@@ -1,0 +1,20 @@
+syntax = "proto3";
+package crosswords;
+option go_package = "github.com/domino14/crosswords/rpc/api/proto/crosswords";
+
+import "macondo/api/proto/macondo/macondo.proto";
+
+message NewGameRequest {
+  repeated macondo.PlayerInfo players = 1;
+  repeated string board_layout = 2;
+  string lexicon = 3;
+  string letter_distribution = 4;
+  // Perhaps an eventual protobuf field that contains a custom letter
+  // distribution, as the above should just be a name ("english", etc).
+}
+
+message NewGameResponse {}
+
+service CrosswordGameService {
+  rpc NewGame(NewGameRequest) returns (NewGameResponse);
+}
