@@ -26,19 +26,169 @@ const (
 // of the legacy proto package is being used.
 const _ = proto.ProtoPackageIsVersion4
 
-type NewGameRequest struct {
+type ChallengeRule int32
+
+const (
+	ChallengeRule_VOID       ChallengeRule = 0
+	ChallengeRule_SINGLE     ChallengeRule = 1
+	ChallengeRule_DOUBLE     ChallengeRule = 2
+	ChallengeRule_FIVE_POINT ChallengeRule = 3
+	ChallengeRule_TEN_POINT  ChallengeRule = 4
+)
+
+// Enum value maps for ChallengeRule.
+var (
+	ChallengeRule_name = map[int32]string{
+		0: "VOID",
+		1: "SINGLE",
+		2: "DOUBLE",
+		3: "FIVE_POINT",
+		4: "TEN_POINT",
+	}
+	ChallengeRule_value = map[string]int32{
+		"VOID":       0,
+		"SINGLE":     1,
+		"DOUBLE":     2,
+		"FIVE_POINT": 3,
+		"TEN_POINT":  4,
+	}
+)
+
+func (x ChallengeRule) Enum() *ChallengeRule {
+	p := new(ChallengeRule)
+	*p = x
+	return p
+}
+
+func (x ChallengeRule) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (ChallengeRule) Descriptor() protoreflect.EnumDescriptor {
+	return file_api_proto_game_service_proto_enumTypes[0].Descriptor()
+}
+
+func (ChallengeRule) Type() protoreflect.EnumType {
+	return &file_api_proto_game_service_proto_enumTypes[0]
+}
+
+func (x ChallengeRule) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use ChallengeRule.Descriptor instead.
+func (ChallengeRule) EnumDescriptor() ([]byte, []int) {
+	return file_api_proto_game_service_proto_rawDescGZIP(), []int{0}
+}
+
+type GameMode int32
+
+const (
+	GameMode_REAL_TIME      GameMode = 0
+	GameMode_CORRESPONDENCE GameMode = 1
+)
+
+// Enum value maps for GameMode.
+var (
+	GameMode_name = map[int32]string{
+		0: "REAL_TIME",
+		1: "CORRESPONDENCE",
+	}
+	GameMode_value = map[string]int32{
+		"REAL_TIME":      0,
+		"CORRESPONDENCE": 1,
+	}
+)
+
+func (x GameMode) Enum() *GameMode {
+	p := new(GameMode)
+	*p = x
+	return p
+}
+
+func (x GameMode) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (GameMode) Descriptor() protoreflect.EnumDescriptor {
+	return file_api_proto_game_service_proto_enumTypes[1].Descriptor()
+}
+
+func (GameMode) Type() protoreflect.EnumType {
+	return &file_api_proto_game_service_proto_enumTypes[1]
+}
+
+func (x GameMode) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use GameMode.Descriptor instead.
+func (GameMode) EnumDescriptor() ([]byte, []int) {
+	return file_api_proto_game_service_proto_rawDescGZIP(), []int{1}
+}
+
+type GameEndReason int32
+
+const (
+	GameEndReason_TIME               GameEndReason = 0
+	GameEndReason_WENT_OUT           GameEndReason = 1
+	GameEndReason_CONSECUTIVE_ZEROES GameEndReason = 2
+)
+
+// Enum value maps for GameEndReason.
+var (
+	GameEndReason_name = map[int32]string{
+		0: "TIME",
+		1: "WENT_OUT",
+		2: "CONSECUTIVE_ZEROES",
+	}
+	GameEndReason_value = map[string]int32{
+		"TIME":               0,
+		"WENT_OUT":           1,
+		"CONSECUTIVE_ZEROES": 2,
+	}
+)
+
+func (x GameEndReason) Enum() *GameEndReason {
+	p := new(GameEndReason)
+	*p = x
+	return p
+}
+
+func (x GameEndReason) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (GameEndReason) Descriptor() protoreflect.EnumDescriptor {
+	return file_api_proto_game_service_proto_enumTypes[2].Descriptor()
+}
+
+func (GameEndReason) Type() protoreflect.EnumType {
+	return &file_api_proto_game_service_proto_enumTypes[2]
+}
+
+func (x GameEndReason) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use GameEndReason.Descriptor instead.
+func (GameEndReason) EnumDescriptor() ([]byte, []int) {
+	return file_api_proto_game_service_proto_rawDescGZIP(), []int{2}
+}
+
+// A GameRules is just the name of a board layout + the name of a letter
+// distribution. These must exist in a database or file somewhere.
+type GameRules struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Players            []*macondo.PlayerInfo `protobuf:"bytes,1,rep,name=players,proto3" json:"players,omitempty"`
-	BoardLayout        []string              `protobuf:"bytes,2,rep,name=board_layout,json=boardLayout,proto3" json:"board_layout,omitempty"`
-	Lexicon            string                `protobuf:"bytes,3,opt,name=lexicon,proto3" json:"lexicon,omitempty"`
-	LetterDistribution string                `protobuf:"bytes,4,opt,name=letter_distribution,json=letterDistribution,proto3" json:"letter_distribution,omitempty"`
+	BoardLayoutName        string `protobuf:"bytes,1,opt,name=board_layout_name,json=boardLayoutName,proto3" json:"board_layout_name,omitempty"`
+	LetterDistributionName string `protobuf:"bytes,2,opt,name=letter_distribution_name,json=letterDistributionName,proto3" json:"letter_distribution_name,omitempty"`
 }
 
-func (x *NewGameRequest) Reset() {
-	*x = NewGameRequest{}
+func (x *GameRules) Reset() {
+	*x = GameRules{}
 	if protoimpl.UnsafeEnabled {
 		mi := &file_api_proto_game_service_proto_msgTypes[0]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -46,13 +196,13 @@ func (x *NewGameRequest) Reset() {
 	}
 }
 
-func (x *NewGameRequest) String() string {
+func (x *GameRules) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*NewGameRequest) ProtoMessage() {}
+func (*GameRules) ProtoMessage() {}
 
-func (x *NewGameRequest) ProtoReflect() protoreflect.Message {
+func (x *GameRules) ProtoReflect() protoreflect.Message {
 	mi := &file_api_proto_game_service_proto_msgTypes[0]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -64,47 +214,40 @@ func (x *NewGameRequest) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use NewGameRequest.ProtoReflect.Descriptor instead.
-func (*NewGameRequest) Descriptor() ([]byte, []int) {
+// Deprecated: Use GameRules.ProtoReflect.Descriptor instead.
+func (*GameRules) Descriptor() ([]byte, []int) {
 	return file_api_proto_game_service_proto_rawDescGZIP(), []int{0}
 }
 
-func (x *NewGameRequest) GetPlayers() []*macondo.PlayerInfo {
+func (x *GameRules) GetBoardLayoutName() string {
 	if x != nil {
-		return x.Players
-	}
-	return nil
-}
-
-func (x *NewGameRequest) GetBoardLayout() []string {
-	if x != nil {
-		return x.BoardLayout
-	}
-	return nil
-}
-
-func (x *NewGameRequest) GetLexicon() string {
-	if x != nil {
-		return x.Lexicon
+		return x.BoardLayoutName
 	}
 	return ""
 }
 
-func (x *NewGameRequest) GetLetterDistribution() string {
+func (x *GameRules) GetLetterDistributionName() string {
 	if x != nil {
-		return x.LetterDistribution
+		return x.LetterDistributionName
 	}
 	return ""
 }
 
-type NewGameResponse struct {
+type GameRequest struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
+
+	Lexicon            string        `protobuf:"bytes,1,opt,name=lexicon,proto3" json:"lexicon,omitempty"`
+	Rules              *GameRules    `protobuf:"bytes,2,opt,name=rules,proto3" json:"rules,omitempty"`
+	InitialTimeSeconds int32         `protobuf:"varint,3,opt,name=initial_time_seconds,json=initialTimeSeconds,proto3" json:"initial_time_seconds,omitempty"`
+	IncrementSeconds   int32         `protobuf:"varint,4,opt,name=increment_seconds,json=incrementSeconds,proto3" json:"increment_seconds,omitempty"`
+	ChallengeRule      ChallengeRule `protobuf:"varint,5,opt,name=challenge_rule,json=challengeRule,proto3,enum=crosswords.ChallengeRule" json:"challenge_rule,omitempty"`
+	Mode               GameMode      `protobuf:"varint,6,opt,name=mode,proto3,enum=crosswords.GameMode" json:"mode,omitempty"`
 }
 
-func (x *NewGameResponse) Reset() {
-	*x = NewGameResponse{}
+func (x *GameRequest) Reset() {
+	*x = GameRequest{}
 	if protoimpl.UnsafeEnabled {
 		mi := &file_api_proto_game_service_proto_msgTypes[1]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -112,13 +255,13 @@ func (x *NewGameResponse) Reset() {
 	}
 }
 
-func (x *NewGameResponse) String() string {
+func (x *GameRequest) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*NewGameResponse) ProtoMessage() {}
+func (*GameRequest) ProtoMessage() {}
 
-func (x *NewGameResponse) ProtoReflect() protoreflect.Message {
+func (x *GameRequest) ProtoReflect() protoreflect.Message {
 	mi := &file_api_proto_game_service_proto_msgTypes[1]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -130,9 +273,433 @@ func (x *NewGameResponse) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use NewGameResponse.ProtoReflect.Descriptor instead.
-func (*NewGameResponse) Descriptor() ([]byte, []int) {
+// Deprecated: Use GameRequest.ProtoReflect.Descriptor instead.
+func (*GameRequest) Descriptor() ([]byte, []int) {
 	return file_api_proto_game_service_proto_rawDescGZIP(), []int{1}
+}
+
+func (x *GameRequest) GetLexicon() string {
+	if x != nil {
+		return x.Lexicon
+	}
+	return ""
+}
+
+func (x *GameRequest) GetRules() *GameRules {
+	if x != nil {
+		return x.Rules
+	}
+	return nil
+}
+
+func (x *GameRequest) GetInitialTimeSeconds() int32 {
+	if x != nil {
+		return x.InitialTimeSeconds
+	}
+	return 0
+}
+
+func (x *GameRequest) GetIncrementSeconds() int32 {
+	if x != nil {
+		return x.IncrementSeconds
+	}
+	return 0
+}
+
+func (x *GameRequest) GetChallengeRule() ChallengeRule {
+	if x != nil {
+		return x.ChallengeRule
+	}
+	return ChallengeRule_VOID
+}
+
+func (x *GameRequest) GetMode() GameMode {
+	if x != nil {
+		return x.Mode
+	}
+	return GameMode_REAL_TIME
+}
+
+type SeekRequest struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	GameRequest   *GameRequest `protobuf:"bytes,1,opt,name=game_request,json=gameRequest,proto3" json:"game_request,omitempty"`
+	MinimumRating int32        `protobuf:"varint,2,opt,name=minimum_rating,json=minimumRating,proto3" json:"minimum_rating,omitempty"`
+	MaximumRating int32        `protobuf:"varint,3,opt,name=maximum_rating,json=maximumRating,proto3" json:"maximum_rating,omitempty"`
+}
+
+func (x *SeekRequest) Reset() {
+	*x = SeekRequest{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_api_proto_game_service_proto_msgTypes[2]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *SeekRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SeekRequest) ProtoMessage() {}
+
+func (x *SeekRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_api_proto_game_service_proto_msgTypes[2]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SeekRequest.ProtoReflect.Descriptor instead.
+func (*SeekRequest) Descriptor() ([]byte, []int) {
+	return file_api_proto_game_service_proto_rawDescGZIP(), []int{2}
+}
+
+func (x *SeekRequest) GetGameRequest() *GameRequest {
+	if x != nil {
+		return x.GameRequest
+	}
+	return nil
+}
+
+func (x *SeekRequest) GetMinimumRating() int32 {
+	if x != nil {
+		return x.MinimumRating
+	}
+	return 0
+}
+
+func (x *SeekRequest) GetMaximumRating() int32 {
+	if x != nil {
+		return x.MaximumRating
+	}
+	return 0
+}
+
+type MatchRequest struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	GameRequest *GameRequest `protobuf:"bytes,1,opt,name=game_request,json=gameRequest,proto3" json:"game_request,omitempty"`
+	Player      string       `protobuf:"bytes,2,opt,name=player,proto3" json:"player,omitempty"`
+}
+
+func (x *MatchRequest) Reset() {
+	*x = MatchRequest{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_api_proto_game_service_proto_msgTypes[3]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *MatchRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*MatchRequest) ProtoMessage() {}
+
+func (x *MatchRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_api_proto_game_service_proto_msgTypes[3]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use MatchRequest.ProtoReflect.Descriptor instead.
+func (*MatchRequest) Descriptor() ([]byte, []int) {
+	return file_api_proto_game_service_proto_rawDescGZIP(), []int{3}
+}
+
+func (x *MatchRequest) GetGameRequest() *GameRequest {
+	if x != nil {
+		return x.GameRequest
+	}
+	return nil
+}
+
+func (x *MatchRequest) GetPlayer() string {
+	if x != nil {
+		return x.Player
+	}
+	return ""
+}
+
+// Unseek is sent from the server (to all clients?) when a seek request is no
+// longer valid (it may have been accepted or withdrawn)
+type Unseek struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	Player string `protobuf:"bytes,1,opt,name=player,proto3" json:"player,omitempty"`
+}
+
+func (x *Unseek) Reset() {
+	*x = Unseek{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_api_proto_game_service_proto_msgTypes[4]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *Unseek) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Unseek) ProtoMessage() {}
+
+func (x *Unseek) ProtoReflect() protoreflect.Message {
+	mi := &file_api_proto_game_service_proto_msgTypes[4]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use Unseek.ProtoReflect.Descriptor instead.
+func (*Unseek) Descriptor() ([]byte, []int) {
+	return file_api_proto_game_service_proto_rawDescGZIP(), []int{4}
+}
+
+func (x *Unseek) GetPlayer() string {
+	if x != nil {
+		return x.Player
+	}
+	return ""
+}
+
+// The server will send back a UserGameplayEvent with the same event, and
+// any corrected fields. The server will also send these asynchronously for
+// opponent gameplay events.
+type UserGameplayEvent struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	Event *macondo.GameEvent `protobuf:"bytes,1,opt,name=event,proto3" json:"event,omitempty"`
+	// new_rack is ignored when sent from client to server, but filled in when
+	// sent from server back to client.
+	NewRack string `protobuf:"bytes,2,opt,name=new_rack,json=newRack,proto3" json:"new_rack,omitempty"`
+	// The player's time remaining, in milliseconds. This is sent from server
+	// to client.
+	TimeRemaining int32 `protobuf:"varint,3,opt,name=time_remaining,json=timeRemaining,proto3" json:"time_remaining,omitempty"`
+}
+
+func (x *UserGameplayEvent) Reset() {
+	*x = UserGameplayEvent{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_api_proto_game_service_proto_msgTypes[5]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *UserGameplayEvent) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UserGameplayEvent) ProtoMessage() {}
+
+func (x *UserGameplayEvent) ProtoReflect() protoreflect.Message {
+	mi := &file_api_proto_game_service_proto_msgTypes[5]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UserGameplayEvent.ProtoReflect.Descriptor instead.
+func (*UserGameplayEvent) Descriptor() ([]byte, []int) {
+	return file_api_proto_game_service_proto_rawDescGZIP(), []int{5}
+}
+
+func (x *UserGameplayEvent) GetEvent() *macondo.GameEvent {
+	if x != nil {
+		return x.Event
+	}
+	return nil
+}
+
+func (x *UserGameplayEvent) GetNewRack() string {
+	if x != nil {
+		return x.NewRack
+	}
+	return ""
+}
+
+func (x *UserGameplayEvent) GetTimeRemaining() int32 {
+	if x != nil {
+		return x.TimeRemaining
+	}
+	return 0
+}
+
+// GameEndedEvent is always sent from the server to both clients.
+type GameEndedEvent struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	Reason GameEndReason `protobuf:"varint,1,opt,name=reason,proto3,enum=crosswords.GameEndReason" json:"reason,omitempty"`
+	// If the reason is TIME, the affected player is the one that ran out of time.
+	// If the reason is WENT_OUT, the affected player is the one that went out.
+	// Otherwise, both players are affected (CONSECUTIVE_ZEROES).
+	AffectedPlayer string           `protobuf:"bytes,2,opt,name=affected_player,json=affectedPlayer,proto3" json:"affected_player,omitempty"`
+	NewRatings     map[string]int32 `protobuf:"bytes,3,rep,name=new_ratings,json=newRatings,proto3" json:"new_ratings,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"varint,2,opt,name=value,proto3"`
+}
+
+func (x *GameEndedEvent) Reset() {
+	*x = GameEndedEvent{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_api_proto_game_service_proto_msgTypes[6]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *GameEndedEvent) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GameEndedEvent) ProtoMessage() {}
+
+func (x *GameEndedEvent) ProtoReflect() protoreflect.Message {
+	mi := &file_api_proto_game_service_proto_msgTypes[6]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GameEndedEvent.ProtoReflect.Descriptor instead.
+func (*GameEndedEvent) Descriptor() ([]byte, []int) {
+	return file_api_proto_game_service_proto_rawDescGZIP(), []int{6}
+}
+
+func (x *GameEndedEvent) GetReason() GameEndReason {
+	if x != nil {
+		return x.Reason
+	}
+	return GameEndReason_TIME
+}
+
+func (x *GameEndedEvent) GetAffectedPlayer() string {
+	if x != nil {
+		return x.AffectedPlayer
+	}
+	return ""
+}
+
+func (x *GameEndedEvent) GetNewRatings() map[string]int32 {
+	if x != nil {
+		return x.NewRatings
+	}
+	return nil
+}
+
+// A GameHistoryRefresher is sent to both players when the game starts,
+// and any observers at the time that they begin observing. It can also be sent
+// to a player who reconnects in the middle of a game.
+type GameHistoryRefresher struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	// The history contains all the moves, points, as well as the last known racks
+	// of each player. It also implicitly contains whose turn it is at the moment,
+	// by the events / turns in the history.
+	// The front-end is responsible for showing all this information in a nice
+	// format.
+	// Note: the racks of each player should not be sent to both players, only
+	// to observers. The back-end will have to be smart enough to overwrite
+	// this information with a blank string before sending it. It might not
+	// even be that great of a big deal, as I'm sure people can devise other ways
+	// to cheat, but shrug.
+	History *macondo.GameHistory `protobuf:"bytes,1,opt,name=history,proto3" json:"history,omitempty"`
+	// These represent how much time each player has remaining on their clock
+	// as of the "refresher", in milliseconds.
+	TimePlayer1 int32 `protobuf:"varint,2,opt,name=time_player1,json=timePlayer1,proto3" json:"time_player1,omitempty"`
+	TimePlayer2 int32 `protobuf:"varint,3,opt,name=time_player2,json=timePlayer2,proto3" json:"time_player2,omitempty"`
+}
+
+func (x *GameHistoryRefresher) Reset() {
+	*x = GameHistoryRefresher{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_api_proto_game_service_proto_msgTypes[7]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *GameHistoryRefresher) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GameHistoryRefresher) ProtoMessage() {}
+
+func (x *GameHistoryRefresher) ProtoReflect() protoreflect.Message {
+	mi := &file_api_proto_game_service_proto_msgTypes[7]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GameHistoryRefresher.ProtoReflect.Descriptor instead.
+func (*GameHistoryRefresher) Descriptor() ([]byte, []int) {
+	return file_api_proto_game_service_proto_rawDescGZIP(), []int{7}
+}
+
+func (x *GameHistoryRefresher) GetHistory() *macondo.GameHistory {
+	if x != nil {
+		return x.History
+	}
+	return nil
+}
+
+func (x *GameHistoryRefresher) GetTimePlayer1() int32 {
+	if x != nil {
+		return x.TimePlayer1
+	}
+	return 0
+}
+
+func (x *GameHistoryRefresher) GetTimePlayer2() int32 {
+	if x != nil {
+		return x.TimePlayer2
+	}
+	return 0
 }
 
 var File_api_proto_game_service_proto protoreflect.FileDescriptor
@@ -143,29 +710,99 @@ var file_api_proto_game_service_proto_rawDesc = []byte{
 	0x63, 0x72, 0x6f, 0x73, 0x73, 0x77, 0x6f, 0x72, 0x64, 0x73, 0x1a, 0x27, 0x6d, 0x61, 0x63, 0x6f,
 	0x6e, 0x64, 0x6f, 0x2f, 0x61, 0x70, 0x69, 0x2f, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x2f, 0x6d, 0x61,
 	0x63, 0x6f, 0x6e, 0x64, 0x6f, 0x2f, 0x6d, 0x61, 0x63, 0x6f, 0x6e, 0x64, 0x6f, 0x2e, 0x70, 0x72,
-	0x6f, 0x74, 0x6f, 0x22, 0xad, 0x01, 0x0a, 0x0e, 0x4e, 0x65, 0x77, 0x47, 0x61, 0x6d, 0x65, 0x52,
-	0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x12, 0x2d, 0x0a, 0x07, 0x70, 0x6c, 0x61, 0x79, 0x65, 0x72,
-	0x73, 0x18, 0x01, 0x20, 0x03, 0x28, 0x0b, 0x32, 0x13, 0x2e, 0x6d, 0x61, 0x63, 0x6f, 0x6e, 0x64,
-	0x6f, 0x2e, 0x50, 0x6c, 0x61, 0x79, 0x65, 0x72, 0x49, 0x6e, 0x66, 0x6f, 0x52, 0x07, 0x70, 0x6c,
-	0x61, 0x79, 0x65, 0x72, 0x73, 0x12, 0x21, 0x0a, 0x0c, 0x62, 0x6f, 0x61, 0x72, 0x64, 0x5f, 0x6c,
-	0x61, 0x79, 0x6f, 0x75, 0x74, 0x18, 0x02, 0x20, 0x03, 0x28, 0x09, 0x52, 0x0b, 0x62, 0x6f, 0x61,
-	0x72, 0x64, 0x4c, 0x61, 0x79, 0x6f, 0x75, 0x74, 0x12, 0x18, 0x0a, 0x07, 0x6c, 0x65, 0x78, 0x69,
-	0x63, 0x6f, 0x6e, 0x18, 0x03, 0x20, 0x01, 0x28, 0x09, 0x52, 0x07, 0x6c, 0x65, 0x78, 0x69, 0x63,
-	0x6f, 0x6e, 0x12, 0x2f, 0x0a, 0x13, 0x6c, 0x65, 0x74, 0x74, 0x65, 0x72, 0x5f, 0x64, 0x69, 0x73,
-	0x74, 0x72, 0x69, 0x62, 0x75, 0x74, 0x69, 0x6f, 0x6e, 0x18, 0x04, 0x20, 0x01, 0x28, 0x09, 0x52,
-	0x12, 0x6c, 0x65, 0x74, 0x74, 0x65, 0x72, 0x44, 0x69, 0x73, 0x74, 0x72, 0x69, 0x62, 0x75, 0x74,
-	0x69, 0x6f, 0x6e, 0x22, 0x11, 0x0a, 0x0f, 0x4e, 0x65, 0x77, 0x47, 0x61, 0x6d, 0x65, 0x52, 0x65,
-	0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x32, 0x5a, 0x0a, 0x14, 0x43, 0x72, 0x6f, 0x73, 0x73, 0x77,
-	0x6f, 0x72, 0x64, 0x47, 0x61, 0x6d, 0x65, 0x53, 0x65, 0x72, 0x76, 0x69, 0x63, 0x65, 0x12, 0x42,
-	0x0a, 0x07, 0x4e, 0x65, 0x77, 0x47, 0x61, 0x6d, 0x65, 0x12, 0x1a, 0x2e, 0x63, 0x72, 0x6f, 0x73,
-	0x73, 0x77, 0x6f, 0x72, 0x64, 0x73, 0x2e, 0x4e, 0x65, 0x77, 0x47, 0x61, 0x6d, 0x65, 0x52, 0x65,
-	0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x1b, 0x2e, 0x63, 0x72, 0x6f, 0x73, 0x73, 0x77, 0x6f, 0x72,
-	0x64, 0x73, 0x2e, 0x4e, 0x65, 0x77, 0x47, 0x61, 0x6d, 0x65, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e,
-	0x73, 0x65, 0x42, 0x39, 0x5a, 0x37, 0x67, 0x69, 0x74, 0x68, 0x75, 0x62, 0x2e, 0x63, 0x6f, 0x6d,
-	0x2f, 0x64, 0x6f, 0x6d, 0x69, 0x6e, 0x6f, 0x31, 0x34, 0x2f, 0x63, 0x72, 0x6f, 0x73, 0x73, 0x77,
-	0x6f, 0x72, 0x64, 0x73, 0x2f, 0x72, 0x70, 0x63, 0x2f, 0x61, 0x70, 0x69, 0x2f, 0x70, 0x72, 0x6f,
-	0x74, 0x6f, 0x2f, 0x63, 0x72, 0x6f, 0x73, 0x73, 0x77, 0x6f, 0x72, 0x64, 0x73, 0x62, 0x06, 0x70,
-	0x72, 0x6f, 0x74, 0x6f, 0x33,
+	0x6f, 0x74, 0x6f, 0x22, 0x71, 0x0a, 0x09, 0x47, 0x61, 0x6d, 0x65, 0x52, 0x75, 0x6c, 0x65, 0x73,
+	0x12, 0x2a, 0x0a, 0x11, 0x62, 0x6f, 0x61, 0x72, 0x64, 0x5f, 0x6c, 0x61, 0x79, 0x6f, 0x75, 0x74,
+	0x5f, 0x6e, 0x61, 0x6d, 0x65, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x0f, 0x62, 0x6f, 0x61,
+	0x72, 0x64, 0x4c, 0x61, 0x79, 0x6f, 0x75, 0x74, 0x4e, 0x61, 0x6d, 0x65, 0x12, 0x38, 0x0a, 0x18,
+	0x6c, 0x65, 0x74, 0x74, 0x65, 0x72, 0x5f, 0x64, 0x69, 0x73, 0x74, 0x72, 0x69, 0x62, 0x75, 0x74,
+	0x69, 0x6f, 0x6e, 0x5f, 0x6e, 0x61, 0x6d, 0x65, 0x18, 0x02, 0x20, 0x01, 0x28, 0x09, 0x52, 0x16,
+	0x6c, 0x65, 0x74, 0x74, 0x65, 0x72, 0x44, 0x69, 0x73, 0x74, 0x72, 0x69, 0x62, 0x75, 0x74, 0x69,
+	0x6f, 0x6e, 0x4e, 0x61, 0x6d, 0x65, 0x22, 0x9f, 0x02, 0x0a, 0x0b, 0x47, 0x61, 0x6d, 0x65, 0x52,
+	0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x12, 0x18, 0x0a, 0x07, 0x6c, 0x65, 0x78, 0x69, 0x63, 0x6f,
+	0x6e, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x07, 0x6c, 0x65, 0x78, 0x69, 0x63, 0x6f, 0x6e,
+	0x12, 0x2b, 0x0a, 0x05, 0x72, 0x75, 0x6c, 0x65, 0x73, 0x18, 0x02, 0x20, 0x01, 0x28, 0x0b, 0x32,
+	0x15, 0x2e, 0x63, 0x72, 0x6f, 0x73, 0x73, 0x77, 0x6f, 0x72, 0x64, 0x73, 0x2e, 0x47, 0x61, 0x6d,
+	0x65, 0x52, 0x75, 0x6c, 0x65, 0x73, 0x52, 0x05, 0x72, 0x75, 0x6c, 0x65, 0x73, 0x12, 0x30, 0x0a,
+	0x14, 0x69, 0x6e, 0x69, 0x74, 0x69, 0x61, 0x6c, 0x5f, 0x74, 0x69, 0x6d, 0x65, 0x5f, 0x73, 0x65,
+	0x63, 0x6f, 0x6e, 0x64, 0x73, 0x18, 0x03, 0x20, 0x01, 0x28, 0x05, 0x52, 0x12, 0x69, 0x6e, 0x69,
+	0x74, 0x69, 0x61, 0x6c, 0x54, 0x69, 0x6d, 0x65, 0x53, 0x65, 0x63, 0x6f, 0x6e, 0x64, 0x73, 0x12,
+	0x2b, 0x0a, 0x11, 0x69, 0x6e, 0x63, 0x72, 0x65, 0x6d, 0x65, 0x6e, 0x74, 0x5f, 0x73, 0x65, 0x63,
+	0x6f, 0x6e, 0x64, 0x73, 0x18, 0x04, 0x20, 0x01, 0x28, 0x05, 0x52, 0x10, 0x69, 0x6e, 0x63, 0x72,
+	0x65, 0x6d, 0x65, 0x6e, 0x74, 0x53, 0x65, 0x63, 0x6f, 0x6e, 0x64, 0x73, 0x12, 0x40, 0x0a, 0x0e,
+	0x63, 0x68, 0x61, 0x6c, 0x6c, 0x65, 0x6e, 0x67, 0x65, 0x5f, 0x72, 0x75, 0x6c, 0x65, 0x18, 0x05,
+	0x20, 0x01, 0x28, 0x0e, 0x32, 0x19, 0x2e, 0x63, 0x72, 0x6f, 0x73, 0x73, 0x77, 0x6f, 0x72, 0x64,
+	0x73, 0x2e, 0x43, 0x68, 0x61, 0x6c, 0x6c, 0x65, 0x6e, 0x67, 0x65, 0x52, 0x75, 0x6c, 0x65, 0x52,
+	0x0d, 0x63, 0x68, 0x61, 0x6c, 0x6c, 0x65, 0x6e, 0x67, 0x65, 0x52, 0x75, 0x6c, 0x65, 0x12, 0x28,
+	0x0a, 0x04, 0x6d, 0x6f, 0x64, 0x65, 0x18, 0x06, 0x20, 0x01, 0x28, 0x0e, 0x32, 0x14, 0x2e, 0x63,
+	0x72, 0x6f, 0x73, 0x73, 0x77, 0x6f, 0x72, 0x64, 0x73, 0x2e, 0x47, 0x61, 0x6d, 0x65, 0x4d, 0x6f,
+	0x64, 0x65, 0x52, 0x04, 0x6d, 0x6f, 0x64, 0x65, 0x22, 0x97, 0x01, 0x0a, 0x0b, 0x53, 0x65, 0x65,
+	0x6b, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x12, 0x3a, 0x0a, 0x0c, 0x67, 0x61, 0x6d, 0x65,
+	0x5f, 0x72, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x18, 0x01, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x17,
+	0x2e, 0x63, 0x72, 0x6f, 0x73, 0x73, 0x77, 0x6f, 0x72, 0x64, 0x73, 0x2e, 0x47, 0x61, 0x6d, 0x65,
+	0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x52, 0x0b, 0x67, 0x61, 0x6d, 0x65, 0x52, 0x65, 0x71,
+	0x75, 0x65, 0x73, 0x74, 0x12, 0x25, 0x0a, 0x0e, 0x6d, 0x69, 0x6e, 0x69, 0x6d, 0x75, 0x6d, 0x5f,
+	0x72, 0x61, 0x74, 0x69, 0x6e, 0x67, 0x18, 0x02, 0x20, 0x01, 0x28, 0x05, 0x52, 0x0d, 0x6d, 0x69,
+	0x6e, 0x69, 0x6d, 0x75, 0x6d, 0x52, 0x61, 0x74, 0x69, 0x6e, 0x67, 0x12, 0x25, 0x0a, 0x0e, 0x6d,
+	0x61, 0x78, 0x69, 0x6d, 0x75, 0x6d, 0x5f, 0x72, 0x61, 0x74, 0x69, 0x6e, 0x67, 0x18, 0x03, 0x20,
+	0x01, 0x28, 0x05, 0x52, 0x0d, 0x6d, 0x61, 0x78, 0x69, 0x6d, 0x75, 0x6d, 0x52, 0x61, 0x74, 0x69,
+	0x6e, 0x67, 0x22, 0x62, 0x0a, 0x0c, 0x4d, 0x61, 0x74, 0x63, 0x68, 0x52, 0x65, 0x71, 0x75, 0x65,
+	0x73, 0x74, 0x12, 0x3a, 0x0a, 0x0c, 0x67, 0x61, 0x6d, 0x65, 0x5f, 0x72, 0x65, 0x71, 0x75, 0x65,
+	0x73, 0x74, 0x18, 0x01, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x17, 0x2e, 0x63, 0x72, 0x6f, 0x73, 0x73,
+	0x77, 0x6f, 0x72, 0x64, 0x73, 0x2e, 0x47, 0x61, 0x6d, 0x65, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73,
+	0x74, 0x52, 0x0b, 0x67, 0x61, 0x6d, 0x65, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x12, 0x16,
+	0x0a, 0x06, 0x70, 0x6c, 0x61, 0x79, 0x65, 0x72, 0x18, 0x02, 0x20, 0x01, 0x28, 0x09, 0x52, 0x06,
+	0x70, 0x6c, 0x61, 0x79, 0x65, 0x72, 0x22, 0x20, 0x0a, 0x06, 0x55, 0x6e, 0x73, 0x65, 0x65, 0x6b,
+	0x12, 0x16, 0x0a, 0x06, 0x70, 0x6c, 0x61, 0x79, 0x65, 0x72, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09,
+	0x52, 0x06, 0x70, 0x6c, 0x61, 0x79, 0x65, 0x72, 0x22, 0x7f, 0x0a, 0x11, 0x55, 0x73, 0x65, 0x72,
+	0x47, 0x61, 0x6d, 0x65, 0x70, 0x6c, 0x61, 0x79, 0x45, 0x76, 0x65, 0x6e, 0x74, 0x12, 0x28, 0x0a,
+	0x05, 0x65, 0x76, 0x65, 0x6e, 0x74, 0x18, 0x01, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x12, 0x2e, 0x6d,
+	0x61, 0x63, 0x6f, 0x6e, 0x64, 0x6f, 0x2e, 0x47, 0x61, 0x6d, 0x65, 0x45, 0x76, 0x65, 0x6e, 0x74,
+	0x52, 0x05, 0x65, 0x76, 0x65, 0x6e, 0x74, 0x12, 0x19, 0x0a, 0x08, 0x6e, 0x65, 0x77, 0x5f, 0x72,
+	0x61, 0x63, 0x6b, 0x18, 0x02, 0x20, 0x01, 0x28, 0x09, 0x52, 0x07, 0x6e, 0x65, 0x77, 0x52, 0x61,
+	0x63, 0x6b, 0x12, 0x25, 0x0a, 0x0e, 0x74, 0x69, 0x6d, 0x65, 0x5f, 0x72, 0x65, 0x6d, 0x61, 0x69,
+	0x6e, 0x69, 0x6e, 0x67, 0x18, 0x03, 0x20, 0x01, 0x28, 0x05, 0x52, 0x0d, 0x74, 0x69, 0x6d, 0x65,
+	0x52, 0x65, 0x6d, 0x61, 0x69, 0x6e, 0x69, 0x6e, 0x67, 0x22, 0xf8, 0x01, 0x0a, 0x0e, 0x47, 0x61,
+	0x6d, 0x65, 0x45, 0x6e, 0x64, 0x65, 0x64, 0x45, 0x76, 0x65, 0x6e, 0x74, 0x12, 0x31, 0x0a, 0x06,
+	0x72, 0x65, 0x61, 0x73, 0x6f, 0x6e, 0x18, 0x01, 0x20, 0x01, 0x28, 0x0e, 0x32, 0x19, 0x2e, 0x63,
+	0x72, 0x6f, 0x73, 0x73, 0x77, 0x6f, 0x72, 0x64, 0x73, 0x2e, 0x47, 0x61, 0x6d, 0x65, 0x45, 0x6e,
+	0x64, 0x52, 0x65, 0x61, 0x73, 0x6f, 0x6e, 0x52, 0x06, 0x72, 0x65, 0x61, 0x73, 0x6f, 0x6e, 0x12,
+	0x27, 0x0a, 0x0f, 0x61, 0x66, 0x66, 0x65, 0x63, 0x74, 0x65, 0x64, 0x5f, 0x70, 0x6c, 0x61, 0x79,
+	0x65, 0x72, 0x18, 0x02, 0x20, 0x01, 0x28, 0x09, 0x52, 0x0e, 0x61, 0x66, 0x66, 0x65, 0x63, 0x74,
+	0x65, 0x64, 0x50, 0x6c, 0x61, 0x79, 0x65, 0x72, 0x12, 0x4b, 0x0a, 0x0b, 0x6e, 0x65, 0x77, 0x5f,
+	0x72, 0x61, 0x74, 0x69, 0x6e, 0x67, 0x73, 0x18, 0x03, 0x20, 0x03, 0x28, 0x0b, 0x32, 0x2a, 0x2e,
+	0x63, 0x72, 0x6f, 0x73, 0x73, 0x77, 0x6f, 0x72, 0x64, 0x73, 0x2e, 0x47, 0x61, 0x6d, 0x65, 0x45,
+	0x6e, 0x64, 0x65, 0x64, 0x45, 0x76, 0x65, 0x6e, 0x74, 0x2e, 0x4e, 0x65, 0x77, 0x52, 0x61, 0x74,
+	0x69, 0x6e, 0x67, 0x73, 0x45, 0x6e, 0x74, 0x72, 0x79, 0x52, 0x0a, 0x6e, 0x65, 0x77, 0x52, 0x61,
+	0x74, 0x69, 0x6e, 0x67, 0x73, 0x1a, 0x3d, 0x0a, 0x0f, 0x4e, 0x65, 0x77, 0x52, 0x61, 0x74, 0x69,
+	0x6e, 0x67, 0x73, 0x45, 0x6e, 0x74, 0x72, 0x79, 0x12, 0x10, 0x0a, 0x03, 0x6b, 0x65, 0x79, 0x18,
+	0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x03, 0x6b, 0x65, 0x79, 0x12, 0x14, 0x0a, 0x05, 0x76, 0x61,
+	0x6c, 0x75, 0x65, 0x18, 0x02, 0x20, 0x01, 0x28, 0x05, 0x52, 0x05, 0x76, 0x61, 0x6c, 0x75, 0x65,
+	0x3a, 0x02, 0x38, 0x01, 0x22, 0x8c, 0x01, 0x0a, 0x14, 0x47, 0x61, 0x6d, 0x65, 0x48, 0x69, 0x73,
+	0x74, 0x6f, 0x72, 0x79, 0x52, 0x65, 0x66, 0x72, 0x65, 0x73, 0x68, 0x65, 0x72, 0x12, 0x2e, 0x0a,
+	0x07, 0x68, 0x69, 0x73, 0x74, 0x6f, 0x72, 0x79, 0x18, 0x01, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x14,
+	0x2e, 0x6d, 0x61, 0x63, 0x6f, 0x6e, 0x64, 0x6f, 0x2e, 0x47, 0x61, 0x6d, 0x65, 0x48, 0x69, 0x73,
+	0x74, 0x6f, 0x72, 0x79, 0x52, 0x07, 0x68, 0x69, 0x73, 0x74, 0x6f, 0x72, 0x79, 0x12, 0x21, 0x0a,
+	0x0c, 0x74, 0x69, 0x6d, 0x65, 0x5f, 0x70, 0x6c, 0x61, 0x79, 0x65, 0x72, 0x31, 0x18, 0x02, 0x20,
+	0x01, 0x28, 0x05, 0x52, 0x0b, 0x74, 0x69, 0x6d, 0x65, 0x50, 0x6c, 0x61, 0x79, 0x65, 0x72, 0x31,
+	0x12, 0x21, 0x0a, 0x0c, 0x74, 0x69, 0x6d, 0x65, 0x5f, 0x70, 0x6c, 0x61, 0x79, 0x65, 0x72, 0x32,
+	0x18, 0x03, 0x20, 0x01, 0x28, 0x05, 0x52, 0x0b, 0x74, 0x69, 0x6d, 0x65, 0x50, 0x6c, 0x61, 0x79,
+	0x65, 0x72, 0x32, 0x2a, 0x50, 0x0a, 0x0d, 0x43, 0x68, 0x61, 0x6c, 0x6c, 0x65, 0x6e, 0x67, 0x65,
+	0x52, 0x75, 0x6c, 0x65, 0x12, 0x08, 0x0a, 0x04, 0x56, 0x4f, 0x49, 0x44, 0x10, 0x00, 0x12, 0x0a,
+	0x0a, 0x06, 0x53, 0x49, 0x4e, 0x47, 0x4c, 0x45, 0x10, 0x01, 0x12, 0x0a, 0x0a, 0x06, 0x44, 0x4f,
+	0x55, 0x42, 0x4c, 0x45, 0x10, 0x02, 0x12, 0x0e, 0x0a, 0x0a, 0x46, 0x49, 0x56, 0x45, 0x5f, 0x50,
+	0x4f, 0x49, 0x4e, 0x54, 0x10, 0x03, 0x12, 0x0d, 0x0a, 0x09, 0x54, 0x45, 0x4e, 0x5f, 0x50, 0x4f,
+	0x49, 0x4e, 0x54, 0x10, 0x04, 0x2a, 0x2d, 0x0a, 0x08, 0x47, 0x61, 0x6d, 0x65, 0x4d, 0x6f, 0x64,
+	0x65, 0x12, 0x0d, 0x0a, 0x09, 0x52, 0x45, 0x41, 0x4c, 0x5f, 0x54, 0x49, 0x4d, 0x45, 0x10, 0x00,
+	0x12, 0x12, 0x0a, 0x0e, 0x43, 0x4f, 0x52, 0x52, 0x45, 0x53, 0x50, 0x4f, 0x4e, 0x44, 0x45, 0x4e,
+	0x43, 0x45, 0x10, 0x01, 0x2a, 0x3f, 0x0a, 0x0d, 0x47, 0x61, 0x6d, 0x65, 0x45, 0x6e, 0x64, 0x52,
+	0x65, 0x61, 0x73, 0x6f, 0x6e, 0x12, 0x08, 0x0a, 0x04, 0x54, 0x49, 0x4d, 0x45, 0x10, 0x00, 0x12,
+	0x0c, 0x0a, 0x08, 0x57, 0x45, 0x4e, 0x54, 0x5f, 0x4f, 0x55, 0x54, 0x10, 0x01, 0x12, 0x16, 0x0a,
+	0x12, 0x43, 0x4f, 0x4e, 0x53, 0x45, 0x43, 0x55, 0x54, 0x49, 0x56, 0x45, 0x5f, 0x5a, 0x45, 0x52,
+	0x4f, 0x45, 0x53, 0x10, 0x02, 0x42, 0x39, 0x5a, 0x37, 0x67, 0x69, 0x74, 0x68, 0x75, 0x62, 0x2e,
+	0x63, 0x6f, 0x6d, 0x2f, 0x64, 0x6f, 0x6d, 0x69, 0x6e, 0x6f, 0x31, 0x34, 0x2f, 0x63, 0x72, 0x6f,
+	0x73, 0x73, 0x77, 0x6f, 0x72, 0x64, 0x73, 0x2f, 0x72, 0x70, 0x63, 0x2f, 0x61, 0x70, 0x69, 0x2f,
+	0x70, 0x72, 0x6f, 0x74, 0x6f, 0x2f, 0x63, 0x72, 0x6f, 0x73, 0x73, 0x77, 0x6f, 0x72, 0x64, 0x73,
+	0x62, 0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
 }
 
 var (
@@ -180,21 +817,39 @@ func file_api_proto_game_service_proto_rawDescGZIP() []byte {
 	return file_api_proto_game_service_proto_rawDescData
 }
 
-var file_api_proto_game_service_proto_msgTypes = make([]protoimpl.MessageInfo, 2)
+var file_api_proto_game_service_proto_enumTypes = make([]protoimpl.EnumInfo, 3)
+var file_api_proto_game_service_proto_msgTypes = make([]protoimpl.MessageInfo, 9)
 var file_api_proto_game_service_proto_goTypes = []interface{}{
-	(*NewGameRequest)(nil),     // 0: crosswords.NewGameRequest
-	(*NewGameResponse)(nil),    // 1: crosswords.NewGameResponse
-	(*macondo.PlayerInfo)(nil), // 2: macondo.PlayerInfo
+	(ChallengeRule)(0),           // 0: crosswords.ChallengeRule
+	(GameMode)(0),                // 1: crosswords.GameMode
+	(GameEndReason)(0),           // 2: crosswords.GameEndReason
+	(*GameRules)(nil),            // 3: crosswords.GameRules
+	(*GameRequest)(nil),          // 4: crosswords.GameRequest
+	(*SeekRequest)(nil),          // 5: crosswords.SeekRequest
+	(*MatchRequest)(nil),         // 6: crosswords.MatchRequest
+	(*Unseek)(nil),               // 7: crosswords.Unseek
+	(*UserGameplayEvent)(nil),    // 8: crosswords.UserGameplayEvent
+	(*GameEndedEvent)(nil),       // 9: crosswords.GameEndedEvent
+	(*GameHistoryRefresher)(nil), // 10: crosswords.GameHistoryRefresher
+	nil,                          // 11: crosswords.GameEndedEvent.NewRatingsEntry
+	(*macondo.GameEvent)(nil),    // 12: macondo.GameEvent
+	(*macondo.GameHistory)(nil),  // 13: macondo.GameHistory
 }
 var file_api_proto_game_service_proto_depIdxs = []int32{
-	2, // 0: crosswords.NewGameRequest.players:type_name -> macondo.PlayerInfo
-	0, // 1: crosswords.CrosswordGameService.NewGame:input_type -> crosswords.NewGameRequest
-	1, // 2: crosswords.CrosswordGameService.NewGame:output_type -> crosswords.NewGameResponse
-	2, // [2:3] is the sub-list for method output_type
-	1, // [1:2] is the sub-list for method input_type
-	1, // [1:1] is the sub-list for extension type_name
-	1, // [1:1] is the sub-list for extension extendee
-	0, // [0:1] is the sub-list for field type_name
+	3,  // 0: crosswords.GameRequest.rules:type_name -> crosswords.GameRules
+	0,  // 1: crosswords.GameRequest.challenge_rule:type_name -> crosswords.ChallengeRule
+	1,  // 2: crosswords.GameRequest.mode:type_name -> crosswords.GameMode
+	4,  // 3: crosswords.SeekRequest.game_request:type_name -> crosswords.GameRequest
+	4,  // 4: crosswords.MatchRequest.game_request:type_name -> crosswords.GameRequest
+	12, // 5: crosswords.UserGameplayEvent.event:type_name -> macondo.GameEvent
+	2,  // 6: crosswords.GameEndedEvent.reason:type_name -> crosswords.GameEndReason
+	11, // 7: crosswords.GameEndedEvent.new_ratings:type_name -> crosswords.GameEndedEvent.NewRatingsEntry
+	13, // 8: crosswords.GameHistoryRefresher.history:type_name -> macondo.GameHistory
+	9,  // [9:9] is the sub-list for method output_type
+	9,  // [9:9] is the sub-list for method input_type
+	9,  // [9:9] is the sub-list for extension type_name
+	9,  // [9:9] is the sub-list for extension extendee
+	0,  // [0:9] is the sub-list for field type_name
 }
 
 func init() { file_api_proto_game_service_proto_init() }
@@ -204,7 +859,7 @@ func file_api_proto_game_service_proto_init() {
 	}
 	if !protoimpl.UnsafeEnabled {
 		file_api_proto_game_service_proto_msgTypes[0].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*NewGameRequest); i {
+			switch v := v.(*GameRules); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -216,7 +871,79 @@ func file_api_proto_game_service_proto_init() {
 			}
 		}
 		file_api_proto_game_service_proto_msgTypes[1].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*NewGameResponse); i {
+			switch v := v.(*GameRequest); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_api_proto_game_service_proto_msgTypes[2].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*SeekRequest); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_api_proto_game_service_proto_msgTypes[3].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*MatchRequest); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_api_proto_game_service_proto_msgTypes[4].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*Unseek); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_api_proto_game_service_proto_msgTypes[5].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*UserGameplayEvent); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_api_proto_game_service_proto_msgTypes[6].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*GameEndedEvent); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_api_proto_game_service_proto_msgTypes[7].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*GameHistoryRefresher); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -233,13 +960,14 @@ func file_api_proto_game_service_proto_init() {
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: file_api_proto_game_service_proto_rawDesc,
-			NumEnums:      0,
-			NumMessages:   2,
+			NumEnums:      3,
+			NumMessages:   9,
 			NumExtensions: 0,
-			NumServices:   1,
+			NumServices:   0,
 		},
 		GoTypes:           file_api_proto_game_service_proto_goTypes,
 		DependencyIndexes: file_api_proto_game_service_proto_depIdxs,
+		EnumInfos:         file_api_proto_game_service_proto_enumTypes,
 		MessageInfos:      file_api_proto_game_service_proto_msgTypes,
 	}.Build()
 	File_api_proto_game_service_proto = out.File

@@ -2,19 +2,137 @@ syntax = "proto3";
 package crosswords;
 option go_package = "github.com/domino14/crosswords/rpc/api/proto/crosswords";
 
+// game_service contains the data structures and services needed for the actual
+// gameplay. Since gameplay is intended to happen over a full-duplex connection,
+// we will not be auto-generating service code; it is here for documentation
+// purposes.
+
 import "macondo/api/proto/macondo/macondo.proto";
 
-message NewGameRequest {
-  repeated macondo.PlayerInfo players = 1;
-  repeated string board_layout = 2;
-  string lexicon = 3;
-  string letter_distribution = 4;
-  // Perhaps an eventual protobuf field that contains a custom letter
-  // distribution, as the above should just be a name ("english", etc).
+// message NewGameRequest {
+//   repeated macondo.PlayerInfo players = 1;
+//   repeated string board_layout = 2;
+//   string lexicon = 3;
+//   string letter_distribution = 4;
+//   // Perhaps an eventual protobuf field that contains a custom letter
+//   // distribution, as the above should just be a name ("english", etc).
+// }
+
+// message NewGameResponse {}
+
+// A GameRules is just the name of a board layout + the name of a letter
+// distribution. These must exist in a database or file somewhere.
+message GameRules {
+  string board_layout_name = 1;
+  string letter_distribution_name = 2;
 }
 
-message NewGameResponse {}
-
-service CrosswordGameService {
-  rpc NewGame(NewGameRequest) returns (NewGameResponse);
+enum ChallengeRule {
+  VOID = 0;
+  SINGLE = 1;
+  DOUBLE = 2;
+  FIVE_POINT = 3;
+  TEN_POINT = 4;
 }
+
+enum GameMode {
+  REAL_TIME = 0;
+  CORRESPONDENCE = 1;
+}
+
+// Game initialization
+// Both SeekRequest and MatchRequest encapsulate a more general GameRequest
+// object Both these types of requests can be sent from client to server or
+// vice-versa.
+
+message GameRequest {
+  string lexicon = 1;
+  GameRules rules = 2;
+  int32 initial_time_seconds = 3;
+  int32 increment_seconds = 4;
+  ChallengeRule challenge_rule = 5;
+  GameMode mode = 6;
+}
+
+message SeekRequest {
+  GameRequest game_request = 1;
+  int32 minimum_rating = 2;
+  int32 maximum_rating = 3;
+}
+
+message MatchRequest {
+  GameRequest game_request = 1;
+  string player = 2;
+}
+
+// Unseek is sent from the server (to all clients?) when a seek request is no
+// longer valid (it may have been accepted or withdrawn)
+message Unseek { string player = 1; }
+
+// Gameplay
+
+enum GameEndReason {
+  TIME = 0;
+  WENT_OUT = 1;
+  CONSECUTIVE_ZEROES = 2;
+}
+
+// One or more macondo.GameEvent comprise a full GameTurn (see macondo proto
+// file). The server is responsible for joining together events into turns for
+// logging purposes. The client will send `macondo.GameEvent` via the websocket.
+
+// We encapsulate the game event here
+
+// The server will send back a UserGameplayEvent with the same event, and
+// any corrected fields. The server will also send these asynchronously for
+// opponent gameplay events.
+message UserGameplayEvent {
+  macondo.GameEvent event = 1;
+  // new_rack is ignored when sent from client to server, but filled in when
+  // sent from server back to client.
+  string new_rack = 2;
+
+  // The player's time remaining, in milliseconds. This is sent from server
+  // to client.
+  int32 time_remaining = 3;
+}
+
+// GameEndedEvent is always sent from the server to both clients.
+message GameEndedEvent {
+  GameEndReason reason = 1;
+  // If the reason is TIME, the affected player is the one that ran out of time.
+  // If the reason is WENT_OUT, the affected player is the one that went out.
+  // Otherwise, both players are affected (CONSECUTIVE_ZEROES).
+  string affected_player = 2;
+
+  map<string, int32> new_ratings = 3;
+}
+
+// A GameHistoryRefresher is sent to both players when the game starts,
+// and any observers at the time that they begin observing. It can also be sent
+// to a player who reconnects in the middle of a game.
+message GameHistoryRefresher {
+  // The history contains all the moves, points, as well as the last known racks
+  // of each player. It also implicitly contains whose turn it is at the moment,
+  // by the events / turns in the history.
+  // The front-end is responsible for showing all this information in a nice
+  // format.
+  // Note: the racks of each player should not be sent to both players, only
+  // to observers. The back-end will have to be smart enough to overwrite
+  // this information with a blank string before sending it. It might not
+  // even be that great of a big deal, as I'm sure people can devise other ways
+  // to cheat, but shrug.
+  macondo.GameHistory history = 1;
+  // These represent how much time each player has remaining on their clock
+  // as of the "refresher", in milliseconds.
+  int32 time_player1 = 2;
+  int32 time_player2 = 3;
+
+  //
+}
+
+// service CrosswordGameService {
+//   rpc SeekGame(SeekGameRequest) returns (SeekGameResponse);
+
+//   rpc NewGame(NewGameRequest) returns (NewGameResponse);
+// }
