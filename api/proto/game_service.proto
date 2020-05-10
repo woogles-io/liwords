@@ -40,6 +40,11 @@ enum GameMode {
   CORRESPONDENCE = 1;
 }
 
+enum RatingMode {
+  RATED = 0;
+  CASUAL = 1;
+}
+
 // Game initialization
 // Both SeekRequest and MatchRequest encapsulate a more general GameRequest
 // object Both these types of requests can be sent from client to server or
@@ -51,7 +56,8 @@ message GameRequest {
   int32 initial_time_seconds = 3;
   int32 increment_seconds = 4;
   ChallengeRule challenge_rule = 5;
-  GameMode mode = 6;
+  GameMode game_mode = 6;
+  RatingMode rating_mode = 7;
 }
 
 message SeekRequest {
@@ -125,6 +131,8 @@ message GameHistoryRefresher {
   macondo.GameHistory history = 1;
   // These represent how much time each player has remaining on their clock
   // as of the "refresher", in milliseconds.
+  // player1 is the player who is listed first in the game history, regardless
+  // of whether they went first.
   int32 time_player1 = 2;
   int32 time_player2 = 3;
 
