@@ -3,10 +3,18 @@
 package sockets
 
 import (
-	"bytes"
-	"log"
+	"crypto/hmac"
+	"crypto/sha1"
+	"encoding/hex"
+	"errors"
+	"fmt"
 	"net/http"
+	"net/url"
+	"os"
+	"strconv"
 	"time"
+
+	"github.com/rs/zerolog/log"
 
 	"github.com/gorilla/websocket"
 )
@@ -23,11 +31,6 @@ const (
 
 	// Maximum message size allowed from peer.
 	maxMessageSize = 512
-)
-
-var (
-	newline = []byte{'\n'}
-	space   = []byte{' '}
 )
 
 var upgrader = websocket.Upgrader{
@@ -65,16 +68,21 @@ func (c *Client) readPump() {
 		_, message, err := c.conn.ReadMessage()
 		if err != nil {
 			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
-				log.Printf("error: %v", err)
+				log.Err(err).Msg("unexpected-close")
 			}
 			break
 		}
 
 		// Here is where we parse the message and send something off to the hub
 		// potentially.
+		err = c.hub.parseAndExecuteMessage(message, c.username)
+		if err != nil {
+			log.Err(err).Msg("parse-and-execute-message")
+			continue
+		}
 
-		message = bytes.TrimSpace(bytes.Replace(message, newline, space, -1))
-		c.hub.broadcast <- message
+		// message = bytes.TrimSpace(bytes.Replace(message, newline, space, -1))
+		// c.hub.broadcast <- message
 	}
 }
 
@@ -96,19 +104,19 @@ func (c *Client) writePump() {
 			if !ok {
 				// The hub closed the channel.
 				c.conn.WriteMessage(websocket.CloseMessage, []byte{})
+				log.Info().Msg("hub closed channel")
 				return
 			}
 
-			w, err := c.conn.NextWriter(websocket.TextMessage)
+			w, err := c.conn.NextWriter(websocket.BinaryMessage)
 			if err != nil {
 				return
 			}
 			w.Write(message)
 
-			// Add queued chat messages to the current websocket message.
+			// Add queued messages to the current websocket message.
 			n := len(c.send)
 			for i := 0; i < n; i++ {
-				w.Write(newline)
 				w.Write(<-c.send)
 			}
 
@@ -124,15 +132,85 @@ func (c *Client) writePump() {
 	}
 }
 
+// close connection with an error string.
+func closeMessage(ws *websocket.Conn, errStr string) {
+	// close code 1008 is used for a generic "policy violation" message.
+	msg := websocket.FormatCloseMessage(websocket.ClosePolicyViolation, errStr)
+	log.Debug().Str("closemsg", string(msg)).Msg("writing close message")
+	err := ws.WriteMessage(websocket.CloseMessage, msg)
+	if err != nil {
+		log.Err(err).Msg("writing close message back to user")
+	}
+	ws.Close()
+	return
+}
+
+func validateWsRequest(v url.Values, now int64) error {
+	secretKey := os.Getenv("SECRET_KEY")
+	user := v.Get("user")
+	timestamp := v.Get("expire")
+	token := v.Get("_token")
+	// Convert token to an array of bytes. Assume token is hex encoded.
+
+	if secretKey == "" {
+		// This should be a panic but let's not go overboard.
+		// Maybe it's a too many open files issue.
+		return errors.New("no secret key in environment")
+	}
+	// Convert timestamp to an int.
+	tsInt, err := strconv.Atoi(timestamp)
+	if err != nil {
+		return err
+	}
+	if int64(tsInt) < now {
+		return fmt.Errorf("your token has expired (ts = %v, now = %v)",
+			tsInt, now)
+	}
+	if user == "" {
+		return fmt.Errorf("no user was specified")
+	}
+	tokenHex, err := hex.DecodeString(token)
+	if err != nil {
+		return err
+	}
+
+	// Reconstruct signed string.
+	ss := fmt.Sprintf("expire=%v&user=%v", timestamp, user)
+	log.Debug().Str("tosign", ss).Msg("signing")
+	mac := hmac.New(sha1.New, []byte(secretKey))
+	mac.Write([]byte(ss))
+	expectedMac := mac.Sum(nil)
+	if !hmac.Equal(expectedMac, tokenHex) {
+		return fmt.Errorf(
+			"token signature was not correct (got %x, expected %x)",
+			expectedMac, tokenHex)
+	}
+	return nil
+}
+
 // serveWs handles websocket requests from the peer.
 func ServeWS(hub *Hub, w http.ResponseWriter, r *http.Request) {
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
-		log.Println(err)
+		log.Err(err).Msg("upgrading socket")
 		return
 	}
-	client := &Client{hub: hub, conn: conn, send: make(chan []byte, 256)}
+
+	qvals := r.URL.Query()
+	err = validateWsRequest(qvals, time.Now().Unix())
+	if err != nil {
+		log.Err(err).Msg("validating websocket")
+		return
+	}
+
+	client := &Client{
+		hub:      hub,
+		conn:     conn,
+		username: qvals.Get("user"),
+		send:     make(chan []byte, 256),
+	}
 	client.hub.register <- client
+	// Maybe can get realm from qvals as well in the future.
 
 	// Allow collection of memory referenced by the caller by doing all work in
 	// new goroutines.

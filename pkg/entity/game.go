@@ -20,6 +20,9 @@ type Game struct {
 
 	// perTurnIncrement, in seconds
 	perTurnIncrement int
+	gamereq          *pb.GameRequest
+
+	changeHook chan<- *EventWrapper
 }
 
 func msTimestamp() int64 {
@@ -28,15 +31,16 @@ func msTimestamp() int64 {
 
 // NewGame takes in a Macondo game that _just started_. So it must log the
 // current timestamp asap.
-func NewGame(mcg *game.Game, perPlayerTimeSecs, perTurnIncrement int) *Game {
+func NewGame(mcg *game.Game, req *pb.GameRequest) *Game {
 	started := msTimestamp()
-	ms := perPlayerTimeSecs * 1000
+	ms := int(req.InitialTimeSeconds * 1000)
 	return &Game{
 		Game:             *mcg,
 		timeRemaining:    []int{ms, ms},
 		timeOfLastMove:   started,
-		perTurnIncrement: perTurnIncrement,
+		perTurnIncrement: int(req.IncrementSeconds),
 		timeStarted:      started,
+		gamereq:          req,
 	}
 }
 
@@ -73,12 +77,39 @@ func (g *Game) RecordTimeOfMove(idx int) {
 	g.timeOfLastMove = now
 }
 
-func (g *Game) HistoryRefresherEvent() *EventWrapper {
+func (g *Game) HistoryRefresherEvent() *pb.GameHistoryRefresher {
 	g.calculateTimeRemaining(0)
 	g.calculateTimeRemaining(1)
-	return NewEventWrapper("GameHistoryRefresher", &pb.GameHistoryRefresher{
+	return &pb.GameHistoryRefresher{
 		History:     g.History(),
 		TimePlayer1: int32(g.TimeRemaining(0)),
 		TimePlayer2: int32(g.TimeRemaining(1)),
-	})
+	}
+}
+
+func (g *Game) GameEndedEvent(reason pb.GameEndReason, player string) *pb.GameEndedEvent {
+	return &pb.GameEndedEvent{
+		Reason:         reason,
+		AffectedPlayer: player,
+	}
+}
+
+func (g *Game) ChallengeRule() pb.ChallengeRule {
+	return g.gamereq.ChallengeRule
+}
+
+func (g *Game) RatingMode() pb.RatingMode {
+	return g.gamereq.RatingMode
+}
+
+// RegisterChangeHook registers a channel with the game. Events will
+// be sent down this channel.
+func (g *Game) RegisterChangeHook(eventChan chan<- *EventWrapper) error {
+	g.changeHook = eventChan
+	return nil
+}
+
+// SendChange sends an event via the registered hook.
+func (g *Game) SendChange(e *EventWrapper) {
+	g.changeHook <- e
 }

@@ -58,6 +58,7 @@ message GameRequest {
   ChallengeRule challenge_rule = 5;
   GameMode game_mode = 6;
   RatingMode rating_mode = 7;
+  string request_id = 8;
 }
 
 message SeekRequest {
@@ -70,6 +71,16 @@ message MatchRequest {
   GameRequest game_request = 1;
   string player = 2;
 }
+
+// A GameAcceptedEvent gets sent when a match request (or seek request)
+// get accepted. The acceptor sends this event to the server.
+message GameAcceptedEvent {
+  string requester = 1;
+  string acceptor = 2;
+  GameRequest game_request = 3;
+}
+
+// XXX: Add a GameResumeEvent
 
 // Unseek is sent from the server (to all clients?) when a seek request is no
 // longer valid (it may have been accepted or withdrawn)
@@ -94,13 +105,14 @@ enum GameEndReason {
 // opponent gameplay events.
 message UserGameplayEvent {
   macondo.GameEvent event = 1;
+  string game_id = 2;
   // new_rack is ignored when sent from client to server, but filled in when
   // sent from server back to client.
-  string new_rack = 2;
+  string new_rack = 3;
 
   // The player's time remaining, in milliseconds. This is sent from server
   // to client.
-  int32 time_remaining = 3;
+  int32 time_remaining = 4;
 }
 
 // GameEndedEvent is always sent from the server to both clients.

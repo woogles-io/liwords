@@ -1,4 +1,12 @@
-# crosswords
+# liwords
+
+### macondo
+
+`liwords` has a dependency on https://github.com/domino14/macondo
+
+`macondo` provides the logic for the actual crossword board game. `liwords` adds
+the web app logic to allow two players to play against each other, or against
+a computer, etc.
 
 ### protoc
 

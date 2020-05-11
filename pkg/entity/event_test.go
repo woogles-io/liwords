@@ -14,7 +14,7 @@ func TestDeserialize(t *testing.T) {
 
 	for _, protocol := range []string{"proto", "json"} {
 
-		w := NewEventWrapper("UserGameplayEvent", &pb.UserGameplayEvent{
+		w := WrapEvent(&pb.UserGameplayEvent{
 			Event: &macondopb.GameEvent{
 				Nickname:   "cesitar",
 				Cumulative: 75,
@@ -29,6 +29,7 @@ func TestDeserialize(t *testing.T) {
 
 		arr, err := w.Serialize()
 		is.NoErr(err)
+
 		ew, err := EventFromByteArray(arr)
 		is.NoErr(err)
 		is.Equal(w.Name, ew.Name)

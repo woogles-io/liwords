@@ -2,6 +2,7 @@ package entity
 
 import (
 	"bytes"
+	"encoding/binary"
 	"encoding/json"
 	"errors"
 	"io"
@@ -30,14 +31,13 @@ type EventWrapper struct {
 	protocol string
 }
 
-// NewGameHistoryEvent returns a new GameHistoryRefresher event wrapper.
-func NewGameHistoryEvent(event proto.Message) *EventWrapper {
-	return NewEventWrapper("GameHistoryRefresher", event)
-}
-
-// NewEventWrapper creates a wrapper around a named proto message.
-func NewEventWrapper(name string, event proto.Message) *EventWrapper {
-	return &EventWrapper{name, event, protobufSerializationProtocol}
+// WrapEvent wraps a protobuf event.
+func WrapEvent(event proto.Message) *EventWrapper {
+	return &EventWrapper{
+		Name:     string(event.ProtoReflect().Descriptor().FullName()),
+		Event:    event,
+		protocol: protobufSerializationProtocol,
+	}
 }
 
 // SetSerializationProtocol sets the serialization protocol of the protobuf
@@ -48,7 +48,8 @@ func (e *EventWrapper) SetSerializationProtocol(protocol string) {
 
 // Serialize serializes the event to a byte array. Our encoding
 // looks like the following:
-// L (single byte for the length of the Name)
+// L1L2 -  Big endian 16-bit length of the entire data packet.
+// LN (single byte for the length of the Name)
 // Name (encoded to ASCII -- all our event names better be ASCII)
 // Protobuf representation of the event.
 func (e *EventWrapper) Serialize() ([]byte, error) {
@@ -56,8 +57,7 @@ func (e *EventWrapper) Serialize() ([]byte, error) {
 	if len(e.Name) > MaxNameLength {
 		return nil, errors.New("event name too long")
 	}
-	b.Write([]byte{byte(len(e.Name))})
-	b.Write([]byte(e.Name))
+
 	var data []byte
 	var err error
 	if e.protocol == "proto" {
@@ -71,27 +71,31 @@ func (e *EventWrapper) Serialize() ([]byte, error) {
 			return nil, err
 		}
 	}
+	binary.Write(&b, binary.BigEndian, int16(len(e.Name)+len(data)))
+	binary.Write(&b, binary.BigEndian, byte(len(e.Name)))
+	b.Write([]byte(e.Name))
 	b.Write(data)
 	return b.Bytes(), nil
 }
 
 // EventFromByteArray takes in a serialized event and deserializes it.
 func EventFromByteArray(arr []byte) (*EventWrapper, error) {
-	fullArrLength := len(arr)
 	b := bytes.NewReader(arr)
-	namelength, err := b.ReadByte()
-	if err != nil {
-		return nil, err
-	}
+	var totalLength int16
+	var namelength byte
+
+	binary.Read(b, binary.BigEndian, &totalLength)
+	binary.Read(b, binary.BigEndian, &namelength)
+
 	nameholder := make([]byte, namelength)
-	_, err = io.ReadFull(b, nameholder)
+	_, err := io.ReadFull(b, nameholder)
 	if err != nil {
 		return nil, err
 	}
 
 	name := string(nameholder)
 	var message proto.Message
-	msgLength := fullArrLength - 1 - int(namelength)
+	msgLength := totalLength - int16(namelength)
 
 	msgBytes := make([]byte, msgLength)
 
@@ -99,11 +103,11 @@ func EventFromByteArray(arr []byte) (*EventWrapper, error) {
 	// Add all relevant events here!
 	// SeekRequest and MatchRequest will be sent from the user via regular
 	// API and not necessarily the socket, so we won't need to process them here.
-	case "UserGameplayEvent":
+	case "crosswords.UserGameplayEvent":
 		message = &pb.UserGameplayEvent{}
-	case "GameEndedEvent":
+	case "crosswords.GameEndedEvent":
 		message = &pb.GameEndedEvent{}
-	case "GameHistoryRefresher":
+	case "crosswords.GameHistoryRefresher":
 		message = &pb.GameHistoryRefresher{}
 	default:
 		return nil, errors.New("event of type " + name + " not handled")
@@ -126,5 +130,5 @@ func EventFromByteArray(arr []byte) (*EventWrapper, error) {
 			return nil, err
 		}
 	}
-	return NewEventWrapper(name, message), nil
+	return WrapEvent(message), nil
 }
