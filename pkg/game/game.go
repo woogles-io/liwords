@@ -35,42 +35,48 @@ type GameStore interface {
 // type Game interface {
 // }
 
-// StartNewGame instantiates a game and starts the timer.
-func StartNewGame(ctx context.Context, gameStore GameStore, cfg *config.Config,
-	players []*macondopb.PlayerInfo, req *pb.GameRequest,
-	eventChan chan<- *entity.EventWrapper) (string, error) {
+// InstantiateNewGame instantiates a game and returns it.
+func InstantiateNewGame(ctx context.Context, gameStore GameStore, cfg *config.Config,
+	players []*macondopb.PlayerInfo, req *pb.GameRequest) (*entity.Game, error) {
 
 	var bd []string
 	switch req.Rules.BoardLayoutName {
 	case CrosswordGame:
 		bd = board.CrosswordGameBoard
 	default:
-		return "", errors.New("unsupported board layout")
+		return nil, errors.New("unsupported board layout")
 	}
 
 	rules, err := game.NewGameRules(&cfg.MacondoConfig, bd,
 		req.Lexicon, req.Rules.LetterDistributionName)
 
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	g, err := game.NewGame(rules, players)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
-	// StartGame sets a new history Uid and actually starts the game.
+	// StartGame creates a new history Uid and actually starts the game.
 	g.StartGame()
 	entGame := entity.NewGame(g, req)
 	if err = gameStore.Set(ctx, entGame); err != nil {
-		return "", err
+		return nil, err
 	}
-	gameID := g.History().Uid
-	if err = entGame.RegisterChangeHook(eventChan); err != nil {
-		return "", err
-	}
-	entGame.SendChange(entity.WrapEvent(entGame.HistoryRefresherEvent()))
+	return entGame, nil
+	// We return the instantiated game. Although the tiles have technically been
+	// dealt out, we need to call StartGameInstance to actually start the timer
+	// and forward game events to the right channels.
 
-	return gameID, nil
+}
+
+func StartGameInstance(entGame *entity.Game, eventChan chan<- *entity.EventWrapper) error {
+	if err := entGame.RegisterChangeHook(eventChan); err != nil {
+		return err
+	}
+	entGame.SendChange(entity.WrapEvent(entGame.HistoryRefresherEvent(), entGame.GameID()))
+
+	return nil
 }
 
 func PlayMove(ctx context.Context, gameStore GameStore, player string,
@@ -111,7 +117,7 @@ func PlayMove(ctx context.Context, gameStore GameStore, player string,
 		return err
 	}
 
-	entGame.SendChange(entity.WrapEvent(uge))
+	entGame.SendChange(entity.WrapEvent(uge, entGame.GameID()))
 	if !playing {
 		performEndgameDuties(entGame, pb.GameEndReason_WENT_OUT, player)
 	}
@@ -125,6 +131,6 @@ func performEndgameDuties(g *entity.Game, reason pb.GameEndReason, player string
 	// }
 
 	g.SendChange(
-		entity.WrapEvent(g.GameEndedEvent(pb.GameEndReason_WENT_OUT, player)))
+		entity.WrapEvent(g.GameEndedEvent(pb.GameEndReason_WENT_OUT, player), g.GameID()))
 
 }

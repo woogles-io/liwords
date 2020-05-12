@@ -5,33 +5,11 @@ import (
 	"errors"
 
 	macondopb "github.com/domino14/macondo/gen/api/proto/macondo"
-	"github.com/rs/zerolog/log"
 
 	"github.com/domino14/crosswords/pkg/entity"
 	"github.com/domino14/crosswords/pkg/game"
 	pb "github.com/domino14/crosswords/rpc/api/proto"
 )
-
-func (h *Hub) registerAndRunEvtQueue(evtChan <-chan *entity.EventWrapper, realm Realm) {
-	// This function is meant to run inside a goroutine.
-	// XXX: if this function stops running we will have a deadlock during gameplay!
-	// this must be thoroughly tested.
-	// At the same time we must figure out how to kill it so we don't have a bunch
-	// of these running uselessly! think this through carefully.
-forloop:
-	for {
-		select {
-		case w := <-evtChan:
-			err := h.sendToRealm(realm, w)
-			if err != nil {
-				log.Err(err).Str("realm", string(realm)).Msg("sending to realm")
-				break forloop
-			}
-		}
-	}
-	log.Debug().Str("realm", string(realm)).Msg("Exiting event queue for realm")
-
-}
 
 func (h *Hub) parseAndExecuteMessage(msg []byte, sender string) error {
 	// All socket messages are encoded entity.Events.
@@ -53,18 +31,19 @@ func (h *Hub) parseAndExecuteMessage(msg []byte, sender string) error {
 			&macondopb.PlayerInfo{Nickname: evt.Acceptor, RealName: evt.Acceptor},
 			&macondopb.PlayerInfo{Nickname: evt.Requester, RealName: evt.Requester},
 		}
+
+		g, err := game.InstantiateNewGame(context.Background(), h.gameStore, h.config,
+			players, evt.GameRequest)
+		if err != nil {
+			return err
+		}
 		// Create a "realm" for these users, and add both of them to the realm.
-		realm := h.addNewRealm()
+		// Use the id of the game as the id of the realm.
+		realm := h.addNewRealm(g.GameID())
 		h.addToRealm(realm, evt.Acceptor)
 		h.addToRealm(realm, evt.Requester)
-
-		// Create a channel to pass to the game. This channel is only written
-		// to by the game, so we must only read from it here.
-		evtChan := make(chan *entity.EventWrapper)
-		go h.registerAndRunEvtQueue(evtChan, realm)
-
-		_, err := game.StartNewGame(context.Background(), h.gameStore, h.config,
-			players, evt.GameRequest, evtChan)
+		// Now, we start the timer and register the event hook.
+		err = game.StartGameInstance(g, h.eventChan)
 		if err != nil {
 			return err
 		}

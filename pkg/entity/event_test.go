@@ -24,7 +24,7 @@ func TestDeserialize(t *testing.T) {
 			},
 			NewRack:       "DOGS",
 			TimeRemaining: 12345,
-		})
+		}, "foo")
 		w.SetSerializationProtocol(protocol)
 
 		arr, err := w.Serialize()

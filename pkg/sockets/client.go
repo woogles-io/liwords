@@ -49,6 +49,8 @@ type Client struct {
 	send chan []byte
 
 	username string
+
+	realms map[Realm]bool
 }
 
 // readPump pumps messages from the websocket connection to the hub.
@@ -208,6 +210,7 @@ func ServeWS(hub *Hub, w http.ResponseWriter, r *http.Request) {
 		conn:     conn,
 		username: qvals.Get("user"),
 		send:     make(chan []byte, 256),
+		realms:   make(map[Realm]bool),
 	}
 	client.hub.register <- client
 	// Maybe can get realm from qvals as well in the future.

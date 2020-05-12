@@ -26,17 +26,21 @@ type EventWrapper struct {
 	Name string
 	// The actual event should therefore be a proto object
 	Event proto.Message
+	// The gameID is the game this event belongs to. This will not be
+	// serialized.
+	gameID string
 
 	// Serialization protocol
 	protocol string
 }
 
 // WrapEvent wraps a protobuf event.
-func WrapEvent(event proto.Message) *EventWrapper {
+func WrapEvent(event proto.Message, gameID string) *EventWrapper {
 	return &EventWrapper{
 		Name:     string(event.ProtoReflect().Descriptor().FullName()),
 		Event:    event,
 		protocol: protobufSerializationProtocol,
+		gameID:   gameID,
 	}
 }
 
@@ -76,6 +80,10 @@ func (e *EventWrapper) Serialize() ([]byte, error) {
 	b.Write([]byte(e.Name))
 	b.Write(data)
 	return b.Bytes(), nil
+}
+
+func (e *EventWrapper) GameID() string {
+	return e.gameID
 }
 
 // EventFromByteArray takes in a serialized event and deserializes it.
@@ -130,5 +138,8 @@ func EventFromByteArray(arr []byte) (*EventWrapper, error) {
 			return nil, err
 		}
 	}
-	return WrapEvent(message), nil
+	// The game ID doesn't matter here. This function handles incoming events,
+	// and the downstream handlers already know how to decode the gameID,
+	// if any, from them.
+	return WrapEvent(message, ""), nil
 }

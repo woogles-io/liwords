@@ -7,7 +7,6 @@ import (
 	"github.com/domino14/crosswords/pkg/config"
 	"github.com/domino14/crosswords/pkg/entity"
 	"github.com/domino14/crosswords/pkg/game"
-	"github.com/lithammer/shortuuid"
 	"github.com/rs/zerolog/log"
 )
 
@@ -43,21 +42,32 @@ type Hub struct {
 	// Each realm has a list of clients in it.
 	realms map[Realm]map[*Client]bool
 
-	/////
-
 	broadcastRealm chan RealmMessage
-	// evtMap is a map of eventwrapper channels. Each of these channels
-	// is associated with a different realm.
-	evtMap map[chan *entity.EventWrapper]Realm
+
+	eventChan chan *entity.EventWrapper
 }
 
-func NewHub(gameStore game.GameStore) *Hub {
+func NewHub(gameStore game.GameStore, cfg *config.Config) *Hub {
 	return &Hub{
 		broadcast:  make(chan []byte),
 		register:   make(chan *Client),
 		unregister: make(chan *Client),
 		clients:    make(map[*Client]bool),
-		gameStore:  gameStore,
+		// eventChan should be buffered to keep the game logic itself
+		// as fast as possible.
+		eventChan: make(chan *entity.EventWrapper, 50),
+		gameStore: gameStore,
+		config:    cfg,
+	}
+}
+
+func (h *Hub) removeClient(c *Client) {
+	log.Debug().Str("client", c.username).Msg("removing client")
+	close(c.send)
+	delete(h.clients, c)
+	delete(h.clientsByUsername, c.username)
+	for realm := range c.realms {
+		delete(h.realms[realm], c)
 	}
 }
 
@@ -69,18 +79,14 @@ func (h *Hub) Run() {
 			h.clientsByUsername[client.username] = client
 		case client := <-h.unregister:
 			if _, ok := h.clients[client]; ok {
-				delete(h.clients, client)
-				delete(h.clientsByUsername, client.username)
-				close(client.send)
+				h.removeClient(client)
 			}
 		case message := <-h.broadcast:
 			for client := range h.clients {
 				select {
 				case client.send <- message:
 				default:
-					close(client.send)
-					delete(h.clients, client)
-					delete(h.clientsByUsername, client.username)
+					h.removeClient(client)
 				}
 			}
 
@@ -91,9 +97,36 @@ func (h *Hub) Run() {
 				select {
 				case client.send <- message.msg:
 				default:
-					close(client.send)
-					delete(h.clients, client)
-					delete(h.clientsByUsername, client.username)
+					h.removeClient(client)
+				}
+			}
+
+		}
+	}
+}
+
+// RunGameEventHandler runs a separate loop that just handles game events,
+// and forwards them to the appropriate sockets. All other events, like chat,
+// should be handled in the Run function (I think, subject to change).
+func (h *Hub) RunGameEventHandler() {
+	for {
+		select {
+		case w := <-h.eventChan:
+			realm := Realm(w.GameID())
+			err := h.sendToRealm(realm, w)
+			if err != nil {
+				log.Err(err).Str("realm", string(realm)).Msg("sending to realm")
+			}
+			n := len(h.eventChan)
+			// Also send any backed up events to the appropriate realms.
+			if n > 0 {
+				log.Info().Int("backpressure", n).Msg("game event channel")
+			}
+			for i := 0; i < n; i++ {
+				w := <-h.eventChan
+				err := h.sendToRealm(realm, w)
+				if err != nil {
+					log.Err(err).Str("realm", string(realm)).Msg("sending to realm")
 				}
 			}
 
@@ -103,13 +136,10 @@ func (h *Hub) Run() {
 
 // since addNewRealm can be called from different goroutines, we must protect
 // the realm map.
-// XXX: Consider treating this inside the main hub Run function above, this might
-// get rid of the need for mutices.
-func (h *Hub) addNewRealm() Realm {
-	realmID := shortuuid.New()
+func (h *Hub) addNewRealm(id string) Realm {
 	h.realmMutex.Lock()
 	defer h.realmMutex.Unlock()
-	realm := Realm(realmID)
+	realm := Realm(id)
 	h.realms[realm] = make(map[*Client]bool)
 	return realm
 }
@@ -120,9 +150,11 @@ func (h *Hub) addToRealm(realm Realm, clientUsername string) {
 	h.realmMutex.Lock()
 	defer h.realmMutex.Unlock()
 	h.realms[realm][client] = true
+	client.realms[realm] = true
 }
 
 func (h *Hub) deleteRealm(realm Realm) {
+	// XXX: maybe disallow if users in realm.
 	h.realmMutex.Lock()
 	defer h.realmMutex.Unlock()
 	delete(h.realms, realm)

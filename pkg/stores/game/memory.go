@@ -23,6 +23,12 @@ type MemoryStore struct {
 	games map[string]*entity.Game
 }
 
+func NewMemoryStore() *MemoryStore {
+	return &MemoryStore{
+		games: make(map[string]*entity.Game),
+	}
+}
+
 // Get gets the game with the given ID.
 func (m *MemoryStore) Get(ctx context.Context, id string) (*entity.Game, error) {
 	g, ok := m.games[id]

@@ -3,9 +3,12 @@ package main
 import (
 	"flag"
 	"net/http"
+	"os"
 	"time"
 
+	"github.com/domino14/crosswords/pkg/config"
 	"github.com/domino14/crosswords/pkg/sockets"
+	"github.com/domino14/crosswords/pkg/stores/game"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 )
@@ -26,15 +29,21 @@ func serveHome(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
-	http.ServeFile(w, r, "home.html")
+	http.ServeFile(w, r, "../../templates/home.html")
 }
 
 func main() {
+
 	flag.Parse()
 	zerolog.SetGlobalLevel(zerolog.DebugLevel)
 
-	hub := sockets.NewHub()
+	cfg := &config.Config{}
+	cfg.Load(os.Args[1:])
+	log.Info().Msgf("Loaded config: %v", cfg)
+
+	hub := sockets.NewHub(game.NewMemoryStore(), cfg)
 	go hub.Run()
+	go hub.RunGameEventHandler()
 
 	http.HandleFunc("/", serveHome)
 	http.HandleFunc("/ws", func(w http.ResponseWriter, r *http.Request) {

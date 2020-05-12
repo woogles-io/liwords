@@ -56,6 +56,10 @@ func (g *Game) PerTurnIncrement() int {
 	return g.perTurnIncrement
 }
 
+func (g *Game) GameID() string {
+	return g.Game.History().Uid
+}
+
 // calculateTimeRemaining calculates the remaining time for the given player.
 // It must be called after every move!
 func (g *Game) calculateTimeRemaining(idx int) {
