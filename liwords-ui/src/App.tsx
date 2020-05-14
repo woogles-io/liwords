@@ -1,6 +1,7 @@
 import React from 'react';
 import logo from './logo.svg';
 import './App.css';
+import { Board } from './board';
 
 function App() {
   return (
@@ -9,7 +10,6 @@ function App() {
         <img src={logo} className="App-logo" alt="logo" />
         <p>
           Edit <code>src/App.tsx</code> and save to reload.
-          LOlz
         </p>
         <a
           className="App-link"
@@ -20,6 +20,7 @@ function App() {
           Learn React
         </a>
       </header>
+      <Board />
     </div>
   );
 }
