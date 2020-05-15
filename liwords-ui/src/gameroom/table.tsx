@@ -1,7 +1,7 @@
 import React from 'react';
 import { Row, Col } from 'antd';
 
-import { Board } from './board';
+import { BoardPanel } from './board_panel';
 
 const gutter = 16;
 const boardspan = 12;
@@ -11,23 +11,53 @@ type Props = {
   windowWidth: number;
 };
 
+// XXX: This should come from the backend.
+const gridLayout = [
+  `=  '   =   '  =`,
+  ` -   "   "   - `,
+  `  -   ' '   -  `,
+  `'  -   '   -  '`,
+  `    -     -    `,
+  ` "   "   "   " `,
+  `  '   ' '   '  `,
+  `=  '   -   '  =`,
+  `  '   ' '   '  `,
+  ` "   "   "   " `,
+  `    -     -    `,
+  `'  -   '   -  '`,
+  `  -   ' '   -  `,
+  ` -   "   "   - `,
+  `=  '   =   '  =`,
+];
+
 export const Table = (props: Props) => {
   // Calculate the width of the board.
   // If the pixel width is 1440,
   // The width of the drawable part is 12/24 * 1440 = 720
   // Minus gutters makes it 704
 
-  <div>
-    <Row gutter={gutter}>
-      <Col span={6}>
-        <div>lefts</div>
-      </Col>
-      <Col span={boardspan}>
-        <Board compWidth={(boardspan / maxspan) * props.windowWidth - gutter} />
-      </Col>
-      <Col span={6}>
-        <div>scorecard and stuff</div>
-      </Col>
-    </Row>
-  </div>;
+  const boardPanelWidth = (boardspan / maxspan) * props.windowWidth - gutter;
+  // Shrug; determine this better:
+  const boardPanelHeight = Math.max(800, boardPanelWidth + 96);
+
+  return (
+    <div>
+      <Row gutter={gutter}>
+        <Col span={6}>
+          <div>lefts</div>
+        </Col>
+        <Col span={boardspan}>
+          <BoardPanel
+            compWidth={boardPanelWidth}
+            compHeight={boardPanelHeight}
+            gridLayout={gridLayout}
+            showBonusLabels={false}
+          />
+        </Col>
+        <Col span={6}>
+          <div>scorecard and stuff</div>
+        </Col>
+      </Row>
+    </div>
+  );
 };
