@@ -40,6 +40,9 @@ type Props = {
   y: number;
   showBonusLabel: boolean;
   startingSquare: boolean;
+  arrow: boolean;
+  arrowHoriz: boolean;
+  clicked: () => void;
 };
 
 const BoardSpace = (props: Props) => {
@@ -48,6 +51,7 @@ const BoardSpace = (props: Props) => {
 
   let bonusLabel = null;
   let startingSquare = null;
+  let arrow = null;
   if (props.showBonusLabel && bonusText !== '') {
     bonusLabel = (
       <text
@@ -67,20 +71,65 @@ const BoardSpace = (props: Props) => {
   }
   // ✩✪✫
   if (props.startingSquare) {
-    startingSquare = <Logo />;
+    startingSquare = (
+      <Logo
+        x={props.boardSquareDim / 4}
+        y={props.boardSquareDim / 6}
+        width={props.boardSquareDim / 1.5}
+        height={props.boardSquareDim / 1.5}
+      />
+    );
+  }
+  if (props.arrow) {
+    if (props.arrowHoriz) {
+      arrow = (
+        <text
+          x={props.boardSquareDim / 2}
+          y={props.boardSquareDim / 2}
+          textAnchor="middle"
+          dominantBaseline="central"
+          fontFamily={fontFamily}
+          fontSize="250%"
+          stroke="#000000"
+          fill="#000000"
+          strokeWidth="1px"
+        >
+          ➡
+        </text>
+      );
+      // arrow = <text>-></text>;
+    } else {
+      arrow = (
+        <text
+          x={props.boardSquareDim / 2}
+          y={props.boardSquareDim / 2}
+          textAnchor="middle"
+          dominantBaseline="central"
+          fontFamily={fontFamily}
+          fontSize="200%"
+          stroke="#000000"
+          fill="#000000"
+          strokeWidth="1px"
+        >
+          ⬇
+        </text>
+      );
+      // arrow = <text>V</text>;
+    }
   }
 
   return (
-    <g transform={transform}>
+    <g transform={transform} onClick={props.clicked}>
       <rect
         width={props.boardSquareDim}
         height={props.boardSquareDim}
         strokeWidth="0.5px"
-        stroke={'#BEBEBE'}
+        stroke="#BEBEBE"
         fill={fillColor}
       />
       {bonusLabel}
       {startingSquare}
+      {arrow}
     </g>
   );
 };

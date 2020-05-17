@@ -17,7 +17,7 @@ function useWindowSize() {
 }
 
 const App = () => {
-  const [width, _] = useWindowSize();
+  const [width] = useWindowSize();
   return (
     <div className="App">
       <Table windowWidth={width} />

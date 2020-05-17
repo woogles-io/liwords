@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Row, Col } from 'antd';
 
 import { BoardPanel } from './board_panel';
@@ -13,21 +13,39 @@ type Props = {
 
 // XXX: This should come from the backend.
 const gridLayout = [
-  `=  '   =   '  =`,
-  ` -   "   "   - `,
-  `  -   ' '   -  `,
-  `'  -   '   -  '`,
-  `    -     -    `,
-  ` "   "   "   " `,
-  `  '   ' '   '  `,
-  `=  '   -   '  =`,
-  `  '   ' '   '  `,
-  ` "   "   "   " `,
-  `    -     -    `,
-  `'  -   '   -  '`,
-  `  -   ' '   -  `,
-  ` -   "   "   - `,
-  `=  '   =   '  =`,
+  "=  '   =   '  =",
+  ' -   "   "   - ',
+  "  -   ' '   -  ",
+  "'  -   '   -  '",
+  '    -     -    ',
+  ' "   "   "   " ',
+  "  '   ' '   '  ",
+  "=  '   -   '  =",
+  "  '   ' '   '  ",
+  ' "   "   "   " ',
+  '    -     -    ',
+  "'  -   '   -  '",
+  "  -   ' '   -  ",
+  ' -   "   "   - ',
+  "=  '   =   '  =",
+];
+
+const tilesLayout = [
+  '         RADIOS',
+  '         E     ',
+  '      R SI     ',
+  '      U E      ',
+  '    ZINGARO    ',
+  '    o   T      ',
+  '    N          ',
+  '   WASTE       ',
+  '    T          ',
+  '    I          ',
+  '    O          ',
+  '    N          ',
+  '               ',
+  '               ',
+  '               ',
 ];
 
 export const Table = (props: Props) => {
@@ -35,10 +53,9 @@ export const Table = (props: Props) => {
   // If the pixel width is 1440,
   // The width of the drawable part is 12/24 * 1440 = 720
   // Minus gutters makes it 704
-
   const boardPanelWidth = (boardspan / maxspan) * props.windowWidth - gutter;
   // Shrug; determine this better:
-  const boardPanelHeight = Math.max(800, boardPanelWidth + 96);
+  const boardPanelHeight = boardPanelWidth + 96;
 
   return (
     <div>
@@ -52,6 +69,9 @@ export const Table = (props: Props) => {
             compHeight={boardPanelHeight}
             gridLayout={gridLayout}
             showBonusLabels={false}
+            currentRack="AEINQ?T"
+            lastPlayedLetters={{}}
+            tilesLayout={tilesLayout}
           />
         </Col>
         <Col span={6}>
