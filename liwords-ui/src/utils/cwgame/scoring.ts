@@ -283,21 +283,24 @@ export const calculateTemporaryScore = (
     const bonusSq = boardLayout[st.row][st.col];
     let letterMultiplier = 1;
     let crossWordMultiplier = 1; // the multiplier for the orthogonal word.
-    switch (bonusSq) {
-      case BonusType.DoubleLetter:
-        letterMultiplier = 2;
-        break;
-      case BonusType.TripleLetter:
-        letterMultiplier = 3;
-        break;
-      case BonusType.DoubleWord:
-        wordMultiplier *= 2;
-        crossWordMultiplier = 2;
-        break;
-      case BonusType.TripleWord:
-        wordMultiplier *= 3;
-        crossWordMultiplier = 3;
-        break;
+    if (st.fresh) {
+      // Bonus only counts if we are putting a fresh tile on it!
+      switch (bonusSq) {
+        case BonusType.DoubleLetter:
+          letterMultiplier = 2;
+          break;
+        case BonusType.TripleLetter:
+          letterMultiplier = 3;
+          break;
+        case BonusType.DoubleWord:
+          wordMultiplier *= 2;
+          crossWordMultiplier = 2;
+          break;
+        case BonusType.TripleWord:
+          wordMultiplier *= 3;
+          crossWordMultiplier = 3;
+          break;
+      }
     }
     const [cs, realcs] = getCrossScore(st.row, st.col, crossDir, boardTiles);
     let ls;

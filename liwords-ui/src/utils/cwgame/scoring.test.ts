@@ -118,6 +118,28 @@ it('tests scores', () => {
   );
 });
 
+it('tests more scores', () => {
+  const placedTiles = new Set<EphemeralTile>();
+  placedTiles.add({
+    row: 10,
+    col: 2,
+    letter: 'Q',
+  });
+  placedTiles.add({
+    row: 10,
+    col: 3,
+    letter: 'u',
+  });
+  placedTiles.add({
+    row: 10,
+    col: 5,
+    letter: 'D',
+  });
+  expect(calculateTemporaryScore(placedTiles, tilesLayout, gridLayout)).toEqual(
+    13
+  );
+});
+
 const oxyTilesLayout = [
   ' PACIFYING     ',
   ' IS            ',

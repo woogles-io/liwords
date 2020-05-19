@@ -87,9 +87,9 @@ export const Table = (props: Props) => {
             compHeight={boardPanelHeight}
             gridLayout={gridLayout}
             showBonusLabels={false}
-            currentRack="ABEOPXZ"
+            currentRack="AEINQ?T"
             lastPlayedLetters={{}}
-            tilesLayout={oxyTilesLayout}
+            tilesLayout={tilesLayout}
           />
         </Col>
         <Col span={6}>
