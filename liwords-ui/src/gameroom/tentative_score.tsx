@@ -11,20 +11,20 @@ type Props = {
 };
 
 const TentativeScore = (props: Props) => {
-  const textSize = (90 / 31) * props.width;
+  const textSize = 5 * props.width;
   const transform = `translate(${props.x}, ${props.y})`;
   return (
     <g transform={transform}>
       <ellipse
-        cx={props.width / 2}
-        cy={props.height / 2}
-        rx={props.width / 2}
-        ry={props.height / 2}
+        cx={props.width / 4}
+        cy={props.height / 4}
+        rx={props.width}
+        ry={props.height}
         style={{ fill: 'yellow', stroke: 'purple', strokeWidth: '1px' }}
       />
       <text
-        x={props.width / 2}
-        y={props.height / 2}
+        x={props.width / 4}
+        y={props.height / 4}
         textAnchor="middle"
         dominantBaseline="central"
         fontFamily={fontFamily}

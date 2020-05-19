@@ -2,7 +2,7 @@
 import { Blank } from '../../gameroom/tile';
 import { EnglishCrosswordGameDistribution } from '../../constants/tile_distributions';
 
-import { EphemeralTile, EmptySpace, isBlank } from './common';
+import { EphemeralTile, EmptySpace, isBlank, uniqueTileIdx } from './common';
 import { calculateTemporaryScore } from './scoring';
 
 const NormalizedBackspace = 'BACKSPACE';
@@ -101,6 +101,8 @@ const handleTileDeletion = (
  * This is a fairly important function for placing tiles with the keyboard.
  * It handles a keypress, and takes in the current direction of the placement
  * arrow, as well as the board tiles, etc.
+ * XXX: The logic in this function is very ugly. We need to write some tests
+ * and try to clean up the logic a bit. There's a lot of fiddly special cases.
  */
 export const handleKeyPress = (
   arrowProperty: PlacementArrow,
@@ -112,6 +114,12 @@ export const handleKeyPress = (
 ): KeypressHandlerReturn | null => {
   const normalizedKey = key.toUpperCase();
   const newPlacedTiles = currentlyPlacedTiles;
+
+  // Create an ephemeral tile map with unique keys.
+  const ephTileMap: Record<number, EphemeralTile> = {};
+  currentlyPlacedTiles.forEach((t) => {
+    ephTileMap[uniqueTileIdx(t.row, t.col)] = t;
+  });
 
   if (
     !Object.prototype.hasOwnProperty.call(
@@ -153,7 +161,9 @@ export const handleKeyPress = (
     } while (
       newcol < boardTiles[newrow].length &&
       newcol >= 0 &&
-      boardTiles[newrow][newcol] !== EmptySpace
+      (boardTiles[newrow][newcol] !== EmptySpace ||
+        (increment === 1 &&
+          ephTileMap[uniqueTileIdx(newrow, newcol)] !== undefined))
     );
   } else {
     do {
@@ -161,11 +171,20 @@ export const handleKeyPress = (
     } while (
       newrow < boardTiles.length &&
       newrow >= 0 &&
-      boardTiles[newrow][newcol] !== EmptySpace
+      (boardTiles[newrow][newcol] !== EmptySpace ||
+        (increment === 1 &&
+          ephTileMap[uniqueTileIdx(newrow, newcol)] !== undefined))
     );
   }
 
   if (normalizedKey === NormalizedBackspace) {
+    // Don't allow the arrow to go off-screen when backspacing.
+    if (newrow < 0) {
+      newrow = 0;
+    }
+    if (newcol < 0) {
+      newcol = 0;
+    }
     return handleTileDeletion(
       {
         row: newrow,

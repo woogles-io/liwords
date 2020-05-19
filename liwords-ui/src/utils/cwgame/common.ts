@@ -12,6 +12,11 @@ export enum Direction {
   Vertical,
 }
 
+export const uniqueTileIdx = (row: number, col: number): number => {
+  // Just a unique number to identify a row,col coordinate.
+  return row * 100 + col;
+};
+
 /**
  * Looks up the tile in the given row, col. If this is out of bounds,
  * return null.
