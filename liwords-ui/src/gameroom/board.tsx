@@ -1,9 +1,10 @@
 import React from 'react';
 
 import BoardSpaces from './board_spaces';
-import { PlacementArrow, EphemeralTile } from './tile_placement';
+import { PlacementArrow } from '../utils/cwgame/tile_placement';
 import BoardCoordLabels from './board_coord_labels';
 import Tiles from './tiles';
+import { EphemeralTile } from '../utils/cwgame/common';
 
 type Props = {
   // component width:
@@ -21,7 +22,7 @@ type Props = {
   currentRack: string;
   squareClicked: (row: number, col: number) => void;
   tentativeTiles: Set<EphemeralTile>;
-  tentativeTileScore: number;
+  tentativeTileScore: number | undefined;
   placementArrowProperties: PlacementArrow;
 };
 
@@ -60,6 +61,7 @@ const Board = (props: Props) => {
           lastPlayedLetters={props.lastPlayedLetters}
           tentativeTiles={props.tentativeTiles}
           scaleTiles={true}
+          tentativeTileScore={props.tentativeTileScore}
         />
       </g>
     </svg>

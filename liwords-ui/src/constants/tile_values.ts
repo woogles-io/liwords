@@ -30,7 +30,10 @@ const CrosswordGameTileValues = {
   Z: 10,
 };
 
-function runeToValues(rune: string, values: any): number {
+function runeToValues(rune: string | null, values: any): number {
+  if (rune === null) {
+    return 0;
+  }
   if (values[rune]) {
     return values[rune];
   }

@@ -1,18 +1,9 @@
 import React from 'react';
 import { ReactComponent as Logo } from '../aero.svg';
+import { BonusType } from '../constants/board_layout';
 
 const fontFamily = 'Arial,Geneva,Helvetica,Helv,sans-serif';
 
-export enum BonusType {
-  DoubleWord = '-',
-  TripleWord = '=',
-  QuadrupleWord = '~',
-  DoubleLetter = "'",
-  TripleLetter = '"',
-  QuadrupleLetter = '^',
-  StartingSquare = '*',
-  NoBonus = ' ',
-}
 
 interface BonusProperties {
   fillColor: string;

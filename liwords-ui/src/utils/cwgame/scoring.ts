@@ -1,0 +1,324 @@
+import { BonusType } from '../../constants/board_layout';
+
+import {
+  EphemeralTile,
+  Direction,
+  EmptySpace,
+  safeBoardLookup,
+  isBlank,
+} from './common';
+
+import {
+  CrosswordGameTileValues,
+  runeToValues,
+} from '../../constants/tile_values';
+
+type simpletile = {
+  fresh: boolean;
+  letter: string;
+  row: number;
+  col: number;
+};
+
+const uniqueTileIdx = (row: number, col: number): number => {
+  // Just a unique number to identify a row,col coordinate.
+  return row * 100 + col;
+};
+
+const genContiguousTileSet = (
+  sorted: Array<EphemeralTile>,
+  wordDir: Direction,
+  boardTiles: Array<string>
+): Record<number, simpletile> => {
+  // build an array of contiguous tiles that includes `sorted`
+  const contiguous: Record<number, simpletile> = {};
+  // Add all the tiles in sorted to the map:
+  sorted.forEach((t) => {
+    contiguous[uniqueTileIdx(t.row, t.col)] = {
+      fresh: true,
+      letter: t.letter,
+      row: t.row,
+      col: t.col,
+    };
+  });
+  // Now look in the board for the remainder of the tiles.
+  let lastSeenTile;
+  let newRow = sorted[0].row;
+  let newCol = sorted[0].col;
+  while (lastSeenTile !== EmptySpace && lastSeenTile !== null) {
+    if (wordDir === Direction.Horizontal) {
+      newCol -= 1;
+    } else {
+      newRow -= 1;
+    }
+    lastSeenTile = safeBoardLookup(newRow, newCol, boardTiles);
+    if (lastSeenTile !== EmptySpace && lastSeenTile !== null) {
+      const u = uniqueTileIdx(newRow, newCol);
+      contiguous[u] = {
+        fresh: false,
+        letter: lastSeenTile,
+        row: newRow,
+        col: newCol,
+      };
+    }
+  }
+
+  // Go back to the first tile, and begin looking to the bottom/right.
+  newRow = sorted[0].row;
+  newCol = sorted[0].col;
+  lastSeenTile = undefined;
+  while (lastSeenTile !== EmptySpace && lastSeenTile !== null) {
+    if (wordDir === Direction.Horizontal) {
+      newCol += 1;
+    } else {
+      newRow += 1;
+    }
+    lastSeenTile = safeBoardLookup(newRow, newCol, boardTiles);
+    const u = uniqueTileIdx(newRow, newCol);
+    if (lastSeenTile !== EmptySpace && lastSeenTile !== null) {
+      contiguous[u] = {
+        fresh: false,
+        letter: lastSeenTile,
+        row: newRow,
+        col: newCol,
+      };
+    } else if (u in contiguous) {
+      // Otherwise, we saw an empty space. If there is an ephemeral tile
+      // on this space, set lastSeenTile to it so the loop continues.
+      lastSeenTile = contiguous[u].letter;
+    }
+  }
+
+  return contiguous;
+};
+
+const getCrossScore = (
+  row: number,
+  col: number,
+  crossDir: Direction,
+  boardTiles: Array<string>
+): [number, boolean] => {
+  // Traverse in both directions from (row, col) in the crossDir axis.
+  let lastSeenTile;
+  let crossScore = 0;
+  let newRow = row;
+  let newCol = col;
+  let actualCrossWord = false;
+  while (lastSeenTile !== EmptySpace && lastSeenTile !== null) {
+    if (crossDir === Direction.Horizontal) {
+      newCol -= 1;
+    } else {
+      newRow -= 1;
+    }
+    lastSeenTile = safeBoardLookup(newRow, newCol, boardTiles);
+    if (lastSeenTile !== null && lastSeenTile !== EmptySpace) {
+      actualCrossWord = true;
+    }
+    crossScore += runeToValues(lastSeenTile, CrosswordGameTileValues);
+  }
+  // Now go in the other direction:
+  newCol = col;
+  newRow = row;
+  lastSeenTile = undefined;
+  while (lastSeenTile !== EmptySpace && lastSeenTile !== null) {
+    if (crossDir === Direction.Horizontal) {
+      newCol += 1;
+    } else {
+      newRow += 1;
+    }
+    lastSeenTile = safeBoardLookup(newRow, newCol, boardTiles);
+    if (lastSeenTile !== null && lastSeenTile !== EmptySpace) {
+      actualCrossWord = true;
+    }
+    crossScore += runeToValues(lastSeenTile, CrosswordGameTileValues);
+  }
+  return [crossScore, actualCrossWord];
+};
+
+export const borders = (
+  t1: EphemeralTile,
+  t2: EphemeralTile,
+  boardTiles: Array<string>
+): boolean => {
+  // Do the two tiles touch each other either directly or across board tiles?
+  if (t1.col !== t2.col && t1.row !== t2.row) {
+    return false;
+  }
+  if (t1.col === t2.col) {
+    if (Math.abs(t1.row - t2.row) === 1) {
+      return true;
+    }
+  } else if (t1.row === t2.row) {
+    if (Math.abs(t1.col - t2.col) === 1) {
+      return true;
+    }
+  }
+  // Otherwise, the tiles do not touch directly.
+  if (t1.col === t2.col) {
+    for (
+      let i = Math.min(t1.row, t2.row) + 1;
+      i < Math.max(t1.row, t2.row);
+      i++
+    ) {
+      if (boardTiles[i][t1.col] === EmptySpace) {
+        return false;
+      }
+    }
+  } else if (t1.row === t2.row) {
+    for (
+      let i = Math.min(t1.col, t2.col) + 1;
+      i < Math.max(t1.col, t2.col);
+      i++
+    ) {
+      if (boardTiles[t1.row][i] === EmptySpace) {
+        return false;
+      }
+    }
+  }
+  return true;
+};
+
+export const touchesBoardTile = (
+  t1: EphemeralTile,
+  boardTiles: Array<string>
+): boolean => {
+  // Does the tile touch any tiles on the board?
+  const dirsToLook = [
+    [1, 0],
+    [-1, 0],
+    [0, 1],
+    [0, -1],
+  ];
+
+  for (let i = 0; i < dirsToLook.length; i++) {
+    const row = t1.row + dirsToLook[i][0];
+    const col = t1.col + dirsToLook[i][1];
+    const letter = safeBoardLookup(row, col, boardTiles);
+    if (letter !== EmptySpace) {
+      return true;
+    }
+  }
+  return false;
+};
+
+const isLegalPlay = (
+  currentlyPlacedTiles: Array<EphemeralTile>,
+  boardTiles: Array<string>
+): boolean => {
+  // Check that all tiles are colinear
+  const rows = new Set<number>();
+  const cols = new Set<number>();
+  currentlyPlacedTiles.forEach((t) => {
+    rows.add(t.row);
+    cols.add(t.col);
+  });
+
+  if (
+    (rows.size > 1 && cols.size !== 1) ||
+    (cols.size > 1 && rows.size !== 1)
+  ) {
+    return false;
+  }
+
+  let touches = false;
+  // Play must touch some tile already on the board.
+  for (let i = 0; i < currentlyPlacedTiles.length; i++) {
+    if (touchesBoardTile(currentlyPlacedTiles[i], boardTiles)) {
+      touches = true;
+      break;
+    }
+  }
+
+  if (!touches) {
+    return false;
+  }
+
+  // Play must have contiguous tiles
+  for (let i = 0; i < currentlyPlacedTiles.length - 1; i++) {
+    const t1 = currentlyPlacedTiles[i];
+    const t2 = currentlyPlacedTiles[i + 1];
+    if (!borders(t1, t2, boardTiles)) {
+      return false;
+    }
+  }
+  return true;
+};
+
+export const calculateTemporaryScore = (
+  currentlyPlacedTiles: Set<EphemeralTile>,
+  boardTiles: Array<string>,
+  boardLayout: Array<string>
+): number | undefined => {
+  const sorted = Array.from(currentlyPlacedTiles.values());
+  sorted.sort((a, b) => {
+    if (a.col === b.col) {
+      return a.row - b.row;
+    }
+    return a.col - b.col;
+  });
+
+  if (!isLegalPlay(sorted, boardTiles)) {
+    return undefined;
+  }
+
+  // Determine the cross direction
+  let crossDir = Direction.Horizontal;
+  // If tiles are oriented horizontally though, the cross dir is vertical.
+  if (sorted.length > 1 && sorted[0].col !== sorted[1].col) {
+    crossDir = Direction.Vertical;
+  }
+  const wordDir =
+    crossDir === Direction.Horizontal
+      ? Direction.Vertical
+      : Direction.Horizontal;
+  const tileSet = genContiguousTileSet(sorted, wordDir, boardTiles);
+  // Ok - the play is technically legal (it may form invalid words, but
+  // we won't worry about that here):
+  // a lot of this code is from board.go in the cwgame repo.
+  let mainWordScore = 0;
+  let crossScores = 0;
+  let bingoBonus = 0;
+  let wordMultiplier = 1;
+  if (sorted.length === 7) {
+    bingoBonus = 50;
+  }
+
+  Object.values(tileSet).forEach((st) => {
+    const bonusSq = boardLayout[st.row][st.col];
+    let letterMultiplier = 1;
+    let crossWordMultiplier = 1; // the multiplier for the orthogonal word.
+    switch (bonusSq) {
+      case BonusType.DoubleLetter:
+        letterMultiplier = 2;
+        break;
+      case BonusType.TripleLetter:
+        letterMultiplier = 3;
+        break;
+      case BonusType.DoubleWord:
+        wordMultiplier *= 2;
+        crossWordMultiplier = 2;
+        break;
+      case BonusType.TripleWord:
+        wordMultiplier *= 3;
+        crossWordMultiplier = 3;
+        break;
+    }
+    const [cs, realcs] = getCrossScore(st.row, st.col, crossDir, boardTiles);
+    let ls;
+    if (isBlank(st.letter)) {
+      ls = 0;
+    } else {
+      ls = runeToValues(st.letter, CrosswordGameTileValues);
+    }
+    mainWordScore += ls * letterMultiplier;
+    if (realcs && st.fresh) {
+      // It's not enough to check that the cross-score is 0 (because of blanks)
+      // we must actually check that we're forming a real cross word to add
+      // any bonuses.
+      crossScores +=
+        ls * letterMultiplier * crossWordMultiplier + cs * crossWordMultiplier;
+    }
+  });
+
+  return mainWordScore * wordMultiplier + crossScores + bingoBonus;
+};

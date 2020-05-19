@@ -1,8 +1,10 @@
 /** @fileoverview business logic for placing tiles on a board */
-import { Blank } from './tile';
-import { EnglishCrosswordGameDistribution } from '../constants/tile_distributions';
+import { Blank } from '../../gameroom/tile';
+import { EnglishCrosswordGameDistribution } from '../../constants/tile_distributions';
 
-const EmptySpace = ' ';
+import { EphemeralTile, EmptySpace, isBlank } from './common';
+import { calculateTemporaryScore } from './scoring';
+
 const NormalizedBackspace = 'BACKSPACE';
 
 export type PlacementArrow = {
@@ -10,13 +12,6 @@ export type PlacementArrow = {
   col: number;
   horizontal: boolean;
   show: boolean;
-};
-
-export type EphemeralTile = {
-  // ephemeron <3 you are missed
-  row: number;
-  col: number;
-  letter: string; // lowercase for blank
 };
 
 export const nextArrowPropertyState = (
@@ -60,28 +55,29 @@ export const nextArrowPropertyState = (
 
 type KeypressHandlerReturn = {
   newArrow: PlacementArrow;
-  justPlayedTile: EphemeralTile | null;
-  justUnplayedTile: EphemeralTile | null;
+  newPlacedTiles: Set<EphemeralTile>;
   newDisplayedRack: string;
-  playScore: number;
+  playScore: number | undefined; // undefined for illegal plays
 };
 
 const handleTileDeletion = (
   arrowProperty: PlacementArrow,
   unplacedTiles: string, // tiles currently still on rack
-  currentlyPlacedTiles: Set<EphemeralTile>
+  currentlyPlacedTiles: Set<EphemeralTile>,
+  gridLayout: Array<string>,
+  boardTiles: Array<string>
 ): KeypressHandlerReturn => {
   // Remove any tiles.
-  let justUnplayedTile = null;
   let newUnplacedTiles = unplacedTiles;
+  const newPlacedTiles = currentlyPlacedTiles;
 
   currentlyPlacedTiles.forEach((t) => {
     if (t.col === arrowProperty.col && t.row === arrowProperty.row) {
       // Remove this tile.
-      justUnplayedTile = t;
+      newPlacedTiles.delete(t);
       // can't exit early but w/e, this is fast
       let { letter } = t;
-      if (letter.toLowerCase() === letter) {
+      if (isBlank(letter)) {
         // unassign the blank
         letter = Blank;
       }
@@ -91,10 +87,13 @@ const handleTileDeletion = (
 
   return {
     newArrow: arrowProperty,
-    justPlayedTile: null,
-    justUnplayedTile,
+    newPlacedTiles,
     newDisplayedRack: newUnplacedTiles,
-    playScore: 0,
+    playScore: calculateTemporaryScore(
+      currentlyPlacedTiles,
+      boardTiles,
+      gridLayout
+    ),
   };
 };
 
@@ -102,20 +101,17 @@ const handleTileDeletion = (
  * This is a fairly important function for placing tiles with the keyboard.
  * It handles a keypress, and takes in the current direction of the placement
  * arrow, as well as the board tiles, etc.
- * @param arrowProperty
- * @param boardTiles
- * @param key
- * @param unplacedTiles
- * @param currentlyPlacedTiles
  */
 export const handleKeyPress = (
   arrowProperty: PlacementArrow,
   boardTiles: Array<string>,
   key: string,
   unplacedTiles: string, // tiles currently still on rack
-  currentlyPlacedTiles: Set<EphemeralTile>
+  currentlyPlacedTiles: Set<EphemeralTile>,
+  gridLayout: Array<string>
 ): KeypressHandlerReturn | null => {
   const normalizedKey = key.toUpperCase();
+  const newPlacedTiles = currentlyPlacedTiles;
 
   if (
     !Object.prototype.hasOwnProperty.call(
@@ -149,7 +145,6 @@ export const handleKeyPress = (
   let newrow = arrowProperty.row;
   let newcol = arrowProperty.col;
   let newUnplacedTiles = unplacedTiles;
-  let justPlayedTile = null;
 
   // First figure out where to put the arrow, no matter what.
   if (arrowProperty.horizontal) {
@@ -179,7 +174,9 @@ export const handleKeyPress = (
         show: true,
       },
       unplacedTiles,
-      currentlyPlacedTiles
+      currentlyPlacedTiles,
+      gridLayout,
+      boardTiles
     );
   }
 
@@ -190,12 +187,12 @@ export const handleKeyPress = (
     // If there is a blank, and the user specifically requested to use it
     // (by typing the letter with a Shift)
     existed = true;
-    justPlayedTile = {
+    newPlacedTiles.add({
       row: arrowProperty.row,
       col: arrowProperty.col,
       // Specifically designate it as a blanked letter by lower-casing it.
       letter: normalizedKey.toLowerCase(),
-    };
+    });
     newUnplacedTiles =
       unplacedTiles.substring(0, blankIdx) +
       unplacedTiles.substring(blankIdx + 1);
@@ -207,11 +204,11 @@ export const handleKeyPress = (
         // - the original letter was uppercase (typed with a Shift)
         // - last-case scenario (all tiles have been scanned first)
 
-        justPlayedTile = {
+        newPlacedTiles.add({
           row: arrowProperty.row,
           col: arrowProperty.col,
           letter: normalizedKey,
-        };
+        });
 
         newUnplacedTiles =
           unplacedTiles.substring(0, i) + unplacedTiles.substring(i + 1);
@@ -223,11 +220,11 @@ export const handleKeyPress = (
   if (!existed) {
     // tile did not exist on rack. Check if there's a blank we can use.
     if (blankIdx !== -1) {
-      justPlayedTile = {
+      newPlacedTiles.add({
         row: arrowProperty.row,
         col: arrowProperty.col,
         letter: normalizedKey.toLowerCase(),
-      };
+      });
 
       newUnplacedTiles =
         unplacedTiles.substring(0, blankIdx) +
@@ -245,9 +242,12 @@ export const handleKeyPress = (
       horizontal: arrowProperty.horizontal,
       show: true,
     },
-    justPlayedTile,
-    justUnplayedTile: null,
+    newPlacedTiles,
     newDisplayedRack: newUnplacedTiles,
-    playScore: 0,
+    playScore: calculateTemporaryScore(
+      currentlyPlacedTiles,
+      boardTiles,
+      gridLayout
+    ),
   };
 };

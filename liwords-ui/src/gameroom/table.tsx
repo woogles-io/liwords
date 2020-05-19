@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { Row, Col } from 'antd';
 
 import { BoardPanel } from './board_panel';
@@ -31,7 +31,7 @@ const gridLayout = [
 ];
 
 const tilesLayout = [
-  '         RADIOS',
+  '         RADIO ',
   '         E     ',
   '      R SI     ',
   '      U E      ',
@@ -46,6 +46,24 @@ const tilesLayout = [
   '               ',
   '               ',
   '               ',
+];
+
+const oxyTilesLayout = [
+  ' PACIFYING     ',
+  ' IS            ',
+  'YE             ',
+  ' REQUALIFIED   ',
+  'H L            ',
+  'EDS            ',
+  'NO   T         ',
+  ' RAINWASHING   ',
+  'UM   O         ',
+  'T  E O         ',
+  ' WAKEnERS      ',
+  ' OnETIME       ',
+  'OOT  E B       ',
+  'N      U       ',
+  ' JACULATING    ',
 ];
 
 export const Table = (props: Props) => {
@@ -69,9 +87,9 @@ export const Table = (props: Props) => {
             compHeight={boardPanelHeight}
             gridLayout={gridLayout}
             showBonusLabels={false}
-            currentRack="AEINQ?T"
+            currentRack="ABEOPXZ"
             lastPlayedLetters={{}}
-            tilesLayout={tilesLayout}
+            tilesLayout={oxyTilesLayout}
           />
         </Col>
         <Col span={6}>

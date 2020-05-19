@@ -1,7 +1,8 @@
 import React from 'react';
 
-import BoardSpace, { BonusType } from './board_space';
-import { PlacementArrow } from './tile_placement';
+import BoardSpace from './board_space';
+import { PlacementArrow } from '../utils/cwgame/tile_placement';
+import { BonusType } from '../constants/board_layout';
 
 type Props = {
   gridDim: number;

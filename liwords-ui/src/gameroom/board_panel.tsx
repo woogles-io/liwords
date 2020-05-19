@@ -7,8 +7,8 @@ import Rack from './rack';
 import {
   nextArrowPropertyState,
   handleKeyPress,
-  EphemeralTile,
-} from './tile_placement';
+} from '../utils/cwgame/tile_placement';
+import { EphemeralTile } from '../utils/cwgame/common';
 
 // The frame atop is 24 height
 // The frames on the sides are 24 in width, surrounded by a 14 pix gutter
@@ -39,17 +39,7 @@ export const BoardPanel = (props: Props) => {
 
   const [displayedRack, setDisplayedRack] = useState(props.currentRack);
   const [placedTiles, setPlacedTiles] = useState(new Set<EphemeralTile>());
-  const [placedTilesTempScore, setPlacedTilesTempScore] = useState(0);
-
-  const addPlacedTile = (t: EphemeralTile) => {
-    const newSet = placedTiles.add(t);
-    setPlacedTiles(newSet);
-  };
-
-  const removePlacedTile = (t: EphemeralTile) => {
-    placedTiles.delete(t);
-    setPlacedTiles(placedTiles);
-  };
+  const [placedTilesTempScore, setPlacedTilesTempScore] = useState<number>();
 
   const squareClicked = (row: number, col: number) => {
     if (props.tilesLayout[row][col] !== ' ') {
@@ -81,7 +71,8 @@ export const BoardPanel = (props: Props) => {
       props.tilesLayout,
       key,
       displayedRack,
-      placedTiles
+      placedTiles,
+      props.gridLayout
     );
 
     if (handlerReturn === null) {
@@ -89,12 +80,7 @@ export const BoardPanel = (props: Props) => {
     }
     setDisplayedRack(handlerReturn.newDisplayedRack);
     setArrowProperties(handlerReturn.newArrow);
-    if (handlerReturn.justPlayedTile !== null) {
-      addPlacedTile(handlerReturn.justPlayedTile);
-    }
-    if (handlerReturn.justUnplayedTile !== null) {
-      removePlacedTile(handlerReturn.justUnplayedTile);
-    }
+    setPlacedTiles(handlerReturn.newPlacedTiles);
     setPlacedTilesTempScore(handlerReturn.playScore);
   };
 

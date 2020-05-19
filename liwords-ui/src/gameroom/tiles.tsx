@@ -5,7 +5,8 @@ import {
   runeToValues,
 } from '../constants/tile_values';
 import Tile from './tile';
-import { EphemeralTile } from './tile_placement';
+import { EphemeralTile } from '../utils/cwgame/common';
+import TentativeScore from './tentative_score';
 
 type Props = {
   gridDim: number;
@@ -16,6 +17,7 @@ type Props = {
   colLabelHeight: number;
   scaleTiles: boolean;
   tentativeTiles: Set<EphemeralTile>;
+  tentativeTileScore: number | undefined;
 };
 
 const Tiles = (props: Props) => {
@@ -23,6 +25,15 @@ const Tiles = (props: Props) => {
   if (!props.tilesLayout || props.tilesLayout.length === 0) {
     return null;
   }
+
+  // Sort the tentative tiles
+  const tentativeTiles = Array.from(props.tentativeTiles.values());
+  tentativeTiles.sort((a, b) => {
+    if (a.col === b.col) {
+      return a.row - b.row;
+    }
+    return a.col - b.col;
+  });
 
   for (let y = 0; y < props.gridDim; y += 1) {
     for (let x = 0; x < props.gridDim; x += 1) {
@@ -47,7 +58,8 @@ const Tiles = (props: Props) => {
   }
 
   // The "tentative tiles" should be displayed slightly differently.
-  props.tentativeTiles.forEach((t) => {
+
+  tentativeTiles.forEach((t) => {
     tiles.push(
       <Tile
         rune={t.letter}
@@ -63,6 +75,18 @@ const Tiles = (props: Props) => {
       />
     );
   });
+  if (tentativeTiles.length > 0 && props.tentativeTileScore !== undefined) {
+    tiles.push(
+      <TentativeScore
+        score={props.tentativeTileScore}
+        width={props.boardSquareDim / 2}
+        height={props.boardSquareDim / 3}
+        x={tentativeTiles[0].col * props.boardSquareDim + props.rowLabelWidth}
+        y={tentativeTiles[0].row * props.boardSquareDim + props.colLabelHeight}
+        key="tentativescore"
+      />
+    );
+  }
 
   return <>{tiles}</>;
 };
