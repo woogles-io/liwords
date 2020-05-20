@@ -135,6 +135,8 @@ type TileProps = {
   value: number;
   scale?: boolean;
   tentative?: boolean;
+  grabbable: boolean;
+  onClick?: () => void;
 };
 
 const Tile = (props: TileProps) => {
@@ -160,7 +162,11 @@ const Tile = (props: TileProps) => {
   }
 
   return (
-    <g transform={transform}>
+    <g
+      transform={transform}
+      style={{ cursor: props.grabbable ? 'grab' : 'default' }}
+      onClick={props.onClick ? props.onClick : () => {}}
+    >
       <rect
         width={scaleFactor * props.width}
         height={scaleFactor * props.height}

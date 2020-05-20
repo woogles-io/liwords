@@ -28,8 +28,8 @@ func (h *Hub) parseAndExecuteMessage(msg []byte, sender string) error {
 		}
 		// XXX: We're going to want to fetch these player IDs from the database later.
 		players := []*macondopb.PlayerInfo{
-			&macondopb.PlayerInfo{Nickname: evt.Acceptor, RealName: evt.Acceptor},
-			&macondopb.PlayerInfo{Nickname: evt.Requester, RealName: evt.Requester},
+			{Nickname: evt.Acceptor, RealName: evt.Acceptor},
+			{Nickname: evt.Requester, RealName: evt.Requester},
 		}
 
 		g, err := game.InstantiateNewGame(context.Background(), h.gameStore, h.config,

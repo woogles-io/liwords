@@ -51,6 +51,7 @@ const Tiles = (props: Props) => {
             lastPlayed={lastPlayed}
             key={`tile_${x}_${y}`}
             scale={props.scaleTiles}
+            grabbable={false}
           />
         );
       }
@@ -72,6 +73,7 @@ const Tiles = (props: Props) => {
         key={`tile_${t.col}_${t.row}`}
         scale={false}
         tentative={true}
+        grabbable={true}
       />
     );
   });

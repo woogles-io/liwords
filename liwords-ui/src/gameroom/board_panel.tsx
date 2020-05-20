@@ -90,6 +90,22 @@ export const BoardPanel = (props: Props) => {
     setDisplayedRack(props.currentRack);
   };
 
+  const exchangeTiles = (rack: string) => {
+    console.log('exchange ', rack);
+  };
+
+  const passTurn = () => {
+    console.log('pass turn');
+  };
+
+  const challengePlay = () => {
+    console.log('challenge play');
+  };
+
+  const commitPlay = () => {
+    console.log('commit ', placedTiles);
+  };
+
   return (
     <div
       style={{
@@ -127,10 +143,17 @@ export const BoardPanel = (props: Props) => {
         placementArrowProperties={arrowProperties}
       />
       <div style={{ marginTop: 30 }}>
-        <Rack letters={displayedRack} tileDim={sqWidth} />
+        <Rack letters={displayedRack} tileDim={sqWidth} grabbable />
       </div>
       <div style={{ marginTop: 30 }}>
-        <GameControls onRecall={recallTiles} />
+        <GameControls
+          onRecall={recallTiles}
+          onExchange={exchangeTiles}
+          onPass={passTurn}
+          onChallenge={challengePlay}
+          onCommit={commitPlay}
+          currentRack={props.currentRack}
+        />
       </div>
     </div>
   );

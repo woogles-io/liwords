@@ -11,6 +11,8 @@ const TileSpacing = 6;
 type Props = {
   letters: string;
   tileDim: number;
+  grabbable: boolean;
+  onTileClick?: (idx: number) => void;
 };
 
 class Rack extends React.Component<Props> {
@@ -33,6 +35,12 @@ class Rack extends React.Component<Props> {
           lastPlayed={false}
           key={`tile_${n}`}
           scale={false}
+          grabbable={this.props.grabbable}
+          onClick={() => {
+            if (this.props.onTileClick) {
+              this.props.onTileClick(n);
+            }
+          }}
         />
       );
     }
