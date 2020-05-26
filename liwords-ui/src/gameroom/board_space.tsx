@@ -13,13 +13,13 @@ interface BonusProperties {
 function getBonusProperties(bt: BonusType): BonusProperties {
   switch (bt) {
     case BonusType.DoubleWord:
-      return { fillColor: '#FF75DD', bonusText: '2WS' };
+      return { fillColor: '#FFC9F3', bonusText: '2WS' };
     case BonusType.TripleWord:
-      return { fillColor: '#FF5555', bonusText: '3WS' };
+      return { fillColor: '#FD7070', bonusText: '3WS' };
     case BonusType.DoubleLetter:
-      return { fillColor: '#9ACEFD', bonusText: '2LS' };
+      return { fillColor: '#C9E5FF', bonusText: '2LS' };
     case BonusType.TripleLetter:
-      return { fillColor: '#0006BD', bonusText: '3LS' };
+      return { fillColor: '#6F87DF', bonusText: '3LS' };
   }
   return { fillColor: '#FFFFFF', bonusText: '' };
 }

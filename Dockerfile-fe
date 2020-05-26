@@ -1,0 +1,10 @@
+
+FROM node:alpine
+ENV NODE_PATH="/usr/lib/node_modules"
+
+COPY . /opt/liwords-ui/
+WORKDIR /opt/liwords-ui/
+
+EXPOSE 3000
+
+CMD ["npm", "start"]

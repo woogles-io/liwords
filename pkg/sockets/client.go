@@ -199,11 +199,12 @@ func ServeWS(hub *Hub, w http.ResponseWriter, r *http.Request) {
 	}
 
 	qvals := r.URL.Query()
-	err = validateWsRequest(qvals, time.Now().Unix())
-	if err != nil {
-		log.Err(err).Msg("validating websocket")
-		return
-	}
+	// XXX: figure out validation later
+	// err = validateWsRequest(qvals, time.Now().Unix())
+	// if err != nil {
+	// 	log.Err(err).Msg("validating websocket")
+	// 	return
+	// }
 
 	client := &Client{
 		hub:      hub,

@@ -21,13 +21,14 @@ type simpletile = {
   col: number;
 };
 
-const genContiguousTileSet = (
+const genContiguousTiles = (
   sorted: Array<EphemeralTile>,
   wordDir: Direction,
   boardTiles: Array<string>
-): Record<number, simpletile> => {
+): Array<simpletile> => {
   // build an array of contiguous tiles that includes `sorted`
-  const contiguous: Record<number, simpletile> = {};
+  const contiguous: { [tileIdx: number]: simpletile } = {};
+
   // Add all the tiles in sorted to the map:
   sorted.forEach((t) => {
     contiguous[uniqueTileIdx(t.row, t.col)] = {
@@ -85,7 +86,16 @@ const genContiguousTileSet = (
     }
   }
 
-  return contiguous;
+  // Turn the contiguous dict into a simple sorted array of contiguous tiles.
+  const retArr = Object.values(contiguous);
+  retArr.sort((a, b) => {
+    if (a.col === b.col) {
+      return a.row - b.row;
+    }
+    return a.col - b.col;
+  });
+
+  return retArr;
 };
 
 const getCrossScore = (
@@ -240,12 +250,11 @@ const isLegalPlay = (
   return true;
 };
 
-export const calculateTemporaryScore = (
-  currentlyPlacedTiles: Set<EphemeralTile>,
-  boardTiles: Array<string>,
-  boardLayout: Array<string>
-): number | undefined => {
-  const sorted = Array.from(currentlyPlacedTiles.values());
+export const contiguousTilesFromTileSet = (
+  tiles: Set<EphemeralTile>,
+  boardTiles: Array<string>
+): [Array<simpletile>, Direction] | null => {
+  const sorted = Array.from(tiles.values());
   sorted.sort((a, b) => {
     if (a.col === b.col) {
       return a.row - b.row;
@@ -254,7 +263,7 @@ export const calculateTemporaryScore = (
   });
 
   if (!isLegalPlay(sorted, boardTiles)) {
-    return undefined;
+    return null;
   }
 
   // Determine the cross direction
@@ -267,19 +276,37 @@ export const calculateTemporaryScore = (
     crossDir === Direction.Horizontal
       ? Direction.Vertical
       : Direction.Horizontal;
-  const tileSet = genContiguousTileSet(sorted, wordDir, boardTiles);
+  return [genContiguousTiles(sorted, wordDir, boardTiles), wordDir];
+};
+
+export const calculateTemporaryScore = (
+  currentlyPlacedTiles: Set<EphemeralTile>,
+  boardTiles: Array<string>,
+  boardLayout: Array<string>
+): number | undefined => {
+  const ret = contiguousTilesFromTileSet(currentlyPlacedTiles, boardTiles);
+  if (ret === null) {
+    return undefined;
+  }
+  const [wordTiles, wordDir] = ret;
+
+  const crossDir =
+    wordDir === Direction.Horizontal
+      ? Direction.Vertical
+      : Direction.Horizontal;
+
   // Ok - the play is technically legal (it may form invalid words, but
   // we won't worry about that here):
-  // a lot of this code is from board.go in the cwgame repo.
+  // a lot of this code is from board.go in the macondo repo.
   let mainWordScore = 0;
   let crossScores = 0;
   let bingoBonus = 0;
   let wordMultiplier = 1;
-  if (sorted.length === 7) {
+  if (currentlyPlacedTiles.size === 7) {
     bingoBonus = 50;
   }
 
-  Object.values(tileSet).forEach((st) => {
+  wordTiles.forEach((st) => {
     const bonusSq = boardLayout[st.row][st.col];
     let letterMultiplier = 1;
     let crossWordMultiplier = 1; // the multiplier for the orthogonal word.

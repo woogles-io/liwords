@@ -1,7 +1,10 @@
 package main
 
 import (
+	"encoding/json"
 	"flag"
+	"fmt"
+	"io/ioutil"
 	"net/http"
 	"os"
 	"time"
@@ -19,17 +22,64 @@ const (
 
 var addr = flag.String("addr", ":8087", "http service address")
 
-func serveHome(w http.ResponseWriter, r *http.Request) {
-	log.Debug().Interface("rURL", r.URL).Msg("")
-	if r.URL.Path != "/" {
-		http.Error(w, "Not found", http.StatusNotFound)
-		return
-	}
-	if r.Method != "GET" {
+// FOR NOW GLOBAL FIX THIS
+var hub *sockets.Hub
+
+type clientSeekAcceptance struct {
+	Seeker string `json:"seeker"`
+}
+
+func sendSeek(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "POST" {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+	}
+	body, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		http.Error(w, "can't read body", http.StatusBadRequest)
 		return
 	}
-	http.ServeFile(w, r, "../../templates/home.html")
+
+	cs := &sockets.ClientSeek{}
+
+	err = json.Unmarshal(body, cs)
+	if err != nil {
+		http.Error(w, "bad request", http.StatusBadRequest)
+		return
+	}
+	// broadcast seek
+	hub.NewSeekRequest(cs)
+
+	// players := []*macondopb.PlayerInfo{
+	// 	{Nickname: evt.Acceptor, RealName: evt.Acceptor},
+	// 	{Nickname: csa.Seeker, RealName: csa.Seeker},
+	// }
+
+	fmt.Fprintf(w, "OK")
+}
+
+func acceptedSeek(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "POST" {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+	}
+	body, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		http.Error(w, "can't read body", http.StatusBadRequest)
+		return
+	}
+
+	csa := &clientSeekAcceptance{}
+
+	err = json.Unmarshal(body, csa)
+	if err != nil {
+		http.Error(w, "bad request", http.StatusBadRequest)
+		return
+	}
+	// players := []*macondopb.PlayerInfo{
+	// 	{Nickname: evt.Acceptor, RealName: evt.Acceptor},
+	// 	{Nickname: csa.Seeker, RealName: csa.Seeker},
+	// }
+
+	// fmt.Fprintf(w, seeker.Seeker)
 }
 
 func main() {
@@ -41,11 +91,12 @@ func main() {
 	cfg.Load(os.Args[1:])
 	log.Info().Msgf("Loaded config: %v", cfg)
 
-	hub := sockets.NewHub(game.NewMemoryStore(), cfg)
+	hub = sockets.NewHub(game.NewMemoryStore(), cfg)
 	go hub.Run()
 	go hub.RunGameEventHandler()
 
-	http.HandleFunc("/", serveHome)
+	http.HandleFunc("/api/acceptedseek", acceptedSeek)
+	http.HandleFunc("/api/sendseek", sendSeek)
 	http.HandleFunc("/ws", func(w http.ResponseWriter, r *http.Request) {
 		sockets.ServeWS(hub, w, r)
 	})

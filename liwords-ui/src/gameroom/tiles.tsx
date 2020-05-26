@@ -11,7 +11,7 @@ import TentativeScore from './tentative_score';
 type Props = {
   gridDim: number;
   tilesLayout: Array<string>;
-  lastPlayedLetters: Record<string, boolean>;
+  lastPlayedLetters: { [tile: string]: boolean };
   boardSquareDim: number;
   rowLabelWidth: number;
   colLabelHeight: number;

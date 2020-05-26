@@ -1,0 +1,241 @@
+/* fake header */
+.top-header {
+  width: 1440px;
+  height: 72px;
+  left: 0px;
+  top: 0px;
+  /* Light Blue (#E2F8FF) */
+  background: #e2f8ff;
+}
+
+/* Mask Group */
+
+.top-header-user-icon {
+  position: absolute;
+  left: 95.56%;
+  right: 1.11%;
+  top: 16.67%;
+  bottom: 16.67%;
+}
+
+/* picture itself */
+/*
+position: absolute;
+left: 95.83%;
+right: 1.39%;
+top: 22.22%;
+bottom: 22.22%;
+
+background: url(o.png); */
+
+.top-header-left-frame {
+  /* Auto Layout */
+  display: flex;
+  flex-direction: row;
+  padding: 0px;
+
+  position: absolute;
+  left: 1.11%;
+  right: 55.76%;
+  top: 16.67%;
+  bottom: 16.67%;
+}
+/* Group 21 */
+.top-header-site-icon {
+  position: static;
+  width: 48px;
+  height: 48px;
+  left: 0px;
+  top: 0px;
+
+  /* Inside Auto Layout */
+  flex: none;
+  order: 0;
+  align-self: center;
+  margin: 20px 0px;
+}
+/* Rectangle 65 */
+.top-header-site-icon-rect {
+  position: absolute;
+  width: 48px;
+  height: 48px;
+  left: 0px;
+  top: 0px;
+
+  /* Dark blue (#2D6A9E) */
+  background: #2d6a9e;
+  border-radius: 4px;
+}
+/* M */
+.top-header-site-icon-m {
+  position: absolute;
+  width: 28px;
+  height: 22px;
+  left: 10px;
+  top: 13px;
+
+  font-family: Muli, 'sans-serif';
+  font-style: normal;
+  font-weight: normal;
+  font-size: 40px;
+  line-height: 64px;
+  /* or 160% */
+  display: flex;
+  align-items: center;
+  text-align: center;
+
+  /* Light Blue (#E2F8FF) */
+  color: #e2f8ff;
+}
+/* Macondo */
+.top-header-left-frame-site-name {
+  position: static;
+  width: 86px;
+  height: 24px;
+  left: 68px;
+  top: 12px;
+
+  font-family: Muli;
+  font-style: normal;
+  font-weight: normal;
+  font-size: 20px;
+  line-height: 24px;
+  /* identical to box height, or 120% */
+  display: flex;
+  align-items: center;
+
+  color: #000000;
+
+  /* Inside Auto Layout */
+  flex: none;
+  order: 1;
+  align-self: center;
+  margin: 20px 0px;
+}
+/* Text */
+/*
+position: static;
+width: 0px;
+height: 24px;
+left: 174px;
+top: 12px;
+
+font-family: Muli;
+font-style: normal;
+font-weight: normal;
+font-size: 16px;
+line-height: 24px;
+display: flex;
+align-items: center;
+
+color: #000000;
+
+flex: none;
+order: 2;
+align-self: center;
+margin: 20px 0px; */
+
+/* Crossword game */
+
+.top-header-left-frame-crossword-game {
+  position: static;
+  width: 126px;
+  height: 24px;
+  left: 194px;
+  top: 12px;
+
+  font-family: Muli;
+  font-style: normal;
+  font-weight: normal;
+  font-size: 16px;
+  line-height: 24px;
+  /* identical to box height, or 150% */
+  display: flex;
+  align-items: center;
+
+  color: #000000;
+
+  /* Inside Auto Layout */
+  flex: none;
+  order: 3;
+  align-self: center;
+  margin: 20px 0px;
+}
+
+/* Aerolith */
+.top-header-left-frame-aerolith {
+  position: static;
+  width: 58px;
+  height: 24px;
+  left: 340px;
+  top: 12px;
+
+  font-family: Muli;
+  font-style: normal;
+  font-weight: normal;
+  font-size: 16px;
+  line-height: 24px;
+  /* identical to box height, or 150% */
+  display: flex;
+  align-items: center;
+
+  color: #000000;
+
+  /* Inside Auto Layout */
+  flex: none;
+  order: 4;
+  align-self: center;
+  margin: 20px 0px;
+}
+
+/* Blog */
+.top-header-left-frame-blog {
+  position: static;
+  width: 34px;
+  height: 24px;
+  left: 418px;
+  top: 12px;
+
+  font-family: Muli;
+  font-style: normal;
+  font-weight: normal;
+  font-size: 16px;
+  line-height: 24px;
+  /* identical to box height, or 150% */
+  display: flex;
+  align-items: center;
+
+  color: #000000;
+
+  /* Inside Auto Layout */
+  flex: none;
+  order: 5;
+  align-self: center;
+  margin: 20px 0px;
+}
+
+/* César’s Special land */
+.top-header-left-frame-special-land {
+  position: static;
+  width: 149px;
+  height: 24px;
+  left: 472px;
+  top: 12px;
+
+  font-family: Muli;
+  font-style: normal;
+  font-weight: normal;
+  font-size: 16px;
+  line-height: 24px;
+  /* identical to box height, or 150% */
+  display: flex;
+  align-items: center;
+
+  color: #000000;
+
+  /* Inside Auto Layout */
+  flex: none;
+  order: 6;
+  align-self: center;
+  margin: 20px 0px;
+}

@@ -3,16 +3,16 @@ import React, { useState } from 'react';
 import Board from './board';
 import GameControls from './game_controls';
 import Rack from './rack';
-
 import {
   nextArrowPropertyState,
   handleKeyPress,
 } from '../utils/cwgame/tile_placement';
 import { EphemeralTile } from '../utils/cwgame/common';
+import { tilesetToMoveEvent } from '../utils/cwgame/game_event';
 
 // The frame atop is 24 height
 // The frames on the sides are 24 in width, surrounded by a 14 pix gutter
-
+const EnterKey = 'Enter';
 const sideFrameWidth = 24;
 const topFrameHeight = 24;
 const sideFrameGutter = 14;
@@ -25,8 +25,9 @@ type Props = {
   gridLayout: Array<string>;
   tilesLayout: Array<string>;
   showBonusLabels: boolean;
-  lastPlayedLetters: Record<string, boolean>;
+  lastPlayedLetters: { [tile: string]: boolean };
   currentRack: string;
+  gameID: string;
 };
 
 export const BoardPanel = (props: Props) => {
@@ -63,6 +64,11 @@ export const BoardPanel = (props: Props) => {
     // marker)
 
     if (!arrowProperties.show) {
+      return;
+    }
+
+    if (key === EnterKey) {
+      commitPlay();
       return;
     }
 
@@ -103,7 +109,13 @@ export const BoardPanel = (props: Props) => {
   };
 
   const commitPlay = () => {
-    console.log('commit ', placedTiles);
+    const moveEvt = tilesetToMoveEvent(placedTiles, props.tilesLayout);
+    if (moveEvt === null) {
+      // Just return. This is an invalid play.
+      return;
+    }
+    moveEvt?.setGameId(props.gameID);
+    console.log('message', moveEvt);
   };
 
   return (

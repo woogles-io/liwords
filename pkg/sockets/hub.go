@@ -1,6 +1,7 @@
 package sockets
 
 import (
+	"encoding/json"
 	"errors"
 	"sync"
 
@@ -49,10 +50,12 @@ type Hub struct {
 
 func NewHub(gameStore game.GameStore, cfg *config.Config) *Hub {
 	return &Hub{
-		broadcast:  make(chan []byte),
-		register:   make(chan *Client),
-		unregister: make(chan *Client),
-		clients:    make(map[*Client]bool),
+		broadcast:         make(chan []byte),
+		register:          make(chan *Client),
+		unregister:        make(chan *Client),
+		clients:           make(map[*Client]bool),
+		clientsByUsername: make(map[string]*Client),
+		realms:            make(map[Realm]map[*Client]bool),
 		// eventChan should be buffered to keep the game logic itself
 		// as fast as possible.
 		eventChan: make(chan *entity.EventWrapper, 50),
@@ -169,5 +172,22 @@ func (h *Hub) sendToRealm(realm Realm, w *entity.EventWrapper) error {
 		return errors.New("realm is empty")
 	}
 	h.broadcastRealm <- RealmMessage{realm: realm, msg: bytes}
+	return nil
+}
+
+type ClientSeek struct {
+	Seeker        string `json:"seeker"`
+	Lexicon       string `json:"lexicon"`
+	TimeControl   string `json:"timeControl"`
+	ChallengeRule string `json:"challengeRule"`
+}
+
+func (h *Hub) NewSeekRequest(cs *ClientSeek) error {
+	bts, err := json.Marshal(cs)
+	if err != nil {
+		return err
+	}
+
+	h.broadcast <- bts
 	return nil
 }

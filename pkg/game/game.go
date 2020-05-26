@@ -8,6 +8,10 @@ import (
 	"context"
 	"errors"
 
+	"github.com/domino14/macondo/alphabet"
+
+	"github.com/domino14/macondo/move"
+
 	macondopb "github.com/domino14/macondo/gen/api/proto/macondo"
 
 	"github.com/domino14/crosswords/pkg/config"
@@ -79,10 +83,45 @@ func StartGameInstance(entGame *entity.Game, eventChan chan<- *entity.EventWrapp
 	return nil
 }
 
-func PlayMove(ctx context.Context, gameStore GameStore, player string,
-	uge *pb.UserGameplayEvent) error {
+func clientEventToGameEvent(cge *pb.ClientGameplayEvent, g *game.Game) (*macondopb.GameEvent, error) {
+	playerid := g.PlayerOnTurn()
+	rack := g.RackFor(playerid)
 
-	entGame, err := gameStore.Get(ctx, uge.GameId)
+	switch cge.Type {
+	case pb.ClientGameplayEvent_TILE_PLACEMENT:
+		m, err := g.CreateAndScorePlacementMove(cge.PositionCoords, cge.Tiles, rack.String())
+		if err != nil {
+			return nil, err
+		}
+		// Note that we don't validate the move here, but we do so later.
+		return g.EventFromMove(m), nil
+
+	case pb.ClientGameplayEvent_CHALLENGE_PLAY:
+		// XXX: THIS NEEDS TO BE HANDLED IN SOME OTHER WAY.
+	case pb.ClientGameplayEvent_PASS:
+		m := move.NewPassMove(rack.TilesOn(), g.Alphabet())
+		return g.EventFromMove(m), nil
+	case pb.ClientGameplayEvent_EXCHANGE:
+		tiles, err := alphabet.ToMachineWord(cge.Tiles, g.Alphabet())
+		if err != nil {
+			return nil, err
+		}
+		leaveMW, err := game.Leave(rack.TilesOn(), tiles)
+		if err != nil {
+			return nil, err
+		}
+		m := move.NewExchangeMove(tiles, leaveMW, g.Alphabet())
+		return g.EventFromMove(m), nil
+	}
+	return nil, errors.New("client gameplay event not handled")
+}
+
+func PlayMove(ctx context.Context, gameStore GameStore, player string,
+	cge *pb.ClientGameplayEvent) error {
+
+	// XXX: VERIFY THAT THE CLIENT GAME ID CORRESPONDS TO THE GAME
+	// THE PLAYER IS PLAYING!
+	entGame, err := gameStore.Get(ctx, cge.GameId)
 	if err != nil {
 		return err
 	}
@@ -96,8 +135,27 @@ func PlayMove(ctx context.Context, gameStore GameStore, player string,
 		return errNotOnTurn
 	}
 
-	m := game.MoveFromEvent(uge.Event, entGame.Game.Alphabet(), entGame.Game.Board())
+	// Turn the event into a macondo GameEvent.
+	evt, err := clientEventToGameEvent(cge, &entGame.Game)
+	if err != nil {
+		return err
+	}
 
+	m := game.MoveFromEvent(evt, entGame.Game.Alphabet(), entGame.Game.Board())
+
+	wordsFormed, err := entGame.Game.ValidateMove(m)
+	if err != nil {
+		return err
+	}
+	entGame.SetLastPlayedWords(wordsFormed)
+
+	// XXX: Depending on the challenge rule, there can be two validation steps:
+	// 1. validate that the play is legal in the game (connects to tiles, etc)
+	// 2. validate that the play creates actual words if the challenge rule is VOID.
+	if entGame.ChallengeRule() == pb.ChallengeRule_VOID {
+		// validate wordsFormed here and return an error if any word is
+		// invalid in the game's lexicon.
+	}
 	// Don't back up the move, but add to history
 	err = entGame.Game.PlayMove(m, false, true)
 	if err != nil {
@@ -106,8 +164,13 @@ func PlayMove(ctx context.Context, gameStore GameStore, player string,
 
 	// Register time.
 	entGame.RecordTimeOfMove(onTurn)
-	uge.TimeRemaining = int32(entGame.TimeRemaining(onTurn))
-	uge.NewRack = entGame.Game.RackLettersFor(onTurn)
+
+	// Create a ServerGameplayEvent to send back.
+	sge := &pb.ServerGameplayEvent{}
+	sge.Event = evt
+	sge.GameId = cge.GameId
+	sge.TimeRemaining = int32(entGame.TimeRemaining(onTurn))
+	sge.NewRack = entGame.Game.RackLettersFor(onTurn)
 	// Since the move was successful, we assume the user gameplay event is valid.
 	// Re-send it, but overwrite the time remaining and new rack properly.
 	playing := entGame.Game.Playing()
@@ -117,7 +180,7 @@ func PlayMove(ctx context.Context, gameStore GameStore, player string,
 		return err
 	}
 
-	entGame.SendChange(entity.WrapEvent(uge, entGame.GameID()))
+	entGame.SendChange(entity.WrapEvent(sge, entGame.GameID()))
 	if !playing {
 		performEndgameDuties(entGame, pb.GameEndReason_WENT_OUT, player)
 	}

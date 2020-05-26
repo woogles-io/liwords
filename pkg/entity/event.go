@@ -111,8 +111,8 @@ func EventFromByteArray(arr []byte) (*EventWrapper, error) {
 	// Add all relevant events here!
 	// SeekRequest and MatchRequest will be sent from the user via regular
 	// API and not necessarily the socket, so we won't need to process them here.
-	case "crosswords.UserGameplayEvent":
-		message = &pb.UserGameplayEvent{}
+	case "crosswords.ClientGameplayEvent":
+		message = &pb.ClientGameplayEvent{}
 	case "crosswords.GameEndedEvent":
 		message = &pb.GameEndedEvent{}
 	case "crosswords.GameHistoryRefresher":

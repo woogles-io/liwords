@@ -11,7 +11,7 @@ type TileStyle = {
   strokeWidth: string;
 };
 
-const TILE_STYLES: Record<string, TileStyle> = {
+const TILE_STYLES: { [name: string]: TileStyle } = {
   aeroBlue: {
     color: '#2D6A9E',
     outline: '#ffffff',

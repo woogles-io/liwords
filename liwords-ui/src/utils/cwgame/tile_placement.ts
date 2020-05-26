@@ -113,10 +113,11 @@ export const handleKeyPress = (
   gridLayout: Array<string>
 ): KeypressHandlerReturn | null => {
   const normalizedKey = key.toUpperCase();
+
   const newPlacedTiles = currentlyPlacedTiles;
 
   // Create an ephemeral tile map with unique keys.
-  const ephTileMap: Record<number, EphemeralTile> = {};
+  const ephTileMap: { [tileIdx: number]: EphemeralTile } = {};
   currentlyPlacedTiles.forEach((t) => {
     ephTileMap[uniqueTileIdx(t.row, t.col)] = t;
   });

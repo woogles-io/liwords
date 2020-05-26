@@ -99,19 +99,30 @@ enum GameEndReason {
 // logging purposes. The client will send `macondo.GameEvent` via the websocket.
 
 // We encapsulate the game event here
+message ClientGameplayEvent {
+  enum EventType {
+    TILE_PLACEMENT = 0;
+    PASS = 1;
+    EXCHANGE = 2;
+    CHALLENGE_PLAY = 3;
+  }
 
-// The server will send back a UserGameplayEvent with the same event, and
-// any corrected fields. The server will also send these asynchronously for
-// opponent gameplay events.
-message UserGameplayEvent {
+  EventType type = 1;
+  string game_id = 2;
+  // position coordinates, like H8 or G10. Only matters for TILE_PLACEMENT.
+  string position_coords = 3;
+  // tiles that are being played (or exchanged). The `.` character is used
+  // for thru, and lowercase characters are used for blanks.
+  string tiles = 4;
+}
+
+// The server will send back a ServerGameplayEvent to a ClientGameplayEvent.
+// The server will also send these asynchronously for opponent gameplay
+// events.
+message ServerGameplayEvent {
   macondo.GameEvent event = 1;
   string game_id = 2;
-  // new_rack is ignored when sent from client to server, but filled in when
-  // sent from server back to client.
   string new_rack = 3;
-
-  // The player's time remaining, in milliseconds. This is sent from server
-  // to client.
   int32 time_remaining = 4;
 }
 
