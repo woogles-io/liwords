@@ -78,7 +78,8 @@ func StartGameInstance(entGame *entity.Game, eventChan chan<- *entity.EventWrapp
 	if err := entGame.RegisterChangeHook(eventChan); err != nil {
 		return err
 	}
-	entGame.SendChange(entity.WrapEvent(entGame.HistoryRefresherEvent(), entGame.GameID()))
+	entGame.SendChange(entity.WrapEvent(entGame.HistoryRefresherEvent(), pb.MessageType_GAME_HISTORY_REFRESHER,
+		entGame.GameID()))
 
 	return nil
 }
@@ -180,7 +181,8 @@ func PlayMove(ctx context.Context, gameStore GameStore, player string,
 		return err
 	}
 
-	entGame.SendChange(entity.WrapEvent(sge, entGame.GameID()))
+	entGame.SendChange(entity.WrapEvent(sge, pb.MessageType_SERVER_GAMEPLAY_EVENT,
+		entGame.GameID()))
 	if !playing {
 		performEndgameDuties(entGame, pb.GameEndReason_WENT_OUT, player)
 	}
@@ -194,6 +196,7 @@ func performEndgameDuties(g *entity.Game, reason pb.GameEndReason, player string
 	// }
 
 	g.SendChange(
-		entity.WrapEvent(g.GameEndedEvent(pb.GameEndReason_WENT_OUT, player), g.GameID()))
+		entity.WrapEvent(g.GameEndedEvent(pb.GameEndReason_WENT_OUT, player),
+			pb.MessageType_GAME_ENDED_EVENT, g.GameID()))
 
 }

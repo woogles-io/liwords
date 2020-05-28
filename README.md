@@ -18,7 +18,5 @@ To generate pb files, run in this directory:
 
 (note, you'll have to change the proto_path to match your folder layout. Make sure that `crosswords` and `macondo` are both inside the supplied `proto_path`)
 
-** IMPORTANT **
-Finally, in order to get this to compile, you have to manually add this line: `/* eslint-disable */` to the top of any generated \*\_pb.js files
-
-At some point we should make this automatic.
+Finally, **IMPORTANT**:
+Add `/* eslint-disable */` to the top of the generated `*_pb.js` files.

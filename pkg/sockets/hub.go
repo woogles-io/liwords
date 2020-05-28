@@ -1,13 +1,13 @@
 package sockets
 
 import (
-	"encoding/json"
 	"errors"
 	"sync"
 
 	"github.com/domino14/crosswords/pkg/config"
 	"github.com/domino14/crosswords/pkg/entity"
 	"github.com/domino14/crosswords/pkg/game"
+	pb "github.com/domino14/crosswords/rpc/api/proto"
 	"github.com/rs/zerolog/log"
 )
 
@@ -175,15 +175,10 @@ func (h *Hub) sendToRealm(realm Realm, w *entity.EventWrapper) error {
 	return nil
 }
 
-type ClientSeek struct {
-	Seeker        string `json:"seeker"`
-	Lexicon       string `json:"lexicon"`
-	TimeControl   string `json:"timeControl"`
-	ChallengeRule string `json:"challengeRule"`
-}
+func (h *Hub) NewSeekRequest(cs *pb.SeekRequest) error {
+	evt := entity.WrapEvent(cs, pb.MessageType_SEEK_REQUEST, "")
 
-func (h *Hub) NewSeekRequest(cs *ClientSeek) error {
-	bts, err := json.Marshal(cs)
+	bts, err := evt.Serialize()
 	if err != nil {
 		return err
 	}

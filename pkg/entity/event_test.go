@@ -4,7 +4,6 @@ import (
 	"testing"
 
 	pb "github.com/domino14/crosswords/rpc/api/proto"
-	macondopb "github.com/domino14/macondo/gen/api/proto/macondo"
 	"github.com/matryer/is"
 	"google.golang.org/protobuf/proto"
 )
@@ -14,17 +13,12 @@ func TestDeserialize(t *testing.T) {
 
 	for _, protocol := range []string{"proto", "json"} {
 
-		w := WrapEvent(&pb.UserGameplayEvent{
-			Event: &macondopb.GameEvent{
-				Nickname:   "cesitar",
-				Cumulative: 75,
-				Rack:       "ALMIBAR",
-				Position:   "G3",
-				Type:       macondopb.GameEvent_TILE_PLACEMENT_MOVE,
-			},
-			NewRack:       "DOGS",
-			TimeRemaining: 12345,
-		}, "foo")
+		w := WrapEvent(&pb.ClientGameplayEvent{
+			Type:           pb.ClientGameplayEvent_TILE_PLACEMENT,
+			GameId:         "foo123",
+			PositionCoords: "G3",
+			Tiles:          "ALMIBAR",
+		}, pb.MessageType_CLIENT_GAMEPLAY_EVENT, "foo")
 		w.SetSerializationProtocol(protocol)
 
 		arr, err := w.Serialize()
@@ -32,7 +26,7 @@ func TestDeserialize(t *testing.T) {
 
 		ew, err := EventFromByteArray(arr)
 		is.NoErr(err)
-		is.Equal(w.Name, ew.Name)
+		is.Equal(w.Type, ew.Type)
 		is.True(proto.Equal(w.Event, ew.Event))
 	}
 }

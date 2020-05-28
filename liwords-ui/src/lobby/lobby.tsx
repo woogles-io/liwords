@@ -1,57 +1,111 @@
-import React, { useState } from 'react';
-import axios from 'axios';
+import React, { useState, useEffect, useRef } from 'react';
 import { Row, Col, Button, Card, Input } from 'antd';
+// import { SoughtGame, LobbyStore } from '../store/lobby_store';
+import { getSocketURI, websocket } from '../socket/socket';
+import {
+  useLobbyContext,
+  LobbyStoreData,
+  SoughtGame,
+} from '../store/lobby_store';
 
 import { TopBar } from '../topbar/topbar';
+import {
+  SeekRequest,
+  GameRequest,
+  ChallengeRuleMap,
+  ChallengeRule,
+  MessageType,
+  RequestingUser,
+} from '../gen/api/proto/game_service_pb';
+import { encodeToSocketFmt, decodeToMsg } from '../utils/protobuf';
+import { SoughtGames } from './sought_games';
 
-const newGame = (seeker: string, acceptor: string) => {
-  axios
-    .post('/api/acceptedseek', {
-      seeker,
-      acceptor,
-    })
-    .then((response) => {
-      console.log(response.data);
-    });
+const onSocketMsg = (storeData: LobbyStoreData) => {
+  return (reader: FileReader) => {
+    if (!reader.result) {
+      return;
+    }
+    const msg = new Uint8Array(reader.result as ArrayBuffer);
+    let sr;
+    let gameReq;
+    let user;
+    // msg type:
+    switch (msg[0]) {
+      case MessageType.SEEK_REQUEST:
+        sr = SeekRequest.deserializeBinary(msg.slice(1));
+        gameReq = sr.getGameRequest();
+        user = sr.getUser();
+        if (!gameReq || !user) {
+          return;
+        }
+        storeData.addSoughtGame({
+          seeker: user.getUsername(),
+          lexicon: gameReq.getLexicon(),
+          initialTimeSecs: gameReq.getInitialTimeSeconds(),
+          challengeRule: gameReq.getChallengeRule(),
+        });
+    }
+  };
 };
 
-const sendSeek = (game: SoughtGame) => {
-  axios.post('/api/sendseek', {
-    seeker: game.seeker,
-    lexicon: game.lexicon,
-    timeControl: game.timeControl,
-    challengeRule: game.challengeRule,
-  });
-};
+function useLobbySocket(
+  socketRef: React.MutableRefObject<WebSocket | null>,
+  storeData: LobbyStoreData
+) {
+  useEffect(() => {
+    websocket(
+      getSocketURI(),
+      (socket) => {
+        // eslint-disable-next-line no-param-reassign
+        socketRef.current = socket;
+      },
+      (event) => {
+        decodeToMsg(event.data, onSocketMsg(storeData));
+      }
+    );
+    return () => {
+      if (socketRef.current) {
+        console.log('closing lobby socket');
+        socketRef.current.close();
+      }
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+}
 
-export type SoughtGame = {
-  seeker: string;
-  lexicon: string;
-  timeControl: string;
-  challengeRule: string;
-  // rating: number;
-  // soughtID: string;
+const sendSeek = (game: SoughtGame, socket: WebSocket | null) => {
+  if (!socket) {
+    return;
+  }
+  const sr = new SeekRequest();
+  const gr = new GameRequest();
+  const user = new RequestingUser();
+
+  user.setUsername(game.seeker);
+  // rating comes from backend.
+
+  sr.setUser(user);
+  gr.setChallengeRule(
+    game.challengeRule as ChallengeRuleMap[keyof ChallengeRuleMap]
+  );
+  gr.setLexicon(game.lexicon);
+  gr.setInitialTimeSeconds(game.initialTimeSecs);
+  sr.setGameRequest(gr);
+  socket.send(
+    encodeToSocketFmt(MessageType.SEEK_REQUEST, sr.serializeBinary())
+  );
 };
 
 type Props = {
-  soughtGames: Array<SoughtGame>;
-  onConnect: (username: string) => void;
+  username: string;
 };
 
 export const Lobby = (props: Props) => {
-  const [username, setUsername] = useState('');
+  // const [store] = React.useState(() => new LobbyStore());
+  const socketRef = useRef<WebSocket | null>(null);
 
-  const soughtGames = props.soughtGames.map((game, idx) => (
-    <li
-      key={`game${game.seeker}`}
-      style={{ paddingTop: 20, cursor: 'pointer' }}
-      onClick={(event: React.MouseEvent) => newGame(game.seeker, username)}
-      role="button"
-    >
-      {game.seeker} wants to play {game.lexicon} ({game.timeControl}{' '}
-      {game.challengeRule})
-    </li>
-  ));
+  const storeFns = useLobbyContext();
+  useLobbySocket(socketRef, storeFns);
 
   return (
     <div>
@@ -62,26 +116,13 @@ export const Lobby = (props: Props) => {
       </Row>
 
       <Row>
-        <Col span={4} offset={10}>
-          <Input
-            placeholder="Username"
-            value={username}
-            onChange={(e) => setUsername(e.target.value)}
-          />
-          <Button onClick={() => props.onConnect(username)}>Connect</Button>
-        </Col>
-      </Row>
-
-      <Row>
         <Col span={24}>
           <h3>Lobby</h3>
         </Col>
       </Row>
       <Row>
         <Col span={8} offset={8}>
-          <Card title="Join a game">
-            <ul style={{ listStyleType: 'none' }}>{soughtGames}</ul>
-          </Card>
+          <SoughtGames />
         </Col>
       </Row>
 
@@ -89,14 +130,19 @@ export const Lobby = (props: Props) => {
         <Col span={24}>
           <Button
             onClick={() =>
-              sendSeek({
-                seeker: username,
-                lexicon: 'CSW19',
-                challengeRule: '5-pt',
-                timeControl: '15/0',
-                // rating: 0,
-                // soughtID: username,
-              })
+              // Eventually will replace with a modal that has selections
+              // like lexicon / challenge rule/ etc.
+              sendSeek(
+                {
+                  seeker: props.username,
+                  lexicon: 'CSW19',
+                  challengeRule: ChallengeRule.FIVE_POINT,
+                  initialTimeSecs: 900,
+                  // rating: 0,
+                  // soughtID: username,
+                },
+                socketRef.current
+              )
             }
           >
             New Game

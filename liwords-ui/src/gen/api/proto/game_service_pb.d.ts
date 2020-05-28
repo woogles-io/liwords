@@ -78,11 +78,40 @@ export namespace GameRequest {
   }
 }
 
+export class RequestingUser extends jspb.Message {
+  getUsername(): string;
+  setUsername(value: string): void;
+
+  getRelevantrating(): number;
+  setRelevantrating(value: number): void;
+
+  serializeBinary(): Uint8Array;
+  toObject(includeInstance?: boolean): RequestingUser.AsObject;
+  static toObject(includeInstance: boolean, msg: RequestingUser): RequestingUser.AsObject;
+  static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+  static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+  static serializeBinaryToWriter(message: RequestingUser, writer: jspb.BinaryWriter): void;
+  static deserializeBinary(bytes: Uint8Array): RequestingUser;
+  static deserializeBinaryFromReader(message: RequestingUser, reader: jspb.BinaryReader): RequestingUser;
+}
+
+export namespace RequestingUser {
+  export type AsObject = {
+    username: string,
+    relevantrating: number,
+  }
+}
+
 export class SeekRequest extends jspb.Message {
   hasGameRequest(): boolean;
   clearGameRequest(): void;
   getGameRequest(): GameRequest | undefined;
   setGameRequest(value?: GameRequest): void;
+
+  hasUser(): boolean;
+  clearUser(): void;
+  getUser(): RequestingUser | undefined;
+  setUser(value?: RequestingUser): void;
 
   getMinimumRating(): number;
   setMinimumRating(value: number): void;
@@ -103,6 +132,7 @@ export class SeekRequest extends jspb.Message {
 export namespace SeekRequest {
   export type AsObject = {
     gameRequest?: GameRequest.AsObject,
+    user?: RequestingUser.AsObject,
     minimumRating: number,
     maximumRating: number,
   }
@@ -114,8 +144,10 @@ export class MatchRequest extends jspb.Message {
   getGameRequest(): GameRequest | undefined;
   setGameRequest(value?: GameRequest): void;
 
-  getPlayer(): string;
-  setPlayer(value: string): void;
+  hasUser(): boolean;
+  clearUser(): void;
+  getUser(): RequestingUser | undefined;
+  setUser(value?: RequestingUser): void;
 
   serializeBinary(): Uint8Array;
   toObject(includeInstance?: boolean): MatchRequest.AsObject;
@@ -130,7 +162,7 @@ export class MatchRequest extends jspb.Message {
 export namespace MatchRequest {
   export type AsObject = {
     gameRequest?: GameRequest.AsObject,
-    player: string,
+    user?: RequestingUser.AsObject,
   }
 }
 
@@ -347,4 +379,16 @@ export interface GameEndReasonMap {
 }
 
 export const GameEndReason: GameEndReasonMap;
+
+export interface MessageTypeMap {
+  SEEK_REQUEST: 0;
+  MATCH_REQUEST: 1;
+  GAME_ACCEPTED_EVENT: 2;
+  CLIENT_GAMEPLAY_EVENT: 3;
+  SERVER_GAMEPLAY_EVENT: 4;
+  GAME_ENDED_EVENT: 5;
+  GAME_HISTORY_REFRESHER: 6;
+}
+
+export const MessageType: MessageTypeMap;
 

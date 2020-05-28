@@ -3,6 +3,7 @@ package sockets
 import (
 	"context"
 	"errors"
+	"fmt"
 
 	"github.com/domino14/crosswords/pkg/entity"
 	"github.com/domino14/crosswords/pkg/game"
@@ -17,7 +18,13 @@ func (h *Hub) parseAndExecuteMessage(msg []byte, sender string) error {
 	if err != nil {
 		return err
 	}
-	switch ew.Name {
+	switch ew.Type {
+	case pb.MessageType_SEEK_REQUEST:
+		evt, ok := ew.Event.(*pb.SeekRequest)
+		if !ok {
+			return errors.New("unexpected typing error")
+		}
+		h.NewSeekRequest(evt)
 
 	// case "crosswords.GameAcceptedEvent":
 	// 	evt, ok := ew.Event.(*pb.GameAcceptedEvent)
@@ -46,7 +53,7 @@ func (h *Hub) parseAndExecuteMessage(msg []byte, sender string) error {
 	// 		return err
 	// 	}
 
-	case "crosswords.ClientGameplayEvent":
+	case pb.MessageType_CLIENT_GAMEPLAY_EVENT:
 		evt, ok := ew.Event.(*pb.ClientGameplayEvent)
 		if !ok {
 			// This really shouldn't happen
@@ -58,7 +65,7 @@ func (h *Hub) parseAndExecuteMessage(msg []byte, sender string) error {
 		}
 
 	default:
-		return errors.New("evt " + ew.Name + " not yet handled")
+		return fmt.Errorf("message type %v not yet handled", ew.Type)
 
 	}
 

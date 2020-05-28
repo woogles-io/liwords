@@ -1,10 +1,7 @@
 package main
 
 import (
-	"encoding/json"
 	"flag"
-	"fmt"
-	"io/ioutil"
 	"net/http"
 	"os"
 	"time"
@@ -22,65 +19,58 @@ const (
 
 var addr = flag.String("addr", ":8087", "http service address")
 
-// FOR NOW GLOBAL FIX THIS
-var hub *sockets.Hub
+// func sendSeek(w http.ResponseWriter, r *http.Request) {
+// 	if r.Method != "POST" {
+// 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+// 	}
+// 	body, err := ioutil.ReadAll(r.Body)
+// 	if err != nil {
+// 		http.Error(w, "can't read body", http.StatusBadRequest)
+// 		return
+// 	}
 
-type clientSeekAcceptance struct {
-	Seeker string `json:"seeker"`
-}
+// 	cs := &sockets.ClientSeek{}
 
-func sendSeek(w http.ResponseWriter, r *http.Request) {
-	if r.Method != "POST" {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-	}
-	body, err := ioutil.ReadAll(r.Body)
-	if err != nil {
-		http.Error(w, "can't read body", http.StatusBadRequest)
-		return
-	}
+// 	err = json.Unmarshal(body, cs)
+// 	if err != nil {
+// 		http.Error(w, "bad request", http.StatusBadRequest)
+// 		return
+// 	}
+// 	// broadcast seek
+// 	hub.NewSeekRequest(cs)
 
-	cs := &sockets.ClientSeek{}
+// 	// players := []*macondopb.PlayerInfo{
+// 	// 	{Nickname: evt.Acceptor, RealName: evt.Acceptor},
+// 	// 	{Nickname: csa.Seeker, RealName: csa.Seeker},
+// 	// }
 
-	err = json.Unmarshal(body, cs)
-	if err != nil {
-		http.Error(w, "bad request", http.StatusBadRequest)
-		return
-	}
-	// broadcast seek
-	hub.NewSeekRequest(cs)
+// 	fmt.Fprintf(w, "OK")
+// }
 
-	// players := []*macondopb.PlayerInfo{
-	// 	{Nickname: evt.Acceptor, RealName: evt.Acceptor},
-	// 	{Nickname: csa.Seeker, RealName: csa.Seeker},
-	// }
+// func acceptedSeek(w http.ResponseWriter, r *http.Request) {
+// 	if r.Method != "POST" {
+// 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+// 	}
+// 	body, err := ioutil.ReadAll(r.Body)
+// 	if err != nil {
+// 		http.Error(w, "can't read body", http.StatusBadRequest)
+// 		return
+// 	}
 
-	fmt.Fprintf(w, "OK")
-}
+// 	csa := &clientSeekAcceptance{}
 
-func acceptedSeek(w http.ResponseWriter, r *http.Request) {
-	if r.Method != "POST" {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-	}
-	body, err := ioutil.ReadAll(r.Body)
-	if err != nil {
-		http.Error(w, "can't read body", http.StatusBadRequest)
-		return
-	}
+// 	err = json.Unmarshal(body, csa)
+// 	if err != nil {
+// 		http.Error(w, "bad request", http.StatusBadRequest)
+// 		return
+// 	}
+// 	// players := []*macondopb.PlayerInfo{
+// 	// 	{Nickname: evt.Acceptor, RealName: evt.Acceptor},
+// 	// 	{Nickname: csa.Seeker, RealName: csa.Seeker},
+// 	// }
 
-	csa := &clientSeekAcceptance{}
-
-	err = json.Unmarshal(body, csa)
-	if err != nil {
-		http.Error(w, "bad request", http.StatusBadRequest)
-		return
-	}
-	// players := []*macondopb.PlayerInfo{
-	// 	{Nickname: evt.Acceptor, RealName: evt.Acceptor},
-	// 	{Nickname: csa.Seeker, RealName: csa.Seeker},
-	// }
-
-	// fmt.Fprintf(w, seeker.Seeker)
-}
+// 	// fmt.Fprintf(w, seeker.Seeker)
+// }
 
 func main() {
 
@@ -91,12 +81,12 @@ func main() {
 	cfg.Load(os.Args[1:])
 	log.Info().Msgf("Loaded config: %v", cfg)
 
-	hub = sockets.NewHub(game.NewMemoryStore(), cfg)
+	hub := sockets.NewHub(game.NewMemoryStore(), cfg)
 	go hub.Run()
 	go hub.RunGameEventHandler()
 
-	http.HandleFunc("/api/acceptedseek", acceptedSeek)
-	http.HandleFunc("/api/sendseek", sendSeek)
+	// http.HandleFunc("/api/acceptedseek", acceptedSeek)
+	// http.HandleFunc("/api/sendseek", sendSeek)
 	http.HandleFunc("/ws", func(w http.ResponseWriter, r *http.Request) {
 		sockets.ServeWS(hub, w, r)
 	})

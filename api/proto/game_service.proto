@@ -61,15 +61,22 @@ message GameRequest {
   string request_id = 8;
 }
 
+// A RequestingUser requests a match via a seek or a match request.
+message RequestingUser {
+  string username = 1;
+  int32 relevantRating = 2;
+}
+
 message SeekRequest {
   GameRequest game_request = 1;
-  int32 minimum_rating = 2;
-  int32 maximum_rating = 3;
+  RequestingUser user = 2;
+  int32 minimum_rating = 3;
+  int32 maximum_rating = 4;
 }
 
 message MatchRequest {
   GameRequest game_request = 1;
-  string player = 2;
+  RequestingUser user = 2;
 }
 
 // A GameAcceptedEvent gets sent when a match request (or seek request)
@@ -160,6 +167,24 @@ message GameHistoryRefresher {
   int32 time_player2 = 3;
 
   //
+}
+
+// In order to make socket messages as small and simple as possible,
+// we should include the message type with the socket message.
+// Whenever we add a new client <-> server socket message type,
+// add it to this list.
+enum MessageType {
+  SEEK_REQUEST = 0;
+  MATCH_REQUEST = 1;
+  GAME_ACCEPTED_EVENT = 2;
+  CLIENT_GAMEPLAY_EVENT = 3;
+  SERVER_GAMEPLAY_EVENT = 4;
+  GAME_ENDED_EVENT = 5;
+  GAME_HISTORY_REFRESHER = 6;
+  // Add more events here. The total number of events should fit in a byte.
+  // We should definitely not be using anywhere close to 255 events, and
+  // in order to enforce that I'll be forcing the event type header to just be
+  // a byte long.
 }
 
 // service CrosswordGameService {
