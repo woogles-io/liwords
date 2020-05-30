@@ -95,6 +95,8 @@ func EventFromByteArray(arr []byte) (*EventWrapper, error) {
 		message = &pb.GameHistoryRefresher{}
 	case pb.MessageType_SEEK_REQUEST:
 		message = &pb.SeekRequest{}
+	case pb.MessageType_GAME_ACCEPTED_EVENT:
+		message = &pb.GameAcceptedEvent{}
 	default:
 		return nil, fmt.Errorf("event of type %d not handled", msgType)
 	}

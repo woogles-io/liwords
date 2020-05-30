@@ -1,14 +1,12 @@
 import { EphemeralTile, Direction } from './common';
 import { ClientGameplayEvent } from '../../gen/api/proto/game_service_pb';
 import { contiguousTilesFromTileSet } from './scoring';
+import { Board } from './game';
 
 const ThroughTileMarker = '.';
 // convert a set of ephemeral tiles to a protobuf game event.
-export const tilesetToMoveEvent = (
-  tiles: Set<EphemeralTile>,
-  tileLayout: Array<string>
-) => {
-  const ret = contiguousTilesFromTileSet(tiles, tileLayout);
+export const tilesetToMoveEvent = (tiles: Set<EphemeralTile>, board: Board) => {
+  const ret = contiguousTilesFromTileSet(tiles, board);
   if (ret === null) {
     // the play is not rules-valid. Deal with it in the caller.
     return null;

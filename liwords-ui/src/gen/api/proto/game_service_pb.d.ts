@@ -166,97 +166,6 @@ export namespace MatchRequest {
   }
 }
 
-export class GameAcceptedEvent extends jspb.Message {
-  getRequester(): string;
-  setRequester(value: string): void;
-
-  getAcceptor(): string;
-  setAcceptor(value: string): void;
-
-  hasGameRequest(): boolean;
-  clearGameRequest(): void;
-  getGameRequest(): GameRequest | undefined;
-  setGameRequest(value?: GameRequest): void;
-
-  serializeBinary(): Uint8Array;
-  toObject(includeInstance?: boolean): GameAcceptedEvent.AsObject;
-  static toObject(includeInstance: boolean, msg: GameAcceptedEvent): GameAcceptedEvent.AsObject;
-  static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
-  static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
-  static serializeBinaryToWriter(message: GameAcceptedEvent, writer: jspb.BinaryWriter): void;
-  static deserializeBinary(bytes: Uint8Array): GameAcceptedEvent;
-  static deserializeBinaryFromReader(message: GameAcceptedEvent, reader: jspb.BinaryReader): GameAcceptedEvent;
-}
-
-export namespace GameAcceptedEvent {
-  export type AsObject = {
-    requester: string,
-    acceptor: string,
-    gameRequest?: GameRequest.AsObject,
-  }
-}
-
-export class Unseek extends jspb.Message {
-  getPlayer(): string;
-  setPlayer(value: string): void;
-
-  serializeBinary(): Uint8Array;
-  toObject(includeInstance?: boolean): Unseek.AsObject;
-  static toObject(includeInstance: boolean, msg: Unseek): Unseek.AsObject;
-  static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
-  static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
-  static serializeBinaryToWriter(message: Unseek, writer: jspb.BinaryWriter): void;
-  static deserializeBinary(bytes: Uint8Array): Unseek;
-  static deserializeBinaryFromReader(message: Unseek, reader: jspb.BinaryReader): Unseek;
-}
-
-export namespace Unseek {
-  export type AsObject = {
-    player: string,
-  }
-}
-
-export class ClientGameplayEvent extends jspb.Message {
-  getType(): ClientGameplayEvent.EventTypeMap[keyof ClientGameplayEvent.EventTypeMap];
-  setType(value: ClientGameplayEvent.EventTypeMap[keyof ClientGameplayEvent.EventTypeMap]): void;
-
-  getGameId(): string;
-  setGameId(value: string): void;
-
-  getPositionCoords(): string;
-  setPositionCoords(value: string): void;
-
-  getTiles(): string;
-  setTiles(value: string): void;
-
-  serializeBinary(): Uint8Array;
-  toObject(includeInstance?: boolean): ClientGameplayEvent.AsObject;
-  static toObject(includeInstance: boolean, msg: ClientGameplayEvent): ClientGameplayEvent.AsObject;
-  static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
-  static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
-  static serializeBinaryToWriter(message: ClientGameplayEvent, writer: jspb.BinaryWriter): void;
-  static deserializeBinary(bytes: Uint8Array): ClientGameplayEvent;
-  static deserializeBinaryFromReader(message: ClientGameplayEvent, reader: jspb.BinaryReader): ClientGameplayEvent;
-}
-
-export namespace ClientGameplayEvent {
-  export type AsObject = {
-    type: ClientGameplayEvent.EventTypeMap[keyof ClientGameplayEvent.EventTypeMap],
-    gameId: string,
-    positionCoords: string,
-    tiles: string,
-  }
-
-  export interface EventTypeMap {
-    TILE_PLACEMENT: 0;
-    PASS: 1;
-    EXCHANGE: 2;
-    CHALLENGE_PLAY: 3;
-  }
-
-  export const EventType: EventTypeMap;
-}
-
 export class ServerGameplayEvent extends jspb.Message {
   hasEvent(): boolean;
   clearEvent(): void;
@@ -348,6 +257,107 @@ export namespace GameHistoryRefresher {
   }
 }
 
+export class NewGameEvent extends jspb.Message {
+  getGameId(): string;
+  setGameId(value: string): void;
+
+  serializeBinary(): Uint8Array;
+  toObject(includeInstance?: boolean): NewGameEvent.AsObject;
+  static toObject(includeInstance: boolean, msg: NewGameEvent): NewGameEvent.AsObject;
+  static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+  static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+  static serializeBinaryToWriter(message: NewGameEvent, writer: jspb.BinaryWriter): void;
+  static deserializeBinary(bytes: Uint8Array): NewGameEvent;
+  static deserializeBinaryFromReader(message: NewGameEvent, reader: jspb.BinaryReader): NewGameEvent;
+}
+
+export namespace NewGameEvent {
+  export type AsObject = {
+    gameId: string,
+  }
+}
+
+export class ErrorMessage extends jspb.Message {
+  getMessage(): string;
+  setMessage(value: string): void;
+
+  serializeBinary(): Uint8Array;
+  toObject(includeInstance?: boolean): ErrorMessage.AsObject;
+  static toObject(includeInstance: boolean, msg: ErrorMessage): ErrorMessage.AsObject;
+  static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+  static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+  static serializeBinaryToWriter(message: ErrorMessage, writer: jspb.BinaryWriter): void;
+  static deserializeBinary(bytes: Uint8Array): ErrorMessage;
+  static deserializeBinaryFromReader(message: ErrorMessage, reader: jspb.BinaryReader): ErrorMessage;
+}
+
+export namespace ErrorMessage {
+  export type AsObject = {
+    message: string,
+  }
+}
+
+export class GameAcceptedEvent extends jspb.Message {
+  getRequestId(): string;
+  setRequestId(value: string): void;
+
+  serializeBinary(): Uint8Array;
+  toObject(includeInstance?: boolean): GameAcceptedEvent.AsObject;
+  static toObject(includeInstance: boolean, msg: GameAcceptedEvent): GameAcceptedEvent.AsObject;
+  static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+  static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+  static serializeBinaryToWriter(message: GameAcceptedEvent, writer: jspb.BinaryWriter): void;
+  static deserializeBinary(bytes: Uint8Array): GameAcceptedEvent;
+  static deserializeBinaryFromReader(message: GameAcceptedEvent, reader: jspb.BinaryReader): GameAcceptedEvent;
+}
+
+export namespace GameAcceptedEvent {
+  export type AsObject = {
+    requestId: string,
+  }
+}
+
+export class ClientGameplayEvent extends jspb.Message {
+  getType(): ClientGameplayEvent.EventTypeMap[keyof ClientGameplayEvent.EventTypeMap];
+  setType(value: ClientGameplayEvent.EventTypeMap[keyof ClientGameplayEvent.EventTypeMap]): void;
+
+  getGameId(): string;
+  setGameId(value: string): void;
+
+  getPositionCoords(): string;
+  setPositionCoords(value: string): void;
+
+  getTiles(): string;
+  setTiles(value: string): void;
+
+  serializeBinary(): Uint8Array;
+  toObject(includeInstance?: boolean): ClientGameplayEvent.AsObject;
+  static toObject(includeInstance: boolean, msg: ClientGameplayEvent): ClientGameplayEvent.AsObject;
+  static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+  static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+  static serializeBinaryToWriter(message: ClientGameplayEvent, writer: jspb.BinaryWriter): void;
+  static deserializeBinary(bytes: Uint8Array): ClientGameplayEvent;
+  static deserializeBinaryFromReader(message: ClientGameplayEvent, reader: jspb.BinaryReader): ClientGameplayEvent;
+}
+
+export namespace ClientGameplayEvent {
+  export type AsObject = {
+    type: ClientGameplayEvent.EventTypeMap[keyof ClientGameplayEvent.EventTypeMap],
+    gameId: string,
+    positionCoords: string,
+    tiles: string,
+  }
+
+  export interface EventTypeMap {
+    TILE_PLACEMENT: 0;
+    PASS: 1;
+    EXCHANGE: 2;
+    CHALLENGE_PLAY: 3;
+  }
+
+  export const EventType: EventTypeMap;
+}
+
 export interface ChallengeRuleMap {
   VOID: 0;
   SINGLE: 1;
@@ -372,14 +382,6 @@ export interface RatingModeMap {
 
 export const RatingMode: RatingModeMap;
 
-export interface GameEndReasonMap {
-  TIME: 0;
-  WENT_OUT: 1;
-  CONSECUTIVE_ZEROES: 2;
-}
-
-export const GameEndReason: GameEndReasonMap;
-
 export interface MessageTypeMap {
   SEEK_REQUEST: 0;
   MATCH_REQUEST: 1;
@@ -388,7 +390,17 @@ export interface MessageTypeMap {
   SERVER_GAMEPLAY_EVENT: 4;
   GAME_ENDED_EVENT: 5;
   GAME_HISTORY_REFRESHER: 6;
+  ERROR_MESSAGE: 7;
+  NEW_GAME_EVENT: 8;
 }
 
 export const MessageType: MessageTypeMap;
+
+export interface GameEndReasonMap {
+  TIME: 0;
+  WENT_OUT: 1;
+  CONSECUTIVE_ZEROES: 2;
+}
+
+export const GameEndReason: GameEndReasonMap;
 

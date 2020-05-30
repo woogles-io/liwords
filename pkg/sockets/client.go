@@ -14,6 +14,9 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/domino14/crosswords/pkg/entity"
+
+	pb "github.com/domino14/crosswords/rpc/api/proto"
 	"github.com/rs/zerolog/log"
 
 	"github.com/gorilla/websocket"
@@ -53,6 +56,17 @@ type Client struct {
 	realms map[Realm]bool
 }
 
+func (c *Client) sendError(err error) {
+	evt := entity.WrapEvent(&pb.ErrorMessage{Message: err.Error()}, pb.MessageType_ERROR_MESSAGE, "")
+	bts, err := evt.Serialize()
+	if err != nil {
+		// This really shouldn't happen.
+		log.Err(err).Msg("error serializing error, lol")
+		return
+	}
+	c.send <- bts
+}
+
 // readPump pumps messages from the websocket connection to the hub.
 //
 // The application runs readPump in a per-connection goroutine. The application
@@ -80,6 +94,7 @@ func (c *Client) readPump() {
 		err = c.hub.parseAndExecuteMessage(message, c.username)
 		if err != nil {
 			log.Err(err).Msg("parse-and-execute-message")
+			c.sendError(err)
 			continue
 		}
 
@@ -216,6 +231,7 @@ func ServeWS(hub *Hub, w http.ResponseWriter, r *http.Request) {
 		send:     make(chan []byte, 256),
 		realms:   make(map[Realm]bool),
 	}
+	log.Info().Str("user", client.username).Msg("new connection")
 	client.hub.register <- client
 	// Maybe can get realm from qvals as well in the future.
 

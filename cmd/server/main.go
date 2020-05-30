@@ -9,6 +9,7 @@ import (
 	"github.com/domino14/crosswords/pkg/config"
 	"github.com/domino14/crosswords/pkg/sockets"
 	"github.com/domino14/crosswords/pkg/stores/game"
+	"github.com/domino14/crosswords/pkg/stores/soughtgame"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 )
@@ -19,59 +20,6 @@ const (
 
 var addr = flag.String("addr", ":8087", "http service address")
 
-// func sendSeek(w http.ResponseWriter, r *http.Request) {
-// 	if r.Method != "POST" {
-// 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-// 	}
-// 	body, err := ioutil.ReadAll(r.Body)
-// 	if err != nil {
-// 		http.Error(w, "can't read body", http.StatusBadRequest)
-// 		return
-// 	}
-
-// 	cs := &sockets.ClientSeek{}
-
-// 	err = json.Unmarshal(body, cs)
-// 	if err != nil {
-// 		http.Error(w, "bad request", http.StatusBadRequest)
-// 		return
-// 	}
-// 	// broadcast seek
-// 	hub.NewSeekRequest(cs)
-
-// 	// players := []*macondopb.PlayerInfo{
-// 	// 	{Nickname: evt.Acceptor, RealName: evt.Acceptor},
-// 	// 	{Nickname: csa.Seeker, RealName: csa.Seeker},
-// 	// }
-
-// 	fmt.Fprintf(w, "OK")
-// }
-
-// func acceptedSeek(w http.ResponseWriter, r *http.Request) {
-// 	if r.Method != "POST" {
-// 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-// 	}
-// 	body, err := ioutil.ReadAll(r.Body)
-// 	if err != nil {
-// 		http.Error(w, "can't read body", http.StatusBadRequest)
-// 		return
-// 	}
-
-// 	csa := &clientSeekAcceptance{}
-
-// 	err = json.Unmarshal(body, csa)
-// 	if err != nil {
-// 		http.Error(w, "bad request", http.StatusBadRequest)
-// 		return
-// 	}
-// 	// players := []*macondopb.PlayerInfo{
-// 	// 	{Nickname: evt.Acceptor, RealName: evt.Acceptor},
-// 	// 	{Nickname: csa.Seeker, RealName: csa.Seeker},
-// 	// }
-
-// 	// fmt.Fprintf(w, seeker.Seeker)
-// }
-
 func main() {
 
 	flag.Parse()
@@ -81,12 +29,10 @@ func main() {
 	cfg.Load(os.Args[1:])
 	log.Info().Msgf("Loaded config: %v", cfg)
 
-	hub := sockets.NewHub(game.NewMemoryStore(), cfg)
+	hub := sockets.NewHub(game.NewMemoryStore(), soughtgame.NewMemoryStore(), cfg)
 	go hub.Run()
 	go hub.RunGameEventHandler()
 
-	// http.HandleFunc("/api/acceptedseek", acceptedSeek)
-	// http.HandleFunc("/api/sendseek", sendSeek)
 	http.HandleFunc("/ws", func(w http.ResponseWriter, r *http.Request) {
 		sockets.ServeWS(hub, w, r)
 	})

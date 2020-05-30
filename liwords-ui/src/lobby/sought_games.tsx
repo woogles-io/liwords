@@ -1,10 +1,12 @@
+/* eslint-disable jsx-a11y/click-events-have-key-events */
+/* eslint-disable jsx-a11y/no-noninteractive-element-interactions */
 import { Card } from 'antd';
 import React from 'react';
 import {
   ChallengeRuleMap,
   ChallengeRule,
 } from '../gen/api/proto/game_service_pb';
-import { useLobbyContext } from '../store/lobby_store';
+import { useStoreContext } from '../store/store';
 
 export const challRuleToStr = (n: number): string => {
   switch (n) {
@@ -22,21 +24,22 @@ export const challRuleToStr = (n: number): string => {
   return 'Unsupported';
 };
 
-export const SoughtGames = () => {
-  const { soughtGames } = useLobbyContext();
-  console.log('rendering soughtgames', soughtGames);
+type Props = {
+  newGame: (seekID: string) => void;
+};
+
+export const SoughtGames = (props: Props) => {
+  const { soughtGames } = useStoreContext();
 
   const soughtGameEls = soughtGames.map((game, idx) => (
-    // eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions
-    // eslint-disable-next-line jsx-a11y/click-events-have-key-events
     <li
       key={`game${game.seeker}`}
       style={{ paddingTop: 20, cursor: 'pointer' }}
-      // onClick={(event: React.MouseEvent) => newGame(game.seeker, username)}
+      onClick={(event: React.MouseEvent) => props.newGame(game.seekID)}
     >
       {game.seeker} wants to play {game.lexicon} (
       {`${game.initialTimeSecs / 60} min`}) {challRuleToStr(game.challengeRule)}
-      )
+      seekID: {game.seekID})
     </li>
   ));
 

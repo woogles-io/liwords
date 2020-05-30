@@ -1,14 +1,15 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 
-import Board from './board';
+import GameBoard from './board';
 import GameControls from './game_controls';
 import Rack from './rack';
 import {
   nextArrowPropertyState,
   handleKeyPress,
 } from '../utils/cwgame/tile_placement';
-import { EphemeralTile } from '../utils/cwgame/common';
+import { EphemeralTile, EmptySpace } from '../utils/cwgame/common';
 import { tilesetToMoveEvent } from '../utils/cwgame/game_event';
+import { Board } from '../utils/cwgame/game';
 
 // The frame atop is 24 height
 // The frames on the sides are 24 in width, surrounded by a 14 pix gutter
@@ -22,12 +23,11 @@ const gridSize = 15;
 type Props = {
   compWidth: number;
   compHeight: number;
-  gridLayout: Array<string>;
-  tilesLayout: Array<string>;
   showBonusLabels: boolean;
   lastPlayedLetters: { [tile: string]: boolean };
   currentRack: string;
   gameID: string;
+  board: Board;
 };
 
 export const BoardPanel = (props: Props) => {
@@ -42,8 +42,13 @@ export const BoardPanel = (props: Props) => {
   const [placedTiles, setPlacedTiles] = useState(new Set<EphemeralTile>());
   const [placedTilesTempScore, setPlacedTilesTempScore] = useState<number>();
 
+  // Need to sync state to props here whenever the props.currentRack changes.
+  useEffect(() => {
+    setDisplayedRack(props.currentRack);
+  }, [props.currentRack]);
+
   const squareClicked = (row: number, col: number) => {
-    if (props.tilesLayout[row][col] !== ' ') {
+    if (props.board.letterAt(row, col) !== EmptySpace) {
       // If there is a tile on this square, ignore the click.
       return;
     }
@@ -74,11 +79,10 @@ export const BoardPanel = (props: Props) => {
 
     const handlerReturn = handleKeyPress(
       arrowProperties,
-      props.tilesLayout,
+      props.board,
       key,
       displayedRack,
-      placedTiles,
-      props.gridLayout
+      placedTiles
     );
 
     if (handlerReturn === null) {
@@ -109,7 +113,7 @@ export const BoardPanel = (props: Props) => {
   };
 
   const commitPlay = () => {
-    const moveEvt = tilesetToMoveEvent(placedTiles, props.tilesLayout);
+    const moveEvt = tilesetToMoveEvent(placedTiles, props.board);
     if (moveEvt === null) {
       // Just return. This is an invalid play.
       return;
@@ -136,16 +140,16 @@ export const BoardPanel = (props: Props) => {
       tabIndex={-1}
       role="textbox"
     >
-      <Board
+      <GameBoard
         compWidth={props.compWidth}
         boardDim={boardDim}
         topFrameHeight={topFrameHeight}
         sideFrameWidth={sideFrameWidth}
         sideFrameGutter={sideFrameGutter}
         sqWidth={sqWidth}
-        gridSize={props.gridLayout[0].length}
-        gridLayout={props.gridLayout}
-        tilesLayout={props.tilesLayout}
+        gridSize={props.board.dim}
+        gridLayout={props.board.gridLayout}
+        tilesLayout={props.board.tilesLayout()}
         showBonusLabels={false}
         lastPlayedLetters={props.lastPlayedLetters}
         tentativeTiles={placedTiles}

@@ -2,13 +2,14 @@
 // It is mostly a pass-through interface to a Macondo game,
 // but also implements a timer and other related logic.
 // This is a use-case in the clean architecture hierarchy.
-package game
+package gameplay
 
 import (
 	"context"
 	"errors"
 
 	"github.com/domino14/macondo/alphabet"
+	"github.com/rs/zerolog/log"
 
 	"github.com/domino14/macondo/move"
 
@@ -44,6 +45,9 @@ func InstantiateNewGame(ctx context.Context, gameStore GameStore, cfg *config.Co
 	players []*macondopb.PlayerInfo, req *pb.GameRequest) (*entity.Game, error) {
 
 	var bd []string
+	if req.Rules == nil {
+		return nil, errors.New("no rules")
+	}
 	switch req.Rules.BoardLayoutName {
 	case CrosswordGame:
 		bd = board.CrosswordGameBoard
@@ -61,28 +65,29 @@ func InstantiateNewGame(ctx context.Context, gameStore GameStore, cfg *config.Co
 	if err != nil {
 		return nil, err
 	}
-	// StartGame creates a new history Uid and actually starts the game.
+	// StartGame creates a new history Uid and deals tiles, etc.
 	g.StartGame()
 	entGame := entity.NewGame(g, req)
+	// Save the game to the store.
 	if err = gameStore.Set(ctx, entGame); err != nil {
 		return nil, err
 	}
 	return entGame, nil
 	// We return the instantiated game. Although the tiles have technically been
-	// dealt out, we need to call StartGameInstance to actually start the timer
+	// dealt out, we need to call StartGame to actually start the timer
 	// and forward game events to the right channels.
-
 }
 
-func StartGameInstance(entGame *entity.Game, eventChan chan<- *entity.EventWrapper) error {
-	if err := entGame.RegisterChangeHook(eventChan); err != nil {
-		return err
-	}
-	entGame.SendChange(entity.WrapEvent(entGame.HistoryRefresherEvent(), pb.MessageType_GAME_HISTORY_REFRESHER,
-		entGame.GameID()))
+// func StartGameInstance(entGame *entity.Game, eventChan chan<- *entity.EventWrapper) error {
+// 	if err := entGame.RegisterChangeHook(eventChan); err != nil {
+// 		return err
+// 	}
+// 	entGame.
+// 	entGame.SendChange(entity.WrapEvent(entGame.HistoryRefresherEvent(), pb.MessageType_GAME_HISTORY_REFRESHER,
+// 		entGame.GameID()))
 
-	return nil
-}
+// 	return nil
+// }
 
 func clientEventToGameEvent(cge *pb.ClientGameplayEvent, g *game.Game) (*macondopb.GameEvent, error) {
 	playerid := g.PlayerOnTurn()
@@ -115,6 +120,38 @@ func clientEventToGameEvent(cge *pb.ClientGameplayEvent, g *game.Game) (*macondo
 		return g.EventFromMove(m), nil
 	}
 	return nil, errors.New("client gameplay event not handled")
+}
+
+func StartGame(ctx context.Context, gameStore GameStore, eventChan chan<- *entity.EventWrapper, id string) error {
+	// Note that StartGame does _not_ start the Macondo game, which
+	// has already started, but we don't "know" that. It is _this_
+	// function that will actually start the game in the user's eyes.
+	// It needs to reset the timer to now.
+	entGame, err := gameStore.Get(ctx, id)
+	if err != nil {
+		return err
+	}
+	// This should be True, see comment above.
+	if !entGame.Game.Playing() {
+		return errGameNotActive
+	}
+	log.Debug().Str("gameid", id).Msg("reset timers (and start)")
+	entGame.ResetTimers()
+
+	// Save the game back to the store always.
+	if err := gameStore.Set(ctx, entGame); err != nil {
+		return err
+	}
+	if err := entGame.RegisterChangeHook(eventChan); err != nil {
+		return err
+	}
+
+	entGame.SendChange(
+		entity.WrapEvent(entGame.HistoryRefresherEvent(),
+			pb.MessageType_GAME_HISTORY_REFRESHER,
+			entGame.GameID()))
+
+	return nil
 }
 
 func PlayMove(ctx context.Context, gameStore GameStore, player string,

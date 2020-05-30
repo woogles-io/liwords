@@ -3,6 +3,7 @@ import ReactDOM from 'react-dom';
 import './index.css';
 import App from './App';
 import * as serviceWorker from './serviceWorker';
+import { Store } from './store/store';
 
 const username = prompt('what is ur username');
 if (!username) {
@@ -10,7 +11,9 @@ if (!username) {
 } else {
   ReactDOM.render(
     <React.StrictMode>
-      <App username={username} />
+      <Store>
+        <App username={username} />
+      </Store>
     </React.StrictMode>,
     document.getElementById('root')
   );

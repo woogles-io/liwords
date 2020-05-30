@@ -1,4 +1,4 @@
-export const getSocketURI = (): string => {
+export const getSocketURI = (username: string): string => {
   const loc = window.location;
   let socketURI;
   if (loc.protocol === 'https:') {
@@ -6,7 +6,7 @@ export const getSocketURI = (): string => {
   } else {
     socketURI = 'ws:';
   }
-  socketURI += `//${loc.host}${loc.pathname}ws`;
+  socketURI += `//${loc.host}${loc.pathname}ws?user=${username}`;
   return socketURI;
 };
 

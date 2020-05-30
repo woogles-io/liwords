@@ -1,3 +1,5 @@
+import { Board } from './game';
+
 export const EmptySpace = ' ';
 
 export type EphemeralTile = {
@@ -15,30 +17,6 @@ export enum Direction {
 export const uniqueTileIdx = (row: number, col: number): number => {
   // Just a unique number to identify a row,col coordinate.
   return row * 100 + col;
-};
-
-/**
- * Looks up the tile in the given row, col. If this is out of bounds,
- * return null.
- * @param row
- * @param col
- * @param boardTiles
- */
-export const safeBoardLookup = (
-  row: number,
-  col: number,
-  boardTiles: Array<string>
-): string | null => {
-  if (
-    row > boardTiles.length - 1 ||
-    row < 0 ||
-    col > boardTiles[0].length - 1 ||
-    col < 0
-  ) {
-    return null;
-  }
-
-  return boardTiles[row][col];
 };
 
 export const isBlank = (letter: string): boolean => {

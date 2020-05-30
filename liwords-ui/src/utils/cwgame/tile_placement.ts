@@ -4,6 +4,7 @@ import { EnglishCrosswordGameDistribution } from '../../constants/tile_distribut
 
 import { EphemeralTile, EmptySpace, isBlank, uniqueTileIdx } from './common';
 import { calculateTemporaryScore } from './scoring';
+import { Board } from './game';
 
 const NormalizedBackspace = 'BACKSPACE';
 
@@ -64,8 +65,7 @@ const handleTileDeletion = (
   arrowProperty: PlacementArrow,
   unplacedTiles: string, // tiles currently still on rack
   currentlyPlacedTiles: Set<EphemeralTile>,
-  gridLayout: Array<string>,
-  boardTiles: Array<string>
+  board: Board
 ): KeypressHandlerReturn => {
   // Remove any tiles.
   let newUnplacedTiles = unplacedTiles;
@@ -89,11 +89,7 @@ const handleTileDeletion = (
     newArrow: arrowProperty,
     newPlacedTiles,
     newDisplayedRack: newUnplacedTiles,
-    playScore: calculateTemporaryScore(
-      currentlyPlacedTiles,
-      boardTiles,
-      gridLayout
-    ),
+    playScore: calculateTemporaryScore(currentlyPlacedTiles, board),
   };
 };
 
@@ -106,11 +102,10 @@ const handleTileDeletion = (
  */
 export const handleKeyPress = (
   arrowProperty: PlacementArrow,
-  boardTiles: Array<string>,
+  board: Board,
   key: string,
   unplacedTiles: string, // tiles currently still on rack
-  currentlyPlacedTiles: Set<EphemeralTile>,
-  gridLayout: Array<string>
+  currentlyPlacedTiles: Set<EphemeralTile>
 ): KeypressHandlerReturn | null => {
   const normalizedKey = key.toUpperCase();
 
@@ -135,8 +130,8 @@ export const handleKeyPress = (
 
   // Make sure we're not trying to type off the edge of the board.
   if (
-    arrowProperty.row >= boardTiles.length ||
-    arrowProperty.col >= boardTiles[0].length ||
+    arrowProperty.row >= board.dim ||
+    arrowProperty.col >= board.dim ||
     arrowProperty.row < 0 ||
     arrowProperty.col < 0
   ) {
@@ -160,9 +155,9 @@ export const handleKeyPress = (
     do {
       newcol += increment;
     } while (
-      newcol < boardTiles[newrow].length &&
+      newcol < board.dim &&
       newcol >= 0 &&
-      (boardTiles[newrow][newcol] !== EmptySpace ||
+      (board.letterAt(newrow, newcol) !== EmptySpace ||
         (increment === 1 &&
           ephTileMap[uniqueTileIdx(newrow, newcol)] !== undefined))
     );
@@ -170,9 +165,9 @@ export const handleKeyPress = (
     do {
       newrow += increment;
     } while (
-      newrow < boardTiles.length &&
+      newrow < board.dim &&
       newrow >= 0 &&
-      (boardTiles[newrow][newcol] !== EmptySpace ||
+      (board.letterAt(newrow, newcol) !== EmptySpace ||
         (increment === 1 &&
           ephTileMap[uniqueTileIdx(newrow, newcol)] !== undefined))
     );
@@ -195,8 +190,7 @@ export const handleKeyPress = (
       },
       unplacedTiles,
       currentlyPlacedTiles,
-      gridLayout,
-      boardTiles
+      board
     );
   }
 
@@ -264,10 +258,6 @@ export const handleKeyPress = (
     },
     newPlacedTiles,
     newDisplayedRack: newUnplacedTiles,
-    playScore: calculateTemporaryScore(
-      currentlyPlacedTiles,
-      boardTiles,
-      gridLayout
-    ),
+    playScore: calculateTemporaryScore(currentlyPlacedTiles, board),
   };
 };

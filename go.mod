@@ -4,11 +4,12 @@ go 1.14
 
 require (
 	github.com/davecgh/go-spew v1.1.1 // indirect
-	github.com/domino14/macondo v0.4.5-0.20200525213549-c24fb5d1dab3
+	github.com/domino14/macondo v0.4.5-0.20200530041949-dea43f3e69a2
 	github.com/golang/protobuf v1.4.2
 	github.com/google/go-cmp v0.4.1 // indirect
 	github.com/gorilla/websocket v1.4.2
 	github.com/kr/text v0.2.0 // indirect
+	github.com/lithammer/shortuuid v3.0.0+incompatible
 	github.com/matryer/is v1.3.0
 	github.com/namsral/flag v1.7.4-pre
 	github.com/niemeyer/pretty v0.0.0-20200227124842-a10e7caefd8e // indirect

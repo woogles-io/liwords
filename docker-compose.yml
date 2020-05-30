@@ -5,8 +5,11 @@ services:
     build:
       context: .
       dockerfile: Dockerfile-dev
+    environment:
+      LEXICON_PATH: /opt/lexica
     volumes:
       - .:/opt/program:rw
+      - ${LEXICON_PATH}:/opt/lexica
     command: sh -c "go run cmd/server/*.go"
     networks:
       - aeronet

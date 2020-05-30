@@ -6,7 +6,7 @@ import (
 
 	"github.com/domino14/crosswords/pkg/config"
 	"github.com/domino14/crosswords/pkg/entity"
-	"github.com/domino14/crosswords/pkg/game"
+	"github.com/domino14/crosswords/pkg/gameplay"
 	pb "github.com/domino14/crosswords/rpc/api/proto"
 	"github.com/rs/zerolog/log"
 )
@@ -36,8 +36,9 @@ type Hub struct {
 	// Unregister requests from clients.
 	unregister chan *Client
 
-	gameStore game.GameStore
-	config    *config.Config
+	gameStore       gameplay.GameStore
+	soughtGameStore gameplay.SoughtGameStore
+	config          *config.Config
 
 	realmMutex sync.Mutex
 	// Each realm has a list of clients in it.
@@ -48,9 +49,11 @@ type Hub struct {
 	eventChan chan *entity.EventWrapper
 }
 
-func NewHub(gameStore game.GameStore, cfg *config.Config) *Hub {
+func NewHub(gameStore gameplay.GameStore, soughtGameStore gameplay.SoughtGameStore,
+	cfg *config.Config) *Hub {
 	return &Hub{
 		broadcast:         make(chan []byte),
+		broadcastRealm:    make(chan RealmMessage),
 		register:          make(chan *Client),
 		unregister:        make(chan *Client),
 		clients:           make(map[*Client]bool),
@@ -58,9 +61,10 @@ func NewHub(gameStore game.GameStore, cfg *config.Config) *Hub {
 		realms:            make(map[Realm]map[*Client]bool),
 		// eventChan should be buffered to keep the game logic itself
 		// as fast as possible.
-		eventChan: make(chan *entity.EventWrapper, 50),
-		gameStore: gameStore,
-		config:    cfg,
+		eventChan:       make(chan *entity.EventWrapper, 50),
+		gameStore:       gameStore,
+		soughtGameStore: soughtGameStore,
+		config:          cfg,
 	}
 }
 
@@ -168,21 +172,50 @@ func (h *Hub) sendToRealm(realm Realm, w *entity.EventWrapper) error {
 	if err != nil {
 		return err
 	}
+	log.Debug().Interface("evt", w).
+		Str("realm", string(realm)).
+		Int("inrealm", len(h.realms[realm])).
+		Msg("sending to realm")
+
 	if len(h.realms[realm]) == 0 {
 		return errors.New("realm is empty")
 	}
 	h.broadcastRealm <- RealmMessage{realm: realm, msg: bytes}
+	log.Debug().Msg("returning nil")
+	return nil
+}
+
+func (h *Hub) broadcastEvent(w *entity.EventWrapper) error {
+	bts, err := w.Serialize()
+	if err != nil {
+		return err
+	}
+	h.broadcast <- bts
 	return nil
 }
 
 func (h *Hub) NewSeekRequest(cs *pb.SeekRequest) error {
 	evt := entity.WrapEvent(cs, pb.MessageType_SEEK_REQUEST, "")
+	return h.broadcastEvent(evt)
 
+}
+
+func (h *Hub) DeleteSeek(id string) error {
+	// essentially just send the same game accepted event back.
+	evt := entity.WrapEvent(&pb.GameAcceptedEvent{RequestId: id}, pb.MessageType_GAME_ACCEPTED_EVENT, "")
+	return h.broadcastEvent(evt)
+}
+
+func (h *Hub) sendToClient(username string, evt *entity.EventWrapper) error {
+	client := h.clientsByUsername[username]
+	if client == nil {
+		return errors.New("client not in list")
+	}
 	bts, err := evt.Serialize()
 	if err != nil {
 		return err
 	}
 
-	h.broadcast <- bts
+	client.send <- bts
 	return nil
 }

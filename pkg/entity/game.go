@@ -31,19 +31,27 @@ func msTimestamp() int64 {
 	return time.Now().UnixNano() / (int64(time.Millisecond) / int64(time.Nanosecond))
 }
 
-// NewGame takes in a Macondo game that _just started_. So it must log the
-// current timestamp asap.
+// NewGame takes in a Macondo game that was just "started". Note that
+// Macondo games when they start do not log any time, they just deal tiles.
+// The time of start must be logged later, when both players are in the table
+// and ready.
 func NewGame(mcg *game.Game, req *pb.GameRequest) *Game {
-	started := msTimestamp()
 	ms := int(req.InitialTimeSeconds * 1000)
 	return &Game{
-		Game:             *mcg,
-		timeRemaining:    []int{ms, ms},
-		timeOfLastMove:   started,
+		Game:          *mcg,
+		timeRemaining: []int{ms, ms},
+		// timeOfLastMove:   started,
 		perTurnIncrement: int(req.IncrementSeconds),
-		timeStarted:      started,
-		gamereq:          req,
+		// timeStarted:      started,
+		gamereq: req,
 	}
+}
+
+// Reset timers to _now_. The game is actually starting.
+func (g *Game) ResetTimers() {
+	ts := msTimestamp()
+	g.timeOfLastMove = ts
+	g.timeStarted = ts
 }
 
 func (g *Game) SetLastPlayedWords(words []alphabet.MachineWord) {

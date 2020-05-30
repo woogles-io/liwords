@@ -1,5 +1,6 @@
 import { EphemeralTile } from './common';
 import { tilesetToMoveEvent } from './game_event';
+import { Board } from './game';
 
 const oxyTilesLayout = [
   ' PACIFYING     ',
@@ -56,8 +57,9 @@ it('tests complex event', () => {
     col: 0,
     letter: 'E',
   });
-
-  const evt = tilesetToMoveEvent(placedTiles, oxyTilesLayout);
+  const board = new Board();
+  board.setTileLayout(oxyTilesLayout);
+  const evt = tilesetToMoveEvent(placedTiles, board);
   expect(evt).not.toBeNull();
   expect(evt?.getPositionCoords()).toEqual('A1');
   expect(evt?.getTiles()).toEqual('OX.P...B..AZ..E');
@@ -96,7 +98,9 @@ it('tests invalid play', () => {
     col: 0,
     letter: 'E',
   });
-  const evt = tilesetToMoveEvent(placedTiles, oxyTilesLayout);
+  const board = new Board();
+  board.setTileLayout(oxyTilesLayout);
+  const evt = tilesetToMoveEvent(placedTiles, board);
   expect(evt).toBeNull();
 });
 
@@ -117,7 +121,9 @@ it('tests event with blank', () => {
     col: 5,
     letter: 'B',
   });
-  const evt = tilesetToMoveEvent(placedTiles, oxyTilesLayout);
+  const board = new Board();
+  board.setTileLayout(oxyTilesLayout);
+  const evt = tilesetToMoveEvent(placedTiles, board);
   expect(evt).not.toBeNull();
   expect(evt?.getPositionCoords()).toEqual('5C');
   expect(evt?.getTiles()).toEqual('.ImB');

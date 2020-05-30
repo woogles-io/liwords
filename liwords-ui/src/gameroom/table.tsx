@@ -1,70 +1,19 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Row, Col } from 'antd';
 
 import { useParams } from 'react-router-dom';
 import { BoardPanel } from './board_panel';
 import { TopBar } from '../topbar/topbar';
 import { Chat } from './chat';
+import { useStoreContext } from '../store/store';
+import { PlayerCards } from './player_cards';
+import Pool from './pool';
+import { fullPlayerInfo } from '../utils/cwgame/game';
 
 const gutter = 16;
 const boardspan = 12;
 const maxspan = 24; // from ant design
 const navbarHeightAndGutter = 84; // 72 + 12 spacing
-
-// XXX: This should come from the backend.
-const gridLayout = [
-  "=  '   =   '  =",
-  ' -   "   "   - ',
-  "  -   ' '   -  ",
-  "'  -   '   -  '",
-  '    -     -    ',
-  ' "   "   "   " ',
-  "  '   ' '   '  ",
-  "=  '   -   '  =",
-  "  '   ' '   '  ",
-  ' "   "   "   " ',
-  '    -     -    ',
-  "'  -   '   -  '",
-  "  -   ' '   -  ",
-  ' -   "   "   - ',
-  "=  '   =   '  =",
-];
-
-const tilesLayout = [
-  '         RADIO ',
-  '         E     ',
-  '      R SI     ',
-  '      U E      ',
-  '    ZINGARO    ',
-  '    o   T      ',
-  '    N          ',
-  '   WASTE       ',
-  '    T          ',
-  '    I          ',
-  '    O          ',
-  '    N          ',
-  '               ',
-  '               ',
-  '               ',
-];
-
-const oxyTilesLayout = [
-  ' PACIFYING     ',
-  ' IS            ',
-  'YE             ',
-  ' REQUALIFIED   ',
-  'H L            ',
-  'EDS            ',
-  'NO   T         ',
-  ' RAINWASHING   ',
-  'UM   O         ',
-  'T  E O         ',
-  ' WAKEnERS      ',
-  ' OnETIME       ',
-  'OOT  E B       ',
-  'N      U       ',
-  ' JACULATING    ',
-];
 
 type RouterProps = {
   gameID: string;
@@ -73,6 +22,8 @@ type RouterProps = {
 type Props = {
   windowWidth: number;
   windowHeight: number;
+  sendSocketMsg: (msg: Uint8Array) => void;
+  username: string;
 };
 
 export const Table = (props: Props) => {
@@ -94,8 +45,18 @@ export const Table = (props: Props) => {
     boardPanelHeight = viewableHeight;
     boardPanelWidth = boardPanelHeight - 96;
   }
-
+  const { setRedirGame, gameState } = useStoreContext();
   const { gameID } = useParams();
+
+  useEffect(() => {
+    // Avoid react-router hijacking the back button.
+    setRedirGame('');
+  }, [setRedirGame]);
+
+  const player1 = fullPlayerInfo(0, gameState);
+  const player2 = fullPlayerInfo(1, gameState);
+
+  console.log('in table', gameState.currentRacks, props.username);
 
   return (
     <div>
@@ -112,16 +73,30 @@ export const Table = (props: Props) => {
           <BoardPanel
             compWidth={boardPanelWidth}
             compHeight={boardPanelHeight}
-            gridLayout={gridLayout}
+            board={gameState.board}
             showBonusLabels={false}
-            currentRack="ABEOPXZ"
+            currentRack={gameState.currentRacks[props.username] || ''}
             lastPlayedLetters={{}}
-            tilesLayout={oxyTilesLayout}
             gameID={gameID}
           />
         </Col>
         <Col span={6}>
-          <div>scorecard and stuff</div>
+          {/* maybe some of this info comes from backend */}
+          <PlayerCards player1={player1} player2={player2} />
+          {/* <GameInfo
+            timer="15 0"
+            gameType="Classic"
+            dictionary="Collins"
+            challengeRule="5-pt"
+            rated={rated}
+          /> */}
+          <Row>15 0 - Classic - Collins</Row>
+          <Row>5 point challenge - Unrated</Row>
+
+          <Pool
+            pool={gameState.pool}
+            currentRack={gameState.currentRacks[props.username] || ''}
+          />
         </Col>
       </Row>
     </div>

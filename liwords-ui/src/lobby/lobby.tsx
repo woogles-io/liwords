@@ -1,12 +1,6 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { Row, Col, Button, Card, Input } from 'antd';
-// import { SoughtGame, LobbyStore } from '../store/lobby_store';
-import { getSocketURI, websocket } from '../socket/socket';
-import {
-  useLobbyContext,
-  LobbyStoreData,
-  SoughtGame,
-} from '../store/lobby_store';
+import React from 'react';
+import { Row, Col, Button } from 'antd';
+import { Redirect } from 'react-router-dom';
 
 import { TopBar } from '../topbar/topbar';
 import {
@@ -16,97 +10,65 @@ import {
   ChallengeRule,
   MessageType,
   RequestingUser,
+  GameAcceptedEvent,
+  GameRules,
 } from '../gen/api/proto/game_service_pb';
-import { encodeToSocketFmt, decodeToMsg } from '../utils/protobuf';
+import { encodeToSocketFmt } from '../utils/protobuf';
 import { SoughtGames } from './sought_games';
+import { SoughtGame, useStoreContext } from '../store/store';
 
-const onSocketMsg = (storeData: LobbyStoreData) => {
-  return (reader: FileReader) => {
-    if (!reader.result) {
-      return;
-    }
-    const msg = new Uint8Array(reader.result as ArrayBuffer);
-    let sr;
-    let gameReq;
-    let user;
-    // msg type:
-    switch (msg[0]) {
-      case MessageType.SEEK_REQUEST:
-        sr = SeekRequest.deserializeBinary(msg.slice(1));
-        gameReq = sr.getGameRequest();
-        user = sr.getUser();
-        if (!gameReq || !user) {
-          return;
-        }
-        storeData.addSoughtGame({
-          seeker: user.getUsername(),
-          lexicon: gameReq.getLexicon(),
-          initialTimeSecs: gameReq.getInitialTimeSeconds(),
-          challengeRule: gameReq.getChallengeRule(),
-        });
-    }
-  };
-};
-
-function useLobbySocket(
-  socketRef: React.MutableRefObject<WebSocket | null>,
-  storeData: LobbyStoreData
-) {
-  useEffect(() => {
-    websocket(
-      getSocketURI(),
-      (socket) => {
-        // eslint-disable-next-line no-param-reassign
-        socketRef.current = socket;
-      },
-      (event) => {
-        decodeToMsg(event.data, onSocketMsg(storeData));
-      }
-    );
-    return () => {
-      if (socketRef.current) {
-        console.log('closing lobby socket');
-        socketRef.current.close();
-      }
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-}
-
-const sendSeek = (game: SoughtGame, socket: WebSocket | null) => {
-  if (!socket) {
-    return;
-  }
+const sendSeek = (
+  game: SoughtGame,
+  sendSocketMsg: (msg: Uint8Array) => void
+) => {
   const sr = new SeekRequest();
   const gr = new GameRequest();
-  const user = new RequestingUser();
+  const rules = new GameRules();
+  rules.setBoardLayoutName('CrosswordGame');
+  rules.setLetterDistributionName('english');
 
+  const user = new RequestingUser();
   user.setUsername(game.seeker);
   // rating comes from backend.
-
   sr.setUser(user);
+
   gr.setChallengeRule(
     game.challengeRule as ChallengeRuleMap[keyof ChallengeRuleMap]
   );
   gr.setLexicon(game.lexicon);
   gr.setInitialTimeSeconds(game.initialTimeSecs);
+  gr.setRules(rules);
+
   sr.setGameRequest(gr);
-  socket.send(
+
+  sendSocketMsg(
     encodeToSocketFmt(MessageType.SEEK_REQUEST, sr.serializeBinary())
+  );
+};
+
+const sendAccept = (
+  seekID: string,
+  sendSocketMsg: (msg: Uint8Array) => void
+) => {
+  // Eventually use the ID.
+  const sa = new GameAcceptedEvent();
+  sa.setRequestId(seekID);
+  sendSocketMsg(
+    encodeToSocketFmt(MessageType.GAME_ACCEPTED_EVENT, sa.serializeBinary())
   );
 };
 
 type Props = {
   username: string;
+  sendSocketMsg: (msg: Uint8Array) => void;
 };
 
 export const Lobby = (props: Props) => {
-  // const [store] = React.useState(() => new LobbyStore());
-  const socketRef = useRef<WebSocket | null>(null);
+  const { redirGame } = useStoreContext();
 
-  const storeFns = useLobbyContext();
-  useLobbySocket(socketRef, storeFns);
-
+  if (redirGame !== '') {
+    return <Redirect push to={`/game/${redirGame}`} />;
+  }
   return (
     <div>
       <Row>
@@ -122,7 +84,11 @@ export const Lobby = (props: Props) => {
       </Row>
       <Row>
         <Col span={8} offset={8}>
-          <SoughtGames />
+          <SoughtGames
+            newGame={(seekID: string) =>
+              sendAccept(seekID, props.sendSocketMsg)
+            }
+          />
         </Col>
       </Row>
 
@@ -139,9 +105,9 @@ export const Lobby = (props: Props) => {
                   challengeRule: ChallengeRule.FIVE_POINT,
                   initialTimeSecs: 900,
                   // rating: 0,
-                  // soughtID: username,
+                  seekID: '', // assigned by server
                 },
-                socketRef.current
+                props.sendSocketMsg
               )
             }
           >

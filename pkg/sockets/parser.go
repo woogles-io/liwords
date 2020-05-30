@@ -6,8 +6,10 @@ import (
 	"fmt"
 
 	"github.com/domino14/crosswords/pkg/entity"
-	"github.com/domino14/crosswords/pkg/game"
+	"github.com/domino14/crosswords/pkg/gameplay"
 	pb "github.com/domino14/crosswords/rpc/api/proto"
+	macondopb "github.com/domino14/macondo/gen/api/proto/macondo"
+	"github.com/rs/zerolog/log"
 )
 
 func (h *Hub) parseAndExecuteMessage(msg []byte, sender string) error {
@@ -24,34 +26,66 @@ func (h *Hub) parseAndExecuteMessage(msg []byte, sender string) error {
 		if !ok {
 			return errors.New("unexpected typing error")
 		}
-		h.NewSeekRequest(evt)
+		sg, err := gameplay.NewSoughtGame(context.Background(), h.soughtGameStore, evt)
+		if err != nil {
+			return err
+		}
 
-	// case "crosswords.GameAcceptedEvent":
-	// 	evt, ok := ew.Event.(*pb.GameAcceptedEvent)
-	// 	if !ok {
-	// 		return errors.New("unexpected typing error")
-	// 	}
-	// 	// XXX: We're going to want to fetch these player IDs from the database later.
-	// 	players := []*macondopb.PlayerInfo{
-	// 		{Nickname: evt.Acceptor, RealName: evt.Acceptor},
-	// 		{Nickname: evt.Requester, RealName: evt.Requester},
-	// 	}
+		h.NewSeekRequest(sg.SeekRequest)
 
-	// 	g, err := game.InstantiateNewGame(context.Background(), h.gameStore, h.config,
-	// 		players, evt.GameRequest)
-	// 	if err != nil {
-	// 		return err
-	// 	}
-	// 	// Create a "realm" for these users, and add both of them to the realm.
-	// 	// Use the id of the game as the id of the realm.
-	// 	realm := h.addNewRealm(g.GameID())
-	// 	h.addToRealm(realm, evt.Acceptor)
-	// 	h.addToRealm(realm, evt.Requester)
-	// 	// Now, we start the timer and register the event hook.
-	// 	err = game.StartGameInstance(g, h.eventChan)
-	// 	if err != nil {
-	// 		return err
-	// 	}
+	case pb.MessageType_GAME_ACCEPTED_EVENT:
+		ctx := context.Background()
+		evt, ok := ew.Event.(*pb.GameAcceptedEvent)
+		if !ok {
+			return errors.New("unexpected typing error")
+		}
+
+		sg, err := h.soughtGameStore.Get(ctx, evt.RequestId)
+		if err != nil {
+			return err
+		}
+		requester := sg.SeekRequest.User.Username
+		if requester == sender {
+			return errors.New("cannot accept own seek")
+		}
+
+		players := []*macondopb.PlayerInfo{
+			{Nickname: sender, RealName: sender},
+			{Nickname: requester, RealName: requester},
+		}
+		log.Debug().Interface("seekreq", sg.SeekRequest).Msg("seek-request-accepted")
+
+		g, err := gameplay.InstantiateNewGame(ctx, h.gameStore, h.config,
+			players, sg.SeekRequest.GameRequest)
+		if err != nil {
+			return err
+		}
+		// Broadcast a seek delete event, and send both parties a game redirect.
+		h.soughtGameStore.Delete(ctx, evt.RequestId)
+		err = h.DeleteSeek(evt.RequestId)
+		if err != nil {
+			return err
+		}
+
+		ngevt := entity.WrapEvent(&pb.NewGameEvent{
+			GameId: g.GameID(),
+		}, pb.MessageType_NEW_GAME_EVENT, "")
+
+		h.sendToClient(sender, ngevt)
+		h.sendToClient(requester, ngevt)
+		// Create a new realm to put these players in.
+		realm := h.addNewRealm(g.GameID())
+		h.addToRealm(realm, sender)
+		h.addToRealm(realm, requester)
+
+		log.Info().Str("newgameid", g.History().Uid).Str("sender", sender).
+			Str("requester", requester).Msg("game-accepted")
+
+		// Now, send a start game event.
+		err = gameplay.StartGame(ctx, h.gameStore, h.eventChan, g.GameID())
+		if err != nil {
+			return err
+		}
 
 	case pb.MessageType_CLIENT_GAMEPLAY_EVENT:
 		evt, ok := ew.Event.(*pb.ClientGameplayEvent)
@@ -59,7 +93,7 @@ func (h *Hub) parseAndExecuteMessage(msg []byte, sender string) error {
 			// This really shouldn't happen
 			return errors.New("unexpected typing error")
 		}
-		err := game.PlayMove(context.Background(), h.gameStore, sender, evt)
+		err := gameplay.PlayMove(context.Background(), h.gameStore, sender, evt)
 		if err != nil {
 			return err
 		}
