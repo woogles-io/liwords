@@ -4,7 +4,7 @@ import { EnglishCrosswordGameDistribution } from '../../constants/tile_distribut
 
 import { EphemeralTile, EmptySpace, isBlank, uniqueTileIdx } from './common';
 import { calculateTemporaryScore } from './scoring';
-import { Board } from './game';
+import { Board } from './board';
 
 const NormalizedBackspace = 'BACKSPACE';
 

@@ -118,6 +118,9 @@ export class GameEvent extends jspb.Message {
   getIsBingo(): boolean;
   setIsBingo(value: boolean): void;
 
+  getUnknownExchange(): number;
+  setUnknownExchange(value: number): void;
+
   serializeBinary(): Uint8Array;
   toObject(includeInstance?: boolean): GameEvent.AsObject;
   static toObject(includeInstance: boolean, msg: GameEvent): GameEvent.AsObject;
@@ -146,6 +149,7 @@ export namespace GameEvent {
     endRackPoints: number,
     lostScore: number,
     isBingo: boolean,
+    unknownExchange: number,
   }
 
   export interface TypeMap {

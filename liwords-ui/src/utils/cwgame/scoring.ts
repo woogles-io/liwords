@@ -12,7 +12,7 @@ import {
   CrosswordGameTileValues,
   runeToValues,
 } from '../../constants/tile_values';
-import { Board } from './game';
+import { Board } from './board';
 
 type simpletile = {
   fresh: boolean;

@@ -1,7 +1,14 @@
 import React, { createContext, useContext, useState } from 'react';
-import { GameState, StateFromHistoryRefresher } from '../utils/cwgame/game';
+import {
+  GameState,
+  StateFromHistoryRefresher,
+  StateForwarder,
+} from '../utils/cwgame/game';
 import { EnglishCrosswordGameDistribution } from '../constants/tile_distributions';
-import { GameHistoryRefresher } from '../gen/api/proto/game_service_pb';
+import {
+  GameHistoryRefresher,
+  ServerGameplayEvent,
+} from '../gen/api/proto/game_service_pb';
 
 export type SoughtGame = {
   seeker: string;
@@ -23,6 +30,7 @@ export type StoreData = {
   setRedirGame: React.Dispatch<React.SetStateAction<string>>;
   gameHistoryRefresher: (ghr: GameHistoryRefresher) => void;
   gameState: GameState;
+  processGameplayEvent: (sge: ServerGameplayEvent) => void;
 };
 
 export const Context = createContext<StoreData>({
@@ -33,6 +41,7 @@ export const Context = createContext<StoreData>({
   setRedirGame: () => {},
   gameHistoryRefresher: () => {},
   gameState: initialGameState,
+  processGameplayEvent: () => {},
 });
 
 type Props = {
@@ -60,6 +69,12 @@ export const Store = ({ children, ...props }: Props) => {
     setGameState(StateFromHistoryRefresher(ghr));
   };
 
+  const processGameplayEvent = (sge: ServerGameplayEvent) => {
+    setGameState((gs) => {
+      return StateForwarder(sge, gs);
+    });
+  };
+
   const store = {
     soughtGames,
     addSoughtGame,
@@ -68,6 +83,7 @@ export const Store = ({ children, ...props }: Props) => {
     setRedirGame,
     gameState,
     gameHistoryRefresher,
+    processGameplayEvent,
   };
 
   return <Context.Provider value={store}>{children}</Context.Provider>;

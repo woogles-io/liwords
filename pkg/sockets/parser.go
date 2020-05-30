@@ -77,9 +77,10 @@ func (h *Hub) parseAndExecuteMessage(msg []byte, sender string) error {
 		realm := h.addNewRealm(g.GameID())
 		h.addToRealm(realm, sender)
 		h.addToRealm(realm, requester)
-
-		log.Info().Str("newgameid", g.History().Uid).Str("sender", sender).
-			Str("requester", requester).Msg("game-accepted")
+		log.Info().Str("newgameid", g.History().Uid).
+			Str("sender", sender).
+			Str("requester", requester).
+			Str("onturn", g.NickOnTurn()).Msg("game-accepted")
 
 		// Now, send a start game event.
 		err = gameplay.StartGame(ctx, h.gameStore, h.eventChan, g.GameID())

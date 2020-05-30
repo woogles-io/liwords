@@ -73,7 +73,7 @@ export const Lobby = (props: Props) => {
     <div>
       <Row>
         <Col span={24}>
-          <TopBar />
+          <TopBar username={props.username} />
         </Col>
       </Row>
 

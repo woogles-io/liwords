@@ -49,7 +49,6 @@ export const onSocketMsg = (storeData: StoreData) => {
         if (!gameReq || !user) {
           return;
         }
-        console.log('adding soght game');
         storeData.addSoughtGame({
           seeker: user.getUsername(),
           lexicon: gameReq.getLexicon(),
@@ -69,7 +68,6 @@ export const onSocketMsg = (storeData: StoreData) => {
       case MessageType.NEW_GAME_EVENT: {
         const nge = parsedMsg as NewGameEvent;
         const gid = nge.getGameId();
-        console.log('redirecting to', gid);
         storeData.setRedirGame(gid);
         break;
       }
@@ -78,6 +76,13 @@ export const onSocketMsg = (storeData: StoreData) => {
         const ghr = parsedMsg as GameHistoryRefresher;
         console.log('got refresher event', ghr);
         storeData.gameHistoryRefresher(ghr);
+        break;
+      }
+
+      case MessageType.SERVER_GAMEPLAY_EVENT: {
+        const sge = parsedMsg as ServerGameplayEvent;
+        console.log('got server event', sge);
+        storeData.processGameplayEvent(sge);
         break;
       }
     }

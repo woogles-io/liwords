@@ -62,7 +62,7 @@ export const Table = (props: Props) => {
     <div>
       <Row>
         <Col span={24}>
-          <TopBar />
+          <TopBar username={props.username} />
         </Col>
       </Row>
       <Row gutter={gutter} style={{ marginTop: 12 }}>
@@ -78,6 +78,7 @@ export const Table = (props: Props) => {
             currentRack={gameState.currentRacks[props.username] || ''}
             lastPlayedLetters={{}}
             gameID={gameID}
+            sendSocketMsg={props.sendSocketMsg}
           />
         </Col>
         <Col span={6}>

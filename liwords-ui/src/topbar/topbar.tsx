@@ -20,10 +20,15 @@ const LeftFrame = () => {
   );
 };
 
-export const TopBar = () => {
+type Props = {
+  username: string;
+};
+
+export const TopBar = (props: Props) => {
   return (
     <nav className="top-header">
       <LeftFrame />
+      {props.username}
     </nav>
   );
 };

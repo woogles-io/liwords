@@ -9,7 +9,9 @@ import {
 } from '../utils/cwgame/tile_placement';
 import { EphemeralTile, EmptySpace } from '../utils/cwgame/common';
 import { tilesetToMoveEvent } from '../utils/cwgame/game_event';
-import { Board } from '../utils/cwgame/game';
+import { Board } from '../utils/cwgame/board';
+import { encodeToSocketFmt } from '../utils/protobuf';
+import { MessageType } from '../gen/api/proto/game_service_pb';
 
 // The frame atop is 24 height
 // The frames on the sides are 24 in width, surrounded by a 14 pix gutter
@@ -28,6 +30,7 @@ type Props = {
   currentRack: string;
   gameID: string;
   board: Board;
+  sendSocketMsg: (msg: Uint8Array) => void;
 };
 
 export const BoardPanel = (props: Props) => {
@@ -118,8 +121,13 @@ export const BoardPanel = (props: Props) => {
       // Just return. This is an invalid play.
       return;
     }
-    moveEvt?.setGameId(props.gameID);
-    console.log('message', moveEvt);
+    moveEvt.setGameId(props.gameID);
+    props.sendSocketMsg(
+      encodeToSocketFmt(
+        MessageType.CLIENT_GAMEPLAY_EVENT,
+        moveEvt.serializeBinary()
+      )
+    );
   };
 
   return (

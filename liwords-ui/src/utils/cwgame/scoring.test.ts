@@ -1,6 +1,6 @@
 import { calculateTemporaryScore, borders, touchesBoardTile } from './scoring';
 import { EphemeralTile } from './common';
-import { tilesLayout, blankLayout, Board } from './game';
+import { Board } from './board';
 
 const someTileLayout = [
   '         RADIOS',

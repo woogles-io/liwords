@@ -3,15 +3,13 @@ import {
   GameTurn,
   GameEvent,
 } from '../../gen/macondo/api/proto/macondo/macondo_pb';
-import { Direction, EmptySpace } from './common';
-import { GameHistoryRefresher } from '../../gen/api/proto/game_service_pb';
+import { Direction } from './common';
+import {
+  GameHistoryRefresher,
+  ServerGameplayEvent,
+} from '../../gen/api/proto/game_service_pb';
 import { EnglishCrosswordGameDistribution } from '../../constants/tile_distributions';
-import { CrosswordGameGridLayout } from '../../constants/board_layout';
-
-/* TODO: should be dependent on board dimensions in future.  */
-export function blankLayout() {
-  return new Array(225).fill(' ');
-}
+import { Board } from './board';
 
 export type FullPlayerInfo = {
   nickname: string;
@@ -25,71 +23,6 @@ export type FullPlayerInfo = {
   avatarUrl: string;
 };
 
-export class Board {
-  private letters: Array<string>; // The letters on the board
-  gridLayout: Array<string>; // the bonus squares.
-  isEmpty: boolean;
-  dim: number;
-
-  constructor() {
-    this.letters = blankLayout();
-    this.isEmpty = true;
-    this.gridLayout = CrosswordGameGridLayout;
-    this.dim = this.gridLayout.length;
-  }
-
-  tilesLayout() {
-    const layout = [];
-    for (let j = 0; j < 15; j += 1) {
-      // row by row
-      const x = j * 15;
-      const sl = this.letters.slice(x, x + 15);
-      layout.push(sl.join(''));
-    }
-    return layout;
-  }
-  /** take in a 2D board array */
-  setTileLayout(layout: Array<string>) {
-    this.isEmpty = true;
-    for (let row = 0; row < 15; row += 1) {
-      for (let col = 0; col < 15; col += 1) {
-        const letter = layout[row][col];
-        if (letter !== EmptySpace) {
-          this.isEmpty = false;
-        }
-        this.letters[row * 15 + col] = letter;
-      }
-    }
-  }
-
-  /**
-   * Return the letter at the given row, col. Returns null if out of bounds.
-   */
-  letterAt(row: number, col: number) {
-    if (row > this.dim - 1 || row < 0 || col > this.dim - 1 || col < 0) {
-      return null;
-    }
-    return this.letters[row * 15 + col];
-  }
-
-  addLetter(row: number, col: number, letter: string) {
-    this.letters[row * 15 + col] = letter;
-    this.isEmpty = false;
-  }
-
-  removeLetter(row: number, col: number, letter: string) {
-    this.letters[row * 15 + col] = ' ';
-    // don't know how else to check, annoyingly
-    this.isEmpty = true;
-    for (let i = 0; i < 225; i++) {
-      if (this.letters[i] !== ' ') {
-        this.isEmpty = false;
-        break;
-      }
-    }
-  }
-}
-
 function setCharAt(str: string, index: number, chr: string) {
   if (index > str.length - 1) {
     return str;
@@ -97,17 +30,59 @@ function setCharAt(str: string, index: number, chr: string) {
   return str.substr(0, index) + chr + str.substr(index + 1);
 }
 
+const deepCopy = (state: GameState): GameState => {
+  const newState = new GameState({ ...state.tileDistribution }, [
+    ...state.players,
+  ]);
+  newState.pool = { ...state.pool };
+  newState.turns = [...state.turns];
+  newState.lastPlayedLetters = { ...state.lastPlayedLetters };
+  newState.scores = { ...state.scores };
+  newState.timeRemaining = { ...state.timeRemaining };
+  newState.onturn = state.onturn;
+  newState.currentRacks = { ...state.currentRacks };
+  newState.currentTurn = GameTurn.deserializeBinary(
+    state.currentTurn.serializeBinary()
+  );
+  newState.lastEvent =
+    state.lastEvent === null
+      ? state.lastEvent
+      : GameEvent.deserializeBinary(state.lastEvent.serializeBinary());
+  newState.turnSummary = [...state.turnSummary];
+  newState.gameID = state.gameID;
+  newState.board = state.board.deepCopy();
+  return newState;
+};
+
 export class GameState {
   // This class holds the layout of the board as well as the remaining pool.
   tileDistribution: { [rune: string]: number };
+
   pool: { [rune: string]: number };
+
   turns: Array<GameTurn>;
+
   lastPlayedLetters: { [tile: string]: boolean };
+
   players: Array<PlayerInfo>;
+
   scores: { [username: string]: number };
+
+  timeRemaining: { [username: string]: number };
+
   onturn: number;
+
   currentRacks: { [username: string]: string };
+
   board: Board;
+
+  currentTurn: GameTurn;
+
+  lastEvent: GameEvent | null;
+
+  turnSummary: Array<string>;
+
+  gameID: string;
 
   constructor(
     tileDistribution: { [rune: string]: number },
@@ -121,23 +96,30 @@ export class GameState {
     this.turns = new Array<GameTurn>();
     this.lastPlayedLetters = {};
     this.players = players;
+
+    this.onturn = 0;
     if (this.players && this.players.length) {
       this.scores = {
         [players[0].getNickname()]: 0,
         [players[1].getNickname()]: 0,
       };
-    } else {
-      this.scores = {};
-    }
-    this.onturn = 0;
-    if (this.players && this.players.length) {
       this.currentRacks = {
         [players[0].getNickname()]: '',
         [players[1].getNickname()]: '',
       };
+      this.timeRemaining = {
+        [players[0].getNickname()]: 0,
+        [players[1].getNickname()]: 0,
+      };
     } else {
       this.currentRacks = {};
+      this.scores = {};
+      this.timeRemaining = {};
     }
+    this.currentTurn = new GameTurn();
+    this.lastEvent = null;
+    this.turnSummary = [];
+    this.gameID = '';
   }
 
   /**
@@ -151,6 +133,10 @@ export class GameState {
     } else {
       this.pool[letter] -= 1;
     }
+  }
+
+  setGameID(id: string) {
+    this.gameID = id;
   }
 
   /**
@@ -191,6 +177,112 @@ export class GameState {
     this.onturn = (this.onturn + 1) % 2;
   }
 
+  /**
+   * Push a new event
+   */
+  pushNewEvent(evt: GameEvent) {
+    if (
+      this.lastEvent !== null &&
+      evt.getNickname() !== this.lastEvent.getNickname()
+    ) {
+      // Create a new turn.
+      this.turns.push(this.currentTurn);
+      this.currentTurn = new GameTurn();
+    }
+
+    this.currentTurn.addEvents(evt, this.currentTurn.getEventsList().length);
+    switch (evt.getType()) {
+      case GameEvent.Type.TILE_PLACEMENT_MOVE:
+        this.placeOnBoard(evt);
+        break;
+      case (GameEvent.Type.EXCHANGE, GameEvent.Type.PASS):
+        // do nothing for now. I think this is right.
+        break;
+      case GameEvent.Type.UNSUCCESSFUL_CHALLENGE_TURN_LOSS:
+        break;
+      case GameEvent.Type.PHONY_TILES_RETURNED:
+        this.unplaceOnBoard(this.lastEvent);
+        break;
+      // this does not add to the board but it modifies the pool.
+      // if I am the player who exchanged, this should give me new tiles
+      // and thus modify the pool
+
+      // if the other player exchanged, the pool should not be modified.
+
+      // if (evt.getUnknownExchange() > 0) {
+      //   // We don't know what the new rack is. Do nothing.
+      // } else {
+      //   // It is likely "our" own exchange, or somehow known in another way.
+      //   this.setCurrentRack(evt.getNickname(), evt.getRack());
+      // }
+    }
+    this.scores[evt.getNickname()] = evt.getCumulative();
+    // events always switch turns visually, although not necessarily in the game
+    // for example, it is on the player on-turn to challenge; if the play comes
+    // off (or stays on) this will add an event to the player who made the play.
+    // XXX: this might need to change as i add more event types.
+    this.onturn = (this.onturn + 1) % 2;
+    this.lastEvent = evt;
+  }
+
+  placeOnBoard(evt: GameEvent) {
+    this.clearLastPlayedLetters();
+
+    let play = evt.getPlayedTiles();
+    for (let i = 0; i < play.length; i += 1) {
+      const letter = play[i];
+      const row =
+        evt.getDirection() === Direction.Vertical
+          ? evt.getRow() + i
+          : evt.getRow();
+      const col =
+        evt.getDirection() === Direction.Horizontal
+          ? evt.getColumn() + i
+          : evt.getColumn();
+      if (letter !== '.') {
+        this.addLetter(row, col, letter);
+        this.setLastPlayedLetter(row, col);
+      } else {
+        play = setCharAt(play, i, this.board.letterAt(row, col)!);
+      }
+    }
+    // Now push a summary of the play
+    // boardState.pushNewTurn(item.nick, {
+    //   pos: item.pos,
+    //   summary: play,
+    //   score: `+${item.score}`,
+    //   cumul: item.cumul,
+    //   turnIdx: idx,
+    //   note: item.note,
+    //   nick: item.nick,
+    //   type: MoveTypesEnum.SCORING_PLAY,
+    //   rack: item.rack,
+    // });
+  }
+
+  unplaceOnBoard(evt: GameEvent | null) {
+    if (!evt) {
+      return;
+    }
+    this.clearLastPlayedLetters();
+
+    const play = evt.getPlayedTiles();
+    for (let i = 0; i < play.length; i += 1) {
+      const letter = play[i];
+      const row =
+        evt.getDirection() === Direction.Vertical
+          ? evt.getRow() + i
+          : evt.getRow();
+      const col =
+        evt.getDirection() === Direction.Horizontal
+          ? evt.getColumn() + i
+          : evt.getColumn();
+      if (letter !== '.') {
+        this.removeLetter(row, col, letter);
+      }
+    }
+  }
+
   clearLastPlayedLetters() {
     this.lastPlayedLetters = {};
   }
@@ -202,6 +294,11 @@ export class GameState {
   // XXX: make it so the backend never sends me the other player's rack
   setCurrentRack(username: string, rack: string) {
     this.currentRacks[username] = rack;
+  }
+
+  // always in seconds.
+  setTimeRemaining(username: string, time: number) {
+    this.timeRemaining[username] = time;
   }
 
   // toDict() {
@@ -218,43 +315,6 @@ export class GameState {
   // }
 }
 
-function trackPlay(idx: number, item: GameEvent, boardState: GameState) {
-  boardState.clearLastPlayedLetters();
-
-  let play = item.getPlayedTiles();
-  for (let i = 0; i < play.length; i += 1) {
-    const letter = play[i];
-    const row =
-      item.getDirection() === Direction.Vertical
-        ? item.getRow() + i
-        : item.getRow();
-    const col =
-      item.getDirection() === Direction.Horizontal
-        ? item.getColumn() + i
-        : item.getColumn();
-    if (letter !== '.') {
-      boardState.addLetter(row, col, letter);
-      boardState.setLastPlayedLetter(row, col);
-    } else {
-      play = setCharAt(play, i, boardState.board.letterAt(row, col)!);
-    }
-  }
-  // Now push a summary of the play
-  // boardState.pushNewTurn(item.nick, {
-  //   pos: item.pos,
-  //   summary: play,
-  //   score: `+${item.score}`,
-  //   cumul: item.cumul,
-  //   turnIdx: idx,
-  //   note: item.note,
-  //   nick: item.nick,
-  //   type: MoveTypesEnum.SCORING_PLAY,
-  //   rack: item.rack,
-  // });
-
-  return boardState;
-}
-
 export const StateFromHistoryRefresher = (
   ghr: GameHistoryRefresher
 ): GameState => {
@@ -262,6 +322,7 @@ export const StateFromHistoryRefresher = (
   const playerList = history!.getPlayersList();
 
   const gs = new GameState(EnglishCrosswordGameDistribution, playerList);
+  gs.setGameID(history!.getUid());
 
   const racks = history!.getLastKnownRacksList();
 
@@ -272,8 +333,46 @@ export const StateFromHistoryRefresher = (
 
   console.log('nicks', p0nick, p1nick);
   [gs.currentRacks[p0nick], gs.currentRacks[p1nick]] = racks;
+
+  if (history!.getTurnsList().length % 2 === 0) {
+    // because we default to the first player in the array being first
+    // unless flipPlayers is set.
+    gs.onturn = history!.getFlipPlayers() ? 1 : 0;
+  } else {
+    gs.onturn = history!.getFlipPlayers() ? 0 : 1;
+  }
+
   console.log('then current racks are', gs.currentRacks);
+  console.log('onturn', gs.onturn, gs.players[gs.onturn]);
   return gs;
+};
+
+export const StateForwarder = (
+  sge: ServerGameplayEvent,
+  state: GameState
+): GameState => {
+  console.log(
+    'in stateforwarder',
+    sge.getGameId(),
+    state.gameID,
+    sge.getGameId() === state.gameID
+  );
+  if (sge.getGameId() !== state.gameID) {
+    return state; // no change.
+  }
+
+  // Returns a new game state from a state that has had an sge applied to it.
+  const evt = sge.getEvent();
+  // Should benchmark this. In all likelihood it's fast enough.
+  const newState = deepCopy(state);
+
+  // Always assume it's valid, if it's not we have bigger issues.
+  newState.pushNewEvent(evt!);
+  newState.setCurrentRack(evt!.getNickname(), sge.getNewRack());
+  newState.setTimeRemaining(evt!.getNickname(), sge.getTimeRemaining());
+
+  console.log('returning a new state');
+  return newState;
 };
 
 export const fullPlayerInfo = (
@@ -291,7 +390,7 @@ export const fullPlayerInfo = (
     rating: 0,
     title: '',
     score: state.scores[pi.getNickname()],
-    timeRemainingSec: 0,
+    timeRemainingSec: state.timeRemaining[pi.getNickname()],
     onturn: state.onturn === playerIdx,
     avatarUrl: '',
   };

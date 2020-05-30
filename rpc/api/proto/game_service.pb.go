@@ -852,7 +852,7 @@ type GameHistoryRefresher struct {
 	// player1 is the player who is listed first in the game history, regardless
 	// of whether they went first.
 	TimePlayer1 int32 `protobuf:"varint,2,opt,name=time_player1,json=timePlayer1,proto3" json:"time_player1,omitempty"`
-	TimePlayer2 int32 `protobuf:"varint,3,opt,name=time_player2,json=timePlayer2,proto3" json:"time_player2,omitempty"` //
+	TimePlayer2 int32 `protobuf:"varint,3,opt,name=time_player2,json=timePlayer2,proto3" json:"time_player2,omitempty"`
 }
 
 func (x *GameHistoryRefresher) Reset() {

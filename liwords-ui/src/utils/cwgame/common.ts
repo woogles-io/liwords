@@ -1,5 +1,3 @@
-import { Board } from './game';
-
 export const EmptySpace = ' ';
 
 export type EphemeralTile = {

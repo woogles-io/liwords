@@ -1,6 +1,6 @@
 import { EphemeralTile } from './common';
 import { tilesetToMoveEvent } from './game_event';
-import { Board } from './game';
+import { Board } from './board';
 
 const oxyTilesLayout = [
   ' PACIFYING     ',

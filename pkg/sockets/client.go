@@ -93,7 +93,7 @@ func (c *Client) readPump() {
 		// potentially.
 		err = c.hub.parseAndExecuteMessage(message, c.username)
 		if err != nil {
-			log.Err(err).Msg("parse-and-execute-message")
+			log.Err(err).Str("username", c.username).Msg("parse-and-execute-message")
 			c.sendError(err)
 			continue
 		}

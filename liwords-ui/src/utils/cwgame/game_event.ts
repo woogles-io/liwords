@@ -1,7 +1,7 @@
 import { EphemeralTile, Direction } from './common';
 import { ClientGameplayEvent } from '../../gen/api/proto/game_service_pb';
 import { contiguousTilesFromTileSet } from './scoring';
-import { Board } from './game';
+import { Board } from './board';
 
 const ThroughTileMarker = '.';
 // convert a set of ephemeral tiles to a protobuf game event.

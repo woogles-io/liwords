@@ -207,6 +207,8 @@ func PlayMove(ctx context.Context, gameStore GameStore, player string,
 	sge := &pb.ServerGameplayEvent{}
 	sge.Event = evt
 	sge.GameId = cge.GameId
+	// note that `onTurn` is correct as it was saved up there before
+	// we played the turn.
 	sge.TimeRemaining = int32(entGame.TimeRemaining(onTurn))
 	sge.NewRack = entGame.Game.RackLettersFor(onTurn)
 	// Since the move was successful, we assume the user gameplay event is valid.

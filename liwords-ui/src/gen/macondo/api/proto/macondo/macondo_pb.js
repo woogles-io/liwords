@@ -652,7 +652,8 @@ proto.macondo.GameEvent.toObject = function(includeInstance, msg) {
     bonus: jspb.Message.getFieldWithDefault(msg, 13, 0),
     endRackPoints: jspb.Message.getFieldWithDefault(msg, 14, 0),
     lostScore: jspb.Message.getFieldWithDefault(msg, 15, 0),
-    isBingo: jspb.Message.getBooleanFieldWithDefault(msg, 16, false)
+    isBingo: jspb.Message.getBooleanFieldWithDefault(msg, 16, false),
+    unknownExchange: jspb.Message.getFieldWithDefault(msg, 17, 0)
   };
 
   if (includeInstance) {
@@ -752,6 +753,10 @@ proto.macondo.GameEvent.deserializeBinaryFromReader = function(msg, reader) {
     case 16:
       var value = /** @type {boolean} */ (reader.readBool());
       msg.setIsBingo(value);
+      break;
+    case 17:
+      var value = /** @type {number} */ (reader.readInt32());
+      msg.setUnknownExchange(value);
       break;
     default:
       reader.skipField();
@@ -891,6 +896,13 @@ proto.macondo.GameEvent.serializeBinaryToWriter = function(message, writer) {
   if (f) {
     writer.writeBool(
       16,
+      f
+    );
+  }
+  f = message.getUnknownExchange();
+  if (f !== 0) {
+    writer.writeInt32(
+      17,
       f
     );
   }
@@ -1205,6 +1217,24 @@ proto.macondo.GameEvent.prototype.getIsBingo = function() {
  */
 proto.macondo.GameEvent.prototype.setIsBingo = function(value) {
   return jspb.Message.setProto3BooleanField(this, 16, value);
+};
+
+
+/**
+ * optional int32 unknown_exchange = 17;
+ * @return {number}
+ */
+proto.macondo.GameEvent.prototype.getUnknownExchange = function() {
+  return /** @type {number} */ (jspb.Message.getFieldWithDefault(this, 17, 0));
+};
+
+
+/**
+ * @param {number} value
+ * @return {!proto.macondo.GameEvent} returns this
+ */
+proto.macondo.GameEvent.prototype.setUnknownExchange = function(value) {
+  return jspb.Message.setProto3IntField(this, 17, value);
 };
 
 
