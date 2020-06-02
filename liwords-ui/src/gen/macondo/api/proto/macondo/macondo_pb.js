@@ -13,6 +13,7 @@ var jspb = require('google-protobuf');
 var goog = jspb;
 var global = Function('return this')();
 
+goog.exportSymbol('proto.macondo.ChallengeRule', null, global);
 goog.exportSymbol('proto.macondo.GameEvent', null, global);
 goog.exportSymbol('proto.macondo.GameEvent.Direction', null, global);
 goog.exportSymbol('proto.macondo.GameEvent.Type', null, global);
@@ -154,7 +155,8 @@ proto.macondo.GameHistory.toObject = function(includeInstance, msg) {
     title: jspb.Message.getFieldWithDefault(msg, 8, ""),
     description: jspb.Message.getFieldWithDefault(msg, 9, ""),
     lastKnownRacksList: (f = jspb.Message.getRepeatedField(msg, 10)) == null ? undefined : f,
-    flipPlayers: jspb.Message.getBooleanFieldWithDefault(msg, 11, false)
+    flipPlayers: jspb.Message.getBooleanFieldWithDefault(msg, 11, false),
+    challengeRule: jspb.Message.getFieldWithDefault(msg, 12, 0)
   };
 
   if (includeInstance) {
@@ -236,6 +238,10 @@ proto.macondo.GameHistory.deserializeBinaryFromReader = function(msg, reader) {
     case 11:
       var value = /** @type {boolean} */ (reader.readBool());
       msg.setFlipPlayers(value);
+      break;
+    case 12:
+      var value = /** @type {!proto.macondo.ChallengeRule} */ (reader.readEnum());
+      msg.setChallengeRule(value);
       break;
     default:
       reader.skipField();
@@ -342,6 +348,13 @@ proto.macondo.GameHistory.serializeBinaryToWriter = function(message, writer) {
   if (f) {
     writer.writeBool(
       11,
+      f
+    );
+  }
+  f = message.getChallengeRule();
+  if (f !== 0.0) {
+    writer.writeEnum(
+      12,
       f
     );
   }
@@ -602,6 +615,24 @@ proto.macondo.GameHistory.prototype.getFlipPlayers = function() {
  */
 proto.macondo.GameHistory.prototype.setFlipPlayers = function(value) {
   return jspb.Message.setProto3BooleanField(this, 11, value);
+};
+
+
+/**
+ * optional ChallengeRule challenge_rule = 12;
+ * @return {!proto.macondo.ChallengeRule}
+ */
+proto.macondo.GameHistory.prototype.getChallengeRule = function() {
+  return /** @type {!proto.macondo.ChallengeRule} */ (jspb.Message.getFieldWithDefault(this, 12, 0));
+};
+
+
+/**
+ * @param {!proto.macondo.ChallengeRule} value
+ * @return {!proto.macondo.GameHistory} returns this
+ */
+proto.macondo.GameHistory.prototype.setChallengeRule = function(value) {
+  return jspb.Message.setProto3EnumField(this, 12, value);
 };
 
 
@@ -1557,5 +1588,16 @@ proto.macondo.PlayerInfo.prototype.setRealName = function(value) {
   return jspb.Message.setProto3StringField(this, 2, value);
 };
 
+
+/**
+ * @enum {number}
+ */
+proto.macondo.ChallengeRule = {
+  VOID: 0,
+  SINGLE: 1,
+  DOUBLE: 2,
+  FIVE_POINT: 3,
+  TEN_POINT: 4
+};
 
 goog.object.extend(exports, proto.macondo);

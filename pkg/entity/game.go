@@ -4,8 +4,8 @@ import (
 	"time"
 
 	pb "github.com/domino14/crosswords/rpc/api/proto"
-	"github.com/domino14/macondo/alphabet"
 	"github.com/domino14/macondo/game"
+	macondopb "github.com/domino14/macondo/gen/api/proto/macondo"
 	"github.com/rs/zerolog/log"
 )
 
@@ -22,7 +22,6 @@ type Game struct {
 	// perTurnIncrement, in seconds
 	perTurnIncrement int
 	gamereq          *pb.GameRequest
-	lastPlayedWords  []alphabet.MachineWord
 
 	changeHook chan<- *EventWrapper
 }
@@ -52,14 +51,6 @@ func (g *Game) ResetTimers() {
 	ts := msTimestamp()
 	g.timeOfLastMove = ts
 	g.timeStarted = ts
-}
-
-func (g *Game) SetLastPlayedWords(words []alphabet.MachineWord) {
-	g.lastPlayedWords = words
-}
-
-func (g *Game) LastPlayedWords() []alphabet.MachineWord {
-	return g.lastPlayedWords
 }
 
 func (g *Game) TimeRemaining(idx int) int {
@@ -116,7 +107,7 @@ func (g *Game) GameEndedEvent(reason pb.GameEndReason, player string) *pb.GameEn
 	}
 }
 
-func (g *Game) ChallengeRule() pb.ChallengeRule {
+func (g *Game) ChallengeRule() macondopb.ChallengeRule {
 	return g.gamereq.ChallengeRule
 }
 

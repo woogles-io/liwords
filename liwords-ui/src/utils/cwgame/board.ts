@@ -3,11 +3,26 @@ import { EmptySpace } from './common';
 
 /* TODO: should be dependent on board dimensions in future.  */
 export function blankLayout() {
-  return new Array(225).fill(' ');
+  return repeatChar(225, EmptySpace);
+}
+
+function repeatChar(count: number, ch: string) {
+  let txt = '';
+  for (let i = 0; i < count; i++) {
+    txt += ch;
+  }
+  return txt;
+}
+
+export function setCharAt(str: string, index: number, chr: string) {
+  if (index > str.length - 1) {
+    return str;
+  }
+  return str.substr(0, index) + chr + str.substr(index + 1);
 }
 
 export class Board {
-  private letters: Array<string>; // The letters on the board
+  letters: string; // The letters on the board
 
   gridLayout: Array<string>; // the bonus squares.
 
@@ -22,17 +37,6 @@ export class Board {
     this.dim = this.gridLayout.length;
   }
 
-  tilesLayout() {
-    const layout = [];
-    for (let j = 0; j < 15; j += 1) {
-      // row by row
-      const x = j * 15;
-      const sl = this.letters.slice(x, x + 15);
-      layout.push(sl.join(''));
-    }
-    return layout;
-  }
-
   /** take in a 2D board array */
   setTileLayout(layout: Array<string>) {
     this.isEmpty = true;
@@ -42,7 +46,7 @@ export class Board {
         if (letter !== EmptySpace) {
           this.isEmpty = false;
         }
-        this.letters[row * 15 + col] = letter;
+        this.letters = setCharAt(this.letters, row * 15 + col, letter);
       }
     }
   }
@@ -58,16 +62,16 @@ export class Board {
   }
 
   addLetter(row: number, col: number, letter: string) {
-    this.letters[row * 15 + col] = letter;
+    this.letters = setCharAt(this.letters, row * 15 + col, letter);
     this.isEmpty = false;
   }
 
   removeLetter(row: number, col: number, letter: string) {
-    this.letters[row * 15 + col] = ' ';
+    this.letters = setCharAt(this.letters, row * 15 + col, EmptySpace);
     // don't know how else to check, annoyingly
     this.isEmpty = true;
-    for (let i = 0; i < 225; i++) {
-      if (this.letters[i] !== ' ') {
+    for (let i = 0; i < this.letters.length; i++) {
+      if (this.letters[i] !== EmptySpace) {
         this.isEmpty = false;
         break;
       }
@@ -76,7 +80,7 @@ export class Board {
 
   deepCopy() {
     const newBoard = new Board();
-    newBoard.letters = [...this.letters];
+    newBoard.letters = this.letters;
     newBoard.gridLayout = [...this.gridLayout];
     newBoard.isEmpty = this.isEmpty;
     newBoard.dim = this.dim;

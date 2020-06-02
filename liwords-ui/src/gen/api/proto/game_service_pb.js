@@ -15,7 +15,6 @@ var global = Function('return this')();
 
 var macondo_api_proto_macondo_macondo_pb = require('../../macondo/api/proto/macondo/macondo_pb.js');
 goog.object.extend(proto, macondo_api_proto_macondo_macondo_pb);
-goog.exportSymbol('proto.crosswords.ChallengeRule', null, global);
 goog.exportSymbol('proto.crosswords.ClientGameplayEvent', null, global);
 goog.exportSymbol('proto.crosswords.ClientGameplayEvent.EventType', null, global);
 goog.exportSymbol('proto.crosswords.ErrorMessage', null, global);
@@ -539,7 +538,7 @@ proto.crosswords.GameRequest.deserializeBinaryFromReader = function(msg, reader)
       msg.setIncrementSeconds(value);
       break;
     case 5:
-      var value = /** @type {!proto.crosswords.ChallengeRule} */ (reader.readEnum());
+      var value = /** @type {!proto.macondo.ChallengeRule} */ (reader.readEnum());
       msg.setChallengeRule(value);
       break;
     case 6:
@@ -735,16 +734,16 @@ proto.crosswords.GameRequest.prototype.setIncrementSeconds = function(value) {
 
 
 /**
- * optional ChallengeRule challenge_rule = 5;
- * @return {!proto.crosswords.ChallengeRule}
+ * optional macondo.ChallengeRule challenge_rule = 5;
+ * @return {!proto.macondo.ChallengeRule}
  */
 proto.crosswords.GameRequest.prototype.getChallengeRule = function() {
-  return /** @type {!proto.crosswords.ChallengeRule} */ (jspb.Message.getFieldWithDefault(this, 5, 0));
+  return /** @type {!proto.macondo.ChallengeRule} */ (jspb.Message.getFieldWithDefault(this, 5, 0));
 };
 
 
 /**
- * @param {!proto.crosswords.ChallengeRule} value
+ * @param {!proto.macondo.ChallengeRule} value
  * @return {!proto.crosswords.GameRequest} returns this
  */
 proto.crosswords.GameRequest.prototype.setChallengeRule = function(value) {
@@ -2694,17 +2693,6 @@ proto.crosswords.ClientGameplayEvent.prototype.setTiles = function(value) {
   return jspb.Message.setProto3StringField(this, 4, value);
 };
 
-
-/**
- * @enum {number}
- */
-proto.crosswords.ChallengeRule = {
-  VOID: 0,
-  SINGLE: 1,
-  DOUBLE: 2,
-  FIVE_POINT: 3,
-  TEN_POINT: 4
-};
 
 /**
  * @enum {number}

@@ -27,14 +27,6 @@ message GameRules {
   string letter_distribution_name = 2;
 }
 
-enum ChallengeRule {
-  VOID = 0;
-  SINGLE = 1;
-  DOUBLE = 2;
-  FIVE_POINT = 3;
-  TEN_POINT = 4;
-}
-
 enum GameMode {
   REAL_TIME = 0;
   CORRESPONDENCE = 1;
@@ -55,7 +47,7 @@ message GameRequest {
   GameRules rules = 2;
   int32 initial_time_seconds = 3;
   int32 increment_seconds = 4;
-  ChallengeRule challenge_rule = 5;
+  macondo.ChallengeRule challenge_rule = 5;
   GameMode game_mode = 6;
   RatingMode rating_mode = 7;
   string request_id = 8;

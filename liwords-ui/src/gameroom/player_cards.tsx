@@ -6,9 +6,9 @@ type CardProps = {
   player: FullPlayerInfo | null;
 };
 
-const secsToTimeStr = (s: number): string => {
-  const mins = Math.floor(s / 60);
-  const secs = Math.floor(s) % 60;
+const msecsToTimeStr = (s: number): string => {
+  const mins = Math.floor(s / 60000);
+  const secs = Math.floor(s / 1000) % 60;
   const minStr = mins.toString().padStart(2, '0');
   const secStr = secs.toString().padStart(2, '0');
   return `${minStr}:${secStr}`;
@@ -18,7 +18,7 @@ const PlayerCard = (props: CardProps) => {
   if (!props.player) {
     return <Card />;
   }
-  const timeStr = secsToTimeStr(props.player.timeRemainingSec);
+  const timeStr = msecsToTimeStr(props.player.timeRemainingMsec);
   return (
     <Card>
       <Row>

@@ -7,6 +7,7 @@ package gameplay
 import (
 	"context"
 	"errors"
+	"fmt"
 
 	"github.com/domino14/macondo/alphabet"
 	"github.com/rs/zerolog/log"
@@ -67,6 +68,9 @@ func InstantiateNewGame(ctx context.Context, gameStore GameStore, cfg *config.Co
 	}
 	// StartGame creates a new history Uid and deals tiles, etc.
 	g.StartGame()
+	g.SetBackupMode(game.InteractiveGameplayMode)
+	g.SetChallengeRule(req.ChallengeRule)
+
 	entGame := entity.NewGame(g, req)
 	// Save the game to the store.
 	if err = gameStore.Set(ctx, entGame); err != nil {
@@ -89,7 +93,7 @@ func InstantiateNewGame(ctx context.Context, gameStore GameStore, cfg *config.Co
 // 	return nil
 // }
 
-func clientEventToGameEvent(cge *pb.ClientGameplayEvent, g *game.Game) (*macondopb.GameEvent, error) {
+func clientEventToMove(cge *pb.ClientGameplayEvent, g *game.Game) (*move.Move, error) {
 	playerid := g.PlayerOnTurn()
 	rack := g.RackFor(playerid)
 
@@ -99,14 +103,13 @@ func clientEventToGameEvent(cge *pb.ClientGameplayEvent, g *game.Game) (*macondo
 		if err != nil {
 			return nil, err
 		}
+		log.Debug().Msg("got a client gameplay event tile placement")
 		// Note that we don't validate the move here, but we do so later.
-		return g.EventFromMove(m), nil
+		return m, nil
 
-	case pb.ClientGameplayEvent_CHALLENGE_PLAY:
-		// XXX: THIS NEEDS TO BE HANDLED IN SOME OTHER WAY.
 	case pb.ClientGameplayEvent_PASS:
 		m := move.NewPassMove(rack.TilesOn(), g.Alphabet())
-		return g.EventFromMove(m), nil
+		return m, nil
 	case pb.ClientGameplayEvent_EXCHANGE:
 		tiles, err := alphabet.ToMachineWord(cge.Tiles, g.Alphabet())
 		if err != nil {
@@ -117,7 +120,7 @@ func clientEventToGameEvent(cge *pb.ClientGameplayEvent, g *game.Game) (*macondo
 			return nil, err
 		}
 		m := move.NewExchangeMove(tiles, leaveMW, g.Alphabet())
-		return g.EventFromMove(m), nil
+		return m, nil
 	}
 	return nil, errors.New("client gameplay event not handled")
 }
@@ -132,7 +135,7 @@ func StartGame(ctx context.Context, gameStore GameStore, eventChan chan<- *entit
 		return err
 	}
 	// This should be True, see comment above.
-	if !entGame.Game.Playing() {
+	if entGame.Game.Playing() != game.StatePlaying {
 		return errGameNotActive
 	}
 	log.Debug().Str("gameid", id).Msg("reset timers (and start)")
@@ -154,6 +157,88 @@ func StartGame(ctx context.Context, gameStore GameStore, eventChan chan<- *entit
 	return nil
 }
 
+func handleChallenge(ctx context.Context, entGame *entity.Game, gameStore GameStore) error {
+	if entGame.ChallengeRule() == macondopb.ChallengeRule_VOID {
+		// The front-end shouldn't even show the button.
+		return errors.New("challenges not acceptable in void")
+	}
+	valid, err := entGame.Game.ChallengeEvent(0)
+	if err != nil {
+		return err
+	}
+
+	turns := entGame.Game.History().Turns
+	if len(turns) == 0 {
+		return errors.New("unexpected turn length")
+	}
+	events := entGame.Game.History().Turns[len(turns)-1].Events
+
+	if !valid {
+		// play is invalid, tiles and board go back to previous state.
+		if len(events) != 2 {
+			return fmt.Errorf("(play invalid) mismatch: expected event length 2, got %d", len(events))
+		}
+		// onTurn is the challenger at this point.
+		onTurn := entGame.Game.PlayerOnTurn()
+		sge := &pb.ServerGameplayEvent{
+			Event:   events[1], // This is the "phony tiles returned" event.
+			GameId:  entGame.GameID(),
+			NewRack: events[1].Rack,
+			// This is going to be the time remaining for the _challenger_
+			TimeRemaining: int32(entGame.TimeRemaining(onTurn)),
+		}
+		entGame.SendChange(entity.WrapEvent(sge, pb.MessageType_SERVER_GAMEPLAY_EVENT,
+			entGame.GameID()))
+	} else {
+		// The play is valid, there was either some bonus awarded, or someone
+		// lost their turn, etc.
+		// if challenge rule is double, then the challenger loses their turn
+		// (which would create a new turn and event)
+		// otherwise, it is still the challenger's turn, and we should fetch
+		// the bonus.
+		// note that in _both_ cases, we are fetching everything after the first event.
+
+		// XXX: No -- I have to handle the special cases when the player goes out.
+		// (the turn doesn't switch, etc)
+		// Seems illogical to handle in both places (macondo and here)
+		// Consider having a gameplay event instead be a full snapshot of the board.
+		// seems aliunde though, but maybe do this only in special cases.
+		// (after challenges?)
+		onTurn := entGame.Game.PlayerOnTurn()
+		if entGame.ChallengeRule() == macondopb.ChallengeRule_DOUBLE {
+
+			if len(events) != 1 {
+				return fmt.Errorf("(play valid) mismatch: expected event length 1, got %d", len(events))
+			}
+		} else {
+			if len(events) != 2 {
+				return fmt.Errorf("(play valid) mismatch: expected event length 2, got %d", len(events))
+			}
+		}
+		entGame.NickOnTurn()
+
+		sge := &pb.ServerGameplayEvent{
+			Event:  events[len(events)-1],
+			GameId: entGame.GameID(),
+			// The front end should ignore this:
+			NewRack: "",
+			// This is going to be the time remaining for either player,
+			// whoever ends up being on turn after the challenge. Front
+			// end should disambiguate this.
+			TimeRemaining: int32(entGame.TimeRemaining(onTurn)),
+		}
+		entGame.SendChange(entity.WrapEvent(sge, pb.MessageType_SERVER_GAMEPLAY_EVENT,
+			entGame.GameID()))
+	}
+
+	err = gameStore.Set(ctx, entGame)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func PlayMove(ctx context.Context, gameStore GameStore, player string,
 	cge *pb.ClientGameplayEvent) error {
 
@@ -163,7 +248,7 @@ func PlayMove(ctx context.Context, gameStore GameStore, player string,
 	if err != nil {
 		return err
 	}
-	if !entGame.Game.Playing() {
+	if entGame.Game.Playing() == game.StateGameOver {
 		return errGameNotActive
 	}
 	onTurn := entGame.Game.PlayerOnTurn()
@@ -173,44 +258,53 @@ func PlayMove(ctx context.Context, gameStore GameStore, player string,
 		return errNotOnTurn
 	}
 
+	log.Debug().Msg("going to turn into a macondo gameevent")
+
+	if cge.Type == pb.ClientGameplayEvent_CHALLENGE_PLAY {
+		// Handle in another way
+		return handleChallenge(ctx, gameStore, entGame)
+	}
+
 	// Turn the event into a macondo GameEvent.
-	evt, err := clientEventToGameEvent(cge, &entGame.Game)
+	m, err := clientEventToMove(cge, &entGame.Game)
+	if err != nil {
+		return err
+	}
+	// m := game.MoveFromEvent(evt, entGame.Game.Alphabet(), entGame.Game.Board())
+	log.Debug().Msg("validating")
+
+	_, err = entGame.Game.ValidateMove(m)
 	if err != nil {
 		return err
 	}
 
-	m := game.MoveFromEvent(evt, entGame.Game.Alphabet(), entGame.Game.Board())
-
-	wordsFormed, err := entGame.Game.ValidateMove(m)
-	if err != nil {
-		return err
-	}
-	entGame.SetLastPlayedWords(wordsFormed)
-
-	// XXX: Depending on the challenge rule, there can be two validation steps:
-	// 1. validate that the play is legal in the game (connects to tiles, etc)
-	// 2. validate that the play creates actual words if the challenge rule is VOID.
-	if entGame.ChallengeRule() == pb.ChallengeRule_VOID {
-		// validate wordsFormed here and return an error if any word is
-		// invalid in the game's lexicon.
-	}
 	// Don't back up the move, but add to history
-	err = entGame.Game.PlayMove(m, false, true)
+	log.Debug().Msg("playing the move")
+	err = entGame.Game.PlayMove(m, true)
 	if err != nil {
 		return err
 	}
-
+	// Get the turn that we _just_ appended to the history
+	turnLength := len(entGame.Game.History().Turns)
+	turn := entGame.Game.History().Turns[turnLength-1]
 	// Register time.
 	entGame.RecordTimeOfMove(onTurn)
 
-	// Create a ServerGameplayEvent to send back.
-	sge := &pb.ServerGameplayEvent{}
-	sge.Event = evt
-	sge.GameId = cge.GameId
-	// note that `onTurn` is correct as it was saved up there before
-	// we played the turn.
-	sge.TimeRemaining = int32(entGame.TimeRemaining(onTurn))
-	sge.NewRack = entGame.Game.RackLettersFor(onTurn)
+	// Create a set of ServerGameplayEvents to send back.
+
+	evts := make([]*pb.ServerGameplayEvent, len(turn.Events))
+
+	for idx, evt := range turn.Events {
+
+		sge := &pb.ServerGameplayEvent{}
+		sge.Event = evt
+		sge.GameId = cge.GameId
+		// note that `onTurn` is correct as it was saved up there before
+		// we played the turn.
+		sge.TimeRemaining = int32(entGame.TimeRemaining(onTurn))
+		sge.NewRack = entGame.Game.RackLettersFor(onTurn)
+		evts[idx] = sge
+	}
 	// Since the move was successful, we assume the user gameplay event is valid.
 	// Re-send it, but overwrite the time remaining and new rack properly.
 	playing := entGame.Game.Playing()
@@ -219,21 +313,17 @@ func PlayMove(ctx context.Context, gameStore GameStore, player string,
 	if err != nil {
 		return err
 	}
-
-	entGame.SendChange(entity.WrapEvent(sge, pb.MessageType_SERVER_GAMEPLAY_EVENT,
-		entGame.GameID()))
-	if !playing {
+	for _, sge := range evts {
+		entGame.SendChange(entity.WrapEvent(sge, pb.MessageType_SERVER_GAMEPLAY_EVENT,
+			entGame.GameID()))
+	}
+	if playing == game.StateGameOver {
 		performEndgameDuties(entGame, pb.GameEndReason_WENT_OUT, player)
 	}
 	return nil
 }
 
 func performEndgameDuties(g *entity.Game, reason pb.GameEndReason, player string) {
-	// figure out ratings later lol
-	// if g.RatingMode() == pb.RatingMode_RATED {
-	// 	ratings :=
-	// }
-
 	g.SendChange(
 		entity.WrapEvent(g.GameEndedEvent(pb.GameEndReason_WENT_OUT, player),
 			pb.MessageType_GAME_ENDED_EVENT, g.GameID()))

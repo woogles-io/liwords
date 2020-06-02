@@ -5,7 +5,11 @@ import { Board } from './board';
 
 const ThroughTileMarker = '.';
 // convert a set of ephemeral tiles to a protobuf game event.
-export const tilesetToMoveEvent = (tiles: Set<EphemeralTile>, board: Board) => {
+export const tilesetToMoveEvent = (
+  tiles: Set<EphemeralTile>,
+  board: Board,
+  gameID: string
+) => {
   const ret = contiguousTilesFromTileSet(tiles, board);
   if (ret === null) {
     // the play is not rules-valid. Deal with it in the caller.
@@ -32,6 +36,31 @@ export const tilesetToMoveEvent = (tiles: Set<EphemeralTile>, board: Board) => {
   evt.setPositionCoords(wordPos);
   evt.setTiles(wordStr);
   evt.setType(ClientGameplayEvent.EventType.TILE_PLACEMENT);
+  evt.setGameId(gameID);
+  return evt;
+};
+
+export const exchangeMoveEvent = (rack: string, gameID: string) => {
+  const evt = new ClientGameplayEvent();
+  evt.setTiles(rack);
+  evt.setType(ClientGameplayEvent.EventType.EXCHANGE);
+  evt.setGameId(gameID);
+
+  return evt;
+};
+
+export const passMoveEvent = (gameID: string) => {
+  const evt = new ClientGameplayEvent();
+  evt.setType(ClientGameplayEvent.EventType.PASS);
+  evt.setGameId(gameID);
+
+  return evt;
+};
+
+export const challengeMoveEvent = (gameID: string) => {
+  const evt = new ClientGameplayEvent();
+  evt.setType(ClientGameplayEvent.EventType.CHALLENGE_PLAY);
+  evt.setGameId(gameID);
 
   return evt;
 };

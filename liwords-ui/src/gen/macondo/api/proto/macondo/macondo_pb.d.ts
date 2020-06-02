@@ -43,6 +43,9 @@ export class GameHistory extends jspb.Message {
   getFlipPlayers(): boolean;
   setFlipPlayers(value: boolean): void;
 
+  getChallengeRule(): ChallengeRuleMap[keyof ChallengeRuleMap];
+  setChallengeRule(value: ChallengeRuleMap[keyof ChallengeRuleMap]): void;
+
   serializeBinary(): Uint8Array;
   toObject(includeInstance?: boolean): GameHistory.AsObject;
   static toObject(includeInstance: boolean, msg: GameHistory): GameHistory.AsObject;
@@ -66,6 +69,7 @@ export namespace GameHistory {
     description: string,
     lastKnownRacksList: Array<string>,
     flipPlayers: boolean,
+    challengeRule: ChallengeRuleMap[keyof ChallengeRuleMap],
   }
 }
 
@@ -219,4 +223,14 @@ export namespace PlayerInfo {
     realName: string,
   }
 }
+
+export interface ChallengeRuleMap {
+  VOID: 0;
+  SINGLE: 1;
+  DOUBLE: 2;
+  FIVE_POINT: 3;
+  TEN_POINT: 4;
+}
+
+export const ChallengeRule: ChallengeRuleMap;
 

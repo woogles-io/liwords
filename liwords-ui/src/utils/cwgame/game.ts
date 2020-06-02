@@ -9,7 +9,7 @@ import {
   ServerGameplayEvent,
 } from '../../gen/api/proto/game_service_pb';
 import { EnglishCrosswordGameDistribution } from '../../constants/tile_distributions';
-import { Board } from './board';
+import { Board, setCharAt } from './board';
 
 export type FullPlayerInfo = {
   nickname: string;
@@ -18,17 +18,10 @@ export type FullPlayerInfo = {
   rating: number;
   title: string;
   score: number;
-  timeRemainingSec: number;
+  timeRemainingMsec: number;
   onturn: boolean;
   avatarUrl: string;
 };
-
-function setCharAt(str: string, index: number, chr: string) {
-  if (index > str.length - 1) {
-    return str;
-  }
-  return str.substr(0, index) + chr + str.substr(index + 1);
-}
 
 const deepCopy = (state: GameState): GameState => {
   const newState = new GameState({ ...state.tileDistribution }, [
@@ -181,6 +174,7 @@ export class GameState {
    * Push a new event
    */
   pushNewEvent(evt: GameEvent) {
+    console.log('push new event', evt);
     if (
       this.lastEvent !== null &&
       evt.getNickname() !== this.lastEvent.getNickname()
@@ -217,6 +211,12 @@ export class GameState {
       // }
     }
     this.scores[evt.getNickname()] = evt.getCumulative();
+    console.log(
+      'assigning score',
+      evt.getCumulative(),
+      evt.getNickname(),
+      this.scores
+    );
     // events always switch turns visually, although not necessarily in the game
     // for example, it is on the player on-turn to challenge; if the play comes
     // off (or stays on) this will add an event to the player who made the play.
@@ -368,10 +368,17 @@ export const StateForwarder = (
 
   // Always assume it's valid, if it's not we have bigger issues.
   newState.pushNewEvent(evt!);
-  newState.setCurrentRack(evt!.getNickname(), sge.getNewRack());
+  if (
+    evt!.getType() === GameEvent.Type.TILE_PLACEMENT_MOVE ||
+    evt!.getType() === GameEvent.Type.EXCHANGE ||
+    evt!.getType() === GameEvent.Type.PHONY_TILES_RETURNED
+  ) {
+    newState.setCurrentRack(evt!.getNickname(), sge.getNewRack());
+  }
+  // Otherwise, ignore it.
   newState.setTimeRemaining(evt!.getNickname(), sge.getTimeRemaining());
 
-  console.log('returning a new state');
+  console.log('returning a new state. scores', newState.scores);
   return newState;
 };
 
@@ -390,7 +397,7 @@ export const fullPlayerInfo = (
     rating: 0,
     title: '',
     score: state.scores[pi.getNickname()],
-    timeRemainingSec: state.timeRemaining[pi.getNickname()],
+    timeRemainingMsec: state.timeRemaining[pi.getNickname()],
     onturn: state.onturn === playerIdx,
     avatarUrl: '',
   };

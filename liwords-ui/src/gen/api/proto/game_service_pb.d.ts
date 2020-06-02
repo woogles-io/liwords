@@ -43,8 +43,8 @@ export class GameRequest extends jspb.Message {
   getIncrementSeconds(): number;
   setIncrementSeconds(value: number): void;
 
-  getChallengeRule(): ChallengeRuleMap[keyof ChallengeRuleMap];
-  setChallengeRule(value: ChallengeRuleMap[keyof ChallengeRuleMap]): void;
+  getChallengeRule(): macondo_api_proto_macondo_macondo_pb.ChallengeRuleMap[keyof macondo_api_proto_macondo_macondo_pb.ChallengeRuleMap];
+  setChallengeRule(value: macondo_api_proto_macondo_macondo_pb.ChallengeRuleMap[keyof macondo_api_proto_macondo_macondo_pb.ChallengeRuleMap]): void;
 
   getGameMode(): GameModeMap[keyof GameModeMap];
   setGameMode(value: GameModeMap[keyof GameModeMap]): void;
@@ -71,7 +71,7 @@ export namespace GameRequest {
     rules?: GameRules.AsObject,
     initialTimeSeconds: number,
     incrementSeconds: number,
-    challengeRule: ChallengeRuleMap[keyof ChallengeRuleMap],
+    challengeRule: macondo_api_proto_macondo_macondo_pb.ChallengeRuleMap[keyof macondo_api_proto_macondo_macondo_pb.ChallengeRuleMap],
     gameMode: GameModeMap[keyof GameModeMap],
     ratingMode: RatingModeMap[keyof RatingModeMap],
     requestId: string,
@@ -357,16 +357,6 @@ export namespace ClientGameplayEvent {
 
   export const EventType: EventTypeMap;
 }
-
-export interface ChallengeRuleMap {
-  VOID: 0;
-  SINGLE: 1;
-  DOUBLE: 2;
-  FIVE_POINT: 3;
-  TEN_POINT: 4;
-}
-
-export const ChallengeRule: ChallengeRuleMap;
 
 export interface GameModeMap {
   REAL_TIME: 0;

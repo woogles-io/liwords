@@ -6,8 +6,6 @@ import { TopBar } from '../topbar/topbar';
 import {
   SeekRequest,
   GameRequest,
-  ChallengeRuleMap,
-  ChallengeRule,
   MessageType,
   RequestingUser,
   GameAcceptedEvent,
@@ -16,6 +14,10 @@ import {
 import { encodeToSocketFmt } from '../utils/protobuf';
 import { SoughtGames } from './sought_games';
 import { SoughtGame, useStoreContext } from '../store/store';
+import {
+  ChallengeRuleMap,
+  ChallengeRule,
+} from '../gen/macondo/api/proto/macondo/macondo_pb';
 
 const sendSeek = (
   game: SoughtGame,

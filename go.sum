@@ -18,6 +18,14 @@ github.com/domino14/macondo v0.4.5-0.20200525213549-c24fb5d1dab3 h1:uogJFbMqbpBq
 github.com/domino14/macondo v0.4.5-0.20200525213549-c24fb5d1dab3/go.mod h1:6rvzhV5VQPsic54F0tDmXBwnd3OzrmKgHn9vaEaZFSs=
 github.com/domino14/macondo v0.4.5-0.20200530041949-dea43f3e69a2 h1:EaJk6Kc8rR91kdoOvFYFmuSXKZf4H78jdF+DAvu+9sM=
 github.com/domino14/macondo v0.4.5-0.20200530041949-dea43f3e69a2/go.mod h1:6rvzhV5VQPsic54F0tDmXBwnd3OzrmKgHn9vaEaZFSs=
+github.com/domino14/macondo v0.4.5-0.20200531024139-69e08287e58c h1:dGu8h4TQ94aQA8PVfoyHJ5MgKUymXZgzd/7jGcCrFMI=
+github.com/domino14/macondo v0.4.5-0.20200531024139-69e08287e58c/go.mod h1:6rvzhV5VQPsic54F0tDmXBwnd3OzrmKgHn9vaEaZFSs=
+github.com/domino14/macondo v0.4.5-0.20200531150850-459cb273877c h1:O0lKcPT6d9VfYj0IQoJeWfpBnlHr1ZwMcqH62SOUM2E=
+github.com/domino14/macondo v0.4.5-0.20200531150850-459cb273877c/go.mod h1:6rvzhV5VQPsic54F0tDmXBwnd3OzrmKgHn9vaEaZFSs=
+github.com/domino14/macondo v0.4.5-0.20200601021404-ab16b69d3096 h1:ePUEaIWX2879wI5BFACOD/eDKWxO6AbNw7Xq6ngOtow=
+github.com/domino14/macondo v0.4.5-0.20200601021404-ab16b69d3096/go.mod h1:6rvzhV5VQPsic54F0tDmXBwnd3OzrmKgHn9vaEaZFSs=
+github.com/domino14/macondo v0.4.5-0.20200602034754-2df21b1f167b h1:sSLeuR09x0JaBBw5lTQdO2fQPWXr7Mdl0EQ/m1zjX84=
+github.com/domino14/macondo v0.4.5-0.20200602034754-2df21b1f167b/go.mod h1:6rvzhV5VQPsic54F0tDmXBwnd3OzrmKgHn9vaEaZFSs=
 github.com/golang/protobuf v1.4.0-rc.1/go.mod h1:ceaxUfeHdC40wWswd/P6IGgMaK3YpKi5j83Wpe3EHw8=
 github.com/golang/protobuf v1.4.0-rc.1.0.20200221234624-67d41d38c208/go.mod h1:xKAWHe0F5eneWXFV3EuXVDTCmh+JuBKY0li0aMyXATA=
 github.com/golang/protobuf v1.4.0-rc.2/go.mod h1:LlEzMj4AhA7rCAGe4KMBDvJI+AwstrUpVNzEA03Pprs=

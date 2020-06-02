@@ -56,8 +56,6 @@ export const Table = (props: Props) => {
   const player1 = fullPlayerInfo(0, gameState);
   const player2 = fullPlayerInfo(1, gameState);
 
-  console.log('in table', gameState.currentRacks, props.username);
-
   return (
     <div>
       <Row>

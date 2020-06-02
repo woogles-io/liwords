@@ -16,7 +16,7 @@ type Props = {
   sqWidth: number;
   sideFrameWidth: number;
   sideFrameGutter: number;
-  tilesLayout: Array<string>;
+  tilesLayout: string;
   showBonusLabels: boolean;
   lastPlayedLetters: { [tile: string]: boolean };
   currentRack: string;

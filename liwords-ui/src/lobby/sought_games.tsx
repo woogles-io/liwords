@@ -2,11 +2,8 @@
 /* eslint-disable jsx-a11y/no-noninteractive-element-interactions */
 import { Card } from 'antd';
 import React from 'react';
-import {
-  ChallengeRuleMap,
-  ChallengeRule,
-} from '../gen/api/proto/game_service_pb';
 import { useStoreContext } from '../store/store';
+import { ChallengeRule } from '../gen/macondo/api/proto/macondo/macondo_pb';
 
 export const challRuleToStr = (n: number): string => {
   switch (n) {
@@ -39,7 +36,6 @@ export const SoughtGames = (props: Props) => {
     >
       {game.seeker} wants to play {game.lexicon} (
       {`${game.initialTimeSecs / 60} min`}) {challRuleToStr(game.challengeRule)}
-      seekID: {game.seekID})
     </li>
   ));
 
