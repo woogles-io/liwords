@@ -155,9 +155,11 @@ export const BoardPanel = (props: Props) => {
   };
 
   const challengePlay = () => {
-    encodeToSocketFmt(
-      MessageType.CLIENT_GAMEPLAY_EVENT,
-      challengeMoveEvent(props.gameID).serializeBinary()
+    props.sendSocketMsg(
+      encodeToSocketFmt(
+        MessageType.CLIENT_GAMEPLAY_EVENT,
+        challengeMoveEvent(props.gameID).serializeBinary()
+      )
     );
   };
 

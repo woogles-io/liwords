@@ -45,7 +45,7 @@ export const Table = (props: Props) => {
     boardPanelHeight = viewableHeight;
     boardPanelWidth = boardPanelHeight - 96;
   }
-  const { setRedirGame, gameState } = useStoreContext();
+  const { setRedirGame, gameState, chat } = useStoreContext();
   const { gameID } = useParams();
 
   useEffect(() => {
@@ -65,7 +65,7 @@ export const Table = (props: Props) => {
       </Row>
       <Row gutter={gutter} style={{ marginTop: 12 }}>
         <Col span={6}>
-          <Chat gameID={gameID} />
+          <Chat chatEntities={chat} />
         </Col>
         <Col span={boardspan}>
           <BoardPanel

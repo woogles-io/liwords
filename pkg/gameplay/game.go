@@ -7,7 +7,6 @@ package gameplay
 import (
 	"context"
 	"errors"
-	"fmt"
 
 	"github.com/domino14/macondo/alphabet"
 	"github.com/rs/zerolog/log"
@@ -162,73 +161,26 @@ func handleChallenge(ctx context.Context, entGame *entity.Game, gameStore GameSt
 		// The front-end shouldn't even show the button.
 		return errors.New("challenges not acceptable in void")
 	}
+	challenger := entGame.Game.NickOnTurn()
+
 	valid, err := entGame.Game.ChallengeEvent(0)
 	if err != nil {
 		return err
 	}
-
-	turns := entGame.Game.History().Turns
-	if len(turns) == 0 {
-		return errors.New("unexpected turn length")
+	resultEvent := &pb.ServerChallengeResultEvent{
+		Valid:         valid,
+		ChallengeRule: entGame.ChallengeRule(),
+		Challenger:    challenger,
 	}
-	events := entGame.Game.History().Turns[len(turns)-1].Events
+	entGame.SendChange(entity.WrapEvent(resultEvent, pb.MessageType_SERVER_CHALLENGE_RESULT_EVENT,
+		entGame.GameID()))
 
-	if !valid {
-		// play is invalid, tiles and board go back to previous state.
-		if len(events) != 2 {
-			return fmt.Errorf("(play invalid) mismatch: expected event length 2, got %d", len(events))
-		}
-		// onTurn is the challenger at this point.
-		onTurn := entGame.Game.PlayerOnTurn()
-		sge := &pb.ServerGameplayEvent{
-			Event:   events[1], // This is the "phony tiles returned" event.
-			GameId:  entGame.GameID(),
-			NewRack: events[1].Rack,
-			// This is going to be the time remaining for the _challenger_
-			TimeRemaining: int32(entGame.TimeRemaining(onTurn)),
-		}
-		entGame.SendChange(entity.WrapEvent(sge, pb.MessageType_SERVER_GAMEPLAY_EVENT,
-			entGame.GameID()))
-	} else {
-		// The play is valid, there was either some bonus awarded, or someone
-		// lost their turn, etc.
-		// if challenge rule is double, then the challenger loses their turn
-		// (which would create a new turn and event)
-		// otherwise, it is still the challenger's turn, and we should fetch
-		// the bonus.
-		// note that in _both_ cases, we are fetching everything after the first event.
+	// Send a refresher event to get the game state up-to-date on the client.
+	entGame.SendChange(entity.WrapEvent(entGame.HistoryRefresherEvent(), pb.MessageType_GAME_HISTORY_REFRESHER,
+		entGame.GameID()))
 
-		// XXX: No -- I have to handle the special cases when the player goes out.
-		// (the turn doesn't switch, etc)
-		// Seems illogical to handle in both places (macondo and here)
-		// Consider having a gameplay event instead be a full snapshot of the board.
-		// seems aliunde though, but maybe do this only in special cases.
-		// (after challenges?)
-		onTurn := entGame.Game.PlayerOnTurn()
-		if entGame.ChallengeRule() == macondopb.ChallengeRule_DOUBLE {
-
-			if len(events) != 1 {
-				return fmt.Errorf("(play valid) mismatch: expected event length 1, got %d", len(events))
-			}
-		} else {
-			if len(events) != 2 {
-				return fmt.Errorf("(play valid) mismatch: expected event length 2, got %d", len(events))
-			}
-		}
-		entGame.NickOnTurn()
-
-		sge := &pb.ServerGameplayEvent{
-			Event:  events[len(events)-1],
-			GameId: entGame.GameID(),
-			// The front end should ignore this:
-			NewRack: "",
-			// This is going to be the time remaining for either player,
-			// whoever ends up being on turn after the challenge. Front
-			// end should disambiguate this.
-			TimeRemaining: int32(entGame.TimeRemaining(onTurn)),
-		}
-		entGame.SendChange(entity.WrapEvent(sge, pb.MessageType_SERVER_GAMEPLAY_EVENT,
-			entGame.GameID()))
+	if entGame.Game.Playing() == game.StateGameOver {
+		performEndgameDuties(entGame)
 	}
 
 	err = gameStore.Set(ctx, entGame)
@@ -262,7 +214,7 @@ func PlayMove(ctx context.Context, gameStore GameStore, player string,
 
 	if cge.Type == pb.ClientGameplayEvent_CHALLENGE_PLAY {
 		// Handle in another way
-		return handleChallenge(ctx, gameStore, entGame)
+		return handleChallenge(ctx, entGame, gameStore)
 	}
 
 	// Turn the event into a macondo GameEvent.
@@ -318,14 +270,14 @@ func PlayMove(ctx context.Context, gameStore GameStore, player string,
 			entGame.GameID()))
 	}
 	if playing == game.StateGameOver {
-		performEndgameDuties(entGame, pb.GameEndReason_WENT_OUT, player)
+		performEndgameDuties(entGame)
 	}
 	return nil
 }
 
-func performEndgameDuties(g *entity.Game, reason pb.GameEndReason, player string) {
+func performEndgameDuties(g *entity.Game) {
 	g.SendChange(
-		entity.WrapEvent(g.GameEndedEvent(pb.GameEndReason_WENT_OUT, player),
+		entity.WrapEvent(g.GameEndedEvent(),
 			pb.MessageType_GAME_ENDED_EVENT, g.GameID()))
 
 }

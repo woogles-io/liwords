@@ -100,11 +100,8 @@ func (g *Game) HistoryRefresherEvent() *pb.GameHistoryRefresher {
 	}
 }
 
-func (g *Game) GameEndedEvent(reason pb.GameEndReason, player string) *pb.GameEndedEvent {
-	return &pb.GameEndedEvent{
-		Reason:         reason,
-		AffectedPlayer: player,
-	}
+func (g *Game) GameEndedEvent() *pb.GameEndedEvent {
+	return &pb.GameEndedEvent{}
 }
 
 func (g *Game) ChallengeRule() macondopb.ChallengeRule {

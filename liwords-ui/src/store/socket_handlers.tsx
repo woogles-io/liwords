@@ -1,4 +1,4 @@
-import { StoreData } from './store';
+import { StoreData, ChatEntityType } from './store';
 import {
   MessageType,
   SeekRequest,
@@ -11,6 +11,7 @@ import {
   ClientGameplayEvent,
   ServerGameplayEvent,
   GameEndedEvent,
+  ServerChallengeResultEvent,
 } from '../gen/api/proto/game_service_pb';
 
 const parseMsg = (msg: Uint8Array) => {
@@ -27,6 +28,7 @@ const parseMsg = (msg: Uint8Array) => {
     [MessageType.CLIENT_GAMEPLAY_EVENT]: ClientGameplayEvent,
     [MessageType.SERVER_GAMEPLAY_EVENT]: ServerGameplayEvent,
     [MessageType.GAME_ENDED_EVENT]: GameEndedEvent,
+    [MessageType.SERVER_CHALLENGE_RESULT_EVENT]: ServerChallengeResultEvent,
   };
 
   const parsedMsg = msgTypes[msgType];
@@ -61,7 +63,11 @@ export const onSocketMsg = (storeData: StoreData) => {
       case MessageType.ERROR_MESSAGE: {
         const err = parsedMsg as ErrorMessage;
         // Show the error in some sort of pop-up in the future.
-        console.error(err.getMessage());
+        storeData.addChat({
+          entityType: ChatEntityType.ErrorMsg,
+          sender: '',
+          message: err.getMessage(),
+        });
         break;
       }
 
@@ -85,6 +91,12 @@ export const onSocketMsg = (storeData: StoreData) => {
         storeData.processGameplayEvent(sge);
         break;
       }
+
+      case MessageType.SERVER_CHALLENGE_RESULT_EVENT:
+        const sge = parsedMsg as ServerChallengeResultEvent;
+        console.log('got server challenge result event', sge);
+        storeData.challengeResultEvent(sge);
+        break;
     }
   };
 };

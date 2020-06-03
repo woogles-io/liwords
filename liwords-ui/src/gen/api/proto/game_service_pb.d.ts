@@ -200,13 +200,35 @@ export namespace ServerGameplayEvent {
   }
 }
 
+export class ServerChallengeResultEvent extends jspb.Message {
+  getValid(): boolean;
+  setValid(value: boolean): void;
+
+  getChallenger(): string;
+  setChallenger(value: string): void;
+
+  getChallengeRule(): macondo_api_proto_macondo_macondo_pb.ChallengeRuleMap[keyof macondo_api_proto_macondo_macondo_pb.ChallengeRuleMap];
+  setChallengeRule(value: macondo_api_proto_macondo_macondo_pb.ChallengeRuleMap[keyof macondo_api_proto_macondo_macondo_pb.ChallengeRuleMap]): void;
+
+  serializeBinary(): Uint8Array;
+  toObject(includeInstance?: boolean): ServerChallengeResultEvent.AsObject;
+  static toObject(includeInstance: boolean, msg: ServerChallengeResultEvent): ServerChallengeResultEvent.AsObject;
+  static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+  static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+  static serializeBinaryToWriter(message: ServerChallengeResultEvent, writer: jspb.BinaryWriter): void;
+  static deserializeBinary(bytes: Uint8Array): ServerChallengeResultEvent;
+  static deserializeBinaryFromReader(message: ServerChallengeResultEvent, reader: jspb.BinaryReader): ServerChallengeResultEvent;
+}
+
+export namespace ServerChallengeResultEvent {
+  export type AsObject = {
+    valid: boolean,
+    challenger: string,
+    challengeRule: macondo_api_proto_macondo_macondo_pb.ChallengeRuleMap[keyof macondo_api_proto_macondo_macondo_pb.ChallengeRuleMap],
+  }
+}
+
 export class GameEndedEvent extends jspb.Message {
-  getReason(): GameEndReasonMap[keyof GameEndReasonMap];
-  setReason(value: GameEndReasonMap[keyof GameEndReasonMap]): void;
-
-  getAffectedPlayer(): string;
-  setAffectedPlayer(value: string): void;
-
   getNewRatingsMap(): jspb.Map<string, number>;
   clearNewRatingsMap(): void;
   serializeBinary(): Uint8Array;
@@ -221,8 +243,6 @@ export class GameEndedEvent extends jspb.Message {
 
 export namespace GameEndedEvent {
   export type AsObject = {
-    reason: GameEndReasonMap[keyof GameEndReasonMap],
-    affectedPlayer: string,
     newRatingsMap: Array<[string, number]>,
   }
 }
@@ -382,6 +402,7 @@ export interface MessageTypeMap {
   GAME_HISTORY_REFRESHER: 6;
   ERROR_MESSAGE: 7;
   NEW_GAME_EVENT: 8;
+  SERVER_CHALLENGE_RESULT_EVENT: 9;
 }
 
 export const MessageType: MessageTypeMap;

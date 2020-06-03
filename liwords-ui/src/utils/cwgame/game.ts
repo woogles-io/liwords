@@ -324,6 +324,35 @@ export const StateFromHistoryRefresher = (
   const gs = new GameState(EnglishCrosswordGameDistribution, playerList);
   gs.setGameID(history!.getUid());
 
+  // Go through game history.
+  history!.getTurnsList().forEach((turn) => {
+    const events = turn.getEventsList();
+    // Skip challenged-off moves:
+    if (events.length === 2) {
+      if (
+        events[0].getType() === GameEvent.Type.TILE_PLACEMENT_MOVE &&
+        events[1].getType() === GameEvent.Type.PHONY_TILES_RETURNED
+      ) {
+        // do not process at all
+        return;
+      }
+    }
+
+    events.forEach((evt) => {
+      switch (evt.getType()) {
+        case GameEvent.Type.TILE_PLACEMENT_MOVE:
+          gs.placeOnBoard(evt);
+          break;
+        default:
+        // do nothing - we only care about tile placement moves here.
+      }
+    });
+
+    // Set cumulative scores after every turn
+    const player = events[0].getNickname();
+    gs.scores[player] = events[events.length - 1].getCumulative();
+  });
+
   const racks = history!.getLastKnownRacksList();
 
   console.log('racks are', racks);
@@ -342,8 +371,12 @@ export const StateFromHistoryRefresher = (
     gs.onturn = history!.getFlipPlayers() ? 0 : 1;
   }
 
+  gs.setTimeRemaining(p0nick, ghr.getTimePlayer1());
+  gs.setTimeRemaining(p1nick, ghr.getTimePlayer2());
+
   console.log('then current racks are', gs.currentRacks);
   console.log('onturn', gs.onturn, gs.players[gs.onturn]);
+  console.log('scores', gs.scores);
   return gs;
 };
 

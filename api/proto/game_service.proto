@@ -75,6 +75,7 @@ enum MessageType {
   GAME_HISTORY_REFRESHER = 6;
   ERROR_MESSAGE = 7;
   NEW_GAME_EVENT = 8;
+  SERVER_CHALLENGE_RESULT_EVENT = 9;
   // Add more events here. The total number of events should fit in a byte.
   // We should definitely not be using anywhere close to 255 events, and
   // in order to enforce that I'll be forcing the event type header to just be
@@ -107,16 +108,22 @@ message ServerGameplayEvent {
   int32 time_remaining = 4;
 }
 
-// GameEndedEvent is always sent from the server to both clients.
-message GameEndedEvent {
-  GameEndReason reason = 1;
-  // If the reason is TIME, the affected player is the one that ran out of time.
-  // If the reason is WENT_OUT, the affected player is the one that went out.
-  // Otherwise, both players are affected (CONSECUTIVE_ZEROES).
-  string affected_player = 2;
-
-  map<string, int32> new_ratings = 3;
+// The server will send back a challenge result event only in the case of
+// a challenge. In all other cases, the server will send back a
+// ServerGameplayEvent, and the front-end can
+// A ServerChallengeResultEvent is sent back along with a GameHistoryRefresher
+// when there is a challenge, instead of trying to reconstruct and send the
+// right incremental events. The reason is that the logic is complex and
+// has many special cases, and is already fully implemented in Macondo.
+// We don't wish to re-implement it both in this repo's backend and frontend.
+message ServerChallengeResultEvent {
+  bool valid = 1;
+  string challenger = 2;
+  macondo.ChallengeRule challenge_rule = 3;
 }
+
+// GameEndedEvent is always sent from the server to both clients.
+message GameEndedEvent { map<string, int32> new_ratings = 1; }
 
 // A GameHistoryRefresher is sent to both players when the game starts,
 // and any observers at the time that they begin observing. It can also be sent
