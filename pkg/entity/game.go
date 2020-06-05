@@ -70,7 +70,6 @@ func (g *Game) GameID() string {
 }
 
 // calculateTimeRemaining calculates the remaining time for the given player.
-// It must be called after every move!
 func (g *Game) calculateTimeRemaining(idx int) {
 	now := msTimestamp()
 	if g.Game.PlayerOnTurn() == idx {
@@ -101,7 +100,11 @@ func (g *Game) HistoryRefresherEvent() *pb.GameHistoryRefresher {
 }
 
 func (g *Game) GameEndedEvent() *pb.GameEndedEvent {
-	return &pb.GameEndedEvent{}
+	return &pb.GameEndedEvent{
+		Scores: map[string]int32{
+			g.History().Players[0].Nickname: int32(g.PointsFor(0)),
+			g.History().Players[1].Nickname: int32(g.PointsFor(1))},
+	}
 }
 
 func (g *Game) ChallengeRule() macondopb.ChallengeRule {

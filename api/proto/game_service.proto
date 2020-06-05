@@ -76,6 +76,9 @@ enum MessageType {
   ERROR_MESSAGE = 7;
   NEW_GAME_EVENT = 8;
   SERVER_CHALLENGE_RESULT_EVENT = 9;
+  SEEK_REQUESTS = 10;
+  REGISTER_REALM = 11;
+  DEREGISTER_REALM = 12;
   // Add more events here. The total number of events should fit in a byte.
   // We should definitely not be using anywhere close to 255 events, and
   // in order to enforce that I'll be forcing the event type header to just be
@@ -96,7 +99,14 @@ message MatchRequest {
   RequestingUser user = 2;
 }
 
+// A GameAcceptedEvent gets sent when a match request (or seek request)
+// get accepted (or canceled -- when sent from server to client).
+message GameAcceptedEvent { string request_id = 1; }
+
 // Server to client messages:
+
+// SeekRequests sends all open seek requests.
+message SeekRequests { repeated SeekRequest requests = 1; }
 
 // The server will send back a ServerGameplayEvent to a ClientGameplayEvent.
 // The server will also send these asynchronously for opponent gameplay
@@ -123,7 +133,10 @@ message ServerChallengeResultEvent {
 }
 
 // GameEndedEvent is always sent from the server to both clients.
-message GameEndedEvent { map<string, int32> new_ratings = 1; }
+message GameEndedEvent {
+  map<string, int32> scores = 1;
+  map<string, int32> new_ratings = 2;
+}
 
 // A GameHistoryRefresher is sent to both players when the game starts,
 // and any observers at the time that they begin observing. It can also be sent
@@ -159,10 +172,6 @@ message ErrorMessage {
 
 // Client-to-server messages
 
-// A GameAcceptedEvent gets sent when a match request (or seek request)
-// get accepted. The acceptor sends this event to the server.
-message GameAcceptedEvent { string request_id = 1; }
-
 // Gameplay
 
 enum GameEndReason {
@@ -193,8 +202,8 @@ message ClientGameplayEvent {
   string tiles = 4;
 }
 
-// XXX: no
-// StartGame is sent by one of the clients (the seeker or matcher/rematcher,
-// by convention) to the server, in order to get it to actually start the timer
-// and display the tiles.
-// message StartGame { string game_id = 1; }
+// Communication
+
+message RegisterRealm { string realm = 1; }
+
+message DeregisterRealm { string realm = 1; }

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Row, Col, Button } from 'antd';
 import { Redirect } from 'react-router-dom';
 
@@ -10,6 +10,8 @@ import {
   RequestingUser,
   GameAcceptedEvent,
   GameRules,
+  RegisterRealm,
+  DeregisterRealm,
 } from '../gen/api/proto/game_service_pb';
 import { encodeToSocketFmt } from '../utils/protobuf';
 import { SoughtGames } from './sought_games';
@@ -67,10 +69,31 @@ type Props = {
 
 export const Lobby = (props: Props) => {
   const { redirGame } = useStoreContext();
+  // On render, register lobby realm; deregister when we exit.
+  const { sendSocketMsg } = props;
+  useEffect(() => {
+    console.log('Tryna register with lobby');
+    const rr = new RegisterRealm();
+    rr.setRealm('lobby');
+    sendSocketMsg(
+      encodeToSocketFmt(MessageType.REGISTER_REALM, rr.serializeBinary())
+    );
+
+    return () => {
+      console.log('cleaning up; deregistering');
+      const dr = new DeregisterRealm();
+      dr.setRealm('lobby');
+      sendSocketMsg(
+        encodeToSocketFmt(MessageType.DEREGISTER_REALM, dr.serializeBinary())
+      );
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   if (redirGame !== '') {
     return <Redirect push to={`/game/${redirGame}`} />;
   }
+
   return (
     <div>
       <Row>

@@ -12,7 +12,7 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-func (h *Hub) parseAndExecuteMessage(msg []byte, sender string) error {
+func (h *Hub) parseAndExecuteMessage(ctx context.Context, msg []byte, sender string) error {
 	// All socket messages are encoded entity.Events.
 	// (or they better be)
 
@@ -24,9 +24,9 @@ func (h *Hub) parseAndExecuteMessage(msg []byte, sender string) error {
 	case pb.MessageType_SEEK_REQUEST:
 		evt, ok := ew.Event.(*pb.SeekRequest)
 		if !ok {
-			return errors.New("unexpected typing error")
+			return errors.New("sr unexpected typing error")
 		}
-		sg, err := gameplay.NewSoughtGame(context.Background(), h.soughtGameStore, evt)
+		sg, err := gameplay.NewSoughtGame(ctx, h.soughtGameStore, evt)
 		if err != nil {
 			return err
 		}
@@ -34,10 +34,9 @@ func (h *Hub) parseAndExecuteMessage(msg []byte, sender string) error {
 		h.NewSeekRequest(sg.SeekRequest)
 
 	case pb.MessageType_GAME_ACCEPTED_EVENT:
-		ctx := context.Background()
 		evt, ok := ew.Event.(*pb.GameAcceptedEvent)
 		if !ok {
-			return errors.New("unexpected typing error")
+			return errors.New("gae unexpected typing error")
 		}
 
 		sg, err := h.soughtGameStore.Get(ctx, evt.RequestId)
@@ -46,7 +45,17 @@ func (h *Hub) parseAndExecuteMessage(msg []byte, sender string) error {
 		}
 		requester := sg.SeekRequest.User.Username
 		if requester == sender {
-			return errors.New("cannot accept own seek")
+			log.Info().Str("sender", sender).Msg("canceling seek")
+			err := gameplay.CancelSoughtGame(ctx, h.soughtGameStore, evt.RequestId)
+			if err != nil {
+				return err
+			}
+			// broadcast a seek deletion.
+			err = h.DeleteSeek(evt.RequestId)
+			if err != nil {
+				return err
+			}
+			return err
 		}
 
 		players := []*macondopb.PlayerInfo{
@@ -66,7 +75,7 @@ func (h *Hub) parseAndExecuteMessage(msg []byte, sender string) error {
 		if err != nil {
 			return err
 		}
-
+		// This event will result in a redirect.
 		ngevt := entity.WrapEvent(&pb.NewGameEvent{
 			GameId: g.GameID(),
 		}, pb.MessageType_NEW_GAME_EVENT, "")
@@ -82,7 +91,7 @@ func (h *Hub) parseAndExecuteMessage(msg []byte, sender string) error {
 			Str("requester", requester).
 			Str("onturn", g.NickOnTurn()).Msg("game-accepted")
 
-		// Now, send a start game event.
+		// Now, reset the timer and register the event change hook.
 		err = gameplay.StartGame(ctx, h.gameStore, h.eventChan, g.GameID())
 		if err != nil {
 			return err
@@ -92,12 +101,29 @@ func (h *Hub) parseAndExecuteMessage(msg []byte, sender string) error {
 		evt, ok := ew.Event.(*pb.ClientGameplayEvent)
 		if !ok {
 			// This really shouldn't happen
-			return errors.New("unexpected typing error")
+			return errors.New("cge unexpected typing error")
 		}
-		err := gameplay.PlayMove(context.Background(), h.gameStore, sender, evt)
+		err := gameplay.PlayMove(ctx, h.gameStore, sender, evt)
 		if err != nil {
 			return err
 		}
+
+	case pb.MessageType_REGISTER_REALM:
+		evt, ok := ew.Event.(*pb.RegisterRealm)
+		if !ok {
+			// This really shouldn't happen
+			return errors.New("rr unexpected typing error")
+		}
+		h.addToRealm(Realm(evt.Realm), sender)
+		h.sendRealmData(ctx, Realm(evt.Realm), sender)
+
+	case pb.MessageType_DEREGISTER_REALM:
+		evt, ok := ew.Event.(*pb.DeregisterRealm)
+		if !ok {
+			// This really shouldn't happen
+			return errors.New("dr unexpected typing error")
+		}
+		h.removeFromRealm(Realm(evt.Realm), sender)
 
 	default:
 		return fmt.Errorf("message type %v not yet handled", ew.Type)

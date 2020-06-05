@@ -148,10 +148,8 @@ func StartGame(ctx context.Context, gameStore GameStore, eventChan chan<- *entit
 		return err
 	}
 
-	entGame.SendChange(
-		entity.WrapEvent(entGame.HistoryRefresherEvent(),
-			pb.MessageType_GAME_HISTORY_REFRESHER,
-			entGame.GameID()))
+	// We do not send a history refresher event here. Instead, we will send one
+	// when the user joins the game realm. See the `sendRealmData` function.
 
 	return nil
 }

@@ -34,3 +34,13 @@ def build_protobuf(c):
         c.run(r'printf "/* eslint-disable */\n" > ' + tmp)
         c.run(f"cat {gen_filename} >> " + tmp)
         c.run(f"mv {tmp} {gen_filename}")
+
+
+@task
+def deploy(c):
+    with c.cd("liwords-ui"):
+        c.run("yarn build")
+        c.run("scp -r build ubuntu@xword.club:~/liwords-ui-build")
+    with c.cd("cmd/server"):
+        c.run("GOOS=linux GOARCH=amd64 go build -o liwords-linux-amd64")
+        c.run("scp liwords-linux-amd64 ubuntu@xword.club:.")

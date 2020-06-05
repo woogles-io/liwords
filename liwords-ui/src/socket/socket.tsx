@@ -6,7 +6,7 @@ export const getSocketURI = (username: string): string => {
   } else {
     socketURI = 'ws:';
   }
-  socketURI += `//${loc.host}${loc.pathname}ws?user=${username}`;
+  socketURI += `//${loc.host}/ws?user=${username}`;
   return socketURI;
 };
 

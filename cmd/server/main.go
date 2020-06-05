@@ -18,10 +18,10 @@ const (
 	GracefulShutdownTimeout = 30 * time.Second
 )
 
-var addr = flag.String("addr", ":8087", "http service address")
-
 func main() {
-
+	var dir, addr string
+	flag.StringVar(&addr, "addr", ":8087", "http service address")
+	flag.StringVar(&dir, "dir", ".", "the directory to serve files from. Defaults to the current dir")
 	flag.Parse()
 	zerolog.SetGlobalLevel(zerolog.DebugLevel)
 
@@ -33,10 +33,17 @@ func main() {
 	go hub.Run()
 	go hub.RunGameEventHandler()
 
+	// http.HandleFunc("/")
+
+	// http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+	// 	r.URL.Path = "/"
+	// 	staticHandler.ServeHTTP(w, r)
+	// })
+
 	http.HandleFunc("/ws", func(w http.ResponseWriter, r *http.Request) {
 		sockets.ServeWS(hub, w, r)
 	})
-	err := http.ListenAndServe(*addr, nil)
+	err := http.ListenAndServe(addr, nil)
 	if err != nil {
 		log.Fatal().Err(err).Msg("ListenAndServe")
 	}

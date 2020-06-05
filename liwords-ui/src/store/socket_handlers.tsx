@@ -12,6 +12,9 @@ import {
   ServerGameplayEvent,
   GameEndedEvent,
   ServerChallengeResultEvent,
+  SeekRequests,
+  RegisterRealm,
+  DeregisterRealm,
 } from '../gen/api/proto/game_service_pb';
 
 const parseMsg = (msg: Uint8Array) => {
@@ -29,6 +32,9 @@ const parseMsg = (msg: Uint8Array) => {
     [MessageType.SERVER_GAMEPLAY_EVENT]: ServerGameplayEvent,
     [MessageType.GAME_ENDED_EVENT]: GameEndedEvent,
     [MessageType.SERVER_CHALLENGE_RESULT_EVENT]: ServerChallengeResultEvent,
+    [MessageType.SEEK_REQUESTS]: SeekRequests,
+    [MessageType.REGISTER_REALM]: RegisterRealm,
+    [MessageType.DEREGISTER_REALM]: DeregisterRealm,
   };
 
   const parsedMsg = msgTypes[msgType];
@@ -60,13 +66,46 @@ export const onSocketMsg = (storeData: StoreData) => {
         });
         break;
       }
+
+      case MessageType.SEEK_REQUESTS: {
+        const sr = parsedMsg as SeekRequests;
+        storeData.addSoughtGames(
+          sr.getRequestsList().map((r) => {
+            const gameReq = r.getGameRequest()!;
+            const user = r.getUser()!;
+            return {
+              seeker: user.getUsername(),
+              lexicon: gameReq.getLexicon(),
+              initialTimeSecs: gameReq.getInitialTimeSeconds(),
+              challengeRule: gameReq.getChallengeRule(),
+              seekID: gameReq.getRequestId(),
+            };
+          })
+        );
+        break;
+      }
+
       case MessageType.ERROR_MESSAGE: {
         const err = parsedMsg as ErrorMessage;
-        // Show the error in some sort of pop-up in the future.
         storeData.addChat({
           entityType: ChatEntityType.ErrorMsg,
           sender: '',
           message: err.getMessage(),
+        });
+        break;
+      }
+
+      case MessageType.GAME_ENDED_EVENT: {
+        const gee = parsedMsg as GameEndedEvent;
+        const scores = gee.getScoresMap();
+        const ratings = gee.getNewRatingsMap();
+        const message = `Game is over. Scores: ${JSON.stringify(
+          scores
+        )}, new ratings: ${JSON.stringify(ratings)}`;
+        storeData.addChat({
+          entityType: ChatEntityType.ServerMsg,
+          sender: '',
+          message,
         });
         break;
       }
@@ -92,11 +131,17 @@ export const onSocketMsg = (storeData: StoreData) => {
         break;
       }
 
-      case MessageType.SERVER_CHALLENGE_RESULT_EVENT:
+      case MessageType.SERVER_CHALLENGE_RESULT_EVENT: {
         const sge = parsedMsg as ServerChallengeResultEvent;
         console.log('got server challenge result event', sge);
         storeData.challengeResultEvent(sge);
         break;
+      }
+      case MessageType.GAME_ACCEPTED_EVENT: {
+        const gae = parsedMsg as GameAcceptedEvent;
+        storeData.removeGame(gae.getRequestId());
+        break;
+      }
     }
   };
 };

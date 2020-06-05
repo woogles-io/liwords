@@ -13,6 +13,7 @@ type SoughtGameStore interface {
 	Get(ctx context.Context, id string) (*entity.SoughtGame, error)
 	Set(context.Context, *entity.SoughtGame) error
 	Delete(ctx context.Context, id string) error
+	ListOpen(ctx context.Context) ([]*entity.SoughtGame, error)
 }
 
 func NewSoughtGame(ctx context.Context, gameStore SoughtGameStore,
@@ -23,6 +24,10 @@ func NewSoughtGame(ctx context.Context, gameStore SoughtGameStore,
 		return nil, err
 	}
 	return sg, nil
+}
+
+func CancelSoughtGame(ctx context.Context, gameStore SoughtGameStore, id string) error {
+	return gameStore.Delete(ctx, id)
 }
 
 func NewMatchRequest(ctx context.Context, gameStore SoughtGameStore,

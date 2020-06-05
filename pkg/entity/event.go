@@ -97,6 +97,10 @@ func EventFromByteArray(arr []byte) (*EventWrapper, error) {
 		message = &pb.SeekRequest{}
 	case pb.MessageType_GAME_ACCEPTED_EVENT:
 		message = &pb.GameAcceptedEvent{}
+	case pb.MessageType_REGISTER_REALM:
+		message = &pb.RegisterRealm{}
+	case pb.MessageType_DEREGISTER_REALM:
+		message = &pb.DeregisterRealm{}
 	default:
 		return nil, fmt.Errorf("event of type %d not handled", msgType)
 	}

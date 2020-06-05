@@ -166,6 +166,48 @@ export namespace MatchRequest {
   }
 }
 
+export class GameAcceptedEvent extends jspb.Message {
+  getRequestId(): string;
+  setRequestId(value: string): void;
+
+  serializeBinary(): Uint8Array;
+  toObject(includeInstance?: boolean): GameAcceptedEvent.AsObject;
+  static toObject(includeInstance: boolean, msg: GameAcceptedEvent): GameAcceptedEvent.AsObject;
+  static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+  static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+  static serializeBinaryToWriter(message: GameAcceptedEvent, writer: jspb.BinaryWriter): void;
+  static deserializeBinary(bytes: Uint8Array): GameAcceptedEvent;
+  static deserializeBinaryFromReader(message: GameAcceptedEvent, reader: jspb.BinaryReader): GameAcceptedEvent;
+}
+
+export namespace GameAcceptedEvent {
+  export type AsObject = {
+    requestId: string,
+  }
+}
+
+export class SeekRequests extends jspb.Message {
+  clearRequestsList(): void;
+  getRequestsList(): Array<SeekRequest>;
+  setRequestsList(value: Array<SeekRequest>): void;
+  addRequests(value?: SeekRequest, index?: number): SeekRequest;
+
+  serializeBinary(): Uint8Array;
+  toObject(includeInstance?: boolean): SeekRequests.AsObject;
+  static toObject(includeInstance: boolean, msg: SeekRequests): SeekRequests.AsObject;
+  static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+  static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+  static serializeBinaryToWriter(message: SeekRequests, writer: jspb.BinaryWriter): void;
+  static deserializeBinary(bytes: Uint8Array): SeekRequests;
+  static deserializeBinaryFromReader(message: SeekRequests, reader: jspb.BinaryReader): SeekRequests;
+}
+
+export namespace SeekRequests {
+  export type AsObject = {
+    requestsList: Array<SeekRequest.AsObject>,
+  }
+}
+
 export class ServerGameplayEvent extends jspb.Message {
   hasEvent(): boolean;
   clearEvent(): void;
@@ -229,6 +271,8 @@ export namespace ServerChallengeResultEvent {
 }
 
 export class GameEndedEvent extends jspb.Message {
+  getScoresMap(): jspb.Map<string, number>;
+  clearScoresMap(): void;
   getNewRatingsMap(): jspb.Map<string, number>;
   clearNewRatingsMap(): void;
   serializeBinary(): Uint8Array;
@@ -243,6 +287,7 @@ export class GameEndedEvent extends jspb.Message {
 
 export namespace GameEndedEvent {
   export type AsObject = {
+    scoresMap: Array<[string, number]>,
     newRatingsMap: Array<[string, number]>,
   }
 }
@@ -317,26 +362,6 @@ export namespace ErrorMessage {
   }
 }
 
-export class GameAcceptedEvent extends jspb.Message {
-  getRequestId(): string;
-  setRequestId(value: string): void;
-
-  serializeBinary(): Uint8Array;
-  toObject(includeInstance?: boolean): GameAcceptedEvent.AsObject;
-  static toObject(includeInstance: boolean, msg: GameAcceptedEvent): GameAcceptedEvent.AsObject;
-  static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
-  static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
-  static serializeBinaryToWriter(message: GameAcceptedEvent, writer: jspb.BinaryWriter): void;
-  static deserializeBinary(bytes: Uint8Array): GameAcceptedEvent;
-  static deserializeBinaryFromReader(message: GameAcceptedEvent, reader: jspb.BinaryReader): GameAcceptedEvent;
-}
-
-export namespace GameAcceptedEvent {
-  export type AsObject = {
-    requestId: string,
-  }
-}
-
 export class ClientGameplayEvent extends jspb.Message {
   getType(): ClientGameplayEvent.EventTypeMap[keyof ClientGameplayEvent.EventTypeMap];
   setType(value: ClientGameplayEvent.EventTypeMap[keyof ClientGameplayEvent.EventTypeMap]): void;
@@ -378,6 +403,46 @@ export namespace ClientGameplayEvent {
   export const EventType: EventTypeMap;
 }
 
+export class RegisterRealm extends jspb.Message {
+  getRealm(): string;
+  setRealm(value: string): void;
+
+  serializeBinary(): Uint8Array;
+  toObject(includeInstance?: boolean): RegisterRealm.AsObject;
+  static toObject(includeInstance: boolean, msg: RegisterRealm): RegisterRealm.AsObject;
+  static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+  static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+  static serializeBinaryToWriter(message: RegisterRealm, writer: jspb.BinaryWriter): void;
+  static deserializeBinary(bytes: Uint8Array): RegisterRealm;
+  static deserializeBinaryFromReader(message: RegisterRealm, reader: jspb.BinaryReader): RegisterRealm;
+}
+
+export namespace RegisterRealm {
+  export type AsObject = {
+    realm: string,
+  }
+}
+
+export class DeregisterRealm extends jspb.Message {
+  getRealm(): string;
+  setRealm(value: string): void;
+
+  serializeBinary(): Uint8Array;
+  toObject(includeInstance?: boolean): DeregisterRealm.AsObject;
+  static toObject(includeInstance: boolean, msg: DeregisterRealm): DeregisterRealm.AsObject;
+  static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+  static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+  static serializeBinaryToWriter(message: DeregisterRealm, writer: jspb.BinaryWriter): void;
+  static deserializeBinary(bytes: Uint8Array): DeregisterRealm;
+  static deserializeBinaryFromReader(message: DeregisterRealm, reader: jspb.BinaryReader): DeregisterRealm;
+}
+
+export namespace DeregisterRealm {
+  export type AsObject = {
+    realm: string,
+  }
+}
+
 export interface GameModeMap {
   REAL_TIME: 0;
   CORRESPONDENCE: 1;
@@ -403,6 +468,9 @@ export interface MessageTypeMap {
   ERROR_MESSAGE: 7;
   NEW_GAME_EVENT: 8;
   SERVER_CHALLENGE_RESULT_EVENT: 9;
+  SEEK_REQUESTS: 10;
+  REGISTER_REALM: 11;
+  DEREGISTER_REALM: 12;
 }
 
 export const MessageType: MessageTypeMap;

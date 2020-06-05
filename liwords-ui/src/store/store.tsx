@@ -3,6 +3,7 @@ import {
   GameState,
   StateFromHistoryRefresher,
   StateForwarder,
+  turnSummary,
 } from '../utils/cwgame/game';
 import { EnglishCrosswordGameDistribution } from '../constants/tile_distributions';
 import {
@@ -10,6 +11,7 @@ import {
   ServerGameplayEvent,
   ServerChallengeResultEvent,
 } from '../gen/api/proto/game_service_pb';
+import { GameEvent } from '../gen/macondo/api/proto/macondo/macondo_pb';
 
 export enum ChatEntityType {
   UserChat,
@@ -41,7 +43,8 @@ export type StoreData = {
   // Functions and data to deal with the global store.
   soughtGames: Array<SoughtGame>;
   addSoughtGame: (sg: SoughtGame) => void;
-  removeGame: (index: number) => void;
+  addSoughtGames: (sgs: Array<SoughtGame>) => void;
+  removeGame: (id: string) => void;
   redirGame: string;
   setRedirGame: React.Dispatch<React.SetStateAction<string>>;
   gameHistoryRefresher: (ghr: GameHistoryRefresher) => void;
@@ -57,6 +60,7 @@ export const Context = createContext<StoreData>({
   chat: [],
   addChat: () => {},
   addSoughtGame: () => {},
+  addSoughtGames: () => {},
   removeGame: () => {},
   redirGame: '',
   setRedirGame: () => {},
@@ -87,11 +91,16 @@ export const Store = ({ children, ...props }: Props) => {
     setSoughtGames((state) => [...state, sg]);
   };
 
-  const removeGame = (index: number) => {
+  const addSoughtGames = (sgs: Array<SoughtGame>) => {
+    setSoughtGames(sgs);
+  };
+
+  const removeGame = (id: string) => {
     setSoughtGames((state) => {
-      const copy = [...state];
-      copy.splice(index, 1);
-      return copy;
+      const newArr = state.filter((sg) => {
+        return sg.seekID !== id;
+      });
+      return newArr;
     });
   };
 
@@ -102,6 +111,12 @@ export const Store = ({ children, ...props }: Props) => {
   const processGameplayEvent = (sge: ServerGameplayEvent) => {
     setGameState((gs) => {
       return StateForwarder(sge, gs);
+    });
+    addChat({
+      entityType: ChatEntityType.ServerMsg,
+      sender: '',
+      message: turnSummary(sge),
+      id: randomID(),
     });
   };
 
@@ -121,16 +136,19 @@ export const Store = ({ children, ...props }: Props) => {
       // eslint-disable-next-line no-param-reassign
       entity.id = randomID();
     }
-    chat.push(entity);
-    if (chat.length > MaxChatLength) {
-      chat.shift();
+    // XXX: This should be sped up.
+    const chatCopy = [...chat];
+    chatCopy.push(entity);
+    if (chatCopy.length > MaxChatLength) {
+      chatCopy.shift();
     }
-    setChat(chat);
+    setChat(chatCopy);
   };
 
   const store = {
     soughtGames,
     addSoughtGame,
+    addSoughtGames,
     removeGame,
     redirGame,
     setRedirGame,

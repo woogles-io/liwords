@@ -9,6 +9,12 @@ import { useStoreContext } from '../store/store';
 import { PlayerCards } from './player_cards';
 import Pool from './pool';
 import { fullPlayerInfo } from '../utils/cwgame/game';
+import {
+  RegisterRealm,
+  DeregisterRealm,
+  MessageType,
+} from '../gen/api/proto/game_service_pb';
+import { encodeToSocketFmt } from '../utils/protobuf';
 
 const gutter = 16;
 const boardspan = 12;
@@ -52,6 +58,25 @@ export const Table = (props: Props) => {
     // Avoid react-router hijacking the back button.
     setRedirGame('');
   }, [setRedirGame]);
+
+  useEffect(() => {
+    console.log('Tryna register with gameID', gameID);
+    const rr = new RegisterRealm();
+    rr.setRealm(gameID);
+    props.sendSocketMsg(
+      encodeToSocketFmt(MessageType.REGISTER_REALM, rr.serializeBinary())
+    );
+
+    return () => {
+      console.log('cleaning up; deregistering', gameID);
+      const dr = new DeregisterRealm();
+      dr.setRealm(gameID);
+      props.sendSocketMsg(
+        encodeToSocketFmt(MessageType.DEREGISTER_REALM, dr.serializeBinary())
+      );
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const player1 = fullPlayerInfo(0, gameState);
   const player2 = fullPlayerInfo(1, gameState);

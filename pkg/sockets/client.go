@@ -3,6 +3,7 @@
 package sockets
 
 import (
+	"context"
 	"crypto/hmac"
 	"crypto/sha1"
 	"encoding/hex"
@@ -39,6 +40,12 @@ const (
 var upgrader = websocket.Upgrader{
 	ReadBufferSize:  1024,
 	WriteBufferSize: 1024,
+	CheckOrigin: func(r *http.Request) bool {
+		log.Debug().Msgf("host header %v", r.Header.Get("Host"))
+		log.Debug().Msgf("origin %v", r.Header.Get("Origin"))
+		// XXX: FIX THIS
+		return true
+	},
 }
 
 // Client is a middleman between the websocket connection and the hub.
@@ -91,7 +98,7 @@ func (c *Client) readPump() {
 
 		// Here is where we parse the message and send something off to the hub
 		// potentially.
-		err = c.hub.parseAndExecuteMessage(message, c.username)
+		err = c.hub.parseAndExecuteMessage(context.Background(), message, c.username)
 		if err != nil {
 			log.Err(err).Str("username", c.username).Msg("parse-and-execute-message")
 			c.sendError(err)
@@ -223,6 +230,7 @@ func ServeWS(hub *Hub, w http.ResponseWriter, r *http.Request) {
 	// 	log.Err(err).Msg("validating websocket")
 	// 	return
 	// }
+	// initialRealm := qvals.Get("realm")
 
 	client := &Client{
 		hub:      hub,
@@ -231,12 +239,14 @@ func ServeWS(hub *Hub, w http.ResponseWriter, r *http.Request) {
 		send:     make(chan []byte, 256),
 		realms:   make(map[Realm]bool),
 	}
-	log.Info().Str("user", client.username).Msg("new connection")
+	// log.Info().Str("user", client.username).Str("initRealm", initialRealm).
+	// 	Msg("new connection")
+	// client.realms[Realm(initialRealm)] = true
 	client.hub.register <- client
-	// Maybe can get realm from qvals as well in the future.
 
 	// Allow collection of memory referenced by the caller by doing all work in
 	// new goroutines.
 	go client.writePump()
 	go client.readPump()
+	// client.sendInitialData()
 }

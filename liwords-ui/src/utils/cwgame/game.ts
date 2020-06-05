@@ -415,6 +415,29 @@ export const StateForwarder = (
   return newState;
 };
 
+export const turnSummary = (sge: ServerGameplayEvent): string => {
+  const evt = sge.getEvent();
+  switch (evt?.getType()) {
+    case GameEvent.Type.TILE_PLACEMENT_MOVE: {
+      const player = evt.getNickname();
+      const move = evt.getPlayedTiles();
+      const position = evt.getPosition();
+      const score = evt.getScore();
+      return `${player} played ${position} ${move} for ${score} points.`;
+    }
+    case GameEvent.Type.EXCHANGE: {
+      const player = evt.getNickname();
+      const move = evt.getExchanged();
+      return `${player} exchanged ${move.length} tiles.`;
+    }
+    case GameEvent.Type.PASS:
+      const player = evt.getNickname();
+      return `${player} passed their turn.`;
+    default:
+      return `unhandled event: ${evt?.getType()}`;
+  }
+};
+
 export const fullPlayerInfo = (
   playerIdx: number,
   state: GameState

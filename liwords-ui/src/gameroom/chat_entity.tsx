@@ -4,6 +4,7 @@ import { ChatEntityType } from '../store/store';
 
 const ServerMsgColor = '#237804';
 const ChatSenderColor = '#ad4e00';
+const ServerErrColor = '#a8071a';
 
 type EntityProps = {
   entityType: ChatEntityType;
@@ -22,7 +23,11 @@ export const ChatEntity = (props: EntityProps) => {
       );
       break;
     case ChatEntityType.ErrorMsg:
-      el = <Alert message={props.message} type="error" />;
+      el = (
+        <div>
+          <span style={{ color: ServerErrColor }}>{props.message}</span>
+        </div>
+      );
       break;
     case ChatEntityType.UserChat:
       el = (

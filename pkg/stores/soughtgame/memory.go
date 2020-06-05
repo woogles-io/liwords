@@ -51,3 +51,11 @@ func (m *MemoryStore) Delete(ctx context.Context, id string) error {
 	delete(m.soughtGames, id)
 	return nil
 }
+
+func (m *MemoryStore) ListOpen(ctx context.Context) ([]*entity.SoughtGame, error) {
+	ret := []*entity.SoughtGame{}
+	for _, v := range m.soughtGames {
+		ret = append(ret, v)
+	}
+	return ret, nil
+}

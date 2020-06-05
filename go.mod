@@ -7,6 +7,7 @@ require (
 	github.com/domino14/macondo v0.4.5-0.20200603015523-7188d2632f0a
 	github.com/golang/protobuf v1.4.2
 	github.com/google/go-cmp v0.4.1 // indirect
+	github.com/gorilla/mux v1.7.4
 	github.com/gorilla/websocket v1.4.2
 	github.com/kr/text v0.2.0 // indirect
 	github.com/lithammer/shortuuid v3.0.0+incompatible
