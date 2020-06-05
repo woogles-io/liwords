@@ -1,5 +1,5 @@
-import React, { useEffect } from 'react';
-import { Row, Col, Button } from 'antd';
+import React, { useEffect, useState } from 'react';
+import { Row, Col, Button, Modal } from 'antd';
 import { Redirect } from 'react-router-dom';
 
 import { TopBar } from '../topbar/topbar';
@@ -20,6 +20,7 @@ import {
   ChallengeRuleMap,
   ChallengeRule,
 } from '../gen/macondo/api/proto/macondo/macondo_pb';
+import { SeekForm, seekPropVals } from './seek_form';
 
 const sendSeek = (
   game: SoughtGame,
@@ -90,6 +91,36 @@ export const Lobby = (props: Props) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  const [seekModalVisible, setSeekModalVisible] = useState(false);
+  const [seekSettings, setSeekSettings] = useState<seekPropVals>({
+    lexicon: 'CSW19',
+    challengerule: ChallengeRule.FIVE_POINT,
+    initialtime: 8,
+  });
+
+  const showSeekModal = () => {
+    setSeekModalVisible(true);
+  };
+
+  const handleModalOk = () => {
+    setSeekModalVisible(false);
+    sendSeek(
+      {
+        seeker: props.username,
+        lexicon: seekSettings.lexicon as string,
+        challengeRule: seekSettings.challengerule as number,
+        initialTimeSecs: (seekSettings.initialtime as number) * 60,
+        // rating: 0,
+        seekID: '', // assigned by server
+      },
+      props.sendSocketMsg
+    );
+  };
+
+  const handleModalCancel = () => {
+    setSeekModalVisible(false);
+  };
+
   if (redirGame !== '') {
     return <Redirect push to={`/game/${redirGame}`} />;
   }
@@ -119,25 +150,17 @@ export const Lobby = (props: Props) => {
 
       <Row>
         <Col span={24}>
-          <Button
-            onClick={() =>
-              // Eventually will replace with a modal that has selections
-              // like lexicon / challenge rule/ etc.
-              sendSeek(
-                {
-                  seeker: props.username,
-                  lexicon: 'CSW19',
-                  challengeRule: ChallengeRule.FIVE_POINT,
-                  initialTimeSecs: 900,
-                  // rating: 0,
-                  seekID: '', // assigned by server
-                },
-                props.sendSocketMsg
-              )
-            }
-          >
+          <Button type="primary" onClick={showSeekModal}>
             New Game
           </Button>
+          <Modal
+            title="New Game"
+            visible={seekModalVisible}
+            onOk={handleModalOk}
+            onCancel={handleModalCancel}
+          >
+            <SeekForm vals={seekSettings} onChange={setSeekSettings} />
+          </Modal>
         </Col>
       </Row>
     </div>

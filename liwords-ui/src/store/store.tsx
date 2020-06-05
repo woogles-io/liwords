@@ -53,6 +53,8 @@ export type StoreData = {
   challengeResultEvent: (sge: ServerChallengeResultEvent) => void;
   addChat: (chat: ChatEntityObj) => void;
   chat: Array<ChatEntityObj>;
+  timers: { [username: string]: number | undefined };
+  setTimer: (username: string, timeMsec: number) => void;
 };
 
 export const Context = createContext<StoreData>({
@@ -68,6 +70,8 @@ export const Context = createContext<StoreData>({
   gameState: initialGameState,
   processGameplayEvent: () => {},
   challengeResultEvent: () => {},
+  timers: {},
+  setTimer: () => {},
 });
 
 type Props = {
@@ -86,6 +90,7 @@ export const Store = ({ children, ...props }: Props) => {
   const [redirGame, setRedirGame] = useState('');
   const [gameState, setGameState] = useState(initialGameState);
   const [chat, setChat] = useState(new Array<ChatEntityObj>());
+  const [timers, setTimer] = useState({});
 
   const addSoughtGame = (sg: SoughtGame) => {
     setSoughtGames((state) => [...state, sg]);
@@ -158,6 +163,8 @@ export const Store = ({ children, ...props }: Props) => {
     challengeResultEvent,
     addChat,
     chat,
+    timers,
+    setTimer,
   };
 
   return <Context.Provider value={store}>{children}</Context.Provider>;

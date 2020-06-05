@@ -77,6 +77,8 @@ export class GameState {
 
   gameID: string;
 
+  // timers: { [username: string]: number | undefined };
+
   constructor(
     tileDistribution: { [rune: string]: number },
     players: Array<PlayerInfo>
@@ -113,6 +115,11 @@ export class GameState {
     this.lastEvent = null;
     this.turnSummary = [];
     this.gameID = '';
+
+    // this.timers = {
+    //   [players[0].getNickname()]: undefined,
+    //   [players[1].getNickname()]: undefined,
+    // };
   }
 
   /**
@@ -313,6 +320,19 @@ export class GameState {
   //     quackleTurnNumber: this.quackleTurnNumber,
   //   };
   // }
+
+  startTimerFor(nick: string, other: string) {
+    // if (this.timers[other] !== undefined && this.timers[other] !== 0) {
+    //   clearInterval(this.timers[other]);
+    // }
+    // // find nearest second.
+    // const nearestSecond = Math.floor(this.timeRemaining[nick] / 1000);
+    // const firstTimer = this.timeRemaining[nick] - nearestSecond;
+    // setTimeout(() => {
+    //   this.setTimeRemaining;
+    // }, firstTimer);
+    console.log('starttimerfor', nick, this);
+  }
 }
 
 export const StateFromHistoryRefresher = (
@@ -377,6 +397,12 @@ export const StateFromHistoryRefresher = (
   console.log('then current racks are', gs.currentRacks);
   console.log('onturn', gs.onturn, gs.players[gs.onturn]);
   console.log('scores', gs.scores);
+
+  // Now we start the timer for the player on turn.
+  gs.startTimerFor(
+    playerList[gs.onturn].getNickname(),
+    playerList[1 - gs.onturn].getNickname()
+  );
   return gs;
 };
 
@@ -410,7 +436,10 @@ export const StateForwarder = (
   }
   // Otherwise, ignore it.
   newState.setTimeRemaining(evt!.getNickname(), sge.getTimeRemaining());
-
+  newState.startTimerFor(
+    newState.players[newState.onturn].getNickname(),
+    newState.players[1 - newState.onturn].getNickname()
+  );
   console.log('returning a new state. scores', newState.scores);
   return newState;
 };
@@ -423,16 +452,18 @@ export const turnSummary = (sge: ServerGameplayEvent): string => {
       const move = evt.getPlayedTiles();
       const position = evt.getPosition();
       const score = evt.getScore();
-      return `${player} played ${position} ${move} for ${score} points.`;
+      const cumulative = evt.getCumulative();
+      return `${player} played ${position} ${move} for ${score} points (total ${cumulative}).`;
     }
     case GameEvent.Type.EXCHANGE: {
       const player = evt.getNickname();
       const move = evt.getExchanged();
       return `${player} exchanged ${move.length} tiles.`;
     }
-    case GameEvent.Type.PASS:
+    case GameEvent.Type.PASS: {
       const player = evt.getNickname();
       return `${player} passed their turn.`;
+    }
     default:
       return `unhandled event: ${evt?.getType()}`;
   }
