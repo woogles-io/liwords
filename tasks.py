@@ -40,7 +40,7 @@ def build_protobuf(c):
 def deploy(c):
     with c.cd("liwords-ui"):
         c.run("yarn build")
-        c.run("scp -r build ubuntu@xword.club:~/liwords-ui-build")
+        c.run("rsync -avz --del build/ ubuntu@xword.club:~/liwords-ui-build")
     with c.cd("cmd/server"):
         c.run("GOOS=linux GOARCH=amd64 go build -o liwords-linux-amd64")
         c.run("scp liwords-linux-amd64 ubuntu@xword.club:.")

@@ -59,7 +59,7 @@ it('tests complex event', () => {
   });
   const board = new Board();
   board.setTileLayout(oxyTilesLayout);
-  const evt = tilesetToMoveEvent(placedTiles, board);
+  const evt = tilesetToMoveEvent(placedTiles, board, '');
   expect(evt).not.toBeNull();
   expect(evt?.getPositionCoords()).toEqual('A1');
   expect(evt?.getTiles()).toEqual('OX.P...B..AZ..E');
@@ -100,7 +100,7 @@ it('tests invalid play', () => {
   });
   const board = new Board();
   board.setTileLayout(oxyTilesLayout);
-  const evt = tilesetToMoveEvent(placedTiles, board);
+  const evt = tilesetToMoveEvent(placedTiles, board, '');
   expect(evt).toBeNull();
 });
 
@@ -123,7 +123,7 @@ it('tests event with blank', () => {
   });
   const board = new Board();
   board.setTileLayout(oxyTilesLayout);
-  const evt = tilesetToMoveEvent(placedTiles, board);
+  const evt = tilesetToMoveEvent(placedTiles, board, '');
   expect(evt).not.toBeNull();
   expect(evt?.getPositionCoords()).toEqual('5C');
   expect(evt?.getTiles()).toEqual('.ImB');

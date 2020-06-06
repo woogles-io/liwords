@@ -6,21 +6,12 @@ export const getSocketURI = (username: string): string => {
   } else {
     socketURI = 'ws:';
   }
-  socketURI += `//${loc.host}/ws?user=${username}`;
+  if (loc.host.includes('localhost') || loc.host.includes('127.0.0.1')) {
+    // Use the local Go server
+    socketURI += `//localhost:8087/ws?user=${username}`;
+  } else {
+    // We are in prod; use same domain (use proxy on prod).
+    socketURI += `//${loc.host}/ws?user=${username}`;
+  }
   return socketURI;
 };
-
-export function websocket(
-  uri: string,
-  onSocket: (sock: WebSocket) => void,
-  onEvent: (evt: MessageEvent) => void
-) {
-  const socket = new WebSocket(uri);
-  socket.addEventListener('open', (event) => {
-    console.log('connected');
-    onSocket(socket);
-  });
-  socket.addEventListener('message', (event) => {
-    onEvent(event);
-  });
-}
