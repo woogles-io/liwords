@@ -57,20 +57,25 @@ export const onSocketMsg = (storeData: StoreData) => {
         if (!gameReq || !user) {
           return;
         }
-        storeData.addSoughtGame({
-          seeker: user.getUsername(),
-          lexicon: gameReq.getLexicon(),
-          initialTimeSecs: gameReq.getInitialTimeSeconds(),
-          challengeRule: gameReq.getChallengeRule(),
-          seekID: gameReq.getRequestId(),
+        storeData.dispatchLobbyContext({
+          actionType: 'addSoughtGame',
+          payload: {
+            seeker: user.getUsername(),
+            lexicon: gameReq.getLexicon(),
+            initialTimeSecs: gameReq.getInitialTimeSeconds(),
+            challengeRule: gameReq.getChallengeRule(),
+            seekID: gameReq.getRequestId(),
+          },
+          reducer: 'lobby',
         });
         break;
       }
 
       case MessageType.SEEK_REQUESTS: {
         const sr = parsedMsg as SeekRequests;
-        storeData.addSoughtGames(
-          sr.getRequestsList().map((r) => {
+        storeData.dispatchLobbyContext({
+          actionType: 'addSoughtGames',
+          payload: sr.getRequestsList().map((r) => {
             const gameReq = r.getGameRequest()!;
             const user = r.getUser()!;
             return {
@@ -80,8 +85,10 @@ export const onSocketMsg = (storeData: StoreData) => {
               challengeRule: gameReq.getChallengeRule(),
               seekID: gameReq.getRequestId(),
             };
-          })
-        );
+          }),
+          reducer: 'lobby',
+        });
+
         break;
       }
 
@@ -139,7 +146,11 @@ export const onSocketMsg = (storeData: StoreData) => {
       }
       case MessageType.GAME_ACCEPTED_EVENT: {
         const gae = parsedMsg as GameAcceptedEvent;
-        storeData.removeGame(gae.getRequestId());
+        storeData.dispatchLobbyContext({
+          actionType: 'removeGame',
+          payload: gae.getRequestId(),
+          reducer: 'lobby',
+        });
         break;
       }
     }

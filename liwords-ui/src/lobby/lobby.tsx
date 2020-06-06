@@ -15,7 +15,8 @@ import {
 } from '../gen/api/proto/game_service_pb';
 import { encodeToSocketFmt } from '../utils/protobuf';
 import { SoughtGames } from './sought_games';
-import { SoughtGame, useStoreContext } from '../store/store';
+import { SoughtGame } from '../store/reducers/lobby_reducer';
+import { useStoreContext } from '../store/store';
 import {
   ChallengeRuleMap,
   ChallengeRule,

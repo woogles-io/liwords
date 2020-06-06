@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState } from 'react';
+import React, { createContext, useContext, useState, useReducer } from 'react';
 import {
   GameState,
   StateFromHistoryRefresher,
@@ -11,22 +11,15 @@ import {
   ServerGameplayEvent,
   ServerChallengeResultEvent,
 } from '../gen/api/proto/game_service_pb';
-import { GameEvent } from '../gen/macondo/api/proto/macondo/macondo_pb';
+import { Reducer } from './reducers/main';
+import { SoughtGame } from './reducers/lobby_reducer';
+import { Action } from '../actions/actions';
 
 export enum ChatEntityType {
   UserChat,
   ServerMsg,
   ErrorMsg,
 }
-
-export type SoughtGame = {
-  seeker: string;
-  lexicon: string;
-  initialTimeSecs: number;
-  challengeRule: number;
-  // rating: number;
-  seekID: string;
-};
 
 export type ChatEntityObj = {
   entityType: ChatEntityType;
@@ -41,10 +34,12 @@ const initialGameState = new GameState(EnglishCrosswordGameDistribution, []);
 
 export type StoreData = {
   // Functions and data to deal with the global store.
-  soughtGames: Array<SoughtGame>;
-  addSoughtGame: (sg: SoughtGame) => void;
-  addSoughtGames: (sgs: Array<SoughtGame>) => void;
-  removeGame: (id: string) => void;
+  // soughtGames: Array<SoughtGame>;
+  // addSoughtGame: (sg: SoughtGame) => void;
+  // addSoughtGames: (sgs: Array<SoughtGame>) => void;
+  // removeGame: (id: string) => void;
+  lobbyContext: Array<SoughtGame>;
+  dispatchLobbyContext: (action: Action) => void;
   redirGame: string;
   setRedirGame: React.Dispatch<React.SetStateAction<string>>;
   gameHistoryRefresher: (ghr: GameHistoryRefresher) => void;
@@ -58,12 +53,11 @@ export type StoreData = {
 };
 
 export const Context = createContext<StoreData>({
-  soughtGames: [],
+  // XXX: Rename these contexts obviously.
+  lobbyContext: [],
+  dispatchLobbyContext: () => {},
   chat: [],
   addChat: () => {},
-  addSoughtGame: () => {},
-  addSoughtGames: () => {},
-  removeGame: () => {},
   redirGame: '',
   setRedirGame: () => {},
   gameHistoryRefresher: () => {},
@@ -86,28 +80,33 @@ const randomID = () => {
 };
 
 export const Store = ({ children, ...props }: Props) => {
-  const [soughtGames, setSoughtGames] = useState(new Array<SoughtGame>());
+  const [lobbyContext, dispatchLobbyContext] = useReducer(
+    Reducer,
+    new Array<SoughtGame>()
+  );
+
+  // const [soughtGames, setSoughtGames] = useState(new Array<SoughtGame>());
   const [redirGame, setRedirGame] = useState('');
   const [gameState, setGameState] = useState(initialGameState);
   const [chat, setChat] = useState(new Array<ChatEntityObj>());
   // const [timers, setTimer] = useState({});
 
-  const addSoughtGame = (sg: SoughtGame) => {
-    setSoughtGames((state) => [...state, sg]);
-  };
+  // const addSoughtGame = (sg: SoughtGame) => {
+  //   setSoughtGames((state) => [...state, sg]);
+  // };
 
-  const addSoughtGames = (sgs: Array<SoughtGame>) => {
-    setSoughtGames(sgs);
-  };
+  // const addSoughtGames = (sgs: Array<SoughtGame>) => {
+  //   setSoughtGames(sgs);
+  // };
 
-  const removeGame = (id: string) => {
-    setSoughtGames((state) => {
-      const newArr = state.filter((sg) => {
-        return sg.seekID !== id;
-      });
-      return newArr;
-    });
-  };
+  // const removeGame = (id: string) => {
+  //   setSoughtGames((state) => {
+  //     const newArr = state.filter((sg) => {
+  //       return sg.seekID !== id;
+  //     });
+  //     return newArr;
+  //   });
+  // };
 
   const gameHistoryRefresher = (ghr: GameHistoryRefresher) => {
     setGameState(StateFromHistoryRefresher(ghr));
@@ -151,10 +150,8 @@ export const Store = ({ children, ...props }: Props) => {
   };
 
   const store = {
-    soughtGames,
-    addSoughtGame,
-    addSoughtGames,
-    removeGame,
+    lobbyContext,
+    dispatchLobbyContext,
     redirGame,
     setRedirGame,
     gameState,
