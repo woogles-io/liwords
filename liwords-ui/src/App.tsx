@@ -33,7 +33,6 @@ const App = (props: Props) => {
   const [width, height] = useWindowSize();
   const store = useStoreContext();
   const socketUrl = getSocketURI(props.username);
-
   const { sendMessage } = useWebSocket(socketUrl, {
     onOpen: () => console.log('connected to socket'),
     // Will attempt to reconnect on all close events, such as server shutting down
