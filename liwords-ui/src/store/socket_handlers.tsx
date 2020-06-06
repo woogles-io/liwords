@@ -16,6 +16,7 @@ import {
   RegisterRealm,
   DeregisterRealm,
 } from '../gen/api/proto/game_service_pb';
+import { ActionType } from '../actions/actions';
 
 const parseMsg = (msg: Uint8Array) => {
   const msgType = msg[0] as MessageTypeMap[keyof MessageTypeMap];
@@ -58,7 +59,7 @@ export const onSocketMsg = (storeData: StoreData) => {
           return;
         }
         storeData.dispatchLobbyContext({
-          actionType: 'addSoughtGame',
+          actionType: ActionType.AddSoughtGame,
           payload: {
             seeker: user.getUsername(),
             lexicon: gameReq.getLexicon(),
@@ -74,7 +75,7 @@ export const onSocketMsg = (storeData: StoreData) => {
       case MessageType.SEEK_REQUESTS: {
         const sr = parsedMsg as SeekRequests;
         storeData.dispatchLobbyContext({
-          actionType: 'addSoughtGames',
+          actionType: ActionType.AddSoughtGames,
           payload: sr.getRequestsList().map((r) => {
             const gameReq = r.getGameRequest()!;
             const user = r.getUser()!;
@@ -147,7 +148,7 @@ export const onSocketMsg = (storeData: StoreData) => {
       case MessageType.GAME_ACCEPTED_EVENT: {
         const gae = parsedMsg as GameAcceptedEvent;
         storeData.dispatchLobbyContext({
-          actionType: 'removeGame',
+          actionType: ActionType.RemoveSoughtGame,
           payload: gae.getRequestId(),
           reducer: 'lobby',
         });

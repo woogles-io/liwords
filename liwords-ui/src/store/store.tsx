@@ -12,7 +12,7 @@ import {
   ServerChallengeResultEvent,
 } from '../gen/api/proto/game_service_pb';
 import { Reducer } from './reducers/main';
-import { SoughtGame } from './reducers/lobby_reducer';
+import { SoughtGame, LobbyState } from './reducers/lobby_reducer';
 import { Action } from '../actions/actions';
 
 export enum ChatEntityType {
@@ -38,7 +38,7 @@ export type StoreData = {
   // addSoughtGame: (sg: SoughtGame) => void;
   // addSoughtGames: (sgs: Array<SoughtGame>) => void;
   // removeGame: (id: string) => void;
-  lobbyContext: Array<SoughtGame>;
+  lobbyContext: LobbyState | undefined;
   dispatchLobbyContext: (action: Action) => void;
   redirGame: string;
   setRedirGame: React.Dispatch<React.SetStateAction<string>>;
@@ -53,8 +53,7 @@ export type StoreData = {
 };
 
 export const Context = createContext<StoreData>({
-  // XXX: Rename these contexts obviously.
-  lobbyContext: [],
+  lobbyContext: { soughtGames: [] },
   dispatchLobbyContext: () => {},
   chat: [],
   addChat: () => {},
@@ -80,33 +79,14 @@ const randomID = () => {
 };
 
 export const Store = ({ children, ...props }: Props) => {
-  const [lobbyContext, dispatchLobbyContext] = useReducer(
-    Reducer,
-    new Array<SoughtGame>()
-  );
+  const [lobbyContext, dispatchLobbyContext] = useReducer(Reducer, {
+    soughtGames: [],
+  });
 
   // const [soughtGames, setSoughtGames] = useState(new Array<SoughtGame>());
   const [redirGame, setRedirGame] = useState('');
   const [gameState, setGameState] = useState(initialGameState);
   const [chat, setChat] = useState(new Array<ChatEntityObj>());
-  // const [timers, setTimer] = useState({});
-
-  // const addSoughtGame = (sg: SoughtGame) => {
-  //   setSoughtGames((state) => [...state, sg]);
-  // };
-
-  // const addSoughtGames = (sgs: Array<SoughtGame>) => {
-  //   setSoughtGames(sgs);
-  // };
-
-  // const removeGame = (id: string) => {
-  //   setSoughtGames((state) => {
-  //     const newArr = state.filter((sg) => {
-  //       return sg.seekID !== id;
-  //     });
-  //     return newArr;
-  //   });
-  // };
 
   const gameHistoryRefresher = (ghr: GameHistoryRefresher) => {
     setGameState(StateFromHistoryRefresher(ghr));

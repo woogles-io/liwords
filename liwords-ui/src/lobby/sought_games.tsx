@@ -28,7 +28,7 @@ type Props = {
 export const SoughtGames = (props: Props) => {
   const { lobbyContext } = useStoreContext();
 
-  const soughtGameEls = lobbyContext.map((game, idx) => (
+  const soughtGameEls = lobbyContext?.soughtGames.map((game, idx) => (
     <li
       key={`game${game.seeker}`}
       style={{ paddingTop: 20, cursor: 'pointer' }}

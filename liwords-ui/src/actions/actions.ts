@@ -1,5 +1,11 @@
 export type Action = {
-  actionType: string;
+  actionType: ActionType;
   payload: unknown;
   reducer: string;
 };
+
+export enum ActionType {
+  AddSoughtGame,
+  AddSoughtGames,
+  RemoveSoughtGame,
+}

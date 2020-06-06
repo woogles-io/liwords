@@ -1,4 +1,4 @@
-import { Action } from '../../actions/actions';
+import { Action, ActionType } from '../../actions/actions';
 
 export type SoughtGame = {
   seeker: string;
@@ -9,27 +9,42 @@ export type SoughtGame = {
   seekID: string;
 };
 
-export function LobbyReducer(state: unknown, action: Action) {
+export type LobbyState = {
+  soughtGames: Array<SoughtGame>;
+  // + Other things in the lobby here that have state.
+};
+
+export function LobbyReducer(state: LobbyState, action: Action): LobbyState {
   switch (action.actionType) {
-    case 'addSoughtGame': {
-      const soughtGames = state as Array<SoughtGame>;
+    case ActionType.AddSoughtGame: {
+      const soughtGames = state.soughtGames;
       const soughtGame = action.payload as SoughtGame;
-      return [...soughtGames, soughtGame];
+      return {
+        ...state,
+        soughtGames: [...soughtGames, soughtGame],
+      };
     }
 
-    case 'removeGame': {
-      const soughtGames = state as Array<SoughtGame>;
+    case ActionType.RemoveSoughtGame: {
+      const soughtGames = state.soughtGames;
       const id = action.payload as string;
 
       const newArr = soughtGames.filter((sg) => {
         return sg.seekID !== id;
       });
-      return newArr;
+
+      return {
+        ...state,
+        soughtGames: newArr,
+      };
     }
 
-    case 'addSoughtGames': {
+    case ActionType.AddSoughtGames: {
       const soughtGames = action.payload as Array<SoughtGame>;
-      return soughtGames;
+      return {
+        ...state,
+        soughtGames,
+      };
     }
   }
 }
