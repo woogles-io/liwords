@@ -1,0 +1,57 @@
+version: "3"
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile-dev
+    environment:
+      LEXICON_PATH: /opt/lexica
+    volumes:
+      - .:/opt/program:rw
+      - ${LEXICON_PATH}:/opt/lexica
+    command: sh -c "go run cmd/server/*.go"
+    networks:
+      - aeronet
+    labels:
+      - "traefik.http.routers.xwordclub.rule=Host(`vm.xword.club`) && PathPrefix(`/api`, `/ws`)"
+      - "traefik.http.routers.xwordclub.entrypoints=web"
+      - "traefik.http.services.xwordclub.loadbalancer.server.port=8087"
+      - traefik.enable=true
+
+  proxy:
+    image: "traefik:v2.2"
+    command:
+      - "--api.insecure=true"
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--entrypoints.web.address=:80"
+
+    ports:
+      - "80:80"
+      - "8080:8080"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    networks:
+      - aeronet
+
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile-fe
+    volumes:
+      - ./liwords-ui:/opt/liwords-ui
+    working_dir: /opt/liwords-ui
+    command: npm start
+    # Need the following else the frontend quits immediately:
+    stdin_open: true
+    networks:
+      - aeronet
+    labels:
+      - "traefik.http.routers.xwordclub-fe.rule=Host(`vm.xword.club`)"
+      - "traefik.http.services.xwordclub-fe.loadbalancer.server.port=3000"
+      - traefik.enable=true
+
+networks:
+  aeronet:
+    driver: bridge

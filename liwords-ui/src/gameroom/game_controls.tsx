@@ -3,9 +3,9 @@ import { Button, Modal } from 'antd';
 import { ExchangeTiles } from './exchange_tiles';
 
 type Props = {
-  onRecall: () => void;
   onExchange: (rack: string) => void;
   onPass: () => void;
+  onRecall: () => void;
   onChallenge: () => void;
   onCommit: () => void;
   currentRack: string;
@@ -52,7 +52,31 @@ const GameControls = (props: Props) => {
 
   return (
     <>
-      <Button style={{ width: 100, height: 40 }} onClick={showChallengeModal}>
+      <Button style={{ width: 100, height: 40, marginLeft: 25 }}>
+        Options
+      </Button>
+
+      <Button
+        onClick={props.onPass}
+        danger
+        style={{ width: 100, height: 40, marginLeft: 25 }}
+      >
+        Pass
+      </Button>
+
+      <Button
+        type="primary"
+        onClick={props.onChallenge}
+        style={{ width: 100, height: 40, marginLeft: 25 }}
+      >
+        Challenge
+      </Button>
+
+      <Button
+        type="primary"
+        style={{ width: 100, height: 40, marginLeft: 25 }}
+        onClick={showChallengeModal}
+      >
         Exchange
       </Button>
       <Modal
@@ -69,30 +93,11 @@ const GameControls = (props: Props) => {
       </Modal>
 
       <Button
-        onClick={props.onPass}
-        danger
-        style={{ width: 100, height: 40, marginLeft: 25 }}
-      >
-        Pass
-      </Button>
-      <Button
-        onClick={props.onRecall}
-        style={{ width: 100, height: 40, marginLeft: 25 }}
-      >
-        Recall tiles
-      </Button>
-      <Button
-        onClick={props.onChallenge}
-        style={{ width: 100, height: 40, marginLeft: 25 }}
-      >
-        Challenge
-      </Button>
-      <Button
         type="primary"
         onClick={props.onCommit}
         style={{ width: 100, height: 40, marginLeft: 25 }}
       >
-        Commit
+        Play
       </Button>
     </>
   );

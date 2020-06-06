@@ -5,6 +5,7 @@ import (
 
 	pb "github.com/domino14/crosswords/rpc/api/proto"
 	"github.com/domino14/macondo/game"
+	macondopb "github.com/domino14/macondo/gen/api/proto/macondo"
 	"github.com/rs/zerolog/log"
 )
 
@@ -29,19 +30,27 @@ func msTimestamp() int64 {
 	return time.Now().UnixNano() / (int64(time.Millisecond) / int64(time.Nanosecond))
 }
 
-// NewGame takes in a Macondo game that _just started_. So it must log the
-// current timestamp asap.
+// NewGame takes in a Macondo game that was just "started". Note that
+// Macondo games when they start do not log any time, they just deal tiles.
+// The time of start must be logged later, when both players are in the table
+// and ready.
 func NewGame(mcg *game.Game, req *pb.GameRequest) *Game {
-	started := msTimestamp()
 	ms := int(req.InitialTimeSeconds * 1000)
 	return &Game{
-		Game:             *mcg,
-		timeRemaining:    []int{ms, ms},
-		timeOfLastMove:   started,
+		Game:          *mcg,
+		timeRemaining: []int{ms, ms},
+		// timeOfLastMove:   started,
 		perTurnIncrement: int(req.IncrementSeconds),
-		timeStarted:      started,
-		gamereq:          req,
+		// timeStarted:      started,
+		gamereq: req,
 	}
+}
+
+// Reset timers to _now_. The game is actually starting.
+func (g *Game) ResetTimers() {
+	ts := msTimestamp()
+	g.timeOfLastMove = ts
+	g.timeStarted = ts
 }
 
 func (g *Game) TimeRemaining(idx int) int {
@@ -61,7 +70,6 @@ func (g *Game) GameID() string {
 }
 
 // calculateTimeRemaining calculates the remaining time for the given player.
-// It must be called after every move!
 func (g *Game) calculateTimeRemaining(idx int) {
 	now := msTimestamp()
 	if g.Game.PlayerOnTurn() == idx {
@@ -91,14 +99,15 @@ func (g *Game) HistoryRefresherEvent() *pb.GameHistoryRefresher {
 	}
 }
 
-func (g *Game) GameEndedEvent(reason pb.GameEndReason, player string) *pb.GameEndedEvent {
+func (g *Game) GameEndedEvent() *pb.GameEndedEvent {
 	return &pb.GameEndedEvent{
-		Reason:         reason,
-		AffectedPlayer: player,
+		Scores: map[string]int32{
+			g.History().Players[0].Nickname: int32(g.PointsFor(0)),
+			g.History().Players[1].Nickname: int32(g.PointsFor(1))},
 	}
 }
 
-func (g *Game) ChallengeRule() pb.ChallengeRule {
+func (g *Game) ChallengeRule() macondopb.ChallengeRule {
 	return g.gamereq.ChallengeRule
 }
 

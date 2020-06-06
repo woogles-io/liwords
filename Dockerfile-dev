@@ -1,0 +1,7 @@
+FROM golang:alpine
+
+COPY go.sum /opt/go.sum
+COPY go.mod /opt/go.mod
+RUN cd /opt && go mod download
+
+WORKDIR /opt/program

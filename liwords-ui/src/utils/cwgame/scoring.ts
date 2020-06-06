@@ -4,7 +4,6 @@ import {
   EphemeralTile,
   Direction,
   EmptySpace,
-  safeBoardLookup,
   isBlank,
   uniqueTileIdx,
 } from './common';
@@ -13,6 +12,7 @@ import {
   CrosswordGameTileValues,
   runeToValues,
 } from '../../constants/tile_values';
+import { Board } from './board';
 
 type simpletile = {
   fresh: boolean;
@@ -21,13 +21,14 @@ type simpletile = {
   col: number;
 };
 
-const genContiguousTileSet = (
+const genContiguousTiles = (
   sorted: Array<EphemeralTile>,
   wordDir: Direction,
-  boardTiles: Array<string>
-): Record<number, simpletile> => {
+  board: Board
+): Array<simpletile> => {
   // build an array of contiguous tiles that includes `sorted`
-  const contiguous: Record<number, simpletile> = {};
+  const contiguous: { [tileIdx: number]: simpletile } = {};
+
   // Add all the tiles in sorted to the map:
   sorted.forEach((t) => {
     contiguous[uniqueTileIdx(t.row, t.col)] = {
@@ -47,7 +48,7 @@ const genContiguousTileSet = (
     } else {
       newRow -= 1;
     }
-    lastSeenTile = safeBoardLookup(newRow, newCol, boardTiles);
+    lastSeenTile = board.letterAt(newRow, newCol);
     if (lastSeenTile !== EmptySpace && lastSeenTile !== null) {
       const u = uniqueTileIdx(newRow, newCol);
       contiguous[u] = {
@@ -69,7 +70,7 @@ const genContiguousTileSet = (
     } else {
       newRow += 1;
     }
-    lastSeenTile = safeBoardLookup(newRow, newCol, boardTiles);
+    lastSeenTile = board.letterAt(newRow, newCol);
     const u = uniqueTileIdx(newRow, newCol);
     if (lastSeenTile !== EmptySpace && lastSeenTile !== null) {
       contiguous[u] = {
@@ -85,14 +86,23 @@ const genContiguousTileSet = (
     }
   }
 
-  return contiguous;
+  // Turn the contiguous dict into a simple sorted array of contiguous tiles.
+  const retArr = Object.values(contiguous);
+  retArr.sort((a, b) => {
+    if (a.col === b.col) {
+      return a.row - b.row;
+    }
+    return a.col - b.col;
+  });
+
+  return retArr;
 };
 
 const getCrossScore = (
   row: number,
   col: number,
   crossDir: Direction,
-  boardTiles: Array<string>
+  board: Board
 ): [number, boolean] => {
   // Traverse in both directions from (row, col) in the crossDir axis.
   let lastSeenTile;
@@ -106,7 +116,7 @@ const getCrossScore = (
     } else {
       newRow -= 1;
     }
-    lastSeenTile = safeBoardLookup(newRow, newCol, boardTiles);
+    lastSeenTile = board.letterAt(newRow, newCol);
     if (lastSeenTile !== null && lastSeenTile !== EmptySpace) {
       actualCrossWord = true;
     }
@@ -122,7 +132,7 @@ const getCrossScore = (
     } else {
       newRow += 1;
     }
-    lastSeenTile = safeBoardLookup(newRow, newCol, boardTiles);
+    lastSeenTile = board.letterAt(newRow, newCol);
     if (lastSeenTile !== null && lastSeenTile !== EmptySpace) {
       actualCrossWord = true;
     }
@@ -134,7 +144,7 @@ const getCrossScore = (
 export const borders = (
   t1: EphemeralTile,
   t2: EphemeralTile,
-  boardTiles: Array<string>
+  board: Board
 ): boolean => {
   // Do the two tiles touch each other either directly or across board tiles?
   if (t1.col !== t2.col && t1.row !== t2.row) {
@@ -156,7 +166,7 @@ export const borders = (
       i < Math.max(t1.row, t2.row);
       i++
     ) {
-      if (boardTiles[i][t1.col] === EmptySpace) {
+      if (board.letterAt(i, t1.col) === EmptySpace) {
         return false;
       }
     }
@@ -166,7 +176,7 @@ export const borders = (
       i < Math.max(t1.col, t2.col);
       i++
     ) {
-      if (boardTiles[t1.row][i] === EmptySpace) {
+      if (board.letterAt(t1.row, i) === EmptySpace) {
         return false;
       }
     }
@@ -174,10 +184,7 @@ export const borders = (
   return true;
 };
 
-export const touchesBoardTile = (
-  t1: EphemeralTile,
-  boardTiles: Array<string>
-): boolean => {
+export const touchesBoardTile = (t1: EphemeralTile, board: Board): boolean => {
   // Does the tile touch any tiles on the board?
   const dirsToLook = [
     [1, 0],
@@ -189,7 +196,7 @@ export const touchesBoardTile = (
   for (let i = 0; i < dirsToLook.length; i++) {
     const row = t1.row + dirsToLook[i][0];
     const col = t1.col + dirsToLook[i][1];
-    const letter = safeBoardLookup(row, col, boardTiles);
+    const letter = board.letterAt(row, col);
     if (letter !== EmptySpace) {
       return true;
     }
@@ -199,7 +206,7 @@ export const touchesBoardTile = (
 
 const isLegalPlay = (
   currentlyPlacedTiles: Array<EphemeralTile>,
-  boardTiles: Array<string>
+  board: Board
 ): boolean => {
   // Check that all tiles are colinear
   const rows = new Set<number>();
@@ -216,36 +223,43 @@ const isLegalPlay = (
     return false;
   }
 
+  // Play must have contiguous tiles
+  for (let i = 0; i < currentlyPlacedTiles.length - 1; i++) {
+    const t1 = currentlyPlacedTiles[i];
+    const t2 = currentlyPlacedTiles[i + 1];
+    if (!borders(t1, t2, board)) {
+      return false;
+    }
+  }
+
   let touches = false;
-  // Play must touch some tile already on the board.
+  // Play must touch some tile already on the board unless board is empty.
   for (let i = 0; i < currentlyPlacedTiles.length; i++) {
-    if (touchesBoardTile(currentlyPlacedTiles[i], boardTiles)) {
+    if (touchesBoardTile(currentlyPlacedTiles[i], board)) {
       touches = true;
       break;
     }
   }
 
-  if (!touches) {
+  if (!touches && !board.isEmpty) {
     return false;
   }
 
-  // Play must have contiguous tiles
-  for (let i = 0; i < currentlyPlacedTiles.length - 1; i++) {
-    const t1 = currentlyPlacedTiles[i];
-    const t2 = currentlyPlacedTiles[i + 1];
-    if (!borders(t1, t2, boardTiles)) {
+  if (board.isEmpty) {
+    // Must touch center square
+    if (!(rows.has(7) && cols.has(7))) {
       return false;
     }
   }
+
   return true;
 };
 
-export const calculateTemporaryScore = (
-  currentlyPlacedTiles: Set<EphemeralTile>,
-  boardTiles: Array<string>,
-  boardLayout: Array<string>
-): number | undefined => {
-  const sorted = Array.from(currentlyPlacedTiles.values());
+export const contiguousTilesFromTileSet = (
+  tiles: Set<EphemeralTile>,
+  board: Board
+): [Array<simpletile>, Direction] | null => {
+  const sorted = Array.from(tiles.values());
   sorted.sort((a, b) => {
     if (a.col === b.col) {
       return a.row - b.row;
@@ -253,8 +267,8 @@ export const calculateTemporaryScore = (
     return a.col - b.col;
   });
 
-  if (!isLegalPlay(sorted, boardTiles)) {
-    return undefined;
+  if (!isLegalPlay(sorted, board)) {
+    return null;
   }
 
   // Determine the cross direction
@@ -267,20 +281,37 @@ export const calculateTemporaryScore = (
     crossDir === Direction.Horizontal
       ? Direction.Vertical
       : Direction.Horizontal;
-  const tileSet = genContiguousTileSet(sorted, wordDir, boardTiles);
+  return [genContiguousTiles(sorted, wordDir, board), wordDir];
+};
+
+export const calculateTemporaryScore = (
+  currentlyPlacedTiles: Set<EphemeralTile>,
+  board: Board
+): number | undefined => {
+  const ret = contiguousTilesFromTileSet(currentlyPlacedTiles, board);
+  if (ret === null) {
+    return undefined;
+  }
+  const [wordTiles, wordDir] = ret;
+
+  const crossDir =
+    wordDir === Direction.Horizontal
+      ? Direction.Vertical
+      : Direction.Horizontal;
+
   // Ok - the play is technically legal (it may form invalid words, but
   // we won't worry about that here):
-  // a lot of this code is from board.go in the cwgame repo.
+  // a lot of this code is from board.go in the macondo repo.
   let mainWordScore = 0;
   let crossScores = 0;
   let bingoBonus = 0;
   let wordMultiplier = 1;
-  if (sorted.length === 7) {
+  if (currentlyPlacedTiles.size === 7) {
     bingoBonus = 50;
   }
 
-  Object.values(tileSet).forEach((st) => {
-    const bonusSq = boardLayout[st.row][st.col];
+  wordTiles.forEach((st) => {
+    const bonusSq = board.gridLayout[st.row][st.col];
     let letterMultiplier = 1;
     let crossWordMultiplier = 1; // the multiplier for the orthogonal word.
     if (st.fresh) {
@@ -302,7 +333,7 @@ export const calculateTemporaryScore = (
           break;
       }
     }
-    const [cs, realcs] = getCrossScore(st.row, st.col, crossDir, boardTiles);
+    const [cs, realcs] = getCrossScore(st.row, st.col, crossDir, board);
     let ls;
     if (isBlank(st.letter)) {
       ls = 0;

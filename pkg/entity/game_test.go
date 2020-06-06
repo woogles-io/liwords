@@ -48,7 +48,7 @@ func TestTimeCalc(t *testing.T) {
 
 	mcg := newMacondoGame()
 	g := NewGame(mcg, &pb.GameRequest{InitialTimeSeconds: 60, IncrementSeconds: 0})
-
+	g.ResetTimers()
 	g.calculateTimeRemaining(0)
 	g.calculateTimeRemaining(1)
 
@@ -61,6 +61,7 @@ func TestTimeCalcWithSleep(t *testing.T) {
 
 	mcg := newMacondoGame()
 	g := NewGame(mcg, &pb.GameRequest{InitialTimeSeconds: 60, IncrementSeconds: 0})
+	g.ResetTimers()
 	g.SetPlayerOnTurn(1)
 	time.Sleep(3520 * time.Millisecond)
 
@@ -75,7 +76,7 @@ func TestTimeCalcWithMultipleSleep(t *testing.T) {
 
 	mcg := newMacondoGame()
 	g := NewGame(mcg, &pb.GameRequest{InitialTimeSeconds: 60, IncrementSeconds: 0})
-
+	g.ResetTimers()
 	// Simulate a few moves:
 	g.SetPlayerOnTurn(1)
 	time.Sleep(1520 * time.Millisecond)

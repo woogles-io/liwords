@@ -1,25 +1,8 @@
 import { calculateTemporaryScore, borders, touchesBoardTile } from './scoring';
 import { EphemeralTile } from './common';
+import { Board } from './board';
 
-const gridLayout = [
-  "=  '   =   '  =",
-  ' -   "   "   - ',
-  "  -   ' '   -  ",
-  "'  -   '   -  '",
-  '    -     -    ',
-  ' "   "   "   " ',
-  "  '   ' '   '  ",
-  "=  '   -   '  =",
-  "  '   ' '   '  ",
-  ' "   "   "   " ',
-  '    -     -    ',
-  "'  -   '   -  '",
-  "  -   ' '   -  ",
-  ' -   "   "   - ',
-  "=  '   =   '  =",
-];
-
-const tilesLayout = [
+const someTileLayout = [
   '         RADIOS',
   '         E     ',
   '      R SI     ',
@@ -55,10 +38,12 @@ it('tests borders', () => {
     col: 10,
     letter: 'U',
   };
+  const board = new Board();
+  board.setTileLayout(someTileLayout);
 
-  expect(borders(t1, t2, tilesLayout)).toBeTruthy();
-  expect(borders(t2, t3, tilesLayout)).toBeTruthy();
-  expect(borders(t1, t3, tilesLayout)).toBeFalsy();
+  expect(borders(t1, t2, board)).toBeTruthy();
+  expect(borders(t2, t3, board)).toBeTruthy();
+  expect(borders(t1, t3, board)).toBeFalsy();
 });
 
 it('testTouches', () => {
@@ -82,10 +67,14 @@ it('testTouches', () => {
     col: 11,
     letter: 'Q',
   };
-  expect(touchesBoardTile(t1, tilesLayout)).toBeTruthy();
-  expect(touchesBoardTile(t2, tilesLayout)).toBeFalsy();
-  expect(touchesBoardTile(t3, tilesLayout)).toBeTruthy();
-  expect(touchesBoardTile(t4, tilesLayout)).toBeFalsy();
+
+  const board = new Board();
+  board.setTileLayout(someTileLayout);
+
+  expect(touchesBoardTile(t1, board)).toBeTruthy();
+  expect(touchesBoardTile(t2, board)).toBeFalsy();
+  expect(touchesBoardTile(t3, board)).toBeTruthy();
+  expect(touchesBoardTile(t4, board)).toBeFalsy();
 });
 
 it('tests scores', () => {
@@ -105,17 +94,16 @@ it('tests scores', () => {
     col: 3,
     letter: 'A',
   });
-  expect(calculateTemporaryScore(placedTiles, tilesLayout, gridLayout)).toEqual(
-    32
-  );
+  const board = new Board();
+  board.setTileLayout(someTileLayout);
+
+  expect(calculateTemporaryScore(placedTiles, board)).toEqual(32);
   placedTiles.add({
     row: 9,
     col: 5,
     letter: 'L',
   });
-  expect(calculateTemporaryScore(placedTiles, tilesLayout, gridLayout)).toEqual(
-    35
-  );
+  expect(calculateTemporaryScore(placedTiles, board)).toEqual(35);
 });
 
 it('tests more scores', () => {
@@ -135,9 +123,11 @@ it('tests more scores', () => {
     col: 5,
     letter: 'D',
   });
-  expect(calculateTemporaryScore(placedTiles, tilesLayout, gridLayout)).toEqual(
-    13
-  );
+
+  const board = new Board();
+  board.setTileLayout(someTileLayout);
+
+  expect(calculateTemporaryScore(placedTiles, board)).toEqual(13);
 });
 
 const oxyTilesLayout = [
@@ -195,7 +185,15 @@ it('tests more complex scores', () => {
     col: 0,
     letter: 'E',
   });
-  expect(
-    calculateTemporaryScore(placedTiles, oxyTilesLayout, gridLayout)
-  ).toEqual(1780);
+  const board = new Board();
+  board.setTileLayout(oxyTilesLayout);
+  expect(calculateTemporaryScore(placedTiles, board)).toEqual(1780);
+});
+
+it('tests opening score', () => {
+  const placedTiles = new Set<EphemeralTile>();
+  placedTiles.add({ row: 7, col: 7, letter: 'Q' });
+  placedTiles.add({ row: 7, col: 8, letter: 'I' });
+  const board = new Board();
+  expect(calculateTemporaryScore(placedTiles, board)).toEqual(22);
 });

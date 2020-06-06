@@ -9,6 +9,7 @@ import (
 	"github.com/domino14/crosswords/pkg/config"
 	"github.com/domino14/crosswords/pkg/sockets"
 	"github.com/domino14/crosswords/pkg/stores/game"
+	"github.com/domino14/crosswords/pkg/stores/soughtgame"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 )
@@ -17,23 +18,10 @@ const (
 	GracefulShutdownTimeout = 30 * time.Second
 )
 
-var addr = flag.String("addr", ":8087", "http service address")
-
-func serveHome(w http.ResponseWriter, r *http.Request) {
-	log.Debug().Interface("rURL", r.URL).Msg("")
-	if r.URL.Path != "/" {
-		http.Error(w, "Not found", http.StatusNotFound)
-		return
-	}
-	if r.Method != "GET" {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-		return
-	}
-	http.ServeFile(w, r, "../../templates/home.html")
-}
-
 func main() {
-
+	var dir, addr string
+	flag.StringVar(&addr, "addr", ":8087", "http service address")
+	flag.StringVar(&dir, "dir", ".", "the directory to serve files from. Defaults to the current dir")
 	flag.Parse()
 	zerolog.SetGlobalLevel(zerolog.DebugLevel)
 
@@ -41,15 +29,21 @@ func main() {
 	cfg.Load(os.Args[1:])
 	log.Info().Msgf("Loaded config: %v", cfg)
 
-	hub := sockets.NewHub(game.NewMemoryStore(), cfg)
+	hub := sockets.NewHub(game.NewMemoryStore(), soughtgame.NewMemoryStore(), cfg)
 	go hub.Run()
 	go hub.RunGameEventHandler()
 
-	http.HandleFunc("/", serveHome)
+	// http.HandleFunc("/")
+
+	// http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+	// 	r.URL.Path = "/"
+	// 	staticHandler.ServeHTTP(w, r)
+	// })
+
 	http.HandleFunc("/ws", func(w http.ResponseWriter, r *http.Request) {
 		sockets.ServeWS(hub, w, r)
 	})
-	err := http.ListenAndServe(*addr, nil)
+	err := http.ListenAndServe(addr, nil)
 	if err != nil {
 		log.Fatal().Err(err).Msg("ListenAndServe")
 	}

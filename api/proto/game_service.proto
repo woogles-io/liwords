@@ -27,14 +27,6 @@ message GameRules {
   string letter_distribution_name = 2;
 }
 
-enum ChallengeRule {
-  VOID = 0;
-  SINGLE = 1;
-  DOUBLE = 2;
-  FIVE_POINT = 3;
-  TEN_POINT = 4;
-}
-
 enum GameMode {
   REAL_TIME = 0;
   CORRESPONDENCE = 1;
@@ -55,75 +47,95 @@ message GameRequest {
   GameRules rules = 2;
   int32 initial_time_seconds = 3;
   int32 increment_seconds = 4;
-  ChallengeRule challenge_rule = 5;
+  macondo.ChallengeRule challenge_rule = 5;
   GameMode game_mode = 6;
   RatingMode rating_mode = 7;
   string request_id = 8;
 }
 
+// A RequestingUser requests a match via a seek or a match request.
+message RequestingUser {
+  string username = 1;
+  int32 relevantRating = 2;
+}
+
+// Message types
+
+// In order to make socket messages as small and simple as possible,
+// we should include the message type with the socket message.
+// Whenever we add a new client <-> server socket message type,
+// add it to this list.
+enum MessageType {
+  SEEK_REQUEST = 0;
+  MATCH_REQUEST = 1;
+  GAME_ACCEPTED_EVENT = 2;
+  CLIENT_GAMEPLAY_EVENT = 3;
+  SERVER_GAMEPLAY_EVENT = 4;
+  GAME_ENDED_EVENT = 5;
+  GAME_HISTORY_REFRESHER = 6;
+  ERROR_MESSAGE = 7;
+  NEW_GAME_EVENT = 8;
+  SERVER_CHALLENGE_RESULT_EVENT = 9;
+  SEEK_REQUESTS = 10;
+  REGISTER_REALM = 11;
+  DEREGISTER_REALM = 12;
+  // Add more events here. The total number of events should fit in a byte.
+  // We should definitely not be using anywhere close to 255 events, and
+  // in order to enforce that I'll be forcing the event type header to just be
+  // a byte long.
+}
+
+// Bi-directional messages
+
 message SeekRequest {
   GameRequest game_request = 1;
-  int32 minimum_rating = 2;
-  int32 maximum_rating = 3;
+  RequestingUser user = 2;
+  int32 minimum_rating = 3;
+  int32 maximum_rating = 4;
 }
 
 message MatchRequest {
   GameRequest game_request = 1;
-  string player = 2;
+  RequestingUser user = 2;
 }
 
 // A GameAcceptedEvent gets sent when a match request (or seek request)
-// get accepted. The acceptor sends this event to the server.
-message GameAcceptedEvent {
-  string requester = 1;
-  string acceptor = 2;
-  GameRequest game_request = 3;
-}
+// get accepted (or canceled -- when sent from server to client).
+message GameAcceptedEvent { string request_id = 1; }
 
-// XXX: Add a GameResumeEvent
+// Server to client messages:
 
-// Unseek is sent from the server (to all clients?) when a seek request is no
-// longer valid (it may have been accepted or withdrawn)
-message Unseek { string player = 1; }
+// SeekRequests sends all open seek requests.
+message SeekRequests { repeated SeekRequest requests = 1; }
 
-// Gameplay
-
-enum GameEndReason {
-  TIME = 0;
-  WENT_OUT = 1;
-  CONSECUTIVE_ZEROES = 2;
-}
-
-// One or more macondo.GameEvent comprise a full GameTurn (see macondo proto
-// file). The server is responsible for joining together events into turns for
-// logging purposes. The client will send `macondo.GameEvent` via the websocket.
-
-// We encapsulate the game event here
-
-// The server will send back a UserGameplayEvent with the same event, and
-// any corrected fields. The server will also send these asynchronously for
-// opponent gameplay events.
-message UserGameplayEvent {
+// The server will send back a ServerGameplayEvent to a ClientGameplayEvent.
+// The server will also send these asynchronously for opponent gameplay
+// events.
+message ServerGameplayEvent {
   macondo.GameEvent event = 1;
   string game_id = 2;
-  // new_rack is ignored when sent from client to server, but filled in when
-  // sent from server back to client.
   string new_rack = 3;
-
-  // The player's time remaining, in milliseconds. This is sent from server
-  // to client.
   int32 time_remaining = 4;
+}
+
+// The server will send back a challenge result event only in the case of
+// a challenge. In all other cases, the server will send back a
+// ServerGameplayEvent, and the front-end can
+// A ServerChallengeResultEvent is sent back along with a GameHistoryRefresher
+// when there is a challenge, instead of trying to reconstruct and send the
+// right incremental events. The reason is that the logic is complex and
+// has many special cases, and is already fully implemented in Macondo.
+// We don't wish to re-implement it both in this repo's backend and frontend.
+message ServerChallengeResultEvent {
+  bool valid = 1;
+  string challenger = 2;
+  macondo.ChallengeRule challenge_rule = 3;
 }
 
 // GameEndedEvent is always sent from the server to both clients.
 message GameEndedEvent {
-  GameEndReason reason = 1;
-  // If the reason is TIME, the affected player is the one that ran out of time.
-  // If the reason is WENT_OUT, the affected player is the one that went out.
-  // Otherwise, both players are affected (CONSECUTIVE_ZEROES).
-  string affected_player = 2;
-
-  map<string, int32> new_ratings = 3;
+  map<string, int32> scores = 1;
+  map<string, int32> new_ratings = 2;
 }
 
 // A GameHistoryRefresher is sent to both players when the game starts,
@@ -147,12 +159,51 @@ message GameHistoryRefresher {
   // of whether they went first.
   int32 time_player1 = 2;
   int32 time_player2 = 3;
-
-  //
 }
 
-// service CrosswordGameService {
-//   rpc SeekGame(SeekGameRequest) returns (SeekGameResponse);
+// A NewGameEvent gets sent from the server to the involved clients when a new
+// game is about to begin. It should follow a GameAcceptedEvent
+message NewGameEvent { string game_id = 1; }
 
-//   rpc NewGame(NewGameRequest) returns (NewGameResponse);
-// }
+message ErrorMessage {
+  string message = 1;
+  // Maybe codes or something else in the future.
+}
+
+// Client-to-server messages
+
+// Gameplay
+
+enum GameEndReason {
+  TIME = 0;
+  WENT_OUT = 1;
+  CONSECUTIVE_ZEROES = 2;
+}
+
+// One or more macondo.GameEvent comprise a full GameTurn (see macondo proto
+// file). The server is responsible for joining together events into turns for
+// logging purposes. The client will send `macondo.GameEvent` via the websocket.
+
+// We encapsulate the game event here
+message ClientGameplayEvent {
+  enum EventType {
+    TILE_PLACEMENT = 0;
+    PASS = 1;
+    EXCHANGE = 2;
+    CHALLENGE_PLAY = 3;
+  }
+
+  EventType type = 1;
+  string game_id = 2;
+  // position coordinates, like H8 or G10. Only matters for TILE_PLACEMENT.
+  string position_coords = 3;
+  // tiles that are being played (or exchanged). The `.` character is used
+  // for thru, and lowercase characters are used for blanks.
+  string tiles = 4;
+}
+
+// Communication
+
+message RegisterRealm { string realm = 1; }
+
+message DeregisterRealm { string realm = 1; }

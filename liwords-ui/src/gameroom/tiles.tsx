@@ -10,8 +10,8 @@ import TentativeScore from './tentative_score';
 
 type Props = {
   gridDim: number;
-  tilesLayout: Array<string>;
-  lastPlayedLetters: Record<string, boolean>;
+  tilesLayout: string;
+  lastPlayedLetters: { [tile: string]: boolean };
   boardSquareDim: number;
   rowLabelWidth: number;
   colLabelHeight: number;
@@ -39,7 +39,7 @@ const Tiles = (props: Props) => {
 
   for (let y = 0; y < props.gridDim; y += 1) {
     for (let x = 0; x < props.gridDim; x += 1) {
-      const rune = props.tilesLayout[y][x];
+      const rune = props.tilesLayout[y * 15 + x];
       if (rune !== ' ') {
         const lastPlayed = props.lastPlayedLetters[`R${y}C${x}`] === true;
         tiles.push(
