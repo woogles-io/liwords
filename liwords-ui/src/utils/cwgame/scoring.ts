@@ -23,11 +23,27 @@ type simpletile = {
 
 const genContiguousTiles = (
   sorted: Array<EphemeralTile>,
-  wordDir: Direction,
   board: Board
-): Array<simpletile> => {
-  // build an array of contiguous tiles that includes `sorted`
+): [Array<simpletile>, Direction] => {
+  // build an object of contiguous tiles that includes `sorted`,
+  // return the direction of play on the board.
   const contiguous: { [tileIdx: number]: simpletile } = {};
+
+  let wordDir = Direction.Vertical;
+  if (sorted.length > 1 && sorted[0].col !== sorted[1].col) {
+    wordDir = Direction.Horizontal;
+  } else if (sorted.length === 1) {
+    // If we are placing down just one single tile, we need to determine
+    // whether the word is vertical or horizontal, based on what tiles are
+    // bordered.
+    const tile = sorted[0];
+    if (
+      tileOnBoard(tile.row, tile.col + 1, board) ||
+      tileOnBoard(tile.row, tile.col - 1, board)
+    ) {
+      wordDir = Direction.Horizontal;
+    }
+  }
 
   // Add all the tiles in sorted to the map:
   sorted.forEach((t) => {
@@ -95,7 +111,7 @@ const genContiguousTiles = (
     return a.col - b.col;
   });
 
-  return retArr;
+  return [retArr, wordDir];
 };
 
 const getCrossScore = (
@@ -139,6 +155,11 @@ const getCrossScore = (
     crossScore += runeToValues(lastSeenTile, CrosswordGameTileValues);
   }
   return [crossScore, actualCrossWord];
+};
+
+const tileOnBoard = (row: number, col: number, board: Board): boolean => {
+  const letter = board.letterAt(row, col);
+  return letter !== EmptySpace && letter !== null;
 };
 
 export const borders = (
@@ -223,7 +244,8 @@ const isLegalPlay = (
     return false;
   }
 
-  // Play must have contiguous tiles
+  // Play must have contiguous tiles (each placed tile must border the next one
+  // either directly, or "through" tiles already on the board):
   for (let i = 0; i < currentlyPlacedTiles.length - 1; i++) {
     const t1 = currentlyPlacedTiles[i];
     const t2 = currentlyPlacedTiles[i + 1];
@@ -271,17 +293,7 @@ export const contiguousTilesFromTileSet = (
     return null;
   }
 
-  // Determine the cross direction
-  let crossDir = Direction.Horizontal;
-  // If tiles are oriented horizontally though, the cross dir is vertical.
-  if (sorted.length > 1 && sorted[0].col !== sorted[1].col) {
-    crossDir = Direction.Vertical;
-  }
-  const wordDir =
-    crossDir === Direction.Horizontal
-      ? Direction.Vertical
-      : Direction.Horizontal;
-  return [genContiguousTiles(sorted, wordDir, board), wordDir];
+  return genContiguousTiles(sorted, board);
 };
 
 export const calculateTemporaryScore = (

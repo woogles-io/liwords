@@ -197,3 +197,41 @@ it('tests opening score', () => {
   const board = new Board();
   expect(calculateTemporaryScore(placedTiles, board)).toEqual(22);
 });
+
+it('tests scores vertical', () => {
+  const placedTiles = new Set<EphemeralTile>();
+  placedTiles.add({
+    row: 6,
+    col: 7,
+    letter: 'M',
+  });
+  const board = new Board();
+  board.setTileLayout(someTileLayout);
+
+  expect(calculateTemporaryScore(placedTiles, board)).toEqual(4);
+  placedTiles.add({
+    row: 8,
+    col: 7,
+    letter: 'L',
+  });
+  expect(calculateTemporaryScore(placedTiles, board)).toEqual(5);
+});
+
+it('tests scores horizontal', () => {
+  const placedTiles = new Set<EphemeralTile>();
+  placedTiles.add({
+    row: 10,
+    col: 3,
+    letter: 'M',
+  });
+  const board = new Board();
+  board.setTileLayout(someTileLayout);
+
+  expect(calculateTemporaryScore(placedTiles, board)).toEqual(4);
+  placedTiles.add({
+    row: 10,
+    col: 5,
+    letter: 'L',
+  });
+  expect(calculateTemporaryScore(placedTiles, board)).toEqual(5);
+});
