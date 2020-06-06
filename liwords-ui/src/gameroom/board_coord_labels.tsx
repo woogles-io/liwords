@@ -4,26 +4,16 @@ import CoordLabel from './board_coord_label';
 
 type Props = {
   gridDim: number;
-  boardSquareDim: number;
-  colLabelHeight: number;
-  colLabelGutter: number;
-  rowLabelWidth: number;
-  rowLabelGutter: number;
 };
 
 const BoardCoordLabels = (props: Props) => {
-  const labels = [];
-  const horizPadding = props.rowLabelWidth + 2 * props.rowLabelGutter;
-  const vertPadding = props.colLabelHeight + 2 * props.colLabelGutter;
+  const horizLabels = [];
+  const vertLabels = [];
 
   // COLUMN labels.
   for (let i = 0; i < props.gridDim; i += 1) {
-    labels.push(
+      horizLabels.push(
       <CoordLabel
-        rectHeight={vertPadding}
-        rectWidth={props.boardSquareDim}
-        x={i * props.boardSquareDim + horizPadding}
-        y={0}
         label={String.fromCharCode(i + 'A'.charCodeAt(0))}
         key={`collbl${i}`}
       />
@@ -32,18 +22,21 @@ const BoardCoordLabels = (props: Props) => {
 
   // ROW labels
   for (let i = 0; i < props.gridDim; i += 1) {
-    labels.push(
+      vertLabels.push(
       <CoordLabel
-        rectHeight={props.boardSquareDim}
-        rectWidth={horizPadding}
-        x={0}
-        y={i * props.boardSquareDim + vertPadding}
         label={String(i + 1)}
         key={`rowlbl${i}`}
       />
     );
   }
-  return <>{labels}</>;
+  return <>
+    <div className="coord-labels horiz">
+      {horizLabels}
+    </div>
+    <div className="coord-labels vert">
+      {vertLabels}
+    </div>
+  </>;
 };
 
 export default BoardCoordLabels;

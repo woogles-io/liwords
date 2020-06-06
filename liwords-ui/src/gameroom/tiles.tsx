@@ -35,6 +35,8 @@ const Tiles = (props: Props) => {
     return a.col - b.col;
   });
 
+  let tentativeTilesRemaining = tentativeTiles.length;
+
   for (let y = 0; y < props.gridDim; y += 1) {
     for (let x = 0; x < props.gridDim; x += 1) {
       const rune = props.tilesLayout[y][x];
@@ -44,40 +46,41 @@ const Tiles = (props: Props) => {
           <Tile
             rune={rune}
             value={runeToValues(rune, CrosswordGameTileValues)}
-            width={props.boardSquareDim}
-            height={props.boardSquareDim}
-            x={x * props.boardSquareDim + props.rowLabelWidth}
-            y={y * props.boardSquareDim + props.colLabelHeight}
             lastPlayed={lastPlayed}
             key={`tile_${x}_${y}`}
             scale={props.scaleTiles}
             grabbable={false}
           />
         );
+      } else {
+        const tentativeTile = tentativeTiles.find(tile => tile.col === x && tile.row === y);
+        if (tentativeTile) {
+            tiles.push(<Tile
+                rune={tentativeTile.letter}
+                value={runeToValues(tentativeTile.letter, CrosswordGameTileValues)}
+                lastPlayed={false}
+                key={`tileT_${tentativeTile.col}_${tentativeTile.row}`}
+                scale={false}
+                tentative={true}
+                tentativeScore={tentativeTilesRemaining === tentativeTiles.length ?
+                  props.tentativeTileScore : undefined}
+                grabbable={true}
+            />);
+            tentativeTilesRemaining -= 1;
+        } else {
+            tiles.push(
+                <div
+                    className="empty-space"
+                    key={`tile_${x}_${y}`}
+                >
+                    &nbsp;
+                </div>
+            );
+        }
       }
     }
   }
-
-  // The "tentative tiles" should be displayed slightly differently.
-
-  tentativeTiles.forEach((t) => {
-    tiles.push(
-      <Tile
-        rune={t.letter}
-        value={runeToValues(t.letter, CrosswordGameTileValues)}
-        width={props.boardSquareDim}
-        height={props.boardSquareDim}
-        x={t.col * props.boardSquareDim + props.rowLabelWidth}
-        y={t.row * props.boardSquareDim + props.colLabelHeight}
-        lastPlayed={false}
-        key={`tile_${t.col}_${t.row}`}
-        scale={false}
-        tentative={true}
-        grabbable={true}
-      />
-    );
-  });
-  if (tentativeTiles.length > 0 && props.tentativeTileScore !== undefined) {
+  /*if (tentativeTiles.length > 0 && props.tentativeTileScore !== undefined) {
     tiles.push(
       <TentativeScore
         score={props.tentativeTileScore}
@@ -88,9 +91,11 @@ const Tiles = (props: Props) => {
         key="tentativescore"
       />
     );
-  }
+  }*/
 
-  return <>{tiles}</>;
+  return <div className="tiles">
+      {tiles}
+  </div>;
 };
 
 export default Tiles;

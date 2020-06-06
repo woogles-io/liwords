@@ -28,10 +28,6 @@ class Rack extends React.Component<Props> {
         <Tile
           rune={rune}
           value={runeToValues(rune, CrosswordGameTileValues)}
-          width={this.props.tileDim}
-          height={this.props.tileDim}
-          x={n * (this.props.tileDim + TileSpacing)}
-          y={0}
           lastPlayed={false}
           key={`tile_${n}`}
           scale={false}
@@ -49,12 +45,9 @@ class Rack extends React.Component<Props> {
 
   render() {
     return (
-      <svg
-        width={this.props.tileDim * 7 + TileSpacing * 6}
-        height={this.props.tileDim}
-      >
-        <g>{this.renderTiles()}</g>
-      </svg>
+      <div className="rack">
+        {this.renderTiles()}
+      </div>
     );
   }
 }

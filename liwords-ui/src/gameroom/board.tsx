@@ -31,16 +31,9 @@ const Board = (props: Props) => {
   // board squares as necessary.
 
   return (
-    <svg width={props.compWidth} height={props.boardDim + props.topFrameHeight}>
-      <g>
-        {/* apply transform here to the g */}
+    <div className="board">
         <BoardCoordLabels
           gridDim={props.gridSize}
-          boardSquareDim={props.sqWidth}
-          rowLabelWidth={props.sideFrameWidth}
-          colLabelHeight={props.topFrameHeight}
-          rowLabelGutter={props.sideFrameGutter}
-          colLabelGutter={0}
         />
         <BoardSpaces
           gridDim={props.gridSize}
@@ -63,8 +56,7 @@ const Board = (props: Props) => {
           scaleTiles={true}
           tentativeTileScore={props.tentativeTileScore}
         />
-      </g>
-    </svg>
+    </div>
   );
 };
 

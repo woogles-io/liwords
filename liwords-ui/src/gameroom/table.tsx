@@ -77,7 +77,10 @@ export const Table = (props: Props) => {
 
   return (
     <div>
-      <Row gutter={gutter}>
+      <Row
+        gutter={gutter}
+       className="game-table"
+      >
         <Col span={6}>
           <div>lefts</div>
         </Col>

@@ -9,6 +9,7 @@ import {
   handleKeyPress,
 } from '../utils/cwgame/tile_placement';
 import { EphemeralTile } from '../utils/cwgame/common';
+import './board_panel.css';
 
 // The frame atop is 24 height
 // The frames on the sides are 24 in width, surrounded by a 14 pix gutter
@@ -108,18 +109,9 @@ export const BoardPanel = (props: Props) => {
 
   return (
     <div
-      style={{
-        width: props.compWidth,
-        height: props.compHeight,
-        background: 'linear-gradient(180deg, #E2F8FF 0%, #FFFFFF 100%)',
-        boxShadow: '0px 0px 30px rgba(0, 0, 0, 0.1)',
-        borderRadius: '4px',
-        lineHeight: '0px',
-        textAlign: 'center',
-        outlineStyle: 'none',
-      }}
+      className="board-container"
       onKeyDown={(e) => {
-        keydown(e.key);
+          keydown(e.key);
       }}
       tabIndex={-1}
       role="textbox"
@@ -142,19 +134,15 @@ export const BoardPanel = (props: Props) => {
         squareClicked={squareClicked}
         placementArrowProperties={arrowProperties}
       />
-      <div style={{ marginTop: 30 }}>
-        <Rack letters={displayedRack} tileDim={sqWidth} grabbable />
-      </div>
-      <div style={{ marginTop: 30 }}>
-        <GameControls
-          onRecall={recallTiles}
-          onExchange={exchangeTiles}
-          onPass={passTurn}
-          onChallenge={challengePlay}
-          onCommit={commitPlay}
-          currentRack={props.currentRack}
-        />
-      </div>
+      <Rack letters={displayedRack} tileDim={sqWidth} grabbable />
+      <GameControls
+        onRecall={recallTiles}
+        onExchange={exchangeTiles}
+        onPass={passTurn}
+        onChallenge={challengePlay}
+        onCommit={commitPlay}
+        currentRack={props.currentRack}
+      />
     </div>
   );
 };
