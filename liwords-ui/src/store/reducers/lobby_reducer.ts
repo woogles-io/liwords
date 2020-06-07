@@ -47,4 +47,5 @@ export function LobbyReducer(state: LobbyState, action: Action): LobbyState {
       };
     }
   }
+  return state;
 }

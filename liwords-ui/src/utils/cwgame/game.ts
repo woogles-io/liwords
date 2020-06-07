@@ -11,18 +11,6 @@ import {
 import { EnglishCrosswordGameDistribution } from '../../constants/tile_distributions';
 import { Board, setCharAt } from './board';
 
-export type FullPlayerInfo = {
-  nickname: string;
-  fullName: string;
-  flag: string;
-  rating: number;
-  title: string;
-  score: number;
-  timeRemainingMsec: number;
-  onturn: boolean;
-  avatarUrl: string;
-};
-
 const deepCopy = (state: GameState): GameState => {
   const newState = new GameState({ ...state.tileDistribution }, [
     ...state.players,

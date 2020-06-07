@@ -34,10 +34,6 @@ const initialGameState = new GameState(EnglishCrosswordGameDistribution, []);
 
 export type StoreData = {
   // Functions and data to deal with the global store.
-  // soughtGames: Array<SoughtGame>;
-  // addSoughtGame: (sg: SoughtGame) => void;
-  // addSoughtGames: (sgs: Array<SoughtGame>) => void;
-  // removeGame: (id: string) => void;
   lobbyContext: LobbyState | undefined;
   dispatchLobbyContext: (action: Action) => void;
   redirGame: string;
@@ -48,8 +44,6 @@ export type StoreData = {
   challengeResultEvent: (sge: ServerChallengeResultEvent) => void;
   addChat: (chat: ChatEntityObj) => void;
   chat: Array<ChatEntityObj>;
-  // timers: { [username: string]: number | undefined };
-  // setTimer: (username: string, timeMsec: number) => void;
 };
 
 export const Context = createContext<StoreData>({
