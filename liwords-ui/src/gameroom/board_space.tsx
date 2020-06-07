@@ -13,15 +13,15 @@ interface BonusProperties {
 function getBonusProperties(bt: BonusType): BonusProperties {
   switch (bt) {
     case BonusType.DoubleWord:
-      return { fillColor: '#FFC9F3', bonusText: '2WS' };
+      return { fillColor: '#FD7070', bonusText: '2WS' };
     case BonusType.TripleWord:
-      return { fillColor: '#FD7070', bonusText: '3WS' };
+      return { fillColor: '#FFC9F3', bonusText: '3WS' };
     case BonusType.DoubleLetter:
       return { fillColor: '#C9E5FF', bonusText: '2LS' };
     case BonusType.TripleLetter:
       return { fillColor: '#6F87DF', bonusText: '3LS' };
   }
-  return { fillColor: '#FFFFFF', bonusText: '' };
+  return { fillColor: 'hsl(35, 30%, 98%)', bonusText: '' };
 }
 
 type Props = {
@@ -37,7 +37,6 @@ type Props = {
 };
 
 const BoardSpace = (props: Props) => {
-  const transform = `translate(${props.x},${props.y})`;
   const { fillColor, bonusText } = getBonusProperties(props.bonusType);
 
   let bonusLabel = null;
@@ -45,27 +44,17 @@ const BoardSpace = (props: Props) => {
   let arrow = null;
   if (props.showBonusLabel && bonusText !== '') {
     bonusLabel = (
-      <text
-        x={props.boardSquareDim / 2}
-        y={props.boardSquareDim / 2}
-        textAnchor="middle"
-        dominantBaseline="central"
-        fontFamily={fontFamily}
-        fontSize="60%"
-        stroke="#DADADB"
-        fill="#DADADB"
-        strokeWidth="0.5px"
+      <p className="bonus-label"
       >
         {bonusText}
-      </text>
+      </p>
     );
   }
   // ✩✪✫
   if (props.startingSquare) {
     startingSquare = (
       <Logo
-        x={props.boardSquareDim / 4}
-        y={props.boardSquareDim / 6}
+        className="logo"
         width={props.boardSquareDim / 1.5}
         height={props.boardSquareDim / 1.5}
       />
@@ -74,54 +63,33 @@ const BoardSpace = (props: Props) => {
   if (props.arrow) {
     if (props.arrowHoriz) {
       arrow = (
-        <text
-          x={props.boardSquareDim / 2}
-          y={props.boardSquareDim / 2}
-          textAnchor="middle"
-          dominantBaseline="central"
-          fontFamily={fontFamily}
-          fontSize="250%"
-          stroke="#000000"
-          fill="#000000"
-          strokeWidth="1px"
-        >
+        <p className="arrow">
           ➡
-        </text>
+        </p>
       );
-      // arrow = <text>-></text>;
     } else {
       arrow = (
-        <text
-          x={props.boardSquareDim / 2}
-          y={props.boardSquareDim / 2}
-          textAnchor="middle"
-          dominantBaseline="central"
-          fontFamily={fontFamily}
-          fontSize="200%"
-          stroke="#000000"
-          fill="#000000"
-          strokeWidth="1px"
-        >
+        <p className="arrow">
           ⬇
-        </text>
+        </p>
       );
-      // arrow = <text>V</text>;
     }
   }
 
+  const styleOverrides = {
+    backgroundColor: fillColor,
+  };
+
   return (
-    <g transform={transform} onClick={props.clicked}>
-      <rect
-        width={props.boardSquareDim}
-        height={props.boardSquareDim}
-        strokeWidth="0.5px"
-        stroke="#BEBEBE"
-        fill={fillColor}
-      />
+    <div
+      className="board-space"
+      onClick={props.clicked}
+      style={styleOverrides}
+    >
       {bonusLabel}
       {startingSquare}
       {arrow}
-    </g>
+  </div>
   );
 };
 

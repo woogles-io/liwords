@@ -5,6 +5,7 @@ import { ExchangeTiles } from './exchange_tiles';
 type Props = {
   onExchange: (rack: string) => void;
   onPass: () => void;
+  onRecall: () => void;
   onChallenge: () => void;
   onCommit: () => void;
   currentRack: string;

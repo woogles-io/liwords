@@ -42,7 +42,11 @@ const BoardSpaces = (props: Props) => {
       );
     }
   }
-  return <>{spaces}</>;
+  return (
+    <div className="board-spaces">
+      {spaces}
+    </div>
+  );
 };
 
 export default BoardSpaces;

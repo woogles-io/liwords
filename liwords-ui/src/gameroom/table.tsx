@@ -88,7 +88,10 @@ export const Table = (props: Props) => {
           <TopBar username={props.username} />
         </Col>
       </Row>
-      <Row gutter={gutter} style={{ marginTop: 12 }}>
+      <Row
+      gutter={gutter}
+      className="game-table"
+      >
         <Col span={6}>
           <Chat chatEntities={chat} />
         </Col>

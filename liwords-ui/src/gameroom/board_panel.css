@@ -1,0 +1,181 @@
+.board-container {
+  user-select: none;
+}
+
+.board-container {
+  background: linear-gradient(180deg, #E2F8FF 0%, #FFFFFF 100%);
+  box-shadow: 0px 0px 2vw rgba(0, 0, 0, 0.1);
+  border-radius: 8px;
+  text-align: center;
+  padding: 12px 52px 24px;
+  margin: 6px;
+  outline-style: none;
+}
+
+.board {
+  position: relative;
+}
+
+/* Board spaces */
+
+.board-spaces-container {
+  position: relative;
+  display: flex;
+  flex-wrap: wrap;
+}
+.board-spaces, .tiles {
+  width: 100%;
+  display: grid;
+  grid-template-columns: repeat(15, 1fr);
+  grid-template-rows: repeat(15, 1fr);
+  gap: 1px;
+  border: 1px solid #CCC;
+  background-color: #CCC;
+}
+
+.tiles {
+  position: absolute;
+  pointer-events: none;
+  background-color: transparent;
+  border: 1px solid transparent;
+  height: 100%;
+}
+
+.board-space {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.board-space::before {
+  content: "";
+  padding-bottom: 100%;
+  display: inline-block;
+  vertical-align: top;
+}
+
+.board-space .logo {
+  transform: translateX(10%);
+}
+
+.board-space .arrow {
+  position: absolute;
+}
+
+.bonus-label {
+  position: absolute;
+  top: 50%;
+  width: 100%;
+  text-align: center;
+  color: white;
+  font-size: 12px;
+}
+
+/* Coordinate labels */
+
+.coord-labels {
+  display: flex;
+  justify-content: space-around;
+  width: 100%;
+}
+
+.coord-labels.vert {
+  position: absolute;
+  left: -24px;
+  bottom: 0;
+  flex-direction: column;
+  width: auto;
+  height: calc(100% - 24px);
+}
+
+.coord-label {
+  color: black;
+  text-align: right;
+  margin: 0;
+  font-size: 100%;
+  font-weight: 600;
+  font-family: 'Source Code Pro', monospace;
+  overflow: hidden;
+}
+
+/* Rack */
+
+.rack {
+  display: flex;
+  justify-content: center;
+  margin: 24px 0;
+  width: 100%;
+  height: 3vw;
+}
+
+.rack-container {
+  display: flex;
+  justify-content: center;
+  outline-style: none;
+}
+
+/* Tiles - defaults that may be overridden by customization */
+.tile, .empty-space {
+  position: relative;
+  display: flex;
+  align-items: center;
+  border-radius: 10%;
+  line-height: 0;
+}
+
+.empty-space {
+  pointer-events: none;
+}
+
+.tile::before {
+  content: "";
+  padding-bottom: 100%;
+  display: inline-block;
+  vertical-align: top;
+}
+
+.tile .rune {
+  margin: 0;
+  font-family: 'Roboto', sans-serif;
+  line-height: 0;
+  font-size: 1.5vw;
+}
+
+.tile .rune {
+  width: 100%;
+  margin-bottom: 1px;
+}
+
+.tile .point-value {
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  padding: 0.5vw 0.3vw;
+  line-height: 0;
+  margin: 0;
+  font-size: 0.6vw;
+  font-weight: bold;
+}
+
+.rack .tile {
+  width: calc(100% / 15);
+  margin: 3px;
+}
+
+
+.tile .tentative-score {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 90%;
+  height: 70%;
+  border-radius: 15%;
+  font-size: 0.9vw;
+  font-weight: bold;
+  margin: 0;
+  left: -95%;
+  background: #999;
+  color: white;
+}

@@ -31,40 +31,35 @@ const Board = (props: Props) => {
   // board squares as necessary.
 
   return (
-    <svg width={props.compWidth} height={props.boardDim + props.topFrameHeight}>
-      <g>
-        {/* apply transform here to the g */}
+    <div className="board">
         <BoardCoordLabels
           gridDim={props.gridSize}
-          boardSquareDim={props.sqWidth}
-          rowLabelWidth={props.sideFrameWidth}
-          colLabelHeight={props.topFrameHeight}
-          rowLabelGutter={props.sideFrameGutter}
-          colLabelGutter={0}
         />
-        <BoardSpaces
-          gridDim={props.gridSize}
-          boardSquareDim={props.sqWidth}
-          rowLabelWidth={props.sideFrameWidth + props.sideFrameGutter * 2}
-          colLabelHeight={props.topFrameHeight}
-          gridLayout={props.gridLayout}
-          showBonusLabels={props.showBonusLabels}
-          placementArrow={props.placementArrowProperties}
-          squareClicked={props.squareClicked}
-        />
-        <Tiles
-          gridDim={props.gridSize}
-          rowLabelWidth={props.sideFrameWidth + props.sideFrameGutter * 2}
-          colLabelHeight={props.topFrameHeight}
-          boardSquareDim={props.sqWidth}
-          tilesLayout={props.tilesLayout}
-          lastPlayedLetters={props.lastPlayedLetters}
-          tentativeTiles={props.tentativeTiles}
-          scaleTiles={true}
-          tentativeTileScore={props.tentativeTileScore}
-        />
-      </g>
-    </svg>
+        <div className="board-spaces-container">
+          <BoardSpaces
+            gridDim={props.gridSize}
+            boardSquareDim={props.sqWidth}
+            rowLabelWidth={props.sideFrameWidth + props.sideFrameGutter * 2}
+            colLabelHeight={props.topFrameHeight}
+            gridLayout={props.gridLayout}
+            showBonusLabels={props.showBonusLabels}
+            placementArrow={props.placementArrowProperties}
+            squareClicked={props.squareClicked}
+          />
+          <Tiles
+            gridDim={props.gridSize}
+            rowLabelWidth={props.sideFrameWidth + props.sideFrameGutter * 2}
+            colLabelHeight={props.topFrameHeight}
+            boardSquareDim={props.sqWidth}
+            tilesLayout={props.tilesLayout}
+            lastPlayedLetters={props.lastPlayedLetters}
+            tentativeTiles={props.tentativeTiles}
+            scaleTiles={true}
+            tentativeTileScore={props.tentativeTileScore}
+          />
+        </div>
+
+    </div>
   );
 };
 
