@@ -1,9 +1,7 @@
 import React from 'react';
 import { ReactComponent as Logo } from '../aero.svg';
 import { BonusType } from '../constants/board_layout';
-
-const fontFamily = 'Arial,Geneva,Helvetica,Helv,sans-serif';
-
+import { ArrowRightOutlined, ArrowDownOutlined } from '@ant-design/icons/lib'
 
 interface BonusProperties {
   fillColor: string;
@@ -63,15 +61,11 @@ const BoardSpace = (props: Props) => {
   if (props.arrow) {
     if (props.arrowHoriz) {
       arrow = (
-        <p className="arrow">
-          ➡
-        </p>
+        <ArrowRightOutlined />
       );
     } else {
       arrow = (
-        <p className="arrow">
-          ⬇
-        </p>
+        <ArrowDownOutlined />
       );
     }
   }

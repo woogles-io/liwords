@@ -1,6 +1,8 @@
 .App {
   text-align: center;
   background-color: #f4f4f4;
+  /* Prevent squashing board until we get to responsive for mobile */
+  min-width: 1024px;
 }
 
 .App-logo {
