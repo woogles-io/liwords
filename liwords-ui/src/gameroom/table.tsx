@@ -15,6 +15,7 @@ import {
   MessageType,
 } from '../gen/api/proto/game_service_pb';
 import { encodeToSocketFmt } from '../utils/protobuf';
+import './gameroom.scss';
 
 const gutter = 16;
 const boardspan = 12;

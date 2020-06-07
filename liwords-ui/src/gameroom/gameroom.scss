@@ -1,7 +1,9 @@
+@import '../base.scss';
+
 .board-container {
   user-select: none;
   background: white;
-  box-shadow: 0px 0px 2vw rgba(0, 0, 0, 0.1);
+  box-shadow: $card-shadow;
   border-radius: 8px;
   text-align: center;
   padding: 12px 52px 24px;

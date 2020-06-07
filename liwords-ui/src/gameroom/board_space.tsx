@@ -1,5 +1,5 @@
 import React from 'react';
-import { ReactComponent as Logo } from '../aero.svg';
+import { ReactComponent as Logo } from '../assets/aero.svg';
 import { BonusType } from '../constants/board_layout';
 import { ArrowRightOutlined, ArrowDownOutlined } from '@ant-design/icons/lib'
 
