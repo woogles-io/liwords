@@ -35,27 +35,30 @@ const Board = (props: Props) => {
         <BoardCoordLabels
           gridDim={props.gridSize}
         />
-        <BoardSpaces
-          gridDim={props.gridSize}
-          boardSquareDim={props.sqWidth}
-          rowLabelWidth={props.sideFrameWidth + props.sideFrameGutter * 2}
-          colLabelHeight={props.topFrameHeight}
-          gridLayout={props.gridLayout}
-          showBonusLabels={props.showBonusLabels}
-          placementArrow={props.placementArrowProperties}
-          squareClicked={props.squareClicked}
-        />
-        <Tiles
-          gridDim={props.gridSize}
-          rowLabelWidth={props.sideFrameWidth + props.sideFrameGutter * 2}
-          colLabelHeight={props.topFrameHeight}
-          boardSquareDim={props.sqWidth}
-          tilesLayout={props.tilesLayout}
-          lastPlayedLetters={props.lastPlayedLetters}
-          tentativeTiles={props.tentativeTiles}
-          scaleTiles={true}
-          tentativeTileScore={props.tentativeTileScore}
-        />
+        <div className="board-spaces-container">
+          <BoardSpaces
+            gridDim={props.gridSize}
+            boardSquareDim={props.sqWidth}
+            rowLabelWidth={props.sideFrameWidth + props.sideFrameGutter * 2}
+            colLabelHeight={props.topFrameHeight}
+            gridLayout={props.gridLayout}
+            showBonusLabels={props.showBonusLabels}
+            placementArrow={props.placementArrowProperties}
+            squareClicked={props.squareClicked}
+          />
+          <Tiles
+            gridDim={props.gridSize}
+            rowLabelWidth={props.sideFrameWidth + props.sideFrameGutter * 2}
+            colLabelHeight={props.topFrameHeight}
+            boardSquareDim={props.sqWidth}
+            tilesLayout={props.tilesLayout}
+            lastPlayedLetters={props.lastPlayedLetters}
+            tentativeTiles={props.tentativeTiles}
+            scaleTiles={true}
+            tentativeTileScore={props.tentativeTileScore}
+          />
+        </div>
+
     </div>
   );
 };

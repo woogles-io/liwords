@@ -6,7 +6,6 @@ import {
 } from '../constants/tile_values';
 import Tile from './tile';
 import { EphemeralTile } from '../utils/cwgame/common';
-import TentativeScore from './tentative_score';
 
 type Props = {
   gridDim: number;
@@ -80,18 +79,6 @@ const Tiles = (props: Props) => {
       }
     }
   }
-  /*if (tentativeTiles.length > 0 && props.tentativeTileScore !== undefined) {
-    tiles.push(
-      <TentativeScore
-        score={props.tentativeTileScore}
-        width={props.boardSquareDim / 2}
-        height={props.boardSquareDim / 3}
-        x={tentativeTiles[0].col * props.boardSquareDim + props.rowLabelWidth}
-        y={tentativeTiles[0].row * props.boardSquareDim + props.colLabelHeight}
-        key="tentativescore"
-      />
-    );
-  }*/
 
   return <div className="tiles">
       {tiles}

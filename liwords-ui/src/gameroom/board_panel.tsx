@@ -206,37 +206,29 @@ export const BoardPanel = (props: Props) => {
         squareClicked={squareClicked}
         placementArrowProperties={arrowProperties}
       />
-      <div>
-        <Row>
-          <Col span={2} offset={4}>
-            <Button
-              shape="circle"
-              icon={<ArrowDownOutlined />}
-              type="primary"
-              onClick={recallTiles}
-            />
-          </Col>
-          <Col span={12}>
-            <Rack letters={displayedRack} tileDim={sqWidth} grabbable />
-          </Col>
-          <Col span={2}>
-            <Button
-              shape="circle"
-              icon={<SyncOutlined />}
-              type="primary"
-              onClick={shuffleTiles}
-            />
-          </Col>
-        </Row>
+      <div className="rack-container">
+        <Button
+          shape="circle"
+          icon={<ArrowDownOutlined />}
+          type="primary"
+          onClick={recallTiles}
+        />
+        <Rack letters={displayedRack} tileDim={sqWidth} grabbable />
+        <Button
+          shape="circle"
+          icon={<SyncOutlined />}
+          type="primary"
+          onClick={shuffleTiles}
+        />
       </div>
       <div>
         <GameControls
-            onRecall={recallTiles}
-            onExchange={exchangeTiles}
-            onPass={passTurn}
-            onChallenge={challengePlay}
-            onCommit={commitPlay}
-            currentRack={props.currentRack}
+          onRecall={recallTiles}
+          onExchange={exchangeTiles}
+          onPass={passTurn}
+          onChallenge={challengePlay}
+          onCommit={commitPlay}
+          currentRack={props.currentRack}
         />
       </div>
     </div>
