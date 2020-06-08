@@ -30,7 +30,7 @@ export type FullPlayerInfo = {
   currentRack: string;
 };
 
-const expandToFull = (playerList: PlayerInfo[]): FullPlayerInfo[] => {
+const initialExpandToFull = (playerList: PlayerInfo[]): FullPlayerInfo[] => {
   return playerList.map((pi, idx) => {
     return {
       nickname: pi.getNickname(),
@@ -56,8 +56,7 @@ export type GameState = {
   pool: TileDistribution;
   // Array of every turn taken so far.
   turns: Array<GameTurn>;
-  // The index of the onturn player in `players`.
-  onturn: number;
+  onturn: number; // index in players
   currentTurn: GameTurn;
   lastEvent: GameEvent | null;
   gameID: string;
@@ -84,11 +83,14 @@ export const startingGameState = (
   return gs;
 };
 
-const newGameState = (state: GameState, evt: GameEvent): GameState => {
+const newGameState = (
+  state: GameState,
+  sge: ServerGameplayEvent
+): GameState => {
   // Variables to pass down anew:
   let { turns, board, lastPlayedTiles, pool, onturn } = state;
   let currentTurn;
-
+  const evt = sge.getEvent()!;
   if (
     state.lastEvent !== null &&
     evt.getNickname() !== state.lastEvent.getNickname()
@@ -116,11 +118,20 @@ const newGameState = (state: GameState, evt: GameEvent): GameState => {
       [lastPlayedTiles, pool] = placeOnBoard(board, pool, evt);
     }
   }
-
   const players = [...state.players];
-  players[onturn].score = evt.getCumulative();
-  onturn = 1 - onturn;
 
+  if (
+    evt.getType() === GameEvent.Type.TILE_PLACEMENT_MOVE ||
+    evt.getType() === GameEvent.Type.EXCHANGE
+  ) {
+    players[onturn].currentRack = sge.getNewRack();
+  }
+
+  players[onturn].score = evt.getCumulative();
+  players[onturn].onturn = false;
+  players[1 - onturn].onturn = true;
+  onturn = 1 - onturn;
+  console.log('but now it changes to', onturn);
   return {
     // These never change:
     tileDistribution: state.tileDistribution,
@@ -185,7 +196,7 @@ const stateFromHistory = (history: GameHistory): GameState => {
 
   const gs = startingGameState(
     EnglishCrosswordGameDistribution,
-    expandToFull(playerList),
+    initialExpandToFull(playerList),
     history!.getUid()
   );
   history.getTurnsList().forEach((turn, idx) => {
@@ -220,6 +231,8 @@ const stateFromHistory = (history: GameHistory): GameState => {
   }
   // Assign racks. Remember that the player listed first goes first.
   [gs.players[0].currentRack, gs.players[1].currentRack] = racks;
+  gs.players[gs.onturn].onturn = true;
+  gs.players[1 - gs.onturn].onturn = false;
   return gs;
 };
 
@@ -232,8 +245,9 @@ export const GameReducer = (state: GameState, action: Action): GameState => {
       if (sge.getGameId() !== state.gameID) {
         return state; // no change
       }
-      const evt = sge.getEvent();
-      return newGameState(state, evt!);
+      const ngs = newGameState(state, sge);
+      console.log('new game state', ngs);
+      return ngs;
     }
 
     case ActionType.RefreshHistory: {

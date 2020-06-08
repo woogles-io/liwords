@@ -19,6 +19,7 @@ const PlayerCard = (props: CardProps) => {
   if (!props.player) {
     return <Card />;
   }
+  console.log('playercard', props.player.nickname, props.player.onturn);
   // const timeStr = msecsToTimeStr(props.player.timeRemainingMsec);
   const timeStr = '15:00 (fake)';
   return (

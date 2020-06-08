@@ -80,13 +80,14 @@ export const Table = (props: Props) => {
   // If we are NOT one of the players (so an observer), display the rack of
   // the player on turn.
   let rack;
-  console.log('finding us', gameContext, gameContext.players);
   const us = gameContext.players.find((p) => p.nickname === props.username);
   if (us) {
     rack = us.currentRack;
   } else {
     rack = gameContext.players.find((p) => p.onturn)?.currentRack || '';
   }
+
+  console.log('in table', gameContext.players);
 
   return (
     <div>
