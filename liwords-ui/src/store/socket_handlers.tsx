@@ -67,7 +67,6 @@ export const onSocketMsg = (storeData: StoreData) => {
             challengeRule: gameReq.getChallengeRule(),
             seekID: gameReq.getRequestId(),
           },
-          reducer: 'lobby',
         });
         break;
       }
@@ -87,7 +86,6 @@ export const onSocketMsg = (storeData: StoreData) => {
               seekID: gameReq.getRequestId(),
             };
           }),
-          reducer: 'lobby',
         });
 
         break;
@@ -128,14 +126,20 @@ export const onSocketMsg = (storeData: StoreData) => {
       case MessageType.GAME_HISTORY_REFRESHER: {
         const ghr = parsedMsg as GameHistoryRefresher;
         console.log('got refresher event', ghr);
-        storeData.gameHistoryRefresher(ghr);
+        storeData.dispatchGameContext({
+          actionType: ActionType.RefreshHistory,
+          payload: ghr,
+        });
         break;
       }
 
       case MessageType.SERVER_GAMEPLAY_EVENT: {
         const sge = parsedMsg as ServerGameplayEvent;
         console.log('got server event', sge);
-        storeData.processGameplayEvent(sge);
+        storeData.dispatchGameContext({
+          actionType: ActionType.AddGameEvent,
+          payload: sge,
+        });
         break;
       }
 
@@ -150,7 +154,6 @@ export const onSocketMsg = (storeData: StoreData) => {
         storeData.dispatchLobbyContext({
           actionType: ActionType.RemoveSoughtGame,
           payload: gae.getRequestId(),
-          reducer: 'lobby',
         });
         break;
       }

@@ -1,4 +1,5 @@
 export const EmptySpace = ' ';
+export const Blank = '?';
 
 export type EphemeralTile = {
   // ephemeron <3 you are missed

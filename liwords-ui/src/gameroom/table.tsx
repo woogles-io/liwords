@@ -8,7 +8,6 @@ import { Chat } from './chat';
 import { useStoreContext } from '../store/store';
 import { PlayerCards } from './player_cards';
 import Pool from './pool';
-import { fullPlayerInfo } from '../utils/cwgame/game';
 import {
   RegisterRealm,
   DeregisterRealm,
@@ -21,10 +20,6 @@ const gutter = 16;
 const boardspan = 12;
 const maxspan = 24; // from ant design
 const navbarHeightAndGutter = 84; // 72 + 12 spacing
-
-type RouterProps = {
-  gameID: string;
-};
 
 type Props = {
   windowWidth: number;
@@ -52,12 +47,13 @@ export const Table = (props: Props) => {
     boardPanelHeight = viewableHeight;
     boardPanelWidth = boardPanelHeight - 96;
   }
-  const { setRedirGame, gameState, chat } = useStoreContext();
+  const { setRedirGame, gameContext, chat } = useStoreContext();
   const { gameID } = useParams();
 
   useEffect(() => {
     // Avoid react-router hijacking the back button.
-    setRedirGame('');
+    // If setRedirGame is not defined, then we're SOL I guess.
+    setRedirGame ? setRedirGame('') : (() => {})();
   }, [setRedirGame]);
 
   useEffect(() => {
@@ -79,8 +75,18 @@ export const Table = (props: Props) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const player1 = fullPlayerInfo(0, gameState);
-  const player2 = fullPlayerInfo(1, gameState);
+  // Figure out what rack we should display.
+  // If we are one of the players, display our rack.
+  // If we are NOT one of the players (so an observer), display the rack of
+  // the player on turn.
+  let rack;
+  console.log('finding us', gameContext, gameContext.players);
+  const us = gameContext.players.find((p) => p.nickname === props.username);
+  if (us) {
+    rack = us.currentRack;
+  } else {
+    rack = gameContext.players.find((p) => p.onturn)?.currentRack || '';
+  }
 
   return (
     <div>
@@ -89,10 +95,7 @@ export const Table = (props: Props) => {
           <TopBar username={props.username} />
         </Col>
       </Row>
-      <Row
-      gutter={gutter}
-      className="game-table"
-      >
+      <Row gutter={gutter} className="game-table">
         <Col span={6}>
           <Chat chatEntities={chat} />
         </Col>
@@ -100,9 +103,9 @@ export const Table = (props: Props) => {
           <BoardPanel
             compWidth={boardPanelWidth}
             compHeight={boardPanelHeight}
-            board={gameState.board}
+            board={gameContext.board}
             showBonusLabels={false}
-            currentRack={gameState.currentRacks[props.username] || ''}
+            currentRack={rack}
             lastPlayedLetters={{}}
             gameID={gameID}
             sendSocketMsg={props.sendSocketMsg}
@@ -110,7 +113,7 @@ export const Table = (props: Props) => {
         </Col>
         <Col span={6}>
           {/* maybe some of this info comes from backend */}
-          <PlayerCards player1={player1} player2={player2} />
+          <PlayerCards />
           {/* <GameInfo
             timer="15 0"
             gameType="Classic"
@@ -120,11 +123,7 @@ export const Table = (props: Props) => {
           /> */}
           <Row>15 0 - Classic - Collins</Row>
           <Row>5 point challenge - Unrated</Row>
-
-          <Pool
-            pool={gameState.pool}
-            currentRack={gameState.currentRacks[props.username] || ''}
-          />
+          <Pool pool={gameContext?.pool} currentRack={rack} />
         </Col>
       </Row>
     </div>

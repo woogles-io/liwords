@@ -47,5 +47,5 @@ export function LobbyReducer(state: LobbyState, action: Action): LobbyState {
       };
     }
   }
-  return state;
+  throw new Error('unhandled action type ' + action.actionType);
 }

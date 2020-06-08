@@ -1,8 +1,13 @@
 /** @fileoverview business logic for placing tiles on a board */
-import { Blank } from '../../gameroom/tile';
 import { EnglishCrosswordGameDistribution } from '../../constants/tile_distributions';
 
-import { EphemeralTile, EmptySpace, isBlank, uniqueTileIdx } from './common';
+import {
+  EphemeralTile,
+  EmptySpace,
+  isBlank,
+  uniqueTileIdx,
+  Blank,
+} from './common';
 import { calculateTemporaryScore } from './scoring';
 import { Board } from './board';
 

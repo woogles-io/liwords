@@ -1,19 +1,20 @@
 import React, { createContext, useContext, useState, useReducer } from 'react';
+// import {
+//   GameState,
+//   StateFromHistoryRefresher,
+//   StateForwarder,
+//   turnSummary,
+// } from '../utils/cwgame/game';
+import { EnglishCrosswordGameDistribution } from '../constants/tile_distributions';
+import { ServerChallengeResultEvent } from '../gen/api/proto/game_service_pb';
+// import { Reducer } from './reducers/main';
+import { LobbyState, LobbyReducer } from './reducers/lobby_reducer';
+import { Action } from '../actions/actions';
 import {
   GameState,
-  StateFromHistoryRefresher,
-  StateForwarder,
-  turnSummary,
-} from '../utils/cwgame/game';
-import { EnglishCrosswordGameDistribution } from '../constants/tile_distributions';
-import {
-  GameHistoryRefresher,
-  ServerGameplayEvent,
-  ServerChallengeResultEvent,
-} from '../gen/api/proto/game_service_pb';
-import { Reducer } from './reducers/main';
-import { SoughtGame, LobbyState } from './reducers/lobby_reducer';
-import { Action } from '../actions/actions';
+  startingGameState,
+  GameReducer,
+} from './reducers/game_reducer';
 
 export enum ChatEntityType {
   UserChat,
@@ -29,36 +30,42 @@ export type ChatEntityObj = {
 };
 
 const MaxChatLength = 250;
-
-const initialGameState = new GameState(EnglishCrosswordGameDistribution, []);
+const defaultGameState = startingGameState(
+  EnglishCrosswordGameDistribution,
+  [],
+  ''
+);
+const defaultFunction = () => {};
 
 export type StoreData = {
   // Functions and data to deal with the global store.
-  lobbyContext: LobbyState | undefined;
+  lobbyContext: LobbyState;
   dispatchLobbyContext: (action: Action) => void;
   redirGame: string;
   setRedirGame: React.Dispatch<React.SetStateAction<string>>;
-  gameHistoryRefresher: (ghr: GameHistoryRefresher) => void;
-  gameState: GameState;
-  processGameplayEvent: (sge: ServerGameplayEvent) => void;
+
   challengeResultEvent: (sge: ServerChallengeResultEvent) => void;
+
+  gameContext: GameState;
+  dispatchGameContext: (action: Action) => void;
+
   addChat: (chat: ChatEntityObj) => void;
   chat: Array<ChatEntityObj>;
 };
 
+// This is annoying, but we have to add a default for everything in this
+// declaration. Declaring it as a Partial<StoreData> breaks things elsewhere.
 export const Context = createContext<StoreData>({
   lobbyContext: { soughtGames: [] },
-  dispatchLobbyContext: () => {},
-  chat: [],
-  addChat: () => {},
+  dispatchLobbyContext: defaultFunction,
   redirGame: '',
-  setRedirGame: () => {},
-  gameHistoryRefresher: () => {},
-  gameState: initialGameState,
-  processGameplayEvent: () => {},
-  challengeResultEvent: () => {},
-  // timers: {},
-  // setTimer: () => {},
+  setRedirGame: defaultFunction,
+  challengeResultEvent: defaultFunction,
+  gameContext: defaultGameState,
+  dispatchGameContext: defaultFunction,
+
+  addChat: defaultFunction,
+  chat: [],
 });
 
 type Props = {
@@ -73,30 +80,17 @@ const randomID = () => {
 };
 
 export const Store = ({ children, ...props }: Props) => {
-  const [lobbyContext, dispatchLobbyContext] = useReducer(Reducer, {
+  const [lobbyContext, dispatchLobbyContext] = useReducer(LobbyReducer, {
     soughtGames: [],
   });
 
-  // const [soughtGames, setSoughtGames] = useState(new Array<SoughtGame>());
+  const [gameContext, dispatchGameContext] = useReducer(
+    GameReducer,
+    defaultGameState
+  );
+
   const [redirGame, setRedirGame] = useState('');
-  const [gameState, setGameState] = useState(initialGameState);
   const [chat, setChat] = useState(new Array<ChatEntityObj>());
-
-  const gameHistoryRefresher = (ghr: GameHistoryRefresher) => {
-    setGameState(StateFromHistoryRefresher(ghr));
-  };
-
-  const processGameplayEvent = (sge: ServerGameplayEvent) => {
-    setGameState((gs) => {
-      return StateForwarder(sge, gs);
-    });
-    addChat({
-      entityType: ChatEntityType.ServerMsg,
-      sender: '',
-      message: turnSummary(sge),
-      id: randomID(),
-    });
-  };
 
   const challengeResultEvent = (sge: ServerChallengeResultEvent) => {
     addChat({
@@ -126,11 +120,10 @@ export const Store = ({ children, ...props }: Props) => {
   const store = {
     lobbyContext,
     dispatchLobbyContext,
+    gameContext,
+    dispatchGameContext,
     redirGame,
     setRedirGame,
-    gameState,
-    gameHistoryRefresher,
-    processGameplayEvent,
     challengeResultEvent,
     addChat,
     chat,
