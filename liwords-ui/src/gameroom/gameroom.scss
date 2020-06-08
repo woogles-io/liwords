@@ -1,10 +1,9 @@
-.board-container {
-  user-select: none;
-}
+@import '../base.scss';
 
 .board-container {
-  background: linear-gradient(180deg, #E2F8FF 0%, #FFFFFF 100%);
-  box-shadow: 0px 0px 2vw rgba(0, 0, 0, 0.1);
+  user-select: none;
+  background: white;
+  box-shadow: $card-shadow;
   border-radius: 8px;
   text-align: center;
   padding: 12px 52px 24px;
@@ -25,6 +24,7 @@
 }
 .board-spaces, .tiles {
   width: 100%;
+  min-width: 360px;
   display: grid;
   grid-template-columns: repeat(15, 1fr);
   grid-template-rows: repeat(15, 1fr);
@@ -46,6 +46,7 @@
   display: flex;
   justify-content: center;
   align-items: center;
+  color: #2D6A9E;
 }
 
 .board-space::before {
@@ -53,6 +54,11 @@
   padding-bottom: 100%;
   display: inline-block;
   vertical-align: top;
+}
+
+.board-space .anticon {
+  position: absolute;
+  font-size: 1.5vw;
 }
 
 .board-space .logo {
@@ -109,6 +115,10 @@
   height: 3vw;
 }
 
+.ant-modal .rack {
+  height: auto;
+}
+
 .rack-container {
   display: flex;
   justify-content: center;
@@ -122,6 +132,7 @@
   align-items: center;
   border-radius: 10%;
   line-height: 0;
+  text-align: center;
 }
 
 .empty-space {

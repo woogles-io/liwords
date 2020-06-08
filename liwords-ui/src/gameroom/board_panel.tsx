@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Button, Row, Col } from 'antd';
+import { Button } from 'antd';
 import { ArrowDownOutlined, SyncOutlined } from '@ant-design/icons';
 import GameBoard from './board';
 import GameControls from './game_controls';
@@ -10,7 +10,6 @@ import {
 } from '../utils/cwgame/tile_placement';
 
 import { EphemeralTile, EmptySpace } from '../utils/cwgame/common';
-import './board_panel.css';
 import {
   tilesetToMoveEvent,
   exchangeMoveEvent,
