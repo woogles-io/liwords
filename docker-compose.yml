@@ -9,7 +9,7 @@ services:
       LEXICON_PATH: /opt/program/data/lexica
     volumes:
       - .:/opt/program:rw
-    command: sh -c "go run cmd/server/*.go"
+    command: sh -c "go run cmd/socketsrv/*.go"
     # networks:
     #   - aeronet
     ports:

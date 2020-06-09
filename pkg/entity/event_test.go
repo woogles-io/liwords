@@ -3,7 +3,7 @@ package entity
 import (
 	"testing"
 
-	pb "github.com/domino14/crosswords/rpc/api/proto"
+	pb "github.com/domino14/liwords/rpc/api/proto"
 	"github.com/matryer/is"
 	"google.golang.org/protobuf/proto"
 )

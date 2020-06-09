@@ -1,7 +1,7 @@
 package entity
 
 import (
-	pb "github.com/domino14/crosswords/rpc/api/proto"
+	pb "github.com/domino14/liwords/rpc/api/proto"
 	"github.com/lithammer/shortuuid"
 )
 

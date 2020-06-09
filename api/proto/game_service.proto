@@ -1,6 +1,6 @@
 syntax = "proto3";
-package crosswords;
-option go_package = "github.com/domino14/crosswords/rpc/api/proto/crosswords";
+package liwords;
+option go_package = "github.com/domino14/liwords/rpc/api/proto/liwords";
 
 // game_service contains the data structures and services needed for the actual
 // gameplay. Since gameplay is intended to happen over a full-duplex connection,

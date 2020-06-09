@@ -5,7 +5,7 @@ import (
 	"errors"
 	"sync"
 
-	"github.com/domino14/crosswords/pkg/entity"
+	"github.com/domino14/liwords/pkg/entity"
 )
 
 var (
