@@ -39,7 +39,7 @@ def build_protobuf(c):
 @task
 def deploy(c):
     with c.cd("liwords-ui"):
-        c.run("yarn build")
+        c.run("npm run build")
         c.run("rsync -avz --del build/ ubuntu@xword.club:~/liwords-ui-build")
     with c.cd("cmd/socketsrv"):
         c.run("GOOS=linux GOARCH=amd64 go build -o liwords-socket-linux-amd64")
