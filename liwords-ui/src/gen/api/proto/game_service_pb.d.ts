@@ -1,4 +1,4 @@
-// package: crosswords
+// package: liwords
 // file: api/proto/game_service.proto
 
 import * as jspb from "google-protobuf";

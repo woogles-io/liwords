@@ -3,9 +3,9 @@ package gameplay
 import (
 	"context"
 
-	pb "github.com/domino14/crosswords/rpc/api/proto"
+	pb "github.com/domino14/liwords/rpc/api/proto"
 
-	"github.com/domino14/crosswords/pkg/entity"
+	"github.com/domino14/liwords/pkg/entity"
 )
 
 // SoughtGameStore is an interface for getting a sought game.

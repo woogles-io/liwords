@@ -3,7 +3,7 @@ package gameplay
 import (
 	"context"
 
-	"github.com/domino14/crosswords/pkg/entity"
+	"github.com/domino14/liwords/pkg/entity"
 )
 
 type playerstore interface {

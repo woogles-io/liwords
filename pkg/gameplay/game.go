@@ -15,9 +15,9 @@ import (
 
 	macondopb "github.com/domino14/macondo/gen/api/proto/macondo"
 
-	"github.com/domino14/crosswords/pkg/config"
-	"github.com/domino14/crosswords/pkg/entity"
-	pb "github.com/domino14/crosswords/rpc/api/proto"
+	"github.com/domino14/liwords/pkg/config"
+	"github.com/domino14/liwords/pkg/entity"
+	pb "github.com/domino14/liwords/rpc/api/proto"
 	"github.com/domino14/macondo/board"
 	"github.com/domino14/macondo/game"
 )

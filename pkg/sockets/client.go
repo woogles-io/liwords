@@ -15,9 +15,9 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/domino14/crosswords/pkg/entity"
+	"github.com/domino14/liwords/pkg/entity"
 
-	pb "github.com/domino14/crosswords/rpc/api/proto"
+	pb "github.com/domino14/liwords/rpc/api/proto"
 	"github.com/rs/zerolog/log"
 
 	"github.com/gorilla/websocket"

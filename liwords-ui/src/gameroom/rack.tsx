@@ -6,7 +6,7 @@ import {
 } from '../constants/tile_values';
 import Tile from './tile';
 
-const TileSpacing = 6;
+// const TileSpacing = 6;
 
 type Props = {
   letters: string;
@@ -44,11 +44,7 @@ class Rack extends React.Component<Props> {
   }
 
   render() {
-    return (
-      <div className="rack">
-        {this.renderTiles()}
-      </div>
-    );
+    return <div className="rack">{this.renderTiles()}</div>;
   }
 }
 

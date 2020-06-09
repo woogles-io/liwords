@@ -6,10 +6,10 @@ import (
 	"os"
 	"time"
 
-	"github.com/domino14/crosswords/pkg/config"
-	"github.com/domino14/crosswords/pkg/sockets"
-	"github.com/domino14/crosswords/pkg/stores/game"
-	"github.com/domino14/crosswords/pkg/stores/soughtgame"
+	"github.com/domino14/liwords/pkg/config"
+	"github.com/domino14/liwords/pkg/sockets"
+	"github.com/domino14/liwords/pkg/stores/game"
+	"github.com/domino14/liwords/pkg/stores/soughtgame"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 )

@@ -5,10 +5,10 @@ import (
 	"errors"
 	"sync"
 
-	"github.com/domino14/crosswords/pkg/config"
-	"github.com/domino14/crosswords/pkg/entity"
-	"github.com/domino14/crosswords/pkg/gameplay"
-	pb "github.com/domino14/crosswords/rpc/api/proto"
+	"github.com/domino14/liwords/pkg/config"
+	"github.com/domino14/liwords/pkg/entity"
+	"github.com/domino14/liwords/pkg/gameplay"
+	pb "github.com/domino14/liwords/rpc/api/proto"
 	"github.com/rs/zerolog/log"
 )
 
