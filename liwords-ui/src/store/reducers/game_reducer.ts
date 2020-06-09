@@ -220,9 +220,8 @@ const stateFromHistory = (history: GameHistory): GameState => {
         //  do nothing - we only care about tile placement moves here.
       }
     });
-
-    gs.onturn = idx % 2;
     gs.players[gs.onturn].score = events[events.length - 1].getCumulative();
+    gs.onturn = (idx + 1) % 2;
   });
 
   let racks = history.getLastKnownRacksList();
@@ -257,5 +256,5 @@ export const GameReducer = (state: GameState, action: Action): GameState => {
     }
   }
   // This should never be reached, but the compiler is complaining.
-  throw new Error('Unhandled action type ' + action.actionType);
+  throw new Error(`Unhandled action type ${action.actionType}`);
 };
