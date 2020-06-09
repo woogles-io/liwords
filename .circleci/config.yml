@@ -11,8 +11,8 @@ jobs:
     steps:
       - checkout
       - run:
-          name: Install build-base (for tests)
-          command: apk update && apk upgrade && apk add build-base
+          name: Install build-base (for tests) and bash (for slack notifier)
+          command: apk update && apk upgrade && apk add bash build-base
 
       - run: mv /opt/liwords/data/lexica $LEXICON_PATH
       - run: cd cmd/socketsrv && go build # persist executable to workspace for deploy step
@@ -26,6 +26,7 @@ jobs:
       - image: node:alpine
     steps:
       - checkout
+      - run: apk add bash
       - run: cd liwords-ui && npm install
       - run: cd liwords-ui && npm run test
       - run: cd liwords-ui && npm run build
