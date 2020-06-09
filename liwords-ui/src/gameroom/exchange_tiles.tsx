@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import Rack from './rack';
 
 // Render an exchange widget.

@@ -7,13 +7,13 @@ type CardProps = {
   player: FullPlayerInfo | undefined;
 };
 
-const msecsToTimeStr = (s: number): string => {
-  const mins = Math.floor(s / 60000);
-  const secs = Math.floor(s / 1000) % 60;
-  const minStr = mins.toString().padStart(2, '0');
-  const secStr = secs.toString().padStart(2, '0');
-  return `${minStr}:${secStr}`;
-};
+// const msecsToTimeStr = (s: number): string => {
+//   const mins = Math.floor(s / 60000);
+//   const secs = Math.floor(s / 1000) % 60;
+//   const minStr = mins.toString().padStart(2, '0');
+//   const secStr = secs.toString().padStart(2, '0');
+//   return `${minStr}:${secStr}`;
+// };
 
 const PlayerCard = (props: CardProps) => {
   if (!props.player) {

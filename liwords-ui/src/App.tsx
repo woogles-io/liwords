@@ -1,4 +1,4 @@
-import React, { useLayoutEffect, useState, useRef, useEffect } from 'react';
+import React, { useLayoutEffect, useState } from 'react';
 import { BrowserRouter as Router, Route, Switch } from 'react-router-dom';
 import './App.scss';
 import 'antd/dist/antd.css';

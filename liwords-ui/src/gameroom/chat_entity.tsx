@@ -1,5 +1,4 @@
 import React from 'react';
-import { Alert } from 'antd';
 import { ChatEntityType } from '../store/store';
 
 const ServerMsgColor = '#237804';
