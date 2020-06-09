@@ -8,9 +8,6 @@ jobs:
     working_directory: /opt/liwords
     steps:
       - checkout
-      - add_ssh_keys:
-          fingerprints:
-            - "bf:37:1b:e1:b2:b0:ec:20:92:43:20:86:40:7c:c4:e0"
       - run:
           name: Install build-base (for tests)
           command: apk update && apk upgrade && apk add build-base
