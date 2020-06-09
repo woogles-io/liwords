@@ -30,6 +30,8 @@ github.com/domino14/macondo v0.4.5-0.20200602215850-7783e49aa35b h1:Ao2Gub+XGzQ5
 github.com/domino14/macondo v0.4.5-0.20200602215850-7783e49aa35b/go.mod h1:6rvzhV5VQPsic54F0tDmXBwnd3OzrmKgHn9vaEaZFSs=
 github.com/domino14/macondo v0.4.5-0.20200603015523-7188d2632f0a h1:RPIoQZd0OBGEXdlPMUUCTAdY/OJPNSAvFghwiLSw6v0=
 github.com/domino14/macondo v0.4.5-0.20200603015523-7188d2632f0a/go.mod h1:RbTodyfCn9CH+dlixMJ1Mn1EGcdPJ+KjceuS02/MiWM=
+github.com/domino14/macondo v0.4.5-0.20200608023158-7c59f47f36d1 h1:pGCMTOXvkpC9MbpyxcyNElwzMNob7z92oDKWMiH+LcE=
+github.com/domino14/macondo v0.4.5-0.20200608023158-7c59f47f36d1/go.mod h1:RbTodyfCn9CH+dlixMJ1Mn1EGcdPJ+KjceuS02/MiWM=
 github.com/golang/protobuf v1.4.0-rc.1/go.mod h1:ceaxUfeHdC40wWswd/P6IGgMaK3YpKi5j83Wpe3EHw8=
 github.com/golang/protobuf v1.4.0-rc.1.0.20200221234624-67d41d38c208/go.mod h1:xKAWHe0F5eneWXFV3EuXVDTCmh+JuBKY0li0aMyXATA=
 github.com/golang/protobuf v1.4.0-rc.2/go.mod h1:LlEzMj4AhA7rCAGe4KMBDvJI+AwstrUpVNzEA03Pprs=

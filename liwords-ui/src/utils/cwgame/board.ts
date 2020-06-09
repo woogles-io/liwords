@@ -1,6 +1,12 @@
 import { CrosswordGameGridLayout } from '../../constants/board_layout';
 import { EmptySpace } from './common';
 
+export type Tile = {
+  row: number;
+  col: number;
+  rune: string; // why doesn't Javascript have runes.
+};
+
 /* TODO: should be dependent on board dimensions in future.  */
 export function blankLayout() {
   return repeatChar(225, EmptySpace);
@@ -37,7 +43,7 @@ export class Board {
     this.dim = this.gridLayout.length;
   }
 
-  /** take in a 2D board array */
+  /** take in a 2D board array. ONLY USE FOR TESTS. */
   setTileLayout(layout: Array<string>) {
     this.isEmpty = true;
     for (let row = 0; row < 15; row += 1) {
@@ -61,22 +67,22 @@ export class Board {
     return this.letters[row * 15 + col];
   }
 
-  addLetter(row: number, col: number, letter: string) {
-    this.letters = setCharAt(this.letters, row * 15 + col, letter);
+  addTile(t: Tile) {
+    this.letters = setCharAt(this.letters, t.row * 15 + t.col, t.rune);
     this.isEmpty = false;
   }
 
-  removeLetter(row: number, col: number, letter: string) {
-    this.letters = setCharAt(this.letters, row * 15 + col, EmptySpace);
-    // don't know how else to check, annoyingly
-    this.isEmpty = true;
-    for (let i = 0; i < this.letters.length; i++) {
-      if (this.letters[i] !== EmptySpace) {
-        this.isEmpty = false;
-        break;
-      }
-    }
-  }
+  // removeLetter(row: number, col: number, letter: string) {
+  //   this.letters = setCharAt(this.letters, row * 15 + col, EmptySpace);
+  //   // don't know how else to check, annoyingly
+  //   this.isEmpty = true;
+  //   for (let i = 0; i < this.letters.length; i++) {
+  //     if (this.letters[i] !== EmptySpace) {
+  //       this.isEmpty = false;
+  //       break;
+  //     }
+  //   }
+  // }
 
   deepCopy() {
     const newBoard = new Board();

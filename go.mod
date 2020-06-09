@@ -4,7 +4,7 @@ go 1.14
 
 require (
 	github.com/davecgh/go-spew v1.1.1 // indirect
-	github.com/domino14/macondo v0.4.5-0.20200603015523-7188d2632f0a
+	github.com/domino14/macondo v0.4.5-0.20200608023158-7c59f47f36d1
 	github.com/golang/protobuf v1.4.2
 	github.com/google/go-cmp v0.4.1 // indirect
 	github.com/gorilla/mux v1.7.4

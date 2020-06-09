@@ -182,7 +182,7 @@ export const BoardPanel = (props: Props) => {
     <div
       className="board-container"
       onKeyDown={(e) => {
-          keydown(e.key);
+        keydown(e.key);
       }}
       tabIndex={-1}
       role="textbox"

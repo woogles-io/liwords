@@ -1,9 +1,10 @@
 import React from 'react';
 import { Card, Row } from 'antd';
-import { FullPlayerInfo } from '../utils/cwgame/game';
+import { FullPlayerInfo } from '../store/reducers/game_reducer';
+import { useStoreContext } from '../store/store';
 
 type CardProps = {
-  player: FullPlayerInfo | null;
+  player: FullPlayerInfo | undefined;
 };
 
 const msecsToTimeStr = (s: number): string => {
@@ -18,14 +19,16 @@ const PlayerCard = (props: CardProps) => {
   if (!props.player) {
     return <Card />;
   }
-  const timeStr = msecsToTimeStr(props.player.timeRemainingMsec);
+  console.log('playercard', props.player.nickname, props.player.onturn);
+  // const timeStr = msecsToTimeStr(props.player.timeRemainingMsec);
+  const timeStr = '15:00 (fake)';
   return (
     <Card>
       <Row>
         {props.player.nickname} {props.player.onturn ? '*' : ''}
       </Row>
       <Row>
-        {props.player.flag} {props.player.title} {props.player.rating}
+        {props.player.countryFlag} {props.player.title} {props.player.rating}
       </Row>
       <Row>
         Score: {props.player.score} Time: {timeStr}
@@ -34,14 +37,13 @@ const PlayerCard = (props: CardProps) => {
   );
 };
 
-type CardsProps = {
-  player1: FullPlayerInfo | null; // player1 goes first
-  player2: FullPlayerInfo | null;
-};
+export const PlayerCards = () => {
+  const { gameContext } = useStoreContext();
 
-export const PlayerCards = (props: CardsProps) => (
-  <>
-    <PlayerCard player={props.player1} />
-    <PlayerCard player={props.player2} />
-  </>
-);
+  return (
+    <>
+      <PlayerCard player={gameContext?.players[0]} />
+      <PlayerCard player={gameContext?.players[1]} />
+    </>
+  );
+};

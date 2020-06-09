@@ -1,32 +1,26 @@
-import React, { createContext, useContext, useState } from 'react';
+import React, { createContext, useContext, useState, useReducer } from 'react';
+// import {
+//   GameState,
+//   StateFromHistoryRefresher,
+//   StateForwarder,
+//   turnSummary,
+// } from '../utils/cwgame/game';
+import { EnglishCrosswordGameDistribution } from '../constants/tile_distributions';
+import { ServerChallengeResultEvent } from '../gen/api/proto/game_service_pb';
+// import { Reducer } from './reducers/main';
+import { LobbyState, LobbyReducer } from './reducers/lobby_reducer';
+import { Action } from '../actions/actions';
 import {
   GameState,
-  StateFromHistoryRefresher,
-  StateForwarder,
-  turnSummary,
-} from '../utils/cwgame/game';
-import { EnglishCrosswordGameDistribution } from '../constants/tile_distributions';
-import {
-  GameHistoryRefresher,
-  ServerGameplayEvent,
-  ServerChallengeResultEvent,
-} from '../gen/api/proto/game_service_pb';
-import { GameEvent } from '../gen/macondo/api/proto/macondo/macondo_pb';
+  startingGameState,
+  GameReducer,
+} from './reducers/game_reducer';
 
 export enum ChatEntityType {
   UserChat,
   ServerMsg,
   ErrorMsg,
 }
-
-export type SoughtGame = {
-  seeker: string;
-  lexicon: string;
-  initialTimeSecs: number;
-  challengeRule: number;
-  // rating: number;
-  seekID: string;
-};
 
 export type ChatEntityObj = {
   entityType: ChatEntityType;
@@ -36,42 +30,42 @@ export type ChatEntityObj = {
 };
 
 const MaxChatLength = 250;
-
-const initialGameState = new GameState(EnglishCrosswordGameDistribution, []);
+const defaultGameState = startingGameState(
+  EnglishCrosswordGameDistribution,
+  [],
+  ''
+);
+const defaultFunction = () => {};
 
 export type StoreData = {
   // Functions and data to deal with the global store.
-  soughtGames: Array<SoughtGame>;
-  addSoughtGame: (sg: SoughtGame) => void;
-  addSoughtGames: (sgs: Array<SoughtGame>) => void;
-  removeGame: (id: string) => void;
+  lobbyContext: LobbyState;
+  dispatchLobbyContext: (action: Action) => void;
   redirGame: string;
   setRedirGame: React.Dispatch<React.SetStateAction<string>>;
-  gameHistoryRefresher: (ghr: GameHistoryRefresher) => void;
-  gameState: GameState;
-  processGameplayEvent: (sge: ServerGameplayEvent) => void;
+
   challengeResultEvent: (sge: ServerChallengeResultEvent) => void;
+
+  gameContext: GameState;
+  dispatchGameContext: (action: Action) => void;
+
   addChat: (chat: ChatEntityObj) => void;
   chat: Array<ChatEntityObj>;
-  // timers: { [username: string]: number | undefined };
-  // setTimer: (username: string, timeMsec: number) => void;
 };
 
+// This is annoying, but we have to add a default for everything in this
+// declaration. Declaring it as a Partial<StoreData> breaks things elsewhere.
 export const Context = createContext<StoreData>({
-  soughtGames: [],
-  chat: [],
-  addChat: () => {},
-  addSoughtGame: () => {},
-  addSoughtGames: () => {},
-  removeGame: () => {},
+  lobbyContext: { soughtGames: [] },
+  dispatchLobbyContext: defaultFunction,
   redirGame: '',
-  setRedirGame: () => {},
-  gameHistoryRefresher: () => {},
-  gameState: initialGameState,
-  processGameplayEvent: () => {},
-  challengeResultEvent: () => {},
-  // timers: {},
-  // setTimer: () => {},
+  setRedirGame: defaultFunction,
+  challengeResultEvent: defaultFunction,
+  gameContext: defaultGameState,
+  dispatchGameContext: defaultFunction,
+
+  addChat: defaultFunction,
+  chat: [],
 });
 
 type Props = {
@@ -86,44 +80,17 @@ const randomID = () => {
 };
 
 export const Store = ({ children, ...props }: Props) => {
-  const [soughtGames, setSoughtGames] = useState(new Array<SoughtGame>());
+  const [lobbyContext, dispatchLobbyContext] = useReducer(LobbyReducer, {
+    soughtGames: [],
+  });
+
+  const [gameContext, dispatchGameContext] = useReducer(
+    GameReducer,
+    defaultGameState
+  );
+
   const [redirGame, setRedirGame] = useState('');
-  const [gameState, setGameState] = useState(initialGameState);
   const [chat, setChat] = useState(new Array<ChatEntityObj>());
-  // const [timers, setTimer] = useState({});
-
-  const addSoughtGame = (sg: SoughtGame) => {
-    setSoughtGames((state) => [...state, sg]);
-  };
-
-  const addSoughtGames = (sgs: Array<SoughtGame>) => {
-    setSoughtGames(sgs);
-  };
-
-  const removeGame = (id: string) => {
-    setSoughtGames((state) => {
-      const newArr = state.filter((sg) => {
-        return sg.seekID !== id;
-      });
-      return newArr;
-    });
-  };
-
-  const gameHistoryRefresher = (ghr: GameHistoryRefresher) => {
-    setGameState(StateFromHistoryRefresher(ghr));
-  };
-
-  const processGameplayEvent = (sge: ServerGameplayEvent) => {
-    setGameState((gs) => {
-      return StateForwarder(sge, gs);
-    });
-    addChat({
-      entityType: ChatEntityType.ServerMsg,
-      sender: '',
-      message: turnSummary(sge),
-      id: randomID(),
-    });
-  };
 
   const challengeResultEvent = (sge: ServerChallengeResultEvent) => {
     addChat({
@@ -151,15 +118,12 @@ export const Store = ({ children, ...props }: Props) => {
   };
 
   const store = {
-    soughtGames,
-    addSoughtGame,
-    addSoughtGames,
-    removeGame,
+    lobbyContext,
+    dispatchLobbyContext,
+    gameContext,
+    dispatchGameContext,
     redirGame,
     setRedirGame,
-    gameState,
-    gameHistoryRefresher,
-    processGameplayEvent,
     challengeResultEvent,
     addChat,
     chat,

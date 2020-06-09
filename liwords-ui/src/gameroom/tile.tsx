@@ -1,7 +1,6 @@
 import React from 'react';
-import TentativeScore from "./tentative_score";
-
-export const Blank = '?';
+import TentativeScore from './tentative_score';
+import { Blank } from '../utils/cwgame/common';
 
 type TileStyle = {
   backgroundColor: string;
@@ -55,11 +54,7 @@ const TileLetter = (props: TileLetterProps) => {
     rune = ' ';
   }
 
-  return (
-    <p className="rune">
-      {rune}
-    </p>
-  );
+  return <p className="rune">{rune}</p>;
 };
 
 type PointValueProps = {
@@ -70,11 +65,7 @@ const PointValue = (props: PointValueProps) => {
   if (!props.value) {
     return null;
   }
-  return (
-    <p className="point-value">
-      {props.value}
-    </p>
-  );
+  return <p className="point-value">{props.value}</p>;
 };
 
 type TileProps = {
@@ -100,21 +91,13 @@ const Tile = (props: TileProps) => {
   return (
     <div
       className="tile"
-      style={Object.assign(
-          {},
-          tileStyle,
-          {
-            cursor: props.grabbable ? 'grab' : 'default',
-          }
-      )}
+      style={Object.assign({}, tileStyle, {
+        cursor: props.grabbable ? 'grab' : 'default',
+      })}
       onClick={props.onClick ? props.onClick : () => {}}
     >
-      <TileLetter
-        rune={props.rune}
-      />
-      <PointValue
-        value={props.value}
-      />
+      <TileLetter rune={props.rune} />
+      <PointValue value={props.value} />
       <TentativeScore score={props.tentativeScore} />
     </div>
   );

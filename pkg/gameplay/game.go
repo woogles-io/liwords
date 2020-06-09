@@ -147,6 +147,7 @@ func StartGame(ctx context.Context, gameStore GameStore, eventChan chan<- *entit
 	if err := entGame.RegisterChangeHook(eventChan); err != nil {
 		return err
 	}
+	log.Debug().Interface("history", entGame.Game.History()).Msg("game history")
 
 	// We do not send a history refresher event here. Instead, we will send one
 	// when the user joins the game realm. See the `sendRealmData` function.

@@ -1,7 +1,7 @@
 import React from 'react';
 import { ReactComponent as Logo } from '../assets/aero.svg';
 import { BonusType } from '../constants/board_layout';
-import { ArrowRightOutlined, ArrowDownOutlined } from '@ant-design/icons/lib'
+import { ArrowRightOutlined, ArrowDownOutlined } from '@ant-design/icons/lib';
 
 interface BonusProperties {
   fillColor: string;
@@ -11,9 +11,9 @@ interface BonusProperties {
 function getBonusProperties(bt: BonusType): BonusProperties {
   switch (bt) {
     case BonusType.DoubleWord:
-      return { fillColor: '#FD7070', bonusText: '2WS' };
+      return { fillColor: '#FFC9F3', bonusText: '2WS' };
     case BonusType.TripleWord:
-      return { fillColor: '#FFC9F3', bonusText: '3WS' };
+      return { fillColor: '#FD7070', bonusText: '3WS' };
     case BonusType.DoubleLetter:
       return { fillColor: '#C9E5FF', bonusText: '2LS' };
     case BonusType.TripleLetter:
@@ -41,12 +41,7 @@ const BoardSpace = (props: Props) => {
   let startingSquare = null;
   let arrow = null;
   if (props.showBonusLabel && bonusText !== '') {
-    bonusLabel = (
-      <p className="bonus-label"
-      >
-        {bonusText}
-      </p>
-    );
+    bonusLabel = <p className="bonus-label">{bonusText}</p>;
   }
   // ✩✪✫
   if (props.startingSquare) {
@@ -60,13 +55,9 @@ const BoardSpace = (props: Props) => {
   }
   if (props.arrow) {
     if (props.arrowHoriz) {
-      arrow = (
-        <ArrowRightOutlined />
-      );
+      arrow = <ArrowRightOutlined />;
     } else {
-      arrow = (
-        <ArrowDownOutlined />
-      );
+      arrow = <ArrowDownOutlined />;
     }
   }
 
@@ -75,15 +66,11 @@ const BoardSpace = (props: Props) => {
   };
 
   return (
-    <div
-      className="board-space"
-      onClick={props.clicked}
-      style={styleOverrides}
-    >
+    <div className="board-space" onClick={props.clicked} style={styleOverrides}>
       {bonusLabel}
       {startingSquare}
       {arrow}
-  </div>
+    </div>
   );
 };
 

@@ -4,11 +4,11 @@ import { ChatEntity } from './chat_entity';
 import { ChatEntityObj } from '../store/store';
 
 type Props = {
-  chatEntities: Array<ChatEntityObj>;
+  chatEntities: Array<ChatEntityObj> | undefined;
 };
 
 export const Chat = (props: Props) => {
-  const entities = props.chatEntities.map((ent) => {
+  const entities = props.chatEntities?.map((ent) => {
     return (
       <ChatEntity
         entityType={ent.entityType}
