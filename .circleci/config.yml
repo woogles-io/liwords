@@ -1,4 +1,6 @@
-version: 2
+version: 2.1
+orbs:
+  slack: circleci/slack@3.4.2
 jobs:
   build_socket_srv:
     environment:
@@ -15,6 +17,8 @@ jobs:
       - run: mv /opt/liwords/data/lexica $LEXICON_PATH
       - run: cd cmd/socketsrv && go build # persist executable to workspace for deploy step
       - run: go test ./...
+      - slack/status:
+          webhook: "${SLACK_WEBHOOK}"
 
   build_fe:
     working_directory: /opt/liwords
@@ -25,6 +29,8 @@ jobs:
       - run: cd liwords-ui && npm install
       - run: cd liwords-ui && npm run test
       - run: cd liwords-ui && npm run build
+      - slack/status:
+          webhook: "${SLACK_WEBHOOK}"
 
     # Later persist to workspace for deploy step.
 
