@@ -13,7 +13,7 @@ jobs:
           command: apk update && apk upgrade && apk add build-base
 
       - run: mv /opt/liwords/data/lexica $LEXICON_PATH
-      - run: cd cmd/server && go build # persist executable to workspace for deploy step
+      - run: cd cmd/socketsrv && go build # persist executable to workspace for deploy step
       - run: go test ./...
 
   build_fe:
