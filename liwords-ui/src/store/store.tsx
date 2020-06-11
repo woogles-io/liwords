@@ -120,7 +120,6 @@ export const Store = ({ children, ...props }: Props) => {
       return;
     }
     const newCtx = { ...clockController.current!.times, [p]: t };
-    console.log('clocktick, setting timer context', newCtx);
     setTimerContext(newCtx);
   };
 

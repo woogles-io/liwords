@@ -222,25 +222,31 @@ const stateFromHistory = (refresher: GameHistoryRefresher): GameState => {
   gs.nickToPlayerOrder = nickToPlayerOrder;
   history.getTurnsList().forEach((turn, idx) => {
     const events = turn.getEventsList();
-    // Skip challenged-off moves:
+    // Detect challenged-off moves:
+    let challengedOff = false;
     if (events.length === 2) {
       if (
         events[0].getType() === GameEvent.Type.TILE_PLACEMENT_MOVE &&
         events[1].getType() === GameEvent.Type.PHONY_TILES_RETURNED
       ) {
-        // do not process at all
-        return;
+        challengedOff = true;
       }
     }
-    events.forEach((evt) => {
-      switch (evt.getType()) {
-        case GameEvent.Type.TILE_PLACEMENT_MOVE:
-          [gs.lastPlayedTiles, gs.pool] = placeOnBoard(gs.board, gs.pool, evt);
-          break;
-        default:
-        //  do nothing - we only care about tile placement moves here.
-      }
-    });
+    if (!challengedOff) {
+      events.forEach((evt) => {
+        switch (evt.getType()) {
+          case GameEvent.Type.TILE_PLACEMENT_MOVE:
+            [gs.lastPlayedTiles, gs.pool] = placeOnBoard(
+              gs.board,
+              gs.pool,
+              evt
+            );
+            break;
+          default:
+          //  do nothing - we only care about tile placement moves here.
+        }
+      });
+    }
     gs.players[gs.onturn].score = events[events.length - 1].getCumulative();
     gs.onturn = (idx + 1) % 2;
   });
@@ -307,6 +313,51 @@ const setClock = (
   );
 };
 
+const initializeTimerController = (
+  state: GameState,
+  newState: GameState,
+  ghr: GameHistoryRefresher
+) => {
+  const history = ghr.getHistory()!;
+  let [t1, t2] = [ghr.getTimePlayer1(), ghr.getTimePlayer2()];
+  if (history.getSecondWentFirst()) {
+    [t1, t2] = [t2, t1];
+  }
+  // Note that p0 and p1 correspond to the new indices (after flipping first and second
+  // players, if that happened)
+  const onturn = (history.getTurnsList().length % 2 === 0
+    ? 'p0'
+    : 'p1') as PlayerOrder;
+  const clockState = {
+    p0: t1,
+    p1: t2,
+    activePlayer: onturn,
+    lastUpdate: 0,
+  };
+
+  console.log(
+    'clockState will be set',
+    clockState,
+    history.getTurnsList().length
+  );
+
+  if (newState.clockController!.current) {
+    newState.clockController!.current.setClock(newState.playState, clockState);
+  } else {
+    // eslint-disable-next-line no-param-reassign
+    newState.clockController!.current = new ClockController(
+      clockState,
+      onTimeout,
+      state.onClockTick
+    );
+  }
+  // And send out a tick right now.
+  newState.onClockTick(
+    onturn,
+    newState.clockController!.current.millisOf(onturn)
+  );
+};
+
 // Here we are mixing declarative code with imperative code (needed for the timer).
 // It is difficult and kind of messy. Hopefully it'll be the only place in the whole
 // app where we do things like this.
@@ -336,40 +387,7 @@ export const GameReducer = (state: GameState, action: Action): GameState => {
         throw new Error('Clock controller should be at least initialized.');
       }
       newState.clockController = state.clockController;
-
-      const history = ghr.getHistory()!;
-      let [t1, t2] = [ghr.getTimePlayer1(), ghr.getTimePlayer2()];
-      if (history.getSecondWentFirst()) {
-        [t1, t2] = [t2, t1];
-      }
-      const onturn = (history.getTurnsList().length % 2 === 0
-        ? 'p0'
-        : 'p1') as PlayerOrder;
-      const clockState = {
-        p0: t1,
-        p1: t2,
-        activePlayer: onturn,
-        lastUpdate: 0,
-      };
-
-      if (newState.clockController.current) {
-        newState.clockController.current.setClock(
-          newState.playState,
-          clockState
-        );
-      } else {
-        newState.clockController.current = new ClockController(
-          clockState,
-          onTimeout,
-          state.onClockTick
-        );
-      }
-      // And send out a tick right now.
-      newState.onClockTick(
-        onturn,
-        newState.clockController.current.millisOf(onturn)
-      );
-
+      initializeTimerController(state, newState, ghr);
       return newState;
     }
   }

@@ -179,7 +179,9 @@ export const BoardPanel = (props: Props) => {
         moveEvt.serializeBinary()
       )
     );
-    stopClock();
+    // Don't stop the clock; the next user event to come in will change the
+    // clock over.
+    // stopClock();
   };
 
   return (

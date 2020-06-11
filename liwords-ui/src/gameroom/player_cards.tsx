@@ -14,7 +14,6 @@ const PlayerCard = (props: CardProps) => {
     return <Card />;
   }
   const timeStr = millisToTimeStr(props.time);
-  console.log('time for', props.player.nickname, props.time, timeStr);
   return (
     <Card>
       <Row>
@@ -32,7 +31,6 @@ const PlayerCard = (props: CardProps) => {
 
 export const PlayerCards = () => {
   const { gameContext, timerContext } = useStoreContext();
-  console.log('timers', timerContext);
   return (
     <>
       <PlayerCard player={gameContext?.players[0]} time={timerContext.p0} />
