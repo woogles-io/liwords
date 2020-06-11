@@ -223,6 +223,9 @@ export class ServerGameplayEvent extends jspb.Message {
   getTimeRemaining(): number;
   setTimeRemaining(value: number): void;
 
+  getPlaying(): macondo_api_proto_macondo_macondo_pb.PlayStateMap[keyof macondo_api_proto_macondo_macondo_pb.PlayStateMap];
+  setPlaying(value: macondo_api_proto_macondo_macondo_pb.PlayStateMap[keyof macondo_api_proto_macondo_macondo_pb.PlayStateMap]): void;
+
   serializeBinary(): Uint8Array;
   toObject(includeInstance?: boolean): ServerGameplayEvent.AsObject;
   static toObject(includeInstance: boolean, msg: ServerGameplayEvent): ServerGameplayEvent.AsObject;
@@ -239,6 +242,7 @@ export namespace ServerGameplayEvent {
     gameId: string,
     newRack: string,
     timeRemaining: number,
+    playing: macondo_api_proto_macondo_macondo_pb.PlayStateMap[keyof macondo_api_proto_macondo_macondo_pb.PlayStateMap],
   }
 }
 

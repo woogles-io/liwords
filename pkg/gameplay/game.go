@@ -134,7 +134,7 @@ func StartGame(ctx context.Context, gameStore GameStore, eventChan chan<- *entit
 		return err
 	}
 	// This should be True, see comment above.
-	if entGame.Game.Playing() != game.StatePlaying {
+	if entGame.Game.Playing() != macondopb.PlayState_PLAYING {
 		return errGameNotActive
 	}
 	log.Debug().Str("gameid", id).Msg("reset timers (and start)")
@@ -178,7 +178,7 @@ func handleChallenge(ctx context.Context, entGame *entity.Game, gameStore GameSt
 	entGame.SendChange(entity.WrapEvent(entGame.HistoryRefresherEvent(), pb.MessageType_GAME_HISTORY_REFRESHER,
 		entGame.GameID()))
 
-	if entGame.Game.Playing() == game.StateGameOver {
+	if entGame.Game.Playing() == macondopb.PlayState_GAME_OVER {
 		performEndgameDuties(entGame)
 	}
 
@@ -199,7 +199,7 @@ func PlayMove(ctx context.Context, gameStore GameStore, player string,
 	if err != nil {
 		return err
 	}
-	if entGame.Game.Playing() == game.StateGameOver {
+	if entGame.Game.Playing() == macondopb.PlayState_GAME_OVER {
 		return errGameNotActive
 	}
 	onTurn := entGame.Game.PlayerOnTurn()
@@ -254,6 +254,7 @@ func PlayMove(ctx context.Context, gameStore GameStore, player string,
 		// we played the turn.
 		sge.TimeRemaining = int32(entGame.TimeRemaining(onTurn))
 		sge.NewRack = entGame.Game.RackLettersFor(onTurn)
+		sge.Playing = entGame.Game.Playing()
 		evts[idx] = sge
 	}
 	// Since the move was successful, we assume the user gameplay event is valid.
@@ -268,7 +269,7 @@ func PlayMove(ctx context.Context, gameStore GameStore, player string,
 		entGame.SendChange(entity.WrapEvent(sge, pb.MessageType_SERVER_GAMEPLAY_EVENT,
 			entGame.GameID()))
 	}
-	if playing == game.StateGameOver {
+	if playing == macondopb.PlayState_GAME_OVER {
 		performEndgameDuties(entGame)
 	}
 	return nil

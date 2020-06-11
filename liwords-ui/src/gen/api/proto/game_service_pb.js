@@ -1842,7 +1842,8 @@ proto.liwords.ServerGameplayEvent.toObject = function(includeInstance, msg) {
     event: (f = msg.getEvent()) && macondo_api_proto_macondo_macondo_pb.GameEvent.toObject(includeInstance, f),
     gameId: jspb.Message.getFieldWithDefault(msg, 2, ""),
     newRack: jspb.Message.getFieldWithDefault(msg, 3, ""),
-    timeRemaining: jspb.Message.getFieldWithDefault(msg, 4, 0)
+    timeRemaining: jspb.Message.getFieldWithDefault(msg, 4, 0),
+    playing: jspb.Message.getFieldWithDefault(msg, 5, 0)
   };
 
   if (includeInstance) {
@@ -1895,6 +1896,10 @@ proto.liwords.ServerGameplayEvent.deserializeBinaryFromReader = function(msg, re
     case 4:
       var value = /** @type {number} */ (reader.readInt32());
       msg.setTimeRemaining(value);
+      break;
+    case 5:
+      var value = /** @type {!proto.macondo.PlayState} */ (reader.readEnum());
+      msg.setPlaying(value);
       break;
     default:
       reader.skipField();
@@ -1951,6 +1956,13 @@ proto.liwords.ServerGameplayEvent.serializeBinaryToWriter = function(message, wr
   if (f !== 0) {
     writer.writeInt32(
       4,
+      f
+    );
+  }
+  f = message.getPlaying();
+  if (f !== 0.0) {
+    writer.writeEnum(
+      5,
       f
     );
   }
@@ -2045,6 +2057,24 @@ proto.liwords.ServerGameplayEvent.prototype.getTimeRemaining = function() {
  */
 proto.liwords.ServerGameplayEvent.prototype.setTimeRemaining = function(value) {
   return jspb.Message.setProto3IntField(this, 4, value);
+};
+
+
+/**
+ * optional macondo.PlayState playing = 5;
+ * @return {!proto.macondo.PlayState}
+ */
+proto.liwords.ServerGameplayEvent.prototype.getPlaying = function() {
+  return /** @type {!proto.macondo.PlayState} */ (jspb.Message.getFieldWithDefault(this, 5, 0));
+};
+
+
+/**
+ * @param {!proto.macondo.PlayState} value
+ * @return {!proto.liwords.ServerGameplayEvent} returns this
+ */
+proto.liwords.ServerGameplayEvent.prototype.setPlaying = function(value) {
+  return jspb.Message.setProto3EnumField(this, 5, value);
 };
 
 

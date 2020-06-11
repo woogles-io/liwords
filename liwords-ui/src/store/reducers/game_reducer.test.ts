@@ -121,7 +121,7 @@ const historyRefresher2 = () => {
   his.setPlayersList([player1, player2]);
   his.setLastKnownRacksList(['EFMPRST', 'AEELRX?']);
   his.setUid('game63');
-  his.setFlipPlayers(true);
+  his.setSecondWentFirst(true);
   ghr.setHistory(his);
   return ghr;
 };
@@ -140,7 +140,7 @@ const historyRefresher2AfterChallenge = () => {
   his.setPlayersList([player1, player2]);
   his.setLastKnownRacksList(['EFMPRST', 'EEJNNOQ']);
   his.setUid('game63');
-  his.setFlipPlayers(true);
+  his.setSecondWentFirst(true);
 
   const evt1 = new GameEvent();
   evt1.setNickname('mina');

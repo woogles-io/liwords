@@ -87,8 +87,6 @@ export const Table = (props: Props) => {
     rack = gameContext.players.find((p) => p.onturn)?.currentRack || '';
   }
 
-  console.log('in table', gameContext.players);
-
   return (
     <div>
       <Row>
@@ -102,6 +100,7 @@ export const Table = (props: Props) => {
         </Col>
         <Col span={boardspan} className="play-area">
           <BoardPanel
+            username={props.username}
             compWidth={boardPanelWidth}
             compHeight={boardPanelHeight}
             board={gameContext.board}

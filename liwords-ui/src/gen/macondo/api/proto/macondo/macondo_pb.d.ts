@@ -40,11 +40,14 @@ export class GameHistory extends jspb.Message {
   setLastKnownRacksList(value: Array<string>): void;
   addLastKnownRacks(value: string, index?: number): string;
 
-  getFlipPlayers(): boolean;
-  setFlipPlayers(value: boolean): void;
+  getSecondWentFirst(): boolean;
+  setSecondWentFirst(value: boolean): void;
 
   getChallengeRule(): ChallengeRuleMap[keyof ChallengeRuleMap];
   setChallengeRule(value: ChallengeRuleMap[keyof ChallengeRuleMap]): void;
+
+  getPlayState(): PlayStateMap[keyof PlayStateMap];
+  setPlayState(value: PlayStateMap[keyof PlayStateMap]): void;
 
   serializeBinary(): Uint8Array;
   toObject(includeInstance?: boolean): GameHistory.AsObject;
@@ -68,8 +71,9 @@ export namespace GameHistory {
     title: string,
     description: string,
     lastKnownRacksList: Array<string>,
-    flipPlayers: boolean,
+    secondWentFirst: boolean,
     challengeRule: ChallengeRuleMap[keyof ChallengeRuleMap],
+    playState: PlayStateMap[keyof PlayStateMap],
   }
 }
 
@@ -223,6 +227,14 @@ export namespace PlayerInfo {
     realName: string,
   }
 }
+
+export interface PlayStateMap {
+  PLAYING: 0;
+  WAITING_FOR_FINAL_PASS: 1;
+  GAME_OVER: 2;
+}
+
+export const PlayState: PlayStateMap;
 
 export interface ChallengeRuleMap {
   VOID: 0;

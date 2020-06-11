@@ -116,6 +116,7 @@ message ServerGameplayEvent {
   string game_id = 2;
   string new_rack = 3;
   int32 time_remaining = 4;
+  macondo.PlayState playing = 5;
 }
 
 // The server will send back a challenge result event only in the case of

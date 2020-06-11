@@ -92,6 +92,7 @@ export const onSocketMsg = (storeData: StoreData) => {
       }
 
       case MessageType.ERROR_MESSAGE: {
+        console.log('got error msg');
         const err = parsedMsg as ErrorMessage;
         storeData.addChat({
           entityType: ChatEntityType.ErrorMsg,
@@ -113,6 +114,7 @@ export const onSocketMsg = (storeData: StoreData) => {
           sender: '',
           message,
         });
+        storeData.stopClock();
         break;
       }
 
@@ -149,6 +151,7 @@ export const onSocketMsg = (storeData: StoreData) => {
         storeData.challengeResultEvent(sge);
         break;
       }
+
       case MessageType.GAME_ACCEPTED_EVENT: {
         const gae = parsedMsg as GameAcceptedEvent;
         storeData.dispatchLobbyContext({
