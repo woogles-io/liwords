@@ -277,11 +277,13 @@ const setClock = (
   sge: ServerGameplayEvent
 ) => {
   if (!newState.clockController) {
-    throw new Error('Clock controller should have been initialized.');
+    return;
   }
   if (!newState.clockController.current) {
-    throw new Error('Clock controller ref is broken!');
+    return;
   }
+  // If either of the above happened, we have an issue. But these should only
+  // happen in some tests.
   // Set the clock
   const rem = sge.getTimeRemaining(); // time remaining for the player who just played
   const evt = sge.getEvent()!;
@@ -384,11 +386,12 @@ export const GameReducer = (state: GameState, action: Action): GameState => {
       const ghr = action.payload as GameHistoryRefresher;
       const newState = stateFromHistory(ghr);
 
-      if (state.clockController === null) {
-        throw new Error('Clock controller should be at least initialized.');
+      if (state.clockController !== null) {
+        newState.clockController = state.clockController;
+        initializeTimerController(state, newState, ghr);
       }
-      newState.clockController = state.clockController;
-      initializeTimerController(state, newState, ghr);
+      // Otherwise if it is null, we have an issue, but there's no need to
+      // throw an Error..
       return newState;
     }
   }
