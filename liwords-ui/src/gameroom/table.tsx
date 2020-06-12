@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { Row, Col } from 'antd';
+import { Row, Col, Card } from 'antd';
 
 import { useParams } from 'react-router-dom';
 import { BoardPanel } from './board_panel';
@@ -97,10 +97,10 @@ export const Table = (props: Props) => {
         </Col>
       </Row>
       <Row gutter={gutter} className="game-table">
-        <Col span={6}>
+        <Col span={6} className="chat-area">
           <Chat chatEntities={chat} />
         </Col>
-        <Col span={boardspan}>
+        <Col span={boardspan} className="play-area">
           <BoardPanel
             compWidth={boardPanelWidth}
             compHeight={boardPanelHeight}
@@ -112,7 +112,7 @@ export const Table = (props: Props) => {
             sendSocketMsg={props.sendSocketMsg}
           />
         </Col>
-        <Col span={6}>
+        <Col span={6} className="data-area">
           {/* maybe some of this info comes from backend */}
           <PlayerCards />
           {/* <GameInfo
@@ -122,10 +122,12 @@ export const Table = (props: Props) => {
             challengeRule="5-pt"
             rated={rated}
           /> */}
-          <Row>15 0 - Classic - Collins</Row>
-          <Row>5 point challenge - Unrated</Row>
           <Pool pool={gameContext?.pool} currentRack={rack} />
-        </Col>
+          <Card>
+            <Row>15 0 - Classic - Collins</Row>
+            <Row>5 point challenge - Unrated</Row>
+          </Card>
+       </Col>
       </Row>
     </div>
   );

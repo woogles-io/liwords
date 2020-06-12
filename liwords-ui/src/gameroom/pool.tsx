@@ -1,5 +1,5 @@
 import React from 'react';
-import { Col, Row } from 'antd';
+import { Col, Row, Card } from 'antd';
 
 const letterOrder = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ?';
 
@@ -42,7 +42,7 @@ const Pool = (props: Props) => {
   const letters = poolGenerator(letterOrder, pool);
 
   return (
-    <>
+    <Card>
       <Row>
         <Col span={24}>{letters.length} unseen tiles:</Col>
       </Row>
@@ -54,7 +54,7 @@ const Pool = (props: Props) => {
           </span>
         </Col>
       </Row>
-    </>
+    </Card>
   );
 };
 

@@ -1,12 +1,12 @@
 @import '../base.scss';
 
+.game-table {
+  padding: 16px;
+}
 .board-container {
   user-select: none;
-  background: white;
-  box-shadow: $card-shadow;
-  border-radius: 8px;
   text-align: center;
-  padding: 12px 52px 24px;
+  padding: 12px 12px 24px 24px;
   margin: 6px;
   outline-style: none;
 }
@@ -14,6 +14,27 @@
 .board {
   position: relative;
 }
+
+.chat-area, .data-area {
+  flex: 0 0 33%;
+  .ant-card {
+    margin-bottom: 12px;
+  }
+}
+
+/* hide at mobile for now,
+ expand board */
+
+.chat-area {
+
+  display: none;
+}
+
+.play-area {
+  max-width: none;
+  flex: 0 0 66%;
+}
+
 
 /* Board spaces */
 
@@ -112,7 +133,7 @@
   justify-content: center;
   margin: 24px 0;
   width: 100%;
-  height: 3vw;
+  height: 3vh;
 }
 
 .ant-modal .rack {
@@ -122,6 +143,7 @@
 .rack-container {
   display: flex;
   justify-content: center;
+  align-items: center;
   outline-style: none;
 }
 
@@ -189,4 +211,26 @@
   left: -95%;
   background: #999;
   color: white;
+}
+
+
+@media (min-width: $screen-tablet-min) {
+
+
+}
+
+@media (min-width: $screen-laptop-min) {
+  .chat-area {
+    display: block;
+  }
+  .chat-area, .data-area {
+    flex: 0 0 25%;
+  }
+  .play-area {
+    flex: 0 0 50%;
+  }
+
+  .rack {
+    height: 3vw;
+  }
 }

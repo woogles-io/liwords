@@ -1,8 +1,10 @@
+@import './base.scss';
+
 .App {
   text-align: center;
-  background-color: #f4f4f4;
+  background-color: white;
   /* Prevent squashing board until we get to responsive for mobile */
-  min-width: 1024px;
+  min-width: $screen-tablet-min;
 }
 
 .App-logo {
@@ -10,11 +12,6 @@
   pointer-events: none;
 }
 
-@media (prefers-reduced-motion: no-preference) {
-  .App-logo {
-    animation: App-logo-spin infinite 20s linear;
-  }
-}
 
 .App-header {
   background-color: #282c34;
@@ -31,6 +28,43 @@
   color: #61dafb;
 }
 
+/* buttons */
+
+button.ant-btn {
+  height: 36px;
+  margin: 6px 3px;
+  font-weight: bold;
+  text-transform: uppercase;
+  &, &:hover {
+    border-color: $color-secondary;
+    color: $color-secondary;
+  }
+  &.ant-btn-primary {
+    background: $color-secondary;
+    color: white;
+    border: 0;
+
+  }
+}
+
+button.ant-btn-circle {
+  height: 32px;
+}
+
+
+/* cards */
+.ant-card {
+  box-shadow: $card-shadow;
+}
+
+
+
+@media (prefers-reduced-motion: no-preference) {
+  .App-logo {
+    animation: App-logo-spin infinite 20s linear;
+  }
+}
+
 @keyframes App-logo-spin {
   from {
     transform: rotate(0deg);
@@ -43,3 +77,4 @@
 /* g:focus {
   outline: none;
 } */
+

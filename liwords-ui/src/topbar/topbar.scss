@@ -3,16 +3,15 @@
 /* fake header */
 .top-header {
   width: 100%;
-  height: 72px;
+  min-height: 72px;
   background: $color-primary-light;
-
   font-family: $font-deco;
   font-style: normal;
   font-weight: normal;
   font-size: 14px;
   line-height: 18px;
-  /* identical to box height */
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-around;
   letter-spacing: 0.25em;
@@ -20,91 +19,76 @@
   padding: 0 32px;
 }
 
-/* Mask Group */
-
-.top-header-user-icon {
-  position: absolute;
-  right: 0;
-  padding-right: 32px;
-}
 
 .user-info {
-  padding-right: 32px;
+  width: 20%;
+  text-align: right;
 }
 
 .top-header-menu {
   width: 100%;
+  order: 3;
   display: flex;
   justify-content: center;
+  padding-bottom: 12px;
   div {
     padding: 12px;
   }
 }
 
-.top-header-left-frame {
-  /* Auto Layout */
-  display: flex;
-  flex-direction: row;
-  padding: 0px;
-  justify-content: center;
-  align-items: center;
-  width: 100%;
-}
-/* Group 21 */
-.site-link {
-  display: flex;
-  font-size: 28px;
-  line-height: 35px;
-  text-transform: none;
-  letter-spacing: 0;
-  color: $color-primary-dark;
-  &:hover {
-    color: $color-primary-dark;
-  }
-}
-
-.top-header-site-icon {
+.site-icon {
   display: flex;
   /* Inside Auto Layout */
   flex: none;
   order: 0;
   align-self: center;
-  margin: 20px 0px;
+  margin: 20px 0px 6px;
+  .top-header-site-icon-rect {
+    width: 48px;
+    height: 48px;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    background: $color-primary-dark;
+    border-radius: 4px;
+  }
+  /* M */
+  .top-header-site-icon-m {
+    left: 3px;
+    top: -1px;
+    position: relative;
+
+    font-family: $font-default;
+    font-style: normal;
+    font-weight: normal;
+    font-size: 40px;
+    line-height: 64px;
+    color: $color-primary-light;
+  }
+  /* Macondo */
+
+
+  .top-header-left-frame-site-name {
+    /* Inside Auto Layout */
+    flex: none;
+    order: 1;
+    align-self: center;
+    margin: 0 20px;
+    font-size: 28px;
+    line-height: 35px;
+  }
 }
-/* Rectangle 65 */
-.top-header-site-icon-rect {
-  width: 48px;
-  height: 48px;
-
-  display: flex;
-  align-items: center;
-  justify-content: center;
-
-  background: $color-primary-dark;
-  border-radius: 4px;
-}
-/* M */
-.top-header-site-icon-m {
-  left: 3px;
-  top: -1px;
-  position: relative;
-
-  font-family: $font-default;
-  font-style: normal;
-  font-weight: normal;
-  font-size: 40px;
-  line-height: 64px;
-  color: $color-primary-light;
-}
-/* Macondo */
 
 
-.top-header-left-frame-site-name {
-  /* Inside Auto Layout */
-  flex: none;
-  order: 1;
-  align-self: center;
-  margin: 0 20px;
-  font-size: 28px;
-  line-height: 35px;
+/* Style overrides for larger screens -- responsive layouts code minimum sizes so they load first, then media queries override */
+@media (min-width: $screen-laptop-min) {
+  .top-header {
+    flex-wrap: nowrap;
+  }
+  .top-header-menu {
+    order: initial;
+    padding-bottom: 0;
+  }
 }
