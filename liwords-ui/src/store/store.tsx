@@ -54,6 +54,7 @@ export type StoreData = {
   dispatchGameContext: (action: Action) => void;
 
   addChat: (chat: ChatEntityObj) => void;
+  clearChat: () => void;
   chat: Array<ChatEntityObj>;
 
   // initClockController: (
@@ -84,6 +85,7 @@ export const Context = createContext<StoreData>({
   dispatchGameContext: defaultFunction,
 
   addChat: defaultFunction,
+  clearChat: defaultFunction,
   chat: [],
 
   // initClockController: defaultFunction,
@@ -172,6 +174,10 @@ export const Store = ({ children, ...props }: Props) => {
     setChat(chatCopy);
   };
 
+  const clearChat = () => {
+    setChat([]);
+  };
+
   const stopClock = () => {
     if (!clockController.current) {
       return;
@@ -189,6 +195,7 @@ export const Store = ({ children, ...props }: Props) => {
     setRedirGame,
     challengeResultEvent,
     addChat,
+    clearChat,
     chat,
 
     // initClockController,

@@ -138,6 +138,10 @@ message ServerChallengeResultEvent {
 message GameEndedEvent {
   map<string, int32> scores = 1;
   map<string, int32> new_ratings = 2;
+  GameEndReason end_reason = 3;
+  // The winner is not always the highest scoring player; one player can
+  // time out. The end_reason should make it clear what happened.
+  string winner = 4;
 }
 
 // A GameHistoryRefresher is sent to both players when the game starts,

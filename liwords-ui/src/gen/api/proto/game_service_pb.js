@@ -2323,7 +2323,9 @@ proto.liwords.GameEndedEvent.prototype.toObject = function(opt_includeInstance) 
 proto.liwords.GameEndedEvent.toObject = function(includeInstance, msg) {
   var f, obj = {
     scoresMap: (f = msg.getScoresMap()) ? f.toObject(includeInstance, undefined) : [],
-    newRatingsMap: (f = msg.getNewRatingsMap()) ? f.toObject(includeInstance, undefined) : []
+    newRatingsMap: (f = msg.getNewRatingsMap()) ? f.toObject(includeInstance, undefined) : [],
+    endReason: jspb.Message.getFieldWithDefault(msg, 3, 0),
+    winner: jspb.Message.getFieldWithDefault(msg, 4, "")
   };
 
   if (includeInstance) {
@@ -2372,6 +2374,14 @@ proto.liwords.GameEndedEvent.deserializeBinaryFromReader = function(msg, reader)
         jspb.Map.deserializeBinary(message, reader, jspb.BinaryReader.prototype.readString, jspb.BinaryReader.prototype.readInt32, null, "", 0);
          });
       break;
+    case 3:
+      var value = /** @type {!proto.liwords.GameEndReason} */ (reader.readEnum());
+      msg.setEndReason(value);
+      break;
+    case 4:
+      var value = /** @type {string} */ (reader.readString());
+      msg.setWinner(value);
+      break;
     default:
       reader.skipField();
       break;
@@ -2408,6 +2418,20 @@ proto.liwords.GameEndedEvent.serializeBinaryToWriter = function(message, writer)
   f = message.getNewRatingsMap(true);
   if (f && f.getLength() > 0) {
     f.serializeBinary(2, writer, jspb.BinaryWriter.prototype.writeString, jspb.BinaryWriter.prototype.writeInt32);
+  }
+  f = message.getEndReason();
+  if (f !== 0.0) {
+    writer.writeEnum(
+      3,
+      f
+    );
+  }
+  f = message.getWinner();
+  if (f.length > 0) {
+    writer.writeString(
+      4,
+      f
+    );
   }
 };
 
@@ -2454,6 +2478,42 @@ proto.liwords.GameEndedEvent.prototype.getNewRatingsMap = function(opt_noLazyCre
 proto.liwords.GameEndedEvent.prototype.clearNewRatingsMap = function() {
   this.getNewRatingsMap().clear();
   return this;};
+
+
+/**
+ * optional GameEndReason end_reason = 3;
+ * @return {!proto.liwords.GameEndReason}
+ */
+proto.liwords.GameEndedEvent.prototype.getEndReason = function() {
+  return /** @type {!proto.liwords.GameEndReason} */ (jspb.Message.getFieldWithDefault(this, 3, 0));
+};
+
+
+/**
+ * @param {!proto.liwords.GameEndReason} value
+ * @return {!proto.liwords.GameEndedEvent} returns this
+ */
+proto.liwords.GameEndedEvent.prototype.setEndReason = function(value) {
+  return jspb.Message.setProto3EnumField(this, 3, value);
+};
+
+
+/**
+ * optional string winner = 4;
+ * @return {string}
+ */
+proto.liwords.GameEndedEvent.prototype.getWinner = function() {
+  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 4, ""));
+};
+
+
+/**
+ * @param {string} value
+ * @return {!proto.liwords.GameEndedEvent} returns this
+ */
+proto.liwords.GameEndedEvent.prototype.setWinner = function(value) {
+  return jspb.Message.setProto3StringField(this, 4, value);
+};
 
 
 

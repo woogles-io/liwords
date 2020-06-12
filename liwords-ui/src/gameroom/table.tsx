@@ -48,7 +48,13 @@ export const Table = (props: Props) => {
     boardPanelHeight = viewableHeight;
     boardPanelWidth = boardPanelHeight - 96;
   }
-  const { setRedirGame, gameContext, chat, pTimedOut } = useStoreContext();
+  const {
+    setRedirGame,
+    gameContext,
+    chat,
+    clearChat,
+    pTimedOut,
+  } = useStoreContext();
   const { gameID } = useParams();
   const { username, sendSocketMsg } = props;
 
@@ -59,7 +65,6 @@ export const Table = (props: Props) => {
   }, [setRedirGame]);
 
   useEffect(() => {
-    console.log('Tryna register with gameID', gameID);
     const rr = new RegisterRealm();
     rr.setRealm(gameID);
     sendSocketMsg(
@@ -67,12 +72,12 @@ export const Table = (props: Props) => {
     );
 
     return () => {
-      console.log('cleaning up; deregistering', gameID);
       const dr = new DeregisterRealm();
       dr.setRealm(gameID);
       sendSocketMsg(
         encodeToSocketFmt(MessageType.DEREGISTER_REALM, dr.serializeBinary())
       );
+      clearChat();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -142,7 +147,7 @@ export const Table = (props: Props) => {
             <Row>15 0 - Classic - Collins</Row>
             <Row>5 point challenge - Unrated</Row>
           </Card>
-       </Col>
+        </Col>
       </Row>
     </div>
   );
