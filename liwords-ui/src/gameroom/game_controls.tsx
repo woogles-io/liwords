@@ -52,14 +52,13 @@ const GameControls = (props: Props) => {
 
   return (
     <>
-      <Button style={{ width: 100, height: 40, marginLeft: 25 }}>
+      <Button>
         Options
       </Button>
 
       <Button
         onClick={props.onPass}
         danger
-        style={{ width: 100, height: 40, marginLeft: 25 }}
       >
         Pass
       </Button>
@@ -67,14 +66,12 @@ const GameControls = (props: Props) => {
       <Button
         type="primary"
         onClick={props.onChallenge}
-        style={{ width: 100, height: 40, marginLeft: 25 }}
       >
         Challenge
       </Button>
 
       <Button
         type="primary"
-        style={{ width: 100, height: 40, marginLeft: 25 }}
         onClick={showChallengeModal}
       >
         Exchange
@@ -95,7 +92,6 @@ const GameControls = (props: Props) => {
       <Button
         type="primary"
         onClick={props.onCommit}
-        style={{ width: 100, height: 40, marginLeft: 25 }}
       >
         Play
       </Button>
