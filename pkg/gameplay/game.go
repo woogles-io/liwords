@@ -213,6 +213,7 @@ func PlayMove(ctx context.Context, gameStore GameStore, player string,
 	// Check that we didn't run out of time.
 	if entGame.TimeRemaining(onTurn) < 0 {
 		// Game is over!
+		log.Debug().Msg("got-move-too-late")
 		entGame.Game.SetPlaying(macondopb.PlayState_GAME_OVER)
 		// Basically skip to the bottom and exit.
 		return setTimedOut(ctx, entGame, gameStore)
@@ -286,6 +287,7 @@ func PlayMove(ctx context.Context, gameStore GameStore, player string,
 
 func TimedOut(ctx context.Context, gameStore GameStore, player string, gameID string) error {
 	// XXX: VERIFY THAT THE GAME ID is the client's current game!!
+	log.Debug().Msg("got-timed-out")
 	entGame, err := gameStore.Get(ctx, gameID)
 	if err != nil {
 		return err
@@ -299,7 +301,10 @@ func TimedOut(ctx context.Context, gameStore GameStore, player string, gameID st
 	if entGame.Game.NickOnTurn() != player {
 		return errNotOnTurn
 	}
+	entGame.CalculateTimeRemaining(onTurn)
 	if entGame.TimeRemaining(onTurn) > 0 {
+		log.Error().Int("TimeRemaining", entGame.TimeRemaining(onTurn)).
+			Int("onturn", onTurn).Msg("time-didnt-run-out")
 		return errTimeDidntRunOut
 	}
 	// Ok, the time did run out after all.

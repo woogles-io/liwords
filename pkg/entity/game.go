@@ -70,7 +70,7 @@ func (g *Game) GameID() string {
 }
 
 // calculateTimeRemaining calculates the remaining time for the given player.
-func (g *Game) calculateTimeRemaining(idx int) {
+func (g *Game) CalculateTimeRemaining(idx int) {
 	now := msTimestamp()
 	if g.Game.PlayerOnTurn() == idx {
 		// Time has passed since this was calculated.
@@ -82,16 +82,24 @@ func (g *Game) calculateTimeRemaining(idx int) {
 
 func (g *Game) RecordTimeOfMove(idx int) {
 	now := msTimestamp()
-	log.Debug().Int64("started", g.timeStarted).Int64("now", now).Int("player", idx).Msg("record time of move")
+
 	// How much time passed since the last made move?
 	elapsed := int(now - g.timeOfLastMove)
 	g.timeRemaining[idx] -= elapsed
 	g.timeOfLastMove = now
+
+	log.Debug().
+		Int64("started", g.timeStarted).
+		Int64("now", now).
+		Int("player", idx).
+		Int("remaining", g.timeRemaining[idx]).
+		Msg("record time of move")
+
 }
 
 func (g *Game) HistoryRefresherEvent() *pb.GameHistoryRefresher {
-	g.calculateTimeRemaining(0)
-	g.calculateTimeRemaining(1)
+	g.CalculateTimeRemaining(0)
+	g.CalculateTimeRemaining(1)
 	return &pb.GameHistoryRefresher{
 		History:     g.History(),
 		TimePlayer1: int32(g.TimeRemaining(0)),
