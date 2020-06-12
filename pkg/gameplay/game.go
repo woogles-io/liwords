@@ -27,8 +27,9 @@ const (
 )
 
 var (
-	errGameNotActive = errors.New("game is not currently active")
-	errNotOnTurn     = errors.New("player not on turn")
+	errGameNotActive   = errors.New("game is not currently active")
+	errNotOnTurn       = errors.New("player not on turn")
+	errTimeDidntRunOut = errors.New("got time ran out, but it did not actually")
 )
 
 // GameStore is an interface for getting a full game.
@@ -209,6 +210,14 @@ func PlayMove(ctx context.Context, gameStore GameStore, player string,
 		return errNotOnTurn
 	}
 
+	// Check that we didn't run out of time.
+	if entGame.TimeRemaining(onTurn) < 0 {
+		// Game is over!
+		entGame.Game.SetPlaying(macondopb.PlayState_GAME_OVER)
+		// Basically skip to the bottom and exit.
+		return setTimedOut(ctx, entGame, gameStore)
+	}
+
 	log.Debug().Msg("going to turn into a macondo gameevent")
 
 	if cge.Type == pb.ClientGameplayEvent_CHALLENGE_PLAY {
@@ -275,7 +284,44 @@ func PlayMove(ctx context.Context, gameStore GameStore, player string,
 	return nil
 }
 
+func TimedOut(ctx context.Context, gameStore GameStore, player string, gameID string) error {
+	// XXX: VERIFY THAT THE GAME ID is the client's current game!!
+	entGame, err := gameStore.Get(ctx, gameID)
+	if err != nil {
+		return err
+	}
+	if entGame.Game.Playing() == macondopb.PlayState_GAME_OVER {
+		return errGameNotActive
+	}
+	onTurn := entGame.Game.PlayerOnTurn()
+
+	// Ensure that it is actually the correct player's turn
+	if entGame.Game.NickOnTurn() != player {
+		return errNotOnTurn
+	}
+	if entGame.TimeRemaining(onTurn) > 0 {
+		return errTimeDidntRunOut
+	}
+	// Ok, the time did run out after all.
+
+	return setTimedOut(ctx, entGame, gameStore)
+}
+
+func setTimedOut(ctx context.Context, entGame *entity.Game, gameStore GameStore) error {
+	log.Debug().Msg("timed out!")
+	entGame.Game.SetPlaying(macondopb.PlayState_GAME_OVER)
+	// Store the game back into the store
+	err := gameStore.Set(ctx, entGame)
+	if err != nil {
+		return err
+	}
+	// And send a game end event.
+	performEndgameDuties(entGame)
+	return nil
+}
+
 func performEndgameDuties(g *entity.Game) {
+	// XXX: need to log who lost or won, the timeout state, etc.
 	g.SendChange(
 		entity.WrapEvent(g.GameEndedEvent(),
 			pb.MessageType_GAME_ENDED_EVENT, g.GameID()))

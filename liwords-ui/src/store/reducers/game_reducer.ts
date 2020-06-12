@@ -68,6 +68,7 @@ export type GameState = {
   playState: number;
   clockController: React.MutableRefObject<ClockController | null> | null;
   onClockTick: (p: PlayerOrder, t: Millis) => void;
+  onClockTimeout: (p: PlayerOrder) => void;
 };
 
 export const startingGameState = (
@@ -90,6 +91,7 @@ export const startingGameState = (
     playState: PlayState.PLAYING,
     clockController: null,
     onClockTick: () => {},
+    onClockTimeout: () => {},
   };
   return gs;
 };
@@ -151,6 +153,7 @@ const newGameState = (
     playState: sge.getPlaying(),
     clockController: state.clockController,
     onClockTick: state.onClockTick,
+    onClockTimeout: state.onClockTimeout,
     // Potential changes:
     board,
     pool,
@@ -268,8 +271,6 @@ const stateFromHistory = (refresher: GameHistoryRefresher): GameState => {
   return gs;
 };
 
-const onTimeout = () => {};
-
 const setClock = (
   state: GameState,
   newState: GameState,
@@ -347,7 +348,7 @@ const initializeTimerController = (
     // eslint-disable-next-line no-param-reassign
     newState.clockController!.current = new ClockController(
       clockState,
-      onTimeout,
+      state.onClockTimeout,
       state.onClockTick
     );
   }

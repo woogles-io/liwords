@@ -56,13 +56,13 @@ export class ClockController {
 
   private tickCallback?: number;
 
-  onTimeout: () => void;
+  onTimeout: (activePlayer: PlayerOrder) => void;
 
   onTick: (p: PlayerOrder, t: Millis) => void;
 
   constructor(
     ts: Times,
-    onTimeout: () => void,
+    onTimeout: (activePlayer: PlayerOrder) => void,
     onTick: (p: PlayerOrder, t: Millis) => void
   ) {
     // Show tenths after 10 seconds.
@@ -130,12 +130,13 @@ export class ClockController {
 
     const now = performance.now();
     const millis = Math.max(0, this.times[activePlayer] - this.elapsed(now));
+    this.onTick(activePlayer, millis);
 
-    this.scheduleTick(millis, 0);
-    if (millis === 0) {
-      this.onTimeout();
+    if (millis !== 0) {
+      this.scheduleTick(millis, 0);
     } else {
-      this.onTick(activePlayer, millis);
+      // we timed out.
+      this.onTimeout(activePlayer);
     }
   };
 

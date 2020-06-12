@@ -63,6 +63,7 @@ export type StoreData = {
   stopClock: () => void;
   // setClock: (sge: ServerGameplayEvent, delay: Centis) => void;
   timerContext: Times;
+  pTimedOut: PlayerOrder | undefined;
 };
 
 const defaultGameState = startingGameState(
@@ -89,6 +90,7 @@ export const Context = createContext<StoreData>({
   stopClock: defaultFunction,
   // setClock: defaultFunction,
   timerContext: defaultTimerContext,
+  pTimedOut: undefined,
 });
 
 type Props = {
@@ -104,11 +106,13 @@ const randomID = () => {
 
 const gameStateInitializer = (
   clockController: React.MutableRefObject<ClockController | null>,
-  onClockTick: (p: PlayerOrder, t: Millis) => void
+  onClockTick: (p: PlayerOrder, t: Millis) => void,
+  onClockTimeout: (p: PlayerOrder) => void
 ) => {
   const state = defaultGameState;
   state.clockController = clockController;
   state.onClockTick = onClockTick;
+  state.onClockTimeout = onClockTimeout;
   return state;
 };
 
@@ -123,15 +127,22 @@ export const Store = ({ children, ...props }: Props) => {
     setTimerContext(newCtx);
   };
 
+  const onClockTimeout = (p: PlayerOrder) => {
+    setPTimedOut(p);
+  };
+
   const [lobbyContext, dispatchLobbyContext] = useReducer(LobbyReducer, {
     soughtGames: [],
   });
 
   const [gameContext, dispatchGameContext] = useReducer(GameReducer, null, () =>
-    gameStateInitializer(clockController, onClockTick)
+    gameStateInitializer(clockController, onClockTick, onClockTimeout)
   );
 
   const [timerContext, setTimerContext] = useState<Times>(defaultTimerContext);
+  const [pTimedOut, setPTimedOut] = useState<PlayerOrder | undefined>(
+    undefined
+  );
 
   const [redirGame, setRedirGame] = useState('');
   const [chat, setChat] = useState(new Array<ChatEntityObj>());
@@ -181,6 +192,7 @@ export const Store = ({ children, ...props }: Props) => {
     chat,
 
     // initClockController,
+    pTimedOut,
     stopClock,
     timerContext,
   };

@@ -15,6 +15,7 @@ import {
   SeekRequests,
   RegisterRealm,
   DeregisterRealm,
+  TimedOut,
 } from '../gen/api/proto/game_service_pb';
 import { ActionType } from '../actions/actions';
 
@@ -36,6 +37,7 @@ const parseMsg = (msg: Uint8Array) => {
     [MessageType.SEEK_REQUESTS]: SeekRequests,
     [MessageType.REGISTER_REALM]: RegisterRealm,
     [MessageType.DEREGISTER_REALM]: DeregisterRealm,
+    [MessageType.TIMED_OUT]: TimedOut,
   };
 
   const parsedMsg = msgTypes[msgType];

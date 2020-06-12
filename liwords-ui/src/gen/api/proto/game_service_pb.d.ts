@@ -407,6 +407,26 @@ export namespace ClientGameplayEvent {
   export const EventType: EventTypeMap;
 }
 
+export class TimedOut extends jspb.Message {
+  getGameId(): string;
+  setGameId(value: string): void;
+
+  serializeBinary(): Uint8Array;
+  toObject(includeInstance?: boolean): TimedOut.AsObject;
+  static toObject(includeInstance: boolean, msg: TimedOut): TimedOut.AsObject;
+  static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+  static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+  static serializeBinaryToWriter(message: TimedOut, writer: jspb.BinaryWriter): void;
+  static deserializeBinary(bytes: Uint8Array): TimedOut;
+  static deserializeBinaryFromReader(message: TimedOut, reader: jspb.BinaryReader): TimedOut;
+}
+
+export namespace TimedOut {
+  export type AsObject = {
+    gameId: string,
+  }
+}
+
 export class RegisterRealm extends jspb.Message {
   getRealm(): string;
   setRealm(value: string): void;
@@ -475,6 +495,7 @@ export interface MessageTypeMap {
   SEEK_REQUESTS: 10;
   REGISTER_REALM: 11;
   DEREGISTER_REALM: 12;
+  TIMED_OUT: 13;
 }
 
 export const MessageType: MessageTypeMap;

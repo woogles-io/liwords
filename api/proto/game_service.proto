@@ -79,6 +79,7 @@ enum MessageType {
   SEEK_REQUESTS = 10;
   REGISTER_REALM = 11;
   DEREGISTER_REALM = 12;
+  TIMED_OUT = 13;
   // Add more events here. The total number of events should fit in a byte.
   // We should definitely not be using anywhere close to 255 events, and
   // in order to enforce that I'll be forcing the event type header to just be
@@ -202,6 +203,8 @@ message ClientGameplayEvent {
   // for thru, and lowercase characters are used for blanks.
   string tiles = 4;
 }
+
+message TimedOut { string game_id = 1; }
 
 // Communication
 

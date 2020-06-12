@@ -12,6 +12,7 @@ import {
   RegisterRealm,
   DeregisterRealm,
   MessageType,
+  TimedOut,
 } from '../gen/api/proto/game_service_pb';
 import { encodeToSocketFmt } from '../utils/protobuf';
 import './gameroom.scss';
@@ -47,8 +48,9 @@ export const Table = (props: Props) => {
     boardPanelHeight = viewableHeight;
     boardPanelWidth = boardPanelHeight - 96;
   }
-  const { setRedirGame, gameContext, chat } = useStoreContext();
+  const { setRedirGame, gameContext, chat, pTimedOut } = useStoreContext();
   const { gameID } = useParams();
+  const { username, sendSocketMsg } = props;
 
   useEffect(() => {
     // Avoid react-router hijacking the back button.
@@ -60,7 +62,7 @@ export const Table = (props: Props) => {
     console.log('Tryna register with gameID', gameID);
     const rr = new RegisterRealm();
     rr.setRealm(gameID);
-    props.sendSocketMsg(
+    sendSocketMsg(
       encodeToSocketFmt(MessageType.REGISTER_REALM, rr.serializeBinary())
     );
 
@@ -68,12 +70,26 @@ export const Table = (props: Props) => {
       console.log('cleaning up; deregistering', gameID);
       const dr = new DeregisterRealm();
       dr.setRealm(gameID);
-      props.sendSocketMsg(
+      sendSocketMsg(
         encodeToSocketFmt(MessageType.DEREGISTER_REALM, dr.serializeBinary())
       );
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    if (pTimedOut === undefined) return;
+    // Otherwise, player timed out. This will only send once.
+    if (gameContext.nickToPlayerOrder[username] !== pTimedOut) return;
+    // Only send it if WE are the player that timed out.
+    const to = new TimedOut();
+    to.setGameId(gameID);
+    console.log('sending timeout to socket');
+    sendSocketMsg(
+      encodeToSocketFmt(MessageType.TIMED_OUT, to.serializeBinary())
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pTimedOut, gameContext.nickToPlayerOrder, gameID]);
 
   // Figure out what rack we should display.
   // If we are one of the players, display our rack.
