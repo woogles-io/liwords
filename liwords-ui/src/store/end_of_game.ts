@@ -6,7 +6,7 @@ import {
 export const endGameMessage = (gee: GameEndedEvent) => {
   const scores = gee.getScoresMap();
   console.log('scores are', scores);
-  const ratings = gee.getNewRatingsMap();
+  // const ratings = gee.getNewRatingsMap();
   const reason = gee.getEndReason();
   const winner = gee.getWinner();
   const loser = gee.getLoser();
