@@ -2325,7 +2325,9 @@ proto.liwords.GameEndedEvent.toObject = function(includeInstance, msg) {
     scoresMap: (f = msg.getScoresMap()) ? f.toObject(includeInstance, undefined) : [],
     newRatingsMap: (f = msg.getNewRatingsMap()) ? f.toObject(includeInstance, undefined) : [],
     endReason: jspb.Message.getFieldWithDefault(msg, 3, 0),
-    winner: jspb.Message.getFieldWithDefault(msg, 4, "")
+    winner: jspb.Message.getFieldWithDefault(msg, 4, ""),
+    loser: jspb.Message.getFieldWithDefault(msg, 5, ""),
+    tie: jspb.Message.getBooleanFieldWithDefault(msg, 6, false)
   };
 
   if (includeInstance) {
@@ -2382,6 +2384,14 @@ proto.liwords.GameEndedEvent.deserializeBinaryFromReader = function(msg, reader)
       var value = /** @type {string} */ (reader.readString());
       msg.setWinner(value);
       break;
+    case 5:
+      var value = /** @type {string} */ (reader.readString());
+      msg.setLoser(value);
+      break;
+    case 6:
+      var value = /** @type {boolean} */ (reader.readBool());
+      msg.setTie(value);
+      break;
     default:
       reader.skipField();
       break;
@@ -2430,6 +2440,20 @@ proto.liwords.GameEndedEvent.serializeBinaryToWriter = function(message, writer)
   if (f.length > 0) {
     writer.writeString(
       4,
+      f
+    );
+  }
+  f = message.getLoser();
+  if (f.length > 0) {
+    writer.writeString(
+      5,
+      f
+    );
+  }
+  f = message.getTie();
+  if (f) {
+    writer.writeBool(
+      6,
       f
     );
   }
@@ -2513,6 +2537,42 @@ proto.liwords.GameEndedEvent.prototype.getWinner = function() {
  */
 proto.liwords.GameEndedEvent.prototype.setWinner = function(value) {
   return jspb.Message.setProto3StringField(this, 4, value);
+};
+
+
+/**
+ * optional string loser = 5;
+ * @return {string}
+ */
+proto.liwords.GameEndedEvent.prototype.getLoser = function() {
+  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 5, ""));
+};
+
+
+/**
+ * @param {string} value
+ * @return {!proto.liwords.GameEndedEvent} returns this
+ */
+proto.liwords.GameEndedEvent.prototype.setLoser = function(value) {
+  return jspb.Message.setProto3StringField(this, 5, value);
+};
+
+
+/**
+ * optional bool tie = 6;
+ * @return {boolean}
+ */
+proto.liwords.GameEndedEvent.prototype.getTie = function() {
+  return /** @type {boolean} */ (jspb.Message.getBooleanFieldWithDefault(this, 6, false));
+};
+
+
+/**
+ * @param {boolean} value
+ * @return {!proto.liwords.GameEndedEvent} returns this
+ */
+proto.liwords.GameEndedEvent.prototype.setTie = function(value) {
+  return jspb.Message.setProto3BooleanField(this, 6, value);
 };
 
 
@@ -3647,9 +3707,12 @@ proto.liwords.MessageType = {
  * @enum {number}
  */
 proto.liwords.GameEndReason = {
-  TIME: 0,
-  WENT_OUT: 1,
-  CONSECUTIVE_ZEROES: 2
+  NONE: 0,
+  TIME: 1,
+  STANDARD: 2,
+  CONSECUTIVE_ZEROES: 3,
+  RESIGNED: 4,
+  ABANDONED: 5
 };
 
 goog.object.extend(exports, proto.liwords);

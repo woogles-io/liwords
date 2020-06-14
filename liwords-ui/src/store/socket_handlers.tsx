@@ -18,6 +18,7 @@ import {
   TimedOut,
 } from '../gen/api/proto/game_service_pb';
 import { ActionType } from '../actions/actions';
+import { endGameMessage } from './end_of_game';
 
 const parseMsg = (msg: Uint8Array) => {
   const msgType = msg[0] as MessageTypeMap[keyof MessageTypeMap];
@@ -106,15 +107,11 @@ export const onSocketMsg = (storeData: StoreData) => {
 
       case MessageType.GAME_ENDED_EVENT: {
         const gee = parsedMsg as GameEndedEvent;
-        const scores = gee.getScoresMap();
-        const ratings = gee.getNewRatingsMap();
-        const message = `Game is over. Scores: ${JSON.stringify(
-          scores
-        )}, new ratings: ${JSON.stringify(ratings)}`;
+
         storeData.addChat({
           entityType: ChatEntityType.ServerMsg,
           sender: '',
-          message,
+          message: endGameMessage(gee),
         });
         storeData.stopClock();
         break;

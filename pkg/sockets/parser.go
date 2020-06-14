@@ -135,7 +135,6 @@ func (h *Hub) parseAndExecuteMessage(ctx context.Context, msg []byte, sender str
 		if err != nil {
 			return err
 		}
-		// XXX: send a game over event
 
 	default:
 		return fmt.Errorf("message type %v not yet handled", ew.Type)

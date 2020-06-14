@@ -121,6 +121,7 @@ export const Lobby = (props: Props) => {
   const handleModalCancel = () => {
     setSeekModalVisible(false);
   };
+  console.log('redirGame', redirGame);
 
   if (redirGame !== '') {
     return <Redirect push to={`/game/${redirGame}`} />;

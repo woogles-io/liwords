@@ -343,8 +343,10 @@ const initializeTimerController = (
   );
 
   if (newState.clockController!.current) {
+    console.log('using existing controller');
     newState.clockController!.current.setClock(newState.playState, clockState);
   } else {
+    console.log('creating new controller');
     // eslint-disable-next-line no-param-reassign
     newState.clockController!.current = new ClockController(
       clockState,

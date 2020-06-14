@@ -285,6 +285,12 @@ export class GameEndedEvent extends jspb.Message {
   getWinner(): string;
   setWinner(value: string): void;
 
+  getLoser(): string;
+  setLoser(value: string): void;
+
+  getTie(): boolean;
+  setTie(value: boolean): void;
+
   serializeBinary(): Uint8Array;
   toObject(includeInstance?: boolean): GameEndedEvent.AsObject;
   static toObject(includeInstance: boolean, msg: GameEndedEvent): GameEndedEvent.AsObject;
@@ -301,6 +307,8 @@ export namespace GameEndedEvent {
     newRatingsMap: Array<[string, number]>,
     endReason: GameEndReasonMap[keyof GameEndReasonMap],
     winner: string,
+    loser: string,
+    tie: boolean,
   }
 }
 
@@ -509,9 +517,12 @@ export interface MessageTypeMap {
 export const MessageType: MessageTypeMap;
 
 export interface GameEndReasonMap {
-  TIME: 0;
-  WENT_OUT: 1;
-  CONSECUTIVE_ZEROES: 2;
+  NONE: 0;
+  TIME: 1;
+  STANDARD: 2;
+  CONSECUTIVE_ZEROES: 3;
+  RESIGNED: 4;
+  ABANDONED: 5;
 }
 
 export const GameEndReason: GameEndReasonMap;
