@@ -180,6 +180,7 @@ func handleChallenge(ctx context.Context, entGame *entity.Game, gameStore GameSt
 		entGame.GameID()))
 
 	if entGame.Game.Playing() == macondopb.PlayState_GAME_OVER {
+		discernEndgameReason(entGame)
 		performEndgameDuties(entGame)
 	}
 
@@ -209,14 +210,15 @@ func PlayMove(ctx context.Context, gameStore GameStore, player string,
 	if entGame.Game.NickOnTurn() != player {
 		return errNotOnTurn
 	}
-
+	timeRemaining := entGame.TimeRemaining(onTurn)
+	log.Debug().Int("time-remaining", timeRemaining).Msg("checking-time-remaining")
 	// Check that we didn't run out of time.
-	if entGame.TimeRemaining(onTurn) < 0 {
+	if timeRemaining < 0 {
 		// Game is over!
 		log.Debug().Msg("got-move-too-late")
 		entGame.Game.SetPlaying(macondopb.PlayState_GAME_OVER)
 		// Basically skip to the bottom and exit.
-		return setTimedOut(ctx, entGame, gameStore)
+		return setTimedOut(ctx, entGame, onTurn, gameStore)
 	}
 
 	log.Debug().Msg("going to turn into a macondo gameevent")
@@ -241,6 +243,8 @@ func PlayMove(ctx context.Context, gameStore GameStore, player string,
 
 	// Don't back up the move, but add to history
 	log.Debug().Msg("playing the move")
+	// Register time BEFORE playing the move, so the turn doesn't switch.
+	entGame.RecordTimeOfMove(onTurn)
 	err = entGame.Game.PlayMove(m, true)
 	if err != nil {
 		return err
@@ -248,8 +252,6 @@ func PlayMove(ctx context.Context, gameStore GameStore, player string,
 	// Get the turn that we _just_ appended to the history
 	turnLength := len(entGame.Game.History().Turns)
 	turn := entGame.Game.History().Turns[turnLength-1]
-	// Register time.
-	entGame.RecordTimeOfMove(onTurn)
 
 	// Create a set of ServerGameplayEvents to send back.
 
@@ -271,37 +273,44 @@ func PlayMove(ctx context.Context, gameStore GameStore, player string,
 	// Re-send it, but overwrite the time remaining and new rack properly.
 	playing := entGame.Game.Playing()
 
-	err = gameStore.Set(ctx, entGame)
-	if err != nil {
-		return err
-	}
 	for _, sge := range evts {
 		entGame.SendChange(entity.WrapEvent(sge, pb.MessageType_SERVER_GAMEPLAY_EVENT,
 			entGame.GameID()))
 	}
 	if playing == macondopb.PlayState_GAME_OVER {
+		discernEndgameReason(entGame)
 		performEndgameDuties(entGame)
 	}
+
+	err = gameStore.Set(ctx, entGame)
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 
-func TimedOut(ctx context.Context, gameStore GameStore, player string, gameID string) error {
+func TimedOut(ctx context.Context, gameStore GameStore, sender string, timedout string, gameID string) error {
 	// XXX: VERIFY THAT THE GAME ID is the client's current game!!
-	log.Debug().Msg("got-timed-out")
+	// Note: we can get this event multiple times; the opponent and the player on turn
+	// both send it.
+	log.Debug().Str("sender", sender).Str("timedout", timedout).Msg("got-timed-out")
 	entGame, err := gameStore.Get(ctx, gameID)
 	if err != nil {
 		return err
 	}
+	entGame.Lock()
+	defer entGame.Unlock()
 	if entGame.Game.Playing() == macondopb.PlayState_GAME_OVER {
-		return errGameNotActive
+		log.Debug().Msg("game not active anymore.")
+		return nil
 	}
 	onTurn := entGame.Game.PlayerOnTurn()
 
 	// Ensure that it is actually the correct player's turn
-	if entGame.Game.NickOnTurn() != player {
+	if entGame.Game.NickOnTurn() != timedout {
 		return errNotOnTurn
 	}
-	entGame.CalculateTimeRemaining(onTurn)
 	if entGame.TimeRemaining(onTurn) > 0 {
 		log.Error().Int("TimeRemaining", entGame.TimeRemaining(onTurn)).
 			Int("onturn", onTurn).Msg("time-didnt-run-out")
@@ -309,26 +318,54 @@ func TimedOut(ctx context.Context, gameStore GameStore, player string, gameID st
 	}
 	// Ok, the time did run out after all.
 
-	return setTimedOut(ctx, entGame, gameStore)
+	return setTimedOut(ctx, entGame, onTurn, gameStore)
 }
 
-func setTimedOut(ctx context.Context, entGame *entity.Game, gameStore GameStore) error {
+func setTimedOut(ctx context.Context, entGame *entity.Game, pidx int, gameStore GameStore) error {
 	log.Debug().Msg("timed out!")
 	entGame.Game.SetPlaying(macondopb.PlayState_GAME_OVER)
+
+	// And send a game end event.
+	entGame.SetGameEndReason(pb.GameEndReason_TIME)
+	entGame.SetWinnerIdx(1 - pidx)
+	entGame.SetLoserIdx(pidx)
+	performEndgameDuties(entGame)
+
 	// Store the game back into the store
 	err := gameStore.Set(ctx, entGame)
 	if err != nil {
 		return err
 	}
-	// And send a game end event.
-	performEndgameDuties(entGame)
+
 	return nil
 }
 
 func performEndgameDuties(g *entity.Game) {
-	// XXX: need to log who lost or won, the timeout state, etc.
 	g.SendChange(
 		entity.WrapEvent(g.GameEndedEvent(),
 			pb.MessageType_GAME_ENDED_EVENT, g.GameID()))
 
+}
+
+func discernEndgameReason(g *entity.Game) {
+	// Figure out why the game ended. Here there are only two options,
+	// standard or six-zero. The game ending on a timeout is handled in
+	// another branch (see setTimedOut above) and resignation/etc will
+	// also be handled elsewhere.
+	if g.RackLettersFor(0) == "" || g.RackLettersFor(1) == "" {
+		g.SetGameEndReason(pb.GameEndReason_STANDARD)
+	} else {
+		g.SetGameEndReason(pb.GameEndReason_CONSECUTIVE_ZEROES)
+	}
+	if g.PointsFor(0) > g.PointsFor(1) {
+		g.SetWinnerIdx(0)
+		g.SetLoserIdx(1)
+	} else if g.PointsFor(1) > g.PointsFor(0) {
+		g.SetWinnerIdx(1)
+		g.SetLoserIdx(0)
+	} else {
+		// They're the same.
+		g.SetWinnerIdx(-1)
+		g.SetLoserIdx(-1)
+	}
 }

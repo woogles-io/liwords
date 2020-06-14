@@ -17,7 +17,7 @@ import (
 
 const (
 	// epsilon is in milliseconds.
-	epsilon = 12
+	epsilon = 20
 )
 
 var DefaultConfig = macondoconfig.Config{
@@ -49,8 +49,9 @@ func TestTimeCalc(t *testing.T) {
 	mcg := newMacondoGame()
 	g := NewGame(mcg, &pb.GameRequest{InitialTimeSeconds: 60, IncrementSeconds: 0})
 	g.ResetTimers()
-	g.CalculateTimeRemaining(0)
-	g.CalculateTimeRemaining(1)
+	now := msTimestamp()
+	g.calculateAndSetTimeRemaining(0, now)
+	g.calculateAndSetTimeRemaining(1, now)
 
 	is.True(withinEpsilon(g.TimeRemaining(0), g.TimeRemaining(1)))
 	is.True(withinEpsilon(g.TimeRemaining(1), 60000))
@@ -64,9 +65,9 @@ func TestTimeCalcWithSleep(t *testing.T) {
 	g.ResetTimers()
 	g.SetPlayerOnTurn(1)
 	time.Sleep(3520 * time.Millisecond)
-
-	g.CalculateTimeRemaining(0)
-	g.CalculateTimeRemaining(1)
+	now := msTimestamp()
+	g.calculateAndSetTimeRemaining(0, now)
+	g.calculateAndSetTimeRemaining(1, now)
 	is.True(withinEpsilon(g.TimeRemaining(0), 60000))
 	is.True(withinEpsilon(g.TimeRemaining(1), 60000-3520))
 }
@@ -75,7 +76,7 @@ func TestTimeCalcWithMultipleSleep(t *testing.T) {
 	is := is.New(t)
 
 	mcg := newMacondoGame()
-	g := NewGame(mcg, &pb.GameRequest{InitialTimeSeconds: 60, IncrementSeconds: 0})
+	g := NewGame(mcg, &pb.GameRequest{InitialTimeSeconds: 10, IncrementSeconds: 0})
 	g.ResetTimers()
 	// Simulate a few moves:
 	g.SetPlayerOnTurn(1)
@@ -92,11 +93,13 @@ func TestTimeCalcWithMultipleSleep(t *testing.T) {
 
 	g.SetPlayerOnTurn(0)
 	time.Sleep(755 * time.Millisecond)
-	g.CalculateTimeRemaining(0)
+	now := msTimestamp()
+
+	g.calculateAndSetTimeRemaining(0, now)
 
 	fmt.Println(g.TimeRemaining(0))
 	fmt.Println(g.TimeRemaining(1))
 
-	is.True(withinEpsilon(g.TimeRemaining(0), 60000-2233-755))
-	is.True(withinEpsilon(g.TimeRemaining(1), 60000-1520-1122))
+	is.True(withinEpsilon(g.TimeRemaining(0), 10000-2233-755))
+	is.True(withinEpsilon(g.TimeRemaining(1), 10000-1520-1122))
 }

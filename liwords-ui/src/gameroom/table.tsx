@@ -48,7 +48,14 @@ export const Table = (props: Props) => {
     boardPanelHeight = viewableHeight;
     boardPanelWidth = boardPanelHeight - 96;
   }
-  const { setRedirGame, gameContext, chat, pTimedOut } = useStoreContext();
+  const {
+    setRedirGame,
+    gameContext,
+    chat,
+    clearChat,
+    pTimedOut,
+    setPTimedOut,
+  } = useStoreContext();
   const { gameID } = useParams();
   const { username, sendSocketMsg } = props;
 
@@ -59,7 +66,6 @@ export const Table = (props: Props) => {
   }, [setRedirGame]);
 
   useEffect(() => {
-    console.log('Tryna register with gameID', gameID);
     const rr = new RegisterRealm();
     rr.setRealm(gameID);
     sendSocketMsg(
@@ -67,12 +73,12 @@ export const Table = (props: Props) => {
     );
 
     return () => {
-      console.log('cleaning up; deregistering', gameID);
       const dr = new DeregisterRealm();
       dr.setRealm(gameID);
       sendSocketMsg(
         encodeToSocketFmt(MessageType.DEREGISTER_REALM, dr.serializeBinary())
       );
+      clearChat();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -80,14 +86,30 @@ export const Table = (props: Props) => {
   useEffect(() => {
     if (pTimedOut === undefined) return;
     // Otherwise, player timed out. This will only send once.
-    if (gameContext.nickToPlayerOrder[username] !== pTimedOut) return;
-    // Only send it if WE are the player that timed out.
+    // Send the time out if we're either of both players that are in the game.
+    let send = false;
+    let timedout = '';
+
+    for (let idx = 0; idx < gameContext.players.length; idx++) {
+      const nick = gameContext.players[idx].nickname;
+      if (gameContext.nickToPlayerOrder[nick] === pTimedOut) {
+        timedout = nick;
+      }
+      if (username === nick) {
+        send = true;
+      }
+    }
+
+    if (!send) return;
+
     const to = new TimedOut();
     to.setGameId(gameID);
+    to.setUsername(timedout);
     console.log('sending timeout to socket');
     sendSocketMsg(
       encodeToSocketFmt(MessageType.TIMED_OUT, to.serializeBinary())
     );
+    setPTimedOut(undefined);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pTimedOut, gameContext.nickToPlayerOrder, gameID]);
 
@@ -142,7 +164,7 @@ export const Table = (props: Props) => {
             <Row>15 0 - Classic - Collins</Row>
             <Row>5 point challenge - Unrated</Row>
           </Card>
-       </Col>
+        </Col>
       </Row>
     </div>
   );
