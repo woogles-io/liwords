@@ -101,6 +101,8 @@ func EventFromByteArray(arr []byte) (*EventWrapper, error) {
 		message = &pb.RegisterRealm{}
 	case pb.MessageType_DEREGISTER_REALM:
 		message = &pb.DeregisterRealm{}
+	case pb.MessageType_TIMED_OUT:
+		message = &pb.TimedOut{}
 	default:
 		return nil, fmt.Errorf("event of type %d not handled", msgType)
 	}

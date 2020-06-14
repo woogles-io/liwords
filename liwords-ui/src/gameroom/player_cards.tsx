@@ -2,26 +2,18 @@ import React from 'react';
 import { Card, Row } from 'antd';
 import { FullPlayerInfo } from '../store/reducers/game_reducer';
 import { useStoreContext } from '../store/store';
+import { Millis, millisToTimeStr } from '../store/timer_controller';
 
 type CardProps = {
   player: FullPlayerInfo | undefined;
+  time: Millis;
 };
-
-// const msecsToTimeStr = (s: number): string => {
-//   const mins = Math.floor(s / 60000);
-//   const secs = Math.floor(s / 1000) % 60;
-//   const minStr = mins.toString().padStart(2, '0');
-//   const secStr = secs.toString().padStart(2, '0');
-//   return `${minStr}:${secStr}`;
-// };
 
 const PlayerCard = (props: CardProps) => {
   if (!props.player) {
     return <Card />;
   }
-  console.log('playercard', props.player.nickname, props.player.onturn);
-  // const timeStr = msecsToTimeStr(props.player.timeRemainingMsec);
-  const timeStr = '15:00 (fake)';
+  const timeStr = millisToTimeStr(props.time);
   return (
     <Card>
       <Row>
@@ -38,12 +30,11 @@ const PlayerCard = (props: CardProps) => {
 };
 
 export const PlayerCards = () => {
-  const { gameContext } = useStoreContext();
-
+  const { gameContext, timerContext } = useStoreContext();
   return (
     <>
-      <PlayerCard player={gameContext?.players[0]} />
-      <PlayerCard player={gameContext?.players[1]} />
+      <PlayerCard player={gameContext?.players[0]} time={timerContext.p0} />
+      <PlayerCard player={gameContext?.players[1]} time={timerContext.p1} />
     </>
   );
 };

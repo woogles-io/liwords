@@ -19,6 +19,7 @@ import {
 import { Board } from '../utils/cwgame/board';
 import { encodeToSocketFmt } from '../utils/protobuf';
 import { MessageType } from '../gen/api/proto/game_service_pb';
+import { useStoreContext } from '../store/store';
 
 // The frame atop is 24 height
 // The frames on the sides are 24 in width, surrounded by a 14 pix gutter
@@ -30,6 +31,7 @@ const sideFrameGutter = 14;
 const gridSize = 15;
 
 type Props = {
+  username: string;
   compWidth: number;
   compHeight: number;
   showBonusLabels: boolean;
@@ -64,6 +66,7 @@ export const BoardPanel = (props: Props) => {
   const [displayedRack, setDisplayedRack] = useState(props.currentRack);
   const [placedTiles, setPlacedTiles] = useState(new Set<EphemeralTile>());
   const [placedTilesTempScore, setPlacedTilesTempScore] = useState<number>();
+  const { stopClock, gameContext } = useStoreContext();
 
   // Need to sync state to props here whenever the props.currentRack changes.
   // We want to take back all the tiles also if the board changes.
@@ -73,6 +76,14 @@ export const BoardPanel = (props: Props) => {
     setPlacedTilesTempScore(0);
     setArrowProperties({ row: 0, col: 0, horizontal: false, show: false });
   }, [props.currentRack, props.board.letters]);
+
+  useEffect(() => {
+    // Stop the clock if we unload the board panel.
+    return () => {
+      stopClock();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const squareClicked = (row: number, col: number) => {
     if (props.board.letterAt(row, col) !== EmptySpace) {
@@ -100,7 +111,7 @@ export const BoardPanel = (props: Props) => {
     }
 
     if (key === EnterKey) {
-      commitPlay();
+      makeMove('commit');
       return;
     }
 
@@ -133,41 +144,33 @@ export const BoardPanel = (props: Props) => {
     setDisplayedRack(shuffleString(props.currentRack));
   };
 
-  const exchangeTiles = (rack: string) => {
-    console.log('exchange ', rack);
-    const moveEvt = exchangeMoveEvent(rack, props.gameID);
-    props.sendSocketMsg(
-      encodeToSocketFmt(
-        MessageType.CLIENT_GAMEPLAY_EVENT,
-        moveEvt.serializeBinary()
-      )
-    );
-  };
+  const makeMove = (move: string, addl?: string) => {
+    let moveEvt;
+    const iam = gameContext.nickToPlayerOrder[props.username];
+    if (!(iam && iam === `p${gameContext.onturn}`)) {
+      // It is not my turn. Ignore this event.
+      return;
+    }
 
-  const passTurn = () => {
-    props.sendSocketMsg(
-      encodeToSocketFmt(
-        MessageType.CLIENT_GAMEPLAY_EVENT,
-        passMoveEvent(props.gameID).serializeBinary()
-      )
-    );
-
-    console.log('pass turn');
-  };
-
-  const challengePlay = () => {
-    props.sendSocketMsg(
-      encodeToSocketFmt(
-        MessageType.CLIENT_GAMEPLAY_EVENT,
-        challengeMoveEvent(props.gameID).serializeBinary()
-      )
-    );
-  };
-
-  const commitPlay = () => {
-    const moveEvt = tilesetToMoveEvent(placedTiles, props.board, props.gameID);
-    if (moveEvt === null) {
-      // Just return. This is an invalid play.
+    switch (move) {
+      case 'exchange':
+        moveEvt = exchangeMoveEvent(addl!, props.gameID);
+        break;
+      case 'pass':
+        moveEvt = passMoveEvent(props.gameID);
+        break;
+      case 'challenge':
+        moveEvt = challengeMoveEvent(props.gameID);
+        break;
+      case 'commit':
+        moveEvt = tilesetToMoveEvent(placedTiles, props.board, props.gameID);
+        if (!moveEvt) {
+          // this is an invalid play
+          return;
+        }
+        break;
+    }
+    if (!moveEvt) {
       return;
     }
     props.sendSocketMsg(
@@ -176,6 +179,9 @@ export const BoardPanel = (props: Props) => {
         moveEvt.serializeBinary()
       )
     );
+    // Don't stop the clock; the next user event to come in will change the
+    // clock over.
+    // stopClock();
   };
 
   return (
@@ -223,10 +229,10 @@ export const BoardPanel = (props: Props) => {
       <div>
         <GameControls
           onRecall={recallTiles}
-          onExchange={exchangeTiles}
-          onPass={passTurn}
-          onChallenge={challengePlay}
-          onCommit={commitPlay}
+          onExchange={(rack: string) => makeMove('exchange', rack)}
+          onPass={() => makeMove('pass')}
+          onChallenge={() => makeMove('challenge')}
+          onCommit={() => makeMove('commit')}
           currentRack={props.currentRack}
         />
       </div>

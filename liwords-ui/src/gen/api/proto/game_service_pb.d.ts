@@ -223,6 +223,9 @@ export class ServerGameplayEvent extends jspb.Message {
   getTimeRemaining(): number;
   setTimeRemaining(value: number): void;
 
+  getPlaying(): macondo_api_proto_macondo_macondo_pb.PlayStateMap[keyof macondo_api_proto_macondo_macondo_pb.PlayStateMap];
+  setPlaying(value: macondo_api_proto_macondo_macondo_pb.PlayStateMap[keyof macondo_api_proto_macondo_macondo_pb.PlayStateMap]): void;
+
   serializeBinary(): Uint8Array;
   toObject(includeInstance?: boolean): ServerGameplayEvent.AsObject;
   static toObject(includeInstance: boolean, msg: ServerGameplayEvent): ServerGameplayEvent.AsObject;
@@ -239,6 +242,7 @@ export namespace ServerGameplayEvent {
     gameId: string,
     newRack: string,
     timeRemaining: number,
+    playing: macondo_api_proto_macondo_macondo_pb.PlayStateMap[keyof macondo_api_proto_macondo_macondo_pb.PlayStateMap],
   }
 }
 
@@ -275,6 +279,18 @@ export class GameEndedEvent extends jspb.Message {
   clearScoresMap(): void;
   getNewRatingsMap(): jspb.Map<string, number>;
   clearNewRatingsMap(): void;
+  getEndReason(): GameEndReasonMap[keyof GameEndReasonMap];
+  setEndReason(value: GameEndReasonMap[keyof GameEndReasonMap]): void;
+
+  getWinner(): string;
+  setWinner(value: string): void;
+
+  getLoser(): string;
+  setLoser(value: string): void;
+
+  getTie(): boolean;
+  setTie(value: boolean): void;
+
   serializeBinary(): Uint8Array;
   toObject(includeInstance?: boolean): GameEndedEvent.AsObject;
   static toObject(includeInstance: boolean, msg: GameEndedEvent): GameEndedEvent.AsObject;
@@ -289,6 +305,10 @@ export namespace GameEndedEvent {
   export type AsObject = {
     scoresMap: Array<[string, number]>,
     newRatingsMap: Array<[string, number]>,
+    endReason: GameEndReasonMap[keyof GameEndReasonMap],
+    winner: string,
+    loser: string,
+    tie: boolean,
   }
 }
 
@@ -403,6 +423,30 @@ export namespace ClientGameplayEvent {
   export const EventType: EventTypeMap;
 }
 
+export class TimedOut extends jspb.Message {
+  getGameId(): string;
+  setGameId(value: string): void;
+
+  getUsername(): string;
+  setUsername(value: string): void;
+
+  serializeBinary(): Uint8Array;
+  toObject(includeInstance?: boolean): TimedOut.AsObject;
+  static toObject(includeInstance: boolean, msg: TimedOut): TimedOut.AsObject;
+  static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+  static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+  static serializeBinaryToWriter(message: TimedOut, writer: jspb.BinaryWriter): void;
+  static deserializeBinary(bytes: Uint8Array): TimedOut;
+  static deserializeBinaryFromReader(message: TimedOut, reader: jspb.BinaryReader): TimedOut;
+}
+
+export namespace TimedOut {
+  export type AsObject = {
+    gameId: string,
+    username: string,
+  }
+}
+
 export class RegisterRealm extends jspb.Message {
   getRealm(): string;
   setRealm(value: string): void;
@@ -471,14 +515,18 @@ export interface MessageTypeMap {
   SEEK_REQUESTS: 10;
   REGISTER_REALM: 11;
   DEREGISTER_REALM: 12;
+  TIMED_OUT: 13;
 }
 
 export const MessageType: MessageTypeMap;
 
 export interface GameEndReasonMap {
-  TIME: 0;
-  WENT_OUT: 1;
-  CONSECUTIVE_ZEROES: 2;
+  NONE: 0;
+  TIME: 1;
+  STANDARD: 2;
+  CONSECUTIVE_ZEROES: 3;
+  RESIGNED: 4;
+  ABANDONED: 5;
 }
 
 export const GameEndReason: GameEndReasonMap;

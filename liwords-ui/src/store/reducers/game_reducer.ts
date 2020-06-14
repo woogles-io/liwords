@@ -3,7 +3,7 @@ import {
   PlayerInfo,
   GameTurn,
   GameEvent,
-  GameHistory,
+  PlayState,
 } from '../../gen/macondo/api/proto/macondo/macondo_pb';
 import { Action, ActionType } from '../../actions/actions';
 import {
@@ -12,6 +12,8 @@ import {
 } from '../../gen/api/proto/game_service_pb';
 import { Direction, isBlank, Blank } from '../../utils/cwgame/common';
 import { EnglishCrosswordGameDistribution } from '../../constants/tile_distributions';
+import { PlayerOrder } from '../constants';
+import { ClockController, Millis } from '../timer_controller';
 
 type TileDistribution = { [rune: string]: number };
 
@@ -24,7 +26,7 @@ export type FullPlayerInfo = {
   score: number;
   // The time remaining is not going to go here. For efficiency,
   // we will put it in its own reducer.
-  // timeRemainingMsec: number;
+  // timeMillis: number;
   onturn: boolean;
   avatarUrl: string;
   currentRack: string;
@@ -42,6 +44,7 @@ const initialExpandToFull = (playerList: PlayerInfo[]): FullPlayerInfo[] => {
       onturn: idx === 0,
       avatarUrl: '',
       currentRack: '',
+      // timeMillis: 0,
     };
   });
 };
@@ -61,6 +64,11 @@ export type GameState = {
   lastEvent: GameEvent | null;
   gameID: string;
   lastPlayedTiles: Array<Tile>;
+  nickToPlayerOrder: { [nick: string]: PlayerOrder };
+  playState: number;
+  clockController: React.MutableRefObject<ClockController | null> | null;
+  onClockTick: (p: PlayerOrder, t: Millis) => void;
+  onClockTimeout: (p: PlayerOrder) => void;
 };
 
 export const startingGameState = (
@@ -79,6 +87,11 @@ export const startingGameState = (
     lastEvent: null,
     gameID,
     lastPlayedTiles: new Array<Tile>(),
+    nickToPlayerOrder: {},
+    playState: PlayState.PLAYING,
+    clockController: null,
+    onClockTick: () => {},
+    onClockTimeout: () => {},
   };
   return gs;
 };
@@ -136,6 +149,11 @@ const newGameState = (
     // These never change:
     tileDistribution: state.tileDistribution,
     gameID: state.gameID,
+    nickToPlayerOrder: state.nickToPlayerOrder,
+    playState: sge.getPlaying(),
+    clockController: state.clockController,
+    onClockTick: state.onClockTick,
+    onClockTimeout: state.onClockTimeout,
     // Potential changes:
     board,
     pool,
@@ -180,61 +198,174 @@ const placeOnBoard = (
   return [playedTiles, newPool];
 };
 
-const stateFromHistory = (history: GameHistory): GameState => {
+const stateFromHistory = (refresher: GameHistoryRefresher): GameState => {
   // XXX: Do this for now. We will eventually want to put the tile
   // distribution itself in the history protobuf.
   // if (['NWL18', 'CSW19'].includes(history!.getLexicon())) {
   //   const dist = EnglishCrosswordGameDistribution;
   // }
+  const history = refresher.getHistory()!;
   let playerList = history.getPlayersList();
-  const flipPlayers = history.getFlipPlayers();
+  const flipPlayers = history.getSecondWentFirst();
   // If flipPlayers is on, we want to flip the players in the playerList.
   // The backend doesn't do this because of Reasons.
   if (flipPlayers) {
     playerList = [...playerList].reverse();
   }
+  const nickToPlayerOrder = {
+    [playerList[0].getNickname()]: 'p0' as PlayerOrder,
+    [playerList[1].getNickname()]: 'p1' as PlayerOrder,
+  };
 
   const gs = startingGameState(
     EnglishCrosswordGameDistribution,
     initialExpandToFull(playerList),
     history!.getUid()
   );
+  gs.nickToPlayerOrder = nickToPlayerOrder;
   history.getTurnsList().forEach((turn, idx) => {
     const events = turn.getEventsList();
-    // Skip challenged-off moves:
+    // Detect challenged-off moves:
+    let challengedOff = false;
     if (events.length === 2) {
       if (
         events[0].getType() === GameEvent.Type.TILE_PLACEMENT_MOVE &&
         events[1].getType() === GameEvent.Type.PHONY_TILES_RETURNED
       ) {
-        // do not process at all
-        return;
+        challengedOff = true;
       }
     }
-    events.forEach((evt) => {
-      switch (evt.getType()) {
-        case GameEvent.Type.TILE_PLACEMENT_MOVE:
-          [gs.lastPlayedTiles, gs.pool] = placeOnBoard(gs.board, gs.pool, evt);
-          break;
-        default:
-        //  do nothing - we only care about tile placement moves here.
-      }
-    });
+    if (!challengedOff) {
+      events.forEach((evt) => {
+        switch (evt.getType()) {
+          case GameEvent.Type.TILE_PLACEMENT_MOVE:
+            [gs.lastPlayedTiles, gs.pool] = placeOnBoard(
+              gs.board,
+              gs.pool,
+              evt
+            );
+            break;
+          default:
+          //  do nothing - we only care about tile placement moves here.
+        }
+      });
+    }
     gs.players[gs.onturn].score = events[events.length - 1].getCumulative();
     gs.onturn = (idx + 1) % 2;
   });
 
+  // racks are given in the original order that the playerList came in.
+  // so if we reversed the player list, we must reverse the racks.
   let racks = history.getLastKnownRacksList();
+  // let timers = [refresher.getTimePlayer1(), refresher.getTimePlayer2()];
   if (flipPlayers) {
     racks = [...racks].reverse();
+    // timers = timers.reverse();
   }
   // Assign racks. Remember that the player listed first goes first.
   [gs.players[0].currentRack, gs.players[1].currentRack] = racks;
+  // [gs.players[0].timeMillis, gs.players[1].timeMillis] = timers;
   gs.players[gs.onturn].onturn = true;
   gs.players[1 - gs.onturn].onturn = false;
+  gs.playState = history.getPlayState();
   return gs;
 };
 
+const setClock = (
+  state: GameState,
+  newState: GameState,
+  sge: ServerGameplayEvent
+) => {
+  if (!newState.clockController) {
+    return;
+  }
+  if (!newState.clockController.current) {
+    return;
+  }
+  // If either of the above happened, we have an issue. But these should only
+  // happen in some tests.
+  // Set the clock
+  const rem = sge.getTimeRemaining(); // time remaining for the player who just played
+  const evt = sge.getEvent()!;
+  const justPlayed = newState.nickToPlayerOrder[evt.getNickname()];
+  let { p0, p1 } = newState.clockController.current.times;
+  let activePlayer;
+  if (justPlayed === 'p0') {
+    p0 = rem;
+    activePlayer = 'p1';
+  } else if (justPlayed === 'p1') {
+    p1 = rem;
+    activePlayer = 'p0';
+  } else {
+    throw new Error(`just played ${justPlayed} is unexpected`);
+  }
+  newState.clockController.current.setClock(
+    newState.playState,
+    {
+      p0,
+      p1,
+      activePlayer: activePlayer as PlayerOrder,
+      lastUpdate: 0, // will get overwritten by setclock
+    },
+    0
+  );
+  // Send out a tick so the state updates right away (See store)
+  newState.onClockTick(
+    activePlayer as PlayerOrder,
+    newState.clockController!.current.millisOf(activePlayer as PlayerOrder)
+  );
+};
+
+const initializeTimerController = (
+  state: GameState,
+  newState: GameState,
+  ghr: GameHistoryRefresher
+) => {
+  const history = ghr.getHistory()!;
+  let [t1, t2] = [ghr.getTimePlayer1(), ghr.getTimePlayer2()];
+  if (history.getSecondWentFirst()) {
+    [t1, t2] = [t2, t1];
+  }
+  // Note that p0 and p1 correspond to the new indices (after flipping first and second
+  // players, if that happened)
+  const onturn = (history.getTurnsList().length % 2 === 0
+    ? 'p0'
+    : 'p1') as PlayerOrder;
+  const clockState = {
+    p0: t1,
+    p1: t2,
+    activePlayer: onturn,
+    lastUpdate: 0,
+  };
+
+  console.log(
+    'clockState will be set',
+    clockState,
+    history.getTurnsList().length
+  );
+
+  if (newState.clockController!.current) {
+    console.log('using existing controller');
+    newState.clockController!.current.setClock(newState.playState, clockState);
+  } else {
+    console.log('creating new controller');
+    // eslint-disable-next-line no-param-reassign
+    newState.clockController!.current = new ClockController(
+      clockState,
+      state.onClockTimeout,
+      state.onClockTick
+    );
+  }
+  // And send out a tick right now.
+  newState.onClockTick(
+    onturn,
+    newState.clockController!.current.millisOf(onturn)
+  );
+};
+
+// Here we are mixing declarative code with imperative code (needed for the timer).
+// It is difficult and kind of messy. Hopefully it'll be the only place in the whole
+// app where we do things like this.
 export const GameReducer = (state: GameState, action: Action): GameState => {
   switch (action.actionType) {
     case ActionType.AddGameEvent: {
@@ -245,14 +376,25 @@ export const GameReducer = (state: GameState, action: Action): GameState => {
         return state; // no change
       }
       const ngs = newGameState(state, sge);
+
       console.log('new game state', ngs);
+      // Always pass the clock ref along. Begin imperative section:
+      ngs.clockController = state.clockController;
+      setClock(state, ngs, sge);
       return ngs;
     }
 
     case ActionType.RefreshHistory: {
       const ghr = action.payload as GameHistoryRefresher;
-      const history = ghr.getHistory();
-      return stateFromHistory(history!);
+      const newState = stateFromHistory(ghr);
+
+      if (state.clockController !== null) {
+        newState.clockController = state.clockController;
+        initializeTimerController(state, newState, ghr);
+      }
+      // Otherwise if it is null, we have an issue, but there's no need to
+      // throw an Error..
+      return newState;
     }
   }
   // This should never be reached, but the compiler is complaining.

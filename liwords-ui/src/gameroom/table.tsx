@@ -12,6 +12,7 @@ import {
   RegisterRealm,
   DeregisterRealm,
   MessageType,
+  TimedOut,
 } from '../gen/api/proto/game_service_pb';
 import { encodeToSocketFmt } from '../utils/protobuf';
 import './gameroom.scss';
@@ -47,8 +48,16 @@ export const Table = (props: Props) => {
     boardPanelHeight = viewableHeight;
     boardPanelWidth = boardPanelHeight - 96;
   }
-  const { setRedirGame, gameContext, chat } = useStoreContext();
+  const {
+    setRedirGame,
+    gameContext,
+    chat,
+    clearChat,
+    pTimedOut,
+    setPTimedOut,
+  } = useStoreContext();
   const { gameID } = useParams();
+  const { username, sendSocketMsg } = props;
 
   useEffect(() => {
     // Avoid react-router hijacking the back button.
@@ -57,23 +66,52 @@ export const Table = (props: Props) => {
   }, [setRedirGame]);
 
   useEffect(() => {
-    console.log('Tryna register with gameID', gameID);
     const rr = new RegisterRealm();
     rr.setRealm(gameID);
-    props.sendSocketMsg(
+    sendSocketMsg(
       encodeToSocketFmt(MessageType.REGISTER_REALM, rr.serializeBinary())
     );
 
     return () => {
-      console.log('cleaning up; deregistering', gameID);
       const dr = new DeregisterRealm();
       dr.setRealm(gameID);
-      props.sendSocketMsg(
+      sendSocketMsg(
         encodeToSocketFmt(MessageType.DEREGISTER_REALM, dr.serializeBinary())
       );
+      clearChat();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    if (pTimedOut === undefined) return;
+    // Otherwise, player timed out. This will only send once.
+    // Send the time out if we're either of both players that are in the game.
+    let send = false;
+    let timedout = '';
+
+    for (let idx = 0; idx < gameContext.players.length; idx++) {
+      const nick = gameContext.players[idx].nickname;
+      if (gameContext.nickToPlayerOrder[nick] === pTimedOut) {
+        timedout = nick;
+      }
+      if (username === nick) {
+        send = true;
+      }
+    }
+
+    if (!send) return;
+
+    const to = new TimedOut();
+    to.setGameId(gameID);
+    to.setUsername(timedout);
+    console.log('sending timeout to socket');
+    sendSocketMsg(
+      encodeToSocketFmt(MessageType.TIMED_OUT, to.serializeBinary())
+    );
+    setPTimedOut(undefined);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pTimedOut, gameContext.nickToPlayerOrder, gameID]);
 
   // Figure out what rack we should display.
   // If we are one of the players, display our rack.
@@ -86,8 +124,6 @@ export const Table = (props: Props) => {
   } else {
     rack = gameContext.players.find((p) => p.onturn)?.currentRack || '';
   }
-
-  console.log('in table', gameContext.players);
 
   return (
     <div>
@@ -102,6 +138,7 @@ export const Table = (props: Props) => {
         </Col>
         <Col span={boardspan} className="play-area">
           <BoardPanel
+            username={props.username}
             compWidth={boardPanelWidth}
             compHeight={boardPanelHeight}
             board={gameContext.board}
@@ -127,7 +164,7 @@ export const Table = (props: Props) => {
             <Row>15 0 - Classic - Collins</Row>
             <Row>5 point challenge - Unrated</Row>
           </Card>
-       </Col>
+        </Col>
       </Row>
     </div>
   );

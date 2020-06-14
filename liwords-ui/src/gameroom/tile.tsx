@@ -39,6 +39,13 @@ const TILE_STYLES: { [name: string]: TileStyle } = {
     blankTextColor: '#fe1111',
     strokeWidth: '0px',
   },
+  aeroBlueTentative: {
+    backgroundColor: '#4894D4',
+    outline: '#4894D4',
+    color: '#FFFFFF',
+    blankTextColor: '#fe1111',
+    strokeWidth: '0px',
+  },
 };
 
 type TileLetterProps = {
@@ -47,9 +54,9 @@ type TileLetterProps = {
 
 const TileLetter = (props: TileLetterProps) => {
   let { rune } = props;
-  if (rune.toUpperCase() !== rune) {
-    rune = rune.toUpperCase();
-  }
+  // if (rune.toUpperCase() !== rune) {
+  //   rune = rune.toUpperCase();
+  // }
   if (rune === Blank) {
     rune = ' ';
   }
@@ -80,20 +87,18 @@ type TileProps = {
 };
 
 const Tile = (props: TileProps) => {
-  let tileStyle = TILE_STYLES.aeroOrange;
+  let tileStyle = TILE_STYLES.aeroBlue;
   if (props.lastPlayed) {
-    tileStyle = TILE_STYLES.aeroOrangeJustPlayed;
+    tileStyle = TILE_STYLES.aeroBlue;
   }
   if (props.tentative) {
-    tileStyle = TILE_STYLES.aeroOrangeTentative;
+    tileStyle = TILE_STYLES.aeroBlueTentative;
   }
 
   return (
     <div
       className="tile"
-      style={Object.assign({}, tileStyle, {
-        cursor: props.grabbable ? 'grab' : 'default',
-      })}
+      style={{ ...tileStyle, cursor: props.grabbable ? 'grab' : 'default' }}
       onClick={props.onClick ? props.onClick : () => {}}
     >
       <TileLetter rune={props.rune} />

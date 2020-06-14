@@ -79,6 +79,7 @@ enum MessageType {
   SEEK_REQUESTS = 10;
   REGISTER_REALM = 11;
   DEREGISTER_REALM = 12;
+  TIMED_OUT = 13;
   // Add more events here. The total number of events should fit in a byte.
   // We should definitely not be using anywhere close to 255 events, and
   // in order to enforce that I'll be forcing the event type header to just be
@@ -116,6 +117,7 @@ message ServerGameplayEvent {
   string game_id = 2;
   string new_rack = 3;
   int32 time_remaining = 4;
+  macondo.PlayState playing = 5;
 }
 
 // The server will send back a challenge result event only in the case of
@@ -136,6 +138,13 @@ message ServerChallengeResultEvent {
 message GameEndedEvent {
   map<string, int32> scores = 1;
   map<string, int32> new_ratings = 2;
+  GameEndReason end_reason = 3;
+  // The winner is not always the highest scoring player; one player can
+  // time out. The end_reason should make it clear what happened.
+  string winner = 4;
+  string loser = 5;
+  // If it was a tie, the winner and loser above can be interchanged.
+  bool tie = 6;
 }
 
 // A GameHistoryRefresher is sent to both players when the game starts,
@@ -175,9 +184,17 @@ message ErrorMessage {
 // Gameplay
 
 enum GameEndReason {
-  TIME = 0;
-  WENT_OUT = 1;
-  CONSECUTIVE_ZEROES = 2;
+  // NONE: the game has not yet ended!
+  NONE = 0;
+  // TIME: one person timed out (and lost)
+  TIME = 1;
+  // WENT_OUT: game ended regularly, with one person having zero tiles on their
+  // rack.
+  STANDARD = 2;
+  // 6 consecutive zeroes ends the game.
+  CONSECUTIVE_ZEROES = 3;
+  RESIGNED = 4;
+  ABANDONED = 5;
 }
 
 // One or more macondo.GameEvent comprise a full GameTurn (see macondo proto
@@ -200,6 +217,11 @@ message ClientGameplayEvent {
   // tiles that are being played (or exchanged). The `.` character is used
   // for thru, and lowercase characters are used for blanks.
   string tiles = 4;
+}
+
+message TimedOut {
+  string game_id = 1;
+  string username = 2;
 }
 
 // Communication

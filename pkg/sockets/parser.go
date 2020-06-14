@@ -125,6 +125,17 @@ func (h *Hub) parseAndExecuteMessage(ctx context.Context, msg []byte, sender str
 		}
 		h.removeFromRealm(Realm(evt.Realm), sender)
 
+	case pb.MessageType_TIMED_OUT:
+		evt, ok := ew.Event.(*pb.TimedOut)
+		if !ok {
+			return errors.New("to unexpected typing error")
+		}
+		// Verify the timeout.
+		err := gameplay.TimedOut(ctx, h.gameStore, sender, evt.Username, evt.GameId)
+		if err != nil {
+			return err
+		}
+
 	default:
 		return fmt.Errorf("message type %v not yet handled", ew.Type)
 
