@@ -1,6 +1,7 @@
 package entity
 
 import (
+	"sync"
 	"time"
 
 	pb "github.com/domino14/liwords/rpc/api/proto"
@@ -13,6 +14,7 @@ import (
 // and we should save most of the included fields here, especially the
 // macondo.game.History (which can be exported as GCG, etc in the future)
 type Game struct {
+	sync.Mutex
 	game.Game
 	// timeOfLastUpdate is the timestamp of the last update, in milliseconds.
 	// If no update has been made, this defaults to timeStarted.

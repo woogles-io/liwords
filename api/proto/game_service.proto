@@ -219,7 +219,10 @@ message ClientGameplayEvent {
   string tiles = 4;
 }
 
-message TimedOut { string game_id = 1; }
+message TimedOut {
+  string game_id = 1;
+  string username = 2;
+}
 
 // Communication
 

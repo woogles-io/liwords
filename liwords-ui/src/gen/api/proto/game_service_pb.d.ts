@@ -427,6 +427,9 @@ export class TimedOut extends jspb.Message {
   getGameId(): string;
   setGameId(value: string): void;
 
+  getUsername(): string;
+  setUsername(value: string): void;
+
   serializeBinary(): Uint8Array;
   toObject(includeInstance?: boolean): TimedOut.AsObject;
   static toObject(includeInstance: boolean, msg: TimedOut): TimedOut.AsObject;
@@ -440,6 +443,7 @@ export class TimedOut extends jspb.Message {
 export namespace TimedOut {
   export type AsObject = {
     gameId: string,
+    username: string,
   }
 }
 

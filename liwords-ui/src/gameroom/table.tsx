@@ -54,7 +54,7 @@ export const Table = (props: Props) => {
     chat,
     clearChat,
     pTimedOut,
-    // setPTimedOut,
+    setPTimedOut,
   } = useStoreContext();
   const { gameID } = useParams();
   const { username, sendSocketMsg } = props;
@@ -86,18 +86,30 @@ export const Table = (props: Props) => {
   useEffect(() => {
     if (pTimedOut === undefined) return;
     // Otherwise, player timed out. This will only send once.
-    // XXX: SEND IT IF WE ARE THE OTHER PLAYER TOO.
-    // XXX: THIS COULD TRIGGER MULTIPLE TIMES; we need to reset
-    // ptimedout after the game.
-    if (gameContext.nickToPlayerOrder[username] !== pTimedOut) return;
-    // Only send it if WE are the player that timed out.
+    // Send the time out if we're either of both players that are in the game.
+    let send = false;
+    let timedout = '';
+
+    for (let idx = 0; idx < gameContext.players.length; idx++) {
+      const nick = gameContext.players[idx].nickname;
+      if (gameContext.nickToPlayerOrder[nick] === pTimedOut) {
+        timedout = nick;
+      }
+      if (username === nick) {
+        send = true;
+      }
+    }
+
+    if (!send) return;
+
     const to = new TimedOut();
     to.setGameId(gameID);
+    to.setUsername(timedout);
     console.log('sending timeout to socket');
     sendSocketMsg(
       encodeToSocketFmt(MessageType.TIMED_OUT, to.serializeBinary())
     );
-    // setPTimedOut(undefined);
+    setPTimedOut(undefined);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pTimedOut, gameContext.nickToPlayerOrder, gameID]);
 

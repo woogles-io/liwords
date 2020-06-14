@@ -290,20 +290,25 @@ func PlayMove(ctx context.Context, gameStore GameStore, player string,
 	return nil
 }
 
-func TimedOut(ctx context.Context, gameStore GameStore, player string, gameID string) error {
+func TimedOut(ctx context.Context, gameStore GameStore, sender string, timedout string, gameID string) error {
 	// XXX: VERIFY THAT THE GAME ID is the client's current game!!
-	log.Debug().Str("player", player).Msg("got-timed-out")
+	// Note: we can get this event multiple times; the opponent and the player on turn
+	// both send it.
+	log.Debug().Str("sender", sender).Str("timedout", timedout).Msg("got-timed-out")
 	entGame, err := gameStore.Get(ctx, gameID)
 	if err != nil {
 		return err
 	}
+	entGame.Lock()
+	defer entGame.Unlock()
 	if entGame.Game.Playing() == macondopb.PlayState_GAME_OVER {
-		return errGameNotActive
+		log.Debug().Msg("game not active anymore.")
+		return nil
 	}
 	onTurn := entGame.Game.PlayerOnTurn()
 
 	// Ensure that it is actually the correct player's turn
-	if entGame.Game.NickOnTurn() != player {
+	if entGame.Game.NickOnTurn() != timedout {
 		return errNotOnTurn
 	}
 	if entGame.TimeRemaining(onTurn) > 0 {

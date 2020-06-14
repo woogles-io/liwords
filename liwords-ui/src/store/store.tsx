@@ -65,6 +65,7 @@ export type StoreData = {
   // setClock: (sge: ServerGameplayEvent, delay: Centis) => void;
   timerContext: Times;
   pTimedOut: PlayerOrder | undefined;
+  setPTimedOut: (p: PlayerOrder | undefined) => void;
 };
 
 const defaultGameState = startingGameState(
@@ -93,6 +94,7 @@ export const Context = createContext<StoreData>({
   // setClock: defaultFunction,
   timerContext: defaultTimerContext,
   pTimedOut: undefined,
+  setPTimedOut: defaultFunction,
 });
 
 type Props = {
@@ -200,6 +202,7 @@ export const Store = ({ children, ...props }: Props) => {
 
     // initClockController,
     pTimedOut,
+    setPTimedOut,
     stopClock,
     timerContext,
   };

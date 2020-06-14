@@ -131,7 +131,7 @@ func (h *Hub) parseAndExecuteMessage(ctx context.Context, msg []byte, sender str
 			return errors.New("to unexpected typing error")
 		}
 		// Verify the timeout.
-		err := gameplay.TimedOut(ctx, h.gameStore, sender, evt.GameId)
+		err := gameplay.TimedOut(ctx, h.gameStore, sender, evt.Username, evt.GameId)
 		if err != nil {
 			return err
 		}

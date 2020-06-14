@@ -3309,7 +3309,8 @@ proto.liwords.TimedOut.prototype.toObject = function(opt_includeInstance) {
  */
 proto.liwords.TimedOut.toObject = function(includeInstance, msg) {
   var f, obj = {
-    gameId: jspb.Message.getFieldWithDefault(msg, 1, "")
+    gameId: jspb.Message.getFieldWithDefault(msg, 1, ""),
+    username: jspb.Message.getFieldWithDefault(msg, 2, "")
   };
 
   if (includeInstance) {
@@ -3350,6 +3351,10 @@ proto.liwords.TimedOut.deserializeBinaryFromReader = function(msg, reader) {
       var value = /** @type {string} */ (reader.readString());
       msg.setGameId(value);
       break;
+    case 2:
+      var value = /** @type {string} */ (reader.readString());
+      msg.setUsername(value);
+      break;
     default:
       reader.skipField();
       break;
@@ -3386,6 +3391,13 @@ proto.liwords.TimedOut.serializeBinaryToWriter = function(message, writer) {
       f
     );
   }
+  f = message.getUsername();
+  if (f.length > 0) {
+    writer.writeString(
+      2,
+      f
+    );
+  }
 };
 
 
@@ -3404,6 +3416,24 @@ proto.liwords.TimedOut.prototype.getGameId = function() {
  */
 proto.liwords.TimedOut.prototype.setGameId = function(value) {
   return jspb.Message.setProto3StringField(this, 1, value);
+};
+
+
+/**
+ * optional string username = 2;
+ * @return {string}
+ */
+proto.liwords.TimedOut.prototype.getUsername = function() {
+  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 2, ""));
+};
+
+
+/**
+ * @param {string} value
+ * @return {!proto.liwords.TimedOut} returns this
+ */
+proto.liwords.TimedOut.prototype.setUsername = function(value) {
+  return jspb.Message.setProto3StringField(this, 2, value);
 };
 
 
