@@ -24,14 +24,17 @@ export interface ClockData {
   moretime: number;
 }
 
-export const millisToTimeStr = (s: number): string => {
+export const millisToTimeStr = (
+  s: number,
+  showTenths: boolean = true
+): string => {
   const neg = s < 0;
   // eslint-disable-next-line no-param-reassign
   s = Math.abs(s);
   const mins = Math.floor(s / 60000);
   let secs;
   let secStr;
-  if (s > showTenthsCutoff) {
+  if (s > showTenthsCutoff || !showTenths) {
     secs = Math.floor(s / 1000) % 60;
     secStr = secs.toString().padStart(2, '0');
   } else {

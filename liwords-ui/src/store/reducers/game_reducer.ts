@@ -14,6 +14,7 @@ import { Direction, isBlank, Blank } from '../../utils/cwgame/common';
 import { EnglishCrosswordGameDistribution } from '../../constants/tile_distributions';
 import { PlayerOrder } from '../constants';
 import { ClockController, Millis } from '../timer_controller';
+import { ThroughTileMarker } from '../../utils/cwgame/game_event';
 
 type TileDistribution = { [rune: string]: number };
 
@@ -185,7 +186,7 @@ const placeOnBoard = (
         ? evt.getColumn() + i
         : evt.getColumn();
     const tile = { row, col, rune };
-    if (rune !== '.') {
+    if (rune !== ThroughTileMarker) {
       board.addTile(tile);
       if (isBlank(tile.rune)) {
         newPool[Blank] -= 1;
@@ -249,6 +250,8 @@ const stateFromHistory = (refresher: GameHistoryRefresher): GameState => {
           //  do nothing - we only care about tile placement moves here.
         }
       });
+      // Push a deep clone of the turn.
+      gs.turns.push(GameTurn.deserializeBinary(turn.serializeBinary()));
     }
     gs.players[gs.onturn].score = events[events.length - 1].getCumulative();
     gs.onturn = (idx + 1) % 2;
@@ -345,10 +348,8 @@ const initializeTimerController = (
   );
 
   if (newState.clockController!.current) {
-    console.log('using existing controller');
     newState.clockController!.current.setClock(newState.playState, clockState);
   } else {
-    console.log('creating new controller');
     // eslint-disable-next-line no-param-reassign
     newState.clockController!.current = new ClockController(
       clockState,

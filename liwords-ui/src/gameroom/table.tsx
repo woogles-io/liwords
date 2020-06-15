@@ -16,6 +16,7 @@ import {
 } from '../gen/api/proto/game_service_pb';
 import { encodeToSocketFmt } from '../utils/protobuf';
 import './gameroom.scss';
+import { ScoreCard } from './scorecard';
 
 const gutter = 16;
 const boardspan = 12;
@@ -71,6 +72,7 @@ export const Table = (props: Props) => {
     sendSocketMsg(
       encodeToSocketFmt(MessageType.REGISTER_REALM, rr.serializeBinary())
     );
+    // XXX: Fetch some info via XHR about the game itself (timer, tourney, etc) here.
 
     return () => {
       const dr = new DeregisterRealm();
@@ -159,11 +161,12 @@ export const Table = (props: Props) => {
             challengeRule="5-pt"
             rated={rated}
           /> */}
-          <Pool pool={gameContext?.pool} currentRack={rack} />
           <Card>
             <Row>15 0 - Classic - Collins</Row>
             <Row>5 point challenge - Unrated</Row>
           </Card>
+          <Pool pool={gameContext?.pool} currentRack={rack} />
+          <ScoreCard turns={gameContext.turns} board={gameContext.board} />
         </Col>
       </Row>
     </div>

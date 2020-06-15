@@ -156,14 +156,15 @@ func StartGame(ctx context.Context, gameStore GameStore, eventChan chan<- *entit
 	return nil
 }
 
-func handleChallenge(ctx context.Context, entGame *entity.Game, gameStore GameStore) error {
+func handleChallenge(ctx context.Context, entGame *entity.Game, gameStore GameStore,
+	timeRemaining int) error {
 	if entGame.ChallengeRule() == macondopb.ChallengeRule_VOID {
 		// The front-end shouldn't even show the button.
 		return errors.New("challenges not acceptable in void")
 	}
 	challenger := entGame.Game.NickOnTurn()
 
-	valid, err := entGame.Game.ChallengeEvent(0)
+	valid, err := entGame.Game.ChallengeEvent(0, timeRemaining)
 	if err != nil {
 		return err
 	}
@@ -201,6 +202,8 @@ func PlayMove(ctx context.Context, gameStore GameStore, player string,
 	if err != nil {
 		return err
 	}
+	entGame.Lock()
+	defer entGame.Unlock()
 	if entGame.Game.Playing() == macondopb.PlayState_GAME_OVER {
 		return errGameNotActive
 	}
@@ -225,7 +228,7 @@ func PlayMove(ctx context.Context, gameStore GameStore, player string,
 
 	if cge.Type == pb.ClientGameplayEvent_CHALLENGE_PLAY {
 		// Handle in another way
-		return handleChallenge(ctx, entGame, gameStore)
+		return handleChallenge(ctx, entGame, gameStore, timeRemaining)
 	}
 
 	// Turn the event into a macondo GameEvent.
@@ -245,7 +248,7 @@ func PlayMove(ctx context.Context, gameStore GameStore, player string,
 	log.Debug().Msg("playing the move")
 	// Register time BEFORE playing the move, so the turn doesn't switch.
 	entGame.RecordTimeOfMove(onTurn)
-	err = entGame.Game.PlayMove(m, true)
+	err = entGame.Game.PlayMove(m, true, timeRemaining)
 	if err != nil {
 		return err
 	}

@@ -4,7 +4,7 @@ go 1.14
 
 require (
 	github.com/davecgh/go-spew v1.1.1 // indirect
-	github.com/domino14/macondo v0.4.5-0.20200612050415-85b32d2f5c80
+	github.com/domino14/macondo v0.4.5-0.20200614205704-f23b8af3878f
 	github.com/golang/protobuf v1.4.2
 	github.com/google/go-cmp v0.4.1 // indirect
 	github.com/gorilla/websocket v1.4.2
