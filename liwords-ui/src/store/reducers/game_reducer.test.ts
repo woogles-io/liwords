@@ -237,5 +237,5 @@ OQ","time_remaining":472033}}
   expect(newState.players[1].score).toBe(0);
   // It is still César's turn
   expect(newState.onturn).toBe(1);
-  expect(newState.turns.length).toBe(0);
+  expect(newState.turns.length).toBe(1);
 });
