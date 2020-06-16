@@ -7,9 +7,11 @@ package gameplay
 import (
 	"context"
 	"errors"
+	"strconv"
 
 	"github.com/domino14/macondo/alphabet"
 	"github.com/rs/zerolog/log"
+	"google.golang.org/protobuf/proto"
 
 	"github.com/domino14/macondo/move"
 
@@ -82,17 +84,6 @@ func InstantiateNewGame(ctx context.Context, gameStore GameStore, cfg *config.Co
 	// and forward game events to the right channels.
 }
 
-// func StartGameInstance(entGame *entity.Game, eventChan chan<- *entity.EventWrapper) error {
-// 	if err := entGame.RegisterChangeHook(eventChan); err != nil {
-// 		return err
-// 	}
-// 	entGame.
-// 	entGame.SendChange(entity.WrapEvent(entGame.HistoryRefresherEvent(), pb.MessageType_GAME_HISTORY_REFRESHER,
-// 		entGame.GameID()))
-
-// 	return nil
-// }
-
 func clientEventToMove(cge *pb.ClientGameplayEvent, g *game.Game) (*move.Move, error) {
 	playerid := g.PlayerOnTurn()
 	rack := g.RackFor(playerid)
@@ -157,7 +148,7 @@ func StartGame(ctx context.Context, gameStore GameStore, eventChan chan<- *entit
 }
 
 func handleChallenge(ctx context.Context, entGame *entity.Game, gameStore GameStore,
-	timeRemaining int) error {
+	timeRemaining int, player string) error {
 	if entGame.ChallengeRule() == macondopb.ChallengeRule_VOID {
 		// The front-end shouldn't even show the button.
 		return errors.New("challenges not acceptable in void")
@@ -177,7 +168,8 @@ func handleChallenge(ctx context.Context, entGame *entity.Game, gameStore GameSt
 		entGame.GameID()))
 
 	// Send a refresher event to get the game state up-to-date on the client.
-	entGame.SendChange(entity.WrapEvent(entGame.HistoryRefresherEvent(), pb.MessageType_GAME_HISTORY_REFRESHER,
+	entGame.SendChange(entity.WrapEvent(entGame.HistoryRefresherEvent(),
+		pb.MessageType_GAME_HISTORY_REFRESHER,
 		entGame.GameID()))
 
 	if entGame.Game.Playing() == macondopb.PlayState_GAME_OVER {
@@ -228,7 +220,7 @@ func PlayMove(ctx context.Context, gameStore GameStore, player string,
 
 	if cge.Type == pb.ClientGameplayEvent_CHALLENGE_PLAY {
 		// Handle in another way
-		return handleChallenge(ctx, entGame, gameStore, timeRemaining)
+		return handleChallenge(ctx, entGame, gameStore, timeRemaining, player)
 	}
 
 	// Turn the event into a macondo GameEvent.
@@ -273,12 +265,12 @@ func PlayMove(ctx context.Context, gameStore GameStore, player string,
 		evts[idx] = sge
 	}
 	// Since the move was successful, we assume the user gameplay event is valid.
-	// Re-send it, but overwrite the time remaining and new rack properly.
+	// Send the server change event.
 	playing := entGame.Game.Playing()
 
 	for _, sge := range evts {
-		entGame.SendChange(entity.WrapEvent(sge, pb.MessageType_SERVER_GAMEPLAY_EVENT,
-			entGame.GameID()))
+		entGame.SendChange(entity.WrapEvent(
+			sge, pb.MessageType_SERVER_GAMEPLAY_EVENT, entGame.GameID()))
 	}
 	if playing == macondopb.PlayState_GAME_OVER {
 		discernEndgameReason(entGame)
@@ -322,6 +314,18 @@ func TimedOut(ctx context.Context, gameStore GameStore, sender string, timedout 
 	// Ok, the time did run out after all.
 
 	return setTimedOut(ctx, entGame, onTurn, gameStore)
+}
+
+// sanitizeEvent removes rack information from the event; it is meant to be
+// sent to someone currently in a game.
+func sanitizeEvent(sge *pb.ServerGameplayEvent) *pb.ServerGameplayEvent {
+	cloned := proto.Clone(sge).(*pb.ServerGameplayEvent)
+	cloned.NewRack = ""
+	cloned.Event.Rack = ""
+	if len(cloned.Event.Exchanged) > 0 {
+		cloned.Event.Exchanged = strconv.Itoa(len(cloned.Event.Exchanged))
+	}
+	return cloned
 }
 
 func setTimedOut(ctx context.Context, entGame *entity.Game, pidx int, gameStore GameStore) error {

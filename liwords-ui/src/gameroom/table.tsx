@@ -167,6 +167,8 @@ export const Table = (props: Props) => {
           </Card>
           <Pool pool={gameContext?.pool} currentRack={rack} />
           <ScoreCard
+            username={props.username}
+            playing={us !== undefined}
             turns={gameContext.turns}
             currentTurn={gameContext.currentTurn}
             board={gameContext.board}

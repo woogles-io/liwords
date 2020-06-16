@@ -275,7 +275,7 @@ func (h *Hub) sendRealmData(ctx context.Context, realm Realm, username string) {
 		} else {
 			// assume it's a game
 			// c.send <- c.hub.gameRefresher(realm)
-			msg, err := h.gameRefresher(ctx, realm)
+			msg, err := h.gameRefresher(ctx, realm, username)
 			if err != nil {
 				log.Err(err).Msg("getting game info")
 				return
@@ -301,7 +301,7 @@ func (h *Hub) openSeeks(ctx context.Context) ([]byte, error) {
 	return evt.Serialize()
 }
 
-func (h *Hub) gameRefresher(ctx context.Context, realm Realm) ([]byte, error) {
+func (h *Hub) gameRefresher(ctx context.Context, realm Realm, username string) ([]byte, error) {
 	// Assume the realm is a game ID. We can expand this later.
 	entGame, err := h.gameStore.Get(ctx, string(realm))
 	if err != nil {
