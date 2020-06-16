@@ -2,6 +2,7 @@ import { EphemeralTile, Direction } from './common';
 import { ClientGameplayEvent } from '../../gen/api/proto/game_service_pb';
 import { contiguousTilesFromTileSet } from './scoring';
 import { Board } from './board';
+import { GameEvent } from '../../gen/macondo/api/proto/macondo/macondo_pb';
 
 export const ThroughTileMarker = '.';
 // convert a set of ephemeral tiles to a protobuf game event.
@@ -63,4 +64,39 @@ export const challengeMoveEvent = (gameID: string) => {
   evt.setGameId(gameID);
 
   return evt;
+};
+
+export const tilePlacementEventDisplay = (evt: GameEvent, board: Board) => {
+  // modify a tile placement move for display purposes.
+  const row = evt.getRow();
+  const col = evt.getColumn();
+  const ri = evt.getDirection() === GameEvent.Direction.HORIZONTAL ? 0 : 1;
+  const ci = 1 - ri;
+
+  let m = '';
+  let openParen = false;
+  for (
+    let i = 0, r = row, c = col;
+    i < evt.getPlayedTiles().length;
+    i += 1, r += ri, c += ci
+  ) {
+    const t = evt.getPlayedTiles()[i];
+    if (t === ThroughTileMarker) {
+      if (!openParen) {
+        m += '(';
+        openParen = true;
+      }
+      m += board.letterAt(r, c)!;
+    } else {
+      if (openParen) {
+        m += ')';
+        openParen = false;
+      }
+      m += t;
+    }
+  }
+  if (openParen) {
+    m += ')';
+  }
+  return m;
 };

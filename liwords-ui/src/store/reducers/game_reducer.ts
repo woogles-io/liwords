@@ -250,9 +250,9 @@ const stateFromHistory = (refresher: GameHistoryRefresher): GameState => {
           //  do nothing - we only care about tile placement moves here.
         }
       });
-      // Push a deep clone of the turn.
-      gs.turns.push(GameTurn.deserializeBinary(turn.serializeBinary()));
     }
+    // Push a deep clone of the turn.
+    gs.turns.push(GameTurn.deserializeBinary(turn.serializeBinary()));
     gs.players[gs.onturn].score = events[events.length - 1].getCumulative();
     gs.onturn = (idx + 1) % 2;
   });

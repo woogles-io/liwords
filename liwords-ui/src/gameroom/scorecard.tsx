@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useRef, useEffect } from 'react';
 import { Card, Avatar, Row, Col } from 'antd';
 import {
   GameTurn,
@@ -6,10 +6,11 @@ import {
 } from '../gen/macondo/api/proto/macondo/macondo_pb';
 import { Board } from '../utils/cwgame/board';
 import { millisToTimeStr } from '../store/timer_controller';
-import { ThroughTileMarker } from '../utils/cwgame/game_event';
+import { tilePlacementEventDisplay } from '../utils/cwgame/game_event';
 
 type Props = {
   turns: Array<GameTurn>;
+  currentTurn: GameTurn;
   board: Board;
 };
 
@@ -35,41 +36,6 @@ type MoveEntityObj = {
   cumulative: number;
 };
 
-const modifyForPlayThrough = (evt: GameEvent, board: Board) => {
-  // modify a tile placement move for display purposes.
-  const row = evt.getRow();
-  const col = evt.getColumn();
-  const ri = evt.getDirection() === GameEvent.Direction.HORIZONTAL ? 0 : 1;
-  const ci = 1 - ri;
-
-  let m = '';
-  let openParen = false;
-  for (
-    let i = 0, r = row, c = col;
-    i < evt.getPlayedTiles().length;
-    i += 1, r += ri, c += ci
-  ) {
-    const t = evt.getPlayedTiles()[i];
-    if (t === ThroughTileMarker) {
-      if (!openParen) {
-        m += '(';
-        openParen = true;
-      }
-      m += board.letterAt(r, c)!;
-    } else {
-      if (openParen) {
-        m += ')';
-        openParen = false;
-      }
-      m += t;
-    }
-  }
-  if (openParen) {
-    m += ')';
-  }
-  return m;
-};
-
 const displaySummary = (evt: GameEvent, board: Board) => {
   // Handle just a subset of the possible moves here. These may be modified
   // later on.
@@ -81,7 +47,7 @@ const displaySummary = (evt: GameEvent, board: Board) => {
       return 'Passed.';
 
     case GameEvent.Type.TILE_PLACEMENT_MOVE:
-      return modifyForPlayThrough(evt, board);
+      return tilePlacementEventDisplay(evt, board);
 
     case GameEvent.Type.UNSUCCESSFUL_CHALLENGE_TURN_LOSS:
       return 'Challenged!';
@@ -163,8 +129,10 @@ const Turn = (props: turnProps) => {
 };
 
 export const ScoreCard = (props: Props) => {
-  // XXX: Fix the classname below later, and the styles.
-  console.log('rendering turns', props.turns, props.turns.length);
+  const el = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    el.current?.scrollIntoView({ block: 'end', behavior: 'smooth' });
+  }, [props.turns]);
   return (
     <Card
       style={{
@@ -178,6 +146,10 @@ export const ScoreCard = (props: Props) => {
       {props.turns.map((t, idx) => (
         <Turn turn={t} board={props.board} key={`t_${idx + 0}`} />
       ))}
+      {props.currentTurn.getEventsList().length ? (
+        <Turn turn={props.currentTurn} board={props.board} />
+      ) : null}
+      <div id="dummy-end" ref={el} />
     </Card>
   );
 };

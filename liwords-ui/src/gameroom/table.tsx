@@ -166,7 +166,11 @@ export const Table = (props: Props) => {
             <Row>5 point challenge - Unrated</Row>
           </Card>
           <Pool pool={gameContext?.pool} currentRack={rack} />
-          <ScoreCard turns={gameContext.turns} board={gameContext.board} />
+          <ScoreCard
+            turns={gameContext.turns}
+            currentTurn={gameContext.currentTurn}
+            board={gameContext.board}
+          />
         </Col>
       </Row>
     </div>
