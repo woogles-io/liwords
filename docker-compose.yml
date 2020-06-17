@@ -1,41 +1,65 @@
 version: "3"
 
 services:
-  app:
+  # app:
+  #   build:
+  #     context: .
+  #     dockerfile: Dockerfile-dev
+  #   environment:
+  #     LEXICON_PATH: /opt/program/data/lexica
+  #   volumes:
+  #     - .:/opt/program:rw
+  #   command: sh -c "go run cmd/socketsrv/*.go"
+  #   networks:
+  #     - aeronet
+  #   ports:
+  #     - "8087:8087"
+  #   labels:
+  #     - "traefik.http.routers.xwordclub.rule=Host(`vm.xword.club`) && PathPrefix(`/api`, `/ws`)"
+  #     - "traefik.http.routers.xwordclub.entrypoints=web"
+  #     - "traefik.http.services.xwordclub.loadbalancer.server.port=8087"
+  #     - traefik.enable=true
+
+  socket:
     build:
-      context: .
+      context: ../liwords-socket
       dockerfile: Dockerfile-dev
-    environment:
-      LEXICON_PATH: /opt/program/data/lexica
     volumes:
-      - .:/opt/program:rw
+      - ../liwords-socket:/opt/program:rw
     command: sh -c "go run cmd/socketsrv/*.go"
-    # networks:
-    #   - aeronet
+    networks:
+      - aeronet
     ports:
       - "8087:8087"
-    # labels:
-    #   - "traefik.http.routers.xwordclub.rule=Host(`vm.xword.club`) && PathPrefix(`/api`, `/ws`)"
-    #   - "traefik.http.routers.xwordclub.entrypoints=web"
-    #   - "traefik.http.services.xwordclub.loadbalancer.server.port=8087"
-    #   - traefik.enable=true
-# Not using proxy for now, since create-react-app compile is very slow
-# in Docker for some reason.
+    labels:
+      - "traefik.http.routers.liwords-socket.rule=Host(`localhost`) && PathPrefix(`/ws`)"
+      - "traefik.http.routers.liwords-socket.entrypoints=web"
+      - "traefik.http.services.liwords-socket.loadbalancer.server.port=8087"
+      - traefik.enable=true
 
-# proxy:
-#   image: "traefik:v2.2"
-#   command:
-#     - "--api.insecure=true"
-#     - "--providers.docker=true"
-#     - "--providers.docker.exposedbydefault=false"
-#     - "--entrypoints.web.address=:80"
-#   ports:
-#     - "80:80"
-#     - "8080:8080"
-#   volumes:
-#     - /var/run/docker.sock:/var/run/docker.sock
-#   networks:
-#     - aeronet
+  proxy:
+    image: "traefik:v2.2"
+    command:
+      - "--api.insecure=true"
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--entrypoints.web.address=:80"
+    ports:
+      - "80:80"
+      - "8080:8080"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    networks:
+      - aeronet
+
+  nats:
+    image: "nats"
+    ports:
+      - "4222:4222"
+      - "8222:8222"
+    networks:
+      - aeronet
+
 # This runs too slowly inside Docker. Why?
 # frontend:
 #   build:
@@ -53,6 +77,6 @@ services:
 #     - "traefik.http.routers.xwordclub-fe.rule=Host(`vm.xword.club`)"
 #     - "traefik.http.services.xwordclub-fe.loadbalancer.server.port=3000"
 #     - traefik.enable=true
-# networks:
-#   aeronet:
-#     driver: bridge
+networks:
+  aeronet:
+    driver: bridge
