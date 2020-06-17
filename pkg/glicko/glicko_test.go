@@ -7,18 +7,17 @@ import (
 	"math/rand"
 )
 
-func CreatePlayers() [10][6]float64 {
-	players := [10][6]float64{
-		{500, 30, InitialVolatility, float64(InitialRating), float64(InitialRatingDeviation)},
-		{460, 30, InitialVolatility, float64(InitialRating), float64(InitialRatingDeviation)},
-		{440, 30, InitialVolatility, float64(InitialRating), float64(InitialRatingDeviation)},
-		{410, 30, InitialVolatility, float64(InitialRating), float64(InitialRatingDeviation)},
-		{380, 30, InitialVolatility, float64(InitialRating), float64(InitialRatingDeviation)},
-		{370, 30, InitialVolatility, float64(InitialRating), float64(InitialRatingDeviation)},
-		{360, 30, InitialVolatility, float64(InitialRating), float64(InitialRatingDeviation)},
-		{340, 30, InitialVolatility, float64(InitialRating), float64(InitialRatingDeviation)},
-		{310, 30, InitialVolatility, float64(InitialRating), float64(InitialRatingDeviation)},
-		{220, 30, InitialVolatility, float64(InitialRating), float64(InitialRatingDeviation)},
+func CreatePlayers() [][]float64 {
+	players := [][]float64{
+		{460, 60, InitialVolatility, float64(InitialRating), float64(InitialRatingDeviation)},
+		{440, 60, InitialVolatility, float64(InitialRating), float64(InitialRatingDeviation)},
+		{410, 60, InitialVolatility, float64(InitialRating), float64(InitialRatingDeviation)},
+		{380, 60, InitialVolatility, float64(InitialRating), float64(InitialRatingDeviation)},
+		{370, 60, InitialVolatility, float64(InitialRating), float64(InitialRatingDeviation)},
+		{360, 60, InitialVolatility, float64(InitialRating), float64(InitialRatingDeviation)},
+		{340, 60, InitialVolatility, float64(InitialRating), float64(InitialRatingDeviation)},
+		{310, 60, InitialVolatility, float64(InitialRating), float64(InitialRatingDeviation)},
+		{220, 60, InitialVolatility, float64(InitialRating), float64(InitialRatingDeviation)},
 	}
 	return players
 }
