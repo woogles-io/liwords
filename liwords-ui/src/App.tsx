@@ -1,8 +1,10 @@
-import React, { useLayoutEffect, useState } from 'react';
+import React, { useLayoutEffect, useState, useEffect } from 'react';
 import { BrowserRouter as Router, Route, Switch } from 'react-router-dom';
 import './App.scss';
 import 'antd/dist/antd.css';
 import useWebSocket from 'react-use-websocket';
+import axios from 'axios';
+import jwt from 'jsonwebtoken';
 
 import { Table } from './gameroom/table';
 import { Lobby } from './lobby/lobby';
@@ -12,6 +14,7 @@ import { getSocketURI } from './socket/socket';
 import { decodeToMsg } from './utils/protobuf';
 import { onSocketMsg } from './store/socket_handlers';
 import { Login } from './lobby/login';
+import { Register } from './lobby/register';
 
 function useWindowSize() {
   const [size, setSize] = useState([0, 0]);
@@ -26,14 +29,44 @@ function useWindowSize() {
   return size;
 }
 
-type Props = {
-  username: string;
+type TokenResponse = {
+  token: string;
 };
 
-const App = (props: Props) => {
+type DecodedToken = {
+  unn: string;
+  uid: string;
+  iss: string;
+};
+
+const App = () => {
   const [width, height] = useWindowSize();
+  const [err, setErr] = useState('');
+  const [username, setUsername] = useState('');
   // XXX: change to look at the cookie.
-  const loggedIn = props.username !== 'anonymous';
+  const [loggedIn, setLoggedIn] = useState(false);
+  console.log('rendering ap');
+  useEffect(() => {
+    console.log('fetching socket token...');
+    axios
+      .post<TokenResponse>(
+        '/twirp/liwords.AuthenticationService/GetSocketToken',
+        {}
+      )
+      .then((resp) => {
+        const decoded = jwt.decode(resp.data.token) as DecodedToken;
+        setUsername(decoded.unn);
+        setLoggedIn(true);
+      })
+      .catch((e) => {
+        if (e.response) {
+          setErr(e.response.data.msg);
+          console.log(e.response);
+        }
+      });
+  }, [loggedIn]);
+
+  // const loggedIn = props.username !== 'anonymous';
   const store = useStoreContext();
   // XXX: change to JWT
   const socketUrl = getSocketURI('foo');
@@ -51,7 +84,7 @@ const App = (props: Props) => {
         <Switch>
           <Route path="/" exact>
             <Lobby
-              username={props.username}
+              username={username}
               sendSocketMsg={sendMessage}
               loggedIn={loggedIn}
             />
@@ -62,15 +95,17 @@ const App = (props: Props) => {
               windowWidth={width}
               windowHeight={height}
               sendSocketMsg={sendMessage}
-              username={props.username}
+              username={username}
               loggedIn={loggedIn}
             />
           </Route>
 
           <Route path="/login">
-            <Login />
+            <Login setLoggedIn={setLoggedIn} loggedIn={loggedIn} />
           </Route>
-          <Route path="/register">{/* <Register /> */}</Route>
+          <Route path="/register">
+            <Register setLoggedIn={setLoggedIn} loggedIn={loggedIn} />
+          </Route>
         </Switch>
       </Router>
     </div>

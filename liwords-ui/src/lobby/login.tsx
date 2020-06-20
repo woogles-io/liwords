@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 
 import { Form, Input, Button, Alert } from 'antd';
-import { Redirect } from 'react-router-dom';
+import { Redirect, Link } from 'react-router-dom';
 import axios from 'axios';
 
 const layout = {
@@ -19,9 +19,13 @@ const tailLayout = {
   },
 };
 
-export const Login = () => {
+type Props = {
+  loggedIn: boolean;
+  setLoggedIn: (v: boolean) => void;
+};
+
+export const Login = (props: Props) => {
   const [err, setErr] = useState('');
-  const [loggedIn, setLoggedIn] = useState(false);
 
   const onFinish = (values: { [key: string]: string }) => {
     axios
@@ -31,7 +35,7 @@ export const Login = () => {
       })
       .then(() => {
         // Automatically will set cookie
-        setLoggedIn(true);
+        props.setLoggedIn(true);
       })
       .catch((e) => {
         if (e.response) {
@@ -44,7 +48,7 @@ export const Login = () => {
       });
   };
 
-  if (loggedIn) {
+  if (props.loggedIn) {
     return <Redirect push to="/" />;
   }
 
@@ -89,6 +93,7 @@ export const Login = () => {
         </Form.Item>
       </Form>
       {err !== '' ? <Alert message={err} type="error" /> : null}
+      <Link to="/register">Register a new name</Link>
     </>
   );
 };
