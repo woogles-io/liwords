@@ -45,7 +45,7 @@
       "last 1 safari version"
     ]
   },
-  "proxy": "http://localhost:8087",
+  "proxy": "http://liwords.localhost",
   "devDependencies": {
     "@typescript-eslint/eslint-plugin": "2.33.0",
     "@typescript-eslint/parser": "2.33.0",

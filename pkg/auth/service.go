@@ -47,7 +47,8 @@ func (as *AuthenticationService) Login(ctx context.Context, r *pb.UserLoginReque
 		// session ID in the database will expire sooner than that.
 		// We will write middleware to extend the expiration length but maybe
 		// it's ok to require the user to log in once a year.
-		Expires: time.Now().Add(365 * 24 * time.Hour),
+		Expires:  time.Now().Add(365 * 24 * time.Hour),
+		HttpOnly: true,
 	})
 	if err != nil {
 		return nil, err
@@ -55,9 +56,28 @@ func (as *AuthenticationService) Login(ctx context.Context, r *pb.UserLoginReque
 	return &pb.LoginResponse{}, nil
 }
 
+// Logout deletes the user session from the store, and also tells the front-end
+// to ditch the cookie (yum)
 func (as *AuthenticationService) Logout(ctx context.Context, r *pb.UserLogoutRequest) (*pb.LogoutResponse, error) {
-
-	return nil, nil
+	sess, err := apiserver.GetSession(ctx)
+	if err != nil {
+		return nil, err
+	}
+	err = as.sessionStore.Delete(ctx, sess)
+	if err != nil {
+		return nil, err
+	}
+	// Delete the cookie as well.
+	err = apiserver.SetCookie(ctx, &http.Cookie{
+		Name:     "sessionid",
+		Value:    "",
+		MaxAge:   -1,
+		HttpOnly: true,
+	})
+	if err != nil {
+		return nil, err
+	}
+	return &pb.LogoutResponse{}, nil
 }
 
 func (as *AuthenticationService) GetSocketToken(ctx context.Context, r *pb.SocketTokenRequest) (*pb.SocketTokenResponse, error) {

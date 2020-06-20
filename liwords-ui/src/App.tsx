@@ -11,6 +11,7 @@ import { useStoreContext } from './store/store';
 import { getSocketURI } from './socket/socket';
 import { decodeToMsg } from './utils/protobuf';
 import { onSocketMsg } from './store/socket_handlers';
+import { Login } from './lobby/login';
 
 function useWindowSize() {
   const [size, setSize] = useState([0, 0]);
@@ -31,8 +32,11 @@ type Props = {
 
 const App = (props: Props) => {
   const [width, height] = useWindowSize();
+  // XXX: change to look at the cookie.
+  const loggedIn = props.username !== 'anonymous';
   const store = useStoreContext();
-  const socketUrl = getSocketURI(props.username);
+  // XXX: change to JWT
+  const socketUrl = getSocketURI('foo');
   const { sendMessage } = useWebSocket(socketUrl, {
     onOpen: () => console.log('connected to socket'),
     // Will attempt to reconnect on all close events, such as server shutting down
@@ -46,7 +50,11 @@ const App = (props: Props) => {
       <Router>
         <Switch>
           <Route path="/" exact>
-            <Lobby username={props.username} sendSocketMsg={sendMessage} />
+            <Lobby
+              username={props.username}
+              sendSocketMsg={sendMessage}
+              loggedIn={loggedIn}
+            />
           </Route>
           <Route path="/game/:gameID">
             {/* Table meaning a game table */}
@@ -55,8 +63,14 @@ const App = (props: Props) => {
               windowHeight={height}
               sendSocketMsg={sendMessage}
               username={props.username}
+              loggedIn={loggedIn}
             />
           </Route>
+
+          <Route path="/login">
+            <Login />
+          </Route>
+          <Route path="/register">{/* <Register /> */}</Route>
         </Switch>
       </Router>
     </div>

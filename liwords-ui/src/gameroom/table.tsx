@@ -28,6 +28,7 @@ type Props = {
   windowHeight: number;
   sendSocketMsg: (msg: Uint8Array) => void;
   username: string;
+  loggedIn: boolean;
 };
 
 export const Table = (props: Props) => {
@@ -131,7 +132,7 @@ export const Table = (props: Props) => {
     <div>
       <Row>
         <Col span={24}>
-          <TopBar username={props.username} />
+          <TopBar username={props.username} loggedIn={props.loggedIn} />
         </Col>
       </Row>
       <Row gutter={gutter} className="game-table">

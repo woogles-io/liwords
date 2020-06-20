@@ -92,3 +92,11 @@ func (s *DBStore) New(ctx context.Context, user *entity.User) (*entity.Session, 
 		UserUUID: user.UUID,
 	}, nil
 }
+
+// Delete deletes the session with the given ID, essentially logging the user out.
+func (s *DBStore) Delete(ctx context.Context, sess *entity.Session) error {
+	if sess.ID == "" {
+		return errors.New("session has a blank ID, cannot be deleted")
+	}
+	return s.db.Delete(sess).Error
+}
