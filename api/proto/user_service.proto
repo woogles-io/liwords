@@ -1,0 +1,54 @@
+syntax = "proto3";
+package liwords;
+option go_package = "github.com/domino14/liwords/rpc/api/proto/liwords";
+
+// User service contains an actual Twirp service for doing user-related things.
+// For example, registering, changing passwords, logging in, logging out, and
+// more. Instead of a RESTful API we will straight up use Twirp to make life
+// easier! We will also use JSON for these requests, as bandwidth is not as
+// important as for the game_service file.
+
+// UserLoginRequest is used for logging in.
+message UserLoginRequest {
+  string username = 1;
+  string password = 2;
+}
+
+// The server should also set the session ID in the header.
+message LoginResponse {
+  string message = 1;
+  // I'm not sure if it's safe to do this (return session_id in the request
+  // body). We will keep it blank but it might be useful for other interfaces,
+  // such as a CLI-driven one, or a phone app, e.g, so keep this here for now.
+  string session_id = 2;
+}
+
+message ResetPasswordRequestStep1 { string email = 1; }
+message ResetPasswordResponse {}
+
+// SocketTokenRequest requests a token in order to authenticate with the
+// socket server
+message SocketTokenRequest {}
+message SocketTokenResponse { string token = 1; }
+
+message UserLogoutRequest {}
+message LogoutResponse {}
+
+service AuthenticationService {
+  rpc Login(UserLoginRequest) returns (LoginResponse);
+  rpc Logout(UserLogoutRequest) returns (LogoutResponse);
+  rpc GetSocketToken(SocketTokenRequest) returns (SocketTokenResponse);
+  rpc ResetPassword(ResetPasswordRequestStep1) returns (ResetPasswordResponse);
+}
+
+message UserRegistrationRequest {
+  string username = 1;
+  string password = 2;
+  string email = 3;
+}
+
+message RegistrationResponse { string message = 1; }
+
+service RegistrationService {
+  rpc Register(UserRegistrationRequest) returns (RegistrationResponse);
+}

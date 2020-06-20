@@ -10,8 +10,10 @@ type Config struct {
 
 	DBConnString string
 	ListenAddr   string
+	SecretKey    string
 }
 
+// Load loads the configs from the given arguments
 func (c *Config) Load(args []string) error {
 	fs := flag.NewFlagSet("macondo", flag.ContinueOnError)
 
@@ -23,6 +25,7 @@ func (c *Config) Load(args []string) error {
 	fs.StringVar(&c.MacondoConfig.DefaultLetterDistribution, "default-letter-distribution", "English", "the default letter distribution to use. English, EnglishSuper, Spanish, Polish, etc.")
 	fs.StringVar(&c.DBConnString, "db-conn-string", "", "the database connection string")
 	fs.StringVar(&c.ListenAddr, "listen-addr", ":8001", "listen on this address")
+	fs.StringVar(&c.SecretKey, "secret-key", "", "secret key must be a random unguessable string")
 	err := fs.Parse(args)
 	return err
 }

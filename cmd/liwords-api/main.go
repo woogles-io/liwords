@@ -2,21 +2,28 @@ package main
 
 import (
 	"context"
-	"encoding/json"
-	"fmt"
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
+	"github.com/domino14/liwords/pkg/apiserver"
+	"github.com/domino14/liwords/pkg/stores/session"
+
 	"github.com/domino14/liwords/pkg/registration"
 
-	"github.com/domino14/liwords/pkg/stores/user"
+	"github.com/domino14/liwords/pkg/auth"
+
+	"github.com/justinas/alice"
+	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/hlog"
+	"github.com/rs/zerolog/log"
 
 	"github.com/domino14/liwords/pkg/config"
-	"github.com/rs/zerolog"
-	"github.com/rs/zerolog/log"
+	"github.com/domino14/liwords/pkg/stores/user"
+	pb "github.com/domino14/liwords/rpc/api/proto"
 )
 
 const (
@@ -29,6 +36,9 @@ func main() {
 	cfg.Load(os.Args[1:])
 	log.Info().Msgf("Loaded config: %v", cfg)
 
+	if cfg.SecretKey == "" {
+		panic("secret key must be non blank")
+	}
 	if cfg.MacondoConfig.Debug {
 		zerolog.SetGlobalLevel(zerolog.DebugLevel)
 	} else {
@@ -42,30 +52,27 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
+	sessionStore, err := session.NewDBStore(cfg.DBConnString)
 
-	router.HandleFunc("/api", func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprintf(w, "Hi there!")
-	})
+	middlewares := alice.New(
+		hlog.NewHandler(log.With().Str("service", "liwords").Logger()),
+		apiserver.WithCookiesMiddleware,
+		apiserver.AuthenticationMiddlewareGenerator(sessionStore),
+		hlog.AccessHandler(func(r *http.Request, status int, size int, d time.Duration) {
+			path := strings.Split(r.URL.Path, "/")
+			method := path[len(path)-1]
+			hlog.FromRequest(r).Info().Str("method", method).Int("status", status).Dur("duration", d).Msg("")
+		}),
+	)
 
-	type RegisterReq struct {
-		Username string
-		Password string
-	}
+	authenticationService := auth.NewAuthenticationService(userStore, sessionStore, cfg.SecretKey)
+	registrationService := registration.NewRegistrationService(userStore)
 
-	router.HandleFunc("/api/user/registration", func(w http.ResponseWriter, r *http.Request) {
-		var rr RegisterReq
-		err := json.NewDecoder(r.Body).Decode(&rr)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
-			return
-		}
-		err = registration.RegisterUser(r.Context(), rr.Username, rr.Password, userStore)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
-			return
-		}
-		fmt.Fprintf(w, `{"msg":"OK"}`)
-	})
+	router.Handle(pb.AuthenticationServicePathPrefix,
+		middlewares.Then(pb.NewAuthenticationServiceServer(authenticationService, nil)))
+
+	router.Handle(pb.RegistrationServicePathPrefix,
+		middlewares.Then(pb.NewRegistrationServiceServer(registrationService, nil)))
 
 	srv := &http.Server{
 		Addr:         cfg.ListenAddr,

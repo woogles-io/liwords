@@ -8,6 +8,8 @@ services:
     environment:
       LEXICON_PATH: /opt/program/data/lexica
       DB_CONN_STRING: "host=db port=5432 user=postgres dbname=liwords password=pass sslmode=disable"
+      SECRET_KEY: jqxztripletriple
+      DEBUG: 1
     volumes:
       - .:/opt/program:rw
     command: sh -c "go run cmd/liwords-api/*.go"
@@ -16,7 +18,7 @@ services:
     ports:
       - "8001:8001"
     labels:
-      - "traefik.http.routers.liwords.rule=Host(`liwords.localhost`) && PathPrefix(`/api`)"
+      - "traefik.http.routers.liwords.rule=Host(`liwords.localhost`) && PathPrefix(`/twirp/liwords.`)"
       - "traefik.http.routers.liwords.entrypoints=web"
       - "traefik.http.services.liwords.loadbalancer.server.port=8001"
       - traefik.enable=true
