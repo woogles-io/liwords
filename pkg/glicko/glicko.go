@@ -15,12 +15,15 @@ const (
 	GlickoToGlicko225Conversion float64 = 173.7178
 	ConvergenceTolerance        float64 = 0.000001
 	SpreadScaling               int     = 200
-	RatingPeriodinSeconds               = 60 * 60 * 24 * 4
+	WinBoost                    float64 = 0.15
+	K                           float64 = (float64(4*SpreadScaling) * WinBoost) / (1 - (2*WinBoost))
+	RatingPeriodinSeconds       int     = 60 * 60 * 24 * 4
 )
 
-func Rate(playerVolatility float64,
+func Rate(
 	playerUnscaledRating float64,
 	playerUnscaledRatingDeviation float64,
+	playerVolatility float64,
 	opponentUnscaledRating float64,
 	opponentUnscaledRatingDeviation float64,
 	spread int,
@@ -81,7 +84,7 @@ func Rate(playerVolatility float64,
 	newPlayerVolatility := math.Min(MaximumVolatility, math.Exp(A/2))
 
 	// Step 6 of the Glicko-225 algorithm
-	newPlayerRatingDeviation := math.Sqrt(rdSquared + ((float64(secondsSinceLastGame) / RatingPeriodinSeconds) * math.Pow(newPlayerVolatility, 2)))
+	newPlayerRatingDeviation := math.Sqrt(rdSquared + ((float64(secondsSinceLastGame) / float64(RatingPeriodinSeconds)) * math.Pow(newPlayerVolatility, 2)))
 
 	// Step 7 of the Glicko-225 algorithm
 	newPlayerRatingDeviation = 1 / math.Sqrt((1/math.Pow(newPlayerRatingDeviation, 2))+1/variance)
@@ -116,7 +119,7 @@ func Variance(opponentAdjustedRatingDeviation float64, expectedValue float64) fl
 }
 
 func Improvement(opponentAdjustedRatingDeviation float64, expectedValue float64, spread int) float64 {
-	return opponentAdjustedRatingDeviation * ((boundedResult(float64(spread)/(2*float64(SpreadScaling))) + 0.5) - expectedValue)
+	return opponentAdjustedRatingDeviation * ((boundedResult(float64(spread)/((2*float64(SpreadScaling))+K) + (float64(sign(spread)) * WinBoost)) + 0.5) - expectedValue)
 }
 
 func boundedResult(result float64) float64 {
@@ -142,4 +145,14 @@ func adjustedRatingDeviation(ratingDeviation float64) float64 {
 
 func expectedValue(playerRating float64, opponentRating float64, opponentAdjustedRatingDeviation float64) float64 {
 	return 1 / (1 + math.Exp(-opponentAdjustedRatingDeviation*(playerRating-opponentRating)))
+}
+
+func sign(spread int) int{
+	sign := 1
+	if spread < 0 {
+		sign = -1
+	} else if spread == 0 {
+		sign = 0
+	}
+	return sign
 }
