@@ -102,6 +102,7 @@ export const Context = createContext<StoreData>({
   // setClock: defaultFunction,
   timerContext: defaultTimerContext,
   poolFormat: PoolFormatType.Alphabet,
+  setPoolFormat: defaultFunction,
   pTimedOut: undefined,
   setPTimedOut: defaultFunction,
 });
