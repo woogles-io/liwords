@@ -5,10 +5,10 @@ import (
 	"fmt"
 	"github.com/matryer/is"
 	"log"
-	"sort"
 	"math"
 	"math/rand"
 	"os"
+	"sort"
 	"strconv"
 	"testing"
 )
@@ -25,7 +25,6 @@ type ByRating []*Player
 func (a ByRating) Len() int           { return len(a) }
 func (a ByRating) Less(i, j int) bool { return a[i].rating < a[j].rating }
 func (a ByRating) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
-
 
 func CreatePlayers() [][]float64 {
 	players := [][]float64{
@@ -177,7 +176,7 @@ func TestRatingDeviationMaximum(t *testing.T) {
 			float64(InitialRating),
 			float64(MinimumRatingDeviation),
 			0,
-			RatingPeriodinSeconds*100000000)
+			RatingPeriodinSeconds*1000000000)
 
 	is.True(int(deviation) == MaximumRatingDeviation)
 }
@@ -457,8 +456,8 @@ func TestRealData(t *testing.T) {
 	}
 
 	playersArray := []*Player{}
-	for _, v := range players { 
-	   playersArray = append(playersArray, v)
+	for _, v := range players {
+		playersArray = append(playersArray, v)
 	}
 
 	sort.Sort(ByRating(playersArray))

@@ -16,7 +16,7 @@ const (
 	ConvergenceTolerance        float64 = 0.000001
 	SpreadScaling               int     = 200
 	WinBoost                    float64 = 0.15
-	K                           float64 = (float64(4*SpreadScaling) * WinBoost) / (1 - (2*WinBoost))
+	K                           float64 = (float64(4*SpreadScaling) * WinBoost) / (1 - (2 * WinBoost))
 	RatingPeriodinSeconds       int     = 60 * 60 * 24 * 4
 )
 
@@ -119,7 +119,7 @@ func Variance(opponentAdjustedRatingDeviation float64, expectedValue float64) fl
 }
 
 func Improvement(opponentAdjustedRatingDeviation float64, expectedValue float64, spread int) float64 {
-	return opponentAdjustedRatingDeviation * ((boundedResult(float64(spread)/((2*float64(SpreadScaling))+K) + (float64(sign(spread)) * WinBoost)) + 0.5) - expectedValue)
+	return opponentAdjustedRatingDeviation * ((boundedResult(float64(spread)/((2*float64(SpreadScaling))+K)+(float64(sign(spread))*WinBoost)) + 0.5) - expectedValue)
 }
 
 func boundedResult(result float64) float64 {
@@ -147,7 +147,7 @@ func expectedValue(playerRating float64, opponentRating float64, opponentAdjuste
 	return 1 / (1 + math.Exp(-opponentAdjustedRatingDeviation*(playerRating-opponentRating)))
 }
 
-func sign(spread int) int{
+func sign(spread int) int {
 	sign := 1
 	if spread < 0 {
 		sign = -1
