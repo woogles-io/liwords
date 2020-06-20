@@ -5,16 +5,16 @@
   width: 100%;
   min-height: 72px;
   background: $color-primary-light;
+
+  @include type-default;
   font-family: $font-deco;
-  font-style: normal;
-  font-weight: normal;
-  font-size: 14px;
-  line-height: 18px;
+  letter-spacing: 0.25em;
+
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   justify-content: space-around;
-  letter-spacing: 0.25em;
+
   text-transform: uppercase;
   padding: 0 32px;
 }

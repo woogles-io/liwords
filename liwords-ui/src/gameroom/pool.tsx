@@ -1,8 +1,8 @@
 import React from 'react';
-import { Col, Row, Card } from 'antd';
+import { Card } from 'antd';
+import { PoolFormatType } from '../store/store'
 
 const letterOrder = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ?';
-
 type poolType = { [rune: string]: number };
 
 /**
@@ -34,6 +34,7 @@ function poolMinusRack(pool: poolType, rack: string) {
 
 type Props = {
   pool: poolType;
+  poolFormat: PoolFormatType,
   currentRack: string;
 };
 
@@ -41,19 +42,20 @@ const Pool = (props: Props) => {
   const pool = poolMinusRack(props.pool, props.currentRack);
   const letters = poolGenerator(letterOrder, pool);
 
-  return (
-    <Card>
-      <Row>
-        <Col span={24}>{letters.length} unseen tiles:</Col>
-      </Row>
+  const renderPool = () => {
+    return <>{letters.join(' ')}</>
+  };
 
-      <Row>
-        <Col span={24}>
-          <span style={{ fontFamily: 'monospace' }}>
-            <big>{letters.join(' ')}</big>
-          </span>
-        </Col>
-      </Row>
+  return (
+    <Card className="pool">
+      <header>
+        <p>
+          {letters.length} tiles in the bag
+        </p>
+      </header>
+      <div className="tiles-remaining">
+          {renderPool()}
+      </div>
     </Card>
   );
 };

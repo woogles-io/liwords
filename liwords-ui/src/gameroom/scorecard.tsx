@@ -7,6 +7,7 @@ import {
 import { Board } from '../utils/cwgame/board';
 import { millisToTimeStr } from '../store/timer_controller';
 import { tilePlacementEventDisplay } from '../utils/cwgame/game_event';
+import './scss/scoreCard.scss';
 
 type Props = {
   playing: boolean;
@@ -153,10 +154,7 @@ export const ScoreCard = (props: Props) => {
   }, [props.turns]);
   return (
     <Card
-      style={{
-        overflowY: 'scroll',
-        maxHeight: 250,
-      }}
+      className="score-card"
       title={`Turn ${props.turns.length + 1}`}
       // eslint-disable-next-line jsx-a11y/anchor-is-valid
       extra={<a href="#">Notepad</a>}

@@ -15,7 +15,7 @@ import {
   TimedOut,
 } from '../gen/api/proto/game_service_pb';
 import { encodeToSocketFmt } from '../utils/protobuf';
-import './gameroom.scss';
+import './scss/gameroom.scss';
 import { ScoreCard } from './scorecard';
 
 const gutter = 16;
@@ -49,15 +49,17 @@ export const Table = (props: Props) => {
     boardPanelHeight = viewableHeight;
     boardPanelWidth = boardPanelHeight - 96;
   }
+  const { gameID } = useParams();
   const {
     setRedirGame,
     gameContext,
     chat,
     clearChat,
     pTimedOut,
+    poolFormat,
+    setPoolFormat,
     setPTimedOut,
   } = useStoreContext();
-  const { gameID } = useParams();
   const { username, sendSocketMsg } = props;
 
   useEffect(() => {
@@ -130,9 +132,7 @@ export const Table = (props: Props) => {
   return (
     <div>
       <Row>
-        <Col span={24}>
-          <TopBar username={props.username} />
-        </Col>
+        <TopBar username={props.username} />
       </Row>
       <Row gutter={gutter} className="game-table">
         <Col span={6} className="chat-area">
@@ -165,7 +165,11 @@ export const Table = (props: Props) => {
             <Row>15 0 - Classic - Collins</Row>
             <Row>5 point challenge - Unrated</Row>
           </Card>
-          <Pool pool={gameContext?.pool} currentRack={rack} />
+          <Pool
+            pool={gameContext?.pool}
+            currentRack={rack}
+            poolFormat={poolFormat}
+          />
           <ScoreCard
             username={props.username}
             playing={us !== undefined}

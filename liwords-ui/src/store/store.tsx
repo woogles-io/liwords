@@ -24,6 +24,12 @@ export enum ChatEntityType {
   ErrorMsg,
 }
 
+export enum PoolFormatType {
+  Alphabet,
+  VowelConsonant,
+  Detail,
+}
+
 export type ChatEntityObj = {
   entityType: ChatEntityType;
   sender: string;
@@ -64,6 +70,8 @@ export type StoreData = {
   stopClock: () => void;
   // setClock: (sge: ServerGameplayEvent, delay: Centis) => void;
   timerContext: Times;
+  poolFormat: PoolFormatType;
+  setPoolFormat: (format: PoolFormatType) => void;
   pTimedOut: PlayerOrder | undefined;
   setPTimedOut: (p: PlayerOrder | undefined) => void;
 };
@@ -93,6 +101,7 @@ export const Context = createContext<StoreData>({
   stopClock: defaultFunction,
   // setClock: defaultFunction,
   timerContext: defaultTimerContext,
+  poolFormat: PoolFormatType.Alphabet,
   pTimedOut: undefined,
   setPTimedOut: defaultFunction,
 });
@@ -148,6 +157,8 @@ export const Store = ({ children, ...props }: Props) => {
     undefined
   );
 
+  const [poolFormat, setPoolFormat] = useState<PoolFormatType>(PoolFormatType.Alphabet);
+
   const [redirGame, setRedirGame] = useState('');
   const [chat, setChat] = useState(new Array<ChatEntityObj>());
 
@@ -201,6 +212,8 @@ export const Store = ({ children, ...props }: Props) => {
     chat,
 
     // initClockController,
+    poolFormat,
+    setPoolFormat,
     pTimedOut,
     setPTimedOut,
     stopClock,

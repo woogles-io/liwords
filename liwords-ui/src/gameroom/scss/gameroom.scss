@@ -1,4 +1,4 @@
-@import '../base.scss';
+@import '../../base';
 
 .game-table {
   padding: 16px;
@@ -6,7 +6,7 @@
 .board-container {
   user-select: none;
   text-align: center;
-  padding: 12px 12px 24px 24px;
+  padding: 0 12px 24px 24px;
   margin: 6px;
   outline-style: none;
 }
@@ -17,9 +17,15 @@
 
 .chat-area, .data-area {
   flex: 0 0 33%;
+  max-width: 33%;
+  text-align: left;
   .ant-card {
     margin-bottom: 12px;
   }
+}
+
+.ant-card {
+  border-radius: 8px;
 }
 
 /* hide at mobile for now,
@@ -161,6 +167,7 @@
   pointer-events: none;
 }
 
+// squareness fix
 .tile::before {
   content: "";
   padding-bottom: 100%;
@@ -214,6 +221,14 @@
 }
 
 
+// Pool
+.pool {
+  header {
+    @include type-title;
+  }
+}
+
+
 @media (min-width: $screen-tablet-min) {
 
 
@@ -225,6 +240,7 @@
   }
   .chat-area, .data-area {
     flex: 0 0 25%;
+    max-width: 25%;
   }
   .play-area {
     flex: 0 0 50%;

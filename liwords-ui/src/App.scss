@@ -1,7 +1,6 @@
-@import './base.scss';
+@import "base";
 
 .App {
-  text-align: center;
   background-color: white;
   /* Prevent squashing board until we get to responsive for mobile */
   min-width: $screen-tablet-min;
@@ -55,6 +54,7 @@ button.ant-btn-circle {
 /* cards */
 .ant-card {
   box-shadow: $card-shadow;
+  border-radius: 8px;
 }
 
 
