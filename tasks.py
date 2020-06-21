@@ -22,6 +22,13 @@ def build_protobuf(c):
     )
     c.run(
         "protoc "
+        "--twirp_out=rpc --go_out=rpc "
+        f"--proto_path={code_dir}/liwords "
+        "--go_opt=paths=source_relative "
+        "--twirp_opt=paths=source_relative api/proto/ipc.proto"
+    )
+    c.run(
+        "protoc "
         '--plugin="protoc-gen-ts=liwords-ui/node_modules/.bin/protoc-gen-ts" '
         "--twirp_out=rpc --go_out=rpc "
         "--js_out=import_style=commonjs,binary:liwords-ui/src/gen "
