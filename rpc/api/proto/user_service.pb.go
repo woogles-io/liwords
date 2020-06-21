@@ -81,14 +81,16 @@ func (x *UserLoginRequest) GetPassword() string {
 	return ""
 }
 
-// Login response sends a session ID back. The server should also set the
-// session ID in the header.
+// The server should also set the session ID in the header.
 type LoginResponse struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Message   string `protobuf:"bytes,1,opt,name=message,proto3" json:"message,omitempty"`
+	Message string `protobuf:"bytes,1,opt,name=message,proto3" json:"message,omitempty"`
+	// I'm not sure if it's safe to do this (return session_id in the request
+	// body). We will keep it blank but it might be useful for other interfaces,
+	// such as a CLI-driven one, or a phone app, e.g, so keep this here for now.
 	SessionId string `protobuf:"bytes,2,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty"`
 }
 

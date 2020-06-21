@@ -1,4 +1,4 @@
-export const getSocketURI = (jwt: string): string => {
+export const getSocketURI = (): string => {
   const loc = window.location;
   let socketURI;
   if (loc.protocol === 'https:') {
@@ -6,7 +6,7 @@ export const getSocketURI = (jwt: string): string => {
   } else {
     socketURI = 'ws:';
   }
-  socketURI += `//${loc.host}/ws?user=${jwt}`;
+  socketURI += `//${loc.host}/ws`;
 
   return socketURI;
 };

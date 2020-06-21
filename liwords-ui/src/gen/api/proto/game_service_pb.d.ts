@@ -487,6 +487,26 @@ export namespace DeregisterRealm {
   }
 }
 
+export class TokenSocketLogin extends jspb.Message {
+  getToken(): string;
+  setToken(value: string): void;
+
+  serializeBinary(): Uint8Array;
+  toObject(includeInstance?: boolean): TokenSocketLogin.AsObject;
+  static toObject(includeInstance: boolean, msg: TokenSocketLogin): TokenSocketLogin.AsObject;
+  static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+  static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+  static serializeBinaryToWriter(message: TokenSocketLogin, writer: jspb.BinaryWriter): void;
+  static deserializeBinary(bytes: Uint8Array): TokenSocketLogin;
+  static deserializeBinaryFromReader(message: TokenSocketLogin, reader: jspb.BinaryReader): TokenSocketLogin;
+}
+
+export namespace TokenSocketLogin {
+  export type AsObject = {
+    token: string,
+  }
+}
+
 export interface GameModeMap {
   REAL_TIME: 0;
   CORRESPONDENCE: 1;
@@ -516,6 +536,7 @@ export interface MessageTypeMap {
   REGISTER_REALM: 11;
   DEREGISTER_REALM: 12;
   TIMED_OUT: 13;
+  TOKEN_SOCKET_LOGIN: 14;
 }
 
 export const MessageType: MessageTypeMap;

@@ -80,6 +80,7 @@ enum MessageType {
   REGISTER_REALM = 11;
   DEREGISTER_REALM = 12;
   TIMED_OUT = 13;
+  TOKEN_SOCKET_LOGIN = 14;
   // Add more events here. The total number of events should fit in a byte.
   // We should definitely not be using anywhere close to 255 events, and
   // in order to enforce that I'll be forcing the event type header to just be
@@ -229,3 +230,5 @@ message TimedOut {
 message RegisterRealm { string realm = 1; }
 
 message DeregisterRealm { string realm = 1; }
+
+message TokenSocketLogin { string token = 1; }
