@@ -44,11 +44,15 @@ const App = () => {
   const [width, height] = useWindowSize();
   const [err, setErr] = useState('');
   const [username, setUsername] = useState('');
-  // XXX: change to look at the cookie.
   const [loggedIn, setLoggedIn] = useState(false);
   console.log('rendering ap');
 
   useEffect(() => {
+    // XXX: This fetches the socket token twice, when we first render,
+    // and when the "loggedIn" state changes because of the token.
+    // if (loggedIn) {
+    //   return;
+    // }
     console.log('fetching socket token...');
     axios
       .post<TokenResponse>(
@@ -82,9 +86,7 @@ const App = () => {
 
   // const loggedIn = props.username !== 'anonymous';
   const store = useStoreContext();
-  // XXX: change to JWT
   const socketUrl = getSocketURI();
-
   const { sendMessage } = useWebSocket(socketUrl, {
     onOpen: () => console.log('connected to socket'),
     // Will attempt to reconnect on all close events, such as server shutting down

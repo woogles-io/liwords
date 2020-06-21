@@ -16,6 +16,7 @@ import {
   RegisterRealm,
   DeregisterRealm,
   TimedOut,
+  TokenSocketLogin,
 } from '../gen/api/proto/game_service_pb';
 import { ActionType } from '../actions/actions';
 import { endGameMessage } from './end_of_game';
@@ -39,6 +40,7 @@ const parseMsg = (msg: Uint8Array) => {
     [MessageType.REGISTER_REALM]: RegisterRealm,
     [MessageType.DEREGISTER_REALM]: DeregisterRealm,
     [MessageType.TIMED_OUT]: TimedOut,
+    [MessageType.TOKEN_SOCKET_LOGIN]: TokenSocketLogin,
   };
 
   const parsedMsg = msgTypes[msgType];

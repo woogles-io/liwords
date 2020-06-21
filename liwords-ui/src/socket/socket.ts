@@ -6,7 +6,12 @@ export const getSocketURI = (): string => {
   } else {
     socketURI = 'ws:';
   }
-  socketURI += `//${loc.host}/ws`;
+  // We are running local
+  if (loc.host.includes('127.0.0.1') || loc.host.includes('localhost')) {
+    socketURI += 'liwords.localhost/ws';
+  } else {
+    socketURI += `//${loc.host}/ws`;
+  }
 
   return socketURI;
 };
