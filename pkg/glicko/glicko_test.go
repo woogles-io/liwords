@@ -14,6 +14,7 @@ import (
 )
 
 type Player struct {
+	name            string
 	id              int
 	rating          float64
 	ratingDeviation float64
@@ -23,7 +24,7 @@ type Player struct {
 type ByRating []*Player
 
 func (a ByRating) Len() int           { return len(a) }
-func (a ByRating) Less(i, j int) bool { return a[i].rating < a[j].rating }
+func (a ByRating) Less(i, j int) bool { return a[i].rating > a[j].rating }
 func (a ByRating) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
 
 func CreatePlayers() [][]float64 {
@@ -318,6 +319,53 @@ func TestWinBoost(t *testing.T) {
 	is.True(rating3-rating2 < rating2-rating1)
 }
 
+func TestRatingConvergenceTime(t *testing.T) {
+
+	is := is.New(t)
+
+	rating := float64(InitialRating)
+	deviation := float64(InitialRatingDeviation)
+	volatility := InitialVolatility
+
+	for i := 0; i < 1000; i++ {
+		rating, deviation, volatility =
+			Rate(
+				rating,
+				deviation,
+				volatility,
+				float64(InitialRating),
+				float64(MinimumRatingDeviation),
+				0,
+				RatingPeriodinSeconds / 12)
+
+	}
+
+	is.True(int(rating) == InitialRating)
+	is.True(int(deviation) == MinimumRatingDeviation)
+	is.True(volatility < InitialVolatility)
+
+	games_to_steady := 0
+
+	for i := 0; i < 1000; i++ {
+		games_to_steady++
+		rating, deviation, volatility =
+			Rate(
+				rating,
+				deviation,
+				volatility,
+				float64(InitialRating),
+				float64(MinimumRatingDeviation),
+				50,
+				RatingPeriodinSeconds / 12)
+		// fmt.Printf("%.2f %.2f %.2f\n", rating, deviation, volatility)
+		if float64(InitialRating+500) - rating < float64(MinimumRatingDeviation) {
+			break
+		}
+	}
+
+	fmt.Printf("It took %d games to converge\n", games_to_steady)
+}
+
 func TestBehaviorUniformPairings(t *testing.T) {
 
 	players := CreatePlayers()
@@ -412,8 +460,10 @@ func TestRealData(t *testing.T) {
 	for _, game := range data {
 		for i := 0; i < 2; i++ {
 			playerid, _ := strconv.Atoi(game[2+i])
+			playername := game[6+i]
 			if _, ok := players[playerid]; !ok {
 				players[playerid] = &Player{id: playerid,
+					name:            playername,
 					rating:          float64(InitialRating),
 					ratingDeviation: float64(InitialRatingDeviation),
 					volatility:      InitialVolatility}
@@ -463,8 +513,10 @@ func TestRealData(t *testing.T) {
 	sort.Sort(ByRating(playersArray))
 
 	for i := 0; i < len(playersArray); i++ {
-		fmt.Println(playersArray[i])
+		if i < 20 || i > len(playersArray) - 20 {
+		fmt.Printf("%-5s %-24s %.2f (rd: %.2f, v: %.2f)\n", strconv.Itoa(i+1) + ":", playersArray[i].name + ":", playersArray[i].rating, playersArray[i].ratingDeviation, playersArray[i].volatility)
+		}
 	}
-	fmt.Println(len(playersArray))
+	fmt.Printf("Test pool contains %d players\n", len(playersArray))
 
 }
