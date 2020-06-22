@@ -13,8 +13,11 @@ import (
 // RegisterUser registers a user.
 func RegisterUser(ctx context.Context, username string, password string, email string,
 	userStore user.Store) error {
-	if len(username) < 2 || len(username) > 16 {
-		return errors.New("username must be between 2 and 16 letters in length")
+	if len(username) < 1 || len(username) > 20 {
+		return errors.New("username must be between 1 and 20 letters in length")
+	}
+	if len(strings.Fields(username)) != 1 {
+		return errors.New("username must not contain any whitespace")
 	}
 	// Should we have other unacceptable usernames?
 	if strings.ToLower(username) == "anonymous" {

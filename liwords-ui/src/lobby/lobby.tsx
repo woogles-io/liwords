@@ -10,8 +10,8 @@ import {
   RequestingUser,
   GameAcceptedEvent,
   GameRules,
-  RegisterRealm,
-  DeregisterRealm,
+  JoinPath,
+  UnjoinPath,
 } from '../gen/api/proto/game_service_pb';
 import { encodeToSocketFmt } from '../utils/protobuf';
 import { SoughtGames } from './sought_games';
@@ -76,18 +76,18 @@ export const Lobby = (props: Props) => {
   const { sendSocketMsg } = props;
   useEffect(() => {
     console.log('Tryna register with lobby');
-    const rr = new RegisterRealm();
-    rr.setRealm('lobby');
+    const rr = new JoinPath();
+    rr.setPath('/');
     sendSocketMsg(
-      encodeToSocketFmt(MessageType.REGISTER_REALM, rr.serializeBinary())
+      encodeToSocketFmt(MessageType.JOIN_PATH, rr.serializeBinary())
     );
 
     return () => {
       console.log('cleaning up; deregistering');
-      const dr = new DeregisterRealm();
-      dr.setRealm('lobby');
+      const dr = new UnjoinPath();
+      dr.setPath('/');
       sendSocketMsg(
-        encodeToSocketFmt(MessageType.DEREGISTER_REALM, dr.serializeBinary())
+        encodeToSocketFmt(MessageType.UNJOIN_PATH, dr.serializeBinary())
       );
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps

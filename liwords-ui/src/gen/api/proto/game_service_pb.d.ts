@@ -447,46 +447,6 @@ export namespace TimedOut {
   }
 }
 
-export class RegisterRealm extends jspb.Message {
-  getRealm(): string;
-  setRealm(value: string): void;
-
-  serializeBinary(): Uint8Array;
-  toObject(includeInstance?: boolean): RegisterRealm.AsObject;
-  static toObject(includeInstance: boolean, msg: RegisterRealm): RegisterRealm.AsObject;
-  static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
-  static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
-  static serializeBinaryToWriter(message: RegisterRealm, writer: jspb.BinaryWriter): void;
-  static deserializeBinary(bytes: Uint8Array): RegisterRealm;
-  static deserializeBinaryFromReader(message: RegisterRealm, reader: jspb.BinaryReader): RegisterRealm;
-}
-
-export namespace RegisterRealm {
-  export type AsObject = {
-    realm: string,
-  }
-}
-
-export class DeregisterRealm extends jspb.Message {
-  getRealm(): string;
-  setRealm(value: string): void;
-
-  serializeBinary(): Uint8Array;
-  toObject(includeInstance?: boolean): DeregisterRealm.AsObject;
-  static toObject(includeInstance: boolean, msg: DeregisterRealm): DeregisterRealm.AsObject;
-  static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
-  static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
-  static serializeBinaryToWriter(message: DeregisterRealm, writer: jspb.BinaryWriter): void;
-  static deserializeBinary(bytes: Uint8Array): DeregisterRealm;
-  static deserializeBinaryFromReader(message: DeregisterRealm, reader: jspb.BinaryReader): DeregisterRealm;
-}
-
-export namespace DeregisterRealm {
-  export type AsObject = {
-    realm: string,
-  }
-}
-
 export class TokenSocketLogin extends jspb.Message {
   getToken(): string;
   setToken(value: string): void;
@@ -504,6 +464,46 @@ export class TokenSocketLogin extends jspb.Message {
 export namespace TokenSocketLogin {
   export type AsObject = {
     token: string,
+  }
+}
+
+export class JoinPath extends jspb.Message {
+  getPath(): string;
+  setPath(value: string): void;
+
+  serializeBinary(): Uint8Array;
+  toObject(includeInstance?: boolean): JoinPath.AsObject;
+  static toObject(includeInstance: boolean, msg: JoinPath): JoinPath.AsObject;
+  static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+  static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+  static serializeBinaryToWriter(message: JoinPath, writer: jspb.BinaryWriter): void;
+  static deserializeBinary(bytes: Uint8Array): JoinPath;
+  static deserializeBinaryFromReader(message: JoinPath, reader: jspb.BinaryReader): JoinPath;
+}
+
+export namespace JoinPath {
+  export type AsObject = {
+    path: string,
+  }
+}
+
+export class UnjoinPath extends jspb.Message {
+  getPath(): string;
+  setPath(value: string): void;
+
+  serializeBinary(): Uint8Array;
+  toObject(includeInstance?: boolean): UnjoinPath.AsObject;
+  static toObject(includeInstance: boolean, msg: UnjoinPath): UnjoinPath.AsObject;
+  static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+  static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+  static serializeBinaryToWriter(message: UnjoinPath, writer: jspb.BinaryWriter): void;
+  static deserializeBinary(bytes: Uint8Array): UnjoinPath;
+  static deserializeBinaryFromReader(message: UnjoinPath, reader: jspb.BinaryReader): UnjoinPath;
+}
+
+export namespace UnjoinPath {
+  export type AsObject = {
+    path: string,
   }
 }
 
@@ -533,8 +533,8 @@ export interface MessageTypeMap {
   NEW_GAME_EVENT: 8;
   SERVER_CHALLENGE_RESULT_EVENT: 9;
   SEEK_REQUESTS: 10;
-  REGISTER_REALM: 11;
-  DEREGISTER_REALM: 12;
+  JOIN_PATH: 11;
+  UNJOIN_PATH: 12;
   TIMED_OUT: 13;
   TOKEN_SOCKET_LOGIN: 14;
 }

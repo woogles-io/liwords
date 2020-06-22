@@ -97,10 +97,10 @@ func EventFromByteArray(arr []byte) (*EventWrapper, error) {
 		message = &pb.SeekRequest{}
 	case pb.MessageType_GAME_ACCEPTED_EVENT:
 		message = &pb.GameAcceptedEvent{}
-	case pb.MessageType_REGISTER_REALM:
-		message = &pb.RegisterRealm{}
-	case pb.MessageType_DEREGISTER_REALM:
-		message = &pb.DeregisterRealm{}
+	case pb.MessageType_JOIN_PATH:
+		message = &pb.JoinPath{}
+	case pb.MessageType_UNJOIN_PATH:
+		message = &pb.UnjoinPath{}
 	case pb.MessageType_TIMED_OUT:
 		message = &pb.TimedOut{}
 	case pb.MessageType_TOKEN_SOCKET_LOGIN:

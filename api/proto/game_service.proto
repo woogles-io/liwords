@@ -77,8 +77,8 @@ enum MessageType {
   NEW_GAME_EVENT = 8;
   SERVER_CHALLENGE_RESULT_EVENT = 9;
   SEEK_REQUESTS = 10;
-  REGISTER_REALM = 11;
-  DEREGISTER_REALM = 12;
+  JOIN_PATH = 11;
+  UNJOIN_PATH = 12;
   TIMED_OUT = 13;
   TOKEN_SOCKET_LOGIN = 14;
   // Add more events here. The total number of events should fit in a byte.
@@ -227,8 +227,10 @@ message TimedOut {
 
 // Communication
 
-message RegisterRealm { string realm = 1; }
-
-message DeregisterRealm { string realm = 1; }
-
 message TokenSocketLogin { string token = 1; }
+
+// When we go to a new path in our SPA, we send a JoinPath. When we leave the
+// path, we send an Unjoin path.
+message JoinPath { string path = 1; }
+
+message UnjoinPath { string path = 1; }

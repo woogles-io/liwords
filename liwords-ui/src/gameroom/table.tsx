@@ -1,7 +1,7 @@
 import React, { useEffect } from 'react';
 import { Row, Col, Card } from 'antd';
 
-import { useParams } from 'react-router-dom';
+import { useParams, useLocation } from 'react-router-dom';
 import { BoardPanel } from './board_panel';
 import { TopBar } from '../topbar/topbar';
 import { Chat } from './chat';
@@ -9,8 +9,8 @@ import { useStoreContext } from '../store/store';
 import { PlayerCards } from './player_cards';
 import Pool from './pool';
 import {
-  RegisterRealm,
-  DeregisterRealm,
+  JoinPath,
+  UnjoinPath,
   MessageType,
   TimedOut,
 } from '../gen/api/proto/game_service_pb';
@@ -60,7 +60,7 @@ export const Table = (props: Props) => {
   } = useStoreContext();
   const { gameID } = useParams();
   const { username, sendSocketMsg } = props;
-
+  const location = useLocation();
   useEffect(() => {
     // Avoid react-router hijacking the back button.
     // If setRedirGame is not defined, then we're SOL I guess.
@@ -68,18 +68,19 @@ export const Table = (props: Props) => {
   }, [setRedirGame]);
 
   useEffect(() => {
-    const rr = new RegisterRealm();
-    rr.setRealm(gameID);
+    const rr = new JoinPath();
+
+    rr.setPath(location.pathname);
     sendSocketMsg(
-      encodeToSocketFmt(MessageType.REGISTER_REALM, rr.serializeBinary())
+      encodeToSocketFmt(MessageType.JOIN_PATH, rr.serializeBinary())
     );
     // XXX: Fetch some info via XHR about the game itself (timer, tourney, etc) here.
 
     return () => {
-      const dr = new DeregisterRealm();
-      dr.setRealm(gameID);
+      const dr = new UnjoinPath();
+      dr.setPath(location.pathname);
       sendSocketMsg(
-        encodeToSocketFmt(MessageType.DEREGISTER_REALM, dr.serializeBinary())
+        encodeToSocketFmt(MessageType.UNJOIN_PATH, dr.serializeBinary())
       );
       clearChat();
     };
