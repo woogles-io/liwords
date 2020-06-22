@@ -13,8 +13,8 @@ import {
   GameEndedEvent,
   ServerChallengeResultEvent,
   SeekRequests,
-  RegisterRealm,
-  DeregisterRealm,
+  JoinPath,
+  UnjoinRealm,
   TimedOut,
   TokenSocketLogin,
 } from '../gen/api/proto/game_service_pb';
@@ -37,8 +37,8 @@ const parseMsg = (msg: Uint8Array) => {
     [MessageType.GAME_ENDED_EVENT]: GameEndedEvent,
     [MessageType.SERVER_CHALLENGE_RESULT_EVENT]: ServerChallengeResultEvent,
     [MessageType.SEEK_REQUESTS]: SeekRequests,
-    [MessageType.REGISTER_REALM]: RegisterRealm,
-    [MessageType.DEREGISTER_REALM]: DeregisterRealm,
+    [MessageType.JOIN_PATH]: JoinPath,
+    [MessageType.UNJOIN_REALM]: UnjoinRealm,
     [MessageType.TIMED_OUT]: TimedOut,
     [MessageType.TOKEN_SOCKET_LOGIN]: TokenSocketLogin,
   };
