@@ -9,15 +9,16 @@ const (
 	InitialVolatility           float64 = 0.06
 	MaximumVolatility           float64 = 0.1
 	InitialRatingDeviation      int     = 350
-	MinimumRatingDeviation      int     = 75
+	MinimumRatingDeviation      int     = 50
 	MaximumRatingDeviation      int     = 350
-	VolatilityDeltaConstraint   float64 = 0.3
+	VolatilityDeltaConstraint   float64 = 0.7
 	GlickoToGlicko225Conversion float64 = 173.7178
 	ConvergenceTolerance        float64 = 0.000001
-	SpreadScaling               int     = 100
+	SpreadScaling               int     = 200
 	WinBoost                    float64 = 0.15
 	K                           float64 = (float64(4*SpreadScaling) * WinBoost) / (1 - (2 * WinBoost))
 	RatingPeriodinSeconds       int     = 60 * 60 * 24 * 4
+	iterationMaximum            int     = 1000
 )
 
 func Rate(
@@ -67,8 +68,8 @@ func Rate(
 
 	fA := iterativeHelper(A, deltaSquared, rdSquared, variance, a)
 	fB := iterativeHelper(B, deltaSquared, rdSquared, variance, a)
-
-	for math.Abs(B-A) > ConvergenceTolerance {
+	i := 0
+	for math.Abs(B-A) > ConvergenceTolerance && i < iterationMaximum {
 		C := A + (((A - B) * fA) / (fB - fA))
 		fC := iterativeHelper(C, deltaSquared, rdSquared, variance, a)
 		if fB*fC < 0 {
@@ -79,6 +80,7 @@ func Rate(
 		}
 		B = C
 		fB = fC
+		i++
 	}
 
 	newPlayerVolatility := math.Min(MaximumVolatility, math.Exp(A/2))

@@ -6,7 +6,6 @@ import (
 	"github.com/matryer/is"
 	"log"
 	"math"
-	"math/rand"
 	"os"
 	"sort"
 	"strconv"
@@ -27,21 +26,6 @@ func (a ByRating) Len() int           { return len(a) }
 func (a ByRating) Less(i, j int) bool { return a[i].rating > a[j].rating }
 func (a ByRating) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
 
-func CreatePlayers() [][]float64 {
-	players := [][]float64{
-		{460, 60, InitialVolatility, float64(InitialRating), float64(InitialRatingDeviation)},
-		{440, 60, InitialVolatility, float64(InitialRating), float64(InitialRatingDeviation)},
-		{410, 60, InitialVolatility, float64(InitialRating), float64(InitialRatingDeviation)},
-		{380, 60, InitialVolatility, float64(InitialRating), float64(InitialRatingDeviation)},
-		{370, 60, InitialVolatility, float64(InitialRating), float64(InitialRatingDeviation)},
-		{360, 60, InitialVolatility, float64(InitialRating), float64(InitialRatingDeviation)},
-		{340, 60, InitialVolatility, float64(InitialRating), float64(InitialRatingDeviation)},
-		{310, 60, InitialVolatility, float64(InitialRating), float64(InitialRatingDeviation)},
-		{220, 60, InitialVolatility, float64(InitialRating), float64(InitialRatingDeviation)},
-	}
-	return players
-}
-
 func readCsvFile(filePath string) [][]string {
 	f, err := os.Open(filePath)
 	if err != nil {
@@ -56,6 +40,22 @@ func readCsvFile(filePath string) [][]string {
 	}
 
 	return records
+}
+
+func MeanStdDev(floats []float64) (float64, float64) {
+
+	sum := 0.0
+	for _, float := range floats {
+		sum += float
+	}
+	length := float64(len(floats))
+	mean := sum / length
+	stdsum := 0.0
+	for _, float := range floats {
+		stdsum += math.Pow(float-mean, 2)
+	}
+
+	return mean, math.Sqrt(stdsum / length)
 }
 
 func TestRatingGain(t *testing.T) {
@@ -94,6 +94,25 @@ func TestRatingLoss(t *testing.T) {
 	is.True(rating < float64(InitialRating))
 	is.True(deviation < float64(InitialRatingDeviation))
 	is.True(volatility < InitialVolatility)
+}
+
+func TestAverageRatingChange(t *testing.T) {
+
+	spread := 80
+
+	rating, _, _ :=
+		Rate(
+			float64(InitialRating),
+			float64(MinimumRatingDeviation),
+			InitialVolatility,
+			float64(InitialRating),
+			float64(MinimumRatingDeviation),
+			spread,
+			RatingPeriodinSeconds/12)
+
+	fmt.Printf("A typical rating change for two players with equal ratings\n"+
+		"and minimum rating deviations in a game where the final\n"+
+		"spread is %d points is %.4f points\n\n", spread, rating-float64(InitialRating))
 }
 
 func TestVolatility(t *testing.T) {
@@ -321,6 +340,38 @@ func TestWinBoost(t *testing.T) {
 
 func TestRatingConvergenceTime(t *testing.T) {
 
+	rating := float64(InitialRating)
+	deviation := float64(InitialRatingDeviation)
+	volatility := InitialVolatility
+
+	games_to_steady := 0
+	spread := 80
+	opponent_rating := float64(InitialRating + 600)
+
+	for i := 0; i < 1000; i++ {
+		games_to_steady++
+		rating, deviation, volatility =
+			Rate(
+				rating,
+				deviation,
+				volatility,
+				opponent_rating,
+				float64(MinimumRatingDeviation),
+				spread,
+				RatingPeriodinSeconds/12)
+		// fmt.Printf("%.2f %.2f %.2f\n", rating, deviation, volatility)
+		if float64(InitialRating+600)-rating < float64(MinimumRatingDeviation) {
+			break
+		}
+	}
+
+	fmt.Printf("Starting at a rating of %d and a deviation of %d,\n"+
+		"it took %d games winning by %d points each against\n"+
+		"a %.2f rated oppoent to get to a rating of %.2f\n\n", InitialRating, InitialRatingDeviation, games_to_steady, spread, opponent_rating, rating)
+}
+
+func TestRatingConvergenceTimeAfterSteadyState(t *testing.T) {
+
 	is := is.New(t)
 
 	rating := float64(InitialRating)
@@ -336,7 +387,7 @@ func TestRatingConvergenceTime(t *testing.T) {
 				float64(InitialRating),
 				float64(MinimumRatingDeviation),
 				0,
-				RatingPeriodinSeconds / 12)
+				RatingPeriodinSeconds/12)
 
 	}
 
@@ -345,6 +396,8 @@ func TestRatingConvergenceTime(t *testing.T) {
 	is.True(volatility < InitialVolatility)
 
 	games_to_steady := 0
+	spread := 50
+	opponent_rating := float64(InitialRating + 500)
 
 	for i := 0; i < 1000; i++ {
 		games_to_steady++
@@ -353,109 +406,28 @@ func TestRatingConvergenceTime(t *testing.T) {
 				rating,
 				deviation,
 				volatility,
-				float64(InitialRating),
+				float64(InitialRating+500),
 				float64(MinimumRatingDeviation),
-				50,
-				RatingPeriodinSeconds / 12)
+				spread,
+				RatingPeriodinSeconds/12)
 		// fmt.Printf("%.2f %.2f %.2f\n", rating, deviation, volatility)
-		if float64(InitialRating+500) - rating < float64(MinimumRatingDeviation) {
+		if float64(InitialRating+500)-rating < float64(MinimumRatingDeviation) {
 			break
 		}
 	}
 
-	fmt.Printf("It took %d games to converge\n", games_to_steady)
-}
-
-func TestBehaviorUniformPairings(t *testing.T) {
-
-	players := CreatePlayers()
-
-	for i := 0; i < 10000; i++ {
-		for j := 0; j < len(players); j++ {
-			for k := j + 1; k < len(players); k++ {
-
-				playerScore := int(rand.NormFloat64()*players[j][1] + players[j][0])
-				oppponentScore := int(rand.NormFloat64()*players[k][1] + players[k][0])
-				spread := playerScore - oppponentScore
-				playerOriginalRating := players[j][3]
-				playerOriginalRatingDeviation := players[j][4]
-
-				players[j][3], players[j][4], players[j][2] =
-					Rate(
-						playerOriginalRating,
-						playerOriginalRatingDeviation,
-						players[j][2],
-						players[k][3],
-						players[k][4],
-						spread,
-						RatingPeriodinSeconds/12)
-
-				players[k][3], players[k][4], players[k][2] =
-					Rate(
-						players[k][3],
-						players[k][4],
-						players[k][2],
-						playerOriginalRating,
-						playerOriginalRatingDeviation,
-						-spread,
-						RatingPeriodinSeconds/12)
-			}
-		}
-	}
-	fmt.Println("Uniform pairings")
-	for i := range players {
-		fmt.Println(players[i])
-	}
-}
-
-func TestBehaviorStratifiedPairings(t *testing.T) {
-
-	players := CreatePlayers()
-
-	for i := 0; i < 10000; i++ {
-		for j := 0; j < len(players); j++ {
-			for k := j + 1; k < len(players); k++ {
-				if j-k > 1 {
-					continue
-				}
-				playerScore := int(rand.NormFloat64()*players[j][1] + players[j][0])
-				oppponentScore := int(rand.NormFloat64()*players[k][1] + players[k][0])
-				spread := playerScore - oppponentScore
-				playerOriginalRating := players[j][3]
-				playerOriginalRatingDeviation := players[j][4]
-
-				players[j][3], players[j][4], players[j][2] =
-					Rate(
-						playerOriginalRating,
-						playerOriginalRatingDeviation,
-						players[j][2],
-						players[k][3],
-						players[k][4],
-						spread,
-						RatingPeriodinSeconds/12)
-
-				players[k][3], players[k][4], players[k][2] =
-					Rate(
-						players[k][3],
-						players[k][4],
-						players[k][2],
-						playerOriginalRating,
-						playerOriginalRatingDeviation,
-						-spread,
-						RatingPeriodinSeconds/12)
-			}
-		}
-	}
-	fmt.Println("Stratified pairings")
-	for i := range players {
-		fmt.Println(players[i])
-	}
+	fmt.Printf("Starting at a rating of %d and a deviation of %d,\n"+
+		"it took %d games winning by %d points each against\n"+
+		"a %.2f rated oppoent to get to a rating of %.2f\n\n\n", InitialRating, MinimumRatingDeviation, games_to_steady, spread, opponent_rating, rating)
 }
 
 func TestRealData(t *testing.T) {
 
 	players := make(map[int]*Player)
 	data := readCsvFile("crosstables_game_results.csv")
+	minDeviationGuesses := 0
+	correctGuesses := 0
+	var spreads []float64
 
 	for _, game := range data {
 		for i := 0; i < 2; i++ {
@@ -485,6 +457,17 @@ func TestRealData(t *testing.T) {
 		playerTwoScore, _ := strconv.Atoi(game[5])
 
 		spread := playerOneScore - playerTwoScore
+		spreads = append(spreads, float64(spread))
+
+		if playerOneRatingDeviation == float64(MinimumRatingDeviation) && playerTwoRatingDeviation == float64(MinimumRatingDeviation) {
+			minDeviationGuesses++
+
+			if math.Abs(playerOneRating-playerTwoRating) < 4*float64(MinimumRatingDeviation) ||
+				(playerOneRating > playerTwoRating && spread > 0) ||
+				(playerOneRating < playerTwoRating && spread < 0) {
+				correctGuesses++
+			}
+		}
 
 		players[playerOneID].rating, players[playerOneID].ratingDeviation, players[playerOneID].volatility =
 			Rate(playerOneRating,
@@ -512,11 +495,18 @@ func TestRealData(t *testing.T) {
 
 	sort.Sort(ByRating(playersArray))
 
+	fmt.Printf("These are the results of the rating system applied to\n" +
+		"every game on cross-tables.com starting on January 1, 2000\n")
+	fmt.Printf("The test pool contains %d players\n\n", len(playersArray))
+	mean, stdev := MeanStdDev(spreads)
+	fmt.Printf("The average victor beat their opponent by %.4f points with a standard deviation of %.4f\n\n", mean, stdev)
+	fmt.Printf("Assuming a 95%% confidence interval, the system correctly predicted %d results out of %d (%.4f)\n"+
+		"when both players had a minimum rating deviation\n\n", correctGuesses, minDeviationGuesses, float64(correctGuesses)/float64(minDeviationGuesses))
+
 	for i := 0; i < len(playersArray); i++ {
-		if i < 20 || i > len(playersArray) - 20 {
-		fmt.Printf("%-5s %-24s %.2f (rd: %.2f, v: %.2f)\n", strconv.Itoa(i+1) + ":", playersArray[i].name + ":", playersArray[i].rating, playersArray[i].ratingDeviation, playersArray[i].volatility)
+		if i < 20 || i > len(playersArray)-20 {
+			fmt.Printf("%-5s %-24s %.2f (rd: %.2f, v: %.2f)\n", strconv.Itoa(i+1)+":", playersArray[i].name+":", playersArray[i].rating, playersArray[i].ratingDeviation, playersArray[i].volatility)
 		}
 	}
-	fmt.Printf("Test pool contains %d players\n", len(playersArray))
 
 }
