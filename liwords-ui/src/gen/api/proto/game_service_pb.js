@@ -3903,7 +3903,7 @@ proto.liwords.UnjoinRealm.prototype.toObject = function(opt_includeInstance) {
  */
 proto.liwords.UnjoinRealm.toObject = function(includeInstance, msg) {
   var f, obj = {
-    realm: jspb.Message.getFieldWithDefault(msg, 1, "")
+
   };
 
   if (includeInstance) {
@@ -3940,10 +3940,6 @@ proto.liwords.UnjoinRealm.deserializeBinaryFromReader = function(msg, reader) {
     }
     var field = reader.getFieldNumber();
     switch (field) {
-    case 1:
-      var value = /** @type {string} */ (reader.readString());
-      msg.setRealm(value);
-      break;
     default:
       reader.skipField();
       break;
@@ -3973,31 +3969,6 @@ proto.liwords.UnjoinRealm.prototype.serializeBinary = function() {
  */
 proto.liwords.UnjoinRealm.serializeBinaryToWriter = function(message, writer) {
   var f = undefined;
-  f = message.getRealm();
-  if (f.length > 0) {
-    writer.writeString(
-      1,
-      f
-    );
-  }
-};
-
-
-/**
- * optional string realm = 1;
- * @return {string}
- */
-proto.liwords.UnjoinRealm.prototype.getRealm = function() {
-  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 1, ""));
-};
-
-
-/**
- * @param {string} value
- * @return {!proto.liwords.UnjoinRealm} returns this
- */
-proto.liwords.UnjoinRealm.prototype.setRealm = function(value) {
-  return jspb.Message.setProto3StringField(this, 1, value);
 };
 
 

@@ -85,9 +85,8 @@ export const Lobby = (props: Props) => {
     return () => {
       console.log('cleaning up; deregistering');
       const dr = new UnjoinRealm();
-      dr.setRealm('lobby');
       sendSocketMsg(
-        encodeToSocketFmt(MessageType.UNJOIN_PATH, dr.serializeBinary())
+        encodeToSocketFmt(MessageType.UNJOIN_REALM, dr.serializeBinary())
       );
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps

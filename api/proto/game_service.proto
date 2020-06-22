@@ -234,8 +234,7 @@ message TimedOut {
 message TokenSocketLogin { string token = 1; }
 
 // When we go to a new path in our SPA, we send a JoinPath. When we leave the
-// path, we send an Unjoin realm with the actual realm name, which would
-// have come in a message when we joined.
+// path, we send an Unjoin realm. d
 message JoinPath { string path = 1; }
 
-message UnjoinRealm { string realm = 1; }
+message UnjoinRealm {}

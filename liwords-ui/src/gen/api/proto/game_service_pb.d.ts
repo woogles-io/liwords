@@ -508,9 +508,6 @@ export namespace JoinPath {
 }
 
 export class UnjoinRealm extends jspb.Message {
-  getRealm(): string;
-  setRealm(value: string): void;
-
   serializeBinary(): Uint8Array;
   toObject(includeInstance?: boolean): UnjoinRealm.AsObject;
   static toObject(includeInstance: boolean, msg: UnjoinRealm): UnjoinRealm.AsObject;
@@ -523,7 +520,6 @@ export class UnjoinRealm extends jspb.Message {
 
 export namespace UnjoinRealm {
   export type AsObject = {
-    realm: string,
   }
 }
 

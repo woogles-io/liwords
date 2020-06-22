@@ -66,9 +66,6 @@ export type StoreData = {
   timerContext: Times;
   pTimedOut: PlayerOrder | undefined;
   setPTimedOut: (p: PlayerOrder | undefined) => void;
-
-  gameRealm: string;
-  setGameRealm: React.Dispatch<React.SetStateAction<string>>;
 };
 
 const defaultGameState = startingGameState(
@@ -98,9 +95,6 @@ export const Context = createContext<StoreData>({
   timerContext: defaultTimerContext,
   pTimedOut: undefined,
   setPTimedOut: defaultFunction,
-
-  gameRealm: '',
-  setGameRealm: defaultFunction,
 });
 
 type Props = {
@@ -156,7 +150,6 @@ export const Store = ({ children, ...props }: Props) => {
 
   const [redirGame, setRedirGame] = useState('');
   const [chat, setChat] = useState(new Array<ChatEntityObj>());
-  const [gameRealm, setGameRealm] = useState('');
 
   const challengeResultEvent = (sge: ServerChallengeResultEvent) => {
     addChat({
@@ -206,8 +199,6 @@ export const Store = ({ children, ...props }: Props) => {
     addChat,
     clearChat,
     chat,
-    gameRealm,
-    setGameRealm,
 
     // initClockController,
     pTimedOut,
