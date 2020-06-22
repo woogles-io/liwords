@@ -2,9 +2,7 @@ import React, { useLayoutEffect, useState, useEffect, useRef } from 'react';
 import { BrowserRouter as Router, Route, Switch } from 'react-router-dom';
 import './App.scss';
 import 'antd/dist/antd.css';
-import useWebSocket, { SendMessage } from 'react-use-websocket';
-import axios from 'axios';
-import jwt from 'jsonwebtoken';
+import useWebSocket from 'react-use-websocket';
 
 import { Table } from './gameroom/table';
 import { Lobby } from './lobby/lobby';
@@ -16,6 +14,7 @@ import { onSocketMsg } from './store/socket_handlers';
 import { Login } from './lobby/login';
 import { Register } from './lobby/register';
 import { MessageType, TokenSocketLogin } from './gen/api/proto/game_service_pb';
+import { useSocketToken } from './hooks/use_socket_token';
 
 function useWindowSize() {
   const [size, setSize] = useState([0, 0]);
@@ -30,63 +29,13 @@ function useWindowSize() {
   return size;
 }
 
-type TokenResponse = {
-  token: string;
-};
-
-type DecodedToken = {
-  unn: string;
-  uid: string;
-  iss: string;
-};
-
 const App = () => {
   const [width, height] = useWindowSize();
-  const [err, setErr] = useState('');
-  const [username, setUsername] = useState('');
-  const [loggedIn, setLoggedIn] = useState(false);
-  console.log('rendering ap');
-
-  useEffect(() => {
-    // XXX: This fetches the socket token twice, when we first render,
-    // and when the "loggedIn" state changes because of the token.
-    // if (loggedIn) {
-    //   return;
-    // }
-    console.log('fetching socket token...');
-    axios
-      .post<TokenResponse>(
-        '/twirp/liwords.AuthenticationService/GetSocketToken',
-        {}
-      )
-      .then((resp) => {
-        const decoded = jwt.decode(resp.data.token) as DecodedToken;
-        setUsername(decoded.unn);
-        setLoggedIn(true);
-        const msg = new TokenSocketLogin();
-        msg.setToken(resp.data.token);
-        // Decoding the token logs us in, and we also send the token to
-        // the socket server to identify ourselves there as well.
-        sendMessage(
-          encodeToSocketFmt(
-            MessageType.TOKEN_SOCKET_LOGIN,
-            msg.serializeBinary()
-          )
-        );
-      })
-      .catch((e) => {
-        if (e.response) {
-          setErr(e.response.data.msg);
-          console.log(e.response);
-        }
-      });
-    // We want to do this when we change the "loggedin" state.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [loggedIn]);
-
-  // const loggedIn = props.username !== 'anonymous';
-  const store = useStoreContext();
+  // const [err, setErr] = useState('');
+  console.log('rendering app');
   const socketUrl = getSocketURI();
+  const store = useStoreContext();
+
   const { sendMessage } = useWebSocket(socketUrl, {
     onOpen: () => console.log('connected to socket'),
     // Will attempt to reconnect on all close events, such as server shutting down
@@ -94,6 +43,8 @@ const App = () => {
     onMessage: (event: MessageEvent) =>
       decodeToMsg(event.data, onSocketMsg(store)),
   });
+
+  const { username, loggedIn } = useSocketToken(sendMessage);
 
   return (
     <div className="App">
@@ -118,10 +69,10 @@ const App = () => {
           </Route>
 
           <Route path="/login">
-            <Login setLoggedIn={setLoggedIn} loggedIn={loggedIn} />
+            <Login />
           </Route>
           <Route path="/register">
-            <Register setLoggedIn={setLoggedIn} loggedIn={loggedIn} />
+            <Register />
           </Route>
         </Switch>
       </Router>

@@ -18,13 +18,9 @@ const tailLayout = {
   },
 };
 
-type Props = {
-  loggedIn: boolean;
-  setLoggedIn: (v: boolean) => void;
-};
-
-export const Register = (props: Props) => {
+export const Register = () => {
   const [err, setErr] = useState('');
+  const [loggedIn, setLoggedIn] = useState(false);
 
   const onFinish = (values: { [key: string]: string }) => {
     axios
@@ -42,7 +38,7 @@ export const Register = (props: Props) => {
           })
           .then(() => {
             // Automatically will set cookie
-            props.setLoggedIn(true);
+            setLoggedIn(true);
           })
           .catch((e) => {
             if (e.response) {
@@ -65,8 +61,8 @@ export const Register = (props: Props) => {
       });
   };
 
-  if (props.loggedIn) {
-    return <Redirect push to="/" />;
+  if (loggedIn) {
+    window.location.replace('/');
   }
 
   return (

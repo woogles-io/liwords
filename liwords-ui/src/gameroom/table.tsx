@@ -57,7 +57,6 @@ export const Table = (props: Props) => {
     clearChat,
     pTimedOut,
     setPTimedOut,
-    gameRealm,
   } = useStoreContext();
   const { gameID } = useParams();
   const { username, sendSocketMsg } = props;
@@ -80,7 +79,6 @@ export const Table = (props: Props) => {
 
     return () => {
       const dr = new UnjoinRealm();
-      dr.setRealm(gameRealm);
       sendSocketMsg(
         encodeToSocketFmt(MessageType.UNJOIN_REALM, dr.serializeBinary())
       );

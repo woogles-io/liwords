@@ -105,8 +105,6 @@ func EventFromByteArray(arr []byte) (*EventWrapper, error) {
 		message = &pb.TimedOut{}
 	case pb.MessageType_TOKEN_SOCKET_LOGIN:
 		message = &pb.TokenSocketLogin{}
-	case pb.MessageType_JOINED_REALM:
-		message = &pb.JoinedRealm{}
 	default:
 		return nil, fmt.Errorf("event of type %d not handled", msgType)
 	}

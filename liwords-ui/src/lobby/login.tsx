@@ -19,14 +19,9 @@ const tailLayout = {
   },
 };
 
-type Props = {
-  loggedIn: boolean;
-  setLoggedIn: (v: boolean) => void;
-};
-
-export const Login = (props: Props) => {
+export const Login = () => {
   const [err, setErr] = useState('');
-
+  const [loggedIn, setLoggedIn] = useState(false);
   const onFinish = (values: { [key: string]: string }) => {
     axios
       .post('/twirp/liwords.AuthenticationService/Login', {
@@ -35,7 +30,7 @@ export const Login = (props: Props) => {
       })
       .then(() => {
         // Automatically will set cookie
-        props.setLoggedIn(true);
+        setLoggedIn(true);
       })
       .catch((e) => {
         if (e.response) {
@@ -48,8 +43,8 @@ export const Login = (props: Props) => {
       });
   };
 
-  if (props.loggedIn) {
-    return <Redirect push to="/" />;
+  if (loggedIn) {
+    window.location.replace('/');
   }
 
   return (
