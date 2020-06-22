@@ -487,23 +487,23 @@ export namespace JoinPath {
   }
 }
 
-export class UnjoinPath extends jspb.Message {
-  getPath(): string;
-  setPath(value: string): void;
+export class UnjoinRealm extends jspb.Message {
+  getRealm(): string;
+  setRealm(value: string): void;
 
   serializeBinary(): Uint8Array;
-  toObject(includeInstance?: boolean): UnjoinPath.AsObject;
-  static toObject(includeInstance: boolean, msg: UnjoinPath): UnjoinPath.AsObject;
+  toObject(includeInstance?: boolean): UnjoinRealm.AsObject;
+  static toObject(includeInstance: boolean, msg: UnjoinRealm): UnjoinRealm.AsObject;
   static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
   static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
-  static serializeBinaryToWriter(message: UnjoinPath, writer: jspb.BinaryWriter): void;
-  static deserializeBinary(bytes: Uint8Array): UnjoinPath;
-  static deserializeBinaryFromReader(message: UnjoinPath, reader: jspb.BinaryReader): UnjoinPath;
+  static serializeBinaryToWriter(message: UnjoinRealm, writer: jspb.BinaryWriter): void;
+  static deserializeBinary(bytes: Uint8Array): UnjoinRealm;
+  static deserializeBinaryFromReader(message: UnjoinRealm, reader: jspb.BinaryReader): UnjoinRealm;
 }
 
-export namespace UnjoinPath {
+export namespace UnjoinRealm {
   export type AsObject = {
-    path: string,
+    realm: string,
   }
 }
 
