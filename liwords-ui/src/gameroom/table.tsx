@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Row, Col, Card } from 'antd';
 
 import { useParams, useLocation } from 'react-router-dom';
@@ -10,7 +10,7 @@ import { PlayerCards } from './player_cards';
 import Pool from './pool';
 import {
   JoinPath,
-  UnjoinPath,
+  UnjoinRealm,
   MessageType,
   TimedOut,
 } from '../gen/api/proto/game_service_pb';
@@ -61,6 +61,7 @@ export const Table = (props: Props) => {
   const { gameID } = useParams();
   const { username, sendSocketMsg } = props;
   const location = useLocation();
+
   useEffect(() => {
     // Avoid react-router hijacking the back button.
     // If setRedirGame is not defined, then we're SOL I guess.
@@ -77,8 +78,8 @@ export const Table = (props: Props) => {
     // XXX: Fetch some info via XHR about the game itself (timer, tourney, etc) here.
 
     return () => {
-      const dr = new UnjoinPath();
-      dr.setPath(location.pathname);
+      const dr = new UnjoinRealm();
+      dr.setRealm(realm);
       sendSocketMsg(
         encodeToSocketFmt(MessageType.UNJOIN_PATH, dr.serializeBinary())
       );
@@ -116,6 +117,8 @@ export const Table = (props: Props) => {
     setPTimedOut(undefined);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pTimedOut, gameContext.nickToPlayerOrder, gameID]);
+
+  const [realm, setRealm] = useState('');
 
   // Figure out what rack we should display.
   // If we are one of the players, display our rack.

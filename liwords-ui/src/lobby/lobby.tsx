@@ -11,7 +11,7 @@ import {
   GameAcceptedEvent,
   GameRules,
   JoinPath,
-  UnjoinPath,
+  UnjoinRealm,
 } from '../gen/api/proto/game_service_pb';
 import { encodeToSocketFmt } from '../utils/protobuf';
 import { SoughtGames } from './sought_games';
@@ -84,8 +84,8 @@ export const Lobby = (props: Props) => {
 
     return () => {
       console.log('cleaning up; deregistering');
-      const dr = new UnjoinPath();
-      dr.setPath('/');
+      const dr = new UnjoinRealm();
+      dr.setRealm('lobby');
       sendSocketMsg(
         encodeToSocketFmt(MessageType.UNJOIN_PATH, dr.serializeBinary())
       );
