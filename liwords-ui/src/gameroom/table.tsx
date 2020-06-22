@@ -22,6 +22,7 @@ const gutter = 16;
 const boardspan = 12;
 const maxspan = 24; // from ant design
 const navbarHeightAndGutter = 84; // 72 + 12 spacing
+const JoinSocketDelay = 1000;
 
 type Props = {
   windowWidth: number;
@@ -72,12 +73,16 @@ export const Table = (props: Props) => {
     const rr = new JoinPath();
 
     rr.setPath(location.pathname);
-    sendSocketMsg(
-      encodeToSocketFmt(MessageType.JOIN_PATH, rr.serializeBinary())
-    );
+    const timeout = setTimeout(() => {
+      sendSocketMsg(
+        encodeToSocketFmt(MessageType.JOIN_PATH, rr.serializeBinary())
+      );
+    }, JoinSocketDelay);
     // XXX: Fetch some info via XHR about the game itself (timer, tourney, etc) here.
 
     return () => {
+      clearTimeout(timeout);
+
       const dr = new UnjoinRealm();
       sendSocketMsg(
         encodeToSocketFmt(MessageType.UNJOIN_REALM, dr.serializeBinary())

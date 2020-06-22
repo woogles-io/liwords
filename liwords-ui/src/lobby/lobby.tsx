@@ -23,6 +23,8 @@ import {
 } from '../gen/macondo/api/proto/macondo/macondo_pb';
 import { SeekForm, seekPropVals } from './seek_form';
 
+const JoinSocketDelay = 1000;
+
 const sendSeek = (
   game: SoughtGame,
   sendSocketMsg: (msg: Uint8Array) => void
@@ -78,11 +80,19 @@ export const Lobby = (props: Props) => {
     console.log('Tryna register with lobby');
     const rr = new JoinPath();
     rr.setPath('/');
-    sendSocketMsg(
-      encodeToSocketFmt(MessageType.JOIN_PATH, rr.serializeBinary())
-    );
+    // Note: We send the socket message 1 second after we join. This
+    // is to give the socket token time to log us in. Note, however,
+    // that the app will not stop working if we are not logged in by the
+    // time this fires. The backend will just fire what it fires when
+    // one logs in, twice.
+    const timeout = setTimeout(() => {
+      sendSocketMsg(
+        encodeToSocketFmt(MessageType.JOIN_PATH, rr.serializeBinary())
+      );
+    }, JoinSocketDelay);
 
     return () => {
+      clearTimeout(timeout);
       console.log('cleaning up; deregistering');
       const dr = new UnjoinRealm();
       sendSocketMsg(

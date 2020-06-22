@@ -10,3 +10,8 @@ message RegisterRealmRequest {
 }
 
 message RegisterRealmResponse { string realm = 1; }
+
+message InitRealmInfo {
+  string realm = 1;
+  string user_id = 2;
+}
