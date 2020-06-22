@@ -57,6 +57,7 @@ export const Table = (props: Props) => {
     clearChat,
     pTimedOut,
     setPTimedOut,
+    gameRealm,
   } = useStoreContext();
   const { gameID } = useParams();
   const { username, sendSocketMsg } = props;
@@ -79,9 +80,9 @@ export const Table = (props: Props) => {
 
     return () => {
       const dr = new UnjoinRealm();
-      dr.setRealm(realm);
+      dr.setRealm(gameRealm);
       sendSocketMsg(
-        encodeToSocketFmt(MessageType.UNJOIN_PATH, dr.serializeBinary())
+        encodeToSocketFmt(MessageType.UNJOIN_REALM, dr.serializeBinary())
       );
       clearChat();
     };
@@ -117,8 +118,6 @@ export const Table = (props: Props) => {
     setPTimedOut(undefined);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pTimedOut, gameContext.nickToPlayerOrder, gameID]);
-
-  const [realm, setRealm] = useState('');
 
   // Figure out what rack we should display.
   // If we are one of the players, display our rack.

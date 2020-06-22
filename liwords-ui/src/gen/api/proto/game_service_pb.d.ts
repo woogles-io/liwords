@@ -382,6 +382,26 @@ export namespace ErrorMessage {
   }
 }
 
+export class JoinedRealm extends jspb.Message {
+  getRealm(): string;
+  setRealm(value: string): void;
+
+  serializeBinary(): Uint8Array;
+  toObject(includeInstance?: boolean): JoinedRealm.AsObject;
+  static toObject(includeInstance: boolean, msg: JoinedRealm): JoinedRealm.AsObject;
+  static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+  static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+  static serializeBinaryToWriter(message: JoinedRealm, writer: jspb.BinaryWriter): void;
+  static deserializeBinary(bytes: Uint8Array): JoinedRealm;
+  static deserializeBinaryFromReader(message: JoinedRealm, reader: jspb.BinaryReader): JoinedRealm;
+}
+
+export namespace JoinedRealm {
+  export type AsObject = {
+    realm: string,
+  }
+}
+
 export class ClientGameplayEvent extends jspb.Message {
   getType(): ClientGameplayEvent.EventTypeMap[keyof ClientGameplayEvent.EventTypeMap];
   setType(value: ClientGameplayEvent.EventTypeMap[keyof ClientGameplayEvent.EventTypeMap]): void;
@@ -537,6 +557,7 @@ export interface MessageTypeMap {
   UNJOIN_REALM: 12;
   TIMED_OUT: 13;
   TOKEN_SOCKET_LOGIN: 14;
+  JOINED_REALM: 15;
 }
 
 export const MessageType: MessageTypeMap;

@@ -81,6 +81,7 @@ enum MessageType {
   UNJOIN_REALM = 12;
   TIMED_OUT = 13;
   TOKEN_SOCKET_LOGIN = 14;
+  JOINED_REALM = 15;
   // Add more events here. The total number of events should fit in a byte.
   // We should definitely not be using anywhere close to 255 events, and
   // in order to enforce that I'll be forcing the event type header to just be
@@ -179,6 +180,9 @@ message ErrorMessage {
   string message = 1;
   // Maybe codes or something else in the future.
 }
+
+// Server tells client which realm they joined
+message JoinedRealm { string realm = 1; }
 
 // Client-to-server messages
 
