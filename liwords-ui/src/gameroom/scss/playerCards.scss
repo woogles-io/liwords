@@ -59,9 +59,6 @@
     }
     &.on-turn {
       background: $color-timer-light;
-      .player {
-        order: 2;
-      }
       button {
         background-color: $color-timer-dark
       }
@@ -75,6 +72,11 @@
         background-color: $color-timer-out-light;
         button {
           background-color: $color-timer-out-dark;
+        }
+      }
+      &:last-child {
+        .player {
+          order: 2;
         }
       }
     }

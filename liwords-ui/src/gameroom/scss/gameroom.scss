@@ -1,6 +1,7 @@
 @import '../../base';
 
 .game-table {
+  @include button;
   padding: 16px;
 }
 .board-container {
@@ -139,7 +140,7 @@
   justify-content: center;
   margin: 24px 0;
   width: 100%;
-  height: 3vh;
+  height: 4vw;
 }
 
 .ant-modal .rack {
@@ -179,7 +180,7 @@
   margin: 0;
   font-family: 'Roboto', sans-serif;
   line-height: 0;
-  font-size: 1.5vw;
+  font-size: 2vw;
 }
 
 .tile .rune {
@@ -226,6 +227,11 @@
   header {
     @include type-title;
   }
+  .tiles-remaining {
+    @include type-monospace;
+    font-size: 16px;
+    letter-spacing: 0.21em;
+  }
 }
 
 
@@ -248,5 +254,12 @@
 
   .rack {
     height: 3vw;
+  }
+
+  .tile .rune {
+    margin: 0;
+    font-family: 'Roboto', sans-serif;
+    line-height: 0;
+    font-size: 1.5vw;
   }
 }

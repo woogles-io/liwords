@@ -169,6 +169,7 @@ export const Table = (props: Props) => {
             pool={gameContext?.pool}
             currentRack={rack}
             poolFormat={poolFormat}
+            setPoolFormat={setPoolFormat}
           />
           <ScoreCard
             username={props.username}
