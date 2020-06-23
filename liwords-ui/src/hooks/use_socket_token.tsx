@@ -19,7 +19,7 @@ type DecodedToken = {
 };
 
 export const useSocketToken = (sendSocketMessage: SendMessage) => {
-  const [username, setUsername] = useState('');
+  const [username, setUsername] = useState('Anonymous');
   const [loggedIn, setLoggedIn] = useState(false);
 
   useEffect(() => {

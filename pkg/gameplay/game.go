@@ -40,9 +40,6 @@ type GameStore interface {
 	Set(context.Context, *entity.Game) error
 }
 
-// type Game interface {
-// }
-
 // InstantiateNewGame instantiates a game and returns it.
 func InstantiateNewGame(ctx context.Context, gameStore GameStore, cfg *config.Config,
 	players []*macondopb.PlayerInfo, req *pb.GameRequest) (*entity.Game, error) {

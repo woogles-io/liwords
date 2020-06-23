@@ -79,11 +79,17 @@ export namespace GameRequest {
 }
 
 export class RequestingUser extends jspb.Message {
-  getUsername(): string;
-  setUsername(value: string): void;
+  getUserId(): string;
+  setUserId(value: string): void;
 
-  getRelevantrating(): number;
-  setRelevantrating(value: number): void;
+  getRelevantRating(): number;
+  setRelevantRating(value: number): void;
+
+  getIsAnonymous(): boolean;
+  setIsAnonymous(value: boolean): void;
+
+  getDisplayName(): string;
+  setDisplayName(value: string): void;
 
   serializeBinary(): Uint8Array;
   toObject(includeInstance?: boolean): RequestingUser.AsObject;
@@ -97,8 +103,10 @@ export class RequestingUser extends jspb.Message {
 
 export namespace RequestingUser {
   export type AsObject = {
-    username: string,
-    relevantrating: number,
+    userId: string,
+    relevantRating: number,
+    isAnonymous: boolean,
+    displayName: string,
   }
 }
 

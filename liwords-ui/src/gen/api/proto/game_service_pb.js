@@ -969,8 +969,10 @@ proto.liwords.RequestingUser.prototype.toObject = function(opt_includeInstance) 
  */
 proto.liwords.RequestingUser.toObject = function(includeInstance, msg) {
   var f, obj = {
-    username: jspb.Message.getFieldWithDefault(msg, 1, ""),
-    relevantrating: jspb.Message.getFieldWithDefault(msg, 2, 0)
+    userId: jspb.Message.getFieldWithDefault(msg, 1, ""),
+    relevantRating: jspb.Message.getFieldWithDefault(msg, 2, 0),
+    isAnonymous: jspb.Message.getBooleanFieldWithDefault(msg, 3, false),
+    displayName: jspb.Message.getFieldWithDefault(msg, 4, "")
   };
 
   if (includeInstance) {
@@ -1009,11 +1011,19 @@ proto.liwords.RequestingUser.deserializeBinaryFromReader = function(msg, reader)
     switch (field) {
     case 1:
       var value = /** @type {string} */ (reader.readString());
-      msg.setUsername(value);
+      msg.setUserId(value);
       break;
     case 2:
       var value = /** @type {number} */ (reader.readInt32());
-      msg.setRelevantrating(value);
+      msg.setRelevantRating(value);
+      break;
+    case 3:
+      var value = /** @type {boolean} */ (reader.readBool());
+      msg.setIsAnonymous(value);
+      break;
+    case 4:
+      var value = /** @type {string} */ (reader.readString());
+      msg.setDisplayName(value);
       break;
     default:
       reader.skipField();
@@ -1044,17 +1054,31 @@ proto.liwords.RequestingUser.prototype.serializeBinary = function() {
  */
 proto.liwords.RequestingUser.serializeBinaryToWriter = function(message, writer) {
   var f = undefined;
-  f = message.getUsername();
+  f = message.getUserId();
   if (f.length > 0) {
     writer.writeString(
       1,
       f
     );
   }
-  f = message.getRelevantrating();
+  f = message.getRelevantRating();
   if (f !== 0) {
     writer.writeInt32(
       2,
+      f
+    );
+  }
+  f = message.getIsAnonymous();
+  if (f) {
+    writer.writeBool(
+      3,
+      f
+    );
+  }
+  f = message.getDisplayName();
+  if (f.length > 0) {
+    writer.writeString(
+      4,
       f
     );
   }
@@ -1062,10 +1086,10 @@ proto.liwords.RequestingUser.serializeBinaryToWriter = function(message, writer)
 
 
 /**
- * optional string username = 1;
+ * optional string user_id = 1;
  * @return {string}
  */
-proto.liwords.RequestingUser.prototype.getUsername = function() {
+proto.liwords.RequestingUser.prototype.getUserId = function() {
   return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 1, ""));
 };
 
@@ -1074,16 +1098,16 @@ proto.liwords.RequestingUser.prototype.getUsername = function() {
  * @param {string} value
  * @return {!proto.liwords.RequestingUser} returns this
  */
-proto.liwords.RequestingUser.prototype.setUsername = function(value) {
+proto.liwords.RequestingUser.prototype.setUserId = function(value) {
   return jspb.Message.setProto3StringField(this, 1, value);
 };
 
 
 /**
- * optional int32 relevantRating = 2;
+ * optional int32 relevant_rating = 2;
  * @return {number}
  */
-proto.liwords.RequestingUser.prototype.getRelevantrating = function() {
+proto.liwords.RequestingUser.prototype.getRelevantRating = function() {
   return /** @type {number} */ (jspb.Message.getFieldWithDefault(this, 2, 0));
 };
 
@@ -1092,8 +1116,44 @@ proto.liwords.RequestingUser.prototype.getRelevantrating = function() {
  * @param {number} value
  * @return {!proto.liwords.RequestingUser} returns this
  */
-proto.liwords.RequestingUser.prototype.setRelevantrating = function(value) {
+proto.liwords.RequestingUser.prototype.setRelevantRating = function(value) {
   return jspb.Message.setProto3IntField(this, 2, value);
+};
+
+
+/**
+ * optional bool is_anonymous = 3;
+ * @return {boolean}
+ */
+proto.liwords.RequestingUser.prototype.getIsAnonymous = function() {
+  return /** @type {boolean} */ (jspb.Message.getBooleanFieldWithDefault(this, 3, false));
+};
+
+
+/**
+ * @param {boolean} value
+ * @return {!proto.liwords.RequestingUser} returns this
+ */
+proto.liwords.RequestingUser.prototype.setIsAnonymous = function(value) {
+  return jspb.Message.setProto3BooleanField(this, 3, value);
+};
+
+
+/**
+ * optional string display_name = 4;
+ * @return {string}
+ */
+proto.liwords.RequestingUser.prototype.getDisplayName = function() {
+  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 4, ""));
+};
+
+
+/**
+ * @param {string} value
+ * @return {!proto.liwords.RequestingUser} returns this
+ */
+proto.liwords.RequestingUser.prototype.setDisplayName = function(value) {
+  return jspb.Message.setProto3StringField(this, 4, value);
 };
 
 

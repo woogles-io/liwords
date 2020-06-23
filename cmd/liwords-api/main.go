@@ -9,8 +9,11 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/domino14/liwords/bus"
 	"github.com/domino14/liwords/pkg/apiserver"
+	"github.com/domino14/liwords/pkg/stores/game"
 	"github.com/domino14/liwords/pkg/stores/session"
+	"github.com/domino14/liwords/pkg/stores/soughtgame"
 
 	"github.com/domino14/liwords/pkg/registration"
 
@@ -82,6 +85,16 @@ func main() {
 
 	idleConnsClosed := make(chan struct{})
 	sig := make(chan os.Signal, 1)
+
+	gameStore := game.NewMemoryStore()
+	soughtGameStore := soughtgame.NewMemoryStore()
+
+	// Handle bus.
+	pubsubBus, err := bus.NewBus(cfg.NatsURL, userStore, gameStore, soughtGameStore)
+	if err != nil {
+		panic(err)
+	}
+	go pubsubBus.ProcessMessages(context.Background())
 
 	go func() {
 		signal.Notify(sig, syscall.SIGINT, syscall.SIGTERM)

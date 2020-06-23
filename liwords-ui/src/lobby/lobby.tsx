@@ -35,11 +35,6 @@ const sendSeek = (
   rules.setBoardLayoutName('CrosswordGame');
   rules.setLetterDistributionName('english');
 
-  const user = new RequestingUser();
-  user.setUsername(game.seeker);
-  // rating comes from backend.
-  sr.setUser(user);
-
   gr.setChallengeRule(
     game.challengeRule as ChallengeRuleMap[keyof ChallengeRuleMap]
   );
@@ -117,7 +112,7 @@ export const Lobby = (props: Props) => {
     setSeekModalVisible(false);
     sendSeek(
       {
-        seeker: props.username,
+        seeker: '',
         lexicon: seekSettings.lexicon as string,
         challengeRule: seekSettings.challengerule as number,
         initialTimeSecs: (seekSettings.initialtime as number) * 60,

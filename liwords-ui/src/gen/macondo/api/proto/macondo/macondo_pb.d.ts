@@ -215,6 +215,9 @@ export class PlayerInfo extends jspb.Message {
   getRealName(): string;
   setRealName(value: string): void;
 
+  getUserId(): string;
+  setUserId(value: string): void;
+
   serializeBinary(): Uint8Array;
   toObject(includeInstance?: boolean): PlayerInfo.AsObject;
   static toObject(includeInstance: boolean, msg: PlayerInfo): PlayerInfo.AsObject;
@@ -229,6 +232,7 @@ export namespace PlayerInfo {
   export type AsObject = {
     nickname: string,
     realName: string,
+    userId: string,
   }
 }
 
