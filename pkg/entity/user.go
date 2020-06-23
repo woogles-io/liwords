@@ -9,8 +9,6 @@ import (
 const (
 	// SessionExpiration - Expire a session after this much time.
 	SessionExpiration = time.Hour * 24 * 30
-	// AnonymousUsername is never a logged-in user, and the contrapositive.
-	AnonymousUsername = "Anonymous"
 )
 
 // A User should be a minimal object. All information such as user profile,

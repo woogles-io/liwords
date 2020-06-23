@@ -38,8 +38,8 @@ func (s *DBStore) Get(ctx context.Context, username string) (*entity.User, error
 	return u, nil
 }
 
-// GetUUID gets user by UUID
-func (s *DBStore) GetUUID(ctx context.Context, uuid string) (*entity.User, error) {
+// GetByUUID gets user by UUID
+func (s *DBStore) GetByUUID(ctx context.Context, uuid string) (*entity.User, error) {
 	u := &entity.User{}
 	if result := s.db.Where("uuid = ?", uuid).First(u); result.Error != nil {
 		return nil, result.Error

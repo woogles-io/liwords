@@ -66,7 +66,7 @@ export const onSocketMsg = (storeData: StoreData) => {
         storeData.dispatchLobbyContext({
           actionType: ActionType.AddSoughtGame,
           payload: {
-            seeker: user.getUsername(),
+            seeker: user.getDisplayName(),
             lexicon: gameReq.getLexicon(),
             initialTimeSecs: gameReq.getInitialTimeSeconds(),
             challengeRule: gameReq.getChallengeRule(),
@@ -84,7 +84,7 @@ export const onSocketMsg = (storeData: StoreData) => {
             const gameReq = r.getGameRequest()!;
             const user = r.getUser()!;
             return {
-              seeker: user.getUsername(),
+              seeker: user.getDisplayName(),
               lexicon: gameReq.getLexicon(),
               initialTimeSecs: gameReq.getInitialTimeSeconds(),
               challengeRule: gameReq.getChallengeRule(),

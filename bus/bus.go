@@ -83,7 +83,7 @@ func (b *Bus) ProcessMessages(ctx context.Context) {
 			// Regular messages.
 			log.Debug().Str("topic", msg.Subject).Msg("got ipc.pb message")
 			subtopics := strings.Split(msg.Subject, ".")
-			err := b.handleNatsPublish(ctx, subtopics[2], msg.Data)
+			err := b.handleNatsPublish(ctx, subtopics[2:], msg.Data)
 			if err != nil {
 				log.Err(err).Msg("process-message-publish-error")
 			}
@@ -153,19 +153,39 @@ func (b *Bus) handleNatsRequest(ctx context.Context, topic string,
 	return nil
 }
 
-func (b *Bus) handleNatsPublish(ctx context.Context, topic string, data []byte) error {
-	switch topic {
+func (b *Bus) handleNatsPublish(ctx context.Context, subtopics []string, data []byte) error {
+	log.Debug().Interface("subtopics", subtopics).Msg("handling nats publish")
+	switch subtopics[0] {
 	case "seekRequest":
 		req := &pb.SeekRequest{}
 		err := proto.Unmarshal(data, req)
 		if err != nil {
 			return err
 		}
+		// Note that the seek request should not come with a requesting user;
+		// instead this is in the topic/subject. It is HERE in the API server that
+		// we set the requesting user's display name, rating, etc.
+		req.User = &pb.RequestingUser{}
+		req.User.IsAnonymous = subtopics[1] == "anon"
+		req.User.UserId = subtopics[2]
+
+		if req.User.IsAnonymous {
+			req.User.DisplayName = entity.DeterministicUsername(req.User.UserId)
+		} else {
+			// Look up user.
+			// XXX: Later look up user rating so we can attach to this request.
+
+			u, err := b.userStore.GetByUUID(ctx, req.User.UserId)
+			if err != nil {
+				return err
+			}
+			req.User.DisplayName = u.Username
+		}
+
 		sg, err := gameplay.NewSoughtGame(ctx, b.soughtGameStore, req)
 		if err != nil {
 			return err
 		}
-		// XXX: Later look up user rating so we can attach to this request.
 		evt := entity.WrapEvent(sg.SeekRequest, pb.MessageType_SEEK_REQUEST, "")
 		data, err := evt.Serialize()
 		if err != nil {
@@ -180,18 +200,19 @@ func (b *Bus) handleNatsPublish(ctx context.Context, topic string, data []byte) 
 			return err
 		}
 
-		return b.gameAccepted(ctx, evt)
+		// return b.gameAccepted(ctx, evt)
 
 	case "gameplayEvent":
 
 	case "initRealmInfo":
 
 	default:
-		return fmt.Errorf("unhandled publish topic: %v", topic)
+		return fmt.Errorf("unhandled publish topic: %v", subtopics)
 	}
 	return nil
 }
 
+/*
 func (b *Bus) gameAccepted(ctx context.Context, evt *pb.GameAcceptedEvent) error {
 	sg, err := b.soughtGameStore.Get(ctx, evt.RequestId)
 	if err != nil {
@@ -212,3 +233,4 @@ func (b *Bus) gameAccepted(ctx context.Context, evt *pb.GameAcceptedEvent) error
 		return err
 	}
 }
+*/
