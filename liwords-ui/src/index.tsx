@@ -1,6 +1,7 @@
 import React from 'react';
 import ReactDOM from 'react-dom';
 import './index.css';
+import { BrowserRouter } from 'react-router-dom';
 import App from './App';
 import * as serviceWorker from './serviceWorker';
 import { Store } from './store/store';
@@ -8,7 +9,9 @@ import { Store } from './store/store';
 ReactDOM.render(
   <React.StrictMode>
     <Store>
-      <App />
+      <BrowserRouter>
+        <App />
+      </BrowserRouter>
     </Store>
   </React.StrictMode>,
   document.getElementById('root')

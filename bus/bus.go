@@ -14,15 +14,18 @@ import (
 	nats "github.com/nats-io/nats.go"
 	"google.golang.org/protobuf/proto"
 
+	"github.com/domino14/liwords/pkg/config"
 	"github.com/domino14/liwords/pkg/entity"
 	"github.com/domino14/liwords/pkg/gameplay"
 	"github.com/domino14/liwords/pkg/user"
 	pb "github.com/domino14/liwords/rpc/api/proto"
+	macondopb "github.com/domino14/macondo/gen/api/proto/macondo"
 )
 
 // Bus is the struct; it should contain all the stores to verify messages, etc.
 type Bus struct {
 	natsconn        *nats.Conn
+	config          *config.Config
 	userStore       user.Store
 	gameStore       gameplay.GameStore
 	soughtGameStore gameplay.SoughtGameStore
@@ -31,8 +34,10 @@ type Bus struct {
 	subchans      map[string]chan *nats.Msg
 }
 
-func NewBus(natsURL string, userStore user.Store, gameStore gameplay.GameStore, soughtGameStore gameplay.SoughtGameStore) (*Bus, error) {
-	natsconn, err := nats.Connect(natsURL)
+func NewBus(cfg *config.Config, userStore user.Store, gameStore gameplay.GameStore,
+	soughtGameStore gameplay.SoughtGameStore) (*Bus, error) {
+
+	natsconn, err := nats.Connect(cfg.NatsURL)
 
 	if err != nil {
 		return nil, err
@@ -44,6 +49,7 @@ func NewBus(natsURL string, userStore user.Store, gameStore gameplay.GameStore, 
 		soughtGameStore: soughtGameStore,
 		subscriptions:   []*nats.Subscription{},
 		subchans:        map[string]chan *nats.Msg{},
+		config:          cfg,
 	}
 
 	topics := []string{
@@ -115,7 +121,7 @@ func (b *Bus) handleNatsRequest(ctx context.Context, topic string,
 		// already handles that.
 		path := msg.Realm
 		userID := msg.UserId
-		var topic string
+		var realm string
 		if strings.HasPrefix(path, "/game/") {
 			gameID := strings.TrimPrefix(path, "/game/")
 			game, err := b.gameStore.Get(ctx, gameID)
@@ -123,27 +129,28 @@ func (b *Bus) handleNatsRequest(ctx context.Context, topic string,
 				return err
 			}
 			var foundPlayer bool
+			log.Debug().Str("gameID", gameID).Interface("gameHistory", game.History()).Str("userID", userID).
+				Msg("register-game-path")
 			for i := 0; i < 2; i++ {
-				if game.History().Players[0].UserId == userID {
+				if game.History().Players[i].UserId == userID {
 					foundPlayer = true
 				}
 			}
 			if !foundPlayer {
-				topic = "gametv." + gameID
+				realm = "gametv-" + gameID
+			} else {
+				realm = "game-" + gameID
 			}
+			log.Debug().Str("computed-realm", realm)
 		} else {
 			return errors.New("realm request not handled")
 		}
 		resp := &pb.RegisterRealmResponse{}
-		resp.Realm = topic
+		resp.Realm = realm
 		retdata, err := proto.Marshal(resp)
 		if err != nil {
 			return err
 		}
-		// Note: if the player is involved IN a game, there is no realm
-		// that they should belong to. They will get game publishes directly
-		// to their user topic! see pubsub.go in liwords-socket. That's why
-		// the topic is blank for this case.
 		b.natsconn.Publish(replyTopic, retdata)
 		log.Debug().Str("topic", topic).Str("replyTopic", replyTopic).
 			Msg("published response")
@@ -200,7 +207,7 @@ func (b *Bus) handleNatsPublish(ctx context.Context, subtopics []string, data []
 			return err
 		}
 
-		// return b.gameAccepted(ctx, evt)
+		return b.gameAccepted(ctx, evt, subtopics[2])
 
 	case "gameplayEvent":
 
@@ -212,25 +219,92 @@ func (b *Bus) handleNatsPublish(ctx context.Context, subtopics []string, data []
 	return nil
 }
 
-/*
-func (b *Bus) gameAccepted(ctx context.Context, evt *pb.GameAcceptedEvent) error {
+func (b *Bus) gameAccepted(ctx context.Context, evt *pb.GameAcceptedEvent, userID string) error {
+
 	sg, err := b.soughtGameStore.Get(ctx, evt.RequestId)
 	if err != nil {
 		return err
 	}
-	requester := sg.SeekRequest.User.Username
-	if requester == sender {
-		log.Info().Str("sender", sender).Msg("canceling seek")
-		err := gameplay.CancelSoughtGame(ctx, h.soughtGameStore, evt.RequestId)
+	requester := sg.SeekRequest.User.UserId
+	if requester == userID {
+		log.Info().Str("sender", requester).Msg("canceling seek")
+		err := gameplay.CancelSoughtGame(ctx, b.soughtGameStore, evt.RequestId)
 		if err != nil {
 			return err
 		}
 		// broadcast a seek deletion.
-		err = h.DeleteSeek(evt.RequestId)
-		if err != nil {
-			return err
-		}
+		return b.broadcastSeekDeletion(evt.RequestId)
+
+	}
+	// Otherwise create a game
+	p1, err := getPlayerInfo(ctx, b.userStore, userID) // the acceptor
+	if err != nil {
 		return err
 	}
+	p2, err := getPlayerInfo(ctx, b.userStore, requester) // the original requester
+	if err != nil {
+		return err
+	}
+	players := []*macondopb.PlayerInfo{p1, p2}
+	log.Debug().Interface("seekreq", sg.SeekRequest).Msg("seek-request-accepted")
+
+	g, err := gameplay.InstantiateNewGame(ctx, b.gameStore, b.config,
+		players, sg.SeekRequest.GameRequest)
+	if err != nil {
+		return err
+	}
+	// Broadcast a seek delete event, and send both parties a game redirect.
+	b.soughtGameStore.Delete(ctx, evt.RequestId)
+	err = b.broadcastSeekDeletion(evt.RequestId)
+	if err != nil {
+		return err
+	}
+	// This event will result in a redirect.
+	ngevt := entity.WrapEvent(&pb.NewGameEvent{
+		GameId: g.GameID(),
+	}, pb.MessageType_NEW_GAME_EVENT, "")
+	b.pubToUser(p1.UserId, ngevt)
+	b.pubToUser(p2.UserId, ngevt)
+
+	log.Info().Str("newgameid", g.History().Uid).
+		Str("sender", userID).
+		Str("requester", requester).
+		Str("onturn", g.NickOnTurn()).Msg("game-accepted")
+
+	// Now, reset the timer and register the event change hook.
+	// err = gameplay.StartGame(ctx, h.gameStore, h.eventChan, g.GameID())
+	// if err != nil {
+	// 	return err
+	// }
+	return nil
 }
-*/
+
+func (b *Bus) broadcastSeekDeletion(seekID string) error {
+	toSend := entity.WrapEvent(&pb.GameAcceptedEvent{RequestId: seekID},
+		pb.MessageType_GAME_ACCEPTED_EVENT, "")
+	data, err := toSend.Serialize()
+	if err != nil {
+		return err
+	}
+	return b.natsconn.Publish("lobby.gameAccepted", data)
+}
+
+func (b *Bus) pubToUser(userID string, evt *entity.EventWrapper) error {
+	bts, err := evt.Serialize()
+	if err != nil {
+		return err
+	}
+	return b.natsconn.Publish("user."+userID, bts)
+}
+
+func getPlayerInfo(ctx context.Context, u user.Store, id string) (*macondopb.PlayerInfo, error) {
+
+	user, err := u.GetByUUID(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	// Put in real name, etc here later.
+	return &macondopb.PlayerInfo{
+		Nickname: user.Username, UserId: user.UUID,
+	}, nil
+}

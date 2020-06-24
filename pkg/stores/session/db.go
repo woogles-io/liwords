@@ -52,7 +52,7 @@ func (s *DBStore) Get(ctx context.Context, sessionID string) (*entity.Session, e
 	}
 
 	return &entity.Session{
-		ID:       u.UUID,
+		ID:       u.UUID, // the session ID
 		Username: data.Username,
 		UserUUID: data.UserUUID,
 	}, nil
@@ -61,14 +61,13 @@ func (s *DBStore) Get(ctx context.Context, sessionID string) (*entity.Session, e
 // The data inside the session's Data object.
 type sessionInfo struct {
 	Username string `json:"username"`
-	UserID   uint   `json:"id"`
 	UserUUID string `json:"uuid"`
 }
 
 // New should be called when a user logs in. It'll create a new session.
 func (s *DBStore) New(ctx context.Context, user *entity.User) (*entity.Session, error) {
 
-	data := sessionInfo{user.Username, user.ID, user.UUID}
+	data := sessionInfo{user.Username, user.UUID}
 
 	bytes, err := json.Marshal(data)
 	if err != nil {

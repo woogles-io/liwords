@@ -1,5 +1,10 @@
 import React, { useLayoutEffect, useState, useEffect, useRef } from 'react';
-import { BrowserRouter as Router, Route, Switch } from 'react-router-dom';
+import {
+  BrowserRouter as Router,
+  Route,
+  Switch,
+  useLocation,
+} from 'react-router-dom';
 import './App.scss';
 import 'antd/dist/antd.css';
 import useWebSocket from 'react-use-websocket';
@@ -13,8 +18,14 @@ import { decodeToMsg, encodeToSocketFmt } from './utils/protobuf';
 import { onSocketMsg } from './store/socket_handlers';
 import { Login } from './lobby/login';
 import { Register } from './lobby/register';
-import { MessageType, TokenSocketLogin } from './gen/api/proto/game_service_pb';
+import {
+  MessageType,
+  JoinPath,
+  UnjoinRealm,
+} from './gen/api/proto/game_service_pb';
 import { useSocketToken } from './hooks/use_socket_token';
+
+const JoinSocketDelay = 1000;
 
 function useWindowSize() {
   const [size, setSize] = useState([0, 0]);
@@ -32,7 +43,6 @@ function useWindowSize() {
 const App = () => {
   const [width, height] = useWindowSize();
   // const [err, setErr] = useState('');
-  console.log('rendering app');
   const socketUrl = getSocketURI();
   const store = useStoreContext();
 
@@ -45,37 +55,49 @@ const App = () => {
   });
 
   const { username, loggedIn } = useSocketToken(sendMessage);
+  const location = useLocation();
+
+  useEffect(() => {
+    const rr = new JoinPath();
+    rr.setPath(location.pathname);
+    console.log('Tryna register with path', location.pathname);
+    const timeout = setTimeout(() => {
+      sendMessage(
+        encodeToSocketFmt(MessageType.JOIN_PATH, rr.serializeBinary())
+      );
+    }, JoinSocketDelay);
+
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.pathname]);
 
   return (
     <div className="App">
-      <Router>
-        <Switch>
-          <Route path="/" exact>
-            <Lobby
-              username={username}
-              sendSocketMsg={sendMessage}
-              loggedIn={loggedIn}
-            />
-          </Route>
-          <Route path="/game/:gameID">
-            {/* Table meaning a game table */}
-            <Table
-              windowWidth={width}
-              windowHeight={height}
-              sendSocketMsg={sendMessage}
-              username={username}
-              loggedIn={loggedIn}
-            />
-          </Route>
+      <Switch>
+        <Route path="/" exact>
+          <Lobby
+            username={username}
+            sendSocketMsg={sendMessage}
+            loggedIn={loggedIn}
+          />
+        </Route>
+        <Route path="/game/:gameID">
+          {/* Table meaning a game table */}
+          <Table
+            windowWidth={width}
+            windowHeight={height}
+            sendSocketMsg={sendMessage}
+            username={username}
+            loggedIn={loggedIn}
+          />
+        </Route>
 
-          <Route path="/login">
-            <Login />
-          </Route>
-          <Route path="/register">
-            <Register />
-          </Route>
-        </Switch>
-      </Router>
+        <Route path="/login">
+          <Login />
+        </Route>
+        <Route path="/register">
+          <Register />
+        </Route>
+      </Switch>
     </div>
   );
 };

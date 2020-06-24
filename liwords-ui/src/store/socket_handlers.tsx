@@ -121,6 +121,7 @@ export const onSocketMsg = (storeData: StoreData) => {
 
       case MessageType.NEW_GAME_EVENT: {
         const nge = parsedMsg as NewGameEvent;
+        console.log('got new game event', nge);
         const gid = nge.getGameId();
         storeData.setRedirGame(gid);
         break;
@@ -155,6 +156,7 @@ export const onSocketMsg = (storeData: StoreData) => {
 
       case MessageType.GAME_ACCEPTED_EVENT: {
         const gae = parsedMsg as GameAcceptedEvent;
+        console.log('got game accepted event', gae);
         storeData.dispatchLobbyContext({
           actionType: ActionType.RemoveSoughtGame,
           payload: gae.getRequestId(),

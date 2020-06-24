@@ -61,7 +61,7 @@ export const Table = (props: Props) => {
   } = useStoreContext();
   const { gameID } = useParams();
   const { username, sendSocketMsg } = props;
-  const location = useLocation();
+  // const location = useLocation();
 
   useEffect(() => {
     // Avoid react-router hijacking the back button.
@@ -70,27 +70,10 @@ export const Table = (props: Props) => {
   }, [setRedirGame]);
 
   useEffect(() => {
-    const rr = new JoinPath();
-
-    rr.setPath(location.pathname);
-    const timeout = setTimeout(() => {
-      sendSocketMsg(
-        encodeToSocketFmt(MessageType.JOIN_PATH, rr.serializeBinary())
-      );
-    }, JoinSocketDelay);
-    // XXX: Fetch some info via XHR about the game itself (timer, tourney, etc) here.
-
     return () => {
-      clearTimeout(timeout);
-
-      const dr = new UnjoinRealm();
-      sendSocketMsg(
-        encodeToSocketFmt(MessageType.UNJOIN_REALM, dr.serializeBinary())
-      );
       clearChat();
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  });
 
   useEffect(() => {
     if (pTimedOut === undefined) return;

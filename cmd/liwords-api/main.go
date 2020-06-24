@@ -90,7 +90,7 @@ func main() {
 	soughtGameStore := soughtgame.NewMemoryStore()
 
 	// Handle bus.
-	pubsubBus, err := bus.NewBus(cfg.NatsURL, userStore, gameStore, soughtGameStore)
+	pubsubBus, err := bus.NewBus(cfg, userStore, gameStore, soughtGameStore)
 	if err != nil {
 		panic(err)
 	}
