@@ -9,13 +9,13 @@ const (
 	InitialVolatility           float64 = 0.06
 	MaximumVolatility           float64 = 0.1
 	InitialRatingDeviation      int     = 350
-	MinimumRatingDeviation      int     = 50
+	MinimumRatingDeviation      int     = 80
 	MaximumRatingDeviation      int     = 350
-	VolatilityDeltaConstraint   float64 = 0.7
+	VolatilityDeltaConstraint   float64 = 0.5
 	GlickoToGlicko225Conversion float64 = 173.7178
 	ConvergenceTolerance        float64 = 0.000001
 	SpreadScaling               int     = 200
-	WinBoost                    float64 = 0.15
+	WinBoost                    float64 = 0.25
 	K                           float64 = (float64(4*SpreadScaling) * WinBoost) / (1 - (2 * WinBoost))
 	RatingPeriodinSeconds       int     = 60 * 60 * 24 * 4
 	iterationMaximum            int     = 1000

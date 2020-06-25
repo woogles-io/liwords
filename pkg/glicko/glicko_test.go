@@ -2,6 +2,7 @@ package glicko
 
 import (
 	"encoding/csv"
+	"flag"
 	"fmt"
 	"github.com/matryer/is"
 	"log"
@@ -11,6 +12,8 @@ import (
 	"strconv"
 	"testing"
 )
+
+var file = flag.String("file", "", "File to use in the last test")
 
 type Player struct {
 	name            string
@@ -338,6 +341,38 @@ func TestWinBoost(t *testing.T) {
 	is.True(rating3-rating2 < rating2-rating1)
 }
 
+func TestGamesToMinimumDeviation(t *testing.T) {
+
+	rating := float64(InitialRating)
+	deviation := float64(InitialRatingDeviation)
+	volatility := InitialVolatility
+
+	games_to_min := 0
+	spread := 0
+	opponent_rating := float64(InitialRating)
+
+	for i := 0; i < 1000; i++ {
+		games_to_min++
+		rating, deviation, volatility =
+			Rate(
+				rating,
+				deviation,
+				volatility,
+				opponent_rating,
+				float64(MinimumRatingDeviation),
+				spread,
+				RatingPeriodinSeconds/12)
+		// fmt.Printf("%.2f %.2f %.2f\n", rating, deviation, volatility)
+		if deviation == float64(MinimumRatingDeviation) {
+			break
+		}
+	}
+
+	fmt.Printf("Starting at a rating of %d and a deviation of %d,\n"+
+		"it took %d games winning by %d points each against\n"+
+		"a %.2f rated oppoent to get to a deviation of %.2f\n\n", InitialRating, InitialRatingDeviation, games_to_min, spread, opponent_rating, deviation)
+}
+
 func TestRatingConvergenceTime(t *testing.T) {
 
 	rating := float64(InitialRating)
@@ -424,9 +459,16 @@ func TestRatingConvergenceTimeAfterSteadyState(t *testing.T) {
 func TestRealData(t *testing.T) {
 
 	players := make(map[int]*Player)
-	data := readCsvFile("crosstables_game_results.csv")
-	minDeviationGuesses := 0
-	correctGuesses := 0
+
+	datafile := "crosstables_game_results.csv"
+
+	if len(*file) > 0 {
+		datafile = *file
+	}
+
+	data := readCsvFile(datafile)
+	predictions := 0
+	correctPredictions := 0
 	var spreads []float64
 
 	for _, game := range data {
@@ -442,6 +484,7 @@ func TestRealData(t *testing.T) {
 			}
 		}
 
+		game_id, _ := strconv.Atoi(game[0])
 		playerOneID, _ := strconv.Atoi(game[2])
 		playerTwoID, _ := strconv.Atoi(game[3])
 
@@ -459,13 +502,12 @@ func TestRealData(t *testing.T) {
 		spread := playerOneScore - playerTwoScore
 		spreads = append(spreads, float64(spread))
 
-		if playerOneRatingDeviation == float64(MinimumRatingDeviation) && playerTwoRatingDeviation == float64(MinimumRatingDeviation) {
-			minDeviationGuesses++
-
-			if math.Abs(playerOneRating-playerTwoRating) < 4*float64(MinimumRatingDeviation) ||
-				(playerOneRating > playerTwoRating && spread > 0) ||
+		// Start predictin in 2018
+		if game_id > 1865903 {
+			predictions++
+			if (playerOneRating > playerTwoRating && spread > 0) ||
 				(playerOneRating < playerTwoRating && spread < 0) {
-				correctGuesses++
+				correctPredictions++
 			}
 		}
 
@@ -500,8 +542,7 @@ func TestRealData(t *testing.T) {
 	fmt.Printf("The test pool contains %d players\n\n", len(playersArray))
 	mean, stdev := MeanStdDev(spreads)
 	fmt.Printf("The average victor beat their opponent by %.4f points with a standard deviation of %.4f\n\n", mean, stdev)
-	fmt.Printf("Assuming a 95%% confidence interval, the system correctly predicted %d results out of %d (%.4f)\n"+
-		"when both players had a minimum rating deviation\n\n", correctGuesses, minDeviationGuesses, float64(correctGuesses)/float64(minDeviationGuesses))
+	fmt.Printf("The system correctly predicted %d results out of %d (%.4f)\n\n", correctPredictions, predictions, float64(correctPredictions)/float64(predictions))
 
 	for i := 0; i < len(playersArray); i++ {
 		if i < 20 || i > len(playersArray)-20 {
