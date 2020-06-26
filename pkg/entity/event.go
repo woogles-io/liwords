@@ -19,6 +19,14 @@ const (
 	protobufSerializationProtocol = "proto"
 )
 
+type EventAudienceType string
+
+const (
+	AudGame   EventAudienceType = "game"
+	AudGameTV                   = "gametv"
+	AudUser                     = "user"
+)
+
 // An EventWrapper is a real-time update, whether it is a played move,
 // a challenged move, or the game ending, a seek beginning, etc.
 type EventWrapper struct {
@@ -31,6 +39,7 @@ type EventWrapper struct {
 
 	// Serialization protocol
 	protocol string
+	audience []string
 }
 
 // WrapEvent wraps a protobuf event.
@@ -47,6 +56,21 @@ func WrapEvent(event proto.Message, messageType pb.MessageType, gameID string) *
 // object.
 func (e *EventWrapper) SetSerializationProtocol(protocol string) {
 	e.protocol = protocol
+}
+
+// AddAudience sets the audience(s) for this event. It is in the form of a NATS
+// channel name. This is not required to be set in order to deliver a message,
+// but certain functions will use it in the gameplay/entity module.
+func (e *EventWrapper) AddAudience(audType EventAudienceType, specific string) {
+	if e.audience == nil {
+		e.audience = []string{}
+	}
+	e.audience = append(e.audience, string(audType)+"."+specific)
+}
+
+// Audience gets the audience(s) for this event, in the form of NATS channel names.
+func (e *EventWrapper) Audience() []string {
+	return e.audience
 }
 
 // Serialize serializes the event to a byte array. Our encoding

@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/rs/zerolog/log"
 
@@ -22,6 +23,10 @@ import (
 	macondopb "github.com/domino14/macondo/gen/api/proto/macondo"
 )
 
+const (
+	GameStartDelay = 3 * time.Second
+)
+
 // Bus is the struct; it should contain all the stores to verify messages, etc.
 type Bus struct {
 	natsconn        *nats.Conn
@@ -32,6 +37,8 @@ type Bus struct {
 
 	subscriptions []*nats.Subscription
 	subchans      map[string]chan *nats.Msg
+
+	gameEventChan chan *entity.EventWrapper
 }
 
 func NewBus(cfg *config.Config, userStore user.Store, gameStore gameplay.GameStore,
@@ -50,6 +57,7 @@ func NewBus(cfg *config.Config, userStore user.Store, gameStore gameplay.GameSto
 		subscriptions:   []*nats.Subscription{},
 		subchans:        map[string]chan *nats.Msg{},
 		config:          cfg,
+		gameEventChan:   make(chan *entity.EventWrapper, 64),
 	}
 
 	topics := []string{
@@ -101,6 +109,23 @@ func (b *Bus) ProcessMessages(ctx context.Context) {
 			err := b.handleNatsRequest(ctx, subtopics[2], msg.Reply, msg.Data)
 			if err != nil {
 				log.Err(err).Msg("process-message-request-error")
+			}
+
+		case msg := <-b.gameEventChan:
+			// A game event. Publish directly to the right realm.
+			log.Debug().Interface("msg", msg).Msg("game event chan")
+			topics := msg.Audience()
+			data, err := msg.Serialize()
+			if err != nil {
+				log.Err(err).Msg("serialize-error")
+				break
+			}
+			for _, topic := range topics {
+				if strings.HasPrefix(topic, "user.") {
+					b.pubToUser(strings.TrimPrefix(topic, "user."), msg)
+				} else {
+					b.natsconn.Publish(topic, data)
+				}
 			}
 		}
 	}
@@ -206,13 +231,34 @@ func (b *Bus) handleNatsPublish(ctx context.Context, subtopics []string, data []
 		if err != nil {
 			return err
 		}
-
+		// subtopics[2] is the user ID of the requester.
 		return b.gameAccepted(ctx, evt, subtopics[2])
 
 	case "gameplayEvent":
+		// evt :=
+		evt := &pb.ClientGameplayEvent{}
+		err := proto.Unmarshal(data, evt)
+		if err != nil {
+			return err
+		}
+		// subtopics[2] is the user ID of the requester.
+		return gameplay.PlayMove(ctx, b.gameStore, subtopics[2], evt)
+
+	case "timedOut":
+		evt := &pb.TimedOut{}
+		err := proto.Unmarshal(data, evt)
+		if err != nil {
+			return err
+		}
+		return gameplay.TimedOut(ctx, b.gameStore, evt.UserId, evt.GameId)
 
 	case "initRealmInfo":
-
+		evt := &pb.InitRealmInfo{}
+		err := proto.Unmarshal(data, evt)
+		if err != nil {
+			return err
+		}
+		return b.initRealmInfo(ctx, evt)
 	default:
 		return fmt.Errorf("unhandled publish topic: %v", subtopics)
 	}
@@ -269,13 +315,17 @@ func (b *Bus) gameAccepted(ctx context.Context, evt *pb.GameAcceptedEvent, userI
 	log.Info().Str("newgameid", g.History().Uid).
 		Str("sender", userID).
 		Str("requester", requester).
+		Interface("starting-in", GameStartDelay).
 		Str("onturn", g.NickOnTurn()).Msg("game-accepted")
 
 	// Now, reset the timer and register the event change hook.
-	// err = gameplay.StartGame(ctx, h.gameStore, h.eventChan, g.GameID())
-	// if err != nil {
-	// 	return err
-	// }
+	time.AfterFunc(GameStartDelay, func() {
+		err = gameplay.StartGame(ctx, b.gameStore, b.gameEventChan, g.GameID())
+		if err != nil {
+			log.Err(err).Msg("starting-game")
+		}
+	})
+
 	return nil
 }
 
@@ -290,11 +340,61 @@ func (b *Bus) broadcastSeekDeletion(seekID string) error {
 }
 
 func (b *Bus) pubToUser(userID string, evt *entity.EventWrapper) error {
-	bts, err := evt.Serialize()
+	sanitized, err := sanitize(evt, userID)
+	bts, err := sanitized.Serialize()
 	if err != nil {
 		return err
 	}
 	return b.natsconn.Publish("user."+userID, bts)
+}
+
+func (b *Bus) initRealmInfo(ctx context.Context, evt *pb.InitRealmInfo) error {
+	if evt.Realm == "lobby" {
+		seeks, err := b.openSeeks(ctx)
+		if err != nil {
+			return err
+		}
+		return b.pubToUser(evt.UserId, seeks)
+	} else if strings.HasPrefix(evt.Realm, "game-") || strings.HasPrefix(evt.Realm, "gametv-") {
+		// Get a sanitized history
+		gameID := strings.Split(evt.Realm, "-")[1]
+		refresher, err := b.gameRefresher(ctx, gameID)
+		if err != nil {
+			return err
+		}
+		return b.pubToUser(evt.UserId, refresher)
+	}
+	log.Debug().Interface("evt", evt).Msg("no init realm info")
+	return nil
+}
+
+func (b *Bus) openSeeks(ctx context.Context) (*entity.EventWrapper, error) {
+	sgs, err := b.soughtGameStore.ListOpen(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	pbobj := &pb.SeekRequests{Requests: []*pb.SeekRequest{}}
+	for _, sg := range sgs {
+		pbobj.Requests = append(pbobj.Requests, sg.SeekRequest)
+	}
+	evt := entity.WrapEvent(pbobj, pb.MessageType_SEEK_REQUESTS, "")
+	return evt, nil
+}
+
+func (b *Bus) gameRefresher(ctx context.Context, gameID string) (*entity.EventWrapper, error) {
+	// Get a game refresher event. If sanitize is true, opponent racks will be
+	// hidden from the given userID.
+	entGame, err := b.gameStore.Get(ctx, string(gameID))
+	if err != nil {
+		return nil, err
+	}
+	if !entGame.Started() {
+		return nil, errors.New("game-starting-soon")
+	}
+	evt := entity.WrapEvent(entGame.HistoryRefresherEvent(),
+		pb.MessageType_GAME_HISTORY_REFRESHER, entGame.GameID())
+	return evt, nil
 }
 
 func getPlayerInfo(ctx context.Context, u user.Store, id string) (*macondopb.PlayerInfo, error) {

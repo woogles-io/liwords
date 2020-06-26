@@ -22,7 +22,6 @@ const gutter = 16;
 const boardspan = 12;
 const maxspan = 24; // from ant design
 const navbarHeightAndGutter = 84; // 72 + 12 spacing
-const JoinSocketDelay = 1000;
 
 type Props = {
   windowWidth: number;
@@ -73,7 +72,8 @@ export const Table = (props: Props) => {
     return () => {
       clearChat();
     };
-  });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     if (pTimedOut === undefined) return;
@@ -83,11 +83,11 @@ export const Table = (props: Props) => {
     let timedout = '';
 
     for (let idx = 0; idx < gameContext.players.length; idx++) {
-      const nick = gameContext.players[idx].nickname;
-      if (gameContext.nickToPlayerOrder[nick] === pTimedOut) {
-        timedout = nick;
+      const p = gameContext.players[idx];
+      if (gameContext.uidToPlayerOrder[p.userID] === pTimedOut) {
+        timedout = p.userID;
       }
-      if (username === nick) {
+      if (username === p.nickname) {
         send = true;
       }
     }
@@ -96,7 +96,7 @@ export const Table = (props: Props) => {
 
     const to = new TimedOut();
     to.setGameId(gameID);
-    to.setUsername(timedout);
+    to.setUserId(timedout);
     console.log('sending timeout to socket');
     sendSocketMsg(
       encodeToSocketFmt(MessageType.TIMED_OUT, to.serializeBinary())

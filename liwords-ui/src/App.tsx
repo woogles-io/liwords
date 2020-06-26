@@ -25,7 +25,7 @@ import {
 } from './gen/api/proto/game_service_pb';
 import { useSocketToken } from './hooks/use_socket_token';
 
-const JoinSocketDelay = 1000;
+const JoinSocketDelay = 2000;
 
 function useWindowSize() {
   const [size, setSize] = useState([0, 0]);
@@ -58,6 +58,7 @@ const App = () => {
   const location = useLocation();
 
   useEffect(() => {
+    console.log('location pathname change, now', location.pathname);
     const rr = new JoinPath();
     rr.setPath(location.pathname);
     console.log('Tryna register with path', location.pathname);

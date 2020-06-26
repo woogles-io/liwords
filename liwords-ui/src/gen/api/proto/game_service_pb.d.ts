@@ -234,6 +234,9 @@ export class ServerGameplayEvent extends jspb.Message {
   getPlaying(): macondo_api_proto_macondo_macondo_pb.PlayStateMap[keyof macondo_api_proto_macondo_macondo_pb.PlayStateMap];
   setPlaying(value: macondo_api_proto_macondo_macondo_pb.PlayStateMap[keyof macondo_api_proto_macondo_macondo_pb.PlayStateMap]): void;
 
+  getUserId(): string;
+  setUserId(value: string): void;
+
   serializeBinary(): Uint8Array;
   toObject(includeInstance?: boolean): ServerGameplayEvent.AsObject;
   static toObject(includeInstance: boolean, msg: ServerGameplayEvent): ServerGameplayEvent.AsObject;
@@ -251,6 +254,7 @@ export namespace ServerGameplayEvent {
     newRack: string,
     timeRemaining: number,
     playing: macondo_api_proto_macondo_macondo_pb.PlayStateMap[keyof macondo_api_proto_macondo_macondo_pb.PlayStateMap],
+    userId: string,
   }
 }
 
@@ -350,6 +354,42 @@ export namespace GameHistoryRefresher {
   }
 }
 
+export class GameTurnsRefresher extends jspb.Message {
+  clearTurnsList(): void;
+  getTurnsList(): Array<macondo_api_proto_macondo_macondo_pb.GameTurn>;
+  setTurnsList(value: Array<macondo_api_proto_macondo_macondo_pb.GameTurn>): void;
+  addTurns(value?: macondo_api_proto_macondo_macondo_pb.GameTurn, index?: number): macondo_api_proto_macondo_macondo_pb.GameTurn;
+
+  getPlayState(): macondo_api_proto_macondo_macondo_pb.PlayStateMap[keyof macondo_api_proto_macondo_macondo_pb.PlayStateMap];
+  setPlayState(value: macondo_api_proto_macondo_macondo_pb.PlayStateMap[keyof macondo_api_proto_macondo_macondo_pb.PlayStateMap]): void;
+
+  getStartingTurn(): number;
+  setStartingTurn(value: number): void;
+
+  clearPlayersList(): void;
+  getPlayersList(): Array<macondo_api_proto_macondo_macondo_pb.PlayerInfo>;
+  setPlayersList(value: Array<macondo_api_proto_macondo_macondo_pb.PlayerInfo>): void;
+  addPlayers(value?: macondo_api_proto_macondo_macondo_pb.PlayerInfo, index?: number): macondo_api_proto_macondo_macondo_pb.PlayerInfo;
+
+  serializeBinary(): Uint8Array;
+  toObject(includeInstance?: boolean): GameTurnsRefresher.AsObject;
+  static toObject(includeInstance: boolean, msg: GameTurnsRefresher): GameTurnsRefresher.AsObject;
+  static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+  static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+  static serializeBinaryToWriter(message: GameTurnsRefresher, writer: jspb.BinaryWriter): void;
+  static deserializeBinary(bytes: Uint8Array): GameTurnsRefresher;
+  static deserializeBinaryFromReader(message: GameTurnsRefresher, reader: jspb.BinaryReader): GameTurnsRefresher;
+}
+
+export namespace GameTurnsRefresher {
+  export type AsObject = {
+    turnsList: Array<macondo_api_proto_macondo_macondo_pb.GameTurn.AsObject>,
+    playState: macondo_api_proto_macondo_macondo_pb.PlayStateMap[keyof macondo_api_proto_macondo_macondo_pb.PlayStateMap],
+    startingTurn: number,
+    playersList: Array<macondo_api_proto_macondo_macondo_pb.PlayerInfo.AsObject>,
+  }
+}
+
 export class NewGameEvent extends jspb.Message {
   getGameId(): string;
   setGameId(value: string): void;
@@ -435,8 +475,8 @@ export class TimedOut extends jspb.Message {
   getGameId(): string;
   setGameId(value: string): void;
 
-  getUsername(): string;
-  setUsername(value: string): void;
+  getUserId(): string;
+  setUserId(value: string): void;
 
   serializeBinary(): Uint8Array;
   toObject(includeInstance?: boolean): TimedOut.AsObject;
@@ -451,7 +491,7 @@ export class TimedOut extends jspb.Message {
 export namespace TimedOut {
   export type AsObject = {
     gameId: string,
-    username: string,
+    userId: string,
   }
 }
 
@@ -541,6 +581,7 @@ export interface MessageTypeMap {
   UNJOIN_REALM: 12;
   TIMED_OUT: 13;
   TOKEN_SOCKET_LOGIN: 14;
+  GAME_TURNS_REFRESHER: 15;
 }
 
 export const MessageType: MessageTypeMap;

@@ -17,9 +17,11 @@ import {
   UnjoinRealm,
   TimedOut,
   TokenSocketLogin,
+  GameTurnsRefresher,
 } from '../gen/api/proto/game_service_pb';
 import { ActionType } from '../actions/actions';
 import { endGameMessage } from './end_of_game';
+import { GameTurn } from '../gen/macondo/api/proto/macondo/macondo_pb';
 
 const parseMsg = (msg: Uint8Array) => {
   const msgType = msg[0] as MessageTypeMap[keyof MessageTypeMap];
@@ -41,6 +43,7 @@ const parseMsg = (msg: Uint8Array) => {
     [MessageType.UNJOIN_REALM]: UnjoinRealm,
     [MessageType.TIMED_OUT]: TimedOut,
     [MessageType.TOKEN_SOCKET_LOGIN]: TokenSocketLogin,
+    [MessageType.GAME_TURNS_REFRESHER]: GameTurnsRefresher,
   };
 
   const parsedMsg = msgTypes[msgType];
@@ -133,6 +136,16 @@ export const onSocketMsg = (storeData: StoreData) => {
         storeData.dispatchGameContext({
           actionType: ActionType.RefreshHistory,
           payload: ghr,
+        });
+        break;
+      }
+
+      case MessageType.GAME_TURNS_REFRESHER: {
+        const gtr = parsedMsg as GameTurnsRefresher;
+        console.log('got gameturns refrsher', gtr);
+        storeData.dispatchGameContext({
+          actionType: ActionType.RefreshTurns,
+          payload: gtr,
         });
         break;
       }

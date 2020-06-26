@@ -87,6 +87,7 @@ enum MessageType {
   UNJOIN_REALM = 12;
   TIMED_OUT = 13;
   TOKEN_SOCKET_LOGIN = 14;
+  GAME_TURNS_REFRESHER = 15;
   // Add more events here. The total number of events should fit in a byte.
   // We should definitely not be using anywhere close to 255 events, and
   // in order to enforce that I'll be forcing the event type header to just be
@@ -125,6 +126,7 @@ message ServerGameplayEvent {
   string new_rack = 3;
   int32 time_remaining = 4;
   macondo.PlayState playing = 5;
+  string user_id = 6; // the event has the nickname, but not the userid.
 }
 
 // The server will send back a challenge result event only in the case of
@@ -175,6 +177,27 @@ message GameHistoryRefresher {
   // of whether they went first.
   int32 time_player1 = 2;
   int32 time_player2 = 3;
+}
+
+// A GameTurnsRefresher is a kind of smaller version of a GameHistoryRefresher.
+// Players receive it after a challenge is adjudicated. Because of the various
+// challenge rules, and because there is a potential for a game to end after
+// a challenge in various ways, there could be one or more turns affected
+// by a challenge. This event sends all affected turns.
+message GameTurnsRefresher {
+  // Assume that the receiver of this event already has some sort of cached
+  // version of a GameHistory. This just adds additional events to that history.
+  // Note that it may also overwrite events (for example, turns with challenge
+  // bonuses are overwrites of previous turns, as well as turns where a player
+  // takes phony tiles back).
+  repeated macondo.GameTurn turns = 1;
+  macondo.PlayState play_state = 2;
+  // starting_turn is the turn at which this turns refresher starts. The
+  // receiver of this event should start writing to its local game history
+  // starting with this turn.
+  int32 starting_turn = 3;
+
+  repeated macondo.PlayerInfo players = 4;
 }
 
 // A NewGameEvent gets sent from the server to the involved clients when a new
@@ -228,7 +251,7 @@ message ClientGameplayEvent {
 
 message TimedOut {
   string game_id = 1;
-  string username = 2;
+  string user_id = 2;
 }
 
 // Communication

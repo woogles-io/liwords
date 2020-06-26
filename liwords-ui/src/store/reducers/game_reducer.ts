@@ -9,6 +9,8 @@ import { Action, ActionType } from '../../actions/actions';
 import {
   ServerGameplayEvent,
   GameHistoryRefresher,
+  ServerChallengeResultEvent,
+  GameTurnsRefresher,
 } from '../../gen/api/proto/game_service_pb';
 import { Direction, isBlank, Blank } from '../../utils/cwgame/common';
 import { EnglishCrosswordGameDistribution } from '../../constants/tile_distributions';
@@ -19,6 +21,7 @@ import { ThroughTileMarker } from '../../utils/cwgame/game_event';
 type TileDistribution = { [rune: string]: number };
 
 export type FullPlayerInfo = {
+  userID: string;
   nickname: string;
   fullName: string;
   countryFlag: string;
@@ -36,6 +39,7 @@ export type FullPlayerInfo = {
 const initialExpandToFull = (playerList: PlayerInfo[]): FullPlayerInfo[] => {
   return playerList.map((pi, idx) => {
     return {
+      userID: pi.getUserId(),
       nickname: pi.getNickname(),
       fullName: pi.getRealName(),
       countryFlag: '',
@@ -66,6 +70,7 @@ export type GameState = {
   gameID: string;
   lastPlayedTiles: Array<Tile>;
   nickToPlayerOrder: { [nick: string]: PlayerOrder };
+  uidToPlayerOrder: { [uid: string]: PlayerOrder };
   playState: number;
   clockController: React.MutableRefObject<ClockController | null> | null;
   onClockTick: (p: PlayerOrder, t: Millis) => void;
@@ -89,6 +94,7 @@ export const startingGameState = (
     gameID,
     lastPlayedTiles: new Array<Tile>(),
     nickToPlayerOrder: {},
+    uidToPlayerOrder: {},
     playState: PlayState.PLAYING,
     clockController: null,
     onClockTick: () => {},
@@ -151,6 +157,7 @@ const newGameState = (
     tileDistribution: state.tileDistribution,
     gameID: state.gameID,
     nickToPlayerOrder: state.nickToPlayerOrder,
+    uidToPlayerOrder: state.uidToPlayerOrder,
     playState: sge.getPlaying(),
     clockController: state.clockController,
     onClockTick: state.onClockTick,
@@ -218,12 +225,18 @@ const stateFromHistory = (refresher: GameHistoryRefresher): GameState => {
     [playerList[1].getNickname()]: 'p1' as PlayerOrder,
   };
 
+  const uidToPlayerOrder = {
+    [playerList[0].getUserId()]: 'p0' as PlayerOrder,
+    [playerList[1].getUserId()]: 'p1' as PlayerOrder,
+  };
+
   const gs = startingGameState(
     EnglishCrosswordGameDistribution,
     initialExpandToFull(playerList),
     history!.getUid()
   );
   gs.nickToPlayerOrder = nickToPlayerOrder;
+  gs.uidToPlayerOrder = uidToPlayerOrder;
   history.getTurnsList().forEach((turn, idx) => {
     const events = turn.getEventsList();
     // Detect challenged-off moves:
@@ -396,6 +409,12 @@ export const GameReducer = (state: GameState, action: Action): GameState => {
       // Otherwise if it is null, we have an issue, but there's no need to
       // throw an Error..
       return newState;
+    }
+
+    case ActionType.RefreshTurns: {
+      // Almost a history refresh, but not quite. We must edit turns in
+      // place and add more turns.
+      const gtr = action.payload as GameTurnsRefresher;
     }
   }
   // This should never be reached, but the compiler is complaining.
