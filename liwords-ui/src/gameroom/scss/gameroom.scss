@@ -79,24 +79,27 @@
   grid-template-columns: repeat(15, 1fr);
   grid-template-rows: repeat(15, 1fr);
   gap: 1px;
-  border: 1px solid #CCC;
-  background-color: #CCC;
+  border: 1px solid #DDD;
+  background-color: #DDD;
 }
 
 .tiles {
   position: absolute;
   pointer-events: none;
   background-color: transparent;
-  border: 1px solid transparent;
+  border-color: transparent;
   height: 100%;
 }
 
 .board-space {
+  box-sizing: border-box;
   position: relative;
   display: flex;
   justify-content: center;
   align-items: center;
   color: $color-board-empty;
+  border: transparent 1px solid;
+  border-color: transparent transparent #DDD #DDD;
 }
 
 .board-space::before {
