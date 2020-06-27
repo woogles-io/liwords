@@ -1,10 +1,10 @@
 import React from 'react';
-import { FullPlayerInfo } from '../store/reducers/game_reducer';
+import { ReducedPlayerInfo } from '../store/reducers/game_reducer';
 import { fixedCharAt} from '../utils/cwgame/common'
 import './avatar.scss';
 
 type AvatarProps = {
-  player: FullPlayerInfo;
+  player: ReducedPlayerInfo,
 };
 
 export const PlayerAvatar = (props: AvatarProps) => {

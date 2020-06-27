@@ -75,7 +75,10 @@ const Pool = (props: Props) => {
     placement="bottomRight"
     overlayClassName="format-dropdown"
   >
-      <a onClick={e => e.preventDefault()}>
+      <a
+        href="/"
+        onClick={e => e.preventDefault()}
+      >
         Rearrange
       </a>
     </Dropdown>);

@@ -224,7 +224,8 @@
 }
 
 .rack .tile {
-  width: calc(100% / 15);
+  width: calc(53vw / 15);
+  height: calc(53vw / 15);
   margin: 3px;
 }
 
@@ -304,6 +305,26 @@
   }
 }
 
+// Scorecard
+.score-card {
+  .ant-card-body {
+    padding: 8px 24px 16px;
+    max-height: 150px;
+    overflow-y: auto;
+  }
+  .turn {
+    display: flex;
+    padding: 12px 0;
+    justify-content: space-between;
+    .coords-time {
+      flex: 2;
+    }
+    .play {
+      flex: 3;
+    }
+  }
+}
+
 @media (min-width: $screen-tablet-min) {
 
 
@@ -330,9 +351,24 @@
   .rack {
     height: 3vw;
   }
+
+  .rack .tile {
+    width: calc(42vw / 15);
+    height: calc(42vw / 15);
+  }
+
   .pool {
     .vc-distribution {
       font-size: 14px;
+    }
+  }
+  .score-card {
+    .player-avatar {
+      width: 36px;
+      min-width: 36px;
+      height: 36px;
+      font-size: 27px;
+      margin-right: 16px;
     }
   }
 }

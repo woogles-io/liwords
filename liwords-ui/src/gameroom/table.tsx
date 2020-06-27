@@ -20,8 +20,6 @@ import { ScoreCard } from './scorecard';
 
 const gutter = 16;
 const boardspan = 12;
-const maxspan = 24; // from ant design
-const navbarHeightAndGutter = 84; // 72 + 12 spacing
 
 type Props = {
   sendSocketMsg: (msg: Uint8Array) => void;
