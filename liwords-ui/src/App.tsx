@@ -37,7 +37,7 @@ const App = () => {
     const rr = new JoinPath();
     rr.setPath(location.pathname);
     console.log('Tryna register with path', location.pathname);
-    const timeout = setTimeout(() => {
+    setTimeout(() => {
       sendMessage(
         encodeToSocketFmt(MessageType.JOIN_PATH, rr.serializeBinary())
       );

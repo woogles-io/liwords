@@ -9,7 +9,6 @@ import { Action, ActionType } from '../../actions/actions';
 import {
   ServerGameplayEvent,
   GameHistoryRefresher,
-  GameTurnsRefresher,
 } from '../../gen/api/proto/game_service_pb';
 import { Direction, isBlank, Blank } from '../../utils/cwgame/common';
 import { EnglishCrosswordGameDistribution } from '../../constants/tile_distributions';
@@ -39,7 +38,7 @@ export type ReducedPlayerInfo = {
   nickname: string;
   fullName: string;
   avatarUrl: string;
-}
+};
 
 const initialExpandToFull = (playerList: PlayerInfo[]): FullPlayerInfo[] => {
   return playerList.map((pi, idx) => {

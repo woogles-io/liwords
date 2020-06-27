@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 
 import { Form, Input, Button, Alert } from 'antd';
-import { Redirect, Link } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import axios from 'axios';
 
 const layout = {

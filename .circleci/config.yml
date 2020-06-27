@@ -15,7 +15,7 @@ jobs:
           command: apk update && apk upgrade && apk add bash build-base curl
 
       - run: mv /opt/liwords/data/lexica $LEXICON_PATH
-      - run: cd cmd/socketsrv && go build # persist executable to workspace for deploy step
+      - run: cd cmd/liwords-api && go build # persist executable to workspace for deploy step
       - run: go test ./...
       - slack/status:
           webhook: "${SLACK_WEBHOOK}"

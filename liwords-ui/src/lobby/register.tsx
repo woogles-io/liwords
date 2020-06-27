@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import axios from 'axios';
-import { Redirect } from 'react-router-dom';
 import { Input, Form, Button, Alert, Switch, Typography } from 'antd';
 
 const layout = {
