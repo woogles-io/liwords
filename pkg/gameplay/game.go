@@ -165,7 +165,7 @@ func handleChallenge(ctx context.Context, entGame *entity.Game, gameStore GameSt
 		// The front-end shouldn't even show the button.
 		return errors.New("challenges not acceptable in void")
 	}
-	curTurn := entGame.Game.Turn()
+	// curTurn := entGame.Game.Turn()
 	valid, err := entGame.Game.ChallengeEvent(0, timeRemaining)
 	if err != nil {
 		return err
@@ -182,14 +182,23 @@ func handleChallenge(ctx context.Context, entGame *entity.Game, gameStore GameSt
 	entGame.SendChange(evt)
 
 	// We need to send the turn history from curTurn onwards.
-	turns := entGame.History().Turns[curTurn-1:]
-	refresher := &pb.GameTurnsRefresher{
-		Turns:        turns,
-		PlayState:    entGame.Game.Playing(),
-		StartingTurn: int32(curTurn - 1),
-	}
-	evt = entity.WrapEvent(refresher, pb.MessageType_GAME_TURNS_REFRESHER,
+	// turns := entGame.History().Turns[curTurn-1:]
+	// refresher := &pb.GameTurnsRefresher{
+	// 	Turns:        turns,
+	// 	PlayState:    entGame.Game.Playing(),
+	// 	StartingTurn: int32(curTurn - 1),
+	// }
+	// evt = entity.WrapEvent(refresher, pb.MessageType_GAME_TURNS_REFRESHER,
+	// 	entGame.GameID())
+
+	// Send just the whole history for now. Sorry, this game turns refresher
+	// thing is just too complicated to handle on the front end; we can
+	// try again later if we need to reduce bandwidth.
+
+	refresher := entGame.HistoryRefresherEvent()
+	evt = entity.WrapEvent(refresher, pb.MessageType_GAME_HISTORY_REFRESHER,
 		entGame.GameID())
+
 	evt.AddAudience(entity.AudGameTV, entGame.GameID())
 	for _, uid := range players(entGame) {
 		evt.AddAudience(entity.AudUser, uid)

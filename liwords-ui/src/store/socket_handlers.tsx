@@ -21,7 +21,6 @@ import {
 } from '../gen/api/proto/game_service_pb';
 import { ActionType } from '../actions/actions';
 import { endGameMessage } from './end_of_game';
-import { GameTurn } from '../gen/macondo/api/proto/macondo/macondo_pb';
 
 const parseMsg = (msg: Uint8Array) => {
   const msgType = msg[0] as MessageTypeMap[keyof MessageTypeMap];

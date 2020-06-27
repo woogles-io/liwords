@@ -18,14 +18,10 @@ import { decodeToMsg, encodeToSocketFmt } from './utils/protobuf';
 import { onSocketMsg } from './store/socket_handlers';
 import { Login } from './lobby/login';
 import { Register } from './lobby/register';
-import {
-  MessageType,
-  JoinPath,
-  UnjoinRealm,
-} from './gen/api/proto/game_service_pb';
+import { MessageType, JoinPath } from './gen/api/proto/game_service_pb';
 import { useSocketToken } from './hooks/use_socket_token';
 
-const JoinSocketDelay = 2000;
+const JoinSocketDelay = 1000;
 
 function useWindowSize() {
   const [size, setSize] = useState([0, 0]);

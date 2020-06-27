@@ -6,6 +6,9 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/domino14/liwords/pkg/entity"
+	"github.com/lithammer/shortuuid"
+
 	"github.com/dgrijalva/jwt-go"
 	"github.com/domino14/liwords/pkg/apiserver"
 
@@ -84,15 +87,28 @@ func (as *AuthenticationService) GetSocketToken(ctx context.Context, r *pb.Socke
 	// This view requires authentication.
 	sess, err := apiserver.GetSession(ctx)
 	if err != nil {
-		return nil, err
+		// Create an unauth token.
+		uuid := shortuuid.New()
+		token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
+			"exp": time.Now().Add(TokenExpiration).Unix(),
+			"uid": uuid,
+			"unn": entity.DeterministicUsername(uuid),
+			"a":   false, // authed
+		})
+		tokenString, err := token.SignedString([]byte(as.secretKey))
+		if err != nil {
+			return nil, err
+		}
+		return &pb.SocketTokenResponse{
+			Token: tokenString,
+		}, nil
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
 		"exp": time.Now().Add(TokenExpiration).Unix(),
-		"iss": "liwords",
-		"aud": "liwords-socket",
 		"uid": sess.UserUUID,
 		"unn": sess.Username,
+		"a":   true,
 	})
 	tokenString, err := token.SignedString([]byte(as.secretKey))
 	if err != nil {

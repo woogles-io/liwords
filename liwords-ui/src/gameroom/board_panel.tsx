@@ -146,6 +146,12 @@ export const BoardPanel = (props: Props) => {
 
   const makeMove = (move: string, addl?: string) => {
     let moveEvt;
+    console.log(
+      'making move',
+      gameContext.nickToPlayerOrder,
+      props.username,
+      gameContext.onturn
+    );
     const iam = gameContext.nickToPlayerOrder[props.username];
     if (!(iam && iam === `p${gameContext.onturn}`)) {
       // It is not my turn. Ignore this event.

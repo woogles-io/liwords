@@ -109,6 +109,17 @@ func (b *Bus) ProcessMessages(ctx context.Context) {
 			err := b.handleNatsRequest(ctx, subtopics[2], msg.Reply, msg.Data)
 			if err != nil {
 				log.Err(err).Msg("process-message-request-error")
+				// just send a blank response so there isn't a timeout on
+				// the other side.
+				rrResp := &pb.RegisterRealmResponse{
+					Realm: "",
+				}
+				data, err := proto.Marshal(rrResp)
+				if err != nil {
+					log.Err(err).Msg("marshalling-error")
+					break
+				}
+				b.natsconn.Publish(msg.Reply, data)
 			}
 
 		case msg := <-b.gameEventChan:
@@ -340,11 +351,13 @@ func (b *Bus) broadcastSeekDeletion(seekID string) error {
 }
 
 func (b *Bus) pubToUser(userID string, evt *entity.EventWrapper) error {
+	t := time.Now()
 	sanitized, err := sanitize(evt, userID)
 	bts, err := sanitized.Serialize()
 	if err != nil {
 		return err
 	}
+	log.Debug().Interface("time-taken", time.Now().Sub(t)).Msg("pubToUser-serialization")
 	return b.natsconn.Publish("user."+userID, bts)
 }
 

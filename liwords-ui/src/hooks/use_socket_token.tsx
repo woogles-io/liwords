@@ -15,7 +15,7 @@ type TokenResponse = {
 type DecodedToken = {
   unn: string;
   uid: string;
-  iss: string;
+  a: boolean; // authed
 };
 
 export const useSocketToken = (sendSocketMessage: SendMessage) => {
@@ -32,7 +32,7 @@ export const useSocketToken = (sendSocketMessage: SendMessage) => {
       .then((resp) => {
         const decoded = jwt.decode(resp.data.token) as DecodedToken;
         setUsername(decoded.unn);
-        setLoggedIn(true);
+        setLoggedIn(decoded.a);
         const msg = new TokenSocketLogin();
         msg.setToken(resp.data.token);
         // Decoding the token logs us in, and we also send the token to
