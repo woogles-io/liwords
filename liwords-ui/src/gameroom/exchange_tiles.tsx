@@ -19,7 +19,6 @@ export const ExchangeTiles = (props: Props) => {
       </h3>
       <Rack
         letters={props.rack}
-        tileDim={40}
         grabbable={false}
         onTileClick={props.selectTile}
       />

@@ -100,7 +100,7 @@ export const Lobby = (props: Props) => {
   }
 
   return (
-    <div>
+    <div className="lobby">
       <Row>
         <Col span={24}>
           <TopBar username={props.username} loggedIn={props.loggedIn} />

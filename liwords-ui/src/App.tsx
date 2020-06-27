@@ -1,10 +1,5 @@
-import React, { useLayoutEffect, useState, useEffect, useRef } from 'react';
-import {
-  BrowserRouter as Router,
-  Route,
-  Switch,
-  useLocation,
-} from 'react-router-dom';
+import React, { useEffect } from 'react';
+import { Route, Switch, useLocation } from 'react-router-dom';
 import './App.scss';
 import 'antd/dist/antd.css';
 import useWebSocket from 'react-use-websocket';
@@ -23,25 +18,9 @@ import { useSocketToken } from './hooks/use_socket_token';
 
 const JoinSocketDelay = 1000;
 
-function useWindowSize() {
-  const [size, setSize] = useState([0, 0]);
-  useLayoutEffect(() => {
-    function updateSize() {
-      setSize([window.innerWidth, window.innerHeight]);
-    }
-    window.addEventListener('resize', updateSize);
-    updateSize();
-    return () => window.removeEventListener('resize', updateSize);
-  }, []);
-  return size;
-}
-
 const App = () => {
-  const [width, height] = useWindowSize();
-  // const [err, setErr] = useState('');
-  const socketUrl = getSocketURI();
   const store = useStoreContext();
-
+  const socketUrl = getSocketURI();
   const { sendMessage } = useWebSocket(socketUrl, {
     onOpen: () => console.log('connected to socket'),
     // Will attempt to reconnect on all close events, such as server shutting down
@@ -80,8 +59,6 @@ const App = () => {
         <Route path="/game/:gameID">
           {/* Table meaning a game table */}
           <Table
-            windowWidth={width}
-            windowHeight={height}
             sendSocketMsg={sendMessage}
             username={username}
             loggedIn={loggedIn}

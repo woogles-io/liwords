@@ -35,6 +35,12 @@ export type FullPlayerInfo = {
   currentRack: string;
 };
 
+export type ReducedPlayerInfo = {
+  nickname: string;
+  fullName: string;
+  avatarUrl: string;
+}
+
 const initialExpandToFull = (playerList: PlayerInfo[]): FullPlayerInfo[] => {
   return playerList.map((pi, idx) => {
     return {

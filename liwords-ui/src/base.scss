@@ -1,15 +1,95 @@
-$card-shadow: 0px 0px 2vw rgba(0, 0, 0, 0.1);
+$card-shadow: 0px 0px 12px rgba(0, 0, 0, 0.15);
+$card-padding: 16px;
+$card-padding-md: ($card-padding / 2);
 
 /* colors */
 
 $color-primary-light: #E2F8FF;
+$color-primary-middle: #C9F0FF;
+$color-primary-midDark: #3B88CA;
 $color-primary-dark: #2D6A9E;
-$color-secondary: #F0AD4E;
+$color-secondary: #6B268B;
+$color-secondary-light: #D5CAD6;
+$color-secondary-medium: #97699B;
+$color-timer-light: #E5FFDF;
+$color-timer-dark: #449E2D;
+$color-timer-low-light: #FFF4D8;
+$color-timer-low-dark: #F4B000;
+$color-timer-out-light: #FFEAEA;
+$color-timer-out-dark: #A92E2E;
 
-$font-deco: 'Fjalla One', sans-serif;
-$font-default:  'Muli', 'sans-serif';
+
+$color-board-dls: #E2F8FF;
+$color-board-dws: #FFEAEA;
+$color-board-tws: #A92E2E;
+$color-board-tls: #3B88CA;
+$color-board-empty: white;
+
+// Magic that makes variables available to the tsx code
+:export {
+  colorSecondary: $color-secondary;
+  colorSecondaryMedium: $color-secondary-medium;
+  colorSecondaryLight: $color-secondary-light;
+
+  colorBoardDLS: $color-board-dls;
+  colorBoardDWS: $color-board-dws;
+  colorBoardTLS: $color-board-tls;
+  colorBoardTWS: $color-board-tws;
+  colorBoardEmpty: $color-board-empty;
+}
 
 $screen-tablet-min: 768px;
 $screen-laptop-min: 1024px;
-$screen-desktop-max: 1280px;
+$screen-desktop-max: 2048px;
+
+$font-deco: 'Fjalla One', sans-serif;
+$font-default:  'Muli', sans-serif;
+$font-monospaced: 'Source Code Pro', monospace;
+
+@mixin type-default {
+  color: black;
+  font-family: $font-default;
+  font-style: normal;
+  font-size: 14px;
+  line-height: 18px;
+}
+
+@mixin type-monospace {
+  @include type-default;
+  font-family: $font-monospaced;
+}
+
+@mixin type-title {
+  @include type-default;
+  font-size: 16px;
+  font-weight: bold;
+  line-height: 20px;
+}
+
+@mixin button {
+  /* buttons */
+  button.ant-btn {
+    height: 36px;
+    margin: 6px 3px;
+    font-weight: bold;
+    text-transform: uppercase;
+    &, &:hover {
+      border-color: $color-primary-dark;
+      color: $color-primary-dark;
+    }
+    &.ant-btn-primary {
+      background: $color-primary-dark;
+      color: white;
+      border: 0;
+
+    }
+  }
+
+  button.ant-btn-circle {
+    height: 32px;
+  }
+}
+
+
+
 

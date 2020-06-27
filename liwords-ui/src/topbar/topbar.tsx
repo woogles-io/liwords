@@ -4,7 +4,7 @@ import { Link } from 'react-router-dom';
 
 const Menu = (
   <div className="top-header-menu">
-    <div className="top-header-left-frame-crossword-game">Crossword Game</div>
+    <div className="top-header-left-frame-crossword-game">OMGWords</div>
     <div className="top-header-left-frame-aerolith">Aerolith</div>
     <div className="top-header-left-frame-blog">Blog</div>
     <div className="top-header-left-frame-special-land">
@@ -23,9 +23,9 @@ export const TopBar = (props: Props) => {
     <nav className="top-header">
       <Link to="/" className="site-icon">
         <div className="top-header-site-icon-rect">
-          <div className="top-header-site-icon-m">M</div>
+          <div className="top-header-site-icon-m">W</div>
         </div>
-        <div className="top-header-left-frame-site-name">Macondo</div>
+        <div className="top-header-left-frame-site-name">Woogles</div>
       </Link>
       {Menu}
       {props.loggedIn ? (
