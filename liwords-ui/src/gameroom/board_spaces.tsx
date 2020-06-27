@@ -6,9 +6,6 @@ import { BonusType } from '../constants/board_layout';
 
 type Props = {
   gridDim: number;
-  boardSquareDim: number;
-  rowLabelWidth: number;
-  colLabelHeight: number;
   showBonusLabels: boolean;
   gridLayout: Array<string>;
   placementArrow: PlacementArrow;
@@ -29,9 +26,6 @@ const BoardSpaces = (props: Props) => {
       spaces.push(
         <BoardSpace
           bonusType={sq as BonusType}
-          boardSquareDim={props.boardSquareDim}
-          x={x * props.boardSquareDim + props.rowLabelWidth}
-          y={y * props.boardSquareDim + props.colLabelHeight}
           key={`sq_${x}_${y}`}
           showBonusLabel={props.showBonusLabels && !startingSquare}
           arrow={showArrow}

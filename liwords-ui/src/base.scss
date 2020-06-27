@@ -24,7 +24,6 @@ $color-board-dws: #FFEAEA;
 $color-board-tws: #A92E2E;
 $color-board-tls: #3B88CA;
 $color-board-empty: white;
-$color-board-empty: white;
 
 // Magic that makes variables available to the tsx code
 :export {
@@ -41,7 +40,7 @@ $color-board-empty: white;
 
 $screen-tablet-min: 768px;
 $screen-laptop-min: 1024px;
-$screen-desktop-max: 1280px;
+$screen-desktop-max: 2048px;
 
 $font-deco: 'Fjalla One', sans-serif;
 $font-default:  'Muli', sans-serif;

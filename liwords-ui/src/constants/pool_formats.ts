@@ -1,7 +1,7 @@
 export enum PoolFormatType {
   Alphabet,
-  Detail,
   VowelConsonant,
+  Detail,
 }
 
 export type PoolFormat = {

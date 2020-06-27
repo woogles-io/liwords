@@ -1,9 +1,14 @@
 import React from 'react'
-import { Card } from 'antd'
+import { Card, Dropdown, Menu } from 'antd';
 import { PoolFormatType, PoolFormats } from '../constants/pool_formats';
 
 
+
 type poolType = { [rune: string]: number };
+
+// TODO: Store these elsewhere -- they're language specific
+const VOWELS = 'AEIOU';
+const CONSONANTS = 'BCDFGHJKLMNPQRSTVWXYZ';
 
 function poolMinusRack(pool: poolType, rack: string) {
   const poolCopy = { ...pool };
@@ -13,39 +18,32 @@ function poolMinusRack(pool: poolType, rack: string) {
   return poolCopy;
 }
 
-
-/* function poolGenerator(possibleLetters: string, pool: poolType) {
-  const poolArr = [];
-  for (let i = 0; i < possibleLetters.length; i += 1) {
-    const letter = possibleLetters[i];
-    if (pool[letter]) {
-      for (let n = 0; n < pool[letter]; n += 1) {
-        poolArr.push(letter);
-      }
-    }
-  }
-  return poolArr;
-}
- */
 function renderLetters(pool: poolType, possibleLetters: string, maxConsecutive: number = 6) {
-  let output = '';
+  let output = [];
   for (let possibility = 0; possibility < possibleLetters.length; possibility += 1) {
     const letter = possibleLetters[possibility];
+    let letterGroup = '';
     if (pool[letter]) {
       for (let i = 0; i < pool[letter]; i ++ ) {
         if (i % maxConsecutive) {
-          output += letter;
+          letterGroup += letter;
         } else {
-          output += ` ${letter}`;
+          letterGroup += ` ${letter}`;
         }
       }
+      output.push(<><span className="letter-group" data-rune={letter}>{letterGroup.trim()}</span> </>)
     }
   }
-  return <section>{output}</section>;
+  return <section className="pool-section">{output}</section>;
 }
 
-function getPoolCount(pool: poolType) {
-  return Object.keys(pool).reduce((acc, cur) => acc + pool[cur], 0);
+function getPoolCount(pool: poolType, includeRunes = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ?') {
+  return Object.keys(pool).reduce((acc, cur) => {
+    if (includeRunes.lastIndexOf(cur) > -1) {
+      return acc + pool[cur];
+    }
+    return acc;
+  }, 0);
 }
 
 type Props = {
@@ -60,14 +58,39 @@ const Pool = (props: Props) => {
   const pool = poolMinusRack(props.pool, props.currentRack);
   const letterSections = letterOrder.split(',')
     .map(letterSection => renderLetters(pool, letterSection));
-
+  const poolMenu = (
+    <Menu>
+      {PoolFormats.map(pf =>
+        <Menu.Item
+          key={pf.poolFormatType}
+          onClick={() => { props.setPoolFormat(pf.poolFormatType); }}
+        >
+          {pf.displayName}
+        </Menu.Item>)}
+    </Menu>
+  );
+  const dropDown = (<Dropdown
+    overlay={poolMenu}
+    trigger={['click']}
+    placement="bottomRight"
+    overlayClassName="format-dropdown"
+  >
+      <a onClick={e => e.preventDefault()}>
+        Rearrange
+      </a>
+    </Dropdown>);
   return (
-    <Card className="pool">
-      <header>
-       {getPoolCount(pool)} tiles in the bag
-      </header>
+    <Card
+      className="pool"
+      title={`${getPoolCount(pool)} tiles in the bag`}
+      extra={dropDown}
+    >
       <div className="tiles-remaining">
         {letterSections}
+      </div>
+      <div className="vc-distribution">
+        <div>{getPoolCount(pool, VOWELS)} vowels</div>
+        <div>{getPoolCount(pool, CONSONANTS)} consonants</div>
       </div>
     </Card>
   );

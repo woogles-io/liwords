@@ -26,9 +26,6 @@ function getBonusProperties(bt: BonusType): BonusProperties {
 
 type Props = {
   bonusType: BonusType;
-  boardSquareDim: number;
-  x: number;
-  y: number;
   showBonusLabel: boolean;
   startingSquare: boolean;
   arrow: boolean;
@@ -50,8 +47,6 @@ const BoardSpace = (props: Props) => {
     startingSquare = (
       <Logo
         className="logo"
-        width={props.boardSquareDim / 1.5}
-        height={props.boardSquareDim / 1.5}
       />
     );
   }

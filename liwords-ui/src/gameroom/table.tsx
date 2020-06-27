@@ -24,31 +24,11 @@ const maxspan = 24; // from ant design
 const navbarHeightAndGutter = 84; // 72 + 12 spacing
 
 type Props = {
-  windowWidth: number;
-  windowHeight: number;
   sendSocketMsg: (msg: Uint8Array) => void;
   username: string;
 };
 
 export const Table = (props: Props) => {
-  // Calculate the width of the board.
-  // If the pixel width is 1440,
-  // The width of the drawable part is 12/24 * 1440 = 720
-  // Minus gutters makes it 704
-
-  // The height is more important, as the buttons and tiles go down
-  // so don't make the board so tall that these elements become invisible.
-
-  let boardPanelWidth = (boardspan / maxspan) * props.windowWidth - gutter;
-  // Shrug; determine this better:
-  let boardPanelHeight = boardPanelWidth + 96;
-  const viewableHeight = props.windowHeight - navbarHeightAndGutter;
-
-  // XXX: this all needs to be tweaked.
-  if (boardPanelHeight > viewableHeight) {
-    boardPanelHeight = viewableHeight;
-    boardPanelWidth = boardPanelHeight - 96;
-  }
   const { gameID } = useParams();
   const {
     setRedirGame,
@@ -141,8 +121,6 @@ export const Table = (props: Props) => {
         <Col span={boardspan} className="play-area">
           <BoardPanel
             username={props.username}
-            compWidth={boardPanelWidth}
-            compHeight={boardPanelHeight}
             board={gameContext.board}
             showBonusLabels={false}
             currentRack={rack}

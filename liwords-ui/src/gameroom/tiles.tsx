@@ -11,9 +11,6 @@ type Props = {
   gridDim: number;
   tilesLayout: string;
   lastPlayedLetters: { [tile: string]: boolean };
-  boardSquareDim: number;
-  rowLabelWidth: number;
-  colLabelHeight: number;
   scaleTiles: boolean;
   tentativeTiles: Set<EphemeralTile>;
   tentativeTileScore: number | undefined;

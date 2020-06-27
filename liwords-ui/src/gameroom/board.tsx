@@ -7,15 +7,8 @@ import Tiles from './tiles';
 import { EphemeralTile } from '../utils/cwgame/common';
 
 type Props = {
-  // component width:
-  compWidth: number;
-  boardDim: number;
-  topFrameHeight: number;
   gridLayout: Array<string>;
   gridSize: number;
-  sqWidth: number;
-  sideFrameWidth: number;
-  sideFrameGutter: number;
   tilesLayout: string;
   showBonusLabels: boolean;
   lastPlayedLetters: { [tile: string]: boolean };
@@ -38,9 +31,6 @@ const Board = (props: Props) => {
         <div className="board-spaces-container">
           <BoardSpaces
             gridDim={props.gridSize}
-            boardSquareDim={props.sqWidth}
-            rowLabelWidth={props.sideFrameWidth + props.sideFrameGutter * 2}
-            colLabelHeight={props.topFrameHeight}
             gridLayout={props.gridLayout}
             showBonusLabels={props.showBonusLabels}
             placementArrow={props.placementArrowProperties}
@@ -48,9 +38,6 @@ const Board = (props: Props) => {
           />
           <Tiles
             gridDim={props.gridSize}
-            rowLabelWidth={props.sideFrameWidth + props.sideFrameGutter * 2}
-            colLabelHeight={props.topFrameHeight}
-            boardSquareDim={props.sqWidth}
             tilesLayout={props.tilesLayout}
             lastPlayedLetters={props.lastPlayedLetters}
             tentativeTiles={props.tentativeTiles}
