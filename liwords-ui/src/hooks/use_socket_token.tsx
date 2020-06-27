@@ -2,10 +2,7 @@ import { useState, useEffect } from 'react';
 import axios from 'axios';
 import jwt from 'jsonwebtoken';
 import { SendMessage } from 'react-use-websocket';
-import {
-  TokenSocketLogin,
-  MessageType,
-} from '../gen/api/proto/game_service_pb';
+import { TokenSocketLogin, MessageType } from '../gen/api/proto/realtime_pb';
 import { encodeToSocketFmt } from '../utils/protobuf';
 
 type TokenResponse = {

@@ -8,7 +8,7 @@ import { Chat } from './chat';
 import { useStoreContext } from '../store/store';
 import { PlayerCards } from './player_cards';
 import Pool from './pool';
-import { MessageType, TimedOut } from '../gen/api/proto/game_service_pb';
+import { MessageType, TimedOut } from '../gen/api/proto/realtime_pb';
 import { encodeToSocketFmt } from '../utils/protobuf';
 import './scss/gameroom.scss';
 import { ScoreCard } from './scorecard';

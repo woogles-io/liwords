@@ -6,7 +6,7 @@ option go_package = "github.com/domino14/liwords/rpc/api/proto/liwords";
 // For example, registering, changing passwords, logging in, logging out, and
 // more. Instead of a RESTful API we will straight up use Twirp to make life
 // easier! We will also use JSON for these requests, as bandwidth is not as
-// important as for the game_service file.
+// important as for the `realtime.proto` file.
 
 // UserLoginRequest is used for logging in.
 message UserLoginRequest {

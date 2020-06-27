@@ -9,7 +9,7 @@ import { Action, ActionType } from '../../actions/actions';
 import {
   ServerGameplayEvent,
   GameHistoryRefresher,
-} from '../../gen/api/proto/game_service_pb';
+} from '../../gen/api/proto/realtime_pb';
 import { Direction, isBlank, Blank } from '../../utils/cwgame/common';
 import { EnglishCrosswordGameDistribution } from '../../constants/tile_distributions';
 import { PlayerOrder } from '../constants';

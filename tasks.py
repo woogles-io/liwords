@@ -35,14 +35,14 @@ def build_protobuf(c):
         f"--ts_out=liwords-ui/src/gen --proto_path={code_dir}/ "
         f"--proto_path={code_dir}/liwords "
         "--go_opt=paths=source_relative "
-        "--twirp_opt=paths=source_relative api/proto/game_service.proto"
+        "--twirp_opt=paths=source_relative api/proto/realtime.proto"
     )
 
     # Prepend line to disable eslint to generated files. It doesn't work
     # if I put them in the .eslintignore file for some reason.
     for gen_filename in (
         "liwords-ui/src/gen/macondo/api/proto/macondo/macondo_pb.js",
-        "liwords-ui/src/gen/api/proto/game_service_pb.js",
+        "liwords-ui/src/gen/api/proto/realtime_pb.js",
     ):
         tmp = c.run("mktemp").stdout.strip()
         c.run(r'printf "/* eslint-disable */\n" > ' + tmp)

@@ -2,23 +2,12 @@ syntax = "proto3";
 package liwords;
 option go_package = "github.com/domino14/liwords/rpc/api/proto/liwords";
 
-// game_service contains the data structures and services needed for the actual
+// realtime contains the data structures and services needed for the actual
 // gameplay. Since gameplay is intended to happen over a full-duplex connection,
 // we will not be auto-generating service code; it is here for documentation
 // purposes.
 
 import "macondo/api/proto/macondo/macondo.proto";
-
-// message NewGameRequest {
-//   repeated macondo.PlayerInfo players = 1;
-//   repeated string board_layout = 2;
-//   string lexicon = 3;
-//   string letter_distribution = 4;
-//   // Perhaps an eventual protobuf field that contains a custom letter
-//   // distribution, as the above should just be a name ("english", etc).
-// }
-
-// message NewGameResponse {}
 
 // A GameRules is just the name of a board layout + the name of a letter
 // distribution. These must exist in a database or file somewhere.

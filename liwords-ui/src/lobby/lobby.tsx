@@ -9,7 +9,7 @@ import {
   MessageType,
   GameAcceptedEvent,
   GameRules,
-} from '../gen/api/proto/game_service_pb';
+} from '../gen/api/proto/realtime_pb';
 import { encodeToSocketFmt } from '../utils/protobuf';
 import { SoughtGames } from './sought_games';
 import { SoughtGame } from '../store/reducers/lobby_reducer';

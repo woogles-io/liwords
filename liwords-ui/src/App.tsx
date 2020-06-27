@@ -13,7 +13,7 @@ import { decodeToMsg, encodeToSocketFmt } from './utils/protobuf';
 import { onSocketMsg } from './store/socket_handlers';
 import { Login } from './lobby/login';
 import { Register } from './lobby/register';
-import { MessageType, JoinPath } from './gen/api/proto/game_service_pb';
+import { MessageType, JoinPath } from './gen/api/proto/realtime_pb';
 import { useSocketToken } from './hooks/use_socket_token';
 
 const JoinSocketDelay = 1000;

@@ -1,5 +1,5 @@
 // package: liwords
-// file: api/proto/game_service.proto
+// file: api/proto/realtime.proto
 
 import * as jspb from "google-protobuf";
 import * as macondo_api_proto_macondo_macondo_pb from "../../macondo/api/proto/macondo/macondo_pb";

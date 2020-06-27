@@ -1,5 +1,5 @@
 /* eslint-disable */
-// source: api/proto/game_service.proto
+// source: api/proto/realtime.proto
 /**
  * @fileoverview
  * @enhanceable
