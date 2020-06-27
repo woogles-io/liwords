@@ -1,4 +1,4 @@
-@import "../../base.scss";
+@import '../../base.scss';
 
 .player-cards {
   .ant-card-body {
@@ -55,12 +55,11 @@
     }
     .score-timer {
       display: flex;
-
     }
     &.on-turn {
       background: $color-timer-light;
       button {
-        background-color: $color-timer-dark
+        background-color: $color-timer-dark;
       }
       &.time-low {
         background-color: $color-timer-low-light;

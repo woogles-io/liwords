@@ -25,27 +25,24 @@ const Board = (props: Props) => {
 
   return (
     <div className="board">
-        <BoardCoordLabels
+      <BoardCoordLabels gridDim={props.gridSize} />
+      <div className="board-spaces-container">
+        <BoardSpaces
           gridDim={props.gridSize}
+          gridLayout={props.gridLayout}
+          showBonusLabels={props.showBonusLabels}
+          placementArrow={props.placementArrowProperties}
+          squareClicked={props.squareClicked}
         />
-        <div className="board-spaces-container">
-          <BoardSpaces
-            gridDim={props.gridSize}
-            gridLayout={props.gridLayout}
-            showBonusLabels={props.showBonusLabels}
-            placementArrow={props.placementArrowProperties}
-            squareClicked={props.squareClicked}
-          />
-          <Tiles
-            gridDim={props.gridSize}
-            tilesLayout={props.tilesLayout}
-            lastPlayedLetters={props.lastPlayedLetters}
-            tentativeTiles={props.tentativeTiles}
-            scaleTiles={true}
-            tentativeTileScore={props.tentativeTileScore}
-          />
-        </div>
-
+        <Tiles
+          gridDim={props.gridSize}
+          tilesLayout={props.tilesLayout}
+          lastPlayedLetters={props.lastPlayedLetters}
+          tentativeTiles={props.tentativeTiles}
+          scaleTiles={true}
+          tentativeTileScore={props.tentativeTileScore}
+        />
+      </div>
     </div>
   );
 };

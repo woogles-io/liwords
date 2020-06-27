@@ -1,12 +1,12 @@
-import React, { useMemo, useRef, useEffect } from 'react'
+import React, { useMemo, useRef, useEffect } from 'react';
 import { Card } from 'antd';
 import {
   GameTurn,
   GameEvent,
 } from '../gen/macondo/api/proto/macondo/macondo_pb';
 import { Board } from '../utils/cwgame/board';
-import { ReducedPlayerInfo } from '../store/reducers/game_reducer'
-import { PlayerAvatar } from '../shared/player_avatar'
+import { ReducedPlayerInfo } from '../store/reducers/game_reducer';
+import { PlayerAvatar } from '../shared/player_avatar';
 import { millisToTimeStr } from '../store/timer_controller';
 import { tilePlacementEventDisplay } from '../utils/cwgame/game_event';
 
@@ -124,7 +124,7 @@ const Turn = (props: turnProps) => {
   return (
     <>
       <div className="turn">
-          <PlayerAvatar player={memoizedTurn.player}/>
+        <PlayerAvatar player={memoizedTurn.player} />
         <div className="coords-time">
           <strong>{memoizedTurn.coords}</strong> <br />
           {memoizedTurn.timeRemaining}

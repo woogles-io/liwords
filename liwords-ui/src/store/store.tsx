@@ -17,7 +17,7 @@ import {
 } from './reducers/game_reducer';
 import { ClockController, Times, Millis } from './timer_controller';
 import { PlayerOrder } from './constants';
-import { PoolFormatType } from '../constants/pool_formats'
+import { PoolFormatType } from '../constants/pool_formats';
 
 export enum ChatEntityType {
   UserChat,
@@ -153,7 +153,9 @@ export const Store = ({ children, ...props }: Props) => {
     undefined
   );
 
-  const [poolFormat, setPoolFormat] = useState<PoolFormatType>(PoolFormatType.Detail);
+  const [poolFormat, setPoolFormat] = useState<PoolFormatType>(
+    PoolFormatType.Detail
+  );
 
   const [redirGame, setRedirGame] = useState('');
   const [chat, setChat] = useState(new Array<ChatEntityObj>());

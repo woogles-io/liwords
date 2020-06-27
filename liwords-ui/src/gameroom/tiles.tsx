@@ -49,37 +49,42 @@ const Tiles = (props: Props) => {
           />
         );
       } else {
-        const tentativeTile = tentativeTiles.find(tile => tile.col === x && tile.row === y);
+        const tentativeTile = tentativeTiles.find(
+          (tile) => tile.col === x && tile.row === y
+        );
         if (tentativeTile) {
-            tiles.push(<Tile
-                rune={tentativeTile.letter}
-                value={runeToValues(tentativeTile.letter, CrosswordGameTileValues)}
-                lastPlayed={false}
-                key={`tileT_${tentativeTile.col}_${tentativeTile.row}`}
-                scale={false}
-                tentative={true}
-                tentativeScore={tentativeTilesRemaining === tentativeTiles.length ?
-                  props.tentativeTileScore : undefined}
-                grabbable={true}
-            />);
-            tentativeTilesRemaining -= 1;
+          tiles.push(
+            <Tile
+              rune={tentativeTile.letter}
+              value={runeToValues(
+                tentativeTile.letter,
+                CrosswordGameTileValues
+              )}
+              lastPlayed={false}
+              key={`tileT_${tentativeTile.col}_${tentativeTile.row}`}
+              scale={false}
+              tentative={true}
+              tentativeScore={
+                tentativeTilesRemaining === tentativeTiles.length
+                  ? props.tentativeTileScore
+                  : undefined
+              }
+              grabbable={true}
+            />
+          );
+          tentativeTilesRemaining -= 1;
         } else {
-            tiles.push(
-                <div
-                    className="empty-space"
-                    key={`tile_${x}_${y}`}
-                >
-                    &nbsp;
-                </div>
-            );
+          tiles.push(
+            <div className="empty-space" key={`tile_${x}_${y}`}>
+              &nbsp;
+            </div>
+          );
         }
       }
     }
   }
 
-  return <div className="tiles">
-      {tiles}
-  </div>;
+  return <div className="tiles">{tiles}</div>;
 };
 
 export default Tiles;
