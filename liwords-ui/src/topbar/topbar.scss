@@ -5,16 +5,15 @@
   width: 100%;
   min-height: 72px;
   background: $color-primary-light;
+  @include type-default;
   font-family: $font-deco;
-  font-style: normal;
-  font-weight: normal;
-  font-size: 14px;
-  line-height: 18px;
+  letter-spacing: 0.25em;
+
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   justify-content: space-around;
-  letter-spacing: 0.25em;
+
   text-transform: uppercase;
   padding: 0 32px;
 }
@@ -42,30 +41,29 @@
   flex: none;
   order: 0;
   align-self: center;
-  margin: 20px 0px 6px;
+  margin: 16px 0px 6px;
   .top-header-site-icon-rect {
     width: 48px;
     height: 48px;
-
+    transform: rotate(-7deg);
     display: flex;
     align-items: center;
     justify-content: center;
-
     background: $color-primary-dark;
     border-radius: 4px;
   }
   /* M */
   .top-header-site-icon-m {
-    left: 3px;
-    top: -1px;
+    left: 2px;
+    top: 0px;
+    transform: rotate(-4deg);
     position: relative;
-
     font-family: $font-default;
     font-style: normal;
-    font-weight: normal;
-    font-size: 40px;
+    font-weight: bold;
+    font-size: 32px;
     line-height: 64px;
-    color: $color-primary-light;
+    color: white;
   }
   /* Macondo */
 

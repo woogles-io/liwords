@@ -1,10 +1,12 @@
 import React, { useMemo, useRef, useEffect } from 'react';
-import { Card, Avatar, Row, Col } from 'antd';
+import { Card } from 'antd';
 import {
   GameTurn,
   GameEvent,
 } from '../gen/macondo/api/proto/macondo/macondo_pb';
 import { Board } from '../utils/cwgame/board';
+import { ReducedPlayerInfo } from '../store/reducers/game_reducer';
+import { PlayerAvatar } from '../shared/player_avatar';
 import { millisToTimeStr } from '../store/timer_controller';
 import { tilePlacementEventDisplay } from '../utils/cwgame/game_event';
 
@@ -23,14 +25,8 @@ type turnProps = {
   board: Board;
 };
 
-type reducedPlayerInfo = {
-  avatar?: string;
-  nickname: string;
-  fullName?: string;
-};
-
 type MoveEntityObj = {
-  player: reducedPlayerInfo;
+  player: ReducedPlayerInfo;
   coords: string;
   timeRemaining: string;
   rack: string;
@@ -72,6 +68,8 @@ const Turn = (props: turnProps) => {
     const turn = {
       player: {
         nickname: evts[0].getNickname(),
+        avatarUrl: '',
+        fullName: '',
       },
       coords: evts[0].getPosition(),
       timeRemaining: millisToTimeStr(evts[0].getMillisRemaining(), false),
@@ -125,23 +123,21 @@ const Turn = (props: turnProps) => {
 
   return (
     <>
-      <Row style={{ fontFamily: "'Source Code Pro', monospace" }}>
-        <Col span={3}>
-          <Avatar>{memoizedTurn.player.nickname[0].toUpperCase()}</Avatar>
-        </Col>
-        <Col span={4}>
+      <div className="turn">
+        <PlayerAvatar player={memoizedTurn.player} />
+        <div className="coords-time">
           <strong>{memoizedTurn.coords}</strong> <br />
           {memoizedTurn.timeRemaining}
-        </Col>
-        <Col span={12}>
+        </div>
+        <div className="play">
           <strong>{memoizedTurn.play}</strong> <br />
           {memoizedTurn.rack}
-        </Col>
-        <Col span={5}>
+        </div>
+        <div className="scores">
           {`${memoizedTurn.oldScore}+${memoizedTurn.score}`} <br />
           <strong>{memoizedTurn.cumulative}</strong>
-        </Col>
-      </Row>
+        </div>
+      </div>
     </>
   );
 };
@@ -153,10 +149,7 @@ export const ScoreCard = (props: Props) => {
   }, [props.turns]);
   return (
     <Card
-      style={{
-        overflowY: 'scroll',
-        maxHeight: 250,
-      }}
+      className="score-card"
       title={`Turn ${props.turns.length + 1}`}
       // eslint-disable-next-line jsx-a11y/anchor-is-valid
       extra={<a href="#">Notepad</a>}

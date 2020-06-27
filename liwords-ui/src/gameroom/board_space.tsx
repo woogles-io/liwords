@@ -3,6 +3,8 @@ import { ReactComponent as Logo } from '../assets/aero.svg';
 import { BonusType } from '../constants/board_layout';
 import { ArrowRightOutlined, ArrowDownOutlined } from '@ant-design/icons/lib';
 
+const colors = require('../base.scss');
+
 interface BonusProperties {
   fillColor: string;
   bonusText: string;
@@ -11,22 +13,19 @@ interface BonusProperties {
 function getBonusProperties(bt: BonusType): BonusProperties {
   switch (bt) {
     case BonusType.DoubleWord:
-      return { fillColor: '#FFC9F3', bonusText: '2WS' };
+      return { fillColor: colors.colorBoardDWS, bonusText: '2WS' };
     case BonusType.TripleWord:
-      return { fillColor: '#FD7070', bonusText: '3WS' };
+      return { fillColor: colors.colorBoardTWS, bonusText: '3WS' };
     case BonusType.DoubleLetter:
-      return { fillColor: '#C9E5FF', bonusText: '2LS' };
+      return { fillColor: colors.colorBoardDLS, bonusText: '2LS' };
     case BonusType.TripleLetter:
-      return { fillColor: '#6F87DF', bonusText: '3LS' };
+      return { fillColor: colors.colorBoardTLS, bonusText: '3LS' };
   }
   return { fillColor: 'hsl(35, 30%, 98%)', bonusText: '' };
 }
 
 type Props = {
   bonusType: BonusType;
-  boardSquareDim: number;
-  x: number;
-  y: number;
   showBonusLabel: boolean;
   startingSquare: boolean;
   arrow: boolean;
@@ -48,8 +47,6 @@ const BoardSpace = (props: Props) => {
     startingSquare = (
       <Logo
         className="logo"
-        width={props.boardSquareDim / 1.5}
-        height={props.boardSquareDim / 1.5}
       />
     );
   }

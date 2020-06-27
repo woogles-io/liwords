@@ -24,16 +24,9 @@ import { useStoreContext } from '../store/store';
 // The frame atop is 24 height
 // The frames on the sides are 24 in width, surrounded by a 14 pix gutter
 const EnterKey = 'Enter';
-const sideFrameWidth = 24;
-const topFrameHeight = 24;
-const sideFrameGutter = 14;
-// XXX: Later make the 15 customizable if we want to add other sizes.
-const gridSize = 15;
 
 type Props = {
   username: string;
-  compWidth: number;
-  compHeight: number;
   showBonusLabels: boolean;
   lastPlayedLetters: { [tile: string]: boolean };
   currentRack: string;
@@ -92,14 +85,6 @@ export const BoardPanel = (props: Props) => {
     }
     setArrowProperties(nextArrowPropertyState(arrowProperties, row, col));
   };
-
-  if (props.compWidth < 100) {
-    return null;
-  }
-
-  const sideFrames = (sideFrameWidth + sideFrameGutter * 2) * 2;
-  const boardDim = props.compWidth - sideFrames;
-  const sqWidth = boardDim / gridSize;
 
   const keydown = (key: string) => {
     // This should return a new set of arrow properties, and also set
@@ -194,12 +179,6 @@ export const BoardPanel = (props: Props) => {
       role="textbox"
     >
       <GameBoard
-        compWidth={props.compWidth}
-        boardDim={boardDim}
-        topFrameHeight={topFrameHeight}
-        sideFrameWidth={sideFrameWidth}
-        sideFrameGutter={sideFrameGutter}
-        sqWidth={sqWidth}
         gridSize={props.board.dim}
         gridLayout={props.board.gridLayout}
         tilesLayout={props.board.letters}
@@ -218,7 +197,7 @@ export const BoardPanel = (props: Props) => {
           type="primary"
           onClick={recallTiles}
         />
-        <Rack letters={displayedRack} tileDim={sqWidth} grabbable />
+        <Rack letters={displayedRack} grabbable />
         <Button
           shape="circle"
           icon={<SyncOutlined />}

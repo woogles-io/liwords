@@ -2,6 +2,8 @@ import React from 'react';
 import TentativeScore from './tentative_score';
 import { Blank } from '../utils/cwgame/common';
 
+const colors = require('../base.scss');
+
 type TileStyle = {
   backgroundColor: string;
   outline: string;
@@ -11,36 +13,22 @@ type TileStyle = {
 };
 
 const TILE_STYLES: { [name: string]: TileStyle } = {
-  aeroBlue: {
-    backgroundColor: '#2D6A9E',
+  primary: {
+    backgroundColor: colors.colorSecondary,
     outline: '#ffffff',
     color: '#ffffff',
     blankTextColor: '#11fefe',
     strokeWidth: '0px',
   },
-  aeroOrange: {
-    backgroundColor: '#F0AD4E',
-    outline: '#FFFFFF',
-    color: '#FFFFFF',
-    blankTextColor: '#fe1111',
+  primaryJustPlayed: {
+    backgroundColor: colors.colorSecondaryMedium,
+    outline: '#ffffff',
+    color: '#ffffff',
+    blankTextColor: '#11fefe',
     strokeWidth: '0px',
   },
-  aeroOrangeJustPlayed: {
-    backgroundColor: '#925b0c',
-    outline: '#FFFFFF',
-    color: '#FFFFFF',
-    blankTextColor: '#fe1111',
-    strokeWidth: '0px',
-  },
-  aeroOrangeTentative: {
-    backgroundColor: '#F0AD4E',
-    outline: '#449E2D',
-    color: '#FFFFFF',
-    blankTextColor: '#fe1111',
-    strokeWidth: '0px',
-  },
-  aeroBlueTentative: {
-    backgroundColor: '#4894D4',
+  primaryTentative: {
+    backgroundColor: colors.colorSecondaryMedium,
     outline: '#4894D4',
     color: '#FFFFFF',
     blankTextColor: '#fe1111',
@@ -87,12 +75,12 @@ type TileProps = {
 };
 
 const Tile = (props: TileProps) => {
-  let tileStyle = TILE_STYLES.aeroBlue;
+  let tileStyle = TILE_STYLES.primary;
   if (props.lastPlayed) {
-    tileStyle = TILE_STYLES.aeroBlue;
+    tileStyle = TILE_STYLES.primaryJustPlayed;
   }
   if (props.tentative) {
-    tileStyle = TILE_STYLES.aeroBlueTentative;
+    tileStyle = TILE_STYLES.primaryTentative;
   }
 
   return (

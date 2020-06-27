@@ -10,7 +10,6 @@ import Tile from './tile';
 
 type Props = {
   letters: string;
-  tileDim: number;
   grabbable: boolean;
   onTileClick?: (idx: number) => void;
 };

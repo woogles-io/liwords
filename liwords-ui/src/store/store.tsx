@@ -17,6 +17,7 @@ import {
 } from './reducers/game_reducer';
 import { ClockController, Times, Millis } from './timer_controller';
 import { PlayerOrder } from './constants';
+import { PoolFormatType } from '../constants/pool_formats';
 
 export enum ChatEntityType {
   UserChat,
@@ -64,6 +65,8 @@ export type StoreData = {
   stopClock: () => void;
   // setClock: (sge: ServerGameplayEvent, delay: Centis) => void;
   timerContext: Times;
+  poolFormat: PoolFormatType;
+  setPoolFormat: (format: PoolFormatType) => void;
   pTimedOut: PlayerOrder | undefined;
   setPTimedOut: (p: PlayerOrder | undefined) => void;
 };
@@ -93,6 +96,8 @@ export const Context = createContext<StoreData>({
   stopClock: defaultFunction,
   // setClock: defaultFunction,
   timerContext: defaultTimerContext,
+  poolFormat: PoolFormatType.Alphabet,
+  setPoolFormat: defaultFunction,
   pTimedOut: undefined,
   setPTimedOut: defaultFunction,
 });
@@ -148,6 +153,10 @@ export const Store = ({ children, ...props }: Props) => {
     undefined
   );
 
+  const [poolFormat, setPoolFormat] = useState<PoolFormatType>(
+    PoolFormatType.Detail
+  );
+
   const [redirGame, setRedirGame] = useState('');
   const [chat, setChat] = useState(new Array<ChatEntityObj>());
 
@@ -201,6 +210,8 @@ export const Store = ({ children, ...props }: Props) => {
     chat,
 
     // initClockController,
+    poolFormat,
+    setPoolFormat,
     pTimedOut,
     setPTimedOut,
     stopClock,

@@ -1,4 +1,4 @@
-import React, { useLayoutEffect, useState } from 'react';
+import React from 'react';
 import { BrowserRouter as Router, Route, Switch } from 'react-router-dom';
 import './App.scss';
 import 'antd/dist/antd.css';
@@ -12,25 +12,11 @@ import { getSocketURI } from './socket/socket';
 import { decodeToMsg } from './utils/protobuf';
 import { onSocketMsg } from './store/socket_handlers';
 
-function useWindowSize() {
-  const [size, setSize] = useState([0, 0]);
-  useLayoutEffect(() => {
-    function updateSize() {
-      setSize([window.innerWidth, window.innerHeight]);
-    }
-    window.addEventListener('resize', updateSize);
-    updateSize();
-    return () => window.removeEventListener('resize', updateSize);
-  }, []);
-  return size;
-}
-
 type Props = {
   username: string;
 };
 
 const App = (props: Props) => {
-  const [width, height] = useWindowSize();
   const store = useStoreContext();
   const socketUrl = getSocketURI(props.username);
   const { sendMessage } = useWebSocket(socketUrl, {
@@ -51,8 +37,6 @@ const App = (props: Props) => {
           <Route path="/game/:gameID">
             {/* Table meaning a game table */}
             <Table
-              windowWidth={width}
-              windowHeight={height}
               sendSocketMsg={sendMessage}
               username={props.username}
             />

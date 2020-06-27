@@ -1,12 +1,35 @@
-@import '../base.scss';
+@import '../../base';
 
 .game-table {
+  @include button;
   padding: 16px;
+  max-width: $screen-desktop-max;
+  margin: 0 auto !important;
 }
+.ant-card {
+  box-shadow: $card-shadow;
+  border-radius: 8px;
+  .ant-card-head {
+    border: 0;
+    .ant-card-head-title, .ant-card-extra {
+      padding: 12px 0;
+      line-height: 32px;
+    }
+    .ant-card-extra {
+      @include type-default;
+      font-weight: bold;
+    }
+  }
+}
+
+.ant-dropdown-menu {
+  padding: 0;
+}
+
 .board-container {
   user-select: none;
   text-align: center;
-  padding: 12px 12px 24px 24px;
+  padding: 0 12px 24px 24px;
   margin: 6px;
   outline-style: none;
 }
@@ -17,9 +40,15 @@
 
 .chat-area, .data-area {
   flex: 0 0 33%;
+  max-width: 33%;
+  text-align: left;
   .ant-card {
     margin-bottom: 12px;
   }
+}
+
+.ant-card {
+  border-radius: 8px;
 }
 
 /* hide at mobile for now,
@@ -50,24 +79,27 @@
   grid-template-columns: repeat(15, 1fr);
   grid-template-rows: repeat(15, 1fr);
   gap: 1px;
-  border: 1px solid #CCC;
-  background-color: #CCC;
+  border: 1px solid #DDD;
+  background-color: #DDD;
 }
 
 .tiles {
   position: absolute;
   pointer-events: none;
   background-color: transparent;
-  border: 1px solid transparent;
+  border-color: transparent;
   height: 100%;
 }
 
 .board-space {
+  box-sizing: border-box;
   position: relative;
   display: flex;
   justify-content: center;
   align-items: center;
-  color: #2D6A9E;
+  color: $color-board-empty;
+  border: transparent 1px solid;
+  border-color: transparent transparent #DDD #DDD;
 }
 
 .board-space::before {
@@ -83,11 +115,14 @@
 }
 
 .board-space .logo {
-  transform: translateX(10%);
+  position: absolute;
+  width: 2.4vw;
+  height: 2.4vw;
 }
 
-.board-space .arrow {
+.board-space .anticon {
   position: absolute;
+  color: $color-secondary;
 }
 
 .bonus-label {
@@ -133,7 +168,8 @@
   justify-content: center;
   margin: 24px 0;
   width: 100%;
-  height: 3vh;
+  height: 4vw;
+  min-height: 30px;
 }
 
 .ant-modal .rack {
@@ -161,6 +197,7 @@
   pointer-events: none;
 }
 
+// squareness fix
 .tile::before {
   content: "";
   padding-bottom: 100%;
@@ -169,15 +206,13 @@
 }
 
 .tile .rune {
+  @include type-monospace;
+  color: white;
   margin: 0;
-  font-family: 'Roboto', sans-serif;
   line-height: 0;
-  font-size: 1.5vw;
-}
-
-.tile .rune {
+  font-size: calc(12px + 1.2vw);
   width: 100%;
-  margin-bottom: 1px;
+  padding-bottom: 3px;
 }
 
 .tile .point-value {
@@ -192,7 +227,8 @@
 }
 
 .rack .tile {
-  width: calc(100% / 15);
+  width: calc(53vw / 15);
+  height: calc(53vw / 15);
   margin: 3px;
 }
 
@@ -214,6 +250,84 @@
 }
 
 
+// Pool
+.pool {
+  header {
+    @include type-title;
+  }
+  .ant-card-body {
+    padding: 0;
+  }
+  .vc-distribution {
+    @include type-monospace;
+    text-transform: uppercase;
+    font-size: 12px;
+    display: flex;
+    border-radius: 0 0 8px 8px;
+    background: $color-primary-dark;
+    color: white;
+    div{
+      width: 50%;
+      text-align: center;
+      padding: 4px;
+      &:first-child {
+        background: $color-primary-light;
+        color: black;
+      }
+    }
+  }
+  .tiles-remaining {
+    @include type-monospace;
+    font-size: 16px;
+    padding: 0px 24px 12px;
+    line-height: 28px;
+    letter-spacing: 0.21em;
+    .pool-section {
+      word-break: break-word;
+    }
+    .letter-group {
+      // white-space: pre would lock each rune group to a single line if we ever want that
+      white-space: normal;
+    }
+  }
+}
+.format-dropdown {
+  .ant-dropdown-menu {
+    top: -28px;
+    li.ant-dropdown-menu-item {
+      @include type-default;
+      font-weight: bold;
+      height: 32px;
+      padding: 0px 16px;
+      width: 120px;
+      line-height: 2.3em;
+      &:hover {
+        background: $color-secondary-light;
+      }
+    }
+  }
+}
+
+// Scorecard
+.score-card {
+  .ant-card-body {
+    padding: 8px 24px 16px;
+    max-height: 150px;
+    overflow-y: auto;
+  }
+  .turn {
+    display: flex;
+    padding: 12px 0;
+    justify-content: space-between;
+    .coords-time {
+      flex: 2;
+    }
+    .play {
+      flex: 3;
+    }
+  }
+}
+
 @media (min-width: $screen-tablet-min) {
 
 
@@ -225,12 +339,39 @@
   }
   .chat-area, .data-area {
     flex: 0 0 25%;
+    max-width: 25%;
   }
   .play-area {
     flex: 0 0 50%;
   }
-
+  .tile .rune {
+    @include type-monospace;
+    color: white;
+    margin: 0;
+    line-height: 0;
+    font-size: calc(14px + 1.24vw);
+  }
   .rack {
     height: 3vw;
+  }
+
+  .rack .tile {
+    width: calc(42vw / 15);
+    height: calc(42vw / 15);
+  }
+
+  .pool {
+    .vc-distribution {
+      font-size: 14px;
+    }
+  }
+  .score-card {
+    .player-avatar {
+      width: 36px;
+      min-width: 36px;
+      height: 36px;
+      font-size: 27px;
+      margin-right: 16px;
+    }
   }
 }
