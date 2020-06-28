@@ -2,15 +2,13 @@ package user
 
 import (
 	"context"
-	"errors"
+	"encoding/json"
 
-	"github.com/domino14/liwords/pkg/auth"
-	"github.com/domino14/liwords/pkg/entity"
 	"github.com/jinzhu/gorm"
+	"github.com/jinzhu/gorm/dialects/postgres"
 	"github.com/lithammer/shortuuid"
 
-	// postgres
-	_ "github.com/jinzhu/gorm/dialects/postgres"
+	"github.com/domino14/liwords/pkg/entity"
 )
 
 // DBStore is a postgres-backed store for users.
@@ -31,13 +29,42 @@ type user struct {
 	Password string `gorm:"type:varchar(128)"`
 }
 
+// A user profile is in a one-to-one relationship with a user. It is the
+// profile that should have all the extra data we don't want to / shouldn't stick
+// in the user model.
+type profile struct {
+	gorm.Model
+	// `profile` belongs to `user`, `UserID` is the foreign key.
+	UserID uint
+	User   user
+
+	FirstName string `gorm:"type:varchar(32)"`
+	LastName  string `gorm:"type:varchar(64)"`
+
+	CountryCode string `gorm:"type:varchar(3)"`
+	// Title is some sort of acronym/shorthand for a title. Like GM, EX, SM, UK-GM (UK Grandmaster?)
+	Title string `gorm:"type:varchar(8)"`
+	// There will be no avatar URL; a user's avatar will be located at a fixed
+	// URL based on the user ID.
+
+	// About is profile notes.
+	About string `gorm:"type:varchar(2048)"`
+	// It's ok to have a few JSON bags here. Postgres makes these easy and fast.
+	// XXX: Come up with a model for friend list.
+	Ratings postgres.Jsonb // A complex dictionary of ratings with variants/lexica/etc.
+	Stats   postgres.Jsonb // Stats such as average score per variant, bingos, a lot of other simple stats.
+	// More complex stats might be in a separate place.
+}
+
 // NewDBStore creates a new DB store
 func NewDBStore(dbURL string) (*DBStore, error) {
 	db, err := gorm.Open("postgres", dbURL)
 	if err != nil {
 		return nil, err
 	}
-	db.AutoMigrate(&user{})
+	db.AutoMigrate(&user{}, &profile{})
+	// Can't get GORM to auto create these foreign keys, so do it myself /shrug
+	db.Model(&profile{}).AddForeignKey("user_id", "users(id)", "RESTRICT", "RESTRICT")
 
 	return &DBStore{db: db}, nil
 }
@@ -45,23 +72,50 @@ func NewDBStore(dbURL string) (*DBStore, error) {
 // Get gets a user by username.
 func (s *DBStore) Get(ctx context.Context, username string) (*entity.User, error) {
 	u := &user{}
+	p := &profile{}
 	if result := s.db.Where("username = ?", username).First(u); result.Error != nil {
 		return nil, result.Error
 	}
+	if result := s.db.Model(u).Related(p); result.Error != nil {
+		return nil, result.Error
+	}
 
+	profile, err := dbProfileToProfile(p)
+	if err != nil {
+		return nil, err
+	}
 	entu := &entity.User{
 		Username:  u.Username,
 		UUID:      u.UUID,
 		Email:     u.Email,
 		Password:  u.Password,
 		Anonymous: false,
+		Profile:   profile,
 	}
+
 	return entu, nil
+}
+
+func dbProfileToProfile(p *profile) (*entity.Profile, error) {
+	var rdata entity.Ratings
+	err := json.Unmarshal(p.Ratings.RawMessage, &rdata)
+	if err != nil {
+		return nil, err
+	}
+	return &entity.Profile{
+		FirstName:   p.FirstName,
+		LastName:    p.LastName,
+		CountryCode: p.CountryCode,
+		Title:       p.Title,
+		About:       p.About,
+		Ratings:     rdata,
+	}, nil
 }
 
 // GetByUUID gets user by UUID
 func (s *DBStore) GetByUUID(ctx context.Context, uuid string) (*entity.User, error) {
 	u := &user{}
+	p := &profile{}
 	var entu *entity.User
 	if result := s.db.Where("uuid = ?", uuid).First(u); result.Error != nil {
 		if gorm.IsRecordNotFoundError(result.Error) {
@@ -74,11 +128,19 @@ func (s *DBStore) GetByUUID(ctx context.Context, uuid string) (*entity.User, err
 			return nil, result.Error
 		}
 	} else {
+		if result := s.db.Model(u).Related(p); result.Error != nil {
+			return nil, result.Error
+		}
+		profile, err := dbProfileToProfile(p)
+		if err != nil {
+			return nil, err
+		}
 		entu = &entity.User{
 			Username: u.Username,
 			UUID:     u.UUID,
 			Email:    u.Email,
 			Password: u.Password,
+			Profile:  profile,
 		}
 	}
 
@@ -94,32 +156,47 @@ func (s *DBStore) New(ctx context.Context, u *entity.User) error {
 		Email:    u.Email,
 		Password: u.Password,
 	}
-
 	result := s.db.Create(dbu)
+	if result.Error != nil {
+		return result.Error
+	}
+	// Create profile
+
+	rdata := entity.Ratings{}
+	bytes, err := json.Marshal(rdata)
+	if err != nil {
+		return err
+	}
+
+	dbp := &profile{
+		User:    *dbu,
+		Ratings: postgres.Jsonb{RawMessage: bytes},
+	}
+	result = s.db.Create(dbp)
 	return result.Error
 }
 
 // CheckPassword checks the password. If the password matches, return the User.
 // If not, return an error.
-func (s *DBStore) CheckPassword(ctx context.Context, username string, password string) (*entity.User, error) {
-	dbu := &user{}
+// func (s *DBStore) CheckPassword(ctx context.Context, username string, password string) (*entity.User, error) {
+// 	dbu := &user{}
 
-	u := &entity.User{}
-	if result := s.db.Where("username = ?", username).First(dbu); result.Error != nil {
-		return nil, result.Error
-	}
-	matches, err := auth.ComparePassword(password, dbu.Password)
-	if err != nil {
-		return nil, err
-	}
-	if !matches {
-		return nil, errors.New("password does not match")
-	}
+// 	u := &entity.User{}
+// 	if result := s.db.Where("username = ?", username).First(dbu); result.Error != nil {
+// 		return nil, result.Error
+// 	}
+// 	matches, err := auth.ComparePassword(password, dbu.Password)
+// 	if err != nil {
+// 		return nil, err
+// 	}
+// 	if !matches {
+// 		return nil, errors.New("password does not match")
+// 	}
 
-	u.Username = dbu.Username
-	u.UUID = dbu.UUID
-	u.Email = dbu.Email
-	u.Password = dbu.Password
+// 	u.Username = dbu.Username
+// 	u.UUID = dbu.UUID
+// 	u.Email = dbu.Email
+// 	u.Password = dbu.Password
 
-	return u, nil
-}
+// 	return u, nil
+// }
