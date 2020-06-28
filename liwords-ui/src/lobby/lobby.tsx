@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { Row, Col, Button, Modal } from 'antd';
 import { Redirect } from 'react-router-dom';
 
@@ -7,12 +7,9 @@ import {
   SeekRequest,
   GameRequest,
   MessageType,
-  RequestingUser,
   GameAcceptedEvent,
   GameRules,
-  RegisterRealm,
-  DeregisterRealm,
-} from '../gen/api/proto/game_service_pb';
+} from '../gen/api/proto/realtime_pb';
 import { encodeToSocketFmt } from '../utils/protobuf';
 import { SoughtGames } from './sought_games';
 import { SoughtGame } from '../store/reducers/lobby_reducer';
@@ -32,11 +29,6 @@ const sendSeek = (
   const rules = new GameRules();
   rules.setBoardLayoutName('CrosswordGame');
   rules.setLetterDistributionName('english');
-
-  const user = new RequestingUser();
-  user.setUsername(game.seeker);
-  // rating comes from backend.
-  sr.setUser(user);
 
   gr.setChallengeRule(
     game.challengeRule as ChallengeRuleMap[keyof ChallengeRuleMap]
@@ -66,31 +58,12 @@ const sendAccept = (
 
 type Props = {
   username: string;
+  loggedIn: boolean;
   sendSocketMsg: (msg: Uint8Array) => void;
 };
 
 export const Lobby = (props: Props) => {
   const { redirGame } = useStoreContext();
-  // On render, register lobby realm; deregister when we exit.
-  const { sendSocketMsg } = props;
-  useEffect(() => {
-    console.log('Tryna register with lobby');
-    const rr = new RegisterRealm();
-    rr.setRealm('lobby');
-    sendSocketMsg(
-      encodeToSocketFmt(MessageType.REGISTER_REALM, rr.serializeBinary())
-    );
-
-    return () => {
-      console.log('cleaning up; deregistering');
-      const dr = new DeregisterRealm();
-      dr.setRealm('lobby');
-      sendSocketMsg(
-        encodeToSocketFmt(MessageType.DEREGISTER_REALM, dr.serializeBinary())
-      );
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
   const [seekModalVisible, setSeekModalVisible] = useState(false);
   const [seekSettings, setSeekSettings] = useState<seekPropVals>({
@@ -107,7 +80,7 @@ export const Lobby = (props: Props) => {
     setSeekModalVisible(false);
     sendSeek(
       {
-        seeker: props.username,
+        seeker: '',
         lexicon: seekSettings.lexicon as string,
         challengeRule: seekSettings.challengerule as number,
         initialTimeSecs: (seekSettings.initialtime as number) * 60,
@@ -121,7 +94,6 @@ export const Lobby = (props: Props) => {
   const handleModalCancel = () => {
     setSeekModalVisible(false);
   };
-  console.log('redirGame', redirGame);
 
   if (redirGame !== '') {
     return <Redirect push to={`/game/${redirGame}`} />;
@@ -131,7 +103,7 @@ export const Lobby = (props: Props) => {
     <div className="lobby">
       <Row>
         <Col span={24}>
-          <TopBar username={props.username} />
+          <TopBar username={props.username} loggedIn={props.loggedIn} />
         </Col>
       </Row>
 

@@ -1523,7 +1523,8 @@ proto.macondo.PlayerInfo.prototype.toObject = function(opt_includeInstance) {
 proto.macondo.PlayerInfo.toObject = function(includeInstance, msg) {
   var f, obj = {
     nickname: jspb.Message.getFieldWithDefault(msg, 1, ""),
-    realName: jspb.Message.getFieldWithDefault(msg, 2, "")
+    realName: jspb.Message.getFieldWithDefault(msg, 2, ""),
+    userId: jspb.Message.getFieldWithDefault(msg, 3, "")
   };
 
   if (includeInstance) {
@@ -1568,6 +1569,10 @@ proto.macondo.PlayerInfo.deserializeBinaryFromReader = function(msg, reader) {
       var value = /** @type {string} */ (reader.readString());
       msg.setRealName(value);
       break;
+    case 3:
+      var value = /** @type {string} */ (reader.readString());
+      msg.setUserId(value);
+      break;
     default:
       reader.skipField();
       break;
@@ -1611,6 +1616,13 @@ proto.macondo.PlayerInfo.serializeBinaryToWriter = function(message, writer) {
       f
     );
   }
+  f = message.getUserId();
+  if (f.length > 0) {
+    writer.writeString(
+      3,
+      f
+    );
+  }
 };
 
 
@@ -1647,6 +1659,24 @@ proto.macondo.PlayerInfo.prototype.getRealName = function() {
  */
 proto.macondo.PlayerInfo.prototype.setRealName = function(value) {
   return jspb.Message.setProto3StringField(this, 2, value);
+};
+
+
+/**
+ * optional string user_id = 3;
+ * @return {string}
+ */
+proto.macondo.PlayerInfo.prototype.getUserId = function() {
+  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 3, ""));
+};
+
+
+/**
+ * @param {string} value
+ * @return {!proto.macondo.PlayerInfo} returns this
+ */
+proto.macondo.PlayerInfo.prototype.setUserId = function(value) {
+  return jspb.Message.setProto3StringField(this, 3, value);
 };
 
 

@@ -8,12 +8,7 @@ import { Chat } from './chat';
 import { useStoreContext } from '../store/store';
 import { PlayerCards } from './player_cards';
 import Pool from './pool';
-import {
-  RegisterRealm,
-  DeregisterRealm,
-  MessageType,
-  TimedOut,
-} from '../gen/api/proto/game_service_pb';
+import { MessageType, TimedOut } from '../gen/api/proto/realtime_pb';
 import { encodeToSocketFmt } from '../utils/protobuf';
 import './scss/gameroom.scss';
 import { ScoreCard } from './scorecard';
@@ -24,6 +19,7 @@ const boardspan = 12;
 type Props = {
   sendSocketMsg: (msg: Uint8Array) => void;
   username: string;
+  loggedIn: boolean;
 };
 
 export const Table = (props: Props) => {
@@ -39,6 +35,7 @@ export const Table = (props: Props) => {
     setPTimedOut,
   } = useStoreContext();
   const { username, sendSocketMsg } = props;
+  // const location = useLocation();
 
   useEffect(() => {
     // Avoid react-router hijacking the back button.
@@ -47,19 +44,7 @@ export const Table = (props: Props) => {
   }, [setRedirGame]);
 
   useEffect(() => {
-    const rr = new RegisterRealm();
-    rr.setRealm(gameID);
-    sendSocketMsg(
-      encodeToSocketFmt(MessageType.REGISTER_REALM, rr.serializeBinary())
-    );
-    // XXX: Fetch some info via XHR about the game itself (timer, tourney, etc) here.
-
     return () => {
-      const dr = new DeregisterRealm();
-      dr.setRealm(gameID);
-      sendSocketMsg(
-        encodeToSocketFmt(MessageType.DEREGISTER_REALM, dr.serializeBinary())
-      );
       clearChat();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -73,11 +58,11 @@ export const Table = (props: Props) => {
     let timedout = '';
 
     for (let idx = 0; idx < gameContext.players.length; idx++) {
-      const nick = gameContext.players[idx].nickname;
-      if (gameContext.nickToPlayerOrder[nick] === pTimedOut) {
-        timedout = nick;
+      const p = gameContext.players[idx];
+      if (gameContext.uidToPlayerOrder[p.userID] === pTimedOut) {
+        timedout = p.userID;
       }
-      if (username === nick) {
+      if (username === p.nickname) {
         send = true;
       }
     }
@@ -86,7 +71,7 @@ export const Table = (props: Props) => {
 
     const to = new TimedOut();
     to.setGameId(gameID);
-    to.setUsername(timedout);
+    to.setUserId(timedout);
     console.log('sending timeout to socket');
     sendSocketMsg(
       encodeToSocketFmt(MessageType.TIMED_OUT, to.serializeBinary())
@@ -110,7 +95,7 @@ export const Table = (props: Props) => {
   return (
     <div>
       <Row>
-        <TopBar username={props.username} />
+        <TopBar username={props.username} loggedIn={props.loggedIn} />
       </Row>
       <Row gutter={gutter} className="game-table">
         <Col span={6} className="chat-area">

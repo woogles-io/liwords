@@ -9,7 +9,7 @@ import { Action, ActionType } from '../../actions/actions';
 import {
   ServerGameplayEvent,
   GameHistoryRefresher,
-} from '../../gen/api/proto/game_service_pb';
+} from '../../gen/api/proto/realtime_pb';
 import { Direction, isBlank, Blank } from '../../utils/cwgame/common';
 import { EnglishCrosswordGameDistribution } from '../../constants/tile_distributions';
 import { PlayerOrder } from '../constants';
@@ -19,6 +19,7 @@ import { ThroughTileMarker } from '../../utils/cwgame/game_event';
 type TileDistribution = { [rune: string]: number };
 
 export type FullPlayerInfo = {
+  userID: string;
   nickname: string;
   fullName: string;
   countryFlag: string;
@@ -37,11 +38,12 @@ export type ReducedPlayerInfo = {
   nickname: string;
   fullName: string;
   avatarUrl: string;
-}
+};
 
 const initialExpandToFull = (playerList: PlayerInfo[]): FullPlayerInfo[] => {
   return playerList.map((pi, idx) => {
     return {
+      userID: pi.getUserId(),
       nickname: pi.getNickname(),
       fullName: pi.getRealName(),
       countryFlag: '',
@@ -72,6 +74,7 @@ export type GameState = {
   gameID: string;
   lastPlayedTiles: Array<Tile>;
   nickToPlayerOrder: { [nick: string]: PlayerOrder };
+  uidToPlayerOrder: { [uid: string]: PlayerOrder };
   playState: number;
   clockController: React.MutableRefObject<ClockController | null> | null;
   onClockTick: (p: PlayerOrder, t: Millis) => void;
@@ -95,6 +98,7 @@ export const startingGameState = (
     gameID,
     lastPlayedTiles: new Array<Tile>(),
     nickToPlayerOrder: {},
+    uidToPlayerOrder: {},
     playState: PlayState.PLAYING,
     clockController: null,
     onClockTick: () => {},
@@ -102,6 +106,54 @@ export const startingGameState = (
   };
   return gs;
 };
+
+/** newStateAfterTurns creates a new state from an old state and a "RefreshTurns"
+ * game event.
+ * A RefreshTurns event ALWAYS gets sent immediately after a challenge. As such,
+ * these are the possibilities for what it contains:
+ * If it was a valid challenge (word is phony):
+ *    Contains one turn with two events: a tile placement and a tile "take back"
+ *      - This overwrites the last turn, which would have just had the tile placement
+ *      - The timestamp of the "take back" event is the time left for the CHALLENGER.
+ *    Potentially contains an additional 2 "turns" with end game rack penalties,
+ *      if the game ended because of six zeroes.
+ * If it was an invalid challenge (word is good):
+ *    Last turn gets overwritten no matter what, with a tile placement + a bonus score event,
+ *      or just with a tile placement (if this is double or single challenge).
+ *    Next turn is a whole new turn if this is double challenge (essentially a pass), or nothing
+ *     if this is any other type of challenge. However, if this ends the game, there
+ *     is no additional "pass turn" if double challenge.
+ *    Potentially contains end game rack bonuses, if this was a challenged out-play.
+ *    Or potentially contains end game rack penalties, if this was 6 consecutive zeroes
+ *      (extremely rare, would likely be a contrived game with a zero-scoring last play)
+ *
+ *    The "Time Remaining" of the challenge event is the CHALLENGER's time left.
+ */
+// XXX: We are not doing this now, it's too complicated. Let's just refresh from
+// GameHistory.
+
+// const newStateAfterTurns = (
+//   state: GameState,
+//   gtr: GameTurnsRefresher
+// ): GameState => {
+//   const { lastPlayedTiles, onturn } = state;
+//   const incomingTurns = gtr.getTurnsList();
+//   const startingTurn = gtr.getStartingTurn();
+//   const turnsCopy = [...state.turns];
+//   turnsCopy.splice(
+//     startingTurn,
+//     turnsCopy.length - startingTurn,
+//     ...incomingTurns
+//   );
+
+//   // Reset the board back to blank and place tiles on it.
+//   const gs = startingGameState(
+//     state.tileDistribution,
+//     [...state.players],
+//     state.gameID
+//   );
+//   pushTurns(gs, turnsCopy);
+// };
 
 const newGameState = (
   state: GameState,
@@ -131,8 +183,7 @@ const newGameState = (
     case GameEvent.Type.TILE_PLACEMENT_MOVE: {
       // Right now, this is the ONLY case in which we modify the board state.
       // the PHONY_TILES_RETURNED event is not handled; we instead refresh
-      // the game from history whenever there is a challenge event
-      // (XXX: This isn't ideal, but the performance impact should be minimal)
+      // the game from a GameTurnRefresher whenever there is a challenge event
       // placeOnBoard(evt) -- make board clone!
       board = state.board.deepCopy();
       [lastPlayedTiles, pool] = placeOnBoard(board, pool, evt);
@@ -157,6 +208,7 @@ const newGameState = (
     tileDistribution: state.tileDistribution,
     gameID: state.gameID,
     nickToPlayerOrder: state.nickToPlayerOrder,
+    uidToPlayerOrder: state.uidToPlayerOrder,
     playState: sge.getPlaying(),
     clockController: state.clockController,
     onClockTick: state.onClockTick,
@@ -205,6 +257,45 @@ const placeOnBoard = (
   return [playedTiles, newPool];
 };
 
+// pushTurns mutates the gs (GameState).
+const pushTurns = (gs: GameState, turns: Array<GameTurn>) => {
+  turns.forEach((turn, idx) => {
+    const events = turn.getEventsList();
+    // Detect challenged-off moves:
+    let challengedOff = false;
+    if (events.length === 2) {
+      if (
+        events[0].getType() === GameEvent.Type.TILE_PLACEMENT_MOVE &&
+        events[1].getType() === GameEvent.Type.PHONY_TILES_RETURNED
+      ) {
+        challengedOff = true;
+      }
+    }
+    if (!challengedOff) {
+      events.forEach((evt) => {
+        switch (evt.getType()) {
+          case GameEvent.Type.TILE_PLACEMENT_MOVE:
+            // eslint-disable-next-line no-param-reassign
+            [gs.lastPlayedTiles, gs.pool] = placeOnBoard(
+              gs.board,
+              gs.pool,
+              evt
+            );
+            break;
+          default:
+          //  do nothing - we only care about tile placement moves here.
+        }
+      });
+    }
+    // Push a deep clone of the turn.
+    gs.turns.push(GameTurn.deserializeBinary(turn.serializeBinary()));
+    // eslint-disable-next-line no-param-reassign
+    gs.players[gs.onturn].score = events[events.length - 1].getCumulative();
+    // eslint-disable-next-line no-param-reassign
+    gs.onturn = (idx + 1) % 2;
+  });
+};
+
 const stateFromHistory = (refresher: GameHistoryRefresher): GameState => {
   // XXX: Do this for now. We will eventually want to put the tile
   // distribution itself in the history protobuf.
@@ -224,44 +315,19 @@ const stateFromHistory = (refresher: GameHistoryRefresher): GameState => {
     [playerList[1].getNickname()]: 'p1' as PlayerOrder,
   };
 
+  const uidToPlayerOrder = {
+    [playerList[0].getUserId()]: 'p0' as PlayerOrder,
+    [playerList[1].getUserId()]: 'p1' as PlayerOrder,
+  };
+
   const gs = startingGameState(
     EnglishCrosswordGameDistribution,
     initialExpandToFull(playerList),
     history!.getUid()
   );
   gs.nickToPlayerOrder = nickToPlayerOrder;
-  history.getTurnsList().forEach((turn, idx) => {
-    const events = turn.getEventsList();
-    // Detect challenged-off moves:
-    let challengedOff = false;
-    if (events.length === 2) {
-      if (
-        events[0].getType() === GameEvent.Type.TILE_PLACEMENT_MOVE &&
-        events[1].getType() === GameEvent.Type.PHONY_TILES_RETURNED
-      ) {
-        challengedOff = true;
-      }
-    }
-    if (!challengedOff) {
-      events.forEach((evt) => {
-        switch (evt.getType()) {
-          case GameEvent.Type.TILE_PLACEMENT_MOVE:
-            [gs.lastPlayedTiles, gs.pool] = placeOnBoard(
-              gs.board,
-              gs.pool,
-              evt
-            );
-            break;
-          default:
-          //  do nothing - we only care about tile placement moves here.
-        }
-      });
-    }
-    // Push a deep clone of the turn.
-    gs.turns.push(GameTurn.deserializeBinary(turn.serializeBinary()));
-    gs.players[gs.onturn].score = events[events.length - 1].getCumulative();
-    gs.onturn = (idx + 1) % 2;
-  });
+  gs.uidToPlayerOrder = uidToPlayerOrder;
+  pushTurns(gs, history.getTurnsList());
 
   // racks are given in the original order that the playerList came in.
   // so if we reversed the player list, we must reverse the racks.
@@ -403,6 +469,16 @@ export const GameReducer = (state: GameState, action: Action): GameState => {
       // throw an Error..
       return newState;
     }
+
+    // case ActionType.RefreshTurns: {
+    //   // Almost a history refresh, but not quite. We must edit turns in
+    //   // place and add more turns.
+    //   const gtr = action.payload as GameTurnsRefresher;
+    //   const ngs = newStateAfterTurns(state, gtr);
+    //   ngs.clockController = state.clockController;
+    //   setClock(state, ngs, sge);
+    //   return ngs;
+    // }
   }
   // This should never be reached, but the compiler is complaining.
   throw new Error(`Unhandled action type ${action.actionType}`);

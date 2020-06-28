@@ -10,5 +10,6 @@ export enum ActionType {
   RemoveSoughtGame,
   /* game actions */
   AddGameEvent,
+  RefreshTurns,
   RefreshHistory,
 }

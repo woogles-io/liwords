@@ -18,7 +18,7 @@ import {
 } from '../utils/cwgame/game_event';
 import { Board } from '../utils/cwgame/board';
 import { encodeToSocketFmt } from '../utils/protobuf';
-import { MessageType } from '../gen/api/proto/game_service_pb';
+import { MessageType } from '../gen/api/proto/realtime_pb';
 import { useStoreContext } from '../store/store';
 
 // The frame atop is 24 height
@@ -131,6 +131,12 @@ export const BoardPanel = (props: Props) => {
 
   const makeMove = (move: string, addl?: string) => {
     let moveEvt;
+    console.log(
+      'making move',
+      gameContext.nickToPlayerOrder,
+      props.username,
+      gameContext.onturn
+    );
     const iam = gameContext.nickToPlayerOrder[props.username];
     if (!(iam && iam === `p${gameContext.onturn}`)) {
       // It is not my turn. Ignore this event.

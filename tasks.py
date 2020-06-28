@@ -15,20 +15,34 @@ def build_protobuf(c):
     )
     c.run(
         "protoc "
+        "--twirp_out=rpc --go_out=rpc "
+        f"--proto_path={code_dir}/liwords "
+        "--go_opt=paths=source_relative "
+        "--twirp_opt=paths=source_relative api/proto/user_service.proto"
+    )
+    c.run(
+        "protoc "
+        "--twirp_out=rpc --go_out=rpc "
+        f"--proto_path={code_dir}/liwords "
+        "--go_opt=paths=source_relative "
+        "--twirp_opt=paths=source_relative api/proto/ipc.proto"
+    )
+    c.run(
+        "protoc "
         '--plugin="protoc-gen-ts=liwords-ui/node_modules/.bin/protoc-gen-ts" '
         "--twirp_out=rpc --go_out=rpc "
         "--js_out=import_style=commonjs,binary:liwords-ui/src/gen "
         f"--ts_out=liwords-ui/src/gen --proto_path={code_dir}/ "
         f"--proto_path={code_dir}/liwords "
         "--go_opt=paths=source_relative "
-        "--twirp_opt=paths=source_relative api/proto/game_service.proto"
+        "--twirp_opt=paths=source_relative api/proto/realtime.proto"
     )
 
     # Prepend line to disable eslint to generated files. It doesn't work
     # if I put them in the .eslintignore file for some reason.
     for gen_filename in (
         "liwords-ui/src/gen/macondo/api/proto/macondo/macondo_pb.js",
-        "liwords-ui/src/gen/api/proto/game_service_pb.js",
+        "liwords-ui/src/gen/api/proto/realtime_pb.js",
     ):
         tmp = c.run("mktemp").stdout.strip()
         c.run(r'printf "/* eslint-disable */\n" > ' + tmp)

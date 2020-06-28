@@ -40,9 +40,6 @@ type GameStore interface {
 	Set(context.Context, *entity.Game) error
 }
 
-// type Game interface {
-// }
-
 // InstantiateNewGame instantiates a game and returns it.
 func InstantiateNewGame(ctx context.Context, gameStore GameStore, cfg *config.Config,
 	players []*macondopb.PlayerInfo, req *pb.GameRequest) (*entity.Game, error) {
@@ -130,7 +127,7 @@ func StartGame(ctx context.Context, gameStore GameStore, eventChan chan<- *entit
 		return errGameNotActive
 	}
 	log.Debug().Str("gameid", id).Msg("reset timers (and start)")
-	entGame.ResetTimers()
+	entGame.ResetTimersAndStart()
 
 	// Save the game back to the store always.
 	if err := gameStore.Set(ctx, entGame); err != nil {
@@ -141,20 +138,34 @@ func StartGame(ctx context.Context, gameStore GameStore, eventChan chan<- *entit
 	}
 	log.Debug().Interface("history", entGame.Game.History()).Msg("game history")
 
-	// We do not send a history refresher event here. Instead, we will send one
-	// when the user joins the game realm. See the `sendRealmData` function.
+	evt := entGame.HistoryRefresherEvent()
+	wrapped := entity.WrapEvent(evt, pb.MessageType_GAME_HISTORY_REFRESHER,
+		entGame.GameID())
+	wrapped.AddAudience(entity.AudGameTV, entGame.GameID())
+	for _, p := range players(entGame) {
+		wrapped.AddAudience(entity.AudUser, p)
+	}
+	entGame.SendChange(wrapped)
 
 	return nil
 }
 
+func players(entGame *entity.Game) []string {
+	// Return user IDs of players.
+	ps := []string{}
+	for _, p := range entGame.History().Players {
+		ps = append(ps, p.UserId)
+	}
+	return ps
+}
+
 func handleChallenge(ctx context.Context, entGame *entity.Game, gameStore GameStore,
-	timeRemaining int, player string) error {
+	timeRemaining int, challengerID string) error {
 	if entGame.ChallengeRule() == macondopb.ChallengeRule_VOID {
 		// The front-end shouldn't even show the button.
 		return errors.New("challenges not acceptable in void")
 	}
-	challenger := entGame.Game.NickOnTurn()
-
+	// curTurn := entGame.Game.Turn()
 	valid, err := entGame.Game.ChallengeEvent(0, timeRemaining)
 	if err != nil {
 		return err
@@ -162,15 +173,37 @@ func handleChallenge(ctx context.Context, entGame *entity.Game, gameStore GameSt
 	resultEvent := &pb.ServerChallengeResultEvent{
 		Valid:         valid,
 		ChallengeRule: entGame.ChallengeRule(),
-		Challenger:    challenger,
+		Challenger:    challengerID,
 	}
-	entGame.SendChange(entity.WrapEvent(resultEvent, pb.MessageType_SERVER_CHALLENGE_RESULT_EVENT,
-		entGame.GameID()))
+	evt := entity.WrapEvent(resultEvent, pb.MessageType_SERVER_CHALLENGE_RESULT_EVENT,
+		entGame.GameID())
+	evt.AddAudience(entity.AudGame, entGame.GameID())
+	evt.AddAudience(entity.AudGameTV, entGame.GameID())
+	entGame.SendChange(evt)
 
-	// Send a refresher event to get the game state up-to-date on the client.
-	entGame.SendChange(entity.WrapEvent(entGame.HistoryRefresherEvent(),
-		pb.MessageType_GAME_HISTORY_REFRESHER,
-		entGame.GameID()))
+	// We need to send the turn history from curTurn onwards.
+	// turns := entGame.History().Turns[curTurn-1:]
+	// refresher := &pb.GameTurnsRefresher{
+	// 	Turns:        turns,
+	// 	PlayState:    entGame.Game.Playing(),
+	// 	StartingTurn: int32(curTurn - 1),
+	// }
+	// evt = entity.WrapEvent(refresher, pb.MessageType_GAME_TURNS_REFRESHER,
+	// 	entGame.GameID())
+
+	// Send just the whole history for now. Sorry, this game turns refresher
+	// thing is just too complicated to handle on the front end; we can
+	// try again later if we need to reduce bandwidth.
+
+	refresher := entGame.HistoryRefresherEvent()
+	evt = entity.WrapEvent(refresher, pb.MessageType_GAME_HISTORY_REFRESHER,
+		entGame.GameID())
+
+	evt.AddAudience(entity.AudGameTV, entGame.GameID())
+	for _, uid := range players(entGame) {
+		evt.AddAudience(entity.AudUser, uid)
+	}
+	entGame.SendChange(evt)
 
 	if entGame.Game.Playing() == macondopb.PlayState_GAME_OVER {
 		discernEndgameReason(entGame)
@@ -185,7 +218,7 @@ func handleChallenge(ctx context.Context, entGame *entity.Game, gameStore GameSt
 	return nil
 }
 
-func PlayMove(ctx context.Context, gameStore GameStore, player string,
+func PlayMove(ctx context.Context, gameStore GameStore, userID string,
 	cge *pb.ClientGameplayEvent) error {
 
 	// XXX: VERIFY THAT THE CLIENT GAME ID CORRESPONDS TO THE GAME
@@ -202,7 +235,7 @@ func PlayMove(ctx context.Context, gameStore GameStore, player string,
 	onTurn := entGame.Game.PlayerOnTurn()
 
 	// Ensure that it is actually the correct player's turn
-	if entGame.Game.NickOnTurn() != player {
+	if entGame.Game.PlayerIDOnTurn() != userID {
 		return errNotOnTurn
 	}
 	timeRemaining := entGame.TimeRemaining(onTurn)
@@ -220,7 +253,7 @@ func PlayMove(ctx context.Context, gameStore GameStore, player string,
 
 	if cge.Type == pb.ClientGameplayEvent_CHALLENGE_PLAY {
 		// Handle in another way
-		return handleChallenge(ctx, entGame, gameStore, timeRemaining, player)
+		return handleChallenge(ctx, entGame, gameStore, timeRemaining, userID)
 	}
 
 	// Turn the event into a macondo GameEvent.
@@ -262,15 +295,21 @@ func PlayMove(ctx context.Context, gameStore GameStore, player string,
 		sge.TimeRemaining = int32(entGame.TimeRemaining(onTurn))
 		sge.NewRack = entGame.Game.RackLettersFor(onTurn)
 		sge.Playing = entGame.Game.Playing()
+		sge.UserId = userID
 		evts[idx] = sge
 	}
 	// Since the move was successful, we assume the user gameplay event is valid.
 	// Send the server change event.
 	playing := entGame.Game.Playing()
-
+	players := players(entGame)
 	for _, sge := range evts {
-		entGame.SendChange(entity.WrapEvent(
-			sge, pb.MessageType_SERVER_GAMEPLAY_EVENT, entGame.GameID()))
+		wrapped := entity.WrapEvent(sge, pb.MessageType_SERVER_GAMEPLAY_EVENT,
+			entGame.GameID())
+		wrapped.AddAudience(entity.AudGameTV, entGame.GameID())
+		for _, p := range players {
+			wrapped.AddAudience(entity.AudUser, p)
+		}
+		entGame.SendChange(wrapped)
 	}
 	if playing == macondopb.PlayState_GAME_OVER {
 		discernEndgameReason(entGame)
@@ -285,11 +324,11 @@ func PlayMove(ctx context.Context, gameStore GameStore, player string,
 	return nil
 }
 
-func TimedOut(ctx context.Context, gameStore GameStore, sender string, timedout string, gameID string) error {
+func TimedOut(ctx context.Context, gameStore GameStore, timedout string, gameID string) error {
 	// XXX: VERIFY THAT THE GAME ID is the client's current game!!
 	// Note: we can get this event multiple times; the opponent and the player on turn
 	// both send it.
-	log.Debug().Str("sender", sender).Str("timedout", timedout).Msg("got-timed-out")
+	log.Debug().Str("timedout", timedout).Msg("got-timed-out")
 	entGame, err := gameStore.Get(ctx, gameID)
 	if err != nil {
 		return err
@@ -348,9 +387,14 @@ func setTimedOut(ctx context.Context, entGame *entity.Game, pidx int, gameStore 
 }
 
 func performEndgameDuties(g *entity.Game) {
-	g.SendChange(
-		entity.WrapEvent(g.GameEndedEvent(),
-			pb.MessageType_GAME_ENDED_EVENT, g.GameID()))
+	wrapped := entity.WrapEvent(g.GameEndedEvent(),
+		pb.MessageType_GAME_ENDED_EVENT, g.GameID())
+	// Once the game ends, we do not need to "sanitize" the packets
+	// going to the users anymore. So just send the data to the right
+	// audiences.
+	wrapped.AddAudience(entity.AudGame, g.GameID())
+	wrapped.AddAudience(entity.AudGameTV, g.GameID())
+	g.SendChange(wrapped)
 
 }
 

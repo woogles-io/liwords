@@ -13,10 +13,12 @@ import {
   GameEndedEvent,
   ServerChallengeResultEvent,
   SeekRequests,
-  RegisterRealm,
-  DeregisterRealm,
+  JoinPath,
+  UnjoinRealm,
   TimedOut,
-} from '../gen/api/proto/game_service_pb';
+  TokenSocketLogin,
+  GameTurnsRefresher,
+} from '../gen/api/proto/realtime_pb';
 import { ActionType } from '../actions/actions';
 import { endGameMessage } from './end_of_game';
 
@@ -36,9 +38,11 @@ const parseMsg = (msg: Uint8Array) => {
     [MessageType.GAME_ENDED_EVENT]: GameEndedEvent,
     [MessageType.SERVER_CHALLENGE_RESULT_EVENT]: ServerChallengeResultEvent,
     [MessageType.SEEK_REQUESTS]: SeekRequests,
-    [MessageType.REGISTER_REALM]: RegisterRealm,
-    [MessageType.DEREGISTER_REALM]: DeregisterRealm,
+    [MessageType.JOIN_PATH]: JoinPath,
+    [MessageType.UNJOIN_REALM]: UnjoinRealm,
     [MessageType.TIMED_OUT]: TimedOut,
+    [MessageType.TOKEN_SOCKET_LOGIN]: TokenSocketLogin,
+    [MessageType.GAME_TURNS_REFRESHER]: GameTurnsRefresher,
   };
 
   const parsedMsg = msgTypes[msgType];
@@ -64,7 +68,7 @@ export const onSocketMsg = (storeData: StoreData) => {
         storeData.dispatchLobbyContext({
           actionType: ActionType.AddSoughtGame,
           payload: {
-            seeker: user.getUsername(),
+            seeker: user.getDisplayName(),
             lexicon: gameReq.getLexicon(),
             initialTimeSecs: gameReq.getInitialTimeSeconds(),
             challengeRule: gameReq.getChallengeRule(),
@@ -82,7 +86,7 @@ export const onSocketMsg = (storeData: StoreData) => {
             const gameReq = r.getGameRequest()!;
             const user = r.getUser()!;
             return {
-              seeker: user.getUsername(),
+              seeker: user.getDisplayName(),
               lexicon: gameReq.getLexicon(),
               initialTimeSecs: gameReq.getInitialTimeSeconds(),
               challengeRule: gameReq.getChallengeRule(),
@@ -119,6 +123,7 @@ export const onSocketMsg = (storeData: StoreData) => {
 
       case MessageType.NEW_GAME_EVENT: {
         const nge = parsedMsg as NewGameEvent;
+        console.log('got new game event', nge);
         const gid = nge.getGameId();
         storeData.setRedirGame(gid);
         break;
@@ -130,6 +135,16 @@ export const onSocketMsg = (storeData: StoreData) => {
         storeData.dispatchGameContext({
           actionType: ActionType.RefreshHistory,
           payload: ghr,
+        });
+        break;
+      }
+
+      case MessageType.GAME_TURNS_REFRESHER: {
+        const gtr = parsedMsg as GameTurnsRefresher;
+        console.log('got gameturns refrsher', gtr);
+        storeData.dispatchGameContext({
+          actionType: ActionType.RefreshTurns,
+          payload: gtr,
         });
         break;
       }
@@ -153,6 +168,7 @@ export const onSocketMsg = (storeData: StoreData) => {
 
       case MessageType.GAME_ACCEPTED_EVENT: {
         const gae = parsedMsg as GameAcceptedEvent;
+        console.log('got game accepted event', gae);
         storeData.dispatchLobbyContext({
           actionType: ActionType.RemoveSoughtGame,
           payload: gae.getRequestId(),

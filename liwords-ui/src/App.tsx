@@ -1,5 +1,5 @@
-import React from 'react';
-import { BrowserRouter as Router, Route, Switch } from 'react-router-dom';
+import React, { useEffect } from 'react';
+import { Route, Switch, useLocation } from 'react-router-dom';
 import './App.scss';
 import 'antd/dist/antd.css';
 import useWebSocket from 'react-use-websocket';
@@ -9,16 +9,18 @@ import { Lobby } from './lobby/lobby';
 import { useStoreContext } from './store/store';
 
 import { getSocketURI } from './socket/socket';
-import { decodeToMsg } from './utils/protobuf';
+import { decodeToMsg, encodeToSocketFmt } from './utils/protobuf';
 import { onSocketMsg } from './store/socket_handlers';
+import { Login } from './lobby/login';
+import { Register } from './lobby/register';
+import { MessageType, JoinPath } from './gen/api/proto/realtime_pb';
+import { useSocketToken } from './hooks/use_socket_token';
 
-type Props = {
-  username: string;
-};
+const JoinSocketDelay = 1000;
 
-const App = (props: Props) => {
+const App = () => {
   const store = useStoreContext();
-  const socketUrl = getSocketURI(props.username);
+  const socketUrl = getSocketURI();
   const { sendMessage } = useWebSocket(socketUrl, {
     onOpen: () => console.log('connected to socket'),
     // Will attempt to reconnect on all close events, such as server shutting down
@@ -27,22 +29,49 @@ const App = (props: Props) => {
       decodeToMsg(event.data, onSocketMsg(store)),
   });
 
+  const { username, loggedIn } = useSocketToken(sendMessage);
+  const location = useLocation();
+
+  useEffect(() => {
+    console.log('location pathname change, now', location.pathname);
+    const rr = new JoinPath();
+    rr.setPath(location.pathname);
+    console.log('Tryna register with path', location.pathname);
+    setTimeout(() => {
+      sendMessage(
+        encodeToSocketFmt(MessageType.JOIN_PATH, rr.serializeBinary())
+      );
+    }, JoinSocketDelay);
+
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.pathname]);
+
   return (
     <div className="App">
-      <Router>
-        <Switch>
-          <Route path="/" exact>
-            <Lobby username={props.username} sendSocketMsg={sendMessage} />
-          </Route>
-          <Route path="/game/:gameID">
-            {/* Table meaning a game table */}
-            <Table
-              sendSocketMsg={sendMessage}
-              username={props.username}
-            />
-          </Route>
-        </Switch>
-      </Router>
+      <Switch>
+        <Route path="/" exact>
+          <Lobby
+            username={username}
+            sendSocketMsg={sendMessage}
+            loggedIn={loggedIn}
+          />
+        </Route>
+        <Route path="/game/:gameID">
+          {/* Table meaning a game table */}
+          <Table
+            sendSocketMsg={sendMessage}
+            username={username}
+            loggedIn={loggedIn}
+          />
+        </Route>
+
+        <Route path="/login">
+          <Login />
+        </Route>
+        <Route path="/register">
+          <Register />
+        </Route>
+      </Switch>
     </div>
   );
 };

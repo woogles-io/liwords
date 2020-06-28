@@ -27,6 +27,11 @@ type Game struct {
 	// perTurnIncrement, in seconds
 	perTurnIncrement int
 	gamereq          *pb.GameRequest
+	// started is set when the game actually starts (when the game timers start).
+	// Note that the internal game.Game may have started a few seconds before,
+	// but there should be no information about it given until _this_ started
+	// is true.
+	started bool
 
 	gameEndReason pb.GameEndReason
 	// if 0 or 1, that player won
@@ -56,11 +61,12 @@ func NewGame(mcg *game.Game, req *pb.GameRequest) *Game {
 }
 
 // Reset timers to _now_. The game is actually starting.
-func (g *Game) ResetTimers() {
+func (g *Game) ResetTimersAndStart() {
 	log.Debug().Msg("reset-timers")
 	ts := msTimestamp()
 	g.timeOfLastUpdate = ts
 	g.timeStarted = ts
+	g.started = true
 }
 
 // TimeRemaining calculates the time remaining, but does NOT update it.
@@ -75,6 +81,10 @@ func (g *Game) TimeRemaining(idx int) int {
 
 func (g *Game) TimeStarted() int64 {
 	return g.timeStarted
+}
+
+func (g *Game) Started() bool {
+	return g.started
 }
 
 func (g *Game) PerTurnIncrement() int {
@@ -112,11 +122,14 @@ func (g *Game) RecordTimeOfMove(idx int) {
 	g.calculateAndSetTimeRemaining(idx, now)
 }
 
-func (g *Game) HistoryRefresherEvent() *pb.GameHistoryRefresher {
+// Return a HistoryRefresherEvent for the given user ID. If sanitize is
+// true, opponent racks are stripped.
+func (g *Game) HistoryRefresherEvent( /*userID string, sanitize bool*/ ) *pb.GameHistoryRefresher {
 	now := msTimestamp()
 
 	g.calculateAndSetTimeRemaining(0, now)
 	g.calculateAndSetTimeRemaining(1, now)
+
 	return &pb.GameHistoryRefresher{
 		History:     g.History(),
 		TimePlayer1: int32(g.TimeRemaining(0)),

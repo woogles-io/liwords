@@ -36,16 +36,12 @@ type MoveEntityObj = {
   cumulative: number;
 };
 
-const displaySummary = (evt: GameEvent, board: Board, scrubRack: boolean) => {
+const displaySummary = (evt: GameEvent, board: Board) => {
   // Handle just a subset of the possible moves here. These may be modified
   // later on.
   switch (evt.getType()) {
     case GameEvent.Type.EXCHANGE:
-      // XXX: SEE NOTE BELOW ABOUT SCRUBBING RACK. THIS IS TEMPORARY CODE.
-      // We don't want to be ISC.
-      return `Exch. ${
-        scrubRack ? evt.getExchanged().length : evt.getExchanged()
-      }`;
+      return `Exch. ${evt.getExchanged()}`;
 
     case GameEvent.Type.PASS:
       return 'Passed.';
@@ -73,18 +69,8 @@ const Turn = (props: turnProps) => {
       },
       coords: evts[0].getPosition(),
       timeRemaining: millisToTimeStr(evts[0].getMillisRemaining(), false),
-      // XXX: The event is STILL in the socket. This is TEMPORARY code to
-      // scrub our opponent's rack.
-      // Fix when we have a better socket hub working!
-      rack:
-        props.playing && evts[0].getNickname() !== props.username
-          ? ''
-          : evts[0].getRack(),
-      play: displaySummary(
-        evts[0],
-        props.board,
-        props.playing && evts[0].getNickname() !== props.username
-      ),
+      rack: evts[0].getRack(),
+      play: displaySummary(evts[0], props.board),
       score: `${evts[0].getScore()}`,
       cumulative: evts[0].getCumulative(),
       oldScore: evts[0].getCumulative() - evts[0].getScore(),

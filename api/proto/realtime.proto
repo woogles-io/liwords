@@ -2,23 +2,12 @@ syntax = "proto3";
 package liwords;
 option go_package = "github.com/domino14/liwords/rpc/api/proto/liwords";
 
-// game_service contains the data structures and services needed for the actual
+// realtime contains the data structures and services needed for the actual
 // gameplay. Since gameplay is intended to happen over a full-duplex connection,
 // we will not be auto-generating service code; it is here for documentation
 // purposes.
 
 import "macondo/api/proto/macondo/macondo.proto";
-
-// message NewGameRequest {
-//   repeated macondo.PlayerInfo players = 1;
-//   repeated string board_layout = 2;
-//   string lexicon = 3;
-//   string letter_distribution = 4;
-//   // Perhaps an eventual protobuf field that contains a custom letter
-//   // distribution, as the above should just be a name ("english", etc).
-// }
-
-// message NewGameResponse {}
 
 // A GameRules is just the name of a board layout + the name of a letter
 // distribution. These must exist in a database or file somewhere.
@@ -55,8 +44,14 @@ message GameRequest {
 
 // A RequestingUser requests a match via a seek or a match request.
 message RequestingUser {
-  string username = 1;
-  int32 relevantRating = 2;
+  // user_id is the database, or anonymous, ID of the user.
+  string user_id = 1;
+  // relevant_rating is the rating of the user, for the relevant seek mode.
+  int32 relevant_rating = 2;
+  // if is_anonymous, backend won't bother to look up the user in the DB.
+  bool is_anonymous = 3;
+  // display_name is the display username of the user (could be real name too)
+  string display_name = 4;
 }
 
 // Message types
@@ -77,9 +72,11 @@ enum MessageType {
   NEW_GAME_EVENT = 8;
   SERVER_CHALLENGE_RESULT_EVENT = 9;
   SEEK_REQUESTS = 10;
-  REGISTER_REALM = 11;
-  DEREGISTER_REALM = 12;
+  JOIN_PATH = 11;
+  UNJOIN_REALM = 12;
   TIMED_OUT = 13;
+  TOKEN_SOCKET_LOGIN = 14;
+  GAME_TURNS_REFRESHER = 15;
   // Add more events here. The total number of events should fit in a byte.
   // We should definitely not be using anywhere close to 255 events, and
   // in order to enforce that I'll be forcing the event type header to just be
@@ -118,6 +115,7 @@ message ServerGameplayEvent {
   string new_rack = 3;
   int32 time_remaining = 4;
   macondo.PlayState playing = 5;
+  string user_id = 6; // the event has the nickname, but not the userid.
 }
 
 // The server will send back a challenge result event only in the case of
@@ -168,6 +166,27 @@ message GameHistoryRefresher {
   // of whether they went first.
   int32 time_player1 = 2;
   int32 time_player2 = 3;
+}
+
+// A GameTurnsRefresher is a kind of smaller version of a GameHistoryRefresher.
+// Players receive it after a challenge is adjudicated. Because of the various
+// challenge rules, and because there is a potential for a game to end after
+// a challenge in various ways, there could be one or more turns affected
+// by a challenge. This event sends all affected turns.
+message GameTurnsRefresher {
+  // Assume that the receiver of this event already has some sort of cached
+  // version of a GameHistory. This just adds additional events to that history.
+  // Note that it may also overwrite events (for example, turns with challenge
+  // bonuses are overwrites of previous turns, as well as turns where a player
+  // takes phony tiles back).
+  repeated macondo.GameTurn turns = 1;
+  macondo.PlayState play_state = 2;
+  // starting_turn is the turn at which this turns refresher starts. The
+  // receiver of this event should start writing to its local game history
+  // starting with this turn.
+  int32 starting_turn = 3;
+
+  repeated macondo.PlayerInfo players = 4;
 }
 
 // A NewGameEvent gets sent from the server to the involved clients when a new
@@ -221,11 +240,15 @@ message ClientGameplayEvent {
 
 message TimedOut {
   string game_id = 1;
-  string username = 2;
+  string user_id = 2;
 }
 
 // Communication
 
-message RegisterRealm { string realm = 1; }
+message TokenSocketLogin { string token = 1; }
 
-message DeregisterRealm { string realm = 1; }
+// When we go to a new path in our SPA, we send a JoinPath. When we leave the
+// path, we send an Unjoin realm. d
+message JoinPath { string path = 1; }
+
+message UnjoinRealm {}

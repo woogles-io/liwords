@@ -1,0 +1,17 @@
+// ipc is used for inter-process communication (essentially between the
+// socket server (liwords-socket) and the main api server (liwords)
+syntax = "proto3";
+package liwords;
+option go_package = "github.com/domino14/liwords/rpc/api/proto/liwords";
+
+message RegisterRealmRequest {
+  string realm = 1;
+  string user_id = 2;
+}
+
+message RegisterRealmResponse { string realm = 1; }
+
+message InitRealmInfo {
+  string realm = 1;
+  string user_id = 2;
+}
