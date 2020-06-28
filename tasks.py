@@ -13,29 +13,33 @@ def build_protobuf(c):
         "--js_out=import_style=commonjs,binary:liwords-ui/src/gen "
         f"--proto_path={code_dir} macondo/api/proto/macondo/macondo.proto"
     )
+
+    twirp_apis = ["user_service", "game_service"]
+    for tapi in twirp_apis:
+        c.run(
+            "protoc "
+            "--twirp_out=rpc --go_out=rpc "
+            f"--proto_path={code_dir}/ --proto_path={code_dir}/liwords "
+            "--go_opt=paths=source_relative "
+            f"--twirp_opt=paths=source_relative api/proto/{tapi}.proto"
+        )
+
     c.run(
         "protoc "
-        "--twirp_out=rpc --go_out=rpc "
+        "--go_out=rpc "
         f"--proto_path={code_dir}/liwords "
         "--go_opt=paths=source_relative "
-        "--twirp_opt=paths=source_relative api/proto/user_service.proto"
-    )
-    c.run(
-        "protoc "
-        "--twirp_out=rpc --go_out=rpc "
-        f"--proto_path={code_dir}/liwords "
-        "--go_opt=paths=source_relative "
-        "--twirp_opt=paths=source_relative api/proto/ipc.proto"
+        "api/proto/ipc.proto"
     )
     c.run(
         "protoc "
         '--plugin="protoc-gen-ts=liwords-ui/node_modules/.bin/protoc-gen-ts" '
-        "--twirp_out=rpc --go_out=rpc "
+        "--go_out=rpc "
         "--js_out=import_style=commonjs,binary:liwords-ui/src/gen "
         f"--ts_out=liwords-ui/src/gen --proto_path={code_dir}/ "
         f"--proto_path={code_dir}/liwords "
         "--go_opt=paths=source_relative "
-        "--twirp_opt=paths=source_relative api/proto/realtime.proto"
+        "api/proto/realtime.proto"
     )
 
     # Prepend line to disable eslint to generated files. It doesn't work

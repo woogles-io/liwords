@@ -173,6 +173,10 @@ func (g *Game) RatingMode() pb.RatingMode {
 	return g.gamereq.RatingMode
 }
 
+func (g *Game) CreationRequest() *pb.GameRequest {
+	return g.gamereq
+}
+
 // RegisterChangeHook registers a channel with the game. Events will
 // be sent down this channel.
 func (g *Game) RegisterChangeHook(eventChan chan<- *EventWrapper) error {

@@ -1,0 +1,36 @@
+syntax = "proto3";
+package liwords;
+option go_package = "github.com/domino14/liwords/rpc/api/proto/liwords";
+
+import "api/proto/realtime.proto";
+import "macondo/api/proto/macondo/macondo.proto";
+
+// Meta information about a game, including its players.
+message GameInfoRequest { string game_id = 1; }
+
+// Meta information about the player of a particular game.
+message PlayerInfo {
+  string user_id = 1;
+  string nickname = 2;
+  string full_name = 3;
+  string country_code = 4;
+  // Rating for the particular mode of the game.
+  int32 rating = 5;
+  string title = 6;
+}
+
+message GameInfoResponse {
+  repeated PlayerInfo players = 1;
+  string lexicon = 2;
+  string variant = 3;
+  string time_control = 4;
+  string tournament_name = 5;
+  macondo.ChallengeRule challenge_rule = 6;
+  liwords.RatingMode rating_mode = 7;
+  // done - is game done?
+  string done = 8;
+}
+
+service GameMetadataService {
+  rpc GetMetadata(GameInfoRequest) returns (GameInfoResponse);
+}

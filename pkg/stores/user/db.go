@@ -79,12 +79,12 @@ func (s *DBStore) Get(ctx context.Context, username string) (*entity.User, error
 	if result := s.db.Model(u).Related(p); result.Error != nil {
 		return nil, result.Error
 	}
-
 	profile, err := dbProfileToProfile(p)
 	if err != nil {
 		return nil, err
 	}
 	entu := &entity.User{
+		ID:        u.ID,
 		Username:  u.Username,
 		UUID:      u.UUID,
 		Email:     u.Email,
@@ -135,7 +135,9 @@ func (s *DBStore) GetByUUID(ctx context.Context, uuid string) (*entity.User, err
 		if err != nil {
 			return nil, err
 		}
+
 		entu = &entity.User{
+			ID:       u.ID,
 			Username: u.Username,
 			UUID:     u.UUID,
 			Email:    u.Email,
@@ -174,6 +176,38 @@ func (s *DBStore) New(ctx context.Context, u *entity.User) error {
 	}
 	result = s.db.Create(dbp)
 	return result.Error
+}
+
+// SetRating sets the specific rating for the given variant.
+func (s *DBStore) SetRating(ctx context.Context, uuid string, variant entity.VariantKey,
+	rating entity.SingleRating) error {
+	u := &user{}
+	p := &profile{}
+
+	if result := s.db.Where("uuid = ?", uuid).First(u); result.Error != nil {
+		return result.Error
+	}
+	if result := s.db.Model(u).Related(p); result.Error != nil {
+		return result.Error
+	}
+
+	var existingRatings entity.Ratings
+	err := json.Unmarshal(p.Ratings.RawMessage, &existingRatings)
+	if err != nil {
+		return nil
+	}
+
+	if existingRatings.Data == nil {
+		existingRatings.Data = make(map[entity.VariantKey]entity.SingleRating)
+	}
+	existingRatings.Data[variant] = rating
+
+	bytes, err := json.Marshal(existingRatings)
+	if err != nil {
+		return err
+	}
+
+	return s.db.Model(p).Update("ratings", postgres.Jsonb{RawMessage: bytes}).Error
 }
 
 // CheckPassword checks the password. If the password matches, return the User.

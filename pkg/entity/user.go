@@ -12,11 +12,15 @@ const (
 // User - the db-specific details are in the store package.
 type User struct {
 	Anonymous bool
-	UUID      string
-	Username  string
-	Password  string
-	Email     string
-	Profile   *Profile
+	// ID is the database ID. Since this increases monotonically, we should
+	// not expose it to the user
+	ID uint
+	// UUID is the "user-exposed" ID, in any APIs.
+	UUID     string
+	Username string
+	Password string
+	Email    string
+	Profile  *Profile
 }
 
 // Session - The db specific-details are in the store package.
