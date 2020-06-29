@@ -1,11 +1,11 @@
 import React from 'react';
 import { Card, Row } from 'antd';
-import { GameInfoResponse } from '../gen/api/proto/game_service/game_service_pb';
+
 // At some point we should get this from the pb but then we have to use
 // twirp for this and we really shouldn't need to. Wait on it probably.
 // See game_service.proto
 export type GameMetadata = {
-  players: Array<PlayerInfo>;
+  players: Array<PlayerMetadata>;
   lexicon: string;
   variant: string;
   time_control: string;
@@ -15,13 +15,14 @@ export type GameMetadata = {
   done: boolean;
 };
 
-type PlayerInfo = {
+export type PlayerMetadata = {
   user_id: string;
   nickname: string;
   full_name: string;
   country_code: string;
   rating: string;
   title: string;
+  avatar_url: string;
 };
 
 type Props = {

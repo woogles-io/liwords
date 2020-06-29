@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Row, Col, Card } from 'antd';
+import { Row, Col } from 'antd';
 import axios from 'axios';
 
 import { useParams } from 'react-router-dom';
@@ -80,15 +80,14 @@ export const Table = (props: Props) => {
     let send = false;
     let timedout = '';
 
-    for (let idx = 0; idx < gameContext.players.length; idx++) {
-      const p = gameContext.players[idx];
-      if (gameContext.uidToPlayerOrder[p.userID] === pTimedOut) {
-        timedout = p.userID;
+    gameInfo.players.forEach((p) => {
+      if (gameContext.uidToPlayerOrder[p.user_id] === pTimedOut) {
+        timedout = p.user_id;
       }
       if (username === p.nickname) {
         send = true;
       }
-    }
+    });
 
     if (!send) return;
 
@@ -108,9 +107,10 @@ export const Table = (props: Props) => {
   // If we are NOT one of the players (so an observer), display the rack of
   // the player on turn.
   let rack;
-  const us = gameContext.players.find((p) => p.nickname === props.username);
+  const us = gameInfo.players.find((p) => p.nickname === props.username);
   if (us) {
-    rack = us.currentRack;
+    rack = gameContext.players.find((p) => p.userID === us.user_id)
+      ?.currentRack;
   } else {
     rack = gameContext.players.find((p) => p.onturn)?.currentRack || '';
   }
@@ -129,20 +129,19 @@ export const Table = (props: Props) => {
             username={props.username}
             board={gameContext.board}
             showBonusLabels={false}
-            currentRack={rack}
+            currentRack={rack || ''}
             lastPlayedLetters={{}}
             gameID={gameID}
             sendSocketMsg={props.sendSocketMsg}
           />
         </Col>
         <Col span={6} className="data-area">
-          {/* maybe some of this info comes from backend */}
-          <PlayerCards />
+          <PlayerCards playerMeta={gameInfo.players} />
           <GameInfo meta={gameInfo} />
 
           <Pool
             pool={gameContext?.pool}
-            currentRack={rack}
+            currentRack={rack || ''}
             poolFormat={poolFormat}
             setPoolFormat={setPoolFormat}
           />
@@ -152,6 +151,7 @@ export const Table = (props: Props) => {
             turns={gameContext.turns}
             currentTurn={gameContext.currentTurn}
             board={gameContext.board}
+            playerMeta={gameInfo.players}
           />
         </Col>
       </Row>

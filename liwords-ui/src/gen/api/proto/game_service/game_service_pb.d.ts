@@ -44,6 +44,9 @@ export class PlayerInfo extends jspb.Message {
   getTitle(): string;
   setTitle(value: string): void;
 
+  getAvatarUrl(): string;
+  setAvatarUrl(value: string): void;
+
   serializeBinary(): Uint8Array;
   toObject(includeInstance?: boolean): PlayerInfo.AsObject;
   static toObject(includeInstance: boolean, msg: PlayerInfo): PlayerInfo.AsObject;
@@ -62,6 +65,7 @@ export namespace PlayerInfo {
     countryCode: string,
     rating: string,
     title: string,
+    avatarUrl: string,
   }
 }
 
