@@ -1,6 +1,6 @@
 syntax = "proto3";
 package liwords;
-option go_package = "github.com/domino14/liwords/rpc/api/proto/liwords";
+option go_package = "github.com/domino14/liwords/rpc/api/proto/realtime";
 
 // realtime contains the data structures and services needed for the actual
 // gameplay. Since gameplay is intended to happen over a full-duplex connection,

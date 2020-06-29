@@ -3,7 +3,7 @@ package gameplay
 import (
 	"context"
 
-	pb "github.com/domino14/liwords/rpc/api/proto"
+	pb "github.com/domino14/liwords/rpc/api/proto/realtime"
 
 	"github.com/domino14/liwords/pkg/entity"
 )

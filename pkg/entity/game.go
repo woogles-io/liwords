@@ -4,7 +4,7 @@ import (
 	"sync"
 	"time"
 
-	pb "github.com/domino14/liwords/rpc/api/proto"
+	pb "github.com/domino14/liwords/rpc/api/proto/realtime"
 	"github.com/domino14/macondo/game"
 	macondopb "github.com/domino14/macondo/gen/api/proto/macondo"
 	"github.com/rs/zerolog/log"

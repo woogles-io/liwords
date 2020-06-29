@@ -18,7 +18,7 @@ import {
   TimedOut,
   TokenSocketLogin,
   GameTurnsRefresher,
-} from '../gen/api/proto/realtime_pb';
+} from '../gen/api/proto/realtime/realtime_pb';
 import { ActionType } from '../actions/actions';
 import { endGameMessage } from './end_of_game';
 

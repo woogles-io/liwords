@@ -14,7 +14,7 @@ import (
 
 	"github.com/domino14/liwords/pkg/user"
 
-	pb "github.com/domino14/liwords/rpc/api/proto"
+	pb "github.com/domino14/liwords/rpc/api/proto/user_service"
 )
 
 const TokenExpiration = 15 * time.Second

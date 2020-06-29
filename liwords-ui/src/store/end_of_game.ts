@@ -1,4 +1,7 @@
-import { GameEndedEvent, GameEndReason } from '../gen/api/proto/realtime_pb';
+import {
+  GameEndedEvent,
+  GameEndReason,
+} from '../gen/api/proto/realtime/realtime_pb';
 
 export const endGameMessage = (gee: GameEndedEvent) => {
   const scores = gee.getScoresMap();

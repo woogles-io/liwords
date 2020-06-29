@@ -1,8 +1,8 @@
 syntax = "proto3";
-package liwords;
-option go_package = "github.com/domino14/liwords/rpc/api/proto/liwords";
+package game_service;
+option go_package = "github.com/domino14/liwords/rpc/api/proto/game_service";
 
-import "api/proto/realtime.proto";
+import "api/proto/realtime/realtime.proto";
 import "macondo/api/proto/macondo/macondo.proto";
 
 // Meta information about a game, including its players.
@@ -14,8 +14,9 @@ message PlayerInfo {
   string nickname = 2;
   string full_name = 3;
   string country_code = 4;
-  // Rating for the particular mode of the game.
-  int32 rating = 5;
+  // Rating for the particular mode of the game. String because it could be
+  // provisional or some other strings.
+  string rating = 5;
   string title = 6;
 }
 
@@ -23,12 +24,13 @@ message GameInfoResponse {
   repeated PlayerInfo players = 1;
   string lexicon = 2;
   string variant = 3;
-  string time_control = 4;
-  string tournament_name = 5;
-  macondo.ChallengeRule challenge_rule = 6;
-  liwords.RatingMode rating_mode = 7;
+  string time_control_name = 4;
+  string time_control = 5;
+  string tournament_name = 6;
+  macondo.ChallengeRule challenge_rule = 7;
+  liwords.RatingMode rating_mode = 8;
   // done - is game done?
-  string done = 8;
+  bool done = 9;
 }
 
 service GameMetadataService {

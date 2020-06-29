@@ -24,7 +24,7 @@ export const Login = () => {
   const [loggedIn, setLoggedIn] = useState(false);
   const onFinish = (values: { [key: string]: string }) => {
     axios
-      .post('/twirp/liwords.AuthenticationService/Login', {
+      .post('/twirp/user_service.AuthenticationService/Login', {
         username: values.username,
         password: values.password,
       })

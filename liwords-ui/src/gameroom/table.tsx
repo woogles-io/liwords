@@ -1,5 +1,6 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Row, Col, Card } from 'antd';
+import axios from 'axios';
 
 import { useParams } from 'react-router-dom';
 import { BoardPanel } from './board_panel';
@@ -8,10 +9,12 @@ import { Chat } from './chat';
 import { useStoreContext } from '../store/store';
 import { PlayerCards } from './player_cards';
 import Pool from './pool';
-import { MessageType, TimedOut } from '../gen/api/proto/realtime_pb';
+import { MessageType, TimedOut } from '../gen/api/proto/realtime/realtime_pb';
 import { encodeToSocketFmt } from '../utils/protobuf';
 import './scss/gameroom.scss';
 import { ScoreCard } from './scorecard';
+import { GameInfo, GameMetadata } from './game_info';
+// import { GameInfoResponse } from '../gen/api/proto/game_service/game_service_pb';
 
 const gutter = 16;
 const boardspan = 12;
@@ -36,7 +39,16 @@ export const Table = (props: Props) => {
   } = useStoreContext();
   const { username, sendSocketMsg } = props;
   // const location = useLocation();
-
+  const [gameInfo, setGameInfo] = useState<GameMetadata>({
+    players: [],
+    lexicon: '',
+    variant: '',
+    time_control: '',
+    tournament_name: '',
+    challenge_rule: 'VOID',
+    rating_mode: 0, // 0 is rated and 1 is casual; see realtime proto.
+    done: false,
+  });
   useEffect(() => {
     // Avoid react-router hijacking the back button.
     // If setRedirGame is not defined, then we're SOL I guess.
@@ -44,11 +56,22 @@ export const Table = (props: Props) => {
   }, [setRedirGame]);
 
   useEffect(() => {
+    // Request game API to get info about the game at the beginning.
+    axios
+      .post<GameMetadata>(
+        '/twirp/game_service.GameMetadataService/GetMetadata',
+        {
+          gameId: gameID,
+        }
+      )
+      .then((resp) => {
+        setGameInfo(resp.data);
+      });
     return () => {
       clearChat();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [gameID]);
 
   useEffect(() => {
     if (pTimedOut === undefined) return;
@@ -115,17 +138,8 @@ export const Table = (props: Props) => {
         <Col span={6} className="data-area">
           {/* maybe some of this info comes from backend */}
           <PlayerCards />
-          {/* <GameInfo
-            timer="15 0"
-            gameType="Classic"
-            dictionary="Collins"
-            challengeRule="5-pt"
-            rated={rated}
-          /> */}
-          <Card>
-            <Row>15 0 - Classic - Collins</Row>
-            <Row>5 point challenge - Unrated</Row>
-          </Card>
+          <GameInfo meta={gameInfo} />
+
           <Pool
             pool={gameContext?.pool}
             currentRack={rack}

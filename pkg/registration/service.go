@@ -6,7 +6,7 @@ import (
 	"github.com/domino14/liwords/pkg/user"
 	"github.com/rs/zerolog"
 
-	pb "github.com/domino14/liwords/rpc/api/proto"
+	pb "github.com/domino14/liwords/rpc/api/proto/user_service"
 )
 
 type RegistrationService struct {

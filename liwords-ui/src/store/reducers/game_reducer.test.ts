@@ -4,7 +4,7 @@ import { ActionType } from '../../actions/actions';
 import {
   GameHistoryRefresher,
   ServerGameplayEvent,
-} from '../../gen/api/proto/realtime_pb';
+} from '../../gen/api/proto/realtime/realtime_pb';
 import {
   GameHistory,
   PlayerInfo,

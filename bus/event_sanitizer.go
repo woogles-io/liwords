@@ -9,7 +9,7 @@ import (
 	macondopb "github.com/domino14/macondo/gen/api/proto/macondo"
 
 	"github.com/domino14/liwords/pkg/entity"
-	pb "github.com/domino14/liwords/rpc/api/proto"
+	pb "github.com/domino14/liwords/rpc/api/proto/realtime"
 )
 
 // Events need to be sanitized so that we don't send user racks to people

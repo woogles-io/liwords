@@ -1,5 +1,5 @@
 /* eslint-disable */
-// source: api/proto/realtime.proto
+// source: api/proto/realtime/realtime.proto
 /**
  * @fileoverview
  * @enhanceable
@@ -13,7 +13,7 @@ var jspb = require('google-protobuf');
 var goog = jspb;
 var global = Function('return this')();
 
-var macondo_api_proto_macondo_macondo_pb = require('../../macondo/api/proto/macondo/macondo_pb.js');
+var macondo_api_proto_macondo_macondo_pb = require('../../../macondo/api/proto/macondo/macondo_pb.js');
 goog.object.extend(proto, macondo_api_proto_macondo_macondo_pb);
 goog.exportSymbol('proto.liwords.ClientGameplayEvent', null, global);
 goog.exportSymbol('proto.liwords.ClientGameplayEvent.EventType', null, global);

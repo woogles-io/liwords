@@ -19,7 +19,7 @@ import (
 
 	"github.com/domino14/liwords/pkg/config"
 	"github.com/domino14/liwords/pkg/entity"
-	pb "github.com/domino14/liwords/rpc/api/proto"
+	pb "github.com/domino14/liwords/rpc/api/proto/realtime"
 	"github.com/domino14/macondo/board"
 	"github.com/domino14/macondo/game"
 )

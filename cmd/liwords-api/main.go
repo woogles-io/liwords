@@ -27,7 +27,8 @@ import (
 
 	"github.com/domino14/liwords/pkg/config"
 	"github.com/domino14/liwords/pkg/stores/user"
-	pb "github.com/domino14/liwords/rpc/api/proto"
+	gameservice "github.com/domino14/liwords/rpc/api/proto/game_service"
+	userservice "github.com/domino14/liwords/rpc/api/proto/user_service"
 )
 
 const (
@@ -75,14 +76,14 @@ func main() {
 	registrationService := registration.NewRegistrationService(userStore)
 	gameService := gameplay.NewGameService(userStore, gameStore)
 
-	router.Handle(pb.AuthenticationServicePathPrefix,
-		middlewares.Then(pb.NewAuthenticationServiceServer(authenticationService, nil)))
+	router.Handle(userservice.AuthenticationServicePathPrefix,
+		middlewares.Then(userservice.NewAuthenticationServiceServer(authenticationService, nil)))
 
-	router.Handle(pb.RegistrationServicePathPrefix,
-		middlewares.Then(pb.NewRegistrationServiceServer(registrationService, nil)))
+	router.Handle(userservice.RegistrationServicePathPrefix,
+		middlewares.Then(userservice.NewRegistrationServiceServer(registrationService, nil)))
 
-	router.Handle(pb.GameMetadataServicePathPrefix,
-		middlewares.Then(pb.NewGameMetadataServiceServer(gameService, nil)))
+	router.Handle(gameservice.GameMetadataServicePathPrefix,
+		middlewares.Then(gameservice.NewGameMetadataServiceServer(gameService, nil)))
 
 	srv := &http.Server{
 		Addr:         cfg.ListenAddr,

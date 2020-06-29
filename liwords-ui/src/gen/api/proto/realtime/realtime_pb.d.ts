@@ -1,8 +1,8 @@
 // package: liwords
-// file: api/proto/realtime.proto
+// file: api/proto/realtime/realtime.proto
 
 import * as jspb from "google-protobuf";
-import * as macondo_api_proto_macondo_macondo_pb from "../../macondo/api/proto/macondo/macondo_pb";
+import * as macondo_api_proto_macondo_macondo_pb from "../../../macondo/api/proto/macondo/macondo_pb";
 
 export class GameRules extends jspb.Message {
   getBoardLayoutName(): string;

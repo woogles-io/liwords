@@ -19,7 +19,7 @@ services:
     ports:
       - "8001:8001"
     labels:
-      - "traefik.http.routers.liwords.rule=Host(`liwords.localhost`) && PathPrefix(`/twirp/liwords.`)"
+      - "traefik.http.routers.liwords.rule=Host(`liwords.localhost`) && PathPrefix(`/twirp/`)"
       - "traefik.http.routers.liwords.entrypoints=web"
       - "traefik.http.services.liwords.loadbalancer.server.port=8001"
       - traefik.enable=true
