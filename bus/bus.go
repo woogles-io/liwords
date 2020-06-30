@@ -217,8 +217,7 @@ func (b *Bus) handleNatsPublish(ctx context.Context, subtopics []string, data []
 			req.User.RelevantRating = "Unrated"
 		} else {
 			// Look up user.
-			// XXX: Later look up user rating so we can attach to this request.
-			timefmt, variant, err := gameplay.VariantFromGamereq(req)
+			timefmt, variant, err := gameplay.VariantFromGamereq(req.GameRequest)
 			ratingKey := entity.ToVariantKey(req.GameRequest.Lexicon, variant, timefmt)
 
 			u, err := b.userStore.GetByUUID(ctx, req.User.UserId)

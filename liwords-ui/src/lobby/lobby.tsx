@@ -83,13 +83,15 @@ export const Lobby = (props: Props) => {
     setSeekModalVisible(false);
     sendSeek(
       {
+        // These items are assigned by the server:
         seeker: '',
+        userRating: '',
+        seekID: '',
+
         lexicon: seekSettings.lexicon as string,
         challengeRule: seekSettings.challengerule as number,
         initialTimeSecs: (seekSettings.initialtime as number) * 60,
         rated: seekSettings.rated as boolean,
-        // rating: 0,
-        seekID: '', // assigned by server
       },
       props.sendSocketMsg
     );
