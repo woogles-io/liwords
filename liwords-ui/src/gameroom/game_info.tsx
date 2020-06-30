@@ -35,8 +35,8 @@ export const GameInfo = (props: Props) => {
   if (props.meta.variant === 'classic') {
     variant = 'Classic';
   }
-
-  if (props.meta.rating_mode === 0) {
+  // It is missing from the props.meta if rated.
+  if (!props.meta.rating_mode) {
     rated = 'Rated';
   } else {
     rated = 'Unrated';

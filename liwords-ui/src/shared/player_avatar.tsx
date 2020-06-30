@@ -4,12 +4,12 @@ import './avatar.scss';
 import { PlayerMetadata } from '../gameroom/game_info';
 
 type AvatarProps = {
-  player: Partial<PlayerMetadata>;
+  player: Partial<PlayerMetadata> | undefined;
 };
 
 export const PlayerAvatar = (props: AvatarProps) => {
   let avatarStyle = {};
-  if (props.player.avatar_url) {
+  if (props.player?.avatar_url) {
     avatarStyle = {
       backgroundImage: `url(${props.player?.avatar_url})`,
     };
@@ -19,7 +19,7 @@ export const PlayerAvatar = (props: AvatarProps) => {
     <div className="player-avatar" style={avatarStyle}>
       {!props.player?.avatar_url
         ? fixedCharAt(
-            props.player.full_name || props.player.nickname || '?',
+            props.player?.full_name || props.player?.nickname || '?',
             0,
             1
           )

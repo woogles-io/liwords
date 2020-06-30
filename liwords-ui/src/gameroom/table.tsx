@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Row, Col } from 'antd';
+import { Row, Col, message } from 'antd';
 import axios from 'axios';
 
 import { useParams } from 'react-router-dom';
@@ -13,7 +13,7 @@ import { MessageType, TimedOut } from '../gen/api/proto/realtime/realtime_pb';
 import { encodeToSocketFmt } from '../utils/protobuf';
 import './scss/gameroom.scss';
 import { ScoreCard } from './scorecard';
-import { GameInfo, GameMetadata } from './game_info';
+import { GameInfo, GameMetadata, PlayerMetadata } from './game_info';
 // import { GameInfoResponse } from '../gen/api/proto/game_service/game_service_pb';
 
 const gutter = 16;
@@ -23,6 +23,22 @@ type Props = {
   sendSocketMsg: (msg: Uint8Array) => void;
   username: string;
   loggedIn: boolean;
+};
+
+const defaultGameInfo = {
+  players: new Array<PlayerMetadata>(),
+  lexicon: '',
+  variant: '',
+  time_control: '',
+  tournament_name: '',
+  challenge_rule: 'VOID' as  // wtf typescript? is there a better way?
+    | 'FIVE_POINT'
+    | 'TEN_POINT'
+    | 'SINGLE'
+    | 'DOUBLE'
+    | 'VOID',
+  rating_mode: 0, // 0 is rated and 1 is casual; see realtime proto.
+  done: false,
 };
 
 export const Table = (props: Props) => {
@@ -39,16 +55,7 @@ export const Table = (props: Props) => {
   } = useStoreContext();
   const { username, sendSocketMsg } = props;
   // const location = useLocation();
-  const [gameInfo, setGameInfo] = useState<GameMetadata>({
-    players: [],
-    lexicon: '',
-    variant: '',
-    time_control: '',
-    tournament_name: '',
-    challenge_rule: 'VOID',
-    rating_mode: 0, // 0 is rated and 1 is casual; see realtime proto.
-    done: false,
-  });
+  const [gameInfo, setGameInfo] = useState<GameMetadata>(defaultGameInfo);
   useEffect(() => {
     // Avoid react-router hijacking the back button.
     // If setRedirGame is not defined, then we're SOL I guess.
@@ -67,8 +74,15 @@ export const Table = (props: Props) => {
       .then((resp) => {
         setGameInfo(resp.data);
       });
+    if (!gameContext.players || !gameContext.players[0]) {
+      // Show a message while waiting for data about the game to come in
+      // via the socket.
+      message.warning('Game is starting shortly', 0);
+    }
     return () => {
       clearChat();
+      setGameInfo(defaultGameInfo);
+      message.destroy();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [gameID]);

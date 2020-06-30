@@ -1,10 +1,11 @@
-import React from 'react';
-import { Form, Radio, InputNumber } from 'antd';
+import React, { useState } from 'react';
+import { Form, Radio, InputNumber, Switch, Tag } from 'antd';
 
 import { Store } from 'antd/lib/form/interface';
 import { ChallengeRule } from '../gen/macondo/api/proto/macondo/macondo_pb';
+import { timeCtrlToDisplayName } from '../store/constants';
 
-export type seekPropVals = { [val: string]: string | number };
+export type seekPropVals = { [val: string]: string | number | boolean };
 
 type Props = {
   vals: seekPropVals;
@@ -12,8 +13,16 @@ type Props = {
 };
 
 export const SeekForm = (props: Props) => {
+  const [timectrl, setTimectrl] = useState('Rapid');
+  const [ttag, setTtag] = useState('gold');
+
   const onFormChange = (val: Store, allvals: Store) => {
     props.onChange(allvals);
+    const [tc, tt] = timeCtrlToDisplayName(
+      (allvals.initialtime as number) * 60
+    );
+    setTimectrl(tc);
+    setTtag(tt);
   };
 
   return (
@@ -24,7 +33,6 @@ export const SeekForm = (props: Props) => {
           <Radio.Button value="NWL18">NWL18</Radio.Button>
         </Radio.Group>
       </Form.Item>
-
       <Form.Item label="Challenge Rule" name="challengerule">
         <Radio.Group>
           <Radio.Button value={ChallengeRule.FIVE_POINT}>5-pt</Radio.Button>
@@ -34,10 +42,13 @@ export const SeekForm = (props: Props) => {
           <Radio.Button value={ChallengeRule.VOID}>Void</Radio.Button>
         </Radio.Group>
       </Form.Item>
-
+      <Form.Item label="Rated" name="rated" valuePropName="checked">
+        <Switch />
+      </Form.Item>
       <Form.Item label="Initial Time (minutes)" name="initialtime">
         <InputNumber />
       </Form.Item>
+      Time Control: <Tag color={ttag}>{timectrl}</Tag>
     </Form>
   );
 };

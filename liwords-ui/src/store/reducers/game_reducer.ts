@@ -423,6 +423,34 @@ const initializeTimerController = (
 // app where we do things like this.
 export const GameReducer = (state: GameState, action: Action): GameState => {
   switch (action.actionType) {
+    case ActionType.ClearHistory: {
+      const gs = startingGameState(
+        EnglishCrosswordGameDistribution,
+        new Array<RawPlayerInfo>(),
+        ''
+      );
+      gs.playState = PlayState.GAME_OVER;
+      // Don't lose the clock controller, but pass it on until we get a
+      // history refresher etc. Reset the shown time to 0.
+      if (state.clockController !== null) {
+        gs.clockController = state.clockController;
+        if (gs.clockController!.current) {
+          gs.clockController!.current.setClock(gs.playState, {
+            p0: 0,
+            p1: 0,
+            lastUpdate: 0,
+          });
+        } else {
+          gs.clockController!.current = new ClockController(
+            { p0: 0, p1: 0, lastUpdate: 0 },
+            state.onClockTimeout,
+            state.onClockTick
+          );
+        }
+      }
+      return gs;
+    }
+
     case ActionType.AddGameEvent: {
       // Check to make sure the game ID matches, and then hand off processing
       // to the newGameState function above.

@@ -9,6 +9,7 @@ import {
   MessageType,
   GameAcceptedEvent,
   GameRules,
+  RatingMode,
 } from '../gen/api/proto/realtime/realtime_pb';
 import { encodeToSocketFmt } from '../utils/protobuf';
 import { SoughtGames } from './sought_games';
@@ -36,6 +37,7 @@ const sendSeek = (
   gr.setLexicon(game.lexicon);
   gr.setInitialTimeSeconds(game.initialTimeSecs);
   gr.setRules(rules);
+  gr.setRatingMode(game.rated ? RatingMode.RATED : RatingMode.CASUAL);
 
   sr.setGameRequest(gr);
 
@@ -70,6 +72,7 @@ export const Lobby = (props: Props) => {
     lexicon: 'CSW19',
     challengerule: ChallengeRule.FIVE_POINT,
     initialtime: 8,
+    rated: true,
   });
 
   const showSeekModal = () => {
@@ -84,6 +87,7 @@ export const Lobby = (props: Props) => {
         lexicon: seekSettings.lexicon as string,
         challengeRule: seekSettings.challengerule as number,
         initialTimeSecs: (seekSettings.initialtime as number) * 60,
+        rated: seekSettings.rated as boolean,
         // rating: 0,
         seekID: '', // assigned by server
       },
