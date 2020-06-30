@@ -71,6 +71,7 @@ export const onSocketMsg = (storeData: StoreData) => {
           actionType: ActionType.AddSoughtGame,
           payload: {
             seeker: user.getDisplayName(),
+            userRating: user.getRelevantRating(),
             lexicon: gameReq.getLexicon(),
             initialTimeSecs: gameReq.getInitialTimeSeconds(),
             challengeRule: gameReq.getChallengeRule(),
@@ -90,6 +91,7 @@ export const onSocketMsg = (storeData: StoreData) => {
             const user = r.getUser()!;
             return {
               seeker: user.getDisplayName(),
+              userRating: user.getRelevantRating(),
               lexicon: gameReq.getLexicon(),
               initialTimeSecs: gameReq.getInitialTimeSeconds(),
               challengeRule: gameReq.getChallengeRule(),

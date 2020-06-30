@@ -82,8 +82,8 @@ export class RequestingUser extends jspb.Message {
   getUserId(): string;
   setUserId(value: string): void;
 
-  getRelevantRating(): number;
-  setRelevantRating(value: number): void;
+  getRelevantRating(): string;
+  setRelevantRating(value: string): void;
 
   getIsAnonymous(): boolean;
   setIsAnonymous(value: boolean): void;
@@ -104,7 +104,7 @@ export class RequestingUser extends jspb.Message {
 export namespace RequestingUser {
   export type AsObject = {
     userId: string,
-    relevantRating: number,
+    relevantRating: string,
     isAnonymous: boolean,
     displayName: string,
   }

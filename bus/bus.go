@@ -214,14 +214,18 @@ func (b *Bus) handleNatsPublish(ctx context.Context, subtopics []string, data []
 
 		if req.User.IsAnonymous {
 			req.User.DisplayName = entity.DeterministicUsername(req.User.UserId)
+			req.User.RelevantRating = "Unrated"
 		} else {
 			// Look up user.
 			// XXX: Later look up user rating so we can attach to this request.
+			timefmt, variant, err := gameplay.VariantFromGamereq(req)
+			ratingKey := entity.ToVariantKey(req.GameRequest.Lexicon, variant, timefmt)
 
 			u, err := b.userStore.GetByUUID(ctx, req.User.UserId)
 			if err != nil {
 				return err
 			}
+			req.User.RelevantRating = gameplay.GetRelevantRating(ratingKey, u)
 			req.User.DisplayName = u.Username
 		}
 

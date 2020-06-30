@@ -6,6 +6,8 @@ import (
 	"math"
 	"strconv"
 
+	"github.com/domino14/liwords/pkg/glicko"
+
 	"github.com/domino14/liwords/pkg/entity"
 
 	"github.com/domino14/liwords/pkg/user"
@@ -24,18 +26,20 @@ func NewGameService(u user.Store, gs GameStore) *GameService {
 	return &GameService{u, gs}
 }
 
-func getRelevantRating(ratingKey entity.VariantKey, u *entity.User) string {
+func GetRelevantRating(ratingKey entity.VariantKey, u *entity.User) string {
 	if u.Profile == nil {
 		return "UnratedAnon"
 	}
 	if u.Profile.Ratings.Data == nil {
-		return "Unrated"
+		// This is not an unrated user. Use default rating.
+		return strconv.Itoa(glicko.InitialRating) + "?"
 	}
 	ratdict, ok := u.Profile.Ratings.Data[ratingKey]
 	if ok {
 		return strconv.Itoa(int(math.Round(ratdict.Rating)))
 	}
-	return "Unrated"
+	// User has no rating in this particular variant.
+	return strconv.Itoa(glicko.InitialRating) + "?"
 }
 
 // GetMetadata gets metadata for the given game.
@@ -46,7 +50,7 @@ func (gs *GameService) GetMetadata(ctx context.Context, req *pb.GameInfoRequest)
 		return nil, err
 	}
 	gamereq := entGame.CreationRequest()
-	timefmt, variant, err := variantFromGamereq(gamereq)
+	timefmt, variant, err := VariantFromGamereq(gamereq)
 	if err != nil {
 		return nil, err
 	}
@@ -63,7 +67,7 @@ func (gs *GameService) GetMetadata(ctx context.Context, req *pb.GameInfoRequest)
 		pinfo := &pb.PlayerInfo{
 			UserId:   p.UserId,
 			Nickname: p.Nickname,
-			Rating:   getRelevantRating(ratingKey, u),
+			Rating:   GetRelevantRating(ratingKey, u),
 		}
 		if u.Profile != nil {
 			if u.Profile.FirstName != "" {
@@ -92,7 +96,7 @@ func (gs *GameService) GetMetadata(ctx context.Context, req *pb.GameInfoRequest)
 
 }
 
-func variantFromGamereq(gamereq *rtpb.GameRequest) (entity.TimeControl, entity.Variant, error) {
+func VariantFromGamereq(gamereq *rtpb.GameRequest) (entity.TimeControl, entity.Variant, error) {
 	// hardcoded values here; fix sometime
 	var timefmt entity.TimeControl
 	if gamereq.InitialTimeSeconds <= entity.CutoffUltraBlitz {
