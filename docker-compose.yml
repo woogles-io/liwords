@@ -80,26 +80,29 @@ services:
       - 5432:5432
     networks:
       - aeronet
-# This runs too slowly inside Docker. Why?
-# frontend:
-#   build:
-#     context: .
-#     dockerfile: Dockerfile-fe
-#   volumes:
-#     - ./liwords-ui:/opt/liwords-ui
-#   working_dir: /opt/liwords-ui
-#   command: npm start
-#   # Need the following else the frontend quits immediately:
-#   stdin_open: true
-#   networks:
-#     - aeronet
-#   labels:
-#     - "traefik.http.routers.xwordclub-fe.rule=Host(`vm.xword.club`)"
-#     - "traefik.http.services.xwordclub-fe.loadbalancer.server.port=3000"
-#     - traefik.enable=true
+
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile-fe
+    volumes:
+      - ./liwords-ui:/opt/liwords-ui
+      - "/opt/liwords-ui/node_modules"
+    working_dir: /opt/liwords-ui
+    command: npm start
+    # Need the following else the frontend quits immediately:
+    stdin_open: true
+    networks:
+      - aeronet
+    labels:
+      - "traefik.http.routers.liwords-fe.rule=Host(`liwords.localhost`)"
+      - "traefik.http.services.liwords-fe.loadbalancer.server.port=3000"
+      - traefik.enable=true
+
 networks:
   aeronet:
     driver: bridge
+
 volumes:
   pg-data-volume:
     external: false

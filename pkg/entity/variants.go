@@ -1,6 +1,16 @@
 package entity
 
+import (
+	"errors"
+
+	pb "github.com/domino14/liwords/rpc/api/proto/realtime"
+)
+
 // Variants, time controls, etc.
+
+const (
+	CrosswordGame string = "CrosswordGame"
+)
 
 type Variant string
 type TimeControl string
@@ -26,3 +36,25 @@ const (
 	CutoffBlitz      = 6 * 60
 	CutoffRapid      = 14 * 60
 )
+
+func VariantFromGameReq(gamereq *pb.GameRequest) (TimeControl, Variant, error) {
+	// hardcoded values here; fix sometime
+	var timefmt TimeControl
+	if gamereq.InitialTimeSeconds <= CutoffUltraBlitz {
+		timefmt = TCUltraBlitz
+	} else if gamereq.InitialTimeSeconds <= CutoffBlitz {
+		timefmt = TCBlitz
+	} else if gamereq.InitialTimeSeconds <= CutoffRapid {
+		timefmt = TCRapid
+	} else {
+		timefmt = TCRegular
+	}
+	var variant Variant
+	if gamereq.Rules.BoardLayoutName == CrosswordGame {
+		variant = VarClassic
+	} else {
+		return "", "", errors.New("unsupported game type")
+	}
+
+	return timefmt, variant, nil
+}

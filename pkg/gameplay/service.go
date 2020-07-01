@@ -2,17 +2,12 @@ package gameplay
 
 import (
 	"context"
-	"errors"
-	"math"
 	"strconv"
-
-	"github.com/domino14/liwords/pkg/glicko"
 
 	"github.com/domino14/liwords/pkg/entity"
 
 	"github.com/domino14/liwords/pkg/user"
 	pb "github.com/domino14/liwords/rpc/api/proto/game_service"
-	rtpb "github.com/domino14/liwords/rpc/api/proto/realtime"
 	macondopb "github.com/domino14/macondo/gen/api/proto/macondo"
 )
 
@@ -26,22 +21,6 @@ func NewGameService(u user.Store, gs GameStore) *GameService {
 	return &GameService{u, gs}
 }
 
-func GetRelevantRating(ratingKey entity.VariantKey, u *entity.User) string {
-	if u.Profile == nil {
-		return "UnratedAnon"
-	}
-	if u.Profile.Ratings.Data == nil {
-		// This is not an unrated user. Use default rating.
-		return strconv.Itoa(glicko.InitialRating) + "?"
-	}
-	ratdict, ok := u.Profile.Ratings.Data[ratingKey]
-	if ok {
-		return strconv.Itoa(int(math.Round(ratdict.Rating)))
-	}
-	// User has no rating in this particular variant.
-	return strconv.Itoa(glicko.InitialRating) + "?"
-}
-
 // GetMetadata gets metadata for the given game.
 func (gs *GameService) GetMetadata(ctx context.Context, req *pb.GameInfoRequest) (*pb.GameInfoResponse, error) {
 
@@ -50,7 +29,7 @@ func (gs *GameService) GetMetadata(ctx context.Context, req *pb.GameInfoRequest)
 		return nil, err
 	}
 	gamereq := entGame.CreationRequest()
-	timefmt, variant, err := VariantFromGamereq(gamereq)
+	timefmt, variant, err := entity.VariantFromGameReq(gamereq)
 	if err != nil {
 		return nil, err
 	}
@@ -67,14 +46,10 @@ func (gs *GameService) GetMetadata(ctx context.Context, req *pb.GameInfoRequest)
 		pinfo := &pb.PlayerInfo{
 			UserId:   p.UserId,
 			Nickname: p.Nickname,
-			Rating:   GetRelevantRating(ratingKey, u),
+			Rating:   u.GetRelevantRating(ratingKey),
 		}
 		if u.Profile != nil {
-			if u.Profile.FirstName != "" {
-				pinfo.FullName = u.Profile.FirstName + " " + u.Profile.LastName
-			} else {
-				pinfo.FullName = u.Profile.LastName
-			}
+			pinfo.FullName = u.RealName()
 			pinfo.CountryCode = u.Profile.CountryCode
 			pinfo.Title = u.Profile.Title
 		}
@@ -93,28 +68,5 @@ func (gs *GameService) GetMetadata(ctx context.Context, req *pb.GameInfoRequest)
 	}
 
 	return resp, nil
-
-}
-
-func VariantFromGamereq(gamereq *rtpb.GameRequest) (entity.TimeControl, entity.Variant, error) {
-	// hardcoded values here; fix sometime
-	var timefmt entity.TimeControl
-	if gamereq.InitialTimeSeconds <= entity.CutoffUltraBlitz {
-		timefmt = entity.TCUltraBlitz
-	} else if gamereq.InitialTimeSeconds <= entity.CutoffBlitz {
-		timefmt = entity.TCBlitz
-	} else if gamereq.InitialTimeSeconds <= entity.CutoffRapid {
-		timefmt = entity.TCRapid
-	} else {
-		timefmt = entity.TCRegular
-	}
-	var variant entity.Variant
-	if gamereq.Rules.BoardLayoutName == CrosswordGame {
-		variant = entity.VarClassic
-	} else {
-		return "", "", errors.New("unsupported game type")
-	}
-
-	return timefmt, variant, nil
 
 }

@@ -23,7 +23,7 @@ export const Register = () => {
 
   const onFinish = (values: { [key: string]: string }) => {
     axios
-      .post('/twirp/liwords.RegistrationService/Register', {
+      .post('/twirp/user_service.RegistrationService/Register', {
         username: values.username,
         password: values.password,
         email: values.email,

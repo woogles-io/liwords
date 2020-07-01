@@ -1,4 +1,4 @@
-// Package game should know nothing about protocols or databases.
+// Package gameplay should know nothing about protocols or databases.
 // It is mostly a pass-through interface to a Macondo game,
 // but also implements a timer and other related logic.
 // This is a use-case in the clean architecture hierarchy.
@@ -19,6 +19,7 @@ import (
 
 	"github.com/domino14/liwords/pkg/config"
 	"github.com/domino14/liwords/pkg/entity"
+	"github.com/domino14/liwords/pkg/user"
 	pb "github.com/domino14/liwords/rpc/api/proto/realtime"
 	"github.com/domino14/macondo/board"
 	"github.com/domino14/macondo/game"
@@ -42,7 +43,17 @@ type GameStore interface {
 
 // InstantiateNewGame instantiates a game and returns it.
 func InstantiateNewGame(ctx context.Context, gameStore GameStore, cfg *config.Config,
-	players []*macondopb.PlayerInfo, req *pb.GameRequest) (*entity.Game, error) {
+	users [2]*entity.User, req *pb.GameRequest) (*entity.Game, error) {
+
+	var players []*macondopb.PlayerInfo
+
+	for _, u := range users {
+		players = append(players, &macondopb.PlayerInfo{
+			Nickname: u.Username,
+			UserId:   u.UUID,
+			RealName: u.RealName(),
+		})
+	}
 
 	var bd []string
 	if req.Rules == nil {
@@ -160,7 +171,7 @@ func players(entGame *entity.Game) []string {
 }
 
 func handleChallenge(ctx context.Context, entGame *entity.Game, gameStore GameStore,
-	timeRemaining int, challengerID string) error {
+	userStore user.Store, timeRemaining int, challengerID string) error {
 	if entGame.ChallengeRule() == macondopb.ChallengeRule_VOID {
 		// The front-end shouldn't even show the button.
 		return errors.New("challenges not acceptable in void")
@@ -207,7 +218,7 @@ func handleChallenge(ctx context.Context, entGame *entity.Game, gameStore GameSt
 
 	if entGame.Game.Playing() == macondopb.PlayState_GAME_OVER {
 		discernEndgameReason(entGame)
-		performEndgameDuties(entGame)
+		performEndgameDuties(ctx, entGame, userStore)
 	}
 
 	err = gameStore.Set(ctx, entGame)
@@ -218,7 +229,7 @@ func handleChallenge(ctx context.Context, entGame *entity.Game, gameStore GameSt
 	return nil
 }
 
-func PlayMove(ctx context.Context, gameStore GameStore, userID string,
+func PlayMove(ctx context.Context, gameStore GameStore, userStore user.Store, userID string,
 	cge *pb.ClientGameplayEvent) error {
 
 	// XXX: VERIFY THAT THE CLIENT GAME ID CORRESPONDS TO THE GAME
@@ -246,14 +257,14 @@ func PlayMove(ctx context.Context, gameStore GameStore, userID string,
 		log.Debug().Msg("got-move-too-late")
 		entGame.Game.SetPlaying(macondopb.PlayState_GAME_OVER)
 		// Basically skip to the bottom and exit.
-		return setTimedOut(ctx, entGame, onTurn, gameStore)
+		return setTimedOut(ctx, entGame, onTurn, gameStore, userStore)
 	}
 
 	log.Debug().Msg("going to turn into a macondo gameevent")
 
 	if cge.Type == pb.ClientGameplayEvent_CHALLENGE_PLAY {
 		// Handle in another way
-		return handleChallenge(ctx, entGame, gameStore, timeRemaining, userID)
+		return handleChallenge(ctx, entGame, gameStore, userStore, timeRemaining, userID)
 	}
 
 	// Turn the event into a macondo GameEvent.
@@ -313,7 +324,7 @@ func PlayMove(ctx context.Context, gameStore GameStore, userID string,
 	}
 	if playing == macondopb.PlayState_GAME_OVER {
 		discernEndgameReason(entGame)
-		performEndgameDuties(entGame)
+		performEndgameDuties(ctx, entGame, userStore)
 	}
 
 	err = gameStore.Set(ctx, entGame)
@@ -324,7 +335,8 @@ func PlayMove(ctx context.Context, gameStore GameStore, userID string,
 	return nil
 }
 
-func TimedOut(ctx context.Context, gameStore GameStore, timedout string, gameID string) error {
+func TimedOut(ctx context.Context, gameStore GameStore, userStore user.Store,
+	timedout string, gameID string) error {
 	// XXX: VERIFY THAT THE GAME ID is the client's current game!!
 	// Note: we can get this event multiple times; the opponent and the player on turn
 	// both send it.
@@ -352,7 +364,7 @@ func TimedOut(ctx context.Context, gameStore GameStore, timedout string, gameID 
 	}
 	// Ok, the time did run out after all.
 
-	return setTimedOut(ctx, entGame, onTurn, gameStore)
+	return setTimedOut(ctx, entGame, onTurn, gameStore, userStore)
 }
 
 // sanitizeEvent removes rack information from the event; it is meant to be
@@ -367,7 +379,8 @@ func sanitizeEvent(sge *pb.ServerGameplayEvent) *pb.ServerGameplayEvent {
 	return cloned
 }
 
-func setTimedOut(ctx context.Context, entGame *entity.Game, pidx int, gameStore GameStore) error {
+func setTimedOut(ctx context.Context, entGame *entity.Game, pidx int, gameStore GameStore,
+	userStore user.Store) error {
 	log.Debug().Msg("timed out!")
 	entGame.Game.SetPlaying(macondopb.PlayState_GAME_OVER)
 
@@ -375,7 +388,7 @@ func setTimedOut(ctx context.Context, entGame *entity.Game, pidx int, gameStore 
 	entGame.SetGameEndReason(pb.GameEndReason_TIME)
 	entGame.SetWinnerIdx(1 - pidx)
 	entGame.SetLoserIdx(pidx)
-	performEndgameDuties(entGame)
+	performEndgameDuties(ctx, entGame, userStore)
 
 	// Store the game back into the store
 	err := gameStore.Set(ctx, entGame)
@@ -386,8 +399,49 @@ func setTimedOut(ctx context.Context, entGame *entity.Game, pidx int, gameStore 
 	return nil
 }
 
-func performEndgameDuties(g *entity.Game) {
-	wrapped := entity.WrapEvent(g.GameEndedEvent(),
+func gameEndedEvent(ctx context.Context, g *entity.Game, userStore user.Store) *pb.GameEndedEvent {
+	var winner, loser string
+	var tie bool
+	winnerIdx := g.GetWinnerIdx()
+	if winnerIdx == 0 || winnerIdx == -1 {
+		winner = g.History().Players[0].Nickname
+		loser = g.History().Players[1].Nickname
+	} else if winnerIdx == 1 {
+		winner = g.History().Players[1].Nickname
+		loser = g.History().Players[0].Nickname
+	}
+	if winnerIdx == -1 {
+		tie = true
+	}
+
+	scores := map[string]int32{
+		g.History().Players[0].Nickname: int32(g.PointsFor(0)),
+		g.History().Players[1].Nickname: int32(g.PointsFor(1))}
+
+	ratings := map[string]int32{}
+	var err error
+	if g.CreationRequest().RatingMode == pb.RatingMode_RATED {
+		ratings, err = rate(ctx, scores, g, winner, userStore)
+		if err != nil {
+			log.Err(err).Msg("rating-error")
+		}
+	}
+
+	// Otherwise the winner will be blank, because it was a tie.
+	evt := &pb.GameEndedEvent{
+		Scores:     scores,
+		NewRatings: ratings,
+		EndReason:  g.GameEndReason(),
+		Winner:     winner,
+		Loser:      loser,
+		Tie:        tie,
+	}
+	log.Debug().Interface("game-ended-event", evt).Msg("game-ended")
+	return evt
+}
+
+func performEndgameDuties(ctx context.Context, g *entity.Game, userStore user.Store) {
+	wrapped := entity.WrapEvent(gameEndedEvent(ctx, g, userStore),
 		pb.MessageType_GAME_ENDED_EVENT, g.GameID())
 	// Once the game ends, we do not need to "sanitize" the packets
 	// going to the users anymore. So just send the data to the right
