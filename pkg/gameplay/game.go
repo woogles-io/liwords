@@ -354,7 +354,7 @@ func TimedOut(ctx context.Context, gameStore GameStore, userStore user.Store,
 	onTurn := entGame.Game.PlayerOnTurn()
 
 	// Ensure that it is actually the correct player's turn
-	if entGame.Game.NickOnTurn() != timedout {
+	if entGame.Game.PlayerIDOnTurn() != timedout {
 		return errNotOnTurn
 	}
 	if entGame.TimeRemaining(onTurn) > 0 {

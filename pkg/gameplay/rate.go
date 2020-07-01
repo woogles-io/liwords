@@ -56,6 +56,7 @@ func rate(ctx context.Context, scores map[string]int32, g *entity.Game,
 		} else {
 			return nil, errors.New("no winner, but maximum penalty?")
 		}
+		log.Debug().Str("p0", usernames[0]).Str("p1", usernames[1]).Int("spread", spread).Msg("rating-max-penalty")
 	} else {
 		// The winner is the person with the higher points. Calculate
 		// from the point of view of users[0] again. We will negate this
@@ -64,10 +65,16 @@ func rate(ctx context.Context, scores map[string]int32, g *entity.Game,
 		if spread > 0 && winner != usernames[0] || spread < 0 && winner != usernames[1] {
 			return nil, errors.New("winner does not match spread")
 		}
+		log.Debug().Str("p0", usernames[0]).Str("p1", usernames[1]).Int("spread", spread).Msg("rating")
 	}
 
 	var now = time.Now().Unix()
-
+	if rat0.LastGameTimestamp == 0 {
+		rat0.LastGameTimestamp = now
+	}
+	if rat1.LastGameTimestamp == 0 {
+		rat1.LastGameTimestamp = now
+	}
 	// Rate for each player separately.
 	p0rat, p0rd, p0v := glicko.Rate(
 		rat0.Rating, rat0.RatingDeviation, rat0.Volatility,
@@ -89,7 +96,7 @@ func rate(ctx context.Context, scores map[string]int32, g *entity.Game,
 		LastGameTimestamp: now,
 	})
 	if err != nil {
-		log.Err(err).Str("uuid", users[0].UUID).Msg("error setting rating for user 0!")
+		return nil, err
 	}
 	err = userStore.SetRating(ctx, users[1].UUID, ratingKey, entity.SingleRating{
 		Rating:            p1rat,
