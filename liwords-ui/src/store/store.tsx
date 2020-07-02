@@ -7,7 +7,7 @@ import React, {
 } from 'react';
 
 import { EnglishCrosswordGameDistribution } from '../constants/tile_distributions';
-import { ServerChallengeResultEvent } from '../gen/api/proto/realtime_pb';
+import { ServerChallengeResultEvent } from '../gen/api/proto/realtime/realtime_pb';
 import { LobbyState, LobbyReducer } from './reducers/lobby_reducer';
 import { Action } from '../actions/actions';
 import {

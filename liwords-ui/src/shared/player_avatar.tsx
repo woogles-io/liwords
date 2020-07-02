@@ -1,25 +1,25 @@
 import React from 'react';
-import { ReducedPlayerInfo } from '../store/reducers/game_reducer';
 import { fixedCharAt } from '../utils/cwgame/common';
 import './avatar.scss';
+import { PlayerMetadata } from '../gameroom/game_info';
 
 type AvatarProps = {
-  player: ReducedPlayerInfo;
+  player: Partial<PlayerMetadata> | undefined;
 };
 
 export const PlayerAvatar = (props: AvatarProps) => {
   let avatarStyle = {};
-  if (props.player.avatarUrl) {
+  if (props.player?.avatar_url) {
     avatarStyle = {
-      backgroundImage: `url(${props.player?.avatarUrl})`,
+      backgroundImage: `url(${props.player?.avatar_url})`,
     };
   }
 
   return (
     <div className="player-avatar" style={avatarStyle}>
-      {!props.player?.avatarUrl
+      {!props.player?.avatar_url
         ? fixedCharAt(
-            props.player.fullName || props.player.nickname || '?',
+            props.player?.full_name || props.player?.nickname || '?',
             0,
             1
           )

@@ -2,7 +2,7 @@
 // socket server (liwords-socket) and the main api server (liwords)
 syntax = "proto3";
 package liwords;
-option go_package = "github.com/domino14/liwords/rpc/api/proto/liwords";
+option go_package = "github.com/domino14/liwords/rpc/api/proto/realtime";
 
 message RegisterRealmRequest {
   string realm = 1;

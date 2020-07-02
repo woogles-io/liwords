@@ -18,7 +18,7 @@ import {
 } from '../utils/cwgame/game_event';
 import { Board } from '../utils/cwgame/board';
 import { encodeToSocketFmt } from '../utils/protobuf';
-import { MessageType } from '../gen/api/proto/realtime_pb';
+import { MessageType } from '../gen/api/proto/realtime/realtime_pb';
 import { useStoreContext } from '../store/store';
 
 // The frame atop is 24 height

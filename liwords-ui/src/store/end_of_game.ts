@@ -1,12 +1,16 @@
-import { GameEndedEvent, GameEndReason } from '../gen/api/proto/realtime_pb';
+import {
+  GameEndedEvent,
+  GameEndReason,
+} from '../gen/api/proto/realtime/realtime_pb';
 
 export const endGameMessage = (gee: GameEndedEvent) => {
   const scores = gee.getScoresMap();
+  const ratings = gee.getNewRatingsMap();
   console.log('scores are', scores);
   // const ratings = gee.getNewRatingsMap();
   const reason = gee.getEndReason();
-  const winner = gee.getWinner();
-  const loser = gee.getLoser();
+  let winner = gee.getWinner();
+  let loser = gee.getLoser();
   const tie = gee.getTie();
   let summary = '';
   // const message = `Game is over. Scores: ${JSON.stringify(
@@ -14,8 +18,13 @@ export const endGameMessage = (gee: GameEndedEvent) => {
   // )}, new ratings: ${JSON.stringify(ratings)}`;
   let summaryReason = '';
   let summaryAddendum = '';
+  if (tie) {
+    [winner, loser] = scores.keys();
+  }
   const winscore = scores.get(winner);
   const losescore = scores.get(loser);
+  const winrating = ratings.get(winner);
+  const loserating = ratings.get(loser);
 
   switch (reason) {
     case GameEndReason.STANDARD:
@@ -40,6 +49,9 @@ export const endGameMessage = (gee: GameEndedEvent) => {
     summary = `${summary}${winner} wins${summaryReason}. ${summaryAddendum}`;
   } else {
     summary = `${summary}tie game! ${summaryAddendum}`;
+  }
+  if (winrating || loserating) {
+    summary += ` New ratings: ${winner}: ${winrating}, ${loser}: ${loserating}`;
   }
   return summary;
 };

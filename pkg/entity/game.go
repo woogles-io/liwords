@@ -4,7 +4,7 @@ import (
 	"sync"
 	"time"
 
-	pb "github.com/domino14/liwords/rpc/api/proto"
+	pb "github.com/domino14/liwords/rpc/api/proto/realtime"
 	"github.com/domino14/macondo/game"
 	macondopb "github.com/domino14/macondo/gen/api/proto/macondo"
 	"github.com/rs/zerolog/log"
@@ -16,6 +16,7 @@ import (
 type Game struct {
 	sync.Mutex
 	game.Game
+
 	// timeOfLastUpdate is the timestamp of the last update, in milliseconds.
 	// If no update has been made, this defaults to timeStarted.
 	timeOfLastUpdate int64
@@ -67,6 +68,15 @@ func (g *Game) ResetTimersAndStart() {
 	g.timeOfLastUpdate = ts
 	g.timeStarted = ts
 	g.started = true
+}
+
+func (g *Game) RatingKey() (VariantKey, error) {
+	req := g.CreationRequest()
+	timefmt, variant, err := VariantFromGameReq(req)
+	if err != nil {
+		return "", err
+	}
+	return ToVariantKey(req.Lexicon, variant, timefmt), nil
 }
 
 // TimeRemaining calculates the time remaining, but does NOT update it.
@@ -137,40 +147,16 @@ func (g *Game) HistoryRefresherEvent( /*userID string, sanitize bool*/ ) *pb.Gam
 	}
 }
 
-func (g *Game) GameEndedEvent() *pb.GameEndedEvent {
-	var winner, loser string
-	var tie bool
-	if g.winnerIdx == 0 || g.winnerIdx == -1 {
-		winner = g.History().Players[0].Nickname
-		loser = g.History().Players[1].Nickname
-	} else if g.winnerIdx == 1 {
-		winner = g.History().Players[1].Nickname
-		loser = g.History().Players[0].Nickname
-	}
-	if g.winnerIdx == -1 {
-		tie = true
-	}
-	scores := map[string]int32{
-		g.History().Players[0].Nickname: int32(g.PointsFor(0)),
-		g.History().Players[1].Nickname: int32(g.PointsFor(1))}
-	// Otherwise the winner will be blank, because it was a tie.
-	evt := &pb.GameEndedEvent{
-		Scores:    scores,
-		EndReason: g.gameEndReason,
-		Winner:    winner,
-		Loser:     loser,
-		Tie:       tie,
-	}
-	log.Debug().Interface("game-ended-event", evt).Msg("game-ended")
-	return evt
-}
-
 func (g *Game) ChallengeRule() macondopb.ChallengeRule {
 	return g.gamereq.ChallengeRule
 }
 
 func (g *Game) RatingMode() pb.RatingMode {
 	return g.gamereq.RatingMode
+}
+
+func (g *Game) CreationRequest() *pb.GameRequest {
+	return g.gamereq
 }
 
 // RegisterChangeHook registers a channel with the game. Events will
@@ -185,6 +171,10 @@ func (g *Game) SendChange(e *EventWrapper) {
 	g.changeHook <- e
 }
 
+func (g *Game) GameEndReason() pb.GameEndReason {
+	return g.gameEndReason
+}
+
 func (g *Game) SetGameEndReason(r pb.GameEndReason) {
 	g.gameEndReason = r
 }
@@ -195,4 +185,8 @@ func (g *Game) SetWinnerIdx(pidx int) {
 
 func (g *Game) SetLoserIdx(pidx int) {
 	g.loserIdx = pidx
+}
+
+func (g *Game) GetWinnerIdx() int {
+	return g.winnerIdx
 }

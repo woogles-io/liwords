@@ -19,8 +19,7 @@ import (
 	"github.com/domino14/liwords/pkg/entity"
 	"github.com/domino14/liwords/pkg/gameplay"
 	"github.com/domino14/liwords/pkg/user"
-	pb "github.com/domino14/liwords/rpc/api/proto"
-	macondopb "github.com/domino14/macondo/gen/api/proto/macondo"
+	pb "github.com/domino14/liwords/rpc/api/proto/realtime"
 )
 
 const (
@@ -214,14 +213,17 @@ func (b *Bus) handleNatsPublish(ctx context.Context, subtopics []string, data []
 
 		if req.User.IsAnonymous {
 			req.User.DisplayName = entity.DeterministicUsername(req.User.UserId)
+			req.User.RelevantRating = "Unrated"
 		} else {
 			// Look up user.
-			// XXX: Later look up user rating so we can attach to this request.
+			timefmt, variant, err := entity.VariantFromGameReq(req.GameRequest)
+			ratingKey := entity.ToVariantKey(req.GameRequest.Lexicon, variant, timefmt)
 
 			u, err := b.userStore.GetByUUID(ctx, req.User.UserId)
 			if err != nil {
 				return err
 			}
+			req.User.RelevantRating = u.GetRelevantRating(ratingKey)
 			req.User.DisplayName = u.Username
 		}
 
@@ -253,7 +255,7 @@ func (b *Bus) handleNatsPublish(ctx context.Context, subtopics []string, data []
 			return err
 		}
 		// subtopics[2] is the user ID of the requester.
-		return gameplay.PlayMove(ctx, b.gameStore, subtopics[2], evt)
+		return gameplay.PlayMove(ctx, b.gameStore, b.userStore, subtopics[2], evt)
 
 	case "timedOut":
 		evt := &pb.TimedOut{}
@@ -261,7 +263,7 @@ func (b *Bus) handleNatsPublish(ctx context.Context, subtopics []string, data []
 		if err != nil {
 			return err
 		}
-		return gameplay.TimedOut(ctx, b.gameStore, evt.UserId, evt.GameId)
+		return gameplay.TimedOut(ctx, b.gameStore, b.userStore, evt.UserId, evt.GameId)
 
 	case "initRealmInfo":
 		evt := &pb.InitRealmInfo{}
@@ -291,22 +293,25 @@ func (b *Bus) gameAccepted(ctx context.Context, evt *pb.GameAcceptedEvent, userI
 		}
 		// broadcast a seek deletion.
 		return b.broadcastSeekDeletion(evt.RequestId)
-
 	}
 	// Otherwise create a game
-	p1, err := getPlayerInfo(ctx, b.userStore, userID) // the acceptor
+
+	accUser, err := b.userStore.GetByUUID(ctx, userID) // acceptor
 	if err != nil {
 		return err
 	}
-	p2, err := getPlayerInfo(ctx, b.userStore, requester) // the original requester
+	reqUser, err := b.userStore.GetByUUID(ctx, requester) //requester
 	if err != nil {
 		return err
 	}
-	players := []*macondopb.PlayerInfo{p1, p2}
+	if (accUser.Anonymous || reqUser.Anonymous) && sg.SeekRequest.GameRequest.RatingMode == pb.RatingMode_RATED {
+		return errors.New("anonymous players cannot play rated games")
+	}
+
 	log.Debug().Interface("seekreq", sg.SeekRequest).Msg("seek-request-accepted")
 
 	g, err := gameplay.InstantiateNewGame(ctx, b.gameStore, b.config,
-		players, sg.SeekRequest.GameRequest)
+		[2]*entity.User{accUser, reqUser}, sg.SeekRequest.GameRequest)
 	if err != nil {
 		return err
 	}
@@ -320,8 +325,8 @@ func (b *Bus) gameAccepted(ctx context.Context, evt *pb.GameAcceptedEvent, userI
 	ngevt := entity.WrapEvent(&pb.NewGameEvent{
 		GameId: g.GameID(),
 	}, pb.MessageType_NEW_GAME_EVENT, "")
-	b.pubToUser(p1.UserId, ngevt)
-	b.pubToUser(p2.UserId, ngevt)
+	b.pubToUser(accUser.UUID, ngevt)
+	b.pubToUser(reqUser.UUID, ngevt)
 
 	log.Info().Str("newgameid", g.History().Uid).
 		Str("sender", userID).
@@ -408,16 +413,4 @@ func (b *Bus) gameRefresher(ctx context.Context, gameID string) (*entity.EventWr
 	evt := entity.WrapEvent(entGame.HistoryRefresherEvent(),
 		pb.MessageType_GAME_HISTORY_REFRESHER, entGame.GameID())
 	return evt, nil
-}
-
-func getPlayerInfo(ctx context.Context, u user.Store, id string) (*macondopb.PlayerInfo, error) {
-
-	user, err := u.GetByUUID(ctx, id)
-	if err != nil {
-		return nil, err
-	}
-	// Put in real name, etc here later.
-	return &macondopb.PlayerInfo{
-		Nickname: user.Username, UserId: user.UUID,
-	}, nil
 }

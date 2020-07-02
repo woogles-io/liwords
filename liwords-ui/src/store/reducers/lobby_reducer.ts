@@ -5,7 +5,8 @@ export type SoughtGame = {
   lexicon: string;
   initialTimeSecs: number;
   challengeRule: number;
-  // rating: number;
+  userRating: string;
+  rated: boolean;
   seekID: string;
 };
 
@@ -17,7 +18,7 @@ export type LobbyState = {
 export function LobbyReducer(state: LobbyState, action: Action): LobbyState {
   switch (action.actionType) {
     case ActionType.AddSoughtGame: {
-      const soughtGames = state.soughtGames;
+      const { soughtGames } = state;
       const soughtGame = action.payload as SoughtGame;
       return {
         ...state,
@@ -26,7 +27,7 @@ export function LobbyReducer(state: LobbyState, action: Action): LobbyState {
     }
 
     case ActionType.RemoveSoughtGame: {
-      const soughtGames = state.soughtGames;
+      const { soughtGames } = state;
       const id = action.payload as string;
 
       const newArr = soughtGames.filter((sg) => {
@@ -47,5 +48,5 @@ export function LobbyReducer(state: LobbyState, action: Action): LobbyState {
       };
     }
   }
-  throw new Error('unhandled action type ' + action.actionType);
+  throw new Error(`unhandled action type ${action.actionType}`);
 }

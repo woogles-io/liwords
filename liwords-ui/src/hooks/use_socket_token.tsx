@@ -2,7 +2,10 @@ import { useState, useEffect } from 'react';
 import axios from 'axios';
 import jwt from 'jsonwebtoken';
 import { SendMessage } from 'react-use-websocket';
-import { TokenSocketLogin, MessageType } from '../gen/api/proto/realtime_pb';
+import {
+  TokenSocketLogin,
+  MessageType,
+} from '../gen/api/proto/realtime/realtime_pb';
 import { encodeToSocketFmt } from '../utils/protobuf';
 
 type TokenResponse = {
@@ -23,7 +26,7 @@ export const useSocketToken = (sendSocketMessage: SendMessage) => {
     console.log('fetching socket token...');
     axios
       .post<TokenResponse>(
-        '/twirp/liwords.AuthenticationService/GetSocketToken',
+        '/twirp/user_service.AuthenticationService/GetSocketToken',
         {}
       )
       .then((resp) => {

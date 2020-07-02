@@ -9,7 +9,7 @@ import { Action, ActionType } from '../../actions/actions';
 import {
   ServerGameplayEvent,
   GameHistoryRefresher,
-} from '../../gen/api/proto/realtime_pb';
+} from '../../gen/api/proto/realtime/realtime_pb';
 import { Direction, isBlank, Blank } from '../../utils/cwgame/common';
 import { EnglishCrosswordGameDistribution } from '../../constants/tile_distributions';
 import { PlayerOrder } from '../constants';
@@ -18,40 +18,22 @@ import { ThroughTileMarker } from '../../utils/cwgame/game_event';
 
 type TileDistribution = { [rune: string]: number };
 
-export type FullPlayerInfo = {
+export type RawPlayerInfo = {
   userID: string;
-  nickname: string;
-  fullName: string;
-  countryFlag: string;
-  rating: number; // in the relevant lexicon / game mode
-  title: string;
   score: number;
   // The time remaining is not going to go here. For efficiency,
   // we will put it in its own reducer.
   // timeMillis: number;
   onturn: boolean;
-  avatarUrl: string;
   currentRack: string;
 };
 
-export type ReducedPlayerInfo = {
-  nickname: string;
-  fullName: string;
-  avatarUrl: string;
-};
-
-const initialExpandToFull = (playerList: PlayerInfo[]): FullPlayerInfo[] => {
+const initialExpandToFull = (playerList: PlayerInfo[]): RawPlayerInfo[] => {
   return playerList.map((pi, idx) => {
     return {
       userID: pi.getUserId(),
-      nickname: pi.getNickname(),
-      fullName: pi.getRealName(),
-      countryFlag: '',
-      rating: 0,
-      title: '',
       score: 0,
       onturn: idx === 0,
-      avatarUrl: '',
       currentRack: '',
       // timeMillis: 0,
     };
@@ -63,7 +45,7 @@ export type GameState = {
   // The initial tile distribution:
   tileDistribution: TileDistribution;
   // players are always in order of who went first:
-  players: Array<FullPlayerInfo>;
+  players: Array<RawPlayerInfo>;
   // The unseen tiles to the user (bag and opp's tiles)
   pool: TileDistribution;
   // Array of every turn taken so far.
@@ -83,7 +65,7 @@ export type GameState = {
 
 export const startingGameState = (
   tileDistribution: TileDistribution,
-  players: Array<FullPlayerInfo>,
+  players: Array<RawPlayerInfo>,
   gameID: string
 ): GameState => {
   const gs = {
@@ -441,6 +423,34 @@ const initializeTimerController = (
 // app where we do things like this.
 export const GameReducer = (state: GameState, action: Action): GameState => {
   switch (action.actionType) {
+    case ActionType.ClearHistory: {
+      const gs = startingGameState(
+        EnglishCrosswordGameDistribution,
+        new Array<RawPlayerInfo>(),
+        ''
+      );
+      gs.playState = PlayState.GAME_OVER;
+      // Don't lose the clock controller, but pass it on until we get a
+      // history refresher etc. Reset the shown time to 0.
+      if (state.clockController !== null) {
+        gs.clockController = state.clockController;
+        if (gs.clockController!.current) {
+          gs.clockController!.current.setClock(gs.playState, {
+            p0: 0,
+            p1: 0,
+            lastUpdate: 0,
+          });
+        } else {
+          gs.clockController!.current = new ClockController(
+            { p0: 0, p1: 0, lastUpdate: 0 },
+            state.onClockTimeout,
+            state.onClockTick
+          );
+        }
+      }
+      return gs;
+    }
+
     case ActionType.AddGameEvent: {
       // Check to make sure the game ID matches, and then hand off processing
       // to the newGameState function above.

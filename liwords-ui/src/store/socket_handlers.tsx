@@ -1,3 +1,4 @@
+import { message } from 'antd';
 import { StoreData, ChatEntityType } from './store';
 import {
   MessageType,
@@ -18,7 +19,8 @@ import {
   TimedOut,
   TokenSocketLogin,
   GameTurnsRefresher,
-} from '../gen/api/proto/realtime_pb';
+  RatingMode,
+} from '../gen/api/proto/realtime/realtime_pb';
 import { ActionType } from '../actions/actions';
 import { endGameMessage } from './end_of_game';
 
@@ -69,10 +71,12 @@ export const onSocketMsg = (storeData: StoreData) => {
           actionType: ActionType.AddSoughtGame,
           payload: {
             seeker: user.getDisplayName(),
+            userRating: user.getRelevantRating(),
             lexicon: gameReq.getLexicon(),
             initialTimeSecs: gameReq.getInitialTimeSeconds(),
             challengeRule: gameReq.getChallengeRule(),
             seekID: gameReq.getRequestId(),
+            rated: gameReq.getRatingMode() === RatingMode.RATED,
           },
         });
         break;
@@ -87,10 +91,12 @@ export const onSocketMsg = (storeData: StoreData) => {
             const user = r.getUser()!;
             return {
               seeker: user.getDisplayName(),
+              userRating: user.getRelevantRating(),
               lexicon: gameReq.getLexicon(),
               initialTimeSecs: gameReq.getInitialTimeSeconds(),
               challengeRule: gameReq.getChallengeRule(),
               seekID: gameReq.getRequestId(),
+              rated: gameReq.getRatingMode() === RatingMode.RATED,
             };
           }),
         });
@@ -124,6 +130,10 @@ export const onSocketMsg = (storeData: StoreData) => {
       case MessageType.NEW_GAME_EVENT: {
         const nge = parsedMsg as NewGameEvent;
         console.log('got new game event', nge);
+        storeData.dispatchGameContext({
+          actionType: ActionType.ClearHistory,
+          payload: '',
+        });
         const gid = nge.getGameId();
         storeData.setRedirGame(gid);
         break;
@@ -136,6 +146,9 @@ export const onSocketMsg = (storeData: StoreData) => {
           actionType: ActionType.RefreshHistory,
           payload: ghr,
         });
+        // If there is an Antd message about "waiting for game", destroy it.
+        // XXX: This is a bit unideal.
+        message.destroy();
         break;
       }
 

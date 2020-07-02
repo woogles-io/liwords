@@ -1,5 +1,5 @@
 /* eslint-disable */
-// source: api/proto/realtime.proto
+// source: api/proto/realtime/realtime.proto
 /**
  * @fileoverview
  * @enhanceable
@@ -13,7 +13,7 @@ var jspb = require('google-protobuf');
 var goog = jspb;
 var global = Function('return this')();
 
-var macondo_api_proto_macondo_macondo_pb = require('../../macondo/api/proto/macondo/macondo_pb.js');
+var macondo_api_proto_macondo_macondo_pb = require('../../../macondo/api/proto/macondo/macondo_pb.js');
 goog.object.extend(proto, macondo_api_proto_macondo_macondo_pb);
 goog.exportSymbol('proto.liwords.ClientGameplayEvent', null, global);
 goog.exportSymbol('proto.liwords.ClientGameplayEvent.EventType', null, global);
@@ -992,7 +992,7 @@ proto.liwords.RequestingUser.prototype.toObject = function(opt_includeInstance) 
 proto.liwords.RequestingUser.toObject = function(includeInstance, msg) {
   var f, obj = {
     userId: jspb.Message.getFieldWithDefault(msg, 1, ""),
-    relevantRating: jspb.Message.getFieldWithDefault(msg, 2, 0),
+    relevantRating: jspb.Message.getFieldWithDefault(msg, 2, ""),
     isAnonymous: jspb.Message.getBooleanFieldWithDefault(msg, 3, false),
     displayName: jspb.Message.getFieldWithDefault(msg, 4, "")
   };
@@ -1036,7 +1036,7 @@ proto.liwords.RequestingUser.deserializeBinaryFromReader = function(msg, reader)
       msg.setUserId(value);
       break;
     case 2:
-      var value = /** @type {number} */ (reader.readInt32());
+      var value = /** @type {string} */ (reader.readString());
       msg.setRelevantRating(value);
       break;
     case 3:
@@ -1084,8 +1084,8 @@ proto.liwords.RequestingUser.serializeBinaryToWriter = function(message, writer)
     );
   }
   f = message.getRelevantRating();
-  if (f !== 0) {
-    writer.writeInt32(
+  if (f.length > 0) {
+    writer.writeString(
       2,
       f
     );
@@ -1126,20 +1126,20 @@ proto.liwords.RequestingUser.prototype.setUserId = function(value) {
 
 
 /**
- * optional int32 relevant_rating = 2;
- * @return {number}
+ * optional string relevant_rating = 2;
+ * @return {string}
  */
 proto.liwords.RequestingUser.prototype.getRelevantRating = function() {
-  return /** @type {number} */ (jspb.Message.getFieldWithDefault(this, 2, 0));
+  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 2, ""));
 };
 
 
 /**
- * @param {number} value
+ * @param {string} value
  * @return {!proto.liwords.RequestingUser} returns this
  */
 proto.liwords.RequestingUser.prototype.setRelevantRating = function(value) {
-  return jspb.Message.setProto3IntField(this, 2, value);
+  return jspb.Message.setProto3StringField(this, 2, value);
 };
 
 

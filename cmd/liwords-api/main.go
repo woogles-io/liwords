@@ -11,6 +11,7 @@ import (
 
 	"github.com/domino14/liwords/bus"
 	"github.com/domino14/liwords/pkg/apiserver"
+	"github.com/domino14/liwords/pkg/gameplay"
 	"github.com/domino14/liwords/pkg/stores/game"
 	"github.com/domino14/liwords/pkg/stores/session"
 	"github.com/domino14/liwords/pkg/stores/soughtgame"
@@ -26,7 +27,8 @@ import (
 
 	"github.com/domino14/liwords/pkg/config"
 	"github.com/domino14/liwords/pkg/stores/user"
-	pb "github.com/domino14/liwords/rpc/api/proto"
+	gameservice "github.com/domino14/liwords/rpc/api/proto/game_service"
+	userservice "github.com/domino14/liwords/rpc/api/proto/user_service"
 )
 
 const (
@@ -67,15 +69,21 @@ func main() {
 			hlog.FromRequest(r).Info().Str("method", method).Int("status", status).Dur("duration", d).Msg("")
 		}),
 	)
+	gameStore := game.NewMemoryStore()
+	soughtGameStore := soughtgame.NewMemoryStore()
 
 	authenticationService := auth.NewAuthenticationService(userStore, sessionStore, cfg.SecretKey)
 	registrationService := registration.NewRegistrationService(userStore)
+	gameService := gameplay.NewGameService(userStore, gameStore)
 
-	router.Handle(pb.AuthenticationServicePathPrefix,
-		middlewares.Then(pb.NewAuthenticationServiceServer(authenticationService, nil)))
+	router.Handle(userservice.AuthenticationServicePathPrefix,
+		middlewares.Then(userservice.NewAuthenticationServiceServer(authenticationService, nil)))
 
-	router.Handle(pb.RegistrationServicePathPrefix,
-		middlewares.Then(pb.NewRegistrationServiceServer(registrationService, nil)))
+	router.Handle(userservice.RegistrationServicePathPrefix,
+		middlewares.Then(userservice.NewRegistrationServiceServer(registrationService, nil)))
+
+	router.Handle(gameservice.GameMetadataServicePathPrefix,
+		middlewares.Then(gameservice.NewGameMetadataServiceServer(gameService, nil)))
 
 	srv := &http.Server{
 		Addr:         cfg.ListenAddr,
@@ -85,9 +93,6 @@ func main() {
 
 	idleConnsClosed := make(chan struct{})
 	sig := make(chan os.Signal, 1)
-
-	gameStore := game.NewMemoryStore()
-	soughtGameStore := soughtgame.NewMemoryStore()
 
 	// Handle bus.
 	pubsubBus, err := bus.NewBus(cfg, userStore, gameStore, soughtGameStore)

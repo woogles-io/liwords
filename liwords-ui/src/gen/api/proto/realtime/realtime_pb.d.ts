@@ -1,8 +1,8 @@
 // package: liwords
-// file: api/proto/realtime.proto
+// file: api/proto/realtime/realtime.proto
 
 import * as jspb from "google-protobuf";
-import * as macondo_api_proto_macondo_macondo_pb from "../../macondo/api/proto/macondo/macondo_pb";
+import * as macondo_api_proto_macondo_macondo_pb from "../../../macondo/api/proto/macondo/macondo_pb";
 
 export class GameRules extends jspb.Message {
   getBoardLayoutName(): string;
@@ -82,8 +82,8 @@ export class RequestingUser extends jspb.Message {
   getUserId(): string;
   setUserId(value: string): void;
 
-  getRelevantRating(): number;
-  setRelevantRating(value: number): void;
+  getRelevantRating(): string;
+  setRelevantRating(value: string): void;
 
   getIsAnonymous(): boolean;
   setIsAnonymous(value: boolean): void;
@@ -104,7 +104,7 @@ export class RequestingUser extends jspb.Message {
 export namespace RequestingUser {
   export type AsObject = {
     userId: string,
-    relevantRating: number,
+    relevantRating: string,
     isAnonymous: boolean,
     displayName: string,
   }

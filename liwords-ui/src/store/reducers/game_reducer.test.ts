@@ -4,7 +4,7 @@ import { ActionType } from '../../actions/actions';
 import {
   GameHistoryRefresher,
   ServerGameplayEvent,
-} from '../../gen/api/proto/realtime_pb';
+} from '../../gen/api/proto/realtime/realtime_pb';
 import {
   GameHistory,
   PlayerInfo,
@@ -17,8 +17,8 @@ const historyRefresher = () => {
   const his = new GameHistory();
   const player1 = new PlayerInfo();
   const player2 = new PlayerInfo();
-  player1.setNickname('césar');
-  player2.setNickname('mina');
+  player1.setUserId('césar');
+  player2.setUserId('mina');
   his.setPlayersList([player1, player2]);
   his.setLastKnownRacksList(['CDEIPTV', 'FIMRSUU']);
   his.setUid('game42');
@@ -34,9 +34,9 @@ it('tests refresher', () => {
     payload: historyRefresher(),
   });
   expect(newState.players[0].currentRack).toBe('CDEIPTV');
-  expect(newState.players[0].nickname).toBe('césar');
+  expect(newState.players[0].userID).toBe('césar');
   expect(newState.players[1].currentRack).toBe('FIMRSUU');
-  expect(newState.players[1].nickname).toBe('mina');
+  expect(newState.players[1].userID).toBe('mina');
   expect(newState.onturn).toBe(0);
   expect(newState.turns.length).toBe(0);
 });
@@ -67,9 +67,9 @@ it('tests addevent', () => {
     payload: sge,
   });
   expect(newState2.players[0].currentRack).toBe('EFIKNNV');
-  expect(newState2.players[0].nickname).toBe('césar');
+  expect(newState2.players[0].userID).toBe('césar');
   expect(newState2.players[1].currentRack).toBe('FIMRSUU');
-  expect(newState2.players[1].nickname).toBe('mina');
+  expect(newState2.players[1].userID).toBe('mina');
   expect(newState2.onturn).toBe(1);
   // The reducer doesn't add the turn yet, until another turn comes in with
   // a different name.
@@ -104,9 +104,9 @@ it('tests addevent with different id', () => {
   });
   // No change
   expect(newState2.players[0].currentRack).toBe('CDEIPTV');
-  expect(newState2.players[0].nickname).toBe('césar');
+  expect(newState2.players[0].userID).toBe('césar');
   expect(newState2.players[1].currentRack).toBe('FIMRSUU');
-  expect(newState2.players[1].nickname).toBe('mina');
+  expect(newState2.players[1].userID).toBe('mina');
   expect(newState2.onturn).toBe(0);
   expect(newState2.turns.length).toBe(0);
 });
@@ -116,8 +116,8 @@ const historyRefresher2 = () => {
   const his = new GameHistory();
   const player1 = new PlayerInfo();
   const player2 = new PlayerInfo();
-  player1.setNickname('césar');
-  player2.setNickname('mina');
+  player1.setUserId('césar');
+  player2.setUserId('mina');
   his.setPlayersList([player1, player2]);
   his.setLastKnownRacksList(['EFMPRST', 'AEELRX?']);
   his.setUid('game63');
@@ -135,7 +135,9 @@ const historyRefresher2AfterChallenge = () => {
   const his = new GameHistory();
   const player1 = new PlayerInfo();
   const player2 = new PlayerInfo();
+  player1.setUserId('césar');
   player1.setNickname('césar');
+  player2.setUserId('mina');
   player2.setNickname('mina');
   his.setPlayersList([player1, player2]);
   his.setLastKnownRacksList(['EFMPRST', 'EEJNNOQ']);
@@ -180,9 +182,9 @@ it('tests flip players', () => {
     payload: historyRefresher2(),
   });
   expect(newState.players[0].currentRack).toBe('AEELRX?');
-  expect(newState.players[0].nickname).toBe('mina');
+  expect(newState.players[0].userID).toBe('mina');
   expect(newState.players[1].currentRack).toBe('EFMPRST');
-  expect(newState.players[1].nickname).toBe('césar');
+  expect(newState.players[1].userID).toBe('césar');
   expect(newState.onturn).toBe(0);
   expect(newState.turns.length).toBe(0);
 });
@@ -218,9 +220,9 @@ OQ","time_remaining":472033}}
     payload: sge,
   });
   expect(newState.players[0].currentRack).toBe('EEJNNOQ');
-  expect(newState.players[0].nickname).toBe('mina');
+  expect(newState.players[0].userID).toBe('mina');
   expect(newState.players[1].currentRack).toBe('EFMPRST');
-  expect(newState.players[1].nickname).toBe('césar');
+  expect(newState.players[1].userID).toBe('césar');
   expect(newState.onturn).toBe(1);
   expect(newState.turns.length).toBe(0);
 
@@ -230,9 +232,9 @@ OQ","time_remaining":472033}}
     payload: historyRefresher2AfterChallenge(),
   });
   expect(newState.players[0].currentRack).toBe('EEJNNOQ');
-  expect(newState.players[0].nickname).toBe('mina');
+  expect(newState.players[0].userID).toBe('mina');
   expect(newState.players[1].currentRack).toBe('EFMPRST');
-  expect(newState.players[1].nickname).toBe('césar');
+  expect(newState.players[1].userID).toBe('césar');
   expect(newState.players[0].score).toBe(97);
   expect(newState.players[1].score).toBe(0);
   // It is still César's turn

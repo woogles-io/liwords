@@ -6,10 +6,11 @@ import (
 	"errors"
 	"time"
 
-	"github.com/domino14/liwords/pkg/entity"
 	"github.com/jinzhu/gorm"
 	"github.com/jinzhu/gorm/dialects/postgres"
 	"github.com/lithammer/shortuuid"
+
+	"github.com/domino14/liwords/pkg/entity"
 )
 
 type dbSession struct {

@@ -1,5 +1,5 @@
 import { EphemeralTile, Direction } from './common';
-import { ClientGameplayEvent } from '../../gen/api/proto/realtime_pb';
+import { ClientGameplayEvent } from '../../gen/api/proto/realtime/realtime_pb';
 import { contiguousTilesFromTileSet } from './scoring';
 import { Board } from './board';
 import { GameEvent } from '../../gen/macondo/api/proto/macondo/macondo_pb';

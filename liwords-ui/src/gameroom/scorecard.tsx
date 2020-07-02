@@ -5,10 +5,10 @@ import {
   GameEvent,
 } from '../gen/macondo/api/proto/macondo/macondo_pb';
 import { Board } from '../utils/cwgame/board';
-import { ReducedPlayerInfo } from '../store/reducers/game_reducer';
 import { PlayerAvatar } from '../shared/player_avatar';
 import { millisToTimeStr } from '../store/timer_controller';
 import { tilePlacementEventDisplay } from '../utils/cwgame/game_event';
+import { PlayerMetadata } from './game_info';
 
 type Props = {
   playing: boolean;
@@ -16,6 +16,7 @@ type Props = {
   turns: Array<GameTurn>;
   currentTurn: GameTurn;
   board: Board;
+  playerMeta: Array<PlayerMetadata>;
 };
 
 type turnProps = {
@@ -26,7 +27,7 @@ type turnProps = {
 };
 
 type MoveEntityObj = {
-  player: ReducedPlayerInfo;
+  player: Partial<PlayerMetadata>;
   coords: string;
   timeRemaining: string;
   rack: string;
@@ -64,8 +65,9 @@ const Turn = (props: turnProps) => {
     const turn = {
       player: {
         nickname: evts[0].getNickname(),
-        avatarUrl: '',
-        fullName: '',
+        // XXX: FIX THIS. avatar url should be set.
+        full_name: '',
+        avatar_url: '',
       },
       coords: evts[0].getPosition(),
       timeRemaining: millisToTimeStr(evts[0].getMillisRemaining(), false),

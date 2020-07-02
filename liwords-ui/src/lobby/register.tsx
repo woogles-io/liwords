@@ -23,7 +23,7 @@ export const Register = () => {
 
   const onFinish = (values: { [key: string]: string }) => {
     axios
-      .post('/twirp/liwords.RegistrationService/Register', {
+      .post('/twirp/user_service.RegistrationService/Register', {
         username: values.username,
         password: values.password,
         email: values.email,
@@ -31,7 +31,7 @@ export const Register = () => {
       .then(() => {
         // Try logging in after registering.
         axios
-          .post('/twirp/liwords.AuthenticationService/Login', {
+          .post('/twirp/user_service.AuthenticationService/Login', {
             username: values.username,
             password: values.password,
           })

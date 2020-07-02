@@ -12,4 +12,5 @@ export enum ActionType {
   AddGameEvent,
   RefreshTurns,
   RefreshHistory,
+  ClearHistory,
 }

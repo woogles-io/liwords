@@ -9,7 +9,8 @@ import {
   MessageType,
   GameAcceptedEvent,
   GameRules,
-} from '../gen/api/proto/realtime_pb';
+  RatingMode,
+} from '../gen/api/proto/realtime/realtime_pb';
 import { encodeToSocketFmt } from '../utils/protobuf';
 import { SoughtGames } from './sought_games';
 import { SoughtGame } from '../store/reducers/lobby_reducer';
@@ -36,6 +37,7 @@ const sendSeek = (
   gr.setLexicon(game.lexicon);
   gr.setInitialTimeSeconds(game.initialTimeSecs);
   gr.setRules(rules);
+  gr.setRatingMode(game.rated ? RatingMode.RATED : RatingMode.CASUAL);
 
   sr.setGameRequest(gr);
 
@@ -70,6 +72,7 @@ export const Lobby = (props: Props) => {
     lexicon: 'CSW19',
     challengerule: ChallengeRule.FIVE_POINT,
     initialtime: 8,
+    rated: true,
   });
 
   const showSeekModal = () => {
@@ -80,12 +83,15 @@ export const Lobby = (props: Props) => {
     setSeekModalVisible(false);
     sendSeek(
       {
+        // These items are assigned by the server:
         seeker: '',
+        userRating: '',
+        seekID: '',
+
         lexicon: seekSettings.lexicon as string,
         challengeRule: seekSettings.challengerule as number,
         initialTimeSecs: (seekSettings.initialtime as number) * 60,
-        // rating: 0,
-        seekID: '', // assigned by server
+        rated: seekSettings.rated as boolean,
       },
       props.sendSocketMsg
     );

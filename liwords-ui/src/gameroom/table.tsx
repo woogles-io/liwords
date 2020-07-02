@@ -1,5 +1,6 @@
-import React, { useEffect } from 'react';
-import { Row, Col, Card } from 'antd';
+import React, { useEffect, useState } from 'react';
+import { Row, Col, message } from 'antd';
+import axios from 'axios';
 
 import { useParams } from 'react-router-dom';
 import { BoardPanel } from './board_panel';
@@ -8,10 +9,12 @@ import { Chat } from './chat';
 import { useStoreContext } from '../store/store';
 import { PlayerCards } from './player_cards';
 import Pool from './pool';
-import { MessageType, TimedOut } from '../gen/api/proto/realtime_pb';
+import { MessageType, TimedOut } from '../gen/api/proto/realtime/realtime_pb';
 import { encodeToSocketFmt } from '../utils/protobuf';
 import './scss/gameroom.scss';
 import { ScoreCard } from './scorecard';
+import { GameInfo, GameMetadata, PlayerMetadata } from './game_info';
+// import { GameInfoResponse } from '../gen/api/proto/game_service/game_service_pb';
 
 const gutter = 16;
 const boardspan = 12;
@@ -20,6 +23,22 @@ type Props = {
   sendSocketMsg: (msg: Uint8Array) => void;
   username: string;
   loggedIn: boolean;
+};
+
+const defaultGameInfo = {
+  players: new Array<PlayerMetadata>(),
+  lexicon: '',
+  variant: '',
+  time_control: '',
+  tournament_name: '',
+  challenge_rule: 'VOID' as  // wtf typescript? is there a better way?
+    | 'FIVE_POINT'
+    | 'TEN_POINT'
+    | 'SINGLE'
+    | 'DOUBLE'
+    | 'VOID',
+  rating_mode: 0, // 0 is rated and 1 is casual; see realtime proto.
+  done: false,
 };
 
 export const Table = (props: Props) => {
@@ -36,7 +55,7 @@ export const Table = (props: Props) => {
   } = useStoreContext();
   const { username, sendSocketMsg } = props;
   // const location = useLocation();
-
+  const [gameInfo, setGameInfo] = useState<GameMetadata>(defaultGameInfo);
   useEffect(() => {
     // Avoid react-router hijacking the back button.
     // If setRedirGame is not defined, then we're SOL I guess.
@@ -44,11 +63,29 @@ export const Table = (props: Props) => {
   }, [setRedirGame]);
 
   useEffect(() => {
+    // Request game API to get info about the game at the beginning.
+    axios
+      .post<GameMetadata>(
+        '/twirp/game_service.GameMetadataService/GetMetadata',
+        {
+          gameId: gameID,
+        }
+      )
+      .then((resp) => {
+        setGameInfo(resp.data);
+      });
+    if (!gameContext.players || !gameContext.players[0]) {
+      // Show a message while waiting for data about the game to come in
+      // via the socket.
+      message.warning('Game is starting shortly', 0);
+    }
     return () => {
       clearChat();
+      setGameInfo(defaultGameInfo);
+      message.destroy();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [gameID]);
 
   useEffect(() => {
     if (pTimedOut === undefined) return;
@@ -57,15 +94,14 @@ export const Table = (props: Props) => {
     let send = false;
     let timedout = '';
 
-    for (let idx = 0; idx < gameContext.players.length; idx++) {
-      const p = gameContext.players[idx];
-      if (gameContext.uidToPlayerOrder[p.userID] === pTimedOut) {
-        timedout = p.userID;
+    gameInfo.players.forEach((p) => {
+      if (gameContext.uidToPlayerOrder[p.user_id] === pTimedOut) {
+        timedout = p.user_id;
       }
       if (username === p.nickname) {
         send = true;
       }
-    }
+    });
 
     if (!send) return;
 
@@ -85,9 +121,10 @@ export const Table = (props: Props) => {
   // If we are NOT one of the players (so an observer), display the rack of
   // the player on turn.
   let rack;
-  const us = gameContext.players.find((p) => p.nickname === props.username);
+  const us = gameInfo.players.find((p) => p.nickname === props.username);
   if (us) {
-    rack = us.currentRack;
+    rack = gameContext.players.find((p) => p.userID === us.user_id)
+      ?.currentRack;
   } else {
     rack = gameContext.players.find((p) => p.onturn)?.currentRack || '';
   }
@@ -106,29 +143,19 @@ export const Table = (props: Props) => {
             username={props.username}
             board={gameContext.board}
             showBonusLabels={false}
-            currentRack={rack}
+            currentRack={rack || ''}
             lastPlayedLetters={{}}
             gameID={gameID}
             sendSocketMsg={props.sendSocketMsg}
           />
         </Col>
         <Col span={6} className="data-area">
-          {/* maybe some of this info comes from backend */}
-          <PlayerCards />
-          {/* <GameInfo
-            timer="15 0"
-            gameType="Classic"
-            dictionary="Collins"
-            challengeRule="5-pt"
-            rated={rated}
-          /> */}
-          <Card>
-            <Row>15 0 - Classic - Collins</Row>
-            <Row>5 point challenge - Unrated</Row>
-          </Card>
+          <PlayerCards playerMeta={gameInfo.players} />
+          <GameInfo meta={gameInfo} />
+
           <Pool
             pool={gameContext?.pool}
-            currentRack={rack}
+            currentRack={rack || ''}
             poolFormat={poolFormat}
             setPoolFormat={setPoolFormat}
           />
@@ -138,6 +165,7 @@ export const Table = (props: Props) => {
             turns={gameContext.turns}
             currentTurn={gameContext.currentTurn}
             board={gameContext.board}
+            playerMeta={gameInfo.players}
           />
         </Col>
       </Row>

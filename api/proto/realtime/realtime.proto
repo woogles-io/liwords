@@ -1,6 +1,6 @@
 syntax = "proto3";
 package liwords;
-option go_package = "github.com/domino14/liwords/rpc/api/proto/liwords";
+option go_package = "github.com/domino14/liwords/rpc/api/proto/realtime";
 
 // realtime contains the data structures and services needed for the actual
 // gameplay. Since gameplay is intended to happen over a full-duplex connection,
@@ -47,7 +47,7 @@ message RequestingUser {
   // user_id is the database, or anonymous, ID of the user.
   string user_id = 1;
   // relevant_rating is the rating of the user, for the relevant seek mode.
-  int32 relevant_rating = 2;
+  string relevant_rating = 2;
   // if is_anonymous, backend won't bother to look up the user in the DB.
   bool is_anonymous = 3;
   // display_name is the display username of the user (could be real name too)

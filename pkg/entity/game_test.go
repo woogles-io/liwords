@@ -7,12 +7,13 @@ import (
 	"testing"
 	"time"
 
-	pb "github.com/domino14/liwords/rpc/api/proto"
 	"github.com/domino14/macondo/board"
 	macondoconfig "github.com/domino14/macondo/config"
 	"github.com/domino14/macondo/game"
 	macondopb "github.com/domino14/macondo/gen/api/proto/macondo"
 	"github.com/matryer/is"
+
+	pb "github.com/domino14/liwords/rpc/api/proto/realtime"
 )
 
 const (
