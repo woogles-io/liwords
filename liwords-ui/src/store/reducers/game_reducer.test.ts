@@ -116,8 +116,8 @@ const historyRefresher2 = () => {
   const his = new GameHistory();
   const player1 = new PlayerInfo();
   const player2 = new PlayerInfo();
-  player1.setNickname('césar');
-  player2.setNickname('mina');
+  player1.setUserId('césar');
+  player2.setUserId('mina');
   his.setPlayersList([player1, player2]);
   his.setLastKnownRacksList(['EFMPRST', 'AEELRX?']);
   his.setUid('game63');
@@ -135,7 +135,9 @@ const historyRefresher2AfterChallenge = () => {
   const his = new GameHistory();
   const player1 = new PlayerInfo();
   const player2 = new PlayerInfo();
+  player1.setUserId('césar');
   player1.setNickname('césar');
+  player2.setUserId('mina');
   player2.setNickname('mina');
   his.setPlayersList([player1, player2]);
   his.setLastKnownRacksList(['EFMPRST', 'EEJNNOQ']);
