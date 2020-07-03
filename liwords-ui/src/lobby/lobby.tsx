@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Row, Col, Button, Modal } from 'antd';
+import React, { useState, useEffect } from 'react';
+import { Row, Col, Button, Modal, Alert } from 'antd';
 import { Redirect } from 'react-router-dom';
 
 import { TopBar } from '../topbar/topbar';
@@ -66,14 +66,23 @@ type Props = {
 
 export const Lobby = (props: Props) => {
   const { redirGame } = useStoreContext();
-
+  console.log('im logged in', props.loggedIn);
   const [seekModalVisible, setSeekModalVisible] = useState(false);
   const [seekSettings, setSeekSettings] = useState<seekPropVals>({
     lexicon: 'CSW19',
     challengerule: ChallengeRule.FIVE_POINT,
     initialtime: 8,
-    rated: true,
+    rated: false,
   });
+  console.log('seek settings are meow', seekSettings);
+
+  useEffect(() => {
+    setSeekSettings((s) => ({
+      rated: props.loggedIn,
+      ...s,
+    }));
+    console.log('since change, rated', props.loggedIn);
+  }, [props.loggedIn]);
 
   const showSeekModal = () => {
     setSeekModalVisible(true);
@@ -139,7 +148,11 @@ export const Lobby = (props: Props) => {
             onOk={handleModalOk}
             onCancel={handleModalCancel}
           >
-            <SeekForm vals={seekSettings} onChange={setSeekSettings} />
+            <SeekForm
+              vals={seekSettings}
+              onChange={setSeekSettings}
+              loggedIn={props.loggedIn}
+            />
           </Modal>
         </Col>
       </Row>

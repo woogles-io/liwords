@@ -48,6 +48,8 @@ export type StoreData = {
   dispatchLobbyContext: (action: Action) => void;
   redirGame: string;
   setRedirGame: React.Dispatch<React.SetStateAction<string>>;
+  errorMessage: string;
+  setErrorMessage: React.Dispatch<React.SetStateAction<string>>;
 
   challengeResultEvent: (sge: ServerChallengeResultEvent) => void;
 
@@ -84,6 +86,9 @@ export const Context = createContext<StoreData>({
   dispatchLobbyContext: defaultFunction,
   redirGame: '',
   setRedirGame: defaultFunction,
+  errorMessage: '',
+  setErrorMessage: defaultFunction,
+
   challengeResultEvent: defaultFunction,
   gameContext: defaultGameState,
   dispatchGameContext: defaultFunction,
@@ -157,6 +162,8 @@ export const Store = ({ children, ...props }: Props) => {
     PoolFormatType.Detail
   );
 
+  const [errorMessage, setErrorMessage] = useState('');
+
   const [redirGame, setRedirGame] = useState('');
   const [chat, setChat] = useState(new Array<ChatEntityObj>());
 
@@ -204,6 +211,8 @@ export const Store = ({ children, ...props }: Props) => {
     dispatchGameContext,
     redirGame,
     setRedirGame,
+    errorMessage,
+    setErrorMessage,
     challengeResultEvent,
     addChat,
     clearChat,

@@ -99,6 +99,13 @@ func (b *Bus) ProcessMessages(ctx context.Context) {
 			err := b.handleNatsPublish(ctx, subtopics[2:], msg.Data)
 			if err != nil {
 				log.Err(err).Msg("process-message-publish-error")
+				// The user ID should have hopefully come in the topic name.
+				// It would be in subtopics[4]
+				if len(subtopics) > 4 {
+					userID := subtopics[4]
+					b.pubToUser(userID, entity.WrapEvent(&pb.ErrorMessage{Message: err.Error()},
+						pb.MessageType_ERROR_MESSAGE, ""))
+				}
 			}
 
 		case msg := <-b.subchans["ipc.request.>"]:
@@ -178,7 +185,7 @@ func (b *Bus) handleNatsRequest(ctx context.Context, topic string,
 			}
 			log.Debug().Str("computed-realm", realm)
 		} else {
-			return errors.New("realm request not handled")
+			return errors.New("realm-req-not-handled")
 		}
 		resp := &pb.RegisterRealmResponse{}
 		resp.Realm = realm
@@ -190,7 +197,7 @@ func (b *Bus) handleNatsRequest(ctx context.Context, topic string,
 		log.Debug().Str("topic", topic).Str("replyTopic", replyTopic).
 			Msg("published response")
 	default:
-		return fmt.Errorf("unhandled request topic: %v", topic)
+		return fmt.Errorf("unhandled-req-topic: %v", topic)
 	}
 	return nil
 }
@@ -214,6 +221,9 @@ func (b *Bus) handleNatsPublish(ctx context.Context, subtopics []string, data []
 		if req.User.IsAnonymous {
 			req.User.DisplayName = entity.DeterministicUsername(req.User.UserId)
 			req.User.RelevantRating = "Unrated"
+			if req.GameRequest.RatingMode != pb.RatingMode_CASUAL {
+				return errors.New("anonymous-games-must-be-unrated")
+			}
 		} else {
 			// Look up user.
 			timefmt, variant, err := entity.VariantFromGameReq(req.GameRequest)
@@ -273,7 +283,7 @@ func (b *Bus) handleNatsPublish(ctx context.Context, subtopics []string, data []
 		}
 		return b.initRealmInfo(ctx, evt)
 	default:
-		return fmt.Errorf("unhandled publish topic: %v", subtopics)
+		return fmt.Errorf("unhandled-publish-topic: %v", subtopics)
 	}
 	return nil
 }
@@ -305,7 +315,7 @@ func (b *Bus) gameAccepted(ctx context.Context, evt *pb.GameAcceptedEvent, userI
 		return err
 	}
 	if (accUser.Anonymous || reqUser.Anonymous) && sg.SeekRequest.GameRequest.RatingMode == pb.RatingMode_RATED {
-		return errors.New("anonymous players cannot play rated games")
+		return errors.New("anonymous-players-cant-play-rated")
 	}
 
 	log.Debug().Interface("seekreq", sg.SeekRequest).Msg("seek-request-accepted")

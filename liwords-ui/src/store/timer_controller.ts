@@ -25,20 +25,20 @@ export interface ClockData {
 }
 
 export const millisToTimeStr = (
-  s: number,
+  ms: number,
   showTenths: boolean = true
 ): string => {
-  const neg = s < 0;
+  const neg = ms < 0;
   // eslint-disable-next-line no-param-reassign
-  s = Math.abs(s);
-  const mins = Math.floor(s / 60000);
+  ms = Math.abs(ms);
+  const mins = Math.floor(ms / 60000);
   let secs;
   let secStr;
-  if (s > showTenthsCutoff || !showTenths) {
-    secs = Math.floor(s / 1000) % 60;
+  if (ms > showTenthsCutoff || !showTenths) {
+    secs = Math.ceil(ms / 1000) % 60;
     secStr = secs.toString().padStart(2, '0');
   } else {
-    secs = s / 1000;
+    secs = ms / 1000;
     secStr = secs.toFixed(1).padStart(4, '0');
   }
   const minStr = mins.toString().padStart(2, '0');

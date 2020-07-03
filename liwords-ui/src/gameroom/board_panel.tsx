@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Button } from 'antd';
+import { Button, notification } from 'antd';
 import { ArrowDownOutlined, SyncOutlined } from '@ant-design/icons';
 import GameBoard from './board';
 import GameControls from './game_controls';
@@ -150,6 +150,12 @@ export const BoardPanel = React.memo((props: Props) => {
     const iam = gameContext.nickToPlayerOrder[props.username];
     if (!(iam && iam === `p${gameContext.onturn}`)) {
       // It is not my turn. Ignore this event.
+      notification.warning({
+        key: 'notyourturn',
+        message: 'Attention',
+        description: 'It is not your turn.',
+        duration: 1.5,
+      });
       return;
     }
 

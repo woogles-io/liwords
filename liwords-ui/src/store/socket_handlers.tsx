@@ -1,4 +1,4 @@
-import { message } from 'antd';
+import { message, notification } from 'antd';
 import { StoreData, ChatEntityType } from './store';
 import {
   MessageType,
@@ -23,6 +23,10 @@ import {
 } from '../gen/api/proto/realtime/realtime_pb';
 import { ActionType } from '../actions/actions';
 import { endGameMessage } from './end_of_game';
+
+const makemoveMP3 = require('../assets/makemove.mp3');
+
+const makemoveSound = new Audio(makemoveMP3);
 
 const parseMsg = (msg: Uint8Array) => {
   const msgType = msg[0] as MessageTypeMap[keyof MessageTypeMap];
@@ -107,11 +111,13 @@ export const onSocketMsg = (storeData: StoreData) => {
       case MessageType.ERROR_MESSAGE: {
         console.log('got error msg');
         const err = parsedMsg as ErrorMessage;
-        storeData.addChat({
-          entityType: ChatEntityType.ErrorMsg,
-          sender: '',
-          message: err.getMessage(),
-        });
+        storeData.setErrorMessage(err.getMessage());
+        notification.error({ message: 'Error', description: err.getMessage() });
+        // storeData.addChat({
+        //   entityType: ChatEntityType.ErrorMsg,
+        //   sender: '',
+        //   message: err.getMessage(),
+        // });
         break;
       }
 
@@ -169,6 +175,8 @@ export const onSocketMsg = (storeData: StoreData) => {
           actionType: ActionType.AddGameEvent,
           payload: sge,
         });
+        // play sound
+        makemoveSound.play();
         break;
       }
 

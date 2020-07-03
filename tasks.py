@@ -70,6 +70,9 @@ def deploy(c):
     with c.cd("liwords-ui"):
         c.run("npm run build")
         c.run("rsync -avz --del build/ ubuntu@xword.club:~/liwords-ui-build")
-    with c.cd("cmd/socketsrv"):
+    with c.cd("cmd/liwords-api"):
+        c.run("GOOS=linux GOARCH=amd64 go build -o liwords-api-linux-amd64")
+        c.run("scp liwords-api-linux-amd64 ubuntu@xword.club:.")
+    with c.cd("../liwords-socket/cmd/socketsrv"):
         c.run("GOOS=linux GOARCH=amd64 go build -o liwords-socket-linux-amd64")
         c.run("scp liwords-socket-linux-amd64 ubuntu@xword.club:.")
