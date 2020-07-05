@@ -1,7 +1,6 @@
-import React from 'react';
+import React, { useState } from 'react';
 import TentativeScore from './tentative_score';
 import { Blank } from '../utils/cwgame/common';
-
 const colors = require('../base.scss');
 
 type TileStyle = {
@@ -40,7 +39,9 @@ type TileLetterProps = {
   rune: string;
 };
 
-const TileLetter = (props: TileLetterProps) => {
+export const DragType = 'Tile';
+
+const TileLetter = React.memo((props: TileLetterProps) => {
   let { rune } = props;
   // if (rune.toUpperCase() !== rune) {
   //   rune = rune.toUpperCase();
@@ -50,7 +51,7 @@ const TileLetter = (props: TileLetterProps) => {
   }
 
   return <p className="rune">{rune}</p>;
-};
+});
 
 type PointValueProps = {
   value: number;
@@ -71,10 +72,14 @@ type TileProps = {
   tentative?: boolean;
   tentativeScore?: number;
   grabbable: boolean;
+  rackIndex?: number | undefined;
+  swapRackTiles?: (indexA: number | undefined, indexB: number | undefined) => void;
   onClick?: () => void;
 };
 
-const Tile = (props: TileProps) => {
+
+const Tile = React.memo((props: TileProps) => {
+  const [isDragging, setIsDragging] = useState(false);
   let tileStyle = TILE_STYLES.primary;
   if (props.lastPlayed) {
     tileStyle = TILE_STYLES.primaryJustPlayed;
@@ -83,17 +88,45 @@ const Tile = (props: TileProps) => {
     tileStyle = TILE_STYLES.primaryTentative;
   }
 
+  const handleStartDrag = (e: any) => {
+    if (e) {
+      e.dataTransfer.setData('rackIndex', props.rackIndex);
+      setIsDragging(true);
+    }
+  };
+
+  const handleEndDrag = () => {
+    setIsDragging(false);
+  };
+
+  const handleDrop = (e: any) => {
+    if (props.swapRackTiles) {
+      props.swapRackTiles(props.rackIndex, parseInt(e.dataTransfer.getData('rackIndex'), 10));
+    }
+  }
+
+  const handleDropOver = (e : any) => {
+    e.preventDefault();
+    e.stopPropagation();
+  }
+
+  const computedClassName = `tile${isDragging ? ' dragging' : ''}${props.grabbable ? ' droppable' : ''}`;
   return (
     <div
-      className="tile"
+      className={computedClassName}
       style={{ ...tileStyle, cursor: props.grabbable ? 'grab' : 'default' }}
       onClick={props.onClick ? props.onClick : () => {}}
+      onDragStart={handleStartDrag}
+      onDragEnd={handleEndDrag}
+      onDragOver={handleDropOver}
+      onDrop={handleDrop}
+      draggable={props.grabbable}
     >
       <TileLetter rune={props.rune} />
       <PointValue value={props.value} />
       <TentativeScore score={props.tentativeScore} />
     </div>
   );
-};
+});
 
 export default Tile;

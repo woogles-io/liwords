@@ -33,9 +33,8 @@ type Props = {
   clicked: () => void;
 };
 
-const BoardSpace = (props: Props) => {
+const BoardSpace = React.memo((props: Props) => {
   const { fillColor, bonusText } = getBonusProperties(props.bonusType);
-
   let bonusLabel = null;
   let startingSquare = null;
   let arrow = null;
@@ -63,12 +62,16 @@ const BoardSpace = (props: Props) => {
   };
 
   return (
-    <div className="board-space" onClick={props.clicked} style={styleOverrides}>
+    <div
+      className="board-space"
+      onClick={props.clicked}
+      style={styleOverrides}
+    >
       {bonusLabel}
       {startingSquare}
       {arrow}
     </div>
   );
-};
+});
 
 export default BoardSpace;

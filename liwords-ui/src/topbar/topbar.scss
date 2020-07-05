@@ -6,20 +6,28 @@
   min-height: 72px;
   background: $color-primary-light;
   @include type-default;
-  font-family: $font-deco;
   letter-spacing: 0.25em;
-
+  font-size: 12px;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   justify-content: space-around;
-
   text-transform: uppercase;
-  padding: 0 32px;
+  padding: 0 160px;
+}
+
+.container {
+  position: relative;
+  max-width: 768px;
+  width: 100%;
+  margin: 0 auto;
 }
 
 
 .user-info {
+  position: absolute;
+  right: 0;
+  top: 32px;
   width: 20%;
   text-align: right;
 }
@@ -43,9 +51,8 @@
   align-self: center;
   margin: 16px 0px 6px;
   .top-header-site-icon-rect {
-    width: 48px;
-    height: 48px;
-    transform: rotate(-7deg);
+    width: 40px;
+    height: 40px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -54,15 +61,15 @@
   }
   /* M */
   .top-header-site-icon-m {
-    left: 2px;
+    left: 3px;
     top: 0px;
-    transform: rotate(-4deg);
+    transform: rotate(-10deg);
     position: relative;
     font-family: $font-default;
     font-style: normal;
     font-weight: bold;
-    font-size: 32px;
-    line-height: 64px;
+    font-size: 28px;
+    line-height: 35px;
     color: white;
   }
   /* Macondo */
@@ -72,10 +79,13 @@
     /* Inside Auto Layout */
     flex: none;
     order: 1;
+    text-transform: none;
     align-self: center;
     margin: 0 20px;
     font-size: 28px;
+    font-weight: bold;
     line-height: 35px;
+    letter-spacing: 0;
   }
 }
 
@@ -84,6 +94,17 @@
 @media (min-width: $screen-laptop-min) {
   .top-header {
     flex-wrap: nowrap;
+    padding: 0 128px;
+  }
+  .container {
+    max-width: $screen-laptop-min;
+    display: flex;
+    flex-wrap: nowrap;
+    align-items: center;
+    justify-content: space-around;
+  }
+  .user-info {
+    position: static;
   }
   .top-header-menu {
     order: initial;
@@ -91,5 +112,22 @@
   }
   .site-icon {
     margin: 20px 0;
+  }
+}
+
+@media (min-width: $screen-desktop-min) {
+  .top-header {
+    padding: 0 128px;
+  }
+  .container {
+    max-width: $screen-desktop-min;
+  }
+}
+@media (min-width: $screen-desktop-max) {
+  .top-header {
+    padding: 0 96px;
+  }
+  .container {
+    max-width: $screen-desktop-max;
   }
 }

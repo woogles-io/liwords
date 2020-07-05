@@ -55,12 +55,12 @@ export const GameInfo = (props: Props) => {
   }
 
   return (
-    <Card>
-      <Row>
-        {props.meta.time_control} - {variant} - {props.meta.lexicon}
+    <Card className="game-info">
+      <Row className="variant">
+        {props.meta.time_control} • {variant} • {props.meta.lexicon}
       </Row>
       <Row>
-        {challenge} challenge - {rated}
+        {challenge} challenge • {rated}
       </Row>
     </Card>
   );

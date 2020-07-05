@@ -19,8 +19,8 @@ $color-timer-out-light: #FFEAEA;
 $color-timer-out-dark: #A92E2E;
 
 
-$color-board-dls: #E2F8FF;
-$color-board-dws: #FFEAEA;
+$color-board-dls: desaturate(darken(#E2F8FF, 10%), 25%);
+$color-board-dws: desaturate(darken(#FFEAEA, 10%), 25%);
 $color-board-tws: #A92E2E;
 $color-board-tls: #3B88CA;
 $color-board-empty: white;
@@ -40,11 +40,12 @@ $color-board-empty: white;
 
 $screen-tablet-min: 768px;
 $screen-laptop-min: 1024px;
-$screen-desktop-max: 2048px;
+$screen-desktop-min: 1280px;
+$screen-desktop-max: 1440px;
 
 $font-deco: 'Fjalla One', sans-serif;
 $font-default:  'Muli', sans-serif;
-$font-monospaced: 'Source Code Pro', monospace;
+$font-monospaced: 'Roboto Mono', monospace;
 
 @mixin type-default {
   color: black;
@@ -72,16 +73,11 @@ $font-monospaced: 'Source Code Pro', monospace;
     height: 36px;
     margin: 6px 3px;
     font-weight: bold;
+    background: white;
     text-transform: uppercase;
     &, &:hover {
       border-color: $color-primary-dark;
       color: $color-primary-dark;
-    }
-    &.ant-btn-primary {
-      background: $color-primary-dark;
-      color: white;
-      border: 0;
-
     }
   }
 

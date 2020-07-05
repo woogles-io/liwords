@@ -8,7 +8,6 @@ import {
   nextArrowPropertyState,
   handleKeyPress,
 } from '../utils/cwgame/tile_placement';
-
 import { EphemeralTile, EmptySpace } from '../utils/cwgame/common';
 import {
   tilesetToMoveEvent,
@@ -48,7 +47,7 @@ const shuffleString = (a: string): string => {
   return alist.join('');
 };
 
-export const BoardPanel = (props: Props) => {
+export const BoardPanel = React.memo((props: Props) => {
   const [arrowProperties, setArrowProperties] = useState({
     row: 0,
     col: 0,
@@ -129,6 +128,17 @@ export const BoardPanel = (props: Props) => {
     setDisplayedRack(shuffleString(props.currentRack));
   };
 
+  const swapRackTiles = (indexA: number | undefined, indexB: number | undefined) => {
+    if (typeof indexA === 'number' && typeof indexB === 'number') {
+      let newRack = displayedRack.split('');
+      newRack[indexA] = displayedRack[indexB];
+      newRack[indexB] = displayedRack[indexA];
+      setPlacedTilesTempScore(0);
+      setPlacedTiles(new Set<EphemeralTile>());
+      setDisplayedRack(newRack.join(''));
+    }
+  };
+
   const makeMove = (move: string, addl?: string) => {
     let moveEvt;
     console.log(
@@ -203,7 +213,9 @@ export const BoardPanel = (props: Props) => {
           type="primary"
           onClick={recallTiles}
         />
-        <Rack letters={displayedRack} grabbable />
+        <Rack letters={displayedRack} grabbable
+          swapRackTiles={(indexA: number | undefined, indexB: number | undefined) => {swapRackTiles(indexA, indexB);}}
+        />
         <Button
           shape="circle"
           icon={<SyncOutlined />}
@@ -211,16 +223,14 @@ export const BoardPanel = (props: Props) => {
           onClick={shuffleTiles}
         />
       </div>
-      <div>
-        <GameControls
-          onRecall={recallTiles}
-          onExchange={(rack: string) => makeMove('exchange', rack)}
-          onPass={() => makeMove('pass')}
-          onChallenge={() => makeMove('challenge')}
-          onCommit={() => makeMove('commit')}
-          currentRack={props.currentRack}
-        />
-      </div>
+      <GameControls
+        onRecall={recallTiles}
+        onExchange={(rack: string) => makeMove('exchange', rack)}
+        onPass={() => makeMove('pass')}
+        onChallenge={() => makeMove('challenge')}
+        onCommit={() => makeMove('commit')}
+        currentRack={props.currentRack}
+      />
     </div>
   );
-};
+});

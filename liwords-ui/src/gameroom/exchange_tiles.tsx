@@ -21,6 +21,7 @@ export const ExchangeTiles = (props: Props) => {
         letters={props.rack}
         grabbable={false}
         onTileClick={props.selectTile}
+        swapRackTiles={() => {}}
       />
       <h3>Exchanging:</h3>
       <h4>{props.exchangedRack}</h4>

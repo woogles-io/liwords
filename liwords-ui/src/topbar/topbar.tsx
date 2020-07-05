@@ -18,23 +18,25 @@ type Props = {
   loggedIn: boolean;
 };
 
-export const TopBar = (props: Props) => {
+export const TopBar = React.memo((props: Props) => {
   return (
     <nav className="top-header">
-      <Link to="/" className="site-icon">
-        <div className="top-header-site-icon-rect">
-          <div className="top-header-site-icon-m">W</div>
-        </div>
-        <div className="top-header-left-frame-site-name">Woogles</div>
-      </Link>
-      {Menu}
-      {props.loggedIn ? (
-        <div className="user-info">{props.username}</div>
-      ) : (
-        <div className="user-info">
-          <Link to="/login">Log In</Link>
-        </div>
-      )}
+      <div className="container">
+        <Link to="/" className="site-icon">
+          <div className="top-header-site-icon-rect">
+            <div className="top-header-site-icon-m">W</div>
+          </div>
+          <div className="top-header-left-frame-site-name">Woogles.io</div>
+        </Link>
+        {Menu}
+        {props.loggedIn ? (
+          <div className="user-info">{props.username}</div>
+        ) : (
+          <div className="user-info">
+            <Link to="/login">Log In</Link>
+          </div>
+        )}
+      </div>
     </nav>
   );
-};
+});

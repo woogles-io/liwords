@@ -1,4 +1,4 @@
-import React, { useMemo, useRef, useEffect } from 'react';
+import React, { useEffect, useMemo, useRef } from 'react';
 import { Card } from 'antd';
 import {
   GameTurn,
@@ -108,7 +108,6 @@ const Turn = (props: turnProps) => {
     return turn;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [evts]);
-
   return (
     <>
       <div className="turn">
@@ -130,10 +129,10 @@ const Turn = (props: turnProps) => {
   );
 };
 
-export const ScoreCard = (props: Props) => {
+export const ScoreCard = React.memo((props: Props) => {
   const el = useRef<HTMLDivElement>(null);
   useEffect(() => {
-    el.current?.scrollIntoView({ block: 'end', behavior: 'smooth' });
+    el.current?.scrollTo(0, el.current?.scrollHeight || 0);
   }, [props.turns]);
   return (
     <Card
@@ -142,24 +141,25 @@ export const ScoreCard = (props: Props) => {
       // eslint-disable-next-line jsx-a11y/anchor-is-valid
       extra={<a href="#">Notepad</a>}
     >
-      {props.turns.map((t, idx) => (
-        <Turn
-          turn={t}
-          board={props.board}
-          key={`t_${idx + 0}`}
-          playing={props.playing}
-          username={props.username}
-        />
-      ))}
-      {props.currentTurn.getEventsList().length ? (
-        <Turn
-          turn={props.currentTurn}
-          board={props.board}
-          playing={props.playing}
-          username={props.username}
-        />
-      ) : null}
-      <div id="dummy-end" ref={el} />
+      <div ref={el}>
+        {props.turns.map((t, idx) => (
+          <Turn
+            turn={t}
+            board={props.board}
+            key={`t_${idx + 0}`}
+            playing={props.playing}
+            username={props.username}
+          />
+        ))}
+        {props.currentTurn.getEventsList().length ? (
+          <Turn
+            turn={props.currentTurn}
+            board={props.board}
+            playing={props.playing}
+            username={props.username}
+          />
+        ) : null}
+      </div>
     </Card>
   );
-};
+});

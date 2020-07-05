@@ -12,7 +12,7 @@ type Props = {
   squareClicked: (row: number, col: number) => void;
 };
 
-const BoardSpaces = (props: Props) => {
+const BoardSpaces = React.memo((props: Props) => {
   const spaces = [];
   // y row, x col
   for (let y = 0; y < props.gridDim; y += 1) {
@@ -37,6 +37,6 @@ const BoardSpaces = (props: Props) => {
     }
   }
   return <div className="board-spaces">{spaces}</div>;
-};
+});
 
 export default BoardSpaces;

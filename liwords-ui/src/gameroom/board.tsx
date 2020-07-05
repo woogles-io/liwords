@@ -19,7 +19,7 @@ type Props = {
   placementArrowProperties: PlacementArrow;
 };
 
-const Board = (props: Props) => {
+const Board = React.memo((props: Props) => {
   // Keep frames the same size, and shrink or grow the
   // board squares as necessary.
 
@@ -45,6 +45,6 @@ const Board = (props: Props) => {
       </div>
     </div>
   );
-};
+});
 
 export default Board;

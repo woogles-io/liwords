@@ -1,12 +1,14 @@
 @import '../../base.scss';
 
-.player-cards {
+.player-cards.ant-card {
   .ant-card-body {
     padding: 0;
   }
-
+  button.ant-btn {
+    color: white;
+  }
   .player-card {
-    padding: $card-padding-md $card-padding;
+    padding: 5px 12px;
     text-align: left;
     display: flex;
     flex-direction: column;
@@ -26,19 +28,26 @@
       align-items: center;
 
       .player-avatar {
-        margin-right: 12px;
+        margin-right: 9px;
+        width: 36px;
+        min-width: 36px;
+        height: 36px;
+        font-size: 27px;
       }
       .player-info {
         padding: $card-padding-md 0;
         display: flex;
         flex-direction: column;
         flex-grow: 2;
+        font-size: 13px;
       }
       .player-details {
         width: 100%;
+        font-size: 12px;
       }
       .player-name {
         @include type-title;
+        font-size: 12px;
         max-width: calc(100% - 48px);
         overflow: hidden;
         text-align: left;
@@ -63,14 +72,17 @@
       }
       &.time-low {
         background-color: $color-timer-low-light;
-        button {
+        color: black;
+        button.ant-btn {
           background-color: $color-timer-low-dark;
+          color: black;
         }
       }
       &.time-out {
         background-color: $color-timer-out-light;
-        button {
+        button.ant-btn {
           background-color: $color-timer-out-dark;
+          border-color: $color-timer-out-dark;
         }
       }
       &:last-child {
@@ -82,12 +94,26 @@
   }
 }
 
-@media (min-width: $screen-laptop-min) {
-  .player-cards {
+@media (min-width: $screen-desktop-min) {
+  .player-cards.ant-card {
     .player-card {
+      padding: $card-padding-md $card-padding;
       .player {
         .player-info {
           min-width: 210px;
+        }
+        .player-avatar {
+          margin-right: 12px;
+          width: 48px;
+          min-width: 48px;
+          height: 48px;
+          font-size: 36px;
+        }
+        .player-name {
+          font-size: 16px;
+        }
+        .player-details {
+          font-size: 14px;
         }
         .player-flag {
           display: inline;

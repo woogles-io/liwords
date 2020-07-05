@@ -39,14 +39,14 @@ function renderLetters(
       }
       output.push(
         <>
-          <span className="letter-group" data-rune={letter}>
+          <span className="letter-group" key={`lg-${letter}-${possibility}`} data-rune={letter}>
             {letterGroup.trim()}
           </span>{' '}
         </>
       );
     }
   }
-  return <section className="pool-section">{output}</section>;
+  return <section className="pool-section" key={possibleLetters}>{output}</section>;
 }
 
 function getPoolCount(
@@ -68,7 +68,7 @@ type Props = {
   currentRack: string;
 };
 
-const Pool = (props: Props) => {
+const Pool = React.memo((props: Props) => {
   const letterOrder =
     PoolFormats.find((f) => f.poolFormatType === props.poolFormat)?.format ||
     'ABCDEFGHIJKLMNOPQRSTUVWXYZ?';
@@ -105,7 +105,7 @@ const Pool = (props: Props) => {
   return (
     <Card
       className="pool"
-      title={`${getPoolCount(pool)} tiles in the bag`}
+      title={`${getPoolCount(pool)} tiles unseen`}
       extra={dropDown}
     >
       <div className="tiles-remaining">{letterSections}</div>
@@ -115,6 +115,6 @@ const Pool = (props: Props) => {
       </div>
     </Card>
   );
-};
+});
 
 export default Pool;

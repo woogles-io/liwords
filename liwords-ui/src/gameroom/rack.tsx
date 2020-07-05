@@ -12,17 +12,18 @@ type Props = {
   letters: string;
   grabbable: boolean;
   onTileClick?: (idx: number) => void;
+  swapRackTiles: (indexA: number | undefined, indexB: number | undefined) => void;
 };
 
-class Rack extends React.Component<Props> {
-  renderTiles() {
+export const Rack = React.memo((props: Props) => {
+  const renderTiles = () => {
     const tiles = [];
-    if (!this.props.letters || this.props.letters.length === 0) {
+    if (!props.letters || props.letters.length === 0) {
       return null;
     }
 
-    for (let n = 0; n < this.props.letters.length; n += 1) {
-      const rune = this.props.letters[n];
+    for (let n = 0; n < props.letters.length; n += 1) {
+      const rune = props.letters[n];
       tiles.push(
         <Tile
           rune={rune}
@@ -30,10 +31,12 @@ class Rack extends React.Component<Props> {
           lastPlayed={false}
           key={`tile_${n}`}
           scale={false}
-          grabbable={this.props.grabbable}
+          grabbable={props.grabbable}
+          rackIndex={n}
+          swapRackTiles={props.swapRackTiles}
           onClick={() => {
-            if (this.props.onTileClick) {
-              this.props.onTileClick(n);
+            if (props.onTileClick) {
+              props.onTileClick(n);
             }
           }}
         />
@@ -42,9 +45,7 @@ class Rack extends React.Component<Props> {
     return <>{tiles}</>;
   }
 
-  render() {
-    return <div className="rack">{this.renderTiles()}</div>;
-  }
-}
+  return <div className="rack">{renderTiles()}</div>;
+});
 
 export default Rack;

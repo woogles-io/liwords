@@ -41,7 +41,7 @@ const defaultGameInfo = {
   done: false,
 };
 
-export const Table = (props: Props) => {
+export const Table = React.memo((props: Props) => {
   const { gameID } = useParams();
   const {
     setRedirGame,
@@ -131,9 +131,7 @@ export const Table = (props: Props) => {
 
   return (
     <div>
-      <Row>
-        <TopBar username={props.username} loggedIn={props.loggedIn} />
-      </Row>
+      <TopBar username={props.username} loggedIn={props.loggedIn} />
       <Row gutter={gutter} className="game-table">
         <Col span={6} className="chat-area">
           <Chat chatEntities={chat} />
@@ -152,7 +150,6 @@ export const Table = (props: Props) => {
         <Col span={6} className="data-area">
           <PlayerCards playerMeta={gameInfo.players} />
           <GameInfo meta={gameInfo} />
-
           <Pool
             pool={gameContext?.pool}
             currentRack={rack || ''}
@@ -171,4 +168,4 @@ export const Table = (props: Props) => {
       </Row>
     </div>
   );
-};
+});

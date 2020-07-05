@@ -15,7 +15,7 @@ type CardProps = {
   playing: boolean;
 };
 
-const PlayerCard = (props: CardProps) => {
+const PlayerCard = React.memo((props: CardProps) => {
   if (!props.player) {
     return <Card />;
   }
@@ -58,13 +58,13 @@ const PlayerCard = (props: CardProps) => {
       </Row>
     </div>
   );
-};
+});
 
 type Props = {
   playerMeta: Array<PlayerMetadata>;
 };
 
-export const PlayerCards = (props: Props) => {
+export const PlayerCards = React.memo((props: Props) => {
   const { gameContext, timerContext } = useStoreContext();
 
   // If the gameContext is not yet available, we should try displaying player cards
@@ -109,4 +109,4 @@ export const PlayerCards = (props: Props) => {
       />
     </Card>
   );
-};
+});
