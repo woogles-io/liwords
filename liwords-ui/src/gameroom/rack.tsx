@@ -12,6 +12,7 @@ type Props = {
   letters: string;
   grabbable: boolean;
   onTileClick?: (idx: number) => void;
+  swapRackTiles: (indexA: number | undefined, indexB: number | undefined) => void;
 };
 
 class Rack extends React.Component<Props> {
@@ -31,6 +32,8 @@ class Rack extends React.Component<Props> {
           key={`tile_${n}`}
           scale={false}
           grabbable={this.props.grabbable}
+          rackIndex={n}
+          swapRackTiles={this.props.swapRackTiles}
           onClick={() => {
             if (this.props.onTileClick) {
               this.props.onTileClick(n);

@@ -230,6 +230,9 @@
   width: calc(53vw / 15);
   height: calc(53vw / 15);
   margin: 3px;
+  &.dragging {
+    opacity: 0.1;
+  }
 }
 
 

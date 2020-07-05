@@ -1,4 +1,4 @@
-import React, { useMemo, useRef, useEffect } from 'react';
+import React, { useMemo, useRef } from 'react';
 import { Card } from 'antd';
 import {
   GameTurn,
@@ -132,9 +132,6 @@ const Turn = (props: turnProps) => {
 
 export const ScoreCard = (props: Props) => {
   const el = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    el.current?.scrollIntoView({ block: 'end', behavior: 'smooth' });
-  }, [props.turns]);
   return (
     <Card
       className="score-card"

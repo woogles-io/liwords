@@ -1,7 +1,7 @@
-import React from 'react';
+import React, { useRef } from 'react';
+import { useDrag, useDrop } from 'react-dnd';
 import TentativeScore from './tentative_score';
 import { Blank } from '../utils/cwgame/common';
-
 const colors = require('../base.scss');
 
 type TileStyle = {
@@ -37,8 +37,10 @@ const TILE_STYLES: { [name: string]: TileStyle } = {
 };
 
 type TileLetterProps = {
-  rune: string;
+  rune: string,
 };
+
+export const DragType = 'Tile';
 
 const TileLetter = (props: TileLetterProps) => {
   let { rune } = props;
@@ -71,10 +73,15 @@ type TileProps = {
   tentative?: boolean;
   tentativeScore?: number;
   grabbable: boolean;
+  rackIndex?: number | undefined;
+  swapRackTiles?: (indexA: number | undefined, indexB: number | undefined) => void;
   onClick?: () => void;
 };
 
+
 const Tile = (props: TileProps) => {
+  const ref = useRef(null);
+
   let tileStyle = TILE_STYLES.primary;
   if (props.lastPlayed) {
     tileStyle = TILE_STYLES.primaryJustPlayed;
@@ -83,9 +90,33 @@ const Tile = (props: TileProps) => {
     tileStyle = TILE_STYLES.primaryTentative;
   }
 
+  const [{ isDragging }, drag] = useDrag({
+    item: { type: DragType, letter: props.rune, pointValue: props.value, rackIndex: props.rackIndex },
+    collect: monitor => ({
+      isDragging: monitor.isDragging()
+    }),
+  });
+
+  const [{ isOver, canDrop }, drop] = useDrop({
+    accept: DragType,
+    drop: (item: any) => {
+      if (props.swapRackTiles) {
+        props.swapRackTiles(item.rackIndex, props.rackIndex);
+      }},
+    collect: (monitor) => ({
+      isOver: !!monitor.isOver(),
+      canDrop: !!monitor.canDrop()
+    })
+  });
+
+  if (props.grabbable) {}
+    drop(drag(ref));
+
+  const computedClassName = `tile ${isDragging? ' dragging' : ''}`;
   return (
     <div
-      className="tile"
+      className={computedClassName}
+      ref={ref}
       style={{ ...tileStyle, cursor: props.grabbable ? 'grab' : 'default' }}
       onClick={props.onClick ? props.onClick : () => {}}
     >
