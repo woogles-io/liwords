@@ -332,9 +332,12 @@
 // Scorecard
 .score-card {
   .ant-card-body {
-    padding: 8px 16px 16px;
-    max-height: 150px;
-    overflow-y: auto;
+    padding: 0;
+    & > div {
+      padding: 8px 16px 16px;
+      max-height: 150px;
+      overflow-y: auto;
+    }
   }
   .player-avatar {
     margin-right: 6px;
@@ -443,8 +446,8 @@
     padding: 8px 3px;
   }
   .tile, .empty-space {
-    height: auto;
-    width: auto
+    height: 37px;
+    width: 37px;
   }
   .rack .tile {
     width: 36px;
@@ -490,5 +493,9 @@
   .rack .tile {
     width: 44px;
     height: 44px;
+  }
+  .tile, .empty-space {
+    height: auto;
+    width: auto;
   }
 }

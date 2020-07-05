@@ -36,7 +36,7 @@ const TILE_STYLES: { [name: string]: TileStyle } = {
 };
 
 type TileLetterProps = {
-  rune: string,
+  rune: string;
 };
 
 export const DragType = 'Tile';
