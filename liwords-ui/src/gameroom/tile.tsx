@@ -1,5 +1,4 @@
-import React, { useRef } from 'react';
-import { useDrag, useDrop } from 'react-dnd';
+import React, { useState } from 'react';
 import TentativeScore from './tentative_score';
 import { Blank } from '../utils/cwgame/common';
 const colors = require('../base.scss');
@@ -80,8 +79,7 @@ type TileProps = {
 
 
 const Tile = React.memo((props: TileProps) => {
-  const ref = useRef(null);
-
+  const [isDragging, setIsDragging] = useState(false);
   let tileStyle = TILE_STYLES.primary;
   if (props.lastPlayed) {
     tileStyle = TILE_STYLES.primaryJustPlayed;
@@ -90,35 +88,39 @@ const Tile = React.memo((props: TileProps) => {
     tileStyle = TILE_STYLES.primaryTentative;
   }
 
-  const [{ isDragging }, drag] = useDrag({
-    item: { type: DragType, letter: props.rune, pointValue: props.value, rackIndex: props.rackIndex },
-    collect: monitor => ({
-      isDragging: monitor.isDragging()
-    }),
-  });
+  const handleStartDrag = (e: any) => {
+    if (e) {
+      e.dataTransfer.setData('rackIndex', props.rackIndex);
+      setIsDragging(true);
+    }
+  };
 
-  const [{ isOver, canDrop }, drop] = useDrop({
-    accept: DragType,
-    drop: (item: any) => {
-      if (props.swapRackTiles) {
-        props.swapRackTiles(item.rackIndex, props.rackIndex);
-      }},
-    collect: (monitor) => ({
-      isOver: !!monitor.isOver(),
-      canDrop: !!monitor.canDrop()
-    })
-  });
+  const handleEndDrag = () => {
+    setIsDragging(false);
+  };
 
-  if (props.grabbable) {}
-    drop(drag(ref));
+  const handleDrop = (e: any) => {
+    if (props.swapRackTiles) {
+      props.swapRackTiles(props.rackIndex, parseInt(e.dataTransfer.getData('rackIndex'), 10));
+    }
+  }
 
-  const computedClassName = `tile ${isDragging? ' dragging' : ''}`;
+  const handleDropOver = (e : any) => {
+    e.preventDefault();
+    e.stopPropagation();
+  }
+
+  const computedClassName = `tile${isDragging ? ' dragging' : ''}${props.grabbable ? ' droppable' : ''}`;
   return (
     <div
       className={computedClassName}
-      ref={ref}
       style={{ ...tileStyle, cursor: props.grabbable ? 'grab' : 'default' }}
       onClick={props.onClick ? props.onClick : () => {}}
+      onDragStart={handleStartDrag}
+      onDragEnd={handleEndDrag}
+      onDragOver={handleDropOver}
+      onDrop={handleDrop}
+      draggable={props.grabbable}
     >
       <TileLetter rune={props.rune} />
       <PointValue value={props.value} />

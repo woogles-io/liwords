@@ -1,9 +1,7 @@
-import React, { useRef } from 'react';
+import React from 'react';
 import { ReactComponent as Logo } from '../assets/aero.svg';
 import { BonusType } from '../constants/board_layout';
-import { useDrop } from 'react-dnd';
 import { ArrowRightOutlined, ArrowDownOutlined } from '@ant-design/icons/lib';
-import { DragType } from './tile';
 
 const colors = require('../base.scss');
 
@@ -37,7 +35,6 @@ type Props = {
 
 const BoardSpace = React.memo((props: Props) => {
   const { fillColor, bonusText } = getBonusProperties(props.bonusType);
-  const ref = useRef(null);
   let bonusLabel = null;
   let startingSquare = null;
   let arrow = null;
@@ -64,22 +61,10 @@ const BoardSpace = React.memo((props: Props) => {
     backgroundColor: fillColor,
   };
 
-  const [{ isOver, canDrop }, drop] = useDrop({
-    accept: DragType,
-    drop: () => { console.log('drop!')},
-    collect: (monitor) => ({
-      isOver: !!monitor.isOver(),
-      canDrop: !!monitor.canDrop()
-    })
-  });
-
-  drop(ref);
-
   return (
     <div
       className="board-space"
       onClick={props.clicked}
-      ref={ref}
       style={styleOverrides}
     >
       {bonusLabel}

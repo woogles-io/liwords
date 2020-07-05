@@ -1,7 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { Button } from 'antd';
-import { DndProvider } from 'react-dnd';
-import { TouchBackend } from 'react-dnd-touch-backend';
 import { ArrowDownOutlined, SyncOutlined } from '@ant-design/icons';
 import GameBoard from './board';
 import GameControls from './game_controls';
@@ -132,9 +130,9 @@ export const BoardPanel = React.memo((props: Props) => {
 
   const swapRackTiles = (indexA: number | undefined, indexB: number | undefined) => {
     if (typeof indexA === 'number' && typeof indexB === 'number') {
-      let newRack = props.currentRack.split('');
-      newRack[indexA] = props.currentRack[indexB];
-      newRack[indexB] = props.currentRack[indexA];
+      let newRack = displayedRack.split('');
+      newRack[indexA] = displayedRack[indexB];
+      newRack[indexB] = displayedRack[indexA];
       setPlacedTilesTempScore(0);
       setPlacedTiles(new Set<EphemeralTile>());
       setDisplayedRack(newRack.join(''));
@@ -186,60 +184,55 @@ export const BoardPanel = React.memo((props: Props) => {
     // clock over.
     // stopClock();
   };
-  const dndOpts = {
-    enableMouseEvents: true,
-  };
 
   return (
-    <DndProvider backend={TouchBackend} options={dndOpts}>
-      <div
-        className="board-container"
-        onKeyDown={(e) => {
-          keydown(e.key);
-        }}
-        tabIndex={-1}
-        role="textbox"
-      >
-        <GameBoard
-          gridSize={props.board.dim}
-          gridLayout={props.board.gridLayout}
-          tilesLayout={props.board.letters}
-          showBonusLabels={false}
-          lastPlayedLetters={props.lastPlayedLetters}
-          tentativeTiles={placedTiles}
-          tentativeTileScore={placedTilesTempScore}
-          currentRack={props.currentRack}
-          squareClicked={squareClicked}
-          placementArrowProperties={arrowProperties}
+    <div
+      className="board-container"
+      onKeyDown={(e) => {
+        keydown(e.key);
+      }}
+      tabIndex={-1}
+      role="textbox"
+    >
+      <GameBoard
+        gridSize={props.board.dim}
+        gridLayout={props.board.gridLayout}
+        tilesLayout={props.board.letters}
+        showBonusLabels={false}
+        lastPlayedLetters={props.lastPlayedLetters}
+        tentativeTiles={placedTiles}
+        tentativeTileScore={placedTilesTempScore}
+        currentRack={props.currentRack}
+        squareClicked={squareClicked}
+        placementArrowProperties={arrowProperties}
+      />
+      <div className="rack-container">
+        <Button
+          shape="circle"
+          icon={<ArrowDownOutlined />}
+          type="primary"
+          onClick={recallTiles}
         />
-        <div className="rack-container">
-          <Button
-            shape="circle"
-            icon={<ArrowDownOutlined />}
-            type="primary"
-            onClick={recallTiles}
-          />
-          <Rack letters={displayedRack} grabbable
-            swapRackTiles={(indexA: number | undefined, indexB: number | undefined) => {swapRackTiles(indexA, indexB);}}
-          />
-          <Button
-            shape="circle"
-            icon={<SyncOutlined />}
-            type="primary"
-            onClick={shuffleTiles}
-          />
-        </div>
-        <div>
-          <GameControls
-            onRecall={recallTiles}
-            onExchange={(rack: string) => makeMove('exchange', rack)}
-            onPass={() => makeMove('pass')}
-            onChallenge={() => makeMove('challenge')}
-            onCommit={() => makeMove('commit')}
-            currentRack={props.currentRack}
-          />
-        </div>
+        <Rack letters={displayedRack} grabbable
+          swapRackTiles={(indexA: number | undefined, indexB: number | undefined) => {swapRackTiles(indexA, indexB);}}
+        />
+        <Button
+          shape="circle"
+          icon={<SyncOutlined />}
+          type="primary"
+          onClick={shuffleTiles}
+        />
       </div>
-    </DndProvider>
+      <div>
+        <GameControls
+          onRecall={recallTiles}
+          onExchange={(rack: string) => makeMove('exchange', rack)}
+          onPass={() => makeMove('pass')}
+          onChallenge={() => makeMove('challenge')}
+          onCommit={() => makeMove('commit')}
+          currentRack={props.currentRack}
+        />
+      </div>
+    </div>
   );
 });
