@@ -9,15 +9,20 @@
 .ant-card {
   box-shadow: $card-shadow;
   border-radius: 8px;
+  .ant-card-body {
+    padding: 16px;
+  }
   .ant-card-head {
-    border: 0;
     .ant-card-head-title, .ant-card-extra {
       padding: 12px 0;
-      line-height: 32px;
+      line-height: 2em;
+      font-size: 12px;
     }
     .ant-card-extra {
       @include type-default;
       font-weight: bold;
+      line-height: 2em;
+      font-size: 12px;
     }
   }
 }
@@ -88,6 +93,8 @@
   pointer-events: none;
   background-color: transparent;
   border-color: transparent;
+  gap: 0;
+  border: 0;
   height: 100%;
 }
 
@@ -211,6 +218,7 @@
   margin: 0;
   line-height: 0;
   font-size: calc(12px + 1.2vw);
+  font-weight: 600;
   width: 100%;
   padding-bottom: 3px;
 }
@@ -219,7 +227,7 @@
   position: absolute;
   bottom: 0;
   right: 0;
-  padding: 0.5vw 0.3vw;
+  padding: 0.6vw 0.3vw;
   line-height: 0;
   margin: 0;
   font-size: 0.6vw;
@@ -227,9 +235,9 @@
 }
 
 .rack .tile {
-  width: calc(53vw / 15);
-  height: calc(53vw / 15);
-  margin: 3px;
+  width: 27px;
+  height: 27px;
+  margin: 1px;
   &.dragging {
     opacity: 0.1;
   }
@@ -281,10 +289,12 @@
   }
   .tiles-remaining {
     @include type-monospace;
-    font-size: 16px;
+    font-size: 13px;
     padding: 0px 24px 12px;
-    line-height: 28px;
+    line-height: 1.6em;
     letter-spacing: 0.21em;
+    max-height: 80px;
+    overflow-y: auto;
     .pool-section {
       word-break: break-word;
     }
@@ -300,9 +310,10 @@
     li.ant-dropdown-menu-item {
       @include type-default;
       font-weight: bold;
-      height: 32px;
-      padding: 0px 16px;
-      width: 120px;
+      font-size: 12px;
+      height: 24px;
+      padding: 0px 12px;
+      width: 100px;
       line-height: 2.3em;
       &:hover {
         background: $color-secondary-light;
@@ -310,17 +321,32 @@
     }
   }
 }
-
+.game-info {
+  display: none;
+  font-size: 14px;
+  .variant {
+    font-weight: 600;
+    font-size: 16px;
+  }
+}
 // Scorecard
 .score-card {
   .ant-card-body {
-    padding: 8px 24px 16px;
+    padding: 8px 16px 16px;
     max-height: 150px;
     overflow-y: auto;
   }
+  .player-avatar {
+    margin-right: 6px;
+    width: 24px;
+    min-width: 24px;
+    height: 24px;
+    font-size: 18px;
+  }
   .turn {
     display: flex;
-    padding: 12px 0;
+    padding: 6px 0;
+    font-size: 11px;
     justify-content: space-between;
     .coords-time {
       flex: 2;
@@ -330,13 +356,26 @@
     }
   }
 }
+.game-controls {
+  max-width: 350px;
+  margin: 0 auto
+}
 
 @media (min-width: $screen-tablet-min) {
-
-
+  .game-table {
+    max-width: $screen-tablet-min;
+  }
+  .pool .tiles-remaining {
+    max-height: 110px;
+    overflow-y: auto;
+  }
 }
 
 @media (min-width: $screen-laptop-min) {
+
+  .game-table {
+    max-width: $screen-laptop-min;
+  }
   .chat-area {
     display: block;
   }
@@ -347,34 +386,109 @@
   .play-area {
     flex: 0 0 50%;
   }
+  .rack .tile {
+    width: 28px;
+    height: 28px;
+    margin: 3px;
+  }
+  .tile, .empty-space {
+    height: 28px;
+    width: 28px;
+  }
   .tile .rune {
-    @include type-monospace;
-    color: white;
-    margin: 0;
-    line-height: 0;
-    font-size: calc(14px + 1.24vw);
+    font-size: 22px;
+    line-height: 28px;
+    position: relative;
+  }
+  .tile .point-value {
+    font-size: 7px;
+    padding: 5px 2px;
   }
   .rack {
     height: 3vw;
   }
-
-  .rack .tile {
-    width: calc(42vw / 15);
-    height: calc(42vw / 15);
+}
+@media (min-width: $screen-desktop-min) {
+  .game-table {
+    max-width: $screen-desktop-min;
+    .ant-card .ant-card-head {
+      .ant-card-head-title, .ant-card-extra {
+        padding: 12px 0;
+        font-size: 16px;
+      }
+      .ant-card-extra {
+        font-size: 16px;
+      }
+    }
   }
-
+  .format-dropdown {
+    .ant-dropdown-menu {
+      li.ant-dropdown-menu-item {
+        height: 32px;
+        padding: 0px 16px;
+        width: 120px;
+        line-height: 2.3em;
+        &:hover {
+          background: $color-secondary-light;
+        }
+      }
+    }
+  }
+  .tile .rune {
+    font-size: 30px;
+    line-height: 35px;
+  }
+  .tile .point-value {
+    font-size: 10px;
+    padding: 8px 3px;
+  }
+  .tile, .empty-space {
+    height: auto;
+    width: auto
+  }
+  .rack .tile {
+    width: 36px;
+    height: 36px;
+  }
   .pool {
     .vc-distribution {
       font-size: 14px;
     }
+    .tiles-remaining {
+      font-size: 16px;
+      line-height: 2em;
+    }
   }
   .score-card {
-    .player-avatar {
-      width: 36px;
-      min-width: 36px;
-      height: 36px;
-      font-size: 27px;
-      margin-right: 16px;
+    .turn {
+      font-size: 14px;
+      padding: 8px 16px 16px 8px;
     }
+    .player-avatar {
+      margin-right: 16px;
+        width: 36px;
+        min-width: 36px;
+        height: 36px;
+        font-size: 27px;
+    }
+  }
+  .game-info {
+    display: block;
+  }
+  .game-controls {
+    max-width: none;
+  }
+}
+
+@media (min-width: $screen-desktop-max) {
+  .game-table {
+    max-width: $screen-desktop-max;
+  }
+  .pool .tiles-remaining {
+    max-height: 180px;
+  }
+  .rack .tile {
+    width: 44px;
+    height: 44px;
   }
 }

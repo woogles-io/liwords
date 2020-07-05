@@ -39,14 +39,14 @@ function renderLetters(
       }
       output.push(
         <>
-          <span className="letter-group" data-rune={letter}>
+          <span className="letter-group" key={`lg-${letter}-${possibility}`} data-rune={letter}>
             {letterGroup.trim()}
           </span>{' '}
         </>
       );
     }
   }
-  return <section className="pool-section">{output}</section>;
+  return <section className="pool-section" key={possibleLetters}>{output}</section>;
 }
 
 function getPoolCount(

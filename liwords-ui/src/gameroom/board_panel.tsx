@@ -223,16 +223,14 @@ export const BoardPanel = React.memo((props: Props) => {
           onClick={shuffleTiles}
         />
       </div>
-      <div>
-        <GameControls
-          onRecall={recallTiles}
-          onExchange={(rack: string) => makeMove('exchange', rack)}
-          onPass={() => makeMove('pass')}
-          onChallenge={() => makeMove('challenge')}
-          onCommit={() => makeMove('commit')}
-          currentRack={props.currentRack}
-        />
-      </div>
+      <GameControls
+        onRecall={recallTiles}
+        onExchange={(rack: string) => makeMove('exchange', rack)}
+        onPass={() => makeMove('pass')}
+        onChallenge={() => makeMove('challenge')}
+        onCommit={() => makeMove('commit')}
+        currentRack={props.currentRack}
+      />
     </div>
   );
 });

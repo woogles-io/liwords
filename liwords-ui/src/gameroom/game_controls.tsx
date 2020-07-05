@@ -51,7 +51,7 @@ const GameControls = React.memo((props: Props) => {
   };
 
   return (
-    <>
+    <div className="game-controls">
       <Button>Options</Button>
 
       <Button onClick={props.onPass} danger>
@@ -81,7 +81,7 @@ const GameControls = React.memo((props: Props) => {
       <Button type="primary" onClick={props.onCommit}>
         Play
       </Button>
-    </>
+    </div>
   );
 });
 
