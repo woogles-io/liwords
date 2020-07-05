@@ -41,7 +41,7 @@ const defaultGameInfo = {
   done: false,
 };
 
-export const Table = (props: Props) => {
+export const Table = React.memo((props: Props) => {
   const { gameID } = useParams();
   const {
     setRedirGame,
@@ -171,4 +171,4 @@ export const Table = (props: Props) => {
       </Row>
     </div>
   );
-};
+});

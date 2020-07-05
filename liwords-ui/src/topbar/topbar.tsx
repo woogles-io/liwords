@@ -18,7 +18,7 @@ type Props = {
   loggedIn: boolean;
 };
 
-export const TopBar = (props: Props) => {
+export const TopBar = React.memo((props: Props) => {
   return (
     <nav className="top-header">
       <Link to="/" className="site-icon">
@@ -37,4 +37,4 @@ export const TopBar = (props: Props) => {
       )}
     </nav>
   );
-};
+});

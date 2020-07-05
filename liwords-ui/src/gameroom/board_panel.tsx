@@ -49,7 +49,7 @@ const shuffleString = (a: string): string => {
   return alist.join('');
 };
 
-export const BoardPanel = (props: Props) => {
+export const BoardPanel = React.memo((props: Props) => {
   const [arrowProperties, setArrowProperties] = useState({
     row: 0,
     col: 0,
@@ -242,4 +242,4 @@ export const BoardPanel = (props: Props) => {
       </div>
     </DndProvider>
   );
-};
+});

@@ -21,7 +21,7 @@ const exchangeSetToString = (
   return e.join('');
 };
 
-const GameControls = (props: Props) => {
+const GameControls = React.memo((props: Props) => {
   const [modalVisible, setModalVisible] = useState(false);
   const [exchangedRack, setExchangedRack] = useState(new Set<number>());
 
@@ -83,6 +83,6 @@ const GameControls = (props: Props) => {
       </Button>
     </>
   );
-};
+});
 
 export default GameControls;

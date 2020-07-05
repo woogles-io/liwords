@@ -18,7 +18,7 @@ import { useSocketToken } from './hooks/use_socket_token';
 
 const JoinSocketDelay = 1000;
 
-const App = () => {
+const App = React.memo(() => {
   const store = useStoreContext();
   const socketUrl = getSocketURI();
   const { sendMessage } = useWebSocket(socketUrl, {
@@ -74,6 +74,6 @@ const App = () => {
       </Switch>
     </div>
   );
-};
+});
 
 export default App;

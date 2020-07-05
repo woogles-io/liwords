@@ -6,7 +6,7 @@ type Props = {
   gridDim: number;
 };
 
-const BoardCoordLabels = (props: Props) => {
+const BoardCoordLabels = React.memo((props: Props) => {
   const horizLabels = [];
   const vertLabels = [];
 
@@ -37,6 +37,6 @@ const BoardCoordLabels = (props: Props) => {
       {vertLabels}
     </div>
   </>;
-};
+});
 
 export default BoardCoordLabels;

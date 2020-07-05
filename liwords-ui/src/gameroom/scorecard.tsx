@@ -130,7 +130,7 @@ const Turn = (props: turnProps) => {
   );
 };
 
-export const ScoreCard = (props: Props) => {
+export const ScoreCard = React.memo((props: Props) => {
   const el = useRef<HTMLDivElement>(null);
   return (
     <Card
@@ -159,4 +159,4 @@ export const ScoreCard = (props: Props) => {
       <div id="dummy-end" ref={el} />
     </Card>
   );
-};
+});

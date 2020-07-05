@@ -42,7 +42,7 @@ type TileLetterProps = {
 
 export const DragType = 'Tile';
 
-const TileLetter = (props: TileLetterProps) => {
+const TileLetter = React.memo((props: TileLetterProps) => {
   let { rune } = props;
   // if (rune.toUpperCase() !== rune) {
   //   rune = rune.toUpperCase();
@@ -52,7 +52,7 @@ const TileLetter = (props: TileLetterProps) => {
   }
 
   return <p className="rune">{rune}</p>;
-};
+});
 
 type PointValueProps = {
   value: number;
@@ -79,7 +79,7 @@ type TileProps = {
 };
 
 
-const Tile = (props: TileProps) => {
+const Tile = React.memo((props: TileProps) => {
   const ref = useRef(null);
 
   let tileStyle = TILE_STYLES.primary;
@@ -125,6 +125,6 @@ const Tile = (props: TileProps) => {
       <TentativeScore score={props.tentativeScore} />
     </div>
   );
-};
+});
 
 export default Tile;

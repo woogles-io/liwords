@@ -68,7 +68,7 @@ type Props = {
   currentRack: string;
 };
 
-const Pool = (props: Props) => {
+const Pool = React.memo((props: Props) => {
   const letterOrder =
     PoolFormats.find((f) => f.poolFormatType === props.poolFormat)?.format ||
     'ABCDEFGHIJKLMNOPQRSTUVWXYZ?';
@@ -105,7 +105,7 @@ const Pool = (props: Props) => {
   return (
     <Card
       className="pool"
-      title={`${getPoolCount(pool)} tiles in the bag`}
+      title={`${getPoolCount(pool)} tiles unseen`}
       extra={dropDown}
     >
       <div className="tiles-remaining">{letterSections}</div>
@@ -115,6 +115,6 @@ const Pool = (props: Props) => {
       </div>
     </Card>
   );
-};
+});
 
 export default Pool;
