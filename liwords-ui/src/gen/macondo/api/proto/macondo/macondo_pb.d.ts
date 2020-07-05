@@ -4,10 +4,10 @@
 import * as jspb from "google-protobuf";
 
 export class GameHistory extends jspb.Message {
-  clearTurnsList(): void;
-  getTurnsList(): Array<GameTurn>;
-  setTurnsList(value: Array<GameTurn>): void;
-  addTurns(value?: GameTurn, index?: number): GameTurn;
+  clearEventsList(): void;
+  getEventsList(): Array<GameEvent>;
+  setEventsList(value: Array<GameEvent>): void;
+  addEvents(value?: GameEvent, index?: number): GameEvent;
 
   clearPlayersList(): void;
   getPlayersList(): Array<PlayerInfo>;
@@ -61,7 +61,7 @@ export class GameHistory extends jspb.Message {
 
 export namespace GameHistory {
   export type AsObject = {
-    turnsList: Array<GameTurn.AsObject>,
+    eventsList: Array<GameEvent.AsObject>,
     playersList: Array<PlayerInfo.AsObject>,
     version: number,
     originalGcg: string,
@@ -184,28 +184,6 @@ export namespace GameEvent {
   }
 
   export const Direction: DirectionMap;
-}
-
-export class GameTurn extends jspb.Message {
-  clearEventsList(): void;
-  getEventsList(): Array<GameEvent>;
-  setEventsList(value: Array<GameEvent>): void;
-  addEvents(value?: GameEvent, index?: number): GameEvent;
-
-  serializeBinary(): Uint8Array;
-  toObject(includeInstance?: boolean): GameTurn.AsObject;
-  static toObject(includeInstance: boolean, msg: GameTurn): GameTurn.AsObject;
-  static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
-  static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
-  static serializeBinaryToWriter(message: GameTurn, writer: jspb.BinaryWriter): void;
-  static deserializeBinary(bytes: Uint8Array): GameTurn;
-  static deserializeBinaryFromReader(message: GameTurn, reader: jspb.BinaryReader): GameTurn;
-}
-
-export namespace GameTurn {
-  export type AsObject = {
-    eventsList: Array<GameEvent.AsObject>,
-  }
 }
 
 export class PlayerInfo extends jspb.Message {

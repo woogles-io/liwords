@@ -25,8 +25,10 @@ import { ActionType } from '../actions/actions';
 import { endGameMessage } from './end_of_game';
 
 const makemoveMP3 = require('../assets/makemove.mp3');
+const startgameMP3 = require('../assets/startgame.mp3');
 
 const makemoveSound = new Audio(makemoveMP3);
+const startgameSound = new Audio(startgameMP3);
 
 const parseMsg = (msg: Uint8Array) => {
   const msgType = msg[0] as MessageTypeMap[keyof MessageTypeMap];
@@ -111,7 +113,6 @@ export const onSocketMsg = (storeData: StoreData) => {
       case MessageType.ERROR_MESSAGE: {
         console.log('got error msg');
         const err = parsedMsg as ErrorMessage;
-        storeData.setErrorMessage(err.getMessage());
         notification.error({ message: 'Error', description: err.getMessage() });
         // storeData.addChat({
         //   entityType: ChatEntityType.ErrorMsg,
@@ -122,6 +123,7 @@ export const onSocketMsg = (storeData: StoreData) => {
       }
 
       case MessageType.GAME_ENDED_EVENT: {
+        console.log('got game end evt');
         const gee = parsedMsg as GameEndedEvent;
 
         storeData.addChat({
@@ -142,6 +144,7 @@ export const onSocketMsg = (storeData: StoreData) => {
         });
         const gid = nge.getGameId();
         storeData.setRedirGame(gid);
+        startgameSound.play();
         break;
       }
 

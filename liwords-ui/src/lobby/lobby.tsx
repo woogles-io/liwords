@@ -66,7 +66,6 @@ type Props = {
 
 export const Lobby = (props: Props) => {
   const { redirGame } = useStoreContext();
-  console.log('im logged in', props.loggedIn);
   const [seekModalVisible, setSeekModalVisible] = useState(false);
   const [seekSettings, setSeekSettings] = useState<seekPropVals>({
     lexicon: 'CSW19',
@@ -74,14 +73,12 @@ export const Lobby = (props: Props) => {
     initialtime: 8,
     rated: false,
   });
-  console.log('seek settings are meow', seekSettings);
 
   useEffect(() => {
     setSeekSettings((s) => ({
-      rated: props.loggedIn,
       ...s,
+      rated: props.loggedIn,
     }));
-    console.log('since change, rated', props.loggedIn);
   }, [props.loggedIn]);
 
   const showSeekModal = () => {

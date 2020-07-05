@@ -272,13 +272,13 @@ func PlayMove(ctx context.Context, gameStore GameStore, userStore user.Store, us
 	if err != nil {
 		return err
 	}
-	// m := game.MoveFromEvent(evt, entGame.Game.Alphabet(), entGame.Game.Board())
 	log.Debug().Msg("validating")
 
 	_, err = entGame.Game.ValidateMove(m)
 	if err != nil {
 		return err
 	}
+	oldTurnLength := len(entGame.Game.History().Turns)
 
 	// Don't back up the move, but add to history
 	log.Debug().Msg("playing the move")
@@ -288,26 +288,30 @@ func PlayMove(ctx context.Context, gameStore GameStore, userStore user.Store, us
 	if err != nil {
 		return err
 	}
-	// Get the turn that we _just_ appended to the history
-	turnLength := len(entGame.Game.History().Turns)
-	turn := entGame.Game.History().Turns[turnLength-1]
-
+	// Get the turn(s) that we _just_ appended to the history
+	turns := entGame.Game.History().Turns[oldTurnLength:]
+	if len(turns) > 1 {
+		// This happens with six zeroes for example.
+		log.Debug().Msg("more than one turn appended")
+	}
 	// Create a set of ServerGameplayEvents to send back.
+	log.Debug().Interface("turns", turns).Msg("sending turns back")
+	evts := []*pb.ServerGameplayEvent{}
 
-	evts := make([]*pb.ServerGameplayEvent, len(turn.Events))
+	for _, t := range turns {
+		for _, evt := range t.Events {
 
-	for idx, evt := range turn.Events {
-
-		sge := &pb.ServerGameplayEvent{}
-		sge.Event = evt
-		sge.GameId = cge.GameId
-		// note that `onTurn` is correct as it was saved up there before
-		// we played the turn.
-		sge.TimeRemaining = int32(entGame.TimeRemaining(onTurn))
-		sge.NewRack = entGame.Game.RackLettersFor(onTurn)
-		sge.Playing = entGame.Game.Playing()
-		sge.UserId = userID
-		evts[idx] = sge
+			sge := &pb.ServerGameplayEvent{}
+			sge.Event = evt
+			sge.GameId = cge.GameId
+			// note that `onTurn` is correct as it was saved up there before
+			// we played the turn.
+			sge.TimeRemaining = int32(entGame.TimeRemaining(onTurn))
+			sge.NewRack = entGame.Game.RackLettersFor(onTurn)
+			sge.Playing = entGame.Game.Playing()
+			sge.UserId = userID
+			evts = append(evts, sge)
+		}
 	}
 	// Since the move was successful, we assume the user gameplay event is valid.
 	// Send the server change event.
