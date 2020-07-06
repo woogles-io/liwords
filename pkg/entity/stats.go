@@ -3,6 +3,7 @@ package entity
 import (
 	"errors"
 	"fmt"
+	"github.com/domino14/macondo/alphabet"
 	pb "github.com/domino14/macondo/gen/api/proto/macondo"
 	"unicode"
 )
@@ -64,18 +65,16 @@ func (stats *Stats) AddGameToStats(history *pb.GameHistory, id string) error {
 	//   Horizontal Openings per First
 
 	// Loop through all the turns in the game history
-	turns := history.GetTurns()
-	for _, turn := range turns {
-		for _, event := range turn.Events {
-			fmt.Println(event)
-			if history.Players[0].Nickname == event.Nickname ||
-				(history.Players[1].Nickname == event.Nickname && history.SecondWentFirst) {
-				addEventToStatItems(stats.PlayerOneData, event, id)
-			} else {
-				addEventToStatItems(stats.PlayerTwoData, event, id)
-			}
-			addEventToStatItems(stats.NotableData, event, id)
+	events := history.GetEvents()
+	for _, event := range turn.Events {
+		fmt.Println(event)
+		if history.Players[0].Nickname == event.Nickname ||
+			(history.Players[1].Nickname == event.Nickname && history.SecondWentFirst) {
+			addEventToStatItems(stats.PlayerOneData, event, id)
+		} else {
+			addEventToStatItems(stats.PlayerTwoData, event, id)
 		}
+		addEventToStatItems(stats.NotableData, event, id)
 	}
 	confirmNotableItems(stats.NotableData, id)
 	return nil
@@ -244,7 +243,7 @@ func addGames(statItem *StatItem, event *pb.GameEvent, id string) {
 }
 
 func addBingos(statItem *StatItem, event *pb.GameEvent, id string) {
-	if isBingo(event) {
+	if event.IsBingo {
 		incrementStatItem(statItem, event, id)
 	}
 }
@@ -284,10 +283,6 @@ func isTripleTriple(event *pb.GameEvent) bool {
 	return false
 }
 
-func isBingo(event *pb.GameEvent) bool {
-	return getNumberOfTilesPlayed(event.PlayedTiles) == 7
-}
-
 func isBingoNineOrAbove(event *pb.GameEvent) bool {
 	// Need to implement
 	return isBingo(event) && len(event.PlayedTiles) >= 9
@@ -297,7 +292,7 @@ func getNumberOfTilesPlayed(play string) int {
 	sum := 0
 	for _, char := range play {
 		// Unicode nonsense, Cesar plz help
-		if !unicode.IsPunct(char) {
+		if char == alphabet.ASCIIPlayedThrough {
 			sum++
 		}
 	}
