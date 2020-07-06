@@ -1,10 +1,10 @@
 package stats
 
 import (
-	"testing"
 	"fmt"
 	"github.com/domino14/liwords/pkg/entity"
 	"github.com/domino14/macondo/gcgio"
+	"testing"
 	//"github.com/matryer/is"
 )
 
@@ -21,7 +21,7 @@ func InstantiateNewStatsWithHistory(filename string) (*entity.Stats, error) {
 func TestStats(t *testing.T) {
 	//is := is.New(t)
 
-	stats, _      := InstantiateNewStatsWithHistory("./testdata/doug_vs_emely.gcg")
+	stats, _ := InstantiateNewStatsWithHistory("./testdata/doug_vs_emely.gcg")
 	otherStats, _ := InstantiateNewStatsWithHistory("./testdata/noah_vs_mishu.gcg")
 	stats.AddStatsToStats(otherStats)
 
