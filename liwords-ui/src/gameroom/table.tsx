@@ -159,8 +159,7 @@ export const Table = React.memo((props: Props) => {
           <ScoreCard
             username={props.username}
             playing={us !== undefined}
-            turns={gameContext.turns}
-            currentTurn={gameContext.currentTurn}
+            events={gameContext.turns}
             board={gameContext.board}
             playerMeta={gameInfo.players}
           />

@@ -7,6 +7,7 @@ package gameplay
 import (
 	"context"
 	"errors"
+	"fmt"
 	"strconv"
 
 	"github.com/domino14/macondo/alphabet"
@@ -176,6 +177,7 @@ func handleChallenge(ctx context.Context, entGame *entity.Game, gameStore GameSt
 		// The front-end shouldn't even show the button.
 		return errors.New("challenges not acceptable in void")
 	}
+	numEvts := len(entGame.Game.History().Events)
 	// curTurn := entGame.Game.Turn()
 	valid, err := entGame.Game.ChallengeEvent(0, timeRemaining)
 	if err != nil {
@@ -206,15 +208,34 @@ func handleChallenge(ctx context.Context, entGame *entity.Game, gameStore GameSt
 	// thing is just too complicated to handle on the front end; we can
 	// try again later if we need to reduce bandwidth.
 
-	refresher := entGame.HistoryRefresherEvent()
-	evt = entity.WrapEvent(refresher, pb.MessageType_GAME_HISTORY_REFRESHER,
-		entGame.GameID())
+	// refresher := entGame.HistoryRefresherEvent()
+	// evt = entity.WrapEvent(refresher, pb.MessageType_GAME_HISTORY_REFRESHER,
+	// 	entGame.GameID())
 
-	evt.AddAudience(entity.AudGameTV, entGame.GameID())
-	for _, uid := range players(entGame) {
-		evt.AddAudience(entity.AudUser, uid)
+	newEvts := entGame.Game.History().Events
+	if len(newEvts) > numEvts {
+		if len(newEvts)-numEvts > 1 {
+			return fmt.Errorf("unexpected number of new evts: %v %v",
+				newEvts, numEvts)
+		}
+		// This event is either a bonus addition, a loss of turn from an
+		// incorrect challenge, or a "phony tiles removed" event.
+		relevantEvent := newEvts[len(newEvts)-1]
+		sge := &pb.ServerGameplayEvent{
+			Event:         relevantEvent,
+			GameId:        entGame.GameID(),
+			TimeRemaining: int32(relevantEvent.MillisRemaining),
+			Playing:       entGame.Game.Playing(),
+			// Does the user id matter?
+		}
+		evt = entity.WrapEvent(sge, pb.MessageType_SERVER_GAMEPLAY_EVENT,
+			entGame.GameID())
+		evt.AddAudience(entity.AudGameTV, entGame.GameID())
+		for _, uid := range players(entGame) {
+			evt.AddAudience(entity.AudUser, uid)
+		}
+		entGame.SendChange(evt)
 	}
-	entGame.SendChange(evt)
 
 	if entGame.Game.Playing() == macondopb.PlayState_GAME_OVER {
 		discernEndgameReason(entGame)
@@ -278,7 +299,7 @@ func PlayMove(ctx context.Context, gameStore GameStore, userStore user.Store, us
 	if err != nil {
 		return err
 	}
-	oldTurnLength := len(entGame.Game.History().Turns)
+	oldTurnLength := len(entGame.Game.History().Events)
 
 	// Don't back up the move, but add to history
 	log.Debug().Msg("playing the move")
@@ -289,7 +310,7 @@ func PlayMove(ctx context.Context, gameStore GameStore, userStore user.Store, us
 		return err
 	}
 	// Get the turn(s) that we _just_ appended to the history
-	turns := entGame.Game.History().Turns[oldTurnLength:]
+	turns := entGame.Game.History().Events[oldTurnLength:]
 	if len(turns) > 1 {
 		// This happens with six zeroes for example.
 		log.Debug().Msg("more than one turn appended")
@@ -298,21 +319,19 @@ func PlayMove(ctx context.Context, gameStore GameStore, userStore user.Store, us
 	log.Debug().Interface("turns", turns).Msg("sending turns back")
 	evts := []*pb.ServerGameplayEvent{}
 
-	for _, t := range turns {
-		for _, evt := range t.Events {
-
-			sge := &pb.ServerGameplayEvent{}
-			sge.Event = evt
-			sge.GameId = cge.GameId
-			// note that `onTurn` is correct as it was saved up there before
-			// we played the turn.
-			sge.TimeRemaining = int32(entGame.TimeRemaining(onTurn))
-			sge.NewRack = entGame.Game.RackLettersFor(onTurn)
-			sge.Playing = entGame.Game.Playing()
-			sge.UserId = userID
-			evts = append(evts, sge)
-		}
+	for _, evt := range turns {
+		sge := &pb.ServerGameplayEvent{}
+		sge.Event = evt
+		sge.GameId = cge.GameId
+		// note that `onTurn` is correct as it was saved up there before
+		// we played the turn.
+		sge.TimeRemaining = int32(entGame.TimeRemaining(onTurn))
+		sge.NewRack = entGame.Game.RackLettersFor(onTurn)
+		sge.Playing = entGame.Game.Playing()
+		sge.UserId = userID
+		evts = append(evts, sge)
 	}
+
 	// Since the move was successful, we assume the user gameplay event is valid.
 	// Send the server change event.
 	playing := entGame.Game.Playing()

@@ -9,7 +9,6 @@ import {
   GameHistory,
   PlayerInfo,
   GameEvent,
-  GameTurn,
 } from '../../gen/macondo/api/proto/macondo/macondo_pb';
 
 const historyRefresher = () => {
@@ -160,9 +159,8 @@ const historyRefresher2AfterChallenge = () => {
   evt2.setCumulative(97);
   evt2.setBonus(5);
 
-  const turn = new GameTurn();
-  turn.setEventsList([evt1, evt2]);
-  his.addTurns(turn);
+  his.addEvents(evt1);
+  his.addEvents(evt2);
 
   ghr.setHistory(his);
   return ghr;

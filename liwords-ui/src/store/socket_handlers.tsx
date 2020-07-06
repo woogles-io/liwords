@@ -18,7 +18,6 @@ import {
   UnjoinRealm,
   TimedOut,
   TokenSocketLogin,
-  GameTurnsRefresher,
   RatingMode,
 } from '../gen/api/proto/realtime/realtime_pb';
 import { ActionType } from '../actions/actions';
@@ -50,7 +49,6 @@ const parseMsg = (msg: Uint8Array) => {
     [MessageType.UNJOIN_REALM]: UnjoinRealm,
     [MessageType.TIMED_OUT]: TimedOut,
     [MessageType.TOKEN_SOCKET_LOGIN]: TokenSocketLogin,
-    [MessageType.GAME_TURNS_REFRESHER]: GameTurnsRefresher,
   };
 
   const parsedMsg = msgTypes[msgType];
@@ -158,16 +156,6 @@ export const onSocketMsg = (storeData: StoreData) => {
         // If there is an Antd message about "waiting for game", destroy it.
         // XXX: This is a bit unideal.
         message.destroy();
-        break;
-      }
-
-      case MessageType.GAME_TURNS_REFRESHER: {
-        const gtr = parsedMsg as GameTurnsRefresher;
-        console.log('got gameturns refrsher', gtr);
-        storeData.dispatchGameContext({
-          actionType: ActionType.RefreshTurns,
-          payload: gtr,
-        });
         break;
       }
 

@@ -1,20 +1,18 @@
 import React, { useEffect, useMemo, useRef } from 'react';
 import { Card } from 'antd';
-import {
-  GameTurn,
-  GameEvent,
-} from '../gen/macondo/api/proto/macondo/macondo_pb';
+import { GameEvent } from '../gen/macondo/api/proto/macondo/macondo_pb';
 import { Board } from '../utils/cwgame/board';
 import { PlayerAvatar } from '../shared/player_avatar';
 import { millisToTimeStr } from '../store/timer_controller';
 import { tilePlacementEventDisplay } from '../utils/cwgame/game_event';
 import { PlayerMetadata } from './game_info';
 
+type Turn = Array<GameEvent>;
+
 type Props = {
   playing: boolean;
   username: string;
-  turns: Array<GameTurn>;
-  currentTurn: GameTurn;
+  events: Array<GameEvent>;
   board: Board;
   playerMeta: Array<PlayerMetadata>;
 };
@@ -22,7 +20,7 @@ type Props = {
 type turnProps = {
   playing: boolean;
   username: string;
-  turn: GameTurn;
+  turn: Turn;
   board: Board;
 };
 
@@ -57,10 +55,10 @@ const displaySummary = (evt: GameEvent, board: Board) => {
 };
 
 const Turn = (props: turnProps) => {
-  const evts = props.turn.getEventsList();
   const memoizedTurn: MoveEntityObj = useMemo(() => {
     // Create a base turn, and modify it accordingly. This is memoized as we
     // don't want to do this relatively expensive computation all the time.
+    const evts = props.turn;
     console.log('computing memoized', evts);
     const turn = {
       player: {
@@ -107,7 +105,7 @@ const Turn = (props: turnProps) => {
     }
     return turn;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [evts]);
+  }, [props.turn]);
   return (
     <>
       <div className="turn">
@@ -133,16 +131,34 @@ export const ScoreCard = React.memo((props: Props) => {
   const el = useRef<HTMLDivElement>(null);
   useEffect(() => {
     el.current?.scrollTo(0, el.current?.scrollHeight || 0);
-  }, [props.turns]);
+  }, [props.events]);
+
+  // Compute the turns based on the game events.
+  const turns = new Array<Turn>();
+  let lastTurn: Turn = new Array<GameEvent>();
+  let lastNickname = '';
+  props.events.forEach((evt) => {
+    if (lastTurn.length !== 0 && lastTurn[0].getNickname() !== lastNickname) {
+      // time to add a new turn.
+      turns.push(lastTurn);
+      lastTurn = new Array<GameEvent>();
+    }
+    lastTurn.push(evt);
+    lastNickname = evt.getNickname();
+  });
+  if (lastTurn.length > 0) {
+    turns.push(lastTurn);
+  }
+
   return (
     <Card
       className="score-card"
-      title={`Turn ${props.turns.length + 1}`}
+      title={`Turn ${turns.length + 1}`}
       // eslint-disable-next-line jsx-a11y/anchor-is-valid
       extra={<a href="#">Notepad</a>}
     >
       <div ref={el}>
-        {props.turns.map((t, idx) => (
+        {turns.map((t, idx) => (
           <Turn
             turn={t}
             board={props.board}
@@ -151,14 +167,6 @@ export const ScoreCard = React.memo((props: Props) => {
             username={props.username}
           />
         ))}
-        {props.currentTurn.getEventsList().length ? (
-          <Turn
-            turn={props.currentTurn}
-            board={props.board}
-            playing={props.playing}
-            username={props.username}
-          />
-        ) : null}
       </div>
     </Card>
   );
