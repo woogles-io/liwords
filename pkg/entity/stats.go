@@ -39,7 +39,6 @@ type StatItem struct {
 type Stats struct {
 	PlayerOneId   int
 	PlayerTwoId   int
-	GamesPlayed   int
 	PlayerOneData []*StatItem
 	PlayerTwoData []*StatItem
 	NotableData   []*StatItem
