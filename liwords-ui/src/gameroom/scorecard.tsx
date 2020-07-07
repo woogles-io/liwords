@@ -6,8 +6,7 @@ import { PlayerAvatar } from '../shared/player_avatar';
 import { millisToTimeStr } from '../store/timer_controller';
 import { tilePlacementEventDisplay } from '../utils/cwgame/game_event';
 import { PlayerMetadata } from './game_info';
-
-type Turn = Array<GameEvent>;
+import { Turn, gameEventsToTurns } from '../store/reducers/turns';
 
 type Props = {
   playing: boolean;
@@ -54,7 +53,7 @@ const displaySummary = (evt: GameEvent, board: Board) => {
   return '';
 };
 
-const Turn = (props: turnProps) => {
+const ScorecardTurn = (props: turnProps) => {
   const memoizedTurn: MoveEntityObj = useMemo(() => {
     // Create a base turn, and modify it accordingly. This is memoized as we
     // don't want to do this relatively expensive computation all the time.
@@ -133,22 +132,7 @@ export const ScoreCard = React.memo((props: Props) => {
     el.current?.scrollTo(0, el.current?.scrollHeight || 0);
   }, [props.events]);
 
-  // Compute the turns based on the game events.
-  const turns = new Array<Turn>();
-  let lastTurn: Turn = new Array<GameEvent>();
-  let lastNickname = '';
-  props.events.forEach((evt) => {
-    if (lastTurn.length !== 0 && lastTurn[0].getNickname() !== lastNickname) {
-      // time to add a new turn.
-      turns.push(lastTurn);
-      lastTurn = new Array<GameEvent>();
-    }
-    lastTurn.push(evt);
-    lastNickname = evt.getNickname();
-  });
-  if (lastTurn.length > 0) {
-    turns.push(lastTurn);
-  }
+  const turns = gameEventsToTurns(props.events);
 
   return (
     <Card
@@ -159,7 +143,7 @@ export const ScoreCard = React.memo((props: Props) => {
     >
       <div ref={el}>
         {turns.map((t, idx) => (
-          <Turn
+          <ScorecardTurn
             turn={t}
             board={props.board}
             key={`t_${idx + 0}`}

@@ -92,7 +92,11 @@ const onturnFromEvt = (state: GameState, evt: GameEvent) => {
   } else if (po === 'p1') {
     onturn = 1;
   } else {
-    throw new Error(`unexpected player order; nick:${evt.getNickname()}`);
+    throw new Error(
+      `unexpected player order; nick:${evt.getNickname()}, ntpo:${JSON.stringify(
+        state.nickToPlayerOrder
+      )} `
+    );
   }
   return onturn;
 };
@@ -269,6 +273,11 @@ const stateFromHistory = (refresher: GameHistoryRefresher): GameState => {
   if (flipPlayers) {
     playerList = [...playerList].reverse();
   }
+  console.log(
+    'Player list is',
+    playerList[0].getNickname(),
+    playerList[1].getNickname()
+  );
   const nickToPlayerOrder = {
     [playerList[0].getNickname()]: 'p0' as PlayerOrder,
     [playerList[1].getNickname()]: 'p1' as PlayerOrder,
