@@ -1,20 +1,17 @@
 import React, { useEffect, useMemo, useRef } from 'react';
 import { Card } from 'antd';
-import {
-  GameTurn,
-  GameEvent,
-} from '../gen/macondo/api/proto/macondo/macondo_pb';
+import { GameEvent } from '../gen/macondo/api/proto/macondo/macondo_pb';
 import { Board } from '../utils/cwgame/board';
 import { PlayerAvatar } from '../shared/player_avatar';
 import { millisToTimeStr } from '../store/timer_controller';
 import { tilePlacementEventDisplay } from '../utils/cwgame/game_event';
 import { PlayerMetadata } from './game_info';
+import { Turn, gameEventsToTurns } from '../store/reducers/turns';
 
 type Props = {
   playing: boolean;
   username: string;
-  turns: Array<GameTurn>;
-  currentTurn: GameTurn;
+  events: Array<GameEvent>;
   board: Board;
   playerMeta: Array<PlayerMetadata>;
 };
@@ -22,7 +19,7 @@ type Props = {
 type turnProps = {
   playing: boolean;
   username: string;
-  turn: GameTurn;
+  turn: Turn;
   board: Board;
 };
 
@@ -56,11 +53,11 @@ const displaySummary = (evt: GameEvent, board: Board) => {
   return '';
 };
 
-const Turn = (props: turnProps) => {
-  const evts = props.turn.getEventsList();
+const ScorecardTurn = (props: turnProps) => {
   const memoizedTurn: MoveEntityObj = useMemo(() => {
     // Create a base turn, and modify it accordingly. This is memoized as we
     // don't want to do this relatively expensive computation all the time.
+    const evts = props.turn;
     console.log('computing memoized', evts);
     const turn = {
       player: {
@@ -107,7 +104,7 @@ const Turn = (props: turnProps) => {
     }
     return turn;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [evts]);
+  }, [props.turn]);
   return (
     <>
       <div className="turn">
@@ -133,17 +130,20 @@ export const ScoreCard = React.memo((props: Props) => {
   const el = useRef<HTMLDivElement>(null);
   useEffect(() => {
     el.current?.scrollTo(0, el.current?.scrollHeight || 0);
-  }, [props.turns]);
+  }, [props.events]);
+
+  const turns = gameEventsToTurns(props.events);
+
   return (
     <Card
       className="score-card"
-      title={`Turn ${props.turns.length + 1}`}
+      title={`Turn ${turns.length + 1}`}
       // eslint-disable-next-line jsx-a11y/anchor-is-valid
       extra={<a href="#">Notepad</a>}
     >
       <div ref={el}>
-        {props.turns.map((t, idx) => (
-          <Turn
+        {turns.map((t, idx) => (
+          <ScorecardTurn
             turn={t}
             board={props.board}
             key={`t_${idx + 0}`}
@@ -151,14 +151,6 @@ export const ScoreCard = React.memo((props: Props) => {
             username={props.username}
           />
         ))}
-        {props.currentTurn.getEventsList().length ? (
-          <Turn
-            turn={props.currentTurn}
-            board={props.board}
-            playing={props.playing}
-            username={props.username}
-          />
-        ) : null}
       </div>
     </Card>
   );

@@ -1,4 +1,4 @@
-import { message } from 'antd';
+import { message, notification } from 'antd';
 import { StoreData, ChatEntityType } from './store';
 import {
   MessageType,
@@ -18,11 +18,16 @@ import {
   UnjoinRealm,
   TimedOut,
   TokenSocketLogin,
-  GameTurnsRefresher,
   RatingMode,
 } from '../gen/api/proto/realtime/realtime_pb';
 import { ActionType } from '../actions/actions';
 import { endGameMessage } from './end_of_game';
+
+const makemoveMP3 = require('../assets/makemove.mp3');
+const startgameMP3 = require('../assets/startgame.mp3');
+
+const makemoveSound = new Audio(makemoveMP3);
+const startgameSound = new Audio(startgameMP3);
 
 const parseMsg = (msg: Uint8Array) => {
   const msgType = msg[0] as MessageTypeMap[keyof MessageTypeMap];
@@ -44,7 +49,6 @@ const parseMsg = (msg: Uint8Array) => {
     [MessageType.UNJOIN_REALM]: UnjoinRealm,
     [MessageType.TIMED_OUT]: TimedOut,
     [MessageType.TOKEN_SOCKET_LOGIN]: TokenSocketLogin,
-    [MessageType.GAME_TURNS_REFRESHER]: GameTurnsRefresher,
   };
 
   const parsedMsg = msgTypes[msgType];
@@ -107,15 +111,17 @@ export const onSocketMsg = (storeData: StoreData) => {
       case MessageType.ERROR_MESSAGE: {
         console.log('got error msg');
         const err = parsedMsg as ErrorMessage;
-        storeData.addChat({
-          entityType: ChatEntityType.ErrorMsg,
-          sender: '',
-          message: err.getMessage(),
-        });
+        notification.error({ message: 'Error', description: err.getMessage() });
+        // storeData.addChat({
+        //   entityType: ChatEntityType.ErrorMsg,
+        //   sender: '',
+        //   message: err.getMessage(),
+        // });
         break;
       }
 
       case MessageType.GAME_ENDED_EVENT: {
+        console.log('got game end evt');
         const gee = parsedMsg as GameEndedEvent;
 
         storeData.addChat({
@@ -136,6 +142,7 @@ export const onSocketMsg = (storeData: StoreData) => {
         });
         const gid = nge.getGameId();
         storeData.setRedirGame(gid);
+        startgameSound.play();
         break;
       }
 
@@ -152,16 +159,6 @@ export const onSocketMsg = (storeData: StoreData) => {
         break;
       }
 
-      case MessageType.GAME_TURNS_REFRESHER: {
-        const gtr = parsedMsg as GameTurnsRefresher;
-        console.log('got gameturns refrsher', gtr);
-        storeData.dispatchGameContext({
-          actionType: ActionType.RefreshTurns,
-          payload: gtr,
-        });
-        break;
-      }
-
       case MessageType.SERVER_GAMEPLAY_EVENT: {
         const sge = parsedMsg as ServerGameplayEvent;
         console.log('got server event', sge);
@@ -169,6 +166,8 @@ export const onSocketMsg = (storeData: StoreData) => {
           actionType: ActionType.AddGameEvent,
           payload: sge,
         });
+        // play sound
+        makemoveSound.play();
         break;
       }
 

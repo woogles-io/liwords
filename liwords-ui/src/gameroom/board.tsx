@@ -4,14 +4,14 @@ import BoardSpaces from './board_spaces';
 import { PlacementArrow } from '../utils/cwgame/tile_placement';
 import BoardCoordLabels from './board_coord_labels';
 import Tiles from './tiles';
-import { EphemeralTile } from '../utils/cwgame/common';
+import { EphemeralTile, PlayedTiles } from '../utils/cwgame/common';
 
 type Props = {
   gridLayout: Array<string>;
   gridSize: number;
   tilesLayout: string;
   showBonusLabels: boolean;
-  lastPlayedLetters: { [tile: string]: boolean };
+  lastPlayedTiles: PlayedTiles;
   currentRack: string;
   squareClicked: (row: number, col: number) => void;
   tentativeTiles: Set<EphemeralTile>;
@@ -37,7 +37,7 @@ const Board = React.memo((props: Props) => {
         <Tiles
           gridDim={props.gridSize}
           tilesLayout={props.tilesLayout}
-          lastPlayedLetters={props.lastPlayedLetters}
+          lastPlayedTiles={props.lastPlayedTiles}
           tentativeTiles={props.tentativeTiles}
           scaleTiles={true}
           tentativeTileScore={props.tentativeTileScore}

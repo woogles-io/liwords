@@ -72,17 +72,17 @@ export class Board {
     this.isEmpty = false;
   }
 
-  // removeLetter(row: number, col: number, letter: string) {
-  //   this.letters = setCharAt(this.letters, row * 15 + col, EmptySpace);
-  //   // don't know how else to check, annoyingly
-  //   this.isEmpty = true;
-  //   for (let i = 0; i < this.letters.length; i++) {
-  //     if (this.letters[i] !== EmptySpace) {
-  //       this.isEmpty = false;
-  //       break;
-  //     }
-  //   }
-  // }
+  removeTile(t: Tile) {
+    this.letters = setCharAt(this.letters, t.row * 15 + t.col, EmptySpace);
+    // don't know how else to check, annoyingly
+    this.isEmpty = true;
+    for (let i = 0; i < this.letters.length; i++) {
+      if (this.letters[i] !== EmptySpace) {
+        this.isEmpty = false;
+        break;
+      }
+    }
+  }
 
   deepCopy() {
     const newBoard = new Board();

@@ -5,12 +5,12 @@ import {
   runeToValues,
 } from '../constants/tile_values';
 import Tile from './tile';
-import { EphemeralTile } from '../utils/cwgame/common';
+import { EphemeralTile, PlayedTiles } from '../utils/cwgame/common';
 
 type Props = {
   gridDim: number;
   tilesLayout: string;
-  lastPlayedLetters: { [tile: string]: boolean };
+  lastPlayedTiles: PlayedTiles;
   scaleTiles: boolean;
   tentativeTiles: Set<EphemeralTile>;
   tentativeTileScore: number | undefined;
@@ -37,7 +37,7 @@ const Tiles = React.memo((props: Props) => {
     for (let x = 0; x < props.gridDim; x += 1) {
       const rune = props.tilesLayout[y * 15 + x];
       if (rune !== ' ') {
-        const lastPlayed = props.lastPlayedLetters[`R${y}C${x}`] === true;
+        const lastPlayed = props.lastPlayedTiles[`R${y}C${x}`] === true;
         tiles.push(
           <Tile
             rune={rune}

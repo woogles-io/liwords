@@ -10,12 +10,13 @@ export type seekPropVals = { [val: string]: string | number | boolean };
 type Props = {
   vals: seekPropVals;
   onChange: (arg0: seekPropVals) => void;
+  loggedIn: boolean;
 };
 
 export const SeekForm = (props: Props) => {
   const [timectrl, setTimectrl] = useState('Rapid');
   const [ttag, setTtag] = useState('gold');
-
+  console.log('wtf', props.vals, props.loggedIn);
   const onFormChange = (val: Store, allvals: Store) => {
     props.onChange(allvals);
     const [tc, tt] = timeCtrlToDisplayName(

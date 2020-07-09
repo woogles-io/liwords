@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Button } from 'antd';
+import { Button, notification } from 'antd';
 import { ArrowDownOutlined, SyncOutlined } from '@ant-design/icons';
 import GameBoard from './board';
 import GameControls from './game_controls';
@@ -27,7 +27,6 @@ const EnterKey = 'Enter';
 type Props = {
   username: string;
   showBonusLabels: boolean;
-  lastPlayedLetters: { [tile: string]: boolean };
   currentRack: string;
   gameID: string;
   board: Board;
@@ -128,9 +127,12 @@ export const BoardPanel = React.memo((props: Props) => {
     setDisplayedRack(shuffleString(props.currentRack));
   };
 
-  const swapRackTiles = (indexA: number | undefined, indexB: number | undefined) => {
+  const swapRackTiles = (
+    indexA: number | undefined,
+    indexB: number | undefined
+  ) => {
     if (typeof indexA === 'number' && typeof indexB === 'number') {
-      let newRack = displayedRack.split('');
+      const newRack = displayedRack.split('');
       newRack[indexA] = displayedRack[indexB];
       newRack[indexB] = displayedRack[indexA];
       setPlacedTilesTempScore(0);
@@ -150,6 +152,12 @@ export const BoardPanel = React.memo((props: Props) => {
     const iam = gameContext.nickToPlayerOrder[props.username];
     if (!(iam && iam === `p${gameContext.onturn}`)) {
       // It is not my turn. Ignore this event.
+      notification.warning({
+        key: 'notyourturn',
+        message: 'Attention',
+        description: 'It is not your turn.',
+        duration: 1.5,
+      });
       return;
     }
 
@@ -199,7 +207,7 @@ export const BoardPanel = React.memo((props: Props) => {
         gridLayout={props.board.gridLayout}
         tilesLayout={props.board.letters}
         showBonusLabels={false}
-        lastPlayedLetters={props.lastPlayedLetters}
+        lastPlayedTiles={gameContext.lastPlayedTiles}
         tentativeTiles={placedTiles}
         tentativeTileScore={placedTilesTempScore}
         currentRack={props.currentRack}
@@ -213,8 +221,15 @@ export const BoardPanel = React.memo((props: Props) => {
           type="primary"
           onClick={recallTiles}
         />
-        <Rack letters={displayedRack} grabbable
-          swapRackTiles={(indexA: number | undefined, indexB: number | undefined) => {swapRackTiles(indexA, indexB);}}
+        <Rack
+          letters={displayedRack}
+          grabbable
+          swapRackTiles={(
+            indexA: number | undefined,
+            indexB: number | undefined
+          ) => {
+            swapRackTiles(indexA, indexB);
+          }}
         />
         <Button
           shape="circle"

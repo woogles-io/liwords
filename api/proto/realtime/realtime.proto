@@ -76,7 +76,6 @@ enum MessageType {
   UNJOIN_REALM = 12;
   TIMED_OUT = 13;
   TOKEN_SOCKET_LOGIN = 14;
-  GAME_TURNS_REFRESHER = 15;
   // Add more events here. The total number of events should fit in a byte.
   // We should definitely not be using anywhere close to 255 events, and
   // in order to enforce that I'll be forcing the event type header to just be
@@ -117,6 +116,10 @@ message ServerGameplayEvent {
   macondo.PlayState playing = 5;
   string user_id = 6; // the event has the nickname, but not the userid.
 }
+
+// ServerGameplayEvents is a list of consecutive events. Sometimes we send
+// more than one event and don't want to send them separately.
+// message ServerGameplayEvents { repeated ServerGameplayEvent events = 1; }
 
 // The server will send back a challenge result event only in the case of
 // a challenge. In all other cases, the server will send back a
@@ -168,27 +171,6 @@ message GameHistoryRefresher {
   int32 time_player2 = 3;
 }
 
-// A GameTurnsRefresher is a kind of smaller version of a GameHistoryRefresher.
-// Players receive it after a challenge is adjudicated. Because of the various
-// challenge rules, and because there is a potential for a game to end after
-// a challenge in various ways, there could be one or more turns affected
-// by a challenge. This event sends all affected turns.
-message GameTurnsRefresher {
-  // Assume that the receiver of this event already has some sort of cached
-  // version of a GameHistory. This just adds additional events to that history.
-  // Note that it may also overwrite events (for example, turns with challenge
-  // bonuses are overwrites of previous turns, as well as turns where a player
-  // takes phony tiles back).
-  repeated macondo.GameTurn turns = 1;
-  macondo.PlayState play_state = 2;
-  // starting_turn is the turn at which this turns refresher starts. The
-  // receiver of this event should start writing to its local game history
-  // starting with this turn.
-  int32 starting_turn = 3;
-
-  repeated macondo.PlayerInfo players = 4;
-}
-
 // A NewGameEvent gets sent from the server to the involved clients when a new
 // game is about to begin. It should follow a GameAcceptedEvent
 message NewGameEvent { string game_id = 1; }
@@ -216,11 +198,8 @@ enum GameEndReason {
   ABANDONED = 5;
 }
 
-// One or more macondo.GameEvent comprise a full GameTurn (see macondo proto
-// file). The server is responsible for joining together events into turns for
-// logging purposes. The client will send `macondo.GameEvent` via the websocket.
-
-// We encapsulate the game event here
+// We encapsulate the game event here from the client's point of view. The
+// server will validate that the event is permissible.
 message ClientGameplayEvent {
   enum EventType {
     TILE_PLACEMENT = 0;

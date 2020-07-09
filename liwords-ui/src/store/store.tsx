@@ -84,6 +84,7 @@ export const Context = createContext<StoreData>({
   dispatchLobbyContext: defaultFunction,
   redirGame: '',
   setRedirGame: defaultFunction,
+
   challengeResultEvent: defaultFunction,
   gameContext: defaultGameState,
   dispatchGameContext: defaultFunction,

@@ -176,6 +176,7 @@ func handleChallenge(ctx context.Context, entGame *entity.Game, gameStore GameSt
 		// The front-end shouldn't even show the button.
 		return errors.New("challenges not acceptable in void")
 	}
+	numEvts := len(entGame.Game.History().Events)
 	// curTurn := entGame.Game.Turn()
 	valid, err := entGame.Game.ChallengeEvent(0, timeRemaining)
 	if err != nil {
@@ -192,29 +193,24 @@ func handleChallenge(ctx context.Context, entGame *entity.Game, gameStore GameSt
 	evt.AddAudience(entity.AudGameTV, entGame.GameID())
 	entGame.SendChange(evt)
 
-	// We need to send the turn history from curTurn onwards.
-	// turns := entGame.History().Turns[curTurn-1:]
-	// refresher := &pb.GameTurnsRefresher{
-	// 	Turns:        turns,
-	// 	PlayState:    entGame.Game.Playing(),
-	// 	StartingTurn: int32(curTurn - 1),
-	// }
-	// evt = entity.WrapEvent(refresher, pb.MessageType_GAME_TURNS_REFRESHER,
-	// 	entGame.GameID())
+	newEvts := entGame.Game.History().Events
 
-	// Send just the whole history for now. Sorry, this game turns refresher
-	// thing is just too complicated to handle on the front end; we can
-	// try again later if we need to reduce bandwidth.
-
-	refresher := entGame.HistoryRefresherEvent()
-	evt = entity.WrapEvent(refresher, pb.MessageType_GAME_HISTORY_REFRESHER,
-		entGame.GameID())
-
-	evt.AddAudience(entity.AudGameTV, entGame.GameID())
-	for _, uid := range players(entGame) {
-		evt.AddAudience(entity.AudUser, uid)
+	for eidx := numEvts; eidx < len(newEvts); eidx++ {
+		sge := &pb.ServerGameplayEvent{
+			Event:         newEvts[eidx],
+			GameId:        entGame.GameID(),
+			TimeRemaining: int32(newEvts[eidx].MillisRemaining),
+			Playing:       entGame.Game.Playing(),
+			// Does the user id matter?
+		}
+		evt = entity.WrapEvent(sge, pb.MessageType_SERVER_GAMEPLAY_EVENT,
+			entGame.GameID())
+		evt.AddAudience(entity.AudGameTV, entGame.GameID())
+		for _, uid := range players(entGame) {
+			evt.AddAudience(entity.AudUser, uid)
+		}
+		entGame.SendChange(evt)
 	}
-	entGame.SendChange(evt)
 
 	if entGame.Game.Playing() == macondopb.PlayState_GAME_OVER {
 		discernEndgameReason(entGame)
@@ -272,13 +268,13 @@ func PlayMove(ctx context.Context, gameStore GameStore, userStore user.Store, us
 	if err != nil {
 		return err
 	}
-	// m := game.MoveFromEvent(evt, entGame.Game.Alphabet(), entGame.Game.Board())
 	log.Debug().Msg("validating")
 
 	_, err = entGame.Game.ValidateMove(m)
 	if err != nil {
 		return err
 	}
+	oldTurnLength := len(entGame.Game.History().Events)
 
 	// Don't back up the move, but add to history
 	log.Debug().Msg("playing the move")
@@ -288,16 +284,17 @@ func PlayMove(ctx context.Context, gameStore GameStore, userStore user.Store, us
 	if err != nil {
 		return err
 	}
-	// Get the turn that we _just_ appended to the history
-	turnLength := len(entGame.Game.History().Turns)
-	turn := entGame.Game.History().Turns[turnLength-1]
-
+	// Get the turn(s) that we _just_ appended to the history
+	turns := entGame.Game.History().Events[oldTurnLength:]
+	if len(turns) > 1 {
+		// This happens with six zeroes for example.
+		log.Debug().Msg("more than one turn appended")
+	}
 	// Create a set of ServerGameplayEvents to send back.
+	log.Debug().Interface("turns", turns).Msg("sending turns back")
+	evts := []*pb.ServerGameplayEvent{}
 
-	evts := make([]*pb.ServerGameplayEvent, len(turn.Events))
-
-	for idx, evt := range turn.Events {
-
+	for _, evt := range turns {
 		sge := &pb.ServerGameplayEvent{}
 		sge.Event = evt
 		sge.GameId = cge.GameId
@@ -307,8 +304,9 @@ func PlayMove(ctx context.Context, gameStore GameStore, userStore user.Store, us
 		sge.NewRack = entGame.Game.RackLettersFor(onTurn)
 		sge.Playing = entGame.Game.Playing()
 		sge.UserId = userID
-		evts[idx] = sge
+		evts = append(evts, sge)
 	}
+
 	// Since the move was successful, we assume the user gameplay event is valid.
 	// Send the server change event.
 	playing := entGame.Game.Playing()
