@@ -16,7 +16,7 @@ type Props = {
   tentativeTileScore: number | undefined;
 };
 
-const Tiles = React.memo((props: Props) => {
+const Tiles = (props: Props) => {
   const tiles = [];
   if (!props.tilesLayout || props.tilesLayout.length === 0) {
     return null;
@@ -85,6 +85,6 @@ const Tiles = React.memo((props: Props) => {
   }
 
   return <div className="tiles">{tiles}</div>;
-});
+};
 
 export default Tiles;
