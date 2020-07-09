@@ -27,7 +27,6 @@ const EnterKey = 'Enter';
 type Props = {
   username: string;
   showBonusLabels: boolean;
-  lastPlayedLetters: { [tile: string]: boolean };
   currentRack: string;
   gameID: string;
   board: Board;
@@ -128,9 +127,12 @@ export const BoardPanel = React.memo((props: Props) => {
     setDisplayedRack(shuffleString(props.currentRack));
   };
 
-  const swapRackTiles = (indexA: number | undefined, indexB: number | undefined) => {
+  const swapRackTiles = (
+    indexA: number | undefined,
+    indexB: number | undefined
+  ) => {
     if (typeof indexA === 'number' && typeof indexB === 'number') {
-      let newRack = displayedRack.split('');
+      const newRack = displayedRack.split('');
       newRack[indexA] = displayedRack[indexB];
       newRack[indexB] = displayedRack[indexA];
       setPlacedTilesTempScore(0);
@@ -205,7 +207,7 @@ export const BoardPanel = React.memo((props: Props) => {
         gridLayout={props.board.gridLayout}
         tilesLayout={props.board.letters}
         showBonusLabels={false}
-        lastPlayedLetters={props.lastPlayedLetters}
+        lastPlayedTiles={gameContext.lastPlayedTiles}
         tentativeTiles={placedTiles}
         tentativeTileScore={placedTilesTempScore}
         currentRack={props.currentRack}
@@ -219,8 +221,15 @@ export const BoardPanel = React.memo((props: Props) => {
           type="primary"
           onClick={recallTiles}
         />
-        <Rack letters={displayedRack} grabbable
-          swapRackTiles={(indexA: number | undefined, indexB: number | undefined) => {swapRackTiles(indexA, indexB);}}
+        <Rack
+          letters={displayedRack}
+          grabbable
+          swapRackTiles={(
+            indexA: number | undefined,
+            indexB: number | undefined
+          ) => {
+            swapRackTiles(indexA, indexB);
+          }}
         />
         <Button
           shape="circle"

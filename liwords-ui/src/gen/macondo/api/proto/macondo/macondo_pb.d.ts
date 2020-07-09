@@ -49,6 +49,14 @@ export class GameHistory extends jspb.Message {
   getPlayState(): PlayStateMap[keyof PlayStateMap];
   setPlayState(value: PlayStateMap[keyof PlayStateMap]): void;
 
+  clearFinalScoresList(): void;
+  getFinalScoresList(): Array<number>;
+  setFinalScoresList(value: Array<number>): void;
+  addFinalScores(value: number, index?: number): number;
+
+  getFinalGameBoard(): string;
+  setFinalGameBoard(value: string): void;
+
   serializeBinary(): Uint8Array;
   toObject(includeInstance?: boolean): GameHistory.AsObject;
   static toObject(includeInstance: boolean, msg: GameHistory): GameHistory.AsObject;
@@ -74,6 +82,8 @@ export namespace GameHistory {
     secondWentFirst: boolean,
     challengeRule: ChallengeRuleMap[keyof ChallengeRuleMap],
     playState: PlayStateMap[keyof PlayStateMap],
+    finalScoresList: Array<number>,
+    finalGameBoard: string,
   }
 }
 

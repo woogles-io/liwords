@@ -9,7 +9,12 @@ import {
   ServerGameplayEvent,
   GameHistoryRefresher,
 } from '../../gen/api/proto/realtime/realtime_pb';
-import { Direction, isBlank, Blank } from '../../utils/cwgame/common';
+import {
+  Direction,
+  isBlank,
+  Blank,
+  PlayedTiles,
+} from '../../utils/cwgame/common';
 import { EnglishCrosswordGameDistribution } from '../../constants/tile_distributions';
 import { PlayerOrder } from '../constants';
 import { ClockController, Millis } from '../timer_controller';
@@ -51,7 +56,7 @@ export type GameState = {
   onturn: number; // index in players
   turns: Array<GameEvent>;
   gameID: string;
-  lastPlayedTiles: Array<Tile>;
+  lastPlayedTiles: PlayedTiles;
   nickToPlayerOrder: { [nick: string]: PlayerOrder };
   uidToPlayerOrder: { [uid: string]: PlayerOrder };
   playState: number;
@@ -73,7 +78,7 @@ export const startingGameState = (
     players,
     onturn: 0,
     gameID,
-    lastPlayedTiles: new Array<Tile>(),
+    lastPlayedTiles: {},
     nickToPlayerOrder: {},
     uidToPlayerOrder: {},
     playState: PlayState.PLAYING,
@@ -170,9 +175,9 @@ const placeOnBoard = (
   board: Board,
   pool: TileDistribution,
   evt: GameEvent
-): [Array<Tile>, TileDistribution] => {
+): [PlayedTiles, TileDistribution] => {
   const play = evt.getPlayedTiles();
-  const playedTiles = [];
+  const playedTiles: PlayedTiles = {};
   const newPool = { ...pool };
   for (let i = 0; i < play.length; i += 1) {
     const rune = play[i];
@@ -192,7 +197,7 @@ const placeOnBoard = (
       } else {
         newPool[tile.rune] -= 1;
       }
-      playedTiles.push(tile);
+      playedTiles[`R${row}C${col}`] = true;
     } // Otherwise, we played through a letter.
   }
   return [playedTiles, newPool];
@@ -314,11 +319,7 @@ const stateFromHistory = (refresher: GameHistoryRefresher): GameState => {
   return gs;
 };
 
-const setClock = (
-  state: GameState,
-  newState: GameState,
-  sge: ServerGameplayEvent
-) => {
+const setClock = (newState: GameState, sge: ServerGameplayEvent) => {
   if (!newState.clockController) {
     return;
   }
@@ -366,10 +367,12 @@ const initializeTimerController = (
 ) => {
   const history = ghr.getHistory()!;
   let [t1, t2] = [ghr.getTimePlayer1(), ghr.getTimePlayer2()];
+  // Note that p0 is always first, even when "secondWentFirst", as p0 refers
+  // to the order in the playerList, which always has the first player in that list
+  // going first. (See flipPlayers in stateFromHistory)
   let onturn = 'p0' as PlayerOrder;
   if (history.getSecondWentFirst()) {
     [t1, t2] = [t2, t1];
-    onturn = 'p1' as PlayerOrder;
   }
 
   // Note that p0 and p1 correspond to the new indices (after flipping first and second
@@ -458,7 +461,7 @@ export const GameReducer = (state: GameState, action: Action): GameState => {
       console.log('new game state', ngs);
       // Always pass the clock ref along. Begin imperative section:
       ngs.clockController = state.clockController;
-      setClock(state, ngs, sge);
+      setClock(ngs, sge);
       return ngs;
     }
 

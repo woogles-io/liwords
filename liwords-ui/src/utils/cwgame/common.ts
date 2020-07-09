@@ -8,6 +8,9 @@ export type EphemeralTile = {
   letter: string; // lowercase for blank
 };
 
+// PlayedTiles is made for quick indexing of a recently placed tile.
+export type PlayedTiles = { [tilecoords: string]: boolean };
+
 export enum Direction {
   Horizontal,
   Vertical,
@@ -28,7 +31,11 @@ export const isBlank = (letter: string): boolean => {
 // String.charAt implementation that handles surrogate pairs
 // modified from:
 // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String/charAt#Fixing_charAt()_to_support_non-Basic-Multilingual-Plane_(BMP)_characters
-export const fixedCharAt = (string: string, startIndex: number, length: number) => {
+export const fixedCharAt = (
+  string: string,
+  startIndex: number,
+  length: number
+) => {
   const surrogatePairs = /[\uD800-\uDBFF][\uDC00-\uDFFF]/g;
   const end = string.length;
   let currentIndex = startIndex;
@@ -36,8 +43,8 @@ export const fixedCharAt = (string: string, startIndex: number, length: number) 
   let ret = '';
 
   while (remainingChars > 0) {
-    while ((surrogatePairs.exec(string)) != null) {
-      const lastIndex = surrogatePairs.lastIndex;
+    while (surrogatePairs.exec(string) != null) {
+      const { lastIndex } = surrogatePairs;
 
       if (lastIndex - 2 < currentIndex) {
         currentIndex++;
@@ -52,7 +59,10 @@ export const fixedCharAt = (string: string, startIndex: number, length: number) 
 
     ret += string.charAt(currentIndex);
 
-    if (/[\uD800-\uDBFF]/.test(ret) && /[\uDC00-\uDFFF]/.test(string.charAt(currentIndex + 1))) {
+    if (
+      /[\uD800-\uDBFF]/.test(ret) &&
+      /[\uDC00-\uDFFF]/.test(string.charAt(currentIndex + 1))
+    ) {
       // Go one further, since one of the "characters" is part of a surrogate pair
       ret += string.charAt(++currentIndex);
     }

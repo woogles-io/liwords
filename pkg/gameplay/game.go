@@ -7,7 +7,6 @@ package gameplay
 import (
 	"context"
 	"errors"
-	"fmt"
 	"strconv"
 
 	"github.com/domino14/macondo/alphabet"
@@ -194,37 +193,13 @@ func handleChallenge(ctx context.Context, entGame *entity.Game, gameStore GameSt
 	evt.AddAudience(entity.AudGameTV, entGame.GameID())
 	entGame.SendChange(evt)
 
-	// We need to send the turn history from curTurn onwards.
-	// turns := entGame.History().Turns[curTurn-1:]
-	// refresher := &pb.GameTurnsRefresher{
-	// 	Turns:        turns,
-	// 	PlayState:    entGame.Game.Playing(),
-	// 	StartingTurn: int32(curTurn - 1),
-	// }
-	// evt = entity.WrapEvent(refresher, pb.MessageType_GAME_TURNS_REFRESHER,
-	// 	entGame.GameID())
-
-	// Send just the whole history for now. Sorry, this game turns refresher
-	// thing is just too complicated to handle on the front end; we can
-	// try again later if we need to reduce bandwidth.
-
-	// refresher := entGame.HistoryRefresherEvent()
-	// evt = entity.WrapEvent(refresher, pb.MessageType_GAME_HISTORY_REFRESHER,
-	// 	entGame.GameID())
-
 	newEvts := entGame.Game.History().Events
-	if len(newEvts) > numEvts {
-		if len(newEvts)-numEvts > 1 {
-			return fmt.Errorf("unexpected number of new evts: %v %v",
-				newEvts, numEvts)
-		}
-		// This event is either a bonus addition, a loss of turn from an
-		// incorrect challenge, or a "phony tiles removed" event.
-		relevantEvent := newEvts[len(newEvts)-1]
+
+	for eidx := numEvts; eidx < len(newEvts); eidx++ {
 		sge := &pb.ServerGameplayEvent{
-			Event:         relevantEvent,
+			Event:         newEvts[eidx],
 			GameId:        entGame.GameID(),
-			TimeRemaining: int32(relevantEvent.MillisRemaining),
+			TimeRemaining: int32(newEvts[eidx].MillisRemaining),
 			Playing:       entGame.Game.Playing(),
 			// Does the user id matter?
 		}

@@ -89,7 +89,7 @@ if (goog.DEBUG && !COMPILED) {
  * @private {!Array<number>}
  * @const
  */
-proto.macondo.GameHistory.repeatedFields_ = [1,2,10];
+proto.macondo.GameHistory.repeatedFields_ = [1,2,10,14];
 
 
 
@@ -136,7 +136,9 @@ proto.macondo.GameHistory.toObject = function(includeInstance, msg) {
     lastKnownRacksList: (f = jspb.Message.getRepeatedField(msg, 10)) == null ? undefined : f,
     secondWentFirst: jspb.Message.getBooleanFieldWithDefault(msg, 11, false),
     challengeRule: jspb.Message.getFieldWithDefault(msg, 12, 0),
-    playState: jspb.Message.getFieldWithDefault(msg, 13, 0)
+    playState: jspb.Message.getFieldWithDefault(msg, 13, 0),
+    finalScoresList: (f = jspb.Message.getRepeatedField(msg, 14)) == null ? undefined : f,
+    finalGameBoard: jspb.Message.getFieldWithDefault(msg, 15, "")
   };
 
   if (includeInstance) {
@@ -226,6 +228,14 @@ proto.macondo.GameHistory.deserializeBinaryFromReader = function(msg, reader) {
     case 13:
       var value = /** @type {!proto.macondo.PlayState} */ (reader.readEnum());
       msg.setPlayState(value);
+      break;
+    case 14:
+      var value = /** @type {!Array<number>} */ (reader.readPackedInt32());
+      msg.setFinalScoresList(value);
+      break;
+    case 15:
+      var value = /** @type {string} */ (reader.readString());
+      msg.setFinalGameBoard(value);
       break;
     default:
       reader.skipField();
@@ -346,6 +356,20 @@ proto.macondo.GameHistory.serializeBinaryToWriter = function(message, writer) {
   if (f !== 0.0) {
     writer.writeEnum(
       13,
+      f
+    );
+  }
+  f = message.getFinalScoresList();
+  if (f.length > 0) {
+    writer.writePackedInt32(
+      14,
+      f
+    );
+  }
+  f = message.getFinalGameBoard();
+  if (f.length > 0) {
+    writer.writeString(
+      15,
       f
     );
   }
@@ -642,6 +666,61 @@ proto.macondo.GameHistory.prototype.getPlayState = function() {
  */
 proto.macondo.GameHistory.prototype.setPlayState = function(value) {
   return jspb.Message.setProto3EnumField(this, 13, value);
+};
+
+
+/**
+ * repeated int32 final_scores = 14;
+ * @return {!Array<number>}
+ */
+proto.macondo.GameHistory.prototype.getFinalScoresList = function() {
+  return /** @type {!Array<number>} */ (jspb.Message.getRepeatedField(this, 14));
+};
+
+
+/**
+ * @param {!Array<number>} value
+ * @return {!proto.macondo.GameHistory} returns this
+ */
+proto.macondo.GameHistory.prototype.setFinalScoresList = function(value) {
+  return jspb.Message.setField(this, 14, value || []);
+};
+
+
+/**
+ * @param {number} value
+ * @param {number=} opt_index
+ * @return {!proto.macondo.GameHistory} returns this
+ */
+proto.macondo.GameHistory.prototype.addFinalScores = function(value, opt_index) {
+  return jspb.Message.addToRepeatedField(this, 14, value, opt_index);
+};
+
+
+/**
+ * Clears the list making it empty but non-null.
+ * @return {!proto.macondo.GameHistory} returns this
+ */
+proto.macondo.GameHistory.prototype.clearFinalScoresList = function() {
+  return this.setFinalScoresList([]);
+};
+
+
+/**
+ * optional string final_game_board = 15;
+ * @return {string}
+ */
+proto.macondo.GameHistory.prototype.getFinalGameBoard = function() {
+  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 15, ""));
+};
+
+
+/**
+ * @param {string} value
+ * @return {!proto.macondo.GameHistory} returns this
+ */
+proto.macondo.GameHistory.prototype.setFinalGameBoard = function(value) {
+  return jspb.Message.setProto3StringField(this, 15, value);
 };
 
 

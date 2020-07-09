@@ -117,6 +117,10 @@ message ServerGameplayEvent {
   string user_id = 6; // the event has the nickname, but not the userid.
 }
 
+// ServerGameplayEvents is a list of consecutive events. Sometimes we send
+// more than one event and don't want to send them separately.
+// message ServerGameplayEvents { repeated ServerGameplayEvent events = 1; }
+
 // The server will send back a challenge result event only in the case of
 // a challenge. In all other cases, the server will send back a
 // ServerGameplayEvent, and the front-end can
