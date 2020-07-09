@@ -49,7 +49,6 @@ func InstantiateNewStats() *Stats {
 	return &Stats{
 		PlayerOneId:   1,
 		PlayerTwoId:   2,
-		GamesPlayed:   0,
 		PlayerOneData: instantiatePlayerData(),
 		PlayerTwoData: instantiatePlayerData(),
 		NotableData:   instantiateNotableData()}
@@ -66,7 +65,7 @@ func (stats *Stats) AddGameToStats(history *pb.GameHistory, id string) error {
 
 	// Loop through all the turns in the game history
 	events := history.GetEvents()
-	for _, event := range turn.Events {
+	for _, event := range events {
 		fmt.Println(event)
 		if history.Players[0].Nickname == event.Nickname ||
 			(history.Players[1].Nickname == event.Nickname && history.SecondWentFirst) {
@@ -285,7 +284,7 @@ func isTripleTriple(event *pb.GameEvent) bool {
 
 func isBingoNineOrAbove(event *pb.GameEvent) bool {
 	// Need to implement
-	return isBingo(event) && len(event.PlayedTiles) >= 9
+	return event.IsBingo && len(event.PlayedTiles) >= 9
 }
 
 func getNumberOfTilesPlayed(play string) int {
