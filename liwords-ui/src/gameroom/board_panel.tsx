@@ -7,7 +7,8 @@ import Rack from './rack';
 import {
   nextArrowPropertyState,
   handleKeyPress,
-} from '../utils/cwgame/tile_placement';
+  handleDrop,
+} from '../utils/cwgame/tile_placement'
 import { EphemeralTile, EmptySpace } from '../utils/cwgame/common';
 import {
   tilesetToMoveEvent,
@@ -115,6 +116,16 @@ export const BoardPanel = React.memo((props: Props) => {
     setPlacedTilesTempScore(handlerReturn.playScore);
   };
 
+  const handleTileDrop = (row: number, col: number, rackIndex: number) => {
+    const handlerReturn = handleDrop(row, col, displayedRack[rackIndex], rackIndex, props.board, displayedRack, placedTiles);
+    if (handlerReturn === null) {
+      return;
+    }
+    setDisplayedRack(handlerReturn.newDisplayedRack);
+    setPlacedTiles(handlerReturn.newPlacedTiles);
+    setPlacedTilesTempScore(handlerReturn.playScore);
+  };
+
   const recallTiles = () => {
     setPlacedTilesTempScore(0);
     setPlacedTiles(new Set<EphemeralTile>());
@@ -205,6 +216,7 @@ export const BoardPanel = React.memo((props: Props) => {
       <GameBoard
         gridSize={props.board.dim}
         gridLayout={props.board.gridLayout}
+        handleTileDrop={handleTileDrop}
         tilesLayout={props.board.letters}
         showBonusLabels={false}
         lastPlayedTiles={gameContext.lastPlayedTiles}

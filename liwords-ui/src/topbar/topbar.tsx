@@ -6,9 +6,9 @@ const Menu = (
   <div className="top-header-menu">
     <div className="top-header-left-frame-crossword-game">OMGWords</div>
     <div className="top-header-left-frame-aerolith">Aerolith</div>
-    <div className="top-header-left-frame-blog">Blog</div>
+    <div className="top-header-left-frame-blog">Random.Racer</div>
     <div className="top-header-left-frame-special-land">
-      César's Special Land
+      About Us
     </div>
   </div>
 );
