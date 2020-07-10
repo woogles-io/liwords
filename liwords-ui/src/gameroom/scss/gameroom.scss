@@ -90,7 +90,6 @@
 
 .tiles {
   position: absolute;
-  pointer-events: none;
   background-color: transparent;
   border-color: transparent;
   gap: 0;
@@ -198,10 +197,6 @@
   border-radius: 10%;
   line-height: 0;
   text-align: center;
-}
-
-.empty-space {
-  pointer-events: none;
 }
 
 // squareness fix

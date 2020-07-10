@@ -89,12 +89,10 @@
   }
 }
 
-
-/* Style overrides for larger screens -- responsive layouts code minimum sizes so they load first, then media queries override */
 @media (min-width: $screen-laptop-min) {
   .top-header {
     flex-wrap: nowrap;
-    padding: 0 128px;
+    padding: 0 64px;
   }
   .container {
     max-width: $screen-laptop-min;

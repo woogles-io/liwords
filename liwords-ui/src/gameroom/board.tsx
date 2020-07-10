@@ -9,6 +9,7 @@ import { EphemeralTile, PlayedTiles } from '../utils/cwgame/common';
 type Props = {
   gridLayout: Array<string>;
   gridSize: number;
+  handleTileDrop?: (row: number, col: number, rackIndex: number) => void;
   tilesLayout: string;
   showBonusLabels: boolean;
   lastPlayedTiles: PlayedTiles;
@@ -36,6 +37,7 @@ const Board = React.memo((props: Props) => {
         />
         <Tiles
           gridDim={props.gridSize}
+          handleTileDrop={props.handleTileDrop}
           tilesLayout={props.tilesLayout}
           lastPlayedTiles={props.lastPlayedTiles}
           tentativeTiles={props.tentativeTiles}

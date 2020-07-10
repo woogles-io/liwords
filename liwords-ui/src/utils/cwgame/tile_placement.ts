@@ -60,11 +60,14 @@ export const nextArrowPropertyState = (
   };
 };
 
-type KeypressHandlerReturn = {
-  newArrow: PlacementArrow;
+type PlacementHandlerReturn = {
   newPlacedTiles: Set<EphemeralTile>;
   newDisplayedRack: string;
   playScore: number | undefined; // undefined for illegal plays
+}
+
+interface KeypressHandlerReturn extends PlacementHandlerReturn {
+  newArrow: PlacementArrow;
 };
 
 const handleTileDeletion = (
@@ -290,4 +293,41 @@ export const handleKeyPress = (
     newDisplayedRack: newUnplacedTiles,
     playScore: calculateTemporaryScore(newPlacedTiles, board),
   };
+};
+
+export const handleDrop = (
+  row: number,
+  col: number,
+  rune: string,
+  rackIndex: number,
+  board: Board,
+  unplacedTiles: string,
+  currentlyPlacedTiles: Set<EphemeralTile>
+): PlacementHandlerReturn | null => {
+  const newPlacedTiles = currentlyPlacedTiles;
+
+  // Create an ephemeral tile map with unique keys.
+  const ephTileMap: { [tileIdx: number]: EphemeralTile } = {};
+  currentlyPlacedTiles.forEach((t) => {
+    ephTileMap[uniqueTileIdx(t.row, t.col)] = t;
+  });
+
+  let newUnplacedTiles = unplacedTiles;
+
+  // TODO: deal with blank
+  newPlacedTiles.add({
+    row: row,
+    col: col,
+    letter: rune,
+  });
+
+  newUnplacedTiles = unplacedTiles.substring(0, rackIndex) +
+    unplacedTiles.substring(rackIndex + 1);
+
+  return {
+    newPlacedTiles,
+    newDisplayedRack: newUnplacedTiles,
+    playScore: calculateTemporaryScore(currentlyPlacedTiles, board),
+  };
+
 };

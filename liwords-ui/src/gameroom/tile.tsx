@@ -39,8 +39,6 @@ type TileLetterProps = {
   rune: string;
 };
 
-export const DragType = 'Tile';
-
 const TileLetter = React.memo((props: TileLetterProps) => {
   let { rune } = props;
   // if (rune.toUpperCase() !== rune) {

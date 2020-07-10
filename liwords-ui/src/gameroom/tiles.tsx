@@ -9,6 +9,7 @@ import { EphemeralTile, PlayedTiles } from '../utils/cwgame/common';
 
 type Props = {
   gridDim: number;
+  handleTileDrop?: (row: number, col: number, rackIndex: number) => void;
   tilesLayout: string;
   lastPlayedTiles: PlayedTiles;
   scaleTiles: boolean;
@@ -29,6 +30,21 @@ const Tiles = React.memo((props: Props) => {
     }
     return a.col - b.col;
   });
+
+  const handleDrop = (e: any, x: number, y: number) => {
+    if (props.handleTileDrop) {
+      props.handleTileDrop(
+        y,
+        x,
+        parseInt(e.dataTransfer.getData('rackIndex'), 10)
+      );
+    }
+  };
+
+  const handleDropOver = (e : any) => {
+    e.preventDefault();
+    e.stopPropagation();
+  }
 
   let tentativeTilesRemaining = tentativeTiles.length;
 
@@ -74,7 +90,14 @@ const Tiles = React.memo((props: Props) => {
           tentativeTilesRemaining -= 1;
         } else {
           tiles.push(
-            <div className="empty-space" key={`tile_${x}_${y}`}>
+            <div
+              className="empty-space droppable"
+              key={`tile_${x}_${y}`}
+              onDragOver={handleDropOver}
+              onDrop={(e: any) => {
+                handleDrop(e, x, y);
+              }}
+            >
               &nbsp;
             </div>
           );
