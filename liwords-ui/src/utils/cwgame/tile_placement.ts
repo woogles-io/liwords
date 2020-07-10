@@ -74,7 +74,7 @@ const handleTileDeletion = (
 ): KeypressHandlerReturn => {
   // Remove any tiles.
   let newUnplacedTiles = unplacedTiles;
-  const newPlacedTiles = currentlyPlacedTiles;
+  const newPlacedTiles = new Set(currentlyPlacedTiles);
 
   currentlyPlacedTiles.forEach((t) => {
     if (t.col === arrowProperty.col && t.row === arrowProperty.row) {
@@ -114,7 +114,7 @@ export const handleKeyPress = (
 ): KeypressHandlerReturn | null => {
   const normalizedKey = key.toUpperCase();
 
-  const newPlacedTiles = currentlyPlacedTiles;
+  const newPlacedTiles = new Set(currentlyPlacedTiles);
 
   // Create an ephemeral tile map with unique keys.
   const ephTileMap: { [tileIdx: number]: EphemeralTile } = {};

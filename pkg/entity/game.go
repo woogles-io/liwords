@@ -168,6 +168,7 @@ func (g *Game) RegisterChangeHook(eventChan chan<- *EventWrapper) error {
 
 // SendChange sends an event via the registered hook.
 func (g *Game) SendChange(e *EventWrapper) {
+	log.Debug().Interface("evt", e.Event).Interface("aud", e.Audience).Msg("send-change")
 	g.changeHook <- e
 }
 

@@ -16,12 +16,11 @@ type Props = {
   tentativeTileScore: number | undefined;
 };
 
-const Tiles = (props: Props) => {
+const Tiles = React.memo((props: Props) => {
   const tiles = [];
   if (!props.tilesLayout || props.tilesLayout.length === 0) {
     return null;
   }
-
   // Sort the tentative tiles
   const tentativeTiles = Array.from(props.tentativeTiles.values());
   tentativeTiles.sort((a, b) => {
@@ -85,6 +84,6 @@ const Tiles = (props: Props) => {
   }
 
   return <div className="tiles">{tiles}</div>;
-};
+});
 
 export default Tiles;
