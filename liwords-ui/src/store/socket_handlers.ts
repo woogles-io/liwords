@@ -29,14 +29,14 @@ const startgameMP3 = require('../assets/startgame.mp3');
 const makemoveSound = new Audio(makemoveMP3);
 const startgameSound = new Audio(startgameMP3);
 
-const parseMsg = (msg: Uint8Array) => {
+export const parseMsgs = (msg: Uint8Array) => {
   // Multiple msgs can come in the same packet.
   const msgs = [];
 
   while (msg.length > 0) {
     const msgLength = msg[0] * 256 + msg[1];
     const msgType = msg[2] as MessageTypeMap[keyof MessageTypeMap];
-    const msgBytes = msg.slice(3, 3 + msgLength);
+    const msgBytes = msg.slice(3, 3 + (msgLength - 1));
 
     const msgTypes = {
       [MessageType.SEEK_REQUEST]: SeekRequest,
@@ -57,12 +57,13 @@ const parseMsg = (msg: Uint8Array) => {
     };
 
     const parsedMsg = msgTypes[msgType];
-    msgs.push({
+    const topush = {
       msgType,
       parsedMsg: parsedMsg.deserializeBinary(msgBytes),
-    });
+    };
+    msgs.push(topush);
     // eslint-disable-next-line no-param-reassign
-    msg = msg.slice(3 + msgLength);
+    msg = msg.slice(3 + (msgLength - 1));
   }
   return msgs;
 };
@@ -72,7 +73,7 @@ export const onSocketMsg = (storeData: StoreData) => {
     if (!reader.result) {
       return;
     }
-    const msgs = parseMsg(new Uint8Array(reader.result as ArrayBuffer));
+    const msgs = parseMsgs(new Uint8Array(reader.result as ArrayBuffer));
 
     msgs.forEach((msg) => {
       const { msgType, parsedMsg } = msg;
