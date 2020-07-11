@@ -27,6 +27,10 @@
 7. Access the dashboard at http://liwords.localhost
 8. If you wish to add a new front-end package, you can run `npm install` LOCALLY (in your host OS) in the `liwords-ui` directory. This adds the package to `package.json`. Then you can do `docker-compose build frontend` to rebuild the frontend and install the package in the internal node_modules directory.
 
+#### Tips
+
+You can do `docker-compose up app` and `docker-compose up frontend` in two different terminal windows to bring these up separately. This may be desirable, for example, when making backend changes and not wanting to restart the frontend compilation everytime something changes.
+
 ### macondo
 
 `liwords` has a dependency on https://github.com/domino14/macondo

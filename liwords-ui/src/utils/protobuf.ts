@@ -7,12 +7,17 @@ export const encodeToSocketFmt = (
   msgTypeCode: number,
   serializedPBPacket: Uint8Array
 ): Uint8Array => {
-  const packetLength = serializedPBPacket.length;
-  const overallLength = packetLength + 1;
+  // 1 byte for the msg type.
+  const packetLength = serializedPBPacket.length + 1;
+  // 2 bytes for the packetLength
+  const overallLength = packetLength + 2;
 
   const newArr = new Uint8Array(overallLength);
-  newArr[0] = msgTypeCode;
-  newArr.set(serializedPBPacket, 1);
+  newArr[0] = Math.floor(packetLength / 256);
+  newArr[1] = packetLength & 255;
+  newArr[2] = msgTypeCode;
+
+  newArr.set(serializedPBPacket, 3);
   return newArr;
 };
 

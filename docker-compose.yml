@@ -14,6 +14,7 @@ services:
     volumes:
       - .:/opt/program:rw
     command: sh -c "go run cmd/liwords-api/*.go"
+    depends_on: ["db", "proxy", "nats", "socket"]
     networks:
       - aeronet
     ports:

@@ -73,9 +73,10 @@ func (e *EventWrapper) Audience() []string {
 	return e.audience
 }
 
-// Serialize serializes the event to a byte array. Our encoding
-// just inserts a single byte representing the message type to the start
-// of the event.
+// Serialize serializes the event to a byte array.
+// Our encoding inserts a two byte big-endian number indicating the length
+// of the coming bytes, then a byte representing the message type to the
+// start of the event.
 func (e *EventWrapper) Serialize() ([]byte, error) {
 	var b bytes.Buffer
 
@@ -92,7 +93,7 @@ func (e *EventWrapper) Serialize() ([]byte, error) {
 			return nil, err
 		}
 	}
-	// The endian-ness obviously doesn't matter here
+	binary.Write(&b, binary.BigEndian, int16(len(data)+1))
 	binary.Write(&b, binary.BigEndian, int8(e.Type))
 	b.Write(data)
 	return b.Bytes(), nil
@@ -106,9 +107,11 @@ func (e *EventWrapper) GameID() string {
 func EventFromByteArray(arr []byte) (*EventWrapper, error) {
 	b := bytes.NewReader(arr)
 	var msgtypeint int8
+	var msglen int16
+	binary.Read(b, binary.BigEndian, &msglen)
 	binary.Read(b, binary.BigEndian, &msgtypeint)
 	var message proto.Message
-	msgBytes := make([]byte, len(arr)-1)
+	msgBytes := make([]byte, msglen-1)
 	msgType := pb.MessageType(msgtypeint)
 	switch msgType {
 	case pb.MessageType_CLIENT_GAMEPLAY_EVENT:
