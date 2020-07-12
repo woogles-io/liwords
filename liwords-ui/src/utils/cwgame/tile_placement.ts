@@ -12,6 +12,7 @@ import { calculateTemporaryScore } from './scoring';
 import { Board } from './board';
 
 const NormalizedBackspace = 'BACKSPACE';
+const NormalizedSpace = ' ';
 
 export type PlacementArrow = {
   row: number;
@@ -94,7 +95,7 @@ const handleTileDeletion = (
     newArrow: arrowProperty,
     newPlacedTiles,
     newDisplayedRack: newUnplacedTiles,
-    playScore: calculateTemporaryScore(currentlyPlacedTiles, board),
+    playScore: calculateTemporaryScore(newPlacedTiles, board),
   };
 };
 
@@ -127,7 +128,8 @@ export const handleKeyPress = (
       EnglishCrosswordGameDistribution,
       normalizedKey
     ) &&
-    normalizedKey !== NormalizedBackspace
+    normalizedKey !== NormalizedBackspace &&
+    normalizedKey !== NormalizedSpace
   ) {
     // Return with no changes.
     return null;
@@ -140,7 +142,10 @@ export const handleKeyPress = (
     arrowProperty.row < 0 ||
     arrowProperty.col < 0
   ) {
-    if (normalizedKey !== NormalizedBackspace) {
+    if (
+      normalizedKey !== NormalizedBackspace &&
+      normalizedKey !== NormalizedSpace
+    ) {
       return null;
     }
   }
@@ -197,6 +202,26 @@ export const handleKeyPress = (
       currentlyPlacedTiles,
       board
     );
+  }
+
+  if (normalizedKey === NormalizedSpace) {
+    if (newrow > board.dim - 1) {
+      newrow = board.dim - 1;
+    }
+    if (newcol > board.dim - 1) {
+      newcol = board.dim - 1;
+    }
+    return {
+      newArrow: {
+        row: newrow,
+        col: newcol,
+        horizontal: arrowProperty.horizontal,
+        show: true,
+      },
+      newPlacedTiles,
+      newDisplayedRack: newUnplacedTiles,
+      playScore: calculateTemporaryScore(newPlacedTiles, board),
+    };
   }
 
   const blankIdx = unplacedTiles.indexOf(Blank);
@@ -263,6 +288,6 @@ export const handleKeyPress = (
     },
     newPlacedTiles,
     newDisplayedRack: newUnplacedTiles,
-    playScore: calculateTemporaryScore(currentlyPlacedTiles, board),
+    playScore: calculateTemporaryScore(newPlacedTiles, board),
   };
 };
