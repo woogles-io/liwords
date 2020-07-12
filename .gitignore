@@ -2,3 +2,9 @@
 cmd/server/server
 node_modules
 *.code-workspace
+.idea/encodings.xml
+.idea/misc.xml
+.idea/modules.xml
+.idea/vcs.xml
+.idea/workspace.xml
+liwords.iml
