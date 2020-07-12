@@ -15,7 +15,7 @@ func GetStats(ctx context.Context, gameStore gameplay.GameStore, id string) (*en
 		return nil, err
 	}
 
-	stats := entity.InstantiateNewStats()
+	stats := entity.InstantiateNewStats(1, 2)
 	stats.AddGameToStats(entGame.Game.History(), id)
 	return stats, nil
 }
