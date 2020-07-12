@@ -17,7 +17,7 @@ const toArr = (s: string) => {
   return bytes;
 };
 
-it('parses multiple messages', () => {
+it('parses two messages', () => {
   const multimsg =
     '003d040a1e0a0962726f776e2d6d656e200152085245522e46554e4478629001' +
     'fef91b1216656b584a61326d5676587a4c43477535667448457a4c20fef91b00' +
@@ -59,4 +59,29 @@ it('parses multiple messages', () => {
   expect((res[1].parsedMsg as ServerChallengeResultEvent).getValid()).toBe(
     false
   );
+});
+
+it('parses multiple messages', () => {
+  const multimsg =
+    '001d0908011216676f346a56355039556f795458346f5175627145764c180300' +
+    '35050a0b0a066365736172341099040a0f0a0a63726973702d6a756a7510da02' +
+    '180222066365736172342a0a63726973702d6a756a750035040a140a06636573' +
+    '617234200328830468059001e9ad12121665757768635a5871666b57366f7365' +
+    '4259796638585520e9ad1228020035040a180a066365736172341a0744454549' +
+    '53545620052899047016121665757768635a5871666b57366f73654259796638' +
+    '58552802';
+  const msg = toArr(multimsg);
+  const res = parseMsgs(msg);
+  expect(res.length).toBe(4);
+  // 482+28+5+22
+  expect(res[0].msgType).toEqual(MessageType.SERVER_CHALLENGE_RESULT_EVENT);
+  expect(res[1].msgType).toEqual(MessageType.GAME_ENDED_EVENT);
+  expect(res[2].msgType).toEqual(MessageType.SERVER_GAMEPLAY_EVENT);
+  expect(res[3].msgType).toEqual(MessageType.SERVER_GAMEPLAY_EVENT);
+  expect(
+    (res[2].parsedMsg as ServerGameplayEvent).getEvent()?.getCumulative()
+  ).toEqual(515);
+  expect(
+    (res[3].parsedMsg as ServerGameplayEvent).getEvent()?.getCumulative()
+  ).toEqual(537);
 });

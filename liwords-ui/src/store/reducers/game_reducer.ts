@@ -106,6 +106,14 @@ const onturnFromEvt = (state: GameState, evt: GameEvent) => {
   return onturn;
 };
 
+const clonePlayers = (players: Array<RawPlayerInfo>) => {
+  const pclone = new Array<RawPlayerInfo>();
+  players.forEach((p) => {
+    pclone.push({ ...p });
+  });
+  return pclone;
+};
+
 const newGameState = (
   state: GameState,
   sge: ServerGameplayEvent
@@ -118,7 +126,7 @@ const newGameState = (
 
   // Append the event.
   turns.push(GameEvent.deserializeBinary(evt.serializeBinary()));
-  const players = [...state.players];
+  const players = clonePlayers(state.players);
 
   // onturn should be set to the player that came with the event.
   let onturn = onturnFromEvt(state, evt);
@@ -458,7 +466,7 @@ export const GameReducer = (state: GameState, action: Action): GameState => {
       }
       const ngs = newGameState(state, sge);
 
-      console.log('new game state', ngs);
+      console.log('new game state', ngs, JSON.stringify(ngs.players));
       // Always pass the clock ref along. Begin imperative section:
       ngs.clockController = state.clockController;
       setClock(ngs, sge);

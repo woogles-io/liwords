@@ -58,7 +58,6 @@ const ScorecardTurn = (props: turnProps) => {
     // Create a base turn, and modify it accordingly. This is memoized as we
     // don't want to do this relatively expensive computation all the time.
     const evts = props.turn;
-    console.log('computing memoized', evts);
     const turn = {
       player: {
         nickname: evts[0].getNickname(),
