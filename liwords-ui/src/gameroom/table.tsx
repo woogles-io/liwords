@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Row, Col, message } from 'antd';
+import { Row, Col, message, notification } from 'antd';
 import axios from 'axios';
 
 import { useParams } from 'react-router-dom';
@@ -14,6 +14,7 @@ import { encodeToSocketFmt } from '../utils/protobuf';
 import './scss/gameroom.scss';
 import { ScoreCard } from './scorecard';
 import { GameInfo, GameMetadata, PlayerMetadata } from './game_info';
+import { PlayState } from '../gen/macondo/api/proto/macondo/macondo_pb';
 // import { GameInfoResponse } from '../gen/api/proto/game_service/game_service_pb';
 
 const gutter = 16;
@@ -115,6 +116,20 @@ export const Table = React.memo((props: Props) => {
     setPTimedOut(undefined);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pTimedOut, gameContext.nickToPlayerOrder, gameID]);
+
+  useEffect(() => {
+    if (
+      gameContext.playState === PlayState.WAITING_FOR_FINAL_PASS &&
+      gameContext.nickToPlayerOrder[props.username] === `p${gameContext.onturn}`
+    ) {
+      notification.info({
+        message: 'Pass or challenge?',
+        description:
+          'Your opponent has played their final tiles. You must pass or challenge.',
+      });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [gameContext.playState]);
 
   // Figure out what rack we should display.
   // If we are one of the players, display our rack.

@@ -76,7 +76,9 @@ it('parses multiple messages', () => {
   // 482+28+5+22
   expect(res[0].msgType).toEqual(MessageType.SERVER_CHALLENGE_RESULT_EVENT);
   expect(res[1].msgType).toEqual(MessageType.GAME_ENDED_EVENT);
+  // challenge (5)
   expect(res[2].msgType).toEqual(MessageType.SERVER_GAMEPLAY_EVENT);
+  // endgame pts (22)
   expect(res[3].msgType).toEqual(MessageType.SERVER_GAMEPLAY_EVENT);
   expect(
     (res[2].parsedMsg as ServerGameplayEvent).getEvent()?.getCumulative()
