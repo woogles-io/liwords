@@ -304,8 +304,8 @@ export const handleDrop = (
   unplacedTiles: string,
   currentlyPlacedTiles: Set<EphemeralTile>
 ): PlacementHandlerReturn | null => {
-  const newPlacedTiles = currentlyPlacedTiles;
-
+  const newPlacedTiles = new Set(currentlyPlacedTiles);
+  console.log(row, col, rune, rackIndex, unplacedTiles, currentlyPlacedTiles);
   // Create an ephemeral tile map with unique keys.
   const ephTileMap: { [tileIdx: number]: EphemeralTile } = {};
   currentlyPlacedTiles.forEach((t) => {

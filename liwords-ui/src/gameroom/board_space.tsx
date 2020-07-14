@@ -26,6 +26,7 @@ function getBonusProperties(bt: BonusType): BonusProperties {
 
 type Props = {
   bonusType: BonusType;
+  handleTileDrop: (e : any) => void;
   showBonusLabel: boolean;
   startingSquare: boolean;
   arrow: boolean;
@@ -61,10 +62,19 @@ const BoardSpace = React.memo((props: Props) => {
     backgroundColor: fillColor,
   };
 
+
+
+  const handleDropOver = (e : any) => {
+    e.preventDefault();
+    e.stopPropagation();
+  }
+
   return (
     <div
-      className="board-space"
+      className="board-space droppable"
       onClick={props.clicked}
+      onDragOver={handleDropOver}
+      onDrop={props.handleTileDrop}
       style={styleOverrides}
     >
       {bonusLabel}

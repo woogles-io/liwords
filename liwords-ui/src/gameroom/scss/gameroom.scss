@@ -95,6 +95,7 @@
   gap: 0;
   border: 0;
   height: 100%;
+  pointer-events: none;
 }
 
 .board-space {
@@ -206,7 +207,13 @@
   display: inline-block;
   vertical-align: top;
 }
+.empty-space {
+  pointer-events: none;
+}
 
+.tile {
+  pointer-events: all;
+}
 .tile .rune {
   @include type-monospace;
   color: white;
@@ -431,6 +438,10 @@
         }
       }
     }
+  }
+  .tile.droppable {
+    pointer-events: all;
+    cursor: grab;
   }
   .tile .rune {
     font-size: 30px;

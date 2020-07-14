@@ -87,6 +87,7 @@ const Tile = React.memo((props: TileProps) => {
   }
 
   const handleStartDrag = (e: any) => {
+    console.log(props);
     if (e) {
       e.dataTransfer.setData('rackIndex', props.rackIndex);
       setIsDragging(true);

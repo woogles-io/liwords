@@ -31,13 +31,13 @@ const Board = React.memo((props: Props) => {
         <BoardSpaces
           gridDim={props.gridSize}
           gridLayout={props.gridLayout}
+          handleTileDrop={props.handleTileDrop}
           showBonusLabels={props.showBonusLabels}
           placementArrow={props.placementArrowProperties}
           squareClicked={props.squareClicked}
         />
         <Tiles
           gridDim={props.gridSize}
-          handleTileDrop={props.handleTileDrop}
           tilesLayout={props.tilesLayout}
           lastPlayedTiles={props.lastPlayedTiles}
           tentativeTiles={props.tentativeTiles}
