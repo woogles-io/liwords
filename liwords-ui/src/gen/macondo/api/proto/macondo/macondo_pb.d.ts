@@ -54,8 +54,8 @@ export class GameHistory extends jspb.Message {
   setFinalScoresList(value: Array<number>): void;
   addFinalScores(value: number, index?: number): number;
 
-  getFinalGameBoard(): string;
-  setFinalGameBoard(value: string): void;
+  getVariant(): string;
+  setVariant(value: string): void;
 
   serializeBinary(): Uint8Array;
   toObject(includeInstance?: boolean): GameHistory.AsObject;
@@ -83,7 +83,7 @@ export namespace GameHistory {
     challengeRule: ChallengeRuleMap[keyof ChallengeRuleMap],
     playState: PlayStateMap[keyof PlayStateMap],
     finalScoresList: Array<number>,
-    finalGameBoard: string,
+    variant: string,
   }
 }
 
@@ -136,8 +136,10 @@ export class GameEvent extends jspb.Message {
   getIsBingo(): boolean;
   setIsBingo(value: boolean): void;
 
-  getUnknownExchange(): number;
-  setUnknownExchange(value: number): void;
+  clearWordsFormedList(): void;
+  getWordsFormedList(): Array<string>;
+  setWordsFormedList(value: Array<string>): void;
+  addWordsFormed(value: string, index?: number): string;
 
   getMillisRemaining(): number;
   setMillisRemaining(value: number): void;
@@ -170,7 +172,7 @@ export namespace GameEvent {
     endRackPoints: number,
     lostScore: number,
     isBingo: boolean,
-    unknownExchange: number,
+    wordsFormedList: Array<string>,
     millisRemaining: number,
   }
 

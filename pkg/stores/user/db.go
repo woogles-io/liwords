@@ -52,7 +52,7 @@ type profile struct {
 	// It's ok to have a few JSON bags here. Postgres makes these easy and fast.
 	// XXX: Come up with a model for friend list.
 	Ratings postgres.Jsonb // A complex dictionary of ratings with variants/lexica/etc.
-	Stats   postgres.Jsonb // Stats such as average score per variant, bingos, a lot of other simple stats.
+	Stats   postgres.Jsonb // Profile stats such as average score per variant, bingos, a lot of other simple stats.
 	// More complex stats might be in a separate place.
 }
 
