@@ -63,6 +63,8 @@ const Tiles = React.memo((props: Props) => {
               key={`tileT_${tentativeTile.col}_${tentativeTile.row}`}
               scale={false}
               tentative={true}
+              x={x}
+              y={y}
               tentativeScore={
                 tentativeTilesRemaining === tentativeTiles.length
                   ? props.tentativeTileScore

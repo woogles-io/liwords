@@ -73,6 +73,8 @@ type TileProps = {
   rackIndex?: number | undefined;
   swapRackTiles?: (indexA: number | undefined, indexB: number | undefined) => void;
   onClick?: () => void;
+  x?: number | undefined;
+  y?: number | undefined;
 };
 
 
@@ -87,10 +89,14 @@ const Tile = React.memo((props: TileProps) => {
   }
 
   const handleStartDrag = (e: any) => {
-    console.log(props);
+    console.log('hey', props);
     if (e) {
       e.dataTransfer.setData('rackIndex', props.rackIndex);
       setIsDragging(true);
+      if (props.tentative) {
+        e.dataTransfer.setData('x', props.x);
+        e.dataTransfer.setData('y', props.y);
+      }
     }
   };
 

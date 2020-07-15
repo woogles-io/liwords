@@ -124,6 +124,7 @@ export const BoardPanel = React.memo((props: Props) => {
     setDisplayedRack(handlerReturn.newDisplayedRack);
     setPlacedTiles(handlerReturn.newPlacedTiles);
     setPlacedTilesTempScore(handlerReturn.playScore);
+    setArrowProperties({ row: 0, col: 0, horizontal: false, show: false });
   };
 
   const recallTiles = () => {
