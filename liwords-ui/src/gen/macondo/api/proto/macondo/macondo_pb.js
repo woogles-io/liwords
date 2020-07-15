@@ -52,7 +52,7 @@ if (goog.DEBUG && !COMPILED) {
  * @constructor
  */
 proto.macondo.GameEvent = function(opt_data) {
-  jspb.Message.initialize(this, opt_data, 0, -1, null, null);
+  jspb.Message.initialize(this, opt_data, 0, -1, proto.macondo.GameEvent.repeatedFields_, null);
 };
 goog.inherits(proto.macondo.GameEvent, jspb.Message);
 if (goog.DEBUG && !COMPILED) {
@@ -138,7 +138,7 @@ proto.macondo.GameHistory.toObject = function(includeInstance, msg) {
     challengeRule: jspb.Message.getFieldWithDefault(msg, 12, 0),
     playState: jspb.Message.getFieldWithDefault(msg, 13, 0),
     finalScoresList: (f = jspb.Message.getRepeatedField(msg, 14)) == null ? undefined : f,
-    finalGameBoard: jspb.Message.getFieldWithDefault(msg, 15, "")
+    variant: jspb.Message.getFieldWithDefault(msg, 15, "")
   };
 
   if (includeInstance) {
@@ -235,7 +235,7 @@ proto.macondo.GameHistory.deserializeBinaryFromReader = function(msg, reader) {
       break;
     case 15:
       var value = /** @type {string} */ (reader.readString());
-      msg.setFinalGameBoard(value);
+      msg.setVariant(value);
       break;
     default:
       reader.skipField();
@@ -366,7 +366,7 @@ proto.macondo.GameHistory.serializeBinaryToWriter = function(message, writer) {
       f
     );
   }
-  f = message.getFinalGameBoard();
+  f = message.getVariant();
   if (f.length > 0) {
     writer.writeString(
       15,
@@ -707,10 +707,10 @@ proto.macondo.GameHistory.prototype.clearFinalScoresList = function() {
 
 
 /**
- * optional string final_game_board = 15;
+ * optional string variant = 15;
  * @return {string}
  */
-proto.macondo.GameHistory.prototype.getFinalGameBoard = function() {
+proto.macondo.GameHistory.prototype.getVariant = function() {
   return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 15, ""));
 };
 
@@ -719,11 +719,18 @@ proto.macondo.GameHistory.prototype.getFinalGameBoard = function() {
  * @param {string} value
  * @return {!proto.macondo.GameHistory} returns this
  */
-proto.macondo.GameHistory.prototype.setFinalGameBoard = function(value) {
+proto.macondo.GameHistory.prototype.setVariant = function(value) {
   return jspb.Message.setProto3StringField(this, 15, value);
 };
 
 
+
+/**
+ * List of repeated fields within this message type.
+ * @private {!Array<number>}
+ * @const
+ */
+proto.macondo.GameEvent.repeatedFields_ = [17];
 
 
 
@@ -772,7 +779,7 @@ proto.macondo.GameEvent.toObject = function(includeInstance, msg) {
     endRackPoints: jspb.Message.getFieldWithDefault(msg, 14, 0),
     lostScore: jspb.Message.getFieldWithDefault(msg, 15, 0),
     isBingo: jspb.Message.getBooleanFieldWithDefault(msg, 16, false),
-    unknownExchange: jspb.Message.getFieldWithDefault(msg, 17, 0),
+    wordsFormedList: (f = jspb.Message.getRepeatedField(msg, 17)) == null ? undefined : f,
     millisRemaining: jspb.Message.getFieldWithDefault(msg, 18, 0)
   };
 
@@ -875,8 +882,8 @@ proto.macondo.GameEvent.deserializeBinaryFromReader = function(msg, reader) {
       msg.setIsBingo(value);
       break;
     case 17:
-      var value = /** @type {number} */ (reader.readInt32());
-      msg.setUnknownExchange(value);
+      var value = /** @type {string} */ (reader.readString());
+      msg.addWordsFormed(value);
       break;
     case 18:
       var value = /** @type {number} */ (reader.readInt32());
@@ -1023,9 +1030,9 @@ proto.macondo.GameEvent.serializeBinaryToWriter = function(message, writer) {
       f
     );
   }
-  f = message.getUnknownExchange();
-  if (f !== 0) {
-    writer.writeInt32(
+  f = message.getWordsFormedList();
+  if (f.length > 0) {
+    writer.writeRepeatedString(
       17,
       f
     );
@@ -1352,20 +1359,39 @@ proto.macondo.GameEvent.prototype.setIsBingo = function(value) {
 
 
 /**
- * optional int32 unknown_exchange = 17;
- * @return {number}
+ * repeated string words_formed = 17;
+ * @return {!Array<string>}
  */
-proto.macondo.GameEvent.prototype.getUnknownExchange = function() {
-  return /** @type {number} */ (jspb.Message.getFieldWithDefault(this, 17, 0));
+proto.macondo.GameEvent.prototype.getWordsFormedList = function() {
+  return /** @type {!Array<string>} */ (jspb.Message.getRepeatedField(this, 17));
 };
 
 
 /**
- * @param {number} value
+ * @param {!Array<string>} value
  * @return {!proto.macondo.GameEvent} returns this
  */
-proto.macondo.GameEvent.prototype.setUnknownExchange = function(value) {
-  return jspb.Message.setProto3IntField(this, 17, value);
+proto.macondo.GameEvent.prototype.setWordsFormedList = function(value) {
+  return jspb.Message.setField(this, 17, value || []);
+};
+
+
+/**
+ * @param {string} value
+ * @param {number=} opt_index
+ * @return {!proto.macondo.GameEvent} returns this
+ */
+proto.macondo.GameEvent.prototype.addWordsFormed = function(value, opt_index) {
+  return jspb.Message.addToRepeatedField(this, 17, value, opt_index);
+};
+
+
+/**
+ * Clears the list making it empty but non-null.
+ * @return {!proto.macondo.GameEvent} returns this
+ */
+proto.macondo.GameEvent.prototype.clearWordsFormedList = function() {
+  return this.setWordsFormedList([]);
 };
 
 

@@ -22,7 +22,6 @@ import {
 } from '../gen/api/proto/realtime/realtime_pb';
 import { ActionType } from '../actions/actions';
 import { endGameMessage } from './end_of_game';
-import { PlayState } from '../gen/macondo/api/proto/macondo/macondo_pb';
 
 const makemoveMP3 = require('../assets/makemove.mp3');
 const startgameMP3 = require('../assets/startgame.mp3');

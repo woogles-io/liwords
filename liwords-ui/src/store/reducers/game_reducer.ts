@@ -1,4 +1,4 @@
-import { Board, Tile } from '../../utils/cwgame/board';
+import { Board } from '../../utils/cwgame/board';
 import {
   PlayerInfo,
   GameEvent,
@@ -158,7 +158,6 @@ const newGameState = (
   players[onturn].onturn = false;
   players[1 - onturn].onturn = true;
   onturn = 1 - onturn;
-  console.log('but now it changes to', onturn);
   return {
     // These never change:
     tileDistribution: state.tileDistribution,
@@ -286,11 +285,7 @@ const stateFromHistory = (refresher: GameHistoryRefresher): GameState => {
   if (flipPlayers) {
     playerList = [...playerList].reverse();
   }
-  console.log(
-    'Player list is',
-    playerList[0].getNickname(),
-    playerList[1].getNickname()
-  );
+
   const nickToPlayerOrder = {
     [playerList[0].getNickname()]: 'p0' as PlayerOrder,
     [playerList[1].getNickname()]: 'p1' as PlayerOrder,
@@ -309,7 +304,6 @@ const stateFromHistory = (refresher: GameHistoryRefresher): GameState => {
   gs.nickToPlayerOrder = nickToPlayerOrder;
   gs.uidToPlayerOrder = uidToPlayerOrder;
   pushTurns(gs, history.getEventsList());
-
   // racks are given in the original order that the playerList came in.
   // so if we reversed the player list, we must reverse the racks.
   let racks = history.getLastKnownRacksList();
@@ -388,7 +382,7 @@ const initializeTimerController = (
   const evts = history.getEventsList();
   if (evts.length > 0) {
     // determine onturn from the last event.
-    const lastWent = onturnFromEvt(state, evts[evts.length - 1]);
+    const lastWent = onturnFromEvt(newState, evts[evts.length - 1]);
     if (lastWent === 1) {
       onturn = 'p0' as PlayerOrder;
     } else if (lastWent === 0) {
@@ -404,8 +398,6 @@ const initializeTimerController = (
     activePlayer: onturn,
     lastUpdate: 0,
   };
-
-  console.log('clockState will be set', clockState, evts.length);
 
   if (newState.clockController!.current) {
     newState.clockController!.current.setClock(newState.playState, clockState);
@@ -466,7 +458,6 @@ export const GameReducer = (state: GameState, action: Action): GameState => {
       }
       const ngs = newGameState(state, sge);
 
-      console.log('new game state', ngs, JSON.stringify(ngs.players));
       // Always pass the clock ref along. Begin imperative section:
       ngs.clockController = state.clockController;
       setClock(ngs, sge);

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Row, Col, Button, Modal, Alert } from 'antd';
+import { Row, Col, Button, Modal } from 'antd';
 import { Redirect } from 'react-router-dom';
 
 import { TopBar } from '../topbar/topbar';
