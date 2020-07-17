@@ -114,6 +114,10 @@ func finalize(statItems []*StatItem) {
 		if statItem.IncrementType == FinalType {
 			statItem.AddFunction(nil, nil, nil, -1, "", false)
 		}
+		var averages []float64
+		for _, denominatorRef := range statItem.DenominatorList {
+			averages = append(averages, float64(statItem.Total) / float64(denominatorRef.Total))
+		}
 	}
 }
 func addBingoNinesOrAbove(statItem *StatItem, otherPlayerStatItem *StatItem, history *pb.GameHistory, i int, id string, isPlayerOne bool) {

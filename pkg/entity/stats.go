@@ -7,10 +7,10 @@ import (
 )
 
 type ListItem struct {
-	Word        string
-	Probability int
-	Score       int
-	GameId      string
+	Word        string `json:"w"`
+	Probability int `json:"p"`
+	Score       int `json:"s"`
+	GameId      string `json:"g"`
 }
 
 type MistakeType string
@@ -82,27 +82,28 @@ const (
 const MaxNotableInt = 1000000000
 
 type StatItem struct {
-	Name               string
-	Description        string
+	Name               string `json:"n"`
+	Description        string `json:"d"`
 	Minimum            int
 	Maximum            int
-	Total              int
+	Total              int `json:"t"`
 	DataType           StatItemType
 	IncrementType      IncrementType
-	Denominator        *StatItem
+	DenominatorList    []*StatItem
+	Averages           []float64 `json:"a"`
 	IsProfileStat      bool
-	List               []*ListItem
-	Subitems           map[string]int
-	HasMeaningfulTotal bool
+	List               []*ListItem `json:"l"`
+	Subitems           map[string]int `json:"s"`
+	HasMeaningfulTotal bool `json:"h"`
 	AddFunction        func(*StatItem, *StatItem, *pb.GameHistory, int, string, bool)
 }
 
 type Stats struct {
-	PlayerOneId   int
-	PlayerTwoId   int
-	PlayerOneData []*StatItem
-	PlayerTwoData []*StatItem
-	NotableData   []*StatItem
+	PlayerOneId   int `json:"i1"`
+	PlayerTwoId   int `json:"i2"`
+	PlayerOneData []*StatItem `json:"d1"`
+	PlayerTwoData []*StatItem `json:"d2"`
+	NotableData   []*StatItem `json:"n"`
 }
 
 func InstantiateNewStats(playerOneId int, playerTwoId int) *Stats {
