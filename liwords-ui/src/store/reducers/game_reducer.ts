@@ -265,7 +265,7 @@ const pushTurns = (gs: GameState, events: Array<GameEvent>) => {
     // determine turn from event.
     const onturn = onturnFromEvt(gs, evt);
     // eslint-disable-next-line no-param-reassign
-    gs.players[onturn].score = events[events.length - 1].getCumulative();
+    gs.players[onturn].score = events[idx].getCumulative();
     // eslint-disable-next-line no-param-reassign
     gs.onturn = (onturn + 1) % 2;
   });

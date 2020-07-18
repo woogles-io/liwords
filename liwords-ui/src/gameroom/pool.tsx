@@ -21,7 +21,7 @@ function renderLetters(
   possibleLetters: string,
   maxConsecutive: number = 6
 ) {
-  let output = [];
+  const output = [];
   for (
     let possibility = 0;
     possibility < possibleLetters.length;
@@ -38,15 +38,19 @@ function renderLetters(
         }
       }
       output.push(
-        <>
-          <span className="letter-group" key={`lg-${letter}-${possibility}`} data-rune={letter}>
+        <React.Fragment key={`lg-${letter}-${possibility}`}>
+          <span className="letter-group" data-rune={letter}>
             {letterGroup.trim()}
           </span>{' '}
-        </>
+        </React.Fragment>
       );
     }
   }
-  return <section className="pool-section" key={possibleLetters}>{output}</section>;
+  return (
+    <section className="pool-section" key={possibleLetters}>
+      {output}
+    </section>
+  );
 }
 
 function getPoolCount(
