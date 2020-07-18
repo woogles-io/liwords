@@ -7,8 +7,8 @@ import (
 
 type ListItem struct {
 	Word        string `json:"w"`
-	Probability int `json:"p"`
-	Score       int `json:"s"`
+	Probability int    `json:"p"`
+	Score       int    `json:"s"`
 	GameId      string `json:"g"`
 }
 
@@ -81,25 +81,25 @@ const (
 const MaxNotableInt = 1000000000
 
 type StatItem struct {
-	Name               string `json:"n"`
-	Description        string `json:"d"`
-	Minimum            int `json:"-"`
-	Maximum            int `json:"-"`
-	Total              int `json:"t"`
-	DataType           StatItemType `json:"-"`
-	IncrementType      IncrementType `json:"-"`
-	DenominatorList    []*StatItem `json:"-"`
-	Averages           []float64 `json:"a"`
-	IsProfileStat      bool `json:"-"`
-	List               []*ListItem `json:"l"`
-	Subitems           map[string]int `json:"s"`
-	HasMeaningfulTotal bool `json:"h"`
+	Name               string                                                         `json:"n"`
+	Description        string                                                         `json:"d"`
+	Minimum            int                                                            `json:"-"`
+	Maximum            int                                                            `json:"-"`
+	Total              int                                                            `json:"t"`
+	DataType           StatItemType                                                   `json:"-"`
+	IncrementType      IncrementType                                                  `json:"-"`
+	DenominatorList    []*StatItem                                                    `json:"-"`
+	Averages           []float64                                                      `json:"a"`
+	IsProfileStat      bool                                                           `json:"-"`
+	List               []*ListItem                                                    `json:"l"`
+	Subitems           map[string]int                                                 `json:"s"`
+	HasMeaningfulTotal bool                                                           `json:"h"`
 	AddFunction        func(*StatItem, *StatItem, *pb.GameHistory, int, string, bool) `json:"-"`
 }
 
 type Stats struct {
-	PlayerOneId   int `json:"i1"`
-	PlayerTwoId   int `json:"i2"`
+	PlayerOneId   int         `json:"i1"`
+	PlayerTwoId   int         `json:"i2"`
 	PlayerOneData []*StatItem `json:"d1"`
 	PlayerTwoData []*StatItem `json:"d2"`
 	NotableData   []*StatItem `json:"n"`

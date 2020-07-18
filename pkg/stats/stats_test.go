@@ -1,16 +1,16 @@
 package stats
 
 import (
-	"os"
-	"fmt"
 	"encoding/json"
+	"fmt"
 	"github.com/domino14/liwords/pkg/entity"
-	"github.com/domino14/macondo/gcgio"
-	"testing"
 	"github.com/domino14/macondo/alphabet"
-	"github.com/matryer/is"
 	macondoconfig "github.com/domino14/macondo/config"
-    "github.com/rs/zerolog"
+	"github.com/domino14/macondo/gcgio"
+	"github.com/matryer/is"
+	"github.com/rs/zerolog"
+	"os"
+	"testing"
 )
 
 func TestMain(m *testing.M) {
@@ -25,7 +25,7 @@ var DefaultConfig = macondoconfig.Config{
 	DefaultLetterDistribution: "English",
 }
 
-func convertStatItemListToMap(statItems []*entity.StatItem) (map[string]*entity.StatItem) {
+func convertStatItemListToMap(statItems []*entity.StatItem) map[string]*entity.StatItem {
 	statItemMap := make(map[string]*entity.StatItem)
 	for _, statItem := range statItems {
 		statItemMap[statItem.Name] = statItem
@@ -54,7 +54,7 @@ func InstantiateNewStatsWithHistory(filename string) (*entity.Stats, error) {
 
 func JoshNationalsFromGames(useJSON bool) (*entity.Stats, error) {
 	annotatedGamePrefix := "josh_nationals_round_"
-	stats :=  entity.InstantiateNewStats(1, 2)
+	stats := entity.InstantiateNewStats(1, 2)
 
 	for i := 1; i <= 31; i++ {
 		annotatedGame := fmt.Sprintf("./testdata/%s%d.gcg", annotatedGamePrefix, i)
@@ -148,7 +148,7 @@ func TestStats(t *testing.T) {
 
 func TestNotable(t *testing.T) {
 	is := is.New(t)
-	stats :=  entity.InstantiateNewStats(1, 2)
+	stats := entity.InstantiateNewStats(1, 2)
 	everyPowerTileStats, _ := InstantiateNewStatsWithHistory("./testdata/jesse_vs_ayo.gcg")
 	everyEStats, _ := InstantiateNewStatsWithHistory("./testdata/josh_vs_jesse.gcg")
 	stats.AddStatsToStats(everyPowerTileStats)
@@ -162,10 +162,10 @@ func TestNotable(t *testing.T) {
 
 func isEqual(statsOne *entity.Stats, statsTwo *entity.Stats) bool {
 	return statsOne.PlayerOneId == statsTwo.PlayerOneId &&
-	       statsOne.PlayerTwoId == statsTwo.PlayerTwoId &&
-	       isStatItemListEqual(statsOne.PlayerOneData, statsTwo.PlayerOneData) &&
-	       isStatItemListEqual(statsOne.PlayerTwoData, statsTwo.PlayerTwoData) &&
-	       isStatItemListEqual(statsOne.NotableData, statsTwo.NotableData)
+		statsOne.PlayerTwoId == statsTwo.PlayerTwoId &&
+		isStatItemListEqual(statsOne.PlayerOneData, statsTwo.PlayerOneData) &&
+		isStatItemListEqual(statsOne.PlayerTwoData, statsTwo.PlayerTwoData) &&
+		isStatItemListEqual(statsOne.NotableData, statsTwo.NotableData)
 }
 
 func isStatItemListEqual(statItemListOne []*entity.StatItem, statItemListTwo []*entity.StatItem) bool {
@@ -184,12 +184,12 @@ func isStatItemListEqual(statItemListOne []*entity.StatItem, statItemListTwo []*
 
 func isStatItemEqual(statItemOne *entity.StatItem, statItemTwo *entity.StatItem) bool {
 	return statItemOne.Name == statItemTwo.Name &&
-	       statItemOne.Description == statItemTwo.Description &&
-	       statItemOne.Total == statItemTwo.Total &&
-	       // Floating points nonsense
-	       //isStatItemAveragesEqual(statItemOne.Averages, statItemTwo.Averages) &&
-	       isStatItemSubitemsEqual(statItemOne.Subitems, statItemTwo.Subitems) &&
-	       statItemOne.HasMeaningfulTotal == statItemTwo.HasMeaningfulTotal
+		statItemOne.Description == statItemTwo.Description &&
+		statItemOne.Total == statItemTwo.Total &&
+		// Floating points nonsense
+		//isStatItemAveragesEqual(statItemOne.Averages, statItemTwo.Averages) &&
+		isStatItemSubitemsEqual(statItemOne.Subitems, statItemTwo.Subitems) &&
+		statItemOne.HasMeaningfulTotal == statItemTwo.HasMeaningfulTotal
 }
 
 func isStatItemAveragesEqual(arrOne []float64, arrTwo []float64) bool {
@@ -248,7 +248,7 @@ func statItemToString(statItem *entity.StatItem) string {
 func averagesToString(averages []float64) string {
 	s := ""
 	for i := 0; i < len(averages); i++ {
-		s += fmt.Sprintf("%.2f", averages[i])		
+		s += fmt.Sprintf("%.2f", averages[i])
 	}
 	return s
 }
