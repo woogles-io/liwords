@@ -171,7 +171,7 @@ func (stats *Stats) AddStatsToStats(otherStats *Stats) error {
 	return nil
 }
 
-func (stats *Stats) FinalizeStats(history *pb.GameHistory) {
-	finalize(stats.PlayerOneData, history)
-	finalize(stats.PlayerTwoData, history)
+func (stats *Stats) Finalize() {
+	finalize(stats.PlayerOneData)
+	finalize(stats.PlayerTwoData)
 }

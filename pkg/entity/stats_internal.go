@@ -111,15 +111,16 @@ func combineItems(statItem *StatItem, otherStatItem *StatItem) {
 	}
 }
 
-func finalize(statItems []*StatItem, history *pb.GameHistory) {
+func finalize(statItems []*StatItem) {
 	for _, statItem := range statItems {
 		if statItem.IncrementType == FinalType {
-			statItem.AddFunction(nil, nil, history, -1, "", false)
+			statItem.AddFunction(nil, nil, nil, -1, "", false)
 		}
 		var averages []float64
 		for _, denominatorRef := range statItem.DenominatorList {
 			averages = append(averages, float64(statItem.Total) / float64(denominatorRef.Total))
 		}
+		statItem.Averages = averages
 	}
 }
 func addBingoNinesOrAbove(statItem *StatItem, otherPlayerStatItem *StatItem, history *pb.GameHistory, i int, id string, isPlayerOne bool) {
@@ -163,7 +164,7 @@ func addCombinedScoring(statItem *StatItem, otherPlayerStatItem *StatItem, histo
 }
 
 func addConfidenceIntervals(statItem *StatItem, otherPlayerStatItem *StatItem, history *pb.GameHistory, i int, id string, isPlayerOne bool) {
-	
+
 	// We'll need to decide if we even want this
 	// We pull a sneaky here and overload some struct fields
 	/*	tilesPlayedStat := statItem.Denominator
