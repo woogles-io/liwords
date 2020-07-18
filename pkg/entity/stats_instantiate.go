@@ -309,34 +309,34 @@ func instantiatePlayerData() []*StatItem {
 		HasMeaningfulTotal: true,
 		AddFunction:        addConfidenceIntervals}
 
-	return []*StatItem{gamesStat,
-		scoreStat,
-		firstsStat,
-		winsStat,
-		drawsStat,
-		lossesStat,
-		turnsStat,
-		verticalOpeningsStat,
+	return []*StatItem{bingoNinesOrAboveStat,
 		bingosStat,
-		noBingosStat,
-		exchangesStat,
-		tripleTriplesStat,
-		bingoNinesOrAboveStat,
-		phoniesStat,
 		challengedPhoniesStat,
-		unchallengedPhoniesStat,
 		challengesStat,
-		challengesWonStat,
 		challengesLostStat,
-		playsThatWereChallengedStat,
-		highGameStat,
-		lowGameStat,
-		highTurnStat,
-		tilesPlayedStat,
-		turnsWithBlankStat,
+		challengesWonStat,
 		commentsStat,
+		confidenceIntervalsStat, // Not tested
+		drawsStat,
+		exchangesStat,
+		firstsStat,
+		gamesStat,
+		highGameStat,
+		highTurnStat,
+		lossesStat,
+		lowGameStat,
+		noBingosStat,
 		mistakesStat,
-		confidenceIntervalsStat,
+		phoniesStat, // Not tested
+		playsThatWereChallengedStat,
+		scoreStat,
+		tilesPlayedStat,
+		tripleTriplesStat, // Not tested
+		turnsStat,
+		turnsWithBlankStat,
+		unchallengedPhoniesStat, // Not tested
+		verticalOpeningsStat,
+		winsStat,
 	}
 	/*
 		Missing stats:
@@ -346,10 +346,7 @@ func instantiatePlayerData() []*StatItem {
 			Comments word length
 			Dynamic Mistakes
 			Confidence Intervals
-		Stats that are missing but can be derive from the current stats data:
-			Bingo probabilities
-			Power tiles played
-			power tiles stuck with
+			Bingo Probabilities? (kinda)
 	*/
 }
 

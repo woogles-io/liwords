@@ -1,9 +1,10 @@
 package entity
 
 import (
-	"errors"
 	"fmt"
+	"errors"
 	"github.com/domino14/macondo/alphabet"
+	"github.com/domino14/macondo/gaddag"
 	pb "github.com/domino14/macondo/gen/api/proto/macondo"
 	"strings"
 	"unicode"
@@ -84,6 +85,7 @@ func confirmNotableItems(statItems []*StatItem, id string) {
 			item.Total = item.Total * (-1)
 		}
 		if item.Total >= item.Minimum && item.Total <= item.Maximum {
+			fmt.Printf("Notable confirmed: %s\n", item.Name)
 			item.List = append(item.List, &ListItem{Word: "", Probability: 0, Score: 0, GameId: id})
 		}
 		item.Total = 0
@@ -109,10 +111,10 @@ func combineItems(statItem *StatItem, otherStatItem *StatItem) {
 	}
 }
 
-func finalize(statItems []*StatItem) {
+func finalize(statItems []*StatItem, history *pb.GameHistory) {
 	for _, statItem := range statItems {
 		if statItem.IncrementType == FinalType {
-			statItem.AddFunction(nil, nil, nil, -1, "", false)
+			statItem.AddFunction(nil, nil, history, -1, "", false)
 		}
 		var averages []float64
 		for _, denominatorRef := range statItem.DenominatorList {
@@ -135,7 +137,6 @@ func addBingoNinesOrAbove(statItem *StatItem, otherPlayerStatItem *StatItem, his
 func addBingos(statItem *StatItem, otherPlayerStatItem *StatItem, history *pb.GameHistory, i int, id string, isPlayerOne bool) {
 	events := history.GetEvents()
 	event := events[i]
-	fmt.Println(event)
 
 	var succEvent *pb.GameEvent
 	if i+1 < len(events) {
@@ -162,6 +163,7 @@ func addCombinedScoring(statItem *StatItem, otherPlayerStatItem *StatItem, histo
 }
 
 func addConfidenceIntervals(statItem *StatItem, otherPlayerStatItem *StatItem, history *pb.GameHistory, i int, id string, isPlayerOne bool) {
+	
 	// We'll need to decide if we even want this
 	// We pull a sneaky here and overload some struct fields
 	/*	tilesPlayedStat := statItem.Denominator
@@ -316,7 +318,7 @@ func addEveryE(statItem *StatItem, otherPlayerStatItem *StatItem, history *pb.Ga
 	if !isPlayerOne && history.Players[1].Nickname == event.Nickname {
 		multiplier = -1
 	}
-	if succEvent == nil || succEvent.Type != pb.GameEvent_PHONY_TILES_RETURNED {
+	if event.Type == pb.GameEvent_TILE_PLACEMENT_MOVE && (succEvent == nil || succEvent.Type != pb.GameEvent_PHONY_TILES_RETURNED) {
 		for _, char := range event.PlayedTiles {
 			if char == 'E' {
 				statItem.Total += 1 * multiplier
@@ -336,10 +338,11 @@ func addEveryPowerTile(statItem *StatItem, otherPlayerStatItem *StatItem, histor
 	if !isPlayerOne && history.Players[1].Nickname == event.Nickname {
 		multiplier = -1
 	}
-	if succEvent == nil || succEvent.Type != pb.GameEvent_PHONY_TILES_RETURNED {
+	if event.Type == pb.GameEvent_TILE_PLACEMENT_MOVE && (succEvent == nil || succEvent.Type != pb.GameEvent_PHONY_TILES_RETURNED) {
 		for _, char := range event.PlayedTiles {
-			if char == 'J' || char == 'Q' || char == 'X' || char == 'Z' || unicode.IsLower(char) || char == 'S' {
+			if char == 'J' || char == 'Q' || char == 'X' || char == 'Z' || char == 'S' || unicode.IsLower(char) {
 				statItem.Total += 1 * multiplier
+				//fmt.Printf("therack: %s, the total: %d eventtype: %s, succ eventtype: %s\n", event.PlayedTiles, statItem.Total, event.Type, succEvent.Type)
 			}
 		}
 	}
@@ -441,7 +444,7 @@ func addTilesPlayed(statItem *StatItem, otherPlayerStatItem *StatItem, history *
 	if i+1 < len(events) {
 		succEvent = events[i+1]
 	}
-	if succEvent == nil || succEvent.Type != pb.GameEvent_PHONY_TILES_RETURNED {
+	if event.Type == pb.GameEvent_TILE_PLACEMENT_MOVE && (succEvent == nil || succEvent.Type != pb.GameEvent_PHONY_TILES_RETURNED) {
 		for _, char := range event.PlayedTiles {
 			if char != alphabet.ASCIIPlayedThrough {
 				statItem.Total++
@@ -560,4 +563,13 @@ func isTripleTriple(event *pb.GameEvent) bool {
 
 func isBingoNineOrAbove(event *pb.GameEvent) bool {
 	return event.IsBingo && len(event.PlayedTiles) >= 9
+}
+
+func validateWord(gd *gaddag.SimpleGaddag, word string) (bool, error) {
+	alph := gd.GetAlphabet()
+	machineWord, error := alphabet.ToMachineWord(word, alph)
+	if error != nil {
+		return false, error
+	}
+    return gaddag.FindMachineWord(gd, machineWord), nil
 }

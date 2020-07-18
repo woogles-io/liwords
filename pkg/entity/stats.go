@@ -2,7 +2,6 @@ package entity
 
 import (
 	"errors"
-	"fmt"
 	pb "github.com/domino14/macondo/gen/api/proto/macondo"
 )
 
@@ -84,18 +83,18 @@ const MaxNotableInt = 1000000000
 type StatItem struct {
 	Name               string `json:"n"`
 	Description        string `json:"d"`
-	Minimum            int
-	Maximum            int
+	Minimum            int `json:"-"`
+	Maximum            int `json:"-"`
 	Total              int `json:"t"`
-	DataType           StatItemType
-	IncrementType      IncrementType
-	DenominatorList    []*StatItem
+	DataType           StatItemType `json:"-"`
+	IncrementType      IncrementType `json:"-"`
+	DenominatorList    []*StatItem `json:"-"`
 	Averages           []float64 `json:"a"`
-	IsProfileStat      bool
+	IsProfileStat      bool `json:"-"`
 	List               []*ListItem `json:"l"`
 	Subitems           map[string]int `json:"s"`
 	HasMeaningfulTotal bool `json:"h"`
-	AddFunction        func(*StatItem, *StatItem, *pb.GameHistory, int, string, bool)
+	AddFunction        func(*StatItem, *StatItem, *pb.GameHistory, int, string, bool) `json:"-"`
 }
 
 type Stats struct {
@@ -119,6 +118,7 @@ func (stats *Stats) AddGameToStats(history *pb.GameHistory, id string) error {
 	events := history.GetEvents()
 	for i := 0; i < len(events); i++ {
 		event := events[i]
+		//fmt.Println(event)
 		if history.Players[0].Nickname == event.Nickname ||
 			(history.Players[1].Nickname == event.Nickname && history.SecondWentFirst) {
 			incrementStatItems(stats.PlayerOneData, stats.PlayerTwoData, history, i, id, false)
@@ -171,46 +171,7 @@ func (stats *Stats) AddStatsToStats(otherStats *Stats) error {
 	return nil
 }
 
-func (stats *Stats) FinalizeStats() {
-	finalize(stats.PlayerOneData)
-	finalize(stats.PlayerTwoData)
-}
-
-func (stats *Stats) ToString() string {
-	s := "Player One Data:\n" + statItemListToString(stats.PlayerOneData)
-	s += "\nPlayer Two Data:\n" + statItemListToString(stats.PlayerTwoData)
-	s += "\nNotable Data:\n" + statItemListToString(stats.NotableData)
-	return s
-}
-
-func statItemListToString(data []*StatItem) string {
-	s := ""
-	for _, statItem := range data {
-		s += statItemToString(statItem)
-	}
-	return s
-}
-
-func statItemToString(statItem *StatItem) string {
-	subitemString := ""
-	if statItem.Subitems != nil {
-		subitemString = subitemsToString(statItem.Subitems)
-	}
-	return fmt.Sprintf("  %s:\n    Total: %d\n    Subitems:\n%s\n    List:\n%s", statItem.Name, statItem.Total, subitemString, listItemToString(statItem.List))
-}
-
-func subitemsToString(subitems map[string]int) string {
-	s := ""
-	for key, value := range subitems {
-		s += fmt.Sprintf("      %s -> %d\n", key, value)
-	}
-	return s
-}
-
-func listItemToString(listStat []*ListItem) string {
-	s := ""
-	for _, wordItem := range listStat {
-		s += fmt.Sprintf("      %s, %d, %d, %s\n", wordItem.Word, wordItem.Score, wordItem.Probability, wordItem.GameId)
-	}
-	return s
+func (stats *Stats) FinalizeStats(history *pb.GameHistory) {
+	finalize(stats.PlayerOneData, history)
+	finalize(stats.PlayerTwoData, history)
 }
