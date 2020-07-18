@@ -13,13 +13,16 @@ import (
 )
 
 // Events need to be sanitized so that we don't send user racks to people
-// who shouldn't get them.
-
+// who shouldn't get them. Note that sanitize only runs for events that are
+// sent DIRECTLY to a player (see AudUser), and not for AudGameTv for example.
 func sanitize(evt *entity.EventWrapper, userID string) (*entity.EventWrapper, error) {
 	// Depending on the event type and even the state of the game, we return a
 	// sanitized event (or not).
 	switch evt.Type {
 	case pb.MessageType_GAME_HISTORY_REFRESHER:
+		// When sent to AudUser, we should sanitize ONLY if we are someone
+		// who is playing in the game. This is because observers can also
+		// receive these events directly (through AudUser).
 		subevt, ok := evt.Event.(*pb.GameHistoryRefresher)
 		if !ok {
 			return nil, errors.New("subevt-wrong-format")
@@ -28,8 +31,16 @@ func sanitize(evt *entity.EventWrapper, userID string) (*entity.EventWrapper, er
 			// no need to sanitize if the game is over.
 			return evt, nil
 		}
+		mynick := nicknameFromUserID(userID, subevt.History.Players)
+		if mynick == "" {
+			// No need to sanitize if we don't have a nickname IN THE GAME;
+			// this only happens if we are not playing the game.
+			return evt, nil
+		}
+
 		cloned := proto.Clone(subevt).(*pb.GameHistoryRefresher)
-		mynick := nicknameFromUserID(userID, cloned.History.Players)
+		// Only sanitize if the nickname is not empty. The nickname is
+		// empty if they are not playing in this game.
 		for _, evt := range cloned.History.Events {
 			if evt.Nickname != mynick {
 				evt.Rack = ""
@@ -47,6 +58,9 @@ func sanitize(evt *entity.EventWrapper, userID string) (*entity.EventWrapper, er
 		return entity.WrapEvent(cloned, pb.MessageType_GAME_HISTORY_REFRESHER, evt.GameID()), nil
 
 	case pb.MessageType_SERVER_GAMEPLAY_EVENT:
+		// Server gameplay events
+		// When sent to AudUser, we need to sanitize them here. When sent to
+		// an AudGameTV, they are unsanitized, and handled elsewhere.
 		subevt, ok := evt.Event.(*pb.ServerGameplayEvent)
 		if !ok {
 			return nil, errors.New("subevt-wrong-format")

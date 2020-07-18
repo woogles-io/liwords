@@ -447,7 +447,12 @@ func performEndgameDuties(ctx context.Context, g *entity.Game, userStore user.St
 	wrapped.AddAudience(entity.AudGame, g.GameID())
 	wrapped.AddAudience(entity.AudGameTV, g.GameID())
 	g.SendChange(wrapped)
-
+	// One more thing -- if the Macondo game doesn't know the game is over, which
+	// can happen if the game didn't end normally (for example, a timeout or a resign)
+	// Then we need to set the final scores here.
+	if len(g.History().FinalScores) == 0 {
+		g.AddFinalScoresToHistory()
+	}
 }
 
 func discernEndgameReason(g *entity.Game) {
