@@ -5,6 +5,7 @@ jobs:
   build_api_srv:
     environment:
       LEXICON_PATH: /opt/lexica/
+      LETTER_DISTRIBUTION_PATH: /opt/liwords/data/letterdistribution/
     docker:
       - image: golang:alpine
     working_directory: /opt/liwords

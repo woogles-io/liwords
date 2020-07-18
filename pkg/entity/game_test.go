@@ -24,6 +24,7 @@ const (
 var DefaultConfig = macondoconfig.Config{
 	StrategyParamsPath:        os.Getenv("STRATEGY_PARAMS_PATH"),
 	LexiconPath:               os.Getenv("LEXICON_PATH"),
+	LetterDistributionPath:    os.Getenv("LETTER_DISTRIBUTION_PATH"),
 	DefaultLexicon:            "NWL18",
 	DefaultLetterDistribution: "English",
 }
@@ -33,20 +34,25 @@ func withinEpsilon(a, b int) bool {
 }
 
 func newMacondoGame() *game.Game {
-	rules, _ := game.NewGameRules(&DefaultConfig, board.CrosswordGameBoard,
+	rules, err := game.NewGameRules(&DefaultConfig, board.CrosswordGameBoard,
 		DefaultConfig.DefaultLexicon, DefaultConfig.DefaultLetterDistribution)
+	if err != nil {
+		panic(err)
+	}
 	players := []*macondopb.PlayerInfo{
 		{Nickname: "p1", RealName: "Player 1"},
 		{Nickname: "p2", RealName: "Player 2"},
 	}
 
-	mcg, _ := game.NewGame(rules, players)
+	mcg, err := game.NewGame(rules, players)
+	if err != nil {
+		panic(err)
+	}
 	return mcg
 }
 
 func TestTimeCalc(t *testing.T) {
 	is := is.New(t)
-
 	mcg := newMacondoGame()
 	g := NewGame(mcg, &pb.GameRequest{InitialTimeSeconds: 60, IncrementSeconds: 0})
 	g.ResetTimersAndStart()
