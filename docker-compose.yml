@@ -7,6 +7,7 @@ services:
       dockerfile: Dockerfile-dev
     environment:
       LEXICON_PATH: /opt/program/data/lexica
+      LETTER_DISTRIBUTION_PATH: /opt/program/data/letterdistributions
       DB_CONN_STRING: "host=db port=5432 user=postgres dbname=liwords password=pass sslmode=disable"
       SECRET_KEY: jqxztripletriple
       DEBUG: 1
