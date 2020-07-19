@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Route, Switch, useLocation } from 'react-router-dom';
 import './App.scss';
 import 'antd/dist/antd.css';
@@ -21,15 +21,24 @@ const JoinSocketDelay = 1000;
 const App = React.memo(() => {
   const store = useStoreContext();
   const socketUrl = getSocketURI();
+  const [connectedToSocket, setConnectedToSocket] = useState(false);
   const { sendMessage } = useWebSocket(socketUrl, {
-    onOpen: () => console.log('connected to socket'),
+    onOpen: () => {
+      console.log('connected to socket');
+      setConnectedToSocket(true);
+    },
+    onClose: () => {
+      console.log('disconnected from socket :(');
+      setConnectedToSocket(false);
+    },
+    retryOnError: true,
     // Will attempt to reconnect on all close events, such as server shutting down
     shouldReconnect: (closeEvent) => true,
     onMessage: (event: MessageEvent) =>
       decodeToMsg(event.data, onSocketMsg(store)),
   });
 
-  const { username, loggedIn } = useSocketToken(sendMessage);
+  const { username, loggedIn } = useSocketToken(sendMessage, connectedToSocket);
   const location = useLocation();
 
   useEffect(() => {

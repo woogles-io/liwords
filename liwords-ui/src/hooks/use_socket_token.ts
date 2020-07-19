@@ -18,11 +18,18 @@ type DecodedToken = {
   a: boolean; // authed
 };
 
-export const useSocketToken = (sendSocketMessage: SendMessage) => {
+export const useSocketToken = (
+  sendSocketMessage: SendMessage,
+  connectedToSocket: boolean
+) => {
   const [username, setUsername] = useState('Anonymous');
   const [loggedIn, setLoggedIn] = useState(false);
 
   useEffect(() => {
+    if (!connectedToSocket) {
+      console.log('not fetching while disconnected...');
+      return;
+    }
     console.log('fetching socket token...');
     axios
       .post<TokenResponse>(
@@ -50,7 +57,7 @@ export const useSocketToken = (sendSocketMessage: SendMessage) => {
         }
       });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [connectedToSocket]);
 
   return {
     username,
