@@ -63,6 +63,7 @@ const App = React.memo(() => {
             username={username}
             sendSocketMsg={sendMessage}
             loggedIn={loggedIn}
+            // connectedToSocket={connectedToSocket}
           />
         </Route>
         <Route path="/game/:gameID">
@@ -71,6 +72,8 @@ const App = React.memo(() => {
             sendSocketMsg={sendMessage}
             username={username}
             loggedIn={loggedIn}
+            // can use some visual indicator to show the user if they disconnected
+            // connectedToSocket={connectedToSocket}
           />
         </Route>
 

@@ -336,15 +336,32 @@ const setClock = (newState: GameState, sge: ServerGameplayEvent) => {
   const justPlayed = newState.nickToPlayerOrder[evt.getNickname()];
   let { p0, p1 } = newState.clockController.current.times;
   let activePlayer;
+  let flipTimeRemaining = false;
+  console.log('just played', justPlayed, evt.getNickname());
+  console.log('player times are currently', p0, p1, 'from evt:', rem);
+
+  if (
+    evt.getType() === GameEvent.Type.CHALLENGE_BONUS ||
+    evt.getType() === GameEvent.Type.PHONY_TILES_RETURNED
+  ) {
+    // For these particular two events, the time remaining is for the CHALLENGER.
+    // Therefore, it's not the time remaining of the player whose nickname is
+    // in the event, so we must flip the times here.
+    flipTimeRemaining = true;
+    console.log('flipTimeRemaining = true');
+  }
+
   if (justPlayed === 'p0') {
-    p0 = rem;
+    flipTimeRemaining ? (p1 = rem) : (p0 = rem);
     activePlayer = 'p1';
   } else if (justPlayed === 'p1') {
-    p1 = rem;
+    flipTimeRemaining ? (p0 = rem) : (p1 = rem);
     activePlayer = 'p0';
   } else {
     throw new Error(`just played ${justPlayed} is unexpected`);
   }
+  console.log('activePlayer is', activePlayer);
+
   newState.clockController.current.setClock(
     newState.playState,
     {
