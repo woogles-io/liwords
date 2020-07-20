@@ -8,3 +8,4 @@ node_modules
 .idea/vcs.xml
 .idea/workspace.xml
 liwords.iml
+.idea/

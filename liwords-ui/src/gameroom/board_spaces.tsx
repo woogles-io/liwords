@@ -6,7 +6,7 @@ import { BonusType } from '../constants/board_layout';
 
 type Props = {
   gridDim: number;
-  handleTileDrop?: (row: number, col: number, rackIndex: number) => void;
+  handleTileDrop?: (row: number, col: number, rackIndex: number | undefined, tileIndex: number | undefined) => void;
   showBonusLabels: boolean;
   gridLayout: Array<string>;
   placementArrow: PlacementArrow;
@@ -36,9 +36,10 @@ const BoardSpaces = React.memo((props: Props) => {
           handleTileDrop={ (e : any) => {
             if (props.handleTileDrop) {
               props.handleTileDrop(
-              y,
-              x,
-              parseInt(e.dataTransfer.getData('rackIndex'), 10)
+                y,
+                x,
+                parseInt(e.dataTransfer.getData('rackIndex'), 10),
+                parseInt(e.dataTransfer.getData('tileIndex'), 10),
               );
             }
           }}

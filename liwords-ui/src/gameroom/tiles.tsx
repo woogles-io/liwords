@@ -14,6 +14,10 @@ type Props = {
   scaleTiles: boolean;
   tentativeTiles: Set<EphemeralTile>;
   tentativeTileScore: number | undefined;
+  returnToRack?: (
+    rackIndex: number | undefined,
+    tileIndex: number | undefined
+  ) => void;
 };
 
 const Tiles = React.memo((props: Props) => {

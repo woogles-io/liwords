@@ -214,6 +214,11 @@
 .tile {
   pointer-events: all;
 }
+
+.tile.dragging {
+  opacity: 0.4;
+}
+
 .tile .rune {
   @include type-monospace;
   color: white;
@@ -223,6 +228,10 @@
   font-weight: 600;
   width: 100%;
   padding-bottom: 3px;
+}
+
+.tile.tentative .rune {
+  opacity: 0.8;
 }
 
 .tile .point-value {
@@ -245,16 +254,30 @@
   }
 }
 
+.blank-selector {
+  display: flex;
+  flex-wrap: wrap;
+  width: 326px;
+  .tile {
+    width: 44px;
+    height: 44px;
+    margin: 0 2px 2px 0;
+    .rune {
+      font-size: 30px;
+    }
+  }
+}
 
 .tile .tentative-score {
   position: absolute;
   display: flex;
+  pointer-events: none;
   align-items: center;
   justify-content: center;
   width: 90%;
   height: 70%;
   border-radius: 15%;
-  font-size: 0.9vw;
+  font-size: 1.1vw;
   font-weight: bold;
   margin: 0;
   left: -95%;
@@ -262,6 +285,9 @@
   color: white;
 }
 
+.tile.dragging .tentative-score {
+  opacity: 0;
+}
 
 // Pool
 .pool {
