@@ -8,8 +8,10 @@ export const gameEventsToTurns = (evts: Array<GameEvent>) => {
   let lastTurn: Turn = new Array<GameEvent>();
   evts.forEach((evt) => {
     if (
-      lastTurn.length !== 0 &&
-      lastTurn[0].getNickname() !== evt.getNickname()
+      (lastTurn.length !== 0 &&
+        lastTurn[0].getNickname() !== evt.getNickname()) ||
+      evt.getType() === GameEvent.Type.TIME_PENALTY ||
+      evt.getType() === GameEvent.Type.END_RACK_PENALTY
     ) {
       // time to add a new turn.
       turns.push(lastTurn);

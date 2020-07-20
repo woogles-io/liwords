@@ -32,6 +32,7 @@ type MoveEntityObj = {
   score: string;
   oldScore: number;
   cumulative: number;
+  lostScore: number;
 };
 
 const displaySummary = (evt: GameEvent, board: Board) => {
@@ -49,6 +50,10 @@ const displaySummary = (evt: GameEvent, board: Board) => {
 
     case GameEvent.Type.UNSUCCESSFUL_CHALLENGE_TURN_LOSS:
       return 'Challenged!';
+    case GameEvent.Type.END_RACK_PENALTY:
+      return '(Final rack pts.)';
+    case GameEvent.Type.TIME_PENALTY:
+      return '(Time penalty)';
   }
   return '';
 };
@@ -70,8 +75,11 @@ const ScorecardTurn = (props: turnProps) => {
       rack: evts[0].getRack(),
       play: displaySummary(evts[0], props.board),
       score: `${evts[0].getScore()}`,
+      lostScore: evts[0].getLostScore(),
       cumulative: evts[0].getCumulative(),
-      oldScore: evts[0].getCumulative() - evts[0].getScore(),
+      oldScore: evts[0].getLostScore()
+        ? evts[0].getCumulative() + evts[0].getLostScore()
+        : evts[0].getCumulative() - evts[0].getScore(),
     };
     if (evts.length === 1) {
       return turn;
@@ -88,15 +96,15 @@ const ScorecardTurn = (props: turnProps) => {
           case GameEvent.Type.CHALLENGE_BONUS:
             turn.score = `${turn.score}+${evts[i].getBonus()}`;
             break;
-          case GameEvent.Type.END_RACK_PENALTY:
-            turn.score = `${turn.score}-${evts[i].getLostScore()}`;
-            break;
+          // case GameEvent.Type.END_RACK_PENALTY:
+          //   turn.score = `${turn.score}-${evts[i].getLostScore()}`;
+          //   break;
           case GameEvent.Type.END_RACK_PTS:
             turn.score = `${turn.score}+${evts[i].getEndRackPoints()}`;
             break;
-          case GameEvent.Type.TIME_PENALTY:
-            turn.score = `${turn.score}-${evts[i].getLostScore()}`;
-            break;
+          // case GameEvent.Type.TIME_PENALTY:
+          //   turn.score = `${turn.score}-${evts[i].getLostScore()}`;
+          //   break;
         }
         turn.cumulative = evts[i].getCumulative();
       }
@@ -117,7 +125,10 @@ const ScorecardTurn = (props: turnProps) => {
           {memoizedTurn.rack}
         </div>
         <div className="scores">
-          {`${memoizedTurn.oldScore}+${memoizedTurn.score}`} <br />
+          {memoizedTurn.lostScore > 0
+            ? `${memoizedTurn.oldScore}-${memoizedTurn.lostScore}`
+            : `${memoizedTurn.oldScore}+${memoizedTurn.score}`}
+          <br />
           <strong>{memoizedTurn.cumulative}</strong>
         </div>
       </div>

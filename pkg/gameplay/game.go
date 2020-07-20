@@ -465,11 +465,12 @@ func performEndgameDuties(ctx context.Context, g *entity.Game, userStore user.St
 		// >Pakorn: ISBALI (time) -10 409
 		evts = append(evts, &pb.ServerGameplayEvent{
 			Event: &macondopb.GameEvent{
-				Nickname:   g.History().Players[0].Nickname,
-				Rack:       g.RackLettersFor(0),
-				Type:       macondopb.GameEvent_TIME_PENALTY,
-				LostScore:  int32(p0penalty),
-				Cumulative: int32(newscore),
+				Nickname:        g.History().Players[0].Nickname,
+				Rack:            g.RackLettersFor(0),
+				Type:            macondopb.GameEvent_TIME_PENALTY,
+				LostScore:       int32(p0penalty),
+				Cumulative:      int32(newscore),
+				MillisRemaining: int32(g.CachedTimeRemaining(0)),
 			},
 			GameId:  g.GameID(),
 			Playing: macondopb.PlayState_GAME_OVER,
@@ -480,11 +481,12 @@ func performEndgameDuties(ctx context.Context, g *entity.Game, userStore user.St
 		newscore := g.PointsFor(1) - p1penalty
 		evts = append(evts, &pb.ServerGameplayEvent{
 			Event: &macondopb.GameEvent{
-				Nickname:   g.History().Players[1].Nickname,
-				Rack:       g.RackLettersFor(1),
-				Type:       macondopb.GameEvent_TIME_PENALTY,
-				LostScore:  int32(p1penalty),
-				Cumulative: int32(newscore),
+				Nickname:        g.History().Players[1].Nickname,
+				Rack:            g.RackLettersFor(1),
+				Type:            macondopb.GameEvent_TIME_PENALTY,
+				LostScore:       int32(p1penalty),
+				Cumulative:      int32(newscore),
+				MillisRemaining: int32(g.CachedTimeRemaining(1)),
 			},
 			GameId:  g.GameID(),
 			Playing: macondopb.PlayState_GAME_OVER,

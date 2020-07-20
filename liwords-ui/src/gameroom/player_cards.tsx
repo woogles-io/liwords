@@ -62,7 +62,10 @@ const PlayerCard = React.memo((props: CardProps) => {
       </Row>
       <Row className="score-timer">
         <Button className="score" type="primary">
-          {props.player.score - timepenalty(props.time)}
+          {props.playing
+            ? // If we're still playing the time penalty has not yet been calculated.
+              props.player.score - timepenalty(props.time)
+            : props.player.score}
         </Button>
         <Button className="timer" type="primary">
           {timeStr}
