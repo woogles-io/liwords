@@ -1,6 +1,5 @@
 /** @fileoverview business logic for placing tiles on a board */
 import {EnglishCrosswordGameDistribution} from '../../constants/tile_distributions';
-import {CrosswordGameTileValues} from '../../constants/tile_values';
 
 import {
 	EphemeralTile,
