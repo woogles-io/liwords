@@ -214,8 +214,7 @@ func handleChallenge(ctx context.Context, entGame *entity.Game, gameStore GameSt
 	}
 
 	if entGame.Game.Playing() == macondopb.PlayState_GAME_OVER {
-		discernEndgameReason(entGame)
-		performEndgameDuties(ctx, entGame, userStore)
+		checkGameOverAndModifyScores(ctx, entGame, userStore)
 	}
 
 	err = gameStore.Set(ctx, entGame)
@@ -327,8 +326,7 @@ func PlayMove(ctx context.Context, gameStore GameStore, userStore user.Store, us
 		entGame.SendChange(wrapped)
 	}
 	if playing == macondopb.PlayState_GAME_OVER {
-		discernEndgameReason(entGame)
-		performEndgameDuties(ctx, entGame, userStore)
+		checkGameOverAndModifyScores(ctx, entGame, userStore)
 	}
 
 	err = gameStore.Set(ctx, entGame)
@@ -337,6 +335,11 @@ func PlayMove(ctx context.Context, gameStore GameStore, userStore user.Store, us
 	}
 
 	return nil
+}
+
+func checkGameOverAndModifyScores(ctx context.Context, entGame *entity.Game, userStore user.Store) {
+	discernEndgameReason(entGame)
+	performEndgameDuties(ctx, entGame, userStore)
 }
 
 // TimedOut gets called when the client thinks the user's time ran out. We
@@ -447,6 +450,83 @@ func gameEndedEvent(ctx context.Context, g *entity.Game, userStore user.Store) *
 }
 
 func performEndgameDuties(ctx context.Context, g *entity.Game, userStore user.Store) {
+	evts := []*pb.ServerGameplayEvent{}
+
+	var p0penalty, p1penalty int
+	if g.CachedTimeRemaining(0) < 0 {
+		p0penalty = 10 * int(math.Ceil(float64(-g.CachedTimeRemaining(0))/60000.0))
+	}
+	if g.CachedTimeRemaining(1) < 0 {
+		p1penalty = 10 * int(math.Ceil(float64(-g.CachedTimeRemaining(1))/60000.0))
+	}
+
+	if p0penalty > 0 {
+		newscore := g.PointsFor(0) - p0penalty
+		// >Pakorn: ISBALI (time) -10 409
+		evts = append(evts, &pb.ServerGameplayEvent{
+			Event: &macondopb.GameEvent{
+				Nickname:   g.History().Players[0].Nickname,
+				Rack:       g.RackLettersFor(0),
+				Type:       macondopb.GameEvent_TIME_PENALTY,
+				LostScore:  int32(p0penalty),
+				Cumulative: int32(newscore),
+			},
+			GameId:  g.GameID(),
+			Playing: macondopb.PlayState_GAME_OVER,
+		})
+		g.SetPointsFor(0, newscore)
+	}
+	if p1penalty > 0 {
+		newscore := g.PointsFor(1) - p1penalty
+		evts = append(evts, &pb.ServerGameplayEvent{
+			Event: &macondopb.GameEvent{
+				Nickname:   g.History().Players[1].Nickname,
+				Rack:       g.RackLettersFor(1),
+				Type:       macondopb.GameEvent_TIME_PENALTY,
+				LostScore:  int32(p1penalty),
+				Cumulative: int32(newscore),
+			},
+			GameId:  g.GameID(),
+			Playing: macondopb.PlayState_GAME_OVER,
+		})
+		g.SetPointsFor(1, newscore)
+	}
+
+	for _, sge := range evts {
+		wrapped := entity.WrapEvent(sge, pb.MessageType_SERVER_GAMEPLAY_EVENT,
+			g.GameID())
+		wrapped.AddAudience(entity.AudGameTV, g.GameID())
+		wrapped.AddAudience(entity.AudGame, g.GameID())
+		g.SendChange(wrapped)
+		g.History().Events = append(g.History().Events, sge.Event)
+	}
+
+	if !g.WinnerWasSet() {
+		// Compute the winner. The winner is already set if someone timed out
+		// or resigned, so we only do this if we need to calculate the winner.
+		if g.PointsFor(0) > g.PointsFor(1) {
+			g.SetWinnerIdx(0)
+			g.SetLoserIdx(1)
+		} else if g.PointsFor(1) > g.PointsFor(0) {
+			g.SetWinnerIdx(1)
+			g.SetLoserIdx(0)
+		} else {
+			// They're the same.
+			g.SetWinnerIdx(-1)
+			g.SetLoserIdx(-1)
+		}
+	}
+
+	log.Debug().Int("p0penalty", p0penalty).Int("p1penalty", p1penalty).Msg("time-penalties")
+
+	// One more thing -- if the Macondo game doesn't know the game is over, which
+	// can happen if the game didn't end normally (for example, a timeout or a resign)
+	// Then we need to set the final scores here.
+	if len(g.History().FinalScores) == 0 || len(evts) > 0 {
+		g.AddFinalScoresToHistory()
+	}
+
+	// Finally, send a gameEndedEvent, which rates the game.
 	wrapped := entity.WrapEvent(gameEndedEvent(ctx, g, userStore),
 		pb.MessageType_GAME_ENDED_EVENT, g.GameID())
 	// Once the game ends, we do not need to "sanitize" the packets
@@ -455,12 +535,6 @@ func performEndgameDuties(ctx context.Context, g *entity.Game, userStore user.St
 	wrapped.AddAudience(entity.AudGame, g.GameID())
 	wrapped.AddAudience(entity.AudGameTV, g.GameID())
 	g.SendChange(wrapped)
-	// One more thing -- if the Macondo game doesn't know the game is over, which
-	// can happen if the game didn't end normally (for example, a timeout or a resign)
-	// Then we need to set the final scores here.
-	if len(g.History().FinalScores) == 0 {
-		g.AddFinalScoresToHistory()
-	}
 }
 
 func discernEndgameReason(g *entity.Game) {
@@ -468,39 +542,10 @@ func discernEndgameReason(g *entity.Game) {
 	// standard or six-zero. The game ending on a timeout is handled in
 	// another branch (see setTimedOut above) and resignation/etc will
 	// also be handled elsewhere.
-	// Subtract points for timing out here as well.
+
 	if g.RackLettersFor(0) == "" || g.RackLettersFor(1) == "" {
 		g.SetGameEndReason(pb.GameEndReason_STANDARD)
 	} else {
 		g.SetGameEndReason(pb.GameEndReason_CONSECUTIVE_ZEROES)
-	}
-	var p0penalty, p1penalty int
-
-	if g.CachedTimeRemaining(0) < 0 {
-		p0penalty = int(math.Ceil(float64(-g.CachedTimeRemaining(0)) / 60000.0))
-	}
-	if g.CachedTimeRemaining(1) < 0 {
-		p1penalty = int(math.Ceil(float64(-g.CachedTimeRemaining(1)) / 60000.0))
-	}
-
-	if p0penalty > 0 {
-		g.SetPointsFor(0, g.PointsFor(0)-p0penalty)
-	}
-	if p1penalty > 0 {
-		g.SetPointsFor(1, g.PointsFor(1)-p1penalty)
-	}
-
-	log.Debug().Int("p0penalty", p0penalty).Int("p1penalty", p1penalty).Msg("time-penalties")
-
-	if g.PointsFor(0) > g.PointsFor(1) {
-		g.SetWinnerIdx(0)
-		g.SetLoserIdx(1)
-	} else if g.PointsFor(1) > g.PointsFor(0) {
-		g.SetWinnerIdx(1)
-		g.SetLoserIdx(0)
-	} else {
-		// They're the same.
-		g.SetWinnerIdx(-1)
-		g.SetLoserIdx(-1)
 	}
 }

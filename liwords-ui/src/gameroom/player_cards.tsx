@@ -15,6 +15,18 @@ type CardProps = {
   playing: boolean;
 };
 
+const timepenalty = (time: Millis) => {
+  // Calculate a timepenalty for display purposes only. The backend will
+  // also properly calculate this.
+
+  if (time >= 0) {
+    return 0;
+  }
+
+  const minsOvertime = Math.ceil(Math.abs(time) / 60000);
+  return minsOvertime * 10;
+};
+
 const PlayerCard = React.memo((props: CardProps) => {
   if (!props.player) {
     return <Card />;
@@ -50,7 +62,7 @@ const PlayerCard = React.memo((props: CardProps) => {
       </Row>
       <Row className="score-timer">
         <Button className="score" type="primary">
-          {props.player.score}
+          {props.player.score - timepenalty(props.time)}
         </Button>
         <Button className="timer" type="primary">
           {timeStr}

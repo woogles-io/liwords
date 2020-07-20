@@ -209,3 +209,9 @@ func (g *Game) SetLoserIdx(pidx int) {
 func (g *Game) GetWinnerIdx() int {
 	return g.winnerIdx
 }
+
+func (g *Game) WinnerWasSet() bool {
+	// This is the only case in which the winner has not yet been set,
+	// when both winnerIdx and loserIdx are 0.
+	return !(g.winnerIdx == 0 && g.loserIdx == 0)
+}

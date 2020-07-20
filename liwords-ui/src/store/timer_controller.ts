@@ -7,7 +7,8 @@ import { PlayerOrder } from './constants';
 // import { GameState } from './reducers/game_reducer';
 import { PlayState } from '../gen/macondo/api/proto/macondo/macondo_pb';
 
-const showTenthsCutoff = 10000;
+const positiveShowTenthsCutoff = 10000;
+const negativeShowTenthsCutoff = -1000;
 
 export type Seconds = number;
 export type Centis = number;
@@ -30,18 +31,27 @@ export const millisToTimeStr = (
 ): string => {
   const neg = ms < 0;
   // eslint-disable-next-line no-param-reassign
-  ms = Math.abs(ms);
+  const absms = Math.abs(ms);
   // const mins = Math.floor(ms / 60000);
   let secs;
   let secStr;
   let mins;
-  if (ms > showTenthsCutoff || !showTenths) {
-    const totalSecs = Math.ceil(ms / 1000);
+  if (
+    ms > positiveShowTenthsCutoff ||
+    ms < negativeShowTenthsCutoff ||
+    !showTenths
+  ) {
+    let totalSecs;
+    if (!neg) {
+      totalSecs = Math.ceil(absms / 1000);
+    } else {
+      totalSecs = Math.floor(absms / 1000);
+    }
     secs = totalSecs % 60;
     mins = Math.floor(totalSecs / 60);
     secStr = secs.toString().padStart(2, '0');
   } else {
-    secs = ms / 1000;
+    secs = absms / 1000;
     mins = Math.floor(secs / 60);
     secStr = secs.toFixed(1).padStart(4, '0');
   }
@@ -79,7 +89,8 @@ export class ClockController {
     onTick: (p: PlayerOrder, t: Millis) => void
   ) {
     // Show tenths after 10 seconds.
-    this.showTenths = (time) => time < showTenthsCutoff;
+    this.showTenths = (time) =>
+      time < positiveShowTenthsCutoff && time > negativeShowTenthsCutoff;
 
     this.times = { ...ts };
     this.onTimeout = onTimeout;
