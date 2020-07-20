@@ -55,6 +55,9 @@ export class GameRequest extends jspb.Message {
   getRequestId(): string;
   setRequestId(value: string): void;
 
+  getMaxOvertimeMinutes(): number;
+  setMaxOvertimeMinutes(value: number): void;
+
   serializeBinary(): Uint8Array;
   toObject(includeInstance?: boolean): GameRequest.AsObject;
   static toObject(includeInstance: boolean, msg: GameRequest): GameRequest.AsObject;
@@ -75,6 +78,7 @@ export namespace GameRequest {
     gameMode: GameModeMap[keyof GameModeMap],
     ratingMode: RatingModeMap[keyof RatingModeMap],
     requestId: string,
+    maxOvertimeMinutes: number,
   }
 }
 

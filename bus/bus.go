@@ -401,6 +401,7 @@ func (b *Bus) openSeeks(ctx context.Context) (*entity.EventWrapper, error) {
 	if err != nil {
 		return nil, err
 	}
+	log.Debug().Interface("open-seeks", sgs).Msg("open-seeks")
 
 	pbobj := &pb.SeekRequests{Requests: []*pb.SeekRequest{}}
 	for _, sg := range sgs {

@@ -56,6 +56,10 @@ export type Times = {
   lastUpdate: Millis;
 };
 
+const minsToMillis = (m: number) => {
+  return (m * 60000) as Millis;
+};
+
 export class ClockController {
   showTenths: (millis: Millis) => boolean;
 
@@ -66,6 +70,8 @@ export class ClockController {
   onTimeout: (activePlayer: PlayerOrder) => void;
 
   onTick: (p: PlayerOrder, t: Millis) => void;
+
+  maxOvertimeMinutes: number;
 
   constructor(
     ts: Times,
@@ -79,7 +85,7 @@ export class ClockController {
     this.onTimeout = onTimeout;
     this.onTick = onTick;
     this.setClock(PlayState.PLAYING, this.times);
-
+    this.maxOvertimeMinutes = 0;
     console.log('in timer controller constructor', this.times);
   }
 
@@ -100,6 +106,11 @@ export class ClockController {
     }
   };
 
+  setMaxOvertime = (maxOTMinutes: number) => {
+    console.log('Set max overtime mins', maxOTMinutes);
+    this.maxOvertimeMinutes = maxOTMinutes;
+  };
+
   stopClock = (): Millis | null => {
     console.log('stopClock');
 
@@ -107,7 +118,7 @@ export class ClockController {
     if (activePlayer) {
       const curElapse = this.elapsed();
       this.times[activePlayer] = Math.max(
-        0,
+        -minsToMillis(this.maxOvertimeMinutes),
         this.times[activePlayer] - curElapse
       );
       this.times.activePlayer = undefined;
@@ -136,10 +147,13 @@ export class ClockController {
     }
 
     const now = performance.now();
-    const millis = Math.max(0, this.times[activePlayer] - this.elapsed(now));
+    const millis = Math.max(
+      -minsToMillis(this.maxOvertimeMinutes),
+      this.times[activePlayer] - this.elapsed(now)
+    );
     this.onTick(activePlayer, millis);
 
-    if (millis !== 0) {
+    if (millis !== -minsToMillis(this.maxOvertimeMinutes)) {
       this.scheduleTick(millis, 0);
     } else {
       // we timed out.
@@ -148,10 +162,16 @@ export class ClockController {
   };
 
   elapsed = (now = performance.now()) =>
-    Math.max(0, now - this.times.lastUpdate);
+    Math.max(
+      -minsToMillis(this.maxOvertimeMinutes),
+      now - this.times.lastUpdate
+    );
 
   millisOf = (p: PlayerOrder): Millis =>
     this.times.activePlayer === p
-      ? Math.max(0, this.times[p] - this.elapsed())
+      ? Math.max(
+          -minsToMillis(this.maxOvertimeMinutes),
+          this.times[p] - this.elapsed()
+        )
       : this.times[p];
 }

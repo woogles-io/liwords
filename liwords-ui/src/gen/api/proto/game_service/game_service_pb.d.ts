@@ -99,6 +99,9 @@ export class GameInfoResponse extends jspb.Message {
   getDone(): boolean;
   setDone(value: boolean): void;
 
+  getMaxOvertimeMinutes(): number;
+  setMaxOvertimeMinutes(value: number): void;
+
   serializeBinary(): Uint8Array;
   toObject(includeInstance?: boolean): GameInfoResponse.AsObject;
   static toObject(includeInstance: boolean, msg: GameInfoResponse): GameInfoResponse.AsObject;
@@ -120,6 +123,7 @@ export namespace GameInfoResponse {
     challengeRule: macondo_api_proto_macondo_macondo_pb.ChallengeRuleMap[keyof macondo_api_proto_macondo_macondo_pb.ChallengeRuleMap],
     ratingMode: api_proto_realtime_realtime_pb.RatingModeMap[keyof api_proto_realtime_realtime_pb.RatingModeMap],
     done: boolean,
+    maxOvertimeMinutes: number,
   }
 }
 

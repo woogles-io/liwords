@@ -9,6 +9,7 @@ export type GameMetadata = {
   lexicon: string;
   variant: string;
   time_control: string;
+  max_overtime_minutes: number;
   tournament_name: string;
   challenge_rule: 'FIVE_POINT' | 'TEN_POINT' | 'SINGLE' | 'DOUBLE' | 'VOID';
   rating_mode: number;

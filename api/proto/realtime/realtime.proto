@@ -40,6 +40,7 @@ message GameRequest {
   GameMode game_mode = 6;
   RatingMode rating_mode = 7;
   string request_id = 8;
+  int32 max_overtime_minutes = 9;
 }
 
 // A RequestingUser requests a match via a seek or a match request.

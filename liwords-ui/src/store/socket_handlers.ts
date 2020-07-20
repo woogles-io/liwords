@@ -96,6 +96,7 @@ export const onSocketMsg = (storeData: StoreData) => {
               challengeRule: gameReq.getChallengeRule(),
               seekID: gameReq.getRequestId(),
               rated: gameReq.getRatingMode() === RatingMode.RATED,
+              maxOvertimeMinutes: gameReq.getMaxOvertimeMinutes(),
             },
           });
           break;
@@ -116,6 +117,7 @@ export const onSocketMsg = (storeData: StoreData) => {
                 challengeRule: gameReq.getChallengeRule(),
                 seekID: gameReq.getRequestId(),
                 rated: gameReq.getRatingMode() === RatingMode.RATED,
+                maxOvertimeMinutes: gameReq.getMaxOvertimeMinutes(),
               };
             }),
           });

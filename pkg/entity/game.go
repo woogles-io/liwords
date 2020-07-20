@@ -27,7 +27,9 @@ type Game struct {
 
 	// perTurnIncrement, in seconds
 	perTurnIncrement int
-	gamereq          *pb.GameRequest
+	// maxOvertime, in minutes
+	maxOvertime int
+	gamereq     *pb.GameRequest
 	// started is set when the game actually starts (when the game timers start).
 	// Note that the internal game.Game may have started a few seconds before,
 	// but there should be no information about it given until _this_ started
@@ -57,6 +59,7 @@ func NewGame(mcg *game.Game, req *pb.GameRequest) *Game {
 		Game:             *mcg,
 		timeRemaining:    []int{ms, ms},
 		perTurnIncrement: int(req.IncrementSeconds),
+		maxOvertime:      int(req.MaxOvertimeMinutes),
 		gamereq:          req,
 	}
 }
@@ -87,6 +90,21 @@ func (g *Game) TimeRemaining(idx int) int {
 	}
 	// If the player is not on turn just return whatever the "cache" says.
 	return g.timeRemaining[idx]
+}
+
+func (g *Game) CachedTimeRemaining(idx int) int {
+	return g.timeRemaining[idx]
+}
+
+// TimeRanOut calculates if time ran out for the given player. Assumes player is
+// on turn, otherwise it always returns false.
+func (g *Game) TimeRanOut(idx int) bool {
+	if g.Game.PlayerOnTurn() != idx {
+		return false
+	}
+	now := msTimestamp()
+	tr := g.timeRemaining[idx] - int(now-g.timeOfLastUpdate)
+	return tr < (-g.maxOvertime * 60000)
 }
 
 func (g *Game) TimeStarted() int64 {

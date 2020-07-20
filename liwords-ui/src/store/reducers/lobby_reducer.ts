@@ -4,6 +4,7 @@ export type SoughtGame = {
   seeker: string;
   lexicon: string;
   initialTimeSecs: number;
+  maxOvertimeMinutes: number;
   challengeRule: number;
   userRating: string;
   rated: boolean;

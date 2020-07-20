@@ -615,7 +615,8 @@ proto.liwords.GameRequest.toObject = function(includeInstance, msg) {
     challengeRule: jspb.Message.getFieldWithDefault(msg, 5, 0),
     gameMode: jspb.Message.getFieldWithDefault(msg, 6, 0),
     ratingMode: jspb.Message.getFieldWithDefault(msg, 7, 0),
-    requestId: jspb.Message.getFieldWithDefault(msg, 8, "")
+    requestId: jspb.Message.getFieldWithDefault(msg, 8, ""),
+    maxOvertimeMinutes: jspb.Message.getFieldWithDefault(msg, 9, 0)
   };
 
   if (includeInstance) {
@@ -684,6 +685,10 @@ proto.liwords.GameRequest.deserializeBinaryFromReader = function(msg, reader) {
     case 8:
       var value = /** @type {string} */ (reader.readString());
       msg.setRequestId(value);
+      break;
+    case 9:
+      var value = /** @type {number} */ (reader.readInt32());
+      msg.setMaxOvertimeMinutes(value);
       break;
     default:
       reader.skipField();
@@ -768,6 +773,13 @@ proto.liwords.GameRequest.serializeBinaryToWriter = function(message, writer) {
   if (f.length > 0) {
     writer.writeString(
       8,
+      f
+    );
+  }
+  f = message.getMaxOvertimeMinutes();
+  if (f !== 0) {
+    writer.writeInt32(
+      9,
       f
     );
   }
@@ -934,6 +946,24 @@ proto.liwords.GameRequest.prototype.getRequestId = function() {
  */
 proto.liwords.GameRequest.prototype.setRequestId = function(value) {
   return jspb.Message.setProto3StringField(this, 8, value);
+};
+
+
+/**
+ * optional int32 max_overtime_minutes = 9;
+ * @return {number}
+ */
+proto.liwords.GameRequest.prototype.getMaxOvertimeMinutes = function() {
+  return /** @type {number} */ (jspb.Message.getFieldWithDefault(this, 9, 0));
+};
+
+
+/**
+ * @param {number} value
+ * @return {!proto.liwords.GameRequest} returns this
+ */
+proto.liwords.GameRequest.prototype.setMaxOvertimeMinutes = function(value) {
+  return jspb.Message.setProto3IntField(this, 9, value);
 };
 
 

@@ -34,6 +34,7 @@ message GameInfoResponse {
   liwords.RatingMode rating_mode = 8;
   // done - is game done?
   bool done = 9;
+  int32 max_overtime_minutes = 10;
 }
 
 service GameMetadataService {

@@ -42,11 +42,14 @@ export const SeekForm = (props: Props) => {
           <Radio.Button value={ChallengeRule.VOID}>Void</Radio.Button>
         </Radio.Group>
       </Form.Item>
-      <Form.Item label="Rated" name="rated" valuePropName="checked">
-        <Switch />
-      </Form.Item>
       <Form.Item label="Initial Time (minutes)" name="initialtime">
         <InputNumber />
+      </Form.Item>
+      <Form.Item label="Max Overtime (minutes)" name="maxovertime">
+        <InputNumber max={5} min={0} />
+      </Form.Item>
+      <Form.Item label="Rated" name="rated" valuePropName="checked">
+        <Switch />
       </Form.Item>
       Time Control: <Tag color={ttag}>{timectrl}</Tag>
     </Form>

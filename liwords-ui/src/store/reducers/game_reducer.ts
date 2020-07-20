@@ -493,6 +493,17 @@ export const GameReducer = (state: GameState, action: Action): GameState => {
       // throw an Error..
       return newState;
     }
+
+    case ActionType.SetMaxOvertime: {
+      const maxOvertimeMinutes = action.payload as number;
+      // This is not a great use of reducers, but the clockController is an
+      // imperative controller anyway so we just modify it here and keep the state
+      // the same.
+      if (state.clockController !== null) {
+        state.clockController.current?.setMaxOvertime(maxOvertimeMinutes);
+      }
+      return state;
+    }
   }
   // This should never be reached, but the compiler is complaining.
   throw new Error(`Unhandled action type ${action.actionType}`);

@@ -570,7 +570,8 @@ proto.game_service.GameInfoResponse.toObject = function(includeInstance, msg) {
     tournamentName: jspb.Message.getFieldWithDefault(msg, 6, ""),
     challengeRule: jspb.Message.getFieldWithDefault(msg, 7, 0),
     ratingMode: jspb.Message.getFieldWithDefault(msg, 8, 0),
-    done: jspb.Message.getBooleanFieldWithDefault(msg, 9, false)
+    done: jspb.Message.getBooleanFieldWithDefault(msg, 9, false),
+    maxOvertimeMinutes: jspb.Message.getFieldWithDefault(msg, 10, 0)
   };
 
   if (includeInstance) {
@@ -643,6 +644,10 @@ proto.game_service.GameInfoResponse.deserializeBinaryFromReader = function(msg, 
     case 9:
       var value = /** @type {boolean} */ (reader.readBool());
       msg.setDone(value);
+      break;
+    case 10:
+      var value = /** @type {number} */ (reader.readInt32());
+      msg.setMaxOvertimeMinutes(value);
       break;
     default:
       reader.skipField();
@@ -734,6 +739,13 @@ proto.game_service.GameInfoResponse.serializeBinaryToWriter = function(message, 
   if (f) {
     writer.writeBool(
       9,
+      f
+    );
+  }
+  f = message.getMaxOvertimeMinutes();
+  if (f !== 0) {
+    writer.writeInt32(
+      10,
       f
     );
   }
@@ -919,6 +931,24 @@ proto.game_service.GameInfoResponse.prototype.getDone = function() {
  */
 proto.game_service.GameInfoResponse.prototype.setDone = function(value) {
   return jspb.Message.setProto3BooleanField(this, 9, value);
+};
+
+
+/**
+ * optional int32 max_overtime_minutes = 10;
+ * @return {number}
+ */
+proto.game_service.GameInfoResponse.prototype.getMaxOvertimeMinutes = function() {
+  return /** @type {number} */ (jspb.Message.getFieldWithDefault(this, 10, 0));
+};
+
+
+/**
+ * @param {number} value
+ * @return {!proto.game_service.GameInfoResponse} returns this
+ */
+proto.game_service.GameInfoResponse.prototype.setMaxOvertimeMinutes = function(value) {
+  return jspb.Message.setProto3IntField(this, 10, value);
 };
 
 

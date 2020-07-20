@@ -15,6 +15,7 @@ import './scss/gameroom.scss';
 import { ScoreCard } from './scorecard';
 import { GameInfo, GameMetadata, PlayerMetadata } from './game_info';
 import { PlayState } from '../gen/macondo/api/proto/macondo/macondo_pb';
+import { ActionType } from '../actions/actions';
 // import { GameInfoResponse } from '../gen/api/proto/game_service/game_service_pb';
 
 const gutter = 16;
@@ -39,6 +40,7 @@ const defaultGameInfo = {
     | 'DOUBLE'
     | 'VOID',
   rating_mode: 0, // 0 is rated and 1 is casual; see realtime proto.
+  max_overtime_minutes: 0,
   done: false,
 };
 
@@ -47,6 +49,7 @@ export const Table = React.memo((props: Props) => {
   const {
     setRedirGame,
     gameContext,
+    dispatchGameContext,
     chat,
     clearChat,
     pTimedOut,
@@ -74,6 +77,10 @@ export const Table = React.memo((props: Props) => {
       )
       .then((resp) => {
         setGameInfo(resp.data);
+        dispatchGameContext({
+          actionType: ActionType.SetMaxOvertime,
+          payload: resp.data.max_overtime_minutes,
+        });
       });
     if (!gameContext.players || !gameContext.players[0]) {
       // Show a message while waiting for data about the game to come in

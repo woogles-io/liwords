@@ -57,14 +57,15 @@ func (gs *GameService) GetMetadata(ctx context.Context, req *pb.GameInfoRequest)
 	}
 	timeCtrl := strconv.Itoa(int(gamereq.InitialTimeSeconds)/60) + " " + strconv.Itoa(int(gamereq.IncrementSeconds))
 	resp := &pb.GameInfoResponse{
-		Players:         playerInfo,
-		Lexicon:         gamereq.Lexicon,
-		Variant:         string(variant),
-		TimeControlName: string(timefmt),
-		TimeControl:     timeCtrl,
-		ChallengeRule:   gamereq.ChallengeRule,
-		RatingMode:      gamereq.RatingMode,
-		Done:            done,
+		Players:            playerInfo,
+		Lexicon:            gamereq.Lexicon,
+		Variant:            string(variant),
+		TimeControlName:    string(timefmt),
+		TimeControl:        timeCtrl,
+		MaxOvertimeMinutes: gamereq.MaxOvertimeMinutes,
+		ChallengeRule:      gamereq.ChallengeRule,
+		RatingMode:         gamereq.RatingMode,
+		Done:               done,
 	}
 
 	return resp, nil

@@ -36,6 +36,7 @@ const sendSeek = (
   );
   gr.setLexicon(game.lexicon);
   gr.setInitialTimeSeconds(game.initialTimeSecs);
+  gr.setMaxOvertimeMinutes(game.maxOvertimeMinutes);
   gr.setRules(rules);
   gr.setRatingMode(game.rated ? RatingMode.RATED : RatingMode.CASUAL);
 
@@ -72,6 +73,7 @@ export const Lobby = (props: Props) => {
     challengerule: ChallengeRule.FIVE_POINT,
     initialtime: 8,
     rated: false,
+    maxovertime: 1,
   });
 
   useEffect(() => {
@@ -98,6 +100,7 @@ export const Lobby = (props: Props) => {
         challengeRule: seekSettings.challengerule as number,
         initialTimeSecs: (seekSettings.initialtime as number) * 60,
         rated: seekSettings.rated as boolean,
+        maxOvertimeMinutes: seekSettings.maxovertime as number,
       },
       props.sendSocketMsg
     );

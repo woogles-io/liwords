@@ -7,6 +7,7 @@ package gameplay
 import (
 	"context"
 	"errors"
+	"math"
 	"strconv"
 
 	"github.com/domino14/macondo/alphabet"
@@ -225,6 +226,7 @@ func handleChallenge(ctx context.Context, entGame *entity.Game, gameStore GameSt
 	return nil
 }
 
+// PlayMove handles a gameplay event from the socket
 func PlayMove(ctx context.Context, gameStore GameStore, userStore user.Store, userID string,
 	cge *pb.ClientGameplayEvent) error {
 
@@ -248,7 +250,7 @@ func PlayMove(ctx context.Context, gameStore GameStore, userStore user.Store, us
 	timeRemaining := entGame.TimeRemaining(onTurn)
 	log.Debug().Int("time-remaining", timeRemaining).Msg("checking-time-remaining")
 	// Check that we didn't run out of time.
-	if timeRemaining < 0 {
+	if entGame.TimeRanOut(onTurn) {
 		// Game is over!
 		log.Debug().Msg("got-move-too-late")
 		entGame.Game.SetPlaying(macondopb.PlayState_GAME_OVER)
@@ -260,6 +262,10 @@ func PlayMove(ctx context.Context, gameStore GameStore, userStore user.Store, us
 
 	if cge.Type == pb.ClientGameplayEvent_CHALLENGE_PLAY {
 		// Handle in another way
+
+		// Record time of challenge: XXX check if this is actually needed / works.
+		entGame.RecordTimeOfMove(onTurn)
+
 		return handleChallenge(ctx, entGame, gameStore, userStore, timeRemaining, userID)
 	}
 
@@ -333,6 +339,8 @@ func PlayMove(ctx context.Context, gameStore GameStore, userStore user.Store, us
 	return nil
 }
 
+// TimedOut gets called when the client thinks the user's time ran out. We
+// verify that that is actually the case.
 func TimedOut(ctx context.Context, gameStore GameStore, userStore user.Store,
 	timedout string, gameID string) error {
 	// XXX: VERIFY THAT THE GAME ID is the client's current game!!
@@ -355,7 +363,7 @@ func TimedOut(ctx context.Context, gameStore GameStore, userStore user.Store,
 	if entGame.Game.PlayerIDOnTurn() != timedout {
 		return errNotOnTurn
 	}
-	if entGame.TimeRemaining(onTurn) > 0 {
+	if !entGame.TimeRanOut(onTurn) {
 		log.Error().Int("TimeRemaining", entGame.TimeRemaining(onTurn)).
 			Int("onturn", onTurn).Msg("time-didnt-run-out")
 		return errTimeDidntRunOut
@@ -460,11 +468,30 @@ func discernEndgameReason(g *entity.Game) {
 	// standard or six-zero. The game ending on a timeout is handled in
 	// another branch (see setTimedOut above) and resignation/etc will
 	// also be handled elsewhere.
+	// Subtract points for timing out here as well.
 	if g.RackLettersFor(0) == "" || g.RackLettersFor(1) == "" {
 		g.SetGameEndReason(pb.GameEndReason_STANDARD)
 	} else {
 		g.SetGameEndReason(pb.GameEndReason_CONSECUTIVE_ZEROES)
 	}
+	var p0penalty, p1penalty int
+
+	if g.CachedTimeRemaining(0) < 0 {
+		p0penalty = int(math.Ceil(float64(-g.CachedTimeRemaining(0)) / 60000.0))
+	}
+	if g.CachedTimeRemaining(1) < 0 {
+		p1penalty = int(math.Ceil(float64(-g.CachedTimeRemaining(1)) / 60000.0))
+	}
+
+	if p0penalty > 0 {
+		g.SetPointsFor(0, g.PointsFor(0)-p0penalty)
+	}
+	if p1penalty > 0 {
+		g.SetPointsFor(1, g.PointsFor(1)-p1penalty)
+	}
+
+	log.Debug().Int("p0penalty", p0penalty).Int("p1penalty", p1penalty).Msg("time-penalties")
+
 	if g.PointsFor(0) > g.PointsFor(1) {
 		g.SetWinnerIdx(0)
 		g.SetLoserIdx(1)

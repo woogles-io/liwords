@@ -30,6 +30,7 @@ export const SoughtGames = (props: Props) => {
   const { lobbyContext } = useStoreContext();
 
   const soughtGameEls = lobbyContext?.soughtGames.map((game) => {
+    console.log('game', game);
     const [tt, tc] = timeCtrlToDisplayName(game.initialTimeSecs);
 
     return (
@@ -42,6 +43,7 @@ export const SoughtGames = (props: Props) => {
         {game.rated ? 'Rated' : 'Casual'})(
         {`${game.initialTimeSecs / 60} min`})<Tag color={tc}>{tt}</Tag>
         {challRuleToStr(game.challengeRule)}
+        {` (Max OT: ${game.maxOvertimeMinutes} min.)`}
       </li>
     );
   });
