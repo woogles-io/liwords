@@ -9,12 +9,15 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/domino14/macondo/gaddag"
+
 	"github.com/domino14/liwords/bus"
 	"github.com/domino14/liwords/pkg/apiserver"
 	"github.com/domino14/liwords/pkg/gameplay"
 	"github.com/domino14/liwords/pkg/stores/game"
 	"github.com/domino14/liwords/pkg/stores/session"
 	"github.com/domino14/liwords/pkg/stores/soughtgame"
+	"github.com/domino14/macondo/alphabet"
 
 	"github.com/domino14/liwords/pkg/registration"
 
@@ -84,6 +87,10 @@ func main() {
 
 	router.Handle(gameservice.GameMetadataServicePathPrefix,
 		middlewares.Then(gameservice.NewGameMetadataServiceServer(gameService, nil)))
+
+	// Create any caches
+	alphabet.CreateLetterDistributionCache()
+	gaddag.CreateGaddagCache()
 
 	srv := &http.Server{
 		Addr:         cfg.ListenAddr,

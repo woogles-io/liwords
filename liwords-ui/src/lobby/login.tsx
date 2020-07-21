@@ -88,7 +88,8 @@ export const Login = () => {
         </Form.Item>
       </Form>
       {err !== '' ? <Alert message={err} type="error" /> : null}
-      <Link to="/register">Register a new name</Link>
+      {/* uncomment after the alpha */}
+      {/* <Link to="/register">Register a new name</Link> */}
     </>
   );
 };

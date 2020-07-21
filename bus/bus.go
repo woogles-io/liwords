@@ -219,11 +219,14 @@ func (b *Bus) handleNatsPublish(ctx context.Context, subtopics []string, data []
 		req.User.UserId = subtopics[2]
 
 		if req.User.IsAnonymous {
-			req.User.DisplayName = entity.DeterministicUsername(req.User.UserId)
-			req.User.RelevantRating = "Unrated"
-			if req.GameRequest.RatingMode != pb.RatingMode_CASUAL {
-				return errors.New("anonymous-games-must-be-unrated")
-			}
+			// Require login for now (forever?)
+			return errors.New("please log in to start a game")
+			/*
+				req.User.DisplayName = entity.DeterministicUsername(req.User.UserId)
+				req.User.RelevantRating = "Unrated"
+				if req.GameRequest.RatingMode != pb.RatingMode_CASUAL {
+					return errors.New("anonymous-games-must-be-unrated")
+				}*/
 		} else {
 			// Look up user.
 			timefmt, variant, err := entity.VariantFromGameReq(req.GameRequest)
@@ -314,6 +317,11 @@ func (b *Bus) gameAccepted(ctx context.Context, evt *pb.GameAcceptedEvent, userI
 	if err != nil {
 		return err
 	}
+	// disallow anon game acceptance for now.
+	if accUser.Anonymous || reqUser.Anonymous {
+		return errors.New("you must log in to play games")
+	}
+
 	if (accUser.Anonymous || reqUser.Anonymous) && sg.SeekRequest.GameRequest.RatingMode == pb.RatingMode_RATED {
 		return errors.New("anonymous-players-cant-play-rated")
 	}

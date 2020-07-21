@@ -16,10 +16,11 @@ type DBStore struct {
 	db *gorm.DB
 }
 
-// A user should be a minimal object. All information such as user profile,
+// User should be a minimal object. All information such as user profile,
 // awards, ratings, records, etc should be in a profile object that
 // joins 1-1 with this User object.
-type user struct {
+// User is exported as a Game has Foreign Keys to it.
+type User struct {
 	gorm.Model
 
 	UUID     string `gorm:"type:varchar(24);index"`
@@ -36,7 +37,7 @@ type profile struct {
 	gorm.Model
 	// `profile` belongs to `user`, `UserID` is the foreign key.
 	UserID uint
-	User   user
+	User   User
 
 	FirstName string `gorm:"type:varchar(32)"`
 	LastName  string `gorm:"type:varchar(64)"`
@@ -62,7 +63,7 @@ func NewDBStore(dbURL string) (*DBStore, error) {
 	if err != nil {
 		return nil, err
 	}
-	db.AutoMigrate(&user{}, &profile{})
+	db.AutoMigrate(&User{}, &profile{})
 	// Can't get GORM to auto create these foreign keys, so do it myself /shrug
 	db.Model(&profile{}).AddForeignKey("user_id", "users(id)", "RESTRICT", "RESTRICT")
 
@@ -71,7 +72,7 @@ func NewDBStore(dbURL string) (*DBStore, error) {
 
 // Get gets a user by username.
 func (s *DBStore) Get(ctx context.Context, username string) (*entity.User, error) {
-	u := &user{}
+	u := &User{}
 	p := &profile{}
 	if result := s.db.Where("username = ?", username).First(u); result.Error != nil {
 		return nil, result.Error
@@ -114,7 +115,7 @@ func dbProfileToProfile(p *profile) (*entity.Profile, error) {
 
 // GetByUUID gets user by UUID
 func (s *DBStore) GetByUUID(ctx context.Context, uuid string) (*entity.User, error) {
-	u := &user{}
+	u := &User{}
 	p := &profile{}
 	var entu *entity.User
 	if result := s.db.Where("uuid = ?", uuid).First(u); result.Error != nil {
@@ -152,7 +153,7 @@ func (s *DBStore) GetByUUID(ctx context.Context, uuid string) (*entity.User, err
 func (s *DBStore) New(ctx context.Context, u *entity.User) error {
 	u.UUID = shortuuid.New()
 
-	dbu := &user{
+	dbu := &User{
 		UUID:     u.UUID,
 		Username: u.Username,
 		Email:    u.Email,
@@ -181,7 +182,7 @@ func (s *DBStore) New(ctx context.Context, u *entity.User) error {
 // SetRating sets the specific rating for the given variant.
 func (s *DBStore) SetRating(ctx context.Context, uuid string, variant entity.VariantKey,
 	rating entity.SingleRating) error {
-	u := &user{}
+	u := &User{}
 	p := &profile{}
 
 	if result := s.db.Where("uuid = ?", uuid).First(u); result.Error != nil {
