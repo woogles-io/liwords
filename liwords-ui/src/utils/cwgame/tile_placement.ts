@@ -60,12 +60,16 @@ export const nextArrowPropertyState = (
   };
 };
 
-type KeypressHandlerReturn = {
-  newArrow: PlacementArrow;
+type PlacementHandlerReturn = {
   newPlacedTiles: Set<EphemeralTile>;
   newDisplayedRack: string;
   playScore: number | undefined; // undefined for illegal plays
+  isUndesignated?: boolean;
 };
+
+interface KeypressHandlerReturn extends PlacementHandlerReturn {
+  newArrow: PlacementArrow;
+}
 
 const handleTileDeletion = (
   arrowProperty: PlacementArrow,
@@ -288,6 +292,107 @@ export const handleKeyPress = (
     },
     newPlacedTiles,
     newDisplayedRack: newUnplacedTiles,
+    playScore: calculateTemporaryScore(newPlacedTiles, board),
+  };
+};
+
+export const returnTileToRack = (
+  board: Board,
+  unplacedTiles: string,
+  currentlyPlacedTiles: Set<EphemeralTile>,
+  rackIndex: number = -1,
+  tileIndex: number = -1
+): PlacementHandlerReturn | null => {
+  // Create an ephemeral tile map with unique keys.
+  const ephTileMap: { [tileIdx: number]: EphemeralTile } = {};
+  currentlyPlacedTiles.forEach((t) => {
+    ephTileMap[uniqueTileIdx(t.row, t.col)] = t;
+  });
+  const newPlacedTiles = new Set(currentlyPlacedTiles);
+  let rune;
+  if (tileIndex > -1) {
+    rune = ephTileMap[tileIndex] ? ephTileMap[tileIndex].letter : '';
+    // Reset blank
+    if (isBlank(rune)) {
+      rune = Blank;
+    }
+    newPlacedTiles.delete(ephTileMap[tileIndex]);
+  } else {
+    return null;
+  }
+  const newRack = unplacedTiles.split('');
+  newRack.splice(rackIndex, 0, rune);
+  return {
+    newPlacedTiles,
+    newDisplayedRack: newRack.join(''),
+    playScore: calculateTemporaryScore(newPlacedTiles, board),
+  };
+};
+
+export const handleDroppedTile = (
+  row: number,
+  col: number,
+  board: Board,
+  unplacedTiles: string,
+  currentlyPlacedTiles: Set<EphemeralTile>,
+  rackIndex: number,
+  tileIndex: number
+): PlacementHandlerReturn | null => {
+  // Create an ephemeral tile map with unique keys.
+  const ephTileMap: { [tileIdx: number]: EphemeralTile } = {};
+  currentlyPlacedTiles.forEach((t) => {
+    ephTileMap[uniqueTileIdx(t.row, t.col)] = t;
+  });
+
+  let newUnplacedTiles = unplacedTiles;
+  const newPlacedTiles = new Set(currentlyPlacedTiles);
+  let rune;
+  if (rackIndex > -1) {
+    rune = unplacedTiles[rackIndex];
+  } else {
+    rune = ephTileMap[tileIndex] ? ephTileMap[tileIndex].letter : '';
+    newPlacedTiles.delete(ephTileMap[tileIndex]);
+  }
+
+  newPlacedTiles.add({
+    row: row,
+    col: col,
+    letter: rune,
+  });
+
+  if (rackIndex > -1) {
+    newUnplacedTiles =
+      unplacedTiles.substring(0, rackIndex) +
+      unplacedTiles.substring(rackIndex + 1);
+  } else {
+    newUnplacedTiles = unplacedTiles;
+  }
+
+  return {
+    newPlacedTiles,
+    newDisplayedRack: newUnplacedTiles,
+    playScore: calculateTemporaryScore(newPlacedTiles, board),
+    isUndesignated: isBlank(rune),
+  };
+};
+
+export const designateBlank = (
+  board: Board,
+  currentlyPlacedTiles: Set<EphemeralTile>,
+  displayedRack: string,
+  rune: string
+): PlacementHandlerReturn | null => {
+  // Find the undesignated blank
+  // TODO: Bug here if there are two blanks. Fix it.
+  const newPlacedTiles = new Set(currentlyPlacedTiles);
+  newPlacedTiles.forEach((t) => {
+    if (isBlank(t.letter)) {
+      t.letter = rune.toLowerCase();
+    }
+  });
+  return {
+    newPlacedTiles,
+    newDisplayedRack: displayedRack,
     playScore: calculateTemporaryScore(newPlacedTiles, board),
   };
 };

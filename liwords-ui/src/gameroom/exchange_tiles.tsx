@@ -11,7 +11,6 @@ type Props = {
 
 export const ExchangeTiles = (props: Props) => {
   // convert exchangedRack to a letter string
-
   return (
     <div>
       <h3>

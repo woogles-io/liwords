@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Button, notification } from 'antd';
+import {Button, Modal, notification} from 'antd';
 import { ArrowDownOutlined, SyncOutlined } from '@ant-design/icons';
 import GameBoard from './board';
 import GameControls from './game_controls';
@@ -7,7 +7,9 @@ import Rack from './rack';
 import {
   nextArrowPropertyState,
   handleKeyPress,
-} from '../utils/cwgame/tile_placement';
+  handleDroppedTile,
+  returnTileToRack, designateBlank,
+} from '../utils/cwgame/tile_placement'
 import { EphemeralTile, EmptySpace } from '../utils/cwgame/common';
 import {
   tilesetToMoveEvent,
@@ -19,6 +21,7 @@ import { Board } from '../utils/cwgame/board';
 import { encodeToSocketFmt } from '../utils/protobuf';
 import { MessageType } from '../gen/api/proto/realtime/realtime_pb';
 import { useStoreContext } from '../store/store';
+import {BlankSelector} from "./blank_selector";
 
 // The frame atop is 24 height
 // The frames on the sides are 24 in width, surrounded by a 14 pix gutter
@@ -57,6 +60,7 @@ export const BoardPanel = React.memo((props: Props) => {
   const [displayedRack, setDisplayedRack] = useState(props.currentRack);
   const [placedTiles, setPlacedTiles] = useState(new Set<EphemeralTile>());
   const [placedTilesTempScore, setPlacedTilesTempScore] = useState<number>();
+  const [blankModalVisible, setBlankModalVisible] = useState(false);
   const { stopClock, gameContext } = useStoreContext();
 
   // Need to sync state to props here whenever the props.currentRack changes.
@@ -115,6 +119,67 @@ export const BoardPanel = React.memo((props: Props) => {
     setPlacedTilesTempScore(handlerReturn.playScore);
   };
 
+  const handleTileDrop = (row: number, col: number, rackIndex: number = -1, tileIndex: number = -1) => {
+    const handlerReturn = handleDroppedTile(
+        row,
+        col,
+        props.board,
+        displayedRack,
+        placedTiles,
+        rackIndex,
+        tileIndex,
+    );
+    if (handlerReturn === null) {
+      return;
+    }
+    setDisplayedRack(handlerReturn.newDisplayedRack);
+    setPlacedTiles(handlerReturn.newPlacedTiles);
+    setPlacedTilesTempScore(handlerReturn.playScore);
+    setArrowProperties({ row: 0, col: 0, horizontal: false, show: false });
+    if (handlerReturn.isUndesignated) {
+      setBlankModalVisible(true);
+    }
+  };
+
+  const handleBlankSelection = (rune: string) => {
+    const handlerReturn = designateBlank(
+      props.board,
+      placedTiles,
+      displayedRack,
+      rune,
+    );
+    if (handlerReturn === null) {
+      return;
+    }
+    setBlankModalVisible(false);
+    setPlacedTiles(handlerReturn.newPlacedTiles);
+    setPlacedTilesTempScore(handlerReturn.playScore);
+  };
+
+  const handleBlankModalCancel = () => {
+    setBlankModalVisible(false);
+  };
+
+  const returnToRack = (
+      rackIndex: number | undefined,
+      tileIndex: number | undefined,
+  ) => {
+    const handlerReturn = returnTileToRack(
+        props.board,
+        displayedRack,
+        placedTiles,
+        rackIndex,
+        tileIndex,
+    );
+    if (handlerReturn === null) {
+      return;
+    };
+    setDisplayedRack(handlerReturn.newDisplayedRack);
+    setPlacedTiles(handlerReturn.newPlacedTiles);
+    setPlacedTilesTempScore(handlerReturn.playScore);
+    setArrowProperties({ row: 0, col: 0, horizontal: false, show: false });
+  };
+
   const recallTiles = () => {
     setPlacedTilesTempScore(0);
     setPlacedTiles(new Set<EphemeralTile>());
@@ -136,7 +201,6 @@ export const BoardPanel = React.memo((props: Props) => {
       newRack[indexA] = displayedRack[indexB];
       newRack[indexB] = displayedRack[indexA];
       setPlacedTilesTempScore(0);
-      setPlacedTiles(new Set<EphemeralTile>());
       setDisplayedRack(newRack.join(''));
     }
   };
@@ -205,6 +269,7 @@ export const BoardPanel = React.memo((props: Props) => {
       <GameBoard
         gridSize={props.board.dim}
         gridLayout={props.board.gridLayout}
+        handleTileDrop={handleTileDrop}
         tilesLayout={props.board.letters}
         showBonusLabels={false}
         lastPlayedTiles={gameContext.lastPlayedTiles}
@@ -224,6 +289,7 @@ export const BoardPanel = React.memo((props: Props) => {
         <Rack
           letters={displayedRack}
           grabbable
+          returnToRack={returnToRack}
           swapRackTiles={(
             indexA: number | undefined,
             indexB: number | undefined
@@ -246,6 +312,16 @@ export const BoardPanel = React.memo((props: Props) => {
         onCommit={() => makeMove('commit')}
         currentRack={props.currentRack}
       />
+      <Modal
+        className="blank-modal"
+        title="Designate your blank"
+        visible={blankModalVisible}
+        onCancel={handleBlankModalCancel}
+        width={360}
+        footer={null}
+      >
+        <BlankSelector handleSelection={handleBlankSelection}/>
+      </Modal>
     </div>
   );
 });

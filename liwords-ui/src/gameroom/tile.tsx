@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import TentativeScore from './tentative_score';
-import { Blank } from '../utils/cwgame/common';
+import { Blank, uniqueTileIdx } from '../utils/cwgame/common';
 const colors = require('../base.scss');
 
 type TileStyle = {
@@ -27,9 +27,9 @@ const TILE_STYLES: { [name: string]: TileStyle } = {
     strokeWidth: '0px',
   },
   primaryTentative: {
-    backgroundColor: colors.colorSecondaryMedium,
-    outline: '#4894D4',
-    color: '#FFFFFF',
+    backgroundColor: colors.colorSecondary,
+    outline: colors.colorSecondaryMedium,
+    color: colors.colorSecondaryLight,
     blankTextColor: '#fe1111',
     strokeWidth: '0px',
   },
@@ -38,8 +38,6 @@ const TILE_STYLES: { [name: string]: TileStyle } = {
 type TileLetterProps = {
   rune: string;
 };
-
-export const DragType = 'Tile';
 
 const TileLetter = React.memo((props: TileLetterProps) => {
   let { rune } = props;
@@ -73,8 +71,17 @@ type TileProps = {
   tentativeScore?: number;
   grabbable: boolean;
   rackIndex?: number | undefined;
-  swapRackTiles?: (indexA: number | undefined, indexB: number | undefined) => void;
+  swapRackTiles?: (
+      indexA: number | undefined,
+      indexB: number | undefined
+  ) => void;
+  returnToRack?: (
+      rackIndex: number | undefined,
+      tileIndex: number | undefined
+  ) => void;
   onClick?: () => void;
+  x?: number | undefined;
+  y?: number | undefined;
 };
 
 
@@ -90,8 +97,13 @@ const Tile = React.memo((props: TileProps) => {
 
   const handleStartDrag = (e: any) => {
     if (e) {
-      e.dataTransfer.setData('rackIndex', props.rackIndex);
       setIsDragging(true);
+      e.dataTransfer.dropEffect = "move";
+      if (props.tentative && props.x && props.y) {
+        e.dataTransfer.setData('tileIndex', uniqueTileIdx(props.y, props.x));
+      } else {
+        e.dataTransfer.setData('rackIndex', props.rackIndex);
+      }
     }
   };
 
@@ -100,8 +112,12 @@ const Tile = React.memo((props: TileProps) => {
   };
 
   const handleDrop = (e: any) => {
-    if (props.swapRackTiles) {
+    if (props.swapRackTiles && e.dataTransfer.getData('rackIndex')) {
       props.swapRackTiles(props.rackIndex, parseInt(e.dataTransfer.getData('rackIndex'), 10));
+    } else {
+      if (props.returnToRack && e.dataTransfer.getData('tileIndex')) {
+        props.returnToRack(props.rackIndex, parseInt(e.dataTransfer.getData('tileIndex'), 10));
+      }
     }
   }
 

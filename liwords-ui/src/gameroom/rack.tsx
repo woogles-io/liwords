@@ -12,7 +12,14 @@ type Props = {
   letters: string;
   grabbable: boolean;
   onTileClick?: (idx: number) => void;
-  swapRackTiles: (indexA: number | undefined, indexB: number | undefined) => void;
+  swapRackTiles: (
+    indexA: number | undefined,
+    indexB: number | undefined
+  ) => void;
+  returnToRack?: (
+    rackIndex: number | undefined,
+    tileIndex: number | undefined
+  ) => void;
 };
 
 export const Rack = React.memo((props: Props) => {
@@ -33,6 +40,7 @@ export const Rack = React.memo((props: Props) => {
           scale={false}
           grabbable={props.grabbable}
           rackIndex={n}
+          returnToRack={props.returnToRack}
           swapRackTiles={props.swapRackTiles}
           onClick={() => {
             if (props.onTileClick) {

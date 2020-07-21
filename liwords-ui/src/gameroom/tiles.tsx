@@ -14,6 +14,10 @@ type Props = {
   scaleTiles: boolean;
   tentativeTiles: Set<EphemeralTile>;
   tentativeTileScore: number | undefined;
+  returnToRack?: (
+    rackIndex: number | undefined,
+    tileIndex: number | undefined
+  ) => void;
 };
 
 const Tiles = React.memo((props: Props) => {
@@ -63,6 +67,8 @@ const Tiles = React.memo((props: Props) => {
               key={`tileT_${tentativeTile.col}_${tentativeTile.row}`}
               scale={false}
               tentative={true}
+              x={x}
+              y={y}
               tentativeScore={
                 tentativeTilesRemaining === tentativeTiles.length
                   ? props.tentativeTileScore
@@ -74,7 +80,10 @@ const Tiles = React.memo((props: Props) => {
           tentativeTilesRemaining -= 1;
         } else {
           tiles.push(
-            <div className="empty-space" key={`tile_${x}_${y}`}>
+            <div
+              className="empty-space"
+              key={`tile_${x}_${y}`}
+            >
               &nbsp;
             </div>
           );
