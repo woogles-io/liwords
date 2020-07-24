@@ -9,7 +9,12 @@ import { EphemeralTile, PlayedTiles } from '../utils/cwgame/common';
 type Props = {
   gridLayout: Array<string>;
   gridSize: number;
-  handleTileDrop?: (row: number, col: number, rackIndex: number | undefined, tileIndex: number | undefined) => void;
+  handleTileDrop?: (
+    row: number,
+    col: number,
+    rackIndex: number | undefined,
+    tileIndex: number | undefined
+  ) => void;
   tilesLayout: string;
   showBonusLabels: boolean;
   lastPlayedTiles: PlayedTiles;

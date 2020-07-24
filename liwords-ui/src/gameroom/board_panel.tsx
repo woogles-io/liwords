@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import {Button, Modal, notification} from 'antd';
+import { Button, Modal, notification } from 'antd';
 import { ArrowDownOutlined, SyncOutlined } from '@ant-design/icons';
 import GameBoard from './board';
 import GameControls from './game_controls';
@@ -8,8 +8,9 @@ import {
   nextArrowPropertyState,
   handleKeyPress,
   handleDroppedTile,
-  returnTileToRack, designateBlank,
-} from '../utils/cwgame/tile_placement'
+  returnTileToRack,
+  designateBlank,
+} from '../utils/cwgame/tile_placement';
 import { EphemeralTile, EmptySpace } from '../utils/cwgame/common';
 import {
   tilesetToMoveEvent,
@@ -21,7 +22,7 @@ import { Board } from '../utils/cwgame/board';
 import { encodeToSocketFmt } from '../utils/protobuf';
 import { MessageType } from '../gen/api/proto/realtime/realtime_pb';
 import { useStoreContext } from '../store/store';
-import {BlankSelector} from "./blank_selector";
+import { BlankSelector } from './blank_selector';
 
 // The frame atop is 24 height
 // The frames on the sides are 24 in width, surrounded by a 14 pix gutter
@@ -119,15 +120,20 @@ export const BoardPanel = React.memo((props: Props) => {
     setPlacedTilesTempScore(handlerReturn.playScore);
   };
 
-  const handleTileDrop = (row: number, col: number, rackIndex: number = -1, tileIndex: number = -1) => {
+  const handleTileDrop = (
+    row: number,
+    col: number,
+    rackIndex: number = -1,
+    tileIndex: number = -1
+  ) => {
     const handlerReturn = handleDroppedTile(
-        row,
-        col,
-        props.board,
-        displayedRack,
-        placedTiles,
-        rackIndex,
-        tileIndex,
+      row,
+      col,
+      props.board,
+      displayedRack,
+      placedTiles,
+      rackIndex,
+      tileIndex
     );
     if (handlerReturn === null) {
       return;
@@ -146,7 +152,7 @@ export const BoardPanel = React.memo((props: Props) => {
       props.board,
       placedTiles,
       displayedRack,
-      rune,
+      rune
     );
     if (handlerReturn === null) {
       return;
@@ -161,19 +167,19 @@ export const BoardPanel = React.memo((props: Props) => {
   };
 
   const returnToRack = (
-      rackIndex: number | undefined,
-      tileIndex: number | undefined,
+    rackIndex: number | undefined,
+    tileIndex: number | undefined
   ) => {
     const handlerReturn = returnTileToRack(
-        props.board,
-        displayedRack,
-        placedTiles,
-        rackIndex,
-        tileIndex,
+      props.board,
+      displayedRack,
+      placedTiles,
+      rackIndex,
+      tileIndex
     );
     if (handlerReturn === null) {
       return;
-    };
+    }
     setDisplayedRack(handlerReturn.newDisplayedRack);
     setPlacedTiles(handlerReturn.newPlacedTiles);
     setPlacedTilesTempScore(handlerReturn.playScore);
@@ -320,7 +326,7 @@ export const BoardPanel = React.memo((props: Props) => {
         width={360}
         footer={null}
       >
-        <BlankSelector handleSelection={handleBlankSelection}/>
+        <BlankSelector handleSelection={handleBlankSelection} />
       </Modal>
     </div>
   );

@@ -357,7 +357,8 @@ export const handleDroppedTile = (
   newPlacedTiles.add({
     row: row,
     col: col,
-    letter: rune,
+    // reset moved blanks
+    letter: isBlank(rune) ? Blank : rune,
   });
 
   if (rackIndex > -1) {
@@ -383,10 +384,9 @@ export const designateBlank = (
   rune: string
 ): PlacementHandlerReturn | null => {
   // Find the undesignated blank
-  // TODO: Bug here if there are two blanks. Fix it.
   const newPlacedTiles = new Set(currentlyPlacedTiles);
   newPlacedTiles.forEach((t) => {
-    if (isBlank(t.letter)) {
+    if (t.letter === Blank) {
       t.letter = rune.toLowerCase();
     }
   });
