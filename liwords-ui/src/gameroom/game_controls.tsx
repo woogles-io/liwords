@@ -52,8 +52,6 @@ const GameControls = React.memo((props: Props) => {
 
   return (
     <div className="game-controls">
-      <Button>Options</Button>
-
       <Button onClick={props.onPass} danger>
         Pass
       </Button>
@@ -70,6 +68,7 @@ const GameControls = React.memo((props: Props) => {
         visible={modalVisible}
         onOk={handleModalOk}
         onCancel={handleModalCancel}
+        width={360}
       >
         <ExchangeTiles
           rack={props.currentRack}

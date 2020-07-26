@@ -66,6 +66,7 @@ function getPoolCount(
 }
 
 type Props = {
+  omitCard?: boolean;
   pool: poolType;
   poolFormat: PoolFormatType;
   setPoolFormat: (format: PoolFormatType) => void;
@@ -106,17 +107,25 @@ const Pool = React.memo((props: Props) => {
       </a>
     </Dropdown>
   );
+  const renderContents = (
+    <div className="pool">
+      <div className="tiles-remaining">{letterSections}</div>
+      <div className="vc-distribution">
+        <div>{getPoolCount(pool, VOWELS)} vowels</div>
+        <div>{getPoolCount(pool, CONSONANTS)} consonants</div>
+      </div>
+    </div>
+  );
+  if (props.omitCard) {
+    return renderContents;
+  }
   return (
     <Card
       className="pool"
       title={`${getPoolCount(pool)} tiles unseen`}
       extra={dropDown}
     >
-      <div className="tiles-remaining">{letterSections}</div>
-      <div className="vc-distribution">
-        <div>{getPoolCount(pool, VOWELS)} vowels</div>
-        <div>{getPoolCount(pool, CONSONANTS)} consonants</div>
-      </div>
+      {renderContents}
     </Card>
   );
 });
