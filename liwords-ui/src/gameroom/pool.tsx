@@ -117,7 +117,7 @@ const Pool = React.memo((props: Props) => {
     </div>
   );
   if (props.omitCard) {
-    return renderContents;
+    return <>{renderContents}</>;
   }
   return (
     <Card
