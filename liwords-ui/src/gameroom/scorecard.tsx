@@ -139,7 +139,10 @@ const ScorecardTurn = (props: turnProps) => {
 export const ScoreCard = React.memo((props: Props) => {
   const el = useRef<HTMLDivElement>(null);
   useEffect(() => {
-    el.current?.scrollTo(0, el.current?.scrollHeight || 0);
+    const currentEl = el.current;
+    if (currentEl) {
+      currentEl.scrollTop = currentEl.scrollHeight || 0;
+    }
   }, [props.events]);
 
   const turns = gameEventsToTurns(props.events);
