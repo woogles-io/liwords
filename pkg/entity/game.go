@@ -10,6 +10,22 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
+const (
+	CrosswordGame string = "CrosswordGame"
+)
+
+type Timers struct {
+	// TimeOfLastUpdate is the timestamp of the last update, in milliseconds.
+	// If no update has been made, this defaults to timeStarted.
+	TimeOfLastUpdate int64 `json:"lu"`
+	// TimeStarted is a unix timestamp, in milliseconds.
+	TimeStarted int64 `json:"ts"`
+	// TimeRemaining is an array of remaining time per player, in milliseconds.
+	TimeRemaining []int `json:"tr"`
+	// MaxOvertime is in minutes. All others are in milliseconds.
+	MaxOvertime int `json:"mo"`
+}
+
 // A Game should be saved to the database or store. It wraps a macondo.Game,
 // and we should save most of the included fields here, especially the
 // macondo.game.History (which can be exported as GCG, etc in the future)
@@ -17,32 +33,21 @@ type Game struct {
 	sync.Mutex
 	game.Game
 
-	// timeOfLastUpdate is the timestamp of the last update, in milliseconds.
-	// If no update has been made, this defaults to timeStarted.
-	timeOfLastUpdate int64
-	// timeRemaining is an array of remaining time per player, in milliseconds.
-	timeRemaining []int
-	// timeStarted is a unix timestamp, in milliseconds.
-	timeStarted int64
-
-	// perTurnIncrement, in seconds
-	perTurnIncrement int
-	// maxOvertime, in minutes
-	maxOvertime int
-	gamereq     *pb.GameRequest
+	GameReq *pb.GameRequest
 	// started is set when the game actually starts (when the game timers start).
 	// Note that the internal game.Game may have started a few seconds before,
 	// but there should be no information about it given until _this_ started
 	// is true.
-	started bool
+	Started bool
+	Timers  Timers
 
-	gameEndReason pb.GameEndReason
+	GameEndReason pb.GameEndReason
 	// if 0 or 1, that player won
 	// if -1, it was a tie!
-	winnerIdx int
-	loserIdx  int
+	WinnerIdx int
+	LoserIdx  int
 
-	changeHook chan<- *EventWrapper
+	ChangeHook chan<- *EventWrapper
 }
 
 func msTimestamp() int64 {
@@ -56,11 +61,12 @@ func msTimestamp() int64 {
 func NewGame(mcg *game.Game, req *pb.GameRequest) *Game {
 	ms := int(req.InitialTimeSeconds * 1000)
 	return &Game{
-		Game:             *mcg,
-		timeRemaining:    []int{ms, ms},
-		perTurnIncrement: int(req.IncrementSeconds),
-		maxOvertime:      int(req.MaxOvertimeMinutes),
-		gamereq:          req,
+		Game: *mcg,
+		Timers: Timers{
+			TimeRemaining: []int{ms, ms},
+			MaxOvertime:   int(req.MaxOvertimeMinutes),
+		},
+		GameReq: req,
 	}
 }
 
@@ -68,9 +74,9 @@ func NewGame(mcg *game.Game, req *pb.GameRequest) *Game {
 func (g *Game) ResetTimersAndStart() {
 	log.Debug().Msg("reset-timers")
 	ts := msTimestamp()
-	g.timeOfLastUpdate = ts
-	g.timeStarted = ts
-	g.started = true
+	g.Timers.TimeOfLastUpdate = ts
+	g.Timers.TimeStarted = ts
+	g.Started = true
 }
 
 func (g *Game) RatingKey() (VariantKey, error) {
@@ -86,14 +92,14 @@ func (g *Game) RatingKey() (VariantKey, error) {
 func (g *Game) TimeRemaining(idx int) int {
 	if g.Game.PlayerOnTurn() == idx {
 		now := msTimestamp()
-		return g.timeRemaining[idx] - int(now-g.timeOfLastUpdate)
+		return g.Timers.TimeRemaining[idx] - int(now-g.Timers.TimeOfLastUpdate)
 	}
 	// If the player is not on turn just return whatever the "cache" says.
-	return g.timeRemaining[idx]
+	return g.Timers.TimeRemaining[idx]
 }
 
 func (g *Game) CachedTimeRemaining(idx int) int {
-	return g.timeRemaining[idx]
+	return g.Timers.TimeRemaining[idx]
 }
 
 // TimeRanOut calculates if time ran out for the given player. Assumes player is
@@ -103,21 +109,17 @@ func (g *Game) TimeRanOut(idx int) bool {
 		return false
 	}
 	now := msTimestamp()
-	tr := g.timeRemaining[idx] - int(now-g.timeOfLastUpdate)
-	return tr < (-g.maxOvertime * 60000)
+	tr := g.Timers.TimeRemaining[idx] - int(now-g.Timers.TimeOfLastUpdate)
+	return tr < (-g.Timers.MaxOvertime * 60000)
 }
 
 func (g *Game) TimeStarted() int64 {
-	return g.timeStarted
+	return g.Timers.TimeStarted
 }
 
-func (g *Game) Started() bool {
-	return g.started
-}
-
-func (g *Game) PerTurnIncrement() int {
-	return g.perTurnIncrement
-}
+// func (g *Game) PerTurnIncrement() int {
+// 	return g.perTurnIncrement
+// }
 
 func (g *Game) GameID() string {
 	return g.Game.History().Uid
@@ -126,18 +128,18 @@ func (g *Game) GameID() string {
 // calculateTimeRemaining calculates the remaining time for the given player.
 func (g *Game) calculateAndSetTimeRemaining(pidx int, now int64) {
 	log.Debug().
-		Int64("started", g.timeStarted).
+		Int64("started", g.Timers.TimeStarted).
 		Int64("now", now).
-		Int64("lastupdate", g.timeOfLastUpdate).
+		Int64("lastupdate", g.Timers.TimeOfLastUpdate).
 		Int("player", pidx).
-		Int("remaining", g.timeRemaining[pidx]).
+		Int("remaining", g.Timers.TimeRemaining[pidx]).
 		Msg("calculate-and-set-remaining")
 
 	if g.Game.PlayerOnTurn() == pidx {
 		// Time has passed since this was calculated.
-		g.timeRemaining[pidx] -= int(now - g.timeOfLastUpdate)
-		g.timeOfLastUpdate = now
-		log.Debug().Int("actual-remaining", g.timeRemaining[pidx]).
+		g.Timers.TimeRemaining[pidx] -= int(now - g.Timers.TimeOfLastUpdate)
+		g.Timers.TimeOfLastUpdate = now
+		log.Debug().Int("actual-remaining", g.Timers.TimeRemaining[pidx]).
 			Msg("player-on-turn")
 	}
 	// Otherwise, the player is not on turn, so their time should not
@@ -166,52 +168,48 @@ func (g *Game) HistoryRefresherEvent( /*userID string, sanitize bool*/ ) *pb.Gam
 }
 
 func (g *Game) ChallengeRule() macondopb.ChallengeRule {
-	return g.gamereq.ChallengeRule
+	return g.GameReq.ChallengeRule
 }
 
 func (g *Game) RatingMode() pb.RatingMode {
-	return g.gamereq.RatingMode
+	return g.GameReq.RatingMode
 }
 
 func (g *Game) CreationRequest() *pb.GameRequest {
-	return g.gamereq
+	return g.GameReq
 }
 
 // RegisterChangeHook registers a channel with the game. Events will
 // be sent down this channel.
 func (g *Game) RegisterChangeHook(eventChan chan<- *EventWrapper) error {
-	g.changeHook = eventChan
+	g.ChangeHook = eventChan
 	return nil
 }
 
 // SendChange sends an event via the registered hook.
 func (g *Game) SendChange(e *EventWrapper) {
 	log.Debug().Interface("evt", e.Event).Interface("aud", e.Audience()).Msg("send-change")
-	g.changeHook <- e
-}
-
-func (g *Game) GameEndReason() pb.GameEndReason {
-	return g.gameEndReason
+	g.ChangeHook <- e
 }
 
 func (g *Game) SetGameEndReason(r pb.GameEndReason) {
-	g.gameEndReason = r
+	g.GameEndReason = r
 }
 
 func (g *Game) SetWinnerIdx(pidx int) {
-	g.winnerIdx = pidx
+	g.WinnerIdx = pidx
 }
 
 func (g *Game) SetLoserIdx(pidx int) {
-	g.loserIdx = pidx
+	g.LoserIdx = pidx
 }
 
 func (g *Game) GetWinnerIdx() int {
-	return g.winnerIdx
+	return g.WinnerIdx
 }
 
 func (g *Game) WinnerWasSet() bool {
 	// This is the only case in which the winner has not yet been set,
 	// when both winnerIdx and loserIdx are 0.
-	return !(g.winnerIdx == 0 && g.loserIdx == 0)
+	return !(g.WinnerIdx == 0 && g.LoserIdx == 0)
 }

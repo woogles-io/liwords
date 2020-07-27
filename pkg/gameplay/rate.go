@@ -33,9 +33,9 @@ func rate(ctx context.Context, scores map[string]int32, g *entity.Game,
 	}
 	// We have two users. Rate them.
 	// If the game ended because of the following, apply the maximum spread.
-	maxPenalty := g.GameEndReason() == pb.GameEndReason_RESIGNED ||
-		g.GameEndReason() == pb.GameEndReason_ABANDONED ||
-		g.GameEndReason() == pb.GameEndReason_TIME
+	maxPenalty := g.GameEndReason == pb.GameEndReason_RESIGNED ||
+		g.GameEndReason == pb.GameEndReason_ABANDONED ||
+		g.GameEndReason == pb.GameEndReason_TIME
 	// Get the user ratings
 	rat0, err := users[0].GetRating(ratingKey)
 	if err != nil {

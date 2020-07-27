@@ -211,6 +211,10 @@ func (s *DBStore) SetRating(ctx context.Context, uuid string, variant entity.Var
 	return s.db.Model(p).Update("ratings", postgres.Jsonb{RawMessage: bytes}).Error
 }
 
+func (s *DBStore) Disconnect() {
+	s.db.Close()
+}
+
 // CheckPassword checks the password. If the password matches, return the User.
 // If not, return an error.
 // func (s *DBStore) CheckPassword(ctx context.Context, username string, password string) (*entity.User, error) {

@@ -8,10 +8,6 @@ import (
 
 // Variants, time controls, etc.
 
-const (
-	CrosswordGame string = "CrosswordGame"
-)
-
 type Variant string
 type TimeControl string
 

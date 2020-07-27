@@ -10,24 +10,19 @@ import (
 	"math"
 	"strconv"
 
-	"github.com/domino14/macondo/alphabet"
 	"github.com/rs/zerolog/log"
 	"google.golang.org/protobuf/proto"
 
-	"github.com/domino14/macondo/move"
-
+	"github.com/domino14/macondo/alphabet"
+	"github.com/domino14/macondo/board"
+	"github.com/domino14/macondo/game"
 	macondopb "github.com/domino14/macondo/gen/api/proto/macondo"
+	"github.com/domino14/macondo/move"
 
 	"github.com/domino14/liwords/pkg/config"
 	"github.com/domino14/liwords/pkg/entity"
 	"github.com/domino14/liwords/pkg/user"
 	pb "github.com/domino14/liwords/rpc/api/proto/realtime"
-	"github.com/domino14/macondo/board"
-	"github.com/domino14/macondo/game"
-)
-
-const (
-	CrosswordGame string = "CrosswordGame"
 )
 
 var (
@@ -40,6 +35,7 @@ var (
 type GameStore interface {
 	Get(ctx context.Context, id string) (*entity.Game, error)
 	Set(context.Context, *entity.Game) error
+	Create(context.Context, *entity.Game) error
 }
 
 // InstantiateNewGame instantiates a game and returns it.
@@ -61,7 +57,7 @@ func InstantiateNewGame(ctx context.Context, gameStore GameStore, cfg *config.Co
 		return nil, errors.New("no rules")
 	}
 	switch req.Rules.BoardLayoutName {
-	case CrosswordGame:
+	case entity.CrosswordGame:
 		bd = board.CrosswordGameBoard
 	default:
 		return nil, errors.New("unsupported board layout")
@@ -440,7 +436,7 @@ func gameEndedEvent(ctx context.Context, g *entity.Game, userStore user.Store) *
 	evt := &pb.GameEndedEvent{
 		Scores:     scores,
 		NewRatings: ratings,
-		EndReason:  g.GameEndReason(),
+		EndReason:  g.GameEndReason,
 		Winner:     winner,
 		Loser:      loser,
 		Tie:        tie,
