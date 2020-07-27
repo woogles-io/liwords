@@ -13,7 +13,8 @@
     padding: 16px;
   }
   .ant-card-head {
-    .ant-card-head-title, .ant-card-extra {
+    .ant-card-head-title,
+    .ant-card-extra {
       padding: 12px 0;
       line-height: 2em;
       font-size: 12px;
@@ -43,7 +44,8 @@
   position: relative;
 }
 
-.chat-area, .data-area {
+.chat-area,
+.data-area {
   flex: 0 0 33%;
   max-width: 33%;
   text-align: left;
@@ -60,7 +62,6 @@
  expand board */
 
 .chat-area {
-
   display: none;
 }
 
@@ -69,7 +70,6 @@
   flex: 0 0 66%;
 }
 
-
 /* Board spaces */
 
 .board-spaces-container {
@@ -77,15 +77,16 @@
   display: flex;
   flex-wrap: wrap;
 }
-.board-spaces, .tiles {
+.board-spaces,
+.tiles {
   width: 100%;
   min-width: 360px;
   display: grid;
   grid-template-columns: repeat(15, 1fr);
   grid-template-rows: repeat(15, 1fr);
   gap: 1px;
-  border: 1px solid #DDD;
-  background-color: #DDD;
+  border: 1px solid #ddd;
+  background-color: #ddd;
 }
 
 .tiles {
@@ -106,11 +107,11 @@
   align-items: center;
   color: $color-board-empty;
   border: transparent 1px solid;
-  border-color: transparent transparent #DDD #DDD;
+  border-color: transparent transparent #ddd #ddd;
 }
 
 .board-space::before {
-  content: "";
+  content: '';
   padding-bottom: 100%;
   display: inline-block;
   vertical-align: top;
@@ -188,10 +189,15 @@
   justify-content: center;
   align-items: center;
   outline-style: none;
+
+  .empty-rack {
+    flex-grow: 2;
+  }
 }
 
 /* Tiles - defaults that may be overridden by customization */
-.tile, .empty-space {
+.tile,
+.empty-space {
   position: relative;
   display: flex;
   align-items: center;
@@ -202,7 +208,7 @@
 
 // squareness fix
 .tile::before {
-  content: "";
+  content: '';
   padding-bottom: 100%;
   display: inline-block;
   vertical-align: top;
@@ -305,7 +311,7 @@
     border-radius: 0 0 8px 8px;
     background: $color-primary-dark;
     color: white;
-    div{
+    div {
       width: 50%;
       text-align: center;
       padding: 4px;
@@ -389,7 +395,7 @@
 }
 .game-controls {
   max-width: 350px;
-  margin: 0 auto
+  margin: 0 auto;
 }
 
 @media (min-width: $screen-tablet-min) {
@@ -403,14 +409,14 @@
 }
 
 @media (min-width: $screen-laptop-min) {
-
   .game-table {
     max-width: $screen-laptop-min;
   }
   .chat-area {
     display: block;
   }
-  .chat-area, .data-area {
+  .chat-area,
+  .data-area {
     flex: 0 0 25%;
     max-width: 25%;
   }
@@ -422,7 +428,8 @@
     height: 28px;
     margin: 3px;
   }
-  .tile, .empty-space {
+  .tile,
+  .empty-space {
     height: 28px;
     width: 28px;
   }
@@ -443,7 +450,8 @@
   .game-table {
     max-width: $screen-desktop-min;
     .ant-card .ant-card-head {
-      .ant-card-head-title, .ant-card-extra {
+      .ant-card-head-title,
+      .ant-card-extra {
         padding: 12px 0;
         font-size: 16px;
       }
@@ -477,7 +485,8 @@
     font-size: 10px;
     padding: 8px 3px;
   }
-  .tile, .empty-space {
+  .tile,
+  .empty-space {
     height: 37px;
     width: 37px;
   }
@@ -501,10 +510,10 @@
     }
     .player-avatar {
       margin-right: 16px;
-        width: 36px;
-        min-width: 36px;
-        height: 36px;
-        font-size: 27px;
+      width: 36px;
+      min-width: 36px;
+      height: 36px;
+      font-size: 27px;
     }
   }
   .game-info {
@@ -526,7 +535,8 @@
     width: 44px;
     height: 44px;
   }
-  .tile, .empty-space {
+  .tile,
+  .empty-space {
     height: auto;
     width: auto;
   }

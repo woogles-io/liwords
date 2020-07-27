@@ -72,18 +72,17 @@ type TileProps = {
   grabbable: boolean;
   rackIndex?: number | undefined;
   swapRackTiles?: (
-      indexA: number | undefined,
-      indexB: number | undefined
+    indexA: number | undefined,
+    indexB: number | undefined
   ) => void;
   returnToRack?: (
-      rackIndex: number | undefined,
-      tileIndex: number | undefined
+    rackIndex: number | undefined,
+    tileIndex: number | undefined
   ) => void;
   onClick?: () => void;
   x?: number | undefined;
   y?: number | undefined;
 };
-
 
 const Tile = React.memo((props: TileProps) => {
   const [isDragging, setIsDragging] = useState(false);
@@ -98,7 +97,7 @@ const Tile = React.memo((props: TileProps) => {
   const handleStartDrag = (e: any) => {
     if (e) {
       setIsDragging(true);
-      e.dataTransfer.dropEffect = "move";
+      e.dataTransfer.dropEffect = 'move';
       if (props.tentative && props.x && props.y) {
         e.dataTransfer.setData('tileIndex', uniqueTileIdx(props.y, props.x));
       } else {
@@ -113,20 +112,28 @@ const Tile = React.memo((props: TileProps) => {
 
   const handleDrop = (e: any) => {
     if (props.swapRackTiles && e.dataTransfer.getData('rackIndex')) {
-      props.swapRackTiles(props.rackIndex, parseInt(e.dataTransfer.getData('rackIndex'), 10));
+      props.swapRackTiles(
+        props.rackIndex,
+        parseInt(e.dataTransfer.getData('rackIndex'), 10)
+      );
     } else {
       if (props.returnToRack && e.dataTransfer.getData('tileIndex')) {
-        props.returnToRack(props.rackIndex, parseInt(e.dataTransfer.getData('tileIndex'), 10));
+        props.returnToRack(
+          props.rackIndex,
+          parseInt(e.dataTransfer.getData('tileIndex'), 10)
+        );
       }
     }
-  }
+  };
 
-  const handleDropOver = (e : any) => {
+  const handleDropOver = (e: any) => {
     e.preventDefault();
     e.stopPropagation();
-  }
+  };
 
-  const computedClassName = `tile${isDragging ? ' dragging' : ''}${props.grabbable ? ' droppable' : ''}`;
+  const computedClassName = `tile${isDragging ? ' dragging' : ''}${
+    props.grabbable ? ' droppable' : ''
+  }`;
   return (
     <div
       className={computedClassName}

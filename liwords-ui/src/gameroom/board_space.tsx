@@ -26,7 +26,7 @@ function getBonusProperties(bt: BonusType): BonusProperties {
 
 type Props = {
   bonusType: BonusType;
-  handleTileDrop: (e : any) => void;
+  handleTileDrop: (e: any) => void;
   showBonusLabel: boolean;
   startingSquare: boolean;
   arrow: boolean;
@@ -44,11 +44,7 @@ const BoardSpace = React.memo((props: Props) => {
   }
   // ✩✪✫
   if (props.startingSquare) {
-    startingSquare = (
-      <Logo
-        className="logo"
-      />
-    );
+    startingSquare = <Logo className="logo" />;
   }
   if (props.arrow) {
     if (props.arrowHoriz) {
@@ -62,12 +58,10 @@ const BoardSpace = React.memo((props: Props) => {
     backgroundColor: fillColor,
   };
 
-
-
-  const handleDropOver = (e : any) => {
+  const handleDropOver = (e: any) => {
     e.preventDefault();
     e.stopPropagation();
-  }
+  };
 
   return (
     <div

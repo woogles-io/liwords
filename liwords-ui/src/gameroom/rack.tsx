@@ -23,6 +23,25 @@ type Props = {
 };
 
 export const Rack = React.memo((props: Props) => {
+  const handleDropOver = (e: any) => {
+    e.preventDefault();
+    e.stopPropagation();
+  };
+  const handleDrop = (e: any, index: number) => {
+    if (props.swapRackTiles && e.dataTransfer.getData('rackIndex')) {
+      props.swapRackTiles(
+        index,
+        parseInt(e.dataTransfer.getData('rackIndex'), 10)
+      );
+    } else {
+      if (props.returnToRack && e.dataTransfer.getData('tileIndex')) {
+        props.returnToRack(
+          index,
+          parseInt(e.dataTransfer.getData('tileIndex'), 10)
+        );
+      }
+    }
+  };
   const renderTiles = () => {
     const tiles = [];
     if (!props.letters || props.letters.length === 0) {
@@ -51,9 +70,27 @@ export const Rack = React.memo((props: Props) => {
       );
     }
     return <>{tiles}</>;
-  }
+  };
 
-  return <div className="rack">{renderTiles()}</div>;
+  return (
+    <div className="rack">
+      <div
+        className="empty-rack droppable"
+        onDragOver={handleDropOver}
+        onDrop={(e) => {
+          handleDrop(e, 0);
+        }}
+      />
+      {renderTiles()}
+      <div
+        className="empty-rack droppable"
+        onDragOver={handleDropOver}
+        onDrop={(e) => {
+          handleDrop(e, props.letters.length);
+        }}
+      />
+    </div>
+  );
 });
 
 export default Rack;
