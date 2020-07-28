@@ -13,6 +13,7 @@ jobs:
         environment:
           POSTGRES_USER: postgres
           POSTGRES_DB: liwords_test
+          POSTGRES_PASSWORD: pass
 
     working_directory: /opt/liwords
     steps:
