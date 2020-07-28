@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"errors"
 
+	"github.com/rs/zerolog/log"
+
 	"google.golang.org/protobuf/proto"
 
 	"github.com/jinzhu/gorm"
@@ -56,8 +58,8 @@ type game struct {
 }
 
 // NewDBStore creates a new DB store for games.
-func NewDBStore(dbURL string, config *config.Config, userStore pkguser.Store) (*DBStore, error) {
-	db, err := gorm.Open("postgres", dbURL)
+func NewDBStore(config *config.Config, userStore pkguser.Store) (*DBStore, error) {
+	db, err := gorm.Open("postgres", config.DBConnString)
 	if err != nil {
 		return nil, err
 	}
@@ -113,6 +115,7 @@ func FromState(p0, p1 user.User, timers entity.Timers, Started bool,
 		return nil, err
 	}
 	g.GameReq = req
+	log.Debug().Interface("reqBytes", req).Msg("req-bytes")
 	// Then unmarshal the history and start a game from it.
 	hist := &macondopb.GameHistory{}
 	err = proto.Unmarshal(histBytes, hist)

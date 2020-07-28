@@ -9,6 +9,8 @@ import (
 	"os"
 	"testing"
 
+	"github.com/domino14/liwords/pkg/config"
+
 	"github.com/domino14/liwords/pkg/stores/user"
 	pkguser "github.com/domino14/liwords/pkg/user"
 
@@ -106,13 +108,14 @@ func setup() {
 		log.Fatal(err)
 	}
 
-	req, err := hex.DecodeString("183c2803")
+	req, err := hex.DecodeString("12180a0d43726f7373776f726447616d651207656e676c697368183c2803")
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	// Add some fake games to the table
-	store, err := NewDBStore(TestingDBConnStr+" dbname=liwords_test", nil, ustore)
+	store, err := NewDBStore(&config.Config{
+		DBConnString: TestingDBConnStr + " dbname=liwords_test"}, ustore)
 	db = store.db.Exec("INSERT INTO games(created_at, updated_at, uuid, "+
 		"player0_id, player1_id, timers, started, game_end_reason, winner_idx, loser_idx, "+
 		"request, history) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
@@ -149,7 +152,8 @@ func TestMain(m *testing.M) {
 func TestCreate(t *testing.T) {
 	is := is.New(t)
 	ustore := userStore(TestingDBConnStr + " dbname=liwords_test")
-	store, err := NewDBStore(TestingDBConnStr+" dbname=liwords_test", nil, ustore)
+	store, err := NewDBStore(&config.Config{
+		DBConnString: TestingDBConnStr + " dbname=liwords_test"}, ustore)
 	is.NoErr(err)
 
 	u1, err := ustore.Get(context.Background(), "cesar")
@@ -161,10 +165,16 @@ func TestCreate(t *testing.T) {
 	mcg := newMacondoGame([2]*entity.User{u1, u2})
 	mcg.StartGame()
 	mcg.SetBackupMode(macondogame.InteractiveGameplayMode)
-	entGame := entity.NewGame(mcg, &pb.GameRequest{InitialTimeSeconds: 60, ChallengeRule: macondopb.ChallengeRule_FIVE_POINT})
+	entGame := entity.NewGame(mcg, &pb.GameRequest{
+		InitialTimeSeconds: 60,
+		ChallengeRule:      macondopb.ChallengeRule_FIVE_POINT,
+		Rules: &pb.GameRules{
+			BoardLayoutName:        "CrosswordGame",
+			LetterDistributionName: "english",
+		},
+	})
 	entGame.ResetTimersAndStart()
 
-	fmt.Println("entGame history", entGame.History(), entGame.Game.Playing())
 	err = store.Create(context.Background(), entGame)
 	is.NoErr(err)
 	// Clean up connections
@@ -176,12 +186,20 @@ func TestGet(t *testing.T) {
 	is := is.New(t)
 
 	ustore := userStore(TestingDBConnStr + " dbname=liwords_test")
-	store, err := NewDBStore(TestingDBConnStr+" dbname=liwords_test", nil, ustore)
+	store, err := NewDBStore(&config.Config{
+		MacondoConfig: DefaultConfig,
+		DBConnString:  TestingDBConnStr + " dbname=liwords_test",
+	}, ustore)
 	is.NoErr(err)
 
 	entGame, err := store.Get(context.Background(), "hvxXXKPBeFDQAUcoKwtreB")
 	is.NoErr(err)
 	is.Equal(entGame.GameID(), "hvxXXKPBeFDQAUcoKwtreB")
+	is.Equal(entGame.NickOnTurn(), "cesar")
+	is.Equal(entGame.RackLettersFor(0), "AAEFIOR")
+	is.Equal(entGame.RackLettersFor(1), "BDENNOU")
+	fmt.Println("entGame history", entGame.History(), entGame.Game.Playing())
+
 	// Clean up connections
 	ustore.(*user.DBStore).Disconnect()
 	store.Disconnect()
