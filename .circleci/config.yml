@@ -6,8 +6,14 @@ jobs:
     environment:
       LEXICON_PATH: /opt/lexica/
       LETTER_DISTRIBUTION_PATH: /opt/liwords/data/letterdistributions/
+      TEST_DB_HOST: localhost
     docker:
       - image: golang:alpine
+      - image: circleci/postgres:12.3
+        environment:
+          POSTGRES_USER: postgres
+          POSTGRES_DB: liwords_test
+
     working_directory: /opt/liwords
     steps:
       - checkout
