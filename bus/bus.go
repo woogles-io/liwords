@@ -426,7 +426,7 @@ func (b *Bus) gameRefresher(ctx context.Context, gameID string) (*entity.EventWr
 	if err != nil {
 		return nil, err
 	}
-	if !entGame.Started() {
+	if !entGame.Started {
 		return nil, errors.New("game-starting-soon")
 	}
 	evt := entity.WrapEvent(entGame.HistoryRefresherEvent(),

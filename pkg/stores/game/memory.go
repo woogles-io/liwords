@@ -49,3 +49,9 @@ func (m *MemoryStore) Set(ctx context.Context, game *entity.Game) error {
 	m.games[gameID] = game
 	return nil
 }
+
+// Create creates a game in the store initially. Make it the same function as
+// Set essentially.
+func (m *MemoryStore) Create(ctx context.Context, game *entity.Game) error {
+	return m.Set(ctx, game)
+}
