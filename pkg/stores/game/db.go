@@ -150,6 +150,7 @@ func FromState(p0, p1 user.User, timers entity.Timers, Started bool,
 // Set takes in a game entity that _already exists_ in the DB, and writes it to
 // the database.
 func (s *DBStore) Set(ctx context.Context, g *entity.Game) error {
+	// s.db.LogMode(true)
 	log.Debug().Interface("set-history", g.History()).Msg("in set")
 	dbg, err := s.toDBObj(ctx, g)
 	if err != nil {
@@ -164,9 +165,8 @@ func (s *DBStore) Set(ctx context.Context, g *entity.Game) error {
 
 	result := s.db.Model(&game{}).Set("gorm:query_option", "FOR UPDATE").
 		Where("uuid = ?", g.GameID()).Update(dbg)
-	if result.Error != nil {
-		return result.Error
-	}
+	// s.db.LogMode(false)
+
 	return result.Error
 }
 

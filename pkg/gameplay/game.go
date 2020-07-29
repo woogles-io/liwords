@@ -80,7 +80,7 @@ func InstantiateNewGame(ctx context.Context, gameStore GameStore, cfg *config.Co
 
 	entGame := entity.NewGame(g, req)
 	// Save the game to the store.
-	if err = gameStore.Set(ctx, entGame); err != nil {
+	if err = gameStore.Create(ctx, entGame); err != nil {
 		return nil, err
 	}
 	return entGame, nil
@@ -213,12 +213,8 @@ func handleChallenge(ctx context.Context, entGame *entity.Game, gameStore GameSt
 		checkGameOverAndModifyScores(ctx, entGame, userStore)
 	}
 
-	err = gameStore.Set(ctx, entGame)
-	if err != nil {
-		return err
-	}
+	return gameStore.Set(ctx, entGame)
 
-	return nil
 }
 
 // PlayMove handles a gameplay event from the socket
@@ -325,12 +321,7 @@ func PlayMove(ctx context.Context, gameStore GameStore, userStore user.Store, us
 		checkGameOverAndModifyScores(ctx, entGame, userStore)
 	}
 
-	err = gameStore.Set(ctx, entGame)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return gameStore.Set(ctx, entGame)
 }
 
 func checkGameOverAndModifyScores(ctx context.Context, entGame *entity.Game, userStore user.Store) {
@@ -396,12 +387,7 @@ func setTimedOut(ctx context.Context, entGame *entity.Game, pidx int, gameStore 
 	performEndgameDuties(ctx, entGame, userStore)
 
 	// Store the game back into the store
-	err := gameStore.Set(ctx, entGame)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return gameStore.Set(ctx, entGame)
 }
 
 func gameEndedEvent(ctx context.Context, g *entity.Game, userStore user.Store) *pb.GameEndedEvent {
