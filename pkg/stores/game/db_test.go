@@ -9,6 +9,7 @@ import (
 
 	"github.com/jinzhu/gorm"
 	"github.com/matryer/is"
+	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 
 	"github.com/domino14/macondo/board"
@@ -66,7 +67,7 @@ func userStore(dbURL string) pkguser.Store {
 	return ustore
 }
 
-func setup() {
+func recreateDB() {
 	// Create a database.
 	db, err := gorm.Open("postgres", TestingDBConnStr+" dbname=postgres")
 	if err != nil {
@@ -96,11 +97,14 @@ func setup() {
 			log.Fatal().Err(err).Msg("error")
 		}
 	}
+	addfakeGames(ustore)
+}
+
+func addfakeGames(ustore pkguser.Store) {
 	protocts, err := ioutil.ReadFile("./testdata/game1/history.pb")
 	if err != nil {
 		log.Fatal().Err(err).Msg("error")
 	}
-
 	protocts, err = hex.DecodeString(string(protocts))
 	if err != nil {
 		log.Fatal().Err(err).Msg("error")
@@ -110,22 +114,24 @@ func setup() {
 	if err != nil {
 		log.Fatal().Err(err).Msg("error")
 	}
-
 	// Add some fake games to the table
 	store, err := NewDBStore(&config.Config{
 		DBConnString: TestingDBConnStr + " dbname=liwords_test"}, ustore)
-	db = store.db.Exec("INSERT INTO games(created_at, updated_at, uuid, "+
+
+	db := store.db.Exec("INSERT INTO games(created_at, updated_at, uuid, "+
 		"player0_id, player1_id, timers, started, game_end_reason, winner_idx, loser_idx, "+
 		"request, history) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
 		"2020-07-27 04:33:45.938304+00", "2020-07-27 04:33:45.938304+00",
-		"wJxURccCgSAPivUvj4QdYL", 1, 3, `{"lu": 1595824425928, "mo": 0, "tr": [60000, 60000], "ts": 1595824425928}`,
+		"wJxURccCgSAPivUvj4QdYL", 1, 3,
+		`{"lu": 1595824425928, "mo": 0, "tr": [60000, 60000], "ts": 1595824425928}`,
 		true, 0, 0, 0, req, protocts)
 
 	if db.Error != nil {
 		log.Fatal().Err(db.Error).Msg("error")
 	}
-	ustore.(*user.DBStore).Disconnect()
 	store.Disconnect()
+	ustore.(*user.DBStore).Disconnect()
+
 }
 
 func teardown() {
@@ -141,13 +147,16 @@ func teardown() {
 }
 
 func TestMain(m *testing.M) {
-	setup()
+	zerolog.SetGlobalLevel(zerolog.InfoLevel)
+
 	code := m.Run()
 	//teardown()
 	os.Exit(code)
 }
 
 func TestCreate(t *testing.T) {
+	log.Info().Msg("TestCreate")
+	recreateDB()
 	is := is.New(t)
 	ustore := userStore(TestingDBConnStr + " dbname=liwords_test")
 	store, err := NewDBStore(&config.Config{
@@ -182,6 +191,9 @@ func TestCreate(t *testing.T) {
 }
 
 func TestSet(t *testing.T) {
+	log.Info().Msg("TestSet")
+	recreateDB()
+
 	is := is.New(t)
 	ustore := userStore(TestingDBConnStr + " dbname=liwords_test")
 	store, err := NewDBStore(&config.Config{
@@ -212,9 +224,16 @@ func TestSet(t *testing.T) {
 	is.Equal(g.RackLettersFor(0), "AEIJVVW")
 	// AGUE was worth 10. The spread for cesar is therefore -10.
 	is.Equal(g.SpreadFor(0), -10)
+
+	// Clean up connections
+	ustore.(*user.DBStore).Disconnect()
+	store.Disconnect()
 }
 
 func TestGet(t *testing.T) {
+	log.Info().Msg("TestGet")
+	recreateDB()
+
 	is := is.New(t)
 
 	ustore := userStore(TestingDBConnStr + " dbname=liwords_test")
