@@ -56,3 +56,9 @@ You must have the Python `invoke` program installed (`pip install invoke`)
 See the `tasks.py` file to see how this function works.
 
 (note, you'll have to change the proto_path to match your folder layout. Make sure that `liwords` and `macondo` are both inside the supplied `proto_path`)
+
+### Attributions
+
+This app uses these sounds from freesound:
+
+S: single dog bark 3 by crazymonke9 -- https://freesound.org/s/418105/

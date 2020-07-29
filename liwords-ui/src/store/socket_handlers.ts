@@ -25,9 +25,12 @@ import { endGameMessage } from './end_of_game';
 
 const makemoveMP3 = require('../assets/makemove.mp3');
 const startgameMP3 = require('../assets/startgame.mp3');
+const woofWav = require('../assets/woof.wav');
 
 const makemoveSound = new Audio(makemoveMP3);
 const startgameSound = new Audio(startgameMP3);
+const woofSound = new Audio(woofWav);
+woofSound.volume = 0.2;
 
 export const parseMsgs = (msg: Uint8Array) => {
   // Multiple msgs can come in the same packet.
@@ -195,6 +198,9 @@ export const onSocketMsg = (storeData: StoreData) => {
           const sge = parsedMsg as ServerChallengeResultEvent;
           console.log('got server challenge result event', sge);
           storeData.challengeResultEvent(sge);
+          if (!sge.getValid()) {
+            woofSound.play();
+          }
           break;
         }
 

@@ -150,13 +150,23 @@ func FromState(p0, p1 user.User, timers entity.Timers, Started bool,
 // Set takes in a game entity that _already exists_ in the DB, and writes it to
 // the database.
 func (s *DBStore) Set(ctx context.Context, g *entity.Game) error {
-
+	log.Debug().Interface("set-history", g.History()).Msg("in set")
 	dbg, err := s.toDBObj(ctx, g)
 	if err != nil {
 		return err
 	}
-	result := s.db.Where("uuid = ?", g.GameID()).Save(dbg)
+	th := &macondopb.GameHistory{}
+	err = proto.Unmarshal(dbg.History, th)
+	if err != nil {
+		return err
+	}
+	log.Debug().Interface("newhist", th).Msg("set")
 
+	result := s.db.Model(&game{}).Set("gorm:query_option", "FOR UPDATE").
+		Where("uuid = ?", g.GameID()).Update(dbg)
+	if result.Error != nil {
+		return result.Error
+	}
 	return result.Error
 }
 
@@ -190,11 +200,13 @@ func (s *DBStore) toDBObj(ctx context.Context, g *entity.Game) (*game, error) {
 	if err != nil {
 		return nil, err
 	}
+	log.Debug().Int("p0id", int(p0.ID)).Str("p0name", p0.Username).Msg("got-p0")
 
 	p1, err := s.userStore.GetByUUID(ctx, players[1].UserId)
 	if err != nil {
 		return nil, err
 	}
+	log.Debug().Int("p1id", int(p1.ID)).Str("p0name", p1.Username).Msg("got-p1")
 
 	dbg := &game{
 		UUID:      g.GameID(),
