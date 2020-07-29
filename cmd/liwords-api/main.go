@@ -72,7 +72,13 @@ func main() {
 			hlog.FromRequest(r).Info().Str("method", method).Int("status", status).Dur("duration", d).Msg("")
 		}),
 	)
-	gameStore := game.NewMemoryStore()
+
+	tmpGameStore, err := game.NewDBStore(cfg, userStore)
+	if err != nil {
+		panic(err)
+	}
+
+	gameStore := game.NewCache(tmpGameStore)
 	soughtGameStore := soughtgame.NewMemoryStore()
 
 	authenticationService := auth.NewAuthenticationService(userStore, sessionStore, cfg.SecretKey)
