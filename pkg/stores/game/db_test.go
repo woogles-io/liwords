@@ -122,7 +122,7 @@ func addfakeGames(ustore pkguser.Store) {
 		"player0_id, player1_id, timers, started, game_end_reason, winner_idx, loser_idx, "+
 		"request, history) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
 		"2020-07-27 04:33:45.938304+00", "2020-07-27 04:33:45.938304+00",
-		"wJxURccCgSAPivUvj4QdYL", 1, 3,
+		"wJxURccCgSAPivUvj4QdYL", 2, 1,
 		`{"lu": 1595824425928, "mo": 0, "tr": [60000, 60000], "ts": 1595824425928}`,
 		true, 0, 0, 0, req, protocts)
 
@@ -154,19 +154,16 @@ func TestMain(m *testing.M) {
 	os.Exit(code)
 }
 
-func TestCreate(t *testing.T) {
-	log.Info().Msg("TestCreate")
-	recreateDB()
-	is := is.New(t)
+func createGame(p0, p1 string, initTime int32, is *is.I) {
 	ustore := userStore(TestingDBConnStr + " dbname=liwords_test")
 	store, err := NewDBStore(&config.Config{
 		DBConnString: TestingDBConnStr + " dbname=liwords_test"}, ustore)
 	is.NoErr(err)
 
-	u1, err := ustore.Get(context.Background(), "cesar")
+	u1, err := ustore.Get(context.Background(), p0)
 	is.NoErr(err)
 
-	u2, err := ustore.Get(context.Background(), "mina")
+	u2, err := ustore.Get(context.Background(), p1)
 	is.NoErr(err)
 
 	mcg := newMacondoGame([2]*entity.User{u1, u2})
@@ -174,7 +171,7 @@ func TestCreate(t *testing.T) {
 	mcg.SetChallengeRule(macondopb.ChallengeRule_FIVE_POINT)
 	mcg.SetBackupMode(macondogame.InteractiveGameplayMode)
 	entGame := entity.NewGame(mcg, &pb.GameRequest{
-		InitialTimeSeconds: 60,
+		InitialTimeSeconds: initTime,
 		ChallengeRule:      macondopb.ChallengeRule_FIVE_POINT,
 		Rules: &pb.GameRules{
 			BoardLayoutName:        "CrosswordGame",
@@ -188,6 +185,13 @@ func TestCreate(t *testing.T) {
 	// Clean up connections
 	ustore.(*user.DBStore).Disconnect()
 	store.Disconnect()
+}
+
+func TestCreate(t *testing.T) {
+	log.Info().Msg("TestCreate")
+	recreateDB()
+	is := is.New(t)
+	createGame("cesar", "mina", int32(60), is)
 }
 
 func TestSet(t *testing.T) {
@@ -245,7 +249,7 @@ func TestGet(t *testing.T) {
 
 	entGame, err := store.Get(context.Background(), "wJxURccCgSAPivUvj4QdYL")
 	is.NoErr(err)
-	log.Debug().Interface("entGame history", entGame.History()).Msg("history")
+	log.Info().Interface("entGame history", entGame.History()).Msg("history")
 
 	mina, err := ustore.Get(context.Background(), "mina")
 	is.NoErr(err)
@@ -258,8 +262,48 @@ func TestGet(t *testing.T) {
 	is.Equal(entGame.RackLettersFor(1), "AEEGOUU")
 	is.Equal(entGame.ChallengeRule(), macondopb.ChallengeRule_FIVE_POINT)
 	is.Equal(entGame.History().ChallengeRule, macondopb.ChallengeRule_FIVE_POINT)
-
 	// Clean up connections
+	ustore.(*user.DBStore).Disconnect()
+	store.Disconnect()
+}
+
+func TestListActive(t *testing.T) {
+	log.Info().Msg("TestListActive")
+	recreateDB()
+	is := is.New(t)
+	createGame("cesar", "jesse", int32(120), is)
+	createGame("jesse", "mina", int32(240), is)
+	ustore := userStore(TestingDBConnStr + " dbname=liwords_test")
+
+	// There should be an additional game, so 3 total, from recreateDB()
+	// The first game is cesar vs mina. (see TestGet)
+	store, err := NewDBStore(&config.Config{
+		MacondoConfig: DefaultConfig,
+		DBConnString:  TestingDBConnStr + " dbname=liwords_test",
+	}, ustore)
+
+	games, err := store.ListActive(context.Background())
+	is.NoErr(err)
+	is.Equal(len(games), 3)
+	is.Equal(games[0].Users, []*pb.GameMeta_UserMeta{
+		{RelevantRating: "1500?", DisplayName: "mina"},
+		{RelevantRating: "1500?", DisplayName: "cesar"},
+	})
+	is.Equal(games[1].Users, []*pb.GameMeta_UserMeta{
+		{RelevantRating: "1500?", DisplayName: "cesar"},
+		{RelevantRating: "1500?", DisplayName: "jesse"},
+	})
+	is.Equal(games[2].Users, []*pb.GameMeta_UserMeta{
+		{RelevantRating: "1500?", DisplayName: "jesse"},
+		{RelevantRating: "1500?", DisplayName: "mina"},
+	})
+
+	is.Equal(games[1].GameRequest.InitialTimeSeconds, int32(120))
+	is.Equal(games[1].GameRequest.ChallengeRule, macondopb.ChallengeRule_FIVE_POINT)
+	is.Equal(games[1].GameRequest.Rules, &pb.GameRules{
+		BoardLayoutName:        "CrosswordGame",
+		LetterDistributionName: "english",
+	})
 	ustore.(*user.DBStore).Disconnect()
 	store.Disconnect()
 }

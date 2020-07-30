@@ -19,12 +19,14 @@ var (
 type MemoryStore struct {
 	sync.Mutex
 
-	soughtGames map[string]*entity.SoughtGame
+	soughtGames       map[string]*entity.SoughtGame
+	soughtGamesByUser map[string]*entity.SoughtGame
 }
 
 func NewMemoryStore() *MemoryStore {
 	return &MemoryStore{
-		soughtGames: make(map[string]*entity.SoughtGame),
+		soughtGames:       make(map[string]*entity.SoughtGame),
+		soughtGamesByUser: make(map[string]*entity.SoughtGame),
 	}
 }
 
@@ -42,14 +44,31 @@ func (m *MemoryStore) Set(ctx context.Context, game *entity.SoughtGame) error {
 	m.Lock()
 	defer m.Unlock()
 	m.soughtGames[game.ID()] = game
+	m.soughtGamesByUser[game.Seeker()] = game
 	return nil
 }
 
 func (m *MemoryStore) Delete(ctx context.Context, id string) error {
 	m.Lock()
 	defer m.Unlock()
+	userID := m.soughtGamesByUser[id].Seeker()
 	delete(m.soughtGames, id)
+	delete(m.soughtGamesByUser, userID)
 	return nil
+}
+
+// DeleteForUser deletes the game by user ID.
+func (m *MemoryStore) DeleteForUser(ctx context.Context, userID string) (string, error) {
+	game, ok := m.soughtGamesByUser[userID]
+	if !ok {
+		// Do nothing, game never existed
+		return "", nil
+	}
+	m.Lock()
+	defer m.Unlock()
+	delete(m.soughtGamesByUser, userID)
+	delete(m.soughtGames, game.ID())
+	return game.ID(), nil
 }
 
 func (m *MemoryStore) ListOpen(ctx context.Context) ([]*entity.SoughtGame, error) {
@@ -58,4 +77,9 @@ func (m *MemoryStore) ListOpen(ctx context.Context) ([]*entity.SoughtGame, error
 		ret = append(ret, v)
 	}
 	return ret, nil
+}
+
+func (m *MemoryStore) ExistsForUser(ctx context.Context, userID string) (bool, error) {
+	_, ok := m.soughtGamesByUser[userID]
+	return ok, nil
 }

@@ -11,6 +11,9 @@ export class GameRules extends jspb.Message {
   getLetterDistributionName(): string;
   setLetterDistributionName(value: string): void;
 
+  getVariantName(): string;
+  setVariantName(value: string): void;
+
   serializeBinary(): Uint8Array;
   toObject(includeInstance?: boolean): GameRules.AsObject;
   static toObject(includeInstance: boolean, msg: GameRules): GameRules.AsObject;
@@ -25,6 +28,7 @@ export namespace GameRules {
   export type AsObject = {
     boardLayoutName: string,
     letterDistributionName: string,
+    variantName: string,
   }
 }
 
@@ -111,6 +115,58 @@ export namespace RequestingUser {
     relevantRating: string,
     isAnonymous: boolean,
     displayName: string,
+  }
+}
+
+export class GameMeta extends jspb.Message {
+  clearUsersList(): void;
+  getUsersList(): Array<GameMeta.UserMeta>;
+  setUsersList(value: Array<GameMeta.UserMeta>): void;
+  addUsers(value?: GameMeta.UserMeta, index?: number): GameMeta.UserMeta;
+
+  hasGameRequest(): boolean;
+  clearGameRequest(): void;
+  getGameRequest(): GameRequest | undefined;
+  setGameRequest(value?: GameRequest): void;
+
+  serializeBinary(): Uint8Array;
+  toObject(includeInstance?: boolean): GameMeta.AsObject;
+  static toObject(includeInstance: boolean, msg: GameMeta): GameMeta.AsObject;
+  static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+  static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+  static serializeBinaryToWriter(message: GameMeta, writer: jspb.BinaryWriter): void;
+  static deserializeBinary(bytes: Uint8Array): GameMeta;
+  static deserializeBinaryFromReader(message: GameMeta, reader: jspb.BinaryReader): GameMeta;
+}
+
+export namespace GameMeta {
+  export type AsObject = {
+    usersList: Array<GameMeta.UserMeta.AsObject>,
+    gameRequest?: GameRequest.AsObject,
+  }
+
+  export class UserMeta extends jspb.Message {
+    getRelevantRating(): string;
+    setRelevantRating(value: string): void;
+
+    getDisplayName(): string;
+    setDisplayName(value: string): void;
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): UserMeta.AsObject;
+    static toObject(includeInstance: boolean, msg: UserMeta): UserMeta.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: UserMeta, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): UserMeta;
+    static deserializeBinaryFromReader(message: UserMeta, reader: jspb.BinaryReader): UserMeta;
+  }
+
+  export namespace UserMeta {
+    export type AsObject = {
+      relevantRating: string,
+      displayName: string,
+    }
   }
 }
 
@@ -217,6 +273,28 @@ export class SeekRequests extends jspb.Message {
 export namespace SeekRequests {
   export type AsObject = {
     requestsList: Array<SeekRequest.AsObject>,
+  }
+}
+
+export class ActiveGames extends jspb.Message {
+  clearGamesList(): void;
+  getGamesList(): Array<GameMeta>;
+  setGamesList(value: Array<GameMeta>): void;
+  addGames(value?: GameMeta, index?: number): GameMeta;
+
+  serializeBinary(): Uint8Array;
+  toObject(includeInstance?: boolean): ActiveGames.AsObject;
+  static toObject(includeInstance: boolean, msg: ActiveGames): ActiveGames.AsObject;
+  static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+  static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+  static serializeBinaryToWriter(message: ActiveGames, writer: jspb.BinaryWriter): void;
+  static deserializeBinary(bytes: Uint8Array): ActiveGames;
+  static deserializeBinaryFromReader(message: ActiveGames, reader: jspb.BinaryReader): ActiveGames;
+}
+
+export namespace ActiveGames {
+  export type AsObject = {
+    gamesList: Array<GameMeta.AsObject>,
   }
 }
 

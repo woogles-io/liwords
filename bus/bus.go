@@ -285,6 +285,12 @@ func (b *Bus) handleNatsPublish(ctx context.Context, subtopics []string, data []
 			return err
 		}
 		return b.initRealmInfo(ctx, evt)
+
+	case "leaveSite":
+		// There is no event here. We have the user ID in the subject.
+		// req.User.IsAnonymous = subtopics[1] == "anon"
+		userID := subtopics[2]
+		return b.leaveSite(ctx, userID)
 	default:
 		return fmt.Errorf("unhandled-publish-topic: %v", subtopics)
 	}
@@ -402,6 +408,18 @@ func (b *Bus) initRealmInfo(ctx context.Context, evt *pb.InitRealmInfo) error {
 	}
 	log.Debug().Interface("evt", evt).Msg("no init realm info")
 	return nil
+}
+
+func (b *Bus) leaveSite(ctx context.Context, userID string) error {
+	reqID, err := b.soughtGameStore.DeleteForUser(ctx, userID)
+	if err != nil {
+		return err
+	}
+	if reqID == "" {
+		return nil
+	}
+	log.Debug().Str("reqID", reqID).Str("userID", userID).Msg("user-left-deleting-sought")
+	return b.broadcastSeekDeletion(reqID)
 }
 
 func (b *Bus) openSeeks(ctx context.Context) (*entity.EventWrapper, error) {

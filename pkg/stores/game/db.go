@@ -48,7 +48,7 @@ type game struct {
 	Timers postgres.Jsonb // A JSON blob containing the game timers.
 
 	Started       bool
-	GameEndReason int
+	GameEndReason int `gorm:"index"`
 	WinnerIdx     int
 	LoserIdx      int
 
@@ -91,12 +91,12 @@ func (s *DBStore) Get(ctx context.Context, id string) (*entity.Game, error) {
 		return nil, err
 	}
 
-	return FromState(g.Player0, g.Player1, tdata, g.Started, g.GameEndReason,
+	return FromState(tdata, g.Started, g.GameEndReason,
 		g.WinnerIdx, g.LoserIdx, g.Request, g.History, s.gameEventChan, s.cfg)
 }
 
 // FromState returns an entity.Game from a DB State.
-func FromState(p0, p1 user.User, timers entity.Timers, Started bool,
+func FromState(timers entity.Timers, Started bool,
 	GameEndReason, WinnerIdx, LoserIdx int, reqBytes, histBytes []byte,
 	gameEventChan chan<- *entity.EventWrapper, cfg *config.Config) (*entity.Game, error) {
 
@@ -178,6 +178,71 @@ func (s *DBStore) Create(ctx context.Context, g *entity.Game) error {
 	}
 	result := s.db.Create(dbg)
 	return result.Error
+}
+
+func (s *DBStore) ListActive(ctx context.Context) ([]*pb.GameMeta, error) {
+	type activeGame struct {
+		P0Username string
+		P1Username string
+		P0Ratings  postgres.Jsonb
+		P1Ratings  postgres.Jsonb
+		Request    []byte
+	}
+
+	var games []activeGame
+
+	// Create query manually
+	result := s.db.Table("games").Select(
+		"u0.username as p0_username, u1.username as p1_username, "+
+			"p0.ratings as p0_ratings, p1.ratings as p1_ratings, games.request as request").
+		Joins("JOIN users as u0  ON u0.id = games.player0_id").
+		Joins("JOIN users as u1  ON u1.id = games.player1_id").
+		Joins("JOIN profiles as p0 on p0.user_id = games.player0_id").
+		Joins("JOIN profiles as p1 on p1.user_id = games.player1_id").
+		Where("games.game_end_reason = ?", 0 /* ongoing games only*/).
+		Order("games.id").
+		Scan(&games)
+
+	if result.Error != nil {
+		return nil, result.Error
+	}
+
+	gamesMeta := make([]*pb.GameMeta, len(games))
+	// This function looks kinda slow; should benchmark.
+	for idx, g := range games {
+
+		req := &pb.GameRequest{}
+		err := proto.Unmarshal(g.Request, req)
+		if err != nil {
+			return nil, err
+		}
+
+		timefmt, variant, err := entity.VariantFromGameReq(req)
+		ratingKey := entity.ToVariantKey(req.Lexicon, variant, timefmt)
+
+		var p0data entity.Ratings
+		err = json.Unmarshal(g.P0Ratings.RawMessage, &p0data)
+		if err != nil {
+			return nil, err
+		}
+		var p1data entity.Ratings
+		err = json.Unmarshal(g.P1Ratings.RawMessage, &p1data)
+		if err != nil {
+			return nil, err
+		}
+
+		p0Rating := entity.RelevantRating(p0data, ratingKey)
+		p1Rating := entity.RelevantRating(p1data, ratingKey)
+
+		players := []*pb.GameMeta_UserMeta{
+			{RelevantRating: p0Rating, DisplayName: g.P0Username},
+			{RelevantRating: p1Rating, DisplayName: g.P1Username}}
+
+		gamesMeta[idx] = &pb.GameMeta{Users: players, GameRequest: req}
+	}
+
+	return gamesMeta, nil
+
 }
 
 func (s *DBStore) toDBObj(ctx context.Context, g *entity.Game) (*game, error) {

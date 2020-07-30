@@ -36,6 +36,7 @@ type GameStore interface {
 	Get(ctx context.Context, id string) (*entity.Game, error)
 	Set(context.Context, *entity.Game) error
 	Create(context.Context, *entity.Game) error
+	ListActive(context.Context) ([]*pb.GameMeta, error)
 }
 
 // InstantiateNewGame instantiates a game and returns it.
