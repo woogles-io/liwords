@@ -3,8 +3,11 @@ package game
 import (
 	"context"
 	"sync"
+	"time"
 
 	"github.com/domino14/liwords/pkg/entity"
+	pb "github.com/domino14/liwords/rpc/api/proto/realtime"
+	"github.com/rs/zerolog/log"
 )
 
 // same as the GameStore in gameplay package, but this gives us a bit more flexibility
@@ -13,6 +16,7 @@ type backingStore interface {
 	Get(ctx context.Context, id string) (*entity.Game, error)
 	Set(context.Context, *entity.Game) error
 	Create(context.Context, *entity.Game) error
+	ListActive(ctx context.Context) ([]*pb.GameMeta, error)
 }
 
 // Cache will reside in-memory, and will be per-node. If we add more nodes
@@ -20,7 +24,12 @@ type backingStore interface {
 type Cache struct {
 	sync.Mutex
 
-	games   map[string]*entity.Game
+	games       map[string]*entity.Game
+	activeGames []*pb.GameMeta
+
+	activeGamesTTL         time.Duration
+	activeGamesLastUpdated time.Time
+
 	backing backingStore
 }
 
@@ -28,6 +37,18 @@ func NewCache(backing backingStore) *Cache {
 	return &Cache{
 		backing: backing,
 		games:   make(map[string]*entity.Game),
+		// Have a non-trivial TTL for the cache of active games.
+		// XXX: This might act poorly if the following happens within the TTL:
+		//  - active games gets cached
+		//  - someone starts playing a game
+		//  - new player logs on and fetches active games
+		//  - new player will receive the old games and not the new game?
+		// One solution: bust the cache or add/subtract directly from cache
+		//  when a new game is created/ended.
+		// Problem: this won't work for distributed nodes. Once we
+		// add multiple nodes we should probably have a Redis cache for a
+		// few things (especially game metadata).
+		activeGamesTTL: time.Second * 5,
 	}
 }
 
@@ -81,4 +102,20 @@ func (c *Cache) setOrCreate(ctx context.Context, game *entity.Game, isNew bool) 
 	defer c.Unlock()
 	c.games[gameID] = game
 	return nil
+}
+
+func (c *Cache) ListActive(ctx context.Context) ([]*pb.GameMeta, error) {
+
+	if time.Now().Sub(c.activeGamesLastUpdated) < c.activeGamesTTL {
+		log.Debug().Msg("returning active games from cache")
+		return c.activeGames, nil
+	}
+	log.Debug().Msg("active games not in cache, fetching from backing")
+
+	games, err := c.backing.ListActive(ctx)
+	if err == nil {
+		c.activeGames = games
+		c.activeGamesLastUpdated = time.Now()
+	}
+	return games, nil
 }
