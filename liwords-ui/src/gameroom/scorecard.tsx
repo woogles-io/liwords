@@ -155,15 +155,17 @@ export const ScoreCard = React.memo((props: Props) => {
       extra={<a href="#">Notepad</a>}
     >
       <div ref={el}>
-        {turns.map((t, idx) => (
-          <ScorecardTurn
-            turn={t}
-            board={props.board}
-            key={`t_${idx + 0}`}
-            playing={props.playing}
-            username={props.username}
-          />
-        ))}
+        {turns.map((t, idx) =>
+          t.length === 0 ? null : (
+            <ScorecardTurn
+              turn={t}
+              board={props.board}
+              key={`t_${idx + 0}`}
+              playing={props.playing}
+              username={props.username}
+            />
+          )
+        )}
       </div>
     </Card>
   );
