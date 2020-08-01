@@ -6,6 +6,7 @@ import (
 	"sync"
 
 	"github.com/domino14/liwords/pkg/entity"
+	"github.com/rs/zerolog/log"
 )
 
 var (
@@ -45,13 +46,22 @@ func (m *MemoryStore) Set(ctx context.Context, game *entity.SoughtGame) error {
 	defer m.Unlock()
 	m.soughtGames[game.ID()] = game
 	m.soughtGamesByUser[game.Seeker()] = game
+	log.Debug().Interface("by-user", m.soughtGamesByUser).Msg("set-sought-game")
 	return nil
 }
 
+// Delete deletes the game by game ID.
 func (m *MemoryStore) Delete(ctx context.Context, id string) error {
 	m.Lock()
 	defer m.Unlock()
-	userID := m.soughtGamesByUser[id].Seeker()
+
+	g, ok := m.soughtGames[id]
+	if !ok {
+		log.Warn().Str("game-id", id).Msg("tried-to-delete-nonexistent-game-id")
+		return nil
+	}
+
+	userID := g.Seeker()
 	delete(m.soughtGames, id)
 	delete(m.soughtGamesByUser, userID)
 	return nil

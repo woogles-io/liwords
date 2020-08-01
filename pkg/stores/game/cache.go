@@ -68,7 +68,12 @@ func (c *Cache) Unload(ctx context.Context, id string) {
 func (c *Cache) Get(ctx context.Context, id string) (*entity.Game, error) {
 	g, ok := c.games[id]
 	if !ok {
-		return nil, errNotFound
+		// Don't store it in the cache. If we are here, the only reason
+		// we wouldn't be able to load from cache is that the game is either
+		// over, or it's found in another API node -- in the latter case,
+		// this function should ideally not be called. We should create an
+		// InCache function.
+		return c.backing.Get(ctx, id)
 	}
 	return g, nil
 }

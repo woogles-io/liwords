@@ -181,20 +181,13 @@ func (s *DBStore) Create(ctx context.Context, g *entity.Game) error {
 }
 
 func (s *DBStore) ListActive(ctx context.Context) ([]*pb.GameMeta, error) {
-	type activeGame struct {
-		P0Username string
-		P1Username string
-		P0Ratings  postgres.Jsonb
-		P1Ratings  postgres.Jsonb
-		Request    []byte
-	}
-
 	var games []activeGame
 
 	// Create query manually
 	result := s.db.Table("games").Select(
 		"u0.username as p0_username, u1.username as p1_username, "+
-			"p0.ratings as p0_ratings, p1.ratings as p1_ratings, games.request as request").
+			"p0.ratings as p0_ratings, p1.ratings as p1_ratings, "+
+			"games.request as request, games.uuid ").
 		Joins("JOIN users as u0  ON u0.id = games.player0_id").
 		Joins("JOIN users as u1  ON u1.id = games.player1_id").
 		Joins("JOIN profiles as p0 on p0.user_id = games.player0_id").
@@ -209,36 +202,12 @@ func (s *DBStore) ListActive(ctx context.Context) ([]*pb.GameMeta, error) {
 
 	gamesMeta := make([]*pb.GameMeta, len(games))
 	// This function looks kinda slow; should benchmark.
+	var err error
 	for idx, g := range games {
-
-		req := &pb.GameRequest{}
-		err := proto.Unmarshal(g.Request, req)
+		gamesMeta[idx], err = g.ToGameMeta()
 		if err != nil {
 			return nil, err
 		}
-
-		timefmt, variant, err := entity.VariantFromGameReq(req)
-		ratingKey := entity.ToVariantKey(req.Lexicon, variant, timefmt)
-
-		var p0data entity.Ratings
-		err = json.Unmarshal(g.P0Ratings.RawMessage, &p0data)
-		if err != nil {
-			return nil, err
-		}
-		var p1data entity.Ratings
-		err = json.Unmarshal(g.P1Ratings.RawMessage, &p1data)
-		if err != nil {
-			return nil, err
-		}
-
-		p0Rating := entity.RelevantRating(p0data, ratingKey)
-		p1Rating := entity.RelevantRating(p1data, ratingKey)
-
-		players := []*pb.GameMeta_UserMeta{
-			{RelevantRating: p0Rating, DisplayName: g.P0Username},
-			{RelevantRating: p1Rating, DisplayName: g.P1Username}}
-
-		gamesMeta[idx] = &pb.GameMeta{Users: players, GameRequest: req}
 	}
 
 	return gamesMeta, nil
@@ -291,4 +260,44 @@ func (s *DBStore) toDBObj(ctx context.Context, g *entity.Game) (*game, error) {
 
 func (s *DBStore) Disconnect() {
 	s.db.Close()
+}
+
+type activeGame struct {
+	P0Username string
+	P1Username string
+	P0Ratings  postgres.Jsonb
+	P1Ratings  postgres.Jsonb
+	Request    []byte
+	Uuid       string
+}
+
+func (a *activeGame) ToGameMeta() (*pb.GameMeta, error) {
+	req := &pb.GameRequest{}
+	err := proto.Unmarshal(a.Request, req)
+	if err != nil {
+		return nil, err
+	}
+
+	timefmt, variant, err := entity.VariantFromGameReq(req)
+	ratingKey := entity.ToVariantKey(req.Lexicon, variant, timefmt)
+
+	var p0data entity.Ratings
+	err = json.Unmarshal(a.P0Ratings.RawMessage, &p0data)
+	if err != nil {
+		return nil, err
+	}
+	var p1data entity.Ratings
+	err = json.Unmarshal(a.P1Ratings.RawMessage, &p1data)
+	if err != nil {
+		return nil, err
+	}
+
+	p0Rating := entity.RelevantRating(p0data, ratingKey)
+	p1Rating := entity.RelevantRating(p1data, ratingKey)
+
+	players := []*pb.GameMeta_UserMeta{
+		{RelevantRating: p0Rating, DisplayName: a.P0Username},
+		{RelevantRating: p1Rating, DisplayName: a.P1Username}}
+
+	return &pb.GameMeta{Users: players, GameRequest: req, Id: a.Uuid}, nil
 }

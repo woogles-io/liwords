@@ -3,24 +3,8 @@
 import { Card, Tag } from 'antd';
 import React from 'react';
 import { useStoreContext } from '../store/store';
-import { ChallengeRule } from '../gen/macondo/api/proto/macondo/macondo_pb';
-import { timeCtrlToDisplayName } from '../store/constants';
-
-export const challRuleToStr = (n: number): string => {
-  switch (n) {
-    case ChallengeRule.DOUBLE:
-      return 'Double';
-    case ChallengeRule.SINGLE:
-      return 'Single';
-    case ChallengeRule.FIVE_POINT:
-      return '5-pt';
-    case ChallengeRule.TEN_POINT:
-      return '10-pt';
-    case ChallengeRule.VOID:
-      return 'Void';
-  }
-  return 'Unsupported';
-};
+import { timeCtrlToDisplayName, challRuleToStr } from '../store/constants';
+import { RatingBadge } from './rating_badge';
 
 type Props = {
   newGame: (seekID: string) => void;
@@ -39,8 +23,8 @@ export const SoughtGames = (props: Props) => {
         style={{ paddingTop: 20, cursor: 'pointer' }}
         onClick={(event: React.MouseEvent) => props.newGame(game.seekID)}
       >
-        {game.seeker} ({game.userRating}) wants to play {game.lexicon} (
-        {game.rated ? 'Rated' : 'Casual'})(
+        <RatingBadge rating={game.userRating} player={game.seeker} /> wants to
+        play {game.lexicon} ({game.rated ? 'Rated' : 'Casual'})(
         {`${game.initialTimeSecs / 60} min`})<Tag color={tc}>{tt}</Tag>
         {challRuleToStr(game.challengeRule)}
         {` (Max OT: ${game.maxOvertimeMinutes} min.)`}

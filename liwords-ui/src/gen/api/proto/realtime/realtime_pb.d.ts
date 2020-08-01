@@ -129,6 +129,9 @@ export class GameMeta extends jspb.Message {
   getGameRequest(): GameRequest | undefined;
   setGameRequest(value?: GameRequest): void;
 
+  getId(): string;
+  setId(value: string): void;
+
   serializeBinary(): Uint8Array;
   toObject(includeInstance?: boolean): GameMeta.AsObject;
   static toObject(includeInstance: boolean, msg: GameMeta): GameMeta.AsObject;
@@ -143,6 +146,7 @@ export namespace GameMeta {
   export type AsObject = {
     usersList: Array<GameMeta.UserMeta.AsObject>,
     gameRequest?: GameRequest.AsObject,
+    id: string,
   }
 
   export class UserMeta extends jspb.Message {
@@ -167,6 +171,26 @@ export namespace GameMeta {
       relevantRating: string,
       displayName: string,
     }
+  }
+}
+
+export class GameDeletion extends jspb.Message {
+  getId(): string;
+  setId(value: string): void;
+
+  serializeBinary(): Uint8Array;
+  toObject(includeInstance?: boolean): GameDeletion.AsObject;
+  static toObject(includeInstance: boolean, msg: GameDeletion): GameDeletion.AsObject;
+  static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+  static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+  static serializeBinaryToWriter(message: GameDeletion, writer: jspb.BinaryWriter): void;
+  static deserializeBinary(bytes: Uint8Array): GameDeletion;
+  static deserializeBinaryFromReader(message: GameDeletion, reader: jspb.BinaryReader): GameDeletion;
+}
+
+export namespace GameDeletion {
+  export type AsObject = {
+    id: string,
   }
 }
 
@@ -627,6 +651,9 @@ export interface MessageTypeMap {
   UNJOIN_REALM: 12;
   TIMED_OUT: 13;
   TOKEN_SOCKET_LOGIN: 14;
+  GAME_META_EVENT: 15;
+  ACTIVE_GAMES: 16;
+  GAME_DELETION: 17;
 }
 
 export const MessageType: MessageTypeMap;

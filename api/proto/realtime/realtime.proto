@@ -80,6 +80,9 @@ enum MessageType {
   UNJOIN_REALM = 12;
   TIMED_OUT = 13;
   TOKEN_SOCKET_LOGIN = 14;
+  GAME_META_EVENT = 15;
+  ACTIVE_GAMES = 16;
+  GAME_DELETION = 17;
   // Add more events here. The total number of events should fit in a byte.
   // We should definitely not be using anywhere close to 255 events, and
   // in order to enforce that I'll be forcing the event type header to just be
@@ -95,7 +98,10 @@ message GameMeta {
   }
   repeated UserMeta users = 1;
   GameRequest game_request = 2;
+  string id = 3; // the game ID
 }
+
+message GameDeletion { string id = 1; }
 
 // Bi-directional messages
 

@@ -298,7 +298,6 @@ func (b *Bus) handleNatsPublish(ctx context.Context, subtopics []string, data []
 }
 
 func (b *Bus) gameAccepted(ctx context.Context, evt *pb.GameAcceptedEvent, userID string) error {
-
 	sg, err := b.soughtGameStore.Get(ctx, evt.RequestId)
 	if err != nil {
 		return err
@@ -343,7 +342,11 @@ func (b *Bus) gameAccepted(ctx context.Context, evt *pb.GameAcceptedEvent, userI
 	b.soughtGameStore.Delete(ctx, evt.RequestId)
 	err = b.broadcastSeekDeletion(evt.RequestId)
 	if err != nil {
-		return err
+		log.Err(err).Msg("broadcasting-seek")
+	}
+	err = b.broadcastGameCreation(g, accUser, reqUser)
+	if err != nil {
+		log.Err(err).Msg("broadcasting-game-creation")
 	}
 	// This event will result in a redirect.
 	ngevt := entity.WrapEvent(&pb.NewGameEvent{
@@ -379,6 +382,29 @@ func (b *Bus) broadcastSeekDeletion(seekID string) error {
 	return b.natsconn.Publish("lobby.gameAccepted", data)
 }
 
+func (b *Bus) broadcastGameCreation(g *entity.Game, acceptor, requester *entity.User) error {
+	timefmt, variant, err := entity.VariantFromGameReq(g.GameReq)
+	if err != nil {
+		return err
+	}
+	ratingKey := entity.ToVariantKey(g.GameReq.Lexicon, variant, timefmt)
+	users := []*pb.GameMeta_UserMeta{
+		{RelevantRating: acceptor.GetRelevantRating(ratingKey),
+			DisplayName: acceptor.Username},
+		{RelevantRating: acceptor.GetRelevantRating(ratingKey),
+			DisplayName: acceptor.Username},
+	}
+
+	toSend := entity.WrapEvent(&pb.GameMeta{Users: users,
+		GameRequest: g.GameReq, Id: g.GameID()},
+		pb.MessageType_GAME_META_EVENT, "")
+	data, err := toSend.Serialize()
+	if err != nil {
+		return err
+	}
+	return b.natsconn.Publish("lobby.newLiveGame", data)
+}
+
 func (b *Bus) pubToUser(userID string, evt *entity.EventWrapper) error {
 	t := time.Now()
 	sanitized, err := sanitize(evt, userID)
@@ -392,11 +418,25 @@ func (b *Bus) pubToUser(userID string, evt *entity.EventWrapper) error {
 
 func (b *Bus) initRealmInfo(ctx context.Context, evt *pb.InitRealmInfo) error {
 	if evt.Realm == "lobby" {
+		// open seeks
 		seeks, err := b.openSeeks(ctx)
 		if err != nil {
 			return err
 		}
-		return b.pubToUser(evt.UserId, seeks)
+		err = b.pubToUser(evt.UserId, seeks)
+		if err != nil {
+			return err
+		}
+		// live games
+		activeGames, err := b.activeGames(ctx)
+		if err != nil {
+			return err
+		}
+		err = b.pubToUser(evt.UserId, activeGames)
+		if err != nil {
+			return err
+		}
+		// TODO: send followed online
 	} else if strings.HasPrefix(evt.Realm, "game-") || strings.HasPrefix(evt.Realm, "gametv-") {
 		// Get a sanitized history
 		gameID := strings.Split(evt.Realm, "-")[1]
@@ -405,8 +445,9 @@ func (b *Bus) initRealmInfo(ctx context.Context, evt *pb.InitRealmInfo) error {
 			return err
 		}
 		return b.pubToUser(evt.UserId, refresher)
+	} else {
+		log.Debug().Interface("evt", evt).Msg("no init realm info")
 	}
-	log.Debug().Interface("evt", evt).Msg("no init realm info")
 	return nil
 }
 
@@ -434,6 +475,22 @@ func (b *Bus) openSeeks(ctx context.Context) (*entity.EventWrapper, error) {
 		pbobj.Requests = append(pbobj.Requests, sg.SeekRequest)
 	}
 	evt := entity.WrapEvent(pbobj, pb.MessageType_SEEK_REQUESTS, "")
+	return evt, nil
+}
+
+func (b *Bus) activeGames(ctx context.Context) (*entity.EventWrapper, error) {
+	gs, err := b.gameStore.ListActive(ctx)
+
+	if err != nil {
+		return nil, err
+	}
+	log.Debug().Interface("active-games", gs).Msg("active-games")
+
+	pbobj := &pb.ActiveGames{Games: []*pb.GameMeta{}}
+	for _, g := range gs {
+		pbobj.Games = append(pbobj.Games, g)
+	}
+	evt := entity.WrapEvent(pbobj, pb.MessageType_ACTIVE_GAMES, "")
 	return evt, nil
 }
 

@@ -520,6 +520,13 @@ func performEndgameDuties(ctx context.Context, g *entity.Game, userStore user.St
 	wrapped.AddAudience(entity.AudGame, g.GameID())
 	wrapped.AddAudience(entity.AudGameTV, g.GameID())
 	g.SendChange(wrapped)
+
+	// And actually finally, send a notification to the lobby that this
+	// game ended. This will remove it from the list of live games.
+	wrapped = entity.WrapEvent(&pb.GameDeletion{Id: g.GameID()},
+		pb.MessageType_GAME_DELETION, "")
+	wrapped.AddAudience(entity.AudLobby, "gameEnded")
+	g.SendChange(wrapped)
 }
 
 func discernEndgameReason(g *entity.Game) {

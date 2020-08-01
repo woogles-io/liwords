@@ -8,6 +8,10 @@ export enum ActionType {
   AddSoughtGame,
   AddSoughtGames,
   RemoveSoughtGame,
+  AddActiveGame,
+  AddActiveGames,
+  RemoveActiveGame,
+
   /* game actions */
   AddGameEvent,
   RefreshTurns,

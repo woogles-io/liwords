@@ -140,6 +140,9 @@ const (
 	MessageType_UNJOIN_REALM                  MessageType = 12
 	MessageType_TIMED_OUT                     MessageType = 13
 	MessageType_TOKEN_SOCKET_LOGIN            MessageType = 14
+	MessageType_GAME_META_EVENT               MessageType = 15
+	MessageType_ACTIVE_GAMES                  MessageType = 16
+	MessageType_GAME_DELETION                 MessageType = 17
 )
 
 // Enum value maps for MessageType.
@@ -160,6 +163,9 @@ var (
 		12: "UNJOIN_REALM",
 		13: "TIMED_OUT",
 		14: "TOKEN_SOCKET_LOGIN",
+		15: "GAME_META_EVENT",
+		16: "ACTIVE_GAMES",
+		17: "GAME_DELETION",
 	}
 	MessageType_value = map[string]int32{
 		"SEEK_REQUEST":                  0,
@@ -177,6 +183,9 @@ var (
 		"UNJOIN_REALM":                  12,
 		"TIMED_OUT":                     13,
 		"TOKEN_SOCKET_LOGIN":            14,
+		"GAME_META_EVENT":               15,
+		"ACTIVE_GAMES":                  16,
+		"GAME_DELETION":                 17,
 	}
 )
 
@@ -319,7 +328,7 @@ func (x ClientGameplayEvent_EventType) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use ClientGameplayEvent_EventType.Descriptor instead.
 func (ClientGameplayEvent_EventType) EnumDescriptor() ([]byte, []int) {
-	return file_api_proto_realtime_realtime_proto_rawDescGZIP(), []int{15, 0}
+	return file_api_proto_realtime_realtime_proto_rawDescGZIP(), []int{16, 0}
 }
 
 // A GameRules is just the name of a board layout + the name of a letter
@@ -585,6 +594,7 @@ type GameMeta struct {
 
 	Users       []*GameMeta_UserMeta `protobuf:"bytes,1,rep,name=users,proto3" json:"users,omitempty"`
 	GameRequest *GameRequest         `protobuf:"bytes,2,opt,name=game_request,json=gameRequest,proto3" json:"game_request,omitempty"`
+	Id          string               `protobuf:"bytes,3,opt,name=id,proto3" json:"id,omitempty"` // the game ID
 }
 
 func (x *GameMeta) Reset() {
@@ -633,6 +643,60 @@ func (x *GameMeta) GetGameRequest() *GameRequest {
 	return nil
 }
 
+func (x *GameMeta) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+type GameDeletion struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+}
+
+func (x *GameDeletion) Reset() {
+	*x = GameDeletion{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_api_proto_realtime_realtime_proto_msgTypes[4]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *GameDeletion) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GameDeletion) ProtoMessage() {}
+
+func (x *GameDeletion) ProtoReflect() protoreflect.Message {
+	mi := &file_api_proto_realtime_realtime_proto_msgTypes[4]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GameDeletion.ProtoReflect.Descriptor instead.
+func (*GameDeletion) Descriptor() ([]byte, []int) {
+	return file_api_proto_realtime_realtime_proto_rawDescGZIP(), []int{4}
+}
+
+func (x *GameDeletion) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
 type SeekRequest struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
@@ -647,7 +711,7 @@ type SeekRequest struct {
 func (x *SeekRequest) Reset() {
 	*x = SeekRequest{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_api_proto_realtime_realtime_proto_msgTypes[4]
+		mi := &file_api_proto_realtime_realtime_proto_msgTypes[5]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -660,7 +724,7 @@ func (x *SeekRequest) String() string {
 func (*SeekRequest) ProtoMessage() {}
 
 func (x *SeekRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_proto_realtime_realtime_proto_msgTypes[4]
+	mi := &file_api_proto_realtime_realtime_proto_msgTypes[5]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -673,7 +737,7 @@ func (x *SeekRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SeekRequest.ProtoReflect.Descriptor instead.
 func (*SeekRequest) Descriptor() ([]byte, []int) {
-	return file_api_proto_realtime_realtime_proto_rawDescGZIP(), []int{4}
+	return file_api_proto_realtime_realtime_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *SeekRequest) GetGameRequest() *GameRequest {
@@ -716,7 +780,7 @@ type MatchRequest struct {
 func (x *MatchRequest) Reset() {
 	*x = MatchRequest{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_api_proto_realtime_realtime_proto_msgTypes[5]
+		mi := &file_api_proto_realtime_realtime_proto_msgTypes[6]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -729,7 +793,7 @@ func (x *MatchRequest) String() string {
 func (*MatchRequest) ProtoMessage() {}
 
 func (x *MatchRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_proto_realtime_realtime_proto_msgTypes[5]
+	mi := &file_api_proto_realtime_realtime_proto_msgTypes[6]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -742,7 +806,7 @@ func (x *MatchRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use MatchRequest.ProtoReflect.Descriptor instead.
 func (*MatchRequest) Descriptor() ([]byte, []int) {
-	return file_api_proto_realtime_realtime_proto_rawDescGZIP(), []int{5}
+	return file_api_proto_realtime_realtime_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *MatchRequest) GetGameRequest() *GameRequest {
@@ -772,7 +836,7 @@ type GameAcceptedEvent struct {
 func (x *GameAcceptedEvent) Reset() {
 	*x = GameAcceptedEvent{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_api_proto_realtime_realtime_proto_msgTypes[6]
+		mi := &file_api_proto_realtime_realtime_proto_msgTypes[7]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -785,7 +849,7 @@ func (x *GameAcceptedEvent) String() string {
 func (*GameAcceptedEvent) ProtoMessage() {}
 
 func (x *GameAcceptedEvent) ProtoReflect() protoreflect.Message {
-	mi := &file_api_proto_realtime_realtime_proto_msgTypes[6]
+	mi := &file_api_proto_realtime_realtime_proto_msgTypes[7]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -798,7 +862,7 @@ func (x *GameAcceptedEvent) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GameAcceptedEvent.ProtoReflect.Descriptor instead.
 func (*GameAcceptedEvent) Descriptor() ([]byte, []int) {
-	return file_api_proto_realtime_realtime_proto_rawDescGZIP(), []int{6}
+	return file_api_proto_realtime_realtime_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *GameAcceptedEvent) GetRequestId() string {
@@ -820,7 +884,7 @@ type SeekRequests struct {
 func (x *SeekRequests) Reset() {
 	*x = SeekRequests{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_api_proto_realtime_realtime_proto_msgTypes[7]
+		mi := &file_api_proto_realtime_realtime_proto_msgTypes[8]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -833,7 +897,7 @@ func (x *SeekRequests) String() string {
 func (*SeekRequests) ProtoMessage() {}
 
 func (x *SeekRequests) ProtoReflect() protoreflect.Message {
-	mi := &file_api_proto_realtime_realtime_proto_msgTypes[7]
+	mi := &file_api_proto_realtime_realtime_proto_msgTypes[8]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -846,7 +910,7 @@ func (x *SeekRequests) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SeekRequests.ProtoReflect.Descriptor instead.
 func (*SeekRequests) Descriptor() ([]byte, []int) {
-	return file_api_proto_realtime_realtime_proto_rawDescGZIP(), []int{7}
+	return file_api_proto_realtime_realtime_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *SeekRequests) GetRequests() []*SeekRequest {
@@ -867,7 +931,7 @@ type ActiveGames struct {
 func (x *ActiveGames) Reset() {
 	*x = ActiveGames{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_api_proto_realtime_realtime_proto_msgTypes[8]
+		mi := &file_api_proto_realtime_realtime_proto_msgTypes[9]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -880,7 +944,7 @@ func (x *ActiveGames) String() string {
 func (*ActiveGames) ProtoMessage() {}
 
 func (x *ActiveGames) ProtoReflect() protoreflect.Message {
-	mi := &file_api_proto_realtime_realtime_proto_msgTypes[8]
+	mi := &file_api_proto_realtime_realtime_proto_msgTypes[9]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -893,7 +957,7 @@ func (x *ActiveGames) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ActiveGames.ProtoReflect.Descriptor instead.
 func (*ActiveGames) Descriptor() ([]byte, []int) {
-	return file_api_proto_realtime_realtime_proto_rawDescGZIP(), []int{8}
+	return file_api_proto_realtime_realtime_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *ActiveGames) GetGames() []*GameMeta {
@@ -922,7 +986,7 @@ type ServerGameplayEvent struct {
 func (x *ServerGameplayEvent) Reset() {
 	*x = ServerGameplayEvent{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_api_proto_realtime_realtime_proto_msgTypes[9]
+		mi := &file_api_proto_realtime_realtime_proto_msgTypes[10]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -935,7 +999,7 @@ func (x *ServerGameplayEvent) String() string {
 func (*ServerGameplayEvent) ProtoMessage() {}
 
 func (x *ServerGameplayEvent) ProtoReflect() protoreflect.Message {
-	mi := &file_api_proto_realtime_realtime_proto_msgTypes[9]
+	mi := &file_api_proto_realtime_realtime_proto_msgTypes[10]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -948,7 +1012,7 @@ func (x *ServerGameplayEvent) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ServerGameplayEvent.ProtoReflect.Descriptor instead.
 func (*ServerGameplayEvent) Descriptor() ([]byte, []int) {
-	return file_api_proto_realtime_realtime_proto_rawDescGZIP(), []int{9}
+	return file_api_proto_realtime_realtime_proto_rawDescGZIP(), []int{10}
 }
 
 func (x *ServerGameplayEvent) GetEvent() *macondo.GameEvent {
@@ -1014,7 +1078,7 @@ type ServerChallengeResultEvent struct {
 func (x *ServerChallengeResultEvent) Reset() {
 	*x = ServerChallengeResultEvent{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_api_proto_realtime_realtime_proto_msgTypes[10]
+		mi := &file_api_proto_realtime_realtime_proto_msgTypes[11]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -1027,7 +1091,7 @@ func (x *ServerChallengeResultEvent) String() string {
 func (*ServerChallengeResultEvent) ProtoMessage() {}
 
 func (x *ServerChallengeResultEvent) ProtoReflect() protoreflect.Message {
-	mi := &file_api_proto_realtime_realtime_proto_msgTypes[10]
+	mi := &file_api_proto_realtime_realtime_proto_msgTypes[11]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1040,7 +1104,7 @@ func (x *ServerChallengeResultEvent) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ServerChallengeResultEvent.ProtoReflect.Descriptor instead.
 func (*ServerChallengeResultEvent) Descriptor() ([]byte, []int) {
-	return file_api_proto_realtime_realtime_proto_rawDescGZIP(), []int{10}
+	return file_api_proto_realtime_realtime_proto_rawDescGZIP(), []int{11}
 }
 
 func (x *ServerChallengeResultEvent) GetValid() bool {
@@ -1084,7 +1148,7 @@ type GameEndedEvent struct {
 func (x *GameEndedEvent) Reset() {
 	*x = GameEndedEvent{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_api_proto_realtime_realtime_proto_msgTypes[11]
+		mi := &file_api_proto_realtime_realtime_proto_msgTypes[12]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -1097,7 +1161,7 @@ func (x *GameEndedEvent) String() string {
 func (*GameEndedEvent) ProtoMessage() {}
 
 func (x *GameEndedEvent) ProtoReflect() protoreflect.Message {
-	mi := &file_api_proto_realtime_realtime_proto_msgTypes[11]
+	mi := &file_api_proto_realtime_realtime_proto_msgTypes[12]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1110,7 +1174,7 @@ func (x *GameEndedEvent) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GameEndedEvent.ProtoReflect.Descriptor instead.
 func (*GameEndedEvent) Descriptor() ([]byte, []int) {
-	return file_api_proto_realtime_realtime_proto_rawDescGZIP(), []int{11}
+	return file_api_proto_realtime_realtime_proto_rawDescGZIP(), []int{12}
 }
 
 func (x *GameEndedEvent) GetScores() map[string]int32 {
@@ -1185,7 +1249,7 @@ type GameHistoryRefresher struct {
 func (x *GameHistoryRefresher) Reset() {
 	*x = GameHistoryRefresher{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_api_proto_realtime_realtime_proto_msgTypes[12]
+		mi := &file_api_proto_realtime_realtime_proto_msgTypes[13]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -1198,7 +1262,7 @@ func (x *GameHistoryRefresher) String() string {
 func (*GameHistoryRefresher) ProtoMessage() {}
 
 func (x *GameHistoryRefresher) ProtoReflect() protoreflect.Message {
-	mi := &file_api_proto_realtime_realtime_proto_msgTypes[12]
+	mi := &file_api_proto_realtime_realtime_proto_msgTypes[13]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1211,7 +1275,7 @@ func (x *GameHistoryRefresher) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GameHistoryRefresher.ProtoReflect.Descriptor instead.
 func (*GameHistoryRefresher) Descriptor() ([]byte, []int) {
-	return file_api_proto_realtime_realtime_proto_rawDescGZIP(), []int{12}
+	return file_api_proto_realtime_realtime_proto_rawDescGZIP(), []int{13}
 }
 
 func (x *GameHistoryRefresher) GetHistory() *macondo.GameHistory {
@@ -1248,7 +1312,7 @@ type NewGameEvent struct {
 func (x *NewGameEvent) Reset() {
 	*x = NewGameEvent{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_api_proto_realtime_realtime_proto_msgTypes[13]
+		mi := &file_api_proto_realtime_realtime_proto_msgTypes[14]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -1261,7 +1325,7 @@ func (x *NewGameEvent) String() string {
 func (*NewGameEvent) ProtoMessage() {}
 
 func (x *NewGameEvent) ProtoReflect() protoreflect.Message {
-	mi := &file_api_proto_realtime_realtime_proto_msgTypes[13]
+	mi := &file_api_proto_realtime_realtime_proto_msgTypes[14]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1274,7 +1338,7 @@ func (x *NewGameEvent) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use NewGameEvent.ProtoReflect.Descriptor instead.
 func (*NewGameEvent) Descriptor() ([]byte, []int) {
-	return file_api_proto_realtime_realtime_proto_rawDescGZIP(), []int{13}
+	return file_api_proto_realtime_realtime_proto_rawDescGZIP(), []int{14}
 }
 
 func (x *NewGameEvent) GetGameId() string {
@@ -1295,7 +1359,7 @@ type ErrorMessage struct {
 func (x *ErrorMessage) Reset() {
 	*x = ErrorMessage{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_api_proto_realtime_realtime_proto_msgTypes[14]
+		mi := &file_api_proto_realtime_realtime_proto_msgTypes[15]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -1308,7 +1372,7 @@ func (x *ErrorMessage) String() string {
 func (*ErrorMessage) ProtoMessage() {}
 
 func (x *ErrorMessage) ProtoReflect() protoreflect.Message {
-	mi := &file_api_proto_realtime_realtime_proto_msgTypes[14]
+	mi := &file_api_proto_realtime_realtime_proto_msgTypes[15]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1321,7 +1385,7 @@ func (x *ErrorMessage) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ErrorMessage.ProtoReflect.Descriptor instead.
 func (*ErrorMessage) Descriptor() ([]byte, []int) {
-	return file_api_proto_realtime_realtime_proto_rawDescGZIP(), []int{14}
+	return file_api_proto_realtime_realtime_proto_rawDescGZIP(), []int{15}
 }
 
 func (x *ErrorMessage) GetMessage() string {
@@ -1350,7 +1414,7 @@ type ClientGameplayEvent struct {
 func (x *ClientGameplayEvent) Reset() {
 	*x = ClientGameplayEvent{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_api_proto_realtime_realtime_proto_msgTypes[15]
+		mi := &file_api_proto_realtime_realtime_proto_msgTypes[16]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -1363,7 +1427,7 @@ func (x *ClientGameplayEvent) String() string {
 func (*ClientGameplayEvent) ProtoMessage() {}
 
 func (x *ClientGameplayEvent) ProtoReflect() protoreflect.Message {
-	mi := &file_api_proto_realtime_realtime_proto_msgTypes[15]
+	mi := &file_api_proto_realtime_realtime_proto_msgTypes[16]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1376,7 +1440,7 @@ func (x *ClientGameplayEvent) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ClientGameplayEvent.ProtoReflect.Descriptor instead.
 func (*ClientGameplayEvent) Descriptor() ([]byte, []int) {
-	return file_api_proto_realtime_realtime_proto_rawDescGZIP(), []int{15}
+	return file_api_proto_realtime_realtime_proto_rawDescGZIP(), []int{16}
 }
 
 func (x *ClientGameplayEvent) GetType() ClientGameplayEvent_EventType {
@@ -1419,7 +1483,7 @@ type TimedOut struct {
 func (x *TimedOut) Reset() {
 	*x = TimedOut{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_api_proto_realtime_realtime_proto_msgTypes[16]
+		mi := &file_api_proto_realtime_realtime_proto_msgTypes[17]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -1432,7 +1496,7 @@ func (x *TimedOut) String() string {
 func (*TimedOut) ProtoMessage() {}
 
 func (x *TimedOut) ProtoReflect() protoreflect.Message {
-	mi := &file_api_proto_realtime_realtime_proto_msgTypes[16]
+	mi := &file_api_proto_realtime_realtime_proto_msgTypes[17]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1445,7 +1509,7 @@ func (x *TimedOut) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TimedOut.ProtoReflect.Descriptor instead.
 func (*TimedOut) Descriptor() ([]byte, []int) {
-	return file_api_proto_realtime_realtime_proto_rawDescGZIP(), []int{16}
+	return file_api_proto_realtime_realtime_proto_rawDescGZIP(), []int{17}
 }
 
 func (x *TimedOut) GetGameId() string {
@@ -1473,7 +1537,7 @@ type TokenSocketLogin struct {
 func (x *TokenSocketLogin) Reset() {
 	*x = TokenSocketLogin{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_api_proto_realtime_realtime_proto_msgTypes[17]
+		mi := &file_api_proto_realtime_realtime_proto_msgTypes[18]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -1486,7 +1550,7 @@ func (x *TokenSocketLogin) String() string {
 func (*TokenSocketLogin) ProtoMessage() {}
 
 func (x *TokenSocketLogin) ProtoReflect() protoreflect.Message {
-	mi := &file_api_proto_realtime_realtime_proto_msgTypes[17]
+	mi := &file_api_proto_realtime_realtime_proto_msgTypes[18]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1499,7 +1563,7 @@ func (x *TokenSocketLogin) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TokenSocketLogin.ProtoReflect.Descriptor instead.
 func (*TokenSocketLogin) Descriptor() ([]byte, []int) {
-	return file_api_proto_realtime_realtime_proto_rawDescGZIP(), []int{17}
+	return file_api_proto_realtime_realtime_proto_rawDescGZIP(), []int{18}
 }
 
 func (x *TokenSocketLogin) GetToken() string {
@@ -1522,7 +1586,7 @@ type JoinPath struct {
 func (x *JoinPath) Reset() {
 	*x = JoinPath{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_api_proto_realtime_realtime_proto_msgTypes[18]
+		mi := &file_api_proto_realtime_realtime_proto_msgTypes[19]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -1535,7 +1599,7 @@ func (x *JoinPath) String() string {
 func (*JoinPath) ProtoMessage() {}
 
 func (x *JoinPath) ProtoReflect() protoreflect.Message {
-	mi := &file_api_proto_realtime_realtime_proto_msgTypes[18]
+	mi := &file_api_proto_realtime_realtime_proto_msgTypes[19]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1548,7 +1612,7 @@ func (x *JoinPath) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use JoinPath.ProtoReflect.Descriptor instead.
 func (*JoinPath) Descriptor() ([]byte, []int) {
-	return file_api_proto_realtime_realtime_proto_rawDescGZIP(), []int{18}
+	return file_api_proto_realtime_realtime_proto_rawDescGZIP(), []int{19}
 }
 
 func (x *JoinPath) GetPath() string {
@@ -1567,7 +1631,7 @@ type UnjoinRealm struct {
 func (x *UnjoinRealm) Reset() {
 	*x = UnjoinRealm{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_api_proto_realtime_realtime_proto_msgTypes[19]
+		mi := &file_api_proto_realtime_realtime_proto_msgTypes[20]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -1580,7 +1644,7 @@ func (x *UnjoinRealm) String() string {
 func (*UnjoinRealm) ProtoMessage() {}
 
 func (x *UnjoinRealm) ProtoReflect() protoreflect.Message {
-	mi := &file_api_proto_realtime_realtime_proto_msgTypes[19]
+	mi := &file_api_proto_realtime_realtime_proto_msgTypes[20]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1593,7 +1657,7 @@ func (x *UnjoinRealm) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UnjoinRealm.ProtoReflect.Descriptor instead.
 func (*UnjoinRealm) Descriptor() ([]byte, []int) {
-	return file_api_proto_realtime_realtime_proto_rawDescGZIP(), []int{19}
+	return file_api_proto_realtime_realtime_proto_rawDescGZIP(), []int{20}
 }
 
 type GameMeta_UserMeta struct {
@@ -1608,7 +1672,7 @@ type GameMeta_UserMeta struct {
 func (x *GameMeta_UserMeta) Reset() {
 	*x = GameMeta_UserMeta{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_api_proto_realtime_realtime_proto_msgTypes[20]
+		mi := &file_api_proto_realtime_realtime_proto_msgTypes[21]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -1621,7 +1685,7 @@ func (x *GameMeta_UserMeta) String() string {
 func (*GameMeta_UserMeta) ProtoMessage() {}
 
 func (x *GameMeta_UserMeta) ProtoReflect() protoreflect.Message {
-	mi := &file_api_proto_realtime_realtime_proto_msgTypes[20]
+	mi := &file_api_proto_realtime_realtime_proto_msgTypes[21]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1705,19 +1769,22 @@ var file_api_proto_realtime_realtime_proto_rawDesc = []byte{
 	0x52, 0x0b, 0x69, 0x73, 0x41, 0x6e, 0x6f, 0x6e, 0x79, 0x6d, 0x6f, 0x75, 0x73, 0x12, 0x21, 0x0a,
 	0x0c, 0x64, 0x69, 0x73, 0x70, 0x6c, 0x61, 0x79, 0x5f, 0x6e, 0x61, 0x6d, 0x65, 0x18, 0x04, 0x20,
 	0x01, 0x28, 0x09, 0x52, 0x0b, 0x64, 0x69, 0x73, 0x70, 0x6c, 0x61, 0x79, 0x4e, 0x61, 0x6d, 0x65,
-	0x22, 0xcd, 0x01, 0x0a, 0x08, 0x47, 0x61, 0x6d, 0x65, 0x4d, 0x65, 0x74, 0x61, 0x12, 0x30, 0x0a,
+	0x22, 0xdd, 0x01, 0x0a, 0x08, 0x47, 0x61, 0x6d, 0x65, 0x4d, 0x65, 0x74, 0x61, 0x12, 0x30, 0x0a,
 	0x05, 0x75, 0x73, 0x65, 0x72, 0x73, 0x18, 0x01, 0x20, 0x03, 0x28, 0x0b, 0x32, 0x1a, 0x2e, 0x6c,
 	0x69, 0x77, 0x6f, 0x72, 0x64, 0x73, 0x2e, 0x47, 0x61, 0x6d, 0x65, 0x4d, 0x65, 0x74, 0x61, 0x2e,
 	0x55, 0x73, 0x65, 0x72, 0x4d, 0x65, 0x74, 0x61, 0x52, 0x05, 0x75, 0x73, 0x65, 0x72, 0x73, 0x12,
 	0x37, 0x0a, 0x0c, 0x67, 0x61, 0x6d, 0x65, 0x5f, 0x72, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x18,
 	0x02, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x14, 0x2e, 0x6c, 0x69, 0x77, 0x6f, 0x72, 0x64, 0x73, 0x2e,
 	0x47, 0x61, 0x6d, 0x65, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x52, 0x0b, 0x67, 0x61, 0x6d,
-	0x65, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x56, 0x0a, 0x08, 0x55, 0x73, 0x65, 0x72,
+	0x65, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x12, 0x0e, 0x0a, 0x02, 0x69, 0x64, 0x18, 0x03,
+	0x20, 0x01, 0x28, 0x09, 0x52, 0x02, 0x69, 0x64, 0x1a, 0x56, 0x0a, 0x08, 0x55, 0x73, 0x65, 0x72,
 	0x4d, 0x65, 0x74, 0x61, 0x12, 0x27, 0x0a, 0x0f, 0x72, 0x65, 0x6c, 0x65, 0x76, 0x61, 0x6e, 0x74,
 	0x5f, 0x72, 0x61, 0x74, 0x69, 0x6e, 0x67, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x0e, 0x72,
 	0x65, 0x6c, 0x65, 0x76, 0x61, 0x6e, 0x74, 0x52, 0x61, 0x74, 0x69, 0x6e, 0x67, 0x12, 0x21, 0x0a,
 	0x0c, 0x64, 0x69, 0x73, 0x70, 0x6c, 0x61, 0x79, 0x5f, 0x6e, 0x61, 0x6d, 0x65, 0x18, 0x02, 0x20,
 	0x01, 0x28, 0x09, 0x52, 0x0b, 0x64, 0x69, 0x73, 0x70, 0x6c, 0x61, 0x79, 0x4e, 0x61, 0x6d, 0x65,
+	0x22, 0x1e, 0x0a, 0x0c, 0x47, 0x61, 0x6d, 0x65, 0x44, 0x65, 0x6c, 0x65, 0x74, 0x69, 0x6f, 0x6e,
+	0x12, 0x0e, 0x0a, 0x02, 0x69, 0x64, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x02, 0x69, 0x64,
 	0x22, 0xc1, 0x01, 0x0a, 0x0b, 0x53, 0x65, 0x65, 0x6b, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74,
 	0x12, 0x37, 0x0a, 0x0c, 0x67, 0x61, 0x6d, 0x65, 0x5f, 0x72, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74,
 	0x18, 0x01, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x14, 0x2e, 0x6c, 0x69, 0x77, 0x6f, 0x72, 0x64, 0x73,
@@ -1841,7 +1908,7 @@ var file_api_proto_realtime_realtime_proto_rawDesc = []byte{
 	0x45, 0x53, 0x50, 0x4f, 0x4e, 0x44, 0x45, 0x4e, 0x43, 0x45, 0x10, 0x01, 0x2a, 0x23, 0x0a, 0x0a,
 	0x52, 0x61, 0x74, 0x69, 0x6e, 0x67, 0x4d, 0x6f, 0x64, 0x65, 0x12, 0x09, 0x0a, 0x05, 0x52, 0x41,
 	0x54, 0x45, 0x44, 0x10, 0x00, 0x12, 0x0a, 0x0a, 0x06, 0x43, 0x41, 0x53, 0x55, 0x41, 0x4c, 0x10,
-	0x01, 0x2a, 0xd8, 0x02, 0x0a, 0x0b, 0x4d, 0x65, 0x73, 0x73, 0x61, 0x67, 0x65, 0x54, 0x79, 0x70,
+	0x01, 0x2a, 0x92, 0x03, 0x0a, 0x0b, 0x4d, 0x65, 0x73, 0x73, 0x61, 0x67, 0x65, 0x54, 0x79, 0x70,
 	0x65, 0x12, 0x10, 0x0a, 0x0c, 0x53, 0x45, 0x45, 0x4b, 0x5f, 0x52, 0x45, 0x51, 0x55, 0x45, 0x53,
 	0x54, 0x10, 0x00, 0x12, 0x11, 0x0a, 0x0d, 0x4d, 0x41, 0x54, 0x43, 0x48, 0x5f, 0x52, 0x45, 0x51,
 	0x55, 0x45, 0x53, 0x54, 0x10, 0x01, 0x12, 0x17, 0x0a, 0x13, 0x47, 0x41, 0x4d, 0x45, 0x5f, 0x41,
@@ -1862,18 +1929,21 @@ var file_api_proto_realtime_realtime_proto_rawDesc = []byte{
 	0x48, 0x10, 0x0b, 0x12, 0x10, 0x0a, 0x0c, 0x55, 0x4e, 0x4a, 0x4f, 0x49, 0x4e, 0x5f, 0x52, 0x45,
 	0x41, 0x4c, 0x4d, 0x10, 0x0c, 0x12, 0x0d, 0x0a, 0x09, 0x54, 0x49, 0x4d, 0x45, 0x44, 0x5f, 0x4f,
 	0x55, 0x54, 0x10, 0x0d, 0x12, 0x16, 0x0a, 0x12, 0x54, 0x4f, 0x4b, 0x45, 0x4e, 0x5f, 0x53, 0x4f,
-	0x43, 0x4b, 0x45, 0x54, 0x5f, 0x4c, 0x4f, 0x47, 0x49, 0x4e, 0x10, 0x0e, 0x2a, 0x66, 0x0a, 0x0d,
-	0x47, 0x61, 0x6d, 0x65, 0x45, 0x6e, 0x64, 0x52, 0x65, 0x61, 0x73, 0x6f, 0x6e, 0x12, 0x08, 0x0a,
-	0x04, 0x4e, 0x4f, 0x4e, 0x45, 0x10, 0x00, 0x12, 0x08, 0x0a, 0x04, 0x54, 0x49, 0x4d, 0x45, 0x10,
-	0x01, 0x12, 0x0c, 0x0a, 0x08, 0x53, 0x54, 0x41, 0x4e, 0x44, 0x41, 0x52, 0x44, 0x10, 0x02, 0x12,
-	0x16, 0x0a, 0x12, 0x43, 0x4f, 0x4e, 0x53, 0x45, 0x43, 0x55, 0x54, 0x49, 0x56, 0x45, 0x5f, 0x5a,
-	0x45, 0x52, 0x4f, 0x45, 0x53, 0x10, 0x03, 0x12, 0x0c, 0x0a, 0x08, 0x52, 0x45, 0x53, 0x49, 0x47,
-	0x4e, 0x45, 0x44, 0x10, 0x04, 0x12, 0x0d, 0x0a, 0x09, 0x41, 0x42, 0x41, 0x4e, 0x44, 0x4f, 0x4e,
-	0x45, 0x44, 0x10, 0x05, 0x42, 0x34, 0x5a, 0x32, 0x67, 0x69, 0x74, 0x68, 0x75, 0x62, 0x2e, 0x63,
-	0x6f, 0x6d, 0x2f, 0x64, 0x6f, 0x6d, 0x69, 0x6e, 0x6f, 0x31, 0x34, 0x2f, 0x6c, 0x69, 0x77, 0x6f,
-	0x72, 0x64, 0x73, 0x2f, 0x72, 0x70, 0x63, 0x2f, 0x61, 0x70, 0x69, 0x2f, 0x70, 0x72, 0x6f, 0x74,
-	0x6f, 0x2f, 0x72, 0x65, 0x61, 0x6c, 0x74, 0x69, 0x6d, 0x65, 0x62, 0x06, 0x70, 0x72, 0x6f, 0x74,
-	0x6f, 0x33,
+	0x43, 0x4b, 0x45, 0x54, 0x5f, 0x4c, 0x4f, 0x47, 0x49, 0x4e, 0x10, 0x0e, 0x12, 0x13, 0x0a, 0x0f,
+	0x47, 0x41, 0x4d, 0x45, 0x5f, 0x4d, 0x45, 0x54, 0x41, 0x5f, 0x45, 0x56, 0x45, 0x4e, 0x54, 0x10,
+	0x0f, 0x12, 0x10, 0x0a, 0x0c, 0x41, 0x43, 0x54, 0x49, 0x56, 0x45, 0x5f, 0x47, 0x41, 0x4d, 0x45,
+	0x53, 0x10, 0x10, 0x12, 0x11, 0x0a, 0x0d, 0x47, 0x41, 0x4d, 0x45, 0x5f, 0x44, 0x45, 0x4c, 0x45,
+	0x54, 0x49, 0x4f, 0x4e, 0x10, 0x11, 0x2a, 0x66, 0x0a, 0x0d, 0x47, 0x61, 0x6d, 0x65, 0x45, 0x6e,
+	0x64, 0x52, 0x65, 0x61, 0x73, 0x6f, 0x6e, 0x12, 0x08, 0x0a, 0x04, 0x4e, 0x4f, 0x4e, 0x45, 0x10,
+	0x00, 0x12, 0x08, 0x0a, 0x04, 0x54, 0x49, 0x4d, 0x45, 0x10, 0x01, 0x12, 0x0c, 0x0a, 0x08, 0x53,
+	0x54, 0x41, 0x4e, 0x44, 0x41, 0x52, 0x44, 0x10, 0x02, 0x12, 0x16, 0x0a, 0x12, 0x43, 0x4f, 0x4e,
+	0x53, 0x45, 0x43, 0x55, 0x54, 0x49, 0x56, 0x45, 0x5f, 0x5a, 0x45, 0x52, 0x4f, 0x45, 0x53, 0x10,
+	0x03, 0x12, 0x0c, 0x0a, 0x08, 0x52, 0x45, 0x53, 0x49, 0x47, 0x4e, 0x45, 0x44, 0x10, 0x04, 0x12,
+	0x0d, 0x0a, 0x09, 0x41, 0x42, 0x41, 0x4e, 0x44, 0x4f, 0x4e, 0x45, 0x44, 0x10, 0x05, 0x42, 0x34,
+	0x5a, 0x32, 0x67, 0x69, 0x74, 0x68, 0x75, 0x62, 0x2e, 0x63, 0x6f, 0x6d, 0x2f, 0x64, 0x6f, 0x6d,
+	0x69, 0x6e, 0x6f, 0x31, 0x34, 0x2f, 0x6c, 0x69, 0x77, 0x6f, 0x72, 0x64, 0x73, 0x2f, 0x72, 0x70,
+	0x63, 0x2f, 0x61, 0x70, 0x69, 0x2f, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x2f, 0x72, 0x65, 0x61, 0x6c,
+	0x74, 0x69, 0x6d, 0x65, 0x62, 0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
 }
 
 var (
@@ -1889,7 +1959,7 @@ func file_api_proto_realtime_realtime_proto_rawDescGZIP() []byte {
 }
 
 var file_api_proto_realtime_realtime_proto_enumTypes = make([]protoimpl.EnumInfo, 5)
-var file_api_proto_realtime_realtime_proto_msgTypes = make([]protoimpl.MessageInfo, 23)
+var file_api_proto_realtime_realtime_proto_msgTypes = make([]protoimpl.MessageInfo, 24)
 var file_api_proto_realtime_realtime_proto_goTypes = []interface{}{
 	(GameMode)(0),                      // 0: liwords.GameMode
 	(RatingMode)(0),                    // 1: liwords.RatingMode
@@ -1900,50 +1970,51 @@ var file_api_proto_realtime_realtime_proto_goTypes = []interface{}{
 	(*GameRequest)(nil),                // 6: liwords.GameRequest
 	(*RequestingUser)(nil),             // 7: liwords.RequestingUser
 	(*GameMeta)(nil),                   // 8: liwords.GameMeta
-	(*SeekRequest)(nil),                // 9: liwords.SeekRequest
-	(*MatchRequest)(nil),               // 10: liwords.MatchRequest
-	(*GameAcceptedEvent)(nil),          // 11: liwords.GameAcceptedEvent
-	(*SeekRequests)(nil),               // 12: liwords.SeekRequests
-	(*ActiveGames)(nil),                // 13: liwords.ActiveGames
-	(*ServerGameplayEvent)(nil),        // 14: liwords.ServerGameplayEvent
-	(*ServerChallengeResultEvent)(nil), // 15: liwords.ServerChallengeResultEvent
-	(*GameEndedEvent)(nil),             // 16: liwords.GameEndedEvent
-	(*GameHistoryRefresher)(nil),       // 17: liwords.GameHistoryRefresher
-	(*NewGameEvent)(nil),               // 18: liwords.NewGameEvent
-	(*ErrorMessage)(nil),               // 19: liwords.ErrorMessage
-	(*ClientGameplayEvent)(nil),        // 20: liwords.ClientGameplayEvent
-	(*TimedOut)(nil),                   // 21: liwords.TimedOut
-	(*TokenSocketLogin)(nil),           // 22: liwords.TokenSocketLogin
-	(*JoinPath)(nil),                   // 23: liwords.JoinPath
-	(*UnjoinRealm)(nil),                // 24: liwords.UnjoinRealm
-	(*GameMeta_UserMeta)(nil),          // 25: liwords.GameMeta.UserMeta
-	nil,                                // 26: liwords.GameEndedEvent.ScoresEntry
-	nil,                                // 27: liwords.GameEndedEvent.NewRatingsEntry
-	(macondo.ChallengeRule)(0),         // 28: macondo.ChallengeRule
-	(*macondo.GameEvent)(nil),          // 29: macondo.GameEvent
-	(macondo.PlayState)(0),             // 30: macondo.PlayState
-	(*macondo.GameHistory)(nil),        // 31: macondo.GameHistory
+	(*GameDeletion)(nil),               // 9: liwords.GameDeletion
+	(*SeekRequest)(nil),                // 10: liwords.SeekRequest
+	(*MatchRequest)(nil),               // 11: liwords.MatchRequest
+	(*GameAcceptedEvent)(nil),          // 12: liwords.GameAcceptedEvent
+	(*SeekRequests)(nil),               // 13: liwords.SeekRequests
+	(*ActiveGames)(nil),                // 14: liwords.ActiveGames
+	(*ServerGameplayEvent)(nil),        // 15: liwords.ServerGameplayEvent
+	(*ServerChallengeResultEvent)(nil), // 16: liwords.ServerChallengeResultEvent
+	(*GameEndedEvent)(nil),             // 17: liwords.GameEndedEvent
+	(*GameHistoryRefresher)(nil),       // 18: liwords.GameHistoryRefresher
+	(*NewGameEvent)(nil),               // 19: liwords.NewGameEvent
+	(*ErrorMessage)(nil),               // 20: liwords.ErrorMessage
+	(*ClientGameplayEvent)(nil),        // 21: liwords.ClientGameplayEvent
+	(*TimedOut)(nil),                   // 22: liwords.TimedOut
+	(*TokenSocketLogin)(nil),           // 23: liwords.TokenSocketLogin
+	(*JoinPath)(nil),                   // 24: liwords.JoinPath
+	(*UnjoinRealm)(nil),                // 25: liwords.UnjoinRealm
+	(*GameMeta_UserMeta)(nil),          // 26: liwords.GameMeta.UserMeta
+	nil,                                // 27: liwords.GameEndedEvent.ScoresEntry
+	nil,                                // 28: liwords.GameEndedEvent.NewRatingsEntry
+	(macondo.ChallengeRule)(0),         // 29: macondo.ChallengeRule
+	(*macondo.GameEvent)(nil),          // 30: macondo.GameEvent
+	(macondo.PlayState)(0),             // 31: macondo.PlayState
+	(*macondo.GameHistory)(nil),        // 32: macondo.GameHistory
 }
 var file_api_proto_realtime_realtime_proto_depIdxs = []int32{
 	5,  // 0: liwords.GameRequest.rules:type_name -> liwords.GameRules
-	28, // 1: liwords.GameRequest.challenge_rule:type_name -> macondo.ChallengeRule
+	29, // 1: liwords.GameRequest.challenge_rule:type_name -> macondo.ChallengeRule
 	0,  // 2: liwords.GameRequest.game_mode:type_name -> liwords.GameMode
 	1,  // 3: liwords.GameRequest.rating_mode:type_name -> liwords.RatingMode
-	25, // 4: liwords.GameMeta.users:type_name -> liwords.GameMeta.UserMeta
+	26, // 4: liwords.GameMeta.users:type_name -> liwords.GameMeta.UserMeta
 	6,  // 5: liwords.GameMeta.game_request:type_name -> liwords.GameRequest
 	6,  // 6: liwords.SeekRequest.game_request:type_name -> liwords.GameRequest
 	7,  // 7: liwords.SeekRequest.user:type_name -> liwords.RequestingUser
 	6,  // 8: liwords.MatchRequest.game_request:type_name -> liwords.GameRequest
 	7,  // 9: liwords.MatchRequest.user:type_name -> liwords.RequestingUser
-	9,  // 10: liwords.SeekRequests.requests:type_name -> liwords.SeekRequest
+	10, // 10: liwords.SeekRequests.requests:type_name -> liwords.SeekRequest
 	8,  // 11: liwords.ActiveGames.games:type_name -> liwords.GameMeta
-	29, // 12: liwords.ServerGameplayEvent.event:type_name -> macondo.GameEvent
-	30, // 13: liwords.ServerGameplayEvent.playing:type_name -> macondo.PlayState
-	28, // 14: liwords.ServerChallengeResultEvent.challenge_rule:type_name -> macondo.ChallengeRule
-	26, // 15: liwords.GameEndedEvent.scores:type_name -> liwords.GameEndedEvent.ScoresEntry
-	27, // 16: liwords.GameEndedEvent.new_ratings:type_name -> liwords.GameEndedEvent.NewRatingsEntry
+	30, // 12: liwords.ServerGameplayEvent.event:type_name -> macondo.GameEvent
+	31, // 13: liwords.ServerGameplayEvent.playing:type_name -> macondo.PlayState
+	29, // 14: liwords.ServerChallengeResultEvent.challenge_rule:type_name -> macondo.ChallengeRule
+	27, // 15: liwords.GameEndedEvent.scores:type_name -> liwords.GameEndedEvent.ScoresEntry
+	28, // 16: liwords.GameEndedEvent.new_ratings:type_name -> liwords.GameEndedEvent.NewRatingsEntry
 	3,  // 17: liwords.GameEndedEvent.end_reason:type_name -> liwords.GameEndReason
-	31, // 18: liwords.GameHistoryRefresher.history:type_name -> macondo.GameHistory
+	32, // 18: liwords.GameHistoryRefresher.history:type_name -> macondo.GameHistory
 	4,  // 19: liwords.ClientGameplayEvent.type:type_name -> liwords.ClientGameplayEvent.EventType
 	20, // [20:20] is the sub-list for method output_type
 	20, // [20:20] is the sub-list for method input_type
@@ -2007,7 +2078,7 @@ func file_api_proto_realtime_realtime_proto_init() {
 			}
 		}
 		file_api_proto_realtime_realtime_proto_msgTypes[4].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*SeekRequest); i {
+			switch v := v.(*GameDeletion); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -2019,7 +2090,7 @@ func file_api_proto_realtime_realtime_proto_init() {
 			}
 		}
 		file_api_proto_realtime_realtime_proto_msgTypes[5].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*MatchRequest); i {
+			switch v := v.(*SeekRequest); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -2031,7 +2102,7 @@ func file_api_proto_realtime_realtime_proto_init() {
 			}
 		}
 		file_api_proto_realtime_realtime_proto_msgTypes[6].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*GameAcceptedEvent); i {
+			switch v := v.(*MatchRequest); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -2043,7 +2114,7 @@ func file_api_proto_realtime_realtime_proto_init() {
 			}
 		}
 		file_api_proto_realtime_realtime_proto_msgTypes[7].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*SeekRequests); i {
+			switch v := v.(*GameAcceptedEvent); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -2055,7 +2126,7 @@ func file_api_proto_realtime_realtime_proto_init() {
 			}
 		}
 		file_api_proto_realtime_realtime_proto_msgTypes[8].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*ActiveGames); i {
+			switch v := v.(*SeekRequests); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -2067,7 +2138,7 @@ func file_api_proto_realtime_realtime_proto_init() {
 			}
 		}
 		file_api_proto_realtime_realtime_proto_msgTypes[9].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*ServerGameplayEvent); i {
+			switch v := v.(*ActiveGames); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -2079,7 +2150,7 @@ func file_api_proto_realtime_realtime_proto_init() {
 			}
 		}
 		file_api_proto_realtime_realtime_proto_msgTypes[10].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*ServerChallengeResultEvent); i {
+			switch v := v.(*ServerGameplayEvent); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -2091,7 +2162,7 @@ func file_api_proto_realtime_realtime_proto_init() {
 			}
 		}
 		file_api_proto_realtime_realtime_proto_msgTypes[11].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*GameEndedEvent); i {
+			switch v := v.(*ServerChallengeResultEvent); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -2103,7 +2174,7 @@ func file_api_proto_realtime_realtime_proto_init() {
 			}
 		}
 		file_api_proto_realtime_realtime_proto_msgTypes[12].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*GameHistoryRefresher); i {
+			switch v := v.(*GameEndedEvent); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -2115,7 +2186,7 @@ func file_api_proto_realtime_realtime_proto_init() {
 			}
 		}
 		file_api_proto_realtime_realtime_proto_msgTypes[13].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*NewGameEvent); i {
+			switch v := v.(*GameHistoryRefresher); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -2127,7 +2198,7 @@ func file_api_proto_realtime_realtime_proto_init() {
 			}
 		}
 		file_api_proto_realtime_realtime_proto_msgTypes[14].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*ErrorMessage); i {
+			switch v := v.(*NewGameEvent); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -2139,7 +2210,7 @@ func file_api_proto_realtime_realtime_proto_init() {
 			}
 		}
 		file_api_proto_realtime_realtime_proto_msgTypes[15].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*ClientGameplayEvent); i {
+			switch v := v.(*ErrorMessage); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -2151,7 +2222,7 @@ func file_api_proto_realtime_realtime_proto_init() {
 			}
 		}
 		file_api_proto_realtime_realtime_proto_msgTypes[16].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*TimedOut); i {
+			switch v := v.(*ClientGameplayEvent); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -2163,7 +2234,7 @@ func file_api_proto_realtime_realtime_proto_init() {
 			}
 		}
 		file_api_proto_realtime_realtime_proto_msgTypes[17].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*TokenSocketLogin); i {
+			switch v := v.(*TimedOut); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -2175,7 +2246,7 @@ func file_api_proto_realtime_realtime_proto_init() {
 			}
 		}
 		file_api_proto_realtime_realtime_proto_msgTypes[18].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*JoinPath); i {
+			switch v := v.(*TokenSocketLogin); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -2187,7 +2258,7 @@ func file_api_proto_realtime_realtime_proto_init() {
 			}
 		}
 		file_api_proto_realtime_realtime_proto_msgTypes[19].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*UnjoinRealm); i {
+			switch v := v.(*JoinPath); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -2199,6 +2270,18 @@ func file_api_proto_realtime_realtime_proto_init() {
 			}
 		}
 		file_api_proto_realtime_realtime_proto_msgTypes[20].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*UnjoinRealm); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_api_proto_realtime_realtime_proto_msgTypes[21].Exporter = func(v interface{}, i int) interface{} {
 			switch v := v.(*GameMeta_UserMeta); i {
 			case 0:
 				return &v.state
@@ -2217,7 +2300,7 @@ func file_api_proto_realtime_realtime_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: file_api_proto_realtime_realtime_proto_rawDesc,
 			NumEnums:      5,
-			NumMessages:   23,
+			NumMessages:   24,
 			NumExtensions: 0,
 			NumServices:   0,
 		},
