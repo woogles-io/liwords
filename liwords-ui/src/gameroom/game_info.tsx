@@ -26,6 +26,10 @@ export type PlayerMetadata = {
   avatar_url: string;
 };
 
+export type GCGResponse = {
+  gcg: string;
+};
+
 type Props = {
   meta: GameMetadata;
 };

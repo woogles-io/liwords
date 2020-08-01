@@ -127,3 +127,43 @@ export namespace GameInfoResponse {
   }
 }
 
+export class GCGRequest extends jspb.Message {
+  getGameId(): string;
+  setGameId(value: string): void;
+
+  serializeBinary(): Uint8Array;
+  toObject(includeInstance?: boolean): GCGRequest.AsObject;
+  static toObject(includeInstance: boolean, msg: GCGRequest): GCGRequest.AsObject;
+  static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+  static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+  static serializeBinaryToWriter(message: GCGRequest, writer: jspb.BinaryWriter): void;
+  static deserializeBinary(bytes: Uint8Array): GCGRequest;
+  static deserializeBinaryFromReader(message: GCGRequest, reader: jspb.BinaryReader): GCGRequest;
+}
+
+export namespace GCGRequest {
+  export type AsObject = {
+    gameId: string,
+  }
+}
+
+export class GCGResponse extends jspb.Message {
+  getGcg(): string;
+  setGcg(value: string): void;
+
+  serializeBinary(): Uint8Array;
+  toObject(includeInstance?: boolean): GCGResponse.AsObject;
+  static toObject(includeInstance: boolean, msg: GCGResponse): GCGResponse.AsObject;
+  static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+  static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+  static serializeBinaryToWriter(message: GCGResponse, writer: jspb.BinaryWriter): void;
+  static deserializeBinary(bytes: Uint8Array): GCGResponse;
+  static deserializeBinaryFromReader(message: GCGResponse, reader: jspb.BinaryReader): GCGResponse;
+}
+
+export namespace GCGResponse {
+  export type AsObject = {
+    gcg: string,
+  }
+}
+

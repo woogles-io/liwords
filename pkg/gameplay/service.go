@@ -2,7 +2,10 @@ package gameplay
 
 import (
 	"context"
+	"errors"
 	"strconv"
+
+	"github.com/domino14/macondo/gcgio"
 
 	"github.com/domino14/liwords/pkg/entity"
 
@@ -11,6 +14,9 @@ import (
 	macondopb "github.com/domino14/macondo/gen/api/proto/macondo"
 )
 
+// GameService is a Twirp service that contains functions relevant to a game's
+// metadata, stats, etc. All real-time functionality is handled in
+// gameplay/game.go and related files.
 type GameService struct {
 	userStore user.Store
 	gameStore GameStore
@@ -70,4 +76,20 @@ func (gs *GameService) GetMetadata(ctx context.Context, req *pb.GameInfoRequest)
 
 	return resp, nil
 
+}
+
+// GetGCG downloads a GCG for a finished game.
+func (gs *GameService) GetGCG(ctx context.Context, req *pb.GCGRequest) (*pb.GCGResponse, error) {
+	entGame, err := gs.gameStore.Get(ctx, req.GameId)
+	if err != nil {
+		return nil, err
+	}
+	if entGame.Playing() != macondopb.PlayState_GAME_OVER {
+		return nil, errors.New("please wait until the game is over to download GCG")
+	}
+	gcg, err := gcgio.GameHistoryToGCG(entGame.History(), true)
+	if err != nil {
+		return nil, err
+	}
+	return &pb.GCGResponse{Gcg: gcg}, nil
 }
