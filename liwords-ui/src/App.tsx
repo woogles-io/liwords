@@ -80,8 +80,7 @@ const App = React.memo(() => {
         <Route path="/login">
           <Login />
         </Route>
-        {/* move this to /register after the alpha is done */}
-        <Route path="/secretregistrationpath">
+        <Route path="/register">
           <Register />
         </Route>
       </Switch>

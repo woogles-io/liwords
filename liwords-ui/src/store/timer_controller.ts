@@ -117,9 +117,9 @@ export class ClockController {
     }
   };
 
-  setMaxOvertime = (maxOTMinutes: number) => {
+  setMaxOvertime = (maxOTMinutes: number | undefined) => {
     console.log('Set max overtime mins', maxOTMinutes);
-    this.maxOvertimeMinutes = maxOTMinutes;
+    this.maxOvertimeMinutes = maxOTMinutes || 0;
   };
 
   stopClock = (): Millis | null => {

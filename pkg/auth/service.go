@@ -6,6 +6,8 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/rs/zerolog/log"
+
 	"github.com/domino14/liwords/pkg/entity"
 	"github.com/lithammer/shortuuid"
 
@@ -33,6 +35,7 @@ func NewAuthenticationService(u user.Store, ss user.SessionStore, secretKey stri
 func (as *AuthenticationService) Login(ctx context.Context, r *pb.UserLoginRequest) (*pb.LoginResponse, error) {
 	user, err := as.userStore.Get(ctx, r.Username)
 	if err != nil {
+		log.Err(err).Msg("getting-user")
 		return nil, err
 	}
 	matches, err := ComparePassword(r.Password, user.Password)
