@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Row, Col, Button, Modal } from 'antd';
+import { Row, Col, Button, Modal, Divider } from 'antd';
 import { Redirect } from 'react-router-dom';
 
 import { TopBar } from '../topbar/topbar';
@@ -20,6 +20,7 @@ import {
   ChallengeRule,
 } from '../gen/macondo/api/proto/macondo/macondo_pb';
 import { SeekForm, seekPropVals } from './seek_form';
+import { ActiveGames } from './active_games';
 
 const sendSeek = (
   game: SoughtGame,
@@ -137,7 +138,7 @@ export const Lobby = (props: Props) => {
         </Col>
       </Row>
 
-      <Row>
+      <Row style={{ marginTop: 10 }}>
         <Col span={24}>
           <Button type="primary" onClick={showSeekModal}>
             New Game
@@ -154,6 +155,12 @@ export const Lobby = (props: Props) => {
               loggedIn={props.loggedIn}
             />
           </Modal>
+        </Col>
+      </Row>
+      <Divider />
+      <Row style={{ marginTop: 10 }}>
+        <Col span={12} offset={6}>
+          <ActiveGames />
         </Col>
       </Row>
     </div>

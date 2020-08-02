@@ -45,22 +45,27 @@ type Profile struct {
 	Ratings     Ratings
 }
 
+// RelevantRating returns the rating from a Ratings object given a rating key.
+func RelevantRating(ratings Ratings, ratingKey VariantKey) string {
+	if ratings.Data == nil {
+		// This is not an unrated user. Use default rating.
+		return strconv.Itoa(glicko.InitialRating) + "?"
+	}
+	ratdict, ok := ratings.Data[ratingKey]
+	if ok {
+		return strconv.Itoa(int(math.Round(ratdict.Rating)))
+	}
+	// User has no rating in this particular variant.
+	return strconv.Itoa(glicko.InitialRating) + "?"
+}
+
 // GetRelevantRating gets a displayable rating for this user, based on the passed-in
 // rating key (encoding variant, time control, etc)
 func (u *User) GetRelevantRating(ratingKey VariantKey) string {
 	if u.Profile == nil {
 		return "UnratedAnon"
 	}
-	if u.Profile.Ratings.Data == nil {
-		// This is not an unrated user. Use default rating.
-		return strconv.Itoa(glicko.InitialRating) + "?"
-	}
-	ratdict, ok := u.Profile.Ratings.Data[ratingKey]
-	if ok {
-		return strconv.Itoa(int(math.Round(ratdict.Rating)))
-	}
-	// User has no rating in this particular variant.
-	return strconv.Itoa(glicko.InitialRating) + "?"
+	return RelevantRating(u.Profile.Ratings, ratingKey)
 }
 
 // GetRating gets a full Glicko-225 rating for this user, based on the

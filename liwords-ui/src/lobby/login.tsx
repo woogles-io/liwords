@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { Form, Input, Button, Alert } from 'antd';
 // import { Link } from 'react-router-dom';
 import axios from 'axios';
+import { Link } from 'react-router-dom';
 
 const layout = {
   labelCol: {
@@ -89,7 +90,7 @@ export const Login = () => {
       </Form>
       {err !== '' ? <Alert message={err} type="error" /> : null}
       {/* uncomment after the alpha */}
-      {/* <Link to="/register">Register a new name</Link> */}
+      <Link to="/register">Register a new name</Link>
     </>
   );
 };

@@ -10,24 +10,19 @@ import (
 	"math"
 	"strconv"
 
-	"github.com/domino14/macondo/alphabet"
 	"github.com/rs/zerolog/log"
 	"google.golang.org/protobuf/proto"
 
-	"github.com/domino14/macondo/move"
-
+	"github.com/domino14/macondo/alphabet"
+	"github.com/domino14/macondo/board"
+	"github.com/domino14/macondo/game"
 	macondopb "github.com/domino14/macondo/gen/api/proto/macondo"
+	"github.com/domino14/macondo/move"
 
 	"github.com/domino14/liwords/pkg/config"
 	"github.com/domino14/liwords/pkg/entity"
 	"github.com/domino14/liwords/pkg/user"
 	pb "github.com/domino14/liwords/rpc/api/proto/realtime"
-	"github.com/domino14/macondo/board"
-	"github.com/domino14/macondo/game"
-)
-
-const (
-	CrosswordGame string = "CrosswordGame"
 )
 
 var (
@@ -40,6 +35,9 @@ var (
 type GameStore interface {
 	Get(ctx context.Context, id string) (*entity.Game, error)
 	Set(context.Context, *entity.Game) error
+	Create(context.Context, *entity.Game) error
+	ListActive(context.Context) ([]*pb.GameMeta, error)
+	SetGameEventChan(c chan<- *entity.EventWrapper)
 }
 
 // InstantiateNewGame instantiates a game and returns it.
@@ -61,7 +59,7 @@ func InstantiateNewGame(ctx context.Context, gameStore GameStore, cfg *config.Co
 		return nil, errors.New("no rules")
 	}
 	switch req.Rules.BoardLayoutName {
-	case CrosswordGame:
+	case entity.CrosswordGame:
 		bd = board.CrosswordGameBoard
 	default:
 		return nil, errors.New("unsupported board layout")
@@ -84,7 +82,7 @@ func InstantiateNewGame(ctx context.Context, gameStore GameStore, cfg *config.Co
 
 	entGame := entity.NewGame(g, req)
 	// Save the game to the store.
-	if err = gameStore.Set(ctx, entGame); err != nil {
+	if err = gameStore.Create(ctx, entGame); err != nil {
 		return nil, err
 	}
 	return entGame, nil
@@ -217,12 +215,8 @@ func handleChallenge(ctx context.Context, entGame *entity.Game, gameStore GameSt
 		checkGameOverAndModifyScores(ctx, entGame, userStore)
 	}
 
-	err = gameStore.Set(ctx, entGame)
-	if err != nil {
-		return err
-	}
+	return gameStore.Set(ctx, entGame)
 
-	return nil
 }
 
 // PlayMove handles a gameplay event from the socket
@@ -329,12 +323,7 @@ func PlayMove(ctx context.Context, gameStore GameStore, userStore user.Store, us
 		checkGameOverAndModifyScores(ctx, entGame, userStore)
 	}
 
-	err = gameStore.Set(ctx, entGame)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return gameStore.Set(ctx, entGame)
 }
 
 func checkGameOverAndModifyScores(ctx context.Context, entGame *entity.Game, userStore user.Store) {
@@ -400,12 +389,7 @@ func setTimedOut(ctx context.Context, entGame *entity.Game, pidx int, gameStore 
 	performEndgameDuties(ctx, entGame, userStore)
 
 	// Store the game back into the store
-	err := gameStore.Set(ctx, entGame)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return gameStore.Set(ctx, entGame)
 }
 
 func gameEndedEvent(ctx context.Context, g *entity.Game, userStore user.Store) *pb.GameEndedEvent {
@@ -440,7 +424,7 @@ func gameEndedEvent(ctx context.Context, g *entity.Game, userStore user.Store) *
 	evt := &pb.GameEndedEvent{
 		Scores:     scores,
 		NewRatings: ratings,
-		EndReason:  g.GameEndReason(),
+		EndReason:  g.GameEndReason,
 		Winner:     winner,
 		Loser:      loser,
 		Tie:        tie,
@@ -536,6 +520,13 @@ func performEndgameDuties(ctx context.Context, g *entity.Game, userStore user.St
 	// audiences.
 	wrapped.AddAudience(entity.AudGame, g.GameID())
 	wrapped.AddAudience(entity.AudGameTV, g.GameID())
+	g.SendChange(wrapped)
+
+	// And actually finally, send a notification to the lobby that this
+	// game ended. This will remove it from the list of live games.
+	wrapped = entity.WrapEvent(&pb.GameDeletion{Id: g.GameID()},
+		pb.MessageType_GAME_DELETION, "")
+	wrapped.AddAudience(entity.AudLobby, "gameEnded")
 	g.SendChange(wrapped)
 }
 

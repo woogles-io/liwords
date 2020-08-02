@@ -14,6 +14,9 @@ import "macondo/api/proto/macondo/macondo.proto";
 message GameRules {
   string board_layout_name = 1;
   string letter_distribution_name = 2;
+  // If blank, variant is classic, otherwise it could be some other game
+  // (a is worth 100, dogworms, etc.)
+  string variant_name = 3;
 }
 
 enum GameMode {
@@ -77,11 +80,28 @@ enum MessageType {
   UNJOIN_REALM = 12;
   TIMED_OUT = 13;
   TOKEN_SOCKET_LOGIN = 14;
+  GAME_META_EVENT = 15;
+  ACTIVE_GAMES = 16;
+  GAME_DELETION = 17;
   // Add more events here. The total number of events should fit in a byte.
   // We should definitely not be using anywhere close to 255 events, and
   // in order to enforce that I'll be forcing the event type header to just be
   // a byte long.
 }
+
+// GameMeta is meant to be a quick summary of a game for watching purposes,
+// for display in a list in the lobby e.g.
+message GameMeta {
+  message UserMeta {
+    string relevant_rating = 1;
+    string display_name = 2;
+  }
+  repeated UserMeta users = 1;
+  GameRequest game_request = 2;
+  string id = 3; // the game ID
+}
+
+message GameDeletion { string id = 1; }
 
 // Bi-directional messages
 
@@ -105,6 +125,8 @@ message GameAcceptedEvent { string request_id = 1; }
 
 // SeekRequests sends all open seek requests.
 message SeekRequests { repeated SeekRequest requests = 1; }
+
+message ActiveGames { repeated GameMeta games = 1; }
 
 // The server will send back a ServerGameplayEvent to a ClientGameplayEvent.
 // The server will also send these asynchronously for opponent gameplay

@@ -150,9 +150,11 @@ func (s *DBStore) GetByUUID(ctx context.Context, uuid string) (*entity.User, err
 	return entu, nil
 }
 
+// New creates a new user in the DB.
 func (s *DBStore) New(ctx context.Context, u *entity.User) error {
-	u.UUID = shortuuid.New()
-
+	if u.UUID == "" {
+		u.UUID = shortuuid.New()
+	}
 	dbu := &User{
 		UUID:     u.UUID,
 		Username: u.Username,
@@ -209,6 +211,10 @@ func (s *DBStore) SetRating(ctx context.Context, uuid string, variant entity.Var
 	}
 
 	return s.db.Model(p).Update("ratings", postgres.Jsonb{RawMessage: bytes}).Error
+}
+
+func (s *DBStore) Disconnect() {
+	s.db.Close()
 }
 
 // CheckPassword checks the password. If the password matches, return the User.

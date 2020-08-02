@@ -25,6 +25,7 @@ const (
 	AudGame   EventAudienceType = "game"
 	AudGameTV                   = "gametv"
 	AudUser                     = "user"
+	AudLobby                    = "lobby"
 )
 
 // An EventWrapper is a real-time update, whether it is a played move,
@@ -65,7 +66,11 @@ func (e *EventWrapper) AddAudience(audType EventAudienceType, specific string) {
 	if e.audience == nil {
 		e.audience = []string{}
 	}
-	e.audience = append(e.audience, string(audType)+"."+specific)
+	if specific != "" {
+		e.audience = append(e.audience, string(audType)+"."+specific)
+	} else {
+		e.audience = append(e.audience, string(audType))
+	}
 }
 
 // Audience gets the audience(s) for this event, in the form of NATS channel names.
