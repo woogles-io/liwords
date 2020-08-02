@@ -321,6 +321,11 @@ func (b *Bus) gameAccepted(ctx context.Context, evt *pb.GameAcceptedEvent, userI
 		return b.broadcastSeekDeletion(evt.RequestId)
 	}
 	// Otherwise create a game
+	// If the ACCEPTOR of the seek has a seek request open, we must cancel it.
+	err = b.deleteSoughtForUser(ctx, userID)
+	if err != nil {
+		return err
+	}
 
 	accUser, err := b.userStore.GetByUUID(ctx, userID) // acceptor
 	if err != nil {
@@ -399,8 +404,8 @@ func (b *Bus) broadcastGameCreation(g *entity.Game, acceptor, requester *entity.
 	users := []*pb.GameMeta_UserMeta{
 		{RelevantRating: acceptor.GetRelevantRating(ratingKey),
 			DisplayName: acceptor.Username},
-		{RelevantRating: acceptor.GetRelevantRating(ratingKey),
-			DisplayName: acceptor.Username},
+		{RelevantRating: requester.GetRelevantRating(ratingKey),
+			DisplayName: requester.Username},
 	}
 
 	toSend := entity.WrapEvent(&pb.GameMeta{Users: users,
@@ -459,7 +464,7 @@ func (b *Bus) initRealmInfo(ctx context.Context, evt *pb.InitRealmInfo) error {
 	return nil
 }
 
-func (b *Bus) leaveSite(ctx context.Context, userID string) error {
+func (b *Bus) deleteSoughtForUser(ctx context.Context, userID string) error {
 	reqID, err := b.soughtGameStore.DeleteForUser(ctx, userID)
 	if err != nil {
 		return err
@@ -467,8 +472,12 @@ func (b *Bus) leaveSite(ctx context.Context, userID string) error {
 	if reqID == "" {
 		return nil
 	}
-	log.Debug().Str("reqID", reqID).Str("userID", userID).Msg("user-left-deleting-sought")
+	log.Debug().Str("reqID", reqID).Str("userID", userID).Msg("deleting-sought")
 	return b.broadcastSeekDeletion(reqID)
+}
+
+func (b *Bus) leaveSite(ctx context.Context, userID string) error {
+	return b.deleteSoughtForUser(ctx, userID)
 }
 
 func (b *Bus) openSeeks(ctx context.Context) (*entity.EventWrapper, error) {
