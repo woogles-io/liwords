@@ -182,6 +182,7 @@ func (g *Game) CreationRequest() *pb.GameRequest {
 // RegisterChangeHook registers a channel with the game. Events will
 // be sent down this channel.
 func (g *Game) RegisterChangeHook(eventChan chan<- *EventWrapper) error {
+	log.Debug().Msg("register-change-hook")
 	g.ChangeHook = eventChan
 	return nil
 }
@@ -189,7 +190,13 @@ func (g *Game) RegisterChangeHook(eventChan chan<- *EventWrapper) error {
 // SendChange sends an event via the registered hook.
 func (g *Game) SendChange(e *EventWrapper) {
 	log.Debug().Interface("evt", e.Event).Interface("aud", e.Audience()).Msg("send-change")
+	if g.ChangeHook == nil {
+		// This should never happen in actual operation; consider making it a Fatal.
+		log.Error().Msg("change hook is closed!")
+		return
+	}
 	g.ChangeHook <- e
+	log.Debug().Msg("change sent")
 }
 
 func (g *Game) SetGameEndReason(r pb.GameEndReason) {

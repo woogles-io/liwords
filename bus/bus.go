@@ -58,6 +58,7 @@ func NewBus(cfg *config.Config, userStore user.Store, gameStore gameplay.GameSto
 		config:          cfg,
 		gameEventChan:   make(chan *entity.EventWrapper, 64),
 	}
+	gameStore.SetGameEventChan(bus.gameEventChan)
 
 	topics := []string{
 		// ipc.pb are generic publishes
@@ -90,6 +91,7 @@ func NewBus(cfg *config.Config, userStore user.Store, gameStore gameplay.GameSto
 // ProcessMessages is very similar to the PubsubProcess in liwords-socket,
 // but that's because they do similar things.
 func (b *Bus) ProcessMessages(ctx context.Context) {
+outerfor:
 	for {
 		select {
 		case msg := <-b.subchans["ipc.pb.>"]:
@@ -144,8 +146,14 @@ func (b *Bus) ProcessMessages(ctx context.Context) {
 					b.natsconn.Publish(topic, data)
 				}
 			}
+		case <-ctx.Done():
+			log.Info().Msg("context done, breaking")
+			break outerfor
 		}
+
 	}
+
+	log.Info().Msg("exiting processMessages loop")
 }
 
 func (b *Bus) handleNatsRequest(ctx context.Context, topic string,

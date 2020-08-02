@@ -37,6 +37,7 @@ type GameStore interface {
 	Set(context.Context, *entity.Game) error
 	Create(context.Context, *entity.Game) error
 	ListActive(context.Context) ([]*pb.GameMeta, error)
+	SetGameEventChan(c chan<- *entity.EventWrapper)
 }
 
 // InstantiateNewGame instantiates a game and returns it.

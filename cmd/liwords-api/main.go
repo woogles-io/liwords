@@ -112,18 +112,22 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	go pubsubBus.ProcessMessages(context.Background())
+
+	ctx, pubsubCancel := context.WithCancel(context.Background())
+
+	go pubsubBus.ProcessMessages(ctx)
 
 	go func() {
 		signal.Notify(sig, syscall.SIGINT, syscall.SIGTERM)
 		<-sig
 		log.Info().Msg("got quit signal...")
-		ctx, cancel := context.WithTimeout(context.Background(), GracefulShutdownTimeout)
+		ctx, shutdownCancel := context.WithTimeout(context.Background(), GracefulShutdownTimeout)
 		if err := srv.Shutdown(ctx); err != nil {
 			// Error from closing listeners, or context timeout:
 			log.Error().Msgf("HTTP server Shutdown: %v", err)
 		}
-		cancel()
+		shutdownCancel()
+		pubsubCancel()
 		close(idleConnsClosed)
 	}()
 	log.Info().Msg("starting listening...")

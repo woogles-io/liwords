@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Row, Col, Button, Modal } from 'antd';
+import { Row, Col, Button, Modal, Divider } from 'antd';
 import { Redirect } from 'react-router-dom';
 
 import { TopBar } from '../topbar/topbar';
@@ -157,7 +157,7 @@ export const Lobby = (props: Props) => {
           </Modal>
         </Col>
       </Row>
-
+      <Divider />
       <Row style={{ marginTop: 10 }}>
         <Col span={12} offset={6}>
           <ActiveGames />

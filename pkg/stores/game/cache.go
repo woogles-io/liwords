@@ -17,6 +17,7 @@ type backingStore interface {
 	Set(context.Context, *entity.Game) error
 	Create(context.Context, *entity.Game) error
 	ListActive(ctx context.Context) ([]*pb.GameMeta, error)
+	SetGameEventChan(ch chan<- *entity.EventWrapper)
 }
 
 // Cache will reside in-memory, and will be per-node. If we add more nodes
@@ -61,6 +62,11 @@ func (c *Cache) Exists(ctx context.Context, id string) bool {
 // Unload unloads the game from the cache
 func (c *Cache) Unload(ctx context.Context, id string) {
 	delete(c.games, id)
+}
+
+// SetGameEventChan sets the game event channel to the passed in channel.
+func (c *Cache) SetGameEventChan(ch chan<- *entity.EventWrapper) {
+	c.backing.SetGameEventChan(ch)
 }
 
 // Get gets a game from the cache. It doesn't try to get it from the backing
