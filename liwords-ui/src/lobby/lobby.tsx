@@ -99,9 +99,9 @@ export const Lobby = (props: Props) => {
 
         lexicon: seekSettings.lexicon as string,
         challengeRule: seekSettings.challengerule as number,
-        initialTimeSecs: (seekSettings.initialtime as number) * 60,
+        initialTimeSecs: Math.round((seekSettings.initialtime as number) * 60),
         rated: seekSettings.rated as boolean,
-        maxOvertimeMinutes: seekSettings.maxovertime as number,
+        maxOvertimeMinutes: Math.round(seekSettings.maxovertime as number),
       },
       props.sendSocketMsg
     );

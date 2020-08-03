@@ -180,6 +180,8 @@ export const Table = React.memo((props: Props) => {
     rack = gameContext.players.find((p) => p.onturn)?.currentRack || '';
   }
 
+  // The game "starts" when the GameHistoryRefresher object comes in via the socket.
+
   return (
     <div>
       <TopBar username={props.username} loggedIn={props.loggedIn} />

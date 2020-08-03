@@ -102,6 +102,9 @@ export class GameInfoResponse extends jspb.Message {
   getMaxOvertimeMinutes(): number;
   setMaxOvertimeMinutes(value: number): void;
 
+  getGameEndReason(): api_proto_realtime_realtime_pb.GameEndReasonMap[keyof api_proto_realtime_realtime_pb.GameEndReasonMap];
+  setGameEndReason(value: api_proto_realtime_realtime_pb.GameEndReasonMap[keyof api_proto_realtime_realtime_pb.GameEndReasonMap]): void;
+
   serializeBinary(): Uint8Array;
   toObject(includeInstance?: boolean): GameInfoResponse.AsObject;
   static toObject(includeInstance: boolean, msg: GameInfoResponse): GameInfoResponse.AsObject;
@@ -124,6 +127,7 @@ export namespace GameInfoResponse {
     ratingMode: api_proto_realtime_realtime_pb.RatingModeMap[keyof api_proto_realtime_realtime_pb.RatingModeMap],
     done: boolean,
     maxOvertimeMinutes: number,
+    gameEndReason: api_proto_realtime_realtime_pb.GameEndReasonMap[keyof api_proto_realtime_realtime_pb.GameEndReasonMap],
   }
 }
 

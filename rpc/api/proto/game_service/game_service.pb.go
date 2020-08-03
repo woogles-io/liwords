@@ -189,8 +189,9 @@ type GameInfoResponse struct {
 	ChallengeRule   macondo.ChallengeRule `protobuf:"varint,7,opt,name=challenge_rule,json=challengeRule,proto3,enum=macondo.ChallengeRule" json:"challenge_rule,omitempty"`
 	RatingMode      realtime.RatingMode   `protobuf:"varint,8,opt,name=rating_mode,json=ratingMode,proto3,enum=liwords.RatingMode" json:"rating_mode,omitempty"`
 	// done - is game done?
-	Done               bool  `protobuf:"varint,9,opt,name=done,proto3" json:"done,omitempty"`
-	MaxOvertimeMinutes int32 `protobuf:"varint,10,opt,name=max_overtime_minutes,json=maxOvertimeMinutes,proto3" json:"max_overtime_minutes,omitempty"`
+	Done               bool                   `protobuf:"varint,9,opt,name=done,proto3" json:"done,omitempty"`
+	MaxOvertimeMinutes int32                  `protobuf:"varint,10,opt,name=max_overtime_minutes,json=maxOvertimeMinutes,proto3" json:"max_overtime_minutes,omitempty"`
+	GameEndReason      realtime.GameEndReason `protobuf:"varint,11,opt,name=game_end_reason,json=gameEndReason,proto3,enum=liwords.GameEndReason" json:"game_end_reason,omitempty"`
 }
 
 func (x *GameInfoResponse) Reset() {
@@ -293,6 +294,13 @@ func (x *GameInfoResponse) GetMaxOvertimeMinutes() int32 {
 		return x.MaxOvertimeMinutes
 	}
 	return 0
+}
+
+func (x *GameInfoResponse) GetGameEndReason() realtime.GameEndReason {
+	if x != nil {
+		return x.GameEndReason
+	}
+	return realtime.GameEndReason_NONE
 }
 
 type GCGRequest struct {
@@ -416,7 +424,7 @@ var file_api_proto_game_service_game_service_proto_rawDesc = []byte{
 	0x05, 0x74, 0x69, 0x74, 0x6c, 0x65, 0x18, 0x06, 0x20, 0x01, 0x28, 0x09, 0x52, 0x05, 0x74, 0x69,
 	0x74, 0x6c, 0x65, 0x12, 0x1d, 0x0a, 0x0a, 0x61, 0x76, 0x61, 0x74, 0x61, 0x72, 0x5f, 0x75, 0x72,
 	0x6c, 0x18, 0x07, 0x20, 0x01, 0x28, 0x09, 0x52, 0x09, 0x61, 0x76, 0x61, 0x74, 0x61, 0x72, 0x55,
-	0x72, 0x6c, 0x22, 0xad, 0x03, 0x0a, 0x10, 0x47, 0x61, 0x6d, 0x65, 0x49, 0x6e, 0x66, 0x6f, 0x52,
+	0x72, 0x6c, 0x22, 0xed, 0x03, 0x0a, 0x10, 0x47, 0x61, 0x6d, 0x65, 0x49, 0x6e, 0x66, 0x6f, 0x52,
 	0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12, 0x32, 0x0a, 0x07, 0x70, 0x6c, 0x61, 0x79, 0x65,
 	0x72, 0x73, 0x18, 0x01, 0x20, 0x03, 0x28, 0x0b, 0x32, 0x18, 0x2e, 0x67, 0x61, 0x6d, 0x65, 0x5f,
 	0x73, 0x65, 0x72, 0x76, 0x69, 0x63, 0x65, 0x2e, 0x50, 0x6c, 0x61, 0x79, 0x65, 0x72, 0x49, 0x6e,
@@ -443,7 +451,11 @@ var file_api_proto_game_service_game_service_proto_rawDesc = []byte{
 	0x12, 0x30, 0x0a, 0x14, 0x6d, 0x61, 0x78, 0x5f, 0x6f, 0x76, 0x65, 0x72, 0x74, 0x69, 0x6d, 0x65,
 	0x5f, 0x6d, 0x69, 0x6e, 0x75, 0x74, 0x65, 0x73, 0x18, 0x0a, 0x20, 0x01, 0x28, 0x05, 0x52, 0x12,
 	0x6d, 0x61, 0x78, 0x4f, 0x76, 0x65, 0x72, 0x74, 0x69, 0x6d, 0x65, 0x4d, 0x69, 0x6e, 0x75, 0x74,
-	0x65, 0x73, 0x22, 0x25, 0x0a, 0x0a, 0x47, 0x43, 0x47, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74,
+	0x65, 0x73, 0x12, 0x3e, 0x0a, 0x0f, 0x67, 0x61, 0x6d, 0x65, 0x5f, 0x65, 0x6e, 0x64, 0x5f, 0x72,
+	0x65, 0x61, 0x73, 0x6f, 0x6e, 0x18, 0x0b, 0x20, 0x01, 0x28, 0x0e, 0x32, 0x16, 0x2e, 0x6c, 0x69,
+	0x77, 0x6f, 0x72, 0x64, 0x73, 0x2e, 0x47, 0x61, 0x6d, 0x65, 0x45, 0x6e, 0x64, 0x52, 0x65, 0x61,
+	0x73, 0x6f, 0x6e, 0x52, 0x0d, 0x67, 0x61, 0x6d, 0x65, 0x45, 0x6e, 0x64, 0x52, 0x65, 0x61, 0x73,
+	0x6f, 0x6e, 0x22, 0x25, 0x0a, 0x0a, 0x47, 0x43, 0x47, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74,
 	0x12, 0x17, 0x0a, 0x07, 0x67, 0x61, 0x6d, 0x65, 0x5f, 0x69, 0x64, 0x18, 0x01, 0x20, 0x01, 0x28,
 	0x09, 0x52, 0x06, 0x67, 0x61, 0x6d, 0x65, 0x49, 0x64, 0x22, 0x1f, 0x0a, 0x0b, 0x47, 0x43, 0x47,
 	0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12, 0x10, 0x0a, 0x03, 0x67, 0x63, 0x67, 0x18,
@@ -479,27 +491,29 @@ func file_api_proto_game_service_game_service_proto_rawDescGZIP() []byte {
 
 var file_api_proto_game_service_game_service_proto_msgTypes = make([]protoimpl.MessageInfo, 5)
 var file_api_proto_game_service_game_service_proto_goTypes = []interface{}{
-	(*GameInfoRequest)(nil),    // 0: game_service.GameInfoRequest
-	(*PlayerInfo)(nil),         // 1: game_service.PlayerInfo
-	(*GameInfoResponse)(nil),   // 2: game_service.GameInfoResponse
-	(*GCGRequest)(nil),         // 3: game_service.GCGRequest
-	(*GCGResponse)(nil),        // 4: game_service.GCGResponse
-	(macondo.ChallengeRule)(0), // 5: macondo.ChallengeRule
-	(realtime.RatingMode)(0),   // 6: liwords.RatingMode
+	(*GameInfoRequest)(nil),     // 0: game_service.GameInfoRequest
+	(*PlayerInfo)(nil),          // 1: game_service.PlayerInfo
+	(*GameInfoResponse)(nil),    // 2: game_service.GameInfoResponse
+	(*GCGRequest)(nil),          // 3: game_service.GCGRequest
+	(*GCGResponse)(nil),         // 4: game_service.GCGResponse
+	(macondo.ChallengeRule)(0),  // 5: macondo.ChallengeRule
+	(realtime.RatingMode)(0),    // 6: liwords.RatingMode
+	(realtime.GameEndReason)(0), // 7: liwords.GameEndReason
 }
 var file_api_proto_game_service_game_service_proto_depIdxs = []int32{
 	1, // 0: game_service.GameInfoResponse.players:type_name -> game_service.PlayerInfo
 	5, // 1: game_service.GameInfoResponse.challenge_rule:type_name -> macondo.ChallengeRule
 	6, // 2: game_service.GameInfoResponse.rating_mode:type_name -> liwords.RatingMode
-	0, // 3: game_service.GameMetadataService.GetMetadata:input_type -> game_service.GameInfoRequest
-	3, // 4: game_service.GameMetadataService.GetGCG:input_type -> game_service.GCGRequest
-	2, // 5: game_service.GameMetadataService.GetMetadata:output_type -> game_service.GameInfoResponse
-	4, // 6: game_service.GameMetadataService.GetGCG:output_type -> game_service.GCGResponse
-	5, // [5:7] is the sub-list for method output_type
-	3, // [3:5] is the sub-list for method input_type
-	3, // [3:3] is the sub-list for extension type_name
-	3, // [3:3] is the sub-list for extension extendee
-	0, // [0:3] is the sub-list for field type_name
+	7, // 3: game_service.GameInfoResponse.game_end_reason:type_name -> liwords.GameEndReason
+	0, // 4: game_service.GameMetadataService.GetMetadata:input_type -> game_service.GameInfoRequest
+	3, // 5: game_service.GameMetadataService.GetGCG:input_type -> game_service.GCGRequest
+	2, // 6: game_service.GameMetadataService.GetMetadata:output_type -> game_service.GameInfoResponse
+	4, // 7: game_service.GameMetadataService.GetGCG:output_type -> game_service.GCGResponse
+	6, // [6:8] is the sub-list for method output_type
+	4, // [4:6] is the sub-list for method input_type
+	4, // [4:4] is the sub-list for extension type_name
+	4, // [4:4] is the sub-list for extension extendee
+	0, // [0:4] is the sub-list for field type_name
 }
 
 func init() { file_api_proto_game_service_game_service_proto_init() }

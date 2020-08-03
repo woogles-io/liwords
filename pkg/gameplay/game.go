@@ -511,6 +511,7 @@ func performEndgameDuties(ctx context.Context, g *entity.Game, userStore user.St
 	if len(g.History().FinalScores) == 0 || len(evts) > 0 {
 		g.AddFinalScoresToHistory()
 	}
+	g.History().PlayState = macondopb.PlayState_GAME_OVER
 
 	// Finally, send a gameEndedEvent, which rates the game.
 	wrapped := entity.WrapEvent(gameEndedEvent(ctx, g, userStore),

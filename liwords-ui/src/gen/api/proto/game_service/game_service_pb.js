@@ -615,7 +615,8 @@ proto.game_service.GameInfoResponse.toObject = function(includeInstance, msg) {
     challengeRule: jspb.Message.getFieldWithDefault(msg, 7, 0),
     ratingMode: jspb.Message.getFieldWithDefault(msg, 8, 0),
     done: jspb.Message.getBooleanFieldWithDefault(msg, 9, false),
-    maxOvertimeMinutes: jspb.Message.getFieldWithDefault(msg, 10, 0)
+    maxOvertimeMinutes: jspb.Message.getFieldWithDefault(msg, 10, 0),
+    gameEndReason: jspb.Message.getFieldWithDefault(msg, 11, 0)
   };
 
   if (includeInstance) {
@@ -692,6 +693,10 @@ proto.game_service.GameInfoResponse.deserializeBinaryFromReader = function(msg, 
     case 10:
       var value = /** @type {number} */ (reader.readInt32());
       msg.setMaxOvertimeMinutes(value);
+      break;
+    case 11:
+      var value = /** @type {!proto.liwords.GameEndReason} */ (reader.readEnum());
+      msg.setGameEndReason(value);
       break;
     default:
       reader.skipField();
@@ -790,6 +795,13 @@ proto.game_service.GameInfoResponse.serializeBinaryToWriter = function(message, 
   if (f !== 0) {
     writer.writeInt32(
       10,
+      f
+    );
+  }
+  f = message.getGameEndReason();
+  if (f !== 0.0) {
+    writer.writeEnum(
+      11,
       f
     );
   }
@@ -993,6 +1005,24 @@ proto.game_service.GameInfoResponse.prototype.getMaxOvertimeMinutes = function()
  */
 proto.game_service.GameInfoResponse.prototype.setMaxOvertimeMinutes = function(value) {
   return jspb.Message.setProto3IntField(this, 10, value);
+};
+
+
+/**
+ * optional liwords.GameEndReason game_end_reason = 11;
+ * @return {!proto.liwords.GameEndReason}
+ */
+proto.game_service.GameInfoResponse.prototype.getGameEndReason = function() {
+  return /** @type {!proto.liwords.GameEndReason} */ (jspb.Message.getFieldWithDefault(this, 11, 0));
+};
+
+
+/**
+ * @param {!proto.liwords.GameEndReason} value
+ * @return {!proto.game_service.GameInfoResponse} returns this
+ */
+proto.game_service.GameInfoResponse.prototype.setGameEndReason = function(value) {
+  return jspb.Message.setProto3EnumField(this, 11, value);
 };
 
 
