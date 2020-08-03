@@ -324,7 +324,7 @@ func (wm *MaxWeightMatching) scanBlossom(v int, w int) int {
 	for v != -1 || w != -1 {
 		// Look for a breadcrumb in v's blossom or put a new breadcrumb.
 		b := wm.inblossoms[v]
-		if wm.label[b] % 8 >= 4 {
+		if wm.label[b]%8 >= 4 {
 			base = wm.blossomBase[b]
 			break
 		}
@@ -442,7 +442,7 @@ func (wm *MaxWeightMatching) addBlossom(base int, k int) {
 			for _, leaf := range wm.blossomLeaves(step) {
 				neighbors := []int{}
 				for _, neighbor := range wm.neighbend[leaf] {
-					neighbors = append(neighbors, neighbor / 2)
+					neighbors = append(neighbors, neighbor/2)
 				}
 				nblists = append(nblists, neighbors)
 			}
@@ -514,7 +514,7 @@ func (wm *MaxWeightMatching) expandBlossom(b int, endStage bool) {
 		j := indexOf(entryChild, &wm.blossomChildren[b])
 		var jstep int
 		var endptrick int
-		if j % 2 == 1 {
+		if j%2 == 1 {
 			// Start index is odd; go forward and wrap.
 			j -= len(wm.blossomChildren[b])
 			jstep = 1
@@ -539,7 +539,7 @@ func (wm *MaxWeightMatching) expandBlossom(b int, endStage bool) {
 			wm.assignLabel(wm.endpoints[p^1], 2, p)
 			// Step to the next S-subblossom and note its forward endpoint.
 			wm.allowEdge[wm.blossomEndpoints[b][jendindex]/2] = true
-			
+
 			j += jstep
 
 			jendindex = j - endptrick
@@ -649,7 +649,7 @@ func (wm *MaxWeightMatching) augmentBlossom(b int, v int) {
 	for j != 0 {
 		// Step to the next subblossom and augment it recursively
 		j += jstep
-		
+
 		jindex := j
 		if jindex < 0 {
 			jindex += len(wm.blossomChildren[b])
@@ -797,8 +797,8 @@ func (wm *MaxWeightMatching) verifyOptimum() {
 		if s < 0 {
 			panic(fmt.Sprintf("s < 0"))
 		}
-		if (wm.mate[i] >= 0 && wm.mate[i] / 2 == k) || (wm.mate[j] >= 0 && wm.mate[j] / 2 == k) {
-			if !(wm.mate[i] / 2 == k && wm.mate[j] / 2 == k) {
+		if (wm.mate[i] >= 0 && wm.mate[i]/2 == k) || (wm.mate[j] >= 0 && wm.mate[j]/2 == k) {
+			if !(wm.mate[i]/2 == k && wm.mate[j]/2 == k) {
 				panic(fmt.Sprintf("wm.mate[i] / 2 == k && wm.mate[j] / 2 == k, %d, %d, %d", wm.mate[i], wm.mate[j], k))
 			}
 			if s != 0 {
@@ -1105,24 +1105,24 @@ func minInt(array []int) int {
 }
 
 func abs(x int) int {
-    if x < 0 {
-        return -x
-    }
-    return x
+	if x < 0 {
+		return -x
+	}
+	return x
 }
 
 func min(x, y int) int {
-    if x < y {
-        return x
-    }
-    return y
+	if x < y {
+		return x
+	}
+	return y
 }
 
 func max(x, y int) int {
-    if x < y {
-        return y
-    }
-    return x
+	if x < y {
+		return y
+	}
+	return x
 }
 
 func indexOf(v int, array *[]int) int {
