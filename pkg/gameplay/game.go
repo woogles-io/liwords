@@ -45,13 +45,15 @@ func InstantiateNewGame(ctx context.Context, gameStore GameStore, cfg *config.Co
 	users [2]*entity.User, req *pb.GameRequest) (*entity.Game, error) {
 
 	var players []*macondopb.PlayerInfo
+	var dbids [2]uint
 
-	for _, u := range users {
+	for idx, u := range users {
 		players = append(players, &macondopb.PlayerInfo{
 			Nickname: u.Username,
 			UserId:   u.UUID,
 			RealName: u.RealName(),
 		})
+		dbids[idx] = u.ID
 	}
 
 	var bd []string
@@ -81,6 +83,7 @@ func InstantiateNewGame(ctx context.Context, gameStore GameStore, cfg *config.Co
 	g.SetChallengeRule(req.ChallengeRule)
 
 	entGame := entity.NewGame(g, req)
+	entGame.PlayerDBIDs = dbids
 	// Save the game to the store.
 	if err = gameStore.Create(ctx, entGame); err != nil {
 		return nil, err

@@ -2,6 +2,7 @@ package entity
 
 import (
 	"errors"
+
 	pb "github.com/domino14/macondo/gen/api/proto/macondo"
 )
 
@@ -103,6 +104,10 @@ type Stats struct {
 	PlayerOneData []*StatItem `json:"d1"`
 	PlayerTwoData []*StatItem `json:"d2"`
 	NotableData   []*StatItem `json:"n"`
+}
+
+type ProfileStats struct {
+	Data map[VariantKey]Stats
 }
 
 func InstantiateNewStats(playerOneId int, playerTwoId int) *Stats {

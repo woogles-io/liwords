@@ -91,13 +91,13 @@ func (s *DBStore) Get(ctx context.Context, id string) (*entity.Game, error) {
 		return nil, err
 	}
 
-	return FromState(tdata, g.Started, g.GameEndReason,
+	return FromState(tdata, g.Started, g.GameEndReason, g.Player0ID, g.Player1ID,
 		g.WinnerIdx, g.LoserIdx, g.Request, g.History, s.gameEventChan, s.cfg)
 }
 
 // FromState returns an entity.Game from a DB State.
 func FromState(timers entity.Timers, Started bool,
-	GameEndReason, WinnerIdx, LoserIdx int, reqBytes, histBytes []byte,
+	GameEndReason int, p0id, p1id uint, WinnerIdx, LoserIdx int, reqBytes, histBytes []byte,
 	gameEventChan chan<- *entity.EventWrapper, cfg *config.Config) (*entity.Game, error) {
 
 	g := &entity.Game{
@@ -107,6 +107,7 @@ func FromState(timers entity.Timers, Started bool,
 		WinnerIdx:     WinnerIdx,
 		LoserIdx:      LoserIdx,
 		ChangeHook:    gameEventChan,
+		PlayerDBIDs:   [2]uint{p0id, p1id},
 	}
 	// Now copy the request
 	req := &pb.GameRequest{}
@@ -227,25 +228,11 @@ func (s *DBStore) toDBObj(ctx context.Context, g *entity.Game) (*game, error) {
 	if err != nil {
 		return nil, err
 	}
-	players := g.History().Players
-
-	// XXX: Maybe can cache later.
-	p0, err := s.userStore.GetByUUID(ctx, players[0].UserId)
-	if err != nil {
-		return nil, err
-	}
-	log.Debug().Int("p0id", int(p0.ID)).Str("p0name", p0.Username).Msg("got-p0")
-
-	p1, err := s.userStore.GetByUUID(ctx, players[1].UserId)
-	if err != nil {
-		return nil, err
-	}
-	log.Debug().Int("p1id", int(p1.ID)).Str("p0name", p1.Username).Msg("got-p1")
 
 	dbg := &game{
 		UUID:      g.GameID(),
-		Player0ID: p0.ID,
-		Player1ID: p1.ID,
+		Player0ID: g.PlayerDBIDs[0],
+		Player1ID: g.PlayerDBIDs[1],
 		Timers:    postgres.Jsonb{RawMessage: timers},
 
 		Started:       g.Started,
