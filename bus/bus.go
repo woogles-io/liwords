@@ -226,6 +226,11 @@ func (b *Bus) handleNatsPublish(ctx context.Context, subtopics []string, data []
 		req.User.IsAnonymous = subtopics[1] == "anon"
 		req.User.UserId = subtopics[2]
 
+		err = gameplay.ValidateSoughtGame(ctx, req)
+		if err != nil {
+			return err
+		}
+
 		if req.User.IsAnonymous {
 			// Require login for now (forever?)
 			return errors.New("please log in to start a game")

@@ -72,6 +72,7 @@ func (gs *GameService) GetMetadata(ctx context.Context, req *pb.GameInfoRequest)
 		ChallengeRule:      gamereq.ChallengeRule,
 		RatingMode:         gamereq.RatingMode,
 		Done:               done,
+		GameEndReason:      entGame.GameEndReason,
 	}
 
 	return resp, nil

@@ -19,7 +19,7 @@ export const SeekForm = (props: Props) => {
   const onFormChange = (val: Store, allvals: Store) => {
     props.onChange(allvals);
     const [tc, tt] = timeCtrlToDisplayName(
-      (allvals.initialtime as number) * 60
+      Math.round((allvals.initialtime as number) * 60)
     );
     setTimectrl(tc);
     setTtag(tt);
