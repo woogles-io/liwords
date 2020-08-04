@@ -55,6 +55,8 @@ type game struct {
 	// Protobuf representations of the game request and history.
 	Request []byte
 	History []byte
+
+	Stats postgres.Jsonb
 }
 
 // NewDBStore creates a new DB store for games.
@@ -91,13 +93,20 @@ func (s *DBStore) Get(ctx context.Context, id string) (*entity.Game, error) {
 		return nil, err
 	}
 
+	var sdata *entity.Stats
+	err = json.Unmarshal(g.Stats.RawMessage, sdata)
+	if err != nil {
+		// it could be that the stats are empty, so don't worry.
+	}
+
 	return FromState(tdata, g.Started, g.GameEndReason, g.Player0ID, g.Player1ID,
-		g.WinnerIdx, g.LoserIdx, g.Request, g.History, s.gameEventChan, s.cfg)
+		g.WinnerIdx, g.LoserIdx, g.Request, g.History, sdata, s.gameEventChan, s.cfg)
 }
 
 // FromState returns an entity.Game from a DB State.
 func FromState(timers entity.Timers, Started bool,
 	GameEndReason int, p0id, p1id uint, WinnerIdx, LoserIdx int, reqBytes, histBytes []byte,
+	stats *entity.Stats,
 	gameEventChan chan<- *entity.EventWrapper, cfg *config.Config) (*entity.Game, error) {
 
 	g := &entity.Game{
@@ -108,6 +117,7 @@ func FromState(timers entity.Timers, Started bool,
 		LoserIdx:      LoserIdx,
 		ChangeHook:    gameEventChan,
 		PlayerDBIDs:   [2]uint{p0id, p1id},
+		Stats:         stats,
 	}
 	// Now copy the request
 	req := &pb.GameRequest{}
@@ -220,6 +230,10 @@ func (s *DBStore) toDBObj(ctx context.Context, g *entity.Game) (*game, error) {
 	if err != nil {
 		return nil, err
 	}
+	stats, err := json.Marshal(g.Stats)
+	if err != nil {
+		return nil, err
+	}
 	req, err := proto.Marshal(g.GameReq)
 	if err != nil {
 		return nil, err
@@ -230,11 +244,11 @@ func (s *DBStore) toDBObj(ctx context.Context, g *entity.Game) (*game, error) {
 	}
 
 	dbg := &game{
-		UUID:      g.GameID(),
-		Player0ID: g.PlayerDBIDs[0],
-		Player1ID: g.PlayerDBIDs[1],
-		Timers:    postgres.Jsonb{RawMessage: timers},
-
+		UUID:          g.GameID(),
+		Player0ID:     g.PlayerDBIDs[0],
+		Player1ID:     g.PlayerDBIDs[1],
+		Timers:        postgres.Jsonb{RawMessage: timers},
+		Stats:         postgres.Jsonb{RawMessage: stats},
 		Started:       g.Started,
 		GameEndReason: int(g.GameEndReason),
 		WinnerIdx:     g.WinnerIdx,

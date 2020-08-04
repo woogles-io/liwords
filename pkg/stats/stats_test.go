@@ -3,14 +3,15 @@ package stats
 import (
 	"encoding/json"
 	"fmt"
+	"os"
+	"testing"
+
 	"github.com/domino14/liwords/pkg/entity"
 	"github.com/domino14/macondo/alphabet"
 	macondoconfig "github.com/domino14/macondo/config"
 	"github.com/domino14/macondo/gcgio"
 	"github.com/matryer/is"
 	"github.com/rs/zerolog"
-	"os"
-	"testing"
 )
 
 func TestMain(m *testing.M) {
@@ -38,23 +39,23 @@ func InstantiateNewStatsWithHistory(filename string) (*entity.Stats, error) {
 	history, err := gcgio.ParseGCG(&DefaultConfig, filename)
 
 	// For these tests, ensure "jvc" and "Josh" always have a player id of 1
-	playerOneId := 1
-	playerTwoId := 2
+	playerOneId := "1"
+	playerTwoId := "2"
 	if history.Players[1].Nickname == "jvc" || history.Players[1].Nickname == "Josh" {
-		playerOneId = 2
-		playerTwoId = 1
+		playerOneId = "2"
+		playerTwoId = "1"
 	}
 	stats := entity.InstantiateNewStats(playerOneId, playerTwoId)
 	if err != nil {
 		return nil, err
 	}
-	stats.AddGameToStats(history, filename)
+	stats.AddGame(history, filename)
 	return stats, nil
 }
 
 func JoshNationalsFromGames(useJSON bool) (*entity.Stats, error) {
 	annotatedGamePrefix := "josh_nationals_round_"
-	stats := entity.InstantiateNewStats(1, 2)
+	stats := entity.InstantiateNewStats("1", "2")
 
 	for i := 1; i <= 31; i++ {
 		annotatedGame := fmt.Sprintf("./testdata/%s%d.gcg", annotatedGamePrefix, i)
@@ -76,7 +77,7 @@ func JoshNationalsFromGames(useJSON bool) (*entity.Stats, error) {
 			}
 			otherStats = &otherStatsFromJSON
 		}
-		stats.AddStatsToStats(otherStats)
+		stats.AddStats(otherStats)
 	}
 	return stats, nil
 }
@@ -148,11 +149,11 @@ func TestStats(t *testing.T) {
 
 func TestNotable(t *testing.T) {
 	is := is.New(t)
-	stats := entity.InstantiateNewStats(1, 2)
+	stats := entity.InstantiateNewStats("1", "2")
 	everyPowerTileStats, _ := InstantiateNewStatsWithHistory("./testdata/jesse_vs_ayo.gcg")
 	everyEStats, _ := InstantiateNewStatsWithHistory("./testdata/josh_vs_jesse.gcg")
-	stats.AddStatsToStats(everyPowerTileStats)
-	stats.AddStatsToStats(everyEStats)
+	stats.AddStats(everyPowerTileStats)
+	stats.AddStats(everyEStats)
 	notableStatsMap := convertStatItemListToMap(stats.NotableData)
 	//fmt.Println(stats.ToString())
 
@@ -184,7 +185,6 @@ func isStatItemListEqual(statItemListOne []*entity.StatItem, statItemListTwo []*
 
 func isStatItemEqual(statItemOne *entity.StatItem, statItemTwo *entity.StatItem) bool {
 	return statItemOne.Name == statItemTwo.Name &&
-		statItemOne.Description == statItemTwo.Description &&
 		statItemOne.Total == statItemTwo.Total &&
 		// Floating points nonsense
 		//isStatItemAveragesEqual(statItemOne.Averages, statItemTwo.Averages) &&

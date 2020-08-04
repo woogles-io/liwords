@@ -48,6 +48,8 @@ type Game struct {
 	WinnerIdx int
 	LoserIdx  int
 
+	Stats *Stats
+
 	ChangeHook chan<- *EventWrapper
 }
 

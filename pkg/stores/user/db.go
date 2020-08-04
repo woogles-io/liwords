@@ -109,7 +109,7 @@ func dbProfileToProfile(p *profile) (*entity.Profile, error) {
 	err = json.Unmarshal(p.Stats.RawMessage, &sdata)
 	if err != nil {
 		log.Err(err).Msg("profile had bad stats json, zeroing")
-		sdata = entity.ProfileStats{Data: map[entity.VariantKey]entity.Stats{}}
+		sdata = entity.ProfileStats{Data: map[entity.VariantKey]*entity.Stats{}}
 	}
 	return &entity.Profile{
 		FirstName:   p.FirstName,
@@ -227,6 +227,36 @@ func (s *DBStore) SetRating(ctx context.Context, uuid string, variant entity.Var
 	}
 
 	return s.db.Model(p).Update("ratings", postgres.Jsonb{RawMessage: bytes}).Error
+}
+
+func (s *DBStore) SetStats(ctx context.Context, uuid string, variant entity.VariantKey,
+	stats *entity.Stats) error {
+
+	u := &User{}
+	p := &profile{}
+
+	if result := s.db.Where("uuid = ?", uuid).First(u); result.Error != nil {
+		return result.Error
+	}
+	if result := s.db.Model(u).Related(p); result.Error != nil {
+		return result.Error
+	}
+
+	var existingProfileStats entity.ProfileStats
+	err := json.Unmarshal(p.Stats.RawMessage, &existingProfileStats)
+	if err != nil {
+		log.Err(err).Msg("existing stats missing; initializing...")
+		existingProfileStats = entity.ProfileStats{Data: map[entity.VariantKey]*entity.Stats{}}
+	}
+	if existingProfileStats.Data == nil {
+		existingProfileStats.Data = make(map[entity.VariantKey]*entity.Stats)
+	}
+	existingProfileStats.Data[variant] = stats
+	bytes, err := json.Marshal(existingProfileStats)
+	if err != nil {
+		return err
+	}
+	return s.db.Model(p).Update("stats", postgres.Jsonb{RawMessage: bytes}).Error
 }
 
 func (s *DBStore) Disconnect() {

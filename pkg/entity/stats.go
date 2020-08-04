@@ -82,8 +82,8 @@ const (
 const MaxNotableInt = 1000000000
 
 type StatItem struct {
-	Name               string                                                         `json:"n"`
-	Description        string                                                         `json:"d"`
+	Name string `json:"n"`
+	// Description        string                                                         `json:"d"`
 	Minimum            int                                                            `json:"-"`
 	Maximum            int                                                            `json:"-"`
 	Total              int                                                            `json:"t"`
@@ -99,18 +99,18 @@ type StatItem struct {
 }
 
 type Stats struct {
-	PlayerOneId   int         `json:"i1"`
-	PlayerTwoId   int         `json:"i2"`
+	PlayerOneId   string      `json:"i1"`
+	PlayerTwoId   string      `json:"i2"`
 	PlayerOneData []*StatItem `json:"d1"`
 	PlayerTwoData []*StatItem `json:"d2"`
 	NotableData   []*StatItem `json:"n"`
 }
 
 type ProfileStats struct {
-	Data map[VariantKey]Stats
+	Data map[VariantKey]*Stats
 }
 
-func InstantiateNewStats(playerOneId int, playerTwoId int) *Stats {
+func InstantiateNewStats(playerOneId string, playerTwoId string) *Stats {
 	return &Stats{
 		PlayerOneId:   playerOneId,
 		PlayerTwoId:   playerTwoId,
@@ -119,7 +119,7 @@ func InstantiateNewStats(playerOneId int, playerTwoId int) *Stats {
 		NotableData:   instantiateNotableData()}
 }
 
-func (stats *Stats) AddGameToStats(history *pb.GameHistory, id string) error {
+func (stats *Stats) AddGame(history *pb.GameHistory, id string) error {
 	events := history.GetEvents()
 	for i := 0; i < len(events); i++ {
 		event := events[i]
@@ -141,7 +141,7 @@ func (stats *Stats) AddGameToStats(history *pb.GameHistory, id string) error {
 	return nil
 }
 
-func (stats *Stats) AddStatsToStats(otherStats *Stats) error {
+func (stats *Stats) AddStats(otherStats *Stats) error {
 
 	if stats.PlayerOneId != otherStats.PlayerOneId && stats.PlayerOneId != otherStats.PlayerTwoId {
 		return errors.New("Stats do not share an identical PlayerOneId")
