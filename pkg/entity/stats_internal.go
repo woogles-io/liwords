@@ -1,13 +1,14 @@
 package entity
 
 import (
-	"fmt"
 	"errors"
+	"fmt"
+	"strings"
+	"unicode"
+
 	"github.com/domino14/macondo/alphabet"
 	"github.com/domino14/macondo/gaddag"
 	pb "github.com/domino14/macondo/gen/api/proto/macondo"
-	"strings"
-	"unicode"
 )
 
 func makeAlphabetSubitems() map[string]int {
@@ -118,7 +119,7 @@ func finalize(statItems []*StatItem) {
 		}
 		var averages []float64
 		for _, denominatorRef := range statItem.DenominatorList {
-			averages = append(averages, float64(statItem.Total) / float64(denominatorRef.Total))
+			averages = append(averages, float64(statItem.Total)/float64(denominatorRef.Total))
 		}
 		statItem.Averages = averages
 	}
@@ -301,9 +302,7 @@ func addConsecutiveBingos(statItem *StatItem, otherPlayerStatItem *StatItem, his
 }
 
 func addDraws(statItem *StatItem, otherPlayerStatItem *StatItem, history *pb.GameHistory, i int, id string, isPlayerOne bool) {
-	playerOneScore := history.FinalScores[0]
-	playerTwoScore := history.FinalScores[1]
-	if playerOneScore == playerTwoScore {
+	if history.Winner == -1 {
 		incrementStatItem(statItem, nil, id)
 	}
 }
@@ -360,10 +359,7 @@ func addGames(statItem *StatItem, otherPlayerStatItem *StatItem, history *pb.Gam
 }
 
 func addLosses(statItem *StatItem, otherPlayerStatItem *StatItem, history *pb.GameHistory, i int, id string, isPlayerOne bool) {
-	playerOneScore := history.FinalScores[0]
-	playerTwoScore := history.FinalScores[1]
-	if (playerOneScore < playerTwoScore && isPlayerOne) ||
-		(playerOneScore > playerTwoScore && !isPlayerOne) {
+	if (history.Winner == 1 && isPlayerOne) || (history.Winner == 0 && !isPlayerOne) {
 		incrementStatItem(statItem, nil, id)
 	}
 }
@@ -517,10 +513,7 @@ func addVerticalOpenings(statItem *StatItem, otherPlayerStatItem *StatItem, hist
 }
 
 func addWins(statItem *StatItem, otherPlayerStatItem *StatItem, history *pb.GameHistory, i int, id string, isPlayerOne bool) {
-	playerOneScore := history.FinalScores[0]
-	playerTwoScore := history.FinalScores[1]
-	if (playerOneScore > playerTwoScore && isPlayerOne) ||
-		(playerOneScore < playerTwoScore && !isPlayerOne) {
+	if (history.Winner == 0 && isPlayerOne) || (history.Winner == 1 && !isPlayerOne) {
 		incrementStatItem(statItem, nil, id)
 	}
 }
@@ -572,5 +565,5 @@ func validateWord(gd *gaddag.SimpleGaddag, word string) (bool, error) {
 	if error != nil {
 		return false, error
 	}
-    return gaddag.FindMachineWord(gd, machineWord), nil
+	return gaddag.FindMachineWord(gd, machineWord), nil
 }

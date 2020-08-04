@@ -517,6 +517,11 @@ func performEndgameDuties(ctx context.Context, g *entity.Game, userStore user.St
 	}
 	g.History().PlayState = macondopb.PlayState_GAME_OVER
 
+	// We need to edit the history's winner to match the reality of the situation.
+	// The history's winner is set in macondo based on just the score of the game
+	// However we are possibly editing it above.
+	g.History().Winner = int32(g.WinnerIdx)
+
 	// Send a gameEndedEvent, which rates the game.
 	wrapped := entity.WrapEvent(gameEndedEvent(ctx, g, userStore),
 		pb.MessageType_GAME_ENDED_EVENT, g.GameID())
