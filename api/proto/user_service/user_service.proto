@@ -52,3 +52,32 @@ message RegistrationResponse { string message = 1; }
 service RegistrationService {
   rpc Register(UserRegistrationRequest) returns (RegistrationResponse);
 }
+
+message RatingsRequest { string username = 1; }
+
+// We just send the raw JSON from the db here for ease. Let the front-end
+// figure out how to display it.
+message RatingsResponse { string json = 1; }
+
+message StatsRequest { string username = 1; }
+
+// See ratings JSON note above.
+message StatsResponse { string json = 1; }
+
+message ProfileRequest { string username = 1; }
+
+message ProfileResponse {
+  string first_name = 1;
+  string last_name = 2;
+  string country_code = 3;
+  string title = 4;
+  string about = 5;
+  string ratings_json = 6;
+  string stats_json = 7;
+}
+
+service ProfileService {
+  rpc GetRatings(RatingsRequest) returns (RatingsResponse);
+  rpc GetStats(StatsRequest) returns (StatsResponse);
+  rpc GetProfile(ProfileRequest) returns (ProfileResponse);
+}

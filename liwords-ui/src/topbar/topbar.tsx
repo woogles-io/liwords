@@ -7,9 +7,7 @@ const Menu = (
     <div className="top-header-left-frame-crossword-game">OMGWords</div>
     <div className="top-header-left-frame-aerolith">Aerolith</div>
     <div className="top-header-left-frame-blog">Random.Racer</div>
-    <div className="top-header-left-frame-special-land">
-      About Us
-    </div>
+    <div className="top-header-left-frame-special-land">About Us</div>
   </div>
 );
 
@@ -30,7 +28,9 @@ export const TopBar = React.memo((props: Props) => {
         </Link>
         {Menu}
         {props.loggedIn ? (
-          <div className="user-info">{props.username}</div>
+          <div className="user-info">
+            <Link to={`/profile/${props.username}`}>{props.username}</Link>
+          </div>
         ) : (
           <div className="user-info">
             <Link to="/login">Log In</Link>

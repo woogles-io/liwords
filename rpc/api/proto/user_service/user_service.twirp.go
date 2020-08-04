@@ -1084,6 +1084,614 @@ func (s *registrationServiceServer) PathPrefix() string {
 	return RegistrationServicePathPrefix
 }
 
+// ========================
+// ProfileService Interface
+// ========================
+
+type ProfileService interface {
+	GetRatings(context.Context, *RatingsRequest) (*RatingsResponse, error)
+
+	GetStats(context.Context, *StatsRequest) (*StatsResponse, error)
+
+	GetProfile(context.Context, *ProfileRequest) (*ProfileResponse, error)
+}
+
+// ==============================
+// ProfileService Protobuf Client
+// ==============================
+
+type profileServiceProtobufClient struct {
+	client HTTPClient
+	urls   [3]string
+}
+
+// NewProfileServiceProtobufClient creates a Protobuf client that implements the ProfileService interface.
+// It communicates using Protobuf and can be configured with a custom HTTPClient.
+func NewProfileServiceProtobufClient(addr string, client HTTPClient) ProfileService {
+	prefix := urlBase(addr) + ProfileServicePathPrefix
+	urls := [3]string{
+		prefix + "GetRatings",
+		prefix + "GetStats",
+		prefix + "GetProfile",
+	}
+	if httpClient, ok := client.(*http.Client); ok {
+		return &profileServiceProtobufClient{
+			client: withoutRedirects(httpClient),
+			urls:   urls,
+		}
+	}
+	return &profileServiceProtobufClient{
+		client: client,
+		urls:   urls,
+	}
+}
+
+func (c *profileServiceProtobufClient) GetRatings(ctx context.Context, in *RatingsRequest) (*RatingsResponse, error) {
+	ctx = ctxsetters.WithPackageName(ctx, "user_service")
+	ctx = ctxsetters.WithServiceName(ctx, "ProfileService")
+	ctx = ctxsetters.WithMethodName(ctx, "GetRatings")
+	out := new(RatingsResponse)
+	err := doProtobufRequest(ctx, c.client, c.urls[0], in, out)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *profileServiceProtobufClient) GetStats(ctx context.Context, in *StatsRequest) (*StatsResponse, error) {
+	ctx = ctxsetters.WithPackageName(ctx, "user_service")
+	ctx = ctxsetters.WithServiceName(ctx, "ProfileService")
+	ctx = ctxsetters.WithMethodName(ctx, "GetStats")
+	out := new(StatsResponse)
+	err := doProtobufRequest(ctx, c.client, c.urls[1], in, out)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *profileServiceProtobufClient) GetProfile(ctx context.Context, in *ProfileRequest) (*ProfileResponse, error) {
+	ctx = ctxsetters.WithPackageName(ctx, "user_service")
+	ctx = ctxsetters.WithServiceName(ctx, "ProfileService")
+	ctx = ctxsetters.WithMethodName(ctx, "GetProfile")
+	out := new(ProfileResponse)
+	err := doProtobufRequest(ctx, c.client, c.urls[2], in, out)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+// ==========================
+// ProfileService JSON Client
+// ==========================
+
+type profileServiceJSONClient struct {
+	client HTTPClient
+	urls   [3]string
+}
+
+// NewProfileServiceJSONClient creates a JSON client that implements the ProfileService interface.
+// It communicates using JSON and can be configured with a custom HTTPClient.
+func NewProfileServiceJSONClient(addr string, client HTTPClient) ProfileService {
+	prefix := urlBase(addr) + ProfileServicePathPrefix
+	urls := [3]string{
+		prefix + "GetRatings",
+		prefix + "GetStats",
+		prefix + "GetProfile",
+	}
+	if httpClient, ok := client.(*http.Client); ok {
+		return &profileServiceJSONClient{
+			client: withoutRedirects(httpClient),
+			urls:   urls,
+		}
+	}
+	return &profileServiceJSONClient{
+		client: client,
+		urls:   urls,
+	}
+}
+
+func (c *profileServiceJSONClient) GetRatings(ctx context.Context, in *RatingsRequest) (*RatingsResponse, error) {
+	ctx = ctxsetters.WithPackageName(ctx, "user_service")
+	ctx = ctxsetters.WithServiceName(ctx, "ProfileService")
+	ctx = ctxsetters.WithMethodName(ctx, "GetRatings")
+	out := new(RatingsResponse)
+	err := doJSONRequest(ctx, c.client, c.urls[0], in, out)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *profileServiceJSONClient) GetStats(ctx context.Context, in *StatsRequest) (*StatsResponse, error) {
+	ctx = ctxsetters.WithPackageName(ctx, "user_service")
+	ctx = ctxsetters.WithServiceName(ctx, "ProfileService")
+	ctx = ctxsetters.WithMethodName(ctx, "GetStats")
+	out := new(StatsResponse)
+	err := doJSONRequest(ctx, c.client, c.urls[1], in, out)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *profileServiceJSONClient) GetProfile(ctx context.Context, in *ProfileRequest) (*ProfileResponse, error) {
+	ctx = ctxsetters.WithPackageName(ctx, "user_service")
+	ctx = ctxsetters.WithServiceName(ctx, "ProfileService")
+	ctx = ctxsetters.WithMethodName(ctx, "GetProfile")
+	out := new(ProfileResponse)
+	err := doJSONRequest(ctx, c.client, c.urls[2], in, out)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+// =============================
+// ProfileService Server Handler
+// =============================
+
+type profileServiceServer struct {
+	ProfileService
+	hooks *twirp.ServerHooks
+}
+
+func NewProfileServiceServer(svc ProfileService, hooks *twirp.ServerHooks) TwirpServer {
+	return &profileServiceServer{
+		ProfileService: svc,
+		hooks:          hooks,
+	}
+}
+
+// writeError writes an HTTP response with a valid Twirp error format, and triggers hooks.
+// If err is not a twirp.Error, it will get wrapped with twirp.InternalErrorWith(err)
+func (s *profileServiceServer) writeError(ctx context.Context, resp http.ResponseWriter, err error) {
+	writeError(ctx, resp, err, s.hooks)
+}
+
+// ProfileServicePathPrefix is used for all URL paths on a twirp ProfileService server.
+// Requests are always: POST ProfileServicePathPrefix/method
+// It can be used in an HTTP mux to route twirp requests along with non-twirp requests on other routes.
+const ProfileServicePathPrefix = "/twirp/user_service.ProfileService/"
+
+func (s *profileServiceServer) ServeHTTP(resp http.ResponseWriter, req *http.Request) {
+	ctx := req.Context()
+	ctx = ctxsetters.WithPackageName(ctx, "user_service")
+	ctx = ctxsetters.WithServiceName(ctx, "ProfileService")
+	ctx = ctxsetters.WithResponseWriter(ctx, resp)
+
+	var err error
+	ctx, err = callRequestReceived(ctx, s.hooks)
+	if err != nil {
+		s.writeError(ctx, resp, err)
+		return
+	}
+
+	if req.Method != "POST" {
+		msg := fmt.Sprintf("unsupported method %q (only POST is allowed)", req.Method)
+		err = badRouteError(msg, req.Method, req.URL.Path)
+		s.writeError(ctx, resp, err)
+		return
+	}
+
+	switch req.URL.Path {
+	case "/twirp/user_service.ProfileService/GetRatings":
+		s.serveGetRatings(ctx, resp, req)
+		return
+	case "/twirp/user_service.ProfileService/GetStats":
+		s.serveGetStats(ctx, resp, req)
+		return
+	case "/twirp/user_service.ProfileService/GetProfile":
+		s.serveGetProfile(ctx, resp, req)
+		return
+	default:
+		msg := fmt.Sprintf("no handler for path %q", req.URL.Path)
+		err = badRouteError(msg, req.Method, req.URL.Path)
+		s.writeError(ctx, resp, err)
+		return
+	}
+}
+
+func (s *profileServiceServer) serveGetRatings(ctx context.Context, resp http.ResponseWriter, req *http.Request) {
+	header := req.Header.Get("Content-Type")
+	i := strings.Index(header, ";")
+	if i == -1 {
+		i = len(header)
+	}
+	switch strings.TrimSpace(strings.ToLower(header[:i])) {
+	case "application/json":
+		s.serveGetRatingsJSON(ctx, resp, req)
+	case "application/protobuf":
+		s.serveGetRatingsProtobuf(ctx, resp, req)
+	default:
+		msg := fmt.Sprintf("unexpected Content-Type: %q", req.Header.Get("Content-Type"))
+		twerr := badRouteError(msg, req.Method, req.URL.Path)
+		s.writeError(ctx, resp, twerr)
+	}
+}
+
+func (s *profileServiceServer) serveGetRatingsJSON(ctx context.Context, resp http.ResponseWriter, req *http.Request) {
+	var err error
+	ctx = ctxsetters.WithMethodName(ctx, "GetRatings")
+	ctx, err = callRequestRouted(ctx, s.hooks)
+	if err != nil {
+		s.writeError(ctx, resp, err)
+		return
+	}
+
+	reqContent := new(RatingsRequest)
+	unmarshaler := jsonpb.Unmarshaler{AllowUnknownFields: true}
+	if err = unmarshaler.Unmarshal(req.Body, reqContent); err != nil {
+		s.writeError(ctx, resp, wrapInternal(err, "failed to parse request json"))
+		return
+	}
+
+	// Call service method
+	var respContent *RatingsResponse
+	func() {
+		defer ensurePanicResponses(ctx, resp, s.hooks)
+		respContent, err = s.ProfileService.GetRatings(ctx, reqContent)
+	}()
+
+	if err != nil {
+		s.writeError(ctx, resp, err)
+		return
+	}
+	if respContent == nil {
+		s.writeError(ctx, resp, twirp.InternalError("received a nil *RatingsResponse and nil error while calling GetRatings. nil responses are not supported"))
+		return
+	}
+
+	ctx = callResponsePrepared(ctx, s.hooks)
+
+	var buf bytes.Buffer
+	marshaler := &jsonpb.Marshaler{OrigName: true}
+	if err = marshaler.Marshal(&buf, respContent); err != nil {
+		s.writeError(ctx, resp, wrapInternal(err, "failed to marshal json response"))
+		return
+	}
+
+	ctx = ctxsetters.WithStatusCode(ctx, http.StatusOK)
+	respBytes := buf.Bytes()
+	resp.Header().Set("Content-Type", "application/json")
+	resp.Header().Set("Content-Length", strconv.Itoa(len(respBytes)))
+	resp.WriteHeader(http.StatusOK)
+
+	if n, err := resp.Write(respBytes); err != nil {
+		msg := fmt.Sprintf("failed to write response, %d of %d bytes written: %s", n, len(respBytes), err.Error())
+		twerr := twirp.NewError(twirp.Unknown, msg)
+		callError(ctx, s.hooks, twerr)
+	}
+	callResponseSent(ctx, s.hooks)
+}
+
+func (s *profileServiceServer) serveGetRatingsProtobuf(ctx context.Context, resp http.ResponseWriter, req *http.Request) {
+	var err error
+	ctx = ctxsetters.WithMethodName(ctx, "GetRatings")
+	ctx, err = callRequestRouted(ctx, s.hooks)
+	if err != nil {
+		s.writeError(ctx, resp, err)
+		return
+	}
+
+	buf, err := ioutil.ReadAll(req.Body)
+	if err != nil {
+		s.writeError(ctx, resp, wrapInternal(err, "failed to read request body"))
+		return
+	}
+	reqContent := new(RatingsRequest)
+	if err = proto.Unmarshal(buf, reqContent); err != nil {
+		s.writeError(ctx, resp, wrapInternal(err, "failed to parse request proto"))
+		return
+	}
+
+	// Call service method
+	var respContent *RatingsResponse
+	func() {
+		defer ensurePanicResponses(ctx, resp, s.hooks)
+		respContent, err = s.ProfileService.GetRatings(ctx, reqContent)
+	}()
+
+	if err != nil {
+		s.writeError(ctx, resp, err)
+		return
+	}
+	if respContent == nil {
+		s.writeError(ctx, resp, twirp.InternalError("received a nil *RatingsResponse and nil error while calling GetRatings. nil responses are not supported"))
+		return
+	}
+
+	ctx = callResponsePrepared(ctx, s.hooks)
+
+	respBytes, err := proto.Marshal(respContent)
+	if err != nil {
+		s.writeError(ctx, resp, wrapInternal(err, "failed to marshal proto response"))
+		return
+	}
+
+	ctx = ctxsetters.WithStatusCode(ctx, http.StatusOK)
+	resp.Header().Set("Content-Type", "application/protobuf")
+	resp.Header().Set("Content-Length", strconv.Itoa(len(respBytes)))
+	resp.WriteHeader(http.StatusOK)
+	if n, err := resp.Write(respBytes); err != nil {
+		msg := fmt.Sprintf("failed to write response, %d of %d bytes written: %s", n, len(respBytes), err.Error())
+		twerr := twirp.NewError(twirp.Unknown, msg)
+		callError(ctx, s.hooks, twerr)
+	}
+	callResponseSent(ctx, s.hooks)
+}
+
+func (s *profileServiceServer) serveGetStats(ctx context.Context, resp http.ResponseWriter, req *http.Request) {
+	header := req.Header.Get("Content-Type")
+	i := strings.Index(header, ";")
+	if i == -1 {
+		i = len(header)
+	}
+	switch strings.TrimSpace(strings.ToLower(header[:i])) {
+	case "application/json":
+		s.serveGetStatsJSON(ctx, resp, req)
+	case "application/protobuf":
+		s.serveGetStatsProtobuf(ctx, resp, req)
+	default:
+		msg := fmt.Sprintf("unexpected Content-Type: %q", req.Header.Get("Content-Type"))
+		twerr := badRouteError(msg, req.Method, req.URL.Path)
+		s.writeError(ctx, resp, twerr)
+	}
+}
+
+func (s *profileServiceServer) serveGetStatsJSON(ctx context.Context, resp http.ResponseWriter, req *http.Request) {
+	var err error
+	ctx = ctxsetters.WithMethodName(ctx, "GetStats")
+	ctx, err = callRequestRouted(ctx, s.hooks)
+	if err != nil {
+		s.writeError(ctx, resp, err)
+		return
+	}
+
+	reqContent := new(StatsRequest)
+	unmarshaler := jsonpb.Unmarshaler{AllowUnknownFields: true}
+	if err = unmarshaler.Unmarshal(req.Body, reqContent); err != nil {
+		s.writeError(ctx, resp, wrapInternal(err, "failed to parse request json"))
+		return
+	}
+
+	// Call service method
+	var respContent *StatsResponse
+	func() {
+		defer ensurePanicResponses(ctx, resp, s.hooks)
+		respContent, err = s.ProfileService.GetStats(ctx, reqContent)
+	}()
+
+	if err != nil {
+		s.writeError(ctx, resp, err)
+		return
+	}
+	if respContent == nil {
+		s.writeError(ctx, resp, twirp.InternalError("received a nil *StatsResponse and nil error while calling GetStats. nil responses are not supported"))
+		return
+	}
+
+	ctx = callResponsePrepared(ctx, s.hooks)
+
+	var buf bytes.Buffer
+	marshaler := &jsonpb.Marshaler{OrigName: true}
+	if err = marshaler.Marshal(&buf, respContent); err != nil {
+		s.writeError(ctx, resp, wrapInternal(err, "failed to marshal json response"))
+		return
+	}
+
+	ctx = ctxsetters.WithStatusCode(ctx, http.StatusOK)
+	respBytes := buf.Bytes()
+	resp.Header().Set("Content-Type", "application/json")
+	resp.Header().Set("Content-Length", strconv.Itoa(len(respBytes)))
+	resp.WriteHeader(http.StatusOK)
+
+	if n, err := resp.Write(respBytes); err != nil {
+		msg := fmt.Sprintf("failed to write response, %d of %d bytes written: %s", n, len(respBytes), err.Error())
+		twerr := twirp.NewError(twirp.Unknown, msg)
+		callError(ctx, s.hooks, twerr)
+	}
+	callResponseSent(ctx, s.hooks)
+}
+
+func (s *profileServiceServer) serveGetStatsProtobuf(ctx context.Context, resp http.ResponseWriter, req *http.Request) {
+	var err error
+	ctx = ctxsetters.WithMethodName(ctx, "GetStats")
+	ctx, err = callRequestRouted(ctx, s.hooks)
+	if err != nil {
+		s.writeError(ctx, resp, err)
+		return
+	}
+
+	buf, err := ioutil.ReadAll(req.Body)
+	if err != nil {
+		s.writeError(ctx, resp, wrapInternal(err, "failed to read request body"))
+		return
+	}
+	reqContent := new(StatsRequest)
+	if err = proto.Unmarshal(buf, reqContent); err != nil {
+		s.writeError(ctx, resp, wrapInternal(err, "failed to parse request proto"))
+		return
+	}
+
+	// Call service method
+	var respContent *StatsResponse
+	func() {
+		defer ensurePanicResponses(ctx, resp, s.hooks)
+		respContent, err = s.ProfileService.GetStats(ctx, reqContent)
+	}()
+
+	if err != nil {
+		s.writeError(ctx, resp, err)
+		return
+	}
+	if respContent == nil {
+		s.writeError(ctx, resp, twirp.InternalError("received a nil *StatsResponse and nil error while calling GetStats. nil responses are not supported"))
+		return
+	}
+
+	ctx = callResponsePrepared(ctx, s.hooks)
+
+	respBytes, err := proto.Marshal(respContent)
+	if err != nil {
+		s.writeError(ctx, resp, wrapInternal(err, "failed to marshal proto response"))
+		return
+	}
+
+	ctx = ctxsetters.WithStatusCode(ctx, http.StatusOK)
+	resp.Header().Set("Content-Type", "application/protobuf")
+	resp.Header().Set("Content-Length", strconv.Itoa(len(respBytes)))
+	resp.WriteHeader(http.StatusOK)
+	if n, err := resp.Write(respBytes); err != nil {
+		msg := fmt.Sprintf("failed to write response, %d of %d bytes written: %s", n, len(respBytes), err.Error())
+		twerr := twirp.NewError(twirp.Unknown, msg)
+		callError(ctx, s.hooks, twerr)
+	}
+	callResponseSent(ctx, s.hooks)
+}
+
+func (s *profileServiceServer) serveGetProfile(ctx context.Context, resp http.ResponseWriter, req *http.Request) {
+	header := req.Header.Get("Content-Type")
+	i := strings.Index(header, ";")
+	if i == -1 {
+		i = len(header)
+	}
+	switch strings.TrimSpace(strings.ToLower(header[:i])) {
+	case "application/json":
+		s.serveGetProfileJSON(ctx, resp, req)
+	case "application/protobuf":
+		s.serveGetProfileProtobuf(ctx, resp, req)
+	default:
+		msg := fmt.Sprintf("unexpected Content-Type: %q", req.Header.Get("Content-Type"))
+		twerr := badRouteError(msg, req.Method, req.URL.Path)
+		s.writeError(ctx, resp, twerr)
+	}
+}
+
+func (s *profileServiceServer) serveGetProfileJSON(ctx context.Context, resp http.ResponseWriter, req *http.Request) {
+	var err error
+	ctx = ctxsetters.WithMethodName(ctx, "GetProfile")
+	ctx, err = callRequestRouted(ctx, s.hooks)
+	if err != nil {
+		s.writeError(ctx, resp, err)
+		return
+	}
+
+	reqContent := new(ProfileRequest)
+	unmarshaler := jsonpb.Unmarshaler{AllowUnknownFields: true}
+	if err = unmarshaler.Unmarshal(req.Body, reqContent); err != nil {
+		s.writeError(ctx, resp, wrapInternal(err, "failed to parse request json"))
+		return
+	}
+
+	// Call service method
+	var respContent *ProfileResponse
+	func() {
+		defer ensurePanicResponses(ctx, resp, s.hooks)
+		respContent, err = s.ProfileService.GetProfile(ctx, reqContent)
+	}()
+
+	if err != nil {
+		s.writeError(ctx, resp, err)
+		return
+	}
+	if respContent == nil {
+		s.writeError(ctx, resp, twirp.InternalError("received a nil *ProfileResponse and nil error while calling GetProfile. nil responses are not supported"))
+		return
+	}
+
+	ctx = callResponsePrepared(ctx, s.hooks)
+
+	var buf bytes.Buffer
+	marshaler := &jsonpb.Marshaler{OrigName: true}
+	if err = marshaler.Marshal(&buf, respContent); err != nil {
+		s.writeError(ctx, resp, wrapInternal(err, "failed to marshal json response"))
+		return
+	}
+
+	ctx = ctxsetters.WithStatusCode(ctx, http.StatusOK)
+	respBytes := buf.Bytes()
+	resp.Header().Set("Content-Type", "application/json")
+	resp.Header().Set("Content-Length", strconv.Itoa(len(respBytes)))
+	resp.WriteHeader(http.StatusOK)
+
+	if n, err := resp.Write(respBytes); err != nil {
+		msg := fmt.Sprintf("failed to write response, %d of %d bytes written: %s", n, len(respBytes), err.Error())
+		twerr := twirp.NewError(twirp.Unknown, msg)
+		callError(ctx, s.hooks, twerr)
+	}
+	callResponseSent(ctx, s.hooks)
+}
+
+func (s *profileServiceServer) serveGetProfileProtobuf(ctx context.Context, resp http.ResponseWriter, req *http.Request) {
+	var err error
+	ctx = ctxsetters.WithMethodName(ctx, "GetProfile")
+	ctx, err = callRequestRouted(ctx, s.hooks)
+	if err != nil {
+		s.writeError(ctx, resp, err)
+		return
+	}
+
+	buf, err := ioutil.ReadAll(req.Body)
+	if err != nil {
+		s.writeError(ctx, resp, wrapInternal(err, "failed to read request body"))
+		return
+	}
+	reqContent := new(ProfileRequest)
+	if err = proto.Unmarshal(buf, reqContent); err != nil {
+		s.writeError(ctx, resp, wrapInternal(err, "failed to parse request proto"))
+		return
+	}
+
+	// Call service method
+	var respContent *ProfileResponse
+	func() {
+		defer ensurePanicResponses(ctx, resp, s.hooks)
+		respContent, err = s.ProfileService.GetProfile(ctx, reqContent)
+	}()
+
+	if err != nil {
+		s.writeError(ctx, resp, err)
+		return
+	}
+	if respContent == nil {
+		s.writeError(ctx, resp, twirp.InternalError("received a nil *ProfileResponse and nil error while calling GetProfile. nil responses are not supported"))
+		return
+	}
+
+	ctx = callResponsePrepared(ctx, s.hooks)
+
+	respBytes, err := proto.Marshal(respContent)
+	if err != nil {
+		s.writeError(ctx, resp, wrapInternal(err, "failed to marshal proto response"))
+		return
+	}
+
+	ctx = ctxsetters.WithStatusCode(ctx, http.StatusOK)
+	resp.Header().Set("Content-Type", "application/protobuf")
+	resp.Header().Set("Content-Length", strconv.Itoa(len(respBytes)))
+	resp.WriteHeader(http.StatusOK)
+	if n, err := resp.Write(respBytes); err != nil {
+		msg := fmt.Sprintf("failed to write response, %d of %d bytes written: %s", n, len(respBytes), err.Error())
+		twerr := twirp.NewError(twirp.Unknown, msg)
+		callError(ctx, s.hooks, twerr)
+	}
+	callResponseSent(ctx, s.hooks)
+}
+
+func (s *profileServiceServer) ServiceDescriptor() ([]byte, int) {
+	return twirpFileDescriptor0, 2
+}
+
+func (s *profileServiceServer) ProtocGenTwirpVersion() string {
+	return "v5.7.0"
+}
+
+func (s *profileServiceServer) PathPrefix() string {
+	return ProfileServicePathPrefix
+}
+
 // =====
 // Utils
 // =====
@@ -1556,32 +2164,45 @@ func callError(ctx context.Context, h *twirp.ServerHooks, err twirp.Error) conte
 }
 
 var twirpFileDescriptor0 = []byte{
-	// 429 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xa4, 0x54, 0x5d, 0x8b, 0xd3, 0x40,
-	0x14, 0x65, 0x57, 0xba, 0xee, 0x5e, 0xdc, 0x65, 0x9d, 0x66, 0x69, 0x8d, 0x5f, 0x75, 0x44, 0x54,
-	0x84, 0xc6, 0x56, 0x11, 0x5f, 0x15, 0xa1, 0x2a, 0x3e, 0x48, 0x6a, 0x5f, 0x04, 0x29, 0x69, 0x7a,
-	0x49, 0x87, 0x36, 0x99, 0x38, 0x77, 0xa2, 0x7f, 0xd6, 0x1f, 0x23, 0x49, 0x66, 0x6c, 0xa6, 0xa9,
-	0xf5, 0xc1, 0xc7, 0x7b, 0xee, 0x9d, 0x33, 0x77, 0xce, 0x39, 0x0c, 0x3c, 0x8d, 0x72, 0x11, 0xe4,
-	0x4a, 0x6a, 0x19, 0x14, 0x84, 0x6a, 0x4e, 0xa8, 0x7e, 0x88, 0x18, 0x9d, 0x62, 0x58, 0xf5, 0xd9,
-	0x8d, 0x26, 0xc6, 0x3f, 0xc2, 0xe5, 0x8c, 0x50, 0x7d, 0x92, 0x89, 0xc8, 0x42, 0xfc, 0x5e, 0x20,
-	0x69, 0xe6, 0xc3, 0x69, 0x39, 0x93, 0x45, 0x29, 0xf6, 0x8f, 0x06, 0x47, 0x4f, 0xce, 0xc2, 0x3f,
-	0x75, 0xd9, 0xcb, 0x23, 0xa2, 0x9f, 0x52, 0x2d, 0xfb, 0xc7, 0x75, 0xcf, 0xd6, 0xfc, 0x3d, 0x9c,
-	0x1b, 0x1e, 0xca, 0x65, 0x46, 0xc8, 0xfa, 0x70, 0x3d, 0x45, 0xa2, 0x28, 0xb1, 0x3c, 0xb6, 0x64,
-	0x77, 0x01, 0x08, 0x89, 0x84, 0xcc, 0xe6, 0xc2, 0x12, 0x9d, 0x19, 0xe4, 0xc3, 0x92, 0x8f, 0xe0,
-	0x56, 0x88, 0x84, 0xfa, 0xb3, 0xa1, 0x36, 0x9b, 0x4d, 0x35, 0xe6, 0x23, 0xe6, 0x41, 0x07, 0xd3,
-	0x48, 0x6c, 0x0c, 0x67, 0x5d, 0xf0, 0x1e, 0x5c, 0xed, 0x1c, 0xa9, 0x97, 0xe0, 0x1e, 0xb0, 0xa9,
-	0x8c, 0xd7, 0xa8, 0xbf, 0xc8, 0x35, 0xda, 0x37, 0xf2, 0x67, 0xd0, 0x75, 0x50, 0xb3, 0xb1, 0x07,
-	0x1d, 0x5d, 0x02, 0x96, 0xbb, 0x2a, 0x78, 0x17, 0x6e, 0x1a, 0x91, 0x64, 0xa1, 0x2d, 0xc3, 0x25,
-	0x5c, 0x58, 0xc0, 0xdc, 0x94, 0x40, 0xaf, 0x1c, 0x0b, 0x31, 0x11, 0xa4, 0x55, 0xa4, 0x85, 0xfc,
-	0x5f, 0x49, 0xb7, 0x6f, 0xbd, 0xd6, 0x7c, 0xeb, 0x73, 0xf0, 0xdc, 0x4b, 0xfe, 0xa5, 0xf7, 0xf8,
-	0xd7, 0x31, 0x5c, 0xbd, 0x29, 0xf4, 0x0a, 0x33, 0x2d, 0xe2, 0xea, 0xd0, 0xb4, 0x0e, 0x00, 0x7b,
-	0x07, 0x9d, 0xca, 0x34, 0x76, 0x6f, 0xe8, 0x84, 0x65, 0x37, 0x15, 0xfe, 0x6d, 0xb7, 0xef, 0x3a,
-	0x3d, 0x81, 0x93, 0x5a, 0x0c, 0x76, 0x7f, 0x2f, 0xcd, 0x56, 0x37, 0xff, 0x4e, 0x8b, 0xa7, 0xa1,
-	0x21, 0x9b, 0xc1, 0xc5, 0x04, 0x75, 0xc3, 0x1a, 0x36, 0x70, 0xe7, 0xdb, 0x5e, 0xfa, 0x0f, 0x0e,
-	0x4c, 0x18, 0xda, 0x6f, 0x70, 0xee, 0xa4, 0x83, 0x3d, 0x76, 0xcf, 0xfc, 0x35, 0x6d, 0xfe, 0xc3,
-	0x83, 0x83, 0x35, 0xfd, 0x78, 0x03, 0xdd, 0xa6, 0x21, 0x56, 0xdb, 0x19, 0x9c, 0xd6, 0x30, 0x2a,
-	0xf6, 0xa8, 0xad, 0xcb, 0x9e, 0xa0, 0xf8, 0x7c, 0xf7, 0xba, 0xb6, 0xcd, 0x6f, 0x5f, 0x7f, 0x7d,
-	0x95, 0x08, 0xbd, 0x2a, 0x16, 0xc3, 0x58, 0xa6, 0xc1, 0x52, 0xa6, 0x22, 0x93, 0xa3, 0x97, 0xc1,
-	0x46, 0x94, 0x3b, 0x51, 0xa0, 0xf2, 0x38, 0xd8, 0xff, 0x1d, 0x2c, 0x4e, 0x2a, 0xec, 0xc5, 0xef,
-	0x00, 0x00, 0x00, 0xff, 0xff, 0xd1, 0x33, 0x02, 0xf2, 0x2f, 0x04, 0x00, 0x00,
+	// 639 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xa4, 0x55, 0x6f, 0x4f, 0x13, 0x4f,
+	0x10, 0x4e, 0xf9, 0x51, 0xa0, 0xf3, 0x83, 0x82, 0x4b, 0x09, 0xf5, 0x10, 0x85, 0x23, 0xc4, 0x7f,
+	0x84, 0x13, 0x34, 0xc6, 0xb7, 0x8a, 0x09, 0x42, 0x8c, 0x21, 0xad, 0xbc, 0x31, 0x31, 0xcd, 0x71,
+	0x1d, 0x8e, 0x95, 0xeb, 0xed, 0xb9, 0xbb, 0xa7, 0xf1, 0xbb, 0x1a, 0xbf, 0x80, 0x5f, 0xc2, 0xec,
+	0xed, 0x6e, 0xb9, 0xbd, 0x96, 0xda, 0xc4, 0x77, 0x9d, 0x67, 0x66, 0x9f, 0x9d, 0x79, 0x76, 0x9e,
+	0x1e, 0x3c, 0x0e, 0x33, 0x1a, 0x64, 0x9c, 0x49, 0x16, 0xe4, 0x02, 0x79, 0x4f, 0x20, 0xff, 0x46,
+	0x23, 0x74, 0x82, 0xfd, 0x22, 0x4f, 0x16, 0xcb, 0x98, 0x7f, 0x0a, 0x2b, 0xe7, 0x02, 0xf9, 0x7b,
+	0x16, 0xd3, 0xb4, 0x83, 0x5f, 0x73, 0x14, 0x92, 0x78, 0xb0, 0xa0, 0x6a, 0xd2, 0x70, 0x80, 0xed,
+	0xda, 0x56, 0xed, 0x51, 0xa3, 0x33, 0x8c, 0x55, 0x2e, 0x0b, 0x85, 0xf8, 0xce, 0x78, 0xbf, 0x3d,
+	0xa3, 0x73, 0x36, 0xf6, 0xdf, 0xc1, 0x92, 0xe1, 0x11, 0x19, 0x4b, 0x05, 0x92, 0x36, 0xcc, 0x0f,
+	0x50, 0x88, 0x30, 0xb6, 0x3c, 0x36, 0x24, 0x9b, 0x00, 0x02, 0x85, 0xa0, 0x2c, 0xed, 0x51, 0x4b,
+	0xd4, 0x30, 0xc8, 0x49, 0xdf, 0x3f, 0x80, 0xbb, 0x1d, 0x14, 0x28, 0xcf, 0x0c, 0xb5, 0xe9, 0xac,
+	0x2b, 0x31, 0x3b, 0x20, 0x2d, 0xa8, 0xe3, 0x20, 0xa4, 0x89, 0xe1, 0xd4, 0x81, 0xbf, 0x0e, 0x6b,
+	0x95, 0x23, 0xba, 0x09, 0xbf, 0x05, 0xa4, 0xcb, 0xa2, 0x6b, 0x94, 0x1f, 0xd9, 0x35, 0xda, 0x19,
+	0xfd, 0xa7, 0xb0, 0xea, 0xa0, 0xa6, 0xe3, 0x16, 0xd4, 0xa5, 0x02, 0x2c, 0x77, 0x11, 0xf8, 0xab,
+	0x70, 0xc7, 0x88, 0xc4, 0x72, 0x69, 0x19, 0x56, 0xa0, 0x69, 0x01, 0x73, 0x53, 0x0c, 0xeb, 0xaa,
+	0xac, 0x83, 0x31, 0x15, 0x92, 0x87, 0x92, 0xb2, 0x7f, 0x95, 0xf4, 0x66, 0xd6, 0xff, 0xca, 0xb3,
+	0x3e, 0x83, 0x96, 0x7b, 0xc9, 0xdf, 0xf4, 0xf6, 0xf7, 0xa0, 0xd9, 0x09, 0x25, 0x4d, 0x63, 0x31,
+	0x45, 0x47, 0xfe, 0x2e, 0x2c, 0x0f, 0xab, 0x0d, 0x35, 0x81, 0xd9, 0x2f, 0x82, 0x59, 0x5d, 0x8a,
+	0xdf, 0xfe, 0x13, 0x58, 0xec, 0xca, 0x50, 0x4e, 0x45, 0xb9, 0x03, 0x4b, 0xa6, 0x76, 0x02, 0xe1,
+	0x1e, 0x34, 0xcf, 0x38, 0xbb, 0xa4, 0x09, 0x4e, 0x43, 0xf9, 0xab, 0x06, 0xcb, 0xc3, 0x72, 0xc3,
+	0xba, 0x09, 0x70, 0x49, 0xb9, 0x90, 0xbd, 0xd2, 0x89, 0x46, 0x81, 0x7c, 0x50, 0x52, 0x6f, 0x40,
+	0x23, 0x09, 0x6d, 0xd6, 0x68, 0xad, 0x80, 0x22, 0xb9, 0x0d, 0x8b, 0x11, 0xcb, 0x53, 0xc9, 0x7f,
+	0xf4, 0x22, 0xd6, 0x47, 0x23, 0xf9, 0xff, 0x06, 0x3b, 0x62, 0x7d, 0xbd, 0x1e, 0x54, 0x26, 0xd8,
+	0x9e, 0x35, 0xeb, 0xa1, 0x02, 0x85, 0x86, 0x17, 0x2c, 0x97, 0xed, 0xba, 0x46, 0x8b, 0x40, 0xd1,
+	0x71, 0x2d, 0x62, 0xaf, 0x18, 0x74, 0x4e, 0xd3, 0x19, 0xec, 0x54, 0xb0, 0xb4, 0x70, 0x81, 0x12,
+	0x45, 0x17, 0xcc, 0x1b, 0x17, 0x28, 0x44, 0xa5, 0x0f, 0x7f, 0xce, 0xc0, 0xda, 0xeb, 0x5c, 0x5e,
+	0x61, 0x2a, 0x69, 0x54, 0xbc, 0x74, 0x57, 0xbb, 0x96, 0xbc, 0x85, 0x7a, 0xe1, 0x34, 0x72, 0x7f,
+	0xdf, 0x71, 0x78, 0xd5, 0xca, 0xde, 0x86, 0x9b, 0x77, 0xed, 0x79, 0x0c, 0x73, 0x7a, 0x83, 0xc9,
+	0x83, 0xb1, 0x34, 0x37, 0xcb, 0xee, 0xdd, 0x1b, 0xe1, 0x29, 0x2d, 0x3e, 0x39, 0x87, 0xe6, 0x31,
+	0xca, 0x92, 0x9f, 0xc8, 0x96, 0x5b, 0x3f, 0x6a, 0x40, 0x6f, 0x7b, 0x42, 0x85, 0xa1, 0xfd, 0x0c,
+	0x4b, 0x8e, 0xa5, 0xc9, 0x43, 0xf7, 0xcc, 0xad, 0x7f, 0x11, 0xde, 0xce, 0xc4, 0x42, 0x4d, 0x7f,
+	0x98, 0xc0, 0x6a, 0xd9, 0x45, 0x56, 0xdb, 0x73, 0x58, 0xd0, 0x30, 0x72, 0xb2, 0x3b, 0xaa, 0xcb,
+	0x18, 0x77, 0x7b, 0x7e, 0xf5, 0xba, 0x51, 0x6f, 0x1e, 0xfe, 0xae, 0x0d, 0x97, 0xdb, 0xde, 0x74,
+	0x02, 0x70, 0x8c, 0xd2, 0x38, 0x8d, 0x54, 0x24, 0x76, 0xed, 0xea, 0x6d, 0xde, 0x92, 0x35, 0x52,
+	0x1d, 0xc1, 0x82, 0x7a, 0x01, 0xb5, 0x3a, 0xc4, 0xab, 0x28, 0x5b, 0xb2, 0x68, 0x75, 0x1f, 0x5c,
+	0x4b, 0xea, 0x7e, 0x4c, 0x93, 0xd5, 0x7e, 0x5c, 0x63, 0x56, 0xfb, 0xa9, 0xf8, 0xf0, 0xcd, 0xab,
+	0x4f, 0x2f, 0x63, 0x2a, 0xaf, 0xf2, 0x8b, 0xfd, 0x88, 0x0d, 0x82, 0x3e, 0x1b, 0xd0, 0x94, 0x1d,
+	0xbc, 0x08, 0x12, 0xaa, 0x5e, 0x40, 0x04, 0x3c, 0x8b, 0x82, 0xf1, 0x5f, 0xac, 0x8b, 0xb9, 0x02,
+	0x7b, 0xfe, 0x27, 0x00, 0x00, 0xff, 0xff, 0xae, 0xca, 0x7a, 0x18, 0xd2, 0x06, 0x00, 0x00,
 }

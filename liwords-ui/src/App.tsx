@@ -15,6 +15,7 @@ import { Login } from './lobby/login';
 import { Register } from './lobby/register';
 import { MessageType, JoinPath } from './gen/api/proto/realtime/realtime_pb';
 import { useSocketToken } from './hooks/use_socket_token';
+import { UserProfile } from './profile/profile';
 
 const JoinSocketDelay = 1000;
 
@@ -82,6 +83,9 @@ const App = React.memo(() => {
         </Route>
         <Route path="/register">
           <Register />
+        </Route>
+        <Route path="/profile/:username">
+          <UserProfile />
         </Route>
       </Switch>
     </div>
