@@ -605,7 +605,10 @@ func (wm *MaxWeightMatching) addBlossom(base int, k int) error {
 }
 
 // Expand the given top-level blossom.
-func (wm *MaxWeightMatching) expandBlossom(b int, endStage bool) error {
+func (wm *MaxWeightMatching) expandBlossom(b int, endStage bool, d int) error {
+	if (d > 1000) {
+		return errors.New("ERROR expandBlossom recursion failure")
+	}
 	// Convert subblossoms into toplevel blossoms.
 	if !(b < len(wm.label)) {
 		return errors.New("ERROR 34")
@@ -620,7 +623,7 @@ func (wm *MaxWeightMatching) expandBlossom(b int, endStage bool) error {
 			wm.inblossoms[s] = s
 		} else if endStage && wm.dualVar[s] == 0 {
 			// Recursively expand this subblossom
-			err := wm.expandBlossom(s, endStage)
+			err := wm.expandBlossom(s, endStage, d + 1)
 			if err != nil {
 				return err
 			}
@@ -1304,7 +1307,7 @@ func (wm *MaxWeightMatching) solveMaxWeightMatching() error {
 				wm.queue = append(wm.queue, i)
 			} else if deltaType == 4 {
 				// Expand the least-z blossom.
-				err := wm.expandBlossom(deltaBlossom, false)
+				err := wm.expandBlossom(deltaBlossom, false, 0)
 				if err != nil {
 					return err
 				}
@@ -1318,7 +1321,7 @@ func (wm *MaxWeightMatching) solveMaxWeightMatching() error {
 		// End of a stage; expand all S-blossom which have dualVar = 0
 		for b := wm.numberOfVertexes; b < wm.numberOfVertexes*2; b++ {
 			if wm.blossomParents[b] == -1 && wm.blossomBase[b] >= 0 && wm.label[b] == 1 && wm.dualVar[b] == 0 {
-				err := wm.expandBlossom(b, true)
+				err := wm.expandBlossom(b, true, 0)
 				if err != nil {
 					return err
 				}
