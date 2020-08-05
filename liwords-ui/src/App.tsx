@@ -80,7 +80,7 @@ const App = React.memo(() => {
         <Route path="/login">
           <Login />
         </Route>
-        <Route path="/register">
+        <Route path="/secretwoogles">
           <Register />
         </Route>
       </Switch>
