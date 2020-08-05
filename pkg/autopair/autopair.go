@@ -1,6 +1,7 @@
 package autopair
 
 import (
+	"errors"
 	"github.com/domino14/liwords/pkg/entity"
 )
 
@@ -25,7 +26,7 @@ func Autopair(members []*entity.PoolMember) ([]int, error) {
 	}
 	if len(pairings) != len(members) {
 		// Log error here, be sure to record edges
-		return nil, errors.new("Pairings and members are not the same length")
+		return nil, errors.New("Pairings and members are not the same length")
 	}
 
 	for index, pairing := range pairings {
