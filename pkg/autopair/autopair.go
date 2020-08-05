@@ -18,7 +18,22 @@ func Autopair(members []*entity.PoolMember) ([]int, error) {
 		}
 	}
 
-	pairings := minWeightMatching(edges, true)
+	pairings, err := minWeightMatching(edges, true)
+	if err != nil {
+		// Log error here, be sure to record edges
+		return nil, err
+	}
+	if len(pairings) != len(members) {
+		// Log error here, be sure to record edges
+		return nil, errors.new("Pairings and members are not the same length")
+	}
+
+	for index, pairing := range pairings {
+		if pairing == -1 {
+			members[index].Misses++
+		}
+	}
+
 	return pairings, nil
 }
 
@@ -40,12 +55,11 @@ func weigh(PoolMemberA *entity.PoolMember, PoolMemberB *entity.PoolMember) int {
 	ratingDiff := abs(PoolMemberA.Rating - PoolMemberB.Rating)
 	missBonus := min(missBonus(PoolMemberA), missBonus(PoolMemberB))
 	rangeBonus := rangeBonus(PoolMemberA, PoolMemberB)
-	sitBonus := sitBonus(PoolMemberA, PoolMemberB)
-	return ratingDiff - missBonus - rangeBonus - sitBonus
+	return ratingDiff - missBonus - rangeBonus
 }
 
 func missBonus(p *entity.PoolMember) int {
-	return min(p.Misses*12, max((460+min(p.SitCounter, -3)*20), 0))
+	return min(p.Misses*12, 400)
 }
 
 func rangeBonus(PoolMemberA *entity.PoolMember, PoolMemberB *entity.PoolMember) int {
@@ -57,17 +71,4 @@ func rangeBonus(PoolMemberA *entity.PoolMember, PoolMemberB *entity.PoolMember) 
 		rangeBonus = 200
 	}
 	return rangeBonus
-}
-
-func sitBonus(PoolMemberA *entity.PoolMember, PoolMemberB *entity.PoolMember) int {
-	// match of good and bad player
-	sitBonus := min(abs(PoolMemberA.SitCounter-PoolMemberB.SitCounter), 10) * 30
-	if PoolMemberA.SitCounter >= -2 && PoolMemberB.SitCounter >= -2 {
-		sitBonus = 30 // good players
-	} else if PoolMemberA.SitCounter <= -10 && PoolMemberB.SitCounter <= -10 {
-		sitBonus = 80 // very bad players
-	} else if PoolMemberA.SitCounter <= -5 && PoolMemberB.SitCounter <= -5 {
-		sitBonus = 30 // bad players
-	}
-	return sitBonus
 }
