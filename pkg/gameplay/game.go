@@ -533,10 +533,16 @@ func performEndgameDuties(ctx context.Context, g *entity.Game, userStore user.St
 	g.SendChange(wrapped)
 
 	// Compute stats for the player and for the game.
-
-	err := computeGameStats(ctx, g, userStore)
+	variantKey, err := g.RatingKey()
 	if err != nil {
-		log.Err(err).Msg("computing stats")
+		log.Err(err).Msg("getting variant key")
+	} else {
+		gameStats, err := computeGameStats(ctx, g.History(), variantKey, userStore)
+		if err != nil {
+			log.Err(err).Msg("computing stats")
+		} else {
+			g.Stats = gameStats
+		}
 	}
 	// And finally, send a notification to the lobby that this
 	// game ended. This will remove it from the list of live games.
@@ -559,49 +565,48 @@ func discernEndgameReason(g *entity.Game) {
 	}
 }
 
-func computeGameStats(ctx context.Context, g *entity.Game, userStore user.Store) error {
+func computeGameStats(ctx context.Context, history *macondopb.GameHistory,
+	variantKey entity.VariantKey, userStore user.Store) (*entity.Stats, error) {
 	// stats := entity.InstantiateNewStats(1, 2)
-	history := g.History()
 	p0id, p1id := history.Players[0].UserId, history.Players[1].UserId
-
-	stats := entity.InstantiateNewStats(p0id, p1id)
-	stats.AddGame(history, history.Uid)
-	g.Stats = stats
-
-	variantKey, err := g.RatingKey()
-	if err != nil {
-		return err
+	if history.SecondWentFirst {
+		p0id, p1id = p1id, p0id
 	}
+	// Here, p0 went first and p1 went second, no matter what.
+
+	gameStats := entity.InstantiateNewStats(p0id, p1id)
+	gameStats.AddGame(history, history.Uid)
+
 	p0Stats, err := statsForUser(ctx, p0id, userStore, variantKey)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	p1Stats, err := statsForUser(ctx, p1id, userStore, variantKey)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	err = p0Stats.AddStats(stats)
+	err = p0Stats.AddStats(gameStats)
 	if err != nil {
 		log.Err(err).Msg("calculating-p0-stats")
-		return err
+		return nil, err
 	}
 
-	err = p1Stats.AddStats(stats)
+	err = p1Stats.AddStats(gameStats)
 	if err != nil {
 		log.Err(err).Msg("calculating-p1-stats")
-		return err
+		return nil, err
 	}
 	// Save all stats back to the database.
 	err = userStore.SetStats(ctx, p0id, variantKey, p0Stats)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	err = userStore.SetStats(ctx, p1id, variantKey, p1Stats)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	return nil
+	return gameStats, nil
 }
 
 func statsForUser(ctx context.Context, id string, userStore user.Store,

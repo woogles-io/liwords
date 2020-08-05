@@ -110,6 +110,8 @@ type ProfileStats struct {
 	Data map[VariantKey]*Stats
 }
 
+// InstantiateNewStats instantiates a new stats object. playerOneId MUST
+// have gone first in the game.
 func InstantiateNewStats(playerOneId string, playerTwoId string) *Stats {
 	return &Stats{
 		PlayerOneId:   playerOneId,
@@ -124,8 +126,7 @@ func (stats *Stats) AddGame(history *pb.GameHistory, id string) error {
 	for i := 0; i < len(events); i++ {
 		event := events[i]
 		//fmt.Println(event)
-		if history.Players[0].Nickname == event.Nickname ||
-			(history.Players[1].Nickname == event.Nickname && history.SecondWentFirst) {
+		if history.Players[0].Nickname == event.Nickname {
 			incrementStatItems(stats.PlayerOneData, stats.PlayerTwoData, history, i, id, false)
 		} else {
 			incrementStatItems(stats.PlayerTwoData, stats.PlayerOneData, history, i, id, false)
@@ -133,8 +134,8 @@ func (stats *Stats) AddGame(history *pb.GameHistory, id string) error {
 		incrementStatItems(stats.NotableData, nil, history, i, id, false)
 	}
 
-	incrementStatItems(stats.PlayerOneData, stats.PlayerTwoData, history, -1, id, !history.SecondWentFirst)
-	incrementStatItems(stats.PlayerTwoData, stats.PlayerOneData, history, -1, id, history.SecondWentFirst)
+	incrementStatItems(stats.PlayerOneData, stats.PlayerTwoData, history, -1, id, true)
+	incrementStatItems(stats.PlayerTwoData, stats.PlayerOneData, history, -1, id, false)
 	incrementStatItems(stats.NotableData, nil, history, -1, id, false)
 
 	confirmNotableItems(stats.NotableData, id)
