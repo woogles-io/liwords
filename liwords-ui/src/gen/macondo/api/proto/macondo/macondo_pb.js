@@ -183,7 +183,8 @@ proto.macondo.GameHistory.toObject = function(includeInstance, msg) {
     challengeRule: jspb.Message.getFieldWithDefault(msg, 12, 0),
     playState: jspb.Message.getFieldWithDefault(msg, 13, 0),
     finalScoresList: (f = jspb.Message.getRepeatedField(msg, 14)) == null ? undefined : f,
-    variant: jspb.Message.getFieldWithDefault(msg, 15, "")
+    variant: jspb.Message.getFieldWithDefault(msg, 15, ""),
+    winner: jspb.Message.getFieldWithDefault(msg, 16, 0)
   };
 
   if (includeInstance) {
@@ -281,6 +282,10 @@ proto.macondo.GameHistory.deserializeBinaryFromReader = function(msg, reader) {
     case 15:
       var value = /** @type {string} */ (reader.readString());
       msg.setVariant(value);
+      break;
+    case 16:
+      var value = /** @type {number} */ (reader.readInt32());
+      msg.setWinner(value);
       break;
     default:
       reader.skipField();
@@ -415,6 +420,13 @@ proto.macondo.GameHistory.serializeBinaryToWriter = function(message, writer) {
   if (f.length > 0) {
     writer.writeString(
       15,
+      f
+    );
+  }
+  f = message.getWinner();
+  if (f !== 0) {
+    writer.writeInt32(
+      16,
       f
     );
   }
@@ -766,6 +778,24 @@ proto.macondo.GameHistory.prototype.getVariant = function() {
  */
 proto.macondo.GameHistory.prototype.setVariant = function(value) {
   return jspb.Message.setProto3StringField(this, 15, value);
+};
+
+
+/**
+ * optional int32 winner = 16;
+ * @return {number}
+ */
+proto.macondo.GameHistory.prototype.getWinner = function() {
+  return /** @type {number} */ (jspb.Message.getFieldWithDefault(this, 16, 0));
+};
+
+
+/**
+ * @param {number} value
+ * @return {!proto.macondo.GameHistory} returns this
+ */
+proto.macondo.GameHistory.prototype.setWinner = function(value) {
+  return jspb.Message.setProto3IntField(this, 16, value);
 };
 
 

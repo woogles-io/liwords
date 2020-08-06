@@ -1,0 +1,11 @@
+{
+  "lexicon": "CSW19",
+  "rules": {
+    "board_layout_name": "CrosswordGame",
+    "letter_distribution_name": "english"
+  },
+  "initial_time_seconds": 60,
+  "challenge_rule": 3,
+  "rating_mode": 1,
+  "request_id": "xbXSGi9L4Vm3bQWqdJrbdg"
+}

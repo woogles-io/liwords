@@ -45,13 +45,15 @@ func InstantiateNewGame(ctx context.Context, gameStore GameStore, cfg *config.Co
 	users [2]*entity.User, req *pb.GameRequest) (*entity.Game, error) {
 
 	var players []*macondopb.PlayerInfo
+	var dbids [2]uint
 
-	for _, u := range users {
+	for idx, u := range users {
 		players = append(players, &macondopb.PlayerInfo{
 			Nickname: u.Username,
 			UserId:   u.UUID,
 			RealName: u.RealName(),
 		})
+		dbids[idx] = u.ID
 	}
 
 	var bd []string
@@ -81,6 +83,7 @@ func InstantiateNewGame(ctx context.Context, gameStore GameStore, cfg *config.Co
 	g.SetChallengeRule(req.ChallengeRule)
 
 	entGame := entity.NewGame(g, req)
+	entGame.PlayerDBIDs = dbids
 	// Save the game to the store.
 	if err = gameStore.Create(ctx, entGame); err != nil {
 		return nil, err
@@ -429,6 +432,7 @@ func gameEndedEvent(ctx context.Context, g *entity.Game, userStore user.Store) *
 		Loser:      loser,
 		Tie:        tie,
 	}
+
 	log.Debug().Interface("game-ended-event", evt).Msg("game-ended")
 	return evt
 }
@@ -513,7 +517,12 @@ func performEndgameDuties(ctx context.Context, g *entity.Game, userStore user.St
 	}
 	g.History().PlayState = macondopb.PlayState_GAME_OVER
 
-	// Finally, send a gameEndedEvent, which rates the game.
+	// We need to edit the history's winner to match the reality of the situation.
+	// The history's winner is set in macondo based on just the score of the game
+	// However we are possibly editing it above.
+	g.History().Winner = int32(g.WinnerIdx)
+
+	// Send a gameEndedEvent, which rates the game.
 	wrapped := entity.WrapEvent(gameEndedEvent(ctx, g, userStore),
 		pb.MessageType_GAME_ENDED_EVENT, g.GameID())
 	// Once the game ends, we do not need to "sanitize" the packets
@@ -523,7 +532,19 @@ func performEndgameDuties(ctx context.Context, g *entity.Game, userStore user.St
 	wrapped.AddAudience(entity.AudGameTV, g.GameID())
 	g.SendChange(wrapped)
 
-	// And actually finally, send a notification to the lobby that this
+	// Compute stats for the player and for the game.
+	variantKey, err := g.RatingKey()
+	if err != nil {
+		log.Err(err).Msg("getting variant key")
+	} else {
+		gameStats, err := computeGameStats(ctx, g.History(), variantKey, userStore)
+		if err != nil {
+			log.Err(err).Msg("computing stats")
+		} else {
+			g.Stats = gameStats
+		}
+	}
+	// And finally, send a notification to the lobby that this
 	// game ended. This will remove it from the list of live games.
 	wrapped = entity.WrapEvent(&pb.GameDeletion{Id: g.GameID()},
 		pb.MessageType_GAME_DELETION, "")
@@ -542,4 +563,90 @@ func discernEndgameReason(g *entity.Game) {
 	} else {
 		g.SetGameEndReason(pb.GameEndReason_CONSECUTIVE_ZEROES)
 	}
+}
+
+func computeGameStats(ctx context.Context, history *macondopb.GameHistory,
+	variantKey entity.VariantKey, userStore user.Store) (*entity.Stats, error) {
+	// stats := entity.InstantiateNewStats(1, 2)
+	p0id, p1id := history.Players[0].UserId, history.Players[1].UserId
+	if history.SecondWentFirst {
+		p0id, p1id = p1id, p0id
+		history.Players[0], history.Players[1] = history.Players[1], history.Players[0]
+		history.FinalScores[0], history.FinalScores[1] = history.FinalScores[1], history.FinalScores[0]
+		if history.Winner != -1 {
+			history.Winner = 1 - history.Winner
+		}
+	}
+	// Here, p0 went first and p1 went second, no matter what.
+	gameStats := entity.InstantiateNewStats(p0id, p1id)
+	gameStats.AddGame(history, history.Uid)
+	gameStats.Finalize()
+
+	if history.SecondWentFirst {
+		// Flip it back
+		history.Players[0], history.Players[1] = history.Players[1], history.Players[0]
+		history.FinalScores[0], history.FinalScores[1] = history.FinalScores[1], history.FinalScores[0]
+		if history.Winner != -1 {
+			history.Winner = 1 - history.Winner
+		}
+	}
+
+	p0NewProfileStats := entity.InstantiateNewStats(p0id, "")
+	p1NewProfileStats := entity.InstantiateNewStats(p1id, "")
+
+	p0ProfileStats, err := statsForUser(ctx, p0id, userStore, variantKey)
+	if err != nil {
+		return nil, err
+	}
+
+	p1ProfileStats, err := statsForUser(ctx, p1id, userStore, variantKey)
+	if err != nil {
+		return nil, err
+	}
+
+	err = p0NewProfileStats.AddStats(p0ProfileStats)
+	if err != nil {
+		return nil, err
+	}
+	err = p1NewProfileStats.AddStats(p1ProfileStats)
+	if err != nil {
+		return nil, err
+	}
+	err = p0NewProfileStats.AddStats(gameStats)
+	if err != nil {
+		return nil, err
+	}
+	err = p1NewProfileStats.AddStats(gameStats)
+	if err != nil {
+		return nil, err
+	}
+	p0NewProfileStats.Finalize()
+	p1NewProfileStats.Finalize()
+	// Save all stats back to the database.
+	err = userStore.SetStats(ctx, p0id, variantKey, p0NewProfileStats)
+	if err != nil {
+		return nil, err
+	}
+	err = userStore.SetStats(ctx, p1id, variantKey, p1NewProfileStats)
+	if err != nil {
+		return nil, err
+	}
+	return gameStats, nil
+}
+
+func statsForUser(ctx context.Context, id string, userStore user.Store,
+	variantKey entity.VariantKey) (*entity.Stats, error) {
+
+	u, err := userStore.GetByUUID(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	stats, ok := u.Profile.Stats.Data[variantKey]
+	if !ok {
+		log.Debug().Str("variantKey", string(variantKey)).Str("pid", id).Msg("instantiating new; no data for variant")
+		// The second user ID does not matter; this is the per user stat.
+		stats = entity.InstantiateNewStats(id, "")
+	}
+
+	return stats, nil
 }

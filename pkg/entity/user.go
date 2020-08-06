@@ -43,6 +43,7 @@ type Profile struct {
 	Title       string
 	About       string
 	Ratings     Ratings
+	Stats       ProfileStats
 }
 
 // RelevantRating returns the rating from a Ratings object given a rating key.

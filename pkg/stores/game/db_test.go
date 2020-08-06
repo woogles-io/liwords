@@ -178,6 +178,7 @@ func createGame(p0, p1 string, initTime int32, is *is.I) {
 			LetterDistributionName: "english",
 		},
 	})
+	entGame.PlayerDBIDs = [2]uint{u1.ID, u2.ID}
 	entGame.ResetTimersAndStart()
 
 	err = store.Create(context.Background(), entGame)

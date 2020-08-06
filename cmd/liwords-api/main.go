@@ -30,6 +30,7 @@ import (
 
 	"github.com/domino14/liwords/pkg/config"
 	"github.com/domino14/liwords/pkg/stores/user"
+	pkguser "github.com/domino14/liwords/pkg/user"
 	gameservice "github.com/domino14/liwords/rpc/api/proto/game_service"
 	userservice "github.com/domino14/liwords/rpc/api/proto/user_service"
 )
@@ -84,6 +85,7 @@ func main() {
 	authenticationService := auth.NewAuthenticationService(userStore, sessionStore, cfg.SecretKey)
 	registrationService := registration.NewRegistrationService(userStore)
 	gameService := gameplay.NewGameService(userStore, gameStore)
+	profileService := pkguser.NewProfileService(userStore)
 
 	router.Handle(userservice.AuthenticationServicePathPrefix,
 		middlewares.Then(userservice.NewAuthenticationServiceServer(authenticationService, nil)))
@@ -93,6 +95,9 @@ func main() {
 
 	router.Handle(gameservice.GameMetadataServicePathPrefix,
 		middlewares.Then(gameservice.NewGameMetadataServiceServer(gameService, nil)))
+
+	router.Handle(userservice.ProfileServicePathPrefix,
+		middlewares.Then(userservice.NewProfileServiceServer(profileService, nil)))
 
 	// Create any caches
 	alphabet.CreateLetterDistributionCache()

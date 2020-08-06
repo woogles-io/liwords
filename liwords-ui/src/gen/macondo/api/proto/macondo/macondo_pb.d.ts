@@ -57,6 +57,9 @@ export class GameHistory extends jspb.Message {
   getVariant(): string;
   setVariant(value: string): void;
 
+  getWinner(): number;
+  setWinner(value: number): void;
+
   serializeBinary(): Uint8Array;
   toObject(includeInstance?: boolean): GameHistory.AsObject;
   static toObject(includeInstance: boolean, msg: GameHistory): GameHistory.AsObject;
@@ -84,6 +87,7 @@ export namespace GameHistory {
     playState: PlayStateMap[keyof PlayStateMap],
     finalScoresList: Array<number>,
     variant: string,
+    winner: number,
   }
 }
 

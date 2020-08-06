@@ -33,7 +33,8 @@ type Game struct {
 	sync.Mutex
 	game.Game
 
-	GameReq *pb.GameRequest
+	PlayerDBIDs [2]uint
+	GameReq     *pb.GameRequest
 	// started is set when the game actually starts (when the game timers start).
 	// Note that the internal game.Game may have started a few seconds before,
 	// but there should be no information about it given until _this_ started
@@ -46,6 +47,8 @@ type Game struct {
 	// if -1, it was a tie!
 	WinnerIdx int
 	LoserIdx  int
+
+	Stats *Stats
 
 	ChangeHook chan<- *EventWrapper
 }

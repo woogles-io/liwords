@@ -7,6 +7,7 @@ import (
 	"github.com/jinzhu/gorm"
 	"github.com/jinzhu/gorm/dialects/postgres"
 	"github.com/lithammer/shortuuid"
+	"github.com/rs/zerolog/log"
 
 	"github.com/domino14/liwords/pkg/entity"
 )
@@ -101,7 +102,14 @@ func dbProfileToProfile(p *profile) (*entity.Profile, error) {
 	var rdata entity.Ratings
 	err := json.Unmarshal(p.Ratings.RawMessage, &rdata)
 	if err != nil {
-		return nil, err
+		log.Err(err).Msg("profile had bad rating json, zeroing")
+		rdata = entity.Ratings{Data: map[entity.VariantKey]entity.SingleRating{}}
+	}
+	var sdata entity.ProfileStats
+	err = json.Unmarshal(p.Stats.RawMessage, &sdata)
+	if err != nil {
+		log.Err(err).Msg("profile had bad stats json, zeroing")
+		sdata = entity.ProfileStats{Data: map[entity.VariantKey]*entity.Stats{}}
 	}
 	return &entity.Profile{
 		FirstName:   p.FirstName,
@@ -110,6 +118,7 @@ func dbProfileToProfile(p *profile) (*entity.Profile, error) {
 		Title:       p.Title,
 		About:       p.About,
 		Ratings:     rdata,
+		Stats:       sdata,
 	}, nil
 }
 
@@ -165,17 +174,23 @@ func (s *DBStore) New(ctx context.Context, u *entity.User) error {
 	if result.Error != nil {
 		return result.Error
 	}
-	// Create profile
 
+	// Create profile
 	rdata := entity.Ratings{}
-	bytes, err := json.Marshal(rdata)
+	ratbytes, err := json.Marshal(rdata)
 	if err != nil {
 		return err
 	}
 
+	sdata := entity.ProfileStats{}
+	statbytes, err := json.Marshal(sdata)
+	if err != nil {
+		return err
+	}
 	dbp := &profile{
 		User:    *dbu,
-		Ratings: postgres.Jsonb{RawMessage: bytes},
+		Ratings: postgres.Jsonb{RawMessage: ratbytes},
+		Stats:   postgres.Jsonb{RawMessage: statbytes},
 	}
 	result = s.db.Create(dbp)
 	return result.Error
@@ -197,7 +212,8 @@ func (s *DBStore) SetRating(ctx context.Context, uuid string, variant entity.Var
 	var existingRatings entity.Ratings
 	err := json.Unmarshal(p.Ratings.RawMessage, &existingRatings)
 	if err != nil {
-		return nil
+		log.Err(err).Msg("existing ratings missing; initializing...")
+		existingRatings = entity.Ratings{Data: map[entity.VariantKey]entity.SingleRating{}}
 	}
 
 	if existingRatings.Data == nil {
@@ -211,6 +227,36 @@ func (s *DBStore) SetRating(ctx context.Context, uuid string, variant entity.Var
 	}
 
 	return s.db.Model(p).Update("ratings", postgres.Jsonb{RawMessage: bytes}).Error
+}
+
+func (s *DBStore) SetStats(ctx context.Context, uuid string, variant entity.VariantKey,
+	stats *entity.Stats) error {
+
+	u := &User{}
+	p := &profile{}
+
+	if result := s.db.Where("uuid = ?", uuid).First(u); result.Error != nil {
+		return result.Error
+	}
+	if result := s.db.Model(u).Related(p); result.Error != nil {
+		return result.Error
+	}
+
+	var existingProfileStats entity.ProfileStats
+	err := json.Unmarshal(p.Stats.RawMessage, &existingProfileStats)
+	if err != nil {
+		log.Err(err).Msg("existing stats missing; initializing...")
+		existingProfileStats = entity.ProfileStats{Data: map[entity.VariantKey]*entity.Stats{}}
+	}
+	if existingProfileStats.Data == nil {
+		existingProfileStats.Data = make(map[entity.VariantKey]*entity.Stats)
+	}
+	existingProfileStats.Data[variant] = stats
+	bytes, err := json.Marshal(existingProfileStats)
+	if err != nil {
+		return err
+	}
+	return s.db.Model(p).Update("stats", postgres.Jsonb{RawMessage: bytes}).Error
 }
 
 func (s *DBStore) Disconnect() {

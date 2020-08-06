@@ -2,7 +2,9 @@ package entity
 
 import (
 	"errors"
+
 	pb "github.com/domino14/macondo/gen/api/proto/macondo"
+	"github.com/rs/zerolog/log"
 )
 
 type ListItem struct {
@@ -80,32 +82,41 @@ const (
 
 const MaxNotableInt = 1000000000
 
+type StatAddFunction func(*StatItem, *StatItem, *pb.GameHistory, int, string, bool)
+
 type StatItem struct {
-	Name               string                                                         `json:"n"`
-	Description        string                                                         `json:"d"`
-	Minimum            int                                                            `json:"-"`
-	Maximum            int                                                            `json:"-"`
-	Total              int                                                            `json:"t"`
-	DataType           StatItemType                                                   `json:"-"`
-	IncrementType      IncrementType                                                  `json:"-"`
-	DenominatorList    []*StatItem                                                    `json:"-"`
-	Averages           []float64                                                      `json:"a"`
-	IsProfileStat      bool                                                           `json:"-"`
-	List               []*ListItem                                                    `json:"l"`
-	Subitems           map[string]int                                                 `json:"s"`
-	HasMeaningfulTotal bool                                                           `json:"h"`
-	AddFunction        func(*StatItem, *StatItem, *pb.GameHistory, int, string, bool) `json:"-"`
+	Name string `json:"n"`
+	// Description        string                                                         `json:"d"`
+	Minimum            int             `json:"-"`
+	Maximum            int             `json:"-"`
+	Total              int             `json:"t"`
+	DataType           StatItemType    `json:"-"`
+	IncrementType      IncrementType   `json:"-"`
+	DenominatorList    []*StatItem     `json:"-"`
+	Averages           []float64       `json:"a"`
+	IsProfileStat      bool            `json:"-"`
+	List               []*ListItem     `json:"l"`
+	Subitems           map[string]int  `json:"s"`
+	HasMeaningfulTotal bool            `json:"h"`
+	AddFunction        StatAddFunction `json:"-"`
 }
 
 type Stats struct {
-	PlayerOneId   int         `json:"i1"`
-	PlayerTwoId   int         `json:"i2"`
+	PlayerOneId   string      `json:"i1"`
+	PlayerTwoId   string      `json:"i2"`
 	PlayerOneData []*StatItem `json:"d1"`
 	PlayerTwoData []*StatItem `json:"d2"`
 	NotableData   []*StatItem `json:"n"`
 }
 
-func InstantiateNewStats(playerOneId int, playerTwoId int) *Stats {
+type ProfileStats struct {
+	Data map[VariantKey]*Stats
+}
+
+// InstantiateNewStats instantiates a new stats object. playerOneId MUST
+// have gone first in the game.
+func InstantiateNewStats(playerOneId string, playerTwoId string) *Stats {
+	log.Debug().Str("p1id", playerOneId).Str("p2id", playerTwoId).Msg("instantiating new stats.")
 	return &Stats{
 		PlayerOneId:   playerOneId,
 		PlayerTwoId:   playerTwoId,
@@ -114,13 +125,12 @@ func InstantiateNewStats(playerOneId int, playerTwoId int) *Stats {
 		NotableData:   instantiateNotableData()}
 }
 
-func (stats *Stats) AddGameToStats(history *pb.GameHistory, id string) error {
+func (stats *Stats) AddGame(history *pb.GameHistory, id string) error {
 	events := history.GetEvents()
 	for i := 0; i < len(events); i++ {
 		event := events[i]
 		//fmt.Println(event)
-		if history.Players[0].Nickname == event.Nickname ||
-			(history.Players[1].Nickname == event.Nickname && history.SecondWentFirst) {
+		if history.Players[0].Nickname == event.Nickname {
 			incrementStatItems(stats.PlayerOneData, stats.PlayerTwoData, history, i, id, false)
 		} else {
 			incrementStatItems(stats.PlayerTwoData, stats.PlayerOneData, history, i, id, false)
@@ -128,15 +138,15 @@ func (stats *Stats) AddGameToStats(history *pb.GameHistory, id string) error {
 		incrementStatItems(stats.NotableData, nil, history, i, id, false)
 	}
 
-	incrementStatItems(stats.PlayerOneData, stats.PlayerTwoData, history, -1, id, !history.SecondWentFirst)
-	incrementStatItems(stats.PlayerTwoData, stats.PlayerOneData, history, -1, id, history.SecondWentFirst)
+	incrementStatItems(stats.PlayerOneData, stats.PlayerTwoData, history, -1, id, true)
+	incrementStatItems(stats.PlayerTwoData, stats.PlayerOneData, history, -1, id, false)
 	incrementStatItems(stats.NotableData, nil, history, -1, id, false)
 
 	confirmNotableItems(stats.NotableData, id)
 	return nil
 }
 
-func (stats *Stats) AddStatsToStats(otherStats *Stats) error {
+func (stats *Stats) AddStats(otherStats *Stats) error {
 
 	if stats.PlayerOneId != otherStats.PlayerOneId && stats.PlayerOneId != otherStats.PlayerTwoId {
 		return errors.New("Stats do not share an identical PlayerOneId")
