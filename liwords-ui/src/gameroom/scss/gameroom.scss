@@ -463,6 +463,9 @@
 .game-controls {
   margin: 0 auto;
 }
+.end-message {
+  background-color: $color-primary-middle;
+}
 
 @media (min-width: $screen-tablet-min) {
   .game-table {

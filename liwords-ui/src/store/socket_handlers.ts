@@ -136,12 +136,7 @@ export const onSocketMsg = (storeData: StoreData) => {
         case MessageType.GAME_ENDED_EVENT: {
           console.log('got game end evt');
           const gee = parsedMsg as GameEndedEvent;
-
-          storeData.addChat({
-            entityType: ChatEntityType.ServerMsg,
-            sender: '',
-            message: endGameMessage(gee),
-          });
+          storeData.setGameEndMessage(endGameMessage(gee));
           storeData.stopClock();
           break;
         }
@@ -155,6 +150,7 @@ export const onSocketMsg = (storeData: StoreData) => {
           });
           const gid = nge.getGameId();
           storeData.setRedirGame(gid);
+          storeData.setGameEndMessage('');
           startgameSound.play();
           break;
         }
@@ -166,6 +162,8 @@ export const onSocketMsg = (storeData: StoreData) => {
             actionType: ActionType.RefreshHistory,
             payload: ghr,
           });
+          storeData.setGameEndMessage('');
+
           // If there is an Antd message about "waiting for game", destroy it.
           // XXX: This is a bit unideal.
           message.destroy();

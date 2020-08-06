@@ -58,6 +58,10 @@ export type StoreData = {
   clearChat: () => void;
   chat: Array<ChatEntityObj>;
 
+  // This variable is set when the game just ended.
+  gameEndMessage: string;
+  setGameEndMessage: React.Dispatch<React.SetStateAction<string>>;
+
   // initClockController: (
   //   ghr: GameHistoryRefresher,
   //   onTimeout: () => void
@@ -92,6 +96,9 @@ export const Context = createContext<StoreData>({
   addChat: defaultFunction,
   clearChat: defaultFunction,
   chat: [],
+
+  gameEndMessage: '',
+  setGameEndMessage: defaultFunction,
 
   // initClockController: defaultFunction,
   stopClock: defaultFunction,
@@ -160,6 +167,7 @@ export const Store = ({ children, ...props }: Props) => {
   );
 
   const [redirGame, setRedirGame] = useState('');
+  const [gameEndMessage, setGameEndMessage] = useState('');
   const [chat, setChat] = useState(new Array<ChatEntityObj>());
 
   const challengeResultEvent = (sge: ServerChallengeResultEvent) => {
@@ -206,6 +214,8 @@ export const Store = ({ children, ...props }: Props) => {
     dispatchGameContext,
     redirGame,
     setRedirGame,
+    gameEndMessage,
+    setGameEndMessage,
     challengeResultEvent,
     addChat,
     clearChat,
