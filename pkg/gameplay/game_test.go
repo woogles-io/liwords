@@ -60,6 +60,7 @@ func recreateDB() {
 			log.Fatal().Err(err).Msg("error")
 		}
 	}
+	ustore.(*user.DBStore).Disconnect()
 }
 
 func TestMain(m *testing.M) {
@@ -98,6 +99,7 @@ func TestComputeGameStats(t *testing.T) {
 	is.Equal(stats.PlayerOneData[1].List, []*entity.ListItem{
 		{Word: "PARDINE", Score: 76, Probability: 1, GameId: "m5ktbp4qPVTqaAhg6HJMsb"},
 		{Word: "HETAERA", Score: 91, Probability: 1, GameId: "m5ktbp4qPVTqaAhg6HJMsb"}})
+	ustore.(*user.DBStore).Disconnect()
 }
 
 func TestComputeGameStats2(t *testing.T) {
@@ -127,6 +129,8 @@ func TestComputeGameStats2(t *testing.T) {
 		{Word: "STYMING", Score: 70, Probability: 1, GameId: "ycj5de5gArFF3ap76JyiUA"}})
 	is.Equal(stats.PlayerTwoData[1].List, []*entity.ListItem{
 		{Word: "UNITERS", Score: 68, Probability: 1, GameId: "ycj5de5gArFF3ap76JyiUA"}})
+	ustore.(*user.DBStore).Disconnect()
+
 }
 
 func TestComputePlayerStats(t *testing.T) {
@@ -169,6 +173,8 @@ func TestComputePlayerStats(t *testing.T) {
 	stats1, ok := u1.Profile.Stats.Data["CSW19.classic.ultrablitz"]
 	is.True(ok)
 	is.Equal(stats1.PlayerOneData[27].Total, 0)
+	ustore.(*user.DBStore).Disconnect()
+
 }
 
 func TestComputePlayerStatsMultipleGames(t *testing.T) {
@@ -224,5 +230,6 @@ func TestComputePlayerStatsMultipleGames(t *testing.T) {
 	is.Equal(stats1.PlayerOneData[20].Averages, []float64{307.0 / 2, 307.0 / (10)})
 	// wins
 	is.Equal(stats1.PlayerOneData[27].Total, 1)
+	ustore.(*user.DBStore).Disconnect()
 
 }
