@@ -571,38 +571,63 @@ func computeGameStats(ctx context.Context, history *macondopb.GameHistory,
 	p0id, p1id := history.Players[0].UserId, history.Players[1].UserId
 	if history.SecondWentFirst {
 		p0id, p1id = p1id, p0id
+		history.Players[0], history.Players[1] = history.Players[1], history.Players[0]
+		history.FinalScores[0], history.FinalScores[1] = history.FinalScores[1], history.FinalScores[0]
+		if history.Winner != -1 {
+			history.Winner = 1 - history.Winner
+		}
 	}
 	// Here, p0 went first and p1 went second, no matter what.
-
 	gameStats := entity.InstantiateNewStats(p0id, p1id)
 	gameStats.AddGame(history, history.Uid)
+	gameStats.Finalize()
 
-	p0Stats, err := statsForUser(ctx, p0id, userStore, variantKey)
-	if err != nil {
-		return nil, err
-	}
-	p1Stats, err := statsForUser(ctx, p1id, userStore, variantKey)
-	if err != nil {
-		return nil, err
-	}
-
-	err = p0Stats.AddStats(gameStats)
-	if err != nil {
-		log.Err(err).Msg("calculating-p0-stats")
-		return nil, err
+	if history.SecondWentFirst {
+		// Flip it back
+		history.Players[0], history.Players[1] = history.Players[1], history.Players[0]
+		history.FinalScores[0], history.FinalScores[1] = history.FinalScores[1], history.FinalScores[0]
+		if history.Winner != -1 {
+			history.Winner = 1 - history.Winner
+		}
 	}
 
-	err = p1Stats.AddStats(gameStats)
+	p0NewProfileStats := entity.InstantiateNewStats(p0id, "")
+	p1NewProfileStats := entity.InstantiateNewStats(p1id, "")
+
+	p0ProfileStats, err := statsForUser(ctx, p0id, userStore, variantKey)
 	if err != nil {
-		log.Err(err).Msg("calculating-p1-stats")
 		return nil, err
 	}
+
+	p1ProfileStats, err := statsForUser(ctx, p1id, userStore, variantKey)
+	if err != nil {
+		return nil, err
+	}
+
+	err = p0NewProfileStats.AddStats(p0ProfileStats)
+	if err != nil {
+		return nil, err
+	}
+	err = p1NewProfileStats.AddStats(p1ProfileStats)
+	if err != nil {
+		return nil, err
+	}
+	err = p0NewProfileStats.AddStats(gameStats)
+	if err != nil {
+		return nil, err
+	}
+	err = p1NewProfileStats.AddStats(gameStats)
+	if err != nil {
+		return nil, err
+	}
+	p0NewProfileStats.Finalize()
+	p1NewProfileStats.Finalize()
 	// Save all stats back to the database.
-	err = userStore.SetStats(ctx, p0id, variantKey, p0Stats)
+	err = userStore.SetStats(ctx, p0id, variantKey, p0NewProfileStats)
 	if err != nil {
 		return nil, err
 	}
-	err = userStore.SetStats(ctx, p1id, variantKey, p1Stats)
+	err = userStore.SetStats(ctx, p1id, variantKey, p1NewProfileStats)
 	if err != nil {
 		return nil, err
 	}
@@ -618,6 +643,7 @@ func statsForUser(ctx context.Context, id string, userStore user.Store,
 	}
 	stats, ok := u.Profile.Stats.Data[variantKey]
 	if !ok {
+		log.Debug().Str("variantKey", string(variantKey)).Str("pid", id).Msg("instantiating new; no data for variant")
 		// The second user ID does not matter; this is the per user stat.
 		stats = entity.InstantiateNewStats(id, "")
 	}

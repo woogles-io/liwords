@@ -100,6 +100,35 @@ func TestComputeGameStats(t *testing.T) {
 		{Word: "HETAERA", Score: 91, Probability: 1, GameId: "m5ktbp4qPVTqaAhg6HJMsb"}})
 }
 
+func TestComputeGameStats2(t *testing.T) {
+	is := is.New(t)
+	recreateDB()
+	ustore := userStore(TestingDBConnStr + " dbname=liwords_test")
+
+	histjson, err := ioutil.ReadFile("./testdata/game2/history.json")
+	is.NoErr(err)
+	hist := &macondopb.GameHistory{}
+	err = json.Unmarshal(histjson, hist)
+	is.NoErr(err)
+
+	reqjson, err := ioutil.ReadFile("./testdata/game2/game_request.json")
+	is.NoErr(err)
+	req := &pb.GameRequest{}
+	err = json.Unmarshal(reqjson, req)
+	is.NoErr(err)
+
+	stats, err := computeGameStats(context.Background(), hist, variantKey(req), ustore)
+	is.NoErr(err)
+	is.Equal(stats.PlayerOneData[1].Name, "Bingos")
+	log.Info().Interface("p1list", stats.PlayerOneData[1].List).Msg("--")
+	log.Info().Interface("p2list", stats.PlayerTwoData[1].List).Msg("--")
+
+	is.Equal(stats.PlayerOneData[1].List, []*entity.ListItem{
+		{Word: "STYMING", Score: 70, Probability: 1, GameId: "ycj5de5gArFF3ap76JyiUA"}})
+	is.Equal(stats.PlayerTwoData[1].List, []*entity.ListItem{
+		{Word: "UNITERS", Score: 68, Probability: 1, GameId: "ycj5de5gArFF3ap76JyiUA"}})
+}
+
 func TestComputePlayerStats(t *testing.T) {
 	is := is.New(t)
 	recreateDB()
@@ -171,10 +200,13 @@ func TestComputePlayerStatsMultipleGames(t *testing.T) {
 
 	stats0, ok := u0.Profile.Stats.Data["CSW19.classic.ultrablitz"]
 	is.True(ok)
+	is.Equal(stats0.PlayerOneData[11].Name, "Games")
+	is.Equal(stats0.PlayerOneData[11].Total, 2)
 	is.Equal(stats0.PlayerOneData[27].Name, "Wins")
 	is.Equal(stats0.PlayerOneData[27].Total, 1)
 
 	is.Equal(stats0.PlayerOneData[1].Name, "Bingos")
+	log.Debug().Interface("li", stats0.PlayerOneData[1].List).Msg("--")
 	is.Equal(stats0.PlayerOneData[1].List, []*entity.ListItem{
 		{Word: "PARDINE", Score: 76, Probability: 1, GameId: "m5ktbp4qPVTqaAhg6HJMsb"},
 		{Word: "HETAERA", Score: 91, Probability: 1, GameId: "m5ktbp4qPVTqaAhg6HJMsb"},
@@ -186,6 +218,11 @@ func TestComputePlayerStatsMultipleGames(t *testing.T) {
 	is.Equal(stats1.PlayerOneData[1].List, []*entity.ListItem{
 		{Word: "STYMING", Score: 70, Probability: 1, GameId: "ycj5de5gArFF3ap76JyiUA"},
 	})
+	// scores
+	is.Equal(stats1.PlayerOneData[20].Total, 307)
+	// avg per game, avg per turn
+	is.Equal(stats1.PlayerOneData[20].Averages, []float64{307.0 / 2, 307.0 / (10)})
+	// wins
 	is.Equal(stats1.PlayerOneData[27].Total, 1)
 
 }

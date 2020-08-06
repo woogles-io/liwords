@@ -85,7 +85,7 @@ const App = React.memo(() => {
           <Register />
         </Route>
         <Route path="/profile/:username">
-          <UserProfile />
+          <UserProfile myUsername={username} loggedIn={loggedIn} />
         </Route>
       </Switch>
     </div>

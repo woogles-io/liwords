@@ -2,13 +2,14 @@ package entity
 
 import (
 	"errors"
-	"fmt"
+	"math"
 	"strings"
 	"unicode"
 
 	"github.com/domino14/macondo/alphabet"
 	"github.com/domino14/macondo/gaddag"
 	pb "github.com/domino14/macondo/gen/api/proto/macondo"
+	"github.com/rs/zerolog/log"
 )
 
 func makeAlphabetSubitems() map[string]int {
@@ -57,7 +58,13 @@ func incrementStatItem(statItem *StatItem, event *pb.GameEvent, id string) {
 		statItem.Total++
 	} else if statItem.DataType == ListType {
 		statItem.Total++
-		statItem.List = append(statItem.List, &ListItem{Word: event.PlayedTiles, Probability: 1, Score: int(event.Score), GameId: id})
+		word := event.PlayedTiles
+		if len(event.WordsFormed) > 0 {
+			// We can have played tiles with words formed being empty
+			// for phony_tiles_returned events, for example.
+			word = event.WordsFormed[0]
+		}
+		statItem.List = append(statItem.List, &ListItem{Word: word, Probability: 1, Score: int(event.Score), GameId: id})
 	}
 }
 
@@ -86,7 +93,7 @@ func confirmNotableItems(statItems []*StatItem, id string) {
 			item.Total = item.Total * (-1)
 		}
 		if item.Total >= item.Minimum && item.Total <= item.Maximum {
-			fmt.Printf("Notable confirmed: %s\n", item.Name)
+			log.Debug().Msgf("Notable confirmed: %s", item.Name)
 			item.List = append(item.List, &ListItem{Word: "", Probability: 0, Score: 0, GameId: id})
 		}
 		item.Total = 0
@@ -106,7 +113,7 @@ func combineItems(statItem *StatItem, otherStatItem *StatItem) {
 	}
 
 	if statItem.Subitems != nil {
-		for key, _ := range statItem.Subitems {
+		for key := range statItem.Subitems {
 			statItem.Subitems[key] += otherStatItem.Subitems[key]
 		}
 	}
@@ -119,7 +126,11 @@ func finalize(statItems []*StatItem) {
 		}
 		var averages []float64
 		for _, denominatorRef := range statItem.DenominatorList {
-			averages = append(averages, float64(statItem.Total)/float64(denominatorRef.Total))
+			toAppend := float64(statItem.Total) / float64(denominatorRef.Total)
+			if math.IsNaN(toAppend) || math.IsInf(toAppend, 0) {
+				toAppend = 0
+			}
+			averages = append(averages, toAppend)
 		}
 		statItem.Averages = averages
 	}
@@ -145,6 +156,7 @@ func addBingos(statItem *StatItem, otherPlayerStatItem *StatItem, history *pb.Ga
 		succEvent = events[i+1]
 	}
 	if event.IsBingo && (succEvent == nil || succEvent.Type != pb.GameEvent_PHONY_TILES_RETURNED) {
+		log.Debug().Interface("evt", event).Interface("statitem", statItem).Interface("otherstat", otherPlayerStatItem).Msg("Add bing")
 		incrementStatItem(statItem, event, id)
 	}
 }

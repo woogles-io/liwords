@@ -4,6 +4,7 @@ import (
 	"errors"
 
 	pb "github.com/domino14/macondo/gen/api/proto/macondo"
+	"github.com/rs/zerolog/log"
 )
 
 type ListItem struct {
@@ -81,21 +82,23 @@ const (
 
 const MaxNotableInt = 1000000000
 
+type StatAddFunction func(*StatItem, *StatItem, *pb.GameHistory, int, string, bool)
+
 type StatItem struct {
 	Name string `json:"n"`
 	// Description        string                                                         `json:"d"`
-	Minimum            int                                                            `json:"-"`
-	Maximum            int                                                            `json:"-"`
-	Total              int                                                            `json:"t"`
-	DataType           StatItemType                                                   `json:"-"`
-	IncrementType      IncrementType                                                  `json:"-"`
-	DenominatorList    []*StatItem                                                    `json:"-"`
-	Averages           []float64                                                      `json:"a"`
-	IsProfileStat      bool                                                           `json:"-"`
-	List               []*ListItem                                                    `json:"l"`
-	Subitems           map[string]int                                                 `json:"s"`
-	HasMeaningfulTotal bool                                                           `json:"h"`
-	AddFunction        func(*StatItem, *StatItem, *pb.GameHistory, int, string, bool) `json:"-"`
+	Minimum            int             `json:"-"`
+	Maximum            int             `json:"-"`
+	Total              int             `json:"t"`
+	DataType           StatItemType    `json:"-"`
+	IncrementType      IncrementType   `json:"-"`
+	DenominatorList    []*StatItem     `json:"-"`
+	Averages           []float64       `json:"a"`
+	IsProfileStat      bool            `json:"-"`
+	List               []*ListItem     `json:"l"`
+	Subitems           map[string]int  `json:"s"`
+	HasMeaningfulTotal bool            `json:"h"`
+	AddFunction        StatAddFunction `json:"-"`
 }
 
 type Stats struct {
@@ -113,6 +116,7 @@ type ProfileStats struct {
 // InstantiateNewStats instantiates a new stats object. playerOneId MUST
 // have gone first in the game.
 func InstantiateNewStats(playerOneId string, playerTwoId string) *Stats {
+	log.Debug().Str("p1id", playerOneId).Str("p2id", playerTwoId).Msg("instantiating new stats.")
 	return &Stats{
 		PlayerOneId:   playerOneId,
 		PlayerTwoId:   playerTwoId,

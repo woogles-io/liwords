@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useParams, useLocation } from 'react-router-dom';
 import { notification, Card, Table, Row, Col } from 'antd';
 import axios, { AxiosError } from 'axios';
+import { TopBar } from '../topbar/topbar';
 
 type ProfileResponse = {
   first_name: string;
@@ -61,9 +62,9 @@ const RatingsCard = (props: RatingsProps) => {
   const dataSource = variants.map((v) => ({
     key: v,
     name: v,
-    rating: props.ratings[v].r,
-    deviation: props.ratings[v].rd,
-    volatility: props.ratings[v].v,
+    rating: props.ratings[v].r.toFixed(2),
+    deviation: props.ratings[v].rd.toFixed(2),
+    volatility: props.ratings[v].v.toFixed(2),
   }));
   console.log('datasource', dataSource);
 
@@ -109,11 +110,9 @@ const StatsCard = (props: StatsProps) => {
     wins: props.stats[v].d1[27].t,
     losses: props.stats[v].d1[14].t,
     draws: props.stats[v].d1[8].t,
-    avgScore:
-      props.stats[v].d1[11].t === 0
-        ? 0
-        : props.stats[v].d1[20].t / props.stats[v].d1[11].t,
-    bingos: props.stats[v].d1[1].t,
+    avgScore: props.stats[v].d1[20].a[0].toFixed(2),
+    avgPerTurn: props.stats[v].d1[20].a[1].toFixed(2),
+    bingosPerGame: props.stats[v].d1[1].a[0].toFixed(2),
   }));
 
   const columns = [
@@ -143,9 +142,14 @@ const StatsCard = (props: StatsProps) => {
       key: 'avgScore',
     },
     {
-      title: 'Bingos',
-      dataIndex: 'bingos',
-      key: 'bingos',
+      title: 'Average Per Turn',
+      dataIndex: 'avgPerTurn',
+      key: 'avgPerTurn',
+    },
+    {
+      title: 'Bingos Per Game',
+      dataIndex: 'bingosPerGame',
+      key: 'bingosPerGame',
     },
   ];
 
@@ -156,7 +160,12 @@ const StatsCard = (props: StatsProps) => {
   );
 };
 
-export const UserProfile = () => {
+type Props = {
+  loggedIn: boolean;
+  myUsername: string;
+};
+
+export const UserProfile = (props: Props) => {
   const { username } = useParams();
   const location = useLocation();
   // Show username's profile
@@ -178,18 +187,27 @@ export const UserProfile = () => {
   return (
     <>
       <Row>
-        <Col span={24}>Profile for {username}</Col>
+        <Col span={24}>
+          <TopBar username={props.myUsername} loggedIn={props.loggedIn} />
+        </Col>
+      </Row>
+
+      <Row>
+        <Col span={12} offset={12}>
+          <h2>Profile for {username}</h2>
+        </Col>
       </Row>
       <Row gutter={16}>
         <Col span={12}>
           <RatingsCard ratings={ratings} />
         </Col>
-      </Row>
-      <Row gutter={16}>
-        <Col span={24}>
+        <Col span={12}>
           <StatsCard stats={stats} />
         </Col>
       </Row>
+      {/* <Row gutter={16}>
+
+      </Row> */}
     </>
   );
 };
