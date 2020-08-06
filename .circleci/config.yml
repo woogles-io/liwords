@@ -24,7 +24,8 @@ jobs:
 
       - run: mv /opt/liwords/data/lexica $LEXICON_PATH
       - run: cd cmd/liwords-api && go build # persist executable to workspace for deploy step
-      - run: go test ./...
+      # Tests must not be run in parallel; postgres issues happen otherwise.
+      - run: go test -p 1 ./...
       - slack/status:
           webhook: "${SLACK_WEBHOOK}"
 
