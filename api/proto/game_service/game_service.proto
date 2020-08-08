@@ -35,8 +35,14 @@ message GameInfoResponse {
   // done - is game done?
   bool done = 9;
   int32 max_overtime_minutes = 10;
+  liwords.GameEndReason game_end_reason = 11;
 }
+
+message GCGRequest { string game_id = 1; }
+
+message GCGResponse { string gcg = 1; }
 
 service GameMetadataService {
   rpc GetMetadata(GameInfoRequest) returns (GameInfoResponse);
+  rpc GetGCG(GCGRequest) returns (GCGResponse);
 }

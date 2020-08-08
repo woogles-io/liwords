@@ -6,8 +6,15 @@ jobs:
     environment:
       LEXICON_PATH: /opt/lexica/
       LETTER_DISTRIBUTION_PATH: /opt/liwords/data/letterdistributions/
+      TEST_DB_HOST: localhost
     docker:
       - image: golang:alpine
+      - image: circleci/postgres:12.3
+        environment:
+          POSTGRES_USER: postgres
+          POSTGRES_DB: liwords_test
+          POSTGRES_PASSWORD: pass
+
     working_directory: /opt/liwords
     steps:
       - checkout
@@ -17,7 +24,8 @@ jobs:
 
       - run: mv /opt/liwords/data/lexica $LEXICON_PATH
       - run: cd cmd/liwords-api && go build # persist executable to workspace for deploy step
-      - run: go test ./...
+      # Tests must not be run in parallel; postgres issues happen otherwise.
+      - run: go test -p 1 ./...
       - slack/status:
           webhook: "${SLACK_WEBHOOK}"
 

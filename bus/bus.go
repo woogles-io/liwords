@@ -58,6 +58,7 @@ func NewBus(cfg *config.Config, userStore user.Store, gameStore gameplay.GameSto
 		config:          cfg,
 		gameEventChan:   make(chan *entity.EventWrapper, 64),
 	}
+	gameStore.SetGameEventChan(bus.gameEventChan)
 
 	topics := []string{
 		// ipc.pb are generic publishes
@@ -90,6 +91,7 @@ func NewBus(cfg *config.Config, userStore user.Store, gameStore gameplay.GameSto
 // ProcessMessages is very similar to the PubsubProcess in liwords-socket,
 // but that's because they do similar things.
 func (b *Bus) ProcessMessages(ctx context.Context) {
+outerfor:
 	for {
 		select {
 		case msg := <-b.subchans["ipc.pb.>"]:
@@ -144,8 +146,14 @@ func (b *Bus) ProcessMessages(ctx context.Context) {
 					b.natsconn.Publish(topic, data)
 				}
 			}
+		case <-ctx.Done():
+			log.Info().Msg("context done, breaking")
+			break outerfor
 		}
+
 	}
+
+	log.Info().Msg("exiting processMessages loop")
 }
 
 func (b *Bus) handleNatsRequest(ctx context.Context, topic string,
@@ -218,6 +226,11 @@ func (b *Bus) handleNatsPublish(ctx context.Context, subtopics []string, data []
 		req.User.IsAnonymous = subtopics[1] == "anon"
 		req.User.UserId = subtopics[2]
 
+		err = gameplay.ValidateSoughtGame(ctx, req)
+		if err != nil {
+			return err
+		}
+
 		if req.User.IsAnonymous {
 			// Require login for now (forever?)
 			return errors.New("please log in to start a game")
@@ -285,6 +298,12 @@ func (b *Bus) handleNatsPublish(ctx context.Context, subtopics []string, data []
 			return err
 		}
 		return b.initRealmInfo(ctx, evt)
+
+	case "leaveSite":
+		// There is no event here. We have the user ID in the subject.
+		// req.User.IsAnonymous = subtopics[1] == "anon"
+		userID := subtopics[2]
+		return b.leaveSite(ctx, userID)
 	default:
 		return fmt.Errorf("unhandled-publish-topic: %v", subtopics)
 	}
@@ -292,7 +311,6 @@ func (b *Bus) handleNatsPublish(ctx context.Context, subtopics []string, data []
 }
 
 func (b *Bus) gameAccepted(ctx context.Context, evt *pb.GameAcceptedEvent, userID string) error {
-
 	sg, err := b.soughtGameStore.Get(ctx, evt.RequestId)
 	if err != nil {
 		return err
@@ -308,6 +326,11 @@ func (b *Bus) gameAccepted(ctx context.Context, evt *pb.GameAcceptedEvent, userI
 		return b.broadcastSeekDeletion(evt.RequestId)
 	}
 	// Otherwise create a game
+	// If the ACCEPTOR of the seek has a seek request open, we must cancel it.
+	err = b.deleteSoughtForUser(ctx, userID)
+	if err != nil {
+		return err
+	}
 
 	accUser, err := b.userStore.GetByUUID(ctx, userID) // acceptor
 	if err != nil {
@@ -337,7 +360,11 @@ func (b *Bus) gameAccepted(ctx context.Context, evt *pb.GameAcceptedEvent, userI
 	b.soughtGameStore.Delete(ctx, evt.RequestId)
 	err = b.broadcastSeekDeletion(evt.RequestId)
 	if err != nil {
-		return err
+		log.Err(err).Msg("broadcasting-seek")
+	}
+	err = b.broadcastGameCreation(g, accUser, reqUser)
+	if err != nil {
+		log.Err(err).Msg("broadcasting-game-creation")
 	}
 	// This event will result in a redirect.
 	ngevt := entity.WrapEvent(&pb.NewGameEvent{
@@ -373,6 +400,29 @@ func (b *Bus) broadcastSeekDeletion(seekID string) error {
 	return b.natsconn.Publish("lobby.gameAccepted", data)
 }
 
+func (b *Bus) broadcastGameCreation(g *entity.Game, acceptor, requester *entity.User) error {
+	timefmt, variant, err := entity.VariantFromGameReq(g.GameReq)
+	if err != nil {
+		return err
+	}
+	ratingKey := entity.ToVariantKey(g.GameReq.Lexicon, variant, timefmt)
+	users := []*pb.GameMeta_UserMeta{
+		{RelevantRating: acceptor.GetRelevantRating(ratingKey),
+			DisplayName: acceptor.Username},
+		{RelevantRating: requester.GetRelevantRating(ratingKey),
+			DisplayName: requester.Username},
+	}
+
+	toSend := entity.WrapEvent(&pb.GameMeta{Users: users,
+		GameRequest: g.GameReq, Id: g.GameID()},
+		pb.MessageType_GAME_META_EVENT, "")
+	data, err := toSend.Serialize()
+	if err != nil {
+		return err
+	}
+	return b.natsconn.Publish("lobby.newLiveGame", data)
+}
+
 func (b *Bus) pubToUser(userID string, evt *entity.EventWrapper) error {
 	t := time.Now()
 	sanitized, err := sanitize(evt, userID)
@@ -386,11 +436,25 @@ func (b *Bus) pubToUser(userID string, evt *entity.EventWrapper) error {
 
 func (b *Bus) initRealmInfo(ctx context.Context, evt *pb.InitRealmInfo) error {
 	if evt.Realm == "lobby" {
+		// open seeks
 		seeks, err := b.openSeeks(ctx)
 		if err != nil {
 			return err
 		}
-		return b.pubToUser(evt.UserId, seeks)
+		err = b.pubToUser(evt.UserId, seeks)
+		if err != nil {
+			return err
+		}
+		// live games
+		activeGames, err := b.activeGames(ctx)
+		if err != nil {
+			return err
+		}
+		err = b.pubToUser(evt.UserId, activeGames)
+		if err != nil {
+			return err
+		}
+		// TODO: send followed online
 	} else if strings.HasPrefix(evt.Realm, "game-") || strings.HasPrefix(evt.Realm, "gametv-") {
 		// Get a sanitized history
 		gameID := strings.Split(evt.Realm, "-")[1]
@@ -399,9 +463,26 @@ func (b *Bus) initRealmInfo(ctx context.Context, evt *pb.InitRealmInfo) error {
 			return err
 		}
 		return b.pubToUser(evt.UserId, refresher)
+	} else {
+		log.Debug().Interface("evt", evt).Msg("no init realm info")
 	}
-	log.Debug().Interface("evt", evt).Msg("no init realm info")
 	return nil
+}
+
+func (b *Bus) deleteSoughtForUser(ctx context.Context, userID string) error {
+	reqID, err := b.soughtGameStore.DeleteForUser(ctx, userID)
+	if err != nil {
+		return err
+	}
+	if reqID == "" {
+		return nil
+	}
+	log.Debug().Str("reqID", reqID).Str("userID", userID).Msg("deleting-sought")
+	return b.broadcastSeekDeletion(reqID)
+}
+
+func (b *Bus) leaveSite(ctx context.Context, userID string) error {
+	return b.deleteSoughtForUser(ctx, userID)
 }
 
 func (b *Bus) openSeeks(ctx context.Context) (*entity.EventWrapper, error) {
@@ -419,6 +500,22 @@ func (b *Bus) openSeeks(ctx context.Context) (*entity.EventWrapper, error) {
 	return evt, nil
 }
 
+func (b *Bus) activeGames(ctx context.Context) (*entity.EventWrapper, error) {
+	gs, err := b.gameStore.ListActive(ctx)
+
+	if err != nil {
+		return nil, err
+	}
+	log.Debug().Interface("active-games", gs).Msg("active-games")
+
+	pbobj := &pb.ActiveGames{Games: []*pb.GameMeta{}}
+	for _, g := range gs {
+		pbobj.Games = append(pbobj.Games, g)
+	}
+	evt := entity.WrapEvent(pbobj, pb.MessageType_ACTIVE_GAMES, "")
+	return evt, nil
+}
+
 func (b *Bus) gameRefresher(ctx context.Context, gameID string) (*entity.EventWrapper, error) {
 	// Get a game refresher event. If sanitize is true, opponent racks will be
 	// hidden from the given userID.
@@ -426,7 +523,7 @@ func (b *Bus) gameRefresher(ctx context.Context, gameID string) (*entity.EventWr
 	if err != nil {
 		return nil, err
 	}
-	if !entGame.Started() {
+	if !entGame.Started {
 		return nil, errors.New("game-starting-soon")
 	}
 	evt := entity.WrapEvent(entGame.HistoryRefresherEvent(),

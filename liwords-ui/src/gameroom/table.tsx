@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Row, Col, message, notification } from 'antd';
+import { Row, Col, message, notification, Button } from 'antd';
 import axios from 'axios';
 
 import { useParams } from 'react-router-dom';
@@ -13,7 +13,12 @@ import { MessageType, TimedOut } from '../gen/api/proto/realtime/realtime_pb';
 import { encodeToSocketFmt } from '../utils/protobuf';
 import './scss/gameroom.scss';
 import { ScoreCard } from './scorecard';
-import { GameInfo, GameMetadata, PlayerMetadata } from './game_info';
+import {
+  GameInfo,
+  GameMetadata,
+  PlayerMetadata,
+  GCGResponse,
+} from './game_info';
 import { PlayState } from '../gen/macondo/api/proto/macondo/macondo_pb';
 import { ActionType } from '../actions/actions';
 // import { GameInfoResponse } from '../gen/api/proto/game_service/game_service_pb';
@@ -60,11 +65,35 @@ export const Table = React.memo((props: Props) => {
   const { username, sendSocketMsg } = props;
   // const location = useLocation();
   const [gameInfo, setGameInfo] = useState<GameMetadata>(defaultGameInfo);
+  const [gcgText, setGCGText] = useState('');
   useEffect(() => {
     // Avoid react-router hijacking the back button.
     // If setRedirGame is not defined, then we're SOL I guess.
     setRedirGame ? setRedirGame('') : (() => {})();
   }, [setRedirGame]);
+
+  const gcgExport = () => {
+    axios
+      .post<GCGResponse>('/twirp/game_service.GameMetadataService/GetGCG', {
+        gameId: gameID,
+      })
+      .then((resp) => {
+        console.log('gcg', resp.data);
+        setGCGText(resp.data.gcg);
+      })
+      .catch((e) => {
+        if (e.response) {
+          // From Twirp
+          notification.warning({
+            message: 'Export Error',
+            description: e.response.data.msg,
+            duration: 4,
+          });
+        } else {
+          console.log(e);
+        }
+      });
+  };
 
   useEffect(() => {
     // Request game API to get info about the game at the beginning.
@@ -151,12 +180,18 @@ export const Table = React.memo((props: Props) => {
     rack = gameContext.players.find((p) => p.onturn)?.currentRack || '';
   }
 
+  // The game "starts" when the GameHistoryRefresher object comes in via the socket.
+
   return (
     <div>
       <TopBar username={props.username} loggedIn={props.loggedIn} />
       <Row gutter={gutter} className="game-table">
         <Col span={6} className="chat-area">
           <Chat chatEntities={chat} />
+          <Button type="primary" onClick={gcgExport}>
+            Export to GCG
+          </Button>
+          <pre>{gcgText}</pre>
         </Col>
         <Col span={boardspan} className="play-area">
           <BoardPanel

@@ -12,6 +12,7 @@ type Store interface {
 	GetByUUID(ctx context.Context, uuid string) (*entity.User, error)
 	New(ctx context.Context, user *entity.User) error
 	SetRating(ctx context.Context, uuid string, variant entity.VariantKey, rating entity.SingleRating) error
+	SetStats(ctx context.Context, uuid string, variant entity.VariantKey, stats *entity.Stats) error
 }
 
 // SessionStore is a session store

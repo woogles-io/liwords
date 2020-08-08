@@ -18,16 +18,25 @@ import {
   UnjoinRealm,
   TimedOut,
   TokenSocketLogin,
-  RatingMode,
+  GameMeta,
+  ActiveGames,
+  GameDeletion,
 } from '../gen/api/proto/realtime/realtime_pb';
 import { ActionType } from '../actions/actions';
 import { endGameMessage } from './end_of_game';
+import {
+  SeekRequestToSoughtGame,
+  GameMetaToActiveGame,
+} from './reducers/lobby_reducer';
 
 const makemoveMP3 = require('../assets/makemove.mp3');
 const startgameMP3 = require('../assets/startgame.mp3');
+const woofWav = require('../assets/woof.wav');
 
 const makemoveSound = new Audio(makemoveMP3);
 const startgameSound = new Audio(startgameMP3);
+const woofSound = new Audio(woofWav);
+woofSound.volume = 0.2;
 
 export const parseMsgs = (msg: Uint8Array) => {
   // Multiple msgs can come in the same packet.
@@ -54,6 +63,9 @@ export const parseMsgs = (msg: Uint8Array) => {
       [MessageType.UNJOIN_REALM]: UnjoinRealm,
       [MessageType.TIMED_OUT]: TimedOut,
       [MessageType.TOKEN_SOCKET_LOGIN]: TokenSocketLogin,
+      [MessageType.GAME_META_EVENT]: GameMeta,
+      [MessageType.ACTIVE_GAMES]: ActiveGames,
+      [MessageType.GAME_DELETION]: GameDeletion,
     };
 
     const parsedMsg = msgTypes[msgType];
@@ -81,23 +93,15 @@ export const onSocketMsg = (storeData: StoreData) => {
       switch (msgType) {
         case MessageType.SEEK_REQUEST: {
           const sr = parsedMsg as SeekRequest;
-          const gameReq = sr.getGameRequest();
-          const user = sr.getUser();
-          if (!gameReq || !user) {
+
+          const soughtGame = SeekRequestToSoughtGame(sr);
+          if (soughtGame === null) {
             return;
           }
+
           storeData.dispatchLobbyContext({
             actionType: ActionType.AddSoughtGame,
-            payload: {
-              seeker: user.getDisplayName(),
-              userRating: user.getRelevantRating(),
-              lexicon: gameReq.getLexicon(),
-              initialTimeSecs: gameReq.getInitialTimeSeconds(),
-              challengeRule: gameReq.getChallengeRule(),
-              seekID: gameReq.getRequestId(),
-              rated: gameReq.getRatingMode() === RatingMode.RATED,
-              maxOvertimeMinutes: gameReq.getMaxOvertimeMinutes(),
-            },
+            payload: soughtGame,
           });
           break;
         }
@@ -106,20 +110,9 @@ export const onSocketMsg = (storeData: StoreData) => {
           const sr = parsedMsg as SeekRequests;
           storeData.dispatchLobbyContext({
             actionType: ActionType.AddSoughtGames,
-            payload: sr.getRequestsList().map((r) => {
-              const gameReq = r.getGameRequest()!;
-              const user = r.getUser()!;
-              return {
-                seeker: user.getDisplayName(),
-                userRating: user.getRelevantRating(),
-                lexicon: gameReq.getLexicon(),
-                initialTimeSecs: gameReq.getInitialTimeSeconds(),
-                challengeRule: gameReq.getChallengeRule(),
-                seekID: gameReq.getRequestId(),
-                rated: gameReq.getRatingMode() === RatingMode.RATED,
-                maxOvertimeMinutes: gameReq.getMaxOvertimeMinutes(),
-              };
-            }),
+            payload: sr
+              .getRequestsList()
+              .map((r) => SeekRequestToSoughtGame(r)),
           });
 
           break;
@@ -195,6 +188,9 @@ export const onSocketMsg = (storeData: StoreData) => {
           const sge = parsedMsg as ServerChallengeResultEvent;
           console.log('got server challenge result event', sge);
           storeData.challengeResultEvent(sge);
+          if (!sge.getValid()) {
+            woofSound.play();
+          }
           break;
         }
 
@@ -204,6 +200,43 @@ export const onSocketMsg = (storeData: StoreData) => {
           storeData.dispatchLobbyContext({
             actionType: ActionType.RemoveSoughtGame,
             payload: gae.getRequestId(),
+          });
+          break;
+        }
+
+        case MessageType.ACTIVE_GAMES: {
+          // lobby context, set list of active games
+          const age = parsedMsg as ActiveGames;
+          console.log('got active games', age);
+          storeData.dispatchLobbyContext({
+            actionType: ActionType.AddActiveGames,
+            payload: age.getGamesList().map((g) => GameMetaToActiveGame(g)),
+          });
+          break;
+        }
+
+        case MessageType.GAME_DELETION: {
+          // lobby context, remove active game
+          const gde = parsedMsg as GameDeletion;
+          console.log('delete active game', gde);
+          storeData.dispatchLobbyContext({
+            actionType: ActionType.RemoveActiveGame,
+            payload: gde.getId(),
+          });
+          break;
+        }
+
+        case MessageType.GAME_META_EVENT: {
+          // lobby context, add active game
+          const gme = parsedMsg as GameMeta;
+          console.log('add active game', gme);
+          const activeGame = GameMetaToActiveGame(gme);
+          if (!activeGame) {
+            return;
+          }
+          storeData.dispatchLobbyContext({
+            actionType: ActionType.AddActiveGame,
+            payload: activeGame,
           });
           break;
         }

@@ -2,11 +2,14 @@ package gameplay
 
 import (
 	"context"
+	"errors"
 
 	pb "github.com/domino14/liwords/rpc/api/proto/realtime"
 
 	"github.com/domino14/liwords/pkg/entity"
 )
+
+var errAlreadyOpenReq = errors.New("you already have an open match or seek request")
 
 // SoughtGameStore is an interface for getting a sought game.
 type SoughtGameStore interface {
@@ -14,10 +17,20 @@ type SoughtGameStore interface {
 	Set(context.Context, *entity.SoughtGame) error
 	Delete(ctx context.Context, id string) error
 	ListOpen(ctx context.Context) ([]*entity.SoughtGame, error)
+	ExistsForUser(ctx context.Context, userID string) (bool, error)
+	DeleteForUser(ctx context.Context, userID string) (string, error)
 }
 
 func NewSoughtGame(ctx context.Context, gameStore SoughtGameStore,
 	req *pb.SeekRequest) (*entity.SoughtGame, error) {
+
+	exists, err := gameStore.ExistsForUser(ctx, req.User.UserId)
+	if err != nil {
+		return nil, err
+	}
+	if exists {
+		return nil, errAlreadyOpenReq
+	}
 
 	sg := entity.NewSoughtGame(req)
 	if err := gameStore.Set(ctx, sg); err != nil {
@@ -38,4 +51,15 @@ func NewMatchRequest(ctx context.Context, gameStore SoughtGameStore,
 		return nil, err
 	}
 	return sg, nil
+}
+
+// ValidateSoughtGame validates the seek request.
+func ValidateSoughtGame(ctx context.Context, req *pb.SeekRequest) error {
+	if req.GameRequest.InitialTimeSeconds < 30 {
+		return errors.New("the initial time must be at least 30 seconds")
+	}
+	if req.GameRequest.MaxOvertimeMinutes < 0 || req.GameRequest.MaxOvertimeMinutes > 5 {
+		return errors.New("overtime minutes must be between 0 and 5")
+	}
+	return nil
 }

@@ -15,6 +15,7 @@ import { Login } from './lobby/login';
 import { Register } from './lobby/register';
 import { MessageType, JoinPath } from './gen/api/proto/realtime/realtime_pb';
 import { useSocketToken } from './hooks/use_socket_token';
+import { UserProfile } from './profile/profile';
 
 const JoinSocketDelay = 1000;
 
@@ -80,9 +81,11 @@ const App = React.memo(() => {
         <Route path="/login">
           <Login />
         </Route>
-        {/* move this to /register after the alpha is done */}
-        <Route path="/secretregistrationpath">
+        <Route path="/secretwoogles">
           <Register />
+        </Route>
+        <Route path="/profile/:username">
+          <UserProfile myUsername={username} loggedIn={loggedIn} />
         </Route>
       </Switch>
     </div>

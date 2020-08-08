@@ -30,6 +30,7 @@ import (
 
 	"github.com/domino14/liwords/pkg/config"
 	"github.com/domino14/liwords/pkg/stores/user"
+	pkguser "github.com/domino14/liwords/pkg/user"
 	gameservice "github.com/domino14/liwords/rpc/api/proto/game_service"
 	userservice "github.com/domino14/liwords/rpc/api/proto/user_service"
 )
@@ -72,12 +73,19 @@ func main() {
 			hlog.FromRequest(r).Info().Str("method", method).Int("status", status).Dur("duration", d).Msg("")
 		}),
 	)
-	gameStore := game.NewMemoryStore()
+
+	tmpGameStore, err := game.NewDBStore(cfg, userStore)
+	if err != nil {
+		panic(err)
+	}
+
+	gameStore := game.NewCache(tmpGameStore)
 	soughtGameStore := soughtgame.NewMemoryStore()
 
 	authenticationService := auth.NewAuthenticationService(userStore, sessionStore, cfg.SecretKey)
 	registrationService := registration.NewRegistrationService(userStore)
 	gameService := gameplay.NewGameService(userStore, gameStore)
+	profileService := pkguser.NewProfileService(userStore)
 
 	router.Handle(userservice.AuthenticationServicePathPrefix,
 		middlewares.Then(userservice.NewAuthenticationServiceServer(authenticationService, nil)))
@@ -87,6 +95,9 @@ func main() {
 
 	router.Handle(gameservice.GameMetadataServicePathPrefix,
 		middlewares.Then(gameservice.NewGameMetadataServiceServer(gameService, nil)))
+
+	router.Handle(userservice.ProfileServicePathPrefix,
+		middlewares.Then(userservice.NewProfileServiceServer(profileService, nil)))
 
 	// Create any caches
 	alphabet.CreateLetterDistributionCache()
@@ -106,18 +117,22 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	go pubsubBus.ProcessMessages(context.Background())
+
+	ctx, pubsubCancel := context.WithCancel(context.Background())
+
+	go pubsubBus.ProcessMessages(ctx)
 
 	go func() {
 		signal.Notify(sig, syscall.SIGINT, syscall.SIGTERM)
 		<-sig
 		log.Info().Msg("got quit signal...")
-		ctx, cancel := context.WithTimeout(context.Background(), GracefulShutdownTimeout)
+		ctx, shutdownCancel := context.WithTimeout(context.Background(), GracefulShutdownTimeout)
 		if err := srv.Shutdown(ctx); err != nil {
 			// Error from closing listeners, or context timeout:
 			log.Error().Msgf("HTTP server Shutdown: %v", err)
 		}
-		cancel()
+		shutdownCancel()
+		pubsubCancel()
 		close(idleConnsClosed)
 	}()
 	log.Info().Msg("starting listening...")

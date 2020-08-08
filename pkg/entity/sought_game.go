@@ -53,3 +53,12 @@ func (sg *SoughtGame) Type() SoughtGameType {
 	}
 	return TypeNone
 }
+
+func (sg *SoughtGame) Seeker() string {
+	if sg.SeekRequest != nil {
+		return sg.SeekRequest.User.UserId
+	} else if sg.MatchRequest != nil {
+		return sg.MatchRequest.User.UserId
+	}
+	return ""
+}

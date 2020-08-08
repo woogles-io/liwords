@@ -57,6 +57,9 @@ export class GameHistory extends jspb.Message {
   getVariant(): string;
   setVariant(value: string): void;
 
+  getWinner(): number;
+  setWinner(value: number): void;
+
   serializeBinary(): Uint8Array;
   toObject(includeInstance?: boolean): GameHistory.AsObject;
   static toObject(includeInstance: boolean, msg: GameHistory): GameHistory.AsObject;
@@ -84,6 +87,7 @@ export namespace GameHistory {
     playState: PlayStateMap[keyof PlayStateMap],
     finalScoresList: Array<number>,
     variant: string,
+    winner: number,
   }
 }
 
@@ -223,6 +227,63 @@ export namespace PlayerInfo {
     nickname: string,
     realName: string,
     userId: string,
+  }
+}
+
+export class BotRequest extends jspb.Message {
+  hasGameHistory(): boolean;
+  clearGameHistory(): void;
+  getGameHistory(): GameHistory | undefined;
+  setGameHistory(value?: GameHistory): void;
+
+  serializeBinary(): Uint8Array;
+  toObject(includeInstance?: boolean): BotRequest.AsObject;
+  static toObject(includeInstance: boolean, msg: BotRequest): BotRequest.AsObject;
+  static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+  static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+  static serializeBinaryToWriter(message: BotRequest, writer: jspb.BinaryWriter): void;
+  static deserializeBinary(bytes: Uint8Array): BotRequest;
+  static deserializeBinaryFromReader(message: BotRequest, reader: jspb.BinaryReader): BotRequest;
+}
+
+export namespace BotRequest {
+  export type AsObject = {
+    gameHistory?: GameHistory.AsObject,
+  }
+}
+
+export class BotResponse extends jspb.Message {
+  hasMove(): boolean;
+  clearMove(): void;
+  getMove(): GameEvent | undefined;
+  setMove(value?: GameEvent): void;
+
+  hasError(): boolean;
+  clearError(): void;
+  getError(): string;
+  setError(value: string): void;
+
+  getResponseCase(): BotResponse.ResponseCase;
+  serializeBinary(): Uint8Array;
+  toObject(includeInstance?: boolean): BotResponse.AsObject;
+  static toObject(includeInstance: boolean, msg: BotResponse): BotResponse.AsObject;
+  static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+  static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+  static serializeBinaryToWriter(message: BotResponse, writer: jspb.BinaryWriter): void;
+  static deserializeBinary(bytes: Uint8Array): BotResponse;
+  static deserializeBinaryFromReader(message: BotResponse, reader: jspb.BinaryReader): BotResponse;
+}
+
+export namespace BotResponse {
+  export type AsObject = {
+    move?: GameEvent.AsObject,
+    error: string,
+  }
+
+  export enum ResponseCase {
+    RESPONSE_NOT_SET = 0,
+    MOVE = 1,
+    ERROR = 2,
   }
 }
 

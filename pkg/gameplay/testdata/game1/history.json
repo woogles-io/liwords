@@ -1,0 +1,78 @@
+{
+  "events": [
+    {
+      "nickname": "Mina",
+      "rack": "ADEINPR",
+      "cumulative": 76,
+      "row": 7,
+      "column": 3,
+      "position": "8D",
+      "played_tiles": "PARDINE",
+      "score": 76,
+      "is_bingo": true,
+      "words_formed": ["PARDINE"],
+      "millis_remaining": 25374
+    },
+    {
+      "nickname": "cesar4",
+      "rack": "AEEGNRW",
+      "cumulative": 22,
+      "row": 6,
+      "column": 4,
+      "direction": 1,
+      "position": "E7",
+      "played_tiles": "N.GWARE",
+      "score": 22,
+      "words_formed": ["NAGWARE"],
+      "millis_remaining": 13207
+    },
+    {
+      "nickname": "Mina",
+      "rack": "AEEKLNU",
+      "cumulative": 92,
+      "row": 6,
+      "column": 7,
+      "position": "7H",
+      "played_tiles": "LUNK",
+      "score": 16,
+      "words_formed": ["LUNK", "LI", "UN", "NE"],
+      "millis_remaining": 19374
+    },
+    {
+      "nickname": "cesar4",
+      "rack": "AAAEEOV",
+      "cumulative": 34,
+      "row": 11,
+      "column": 3,
+      "position": "12D",
+      "played_tiles": "A.EAE",
+      "score": 12,
+      "words_formed": ["AREAE"],
+      "millis_remaining": 4091
+    },
+    {
+      "nickname": "Mina",
+      "rack": "AAEEHRT",
+      "cumulative": 183,
+      "row": 12,
+      "column": 6,
+      "position": "13G",
+      "played_tiles": "HETAERA",
+      "score": 91,
+      "is_bingo": true,
+      "words_formed": ["HETAERA", "AH", "EE"],
+      "millis_remaining": 12168
+    }
+  ],
+  "players": [
+    { "nickname": "Mina", "user_id": "qUQkST8CendYA3baHNoPjk" },
+    { "nickname": "cesar4", "user_id": "xjCWug7EZtDxDHX5fRZTLo" }
+  ],
+  "id_auth": "org.aerolith",
+  "uid": "m5ktbp4qPVTqaAhg6HJMsb",
+  "description": "Created with Macondo",
+  "last_known_racks": ["DFIIOT?", "AEEORRV"],
+  "challenge_rule": 3,
+  "play_state": 2,
+  "final_scores": [183, 34]
+}

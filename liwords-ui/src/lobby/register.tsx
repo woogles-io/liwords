@@ -66,6 +66,12 @@ export const Register = () => {
 
   return (
     <>
+      <p>
+        <em>Note:</em> This is a test site, and accounts will be removed
+        shortly. Please use throwaway passwords / emails as SSL is still not
+        active on this site :)
+      </p>
+
       <Form
         {...layout}
         name="login"
