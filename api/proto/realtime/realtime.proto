@@ -83,6 +83,7 @@ enum MessageType {
   GAME_META_EVENT = 15;
   ACTIVE_GAMES = 16;
   GAME_DELETION = 17;
+  MATCH_REQUESTS = 18;
   // Add more events here. The total number of events should fit in a byte.
   // We should definitely not be using anywhere close to 255 events, and
   // in order to enforce that I'll be forcing the event type header to just be
@@ -115,6 +116,8 @@ message SeekRequest {
 message MatchRequest {
   GameRequest game_request = 1;
   RequestingUser user = 2;
+  string receiving_user = 3;
+  bool is_rematch = 4;
 }
 
 // A GameAcceptedEvent gets sent when a match request (or seek request)
@@ -125,6 +128,7 @@ message GameAcceptedEvent { string request_id = 1; }
 
 // SeekRequests sends all open seek requests.
 message SeekRequests { repeated SeekRequest requests = 1; }
+message MatchRequests { repeated MatchRequest requests = 1; }
 
 message ActiveGames { repeated GameMeta games = 1; }
 

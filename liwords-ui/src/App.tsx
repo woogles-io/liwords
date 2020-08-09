@@ -40,7 +40,10 @@ const App = React.memo(() => {
       decodeToMsg(event.data, onSocketMsg(store)),
   });
 
-  const { username, loggedIn } = useSocketToken(sendMessage, connectedToSocket);
+  const { username, userID, loggedIn } = useSocketToken(
+    sendMessage,
+    connectedToSocket
+  );
   const location = useLocation();
 
   useEffect(() => {
@@ -63,6 +66,7 @@ const App = React.memo(() => {
         <Route path="/" exact>
           <Lobby
             username={username}
+            userID={userID}
             sendSocketMsg={sendMessage}
             loggedIn={loggedIn}
             // connectedToSocket={connectedToSocket}

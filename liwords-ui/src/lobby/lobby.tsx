@@ -10,6 +10,7 @@ import {
   GameAcceptedEvent,
   GameRules,
   RatingMode,
+  MatchRequest,
 } from '../gen/api/proto/realtime/realtime_pb';
 import { encodeToSocketFmt } from '../utils/protobuf';
 import { SoughtGames } from './sought_games';
@@ -27,6 +28,7 @@ const sendSeek = (
   sendSocketMsg: (msg: Uint8Array) => void
 ) => {
   const sr = new SeekRequest();
+  const mr = new MatchRequest();
   const gr = new GameRequest();
   const rules = new GameRules();
   rules.setBoardLayoutName('CrosswordGame');
@@ -38,14 +40,21 @@ const sendSeek = (
   gr.setLexicon(game.lexicon);
   gr.setInitialTimeSeconds(game.initialTimeSecs);
   gr.setMaxOvertimeMinutes(game.maxOvertimeMinutes);
+  gr.setIncrementSeconds(game.incrementSecs);
   gr.setRules(rules);
   gr.setRatingMode(game.rated ? RatingMode.RATED : RatingMode.CASUAL);
-
-  sr.setGameRequest(gr);
-
-  sendSocketMsg(
-    encodeToSocketFmt(MessageType.SEEK_REQUEST, sr.serializeBinary())
-  );
+  if (game.receiver === '') {
+    sr.setGameRequest(gr);
+    sendSocketMsg(
+      encodeToSocketFmt(MessageType.SEEK_REQUEST, sr.serializeBinary())
+    );
+  } else {
+    mr.setGameRequest(gr);
+    mr.setReceivingUser(game.receiver);
+    sendSocketMsg(
+      encodeToSocketFmt(MessageType.MATCH_REQUEST, mr.serializeBinary())
+    );
+  }
 };
 
 const sendAccept = (
@@ -62,6 +71,7 @@ const sendAccept = (
 
 type Props = {
   username: string;
+  userID: string;
   loggedIn: boolean;
   sendSocketMsg: (msg: Uint8Array) => void;
 };
@@ -69,12 +79,15 @@ type Props = {
 export const Lobby = (props: Props) => {
   const { redirGame } = useStoreContext();
   const [seekModalVisible, setSeekModalVisible] = useState(false);
+  const [matchModalVisible, setMatchModalVisible] = useState(false);
   const [seekSettings, setSeekSettings] = useState<seekPropVals>({
     lexicon: 'CSW19',
     challengerule: ChallengeRule.FIVE_POINT,
     initialtime: 8,
     rated: false,
     maxovertime: 1,
+    friend: '',
+    incrementsecs: 0,
   });
 
   useEffect(() => {
@@ -88,7 +101,11 @@ export const Lobby = (props: Props) => {
     setSeekModalVisible(true);
   };
 
-  const handleModalOk = () => {
+  const showMatchModal = () => {
+    setMatchModalVisible(true);
+  };
+
+  const handleSeekModalOk = () => {
     setSeekModalVisible(false);
     sendSeek(
       {
@@ -100,15 +117,42 @@ export const Lobby = (props: Props) => {
         lexicon: seekSettings.lexicon as string,
         challengeRule: seekSettings.challengerule as number,
         initialTimeSecs: Math.round((seekSettings.initialtime as number) * 60),
+        incrementSecs: Math.round(seekSettings.incrementsecs as number),
         rated: seekSettings.rated as boolean,
         maxOvertimeMinutes: Math.round(seekSettings.maxovertime as number),
+        receiver: '',
       },
       props.sendSocketMsg
     );
   };
 
-  const handleModalCancel = () => {
+  const handleSeekModalCancel = () => {
     setSeekModalVisible(false);
+  };
+
+  const handleMatchModalOk = () => {
+    setMatchModalVisible(false);
+    sendSeek(
+      {
+        // These items are assigned by the server:
+        seeker: '',
+        userRating: '',
+        seekID: '',
+
+        lexicon: seekSettings.lexicon as string,
+        challengeRule: seekSettings.challengerule as number,
+        initialTimeSecs: Math.round((seekSettings.initialtime as number) * 60),
+        incrementSecs: Math.round(seekSettings.incrementsecs as number),
+        rated: seekSettings.rated as boolean,
+        maxOvertimeMinutes: Math.round(seekSettings.maxovertime as number),
+        receiver: seekSettings.friend as string,
+      },
+      props.sendSocketMsg
+    );
+  };
+
+  const handleMatchModalCancel = () => {
+    setMatchModalVisible(false);
   };
 
   if (redirGame !== '') {
@@ -136,9 +180,10 @@ export const Lobby = (props: Props) => {
         </Col>
       </Row>
       <Row style={{ marginTop: 24 }}>
-        >
         <Col span={12} offset={6}>
           <SoughtGames
+            userID={props.userID}
+            username={props.username}
             newGame={(seekID: string) =>
               sendAccept(seekID, props.sendSocketMsg)
             }
@@ -147,24 +192,45 @@ export const Lobby = (props: Props) => {
       </Row>
 
       <Row style={{ marginTop: 24 }}>
-        <Col span={12} offset={6}>
+        <Col offset={8} span={4}>
           <Button type="primary" onClick={showSeekModal}>
-            New Game
+            Create New Game
           </Button>
           <Modal
-            title="New Game"
+            title="Seek New Game"
             visible={seekModalVisible}
-            onOk={handleModalOk}
-            onCancel={handleModalCancel}
+            onOk={handleSeekModalOk}
+            onCancel={handleSeekModalCancel}
           >
             <SeekForm
               vals={seekSettings}
               onChange={setSeekSettings}
               loggedIn={props.loggedIn}
+              showFriendInput={false}
+            />
+          </Modal>
+        </Col>
+
+        <Col span={4}>
+          <Button type="primary" onClick={showMatchModal}>
+            Match a Friend
+          </Button>
+          <Modal
+            title="Match a Friend"
+            visible={matchModalVisible}
+            onOk={handleMatchModalOk}
+            onCancel={handleMatchModalCancel}
+          >
+            <SeekForm
+              vals={seekSettings}
+              onChange={setSeekSettings}
+              loggedIn={props.loggedIn}
+              showFriendInput={true}
             />
           </Modal>
         </Col>
       </Row>
+
       <Divider />
       <Row style={{ marginTop: 10 }}>
         <Col span={12} offset={6}>

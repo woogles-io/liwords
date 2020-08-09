@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Button, Modal } from 'antd';
+import { Button } from 'antd';
 import { Link } from 'react-router-dom';
 import { ExchangeTiles } from './exchange_tiles';
 
@@ -11,6 +11,7 @@ type Props = {
   onCommit: () => void;
   onRematch: () => void;
   gameEndControls: boolean;
+  showRematch: boolean;
   currentRack: string;
 };
 
@@ -54,7 +55,12 @@ const GameControls = React.memo((props: Props) => {
   };
 
   if (props.gameEndControls) {
-    return <EndGameControls onRematch={props.onRematch} />;
+    return (
+      <EndGameControls
+        onRematch={props.onRematch}
+        showRematch={props.showRematch}
+      />
+    );
   }
 
   return (
@@ -87,6 +93,7 @@ const GameControls = React.memo((props: Props) => {
 
 type EGCProps = {
   onRematch: () => void;
+  showRematch: boolean;
 };
 
 const EndGameControls = (props: EGCProps) => (
@@ -96,9 +103,11 @@ const EndGameControls = (props: EGCProps) => (
     <Button>
       <Link to="/">Exit</Link>
     </Button>
-    <Button type="primary" onClick={props.onRematch}>
-      Rematch
-    </Button>
+    {props.showRematch && (
+      <Button type="primary" onClick={props.onRematch}>
+        Rematch
+      </Button>
+    )}
   </div>
 );
 

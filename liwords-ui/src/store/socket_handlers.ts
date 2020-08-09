@@ -21,6 +21,7 @@ import {
   GameMeta,
   ActiveGames,
   GameDeletion,
+  MatchRequests,
 } from '../gen/api/proto/realtime/realtime_pb';
 import { ActionType } from '../actions/actions';
 import { endGameMessage } from './end_of_game';
@@ -66,6 +67,7 @@ export const parseMsgs = (msg: Uint8Array) => {
       [MessageType.GAME_META_EVENT]: GameMeta,
       [MessageType.ACTIVE_GAMES]: ActiveGames,
       [MessageType.GAME_DELETION]: GameDeletion,
+      [MessageType.MATCH_REQUESTS]: MatchRequests,
     };
 
     const parsedMsg = msgTypes[msgType];
@@ -115,6 +117,32 @@ export const onSocketMsg = (storeData: StoreData) => {
               .map((r) => SeekRequestToSoughtGame(r)),
           });
 
+          break;
+        }
+
+        case MessageType.MATCH_REQUEST: {
+          const mr = parsedMsg as MatchRequest;
+
+          const soughtGame = SeekRequestToSoughtGame(mr);
+          if (soughtGame === null) {
+            return;
+          }
+
+          storeData.dispatchLobbyContext({
+            actionType: ActionType.AddMatchRequest,
+            payload: soughtGame,
+          });
+          break;
+        }
+
+        case MessageType.MATCH_REQUESTS: {
+          const mr = parsedMsg as MatchRequests;
+          storeData.dispatchLobbyContext({
+            actionType: ActionType.AddMatchRequests,
+            payload: mr
+              .getRequestsList()
+              .map((r) => SeekRequestToSoughtGame(r)),
+          });
           break;
         }
 

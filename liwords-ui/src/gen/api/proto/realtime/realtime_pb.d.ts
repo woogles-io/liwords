@@ -241,6 +241,12 @@ export class MatchRequest extends jspb.Message {
   getUser(): RequestingUser | undefined;
   setUser(value?: RequestingUser): void;
 
+  getReceivingUser(): string;
+  setReceivingUser(value: string): void;
+
+  getIsRematch(): boolean;
+  setIsRematch(value: boolean): void;
+
   serializeBinary(): Uint8Array;
   toObject(includeInstance?: boolean): MatchRequest.AsObject;
   static toObject(includeInstance: boolean, msg: MatchRequest): MatchRequest.AsObject;
@@ -255,6 +261,8 @@ export namespace MatchRequest {
   export type AsObject = {
     gameRequest?: GameRequest.AsObject,
     user?: RequestingUser.AsObject,
+    receivingUser: string,
+    isRematch: boolean,
   }
 }
 
@@ -297,6 +305,28 @@ export class SeekRequests extends jspb.Message {
 export namespace SeekRequests {
   export type AsObject = {
     requestsList: Array<SeekRequest.AsObject>,
+  }
+}
+
+export class MatchRequests extends jspb.Message {
+  clearRequestsList(): void;
+  getRequestsList(): Array<MatchRequest>;
+  setRequestsList(value: Array<MatchRequest>): void;
+  addRequests(value?: MatchRequest, index?: number): MatchRequest;
+
+  serializeBinary(): Uint8Array;
+  toObject(includeInstance?: boolean): MatchRequests.AsObject;
+  static toObject(includeInstance: boolean, msg: MatchRequests): MatchRequests.AsObject;
+  static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+  static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+  static serializeBinaryToWriter(message: MatchRequests, writer: jspb.BinaryWriter): void;
+  static deserializeBinary(bytes: Uint8Array): MatchRequests;
+  static deserializeBinaryFromReader(message: MatchRequests, reader: jspb.BinaryReader): MatchRequests;
+}
+
+export namespace MatchRequests {
+  export type AsObject = {
+    requestsList: Array<MatchRequest.AsObject>,
   }
 }
 
@@ -654,6 +684,7 @@ export interface MessageTypeMap {
   GAME_META_EVENT: 15;
   ACTIVE_GAMES: 16;
   GAME_DELETION: 17;
+  MATCH_REQUESTS: 18;
 }
 
 export const MessageType: MessageTypeMap;

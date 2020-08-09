@@ -201,6 +201,7 @@ export const Table = React.memo((props: Props) => {
             currentRack={rack || ''}
             gameID={gameID}
             sendSocketMsg={props.sendSocketMsg}
+            gameDone={gameInfo.done}
           />
         </Col>
         <Col span={6} className="data-area">

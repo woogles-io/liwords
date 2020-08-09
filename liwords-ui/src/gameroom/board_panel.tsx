@@ -3,7 +3,7 @@ import { Button, Modal, notification } from 'antd';
 import { ArrowDownOutlined, SyncOutlined } from '@ant-design/icons';
 import GameBoard from './board';
 import GameControls from './game_controls';
-import Rack from './rack';
+import { Rack } from './rack';
 import {
   nextArrowPropertyState,
   handleKeyPress,
@@ -36,6 +36,7 @@ type Props = {
   gameID: string;
   board: Board;
   sendSocketMsg: (msg: Uint8Array) => void;
+  gameDone: boolean;
 };
 
 const shuffleString = (a: string): string => {
@@ -326,7 +327,8 @@ export const BoardPanel = React.memo((props: Props) => {
         onChallenge={() => makeMove('challenge')}
         onCommit={() => makeMove('commit')}
         onRematch={rematch}
-        gameEndControls={gameEndMessage !== ''}
+        showRematch={gameEndMessage !== ''}
+        gameEndControls={gameEndMessage !== '' || props.gameDone}
         currentRack={props.currentRack}
       />
       <Modal

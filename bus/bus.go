@@ -210,60 +210,105 @@ func (b *Bus) handleNatsRequest(ctx context.Context, topic string,
 	return nil
 }
 
+// A somewhat silly function to get around Go's lack of generics
+func setRequestingUser(msg proto.Message, reqUser *pb.RequestingUser) {
+	switch sought := msg.(type) {
+	case *pb.SeekRequest:
+		sought.User = reqUser
+	case *pb.MatchRequest:
+		// lol
+		sought.User = reqUser
+	}
+}
+
 func (b *Bus) handleNatsPublish(ctx context.Context, subtopics []string, data []byte) error {
 	log.Debug().Interface("subtopics", subtopics).Msg("handling nats publish")
 	switch subtopics[0] {
-	case "seekRequest":
-		req := &pb.SeekRequest{}
+	case "seekRequest", "matchRequest":
+		var req proto.Message
+		var gameRequest *pb.GameRequest
+
+		if subtopics[1] == "anon" {
+			// Require login for now (forever?)
+			return errors.New("please log in to start a game")
+		}
+
+		st := subtopics[0]
+
+		if st == "seekRequest" {
+			req = &pb.SeekRequest{}
+		} else {
+			req = &pb.MatchRequest{}
+		}
 		err := proto.Unmarshal(data, req)
 		if err != nil {
 			return err
 		}
+
+		if st == "seekRequest" {
+			gameRequest = req.(*pb.SeekRequest).GameRequest
+		} else {
+			gameRequest = req.(*pb.MatchRequest).GameRequest
+		}
 		// Note that the seek request should not come with a requesting user;
 		// instead this is in the topic/subject. It is HERE in the API server that
 		// we set the requesting user's display name, rating, etc.
-		req.User = &pb.RequestingUser{}
-		req.User.IsAnonymous = subtopics[1] == "anon"
-		req.User.UserId = subtopics[2]
+		reqUser := &pb.RequestingUser{}
+		reqUser.IsAnonymous = subtopics[1] == "anon" // this is never true here anymore, see check above
+		reqUser.UserId = subtopics[2]
+		setRequestingUser(req, reqUser)
 
-		err = gameplay.ValidateSoughtGame(ctx, req)
+		err = gameplay.ValidateSoughtGame(ctx, gameRequest)
 		if err != nil {
 			return err
 		}
 
-		if req.User.IsAnonymous {
-			// Require login for now (forever?)
-			return errors.New("please log in to start a game")
-			/*
-				req.User.DisplayName = entity.DeterministicUsername(req.User.UserId)
-				req.User.RelevantRating = "Unrated"
-				if req.GameRequest.RatingMode != pb.RatingMode_CASUAL {
-					return errors.New("anonymous-games-must-be-unrated")
-				}*/
-		} else {
-			// Look up user.
-			timefmt, variant, err := entity.VariantFromGameReq(req.GameRequest)
-			ratingKey := entity.ToVariantKey(req.GameRequest.Lexicon, variant, timefmt)
+		// Look up user.
+		timefmt, variant, err := entity.VariantFromGameReq(gameRequest)
+		ratingKey := entity.ToVariantKey(gameRequest.Lexicon, variant, timefmt)
 
-			u, err := b.userStore.GetByUUID(ctx, req.User.UserId)
+		u, err := b.userStore.GetByUUID(ctx, reqUser.UserId)
+		if err != nil {
+			return err
+		}
+		reqUser.RelevantRating = u.GetRelevantRating(ratingKey)
+		reqUser.DisplayName = u.Username
+
+		if st == "seekRequest" {
+			sg, err := gameplay.NewSoughtGame(ctx, b.soughtGameStore, req.(*pb.SeekRequest))
 			if err != nil {
 				return err
 			}
-			req.User.RelevantRating = u.GetRelevantRating(ratingKey)
-			req.User.DisplayName = u.Username
+			evt := entity.WrapEvent(sg.SeekRequest, pb.MessageType_SEEK_REQUEST, "")
+			data, err := evt.Serialize()
+			if err != nil {
+				return err
+			}
+
+			log.Debug().Interface("evt", evt).Msg("publishing seek request to lobby topic")
+			b.natsconn.Publish("lobby.seekRequest", data)
+		} else {
+			// Check if the user being matched exists.
+			receiver, err := b.userStore.Get(ctx, req.(*pb.MatchRequest).ReceivingUser)
+			if err != nil {
+				// No such user, most likely.
+				return err
+			}
+			// Overwrite the username with the actual UUID of the receiving user.
+			req.(*pb.MatchRequest).ReceivingUser = receiver.UUID
+			mg, err := gameplay.NewMatchRequest(ctx, b.soughtGameStore, req.(*pb.MatchRequest))
+			if err != nil {
+				return err
+			}
+			evt := entity.WrapEvent(mg.MatchRequest, pb.MessageType_MATCH_REQUEST, "")
+			log.Debug().Interface("evt", evt).Str("receiver", mg.MatchRequest.ReceivingUser).
+				Str("sender", reqUser.UserId).Msg("publishing match request to user")
+			b.pubToUser(receiver.UUID, evt)
+			// Publish it to the requester as well. This is so they can see it on
+			// their own screen and cancel it if they wish.
+			b.pubToUser(reqUser.UserId, evt)
 		}
 
-		sg, err := gameplay.NewSoughtGame(ctx, b.soughtGameStore, req)
-		if err != nil {
-			return err
-		}
-		evt := entity.WrapEvent(sg.SeekRequest, pb.MessageType_SEEK_REQUEST, "")
-		data, err := evt.Serialize()
-		if err != nil {
-			return err
-		}
-		log.Debug().Interface("evt", evt).Msg("publishing seek request to lobby topic")
-		b.natsconn.Publish("lobby.seekRequest", data)
 	case "gameAccepted":
 		evt := &pb.GameAcceptedEvent{}
 		err := proto.Unmarshal(data, evt)
@@ -315,7 +360,15 @@ func (b *Bus) gameAccepted(ctx context.Context, evt *pb.GameAcceptedEvent, userI
 	if err != nil {
 		return err
 	}
-	requester := sg.SeekRequest.User.UserId
+	var requester string
+	var gameReq *pb.GameRequest
+	if sg.Type() == entity.TypeSeek {
+		requester = sg.SeekRequest.User.UserId
+		gameReq = sg.SeekRequest.GameRequest
+	} else if sg.Type() == entity.TypeMatch {
+		requester = sg.MatchRequest.User.UserId
+		gameReq = sg.MatchRequest.GameRequest
+	}
 	if requester == userID {
 		log.Info().Str("sender", requester).Msg("canceling seek")
 		err := gameplay.CancelSoughtGame(ctx, b.soughtGameStore, evt.RequestId)
@@ -345,14 +398,14 @@ func (b *Bus) gameAccepted(ctx context.Context, evt *pb.GameAcceptedEvent, userI
 		return errors.New("you must log in to play games")
 	}
 
-	if (accUser.Anonymous || reqUser.Anonymous) && sg.SeekRequest.GameRequest.RatingMode == pb.RatingMode_RATED {
+	if (accUser.Anonymous || reqUser.Anonymous) && gameReq.RatingMode == pb.RatingMode_RATED {
 		return errors.New("anonymous-players-cant-play-rated")
 	}
 
-	log.Debug().Interface("seekreq", sg.SeekRequest).Msg("seek-request-accepted")
+	log.Debug().Interface("req", sg).Msg("game-request-accepted")
 
 	g, err := gameplay.InstantiateNewGame(ctx, b.gameStore, b.config,
-		[2]*entity.User{accUser, reqUser}, sg.SeekRequest.GameRequest)
+		[2]*entity.User{accUser, reqUser}, gameReq)
 	if err != nil {
 		return err
 	}
@@ -454,6 +507,15 @@ func (b *Bus) initRealmInfo(ctx context.Context, evt *pb.InitRealmInfo) error {
 		if err != nil {
 			return err
 		}
+		// open match reqs
+		matches, err := b.openMatches(ctx, evt.UserId)
+		if err != nil {
+			return err
+		}
+		err = b.pubToUser(evt.UserId, matches)
+		if err != nil {
+			return err
+		}
 		// TODO: send followed online
 	} else if strings.HasPrefix(evt.Realm, "game-") || strings.HasPrefix(evt.Realm, "gametv-") {
 		// Get a sanitized history
@@ -486,7 +548,7 @@ func (b *Bus) leaveSite(ctx context.Context, userID string) error {
 }
 
 func (b *Bus) openSeeks(ctx context.Context) (*entity.EventWrapper, error) {
-	sgs, err := b.soughtGameStore.ListOpen(ctx)
+	sgs, err := b.soughtGameStore.ListOpenSeeks(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -497,6 +559,20 @@ func (b *Bus) openSeeks(ctx context.Context) (*entity.EventWrapper, error) {
 		pbobj.Requests = append(pbobj.Requests, sg.SeekRequest)
 	}
 	evt := entity.WrapEvent(pbobj, pb.MessageType_SEEK_REQUESTS, "")
+	return evt, nil
+}
+
+func (b *Bus) openMatches(ctx context.Context, receiverID string) (*entity.EventWrapper, error) {
+	sgs, err := b.soughtGameStore.ListOpenMatches(ctx, receiverID)
+	if err != nil {
+		return nil, err
+	}
+	log.Debug().Str("receiver", receiverID).Interface("open-matches", sgs).Msg("open-seeks")
+	pbobj := &pb.MatchRequests{Requests: []*pb.MatchRequest{}}
+	for _, sg := range sgs {
+		pbobj.Requests = append(pbobj.Requests, sg.MatchRequest)
+	}
+	evt := entity.WrapEvent(pbobj, pb.MessageType_MATCH_REQUESTS, "")
 	return evt, nil
 }
 

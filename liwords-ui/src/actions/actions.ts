@@ -8,6 +8,10 @@ export enum ActionType {
   AddSoughtGame,
   AddSoughtGames,
   RemoveSoughtGame,
+
+  AddMatchRequest,
+  AddMatchRequests,
+
   AddActiveGame,
   AddActiveGames,
   RemoveActiveGame,
