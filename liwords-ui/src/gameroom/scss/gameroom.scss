@@ -357,6 +357,8 @@
     padding: 12px 24px;
     line-height: 1.6em;
     letter-spacing: 0.21em;
+    max-height: 80px;
+    overflow-y: auto;
     .pool-section {
       word-break: break-word;
     }
@@ -427,6 +429,8 @@
 .score-card {
   .ant-card-body {
     padding: 0;
+    max-height: 140px;
+    overflow-y: auto;
     & > div {
       padding: 8px 16px 16px;
     }
