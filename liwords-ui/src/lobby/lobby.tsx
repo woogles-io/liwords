@@ -122,7 +122,19 @@ export const Lobby = (props: Props) => {
           <TopBar username={props.username} loggedIn={props.loggedIn} />
         </Col>
       </Row>
-
+      <Row>
+        <Col span={24}>
+          <h3>Woogles is coming soon!</h3>
+          <p>
+            Please back our{' '}
+            <a href="https://www.kickstarter.com/projects/woogles/woogles">
+              {' '}
+              Kickstarter.
+            </a>{' '}
+            We're a nonprofit and are counting on you.
+          </p>
+        </Col>
+      </Row>
       <Row>
         <Col span={24}>
           <h3>Lobby</h3>

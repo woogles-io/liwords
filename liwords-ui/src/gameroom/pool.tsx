@@ -107,8 +107,9 @@ const Pool = React.memo((props: Props) => {
       </a>
     </Dropdown>
   );
-  const renderContents = (
+  const renderContents = (title?: string) => (
     <div className="pool">
+      {title ? <p className="label">{title}</p> : null}
       <div className="tiles-remaining">{letterSections}</div>
       <div className="vc-distribution">
         <div>{getPoolCount(pool, VOWELS)} vowels</div>
@@ -116,8 +117,9 @@ const Pool = React.memo((props: Props) => {
       </div>
     </div>
   );
+  const title = `${getPoolCount(pool)} tiles unseen`;
   if (props.omitCard) {
-    return <>{renderContents}</>;
+    return <>{renderContents(title)}</>;
   }
   return (
     <Card
@@ -125,7 +127,7 @@ const Pool = React.memo((props: Props) => {
       title={`${getPoolCount(pool)} tiles unseen`}
       extra={dropDown}
     >
-      {renderContents}
+      {renderContents()}
     </Card>
   );
 });

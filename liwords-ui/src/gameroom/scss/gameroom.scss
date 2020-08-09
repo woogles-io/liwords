@@ -1,7 +1,16 @@
 @import '../../base';
+@include button;
+
+.ant-modal-footer {
+  display: flex;
+  align-items: flex-end;
+  justify-content: flex-end;
+  .ant-btn {
+    margin-left: 16px;
+  }
+}
 
 .game-table {
-  @include button;
   padding: 16px;
   max-width: $screen-desktop-max;
   margin: 0 auto !important;
@@ -183,6 +192,9 @@
 .ant-modal .rack {
   height: auto;
 }
+.ant-modal-header {
+  border: 0;
+}
 
 .rack-container {
   display: flex;
@@ -260,6 +272,24 @@
   }
 }
 
+.exchange .rack .tile {
+  width: 44px;
+  height: 44px;
+  &.selected {
+    position: relative;
+    top: -30px;
+    box-shadow: $card-shadow;
+  }
+  .rune {
+    font-size: 30px;
+    line-height: 35px;
+  }
+  .point-value {
+    font-size: 10px;
+    padding: 8px 3px;
+  }
+}
+
 .blank-selector {
   display: flex;
   flex-wrap: wrap;
@@ -324,17 +354,47 @@
   .tiles-remaining {
     @include type-monospace;
     font-size: 13px;
-    padding: 0px 24px 12px;
+    padding: 12px 24px;
     line-height: 1.6em;
     letter-spacing: 0.21em;
-    max-height: 80px;
-    overflow-y: auto;
     .pool-section {
       word-break: break-word;
     }
     .letter-group {
       // white-space: pre would lock each rune group to a single line if we ever want that
       white-space: normal;
+    }
+  }
+}
+.exchange {
+  .pool {
+    .label {
+      margin: 0;
+    }
+    .vc-distribution {
+      border-radius: 0;
+      background: transparent;
+      justify-content: space-between;
+      div {
+        background-color: $color-primary-dark;
+        border-radius: 8px;
+        width: calc(50% - 4px);
+        letter-spacing: 1px;
+
+        &:first-child {
+          background-color: $color-primary-middle;
+        }
+      }
+    }
+
+    .tiles-remaining {
+      padding: 12px 0;
+      max-height: none;
+      font-size: 16px;
+      font-weight: 500;
+      line-height: 28px;
+      overflow-y: visible;
+      font-weight: bold;
     }
   }
 }
@@ -369,8 +429,6 @@
     padding: 0;
     & > div {
       padding: 8px 16px 16px;
-      max-height: 150px;
-      overflow-y: auto;
     }
   }
   .player-avatar {
@@ -400,10 +458,6 @@
 @media (min-width: $screen-tablet-min) {
   .game-table {
     max-width: $screen-tablet-min;
-  }
-  .pool .tiles-remaining {
-    max-height: 110px;
-    overflow-y: auto;
   }
 }
 
@@ -445,7 +499,7 @@
     height: 3vw;
   }
 }
-@media (min-width: $screen-desktop-min) {
+@media (min-height: 800px) and (min-width: $screen-desktop-min) {
   .game-table {
     max-width: $screen-desktop-min;
     .ant-card .ant-card-head {
@@ -497,10 +551,6 @@
     .vc-distribution {
       font-size: 14px;
     }
-    .tiles-remaining {
-      font-size: 16px;
-      line-height: 2em;
-    }
   }
   .score-card {
     .turn {
@@ -523,12 +573,9 @@
   }
 }
 
-@media (min-width: $screen-desktop-max) {
+@media (min-height: 810px) and (min-width: $screen-desktop-max) {
   .game-table {
     max-width: $screen-desktop-max;
-  }
-  .pool .tiles-remaining {
-    max-height: 180px;
   }
   .rack .tile {
     width: 44px;

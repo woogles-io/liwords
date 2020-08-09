@@ -1,11 +1,12 @@
-@import "base";
+@import 'base';
 .App {
   background-color: white;
   /* Prevent squashing board until we get to responsive for mobile */
   min-width: $screen-tablet-min;
   a {
     color: $color-primary-dark;
-    &:hover, &:active {
+    &:hover,
+    &:active {
       color: $color-primary-midDark;
     }
   }
@@ -15,7 +16,6 @@
   height: 40vmin;
   pointer-events: none;
 }
-
 
 .App-header {
   background-color: #282c34;
@@ -43,8 +43,6 @@
   }
 }
 
-
-
 @media (prefers-reduced-motion: no-preference) {
   .App-logo {
     animation: App-logo-spin infinite 20s linear;
@@ -63,4 +61,3 @@
 /* g:focus {
   outline: none;
 } */
-
