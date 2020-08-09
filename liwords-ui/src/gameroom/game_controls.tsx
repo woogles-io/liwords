@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Button, Modal } from 'antd';
+import { Button } from 'antd';
 import { ExchangeTiles } from './exchange_tiles';
 
 type Props = {
@@ -52,8 +52,6 @@ const GameControls = React.memo((props: Props) => {
 
   return (
     <div className="game-controls">
-      <Button>Options</Button>
-
       <Button onClick={props.onPass} danger>
         Pass
       </Button>
@@ -65,18 +63,15 @@ const GameControls = React.memo((props: Props) => {
       <Button type="primary" onClick={showChallengeModal}>
         Exchange
       </Button>
-      <Modal
-        title="Exchange tiles"
-        visible={modalVisible}
+
+      <ExchangeTiles
+        rack={props.currentRack}
+        exchangedRack={exchangedRack}
+        selectTile={(idx) => selectTileForExchange(idx)}
+        modalVisible={modalVisible}
         onOk={handleModalOk}
         onCancel={handleModalCancel}
-      >
-        <ExchangeTiles
-          rack={props.currentRack}
-          exchangedRack={exchangeSetToString(props.currentRack, exchangedRack)}
-          selectTile={(idx) => selectTileForExchange(idx)}
-        />
-      </Modal>
+      />
 
       <Button type="primary" onClick={props.onCommit}>
         Play

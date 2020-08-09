@@ -33,6 +33,13 @@ const TILE_STYLES: { [name: string]: TileStyle } = {
     blankTextColor: '#fe1111',
     strokeWidth: '0px',
   },
+  primarySelectedForExchange: {
+    backgroundColor: colors.colorPrimary,
+    outline: colors.colorPrimary,
+    color: '#ffffff',
+    blankTextColor: '#fe1111',
+    strokeWidth: '0px',
+  },
 };
 
 type TileLetterProps = {
@@ -71,6 +78,7 @@ type TileProps = {
   tentativeScore?: number;
   grabbable: boolean;
   rackIndex?: number | undefined;
+  selected?: boolean;
   swapRackTiles?: (
     indexA: number | undefined,
     indexB: number | undefined
@@ -92,6 +100,9 @@ const Tile = React.memo((props: TileProps) => {
   }
   if (props.tentative) {
     tileStyle = TILE_STYLES.primaryTentative;
+  }
+  if (props.selected) {
+    tileStyle = TILE_STYLES.primarySelectedForExchange;
   }
 
   const handleStartDrag = (e: any) => {
@@ -133,7 +144,7 @@ const Tile = React.memo((props: TileProps) => {
 
   const computedClassName = `tile${isDragging ? ' dragging' : ''}${
     props.grabbable ? ' droppable' : ''
-  }`;
+  }${props.selected ? ' selected' : ''}`;
   return (
     <div
       className={computedClassName}

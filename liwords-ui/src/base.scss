@@ -1,35 +1,39 @@
 $card-shadow: 0px 0px 12px rgba(0, 0, 0, 0.15);
+$card-shadow-lower: 0px 0px 6px rgba(0, 0, 0, 0.15);
 $card-padding: 16px;
 $card-padding-md: ($card-padding / 2);
 
 /* colors */
 
-$color-primary-light: #E2F8FF;
-$color-primary-middle: #C9F0FF;
-$color-primary-midDark: #3B88CA;
-$color-primary-dark: #2D6A9E;
-$color-secondary: #6B268B;
-$color-secondary-light: #D5CAD6;
-$color-secondary-medium: #97699B;
-$color-timer-light: #E5FFDF;
-$color-timer-dark: #449E2D;
-$color-timer-low-light: #FFF4D8;
-$color-timer-low-dark: #F4B000;
-$color-timer-out-light: #FFEAEA;
-$color-timer-out-dark: #A92E2E;
+$color-primary-light: #e2f8ff;
+$color-primary-middle: #c9f0ff;
+$color-primary-midDark: #3b88ca;
+$color-primary-dark: #2d6a9e;
+$color-secondary: #6b268b;
+$color-secondary-light: #d5cad6;
+$color-secondary-medium: #97699b;
+$color-timer-light: #e5ffdf;
+$color-timer-dark: #449e2d;
+$color-timer-low-light: #fff4d8;
+$color-timer-low-dark: #f4b000;
+$color-timer-out-light: #ffeaea;
+$color-timer-out-dark: #a92e2e;
 
-
-$color-board-dls: desaturate(darken(#E2F8FF, 10%), 25%);
-$color-board-dws: desaturate(darken(#FFEAEA, 10%), 25%);
-$color-board-tws: #A92E2E;
-$color-board-tls: #3B88CA;
+$color-board-dls: desaturate(darken(#e2f8ff, 10%), 25%);
+$color-board-dws: desaturate(darken(#ffeaea, 10%), 25%);
+$color-board-tws: #a92e2e;
+$color-board-tls: #3b88ca;
 $color-board-empty: white;
+
+$color-gray-middle: #bebebe;
 
 // Magic that makes variables available to the tsx code
 :export {
   colorSecondary: $color-secondary;
   colorSecondaryMedium: $color-secondary-medium;
   colorSecondaryLight: $color-secondary-light;
+
+  colorPrimary: $color-primary-dark;
 
   colorBoardDLS: $color-board-dls;
   colorBoardDWS: $color-board-dws;
@@ -44,7 +48,7 @@ $screen-desktop-min: 1280px;
 $screen-desktop-max: 1440px;
 
 $font-deco: 'Fjalla One', sans-serif;
-$font-default:  'Muli', sans-serif;
+$font-default: 'Muli', sans-serif;
 $font-monospaced: 'Roboto Mono', monospace;
 
 @mixin type-default {
@@ -69,23 +73,55 @@ $font-monospaced: 'Roboto Mono', monospace;
 
 @mixin button {
   /* buttons */
-  button.ant-btn {
+  button.ant-btn,
+  button.ant-btn-primary,
+  .ant-modal-root button.ant-btn-secondary {
     height: 36px;
     margin: 6px 3px;
-    font-weight: bold;
+    font-weight: 500;
     background: white;
     text-transform: uppercase;
-    &, &:hover {
+    transition: none;
+    &,
+    &:hover,
+    &:focus,
+    &:visited,
+    &:active {
       border-color: $color-primary-dark;
       color: $color-primary-dark;
+      background: white;
+      transition: none;
     }
+  }
+
+  button.ant-modal-close {
+    transition: none;
   }
 
   button.ant-btn-circle {
     height: 32px;
   }
+
+  button.ant-btn-primary {
+    height: 36px;
+    margin: 6px 3px;
+    background: $color-primary-dark;
+    color: white;
+    text-transform: uppercase;
+    border-radius: 3px;
+    transition: none;
+    &,
+    &:hover,
+    &:focus,
+    &:visited,
+    &:active {
+      background: $color-primary-dark;
+      color: white;
+      transition: none;
+    }
+    &:disabled {
+      background: $color-gray-middle;
+      color: white;
+    }
+  }
 }
-
-
-
-

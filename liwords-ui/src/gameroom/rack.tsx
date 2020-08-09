@@ -12,6 +12,7 @@ type Props = {
   letters: string;
   grabbable: boolean;
   onTileClick?: (idx: number) => void;
+  selected?: Set<number>;
   swapRackTiles: (
     indexA: number | undefined,
     indexB: number | undefined
@@ -57,6 +58,7 @@ export const Rack = React.memo((props: Props) => {
           lastPlayed={false}
           key={`tile_${n}`}
           scale={false}
+          selected={props.selected && props.selected.has(n)}
           grabbable={props.grabbable}
           rackIndex={n}
           returnToRack={props.returnToRack}
