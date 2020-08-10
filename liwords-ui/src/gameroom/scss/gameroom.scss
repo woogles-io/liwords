@@ -14,7 +14,11 @@
   padding: 16px;
   max-width: $screen-desktop-max;
   margin: 0 auto !important;
+  p {
+    color: white;
+  }
 }
+
 .ant-card {
   box-shadow: $card-shadow;
   border-radius: 8px;
@@ -261,6 +265,7 @@
   margin: 0;
   font-size: 0.6vw;
   font-weight: bold;
+  color: white;
 }
 
 .rack .tile {
@@ -357,7 +362,7 @@
     padding: 12px 24px;
     line-height: 1.6em;
     letter-spacing: 0.21em;
-    max-height: 80px;
+    max-height: 150px;
     overflow-y: auto;
     .pool-section {
       word-break: break-word;
@@ -589,5 +594,10 @@
   .empty-space {
     height: auto;
     width: auto;
+  }
+  .score-card {
+    .ant-card-body {
+      max-height: 170px;
+    }
   }
 }
