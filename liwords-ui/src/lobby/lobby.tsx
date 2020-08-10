@@ -194,7 +194,7 @@ export const Lobby = (props: Props) => {
       <Row style={{ marginTop: 24 }}>
         <Col offset={8} span={4}>
           <Button type="primary" onClick={showSeekModal}>
-            Create New Game
+            New Game
           </Button>
           <Modal
             title="Seek New Game"
