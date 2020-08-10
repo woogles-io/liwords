@@ -66,7 +66,7 @@ export const About = (props: Props) => {
         <Row>
           <Col span={24} className="bio">
             <div className="container">
-              <img src={cesar} />
+              <img src={cesar} alt="César Del Solar" />
               <div className="team-info">
                 <h3>César Del Solar</h3>
                 <p>
@@ -90,7 +90,7 @@ export const About = (props: Props) => {
         <Row>
           <Col span={24} className="bio">
             <div className="container">
-              <img src={jesse} />
+              <img src={jesse} alt="Jesse Day" />
               <div className="team-info">
                 <h3>Jesse Day</h3>
                 <p>
@@ -111,7 +111,7 @@ export const About = (props: Props) => {
         <Row>
           <Col span={24} className="bio">
             <div className="container">
-              <img src={conrad} />
+              <img src={conrad} alt="Conrad Bassett-Bouchard" />
               <div className="team-info">
                 <h3>Conrad Bassett-Bouchard</h3>
                 <p>
@@ -133,7 +133,7 @@ export const About = (props: Props) => {
         <Row>
           <Col span={24} className="bio">
             <div className="container">
-              <img src={josh} />
+              <img src={josh} alt="Josh Castellano" />
               <div className="team-info">
                 <h3>Josh Castellano</h3>
                 <p>
@@ -155,7 +155,7 @@ export const About = (props: Props) => {
         <Row>
           <Col span={24} className="bio">
             <div className="container">
-              <img src={lola} />
+              <img src={lola} alt="BriAnna 'Lola' McKissen" />
               <div className="team-info">
                 <h3>BriAnna "Lola" McKissen</h3>
                 <p>
@@ -177,7 +177,7 @@ export const About = (props: Props) => {
         <Row>
           <Col span={24} className="bio">
             <div className="container">
-              <img src={macondo} />
+              <img src={macondo} alt="Macondo" />
               <div className="team-info">
                 <h3>Macondo</h3>
                 <p>
@@ -196,7 +196,7 @@ export const About = (props: Props) => {
         <Row>
           <Col span={24} className="bio">
             <div className="container">
-              <img src={woogles} />
+              <img src={woogles} alt="Woogles the Greek Dog of Word Games" />
               <div className="team-info">
                 <h3>Woogles</h3>
                 <p>
