@@ -1,13 +1,19 @@
 @import '../base.scss';
+body {
+  margin-top: 96px;
+}
 
-/* fake header */
 .top-header {
   width: 100%;
-  min-height: 72px;
-  background: $color-primary-light;
+  position: fixed;
+  top: 0;
+  z-index: 2;
+  min-height: 60px;
+  background: $color-primary-middle;
   @include type-default;
   letter-spacing: 0.25em;
   font-size: 12px;
+  font-weight: bold;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -35,10 +41,23 @@
   width: 100%;
   order: 3;
   display: flex;
-  justify-content: center;
-  padding-bottom: 12px;
+  justify-content: space-between;
+  max-width: 576px;
+  margin: 0 auto;
   div {
-    padding: 12px;
+    padding: 12px 6px;
+    a {
+      color: black;
+      white-space: nowrap;
+      &:focus,
+      &:hover,
+      &:active {
+        color: $color-primary-dark;
+      }
+      &:active {
+        border-bottom: 3px;
+      }
+    }
   }
 }
 
@@ -48,7 +67,7 @@
   flex: none;
   order: 0;
   align-self: center;
-  margin: 16px 0px 6px;
+  margin: 8px 0px 6px;
   .top-header-site-icon-rect {
     width: 40px;
     height: 40px;
@@ -79,7 +98,7 @@
     order: 1;
     text-transform: none;
     align-self: center;
-    margin: 0 20px;
+    margin: 0 12px;
     font-size: 28px;
     font-weight: bold;
     line-height: 35px;
@@ -88,6 +107,9 @@
 }
 
 @media (min-width: $screen-laptop-min) {
+  body {
+    margin-top: 60px;
+  }
   .top-header {
     flex-wrap: nowrap;
     padding: 0 64px;
@@ -105,9 +127,14 @@
   .top-header-menu {
     order: initial;
     padding-bottom: 0;
+    justify-content: center;
+    max-width: none;
+    div {
+      padding: 12px;
+    }
   }
   .site-icon {
-    margin: 20px 0;
+    margin: 0;
   }
 }
 

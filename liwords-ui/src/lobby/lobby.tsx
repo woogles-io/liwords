@@ -122,7 +122,7 @@ export const Lobby = (props: Props) => {
           <TopBar username={props.username} loggedIn={props.loggedIn} />
         </Col>
       </Row>
-      <Row>
+      <Row style={{ marginTop: 24 }}>
         <Col span={24}>
           <h3>Woogles is coming soon!</h3>
           <p>
@@ -135,13 +135,9 @@ export const Lobby = (props: Props) => {
           </p>
         </Col>
       </Row>
-      <Row>
-        <Col span={24}>
-          <h3>Lobby</h3>
-        </Col>
-      </Row>
-      <Row>
-        <Col span={8} offset={8}>
+      <Row style={{ marginTop: 24 }}>
+        >
+        <Col span={12} offset={6}>
           <SoughtGames
             newGame={(seekID: string) =>
               sendAccept(seekID, props.sendSocketMsg)
@@ -150,8 +146,8 @@ export const Lobby = (props: Props) => {
         </Col>
       </Row>
 
-      <Row style={{ marginTop: 10 }}>
-        <Col span={24}>
+      <Row style={{ marginTop: 24 }}>
+        <Col span={12} offset={6}>
           <Button type="primary" onClick={showSeekModal}>
             New Game
           </Button>

@@ -14,7 +14,11 @@
   padding: 16px;
   max-width: $screen-desktop-max;
   margin: 0 auto !important;
+  p {
+    color: white;
+  }
 }
+
 .ant-card {
   box-shadow: $card-shadow;
   border-radius: 8px;
@@ -261,6 +265,7 @@
   margin: 0;
   font-size: 0.6vw;
   font-weight: bold;
+  color: white;
 }
 
 .rack .tile {
@@ -357,7 +362,7 @@
     padding: 12px 24px;
     line-height: 1.6em;
     letter-spacing: 0.21em;
-    max-height: 80px;
+    max-height: 150px;
     overflow-y: auto;
     .pool-section {
       word-break: break-word;
@@ -429,10 +434,10 @@
 .score-card {
   .ant-card-body {
     padding: 0;
-    max-height: 140px;
-    overflow-y: auto;
     & > div {
+      max-height: 110px;
       padding: 8px 16px 16px;
+      overflow-y: auto;
     }
   }
   .player-avatar {
@@ -503,7 +508,7 @@
     height: 3vw;
   }
 }
-@media (min-height: 800px) and (min-width: $screen-desktop-min) {
+@media (min-height: 880px) and (min-width: $screen-desktop-min) {
   .game-table {
     max-width: $screen-desktop-min;
     .ant-card .ant-card-head {
@@ -568,6 +573,15 @@
       height: 36px;
       font-size: 27px;
     }
+    .score-card {
+      .ant-card-body {
+        padding: 0;
+
+        & > div {
+          max-height: 140px;
+        }
+      }
+    }
   }
   .game-info {
     display: block;
@@ -577,7 +591,7 @@
   }
 }
 
-@media (min-height: 810px) and (min-width: $screen-desktop-max) {
+@media (min-height: 880px) and (min-width: $screen-desktop-max) {
   .game-table {
     max-width: $screen-desktop-max;
   }
@@ -589,5 +603,14 @@
   .empty-space {
     height: auto;
     width: auto;
+  }
+  .score-card {
+    .ant-card-body {
+      padding: 0;
+
+      & > div {
+        max-height: 200px;
+      }
+    }
   }
 }
