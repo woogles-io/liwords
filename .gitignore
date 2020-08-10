@@ -9,3 +9,4 @@ node_modules
 .idea/workspace.xml
 liwords.iml
 .idea/
+*.ipynb_checkpoints/

@@ -32,14 +32,14 @@ export const About = (props: Props) => {
         <Row>
           <Col span={24} className="intro">
             <h4>
-              We’re a group of techy word gamers reinventing what it means to
-              play word games online.
+              We're reinventing what it means to play word games online.
             </h4>
             <p>
-              Let’s face it, the status quo is pretty bad. After so many years
-              of being inurned to “average”, we realize change will only start
-              at the grassroots level. We have big dreams, and while it’ll take
-              time, we believe we can get there.
+              Let’s face it, the status quo is pretty bad. After so many years 
+              of being inurned to “average”, we realize change will only start 
+              at the grassroots level. We’re a group of techy word gamers with 
+              big dreams, and while it’ll take time to achieve them all, we 
+              believe we can get there.
             </p>
             <h4>Three main principles guide the creation of this community.</h4>
             <p>1) Create a great place to play word games online.</p>
