@@ -38,12 +38,11 @@ const SoughtGameItem = (props: SoughtGameProps) => {
     </div>
   );
 
-  // game.receiver is always a user ID (a UUID)
   // game.seeker is a username - it is for display
-  if (game.receiver !== '') {
+  if (game.receiver && game.receiver.getUserId() !== '') {
     console.log('reciever', game.receiver);
 
-    if (userID === game.receiver) {
+    if (userID === game.receiver.getUserId()) {
       // This is the receiver of the match request.
       innerel = (
         <Badge.Ribbon text="Match Request" color="volcano">
@@ -56,7 +55,11 @@ const SoughtGameItem = (props: SoughtGameProps) => {
         throw new Error(`unexpected seeker${username}, ${game.seeker}`);
       }
       innerel = (
-        <Badge.Ribbon text="Outgoing Match Request">{innerel}</Badge.Ribbon>
+        <Badge.Ribbon
+          text={`Outgoing Match Request to ${game.receiver.getDisplayName()}`}
+        >
+          {innerel}
+        </Badge.Ribbon>
       );
     }
   }

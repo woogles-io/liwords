@@ -49,12 +49,12 @@ func (m *MemoryStore) Set(ctx context.Context, game *entity.SoughtGame) error {
 	m.soughtGames[game.ID()] = game
 	m.soughtGamesByUser[game.Seeker()] = game
 	if game.Type() == entity.TypeMatch {
-		if m.matchRequestsByReceiver[game.MatchRequest.ReceivingUser] == nil {
-			m.matchRequestsByReceiver[game.MatchRequest.ReceivingUser] = []*entity.SoughtGame{}
+		if m.matchRequestsByReceiver[game.MatchRequest.ReceivingUser.UserId] == nil {
+			m.matchRequestsByReceiver[game.MatchRequest.ReceivingUser.UserId] = []*entity.SoughtGame{}
 		}
 
-		m.matchRequestsByReceiver[game.MatchRequest.ReceivingUser] = append(
-			m.matchRequestsByReceiver[game.MatchRequest.ReceivingUser], game)
+		m.matchRequestsByReceiver[game.MatchRequest.ReceivingUser.UserId] = append(
+			m.matchRequestsByReceiver[game.MatchRequest.ReceivingUser.UserId], game)
 	}
 
 	log.Debug().Interface("by-user", m.soughtGamesByUser).Msg("set-sought-game")
@@ -82,18 +82,18 @@ func (m *MemoryStore) Delete(ctx context.Context, id string) error {
 }
 
 func (m *MemoryStore) deleteFromReqsByReceiver(g *entity.SoughtGame) {
-	if len(m.matchRequestsByReceiver[g.MatchRequest.ReceivingUser]) == 1 {
-		delete(m.matchRequestsByReceiver, g.MatchRequest.ReceivingUser)
+	if len(m.matchRequestsByReceiver[g.MatchRequest.ReceivingUser.UserId]) == 1 {
+		delete(m.matchRequestsByReceiver, g.MatchRequest.ReceivingUser.UserId)
 		return
 	}
 
 	arrcpy := []*entity.SoughtGame{}
-	for _, sg := range m.matchRequestsByReceiver[g.MatchRequest.ReceivingUser] {
+	for _, sg := range m.matchRequestsByReceiver[g.MatchRequest.ReceivingUser.UserId] {
 		if sg.ID() != g.ID() {
 			arrcpy = append(arrcpy, sg)
 		}
 	}
-	m.matchRequestsByReceiver[g.MatchRequest.ReceivingUser] = arrcpy
+	m.matchRequestsByReceiver[g.MatchRequest.ReceivingUser.UserId] = arrcpy
 }
 
 // DeleteForUser deletes the game by seeker ID.

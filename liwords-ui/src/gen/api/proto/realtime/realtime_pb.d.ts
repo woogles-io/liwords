@@ -86,7 +86,7 @@ export namespace GameRequest {
   }
 }
 
-export class RequestingUser extends jspb.Message {
+export class MatchUser extends jspb.Message {
   getUserId(): string;
   setUserId(value: string): void;
 
@@ -100,16 +100,16 @@ export class RequestingUser extends jspb.Message {
   setDisplayName(value: string): void;
 
   serializeBinary(): Uint8Array;
-  toObject(includeInstance?: boolean): RequestingUser.AsObject;
-  static toObject(includeInstance: boolean, msg: RequestingUser): RequestingUser.AsObject;
+  toObject(includeInstance?: boolean): MatchUser.AsObject;
+  static toObject(includeInstance: boolean, msg: MatchUser): MatchUser.AsObject;
   static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
   static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
-  static serializeBinaryToWriter(message: RequestingUser, writer: jspb.BinaryWriter): void;
-  static deserializeBinary(bytes: Uint8Array): RequestingUser;
-  static deserializeBinaryFromReader(message: RequestingUser, reader: jspb.BinaryReader): RequestingUser;
+  static serializeBinaryToWriter(message: MatchUser, writer: jspb.BinaryWriter): void;
+  static deserializeBinary(bytes: Uint8Array): MatchUser;
+  static deserializeBinaryFromReader(message: MatchUser, reader: jspb.BinaryReader): MatchUser;
 }
 
-export namespace RequestingUser {
+export namespace MatchUser {
   export type AsObject = {
     userId: string,
     relevantRating: string,
@@ -202,8 +202,8 @@ export class SeekRequest extends jspb.Message {
 
   hasUser(): boolean;
   clearUser(): void;
-  getUser(): RequestingUser | undefined;
-  setUser(value?: RequestingUser): void;
+  getUser(): MatchUser | undefined;
+  setUser(value?: MatchUser): void;
 
   getMinimumRating(): number;
   setMinimumRating(value: number): void;
@@ -224,7 +224,7 @@ export class SeekRequest extends jspb.Message {
 export namespace SeekRequest {
   export type AsObject = {
     gameRequest?: GameRequest.AsObject,
-    user?: RequestingUser.AsObject,
+    user?: MatchUser.AsObject,
     minimumRating: number,
     maximumRating: number,
   }
@@ -238,11 +238,13 @@ export class MatchRequest extends jspb.Message {
 
   hasUser(): boolean;
   clearUser(): void;
-  getUser(): RequestingUser | undefined;
-  setUser(value?: RequestingUser): void;
+  getUser(): MatchUser | undefined;
+  setUser(value?: MatchUser): void;
 
-  getReceivingUser(): string;
-  setReceivingUser(value: string): void;
+  hasReceivingUser(): boolean;
+  clearReceivingUser(): void;
+  getReceivingUser(): MatchUser | undefined;
+  setReceivingUser(value?: MatchUser): void;
 
   getIsRematch(): boolean;
   setIsRematch(value: boolean): void;
@@ -260,8 +262,8 @@ export class MatchRequest extends jspb.Message {
 export namespace MatchRequest {
   export type AsObject = {
     gameRequest?: GameRequest.AsObject,
-    user?: RequestingUser.AsObject,
-    receivingUser: string,
+    user?: MatchUser.AsObject,
+    receivingUser?: MatchUser.AsObject,
     isRematch: boolean,
   }
 }
@@ -595,6 +597,26 @@ export namespace TimedOut {
   }
 }
 
+export class DeclineMatchRequest extends jspb.Message {
+  getRequestId(): string;
+  setRequestId(value: string): void;
+
+  serializeBinary(): Uint8Array;
+  toObject(includeInstance?: boolean): DeclineMatchRequest.AsObject;
+  static toObject(includeInstance: boolean, msg: DeclineMatchRequest): DeclineMatchRequest.AsObject;
+  static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+  static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+  static serializeBinaryToWriter(message: DeclineMatchRequest, writer: jspb.BinaryWriter): void;
+  static deserializeBinary(bytes: Uint8Array): DeclineMatchRequest;
+  static deserializeBinaryFromReader(message: DeclineMatchRequest, reader: jspb.BinaryReader): DeclineMatchRequest;
+}
+
+export namespace DeclineMatchRequest {
+  export type AsObject = {
+    requestId: string,
+  }
+}
+
 export class TokenSocketLogin extends jspb.Message {
   getToken(): string;
   setToken(value: string): void;
@@ -685,6 +707,7 @@ export interface MessageTypeMap {
   ACTIVE_GAMES: 16;
   GAME_DELETION: 17;
   MATCH_REQUESTS: 18;
+  DECLINE_MATCH_REQUEST: 19;
 }
 
 export const MessageType: MessageTypeMap;

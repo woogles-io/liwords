@@ -46,8 +46,8 @@ message GameRequest {
   int32 max_overtime_minutes = 9;
 }
 
-// A RequestingUser requests a match via a seek or a match request.
-message RequestingUser {
+// A MatchUser requests or receives a match via a seek or a match request.
+message MatchUser {
   // user_id is the database, or anonymous, ID of the user.
   string user_id = 1;
   // relevant_rating is the rating of the user, for the relevant seek mode.
@@ -84,6 +84,7 @@ enum MessageType {
   ACTIVE_GAMES = 16;
   GAME_DELETION = 17;
   MATCH_REQUESTS = 18;
+  DECLINE_MATCH_REQUEST = 19;
   // Add more events here. The total number of events should fit in a byte.
   // We should definitely not be using anywhere close to 255 events, and
   // in order to enforce that I'll be forcing the event type header to just be
@@ -108,15 +109,15 @@ message GameDeletion { string id = 1; }
 
 message SeekRequest {
   GameRequest game_request = 1;
-  RequestingUser user = 2;
+  MatchUser user = 2;
   int32 minimum_rating = 3;
   int32 maximum_rating = 4;
 }
 
 message MatchRequest {
   GameRequest game_request = 1;
-  RequestingUser user = 2;
-  string receiving_user = 3;
+  MatchUser user = 2;
+  MatchUser receiving_user = 3;
   bool is_rematch = 4;
 }
 
@@ -248,6 +249,8 @@ message TimedOut {
   string game_id = 1;
   string user_id = 2;
 }
+
+message DeclineMatchRequest { string request_id = 1; }
 
 // Communication
 

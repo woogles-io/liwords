@@ -11,6 +11,7 @@ import {
   GameRules,
   RatingMode,
   MatchRequest,
+  MatchUser,
 } from '../gen/api/proto/realtime/realtime_pb';
 import { encodeToSocketFmt } from '../utils/protobuf';
 import { SoughtGames } from './sought_games';
@@ -43,7 +44,7 @@ const sendSeek = (
   gr.setIncrementSeconds(game.incrementSecs);
   gr.setRules(rules);
   gr.setRatingMode(game.rated ? RatingMode.RATED : RatingMode.CASUAL);
-  if (game.receiver === '') {
+  if (game.receiver.getDisplayName() === '') {
     sr.setGameRequest(gr);
     sendSocketMsg(
       encodeToSocketFmt(MessageType.SEEK_REQUEST, sr.serializeBinary())
@@ -120,7 +121,7 @@ export const Lobby = (props: Props) => {
         incrementSecs: Math.round(seekSettings.incrementsecs as number),
         rated: seekSettings.rated as boolean,
         maxOvertimeMinutes: Math.round(seekSettings.maxovertime as number),
-        receiver: '',
+        receiver: new MatchUser(),
       },
       props.sendSocketMsg
     );
@@ -132,6 +133,8 @@ export const Lobby = (props: Props) => {
 
   const handleMatchModalOk = () => {
     setMatchModalVisible(false);
+    const matchUser = new MatchUser();
+    matchUser.setDisplayName(seekSettings.friend as string);
     sendSeek(
       {
         // These items are assigned by the server:
@@ -145,7 +148,7 @@ export const Lobby = (props: Props) => {
         incrementSecs: Math.round(seekSettings.incrementsecs as number),
         rated: seekSettings.rated as boolean,
         maxOvertimeMinutes: Math.round(seekSettings.maxovertime as number),
-        receiver: seekSettings.friend as string,
+        receiver: matchUser,
       },
       props.sendSocketMsg
     );

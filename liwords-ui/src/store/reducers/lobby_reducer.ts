@@ -4,6 +4,7 @@ import {
   SeekRequest,
   RatingMode,
   MatchRequest,
+  MatchUser,
 } from '../../gen/api/proto/realtime/realtime_pb';
 
 export type SoughtGame = {
@@ -17,7 +18,7 @@ export type SoughtGame = {
   rated: boolean;
   seekID: string;
   // Only for direct match requests:
-  receiver: string;
+  receiver: MatchUser;
 };
 
 type playerMeta = {
@@ -53,10 +54,10 @@ export const SeekRequestToSoughtGame = (
     return null;
   }
 
-  let receivingUser = '';
+  let receivingUser = new MatchUser();
   if (req instanceof MatchRequest) {
     console.log('ismatchrequest');
-    receivingUser = req.getReceivingUser();
+    receivingUser = req.getReceivingUser()!;
   }
 
   return {

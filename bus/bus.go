@@ -211,7 +211,7 @@ func (b *Bus) handleNatsRequest(ctx context.Context, topic string,
 }
 
 // A somewhat silly function to get around Go's lack of generics
-func setRequestingUser(msg proto.Message, reqUser *pb.RequestingUser) {
+func setMatchUser(msg proto.Message, reqUser *pb.MatchUser) {
 	switch sought := msg.(type) {
 	case *pb.SeekRequest:
 		sought.User = reqUser
@@ -253,10 +253,10 @@ func (b *Bus) handleNatsPublish(ctx context.Context, subtopics []string, data []
 		// Note that the seek request should not come with a requesting user;
 		// instead this is in the topic/subject. It is HERE in the API server that
 		// we set the requesting user's display name, rating, etc.
-		reqUser := &pb.RequestingUser{}
+		reqUser := &pb.MatchUser{}
 		reqUser.IsAnonymous = subtopics[1] == "anon" // this is never true here anymore, see check above
 		reqUser.UserId = subtopics[2]
-		setRequestingUser(req, reqUser)
+		setMatchUser(req, reqUser)
 
 		err = gameplay.ValidateSoughtGame(ctx, gameRequest)
 		if err != nil {
@@ -289,19 +289,19 @@ func (b *Bus) handleNatsPublish(ctx context.Context, subtopics []string, data []
 			b.natsconn.Publish("lobby.seekRequest", data)
 		} else {
 			// Check if the user being matched exists.
-			receiver, err := b.userStore.Get(ctx, req.(*pb.MatchRequest).ReceivingUser)
+			receiver, err := b.userStore.Get(ctx, req.(*pb.MatchRequest).ReceivingUser.DisplayName)
 			if err != nil {
 				// No such user, most likely.
 				return err
 			}
-			// Overwrite the username with the actual UUID of the receiving user.
-			req.(*pb.MatchRequest).ReceivingUser = receiver.UUID
+			// Set the actual UUID of the receiving user.
+			req.(*pb.MatchRequest).ReceivingUser.UserId = receiver.UUID
 			mg, err := gameplay.NewMatchRequest(ctx, b.soughtGameStore, req.(*pb.MatchRequest))
 			if err != nil {
 				return err
 			}
 			evt := entity.WrapEvent(mg.MatchRequest, pb.MessageType_MATCH_REQUEST, "")
-			log.Debug().Interface("evt", evt).Str("receiver", mg.MatchRequest.ReceivingUser).
+			log.Debug().Interface("evt", evt).Interface("receiver", mg.MatchRequest.ReceivingUser).
 				Str("sender", reqUser.UserId).Msg("publishing match request to user")
 			b.pubToUser(receiver.UUID, evt)
 			// Publish it to the requester as well. This is so they can see it on
