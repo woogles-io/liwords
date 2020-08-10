@@ -55,7 +55,10 @@ export const About = (props: Props) => {
                 Kickstarter
               </a>
               . We are registered as a non-profit in the state of New Jersey,
-              and will have a way for you to donate directly.
+              and will have a way for you to donate directly.{' '}
+              <a href="https://docs.google.com/spreadsheets/d/1RCdyjgq-QF2OihNKXDOhW6WDQyayxhmjhMakfUNNuLQ">
+                Here's our plan for the funds.
+              </a>
             </p>
             <p>
               If you have skills you think we can use, please let us know. We
