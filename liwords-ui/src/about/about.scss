@@ -20,7 +20,7 @@ p {
 
 .intro {
   margin: 0 auto;
-  max-width: 660px;
+  max-width: $screen-tablet-min;
   padding: 12px 12px 48px;
   h4 {
     text-transform: uppercase;

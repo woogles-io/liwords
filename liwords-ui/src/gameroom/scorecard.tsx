@@ -140,6 +140,7 @@ export const ScoreCard = React.memo((props: Props) => {
   const el = useRef<HTMLDivElement>(null);
   useEffect(() => {
     const currentEl = el.current;
+
     if (currentEl) {
       currentEl.scrollTop = currentEl.scrollHeight || 0;
     }
