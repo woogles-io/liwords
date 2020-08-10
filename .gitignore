@@ -1,3 +1,4 @@
+*.ipynb_checkpoints/
 .vscode
 cmd/server/server
 node_modules
