@@ -11,6 +11,7 @@ import { useStoreContext } from './store/store';
 import { getSocketURI } from './socket/socket';
 import { decodeToMsg, encodeToSocketFmt } from './utils/protobuf';
 import { onSocketMsg } from './store/socket_handlers';
+import { About } from './about/about';
 import { Login } from './lobby/login';
 import { Register } from './lobby/register';
 import { MessageType, JoinPath } from './gen/api/proto/realtime/realtime_pb';
@@ -77,7 +78,9 @@ const App = React.memo(() => {
             // connectedToSocket={connectedToSocket}
           />
         </Route>
-
+        <Route path="/about">
+          <About myUsername={username} loggedIn={loggedIn} />
+        </Route>
         <Route path="/login">
           <Login />
         </Route>

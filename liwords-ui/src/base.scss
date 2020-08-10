@@ -11,6 +11,7 @@ $color-primary-midDark: #3b88ca;
 $color-primary-dark: #2d6a9e;
 $color-secondary: #6b268b;
 $color-secondary-light: #d5cad6;
+$color-secondary-lighter: #f8f2fc;
 $color-secondary-medium: #97699b;
 $color-timer-light: #e5ffdf;
 $color-timer-dark: #449e2d;
@@ -71,6 +72,38 @@ $font-monospaced: 'Roboto Mono', monospace;
   line-height: 20px;
 }
 
+@mixin type-deco {
+  @include type-default;
+  font-family: Fjalla One;
+  font-style: normal;
+  font-weight: normal;
+  font-size: 24px;
+  line-height: 1.5em;
+  letter-spacing: 0.15em;
+}
+
+h1,
+h2,
+h3,
+h4 {
+  @include type-deco;
+}
+
+h1 {
+  font-size: 48px;
+}
+
+h2 {
+  font-size: 36px;
+}
+
+h3 {
+  font-size: 28px;
+}
+
+h4 {
+  font-size: 16px;
+}
 @mixin button {
   /* buttons */
   button.ant-btn,

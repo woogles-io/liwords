@@ -4,10 +4,14 @@ import { Link } from 'react-router-dom';
 
 const Menu = (
   <div className="top-header-menu">
-    <div className="top-header-left-frame-crossword-game">OMGWords</div>
+    <div className="top-header-left-frame-crossword-game">
+      <a href="/">OMGWords</a>
+    </div>
     <div className="top-header-left-frame-aerolith">Aerolith</div>
     <div className="top-header-left-frame-blog">Random.Racer</div>
-    <div className="top-header-left-frame-special-land">About Us</div>
+    <div className="top-header-left-frame-special-land">
+      <a href="/about">About Us</a>
+    </div>
   </div>
 );
 
