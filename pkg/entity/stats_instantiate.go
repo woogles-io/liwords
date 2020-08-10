@@ -1,9 +1,7 @@
 package entity
 
-func instantiatePlayerData() []*StatItem {
-	gamesStat := &StatItem{Name: "Games",
-		//Description:        "The number of games played",
-		Total:              0,
+func instantiatePlayerData() map[string]*StatItem {
+	gamesStat := &StatItem{Total: 0,
 		DataType:           SingleType,
 		IncrementType:      GameType,
 		DenominatorList:    nil,
@@ -11,9 +9,7 @@ func instantiatePlayerData() []*StatItem {
 		List:               []*ListItem{},
 		HasMeaningfulTotal: true,
 		AddFunction:        addGames}
-	turnsStat := &StatItem{Name: "Turns",
-		//Description:        "The number of turns the player had",
-		Total:              0,
+	turnsStat := &StatItem{Total: 0,
 		DataType:           SingleType,
 		IncrementType:      EventType,
 		DenominatorList:    []*StatItem{gamesStat},
@@ -22,9 +18,7 @@ func instantiatePlayerData() []*StatItem {
 		HasMeaningfulTotal: true,
 		AddFunction:        addTurns}
 
-	scoreStat := &StatItem{Name: "Score",
-		//Description:        "The average score of the player",
-		Total:              0,
+	scoreStat := &StatItem{Total: 0,
 		DataType:           SingleType,
 		IncrementType:      GameType,
 		DenominatorList:    []*StatItem{gamesStat, turnsStat},
@@ -33,9 +27,7 @@ func instantiatePlayerData() []*StatItem {
 		HasMeaningfulTotal: true,
 		AddFunction:        addScore}
 
-	firstsStat := &StatItem{Name: "Firsts",
-		//Description:        "The number of times the player went first",
-		Total:              0,
+	firstsStat := &StatItem{Total: 0,
 		DataType:           SingleType,
 		IncrementType:      GameType,
 		DenominatorList:    []*StatItem{gamesStat},
@@ -43,9 +35,7 @@ func instantiatePlayerData() []*StatItem {
 		List:               []*ListItem{},
 		HasMeaningfulTotal: true,
 		AddFunction:        addFirsts}
-	verticalOpeningsStat := &StatItem{Name: "Vertical Openings",
-		//Description:        "The number of times the player opened vertically",
-		Total:              0,
+	verticalOpeningsStat := &StatItem{Total: 0,
 		DataType:           SingleType,
 		IncrementType:      EventType,
 		DenominatorList:    []*StatItem{gamesStat},
@@ -54,9 +44,7 @@ func instantiatePlayerData() []*StatItem {
 		HasMeaningfulTotal: true,
 		AddFunction:        addVerticalOpenings}
 
-	exchangesStat := &StatItem{Name: "Exchanges",
-		//Description:        "The number of times the player exchanged",
-		Total:              0,
+	exchangesStat := &StatItem{Total: 0,
 		DataType:           SingleType,
 		IncrementType:      EventType,
 		DenominatorList:    []*StatItem{gamesStat},
@@ -65,9 +53,7 @@ func instantiatePlayerData() []*StatItem {
 		HasMeaningfulTotal: true,
 		AddFunction:        addExchanges}
 
-	phoniesStat := &StatItem{Name: "Phonies",
-		//Description:        "The number of phonies plays made",
-		Total:              0,
+	phoniesStat := &StatItem{Total: 0,
 		DataType:           SingleType,
 		IncrementType:      EventType,
 		DenominatorList:    []*StatItem{gamesStat},
@@ -76,9 +62,7 @@ func instantiatePlayerData() []*StatItem {
 		HasMeaningfulTotal: true,
 		AddFunction:        addPhonies}
 
-	challengedPhoniesStat := &StatItem{Name: "Challenged Phonies",
-		//Description:        "The number of phonies plays made that were challenged off the board",
-		Total:              0,
+	challengedPhoniesStat := &StatItem{Total: 0,
 		DataType:           ListType,
 		IncrementType:      EventType,
 		DenominatorList:    []*StatItem{phoniesStat},
@@ -87,9 +71,7 @@ func instantiatePlayerData() []*StatItem {
 		HasMeaningfulTotal: true,
 		AddFunction:        addChallengedPhonies}
 
-	unchallengedPhoniesStat := &StatItem{Name: "Unchallenged Phonies",
-		//Description:        "The number of phonies plays made that were not challenged off the board",
-		Total:              0,
+	unchallengedPhoniesStat := &StatItem{Total: 0,
 		DataType:           ListType,
 		IncrementType:      EventType,
 		DenominatorList:    []*StatItem{phoniesStat},
@@ -98,9 +80,7 @@ func instantiatePlayerData() []*StatItem {
 		HasMeaningfulTotal: true,
 		AddFunction:        addUnchallengedPhonies}
 
-	challengesStat := &StatItem{Name: "Challenges",
-		//Description:        "The number of challenges made by the player",
-		Total:              0,
+	challengesStat := &StatItem{Total: 0,
 		DataType:           SingleType,
 		IncrementType:      EventType,
 		DenominatorList:    []*StatItem{gamesStat},
@@ -109,9 +89,7 @@ func instantiatePlayerData() []*StatItem {
 		HasMeaningfulTotal: true,
 		AddFunction:        addChallenges}
 
-	challengesWonStat := &StatItem{Name: "Challenges Won",
-		//Description:        "The number of challenges won by the player",
-		Total:              0,
+	challengesWonStat := &StatItem{Total: 0,
 		DataType:           ListType,
 		IncrementType:      EventType,
 		DenominatorList:    []*StatItem{challengesStat},
@@ -120,9 +98,7 @@ func instantiatePlayerData() []*StatItem {
 		HasMeaningfulTotal: true,
 		AddFunction:        addChallengesWon}
 
-	challengesLostStat := &StatItem{Name: "Challenges Lost",
-		//Description:        "The number challenges lost by the player",
-		Total:              0,
+	challengesLostStat := &StatItem{Total: 0,
 		DataType:           SingleType,
 		IncrementType:      EventType,
 		DenominatorList:    []*StatItem{challengesStat},
@@ -131,9 +107,7 @@ func instantiatePlayerData() []*StatItem {
 		HasMeaningfulTotal: true,
 		AddFunction:        addChallengesLost}
 
-	playsThatWereChallengedStat := &StatItem{Name: "Plays That Were Challenged",
-		//Description:        "The number of plays that were challenged by the opponent",
-		Total:              0,
+	playsThatWereChallengedStat := &StatItem{Total: 0,
 		DataType:           ListType,
 		IncrementType:      EventType,
 		DenominatorList:    []*StatItem{turnsStat},
@@ -142,9 +116,7 @@ func instantiatePlayerData() []*StatItem {
 		HasMeaningfulTotal: true,
 		AddFunction:        addPlaysThatWereChallenged}
 
-	winsStat := &StatItem{Name: "Wins",
-		//Description:        "The number of wins",
-		Total:              0,
+	winsStat := &StatItem{Total: 0,
 		DataType:           SingleType,
 		IncrementType:      GameType,
 		DenominatorList:    []*StatItem{gamesStat},
@@ -152,9 +124,7 @@ func instantiatePlayerData() []*StatItem {
 		List:               []*ListItem{},
 		HasMeaningfulTotal: true,
 		AddFunction:        addWins}
-	lossesStat := &StatItem{Name: "Losses",
-		//Description:        "The number of losses",
-		Total:              0,
+	lossesStat := &StatItem{Total: 0,
 		DataType:           SingleType,
 		IncrementType:      GameType,
 		DenominatorList:    []*StatItem{gamesStat},
@@ -162,9 +132,7 @@ func instantiatePlayerData() []*StatItem {
 		List:               []*ListItem{},
 		HasMeaningfulTotal: true,
 		AddFunction:        addLosses}
-	drawsStat := &StatItem{Name: "Draws",
-		//Description:        "The number of draws",
-		Total:              0,
+	drawsStat := &StatItem{Total: 0,
 		DataType:           SingleType,
 		IncrementType:      GameType,
 		DenominatorList:    []*StatItem{gamesStat},
@@ -172,9 +140,7 @@ func instantiatePlayerData() []*StatItem {
 		List:               []*ListItem{},
 		HasMeaningfulTotal: true,
 		AddFunction:        addDraws}
-	bingosStat := &StatItem{Name: "Bingos",
-		//Description:        "The list of bingos played",
-		Total:              0,
+	bingosStat := &StatItem{Total: 0,
 		DataType:           ListType,
 		IncrementType:      EventType,
 		DenominatorList:    []*StatItem{gamesStat},
@@ -183,9 +149,7 @@ func instantiatePlayerData() []*StatItem {
 		HasMeaningfulTotal: true,
 		AddFunction:        addBingos}
 
-	noBingosStat := &StatItem{Name: "Bingoless Games",
-		//Description:        "The list of bingos played",
-		Total:              0,
+	noBingosStat := &StatItem{Total: 0,
 		DataType:           ListType,
 		IncrementType:      GameType,
 		DenominatorList:    []*StatItem{gamesStat},
@@ -194,9 +158,7 @@ func instantiatePlayerData() []*StatItem {
 		HasMeaningfulTotal: true,
 		AddFunction:        addNoBingos}
 
-	tripleTriplesStat := &StatItem{Name: "Triple Triples",
-		//Description:        "Number of triple triples played",
-		Total:              0,
+	tripleTriplesStat := &StatItem{Total: 0,
 		DataType:           ListType,
 		IncrementType:      EventType,
 		DenominatorList:    []*StatItem{gamesStat},
@@ -205,9 +167,7 @@ func instantiatePlayerData() []*StatItem {
 		HasMeaningfulTotal: true,
 		AddFunction:        addTripleTriples}
 
-	bingoNinesOrAboveStat := &StatItem{Name: "Bingo Nines or Above",
-		//Description:        "The list of bingos that were nines tiles or above",
-		Total:              0,
+	bingoNinesOrAboveStat := &StatItem{Total: 0,
 		DataType:           ListType,
 		IncrementType:      EventType,
 		DenominatorList:    []*StatItem{gamesStat},
@@ -216,9 +176,7 @@ func instantiatePlayerData() []*StatItem {
 		HasMeaningfulTotal: true,
 		AddFunction:        addBingoNinesOrAbove}
 
-	highGameStat := &StatItem{Name: "Highest Scoring Game",
-		//Description:        "The game with the highest score",
-		Total:              0,
+	highGameStat := &StatItem{Total: 0,
 		DataType:           MaximumType,
 		IncrementType:      GameType,
 		DenominatorList:    nil,
@@ -227,9 +185,7 @@ func instantiatePlayerData() []*StatItem {
 		HasMeaningfulTotal: true,
 		AddFunction:        setHighGame}
 
-	lowGameStat := &StatItem{Name: "Lowest Scoring Game",
-		//Description:        "The game with the lowest score",
-		Total:              MaxNotableInt,
+	lowGameStat := &StatItem{Total: MaxNotableInt,
 		DataType:           MinimumType,
 		IncrementType:      GameType,
 		DenominatorList:    nil,
@@ -238,9 +194,7 @@ func instantiatePlayerData() []*StatItem {
 		HasMeaningfulTotal: true,
 		AddFunction:        setLowGame}
 
-	highTurnStat := &StatItem{Name: "Highest Scoring Turn",
-		//Description:        "The turn with the highest score",
-		Total:              0,
+	highTurnStat := &StatItem{Total: 0,
 		DataType:           MaximumType,
 		IncrementType:      EventType,
 		DenominatorList:    nil,
@@ -249,9 +203,7 @@ func instantiatePlayerData() []*StatItem {
 		HasMeaningfulTotal: true,
 		AddFunction:        setHighTurn}
 
-	tilesPlayedStat := &StatItem{Name: "Tiles Played",
-		//Description:        "The number of tiles played",
-		Total:              0,
+	tilesPlayedStat := &StatItem{Total: 0,
 		DataType:           SingleType,
 		IncrementType:      EventType,
 		DenominatorList:    []*StatItem{gamesStat},
@@ -261,9 +213,7 @@ func instantiatePlayerData() []*StatItem {
 		HasMeaningfulTotal: true,
 		AddFunction:        addTilesPlayed}
 
-	turnsWithBlankStat := &StatItem{Name: "Turns With at Least One Blank",
-		//Description:        "The number of turns where the player had at least one blank on their rack",
-		Total:              0,
+	turnsWithBlankStat := &StatItem{Total: 0,
 		DataType:           SingleType,
 		IncrementType:      EventType,
 		DenominatorList:    []*StatItem{turnsStat},
@@ -272,9 +222,7 @@ func instantiatePlayerData() []*StatItem {
 		HasMeaningfulTotal: true,
 		AddFunction:        addTurnsWithBlank}
 
-	commentsStat := &StatItem{Name: "Comments",
-		//Description:        "The number of annotated comments",
-		Total:              0,
+	commentsStat := &StatItem{Total: 0,
 		DataType:           ListType,
 		IncrementType:      EventType,
 		DenominatorList:    []*StatItem{gamesStat},
@@ -283,9 +231,7 @@ func instantiatePlayerData() []*StatItem {
 		HasMeaningfulTotal: true,
 		AddFunction:        addComments}
 
-	mistakesStat := &StatItem{Name: "Mistakes",
-		//Description:        "The number, type, and magnitude of self-recorded mistakes",
-		Total:              0,
+	mistakesStat := &StatItem{Total: 0,
 		DataType:           ListType,
 		IncrementType:      EventType,
 		DenominatorList:    []*StatItem{gamesStat},
@@ -295,9 +241,7 @@ func instantiatePlayerData() []*StatItem {
 		HasMeaningfulTotal: true,
 		AddFunction:        addMistakes}
 
-	confidenceIntervalsStat := &StatItem{Name: "Confidence Intervals",
-		//Description:   "The confidence intervals for each tile drawn",
-		Total:         0,
+	confidenceIntervalsStat := &StatItem{Total: 0,
 		DataType:      SingleType,
 		IncrementType: FinalType,
 		// Not actually a denominatorList, just a needed ref
@@ -308,34 +252,34 @@ func instantiatePlayerData() []*StatItem {
 		HasMeaningfulTotal: true,
 		AddFunction:        addConfidenceIntervals}
 
-	return []*StatItem{bingoNinesOrAboveStat,
-		bingosStat,
-		challengedPhoniesStat,
-		challengesStat,
-		challengesLostStat,
-		challengesWonStat,
-		commentsStat,
-		confidenceIntervalsStat, // Not tested
-		drawsStat,
-		exchangesStat,
-		firstsStat,
-		gamesStat,
-		highGameStat,
-		highTurnStat,
-		lossesStat,
-		lowGameStat,
-		noBingosStat,
-		mistakesStat,
-		phoniesStat, // Not tested
-		playsThatWereChallengedStat,
-		scoreStat,
-		tilesPlayedStat,
-		tripleTriplesStat, // Not tested
-		turnsStat,
-		turnsWithBlankStat,
-		unchallengedPhoniesStat, // Not tested
-		verticalOpeningsStat,
-		winsStat,
+	return map[string]*StatItem{BINGO_NINES_OR_ABOVE_STAT: bingoNinesOrAboveStat,
+		BINGOS_STAT:                     bingosStat,
+		CHALLENGED_PHONIES_STAT:         challengedPhoniesStat,
+		CHALLENGES_STAT:                 challengesStat,
+		CHALLENGES_LOST_STAT:            challengesLostStat,
+		CHALLENGES_WON_STAT:             challengesWonStat,
+		COMMENTS_STAT:                   commentsStat,
+		CONFIDENCE_INTERVALS_STAT:       confidenceIntervalsStat, // Not tested
+		DRAWS_STAT:                      drawsStat,
+		EXCHANGES_STAT:                  exchangesStat,
+		FIRSTS_STAT:                     firstsStat,
+		GAMES_STAT:                      gamesStat,
+		HIGH_GAME_STAT:                  highGameStat,
+		HIGH_TURN_STAT:                  highTurnStat,
+		LOSSES_STAT:                     lossesStat,
+		LOW_GAME_STAT:                   lowGameStat,
+		NO_BINGOS_STAT:                  noBingosStat,
+		MISTAKES_STAT:                   mistakesStat,
+		PHONIES_STAT:                    phoniesStat, // Not tested
+		PLAYS_THAT_WERE_CHALLENGED_STAT: playsThatWereChallengedStat,
+		SCORE_STAT:                      scoreStat,
+		TILES_PLAYED_STAT:               tilesPlayedStat,
+		TRIPLE_TRIPLES_STAT:             tripleTriplesStat, // Not tested
+		TURNS_STAT:                      turnsStat,
+		TURNS_WITH_BLANK_STAT:           turnsWithBlankStat,
+		UNCHALLENGED_PHONIES_STAT:       unchallengedPhoniesStat, // Not tested
+		VERTICAL_OPENINGS_STAT:          verticalOpeningsStat,
+		WINS_STAT:                       winsStat,
 	}
 	/*
 		Missing stats:
@@ -349,10 +293,8 @@ func instantiatePlayerData() []*StatItem {
 	*/
 }
 
-func instantiateNotableData() []*StatItem {
-	return []*StatItem{&StatItem{Name: "No Blanks Played",
-		//Description:        "Games in which no blanks are played",
-		Minimum:            0,
+func instantiateNotableData() map[string]*StatItem {
+	return map[string]*StatItem{NO_BLANKS_PLAYED_STAT: &StatItem{Minimum: 0,
 		Maximum:            0,
 		Total:              0,
 		DataType:           ListType,
@@ -362,9 +304,7 @@ func instantiateNotableData() []*StatItem {
 		HasMeaningfulTotal: false,
 		AddFunction:        addBlanksPlayed},
 
-		&StatItem{Name: "High Scoring",
-			//Description:        "Games in which one player scores at least 700 points",
-			Minimum:            700,
+		HIGH_SCORING_STAT: &StatItem{Minimum: 700,
 			Maximum:            MaxNotableInt,
 			Total:              0,
 			DataType:           ListType,
@@ -374,9 +314,7 @@ func instantiateNotableData() []*StatItem {
 			HasMeaningfulTotal: false,
 			AddFunction:        addHighScoring},
 
-		&StatItem{Name: "Combined High Scoring",
-			//Description:        "Games in which the combined score is at least 1100 points",
-			Minimum:            1100,
+		COMBINED_HIGH_SCORING_STAT: &StatItem{Minimum: 1100,
 			Maximum:            MaxNotableInt,
 			Total:              0,
 			DataType:           ListType,
@@ -386,9 +324,7 @@ func instantiateNotableData() []*StatItem {
 			HasMeaningfulTotal: false,
 			AddFunction:        addCombinedScoring},
 
-		&StatItem{Name: "Combined Low Scoring",
-			//Description:        "Games in which the combined score no greater than 200 points",
-			Minimum:            0,
+		COMBINED_LOW_SCORING_STAT: &StatItem{Minimum: 0,
 			Maximum:            200,
 			Total:              0,
 			DataType:           ListType,
@@ -398,9 +334,7 @@ func instantiateNotableData() []*StatItem {
 			HasMeaningfulTotal: false,
 			AddFunction:        addCombinedScoring},
 
-		&StatItem{Name: "One Player Plays Every Power Tile",
-			//Description:        "Games in which one player plays the Z, X, Q, J, every blank, and every S",
-			Minimum:            10,
+		ONE_PLAYER_PLAYS_EVERY_POWER_TILE_STAT: &StatItem{Minimum: 10,
 			Maximum:            10,
 			Total:              0,
 			DataType:           ListType,
@@ -410,9 +344,7 @@ func instantiateNotableData() []*StatItem {
 			HasMeaningfulTotal: false,
 			AddFunction:        addEveryPowerTile},
 
-		&StatItem{Name: "One Player Plays Every E",
-			//Description:        "Games in which one player plays every E",
-			Minimum:            12,
+		ONE_PLAYER_PLAYS_EVERY_E_STAT: &StatItem{Minimum: 12,
 			Maximum:            12,
 			Total:              0,
 			DataType:           ListType,
@@ -422,9 +354,7 @@ func instantiateNotableData() []*StatItem {
 			HasMeaningfulTotal: false,
 			AddFunction:        addEveryE},
 
-		&StatItem{Name: "Many Challenges",
-			//Description:        "Games in which there are at least 5 challenges made",
-			Minimum:            5,
+		MANY_CHALLENGES_STAT: &StatItem{Minimum: 5,
 			Maximum:            MaxNotableInt,
 			Total:              0,
 			DataType:           ListType,
@@ -434,9 +364,7 @@ func instantiateNotableData() []*StatItem {
 			HasMeaningfulTotal: false,
 			AddFunction:        addManyChallenges},
 
-		&StatItem{Name: "Four or More Consecutive Bingos",
-			//Description:        "Games in which there are at least four consecutive bingos",
-			Minimum:            4,
+		FOUR_OR_MORE_CONSECUTIVE_BINGOS_STAT: &StatItem{Minimum: 4,
 			Maximum:            MaxNotableInt,
 			Total:              0,
 			DataType:           ListType,

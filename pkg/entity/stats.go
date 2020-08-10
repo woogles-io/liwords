@@ -85,8 +85,6 @@ const MaxNotableInt = 1000000000
 type StatAddFunction func(*StatItem, *StatItem, *pb.GameHistory, int, string, bool)
 
 type StatItem struct {
-	Name string `json:"n"`
-	// Description        string                                                         `json:"d"`
 	Minimum            int             `json:"-"`
 	Maximum            int             `json:"-"`
 	Total              int             `json:"t"`
@@ -102,16 +100,55 @@ type StatItem struct {
 }
 
 type Stats struct {
-	PlayerOneId   string      `json:"i1"`
-	PlayerTwoId   string      `json:"i2"`
-	PlayerOneData []*StatItem `json:"d1"`
-	PlayerTwoData []*StatItem `json:"d2"`
-	NotableData   []*StatItem `json:"n"`
+	PlayerOneId   string               `json:"i1"`
+	PlayerTwoId   string               `json:"i2"`
+	PlayerOneData map[string]*StatItem `json:"d1"`
+	PlayerTwoData map[string]*StatItem `json:"d2"`
+	NotableData   map[string]*StatItem `json:"n"`
 }
 
 type ProfileStats struct {
 	Data map[VariantKey]*Stats
 }
+
+const (
+	BINGO_NINES_OR_ABOVE_STAT              string = "Bingo Nines or Above"
+	BINGOS_STAT                            string = "Bingos"
+	CHALLENGED_PHONIES_STAT                string = "Challenged Phonies"
+	CHALLENGES_STAT                        string = "Challenges"
+	CHALLENGES_LOST_STAT                   string = "Challenges Lost"
+	CHALLENGES_WON_STAT                    string = "Challenges Won"
+	COMMENTS_STAT                          string = "Comments"
+	CONFIDENCE_INTERVALS_STAT              string = "Confidence Intervals"
+	DRAWS_STAT                             string = "Draws"
+	EXCHANGES_STAT                         string = "Exchanges"
+	FIRSTS_STAT                            string = "Firsts"
+	GAMES_STAT                             string = "Games"
+	HIGH_GAME_STAT                         string = "High Game"
+	HIGH_TURN_STAT                         string = "High Turn"
+	LOSSES_STAT                            string = "Losses"
+	LOW_GAME_STAT                          string = "Low Game"
+	NO_BINGOS_STAT                         string = "Games with no Bingos"
+	MISTAKES_STAT                          string = "Mistakes"
+	PHONIES_STAT                           string = "Phonies"
+	PLAYS_THAT_WERE_CHALLENGED_STAT        string = "Plays That Were Challenged"
+	SCORE_STAT                             string = "Score"
+	TILES_PLAYED_STAT                      string = "Tiles Played"
+	TRIPLE_TRIPLES_STAT                    string = "Triple Triples"
+	TURNS_STAT                             string = "Turns"
+	TURNS_WITH_BLANK_STAT                  string = "Turns With Blank"
+	UNCHALLENGED_PHONIES_STAT              string = "Unchallenged Phonies"
+	VERTICAL_OPENINGS_STAT                 string = "Vertical Openings"
+	WINS_STAT                              string = "Wins"
+	NO_BLANKS_PLAYED_STAT                  string = "No Blanks Played"
+	HIGH_SCORING_STAT                      string = "High Scoring"
+	COMBINED_HIGH_SCORING_STAT             string = "Combined High Scoring"
+	COMBINED_LOW_SCORING_STAT              string = "Combined Low Scoring"
+	ONE_PLAYER_PLAYS_EVERY_POWER_TILE_STAT string = "One Player Plays Every Power Tile"
+	ONE_PLAYER_PLAYS_EVERY_E_STAT          string = "One Player Plays Every E"
+	MANY_CHALLENGES_STAT                   string = "Many Challenges"
+	FOUR_OR_MORE_CONSECUTIVE_BINGOS_STAT   string = "Four or More Consecutive Bingos"
+)
 
 // InstantiateNewStats instantiates a new stats object. playerOneId MUST
 // have gone first in the game.
@@ -160,19 +197,19 @@ func (stats *Stats) AddStats(otherStats *Stats) error {
 		otherPlayerTwoData = otherStats.PlayerOneData
 	}
 
-	err := combineStatItemLists(stats.PlayerOneData, otherPlayerOneData)
+	err := combineStatItemMaps(stats.PlayerOneData, otherPlayerOneData)
 
 	if err != nil {
 		return err
 	}
 
-	err = combineStatItemLists(stats.PlayerTwoData, otherPlayerTwoData)
+	err = combineStatItemMaps(stats.PlayerTwoData, otherPlayerTwoData)
 
 	if err != nil {
 		return err
 	}
 
-	err = combineStatItemLists(stats.NotableData, otherStats.NotableData)
+	err = combineStatItemMaps(stats.NotableData, otherStats.NotableData)
 
 	if err != nil {
 		return err

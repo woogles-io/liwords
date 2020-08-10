@@ -1,7 +1,6 @@
 package entity
 
 import (
-	"errors"
 	"math"
 	"strings"
 	"unicode"
@@ -39,14 +38,13 @@ func makeMistakeSubitems() map[string]int {
 	return mistakeSubitems
 }
 
-func incrementStatItems(statItems []*StatItem, otherPlayerStatItems []*StatItem, history *pb.GameHistory, eventIndex int, id string, isPlayerOne bool) {
-	for i := 0; i < len(statItems); i++ {
-		statItem := statItems[i]
+func incrementStatItems(statItems map[string]*StatItem, otherPlayerStatItems map[string]*StatItem, history *pb.GameHistory, eventIndex int, id string, isPlayerOne bool) {
+	for key, statItem := range statItems {
 		if (statItem.IncrementType == EventType && eventIndex >= 0) ||
 			(statItem.IncrementType == GameType && eventIndex < 0) {
 			var otherPlayerStatItem *StatItem
 			if otherPlayerStatItems != nil {
-				otherPlayerStatItem = otherPlayerStatItems[i]
+				otherPlayerStatItem = otherPlayerStatItems[key]
 			}
 			statItem.AddFunction(statItem, otherPlayerStatItem, history, eventIndex, id, isPlayerOne)
 		}
@@ -68,24 +66,16 @@ func incrementStatItem(statItem *StatItem, event *pb.GameEvent, id string) {
 	}
 }
 
-func combineStatItemLists(statItems []*StatItem, otherStatItems []*StatItem) error {
-	if len(statItems) != len(otherStatItems) {
-		return errors.New("StatItem lists do not match in length")
-	}
-	for i := 0; i < len(statItems); i++ {
-		item := statItems[i]
-		itemOther := otherStatItems[i]
-		if item.Name != itemOther.Name {
-			return errors.New("StatItem names do not match")
-		}
+func combineStatItemMaps(statItems map[string]*StatItem, otherStatItems map[string]*StatItem) error {
+	for key, item := range statItems {
+		itemOther := otherStatItems[key]
 		combineItems(item, itemOther)
 	}
 	return nil
 }
 
-func confirmNotableItems(statItems []*StatItem, id string) {
-	for i := 0; i < len(statItems); i++ {
-		item := statItems[i]
+func confirmNotableItems(statItems map[string]*StatItem, id string) {
+	for key, item := range statItems {
 		// For one player plays every _ stats
 		// Player one adds to the total, player two subtracts
 		// So we need the absolute value to account for both possibilities
@@ -93,7 +83,7 @@ func confirmNotableItems(statItems []*StatItem, id string) {
 			item.Total = item.Total * (-1)
 		}
 		if item.Total >= item.Minimum && item.Total <= item.Maximum {
-			log.Debug().Msgf("Notable confirmed: %s", item.Name)
+			log.Debug().Msgf("Notable confirmed: %s", key)
 			item.List = append(item.List, &ListItem{Word: "", Probability: 0, Score: 0, GameId: id})
 		}
 		item.Total = 0
@@ -119,7 +109,7 @@ func combineItems(statItem *StatItem, otherStatItem *StatItem) {
 	}
 }
 
-func finalize(statItems []*StatItem) {
+func finalize(statItems map[string]*StatItem) {
 	for _, statItem := range statItems {
 		if statItem.IncrementType == FinalType {
 			statItem.AddFunction(nil, nil, nil, -1, "", false)

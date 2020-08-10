@@ -26,18 +26,12 @@ var DefaultConfig = macondoconfig.Config{
 	DefaultLetterDistribution: "English",
 }
 
-func convertStatItemListToMap(statItems []*entity.StatItem) map[string]*entity.StatItem {
-	statItemMap := make(map[string]*entity.StatItem)
-	for _, statItem := range statItems {
-		statItemMap[statItem.Name] = statItem
-	}
-	return statItemMap
-}
-
 func InstantiateNewStatsWithHistory(filename string) (*entity.Stats, error) {
 
 	history, err := gcgio.ParseGCG(&DefaultConfig, filename)
-
+	if err != nil {
+		panic(err)
+	}
 	// For these tests, ensure "jvc" and "Josh" always have a player id of 1
 	playerOneId := "1"
 	playerTwoId := "2"
@@ -92,59 +86,58 @@ func TestStats(t *testing.T) {
 	stats.Finalize()
 	statsJSON.Finalize()
 	is.True(isEqual(stats, statsJSON))
-	playerOneStatsMap := convertStatItemListToMap(stats.PlayerOneData)
-	fmt.Println(StatsToString(stats))
-	is.True(playerOneStatsMap["Bingo Nines or Above"].Total == 1)
-	is.True(playerOneStatsMap["Bingoless Games"].Total == 0)
-	is.True(playerOneStatsMap["Bingos"].Total == 75)
-	is.True(playerOneStatsMap["Challenged Phonies"].Total == 4)
-	is.True(playerOneStatsMap["Challenges"].Total == 20)
-	is.True(playerOneStatsMap["Challenges Won"].Total == 9)
-	is.True(playerOneStatsMap["Challenges Lost"].Total == 11)
-	is.True(playerOneStatsMap["Comments"].Total == 174)
-	is.True(playerOneStatsMap["Draws"].Total == 0)
-	is.True(playerOneStatsMap["Exchanges"].Total == 3)
-	is.True(playerOneStatsMap["Firsts"].Total == 16)
-	is.True(playerOneStatsMap["Games"].Total == 31)
-	is.True(playerOneStatsMap["Highest Scoring Game"].Total == 619)
-	is.True(playerOneStatsMap["Highest Scoring Turn"].Total == 167)
-	is.True(playerOneStatsMap["Losses"].Total == 11)
-	is.True(playerOneStatsMap["Lowest Scoring Game"].Total == 359)
-	is.True(playerOneStatsMap["Mistakes"].Total == 134)
-	is.True(playerOneStatsMap["Plays That Were Challenged"].Total == 18)
-	is.True(playerOneStatsMap["Score"].Total == 13977)
-	is.True(playerOneStatsMap["Turns"].Total == 375)
-	is.True(playerOneStatsMap["Turns With at Least One Blank"].Total == 72)
-	is.True(playerOneStatsMap["Vertical Openings"].Total == 0)
-	is.True(playerOneStatsMap["Wins"].Total == 20)
-	is.True(playerOneStatsMap["Tiles Played"].Total == 1556)
-	is.True(playerOneStatsMap["Tiles Played"].Subitems["A"] == 134)
-	is.True(playerOneStatsMap["Tiles Played"].Subitems["B"] == 25)
-	is.True(playerOneStatsMap["Tiles Played"].Subitems["C"] == 26)
-	is.True(playerOneStatsMap["Tiles Played"].Subitems["D"] == 71)
-	is.True(playerOneStatsMap["Tiles Played"].Subitems["E"] == 186)
-	is.True(playerOneStatsMap["Tiles Played"].Subitems["F"] == 24)
-	is.True(playerOneStatsMap["Tiles Played"].Subitems["G"] == 50)
-	is.True(playerOneStatsMap["Tiles Played"].Subitems["H"] == 34)
-	is.True(playerOneStatsMap["Tiles Played"].Subitems["I"] == 144)
-	is.True(playerOneStatsMap["Tiles Played"].Subitems["J"] == 13)
-	is.True(playerOneStatsMap["Tiles Played"].Subitems["K"] == 14)
-	is.True(playerOneStatsMap["Tiles Played"].Subitems["L"] == 72)
-	is.True(playerOneStatsMap["Tiles Played"].Subitems["M"] == 32)
-	is.True(playerOneStatsMap["Tiles Played"].Subitems["N"] == 102)
-	is.True(playerOneStatsMap["Tiles Played"].Subitems["O"] == 125)
-	is.True(playerOneStatsMap["Tiles Played"].Subitems["P"] == 21)
-	is.True(playerOneStatsMap["Tiles Played"].Subitems["Q"] == 16)
-	is.True(playerOneStatsMap["Tiles Played"].Subitems["R"] == 94)
-	is.True(playerOneStatsMap["Tiles Played"].Subitems["S"] == 44)
-	is.True(playerOneStatsMap["Tiles Played"].Subitems["T"] == 94)
-	is.True(playerOneStatsMap["Tiles Played"].Subitems["U"] == 67)
-	is.True(playerOneStatsMap["Tiles Played"].Subitems["V"] == 30)
-	is.True(playerOneStatsMap["Tiles Played"].Subitems["W"] == 31)
-	is.True(playerOneStatsMap["Tiles Played"].Subitems["X"] == 16)
-	is.True(playerOneStatsMap["Tiles Played"].Subitems["Y"] == 33)
-	is.True(playerOneStatsMap["Tiles Played"].Subitems["Z"] == 19)
-	is.True(playerOneStatsMap["Tiles Played"].Subitems[string(alphabet.BlankToken)] == 39)
+	// fmt.Println(StatsToString(stats))
+	is.True(stats.PlayerOneData[entity.BINGO_NINES_OR_ABOVE_STAT].Total == 1)
+	is.True(stats.PlayerOneData[entity.NO_BINGOS_STAT].Total == 0)
+	is.True(stats.PlayerOneData[entity.BINGOS_STAT].Total == 75)
+	is.True(stats.PlayerOneData[entity.CHALLENGED_PHONIES_STAT].Total == 4)
+	is.True(stats.PlayerOneData[entity.CHALLENGES_STAT].Total == 20)
+	is.True(stats.PlayerOneData[entity.CHALLENGES_WON_STAT].Total == 9)
+	is.True(stats.PlayerOneData[entity.CHALLENGES_LOST_STAT].Total == 11)
+	is.True(stats.PlayerOneData[entity.COMMENTS_STAT].Total == 174)
+	is.True(stats.PlayerOneData[entity.DRAWS_STAT].Total == 0)
+	is.True(stats.PlayerOneData[entity.EXCHANGES_STAT].Total == 3)
+	is.True(stats.PlayerOneData[entity.FIRSTS_STAT].Total == 16)
+	is.True(stats.PlayerOneData[entity.GAMES_STAT].Total == 31)
+	is.True(stats.PlayerOneData[entity.HIGH_GAME_STAT].Total == 619)
+	is.True(stats.PlayerOneData[entity.HIGH_TURN_STAT].Total == 167)
+	is.True(stats.PlayerOneData[entity.LOSSES_STAT].Total == 11)
+	is.True(stats.PlayerOneData[entity.LOW_GAME_STAT].Total == 359)
+	is.True(stats.PlayerOneData[entity.MISTAKES_STAT].Total == 134)
+	is.True(stats.PlayerOneData[entity.PLAYS_THAT_WERE_CHALLENGED_STAT].Total == 18)
+	is.True(stats.PlayerOneData[entity.SCORE_STAT].Total == 13977)
+	is.True(stats.PlayerOneData[entity.TURNS_STAT].Total == 375)
+	is.True(stats.PlayerOneData[entity.TURNS_WITH_BLANK_STAT].Total == 72)
+	is.True(stats.PlayerOneData[entity.VERTICAL_OPENINGS_STAT].Total == 0)
+	is.True(stats.PlayerOneData[entity.WINS_STAT].Total == 20)
+	is.True(stats.PlayerOneData[entity.TILES_PLAYED_STAT].Total == 1556)
+	is.True(stats.PlayerOneData[entity.TILES_PLAYED_STAT].Subitems["A"] == 134)
+	is.True(stats.PlayerOneData[entity.TILES_PLAYED_STAT].Subitems["B"] == 25)
+	is.True(stats.PlayerOneData[entity.TILES_PLAYED_STAT].Subitems["C"] == 26)
+	is.True(stats.PlayerOneData[entity.TILES_PLAYED_STAT].Subitems["D"] == 71)
+	is.True(stats.PlayerOneData[entity.TILES_PLAYED_STAT].Subitems["E"] == 186)
+	is.True(stats.PlayerOneData[entity.TILES_PLAYED_STAT].Subitems["F"] == 24)
+	is.True(stats.PlayerOneData[entity.TILES_PLAYED_STAT].Subitems["G"] == 50)
+	is.True(stats.PlayerOneData[entity.TILES_PLAYED_STAT].Subitems["H"] == 34)
+	is.True(stats.PlayerOneData[entity.TILES_PLAYED_STAT].Subitems["I"] == 144)
+	is.True(stats.PlayerOneData[entity.TILES_PLAYED_STAT].Subitems["J"] == 13)
+	is.True(stats.PlayerOneData[entity.TILES_PLAYED_STAT].Subitems["K"] == 14)
+	is.True(stats.PlayerOneData[entity.TILES_PLAYED_STAT].Subitems["L"] == 72)
+	is.True(stats.PlayerOneData[entity.TILES_PLAYED_STAT].Subitems["M"] == 32)
+	is.True(stats.PlayerOneData[entity.TILES_PLAYED_STAT].Subitems["N"] == 102)
+	is.True(stats.PlayerOneData[entity.TILES_PLAYED_STAT].Subitems["O"] == 125)
+	is.True(stats.PlayerOneData[entity.TILES_PLAYED_STAT].Subitems["P"] == 21)
+	is.True(stats.PlayerOneData[entity.TILES_PLAYED_STAT].Subitems["Q"] == 16)
+	is.True(stats.PlayerOneData[entity.TILES_PLAYED_STAT].Subitems["R"] == 94)
+	is.True(stats.PlayerOneData[entity.TILES_PLAYED_STAT].Subitems["S"] == 44)
+	is.True(stats.PlayerOneData[entity.TILES_PLAYED_STAT].Subitems["T"] == 94)
+	is.True(stats.PlayerOneData[entity.TILES_PLAYED_STAT].Subitems["U"] == 67)
+	is.True(stats.PlayerOneData[entity.TILES_PLAYED_STAT].Subitems["V"] == 30)
+	is.True(stats.PlayerOneData[entity.TILES_PLAYED_STAT].Subitems["W"] == 31)
+	is.True(stats.PlayerOneData[entity.TILES_PLAYED_STAT].Subitems["X"] == 16)
+	is.True(stats.PlayerOneData[entity.TILES_PLAYED_STAT].Subitems["Y"] == 33)
+	is.True(stats.PlayerOneData[entity.TILES_PLAYED_STAT].Subitems["Z"] == 19)
+	is.True(stats.PlayerOneData[entity.TILES_PLAYED_STAT].Subitems[string(alphabet.BlankToken)] == 39)
 }
 
 func TestNotable(t *testing.T) {
@@ -154,11 +147,10 @@ func TestNotable(t *testing.T) {
 	everyEStats, _ := InstantiateNewStatsWithHistory("./testdata/josh_vs_jesse.gcg")
 	stats.AddStats(everyPowerTileStats)
 	stats.AddStats(everyEStats)
-	notableStatsMap := convertStatItemListToMap(stats.NotableData)
 	//fmt.Println(stats.ToString())
 
-	is.True(len(notableStatsMap["One Player Plays Every Power Tile"].List) == 1)
-	is.True(len(notableStatsMap["One Player Plays Every E"].List) == 1)
+	is.True(len(stats.NotableData[entity.ONE_PLAYER_PLAYS_EVERY_POWER_TILE_STAT].List) == 1)
+	is.True(len(stats.NotableData[entity.ONE_PLAYER_PLAYS_EVERY_E_STAT].List) == 1)
 }
 
 func isEqual(statsOne *entity.Stats, statsTwo *entity.Stats) bool {
@@ -169,13 +161,10 @@ func isEqual(statsOne *entity.Stats, statsTwo *entity.Stats) bool {
 		isStatItemListEqual(statsOne.NotableData, statsTwo.NotableData)
 }
 
-func isStatItemListEqual(statItemListOne []*entity.StatItem, statItemListTwo []*entity.StatItem) bool {
-	if len(statItemListOne) != len(statItemListTwo) {
-		return false
-	}
-	for i := 0; i < len(statItemListOne); i++ {
-		statsItemOne := statItemListOne[i]
-		statsItemTwo := statItemListTwo[i]
+func isStatItemListEqual(statItemListOne map[string]*entity.StatItem, statItemListTwo map[string]*entity.StatItem) bool {
+	for key, value := range statItemListOne {
+		statsItemOne := value
+		statsItemTwo := statItemListTwo[key]
 		if !isStatItemEqual(statsItemOne, statsItemTwo) {
 			return false
 		}
@@ -184,8 +173,7 @@ func isStatItemListEqual(statItemListOne []*entity.StatItem, statItemListTwo []*
 }
 
 func isStatItemEqual(statItemOne *entity.StatItem, statItemTwo *entity.StatItem) bool {
-	return statItemOne.Name == statItemTwo.Name &&
-		statItemOne.Total == statItemTwo.Total &&
+	return statItemOne.Total == statItemTwo.Total &&
 		// Floating points nonsense
 		//isStatItemAveragesEqual(statItemOne.Averages, statItemTwo.Averages) &&
 		isStatItemSubitemsEqual(statItemOne.Subitems, statItemTwo.Subitems) &&
@@ -225,15 +213,15 @@ func StatsToString(stats *entity.Stats) string {
 	return s
 }
 
-func statItemListToString(data []*entity.StatItem) string {
+func statItemListToString(data map[string]*entity.StatItem) string {
 	s := ""
-	for _, statItem := range data {
-		s += statItemToString(statItem)
+	for key, statItem := range data {
+		s += statItemToString(key, statItem)
 	}
 	return s
 }
 
-func statItemToString(statItem *entity.StatItem) string {
+func statItemToString(key string, statItem *entity.StatItem) string {
 	subitemString := ""
 	if statItem.Subitems != nil {
 		subitemString = subitemsToString(statItem.Subitems)
@@ -242,7 +230,7 @@ func statItemToString(statItem *entity.StatItem) string {
 	if statItem.Averages != nil {
 		averagesString = averagesToString(statItem.Averages)
 	}
-	return fmt.Sprintf("  %s:\n    Total: %d\n    Averages: %s\nSubitems:\n%s\n    List:\n%s", statItem.Name, statItem.Total, averagesString, subitemString, listItemToString(statItem.List))
+	return fmt.Sprintf("  %s:\n    Total: %d\n    Averages: %s\nSubitems:\n%s\n    List:\n%s", key, statItem.Total, averagesString, subitemString, listItemToString(statItem.List))
 }
 
 func averagesToString(averages []float64) string {
