@@ -129,7 +129,8 @@ message MatchRequest {
 }
 
 // A SoughtGameProcessEvent gets sent when a match request (or seek request)
-// get accepted (or canceled -- when sent from server to client).
+// get accepted (from client to server), or canceled -- when sent from server to
+// client.
 message SoughtGameProcessEvent { string request_id = 1; }
 
 // Server to client messages:
@@ -207,7 +208,7 @@ message GameHistoryRefresher {
 }
 
 // A NewGameEvent gets sent from the server to the involved clients when a new
-// game is about to begin. It should follow a SoughtGameProcessEvent
+// game is about to begin. It should follow a SoughtGameProcessEvent.
 message NewGameEvent { string game_id = 1; }
 
 message ErrorMessage {

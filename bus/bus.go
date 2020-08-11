@@ -495,7 +495,7 @@ func (b *Bus) broadcastSeekDeletion(seekID string) error {
 	if err != nil {
 		return err
 	}
-	return b.natsconn.Publish("lobby.gameAccepted", data)
+	return b.natsconn.Publish("lobby.soughtGameProcess", data)
 }
 
 func (b *Bus) broadcastGameCreation(g *entity.Game, acceptor, requester *entity.User) error {

@@ -7,11 +7,11 @@ import {
   SeekRequest,
   GameRequest,
   MessageType,
-  GameAcceptedEvent,
   GameRules,
   RatingMode,
   MatchRequest,
   MatchUser,
+  SoughtGameProcessEvent,
 } from '../gen/api/proto/realtime/realtime_pb';
 import { encodeToSocketFmt } from '../utils/protobuf';
 import { SoughtGames } from './sought_games';
@@ -63,7 +63,7 @@ const sendAccept = (
   sendSocketMsg: (msg: Uint8Array) => void
 ) => {
   // Eventually use the ID.
-  const sa = new GameAcceptedEvent();
+  const sa = new SoughtGameProcessEvent();
   sa.setRequestId(seekID);
   sendSocketMsg(
     encodeToSocketFmt(
@@ -125,6 +125,7 @@ export const Lobby = (props: Props) => {
         rated: seekSettings.rated as boolean,
         maxOvertimeMinutes: Math.round(seekSettings.maxovertime as number),
         receiver: new MatchUser(),
+        isRematch: false,
       },
       props.sendSocketMsg
     );
@@ -152,6 +153,7 @@ export const Lobby = (props: Props) => {
         rated: seekSettings.rated as boolean,
         maxOvertimeMinutes: Math.round(seekSettings.maxovertime as number),
         receiver: matchUser,
+        isRematch: false,
       },
       props.sendSocketMsg
     );

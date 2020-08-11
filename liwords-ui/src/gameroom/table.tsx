@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import { Row, Col, message, notification, Button } from 'antd';
+import { Row, Col, message, notification, Button, Modal } from 'antd';
 import axios from 'axios';
+import { ExclamationCircleOutlined } from '@ant-design/icons';
 
 import { useParams } from 'react-router-dom';
 import { BoardPanel } from './board_panel';
@@ -9,7 +10,11 @@ import { Chat } from './chat';
 import { useStoreContext } from '../store/store';
 import { PlayerCards } from './player_cards';
 import Pool from './pool';
-import { MessageType, TimedOut } from '../gen/api/proto/realtime/realtime_pb';
+import {
+  MessageType,
+  TimedOut,
+  MatchRequest,
+} from '../gen/api/proto/realtime/realtime_pb';
 import { encodeToSocketFmt } from '../utils/protobuf';
 import './scss/gameroom.scss';
 import { ScoreCard } from './scorecard';
@@ -61,6 +66,8 @@ export const Table = React.memo((props: Props) => {
     poolFormat,
     setPoolFormat,
     setPTimedOut,
+    rematchRequest,
+    setRematchRequest,
   } = useStoreContext();
   const { username, sendSocketMsg } = props;
   // const location = useLocation();
@@ -179,6 +186,25 @@ export const Table = React.memo((props: Props) => {
   } else {
     rack = gameContext.players.find((p) => p.onturn)?.currentRack || '';
   }
+  console.log('before getisrematch modal');
+  if (rematchRequest.getIsRematch()) {
+    Modal.confirm({
+      title: 'Match Request',
+      icon: <ExclamationCircleOutlined />,
+      content: `${rematchRequest
+        .getUser()
+        ?.getDisplayName()} has challenged you to a rematch`,
+      onOk() {
+        console.log('OK');
+        setRematchRequest(new MatchRequest());
+      },
+      onCancel() {
+        console.log('Cancel');
+        setRematchRequest(new MatchRequest());
+      },
+    });
+  }
+  console.log('after getisrematch modal');
 
   // The game "starts" when the GameHistoryRefresher object comes in via the socket.
 

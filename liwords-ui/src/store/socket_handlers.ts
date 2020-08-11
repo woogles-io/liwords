@@ -1,6 +1,4 @@
-import React from 'react';
-import { message, notification, Modal } from 'antd';
-import { ExclamationCircleOutlined } from '@ant-design/icons';
+import { message, notification } from 'antd';
 import { StoreData } from './store';
 import {
   MessageType,
@@ -133,34 +131,13 @@ export const onSocketMsg = (storeData: StoreData) => {
           if (soughtGame === null) {
             return;
           }
-
+          if (mr.getIsRematch()) {
+            storeData.setRematchRequest(mr);
+          }
           storeData.dispatchLobbyContext({
             actionType: ActionType.AddMatchRequest,
             payload: soughtGame,
           });
-
-          if (mr.getIsRematch()) {
-            // If it is a rematch, we want to show a modal.
-            // Note that this is a bit of a hack, as there's no way to show
-            // a match request outside of the lobby otherwise at the moment.
-            // If we want to handle this in a different way, then we need to think
-            // more carefully about it.
-
-            Modal.confirm({
-              title: 'Match Request',
-              icon: <ExclamationCircleOutlined />,
-              content: `${mr
-                .getUser()
-                ?.getDisplayName()} has challenged you to a rematch`,
-              onOk() {
-                console.log('OK');
-              },
-              onCancel() {
-                console.log('Cancel');
-              },
-            });
-          }
-
           break;
         }
 
@@ -265,6 +242,10 @@ export const onSocketMsg = (storeData: StoreData) => {
           storeData.dispatchLobbyContext({
             actionType: ActionType.RemoveSoughtGame,
             payload: dec.getRequestId(),
+          });
+          notification.info({
+            message: 'Declined',
+            description: 'Your match request was declined.',
           });
           break;
         }

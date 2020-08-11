@@ -7,7 +7,10 @@ import React, {
 } from 'react';
 
 import { EnglishCrosswordGameDistribution } from '../constants/tile_distributions';
-import { ServerChallengeResultEvent } from '../gen/api/proto/realtime/realtime_pb';
+import {
+  ServerChallengeResultEvent,
+  MatchRequest,
+} from '../gen/api/proto/realtime/realtime_pb';
 import { LobbyState, LobbyReducer } from './reducers/lobby_reducer';
 import { Action } from '../actions/actions';
 import {
@@ -62,6 +65,9 @@ export type StoreData = {
   gameEndMessage: string;
   setGameEndMessage: React.Dispatch<React.SetStateAction<string>>;
 
+  rematchRequest: MatchRequest;
+  setRematchRequest: React.Dispatch<React.SetStateAction<MatchRequest>>;
+
   // initClockController: (
   //   ghr: GameHistoryRefresher,
   //   onTimeout: () => void
@@ -99,6 +105,9 @@ export const Context = createContext<StoreData>({
 
   gameEndMessage: '',
   setGameEndMessage: defaultFunction,
+
+  rematchRequest: new MatchRequest(),
+  setRematchRequest: defaultFunction,
 
   // initClockController: defaultFunction,
   stopClock: defaultFunction,
@@ -169,6 +178,7 @@ export const Store = ({ children, ...props }: Props) => {
 
   const [redirGame, setRedirGame] = useState('');
   const [gameEndMessage, setGameEndMessage] = useState('');
+  const [rematchRequest, setRematchRequest] = useState(new MatchRequest());
   const [chat, setChat] = useState(new Array<ChatEntityObj>());
 
   const challengeResultEvent = (sge: ServerChallengeResultEvent) => {
@@ -221,6 +231,8 @@ export const Store = ({ children, ...props }: Props) => {
     addChat,
     clearChat,
     chat,
+    rematchRequest,
+    setRematchRequest,
 
     // initClockController,
     poolFormat,
