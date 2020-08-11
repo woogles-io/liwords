@@ -10,7 +10,7 @@ import {
   GameHistoryRefresher,
   MessageTypeMap,
   MatchRequest,
-  GameAcceptedEvent,
+  SoughtGameProcessEvent,
   ClientGameplayEvent,
   ServerGameplayEvent,
   GameEndedEvent,
@@ -24,6 +24,8 @@ import {
   ActiveGames,
   GameDeletion,
   MatchRequests,
+  DeclineMatchRequest,
+  ChatMessage,
 } from '../gen/api/proto/realtime/realtime_pb';
 import { ActionType } from '../actions/actions';
 import { endGameMessage } from './end_of_game';
@@ -56,7 +58,7 @@ export const parseMsgs = (msg: Uint8Array) => {
       [MessageType.NEW_GAME_EVENT]: NewGameEvent,
       [MessageType.GAME_HISTORY_REFRESHER]: GameHistoryRefresher,
       [MessageType.MATCH_REQUEST]: MatchRequest,
-      [MessageType.GAME_ACCEPTED_EVENT]: GameAcceptedEvent,
+      [MessageType.SOUGHT_GAME_PROCESS_EVENT]: SoughtGameProcessEvent,
       [MessageType.CLIENT_GAMEPLAY_EVENT]: ClientGameplayEvent,
       [MessageType.SERVER_GAMEPLAY_EVENT]: ServerGameplayEvent,
       [MessageType.GAME_ENDED_EVENT]: GameEndedEvent,
@@ -70,6 +72,8 @@ export const parseMsgs = (msg: Uint8Array) => {
       [MessageType.ACTIVE_GAMES]: ActiveGames,
       [MessageType.GAME_DELETION]: GameDeletion,
       [MessageType.MATCH_REQUESTS]: MatchRequests,
+      [MessageType.DECLINE_MATCH_REQUEST]: DeclineMatchRequest,
+      [MessageType.CHAT_MESSAGE]: ChatMessage,
     };
 
     const parsedMsg = msgTypes[msgType];
@@ -245,12 +249,22 @@ export const onSocketMsg = (storeData: StoreData) => {
           break;
         }
 
-        case MessageType.GAME_ACCEPTED_EVENT: {
-          const gae = parsedMsg as GameAcceptedEvent;
+        case MessageType.SOUGHT_GAME_PROCESS_EVENT: {
+          const gae = parsedMsg as SoughtGameProcessEvent;
           console.log('got game accepted event', gae);
           storeData.dispatchLobbyContext({
             actionType: ActionType.RemoveSoughtGame,
             payload: gae.getRequestId(),
+          });
+          break;
+        }
+
+        case MessageType.DECLINE_MATCH_REQUEST: {
+          const dec = parsedMsg as DeclineMatchRequest;
+          console.log('got decline match request', dec);
+          storeData.dispatchLobbyContext({
+            actionType: ActionType.RemoveSoughtGame,
+            payload: dec.getRequestId(),
           });
           break;
         }

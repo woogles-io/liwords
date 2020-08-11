@@ -67,7 +67,7 @@ message MatchUser {
 enum MessageType {
   SEEK_REQUEST = 0;
   MATCH_REQUEST = 1;
-  GAME_ACCEPTED_EVENT = 2;
+  SOUGHT_GAME_PROCESS_EVENT = 2;
   CLIENT_GAMEPLAY_EVENT = 3;
   SERVER_GAMEPLAY_EVENT = 4;
   GAME_ENDED_EVENT = 5;
@@ -85,6 +85,7 @@ enum MessageType {
   GAME_DELETION = 17;
   MATCH_REQUESTS = 18;
   DECLINE_MATCH_REQUEST = 19;
+  CHAT_MESSAGE = 20;
   // Add more events here. The total number of events should fit in a byte.
   // We should definitely not be using anywhere close to 255 events, and
   // in order to enforce that I'll be forcing the event type header to just be
@@ -107,6 +108,12 @@ message GameDeletion { string id = 1; }
 
 // Bi-directional messages
 
+message ChatMessage {
+  string username = 1;
+  string channel = 2;
+  string message = 3;
+}
+
 message SeekRequest {
   GameRequest game_request = 1;
   MatchUser user = 2;
@@ -121,9 +128,9 @@ message MatchRequest {
   bool is_rematch = 4;
 }
 
-// A GameAcceptedEvent gets sent when a match request (or seek request)
+// A SoughtGameProcessEvent gets sent when a match request (or seek request)
 // get accepted (or canceled -- when sent from server to client).
-message GameAcceptedEvent { string request_id = 1; }
+message SoughtGameProcessEvent { string request_id = 1; }
 
 // Server to client messages:
 
@@ -200,7 +207,7 @@ message GameHistoryRefresher {
 }
 
 // A NewGameEvent gets sent from the server to the involved clients when a new
-// game is about to begin. It should follow a GameAcceptedEvent
+// game is about to begin. It should follow a SoughtGameProcessEvent
 message NewGameEvent { string game_id = 1; }
 
 message ErrorMessage {

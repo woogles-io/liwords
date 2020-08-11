@@ -66,7 +66,10 @@ const sendAccept = (
   const sa = new GameAcceptedEvent();
   sa.setRequestId(seekID);
   sendSocketMsg(
-    encodeToSocketFmt(MessageType.GAME_ACCEPTED_EVENT, sa.serializeBinary())
+    encodeToSocketFmt(
+      MessageType.SOUGHT_GAME_PROCESS_EVENT,
+      sa.serializeBinary()
+    )
   );
 };
 

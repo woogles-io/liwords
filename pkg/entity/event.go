@@ -127,8 +127,8 @@ func EventFromByteArray(arr []byte) (*EventWrapper, error) {
 		message = &pb.GameHistoryRefresher{}
 	case pb.MessageType_SEEK_REQUEST:
 		message = &pb.SeekRequest{}
-	case pb.MessageType_GAME_ACCEPTED_EVENT:
-		message = &pb.GameAcceptedEvent{}
+	case pb.MessageType_SOUGHT_GAME_PROCESS_EVENT:
+		message = &pb.SoughtGameProcessEvent{}
 	case pb.MessageType_JOIN_PATH:
 		message = &pb.JoinPath{}
 	case pb.MessageType_UNJOIN_REALM:

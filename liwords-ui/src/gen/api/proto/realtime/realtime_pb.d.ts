@@ -194,6 +194,34 @@ export namespace GameDeletion {
   }
 }
 
+export class ChatMessage extends jspb.Message {
+  getUsername(): string;
+  setUsername(value: string): void;
+
+  getChannel(): string;
+  setChannel(value: string): void;
+
+  getMessage(): string;
+  setMessage(value: string): void;
+
+  serializeBinary(): Uint8Array;
+  toObject(includeInstance?: boolean): ChatMessage.AsObject;
+  static toObject(includeInstance: boolean, msg: ChatMessage): ChatMessage.AsObject;
+  static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+  static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+  static serializeBinaryToWriter(message: ChatMessage, writer: jspb.BinaryWriter): void;
+  static deserializeBinary(bytes: Uint8Array): ChatMessage;
+  static deserializeBinaryFromReader(message: ChatMessage, reader: jspb.BinaryReader): ChatMessage;
+}
+
+export namespace ChatMessage {
+  export type AsObject = {
+    username: string,
+    channel: string,
+    message: string,
+  }
+}
+
 export class SeekRequest extends jspb.Message {
   hasGameRequest(): boolean;
   clearGameRequest(): void;
@@ -268,21 +296,21 @@ export namespace MatchRequest {
   }
 }
 
-export class GameAcceptedEvent extends jspb.Message {
+export class SoughtGameProcessEvent extends jspb.Message {
   getRequestId(): string;
   setRequestId(value: string): void;
 
   serializeBinary(): Uint8Array;
-  toObject(includeInstance?: boolean): GameAcceptedEvent.AsObject;
-  static toObject(includeInstance: boolean, msg: GameAcceptedEvent): GameAcceptedEvent.AsObject;
+  toObject(includeInstance?: boolean): SoughtGameProcessEvent.AsObject;
+  static toObject(includeInstance: boolean, msg: SoughtGameProcessEvent): SoughtGameProcessEvent.AsObject;
   static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
   static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
-  static serializeBinaryToWriter(message: GameAcceptedEvent, writer: jspb.BinaryWriter): void;
-  static deserializeBinary(bytes: Uint8Array): GameAcceptedEvent;
-  static deserializeBinaryFromReader(message: GameAcceptedEvent, reader: jspb.BinaryReader): GameAcceptedEvent;
+  static serializeBinaryToWriter(message: SoughtGameProcessEvent, writer: jspb.BinaryWriter): void;
+  static deserializeBinary(bytes: Uint8Array): SoughtGameProcessEvent;
+  static deserializeBinaryFromReader(message: SoughtGameProcessEvent, reader: jspb.BinaryReader): SoughtGameProcessEvent;
 }
 
-export namespace GameAcceptedEvent {
+export namespace SoughtGameProcessEvent {
   export type AsObject = {
     requestId: string,
   }
@@ -690,7 +718,7 @@ export const RatingMode: RatingModeMap;
 export interface MessageTypeMap {
   SEEK_REQUEST: 0;
   MATCH_REQUEST: 1;
-  GAME_ACCEPTED_EVENT: 2;
+  SOUGHT_GAME_PROCESS_EVENT: 2;
   CLIENT_GAMEPLAY_EVENT: 3;
   SERVER_GAMEPLAY_EVENT: 4;
   GAME_ENDED_EVENT: 5;
@@ -708,6 +736,7 @@ export interface MessageTypeMap {
   GAME_DELETION: 17;
   MATCH_REQUESTS: 18;
   DECLINE_MATCH_REQUEST: 19;
+  CHAT_MESSAGE: 20;
 }
 
 export const MessageType: MessageTypeMap;
