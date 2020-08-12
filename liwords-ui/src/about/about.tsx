@@ -37,8 +37,8 @@ export const About = (props: Props) => {
             </h4>
             <p>
               Let’s face it, the status quo is pretty bad. After so many years
-              of being inurned to “average”, we realize change will only start
-              at the grassroots level. We have big dreams, and while it’ll take
+              of being inured to “average”, we realize change will only start at
+              the grassroots level. We have big dreams, and while it’ll take
               time, we believe we can get there.
             </p>
             <h4>Three main principles guide the creation of this community.</h4>

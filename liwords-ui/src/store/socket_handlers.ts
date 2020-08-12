@@ -34,12 +34,17 @@ import {
 
 const makemoveMP3 = require('../assets/makemove.mp3');
 const startgameMP3 = require('../assets/startgame.mp3');
+const oppMoveMP3 = require('../assets/oppmove.mp3');
+const matchReqMP3 = require('../assets/matchreq.mp3');
 const woofWav = require('../assets/woof.wav');
 
-const makemoveSound = new Audio(makemoveMP3);
+const makeMoveSound = new Audio(makemoveMP3);
+const oppMoveSound = new Audio(oppMoveMP3);
+const matchReqSound = new Audio(matchReqMP3);
+
 const startgameSound = new Audio(startgameMP3);
 const woofSound = new Audio(woofWav);
-woofSound.volume = 0.2;
+woofSound.volume = 0.15;
 
 export const parseMsgs = (msg: Uint8Array) => {
   // Multiple msgs can come in the same packet.
@@ -86,7 +91,7 @@ export const parseMsgs = (msg: Uint8Array) => {
   return msgs;
 };
 
-export const onSocketMsg = (storeData: StoreData) => {
+export const onSocketMsg = (username: string, storeData: StoreData) => {
   return (reader: FileReader) => {
     if (!reader.result) {
       return;
@@ -126,14 +131,20 @@ export const onSocketMsg = (storeData: StoreData) => {
 
         case MessageType.MATCH_REQUEST: {
           const mr = parsedMsg as MatchRequest;
-
+          const receiver = mr.getReceivingUser()?.getDisplayName();
           const soughtGame = SeekRequestToSoughtGame(mr);
           if (soughtGame === null) {
             return;
           }
-          if (mr.getIsRematch()) {
-            storeData.setRematchRequest(mr);
+          if (receiver === username) {
+            matchReqSound.play();
+            if (mr.getRematchFor() !== '') {
+              // Only display the rematch modal if we are the recipient
+              // of the rematch request.
+              storeData.setRematchRequest(mr);
+            }
           }
+
           storeData.dispatchLobbyContext({
             actionType: ActionType.AddMatchRequest,
             payload: soughtGame,
@@ -212,7 +223,11 @@ export const onSocketMsg = (storeData: StoreData) => {
             payload: sge,
           });
           // play sound
-          makemoveSound.play();
+          if (username === sge.getEvent()?.getNickname()) {
+            makeMoveSound.play();
+          } else {
+            oppMoveSound.play();
+          }
           break;
         }
 

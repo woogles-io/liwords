@@ -125,7 +125,9 @@ message MatchRequest {
   GameRequest game_request = 1;
   MatchUser user = 2;
   MatchUser receiving_user = 3;
-  bool is_rematch = 4;
+  // rematch_for is the game ID that this Match Request is a rematch for (empty
+  // if it isn't a rematch)
+  string rematch_for = 4;
 }
 
 // A SoughtGameProcessEvent gets sent when a match request (or seek request)

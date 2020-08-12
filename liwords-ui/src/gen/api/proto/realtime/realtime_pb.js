@@ -2389,7 +2389,7 @@ proto.liwords.MatchRequest.toObject = function(includeInstance, msg) {
     gameRequest: (f = msg.getGameRequest()) && proto.liwords.GameRequest.toObject(includeInstance, f),
     user: (f = msg.getUser()) && proto.liwords.MatchUser.toObject(includeInstance, f),
     receivingUser: (f = msg.getReceivingUser()) && proto.liwords.MatchUser.toObject(includeInstance, f),
-    isRematch: jspb.Message.getBooleanFieldWithDefault(msg, 4, false)
+    rematchFor: jspb.Message.getFieldWithDefault(msg, 4, "")
   };
 
   if (includeInstance) {
@@ -2442,8 +2442,8 @@ proto.liwords.MatchRequest.deserializeBinaryFromReader = function(msg, reader) {
       msg.setReceivingUser(value);
       break;
     case 4:
-      var value = /** @type {boolean} */ (reader.readBool());
-      msg.setIsRematch(value);
+      var value = /** @type {string} */ (reader.readString());
+      msg.setRematchFor(value);
       break;
     default:
       reader.skipField();
@@ -2498,9 +2498,9 @@ proto.liwords.MatchRequest.serializeBinaryToWriter = function(message, writer) {
       proto.liwords.MatchUser.serializeBinaryToWriter
     );
   }
-  f = message.getIsRematch();
-  if (f) {
-    writer.writeBool(
+  f = message.getRematchFor();
+  if (f.length > 0) {
+    writer.writeString(
       4,
       f
     );
@@ -2620,20 +2620,20 @@ proto.liwords.MatchRequest.prototype.hasReceivingUser = function() {
 
 
 /**
- * optional bool is_rematch = 4;
- * @return {boolean}
+ * optional string rematch_for = 4;
+ * @return {string}
  */
-proto.liwords.MatchRequest.prototype.getIsRematch = function() {
-  return /** @type {boolean} */ (jspb.Message.getBooleanFieldWithDefault(this, 4, false));
+proto.liwords.MatchRequest.prototype.getRematchFor = function() {
+  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 4, ""));
 };
 
 
 /**
- * @param {boolean} value
+ * @param {string} value
  * @return {!proto.liwords.MatchRequest} returns this
  */
-proto.liwords.MatchRequest.prototype.setIsRematch = function(value) {
-  return jspb.Message.setProto3BooleanField(this, 4, value);
+proto.liwords.MatchRequest.prototype.setRematchFor = function(value) {
+  return jspb.Message.setProto3StringField(this, 4, value);
 };
 
 

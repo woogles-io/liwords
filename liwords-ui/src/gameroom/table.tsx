@@ -1,5 +1,13 @@
 import React, { useEffect, useState } from 'react';
-import { Row, Col, message, notification, Button, Modal } from 'antd';
+import {
+  Row,
+  Col,
+  message,
+  notification,
+  Button,
+  Modal,
+  Popconfirm,
+} from 'antd';
 import axios from 'axios';
 import { ExclamationCircleOutlined } from '@ant-design/icons';
 
@@ -186,25 +194,6 @@ export const Table = React.memo((props: Props) => {
   } else {
     rack = gameContext.players.find((p) => p.onturn)?.currentRack || '';
   }
-  console.log('before getisrematch modal');
-  if (rematchRequest.getIsRematch()) {
-    Modal.confirm({
-      title: 'Match Request',
-      icon: <ExclamationCircleOutlined />,
-      content: `${rematchRequest
-        .getUser()
-        ?.getDisplayName()} has challenged you to a rematch`,
-      onOk() {
-        console.log('OK');
-        setRematchRequest(new MatchRequest());
-      },
-      onCancel() {
-        console.log('Cancel');
-        setRematchRequest(new MatchRequest());
-      },
-    });
-  }
-  console.log('after getisrematch modal');
 
   // The game "starts" when the GameHistoryRefresher object comes in via the socket.
 
@@ -220,15 +209,35 @@ export const Table = React.memo((props: Props) => {
           <pre>{gcgText}</pre>
         </Col>
         <Col span={boardspan} className="play-area">
-          <BoardPanel
-            username={props.username}
-            board={gameContext.board}
-            showBonusLabels={false}
-            currentRack={rack || ''}
-            gameID={gameID}
-            sendSocketMsg={props.sendSocketMsg}
-            gameDone={gameInfo.done}
-          />
+          {/* we only put the Popconfirm here so that we can physically place it */}
+          <Popconfirm
+            title={`${rematchRequest
+              .getUser()
+              ?.getDisplayName()} sent you a rematch request`}
+            visible={rematchRequest.getRematchFor() !== ''}
+            onConfirm={() => {
+              console.log('ok');
+              setRematchRequest(new MatchRequest());
+            }}
+            onCancel={() => {
+              console.log('cancel');
+              setRematchRequest(new MatchRequest());
+            }}
+            okText="Accept"
+            cancelText="Decline"
+            placement="bottom"
+          >
+            <BoardPanel
+              username={props.username}
+              board={gameContext.board}
+              showBonusLabels={false}
+              currentRack={rack || ''}
+              gameID={gameID}
+              sendSocketMsg={props.sendSocketMsg}
+              gameDone={gameInfo.done}
+              playerMeta={gameInfo.players}
+            />
+          </Popconfirm>
         </Col>
         <Col span={6} className="data-area">
           <PlayerCards playerMeta={gameInfo.players} />

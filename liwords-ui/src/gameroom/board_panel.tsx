@@ -20,10 +20,15 @@ import {
 } from '../utils/cwgame/game_event';
 import { Board } from '../utils/cwgame/board';
 import { encodeToSocketFmt } from '../utils/protobuf';
-import { MessageType } from '../gen/api/proto/realtime/realtime_pb';
+import {
+  MessageType,
+  MatchRequest,
+  MatchUser,
+} from '../gen/api/proto/realtime/realtime_pb';
 import { useStoreContext } from '../store/store';
 import { BlankSelector } from './blank_selector';
 import { GameEndMessage } from './game_end_message';
+import { PlayerMetadata } from './game_info';
 
 // The frame atop is 24 height
 // The frames on the sides are 24 in width, surrounded by a 14 pix gutter
@@ -37,6 +42,7 @@ type Props = {
   board: Board;
   sendSocketMsg: (msg: Uint8Array) => void;
   gameDone: boolean;
+  playerMeta: Array<PlayerMetadata>;
 };
 
 const shuffleString = (a: string): string => {
@@ -266,6 +272,32 @@ export const BoardPanel = React.memo((props: Props) => {
   };
 
   const rematch = () => {
+    const evt = new MatchRequest();
+    const receiver = new MatchUser();
+
+    let observer = true;
+    let opp = '';
+    props.playerMeta.forEach((p) => {
+      if (p.nickname === props.username) {
+        observer = false;
+      } else {
+        opp = p.nickname;
+      }
+    });
+    if (observer) {
+      return;
+    }
+
+    receiver.setDisplayName(opp);
+    evt.setReceivingUser(receiver);
+    evt.setRematchFor(props.gameID);
+    props.sendSocketMsg(
+      encodeToSocketFmt(MessageType.MATCH_REQUEST, evt.serializeBinary())
+    );
+    notification.info({
+      message: 'Rematch',
+      description: `Sent rematch request to ${opp}`,
+    });
     console.log('rematching');
   };
 

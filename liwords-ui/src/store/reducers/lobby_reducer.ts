@@ -20,7 +20,7 @@ export type SoughtGame = {
   seekID: string;
   // Only for direct match requests:
   receiver: MatchUser;
-  isRematch: boolean;
+  rematchFor: string;
 };
 
 type playerMeta = {
@@ -57,11 +57,11 @@ export const SeekRequestToSoughtGame = (
   }
 
   let receivingUser = new MatchUser();
-  let isRematch = false;
+  let rematchFor = '';
   if (req instanceof MatchRequest) {
     console.log('ismatchrequest');
     receivingUser = req.getReceivingUser()!;
-    isRematch = req.getIsRematch();
+    rematchFor = req.getRematchFor();
   }
 
   return {
@@ -74,7 +74,7 @@ export const SeekRequestToSoughtGame = (
     rated: gameReq.getRatingMode() === RatingMode.RATED,
     maxOvertimeMinutes: gameReq.getMaxOvertimeMinutes(),
     receiver: receivingUser,
-    isRematch,
+    rematchFor,
     incrementSecs: gameReq.getIncrementSeconds(),
   };
 };
@@ -161,28 +161,6 @@ export function LobbyReducer(state: LobbyState, action: Action): LobbyState {
         matchRequests: [matchRequest, ...matchRequests],
       };
     }
-    /*      if (matchRequest.isRematch) {
-        // If it is a rematch, we want to show a modal.
-        // Note that this is a bit of a hack, as there's no way to show
-        // a match request outside of the lobby otherwise at the moment.
-        // If we want to handle this in a different way, then we need to think
-        // more carefully about it.
-
-        Modal.confirm({
-          title: 'Match Request',
-          icon: <ExclamationCircleOutlined />,
-          content: `${mr
-            .getUser()
-            ?.getDisplayName()} has challenged you to a rematch`,
-          onOk() {
-            console.log('OK');
-          },
-          onCancel() {
-            console.log('Cancel');
-          },
-        });
-      }
-      */
 
     case ActionType.AddMatchRequests: {
       const matchRequests = action.payload as Array<SoughtGame>;

@@ -274,8 +274,8 @@ export class MatchRequest extends jspb.Message {
   getReceivingUser(): MatchUser | undefined;
   setReceivingUser(value?: MatchUser): void;
 
-  getIsRematch(): boolean;
-  setIsRematch(value: boolean): void;
+  getRematchFor(): string;
+  setRematchFor(value: string): void;
 
   serializeBinary(): Uint8Array;
   toObject(includeInstance?: boolean): MatchRequest.AsObject;
@@ -292,7 +292,7 @@ export namespace MatchRequest {
     gameRequest?: GameRequest.AsObject,
     user?: MatchUser.AsObject,
     receivingUser?: MatchUser.AsObject,
-    isRematch: boolean,
+    rematchFor: string,
   }
 }
 

@@ -125,7 +125,7 @@ export const Lobby = (props: Props) => {
         rated: seekSettings.rated as boolean,
         maxOvertimeMinutes: Math.round(seekSettings.maxovertime as number),
         receiver: new MatchUser(),
-        isRematch: false,
+        rematchFor: '',
       },
       props.sendSocketMsg
     );
@@ -153,7 +153,7 @@ export const Lobby = (props: Props) => {
         rated: seekSettings.rated as boolean,
         maxOvertimeMinutes: Math.round(seekSettings.maxovertime as number),
         receiver: matchUser,
-        isRematch: false,
+        rematchFor: '',
       },
       props.sendSocketMsg
     );

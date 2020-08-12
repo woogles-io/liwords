@@ -277,7 +277,6 @@ func (b *Bus) handleNatsPublish(ctx context.Context, subtopics []string, data []
 	default:
 		return fmt.Errorf("unhandled-publish-topic: %v", subtopics)
 	}
-	return nil
 }
 
 func (b *Bus) seekRequest(ctx context.Context, seekOrMatch, auth, userID string, data []byte) error {
@@ -302,7 +301,25 @@ func (b *Bus) seekRequest(ctx context.Context, seekOrMatch, auth, userID string,
 	if seekOrMatch == "seekRequest" {
 		gameRequest = req.(*pb.SeekRequest).GameRequest
 	} else {
-		gameRequest = req.(*pb.MatchRequest).GameRequest
+		// Get the game request from the passed in "rematchFor", if it
+		// is provided. Otherwise, the game request must have been provided
+		// in the request itself.
+		gameID := req.(*pb.MatchRequest).RematchFor
+		if gameID == "" {
+			gameRequest = req.(*pb.MatchRequest).GameRequest
+		} else {
+			g, err := b.gameStore.Get(ctx, gameID)
+			if err != nil {
+				return err
+			}
+			gameRequest = proto.Clone(g.GameReq).(*pb.GameRequest)
+			// This will get overwritten later:
+			gameRequest.RequestId = ""
+			req.(*pb.MatchRequest).GameRequest = gameRequest
+		}
+	}
+	if gameRequest == nil {
+		return errors.New("no game request was found")
 	}
 	// Note that the seek request should not come with a requesting user;
 	// instead this is in the topic/subject. It is HERE in the API server that
