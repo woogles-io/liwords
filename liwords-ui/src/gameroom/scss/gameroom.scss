@@ -465,7 +465,11 @@
 }
 .end-message {
   background-color: $color-primary-middle;
-  color: black;
+  .ant-card-body {
+    p {
+      color: black;
+    }
+  }
 }
 
 @media (min-width: $screen-tablet-min) {

@@ -232,6 +232,7 @@ func (b *Bus) handleNatsPublish(ctx context.Context, subtopics []string, data []
 		if err != nil {
 			return err
 		}
+		log.Debug().Str("user", subtopics[2]).Str("reqid", evt.RequestId).Msg("decline-rematch")
 		return b.matchDeclined(ctx, evt, subtopics[2])
 
 	case "soughtGameProcess":

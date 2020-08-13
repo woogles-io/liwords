@@ -81,7 +81,7 @@ type Props = {
 };
 
 export const Lobby = (props: Props) => {
-  const { redirGame } = useStoreContext();
+  const { redirGame, setRedirGame } = useStoreContext();
   const [seekModalVisible, setSeekModalVisible] = useState(false);
   const [matchModalVisible, setMatchModalVisible] = useState(false);
   const [seekSettings, setSeekSettings] = useState<seekPropVals>({
@@ -164,6 +164,7 @@ export const Lobby = (props: Props) => {
   };
 
   if (redirGame !== '') {
+    setRedirGame('');
     return <Redirect push to={`/game/${redirGame}`} />;
   }
 

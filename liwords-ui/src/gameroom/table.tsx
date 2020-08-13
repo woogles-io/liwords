@@ -11,7 +11,7 @@ import {
 import axios from 'axios';
 import { ExclamationCircleOutlined } from '@ant-design/icons';
 
-import { useParams } from 'react-router-dom';
+import { useParams, Redirect } from 'react-router-dom';
 import { BoardPanel } from './board_panel';
 import { TopBar } from '../topbar/topbar';
 import { Chat } from './chat';
@@ -22,6 +22,8 @@ import {
   MessageType,
   TimedOut,
   MatchRequest,
+  SoughtGameProcessEvent,
+  DeclineMatchRequest,
 } from '../gen/api/proto/realtime/realtime_pb';
 import { encodeToSocketFmt } from '../utils/protobuf';
 import './scss/gameroom.scss';
@@ -65,6 +67,7 @@ const defaultGameInfo = {
 export const Table = React.memo((props: Props) => {
   const { gameID } = useParams();
   const {
+    redirGame,
     setRedirGame,
     gameContext,
     dispatchGameContext,
@@ -81,11 +84,6 @@ export const Table = React.memo((props: Props) => {
   // const location = useLocation();
   const [gameInfo, setGameInfo] = useState<GameMetadata>(defaultGameInfo);
   const [gcgText, setGCGText] = useState('');
-  useEffect(() => {
-    // Avoid react-router hijacking the back button.
-    // If setRedirGame is not defined, then we're SOL I guess.
-    setRedirGame ? setRedirGame('') : (() => {})();
-  }, [setRedirGame]);
 
   const gcgExport = () => {
     axios
@@ -182,6 +180,34 @@ export const Table = React.memo((props: Props) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [gameContext.playState]);
 
+  if (redirGame && redirGame !== gameID) {
+    // This can happen if we accept another match while in this game (typically a rematch)
+    setRedirGame('');
+    return <Redirect push to={`/game/${redirGame}`} />;
+  }
+
+  const acceptRematch = (reqID: string) => {
+    const evt = new SoughtGameProcessEvent();
+    evt.setRequestId(reqID);
+    sendSocketMsg(
+      encodeToSocketFmt(
+        MessageType.SOUGHT_GAME_PROCESS_EVENT,
+        evt.serializeBinary()
+      )
+    );
+  };
+
+  const declineRematch = (reqID: string) => {
+    const evt = new DeclineMatchRequest();
+    evt.setRequestId(reqID);
+    sendSocketMsg(
+      encodeToSocketFmt(
+        MessageType.DECLINE_MATCH_REQUEST,
+        evt.serializeBinary()
+      )
+    );
+  };
+
   // Figure out what rack we should display.
   // If we are one of the players, display our rack.
   // If we are NOT one of the players (so an observer), display the rack of
@@ -216,16 +242,17 @@ export const Table = React.memo((props: Props) => {
               ?.getDisplayName()} sent you a rematch request`}
             visible={rematchRequest.getRematchFor() !== ''}
             onConfirm={() => {
-              console.log('ok');
+              acceptRematch(rematchRequest.getGameRequest()!.getRequestId());
               setRematchRequest(new MatchRequest());
             }}
             onCancel={() => {
+              declineRematch(rematchRequest.getGameRequest()!.getRequestId());
               console.log('cancel');
               setRematchRequest(new MatchRequest());
             }}
             okText="Accept"
             cancelText="Decline"
-            placement="bottom"
+            placement="top"
           >
             <BoardPanel
               username={props.username}
