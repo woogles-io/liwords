@@ -164,9 +164,10 @@ func (g *Game) HistoryRefresherEvent( /*userID string, sanitize bool*/ ) *pb.Gam
 	g.calculateAndSetTimeRemaining(1, now)
 
 	return &pb.GameHistoryRefresher{
-		History:     g.History(),
-		TimePlayer1: int32(g.TimeRemaining(0)),
-		TimePlayer2: int32(g.TimeRemaining(1)),
+		History:            g.History(),
+		TimePlayer1:        int32(g.TimeRemaining(0)),
+		TimePlayer2:        int32(g.TimeRemaining(1)),
+		MaxOvertimeMinutes: g.GameReq.MaxOvertimeMinutes,
 	}
 }
 

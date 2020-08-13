@@ -23,6 +23,7 @@ export const useSocketToken = (
   connectedToSocket: boolean
 ) => {
   const [username, setUsername] = useState('Anonymous');
+  const [userID, setUserID] = useState('');
   const [loggedIn, setLoggedIn] = useState(false);
 
   useEffect(() => {
@@ -39,6 +40,7 @@ export const useSocketToken = (
       .then((resp) => {
         const decoded = jwt.decode(resp.data.token) as DecodedToken;
         setUsername(decoded.unn);
+        setUserID(decoded.uid);
         setLoggedIn(decoded.a);
         const msg = new TokenSocketLogin();
         msg.setToken(resp.data.token);
@@ -61,6 +63,7 @@ export const useSocketToken = (
 
   return {
     username,
+    userID,
     loggedIn,
   };
 };

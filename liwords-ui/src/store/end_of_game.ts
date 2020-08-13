@@ -3,7 +3,7 @@ import {
   GameEndReason,
 } from '../gen/api/proto/realtime/realtime_pb';
 
-export const endGameMessage = (gee: GameEndedEvent) => {
+export const endGameMessage = (gee: GameEndedEvent): string => {
   const scores = gee.getScoresMap();
   const ratings = gee.getNewRatingsMap();
   console.log('scores are', scores);
@@ -12,7 +12,7 @@ export const endGameMessage = (gee: GameEndedEvent) => {
   let winner = gee.getWinner();
   let loser = gee.getLoser();
   const tie = gee.getTie();
-  let summary = '';
+  let summary = [''];
   // const message = `Game is over. Scores: ${JSON.stringify(
   //   scores
   // )}, new ratings: ${JSON.stringify(ratings)}`;
@@ -43,15 +43,16 @@ export const endGameMessage = (gee: GameEndedEvent) => {
       summaryReason = ` (${loser} resigned...)`;
       break;
   }
-  summary = 'Game is over - ';
 
   if (!tie) {
-    summary = `${summary}${winner} wins${summaryReason}. ${summaryAddendum}`;
+    summary = [`${summary}${winner} wins${summaryReason}. ${summaryAddendum}`];
   } else {
-    summary = `${summary}tie game! ${summaryAddendum}`;
+    summary = [`${summary}tie game! ${summaryAddendum}`];
   }
   if (winrating || loserating) {
-    summary += ` New ratings: ${winner}: ${winrating}, ${loser}: ${loserating}`;
+    summary.push(
+      `New ratings: ${winner}: ${winrating}, ${loser}: ${loserating}`
+    );
   }
-  return summary;
+  return summary.join('\n');
 };

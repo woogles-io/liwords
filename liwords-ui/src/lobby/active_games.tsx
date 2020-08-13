@@ -9,7 +9,11 @@ export const ActiveGames = () => {
 
   const activeGameEls = lobbyContext?.activeGames.map((game) => {
     console.log('game', game);
-    const [tt, tc] = timeCtrlToDisplayName(game.initialTimeSecs);
+    const [tt, tc] = timeCtrlToDisplayName(
+      game.initialTimeSecs,
+      game.incrementSecs,
+      game.maxOvertimeMinutes
+    );
 
     return (
       <li key={`game${game.gameID}`} style={{ paddingTop: 20 }}>
@@ -31,8 +35,8 @@ export const ActiveGames = () => {
         <RatingBadge
           rating={game.players[1].rating}
           player={game.players[1].displayName}
-        />
-        ({game.rated ? 'Rated' : 'Casual'})(
+        />{' '}
+        ({game.lexicon}) ({game.rated ? 'Rated' : 'Casual'})(
         {`${game.initialTimeSecs / 60} min`})<Tag color={tc}>{tt}</Tag>
         {challRuleToStr(game.challengeRule)}
         {` (Max OT: ${game.maxOvertimeMinutes} min.)`}

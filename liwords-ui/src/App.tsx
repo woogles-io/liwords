@@ -37,10 +37,13 @@ const App = React.memo(() => {
     // Will attempt to reconnect on all close events, such as server shutting down
     shouldReconnect: (closeEvent) => true,
     onMessage: (event: MessageEvent) =>
-      decodeToMsg(event.data, onSocketMsg(store)),
+      decodeToMsg(event.data, onSocketMsg(username, store)),
   });
 
-  const { username, loggedIn } = useSocketToken(sendMessage, connectedToSocket);
+  const { username, userID, loggedIn } = useSocketToken(
+    sendMessage,
+    connectedToSocket
+  );
   const location = useLocation();
 
   useEffect(() => {
@@ -63,6 +66,7 @@ const App = React.memo(() => {
         <Route path="/" exact>
           <Lobby
             username={username}
+            userID={userID}
             sendSocketMsg={sendMessage}
             loggedIn={loggedIn}
             // connectedToSocket={connectedToSocket}

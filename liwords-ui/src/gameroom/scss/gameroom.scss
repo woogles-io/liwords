@@ -463,6 +463,14 @@
 .game-controls {
   margin: 0 auto;
 }
+.end-message {
+  background-color: $color-primary-middle;
+  .ant-card-body {
+    p {
+      color: black;
+    }
+  }
+}
 
 @media (min-width: $screen-tablet-min) {
   .game-table {

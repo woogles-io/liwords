@@ -1,5 +1,5 @@
 import { message, notification } from 'antd';
-import { StoreData, ChatEntityType } from './store';
+import { StoreData } from './store';
 import {
   MessageType,
   SeekRequest,
@@ -8,7 +8,7 @@ import {
   GameHistoryRefresher,
   MessageTypeMap,
   MatchRequest,
-  GameAcceptedEvent,
+  SoughtGameProcessEvent,
   ClientGameplayEvent,
   ServerGameplayEvent,
   GameEndedEvent,
@@ -21,6 +21,9 @@ import {
   GameMeta,
   ActiveGames,
   GameDeletion,
+  MatchRequests,
+  DeclineMatchRequest,
+  ChatMessage,
 } from '../gen/api/proto/realtime/realtime_pb';
 import { ActionType } from '../actions/actions';
 import { endGameMessage } from './end_of_game';
@@ -31,12 +34,19 @@ import {
 
 const makemoveMP3 = require('../assets/makemove.mp3');
 const startgameMP3 = require('../assets/startgame.mp3');
+const oppMoveMP3 = require('../assets/oppmove.mp3');
+const matchReqMP3 = require('../assets/matchreq.mp3');
 const woofWav = require('../assets/woof.wav');
+const endgameMP3 = require('../assets/endgame.mp3');
 
-const makemoveSound = new Audio(makemoveMP3);
+const makeMoveSound = new Audio(makemoveMP3);
+const oppMoveSound = new Audio(oppMoveMP3);
+const matchReqSound = new Audio(matchReqMP3);
+
 const startgameSound = new Audio(startgameMP3);
+const endgameSound = new Audio(endgameMP3);
 const woofSound = new Audio(woofWav);
-woofSound.volume = 0.2;
+woofSound.volume = 0.15;
 
 export const parseMsgs = (msg: Uint8Array) => {
   // Multiple msgs can come in the same packet.
@@ -53,7 +63,7 @@ export const parseMsgs = (msg: Uint8Array) => {
       [MessageType.NEW_GAME_EVENT]: NewGameEvent,
       [MessageType.GAME_HISTORY_REFRESHER]: GameHistoryRefresher,
       [MessageType.MATCH_REQUEST]: MatchRequest,
-      [MessageType.GAME_ACCEPTED_EVENT]: GameAcceptedEvent,
+      [MessageType.SOUGHT_GAME_PROCESS_EVENT]: SoughtGameProcessEvent,
       [MessageType.CLIENT_GAMEPLAY_EVENT]: ClientGameplayEvent,
       [MessageType.SERVER_GAMEPLAY_EVENT]: ServerGameplayEvent,
       [MessageType.GAME_ENDED_EVENT]: GameEndedEvent,
@@ -66,6 +76,9 @@ export const parseMsgs = (msg: Uint8Array) => {
       [MessageType.GAME_META_EVENT]: GameMeta,
       [MessageType.ACTIVE_GAMES]: ActiveGames,
       [MessageType.GAME_DELETION]: GameDeletion,
+      [MessageType.MATCH_REQUESTS]: MatchRequests,
+      [MessageType.DECLINE_MATCH_REQUEST]: DeclineMatchRequest,
+      [MessageType.CHAT_MESSAGE]: ChatMessage,
     };
 
     const parsedMsg = msgTypes[msgType];
@@ -80,7 +93,7 @@ export const parseMsgs = (msg: Uint8Array) => {
   return msgs;
 };
 
-export const onSocketMsg = (storeData: StoreData) => {
+export const onSocketMsg = (username: string, storeData: StoreData) => {
   return (reader: FileReader) => {
     if (!reader.result) {
       return;
@@ -118,6 +131,40 @@ export const onSocketMsg = (storeData: StoreData) => {
           break;
         }
 
+        case MessageType.MATCH_REQUEST: {
+          const mr = parsedMsg as MatchRequest;
+          const receiver = mr.getReceivingUser()?.getDisplayName();
+          const soughtGame = SeekRequestToSoughtGame(mr);
+          if (soughtGame === null) {
+            return;
+          }
+          if (receiver === username) {
+            matchReqSound.play();
+            if (mr.getRematchFor() !== '') {
+              // Only display the rematch modal if we are the recipient
+              // of the rematch request.
+              storeData.setRematchRequest(mr);
+            }
+          }
+
+          storeData.dispatchLobbyContext({
+            actionType: ActionType.AddMatchRequest,
+            payload: soughtGame,
+          });
+          break;
+        }
+
+        case MessageType.MATCH_REQUESTS: {
+          const mr = parsedMsg as MatchRequests;
+          storeData.dispatchLobbyContext({
+            actionType: ActionType.AddMatchRequests,
+            payload: mr
+              .getRequestsList()
+              .map((r) => SeekRequestToSoughtGame(r)),
+          });
+          break;
+        }
+
         case MessageType.ERROR_MESSAGE: {
           console.log('got error msg');
           const err = parsedMsg as ErrorMessage;
@@ -136,13 +183,9 @@ export const onSocketMsg = (storeData: StoreData) => {
         case MessageType.GAME_ENDED_EVENT: {
           console.log('got game end evt');
           const gee = parsedMsg as GameEndedEvent;
-
-          storeData.addChat({
-            entityType: ChatEntityType.ServerMsg,
-            sender: '',
-            message: endGameMessage(gee),
-          });
+          storeData.setGameEndMessage(endGameMessage(gee));
           storeData.stopClock();
+          endgameSound.play();
           break;
         }
 
@@ -155,6 +198,7 @@ export const onSocketMsg = (storeData: StoreData) => {
           });
           const gid = nge.getGameId();
           storeData.setRedirGame(gid);
+          storeData.setGameEndMessage('');
           startgameSound.play();
           break;
         }
@@ -166,6 +210,8 @@ export const onSocketMsg = (storeData: StoreData) => {
             actionType: ActionType.RefreshHistory,
             payload: ghr,
           });
+          storeData.setGameEndMessage('');
+
           // If there is an Antd message about "waiting for game", destroy it.
           // XXX: This is a bit unideal.
           message.destroy();
@@ -180,7 +226,11 @@ export const onSocketMsg = (storeData: StoreData) => {
             payload: sge,
           });
           // play sound
-          makemoveSound.play();
+          if (username === sge.getEvent()?.getNickname()) {
+            makeMoveSound.play();
+          } else {
+            oppMoveSound.play();
+          }
           break;
         }
 
@@ -194,12 +244,26 @@ export const onSocketMsg = (storeData: StoreData) => {
           break;
         }
 
-        case MessageType.GAME_ACCEPTED_EVENT: {
-          const gae = parsedMsg as GameAcceptedEvent;
+        case MessageType.SOUGHT_GAME_PROCESS_EVENT: {
+          const gae = parsedMsg as SoughtGameProcessEvent;
           console.log('got game accepted event', gae);
           storeData.dispatchLobbyContext({
             actionType: ActionType.RemoveSoughtGame,
             payload: gae.getRequestId(),
+          });
+          break;
+        }
+
+        case MessageType.DECLINE_MATCH_REQUEST: {
+          const dec = parsedMsg as DeclineMatchRequest;
+          console.log('got decline match request', dec);
+          storeData.dispatchLobbyContext({
+            actionType: ActionType.RemoveSoughtGame,
+            payload: dec.getRequestId(),
+          });
+          notification.info({
+            message: 'Declined',
+            description: 'Your match request was declined.',
           });
           break;
         }

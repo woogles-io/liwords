@@ -7,7 +7,10 @@ import React, {
 } from 'react';
 
 import { EnglishCrosswordGameDistribution } from '../constants/tile_distributions';
-import { ServerChallengeResultEvent } from '../gen/api/proto/realtime/realtime_pb';
+import {
+  ServerChallengeResultEvent,
+  MatchRequest,
+} from '../gen/api/proto/realtime/realtime_pb';
 import { LobbyState, LobbyReducer } from './reducers/lobby_reducer';
 import { Action } from '../actions/actions';
 import {
@@ -58,6 +61,13 @@ export type StoreData = {
   clearChat: () => void;
   chat: Array<ChatEntityObj>;
 
+  // This variable is set when the game just ended.
+  gameEndMessage: string;
+  setGameEndMessage: React.Dispatch<React.SetStateAction<string>>;
+
+  rematchRequest: MatchRequest;
+  setRematchRequest: React.Dispatch<React.SetStateAction<MatchRequest>>;
+
   // initClockController: (
   //   ghr: GameHistoryRefresher,
   //   onTimeout: () => void
@@ -80,7 +90,7 @@ const defaultGameState = startingGameState(
 // This is annoying, but we have to add a default for everything in this
 // declaration. Declaring it as a Partial<StoreData> breaks things elsewhere.
 export const Context = createContext<StoreData>({
-  lobbyContext: { soughtGames: [], activeGames: [] },
+  lobbyContext: { soughtGames: [], activeGames: [], matchRequests: [] },
   dispatchLobbyContext: defaultFunction,
   redirGame: '',
   setRedirGame: defaultFunction,
@@ -92,6 +102,12 @@ export const Context = createContext<StoreData>({
   addChat: defaultFunction,
   clearChat: defaultFunction,
   chat: [],
+
+  gameEndMessage: '',
+  setGameEndMessage: defaultFunction,
+
+  rematchRequest: new MatchRequest(),
+  setRematchRequest: defaultFunction,
 
   // initClockController: defaultFunction,
   stopClock: defaultFunction,
@@ -144,6 +160,7 @@ export const Store = ({ children, ...props }: Props) => {
   const [lobbyContext, dispatchLobbyContext] = useReducer(LobbyReducer, {
     soughtGames: [],
     activeGames: [],
+    matchRequests: [],
   });
 
   const [gameContext, dispatchGameContext] = useReducer(GameReducer, null, () =>
@@ -160,6 +177,8 @@ export const Store = ({ children, ...props }: Props) => {
   );
 
   const [redirGame, setRedirGame] = useState('');
+  const [gameEndMessage, setGameEndMessage] = useState('');
+  const [rematchRequest, setRematchRequest] = useState(new MatchRequest());
   const [chat, setChat] = useState(new Array<ChatEntityObj>());
 
   const challengeResultEvent = (sge: ServerChallengeResultEvent) => {
@@ -206,10 +225,14 @@ export const Store = ({ children, ...props }: Props) => {
     dispatchGameContext,
     redirGame,
     setRedirGame,
+    gameEndMessage,
+    setGameEndMessage,
     challengeResultEvent,
     addChat,
     clearChat,
     chat,
+    rematchRequest,
+    setRematchRequest,
 
     // initClockController,
     poolFormat,

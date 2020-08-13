@@ -3,7 +3,7 @@ import { Button, Modal, notification } from 'antd';
 import { ArrowDownOutlined, SyncOutlined } from '@ant-design/icons';
 import GameBoard from './board';
 import GameControls from './game_controls';
-import Rack from './rack';
+import { Rack } from './rack';
 import {
   nextArrowPropertyState,
   handleKeyPress,
@@ -20,9 +20,15 @@ import {
 } from '../utils/cwgame/game_event';
 import { Board } from '../utils/cwgame/board';
 import { encodeToSocketFmt } from '../utils/protobuf';
-import { MessageType } from '../gen/api/proto/realtime/realtime_pb';
+import {
+  MessageType,
+  MatchRequest,
+  MatchUser,
+} from '../gen/api/proto/realtime/realtime_pb';
 import { useStoreContext } from '../store/store';
 import { BlankSelector } from './blank_selector';
+import { GameEndMessage } from './game_end_message';
+import { PlayerMetadata } from './game_info';
 
 // The frame atop is 24 height
 // The frames on the sides are 24 in width, surrounded by a 14 pix gutter
@@ -35,6 +41,8 @@ type Props = {
   gameID: string;
   board: Board;
   sendSocketMsg: (msg: Uint8Array) => void;
+  gameDone: boolean;
+  playerMeta: Array<PlayerMetadata>;
 };
 
 const shuffleString = (a: string): string => {
@@ -62,7 +70,7 @@ export const BoardPanel = React.memo((props: Props) => {
   const [placedTiles, setPlacedTiles] = useState(new Set<EphemeralTile>());
   const [placedTilesTempScore, setPlacedTilesTempScore] = useState<number>();
   const [blankModalVisible, setBlankModalVisible] = useState(false);
-  const { stopClock, gameContext } = useStoreContext();
+  const { stopClock, gameContext, gameEndMessage } = useStoreContext();
 
   // Need to sync state to props here whenever the props.currentRack changes.
   // We want to take back all the tiles also if the board changes.
@@ -263,6 +271,36 @@ export const BoardPanel = React.memo((props: Props) => {
     // stopClock();
   };
 
+  const rematch = () => {
+    const evt = new MatchRequest();
+    const receiver = new MatchUser();
+
+    let observer = true;
+    let opp = '';
+    props.playerMeta.forEach((p) => {
+      if (p.nickname === props.username) {
+        observer = false;
+      } else {
+        opp = p.nickname;
+      }
+    });
+    if (observer) {
+      return;
+    }
+
+    receiver.setDisplayName(opp);
+    evt.setReceivingUser(receiver);
+    evt.setRematchFor(props.gameID);
+    props.sendSocketMsg(
+      encodeToSocketFmt(MessageType.MATCH_REQUEST, evt.serializeBinary())
+    );
+    notification.info({
+      message: 'Rematch',
+      description: `Sent rematch request to ${opp}`,
+    });
+    console.log('rematching');
+  };
+
   return (
     <div
       className="board-container"
@@ -285,37 +323,44 @@ export const BoardPanel = React.memo((props: Props) => {
         squareClicked={squareClicked}
         placementArrowProperties={arrowProperties}
       />
-      <div className="rack-container">
-        <Button
-          shape="circle"
-          icon={<ArrowDownOutlined />}
-          type="primary"
-          onClick={recallTiles}
-        />
-        <Rack
-          letters={displayedRack}
-          grabbable
-          returnToRack={returnToRack}
-          swapRackTiles={(
-            indexA: number | undefined,
-            indexB: number | undefined
-          ) => {
-            swapRackTiles(indexA, indexB);
-          }}
-        />
-        <Button
-          shape="circle"
-          icon={<SyncOutlined />}
-          type="primary"
-          onClick={shuffleTiles}
-        />
-      </div>
+      {!gameEndMessage ? (
+        <div className="rack-container">
+          <Button
+            shape="circle"
+            icon={<ArrowDownOutlined />}
+            type="primary"
+            onClick={recallTiles}
+          />
+          <Rack
+            letters={displayedRack}
+            grabbable
+            returnToRack={returnToRack}
+            swapRackTiles={(
+              indexA: number | undefined,
+              indexB: number | undefined
+            ) => {
+              swapRackTiles(indexA, indexB);
+            }}
+          />
+          <Button
+            shape="circle"
+            icon={<SyncOutlined />}
+            type="primary"
+            onClick={shuffleTiles}
+          />
+        </div>
+      ) : (
+        <GameEndMessage message={gameEndMessage} />
+      )}
       <GameControls
         onRecall={recallTiles}
         onExchange={(rack: string) => makeMove('exchange', rack)}
         onPass={() => makeMove('pass')}
         onChallenge={() => makeMove('challenge')}
         onCommit={() => makeMove('commit')}
+        onRematch={rematch}
+        showRematch={gameEndMessage !== ''}
+        gameEndControls={gameEndMessage !== '' || props.gameDone}
         currentRack={props.currentRack}
       />
       <Modal
