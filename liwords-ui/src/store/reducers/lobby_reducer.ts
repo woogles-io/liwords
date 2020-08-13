@@ -1,4 +1,3 @@
-import Modal from 'antd/lib/modal/Modal';
 import { Action, ActionType } from '../../actions/actions';
 import {
   GameMeta,

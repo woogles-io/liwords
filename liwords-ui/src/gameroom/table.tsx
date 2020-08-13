@@ -1,15 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import {
-  Row,
-  Col,
-  message,
-  notification,
-  Button,
-  Modal,
-  Popconfirm,
-} from 'antd';
+import { Row, Col, message, notification, Button, Popconfirm } from 'antd';
 import axios from 'axios';
-import { ExclamationCircleOutlined } from '@ant-design/icons';
 
 import { useParams, Redirect } from 'react-router-dom';
 import { BoardPanel } from './board_panel';
@@ -35,7 +26,6 @@ import {
   GCGResponse,
 } from './game_info';
 import { PlayState } from '../gen/macondo/api/proto/macondo/macondo_pb';
-import { ActionType } from '../actions/actions';
 // import { GameInfoResponse } from '../gen/api/proto/game_service/game_service_pb';
 
 const gutter = 16;
@@ -70,7 +60,6 @@ export const Table = React.memo((props: Props) => {
     redirGame,
     setRedirGame,
     gameContext,
-    dispatchGameContext,
     chat,
     clearChat,
     pTimedOut,
@@ -224,14 +213,6 @@ export const Table = React.memo((props: Props) => {
       <TopBar username={props.username} loggedIn={props.loggedIn} />
       <Row gutter={gutter} className="game-table">
         <Col span={6} className="chat-area">
-          <Chat chatEntities={chat} />
-          <Button type="primary" onClick={gcgExport}>
-            Export to GCG
-          </Button>
-          <pre>{gcgText}</pre>
-        </Col>
-        <Col span={boardspan} className="play-area">
-          {/* we only put the Popconfirm here so that we can physically place it */}
           <Popconfirm
             title={`${rematchRequest
               .getUser()
@@ -243,24 +224,32 @@ export const Table = React.memo((props: Props) => {
             }}
             onCancel={() => {
               declineRematch(rematchRequest.getGameRequest()!.getRequestId());
-              console.log('cancel');
               setRematchRequest(new MatchRequest());
             }}
             okText="Accept"
             cancelText="Decline"
-            placement="top"
           >
-            <BoardPanel
-              username={props.username}
-              board={gameContext.board}
-              showBonusLabels={false}
-              currentRack={rack || ''}
-              gameID={gameID}
-              sendSocketMsg={props.sendSocketMsg}
-              gameDone={gameInfo.done}
-              playerMeta={gameInfo.players}
-            />
+            <Chat chatEntities={chat} />
           </Popconfirm>
+
+          <Button type="primary" onClick={gcgExport}>
+            Export to GCG
+          </Button>
+          <pre>{gcgText}</pre>
+        </Col>
+        <Col span={boardspan} className="play-area">
+          {/* we only put the Popconfirm here so that we can physically place it */}
+
+          <BoardPanel
+            username={props.username}
+            board={gameContext.board}
+            showBonusLabels={false}
+            currentRack={rack || ''}
+            gameID={gameID}
+            sendSocketMsg={props.sendSocketMsg}
+            gameDone={gameInfo.done}
+            playerMeta={gameInfo.players}
+          />
         </Col>
         <Col span={6} className="data-area">
           <PlayerCards playerMeta={gameInfo.players} />
