@@ -21,5 +21,4 @@ export enum ActionType {
   RefreshTurns,
   RefreshHistory,
   ClearHistory,
-  SetMaxOvertime,
 }

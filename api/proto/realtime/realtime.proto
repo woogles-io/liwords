@@ -207,6 +207,7 @@ message GameHistoryRefresher {
   // of whether they went first.
   int32 time_player1 = 2;
   int32 time_player2 = 3;
+  int32 max_overtime_minutes = 4;
 }
 
 // A NewGameEvent gets sent from the server to the involved clients when a new

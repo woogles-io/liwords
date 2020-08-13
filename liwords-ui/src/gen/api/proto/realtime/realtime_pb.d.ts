@@ -502,6 +502,9 @@ export class GameHistoryRefresher extends jspb.Message {
   getTimePlayer2(): number;
   setTimePlayer2(value: number): void;
 
+  getMaxOvertimeMinutes(): number;
+  setMaxOvertimeMinutes(value: number): void;
+
   serializeBinary(): Uint8Array;
   toObject(includeInstance?: boolean): GameHistoryRefresher.AsObject;
   static toObject(includeInstance: boolean, msg: GameHistoryRefresher): GameHistoryRefresher.AsObject;
@@ -517,6 +520,7 @@ export namespace GameHistoryRefresher {
     history?: macondo_api_proto_macondo_macondo_pb.GameHistory.AsObject,
     timePlayer1: number,
     timePlayer2: number,
+    maxOvertimeMinutes: number,
   }
 }
 

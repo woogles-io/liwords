@@ -4058,7 +4058,8 @@ proto.liwords.GameHistoryRefresher.toObject = function(includeInstance, msg) {
   var f, obj = {
     history: (f = msg.getHistory()) && macondo_api_proto_macondo_macondo_pb.GameHistory.toObject(includeInstance, f),
     timePlayer1: jspb.Message.getFieldWithDefault(msg, 2, 0),
-    timePlayer2: jspb.Message.getFieldWithDefault(msg, 3, 0)
+    timePlayer2: jspb.Message.getFieldWithDefault(msg, 3, 0),
+    maxOvertimeMinutes: jspb.Message.getFieldWithDefault(msg, 4, 0)
   };
 
   if (includeInstance) {
@@ -4108,6 +4109,10 @@ proto.liwords.GameHistoryRefresher.deserializeBinaryFromReader = function(msg, r
       var value = /** @type {number} */ (reader.readInt32());
       msg.setTimePlayer2(value);
       break;
+    case 4:
+      var value = /** @type {number} */ (reader.readInt32());
+      msg.setMaxOvertimeMinutes(value);
+      break;
     default:
       reader.skipField();
       break;
@@ -4156,6 +4161,13 @@ proto.liwords.GameHistoryRefresher.serializeBinaryToWriter = function(message, w
   if (f !== 0) {
     writer.writeInt32(
       3,
+      f
+    );
+  }
+  f = message.getMaxOvertimeMinutes();
+  if (f !== 0) {
+    writer.writeInt32(
+      4,
       f
     );
   }
@@ -4232,6 +4244,24 @@ proto.liwords.GameHistoryRefresher.prototype.getTimePlayer2 = function() {
  */
 proto.liwords.GameHistoryRefresher.prototype.setTimePlayer2 = function(value) {
   return jspb.Message.setProto3IntField(this, 3, value);
+};
+
+
+/**
+ * optional int32 max_overtime_minutes = 4;
+ * @return {number}
+ */
+proto.liwords.GameHistoryRefresher.prototype.getMaxOvertimeMinutes = function() {
+  return /** @type {number} */ (jspb.Message.getFieldWithDefault(this, 4, 0));
+};
+
+
+/**
+ * @param {number} value
+ * @return {!proto.liwords.GameHistoryRefresher} returns this
+ */
+proto.liwords.GameHistoryRefresher.prototype.setMaxOvertimeMinutes = function(value) {
+  return jspb.Message.setProto3IntField(this, 4, value);
 };
 
 

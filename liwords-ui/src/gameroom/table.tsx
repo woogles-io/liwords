@@ -119,10 +119,6 @@ export const Table = React.memo((props: Props) => {
       )
       .then((resp) => {
         setGameInfo(resp.data);
-        dispatchGameContext({
-          actionType: ActionType.SetMaxOvertime,
-          payload: resp.data.max_overtime_minutes,
-        });
       });
     if (!gameContext.players || !gameContext.players[0]) {
       // Show a message while waiting for data about the game to come in
