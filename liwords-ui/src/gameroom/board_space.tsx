@@ -1,7 +1,10 @@
 import React from 'react';
-import { ReactComponent as Logo } from '../assets/aero.svg';
 import { BonusType } from '../constants/board_layout';
-import { ArrowRightOutlined, ArrowDownOutlined } from '@ant-design/icons/lib';
+import {
+  ArrowRightOutlined,
+  ArrowDownOutlined,
+  StarOutlined,
+} from '@ant-design/icons/lib';
 
 const colors = require('../base.scss');
 
@@ -44,7 +47,7 @@ const BoardSpace = React.memo((props: Props) => {
   }
   // ✩✪✫
   if (props.startingSquare) {
-    startingSquare = <Logo className="logo" />;
+    startingSquare = <StarOutlined className="center-square" />;
   }
   if (props.arrow) {
     if (props.arrowHoriz) {
