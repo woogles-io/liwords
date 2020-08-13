@@ -67,6 +67,12 @@
   }
 }
 
+.chat-area {
+  .chat {
+    height: 80%;
+  }
+}
+
 .ant-card {
   border-radius: 8px;
 }
@@ -132,18 +138,8 @@
 
 .board-space .anticon {
   position: absolute;
+  color: $color-board-tws;
   font-size: 1.5vw;
-}
-
-.board-space .logo {
-  position: absolute;
-  width: 2.4vw;
-  height: 2.4vw;
-}
-
-.board-space .anticon {
-  position: absolute;
-  color: $color-secondary;
 }
 
 .bonus-label {
@@ -161,6 +157,9 @@
   display: flex;
   justify-content: space-around;
   width: 100%;
+  p {
+    color: black;
+  }
 }
 
 .coord-labels.vert {
@@ -493,6 +492,7 @@
   .play-area {
     flex: 0 0 50%;
   }
+
   .rack .tile {
     width: 28px;
     height: 28px;
@@ -516,7 +516,7 @@
     height: 3vw;
   }
 }
-@media (min-height: 880px) and (min-width: $screen-desktop-min) {
+@media (min-height: 800px) and (min-width: $screen-desktop-min) {
   .game-table {
     max-width: $screen-desktop-min;
     .ant-card .ant-card-head {
@@ -543,6 +543,7 @@
       }
     }
   }
+
   .tile.droppable {
     pointer-events: all;
     cursor: grab;
@@ -599,7 +600,7 @@
   }
 }
 
-@media (min-height: 880px) and (min-width: $screen-desktop-max) {
+@media (min-height: 864px) and (min-width: $screen-desktop-max) {
   .game-table {
     max-width: $screen-desktop-max;
   }

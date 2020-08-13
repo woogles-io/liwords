@@ -19,5 +19,9 @@ export const Chat = (props: Props) => {
     );
   });
 
-  return <Card style={{ textAlign: 'left' }}>{entities}</Card>;
+  return (
+    <Card className="chat" style={{ textAlign: 'left' }}>
+      {entities}
+    </Card>
+  );
 };
