@@ -1,5 +1,5 @@
 import React from 'react';
-import { Card, Row } from 'antd';
+import { Card, Row, Tooltip } from 'antd';
 
 // At some point we should get this from the pb but then we have to use
 // twirp for this and we really shouldn't need to. Wait on it probably.
@@ -62,7 +62,13 @@ export const GameInfo = (props: Props) => {
   return (
     <Card className="game-info">
       <Row className="variant">
-        {props.meta.time_control} • {variant} • {props.meta.lexicon}
+        {props.meta.time_control} •
+        <Tooltip title="The maximum amount of overtime, in minutes">
+          <span>
+            &nbsp;{`OT: ${props.meta.max_overtime_minutes || 0}`}&nbsp;
+          </span>
+        </Tooltip>
+        • {variant} • {props.meta.lexicon}
       </Row>
       <Row>
         {challenge} challenge • {rated}

@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Button } from 'antd';
+import { Link } from 'react-router-dom';
 import { ExchangeTiles } from './exchange_tiles';
 
 type Props = {
@@ -8,6 +9,9 @@ type Props = {
   onRecall: () => void;
   onChallenge: () => void;
   onCommit: () => void;
+  onRematch: () => void;
+  gameEndControls: boolean;
+  showRematch: boolean;
   currentRack: string;
 };
 
@@ -50,15 +54,22 @@ const GameControls = React.memo((props: Props) => {
     setExchangedRack(newExchangedRack);
   };
 
+  if (props.gameEndControls) {
+    return (
+      <EndGameControls
+        onRematch={props.onRematch}
+        showRematch={props.showRematch}
+      />
+    );
+  }
+
   return (
     <div className="game-controls">
       <Button onClick={props.onPass} danger>
         Pass
       </Button>
 
-      <Button type="primary" onClick={props.onChallenge}>
-        Challenge
-      </Button>
+      <Button onClick={props.onChallenge}>Challenge</Button>
 
       <Button type="primary" onClick={showChallengeModal}>
         Exchange
@@ -79,5 +90,25 @@ const GameControls = React.memo((props: Props) => {
     </div>
   );
 });
+
+type EGCProps = {
+  onRematch: () => void;
+  showRematch: boolean;
+};
+
+const EndGameControls = (props: EGCProps) => (
+  <div className="game-controls">
+    <Button>Options</Button>
+    <Button>Examine</Button>
+    <Button>
+      <Link to="/">Exit</Link>
+    </Button>
+    {props.showRematch && (
+      <Button type="primary" onClick={props.onRematch}>
+        Rematch
+      </Button>
+    )}
+  </div>
+);
 
 export default GameControls;

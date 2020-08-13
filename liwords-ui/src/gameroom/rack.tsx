@@ -34,13 +34,11 @@ export const Rack = React.memo((props: Props) => {
         index,
         parseInt(e.dataTransfer.getData('rackIndex'), 10)
       );
-    } else {
-      if (props.returnToRack && e.dataTransfer.getData('tileIndex')) {
-        props.returnToRack(
-          index,
-          parseInt(e.dataTransfer.getData('tileIndex'), 10)
-        );
-      }
+    } else if (props.returnToRack && e.dataTransfer.getData('tileIndex')) {
+      props.returnToRack(
+        index,
+        parseInt(e.dataTransfer.getData('tileIndex'), 10)
+      );
     }
   };
   const renderTiles = () => {
