@@ -1,9 +1,8 @@
 /* eslint-disable jsx-a11y/click-events-have-key-events */
 /* eslint-disable jsx-a11y/no-noninteractive-element-interactions */
-import { Tag, Badge, Table } from 'antd';
+import { Table } from 'antd';
 import React, { ReactNode } from 'react';
-import { timeCtrlToDisplayName, challRuleToStr } from '../store/constants';
-import { RatingBadge } from './rating_badge';
+import { challRuleToStr } from '../store/constants';
 import { SoughtGame } from '../store/reducers/lobby_reducer';
 
 type SoughtGameProps = {
