@@ -2,7 +2,8 @@ package entity
 
 import (
 	"errors"
-
+	realtime "github.com/domino14/liwords/rpc/api/proto/realtime"
+	macondoconfig "github.com/domino14/macondo/config"
 	pb "github.com/domino14/macondo/gen/api/proto/macondo"
 	"github.com/rs/zerolog/log"
 )
@@ -82,21 +83,26 @@ const (
 
 const MaxNotableInt = 1000000000
 
-type StatAddFunction func(*StatItem, *StatItem, *pb.GameHistory, int, string, bool)
+type IncrementInfo struct {
+	cfg                 *macondoconfig.Config
+	req                 *realtime.GameRequest
+	statItem            *StatItem
+	otherPlayerStatItem *StatItem
+	history             *pb.GameHistory
+	eventIndex          int
+	id                  string
+	isPlayerOne         bool
+}
 
 type StatItem struct {
-	Minimum            int             `json:"-"`
-	Maximum            int             `json:"-"`
-	Total              int             `json:"t"`
-	DataType           StatItemType    `json:"-"`
-	IncrementType      IncrementType   `json:"-"`
-	DenominatorList    []*StatItem     `json:"-"`
-	Averages           []float64       `json:"a"`
-	IsProfileStat      bool            `json:"-"`
-	List               []*ListItem     `json:"l"`
-	Subitems           map[string]int  `json:"s"`
-	HasMeaningfulTotal bool            `json:"h"`
-	AddFunction        StatAddFunction `json:"-"`
+	Minimum       int                        `json:"-"`
+	Maximum       int                        `json:"-"`
+	Total         int                        `json:"t"`
+	DataType      StatItemType               `json:"-"`
+	IncrementType IncrementType              `json:"-"`
+	List          []*ListItem                `json:"l"`
+	Subitems      map[string]int             `json:"s"`
+	AddFunction   func(*IncrementInfo) error `json:"-"`
 }
 
 type Stats struct {
@@ -112,14 +118,13 @@ type ProfileStats struct {
 }
 
 const (
-	BINGO_NINES_OR_ABOVE_STAT              string = "Bingo Nines or Above"
+	ALL_TRIPLE_LETTERS_COVERED_STAT        string = "All Triple Letter Squares Covered"
+	ALL_TRIPLE_WORDS_COVERED_STAT          string = "All Triple Word Squares Covered"
 	BINGOS_STAT                            string = "Bingos"
 	CHALLENGED_PHONIES_STAT                string = "Challenged Phonies"
-	CHALLENGES_STAT                        string = "Challenges"
 	CHALLENGES_LOST_STAT                   string = "Challenges Lost"
 	CHALLENGES_WON_STAT                    string = "Challenges Won"
 	COMMENTS_STAT                          string = "Comments"
-	CONFIDENCE_INTERVALS_STAT              string = "Confidence Intervals"
 	DRAWS_STAT                             string = "Draws"
 	EXCHANGES_STAT                         string = "Exchanges"
 	FIRSTS_STAT                            string = "Firsts"
@@ -129,15 +134,17 @@ const (
 	LOSSES_STAT                            string = "Losses"
 	LOW_GAME_STAT                          string = "Low Game"
 	NO_BINGOS_STAT                         string = "Games with no Bingos"
+	MANY_DOUBLE_LETTERS_COVERED_STAT       string = "Many Double Letter Squares Covered"
+	MANY_DOUBLE_WORDS_COVERED_STAT         string = "Many Double Word Squares Covered"
 	MISTAKES_STAT                          string = "Mistakes"
-	PHONIES_STAT                           string = "Phonies"
-	PLAYS_THAT_WERE_CHALLENGED_STAT        string = "Plays That Were Challenged"
 	SCORE_STAT                             string = "Score"
 	TILES_PLAYED_STAT                      string = "Tiles Played"
+	TIME_STAT                              string = "Time Taken"
 	TRIPLE_TRIPLES_STAT                    string = "Triple Triples"
 	TURNS_STAT                             string = "Turns"
 	TURNS_WITH_BLANK_STAT                  string = "Turns With Blank"
 	UNCHALLENGED_PHONIES_STAT              string = "Unchallenged Phonies"
+	VALID_PLAYS_THAT_WERE_CHALLENGED_STAT  string = "Valid Plays That Were Challenged"
 	VERTICAL_OPENINGS_STAT                 string = "Vertical Openings"
 	WINS_STAT                              string = "Wins"
 	NO_BLANKS_PLAYED_STAT                  string = "No Blanks Played"
@@ -162,22 +169,41 @@ func InstantiateNewStats(playerOneId string, playerTwoId string) *Stats {
 		NotableData:   instantiateNotableData()}
 }
 
-func (stats *Stats) AddGame(history *pb.GameHistory, id string) error {
+func (stats *Stats) AddGame(history *pb.GameHistory, req *realtime.GameRequest, cfg *macondoconfig.Config, id string) error {
 	events := history.GetEvents()
 	for i := 0; i < len(events); i++ {
 		event := events[i]
-		//fmt.Println(event)
 		if history.Players[0].Nickname == event.Nickname {
-			incrementStatItems(stats.PlayerOneData, stats.PlayerTwoData, history, i, id, false)
+			err := incrementStatItems(cfg, req, stats.PlayerOneData, stats.PlayerTwoData, history, i, id, false)
+			if err != nil {
+				return err
+			}
 		} else {
-			incrementStatItems(stats.PlayerTwoData, stats.PlayerOneData, history, i, id, false)
+			err := incrementStatItems(cfg, req, stats.PlayerTwoData, stats.PlayerOneData, history, i, id, false)
+			if err != nil {
+				return err
+			}
 		}
-		incrementStatItems(stats.NotableData, nil, history, i, id, false)
+		err := incrementStatItems(cfg, req, stats.NotableData, nil, history, i, id, false)
+		if err != nil {
+			return err
+		}
 	}
 
-	incrementStatItems(stats.PlayerOneData, stats.PlayerTwoData, history, -1, id, true)
-	incrementStatItems(stats.PlayerTwoData, stats.PlayerOneData, history, -1, id, false)
-	incrementStatItems(stats.NotableData, nil, history, -1, id, false)
+	err := incrementStatItems(cfg, req, stats.PlayerOneData, stats.PlayerTwoData, history, -1, id, true)
+	if err != nil {
+		return err
+	}
+
+	err = incrementStatItems(cfg, req, stats.PlayerTwoData, stats.PlayerOneData, history, -1, id, false)
+	if err != nil {
+		return err
+	}
+
+	err = incrementStatItems(cfg, req, stats.NotableData, nil, history, -1, id, false)
+	if err != nil {
+		return err
+	}
 
 	confirmNotableItems(stats.NotableData, id)
 	return nil

@@ -15,6 +15,7 @@ import (
 
 	"github.com/domino14/macondo/alphabet"
 	"github.com/domino14/macondo/board"
+	macondoconfig "github.com/domino14/macondo/config"
 	"github.com/domino14/macondo/game"
 	macondopb "github.com/domino14/macondo/gen/api/proto/macondo"
 	"github.com/domino14/macondo/move"
@@ -39,6 +40,8 @@ type GameStore interface {
 	ListActive(context.Context) ([]*pb.GameMeta, error)
 	SetGameEventChan(c chan<- *entity.EventWrapper)
 }
+
+type ConfigCtxKey string
 
 // InstantiateNewGame instantiates a game and returns it.
 func InstantiateNewGame(ctx context.Context, gameStore GameStore, cfg *config.Config,
@@ -537,7 +540,7 @@ func performEndgameDuties(ctx context.Context, g *entity.Game, userStore user.St
 	if err != nil {
 		log.Err(err).Msg("getting variant key")
 	} else {
-		gameStats, err := computeGameStats(ctx, g.History(), variantKey, userStore)
+		gameStats, err := computeGameStats(ctx, g.History(), g.GameReq, variantKey, userStore)
 		if err != nil {
 			log.Err(err).Msg("computing stats")
 		} else {
@@ -565,7 +568,7 @@ func discernEndgameReason(g *entity.Game) {
 	}
 }
 
-func computeGameStats(ctx context.Context, history *macondopb.GameHistory,
+func computeGameStats(ctx context.Context, history *macondopb.GameHistory, req *pb.GameRequest,
 	variantKey entity.VariantKey, userStore user.Store) (*entity.Stats, error) {
 	// stats := entity.InstantiateNewStats(1, 2)
 	p0id, p1id := history.Players[0].UserId, history.Players[1].UserId
@@ -577,9 +580,13 @@ func computeGameStats(ctx context.Context, history *macondopb.GameHistory,
 			history.Winner = 1 - history.Winner
 		}
 	}
+
+	// Fetch the Macondo config
+	config := ctx.Value(ConfigCtxKey("config")).(*macondoconfig.Config)
+
 	// Here, p0 went first and p1 went second, no matter what.
 	gameStats := entity.InstantiateNewStats(p0id, p1id)
-	gameStats.AddGame(history, history.Uid)
+	gameStats.AddGame(history, req, config, history.Uid)
 	gameStats.Finalize()
 
 	if history.SecondWentFirst {

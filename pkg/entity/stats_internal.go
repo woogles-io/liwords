@@ -1,14 +1,16 @@
 package entity
 
 import (
-	"math"
-	"strings"
-	"unicode"
-
+	realtime "github.com/domino14/liwords/rpc/api/proto/realtime"
 	"github.com/domino14/macondo/alphabet"
+	macondoconfig "github.com/domino14/macondo/config"
 	"github.com/domino14/macondo/gaddag"
+	"github.com/domino14/macondo/game"
 	pb "github.com/domino14/macondo/gen/api/proto/macondo"
 	"github.com/rs/zerolog/log"
+	"os"
+	"strings"
+	"unicode"
 )
 
 func makeAlphabetSubitems() map[string]int {
@@ -18,6 +20,17 @@ func makeAlphabetSubitems() map[string]int {
 	}
 	alphabetSubitems[string(alphabet.BlankToken)] = 0
 	return alphabetSubitems
+}
+
+func makeGameSubitems() map[string]int {
+	gameSubitems := make(map[string]int)
+	for _, value := range pb.ChallengeRule_name {
+		gameSubitems[value] = 0
+	}
+	for _, value := range realtime.RatingMode_name {
+		gameSubitems[value] = 0
+	}
+	return gameSubitems
 }
 
 func makeMistakeSubitems() map[string]int {
@@ -38,7 +51,15 @@ func makeMistakeSubitems() map[string]int {
 	return mistakeSubitems
 }
 
-func incrementStatItems(statItems map[string]*StatItem, otherPlayerStatItems map[string]*StatItem, history *pb.GameHistory, eventIndex int, id string, isPlayerOne bool) {
+func incrementStatItems(cfg *macondoconfig.Config,
+	req *realtime.GameRequest,
+	statItems map[string]*StatItem,
+	otherPlayerStatItems map[string]*StatItem,
+	history *pb.GameHistory,
+	eventIndex int,
+	id string,
+	isPlayerOne bool) error {
+
 	for key, statItem := range statItems {
 		if (statItem.IncrementType == EventType && eventIndex >= 0) ||
 			(statItem.IncrementType == GameType && eventIndex < 0) {
@@ -46,9 +67,24 @@ func incrementStatItems(statItems map[string]*StatItem, otherPlayerStatItems map
 			if otherPlayerStatItems != nil {
 				otherPlayerStatItem = otherPlayerStatItems[key]
 			}
-			statItem.AddFunction(statItem, otherPlayerStatItem, history, eventIndex, id, isPlayerOne)
+			info := &IncrementInfo{cfg: cfg,
+				req:                 req,
+				statItem:            statItem,
+				otherPlayerStatItem: otherPlayerStatItem,
+				history:             history,
+				eventIndex:          eventIndex,
+				id:                  id,
+				isPlayerOne:         isPlayerOne}
+			err := statItem.AddFunction(info)
+			// LIST SEPARATION
+			// Update the database here
+			// if listItem
+			if err != nil {
+				return err
+			}
 		}
 	}
+	return nil
 }
 
 func incrementStatItem(statItem *StatItem, event *pb.GameEvent, id string) {
@@ -95,6 +131,8 @@ func combineItems(statItem *StatItem, otherStatItem *StatItem) {
 		statItem.Total += otherStatItem.Total
 	} else if statItem.DataType == ListType {
 		statItem.Total += otherStatItem.Total
+		// LIST SEPARATION
+		// Eventually comment out the following line
 		statItem.List = append(statItem.List, otherStatItem.List...)
 	} else if (statItem.DataType == MaximumType && otherStatItem.Total > statItem.Total) ||
 		(statItem.DataType == MinimumType && otherStatItem.Total < statItem.Total) {
@@ -109,276 +147,274 @@ func combineItems(statItem *StatItem, otherStatItem *StatItem) {
 	}
 }
 
+// This will need a list of GameIDS
 func finalize(statItems map[string]*StatItem) {
-	for _, statItem := range statItems {
-		if statItem.IncrementType == FinalType {
-			statItem.AddFunction(nil, nil, nil, -1, "", false)
-		}
-		var averages []float64
-		for _, denominatorRef := range statItem.DenominatorList {
-			toAppend := float64(statItem.Total) / float64(denominatorRef.Total)
-			if math.IsNaN(toAppend) || math.IsInf(toAppend, 0) {
-				toAppend = 0
-			}
-			averages = append(averages, toAppend)
-		}
-		statItem.Averages = averages
-	}
-}
-func addBingoNinesOrAbove(statItem *StatItem, otherPlayerStatItem *StatItem, history *pb.GameHistory, i int, id string, isPlayerOne bool) {
-	events := history.GetEvents()
-	event := events[i]
-	var succEvent *pb.GameEvent
-	if i+1 < len(events) {
-		succEvent = events[i+1]
-	}
-	if isBingoNineOrAbove(event) && (succEvent == nil || succEvent.Type != pb.GameEvent_PHONY_TILES_RETURNED) {
-		incrementStatItem(statItem, event, id)
-	}
+	// For each statItem
+	// LIST SEPARATION
+	// If list is not empty
+	// load the list from database
+	return
 }
 
-func addBingos(statItem *StatItem, otherPlayerStatItem *StatItem, history *pb.GameHistory, i int, id string, isPlayerOne bool) {
-	events := history.GetEvents()
-	event := events[i]
+func addBingos(info *IncrementInfo) error {
+	events := info.history.GetEvents()
+	event := events[info.eventIndex]
 
 	var succEvent *pb.GameEvent
-	if i+1 < len(events) {
-		succEvent = events[i+1]
+	if info.eventIndex+1 < len(events) {
+		succEvent = events[info.eventIndex+1]
 	}
 	if event.IsBingo && (succEvent == nil || succEvent.Type != pb.GameEvent_PHONY_TILES_RETURNED) {
-		log.Debug().Interface("evt", event).Interface("statitem", statItem).Interface("otherstat", otherPlayerStatItem).Msg("Add bing")
-		incrementStatItem(statItem, event, id)
+		log.Debug().Interface("evt", event).Interface("statitem", info.statItem).Interface("otherstat", info.otherPlayerStatItem).Msg("Add bing")
+		incrementStatItem(info.statItem, event, info.id)
 	}
+	return nil
 }
 
-func addBlanksPlayed(statItem *StatItem, otherPlayerStatItem *StatItem, history *pb.GameHistory, i int, id string, isPlayerOne bool) {
-	events := history.GetEvents()
-	event := events[i]
+func addBlanksPlayed(info *IncrementInfo) error {
+	events := info.history.GetEvents()
+	event := events[info.eventIndex]
 	tiles := event.PlayedTiles
 	for _, char := range tiles {
 		if unicode.IsLower(char) {
-			statItem.Total++
+			info.statItem.Total++
 		}
 	}
+	return nil
 }
 
-func addCombinedScoring(statItem *StatItem, otherPlayerStatItem *StatItem, history *pb.GameHistory, i int, id string, isPlayerOne bool) {
-	statItem.Total = int(history.FinalScores[0] + history.FinalScores[1])
+func addDoubleLetter(info *IncrementInfo) error {
+	err := addBonusSquares(info, '\'')
+	return err
 }
 
-func addConfidenceIntervals(statItem *StatItem, otherPlayerStatItem *StatItem, history *pb.GameHistory, i int, id string, isPlayerOne bool) {
-
-	// We'll need to decide if we even want this
-	// We pull a sneaky here and overload some struct fields
-	/*	tilesPlayedStat := statItem.Denominator
-			gamesStat := tilesPlayedStat.Denominator
-			totalGames := gamesStat.Total
-			for tile, timesPlayed := range tilesPlayedStat.Subitems {
-				bagSizes := 100 // Get real bag frequency somehow
-				tileFrequency := 8 // Get real frequency somehow
-		          my $tile_frequencies = Constants::TILE_FREQUENCIES;
-		          my $f           = $tile_frequencies->{$subtitle};
-		          my $P           = $average / 100;
-		          my $n           = $f * $numgames;
-		          my ($lower, $upper) = Utils::get_confidence_interval($P, $n);
-		          my $prob        = sprintf "%.4f", $subaverage / $f;
-			}*/
+func addDoubleWord(info *IncrementInfo) error {
+	err := addBonusSquares(info, '-')
+	return err
 }
 
-func addHighScoring(statItem *StatItem, otherPlayerStatItem *StatItem, history *pb.GameHistory, i int, id string, isPlayerOne bool) {
-	playerScore := int(history.FinalScores[0])
-	if !isPlayerOne {
-		playerScore = int(history.FinalScores[1])
+func addTripleLetter(info *IncrementInfo) error {
+	err := addBonusSquares(info, '"')
+	return err
+}
+
+func addTripleWord(info *IncrementInfo) error {
+	err := addBonusSquares(info, '=')
+	return err
+}
+
+func addCombinedScoring(info *IncrementInfo) error {
+	info.statItem.Total = int(info.history.FinalScores[0] + info.history.FinalScores[1])
+	return nil
+}
+
+func addHighScoring(info *IncrementInfo) error {
+	playerScore := int(info.history.FinalScores[0])
+	if !info.isPlayerOne {
+		playerScore = int(info.history.FinalScores[1])
 	}
-	if playerScore > statItem.Total {
-		statItem.Total = playerScore
+	if playerScore > info.statItem.Total {
+		info.statItem.Total = playerScore
 	}
+	return nil
 }
 
-func addExchanges(statItem *StatItem, otherPlayerStatItem *StatItem, history *pb.GameHistory, i int, id string, isPlayerOne bool) {
-	events := history.GetEvents()
-	event := events[i]
+func addExchanges(info *IncrementInfo) error {
+	events := info.history.GetEvents()
+	event := events[info.eventIndex]
 	if event.Type == pb.GameEvent_EXCHANGE {
-		incrementStatItem(statItem, event, id)
+		incrementStatItem(info.statItem, event, info.id)
 	}
+	return nil
 }
 
-func addPhonies(statItem *StatItem, otherPlayerStatItem *StatItem, history *pb.GameHistory, i int, id string, isPlayerOne bool) {
-	events := history.GetEvents()
-	event := events[i]
-	isPhony := false // Add isPhony to GameEvent probably
-	if isPhony {
-		incrementStatItem(statItem, event, id)
+func addPhonies(info *IncrementInfo) error {
+	events := info.history.GetEvents()
+	event := events[info.eventIndex]
+	isUnchallengedPhony, err := isUnchallengedPhonyEvent(event, info.history)
+	if err != nil {
+		return err
 	}
+	if event.Type == pb.GameEvent_PHONY_TILES_RETURNED || ((info.eventIndex+1 >= len(events) ||
+		events[info.eventIndex+1].Type != pb.GameEvent_PHONY_TILES_RETURNED) && isUnchallengedPhony) {
+		incrementStatItem(info.statItem, event, info.id)
+	}
+	return nil
 }
 
-func addChallengedPhonies(statItem *StatItem, otherPlayerStatItem *StatItem, history *pb.GameHistory, i int, id string, isPlayerOne bool) {
-	events := history.GetEvents()
-	event := events[i]
+func addChallengedPhonies(info *IncrementInfo) error {
+	events := info.history.GetEvents()
+	event := events[info.eventIndex]
 	if event.Type == pb.GameEvent_PHONY_TILES_RETURNED {
-		incrementStatItem(statItem, event, id)
-		// Need to increment opp's challengesWon stat
+		incrementStatItem(info.statItem, event, info.id)
 	}
+	return nil
 }
 
-func addUnchallengedPhonies(statItem *StatItem, otherPlayerStatItem *StatItem, history *pb.GameHistory, i int, id string, isPlayerOne bool) {
-	events := history.GetEvents()
-	event := events[i]
-	isPhony := false // Add isPhony to GameEvent probably
-	if isPhony {
-		incrementStatItem(statItem, event, id)
+func addUnchallengedPhonies(info *IncrementInfo) error {
+	events := info.history.GetEvents()
+	event := events[info.eventIndex]
+	isUnchallengedPhony, err := isUnchallengedPhonyEvent(event, info.history)
+	if err != nil {
+		return err
 	}
+	if (info.eventIndex+1 >= len(events) || events[info.eventIndex+1].Type != pb.GameEvent_PHONY_TILES_RETURNED) && isUnchallengedPhony {
+		incrementStatItem(info.statItem, event, info.id)
+	}
+	return nil
 }
 
-func addPlaysThatWereChallenged(statItem *StatItem, otherPlayerStatItem *StatItem, history *pb.GameHistory, i int, id string, isPlayerOne bool) {
-	events := history.GetEvents()
-	event := events[i]
+func addValidPlaysThatWereChallenged(info *IncrementInfo) error {
+	events := info.history.GetEvents()
+	event := events[info.eventIndex]
 	var succEvent *pb.GameEvent
-	if i+1 < len(events) {
-		succEvent = events[i+1]
+	if info.eventIndex+1 < len(events) {
+		succEvent = events[info.eventIndex+1]
 	}
 	if succEvent != nil &&
 		(succEvent.Type == pb.GameEvent_CHALLENGE_BONUS ||
-			succEvent.Type == pb.GameEvent_PHONY_TILES_RETURNED) {
-		incrementStatItem(statItem, event, id)
+			succEvent.Type == pb.GameEvent_UNSUCCESSFUL_CHALLENGE_TURN_LOSS) {
+		incrementStatItem(info.statItem, event, info.id)
 		// Need to increment opp's challengesLost stat
 	}
+	return nil
 }
 
-func addChallenges(statItem *StatItem, otherPlayerStatItem *StatItem, history *pb.GameHistory, i int, id string, isPlayerOne bool) {
-	events := history.GetEvents()
-	event := events[i]
-	if event.Type == pb.GameEvent_CHALLENGE_BONUS || // Opp's bonus
-		event.Type == pb.GameEvent_PHONY_TILES_RETURNED { // Opp's phony tiles returned
-		incrementStatItem(otherPlayerStatItem, events[i-1], id)
-	} else if event.Type == pb.GameEvent_UNSUCCESSFUL_CHALLENGE_TURN_LOSS { // Player's turn loss
-		incrementStatItem(statItem, events[i-1], id)
-	}
-}
-
-func addChallengesWon(statItem *StatItem, otherPlayerStatItem *StatItem, history *pb.GameHistory, i int, id string, isPlayerOne bool) {
-	events := history.GetEvents()
-	event := events[i]
+func addChallengesWon(info *IncrementInfo) error {
+	events := info.history.GetEvents()
+	event := events[info.eventIndex]
 	if event.Type == pb.GameEvent_PHONY_TILES_RETURNED { // Opp's phony tiles returned
-		incrementStatItem(otherPlayerStatItem, events[i-1], id)
+		incrementStatItem(info.otherPlayerStatItem, events[info.eventIndex-1], info.id)
 	}
+	return nil
 }
 
-func addChallengesLost(statItem *StatItem, otherPlayerStatItem *StatItem, history *pb.GameHistory, i int, id string, isPlayerOne bool) {
-	events := history.GetEvents()
-	event := events[i]
+func addChallengesLost(info *IncrementInfo) error {
+	events := info.history.GetEvents()
+	event := events[info.eventIndex]
 	if event.Type == pb.GameEvent_CHALLENGE_BONUS { // Opp's bonus
-		incrementStatItem(otherPlayerStatItem, events[i-1], id)
+		incrementStatItem(info.otherPlayerStatItem, events[info.eventIndex-1], info.id)
 	} else if event.Type == pb.GameEvent_UNSUCCESSFUL_CHALLENGE_TURN_LOSS { // Player's turn loss
-		incrementStatItem(statItem, events[i-1], id)
+		incrementStatItem(info.statItem, events[info.eventIndex-1], info.id)
 	}
+	return nil
 }
 
-func addComments(statItem *StatItem, otherPlayerStatItem *StatItem, history *pb.GameHistory, i int, id string, isPlayerOne bool) {
-	events := history.GetEvents()
-	event := events[i]
+func addComments(info *IncrementInfo) error {
+	events := info.history.GetEvents()
+	event := events[info.eventIndex]
 	if event.Note != "" {
-		incrementStatItem(statItem, event, id)
+		incrementStatItem(info.statItem, event, info.id)
 	}
+	return nil
 }
 
-func addConsecutiveBingos(statItem *StatItem, otherPlayerStatItem *StatItem, history *pb.GameHistory, i int, id string, isPlayerOne bool) {
-	events := history.GetEvents()
-	event := events[i]
+func addConsecutiveBingos(info *IncrementInfo) error {
+	events := info.history.GetEvents()
+	event := events[info.eventIndex]
 	player := "player_one_streak"
-	if !isPlayerOne && history.Players[1].Nickname == event.Nickname {
+	if !info.isPlayerOne && info.history.Players[1].Nickname == event.Nickname {
 		player = "player_two_streak"
 	}
 	if event.Type == pb.GameEvent_TILE_PLACEMENT_MOVE ||
 		event.Type == pb.GameEvent_PASS ||
 		event.Type == pb.GameEvent_EXCHANGE {
 		if event.IsBingo {
-			statItem.Subitems[player]++
-			if statItem.Subitems[player] > statItem.Total {
-				statItem.Total = statItem.Subitems[player]
+			info.statItem.Subitems[player]++
+			if info.statItem.Subitems[player] > info.statItem.Total {
+				info.statItem.Total = info.statItem.Subitems[player]
 			}
 		} else {
-			statItem.Subitems[player] = 0
+			info.statItem.Subitems[player] = 0
 		}
 	}
+	return nil
 }
 
-func addDraws(statItem *StatItem, otherPlayerStatItem *StatItem, history *pb.GameHistory, i int, id string, isPlayerOne bool) {
-	if history.Winner == -1 {
-		incrementStatItem(statItem, nil, id)
+func addDraws(info *IncrementInfo) error {
+	if info.history.Winner == -1 {
+		incrementStatItem(info.statItem, nil, info.id)
 	}
+	return nil
 }
 
-func addEveryE(statItem *StatItem, otherPlayerStatItem *StatItem, history *pb.GameHistory, i int, id string, isPlayerOne bool) {
-	events := history.GetEvents()
-	event := events[i]
+func addEveryE(info *IncrementInfo) error {
+	events := info.history.GetEvents()
+	event := events[info.eventIndex]
 	var succEvent *pb.GameEvent
-	if i+1 < len(events) {
-		succEvent = events[i+1]
+	if info.eventIndex+1 < len(events) {
+		succEvent = events[info.eventIndex+1]
 	}
 	multiplier := 1
-	if !isPlayerOne && history.Players[1].Nickname == event.Nickname {
+	if !info.isPlayerOne && info.history.Players[1].Nickname == event.Nickname {
 		multiplier = -1
 	}
 	if event.Type == pb.GameEvent_TILE_PLACEMENT_MOVE && (succEvent == nil || succEvent.Type != pb.GameEvent_PHONY_TILES_RETURNED) {
 		for _, char := range event.PlayedTiles {
 			if char == 'E' {
-				statItem.Total += 1 * multiplier
+				info.statItem.Total += 1 * multiplier
 			}
 		}
 	}
+	return nil
 }
 
-func addEveryPowerTile(statItem *StatItem, otherPlayerStatItem *StatItem, history *pb.GameHistory, i int, id string, isPlayerOne bool) {
-	events := history.GetEvents()
-	event := events[i]
+func addEveryPowerTile(info *IncrementInfo) error {
+	events := info.history.GetEvents()
+	event := events[info.eventIndex]
 	var succEvent *pb.GameEvent
-	if i+1 < len(events) {
-		succEvent = events[i+1]
+	if info.eventIndex+1 < len(events) {
+		succEvent = events[info.eventIndex+1]
 	}
 	multiplier := 1
-	if !isPlayerOne && history.Players[1].Nickname == event.Nickname {
+	if !info.isPlayerOne && info.history.Players[1].Nickname == event.Nickname {
 		multiplier = -1
 	}
 	if event.Type == pb.GameEvent_TILE_PLACEMENT_MOVE && (succEvent == nil || succEvent.Type != pb.GameEvent_PHONY_TILES_RETURNED) {
 		for _, char := range event.PlayedTiles {
 			if char == 'J' || char == 'Q' || char == 'X' || char == 'Z' || char == 'S' || unicode.IsLower(char) {
-				statItem.Total += 1 * multiplier
-				//fmt.Printf("therack: %s, the total: %d eventtype: %s, succ eventtype: %s\n", event.PlayedTiles, statItem.Total, event.Type, succEvent.Type)
+				info.statItem.Total += 1 * multiplier
 			}
 		}
 	}
+	return nil
 }
 
-func addFirsts(statItem *StatItem, otherPlayerStatItem *StatItem, history *pb.GameHistory, i int, id string, isPlayerOne bool) {
-	if isPlayerOne {
-		incrementStatItem(statItem, nil, id)
+func addFirsts(info *IncrementInfo) error {
+	if info.isPlayerOne {
+		incrementStatItem(info.statItem, nil, info.id)
 	}
+	return nil
 }
 
-func addGames(statItem *StatItem, otherPlayerStatItem *StatItem, history *pb.GameHistory, i int, id string, isPlayerOne bool) {
-	incrementStatItem(statItem, nil, id)
+func addGames(info *IncrementInfo) error {
+	incrementStatItem(info.statItem, nil, info.id)
+	info.statItem.Subitems[realtime.RatingMode_name[int32(info.req.RatingMode)]]++
+	info.statItem.Subitems[pb.ChallengeRule_name[int32(info.req.ChallengeRule)]]++
+	return nil
 }
 
-func addLosses(statItem *StatItem, otherPlayerStatItem *StatItem, history *pb.GameHistory, i int, id string, isPlayerOne bool) {
-	if (history.Winner == 1 && isPlayerOne) || (history.Winner == 0 && !isPlayerOne) {
-		incrementStatItem(statItem, nil, id)
+func addLosses(info *IncrementInfo) error {
+	if (info.history.Winner == 1 && info.isPlayerOne) || (info.history.Winner == 0 && !info.isPlayerOne) {
+		incrementStatItem(info.statItem, nil, info.id)
 	}
+	return nil
 }
 
-func addManyChallenges(statItem *StatItem, otherPlayerStatItem *StatItem, history *pb.GameHistory, i int, id string, isPlayerOne bool) {
-	events := history.GetEvents()
-	event := events[i]
+func addManyChallenges(info *IncrementInfo) error {
+	events := info.history.GetEvents()
+	event := events[info.eventIndex]
 	if event.Type == pb.GameEvent_PHONY_TILES_RETURNED ||
 		event.Type == pb.GameEvent_CHALLENGE_BONUS ||
 		event.Type == pb.GameEvent_UNSUCCESSFUL_CHALLENGE_TURN_LOSS { // Do we want this last one?
-		statItem.Total++
+		info.statItem.Total++
 	}
+	return nil
 }
 
-func addMistakes(statItem *StatItem, otherPlayerStatItem *StatItem, history *pb.GameHistory, i int, id string, isPlayerOne bool) {
-	events := history.GetEvents()
-	event := events[i]
+func addMistakes(info *IncrementInfo) error {
+	events := info.history.GetEvents()
+	event := events[info.eventIndex]
 	mistakeTypes := []string{KnowledgeMistakeType, FindingMistakeType, VisionMistakeType, TacticsMistakeType, StrategyMistakeType, TimeMistakeType, EndgameMistakeType}
 	mistakeMagnitudes := []string{LargeMistakeMagnitude, MediumMistakeMagnitude, SmallMistakeMagnitude, "saddest", "sadder", "sad"}
 	if event.Note != "" {
@@ -391,181 +427,271 @@ func addMistakes(statItem *StatItem, otherPlayerStatItem *StatItem, history *pb.
 				occurences := strings.Count(note, substring)
 				note = strings.ReplaceAll(note, substring, "")
 				unaliasedMistakeM := MistakeMagnitudeAliases[mMagnitude]
-				statItem.Total += occurences
-				statItem.Subitems[mType] += occurences
-				statItem.Subitems[unaliasedMistakeM] += occurences
+				info.statItem.Total += occurences
+				info.statItem.Subitems[mType] += occurences
+				info.statItem.Subitems[unaliasedMistakeM] += occurences
 				totalOccurences += occurences
-				for i := 0; i < occurences; i++ {
-					statItem.List = append(statItem.List, &ListItem{Word: event.Note, Probability: MistakeTypeMapping[mType], Score: MistakeMagnitudeMapping[unaliasedMistakeM], GameId: id})
+				for k := 0; k < occurences; k++ {
+					info.statItem.List = append(info.statItem.List, &ListItem{Word: event.Note, Probability: MistakeTypeMapping[mType], Score: MistakeMagnitudeMapping[unaliasedMistakeM], GameId: info.id})
 				}
 			}
 			unspecifiedOccurences := strings.Count(note, "#"+mType)
 			note = strings.ReplaceAll(note, "#"+mType, "")
-			statItem.Total += unspecifiedOccurences
-			statItem.Subitems[mType] += unspecifiedOccurences
-			statItem.Subitems[UnspecifiedMistakeMagnitude] += unspecifiedOccurences
+			info.statItem.Total += unspecifiedOccurences
+			info.statItem.Subitems[mType] += unspecifiedOccurences
+			info.statItem.Subitems[UnspecifiedMistakeMagnitude] += unspecifiedOccurences
 			for i := 0; i < unspecifiedOccurences-totalOccurences; i++ {
-				statItem.List = append(statItem.List, &ListItem{Word: event.Note, Probability: MistakeTypeMapping[mType], Score: MistakeMagnitudeMapping[UnspecifiedMistakeMagnitude], GameId: id})
+				info.statItem.List = append(info.statItem.List, &ListItem{Word: event.Note, Probability: MistakeTypeMapping[mType], Score: MistakeMagnitudeMapping[UnspecifiedMistakeMagnitude], GameId: info.id})
 			}
 		}
 	}
+	return nil
 }
 
-func addNoBingos(statItem *StatItem, otherPlayerStatItem *StatItem, history *pb.GameHistory, i int, id string, isPlayerOne bool) {
-	events := history.GetEvents()
+func addNoBingos(info *IncrementInfo) error {
+	events := info.history.GetEvents()
 	atLeastOneBingo := false
 	// SAD! (have to loop through events again, should not do this, is the big not good)
 	for i := 0; i < len(events); i++ {
 		event := events[i]
-		if (history.Players[0].Nickname == event.Nickname && isPlayerOne) ||
-			(history.Players[1].Nickname == event.Nickname && !isPlayerOne) {
+		if (info.history.Players[0].Nickname == event.Nickname && info.isPlayerOne) ||
+			(info.history.Players[1].Nickname == event.Nickname && !info.isPlayerOne) {
 			atLeastOneBingo = true
 			break
 		}
 	}
 	if !atLeastOneBingo {
-		incrementStatItem(statItem, nil, id)
+		incrementStatItem(info.statItem, nil, info.id)
 	}
+	return nil
 }
 
-func addScore(statItem *StatItem, otherPlayerStatItem *StatItem, history *pb.GameHistory, i int, id string, isPlayerOne bool) {
-	if isPlayerOne {
-		statItem.Total += int(history.FinalScores[0])
+func addScore(info *IncrementInfo) error {
+	if info.isPlayerOne {
+		info.statItem.Total += int(info.history.FinalScores[0])
 	} else {
-		statItem.Total += int(history.FinalScores[1])
+		info.statItem.Total += int(info.history.FinalScores[1])
 	}
+	return nil
 }
 
-func addTilesPlayed(statItem *StatItem, otherPlayerStatItem *StatItem, history *pb.GameHistory, i int, id string, isPlayerOne bool) {
-	events := history.GetEvents()
-	event := events[i]
+func addTilesPlayed(info *IncrementInfo) error {
+	events := info.history.GetEvents()
+	event := events[info.eventIndex]
 	var succEvent *pb.GameEvent
-	if i+1 < len(events) {
-		succEvent = events[i+1]
+	if info.eventIndex+1 < len(events) {
+		succEvent = events[info.eventIndex+1]
 	}
 	if event.Type == pb.GameEvent_TILE_PLACEMENT_MOVE && (succEvent == nil || succEvent.Type != pb.GameEvent_PHONY_TILES_RETURNED) {
 		for _, char := range event.PlayedTiles {
 			if char != alphabet.ASCIIPlayedThrough {
-				statItem.Total++
+				info.statItem.Total++
 				if unicode.IsLower(char) {
-					statItem.Subitems[string(alphabet.BlankToken)]++
+					info.statItem.Subitems[string(alphabet.BlankToken)]++
 				} else {
-					statItem.Subitems[string(char)]++
+					info.statItem.Subitems[string(char)]++
 				}
 			}
 		}
 	}
+	return nil
 }
 
-func addTilesStuckWith(statItem *StatItem, otherPlayerStatItem *StatItem, history *pb.GameHistory, i int, id string, isPlayerOne bool) {
-	events := history.GetEvents()
+func addTilesStuckWith(info *IncrementInfo) error {
+	events := info.history.GetEvents()
 	event := events[len(events)-1]
 	if event.Type == pb.GameEvent_END_RACK_PTS &&
-		((isPlayerOne && event.Nickname == history.Players[0].Nickname) ||
-			(!isPlayerOne && event.Nickname == history.Players[1].Nickname)) {
+		((info.isPlayerOne && event.Nickname == info.history.Players[0].Nickname) ||
+			(!info.isPlayerOne && event.Nickname == info.history.Players[1].Nickname)) {
 		tilesStuckWith := event.Rack
 		for _, char := range tilesStuckWith {
-			statItem.Total++
-			statItem.Subitems[string(char)]++
+			info.statItem.Total++
+			info.statItem.Subitems[string(char)]++
 		}
 	}
+	return nil
 }
 
-func addTripleTriples(statItem *StatItem, otherPlayerStatItem *StatItem, history *pb.GameHistory, i int, id string, isPlayerOne bool) {
-	events := history.GetEvents()
-	event := events[i]
-	if isTripleTriple(event) {
-		incrementStatItem(statItem, event, id)
+func addTime(info *IncrementInfo) error {
+	events := info.history.GetEvents()
+	for i := len(events) - 1; i >= 0; i-- {
+		event := events[i]
+		if (event.Nickname == info.history.Players[0].Nickname && info.isPlayerOne) ||
+			(event.Nickname == info.history.Players[1].Nickname && !info.isPlayerOne) {
+			info.statItem.Total += int((info.req.InitialTimeSeconds * 1000) - event.MillisRemaining)
+		}
 	}
+	return nil
 }
 
-func addTurns(statItem *StatItem, otherPlayerStatItem *StatItem, history *pb.GameHistory, i int, id string, isPlayerOne bool) {
-	events := history.GetEvents()
-	event := events[i]
+func addTripleTriples(info *IncrementInfo) error {
+	events := info.history.GetEvents()
+	event := events[info.eventIndex]
+	var succEvent *pb.GameEvent
+	if info.eventIndex+1 < len(events) {
+		succEvent = events[info.eventIndex+1]
+	}
+	if event.Type == pb.GameEvent_TILE_PLACEMENT_MOVE &&
+		(succEvent == nil || succEvent.Type != pb.GameEvent_PHONY_TILES_RETURNED) &&
+		countBonusSquares(info, event, '=') >= 2 {
+		incrementStatItem(info.statItem, event, info.id)
+	}
+	return nil
+}
+
+func addTurns(info *IncrementInfo) error {
+	events := info.history.GetEvents()
+	event := events[info.eventIndex]
 	if event.Type == pb.GameEvent_TILE_PLACEMENT_MOVE ||
 		event.Type == pb.GameEvent_PASS ||
 		event.Type == pb.GameEvent_EXCHANGE ||
 		event.Type == pb.GameEvent_UNSUCCESSFUL_CHALLENGE_TURN_LOSS { // Do we want this last one?
-		incrementStatItem(statItem, event, id)
+		incrementStatItem(info.statItem, event, info.id)
 	}
+	return nil
 }
 
-func addTurnsWithBlank(statItem *StatItem, otherPlayerStatItem *StatItem, history *pb.GameHistory, i int, id string, isPlayerOne bool) {
-	events := history.GetEvents()
-	event := events[i]
+func addTurnsWithBlank(info *IncrementInfo) error {
+	events := info.history.GetEvents()
+	event := events[info.eventIndex]
 	if event.Type == pb.GameEvent_TILE_PLACEMENT_MOVE ||
 		event.Type == pb.GameEvent_PASS ||
 		event.Type == pb.GameEvent_EXCHANGE ||
 		event.Type == pb.GameEvent_UNSUCCESSFUL_CHALLENGE_TURN_LOSS { // Do we want this last one?
 		for _, char := range event.Rack {
 			if char == alphabet.BlankToken {
-				incrementStatItem(statItem, event, id)
+				incrementStatItem(info.statItem, event, info.id)
 				break
 			}
 		}
 	}
+	return nil
 }
 
-func addVerticalOpenings(statItem *StatItem, otherPlayerStatItem *StatItem, history *pb.GameHistory, i int, id string, isPlayerOne bool) {
-	events := history.GetEvents()
+func addVerticalOpenings(info *IncrementInfo) error {
+	events := info.history.GetEvents()
 	event := events[0]
-	if isPlayerOne && events[0].Direction == pb.GameEvent_VERTICAL {
-		incrementStatItem(statItem, event, id)
+	if info.isPlayerOne && events[0].Direction == pb.GameEvent_VERTICAL {
+		incrementStatItem(info.statItem, event, info.id)
 	}
+	return nil
 }
 
-func addWins(statItem *StatItem, otherPlayerStatItem *StatItem, history *pb.GameHistory, i int, id string, isPlayerOne bool) {
-	if (history.Winner == 0 && isPlayerOne) || (history.Winner == 1 && !isPlayerOne) {
-		incrementStatItem(statItem, nil, id)
+func addWins(info *IncrementInfo) error {
+	if (info.history.Winner == 0 && info.isPlayerOne) || (info.history.Winner == 1 && !info.isPlayerOne) {
+		incrementStatItem(info.statItem, nil, info.id)
 	}
+	return nil
 }
 
-func setHighGame(statItem *StatItem, otherPlayerStatItem *StatItem, history *pb.GameHistory, i int, id string, isPlayerOne bool) {
-	playerScore := int(history.FinalScores[0])
-	if !isPlayerOne {
-		playerScore = int(history.FinalScores[1])
+func setHighGame(info *IncrementInfo) error {
+	playerScore := int(info.history.FinalScores[0])
+	if !info.isPlayerOne {
+		playerScore = int(info.history.FinalScores[1])
 	}
-	if playerScore > statItem.Total {
-		statItem.Total = playerScore
-		statItem.List = []*ListItem{&ListItem{Word: "", Probability: 0, Score: 0, GameId: id}}
+	if playerScore > info.statItem.Total {
+		info.statItem.Total = playerScore
+		info.statItem.List = []*ListItem{&ListItem{Word: "", Probability: 0, Score: 0, GameId: info.id}}
 	}
+	return nil
 }
 
-func setLowGame(statItem *StatItem, otherPlayerStatItem *StatItem, history *pb.GameHistory, i int, id string, isPlayerOne bool) {
-	playerScore := int(history.FinalScores[0])
-	if !isPlayerOne {
-		playerScore = int(history.FinalScores[1])
+func setLowGame(info *IncrementInfo) error {
+	playerScore := int(info.history.FinalScores[0])
+	if !info.isPlayerOne {
+		playerScore = int(info.history.FinalScores[1])
 	}
-	if playerScore < statItem.Total {
-		statItem.Total = playerScore
-		statItem.List = []*ListItem{&ListItem{Word: "", Probability: 0, Score: 0, GameId: id}}
+	if playerScore < info.statItem.Total {
+		info.statItem.Total = playerScore
+		info.statItem.List = []*ListItem{&ListItem{Word: "", Probability: 0, Score: 0, GameId: info.id}}
 	}
+	return nil
 }
 
-func setHighTurn(statItem *StatItem, otherPlayerStatItem *StatItem, history *pb.GameHistory, i int, id string, isPlayerOne bool) {
-	events := history.GetEvents()
-	event := events[i]
+func setHighTurn(info *IncrementInfo) error {
+	events := info.history.GetEvents()
+	event := events[info.eventIndex]
 	score := int(event.Score)
-	if score > statItem.Total {
-		statItem.Total = score
-		statItem.List = []*ListItem{&ListItem{Word: "", Probability: 0, Score: 0, GameId: id}}
+	if score > info.statItem.Total {
+		info.statItem.Total = score
+		info.statItem.List = []*ListItem{&ListItem{Word: "", Probability: 0, Score: 0, GameId: info.id}}
 	}
+	return nil
 }
 
-func isTripleTriple(event *pb.GameEvent) bool {
-	// Need to implement
-	return false
+func addBonusSquares(info *IncrementInfo, bonusSquare byte) error {
+	events := info.history.GetEvents()
+	event := events[info.eventIndex]
+	var succEvent *pb.GameEvent
+	if info.eventIndex+1 < len(events) {
+		succEvent = events[info.eventIndex+1]
+	}
+	if event.Type == pb.GameEvent_TILE_PLACEMENT_MOVE &&
+		(succEvent == nil || succEvent.Type != pb.GameEvent_PHONY_TILES_RETURNED) {
+		info.statItem.Total += countBonusSquares(info, event, bonusSquare)
+	}
+	return nil
+}
+
+func getOccupiedIndexes(event *pb.GameEvent) [][]int {
+	occupied := [][]int{}
+	row := int(event.Row)
+	column := int(event.Column)
+	for _, char := range event.PlayedTiles {
+		if char != alphabet.ASCIIPlayedThrough {
+			occupied = append(occupied, []int{row, column})
+		}
+		if event.Direction == pb.GameEvent_VERTICAL {
+			row++
+		} else {
+			column++
+		}
+	}
+	return occupied
+}
+
+func countBonusSquares(info *IncrementInfo, event *pb.GameEvent, bonusSquare byte) int {
+	occupiedIndexes := getOccupiedIndexes(event)
+	boardLayout, _ := game.HistoryToVariant(info.history)
+	count := 0
+	for j := 0; j < len(occupiedIndexes); j++ {
+		rowAndColumn := occupiedIndexes[j]
+		if boardLayout[rowAndColumn[0]][rowAndColumn[1]] == bonusSquare {
+			count++
+		}
+	}
+	return count
 }
 
 func isBingoNineOrAbove(event *pb.GameEvent) bool {
 	return event.IsBingo && len(event.PlayedTiles) >= 9
 }
 
-func validateWord(gd *gaddag.SimpleGaddag, word string) (bool, error) {
-	alph := gd.GetAlphabet()
-	machineWord, error := alphabet.ToMachineWord(word, alph)
-	if error != nil {
-		return false, error
+func isUnchallengedPhonyEvent(event *pb.GameEvent, history *pb.GameHistory) (bool, error) {
+	phony := false
+	var err error
+	if event.Type == pb.GameEvent_TILE_PLACEMENT_MOVE {
+		_, letterDistribution := game.HistoryToVariant(history)
+		var cfg = macondoconfig.Config{
+			LexiconPath:               os.Getenv("LEXICON_PATH"),
+			LetterDistributionPath:    os.Getenv("LETTER_DISTRIBUTION_PATH"),
+			DefaultLexicon:            history.Lexicon,
+			DefaultLetterDistribution: letterDistribution,
+		}
+		gaddag, err := gaddag.GenericDawgCache.Get(&cfg, history.Lexicon)
+		if err != nil {
+			return phony, err
+		}
+		phony, err = isPhony(gaddag, event.WordsFormed[0])
 	}
-	return gaddag.FindMachineWord(gd, machineWord), nil
+	return phony, err
+}
+
+func isPhony(gd gaddag.GenericDawg, word string) (bool, error) {
+	alph := gd.GetAlphabet()
+	machineWord, err := alphabet.ToMachineWord(word, alph)
+	if err != nil {
+		return false, err
+	}
+	return !gaddag.FindMachineWord(gd, machineWord), nil
 }

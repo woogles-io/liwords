@@ -21,6 +21,18 @@ import (
 
 var TestDBHost = os.Getenv("TEST_DB_HOST")
 var TestingDBConnStr = "host=" + TestDBHost + " port=5432 user=postgres password=pass sslmode=disable"
+var gameReq = &pb.GameRequest{Lexicon: "CSW19",
+	Rules: &pb.GameRules{BoardLayoutName: "layout",
+		LetterDistributionName: "letterdist",
+		VariantName:            "classic"},
+
+	InitialTimeSeconds: 25 * 60,
+	IncrementSeconds:   0,
+	ChallengeRule:      macondopb.ChallengeRule_FIVE_POINT,
+	GameMode:           pb.GameMode_REAL_TIME,
+	RatingMode:         pb.RatingMode_RATED,
+	RequestId:          "yeet",
+	MaxOvertimeMinutes: 10}
 
 func userStore(dbURL string) pkguser.Store {
 	ustore, err := user.NewDBStore(TestingDBConnStr + " dbname=liwords_test")
@@ -93,7 +105,7 @@ func TestComputeGameStats(t *testing.T) {
 	err = json.Unmarshal(reqjson, req)
 	is.NoErr(err)
 
-	stats, err := computeGameStats(context.Background(), hist, variantKey(req), ustore)
+	stats, err := computeGameStats(context.Background(), hist, gameReq, variantKey(req), ustore)
 	is.NoErr(err)
 	is.Equal(stats.PlayerOneData[entity.BINGOS_STAT].List, []*entity.ListItem{
 		{Word: "PARDINE", Score: 76, Probability: 1, GameId: "m5ktbp4qPVTqaAhg6HJMsb"},
@@ -118,7 +130,7 @@ func TestComputeGameStats2(t *testing.T) {
 	err = json.Unmarshal(reqjson, req)
 	is.NoErr(err)
 
-	stats, err := computeGameStats(context.Background(), hist, variantKey(req), ustore)
+	stats, err := computeGameStats(context.Background(), hist, gameReq, variantKey(req), ustore)
 	is.NoErr(err)
 	log.Info().Interface("p1list", stats.PlayerOneData[entity.BINGOS_STAT].List).Msg("--")
 	log.Info().Interface("p2list", stats.PlayerTwoData[entity.BINGOS_STAT].List).Msg("--")
@@ -148,7 +160,7 @@ func TestComputePlayerStats(t *testing.T) {
 	err = json.Unmarshal(reqjson, req)
 	is.NoErr(err)
 
-	_, err = computeGameStats(context.Background(), hist, variantKey(req), ustore)
+	_, err = computeGameStats(context.Background(), hist, gameReq, variantKey(req), ustore)
 	is.NoErr(err)
 
 	p0id, p1id := hist.Players[0].UserId, hist.Players[1].UserId
@@ -191,7 +203,7 @@ func TestComputePlayerStatsMultipleGames(t *testing.T) {
 		err = json.Unmarshal(reqjson, req)
 		is.NoErr(err)
 
-		_, err = computeGameStats(context.Background(), hist, variantKey(req), ustore)
+		_, err = computeGameStats(context.Background(), hist, gameReq, variantKey(req), ustore)
 		is.NoErr(err)
 	}
 
@@ -219,8 +231,6 @@ func TestComputePlayerStatsMultipleGames(t *testing.T) {
 	})
 	// scores
 	is.Equal(stats1.PlayerOneData[entity.SCORE_STAT].Total, 307)
-	// avg per game, avg per turn
-	is.Equal(stats1.PlayerOneData[entity.SCORE_STAT].Averages, []float64{307.0 / 2, 307.0 / (10)})
 	// wins
 	is.Equal(stats1.PlayerOneData[entity.WINS_STAT].Total, 1)
 	ustore.(*user.DBStore).Disconnect()
