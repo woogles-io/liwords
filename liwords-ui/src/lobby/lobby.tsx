@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Card, Row, Col, Button, Modal, Divider } from 'antd';
+import { Card, Row, Col } from 'antd';
 
 import { TopBar } from '../topbar/topbar';
 import {
@@ -18,8 +18,7 @@ import {
   ChallengeRuleMap,
   ChallengeRule,
 } from '../gen/macondo/api/proto/macondo/macondo_pb';
-import { SeekForm, seekPropVals } from './seek_form';
-import { ActiveGames } from './active_games';
+import { seekPropVals } from './seek_form';
 import { GameLists } from './gameLists';
 import { Chat } from '../gameroom/chat';
 import { useStoreContext } from '../store/store';
@@ -188,6 +187,16 @@ export const Lobby = (props: Props) => {
             }
             selectedGameTab={selectedGameTab}
             setSelectedGameTab={setSelectedGameTab}
+            showSeekModal={showSeekModal}
+            showMatchModal={showMatchModal}
+            matchModalVisible={matchModalVisible}
+            seekModalVisible={seekModalVisible}
+            handleMatchModalCancel={handleMatchModalCancel}
+            handleMatchModalOk={handleMatchModalOk}
+            handleSeekModalCancel={handleSeekModalCancel}
+            handleSeekModalOk={handleSeekModalOk}
+            seekSettings={seekSettings}
+            setSeekSettings={setSeekSettings}
           />
         </Col>
         <Col span={6} className="news-area">
@@ -202,55 +211,6 @@ export const Lobby = (props: Props) => {
               We're a nonprofit and are counting on you.
             </p>
           </Card>
-        </Col>
-      </Row>
-
-      {props.loggedIn ? (
-        <Row style={{ marginTop: 24 }}>
-          <Col offset={8} span={4}>
-            <Button type="primary" onClick={showSeekModal}>
-              New Game
-            </Button>
-            <Modal
-              title="Seek New Game"
-              visible={seekModalVisible}
-              onOk={handleSeekModalOk}
-              onCancel={handleSeekModalCancel}
-            >
-              <SeekForm
-                vals={seekSettings}
-                onChange={setSeekSettings}
-                loggedIn={props.loggedIn}
-                showFriendInput={false}
-              />
-            </Modal>
-          </Col>
-
-          <Col span={4}>
-            <Button type="primary" onClick={showMatchModal}>
-              Match a Friend
-            </Button>
-            <Modal
-              title="Match a Friend"
-              visible={matchModalVisible}
-              onOk={handleMatchModalOk}
-              onCancel={handleMatchModalCancel}
-            >
-              <SeekForm
-                vals={seekSettings}
-                onChange={setSeekSettings}
-                loggedIn={props.loggedIn}
-                showFriendInput={true}
-              />
-            </Modal>
-          </Col>
-        </Row>
-      ) : null}
-
-      <Divider />
-      <Row style={{ marginTop: 10 }}>
-        <Col span={12} offset={6}>
-          <ActiveGames username={props.username} />
         </Col>
       </Row>
     </div>

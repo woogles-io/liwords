@@ -45,6 +45,7 @@
     margin: 0;
     padding: 0;
     li {
+      cursor: pointer;
       .game {
         display: flex;
         flex-direction: row;
@@ -52,6 +53,14 @@
         padding: 12px 0;
       }
     }
+  }
+  .requests {
+    display: flex;
+    flex-direction: row;
+    justify-content: center;
+    position: absolute;
+    bottom: 12px;
+    width: 100%;
   }
 }
 
