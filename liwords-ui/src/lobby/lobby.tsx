@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Row, Col, Button, Modal, Divider } from 'antd';
+import { Card, Row, Col, Button, Modal, Divider } from 'antd';
 
 import { TopBar } from '../topbar/topbar';
 import {
@@ -13,7 +13,6 @@ import {
   SoughtGameProcessEvent,
 } from '../gen/api/proto/realtime/realtime_pb';
 import { encodeToSocketFmt } from '../utils/protobuf';
-import { SoughtGames } from './sought_games';
 import { SoughtGame } from '../store/reducers/lobby_reducer';
 import {
   ChallengeRuleMap,
@@ -21,6 +20,10 @@ import {
 } from '../gen/macondo/api/proto/macondo/macondo_pb';
 import { SeekForm, seekPropVals } from './seek_form';
 import { ActiveGames } from './active_games';
+import { GameLists } from './gameLists';
+import { Chat } from '../gameroom/chat';
+import { useStoreContext } from '../store/store';
+import './lobby.scss';
 
 const sendSeek = (
   game: SoughtGame,
@@ -81,6 +84,9 @@ type Props = {
 export const Lobby = (props: Props) => {
   const [seekModalVisible, setSeekModalVisible] = useState(false);
   const [matchModalVisible, setMatchModalVisible] = useState(false);
+  const [selectedGameTab, setSelectedGameTab] = useState(
+    props.loggedIn ? 'WATCH' : 'PLAY'
+  );
   const [seekSettings, setSeekSettings] = useState<seekPropVals>({
     lexicon: 'CSW19',
     challengerule: ChallengeRule.FIVE_POINT,
@@ -90,6 +96,7 @@ export const Lobby = (props: Props) => {
     friend: '',
     incrementsecs: 0,
   });
+  const { chat } = useStoreContext();
 
   useEffect(() => {
     setSeekSettings((s) => ({
@@ -161,76 +168,84 @@ export const Lobby = (props: Props) => {
   };
 
   return (
-    <div className="lobby">
+    <div>
       <Row>
         <Col span={24}>
           <TopBar username={props.username} loggedIn={props.loggedIn} />
         </Col>
       </Row>
-      <Row style={{ marginTop: 24 }}>
-        <Col span={24}>
-          <h3>Woogles is coming soon!</h3>
-          <p>
-            Please back our{' '}
-            <a href="https://www.kickstarter.com/projects/woogles/woogles">
-              {' '}
-              Kickstarter.
-            </a>{' '}
-            We're a nonprofit and are counting on you.
-          </p>
+      <Row className="lobby">
+        <Col span={6} className="chat-area">
+          <Chat chatEntities={chat} />
         </Col>
-      </Row>
-      <Row style={{ marginTop: 24 }}>
-        <Col span={12} offset={6}>
-          <SoughtGames
+        <Col span={12} className="game-lists">
+          <GameLists
+            loggedIn={props.loggedIn}
             userID={props.userID}
             username={props.username}
             newGame={(seekID: string) =>
               sendAccept(seekID, props.sendSocketMsg)
             }
+            selectedGameTab={selectedGameTab}
+            setSelectedGameTab={setSelectedGameTab}
           />
         </Col>
-      </Row>
-
-      <Row style={{ marginTop: 24 }}>
-        <Col offset={8} span={4}>
-          <Button type="primary" onClick={showSeekModal}>
-            New Game
-          </Button>
-          <Modal
-            title="Seek New Game"
-            visible={seekModalVisible}
-            onOk={handleSeekModalOk}
-            onCancel={handleSeekModalCancel}
-          >
-            <SeekForm
-              vals={seekSettings}
-              onChange={setSeekSettings}
-              loggedIn={props.loggedIn}
-              showFriendInput={false}
-            />
-          </Modal>
-        </Col>
-
-        <Col span={4}>
-          <Button type="primary" onClick={showMatchModal}>
-            Match a Friend
-          </Button>
-          <Modal
-            title="Match a Friend"
-            visible={matchModalVisible}
-            onOk={handleMatchModalOk}
-            onCancel={handleMatchModalCancel}
-          >
-            <SeekForm
-              vals={seekSettings}
-              onChange={setSeekSettings}
-              loggedIn={props.loggedIn}
-              showFriendInput={true}
-            />
-          </Modal>
+        <Col span={6} className="news-area">
+          <Card className="announcements">
+            <h3>Woogles is coming soon!</h3>
+            <p>
+              Please back our{' '}
+              <a href="https://www.kickstarter.com/projects/woogles/woogles">
+                {' '}
+                Kickstarter.
+              </a>{' '}
+              We're a nonprofit and are counting on you.
+            </p>
+          </Card>
         </Col>
       </Row>
+
+      {props.loggedIn ? (
+        <Row style={{ marginTop: 24 }}>
+          <Col offset={8} span={4}>
+            <Button type="primary" onClick={showSeekModal}>
+              New Game
+            </Button>
+            <Modal
+              title="Seek New Game"
+              visible={seekModalVisible}
+              onOk={handleSeekModalOk}
+              onCancel={handleSeekModalCancel}
+            >
+              <SeekForm
+                vals={seekSettings}
+                onChange={setSeekSettings}
+                loggedIn={props.loggedIn}
+                showFriendInput={false}
+              />
+            </Modal>
+          </Col>
+
+          <Col span={4}>
+            <Button type="primary" onClick={showMatchModal}>
+              Match a Friend
+            </Button>
+            <Modal
+              title="Match a Friend"
+              visible={matchModalVisible}
+              onOk={handleMatchModalOk}
+              onCancel={handleMatchModalCancel}
+            >
+              <SeekForm
+                vals={seekSettings}
+                onChange={setSeekSettings}
+                loggedIn={props.loggedIn}
+                showFriendInput={true}
+              />
+            </Modal>
+          </Col>
+        </Row>
+      ) : null}
 
       <Divider />
       <Row style={{ marginTop: 10 }}>

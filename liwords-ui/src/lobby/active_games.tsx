@@ -1,11 +1,11 @@
-import { Card, Tag, Button } from 'antd';
+import { Tag, Button } from 'antd';
 import React from 'react';
 import { useStoreContext } from '../store/store';
 import { timeCtrlToDisplayName, challRuleToStr } from '../store/constants';
 import { RatingBadge } from './rating_badge';
 
 type Props = {
-  username: string;
+  username?: string;
 };
 
 export const ActiveGames = (props: Props) => {
@@ -29,8 +29,9 @@ export const ActiveGames = (props: Props) => {
           type="primary"
           style={{ marginRight: 10 }}
         >
-          {game.players[0].displayName === props.username ||
-          game.players[1].displayName === props.username
+          {props.username &&
+          (game.players[0].displayName === props.username ||
+            game.players[1].displayName === props.username)
             ? 'Resume Game'
             : 'Watch!'}
         </Button>
@@ -52,8 +53,8 @@ export const ActiveGames = (props: Props) => {
   });
 
   return (
-    <Card title="Watch a live game!">
-      <ul style={{ listStyleType: 'none' }}>{activeGameEls}</ul>
-    </Card>
+    <div>
+      <ul className="games observe">{activeGameEls}</ul>
+    </div>
   );
 };
