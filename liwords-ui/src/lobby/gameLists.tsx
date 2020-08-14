@@ -3,6 +3,7 @@ import { SoughtGames } from './sought_games';
 import { Button, Card, Modal } from 'antd';
 import { ActiveGames } from './active_games';
 import { SeekForm, seekPropVals } from './seek_form';
+import { useStoreContext } from '../store/store';
 
 type Props = {
   loggedIn: boolean;
@@ -42,14 +43,46 @@ export const GameLists = React.memo((props: Props) => {
     seekSettings,
     setSeekSettings,
   } = props;
+  const { lobbyContext } = useStoreContext();
   const renderGames = () => {
     if (loggedIn && userID && username && selectedGameTab === 'PLAY') {
       return (
-        <SoughtGames userID={userID} username={username} newGame={newGame} />
+        <>
+          {lobbyContext?.matchRequests.length ? (
+            <SoughtGames
+              isMatch={true}
+              userID={userID}
+              username={username}
+              newGame={newGame}
+              requests={lobbyContext?.matchRequests}
+            />
+          ) : null}
+          <SoughtGames
+            isMatch={false}
+            userID={userID}
+            username={username}
+            newGame={newGame}
+            requests={lobbyContext?.soughtGames}
+          />
+        </>
       );
     }
-    return <ActiveGames username={username} />;
+    return (
+      <>
+        {lobbyContext?.matchRequests.length ? (
+          <SoughtGames
+            isMatch={true}
+            userID={userID}
+            username={username}
+            newGame={newGame}
+            requests={lobbyContext?.matchRequests}
+          />
+        ) : null}
+        <ActiveGames username={username} />
+      </>
+    );
   };
+
   return (
     <Card>
       <div className="tabs">

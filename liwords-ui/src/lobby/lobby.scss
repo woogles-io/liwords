@@ -19,6 +19,19 @@
   max-width: none;
   flex: 0 0 66%;
   @include type-default;
+  .ant-card-body {
+    padding: 12px 0 0 0;
+  }
+  .ant-table-thead > tr > th {
+    background: white;
+    font-size: 12px;
+    font-weight: bold;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    &.details {
+      text-align: right;
+    }
+  }
   .tabs {
     display: flex;
     flex-direction: row;
@@ -40,17 +53,22 @@
       }
     }
   }
-  ul.games {
-    list-style-type: none;
-    margin: 0;
-    padding: 0;
-    li {
+  .games {
+    .game-listing {
       cursor: pointer;
-      .game {
-        display: flex;
-        flex-direction: row;
-        justify-content: space-around;
-        padding: 12px 0;
+      .details {
+        text-align: right;
+        @include type-deco;
+        letter-spacing: 0;
+        font-size: 12px;
+        color: $color-timer-dark;
+        .mode_x2 {
+          color: $color-timer-out-dark;
+        }
+        .mode_Void {
+          color: $color-timer-low-dark;
+          text-transform: uppercase;
+        }
       }
     }
   }
@@ -61,6 +79,19 @@
     position: absolute;
     bottom: 12px;
     width: 100%;
+  }
+  .ant-empty {
+    display: none;
+  }
+  h4 {
+    @include type-default;
+    background: $color-primary-light;
+    font-size: 22px;
+    font-weight: bold;
+    text-align: left;
+    padding: 12px;
+    letter-spacing: 0;
+    margin: 6px 0px 0px;
   }
 }
 

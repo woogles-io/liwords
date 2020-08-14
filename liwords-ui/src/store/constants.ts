@@ -57,13 +57,13 @@ export const ratingToColor = (rating: string): [number, string] => {
 export const challRuleToStr = (n: number): string => {
   switch (n) {
     case ChallengeRule.DOUBLE:
-      return 'Double';
+      return 'x2';
     case ChallengeRule.SINGLE:
-      return 'Single';
+      return 'x1';
     case ChallengeRule.FIVE_POINT:
-      return '5-pt';
+      return '-5';
     case ChallengeRule.TEN_POINT:
-      return '10-pt';
+      return '-10';
     case ChallengeRule.VOID:
       return 'Void';
   }
