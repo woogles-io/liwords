@@ -1,0 +1,57 @@
+@import '../base';
+@include button;
+
+.lobby {
+  justify-content: center;
+  align-items: flex-start;
+  padding: 0 24px;
+}
+
+.game-lists, .chat-area, .news-area {
+  margin: 12px 0;
+  .ant-card {
+    height: calc(100vh - #{$header-height-mobile} - 30px);
+  }
+}
+
+.game-lists {
+  padding: 0 12px;
+  max-width: none;
+  flex: 0 0 66%;
+  @include type-default;
+  .tabs {
+    display: flex;
+    flex-direction: row;
+    justify-content: space-around;
+    .tab {
+      padding: 0px 24px 6px;
+      text-transform: uppercase;
+      font-size: 12px;
+      line-height: 24px;
+      font-weight: bold;
+      letter-spacing: 0.16em;
+      cursor: pointer;
+      &:hover,
+      &.active {
+        color: $color-primary-dark;
+      }
+      &.active {
+        border-bottom: 3px solid $color-primary-dark;
+      }
+    }
+  }
+}
+
+@media (min-width: $screen-tablet-min) {
+  .game-lists, .chat-area, .news-area {
+    .ant-card {
+      height: calc(100vh - #{$header-height-desktop} - 64px);
+    }
+  }
+}
+
+@media (min-width: $screen-laptop-min) {
+  .game-lists {
+    flex: 0 0 50%;
+  }
+}

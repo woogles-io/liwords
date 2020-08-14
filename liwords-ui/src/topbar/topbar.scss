@@ -2,7 +2,7 @@
 body {
   width: auto;
   height: auto;
-  margin-top: 96px;
+  margin-top: $header-height-mobile;
 }
 
 .top-header {
@@ -56,7 +56,7 @@ body {
       &:active {
         color: $color-primary-dark;
       }
-      &:active {
+      &:active, &.active {
         border-bottom: 3px;
       }
     }
@@ -109,7 +109,7 @@ body {
 }
 @media (min-width: $screen-tablet-min) {
   .top-header {
-    padding: 64px;
+    padding: 0 $header-height-desktop;
   }
 }
 @media (min-width: $screen-laptop-min) {

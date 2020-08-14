@@ -1,6 +1,6 @@
 /* eslint-disable jsx-a11y/click-events-have-key-events */
 /* eslint-disable jsx-a11y/no-noninteractive-element-interactions */
-import { Card, Tag, Badge } from 'antd';
+import { Tag, Badge } from 'antd';
 import React from 'react';
 import { useStoreContext } from '../store/store';
 import { timeCtrlToDisplayName, challRuleToStr } from '../store/constants';
@@ -101,10 +101,9 @@ export const SoughtGames = (props: Props) => {
   });
 
   return (
-    <Card title="Join a game">
+    <>
       <ul style={{ listStyleType: 'none' }}>{matchReqEls}</ul>
-
       <ul style={{ listStyleType: 'none' }}>{soughtGameEls}</ul>
-    </Card>
+    </>
   );
 };
