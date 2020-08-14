@@ -243,7 +243,7 @@ export const Lobby = (props: Props) => {
       <Divider />
       <Row style={{ marginTop: 10 }}>
         <Col span={12} offset={6}>
-          <ActiveGames />
+          <ActiveGames username={props.username} />
         </Col>
       </Row>
     </div>

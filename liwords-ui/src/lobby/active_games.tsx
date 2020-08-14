@@ -4,7 +4,11 @@ import { useStoreContext } from '../store/store';
 import { timeCtrlToDisplayName, challRuleToStr } from '../store/constants';
 import { RatingBadge } from './rating_badge';
 
-export const ActiveGames = () => {
+type Props = {
+  username: string;
+};
+
+export const ActiveGames = (props: Props) => {
   const { lobbyContext, setRedirGame } = useStoreContext();
 
   const activeGameEls = lobbyContext?.activeGames.map((game) => {
@@ -25,7 +29,10 @@ export const ActiveGames = () => {
           type="primary"
           style={{ marginRight: 10 }}
         >
-          Watch!
+          {game.players[0].displayName === props.username ||
+          game.players[1].displayName === props.username
+            ? 'Resume Game'
+            : 'Watch!'}
         </Button>
         <RatingBadge
           rating={game.players[0].rating}

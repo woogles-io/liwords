@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useParams, useLocation } from 'react-router-dom';
+import { useParams, useLocation, Link } from 'react-router-dom';
 import { notification, Card, Table, Row, Col } from 'antd';
 import axios, { AxiosError } from 'axios';
 import { TopBar } from '../topbar/topbar';
@@ -197,6 +197,7 @@ export const UserProfile = (props: Props) => {
           <h2>Profile for {username}</h2>
         </Col>
       </Row>
+
       <Row gutter={16}>
         <Col span={12}>
           <RatingsCard ratings={ratings} />
@@ -205,9 +206,13 @@ export const UserProfile = (props: Props) => {
           <StatsCard stats={stats} />
         </Col>
       </Row>
-      {/* <Row gutter={16}>
-
-      </Row> */}
+      <Row style={{ marginTop: 20 }}>
+        <Col span={12} offset={12}>
+          <Link to="/password/change">
+            <big>Change your password</big>
+          </Link>
+        </Col>
+      </Row>
     </>
   );
 };

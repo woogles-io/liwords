@@ -17,6 +17,7 @@ import { Register } from './lobby/register';
 import { MessageType, JoinPath } from './gen/api/proto/realtime/realtime_pb';
 import { useSocketToken } from './hooks/use_socket_token';
 import { UserProfile } from './profile/profile';
+import { PasswordChange } from './lobby/password_change';
 
 const JoinSocketDelay = 1000;
 
@@ -90,6 +91,9 @@ const App = React.memo(() => {
         </Route>
         <Route path="/secretwoogles">
           <Register />
+        </Route>
+        <Route path="/password/change">
+          <PasswordChange username={username} loggedIn={loggedIn} />
         </Route>
         <Route path="/profile/:username">
           <UserProfile myUsername={username} loggedIn={loggedIn} />

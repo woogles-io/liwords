@@ -196,6 +196,15 @@ func (s *DBStore) New(ctx context.Context, u *entity.User) error {
 	return result.Error
 }
 
+// SetPassword sets the password for the user. The password is already hashed.
+func (s *DBStore) SetPassword(ctx context.Context, uuid string, hashpass string) error {
+	u := &User{}
+	if result := s.db.Where("uuid = ?", uuid).First(u); result.Error != nil {
+		return result.Error
+	}
+	return s.db.Model(u).Update("password", hashpass).Error
+}
+
 // SetRating sets the specific rating for the given variant.
 func (s *DBStore) SetRating(ctx context.Context, uuid string, variant entity.VariantKey,
 	rating entity.SingleRating) error {

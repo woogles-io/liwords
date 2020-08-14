@@ -125,3 +125,35 @@ func (as *AuthenticationService) GetSocketToken(ctx context.Context, r *pb.Socke
 func (as *AuthenticationService) ResetPassword(ctx context.Context, r *pb.ResetPasswordRequestStep1) (*pb.ResetPasswordResponse, error) {
 	return nil, nil
 }
+
+func (as *AuthenticationService) ChangePassword(ctx context.Context, r *pb.ChangePasswordRequest) (*pb.ChangePasswordResponse, error) {
+	// This view requires authentication.
+	sess, err := apiserver.GetSession(ctx)
+
+	user, err := as.userStore.Get(ctx, sess.Username)
+	if err != nil {
+		log.Err(err).Msg("getting-user")
+		return nil, err
+	}
+	matches, err := ComparePassword(r.OldPassword, user.Password)
+	if !matches {
+		return nil, errors.New("your password is incorrect")
+	}
+
+	if len(r.NewPassword) < 8 {
+		return nil, errors.New("your password is too short, use 8 or more characters")
+	}
+
+	// time, memory, threads, keyLen for argon2:
+	config := NewPasswordConfig(1, 64*1024, 4, 32)
+	// XXX: do not hardcode, put in a config file
+	hashPass, err := GeneratePassword(config, r.NewPassword)
+	if err != nil {
+		return nil, err
+	}
+	err = as.userStore.SetPassword(ctx, user.UUID, hashPass)
+	if err != nil {
+		return nil, err
+	}
+	return &pb.ChangePasswordResponse{}, nil
+}

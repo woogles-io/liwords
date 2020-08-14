@@ -431,9 +431,33 @@ func (b *Bus) gameAccepted(ctx context.Context, evt *pb.SoughtGameProcessEvent, 
 	}
 
 	log.Debug().Interface("req", sg).Msg("game-request-accepted")
+	assignedFirst := -1
+	if sg.Type() == entity.TypeMatch {
+		if sg.MatchRequest.RematchFor != "" {
+			// Assign firsts to be the the other player.
+			gameID := sg.MatchRequest.RematchFor
+			g, err := b.gameStore.Get(ctx, gameID)
+			if err != nil {
+				return err
+			}
+			wentFirst := 0
+			players := g.History().Players
+			if g.History().SecondWentFirst {
+				wentFirst = 1
+			}
+			log.Debug().Str("went-first", players[wentFirst].Nickname).Msg("determining-first")
+
+			// These are indices in the array passed to InstantiateNewGame
+			if accUser.UUID == players[wentFirst].UserId {
+				assignedFirst = 1 // reqUser should go first
+			} else if reqUser.UUID == players[wentFirst].UserId {
+				assignedFirst = 0 // accUser should go first
+			}
+		}
+	}
 
 	g, err := gameplay.InstantiateNewGame(ctx, b.gameStore, b.config,
-		[2]*entity.User{accUser, reqUser}, gameReq)
+		[2]*entity.User{accUser, reqUser}, assignedFirst, gameReq)
 	if err != nil {
 		return err
 	}
