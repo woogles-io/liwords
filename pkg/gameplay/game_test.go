@@ -11,12 +11,14 @@ import (
 	"github.com/rs/zerolog/log"
 
 	"github.com/jinzhu/gorm"
-	
-	macondoconfig "github.com/domino14/macondo/config"
+
 	"github.com/domino14/liwords/pkg/entity"
 	"github.com/domino14/liwords/pkg/stores/user"
 	pkguser "github.com/domino14/liwords/pkg/user"
 	pb "github.com/domino14/liwords/rpc/api/proto/realtime"
+	"github.com/domino14/macondo/alphabet"
+	macondoconfig "github.com/domino14/macondo/config"
+	"github.com/domino14/macondo/gaddag"
 	macondopb "github.com/domino14/macondo/gen/api/proto/macondo"
 )
 
@@ -84,6 +86,8 @@ func recreateDB() {
 }
 
 func TestMain(m *testing.M) {
+	alphabet.CreateLetterDistributionCache()
+	gaddag.CreateGaddagCache()
 	code := m.Run()
 	os.Exit(code)
 }
