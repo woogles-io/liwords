@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Route, Switch, useLocation } from 'react-router-dom';
+import { Route, Switch, useLocation, Redirect } from 'react-router-dom';
 import './App.scss';
 import 'antd/dist/antd.css';
 import useWebSocket from 'react-use-websocket';
@@ -60,6 +60,11 @@ const App = React.memo(() => {
 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location.pathname]);
+
+  if (store.redirGame !== '') {
+    store.setRedirGame('');
+    return <Redirect push to={`/game/${store.redirGame}`} />;
+  }
 
   return (
     <div className="App">

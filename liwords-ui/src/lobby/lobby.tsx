@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { Row, Col, Button, Modal, Divider } from 'antd';
-import { Redirect } from 'react-router-dom';
 
 import { TopBar } from '../topbar/topbar';
 import {
@@ -16,7 +15,6 @@ import {
 import { encodeToSocketFmt } from '../utils/protobuf';
 import { SoughtGames } from './sought_games';
 import { SoughtGame } from '../store/reducers/lobby_reducer';
-import { useStoreContext } from '../store/store';
 import {
   ChallengeRuleMap,
   ChallengeRule,
@@ -81,7 +79,6 @@ type Props = {
 };
 
 export const Lobby = (props: Props) => {
-  const { redirGame, setRedirGame } = useStoreContext();
   const [seekModalVisible, setSeekModalVisible] = useState(false);
   const [matchModalVisible, setMatchModalVisible] = useState(false);
   const [seekSettings, setSeekSettings] = useState<seekPropVals>({
@@ -162,11 +159,6 @@ export const Lobby = (props: Props) => {
   const handleMatchModalCancel = () => {
     setMatchModalVisible(false);
   };
-
-  if (redirGame !== '') {
-    setRedirGame('');
-    return <Redirect push to={`/game/${redirGame}`} />;
-  }
 
   return (
     <div className="lobby">

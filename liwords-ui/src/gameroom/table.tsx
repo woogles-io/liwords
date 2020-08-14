@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Row, Col, message, notification, Button, Popconfirm } from 'antd';
 import axios from 'axios';
 
-import { useParams, Redirect } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 import { BoardPanel } from './board_panel';
 import { TopBar } from '../topbar/topbar';
 import { Chat } from './chat';
@@ -57,8 +57,6 @@ const defaultGameInfo = {
 export const Table = React.memo((props: Props) => {
   const { gameID } = useParams();
   const {
-    redirGame,
-    setRedirGame,
     gameContext,
     chat,
     clearChat,
@@ -164,12 +162,6 @@ export const Table = React.memo((props: Props) => {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [gameContext.playState]);
-
-  if (redirGame && redirGame !== gameID) {
-    // This can happen if we accept another match while in this game (typically a rematch)
-    setRedirGame('');
-    return <Redirect push to={`/game/${redirGame}`} />;
-  }
 
   const acceptRematch = (reqID: string) => {
     const evt = new SoughtGameProcessEvent();
