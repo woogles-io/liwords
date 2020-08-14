@@ -10,6 +10,7 @@ import (
 )
 
 var errAlreadyOpenReq = errors.New("you already have an open match or seek request")
+var errMatchAlreadyExists = errors.New("the user you are trying to match has already matched you")
 
 // SoughtGameStore is an interface for getting a sought game.
 type SoughtGameStore interface {
@@ -20,6 +21,7 @@ type SoughtGameStore interface {
 	ListOpenMatches(ctx context.Context, receiverID string) ([]*entity.SoughtGame, error)
 	ExistsForUser(ctx context.Context, userID string) (bool, error)
 	DeleteForUser(ctx context.Context, userID string) (string, error)
+	UserMatchedBy(ctx context.Context, userID, matcher string) (bool, error)
 }
 
 func NewSoughtGame(ctx context.Context, gameStore SoughtGameStore,
@@ -53,6 +55,15 @@ func NewMatchRequest(ctx context.Context, gameStore SoughtGameStore,
 	}
 	if exists {
 		return nil, errAlreadyOpenReq
+	}
+
+	// Check that the user we are matching hasn't already matched us.
+	matched, err := gameStore.UserMatchedBy(ctx, req.User.UserId, req.ReceivingUser.UserId)
+	if err != nil {
+		return nil, err
+	}
+	if matched {
+		return nil, errMatchAlreadyExists
 	}
 
 	sg := entity.NewMatchRequest(req)

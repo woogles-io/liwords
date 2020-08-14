@@ -135,8 +135,22 @@ func (m *MemoryStore) ListOpenMatches(ctx context.Context, receiver string) ([]*
 	return ret, nil
 }
 
-// ExistsForUser returns a user
+// ExistsForUser returns true if the user already has an outstanding seek request.
 func (m *MemoryStore) ExistsForUser(ctx context.Context, userID string) (bool, error) {
 	_, ok := m.soughtGamesByUser[userID]
 	return ok, nil
+}
+
+// UserMatchedBy returns true if there is an open seek request from matcher for user
+func (m *MemoryStore) UserMatchedBy(ctx context.Context, userID, matcher string) (bool, error) {
+	matches, ok := m.matchRequestsByReceiver[userID]
+	if !ok {
+		return false, nil
+	}
+	for _, m := range matches {
+		if m.MatchRequest.User.UserId == matcher {
+			return true, nil
+		}
+	}
+	return false, nil
 }
