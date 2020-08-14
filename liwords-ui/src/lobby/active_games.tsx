@@ -54,7 +54,7 @@ export const ActiveGames = (props: Props) => {
 
   return (
     <div>
-      <ul style={{ listStyleType: 'none' }}>{activeGameEls}</ul>
+      <ul className="games observe">{activeGameEls}</ul>
     </div>
   );
 };

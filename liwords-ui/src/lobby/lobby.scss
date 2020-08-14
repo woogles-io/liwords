@@ -40,6 +40,19 @@
       }
     }
   }
+  ul.games {
+    list-style-type: none;
+    margin: 0;
+    padding: 0;
+    li {
+      .game {
+        display: flex;
+        flex-direction: row;
+        justify-content: space-around;
+        padding: 12px 0;
+      }
+    }
+  }
 }
 
 @media (min-width: $screen-tablet-min) {

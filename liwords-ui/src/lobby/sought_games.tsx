@@ -24,7 +24,7 @@ const SoughtGameItem = (props: SoughtGameProps) => {
   let innerel = (
     // eslint-disable-next-line jsx-a11y/no-static-element-interactions
     <div
-      style={{ paddingTop: 20, cursor: 'pointer' }}
+      className="game"
       onClick={(event: React.MouseEvent) => props.newGame(game.seekID)}
     >
       <RatingBadge rating={game.userRating} player={game.seeker} />
@@ -102,8 +102,8 @@ export const SoughtGames = (props: Props) => {
 
   return (
     <>
-      <ul style={{ listStyleType: 'none' }}>{matchReqEls}</ul>
-      <ul style={{ listStyleType: 'none' }}>{soughtGameEls}</ul>
+      <ul className="games match">{matchReqEls}</ul>
+      <ul className="games seek">{soughtGameEls}</ul>
     </>
   );
 };
