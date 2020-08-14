@@ -4,6 +4,7 @@ import { Table } from 'antd';
 import React, { ReactNode } from 'react';
 import { challRuleToStr } from '../store/constants';
 import { SoughtGame } from '../store/reducers/lobby_reducer';
+import { FundOutlined } from '@ant-design/icons/lib';
 
 type SoughtGameProps = {
   game: SoughtGame;
@@ -103,7 +104,7 @@ export const SoughtGames = (props: Props) => {
     {
       title: 'Challenge',
       className: 'details',
-      dataIndex: 'challengeRule',
+      dataIndex: 'details',
       key: 'details',
     },
   ];
@@ -113,7 +114,7 @@ export const SoughtGames = (props: Props) => {
     rating: string;
     lexicon: string;
     time: string;
-    challengeRule?: ReactNode;
+    details?: ReactNode;
     seekID: string;
   };
 
@@ -122,7 +123,7 @@ export const SoughtGames = (props: Props) => {
       (sg: SoughtGame): SoughtGameTableData => {
         const challengeFormat = (cr: number) => {
           return (
-            <span className={`mode_${challRuleToStr(cr)}`}>
+            <span className={`challenge-rule mode_${challRuleToStr(cr)}`}>
               {challRuleToStr(cr)}
             </span>
           );
@@ -140,12 +141,20 @@ export const SoughtGames = (props: Props) => {
               : 'Blitz';
           return `${label} ${initialTimeSecs / 60}/${incrementSecs}`;
         };
+        const getDetails = () => {
+          return (
+            <>
+              {sg.rated ? <FundOutlined /> : null}
+              {challengeFormat(sg.challengeRule)}
+            </>
+          );
+        };
         return {
           seeker: sg.seeker,
           rating: sg.userRating,
           lexicon: sg.lexicon,
           time: timeFormat(sg.initialTimeSecs, sg.incrementSecs),
-          challengeRule: challengeFormat(sg.challengeRule),
+          details: getDetails(),
           seekID: sg.seekID,
         };
       }
