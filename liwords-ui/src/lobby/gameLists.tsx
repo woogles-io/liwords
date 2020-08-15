@@ -78,7 +78,10 @@ export const GameLists = React.memo((props: Props) => {
             requests={lobbyContext?.matchRequests}
           />
         ) : null}
-        <ActiveGames username={username} />
+        <ActiveGames
+          username={username}
+          activeGames={lobbyContext?.activeGames}
+        />
       </>
     );
   };

@@ -61,9 +61,9 @@ export const challRuleToStr = (n: number): string => {
     case ChallengeRule.SINGLE:
       return 'x1';
     case ChallengeRule.FIVE_POINT:
-      return '-5';
+      return '+5';
     case ChallengeRule.TEN_POINT:
-      return '-10';
+      return '+10';
     case ChallengeRule.VOID:
       return 'Void';
   }

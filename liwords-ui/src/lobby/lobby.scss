@@ -57,28 +57,57 @@
     .game-listing {
       cursor: pointer;
       .details {
-        @include type-deco;
-        letter-spacing: 0;
-        font-size: 12px;
         display: flex;
         align-items: center;
         justify-content: flex-end;
         .anticon-fund {
           color: $color-primary-dark;
           font-size: 18px;
-          margin-right: 4px;
+          margin-left: 6px;
         }
         .challenge-rule {
+          font-size: 14px;
+          font-weight: bold;
+          letter-spacing: 0;
           color: $color-timer-dark;
           &.mode_x2 {
             color: $color-timer-out-dark;
           }
           &.mode_Void {
+            @include type-deco;
+            font-size: 12px;
+            letter-spacing: 0;
             color: $color-timer-low-dark;
             text-transform: uppercase;
           }
         }
 
+      }
+      &.resume {
+        background-color: $color-timer-low-light;
+        font-weight: bold;
+        position: relative;
+        vertical-align: bottom;
+        td.details {
+          padding-top: 36px;
+        }
+        td.players {
+          min-height: 78px;
+        }
+         td.players:after {
+          content: 'Resume';
+          text-align: center;
+          font-size: 12px;
+          font-weight: bold;
+          letter-spacing: 0.3em;
+          text-transform: uppercase;
+         position: absolute;
+         top: 12px;
+         left: 18px;
+        }
+        &:hover {
+          background-color: inherit;
+        }
       }
     }
   }
