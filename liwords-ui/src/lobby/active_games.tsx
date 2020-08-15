@@ -1,10 +1,10 @@
 import { Table } from 'antd';
 import React, { ReactNode } from 'react';
+import { FundOutlined } from '@ant-design/icons/lib';
 import { useStoreContext } from '../store/store';
 import { RatingBadge } from './rating_badge';
 import { challengeFormat, timeFormat } from './sought_games';
 import { ActiveGame } from '../store/reducers/lobby_reducer';
-import { FundOutlined } from '@ant-design/icons/lib';
 
 type Props = {
   activeGames: ActiveGame[];
@@ -110,12 +110,13 @@ export const ActiveGames = (props: Props) => {
     <>
       <h4>Games Live Now</h4>
       <Table
-        className={'games observe'}
+        className="games observe"
         dataSource={formatGameData(props.activeGames)}
         columns={columns}
         pagination={{
           hideOnSinglePage: true,
         }}
+        rowKey="gameID"
         onRow={(record) => {
           return {
             onClick: (event) => {
