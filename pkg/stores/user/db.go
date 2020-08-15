@@ -58,16 +58,28 @@ type profile struct {
 	// More complex stats might be in a separate place.
 }
 
+type following struct {
+	// Follower follows user; pretty straightforward.
+	UserID uint
+	User   User
+
+	FollowerID uint
+	Follower   User
+}
+
 // NewDBStore creates a new DB store
 func NewDBStore(dbURL string) (*DBStore, error) {
 	db, err := gorm.Open("postgres", dbURL)
 	if err != nil {
 		return nil, err
 	}
-	db.AutoMigrate(&User{}, &profile{})
+	db.AutoMigrate(&User{}, &profile{}, &following{})
 	// Can't get GORM to auto create these foreign keys, so do it myself /shrug
 	db.Model(&profile{}).AddForeignKey("user_id", "users(id)", "RESTRICT", "RESTRICT")
-
+	db.Model(&following{}).
+		AddForeignKey("user_id", "users(id)", "RESTRICT", "RESTRICT").
+		AddForeignKey("follower_id", "users(id)", "RESTRICT", "RESTRICT").
+		AddUniqueIndex("user_follower_idx", "user_id", "follower_id")
 	return &DBStore{db: db}, nil
 }
 
@@ -268,31 +280,55 @@ func (s *DBStore) SetStats(ctx context.Context, uuid string, variant entity.Vari
 	return s.db.Model(p).Update("stats", postgres.Jsonb{RawMessage: bytes}).Error
 }
 
+// AddFollower creates a follower -> target follow.
+func (s *DBStore) AddFollower(ctx context.Context, targetUser, follower uint) error {
+	dbf := &following{UserID: targetUser, FollowerID: follower}
+	result := s.db.Create(dbf)
+	return result.Error
+}
+
+// RemoveFollower removes a follower -> target follow.
+func (s *DBStore) RemoveFollower(ctx context.Context, targetUser, follower uint) error {
+	return s.db.Where("user_id = ? AND follower_id = ?", targetUser, follower).Delete(&following{}).Error
+}
+
+// GetFollows gets all the users that the passed-in user DB ID is following.
+func (s *DBStore) GetFollows(ctx context.Context, uid uint) ([]*entity.User, error) {
+	type followed struct {
+		Username string
+		Uuid     string
+	}
+
+	var users []followed
+
+	if result := s.db.Table("followings").Select("u0.username, u0.uuid").
+		Joins("JOIN users as u0 ON u0.id = user_id").
+		Where("follower_id = ?", uid).Scan(&users); result.Error != nil {
+
+		return nil, result.Error
+	}
+	log.Debug().Int("num-followed", len(users)).Msg("found-followed")
+	entUsers := make([]*entity.User, len(users))
+	for idx, u := range users {
+		entUsers[idx] = &entity.User{UUID: u.Uuid, Username: u.Username}
+	}
+	return entUsers, nil
+}
+
+// Username gets the username from the uuid
+func (s *DBStore) Username(ctx context.Context, uuid string) (string, error) {
+	type u struct {
+		Username string
+	}
+	var user u
+	if result := s.db.Table("users").Select("username").
+		Where("uuid = ?", uuid).Scan(&user); result.Error != nil {
+
+		return "", result.Error
+	}
+	return user.Username, nil
+}
+
 func (s *DBStore) Disconnect() {
 	s.db.Close()
 }
-
-// CheckPassword checks the password. If the password matches, return the User.
-// If not, return an error.
-// func (s *DBStore) CheckPassword(ctx context.Context, username string, password string) (*entity.User, error) {
-// 	dbu := &user{}
-
-// 	u := &entity.User{}
-// 	if result := s.db.Where("username = ?", username).First(dbu); result.Error != nil {
-// 		return nil, result.Error
-// 	}
-// 	matches, err := auth.ComparePassword(password, dbu.Password)
-// 	if err != nil {
-// 		return nil, err
-// 	}
-// 	if !matches {
-// 		return nil, errors.New("password does not match")
-// 	}
-
-// 	u.Username = dbu.Username
-// 	u.UUID = dbu.UUID
-// 	u.Email = dbu.Email
-// 	u.Password = dbu.Password
-
-// 	return u, nil
-// }

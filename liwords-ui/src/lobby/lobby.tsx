@@ -176,7 +176,7 @@ export const Lobby = (props: Props) => {
       </Row>
       <Row className="lobby">
         <Col span={6} className="chat-area">
-          <Chat chatEntities={chat} />
+          <Chat chatEntities={chat} sendChat={(msg: string) => {}} />
         </Col>
         <Col span={12} className="game-lists">
           <GameLists

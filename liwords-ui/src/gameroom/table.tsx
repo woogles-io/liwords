@@ -15,6 +15,7 @@ import {
   MatchRequest,
   SoughtGameProcessEvent,
   DeclineMatchRequest,
+  ChatMessage,
 } from '../gen/api/proto/realtime/realtime_pb';
 import { encodeToSocketFmt } from '../utils/protobuf';
 import './scss/gameroom.scss';
@@ -185,6 +186,17 @@ export const Table = React.memo((props: Props) => {
     );
   };
 
+  const sendChat = (msg: string) => {
+    const evt = new ChatMessage();
+    evt.setMessage(msg);
+    // XXX: Backend should figure out channels; also separate game and gameTV channels
+    // Right now everyone will get this.
+    evt.setChannel(`game.${gameID}`);
+    sendSocketMsg(
+      encodeToSocketFmt(MessageType.CHAT_MESSAGE, evt.serializeBinary())
+    );
+  };
+
   // Figure out what rack we should display.
   // If we are one of the players, display our rack.
   // If we are NOT one of the players (so an observer), display the rack of
@@ -221,7 +233,7 @@ export const Table = React.memo((props: Props) => {
             okText="Accept"
             cancelText="Decline"
           >
-            <Chat chatEntities={chat} />
+            <Chat chatEntities={chat} sendChat={sendChat} />
           </Popconfirm>
 
           <Button type="primary" onClick={gcgExport}>

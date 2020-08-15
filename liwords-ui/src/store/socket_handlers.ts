@@ -1,5 +1,5 @@
 import { message, notification } from 'antd';
-import { StoreData } from './store';
+import { StoreData, ChatEntityType } from './store';
 import {
   MessageType,
   SeekRequest,
@@ -172,11 +172,16 @@ export const onSocketMsg = (username: string, storeData: StoreData) => {
             message: 'Error',
             description: err.getMessage(),
           });
-          // storeData.addChat({
-          //   entityType: ChatEntityType.ErrorMsg,
-          //   sender: '',
-          //   message: err.getMessage(),
-          // });
+          break;
+        }
+
+        case MessageType.CHAT_MESSAGE: {
+          const cm = parsedMsg as ChatMessage;
+          storeData.addChat({
+            entityType: ChatEntityType.UserChat,
+            sender: cm.getUsername(),
+            message: cm.getMessage(),
+          });
           break;
         }
 

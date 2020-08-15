@@ -24,6 +24,8 @@ import (
 
 const (
 	GameStartDelay = 3 * time.Second
+
+	MaxMessageLength = 256
 )
 
 // Bus is the struct; it should contain all the stores to verify messages, etc.
@@ -226,6 +228,15 @@ func (b *Bus) handleNatsPublish(ctx context.Context, subtopics []string, data []
 	switch subtopics[0] {
 	case "seekRequest", "matchRequest":
 		return b.seekRequest(ctx, subtopics[0], subtopics[1], subtopics[2], data)
+	case "chat":
+		// The user is subtopics[2]
+		evt := &pb.ChatMessage{}
+		err := proto.Unmarshal(data, evt)
+		if err != nil {
+			return err
+		}
+		log.Debug().Str("user", subtopics[2]).Str("msg", evt.Message).Str("channel", evt.Channel).Msg("chat")
+		return b.chat(ctx, subtopics[2], evt)
 	case "declineMatchRequest":
 		evt := &pb.DeclineMatchRequest{}
 		err := proto.Unmarshal(data, evt)
@@ -528,6 +539,27 @@ func (b *Bus) matchDeclined(ctx context.Context, evt *pb.DeclineMatchRequest, us
 	wrapped = entity.WrapEvent(&pb.SoughtGameProcessEvent{RequestId: evt.RequestId},
 		pb.MessageType_SOUGHT_GAME_PROCESS_EVENT, "")
 	return b.pubToUser(decliner, wrapped)
+}
+
+func (b *Bus) chat(ctx context.Context, userID string, evt *pb.ChatMessage) error {
+	if len(evt.Message) > MaxMessageLength {
+		return errors.New("message-too-long")
+	}
+	username, err := b.userStore.Username(ctx, userID)
+	if err != nil {
+		return err
+	}
+
+	toSend := entity.WrapEvent(&pb.ChatMessage{
+		Username: username,
+		Channel:  evt.Channel,
+		Message:  evt.Message,
+	}, pb.MessageType_CHAT_MESSAGE, "")
+	data, err := toSend.Serialize()
+	if err != nil {
+		return err
+	}
+	return b.natsconn.Publish(evt.Channel, data)
 }
 
 func (b *Bus) broadcastSeekDeletion(seekID string) error {
