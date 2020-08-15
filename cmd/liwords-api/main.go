@@ -11,8 +11,8 @@ import (
 
 	"github.com/domino14/macondo/gaddag"
 
-	"github.com/domino14/liwords/bus"
 	"github.com/domino14/liwords/pkg/apiserver"
+	"github.com/domino14/liwords/pkg/bus"
 	"github.com/domino14/liwords/pkg/gameplay"
 	"github.com/domino14/liwords/pkg/stores/game"
 	"github.com/domino14/liwords/pkg/stores/session"

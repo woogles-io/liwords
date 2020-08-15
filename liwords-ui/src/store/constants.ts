@@ -2,15 +2,24 @@ import { ChallengeRule } from '../gen/macondo/api/proto/macondo/macondo_pb';
 
 export type PlayerOrder = 'p0' | 'p1';
 
+// number of turns in a game, this is just an estimate. See `variants.go`
+const turnsPerGame = 16;
+
 // See cutoffs in variants.go. XXX: Try to tie these together better.
-export const timeCtrlToDisplayName = (secs: number) => {
-  if (secs <= 2 * 60) {
+export const timeCtrlToDisplayName = (
+  secs: number,
+  incrementSecs: number,
+  maxOvertime: number
+) => {
+  const totalTime = secs + maxOvertime * 60 + incrementSecs * turnsPerGame;
+
+  if (totalTime <= 2 * 60) {
     return ['Ultra-Blitz!', 'magenta'];
   }
-  if (secs <= 6 * 60) {
+  if (totalTime <= 6 * 60) {
     return ['Blitz', 'volcano'];
   }
-  if (secs <= 14 * 60) {
+  if (totalTime <= 14 * 60) {
     return ['Rapid', 'gold'];
   }
   return ['Regular', 'blue'];
@@ -19,11 +28,11 @@ export const timeCtrlToDisplayName = (secs: number) => {
 export const ratingToColor = (rating: string): [number, string] => {
   let ratNum;
   if (rating.endsWith('?')) {
-    ratNum = parseInt(rating.substring(0, rating.length - 1));
+    ratNum = parseInt(rating.substring(0, rating.length - 1), 10);
   } else {
-    ratNum = parseInt(rating);
+    ratNum = parseInt(rating, 10);
   }
-  let ratingCutoffs: Array<[number, string]> = [
+  const ratingCutoffs: Array<[number, string]> = [
     [2100, 'pink'],
     [1900, 'volcano'],
     [1700, 'yellow'],
@@ -48,13 +57,13 @@ export const ratingToColor = (rating: string): [number, string] => {
 export const challRuleToStr = (n: number): string => {
   switch (n) {
     case ChallengeRule.DOUBLE:
-      return 'Double';
+      return 'x2';
     case ChallengeRule.SINGLE:
-      return 'Single';
+      return 'x1';
     case ChallengeRule.FIVE_POINT:
-      return '5-pt';
+      return '+5';
     case ChallengeRule.TEN_POINT:
-      return '10-pt';
+      return '+10';
     case ChallengeRule.VOID:
       return 'Void';
   }

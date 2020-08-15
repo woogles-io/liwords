@@ -86,7 +86,7 @@ export namespace GameRequest {
   }
 }
 
-export class RequestingUser extends jspb.Message {
+export class MatchUser extends jspb.Message {
   getUserId(): string;
   setUserId(value: string): void;
 
@@ -100,16 +100,16 @@ export class RequestingUser extends jspb.Message {
   setDisplayName(value: string): void;
 
   serializeBinary(): Uint8Array;
-  toObject(includeInstance?: boolean): RequestingUser.AsObject;
-  static toObject(includeInstance: boolean, msg: RequestingUser): RequestingUser.AsObject;
+  toObject(includeInstance?: boolean): MatchUser.AsObject;
+  static toObject(includeInstance: boolean, msg: MatchUser): MatchUser.AsObject;
   static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
   static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
-  static serializeBinaryToWriter(message: RequestingUser, writer: jspb.BinaryWriter): void;
-  static deserializeBinary(bytes: Uint8Array): RequestingUser;
-  static deserializeBinaryFromReader(message: RequestingUser, reader: jspb.BinaryReader): RequestingUser;
+  static serializeBinaryToWriter(message: MatchUser, writer: jspb.BinaryWriter): void;
+  static deserializeBinary(bytes: Uint8Array): MatchUser;
+  static deserializeBinaryFromReader(message: MatchUser, reader: jspb.BinaryReader): MatchUser;
 }
 
-export namespace RequestingUser {
+export namespace MatchUser {
   export type AsObject = {
     userId: string,
     relevantRating: string,
@@ -194,6 +194,34 @@ export namespace GameDeletion {
   }
 }
 
+export class ChatMessage extends jspb.Message {
+  getUsername(): string;
+  setUsername(value: string): void;
+
+  getChannel(): string;
+  setChannel(value: string): void;
+
+  getMessage(): string;
+  setMessage(value: string): void;
+
+  serializeBinary(): Uint8Array;
+  toObject(includeInstance?: boolean): ChatMessage.AsObject;
+  static toObject(includeInstance: boolean, msg: ChatMessage): ChatMessage.AsObject;
+  static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+  static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+  static serializeBinaryToWriter(message: ChatMessage, writer: jspb.BinaryWriter): void;
+  static deserializeBinary(bytes: Uint8Array): ChatMessage;
+  static deserializeBinaryFromReader(message: ChatMessage, reader: jspb.BinaryReader): ChatMessage;
+}
+
+export namespace ChatMessage {
+  export type AsObject = {
+    username: string,
+    channel: string,
+    message: string,
+  }
+}
+
 export class SeekRequest extends jspb.Message {
   hasGameRequest(): boolean;
   clearGameRequest(): void;
@@ -202,8 +230,8 @@ export class SeekRequest extends jspb.Message {
 
   hasUser(): boolean;
   clearUser(): void;
-  getUser(): RequestingUser | undefined;
-  setUser(value?: RequestingUser): void;
+  getUser(): MatchUser | undefined;
+  setUser(value?: MatchUser): void;
 
   getMinimumRating(): number;
   setMinimumRating(value: number): void;
@@ -224,7 +252,7 @@ export class SeekRequest extends jspb.Message {
 export namespace SeekRequest {
   export type AsObject = {
     gameRequest?: GameRequest.AsObject,
-    user?: RequestingUser.AsObject,
+    user?: MatchUser.AsObject,
     minimumRating: number,
     maximumRating: number,
   }
@@ -238,8 +266,16 @@ export class MatchRequest extends jspb.Message {
 
   hasUser(): boolean;
   clearUser(): void;
-  getUser(): RequestingUser | undefined;
-  setUser(value?: RequestingUser): void;
+  getUser(): MatchUser | undefined;
+  setUser(value?: MatchUser): void;
+
+  hasReceivingUser(): boolean;
+  clearReceivingUser(): void;
+  getReceivingUser(): MatchUser | undefined;
+  setReceivingUser(value?: MatchUser): void;
+
+  getRematchFor(): string;
+  setRematchFor(value: string): void;
 
   serializeBinary(): Uint8Array;
   toObject(includeInstance?: boolean): MatchRequest.AsObject;
@@ -254,25 +290,27 @@ export class MatchRequest extends jspb.Message {
 export namespace MatchRequest {
   export type AsObject = {
     gameRequest?: GameRequest.AsObject,
-    user?: RequestingUser.AsObject,
+    user?: MatchUser.AsObject,
+    receivingUser?: MatchUser.AsObject,
+    rematchFor: string,
   }
 }
 
-export class GameAcceptedEvent extends jspb.Message {
+export class SoughtGameProcessEvent extends jspb.Message {
   getRequestId(): string;
   setRequestId(value: string): void;
 
   serializeBinary(): Uint8Array;
-  toObject(includeInstance?: boolean): GameAcceptedEvent.AsObject;
-  static toObject(includeInstance: boolean, msg: GameAcceptedEvent): GameAcceptedEvent.AsObject;
+  toObject(includeInstance?: boolean): SoughtGameProcessEvent.AsObject;
+  static toObject(includeInstance: boolean, msg: SoughtGameProcessEvent): SoughtGameProcessEvent.AsObject;
   static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
   static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
-  static serializeBinaryToWriter(message: GameAcceptedEvent, writer: jspb.BinaryWriter): void;
-  static deserializeBinary(bytes: Uint8Array): GameAcceptedEvent;
-  static deserializeBinaryFromReader(message: GameAcceptedEvent, reader: jspb.BinaryReader): GameAcceptedEvent;
+  static serializeBinaryToWriter(message: SoughtGameProcessEvent, writer: jspb.BinaryWriter): void;
+  static deserializeBinary(bytes: Uint8Array): SoughtGameProcessEvent;
+  static deserializeBinaryFromReader(message: SoughtGameProcessEvent, reader: jspb.BinaryReader): SoughtGameProcessEvent;
 }
 
-export namespace GameAcceptedEvent {
+export namespace SoughtGameProcessEvent {
   export type AsObject = {
     requestId: string,
   }
@@ -297,6 +335,28 @@ export class SeekRequests extends jspb.Message {
 export namespace SeekRequests {
   export type AsObject = {
     requestsList: Array<SeekRequest.AsObject>,
+  }
+}
+
+export class MatchRequests extends jspb.Message {
+  clearRequestsList(): void;
+  getRequestsList(): Array<MatchRequest>;
+  setRequestsList(value: Array<MatchRequest>): void;
+  addRequests(value?: MatchRequest, index?: number): MatchRequest;
+
+  serializeBinary(): Uint8Array;
+  toObject(includeInstance?: boolean): MatchRequests.AsObject;
+  static toObject(includeInstance: boolean, msg: MatchRequests): MatchRequests.AsObject;
+  static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+  static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+  static serializeBinaryToWriter(message: MatchRequests, writer: jspb.BinaryWriter): void;
+  static deserializeBinary(bytes: Uint8Array): MatchRequests;
+  static deserializeBinaryFromReader(message: MatchRequests, reader: jspb.BinaryReader): MatchRequests;
+}
+
+export namespace MatchRequests {
+  export type AsObject = {
+    requestsList: Array<MatchRequest.AsObject>,
   }
 }
 
@@ -442,6 +502,9 @@ export class GameHistoryRefresher extends jspb.Message {
   getTimePlayer2(): number;
   setTimePlayer2(value: number): void;
 
+  getMaxOvertimeMinutes(): number;
+  setMaxOvertimeMinutes(value: number): void;
+
   serializeBinary(): Uint8Array;
   toObject(includeInstance?: boolean): GameHistoryRefresher.AsObject;
   static toObject(includeInstance: boolean, msg: GameHistoryRefresher): GameHistoryRefresher.AsObject;
@@ -457,6 +520,7 @@ export namespace GameHistoryRefresher {
     history?: macondo_api_proto_macondo_macondo_pb.GameHistory.AsObject,
     timePlayer1: number,
     timePlayer2: number,
+    maxOvertimeMinutes: number,
   }
 }
 
@@ -565,23 +629,23 @@ export namespace TimedOut {
   }
 }
 
-export class TokenSocketLogin extends jspb.Message {
-  getToken(): string;
-  setToken(value: string): void;
+export class DeclineMatchRequest extends jspb.Message {
+  getRequestId(): string;
+  setRequestId(value: string): void;
 
   serializeBinary(): Uint8Array;
-  toObject(includeInstance?: boolean): TokenSocketLogin.AsObject;
-  static toObject(includeInstance: boolean, msg: TokenSocketLogin): TokenSocketLogin.AsObject;
+  toObject(includeInstance?: boolean): DeclineMatchRequest.AsObject;
+  static toObject(includeInstance: boolean, msg: DeclineMatchRequest): DeclineMatchRequest.AsObject;
   static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
   static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
-  static serializeBinaryToWriter(message: TokenSocketLogin, writer: jspb.BinaryWriter): void;
-  static deserializeBinary(bytes: Uint8Array): TokenSocketLogin;
-  static deserializeBinaryFromReader(message: TokenSocketLogin, reader: jspb.BinaryReader): TokenSocketLogin;
+  static serializeBinaryToWriter(message: DeclineMatchRequest, writer: jspb.BinaryWriter): void;
+  static deserializeBinary(bytes: Uint8Array): DeclineMatchRequest;
+  static deserializeBinaryFromReader(message: DeclineMatchRequest, reader: jspb.BinaryReader): DeclineMatchRequest;
 }
 
-export namespace TokenSocketLogin {
+export namespace DeclineMatchRequest {
   export type AsObject = {
-    token: string,
+    requestId: string,
   }
 }
 
@@ -638,7 +702,7 @@ export const RatingMode: RatingModeMap;
 export interface MessageTypeMap {
   SEEK_REQUEST: 0;
   MATCH_REQUEST: 1;
-  GAME_ACCEPTED_EVENT: 2;
+  SOUGHT_GAME_PROCESS_EVENT: 2;
   CLIENT_GAMEPLAY_EVENT: 3;
   SERVER_GAMEPLAY_EVENT: 4;
   GAME_ENDED_EVENT: 5;
@@ -650,10 +714,12 @@ export interface MessageTypeMap {
   JOIN_PATH: 11;
   UNJOIN_REALM: 12;
   TIMED_OUT: 13;
-  TOKEN_SOCKET_LOGIN: 14;
   GAME_META_EVENT: 15;
   ACTIVE_GAMES: 16;
   GAME_DELETION: 17;
+  MATCH_REQUESTS: 18;
+  DECLINE_MATCH_REQUEST: 19;
+  CHAT_MESSAGE: 20;
 }
 
 export const MessageType: MessageTypeMap;

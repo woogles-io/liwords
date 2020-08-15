@@ -431,6 +431,7 @@ const initializeTimerController = (
     onturn,
     newState.clockController!.current.millisOf(onturn)
   );
+  newState.clockController!.current.setMaxOvertime(ghr.getMaxOvertimeMinutes());
 };
 
 // Here we are mixing declarative code with imperative code (needed for the timer).
@@ -492,17 +493,6 @@ export const GameReducer = (state: GameState, action: Action): GameState => {
       // Otherwise if it is null, we have an issue, but there's no need to
       // throw an Error..
       return newState;
-    }
-
-    case ActionType.SetMaxOvertime: {
-      const maxOvertimeMinutes = action.payload as number;
-      // This is not a great use of reducers, but the clockController is an
-      // imperative controller anyway so we just modify it here and keep the state
-      // the same.
-      if (state.clockController !== null) {
-        state.clockController.current?.setMaxOvertime(maxOvertimeMinutes);
-      }
-      return state;
     }
   }
   // This should never be reached, but the compiler is complaining.

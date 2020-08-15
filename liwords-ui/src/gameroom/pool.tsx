@@ -107,6 +107,7 @@ const Pool = React.memo((props: Props) => {
       </a>
     </Dropdown>
   );
+
   const renderContents = (title?: string) => (
     <div className="pool">
       {title ? <p className="label">{title}</p> : null}
@@ -117,16 +118,22 @@ const Pool = React.memo((props: Props) => {
       </div>
     </div>
   );
-  const title = `${getPoolCount(pool)} tiles unseen`;
+
+  const unseen = getPoolCount(pool);
+  const inbag = Math.max(unseen - 7, 0);
+
+  let title: string;
+  if (inbag === 0) {
+    title = `${unseen} tiles on opponent's rack`;
+  } else {
+    title = `${inbag} tiles in bag`;
+  }
+
   if (props.omitCard) {
     return <>{renderContents(title)}</>;
   }
   return (
-    <Card
-      className="pool"
-      title={`${getPoolCount(pool)} tiles unseen`}
-      extra={dropDown}
-    >
+    <Card className="pool" title={title} extra={dropDown}>
       {renderContents()}
     </Card>
   );

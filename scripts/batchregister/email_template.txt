@@ -1,0 +1,15 @@
+Dear Corgi/Collie/Basset Hound/Woogles,
+
+    Thank you for your support in bringing Woogles.io to life! Here are your temporary login credentials to woogles.io:
+
+        Username: {username}
+        PW: {password}
+
+    We encourage you to change your password when you first log in. To change your password, click on your name at the top right to access your profile, and then find the "Change your password" link at the bottom of the page.
+
+    In addition, please join us on the Woogles Discord which we’ll be using to organize fun launch events/Corgi parties in upcoming months!
+
+    Click this link to sign up to the Woogles Discord: https://discord.gg/SecsSsc
+
+	Love,
+	The Woogles.io team

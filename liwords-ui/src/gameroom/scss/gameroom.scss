@@ -6,7 +6,7 @@
   align-items: flex-end;
   justify-content: flex-end;
   .ant-btn {
-    margin-left: 16px;
+    margin: 0 0 0 12px;
   }
 }
 
@@ -64,6 +64,12 @@
   text-align: left;
   .ant-card {
     margin-bottom: 12px;
+  }
+}
+
+.chat-area {
+  .chat {
+    height: 80%;
   }
 }
 
@@ -129,21 +135,50 @@
   display: inline-block;
   vertical-align: top;
 }
+.board-space {
 
-.board-space .anticon {
-  position: absolute;
-  font-size: 1.5vw;
-}
-
-.board-space .logo {
-  position: absolute;
-  width: 2.4vw;
-  height: 2.4vw;
-}
-
-.board-space .anticon {
-  position: absolute;
-  color: $color-secondary;
+  .anticon {
+    position: absolute;
+    color: $color-timer-dark;
+    font-size: 2vw;
+  }
+  &.bonus-none {
+    background-color: $color-board-empty;
+  }
+  &.bonus-3WS {
+    background-color: $color-board-tws;
+    &.selected {
+      background-color: mix($color-board-tws, $color-timer-light, $weight: 30%)
+    }
+  }
+  &.bonus-2WS {
+    background-color: $color-board-dws;
+    .anticon-star {
+      color: $color-board-tws;
+    }
+    &.selected {
+      background-color: mix($color-board-dws, $color-timer-light, $weight: 60%);
+      .anticon-star {
+        display: none;
+      }
+    }
+  }
+  &.bonus-3LS {
+    background-color: $color-board-tls;
+    &.selected {
+      background-color: mix($color-board-tls, $color-timer-light, $weight: 50%)
+    }
+  }
+  &.bonus-2LS {
+    background-color: $color-board-dls;
+    &.selected {
+      background-color: mix($color-board-dls, $color-timer-light, $weight: 30%)
+    }
+  }
+  &.selected {
+    border: 1px solid $color-timer-dark;
+    background: $color-timer-light;
+  }
 }
 
 .bonus-label {
@@ -161,6 +196,9 @@
   display: flex;
   justify-content: space-around;
   width: 100%;
+  p {
+    color: black;
+  }
 }
 
 .coord-labels.vert {
@@ -463,6 +501,14 @@
 .game-controls {
   margin: 0 auto;
 }
+.end-message {
+  background-color: $color-primary-middle;
+  .ant-card-body {
+    p {
+      color: black;
+    }
+  }
+}
 
 @media (min-width: $screen-tablet-min) {
   .game-table {
@@ -485,6 +531,7 @@
   .play-area {
     flex: 0 0 50%;
   }
+
   .rack .tile {
     width: 28px;
     height: 28px;
@@ -508,7 +555,7 @@
     height: 3vw;
   }
 }
-@media (min-height: 880px) and (min-width: $screen-desktop-min) {
+@media (min-height: 800px) and (min-width: $screen-desktop-min) {
   .game-table {
     max-width: $screen-desktop-min;
     .ant-card .ant-card-head {
@@ -535,6 +582,7 @@
       }
     }
   }
+
   .tile.droppable {
     pointer-events: all;
     cursor: grab;
@@ -591,7 +639,7 @@
   }
 }
 
-@media (min-height: 880px) and (min-width: $screen-desktop-max) {
+@media (min-height: 864px) and (min-width: $screen-desktop-max) {
   .game-table {
     max-width: $screen-desktop-max;
   }

@@ -33,14 +33,20 @@ const (
 	CutoffRapid      = 14 * 60
 )
 
+// Calculate "total" time assuming there are 16 turns in a game per player.
+const TurnsPerGame = 16 // just an estimate.
+
 func VariantFromGameReq(gamereq *pb.GameRequest) (TimeControl, Variant, error) {
 	// hardcoded values here; fix sometime
 	var timefmt TimeControl
-	if gamereq.InitialTimeSeconds <= CutoffUltraBlitz {
+
+	totalTime := gamereq.InitialTimeSeconds + (gamereq.MaxOvertimeMinutes * 60) + (gamereq.IncrementSeconds * TurnsPerGame)
+
+	if totalTime <= CutoffUltraBlitz {
 		timefmt = TCUltraBlitz
-	} else if gamereq.InitialTimeSeconds <= CutoffBlitz {
+	} else if totalTime <= CutoffBlitz {
 		timefmt = TCBlitz
-	} else if gamereq.InitialTimeSeconds <= CutoffRapid {
+	} else if totalTime <= CutoffRapid {
 		timefmt = TCRapid
 	} else {
 		timefmt = TCRegular

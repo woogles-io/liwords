@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Row, Col, message, notification, Button } from 'antd';
+import { Row, Col, message, notification, Button, Popconfirm } from 'antd';
 import axios from 'axios';
 
 import { useParams } from 'react-router-dom';
@@ -9,7 +9,14 @@ import { Chat } from './chat';
 import { useStoreContext } from '../store/store';
 import { PlayerCards } from './player_cards';
 import Pool from './pool';
-import { MessageType, TimedOut } from '../gen/api/proto/realtime/realtime_pb';
+import {
+  MessageType,
+  TimedOut,
+  MatchRequest,
+  SoughtGameProcessEvent,
+  DeclineMatchRequest,
+  ChatMessage,
+} from '../gen/api/proto/realtime/realtime_pb';
 import { encodeToSocketFmt } from '../utils/protobuf';
 import './scss/gameroom.scss';
 import { ScoreCard } from './scorecard';
@@ -20,7 +27,6 @@ import {
   GCGResponse,
 } from './game_info';
 import { PlayState } from '../gen/macondo/api/proto/macondo/macondo_pb';
-import { ActionType } from '../actions/actions';
 // import { GameInfoResponse } from '../gen/api/proto/game_service/game_service_pb';
 
 const gutter = 16;
@@ -30,6 +36,7 @@ type Props = {
   sendSocketMsg: (msg: Uint8Array) => void;
   username: string;
   loggedIn: boolean;
+  connectedToSocket: boolean;
 };
 
 const defaultGameInfo = {
@@ -52,25 +59,21 @@ const defaultGameInfo = {
 export const Table = React.memo((props: Props) => {
   const { gameID } = useParams();
   const {
-    setRedirGame,
     gameContext,
-    dispatchGameContext,
     chat,
     clearChat,
     pTimedOut,
     poolFormat,
     setPoolFormat,
     setPTimedOut,
+    rematchRequest,
+    setRematchRequest,
   } = useStoreContext();
   const { username, sendSocketMsg } = props;
   // const location = useLocation();
   const [gameInfo, setGameInfo] = useState<GameMetadata>(defaultGameInfo);
   const [gcgText, setGCGText] = useState('');
-  useEffect(() => {
-    // Avoid react-router hijacking the back button.
-    // If setRedirGame is not defined, then we're SOL I guess.
-    setRedirGame ? setRedirGame('') : (() => {})();
-  }, [setRedirGame]);
+  const [isObserver, setIsObserver] = useState(false);
 
   const gcgExport = () => {
     axios
@@ -106,16 +109,13 @@ export const Table = React.memo((props: Props) => {
       )
       .then((resp) => {
         setGameInfo(resp.data);
-        dispatchGameContext({
-          actionType: ActionType.SetMaxOvertime,
-          payload: resp.data.max_overtime_minutes,
-        });
       });
     if (!gameContext.players || !gameContext.players[0]) {
       // Show a message while waiting for data about the game to come in
       // via the socket.
       message.warning('Game is starting shortly', 0);
     }
+
     return () => {
       clearChat();
       setGameInfo(defaultGameInfo);
@@ -128,19 +128,15 @@ export const Table = React.memo((props: Props) => {
     if (pTimedOut === undefined) return;
     // Otherwise, player timed out. This will only send once.
     // Send the time out if we're either of both players that are in the game.
-    let send = false;
+    if (isObserver) return;
+
     let timedout = '';
 
     gameInfo.players.forEach((p) => {
       if (gameContext.uidToPlayerOrder[p.user_id] === pTimedOut) {
         timedout = p.user_id;
       }
-      if (username === p.nickname) {
-        send = true;
-      }
     });
-
-    if (!send) return;
 
     const to = new TimedOut();
     to.setGameId(gameID);
@@ -167,6 +163,51 @@ export const Table = React.memo((props: Props) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [gameContext.playState]);
 
+  useEffect(() => {
+    let observer = true;
+    gameInfo.players.forEach((p) => {
+      if (username === p.nickname) {
+        observer = false;
+      }
+    });
+    setIsObserver(observer);
+  }, [username, gameInfo]);
+
+  const acceptRematch = (reqID: string) => {
+    const evt = new SoughtGameProcessEvent();
+    evt.setRequestId(reqID);
+    sendSocketMsg(
+      encodeToSocketFmt(
+        MessageType.SOUGHT_GAME_PROCESS_EVENT,
+        evt.serializeBinary()
+      )
+    );
+  };
+
+  const declineRematch = (reqID: string) => {
+    const evt = new DeclineMatchRequest();
+    evt.setRequestId(reqID);
+    sendSocketMsg(
+      encodeToSocketFmt(
+        MessageType.DECLINE_MATCH_REQUEST,
+        evt.serializeBinary()
+      )
+    );
+  };
+
+  const sendChat = (msg: string) => {
+    const evt = new ChatMessage();
+    evt.setMessage(msg);
+
+    const chan = isObserver ? 'gametv' : 'game';
+    // XXX: Backend should figure out channels; also separate game and gameTV channels
+    // Right now everyone will get this.
+    evt.setChannel(`${chan}.${gameID}`);
+    sendSocketMsg(
+      encodeToSocketFmt(MessageType.CHAT_MESSAGE, evt.serializeBinary())
+    );
+  };
+
   // Figure out what rack we should display.
   // If we are one of the players, display our rack.
   // If we are NOT one of the players (so an observer), display the rack of
@@ -184,16 +225,44 @@ export const Table = React.memo((props: Props) => {
 
   return (
     <div>
-      <TopBar username={props.username} loggedIn={props.loggedIn} />
+      <TopBar
+        username={props.username}
+        loggedIn={props.loggedIn}
+        connectedToSocket={props.connectedToSocket}
+      />
       <Row gutter={gutter} className="game-table">
         <Col span={6} className="chat-area">
-          <Chat chatEntities={chat} />
+          <Popconfirm
+            title={`${rematchRequest
+              .getUser()
+              ?.getDisplayName()} sent you a rematch request`}
+            visible={rematchRequest.getRematchFor() !== ''}
+            onConfirm={() => {
+              acceptRematch(rematchRequest.getGameRequest()!.getRequestId());
+              setRematchRequest(new MatchRequest());
+            }}
+            onCancel={() => {
+              declineRematch(rematchRequest.getGameRequest()!.getRequestId());
+              setRematchRequest(new MatchRequest());
+            }}
+            okText="Accept"
+            cancelText="Decline"
+          >
+            <Chat
+              chatEntities={chat}
+              sendChat={sendChat}
+              description={isObserver ? 'Observer chat' : 'Game chat'}
+            />
+          </Popconfirm>
+
           <Button type="primary" onClick={gcgExport}>
             Export to GCG
           </Button>
           <pre>{gcgText}</pre>
         </Col>
         <Col span={boardspan} className="play-area">
+          {/* we only put the Popconfirm here so that we can physically place it */}
+
           <BoardPanel
             username={props.username}
             board={gameContext.board}
@@ -201,6 +270,8 @@ export const Table = React.memo((props: Props) => {
             currentRack={rack || ''}
             gameID={gameID}
             sendSocketMsg={props.sendSocketMsg}
+            gameDone={gameInfo.done}
+            playerMeta={gameInfo.players}
           />
         </Col>
         <Col span={6} className="data-area">

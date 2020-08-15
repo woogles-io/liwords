@@ -46,8 +46,8 @@ message GameRequest {
   int32 max_overtime_minutes = 9;
 }
 
-// A RequestingUser requests a match via a seek or a match request.
-message RequestingUser {
+// A MatchUser requests or receives a match via a seek or a match request.
+message MatchUser {
   // user_id is the database, or anonymous, ID of the user.
   string user_id = 1;
   // relevant_rating is the rating of the user, for the relevant seek mode.
@@ -67,7 +67,7 @@ message RequestingUser {
 enum MessageType {
   SEEK_REQUEST = 0;
   MATCH_REQUEST = 1;
-  GAME_ACCEPTED_EVENT = 2;
+  SOUGHT_GAME_PROCESS_EVENT = 2;
   CLIENT_GAMEPLAY_EVENT = 3;
   SERVER_GAMEPLAY_EVENT = 4;
   GAME_ENDED_EVENT = 5;
@@ -79,10 +79,12 @@ enum MessageType {
   JOIN_PATH = 11;
   UNJOIN_REALM = 12;
   TIMED_OUT = 13;
-  TOKEN_SOCKET_LOGIN = 14;
   GAME_META_EVENT = 15;
   ACTIVE_GAMES = 16;
   GAME_DELETION = 17;
+  MATCH_REQUESTS = 18;
+  DECLINE_MATCH_REQUEST = 19;
+  CHAT_MESSAGE = 20;
   // Add more events here. The total number of events should fit in a byte.
   // We should definitely not be using anywhere close to 255 events, and
   // in order to enforce that I'll be forcing the event type header to just be
@@ -105,26 +107,38 @@ message GameDeletion { string id = 1; }
 
 // Bi-directional messages
 
+message ChatMessage {
+  string username = 1;
+  string channel = 2;
+  string message = 3;
+}
+
 message SeekRequest {
   GameRequest game_request = 1;
-  RequestingUser user = 2;
+  MatchUser user = 2;
   int32 minimum_rating = 3;
   int32 maximum_rating = 4;
 }
 
 message MatchRequest {
   GameRequest game_request = 1;
-  RequestingUser user = 2;
+  MatchUser user = 2;
+  MatchUser receiving_user = 3;
+  // rematch_for is the game ID that this Match Request is a rematch for (empty
+  // if it isn't a rematch)
+  string rematch_for = 4;
 }
 
-// A GameAcceptedEvent gets sent when a match request (or seek request)
-// get accepted (or canceled -- when sent from server to client).
-message GameAcceptedEvent { string request_id = 1; }
+// A SoughtGameProcessEvent gets sent when a match request (or seek request)
+// get accepted (from client to server), or canceled -- when sent from server to
+// client.
+message SoughtGameProcessEvent { string request_id = 1; }
 
 // Server to client messages:
 
 // SeekRequests sends all open seek requests.
 message SeekRequests { repeated SeekRequest requests = 1; }
+message MatchRequests { repeated MatchRequest requests = 1; }
 
 message ActiveGames { repeated GameMeta games = 1; }
 
@@ -192,10 +206,11 @@ message GameHistoryRefresher {
   // of whether they went first.
   int32 time_player1 = 2;
   int32 time_player2 = 3;
+  int32 max_overtime_minutes = 4;
 }
 
 // A NewGameEvent gets sent from the server to the involved clients when a new
-// game is about to begin. It should follow a GameAcceptedEvent
+// game is about to begin. It should follow a SoughtGameProcessEvent.
 message NewGameEvent { string game_id = 1; }
 
 message ErrorMessage {
@@ -245,9 +260,9 @@ message TimedOut {
   string user_id = 2;
 }
 
-// Communication
+message DeclineMatchRequest { string request_id = 1; }
 
-message TokenSocketLogin { string token = 1; }
+// Communication
 
 // When we go to a new path in our SPA, we send a JoinPath. When we leave the
 // path, we send an Unjoin realm. d

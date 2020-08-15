@@ -12,6 +12,7 @@ services:
       SECRET_KEY: jqxztripletriple
       DEBUG: 1
       NATS_URL: nats://nats:4222
+      REGISTRATION_CODE: foobar
     volumes:
       - .:/opt/program:rw
     command: sh -c "go run cmd/liwords-api/*.go"

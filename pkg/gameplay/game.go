@@ -45,7 +45,7 @@ type ConfigCtxKey string
 
 // InstantiateNewGame instantiates a game and returns it.
 func InstantiateNewGame(ctx context.Context, gameStore GameStore, cfg *config.Config,
-	users [2]*entity.User, req *pb.GameRequest) (*entity.Game, error) {
+	users [2]*entity.User, assignedFirst int, req *pb.GameRequest) (*entity.Game, error) {
 
 	var players []*macondopb.PlayerInfo
 	var dbids [2]uint
@@ -80,6 +80,7 @@ func InstantiateNewGame(ctx context.Context, gameStore GameStore, cfg *config.Co
 	if err != nil {
 		return nil, err
 	}
+	g.SetNextFirst(assignedFirst)
 	// StartGame creates a new history Uid and deals tiles, etc.
 	g.StartGame()
 	g.SetBackupMode(game.InteractiveGameplayMode)

@@ -1,27 +1,27 @@
 import React from 'react';
-import { ReactComponent as Logo } from '../assets/aero.svg';
 import { BonusType } from '../constants/board_layout';
-import { ArrowRightOutlined, ArrowDownOutlined } from '@ant-design/icons/lib';
-
-const colors = require('../base.scss');
+import {
+  ArrowRightOutlined,
+  ArrowDownOutlined,
+  StarOutlined,
+} from '@ant-design/icons/lib';
 
 interface BonusProperties {
-  fillColor: string;
   bonusText: string;
 }
 
 function getBonusProperties(bt: BonusType): BonusProperties {
   switch (bt) {
     case BonusType.DoubleWord:
-      return { fillColor: colors.colorBoardDWS, bonusText: '2WS' };
+      return { bonusText: '2WS' };
     case BonusType.TripleWord:
-      return { fillColor: colors.colorBoardTWS, bonusText: '3WS' };
+      return { bonusText: '3WS' };
     case BonusType.DoubleLetter:
-      return { fillColor: colors.colorBoardDLS, bonusText: '2LS' };
+      return { bonusText: '2LS' };
     case BonusType.TripleLetter:
-      return { fillColor: colors.colorBoardTLS, bonusText: '3LS' };
+      return { bonusText: '3LS' };
   }
-  return { fillColor: 'hsl(35, 30%, 98%)', bonusText: '' };
+  return { bonusText: '' };
 }
 
 type Props = {
@@ -35,7 +35,7 @@ type Props = {
 };
 
 const BoardSpace = React.memo((props: Props) => {
-  const { fillColor, bonusText } = getBonusProperties(props.bonusType);
+  const { bonusText } = getBonusProperties(props.bonusType);
   let bonusLabel = null;
   let startingSquare = null;
   let arrow = null;
@@ -44,7 +44,7 @@ const BoardSpace = React.memo((props: Props) => {
   }
   // ✩✪✫
   if (props.startingSquare) {
-    startingSquare = <Logo className="logo" />;
+    startingSquare = <StarOutlined className="center-square" />;
   }
   if (props.arrow) {
     if (props.arrowHoriz) {
@@ -54,22 +54,18 @@ const BoardSpace = React.memo((props: Props) => {
     }
   }
 
-  const styleOverrides = {
-    backgroundColor: fillColor,
-  };
-
   const handleDropOver = (e: any) => {
     e.preventDefault();
     e.stopPropagation();
   };
-
   return (
     <div
-      className="board-space droppable"
+      className={`board-space droppable ${
+        props.arrow ? 'selected' : ''
+      } bonus-${bonusText ? bonusText : 'none'}`}
       onClick={props.clicked}
       onDragOver={handleDropOver}
       onDrop={props.handleTileDrop}
-      style={styleOverrides}
     >
       {bonusLabel}
       {startingSquare}

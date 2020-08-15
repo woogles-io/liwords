@@ -8,6 +8,10 @@ export enum ActionType {
   AddSoughtGame,
   AddSoughtGames,
   RemoveSoughtGame,
+
+  AddMatchRequest,
+  AddMatchRequests,
+
   AddActiveGame,
   AddActiveGames,
   RemoveActiveGame,
@@ -17,5 +21,4 @@ export enum ActionType {
   RefreshTurns,
   RefreshHistory,
   ClearHistory,
-  SetMaxOvertime,
 }

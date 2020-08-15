@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Form, Radio, InputNumber, Switch, Tag } from 'antd';
+import { Form, Radio, InputNumber, Switch, Tag, Input } from 'antd';
 
 import { Store } from 'antd/lib/form/interface';
 import { ChallengeRule } from '../gen/macondo/api/proto/macondo/macondo_pb';
@@ -11,6 +11,7 @@ type Props = {
   vals: seekPropVals;
   onChange: (arg0: seekPropVals) => void;
   loggedIn: boolean;
+  showFriendInput: boolean;
 };
 
 export const SeekForm = (props: Props) => {
@@ -19,7 +20,9 @@ export const SeekForm = (props: Props) => {
   const onFormChange = (val: Store, allvals: Store) => {
     props.onChange(allvals);
     const [tc, tt] = timeCtrlToDisplayName(
-      Math.round((allvals.initialtime as number) * 60)
+      Math.round((allvals.initialtime as number) * 60),
+      Math.round(allvals.incrementsecs as number),
+      Math.round(allvals.maxovertime as number)
     );
     setTimectrl(tc);
     setTtag(tt);
@@ -27,6 +30,11 @@ export const SeekForm = (props: Props) => {
 
   return (
     <Form onValuesChange={onFormChange} initialValues={props.vals}>
+      {props.showFriendInput && (
+        <Form.Item label="Friend" name="friend">
+          <Input />
+        </Form.Item>
+      )}
       <Form.Item label="Lexicon" name="lexicon">
         <Radio.Group>
           <Radio.Button value="CSW19">CSW19</Radio.Button>
@@ -43,6 +51,9 @@ export const SeekForm = (props: Props) => {
         </Radio.Group>
       </Form.Item>
       <Form.Item label="Initial Time (minutes)" name="initialtime">
+        <InputNumber />
+      </Form.Item>
+      <Form.Item label="Increment (seconds)" name="incrementsecs">
         <InputNumber />
       </Form.Item>
       <Form.Item label="Max Overtime (minutes)" name="maxovertime">

@@ -1,48 +1,140 @@
-import { Card, Tag, Button } from 'antd';
-import React from 'react';
+import { Table } from 'antd';
+import React, { ReactNode } from 'react';
 import { useStoreContext } from '../store/store';
-import { timeCtrlToDisplayName, challRuleToStr } from '../store/constants';
 import { RatingBadge } from './rating_badge';
+import { challengeFormat, timeFormat } from './sought_games';
+import { ActiveGame } from '../store/reducers/lobby_reducer';
+import { FundOutlined } from '@ant-design/icons/lib';
 
-export const ActiveGames = () => {
-  const { lobbyContext, setRedirGame } = useStoreContext();
+type Props = {
+  activeGames: ActiveGame[];
+  username?: string;
+};
 
-  const activeGameEls = lobbyContext?.activeGames.map((game) => {
-    console.log('game', game);
-    const [tt, tc] = timeCtrlToDisplayName(game.initialTimeSecs);
+export const ActiveGames = (props: Props) => {
+  const { setRedirGame } = useStoreContext();
 
-    return (
-      <li key={`game${game.gameID}`} style={{ paddingTop: 20 }}>
-        <Button
-          onClick={(event: React.MouseEvent) => {
-            setRedirGame(game.gameID);
-            console.log('redirecting to', game.gameID);
-          }}
-          type="primary"
-          style={{ marginRight: 10 }}
-        >
-          Watch!
-        </Button>
-        <RatingBadge
-          rating={game.players[0].rating}
-          player={game.players[0].displayName}
-        />
-        {'vs.  '}
-        <RatingBadge
-          rating={game.players[1].rating}
-          player={game.players[1].displayName}
-        />
-        ({game.rated ? 'Rated' : 'Casual'})(
-        {`${game.initialTimeSecs / 60} min`})<Tag color={tc}>{tt}</Tag>
-        {challRuleToStr(game.challengeRule)}
-        {` (Max OT: ${game.maxOvertimeMinutes} min.)`}
-      </li>
+  type ActiveGameTableData = {
+    gameID: string;
+    players: ReactNode;
+    lexicon: string;
+    time: string;
+    details?: ReactNode;
+    player1: string;
+    player2: string;
+  };
+  const formatGameData = (games: ActiveGame[]): ActiveGameTableData[] => {
+    const gameData: ActiveGameTableData[] = games.map(
+      (ag: ActiveGame): ActiveGameTableData => {
+        const getDetails = () => {
+          return (
+            <>
+              {challengeFormat(ag.challengeRule)}
+              {ag.rated ? <FundOutlined title="Rated" /> : null}
+            </>
+          );
+        };
+        return {
+          gameID: ag.gameID,
+          players: (
+            <>
+              <RatingBadge
+                rating={ag.players[0].rating}
+                player={ag.players[0].displayName}
+              />
+              {'vs.  '}
+              <RatingBadge
+                rating={ag.players[1].rating}
+                player={ag.players[1].displayName}
+              />
+            </>
+          ),
+          lexicon: ag.lexicon,
+          time: timeFormat(
+            ag.initialTimeSecs,
+            ag.incrementSecs,
+            ag.maxOvertimeMinutes
+          ),
+          details: getDetails(),
+          player1: ag.players[0].displayName,
+          player2: ag.players[1].displayName,
+        };
+      }
     );
-  });
-
+    return gameData;
+  };
+  const columns = [
+    {
+      title: 'Players',
+      className: 'players',
+      dataIndex: 'players',
+      key: 'players',
+    },
+    {
+      title: 'Words',
+      className: 'lexicon',
+      dataIndex: 'lexicon',
+      key: 'lexicon',
+      filters: [
+        {
+          text: 'CSW19',
+          value: 'CSW19',
+        },
+        {
+          text: 'NWL18',
+          value: 'NWL18',
+        },
+      ],
+      filterMultiple: false,
+      onFilter: (
+        value: string | number | boolean,
+        record: ActiveGameTableData
+      ) => record.lexicon.indexOf(value.toString()) === 0,
+    },
+    {
+      title: 'Time',
+      className: 'time',
+      dataIndex: 'time',
+      key: 'time',
+      sorter: (a: ActiveGameTableData, b: ActiveGameTableData) =>
+        a.time.localeCompare(b.time),
+    },
+    {
+      title: 'Details',
+      className: 'details',
+      dataIndex: 'details',
+      key: 'details',
+    },
+  ];
   return (
-    <Card title="Watch a live game!">
-      <ul style={{ listStyleType: 'none' }}>{activeGameEls}</ul>
-    </Card>
+    <>
+      <h4>Games Live Now</h4>
+      <Table
+        className={'games observe'}
+        dataSource={formatGameData(props.activeGames)}
+        columns={columns}
+        pagination={{
+          hideOnSinglePage: true,
+        }}
+        onRow={(record) => {
+          return {
+            onClick: (event) => {
+              setRedirGame(record.gameID);
+              console.log('redirecting to', record.gameID);
+            },
+          };
+        }}
+        rowClassName={(record) => {
+          if (
+            props.username &&
+            (record.player1 === props.username ||
+              record.player2 === props.username)
+          ) {
+            return 'game-listing resume';
+          }
+          return 'game-listing';
+        }}
+      />
+    </>
   );
 };

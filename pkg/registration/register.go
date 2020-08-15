@@ -24,7 +24,7 @@ func RegisterUser(ctx context.Context, username string, password string, email s
 		return errors.New("username is not acceptable")
 	}
 	if len(password) < 8 {
-		return errors.New("your password is too short, use 8 or more characters")
+		return errors.New("your new password is too short, use 8 or more characters")
 	}
 	if len(email) < 3 {
 		return errors.New("please use a valid email address")

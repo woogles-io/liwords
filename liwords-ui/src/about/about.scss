@@ -6,7 +6,7 @@
   display: flex;
   justify-content: center;
   align-items: center;
-  background-image: linear-gradient($color-secondary-light 20%, white);
+  background-image: linear-gradient($color-primary-middle 20%, white 70%);
   height: 140px;
   h1 {
     margin-bottom: 0;
@@ -23,7 +23,6 @@ p {
   max-width: $screen-tablet-min;
   padding: 12px 12px 48px;
   h4 {
-    text-transform: uppercase;
     color: $color-secondary;
   }
   p + h4 {
@@ -35,7 +34,7 @@ p {
 }
 
 .bio {
-  background: linear-gradient(to left, $color-secondary-lighter 80%, white 85%);
+  background: $color-secondary-lighter;
   .container {
     display: flex;
     align-items: flex-start;
@@ -54,8 +53,8 @@ p {
     padding: 24px 0 0 24px;
   }
 }
-.ant-row:nth-child(even) .bio {
-  background: linear-gradient(to right, $color-primary-light 80%, white 85%);
+.ant-row:nth-child(odd) .bio {
+  background: $color-primary-light;
   h3 {
     color: $color-primary-dark;
     font-size: 21px;
@@ -82,7 +81,7 @@ p {
       padding: 60px 0 0 60px;
     }
   }
-  .ant-row:nth-child(even) .bio {
+  .ant-row:nth-child(odd) .bio {
     .team-info {
       padding: 60px 60px 0 0;
     }

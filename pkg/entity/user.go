@@ -26,6 +26,8 @@ type User struct {
 	Password string
 	Email    string
 	Profile  *Profile
+	// CurrentChannel tracks presence; where is the user currently?
+	CurrentChannel string
 }
 
 // Session - The db specific-details are in the store package.

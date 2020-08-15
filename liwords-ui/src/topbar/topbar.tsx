@@ -1,6 +1,7 @@
 import React from 'react';
 import './topbar.scss';
 import { Link } from 'react-router-dom';
+import { DisconnectOutlined } from '@ant-design/icons/lib';
 
 const Menu = (
   <div className="top-header-menu">
@@ -18,6 +19,7 @@ const Menu = (
 type Props = {
   username: string;
   loggedIn: boolean;
+  connectedToSocket: boolean;
 };
 
 export const TopBar = React.memo((props: Props) => {
@@ -40,6 +42,7 @@ export const TopBar = React.memo((props: Props) => {
             <Link to="/login">Log In</Link>
           </div>
         )}
+        {!props.connectedToSocket ? <DisconnectOutlined /> : null}
       </div>
     </nav>
   );
