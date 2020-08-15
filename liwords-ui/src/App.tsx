@@ -39,6 +39,7 @@ const App = React.memo(() => {
   const [userID, setUserID] = useState('');
   const [loggedIn, setLoggedIn] = useState(false);
   const [connectedToSocket, setConnectedToSocket] = useState(false);
+  const [justDisconnected, setJustDisconnected] = useState(false);
 
   useEffect(() => {
     if (connectedToSocket) {
@@ -60,6 +61,7 @@ const App = React.memo(() => {
         setUsername(decoded.unn);
         setUserID(decoded.uid);
         setLoggedIn(decoded.a);
+        console.log('Got token, setting state');
       })
       .catch((e) => {
         if (e.response) {
@@ -74,10 +76,12 @@ const App = React.memo(() => {
       onOpen: () => {
         console.log('connected to socket');
         setConnectedToSocket(true);
+        setJustDisconnected(false);
       },
       onClose: () => {
         console.log('disconnected from socket :(');
         setConnectedToSocket(false);
+        setJustDisconnected(true);
       },
       retryOnError: true,
       // Will attempt to reconnect on all close events, such as server shutting down
@@ -97,7 +101,7 @@ const App = React.memo(() => {
     console.log('Tryna register with path', location.pathname);
     sendMessage(encodeToSocketFmt(MessageType.JOIN_PATH, rr.serializeBinary()));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [location.pathname]);
+  }, [location.pathname, justDisconnected]);
 
   if (store.redirGame !== '') {
     store.setRedirGame('');

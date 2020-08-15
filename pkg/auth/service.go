@@ -19,7 +19,8 @@ import (
 	pb "github.com/domino14/liwords/rpc/api/proto/user_service"
 )
 
-const TokenExpiration = 15 * time.Second
+// A little bit of grace period in case we have to redeploy the socket or something.
+const TokenExpiration = 60 * time.Second
 
 type AuthenticationService struct {
 	userStore    user.Store
