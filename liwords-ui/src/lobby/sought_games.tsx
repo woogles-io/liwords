@@ -2,7 +2,7 @@
 /* eslint-disable jsx-a11y/no-noninteractive-element-interactions */
 import { Table } from 'antd';
 import React, { ReactNode } from 'react';
-import { challRuleToStr } from '../store/constants';
+import { challRuleToStr, timeCtrlToDisplayName } from '../store/constants';
 import { SoughtGame } from '../store/reducers/lobby_reducer';
 import { FundOutlined } from '@ant-design/icons/lib';
 
@@ -66,6 +66,26 @@ type SoughtGameProps = {
   return <li>{innerel}</li>;
 };
 */
+export const timeFormat = (
+  initialTimeSecs: number,
+  incrementSecs: number,
+  maxOvertime: number
+): string => {
+  const label = timeCtrlToDisplayName(
+    initialTimeSecs,
+    incrementSecs,
+    maxOvertime
+  )[0];
+  return `${label} ${initialTimeSecs / 60}/${incrementSecs}`;
+};
+
+export const challengeFormat = (cr: number) => {
+  return (
+    <span className={`challenge-rule mode_${challRuleToStr(cr)}`}>
+      {challRuleToStr(cr)}
+    </span>
+  );
+};
 
 type Props = {
   isMatch?: boolean;
@@ -76,6 +96,8 @@ type Props = {
 };
 
 export const SoughtGames = (props: Props) => {
+  // @ts-ignore
+  // @ts-ignore
   const columns = [
     {
       title: 'Player',
@@ -88,21 +110,40 @@ export const SoughtGames = (props: Props) => {
       className: 'rating',
       dataIndex: 'rating',
       key: 'rating',
+      sorter: (a: SoughtGameTableData, b: SoughtGameTableData) =>
+        parseInt(a.rating) - parseInt(b.rating),
     },
     {
       title: 'Words',
       className: 'lexicon',
       dataIndex: 'lexicon',
       key: 'lexicon',
+      filters: [
+        {
+          text: 'CSW19',
+          value: 'CSW19',
+        },
+        {
+          text: 'NWL18',
+          value: 'NWL18',
+        },
+      ],
+      filterMultiple: false,
+      onFilter: (
+        value: string | number | boolean,
+        record: SoughtGameTableData
+      ) => record.lexicon.indexOf(value.toString()) === 0,
     },
     {
       title: 'Time',
       className: 'time',
       dataIndex: 'time',
       key: 'time',
+      sorter: (a: SoughtGameTableData, b: SoughtGameTableData) =>
+        a.time.localeCompare(b.time),
     },
     {
-      title: 'Challenge',
+      title: 'Details',
       className: 'details',
       dataIndex: 'details',
       key: 'details',
@@ -121,31 +162,11 @@ export const SoughtGames = (props: Props) => {
   const formatGameData = (games: SoughtGame[]): SoughtGameTableData[] => {
     const gameData: SoughtGameTableData[] = games.map(
       (sg: SoughtGame): SoughtGameTableData => {
-        const challengeFormat = (cr: number) => {
-          return (
-            <span className={`challenge-rule mode_${challRuleToStr(cr)}`}>
-              {challRuleToStr(cr)}
-            </span>
-          );
-        };
-        const timeFormat = (
-          initialTimeSecs: number,
-          incrementSecs: number
-        ): string => {
-          // TODO: Pull in from time control in seek window
-          const label =
-            initialTimeSecs > 900
-              ? 'Regular'
-              : initialTimeSecs > 300
-              ? 'Rapid'
-              : 'Blitz';
-          return `${label} ${initialTimeSecs / 60}/${incrementSecs}`;
-        };
         const getDetails = () => {
           return (
             <>
-              {sg.rated ? <FundOutlined /> : null}
               {challengeFormat(sg.challengeRule)}
+              {sg.rated ? <FundOutlined title="Rated" /> : null}
             </>
           );
         };
@@ -153,7 +174,11 @@ export const SoughtGames = (props: Props) => {
           seeker: sg.seeker,
           rating: sg.userRating,
           lexicon: sg.lexicon,
-          time: timeFormat(sg.initialTimeSecs, sg.incrementSecs),
+          time: timeFormat(
+            sg.initialTimeSecs,
+            sg.incrementSecs,
+            sg.maxOvertimeMinutes
+          ),
           details: getDetails(),
           seekID: sg.seekID,
         };
@@ -172,7 +197,7 @@ export const SoughtGames = (props: Props) => {
         pagination={{
           hideOnSinglePage: true,
         }}
-        onRow={(record, rowIndex) => {
+        onRow={(record) => {
           return {
             onClick: (event) => {
               props.newGame(record.seekID);
