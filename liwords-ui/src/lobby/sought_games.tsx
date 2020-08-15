@@ -76,6 +76,8 @@ type Props = {
 };
 
 export const SoughtGames = (props: Props) => {
+  // @ts-ignore
+  // @ts-ignore
   const columns = [
     {
       title: 'Player',
@@ -117,6 +119,9 @@ export const SoughtGames = (props: Props) => {
       className: 'time',
       dataIndex: 'time',
       key: 'time',
+
+      sorter: (a: SoughtGameTableData, b: SoughtGameTableData) =>
+        a.time.localeCompare(b.time),
     },
     {
       title: 'Details',
