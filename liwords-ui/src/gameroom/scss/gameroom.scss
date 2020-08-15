@@ -6,7 +6,7 @@
   align-items: flex-end;
   justify-content: flex-end;
   .ant-btn {
-    margin-left: 16px;
+    margin: 0 0 0 12px;
   }
 }
 
@@ -135,11 +135,50 @@
   display: inline-block;
   vertical-align: top;
 }
+.board-space {
 
-.board-space .anticon {
-  position: absolute;
-  color: $color-board-tws;
-  font-size: 1.5vw;
+  .anticon {
+    position: absolute;
+    color: $color-timer-dark;
+    font-size: 2vw;
+  }
+  &.bonus-none {
+    background-color: $color-board-empty;
+  }
+  &.bonus-3WS {
+    background-color: $color-board-tws;
+    &.selected {
+      background-color: mix($color-board-tws, $color-timer-light, $weight: 30%)
+    }
+  }
+  &.bonus-2WS {
+    background-color: $color-board-dws;
+    .anticon-star {
+      color: $color-board-tws;
+    }
+    &.selected {
+      background-color: mix($color-board-dws, $color-timer-light, $weight: 60%);
+      .anticon-star {
+        display: none;
+      }
+    }
+  }
+  &.bonus-3LS {
+    background-color: $color-board-tls;
+    &.selected {
+      background-color: mix($color-board-tls, $color-timer-light, $weight: 50%)
+    }
+  }
+  &.bonus-2LS {
+    background-color: $color-board-dls;
+    &.selected {
+      background-color: mix($color-board-dls, $color-timer-light, $weight: 30%)
+    }
+  }
+  &.selected {
+    border: 1px solid $color-timer-dark;
+    background: $color-timer-light;
+  }
 }
 
 .bonus-label {

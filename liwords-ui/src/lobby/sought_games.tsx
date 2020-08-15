@@ -1,20 +1,20 @@
 /* eslint-disable jsx-a11y/click-events-have-key-events */
 /* eslint-disable jsx-a11y/no-noninteractive-element-interactions */
-import { Tag, Badge } from 'antd';
-import React from 'react';
-import { useStoreContext } from '../store/store';
-import { timeCtrlToDisplayName, challRuleToStr } from '../store/constants';
-import { RatingBadge } from './rating_badge';
+import { Table } from 'antd';
+import React, { ReactNode } from 'react';
+import { challRuleToStr } from '../store/constants';
 import { SoughtGame } from '../store/reducers/lobby_reducer';
+import { FundOutlined } from '@ant-design/icons/lib';
 
 type SoughtGameProps = {
   game: SoughtGame;
   newGame: (seekID: string) => void;
   userID?: string;
   username?: string;
+  requests: SoughtGame[];
 };
 
-const SoughtGameItem = (props: SoughtGameProps) => {
+/* const SoughtGameItem = (props: SoughtGameProps) => {
   const { game, userID, username } = props;
   const [tt, tc] = timeCtrlToDisplayName(
     game.initialTimeSecs,
@@ -38,7 +38,6 @@ const SoughtGameItem = (props: SoughtGameProps) => {
     </div>
   );
 
-  // game.seeker is a username - it is for display
   if (game.receiver && game.receiver.getUserId() !== '') {
     console.log('reciever', game.receiver);
 
@@ -66,44 +65,122 @@ const SoughtGameItem = (props: SoughtGameProps) => {
 
   return <li>{innerel}</li>;
 };
+*/
 
 type Props = {
+  isMatch?: boolean;
   newGame: (seekID: string) => void;
-  userID: string;
-  username: string;
+  userID?: string;
+  username?: string;
+  requests: Array<SoughtGame>;
 };
 
 export const SoughtGames = (props: Props) => {
-  const { lobbyContext } = useStoreContext();
+  const columns = [
+    {
+      title: 'Player',
+      className: 'seeker',
+      dataIndex: 'seeker',
+      key: 'seeker',
+    },
+    {
+      title: 'Rating',
+      className: 'rating',
+      dataIndex: 'rating',
+      key: 'rating',
+    },
+    {
+      title: 'Words',
+      className: 'lexicon',
+      dataIndex: 'lexicon',
+      key: 'lexicon',
+    },
+    {
+      title: 'Time',
+      className: 'time',
+      dataIndex: 'time',
+      key: 'time',
+    },
+    {
+      title: 'Challenge',
+      className: 'details',
+      dataIndex: 'details',
+      key: 'details',
+    },
+  ];
 
-  const soughtGameEls = lobbyContext?.soughtGames.map((game) => {
-    console.log('game', game);
-    return (
-      <SoughtGameItem
-        game={game}
-        newGame={props.newGame}
-        key={`game${game.seekID}`}
-      />
-    );
-  });
+  type SoughtGameTableData = {
+    seeker: string;
+    rating: string;
+    lexicon: string;
+    time: string;
+    details?: ReactNode;
+    seekID: string;
+  };
 
-  const matchReqEls = lobbyContext?.matchRequests.map((game) => {
-    console.log('matchreq', game);
-    return (
-      <SoughtGameItem
-        game={game}
-        newGame={props.newGame}
-        key={`game${game.seekID}`}
-        userID={props.userID}
-        username={props.username}
-      />
+  const formatGameData = (games: SoughtGame[]): SoughtGameTableData[] => {
+    const gameData: SoughtGameTableData[] = games.map(
+      (sg: SoughtGame): SoughtGameTableData => {
+        const challengeFormat = (cr: number) => {
+          return (
+            <span className={`challenge-rule mode_${challRuleToStr(cr)}`}>
+              {challRuleToStr(cr)}
+            </span>
+          );
+        };
+        const timeFormat = (
+          initialTimeSecs: number,
+          incrementSecs: number
+        ): string => {
+          // TODO: Pull in from time control in seek window
+          const label =
+            initialTimeSecs > 900
+              ? 'Regular'
+              : initialTimeSecs > 300
+              ? 'Rapid'
+              : 'Blitz';
+          return `${label} ${initialTimeSecs / 60}/${incrementSecs}`;
+        };
+        const getDetails = () => {
+          return (
+            <>
+              {sg.rated ? <FundOutlined /> : null}
+              {challengeFormat(sg.challengeRule)}
+            </>
+          );
+        };
+        return {
+          seeker: sg.seeker,
+          rating: sg.userRating,
+          lexicon: sg.lexicon,
+          time: timeFormat(sg.initialTimeSecs, sg.incrementSecs),
+          details: getDetails(),
+          seekID: sg.seekID,
+        };
+      }
     );
-  });
+    return gameData;
+  };
 
   return (
     <>
-      <ul className="games match">{matchReqEls}</ul>
-      <ul className="games seek">{soughtGameEls}</ul>
+      {props.isMatch ? <h4>Incoming Requests</h4> : <h4>Available Games</h4>}
+      <Table
+        className={`games ${props.isMatch ? 'match' : 'seek'}`}
+        dataSource={formatGameData(props.requests)}
+        columns={columns}
+        pagination={{
+          hideOnSinglePage: true,
+        }}
+        onRow={(record, rowIndex) => {
+          return {
+            onClick: (event) => {
+              props.newGame(record.seekID);
+            },
+          };
+        }}
+        rowClassName="game-listing"
+      />
     </>
   );
 };
