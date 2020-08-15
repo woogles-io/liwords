@@ -21,7 +21,8 @@ export const SeekForm = (props: Props) => {
     props.onChange(allvals);
     const [tc, tt] = timeCtrlToDisplayName(
       Math.round((allvals.initialtime as number) * 60),
-      Math.round(allvals.incrementsecs as number),
+      // Math.round(allvals.incrementsecs as number),
+      0,
       Math.round(allvals.maxovertime as number)
     );
     setTimectrl(tc);
@@ -53,9 +54,9 @@ export const SeekForm = (props: Props) => {
       <Form.Item label="Initial Time (minutes)" name="initialtime">
         <InputNumber />
       </Form.Item>
-      <Form.Item label="Increment (seconds)" name="incrementsecs">
+      {/* <Form.Item label="Increment (seconds)" name="incrementsecs">
         <InputNumber />
-      </Form.Item>
+      </Form.Item> */}
       <Form.Item label="Max Overtime (minutes)" name="maxovertime">
         <InputNumber max={5} min={0} />
       </Form.Item>
