@@ -22,7 +22,6 @@ github.com/denisenkom/go-mssqldb v0.0.0-20191124224453-732737034ffd h1:83Wprp6RO
 github.com/denisenkom/go-mssqldb v0.0.0-20191124224453-732737034ffd/go.mod h1:xbL0rPBG9cCiLr28tMa8zpbdarY27NDyej4t/EjAShU=
 github.com/dgrijalva/jwt-go v3.2.0+incompatible h1:7qlOGliEKZXTDg6OTjfoBKDXWrumCAMpl/TFQ4/5kLM=
 github.com/dgrijalva/jwt-go v3.2.0+incompatible/go.mod h1:E3ru+11k8xSBh+hMPgOLZmtrrCbhqsmaPHjLKYnJCaQ=
-github.com/domino14/macondo v0.4.4 h1:xhIj8mep3AV1cRT9Uo74+3pgLPCHCN6cYI7j74ma0G0=
 github.com/domino14/macondo v0.4.5-0.20200804025941-f4c4c652a44d h1:30tkFhBlDA1FBFTR52zYrkKAvxaMqZBkdbCtHHNCVqA=
 github.com/domino14/macondo v0.4.5-0.20200804025941-f4c4c652a44d/go.mod h1:GAib5Wo/e78Llg4a/10xfCgo0Tz25NPbqU/sQSr0bwo=
 github.com/envoyproxy/go-control-plane v0.9.1-0.20191026205805-5f8ba28d4473/go.mod h1:YTl/9mNaCwkRvm6d1a2C3ymFceY/DCBVvsKhRF0iEA4=
