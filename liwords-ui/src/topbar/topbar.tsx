@@ -42,7 +42,9 @@ export const TopBar = React.memo((props: Props) => {
             <Link to="/login">Log In</Link>
           </div>
         )}
-        {!props.connectedToSocket ? <DisconnectOutlined /> : null}
+        {!props.connectedToSocket ? (
+          <DisconnectOutlined style={{ color: 'red', marginLeft: 5 }} />
+        ) : null}
       </div>
     </nav>
   );

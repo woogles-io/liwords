@@ -104,6 +104,7 @@ export const Lobby = (props: Props) => {
       ...s,
       rated: props.loggedIn,
     }));
+    setSelectedGameTab(props.loggedIn ? 'PLAY' : 'WATCH');
   }, [props.loggedIn]);
 
   const showSeekModal = () => {
