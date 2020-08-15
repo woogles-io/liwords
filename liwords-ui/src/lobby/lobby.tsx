@@ -78,6 +78,7 @@ type Props = {
   userID: string;
   loggedIn: boolean;
   sendSocketMsg: (msg: Uint8Array) => void;
+  connectedToSocket: boolean;
 };
 
 export const Lobby = (props: Props) => {
@@ -170,7 +171,11 @@ export const Lobby = (props: Props) => {
     <div>
       <Row>
         <Col span={24}>
-          <TopBar username={props.username} loggedIn={props.loggedIn} />
+          <TopBar
+            username={props.username}
+            loggedIn={props.loggedIn}
+            connectedToSocket={props.connectedToSocket}
+          />
         </Col>
       </Row>
       <Row className="lobby">

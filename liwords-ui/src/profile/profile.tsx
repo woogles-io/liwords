@@ -163,6 +163,7 @@ const StatsCard = (props: StatsProps) => {
 type Props = {
   loggedIn: boolean;
   myUsername: string;
+  connectedToSocket: boolean;
 };
 
 export const UserProfile = (props: Props) => {
@@ -188,7 +189,11 @@ export const UserProfile = (props: Props) => {
     <>
       <Row>
         <Col span={24}>
-          <TopBar username={props.myUsername} loggedIn={props.loggedIn} />
+          <TopBar
+            username={props.myUsername}
+            loggedIn={props.loggedIn}
+            connectedToSocket={props.connectedToSocket}
+          />
         </Col>
       </Row>
 

@@ -36,6 +36,7 @@ type Props = {
   sendSocketMsg: (msg: Uint8Array) => void;
   username: string;
   loggedIn: boolean;
+  connectedToSocket: boolean;
 };
 
 const defaultGameInfo = {
@@ -214,7 +215,11 @@ export const Table = React.memo((props: Props) => {
 
   return (
     <div>
-      <TopBar username={props.username} loggedIn={props.loggedIn} />
+      <TopBar
+        username={props.username}
+        loggedIn={props.loggedIn}
+        connectedToSocket={props.connectedToSocket}
+      />
       <Row gutter={gutter} className="game-table">
         <Col span={6} className="chat-area">
           <Popconfirm

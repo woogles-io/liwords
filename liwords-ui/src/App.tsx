@@ -117,7 +117,7 @@ const App = React.memo(() => {
             userID={userID}
             sendSocketMsg={sendMessage}
             loggedIn={loggedIn}
-            // connectedToSocket={connectedToSocket}
+            connectedToSocket={connectedToSocket}
           />
         </Route>
         <Route path="/game/:gameID">
@@ -127,11 +127,15 @@ const App = React.memo(() => {
             username={username}
             loggedIn={loggedIn}
             // can use some visual indicator to show the user if they disconnected
-            // connectedToSocket={connectedToSocket}
+            connectedToSocket={connectedToSocket}
           />
         </Route>
         <Route path="/about">
-          <About myUsername={username} loggedIn={loggedIn} />
+          <About
+            myUsername={username}
+            loggedIn={loggedIn}
+            connectedToSocket={connectedToSocket}
+          />
         </Route>
         <Route path="/login">
           <Login />
@@ -140,10 +144,18 @@ const App = React.memo(() => {
           <Register />
         </Route>
         <Route path="/password/change">
-          <PasswordChange username={username} loggedIn={loggedIn} />
+          <PasswordChange
+            username={username}
+            loggedIn={loggedIn}
+            connectedToSocket={connectedToSocket}
+          />
         </Route>
         <Route path="/profile/:username">
-          <UserProfile myUsername={username} loggedIn={loggedIn} />
+          <UserProfile
+            myUsername={username}
+            loggedIn={loggedIn}
+            connectedToSocket={connectedToSocket}
+          />
         </Route>
       </Switch>
     </div>

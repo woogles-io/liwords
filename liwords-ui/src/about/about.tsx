@@ -13,6 +13,7 @@ import woogles from '../assets/bio/bio_woogles.jpg';
 type Props = {
   myUsername: string;
   loggedIn: boolean;
+  connectedToSocket: boolean;
 };
 
 export const About = (props: Props) => {
@@ -20,7 +21,11 @@ export const About = (props: Props) => {
     <>
       <Row>
         <Col span={24}>
-          <TopBar username={props.myUsername} loggedIn={props.loggedIn} />
+          <TopBar
+            username={props.myUsername}
+            loggedIn={props.loggedIn}
+            connectedToSocket={props.connectedToSocket}
+          />
         </Col>
       </Row>
       <Row>

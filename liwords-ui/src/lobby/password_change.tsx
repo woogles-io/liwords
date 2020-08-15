@@ -23,6 +23,7 @@ const tailLayout = {
 type Props = {
   username: string;
   loggedIn: boolean;
+  connectedToSocket: boolean;
 };
 
 export const PasswordChange = (props: Props) => {
@@ -60,7 +61,11 @@ export const PasswordChange = (props: Props) => {
     <>
       <Row>
         <Col span={24}>
-          <TopBar username={props.username} loggedIn={props.loggedIn} />
+          <TopBar
+            username={props.username}
+            loggedIn={props.loggedIn}
+            connectedToSocket={props.connectedToSocket}
+          />
         </Col>
       </Row>
       <Form
