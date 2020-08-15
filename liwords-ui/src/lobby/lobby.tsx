@@ -86,7 +86,7 @@ export const Lobby = (props: Props) => {
   const [seekModalVisible, setSeekModalVisible] = useState(false);
   const [matchModalVisible, setMatchModalVisible] = useState(false);
   const [selectedGameTab, setSelectedGameTab] = useState(
-    props.loggedIn ? 'WATCH' : 'PLAY'
+    props.loggedIn ? 'PLAY' : 'WATCH'
   );
   const [seekSettings, setSeekSettings] = useState<seekPropVals>({
     lexicon: 'CSW19',

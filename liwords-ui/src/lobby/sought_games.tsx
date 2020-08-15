@@ -4,7 +4,7 @@ import { Table } from 'antd';
 import React, { ReactNode } from 'react';
 import { challRuleToStr, timeCtrlToDisplayName } from '../store/constants';
 import { SoughtGame } from '../store/reducers/lobby_reducer';
-import { FundOutlined } from '@ant-design/icons/lib';
+import { FundOutlined, ExportOutlined } from '@ant-design/icons/lib';
 
 type SoughtGameProps = {
   game: SoughtGame;
@@ -14,58 +14,6 @@ type SoughtGameProps = {
   requests: SoughtGame[];
 };
 
-/* const SoughtGameItem = (props: SoughtGameProps) => {
-  const { game, userID, username } = props;
-  const [tt, tc] = timeCtrlToDisplayName(
-    game.initialTimeSecs,
-    game.incrementSecs,
-    game.maxOvertimeMinutes
-  );
-  let innerel = (
-    // eslint-disable-next-line jsx-a11y/no-static-element-interactions
-    <div
-      className="game"
-      onClick={(event: React.MouseEvent) => props.newGame(game.seekID)}
-    >
-      <RatingBadge rating={game.userRating} player={game.seeker} />
-      {game.lexicon} ({game.rated ? 'Rated' : 'Casual'})(
-      {`${game.initialTimeSecs / 60} / ${game.incrementSecs}`})
-      <Tag color={tc}>{tt}</Tag>
-      {challRuleToStr(game.challengeRule)}
-      {game.incrementSecs === 0
-        ? ` (Max OT: ${game.maxOvertimeMinutes} min.)`
-        : ''}
-    </div>
-  );
-
-  if (game.receiver && game.receiver.getUserId() !== '') {
-    console.log('reciever', game.receiver);
-
-    if (userID === game.receiver.getUserId()) {
-      // This is the receiver of the match request.
-      innerel = (
-        <Badge.Ribbon text="Match Request" color="volcano">
-          {innerel}
-        </Badge.Ribbon>
-      );
-    } else {
-      // We must be the sender of the match request.
-      if (username !== game.seeker) {
-        throw new Error(`unexpected seeker${username}, ${game.seeker}`);
-      }
-      innerel = (
-        <Badge.Ribbon
-          text={`Outgoing Match Request to ${game.receiver.getDisplayName()}`}
-        >
-          {innerel}
-        </Badge.Ribbon>
-      );
-    }
-  }
-
-  return <li>{innerel}</li>;
-};
-*/
 export const timeFormat = (
   initialTimeSecs: number,
   incrementSecs: number,
@@ -151,11 +99,12 @@ export const SoughtGames = (props: Props) => {
   ];
 
   type SoughtGameTableData = {
-    seeker: string;
+    seeker: string | ReactNode;
     rating: string;
     lexicon: string;
     time: string;
     details?: ReactNode;
+    outgoing: boolean;
     seekID: string;
   };
 
@@ -170,8 +119,19 @@ export const SoughtGames = (props: Props) => {
             </>
           );
         };
+        let outgoing = true;
+        if (sg.receiver.getUserId() === props.userID) {
+          outgoing = false;
+        }
         return {
-          seeker: sg.seeker,
+          seeker: outgoing ? (
+            <>
+              {sg.receiver.getDisplayName()}
+              <ExportOutlined />
+            </>
+          ) : (
+            sg.seeker
+          ),
           rating: sg.userRating,
           lexicon: sg.lexicon,
           time: timeFormat(
@@ -180,6 +140,7 @@ export const SoughtGames = (props: Props) => {
             sg.maxOvertimeMinutes
           ),
           details: getDetails(),
+          outgoing,
           seekID: sg.seekID,
         };
       }
@@ -189,7 +150,7 @@ export const SoughtGames = (props: Props) => {
 
   return (
     <>
-      {props.isMatch ? <h4>Incoming Requests</h4> : <h4>Available Games</h4>}
+      {props.isMatch ? <h4>Match Requests</h4> : <h4>Available Games</h4>}
       <Table
         className={`games ${props.isMatch ? 'match' : 'seek'}`}
         dataSource={formatGameData(props.requests)}
@@ -204,7 +165,12 @@ export const SoughtGames = (props: Props) => {
             },
           };
         }}
-        rowClassName="game-listing"
+        rowClassName={(record) => {
+          if (record.outgoing) {
+            return 'game-listing outgoing';
+          }
+          return 'game-listing';
+        }}
       />
     </>
   );

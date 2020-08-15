@@ -83,11 +83,20 @@
         }
 
       }
-      &.resume {
-        background-color: $color-timer-low-light;
+      &.resume, &.outgoing {
+        background-color: #F2F2F2;
         font-weight: bold;
+        .anticon {
+          margin-left: 6px;
+        }
+        &:hover {
+          background-color: inherit;
+        }
+      }
+      &.resume {
         position: relative;
         vertical-align: bottom;
+        background-color: $color-timer-low-light;
         td.details {
           padding-top: 36px;
         }
@@ -104,9 +113,6 @@
          position: absolute;
          top: 12px;
          left: 18px;
-        }
-        &:hover {
-          background-color: inherit;
         }
       }
     }
