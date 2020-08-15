@@ -8,7 +8,6 @@ import (
 	"github.com/domino14/macondo/game"
 	pb "github.com/domino14/macondo/gen/api/proto/macondo"
 	"github.com/rs/zerolog/log"
-	"os"
 	"strings"
 	"unicode"
 )
@@ -231,7 +230,7 @@ func addExchanges(info *IncrementInfo) error {
 func addPhonies(info *IncrementInfo) error {
 	events := info.history.GetEvents()
 	event := events[info.eventIndex]
-	isUnchallengedPhony, err := isUnchallengedPhonyEvent(event, info.history)
+	isUnchallengedPhony, err := isUnchallengedPhonyEvent(event, info.history, info.cfg)
 	if err != nil {
 		return err
 	}
@@ -254,7 +253,7 @@ func addChallengedPhonies(info *IncrementInfo) error {
 func addUnchallengedPhonies(info *IncrementInfo) error {
 	events := info.history.GetEvents()
 	event := events[info.eventIndex]
-	isUnchallengedPhony, err := isUnchallengedPhonyEvent(event, info.history)
+	isUnchallengedPhony, err := isUnchallengedPhonyEvent(event, info.history, info.cfg)
 	if err != nil {
 		return err
 	}
@@ -667,18 +666,11 @@ func isBingoNineOrAbove(event *pb.GameEvent) bool {
 	return event.IsBingo && len(event.PlayedTiles) >= 9
 }
 
-func isUnchallengedPhonyEvent(event *pb.GameEvent, history *pb.GameHistory) (bool, error) {
+func isUnchallengedPhonyEvent(event *pb.GameEvent, history *pb.GameHistory, cfg *macondoconfig.Config) (bool, error) {
 	phony := false
 	var err error
 	if event.Type == pb.GameEvent_TILE_PLACEMENT_MOVE {
-		_, letterDistribution := game.HistoryToVariant(history)
-		var cfg = macondoconfig.Config{
-			LexiconPath:               os.Getenv("LEXICON_PATH"),
-			LetterDistributionPath:    os.Getenv("LETTER_DISTRIBUTION_PATH"),
-			DefaultLexicon:            history.Lexicon,
-			DefaultLetterDistribution: letterDistribution,
-		}
-		gaddag, err := gaddag.GenericDawgCache.Get(&cfg, history.Lexicon)
+		gaddag, err := gaddag.GenericDawgCache.Get(cfg, history.Lexicon)
 		if err != nil {
 			return phony, err
 		}

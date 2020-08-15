@@ -586,8 +586,11 @@ func computeGameStats(ctx context.Context, history *macondopb.GameHistory, req *
 
 	// Here, p0 went first and p1 went second, no matter what.
 	gameStats := entity.InstantiateNewStats(p0id, p1id)
-	gameStats.AddGame(history, req, config, history.Uid)
-	gameStats.Finalize()
+
+	err := gameStats.AddGame(history, req, config, history.Uid)
+	if err != nil {
+		return nil, err
+	}
 
 	if history.SecondWentFirst {
 		// Flip it back
