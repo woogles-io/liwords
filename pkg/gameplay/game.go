@@ -83,6 +83,8 @@ func InstantiateNewGame(ctx context.Context, gameStore GameStore, cfg *config.Co
 	g.SetNextFirst(assignedFirst)
 	// StartGame creates a new history Uid and deals tiles, etc.
 	g.StartGame()
+	// XXX: This should be set in Macondo, but let's do it here for now.
+	g.History().Lexicon = req.Lexicon
 	g.SetBackupMode(game.InteractiveGameplayMode)
 	g.SetChallengeRule(req.ChallengeRule)
 

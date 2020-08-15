@@ -94,7 +94,7 @@ func NewBus(cfg *config.Config, userStore user.Store, gameStore gameplay.GameSto
 // but that's because they do similar things.
 func (b *Bus) ProcessMessages(ctx context.Context) {
 
-	ctx = context.WithValue(ctx, gameplay.ConfigCtxKey("config"), b.config)
+	ctx = context.WithValue(ctx, gameplay.ConfigCtxKey("config"), &b.config.MacondoConfig)
 
 outerfor:
 	for {

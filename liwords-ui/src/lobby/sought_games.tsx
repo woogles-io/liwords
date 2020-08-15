@@ -2,9 +2,9 @@
 /* eslint-disable jsx-a11y/no-noninteractive-element-interactions */
 import { Table } from 'antd';
 import React, { ReactNode } from 'react';
+import { FundOutlined, ExportOutlined } from '@ant-design/icons/lib';
 import { challRuleToStr, timeCtrlToDisplayName } from '../store/constants';
 import { SoughtGame } from '../store/reducers/lobby_reducer';
-import { FundOutlined, ExportOutlined } from '@ant-design/icons/lib';
 
 type SoughtGameProps = {
   game: SoughtGame;
@@ -158,6 +158,7 @@ export const SoughtGames = (props: Props) => {
         pagination={{
           hideOnSinglePage: true,
         }}
+        rowKey="seekID"
         onRow={(record) => {
           return {
             onClick: (event) => {

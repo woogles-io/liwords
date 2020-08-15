@@ -11,11 +11,9 @@ import requests
 
 MAILGUN_KEY = os.getenv("MAILGUN_KEY")
 
-with open("email_template.txt") as f:
-    email_template = f.read()
 
+def send_email(recipient, username, password, email_template):
 
-def send_email(recipient, username, password):
     return requests.post(
         "https://api.mailgun.net/v3/mg.woogles.io/messages",
         auth=("api", MAILGUN_KEY),
@@ -30,7 +28,11 @@ def send_email(recipient, username, password):
     )
 
 
-def emailer(incsv):
+def emailer(incsv, templatefile):
+
+    with open(templatefile) as f:
+        email_template = f.read()
+
     with open(incsv, newline="") as f:
         reader = csv.reader(f)
         for row in reader:
@@ -40,7 +42,7 @@ def emailer(incsv):
                 continue
 
             username, email, password = row
-            resp = send_email(email, username, password)
+            resp = send_email(email, username, password, email_template)
             if resp.status_code != 200:
                 print(
                     "Mailgun request failed",
@@ -51,7 +53,7 @@ def emailer(incsv):
 
 
 if __name__ == "__main__":
-    if len(sys.argv) != 2:
-        print("Usage: python send_emails.py <input.csv>")
+    if len(sys.argv) != 3:
+        print("Usage: python send_emails.py <input.csv> <template.txt>")
         sys.exit(1)
-    emailer(sys.argv[1])
+    emailer(sys.argv[1], sys.argv[2])

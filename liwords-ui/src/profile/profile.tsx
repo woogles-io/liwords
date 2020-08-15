@@ -46,8 +46,8 @@ type ProfileStats = {
   [variant: string]: {
     i1: string; // us
     i2: string; // opp
-    d1: Array<StatItem>; // us
-    d2: Array<StatItem>; // opp
+    d1: { [key: string]: StatItem }; // us
+    d2: { [key: string]: StatItem }; // opp
     n: Array<StatItem>; // notable
   };
 };
@@ -56,12 +56,25 @@ type StatsProps = {
   stats: ProfileStats;
 };
 
+const variantToName = (variant: string) => {
+  const arr = variant.split('.');
+  // get rid of the middle element (classic) for now
+  const timectrl = {
+    ultrablitz: 'Ultra-Blitz!',
+    blitz: 'Blitz',
+    rapid: 'Rapid',
+    regular: 'Regular',
+  }[arr[2] as 'ultrablitz' | 'blitz' | 'rapid' | 'regular']; // cmon typescript
+
+  return `${arr[0]} (${timectrl})`;
+};
+
 const RatingsCard = (props: RatingsProps) => {
   const variants = Object.keys(props.ratings);
   console.log('ratings', props.ratings, variants);
   const dataSource = variants.map((v) => ({
     key: v,
-    name: v,
+    name: variantToName(v),
     rating: props.ratings[v].r.toFixed(2),
     deviation: props.ratings[v].rd.toFixed(2),
     volatility: props.ratings[v].v.toFixed(2),
@@ -105,14 +118,21 @@ const StatsCard = (props: StatsProps) => {
 
   const dataSource = variants.map((v) => ({
     key: v,
-    name: v,
-    // Obviously hardcoded numbers here...
-    wins: props.stats[v].d1[27].t,
-    losses: props.stats[v].d1[14].t,
-    draws: props.stats[v].d1[8].t,
-    avgScore: props.stats[v].d1[20].a[0].toFixed(2),
-    avgPerTurn: props.stats[v].d1[20].a[1].toFixed(2),
-    bingosPerGame: props.stats[v].d1[1].a[0].toFixed(2),
+    name: variantToName(v),
+    games: props.stats[v].d1.Games.t,
+    wld: `${props.stats[v].d1.Wins.t}-${props.stats[v].d1.Losses.t}-${props.stats[v].d1.Draws.t}`,
+    avgScore: (props.stats[v].d1.Score.t / props.stats[v].d1.Games.t).toFixed(
+      2
+    ),
+    avgPerTurn: (props.stats[v].d1.Score.t / props.stats[v].d1.Turns.t).toFixed(
+      2
+    ),
+    avgScoreAgainst: (
+      props.stats[v].d2.Score.t / props.stats[v].d2.Games.t
+    ).toFixed(2),
+    bingosPerGame: (
+      props.stats[v].d1.Bingos.t / props.stats[v].d1.Games.t
+    ).toFixed(2),
   }));
 
   const columns = [
@@ -122,29 +142,29 @@ const StatsCard = (props: StatsProps) => {
       key: 'name',
     },
     {
-      title: 'Wins',
-      dataIndex: 'wins',
-      key: 'wins',
+      title: 'Games',
+      dataIndex: 'games',
+      key: 'games',
     },
     {
-      title: 'Losses',
-      dataIndex: 'losses',
-      key: 'losses',
+      title: 'W-L-D',
+      dataIndex: 'wld',
+      key: 'wld',
     },
     {
-      title: 'Draws',
-      dataIndex: 'draws',
-      key: 'draws',
-    },
-    {
-      title: 'Average Score',
+      title: 'Avg Score',
       dataIndex: 'avgScore',
       key: 'avgScore',
     },
     {
-      title: 'Average Per Turn',
+      title: 'Avg Per Turn',
       dataIndex: 'avgPerTurn',
       key: 'avgPerTurn',
+    },
+    {
+      title: 'Opp Avg Score',
+      dataIndex: 'avgScoreAgainst',
+      key: 'avgScoreAgainst',
     },
     {
       title: 'Bingos Per Game',
