@@ -83,6 +83,32 @@
         }
 
       }
+      &.resume {
+        background-color: $color-timer-low-light;
+        font-weight: bold;
+        position: relative;
+        vertical-align: bottom;
+        td.details {
+          padding-top: 36px;
+        }
+        td.players {
+          min-height: 78px;
+        }
+         td.players:after {
+          content: 'Resume';
+          text-align: center;
+          font-size: 12px;
+          font-weight: bold;
+          letter-spacing: 0.3em;
+          text-transform: uppercase;
+         position: absolute;
+         top: 12px;
+         left: 18px;
+        }
+        &:hover {
+          background-color: inherit;
+        }
+      }
     }
   }
   .requests {

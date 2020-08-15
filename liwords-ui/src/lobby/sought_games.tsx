@@ -66,6 +66,26 @@ type SoughtGameProps = {
   return <li>{innerel}</li>;
 };
 */
+export const timeFormat = (
+  initialTimeSecs: number,
+  incrementSecs: number,
+  maxOvertime: number
+): string => {
+  const label = timeCtrlToDisplayName(
+    initialTimeSecs,
+    incrementSecs,
+    maxOvertime
+  )[0];
+  return `${label} ${initialTimeSecs / 60}/${incrementSecs}`;
+};
+
+export const challengeFormat = (cr: number) => {
+  return (
+    <span className={`challenge-rule mode_${challRuleToStr(cr)}`}>
+      {challRuleToStr(cr)}
+    </span>
+  );
+};
 
 type Props = {
   isMatch?: boolean;
@@ -119,7 +139,6 @@ export const SoughtGames = (props: Props) => {
       className: 'time',
       dataIndex: 'time',
       key: 'time',
-
       sorter: (a: SoughtGameTableData, b: SoughtGameTableData) =>
         a.time.localeCompare(b.time),
     },
@@ -143,26 +162,6 @@ export const SoughtGames = (props: Props) => {
   const formatGameData = (games: SoughtGame[]): SoughtGameTableData[] => {
     const gameData: SoughtGameTableData[] = games.map(
       (sg: SoughtGame): SoughtGameTableData => {
-        const challengeFormat = (cr: number) => {
-          return (
-            <span className={`challenge-rule mode_${challRuleToStr(cr)}`}>
-              {challRuleToStr(cr)}
-            </span>
-          );
-        };
-        const timeFormat = (
-          initialTimeSecs: number,
-          incrementSecs: number,
-          maxOvertime: number
-        ): string => {
-          // TODO: Pull in from time control in seek window
-          const label = timeCtrlToDisplayName(
-            initialTimeSecs,
-            incrementSecs,
-            maxOvertime
-          )[0];
-          return `${label} ${initialTimeSecs / 60}/${incrementSecs}`;
-        };
         const getDetails = () => {
           return (
             <>
@@ -198,7 +197,7 @@ export const SoughtGames = (props: Props) => {
         pagination={{
           hideOnSinglePage: true,
         }}
-        onRow={(record, rowIndex) => {
+        onRow={(record) => {
           return {
             onClick: (event) => {
               props.newGame(record.seekID);
