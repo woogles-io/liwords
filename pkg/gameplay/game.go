@@ -14,7 +14,6 @@ import (
 	"google.golang.org/protobuf/proto"
 
 	"github.com/domino14/macondo/alphabet"
-	"github.com/domino14/macondo/board"
 	macondoconfig "github.com/domino14/macondo/config"
 	"github.com/domino14/macondo/game"
 	macondopb "github.com/domino14/macondo/gen/api/proto/macondo"
@@ -60,50 +59,36 @@ func InstantiateNewGame(ctx context.Context, gameStore GameStore, cfg *config.Co
 		dbids[idx] = u.ID
 	}
 
-	var bd []string
 	if req.Rules == nil {
 		return nil, errors.New("no rules")
 	}
-	switch req.Rules.BoardLayoutName {
-	case entity.CrosswordGame:
-		bd = board.CrosswordGameBoard
-	default:
-		return nil, errors.New("unsupported board layout")
+
+	// XXX: Bring this back later.
+	// var bd []string
+	// switch req.Rules.BoardLayoutName {
+	// case entity.CrosswordGame:
+	// 	bd = board.CrosswordGameBoard
+	// default:
+	// 	return nil, errors.New("unsupported board layout")
+	// }
+
+	firstAssigned := false
+	if assignedFirst != -1 {
+		firstAssigned = true
 	}
 
-	// dist, err := alphabet.LoadLetterDistribution(cfg, req.Rules.LetterDistributionName)
-	// if err != nil {
-	// 	return nil, err
-	// }
-
-	// rules, err := game.NewGameRules(&cfg.MacondoConfig, dist, bd,
-	// 	req.Lexicon, req.Rules.LetterDistributionName)
-
-	// if err != nil {
-	// 	return nil, err
-	// }
-
 	runner, err := runner.NewGameRunner(&cfg.MacondoConfig, &runner.GameOptions{
-		Lexicon: &runner.Lexicon{Name: req.Lexicon, Distribution: req.Rules.LetterDistributionName}},
+		Lexicon:         &runner.Lexicon{Name: req.Lexicon, Distribution: req.Rules.LetterDistributionName},
+		FirstIsAssigned: firstAssigned,
+		GoesFirst:       assignedFirst,
+	},
 		players,
 	)
 	if err != nil {
 		return nil, err
 	}
 
-	// g, err := game.NewGame(rules, players)
-	// if err != nil {
-	// 	return nil, err
-	// }
-	g.SetNextFirst(assignedFirst)
-	// StartGame creates a new history Uid and deals tiles, etc.
-	// g.StartGame()
-	// XXX: This should be set in Macondo, but let's do it here for now.
-	g.History().Lexicon = req.Lexicon
-	g.SetBackupMode(game.InteractiveGameplayMode)
-	g.SetChallengeRule(req.ChallengeRule)
-
-	entGame := entity.NewGame(g, req)
+	entGame := entity.NewGame(&runner.Game, req)
 	entGame.PlayerDBIDs = dbids
 	// Save the game to the store.
 	if err = gameStore.Create(ctx, entGame); err != nil {
