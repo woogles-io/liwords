@@ -70,7 +70,7 @@ const variantToName = (variant: string) => {
 };
 
 const RatingsCard = (props: RatingsProps) => {
-  const variants = Object.keys(props.ratings);
+  const variants = props.ratings ? Object.keys(props.ratings) : [];
   console.log('ratings', props.ratings, variants);
   const dataSource = variants.map((v) => ({
     key: v,
@@ -112,7 +112,7 @@ const RatingsCard = (props: RatingsProps) => {
 };
 
 const StatsCard = (props: StatsProps) => {
-  const variants = Object.keys(props.stats);
+  const variants = props.stats ? Object.keys(props.stats) : [];
 
   console.log('stats', props.stats, variants);
 

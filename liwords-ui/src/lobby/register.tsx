@@ -27,6 +27,7 @@ export const Register = () => {
         username: values.username,
         password: values.password,
         email: values.email,
+        registrationCode: values.registrationCode,
       })
       .then(() => {
         // Try logging in after registering.
@@ -111,6 +112,19 @@ export const Register = () => {
             {
               required: true,
               message: 'Please input your email. We promise not to spam you.',
+            },
+          ]}
+        >
+          <Input />
+        </Form.Item>
+
+        <Form.Item
+          label="Secret code"
+          name="registrationCode"
+          rules={[
+            {
+              required: true,
+              message: 'You need a registration code.',
             },
           ]}
         >
