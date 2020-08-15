@@ -5,7 +5,7 @@ go 1.14
 require (
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible
-	github.com/domino14/macondo v0.4.5-0.20200804025941-f4c4c652a44d
+	github.com/domino14/macondo v0.4.5-0.20200815185535-229a233a3ff8
 	github.com/golang/protobuf v1.4.2
 	github.com/jinzhu/gorm v1.9.14
 	github.com/justinas/alice v1.2.0
