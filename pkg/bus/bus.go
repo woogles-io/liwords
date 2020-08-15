@@ -93,6 +93,9 @@ func NewBus(cfg *config.Config, userStore user.Store, gameStore gameplay.GameSto
 // ProcessMessages is very similar to the PubsubProcess in liwords-socket,
 // but that's because they do similar things.
 func (b *Bus) ProcessMessages(ctx context.Context) {
+
+	ctx = context.WithValue(ctx, gameplay.ConfigCtxKey("config"), b.config)
+
 outerfor:
 	for {
 		select {

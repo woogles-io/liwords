@@ -207,5 +207,6 @@
   "challenge_rule": 3,
   "play_state": 2,
   "final_scores": [131, 273],
+  "lexicon": "CSW19",
   "winner": 1
 }

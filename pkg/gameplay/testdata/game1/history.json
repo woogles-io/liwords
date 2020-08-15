@@ -74,5 +74,6 @@
   "last_known_racks": ["DFIIOT?", "AEEORRV"],
   "challenge_rule": 3,
   "play_state": 2,
+  "lexicon": "CSW19",
   "final_scores": [183, 34]
 }
