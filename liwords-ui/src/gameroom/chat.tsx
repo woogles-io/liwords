@@ -6,6 +6,7 @@ import { ChatEntityObj } from '../store/store';
 type Props = {
   chatEntities: Array<ChatEntityObj> | undefined;
   sendChat: (msg: string) => void;
+  description: string;
 };
 
 export const Chat = (props: Props) => {
@@ -41,7 +42,11 @@ export const Chat = (props: Props) => {
 
   return (
     <>
-      <Card className="chat" style={{ textAlign: 'left' }}>
+      <Card
+        className="chat"
+        style={{ textAlign: 'left' }}
+        title={props.description}
+      >
         {entities}
       </Card>
       <Input

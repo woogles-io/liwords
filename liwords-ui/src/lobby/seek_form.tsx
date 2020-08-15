@@ -28,7 +28,6 @@ export const SeekForm = (props: Props) => {
     setTtag(tt);
   };
 
-  console.log('showFriendInput', props.showFriendInput);
   return (
     <Form onValuesChange={onFormChange} initialValues={props.vals}>
       {props.showFriendInput && (

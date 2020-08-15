@@ -11,6 +11,7 @@ import {
   MatchRequest,
   MatchUser,
   SoughtGameProcessEvent,
+  ChatMessage,
 } from '../gen/api/proto/realtime/realtime_pb';
 import { encodeToSocketFmt } from '../utils/protobuf';
 import { SoughtGame } from '../store/reducers/lobby_reducer';
@@ -167,6 +168,15 @@ export const Lobby = (props: Props) => {
     setMatchModalVisible(false);
   };
 
+  const sendChat = (msg: string) => {
+    const evt = new ChatMessage();
+    evt.setMessage(msg);
+    evt.setChannel('lobby.chat');
+    props.sendSocketMsg(
+      encodeToSocketFmt(MessageType.CHAT_MESSAGE, evt.serializeBinary())
+    );
+  };
+
   return (
     <div>
       <Row>
@@ -180,7 +190,11 @@ export const Lobby = (props: Props) => {
       </Row>
       <Row className="lobby">
         <Col span={6} className="chat-area">
-          <Chat chatEntities={chat} sendChat={(msg: string) => {}} />
+          <Chat
+            chatEntities={chat}
+            sendChat={sendChat}
+            description="Lobby chat"
+          />
         </Col>
         <Col span={12} className="game-lists">
           <GameLists

@@ -35,7 +35,7 @@ export type ChatEntityObj = {
   id?: string;
 };
 
-const MaxChatLength = 250;
+const MaxChatLength = 100;
 
 const defaultTimerContext = {
   p0: 0,

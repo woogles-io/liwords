@@ -73,6 +73,7 @@ export const Table = React.memo((props: Props) => {
   // const location = useLocation();
   const [gameInfo, setGameInfo] = useState<GameMetadata>(defaultGameInfo);
   const [gcgText, setGCGText] = useState('');
+  const [isObserver, setIsObserver] = useState(false);
 
   const gcgExport = () => {
     axios
@@ -114,6 +115,7 @@ export const Table = React.memo((props: Props) => {
       // via the socket.
       message.warning('Game is starting shortly', 0);
     }
+
     return () => {
       clearChat();
       setGameInfo(defaultGameInfo);
@@ -126,19 +128,15 @@ export const Table = React.memo((props: Props) => {
     if (pTimedOut === undefined) return;
     // Otherwise, player timed out. This will only send once.
     // Send the time out if we're either of both players that are in the game.
-    let send = false;
+    if (isObserver) return;
+
     let timedout = '';
 
     gameInfo.players.forEach((p) => {
       if (gameContext.uidToPlayerOrder[p.user_id] === pTimedOut) {
         timedout = p.user_id;
       }
-      if (username === p.nickname) {
-        send = true;
-      }
     });
-
-    if (!send) return;
 
     const to = new TimedOut();
     to.setGameId(gameID);
@@ -165,6 +163,16 @@ export const Table = React.memo((props: Props) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [gameContext.playState]);
 
+  useEffect(() => {
+    let observer = true;
+    gameInfo.players.forEach((p) => {
+      if (username === p.nickname) {
+        observer = false;
+      }
+    });
+    setIsObserver(observer);
+  }, [username, gameInfo]);
+
   const acceptRematch = (reqID: string) => {
     const evt = new SoughtGameProcessEvent();
     evt.setRequestId(reqID);
@@ -190,9 +198,11 @@ export const Table = React.memo((props: Props) => {
   const sendChat = (msg: string) => {
     const evt = new ChatMessage();
     evt.setMessage(msg);
+
+    const chan = isObserver ? 'gametv' : 'game';
     // XXX: Backend should figure out channels; also separate game and gameTV channels
     // Right now everyone will get this.
-    evt.setChannel(`game.${gameID}`);
+    evt.setChannel(`${chan}.${gameID}`);
     sendSocketMsg(
       encodeToSocketFmt(MessageType.CHAT_MESSAGE, evt.serializeBinary())
     );
@@ -238,7 +248,11 @@ export const Table = React.memo((props: Props) => {
             okText="Accept"
             cancelText="Decline"
           >
-            <Chat chatEntities={chat} sendChat={sendChat} />
+            <Chat
+              chatEntities={chat}
+              sendChat={sendChat}
+              description={isObserver ? 'Observer chat' : 'Game chat'}
+            />
           </Popconfirm>
 
           <Button type="primary" onClick={gcgExport}>
