@@ -48,13 +48,13 @@ export const Chat = (props: Props) => {
         title={props.description}
       >
         {entities}
+        <Input
+          placeholder="chat..."
+          onKeyDown={onKeyDown}
+          onChange={onChange}
+          value={curMsg}
+        />
       </Card>
-      <Input
-        placeholder="chat..."
-        onKeyDown={onKeyDown}
-        onChange={onChange}
-        value={curMsg}
-      />
     </>
   );
 };
