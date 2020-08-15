@@ -649,26 +649,6 @@ export namespace DeclineMatchRequest {
   }
 }
 
-export class TokenSocketLogin extends jspb.Message {
-  getToken(): string;
-  setToken(value: string): void;
-
-  serializeBinary(): Uint8Array;
-  toObject(includeInstance?: boolean): TokenSocketLogin.AsObject;
-  static toObject(includeInstance: boolean, msg: TokenSocketLogin): TokenSocketLogin.AsObject;
-  static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
-  static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
-  static serializeBinaryToWriter(message: TokenSocketLogin, writer: jspb.BinaryWriter): void;
-  static deserializeBinary(bytes: Uint8Array): TokenSocketLogin;
-  static deserializeBinaryFromReader(message: TokenSocketLogin, reader: jspb.BinaryReader): TokenSocketLogin;
-}
-
-export namespace TokenSocketLogin {
-  export type AsObject = {
-    token: string,
-  }
-}
-
 export class JoinPath extends jspb.Message {
   getPath(): string;
   setPath(value: string): void;
@@ -734,7 +714,6 @@ export interface MessageTypeMap {
   JOIN_PATH: 11;
   UNJOIN_REALM: 12;
   TIMED_OUT: 13;
-  TOKEN_SOCKET_LOGIN: 14;
   GAME_META_EVENT: 15;
   ACTIVE_GAMES: 16;
   GAME_DELETION: 17;

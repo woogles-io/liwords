@@ -79,7 +79,6 @@ enum MessageType {
   JOIN_PATH = 11;
   UNJOIN_REALM = 12;
   TIMED_OUT = 13;
-  TOKEN_SOCKET_LOGIN = 14;
   GAME_META_EVENT = 15;
   ACTIVE_GAMES = 16;
   GAME_DELETION = 17;
@@ -264,8 +263,6 @@ message TimedOut {
 message DeclineMatchRequest { string request_id = 1; }
 
 // Communication
-
-message TokenSocketLogin { string token = 1; }
 
 // When we go to a new path in our SPA, we send a JoinPath. When we leave the
 // path, we send an Unjoin realm. d
