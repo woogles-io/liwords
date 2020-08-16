@@ -10,6 +10,7 @@ import (
 	realtime "github.com/domino14/liwords/rpc/api/proto/realtime"
 	"github.com/domino14/macondo/alphabet"
 	macondoconfig "github.com/domino14/macondo/config"
+	"github.com/domino14/macondo/gaddag"
 	"github.com/domino14/macondo/gcgio"
 	pb "github.com/domino14/macondo/gen/api/proto/macondo"
 	"github.com/matryer/is"
@@ -17,6 +18,8 @@ import (
 )
 
 func TestMain(m *testing.M) {
+	// Let's create the gaddag cache, we need it for word validity tests.
+	gaddag.CreateGaddagCache()
 	zerolog.SetGlobalLevel(zerolog.InfoLevel)
 	os.Exit(m.Run())
 }
