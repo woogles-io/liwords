@@ -9,11 +9,13 @@ import (
 
 	"github.com/jinzhu/gorm"
 	"github.com/matryer/is"
-	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 
+	"github.com/domino14/macondo/alphabet"
 	"github.com/domino14/macondo/board"
 	macondoconfig "github.com/domino14/macondo/config"
+	"github.com/domino14/macondo/cross_set"
+	"github.com/domino14/macondo/gaddag"
 	macondogame "github.com/domino14/macondo/game"
 	macondopb "github.com/domino14/macondo/gen/api/proto/macondo"
 
@@ -37,11 +39,21 @@ var TestDBHost = os.Getenv("TEST_DB_HOST")
 var TestingDBConnStr = "host=" + TestDBHost + " port=5432 user=postgres password=pass sslmode=disable"
 
 func newMacondoGame(users [2]*entity.User) *macondogame.Game {
-	rules, err := macondogame.NewGameRules(&DefaultConfig, board.CrosswordGameBoard,
-		DefaultConfig.DefaultLexicon, DefaultConfig.DefaultLetterDistribution)
+	dist, err := alphabet.LoadLetterDistribution(&DefaultConfig, DefaultConfig.DefaultLetterDistribution)
 	if err != nil {
 		panic(err)
 	}
+
+	gd, err := gaddag.LoadFromCache(&DefaultConfig, DefaultConfig.DefaultLexicon)
+	if err != nil {
+		panic(err)
+	}
+
+	rules := macondogame.NewGameRules(&DefaultConfig, dist,
+		board.MakeBoard(board.CrosswordGameBoard),
+		&gaddag.Lexicon{GenericDawg: gd},
+		cross_set.NullCrossSetGenerator{})
+
 	var players []*macondopb.PlayerInfo
 
 	for _, u := range users {
@@ -147,7 +159,8 @@ func teardown() {
 }
 
 func TestMain(m *testing.M) {
-	zerolog.SetGlobalLevel(zerolog.InfoLevel)
+	alphabet.CreateLetterDistributionCache()
+	gaddag.CreateGaddagCache()
 
 	code := m.Run()
 	//teardown()
@@ -208,7 +221,10 @@ func TestSet(t *testing.T) {
 
 	// Fetch the game from the backend.
 	entGame, err := store.Get(context.Background(), "wJxURccCgSAPivUvj4QdYL")
+	is.NoErr(err)
 	// Make some modification.
+
+	log.Debug().Interface("history", entGame.History()).Msg("test-set")
 	is.Equal(entGame.History().ChallengeRule, macondopb.ChallengeRule_FIVE_POINT)
 	is.Equal(entGame.NickOnTurn(), "mina")
 	is.Equal(entGame.Turn(), 0)

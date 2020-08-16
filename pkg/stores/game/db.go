@@ -150,14 +150,14 @@ func FromState(timers entity.Timers, Started bool,
 		return nil, err
 	}
 
-	gd, err := gaddag.LoadFromCache(&cfg.MacondoConfig, req.Lexicon)
+	gd, err := gaddag.LoadFromCache(&cfg.MacondoConfig, hist.Lexicon)
 	if err != nil {
 		return nil, err
 	}
 
 	rules := macondogame.NewGameRules(
 		&cfg.MacondoConfig, dist, board.MakeBoard(bd),
-		&gaddag.Lexicon{gd},
+		&gaddag.Lexicon{GenericDawg: gd},
 		cross_set.NullCrossSetGenerator{})
 
 	if err != nil {
@@ -171,6 +171,7 @@ func FromState(timers entity.Timers, Started bool,
 	// XXX: We should probably move this to `NewFromHistory`:
 	mcg.SetBackupMode(macondogame.InteractiveGameplayMode)
 	g.Game = *mcg
+	log.Debug().Interface("history", g.History()).Msg("from-state")
 	return g, nil
 }
 

@@ -16,14 +16,19 @@ import (
 func main() {
 	protofile := flag.String("protofile", "macondo", "the name of the protofile: macondo or realtime")
 	messageName := flag.String("messagename", "", "the name of the pb message")
+	convertfrom := flag.String("convertfrom", "binary", "binary or json (to the other)")
 
-	msg := flag.String("msg", "", "the message, in hexadecimal")
+	msg := flag.String("msg", "", "the message, in hexadecimal or json")
 	flag.Parse()
 
 	var pbmsg proto.Message
-	raw, err := hex.DecodeString(*msg)
-	if err != nil {
-		panic(err)
+	var raw []byte
+	var err error
+	if *convertfrom == "binary" {
+		raw, err = hex.DecodeString(*msg)
+		if err != nil {
+			panic(err)
+		}
 	}
 
 	if *protofile == "macondo" {
@@ -45,14 +50,29 @@ func main() {
 	} else {
 		panic("protofile " + *protofile + " not handled")
 	}
+	var b []byte
+	var bstr string
 
-	err = proto.Unmarshal(raw, pbmsg)
-	if err != nil {
-		panic(err)
+	if *convertfrom == "binary" {
+		err = proto.Unmarshal(raw, pbmsg)
+		if err != nil {
+			panic(err)
+		}
+		b, err = json.Marshal(pbmsg)
+		if err != nil {
+			panic(err)
+		}
+		bstr = string(b)
+	} else if *convertfrom == "json" {
+		err = json.Unmarshal([]byte(*msg), pbmsg)
+		if err != nil {
+			panic(err)
+		}
+		b, err = proto.Marshal(pbmsg)
+		if err != nil {
+			panic(err)
+		}
+		bstr = hex.EncodeToString(b)
 	}
-	b, err := json.Marshal(pbmsg)
-	if err != nil {
-		panic(err)
-	}
-	fmt.Println(string(b))
+	fmt.Println(bstr)
 }
