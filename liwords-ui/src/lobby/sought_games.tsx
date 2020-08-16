@@ -119,7 +119,7 @@ export const SoughtGames = (props: Props) => {
             </>
           );
         };
-        let outgoing = true;
+        let outgoing = sg.receiver.getUserId() ? true : false;
         if (sg.receiver.getUserId() === props.userID) {
           outgoing = false;
         }
