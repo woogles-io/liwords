@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Card, Row, Col } from 'antd';
+import { Card } from 'antd';
 
 import { TopBar } from '../topbar/topbar';
 import {
@@ -21,7 +21,7 @@ import {
 } from '../gen/macondo/api/proto/macondo/macondo_pb';
 import { seekPropVals } from './seek_form';
 import { GameLists } from './gameLists';
-import { Chat } from '../gameroom/chat';
+import { Chat } from '../chat/chat';
 import { useStoreContext } from '../store/store';
 import './lobby.scss';
 
@@ -179,48 +179,38 @@ export const Lobby = (props: Props) => {
   };
 
   return (
-    <div>
-      <Row>
-        <Col span={24}>
-          <TopBar
-            username={props.username}
-            loggedIn={props.loggedIn}
-            connectedToSocket={props.connectedToSocket}
-          />
-        </Col>
-      </Row>
-      <Row className="lobby">
-        <Col span={6} className="chat-area">
-          <Chat
-            chatEntities={chat}
-            sendChat={sendChat}
-            description="Lobby chat"
-          />
-        </Col>
-        <Col span={12} className="game-lists">
-          <GameLists
-            loggedIn={props.loggedIn}
-            userID={props.userID}
-            username={props.username}
-            newGame={(seekID: string) =>
-              sendAccept(seekID, props.sendSocketMsg)
-            }
-            selectedGameTab={selectedGameTab}
-            setSelectedGameTab={setSelectedGameTab}
-            showSeekModal={showSeekModal}
-            showMatchModal={showMatchModal}
-            matchModalVisible={matchModalVisible}
-            seekModalVisible={seekModalVisible}
-            handleMatchModalCancel={handleMatchModalCancel}
-            handleMatchModalOk={handleMatchModalOk}
-            handleSeekModalCancel={handleSeekModalCancel}
-            handleSeekModalOk={handleSeekModalOk}
-            seekSettings={seekSettings}
-            setSeekSettings={setSeekSettings}
-          />
-        </Col>
-        <Col span={6} className="news-area">
-          <Card className="announcements">
+    <>
+      <TopBar
+        username={props.username}
+        loggedIn={props.loggedIn}
+        connectedToSocket={props.connectedToSocket}
+      />
+      <div className="lobby">
+        <Chat
+          chatEntities={chat}
+          sendChat={sendChat}
+          description="Lobby chat"
+        />
+        <GameLists
+          loggedIn={props.loggedIn}
+          userID={props.userID}
+          username={props.username}
+          newGame={(seekID: string) => sendAccept(seekID, props.sendSocketMsg)}
+          selectedGameTab={selectedGameTab}
+          setSelectedGameTab={setSelectedGameTab}
+          showSeekModal={showSeekModal}
+          showMatchModal={showMatchModal}
+          matchModalVisible={matchModalVisible}
+          seekModalVisible={seekModalVisible}
+          handleMatchModalCancel={handleMatchModalCancel}
+          handleMatchModalOk={handleMatchModalOk}
+          handleSeekModalCancel={handleSeekModalCancel}
+          handleSeekModalOk={handleSeekModalOk}
+          seekSettings={seekSettings}
+          setSeekSettings={setSeekSettings}
+        />
+        <div className="announcements">
+          <Card>
             <h3>Woogles is coming soon!</h3>
             <p>
               Please back our{' '}
@@ -231,8 +221,8 @@ export const Lobby = (props: Props) => {
               We're a nonprofit and are counting on you.
             </p>
           </Card>
-        </Col>
-      </Row>
-    </div>
+        </div>
+      </div>
+    </>
   );
 };

@@ -32,26 +32,6 @@
   color: #61dafb;
 }
 
-/* lobby */
-.lobby {
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  text-align: center;
-  .ant-row {
-    width: 100%;
-  }
-}
-.chat input {
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  left: 0;
-  width: calc(100% - 12px);
-  margin: 6px;
-}
-
-
 @media (prefers-reduced-motion: no-preference) {
   .App-logo {
     animation: App-logo-spin infinite 20s linear;

@@ -2,22 +2,27 @@
 @include button;
 
 .lobby {
+  @include container();
+  display: flex;
+  flex-direction: row;
   justify-content: center;
   align-items: flex-start;
-  padding: 0 24px;
-}
-
-.game-lists, .chat-area, .news-area {
-  margin: 12px 0;
+  padding: 12px 0;
   .ant-card {
-    height: calc(100vh - #{$header-height-mobile} - 30px);
+    @include fullHeight();
   }
 }
 
+
+.announcements {
+  max-width: 33%;
+  flex-grow: 1;
+}
+
 .game-lists {
-  padding: 0 12px;
+  margin: 0 12px;
   max-width: none;
-  flex: 0 0 66%;
+  flex-grow: 2;
   @include type-default;
   .ant-card-body {
     padding: 12px 0 0 0;
@@ -140,16 +145,8 @@
   }
 }
 
-@media (min-width: $screen-tablet-min) {
-  .game-lists, .chat-area, .news-area {
-    .ant-card {
-      height: calc(100vh - #{$header-height-desktop} - 64px);
+@media (min-height: $screen-min-height-laptop-min) and (min-width: $screen-laptop-min) {
+    .announcements {
+      max-width: 25%;
     }
-  }
-}
-
-@media (min-width: $screen-laptop-min) {
-  .game-lists {
-    flex: 0 0 50%;
-  }
 }

@@ -11,9 +11,13 @@
 }
 
 .game-table {
-  padding: 16px;
-  max-width: $screen-desktop-max;
+  @include container();
+  display: flex;
   margin: 0 auto !important;
+  flex-direction: row;
+  justify-content: center;
+  align-items: flex-start;
+  padding: 12px 0;
   p {
     color: white;
   }
@@ -57,19 +61,10 @@
   position: relative;
 }
 
-.chat-area,
 .data-area {
-  flex: 0 0 33%;
-  max-width: 33%;
   text-align: left;
   .ant-card {
     margin-bottom: 12px;
-  }
-}
-
-.chat-area {
-  .chat {
-    height: 80%;
   }
 }
 
@@ -77,16 +72,9 @@
   border-radius: 8px;
 }
 
-/* hide at mobile for now,
- expand board */
-
-.chat-area {
-  display: none;
-}
-
 .play-area {
-  max-width: none;
-  flex: 0 0 66%;
+  margin: 0 12px;
+  flex-grow: 2;
 }
 
 /* Board spaces */
@@ -510,24 +498,7 @@
   }
 }
 
-@media (min-width: $screen-tablet-min) {
-  .game-table {
-    max-width: $screen-tablet-min;
-  }
-}
-
-@media (min-width: $screen-laptop-min) {
-  .game-table {
-    max-width: $screen-laptop-min;
-  }
-  .chat-area {
-    display: block;
-  }
-  .chat-area,
-  .data-area {
-    flex: 0 0 25%;
-    max-width: 25%;
-  }
+@media (min-height: $screen-min-height-laptop-min) and (min-width: $screen-laptop-min) {
   .play-area {
     flex: 0 0 50%;
   }
@@ -555,9 +526,9 @@
     height: 3vw;
   }
 }
-@media (min-height: 800px) and (min-width: $screen-desktop-min) {
+
+@media (min-height: $screen-min-height-desktop-min) and (min-width: $screen-desktop-min) {
   .game-table {
-    max-width: $screen-desktop-min;
     .ant-card .ant-card-head {
       .ant-card-head-title,
       .ant-card-extra {
@@ -639,10 +610,7 @@
   }
 }
 
-@media (min-height: 864px) and (min-width: $screen-desktop-max) {
-  .game-table {
-    max-width: $screen-desktop-max;
-  }
+@media (min-height: $screen-min-height-desktop-max) and (min-width: $screen-desktop-max) {
   .rack .tile {
     width: 44px;
     height: 44px;

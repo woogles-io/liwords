@@ -36,6 +36,7 @@ p {
 .bio {
   background: $color-secondary-lighter;
   .container {
+    @include container();
     display: flex;
     align-items: flex-start;
   }
@@ -89,9 +90,6 @@ p {
 }
 
 @media (min-width: $screen-desktop-min) {
-  .container {
-    padding: 0 128px;
-  }
   p {
     line-height: 2em;
   }
