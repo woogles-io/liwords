@@ -92,7 +92,7 @@ func InstantiateNewGame(ctx context.Context, gameStore GameStore, cfg *config.Co
 	rules := game.NewGameRules(
 		&cfg.MacondoConfig, dist, board.MakeBoard(bd),
 		&gaddag.Lexicon{GenericDawg: gd},
-		cross_set.NullCrossSetGenerator{})
+		cross_set.GaddagCrossSetGenerator{Dist: dist, Gaddag: gd})
 
 	runner, err := runner.NewGameRunnerFromRules(&runner.GameOptions{
 		FirstIsAssigned: firstAssigned,
@@ -279,10 +279,6 @@ func PlayMove(ctx context.Context, gameStore GameStore, userStore user.Store, us
 
 	if cge.Type == pb.ClientGameplayEvent_CHALLENGE_PLAY {
 		// Handle in another way
-
-		// Record time of challenge: XXX check if this is actually needed / works.
-		entGame.RecordTimeOfMove(onTurn)
-
 		return handleChallenge(ctx, entGame, gameStore, userStore, timeRemaining, userID)
 	}
 

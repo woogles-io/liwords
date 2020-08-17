@@ -81,5 +81,11 @@ func ValidateSoughtGame(ctx context.Context, req *pb.GameRequest) error {
 	if req.MaxOvertimeMinutes < 0 || req.MaxOvertimeMinutes > 5 {
 		return errors.New("overtime minutes must be between 0 and 5")
 	}
+	if req.IncrementSeconds < 0 {
+		return errors.New("you cannot have a negative time increment")
+	}
+	if req.MaxOvertimeMinutes > 0 && req.IncrementSeconds > 0 {
+		return errors.New("you can have increments or max overtime, but not both")
+	}
 	return nil
 }

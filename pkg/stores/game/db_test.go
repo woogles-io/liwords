@@ -52,7 +52,7 @@ func newMacondoGame(users [2]*entity.User) *macondogame.Game {
 	rules := macondogame.NewGameRules(&DefaultConfig, dist,
 		board.MakeBoard(board.CrosswordGameBoard),
 		&gaddag.Lexicon{GenericDawg: gd},
-		cross_set.NullCrossSetGenerator{})
+		cross_set.GaddagCrossSetGenerator{Dist: dist, Gaddag: gd})
 
 	var players []*macondopb.PlayerInfo
 

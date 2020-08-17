@@ -158,7 +158,7 @@ func FromState(timers entity.Timers, Started bool,
 	rules := macondogame.NewGameRules(
 		&cfg.MacondoConfig, dist, board.MakeBoard(bd),
 		&gaddag.Lexicon{GenericDawg: gd},
-		cross_set.NullCrossSetGenerator{})
+		cross_set.GaddagCrossSetGenerator{Dist: dist, Gaddag: gd})
 
 	if err != nil {
 		return nil, err

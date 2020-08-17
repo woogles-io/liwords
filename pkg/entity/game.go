@@ -129,7 +129,7 @@ func (g *Game) GameID() string {
 }
 
 // calculateTimeRemaining calculates the remaining time for the given player.
-func (g *Game) calculateAndSetTimeRemaining(pidx int, now int64) {
+func (g *Game) calculateAndSetTimeRemaining(pidx int, now int64, accountForIncrement bool) {
 	log.Debug().
 		Int64("started", g.Timers.TimeStarted).
 		Int64("now", now).
@@ -141,6 +141,9 @@ func (g *Game) calculateAndSetTimeRemaining(pidx int, now int64) {
 	if g.Game.PlayerOnTurn() == pidx {
 		// Time has passed since this was calculated.
 		g.Timers.TimeRemaining[pidx] -= int(now - g.Timers.TimeOfLastUpdate)
+		if accountForIncrement {
+			g.Timers.TimeRemaining[pidx] += (int(g.GameReq.IncrementSeconds) * 1000)
+		}
 		g.Timers.TimeOfLastUpdate = now
 		log.Debug().Int("actual-remaining", g.Timers.TimeRemaining[pidx]).
 			Msg("player-on-turn")
@@ -152,16 +155,14 @@ func (g *Game) calculateAndSetTimeRemaining(pidx int, now int64) {
 
 func (g *Game) RecordTimeOfMove(idx int) {
 	now := msTimestamp()
-	g.calculateAndSetTimeRemaining(idx, now)
+	g.calculateAndSetTimeRemaining(idx, now, true)
 }
 
-// Return a HistoryRefresherEvent for the given user ID. If sanitize is
-// true, opponent racks are stripped.
-func (g *Game) HistoryRefresherEvent( /*userID string, sanitize bool*/ ) *pb.GameHistoryRefresher {
+func (g *Game) HistoryRefresherEvent() *pb.GameHistoryRefresher {
 	now := msTimestamp()
 
-	g.calculateAndSetTimeRemaining(0, now)
-	g.calculateAndSetTimeRemaining(1, now)
+	g.calculateAndSetTimeRemaining(0, now, false)
+	g.calculateAndSetTimeRemaining(1, now, false)
 
 	return &pb.GameHistoryRefresher{
 		History:            g.History(),

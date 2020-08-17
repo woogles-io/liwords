@@ -715,13 +715,13 @@ func (b *Bus) activeGames(ctx context.Context) (*entity.EventWrapper, error) {
 }
 
 func (b *Bus) gameRefresher(ctx context.Context, gameID string) (*entity.EventWrapper, error) {
-	// Get a game refresher event. If sanitize is true, opponent racks will be
-	// hidden from the given userID.
+	// Get a game refresher event.
 	entGame, err := b.gameStore.Get(ctx, string(gameID))
 	if err != nil {
 		return nil, err
 	}
 	if !entGame.Started {
+		// XXX: This shouldn't be an error, fix.
 		return nil, errors.New("game-starting-soon")
 	}
 	evt := entity.WrapEvent(entGame.HistoryRefresherEvent(),
