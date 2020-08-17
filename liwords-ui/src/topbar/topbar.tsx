@@ -36,15 +36,15 @@ export const TopBar = React.memo((props: Props) => {
         {props.loggedIn ? (
           <div className="user-info">
             <Link to={`/profile/${props.username}`}>{props.username}</Link>
+            {!props.connectedToSocket ? (
+              <DisconnectOutlined style={{ color: 'red', marginLeft: 5 }} />
+            ) : null}
           </div>
         ) : (
           <div className="user-info">
             <Link to="/login">Log In</Link>
           </div>
         )}
-        {!props.connectedToSocket ? (
-          <DisconnectOutlined style={{ color: 'red', marginLeft: 5 }} />
-        ) : null}
       </div>
     </nav>
   );

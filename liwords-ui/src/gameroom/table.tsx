@@ -1,11 +1,11 @@
 import React, { useEffect, useState } from 'react';
-import { Row, Col, message, notification, Popconfirm } from 'antd';
+import { message, notification, Popconfirm } from 'antd';
 import axios from 'axios';
 
 import { useParams } from 'react-router-dom';
 import { BoardPanel } from './board_panel';
 import { TopBar } from '../topbar/topbar';
-import { Chat } from './chat';
+import { Chat } from '../chat/chat';
 import { useStoreContext } from '../store/store';
 import { PlayerCards } from './player_cards';
 import Pool from './pool';
@@ -23,10 +23,6 @@ import { ScoreCard } from './scorecard';
 import { GameInfo, GameMetadata, PlayerMetadata } from './game_info';
 import { PlayState } from '../gen/macondo/api/proto/macondo/macondo_pb';
 // import { GameInfoResponse } from '../gen/api/proto/game_service/game_service_pb';
-
-const gutter = 16;
-const boardspan = 12;
-
 type Props = {
   sendSocketMsg: (msg: Uint8Array) => void;
   username: string;
@@ -201,9 +197,27 @@ export const Table = React.memo((props: Props) => {
         loggedIn={props.loggedIn}
         connectedToSocket={props.connectedToSocket}
       />
-      <Row gutter={gutter} className="game-table">
-        <Col span={6} className="chat-area">
-          {/* we only put the Popconfirm here so that we can physically place it */}
+      <div className="game-table">
+        <Chat
+          chatEntities={chat}
+          sendChat={sendChat}
+          description={isObserver ? 'Observer chat' : 'Game chat'}
+        />
+        {/* we only put the Popconfirm here so that we can physically place it */}
+
+        <div className="play-area">
+          <BoardPanel
+            username={props.username}
+            board={gameContext.board}
+            showBonusLabels={false}
+            currentRack={rack || ''}
+            gameID={gameID}
+            sendSocketMsg={props.sendSocketMsg}
+            gameDone={gameInfo.done}
+            playerMeta={gameInfo.players}
+          />
+        </div>
+        <div className="data-area">
           <Popconfirm
             title={`${rematchRequest
               .getUser()
@@ -219,27 +233,7 @@ export const Table = React.memo((props: Props) => {
             }}
             okText="Accept"
             cancelText="Decline"
-          >
-            <Chat
-              chatEntities={chat}
-              sendChat={sendChat}
-              description={isObserver ? 'Observer chat' : 'Game chat'}
-            />
-          </Popconfirm>
-        </Col>
-        <Col span={boardspan} className="play-area">
-          <BoardPanel
-            username={props.username}
-            board={gameContext.board}
-            showBonusLabels={false}
-            currentRack={rack || ''}
-            gameID={gameID}
-            sendSocketMsg={props.sendSocketMsg}
-            gameDone={gameInfo.done}
-            playerMeta={gameInfo.players}
           />
-        </Col>
-        <Col span={6} className="data-area">
           <PlayerCards playerMeta={gameInfo.players} />
           <GameInfo meta={gameInfo} />
           <Pool
@@ -255,8 +249,8 @@ export const Table = React.memo((props: Props) => {
             board={gameContext.board}
             playerMeta={gameInfo.players}
           />
-        </Col>
-      </Row>
+        </div>
+      </div>
     </div>
   );
 });

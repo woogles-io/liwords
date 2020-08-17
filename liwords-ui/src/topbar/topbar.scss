@@ -6,8 +6,10 @@ body {
 }
 
 .top-header {
-  width: 100%;
   position: fixed;
+  width: 100%;
+  display: flex;
+  align-items: center;
   top: 0;
   z-index: 2;
   min-height: 60px;
@@ -16,27 +18,14 @@ body {
   letter-spacing: 0.25em;
   font-size: 12px;
   font-weight: bold;
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-around;
   text-transform: uppercase;
-  padding: 0 140px;
-}
-
-.top-header .container {
-  position: relative;
-  max-width: 768px;
-  width: 100%;
-  margin: 0 auto;
-}
-
-.user-info {
-  position: absolute;
-  right: 0;
-  top: 32px;
-  width: 20%;
-  text-align: right;
+  .container {
+    @include container();
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+  }
 }
 
 .top-header-menu {
@@ -107,21 +96,11 @@ body {
     letter-spacing: 0;
   }
 }
-@media (min-width: $screen-tablet-min) {
-  .top-header {
-    padding: 0 $header-height-desktop;
-  }
-}
-@media (min-width: $screen-laptop-min) {
+@media (min-height: $screen-min-height-laptop-min) and (min-width: $screen-laptop-min) {
   body {
     margin-top: 60px;
   }
-  .top-header {
-    flex-wrap: nowrap;
-    padding: 0 36px;
-  }
   .top-header .container {
-    max-width: $screen-laptop-min;
     display: flex;
     flex-wrap: nowrap;
     align-items: center;
@@ -141,19 +120,5 @@ body {
   }
   .site-icon {
     margin: 0;
-  }
-}
-
-@media (min-height: 800px) and (min-width: $screen-desktop-min) {
-  .top-header .container {
-    padding: 0 24px;
-    max-width: $screen-desktop-min;
-  }
-}
-
-@media (min-height: 864px) and (min-width: $screen-desktop-max) {
- .top-header .container {
-    max-width: $screen-desktop-max;
-    padding: 0 24px;
   }
 }

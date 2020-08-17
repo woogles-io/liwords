@@ -50,6 +50,10 @@ $screen-laptop-min: 1024px;
 $screen-desktop-min: 1280px;
 $screen-desktop-max: 1440px;
 
+$screen-min-height-laptop-min: 680px;
+$screen-min-height-desktop-min: 800px;
+$screen-min-height-desktop-max: 840px;
+
 $font-deco: 'Fjalla One', sans-serif;
 $font-default: 'Muli', sans-serif;
 $font-monospaced: 'Roboto Mono', monospace;
@@ -158,5 +162,37 @@ h4 {
       background: $color-gray-middle;
       color: white;
     }
+  }
+}
+
+@mixin fullHeight {
+  height: calc(100vh - #{$header-height-mobile} - 30px);
+
+  @media (min-height: $screen-min-height-laptop-min) and (min-width: $screen-laptop-min) {
+    height: calc(100vh - #{$header-height-desktop} - 30px);
+  }
+}
+
+@mixin container {
+  min-width: $screen-tablet-min;
+  max-width: $screen-tablet-min;
+  width: 100%;
+  position: relative;
+  margin: 0 auto;
+  padding: 0 12px;
+
+  @media (min-height: $screen-min-height-laptop-min) and (min-width: $screen-laptop-min) {
+    min-width: $screen-laptop-min;
+    max-width: $screen-laptop-min;
+  }
+
+  @media (min-height: $screen-min-height-desktop-min) and (min-width: $screen-desktop-min) {
+    min-width: $screen-desktop-min;
+    max-width: $screen-desktop-min;
+  }
+
+  @media (min-height: $screen-min-height-desktop-max) and (min-width: $screen-desktop-max) {
+    min-width: $screen-desktop-max;
+    max-width: $screen-desktop-max;
   }
 }

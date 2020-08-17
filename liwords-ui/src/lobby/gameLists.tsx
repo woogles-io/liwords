@@ -87,67 +87,69 @@ export const GameLists = React.memo((props: Props) => {
   };
 
   return (
-    <Card>
-      <div className="tabs">
-        {loggedIn ? (
+    <div className="game-lists">
+      <Card>
+        <div className="tabs">
+          {loggedIn ? (
+            <div
+              onClick={() => {
+                setSelectedGameTab('PLAY');
+              }}
+              className={selectedGameTab === 'PLAY' ? 'tab active' : 'tab'}
+            >
+              Play
+            </div>
+          ) : null}
           <div
             onClick={() => {
-              setSelectedGameTab('PLAY');
+              setSelectedGameTab('WATCH');
             }}
-            className={selectedGameTab === 'PLAY' ? 'tab active' : 'tab'}
+            className={
+              selectedGameTab === 'WATCH' || !loggedIn ? 'tab active' : 'tab'
+            }
           >
-            Play
+            Watch
+          </div>
+        </div>
+        {renderGames()}
+        {loggedIn && selectedGameTab === 'PLAY' ? (
+          <div className="requests">
+            <Button type="primary" onClick={showSeekModal}>
+              New Game
+            </Button>
+            <Modal
+              title="Seek New Game"
+              visible={seekModalVisible}
+              onOk={handleSeekModalOk}
+              onCancel={handleSeekModalCancel}
+            >
+              <SeekForm
+                vals={seekSettings}
+                onChange={setSeekSettings}
+                loggedIn={props.loggedIn}
+                showFriendInput={false}
+              />
+            </Modal>
+
+            <Button type="primary" onClick={showMatchModal}>
+              Match a Friend
+            </Button>
+            <Modal
+              title="Match a Friend"
+              visible={matchModalVisible}
+              onOk={handleMatchModalOk}
+              onCancel={handleMatchModalCancel}
+            >
+              <SeekForm
+                vals={seekSettings}
+                onChange={setSeekSettings}
+                loggedIn={props.loggedIn}
+                showFriendInput={true}
+              />
+            </Modal>
           </div>
         ) : null}
-        <div
-          onClick={() => {
-            setSelectedGameTab('WATCH');
-          }}
-          className={
-            selectedGameTab === 'WATCH' || !loggedIn ? 'tab active' : 'tab'
-          }
-        >
-          Watch
-        </div>
-      </div>
-      {renderGames()}
-      {loggedIn && selectedGameTab === 'PLAY' ? (
-        <div className="requests">
-          <Button type="primary" onClick={showSeekModal}>
-            New Game
-          </Button>
-          <Modal
-            title="Seek New Game"
-            visible={seekModalVisible}
-            onOk={handleSeekModalOk}
-            onCancel={handleSeekModalCancel}
-          >
-            <SeekForm
-              vals={seekSettings}
-              onChange={setSeekSettings}
-              loggedIn={props.loggedIn}
-              showFriendInput={false}
-            />
-          </Modal>
-
-          <Button type="primary" onClick={showMatchModal}>
-            Match a Friend
-          </Button>
-          <Modal
-            title="Match a Friend"
-            visible={matchModalVisible}
-            onOk={handleMatchModalOk}
-            onCancel={handleMatchModalCancel}
-          >
-            <SeekForm
-              vals={seekSettings}
-              onChange={setSeekSettings}
-              loggedIn={props.loggedIn}
-              showFriendInput={true}
-            />
-          </Modal>
-        </div>
-      ) : null}
-    </Card>
+      </Card>
+    </div>
   );
 });
