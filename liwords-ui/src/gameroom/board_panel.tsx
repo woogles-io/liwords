@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Button, Modal, notification } from 'antd';
 import { ArrowDownOutlined, SyncOutlined } from '@ant-design/icons';
+import axios from 'axios';
+
 import GameBoard from './board';
 import GameControls from './game_controls';
 import { Rack } from './rack';
@@ -28,7 +30,7 @@ import {
 import { useStoreContext } from '../store/store';
 import { BlankSelector } from './blank_selector';
 import { GameEndMessage } from './game_end_message';
-import { PlayerMetadata } from './game_info';
+import { PlayerMetadata, GCGResponse } from './game_info';
 
 // The frame atop is 24 height
 // The frames on the sides are 24 in width, surrounded by a 14 pix gutter
@@ -56,6 +58,33 @@ const shuffleString = (a: string): string => {
     alist[j] = tmp;
   }
   return alist.join('');
+};
+
+const gcgExport = (gameID: string) => {
+  axios
+    .post<GCGResponse>('/twirp/game_service.GameMetadataService/GetGCG', {
+      gameId: gameID,
+    })
+    .then((resp) => {
+      const url = window.URL.createObjectURL(new Blob([resp.data.gcg]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `${gameID}.gcg`);
+      document.body.appendChild(link);
+      link.click();
+    })
+    .catch((e) => {
+      if (e.response) {
+        // From Twirp
+        notification.warning({
+          message: 'Export Error',
+          description: e.response.data.msg,
+          duration: 4,
+        });
+      } else {
+        console.log(e);
+      }
+    });
 };
 
 export const BoardPanel = React.memo((props: Props) => {
@@ -359,6 +388,7 @@ export const BoardPanel = React.memo((props: Props) => {
         onChallenge={() => makeMove('challenge')}
         onCommit={() => makeMove('commit')}
         onRematch={rematch}
+        onExamine={() => gcgExport(props.gameID)}
         showRematch={gameEndMessage !== ''}
         gameEndControls={gameEndMessage !== '' || props.gameDone}
         currentRack={props.currentRack}

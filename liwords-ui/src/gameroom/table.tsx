@@ -20,12 +20,7 @@ import {
 import { encodeToSocketFmt } from '../utils/protobuf';
 import './scss/gameroom.scss';
 import { ScoreCard } from './scorecard';
-import {
-  GameInfo,
-  GameMetadata,
-  PlayerMetadata,
-  GCGResponse,
-} from './game_info';
+import { GameInfo, GameMetadata, PlayerMetadata } from './game_info';
 import { PlayState } from '../gen/macondo/api/proto/macondo/macondo_pb';
 // import { GameInfoResponse } from '../gen/api/proto/game_service/game_service_pb';
 
@@ -74,29 +69,6 @@ export const Table = React.memo((props: Props) => {
   const [gameInfo, setGameInfo] = useState<GameMetadata>(defaultGameInfo);
   const [gcgText, setGCGText] = useState('');
   const [isObserver, setIsObserver] = useState(false);
-
-  const gcgExport = () => {
-    axios
-      .post<GCGResponse>('/twirp/game_service.GameMetadataService/GetGCG', {
-        gameId: gameID,
-      })
-      .then((resp) => {
-        console.log('gcg', resp.data);
-        setGCGText(resp.data.gcg);
-      })
-      .catch((e) => {
-        if (e.response) {
-          // From Twirp
-          notification.warning({
-            message: 'Export Error',
-            description: e.response.data.msg,
-            duration: 4,
-          });
-        } else {
-          console.log(e);
-        }
-      });
-  };
 
   useEffect(() => {
     // Request game API to get info about the game at the beginning.
@@ -232,6 +204,7 @@ export const Table = React.memo((props: Props) => {
       />
       <Row gutter={gutter} className="game-table">
         <Col span={6} className="chat-area">
+          {/* we only put the Popconfirm here so that we can physically place it */}
           <Popconfirm
             title={`${rematchRequest
               .getUser()
@@ -254,15 +227,8 @@ export const Table = React.memo((props: Props) => {
               description={isObserver ? 'Observer chat' : 'Game chat'}
             />
           </Popconfirm>
-
-          <Button type="primary" onClick={gcgExport}>
-            Export to GCG
-          </Button>
-          <pre>{gcgText}</pre>
         </Col>
         <Col span={boardspan} className="play-area">
-          {/* we only put the Popconfirm here so that we can physically place it */}
-
           <BoardPanel
             username={props.username}
             board={gameContext.board}

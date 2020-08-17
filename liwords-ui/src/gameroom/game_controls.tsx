@@ -9,6 +9,7 @@ type Props = {
   onRecall: () => void;
   onChallenge: () => void;
   onCommit: () => void;
+  onExamine: () => void;
   onRematch: () => void;
   gameEndControls: boolean;
   showRematch: boolean;
@@ -58,6 +59,7 @@ const GameControls = React.memo((props: Props) => {
     return (
       <EndGameControls
         onRematch={props.onRematch}
+        onExamine={props.onExamine}
         showRematch={props.showRematch}
       />
     );
@@ -94,12 +96,13 @@ const GameControls = React.memo((props: Props) => {
 type EGCProps = {
   onRematch: () => void;
   showRematch: boolean;
+  onExamine: () => void;
 };
 
 const EndGameControls = (props: EGCProps) => (
   <div className="game-controls">
     <Button>Options</Button>
-    <Button>Examine</Button>
+    <Button onClick={props.onExamine}>Export GCG</Button>
     <Button>
       <Link to="/">Exit</Link>
     </Button>

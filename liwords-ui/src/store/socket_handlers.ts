@@ -170,6 +170,11 @@ export const onSocketMsg = (username: string, storeData: StoreData) => {
             message: 'Error',
             description: err.getMessage(),
           });
+          storeData.addChat({
+            entityType: ChatEntityType.ErrorMsg,
+            sender: 'Woogles',
+            message: err.getMessage(),
+          });
           break;
         }
 
