@@ -16,9 +16,12 @@ import (
 	"github.com/domino14/macondo/alphabet"
 	"github.com/domino14/macondo/board"
 	macondoconfig "github.com/domino14/macondo/config"
+	"github.com/domino14/macondo/cross_set"
+	"github.com/domino14/macondo/gaddag"
 	"github.com/domino14/macondo/game"
 	macondopb "github.com/domino14/macondo/gen/api/proto/macondo"
 	"github.com/domino14/macondo/move"
+	"github.com/domino14/macondo/runner"
 
 	"github.com/domino14/liwords/pkg/config"
 	"github.com/domino14/liwords/pkg/entity"
@@ -59,10 +62,11 @@ func InstantiateNewGame(ctx context.Context, gameStore GameStore, cfg *config.Co
 		dbids[idx] = u.ID
 	}
 
-	var bd []string
 	if req.Rules == nil {
 		return nil, errors.New("no rules")
 	}
+
+	var bd []string
 	switch req.Rules.BoardLayoutName {
 	case entity.CrosswordGame:
 		bd = board.CrosswordGameBoard
@@ -70,25 +74,36 @@ func InstantiateNewGame(ctx context.Context, gameStore GameStore, cfg *config.Co
 		return nil, errors.New("unsupported board layout")
 	}
 
-	rules, err := game.NewGameRules(&cfg.MacondoConfig, bd,
-		req.Lexicon, req.Rules.LetterDistributionName)
+	firstAssigned := false
+	if assignedFirst != -1 {
+		firstAssigned = true
+	}
 
+	dist, err := alphabet.LoadLetterDistribution(&cfg.MacondoConfig, req.Rules.LetterDistributionName)
 	if err != nil {
 		return nil, err
 	}
-	g, err := game.NewGame(rules, players)
+
+	gd, err := gaddag.LoadFromCache(&cfg.MacondoConfig, req.Lexicon)
 	if err != nil {
 		return nil, err
 	}
-	g.SetNextFirst(assignedFirst)
-	// StartGame creates a new history Uid and deals tiles, etc.
-	g.StartGame()
-	// XXX: This should be set in Macondo, but let's do it here for now.
-	g.History().Lexicon = req.Lexicon
-	g.SetBackupMode(game.InteractiveGameplayMode)
-	g.SetChallengeRule(req.ChallengeRule)
 
-	entGame := entity.NewGame(g, req)
+	rules := game.NewGameRules(
+		&cfg.MacondoConfig, dist, board.MakeBoard(bd),
+		&gaddag.Lexicon{GenericDawg: gd},
+		cross_set.NullCrossSetGenerator{})
+
+	runner, err := runner.NewGameRunnerFromRules(&runner.GameOptions{
+		FirstIsAssigned: firstAssigned,
+		GoesFirst:       assignedFirst,
+		ChallengeRule:   req.ChallengeRule,
+	}, players, rules)
+	if err != nil {
+		return nil, err
+	}
+
+	entGame := entity.NewGame(&runner.Game, req)
 	entGame.PlayerDBIDs = dbids
 	// Save the game to the store.
 	if err = gameStore.Create(ctx, entGame); err != nil {

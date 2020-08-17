@@ -34,8 +34,8 @@ func withinEpsilon(a, b int) bool {
 }
 
 func newMacondoGame() *game.Game {
-	rules, err := game.NewGameRules(&DefaultConfig, board.CrosswordGameBoard,
-		DefaultConfig.DefaultLexicon, DefaultConfig.DefaultLetterDistribution)
+	rules, err := game.NewBasicGameRules(&DefaultConfig, board.CrosswordGameBoard,
+		DefaultConfig.DefaultLetterDistribution)
 	if err != nil {
 		panic(err)
 	}

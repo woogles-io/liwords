@@ -17,7 +17,10 @@ import (
 	"github.com/domino14/liwords/pkg/stores/user"
 	pkguser "github.com/domino14/liwords/pkg/user"
 	pb "github.com/domino14/liwords/rpc/api/proto/realtime"
+	"github.com/domino14/macondo/alphabet"
 	"github.com/domino14/macondo/board"
+	"github.com/domino14/macondo/cross_set"
+	"github.com/domino14/macondo/gaddag"
 	macondogame "github.com/domino14/macondo/game"
 	macondopb "github.com/domino14/macondo/gen/api/proto/macondo"
 )
@@ -142,8 +145,20 @@ func FromState(timers entity.Timers, Started bool,
 		return nil, errors.New("unsupported board layout")
 	}
 
-	rules, err := macondogame.NewGameRules(&cfg.MacondoConfig, bd,
-		req.Lexicon, req.Rules.LetterDistributionName)
+	dist, err := alphabet.LoadLetterDistribution(&cfg.MacondoConfig, req.Rules.LetterDistributionName)
+	if err != nil {
+		return nil, err
+	}
+
+	gd, err := gaddag.LoadFromCache(&cfg.MacondoConfig, hist.Lexicon)
+	if err != nil {
+		return nil, err
+	}
+
+	rules := macondogame.NewGameRules(
+		&cfg.MacondoConfig, dist, board.MakeBoard(bd),
+		&gaddag.Lexicon{GenericDawg: gd},
+		cross_set.NullCrossSetGenerator{})
 
 	if err != nil {
 		return nil, err
@@ -153,8 +168,10 @@ func FromState(timers entity.Timers, Started bool,
 	if err != nil {
 		return nil, err
 	}
-
+	// XXX: We should probably move this to `NewFromHistory`:
+	mcg.SetBackupMode(macondogame.InteractiveGameplayMode)
 	g.Game = *mcg
+	log.Debug().Interface("history", g.History()).Msg("from-state")
 	return g, nil
 }
 
