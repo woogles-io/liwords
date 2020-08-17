@@ -246,6 +246,12 @@
   border-radius: 10%;
   line-height: 0;
   text-align: center;
+  &[data-rune="Q"] {
+    .rune {
+      position: relative;
+      left: -3px;
+    }
+  }
 }
 
 // squareness fix
@@ -267,12 +273,12 @@
   opacity: 0.4;
 }
 
-.tile .rune {
+.rune {
   @include type-monospace;
   color: white;
   margin: 0;
   line-height: 0;
-  font-size: calc(12px + 1.2vw);
+  font-size: 24px;
   font-weight: 600;
   width: 100%;
   padding-bottom: 3px;
@@ -289,15 +295,15 @@
   padding: 0.6vw 0.3vw;
   line-height: 0;
   margin: 0;
-  font-size: 0.6vw;
+  font-size: 8px;
   font-weight: bold;
   color: white;
 }
 
 .rack .tile {
-  width: 27px;
-  height: 27px;
-  margin: 1px;
+  width: 32px;
+  height: 32px;
+  margin: 2px;
   &.dragging {
     opacity: 0.1;
   }
@@ -504,14 +510,14 @@
   }
 
   .rack .tile {
-    width: 28px;
-    height: 28px;
+    width: 32px;
+    height: 32px;
     margin: 3px;
   }
   .tile,
   .empty-space {
-    height: 28px;
-    width: 28px;
+    height: 30.7px;
+    width: 30.7px;
   }
   .tile .rune {
     font-size: 22px;
@@ -568,8 +574,8 @@
   }
   .tile,
   .empty-space {
-    height: 37px;
-    width: 37px;
+    height: 39.5px;
+    width: 39.5px;
   }
   .rack .tile {
     width: 36px;
