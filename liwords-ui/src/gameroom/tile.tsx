@@ -148,6 +148,7 @@ const Tile = React.memo((props: TileProps) => {
   return (
     <div
       className={computedClassName}
+      data-rune={props.rune}
       style={{ ...tileStyle, cursor: props.grabbable ? 'grab' : 'default' }}
       onClick={props.onClick ? props.onClick : () => {}}
       onDragStart={handleStartDrag}
