@@ -38,8 +38,8 @@ func Rate(
 	opponentRatingDeviation := ConvertRatingDeviationToGlicko225(opponentUnscaledRatingDeviation)
 
 	// Precompute these values for efficiency
-	expectedValue := expectedValue(playerRating, opponentRating, opponentRatingDeviation)
 	opponentAdjustedRatingDeviation := adjustedRatingDeviation(opponentRatingDeviation)
+	expectedValue := expectedValue(playerRating, opponentRating, opponentAdjustedRatingDeviation)
 
 	// Step 3 of the Glicko-225 algorithm
 	variance := 1 / Variance(opponentAdjustedRatingDeviation, expectedValue)

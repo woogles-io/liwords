@@ -179,7 +179,6 @@ func TestVolatilityMaximum(t *testing.T) {
 
 	}
 
-	is.True(int(deviation) == MinimumRatingDeviation)
 	is.True(volatility == MaximumVolatility)
 }
 
@@ -371,6 +370,100 @@ func TestGamesToMinimumDeviation(t *testing.T) {
 	fmt.Printf("Starting at a rating of %d and a deviation of %d,\n"+
 		"it took %d games winning by %d points each against\n"+
 		"a %.2f rated oppoent to get to a deviation of %.2f\n\n", InitialRating, InitialRatingDeviation, games_to_min, spread, opponent_rating, deviation)
+}
+
+func TestRatingWeirdness(t *testing.T) {
+	// New ratings were 1679
+	// and 1476
+
+	rating1 := 1800.0
+	// deviation1 := 220.69 + 20.0
+	deviation1 := float64(MinimumRatingDeviation)
+	volatility1 := float64(InitialVolatility)
+
+	rating2 := 1000.0
+	// deviation2 := 138.1 + 20.0
+	deviation2 := float64(MaximumRatingDeviation)
+	volatility2 := float64(InitialVolatility)
+
+	spread := 190
+
+	newrating1, newdeviation1, newvolatility1 :=
+		Rate(
+			rating1,
+			deviation1,
+			volatility1,
+			rating2,
+			deviation2,
+			spread,
+			60 * 60 * 24)
+
+	newrating2, newdeviation2, newvolatility2 :=
+		Rate(
+			rating2,
+			deviation2,
+			volatility2,
+			rating1,
+			deviation1,
+			-spread,
+			60 * 60 * 24)
+
+	fmt.Println("Proving that in some cases, both players may gain or lose rating.")
+	fmt.Printf("\nPlayer 1 (r, d, v): %f, %f, %f\n", rating1, deviation1, volatility1)
+	fmt.Printf("Player 2 (r, d, v): %f, %f, %f\n", rating2, deviation2, volatility2)
+	fmt.Printf("Result: Player 1 wins by %d\n", spread)
+	fmt.Printf("Player 1 (r, d, v): %f, %f, %f\n", newrating1, newdeviation1, newvolatility1)
+	fmt.Printf("Player 2 (r, d, v): %f, %f, %f\n", newrating2, newdeviation2, newvolatility2)
+	fmt.Printf("Differences: %f, %f\n\n\n", newrating1 - rating1, newrating2 - rating2)
+}
+
+func TestGamesToMinimumDeviationNewPlayers(t *testing.T) {
+
+	rating1 := float64(InitialRating)
+	deviation1 := float64(InitialRatingDeviation)
+	volatility1 := InitialVolatility
+
+	rating2 := float64(InitialRating)
+	deviation2 := float64(InitialRatingDeviation)
+	volatility2 := InitialVolatility
+
+	games_to_min := 0
+	spread := 0
+
+	for i := 0; i < 1000; i++ {
+		games_to_min++
+
+		new_rating1, new_deviation1, new_volatility1 :=
+			Rate(
+				rating1,
+				deviation1,
+				volatility1,
+				rating2,
+				deviation2,
+				spread,
+				RatingPeriodinSeconds/12)
+		rating2, deviation2, volatility2 =
+			Rate(
+				rating2,
+				deviation2,
+				volatility2,
+				rating1,
+				deviation1,
+				spread,
+				RatingPeriodinSeconds/12)
+		rating1 = new_rating1
+		deviation1 = new_deviation1
+		volatility1 = new_volatility1
+		// fmt.Printf("%.2f %.2f %.2f\n", rating, deviation, volatility)
+		if deviation1 == float64(MinimumRatingDeviation) && deviation2 == float64(MinimumRatingDeviation){
+			break
+		}
+	}
+
+	fmt.Printf("Starting at a rating of %d and a deviation of %d,\n"+
+		"it took %d games winning by %d points each against\n"+
+		"a %.2f rated oppoent with the minimum rating deviation\n"+
+		"to get to a deviation of %.2f\n\n", InitialRating, InitialRatingDeviation, games_to_min, spread, rating2, deviation1)
 }
 
 func TestRatingConvergenceTime(t *testing.T) {
