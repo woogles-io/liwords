@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Row, Col, message, notification, Button, Popconfirm } from 'antd';
+import { Row, Col, message, notification, Popconfirm } from 'antd';
 import axios from 'axios';
 
 import { useParams } from 'react-router-dom';
@@ -67,7 +67,6 @@ export const Table = React.memo((props: Props) => {
   const { username, sendSocketMsg } = props;
   // const location = useLocation();
   const [gameInfo, setGameInfo] = useState<GameMetadata>(defaultGameInfo);
-  const [gcgText, setGCGText] = useState('');
   const [isObserver, setIsObserver] = useState(false);
 
   useEffect(() => {

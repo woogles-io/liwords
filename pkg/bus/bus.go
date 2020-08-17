@@ -25,7 +25,7 @@ import (
 const (
 	GameStartDelay = 3 * time.Second
 
-	MaxMessageLength = 256
+	MaxMessageLength = 500
 )
 
 // Bus is the struct; it should contain all the stores to verify messages, etc.
