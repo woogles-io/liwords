@@ -1,5 +1,6 @@
 import React from 'react';
 import { Card, Row, Tooltip } from 'antd';
+import { initialTimeLabel } from '../store/constants';
 
 // At some point we should get this from the pb but then we have to use
 // twirp for this and we really shouldn't need to. Wait on it probably.
@@ -8,8 +9,9 @@ export type GameMetadata = {
   players: Array<PlayerMetadata>;
   lexicon: string;
   variant: string;
-  time_control: string;
+  initial_time_seconds: number;
   max_overtime_minutes: number;
+  increment_seconds: number;
   tournament_name: string;
   challenge_rule: 'FIVE_POINT' | 'TEN_POINT' | 'SINGLE' | 'DOUBLE' | 'VOID';
   rating_mode: number;
@@ -62,7 +64,10 @@ export const GameInfo = (props: Props) => {
   return (
     <Card className="game-info">
       <Row className="variant">
-        {props.meta.time_control} •
+        {`${initialTimeLabel(props.meta.initial_time_seconds)} ${
+          props.meta.increment_seconds || 0
+        }`}{' '}
+        •
         <Tooltip title="The maximum amount of overtime, in minutes">
           <span>
             &nbsp;{`OT: ${props.meta.max_overtime_minutes || 0}`}&nbsp;

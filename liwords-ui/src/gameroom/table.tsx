@@ -34,7 +34,8 @@ const defaultGameInfo = {
   players: new Array<PlayerMetadata>(),
   lexicon: '',
   variant: '',
-  time_control: '',
+  initial_time_seconds: 0,
+  increment_seconds: 0,
   tournament_name: '',
   challenge_rule: 'VOID' as  // wtf typescript? is there a better way?
     | 'FIVE_POINT'

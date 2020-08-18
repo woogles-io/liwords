@@ -25,6 +25,24 @@ export const timeCtrlToDisplayName = (
   return ['Regular', 'blue'];
 };
 
+export const initialTimeLabel = (secs: number) => {
+  let initTLabel;
+  switch (secs) {
+    case 15:
+      initTLabel = '¼';
+      break;
+    case 30:
+      initTLabel = '½';
+      break;
+    case 45:
+      initTLabel = '¾';
+      break;
+    default:
+      initTLabel = `${secs / 60}`;
+  }
+  return initTLabel;
+};
+
 export const ratingToColor = (rating: string): [number, string] => {
   let ratNum;
   if (rating.endsWith('?')) {

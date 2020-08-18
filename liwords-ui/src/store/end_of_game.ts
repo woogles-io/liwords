@@ -45,9 +45,9 @@ export const endGameMessage = (gee: GameEndedEvent): string => {
   }
 
   if (!tie) {
-    summary = [`${summary}${winner} wins${summaryReason}. ${summaryAddendum}`];
+    summary = [`${winner} wins${summaryReason}. ${summaryAddendum}`];
   } else {
-    summary = [`${summary}tie game! ${summaryAddendum}`];
+    summary = [`Tie game! ${summaryAddendum}`];
   }
   if (winrating || loserating) {
     summary.push(

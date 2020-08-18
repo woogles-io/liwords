@@ -262,6 +262,7 @@ func PlayMove(ctx context.Context, gameStore GameStore, userStore user.Store, us
 
 	// Ensure that it is actually the correct player's turn
 	if entGame.Game.PlayerIDOnTurn() != userID {
+		log.Info().Interface("client-event", cge).Msg("not on turn")
 		return errNotOnTurn
 	}
 	timeRemaining := entGame.TimeRemaining(onTurn)

@@ -84,8 +84,8 @@ export class GameInfoResponse extends jspb.Message {
   getTimeControlName(): string;
   setTimeControlName(value: string): void;
 
-  getTimeControl(): string;
-  setTimeControl(value: string): void;
+  getInitialTimeSeconds(): number;
+  setInitialTimeSeconds(value: number): void;
 
   getTournamentName(): string;
   setTournamentName(value: string): void;
@@ -105,6 +105,9 @@ export class GameInfoResponse extends jspb.Message {
   getGameEndReason(): api_proto_realtime_realtime_pb.GameEndReasonMap[keyof api_proto_realtime_realtime_pb.GameEndReasonMap];
   setGameEndReason(value: api_proto_realtime_realtime_pb.GameEndReasonMap[keyof api_proto_realtime_realtime_pb.GameEndReasonMap]): void;
 
+  getIncrementSeconds(): number;
+  setIncrementSeconds(value: number): void;
+
   serializeBinary(): Uint8Array;
   toObject(includeInstance?: boolean): GameInfoResponse.AsObject;
   static toObject(includeInstance: boolean, msg: GameInfoResponse): GameInfoResponse.AsObject;
@@ -121,13 +124,14 @@ export namespace GameInfoResponse {
     lexicon: string,
     variant: string,
     timeControlName: string,
-    timeControl: string,
+    initialTimeSeconds: number,
     tournamentName: string,
     challengeRule: macondo_api_proto_macondo_macondo_pb.ChallengeRuleMap[keyof macondo_api_proto_macondo_macondo_pb.ChallengeRuleMap],
     ratingMode: api_proto_realtime_realtime_pb.RatingModeMap[keyof api_proto_realtime_realtime_pb.RatingModeMap],
     done: boolean,
     maxOvertimeMinutes: number,
     gameEndReason: api_proto_realtime_realtime_pb.GameEndReasonMap[keyof api_proto_realtime_realtime_pb.GameEndReasonMap],
+    incrementSeconds: number,
   }
 }
 

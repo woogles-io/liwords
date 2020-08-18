@@ -3,7 +3,11 @@
 import { Table } from 'antd';
 import React, { ReactNode } from 'react';
 import { FundOutlined, ExportOutlined } from '@ant-design/icons/lib';
-import { challRuleToStr, timeCtrlToDisplayName } from '../store/constants';
+import {
+  challRuleToStr,
+  timeCtrlToDisplayName,
+  initialTimeLabel,
+} from '../store/constants';
 import { SoughtGame } from '../store/reducers/lobby_reducer';
 
 type SoughtGameProps = {
@@ -24,7 +28,8 @@ export const timeFormat = (
     incrementSecs,
     maxOvertime
   )[0];
-  return `${label} ${initialTimeSecs / 60}/${incrementSecs}`;
+
+  return `${label} ${initialTimeLabel(initialTimeSecs)}/${incrementSecs}`;
 };
 
 export const challengeFormat = (cr: number) => {
@@ -119,7 +124,7 @@ export const SoughtGames = (props: Props) => {
             </>
           );
         };
-        let outgoing = sg.receiver.getUserId() ? true : false;
+        let outgoing = !!sg.receiver.getUserId();
         if (sg.receiver.getUserId() === props.userID) {
           outgoing = false;
         }

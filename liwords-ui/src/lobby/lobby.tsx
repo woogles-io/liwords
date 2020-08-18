@@ -9,17 +9,12 @@ import {
   GameRules,
   RatingMode,
   MatchRequest,
-  MatchUser,
   SoughtGameProcessEvent,
   ChatMessage,
 } from '../gen/api/proto/realtime/realtime_pb';
 import { encodeToSocketFmt } from '../utils/protobuf';
 import { SoughtGame } from '../store/reducers/lobby_reducer';
-import {
-  ChallengeRuleMap,
-  ChallengeRule,
-} from '../gen/macondo/api/proto/macondo/macondo_pb';
-import { seekPropVals } from './seek_form';
+import { ChallengeRuleMap } from '../gen/macondo/api/proto/macondo/macondo_pb';
 import { GameLists } from './gameLists';
 import { Chat } from '../chat/chat';
 import { useStoreContext } from '../store/store';
@@ -88,22 +83,10 @@ export const Lobby = (props: Props) => {
   const [selectedGameTab, setSelectedGameTab] = useState(
     props.loggedIn ? 'PLAY' : 'WATCH'
   );
-  const [seekSettings, setSeekSettings] = useState<seekPropVals>({
-    lexicon: 'CSW19',
-    challengerule: ChallengeRule.FIVE_POINT,
-    initialtime: 8,
-    rated: false,
-    maxovertime: 1,
-    friend: '',
-    incrementsecs: 0,
-  });
+
   const { chat } = useStoreContext();
 
   useEffect(() => {
-    setSeekSettings((s) => ({
-      ...s,
-      rated: props.loggedIn,
-    }));
     setSelectedGameTab(props.loggedIn ? 'PLAY' : 'WATCH');
   }, [props.loggedIn]);
 
@@ -115,54 +98,14 @@ export const Lobby = (props: Props) => {
     setMatchModalVisible(true);
   };
 
-  const handleSeekModalOk = () => {
-    setSeekModalVisible(false);
-    sendSeek(
-      {
-        // These items are assigned by the server:
-        seeker: '',
-        userRating: '',
-        seekID: '',
-
-        lexicon: seekSettings.lexicon as string,
-        challengeRule: seekSettings.challengerule as number,
-        initialTimeSecs: Math.round((seekSettings.initialtime as number) * 60),
-        incrementSecs: Math.round(seekSettings.incrementsecs as number),
-        rated: seekSettings.rated as boolean,
-        maxOvertimeMinutes: Math.round(seekSettings.maxovertime as number),
-        receiver: new MatchUser(),
-        rematchFor: '',
-      },
-      props.sendSocketMsg
-    );
-  };
-
   const handleSeekModalCancel = () => {
     setSeekModalVisible(false);
   };
 
-  const handleMatchModalOk = () => {
+  const onSeekSubmit = (g: SoughtGame) => {
+    sendSeek(g, props.sendSocketMsg);
     setMatchModalVisible(false);
-    const matchUser = new MatchUser();
-    matchUser.setDisplayName(seekSettings.friend as string);
-    sendSeek(
-      {
-        // These items are assigned by the server:
-        seeker: '',
-        userRating: '',
-        seekID: '',
-
-        lexicon: seekSettings.lexicon as string,
-        challengeRule: seekSettings.challengerule as number,
-        initialTimeSecs: Math.round((seekSettings.initialtime as number) * 60),
-        incrementSecs: Math.round(seekSettings.incrementsecs as number),
-        rated: seekSettings.rated as boolean,
-        maxOvertimeMinutes: Math.round(seekSettings.maxovertime as number),
-        receiver: matchUser,
-        rematchFor: '',
-      },
-      props.sendSocketMsg
-    );
+    setSeekModalVisible(false);
   };
 
   const handleMatchModalCancel = () => {
@@ -203,11 +146,8 @@ export const Lobby = (props: Props) => {
           matchModalVisible={matchModalVisible}
           seekModalVisible={seekModalVisible}
           handleMatchModalCancel={handleMatchModalCancel}
-          handleMatchModalOk={handleMatchModalOk}
           handleSeekModalCancel={handleSeekModalCancel}
-          handleSeekModalOk={handleSeekModalOk}
-          seekSettings={seekSettings}
-          setSeekSettings={setSeekSettings}
+          onSeekSubmit={onSeekSubmit}
         />
         <div className="announcements">
           <Card>

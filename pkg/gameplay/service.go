@@ -3,7 +3,6 @@ package gameplay
 import (
 	"context"
 	"errors"
-	"strconv"
 
 	"github.com/domino14/macondo/gcgio"
 
@@ -61,18 +60,19 @@ func (gs *GameService) GetMetadata(ctx context.Context, req *pb.GameInfoRequest)
 		}
 		playerInfo = append(playerInfo, pinfo)
 	}
-	timeCtrl := strconv.Itoa(int(gamereq.InitialTimeSeconds)/60) + " " + strconv.Itoa(int(gamereq.IncrementSeconds))
+
 	resp := &pb.GameInfoResponse{
 		Players:            playerInfo,
 		Lexicon:            gamereq.Lexicon,
 		Variant:            string(variant),
 		TimeControlName:    string(timefmt),
-		TimeControl:        timeCtrl,
+		InitialTimeSeconds: gamereq.InitialTimeSeconds,
 		MaxOvertimeMinutes: gamereq.MaxOvertimeMinutes,
 		ChallengeRule:      gamereq.ChallengeRule,
 		RatingMode:         gamereq.RatingMode,
 		Done:               done,
 		GameEndReason:      entGame.GameEndReason,
+		IncrementSeconds:   gamereq.IncrementSeconds,
 	}
 
 	return resp, nil

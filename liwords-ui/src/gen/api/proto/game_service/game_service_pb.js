@@ -610,13 +610,14 @@ proto.game_service.GameInfoResponse.toObject = function(includeInstance, msg) {
     lexicon: jspb.Message.getFieldWithDefault(msg, 2, ""),
     variant: jspb.Message.getFieldWithDefault(msg, 3, ""),
     timeControlName: jspb.Message.getFieldWithDefault(msg, 4, ""),
-    timeControl: jspb.Message.getFieldWithDefault(msg, 5, ""),
+    initialTimeSeconds: jspb.Message.getFieldWithDefault(msg, 5, 0),
     tournamentName: jspb.Message.getFieldWithDefault(msg, 6, ""),
     challengeRule: jspb.Message.getFieldWithDefault(msg, 7, 0),
     ratingMode: jspb.Message.getFieldWithDefault(msg, 8, 0),
     done: jspb.Message.getBooleanFieldWithDefault(msg, 9, false),
     maxOvertimeMinutes: jspb.Message.getFieldWithDefault(msg, 10, 0),
-    gameEndReason: jspb.Message.getFieldWithDefault(msg, 11, 0)
+    gameEndReason: jspb.Message.getFieldWithDefault(msg, 11, 0),
+    incrementSeconds: jspb.Message.getFieldWithDefault(msg, 12, 0)
   };
 
   if (includeInstance) {
@@ -671,8 +672,8 @@ proto.game_service.GameInfoResponse.deserializeBinaryFromReader = function(msg, 
       msg.setTimeControlName(value);
       break;
     case 5:
-      var value = /** @type {string} */ (reader.readString());
-      msg.setTimeControl(value);
+      var value = /** @type {number} */ (reader.readInt32());
+      msg.setInitialTimeSeconds(value);
       break;
     case 6:
       var value = /** @type {string} */ (reader.readString());
@@ -697,6 +698,10 @@ proto.game_service.GameInfoResponse.deserializeBinaryFromReader = function(msg, 
     case 11:
       var value = /** @type {!proto.liwords.GameEndReason} */ (reader.readEnum());
       msg.setGameEndReason(value);
+      break;
+    case 12:
+      var value = /** @type {number} */ (reader.readInt32());
+      msg.setIncrementSeconds(value);
       break;
     default:
       reader.skipField();
@@ -756,9 +761,9 @@ proto.game_service.GameInfoResponse.serializeBinaryToWriter = function(message, 
       f
     );
   }
-  f = message.getTimeControl();
-  if (f.length > 0) {
-    writer.writeString(
+  f = message.getInitialTimeSeconds();
+  if (f !== 0) {
+    writer.writeInt32(
       5,
       f
     );
@@ -802,6 +807,13 @@ proto.game_service.GameInfoResponse.serializeBinaryToWriter = function(message, 
   if (f !== 0.0) {
     writer.writeEnum(
       11,
+      f
+    );
+  }
+  f = message.getIncrementSeconds();
+  if (f !== 0) {
+    writer.writeInt32(
+      12,
       f
     );
   }
@@ -901,20 +913,20 @@ proto.game_service.GameInfoResponse.prototype.setTimeControlName = function(valu
 
 
 /**
- * optional string time_control = 5;
- * @return {string}
+ * optional int32 initial_time_seconds = 5;
+ * @return {number}
  */
-proto.game_service.GameInfoResponse.prototype.getTimeControl = function() {
-  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 5, ""));
+proto.game_service.GameInfoResponse.prototype.getInitialTimeSeconds = function() {
+  return /** @type {number} */ (jspb.Message.getFieldWithDefault(this, 5, 0));
 };
 
 
 /**
- * @param {string} value
+ * @param {number} value
  * @return {!proto.game_service.GameInfoResponse} returns this
  */
-proto.game_service.GameInfoResponse.prototype.setTimeControl = function(value) {
-  return jspb.Message.setProto3StringField(this, 5, value);
+proto.game_service.GameInfoResponse.prototype.setInitialTimeSeconds = function(value) {
+  return jspb.Message.setProto3IntField(this, 5, value);
 };
 
 
@@ -1023,6 +1035,24 @@ proto.game_service.GameInfoResponse.prototype.getGameEndReason = function() {
  */
 proto.game_service.GameInfoResponse.prototype.setGameEndReason = function(value) {
   return jspb.Message.setProto3EnumField(this, 11, value);
+};
+
+
+/**
+ * optional int32 increment_seconds = 12;
+ * @return {number}
+ */
+proto.game_service.GameInfoResponse.prototype.getIncrementSeconds = function() {
+  return /** @type {number} */ (jspb.Message.getFieldWithDefault(this, 12, 0));
+};
+
+
+/**
+ * @param {number} value
+ * @return {!proto.game_service.GameInfoResponse} returns this
+ */
+proto.game_service.GameInfoResponse.prototype.setIncrementSeconds = function(value) {
+  return jspb.Message.setProto3IntField(this, 12, value);
 };
 
 

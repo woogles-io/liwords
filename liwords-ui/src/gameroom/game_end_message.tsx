@@ -1,5 +1,5 @@
 import React from 'react';
-import { Card } from 'antd';
+import { Card, Row, Col } from 'antd';
 
 type Props = {
   message: string;
@@ -8,7 +8,9 @@ type Props = {
 export const GameEndMessage = (props: Props) => (
   <Card className="end-message" size="small">
     {props.message.split('\n').map((line, idx) => (
-      <p key={`l-${idx + 0}`}>{line}</p>
+      <Row key={`l-${idx + 0}`} justify="center">
+        <Col>{line}</Col>
+      </Row>
     ))}
   </Card>
 );

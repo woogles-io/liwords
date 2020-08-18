@@ -75,8 +75,8 @@ func NewMatchRequest(ctx context.Context, gameStore SoughtGameStore,
 
 // ValidateSoughtGame validates the seek request.
 func ValidateSoughtGame(ctx context.Context, req *pb.GameRequest) error {
-	if req.InitialTimeSeconds < 30 {
-		return errors.New("the initial time must be at least 30 seconds")
+	if req.InitialTimeSeconds < 15 {
+		return errors.New("the initial time must be at least 15 seconds")
 	}
 	if req.MaxOvertimeMinutes < 0 || req.MaxOvertimeMinutes > 5 {
 		return errors.New("overtime minutes must be between 0 and 5")

@@ -1,45 +1,138 @@
 import React, { useState } from 'react';
-import { Form, Radio, InputNumber, Switch, Tag, Input } from 'antd';
+import {
+  Form,
+  Radio,
+  InputNumber,
+  Switch,
+  Tag,
+  Input,
+  Slider,
+  Button,
+} from 'antd';
 
 import { Store } from 'antd/lib/form/interface';
 import { ChallengeRule } from '../gen/macondo/api/proto/macondo/macondo_pb';
 import { timeCtrlToDisplayName } from '../store/constants';
+import { MatchUser } from '../gen/api/proto/realtime/realtime_pb';
+import { SoughtGame } from '../store/reducers/lobby_reducer';
 
 export type seekPropVals = { [val: string]: string | number | boolean };
 
+const wholetimes = [];
+for (let i = 1; i <= 25; i++) {
+  wholetimes.push(i.toString());
+}
+const initTimeDiscreteScale = [
+  '¼',
+  '½',
+  '¾',
+  ...wholetimes,
+  '30',
+  '35',
+  '40',
+  '45',
+  '50',
+  '55',
+  '60',
+];
+
+const initTimeFormatter = (val?: number) => {
+  return initTimeDiscreteScale[val!];
+};
+
+const timeScaleToNum = (val: string) => {
+  switch (val) {
+    case '¼':
+      return 0.25;
+    case '½':
+      return 0.5;
+    case '¾':
+      return 0.75;
+    default:
+      return parseInt(val, 10);
+  }
+};
+
+const initialValues: seekPropVals = {
+  lexicon: 'CSW19',
+  challengerule: ChallengeRule.FIVE_POINT,
+  initialtime: 10, // Note this isn't minutes, but the slider position.
+  rated: true,
+  extratime: 1,
+  incOrOT: 'overtime',
+  friend: '',
+};
+
 type Props = {
-  vals: seekPropVals;
-  onChange: (arg0: seekPropVals) => void;
+  onFormSubmit: (g: SoughtGame) => void;
   loggedIn: boolean;
   showFriendInput: boolean;
 };
 
+const otLabel = 'Max Overtime (minutes)';
+const incLabel = 'Increment (seconds)';
+
 export const SeekForm = (props: Props) => {
   const [timectrl, setTimectrl] = useState('Rapid');
   const [ttag, setTtag] = useState('gold');
+  const [timeSetting, setTimeSetting] = useState(
+    initialValues.incOrOT === 'overtime' ? otLabel : incLabel
+  );
+  const [maxTimeSetting, setMaxTimeSetting] = useState(
+    initialValues.incOrOT === 'overtime' ? 5 : 60
+  );
   const onFormChange = (val: Store, allvals: Store) => {
-    if (
-      (allvals.incrementsecs as number) > 0 &&
-      (allvals.maxovertime as number) > 0
-    ) {
-      // eslint-disable-next-line no-param-reassign
-      allvals.incrementsecs = 0;
-      // eslint-disable-next-line no-param-reassign
-      allvals.maxovertime = 0;
+    if (allvals.incOrOT === 'increment') {
+      setTimeSetting(incLabel);
+      setMaxTimeSetting(60);
+    } else {
+      setTimeSetting(otLabel);
+      setMaxTimeSetting(5);
     }
-
-    props.onChange(allvals);
     const [tc, tt] = timeCtrlToDisplayName(
-      Math.round((allvals.initialtime as number) * 60),
-      Math.round(allvals.incrementsecs as number),
-      Math.round(allvals.maxovertime as number)
+      timeScaleToNum(initTimeDiscreteScale[allvals.initialtime]) * 60,
+      allvals.incOrOT === 'increment'
+        ? Math.round(allvals.extratime as number)
+        : 0,
+      allvals.incOrOT === 'increment'
+        ? 0
+        : Math.round(allvals.extratime as number)
     );
     setTimectrl(tc);
     setTtag(tt);
   };
 
+  const onFormSubmit = (val: Store) => {
+    const receiver = new MatchUser();
+    receiver.setDisplayName(val.friend as string);
+
+    const obj = {
+      // These items are assigned by the server:
+      seeker: '',
+      userRating: '',
+      seekID: '',
+
+      lexicon: val.lexicon as string,
+      challengeRule: val.challengerule as number,
+      initialTimeSecs:
+        timeScaleToNum(initTimeDiscreteScale[val.initialtime]) * 60,
+      incrementSecs:
+        val.incOrOT === 'increment' ? Math.round(val.extratime as number) : 0,
+      rated: val.rated as boolean,
+      maxOvertimeMinutes:
+        val.incOrOT === 'increment' ? 0 : Math.round(val.extratime as number),
+      receiver,
+      rematchFor: '',
+    };
+    props.onFormSubmit(obj);
+  };
+
   return (
-    <Form onValuesChange={onFormChange} initialValues={props.vals}>
+    <Form
+      onValuesChange={onFormChange}
+      initialValues={initialValues}
+      onFinish={onFormSubmit}
+    >
       {props.showFriendInput && (
         <Form.Item label="Friend" name="friend">
           <Input />
@@ -61,18 +154,31 @@ export const SeekForm = (props: Props) => {
         </Radio.Group>
       </Form.Item>
       <Form.Item label="Initial Time (minutes)" name="initialtime">
-        <InputNumber />
+        <Slider
+          tipFormatter={initTimeFormatter}
+          min={0}
+          max={initTimeDiscreteScale.length - 1}
+          tooltipVisible
+        />
       </Form.Item>
-      <Form.Item label="Increment (seconds)" name="incrementsecs">
-        <InputNumber min={0} max={60} />
+      <Form.Item label="Time Setting" name="incOrOT">
+        <Radio.Group>
+          <Radio.Button value="overtime">Use Max Overtime</Radio.Button>
+          <Radio.Button value="increment">Use Increment</Radio.Button>
+        </Radio.Group>
       </Form.Item>
-      <Form.Item label="Max Overtime (minutes)" name="maxovertime">
-        <InputNumber max={5} min={0} />
+      <Form.Item label={timeSetting} name="extratime">
+        <InputNumber min={0} max={maxTimeSetting} />
       </Form.Item>
       <Form.Item label="Rated" name="rated" valuePropName="checked">
         <Switch />
       </Form.Item>
       Time Control: <Tag color={ttag}>{timectrl}</Tag>
+      <Form.Item>
+        <Button type="primary" htmlType="submit" style={{ marginTop: 10 }}>
+          Send Request
+        </Button>
+      </Form.Item>
     </Form>
   );
 };

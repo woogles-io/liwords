@@ -1,9 +1,10 @@
 import React from 'react';
-import { SoughtGames } from './sought_games';
 import { Button, Card, Modal } from 'antd';
+import { SoughtGames } from './sought_games';
 import { ActiveGames } from './active_games';
-import { SeekForm, seekPropVals } from './seek_form';
+import { SeekForm } from './seek_form';
 import { useStoreContext } from '../store/store';
+import { SoughtGame } from '../store/reducers/lobby_reducer';
 
 type Props = {
   loggedIn: boolean;
@@ -17,11 +18,8 @@ type Props = {
   showSeekModal: () => void;
   seekModalVisible: boolean;
   handleMatchModalCancel: () => void;
-  handleMatchModalOk: () => void;
   handleSeekModalCancel: () => void;
-  handleSeekModalOk: () => void;
-  seekSettings: seekPropVals;
-  setSeekSettings: (seekProps: seekPropVals) => void;
+  onSeekSubmit: (g: SoughtGame) => void;
 };
 
 export const GameLists = React.memo((props: Props) => {
@@ -37,11 +35,8 @@ export const GameLists = React.memo((props: Props) => {
     matchModalVisible,
     seekModalVisible,
     handleMatchModalCancel,
-    handleMatchModalOk,
     handleSeekModalCancel,
-    handleSeekModalOk,
-    seekSettings,
-    setSeekSettings,
+    onSeekSubmit,
   } = props;
   const { lobbyContext } = useStoreContext();
   const renderGames = () => {
@@ -120,12 +115,15 @@ export const GameLists = React.memo((props: Props) => {
             <Modal
               title="Seek New Game"
               visible={seekModalVisible}
-              onOk={handleSeekModalOk}
               onCancel={handleSeekModalCancel}
+              footer={[
+                <Button key="back" onClick={handleSeekModalCancel}>
+                  Cancel
+                </Button>,
+              ]}
             >
               <SeekForm
-                vals={seekSettings}
-                onChange={setSeekSettings}
+                onFormSubmit={onSeekSubmit}
                 loggedIn={props.loggedIn}
                 showFriendInput={false}
               />
@@ -137,12 +135,15 @@ export const GameLists = React.memo((props: Props) => {
             <Modal
               title="Match a Friend"
               visible={matchModalVisible}
-              onOk={handleMatchModalOk}
               onCancel={handleMatchModalCancel}
+              footer={[
+                <Button key="back" onClick={handleMatchModalCancel}>
+                  Cancel
+                </Button>,
+              ]}
             >
               <SeekForm
-                vals={seekSettings}
-                onChange={setSeekSettings}
+                onFormSubmit={onSeekSubmit}
                 loggedIn={props.loggedIn}
                 showFriendInput={true}
               />
