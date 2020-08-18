@@ -372,6 +372,72 @@ func TestGamesToMinimumDeviation(t *testing.T) {
 		"a %.2f rated oppoent to get to a deviation of %.2f\n\n", InitialRating, InitialRatingDeviation, games_to_min, spread, opponent_rating, deviation)
 }
 
+func TestRatingManually(t *testing.T) {
+	rating1 := 1600.0
+	deviation1 := 350.0
+	volatility1 := 0.06
+
+	rating2 := 1300.0
+	// deviation2 := 138.1 + 20.0
+	deviation2 := 80.0
+	volatility2 := 0.06
+
+	spread := 100
+
+	// u1 = 0.57564624926 = (1600 - 1500) / 173.7178
+	// u2 = -1.15129249852 = (1300 - 1500) / 173.7178
+	// RD1 = 2.01476187242 = 350 / 173.7178
+	// RD2 = 0.4605169994 = 80 / 173.7178
+	// g1 = 0.96924739925 = 1 / sqrt(1 + 3*(0.4605169994)^2/(pi^2))
+	// g2 = 0.66906941258 = 1 / sqrt(1 + 3*(2.01476187242)^2/(pi^2))
+	// E1 = 0.84208591013 = 1 / (1 + exp(-1 * 0.96924739925 * (0.57564624926 - -1.15129249852)))
+	// E2 = 0.23949650317 = 1 / (1 + exp(-1 * 0.66906941258 * (-1.15129249852 - 0.57564624926)))
+	// var1 = 8.00485425177 = 1 / (0.96924739925^2 * 0.84208591013*(1-0.84208591013))
+	// var2 = 12.2647092165 = 1 / (0.66906941258^2 * 0.23949650317*(1-0.23949650317s))
+
+	// K = 400 = 4 * .25 * * 200 / (1 - 2*0.25)
+	// r1 = 0.875 = 100 / (2 * 200 + 400) + 0.25 + 0.5
+	// r2 = 0.125 = -100 / (2 * 200 + 400) - 0.25 + 0.5
+	// d1 = 0.25537002787 = 8.00485425177*0.96924739925*(0.875 - 0.84208591013)
+	// d2 = -0.93955164028 = 12.2647092165*0.66906941258*(0.125 - 0.23949650317)
+
+	// RD1' = 1.64116641184 = 1 / sqrt( (1 / 2.01476187242^2) + (1 / 8.00485425177) )
+	// RD2' = 0.45658637379 = 1 / sqrt( (1 / 0.4605169994^2) + (1 / 12.2647092165) )
+
+	// u1' = 0.66157168341 = 0.57564624926 + 1.64116641184'^2 * 0.96924739925 * (0.875 - 0.84208591013)
+	// u2' = -1.16726265943 = -1.15129249852 +  0.45658637379^2 * 0.66906941258 * (0.125 - 0.23949650317)
+
+	// new rating1 = 1614.92677738 = 0.66157168341 * 173.7178 + 1500
+	// new rating2 = 1297.22569878 = -1.16726265943 * 173.7178 + 1500
+
+	// new rd1 = 285.099818499 = 1.64116641184 * 173.7178
+	// new rd2 = 80
+	newrating1, newdeviation1, newvolatility1 :=
+		Rate(
+			rating1,
+			deviation1,
+			volatility1,
+			rating2,
+			deviation2,
+			spread,
+			0)
+
+	newrating2, newdeviation2, newvolatility2 :=
+		Rate(
+			rating2,
+			deviation2,
+			volatility2,
+			rating1,
+			deviation1,
+			-spread,
+			0)
+
+	fmt.Printf("Manual ratings test:\n\n")
+	fmt.Printf("Result: Player 1 wins by %d\n", spread)
+	fmt.Printf("Player 1 (r, d, v): %f, %f, %f\n", newrating1, newdeviation1, newvolatility1)
+	fmt.Printf("Player 2 (r, d, v): %f, %f, %f\n", newrating2, newdeviation2, newvolatility2)
+}
+
 func TestRatingWeirdness(t *testing.T) {
 	// New ratings were 1679
 	// and 1476
@@ -396,7 +462,7 @@ func TestRatingWeirdness(t *testing.T) {
 			rating2,
 			deviation2,
 			spread,
-			60 * 60 * 24)
+			60*60*24)
 
 	newrating2, newdeviation2, newvolatility2 :=
 		Rate(
@@ -406,15 +472,15 @@ func TestRatingWeirdness(t *testing.T) {
 			rating1,
 			deviation1,
 			-spread,
-			60 * 60 * 24)
+			60*60*24)
 
-	fmt.Println("Proving that in some cases, both players may gain or lose rating.")
+	fmt.Println("\n\nProving that in some cases, both players may gain or lose rating.")
 	fmt.Printf("\nPlayer 1 (r, d, v): %f, %f, %f\n", rating1, deviation1, volatility1)
 	fmt.Printf("Player 2 (r, d, v): %f, %f, %f\n", rating2, deviation2, volatility2)
 	fmt.Printf("Result: Player 1 wins by %d\n", spread)
 	fmt.Printf("Player 1 (r, d, v): %f, %f, %f\n", newrating1, newdeviation1, newvolatility1)
 	fmt.Printf("Player 2 (r, d, v): %f, %f, %f\n", newrating2, newdeviation2, newvolatility2)
-	fmt.Printf("Differences: %f, %f\n\n\n", newrating1 - rating1, newrating2 - rating2)
+	fmt.Printf("Differences: %f, %f\n\n\n", newrating1-rating1, newrating2-rating2)
 }
 
 func TestGamesToMinimumDeviationNewPlayers(t *testing.T) {
@@ -455,7 +521,7 @@ func TestGamesToMinimumDeviationNewPlayers(t *testing.T) {
 		deviation1 = new_deviation1
 		volatility1 = new_volatility1
 		// fmt.Printf("%.2f %.2f %.2f\n", rating, deviation, volatility)
-		if deviation1 == float64(MinimumRatingDeviation) && deviation2 == float64(MinimumRatingDeviation){
+		if deviation1 == float64(MinimumRatingDeviation) && deviation2 == float64(MinimumRatingDeviation) {
 			break
 		}
 	}
