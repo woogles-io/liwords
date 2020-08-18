@@ -4,13 +4,14 @@ import (
 	"encoding/csv"
 	"flag"
 	"fmt"
-	"github.com/matryer/is"
 	"log"
 	"math"
 	"os"
 	"sort"
 	"strconv"
 	"testing"
+
+	"github.com/matryer/is"
 )
 
 var file = flag.String("file", "", "File to use in the last test")
@@ -43,6 +44,12 @@ func readCsvFile(filePath string) [][]string {
 	}
 
 	return records
+}
+
+const epsilon = 1e-4
+
+func withinEpsilon(a, b float64) bool {
+	return math.Abs(float64(a-b)) < float64(epsilon)
 }
 
 func MeanStdDev(floats []float64) (float64, float64) {
@@ -436,6 +443,11 @@ func TestRatingManually(t *testing.T) {
 	fmt.Printf("Result: Player 1 wins by %d\n", spread)
 	fmt.Printf("Player 1 (r, d, v): %f, %f, %f\n", newrating1, newdeviation1, newvolatility1)
 	fmt.Printf("Player 2 (r, d, v): %f, %f, %f\n", newrating2, newdeviation2, newvolatility2)
+	is := is.New(t)
+	is.True(withinEpsilon(newrating1, 1614.926777))
+	is.True(withinEpsilon(newrating2, 1297.225699))
+	is.True(withinEpsilon(newdeviation1, 285.099818))
+	is.True(withinEpsilon(newdeviation2, 80))
 }
 
 func TestRatingWeirdness(t *testing.T) {
