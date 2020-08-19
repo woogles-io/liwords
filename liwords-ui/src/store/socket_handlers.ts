@@ -45,7 +45,7 @@ const matchReqSound = new Audio(matchReqMP3);
 const startgameSound = new Audio(startgameMP3);
 const endgameSound = new Audio(endgameMP3);
 const woofSound = new Audio(woofWav);
-woofSound.volume = 0.15;
+woofSound.volume = 0.25;
 
 export const parseMsgs = (msg: Uint8Array) => {
   // Multiple msgs can come in the same packet.

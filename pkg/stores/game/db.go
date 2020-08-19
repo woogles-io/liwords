@@ -158,7 +158,7 @@ func FromState(timers entity.Timers, Started bool,
 	rules := macondogame.NewGameRules(
 		&cfg.MacondoConfig, dist, board.MakeBoard(bd),
 		&gaddag.Lexicon{GenericDawg: gd},
-		cross_set.GaddagCrossSetGenerator{Dist: dist, Gaddag: gd})
+		cross_set.CrossScoreOnlyGenerator{Dist: dist})
 
 	if err != nil {
 		return nil, err
@@ -179,7 +179,6 @@ func FromState(timers entity.Timers, Started bool,
 // the database.
 func (s *DBStore) Set(ctx context.Context, g *entity.Game) error {
 	// s.db.LogMode(true)
-	log.Debug().Interface("set-history", g.History()).Msg("in set")
 	dbg, err := s.toDBObj(ctx, g)
 	if err != nil {
 		return err
@@ -189,7 +188,6 @@ func (s *DBStore) Set(ctx context.Context, g *entity.Game) error {
 	if err != nil {
 		return err
 	}
-	log.Debug().Interface("newhist", th).Msg("set")
 
 	result := s.db.Model(&game{}).Set("gorm:query_option", "FOR UPDATE").
 		Where("uuid = ?", g.GameID()).Update(dbg)
