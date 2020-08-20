@@ -9,6 +9,7 @@ import (
 	"errors"
 	"math"
 	"strconv"
+	"time"
 
 	"github.com/rs/zerolog/log"
 	"google.golang.org/protobuf/proto"
@@ -435,14 +436,13 @@ func gameEndedEvent(ctx context.Context, g *entity.Game, userStore user.Store) *
 
 	ratings := map[string]int32{}
 	var err error
+	var now = time.Now().Unix()
 	if g.CreationRequest().RatingMode == pb.RatingMode_RATED {
-		ratings, err = rate(ctx, scores, g, winner, userStore)
+		ratings, err = Rate(ctx, scores, g, winner, userStore, now)
 		if err != nil {
 			log.Err(err).Msg("rating-error")
 		}
 	}
-
-	// Otherwise the winner will be blank, because it was a tie.
 	evt := &pb.GameEndedEvent{
 		Scores:     scores,
 		NewRatings: ratings,

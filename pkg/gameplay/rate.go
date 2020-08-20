@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"math"
-	"time"
 
 	"github.com/domino14/liwords/pkg/entity"
 	"github.com/domino14/liwords/pkg/glicko"
@@ -13,8 +12,8 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-func rate(ctx context.Context, scores map[string]int32, g *entity.Game,
-	winner string, userStore user.Store) (map[string]int32, error) {
+func Rate(ctx context.Context, scores map[string]int32, g *entity.Game,
+	winner string, userStore user.Store, now int64) (map[string]int32, error) {
 
 	// Fetch the users from the store.
 	users := []*entity.User{}
@@ -68,7 +67,6 @@ func rate(ctx context.Context, scores map[string]int32, g *entity.Game,
 		log.Debug().Str("p0", usernames[0]).Str("p1", usernames[1]).Int("spread", spread).Msg("rating")
 	}
 
-	var now = time.Now().Unix()
 	if rat0.LastGameTimestamp == 0 {
 		rat0.LastGameTimestamp = now
 	}

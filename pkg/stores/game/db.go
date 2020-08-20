@@ -129,13 +129,14 @@ func FromState(timers entity.Timers, Started bool,
 		return nil, err
 	}
 	g.GameReq = req
-	log.Debug().Interface("reqBytes", req).Msg("req-bytes")
+	log.Debug().Interface("req", req).Msg("req-unmarshal")
 	// Then unmarshal the history and start a game from it.
 	hist := &macondopb.GameHistory{}
 	err = proto.Unmarshal(histBytes, hist)
 	if err != nil {
 		return nil, err
 	}
+	log.Info().Interface("hist", hist).Msg("hist-unmarshal")
 
 	var bd []string
 	switch req.Rules.BoardLayoutName {
@@ -150,7 +151,13 @@ func FromState(timers entity.Timers, Started bool,
 		return nil, err
 	}
 
-	gd, err := gaddag.LoadFromCache(&cfg.MacondoConfig, hist.Lexicon)
+	lexicon := hist.Lexicon
+	if lexicon == "" {
+		// This can happen for some early games where we didn't migrate this.
+		lexicon = req.Lexicon
+	}
+
+	gd, err := gaddag.LoadFromCache(&cfg.MacondoConfig, lexicon)
 	if err != nil {
 		return nil, err
 	}
@@ -237,7 +244,20 @@ func (s *DBStore) ListActive(ctx context.Context) ([]*pb.GameMeta, error) {
 	}
 
 	return gamesMeta, nil
+}
 
+// List all game IDs, ordered by date played. Should not be used by anything
+// other than debug or migration code when the db is still small.
+func (s *DBStore) ListAllIDs(ctx context.Context) ([]string, error) {
+	var gids []struct{ Uuid string }
+	result := s.db.Table("games").Select("uuid").Order("created_at").Scan(&gids)
+
+	ids := make([]string, len(gids))
+	for idx, gid := range gids {
+		ids[idx] = gid.Uuid
+	}
+
+	return ids, result.Error
 }
 
 func (s *DBStore) toDBObj(ctx context.Context, g *entity.Game) (*game, error) {
