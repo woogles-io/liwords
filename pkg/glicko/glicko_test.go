@@ -379,13 +379,12 @@ func TestGamesToMinimumDeviation(t *testing.T) {
 		"a %.2f rated oppoent to get to a deviation of %.2f\n\n", InitialRating, InitialRatingDeviation, games_to_min, spread, opponent_rating, deviation)
 }
 
-func TestRatingManually(t *testing.T) {
+/*func TestRatingManually(t *testing.T) {
 	rating1 := 1600.0
 	deviation1 := 350.0
 	volatility1 := 0.06
 
 	rating2 := 1300.0
-	// deviation2 := 138.1 + 20.0
 	deviation2 := 80.0
 	volatility2 := 0.06
 
@@ -448,7 +447,7 @@ func TestRatingManually(t *testing.T) {
 	is.True(withinEpsilon(newrating2, 1297.225699))
 	is.True(withinEpsilon(newdeviation1, 285.099818))
 	is.True(withinEpsilon(newdeviation2, 80))
-}
+}*/
 
 func TestRatingWeirdness(t *testing.T) {
 	// New ratings were 1679
