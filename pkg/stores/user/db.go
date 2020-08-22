@@ -110,6 +110,27 @@ func (s *DBStore) Get(ctx context.Context, username string) (*entity.User, error
 	return entu, nil
 }
 
+// GetByEmail gets the user by email. It does not try to get the profile.
+// We don't get the profile here because GetByEmail is only used for things
+// like password resets and there is no need.
+func (s *DBStore) GetByEmail(ctx context.Context, email string) (*entity.User, error) {
+	u := &User{}
+	if result := s.db.Where("email = ?", email).First(u); result.Error != nil {
+		return nil, result.Error
+	}
+
+	entu := &entity.User{
+		ID:        u.ID,
+		Username:  u.Username,
+		UUID:      u.UUID,
+		Email:     u.Email,
+		Password:  u.Password,
+		Anonymous: false,
+	}
+
+	return entu, nil
+}
+
 func dbProfileToProfile(p *profile) (*entity.Profile, error) {
 	var rdata entity.Ratings
 	err := json.Unmarshal(p.Ratings.RawMessage, &rdata)

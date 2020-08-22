@@ -19,6 +19,8 @@ import { Register } from './lobby/register';
 import { MessageType, JoinPath } from './gen/api/proto/realtime/realtime_pb';
 import { UserProfile } from './profile/profile';
 import { PasswordChange } from './lobby/password_change';
+import { PasswordReset } from './lobby/password_reset';
+import { NewPassword } from './lobby/new_password';
 
 type TokenResponse = {
   token: string;
@@ -150,6 +152,18 @@ const App = React.memo(() => {
             connectedToSocket={connectedToSocket}
           />
         </Route>
+        <Route path="/password/reset">
+          <PasswordReset />
+        </Route>
+
+        <Route path="/password/new">
+          <NewPassword
+            username={username}
+            loggedIn={loggedIn}
+            connectedToSocket={connectedToSocket}
+          />
+        </Route>
+
         <Route path="/profile/:username">
           <UserProfile
             myUsername={username}

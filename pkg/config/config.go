@@ -12,6 +12,7 @@ type Config struct {
 	ListenAddr   string
 	SecretKey    string
 	NatsURL      string
+	MailgunKey   string
 }
 
 // Load loads the configs from the given arguments
@@ -29,7 +30,7 @@ func (c *Config) Load(args []string) error {
 	fs.StringVar(&c.ListenAddr, "listen-addr", ":8001", "listen on this address")
 	fs.StringVar(&c.SecretKey, "secret-key", "", "secret key must be a random unguessable string")
 	fs.StringVar(&c.NatsURL, "nats-url", "nats://localhost:4222", "the NATS server URL")
-
+	fs.StringVar(&c.MailgunKey, "mailgun-key", "", "the Mailgun secret key")
 	err := fs.Parse(args)
 	return err
 }

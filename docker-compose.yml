@@ -13,10 +13,11 @@ services:
       DEBUG: 1
       NATS_URL: nats://nats:4222
       REGISTRATION_CODE: foobar
+      MAILGUN_KEY: ${MAILGUN_KEY:-default}
     volumes:
       - .:/opt/program:rw
     command: sh -c "go run cmd/liwords-api/*.go"
-    depends_on: ["db", "proxy", "nats", "socket"]
+    depends_on: ["db", "proxy", "nats", "socket", "redis"]
     networks:
       - aeronet
     ports:
@@ -68,6 +69,11 @@ services:
     ports:
       - "4222:4222"
       - "8222:8222"
+    networks:
+      - aeronet
+
+  redis:
+    image: "redis"
     networks:
       - aeronet
 

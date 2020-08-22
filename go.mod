@@ -6,11 +6,14 @@ require (
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible
 	github.com/domino14/macondo v0.4.5-0.20200819044932-481c0922d3de
+	github.com/gobuffalo/envy v1.9.0 // indirect
 	github.com/golang/protobuf v1.4.2
 	github.com/jinzhu/gorm v1.9.14
 	github.com/justinas/alice v1.2.0
 	github.com/kr/text v0.2.0 // indirect
 	github.com/lithammer/shortuuid v3.0.0+incompatible
+	github.com/mailgun/mailgun-go v2.0.0+incompatible
+	github.com/mailgun/mailgun-go/v4 v4.1.4
 	github.com/matryer/is v1.3.0
 	github.com/namsral/flag v1.7.4-pre
 	github.com/nats-io/nats.go v1.10.0

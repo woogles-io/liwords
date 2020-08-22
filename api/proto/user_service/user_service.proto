@@ -31,6 +31,10 @@ message LoginResponse {
 message ChangePasswordResponse {}
 
 message ResetPasswordRequestStep1 { string email = 1; }
+message ResetPasswordRequestStep2 {
+  string password = 1;
+  string reset_code = 2;
+}
 message ResetPasswordResponse {}
 
 // SocketTokenRequest requests a token in order to authenticate with the
@@ -45,7 +49,10 @@ service AuthenticationService {
   rpc Login(UserLoginRequest) returns (LoginResponse);
   rpc Logout(UserLogoutRequest) returns (LogoutResponse);
   rpc GetSocketToken(SocketTokenRequest) returns (SocketTokenResponse);
-  rpc ResetPassword(ResetPasswordRequestStep1) returns (ResetPasswordResponse);
+  rpc ResetPasswordStep1(ResetPasswordRequestStep1)
+      returns (ResetPasswordResponse);
+  rpc ResetPasswordStep2(ResetPasswordRequestStep2)
+      returns (ResetPasswordResponse);
   rpc ChangePassword(ChangePasswordRequest) returns (ChangePasswordResponse);
 }
 

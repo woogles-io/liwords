@@ -82,7 +82,7 @@ func main() {
 	gameStore := game.NewCache(tmpGameStore)
 	soughtGameStore := soughtgame.NewMemoryStore()
 
-	authenticationService := auth.NewAuthenticationService(userStore, sessionStore, cfg.SecretKey)
+	authenticationService := auth.NewAuthenticationService(userStore, sessionStore, cfg.SecretKey, cfg.MailgunKey)
 	registrationService := registration.NewRegistrationService(userStore)
 	gameService := gameplay.NewGameService(userStore, gameStore)
 	profileService := pkguser.NewProfileService(userStore)
