@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/gomodule/redigo/redis"
 	"github.com/rs/zerolog/log"
 
 	nats "github.com/nats-io/nats.go"
@@ -35,6 +36,7 @@ type Bus struct {
 	userStore       user.Store
 	gameStore       gameplay.GameStore
 	soughtGameStore gameplay.SoughtGameStore
+	redisPool       *redis.Pool
 
 	subscriptions []*nats.Subscription
 	subchans      map[string]chan *nats.Msg
@@ -43,7 +45,7 @@ type Bus struct {
 }
 
 func NewBus(cfg *config.Config, userStore user.Store, gameStore gameplay.GameStore,
-	soughtGameStore gameplay.SoughtGameStore) (*Bus, error) {
+	soughtGameStore gameplay.SoughtGameStore, redisPool *redis.Pool) (*Bus, error) {
 
 	natsconn, err := nats.Connect(cfg.NatsURL)
 
@@ -59,6 +61,7 @@ func NewBus(cfg *config.Config, userStore user.Store, gameStore gameplay.GameSto
 		subchans:        map[string]chan *nats.Msg{},
 		config:          cfg,
 		gameEventChan:   make(chan *entity.EventWrapper, 64),
+		redisPool:       redisPool,
 	}
 	gameStore.SetGameEventChan(bus.gameEventChan)
 
@@ -544,27 +547,6 @@ func (b *Bus) matchDeclined(ctx context.Context, evt *pb.DeclineMatchRequest, us
 	return b.pubToUser(decliner, wrapped)
 }
 
-func (b *Bus) chat(ctx context.Context, userID string, evt *pb.ChatMessage) error {
-	if len(evt.Message) > MaxMessageLength {
-		return errors.New("message-too-long")
-	}
-	username, err := b.userStore.Username(ctx, userID)
-	if err != nil {
-		return err
-	}
-
-	toSend := entity.WrapEvent(&pb.ChatMessage{
-		Username: username,
-		Channel:  evt.Channel,
-		Message:  evt.Message,
-	}, pb.MessageType_CHAT_MESSAGE, "")
-	data, err := toSend.Serialize()
-	if err != nil {
-		return err
-	}
-	return b.natsconn.Publish(evt.Channel, data)
-}
-
 func (b *Bus) broadcastSeekDeletion(seekID string) error {
 	toSend := entity.WrapEvent(&pb.SoughtGameProcessEvent{RequestId: seekID},
 		pb.MessageType_SOUGHT_GAME_PROCESS_EVENT, "")
@@ -646,11 +628,15 @@ func (b *Bus) initRealmInfo(ctx context.Context, evt *pb.InitRealmInfo) error {
 		if err != nil {
 			return err
 		}
-		return b.pubToUser(evt.UserId, refresher)
+		err = b.pubToUser(evt.UserId, refresher)
+		if err != nil {
+			return err
+		}
 	} else {
 		log.Debug().Interface("evt", evt).Msg("no init realm info")
 	}
-	return nil
+	// send chat info
+	return b.sendOldChats(evt.UserId, evt.Realm)
 }
 
 func (b *Bus) deleteSoughtForUser(ctx context.Context, userID string) error {

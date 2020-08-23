@@ -8,6 +8,7 @@ require (
 	github.com/domino14/macondo v0.4.5-0.20200819044932-481c0922d3de
 	github.com/gobuffalo/envy v1.9.0 // indirect
 	github.com/golang/protobuf v1.4.2
+	github.com/gomodule/redigo v1.8.2
 	github.com/jinzhu/gorm v1.9.14
 	github.com/justinas/alice v1.2.0
 	github.com/kr/text v0.2.0 // indirect

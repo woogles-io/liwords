@@ -23,6 +23,7 @@ import {
   MatchRequests,
   DeclineMatchRequest,
   ChatMessage,
+  ChatMessages,
 } from '../gen/api/proto/realtime/realtime_pb';
 import { ActionType } from '../actions/actions';
 import { endGameMessage } from './end_of_game';
@@ -77,6 +78,7 @@ export const parseMsgs = (msg: Uint8Array) => {
       [MessageType.MATCH_REQUESTS]: MatchRequests,
       [MessageType.DECLINE_MATCH_REQUEST]: DeclineMatchRequest,
       [MessageType.CHAT_MESSAGE]: ChatMessage,
+      [MessageType.CHAT_MESSAGES]: ChatMessages,
     };
 
     const parsedMsg = msgTypes[msgType];
@@ -184,7 +186,23 @@ export const onSocketMsg = (username: string, storeData: StoreData) => {
             entityType: ChatEntityType.UserChat,
             sender: cm.getUsername(),
             message: cm.getMessage(),
+            timestamp: cm.getTimestamp(),
           });
+          break;
+        }
+
+        case MessageType.CHAT_MESSAGES: {
+          // These replace all existing messages.
+          const cms = parsedMsg as ChatMessages;
+
+          const entities = cms.getMessagesList().map((cm) => ({
+            entityType: ChatEntityType.UserChat,
+            sender: cm.getUsername(),
+            message: cm.getMessage(),
+            timestamp: cm.getTimestamp(),
+          }));
+
+          storeData.addChats(entities);
           break;
         }
 

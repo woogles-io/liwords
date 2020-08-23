@@ -14,6 +14,7 @@ services:
       NATS_URL: nats://nats:4222
       REGISTRATION_CODE: foobar
       MAILGUN_KEY: ${MAILGUN_KEY:-default}
+      REDIS_URL: "redis://redis:6379"
     volumes:
       - .:/opt/program:rw
     command: sh -c "go run cmd/liwords-api/*.go"
@@ -73,7 +74,11 @@ services:
       - aeronet
 
   redis:
-    image: "redis"
+    image: "redis:alpine"
+    volumes:
+      - redis-data-volume:/data
+    ports:
+      - 6379:6379
     networks:
       - aeronet
 
@@ -114,4 +119,6 @@ networks:
 
 volumes:
   pg-data-volume:
+    external: false
+  redis-data-volume:
     external: false

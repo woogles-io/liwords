@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/domino14/macondo/gaddag"
+	"github.com/gomodule/redigo/redis"
 
 	"github.com/domino14/liwords/pkg/apiserver"
 	"github.com/domino14/liwords/pkg/bus"
@@ -39,6 +40,15 @@ const (
 	GracefulShutdownTimeout = 30 * time.Second
 )
 
+func newPool(addr string) *redis.Pool {
+	return &redis.Pool{
+		MaxIdle:     3,
+		IdleTimeout: 240 * time.Second,
+		// Dial or DialContext must be set. When both are set, DialContext takes precedence over Dial.
+		Dial: func() (redis.Conn, error) { return redis.DialURL(addr) },
+	}
+}
+
 func main() {
 
 	cfg := &config.Config{}
@@ -54,6 +64,8 @@ func main() {
 		zerolog.SetGlobalLevel(zerolog.InfoLevel)
 	}
 	log.Debug().Msg("debug log is on")
+
+	redisPool := newPool(cfg.RedisURL)
 
 	router := http.NewServeMux() // here you could also go with third party packages to create a router
 
@@ -113,7 +125,7 @@ func main() {
 	sig := make(chan os.Signal, 1)
 
 	// Handle bus.
-	pubsubBus, err := bus.NewBus(cfg, userStore, gameStore, soughtGameStore)
+	pubsubBus, err := bus.NewBus(cfg, userStore, gameStore, soughtGameStore, redisPool)
 	if err != nil {
 		panic(err)
 	}

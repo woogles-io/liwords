@@ -33,6 +33,7 @@ export type ChatEntityObj = {
   sender: string;
   message: string;
   id?: string;
+  timestamp?: number;
 };
 
 const MaxChatLength = 100;
@@ -58,6 +59,7 @@ export type StoreData = {
   dispatchGameContext: (action: Action) => void;
 
   addChat: (chat: ChatEntityObj) => void;
+  addChats: (chats: Array<ChatEntityObj>) => void;
   clearChat: () => void;
   chat: Array<ChatEntityObj>;
 
@@ -100,6 +102,7 @@ export const Context = createContext<StoreData>({
   dispatchGameContext: defaultFunction,
 
   addChat: defaultFunction,
+  addChats: defaultFunction,
   clearChat: defaultFunction,
   chat: [],
 
@@ -206,6 +209,10 @@ export const Store = ({ children, ...props }: Props) => {
     setChat(chatCopy);
   };
 
+  const addChats = (entities: Array<ChatEntityObj>) => {
+    setChat([...entities]);
+  };
+
   const clearChat = () => {
     setChat([]);
   };
@@ -229,6 +236,7 @@ export const Store = ({ children, ...props }: Props) => {
     setGameEndMessage,
     challengeResultEvent,
     addChat,
+    addChats,
     clearChat,
     chat,
     rematchRequest,

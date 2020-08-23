@@ -85,6 +85,7 @@ enum MessageType {
   MATCH_REQUESTS = 18;
   DECLINE_MATCH_REQUEST = 19;
   CHAT_MESSAGE = 20;
+  CHAT_MESSAGES = 21;
   // Add more events here. The total number of events should fit in a byte.
   // We should definitely not be using anywhere close to 255 events, and
   // in order to enforce that I'll be forcing the event type header to just be
@@ -111,7 +112,11 @@ message ChatMessage {
   string username = 1;
   string channel = 2;
   string message = 3;
+  // millis.
+  int64 timestamp = 4;
 }
+
+message ChatMessages { repeated ChatMessage messages = 1; }
 
 message SeekRequest {
   GameRequest game_request = 1;

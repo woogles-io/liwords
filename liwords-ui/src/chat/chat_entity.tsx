@@ -1,4 +1,5 @@
 import React from 'react';
+import moment from 'moment';
 import { ChatEntityType } from '../store/store';
 
 const ServerMsgColor = '#237804';
@@ -9,9 +10,14 @@ type EntityProps = {
   entityType: ChatEntityType;
   sender: string;
   message: string;
+  timestamp?: number;
 };
 
 export const ChatEntity = (props: EntityProps) => {
+  let ts = '';
+  if (props.timestamp) {
+    ts = moment(props.timestamp).format('LTS');
+  }
   let el;
   switch (props.entityType) {
     case ChatEntityType.ServerMsg:
@@ -31,8 +37,10 @@ export const ChatEntity = (props: EntityProps) => {
     case ChatEntityType.UserChat:
       el = (
         <div>
-          <span style={{ color: ChatSenderColor }}>{props.sender}</span>:{' '}
-          <span style={{ color: 'black' }}>{props.message}</span>
+          <span style={{ color: ChatSenderColor }}>
+            ({ts}) {props.sender}
+          </span>
+          : <span style={{ color: 'black' }}>{props.message}</span>
         </div>
       );
       break;

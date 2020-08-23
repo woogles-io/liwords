@@ -204,6 +204,9 @@ export class ChatMessage extends jspb.Message {
   getMessage(): string;
   setMessage(value: string): void;
 
+  getTimestamp(): number;
+  setTimestamp(value: number): void;
+
   serializeBinary(): Uint8Array;
   toObject(includeInstance?: boolean): ChatMessage.AsObject;
   static toObject(includeInstance: boolean, msg: ChatMessage): ChatMessage.AsObject;
@@ -219,6 +222,29 @@ export namespace ChatMessage {
     username: string,
     channel: string,
     message: string,
+    timestamp: number,
+  }
+}
+
+export class ChatMessages extends jspb.Message {
+  clearMessagesList(): void;
+  getMessagesList(): Array<ChatMessage>;
+  setMessagesList(value: Array<ChatMessage>): void;
+  addMessages(value?: ChatMessage, index?: number): ChatMessage;
+
+  serializeBinary(): Uint8Array;
+  toObject(includeInstance?: boolean): ChatMessages.AsObject;
+  static toObject(includeInstance: boolean, msg: ChatMessages): ChatMessages.AsObject;
+  static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+  static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+  static serializeBinaryToWriter(message: ChatMessages, writer: jspb.BinaryWriter): void;
+  static deserializeBinary(bytes: Uint8Array): ChatMessages;
+  static deserializeBinaryFromReader(message: ChatMessages, reader: jspb.BinaryReader): ChatMessages;
+}
+
+export namespace ChatMessages {
+  export type AsObject = {
+    messagesList: Array<ChatMessage.AsObject>,
   }
 }
 
@@ -720,6 +746,7 @@ export interface MessageTypeMap {
   MATCH_REQUESTS: 18;
   DECLINE_MATCH_REQUEST: 19;
   CHAT_MESSAGE: 20;
+  CHAT_MESSAGES: 21;
 }
 
 export const MessageType: MessageTypeMap;

@@ -10,7 +10,7 @@ type Props = {
   description: string;
 };
 
-export const Chat = (props: Props) => {
+export const Chat = React.memo((props: Props) => {
   const [curMsg, setCurMsg] = useState('');
   const el = useRef<HTMLDivElement>(null);
   const onKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -45,6 +45,7 @@ export const Chat = (props: Props) => {
         key={ent.id}
         sender={ent.sender}
         message={ent.message}
+        timestamp={ent.timestamp}
       />
     );
   });
@@ -68,4 +69,4 @@ export const Chat = (props: Props) => {
       </Card>
     </div>
   );
-};
+});
