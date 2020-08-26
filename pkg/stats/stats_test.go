@@ -49,18 +49,6 @@ func InstantiateNewStatsWithHistory(filename string) (*entity.Stats, error) {
 		return nil, err
 	}
 
-	/*message GameRequest {
-	  string lexicon = 1;
-	  GameRules rules = 2;
-	  int32 initial_time_seconds = 3;
-	  int32 increment_seconds = 4;
-	  macondo.ChallengeRule challenge_rule = 5;
-	  GameMode game_mode = 6;
-	  RatingMode rating_mode = 7;
-	  string request_id = 8;
-	  int32 max_overtime_minutes = 9;
-	}*/
-
 	req := &realtime.GameRequest{Lexicon: "CSW19",
 		Rules: &realtime.GameRules{BoardLayoutName: "layout",
 			LetterDistributionName: "letterdist",
@@ -74,7 +62,19 @@ func InstantiateNewStatsWithHistory(filename string) (*entity.Stats, error) {
 		RequestId:          "yeet",
 		MaxOvertimeMinutes: 10}
 
-	stats.AddGame(history, req, &DefaultConfig, filename)
+	// Just dummy info to test that rating stats work
+	gameEndedEvent := &realtime.GameEndedEvent{
+		Scores: map[string]int32{history.Players[0].Nickname: history.FinalScores[0],
+			history.Players[1].Nickname: history.FinalScores[1]},
+		NewRatings: map[string]int32{history.Players[0].Nickname: int32(1500),
+			history.Players[1].Nickname: int32(1400)},
+		EndReason: realtime.GameEndReason_STANDARD,
+		Winner:    history.Players[0].Nickname,
+		Loser:     history.Players[1].Nickname,
+		Tie:       history.FinalScores[0] != history.FinalScores[1],
+	}
+
+	stats.AddGame(history, req, &DefaultConfig, gameEndedEvent, filename)
 
 	return stats, nil
 }

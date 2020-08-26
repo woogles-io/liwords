@@ -155,6 +155,12 @@ func instantiatePlayerData() map[string]*StatItem {
 		Subitems:      makeMistakeSubitems(),
 		AddFunction:   addMistakes}
 
+	ratingsStat := &StatItem{Total: 0,
+		DataType:      ListType,
+		IncrementType: GameType,
+		List:          []*ListItem{},
+		AddFunction:   addRatings}
+
 	return map[string]*StatItem{BINGOS_STAT: bingosStat,
 		CHALLENGED_PHONIES_STAT:               challengedPhoniesStat,
 		CHALLENGES_LOST_STAT:                  challengesLostStat,
@@ -171,6 +177,7 @@ func instantiatePlayerData() map[string]*StatItem {
 		NO_BINGOS_STAT:                        noBingosStat,
 		MISTAKES_STAT:                         mistakesStat,
 		VALID_PLAYS_THAT_WERE_CHALLENGED_STAT: validPlaysThatWereChallengedStat,
+		RATINGS_STAT:                          ratingsStat,
 		SCORE_STAT:                            scoreStat,
 		TILES_PLAYED_STAT:                     tilesPlayedStat,
 		TIME_STAT:                             timeStat,

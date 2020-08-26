@@ -86,6 +86,7 @@ const MaxNotableInt = 1000000000
 type IncrementInfo struct {
 	cfg                 *macondoconfig.Config
 	req                 *realtime.GameRequest
+	evt                 *realtime.GameEndedEvent
 	statItem            *StatItem
 	otherPlayerStatItem *StatItem
 	history             *pb.GameHistory
@@ -138,6 +139,7 @@ const (
 	MANY_DOUBLE_WORDS_COVERED_STAT         string = "Many Double Word Squares Covered"
 	MISTAKES_STAT                          string = "Mistakes"
 	SCORE_STAT                             string = "Score"
+	RATINGS_STAT                           string = "Ratings"
 	TILES_PLAYED_STAT                      string = "Tiles Played"
 	TIME_STAT                              string = "Time Taken"
 	TRIPLE_TRIPLES_STAT                    string = "Triple Triples"
@@ -169,38 +171,44 @@ func InstantiateNewStats(playerOneId string, playerTwoId string) *Stats {
 		NotableData:   instantiateNotableData()}
 }
 
-func (stats *Stats) AddGame(history *pb.GameHistory, req *realtime.GameRequest, cfg *macondoconfig.Config, id string) error {
+func (stats *Stats) AddGame(history *pb.GameHistory, req *realtime.GameRequest,
+	cfg *macondoconfig.Config, gameEndedEvent *realtime.GameEndedEvent, id string) error {
 	events := history.GetEvents()
 	for i := 0; i < len(events); i++ {
 		event := events[i]
 		if history.Players[0].Nickname == event.Nickname {
-			err := incrementStatItems(cfg, req, stats.PlayerOneData, stats.PlayerTwoData, history, i, id, false)
+			err := incrementStatItems(cfg, req, gameEndedEvent, stats.PlayerOneData,
+				stats.PlayerTwoData, history, i, id, false)
 			if err != nil {
 				return err
 			}
 		} else {
-			err := incrementStatItems(cfg, req, stats.PlayerTwoData, stats.PlayerOneData, history, i, id, false)
+			err := incrementStatItems(cfg, req, gameEndedEvent, stats.PlayerTwoData,
+				stats.PlayerOneData, history, i, id, false)
 			if err != nil {
 				return err
 			}
 		}
-		err := incrementStatItems(cfg, req, stats.NotableData, nil, history, i, id, false)
+		err := incrementStatItems(cfg, req, gameEndedEvent, stats.NotableData,
+			nil, history, i, id, false)
 		if err != nil {
 			return err
 		}
 	}
 
-	err := incrementStatItems(cfg, req, stats.PlayerOneData, stats.PlayerTwoData, history, -1, id, true)
+	err := incrementStatItems(cfg, req, gameEndedEvent, stats.PlayerOneData,
+		stats.PlayerTwoData, history, -1, id, true)
 	if err != nil {
 		return err
 	}
 
-	err = incrementStatItems(cfg, req, stats.PlayerTwoData, stats.PlayerOneData, history, -1, id, false)
+	err = incrementStatItems(cfg, req, gameEndedEvent, stats.PlayerTwoData,
+		stats.PlayerOneData, history, -1, id, false)
 	if err != nil {
 		return err
 	}
 
-	err = incrementStatItems(cfg, req, stats.NotableData, nil, history, -1, id, false)
+	err = incrementStatItems(cfg, req, gameEndedEvent, stats.NotableData, nil, history, -1, id, false)
 	if err != nil {
 		return err
 	}
