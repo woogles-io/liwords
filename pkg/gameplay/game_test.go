@@ -44,6 +44,18 @@ var DefaultConfig = macondoconfig.Config{
 	DefaultLetterDistribution: "English",
 }
 
+// Just dummy info to test that rating stats work
+var gameEndedEventObj = &pb.GameEndedEvent{
+	Scores: map[string]int32{"Chump": 0,
+		"Bozo": 0},
+	NewRatings: map[string]int32{"Chump": 0,
+		"Bozo": 0},
+	EndReason: pb.GameEndReason_STANDARD,
+	Winner:    "Chump",
+	Loser:     "Bozo",
+	Tie:       false,
+}
+
 func userStore(dbURL string) pkguser.Store {
 	ustore, err := user.NewDBStore(TestingDBConnStr + " dbname=liwords_test")
 	if err != nil {
@@ -118,7 +130,7 @@ func TestComputeGameStats(t *testing.T) {
 	is.NoErr(err)
 
 	ctx := context.WithValue(context.Background(), ConfigCtxKey("config"), &DefaultConfig)
-	stats, err := computeGameStats(ctx, hist, gameReq, variantKey(req), ustore)
+	stats, err := computeGameStats(ctx, hist, gameReq, variantKey(req), gameEndedEventObj, ustore)
 	is.NoErr(err)
 	is.Equal(stats.PlayerOneData[entity.BINGOS_STAT].List, []*entity.ListItem{
 		{Word: "PARDINE", Score: 76, Probability: 1, GameId: "m5ktbp4qPVTqaAhg6HJMsb"},
@@ -144,7 +156,7 @@ func TestComputeGameStats2(t *testing.T) {
 	is.NoErr(err)
 
 	ctx := context.WithValue(context.Background(), ConfigCtxKey("config"), &DefaultConfig)
-	stats, err := computeGameStats(ctx, hist, gameReq, variantKey(req), ustore)
+	stats, err := computeGameStats(ctx, hist, gameReq, variantKey(req), gameEndedEventObj, ustore)
 	is.NoErr(err)
 	log.Info().Interface("p1list", stats.PlayerOneData[entity.BINGOS_STAT].List).Msg("--")
 	log.Info().Interface("p2list", stats.PlayerTwoData[entity.BINGOS_STAT].List).Msg("--")
@@ -175,7 +187,7 @@ func TestComputePlayerStats(t *testing.T) {
 	is.NoErr(err)
 
 	ctx := context.WithValue(context.Background(), ConfigCtxKey("config"), &DefaultConfig)
-	_, err = computeGameStats(ctx, hist, gameReq, variantKey(req), ustore)
+	_, err = computeGameStats(ctx, hist, gameReq, variantKey(req), gameEndedEventObj, ustore)
 	is.NoErr(err)
 
 	p0id, p1id := hist.Players[0].UserId, hist.Players[1].UserId
@@ -219,7 +231,7 @@ func TestComputePlayerStatsMultipleGames(t *testing.T) {
 		is.NoErr(err)
 
 		ctx := context.WithValue(context.Background(), ConfigCtxKey("config"), &DefaultConfig)
-		_, err = computeGameStats(ctx, hist, gameReq, variantKey(req), ustore)
+		_, err = computeGameStats(ctx, hist, gameReq, variantKey(req), gameEndedEventObj, ustore)
 		is.NoErr(err)
 	}
 

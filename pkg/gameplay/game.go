@@ -542,7 +542,8 @@ func performEndgameDuties(ctx context.Context, g *entity.Game, userStore user.St
 	g.History().Winner = int32(g.WinnerIdx)
 
 	// Send a gameEndedEvent, which rates the game.
-	wrapped := entity.WrapEvent(gameEndedEvent(ctx, g, userStore),
+	evt := gameEndedEvent(ctx, g, userStore)
+	wrapped := entity.WrapEvent(evt,
 		pb.MessageType_GAME_ENDED_EVENT, g.GameID())
 	// Once the game ends, we do not need to "sanitize" the packets
 	// going to the users anymore. So just send the data to the right
@@ -556,7 +557,7 @@ func performEndgameDuties(ctx context.Context, g *entity.Game, userStore user.St
 	if err != nil {
 		log.Err(err).Msg("getting variant key")
 	} else {
-		gameStats, err := computeGameStats(ctx, g.History(), g.GameReq, variantKey, userStore)
+		gameStats, err := computeGameStats(ctx, g.History(), g.GameReq, variantKey, evt, userStore)
 		if err != nil {
 			log.Err(err).Msg("computing stats")
 		} else {
@@ -585,7 +586,7 @@ func discernEndgameReason(g *entity.Game) {
 }
 
 func computeGameStats(ctx context.Context, history *macondopb.GameHistory, req *pb.GameRequest,
-	variantKey entity.VariantKey, userStore user.Store) (*entity.Stats, error) {
+	variantKey entity.VariantKey, evt *pb.GameEndedEvent, userStore user.Store) (*entity.Stats, error) {
 	// stats := entity.InstantiateNewStats(1, 2)
 	p0id, p1id := history.Players[0].UserId, history.Players[1].UserId
 	if history.SecondWentFirst {
@@ -603,7 +604,7 @@ func computeGameStats(ctx context.Context, history *macondopb.GameHistory, req *
 	// Here, p0 went first and p1 went second, no matter what.
 	gameStats := entity.InstantiateNewStats(p0id, p1id)
 
-	err := gameStats.AddGame(history, req, config, history.Uid)
+	err := gameStats.AddGame(history, req, config, evt, history.Uid)
 	if err != nil {
 		return nil, err
 	}

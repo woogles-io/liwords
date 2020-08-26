@@ -52,6 +52,7 @@ func makeMistakeSubitems() map[string]int {
 
 func incrementStatItems(cfg *macondoconfig.Config,
 	req *realtime.GameRequest,
+	gameEndedEvent *realtime.GameEndedEvent,
 	statItems map[string]*StatItem,
 	otherPlayerStatItems map[string]*StatItem,
 	history *pb.GameHistory,
@@ -68,6 +69,7 @@ func incrementStatItems(cfg *macondoconfig.Config,
 			}
 			info := &IncrementInfo{cfg: cfg,
 				req:                 req,
+				evt:                 gameEndedEvent,
 				statItem:            statItem,
 				otherPlayerStatItem: otherPlayerStatItem,
 				history:             history,
@@ -462,6 +464,18 @@ func addNoBingos(info *IncrementInfo) error {
 	if !atLeastOneBingo {
 		incrementStatItem(info.statItem, nil, info.id)
 	}
+	return nil
+}
+
+func addRatings(info *IncrementInfo) error {
+	var rating int32
+	if info.isPlayerOne {
+		rating = info.evt.NewRatings[info.history.Players[0].Nickname]
+	} else {
+		rating = info.evt.NewRatings[info.history.Players[1].Nickname]
+	}
+	info.statItem.Total++
+	info.statItem.List = append(info.statItem.List, &ListItem{Word: "", Probability: 0, Score: int(rating), GameId: info.id})
 	return nil
 }
 
