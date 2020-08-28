@@ -26,23 +26,23 @@ export const TopBar = React.memo((props: Props) => {
   return (
     <nav className="top-header">
       <div className="container">
-        <Link to="/" className="site-icon">
+        <a href="/" className="site-icon">
           <div className="top-header-site-icon-rect">
             <div className="top-header-site-icon-m">W</div>
           </div>
           <div className="top-header-left-frame-site-name">Woogles.io</div>
-        </Link>
+        </a>
         {Menu}
         {props.loggedIn ? (
           <div className="user-info">
-            <Link to={`/profile/${props.username}`}>{props.username}</Link>
+            <a href={`/profile/${props.username}`}>{props.username}</a>
             {!props.connectedToSocket ? (
               <DisconnectOutlined style={{ color: 'red', marginLeft: 5 }} />
             ) : null}
           </div>
         ) : (
           <div className="user-info">
-            <Link to="/login">Log In</Link>
+            <a href="/login">Log In</a>
           </div>
         )}
       </div>

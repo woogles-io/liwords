@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { message, notification, Popconfirm } from 'antd';
 import axios from 'axios';
+import qs from 'qs';
 
-import { useParams } from 'react-router-dom';
+import { useParams, useLocation } from 'react-router-dom';
 import { BoardPanel } from './board_panel';
 import { TopBar } from '../topbar/topbar';
 import { Chat } from '../chat/chat';
@@ -22,6 +23,7 @@ import './scss/gameroom.scss';
 import { ScoreCard } from './scorecard';
 import { GameInfo, GameMetadata, PlayerMetadata } from './game_info';
 import { PlayState } from '../gen/macondo/api/proto/macondo/macondo_pb';
+import { BoopSounds } from '../sound/boop';
 // import { GameInfoResponse } from '../gen/api/proto/game_service/game_service_pb';
 type Props = {
   sendSocketMsg: (msg: Uint8Array) => void;
@@ -50,6 +52,7 @@ const defaultGameInfo = {
 
 export const Table = React.memo((props: Props) => {
   const { gameID } = useParams();
+  const location = useLocation();
   const {
     gameContext,
     chat,
@@ -65,6 +68,7 @@ export const Table = React.memo((props: Props) => {
   // const location = useLocation();
   const [gameInfo, setGameInfo] = useState<GameMetadata>(defaultGameInfo);
   const [isObserver, setIsObserver] = useState(false);
+  const params = qs.parse(location.search, { ignoreQueryPrefix: true });
 
   useEffect(() => {
     // Prevent backspace unless we're in an input element. We don't want to
@@ -110,6 +114,7 @@ export const Table = React.memo((props: Props) => {
       // via the socket.
       message.warning('Game is starting shortly', 0);
     }
+    BoopSounds.startgameSound.play();
 
     return () => {
       clearChat();

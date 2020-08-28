@@ -715,7 +715,7 @@ func TestRealData(t *testing.T) {
 	fmt.Printf("The system correctly predicted %d results out of %d (%.4f)\n\n", correctPredictions, predictions, float64(correctPredictions)/float64(predictions))
 
 	for i := 0; i < len(playersArray); i++ {
-		if i < 20 || i > len(playersArray)-20 {
+		if i < 150 || i > len(playersArray)-20 {
 			fmt.Printf("%-5s %-24s %.2f (rd: %.2f, v: %.2f)\n", strconv.Itoa(i+1)+":", playersArray[i].name+":", playersArray[i].rating, playersArray[i].ratingDeviation, playersArray[i].volatility)
 		}
 	}

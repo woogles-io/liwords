@@ -3,6 +3,7 @@ package user
 import (
 	"context"
 	"encoding/json"
+	"errors"
 
 	"github.com/jinzhu/gorm"
 	"github.com/jinzhu/gorm/dialects/postgres"
@@ -160,6 +161,9 @@ func (s *DBStore) GetByUUID(ctx context.Context, uuid string) (*entity.User, err
 	u := &User{}
 	p := &profile{}
 	var entu *entity.User
+	if uuid == "" {
+		return nil, errors.New("blank-uuid")
+	}
 	if result := s.db.Where("uuid = ?", uuid).First(u); result.Error != nil {
 		if gorm.IsRecordNotFoundError(result.Error) {
 			entu = &entity.User{

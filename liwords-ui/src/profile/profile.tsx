@@ -233,9 +233,9 @@ export const UserProfile = (props: Props) => {
       </Row>
       <Row style={{ marginTop: 20 }}>
         <Col span={12} offset={12}>
-          <Link to="/password/change">
+          <a href="/password/change">
             <big>Change your password</big>
-          </Link>
+          </a>
         </Col>
       </Row>
     </>

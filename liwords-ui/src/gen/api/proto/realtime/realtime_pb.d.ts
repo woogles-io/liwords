@@ -248,6 +248,52 @@ export namespace ChatMessages {
   }
 }
 
+export class UserPresence extends jspb.Message {
+  getUsername(): string;
+  setUsername(value: string): void;
+
+  getChannel(): string;
+  setChannel(value: string): void;
+
+  serializeBinary(): Uint8Array;
+  toObject(includeInstance?: boolean): UserPresence.AsObject;
+  static toObject(includeInstance: boolean, msg: UserPresence): UserPresence.AsObject;
+  static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+  static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+  static serializeBinaryToWriter(message: UserPresence, writer: jspb.BinaryWriter): void;
+  static deserializeBinary(bytes: Uint8Array): UserPresence;
+  static deserializeBinaryFromReader(message: UserPresence, reader: jspb.BinaryReader): UserPresence;
+}
+
+export namespace UserPresence {
+  export type AsObject = {
+    username: string,
+    channel: string,
+  }
+}
+
+export class UserPresences extends jspb.Message {
+  clearPresencesList(): void;
+  getPresencesList(): Array<UserPresence>;
+  setPresencesList(value: Array<UserPresence>): void;
+  addPresences(value?: UserPresence, index?: number): UserPresence;
+
+  serializeBinary(): Uint8Array;
+  toObject(includeInstance?: boolean): UserPresences.AsObject;
+  static toObject(includeInstance: boolean, msg: UserPresences): UserPresences.AsObject;
+  static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+  static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+  static serializeBinaryToWriter(message: UserPresences, writer: jspb.BinaryWriter): void;
+  static deserializeBinary(bytes: Uint8Array): UserPresences;
+  static deserializeBinaryFromReader(message: UserPresences, reader: jspb.BinaryReader): UserPresences;
+}
+
+export namespace UserPresences {
+  export type AsObject = {
+    presencesList: Array<UserPresence.AsObject>,
+  }
+}
+
 export class SeekRequest extends jspb.Message {
   hasGameRequest(): boolean;
   clearGameRequest(): void;
@@ -737,8 +783,6 @@ export interface MessageTypeMap {
   NEW_GAME_EVENT: 8;
   SERVER_CHALLENGE_RESULT_EVENT: 9;
   SEEK_REQUESTS: 10;
-  JOIN_PATH: 11;
-  UNJOIN_REALM: 12;
   TIMED_OUT: 13;
   GAME_META_EVENT: 15;
   ACTIVE_GAMES: 16;
@@ -747,6 +791,8 @@ export interface MessageTypeMap {
   DECLINE_MATCH_REQUEST: 19;
   CHAT_MESSAGE: 20;
   CHAT_MESSAGES: 21;
+  USER_PRESENCE: 22;
+  USER_PRESENCES: 23;
 }
 
 export const MessageType: MessageTypeMap;

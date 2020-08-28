@@ -14,8 +14,6 @@ import {
   GameEndedEvent,
   ServerChallengeResultEvent,
   SeekRequests,
-  JoinPath,
-  UnjoinRealm,
   TimedOut,
   GameMeta,
   ActiveGames,
@@ -31,22 +29,7 @@ import {
   SeekRequestToSoughtGame,
   GameMetaToActiveGame,
 } from './reducers/lobby_reducer';
-
-const makemoveMP3 = require('../assets/makemove.mp3');
-const startgameMP3 = require('../assets/startgame.mp3');
-const oppMoveMP3 = require('../assets/oppmove.mp3');
-const matchReqMP3 = require('../assets/matchreq.mp3');
-const woofWav = require('../assets/woof.wav');
-const endgameMP3 = require('../assets/endgame.mp3');
-
-const makeMoveSound = new Audio(makemoveMP3);
-const oppMoveSound = new Audio(oppMoveMP3);
-const matchReqSound = new Audio(matchReqMP3);
-
-const startgameSound = new Audio(startgameMP3);
-const endgameSound = new Audio(endgameMP3);
-const woofSound = new Audio(woofWav);
-woofSound.volume = 0.25;
+import { BoopSounds } from '../sound/boop';
 
 export const parseMsgs = (msg: Uint8Array) => {
   // Multiple msgs can come in the same packet.
@@ -69,8 +52,6 @@ export const parseMsgs = (msg: Uint8Array) => {
       [MessageType.GAME_ENDED_EVENT]: GameEndedEvent,
       [MessageType.SERVER_CHALLENGE_RESULT_EVENT]: ServerChallengeResultEvent,
       [MessageType.SEEK_REQUESTS]: SeekRequests,
-      [MessageType.JOIN_PATH]: JoinPath,
-      [MessageType.UNJOIN_REALM]: UnjoinRealm,
       [MessageType.TIMED_OUT]: TimedOut,
       [MessageType.GAME_META_EVENT]: GameMeta,
       [MessageType.ACTIVE_GAMES]: ActiveGames,
@@ -139,7 +120,7 @@ export const onSocketMsg = (username: string, storeData: StoreData) => {
             return;
           }
           if (receiver === username) {
-            matchReqSound.play();
+            BoopSounds.matchReqSound.play();
             if (mr.getRematchFor() !== '') {
               // Only display the rematch modal if we are the recipient
               // of the rematch request.
@@ -211,7 +192,7 @@ export const onSocketMsg = (username: string, storeData: StoreData) => {
           const gee = parsedMsg as GameEndedEvent;
           storeData.setGameEndMessage(endGameMessage(gee));
           storeData.stopClock();
-          endgameSound.play();
+          BoopSounds.endgameSound.play();
           break;
         }
 
@@ -225,7 +206,6 @@ export const onSocketMsg = (username: string, storeData: StoreData) => {
           const gid = nge.getGameId();
           storeData.setRedirGame(gid);
           storeData.setGameEndMessage('');
-          startgameSound.play();
           break;
         }
 
@@ -253,9 +233,9 @@ export const onSocketMsg = (username: string, storeData: StoreData) => {
           });
           // play sound
           if (username === sge.getEvent()?.getNickname()) {
-            makeMoveSound.play();
+            BoopSounds.makeMoveSound.play();
           } else {
-            oppMoveSound.play();
+            BoopSounds.oppMoveSound.play();
           }
           break;
         }
@@ -265,7 +245,7 @@ export const onSocketMsg = (username: string, storeData: StoreData) => {
           console.log('got server challenge result event', sge);
           storeData.challengeResultEvent(sge);
           if (!sge.getValid()) {
-            woofSound.play();
+            BoopSounds.woofSound.play();
           }
           break;
         }
