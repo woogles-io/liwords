@@ -640,6 +640,26 @@ export namespace ErrorMessage {
   }
 }
 
+export class ServerMessage extends jspb.Message {
+  getMessage(): string;
+  setMessage(value: string): void;
+
+  serializeBinary(): Uint8Array;
+  toObject(includeInstance?: boolean): ServerMessage.AsObject;
+  static toObject(includeInstance: boolean, msg: ServerMessage): ServerMessage.AsObject;
+  static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+  static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+  static serializeBinaryToWriter(message: ServerMessage, writer: jspb.BinaryWriter): void;
+  static deserializeBinary(bytes: Uint8Array): ServerMessage;
+  static deserializeBinaryFromReader(message: ServerMessage, reader: jspb.BinaryReader): ServerMessage;
+}
+
+export namespace ServerMessage {
+  export type AsObject = {
+    message: string,
+  }
+}
+
 export class ClientGameplayEvent extends jspb.Message {
   getType(): ClientGameplayEvent.EventTypeMap[keyof ClientGameplayEvent.EventTypeMap];
   setType(value: ClientGameplayEvent.EventTypeMap[keyof ClientGameplayEvent.EventTypeMap]): void;
@@ -797,6 +817,7 @@ export interface MessageTypeMap {
   CHAT_MESSAGES: 21;
   USER_PRESENCE: 22;
   USER_PRESENCES: 23;
+  SERVER_MESSAGE: 24;
 }
 
 export const MessageType: MessageTypeMap;

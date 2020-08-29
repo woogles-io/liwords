@@ -107,11 +107,6 @@ export const Table = React.memo((props: Props) => {
       .then((resp) => {
         setGameInfo(resp.data);
       });
-    if (!gameContext.players || !gameContext.players[0]) {
-      // Show a message while waiting for data about the game to come in
-      // via the socket.
-      message.warning('Game is starting shortly', 0);
-    }
     BoopSounds.startgameSound.play();
 
     return () => {

@@ -190,6 +190,7 @@ export namespace GameEvent {
     TIME_PENALTY: 6;
     END_RACK_PENALTY: 7;
     UNSUCCESSFUL_CHALLENGE_TURN_LOSS: 8;
+    CHALLENGE: 9;
   }
 
   export const Type: TypeMap;

@@ -4,6 +4,7 @@ import {
   MessageType,
   SeekRequest,
   ErrorMessage,
+  ServerMessage,
   NewGameEvent,
   GameHistoryRefresher,
   MessageTypeMap,
@@ -45,6 +46,7 @@ export const parseMsgs = (msg: Uint8Array) => {
     const msgTypes = {
       [MessageType.SEEK_REQUEST]: SeekRequest,
       [MessageType.ERROR_MESSAGE]: ErrorMessage,
+      [MessageType.SERVER_MESSAGE]: ServerMessage,
       [MessageType.NEW_GAME_EVENT]: NewGameEvent,
       [MessageType.GAME_HISTORY_REFRESHER]: GameHistoryRefresher,
       [MessageType.MATCH_REQUEST]: MatchRequest,
@@ -147,6 +149,12 @@ export const onSocketMsg = (username: string, storeData: StoreData) => {
               .getRequestsList()
               .map((r) => SeekRequestToSoughtGame(r)),
           });
+          break;
+        }
+
+        case MessageType.SERVER_MESSAGE: {
+          const sm = parsedMsg as ServerMessage;
+          message.warning(sm.getMessage(), 2);
           break;
         }
 

@@ -802,8 +802,8 @@ func (b *Bus) gameRefresher(ctx context.Context, gameID string) (*entity.EventWr
 		return nil, err
 	}
 	if !entGame.Started {
-		// XXX: This shouldn't be an error, fix.
-		return nil, errors.New("game-starting-soon")
+		return entity.WrapEvent(&pb.ServerMessage{Message: "Game is starting soon!"},
+			pb.MessageType_SERVER_MESSAGE, entGame.GameID()), nil
 	}
 	evt := entity.WrapEvent(entGame.HistoryRefresherEvent(),
 		pb.MessageType_GAME_HISTORY_REFRESHER, entGame.GameID())

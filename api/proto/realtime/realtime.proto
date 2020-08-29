@@ -86,6 +86,7 @@ enum MessageType {
   CHAT_MESSAGES = 21;
   USER_PRESENCE = 22;
   USER_PRESENCES = 23;
+  SERVER_MESSAGE = 24;
   // Add more events here. The total number of events should fit in a byte.
   // We should definitely not be using anywhere close to 255 events, and
   // in order to enforce that I'll be forcing the event type header to just be
@@ -230,6 +231,8 @@ message ErrorMessage {
   string message = 1;
   // Maybe codes or something else in the future.
 }
+
+message ServerMessage { string message = 1; }
 
 // Client-to-server messages
 
