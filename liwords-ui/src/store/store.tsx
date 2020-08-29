@@ -140,7 +140,7 @@ type Props = {
   children: React.ReactNode;
 };
 
-const randomID = () => {
+export const randomID = () => {
   // Math.random should be unique because of its seeding algorithm.
   // Convert it to base 36 (numbers + letters), and grab the first 9 characters
   // after the decimal.
@@ -213,17 +213,19 @@ export const Store = ({ children, ...props }: Props) => {
   };
 
   const addChat = (entity: ChatEntityObj) => {
-    if (!entity.id) {
-      // eslint-disable-next-line no-param-reassign
-      entity.id = randomID();
-    }
-    // XXX: This should be sped up.
-    const chatCopy = [...chat];
-    chatCopy.push(entity);
-    if (chatCopy.length > MaxChatLength) {
-      chatCopy.shift();
-    }
-    setChat(chatCopy);
+    setChat((oldChat) => {
+      if (!entity.id) {
+        // eslint-disable-next-line no-param-reassign
+        entity.id = randomID();
+      }
+      // XXX: This should be sped up.
+      const chatCopy = [...oldChat];
+      chatCopy.push(entity);
+      if (chatCopy.length > MaxChatLength) {
+        chatCopy.shift();
+      }
+      return chatCopy;
+    });
   };
 
   const addChats = (entities: Array<ChatEntityObj>) => {
@@ -236,15 +238,16 @@ export const Store = ({ children, ...props }: Props) => {
 
   const setPresence = (entity: PresenceEntity) => {
     // XXX: This looks slow.
-    const presencesCopy = { ...presences };
-    if (entity.channel === '') {
-      // This user signed off; remove
-      delete presencesCopy[entity.uuid];
-    } else {
-      presencesCopy[entity.uuid] = entity;
-    }
-    console.log('in setPresence', presencesCopy);
-    setPresences(presencesCopy);
+    setPresences((prevPresences) => {
+      const presencesCopy = { ...prevPresences };
+      if (entity.channel === '') {
+        // This user signed off; remove
+        delete presencesCopy[entity.uuid];
+      } else {
+        presencesCopy[entity.uuid] = entity;
+      }
+      return presencesCopy;
+    });
   };
 
   const addPresences = (entities: Array<PresenceEntity>) => {

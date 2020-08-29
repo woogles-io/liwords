@@ -1,5 +1,5 @@
 import { message, notification } from 'antd';
-import { StoreData, ChatEntityType } from './store';
+import { StoreData, ChatEntityType, randomID } from './store';
 import {
   MessageType,
   SeekRequest,
@@ -185,6 +185,7 @@ export const onSocketMsg = (username: string, storeData: StoreData) => {
             sender: cm.getUsername(),
             message: cm.getMessage(),
             timestamp: cm.getTimestamp(),
+            id: randomID(),
           }));
 
           storeData.addChats(entities);
