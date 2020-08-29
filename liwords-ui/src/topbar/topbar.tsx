@@ -1,6 +1,5 @@
 import React from 'react';
 import './topbar.scss';
-import { Link } from 'react-router-dom';
 import { DisconnectOutlined } from '@ant-design/icons/lib';
 
 const Menu = (

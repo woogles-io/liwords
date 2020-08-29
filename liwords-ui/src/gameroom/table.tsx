@@ -1,9 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { message, notification, Popconfirm } from 'antd';
 import axios from 'axios';
-import qs from 'qs';
 
-import { useParams, useLocation } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 import { BoardPanel } from './board_panel';
 import { TopBar } from '../topbar/topbar';
 import { Chat } from '../chat/chat';
@@ -52,7 +51,6 @@ const defaultGameInfo = {
 
 export const Table = React.memo((props: Props) => {
   const { gameID } = useParams();
-  const location = useLocation();
   const {
     gameContext,
     chat,
@@ -69,7 +67,6 @@ export const Table = React.memo((props: Props) => {
   // const location = useLocation();
   const [gameInfo, setGameInfo] = useState<GameMetadata>(defaultGameInfo);
   const [isObserver, setIsObserver] = useState(false);
-  const params = qs.parse(location.search, { ignoreQueryPrefix: true });
 
   useEffect(() => {
     // Prevent backspace unless we're in an input element. We don't want to

@@ -71,7 +71,9 @@ export const Chat = React.memo((props: Props) => {
             }}
             className={selectedChatTab === 'PLAYERS' ? 'tab active' : 'tab'}
           >
-            {props.peopleOnlineContext}
+            {`${props.peopleOnlineContext} (${
+              Object.keys(props.presences).length
+            })`}
           </div>
           <div
             onClick={() => {

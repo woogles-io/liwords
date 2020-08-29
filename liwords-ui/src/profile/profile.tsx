@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useParams, useLocation, Link } from 'react-router-dom';
+import { useParams, useLocation } from 'react-router-dom';
 import { notification, Card, Table, Row, Col } from 'antd';
 import axios, { AxiosError } from 'axios';
 import { TopBar } from '../topbar/topbar';

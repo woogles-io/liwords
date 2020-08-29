@@ -3,7 +3,6 @@ import React, { useState } from 'react';
 import { Form, Input, Button, Alert, Row, Col } from 'antd';
 // import { Link } from 'react-router-dom';
 import axios from 'axios';
-import { Link } from 'react-router-dom';
 
 const layout = {
   labelCol: {

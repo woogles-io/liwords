@@ -100,5 +100,6 @@ export const useLiwordsSocket = () => {
     username,
     loggedIn,
     connectedToSocket,
+    justDisconnected,
   };
 };
