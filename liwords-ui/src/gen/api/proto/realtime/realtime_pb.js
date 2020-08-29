@@ -2359,7 +2359,8 @@ proto.liwords.UserPresence.prototype.toObject = function(opt_includeInstance) {
 proto.liwords.UserPresence.toObject = function(includeInstance, msg) {
   var f, obj = {
     username: jspb.Message.getFieldWithDefault(msg, 1, ""),
-    channel: jspb.Message.getFieldWithDefault(msg, 2, "")
+    userId: jspb.Message.getFieldWithDefault(msg, 2, ""),
+    channel: jspb.Message.getFieldWithDefault(msg, 3, "")
   };
 
   if (includeInstance) {
@@ -2402,6 +2403,10 @@ proto.liwords.UserPresence.deserializeBinaryFromReader = function(msg, reader) {
       break;
     case 2:
       var value = /** @type {string} */ (reader.readString());
+      msg.setUserId(value);
+      break;
+    case 3:
+      var value = /** @type {string} */ (reader.readString());
       msg.setChannel(value);
       break;
     default:
@@ -2440,10 +2445,17 @@ proto.liwords.UserPresence.serializeBinaryToWriter = function(message, writer) {
       f
     );
   }
-  f = message.getChannel();
+  f = message.getUserId();
   if (f.length > 0) {
     writer.writeString(
       2,
+      f
+    );
+  }
+  f = message.getChannel();
+  if (f.length > 0) {
+    writer.writeString(
+      3,
       f
     );
   }
@@ -2469,10 +2481,10 @@ proto.liwords.UserPresence.prototype.setUsername = function(value) {
 
 
 /**
- * optional string channel = 2;
+ * optional string user_id = 2;
  * @return {string}
  */
-proto.liwords.UserPresence.prototype.getChannel = function() {
+proto.liwords.UserPresence.prototype.getUserId = function() {
   return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 2, ""));
 };
 
@@ -2481,8 +2493,26 @@ proto.liwords.UserPresence.prototype.getChannel = function() {
  * @param {string} value
  * @return {!proto.liwords.UserPresence} returns this
  */
-proto.liwords.UserPresence.prototype.setChannel = function(value) {
+proto.liwords.UserPresence.prototype.setUserId = function(value) {
   return jspb.Message.setProto3StringField(this, 2, value);
+};
+
+
+/**
+ * optional string channel = 3;
+ * @return {string}
+ */
+proto.liwords.UserPresence.prototype.getChannel = function() {
+  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 3, ""));
+};
+
+
+/**
+ * @param {string} value
+ * @return {!proto.liwords.UserPresence} returns this
+ */
+proto.liwords.UserPresence.prototype.setChannel = function(value) {
+  return jspb.Message.setProto3StringField(this, 3, value);
 };
 
 

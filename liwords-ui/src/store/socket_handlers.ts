@@ -22,6 +22,8 @@ import {
   DeclineMatchRequest,
   ChatMessage,
   ChatMessages,
+  UserPresence,
+  UserPresences,
 } from '../gen/api/proto/realtime/realtime_pb';
 import { ActionType } from '../actions/actions';
 import { endGameMessage } from './end_of_game';
@@ -60,6 +62,8 @@ export const parseMsgs = (msg: Uint8Array) => {
       [MessageType.DECLINE_MATCH_REQUEST]: DeclineMatchRequest,
       [MessageType.CHAT_MESSAGE]: ChatMessage,
       [MessageType.CHAT_MESSAGES]: ChatMessages,
+      [MessageType.USER_PRESENCE]: UserPresence,
+      [MessageType.USER_PRESENCES]: UserPresences,
     };
 
     const parsedMsg = msgTypes[msgType];
@@ -184,6 +188,31 @@ export const onSocketMsg = (username: string, storeData: StoreData) => {
           }));
 
           storeData.addChats(entities);
+          break;
+        }
+
+        case MessageType.USER_PRESENCE: {
+          console.log('userpresence', parsedMsg);
+
+          const up = parsedMsg as UserPresence;
+          storeData.setPresence({
+            uuid: up.getUserId(),
+            username: up.getUsername(),
+            channel: up.getChannel(),
+          });
+          break;
+        }
+
+        case MessageType.USER_PRESENCES: {
+          const ups = parsedMsg as UserPresences;
+          const toAdd = ups.getPresencesList().map((p) => ({
+            uuid: p.getUserId(),
+            username: p.getUsername(),
+            channel: p.getChannel(),
+          }));
+          console.log('userpresences', toAdd);
+
+          storeData.addPresences(toAdd);
           break;
         }
 

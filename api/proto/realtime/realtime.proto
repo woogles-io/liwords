@@ -120,7 +120,8 @@ message ChatMessages { repeated ChatMessage messages = 1; }
 
 message UserPresence {
   string username = 1;
-  string channel = 2;
+  string user_id = 2;
+  string channel = 3;
 }
 
 message UserPresences { repeated UserPresence presences = 1; }

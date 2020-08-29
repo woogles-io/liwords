@@ -252,6 +252,9 @@ export class UserPresence extends jspb.Message {
   getUsername(): string;
   setUsername(value: string): void;
 
+  getUserId(): string;
+  setUserId(value: string): void;
+
   getChannel(): string;
   setChannel(value: string): void;
 
@@ -268,6 +271,7 @@ export class UserPresence extends jspb.Message {
 export namespace UserPresence {
   export type AsObject = {
     username: string,
+    userId: string,
     channel: string,
   }
 }

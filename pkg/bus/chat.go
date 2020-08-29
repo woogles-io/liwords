@@ -79,20 +79,20 @@ func (b *Bus) chat(ctx context.Context, userID string, evt *pb.ChatMessage) erro
 	return b.natsconn.Publish(evt.Channel, data)
 }
 
-func (b *Bus) sendOldChats(userID, presenceChannel string) error {
-	// Send chats in a presenceChannel to the given user.
-	log.Debug().Str("presenceChannel", presenceChannel).Msg("send-old-chats")
-	if presenceChannel == "" {
+func (b *Bus) sendOldChats(userID, chatChannel string) error {
+	// Send chats in a chatChannel to the given user.
+	log.Debug().Str("chatChannel", chatChannel).Msg("send-old-chats")
+	if chatChannel == "" {
 		// No chats for this channel.
 		return nil
 	}
-	channel := "chat:" + presenceChannel
-	log.Debug().Str("chan", channel).Msg("get-old-chats")
+	redisKey := "chat:" + chatChannel
+	log.Debug().Str("redisKey", redisKey).Msg("get-old-chats")
 	conn := b.redisPool.Get()
 	defer conn.Close()
 
 	// Get the latest 50 chats to display to the user.
-	vals, err := redis.Values(conn.Do("XREVRANGE", channel, "+", "-", "COUNT", ChatsOnReload))
+	vals, err := redis.Values(conn.Do("XREVRANGE", redisKey, "+", "-", "COUNT", ChatsOnReload))
 	if err != nil {
 		return err
 	}

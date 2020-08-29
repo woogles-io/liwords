@@ -36,7 +36,7 @@ type PresenceStore interface {
 	// SetPresence sets the presence. If channel is the string NULL this is
 	// equivalent to saying the user logged off.
 	SetPresence(ctx context.Context, uuid, username, channel string) error
-	ClearPresence(ctx context.Context, uuid, username string) error
+	ClearPresence(ctx context.Context, uuid, username string) (string, error)
 	GetPresence(ctx context.Context, uuid string) (string, error)
 
 	CountInChannel(ctx context.Context, channel string) (int, error)

@@ -84,7 +84,7 @@ export const Lobby = (props: Props) => {
     props.loggedIn ? 'PLAY' : 'WATCH'
   );
 
-  const { chat } = useStoreContext();
+  const { chat, presences } = useStoreContext();
 
   useEffect(() => {
     setSelectedGameTab(props.loggedIn ? 'PLAY' : 'WATCH');
@@ -133,6 +133,8 @@ export const Lobby = (props: Props) => {
           chatEntities={chat}
           sendChat={sendChat}
           description="Lobby chat"
+          peopleOnlineContext="Players"
+          presences={presences}
         />
         <GameLists
           loggedIn={props.loggedIn}

@@ -63,6 +63,7 @@ export const Table = React.memo((props: Props) => {
     setPTimedOut,
     rematchRequest,
     setRematchRequest,
+    presences,
   } = useStoreContext();
   const { username, sendSocketMsg } = props;
   // const location = useLocation();
@@ -235,6 +236,8 @@ export const Table = React.memo((props: Props) => {
           chatEntities={chat}
           sendChat={sendChat}
           description={isObserver ? 'Observer chat' : 'Game chat'}
+          presences={presences}
+          peopleOnlineContext={isObserver ? 'Observers' : 'Players'}
         />
         {/* we only put the Popconfirm here so that we can physically place it */}
 

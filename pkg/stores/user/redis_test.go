@@ -64,8 +64,9 @@ func TestSetPresenceLeaveAndComeback(t *testing.T) {
 	err = ps.SetPresence(ctx, "uuid2", "mina", "lobby")
 	is.NoErr(err)
 
-	err = ps.ClearPresence(ctx, "uuid1", "cesar")
+	val, err := ps.ClearPresence(ctx, "uuid1", "cesar")
 	is.NoErr(err)
+	is.Equal(val, "lobby")
 
 	ct, err := ps.CountInChannel(ctx, "lobby")
 	is.NoErr(err)
@@ -115,7 +116,7 @@ func TestGetInChannel(t *testing.T) {
 	err = ps.SetPresence(ctx, "uuid6", "conrad", "lobby")
 	is.NoErr(err)
 
-	err = ps.ClearPresence(ctx, "uuid1", "cesar")
+	_, err = ps.ClearPresence(ctx, "uuid1", "cesar")
 	is.NoErr(err)
 
 	err = ps.SetPresence(ctx, "uuid1", "cesar", "gametv:abc")
@@ -163,4 +164,20 @@ func TestGetInChannel(t *testing.T) {
 		{Username: "conrad", UUID: "uuid6"},
 		{Username: "puneet", UUID: "uuid7"},
 	})
+
+	users, err = ps.GetInChannel(ctx, "gametv:abc")
+	sort.Slice(users, func(a, b int) bool {
+		return users[a].UUID < users[b].UUID
+	})
+	is.Equal(users, []*entity.User{
+		{Username: "cesar", UUID: "uuid1"},
+		{Username: "mina", UUID: "uuid2"},
+	})
+
+	users, err = ps.GetInChannel(ctx, "gametv:abcd")
+	sort.Slice(users, func(a, b int) bool {
+		return users[a].UUID < users[b].UUID
+	})
+	is.Equal(users, []*entity.User{})
+
 }

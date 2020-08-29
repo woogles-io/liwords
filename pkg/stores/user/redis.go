@@ -2,10 +2,12 @@ package user
 
 import (
 	"context"
+	"errors"
 	"strings"
 
 	"github.com/domino14/liwords/pkg/entity"
 	"github.com/gomodule/redigo/redis"
+	"github.com/rs/zerolog/log"
 )
 
 const (
@@ -16,11 +18,15 @@ const (
 type RedisPresenceStore struct {
 	redisPool *redis.Pool
 
-	setPresenceScript *redis.Script
+	setPresenceScript   *redis.Script
+	clearPresenceScript *redis.Script
 }
 
+// SetPresenceScript is a Lua script that handles presence in an atomic way.
+// We may want to move this to a separate file if we start adding more Lua
+// scripts.
 const SetPresenceScript = `
--- Arguments to this LUA script:
+-- Arguments to this Lua script:
 -- uuid, username, channel string  (ARGV[1] through [3])
 
 local presencekey = "presence:user:"..ARGV[1]
@@ -36,22 +42,38 @@ if curchannel ~= false then
     redis.call("SREM", "presence:channel:"..curchannel, userkey)
 end
 
-if ARGV[3] ~= "NULL" then
-    redis.call("HSET", presencekey, "username", ARGV[2], "channel", ARGV[3])
-    -- and add to the channel presence
-    redis.call("SADD", channelpresencekey, userkey)
-else
-    -- if the channel string is a physical "NULL" this is equivalent to signing off.
-    redis.call("DEL", presencekey)
-end
+redis.call("HSET", presencekey, "username", ARGV[2], "channel", ARGV[3])
+-- and add to the channel presence
+redis.call("SADD", channelpresencekey, userkey)
 
+`
+
+// ClearPresenceScript clears the presence and returns the channel it was in.
+const ClearPresenceScript = `
+-- Arguments to this Lua script:
+-- uuid, username
+
+local presencekey = "presence:user:"..ARGV[1]
+local userkey = ARGV[1].."#"..ARGV[2]  -- uuid#username
+
+-- get the current channel that this presence is in.
+local curchannel = redis.call("HGET", presencekey, "channel")
+if curchannel ~= false then
+    -- figure out what channel we are in
+    redis.call("SREM", "presence:channel:"..curchannel, userkey)
+end
+redis.call("DEL", presencekey)
+
+-- return the channel where the user used to be.
+return curchannel
 `
 
 func NewRedisPresenceStore(r *redis.Pool) *RedisPresenceStore {
 
 	return &RedisPresenceStore{
-		redisPool:         r,
-		setPresenceScript: redis.NewScript(0, SetPresenceScript),
+		redisPool:           r,
+		setPresenceScript:   redis.NewScript(0, SetPresenceScript),
+		clearPresenceScript: redis.NewScript(0, ClearPresenceScript),
 	}
 }
 
@@ -73,8 +95,27 @@ func (s *RedisPresenceStore) SetPresence(ctx context.Context, uuid, username, ch
 	return err
 }
 
-func (s *RedisPresenceStore) ClearPresence(ctx context.Context, uuid, username string) error {
-	return s.SetPresence(ctx, uuid, username, NullPresenceChannel)
+func (s *RedisPresenceStore) ClearPresence(ctx context.Context, uuid, username string) (string, error) {
+	conn := s.redisPool.Get()
+	defer conn.Close()
+
+	ret, err := s.clearPresenceScript.Do(conn, uuid, username)
+	if err != nil {
+		return "", err
+	}
+	log.Debug().Interface("ret", ret).Msg("clear-presence-return")
+
+	switch v := ret.(type) {
+	case bool:
+		// can only be false. User was not found anywhere, so nowhere to leave from.
+		if !v {
+			return "", nil
+		}
+		return "", errors.New("unexpected bool")
+	case []byte:
+		return string(v), nil
+	}
+	return "", errors.New("unexpected clear presence result")
 }
 
 func (s *RedisPresenceStore) GetInChannel(ctx context.Context, channel string) ([]*entity.User, error) {

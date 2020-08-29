@@ -36,6 +36,12 @@ export type ChatEntityObj = {
   timestamp?: number;
 };
 
+export type PresenceEntity = {
+  uuid: string;
+  username: string;
+  channel: string;
+};
+
 const MaxChatLength = 100;
 
 const defaultTimerContext = {
@@ -62,6 +68,10 @@ export type StoreData = {
   addChats: (chats: Array<ChatEntityObj>) => void;
   clearChat: () => void;
   chat: Array<ChatEntityObj>;
+
+  setPresence: (presence: PresenceEntity) => void;
+  addPresences: (presences: Array<PresenceEntity>) => void;
+  presences: { [uuid: string]: PresenceEntity };
 
   // This variable is set when the game just ended.
   gameEndMessage: string;
@@ -105,6 +115,10 @@ export const Context = createContext<StoreData>({
   addChats: defaultFunction,
   clearChat: defaultFunction,
   chat: [],
+
+  setPresence: defaultFunction,
+  addPresences: defaultFunction,
+  presences: {},
 
   gameEndMessage: '',
   setGameEndMessage: defaultFunction,
@@ -183,6 +197,9 @@ export const Store = ({ children, ...props }: Props) => {
   const [gameEndMessage, setGameEndMessage] = useState('');
   const [rematchRequest, setRematchRequest] = useState(new MatchRequest());
   const [chat, setChat] = useState(new Array<ChatEntityObj>());
+  const [presences, setPresences] = useState(
+    {} as { [uuid: string]: PresenceEntity }
+  );
 
   const challengeResultEvent = (sge: ServerChallengeResultEvent) => {
     addChat({
@@ -217,6 +234,29 @@ export const Store = ({ children, ...props }: Props) => {
     setChat([]);
   };
 
+  const setPresence = (entity: PresenceEntity) => {
+    // XXX: This looks slow.
+    const presencesCopy = { ...presences };
+    if (entity.channel === '') {
+      // This user signed off; remove
+      delete presencesCopy[entity.uuid];
+    } else {
+      presencesCopy[entity.uuid] = entity;
+    }
+    console.log('in setPresence', presencesCopy);
+    setPresences(presencesCopy);
+  };
+
+  const addPresences = (entities: Array<PresenceEntity>) => {
+    const presencesCopy = {} as { [uuid: string]: PresenceEntity };
+    entities.forEach((p) => {
+      presencesCopy[p.uuid] = p;
+    });
+    console.log('in addPresences', presencesCopy);
+
+    setPresences(presencesCopy);
+  };
+
   const stopClock = () => {
     if (!clockController.current) {
       return;
@@ -239,6 +279,10 @@ export const Store = ({ children, ...props }: Props) => {
     addChats,
     clearChat,
     chat,
+    setPresence,
+    addPresences,
+    presences,
+
     rematchRequest,
     setRematchRequest,
 
