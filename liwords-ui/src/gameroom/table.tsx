@@ -22,6 +22,7 @@ import './scss/gameroom.scss';
 import { ScoreCard } from './scorecard';
 import { GameInfo, GameMetadata, PlayerMetadata } from './game_info';
 import { PlayState } from '../gen/macondo/api/proto/macondo/macondo_pb';
+import { BoopSounds } from '../sound/boop';
 // import { GameInfoResponse } from '../gen/api/proto/game_service/game_service_pb';
 type Props = {
   sendSocketMsg: (msg: Uint8Array) => void;
@@ -60,6 +61,7 @@ export const Table = React.memo((props: Props) => {
     setPTimedOut,
     rematchRequest,
     setRematchRequest,
+    presences,
   } = useStoreContext();
   const { username, sendSocketMsg } = props;
   // const location = useLocation();
@@ -110,6 +112,7 @@ export const Table = React.memo((props: Props) => {
       // via the socket.
       message.warning('Game is starting shortly', 0);
     }
+    BoopSounds.startgameSound.play();
 
     return () => {
       clearChat();
@@ -230,6 +233,8 @@ export const Table = React.memo((props: Props) => {
           chatEntities={chat}
           sendChat={sendChat}
           description={isObserver ? 'Observer chat' : 'Game chat'}
+          presences={presences}
+          peopleOnlineContext={isObserver ? 'Observers' : 'Players'}
         />
         {/* we only put the Popconfirm here so that we can physically place it */}
 

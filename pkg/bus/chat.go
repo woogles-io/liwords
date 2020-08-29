@@ -45,8 +45,9 @@ func (b *Bus) chat(ctx context.Context, userID string, evt *pb.ChatMessage) erro
 	}
 	conn := b.redisPool.Get()
 	defer conn.Close()
+	redisKey := "chat:" + evt.Channel
 
-	ret, err := redis.String(conn.Do("XADD", "chat:"+evt.Channel, "MAXLEN", "~", "500", "*",
+	ret, err := redis.String(conn.Do("XADD", redisKey, "MAXLEN", "~", "500", "*",
 		"username", username, "message", evt.Message))
 	if err != nil {
 		return err
@@ -70,7 +71,7 @@ func (b *Bus) chat(ctx context.Context, userID string, evt *pb.ChatMessage) erro
 	}
 
 	if evt.Channel != LobbyChannel {
-		_, err = conn.Do("EXPIRE", evt.Channel, ChannelExpiration)
+		_, err = conn.Do("EXPIRE", redisKey, ChannelExpiration)
 		if err != nil {
 			return err
 		}
@@ -78,33 +79,20 @@ func (b *Bus) chat(ctx context.Context, userID string, evt *pb.ChatMessage) erro
 	return b.natsconn.Publish(evt.Channel, data)
 }
 
-func (b *Bus) sendOldChats(userID, realm string) error {
-	// Send chats in a realm to the given user.
-	// Note that a realm and a channel are not identical. A Realm is a construct
-	// used by the socket server, and a socket connection can only be in one
-	// realm at once. A channel is essentially a NATS pubsub channel.
-	// They do map very closely, though.
-	var channel string
-	log.Debug().Str("realm", realm).Msg("send-old-chats")
-	if realm == "lobby" {
-		// The lobby realm, for example, can receive other lobby events.
-		// Chats only come in on the lobby.chat pubsub channel though.
-		channel = LobbyChannel
-	} else if strings.HasPrefix(realm, "game-") || strings.HasPrefix(realm, "gametv-") {
-		// The channel is still pretty similar.
-		channel = strings.ReplaceAll(realm, "-", ".")
-	}
-	if channel == "" {
+func (b *Bus) sendOldChats(userID, chatChannel string) error {
+	// Send chats in a chatChannel to the given user.
+	log.Debug().Str("chatChannel", chatChannel).Msg("send-old-chats")
+	if chatChannel == "" {
 		// No chats for this channel.
 		return nil
 	}
-	channel = "chat:" + channel
-	log.Debug().Str("chan", channel).Msg("get-old-chats")
+	redisKey := "chat:" + chatChannel
+	log.Debug().Str("redisKey", redisKey).Msg("get-old-chats")
 	conn := b.redisPool.Get()
 	defer conn.Close()
 
 	// Get the latest 50 chats to display to the user.
-	vals, err := redis.Values(conn.Do("XREVRANGE", channel, "+", "-", "COUNT", ChatsOnReload))
+	vals, err := redis.Values(conn.Do("XREVRANGE", redisKey, "+", "-", "COUNT", ChatsOnReload))
 	if err != nil {
 		return err
 	}

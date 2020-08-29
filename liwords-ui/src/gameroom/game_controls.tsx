@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { Button } from 'antd';
-import { Link } from 'react-router-dom';
 import { ExchangeTiles } from './exchange_tiles';
 
 type Props = {
@@ -103,9 +102,7 @@ const EndGameControls = (props: EGCProps) => (
   <div className="game-controls">
     <Button>Options</Button>
     <Button onClick={props.onExamine}>Export GCG</Button>
-    <Button>
-      <Link to="/">Exit</Link>
-    </Button>
+    <Button onClick={() => window.location.replace('/')}>Exit</Button>
     {props.showRematch && (
       <Button type="primary" onClick={props.onRematch}>
         Rematch

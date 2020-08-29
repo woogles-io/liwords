@@ -128,5 +128,5 @@ func (c *Cache) ListActive(ctx context.Context) ([]*pb.GameMeta, error) {
 		c.activeGames = games
 		c.activeGamesLastUpdated = time.Now()
 	}
-	return games, nil
+	return games, err
 }

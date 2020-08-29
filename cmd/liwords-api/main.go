@@ -124,8 +124,10 @@ func main() {
 	idleConnsClosed := make(chan struct{})
 	sig := make(chan os.Signal, 1)
 
+	presenceStore := user.NewRedisPresenceStore(redisPool)
 	// Handle bus.
-	pubsubBus, err := bus.NewBus(cfg, userStore, gameStore, soughtGameStore, redisPool)
+	pubsubBus, err := bus.NewBus(cfg, userStore, gameStore, soughtGameStore,
+		presenceStore, redisPool)
 	if err != nil {
 		panic(err)
 	}

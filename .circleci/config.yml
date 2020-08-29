@@ -7,6 +7,7 @@ jobs:
       LEXICON_PATH: /opt/lexica/
       LETTER_DISTRIBUTION_PATH: /opt/liwords/data/letterdistributions/
       TEST_DB_HOST: localhost
+      REDIS_URL: redis://localhost:6379
     docker:
       - image: golang:alpine
       - image: circleci/postgres:12.3
@@ -14,6 +15,7 @@ jobs:
           POSTGRES_USER: postgres
           POSTGRES_DB: liwords_test
           POSTGRES_PASSWORD: pass
+      - image: circleci/redis:alpine
 
     working_directory: /opt/liwords
     steps:

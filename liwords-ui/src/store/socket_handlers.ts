@@ -1,5 +1,5 @@
 import { message, notification } from 'antd';
-import { StoreData, ChatEntityType } from './store';
+import { StoreData, ChatEntityType, randomID } from './store';
 import {
   MessageType,
   SeekRequest,
@@ -14,8 +14,6 @@ import {
   GameEndedEvent,
   ServerChallengeResultEvent,
   SeekRequests,
-  JoinPath,
-  UnjoinRealm,
   TimedOut,
   GameMeta,
   ActiveGames,
@@ -24,6 +22,8 @@ import {
   DeclineMatchRequest,
   ChatMessage,
   ChatMessages,
+  UserPresence,
+  UserPresences,
 } from '../gen/api/proto/realtime/realtime_pb';
 import { ActionType } from '../actions/actions';
 import { endGameMessage } from './end_of_game';
@@ -31,22 +31,7 @@ import {
   SeekRequestToSoughtGame,
   GameMetaToActiveGame,
 } from './reducers/lobby_reducer';
-
-const makemoveMP3 = require('../assets/makemove.mp3');
-const startgameMP3 = require('../assets/startgame.mp3');
-const oppMoveMP3 = require('../assets/oppmove.mp3');
-const matchReqMP3 = require('../assets/matchreq.mp3');
-const woofWav = require('../assets/woof.wav');
-const endgameMP3 = require('../assets/endgame.mp3');
-
-const makeMoveSound = new Audio(makemoveMP3);
-const oppMoveSound = new Audio(oppMoveMP3);
-const matchReqSound = new Audio(matchReqMP3);
-
-const startgameSound = new Audio(startgameMP3);
-const endgameSound = new Audio(endgameMP3);
-const woofSound = new Audio(woofWav);
-woofSound.volume = 0.25;
+import { BoopSounds } from '../sound/boop';
 
 export const parseMsgs = (msg: Uint8Array) => {
   // Multiple msgs can come in the same packet.
@@ -69,8 +54,6 @@ export const parseMsgs = (msg: Uint8Array) => {
       [MessageType.GAME_ENDED_EVENT]: GameEndedEvent,
       [MessageType.SERVER_CHALLENGE_RESULT_EVENT]: ServerChallengeResultEvent,
       [MessageType.SEEK_REQUESTS]: SeekRequests,
-      [MessageType.JOIN_PATH]: JoinPath,
-      [MessageType.UNJOIN_REALM]: UnjoinRealm,
       [MessageType.TIMED_OUT]: TimedOut,
       [MessageType.GAME_META_EVENT]: GameMeta,
       [MessageType.ACTIVE_GAMES]: ActiveGames,
@@ -79,6 +62,8 @@ export const parseMsgs = (msg: Uint8Array) => {
       [MessageType.DECLINE_MATCH_REQUEST]: DeclineMatchRequest,
       [MessageType.CHAT_MESSAGE]: ChatMessage,
       [MessageType.CHAT_MESSAGES]: ChatMessages,
+      [MessageType.USER_PRESENCE]: UserPresence,
+      [MessageType.USER_PRESENCES]: UserPresences,
     };
 
     const parsedMsg = msgTypes[msgType];
@@ -139,7 +124,7 @@ export const onSocketMsg = (username: string, storeData: StoreData) => {
             return;
           }
           if (receiver === username) {
-            matchReqSound.play();
+            BoopSounds.matchReqSound.play();
             if (mr.getRematchFor() !== '') {
               // Only display the rematch modal if we are the recipient
               // of the rematch request.
@@ -200,9 +185,35 @@ export const onSocketMsg = (username: string, storeData: StoreData) => {
             sender: cm.getUsername(),
             message: cm.getMessage(),
             timestamp: cm.getTimestamp(),
+            id: randomID(),
           }));
 
           storeData.addChats(entities);
+          break;
+        }
+
+        case MessageType.USER_PRESENCE: {
+          console.log('userpresence', parsedMsg);
+
+          const up = parsedMsg as UserPresence;
+          storeData.setPresence({
+            uuid: up.getUserId(),
+            username: up.getUsername(),
+            channel: up.getChannel(),
+          });
+          break;
+        }
+
+        case MessageType.USER_PRESENCES: {
+          const ups = parsedMsg as UserPresences;
+          const toAdd = ups.getPresencesList().map((p) => ({
+            uuid: p.getUserId(),
+            username: p.getUsername(),
+            channel: p.getChannel(),
+          }));
+          console.log('userpresences', toAdd);
+
+          storeData.addPresences(toAdd);
           break;
         }
 
@@ -211,7 +222,7 @@ export const onSocketMsg = (username: string, storeData: StoreData) => {
           const gee = parsedMsg as GameEndedEvent;
           storeData.setGameEndMessage(endGameMessage(gee));
           storeData.stopClock();
-          endgameSound.play();
+          BoopSounds.endgameSound.play();
           break;
         }
 
@@ -225,7 +236,6 @@ export const onSocketMsg = (username: string, storeData: StoreData) => {
           const gid = nge.getGameId();
           storeData.setRedirGame(gid);
           storeData.setGameEndMessage('');
-          startgameSound.play();
           break;
         }
 
@@ -253,9 +263,9 @@ export const onSocketMsg = (username: string, storeData: StoreData) => {
           });
           // play sound
           if (username === sge.getEvent()?.getNickname()) {
-            makeMoveSound.play();
+            BoopSounds.makeMoveSound.play();
           } else {
-            oppMoveSound.play();
+            BoopSounds.oppMoveSound.play();
           }
           break;
         }
@@ -265,7 +275,7 @@ export const onSocketMsg = (username: string, storeData: StoreData) => {
           console.log('got server challenge result event', sge);
           storeData.challengeResultEvent(sge);
           if (!sge.getValid()) {
-            woofSound.play();
+            BoopSounds.woofSound.play();
           }
           break;
         }

@@ -76,8 +76,6 @@ enum MessageType {
   NEW_GAME_EVENT = 8;
   SERVER_CHALLENGE_RESULT_EVENT = 9;
   SEEK_REQUESTS = 10;
-  JOIN_PATH = 11;
-  UNJOIN_REALM = 12;
   TIMED_OUT = 13;
   GAME_META_EVENT = 15;
   ACTIVE_GAMES = 16;
@@ -86,6 +84,8 @@ enum MessageType {
   DECLINE_MATCH_REQUEST = 19;
   CHAT_MESSAGE = 20;
   CHAT_MESSAGES = 21;
+  USER_PRESENCE = 22;
+  USER_PRESENCES = 23;
   // Add more events here. The total number of events should fit in a byte.
   // We should definitely not be using anywhere close to 255 events, and
   // in order to enforce that I'll be forcing the event type header to just be
@@ -117,6 +117,14 @@ message ChatMessage {
 }
 
 message ChatMessages { repeated ChatMessage messages = 1; }
+
+message UserPresence {
+  string username = 1;
+  string user_id = 2;
+  string channel = 3;
+}
+
+message UserPresences { repeated UserPresence presences = 1; }
 
 message SeekRequest {
   GameRequest game_request = 1;

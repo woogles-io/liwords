@@ -20,6 +20,7 @@ import (
 	"github.com/domino14/liwords/pkg/entity"
 	"github.com/domino14/liwords/pkg/gameplay"
 	"github.com/domino14/liwords/pkg/user"
+
 	pb "github.com/domino14/liwords/rpc/api/proto/realtime"
 )
 
@@ -36,7 +37,9 @@ type Bus struct {
 	userStore       user.Store
 	gameStore       gameplay.GameStore
 	soughtGameStore gameplay.SoughtGameStore
-	redisPool       *redis.Pool
+	presenceStore   user.PresenceStore
+
+	redisPool *redis.Pool
 
 	subscriptions []*nats.Subscription
 	subchans      map[string]chan *nats.Msg
@@ -45,7 +48,8 @@ type Bus struct {
 }
 
 func NewBus(cfg *config.Config, userStore user.Store, gameStore gameplay.GameStore,
-	soughtGameStore gameplay.SoughtGameStore, redisPool *redis.Pool) (*Bus, error) {
+	soughtGameStore gameplay.SoughtGameStore, presenceStore user.PresenceStore,
+	redisPool *redis.Pool) (*Bus, error) {
 
 	natsconn, err := nats.Connect(cfg.NatsURL)
 
@@ -57,6 +61,7 @@ func NewBus(cfg *config.Config, userStore user.Store, gameStore gameplay.GameSto
 		userStore:       userStore,
 		gameStore:       gameStore,
 		soughtGameStore: soughtGameStore,
+		presenceStore:   presenceStore,
 		subscriptions:   []*nats.Subscription{},
 		subchans:        map[string]chan *nats.Msg{},
 		config:          cfg,
@@ -580,6 +585,29 @@ func (b *Bus) broadcastGameCreation(g *entity.Game, acceptor, requester *entity.
 	return b.natsconn.Publish("lobby.newLiveGame", data)
 }
 
+func (b *Bus) broadcastPresence(username, userID, presenceChan string, deleting bool) error {
+	// broadcast username's presence to the channel.
+	log.Debug().Str("username", username).Str("userID", userID).
+		Str("presenceChan", presenceChan).Bool("deleting", deleting).Msg("broadcast-presence")
+
+	evtChannel := presenceChan
+
+	if deleting {
+		evtChannel = ""
+	}
+
+	toSend := entity.WrapEvent(&pb.UserPresence{
+		Username: username,
+		UserId:   userID,
+		Channel:  evtChannel},
+		pb.MessageType_USER_PRESENCE, "")
+	data, err := toSend.Serialize()
+	if err != nil {
+		return err
+	}
+	return b.natsconn.Publish(presenceChan, data)
+}
+
 func (b *Bus) pubToUser(userID string, evt *entity.EventWrapper) error {
 	t := time.Now()
 	sanitized, err := sanitize(evt, userID)
@@ -592,6 +620,23 @@ func (b *Bus) pubToUser(userID string, evt *entity.EventWrapper) error {
 }
 
 func (b *Bus) initRealmInfo(ctx context.Context, evt *pb.InitRealmInfo) error {
+	// For consistency sake, use the `dotted` channels for presence
+	// i.e. game.<gameID>, gametv.<gameID>
+	// The reasoning is that realms should only be cared about by the socket
+	// server. The channels are NATS pubsub channels and we use these for chat
+	// too.
+	username, err := b.userStore.Username(ctx, evt.UserId)
+	if err != nil {
+		return err
+	}
+	presenceChan := strings.ReplaceAll(evt.Realm, "-", ".")
+	chatChan := presenceChan
+	if presenceChan == "lobby" {
+		presenceChan = "lobby.presence"
+		chatChan = "lobby.chat"
+	}
+	b.presenceStore.SetPresence(ctx, evt.UserId, username, presenceChan)
+
 	if evt.Realm == "lobby" {
 		// open seeks
 		seeks, err := b.openSeeks(ctx)
@@ -621,6 +666,7 @@ func (b *Bus) initRealmInfo(ctx context.Context, evt *pb.InitRealmInfo) error {
 			return err
 		}
 		// TODO: send followed online
+
 	} else if strings.HasPrefix(evt.Realm, "game-") || strings.HasPrefix(evt.Realm, "gametv-") {
 		// Get a sanitized history
 		gameID := strings.Split(evt.Realm, "-")[1]
@@ -635,8 +681,43 @@ func (b *Bus) initRealmInfo(ctx context.Context, evt *pb.InitRealmInfo) error {
 	} else {
 		log.Debug().Interface("evt", evt).Msg("no init realm info")
 	}
+
+	// Get presence
+	pres, err := b.getPresence(ctx, presenceChan)
+	if err != nil {
+		return err
+	}
+	err = b.pubToUser(evt.UserId, pres)
+	if err != nil {
+		return err
+	}
+	// Also send OUR presence to users in this channel.
+	err = b.broadcastPresence(username, evt.UserId, presenceChan, false)
+	if err != nil {
+		return err
+	}
 	// send chat info
-	return b.sendOldChats(evt.UserId, evt.Realm)
+	return b.sendOldChats(evt.UserId, chatChan)
+}
+
+func (b *Bus) getPresence(ctx context.Context, presenceChan string) (*entity.EventWrapper, error) {
+	users, err := b.presenceStore.GetInChannel(ctx, presenceChan)
+	if err != nil {
+		return nil, err
+	}
+	pbobj := &pb.UserPresences{Presences: []*pb.UserPresence{}}
+	for _, u := range users {
+		pbobj.Presences = append(pbobj.Presences, &pb.UserPresence{
+			Username: u.Username,
+			UserId:   u.UUID,
+			Channel:  presenceChan,
+		})
+	}
+
+	log.Debug().Interface("presences", pbobj.Presences).Msg("get-presences")
+
+	evt := entity.WrapEvent(pbobj, pb.MessageType_USER_PRESENCES, "")
+	return evt, nil
 }
 
 func (b *Bus) deleteSoughtForUser(ctx context.Context, userID string) error {
@@ -652,6 +733,20 @@ func (b *Bus) deleteSoughtForUser(ctx context.Context, userID string) error {
 }
 
 func (b *Bus) leaveSite(ctx context.Context, userID string) error {
+	username, err := b.userStore.Username(ctx, userID)
+	if err != nil {
+		return err
+	}
+	oldchannel, err := b.presenceStore.ClearPresence(ctx, userID, username)
+	if err != nil {
+		return err
+	}
+
+	err = b.broadcastPresence(username, userID, oldchannel, true)
+	if err != nil {
+		return err
+	}
+
 	return b.deleteSoughtForUser(ctx, userID)
 }
 

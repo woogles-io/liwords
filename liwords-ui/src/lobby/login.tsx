@@ -3,7 +3,6 @@ import React, { useState } from 'react';
 import { Form, Input, Button, Alert, Row, Col } from 'antd';
 // import { Link } from 'react-router-dom';
 import axios from 'axios';
-import { Link } from 'react-router-dom';
 
 const layout = {
   labelCol: {
@@ -93,9 +92,9 @@ export const Login = () => {
       {/* <Link to="/register">Register a new name</Link> */}
       <Row style={{ marginTop: 20 }}>
         <Col span={12} offset={12}>
-          <Link to="/password/reset">
+          <a href="/password/reset">
             <big>Forgot your password?</big>
-          </Link>
+          </a>
         </Col>
       </Row>
     </>
