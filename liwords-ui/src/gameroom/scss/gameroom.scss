@@ -278,7 +278,7 @@
   color: white;
   margin: 0;
   line-height: 0;
-  font-size: 24px;
+  font-size: 18px;
   font-weight: 600;
   width: 100%;
   padding-bottom: 3px;
@@ -295,14 +295,14 @@
   padding: 0.6vw 0.3vw;
   line-height: 0;
   margin: 0;
-  font-size: 8px;
+  font-size: 6px;
   font-weight: bold;
   color: white;
 }
 
 .rack .tile {
-  width: 32px;
-  height: 32px;
+  width: 26px;
+  height: 26px;
   margin: 2px;
   &.dragging {
     opacity: 0.1;

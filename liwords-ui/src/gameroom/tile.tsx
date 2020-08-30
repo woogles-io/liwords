@@ -109,7 +109,11 @@ const Tile = React.memo((props: TileProps) => {
     if (e) {
       setIsDragging(true);
       e.dataTransfer.dropEffect = 'move';
-      if (props.tentative && props.x && props.y) {
+      if (
+        props.tentative &&
+        typeof props.x == 'number' &&
+        typeof props.y == 'number'
+      ) {
         e.dataTransfer.setData('tileIndex', uniqueTileIdx(props.y, props.x));
       } else {
         e.dataTransfer.setData('rackIndex', props.rackIndex);
