@@ -19,8 +19,9 @@ require (
 	github.com/namsral/flag v1.7.4-pre
 	github.com/nats-io/nats.go v1.10.0
 	github.com/niemeyer/pretty v0.0.0-20200227124842-a10e7caefd8e // indirect
+	github.com/pkg/errors v0.9.1 // indirect
 	github.com/rs/zerolog v1.19.0
-	github.com/twitchtv/twirp v5.12.0+incompatible
+	github.com/twitchtv/twirp v5.12.1+incompatible
 	golang.org/x/crypto v0.0.0-20200604202706-70a84ac30bf9
 	golang.org/x/sys v0.0.0-20200622214017-ed371f2e16b4 // indirect
 	golang.org/x/text v0.3.3 // indirect
