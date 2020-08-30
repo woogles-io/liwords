@@ -545,6 +545,9 @@ export class GameEndedEvent extends jspb.Message {
   getTie(): boolean;
   setTie(value: boolean): void;
 
+  getTime(): number;
+  setTime(value: number): void;
+
   serializeBinary(): Uint8Array;
   toObject(includeInstance?: boolean): GameEndedEvent.AsObject;
   static toObject(includeInstance: boolean, msg: GameEndedEvent): GameEndedEvent.AsObject;
@@ -563,6 +566,7 @@ export namespace GameEndedEvent {
     winner: string,
     loser: string,
     tie: boolean,
+    time: number,
   }
 }
 

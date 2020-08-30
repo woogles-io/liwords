@@ -26,6 +26,7 @@ import (
 
 	"github.com/domino14/liwords/pkg/config"
 	"github.com/domino14/liwords/pkg/entity"
+	"github.com/domino14/liwords/pkg/stats"
 	"github.com/domino14/liwords/pkg/user"
 	pb "github.com/domino14/liwords/rpc/api/proto/realtime"
 )
@@ -450,6 +451,7 @@ func gameEndedEvent(ctx context.Context, g *entity.Game, userStore user.Store) *
 		Winner:     winner,
 		Loser:      loser,
 		Tie:        tie,
+		Time:       g.Timers.TimeOfLastUpdate,
 	}
 
 	log.Debug().Interface("game-ended-event", evt).Msg("game-ended")
@@ -587,7 +589,7 @@ func discernEndgameReason(g *entity.Game) {
 
 func computeGameStats(ctx context.Context, history *macondopb.GameHistory, req *pb.GameRequest,
 	variantKey entity.VariantKey, evt *pb.GameEndedEvent, userStore user.Store) (*entity.Stats, error) {
-	// stats := entity.InstantiateNewStats(1, 2)
+	// stats := stats.InstantiateNewStats(1, 2)
 	p0id, p1id := history.Players[0].UserId, history.Players[1].UserId
 	if history.SecondWentFirst {
 		p0id, p1id = p1id, p0id
@@ -602,9 +604,9 @@ func computeGameStats(ctx context.Context, history *macondopb.GameHistory, req *
 	config := ctx.Value(ConfigCtxKey("config")).(*macondoconfig.Config)
 
 	// Here, p0 went first and p1 went second, no matter what.
-	gameStats := entity.InstantiateNewStats(p0id, p1id)
+	gameStats := stats.InstantiateNewStats(p0id, p1id)
 
-	err := gameStats.AddGame(history, req, config, evt, history.Uid)
+	err := stats.AddGame(gameStats, history, req, config, evt, history.Uid)
 	if err != nil {
 		return nil, err
 	}
@@ -618,8 +620,8 @@ func computeGameStats(ctx context.Context, history *macondopb.GameHistory, req *
 		}
 	}
 
-	p0NewProfileStats := entity.InstantiateNewStats(p0id, "")
-	p1NewProfileStats := entity.InstantiateNewStats(p1id, "")
+	p0NewProfileStats := stats.InstantiateNewStats(p0id, "")
+	p1NewProfileStats := stats.InstantiateNewStats(p1id, "")
 
 	p0ProfileStats, err := statsForUser(ctx, p0id, userStore, variantKey)
 	if err != nil {
@@ -631,24 +633,24 @@ func computeGameStats(ctx context.Context, history *macondopb.GameHistory, req *
 		return nil, err
 	}
 
-	err = p0NewProfileStats.AddStats(p0ProfileStats)
+	err = stats.AddStats(p0NewProfileStats, p0ProfileStats)
 	if err != nil {
 		return nil, err
 	}
-	err = p1NewProfileStats.AddStats(p1ProfileStats)
+	err = stats.AddStats(p1NewProfileStats, p1ProfileStats)
 	if err != nil {
 		return nil, err
 	}
-	err = p0NewProfileStats.AddStats(gameStats)
+	err = stats.AddStats(p0NewProfileStats, gameStats)
 	if err != nil {
 		return nil, err
 	}
-	err = p1NewProfileStats.AddStats(gameStats)
+	err = stats.AddStats(p1NewProfileStats, gameStats)
 	if err != nil {
 		return nil, err
 	}
-	p0NewProfileStats.Finalize()
-	p1NewProfileStats.Finalize()
+	stats.Finalize(p0NewProfileStats, []string{}, p0id, p1id)
+	stats.Finalize(p1NewProfileStats, []string{}, p1id, p0id)
 	// Save all stats back to the database.
 	err = userStore.SetStats(ctx, p0id, variantKey, p0NewProfileStats)
 	if err != nil {
@@ -668,12 +670,12 @@ func statsForUser(ctx context.Context, id string, userStore user.Store,
 	if err != nil {
 		return nil, err
 	}
-	stats, ok := u.Profile.Stats.Data[variantKey]
+	userStats, ok := u.Profile.Stats.Data[variantKey]
 	if !ok {
 		log.Debug().Str("variantKey", string(variantKey)).Str("pid", id).Msg("instantiating new; no data for variant")
 		// The second user ID does not matter; this is the per user stat.
-		stats = entity.InstantiateNewStats(id, "")
+		userStats = stats.InstantiateNewStats(id, "")
 	}
 
-	return stats, nil
+	return userStats, nil
 }

@@ -4381,7 +4381,8 @@ proto.liwords.GameEndedEvent.toObject = function(includeInstance, msg) {
     endReason: jspb.Message.getFieldWithDefault(msg, 3, 0),
     winner: jspb.Message.getFieldWithDefault(msg, 4, ""),
     loser: jspb.Message.getFieldWithDefault(msg, 5, ""),
-    tie: jspb.Message.getBooleanFieldWithDefault(msg, 6, false)
+    tie: jspb.Message.getBooleanFieldWithDefault(msg, 6, false),
+    time: jspb.Message.getFieldWithDefault(msg, 7, 0)
   };
 
   if (includeInstance) {
@@ -4446,6 +4447,10 @@ proto.liwords.GameEndedEvent.deserializeBinaryFromReader = function(msg, reader)
       var value = /** @type {boolean} */ (reader.readBool());
       msg.setTie(value);
       break;
+    case 7:
+      var value = /** @type {number} */ (reader.readInt64());
+      msg.setTime(value);
+      break;
     default:
       reader.skipField();
       break;
@@ -4508,6 +4513,13 @@ proto.liwords.GameEndedEvent.serializeBinaryToWriter = function(message, writer)
   if (f) {
     writer.writeBool(
       6,
+      f
+    );
+  }
+  f = message.getTime();
+  if (f !== 0) {
+    writer.writeInt64(
+      7,
       f
     );
   }
@@ -4627,6 +4639,24 @@ proto.liwords.GameEndedEvent.prototype.getTie = function() {
  */
 proto.liwords.GameEndedEvent.prototype.setTie = function(value) {
   return jspb.Message.setProto3BooleanField(this, 6, value);
+};
+
+
+/**
+ * optional int64 time = 7;
+ * @return {number}
+ */
+proto.liwords.GameEndedEvent.prototype.getTime = function() {
+  return /** @type {number} */ (jspb.Message.getFieldWithDefault(this, 7, 0));
+};
+
+
+/**
+ * @param {number} value
+ * @return {!proto.liwords.GameEndedEvent} returns this
+ */
+proto.liwords.GameEndedEvent.prototype.setTime = function(value) {
+  return jspb.Message.setProto3IntField(this, 7, value);
 };
 
 
