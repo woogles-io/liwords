@@ -46,7 +46,21 @@ type GameStore interface {
 	SetGameEventChan(c chan<- *entity.EventWrapper)
 }
 
+type DummyListStatStore struct {
+}
+
+func (lss DummyListStatStore) AddListItem(gameId string, playerId string, statType int, time int64, item interface{}) error {
+	// Do nothing for now
+	return nil
+}
+
+func (lss DummyListStatStore) GetListItems(statType int, gameIds []string, playerId string) ([]*entity.ListItem, error) {
+	return []*entity.ListItem{}, nil
+}
+
 type ConfigCtxKey string
+
+var listStatStore = DummyListStatStore{}
 
 // InstantiateNewGame instantiates a game and returns it.
 func InstantiateNewGame(ctx context.Context, gameStore GameStore, cfg *config.Config,
@@ -606,7 +620,7 @@ func computeGameStats(ctx context.Context, history *macondopb.GameHistory, req *
 	// Here, p0 went first and p1 went second, no matter what.
 	gameStats := stats.InstantiateNewStats(p0id, p1id)
 
-	err := stats.AddGame(gameStats, history, req, config, evt, history.Uid)
+	err := stats.AddGame(gameStats, listStatStore, history, req, config, evt, history.Uid)
 	if err != nil {
 		return nil, err
 	}
@@ -649,8 +663,8 @@ func computeGameStats(ctx context.Context, history *macondopb.GameHistory, req *
 	if err != nil {
 		return nil, err
 	}
-	stats.Finalize(p0NewProfileStats, []string{}, p0id, p1id)
-	stats.Finalize(p1NewProfileStats, []string{}, p1id, p0id)
+	stats.Finalize(p0NewProfileStats, listStatStore, []string{}, p0id, p1id)
+	stats.Finalize(p1NewProfileStats, listStatStore, []string{}, p1id, p0id)
 	// Save all stats back to the database.
 	err = userStore.SetStats(ctx, p0id, variantKey, p0NewProfileStats)
 	if err != nil {
