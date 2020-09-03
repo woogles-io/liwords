@@ -36,6 +36,11 @@ type ListItem struct {
 	Item     interface{}
 }
 
+type ListStatStore interface {
+	AddListItem(gameId string, playerId string, statType int, time int64, item interface{}) error
+	GetListItems(statType int, gameIds []string, playerId string) ([]*ListItem, error)
+}
+
 type MistakeType string
 
 const (
@@ -108,6 +113,7 @@ type IncrementInfo struct {
 	Cfg                 *macondoconfig.Config
 	Req                 *realtime.GameRequest
 	Evt                 *realtime.GameEndedEvent
+	Lss                 ListStatStore
 	StatName            string
 	StatItem            *StatItem
 	OtherPlayerStatItem *StatItem

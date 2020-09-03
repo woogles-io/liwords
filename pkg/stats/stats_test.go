@@ -24,6 +24,18 @@ func TestMain(m *testing.M) {
 	os.Exit(m.Run())
 }
 
+type DummyListStatStore struct {
+}
+
+func (lss DummyListStatStore) AddListItem(gameId string, playerId string, statType int, time int64, item interface{}) error {
+	// Do nothing for now
+	return nil
+}
+
+func (lss DummyListStatStore) GetListItems(statType int, gameIds []string, playerId string) ([]*entity.ListItem, error) {
+	return []*entity.ListItem{}, nil
+}
+
 var DefaultConfig = macondoconfig.Config{
 	LexiconPath:               os.Getenv("LEXICON_PATH"),
 	LetterDistributionPath:    os.Getenv("LETTER_DISTRIBUTION_PATH"),
@@ -74,7 +86,7 @@ func InstantiateNewStatsWithHistory(filename string) (*entity.Stats, error) {
 		Tie:       history.FinalScores[0] != history.FinalScores[1],
 	}
 
-	AddGame(stats, history, req, &DefaultConfig, gameEndedEvent, filename)
+	AddGame(stats, DummyListStatStore{}, history, req, &DefaultConfig, gameEndedEvent, filename)
 
 	return stats, nil
 }
@@ -111,13 +123,14 @@ func JoshNationalsFromGames(useJSON bool) (*entity.Stats, error) {
 func TestStats(t *testing.T) {
 
 	is := is.New(t)
+	lss := DummyListStatStore{}
 	stats, error := JoshNationalsFromGames(false)
 	is.True(error == nil)
 	statsJSON, error := JoshNationalsFromGames(true)
 	is.True(error == nil)
-	error = Finalize(stats, []string{}, "", "")
+	error = Finalize(stats, lss, []string{}, "", "")
 	is.True(error == nil)
-	error = Finalize(statsJSON, []string{}, "", "")
+	error = Finalize(statsJSON, lss, []string{}, "", "")
 	is.True(error == nil)
 	is.True(isEqual(stats, statsJSON))
 	// fmt.Println(StatsToString(stats))
