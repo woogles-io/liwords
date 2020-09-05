@@ -27,6 +27,7 @@
         margin: 0 9px 0 0;
       }
       .message-body {
+        color: black;
         margin-bottom: 4px;
         line-height: 1.4em;
       }
@@ -75,7 +76,7 @@
   .chat-area .ant-card {
     height: 640px;
     .entities {
-      max-height: 520px;
+      max-height: 510px;
     }
   }
 }
@@ -91,9 +92,9 @@
   }
   .game-table {
     .chat-area .ant-card {
-      height: 740px;
+      height: 680px;
       .entities {
-        max-height: 610px;
+        max-height: 530px;
       }
     }
   }
@@ -104,7 +105,7 @@
     .chat-area .ant-card {
       height: 810px;
       .entities {
-        max-height: 680px;
+        max-height: 660px;
       }
     }
   }

@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { message, notification, Popconfirm } from 'antd';
+import { Card, message, notification, Popconfirm } from 'antd';
+import { HomeOutlined } from '@ant-design/icons/lib';
 import axios from 'axios';
 
 import { useParams } from 'react-router-dom';
@@ -224,13 +225,21 @@ export const Table = React.memo((props: Props) => {
         connectedToSocket={props.connectedToSocket}
       />
       <div className="game-table">
-        <Chat
-          chatEntities={chat}
-          sendChat={sendChat}
-          description={isObserver ? 'Observer chat' : 'Game chat'}
-          presences={presences}
-          peopleOnlineContext={isObserver ? 'Observers' : 'Players'}
-        />
+        <div className="chat-area">
+          <Card className="left-menu">
+            <a href="/">
+              <HomeOutlined />
+              Back to lobby
+            </a>
+          </Card>
+          <Chat
+            chatEntities={chat}
+            sendChat={sendChat}
+            description={isObserver ? 'Observer chat' : 'Game chat'}
+            presences={presences}
+            peopleOnlineContext={isObserver ? 'Observers' : 'Players'}
+          />
+        </div>
         {/* we only put the Popconfirm here so that we can physically place it */}
 
         <div className="play-area">

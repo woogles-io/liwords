@@ -22,6 +22,20 @@
   p {
     color: white;
   }
+  .chat-area {
+    .ant-card.left-menu {
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      font-weight: bold;
+      padding: 3px 12px;
+      height: 50px;
+      margin-bottom: 12px;
+      .anticon {
+        font-size: 16px;
+        margin-right: 9px;
+      }
+    }
+  }
 }
 
 .ant-card {
@@ -553,6 +567,7 @@
   }
   .game-table {
     flex-wrap: nowrap;
+
     .ant-card .ant-card-head {
       .ant-card-head-title,
       .ant-card-extra {
@@ -627,6 +642,9 @@
   .empty-space {
     height: 40px;
     width: 40px;
+  }
+  .chat-area .ant-card.left-menu{
+    display: none;
   }
   .rack .tile {
     width: 40px;

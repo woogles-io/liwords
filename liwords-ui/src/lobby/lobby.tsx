@@ -129,13 +129,15 @@ export const Lobby = (props: Props) => {
         connectedToSocket={props.connectedToSocket}
       />
       <div className="lobby">
-        <Chat
-          chatEntities={chat}
-          sendChat={sendChat}
-          description="Lobby chat"
-          peopleOnlineContext="Players"
-          presences={presences}
-        />
+        <div className="chat-area">
+          <Chat
+            chatEntities={chat}
+            sendChat={sendChat}
+            description="Lobby chat"
+            peopleOnlineContext="Players"
+            presences={presences}
+          />
+        </div>
         <GameLists
           loggedIn={props.loggedIn}
           userID={props.userID}
