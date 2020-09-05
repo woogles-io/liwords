@@ -13,6 +13,7 @@
 .game-table {
   @include container();
   display: flex;
+  flex-wrap: wrap;
   margin: 0 auto !important;
   flex-direction: row;
   justify-content: center;
@@ -455,7 +456,6 @@
   }
 }
 .game-info {
-  display: none;
   font-size: 14px;
   .variant {
     font-weight: 600;
@@ -504,9 +504,18 @@
   }
 }
 
-@media (min-height: $screen-min-height-laptop-min) and (min-width: $screen-laptop-min) {
+@media (min-width: $screen-tablet-min) {
+  .data-area {
+    min-width: 300px;
+    max-width: 38%;
+  }
+  .chat-area {
+    max-width: 80%;
+  }
+}
+@media (min-width: $screen-laptop-min) {
   .play-area {
-    flex: 0 0 50%;
+    flex: 0 0 45%;
   }
 
   .rack .tile {
@@ -516,11 +525,11 @@
   }
   .tile,
   .empty-space {
-    height: 30.7px;
-    width: 30.7px;
+    height: 26px;
+    width: 26px;
   }
   .tile .rune {
-    font-size: 22px;
+    font-size: 18px;
     line-height: 28px;
     position: relative;
   }
@@ -533,8 +542,9 @@
   }
 }
 
-@media (min-height: $screen-min-height-desktop-min) and (min-width: $screen-desktop-min) {
+@media (min-width: $screen-desktop-min) {
   .game-table {
+    flex-wrap: nowrap;
     .ant-card .ant-card-head {
       .ant-card-head-title,
       .ant-card-extra {
@@ -608,31 +618,8 @@
       }
     }
   }
-  .game-info {
-    display: block;
-  }
   .game-controls {
     max-width: none;
   }
 }
 
-@media (min-height: $screen-min-height-desktop-max) and (min-width: $screen-desktop-max) {
-  .rack .tile {
-    width: 44px;
-    height: 44px;
-  }
-  .tile,
-  .empty-space {
-    height: auto;
-    width: auto;
-  }
-  .score-card {
-    .ant-card-body {
-      padding: 0;
-
-      & > div {
-        max-height: 200px;
-      }
-    }
-  }
-}

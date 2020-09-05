@@ -7,21 +7,34 @@
   flex-direction: row;
   justify-content: center;
   align-items: flex-start;
-  padding: 12px 0;
+  padding: 12px 24px 12px 12px;
+  flex-wrap: wrap;
   .ant-card {
     @include fullHeight();
+    height: 70vh;
+  }
+}
+.announcements {
+  order: 0;
+  max-height: 100px;
+
+  min-width: 300px;
+  flex-grow: 1;
+  margin: 0px 12px 24px 12px;
+  .ant-card {
+    height: auto;
+    margin-bottom: 12px;
+  }
+  .ant-card-body {
+    max-height: 130px;
+    overflow-y: auto;
   }
 }
 
-
-.announcements {
-  max-width: 33%;
-  flex-grow: 1;
-}
-
 .game-lists {
-  margin: 0 12px;
+  margin: 12px 12px 0;
   max-width: none;
+  order: 2;
   flex-grow: 2;
   @include type-default;
   .ant-card-body {
@@ -144,8 +157,34 @@
     margin: 6px 0px 0px;
   }
 }
-
-@media (min-height: $screen-min-height-laptop-min) and (min-width: $screen-laptop-min) {
+@media (min-width: $screen-laptop-min) {
+  .lobby {
+    padding: 12px 0;
+    flex-wrap: wrap;
+    .ant-card {
+      @include fullHeight();
+    }
+  }
+  .announcements {
+    order: initial;
+    max-height: auto;
+    margin: 0;
+    min-width: 300px;
+    max-width: 38%;
+    flex-grow: 1;
+    .ant-card {
+      @include fullHeight();
+    }
+    .ant-card-body {
+      max-height: none;
+    }
+  }
+  .game-lists {
+    order: initial;
+    margin: 0 12px;
+  }
+}
+@media (min-width: $screen-desktop-min) {
     .announcements {
       max-width: 25%;
     }

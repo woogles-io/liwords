@@ -5,7 +5,9 @@
  expand board */
 
 .chat-area {
-  display: none;
+  order: 3;
+  width: 100%;
+  margin: 12px 12px 0 12px;
   .ant-card .ant-card-body {
     padding: 12px 0 40px 0;
   }
@@ -55,16 +57,15 @@
   }
 }
 
-@media (min-height: $screen-min-height-laptop-min) and (min-width: $screen-laptop-min) {
+@media (min-width: $screen-desktop-min) {
   .chat-area {
+    order: initial;
     display: block;
     flex: 1;
     width: 25%;
     min-width: 25%;
+    margin: 0;
   }
-}
-
-@media (min-height: $screen-min-height-desktop-min) and (min-width: $screen-desktop-min) {
   .game-table {
     .chat-area .ant-card {
       height: 740px;
@@ -75,7 +76,7 @@
   }
 }
 
-@media (min-height: $screen-min-height-desktop-max) and (min-width: $screen-desktop-max) {
+@media (min-width: $screen-desktop-max) {
   .game-table {
     .chat-area .ant-card {
       height: 810px;

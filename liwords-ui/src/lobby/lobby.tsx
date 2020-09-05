@@ -155,12 +155,7 @@ export const Lobby = (props: Props) => {
           <Card>
             <h3>Woogles is coming soon!</h3>
             <p>
-              Please back our{' '}
-              <a href="https://www.kickstarter.com/projects/woogles/woogles">
-                {' '}
-                Kickstarter.
-              </a>{' '}
-              We're a nonprofit and are counting on you.
+              In the meantime, why not watch some of our alpha testers play?
             </p>
           </Card>
         </div>

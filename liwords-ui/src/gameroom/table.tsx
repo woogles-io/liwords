@@ -217,7 +217,7 @@ export const Table = React.memo((props: Props) => {
   // The game "starts" when the GameHistoryRefresher object comes in via the socket.
 
   return (
-    <div>
+    <div className="game-container">
       <TopBar
         username={props.username}
         loggedIn={props.loggedIn}
