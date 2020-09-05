@@ -126,8 +126,8 @@ const ScorecardTurn = (props: turnProps) => {
         </div>
         <div className="scores">
           {memoizedTurn.lostScore > 0
-            ? `${memoizedTurn.oldScore}-${memoizedTurn.lostScore}`
-            : `${memoizedTurn.oldScore}+${memoizedTurn.score}`}
+            ? `${memoizedTurn.oldScore} - ${memoizedTurn.lostScore}`
+            : `${memoizedTurn.oldScore} + ${memoizedTurn.score}`}
           <br />
           <strong>{memoizedTurn.cumulative}</strong>
         </div>

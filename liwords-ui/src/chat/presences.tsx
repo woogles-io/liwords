@@ -14,7 +14,7 @@ export const Presences = React.memo((props: Props) => {
   ));
   return (
     <div className="entities" style={{ marginTop: 20 }}>
-      {presences}
+      <p className="presences">{presences}</p>
     </div>
   );
 });
