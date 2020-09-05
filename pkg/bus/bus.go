@@ -20,8 +20,10 @@ import (
 	"github.com/domino14/liwords/pkg/entity"
 	"github.com/domino14/liwords/pkg/gameplay"
 	"github.com/domino14/liwords/pkg/user"
+	macondogame "github.com/domino14/macondo/game"
 
 	pb "github.com/domino14/liwords/rpc/api/proto/realtime"
+	macondopb "github.com/domino14/macondo/gen/api/proto/macondo"
 )
 
 const (
@@ -111,6 +113,7 @@ outerfor:
 			// Regular messages.
 			log.Debug().Str("topic", msg.Subject).Msg("got ipc.pb message")
 			subtopics := strings.Split(msg.Subject, ".")
+			// XXX: put in a goroutine (go b.handleNatsPublish(...))
 			err := b.handleNatsPublish(ctx, subtopics[2:], msg.Data)
 			if err != nil {
 				// Unexpected end of JSON input!!
@@ -235,6 +238,54 @@ func setMatchUser(msg proto.Message, reqUser *pb.MatchUser) {
 	}
 }
 
+func (b *Bus) handleBotMove(ctx context.Context, g *entity.Game) {
+	hist := g.History()
+	req := macondopb.BotRequest{GameHistory: hist}
+	data, err := proto.Marshal(&req)
+	if err != nil {
+		log.Err(err).Msg("bot-cant-move")
+		return
+	}
+	res, err := b.natsconn.Request("macondo.bot", data, 10*time.Second)
+
+	if err != nil {
+		if b.natsconn.LastError() != nil {
+			log.Error().Msgf("bot-cant-move %v for request", b.natsconn.LastError())
+		}
+		log.Error().Msgf("bot-cant-move %v for request", err)
+		return
+	}
+	log.Debug().Msgf("res: %v", string(res.Data))
+
+	resp := macondopb.BotResponse{}
+	err = proto.Unmarshal(res.Data, &resp)
+	if err != nil {
+		log.Err(err).Msg("bot-cant-move-unmarshal-error")
+		return
+	}
+	switch r := resp.Response.(type) {
+	case *macondopb.BotResponse_Move:
+		// return game.MoveFromEvent(r.Move), nil
+
+		// execute this move:
+		onTurn := g.Game.PlayerOnTurn()
+		userID := g.Game.PlayerIDOnTurn()
+		timeRemaining := g.TimeRemaining(onTurn)
+
+		m := macondogame.MoveFromEvent(r.Move, g.Alphabet(), g.Board())
+		err = gameplay.PlayMove(ctx, g, b.userStore, userID, onTurn, timeRemaining, m)
+		if err != nil {
+			log.Err(err).Msg("bot-cant-move-play-error")
+			return
+		}
+	case *macondopb.BotResponse_Error:
+		log.Error().Str("error", r.Error).Msg("bot-error")
+		return
+	default:
+		log.Err(errors.New("should never happen")).Msg("bot-cant-move")
+	}
+}
+
 func (b *Bus) handleNatsPublish(ctx context.Context, subtopics []string, data []byte) error {
 	log.Debug().Interface("subtopics", subtopics).Msg("handling nats publish")
 	switch subtopics[0] {
@@ -268,14 +319,24 @@ func (b *Bus) handleNatsPublish(ctx context.Context, subtopics []string, data []
 		return b.gameAccepted(ctx, evt, subtopics[2])
 
 	case "gameplayEvent":
-		// evt :=
 		evt := &pb.ClientGameplayEvent{}
 		err := proto.Unmarshal(data, evt)
 		if err != nil {
 			return err
 		}
 		// subtopics[2] is the user ID of the requester.
-		return gameplay.PlayMove(ctx, b.gameStore, b.userStore, subtopics[2], evt)
+		entGame, err := gameplay.HandleEvent(ctx, b.gameStore, b.userStore, subtopics[2], evt)
+		if err != nil {
+			return err
+		}
+		// Determine if one of our players is a bot (no bot-vs-bot supported yet?)
+		if entGame.Game.Playing() != macondopb.PlayState_GAME_OVER &&
+			entGame.GameReq != nil &&
+			entGame.GameReq.PlayerVsBot {
+			// Do this in a separate goroutine as it blocks while waiting for bot move.
+			go b.handleBotMove(ctx, entGame)
+		}
+		return nil
 
 	case "timedOut":
 		evt := &pb.TimedOut{}

@@ -28,6 +28,7 @@ type User struct {
 	Profile  *Profile
 	// CurrentChannel tracks presence; where is the user currently?
 	CurrentChannel string
+	IsBot          bool
 }
 
 // Session - The db specific-details are in the store package.

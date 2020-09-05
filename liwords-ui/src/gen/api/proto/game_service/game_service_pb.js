@@ -294,7 +294,8 @@ proto.game_service.PlayerInfo.toObject = function(includeInstance, msg) {
     countryCode: jspb.Message.getFieldWithDefault(msg, 4, ""),
     rating: jspb.Message.getFieldWithDefault(msg, 5, ""),
     title: jspb.Message.getFieldWithDefault(msg, 6, ""),
-    avatarUrl: jspb.Message.getFieldWithDefault(msg, 7, "")
+    avatarUrl: jspb.Message.getFieldWithDefault(msg, 7, ""),
+    isBot: jspb.Message.getBooleanFieldWithDefault(msg, 8, false)
   };
 
   if (includeInstance) {
@@ -358,6 +359,10 @@ proto.game_service.PlayerInfo.deserializeBinaryFromReader = function(msg, reader
     case 7:
       var value = /** @type {string} */ (reader.readString());
       msg.setAvatarUrl(value);
+      break;
+    case 8:
+      var value = /** @type {boolean} */ (reader.readBool());
+      msg.setIsBot(value);
       break;
     default:
       reader.skipField();
@@ -434,6 +439,13 @@ proto.game_service.PlayerInfo.serializeBinaryToWriter = function(message, writer
   if (f.length > 0) {
     writer.writeString(
       7,
+      f
+    );
+  }
+  f = message.getIsBot();
+  if (f) {
+    writer.writeBool(
+      8,
       f
     );
   }
@@ -563,6 +575,24 @@ proto.game_service.PlayerInfo.prototype.getAvatarUrl = function() {
  */
 proto.game_service.PlayerInfo.prototype.setAvatarUrl = function(value) {
   return jspb.Message.setProto3StringField(this, 7, value);
+};
+
+
+/**
+ * optional bool is_bot = 8;
+ * @return {boolean}
+ */
+proto.game_service.PlayerInfo.prototype.getIsBot = function() {
+  return /** @type {boolean} */ (jspb.Message.getBooleanFieldWithDefault(this, 8, false));
+};
+
+
+/**
+ * @param {boolean} value
+ * @return {!proto.game_service.PlayerInfo} returns this
+ */
+proto.game_service.PlayerInfo.prototype.setIsBot = function(value) {
+  return jspb.Message.setProto3BooleanField(this, 8, value);
 };
 
 

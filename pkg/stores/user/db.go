@@ -29,7 +29,8 @@ type User struct {
 	Username string `gorm:"type:varchar(32);unique_index"`
 	Email    string `gorm:"type:varchar(100);unique_index"`
 	// Password will be hashed.
-	Password string `gorm:"type:varchar(128)"`
+	Password    string `gorm:"type:varchar(128)"`
+	InternalBot bool   `gorm:"default:false"`
 }
 
 // A user profile is in a one-to-one relationship with a user. It is the
@@ -104,6 +105,7 @@ func (s *DBStore) Get(ctx context.Context, username string) (*entity.User, error
 		UUID:      u.UUID,
 		Email:     u.Email,
 		Password:  u.Password,
+		IsBot:     u.InternalBot,
 		Anonymous: false,
 		Profile:   profile,
 	}
@@ -127,6 +129,7 @@ func (s *DBStore) GetByEmail(ctx context.Context, email string) (*entity.User, e
 		Email:     u.Email,
 		Password:  u.Password,
 		Anonymous: false,
+		IsBot:     u.InternalBot,
 	}
 
 	return entu, nil
@@ -164,6 +167,7 @@ func (s *DBStore) GetByUUID(ctx context.Context, uuid string) (*entity.User, err
 	if uuid == "" {
 		return nil, errors.New("blank-uuid")
 	}
+
 	if result := s.db.Where("uuid = ?", uuid).First(u); result.Error != nil {
 		if gorm.IsRecordNotFoundError(result.Error) {
 			entu = &entity.User{
@@ -189,6 +193,7 @@ func (s *DBStore) GetByUUID(ctx context.Context, uuid string) (*entity.User, err
 			UUID:     u.UUID,
 			Email:    u.Email,
 			Password: u.Password,
+			IsBot:    u.InternalBot,
 			Profile:  profile,
 		}
 	}
@@ -202,10 +207,11 @@ func (s *DBStore) New(ctx context.Context, u *entity.User) error {
 		u.UUID = shortuuid.New()
 	}
 	dbu := &User{
-		UUID:     u.UUID,
-		Username: u.Username,
-		Email:    u.Email,
-		Password: u.Password,
+		UUID:        u.UUID,
+		Username:    u.Username,
+		Email:       u.Email,
+		Password:    u.Password,
+		InternalBot: u.IsBot,
 	}
 	result := s.db.Create(dbu)
 	if result.Error != nil {
