@@ -148,6 +148,17 @@ export const GameLists = React.memo((props: Props) => {
                 showFriendInput={true}
               />
             </Modal>
+
+            <Button type="primary" onClick={showSeekModal}>
+              Play a Bot
+            </Button>
+            <Modal title="Play a Bot">
+              <SeekForm
+                onFormSubmit={onSeekSubmit}
+                loggedIn={props.loggedIn}
+                showFriendInput={false}
+              />
+            </Modal>
           </div>
         ) : null}
       </Card>
