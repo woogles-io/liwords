@@ -100,13 +100,12 @@
   }
 }
 
-@media (min-width: $screen-desktop-max) {
-  .game-table {
+@media (min-height: $screen-min-height-desktop-max) and (min-width: $screen-desktop-max) {
+  game-table {
     .chat-area .ant-card {
       height: 810px;
       .entities {
         max-height: 660px;
       }
     }
-  }
 }
