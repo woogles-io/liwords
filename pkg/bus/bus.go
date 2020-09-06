@@ -19,6 +19,7 @@ import (
 	"github.com/domino14/liwords/pkg/config"
 	"github.com/domino14/liwords/pkg/entity"
 	"github.com/domino14/liwords/pkg/gameplay"
+	"github.com/domino14/liwords/pkg/stats"
 	"github.com/domino14/liwords/pkg/user"
 
 	pb "github.com/domino14/liwords/rpc/api/proto/realtime"
@@ -38,6 +39,7 @@ type Bus struct {
 	gameStore       gameplay.GameStore
 	soughtGameStore gameplay.SoughtGameStore
 	presenceStore   user.PresenceStore
+	listStatStore   stats.ListStatStore
 
 	redisPool *redis.Pool
 
@@ -49,7 +51,7 @@ type Bus struct {
 
 func NewBus(cfg *config.Config, userStore user.Store, gameStore gameplay.GameStore,
 	soughtGameStore gameplay.SoughtGameStore, presenceStore user.PresenceStore,
-	redisPool *redis.Pool) (*Bus, error) {
+	listStatStore stats.ListStatStore, redisPool *redis.Pool) (*Bus, error) {
 
 	natsconn, err := nats.Connect(cfg.NatsURL)
 
@@ -62,6 +64,7 @@ func NewBus(cfg *config.Config, userStore user.Store, gameStore gameplay.GameSto
 		gameStore:       gameStore,
 		soughtGameStore: soughtGameStore,
 		presenceStore:   presenceStore,
+		listStatStore:   listStatStore,
 		subscriptions:   []*nats.Subscription{},
 		subchans:        map[string]chan *nats.Msg{},
 		config:          cfg,
@@ -274,7 +277,7 @@ func (b *Bus) handleNatsPublish(ctx context.Context, subtopics []string, data []
 			return err
 		}
 		// subtopics[2] is the user ID of the requester.
-		return gameplay.PlayMove(ctx, b.gameStore, b.userStore, subtopics[2], evt)
+		return gameplay.PlayMove(ctx, b.gameStore, b.userStore, b.listStatStore, subtopics[2], evt)
 
 	case "timedOut":
 		evt := &pb.TimedOut{}
@@ -282,7 +285,7 @@ func (b *Bus) handleNatsPublish(ctx context.Context, subtopics []string, data []
 		if err != nil {
 			return err
 		}
-		return gameplay.TimedOut(ctx, b.gameStore, b.userStore, evt.UserId, evt.GameId)
+		return gameplay.TimedOut(ctx, b.gameStore, b.userStore, b.listStatStore, evt.UserId, evt.GameId)
 
 	case "initRealmInfo":
 		evt := &pb.InitRealmInfo{}

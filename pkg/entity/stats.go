@@ -1,11 +1,5 @@
 package entity
 
-import (
-	realtime "github.com/domino14/liwords/rpc/api/proto/realtime"
-	macondoconfig "github.com/domino14/macondo/config"
-	pb "github.com/domino14/macondo/gen/api/proto/macondo"
-)
-
 type ListWord struct {
 	Word        string `json:"w"`
 	Probability int    `json:"p"`
@@ -34,11 +28,6 @@ type ListItem struct {
 	PlayerId string
 	Time     int64
 	Item     interface{}
-}
-
-type ListStatStore interface {
-	AddListItem(gameId string, playerId string, statType int, time int64, item interface{}) error
-	GetListItems(statType int, gameIds []string, playerId string) ([]*ListItem, error)
 }
 
 type MistakeType string
@@ -109,32 +98,15 @@ const (
 
 const MaxNotableInt = 1000000000
 
-type IncrementInfo struct {
-	Cfg                 *macondoconfig.Config
-	Req                 *realtime.GameRequest
-	Evt                 *realtime.GameEndedEvent
-	Lss                 ListStatStore
-	StatName            string
-	StatItem            *StatItem
-	OtherPlayerStatItem *StatItem
-	History             *pb.GameHistory
-	EventIndex          int
-	GameId              string
-	PlayerId            string
-	OtherPlayerId       string
-	IsPlayerOne         bool
-}
-
 type StatItem struct {
-	Name          string                     `json:"-"`
-	Minimum       int                        `json:"-"`
-	Maximum       int                        `json:"-"`
-	Total         int                        `json:"t"`
-	DataType      StatItemType               `json:"-"`
-	IncrementType IncrementType              `json:"-"`
-	List          []*ListItem                `json:"-"`
-	Subitems      map[string]int             `json:"s"`
-	AddFunction   func(*IncrementInfo) error `json:"-"`
+	Name          string         `json:"-"`
+	Minimum       int            `json:"-"`
+	Maximum       int            `json:"-"`
+	Total         int            `json:"t"`
+	DataType      StatItemType   `json:"-"`
+	IncrementType IncrementType  `json:"-"`
+	List          []*ListItem    `json:"-"`
+	Subitems      map[string]int `json:"s"`
 }
 
 type Stats struct {

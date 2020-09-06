@@ -46,21 +46,7 @@ type GameStore interface {
 	SetGameEventChan(c chan<- *entity.EventWrapper)
 }
 
-type DummyListStatStore struct {
-}
-
-func (lss DummyListStatStore) AddListItem(gameId string, playerId string, statType int, time int64, item interface{}) error {
-	// Do nothing for now
-	return nil
-}
-
-func (lss DummyListStatStore) GetListItems(statType int, gameIds []string, playerId string) ([]*entity.ListItem, error) {
-	return []*entity.ListItem{}, nil
-}
-
 type ConfigCtxKey string
-
-var listStatStore = DummyListStatStore{}
 
 // InstantiateNewGame instantiates a game and returns it.
 func InstantiateNewGame(ctx context.Context, gameStore GameStore, cfg *config.Config,
@@ -210,7 +196,8 @@ func players(entGame *entity.Game) []string {
 }
 
 func handleChallenge(ctx context.Context, entGame *entity.Game, gameStore GameStore,
-	userStore user.Store, timeRemaining int, challengerID string) error {
+	userStore user.Store, listStatStore stats.ListStatStore,
+	timeRemaining int, challengerID string) error {
 	if entGame.ChallengeRule() == macondopb.ChallengeRule_VOID {
 		// The front-end shouldn't even show the button.
 		return errors.New("challenges not acceptable in void")
@@ -252,7 +239,7 @@ func handleChallenge(ctx context.Context, entGame *entity.Game, gameStore GameSt
 	}
 
 	if entGame.Game.Playing() == macondopb.PlayState_GAME_OVER {
-		checkGameOverAndModifyScores(ctx, entGame, userStore)
+		checkGameOverAndModifyScores(ctx, entGame, userStore, listStatStore)
 	}
 
 	return gameStore.Set(ctx, entGame)
@@ -260,8 +247,8 @@ func handleChallenge(ctx context.Context, entGame *entity.Game, gameStore GameSt
 }
 
 // PlayMove handles a gameplay event from the socket
-func PlayMove(ctx context.Context, gameStore GameStore, userStore user.Store, userID string,
-	cge *pb.ClientGameplayEvent) error {
+func PlayMove(ctx context.Context, gameStore GameStore, userStore user.Store,
+	listStatStore stats.ListStatStore, userID string, cge *pb.ClientGameplayEvent) error {
 
 	// XXX: VERIFY THAT THE CLIENT GAME ID CORRESPONDS TO THE GAME
 	// THE PLAYER IS PLAYING!
@@ -289,14 +276,14 @@ func PlayMove(ctx context.Context, gameStore GameStore, userStore user.Store, us
 		log.Debug().Msg("got-move-too-late")
 		entGame.Game.SetPlaying(macondopb.PlayState_GAME_OVER)
 		// Basically skip to the bottom and exit.
-		return setTimedOut(ctx, entGame, onTurn, gameStore, userStore)
+		return setTimedOut(ctx, entGame, onTurn, gameStore, userStore, listStatStore)
 	}
 
 	log.Debug().Msg("going to turn into a macondo gameevent")
 
 	if cge.Type == pb.ClientGameplayEvent_CHALLENGE_PLAY {
 		// Handle in another way
-		return handleChallenge(ctx, entGame, gameStore, userStore, timeRemaining, userID)
+		return handleChallenge(ctx, entGame, gameStore, userStore, listStatStore, timeRemaining, userID)
 	}
 
 	// Turn the event into a macondo GameEvent.
@@ -358,21 +345,22 @@ func PlayMove(ctx context.Context, gameStore GameStore, userStore user.Store, us
 		entGame.SendChange(wrapped)
 	}
 	if playing == macondopb.PlayState_GAME_OVER {
-		checkGameOverAndModifyScores(ctx, entGame, userStore)
+		checkGameOverAndModifyScores(ctx, entGame, userStore, listStatStore)
 	}
 
 	return gameStore.Set(ctx, entGame)
 }
 
-func checkGameOverAndModifyScores(ctx context.Context, entGame *entity.Game, userStore user.Store) {
+func checkGameOverAndModifyScores(ctx context.Context, entGame *entity.Game, userStore user.Store,
+	listStatStore stats.ListStatStore) {
 	discernEndgameReason(entGame)
-	performEndgameDuties(ctx, entGame, userStore)
+	performEndgameDuties(ctx, entGame, userStore, listStatStore)
 }
 
 // TimedOut gets called when the client thinks the user's time ran out. We
 // verify that that is actually the case.
 func TimedOut(ctx context.Context, gameStore GameStore, userStore user.Store,
-	timedout string, gameID string) error {
+	listStatStore stats.ListStatStore, timedout string, gameID string) error {
 	// XXX: VERIFY THAT THE GAME ID is the client's current game!!
 	// Note: we can get this event multiple times; the opponent and the player on turn
 	// both send it.
@@ -400,7 +388,7 @@ func TimedOut(ctx context.Context, gameStore GameStore, userStore user.Store,
 	}
 	// Ok, the time did run out after all.
 
-	return setTimedOut(ctx, entGame, onTurn, gameStore, userStore)
+	return setTimedOut(ctx, entGame, onTurn, gameStore, userStore, listStatStore)
 }
 
 // sanitizeEvent removes rack information from the event; it is meant to be
@@ -416,7 +404,7 @@ func sanitizeEvent(sge *pb.ServerGameplayEvent) *pb.ServerGameplayEvent {
 }
 
 func setTimedOut(ctx context.Context, entGame *entity.Game, pidx int, gameStore GameStore,
-	userStore user.Store) error {
+	userStore user.Store, listStatStore stats.ListStatStore) error {
 	log.Debug().Msg("timed out!")
 	entGame.Game.SetPlaying(macondopb.PlayState_GAME_OVER)
 
@@ -424,7 +412,7 @@ func setTimedOut(ctx context.Context, entGame *entity.Game, pidx int, gameStore 
 	entGame.SetGameEndReason(pb.GameEndReason_TIME)
 	entGame.SetWinnerIdx(1 - pidx)
 	entGame.SetLoserIdx(pidx)
-	performEndgameDuties(ctx, entGame, userStore)
+	performEndgameDuties(ctx, entGame, userStore, listStatStore)
 
 	// Store the game back into the store
 	return gameStore.Set(ctx, entGame)
@@ -472,7 +460,8 @@ func gameEndedEvent(ctx context.Context, g *entity.Game, userStore user.Store) *
 	return evt
 }
 
-func performEndgameDuties(ctx context.Context, g *entity.Game, userStore user.Store) {
+func performEndgameDuties(ctx context.Context, g *entity.Game, userStore user.Store,
+	listStatStore stats.ListStatStore) {
 	evts := []*pb.ServerGameplayEvent{}
 
 	var p0penalty, p1penalty int
@@ -573,7 +562,8 @@ func performEndgameDuties(ctx context.Context, g *entity.Game, userStore user.St
 	if err != nil {
 		log.Err(err).Msg("getting variant key")
 	} else {
-		gameStats, err := computeGameStats(ctx, g.History(), g.GameReq, variantKey, evt, userStore)
+		gameStats, err := computeGameStats(ctx, g.History(), g.GameReq, variantKey,
+			evt, userStore, listStatStore)
 		if err != nil {
 			log.Err(err).Msg("computing stats")
 		} else {
@@ -602,7 +592,8 @@ func discernEndgameReason(g *entity.Game) {
 }
 
 func computeGameStats(ctx context.Context, history *macondopb.GameHistory, req *pb.GameRequest,
-	variantKey entity.VariantKey, evt *pb.GameEndedEvent, userStore user.Store) (*entity.Stats, error) {
+	variantKey entity.VariantKey, evt *pb.GameEndedEvent, userStore user.Store,
+	listStatStore stats.ListStatStore) (*entity.Stats, error) {
 	// stats := stats.InstantiateNewStats(1, 2)
 	p0id, p1id := history.Players[0].UserId, history.Players[1].UserId
 	if history.SecondWentFirst {

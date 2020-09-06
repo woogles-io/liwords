@@ -13,6 +13,8 @@ import (
 	"github.com/jinzhu/gorm"
 
 	"github.com/domino14/liwords/pkg/entity"
+	pkgstats "github.com/domino14/liwords/pkg/stats"
+	"github.com/domino14/liwords/pkg/stores/stats"
 	"github.com/domino14/liwords/pkg/stores/user"
 	pkguser "github.com/domino14/liwords/pkg/user"
 	pb "github.com/domino14/liwords/rpc/api/proto/realtime"
@@ -62,6 +64,10 @@ func userStore(dbURL string) pkguser.Store {
 		log.Fatal().Err(err).Msg("error")
 	}
 	return ustore
+}
+
+func listStatStore(dbURL string) pkgstats.ListStatStore {
+	return stats.NewListStatStore(TestingDBConnStr + " dbname=liwords_test")
 }
 
 func recreateDB() {
@@ -116,6 +122,7 @@ func TestComputeGameStats(t *testing.T) {
 	is := is.New(t)
 	recreateDB()
 	ustore := userStore(TestingDBConnStr + " dbname=liwords_test")
+	lstore := listStatStore(TestingDBConnStr + " dbname=liwords_test")
 
 	histjson, err := ioutil.ReadFile("./testdata/game1/history.json")
 	is.NoErr(err)
@@ -131,7 +138,7 @@ func TestComputeGameStats(t *testing.T) {
 
 	ctx := context.WithValue(context.Background(), ConfigCtxKey("config"), &DefaultConfig)
 	// Fix this once list separation is complete
-	_, err = computeGameStats(ctx, hist, gameReq, variantKey(req), gameEndedEventObj, ustore)
+	_, err = computeGameStats(ctx, hist, gameReq, variantKey(req), gameEndedEventObj, ustore, lstore)
 	is.NoErr(err)
 	// Fix this once list separation is complete
 	/*	is.Equal(stats.PlayerOneData[entity.BINGOS_STAT].List, []*entity.ListItem{
@@ -144,6 +151,7 @@ func TestComputeGameStats2(t *testing.T) {
 	is := is.New(t)
 	recreateDB()
 	ustore := userStore(TestingDBConnStr + " dbname=liwords_test")
+	lstore := listStatStore(TestingDBConnStr + " dbname=liwords_test")
 
 	histjson, err := ioutil.ReadFile("./testdata/game2/history.json")
 	is.NoErr(err)
@@ -158,7 +166,7 @@ func TestComputeGameStats2(t *testing.T) {
 	is.NoErr(err)
 
 	ctx := context.WithValue(context.Background(), ConfigCtxKey("config"), &DefaultConfig)
-	stats, err := computeGameStats(ctx, hist, gameReq, variantKey(req), gameEndedEventObj, ustore)
+	stats, err := computeGameStats(ctx, hist, gameReq, variantKey(req), gameEndedEventObj, ustore, lstore)
 	is.NoErr(err)
 	log.Info().Interface("p1list", stats.PlayerOneData[entity.BINGOS_STAT].List).Msg("--")
 	log.Info().Interface("p2list", stats.PlayerTwoData[entity.BINGOS_STAT].List).Msg("--")
@@ -176,6 +184,7 @@ func TestComputePlayerStats(t *testing.T) {
 	is := is.New(t)
 	recreateDB()
 	ustore := userStore(TestingDBConnStr + " dbname=liwords_test")
+	lstore := listStatStore(TestingDBConnStr + " dbname=liwords_test")
 
 	histjson, err := ioutil.ReadFile("./testdata/game1/history.json")
 	is.NoErr(err)
@@ -190,7 +199,7 @@ func TestComputePlayerStats(t *testing.T) {
 	is.NoErr(err)
 
 	ctx := context.WithValue(context.Background(), ConfigCtxKey("config"), &DefaultConfig)
-	_, err = computeGameStats(ctx, hist, gameReq, variantKey(req), gameEndedEventObj, ustore)
+	_, err = computeGameStats(ctx, hist, gameReq, variantKey(req), gameEndedEventObj, ustore, lstore)
 	is.NoErr(err)
 
 	p0id, p1id := hist.Players[0].UserId, hist.Players[1].UserId
@@ -220,6 +229,7 @@ func TestComputePlayerStatsMultipleGames(t *testing.T) {
 	is := is.New(t)
 	recreateDB()
 	ustore := userStore(TestingDBConnStr + " dbname=liwords_test")
+	lstore := listStatStore(TestingDBConnStr + " dbname=liwords_test")
 
 	for _, g := range []string{"game1", "game2"} {
 		histjson, err := ioutil.ReadFile("./testdata/" + g + "/history.json")
@@ -235,7 +245,7 @@ func TestComputePlayerStatsMultipleGames(t *testing.T) {
 		is.NoErr(err)
 
 		ctx := context.WithValue(context.Background(), ConfigCtxKey("config"), &DefaultConfig)
-		_, err = computeGameStats(ctx, hist, gameReq, variantKey(req), gameEndedEventObj, ustore)
+		_, err = computeGameStats(ctx, hist, gameReq, variantKey(req), gameEndedEventObj, ustore, lstore)
 		is.NoErr(err)
 	}
 

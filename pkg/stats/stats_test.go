@@ -3,10 +3,8 @@ package stats
 import (
 	"encoding/json"
 	"fmt"
-	"os"
-	"testing"
-
 	"github.com/domino14/liwords/pkg/entity"
+	statstore "github.com/domino14/liwords/pkg/stores/stats"
 	realtime "github.com/domino14/liwords/rpc/api/proto/realtime"
 	"github.com/domino14/macondo/alphabet"
 	macondoconfig "github.com/domino14/macondo/config"
@@ -15,26 +13,12 @@ import (
 	pb "github.com/domino14/macondo/gen/api/proto/macondo"
 	"github.com/matryer/is"
 	"github.com/rs/zerolog"
+	"os"
+	"testing"
 )
 
-func TestMain(m *testing.M) {
-	// Let's create the gaddag cache, we need it for word validity tests.
-	gaddag.CreateGaddagCache()
-	zerolog.SetGlobalLevel(zerolog.InfoLevel)
-	os.Exit(m.Run())
-}
-
-type DummyListStatStore struct {
-}
-
-func (lss DummyListStatStore) AddListItem(gameId string, playerId string, statType int, time int64, item interface{}) error {
-	// Do nothing for now
-	return nil
-}
-
-func (lss DummyListStatStore) GetListItems(statType int, gameIds []string, playerId string) ([]*entity.ListItem, error) {
-	return []*entity.ListItem{}, nil
-}
+var TestDBHost = os.Getenv("TEST_DB_HOST")
+var TestingDBConnStr = "host=" + TestDBHost + " port=5432 user=postgres password=pass sslmode=disable"
 
 var DefaultConfig = macondoconfig.Config{
 	LexiconPath:               os.Getenv("LEXICON_PATH"),
@@ -43,7 +27,14 @@ var DefaultConfig = macondoconfig.Config{
 	DefaultLetterDistribution: "English",
 }
 
-func InstantiateNewStatsWithHistory(filename string) (*entity.Stats, error) {
+func TestMain(m *testing.M) {
+	// Let's create the gaddag cache, we need it for word validity tests.
+	gaddag.CreateGaddagCache()
+	zerolog.SetGlobalLevel(zerolog.InfoLevel)
+	os.Exit(m.Run())
+}
+
+func InstantiateNewStatsWithHistory(filename string, listStatStore ListStatStore) (*entity.Stats, error) {
 
 	history, err := gcgio.ParseGCG(&DefaultConfig, filename)
 	if err != nil {
@@ -86,18 +77,18 @@ func InstantiateNewStatsWithHistory(filename string) (*entity.Stats, error) {
 		Tie:       history.FinalScores[0] != history.FinalScores[1],
 	}
 
-	AddGame(stats, DummyListStatStore{}, history, req, &DefaultConfig, gameEndedEvent, filename)
+	AddGame(stats, listStatStore, history, req, &DefaultConfig, gameEndedEvent, filename)
 
 	return stats, nil
 }
 
-func JoshNationalsFromGames(useJSON bool) (*entity.Stats, error) {
+func JoshNationalsFromGames(useJSON bool, listStatStore ListStatStore) (*entity.Stats, error) {
 	annotatedGamePrefix := "josh_nationals_round_"
 	stats := InstantiateNewStats("1", "2")
 
 	for i := 1; i <= 31; i++ {
 		annotatedGame := fmt.Sprintf("./testdata/%s%d.gcg", annotatedGamePrefix, i)
-		otherStats, _ := InstantiateNewStatsWithHistory(annotatedGame)
+		otherStats, _ := InstantiateNewStatsWithHistory(annotatedGame, listStatStore)
 
 		if useJSON {
 			bytes, err := json.Marshal(otherStats)
@@ -122,15 +113,17 @@ func JoshNationalsFromGames(useJSON bool) (*entity.Stats, error) {
 
 func TestStats(t *testing.T) {
 
+	listStatStore := statstore.NewListStatStore(TestingDBConnStr + " dbname=liwords_test")
+
 	is := is.New(t)
-	lss := DummyListStatStore{}
-	stats, error := JoshNationalsFromGames(false)
+
+	stats, error := JoshNationalsFromGames(false, listStatStore)
 	is.True(error == nil)
-	statsJSON, error := JoshNationalsFromGames(true)
+	statsJSON, error := JoshNationalsFromGames(true, listStatStore)
 	is.True(error == nil)
-	error = Finalize(stats, lss, []string{}, "", "")
+	error = Finalize(stats, listStatStore, []string{}, "", "")
 	is.True(error == nil)
-	error = Finalize(statsJSON, lss, []string{}, "", "")
+	error = Finalize(statsJSON, listStatStore, []string{}, "", "")
 	is.True(error == nil)
 	is.True(isEqual(stats, statsJSON))
 	// fmt.Println(StatsToString(stats))
