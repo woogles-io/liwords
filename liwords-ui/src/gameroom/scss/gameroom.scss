@@ -643,9 +643,7 @@
     height: 40px;
     width: 40px;
   }
-  .chat-area .ant-card.left-menu{
-    display: none;
-  }
+
   .rack .tile {
     width: 40px;
     height: 40px;
@@ -658,4 +656,10 @@
         }
       }
     }
+}
+
+@media (min-height: $screen-min-height-desktop-max) and (min-width: $screen-desktop-max) {
+  .chat-area .ant-card.left-menu{
+    display: none;
+  }
 }
