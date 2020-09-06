@@ -2,11 +2,18 @@
 body {
   width: auto;
   height: auto;
-  margin-top: $header-height-mobile;
+}
+
+.game-container {
+  .top-header {
+    display: none;
+    @media (min-height: $screen-min-height-desktop-max) and (min-width: $screen-desktop-max) {
+      display: flex;
+    }
+  }
 }
 
 .top-header {
-  position: fixed;
   width: 100%;
   display: flex;
   align-items: center;
@@ -22,21 +29,22 @@ body {
   .container {
     @include container();
     display: flex;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
     align-items: center;
-    justify-content: space-between;
+    justify-content: space-around;
   }
 }
 
 .top-header-menu {
   width: 100%;
-  order: 3;
   display: flex;
-  justify-content: space-between;
-  max-width: 576px;
   margin: 0 auto;
+  padding-bottom: 0;
+  justify-content: center;
+  max-width: none;
   div {
-    padding: 12px 6px;
+    display: none;
+    padding: 12px;
     a {
       color: black;
       white-space: nowrap;
@@ -50,15 +58,20 @@ body {
       }
     }
   }
+  @media (min-width: $screen-laptop-min) {
+    display: flex;
+    div {
+      display: flex;
+    }
+  }
 }
 
 .site-icon {
   display: flex;
   /* Inside Auto Layout */
   flex: none;
-  order: 0;
   align-self: center;
-  margin: 8px 0px 6px;
+  margin: 0;
   .top-header-site-icon-rect {
     width: 40px;
     height: 40px;
@@ -86,7 +99,6 @@ body {
   .top-header-left-frame-site-name {
     /* Inside Auto Layout */
     flex: none;
-    order: 1;
     text-transform: none;
     align-self: center;
     margin: 0 12px;
@@ -94,31 +106,5 @@ body {
     font-weight: bold;
     line-height: 35px;
     letter-spacing: 0;
-  }
-}
-@media (min-height: $screen-min-height-laptop-min) and (min-width: $screen-laptop-min) {
-  body {
-    margin-top: 60px;
-  }
-  .top-header .container {
-    display: flex;
-    flex-wrap: nowrap;
-    align-items: center;
-    justify-content: space-around;
-  }
-  .user-info {
-    position: static;
-  }
-  .top-header-menu {
-    order: initial;
-    padding-bottom: 0;
-    justify-content: center;
-    max-width: none;
-    div {
-      padding: 12px;
-    }
-  }
-  .site-icon {
-    margin: 0;
   }
 }

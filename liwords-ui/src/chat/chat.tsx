@@ -58,53 +58,51 @@ export const Chat = React.memo((props: Props) => {
   });
 
   return (
-    <div className="chat-area">
-      <Card
-        className="chat"
-        style={{ textAlign: 'left' }}
-        title={props.description}
-      >
-        <div className="tabs">
-          <div
-            onClick={() => {
-              setSelectedChatTab('PLAYERS');
-            }}
-            className={selectedChatTab === 'PLAYERS' ? 'tab active' : 'tab'}
-          >
-            {`${props.peopleOnlineContext} (${
-              Object.keys(props.presences).length
-            })`}
-          </div>
-          <div
-            onClick={() => {
-              setSelectedChatTab('CHAT');
-            }}
-            className={selectedChatTab === 'CHAT' ? 'tab active' : 'tab'}
-          >
-            Chat
-          </div>
+    <Card
+      className="chat"
+      style={{ textAlign: 'left' }}
+      title={props.description}
+    >
+      <div className="tabs">
+        <div
+          onClick={() => {
+            setSelectedChatTab('PLAYERS');
+          }}
+          className={selectedChatTab === 'PLAYERS' ? 'tab active' : 'tab'}
+        >
+          {`${props.peopleOnlineContext} (${
+            Object.keys(props.presences).length
+          })`}
         </div>
+        <div
+          onClick={() => {
+            setSelectedChatTab('CHAT');
+          }}
+          className={selectedChatTab === 'CHAT' ? 'tab active' : 'tab'}
+        >
+          Chat
+        </div>
+      </div>
 
-        {selectedChatTab === 'CHAT' ? (
-          <>
-            <div className="entities" ref={el}>
-              {entities}
-            </div>
-            <Input
-              placeholder="chat..."
-              onKeyDown={onKeyDown}
-              onChange={onChange}
-              value={curMsg}
-            />
-          </>
-        ) : null}
+      {selectedChatTab === 'CHAT' ? (
+        <>
+          <div className="entities" ref={el}>
+            {entities}
+          </div>
+          <Input
+            placeholder="chat..."
+            onKeyDown={onKeyDown}
+            onChange={onChange}
+            value={curMsg}
+          />
+        </>
+      ) : null}
 
-        {selectedChatTab === 'PLAYERS' ? (
-          <>
-            <Presences players={props.presences} />
-          </>
-        ) : null}
-      </Card>
-    </div>
+      {selectedChatTab === 'PLAYERS' ? (
+        <>
+          <Presences players={props.presences} />
+        </>
+      ) : null}
+    </Card>
   );
 });

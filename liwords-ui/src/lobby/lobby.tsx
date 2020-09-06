@@ -129,13 +129,15 @@ export const Lobby = (props: Props) => {
         connectedToSocket={props.connectedToSocket}
       />
       <div className="lobby">
-        <Chat
-          chatEntities={chat}
-          sendChat={sendChat}
-          description="Lobby chat"
-          peopleOnlineContext="Players"
-          presences={presences}
-        />
+        <div className="chat-area">
+          <Chat
+            chatEntities={chat}
+            sendChat={sendChat}
+            description="Lobby chat"
+            peopleOnlineContext="Players"
+            presences={presences}
+          />
+        </div>
         <GameLists
           loggedIn={props.loggedIn}
           userID={props.userID}
@@ -155,12 +157,7 @@ export const Lobby = (props: Props) => {
           <Card>
             <h3>Woogles is coming soon!</h3>
             <p>
-              Please back our{' '}
-              <a href="https://www.kickstarter.com/projects/woogles/woogles">
-                {' '}
-                Kickstarter.
-              </a>{' '}
-              We're a nonprofit and are counting on you.
+              In the meantime, why not watch some of our alpha testers play?
             </p>
           </Card>
         </div>

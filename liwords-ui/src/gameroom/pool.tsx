@@ -124,7 +124,7 @@ const Pool = React.memo((props: Props) => {
 
   let title: string;
   if (inbag === 0) {
-    title = `${unseen} tiles on opponent's rack`;
+    title = `Opponent has ${unseen} tiles`;
   } else {
     title = `${inbag} tiles in bag`;
   }

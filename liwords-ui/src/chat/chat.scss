@@ -5,7 +5,9 @@
  expand board */
 
 .chat-area {
-  display: none;
+  order: 3;
+  width: 100%;
+  margin: 12px 12px 0 12px;
   .ant-card .ant-card-body {
     padding: 12px 0 40px 0;
   }
@@ -13,6 +15,30 @@
     overflow-y: auto;
     padding: 0 24px;
     max-height: calc(100vh - 220px);
+    .presences {
+      color: $color-primary-dark;
+      font-weight: 800;
+      margin: 0 9px 0 0;
+    }
+    .chat-entity {
+      .sender {
+        color: $color-primary-dark;
+        font-weight: 800;
+        margin: 0 9px 0 0;
+      }
+      .message-body {
+        color: black;
+        margin-bottom: 4px;
+        line-height: 1.4em;
+      }
+      .timestamp {
+        color: #6b268b;
+        font-size: 75%;
+        margin: 0;
+        position: relative;
+        top: 2px;
+      }
+    }
   }
   .tabs {
     display: flex;
@@ -50,37 +76,36 @@
   .chat-area .ant-card {
     height: 640px;
     .entities {
-      max-height: 520px;
+      max-height: 510px;
     }
   }
 }
 
-@media (min-height: $screen-min-height-laptop-min) and (min-width: $screen-laptop-min) {
+@media (min-width: $screen-desktop-min) {
   .chat-area {
+    order: initial;
     display: block;
     flex: 1;
     width: 25%;
     min-width: 25%;
+    margin: 0;
   }
-}
-
-@media (min-height: $screen-min-height-desktop-min) and (min-width: $screen-desktop-min) {
   .game-table {
     .chat-area .ant-card {
-      height: 740px;
+      height: 680px;
       .entities {
-        max-height: 610px;
+        max-height: 530px;
       }
     }
   }
 }
 
-@media (min-height: $screen-min-height-desktop-max) and (min-width: $screen-desktop-max) {
+@media (min-width: $screen-desktop-max) {
   .game-table {
     .chat-area .ant-card {
       height: 810px;
       .entities {
-        max-height: 680px;
+        max-height: 660px;
       }
     }
   }

@@ -3,7 +3,6 @@ import moment from 'moment';
 import { ChatEntityType } from '../store/store';
 
 const ServerMsgColor = '#237804';
-const ChatSenderColor = '#ad4e00';
 const ServerErrColor = '#a8071a';
 
 type EntityProps = {
@@ -16,7 +15,7 @@ type EntityProps = {
 export const ChatEntity = (props: EntityProps) => {
   let ts = '';
   if (props.timestamp) {
-    ts = moment(props.timestamp).format('LTS');
+    ts = moment(props.timestamp).format('MMM Do - LT');
   }
   let el;
   switch (props.entityType) {
@@ -36,11 +35,12 @@ export const ChatEntity = (props: EntityProps) => {
       break;
     case ChatEntityType.UserChat:
       el = (
-        <div>
-          <span style={{ color: ChatSenderColor }}>
-            ({ts}) {props.sender}
-          </span>
-          : <span style={{ color: 'black' }}>{props.message}</span>
+        <div className="chat-entity">
+          <p className="timestamp">{ts}</p>
+          <p className="message-body">
+            <span className="sender">{props.sender}</span>
+            <span className="message">{props.message}</span>
+          </p>
         </div>
       );
       break;
