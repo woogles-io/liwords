@@ -113,6 +113,7 @@ outerfor:
 			subtopics := strings.Split(msg.Subject, ".")
 			err := b.handleNatsPublish(ctx, subtopics[2:], msg.Data)
 			if err != nil {
+				// Unexpected end of JSON input!!
 				log.Err(err).Msg("process-message-publish-error")
 				// The user ID should have hopefully come in the topic name.
 				// It would be in subtopics[4]
