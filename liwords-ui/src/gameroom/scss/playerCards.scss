@@ -1,6 +1,9 @@
 @import '../../base.scss';
 
 .player-cards.ant-card {
+  p {
+    color: black;
+  }
   .ant-card-body {
     padding: 0;
   }
@@ -94,7 +97,7 @@
   }
 }
 
-@media (min-width: $screen-desktop-min) {
+@media (min-width: $screen-laptop-min) {
   .player-cards.ant-card {
     .player-card {
       padding: $card-padding-md $card-padding;

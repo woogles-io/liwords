@@ -45,10 +45,10 @@ $color-gray-middle: #bebebe;
   colorBoardEmpty: $color-board-empty;
 }
 
-$screen-tablet-min: 768px;
-$screen-laptop-min: 1024px;
-$screen-desktop-min: 1280px;
-$screen-desktop-max: 1440px;
+$screen-mobile-min: 768px;
+$screen-tablet-min: 1024px;
+$screen-laptop-min: 1280px;
+$screen-desktop-min: 1440px;
 
 $screen-min-height-laptop-min: 680px;
 $screen-min-height-desktop-min: 800px;
@@ -57,6 +57,26 @@ $screen-min-height-desktop-max: 940px;
 $font-deco: 'Fjalla One', sans-serif;
 $font-default: 'Muli', sans-serif;
 $font-monospaced: 'Roboto Mono', monospace;
+
+$tile-size-mobile: 40px;
+$tile-size-tablet: $tile-size-mobile;
+$tile-size-laptop:  34px;
+$tile-size-desktop: 44px;
+
+$board-size-mobile: $tile-size-mobile * 15;
+$board-size-tablet: $tile-size-tablet * 15;
+$board-size-laptop: $tile-size-laptop * 15;
+$board-size-desktop: $tile-size-desktop * 15;
+
+$tile-font-size-mobile: $tile-size-mobile * 0.68;
+$tile-font-size-tablet: $tile-size-tablet * 0.68;
+$tile-font-size-laptop: $tile-size-laptop * 0.68;
+$tile-font-size-desktop: $tile-size-desktop * 0.68;
+
+$point-size-mobile: $tile-font-size-mobile / 3;
+$point-size-tablet: $tile-font-size-tablet / 3;
+$point-size-laptop: $tile-font-size-laptop / 3;
+$point-size-desktop: $tile-font-size-desktop / 3;
 
 @mixin type-default {
   color: black;
@@ -67,25 +87,39 @@ $font-monospaced: 'Roboto Mono', monospace;
 }
 
 @mixin type-monospace {
-  @include type-default;
+  color: black;
   font-family: $font-monospaced;
+  font-style: normal;
+  font-size: 14px;
+  line-height: 18px;
 }
 
 @mixin type-title {
-  @include type-default;
+  font-family: $font-default;
+  font-style: normal;
   font-size: 16px;
   font-weight: bold;
   line-height: 20px;
 }
 
 @mixin type-deco {
-  @include type-default;
   font-family: Fjalla One;
   font-style: normal;
   font-weight: normal;
   font-size: 24px;
   line-height: 1.5em;
   letter-spacing: 0.15em;
+}
+
+@mixin type-link {
+  font-family: $font-default;
+  font-style: normal;
+  font-weight: bold;
+  font-size: 12px;
+  line-height: 2em;
+  letter-spacing: 0.16em;
+  text-align: center;
+  text-transform: uppercase;
 }
 
 h1,
@@ -110,6 +144,50 @@ h3 {
 h4 {
   font-size: 16px;
 }
+
+ul
+{
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+@mixin tabs {
+  .ant-tabs {
+    .ant-tabs-ink-bar {
+      background: $color-primary-dark;
+    }
+    .ant-tabs-nav {
+      margin: 0;
+      border-bottom: 1px solid #EEE;
+      .ant-tabs-nav-operations {
+        display: none;
+      }
+      .ant-tabs-nav-list {
+        width: 100%;
+        justify-content: space-evenly;
+      }
+    }
+    .ant-tabs-tab {
+      justify-content: center;
+      padding: 12px 24px;
+      margin: 0;
+      width: 100%;
+      .ant-tabs-tab-btn {
+        @include type-link;
+        display: flex;
+        flex-wrap: nowrap;
+        align-items: center;
+      }
+      &:active, &:hover, &.ant-tabs-tab-active  {
+        .ant-tabs-tab-btn {
+          color: $color-primary-dark;
+        }
+      }
+    }
+  }
+}
+
 @mixin button {
   /* buttons */
   button.ant-btn,
@@ -168,18 +246,23 @@ h4 {
 @mixin fullHeight {
   height: calc(100vh - #{$header-height-desktop} - 30px);
 
-  @media (min-height: $screen-min-height-laptop-min) and (min-width: $screen-laptop-min) {
+  @media (min-height: $screen-min-height-laptop-min) and (min-width: $screen-tablet-min) {
     height: calc(100vh - #{$header-height-desktop} - 30px);
   }
 }
 
 @mixin container {
-  min-width: $screen-tablet-min;
-  max-width: $screen-tablet-min;
+  min-width: $screen-mobile-min;
+  max-width: $screen-mobile-min;
   width: 100%;
   position: relative;
   margin: 0 auto;
   padding: 0 12px;
+
+  @media (min-width: $screen-tablet-min) {
+    min-width: $screen-tablet-min;
+    max-width: $screen-tablet-min;
+  }
 
   @media (min-width: $screen-laptop-min) {
     min-width: $screen-laptop-min;
@@ -189,10 +272,5 @@ h4 {
   @media (min-width: $screen-desktop-min) {
     min-width: $screen-desktop-min;
     max-width: $screen-desktop-min;
-  }
-
-  @media (min-width: $screen-desktop-max) {
-    min-width: $screen-desktop-max;
-    max-width: $screen-desktop-max;
   }
 }

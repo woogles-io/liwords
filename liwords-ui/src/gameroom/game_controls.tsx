@@ -3,6 +3,7 @@ import { Button } from 'antd';
 import { ExchangeTiles } from './exchange_tiles';
 
 type Props = {
+  observer?: boolean;
   onExchange: (rack: string) => void;
   onPass: () => void;
   onRecall: () => void;
@@ -62,6 +63,10 @@ const GameControls = React.memo((props: Props) => {
         showRematch={props.showRematch}
       />
     );
+  }
+
+  if (props.observer) {
+    return null;
   }
 
   return (

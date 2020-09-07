@@ -1,11 +1,13 @@
 /* eslint-disable jsx-a11y/click-events-have-key-events */
 /* eslint-disable jsx-a11y/no-static-element-interactions */
 import React, { useEffect, useRef, useState } from 'react';
-import { Card, Input } from 'antd';
+import { Card, Input, Tabs, Popover } from 'antd';
 import { ChatEntity } from './chat_entity';
 import { ChatEntityObj, PresenceEntity } from '../store/store';
 import './chat.scss';
 import { Presences } from './presences';
+
+const { TabPane } = Tabs;
 
 type Props = {
   peopleOnlineContext: string; // the name for the people in this chat channel
@@ -18,7 +20,7 @@ type Props = {
 export const Chat = React.memo((props: Props) => {
   const [curMsg, setCurMsg] = useState('');
   const [selectedChatTab, setSelectedChatTab] = useState('CHAT');
-
+  // const presenceCount = Object.keys(props.presences).length;
   const el = useRef<HTMLDivElement>(null);
   const onKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') {
@@ -38,12 +40,11 @@ export const Chat = React.memo((props: Props) => {
   };
 
   useEffect(() => {
-    const currentEl = el.current;
-
-    if (currentEl) {
-      currentEl.scrollTop = currentEl.scrollHeight || 0;
+    const tabContainer = el.current?.closest('.ant-tabs-content-holder');
+    if (tabContainer && selectedChatTab === 'CHAT') {
+      tabContainer.scrollTop = tabContainer.scrollHeight || 0;
     }
-  }, [props.chatEntities]);
+  }, [props.chatEntities, selectedChatTab]);
 
   const entities = props.chatEntities?.map((ent) => {
     return (
@@ -56,36 +57,39 @@ export const Chat = React.memo((props: Props) => {
       />
     );
   });
-
+  const renderChatTabHeader = () => (
+    <>
+      {props.description}
+      {Object.keys(props.presences).length ? (
+        <Popover
+          overlayClassName="presences"
+          placement="bottomRight"
+          title="Online"
+          arrowPointAtCenter
+          content={<Presences players={props.presences} />}
+          trigger="hover"
+        ></Popover>
+      ) : null}
+    </>
+  );
   return (
-    <Card
-      className="chat"
-      style={{ textAlign: 'left' }}
-      title={props.description}
-    >
-      <div className="tabs">
-        <div
-          onClick={() => {
-            setSelectedChatTab('PLAYERS');
-          }}
-          className={selectedChatTab === 'PLAYERS' ? 'tab active' : 'tab'}
-        >
-          {`${props.peopleOnlineContext} (${
-            Object.keys(props.presences).length
-          })`}
-        </div>
-        <div
-          onClick={() => {
-            setSelectedChatTab('CHAT');
-          }}
-          className={selectedChatTab === 'CHAT' ? 'tab active' : 'tab'}
-        >
-          Chat
-        </div>
-      </div>
-
-      {selectedChatTab === 'CHAT' ? (
-        <>
+    <Card className="chat">
+      <Tabs
+        defaultActiveKey="CHAT"
+        centered
+        onTabClick={(key) => {
+          setSelectedChatTab(key);
+        }}
+      >
+        {/* TabPane for available players to chat with goes here:
+          past chats, friends, all online players.
+          It's not the same as the users in this current chat group.
+         */}
+        <TabPane tab={<>Players{/* Notification dot */}</>} key="PLAYERS">
+          Coming soon! This will be a list of friends and other players to chat
+          with.
+        </TabPane>
+        <TabPane tab={renderChatTabHeader()} key="CHAT">
           <div className="entities" ref={el}>
             {entities}
           </div>
@@ -95,14 +99,8 @@ export const Chat = React.memo((props: Props) => {
             onChange={onChange}
             value={curMsg}
           />
-        </>
-      ) : null}
-
-      {selectedChatTab === 'PLAYERS' ? (
-        <>
-          <Presences players={props.presences} />
-        </>
-      ) : null}
+        </TabPane>
+      </Tabs>
     </Card>
   );
 });

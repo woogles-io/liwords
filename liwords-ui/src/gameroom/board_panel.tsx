@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Button, Modal, notification } from 'antd';
-import { ArrowDownOutlined, SyncOutlined } from '@ant-design/icons';
+import { SyncOutlined } from '@ant-design/icons';
 import axios from 'axios';
 
 import GameBoard from './board';
@@ -300,19 +300,18 @@ export const BoardPanel = React.memo((props: Props) => {
     // stopClock();
   };
 
+  const observer = !props.playerMeta.some((p) => p.nickname === props.username);
   const rematch = () => {
     const evt = new MatchRequest();
     const receiver = new MatchUser();
 
-    let observer = true;
     let opp = '';
     props.playerMeta.forEach((p) => {
-      if (p.nickname === props.username) {
-        observer = false;
-      } else {
+      if (!(p.nickname === props.username)) {
         opp = p.nickname;
       }
     });
+
     if (observer) {
       return;
     }
@@ -354,12 +353,9 @@ export const BoardPanel = React.memo((props: Props) => {
       />
       {!gameEndMessage ? (
         <div className="rack-container">
-          <Button
-            shape="circle"
-            icon={<ArrowDownOutlined />}
-            type="primary"
-            onClick={recallTiles}
-          />
+          <Button shape="circle" type="primary" onClick={recallTiles}>
+            &#8595;
+          </Button>
           <Rack
             letters={displayedRack}
             grabbable
@@ -382,6 +378,7 @@ export const BoardPanel = React.memo((props: Props) => {
         <GameEndMessage message={gameEndMessage} />
       )}
       <GameControls
+        observer={observer}
         onRecall={recallTiles}
         onExchange={(rack: string) => makeMove('exchange', rack)}
         onPass={() => makeMove('pass')}

@@ -54,6 +54,8 @@
     display: flex;
     flex-direction: row;
     justify-content: space-around;
+    border-bottom: 1px solid #EEE;
+    height: 36px;
     .tab {
       padding: 0px 24px 6px;
       text-transform: uppercase;
@@ -67,7 +69,7 @@
         color: $color-primary-dark;
       }
       &.active {
-        border-bottom: 3px solid $color-primary-dark;
+        border-bottom: 2px solid $color-primary-dark;
       }
     }
   }
@@ -154,10 +156,10 @@
     text-align: left;
     padding: 12px;
     letter-spacing: 0;
-    margin: 6px 0px 0px;
+    margin: 0;
   }
 }
-@media (min-width: $screen-laptop-min) {
+@media (min-width: $screen-tablet-min) {
   .lobby {
     padding: 12px 0;
     flex-wrap: wrap;
@@ -184,7 +186,7 @@
     margin: 0 12px;
   }
 }
-@media (min-width: $screen-desktop-min) {
+@media (min-width: $screen-laptop-min) {
     .announcements {
       max-width: 25%;
     }

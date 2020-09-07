@@ -7,7 +7,7 @@ body {
 .game-container {
   .top-header {
     display: none;
-    @media (min-height: $screen-min-height-desktop-max) and (min-width: $screen-desktop-max) {
+    @media (min-height: $screen-min-height-desktop-max) and (min-width: $screen-desktop-min) {
       display: flex;
     }
   }
@@ -58,7 +58,7 @@ body {
       }
     }
   }
-  @media (min-width: $screen-laptop-min) {
+  @media (min-width: $screen-tablet-min) {
     display: flex;
     div {
       display: flex;

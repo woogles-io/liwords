@@ -10,11 +10,7 @@ export const Presences = React.memo((props: Props) => {
   vals.sort((a, b) => (a.username < b.username ? -1 : 1));
 
   const presences = Object.keys(props.players).map((p) => (
-    <div key={props.players[p].uuid}>{props.players[p].username}</div>
+    <li key={props.players[p].uuid}>{props.players[p].username}</li>
   ));
-  return (
-    <div className="entities" style={{ marginTop: 20 }}>
-      <p className="presences">{presences}</p>
-    </div>
-  );
+  return <ul>{presences}</ul>;
 });

@@ -20,7 +20,7 @@ p {
 
 .intro {
   margin: 0 auto;
-  max-width: $screen-tablet-min;
+  max-width: $screen-mobile-min;
   padding: 12px 12px 48px;
   h4 {
     color: $color-secondary;
@@ -71,7 +71,7 @@ p {
   }
 }
 
-@media (min-width: $screen-laptop-min) {
+@media (min-width: $screen-tablet-min) {
   .bio {
     img {
       min-width: 420px;
@@ -89,7 +89,7 @@ p {
   }
 }
 
-@media (min-width: $screen-desktop-min) {
+@media (min-width: $screen-laptop-min) {
   p {
     line-height: 2em;
   }

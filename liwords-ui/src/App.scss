@@ -2,7 +2,7 @@
 .App {
   background-color: white;
   /* Prevent squashing board until we get to responsive for mobile */
-  min-width: $screen-tablet-min;
+  min-width: $screen-mobile-min;
   a {
     color: $color-primary-dark;
     &:hover,

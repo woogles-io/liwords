@@ -1,6 +1,8 @@
 @import '../../base';
 @include button;
 
+
+
 .ant-modal-footer {
   display: flex;
   align-items: flex-end;
@@ -30,6 +32,9 @@
       padding: 3px 12px;
       height: 50px;
       margin-bottom: 12px;
+      .ant-card-body {
+        padding: 12px;
+      }
       .anticon {
         font-size: 16px;
         margin-right: 9px;
@@ -98,10 +103,13 @@
   position: relative;
   display: flex;
   flex-wrap: wrap;
+  width: $board-size-mobile;
+  height: $board-size-mobile;
 }
 .board-spaces,
 .tiles {
-  width: 100%;
+  width: $board-size-mobile;
+  height: $board-size-mobile;
   min-width: 360px;
   display: grid;
   grid-template-columns: repeat(15, 1fr);
@@ -117,7 +125,6 @@
   border-color: transparent;
   gap: 0;
   border: 0;
-  height: 100%;
   pointer-events: none;
 }
 
@@ -139,11 +146,10 @@
   vertical-align: top;
 }
 .board-space {
-
   .anticon {
     position: absolute;
     color: $color-timer-dark;
-    font-size: 28px;
+    font-size: $tile-font-size-mobile;
   }
   &.bonus-none {
     background-color: $color-board-empty;
@@ -198,7 +204,7 @@
 .coord-labels {
   display: flex;
   justify-content: space-around;
-  width: 100%;
+  width: $board-size-mobile;
   p {
     color: black;
   }
@@ -228,10 +234,11 @@
 .rack {
   display: flex;
   justify-content: center;
+  align-items: center;
   margin: 24px 0;
-  width: 100%;
-  height: 4vw;
-  min-height: 30px;
+  width: $tile-size-mobile * 9;
+  height: $tile-size-mobile;
+  min-height: $tile-size-mobile;
 }
 
 .ant-modal .rack {
@@ -246,7 +253,23 @@
   justify-content: center;
   align-items: center;
   outline-style: none;
+.ant-btn.ant-btn-primary.ant-btn-circle {
+  border-radius: 50%;
+  width: $tile-size-laptop;
+  height: $tile-size-laptop;
 
+  line-height: 0;
+  span {
+    font-family: $font-monospaced;
+    font-size: 28px;
+    position: relative;
+    top: -1px;
+  }
+  .anticon {
+    font-size: 20px;
+    top: 1px;
+  }
+}
   .empty-rack {
     flex-grow: 2;
   }
@@ -261,6 +284,8 @@
   border-radius: 10%;
   line-height: 0;
   text-align: center;
+  width: $tile-size-mobile;
+  height: $tile-size-mobile;
   &[data-rune="Q"] {
     .rune {
       position: relative;
@@ -293,14 +318,10 @@
   color: white;
   margin: 0;
   line-height: 0;
-  font-size: 28px;
+  font-size: $tile-font-size-mobile;
   font-weight: 600;
   width: 100%;
   padding-bottom: 3px;
-}
-
-.tile.tentative .rune {
-  opacity: 0.8;
 }
 
 .tile .point-value {
@@ -310,35 +331,34 @@
   padding: 0.6vw 0.3vw;
   line-height: 0;
   margin: 0;
-  font-size: 10px;
+  font-size: $point-size-mobile;
   font-weight: bold;
   color: white;
 }
 
 .rack .tile {
-  width: 47px;
-  height: 47px;
-  margin: 3px;
+  width: $tile-size-mobile;
+  height: $tile-size-mobile;
+  margin: 2px;
   &.dragging {
     opacity: 0.1;
   }
 }
 
 .exchange .rack .tile {
-  width: 44px;
-  height: 44px;
+  width: $tile-size-laptop;
+  height: $tile-size-laptop;
   &.selected {
     position: relative;
     top: -30px;
     box-shadow: $card-shadow;
   }
   .rune {
-    font-size: 30px;
+    font-size: $tile-font-size-laptop;
     line-height: 35px;
   }
   .point-value {
-    font-size: 10px;
-    padding: 8px 3px;
+    font-size: $point-size-laptop;
   }
 }
 
@@ -347,8 +367,8 @@
   flex-wrap: wrap;
   width: 326px;
   .tile {
-    width: 44px;
-    height: 44px;
+    width: $tile-size-desktop;
+    height: $tile-size-desktop;
     margin: 0 2px 2px 0;
     .rune {
       font-size: 30px;
@@ -421,6 +441,9 @@
   }
 }
 .exchange {
+  .rack {
+    width: 100%;
+  }
   .pool {
     .label {
       margin: 0;
@@ -504,6 +527,7 @@
     }
     .play {
       flex: 3;
+      min-width: 120px;
     }
     .scores {
       text-align: right;
@@ -522,48 +546,65 @@
   }
 }
 
-@media (min-width: $screen-tablet-min) {
+@media (min-width: $screen-mobile-min) {
   .data-area {
     min-width: 300px;
     max-width: 38%;
   }
   .chat-area {
-    max-width: $screen-laptop-min;
+    max-width: $screen-tablet-min;
+  }
+  .board-spaces-container, .board-spaces, .tiles {
+    width: $board-size-mobile;
+    height: $board-size-mobile;
+  }
+  .coord-labels {
+    width: $board-size-mobile;
   }
 }
-@media (min-width: $screen-laptop-min) {
+@media (min-width: $screen-tablet-min) {
   .play-area {
     flex: 0 0 55%;
   }
-
+  .board-spaces-container, .board-spaces, .tiles {
+    width: $board-size-tablet;
+    height: $board-size-tablet;
+  }
+  .coord-labels {
+    width: $board-size-tablet;
+  }
   .rack .tile {
-    width: 34px;
-    height: 34px;
+    width: $tile-size-tablet;
+    height: $tile-size-tablet;
     margin: 3px;
   }
   .tile,
   .empty-space {
-    height: 34px;
-    width: 34px;
+    height: $tile-size-tablet;
+    width: $tile-size-tablet;
   }
   .tile .rune {
-    font-size: 24px;
-    line-height: 28px;
+    font-size: $tile-font-size-tablet;
+    line-height: 1.2em;
     position: relative;
   }
   .tile .point-value {
-    font-size: 7px;
+    font-size: $point-size-tablet;
     padding: 5px 2px;
     bottom: 1px;
   }
-  .rack {
-    height: 3vw;
-  }
 }
 
-@media (min-width: $screen-desktop-min) {
+@media (min-width: $screen-laptop-min) {
   .play-area {
     flex: 0 0 45%;
+  }
+  .board-spaces-container, .board-spaces, .tiles {
+    width: $board-size-laptop;
+    height: $board-size-laptop;
+  }
+  .coord-labels {
+    width: $board-size-laptop;
   }
   .game-table {
     flex-wrap: nowrap;
@@ -592,18 +633,25 @@
       }
     }
   }
-
+  .tile,
+  .empty-space {
+    height: $tile-size-laptop;
+    width: $tile-size-laptop;
+  }
   .tile.droppable {
     pointer-events: all;
     cursor: grab;
   }
   .tile .rune {
-    font-size: 26px;
-    line-height: 35px;
+    font-size: $tile-font-size-laptop;
   }
   .tile .point-value {
-    font-size: 10px;
-    padding: 8px 3px;
+    font-size: $point-size-laptop;
+    padding: 5px 3px;
+  }
+  .rack .tile {
+    height: $tile-size-laptop;
+    width: $tile-size-laptop;
   }
   .pool {
     .vc-distribution {
@@ -637,28 +685,43 @@
   }
 }
 
-@media (min-width: $screen-desktop-max) {
+@media (min-width: $screen-desktop-min) {
+  .board-spaces-container, .board-spaces, .tiles {
+    width: $board-size-desktop;
+    height: $board-size-desktop;
+  }
+  .coord-labels {
+    width: $board-size-desktop;
+  }
   .tile,
   .empty-space {
-    height: 40px;
-    width: 40px;
+    height: $tile-size-desktop;
+    width: $tile-size-desktop;
   }
 
   .rack .tile {
-    width: 40px;
-    height: 40px;
+    height: $tile-size-desktop;
+    width: $tile-size-desktop;
   }
-    .score-card {
-      font-size: 100%;
-      .ant-card-body {
-        & > div {
-          max-height: 210px;
-        }
+
+  .tile .rune {
+    font-size: $tile-font-size-desktop;
+  }
+  .tile .point-value {
+    font-size: $point-size-desktop;
+    padding: 7px 3px;
+  }
+  .score-card {
+    font-size: 100%;
+    .ant-card-body {
+      & > div {
+        max-height: 210px;
       }
     }
+  }
 }
 
-@media (min-height: $screen-min-height-desktop-max) and (min-width: $screen-desktop-max) {
+@media (min-height: $screen-min-height-desktop-max) and (min-width: $screen-desktop-min) {
   .chat-area .ant-card.left-menu{
     display: none;
   }
