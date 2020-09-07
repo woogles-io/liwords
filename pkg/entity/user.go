@@ -49,18 +49,27 @@ type Profile struct {
 	Stats       ProfileStats
 }
 
+// If the RD is <= this number, the rating is "known"
+const RatingDeviationConfidence = 150
+
 // RelevantRating returns the rating from a Ratings object given a rating key.
 func RelevantRating(ratings Ratings, ratingKey VariantKey) string {
+
+	unknownRating := "?"
+
 	if ratings.Data == nil {
 		// This is not an unrated user. Use default rating.
-		return strconv.Itoa(glicko.InitialRating) + "?"
+		return strconv.Itoa(glicko.InitialRating) + unknownRating
 	}
 	ratdict, ok := ratings.Data[ratingKey]
 	if ok {
-		return strconv.Itoa(int(math.Round(ratdict.Rating)))
+		if ratdict.RatingDeviation <= RatingDeviationConfidence {
+			unknownRating = ""
+		}
+		return strconv.Itoa(int(math.Round(ratdict.Rating))) + unknownRating
 	}
 	// User has no rating in this particular variant.
-	return strconv.Itoa(glicko.InitialRating) + "?"
+	return strconv.Itoa(glicko.InitialRating) + unknownRating
 }
 
 // GetRelevantRating gets a displayable rating for this user, based on the passed-in

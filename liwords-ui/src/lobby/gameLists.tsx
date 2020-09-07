@@ -13,12 +13,15 @@ type Props = {
   username?: string;
   selectedGameTab: string;
   setSelectedGameTab: (tab: string) => void;
-  matchModalVisible: boolean;
   showMatchModal: () => void;
   showSeekModal: () => void;
+  showBotModal: () => void;
+  matchModalVisible: boolean;
   seekModalVisible: boolean;
+  botModalVisible: boolean;
   handleMatchModalCancel: () => void;
   handleSeekModalCancel: () => void;
+  handleBotModalCancel: () => void;
   onSeekSubmit: (g: SoughtGame) => void;
 };
 
@@ -32,10 +35,13 @@ export const GameLists = React.memo((props: Props) => {
     setSelectedGameTab,
     showMatchModal,
     showSeekModal,
+    showBotModal,
     matchModalVisible,
     seekModalVisible,
+    botModalVisible,
     handleMatchModalCancel,
     handleSeekModalCancel,
+    handleBotModalCancel,
     onSeekSubmit,
   } = props;
   const { lobbyContext } = useStoreContext();
@@ -149,14 +155,24 @@ export const GameLists = React.memo((props: Props) => {
               />
             </Modal>
 
-            <Button type="primary" onClick={showSeekModal}>
+            <Button type="primary" onClick={showBotModal}>
               Play a Bot
             </Button>
-            <Modal title="Play a Bot">
+            <Modal
+              title="Play a Bot"
+              visible={botModalVisible}
+              onCancel={handleBotModalCancel}
+              footer={[
+                <Button key="back" onClick={handleBotModalCancel}>
+                  Cancel
+                </Button>,
+              ]}
+            >
               <SeekForm
                 onFormSubmit={onSeekSubmit}
                 loggedIn={props.loggedIn}
                 showFriendInput={false}
+                vsBot={true}
               />
             </Modal>
           </div>

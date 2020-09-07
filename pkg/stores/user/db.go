@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"math/rand"
 
 	"github.com/jinzhu/gorm"
 	"github.com/jinzhu/gorm/dialects/postgres"
@@ -30,7 +31,7 @@ type User struct {
 	Email    string `gorm:"type:varchar(100);unique_index"`
 	// Password will be hashed.
 	Password    string `gorm:"type:varchar(128)"`
-	InternalBot bool   `gorm:"default:false"`
+	InternalBot bool   `gorm:"default:false;index"`
 }
 
 // A user profile is in a one-to-one relationship with a user. It is the
@@ -309,6 +310,28 @@ func (s *DBStore) SetStats(ctx context.Context, uuid string, variant entity.Vari
 		return err
 	}
 	return s.db.Model(p).Update("stats", postgres.Jsonb{RawMessage: bytes}).Error
+}
+
+func (s *DBStore) GetRandomBot(ctx context.Context) (*entity.User, error) {
+
+	var users []*User
+	if result := s.db.Where("internal_bot = ?", true).Find(&users); result.Error != nil {
+		return nil, result.Error
+	}
+	idx := rand.Intn(len(users))
+	u := users[idx]
+
+	entu := &entity.User{
+		ID:        u.ID,
+		Username:  u.Username,
+		UUID:      u.UUID,
+		Email:     u.Email,
+		Password:  u.Password,
+		Anonymous: false,
+		IsBot:     u.InternalBot,
+	}
+
+	return entu, nil
 }
 
 // AddFollower creates a follower -> target follow.

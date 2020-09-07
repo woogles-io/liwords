@@ -26,6 +26,7 @@ export type PlayerMetadata = {
   rating: string;
   title: string;
   avatar_url: string;
+  is_bot: boolean;
 };
 
 export type GCGResponse = {
