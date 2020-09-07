@@ -17,6 +17,7 @@ export type SoughtGame = {
   userRating: string;
   rated: boolean;
   seekID: string;
+  playerVsBot: boolean;
   // Only for direct match requests:
   receiver: MatchUser;
   rematchFor: string;
@@ -75,6 +76,7 @@ export const SeekRequestToSoughtGame = (
     receiver: receivingUser,
     rematchFor,
     incrementSecs: gameReq.getIncrementSeconds(),
+    playerVsBot: gameReq.getPlayerVsBot(),
   };
 };
 

@@ -21,6 +21,7 @@ message PlayerInfo {
   // The avatar URL should be set if the player has an avatar, and blank
   // otherwise. It'll probably be a fixed pattern for the url.
   string avatar_url = 7;
+  bool is_bot = 8;
 }
 
 message GameInfoResponse {

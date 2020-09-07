@@ -23,10 +23,15 @@ func NewRegistrationService(u user.Store) *RegistrationService {
 func (rs *RegistrationService) Register(ctx context.Context, r *pb.UserRegistrationRequest) (*pb.RegistrationResponse, error) {
 	log := zerolog.Ctx(ctx)
 	log.Info().Str("user", r.Username).Str("email", r.Email).Msg("new-user")
-	if r.RegistrationCode != os.Getenv("REGISTRATION_CODE") {
+
+	code := os.Getenv("REGISTRATION_CODE")
+	codebot := "bot" + code
+
+	if r.RegistrationCode != code && r.RegistrationCode != codebot {
 		return nil, errors.New("unauthorized")
 	}
-	err := RegisterUser(ctx, r.Username, r.Password, r.Email, rs.userStore)
+	err := RegisterUser(ctx, r.Username, r.Password, r.Email, rs.userStore,
+		r.RegistrationCode == codebot)
 	if err != nil {
 		return nil, err
 	}

@@ -40,12 +40,14 @@ const sendSeek = (
   gr.setIncrementSeconds(game.incrementSecs);
   gr.setRules(rules);
   gr.setRatingMode(game.rated ? RatingMode.RATED : RatingMode.CASUAL);
-  if (game.receiver.getDisplayName() === '') {
+  gr.setPlayerVsBot(game.playerVsBot);
+  if (game.receiver.getDisplayName() === '' && game.playerVsBot === false) {
     sr.setGameRequest(gr);
     sendSocketMsg(
       encodeToSocketFmt(MessageType.SEEK_REQUEST, sr.serializeBinary())
     );
   } else {
+    // We make it a match request if the receiver is non-empty, or if playerVsBot.
     mr.setGameRequest(gr);
     mr.setReceivingUser(game.receiver);
     sendSocketMsg(
@@ -80,6 +82,7 @@ type Props = {
 export const Lobby = (props: Props) => {
   const [seekModalVisible, setSeekModalVisible] = useState(false);
   const [matchModalVisible, setMatchModalVisible] = useState(false);
+  const [botModalVisible, setBotModalVisible] = useState(false);
   const [selectedGameTab, setSelectedGameTab] = useState(
     props.loggedIn ? 'PLAY' : 'WATCH'
   );
@@ -98,18 +101,27 @@ export const Lobby = (props: Props) => {
     setMatchModalVisible(true);
   };
 
+  const showBotModal = () => {
+    setBotModalVisible(true);
+  };
+
   const handleSeekModalCancel = () => {
     setSeekModalVisible(false);
+  };
+
+  const handleBotModalCancel = () => {
+    setBotModalVisible(false);
+  };
+
+  const handleMatchModalCancel = () => {
+    setMatchModalVisible(false);
   };
 
   const onSeekSubmit = (g: SoughtGame) => {
     sendSeek(g, props.sendSocketMsg);
     setMatchModalVisible(false);
     setSeekModalVisible(false);
-  };
-
-  const handleMatchModalCancel = () => {
-    setMatchModalVisible(false);
+    setBotModalVisible(false);
   };
 
   const sendChat = (msg: string) => {
@@ -147,10 +159,13 @@ export const Lobby = (props: Props) => {
           setSelectedGameTab={setSelectedGameTab}
           showSeekModal={showSeekModal}
           showMatchModal={showMatchModal}
+          showBotModal={showBotModal}
           matchModalVisible={matchModalVisible}
           seekModalVisible={seekModalVisible}
+          botModalVisible={botModalVisible}
           handleMatchModalCancel={handleMatchModalCancel}
           handleSeekModalCancel={handleSeekModalCancel}
+          handleBotModalCancel={handleBotModalCancel}
           onSeekSubmit={onSeekSubmit}
         />
         <div className="announcements">

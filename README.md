@@ -32,6 +32,8 @@ Use `foobar` as the registration code.
 
 To have two players play each other you must have one browser window in incognito mode, or use another browser.
 
+10. To register a bot, follow the above step, except enter `botfoobar` as the registration code. You need to register at least one bot in order for bot games to work.
+
 #### Tips
 
 You can do `docker-compose up app` and `docker-compose up frontend` in two different terminal windows to bring these up separately. This may be desirable, for example, when making backend changes and not wanting to restart the frontend compilation everytime something changes.
@@ -43,6 +45,8 @@ You can do `docker-compose up app` and `docker-compose up frontend` in two diffe
 `macondo` provides the logic for the actual crossword board game. `liwords` adds
 the web app logic to allow two players to play against each other, or against
 a computer, etc.
+
+`macondo` also provides a bot.
 
 ### socket
 

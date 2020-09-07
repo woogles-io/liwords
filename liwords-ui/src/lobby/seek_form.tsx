@@ -61,12 +61,14 @@ const initialValues: seekPropVals = {
   extratime: 1,
   incOrOT: 'overtime',
   friend: '',
+  vsBot: false,
 };
 
 type Props = {
   onFormSubmit: (g: SoughtGame) => void;
   loggedIn: boolean;
   showFriendInput: boolean;
+  vsBot?: boolean;
 };
 
 const otLabel = 'Max Overtime (minutes)';
@@ -123,6 +125,7 @@ export const SeekForm = (props: Props) => {
         val.incOrOT === 'increment' ? 0 : Math.round(val.extratime as number),
       receiver,
       rematchFor: '',
+      playerVsBot: props.vsBot || false,
     };
     props.onFormSubmit(obj);
   };

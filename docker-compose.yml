@@ -29,6 +29,22 @@ services:
       - "traefik.http.services.liwords.loadbalancer.server.port=8001"
       - traefik.enable=true
 
+  bot:
+    build:
+      context: ../macondo
+      dockerfile: Dockerfile-bot
+    environment:
+      LEXICON_PATH: /opt/program/data/lexica
+      LETTER_DISTRIBUTION_PATH: /opt/program/data/letterdistributions
+      NATS_URL: nats://nats:4222
+      DEBUG: 1
+    volumes:
+      - ../macondo:/opt/program:rw
+    command: sh -c "./bin/bot"
+    depends_on: ["nats"]
+    networks:
+      - aeronet
+
   socket:
     build:
       context: ../liwords-socket

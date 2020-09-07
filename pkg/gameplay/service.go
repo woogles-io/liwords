@@ -52,6 +52,7 @@ func (gs *GameService) GetMetadata(ctx context.Context, req *pb.GameInfoRequest)
 			UserId:   p.UserId,
 			Nickname: p.Nickname,
 			Rating:   u.GetRelevantRating(ratingKey),
+			IsBot:    u.IsBot,
 		}
 		if u.Profile != nil {
 			pinfo.FullName = u.RealName()
