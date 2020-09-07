@@ -1,7 +1,7 @@
 /* eslint-disable jsx-a11y/click-events-have-key-events */
 /* eslint-disable jsx-a11y/no-static-element-interactions */
 import React, { useEffect, useRef, useState } from 'react';
-import { Card, Input, Tabs, Popover } from 'antd';
+import { Card, Input, Tabs } from 'antd';
 import { ChatEntity } from './chat_entity';
 import { ChatEntityObj, PresenceEntity } from '../store/store';
 import './chat.scss';
@@ -19,8 +19,9 @@ type Props = {
 
 export const Chat = React.memo((props: Props) => {
   const [curMsg, setCurMsg] = useState('');
+  const [hasScroll, setHasScroll] = useState(false);
   const [selectedChatTab, setSelectedChatTab] = useState('CHAT');
-  // const presenceCount = Object.keys(props.presences).length;
+  const presenceCount = Object.keys(props.presences).length;
   const el = useRef<HTMLDivElement>(null);
   const onKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') {
@@ -42,6 +43,9 @@ export const Chat = React.memo((props: Props) => {
   useEffect(() => {
     const tabContainer = el.current?.closest('.ant-tabs-content-holder');
     if (tabContainer && selectedChatTab === 'CHAT') {
+      if (tabContainer.scrollHeight > tabContainer.clientHeight) {
+        setHasScroll(true);
+      }
       tabContainer.scrollTop = tabContainer.scrollHeight || 0;
     }
   }, [props.chatEntities, selectedChatTab]);
@@ -57,21 +61,6 @@ export const Chat = React.memo((props: Props) => {
       />
     );
   });
-  const renderChatTabHeader = () => (
-    <>
-      {props.description}
-      {Object.keys(props.presences).length ? (
-        <Popover
-          overlayClassName="presences"
-          placement="bottomRight"
-          title="Online"
-          arrowPointAtCenter
-          content={<Presences players={props.presences} />}
-          trigger="hover"
-        ></Popover>
-      ) : null}
-    </>
-  );
   return (
     <Card className="chat">
       <Tabs
@@ -89,7 +78,15 @@ export const Chat = React.memo((props: Props) => {
           Coming soon! This will be a list of friends and other players to chat
           with.
         </TabPane>
-        <TabPane tab={renderChatTabHeader()} key="CHAT">
+        <TabPane tab="Chat" key="CHAT">
+          <div className={`chat-context${hasScroll ? ' scrolling' : ''}`}>
+            <p>{props.description}</p>
+            {presenceCount ? (
+              <p className="presence-count">
+                {presenceCount} {props.peopleOnlineContext}
+              </p>
+            ) : null}
+          </div>
           <div className="entities" ref={el}>
             {entities}
           </div>

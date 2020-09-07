@@ -21,9 +21,6 @@
   justify-content: center;
   align-items: flex-start;
   padding: 12px 0;
-  p {
-    color: white;
-  }
   .chat-area {
     .ant-card.left-menu {
       text-transform: uppercase;
@@ -115,8 +112,11 @@
   grid-template-columns: repeat(15, 1fr);
   grid-template-rows: repeat(15, 1fr);
   gap: 1px;
-  border: 1px solid #ddd;
   background-color: #ddd;
+}
+.board-spaces {
+  // Using a box shadow that looks like a border to not mess up the
+  box-shadow: 0 0 4px rgba(0,0,0,0.3);
 }
 
 .tiles {
@@ -126,6 +126,9 @@
   gap: 0;
   border: 0;
   pointer-events: none;
+  p {
+    color: white;
+  }
 }
 
 .board-space {
@@ -236,7 +239,7 @@
   justify-content: center;
   align-items: center;
   margin: 24px 0;
-  width: $tile-size-mobile * 9;
+  width: ($tile-size-mobile * 7);
   height: $tile-size-mobile;
   min-height: $tile-size-mobile;
 }
@@ -257,7 +260,7 @@
   border-radius: 50%;
   width: $tile-size-laptop;
   height: $tile-size-laptop;
-
+  margin: 0 6px;
   line-height: 0;
   span {
     font-family: $font-monospaced;
@@ -281,7 +284,7 @@
   position: relative;
   display: flex;
   align-items: center;
-  border-radius: 10%;
+  border-radius: 7%;
   line-height: 0;
   text-align: center;
   width: $tile-size-mobile;
@@ -561,6 +564,9 @@
   .coord-labels {
     width: $board-size-mobile;
   }
+  .rack {
+    width: (48 + $tile-size-mobile * 7);
+  }
 }
 @media (min-width: $screen-tablet-min) {
   .play-area {
@@ -573,10 +579,12 @@
   .coord-labels {
     width: $board-size-tablet;
   }
+  .rack {
+    width: (48 + $tile-size-tablet * 7);
+  }
   .rack .tile {
     width: $tile-size-tablet;
     height: $tile-size-tablet;
-    margin: 3px;
   }
   .tile,
   .empty-space {
@@ -649,6 +657,9 @@
     font-size: $point-size-laptop;
     padding: 5px 3px;
   }
+  .rack {
+    width: (48 + $tile-size-laptop * 7);
+  }
   .rack .tile {
     height: $tile-size-laptop;
     width: $tile-size-laptop;
@@ -698,7 +709,9 @@
     height: $tile-size-desktop;
     width: $tile-size-desktop;
   }
-
+  .rack {
+    width: (48 + $tile-size-desktop * 7);
+  }
   .rack .tile {
     height: $tile-size-desktop;
     width: $tile-size-desktop;

@@ -3,6 +3,9 @@
 @include tabs;
 /* hide at mobile for now,
  expand board */
+p {
+  margin: 0;
+}
 .presences .ant-popover-inner-content {
   @include type-default;
   padding: 12px;
@@ -28,22 +31,30 @@
   #rc-tabs-0-panel-PLAYERS {
     padding: 24px;
   }
-  .presence-count {
-    @include type-monospace;
+  .chat-context {
+    color: black;
+    min-height: 48px;
+    width: 100%;
+    background: white;
+    font-size: 16px;
     font-weight: bold;
-    letter-spacing: 0;
-    line-height: 1.5em;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    min-width: 21px;
-    height: 21px;
-    background: $color-primary-dark;
-    border-radius: 3px;
-    padding: 5px;
-    color: white;
-    margin-left: 6px;
-    font-size: 10px;
+    z-index: 1;
+    padding: 12px 24px 0;
+    &.scrolling {
+      position: absolute;
+      padding-bottom: 12px;
+      border-bottom: 1px solid #ddd;
+    }
+    .presence-count {
+      color: #707070;
+      text-transform: uppercase;
+      font-size: 12px;
+      letter-spacing: 0.16em;
+      margin: 6px 0;
+    }
+    &.scrolling + .entities {
+      margin-top: 90px;
+    }
   }
   .entities {
     padding: 12px 24px;
@@ -81,8 +92,8 @@
 .game-table {
   .chat-area .ant-card {
     height: 640px;
-    .ant-tabs-content-holder {
-      max-height: 540px;
+    .ant-tabs-contezt-holder {
+      max-height: 550px;
     }
   }
 }
@@ -100,7 +111,7 @@
     .chat-area .ant-card {
       height: 680px;
       .ant-tabs-content-holder {
-        max-height: 580px;
+        max-height: 590px;
       }
     }
   }
@@ -111,7 +122,7 @@
     .chat-area .ant-card {
       height: 745px;
       .ant-tabs-content-holder {
-        max-height: 645px;
+        max-height: 655px;
       }
     }
   }
@@ -122,7 +133,7 @@
     .chat-area .ant-card {
       height: 810px;
       .ant-tabs-content-holder {
-        max-height: 710px;
+        max-height: 720px;
       }
     }
   }
