@@ -331,15 +331,19 @@ func (b *Bus) handleNatsPublish(ctx context.Context, subtopics []string, data []
 		if err != nil {
 			return err
 		}
+		userid := subtopics[2]
 		// subtopics[2] is the user ID of the requester.
-		entGame, err := gameplay.HandleEvent(ctx, b.gameStore, b.userStore, subtopics[2], evt)
+		entGame, err := gameplay.HandleEvent(ctx, b.gameStore, b.userStore, userid, evt)
 		if err != nil {
 			return err
 		}
 		// Determine if one of our players is a bot (no bot-vs-bot supported yet?)
+		// and if it is the bot's turn.
 		if entGame.Game.Playing() != macondopb.PlayState_GAME_OVER &&
 			entGame.GameReq != nil &&
-			entGame.GameReq.PlayerVsBot {
+			entGame.GameReq.PlayerVsBot &&
+			entGame.PlayerIDOnTurn() != userid {
+
 			// Do this in a separate goroutine as it blocks while waiting for bot move.
 			go b.handleBotMove(ctx, entGame)
 		}
