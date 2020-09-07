@@ -17,6 +17,7 @@ type Store interface {
 	SetPassword(ctx context.Context, uuid string, hashpass string) error
 	SetRating(ctx context.Context, uuid string, variant entity.VariantKey, rating entity.SingleRating) error
 	SetStats(ctx context.Context, uuid string, variant entity.VariantKey, stats *entity.Stats) error
+	GetRandomBot(ctx context.Context) (*entity.User, error)
 	AddFollower(ctx context.Context, targetUser, follower uint) error
 	RemoveFollower(ctx context.Context, targetUser, follower uint) error
 	// GetFollows gets all the users that the passed-in DB ID is following.

@@ -320,13 +320,14 @@ func (a *activeGame) ToGameMeta() (*pb.GameMeta, error) {
 	var p0data entity.Ratings
 	err = json.Unmarshal(a.P0Ratings.RawMessage, &p0data)
 	if err != nil {
-		return nil, err
+		log.Err(err).Msg("unmarshal-p0-rating")
 	}
 	var p1data entity.Ratings
 	err = json.Unmarshal(a.P1Ratings.RawMessage, &p1data)
 	if err != nil {
-		return nil, err
+		log.Err(err).Msg("unmarshal-p0-rating")
 	}
+	// Don't quit if we can't unmarshal ratings.
 
 	p0Rating := entity.RelevantRating(p0data, ratingKey)
 	p1Rating := entity.RelevantRating(p1data, ratingKey)

@@ -47,6 +47,9 @@ export class PlayerInfo extends jspb.Message {
   getAvatarUrl(): string;
   setAvatarUrl(value: string): void;
 
+  getIsBot(): boolean;
+  setIsBot(value: boolean): void;
+
   serializeBinary(): Uint8Array;
   toObject(includeInstance?: boolean): PlayerInfo.AsObject;
   static toObject(includeInstance: boolean, msg: PlayerInfo): PlayerInfo.AsObject;
@@ -66,6 +69,7 @@ export namespace PlayerInfo {
     rating: string,
     title: string,
     avatarUrl: string,
+    isBot: boolean,
   }
 }
 

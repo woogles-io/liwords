@@ -144,6 +144,10 @@ func clientEventToMove(cge *pb.ClientGameplayEvent, g *game.Game) (*move.Move, e
 		}
 		m := move.NewExchangeMove(tiles, leaveMW, g.Alphabet())
 		return m, nil
+
+	case pb.ClientGameplayEvent_CHALLENGE_PLAY:
+		m := move.NewChallengeMove(rack.TilesOn(), g.Alphabet())
+		return m, nil
 	}
 	return nil, errors.New("client gameplay event not handled")
 }
@@ -194,7 +198,7 @@ func players(entGame *entity.Game) []string {
 	return ps
 }
 
-func handleChallenge(ctx context.Context, entGame *entity.Game, gameStore GameStore,
+func handleChallenge(ctx context.Context, entGame *entity.Game,
 	userStore user.Store, timeRemaining int, challengerID string) error {
 	if entGame.ChallengeRule() == macondopb.ChallengeRule_VOID {
 		// The front-end shouldn't even show the button.
@@ -240,61 +244,24 @@ func handleChallenge(ctx context.Context, entGame *entity.Game, gameStore GameSt
 		checkGameOverAndModifyScores(ctx, entGame, userStore)
 	}
 
-	return gameStore.Set(ctx, entGame)
-
+	return nil
 }
 
-// PlayMove handles a gameplay event from the socket
-func PlayMove(ctx context.Context, gameStore GameStore, userStore user.Store, userID string,
-	cge *pb.ClientGameplayEvent) error {
+func PlayMove(ctx context.Context, entGame *entity.Game, userStore user.Store,
+	userID string, onTurn, timeRemaining int, m *move.Move) error {
 
-	// XXX: VERIFY THAT THE CLIENT GAME ID CORRESPONDS TO THE GAME
-	// THE PLAYER IS PLAYING!
-	entGame, err := gameStore.Get(ctx, cge.GameId)
-	if err != nil {
-		return err
-	}
-	entGame.Lock()
-	defer entGame.Unlock()
-	if entGame.Game.Playing() == macondopb.PlayState_GAME_OVER {
-		return errGameNotActive
-	}
-	onTurn := entGame.Game.PlayerOnTurn()
-
-	// Ensure that it is actually the correct player's turn
-	if entGame.Game.PlayerIDOnTurn() != userID {
-		log.Info().Interface("client-event", cge).Msg("not on turn")
-		return errNotOnTurn
-	}
-	timeRemaining := entGame.TimeRemaining(onTurn)
-	log.Debug().Int("time-remaining", timeRemaining).Msg("checking-time-remaining")
-	// Check that we didn't run out of time.
-	if entGame.TimeRanOut(onTurn) {
-		// Game is over!
-		log.Debug().Msg("got-move-too-late")
-		entGame.Game.SetPlaying(macondopb.PlayState_GAME_OVER)
-		// Basically skip to the bottom and exit.
-		return setTimedOut(ctx, entGame, onTurn, gameStore, userStore)
-	}
-
-	log.Debug().Msg("going to turn into a macondo gameevent")
-
-	if cge.Type == pb.ClientGameplayEvent_CHALLENGE_PLAY {
-		// Handle in another way
-		return handleChallenge(ctx, entGame, gameStore, userStore, timeRemaining, userID)
-	}
-
-	// Turn the event into a macondo GameEvent.
-	m, err := clientEventToMove(cge, &entGame.Game)
-	if err != nil {
-		return err
-	}
 	log.Debug().Msg("validating")
 
-	_, err = entGame.Game.ValidateMove(m)
+	_, err := entGame.Game.ValidateMove(m)
 	if err != nil {
 		return err
 	}
+
+	if m.Action() == move.MoveTypeChallenge {
+		// Handle in another way
+		return handleChallenge(ctx, entGame, userStore, timeRemaining, userID)
+	}
+
 	oldTurnLength := len(entGame.Game.History().Events)
 
 	// Don't back up the move, but add to history
@@ -319,7 +286,7 @@ func PlayMove(ctx context.Context, gameStore GameStore, userStore user.Store, us
 	for _, evt := range turns {
 		sge := &pb.ServerGameplayEvent{}
 		sge.Event = evt
-		sge.GameId = cge.GameId
+		sge.GameId = entGame.GameID()
 		// note that `onTurn` is correct as it was saved up there before
 		// we played the turn.
 		sge.TimeRemaining = int32(entGame.TimeRemaining(onTurn))
@@ -345,8 +312,57 @@ func PlayMove(ctx context.Context, gameStore GameStore, userStore user.Store, us
 	if playing == macondopb.PlayState_GAME_OVER {
 		checkGameOverAndModifyScores(ctx, entGame, userStore)
 	}
+	return nil
+}
 
-	return gameStore.Set(ctx, entGame)
+// HandleEvent handles a gameplay event from the socket
+func HandleEvent(ctx context.Context, gameStore GameStore, userStore user.Store, userID string,
+	cge *pb.ClientGameplayEvent) (*entity.Game, error) {
+
+	// XXX: VERIFY THAT THE CLIENT GAME ID CORRESPONDS TO THE GAME
+	// THE PLAYER IS PLAYING!
+	entGame, err := gameStore.Get(ctx, cge.GameId)
+	if err != nil {
+		return nil, err
+	}
+	entGame.Lock()
+	defer entGame.Unlock()
+	if entGame.Game.Playing() == macondopb.PlayState_GAME_OVER {
+		return entGame, errGameNotActive
+	}
+	onTurn := entGame.Game.PlayerOnTurn()
+
+	// Ensure that it is actually the correct player's turn
+	if entGame.Game.PlayerIDOnTurn() != userID {
+		log.Info().Interface("client-event", cge).Msg("not on turn")
+		return entGame, errNotOnTurn
+	}
+	timeRemaining := entGame.TimeRemaining(onTurn)
+	log.Debug().Int("time-remaining", timeRemaining).Msg("checking-time-remaining")
+	// Check that we didn't run out of time.
+	if entGame.TimeRanOut(onTurn) {
+		// Game is over!
+		log.Debug().Msg("got-move-too-late")
+		entGame.Game.SetPlaying(macondopb.PlayState_GAME_OVER)
+		// Basically skip to the bottom and exit.
+		return entGame, setTimedOut(ctx, entGame, onTurn, gameStore, userStore)
+	}
+
+	log.Debug().Msg("going to turn into a macondo gameevent")
+
+	// Turn the event into a macondo GameEvent.
+	m, err := clientEventToMove(cge, &entGame.Game)
+	if err != nil {
+		return entGame, err
+	}
+
+	err = PlayMove(ctx, entGame, userStore, userID, onTurn, timeRemaining, m)
+	if err != nil {
+		return entGame, err
+	}
+
+	return entGame, gameStore.Set(ctx, entGame)
+
 }
 
 func checkGameOverAndModifyScores(ctx context.Context, entGame *entity.Game, userStore user.Store) {

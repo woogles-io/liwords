@@ -12,7 +12,8 @@ import (
 
 // RegisterUser registers a user.
 func RegisterUser(ctx context.Context, username string, password string, email string,
-	userStore user.Store) error {
+	userStore user.Store, bot bool) error {
+	// username = strings.Rep
 	if len(username) < 1 || len(username) > 20 {
 		return errors.New("username must be between 1 and 20 letters in length")
 	}
@@ -40,6 +41,7 @@ func RegisterUser(ctx context.Context, username string, password string, email s
 		Username: username,
 		Password: hashPass,
 		Email:    email,
+		IsBot:    bot,
 	})
 	return err
 }
