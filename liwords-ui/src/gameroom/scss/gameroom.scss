@@ -20,7 +20,7 @@
   flex-direction: row;
   justify-content: center;
   align-items: flex-start;
-  padding: 12px 0;
+  padding: 0;
   .chat-area {
     .ant-card.left-menu {
       text-transform: uppercase;
@@ -44,13 +44,14 @@
   box-shadow: $card-shadow;
   border-radius: 8px;
   .ant-card-body {
-    padding: 16px;
+    padding: 12px;
   }
   .ant-card-head {
+    min-height: none;
     .ant-card-head-title,
     .ant-card-extra {
-      padding: 12px 0;
-      line-height: 2em;
+      padding: 12px 3px;
+      line-height: 1.5em;
       font-size: 12px;
     }
     .ant-card-extra {
@@ -69,7 +70,7 @@
 .board-container {
   user-select: none;
   text-align: center;
-  padding: 0 12px 24px 24px;
+  padding: 0;
   margin: 6px;
   outline-style: none;
 }
@@ -238,7 +239,7 @@
   display: flex;
   justify-content: center;
   align-items: center;
-  margin: 24px 0;
+  margin: 20px 0;
   width: ($tile-size-mobile * 7);
   height: $tile-size-mobile;
   min-height: $tile-size-mobile;
@@ -261,12 +262,12 @@
   width: $tile-size-laptop;
   height: $tile-size-laptop;
   margin: 0 6px;
+  padding: 0;
   line-height: 0;
   span {
     font-family: $font-monospaced;
+    font-weight: 500;
     font-size: 28px;
-    position: relative;
-    top: -1px;
   }
   .anticon {
     font-size: 20px;
@@ -409,9 +410,11 @@
     padding: 0;
   }
   .vc-distribution {
-    @include type-monospace;
+    @include type-default;
     text-transform: uppercase;
-    font-size: 12px;
+    letter-spacing: 0.16em;
+    font-size: 11px;
+    font-weight: bold;
     display: flex;
     border-radius: 0 0 8px 8px;
     background: $color-primary-dark;
@@ -527,10 +530,11 @@
     justify-content: space-between;
     .coords-time {
       flex: 2;
+      min-width: 50px;
     }
     .play {
       flex: 3;
-      min-width: 120px;
+      min-width: 150px;
     }
     .scores {
       text-align: right;
@@ -539,6 +543,10 @@
 }
 .game-controls {
   margin: 0 auto;
+  button {
+    margin: 0 6px;
+    padding: 0;
+  }
 }
 .end-message {
   background-color: $color-primary-middle;
@@ -551,8 +559,8 @@
 
 @media (min-width: $screen-mobile-min) {
   .data-area {
-    min-width: 300px;
-    max-width: 38%;
+    min-width: 356px;
+    max-width: 356px;
   }
   .chat-area {
     max-width: $screen-tablet-min;
@@ -604,8 +612,16 @@
 }
 
 @media (min-width: $screen-laptop-min) {
+  .chat-area, .data-area {
+    min-width: 340px;
+    max-width: 340px;
+  }
+  .data-area .ant-card {
+    margin-bottom: 6px;
+  }
   .play-area {
-    flex: 0 0 45%;
+    flex: 0 0 0;
+    padding: 0 12px 0 24px;
   }
   .board-spaces-container, .board-spaces, .tiles {
     width: $board-size-laptop;
@@ -617,16 +633,6 @@
   .game-table {
     flex-wrap: nowrap;
 
-    .ant-card .ant-card-head {
-      .ant-card-head-title,
-      .ant-card-extra {
-        padding: 12px 0;
-        font-size: 16px;
-      }
-      .ant-card-extra {
-        font-size: 16px;
-      }
-    }
   }
   .format-dropdown {
     .ant-dropdown-menu {
@@ -664,39 +670,34 @@
     height: $tile-size-laptop;
     width: $tile-size-laptop;
   }
-  .pool {
-    .vc-distribution {
+  .game-info {
+    font-size: 12px;
+    .variant {
       font-size: 14px;
     }
   }
-  .score-card {
-    .turn {
-      font-size: 14px;
-      padding: 8px 16px 16px 8px;
-    }
-    .player-avatar {
-      margin-right: 16px;
-      width: 36px;
-      min-width: 36px;
-      height: 36px;
-      font-size: 27px;
-    }
     .score-card {
       .ant-card-body {
         padding: 0;
 
         & > div {
-          max-height: 140px;
+          max-height: 150px;
         }
       }
+      .turn .play {
+        min-width: 130px;
+      }
     }
-  }
+
   .game-controls {
     max-width: none;
   }
 }
 
 @media (min-width: $screen-desktop-min) {
+  .data-area .ant-card {
+    margin-bottom: 12px;
+  }
   .board-spaces-container, .board-spaces, .tiles {
     width: $board-size-desktop;
     height: $board-size-desktop;
@@ -724,6 +725,13 @@
     font-size: $point-size-desktop;
     padding: 7px 3px;
   }
+  .game-info {
+    font-size: 14px;
+    .variant {
+      font-weight: 600;
+      font-size: 16px;
+    }
+  }
   .score-card {
     font-size: 100%;
     .ant-card-body {
@@ -731,11 +739,17 @@
         max-height: 210px;
       }
     }
+    .turn .play {
+      min-width: 180px;
+    }
   }
 }
 
 @media (min-height: $screen-min-height-desktop-max) and (min-width: $screen-desktop-min) {
-  .chat-area .ant-card.left-menu{
+  .chat-area .ant-card.left-menu {
     display: none;
+  }
+  .game-table {
+    margin-top: 12px;
   }
 }

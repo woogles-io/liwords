@@ -21,6 +21,7 @@ export const Chat = React.memo((props: Props) => {
   const [curMsg, setCurMsg] = useState('');
   const [hasScroll, setHasScroll] = useState(false);
   const [selectedChatTab, setSelectedChatTab] = useState('CHAT');
+  const [presenceVisible, setPresenceVisible] = useState(false);
   const presenceCount = Object.keys(props.presences).length;
   const el = useRef<HTMLDivElement>(null);
   const onKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -82,9 +83,37 @@ export const Chat = React.memo((props: Props) => {
           <div className={`chat-context${hasScroll ? ' scrolling' : ''}`}>
             <p>{props.description}</p>
             {presenceCount ? (
-              <p className="presence-count">
-                {presenceCount} {props.peopleOnlineContext}
-              </p>
+              <>
+                <p className="presence-count">
+                  <span>
+                    {presenceCount} {props.peopleOnlineContext}
+                  </span>
+                  {presenceVisible ? (
+                    <span
+                      className="list-trigger"
+                      onClick={() => {
+                        setPresenceVisible(false);
+                      }}
+                    >
+                      Hide list
+                    </span>
+                  ) : (
+                    <span
+                      className="list-trigger"
+                      onClick={() => {
+                        setPresenceVisible(true);
+                      }}
+                    >
+                      Show list
+                    </span>
+                  )}
+                </p>
+                {presenceVisible ? (
+                  <p className="presence">
+                    <Presences players={props.presences} />
+                  </p>
+                ) : null}
+              </>
             ) : null}
           </div>
           <div className="entities" ref={el}>

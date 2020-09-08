@@ -193,12 +193,15 @@ ul
   button.ant-btn,
   button.ant-btn-primary,
   .ant-modal-root button.ant-btn-secondary {
+    font-family: $font-default;
+    font-size: 12px;
     height: 36px;
-    margin: 6px 3px;
-    font-weight: 500;
+    font-weight: 800;
     background: white;
     text-transform: uppercase;
     transition: none;
+    margin: 0 6px;
+    padding: 3px 12px;
     &,
     &:hover,
     &:focus,

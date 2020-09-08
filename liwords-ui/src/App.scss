@@ -5,6 +5,7 @@
   min-width: $screen-mobile-min;
   a {
     color: $color-primary-dark;
+    font-weight: bold;
     &:hover,
     &:active {
       color: $color-primary-midDark;

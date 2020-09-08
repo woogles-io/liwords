@@ -40,12 +40,25 @@ p {
     font-weight: bold;
     z-index: 1;
     padding: 12px 24px 0;
+    span {
+      display: block;
+    }
+    .list-trigger {
+      letter-spacing: 0;
+      cursor: pointer;
+      color: $color-primary-dark;
+      font-weight: bold;
+      text-transform: none;
+    }
     &.scrolling {
       position: absolute;
       padding-bottom: 12px;
       border-bottom: 1px solid #ddd;
     }
     .presence-count {
+      display: flex;
+      width: 100%;
+      justify-content: space-between;
       color: #707070;
       text-transform: uppercase;
       font-size: 12px;
@@ -54,6 +67,10 @@ p {
     }
     &.scrolling + .entities {
       margin-top: 90px;
+    }
+    .presence {
+      color: $color-primary-dark;
+      font-weight: bold;
     }
   }
   .entities {
@@ -109,9 +126,9 @@ p {
   }
   .game-table {
     .chat-area .ant-card {
-      height: 680px;
+      height: 600px;
       .ant-tabs-content-holder {
-        max-height: 590px;
+        max-height: 510px;
       }
     }
   }

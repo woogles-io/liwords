@@ -208,6 +208,7 @@ export const onSocketMsg = (username: string, storeData: StoreData) => {
             uuid: up.getUserId(),
             username: up.getUsername(),
             channel: up.getChannel(),
+            // authenticated: true,
           });
           break;
         }
