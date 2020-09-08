@@ -39,7 +39,7 @@ func (b *Bus) chat(ctx context.Context, userID string, evt *pb.ChatMessage) erro
 	if len(evt.Message) > MaxMessageLength {
 		return errors.New("message-too-long")
 	}
-	username, err := b.userStore.Username(ctx, userID)
+	username, _, err := b.userStore.Username(ctx, userID)
 	if err != nil {
 		return err
 	}

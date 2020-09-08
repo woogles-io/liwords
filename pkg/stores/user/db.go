@@ -369,8 +369,9 @@ func (s *DBStore) GetFollows(ctx context.Context, uid uint) ([]*entity.User, err
 	return entUsers, nil
 }
 
-// Username gets the username from the uuid. If not found, return a deterministic username.
-func (s *DBStore) Username(ctx context.Context, uuid string) (string, error) {
+// Username gets the username from the uuid. If not found, return a deterministic username,
+// and return true for isAnonymous.
+func (s *DBStore) Username(ctx context.Context, uuid string) (string, bool, error) {
 	type u struct {
 		Username string
 	}
@@ -380,11 +381,11 @@ func (s *DBStore) Username(ctx context.Context, uuid string) (string, error) {
 		Where("uuid = ?", uuid).Scan(&user); result.Error != nil {
 
 		if gorm.IsRecordNotFoundError(result.Error) {
-			return entity.DeterministicUsername(uuid), nil
+			return entity.DeterministicUsername(uuid), true, nil
 		}
-		return "", result.Error
+		return "", false, result.Error
 	}
-	return user.Username, nil
+	return user.Username, false, nil
 }
 
 func (s *DBStore) Disconnect() {

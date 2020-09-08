@@ -695,10 +695,13 @@ func (b *Bus) broadcastGameCreation(g *entity.Game, acceptor, requester *entity.
 	return b.natsconn.Publish("lobby.newLiveGame", data)
 }
 
-func (b *Bus) broadcastPresence(username, userID, presenceChan string, deleting bool) error {
+func (b *Bus) broadcastPresence(username, userID string, anon bool, presenceChan string, deleting bool) error {
 	// broadcast username's presence to the channel.
 	log.Debug().Str("username", username).Str("userID", userID).
-		Str("presenceChan", presenceChan).Bool("deleting", deleting).Msg("broadcast-presence")
+		Bool("anon", anon).
+		Str("presenceChan", presenceChan).
+		Bool("deleting", deleting).
+		Msg("broadcast-presence")
 
 	evtChannel := presenceChan
 
@@ -707,9 +710,11 @@ func (b *Bus) broadcastPresence(username, userID, presenceChan string, deleting 
 	}
 
 	toSend := entity.WrapEvent(&pb.UserPresence{
-		Username: username,
-		UserId:   userID,
-		Channel:  evtChannel},
+		Username:    username,
+		UserId:      userID,
+		Channel:     evtChannel,
+		IsAnonymous: anon,
+	},
 		pb.MessageType_USER_PRESENCE, "")
 	data, err := toSend.Serialize()
 	if err != nil {
@@ -735,7 +740,7 @@ func (b *Bus) initRealmInfo(ctx context.Context, evt *pb.InitRealmInfo) error {
 	// The reasoning is that realms should only be cared about by the socket
 	// server. The channels are NATS pubsub channels and we use these for chat
 	// too.
-	username, err := b.userStore.Username(ctx, evt.UserId)
+	username, anon, err := b.userStore.Username(ctx, evt.UserId)
 	if err != nil {
 		return err
 	}
@@ -802,7 +807,7 @@ func (b *Bus) initRealmInfo(ctx context.Context, evt *pb.InitRealmInfo) error {
 		return err
 	}
 	// Also send OUR presence to users in this channel.
-	err = b.broadcastPresence(username, evt.UserId, presenceChan, false)
+	err = b.broadcastPresence(username, evt.UserId, anon, presenceChan, false)
 	if err != nil {
 		return err
 	}
@@ -818,9 +823,10 @@ func (b *Bus) getPresence(ctx context.Context, presenceChan string) (*entity.Eve
 	pbobj := &pb.UserPresences{Presences: []*pb.UserPresence{}}
 	for _, u := range users {
 		pbobj.Presences = append(pbobj.Presences, &pb.UserPresence{
-			Username: u.Username,
-			UserId:   u.UUID,
-			Channel:  presenceChan,
+			Username:    u.Username,
+			UserId:      u.UUID,
+			Channel:     presenceChan,
+			IsAnonymous: u.Anonymous,
 		})
 	}
 
@@ -843,7 +849,7 @@ func (b *Bus) deleteSoughtForUser(ctx context.Context, userID string) error {
 }
 
 func (b *Bus) leaveSite(ctx context.Context, userID string) error {
-	username, err := b.userStore.Username(ctx, userID)
+	username, anon, err := b.userStore.Username(ctx, userID)
 	if err != nil {
 		return err
 	}
@@ -852,7 +858,7 @@ func (b *Bus) leaveSite(ctx context.Context, userID string) error {
 		return err
 	}
 
-	err = b.broadcastPresence(username, userID, oldchannel, true)
+	err = b.broadcastPresence(username, userID, anon, oldchannel, true)
 	if err != nil {
 		return err
 	}
