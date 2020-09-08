@@ -315,11 +315,22 @@ func (s *DBStore) SetStats(ctx context.Context, uuid string, variant entity.Vari
 func (s *DBStore) GetRandomBot(ctx context.Context) (*entity.User, error) {
 
 	var users []*User
+	p := &profile{}
+
 	if result := s.db.Where("internal_bot = ?", true).Find(&users); result.Error != nil {
 		return nil, result.Error
 	}
 	idx := rand.Intn(len(users))
 	u := users[idx]
+
+	if result := s.db.Model(u).Related(p); result.Error != nil {
+		return nil, result.Error
+	}
+
+	profile, err := dbProfileToProfile(p)
+	if err != nil {
+		return nil, err
+	}
 
 	entu := &entity.User{
 		ID:        u.ID,
@@ -329,6 +340,7 @@ func (s *DBStore) GetRandomBot(ctx context.Context) (*entity.User, error) {
 		Password:  u.Password,
 		Anonymous: false,
 		IsBot:     u.InternalBot,
+		Profile:   profile,
 	}
 
 	return entu, nil
