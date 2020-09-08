@@ -153,7 +153,7 @@ export const ScoreCard = React.memo((props: Props) => {
       className="score-card"
       title={`Turn ${turns.length + 1}`}
       // eslint-disable-next-line jsx-a11y/anchor-is-valid
-      extra={<a href="#">Notepad</a>}
+      // extra={<a href="#">Show notepad</a>}
     >
       <div ref={el}>
         {turns.map((t, idx) =>

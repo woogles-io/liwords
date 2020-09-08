@@ -1,6 +1,8 @@
 @import '../../base';
 @include button;
 
+
+
 .ant-modal-footer {
   display: flex;
   align-items: flex-end;
@@ -18,10 +20,7 @@
   flex-direction: row;
   justify-content: center;
   align-items: flex-start;
-  padding: 12px 0;
-  p {
-    color: white;
-  }
+  padding: 0;
   .chat-area {
     .ant-card.left-menu {
       text-transform: uppercase;
@@ -30,6 +29,9 @@
       padding: 3px 12px;
       height: 50px;
       margin-bottom: 12px;
+      .ant-card-body {
+        padding: 12px;
+      }
       .anticon {
         font-size: 16px;
         margin-right: 9px;
@@ -42,13 +44,14 @@
   box-shadow: $card-shadow;
   border-radius: 8px;
   .ant-card-body {
-    padding: 16px;
+    padding: 12px;
   }
   .ant-card-head {
+    min-height: none;
     .ant-card-head-title,
     .ant-card-extra {
-      padding: 12px 0;
-      line-height: 2em;
+      padding: 12px 3px;
+      line-height: 1.5em;
       font-size: 12px;
     }
     .ant-card-extra {
@@ -67,7 +70,7 @@
 .board-container {
   user-select: none;
   text-align: center;
-  padding: 0 12px 24px 24px;
+  padding: 0;
   margin: 6px;
   outline-style: none;
 }
@@ -98,17 +101,23 @@
   position: relative;
   display: flex;
   flex-wrap: wrap;
+  width: $board-size-mobile;
+  height: $board-size-mobile;
 }
 .board-spaces,
 .tiles {
-  width: 100%;
+  width: $board-size-mobile;
+  height: $board-size-mobile;
   min-width: 360px;
   display: grid;
   grid-template-columns: repeat(15, 1fr);
   grid-template-rows: repeat(15, 1fr);
   gap: 1px;
-  border: 1px solid #ddd;
   background-color: #ddd;
+}
+.board-spaces {
+  // Using a box shadow that looks like a border to not mess up the
+  box-shadow: 0 0 4px rgba(0,0,0,0.3);
 }
 
 .tiles {
@@ -117,8 +126,10 @@
   border-color: transparent;
   gap: 0;
   border: 0;
-  height: 100%;
   pointer-events: none;
+  p {
+    color: white;
+  }
 }
 
 .board-space {
@@ -139,11 +150,10 @@
   vertical-align: top;
 }
 .board-space {
-
   .anticon {
     position: absolute;
     color: $color-timer-dark;
-    font-size: 28px;
+    font-size: $tile-font-size-mobile;
   }
   &.bonus-none {
     background-color: $color-board-empty;
@@ -198,7 +208,7 @@
 .coord-labels {
   display: flex;
   justify-content: space-around;
-  width: 100%;
+  width: $board-size-mobile;
   p {
     color: black;
   }
@@ -228,10 +238,11 @@
 .rack {
   display: flex;
   justify-content: center;
-  margin: 24px 0;
-  width: 100%;
-  height: 4vw;
-  min-height: 30px;
+  align-items: center;
+  margin: 20px 0;
+  width: ($tile-size-mobile * 7);
+  height: $tile-size-mobile;
+  min-height: $tile-size-mobile;
 }
 
 .ant-modal .rack {
@@ -246,7 +257,23 @@
   justify-content: center;
   align-items: center;
   outline-style: none;
-
+.ant-btn.ant-btn-primary.ant-btn-circle {
+  border-radius: 50%;
+  width: $tile-size-laptop;
+  height: $tile-size-laptop;
+  margin: 0 6px;
+  padding: 0;
+  line-height: 0;
+  span {
+    font-family: $font-monospaced;
+    font-weight: 500;
+    font-size: 28px;
+  }
+  .anticon {
+    font-size: 20px;
+    top: 1px;
+  }
+}
   .empty-rack {
     flex-grow: 2;
   }
@@ -258,9 +285,11 @@
   position: relative;
   display: flex;
   align-items: center;
-  border-radius: 10%;
+  border-radius: 7%;
   line-height: 0;
   text-align: center;
+  width: $tile-size-mobile;
+  height: $tile-size-mobile;
   &[data-rune="Q"] {
     .rune {
       position: relative;
@@ -293,14 +322,10 @@
   color: white;
   margin: 0;
   line-height: 0;
-  font-size: 28px;
+  font-size: $tile-font-size-mobile;
   font-weight: 600;
   width: 100%;
   padding-bottom: 3px;
-}
-
-.tile.tentative .rune {
-  opacity: 0.8;
 }
 
 .tile .point-value {
@@ -310,35 +335,34 @@
   padding: 0.6vw 0.3vw;
   line-height: 0;
   margin: 0;
-  font-size: 10px;
+  font-size: $point-size-mobile;
   font-weight: bold;
   color: white;
 }
 
 .rack .tile {
-  width: 47px;
-  height: 47px;
-  margin: 3px;
+  width: $tile-size-mobile;
+  height: $tile-size-mobile;
+  margin: 2px;
   &.dragging {
     opacity: 0.1;
   }
 }
 
 .exchange .rack .tile {
-  width: 44px;
-  height: 44px;
+  width: $tile-size-laptop;
+  height: $tile-size-laptop;
   &.selected {
     position: relative;
     top: -30px;
     box-shadow: $card-shadow;
   }
   .rune {
-    font-size: 30px;
+    font-size: $tile-font-size-laptop;
     line-height: 35px;
   }
   .point-value {
-    font-size: 10px;
-    padding: 8px 3px;
+    font-size: $point-size-laptop;
   }
 }
 
@@ -347,8 +371,8 @@
   flex-wrap: wrap;
   width: 326px;
   .tile {
-    width: 44px;
-    height: 44px;
+    width: $tile-size-desktop;
+    height: $tile-size-desktop;
     margin: 0 2px 2px 0;
     .rune {
       font-size: 30px;
@@ -386,9 +410,11 @@
     padding: 0;
   }
   .vc-distribution {
-    @include type-monospace;
+    @include type-default;
     text-transform: uppercase;
-    font-size: 12px;
+    letter-spacing: 0.16em;
+    font-size: 11px;
+    font-weight: bold;
     display: flex;
     border-radius: 0 0 8px 8px;
     background: $color-primary-dark;
@@ -421,6 +447,9 @@
   }
 }
 .exchange {
+  .rack {
+    width: 100%;
+  }
   .pool {
     .label {
       margin: 0;
@@ -501,9 +530,11 @@
     justify-content: space-between;
     .coords-time {
       flex: 2;
+      min-width: 50px;
     }
     .play {
       flex: 3;
+      min-width: 150px;
     }
     .scores {
       text-align: right;
@@ -512,6 +543,10 @@
 }
 .game-controls {
   margin: 0 auto;
+  button {
+    margin: 0 6px;
+    padding: 0;
+  }
 }
 .end-message {
   background-color: $color-primary-middle;
@@ -522,62 +557,82 @@
   }
 }
 
-@media (min-width: $screen-tablet-min) {
+@media (min-width: $screen-mobile-min) {
   .data-area {
-    min-width: 300px;
-    max-width: 38%;
+    min-width: 356px;
+    max-width: 356px;
   }
   .chat-area {
-    max-width: $screen-laptop-min;
+    max-width: $screen-tablet-min;
+  }
+  .board-spaces-container, .board-spaces, .tiles {
+    width: $board-size-mobile;
+    height: $board-size-mobile;
+  }
+  .coord-labels {
+    width: $board-size-mobile;
+  }
+  .rack {
+    width: (48 + $tile-size-mobile * 7);
   }
 }
-@media (min-width: $screen-laptop-min) {
+@media (min-width: $screen-tablet-min) {
   .play-area {
     flex: 0 0 55%;
   }
-
+  .board-spaces-container, .board-spaces, .tiles {
+    width: $board-size-tablet;
+    height: $board-size-tablet;
+  }
+  .coord-labels {
+    width: $board-size-tablet;
+  }
+  .rack {
+    width: (48 + $tile-size-tablet * 7);
+  }
   .rack .tile {
-    width: 34px;
-    height: 34px;
-    margin: 3px;
+    width: $tile-size-tablet;
+    height: $tile-size-tablet;
   }
   .tile,
   .empty-space {
-    height: 34px;
-    width: 34px;
+    height: $tile-size-tablet;
+    width: $tile-size-tablet;
   }
   .tile .rune {
-    font-size: 24px;
-    line-height: 28px;
+    font-size: $tile-font-size-tablet;
+    line-height: 1.2em;
     position: relative;
   }
   .tile .point-value {
-    font-size: 7px;
+    font-size: $point-size-tablet;
     padding: 5px 2px;
     bottom: 1px;
   }
-  .rack {
-    height: 3vw;
-  }
 }
 
-@media (min-width: $screen-desktop-min) {
+@media (min-width: $screen-laptop-min) {
+  .chat-area, .data-area {
+    min-width: 340px;
+    max-width: 340px;
+  }
+  .data-area .ant-card {
+    margin-bottom: 6px;
+  }
   .play-area {
-    flex: 0 0 45%;
+    flex: 0 0 0;
+    padding: 0 12px 0 24px;
+  }
+  .board-spaces-container, .board-spaces, .tiles {
+    width: $board-size-laptop;
+    height: $board-size-laptop;
+  }
+  .coord-labels {
+    width: $board-size-laptop;
   }
   .game-table {
     flex-wrap: nowrap;
 
-    .ant-card .ant-card-head {
-      .ant-card-head-title,
-      .ant-card-extra {
-        padding: 12px 0;
-        font-size: 16px;
-      }
-      .ant-card-extra {
-        font-size: 16px;
-      }
-    }
   }
   .format-dropdown {
     .ant-dropdown-menu {
@@ -592,74 +647,109 @@
       }
     }
   }
-
+  .tile,
+  .empty-space {
+    height: $tile-size-laptop;
+    width: $tile-size-laptop;
+  }
   .tile.droppable {
     pointer-events: all;
     cursor: grab;
   }
   .tile .rune {
-    font-size: 26px;
-    line-height: 35px;
+    font-size: $tile-font-size-laptop;
   }
   .tile .point-value {
-    font-size: 10px;
-    padding: 8px 3px;
+    font-size: $point-size-laptop;
+    padding: 5px 3px;
   }
-  .pool {
-    .vc-distribution {
+  .rack {
+    width: (48 + $tile-size-laptop * 7);
+  }
+  .rack .tile {
+    height: $tile-size-laptop;
+    width: $tile-size-laptop;
+  }
+  .game-info {
+    font-size: 12px;
+    .variant {
       font-size: 14px;
     }
   }
-  .score-card {
-    .turn {
-      font-size: 14px;
-      padding: 8px 16px 16px 8px;
-    }
-    .player-avatar {
-      margin-right: 16px;
-      width: 36px;
-      min-width: 36px;
-      height: 36px;
-      font-size: 27px;
-    }
     .score-card {
       .ant-card-body {
         padding: 0;
 
         & > div {
-          max-height: 140px;
+          max-height: 150px;
         }
       }
+      .turn .play {
+        min-width: 130px;
+      }
     }
-  }
+
   .game-controls {
     max-width: none;
   }
 }
 
-@media (min-width: $screen-desktop-max) {
+@media (min-width: $screen-desktop-min) {
+  .data-area .ant-card {
+    margin-bottom: 12px;
+  }
+  .board-spaces-container, .board-spaces, .tiles {
+    width: $board-size-desktop;
+    height: $board-size-desktop;
+  }
+  .coord-labels {
+    width: $board-size-desktop;
+  }
   .tile,
   .empty-space {
-    height: 40px;
-    width: 40px;
+    height: $tile-size-desktop;
+    width: $tile-size-desktop;
+  }
+  .rack {
+    width: (48 + $tile-size-desktop * 7);
+  }
+  .rack .tile {
+    height: $tile-size-desktop;
+    width: $tile-size-desktop;
   }
 
-  .rack .tile {
-    width: 40px;
-    height: 40px;
+  .tile .rune {
+    font-size: $tile-font-size-desktop;
   }
-    .score-card {
-      font-size: 100%;
-      .ant-card-body {
-        & > div {
-          max-height: 210px;
-        }
+  .tile .point-value {
+    font-size: $point-size-desktop;
+    padding: 7px 3px;
+  }
+  .game-info {
+    font-size: 14px;
+    .variant {
+      font-weight: 600;
+      font-size: 16px;
+    }
+  }
+  .score-card {
+    font-size: 100%;
+    .ant-card-body {
+      & > div {
+        max-height: 210px;
       }
     }
+    .turn .play {
+      min-width: 180px;
+    }
+  }
 }
 
-@media (min-height: $screen-min-height-desktop-max) and (min-width: $screen-desktop-max) {
-  .chat-area .ant-card.left-menu{
+@media (min-height: $screen-min-height-desktop-max) and (min-width: $screen-desktop-min) {
+  .chat-area .ant-card.left-menu {
     display: none;
+  }
+  .game-table {
+    margin-top: 12px;
   }
 }
