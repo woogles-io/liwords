@@ -208,7 +208,7 @@ export const onSocketMsg = (username: string, storeData: StoreData) => {
             uuid: up.getUserId(),
             username: up.getUsername(),
             channel: up.getChannel(),
-            // authenticated: true,
+            anon: up.getIsAnonymous(),
           });
           break;
         }
@@ -219,6 +219,7 @@ export const onSocketMsg = (username: string, storeData: StoreData) => {
             uuid: p.getUserId(),
             username: p.getUsername(),
             channel: p.getChannel(),
+            anon: p.getIsAnonymous(),
           }));
           console.log('userpresences', toAdd);
 

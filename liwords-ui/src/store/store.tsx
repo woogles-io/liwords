@@ -40,6 +40,7 @@ export type PresenceEntity = {
   uuid: string;
   username: string;
   channel: string;
+  anon: boolean;
 };
 
 const MaxChatLength = 100;

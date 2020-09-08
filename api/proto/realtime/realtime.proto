@@ -124,6 +124,7 @@ message UserPresence {
   string username = 1;
   string user_id = 2;
   string channel = 3;
+  bool is_anonymous = 4;
 }
 
 message UserPresences { repeated UserPresence presences = 1; }
