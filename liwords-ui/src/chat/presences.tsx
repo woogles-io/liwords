@@ -22,10 +22,15 @@ export const Presences = React.memo((props: Props) => {
   const knownUsers = Object.keys(props.players).filter(
     (p) => !props.players[p].anon
   );
-  const presences = knownUsers
-    .map<React.ReactNode>((u) => profileLink(props.players[u]))
-    .reduce((prev, curr) => [prev, ', ', curr]);
+  const presences = knownUsers.length
+    ? knownUsers
+        .map<React.ReactNode>((u) => profileLink(props.players[u]))
+        .reduce((prev, curr) => [prev, ', ', curr])
+    : null;
   const anonCount = Object.keys(props.players).length - knownUsers.length;
+  if (!knownUsers.length) {
+    return <span className="anonymous">No logged in players.</span>;
+  }
   return (
     <>
       {presences}
