@@ -74,12 +74,15 @@ func (c *Cache) SetGameEventChan(ch chan<- *entity.EventWrapper) {
 func (c *Cache) Get(ctx context.Context, id string) (*entity.Game, error) {
 	g, ok := c.games[id]
 	if !ok {
-		// Don't store it in the cache. If we are here, the only reason
-		// we wouldn't be able to load from cache is that the game is either
-		// over, or it's found in another API node -- in the latter case,
-		// this function should ideally not be called. We should create an
-		// InCache function.
-		return c.backing.Get(ctx, id)
+
+		g, err := c.backing.Get(ctx, id)
+		if err != nil {
+			return nil, err
+		}
+		c.Lock()
+		defer c.Unlock()
+		c.games[id] = g
+		return g, nil
 	}
 	return g, nil
 }
