@@ -171,6 +171,12 @@ func FromState(timers entity.Timers, Started bool,
 		return nil, err
 	}
 
+	// There's a chance the game is over, so we want to get that state before
+	// the following function modifies it.
+	histPlayState := hist.GetPlayState()
+
+	// This function modifies the history. (XXX it probably shouldn't)
+	// It modifies the play state as it plays the game from the beginning.
 	mcg, err := macondogame.NewFromHistory(hist, rules, len(hist.Events))
 	if err != nil {
 		return nil, err
@@ -179,6 +185,12 @@ func FromState(timers entity.Timers, Started bool,
 	mcg.SetBackupMode(macondogame.InteractiveGameplayMode)
 	g.Game = *mcg
 	log.Debug().Interface("history", g.History()).Msg("from-state")
+	// Finally, restore the play state from the passed-in history. This
+	// might immediately end the game (for example, the game could have timed
+	// out, but the NewFromHistory function doesn't actually handle that).
+	// We could consider changing NewFromHistory, but we want it to be as
+	// flexible as possible for things like analysis mode.
+	g.SetPlaying(histPlayState)
 	return g, nil
 }
 
