@@ -34,13 +34,20 @@ const (
 )
 
 // Calculate "total" time assuming there are 16 turns in a game per player.
-const TurnsPerGame = 16 // just an estimate.
+const turnsPerGame = 16 // just an estimate.
+
+// TotalTimeEstimate estimates the amount of time this game will take, per side.
+func TotalTimeEstimate(gamereq *pb.GameRequest) int32 {
+	return gamereq.InitialTimeSeconds +
+		(gamereq.MaxOvertimeMinutes * 60) +
+		(gamereq.IncrementSeconds * turnsPerGame)
+}
 
 func VariantFromGameReq(gamereq *pb.GameRequest) (TimeControl, Variant, error) {
 	// hardcoded values here; fix sometime
 	var timefmt TimeControl
 
-	totalTime := gamereq.InitialTimeSeconds + (gamereq.MaxOvertimeMinutes * 60) + (gamereq.IncrementSeconds * TurnsPerGame)
+	totalTime := TotalTimeEstimate(gamereq)
 
 	if totalTime <= CutoffUltraBlitz {
 		timefmt = TCUltraBlitz

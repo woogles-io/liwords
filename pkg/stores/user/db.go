@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"math/rand"
+	"strings"
 
 	"github.com/jinzhu/gorm"
 	"github.com/jinzhu/gorm/dialects/postgres"
@@ -27,8 +28,8 @@ type User struct {
 	gorm.Model
 
 	UUID     string `gorm:"type:varchar(24);index"`
-	Username string `gorm:"type:varchar(32);unique_index"`
-	Email    string `gorm:"type:varchar(100);unique_index"`
+	Username string `gorm:"type:varchar(32)"`
+	Email    string `gorm:"type:varchar(100)"`
 	// Password will be hashed.
 	Password    string `gorm:"type:varchar(128)"`
 	InternalBot bool   `gorm:"default:false;index"`
@@ -77,12 +78,17 @@ func NewDBStore(dbURL string) (*DBStore, error) {
 		return nil, err
 	}
 	db.AutoMigrate(&User{}, &profile{}, &following{})
+	db.Model(&User{}).
+		AddUniqueIndex("username_idx", "lower(username)").
+		AddUniqueIndex("email_idx", "lower(email)")
+
 	// Can't get GORM to auto create these foreign keys, so do it myself /shrug
 	db.Model(&profile{}).AddForeignKey("user_id", "users(id)", "RESTRICT", "RESTRICT")
 	db.Model(&following{}).
 		AddForeignKey("user_id", "users(id)", "RESTRICT", "RESTRICT").
 		AddForeignKey("follower_id", "users(id)", "RESTRICT", "RESTRICT").
 		AddUniqueIndex("user_follower_idx", "user_id", "follower_id")
+
 	return &DBStore{db: db}, nil
 }
 
@@ -90,7 +96,7 @@ func NewDBStore(dbURL string) (*DBStore, error) {
 func (s *DBStore) Get(ctx context.Context, username string) (*entity.User, error) {
 	u := &User{}
 	p := &profile{}
-	if result := s.db.Where("username = ?", username).First(u); result.Error != nil {
+	if result := s.db.Where("lower(username) = ?", strings.ToLower(username)).First(u); result.Error != nil {
 		return nil, result.Error
 	}
 	if result := s.db.Model(u).Related(p); result.Error != nil {
@@ -119,7 +125,7 @@ func (s *DBStore) Get(ctx context.Context, username string) (*entity.User, error
 // like password resets and there is no need.
 func (s *DBStore) GetByEmail(ctx context.Context, email string) (*entity.User, error) {
 	u := &User{}
-	if result := s.db.Where("email = ?", email).First(u); result.Error != nil {
+	if result := s.db.Where("lower(email) = ?", strings.ToLower(email)).First(u); result.Error != nil {
 		return nil, result.Error
 	}
 
@@ -315,11 +321,22 @@ func (s *DBStore) SetStats(ctx context.Context, uuid string, variant entity.Vari
 func (s *DBStore) GetRandomBot(ctx context.Context) (*entity.User, error) {
 
 	var users []*User
+	p := &profile{}
+
 	if result := s.db.Where("internal_bot = ?", true).Find(&users); result.Error != nil {
 		return nil, result.Error
 	}
 	idx := rand.Intn(len(users))
 	u := users[idx]
+
+	if result := s.db.Model(u).Related(p); result.Error != nil {
+		return nil, result.Error
+	}
+
+	profile, err := dbProfileToProfile(p)
+	if err != nil {
+		return nil, err
+	}
 
 	entu := &entity.User{
 		ID:        u.ID,
@@ -329,6 +346,7 @@ func (s *DBStore) GetRandomBot(ctx context.Context) (*entity.User, error) {
 		Password:  u.Password,
 		Anonymous: false,
 		IsBot:     u.InternalBot,
+		Profile:   profile,
 	}
 
 	return entu, nil
