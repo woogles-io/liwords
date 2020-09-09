@@ -6,17 +6,6 @@
 p {
   margin: 0;
 }
-.presences .ant-popover-inner-content {
-  @include type-default;
-  padding: 12px;
-  color: $color-primary-dark;
-  font-weight: 800;
-  max-height: 300px;
-  overflow-y: auto;
-  li {
-    margin: 6px 0;
-  }
-}
 .chat-area {
   order: 3;
   width: 100%;
@@ -71,6 +60,11 @@ p {
     .presence {
       color: $color-primary-dark;
       font-weight: bold;
+      span.anonymous {
+        color: #444;
+        font-weight: normal;
+        display: inline;
+      }
     }
   }
   .entities {

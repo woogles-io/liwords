@@ -4,7 +4,7 @@ import { SoughtGames } from './sought_games';
 import { ActiveGames } from './active_games';
 import { SeekForm } from './seek_form';
 import { useStoreContext } from '../store/store';
-import { SoughtGame } from '../store/reducers/lobby_reducer';
+import { ActiveGame, SoughtGame } from '../store/reducers/lobby_reducer';
 
 type Props = {
   loggedIn: boolean;
@@ -44,7 +44,13 @@ export const GameLists = React.memo((props: Props) => {
     handleBotModalCancel,
     onSeekSubmit,
   } = props;
-  const { lobbyContext } = useStoreContext();
+  const { lobbyContext, setRedirGame } = useStoreContext();
+  const currentGame: ActiveGame | null =
+    lobbyContext.activeGames.find((ag) =>
+      ag.players.some((p) => p.displayName === username)
+    ) || null;
+  const opponent = currentGame?.players.find((p) => p.displayName !== username)
+    ?.displayName;
   const renderGames = () => {
     if (loggedIn && userID && username && selectedGameTab === 'PLAY') {
       return (
@@ -86,10 +92,97 @@ export const GameLists = React.memo((props: Props) => {
       </>
     );
   };
-
+  const seekModal = (
+    <Modal
+      title="Seek New Game"
+      visible={seekModalVisible}
+      onCancel={handleSeekModalCancel}
+      footer={[
+        <Button key="back" onClick={handleSeekModalCancel}>
+          Cancel
+        </Button>,
+      ]}
+    >
+      <SeekForm
+        onFormSubmit={onSeekSubmit}
+        loggedIn={props.loggedIn}
+        showFriendInput={false}
+      />
+    </Modal>
+  );
+  const matchModal = (
+    <Modal
+      title="Match a Friend"
+      visible={matchModalVisible}
+      onCancel={handleMatchModalCancel}
+      footer={[
+        <Button key="back" onClick={handleMatchModalCancel}>
+          Cancel
+        </Button>,
+      ]}
+    >
+      <SeekForm
+        onFormSubmit={onSeekSubmit}
+        loggedIn={props.loggedIn}
+        showFriendInput={true}
+      />
+    </Modal>
+  );
+  const botModal = (
+    <Modal
+      title="Play a Bot"
+      visible={botModalVisible}
+      onCancel={handleBotModalCancel}
+      footer={[
+        <Button key="back" onClick={handleBotModalCancel}>
+          Cancel
+        </Button>,
+      ]}
+    >
+      <SeekForm
+        onFormSubmit={onSeekSubmit}
+        loggedIn={props.loggedIn}
+        showFriendInput={false}
+        vsBot={true}
+      />
+    </Modal>
+  );
+  const actions = [];
+  //if no existing game
+  if (loggedIn) {
+    if (currentGame) {
+      actions.push(
+        <div
+          className="resume"
+          onClick={() => {
+            setRedirGame(currentGame.gameID);
+            console.log('redirecting to', currentGame.gameID);
+          }}
+        >
+          Resume your game with {opponent}
+        </div>
+      );
+    } else {
+      actions.push(
+        <div className="bot" onClick={showBotModal}>
+          Play a bot
+        </div>
+      );
+      actions.push(
+        <div className="match" onClick={showMatchModal}>
+          Match a friend
+        </div>
+      );
+      actions.push(
+        <div className="seek" onClick={showSeekModal}>
+          New game
+        </div>
+      );
+    }
+  }
   return (
     <div className="game-lists">
-      <Card>
+      <Card actions={actions}>
         <div className="tabs">
           {loggedIn ? (
             <div
@@ -113,70 +206,9 @@ export const GameLists = React.memo((props: Props) => {
           </div>
         </div>
         {renderGames()}
-        {loggedIn && selectedGameTab === 'PLAY' ? (
-          <div className="requests">
-            <Button type="primary" onClick={showSeekModal}>
-              New Game
-            </Button>
-            <Modal
-              title="Seek New Game"
-              visible={seekModalVisible}
-              onCancel={handleSeekModalCancel}
-              footer={[
-                <Button key="back" onClick={handleSeekModalCancel}>
-                  Cancel
-                </Button>,
-              ]}
-            >
-              <SeekForm
-                onFormSubmit={onSeekSubmit}
-                loggedIn={props.loggedIn}
-                showFriendInput={false}
-              />
-            </Modal>
-
-            <Button type="primary" onClick={showMatchModal}>
-              Match a Friend
-            </Button>
-            <Modal
-              title="Match a Friend"
-              visible={matchModalVisible}
-              onCancel={handleMatchModalCancel}
-              footer={[
-                <Button key="back" onClick={handleMatchModalCancel}>
-                  Cancel
-                </Button>,
-              ]}
-            >
-              <SeekForm
-                onFormSubmit={onSeekSubmit}
-                loggedIn={props.loggedIn}
-                showFriendInput={true}
-              />
-            </Modal>
-
-            <Button type="primary" onClick={showBotModal}>
-              Play a Bot
-            </Button>
-            <Modal
-              title="Play a Bot"
-              visible={botModalVisible}
-              onCancel={handleBotModalCancel}
-              footer={[
-                <Button key="back" onClick={handleBotModalCancel}>
-                  Cancel
-                </Button>,
-              ]}
-            >
-              <SeekForm
-                onFormSubmit={onSeekSubmit}
-                loggedIn={props.loggedIn}
-                showFriendInput={false}
-                vsBot={true}
-              />
-            </Modal>
-          </div>
-        ) : null}
+        {seekModal}
+        {matchModal}
+        {botModal}
       </Card>
     </div>
   );

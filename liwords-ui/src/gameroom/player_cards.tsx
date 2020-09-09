@@ -59,7 +59,13 @@ const PlayerCard = React.memo((props: CardProps) => {
           )}
           <div className="player-details">
             {meta?.rating || 'Unrated'} •{' '}
-            <a href={`/profile/${meta?.nickname}`}>View Profile</a>
+            <a
+              rel="noopener noreferrer"
+              target="_blank"
+              href={`/profile/${meta?.nickname}`}
+            >
+              View Profile
+            </a>
           </div>
         </div>
       </Row>
