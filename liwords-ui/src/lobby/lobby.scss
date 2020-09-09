@@ -30,16 +30,19 @@
     overflow-y: auto;
   }
 }
-
 .game-lists {
   margin: 12px 12px 0;
   max-width: none;
   order: 2;
   flex-grow: 2;
   @include type-default;
+  .ant-card {
+    @include action-blocks;
+  }
   .ant-card-body {
     padding: 12px 0 0 0;
   }
+
   .ant-table-thead > tr > th {
     background: white;
     font-size: 12px;
