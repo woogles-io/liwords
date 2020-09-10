@@ -30,6 +30,8 @@ const (
 	GameStartDelay = 3 * time.Second
 
 	MaxMessageLength = 500
+
+	AdjudicateInterval = 300 * time.Second
 )
 
 // Bus is the struct; it should contain all the stores to verify messages, etc.
@@ -106,6 +108,9 @@ func (b *Bus) ProcessMessages(ctx context.Context) {
 
 	ctx = context.WithValue(ctx, gameplay.ConfigCtxKey("config"), &b.config.MacondoConfig)
 
+	// Adjudicate unfinished games every few minutes.
+	adjudicator := time.NewTicker(AdjudicateInterval)
+	defer adjudicator.Stop()
 outerfor:
 	for {
 		select {
@@ -116,7 +121,6 @@ outerfor:
 			// XXX: put in a goroutine (go b.handleNatsPublish(...))
 			err := b.handleNatsPublish(ctx, subtopics[2:], msg.Data)
 			if err != nil {
-				// Unexpected end of JSON input!!
 				log.Err(err).Msg("process-message-publish-error")
 				// The user ID should have hopefully come in the topic name.
 				// It would be in subtopics[4]
@@ -166,6 +170,13 @@ outerfor:
 		case <-ctx.Done():
 			log.Info().Msg("context done, breaking")
 			break outerfor
+
+		case <-adjudicator.C:
+			err := b.adjudicateGames(ctx)
+			if err != nil {
+				log.Err(err).Msg("adjudicate-error")
+				break
+			}
 		}
 
 	}
@@ -210,7 +221,7 @@ func (b *Bus) handleNatsRequest(ctx context.Context, topic string,
 			}
 			log.Debug().Str("computed-realm", realm)
 		} else {
-			return errors.New("realm-req-not-handled")
+			log.Info().Str("path", path).Msg("realm-req-not-handled-sending-blank-realm")
 		}
 		resp := &pb.RegisterRealmResponse{}
 		resp.Realm = realm
@@ -720,7 +731,13 @@ func (b *Bus) broadcastPresence(username, userID string, anon bool, presenceChan
 	if err != nil {
 		return err
 	}
-	return b.natsconn.Publish(presenceChan, data)
+	if presenceChan != "" {
+		return b.natsconn.Publish(presenceChan, data)
+	}
+	// If the presence channel is empty we are in some other page, like the
+	// about page or something. We need to clean this up a bit, but we don't
+	// want to log errors here.
+	return nil
 }
 
 func (b *Bus) pubToUser(userID string, evt *entity.EventWrapper) error {
@@ -750,7 +767,7 @@ func (b *Bus) initRealmInfo(ctx context.Context, evt *pb.InitRealmInfo) error {
 		presenceChan = "lobby.presence"
 		chatChan = "lobby.chat"
 	}
-	b.presenceStore.SetPresence(ctx, evt.UserId, username, presenceChan)
+	b.presenceStore.SetPresence(ctx, evt.UserId, username, anon, presenceChan)
 
 	if evt.Realm == "lobby" {
 		// open seeks
@@ -853,10 +870,11 @@ func (b *Bus) leaveSite(ctx context.Context, userID string) error {
 	if err != nil {
 		return err
 	}
-	oldchannel, err := b.presenceStore.ClearPresence(ctx, userID, username)
+	oldchannel, err := b.presenceStore.ClearPresence(ctx, userID, username, anon)
 	if err != nil {
 		return err
 	}
+	log.Debug().Str("oldchannel", oldchannel).Str("userid", userID).Msg("left-site")
 
 	err = b.broadcastPresence(username, userID, anon, oldchannel, true)
 	if err != nil {
@@ -909,6 +927,29 @@ func (b *Bus) activeGames(ctx context.Context) (*entity.EventWrapper, error) {
 	}
 	evt := entity.WrapEvent(pbobj, pb.MessageType_ACTIVE_GAMES, "")
 	return evt, nil
+}
+
+func (b *Bus) adjudicateGames(ctx context.Context) error {
+	gs, err := b.gameStore.ListActive(ctx)
+
+	if err != nil {
+		return err
+	}
+	log.Debug().Interface("active-games", gs).Msg("adjudicating...")
+	for _, g := range gs {
+		// These will likely be in the cache.
+		entGame, err := b.gameStore.Get(ctx, g.Id)
+		if err != nil {
+			return err
+		}
+		onTurn := entGame.Game.PlayerOnTurn()
+		if entGame.TimeRanOut(onTurn) {
+			log.Debug().Str("gid", g.Id).Msg("time-ran-out")
+			err = gameplay.TimedOut(ctx, b.gameStore, b.userStore, entGame.Game.PlayerIDOnTurn(), g.Id)
+			log.Err(err).Msg("gameplay-timed-out")
+		}
+	}
+	return nil
 }
 
 func (b *Bus) gameRefresher(ctx context.Context, gameID string) (*entity.EventWrapper, error) {

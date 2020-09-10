@@ -37,6 +37,15 @@ func performEndgameDuties(ctx context.Context, g *entity.Game, userStore user.St
 	if g.CachedTimeRemaining(1) < 0 {
 		p1penalty = 10 * int(math.Ceil(float64(-g.CachedTimeRemaining(1))/60000.0))
 	}
+	// Limit time penalties to the max OT. This is so that we don't get situations
+	// where a game was adjudicated days after the fact and a user ends up with
+	// a score of -37500
+	if p0penalty > 50 {
+		p0penalty = 50
+	}
+	if p1penalty > 50 {
+		p1penalty = 50
+	}
 
 	if p0penalty > 0 {
 		newscore := g.PointsFor(0) - p0penalty

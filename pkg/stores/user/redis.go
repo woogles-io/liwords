@@ -27,11 +27,11 @@ type RedisPresenceStore struct {
 // scripts.
 const SetPresenceScript = `
 -- Arguments to this Lua script:
--- uuid, username, channel string  (ARGV[1] through [3])
+-- uuid, username, authOrAnon, channel string  (ARGV[1] through [4])
 
 local presencekey = "presence:user:"..ARGV[1]
-local channelpresencekey = "presence:channel:"..ARGV[3]
-local userkey = ARGV[1].."#"..ARGV[2]  -- uuid#username
+local channelpresencekey = "presence:channel:"..ARGV[4]
+local userkey = ARGV[1].."#"..ARGV[2].."#"..ARGV[3]  -- uuid#username#auth
 
 -- get the current channel that this presence is in.
 local curchannel = redis.call("HGET", presencekey, "channel")
@@ -42,7 +42,7 @@ if curchannel ~= false then
     redis.call("SREM", "presence:channel:"..curchannel, userkey)
 end
 
-redis.call("HSET", presencekey, "username", ARGV[2], "channel", ARGV[3])
+redis.call("HSET", presencekey, "username", ARGV[2], "channel", ARGV[4])
 -- and add to the channel presence
 redis.call("SADD", channelpresencekey, userkey)
 
@@ -51,10 +51,10 @@ redis.call("SADD", channelpresencekey, userkey)
 // ClearPresenceScript clears the presence and returns the channel it was in.
 const ClearPresenceScript = `
 -- Arguments to this Lua script:
--- uuid, username
+-- uuid, username, authOrAnon
 
 local presencekey = "presence:user:"..ARGV[1]
-local userkey = ARGV[1].."#"..ARGV[2]  -- uuid#username
+local userkey = ARGV[1].."#"..ARGV[2].."#"..ARGV[3]  -- uuid#username#anon
 
 -- get the current channel that this presence is in.
 local curchannel = redis.call("HGET", presencekey, "channel")
@@ -78,7 +78,8 @@ func NewRedisPresenceStore(r *redis.Pool) *RedisPresenceStore {
 }
 
 // SetPresence sets the user's presence channel.
-func (s *RedisPresenceStore) SetPresence(ctx context.Context, uuid, username, channel string) error {
+func (s *RedisPresenceStore) SetPresence(ctx context.Context, uuid, username string, anon bool,
+	channel string) error {
 	// We try to map channels closely to the pubsub NATS channels (and realms),
 	// with some exceptions.
 	// If the user is online in two different tabs, we go in priority order,
@@ -91,15 +92,27 @@ func (s *RedisPresenceStore) SetPresence(ctx context.Context, uuid, username, ch
 
 	conn := s.redisPool.Get()
 	defer conn.Close()
-	_, err := s.setPresenceScript.Do(conn, uuid, username, channel)
+
+	authUser := "auth"
+	if anon {
+		authUser = "anon"
+	}
+
+	_, err := s.setPresenceScript.Do(conn, uuid, username, authUser, channel)
 	return err
 }
 
-func (s *RedisPresenceStore) ClearPresence(ctx context.Context, uuid, username string) (string, error) {
+func (s *RedisPresenceStore) ClearPresence(ctx context.Context, uuid, username string,
+	anon bool) (string, error) {
 	conn := s.redisPool.Get()
 	defer conn.Close()
 
-	ret, err := s.clearPresenceScript.Do(conn, uuid, username)
+	authUser := "auth"
+	if anon {
+		authUser = "anon"
+	}
+
+	ret, err := s.clearPresenceScript.Do(conn, uuid, username, authUser)
 	if err != nil {
 		return "", err
 	}
@@ -133,9 +146,15 @@ func (s *RedisPresenceStore) GetInChannel(ctx context.Context, channel string) (
 
 	for idx, member := range vals {
 		splitmember := strings.Split(member, "#")
+		anon := false
+		if len(splitmember) > 2 {
+			anon = splitmember[2] == "anon"
+		}
+
 		users[idx] = &entity.User{
-			UUID:     splitmember[0],
-			Username: splitmember[1],
+			UUID:      splitmember[0],
+			Username:  splitmember[1],
+			Anonymous: anon,
 		}
 	}
 
