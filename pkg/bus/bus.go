@@ -288,7 +288,7 @@ func (b *Bus) handleBotMove(ctx context.Context, g *entity.Game) {
 			timeRemaining := g.TimeRemaining(onTurn)
 
 			m := macondogame.MoveFromEvent(r.Move, g.Alphabet(), g.Board())
-			err = gameplay.PlayMove(ctx, g, b.userStore, userID, onTurn, timeRemaining, m)
+			err = gameplay.PlayMove(ctx, g, b.userStore, b.listStatStore, userID, onTurn, timeRemaining, m)
 			if err != nil {
 				log.Err(err).Msg("bot-cant-move-play-error")
 				return
@@ -951,7 +951,8 @@ func (b *Bus) adjudicateGames(ctx context.Context) error {
 		onTurn := entGame.Game.PlayerOnTurn()
 		if entGame.TimeRanOut(onTurn) {
 			log.Debug().Str("gid", g.Id).Msg("time-ran-out")
-			err = gameplay.TimedOut(ctx, b.gameStore, b.userStore, entGame.Game.PlayerIDOnTurn(), g.Id)
+			err = gameplay.TimedOut(ctx, b.gameStore, b.userStore,
+				b.listStatStore, entGame.Game.PlayerIDOnTurn(), g.Id)
 			log.Err(err).Msg("gameplay-timed-out")
 		}
 	}
