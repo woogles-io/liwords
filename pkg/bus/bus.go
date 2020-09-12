@@ -109,8 +109,8 @@ func (b *Bus) ProcessMessages(ctx context.Context) {
 	ctx = context.WithValue(ctx, gameplay.ConfigCtxKey("config"), &b.config.MacondoConfig)
 
 	// Adjudicate unfinished games every few minutes.
-	adjudicator := time.NewTicker(AdjudicateInterval)
-	defer adjudicator.Stop()
+	// adjudicator := time.NewTicker(AdjudicateInterval)
+	// defer adjudicator.Stop()
 outerfor:
 	for {
 		select {
@@ -171,13 +171,13 @@ outerfor:
 			log.Info().Msg("context done, breaking")
 			break outerfor
 
-		case <-adjudicator.C:
-			err := b.adjudicateGames(ctx)
-			if err != nil {
-				log.Err(err).Msg("adjudicate-error")
-				break
-			}
-		}
+		// case <-adjudicator.C:
+		// 	err := b.adjudicateGames(ctx)
+		// 	if err != nil {
+		// 		log.Err(err).Msg("adjudicate-error")
+		// 		break
+		// 	}
+		// }
 
 	}
 
@@ -582,6 +582,7 @@ func (b *Bus) instantiateAndStartGame(ctx context.Context, accUser *entity.User,
 			log.Debug().Str("went-first", players[wentFirst].Nickname).Msg("determining-first")
 
 			// These are indices in the array passed to InstantiateNewGame
+			// XXX: this doesn't work for bots since they switch off players! FIX.
 			if accUser.UUID == players[wentFirst].UserId {
 				assignedFirst = 1 // reqUser should go first
 			} else if reqUser.UUID == players[wentFirst].UserId {
