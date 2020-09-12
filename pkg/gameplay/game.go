@@ -355,7 +355,7 @@ func HandleEvent(ctx context.Context, gameStore GameStore, userStore user.Store,
 		return entGame, err
 	}
 
-	err = PlayMove(ctx, entGame, userStore, userID, onTurn, timeRemaining, m)
+	err = PlayMove(ctx, entGame, userStore, listStatStore, userID, onTurn, timeRemaining, m)
 	if err != nil {
 		return entGame, err
 	}
