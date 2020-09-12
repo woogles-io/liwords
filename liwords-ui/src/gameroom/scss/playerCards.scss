@@ -1,6 +1,9 @@
 @import '../../base.scss';
 
 .player-cards.ant-card {
+  p {
+    color: black;
+  }
   .ant-card-body {
     padding: 0;
   }
@@ -26,28 +29,27 @@
 
     .player {
       align-items: center;
-
       .player-avatar {
-        margin-right: 9px;
-        width: 36px;
-        min-width: 36px;
-        height: 36px;
-        font-size: 27px;
+        margin-right: 12px;
+        width: 48px;
+        min-width: 48px;
+        height: 48px;
+        font-size: 36px;
       }
       .player-info {
         padding: $card-padding-md 0;
         display: flex;
         flex-direction: column;
         flex-grow: 2;
-        font-size: 13px;
+        font-size: 14px;
       }
       .player-details {
         width: 100%;
-        font-size: 12px;
+        font-size: 14px;
       }
       .player-name {
         @include type-title;
-        font-size: 12px;
+        font-size: 16px;
         max-width: calc(100% - 48px);
         overflow: hidden;
         text-align: left;
@@ -64,11 +66,34 @@
     }
     .score-timer {
       display: flex;
+      button {
+        @include type-monospace;
+        font-size: 20px;
+        color: white;
+        font-weight: bold;
+        &.timer {
+          background-color: white;
+          color: $color-primary-dark;
+          border-color: $color-primary-dark;
+          font-weight: 500;
+        }
+      }
     }
+    &:last-child {
+       .player {
+         order: 2;
+       }
+     }
+
     &.on-turn {
       background: $color-timer-light;
-      button {
+      button.ant-btn {
         background-color: $color-timer-dark;
+        &.timer {
+          background-color: white;
+          color: $color-timer-dark;
+          border-color: $color-timer-dark;
+        }
       }
       &.time-low {
         background-color: $color-timer-low-light;
@@ -76,6 +101,11 @@
         button.ant-btn {
           background-color: $color-timer-low-dark;
           color: black;
+          &.timer {
+            background: white;
+            border-color: $color-timer-low-dark;
+            color: black;
+          }
         }
       }
       &.time-out {
@@ -83,11 +113,38 @@
         button.ant-btn {
           background-color: $color-timer-out-dark;
           border-color: $color-timer-out-dark;
+          &.timer {
+            background: white;
+            border-color: $color-timer-out-dark;
+            color: $color-timer-out-dark;;
+          }
         }
       }
-      &:last-child {
-        .player {
-          order: 2;
+    }
+  }
+}
+
+@media (min-width: $screen-laptop-min) {
+  .player-cards.ant-card {
+    .player-card {
+      .player {
+        .player-info {
+          font-size: 12px;
+        }
+        .player-name {
+          font-size: 14px;
+        }
+        .player-avatar {
+          width: 40px;
+          min-width: 40px;
+          height: 40px;
+          font-size: 30px;
+        }
+      }
+
+      .score-timer {
+        button {
+          font-size: 16px;
         }
       }
     }
@@ -97,28 +154,27 @@
 @media (min-width: $screen-desktop-min) {
   .player-cards.ant-card {
     .player-card {
-      padding: $card-padding-md $card-padding;
       .player {
         .player-info {
-          min-width: 210px;
+          font-size: 14px;
+        }
+        .player-name {
+          font-size: 16px;
         }
         .player-avatar {
-          margin-right: 12px;
           width: 48px;
           min-width: 48px;
           height: 48px;
           font-size: 36px;
         }
-        .player-name {
-          font-size: 16px;
-        }
-        .player-details {
-          font-size: 14px;
-        }
-        .player-flag {
-          display: inline;
-        }
+      }
+    }
+    .score-timer {
+      button {
+        font-size: 16px;
       }
     }
   }
 }
+
+

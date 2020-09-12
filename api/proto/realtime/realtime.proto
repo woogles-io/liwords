@@ -44,6 +44,7 @@ message GameRequest {
   RatingMode rating_mode = 7;
   string request_id = 8;
   int32 max_overtime_minutes = 9;
+  bool player_vs_bot = 10;
 }
 
 // A MatchUser requests or receives a match via a seek or a match request.
@@ -123,6 +124,7 @@ message UserPresence {
   string username = 1;
   string user_id = 2;
   string channel = 3;
+  bool is_anonymous = 4;
 }
 
 message UserPresences { repeated UserPresence presences = 1; }

@@ -9,6 +9,14 @@ type AvatarProps = {
 
 export const PlayerAvatar = (props: AvatarProps) => {
   let avatarStyle = {};
+
+  // XXX temporary code!
+  if (props.player?.is_bot) {
+    // eslint-disable-next-line no-param-reassign
+    props.player.avatar_url =
+      'https://woogles-prod-assets.s3.amazonaws.com/macondog.png';
+  }
+
   if (props.player?.avatar_url) {
     avatarStyle = {
       backgroundImage: `url(${props.player?.avatar_url})`,

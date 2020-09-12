@@ -3,6 +3,7 @@ import { useParams, useLocation } from 'react-router-dom';
 import { notification, Card, Table, Row, Col } from 'antd';
 import axios, { AxiosError } from 'axios';
 import { TopBar } from '../topbar/topbar';
+import { useLiwordsSocket } from '../socket/socket';
 
 type ProfileResponse = {
   first_name: string;
@@ -192,6 +193,7 @@ export const UserProfile = (props: Props) => {
   // Show username's profile
   const [ratings, setRatings] = useState({});
   const [stats, setStats] = useState({});
+  const { username: viewer } = useLiwordsSocket();
   useEffect(() => {
     axios
       .post<ProfileResponse>('/twirp/user_service.ProfileService/GetProfile', {
@@ -231,13 +233,15 @@ export const UserProfile = (props: Props) => {
           <StatsCard stats={stats} />
         </Col>
       </Row>
-      <Row style={{ marginTop: 20 }}>
-        <Col span={12} offset={12}>
-          <a href="/password/change">
-            <big>Change your password</big>
-          </a>
-        </Col>
-      </Row>
+      {viewer === username ? (
+        <Row style={{ marginTop: 20 }}>
+          <Col span={12} offset={12}>
+            <a href="/password/change">
+              <big>Change your password</big>
+            </a>
+          </Col>
+        </Row>
+      ) : null}
     </>
   );
 };

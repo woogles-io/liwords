@@ -2072,8 +2072,7 @@ proto.macondo.ChallengeRule = {
   SINGLE: 1,
   DOUBLE: 2,
   FIVE_POINT: 3,
-  TEN_POINT: 4,
-  TRIPLE: 5
+  TEN_POINT: 4
 };
 
 goog.object.extend(exports, proto.macondo);

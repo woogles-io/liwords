@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/domino14/liwords/pkg/emailer"
@@ -55,6 +56,7 @@ func NewAuthenticationService(u user.Store, ss user.SessionStore, secretKey, mai
 
 // Login sets a cookie.
 func (as *AuthenticationService) Login(ctx context.Context, r *pb.UserLoginRequest) (*pb.LoginResponse, error) {
+	r.Username = strings.TrimSpace(r.Username)
 	user, err := as.userStore.Get(ctx, r.Username)
 	if err != nil {
 		log.Err(err).Msg("getting-user")

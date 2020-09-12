@@ -76,6 +76,9 @@ def deploy(c):
     with c.cd("../liwords-socket/cmd/socketsrv"):
         c.run("GOOS=linux GOARCH=amd64 go build -o liwords-socket-linux-amd64")
         c.run("scp liwords-socket-linux-amd64 ubuntu@xword.club:.")
-    # with c.cd("scripts/migrations/rerate"):
-    #     c.run("GOOS=linux GOARCH=amd64 go build -o rerate-linux-amd64")
-    #     c.run("scp rerate-linux-amd64 ubuntu@xword.club:.")
+    with c.cd("../macondo/cmd/bot"):
+        c.run("GOOS=linux GOARCH=amd64 go build -o macondo-bot-linux-amd64")
+        c.run("scp macondo-bot-linux-amd64 ubuntu@xword.club:.")
+    with c.cd("scripts/migrations/rerate"):
+        c.run("GOOS=linux GOARCH=amd64 go build -o rerate-linux-amd64")
+        c.run("scp rerate-linux-amd64 ubuntu@xword.club:.")

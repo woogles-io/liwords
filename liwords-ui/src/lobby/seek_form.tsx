@@ -53,26 +53,43 @@ const timeScaleToNum = (val: string) => {
   }
 };
 
-const initialValues: seekPropVals = {
-  lexicon: 'CSW19',
-  challengerule: ChallengeRule.FIVE_POINT,
-  initialtime: 10, // Note this isn't minutes, but the slider position.
-  rated: true,
-  extratime: 1,
-  incOrOT: 'overtime',
-  friend: '',
-};
-
 type Props = {
   onFormSubmit: (g: SoughtGame) => void;
   loggedIn: boolean;
   showFriendInput: boolean;
+  vsBot?: boolean;
 };
 
 const otLabel = 'Max Overtime (minutes)';
 const incLabel = 'Increment (seconds)';
 
 export const SeekForm = (props: Props) => {
+  let storageKey = 'lastSeekForm';
+  if (props.vsBot) {
+    storageKey = 'lastBotForm';
+  }
+  if (props.showFriendInput) {
+    storageKey = 'lastMatchForm';
+  }
+
+  const storedValues = window.localStorage
+    ? JSON.parse(window.localStorage.getItem(storageKey) || '{}')
+    : {};
+  const defaultValues: seekPropVals = {
+    lexicon: 'CSW19',
+    challengerule: ChallengeRule.FIVE_POINT,
+    initialtime: 12, // Note this isn't minutes, but the slider position.
+    rated: true,
+    extratime: 1,
+    friend: '',
+    incOrOT: 'overtime',
+    vsBot: false,
+  };
+  const initialValues = {
+    ...defaultValues,
+    ...storedValues,
+  };
+
   const [timectrl, setTimectrl] = useState('Rapid');
   const [ttag, setTtag] = useState('gold');
   const [timeSetting, setTimeSetting] = useState(
@@ -98,6 +115,9 @@ export const SeekForm = (props: Props) => {
         ? 0
         : Math.round(allvals.extratime as number)
     );
+    if (window.localStorage) {
+      localStorage.setItem(storageKey, JSON.stringify(allvals));
+    }
     setTimectrl(tc);
     setTtag(tt);
   };
@@ -105,7 +125,6 @@ export const SeekForm = (props: Props) => {
   const onFormSubmit = (val: Store) => {
     const receiver = new MatchUser();
     receiver.setDisplayName(val.friend as string);
-
     const obj = {
       // These items are assigned by the server:
       seeker: '',
@@ -123,6 +142,7 @@ export const SeekForm = (props: Props) => {
         val.incOrOT === 'increment' ? 0 : Math.round(val.extratime as number),
       receiver,
       rematchFor: '',
+      playerVsBot: props.vsBot || false,
     };
     props.onFormSubmit(obj);
   };

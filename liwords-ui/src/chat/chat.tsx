@@ -1,11 +1,13 @@
 /* eslint-disable jsx-a11y/click-events-have-key-events */
 /* eslint-disable jsx-a11y/no-static-element-interactions */
 import React, { useEffect, useRef, useState } from 'react';
-import { Card, Input } from 'antd';
+import { Card, Input, Tabs } from 'antd';
 import { ChatEntity } from './chat_entity';
 import { ChatEntityObj, PresenceEntity } from '../store/store';
 import './chat.scss';
 import { Presences } from './presences';
+
+const { TabPane } = Tabs;
 
 type Props = {
   peopleOnlineContext: string; // the name for the people in this chat channel
@@ -17,8 +19,10 @@ type Props = {
 
 export const Chat = React.memo((props: Props) => {
   const [curMsg, setCurMsg] = useState('');
+  const [hasScroll, setHasScroll] = useState(false);
   const [selectedChatTab, setSelectedChatTab] = useState('CHAT');
-
+  const [presenceVisible, setPresenceVisible] = useState(false);
+  const presenceCount = Object.keys(props.presences).length;
   const el = useRef<HTMLDivElement>(null);
   const onKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') {
@@ -38,12 +42,14 @@ export const Chat = React.memo((props: Props) => {
   };
 
   useEffect(() => {
-    const currentEl = el.current;
-
-    if (currentEl) {
-      currentEl.scrollTop = currentEl.scrollHeight || 0;
+    const tabContainer = el.current?.closest('.ant-tabs-content-holder');
+    if (tabContainer && selectedChatTab === 'CHAT') {
+      if (tabContainer.scrollHeight > tabContainer.clientHeight) {
+        setHasScroll(true);
+      }
+      tabContainer.scrollTop = tabContainer.scrollHeight || 0;
     }
-  }, [props.chatEntities]);
+  }, [props.chatEntities, selectedChatTab]);
 
   const entities = props.chatEntities?.map((ent) => {
     return (
@@ -56,55 +62,71 @@ export const Chat = React.memo((props: Props) => {
       />
     );
   });
-
   return (
-    <div className="chat-area">
-      <Card
-        className="chat"
-        style={{ textAlign: 'left' }}
-        title={props.description}
+    <Card className="chat">
+      <Tabs
+        defaultActiveKey="CHAT"
+        centered
+        onTabClick={(key) => {
+          setSelectedChatTab(key);
+        }}
       >
-        <div className="tabs">
-          <div
-            onClick={() => {
-              setSelectedChatTab('PLAYERS');
-            }}
-            className={selectedChatTab === 'PLAYERS' ? 'tab active' : 'tab'}
-          >
-            {`${props.peopleOnlineContext} (${
-              Object.keys(props.presences).length
-            })`}
+        {/* TabPane for available players to chat with goes here:
+          past chats, friends, all online players.
+          It's not the same as the users in this current chat group.
+         */}
+        <TabPane tab={<>Players{/* Notification dot */}</>} key="PLAYERS">
+          Coming soon! This will be a list of friends and other players to chat
+          with.
+        </TabPane>
+        <TabPane tab="Chat" key="CHAT">
+          <div className={`chat-context${hasScroll ? ' scrolling' : ''}`}>
+            <p>{props.description}</p>
+            {presenceCount ? (
+              <>
+                <p className="presence-count">
+                  <span>
+                    {presenceCount} {props.peopleOnlineContext}
+                  </span>
+                  {presenceVisible ? (
+                    <span
+                      className="list-trigger"
+                      onClick={() => {
+                        setPresenceVisible(false);
+                      }}
+                    >
+                      Hide list
+                    </span>
+                  ) : (
+                    <span
+                      className="list-trigger"
+                      onClick={() => {
+                        setPresenceVisible(true);
+                      }}
+                    >
+                      Show list
+                    </span>
+                  )}
+                </p>
+                {presenceVisible ? (
+                  <p className="presence">
+                    <Presences players={props.presences} />
+                  </p>
+                ) : null}
+              </>
+            ) : null}
           </div>
-          <div
-            onClick={() => {
-              setSelectedChatTab('CHAT');
-            }}
-            className={selectedChatTab === 'CHAT' ? 'tab active' : 'tab'}
-          >
-            Chat
+          <div className="entities" ref={el}>
+            {entities}
           </div>
-        </div>
-
-        {selectedChatTab === 'CHAT' ? (
-          <>
-            <div className="entities" ref={el}>
-              {entities}
-            </div>
-            <Input
-              placeholder="chat..."
-              onKeyDown={onKeyDown}
-              onChange={onChange}
-              value={curMsg}
-            />
-          </>
-        ) : null}
-
-        {selectedChatTab === 'PLAYERS' ? (
-          <>
-            <Presences players={props.presences} />
-          </>
-        ) : null}
-      </Card>
-    </div>
+          <Input
+            placeholder="chat..."
+            onKeyDown={onKeyDown}
+            onChange={onChange}
+            value={curMsg}
+          />
+        </TabPane>
+      </Tabs>
+    </Card>
   );
 });

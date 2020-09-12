@@ -26,6 +26,13 @@
 
 7. Access the dashboard at http://liwords.localhost
 8. If you wish to add a new front-end package, you can run `npm install` LOCALLY (in your host OS) in the `liwords-ui` directory. This adds the package to `package.json`. Then you can do `docker-compose build frontend` to rebuild the frontend and install the package in the internal node_modules directory.
+9. You can register a user by going to http://liwords.localhost/secretwoogles (TODO: change this link when we enter beta/public release)
+
+Use `foobar` as the registration code.
+
+To have two players play each other you must have one browser window in incognito mode, or use another browser.
+
+10. To register a bot, follow the above step, except enter `botfoobar` as the registration code. You need to register at least one bot in order for bot games to work.
 
 #### Tips
 
@@ -38,6 +45,8 @@ You can do `docker-compose up app` and `docker-compose up frontend` in two diffe
 `macondo` provides the logic for the actual crossword board game. `liwords` adds
 the web app logic to allow two players to play against each other, or against
 a computer, etc.
+
+`macondo` also provides a bot.
 
 ### socket
 

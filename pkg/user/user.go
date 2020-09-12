@@ -12,11 +12,12 @@ type Store interface {
 	GetByUUID(ctx context.Context, uuid string) (*entity.User, error)
 	GetByEmail(ctx context.Context, email string) (*entity.User, error)
 	// Username by UUID. Good for fast lookups.
-	Username(ctx context.Context, uuid string) (string, error)
+	Username(ctx context.Context, uuid string) (string, bool, error)
 	New(ctx context.Context, user *entity.User) error
 	SetPassword(ctx context.Context, uuid string, hashpass string) error
 	SetRating(ctx context.Context, uuid string, variant entity.VariantKey, rating entity.SingleRating) error
 	SetStats(ctx context.Context, uuid string, variant entity.VariantKey, stats *entity.Stats) error
+	GetRandomBot(ctx context.Context) (*entity.User, error)
 	AddFollower(ctx context.Context, targetUser, follower uint) error
 	RemoveFollower(ctx context.Context, targetUser, follower uint) error
 	// GetFollows gets all the users that the passed-in DB ID is following.
@@ -35,8 +36,8 @@ type SessionStore interface {
 type PresenceStore interface {
 	// SetPresence sets the presence. If channel is the string NULL this is
 	// equivalent to saying the user logged off.
-	SetPresence(ctx context.Context, uuid, username, channel string) error
-	ClearPresence(ctx context.Context, uuid, username string) (string, error)
+	SetPresence(ctx context.Context, uuid, username string, anon bool, channel string) error
+	ClearPresence(ctx context.Context, uuid, username string, anon bool) (string, error)
 	GetPresence(ctx context.Context, uuid string) (string, error)
 
 	CountInChannel(ctx context.Context, channel string) (int, error)

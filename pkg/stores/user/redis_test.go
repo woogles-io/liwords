@@ -10,11 +10,13 @@ import (
 	"github.com/domino14/liwords/pkg/entity"
 	"github.com/gomodule/redigo/redis"
 	"github.com/matryer/is"
+	"github.com/rs/zerolog/log"
 )
 
 var RedisURL = os.Getenv("REDIS_URL")
 
 func newPool(addr string) *redis.Pool {
+	log.Info().Str("addr", addr).Msg("new-redis-pool")
 	return &redis.Pool{
 		MaxIdle:     3,
 		IdleTimeout: 240 * time.Second,
@@ -39,10 +41,10 @@ func TestSetPresence(t *testing.T) {
 
 	ctx := context.Background()
 
-	err := ps.SetPresence(ctx, "uuid1", "cesar", "lobby")
+	err := ps.SetPresence(ctx, "uuid1", "cesar", false, "lobby")
 	is.NoErr(err)
 
-	err = ps.SetPresence(ctx, "uuid2", "mina", "lobby")
+	err = ps.SetPresence(ctx, "uuid2", "mina", false, "lobby")
 	is.NoErr(err)
 
 	ct, err := ps.CountInChannel(ctx, "lobby")
@@ -58,13 +60,13 @@ func TestSetPresenceLeaveAndComeback(t *testing.T) {
 
 	ctx := context.Background()
 
-	err := ps.SetPresence(ctx, "uuid1", "cesar", "lobby")
+	err := ps.SetPresence(ctx, "uuid1", "cesar", false, "lobby")
 	is.NoErr(err)
 
-	err = ps.SetPresence(ctx, "uuid2", "mina", "lobby")
+	err = ps.SetPresence(ctx, "uuid2", "mina", false, "lobby")
 	is.NoErr(err)
 
-	val, err := ps.ClearPresence(ctx, "uuid1", "cesar")
+	val, err := ps.ClearPresence(ctx, "uuid1", "cesar", false)
 	is.NoErr(err)
 	is.Equal(val, "lobby")
 
@@ -81,10 +83,10 @@ func TestGetPresence(t *testing.T) {
 
 	ctx := context.Background()
 
-	err := ps.SetPresence(ctx, "uuid1", "cesar", "lobby")
+	err := ps.SetPresence(ctx, "uuid1", "cesar", false, "lobby")
 	is.NoErr(err)
 
-	err = ps.SetPresence(ctx, "uuid2", "mina", "lobby")
+	err = ps.SetPresence(ctx, "uuid2", "mina", false, "lobby")
 	is.NoErr(err)
 
 	channel, err := ps.GetPresence(ctx, "uuid2")
@@ -104,34 +106,34 @@ func TestGetInChannel(t *testing.T) {
 
 	ctx := context.Background()
 
-	err := ps.SetPresence(ctx, "uuid1", "cesar", "lobby")
+	err := ps.SetPresence(ctx, "uuid1", "cesar", false, "lobby")
 	is.NoErr(err)
 
-	err = ps.SetPresence(ctx, "uuid2", "mina", "lobby")
+	err = ps.SetPresence(ctx, "uuid2", "mina", false, "lobby")
 	is.NoErr(err)
 
-	err = ps.SetPresence(ctx, "uuid5", "jesse", "lobby")
+	err = ps.SetPresence(ctx, "uuid5", "jesse", false, "lobby")
 	is.NoErr(err)
 
-	err = ps.SetPresence(ctx, "uuid6", "conrad", "lobby")
+	err = ps.SetPresence(ctx, "uuid6", "conrad", false, "lobby")
 	is.NoErr(err)
 
-	_, err = ps.ClearPresence(ctx, "uuid1", "cesar")
+	_, err = ps.ClearPresence(ctx, "uuid1", "cesar", false)
 	is.NoErr(err)
 
-	err = ps.SetPresence(ctx, "uuid1", "cesar", "gametv:abc")
+	err = ps.SetPresence(ctx, "uuid1", "cesar", false, "gametv:abc")
 	is.NoErr(err)
 
-	err = ps.SetPresence(ctx, "uuid3", "josh", "game:abc")
+	err = ps.SetPresence(ctx, "uuid3", "josh", false, "game:abc")
 	is.NoErr(err)
 
-	err = ps.SetPresence(ctx, "uuid4", "lola", "game:abc")
+	err = ps.SetPresence(ctx, "uuid4", "lola", false, "game:abc")
 	is.NoErr(err)
 
-	err = ps.SetPresence(ctx, "uuid7", "puneet", "lobby")
+	err = ps.SetPresence(ctx, "uuid7", "puneet", false, "lobby")
 	is.NoErr(err)
 
-	err = ps.SetPresence(ctx, "uuid2", "mina", "gametv:abc")
+	err = ps.SetPresence(ctx, "uuid2", "mina", false, "gametv:abc")
 	is.NoErr(err)
 
 	ct, err := ps.CountInChannel(ctx, "game:abc")

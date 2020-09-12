@@ -126,8 +126,8 @@ const ScorecardTurn = (props: turnProps) => {
         </div>
         <div className="scores">
           {memoizedTurn.lostScore > 0
-            ? `${memoizedTurn.oldScore}-${memoizedTurn.lostScore}`
-            : `${memoizedTurn.oldScore}+${memoizedTurn.score}`}
+            ? `${memoizedTurn.oldScore} - ${memoizedTurn.lostScore}`
+            : `${memoizedTurn.oldScore} + ${memoizedTurn.score}`}
           <br />
           <strong>{memoizedTurn.cumulative}</strong>
         </div>
@@ -153,7 +153,7 @@ export const ScoreCard = React.memo((props: Props) => {
       className="score-card"
       title={`Turn ${turns.length + 1}`}
       // eslint-disable-next-line jsx-a11y/anchor-is-valid
-      extra={<a href="#">Notepad</a>}
+      // extra={<a href="#">Show notepad</a>}
     >
       <div ref={el}>
         {turns.map((t, idx) =>

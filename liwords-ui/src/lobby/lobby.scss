@@ -7,26 +7,42 @@
   flex-direction: row;
   justify-content: center;
   align-items: flex-start;
-  padding: 12px 0;
+  padding: 12px 24px 12px 12px;
+  flex-wrap: wrap;
   .ant-card {
     @include fullHeight();
+    height: 70vh;
   }
 }
-
-
 .announcements {
-  max-width: 33%;
-  flex-grow: 1;
-}
+  order: 0;
+  max-height: 100px;
 
+  min-width: 300px;
+  flex-grow: 1;
+  margin: 0px 12px 24px 12px;
+  .ant-card {
+    height: auto;
+    margin-bottom: 12px;
+  }
+  .ant-card-body {
+    max-height: 130px;
+    overflow-y: auto;
+  }
+}
 .game-lists {
-  margin: 0 12px;
+  margin: 12px 12px 0;
   max-width: none;
+  order: 2;
   flex-grow: 2;
   @include type-default;
+  .ant-card {
+    @include action-blocks;
+  }
   .ant-card-body {
     padding: 12px 0 0 0;
   }
+
   .ant-table-thead > tr > th {
     background: white;
     font-size: 12px;
@@ -41,6 +57,8 @@
     display: flex;
     flex-direction: row;
     justify-content: space-around;
+    border-bottom: 1px solid #EEE;
+    height: 36px;
     .tab {
       padding: 0px 24px 6px;
       text-transform: uppercase;
@@ -54,7 +72,7 @@
         color: $color-primary-dark;
       }
       &.active {
-        border-bottom: 3px solid $color-primary-dark;
+        border-bottom: 2px solid $color-primary-dark;
       }
     }
   }
@@ -141,11 +159,37 @@
     text-align: left;
     padding: 12px;
     letter-spacing: 0;
-    margin: 6px 0px 0px;
+    margin: 0;
   }
 }
-
-@media (min-height: $screen-min-height-laptop-min) and (min-width: $screen-laptop-min) {
+@media (min-width: $screen-tablet-min) {
+  .lobby {
+    padding: 12px 0;
+    flex-wrap: wrap;
+    .ant-card {
+      @include fullHeight();
+    }
+  }
+  .announcements {
+    order: initial;
+    max-height: auto;
+    margin: 0;
+    min-width: 300px;
+    max-width: 38%;
+    flex-grow: 1;
+    .ant-card {
+      @include fullHeight();
+    }
+    .ant-card-body {
+      max-height: none;
+    }
+  }
+  .game-lists {
+    order: initial;
+    margin: 0 12px;
+  }
+}
+@media (min-width: $screen-laptop-min) {
     .announcements {
       max-width: 25%;
     }

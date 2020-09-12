@@ -171,6 +171,12 @@ func FromState(timers entity.Timers, Started bool,
 		return nil, err
 	}
 
+	// There's a chance the game is over, so we want to get that state before
+	// the following function modifies it.
+	histPlayState := hist.GetPlayState()
+	log.Debug().Interface("old-play-state", histPlayState).Msg("play-state-loading-hist")
+	// This function modifies the history. (XXX it probably shouldn't)
+	// It modifies the play state as it plays the game from the beginning.
 	mcg, err := macondogame.NewFromHistory(hist, rules, len(hist.Events))
 	if err != nil {
 		return nil, err
@@ -179,6 +185,13 @@ func FromState(timers entity.Timers, Started bool,
 	mcg.SetBackupMode(macondogame.InteractiveGameplayMode)
 	g.Game = *mcg
 	log.Debug().Interface("history", g.History()).Msg("from-state")
+	// Finally, restore the play state from the passed-in history. This
+	// might immediately end the game (for example, the game could have timed
+	// out, but the NewFromHistory function doesn't actually handle that).
+	// We could consider changing NewFromHistory, but we want it to be as
+	// flexible as possible for things like analysis mode.
+	g.SetPlaying(histPlayState)
+	g.History().PlayState = histPlayState
 	return g, nil
 }
 
@@ -320,13 +333,14 @@ func (a *activeGame) ToGameMeta() (*pb.GameMeta, error) {
 	var p0data entity.Ratings
 	err = json.Unmarshal(a.P0Ratings.RawMessage, &p0data)
 	if err != nil {
-		return nil, err
+		log.Err(err).Msg("unmarshal-p0-rating")
 	}
 	var p1data entity.Ratings
 	err = json.Unmarshal(a.P1Ratings.RawMessage, &p1data)
 	if err != nil {
-		return nil, err
+		log.Err(err).Msg("unmarshal-p0-rating")
 	}
+	// Don't quit if we can't unmarshal ratings.
 
 	p0Rating := entity.RelevantRating(p0data, ratingKey)
 	p1Rating := entity.RelevantRating(p1data, ratingKey)

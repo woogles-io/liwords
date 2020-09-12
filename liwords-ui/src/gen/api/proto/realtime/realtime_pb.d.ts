@@ -62,6 +62,9 @@ export class GameRequest extends jspb.Message {
   getMaxOvertimeMinutes(): number;
   setMaxOvertimeMinutes(value: number): void;
 
+  getPlayerVsBot(): boolean;
+  setPlayerVsBot(value: boolean): void;
+
   serializeBinary(): Uint8Array;
   toObject(includeInstance?: boolean): GameRequest.AsObject;
   static toObject(includeInstance: boolean, msg: GameRequest): GameRequest.AsObject;
@@ -83,6 +86,7 @@ export namespace GameRequest {
     ratingMode: RatingModeMap[keyof RatingModeMap],
     requestId: string,
     maxOvertimeMinutes: number,
+    playerVsBot: boolean,
   }
 }
 
@@ -258,6 +262,9 @@ export class UserPresence extends jspb.Message {
   getChannel(): string;
   setChannel(value: string): void;
 
+  getIsAnonymous(): boolean;
+  setIsAnonymous(value: boolean): void;
+
   serializeBinary(): Uint8Array;
   toObject(includeInstance?: boolean): UserPresence.AsObject;
   static toObject(includeInstance: boolean, msg: UserPresence): UserPresence.AsObject;
@@ -273,6 +280,7 @@ export namespace UserPresence {
     username: string,
     userId: string,
     channel: string,
+    isAnonymous: boolean,
   }
 }
 

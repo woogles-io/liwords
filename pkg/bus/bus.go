@@ -21,14 +21,18 @@ import (
 	"github.com/domino14/liwords/pkg/gameplay"
 	"github.com/domino14/liwords/pkg/stats"
 	"github.com/domino14/liwords/pkg/user"
+	macondogame "github.com/domino14/macondo/game"
 
 	pb "github.com/domino14/liwords/rpc/api/proto/realtime"
+	macondopb "github.com/domino14/macondo/gen/api/proto/macondo"
 )
 
 const (
 	GameStartDelay = 3 * time.Second
 
 	MaxMessageLength = 500
+
+	AdjudicateInterval = 300 * time.Second
 )
 
 // Bus is the struct; it should contain all the stores to verify messages, etc.
@@ -107,6 +111,9 @@ func (b *Bus) ProcessMessages(ctx context.Context) {
 
 	ctx = context.WithValue(ctx, gameplay.ConfigCtxKey("config"), &b.config.MacondoConfig)
 
+	// Adjudicate unfinished games every few minutes.
+	// adjudicator := time.NewTicker(AdjudicateInterval)
+	// defer adjudicator.Stop()
 outerfor:
 	for {
 		select {
@@ -114,6 +121,7 @@ outerfor:
 			// Regular messages.
 			log.Debug().Str("topic", msg.Subject).Msg("got ipc.pb message")
 			subtopics := strings.Split(msg.Subject, ".")
+			// XXX: put in a goroutine (go b.handleNatsPublish(...))
 			err := b.handleNatsPublish(ctx, subtopics[2:], msg.Data)
 			if err != nil {
 				log.Err(err).Msg("process-message-publish-error")
@@ -165,6 +173,14 @@ outerfor:
 		case <-ctx.Done():
 			log.Info().Msg("context done, breaking")
 			break outerfor
+
+			// case <-adjudicator.C:
+			// 	err := b.adjudicateGames(ctx)
+			// 	if err != nil {
+			// 		log.Err(err).Msg("adjudicate-error")
+			// 		break
+			// 	}
+
 		}
 
 	}
@@ -209,7 +225,7 @@ func (b *Bus) handleNatsRequest(ctx context.Context, topic string,
 			}
 			log.Debug().Str("computed-realm", realm)
 		} else {
-			return errors.New("realm-req-not-handled")
+			log.Info().Str("path", path).Msg("realm-req-not-handled-sending-blank-realm")
 		}
 		resp := &pb.RegisterRealmResponse{}
 		resp.Realm = realm
@@ -235,6 +251,61 @@ func setMatchUser(msg proto.Message, reqUser *pb.MatchUser) {
 		// lol
 		sought.User = reqUser
 	}
+}
+
+func (b *Bus) handleBotMove(ctx context.Context, g *entity.Game) {
+	// This function should only be called if it's the bot's turn.
+	onTurn := g.Game.PlayerOnTurn()
+	userID := g.Game.PlayerIDOnTurn()
+
+	for g.PlayerOnTurn() == onTurn {
+		hist := g.History()
+		req := macondopb.BotRequest{GameHistory: hist}
+		data, err := proto.Marshal(&req)
+		if err != nil {
+			log.Err(err).Msg("bot-cant-move")
+			return
+		}
+		res, err := b.natsconn.Request("macondo.bot", data, 10*time.Second)
+
+		if err != nil {
+			if b.natsconn.LastError() != nil {
+				log.Error().Msgf("bot-cant-move %v for request", b.natsconn.LastError())
+			}
+			log.Error().Msgf("bot-cant-move %v for request", err)
+			return
+		}
+		log.Debug().Msgf("res: %v", string(res.Data))
+
+		resp := macondopb.BotResponse{}
+		err = proto.Unmarshal(res.Data, &resp)
+		if err != nil {
+			log.Err(err).Msg("bot-cant-move-unmarshal-error")
+			return
+		}
+		switch r := resp.Response.(type) {
+		case *macondopb.BotResponse_Move:
+			timeRemaining := g.TimeRemaining(onTurn)
+
+			m := macondogame.MoveFromEvent(r.Move, g.Alphabet(), g.Board())
+			err = gameplay.PlayMove(ctx, g, b.userStore, userID, onTurn, timeRemaining, m)
+			if err != nil {
+				log.Err(err).Msg("bot-cant-move-play-error")
+				return
+			}
+		case *macondopb.BotResponse_Error:
+			log.Error().Str("error", r.Error).Msg("bot-error")
+			return
+		default:
+			log.Err(errors.New("should never happen")).Msg("bot-cant-move")
+		}
+	}
+
+	err := b.gameStore.Set(ctx, g)
+	if err != nil {
+		log.Err(err).Msg("setting-game-after-bot-move")
+	}
+
 }
 
 func (b *Bus) handleNatsPublish(ctx context.Context, subtopics []string, data []byte) error {
@@ -270,14 +341,29 @@ func (b *Bus) handleNatsPublish(ctx context.Context, subtopics []string, data []
 		return b.gameAccepted(ctx, evt, subtopics[2])
 
 	case "gameplayEvent":
-		// evt :=
 		evt := &pb.ClientGameplayEvent{}
 		err := proto.Unmarshal(data, evt)
 		if err != nil {
 			return err
 		}
+		userid := subtopics[2]
 		// subtopics[2] is the user ID of the requester.
-		return gameplay.PlayMove(ctx, b.gameStore, b.userStore, b.listStatStore, subtopics[2], evt)
+		entGame, err := gameplay.HandleEvent(ctx, b.gameStore, b.userStore, b.listStatStore,
+			userid, evt)
+		if err != nil {
+			return err
+		}
+		// Determine if one of our players is a bot (no bot-vs-bot supported yet?)
+		// and if it is the bot's turn.
+		if entGame.Game.Playing() != macondopb.PlayState_GAME_OVER &&
+			entGame.GameReq != nil &&
+			entGame.GameReq.PlayerVsBot &&
+			entGame.PlayerIDOnTurn() != userid {
+
+			// Do this in a separate goroutine as it blocks while waiting for bot move.
+			go b.handleBotMove(ctx, entGame)
+		}
+		return nil
 
 	case "timedOut":
 		evt := &pb.TimedOut{}
@@ -371,6 +457,8 @@ func (b *Bus) seekRequest(ctx context.Context, seekOrMatch, auth, userID string,
 	reqUser.RelevantRating = u.GetRelevantRating(ratingKey)
 	reqUser.DisplayName = u.Username
 
+	log.Debug().Bool("vsBot", gameRequest.PlayerVsBot).Msg("seeking-bot?")
+
 	if seekOrMatch == "seekRequest" {
 		sg, err := gameplay.NewSoughtGame(ctx, b.soughtGameStore, req.(*pb.SeekRequest))
 		if err != nil {
@@ -385,6 +473,13 @@ func (b *Bus) seekRequest(ctx context.Context, seekOrMatch, auth, userID string,
 		log.Debug().Interface("evt", evt).Msg("publishing seek request to lobby topic")
 		b.natsconn.Publish("lobby.seekRequest", data)
 	} else {
+
+		if gameRequest.PlayerVsBot {
+			// There is no user being matched. Find a bot to play instead.
+			// No need to create a match request in the store.
+			return b.newBotGame(ctx, req.(*pb.MatchRequest))
+		}
+
 		// Check if the user being matched exists.
 		receiver, err := b.userStore.Get(ctx, req.(*pb.MatchRequest).ReceivingUser.DisplayName)
 		if err != nil {
@@ -406,6 +501,18 @@ func (b *Bus) seekRequest(ctx context.Context, seekOrMatch, auth, userID string,
 		b.pubToUser(reqUser.UserId, evt)
 	}
 	return nil
+}
+
+func (b *Bus) newBotGame(ctx context.Context, req *pb.MatchRequest) error {
+	// NewBotGame creates and starts a new game against a bot!
+
+	accUser, err := b.userStore.GetRandomBot(ctx)
+	if err != nil {
+		return err
+	}
+	sg := &entity.SoughtGame{MatchRequest: req}
+	return b.instantiateAndStartGame(ctx, accUser, req.User.UserId, req.GameRequest,
+		sg, "")
 }
 
 func (b *Bus) gameAccepted(ctx context.Context, evt *pb.SoughtGameProcessEvent, userID string) error {
@@ -438,11 +545,18 @@ func (b *Bus) gameAccepted(ctx context.Context, evt *pb.SoughtGameProcessEvent, 
 		return err
 	}
 
-	accUser, err := b.userStore.GetByUUID(ctx, userID) // acceptor
+	accUser, err := b.userStore.GetByUUID(ctx, userID)
 	if err != nil {
 		return err
 	}
-	reqUser, err := b.userStore.GetByUUID(ctx, requester) //requester
+
+	return b.instantiateAndStartGame(ctx, accUser, requester, gameReq, sg, evt.RequestId)
+}
+
+func (b *Bus) instantiateAndStartGame(ctx context.Context, accUser *entity.User, requester string,
+	gameReq *pb.GameRequest, sg *entity.SoughtGame, reqID string) error {
+
+	reqUser, err := b.userStore.GetByUUID(ctx, requester)
 	if err != nil {
 		return err
 	}
@@ -473,6 +587,7 @@ func (b *Bus) gameAccepted(ctx context.Context, evt *pb.SoughtGameProcessEvent, 
 			log.Debug().Str("went-first", players[wentFirst].Nickname).Msg("determining-first")
 
 			// These are indices in the array passed to InstantiateNewGame
+			// XXX: this doesn't work for bots since they switch off players! FIX.
 			if accUser.UUID == players[wentFirst].UserId {
 				assignedFirst = 1 // reqUser should go first
 			} else if reqUser.UUID == players[wentFirst].UserId {
@@ -487,11 +602,14 @@ func (b *Bus) gameAccepted(ctx context.Context, evt *pb.SoughtGameProcessEvent, 
 		return err
 	}
 	// Broadcast a seek delete event, and send both parties a game redirect.
-	b.soughtGameStore.Delete(ctx, evt.RequestId)
-	err = b.broadcastSeekDeletion(evt.RequestId)
-	if err != nil {
-		log.Err(err).Msg("broadcasting-seek")
+	if reqID != "" {
+		b.soughtGameStore.Delete(ctx, reqID)
+		err = b.broadcastSeekDeletion(reqID)
+		if err != nil {
+			log.Err(err).Msg("broadcasting-seek")
+		}
 	}
+
 	err = b.broadcastGameCreation(g, accUser, reqUser)
 	if err != nil {
 		log.Err(err).Msg("broadcasting-game-creation")
@@ -504,7 +622,7 @@ func (b *Bus) gameAccepted(ctx context.Context, evt *pb.SoughtGameProcessEvent, 
 	b.pubToUser(reqUser.UUID, ngevt)
 
 	log.Info().Str("newgameid", g.History().Uid).
-		Str("sender", userID).
+		Str("sender", accUser.UUID).
 		Str("requester", requester).
 		Interface("starting-in", GameStartDelay).
 		Str("onturn", g.NickOnTurn()).Msg("game-accepted")
@@ -515,6 +633,12 @@ func (b *Bus) gameAccepted(ctx context.Context, evt *pb.SoughtGameProcessEvent, 
 		if err != nil {
 			log.Err(err).Msg("starting-game")
 		}
+
+		if accUser.IsBot && g.PlayerIDOnTurn() == accUser.UUID {
+			// Make a bot move if it's the bot's turn at the beginning.
+			go b.handleBotMove(ctx, g)
+		}
+
 	})
 
 	return nil
@@ -588,10 +712,13 @@ func (b *Bus) broadcastGameCreation(g *entity.Game, acceptor, requester *entity.
 	return b.natsconn.Publish("lobby.newLiveGame", data)
 }
 
-func (b *Bus) broadcastPresence(username, userID, presenceChan string, deleting bool) error {
+func (b *Bus) broadcastPresence(username, userID string, anon bool, presenceChan string, deleting bool) error {
 	// broadcast username's presence to the channel.
 	log.Debug().Str("username", username).Str("userID", userID).
-		Str("presenceChan", presenceChan).Bool("deleting", deleting).Msg("broadcast-presence")
+		Bool("anon", anon).
+		Str("presenceChan", presenceChan).
+		Bool("deleting", deleting).
+		Msg("broadcast-presence")
 
 	evtChannel := presenceChan
 
@@ -600,15 +727,23 @@ func (b *Bus) broadcastPresence(username, userID, presenceChan string, deleting 
 	}
 
 	toSend := entity.WrapEvent(&pb.UserPresence{
-		Username: username,
-		UserId:   userID,
-		Channel:  evtChannel},
+		Username:    username,
+		UserId:      userID,
+		Channel:     evtChannel,
+		IsAnonymous: anon,
+	},
 		pb.MessageType_USER_PRESENCE, "")
 	data, err := toSend.Serialize()
 	if err != nil {
 		return err
 	}
-	return b.natsconn.Publish(presenceChan, data)
+	if presenceChan != "" {
+		return b.natsconn.Publish(presenceChan, data)
+	}
+	// If the presence channel is empty we are in some other page, like the
+	// about page or something. We need to clean this up a bit, but we don't
+	// want to log errors here.
+	return nil
 }
 
 func (b *Bus) pubToUser(userID string, evt *entity.EventWrapper) error {
@@ -628,7 +763,7 @@ func (b *Bus) initRealmInfo(ctx context.Context, evt *pb.InitRealmInfo) error {
 	// The reasoning is that realms should only be cared about by the socket
 	// server. The channels are NATS pubsub channels and we use these for chat
 	// too.
-	username, err := b.userStore.Username(ctx, evt.UserId)
+	username, anon, err := b.userStore.Username(ctx, evt.UserId)
 	if err != nil {
 		return err
 	}
@@ -638,7 +773,7 @@ func (b *Bus) initRealmInfo(ctx context.Context, evt *pb.InitRealmInfo) error {
 		presenceChan = "lobby.presence"
 		chatChan = "lobby.chat"
 	}
-	b.presenceStore.SetPresence(ctx, evt.UserId, username, presenceChan)
+	b.presenceStore.SetPresence(ctx, evt.UserId, username, anon, presenceChan)
 
 	if evt.Realm == "lobby" {
 		// open seeks
@@ -695,7 +830,7 @@ func (b *Bus) initRealmInfo(ctx context.Context, evt *pb.InitRealmInfo) error {
 		return err
 	}
 	// Also send OUR presence to users in this channel.
-	err = b.broadcastPresence(username, evt.UserId, presenceChan, false)
+	err = b.broadcastPresence(username, evt.UserId, anon, presenceChan, false)
 	if err != nil {
 		return err
 	}
@@ -711,9 +846,10 @@ func (b *Bus) getPresence(ctx context.Context, presenceChan string) (*entity.Eve
 	pbobj := &pb.UserPresences{Presences: []*pb.UserPresence{}}
 	for _, u := range users {
 		pbobj.Presences = append(pbobj.Presences, &pb.UserPresence{
-			Username: u.Username,
-			UserId:   u.UUID,
-			Channel:  presenceChan,
+			Username:    u.Username,
+			UserId:      u.UUID,
+			Channel:     presenceChan,
+			IsAnonymous: u.Anonymous,
 		})
 	}
 
@@ -736,16 +872,17 @@ func (b *Bus) deleteSoughtForUser(ctx context.Context, userID string) error {
 }
 
 func (b *Bus) leaveSite(ctx context.Context, userID string) error {
-	username, err := b.userStore.Username(ctx, userID)
+	username, anon, err := b.userStore.Username(ctx, userID)
 	if err != nil {
 		return err
 	}
-	oldchannel, err := b.presenceStore.ClearPresence(ctx, userID, username)
+	oldchannel, err := b.presenceStore.ClearPresence(ctx, userID, username, anon)
 	if err != nil {
 		return err
 	}
+	log.Debug().Str("oldchannel", oldchannel).Str("userid", userID).Msg("left-site")
 
-	err = b.broadcastPresence(username, userID, oldchannel, true)
+	err = b.broadcastPresence(username, userID, anon, oldchannel, true)
 	if err != nil {
 		return err
 	}
@@ -796,6 +933,29 @@ func (b *Bus) activeGames(ctx context.Context) (*entity.EventWrapper, error) {
 	}
 	evt := entity.WrapEvent(pbobj, pb.MessageType_ACTIVE_GAMES, "")
 	return evt, nil
+}
+
+func (b *Bus) adjudicateGames(ctx context.Context) error {
+	gs, err := b.gameStore.ListActive(ctx)
+
+	if err != nil {
+		return err
+	}
+	log.Debug().Interface("active-games", gs).Msg("adjudicating...")
+	for _, g := range gs {
+		// These will likely be in the cache.
+		entGame, err := b.gameStore.Get(ctx, g.Id)
+		if err != nil {
+			return err
+		}
+		onTurn := entGame.Game.PlayerOnTurn()
+		if entGame.TimeRanOut(onTurn) {
+			log.Debug().Str("gid", g.Id).Msg("time-ran-out")
+			err = gameplay.TimedOut(ctx, b.gameStore, b.userStore, entGame.Game.PlayerIDOnTurn(), g.Id)
+			log.Err(err).Msg("gameplay-timed-out")
+		}
+	}
+	return nil
 }
 
 func (b *Bus) gameRefresher(ctx context.Context, gameID string) (*entity.EventWrapper, error) {
