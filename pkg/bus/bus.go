@@ -171,13 +171,14 @@ outerfor:
 			log.Info().Msg("context done, breaking")
 			break outerfor
 
-		// case <-adjudicator.C:
-		// 	err := b.adjudicateGames(ctx)
-		// 	if err != nil {
-		// 		log.Err(err).Msg("adjudicate-error")
-		// 		break
-		// 	}
-		// }
+			// case <-adjudicator.C:
+			// 	err := b.adjudicateGames(ctx)
+			// 	if err != nil {
+			// 		log.Err(err).Msg("adjudicate-error")
+			// 		break
+			// 	}
+
+		}
 
 	}
 
