@@ -3,6 +3,9 @@ package stats
 import (
 	"encoding/json"
 	"fmt"
+	"os"
+	"testing"
+
 	"github.com/domino14/liwords/pkg/entity"
 	statstore "github.com/domino14/liwords/pkg/stores/stats"
 	realtime "github.com/domino14/liwords/rpc/api/proto/realtime"
@@ -13,8 +16,6 @@ import (
 	pb "github.com/domino14/macondo/gen/api/proto/macondo"
 	"github.com/matryer/is"
 	"github.com/rs/zerolog"
-	"os"
-	"testing"
 )
 
 var TestDBHost = os.Getenv("TEST_DB_HOST")
@@ -112,10 +113,11 @@ func JoshNationalsFromGames(useJSON bool, listStatStore ListStatStore) (*entity.
 }
 
 func TestStats(t *testing.T) {
-
-	listStatStore := statstore.NewListStatStore(TestingDBConnStr + " dbname=liwords_test")
-
 	is := is.New(t)
+
+	listStatStore, err := statstore.NewListStatStore(TestingDBConnStr + " dbname=liwords_test")
+
+	is.NoErr(err)
 
 	stats, error := JoshNationalsFromGames(false, listStatStore)
 	is.True(error == nil)

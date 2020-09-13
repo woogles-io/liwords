@@ -94,7 +94,10 @@ func main() {
 
 	gameStore := game.NewCache(tmpGameStore)
 	soughtGameStore := soughtgame.NewMemoryStore()
-	listStatStore := stats.NewListStatStore(cfg.DBConnString)
+	listStatStore, err := stats.NewListStatStore(cfg.DBConnString)
+	if err != nil {
+		panic(err)
+	}
 
 	authenticationService := auth.NewAuthenticationService(userStore, sessionStore, cfg.SecretKey, cfg.MailgunKey)
 	registrationService := registration.NewRegistrationService(userStore)

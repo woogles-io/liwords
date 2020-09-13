@@ -2,6 +2,9 @@ package stats
 
 import (
 	"errors"
+	"strings"
+	"unicode"
+
 	"github.com/domino14/liwords/pkg/entity"
 	realtime "github.com/domino14/liwords/rpc/api/proto/realtime"
 	"github.com/domino14/macondo/alphabet"
@@ -10,8 +13,6 @@ import (
 	"github.com/domino14/macondo/game"
 	pb "github.com/domino14/macondo/gen/api/proto/macondo"
 	"github.com/rs/zerolog/log"
-	"strings"
-	"unicode"
 )
 
 type ListStatStore interface {
@@ -174,6 +175,7 @@ func AddStats(stats *entity.Stats, otherStats *entity.Stats) error {
 	return nil
 }
 
+// Finalize will be needed in the future when we want to retrieve stats.
 func Finalize(stats *entity.Stats, lss ListStatStore, gameIds []string,
 	playerOneId string, playerTwoId string) error {
 	err := finalize(stats.PlayerOneData, lss, gameIds, playerOneId)

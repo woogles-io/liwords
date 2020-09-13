@@ -67,7 +67,11 @@ func userStore(dbURL string) pkguser.Store {
 }
 
 func listStatStore(dbURL string) pkgstats.ListStatStore {
-	return stats.NewListStatStore(TestingDBConnStr + " dbname=liwords_test")
+	s, err := stats.NewListStatStore(TestingDBConnStr + " dbname=liwords_test")
+	if err != nil {
+		log.Fatal().Err(err).Msg("error")
+	}
+	return s
 }
 
 func recreateDB() {

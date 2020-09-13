@@ -222,9 +222,6 @@ func computeGameStats(ctx context.Context, history *macondopb.GameHistory, req *
 		return nil, err
 	}
 
-	stats.Finalize(p0NewProfileStats, listStatStore, []string{}, p0id, p1id)
-	stats.Finalize(p1NewProfileStats, listStatStore, []string{}, p1id, p0id)
-
 	// Save all stats back to the database.
 	err = userStore.SetStats(ctx, p0id, variantKey, p0NewProfileStats)
 	if err != nil {
