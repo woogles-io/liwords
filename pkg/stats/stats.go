@@ -712,11 +712,16 @@ func addRatings(info *IncrementInfo) error {
 		rating = info.Evt.NewRatings[info.History.Players[1].Nickname]
 	}
 	info.StatItem.Total++
+	timeControl, variant, err := entity.VariantFromGameReq(info.Req)
+	if err != nil {
+		return err
+	}
+	variantKey := entity.ToVariantKey(info.Req.Lexicon, variant, timeControl)
 	info.Lss.AddListItem(info.GameId,
 		info.PlayerId,
 		entity.StatName_value[entity.RATINGS_STAT],
 		info.Evt.Time,
-		entity.ListDatum{Rating: int(rating)})
+		entity.ListDatum{Rating: int(rating), Variant: string(variantKey)})
 	return nil
 }
 

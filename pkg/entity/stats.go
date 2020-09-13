@@ -19,6 +19,7 @@ type ListDatum struct {
 
 	// Used for ratings:
 	Rating int `json:"r,omitempty"`
+	Variant string `json: "v,omitempty"`
 }
 
 type ListItem struct {
