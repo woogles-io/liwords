@@ -694,7 +694,7 @@
   }
 }
 
-@media (min-width: $screen-desktop-min) {
+@media (min-height: $screen-min-height-desktop-min) and (min-width: $screen-desktop-min) {
   .data-area .ant-card {
     margin-bottom: 12px;
   }
