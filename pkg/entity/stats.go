@@ -1,33 +1,31 @@
 package entity
 
-type ListWord struct {
-	Word        string `json:"w"`
-	Probability int    `json:"p"`
-	Score       int    `json:"s"`
-}
+// A ListDatum is the individual datum that is stored in a list. It is
+// a sort of "union" of various struct types. Depending on the type of stat,
+// only some of thees fields will be filled in.
+type ListDatum struct {
+	// Used for words
+	Word        string `json:"w,omitempty"`
+	Probability int    `json:"p,omitempty"`
+	// Used for words or games:
+	Score int `json:"s,omitempty"`
 
-type ListGame struct {
-	Score int `json:"s"`
-}
+	// Used for comments:
+	Comment string `json:"c,omitempty"`
 
-type ListComment struct {
-	Comment string `json:"c"`
-}
+	// Used for mistakes:
+	MistakeType int `json:"t,omitempty"`
+	MistakeSize int `json:"z,omitempty"`
 
-type ListMistake struct {
-	Type int `json:"t"`
-	Size int `json:"s"`
-}
-
-type ListRating struct {
-	Rating int `json:"r"`
+	// Used for ratings:
+	Rating int `json:"r,omitempty"`
 }
 
 type ListItem struct {
 	GameId   string
 	PlayerId string
 	Time     int64
-	Item     interface{}
+	Item     ListDatum
 }
 
 type MistakeType string
@@ -103,7 +101,6 @@ type StatItem struct {
 	Minimum       int            `json:"-"`
 	Maximum       int            `json:"-"`
 	Total         int            `json:"t"`
-	DataType      StatItemType   `json:"-"`
 	IncrementType IncrementType  `json:"-"`
 	List          []*ListItem    `json:"-"`
 	Subitems      map[string]int `json:"s"`

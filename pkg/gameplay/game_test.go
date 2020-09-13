@@ -141,14 +141,28 @@ func TestComputeGameStats(t *testing.T) {
 	is.NoErr(err)
 
 	ctx := context.WithValue(context.Background(), ConfigCtxKey("config"), &DefaultConfig)
-	// Fix this once list separation is complete
-	_, err = computeGameStats(ctx, hist, gameReq, variantKey(req), gameEndedEventObj, ustore, lstore)
+	s, err := computeGameStats(ctx, hist, gameReq, variantKey(req), gameEndedEventObj, ustore, lstore)
 	is.NoErr(err)
-	// Fix this once list separation is complete
-	/*	is.Equal(stats.PlayerOneData[entity.BINGOS_STAT].List, []*entity.ListItem{
-		{Word: "PARDINE", Score: 76, Probability: 1, GameId: "m5ktbp4qPVTqaAhg6HJMsb"},
-		{Word: "HETAERA", Score: 91, Probability: 1, GameId: "m5ktbp4qPVTqaAhg6HJMsb"}})*/
+	pkgstats.Finalize(s, lstore, []string{"m5ktbp4qPVTqaAhg6HJMsb"},
+		"qUQkST8CendYA3baHNoPjk", "xjCWug7EZtDxDHX5fRZTLo",
+	)
+
+	is.Equal(s.PlayerOneData[entity.BINGOS_STAT].List, []*entity.ListItem{
+		{
+			GameId:   "m5ktbp4qPVTqaAhg6HJMsb",
+			PlayerId: "qUQkST8CendYA3baHNoPjk",
+			Time:     0,
+			Item:     entity.ListDatum{Word: "PARDINE", Score: 76, Probability: 1},
+		},
+		{
+			GameId:   "m5ktbp4qPVTqaAhg6HJMsb",
+			PlayerId: "qUQkST8CendYA3baHNoPjk",
+			Time:     0,
+			Item:     entity.ListDatum{Word: "HETAERA", Score: 91, Probability: 1},
+		},
+	})
 	ustore.(*user.DBStore).Disconnect()
+	lstore.(*stats.ListStatStore).Disconnect()
 }
 
 func TestComputeGameStats2(t *testing.T) {
@@ -170,17 +184,34 @@ func TestComputeGameStats2(t *testing.T) {
 	is.NoErr(err)
 
 	ctx := context.WithValue(context.Background(), ConfigCtxKey("config"), &DefaultConfig)
-	stats, err := computeGameStats(ctx, hist, gameReq, variantKey(req), gameEndedEventObj, ustore, lstore)
+	s, err := computeGameStats(ctx, hist, gameReq, variantKey(req), gameEndedEventObj, ustore, lstore)
 	is.NoErr(err)
-	log.Info().Interface("p1list", stats.PlayerOneData[entity.BINGOS_STAT].List).Msg("--")
-	log.Info().Interface("p2list", stats.PlayerTwoData[entity.BINGOS_STAT].List).Msg("--")
 
-	// Fix this once list separation is complete
-	/*	is.Equal(stats.PlayerOneData[entity.BINGOS_STAT].List, []*entity.ListItem{
-			{Word: "STYMING", Score: 70, Probability: 1, GameId: "ycj5de5gArFF3ap76JyiUA"}})
-		is.Equal(stats.PlayerTwoData[entity.BINGOS_STAT].List, []*entity.ListItem{
-			{Word: "UNITERS", Score: 68, Probability: 1, GameId: "ycj5de5gArFF3ap76JyiUA"}})*/
+	pkgstats.Finalize(s, lstore, []string{"ycj5de5gArFF3ap76JyiUA"},
+		"xjCWug7EZtDxDHX5fRZTLo", "qUQkST8CendYA3baHNoPjk",
+	)
+	log.Info().Interface("bingos", s.PlayerOneData[entity.BINGOS_STAT].List).Msg("player one bingos")
+
+	is.Equal(s.PlayerOneData[entity.BINGOS_STAT].List, []*entity.ListItem{
+		{
+			GameId:   "ycj5de5gArFF3ap76JyiUA",
+			PlayerId: "xjCWug7EZtDxDHX5fRZTLo",
+			Time:     0,
+			Item:     entity.ListDatum{Word: "STYMING", Score: 70, Probability: 1},
+		},
+	})
+
+	is.Equal(s.PlayerTwoData[entity.BINGOS_STAT].List, []*entity.ListItem{
+		{
+			GameId:   "ycj5de5gArFF3ap76JyiUA",
+			PlayerId: "qUQkST8CendYA3baHNoPjk",
+			Time:     0,
+			Item:     entity.ListDatum{Word: "UNITERS", Score: 68, Probability: 1},
+		},
+	})
+
 	ustore.(*user.DBStore).Disconnect()
+	lstore.(*stats.ListStatStore).Disconnect()
 
 }
 
@@ -215,10 +246,26 @@ func TestComputePlayerStats(t *testing.T) {
 
 	stats0, ok := u0.Profile.Stats.Data["CSW19.classic.ultrablitz"]
 	is.True(ok)
-	// Fix this once list separation is complete
-	/*	is.Equal(stats0.PlayerOneData[entity.BINGOS_STAT].List, []*entity.ListItem{
-		{Word: "PARDINE", Score: 76, Probability: 1, GameId: "m5ktbp4qPVTqaAhg6HJMsb"},
-		{Word: "HETAERA", Score: 91, Probability: 1, GameId: "m5ktbp4qPVTqaAhg6HJMsb"}})*/
+
+	err = pkgstats.Finalize(stats0, lstore, []string{"m5ktbp4qPVTqaAhg6HJMsb"},
+		"qUQkST8CendYA3baHNoPjk", "xjCWug7EZtDxDHX5fRZTLo",
+	)
+	is.NoErr(err)
+
+	is.Equal(stats0.PlayerOneData[entity.BINGOS_STAT].List, []*entity.ListItem{
+		{
+			GameId:   "m5ktbp4qPVTqaAhg6HJMsb",
+			PlayerId: "qUQkST8CendYA3baHNoPjk",
+			Time:     0,
+			Item:     entity.ListDatum{Word: "PARDINE", Score: 76, Probability: 1},
+		},
+		{
+			GameId:   "m5ktbp4qPVTqaAhg6HJMsb",
+			PlayerId: "qUQkST8CendYA3baHNoPjk",
+			Time:     0,
+			Item:     entity.ListDatum{Word: "HETAERA", Score: 91, Probability: 1},
+		},
+	})
 
 	is.Equal(stats0.PlayerOneData[entity.WINS_STAT].Total, 1)
 
@@ -226,7 +273,7 @@ func TestComputePlayerStats(t *testing.T) {
 	is.True(ok)
 	is.Equal(stats1.PlayerOneData[entity.WINS_STAT].Total, 0)
 	ustore.(*user.DBStore).Disconnect()
-
+	lstore.(*stats.ListStatStore).Disconnect()
 }
 
 func TestComputePlayerStatsMultipleGames(t *testing.T) {
@@ -264,23 +311,55 @@ func TestComputePlayerStatsMultipleGames(t *testing.T) {
 	is.Equal(stats0.PlayerOneData[entity.WINS_STAT].Total, 1)
 
 	log.Debug().Interface("li", stats0.PlayerOneData[entity.BINGOS_STAT].List).Msg("--")
-	// Fix this once list separation is complete
-	/*	is.Equal(stats0.PlayerOneData[entity.BINGOS_STAT].List, []*entity.ListItem{
-		{Word: "PARDINE", Score: 76, Probability: 1, GameId: "m5ktbp4qPVTqaAhg6HJMsb"},
-		{Word: "HETAERA", Score: 91, Probability: 1, GameId: "m5ktbp4qPVTqaAhg6HJMsb"},
-		{Word: "UNITERS", Score: 68, Probability: 1, GameId: "ycj5de5gArFF3ap76JyiUA"},
-	})*/
+	err = pkgstats.Finalize(stats0, lstore, []string{
+		// Aggregate across two games
+		"m5ktbp4qPVTqaAhg6HJMsb", "ycj5de5gArFF3ap76JyiUA"},
+		// Mina then cesar4
+		"qUQkST8CendYA3baHNoPjk", "xjCWug7EZtDxDHX5fRZTLo",
+	)
+	is.NoErr(err)
+
+	is.Equal(stats0.PlayerOneData[entity.BINGOS_STAT].List, []*entity.ListItem{
+		{
+			GameId:   "m5ktbp4qPVTqaAhg6HJMsb",
+			PlayerId: "qUQkST8CendYA3baHNoPjk",
+			Time:     0,
+			Item:     entity.ListDatum{Word: "PARDINE", Score: 76, Probability: 1},
+		},
+		{
+			GameId:   "m5ktbp4qPVTqaAhg6HJMsb",
+			PlayerId: "qUQkST8CendYA3baHNoPjk",
+			Time:     0,
+			Item:     entity.ListDatum{Word: "HETAERA", Score: 91, Probability: 1},
+		},
+		{
+			GameId:   "ycj5de5gArFF3ap76JyiUA",
+			PlayerId: "qUQkST8CendYA3baHNoPjk",
+			Time:     0,
+			Item:     entity.ListDatum{Word: "UNITERS", Score: 68, Probability: 1},
+		},
+	})
 
 	stats1, ok := u1.Profile.Stats.Data["CSW19.classic.ultrablitz"]
 	is.True(ok)
-	// Fix this once list separation is complete
-	/*	is.Equal(stats1.PlayerOneData[entity.BINGOS_STAT].List, []*entity.ListItem{
-		{Word: "STYMING", Score: 70, Probability: 1, GameId: "ycj5de5gArFF3ap76JyiUA"},
-	})*/
-	// scores
+
+	err = pkgstats.Finalize(stats1, lstore, []string{
+		"m5ktbp4qPVTqaAhg6HJMsb", "ycj5de5gArFF3ap76JyiUA",
+	},
+		// cesar4 then mina
+		"xjCWug7EZtDxDHX5fRZTLo", "qUQkST8CendYA3baHNoPjk")
+
+	is.Equal(stats1.PlayerOneData[entity.BINGOS_STAT].List, []*entity.ListItem{
+		{
+			GameId:   "ycj5de5gArFF3ap76JyiUA",
+			PlayerId: "xjCWug7EZtDxDHX5fRZTLo",
+			Time:     0,
+			Item:     entity.ListDatum{Word: "STYMING", Score: 70, Probability: 1},
+		},
+	})
+
 	is.Equal(stats1.PlayerOneData[entity.SCORE_STAT].Total, 307)
-	// wins
 	is.Equal(stats1.PlayerOneData[entity.WINS_STAT].Total, 1)
 	ustore.(*user.DBStore).Disconnect()
-
+	lstore.(*stats.ListStatStore).Disconnect()
 }
