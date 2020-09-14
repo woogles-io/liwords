@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Button, Modal, notification } from 'antd';
+import { Button, Modal, notification, Tooltip } from 'antd';
 import { SyncOutlined } from '@ant-design/icons';
 import axios from 'axios';
 
@@ -35,6 +35,7 @@ import { PlayerMetadata, GCGResponse } from './game_info';
 // The frame atop is 24 height
 // The frames on the sides are 24 in width, surrounded by a 14 pix gutter
 const EnterKey = 'Enter';
+const colors = require('../base.scss');
 
 type Props = {
   username: string;
@@ -353,9 +354,17 @@ export const BoardPanel = React.memo((props: Props) => {
       />
       {!gameEndMessage ? (
         <div className="rack-container">
-          <Button shape="circle" type="primary" onClick={recallTiles}>
-            &#8595;
-          </Button>
+          <Tooltip
+            title="Reset Rack"
+            placement="bottomRight"
+            mouseEnterDelay={0.1}
+            mouseLeaveDelay={0.01}
+            color={colors.colorPrimary}
+          >
+            <Button shape="circle" type="primary" onClick={recallTiles}>
+              &#8595;
+            </Button>
+          </Tooltip>
           <Rack
             letters={displayedRack}
             grabbable
@@ -367,12 +376,20 @@ export const BoardPanel = React.memo((props: Props) => {
               swapRackTiles(indexA, indexB);
             }}
           />
-          <Button
-            shape="circle"
-            icon={<SyncOutlined />}
-            type="primary"
-            onClick={shuffleTiles}
-          />
+          <Tooltip
+            title="Shuffle"
+            placement="bottomLeft"
+            mouseEnterDelay={0.1}
+            mouseLeaveDelay={0.01}
+            color={colors.colorPrimary}
+          >
+            <Button
+              shape="circle"
+              icon={<SyncOutlined />}
+              type="primary"
+              onClick={shuffleTiles}
+            />
+          </Tooltip>
         </div>
       ) : (
         <GameEndMessage message={gameEndMessage} />

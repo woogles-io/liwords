@@ -1,5 +1,4 @@
 @import '../base.scss';
-
 .section-head {
   position: relative;
   top: -1px;
@@ -12,91 +11,101 @@
     margin-bottom: 0;
   }
 }
-p {
-  @include type-default;
-  font-weight: 500;
-  line-height: 1.5em;
-}
+.bios {
 
-.intro {
-  margin: 0 auto;
-  max-width: $screen-mobile-min;
-  padding: 12px 12px 48px;
-  h4 {
-    color: $color-secondary;
-  }
-  p + h4 {
-    margin-top: 36px;
-  }
   p {
-    margin-bottom: 0.3em;
+    @include type-default;
+    font-weight: 500;
+    line-height: 1.5em;
   }
-}
-
-.bio {
-  background: $color-secondary-lighter;
-  .container {
-    @include container();
-    display: flex;
-    align-items: flex-start;
+  .intro {
+    margin: 0 auto;
+    max-width: $screen-mobile-min;
+    padding: 12px 12px 48px;
+    h4 {
+      color: $color-secondary;
+    }
+    p + h4 {
+      margin-top: 36px;
+    }
+    p {
+      margin-bottom: 0.3em;
+    }
   }
-  img {
-    min-width: 380px;
-    width: 380px;
-    height: 380px;
-  }
-  h3 {
-    color: $color-secondary;
-    font-size: 24px;
-    margin-bottom: 0.5em;
-  }
-  .team-info {
-    padding: 24px 0 0 24px;
-  }
-}
-.ant-row:nth-child(odd) .bio {
-  background: $color-primary-light;
-  h3 {
-    color: $color-primary-dark;
-    font-size: 21px;
-    margin-bottom: 0.5em;
-  }
-  img {
-    order: 2;
-  }
-
-  .team-info {
-    padding: 24px 24px 0 0;
-    text-align: right;
-  }
-}
-
-@media (min-width: $screen-tablet-min) {
   .bio {
+    background: $color-secondary-lighter;
+    .container {
+      @include container();
+      display: flex;
+      align-items: flex-start;
+    }
     img {
-      min-width: 420px;
-      width: 420px;
-      height: 420px;
+      min-width: 380px;
+      width: 380px;
+      height: 380px;
+    }
+    h3 {
+      color: $color-secondary;
+      font-size: 24px;
+      margin-bottom: 0.5em;
     }
     .team-info {
-      padding: 60px 0 0 60px;
+      padding: 24px 0 0 24px;
     }
   }
   .ant-row:nth-child(odd) .bio {
+    background: $color-primary-light;
+    h3 {
+      color: $color-primary-dark;
+      font-size: 21px;
+      margin-bottom: 0.5em;
+    }
+    img {
+      order: 2;
+    }
+
     .team-info {
-      padding: 60px 60px 0 0;
+      padding: 24px 24px 0 0;
+      text-align: right;
+    }
+  }
+}
+
+
+
+
+
+
+@media (min-width: $screen-tablet-min) {
+  .bios {
+    .bio {
+      img {
+        min-width: 420px;
+        width: 420px;
+        height: 420px;
+      }
+      .team-info {
+        padding: 60px 0 0 60px;
+      }
+    }
+    .ant-row:nth-child(odd) .bio {
+      .team-info {
+        padding: 60px 60px 0 0;
+      }
     }
   }
 }
 
 @media (min-width: $screen-laptop-min) {
-  p {
-    line-height: 2em;
-  }
-  .bio {
-    h3 {
-      font-size: 24px;
-      margin-bottom: 1em;
+  .bios {
+    p {
+      line-height: 2em;
+    }
+    .bio {
+      h3 {
+        font-size: 24px;
+        margin-bottom: 1em;
+      }
     }
   }
 }

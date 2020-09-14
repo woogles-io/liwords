@@ -29,6 +29,7 @@ $color-board-tls: #3b88ca;
 $color-board-empty: white;
 
 $color-gray-middle: #bebebe;
+$color-gray-dark: #414141;
 
 // Magic that makes variables available to the tsx code
 :export {
@@ -37,6 +38,8 @@ $color-gray-middle: #bebebe;
   colorSecondaryLight: $color-secondary-light;
 
   colorPrimary: $color-primary-dark;
+  colorPrimaryMedium: $color-primary-midDark;
+  colorPrimaryLight: $color-primary-light;
 
   colorBoardDLS: $color-board-dls;
   colorBoardDWS: $color-board-dws;
@@ -58,7 +61,7 @@ $font-deco: 'Fjalla One', sans-serif;
 $font-default: 'Muli', sans-serif;
 $font-monospaced: 'Roboto Mono', monospace;
 
-$tile-size-mobile: 40px;
+$tile-size-mobile: 34px;
 $tile-size-tablet: $tile-size-mobile;
 $tile-size-laptop:  34px;
 $tile-size-desktop: 44px;

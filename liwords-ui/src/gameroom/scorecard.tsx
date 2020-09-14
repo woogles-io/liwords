@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef } from 'react';
+import React, { ReactNode, useEffect, useMemo, useRef } from 'react';
 import { Card } from 'antd';
 import { GameEvent } from '../gen/macondo/api/proto/macondo/macondo_pb';
 import { Board } from '../utils/cwgame/board';
@@ -27,8 +27,9 @@ type MoveEntityObj = {
   player: Partial<PlayerMetadata>;
   coords: string;
   timeRemaining: string;
+  moveType: string | ReactNode;
   rack: string;
-  play: string;
+  play: string | ReactNode;
   score: string;
   oldScore: number;
   cumulative: number;
@@ -40,22 +41,34 @@ const displaySummary = (evt: GameEvent, board: Board) => {
   // later on.
   switch (evt.getType()) {
     case GameEvent.Type.EXCHANGE:
-      return `Exch. ${evt.getExchanged()}`;
+      return <span className="exchanged">-{evt.getExchanged()}</span>;
 
     case GameEvent.Type.PASS:
-      return 'Passed.';
+      return <span className="pass">Passed turn</span>;
 
     case GameEvent.Type.TILE_PLACEMENT_MOVE:
       return tilePlacementEventDisplay(evt, board);
-
     case GameEvent.Type.UNSUCCESSFUL_CHALLENGE_TURN_LOSS:
-      return 'Challenged!';
+      return <span className="challenge unsuccessful">Challenged</span>;
     case GameEvent.Type.END_RACK_PENALTY:
-      return '(Final rack pts.)';
+      return <span className="final-rack">Tiles on rack</span>;
     case GameEvent.Type.TIME_PENALTY:
-      return '(Time penalty)';
+      return <span className="time-penalty">Time penalty</span>;
   }
   return '';
+};
+
+const displayType = (evt: GameEvent) => {
+  switch (evt.getType()) {
+    case GameEvent.Type.EXCHANGE:
+      return <span className="exchanged">EXCH</span>;
+    case GameEvent.Type.CHALLENGE:
+    case GameEvent.Type.CHALLENGE_BONUS:
+    case GameEvent.Type.UNSUCCESSFUL_CHALLENGE_TURN_LOSS:
+      return <span className="challenge">&nbsp;</span>;
+    default:
+      return <span className="other">&nbsp;</span>;
+  }
 };
 
 const ScorecardTurn = (props: turnProps) => {
@@ -76,6 +89,7 @@ const ScorecardTurn = (props: turnProps) => {
       play: displaySummary(evts[0], props.board),
       score: `${evts[0].getScore()}`,
       lostScore: evts[0].getLostScore(),
+      moveType: displayType(evts[0]),
       cumulative: evts[0].getCumulative(),
       oldScore: evts[0].getLostScore()
         ? evts[0].getCumulative() + evts[0].getLostScore()
@@ -84,6 +98,7 @@ const ScorecardTurn = (props: turnProps) => {
     if (evts.length === 1) {
       return turn;
     }
+    console.log(evts[1].getType());
     // Otherwise, we have to make some modifications.
     if (evts[1].getType() === GameEvent.Type.PHONY_TILES_RETURNED) {
       turn.score = '0';
@@ -117,19 +132,24 @@ const ScorecardTurn = (props: turnProps) => {
       <div className="turn">
         <PlayerAvatar player={memoizedTurn.player} />
         <div className="coords-time">
-          <strong>{memoizedTurn.coords}</strong> <br />
-          {memoizedTurn.timeRemaining}
+          {memoizedTurn.coords ? (
+            <p className="coord">{memoizedTurn.coords}</p>
+          ) : (
+            <p className="move-type">{memoizedTurn.moveType}</p>
+          )}
+          <p className="time-left">{memoizedTurn.timeRemaining}</p>
         </div>
         <div className="play">
-          <strong>{memoizedTurn.play}</strong> <br />
-          {memoizedTurn.rack}
+          <p className="main-word">{memoizedTurn.play}</p>
+          <p>{memoizedTurn.rack}</p>
         </div>
         <div className="scores">
-          {memoizedTurn.lostScore > 0
-            ? `${memoizedTurn.oldScore} - ${memoizedTurn.lostScore}`
-            : `${memoizedTurn.oldScore} + ${memoizedTurn.score}`}
-          <br />
-          <strong>{memoizedTurn.cumulative}</strong>
+          <p className="score-change">
+            {memoizedTurn.lostScore > 0
+              ? `${memoizedTurn.oldScore} - ${memoizedTurn.lostScore}`
+              : `${memoizedTurn.oldScore} + ${memoizedTurn.score}`}
+          </p>
+          <p className="cumulative">{memoizedTurn.cumulative}</p>
         </div>
       </div>
     </>
