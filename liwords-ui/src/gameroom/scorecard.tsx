@@ -111,20 +111,20 @@ const ScorecardTurn = (props: turnProps) => {
         </>
       );
       turn.rack = 'Play is invalid';
-    } else if (evts[1].getType() === GameEvent.Type.CHALLENGE_BONUS) {
-      turn.score = '0';
-      turn.cumulative = evts[1].getCumulative();
-      turn.play = (
-        <>
-          <span className="challenge unsuccessful">Challenge!</span>
-          <span className="main-word">
-            {displaySummary(evts[0], props.board)}
-          </span>
-        </>
-      );
-      turn.rack = `Play is valid ${evts[0].getRack()}`;
     } else {
       // Otherwise, just add/subtract as needed.
+      if (evts[1].getType() === GameEvent.Type.CHALLENGE_BONUS) {
+        turn.cumulative = evts[1].getCumulative();
+        turn.play = (
+          <>
+            <span className="challenge unsuccessful">Challenge!</span>
+            <span className="main-word">
+              {displaySummary(evts[0], props.board)}
+            </span>
+          </>
+        );
+        turn.rack = `Play is valid ${evts[0].getRack()}`;
+      }
       for (let i = 1; i < evts.length; i++) {
         switch (evts[i].getType()) {
           case GameEvent.Type.CHALLENGE_BONUS:
