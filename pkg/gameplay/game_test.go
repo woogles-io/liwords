@@ -48,13 +48,13 @@ var DefaultConfig = macondoconfig.Config{
 
 // Just dummy info to test that rating stats work
 var gameEndedEventObj = &pb.GameEndedEvent{
-	Scores: map[string]int32{"Chump": 0,
-		"Bozo": 0},
-	NewRatings: map[string]int32{"Chump": 0,
-		"Bozo": 0},
+	Scores: map[string]int32{"cesar4": 1500,
+		"Mina": 1800},
+	NewRatings: map[string]int32{"cesar4": 1500,
+		"Mina": 1800},
 	EndReason: pb.GameEndReason_STANDARD,
-	Winner:    "Chump",
-	Loser:     "Bozo",
+	Winner:    "cesar4",
+	Loser:     "Mina",
 	Tie:       false,
 }
 
@@ -161,6 +161,17 @@ func TestComputeGameStats(t *testing.T) {
 			Item:     entity.ListDatum{Word: "HETAERA", Score: 91, Probability: 1},
 		},
 	})
+	log.Info().Interface("ratings", s.PlayerOneData[entity.RATINGS_STAT].List).Msg("player rating")
+
+	is.Equal(s.PlayerOneData[entity.RATINGS_STAT].List, []*entity.ListItem{
+		{
+			GameId:   "m5ktbp4qPVTqaAhg6HJMsb",
+			PlayerId: "qUQkST8CendYA3baHNoPjk",
+			Time:     0,
+			Item:     entity.ListDatum{Rating: 1800, Variant: "CSW19.classic.regular"},
+		},
+	})
+
 	ustore.(*user.DBStore).Disconnect()
 	lstore.(*stats.ListStatStore).Disconnect()
 }
