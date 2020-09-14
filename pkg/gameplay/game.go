@@ -23,6 +23,7 @@ import (
 
 	"github.com/domino14/liwords/pkg/config"
 	"github.com/domino14/liwords/pkg/entity"
+	"github.com/domino14/liwords/pkg/stats"
 	"github.com/domino14/liwords/pkg/user"
 	pb "github.com/domino14/liwords/rpc/api/proto/realtime"
 )
@@ -197,7 +198,8 @@ func players(entGame *entity.Game) []string {
 }
 
 func handleChallenge(ctx context.Context, entGame *entity.Game,
-	userStore user.Store, timeRemaining int, challengerID string) error {
+	userStore user.Store, listStatStore stats.ListStatStore,
+	timeRemaining int, challengerID string) error {
 	if entGame.ChallengeRule() == macondopb.ChallengeRule_VOID {
 		// The front-end shouldn't even show the button.
 		return errors.New("challenges not acceptable in void")
@@ -239,14 +241,14 @@ func handleChallenge(ctx context.Context, entGame *entity.Game,
 	}
 
 	if entGame.Game.Playing() == macondopb.PlayState_GAME_OVER {
-		checkGameOverAndModifyScores(ctx, entGame, userStore)
+		checkGameOverAndModifyScores(ctx, entGame, userStore, listStatStore)
 	}
 
 	return nil
 }
 
 func PlayMove(ctx context.Context, entGame *entity.Game, userStore user.Store,
-	userID string, onTurn, timeRemaining int, m *move.Move) error {
+	listStatStore stats.ListStatStore, userID string, onTurn, timeRemaining int, m *move.Move) error {
 
 	log.Debug().Msg("validating")
 
@@ -257,7 +259,7 @@ func PlayMove(ctx context.Context, entGame *entity.Game, userStore user.Store,
 
 	if m.Action() == move.MoveTypeChallenge {
 		// Handle in another way
-		return handleChallenge(ctx, entGame, userStore, timeRemaining, userID)
+		return handleChallenge(ctx, entGame, userStore, listStatStore, timeRemaining, userID)
 	}
 
 	oldTurnLength := len(entGame.Game.History().Events)
@@ -308,14 +310,14 @@ func PlayMove(ctx context.Context, entGame *entity.Game, userStore user.Store,
 		entGame.SendChange(wrapped)
 	}
 	if playing == macondopb.PlayState_GAME_OVER {
-		checkGameOverAndModifyScores(ctx, entGame, userStore)
+		checkGameOverAndModifyScores(ctx, entGame, userStore, listStatStore)
 	}
 	return nil
 }
 
 // HandleEvent handles a gameplay event from the socket
-func HandleEvent(ctx context.Context, gameStore GameStore, userStore user.Store, userID string,
-	cge *pb.ClientGameplayEvent) (*entity.Game, error) {
+func HandleEvent(ctx context.Context, gameStore GameStore, userStore user.Store,
+	listStatStore stats.ListStatStore, userID string, cge *pb.ClientGameplayEvent) (*entity.Game, error) {
 
 	// XXX: VERIFY THAT THE CLIENT GAME ID CORRESPONDS TO THE GAME
 	// THE PLAYER IS PLAYING!
@@ -342,7 +344,7 @@ func HandleEvent(ctx context.Context, gameStore GameStore, userStore user.Store,
 		// Game is over!
 		log.Debug().Msg("got-move-too-late")
 		// Basically skip to the bottom and exit.
-		return entGame, setTimedOut(ctx, entGame, onTurn, gameStore, userStore)
+		return entGame, setTimedOut(ctx, entGame, onTurn, gameStore, userStore, listStatStore)
 	}
 
 	log.Debug().Msg("going to turn into a macondo gameevent")
@@ -353,7 +355,7 @@ func HandleEvent(ctx context.Context, gameStore GameStore, userStore user.Store,
 		return entGame, err
 	}
 
-	err = PlayMove(ctx, entGame, userStore, userID, onTurn, timeRemaining, m)
+	err = PlayMove(ctx, entGame, userStore, listStatStore, userID, onTurn, timeRemaining, m)
 	if err != nil {
 		return entGame, err
 	}
@@ -373,7 +375,7 @@ func HandleEvent(ctx context.Context, gameStore GameStore, userStore user.Store,
 // TimedOut gets called when the client thinks the user's time ran out. We
 // verify that that is actually the case.
 func TimedOut(ctx context.Context, gameStore GameStore, userStore user.Store,
-	timedout string, gameID string) error {
+	listStatStore stats.ListStatStore, timedout string, gameID string) error {
 	// XXX: VERIFY THAT THE GAME ID is the client's current game!!
 	// Note: we can get this event multiple times; the opponent and the player on turn
 	// both send it.
@@ -401,7 +403,7 @@ func TimedOut(ctx context.Context, gameStore GameStore, userStore user.Store,
 	}
 	// Ok, the time did run out after all.
 
-	return setTimedOut(ctx, entGame, onTurn, gameStore, userStore)
+	return setTimedOut(ctx, entGame, onTurn, gameStore, userStore, listStatStore)
 }
 
 // sanitizeEvent removes rack information from the event; it is meant to be
@@ -423,12 +425,12 @@ func statsForUser(ctx context.Context, id string, userStore user.Store,
 	if err != nil {
 		return nil, err
 	}
-	stats, ok := u.Profile.Stats.Data[variantKey]
+	userStats, ok := u.Profile.Stats.Data[variantKey]
 	if !ok {
 		log.Debug().Str("variantKey", string(variantKey)).Str("pid", id).Msg("instantiating new; no data for variant")
 		// The second user ID does not matter; this is the per user stat.
-		stats = entity.InstantiateNewStats(id, "")
+		userStats = stats.InstantiateNewStats(id, "")
 	}
 
-	return stats, nil
+	return userStats, nil
 }

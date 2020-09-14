@@ -199,6 +199,8 @@ message GameEndedEvent {
   string loser = 5;
   // If it was a tie, the winner and loser above can be interchanged.
   bool tie = 6;
+  // Time that the game ended
+  int64 time = 7;
 }
 
 // A GameHistoryRefresher is sent to both players when the game starts,

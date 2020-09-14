@@ -19,6 +19,7 @@ import (
 	"github.com/domino14/liwords/pkg/config"
 	"github.com/domino14/liwords/pkg/entity"
 	"github.com/domino14/liwords/pkg/gameplay"
+	"github.com/domino14/liwords/pkg/stats"
 	"github.com/domino14/liwords/pkg/user"
 	macondogame "github.com/domino14/macondo/game"
 
@@ -42,6 +43,7 @@ type Bus struct {
 	gameStore       gameplay.GameStore
 	soughtGameStore gameplay.SoughtGameStore
 	presenceStore   user.PresenceStore
+	listStatStore   stats.ListStatStore
 
 	redisPool *redis.Pool
 
@@ -53,7 +55,7 @@ type Bus struct {
 
 func NewBus(cfg *config.Config, userStore user.Store, gameStore gameplay.GameStore,
 	soughtGameStore gameplay.SoughtGameStore, presenceStore user.PresenceStore,
-	redisPool *redis.Pool) (*Bus, error) {
+	listStatStore stats.ListStatStore, redisPool *redis.Pool) (*Bus, error) {
 
 	natsconn, err := nats.Connect(cfg.NatsURL)
 
@@ -66,6 +68,7 @@ func NewBus(cfg *config.Config, userStore user.Store, gameStore gameplay.GameSto
 		gameStore:       gameStore,
 		soughtGameStore: soughtGameStore,
 		presenceStore:   presenceStore,
+		listStatStore:   listStatStore,
 		subscriptions:   []*nats.Subscription{},
 		subchans:        map[string]chan *nats.Msg{},
 		config:          cfg,
@@ -285,7 +288,7 @@ func (b *Bus) handleBotMove(ctx context.Context, g *entity.Game) {
 			timeRemaining := g.TimeRemaining(onTurn)
 
 			m := macondogame.MoveFromEvent(r.Move, g.Alphabet(), g.Board())
-			err = gameplay.PlayMove(ctx, g, b.userStore, userID, onTurn, timeRemaining, m)
+			err = gameplay.PlayMove(ctx, g, b.userStore, b.listStatStore, userID, onTurn, timeRemaining, m)
 			if err != nil {
 				log.Err(err).Msg("bot-cant-move-play-error")
 				return
@@ -345,7 +348,8 @@ func (b *Bus) handleNatsPublish(ctx context.Context, subtopics []string, data []
 		}
 		userid := subtopics[2]
 		// subtopics[2] is the user ID of the requester.
-		entGame, err := gameplay.HandleEvent(ctx, b.gameStore, b.userStore, userid, evt)
+		entGame, err := gameplay.HandleEvent(ctx, b.gameStore, b.userStore, b.listStatStore,
+			userid, evt)
 		if err != nil {
 			return err
 		}
@@ -367,7 +371,7 @@ func (b *Bus) handleNatsPublish(ctx context.Context, subtopics []string, data []
 		if err != nil {
 			return err
 		}
-		return gameplay.TimedOut(ctx, b.gameStore, b.userStore, evt.UserId, evt.GameId)
+		return gameplay.TimedOut(ctx, b.gameStore, b.userStore, b.listStatStore, evt.UserId, evt.GameId)
 
 	case "initRealmInfo":
 		evt := &pb.InitRealmInfo{}
@@ -947,7 +951,8 @@ func (b *Bus) adjudicateGames(ctx context.Context) error {
 		onTurn := entGame.Game.PlayerOnTurn()
 		if entGame.TimeRanOut(onTurn) {
 			log.Debug().Str("gid", g.Id).Msg("time-ran-out")
-			err = gameplay.TimedOut(ctx, b.gameStore, b.userStore, entGame.Game.PlayerIDOnTurn(), g.Id)
+			err = gameplay.TimedOut(ctx, b.gameStore, b.userStore,
+				b.listStatStore, entGame.Game.PlayerIDOnTurn(), g.Id)
 			log.Err(err).Msg("gameplay-timed-out")
 		}
 	}
