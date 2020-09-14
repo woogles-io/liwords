@@ -73,7 +73,7 @@ func InstantiateNewStatsWithHistory(filename string, listStatStore ListStatStore
 	}
 
 	req := &realtime.GameRequest{Lexicon: "CSW19",
-		Rules: &realtime.GameRules{BoardLayoutName: "layout",
+		Rules: &realtime.GameRules{BoardLayoutName: entity.CrosswordGame,
 			LetterDistributionName: "letterdist",
 			VariantName:            "classic"},
 

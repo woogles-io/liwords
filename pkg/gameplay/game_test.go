@@ -27,7 +27,7 @@ import (
 var TestDBHost = os.Getenv("TEST_DB_HOST")
 var TestingDBConnStr = "host=" + TestDBHost + " port=5432 user=postgres password=pass sslmode=disable"
 var gameReq = &pb.GameRequest{Lexicon: "CSW19",
-	Rules: &pb.GameRules{BoardLayoutName: "layout",
+	Rules: &pb.GameRules{BoardLayoutName: entity.CrosswordGame,
 		LetterDistributionName: "letterdist",
 		VariantName:            "classic"},
 
