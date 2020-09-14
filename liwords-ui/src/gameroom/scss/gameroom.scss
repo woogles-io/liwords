@@ -47,11 +47,12 @@
     padding: 12px;
   }
   .ant-card-head {
-    min-height: none;
+    min-height: auto;
     .ant-card-head-title,
     .ant-card-extra {
-      padding: 12px 3px;
-      line-height: 1.5em;
+      padding: 6px 3px;
+      font-size: 12px;
+      line-height: 1em;
     }
     .ant-card-extra {
       @include type-default;
@@ -509,7 +510,7 @@
   .ant-card-body {
     padding: 0;
     & > div {
-      max-height: 130px;
+      max-height: 100px;
       padding: 8px 16px 16px;
       overflow-y: auto;
     }
@@ -586,7 +587,11 @@
 }
 @media (min-width: $screen-tablet-min) {
   .play-area {
-    flex: 0 0 55%;
+    flex: 0 0 50%;
+  }
+  .data-area, .chat-area {
+    min-width: 420px;
+    max-width: 420px;
   }
   .board-spaces-container, .board-spaces, .tiles {
     width: $board-size-tablet;
@@ -626,6 +631,19 @@
   }
   .data-area .ant-card {
     margin-bottom: 6px;
+  }
+  .ant-card {
+    .ant-card-head {
+      .ant-card-head-title,
+      .ant-card-extra {
+        padding: 12px 3px;
+        line-height: 1.5em;
+        font-size: 14px;
+      }
+      .ant-card-extra {
+        font-size: 14px;
+      }
+    }
   }
   .play-area {
     flex: 0 0 0;
@@ -692,7 +710,7 @@
         padding: 0;
 
         & > div {
-          max-height: 150px;
+          max-height: 130px;
         }
       }
     }
