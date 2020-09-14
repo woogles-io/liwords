@@ -112,7 +112,6 @@ const ScorecardTurn = (props: turnProps) => {
       );
       turn.rack = 'Play is invalid';
     } else {
-      // Otherwise, just add/subtract as needed.
       if (evts[1].getType() === GameEvent.Type.CHALLENGE_BONUS) {
         turn.cumulative = evts[1].getCumulative();
         turn.play = (
@@ -125,10 +124,11 @@ const ScorecardTurn = (props: turnProps) => {
         );
         turn.rack = `Play is valid ${evts[0].getRack()}`;
       }
+      // Otherwise, just add/subtract as needed.
       for (let i = 1; i < evts.length; i++) {
         switch (evts[i].getType()) {
           case GameEvent.Type.CHALLENGE_BONUS:
-            turn.score = `${turn.score}+${evts[i].getBonus()}`;
+            turn.score = `${turn.score} + ${evts[i].getBonus()}`;
             break;
           // case GameEvent.Type.END_RACK_PENALTY:
           //   turn.score = `${turn.score}-${evts[i].getLostScore()}`;
