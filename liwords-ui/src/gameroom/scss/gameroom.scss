@@ -529,14 +529,26 @@
     display: flex;
     padding: 6px 0;
     justify-content: space-between;
+    p {
+      line-height: 1.2em;
+      margin-bottom: 3px;
+    }
     .coord, .main-word, .cumulative, .exchanged {
       font-weight: 800;
     }
-
-    .pass, .exchanged, .time-penalty, .tiles-left {
+    .main-word {
+      display: block;
+      color: $color-gray-dark;
+    }
+    .pass, .exchanged, .time-penalty, .tiles-left, .challenge {
       color: $color-timer-out-dark;
+      display: inline-block;
+      margin-bottom: 3px;
     }
 
+    .challenge.unsuccessful {
+      color: $color-timer-dark;
+    }
     .coords-time {
       flex: 2;
       min-width: 60px;

@@ -103,7 +103,27 @@ const ScorecardTurn = (props: turnProps) => {
     if (evts[1].getType() === GameEvent.Type.PHONY_TILES_RETURNED) {
       turn.score = '0';
       turn.cumulative = evts[1].getCumulative();
-      turn.play = `(${turn.play})`;
+      turn.play = (
+        <>
+          <span className="challenge successful">Challenge!</span>
+          <span className="main-word">
+            {displaySummary(evts[0], props.board)}
+          </span>
+        </>
+      );
+      turn.rack = 'Play is invalid';
+    } else if (evts[1].getType() === GameEvent.Type.CHALLENGE_BONUS) {
+      turn.score = '0';
+      turn.cumulative = evts[1].getCumulative();
+      turn.play = (
+        <>
+          <span className="challenge unsuccessful">Challenge!</span>
+          <span className="main-word">
+            {displaySummary(evts[0], props.board)}
+          </span>
+        </>
+      );
+      turn.rack = `Play is valid ${evts[0].getRack()}`;
     } else {
       // Otherwise, just add/subtract as needed.
       for (let i = 1; i < evts.length; i++) {
