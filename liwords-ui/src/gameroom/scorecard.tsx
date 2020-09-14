@@ -98,7 +98,6 @@ const ScorecardTurn = (props: turnProps) => {
     if (evts.length === 1) {
       return turn;
     }
-    console.log(evts[1].getType());
     // Otherwise, we have to make some modifications.
     if (evts[1].getType() === GameEvent.Type.PHONY_TILES_RETURNED) {
       turn.score = '0';
