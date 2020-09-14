@@ -1,18 +1,32 @@
 package entity
 
-import (
-	"errors"
-	realtime "github.com/domino14/liwords/rpc/api/proto/realtime"
-	macondoconfig "github.com/domino14/macondo/config"
-	pb "github.com/domino14/macondo/gen/api/proto/macondo"
-	"github.com/rs/zerolog/log"
-)
+// A ListDatum is the individual datum that is stored in a list. It is
+// a sort of "union" of various struct types. Depending on the type of stat,
+// only some of thees fields will be filled in.
+type ListDatum struct {
+	// Used for words
+	Word        string `json:"w,omitempty"`
+	Probability int    `json:"p,omitempty"`
+	// Used for words or games:
+	Score int `json:"s,omitempty"`
+
+	// Used for comments:
+	Comment string `json:"c,omitempty"`
+
+	// Used for mistakes:
+	MistakeType int `json:"t,omitempty"`
+	MistakeSize int `json:"z,omitempty"`
+
+	// Used for ratings:
+	Rating int `json:"r,omitempty"`
+	Variant string `json: "v,omitempty"`
+}
 
 type ListItem struct {
-	Word        string `json:"w"`
-	Probability int    `json:"p"`
-	Score       int    `json:"s"`
-	GameId      string `json:"g"`
+	GameId   string
+	PlayerId string
+	Time     int64
+	Item     ListDatum
 }
 
 type MistakeType string
@@ -83,26 +97,14 @@ const (
 
 const MaxNotableInt = 1000000000
 
-type IncrementInfo struct {
-	cfg                 *macondoconfig.Config
-	req                 *realtime.GameRequest
-	statItem            *StatItem
-	otherPlayerStatItem *StatItem
-	history             *pb.GameHistory
-	eventIndex          int
-	id                  string
-	isPlayerOne         bool
-}
-
 type StatItem struct {
-	Minimum       int                        `json:"-"`
-	Maximum       int                        `json:"-"`
-	Total         int                        `json:"t"`
-	DataType      StatItemType               `json:"-"`
-	IncrementType IncrementType              `json:"-"`
-	List          []*ListItem                `json:"l"`
-	Subitems      map[string]int             `json:"s"`
-	AddFunction   func(*IncrementInfo) error `json:"-"`
+	Name          string         `json:"-"`
+	Minimum       int            `json:"-"`
+	Maximum       int            `json:"-"`
+	Total         int            `json:"t"`
+	IncrementType IncrementType  `json:"-"`
+	List          []*ListItem    `json:"-"`
+	Subitems      map[string]int `json:"s"`
 }
 
 type Stats struct {
@@ -138,6 +140,7 @@ const (
 	MANY_DOUBLE_WORDS_COVERED_STAT         string = "Many Double Word Squares Covered"
 	MISTAKES_STAT                          string = "Mistakes"
 	SCORE_STAT                             string = "Score"
+	RATINGS_STAT                           string = "Ratings"
 	TILES_PLAYED_STAT                      string = "Tiles Played"
 	TIME_STAT                              string = "Time Taken"
 	TRIPLE_TRIPLES_STAT                    string = "Triple Triples"
@@ -157,94 +160,43 @@ const (
 	FOUR_OR_MORE_CONSECUTIVE_BINGOS_STAT   string = "Four or More Consecutive Bingos"
 )
 
-// InstantiateNewStats instantiates a new stats object. playerOneId MUST
-// have gone first in the game.
-func InstantiateNewStats(playerOneId string, playerTwoId string) *Stats {
-	log.Debug().Str("p1id", playerOneId).Str("p2id", playerTwoId).Msg("instantiating new stats.")
-	return &Stats{
-		PlayerOneId:   playerOneId,
-		PlayerTwoId:   playerTwoId,
-		PlayerOneData: instantiatePlayerData(),
-		PlayerTwoData: instantiatePlayerData(),
-		NotableData:   instantiateNotableData()}
-}
-
-func (stats *Stats) AddGame(history *pb.GameHistory, req *realtime.GameRequest, cfg *macondoconfig.Config, id string) error {
-	events := history.GetEvents()
-	for i := 0; i < len(events); i++ {
-		event := events[i]
-		if history.Players[0].Nickname == event.Nickname {
-			err := incrementStatItems(cfg, req, stats.PlayerOneData, stats.PlayerTwoData, history, i, id, false)
-			if err != nil {
-				return err
-			}
-		} else {
-			err := incrementStatItems(cfg, req, stats.PlayerTwoData, stats.PlayerOneData, history, i, id, false)
-			if err != nil {
-				return err
-			}
-		}
-		err := incrementStatItems(cfg, req, stats.NotableData, nil, history, i, id, false)
-		if err != nil {
-			return err
-		}
-	}
-
-	err := incrementStatItems(cfg, req, stats.PlayerOneData, stats.PlayerTwoData, history, -1, id, true)
-	if err != nil {
-		return err
-	}
-
-	err = incrementStatItems(cfg, req, stats.PlayerTwoData, stats.PlayerOneData, history, -1, id, false)
-	if err != nil {
-		return err
-	}
-
-	err = incrementStatItems(cfg, req, stats.NotableData, nil, history, -1, id, false)
-	if err != nil {
-		return err
-	}
-
-	confirmNotableItems(stats.NotableData, id)
-	return nil
-}
-
-func (stats *Stats) AddStats(otherStats *Stats) error {
-
-	if stats.PlayerOneId != otherStats.PlayerOneId && stats.PlayerOneId != otherStats.PlayerTwoId {
-		return errors.New("Stats do not share an identical PlayerOneId")
-	}
-
-	otherPlayerOneData := otherStats.PlayerOneData
-	otherPlayerTwoData := otherStats.PlayerTwoData
-
-	if stats.PlayerOneId == otherStats.PlayerTwoId {
-		otherPlayerOneData = otherStats.PlayerTwoData
-		otherPlayerTwoData = otherStats.PlayerOneData
-	}
-
-	err := combineStatItemMaps(stats.PlayerOneData, otherPlayerOneData)
-
-	if err != nil {
-		return err
-	}
-
-	err = combineStatItemMaps(stats.PlayerTwoData, otherPlayerTwoData)
-
-	if err != nil {
-		return err
-	}
-
-	err = combineStatItemMaps(stats.NotableData, otherStats.NotableData)
-
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func (stats *Stats) Finalize() {
-	finalize(stats.PlayerOneData)
-	finalize(stats.PlayerTwoData)
+var StatName_value = map[string]int{
+	ALL_TRIPLE_LETTERS_COVERED_STAT:        0,
+	ALL_TRIPLE_WORDS_COVERED_STAT:          1,
+	BINGOS_STAT:                            2,
+	CHALLENGED_PHONIES_STAT:                3,
+	CHALLENGES_LOST_STAT:                   4,
+	CHALLENGES_WON_STAT:                    5,
+	COMMENTS_STAT:                          6,
+	DRAWS_STAT:                             7,
+	EXCHANGES_STAT:                         8,
+	FIRSTS_STAT:                            9,
+	GAMES_STAT:                             10,
+	HIGH_GAME_STAT:                         11,
+	HIGH_TURN_STAT:                         12,
+	LOSSES_STAT:                            13,
+	LOW_GAME_STAT:                          14,
+	NO_BINGOS_STAT:                         15,
+	MANY_DOUBLE_LETTERS_COVERED_STAT:       16,
+	MANY_DOUBLE_WORDS_COVERED_STAT:         17,
+	MISTAKES_STAT:                          18,
+	SCORE_STAT:                             19,
+	RATINGS_STAT:                           20,
+	TILES_PLAYED_STAT:                      21,
+	TIME_STAT:                              22,
+	TRIPLE_TRIPLES_STAT:                    23,
+	TURNS_STAT:                             24,
+	TURNS_WITH_BLANK_STAT:                  25,
+	UNCHALLENGED_PHONIES_STAT:              26,
+	VALID_PLAYS_THAT_WERE_CHALLENGED_STAT:  27,
+	VERTICAL_OPENINGS_STAT:                 28,
+	WINS_STAT:                              29,
+	NO_BLANKS_PLAYED_STAT:                  30,
+	HIGH_SCORING_STAT:                      31,
+	COMBINED_HIGH_SCORING_STAT:             32,
+	COMBINED_LOW_SCORING_STAT:              33,
+	ONE_PLAYER_PLAYS_EVERY_POWER_TILE_STAT: 34,
+	ONE_PLAYER_PLAYS_EVERY_E_STAT:          35,
+	MANY_CHALLENGES_STAT:                   36,
+	FOUR_OR_MORE_CONSECUTIVE_BINGOS_STAT:   37,
 }

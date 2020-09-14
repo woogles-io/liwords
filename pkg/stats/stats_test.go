@@ -7,22 +7,21 @@ import (
 	"testing"
 
 	"github.com/domino14/liwords/pkg/entity"
+	statstore "github.com/domino14/liwords/pkg/stores/stats"
 	realtime "github.com/domino14/liwords/rpc/api/proto/realtime"
 	"github.com/domino14/macondo/alphabet"
 	macondoconfig "github.com/domino14/macondo/config"
 	"github.com/domino14/macondo/gaddag"
 	"github.com/domino14/macondo/gcgio"
 	pb "github.com/domino14/macondo/gen/api/proto/macondo"
+	"github.com/jinzhu/gorm"
 	"github.com/matryer/is"
 	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
 )
 
-func TestMain(m *testing.M) {
-	// Let's create the gaddag cache, we need it for word validity tests.
-	gaddag.CreateGaddagCache()
-	zerolog.SetGlobalLevel(zerolog.InfoLevel)
-	os.Exit(m.Run())
-}
+var TestDBHost = os.Getenv("TEST_DB_HOST")
+var TestingDBConnStr = "host=" + TestDBHost + " port=5432 user=postgres password=pass sslmode=disable"
 
 var DefaultConfig = macondoconfig.Config{
 	LexiconPath:               os.Getenv("LEXICON_PATH"),
@@ -31,7 +30,31 @@ var DefaultConfig = macondoconfig.Config{
 	DefaultLetterDistribution: "English",
 }
 
-func InstantiateNewStatsWithHistory(filename string) (*entity.Stats, error) {
+func TestMain(m *testing.M) {
+	// Let's create the gaddag cache, we need it for word validity tests.
+	gaddag.CreateGaddagCache()
+	zerolog.SetGlobalLevel(zerolog.InfoLevel)
+	os.Exit(m.Run())
+}
+
+func recreateDB() {
+	// Create a database.
+	db, err := gorm.Open("postgres", TestingDBConnStr+" dbname=postgres")
+	if err != nil {
+		log.Fatal().Err(err).Msg("error")
+	}
+	defer db.Close()
+	db = db.Exec("DROP DATABASE IF EXISTS liwords_test")
+	if db.Error != nil {
+		log.Fatal().Err(db.Error).Msg("error")
+	}
+	db = db.Exec("CREATE DATABASE liwords_test")
+	if db.Error != nil {
+		log.Fatal().Err(db.Error).Msg("error")
+	}
+}
+
+func InstantiateNewStatsWithHistory(filename string, listStatStore ListStatStore) (*entity.Stats, error) {
 
 	history, err := gcgio.ParseGCG(&DefaultConfig, filename)
 	if err != nil {
@@ -44,25 +67,13 @@ func InstantiateNewStatsWithHistory(filename string) (*entity.Stats, error) {
 		playerOneId = "2"
 		playerTwoId = "1"
 	}
-	stats := entity.InstantiateNewStats(playerOneId, playerTwoId)
+	stats := InstantiateNewStats(playerOneId, playerTwoId)
 	if err != nil {
 		return nil, err
 	}
 
-	/*message GameRequest {
-	  string lexicon = 1;
-	  GameRules rules = 2;
-	  int32 initial_time_seconds = 3;
-	  int32 increment_seconds = 4;
-	  macondo.ChallengeRule challenge_rule = 5;
-	  GameMode game_mode = 6;
-	  RatingMode rating_mode = 7;
-	  string request_id = 8;
-	  int32 max_overtime_minutes = 9;
-	}*/
-
 	req := &realtime.GameRequest{Lexicon: "CSW19",
-		Rules: &realtime.GameRules{BoardLayoutName: "layout",
+		Rules: &realtime.GameRules{BoardLayoutName: entity.CrosswordGame,
 			LetterDistributionName: "letterdist",
 			VariantName:            "classic"},
 
@@ -74,24 +85,36 @@ func InstantiateNewStatsWithHistory(filename string) (*entity.Stats, error) {
 		RequestId:          "yeet",
 		MaxOvertimeMinutes: 10}
 
-	stats.AddGame(history, req, &DefaultConfig, filename)
+	// Just dummy info to test that rating stats work
+	gameEndedEvent := &realtime.GameEndedEvent{
+		Scores: map[string]int32{history.Players[0].Nickname: history.FinalScores[0],
+			history.Players[1].Nickname: history.FinalScores[1]},
+		NewRatings: map[string]int32{history.Players[0].Nickname: int32(1500),
+			history.Players[1].Nickname: int32(1400)},
+		EndReason: realtime.GameEndReason_STANDARD,
+		Winner:    history.Players[0].Nickname,
+		Loser:     history.Players[1].Nickname,
+		Tie:       history.FinalScores[0] != history.FinalScores[1],
+	}
+
+	AddGame(stats, listStatStore, history, req, &DefaultConfig, gameEndedEvent, filename)
 
 	return stats, nil
 }
 
-func JoshNationalsFromGames(useJSON bool) (*entity.Stats, error) {
+func JoshNationalsFromGames(useJSON bool, listStatStore ListStatStore) (*entity.Stats, []string, error) {
 	annotatedGamePrefix := "josh_nationals_round_"
-	stats := entity.InstantiateNewStats("1", "2")
-
+	stats := InstantiateNewStats("1", "2")
+	files := []string{}
 	for i := 1; i <= 31; i++ {
 		annotatedGame := fmt.Sprintf("./testdata/%s%d.gcg", annotatedGamePrefix, i)
-		otherStats, _ := InstantiateNewStatsWithHistory(annotatedGame)
-
+		otherStats, _ := InstantiateNewStatsWithHistory(annotatedGame, listStatStore)
+		files = append(files, annotatedGame)
 		if useJSON {
 			bytes, err := json.Marshal(otherStats)
 			if err != nil {
 				fmt.Println(err)
-				return otherStats, err
+				return otherStats, files, err
 			}
 			// It is assumed that in production the json is stored in a database
 			// and remains untouched until it is retrieved later for stats
@@ -99,25 +122,46 @@ func JoshNationalsFromGames(useJSON bool) (*entity.Stats, error) {
 			var otherStatsFromJSON entity.Stats
 			err = json.Unmarshal(bytes, &otherStatsFromJSON)
 			if err != nil {
-				return otherStats, err
+				return otherStats, files, err
 			}
 			otherStats = &otherStatsFromJSON
 		}
-		stats.AddStats(otherStats)
+		AddStats(stats, otherStats)
 	}
-	return stats, nil
+	return stats, files, nil
+}
+
+func TestStatsFromJson(t *testing.T) {
+	is := is.New(t)
+
+	recreateDB()
+	listStatStore, err := statstore.NewListStatStore(TestingDBConnStr + " dbname=liwords_test")
+	is.NoErr(err)
+	stats, gameIds, err := JoshNationalsFromGames(false, listStatStore)
+	is.NoErr(err)
+	statsJSON, gameIds, err := JoshNationalsFromGames(true, listStatStore)
+	is.NoErr(err)
+
+	err = Finalize(stats, listStatStore, gameIds, "", "")
+	is.NoErr(err)
+	err = Finalize(statsJSON, listStatStore, gameIds, "", "")
+	is.NoErr(err)
+	is.True(isEqual(stats, statsJSON))
+	listStatStore.Disconnect()
 }
 
 func TestStats(t *testing.T) {
-
 	is := is.New(t)
-	stats, error := JoshNationalsFromGames(false)
-	is.True(error == nil)
-	statsJSON, error := JoshNationalsFromGames(true)
-	is.True(error == nil)
-	stats.Finalize()
-	statsJSON.Finalize()
-	is.True(isEqual(stats, statsJSON))
+
+	recreateDB()
+	listStatStore, err := statstore.NewListStatStore(TestingDBConnStr + " dbname=liwords_test")
+	is.NoErr(err)
+	stats, gameIds, err := JoshNationalsFromGames(false, listStatStore)
+	is.NoErr(err)
+
+	err = Finalize(stats, listStatStore, gameIds, "", "")
+	is.NoErr(err)
+
 	// fmt.Println(StatsToString(stats))
 	is.True(stats.PlayerOneData[entity.NO_BINGOS_STAT].Total == 0)
 	is.True(stats.PlayerOneData[entity.BINGOS_STAT].Total == 75)
@@ -187,30 +231,49 @@ func TestStats(t *testing.T) {
 	is.True(len(stats.NotableData[entity.ONE_PLAYER_PLAYS_EVERY_POWER_TILE_STAT].List) == 0)
 	is.True(len(stats.NotableData[entity.ONE_PLAYER_PLAYS_EVERY_E_STAT].List) == 0)
 	is.True(len(stats.NotableData[entity.FOUR_OR_MORE_CONSECUTIVE_BINGOS_STAT].List) == 0)
+	listStatStore.Disconnect()
 }
 
 func TestNotable(t *testing.T) {
 	is := is.New(t)
-	stats := entity.InstantiateNewStats("1", "2")
-	manyDoubleWordsCoveredStats, _ := InstantiateNewStatsWithHistory("./testdata/many_double_words_covered.gcg")
-	allTripleLettersCoveredStats, _ := InstantiateNewStatsWithHistory("./testdata/all_triple_letters_covered.gcg")
-	allTripleWordsCoveredStats, _ := InstantiateNewStatsWithHistory("./testdata/all_triple_words_covered.gcg")
-	combinedHighScoringStats, _ := InstantiateNewStatsWithHistory("./testdata/combined_high_scoring.gcg")
-	combinedLowScoringStats, _ := InstantiateNewStatsWithHistory("./testdata/combined_low_scoring.gcg")
-	everyPowerTileStats, _ := InstantiateNewStatsWithHistory("./testdata/every_power_tile.gcg")
-	everyEStats, _ := InstantiateNewStatsWithHistory("./testdata/every_e.gcg")
-	manyChallengesStats, _ := InstantiateNewStatsWithHistory("./testdata/many_challenges.gcg")
-	fourOrMoreConsecutiveBingosStats, _ := InstantiateNewStatsWithHistory("./testdata/four_or_more_consecutive_bingos.gcg")
+	recreateDB()
 
-	stats.AddStats(manyDoubleWordsCoveredStats)
-	stats.AddStats(allTripleLettersCoveredStats)
-	stats.AddStats(allTripleWordsCoveredStats)
-	stats.AddStats(combinedHighScoringStats)
-	stats.AddStats(combinedLowScoringStats)
-	stats.AddStats(manyChallengesStats)
-	stats.AddStats(fourOrMoreConsecutiveBingosStats)
-	stats.AddStats(everyPowerTileStats)
-	stats.AddStats(everyEStats)
+	stats := InstantiateNewStats("1", "2")
+	listStatStore, err := statstore.NewListStatStore(TestingDBConnStr + " dbname=liwords_test")
+	is.NoErr(err)
+
+	manyDoubleWordsCoveredStats, _ := InstantiateNewStatsWithHistory("./testdata/many_double_words_covered.gcg", listStatStore)
+	allTripleLettersCoveredStats, _ := InstantiateNewStatsWithHistory("./testdata/all_triple_letters_covered.gcg", listStatStore)
+	allTripleWordsCoveredStats, _ := InstantiateNewStatsWithHistory("./testdata/all_triple_words_covered.gcg", listStatStore)
+	combinedHighScoringStats, _ := InstantiateNewStatsWithHistory("./testdata/combined_high_scoring.gcg", listStatStore)
+	combinedLowScoringStats, _ := InstantiateNewStatsWithHistory("./testdata/combined_low_scoring.gcg", listStatStore)
+	everyPowerTileStats, _ := InstantiateNewStatsWithHistory("./testdata/every_power_tile.gcg", listStatStore)
+	everyEStats, _ := InstantiateNewStatsWithHistory("./testdata/every_e.gcg", listStatStore)
+	manyChallengesStats, _ := InstantiateNewStatsWithHistory("./testdata/many_challenges.gcg", listStatStore)
+	fourOrMoreConsecutiveBingosStats, _ := InstantiateNewStatsWithHistory("./testdata/four_or_more_consecutive_bingos.gcg", listStatStore)
+
+	AddStats(stats, manyDoubleWordsCoveredStats)
+	AddStats(stats, allTripleLettersCoveredStats)
+	AddStats(stats, allTripleWordsCoveredStats)
+	AddStats(stats, combinedHighScoringStats)
+	AddStats(stats, combinedLowScoringStats)
+	AddStats(stats, manyChallengesStats)
+	AddStats(stats, fourOrMoreConsecutiveBingosStats)
+	AddStats(stats, everyPowerTileStats)
+	AddStats(stats, everyEStats)
+
+	err = Finalize(stats, listStatStore, []string{
+		"./testdata/many_double_words_covered.gcg",
+		"./testdata/all_triple_letters_covered.gcg",
+		"./testdata/all_triple_words_covered.gcg",
+		"./testdata/combined_high_scoring.gcg",
+		"./testdata/combined_low_scoring.gcg",
+		"./testdata/every_power_tile.gcg",
+		"./testdata/every_e.gcg",
+		"./testdata/many_challenges.gcg",
+		"./testdata/four_or_more_consecutive_bingos.gcg",
+	}, "", "")
+	is.NoErr(err)
 
 	is.True(len(stats.NotableData[entity.MANY_DOUBLE_WORDS_COVERED_STAT].List) == 1)
 	is.True(len(stats.NotableData[entity.ALL_TRIPLE_LETTERS_COVERED_STAT].List) == 1)
@@ -221,6 +284,8 @@ func TestNotable(t *testing.T) {
 	is.True(len(stats.NotableData[entity.ONE_PLAYER_PLAYS_EVERY_POWER_TILE_STAT].List) == 1)
 	is.True(len(stats.NotableData[entity.ONE_PLAYER_PLAYS_EVERY_E_STAT].List) == 1)
 	is.True(len(stats.NotableData[entity.FOUR_OR_MORE_CONSECUTIVE_BINGOS_STAT].List) == 1)
+	listStatStore.Disconnect()
+
 }
 
 func isEqual(statsOne *entity.Stats, statsTwo *entity.Stats) bool {
@@ -316,8 +381,8 @@ func subitemsToString(subitems map[string]int) string {
 
 func listItemToString(listStat []*entity.ListItem) string {
 	s := ""
-	for _, wordItem := range listStat {
-		s += fmt.Sprintf("      %s, %d, %d, %s\n", wordItem.Word, wordItem.Score, wordItem.Probability, wordItem.GameId)
+	for _, item := range listStat {
+		s += fmt.Sprintf("      %s, %s, %d, %v\n", item.GameId, item.PlayerId, item.Time, item.Item)
 	}
 	return s
 }

@@ -18,6 +18,7 @@ import (
 	"github.com/domino14/liwords/pkg/stores/game"
 	"github.com/domino14/liwords/pkg/stores/session"
 	"github.com/domino14/liwords/pkg/stores/soughtgame"
+	"github.com/domino14/liwords/pkg/stores/stats"
 	"github.com/domino14/macondo/alphabet"
 
 	"github.com/domino14/liwords/pkg/registration"
@@ -93,6 +94,10 @@ func main() {
 
 	gameStore := game.NewCache(tmpGameStore)
 	soughtGameStore := soughtgame.NewMemoryStore()
+	listStatStore, err := stats.NewListStatStore(cfg.DBConnString)
+	if err != nil {
+		panic(err)
+	}
 
 	authenticationService := auth.NewAuthenticationService(userStore, sessionStore, cfg.SecretKey, cfg.MailgunKey)
 	registrationService := registration.NewRegistrationService(userStore)
@@ -127,7 +132,7 @@ func main() {
 	presenceStore := user.NewRedisPresenceStore(redisPool)
 	// Handle bus.
 	pubsubBus, err := bus.NewBus(cfg, userStore, gameStore, soughtGameStore,
-		presenceStore, redisPool)
+		presenceStore, listStatStore, redisPool)
 	if err != nil {
 		panic(err)
 	}

@@ -13,6 +13,8 @@ import (
 	"github.com/jinzhu/gorm"
 
 	"github.com/domino14/liwords/pkg/entity"
+	pkgstats "github.com/domino14/liwords/pkg/stats"
+	"github.com/domino14/liwords/pkg/stores/stats"
 	"github.com/domino14/liwords/pkg/stores/user"
 	pkguser "github.com/domino14/liwords/pkg/user"
 	pb "github.com/domino14/liwords/rpc/api/proto/realtime"
@@ -25,7 +27,7 @@ import (
 var TestDBHost = os.Getenv("TEST_DB_HOST")
 var TestingDBConnStr = "host=" + TestDBHost + " port=5432 user=postgres password=pass sslmode=disable"
 var gameReq = &pb.GameRequest{Lexicon: "CSW19",
-	Rules: &pb.GameRules{BoardLayoutName: "layout",
+	Rules: &pb.GameRules{BoardLayoutName: entity.CrosswordGame,
 		LetterDistributionName: "letterdist",
 		VariantName:            "classic"},
 
@@ -44,12 +46,32 @@ var DefaultConfig = macondoconfig.Config{
 	DefaultLetterDistribution: "English",
 }
 
+// Just dummy info to test that rating stats work
+var gameEndedEventObj = &pb.GameEndedEvent{
+	Scores: map[string]int32{"cesar4": 1500,
+		"Mina": 1800},
+	NewRatings: map[string]int32{"cesar4": 1500,
+		"Mina": 1800},
+	EndReason: pb.GameEndReason_STANDARD,
+	Winner:    "cesar4",
+	Loser:     "Mina",
+	Tie:       false,
+}
+
 func userStore(dbURL string) pkguser.Store {
 	ustore, err := user.NewDBStore(TestingDBConnStr + " dbname=liwords_test")
 	if err != nil {
 		log.Fatal().Err(err).Msg("error")
 	}
 	return ustore
+}
+
+func listStatStore(dbURL string) pkgstats.ListStatStore {
+	s, err := stats.NewListStatStore(TestingDBConnStr + " dbname=liwords_test")
+	if err != nil {
+		log.Fatal().Err(err).Msg("error")
+	}
+	return s
 }
 
 func recreateDB() {
@@ -104,6 +126,7 @@ func TestComputeGameStats(t *testing.T) {
 	is := is.New(t)
 	recreateDB()
 	ustore := userStore(TestingDBConnStr + " dbname=liwords_test")
+	lstore := listStatStore(TestingDBConnStr + " dbname=liwords_test")
 
 	histjson, err := ioutil.ReadFile("./testdata/game1/history.json")
 	is.NoErr(err)
@@ -118,18 +141,46 @@ func TestComputeGameStats(t *testing.T) {
 	is.NoErr(err)
 
 	ctx := context.WithValue(context.Background(), ConfigCtxKey("config"), &DefaultConfig)
-	stats, err := computeGameStats(ctx, hist, gameReq, variantKey(req), ustore)
+	s, err := computeGameStats(ctx, hist, gameReq, variantKey(req), gameEndedEventObj, ustore, lstore)
 	is.NoErr(err)
-	is.Equal(stats.PlayerOneData[entity.BINGOS_STAT].List, []*entity.ListItem{
-		{Word: "PARDINE", Score: 76, Probability: 1, GameId: "m5ktbp4qPVTqaAhg6HJMsb"},
-		{Word: "HETAERA", Score: 91, Probability: 1, GameId: "m5ktbp4qPVTqaAhg6HJMsb"}})
+	pkgstats.Finalize(s, lstore, []string{"m5ktbp4qPVTqaAhg6HJMsb"},
+		"qUQkST8CendYA3baHNoPjk", "xjCWug7EZtDxDHX5fRZTLo",
+	)
+
+	is.Equal(s.PlayerOneData[entity.BINGOS_STAT].List, []*entity.ListItem{
+		{
+			GameId:   "m5ktbp4qPVTqaAhg6HJMsb",
+			PlayerId: "qUQkST8CendYA3baHNoPjk",
+			Time:     0,
+			Item:     entity.ListDatum{Word: "PARDINE", Score: 76, Probability: 1},
+		},
+		{
+			GameId:   "m5ktbp4qPVTqaAhg6HJMsb",
+			PlayerId: "qUQkST8CendYA3baHNoPjk",
+			Time:     0,
+			Item:     entity.ListDatum{Word: "HETAERA", Score: 91, Probability: 1},
+		},
+	})
+	log.Info().Interface("ratings", s.PlayerOneData[entity.RATINGS_STAT].List).Msg("player rating")
+
+	is.Equal(s.PlayerOneData[entity.RATINGS_STAT].List, []*entity.ListItem{
+		{
+			GameId:   "m5ktbp4qPVTqaAhg6HJMsb",
+			PlayerId: "qUQkST8CendYA3baHNoPjk",
+			Time:     0,
+			Item:     entity.ListDatum{Rating: 1800, Variant: "CSW19.classic.regular"},
+		},
+	})
+
 	ustore.(*user.DBStore).Disconnect()
+	lstore.(*stats.ListStatStore).Disconnect()
 }
 
 func TestComputeGameStats2(t *testing.T) {
 	is := is.New(t)
 	recreateDB()
 	ustore := userStore(TestingDBConnStr + " dbname=liwords_test")
+	lstore := listStatStore(TestingDBConnStr + " dbname=liwords_test")
 
 	histjson, err := ioutil.ReadFile("./testdata/game2/history.json")
 	is.NoErr(err)
@@ -144,16 +195,34 @@ func TestComputeGameStats2(t *testing.T) {
 	is.NoErr(err)
 
 	ctx := context.WithValue(context.Background(), ConfigCtxKey("config"), &DefaultConfig)
-	stats, err := computeGameStats(ctx, hist, gameReq, variantKey(req), ustore)
+	s, err := computeGameStats(ctx, hist, gameReq, variantKey(req), gameEndedEventObj, ustore, lstore)
 	is.NoErr(err)
-	log.Info().Interface("p1list", stats.PlayerOneData[entity.BINGOS_STAT].List).Msg("--")
-	log.Info().Interface("p2list", stats.PlayerTwoData[entity.BINGOS_STAT].List).Msg("--")
 
-	is.Equal(stats.PlayerOneData[entity.BINGOS_STAT].List, []*entity.ListItem{
-		{Word: "STYMING", Score: 70, Probability: 1, GameId: "ycj5de5gArFF3ap76JyiUA"}})
-	is.Equal(stats.PlayerTwoData[entity.BINGOS_STAT].List, []*entity.ListItem{
-		{Word: "UNITERS", Score: 68, Probability: 1, GameId: "ycj5de5gArFF3ap76JyiUA"}})
+	pkgstats.Finalize(s, lstore, []string{"ycj5de5gArFF3ap76JyiUA"},
+		"xjCWug7EZtDxDHX5fRZTLo", "qUQkST8CendYA3baHNoPjk",
+	)
+	log.Info().Interface("bingos", s.PlayerOneData[entity.BINGOS_STAT].List).Msg("player one bingos")
+
+	is.Equal(s.PlayerOneData[entity.BINGOS_STAT].List, []*entity.ListItem{
+		{
+			GameId:   "ycj5de5gArFF3ap76JyiUA",
+			PlayerId: "xjCWug7EZtDxDHX5fRZTLo",
+			Time:     0,
+			Item:     entity.ListDatum{Word: "STYMING", Score: 70, Probability: 1},
+		},
+	})
+
+	is.Equal(s.PlayerTwoData[entity.BINGOS_STAT].List, []*entity.ListItem{
+		{
+			GameId:   "ycj5de5gArFF3ap76JyiUA",
+			PlayerId: "qUQkST8CendYA3baHNoPjk",
+			Time:     0,
+			Item:     entity.ListDatum{Word: "UNITERS", Score: 68, Probability: 1},
+		},
+	})
+
 	ustore.(*user.DBStore).Disconnect()
+	lstore.(*stats.ListStatStore).Disconnect()
 
 }
 
@@ -161,6 +230,7 @@ func TestComputePlayerStats(t *testing.T) {
 	is := is.New(t)
 	recreateDB()
 	ustore := userStore(TestingDBConnStr + " dbname=liwords_test")
+	lstore := listStatStore(TestingDBConnStr + " dbname=liwords_test")
 
 	histjson, err := ioutil.ReadFile("./testdata/game1/history.json")
 	is.NoErr(err)
@@ -175,7 +245,7 @@ func TestComputePlayerStats(t *testing.T) {
 	is.NoErr(err)
 
 	ctx := context.WithValue(context.Background(), ConfigCtxKey("config"), &DefaultConfig)
-	_, err = computeGameStats(ctx, hist, gameReq, variantKey(req), ustore)
+	_, err = computeGameStats(ctx, hist, gameReq, variantKey(req), gameEndedEventObj, ustore, lstore)
 	is.NoErr(err)
 
 	p0id, p1id := hist.Players[0].UserId, hist.Players[1].UserId
@@ -187,9 +257,26 @@ func TestComputePlayerStats(t *testing.T) {
 
 	stats0, ok := u0.Profile.Stats.Data["CSW19.classic.ultrablitz"]
 	is.True(ok)
+
+	err = pkgstats.Finalize(stats0, lstore, []string{"m5ktbp4qPVTqaAhg6HJMsb"},
+		"qUQkST8CendYA3baHNoPjk", "xjCWug7EZtDxDHX5fRZTLo",
+	)
+	is.NoErr(err)
+
 	is.Equal(stats0.PlayerOneData[entity.BINGOS_STAT].List, []*entity.ListItem{
-		{Word: "PARDINE", Score: 76, Probability: 1, GameId: "m5ktbp4qPVTqaAhg6HJMsb"},
-		{Word: "HETAERA", Score: 91, Probability: 1, GameId: "m5ktbp4qPVTqaAhg6HJMsb"}})
+		{
+			GameId:   "m5ktbp4qPVTqaAhg6HJMsb",
+			PlayerId: "qUQkST8CendYA3baHNoPjk",
+			Time:     0,
+			Item:     entity.ListDatum{Word: "PARDINE", Score: 76, Probability: 1},
+		},
+		{
+			GameId:   "m5ktbp4qPVTqaAhg6HJMsb",
+			PlayerId: "qUQkST8CendYA3baHNoPjk",
+			Time:     0,
+			Item:     entity.ListDatum{Word: "HETAERA", Score: 91, Probability: 1},
+		},
+	})
 
 	is.Equal(stats0.PlayerOneData[entity.WINS_STAT].Total, 1)
 
@@ -197,13 +284,14 @@ func TestComputePlayerStats(t *testing.T) {
 	is.True(ok)
 	is.Equal(stats1.PlayerOneData[entity.WINS_STAT].Total, 0)
 	ustore.(*user.DBStore).Disconnect()
-
+	lstore.(*stats.ListStatStore).Disconnect()
 }
 
 func TestComputePlayerStatsMultipleGames(t *testing.T) {
 	is := is.New(t)
 	recreateDB()
 	ustore := userStore(TestingDBConnStr + " dbname=liwords_test")
+	lstore := listStatStore(TestingDBConnStr + " dbname=liwords_test")
 
 	for _, g := range []string{"game1", "game2"} {
 		histjson, err := ioutil.ReadFile("./testdata/" + g + "/history.json")
@@ -219,7 +307,7 @@ func TestComputePlayerStatsMultipleGames(t *testing.T) {
 		is.NoErr(err)
 
 		ctx := context.WithValue(context.Background(), ConfigCtxKey("config"), &DefaultConfig)
-		_, err = computeGameStats(ctx, hist, gameReq, variantKey(req), ustore)
+		_, err = computeGameStats(ctx, hist, gameReq, variantKey(req), gameEndedEventObj, ustore, lstore)
 		is.NoErr(err)
 	}
 
@@ -234,21 +322,55 @@ func TestComputePlayerStatsMultipleGames(t *testing.T) {
 	is.Equal(stats0.PlayerOneData[entity.WINS_STAT].Total, 1)
 
 	log.Debug().Interface("li", stats0.PlayerOneData[entity.BINGOS_STAT].List).Msg("--")
+	err = pkgstats.Finalize(stats0, lstore, []string{
+		// Aggregate across two games
+		"m5ktbp4qPVTqaAhg6HJMsb", "ycj5de5gArFF3ap76JyiUA"},
+		// Mina then cesar4
+		"qUQkST8CendYA3baHNoPjk", "xjCWug7EZtDxDHX5fRZTLo",
+	)
+	is.NoErr(err)
+
 	is.Equal(stats0.PlayerOneData[entity.BINGOS_STAT].List, []*entity.ListItem{
-		{Word: "PARDINE", Score: 76, Probability: 1, GameId: "m5ktbp4qPVTqaAhg6HJMsb"},
-		{Word: "HETAERA", Score: 91, Probability: 1, GameId: "m5ktbp4qPVTqaAhg6HJMsb"},
-		{Word: "UNITERS", Score: 68, Probability: 1, GameId: "ycj5de5gArFF3ap76JyiUA"},
+		{
+			GameId:   "m5ktbp4qPVTqaAhg6HJMsb",
+			PlayerId: "qUQkST8CendYA3baHNoPjk",
+			Time:     0,
+			Item:     entity.ListDatum{Word: "PARDINE", Score: 76, Probability: 1},
+		},
+		{
+			GameId:   "m5ktbp4qPVTqaAhg6HJMsb",
+			PlayerId: "qUQkST8CendYA3baHNoPjk",
+			Time:     0,
+			Item:     entity.ListDatum{Word: "HETAERA", Score: 91, Probability: 1},
+		},
+		{
+			GameId:   "ycj5de5gArFF3ap76JyiUA",
+			PlayerId: "qUQkST8CendYA3baHNoPjk",
+			Time:     0,
+			Item:     entity.ListDatum{Word: "UNITERS", Score: 68, Probability: 1},
+		},
 	})
 
 	stats1, ok := u1.Profile.Stats.Data["CSW19.classic.ultrablitz"]
 	is.True(ok)
+
+	err = pkgstats.Finalize(stats1, lstore, []string{
+		"m5ktbp4qPVTqaAhg6HJMsb", "ycj5de5gArFF3ap76JyiUA",
+	},
+		// cesar4 then mina
+		"xjCWug7EZtDxDHX5fRZTLo", "qUQkST8CendYA3baHNoPjk")
+
 	is.Equal(stats1.PlayerOneData[entity.BINGOS_STAT].List, []*entity.ListItem{
-		{Word: "STYMING", Score: 70, Probability: 1, GameId: "ycj5de5gArFF3ap76JyiUA"},
+		{
+			GameId:   "ycj5de5gArFF3ap76JyiUA",
+			PlayerId: "xjCWug7EZtDxDHX5fRZTLo",
+			Time:     0,
+			Item:     entity.ListDatum{Word: "STYMING", Score: 70, Probability: 1},
+		},
 	})
-	// scores
+
 	is.Equal(stats1.PlayerOneData[entity.SCORE_STAT].Total, 307)
-	// wins
 	is.Equal(stats1.PlayerOneData[entity.WINS_STAT].Total, 1)
 	ustore.(*user.DBStore).Disconnect()
-
+	lstore.(*stats.ListStatStore).Disconnect()
 }

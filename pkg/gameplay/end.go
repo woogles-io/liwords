@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/domino14/liwords/pkg/entity"
+	"github.com/domino14/liwords/pkg/stats"
 	"github.com/domino14/liwords/pkg/user"
 	pb "github.com/domino14/liwords/rpc/api/proto/realtime"
 	macondoconfig "github.com/domino14/macondo/config"
@@ -13,7 +14,8 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-func checkGameOverAndModifyScores(ctx context.Context, entGame *entity.Game, userStore user.Store) {
+func checkGameOverAndModifyScores(ctx context.Context, entGame *entity.Game,
+	userStore user.Store, listStatStore stats.ListStatStore) {
 	// Figure out why the game ended. Here there are only two options,
 	// standard or six-zero. The game ending on a timeout is handled in
 	// another branch (see setTimedOut above) and resignation/etc will
@@ -24,10 +26,11 @@ func checkGameOverAndModifyScores(ctx context.Context, entGame *entity.Game, use
 	} else {
 		entGame.SetGameEndReason(pb.GameEndReason_CONSECUTIVE_ZEROES)
 	}
-	performEndgameDuties(ctx, entGame, userStore)
+	performEndgameDuties(ctx, entGame, userStore, listStatStore)
 }
 
-func performEndgameDuties(ctx context.Context, g *entity.Game, userStore user.Store) {
+func performEndgameDuties(ctx context.Context, g *entity.Game,
+	userStore user.Store, listStatStore stats.ListStatStore) {
 	evts := []*pb.ServerGameplayEvent{}
 
 	var p0penalty, p1penalty int
@@ -123,7 +126,8 @@ func performEndgameDuties(ctx context.Context, g *entity.Game, userStore user.St
 	g.History().Winner = int32(g.WinnerIdx)
 
 	// Send a gameEndedEvent, which rates the game.
-	wrapped := entity.WrapEvent(gameEndedEvent(ctx, g, userStore),
+	evt := gameEndedEvent(ctx, g, userStore)
+	wrapped := entity.WrapEvent(evt,
 		pb.MessageType_GAME_ENDED_EVENT, g.GameID())
 	// Once the game ends, we do not need to "sanitize" the packets
 	// going to the users anymore. So just send the data to the right
@@ -137,7 +141,8 @@ func performEndgameDuties(ctx context.Context, g *entity.Game, userStore user.St
 	if err != nil {
 		log.Err(err).Msg("getting variant key")
 	} else {
-		gameStats, err := computeGameStats(ctx, g.History(), g.GameReq, variantKey, userStore)
+		gameStats, err := computeGameStats(ctx, g.History(), g.GameReq, variantKey,
+			evt, userStore, listStatStore)
 		if err != nil {
 			log.Err(err).Msg("computing stats")
 		} else {
@@ -153,7 +158,9 @@ func performEndgameDuties(ctx context.Context, g *entity.Game, userStore user.St
 }
 
 func computeGameStats(ctx context.Context, history *macondopb.GameHistory, req *pb.GameRequest,
-	variantKey entity.VariantKey, userStore user.Store) (*entity.Stats, error) {
+	variantKey entity.VariantKey, evt *pb.GameEndedEvent, userStore user.Store,
+	listStatStore stats.ListStatStore) (*entity.Stats, error) {
+
 	// stats := entity.InstantiateNewStats(1, 2)
 	p0id, p1id := history.Players[0].UserId, history.Players[1].UserId
 	if history.SecondWentFirst {
@@ -169,9 +176,9 @@ func computeGameStats(ctx context.Context, history *macondopb.GameHistory, req *
 	config := ctx.Value(ConfigCtxKey("config")).(*macondoconfig.Config)
 
 	// Here, p0 went first and p1 went second, no matter what.
-	gameStats := entity.InstantiateNewStats(p0id, p1id)
+	gameStats := stats.InstantiateNewStats(p0id, p1id)
 
-	err := gameStats.AddGame(history, req, config, history.Uid)
+	err := stats.AddGame(gameStats, listStatStore, history, req, config, evt, history.Uid)
 	if err != nil {
 		return nil, err
 	}
@@ -185,8 +192,8 @@ func computeGameStats(ctx context.Context, history *macondopb.GameHistory, req *
 		}
 	}
 
-	p0NewProfileStats := entity.InstantiateNewStats(p0id, "")
-	p1NewProfileStats := entity.InstantiateNewStats(p1id, "")
+	p0NewProfileStats := stats.InstantiateNewStats(p0id, "")
+	p1NewProfileStats := stats.InstantiateNewStats(p1id, "")
 
 	p0ProfileStats, err := statsForUser(ctx, p0id, userStore, variantKey)
 	if err != nil {
@@ -198,24 +205,23 @@ func computeGameStats(ctx context.Context, history *macondopb.GameHistory, req *
 		return nil, err
 	}
 
-	err = p0NewProfileStats.AddStats(p0ProfileStats)
+	err = stats.AddStats(p0NewProfileStats, p0ProfileStats)
 	if err != nil {
 		return nil, err
 	}
-	err = p1NewProfileStats.AddStats(p1ProfileStats)
+	err = stats.AddStats(p1NewProfileStats, p1ProfileStats)
 	if err != nil {
 		return nil, err
 	}
-	err = p0NewProfileStats.AddStats(gameStats)
+	err = stats.AddStats(p0NewProfileStats, gameStats)
 	if err != nil {
 		return nil, err
 	}
-	err = p1NewProfileStats.AddStats(gameStats)
+	err = stats.AddStats(p1NewProfileStats, gameStats)
 	if err != nil {
 		return nil, err
 	}
-	p0NewProfileStats.Finalize()
-	p1NewProfileStats.Finalize()
+
 	// Save all stats back to the database.
 	err = userStore.SetStats(ctx, p0id, variantKey, p0NewProfileStats)
 	if err != nil {
@@ -229,7 +235,7 @@ func computeGameStats(ctx context.Context, history *macondopb.GameHistory, req *
 }
 
 func setTimedOut(ctx context.Context, entGame *entity.Game, pidx int, gameStore GameStore,
-	userStore user.Store) error {
+	userStore user.Store, listStatStore stats.ListStatStore) error {
 	log.Debug().Interface("playing", entGame.Game.Playing()).Msg("timed out!")
 	entGame.Game.SetPlaying(macondopb.PlayState_GAME_OVER)
 
@@ -237,7 +243,7 @@ func setTimedOut(ctx context.Context, entGame *entity.Game, pidx int, gameStore 
 	entGame.SetGameEndReason(pb.GameEndReason_TIME)
 	entGame.SetWinnerIdx(1 - pidx)
 	entGame.SetLoserIdx(pidx)
-	performEndgameDuties(ctx, entGame, userStore)
+	performEndgameDuties(ctx, entGame, userStore, listStatStore)
 
 	// Store the game back into the store
 	err := gameStore.Set(ctx, entGame)
@@ -286,6 +292,7 @@ func gameEndedEvent(ctx context.Context, g *entity.Game, userStore user.Store) *
 		Winner:     winner,
 		Loser:      loser,
 		Tie:        tie,
+		Time:       g.Timers.TimeOfLastUpdate,
 	}
 
 	log.Debug().Interface("game-ended-event", evt).Msg("game-ended")
