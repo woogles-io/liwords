@@ -319,6 +319,9 @@ ul
 }
 
 @mixin notification {
+  .ant-message {
+    pointer-events: none;
+  }
   .ant-notification, .ant-message {
     .ant-notification-notice, .ant-message-notice-content {
       @include type-default;
