@@ -322,7 +322,9 @@ func combineStatItemMaps(statItems map[string]*entity.StatItem,
 	otherStatItems map[string]*entity.StatItem) error {
 	for key, item := range statItems {
 		itemOther := otherStatItems[key]
-		combineItems(item, itemOther)
+		if itemOther != nil {
+			combineItems(item, itemOther)
+		}
 	}
 	return nil
 }

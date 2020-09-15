@@ -6155,7 +6155,8 @@ proto.liwords.GameEndReason = {
   STANDARD: 2,
   CONSECUTIVE_ZEROES: 3,
   RESIGNED: 4,
-  ABANDONED: 5
+  ABANDONED: 5,
+  TRIPLE_CHALLENGE: 6
 };
 
 goog.object.extend(exports, proto.liwords);

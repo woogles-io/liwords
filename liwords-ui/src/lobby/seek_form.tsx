@@ -171,6 +171,7 @@ export const SeekForm = (props: Props) => {
           <Radio.Button value={ChallengeRule.DOUBLE}>Double</Radio.Button>
           <Radio.Button value={ChallengeRule.SINGLE}>Single</Radio.Button>
           <Radio.Button value={ChallengeRule.VOID}>Void</Radio.Button>
+          <Radio.Button value={ChallengeRule.TRIPLE}>Triple</Radio.Button>
         </Radio.Group>
       </Form.Item>
       <Form.Item label="Initial Time (minutes)" name="initialtime">

@@ -841,6 +841,7 @@ export interface GameEndReasonMap {
   CONSECUTIVE_ZEROES: 3;
   RESIGNED: 4;
   ABANDONED: 5;
+  TRIPLE_CHALLENGE: 6;
 }
 
 export const GameEndReason: GameEndReasonMap;

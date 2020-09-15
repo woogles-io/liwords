@@ -148,7 +148,7 @@ export const GameLists = React.memo((props: Props) => {
     </Modal>
   );
   const actions = [];
-  //if no existing game
+  // if no existing game
   if (loggedIn) {
     if (currentGame) {
       actions.push(
