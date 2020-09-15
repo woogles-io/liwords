@@ -29,6 +29,7 @@ $color-board-tls: #3b88ca;
 $color-board-empty: white;
 
 $color-gray-middle: #bebebe;
+$color-gray-dark: #414141;
 
 // Magic that makes variables available to the tsx code
 :export {
@@ -37,6 +38,8 @@ $color-gray-middle: #bebebe;
   colorSecondaryLight: $color-secondary-light;
 
   colorPrimary: $color-primary-dark;
+  colorPrimaryMedium: $color-primary-midDark;
+  colorPrimaryLight: $color-primary-light;
 
   colorBoardDLS: $color-board-dls;
   colorBoardDWS: $color-board-dws;
@@ -51,14 +54,14 @@ $screen-laptop-min: 1280px;
 $screen-desktop-min: 1440px;
 
 $screen-min-height-laptop-min: 680px;
-$screen-min-height-desktop-min: 800px;
+$screen-min-height-desktop-min: 768px;
 $screen-min-height-desktop-max: 940px;
 
 $font-deco: 'Fjalla One', sans-serif;
 $font-default: 'Muli', sans-serif;
 $font-monospaced: 'Roboto Mono', monospace;
 
-$tile-size-mobile: 40px;
+$tile-size-mobile: 34px;
 $tile-size-tablet: $tile-size-mobile;
 $tile-size-laptop:  34px;
 $tile-size-desktop: 44px;
@@ -312,6 +315,29 @@ ul
 
   @media (min-height: $screen-min-height-laptop-min) and (min-width: $screen-tablet-min) {
     height: calc(100vh - #{$header-height-desktop} - 30px);
+  }
+}
+
+@mixin notification {
+  .ant-message {
+    pointer-events: none;
+  }
+  .ant-notification, .ant-message {
+    .ant-notification-notice, .ant-message-notice-content {
+      @include type-default;
+      background: $color-primary-dark;
+      color: white;
+      font-size: 15px;
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      .ant-notification-notice-message {
+        font-weight: 1000;
+        color: white;
+      }
+      .anticon {
+        color: $color-primary-light;
+      }
+    }
   }
 }
 

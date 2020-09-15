@@ -1,7 +1,6 @@
 @import '../../base';
 @include button;
-
-
+@include notification;
 
 .ant-modal-footer {
   display: flex;
@@ -47,12 +46,12 @@
     padding: 12px;
   }
   .ant-card-head {
-    min-height: none;
+    min-height: auto;
     .ant-card-head-title,
     .ant-card-extra {
-      padding: 12px 3px;
-      line-height: 1.5em;
+      padding: 6px 3px;
       font-size: 12px;
+      line-height: 1em;
     }
     .ant-card-extra {
       @include type-default;
@@ -240,7 +239,7 @@
   justify-content: center;
   align-items: center;
   margin: 20px 0;
-  width: ($tile-size-mobile * 7);
+  width: ($tile-size-mobile * 8);
   height: $tile-size-mobile;
   min-height: $tile-size-mobile;
 }
@@ -257,12 +256,13 @@
   justify-content: center;
   align-items: center;
   outline-style: none;
+  margin-top: 12px;
 .ant-btn.ant-btn-primary.ant-btn-circle {
   border-radius: 50%;
   width: $tile-size-laptop;
   height: $tile-size-laptop;
   margin: 0 6px;
-  padding: 0;
+  padding: 1px 0 0;
   line-height: 0;
   span {
     font-family: $font-monospaced;
@@ -271,10 +271,10 @@
   }
   .anticon {
     font-size: 20px;
-    top: 1px;
   }
 }
   .empty-rack {
+    height: 100%;
     flex-grow: 2;
   }
 }
@@ -507,34 +507,55 @@
 }
 // Scorecard
 .score-card {
-  font-size: 80%;
   .ant-card-body {
     padding: 0;
     & > div {
-      max-height: 130px;
+      max-height: 100px;
       padding: 8px 16px 16px;
       overflow-y: auto;
     }
   }
   .player-avatar {
-    margin-right: 6px;
+    margin-right: 12px;
     width: 24px;
     min-width: 24px;
     height: 24px;
     font-size: 18px;
   }
   .turn {
+    @include type-monospace;
+    color: $color-gray-dark;
+    font-size: 11px;
     display: flex;
     padding: 6px 0;
-    font-size: 11px;
     justify-content: space-between;
+    p {
+      line-height: 1.2em;
+      margin-bottom: 3px;
+    }
+    .coord, .main-word, .cumulative, .exchanged {
+      font-weight: 800;
+    }
+    .main-word {
+      display: block;
+      color: $color-gray-dark;
+    }
+    .pass, .exchanged, .time-penalty, .tiles-left, .challenge {
+      color: $color-timer-out-dark;
+      display: inline-block;
+      margin-bottom: 3px;
+    }
+
+    .challenge.unsuccessful {
+      color: $color-timer-dark;
+    }
     .coords-time {
       flex: 2;
-      min-width: 50px;
+      min-width: 60px;
+      max-width: 60px;
     }
     .play {
       flex: 3;
-      min-width: 150px;
     }
     .scores {
       text-align: right;
@@ -573,12 +594,16 @@
     width: $board-size-mobile;
   }
   .rack {
-    width: (48 + $tile-size-mobile * 7);
+    width: (48 + $tile-size-mobile * 8);
   }
 }
 @media (min-width: $screen-tablet-min) {
   .play-area {
-    flex: 0 0 55%;
+    flex: 0 0 50%;
+  }
+  .data-area {
+    min-width: 420px;
+    max-width: 420px;
   }
   .board-spaces-container, .board-spaces, .tiles {
     width: $board-size-tablet;
@@ -588,7 +613,7 @@
     width: $board-size-tablet;
   }
   .rack {
-    width: (48 + $tile-size-tablet * 7);
+    width: (48 + $tile-size-tablet * 8);
   }
   .rack .tile {
     width: $tile-size-tablet;
@@ -618,6 +643,19 @@
   }
   .data-area .ant-card {
     margin-bottom: 6px;
+  }
+  .ant-card {
+    .ant-card-head {
+      .ant-card-head-title,
+      .ant-card-extra {
+        padding: 12px 3px;
+        line-height: 1.5em;
+        font-size: 14px;
+      }
+      .ant-card-extra {
+        font-size: 14px;
+      }
+    }
   }
   .play-area {
     flex: 0 0 0;
@@ -664,7 +702,7 @@
     padding: 5px 3px;
   }
   .rack {
-    width: (48 + $tile-size-laptop * 7);
+    width: (48 + $tile-size-laptop * 8);
   }
   .rack .tile {
     height: $tile-size-laptop;
@@ -677,15 +715,15 @@
     }
   }
     .score-card {
+      .turn {
+        font-size: 13px;
+      }
       .ant-card-body {
         padding: 0;
 
         & > div {
-          max-height: 150px;
+          max-height: 130px;
         }
-      }
-      .turn .play {
-        min-width: 130px;
       }
     }
 
@@ -694,7 +732,7 @@
   }
 }
 
-@media (min-width: $screen-desktop-min) {
+@media (min-height: $screen-min-height-desktop-min) and (min-width: $screen-desktop-min) {
   .data-area .ant-card {
     margin-bottom: 12px;
   }
@@ -711,7 +749,7 @@
     width: $tile-size-desktop;
   }
   .rack {
-    width: (48 + $tile-size-desktop * 7);
+    width: (48 + $tile-size-desktop * 8);
   }
   .rack .tile {
     height: $tile-size-desktop;
@@ -733,14 +771,13 @@
     }
   }
   .score-card {
-    font-size: 100%;
+    .turn {
+      font-size: 14px;
+    }
     .ant-card-body {
       & > div {
         max-height: 210px;
       }
-    }
-    .turn .play {
-      min-width: 180px;
     }
   }
 }

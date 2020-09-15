@@ -9,8 +9,8 @@ import (
 	"github.com/domino14/liwords/pkg/entity"
 )
 
-var errAlreadyOpenReq = errors.New("you already have an open match or seek request")
-var errMatchAlreadyExists = errors.New("the user you are trying to match has already matched you")
+var errAlreadyOpenReq = errors.New("You already have an open match or seek request")
+var errMatchAlreadyExists = errors.New("The user you are trying to match has already matched you")
 
 // SoughtGameStore is an interface for getting a sought game.
 type SoughtGameStore interface {

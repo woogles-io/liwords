@@ -14,7 +14,7 @@ p {
     padding: 0 0 40px 0;
   }
   .ant-tabs-content-holder {
-    max-height: calc(100vh - 180px);
+    max-height: calc(70vh - 100px);
     overflow-y: auto;
   }
   #rc-tabs-0-panel-PLAYERS {
@@ -109,6 +109,12 @@ p {
   }
 }
 
+@media (min-width: $screen-tablet-min) {
+  .chat-area .ant-tabs-content-holder {
+    max-height: calc(100vh - 180px);
+    overflow-y: auto;
+  }
+}
 @media (min-width: $screen-laptop-min) {
   .chat-area {
     order: initial;
@@ -128,7 +134,7 @@ p {
   }
 }
 
-@media (min-width: $screen-desktop-min) {
+@media (min-height: $screen-min-height-desktop-min) and (min-width: $screen-desktop-min) {
   .game-table {
     .chat-area .ant-card {
       height: 745px;

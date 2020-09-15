@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Button, Modal, notification } from 'antd';
+import { Button, Modal, notification, message, Tooltip } from 'antd';
 import { SyncOutlined } from '@ant-design/icons';
 import axios from 'axios';
 
@@ -31,15 +31,18 @@ import { useStoreContext } from '../store/store';
 import { BlankSelector } from './blank_selector';
 import { GameEndMessage } from './game_end_message';
 import { PlayerMetadata, GCGResponse } from './game_info';
+import { GameEvent } from '../gen/macondo/api/proto/macondo/macondo_pb';
 
 // The frame atop is 24 height
 // The frames on the sides are 24 in width, surrounded by a 14 pix gutter
 const EnterKey = 'Enter';
+const colors = require('../base.scss');
 
 type Props = {
   username: string;
   showBonusLabels: boolean;
   currentRack: string;
+  events: Array<GameEvent>;
   gameID: string;
   board: Board;
   sendSocketMsg: (msg: Uint8Array) => void;
@@ -118,6 +121,34 @@ export const BoardPanel = React.memo((props: Props) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  useEffect(() => {
+    if (!props.events.length) {
+      return;
+    }
+    const evt = props.events[props.events.length - 1];
+    if (evt.getNickname() === props.username) {
+      return;
+    }
+    let boardMessage = null;
+    switch (evt.getType()) {
+      case GameEvent.Type.PASS:
+        boardMessage = `${evt.getNickname()} passed`;
+        break;
+      case GameEvent.Type.EXCHANGE:
+        boardMessage = `${evt.getNickname()} exchanged`;
+        break;
+    }
+    if (boardMessage) {
+      message.info(
+        {
+          content: boardMessage,
+          className: 'board-hud-message',
+        },
+        3,
+        undefined
+      );
+    }
+  }, [props.events, props.username]);
   const squareClicked = (row: number, col: number) => {
     if (props.board.letterAt(row, col) !== EmptySpace) {
       // If there is a tile on this square, ignore the click.
@@ -353,9 +384,17 @@ export const BoardPanel = React.memo((props: Props) => {
       />
       {!gameEndMessage ? (
         <div className="rack-container">
-          <Button shape="circle" type="primary" onClick={recallTiles}>
-            &#8595;
-          </Button>
+          <Tooltip
+            title="Reset Rack"
+            placement="bottomRight"
+            mouseEnterDelay={0.1}
+            mouseLeaveDelay={0.01}
+            color={colors.colorPrimary}
+          >
+            <Button shape="circle" type="primary" onClick={recallTiles}>
+              &#8595;
+            </Button>
+          </Tooltip>
           <Rack
             letters={displayedRack}
             grabbable
@@ -367,12 +406,20 @@ export const BoardPanel = React.memo((props: Props) => {
               swapRackTiles(indexA, indexB);
             }}
           />
-          <Button
-            shape="circle"
-            icon={<SyncOutlined />}
-            type="primary"
-            onClick={shuffleTiles}
-          />
+          <Tooltip
+            title="Shuffle"
+            placement="bottomLeft"
+            mouseEnterDelay={0.1}
+            mouseLeaveDelay={0.01}
+            color={colors.colorPrimary}
+          >
+            <Button
+              shape="circle"
+              icon={<SyncOutlined />}
+              type="primary"
+              onClick={shuffleTiles}
+            />
+          </Tooltip>
         </div>
       ) : (
         <GameEndMessage message={gameEndMessage} />
