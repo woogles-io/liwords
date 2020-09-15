@@ -58,7 +58,7 @@
     display: flex;
     flex-direction: row;
     justify-content: space-around;
-    border-bottom: 1px solid #EEE;
+    border-bottom: 1px solid #eee;
     height: 36px;
     .tab {
       padding: 0px 24px 6px;
@@ -105,10 +105,10 @@
             text-transform: uppercase;
           }
         }
-
       }
-      &.resume, &.outgoing {
-        background-color: #F2F2F2;
+      &.resume,
+      &.outgoing {
+        background-color: #f2f2f2;
         font-weight: bold;
         .anticon {
           margin-left: 6px;
@@ -127,16 +127,16 @@
         td.players {
           min-height: 78px;
         }
-         td.players:after {
+        td.players:after {
           content: 'Resume';
           text-align: center;
           font-size: 12px;
           font-weight: bold;
           letter-spacing: 0.3em;
           text-transform: uppercase;
-         position: absolute;
-         top: 12px;
-         left: 18px;
+          position: absolute;
+          top: 12px;
+          left: 18px;
         }
       }
     }
@@ -191,7 +191,11 @@
   }
 }
 @media (min-width: $screen-laptop-min) {
-    .announcements {
-      max-width: 25%;
-    }
+  .announcements {
+    max-width: 25%;
+  }
+}
+
+#challengerule .ant-radio-button-wrapper {
+  padding: 0 10px;
 }
