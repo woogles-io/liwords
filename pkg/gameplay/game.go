@@ -241,7 +241,13 @@ func handleChallenge(ctx context.Context, entGame *entity.Game,
 	}
 
 	if entGame.Game.Playing() == macondopb.PlayState_GAME_OVER {
-		checkGameOverAndModifyScores(ctx, entGame, userStore, listStatStore)
+		if entGame.ChallengeRule() == macondopb.ChallengeRule_TRIPLE {
+			entGame.SetGameEndReason(pb.GameEndReason_TRIPLE_CHALLENGE)
+			winner := int(entGame.History().Winner)
+			entGame.SetWinnerIdx(winner)
+			entGame.SetLoserIdx(1 - winner)
+		}
+		performEndgameDuties(ctx, entGame, userStore, listStatStore)
 	}
 
 	return nil
@@ -310,7 +316,7 @@ func PlayMove(ctx context.Context, entGame *entity.Game, userStore user.Store,
 		entGame.SendChange(wrapped)
 	}
 	if playing == macondopb.PlayState_GAME_OVER {
-		checkGameOverAndModifyScores(ctx, entGame, userStore, listStatStore)
+		performEndgameDuties(ctx, entGame, userStore, listStatStore)
 	}
 	return nil
 }

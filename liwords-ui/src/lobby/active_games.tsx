@@ -1,4 +1,4 @@
-import { Table } from 'antd';
+import { Table, Tooltip } from 'antd';
 import React, { ReactNode } from 'react';
 import { FundOutlined } from '@ant-design/icons/lib';
 import { useStoreContext } from '../store/store';
@@ -30,7 +30,11 @@ export const ActiveGames = (props: Props) => {
           return (
             <>
               {challengeFormat(ag.challengeRule)}
-              {ag.rated ? <FundOutlined title="Rated" /> : null}
+              {ag.rated ? (
+                <Tooltip title="Rated">
+                  <FundOutlined />
+                </Tooltip>
+              ) : null}
             </>
           );
         };

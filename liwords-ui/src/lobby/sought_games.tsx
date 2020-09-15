@@ -1,6 +1,6 @@
 /* eslint-disable jsx-a11y/click-events-have-key-events */
 /* eslint-disable jsx-a11y/no-noninteractive-element-interactions */
-import { Table } from 'antd';
+import { Table, Tooltip } from 'antd';
 import React, { ReactNode } from 'react';
 import { FundOutlined, ExportOutlined } from '@ant-design/icons/lib';
 import {
@@ -120,7 +120,11 @@ export const SoughtGames = (props: Props) => {
           return (
             <>
               {challengeFormat(sg.challengeRule)}
-              {sg.rated ? <FundOutlined title="Rated" /> : null}
+              {sg.rated ? (
+                <Tooltip title="Rated">
+                  <FundOutlined />
+                </Tooltip>
+              ) : null}
             </>
           );
         };

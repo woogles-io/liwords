@@ -44,6 +44,7 @@ const defaultGameInfo = {
     | 'TEN_POINT'
     | 'SINGLE'
     | 'DOUBLE'
+    | 'TRIPLE'
     | 'VOID',
   rating_mode: 0, // 0 is rated and 1 is casual; see realtime proto.
   max_overtime_minutes: 0,

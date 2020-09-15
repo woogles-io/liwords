@@ -14,23 +14,20 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-func checkGameOverAndModifyScores(ctx context.Context, entGame *entity.Game,
-	userStore user.Store, listStatStore stats.ListStatStore) {
-	// Figure out why the game ended. Here there are only two options,
-	// standard or six-zero. The game ending on a timeout is handled in
-	// another branch (see setTimedOut above) and resignation/etc will
-	// also be handled elsewhere.
-
-	if entGame.RackLettersFor(0) == "" || entGame.RackLettersFor(1) == "" {
-		entGame.SetGameEndReason(pb.GameEndReason_STANDARD)
-	} else {
-		entGame.SetGameEndReason(pb.GameEndReason_CONSECUTIVE_ZEROES)
-	}
-	performEndgameDuties(ctx, entGame, userStore, listStatStore)
-}
-
 func performEndgameDuties(ctx context.Context, g *entity.Game,
 	userStore user.Store, listStatStore stats.ListStatStore) {
+
+	log.Debug().Interface("game-end-reason", g.GameEndReason).Msg("checking-game-over")
+	// The game is over already. Set an end game reason if there hasn't been
+	// one set.
+	if g.GameEndReason == pb.GameEndReason_NONE {
+		if g.RackLettersFor(0) == "" || g.RackLettersFor(1) == "" {
+			g.SetGameEndReason(pb.GameEndReason_STANDARD)
+		} else {
+			g.SetGameEndReason(pb.GameEndReason_CONSECUTIVE_ZEROES)
+		}
+	}
+
 	evts := []*pb.ServerGameplayEvent{}
 
 	var p0penalty, p1penalty int

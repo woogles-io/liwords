@@ -13,7 +13,13 @@ export type GameMetadata = {
   max_overtime_minutes: number;
   increment_seconds: number;
   tournament_name: string;
-  challenge_rule: 'FIVE_POINT' | 'TEN_POINT' | 'SINGLE' | 'DOUBLE' | 'VOID';
+  challenge_rule:
+    | 'FIVE_POINT'
+    | 'TEN_POINT'
+    | 'SINGLE'
+    | 'DOUBLE'
+    | 'TRIPLE'
+    | 'VOID';
   rating_mode: number;
   done: boolean;
 };
@@ -58,6 +64,7 @@ export const GameInfo = (props: Props) => {
       TEN_POINT: '10 point',
       SINGLE: 'Single',
       DOUBLE: 'Double',
+      TRIPLE: 'Triple',
       VOID: 'Void',
     }[props.meta.challenge_rule];
   }
