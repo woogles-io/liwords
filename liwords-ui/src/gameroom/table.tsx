@@ -248,6 +248,7 @@ export const Table = React.memo((props: Props) => {
             board={gameContext.board}
             showBonusLabels={false}
             currentRack={rack || ''}
+            events={gameContext.turns}
             gameID={gameID}
             sendSocketMsg={props.sendSocketMsg}
             gameDone={gameInfo.done}

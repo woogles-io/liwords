@@ -1,5 +1,6 @@
 @import '../base';
 @include button;
+@include notification;
 
 .lobby {
   @include container();

@@ -203,6 +203,7 @@ export const Store = ({ children, ...props }: Props) => {
   );
 
   const challengeResultEvent = (sge: ServerChallengeResultEvent) => {
+    console.log('sge', sge);
     addChat({
       entityType: ChatEntityType.ServerMsg,
       sender: '',

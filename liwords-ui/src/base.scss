@@ -318,6 +318,26 @@ ul
   }
 }
 
+@mixin notification {
+  .ant-notification, .ant-message {
+    .ant-notification-notice, .ant-message-notice-content {
+      @include type-default;
+      background: $color-primary-dark;
+      color: white;
+      font-size: 15px;
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      .ant-notification-notice-message {
+        font-weight: 1000;
+        color: white;
+      }
+      .anticon {
+        color: $color-primary-light;
+      }
+    }
+  }
+}
+
 @mixin container {
   min-width: $screen-mobile-min;
   max-width: $screen-mobile-min;

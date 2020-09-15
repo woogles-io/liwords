@@ -1,7 +1,6 @@
 @import '../../base';
 @include button;
-
-
+@include notification;
 
 .ant-modal-footer {
   display: flex;
@@ -257,6 +256,7 @@
   justify-content: center;
   align-items: center;
   outline-style: none;
+  margin-top: 12px;
 .ant-btn.ant-btn-primary.ant-btn-circle {
   border-radius: 50%;
   width: $tile-size-laptop;
@@ -601,7 +601,7 @@
   .play-area {
     flex: 0 0 50%;
   }
-  .data-area, .chat-area {
+  .data-area {
     min-width: 420px;
     max-width: 420px;
   }
