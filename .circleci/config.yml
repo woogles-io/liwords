@@ -52,6 +52,7 @@ jobs:
     docker:
       - image: amazon/aws-cli
     steps:
+      - run: sudo yum install tar
       - attach_workspace:
           at: liwords-ui
       - run: cd liwords-ui/build && aws s3 sync . s3://woogles-prod-app
