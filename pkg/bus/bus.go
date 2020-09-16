@@ -121,38 +121,43 @@ outerfor:
 			// Regular messages.
 			log.Debug().Str("topic", msg.Subject).Msg("got ipc.pb message")
 			subtopics := strings.Split(msg.Subject, ".")
-			// XXX: put in a goroutine (go b.handleNatsPublish(...))
-			err := b.handleNatsPublish(ctx, subtopics[2:], msg.Data)
-			if err != nil {
-				log.Err(err).Msg("process-message-publish-error")
-				// The user ID should have hopefully come in the topic name.
-				// It would be in subtopics[4]
-				if len(subtopics) > 4 {
-					userID := subtopics[4]
-					b.pubToUser(userID, entity.WrapEvent(&pb.ErrorMessage{Message: err.Error()},
-						pb.MessageType_ERROR_MESSAGE, ""))
+
+			go func() {
+				err := b.handleNatsPublish(ctx, subtopics[2:], msg.Data)
+				if err != nil {
+					log.Err(err).Msg("process-message-publish-error")
+					// The user ID should have hopefully come in the topic name.
+					// It would be in subtopics[4]
+					if len(subtopics) > 4 {
+						userID := subtopics[4]
+						b.pubToUser(userID, entity.WrapEvent(&pb.ErrorMessage{Message: err.Error()},
+							pb.MessageType_ERROR_MESSAGE, ""))
+					}
 				}
-			}
+			}()
 
 		case msg := <-b.subchans["ipc.request.>"]:
 			log.Debug().Str("topic", msg.Subject).Msg("got ipc.request")
 			// Requests. We must respond on a specific topic.
 			subtopics := strings.Split(msg.Subject, ".")
-			err := b.handleNatsRequest(ctx, subtopics[2], msg.Reply, msg.Data)
-			if err != nil {
-				log.Err(err).Msg("process-message-request-error")
-				// just send a blank response so there isn't a timeout on
-				// the other side.
-				rrResp := &pb.RegisterRealmResponse{
-					Realm: "",
-				}
-				data, err := proto.Marshal(rrResp)
+
+			go func() {
+				err := b.handleNatsRequest(ctx, subtopics[2], msg.Reply, msg.Data)
 				if err != nil {
-					log.Err(err).Msg("marshalling-error")
-					break
+					log.Err(err).Msg("process-message-request-error")
+					// just send a blank response so there isn't a timeout on
+					// the other side.
+					rrResp := &pb.RegisterRealmResponse{
+						Realm: "",
+					}
+					data, err := proto.Marshal(rrResp)
+					if err != nil {
+						log.Err(err).Msg("marshalling-error")
+					} else {
+						b.natsconn.Publish(msg.Reply, data)
+					}
 				}
-				b.natsconn.Publish(msg.Reply, data)
-			}
+			}()
 
 		case msg := <-b.gameEventChan:
 			// A game event. Publish directly to the right realm.
@@ -308,6 +313,7 @@ func (b *Bus) handleBotMove(ctx context.Context, g *entity.Game) {
 
 }
 
+// handleNatsPublish runs in a separate goroutine
 func (b *Bus) handleNatsPublish(ctx context.Context, subtopics []string, data []byte) error {
 	log.Debug().Interface("subtopics", subtopics).Msg("handling nats publish")
 	switch subtopics[0] {
