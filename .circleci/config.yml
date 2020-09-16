@@ -62,7 +62,7 @@ workflows:
     jobs:
       - build_api_srv
       - build_fe
-      - deploy_fe
+      - deploy_fe:
           filters:
             branches:
               only: master
