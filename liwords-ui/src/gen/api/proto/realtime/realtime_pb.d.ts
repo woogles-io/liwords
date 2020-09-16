@@ -708,6 +708,7 @@ export namespace ClientGameplayEvent {
     PASS: 1;
     EXCHANGE: 2;
     CHALLENGE_PLAY: 3;
+    RESIGN: 4;
   }
 
   export const EventType: EventTypeMap;

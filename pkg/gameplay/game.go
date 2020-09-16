@@ -356,14 +356,23 @@ func HandleEvent(ctx context.Context, gameStore GameStore, userStore user.Store,
 	log.Debug().Msg("going to turn into a macondo gameevent")
 
 	// Turn the event into a macondo GameEvent.
-	m, err := clientEventToMove(cge, &entGame.Game)
-	if err != nil {
-		return entGame, err
-	}
+	if cge.Type == pb.ClientGameplayEvent_RESIGN {
+		entGame.SetGameEndReason(pb.GameEndReason_RESIGNED)
+		winner := 1 - onTurn
+		entGame.History().Winner = int32(winner)
+		entGame.SetWinnerIdx(winner)
+		entGame.SetLoserIdx(1 - winner)
+		performEndgameDuties(ctx, entGame, userStore, listStatStore)
+	} else {
+		m, err := clientEventToMove(cge, &entGame.Game)
+		if err != nil {
+			return entGame, err
+		}
 
-	err = PlayMove(ctx, entGame, userStore, listStatStore, userID, onTurn, timeRemaining, m)
-	if err != nil {
-		return entGame, err
+		err = PlayMove(ctx, entGame, userStore, listStatStore, userID, onTurn, timeRemaining, m)
+		if err != nil {
+			return entGame, err
+		}
 	}
 
 	err = gameStore.Set(ctx, entGame)

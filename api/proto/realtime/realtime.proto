@@ -265,6 +265,7 @@ message ClientGameplayEvent {
     PASS = 1;
     EXCHANGE = 2;
     CHALLENGE_PLAY = 3;
+    RESIGN = 4;
   }
 
   EventType type = 1;

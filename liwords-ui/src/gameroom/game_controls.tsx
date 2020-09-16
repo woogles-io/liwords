@@ -6,6 +6,7 @@ type Props = {
   observer?: boolean;
   onExchange: (rack: string) => void;
   onPass: () => void;
+  onResign: () => void;
   onRecall: () => void;
   onChallenge: () => void;
   onCommit: () => void;
@@ -71,6 +72,10 @@ const GameControls = React.memo((props: Props) => {
 
   return (
     <div className="game-controls">
+      <Button onClick={props.onResign} danger>
+        Resign
+      </Button>
+
       <Button onClick={props.onPass} danger>
         Pass
       </Button>
