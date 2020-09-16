@@ -67,6 +67,8 @@ workflows:
       - build_api_srv
       - build_fe
       - deploy_fe:
+          requires:
+            - build_fe
           filters:
             branches:
               only: master
