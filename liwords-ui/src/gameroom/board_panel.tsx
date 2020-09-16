@@ -135,7 +135,7 @@ export const BoardPanel = React.memo((props: Props) => {
         boardMessage = `${evt.getNickname()} passed`;
         break;
       case GameEvent.Type.EXCHANGE:
-        boardMessage = `${evt.getNickname()} exchanged`;
+        boardMessage = `${evt.getNickname()} exchanged ${evt.getExchanged()}`;
         break;
     }
     if (boardMessage) {

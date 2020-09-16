@@ -257,6 +257,14 @@ export const Table = React.memo((props: Props) => {
           />
         </div>
         <div className="data-area">
+          <PlayerCards playerMeta={gameInfo.players} />
+          <GameInfo meta={gameInfo} />
+          <Pool
+            pool={gameContext?.pool}
+            currentRack={rack || ''}
+            poolFormat={poolFormat}
+            setPoolFormat={setPoolFormat}
+          />
           <Popconfirm
             title={`${rematchRequest
               .getUser()
@@ -272,14 +280,6 @@ export const Table = React.memo((props: Props) => {
             }}
             okText="Accept"
             cancelText="Decline"
-          />
-          <PlayerCards playerMeta={gameInfo.players} />
-          <GameInfo meta={gameInfo} />
-          <Pool
-            pool={gameContext?.pool}
-            currentRack={rack || ''}
-            poolFormat={poolFormat}
-            setPoolFormat={setPoolFormat}
           />
           <ScoreCard
             username={props.username}
