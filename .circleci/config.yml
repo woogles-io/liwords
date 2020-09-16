@@ -56,7 +56,9 @@ jobs:
       - attach_workspace:
           at: /tmp/liwords-ui
       - run: ls -al /tmp/liwords-ui
-      - run: cd /tmp/liwords-ui/build && aws s3 sync . s3://woogles-prod-app
+      # cache everything except index.html
+      - run: cd /tmp/liwords-ui/build && aws s3 sync --cache-control 'max-age=604800' --exclude index.html . s3://woogles-prod-app
+      - run: cd /tmp/liwords-ui/build && aws s3 sync --cache-control 'no-cache' . s3://woogles-prod-app
       - slack/status:
           webhook: "${SLACK_WEBHOOK}"
 
