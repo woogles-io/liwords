@@ -12,7 +12,10 @@
   flex-wrap: wrap;
   .ant-card {
     @include fullHeight();
-    height: 70vh;
+    height: 600px;
+    &.chat .ant-tabs-content-holder {
+        max-height: 500px;
+      }
   }
 }
 .announcements {
@@ -169,6 +172,9 @@
     flex-wrap: wrap;
     .ant-card {
       @include fullHeight();
+      &.chat {
+        height: 600px;
+      }
     }
   }
   .announcements {
@@ -194,4 +200,11 @@
     .announcements {
       max-width: 25%;
     }
+  .lobby {
+    .ant-card {
+      &.chat {
+        @include fullHeight();
+      }
+    }
+  }
 }

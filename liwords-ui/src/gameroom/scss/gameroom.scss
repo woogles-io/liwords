@@ -15,12 +15,14 @@
   @include container();
   display: flex;
   flex-wrap: wrap;
-  margin: 0 auto !important;
+  margin: 0 auto;
   flex-direction: row;
   justify-content: center;
   align-items: flex-start;
   padding: 0;
   .chat-area {
+    min-width: $board-size-mobile;
+    max-width: $board-size-mobile;
     .ant-card.left-menu {
       text-transform: uppercase;
       letter-spacing: 1px;
@@ -37,30 +39,34 @@
       }
     }
   }
+
+}
+.game-container {
+  .ant-card {
+    box-shadow: $card-shadow;
+    border-radius: 8px;
+    .ant-card-body {
+      padding: 0;
+    }
+
+    .ant-card-head {
+      min-height: auto;
+      .ant-card-head-title,
+      .ant-card-extra {
+        padding: 6px 3px;
+        font-size: 12px;
+        line-height: 1em;
+      }
+      .ant-card-extra {
+        @include type-default;
+        font-weight: bold;
+        line-height: 2em;
+        font-size: 12px;
+      }
+    }
+  }
 }
 
-.ant-card {
-  box-shadow: $card-shadow;
-  border-radius: 8px;
-  .ant-card-body {
-    padding: 12px;
-  }
-  .ant-card-head {
-    min-height: auto;
-    .ant-card-head-title,
-    .ant-card-extra {
-      padding: 6px 3px;
-      font-size: 12px;
-      line-height: 1em;
-    }
-    .ant-card-extra {
-      @include type-default;
-      font-weight: bold;
-      line-height: 2em;
-      font-size: 12px;
-    }
-  }
-}
 
 .ant-dropdown-menu {
   padding: 0;
@@ -72,6 +78,9 @@
   padding: 0;
   margin: 6px;
   outline-style: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
 }
 
 .board {
@@ -79,6 +88,8 @@
 }
 
 .data-area {
+  min-width: $board-size-mobile;
+  max-width: $board-size-mobile;
   text-align: left;
   .ant-card {
     margin-bottom: 12px;
@@ -406,7 +417,7 @@
   header {
     @include type-title;
   }
-  .ant-card-body {
+  .ant-card .ant-card-body {
     padding: 0;
   }
   .vc-distribution {
@@ -500,6 +511,9 @@
 }
 .game-info {
   font-size: 14px;
+  &.ant-card .ant-card-body {
+    padding: 12px;
+  }
   .variant {
     font-weight: 600;
     font-size: 16px;
@@ -579,11 +593,7 @@
 }
 
 @media (min-width: $screen-mobile-min) {
-  .data-area {
-    min-width: 356px;
-    max-width: 356px;
-  }
-  .chat-area {
+  .game-table .chat-area {
     max-width: $screen-tablet-min;
   }
   .board-spaces-container, .board-spaces, .tiles {
@@ -604,6 +614,11 @@
   .data-area {
     min-width: 420px;
     max-width: 420px;
+  }
+  .game-table .chat-area {
+    min-width: $screen-tablet-min;
+    max-width: $screen-tablet-min;
+    padding: 0 24px;
   }
   .board-spaces-container, .board-spaces, .tiles {
     width: $board-size-tablet;
@@ -637,26 +652,32 @@
 }
 
 @media (min-width: $screen-laptop-min) {
-  .chat-area, .data-area {
-    min-width: 340px;
-    max-width: 340px;
-  }
-  .data-area .ant-card {
-    margin-bottom: 6px;
-  }
-  .ant-card {
-    .ant-card-head {
-      .ant-card-head-title,
-      .ant-card-extra {
-        padding: 12px 3px;
-        line-height: 1.5em;
-        font-size: 14px;
-      }
-      .ant-card-extra {
-        font-size: 14px;
+  .game-container {
+    .chat-area, .data-area {
+      min-width: 340px;
+      max-width: 340px;
+      padding: 0;
+    }
+
+    .data-area .ant-card {
+      margin-bottom: 6px;
+    }
+    .ant-card {
+      .ant-card-head {
+        .ant-card-head-title,
+        .ant-card-extra {
+          padding: 12px 3px;
+          line-height: 1.5em;
+          font-size: 14px;
+        }
+        .ant-card-extra {
+          font-size: 14px;
+        }
       }
     }
+
   }
+
   .play-area {
     flex: 0 0 0;
     padding: 0 12px 0 24px;
@@ -787,6 +808,6 @@
     display: none;
   }
   .game-table {
-    margin-top: 12px;
+    margin-top: 24px;
   }
 }

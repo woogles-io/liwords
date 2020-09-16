@@ -266,14 +266,14 @@ export const BoardPanel = React.memo((props: Props) => {
     setDisplayedRack(shuffleString(props.currentRack));
   };
 
-  const swapRackTiles = (
-    indexA: number | undefined,
-    indexB: number | undefined
+  const moveRackTile = (
+    newIndex: number | undefined,
+    oldIndex: number | undefined
   ) => {
-    if (typeof indexA === 'number' && typeof indexB === 'number') {
+    if (typeof newIndex === 'number' && typeof oldIndex === 'number') {
       const newRack = displayedRack.split('');
-      newRack[indexA] = displayedRack[indexB];
-      newRack[indexB] = displayedRack[indexA];
+      newRack.splice(oldIndex, 1);
+      newRack.splice(newIndex, 0, displayedRack[oldIndex]);
       setPlacedTilesTempScore(0);
       setDisplayedRack(newRack.join(''));
     }
@@ -399,11 +399,11 @@ export const BoardPanel = React.memo((props: Props) => {
             letters={displayedRack}
             grabbable
             returnToRack={returnToRack}
-            swapRackTiles={(
+            moveRackTile={(
               indexA: number | undefined,
               indexB: number | undefined
             ) => {
-              swapRackTiles(indexA, indexB);
+              moveRackTile(indexA, indexB);
             }}
           />
           <Tooltip

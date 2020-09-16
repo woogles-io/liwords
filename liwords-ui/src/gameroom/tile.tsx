@@ -79,7 +79,7 @@ type TileProps = {
   grabbable: boolean;
   rackIndex?: number | undefined;
   selected?: boolean;
-  swapRackTiles?: (
+  moveRackTile?: (
     indexA: number | undefined,
     indexB: number | undefined
   ) => void;
@@ -126,8 +126,8 @@ const Tile = React.memo((props: TileProps) => {
   };
 
   const handleDrop = (e: any) => {
-    if (props.swapRackTiles && e.dataTransfer.getData('rackIndex')) {
-      props.swapRackTiles(
+    if (props.moveRackTile && e.dataTransfer.getData('rackIndex')) {
+      props.moveRackTile(
         props.rackIndex,
         parseInt(e.dataTransfer.getData('rackIndex'), 10)
       );

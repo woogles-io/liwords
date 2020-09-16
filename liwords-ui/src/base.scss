@@ -342,8 +342,6 @@ ul
 }
 
 @mixin container {
-  min-width: $screen-mobile-min;
-  max-width: $screen-mobile-min;
   width: 100%;
   position: relative;
   margin: 0 auto;
