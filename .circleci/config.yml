@@ -52,10 +52,12 @@ jobs:
     docker:
       - image: amazon/aws-cli
     steps:
-      - run: yum install -y tar
+      - run: yum install -y tar gzip
       - attach_workspace:
           at: liwords-ui
       - run: cd liwords-ui/build && aws s3 sync . s3://woogles-prod-app
+      - slack/status:
+          webhook: "${SLACK_WEBHOOK}"
 
 workflows:
   version: 2
