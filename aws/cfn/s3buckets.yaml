@@ -1,0 +1,69 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Parameters:
+  BucketName:
+    Type: String
+  RedirectTarget:
+    Type: String
+Resources:
+  UploadBucket:
+    Type: "AWS::S3::Bucket"
+    Properties:
+      AccessControl: PublicRead
+      BucketName: !Ref BucketName
+      WebsiteConfiguration:
+        IndexDocument: index.html
+
+  S3BucketPolicy:
+    Type: "AWS::S3::BucketPolicy"
+    Properties:
+      Bucket: !Ref BucketName
+      PolicyDocument:
+        Statement:
+          - Action: ["s3:GetObject"]
+            Effect: Allow
+            Principal: "*"
+            Resource: !Sub "arn:aws:s3:::${BucketName}/*"
+
+  S3WebsiteUploadGroup:
+    Type: "AWS::IAM::Group"
+    Properties:
+      GroupName: "S3WebsiteUpload"
+      Policies:
+        - PolicyName: write-to-s3
+          PolicyDocument: !Sub |
+            {
+                "Version": "2012-10-17",
+                "Statement": [
+                    {
+                        "Effect": "Allow",
+                        "Action": [
+                            "s3:PutObject",
+                            "s3:Get*",
+                            "s3:List*",
+                            "s3:DeleteObject"
+                        ],
+                        "Resource": [
+                            "arn:aws:s3:::${UploadBucket}",
+                            "arn:aws:s3:::${UploadBucket}/*"
+                        ]
+                    }
+                ]
+            }
+
+  CircleCIUploadUser:
+    Type: "AWS::IAM::User"
+    Properties:
+      Groups:
+        - !Ref S3WebsiteUploadGroup
+      UserName: CircleCIUploadUser
+
+  S3RedirectBucket:
+    Type: "AWS::S3::Bucket"
+    Properties:
+      AccessControl: PublicRead
+      BucketName: !Sub "www.${BucketName}"
+      WebsiteConfiguration:
+        IndexDocument: index.html
+        RoutingRules:
+          - RedirectRule:
+              HostName: !Ref RedirectTarget

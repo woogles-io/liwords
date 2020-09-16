@@ -1,0 +1,89 @@
+# See: https://www.superloopy.io/articles/2017/route-53-cloudformation.html
+AWSTemplateFormatVersion: "2010-09-09"
+Parameters:
+  DomainName:
+    Type: String
+  OriginDomainName:
+    Type: String
+  OriginRedirectDomainName:
+    Type: String
+Outputs:
+  CertificateARN:
+    Value: !Ref Certificate
+Resources:
+  Distribution:
+    Type: "AWS::CloudFront::Distribution"
+    Properties:
+      DistributionConfig:
+        Aliases:
+          - !Ref DomainName
+        # S3 website is our origin, so we can have redirects
+        Origins:
+          - Id: !Sub "S3-${DomainName}"
+            DomainName: !Ref OriginDomainName
+            CustomOriginConfig:
+              OriginProtocolPolicy: http-only
+        # Don't do any forwarding, send all through to the S3 origin.
+        CustomErrorResponses:
+          - ErrorCode: 404
+            ResponseCode: 200
+            ResponsePagePath: /index.html
+        DefaultCacheBehavior:
+          Compress: true
+          ForwardedValues:
+            Cookies:
+              Forward: none
+            Headers: []
+            QueryString: false
+          TargetOriginId: !Sub "S3-${DomainName}"
+          ViewerProtocolPolicy: redirect-to-https
+        DefaultRootObject: index.html
+        Enabled: true
+        HttpVersion: http2
+        PriceClass: PriceClass_100 # US, Canada, and Europe
+        ViewerCertificate:
+          AcmCertificateArn: !Ref Certificate
+          SslSupportMethod: sni-only
+      Tags:
+        - Key: Name
+          Value: !Ref DomainName
+
+  RedirectDistribution:
+    Type: "AWS::CloudFront::Distribution"
+    Properties:
+      DistributionConfig:
+        Aliases:
+          - !Sub "www.${DomainName}"
+        # S3 website is our origin, so we can have redirects
+        Origins:
+          - Id: !Sub "S3-${DomainName}"
+            DomainName: !Ref OriginRedirectDomainName
+            CustomOriginConfig:
+              OriginProtocolPolicy: http-only
+        # Don't do any forwarding, send all through to the S3 origin.
+        DefaultCacheBehavior:
+          Compress: true
+          ForwardedValues:
+            Cookies:
+              Forward: none
+            Headers: []
+            QueryString: false
+          TargetOriginId: !Sub "S3-${DomainName}"
+          ViewerProtocolPolicy: redirect-to-https
+        DefaultRootObject: index.html
+        Enabled: true
+        HttpVersion: http2
+        PriceClass: PriceClass_100 # US, Canada, and Europe
+        ViewerCertificate:
+          AcmCertificateArn: !Ref Certificate
+          SslSupportMethod: sni-only
+      Tags:
+        - Key: Name
+          Value: !Ref OriginRedirectDomainName
+
+  Certificate:
+    Type: "AWS::CertificateManager::Certificate"
+    Properties:
+      DomainName: !Ref DomainName
+      SubjectAlternativeNames:
+        - !Sub "www.${DomainName}"
