@@ -43,8 +43,18 @@ jobs:
       - run: cd liwords-ui && npm run build
       - slack/status:
           webhook: "${SLACK_WEBHOOK}"
+      - persist_to_workspace:
+          root: liwords-ui
+          paths:
+            - build
 
-    # Later persist to workspace for deploy step.
+  deploy_fe:
+    docker:
+      - image: amazon/aws-cli
+    steps:
+      - attach_workspace:
+          at: liwords-ui
+      - run: cd liwords-ui/build && aws s3 sync . s3://woogles-prod-app
 
 workflows:
   version: 2
@@ -52,3 +62,7 @@ workflows:
     jobs:
       - build_api_srv
       - build_fe
+      - deploy_fe
+          filters:
+            branches:
+              only: master
