@@ -4,6 +4,7 @@ import { notification, Card, Table, Row, Col } from 'antd';
 import axios, { AxiosError } from 'axios';
 import { TopBar } from '../topbar/topbar';
 import { useLiwordsSocket } from '../socket/socket';
+import './profile.scss';
 
 type ProfileResponse = {
   first_name: string;
@@ -107,7 +108,14 @@ const RatingsCard = (props: RatingsProps) => {
 
   return (
     <Card title="Ratings">
-      <Table dataSource={dataSource} columns={columns} scroll={{ x: 500 }} />
+      <Table
+        pagination={{
+          hideOnSinglePage: true,
+        }}
+        dataSource={dataSource}
+        columns={columns}
+        scroll={{ x: 500 }}
+      />
     </Card>
   );
 };
@@ -175,8 +183,14 @@ const StatsCard = (props: StatsProps) => {
   ];
 
   return (
-    <Card title="stats">
-      <Table dataSource={dataSource} columns={columns} />
+    <Card title="Stats">
+      <Table
+        dataSource={dataSource}
+        columns={columns}
+        pagination={{
+          hideOnSinglePage: true,
+        }}
+      />
     </Card>
   );
 };
@@ -219,29 +233,16 @@ export const UserProfile = (props: Props) => {
         </Col>
       </Row>
 
-      <Row>
-        <Col span={12} offset={12}>
-          <h2>Profile for {username}</h2>
-        </Col>
-      </Row>
-
-      <Row gutter={16}>
-        <Col span={12}>
-          <RatingsCard ratings={ratings} />
-        </Col>
-        <Col span={12}>
-          <StatsCard stats={stats} />
-        </Col>
-      </Row>
-      {viewer === username ? (
-        <Row style={{ marginTop: 20 }}>
-          <Col span={12} offset={12}>
-            <a href="/password/change">
-              <big>Change your password</big>
-            </a>
-          </Col>
-        </Row>
-      ) : null}
+      <div className="profile">
+        <header>
+          <h3>{username}</h3>
+          {viewer === username ? (
+            <a href="/password/change">Change your password</a>
+          ) : null}
+        </header>
+        <RatingsCard ratings={ratings} />
+        <StatsCard stats={stats} />
+      </div>
     </>
   );
 };

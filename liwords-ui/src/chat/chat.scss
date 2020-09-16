@@ -10,12 +10,16 @@ p {
   order: 3;
   width: 100%;
   margin: 12px 12px 0 12px;
+  .ant-card {
+    height: 640px;
+    margin-bottom: 24px;
+    .ant-tabs-content-holder {
+      overflow-y: auto;
+      max-height: 550px;
+    }
+  }
   .ant-card.chat .ant-card-body {
     padding: 0 0 40px 0;
-  }
-  .ant-tabs-content-holder {
-    max-height: calc(70vh - 100px);
-    overflow-y: auto;
   }
   #rc-tabs-0-panel-PLAYERS {
     padding: 24px;
@@ -100,22 +104,16 @@ p {
   margin: 6px;
 }
 
-.game-table {
-  .chat-area .ant-card {
-    height: 640px;
-    .ant-tabs-contezt-holder {
-      max-height: 550px;
-    }
-  }
-}
-
 @media (min-width: $screen-tablet-min) {
   .chat-area .ant-tabs-content-holder {
-    max-height: calc(100vh - 180px);
+    max-height: 800px;
     overflow-y: auto;
   }
 }
 @media (min-width: $screen-laptop-min) {
+  .lobby .chat-area .ant-card.chat .ant-tabs-content-holder {
+    max-height: calc(100vh - 180px)
+  }
   .chat-area {
     order: initial;
     display: block;
@@ -135,6 +133,7 @@ p {
 }
 
 @media (min-height: $screen-min-height-desktop-min) and (min-width: $screen-desktop-min) {
+
   .game-table {
     .chat-area .ant-card {
       height: 745px;

@@ -1,0 +1,31 @@
+@import '../base';
+@include button;
+@include tabs;
+
+.profile {
+  @include container;
+  padding: 0 24px;
+  header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  h3 {
+    margin: 24px 12px;
+    width: auto;
+    display: inline-block;
+  }
+  .ant-card {
+    margin-bottom: 12px;
+  }
+  .ant-card-body {
+    padding: 0;
+  }
+  .ant-card-head {
+    background: $color-primary-light;
+  }
+  a {
+    font-size: 14px;
+    text-align: right;
+  }
+}

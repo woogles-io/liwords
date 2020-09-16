@@ -50,7 +50,7 @@ export const ExchangeTiles = (props: Props) => {
         letters={props.rack}
         grabbable={false}
         onTileClick={props.selectTile}
-        swapRackTiles={() => {}}
+        moveRackTile={() => {}}
         selected={props.exchangedRack}
       />
 

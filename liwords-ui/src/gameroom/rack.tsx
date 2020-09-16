@@ -13,7 +13,7 @@ type Props = {
   grabbable: boolean;
   onTileClick?: (idx: number) => void;
   selected?: Set<number>;
-  swapRackTiles: (
+  moveRackTile: (
     indexA: number | undefined,
     indexB: number | undefined
   ) => void;
@@ -29,8 +29,8 @@ export const Rack = React.memo((props: Props) => {
     e.stopPropagation();
   };
   const handleDrop = (e: any, index: number) => {
-    if (props.swapRackTiles && e.dataTransfer.getData('rackIndex')) {
-      props.swapRackTiles(
+    if (props.moveRackTile && e.dataTransfer.getData('rackIndex')) {
+      props.moveRackTile(
         index,
         parseInt(e.dataTransfer.getData('rackIndex'), 10)
       );
@@ -60,7 +60,7 @@ export const Rack = React.memo((props: Props) => {
           grabbable={props.grabbable}
           rackIndex={n}
           returnToRack={props.returnToRack}
-          swapRackTiles={props.swapRackTiles}
+          moveRackTile={props.moveRackTile}
           onClick={() => {
             if (props.onTileClick) {
               props.onTileClick(n);
