@@ -43,11 +43,9 @@ p {
       font-weight: bold;
       text-transform: none;
     }
-    &.scrolling {
-      padding-bottom: 12px;
-      border-bottom: 1px solid #ddd;
-    }
+
     .presence-count {
+      position: relative;
       display: flex;
       width: 100%;
       justify-content: space-between;
@@ -60,10 +58,23 @@ p {
     .presence {
       color: $color-primary-dark;
       font-weight: bold;
+      z-index: 2;
       span.anonymous {
         color: #444;
         font-weight: normal;
         display: inline;
+      }
+    }
+    &.scrolling {
+      padding-bottom: 12px;
+      border-bottom: 1px solid #ddd;
+      .presence {
+        position: absolute;
+        width: 100%;
+        background: white;
+        padding: 12px 24px;
+        left: 0;
+        border-bottom: 1px solid #ddd;
       }
     }
   }
