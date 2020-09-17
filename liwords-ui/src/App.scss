@@ -2,9 +2,12 @@
 .App {
   background-color: white;
   /* Prevent squashing board until we get to responsive for mobile */
-  a {
+  a, button.link {
     color: $color-primary-dark;
     font-weight: bold;
+    background: white;
+    border: 0;
+    outline: 0;
     &:hover,
     &:active {
       color: $color-primary-midDark;

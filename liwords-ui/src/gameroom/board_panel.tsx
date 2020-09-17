@@ -362,6 +362,7 @@ export const BoardPanel = React.memo((props: Props) => {
 
   return (
     <div
+      id="board-container"
       className="board-container"
       onKeyDown={(e) => {
         keydown(e.key);
