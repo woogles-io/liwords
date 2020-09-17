@@ -42,7 +42,7 @@ export const Chat = React.memo((props: Props) => {
   };
 
   useEffect(() => {
-    const tabContainer = el.current?.closest('.ant-tabs-content-holder');
+    const tabContainer = el.current;
     if (tabContainer && selectedChatTab === 'CHAT') {
       if (tabContainer.scrollHeight > tabContainer.clientHeight) {
         setHasScroll(true);

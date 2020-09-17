@@ -69,8 +69,6 @@
     }
   }
 }
-
-
 .ant-dropdown-menu {
   padding: 0;
 }
@@ -527,9 +525,24 @@
   .ant-card-body {
     padding: 0;
     & > div {
-      max-height: 100px;
+      min-height: 134px;
+      max-height: 134px;
       padding: 8px 16px 16px;
       overflow-y: auto;
+    }
+    .notepad-container {
+      display: flex;
+      height: 100%;
+    }
+    .notepad {
+      resize: none;
+      width: 100%;
+      height: 110px;
+      @include type-monospace;
+      font-size: 15px;
+      line-height: 1.8em;
+      letter-spacing: 0.05em;
+      padding: 12px;
     }
   }
   .player-avatar {
@@ -539,6 +552,7 @@
     height: 24px;
     font-size: 18px;
   }
+
   .turn {
     @include type-monospace;
     color: $color-gray-dark;
@@ -746,7 +760,8 @@
         padding: 0;
 
         & > div {
-          max-height: 130px;
+          min-height: 110px;
+          max-height: 110px;
         }
       }
     }
@@ -800,7 +815,11 @@
     }
     .ant-card-body {
       & > div {
-        max-height: 210px;
+        max-height: 252px;
+        min-height: 252px;
+      }
+      .notepad {
+        height: 228px;
       }
     }
   }
@@ -812,5 +831,16 @@
   }
   .game-table {
     margin-top: 24px;
+  }
+  .score-card {
+    .ant-card-body {
+      & > div {
+        max-height: 241px;
+        min-height: 241px;
+      }
+      .notepad {
+        height: 217px;
+      }
+    }
   }
 }

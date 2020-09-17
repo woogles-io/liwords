@@ -23,7 +23,7 @@ type Props = {
 
 export const TopBar = React.memo((props: Props) => {
   return (
-    <nav className="top-header">
+    <nav className="top-header" id="main-nav">
       <div className="container">
         <a href="/" className="site-icon">
           <div className="top-header-site-icon-rect">

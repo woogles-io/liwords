@@ -218,6 +218,7 @@ ul
 }
 @mixin tabs {
   .ant-tabs {
+    overflow: visible;
     .ant-tabs-ink-bar {
       background: $color-primary-dark;
     }

@@ -1,4 +1,4 @@
-import React, { ReactNode, useEffect, useMemo, useRef } from 'react';
+import React, { ReactNode, useState, useEffect, useMemo, useRef } from 'react';
 import { Card } from 'antd';
 import { GameEvent } from '../gen/macondo/api/proto/macondo/macondo_pb';
 import { Board } from '../utils/cwgame/board';
@@ -177,33 +177,106 @@ const ScorecardTurn = (props: turnProps) => {
 
 export const ScoreCard = React.memo((props: Props) => {
   const el = useRef<HTMLDivElement>(null);
-  useEffect(() => {
+  const notepad = useRef<HTMLTextAreaElement>(null);
+  const [cardHeight, setCardHeight] = useState(0);
+  const [curNotepad, setCurNotepad] = useState('');
+  const [notepadVisible, setNotepadVisible] = useState(false);
+  const resizeListener = () => {
     const currentEl = el.current;
-
     if (currentEl) {
       currentEl.scrollTop = currentEl.scrollHeight || 0;
+      const parentHeight = document.getElementById('board-container')
+        ?.clientHeight;
+      let navHeight = document.getElementById('main-nav')?.clientHeight || 0;
+      if (navHeight > 0) {
+        navHeight += 12;
+      }
+      if (parentHeight) {
+        setCardHeight(
+          parentHeight -
+            currentEl?.getBoundingClientRect().top -
+            window.scrollY +
+            navHeight
+        );
+      }
+    }
+  };
+  useEffect(() => {
+    if (props.events.length) {
+      resizeListener();
     }
   }, [props.events]);
-
+  useEffect(() => {
+    window.addEventListener('resize', resizeListener);
+    return () => {
+      window.removeEventListener('resize', resizeListener);
+    };
+  }, []);
+  useEffect(() => {
+    const currentEl = notepad.current;
+    if (notepadVisible && currentEl) {
+      currentEl.scrollTop = currentEl.scrollHeight || 0;
+    }
+  }, [notepadVisible]);
   const turns = gameEventsToTurns(props.events);
-
+  const cardStyle = cardHeight
+    ? {
+        maxHeight: cardHeight,
+        minHeight: cardHeight,
+      }
+    : undefined;
+  const notepadStyle = cardHeight
+    ? {
+        height: cardHeight - 24,
+      }
+    : undefined;
+  const title = notepadVisible ? 'Notepad' : `Turn ${turns.length + 1}`;
+  const extra = notepadVisible ? 'View Scorecard' : 'View Notepad';
   return (
     <Card
       className="score-card"
-      title={`Turn ${turns.length + 1}`}
+      title={title}
       // eslint-disable-next-line jsx-a11y/anchor-is-valid
-      // extra={<a href="#">Show notepad</a>}
+      extra={
+        <button
+          className="link"
+          onClick={() => {
+            if (notepadVisible) {
+              setNotepadVisible(false);
+            } else {
+              setNotepadVisible(true);
+            }
+          }}
+        >
+          {extra}
+        </button>
+      }
     >
-      <div ref={el}>
-        {turns.map((t, idx) =>
-          t.length === 0 ? null : (
-            <ScorecardTurn
-              turn={t}
-              board={props.board}
-              key={`t_${idx + 0}`}
-              playing={props.playing}
-              username={props.username}
+      <div ref={el} style={cardStyle}>
+        {notepadVisible ? (
+          <div className="notepad-container">
+            <textarea
+              className="notepad"
+              value={curNotepad}
+              ref={notepad}
+              spellCheck={false}
+              style={notepadStyle}
+              onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => {
+                setCurNotepad(e.target.value);
+              }}
             />
+          </div>
+        ) : (
+          turns.map((t, idx) =>
+            t.length === 0 ? null : (
+              <ScorecardTurn
+                turn={t}
+                board={props.board}
+                key={`t_${idx + 0}`}
+                playing={props.playing}
+                username={props.username}
+              />
+            )
           )
         )}
       </div>

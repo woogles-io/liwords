@@ -13,8 +13,8 @@
   .ant-card {
     @include fullHeight();
     height: 600px;
-    &.chat .ant-tabs-content-holder {
-        max-height: 500px;
+    &.chat .entities {
+        max-height: 430px;
       }
   }
 }

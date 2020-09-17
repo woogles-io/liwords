@@ -13,9 +13,9 @@ p {
   .ant-card {
     height: 640px;
     margin-bottom: 24px;
-    .ant-tabs-content-holder {
+    .entities {
       overflow-y: auto;
-      max-height: 550px;
+      max-height: 435px;
     }
   }
   .ant-card.chat .ant-card-body {
@@ -43,12 +43,9 @@ p {
       font-weight: bold;
       text-transform: none;
     }
-    &.scrolling {
-      position: absolute;
-      padding-bottom: 12px;
-      border-bottom: 1px solid #ddd;
-    }
+
     .presence-count {
+      position: relative;
       display: flex;
       width: 100%;
       justify-content: space-between;
@@ -58,16 +55,26 @@ p {
       letter-spacing: 0.16em;
       margin: 6px 0;
     }
-    &.scrolling + .entities {
-      margin-top: 90px;
-    }
     .presence {
       color: $color-primary-dark;
       font-weight: bold;
+      z-index: 2;
       span.anonymous {
         color: #444;
         font-weight: normal;
         display: inline;
+      }
+    }
+    &.scrolling {
+      padding-bottom: 12px;
+      border-bottom: 1px solid #ddd;
+      .presence {
+        position: absolute;
+        width: 100%;
+        background: white;
+        padding: 12px 24px;
+        left: 0;
+        border-bottom: 1px solid #ddd;
       }
     }
   }
@@ -104,15 +111,23 @@ p {
   margin: 6px;
 }
 
+.game-table {
+  .chat-area .ant-card {
+    .entities {
+      max-height: 470px;
+    }
+  }
+}
+
 @media (min-width: $screen-tablet-min) {
-  .chat-area .ant-tabs-content-holder {
-    max-height: 800px;
+  .chat-area .ant-card .entities {
+    max-height: 455px;
     overflow-y: auto;
   }
 }
 @media (min-width: $screen-laptop-min) {
-  .lobby .chat-area .ant-card.chat .ant-tabs-content-holder {
-    max-height: calc(100vh - 180px)
+  .lobby .chat-area .ant-card.chat .entities {
+    max-height: calc(100vh - 265px)
   }
   .chat-area {
     order: initial;
@@ -125,8 +140,8 @@ p {
   .game-table {
     .chat-area .ant-card {
       height: 600px;
-      .ant-tabs-content-holder {
-        max-height: 510px;
+      .entities {
+        max-height: 430px;
       }
     }
   }
@@ -137,8 +152,8 @@ p {
   .game-table {
     .chat-area .ant-card {
       height: 745px;
-      .ant-tabs-content-holder {
-        max-height: 655px;
+      .entities {
+        max-height: 570px;
       }
     }
   }
@@ -148,8 +163,8 @@ p {
   .game-table {
     .chat-area .ant-card {
       height: 810px;
-      .ant-tabs-content-holder {
-        max-height: 720px;
+      .entities {
+        max-height: 635px;
       }
     }
   }
