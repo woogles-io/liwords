@@ -5506,7 +5506,8 @@ proto.liwords.ClientGameplayEvent.EventType = {
   TILE_PLACEMENT: 0,
   PASS: 1,
   EXCHANGE: 2,
-  CHALLENGE_PLAY: 3
+  CHALLENGE_PLAY: 3,
+  RESIGN: 4
 };
 
 /**

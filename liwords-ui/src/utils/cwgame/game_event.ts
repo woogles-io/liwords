@@ -58,6 +58,14 @@ export const passMoveEvent = (gameID: string) => {
   return evt;
 };
 
+export const resignMoveEvent = (gameID: string) => {
+  const evt = new ClientGameplayEvent();
+  evt.setType(ClientGameplayEvent.EventType.RESIGN);
+  evt.setGameId(gameID);
+
+  return evt;
+};
+
 export const challengeMoveEvent = (gameID: string) => {
   const evt = new ClientGameplayEvent();
   evt.setType(ClientGameplayEvent.EventType.CHALLENGE_PLAY);

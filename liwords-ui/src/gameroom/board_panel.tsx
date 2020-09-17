@@ -18,6 +18,7 @@ import {
   tilesetToMoveEvent,
   exchangeMoveEvent,
   passMoveEvent,
+  resignMoveEvent,
   challengeMoveEvent,
 } from '../utils/cwgame/game_event';
 import { Board } from '../utils/cwgame/board';
@@ -306,6 +307,9 @@ export const BoardPanel = React.memo((props: Props) => {
       case 'pass':
         moveEvt = passMoveEvent(props.gameID);
         break;
+      case 'resign':
+        moveEvt = resignMoveEvent(props.gameID);
+        break;
       case 'challenge':
         moveEvt = challengeMoveEvent(props.gameID);
         break;
@@ -430,6 +434,7 @@ export const BoardPanel = React.memo((props: Props) => {
         onRecall={recallTiles}
         onExchange={(rack: string) => makeMove('exchange', rack)}
         onPass={() => makeMove('pass')}
+        onResign={() => makeMove('resign')}
         onChallenge={() => makeMove('challenge')}
         onCommit={() => makeMove('commit')}
         onRematch={rematch}
