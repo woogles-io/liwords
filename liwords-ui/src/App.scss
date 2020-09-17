@@ -5,13 +5,15 @@
   a, button.link {
     color: $color-primary-dark;
     font-weight: bold;
-    background: white;
     border: 0;
     outline: 0;
     &:hover,
     &:active {
       color: $color-primary-midDark;
     }
+  }
+  button.link {
+    background: white;
   }
 }
 
