@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Button } from 'antd';
+import { Button, Popconfirm } from 'antd';
 import { ExchangeTiles } from './exchange_tiles';
 
 type Props = {
@@ -72,9 +72,14 @@ const GameControls = React.memo((props: Props) => {
 
   return (
     <div className="game-controls">
-      <Button onClick={props.onResign} danger>
-        Resign
-      </Button>
+      <Popconfirm
+        title="Are you sure you wish to resign?"
+        onConfirm={props.onResign}
+        okText="Yes"
+        cancelText="No"
+      >
+        <Button danger>Resign</Button>
+      </Popconfirm>
 
       <Button onClick={props.onPass} danger>
         Pass

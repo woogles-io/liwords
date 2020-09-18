@@ -2,8 +2,7 @@ AWSTemplateFormatVersion: "2010-09-09"
 Parameters:
   BucketName:
     Type: String
-  RedirectTarget:
-    Type: String
+
 Resources:
   UploadBucket:
     Type: "AWS::S3::Bucket"
@@ -56,14 +55,3 @@ Resources:
       Groups:
         - !Ref S3WebsiteUploadGroup
       UserName: CircleCIUploadUser
-
-  S3RedirectBucket:
-    Type: "AWS::S3::Bucket"
-    Properties:
-      AccessControl: PublicRead
-      BucketName: !Sub "www.${BucketName}"
-      WebsiteConfiguration:
-        IndexDocument: index.html
-        RoutingRules:
-          - RedirectRule:
-              HostName: !Ref RedirectTarget

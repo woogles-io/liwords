@@ -73,4 +73,6 @@ workflows:
             - build_fe
           filters:
             branches:
-              only: master
+              only:
+                - master
+                - develop
