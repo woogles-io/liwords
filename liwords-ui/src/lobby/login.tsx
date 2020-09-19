@@ -35,7 +35,7 @@ export const Login = () => {
       )
       .then(() => {
         // Automatically will set cookie
-        // setLoggedIn(true);
+        setLoggedIn(true);
       })
       .catch((e) => {
         if (e.response) {
