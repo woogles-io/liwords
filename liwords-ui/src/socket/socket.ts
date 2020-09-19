@@ -6,6 +6,7 @@ import { useLocation } from 'react-router-dom';
 import { useStoreContext } from '../store/store';
 import { onSocketMsg } from '../store/socket_handlers';
 import { decodeToMsg } from '../utils/protobuf';
+import { toAPIUrl } from '../api/api';
 
 const getSocketURI = (): string => {
   const loc = window.location;
@@ -16,7 +17,7 @@ const getSocketURI = (): string => {
     socketURI = 'ws:';
   }
 
-  socketURI += `//${loc.host}/ws`;
+  socketURI += `//${window.RUNTIME_CONFIGURATION.socketEndpoint}/ws`;
 
   return socketURI;
 };
@@ -54,8 +55,9 @@ export const useLiwordsSocket = () => {
 
     axios
       .post<TokenResponse>(
-        '/twirp/user_service.AuthenticationService/GetSocketToken',
-        {}
+        toAPIUrl('user_service.AuthenticationService', 'GetSocketToken'),
+        {},
+        { withCredentials: true }
       )
       .then((resp) => {
         setSocketToken(resp.data.token);

@@ -44,14 +44,17 @@ The Woogles.io team
 `
 
 type AuthenticationService struct {
-	userStore    user.Store
-	sessionStore user.SessionStore
-	secretKey    string
-	mailgunKey   string
+	userStore            user.Store
+	sessionStore         user.SessionStore
+	secretKey            string
+	mailgunKey           string
+	allowedCookieDomains []string
 }
 
-func NewAuthenticationService(u user.Store, ss user.SessionStore, secretKey, mailgunKey string) *AuthenticationService {
-	return &AuthenticationService{userStore: u, sessionStore: ss, secretKey: secretKey, mailgunKey: mailgunKey}
+func NewAuthenticationService(u user.Store, ss user.SessionStore, secretKey,
+	mailgunKey string, allowedCookieDomains []string) *AuthenticationService {
+	return &AuthenticationService{userStore: u, sessionStore: ss, secretKey: secretKey,
+		mailgunKey: mailgunKey, allowedCookieDomains: allowedCookieDomains}
 }
 
 // Login sets a cookie.
@@ -70,6 +73,9 @@ func (as *AuthenticationService) Login(ctx context.Context, r *pb.UserLoginReque
 	if err != nil {
 		return nil, err
 	}
+
+	// Figure out our origin.
+
 	err = apiserver.SetCookie(ctx, &http.Cookie{
 		Name:  "sessionid",
 		Value: sess.ID,
@@ -79,7 +85,12 @@ func (as *AuthenticationService) Login(ctx context.Context, r *pb.UserLoginReque
 		// it's ok to require the user to log in once a year.
 		Expires:  time.Now().Add(365 * 24 * time.Hour),
 		HttpOnly: true,
+		Domain:   as.allowedCookieDomains[0],
+		// Need to specifically set this for the cross-domain cookie.
+		SameSite: http.SameSiteNoneMode,
+		Secure:   true,
 	})
+	log.Info().Str("domain", as.allowedCookieDomains[0]).Str("value", sess.ID).Msg("setting-cookie")
 	if err != nil {
 		return nil, err
 	}
@@ -103,6 +114,7 @@ func (as *AuthenticationService) Logout(ctx context.Context, r *pb.UserLogoutReq
 		Value:    "",
 		MaxAge:   -1,
 		HttpOnly: true,
+		Domain:   as.allowedCookieDomains[0],
 	})
 	if err != nil {
 		return nil, err

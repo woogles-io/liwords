@@ -24,7 +24,7 @@ services:
     ports:
       - "8001:8001"
     labels:
-      - "traefik.http.routers.liwords.rule=Host(`liwords.localhost`) && PathPrefix(`/twirp/`)"
+      - "traefik.http.routers.liwords.rule=Host(`api.xwordclub.localhost`) && PathPrefix(`/twirp/`)"
       - "traefik.http.routers.liwords.entrypoints=web"
       - "traefik.http.services.liwords.loadbalancer.server.port=8001"
       - traefik.enable=true
@@ -62,7 +62,7 @@ services:
     ports:
       - "8087:8087"
     labels:
-      - "traefik.http.routers.liwords-socket.rule=Host(`liwords.localhost`) && PathPrefix(`/ws`)"
+      - "traefik.http.routers.liwords-socket.rule=Host(`socket.xwordclub.localhost`) && PathPrefix(`/ws`)"
       - "traefik.http.routers.liwords-socket.entrypoints=web"
       - "traefik.http.services.liwords-socket.loadbalancer.server.port=8087"
       - traefik.enable=true

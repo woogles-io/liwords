@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import axios from 'axios';
 import { Input, Form, Button, Alert, Switch, Typography } from 'antd';
+import { toAPIUrl } from '../api/api';
 
 const layout = {
   labelCol: {
@@ -23,7 +24,7 @@ export const Register = () => {
 
   const onFinish = (values: { [key: string]: string }) => {
     axios
-      .post('/twirp/user_service.RegistrationService/Register', {
+      .post(toAPIUrl('user_service.RegistrationService', 'Register'), {
         username: values.username,
         password: values.password,
         email: values.email,
@@ -32,10 +33,14 @@ export const Register = () => {
       .then(() => {
         // Try logging in after registering.
         axios
-          .post('/twirp/user_service.AuthenticationService/Login', {
-            username: values.username,
-            password: values.password,
-          })
+          .post(
+            toAPIUrl('user_service.AuthenticationService', 'Login'),
+            {
+              username: values.username,
+              password: values.password,
+            },
+            { withCredentials: true }
+          )
           .then(() => {
             // Automatically will set cookie
             setLoggedIn(true);

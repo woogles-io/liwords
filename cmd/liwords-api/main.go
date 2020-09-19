@@ -26,6 +26,7 @@ import (
 	"github.com/domino14/liwords/pkg/auth"
 
 	"github.com/justinas/alice"
+	"github.com/rs/cors"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/hlog"
 	"github.com/rs/zerolog/log"
@@ -76,7 +77,17 @@ func main() {
 	}
 	sessionStore, err := session.NewDBStore(cfg.DBConnString)
 
+	originURLs := strings.Split(cfg.OriginURLs, ",")
+
+	c := cors.New(cors.Options{
+		AllowedOrigins:   originURLs,
+		AllowCredentials: true,
+		// Enable Debugging for testing, consider disabling in production
+		Debug: true,
+	})
+
 	middlewares := alice.New(
+		c.Handler,
 		hlog.NewHandler(log.With().Str("service", "liwords").Logger()),
 		apiserver.WithCookiesMiddleware,
 		apiserver.AuthenticationMiddlewareGenerator(sessionStore),
@@ -99,7 +110,7 @@ func main() {
 		panic(err)
 	}
 
-	authenticationService := auth.NewAuthenticationService(userStore, sessionStore, cfg.SecretKey, cfg.MailgunKey)
+	authenticationService := auth.NewAuthenticationService(userStore, sessionStore, cfg.SecretKey, cfg.MailgunKey, originURLs)
 	registrationService := registration.NewRegistrationService(userStore)
 	gameService := gameplay.NewGameService(userStore, gameStore)
 	profileService := pkguser.NewProfileService(userStore)
