@@ -73,8 +73,6 @@ func (as *AuthenticationService) Login(ctx context.Context, r *pb.UserLoginReque
 		return nil, err
 	}
 
-	// Figure out our origin.
-
 	err = apiserver.SetCookie(ctx, &http.Cookie{
 		Name:  "sessionid",
 		Value: sess.ID,

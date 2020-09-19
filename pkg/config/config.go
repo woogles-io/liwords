@@ -14,8 +14,6 @@ type Config struct {
 	NatsURL      string
 	MailgunKey   string
 	RedisURL     string
-	OriginURLs   string
-	CookieDomain string
 }
 
 // Load loads the configs from the given arguments
@@ -35,8 +33,6 @@ func (c *Config) Load(args []string) error {
 	fs.StringVar(&c.NatsURL, "nats-url", "nats://localhost:4222", "the NATS server URL")
 	fs.StringVar(&c.MailgunKey, "mailgun-key", "", "the Mailgun secret key")
 	fs.StringVar(&c.RedisURL, "redis-url", "", "the Redis URL")
-	fs.StringVar(&c.OriginURLs, "origin-urls", "http://liwords.localhost", "a comma-separated list of domains for CORS; use protocols")
-	fs.StringVar(&c.CookieDomain, "cookie-domain", "liwords.localhost", "the cookie domain -- should be the domain part of one of the origin URLs")
 	err := fs.Parse(args)
 	return err
 }
