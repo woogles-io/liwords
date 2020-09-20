@@ -149,7 +149,7 @@ const ScorecardTurn = (props: turnProps) => {
   return (
     <>
       <div className="turn">
-        <PlayerAvatar player={memoizedTurn.player} />
+        <PlayerAvatar player={memoizedTurn.player} withTooltip />
         <div className="coords-time">
           {memoizedTurn.coords ? (
             <p className="coord">{memoizedTurn.coords}</p>

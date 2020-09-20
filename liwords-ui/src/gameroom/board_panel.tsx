@@ -41,7 +41,6 @@ const colors = require('../base.scss');
 
 type Props = {
   username: string;
-  showBonusLabels: boolean;
   currentRack: string;
   events: Array<GameEvent>;
   gameID: string;
@@ -379,7 +378,6 @@ export const BoardPanel = React.memo((props: Props) => {
         gridLayout={props.board.gridLayout}
         handleTileDrop={handleTileDrop}
         tilesLayout={props.board.letters}
-        showBonusLabels={false}
         lastPlayedTiles={gameContext.lastPlayedTiles}
         tentativeTiles={placedTiles}
         tentativeTileScore={placedTilesTempScore}

@@ -191,7 +191,7 @@ export const Store = ({ children, ...props }: Props) => {
   );
 
   const [poolFormat, setPoolFormat] = useState<PoolFormatType>(
-    PoolFormatType.Detail
+    PoolFormatType.Alphabet
   );
 
   const [redirGame, setRedirGame] = useState('');

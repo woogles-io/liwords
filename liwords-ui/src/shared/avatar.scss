@@ -12,10 +12,11 @@
   background-position: center center;
   background-repeat: no-repeat;
   background-size: cover;
-  font-family: $font-monospaced;
+  font-family: $font-default;
+  font-weight: 700;
   color: white;
   text-transform: capitalize;
-  font-size: 24px;
+  font-size: 15px;
   line-height: 0;
 }
 
@@ -24,6 +25,6 @@
     width: 48px;
     min-width: 48px;
     height: 48px;
-    font-size: 32px;
+    font-size: 22px;
   }
 }

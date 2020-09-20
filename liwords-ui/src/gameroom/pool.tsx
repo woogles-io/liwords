@@ -87,6 +87,7 @@ const Pool = React.memo((props: Props) => {
         <Menu.Item
           key={pf.poolFormatType}
           onClick={() => {
+            localStorage?.setItem('poolFormat', pf.poolFormatType.toString());
             props.setPoolFormat(pf.poolFormatType);
           }}
         >

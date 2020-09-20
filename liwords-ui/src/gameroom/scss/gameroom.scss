@@ -54,17 +54,18 @@
 
     .ant-card-head {
       min-height: auto;
+      padding: 0 12px;
       .ant-card-head-title,
       .ant-card-extra {
         padding: 6px 3px;
-        font-size: 12px;
+        font-size: 13px;
         line-height: 1em;
       }
       .ant-card-extra {
         @include type-default;
         font-weight: bold;
         line-height: 2em;
-        font-size: 12px;
+        font-size: 13px;
       }
     }
   }
@@ -124,11 +125,11 @@
   grid-template-columns: repeat(15, 1fr);
   grid-template-rows: repeat(15, 1fr);
   gap: 1px;
-  background-color: #ddd;
+  background-color: $color-grid;
 }
 .board-spaces {
   // Using a box shadow that looks like a border to not mess up the
-  box-shadow: 0 0 4px rgba(0,0,0,0.3);
+  box-shadow: 0 0 6px scale-color($color-grid, $lightness: -20%);;
 }
 
 .tiles {
@@ -151,7 +152,7 @@
   align-items: center;
   color: $color-board-empty;
   border: transparent 1px solid;
-  border-color: transparent transparent #ddd #ddd;
+  border-color: transparent transparent $color-grid $color-grid;
 }
 
 .board-space::before {
@@ -161,10 +162,33 @@
   vertical-align: top;
 }
 .board-space {
+  display: flex;
   .anticon {
     position: absolute;
     color: $color-timer-dark;
     font-size: $tile-font-size-mobile;
+  }
+  .bonus-label {
+    text-align: center;
+    color: white;
+    font-family: $font-default;
+    font-size: 10px;
+    font-weight: 800;
+    max-width: 30px;
+    position: absolute;
+    line-height: 1em;
+    padding: 0 0 1px;
+    opacity: 0;
+   }
+  &:hover {
+    .bonus-label {
+      animation: fadeIn 700ms cubic-bezier(.17,.67,.29, 1) 400ms forwards;
+    }
+  }
+  &.selected {
+    .bonus-label {
+      display: none;
+    }
   }
   &.bonus-none {
     background-color: $color-board-empty;
@@ -172,7 +196,11 @@
   &.bonus-3WS {
     background-color: $color-board-tws;
     &.selected {
-      background-color: mix($color-board-tws, $color-timer-light, $weight: 30%)
+      background-color: mix($color-board-tws, white, $weight: 50%);
+      border-color: scale-color($color-timer-light, $lightness: -10%);
+      .anticon {
+        color: scale-color($color-timer-light, $lightness: -10%);
+      }
     }
   }
   &.bonus-2WS {
@@ -186,11 +214,18 @@
         display: none;
       }
     }
+    .bonus-label {
+      color: mix($color-board-tws, black, $weight: 90%);
+    }
   }
   &.bonus-3LS {
     background-color: $color-board-tls;
     &.selected {
-      background-color: mix($color-board-tls, $color-timer-light, $weight: 50%)
+      background-color: mix($color-board-tls, $color-timer-light, $weight: 70%);
+      border-color: scale-color($color-timer-light, $lightness: -10%);
+      .anticon {
+        color: scale-color($color-timer-light, $lightness: -10%);
+      }
     }
   }
   &.bonus-2LS {
@@ -198,22 +233,23 @@
     &.selected {
       background-color: mix($color-board-dls, $color-timer-light, $weight: 30%)
     }
+    .bonus-label {
+      color: mix($color-board-tls, black, $weight: 50%);
+    }
   }
   &.selected {
     border: 1px solid $color-timer-dark;
     background: $color-timer-light;
   }
 }
-
-.bonus-label {
-  position: absolute;
-  top: 50%;
-  width: 100%;
-  text-align: center;
-  color: white;
-  font-size: 12px;
+@keyframes fadeIn {
+  0% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 1;
+  }
 }
-
 /* Coordinate labels */
 
 .coord-labels {
@@ -398,15 +434,20 @@
   pointer-events: none;
   align-items: center;
   justify-content: center;
-  width: 90%;
-  height: 70%;
-  border-radius: 15%;
+  width: 100%;
+  height:100%;
+  border-radius: 10%;
   font-size: 1.1vw;
   font-weight: bold;
-  margin: 0;
-  left: -95%;
-  background: #999;
-  color: white;
+  margin: 1px;
+  left: -100%;
+  border: 1px solid $color-timer-dark;
+  background: $color-timer-light;
+  color: $color-timer-dark;
+}
+.tile:hover {
+  .tentative-score {
+  }
 }
 
 .tile.dragging .tentative-score {
@@ -550,7 +591,7 @@
     width: 24px;
     min-width: 24px;
     height: 24px;
-    font-size: 18px;
+    font-size: 16px;
   }
 
   .turn {
