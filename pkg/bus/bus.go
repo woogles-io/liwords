@@ -263,7 +263,9 @@ func (b *Bus) handleBotMove(ctx context.Context, g *entity.Game) {
 	onTurn := g.Game.PlayerOnTurn()
 	userID := g.Game.PlayerIDOnTurn()
 
-	for g.PlayerOnTurn() == onTurn {
+	// We check if that game is not over because a triple challenge
+	// could have ended it
+	for g.PlayerOnTurn() == onTurn && g.Game.Playing() != macondopb.PlayState_GAME_OVER {
 		hist := g.History()
 		req := macondopb.BotRequest{GameHistory: hist}
 		data, err := proto.Marshal(&req)
