@@ -2,375 +2,188 @@ package gameplay
 
 import (
 	"context"
-	"encoding/json"
-	"io/ioutil"
-	"os"
 	"testing"
 
+	"github.com/golang/protobuf/proto"
 	"github.com/matryer/is"
 	"github.com/rs/zerolog/log"
 
-	"github.com/jinzhu/gorm"
-
+	"github.com/domino14/liwords/pkg/config"
 	"github.com/domino14/liwords/pkg/entity"
-	pkgstats "github.com/domino14/liwords/pkg/stats"
+	"github.com/domino14/liwords/pkg/stores/game"
 	"github.com/domino14/liwords/pkg/stores/stats"
 	"github.com/domino14/liwords/pkg/stores/user"
 	pkguser "github.com/domino14/liwords/pkg/user"
 	pb "github.com/domino14/liwords/rpc/api/proto/realtime"
 	"github.com/domino14/macondo/alphabet"
-	macondoconfig "github.com/domino14/macondo/config"
-	"github.com/domino14/macondo/gaddag"
-	macondopb "github.com/domino14/macondo/gen/api/proto/macondo"
 )
 
-var TestDBHost = os.Getenv("TEST_DB_HOST")
-var TestingDBConnStr = "host=" + TestDBHost + " port=5432 user=postgres password=pass sslmode=disable"
-var gameReq = &pb.GameRequest{Lexicon: "CSW19",
-	Rules: &pb.GameRules{BoardLayoutName: entity.CrosswordGame,
-		LetterDistributionName: "letterdist",
-		VariantName:            "classic"},
-
-	InitialTimeSeconds: 25 * 60,
-	IncrementSeconds:   0,
-	ChallengeRule:      macondopb.ChallengeRule_FIVE_POINT,
-	GameMode:           pb.GameMode_REAL_TIME,
-	RatingMode:         pb.RatingMode_RATED,
-	RequestId:          "yeet",
-	MaxOvertimeMinutes: 10}
-
-var DefaultConfig = macondoconfig.Config{
-	LexiconPath:               os.Getenv("LEXICON_PATH"),
-	LetterDistributionPath:    os.Getenv("LETTER_DISTRIBUTION_PATH"),
-	DefaultLexicon:            "CSW19",
-	DefaultLetterDistribution: "English",
+type FakeNower struct {
+	fakeMeow int64
 }
 
-// Just dummy info to test that rating stats work
-var gameEndedEventObj = &pb.GameEndedEvent{
-	Scores: map[string]int32{"cesar4": 1500,
-		"Mina": 1800},
-	NewRatings: map[string]int32{"cesar4": 1500,
-		"Mina": 1800},
-	EndReason: pb.GameEndReason_STANDARD,
-	Winner:    "cesar4",
-	Loser:     "Mina",
-	Tie:       false,
+func (f FakeNower) Now() int64 {
+	return f.fakeMeow
 }
 
-func userStore(dbURL string) pkguser.Store {
-	ustore, err := user.NewDBStore(TestingDBConnStr + " dbname=liwords_test")
+func gameStore(dbURL string, userStore pkguser.Store) (*config.Config, GameStore) {
+	cfg := &config.Config{}
+	cfg.MacondoConfig = DefaultConfig
+	cfg.DBConnString = dbURL
+
+	tmp, err := game.NewDBStore(cfg, userStore)
 	if err != nil {
 		log.Fatal().Err(err).Msg("error")
 	}
-	return ustore
+	gameStore := game.NewCache(tmp)
+	return cfg, gameStore
 }
 
-func listStatStore(dbURL string) pkgstats.ListStatStore {
-	s, err := stats.NewListStatStore(TestingDBConnStr + " dbname=liwords_test")
-	if err != nil {
-		log.Fatal().Err(err).Msg("error")
-	}
-	return s
+type evtConsumer struct {
+	evts []*entity.EventWrapper
 }
 
-func recreateDB() {
-	// Create a database.
-	db, err := gorm.Open("postgres", TestingDBConnStr+" dbname=postgres")
-	if err != nil {
-		log.Fatal().Err(err).Msg("error")
-	}
-	defer db.Close()
-	db = db.Exec("DROP DATABASE IF EXISTS liwords_test")
-	if db.Error != nil {
-		log.Fatal().Err(db.Error).Msg("error")
-	}
-	db = db.Exec("CREATE DATABASE liwords_test")
-	if db.Error != nil {
-		log.Fatal().Err(db.Error).Msg("error")
-	}
-	// Create a user table. Initialize the user store.
-	ustore := userStore(TestingDBConnStr + " dbname=liwords_test")
-
-	// Insert a couple of users into the table.
-
-	for _, u := range []*entity.User{
-		{Username: "cesar4", Email: "cesar4@woogles.io", UUID: "xjCWug7EZtDxDHX5fRZTLo"},
-		{Username: "Mina", Email: "mina@gmail.com", UUID: "qUQkST8CendYA3baHNoPjk"},
-		{Username: "jesse", Email: "jesse@woogles.io", UUID: "3xpEkpRAy3AizbVmDg3kdi"},
-	} {
-		err = ustore.New(context.Background(), u)
-		if err != nil {
-			log.Fatal().Err(err).Msg("error")
+func (ec *evtConsumer) consumeEventChan(ctx context.Context,
+	ch chan *entity.EventWrapper,
+	done chan bool) {
+	defer func() { done <- true }()
+	for {
+		select {
+		case msg := <-ch:
+			ec.evts = append(ec.evts, msg)
+		case <-ctx.Done():
+			return
 		}
 	}
-	ustore.(*user.DBStore).Disconnect()
 }
 
-func TestMain(m *testing.M) {
-	alphabet.CreateLetterDistributionCache()
-	gaddag.CreateGaddagCache()
-	code := m.Run()
-	os.Exit(code)
+func makeGame(cfg *config.Config, ustore pkguser.Store, gstore GameStore) (
+	*entity.Game, *FakeNower, context.CancelFunc, chan bool, *evtConsumer) {
+
+	ctx := context.Background()
+	cesar, _ := ustore.Get(ctx, "cesar4")
+	jesse, _ := ustore.Get(ctx, "jesse")
+	// see the gameReq in game_test.go in this package
+	gr := proto.Clone(gameReq).(*pb.GameRequest)
+
+	gr.IncrementSeconds = 5
+	gr.MaxOvertimeMinutes = 0
+	g, _ := InstantiateNewGame(ctx, gstore, cfg, [2]*entity.User{cesar, jesse},
+		1, gr)
+
+	ch := make(chan *entity.EventWrapper)
+	donechan := make(chan bool)
+	consumer := &evtConsumer{}
+
+	cctx, cancel := context.WithCancel(ctx)
+	go consumer.consumeEventChan(cctx, ch, donechan)
+
+	nower := &FakeNower{}
+	g.SetTimerModule(nower)
+
+	StartGame(ctx, gstore, ch, g.GameID())
+
+	return g, nower, cancel, donechan, consumer
 }
 
-func variantKey(req *pb.GameRequest) entity.VariantKey {
-	timefmt, variant, err := entity.VariantFromGameReq(req)
-	if err != nil {
-		panic(err)
-	}
-	return entity.ToVariantKey(req.Lexicon, variant, timefmt)
-}
-
-func TestComputeGameStats(t *testing.T) {
+func TestInitializeGame(t *testing.T) {
 	is := is.New(t)
 	recreateDB()
-	ustore := userStore(TestingDBConnStr + " dbname=liwords_test")
-	lstore := listStatStore(TestingDBConnStr + " dbname=liwords_test")
+	cstr := TestingDBConnStr + " dbname=liwords_test"
 
-	histjson, err := ioutil.ReadFile("./testdata/game1/history.json")
-	is.NoErr(err)
-	hist := &macondopb.GameHistory{}
-	err = json.Unmarshal(histjson, hist)
-	is.NoErr(err)
+	ustore := userStore(cstr)
+	lstore := listStatStore(cstr)
+	cfg, gstore := gameStore(cstr, ustore)
 
-	reqjson, err := ioutil.ReadFile("./testdata/game1/game_request.json")
-	is.NoErr(err)
-	req := &pb.GameRequest{}
-	err = json.Unmarshal(reqjson, req)
-	is.NoErr(err)
+	g, _, cancel, donechan, consumer := makeGame(cfg, ustore, gstore)
 
-	ctx := context.WithValue(context.Background(), ConfigCtxKey("config"), &DefaultConfig)
-	s, err := computeGameStats(ctx, hist, gameReq, variantKey(req), gameEndedEventObj, ustore, lstore)
-	is.NoErr(err)
-	pkgstats.Finalize(s, lstore, []string{"m5ktbp4qPVTqaAhg6HJMsb"},
-		"qUQkST8CendYA3baHNoPjk", "xjCWug7EZtDxDHX5fRZTLo",
-	)
-
-	is.Equal(s.PlayerOneData[entity.BINGOS_STAT].List, []*entity.ListItem{
-		{
-			GameId:   "m5ktbp4qPVTqaAhg6HJMsb",
-			PlayerId: "qUQkST8CendYA3baHNoPjk",
-			Time:     0,
-			Item:     entity.ListDatum{Word: "PARDINE", Score: 76, Probability: 1},
-		},
-		{
-			GameId:   "m5ktbp4qPVTqaAhg6HJMsb",
-			PlayerId: "qUQkST8CendYA3baHNoPjk",
-			Time:     0,
-			Item:     entity.ListDatum{Word: "HETAERA", Score: 91, Probability: 1},
-		},
-	})
-	log.Info().Interface("ratings", s.PlayerOneData[entity.RATINGS_STAT].List).Msg("player rating")
-
-	is.Equal(s.PlayerOneData[entity.RATINGS_STAT].List, []*entity.ListItem{
-		{
-			GameId:   "m5ktbp4qPVTqaAhg6HJMsb",
-			PlayerId: "qUQkST8CendYA3baHNoPjk",
-			Time:     0,
-			Item:     entity.ListDatum{Rating: 1800, Variant: "CSW19.classic.regular"},
-		},
-	})
-
+	is.Equal(g.PlayerOnTurn(), 1)
+	cancel()
+	<-donechan
+	// It should just be a single GameHistory event.
+	is.Equal(len(consumer.evts), 1)
 	ustore.(*user.DBStore).Disconnect()
 	lstore.(*stats.ListStatStore).Disconnect()
+	gstore.(*game.Cache).Disconnect()
 }
 
-func TestComputeGameStats2(t *testing.T) {
+func TestWrongTurn(t *testing.T) {
 	is := is.New(t)
 	recreateDB()
-	ustore := userStore(TestingDBConnStr + " dbname=liwords_test")
-	lstore := listStatStore(TestingDBConnStr + " dbname=liwords_test")
+	cstr := TestingDBConnStr + " dbname=liwords_test"
 
-	histjson, err := ioutil.ReadFile("./testdata/game2/history.json")
-	is.NoErr(err)
-	hist := &macondopb.GameHistory{}
-	err = json.Unmarshal(histjson, hist)
-	is.NoErr(err)
+	ustore := userStore(cstr)
+	lstore := listStatStore(cstr)
+	cfg, gstore := gameStore(cstr, ustore)
 
-	reqjson, err := ioutil.ReadFile("./testdata/game2/game_request.json")
-	is.NoErr(err)
-	req := &pb.GameRequest{}
-	err = json.Unmarshal(reqjson, req)
-	is.NoErr(err)
+	g, _, cancel, donechan, consumer := makeGame(cfg, ustore, gstore)
 
-	ctx := context.WithValue(context.Background(), ConfigCtxKey("config"), &DefaultConfig)
-	s, err := computeGameStats(ctx, hist, gameReq, variantKey(req), gameEndedEventObj, ustore, lstore)
-	is.NoErr(err)
+	is.Equal(g.PlayerOnTurn(), 1)
 
-	pkgstats.Finalize(s, lstore, []string{"ycj5de5gArFF3ap76JyiUA"},
-		"xjCWug7EZtDxDHX5fRZTLo", "qUQkST8CendYA3baHNoPjk",
-	)
-	log.Info().Interface("bingos", s.PlayerOneData[entity.BINGOS_STAT].List).Msg("player one bingos")
-
-	is.Equal(s.PlayerOneData[entity.BINGOS_STAT].List, []*entity.ListItem{
-		{
-			GameId:   "ycj5de5gArFF3ap76JyiUA",
-			PlayerId: "xjCWug7EZtDxDHX5fRZTLo",
-			Time:     0,
-			Item:     entity.ListDatum{Word: "STYMING", Score: 70, Probability: 1},
-		},
-	})
-
-	is.Equal(s.PlayerTwoData[entity.BINGOS_STAT].List, []*entity.ListItem{
-		{
-			GameId:   "ycj5de5gArFF3ap76JyiUA",
-			PlayerId: "qUQkST8CendYA3baHNoPjk",
-			Time:     0,
-			Item:     entity.ListDatum{Word: "UNITERS", Score: 68, Probability: 1},
-		},
-	})
-
-	ustore.(*user.DBStore).Disconnect()
-	lstore.(*stats.ListStatStore).Disconnect()
-
-}
-
-func TestComputePlayerStats(t *testing.T) {
-	is := is.New(t)
-	recreateDB()
-	ustore := userStore(TestingDBConnStr + " dbname=liwords_test")
-	lstore := listStatStore(TestingDBConnStr + " dbname=liwords_test")
-
-	histjson, err := ioutil.ReadFile("./testdata/game1/history.json")
-	is.NoErr(err)
-	hist := &macondopb.GameHistory{}
-	err = json.Unmarshal(histjson, hist)
-	is.NoErr(err)
-
-	reqjson, err := ioutil.ReadFile("./testdata/game1/game_request.json")
-	is.NoErr(err)
-	req := &pb.GameRequest{}
-	err = json.Unmarshal(reqjson, req)
-	is.NoErr(err)
-
-	ctx := context.WithValue(context.Background(), ConfigCtxKey("config"), &DefaultConfig)
-	_, err = computeGameStats(ctx, hist, gameReq, variantKey(req), gameEndedEventObj, ustore, lstore)
-	is.NoErr(err)
-
-	p0id, p1id := hist.Players[0].UserId, hist.Players[1].UserId
-
-	u0, err := ustore.GetByUUID(context.Background(), p0id)
-	is.NoErr(err)
-	u1, err := ustore.GetByUUID(context.Background(), p1id)
-	is.NoErr(err)
-
-	stats0, ok := u0.Profile.Stats.Data["CSW19.classic.ultrablitz"]
-	is.True(ok)
-
-	err = pkgstats.Finalize(stats0, lstore, []string{"m5ktbp4qPVTqaAhg6HJMsb"},
-		"qUQkST8CendYA3baHNoPjk", "xjCWug7EZtDxDHX5fRZTLo",
-	)
-	is.NoErr(err)
-
-	is.Equal(stats0.PlayerOneData[entity.BINGOS_STAT].List, []*entity.ListItem{
-		{
-			GameId:   "m5ktbp4qPVTqaAhg6HJMsb",
-			PlayerId: "qUQkST8CendYA3baHNoPjk",
-			Time:     0,
-			Item:     entity.ListDatum{Word: "PARDINE", Score: 76, Probability: 1},
-		},
-		{
-			GameId:   "m5ktbp4qPVTqaAhg6HJMsb",
-			PlayerId: "qUQkST8CendYA3baHNoPjk",
-			Time:     0,
-			Item:     entity.ListDatum{Word: "HETAERA", Score: 91, Probability: 1},
-		},
-	})
-
-	is.Equal(stats0.PlayerOneData[entity.WINS_STAT].Total, 1)
-
-	stats1, ok := u1.Profile.Stats.Data["CSW19.classic.ultrablitz"]
-	is.True(ok)
-	is.Equal(stats1.PlayerOneData[entity.WINS_STAT].Total, 0)
-	ustore.(*user.DBStore).Disconnect()
-	lstore.(*stats.ListStatStore).Disconnect()
-}
-
-func TestComputePlayerStatsMultipleGames(t *testing.T) {
-	is := is.New(t)
-	recreateDB()
-	ustore := userStore(TestingDBConnStr + " dbname=liwords_test")
-	lstore := listStatStore(TestingDBConnStr + " dbname=liwords_test")
-
-	for _, g := range []string{"game1", "game2"} {
-		histjson, err := ioutil.ReadFile("./testdata/" + g + "/history.json")
-		is.NoErr(err)
-		hist := &macondopb.GameHistory{}
-		err = json.Unmarshal(histjson, hist)
-		is.NoErr(err)
-
-		reqjson, err := ioutil.ReadFile("./testdata/" + g + "/game_request.json")
-		is.NoErr(err)
-		req := &pb.GameRequest{}
-		err = json.Unmarshal(reqjson, req)
-		is.NoErr(err)
-
-		ctx := context.WithValue(context.Background(), ConfigCtxKey("config"), &DefaultConfig)
-		_, err = computeGameStats(ctx, hist, gameReq, variantKey(req), gameEndedEventObj, ustore, lstore)
-		is.NoErr(err)
+	cge := &pb.ClientGameplayEvent{
+		Type:           pb.ClientGameplayEvent_TILE_PLACEMENT,
+		GameId:         g.GameID(),
+		PositionCoords: "8D",
+		Tiles:          "BANJO",
 	}
 
-	u0, err := ustore.Get(context.Background(), "Mina")
-	is.NoErr(err)
-	u1, err := ustore.Get(context.Background(), "cesar4")
-	is.NoErr(err)
+	// User ID below is "cesar4" who's not on turn.
+	_, err := HandleEvent(context.Background(), gstore, ustore, lstore,
+		"xjCWug7EZtDxDHX5fRZTLo", cge)
 
-	stats0, ok := u0.Profile.Stats.Data["CSW19.classic.ultrablitz"]
-	is.True(ok)
-	is.Equal(stats0.PlayerOneData[entity.GAMES_STAT].Total, 2)
-	is.Equal(stats0.PlayerOneData[entity.WINS_STAT].Total, 1)
+	is.Equal(err.Error(), "player not on turn")
 
-	log.Debug().Interface("li", stats0.PlayerOneData[entity.BINGOS_STAT].List).Msg("--")
-	err = pkgstats.Finalize(stats0, lstore, []string{
-		// Aggregate across two games
-		"m5ktbp4qPVTqaAhg6HJMsb", "ycj5de5gArFF3ap76JyiUA"},
-		// Mina then cesar4
-		"qUQkST8CendYA3baHNoPjk", "xjCWug7EZtDxDHX5fRZTLo",
-	)
-	is.NoErr(err)
-
-	is.Equal(stats0.PlayerOneData[entity.BINGOS_STAT].List, []*entity.ListItem{
-		{
-			GameId:   "m5ktbp4qPVTqaAhg6HJMsb",
-			PlayerId: "qUQkST8CendYA3baHNoPjk",
-			Time:     0,
-			Item:     entity.ListDatum{Word: "PARDINE", Score: 76, Probability: 1},
-		},
-		{
-			GameId:   "m5ktbp4qPVTqaAhg6HJMsb",
-			PlayerId: "qUQkST8CendYA3baHNoPjk",
-			Time:     0,
-			Item:     entity.ListDatum{Word: "HETAERA", Score: 91, Probability: 1},
-		},
-		{
-			GameId:   "ycj5de5gArFF3ap76JyiUA",
-			PlayerId: "qUQkST8CendYA3baHNoPjk",
-			Time:     0,
-			Item:     entity.ListDatum{Word: "UNITERS", Score: 68, Probability: 1},
-		},
-	})
-
-	stats1, ok := u1.Profile.Stats.Data["CSW19.classic.ultrablitz"]
-	is.True(ok)
-
-	err = pkgstats.Finalize(stats1, lstore, []string{
-		"m5ktbp4qPVTqaAhg6HJMsb", "ycj5de5gArFF3ap76JyiUA",
-	},
-		// cesar4 then mina
-		"xjCWug7EZtDxDHX5fRZTLo", "qUQkST8CendYA3baHNoPjk")
-
-	is.Equal(stats1.PlayerOneData[entity.BINGOS_STAT].List, []*entity.ListItem{
-		{
-			GameId:   "ycj5de5gArFF3ap76JyiUA",
-			PlayerId: "xjCWug7EZtDxDHX5fRZTLo",
-			Time:     0,
-			Item:     entity.ListDatum{Word: "STYMING", Score: 70, Probability: 1},
-		},
-	})
-
-	is.Equal(stats1.PlayerOneData[entity.SCORE_STAT].Total, 307)
-	is.Equal(stats1.PlayerOneData[entity.WINS_STAT].Total, 1)
+	cancel()
+	<-donechan
+	// It should just be a single GameHistory event.
+	is.Equal(len(consumer.evts), 1)
 	ustore.(*user.DBStore).Disconnect()
 	lstore.(*stats.ListStatStore).Disconnect()
+	gstore.(*game.Cache).Disconnect()
+}
+
+func Test5ptBadWord(t *testing.T) {
+	is := is.New(t)
+	recreateDB()
+	cstr := TestingDBConnStr + " dbname=liwords_test"
+
+	ustore := userStore(cstr)
+	lstore := listStatStore(cstr)
+	cfg, gstore := gameStore(cstr, ustore)
+
+	g, nower, cancel, donechan, consumer := makeGame(cfg, ustore, gstore)
+
+	cge := &pb.ClientGameplayEvent{
+		Type:           pb.ClientGameplayEvent_TILE_PLACEMENT,
+		GameId:         g.GameID(),
+		PositionCoords: "8D",
+		Tiles:          "BANJO",
+	}
+	g.SetRacksForBoth([]*alphabet.Rack{
+		alphabet.RackFromString("AGLSYYZ", g.Alphabet()),
+		alphabet.RackFromString("ABEJNOR", g.Alphabet()),
+	})
+	// "jesse" plays a word after some time
+	nower.fakeMeow += 3750 // 3.75 secs
+	_, err := HandleEvent(context.Background(), gstore, ustore, lstore,
+		"3xpEkpRAy3AizbVmDg3kdi", cge)
+
+	is.NoErr(err)
+
+	// Kill the go-routine and let's see the events.
+	cancel()
+	<-donechan
+
+	is.Equal(len(consumer.evts), 2)
+	// get some fields to make sure the move was played properly.
+	evt := consumer.evts[1].Event.(*pb.ServerGameplayEvent)
+	is.Equal(evt.Event.Score, int32(34))
+	is.Equal(evt.UserId, "3xpEkpRAy3AizbVmDg3kdi")
+	// starting time is 25*60 secs, plus a 5-second increment, and they spent 3750 ms on the move.
+	// TimeRemaining is in ms.
+	is.Equal(evt.TimeRemaining, int32((25*60000)+1250))
+
+	ustore.(*user.DBStore).Disconnect()
+	lstore.(*stats.ListStatStore).Disconnect()
+	gstore.(*game.Cache).Disconnect()
 }

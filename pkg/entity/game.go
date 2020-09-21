@@ -26,6 +26,12 @@ type Timers struct {
 	MaxOvertime int `json:"mo"`
 }
 
+// Nower is an interface for determining the current time
+type Nower interface {
+	// Now returns a timestamp in milliseconds
+	Now() int64
+}
+
 // A Game should be saved to the database or store. It wraps a macondo.Game,
 // and we should save most of the included fields here, especially the
 // macondo.game.History (which can be exported as GCG, etc in the future)
@@ -51,9 +57,15 @@ type Game struct {
 	Stats *Stats
 
 	ChangeHook chan<- *EventWrapper
+	nower      Nower
 }
 
-func msTimestamp() int64 {
+// GameTimer uses the standard library's `time` package to determine how much time
+// has elapsed in a game.
+type GameTimer struct{}
+
+// Now returns the current timestamp in milliseconds.
+func (g GameTimer) Now() int64 {
 	return time.Now().UnixNano() / (int64(time.Millisecond) / int64(time.Nanosecond))
 }
 
@@ -70,13 +82,19 @@ func NewGame(mcg *game.Game, req *pb.GameRequest) *Game {
 			MaxOvertime:   int(req.MaxOvertimeMinutes),
 		},
 		GameReq: req,
+		nower:   &GameTimer{},
 	}
+}
+
+// SetTimerModule sets the timer for a game to the given Nower.
+func (g *Game) SetTimerModule(n Nower) {
+	g.nower = n
 }
 
 // Reset timers to _now_. The game is actually starting.
 func (g *Game) ResetTimersAndStart() {
 	log.Debug().Msg("reset-timers")
-	ts := msTimestamp()
+	ts := g.nower.Now()
 	g.Timers.TimeOfLastUpdate = ts
 	g.Timers.TimeStarted = ts
 	g.Started = true
@@ -94,7 +112,7 @@ func (g *Game) RatingKey() (VariantKey, error) {
 // TimeRemaining calculates the time remaining, but does NOT update it.
 func (g *Game) TimeRemaining(idx int) int {
 	if g.Game.PlayerOnTurn() == idx {
-		now := msTimestamp()
+		now := g.nower.Now()
 		return g.Timers.TimeRemaining[idx] - int(now-g.Timers.TimeOfLastUpdate)
 	}
 	// If the player is not on turn just return whatever the "cache" says.
@@ -111,7 +129,7 @@ func (g *Game) TimeRanOut(idx int) bool {
 	if g.Game.PlayerOnTurn() != idx {
 		return false
 	}
-	now := msTimestamp()
+	now := g.nower.Now()
 	tr := g.Timers.TimeRemaining[idx] - int(now-g.Timers.TimeOfLastUpdate)
 	return tr < (-g.Timers.MaxOvertime * 60000)
 }
@@ -154,12 +172,12 @@ func (g *Game) calculateAndSetTimeRemaining(pidx int, now int64, accountForIncre
 }
 
 func (g *Game) RecordTimeOfMove(idx int) {
-	now := msTimestamp()
+	now := g.nower.Now()
 	g.calculateAndSetTimeRemaining(idx, now, true)
 }
 
 func (g *Game) HistoryRefresherEvent() *pb.GameHistoryRefresher {
-	now := msTimestamp()
+	now := g.nower.Now()
 
 	g.calculateAndSetTimeRemaining(0, now, false)
 	g.calculateAndSetTimeRemaining(1, now, false)
