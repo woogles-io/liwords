@@ -32,6 +32,25 @@ type Nower interface {
 	Now() int64
 }
 
+// FakeNower uses a fake timer. It is used for tests so we don't actually sleep.
+type FakeNower struct {
+	fakeMeow int64
+}
+
+func NewFakeNower(f int64) *FakeNower {
+	return &FakeNower{f}
+}
+
+// Now returns now's value
+func (f FakeNower) Now() int64 {
+	return f.fakeMeow
+}
+
+// Sleep simulates a sleep.
+func (f *FakeNower) Sleep(t int64) {
+	f.fakeMeow += t
+}
+
 // A Game should be saved to the database or store. It wraps a macondo.Game,
 // and we should save most of the included fields here, especially the
 // macondo.game.History (which can be exported as GCG, etc in the future)

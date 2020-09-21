@@ -22,14 +22,6 @@ var DefaultConfig = macondoconfig.Config{
 	DefaultLetterDistribution: "English",
 }
 
-type FakeNower struct {
-	fakeMeow int64
-}
-
-func (f FakeNower) Now() int64 {
-	return f.fakeMeow
-}
-
 func newMacondoGame() *game.Game {
 	rules, err := game.NewBasicGameRules(&DefaultConfig, board.CrosswordGameBoard,
 		DefaultConfig.DefaultLetterDistribution)
@@ -52,7 +44,7 @@ func TestTimeCalc(t *testing.T) {
 	is := is.New(t)
 	mcg := newMacondoGame()
 	g := NewGame(mcg, &pb.GameRequest{InitialTimeSeconds: 60, IncrementSeconds: 0})
-	g.SetTimerModule(FakeNower{fakeMeow: 1234})
+	g.SetTimerModule(NewFakeNower(1234))
 	g.ResetTimersAndStart()
 
 	now := g.nower.Now()
@@ -68,13 +60,13 @@ func TestTimeCalcWithSleep(t *testing.T) {
 
 	mcg := newMacondoGame()
 	g := NewGame(mcg, &pb.GameRequest{InitialTimeSeconds: 60, IncrementSeconds: 0})
-	nower := &FakeNower{fakeMeow: 1234}
+	nower := NewFakeNower(1234)
 	g.SetTimerModule(nower)
 
 	g.ResetTimersAndStart()
 	g.SetPlayerOnTurn(1)
 	// "sleep" 3520 ms
-	nower.fakeMeow += 3520
+	nower.Sleep(3520)
 	now := nower.Now()
 	g.calculateAndSetTimeRemaining(0, now, false)
 	g.calculateAndSetTimeRemaining(1, now, false)
@@ -87,25 +79,25 @@ func TestTimeCalcWithMultipleSleep(t *testing.T) {
 
 	mcg := newMacondoGame()
 	g := NewGame(mcg, &pb.GameRequest{InitialTimeSeconds: 10, IncrementSeconds: 0})
-	nower := &FakeNower{fakeMeow: 1234}
+	nower := NewFakeNower(1234)
 	g.SetTimerModule(nower)
 
 	g.ResetTimersAndStart()
 	// Simulate a few moves:
 	g.SetPlayerOnTurn(1)
-	nower.fakeMeow += 1520
+	nower.Sleep(1520)
 	g.RecordTimeOfMove(1)
 
 	g.SetPlayerOnTurn(0)
-	nower.fakeMeow += 2233
+	nower.Sleep(2233)
 	g.RecordTimeOfMove(0)
 
 	g.SetPlayerOnTurn(1)
-	nower.fakeMeow += 1122
+	nower.Sleep(1122)
 	g.RecordTimeOfMove(1)
 
 	g.SetPlayerOnTurn(0)
-	nower.fakeMeow += 755
+	nower.Sleep(755)
 	time.Sleep(755 * time.Millisecond)
 	now := nower.Now()
 
@@ -120,25 +112,25 @@ func TestTimeCalcWithMultipleSleepIncrement(t *testing.T) {
 
 	mcg := newMacondoGame()
 	g := NewGame(mcg, &pb.GameRequest{InitialTimeSeconds: 10, IncrementSeconds: 5})
-	nower := &FakeNower{fakeMeow: 1234}
+	nower := NewFakeNower(1234)
 	g.SetTimerModule(nower)
 
 	g.ResetTimersAndStart()
 	// Simulate a few moves:
 	g.SetPlayerOnTurn(1)
-	nower.fakeMeow += 1520
+	nower.Sleep(1520)
 	g.RecordTimeOfMove(1)
 
 	g.SetPlayerOnTurn(0)
-	nower.fakeMeow += 2233
+	nower.Sleep(2233)
 	g.RecordTimeOfMove(0)
 
 	g.SetPlayerOnTurn(1)
-	nower.fakeMeow += 1122
+	nower.Sleep(1122)
 	g.RecordTimeOfMove(1)
 
 	g.SetPlayerOnTurn(0)
-	nower.fakeMeow += 755
+	nower.Sleep(755)
 	now := nower.Now()
 
 	g.calculateAndSetTimeRemaining(0, now, false)

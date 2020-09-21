@@ -18,14 +18,6 @@ import (
 	"github.com/domino14/macondo/alphabet"
 )
 
-type FakeNower struct {
-	fakeMeow int64
-}
-
-func (f FakeNower) Now() int64 {
-	return f.fakeMeow
-}
-
 func gameStore(dbURL string, userStore pkguser.Store) (*config.Config, GameStore) {
 	cfg := &config.Config{}
 	cfg.MacondoConfig = DefaultConfig
@@ -58,7 +50,7 @@ func (ec *evtConsumer) consumeEventChan(ctx context.Context,
 }
 
 func makeGame(cfg *config.Config, ustore pkguser.Store, gstore GameStore) (
-	*entity.Game, *FakeNower, context.CancelFunc, chan bool, *evtConsumer) {
+	*entity.Game, *entity.FakeNower, context.CancelFunc, chan bool, *evtConsumer) {
 
 	ctx := context.Background()
 	cesar, _ := ustore.Get(ctx, "cesar4")
@@ -78,7 +70,7 @@ func makeGame(cfg *config.Config, ustore pkguser.Store, gstore GameStore) (
 	cctx, cancel := context.WithCancel(ctx)
 	go consumer.consumeEventChan(cctx, ch, donechan)
 
-	nower := &FakeNower{}
+	nower := entity.NewFakeNower(1234)
 	g.SetTimerModule(nower)
 
 	StartGame(ctx, gstore, ch, g.GameID())
@@ -164,7 +156,7 @@ func Test5ptBadWord(t *testing.T) {
 		alphabet.RackFromString("ABEJNOR", g.Alphabet()),
 	})
 	// "jesse" plays a word after some time
-	nower.fakeMeow += 3750 // 3.75 secs
+	nower.Sleep(3750) // 3.75 secs
 	_, err := HandleEvent(context.Background(), gstore, ustore, lstore,
 		"3xpEkpRAy3AizbVmDg3kdi", cge)
 
