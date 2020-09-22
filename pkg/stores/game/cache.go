@@ -18,6 +18,7 @@ type backingStore interface {
 	Create(context.Context, *entity.Game) error
 	ListActive(ctx context.Context) ([]*pb.GameMeta, error)
 	SetGameEventChan(ch chan<- *entity.EventWrapper)
+	Disconnect()
 }
 
 // Cache will reside in-memory, and will be per-node. If we add more nodes
@@ -132,4 +133,8 @@ func (c *Cache) ListActive(ctx context.Context) ([]*pb.GameMeta, error) {
 		c.activeGamesLastUpdated = time.Now()
 	}
 	return games, err
+}
+
+func (c *Cache) Disconnect() {
+	c.backing.Disconnect()
 }
