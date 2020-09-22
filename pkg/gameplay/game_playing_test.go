@@ -16,6 +16,7 @@ import (
 	pkguser "github.com/domino14/liwords/pkg/user"
 	pb "github.com/domino14/liwords/rpc/api/proto/realtime"
 	"github.com/domino14/macondo/alphabet"
+	macondopb "github.com/domino14/macondo/gen/api/proto/macondo"
 )
 
 func gameStore(dbURL string, userStore pkguser.Store) (*config.Config, GameStore) {
@@ -174,6 +175,130 @@ func Test5ptBadWord(t *testing.T) {
 	// starting time is 25*60 secs, plus a 5-second increment, and they spent 3750 ms on the move.
 	// TimeRemaining is in ms.
 	is.Equal(evt.TimeRemaining, int32((25*60000)+1250))
+
+	ustore.(*user.DBStore).Disconnect()
+	lstore.(*stats.ListStatStore).Disconnect()
+	gstore.(*game.Cache).Disconnect()
+}
+
+func TestDoubleChallengeBadWord(t *testing.T) {
+	is := is.New(t)
+	recreateDB()
+	cstr := TestingDBConnStr + " dbname=liwords_test"
+
+	ustore := userStore(cstr)
+	lstore := listStatStore(cstr)
+	cfg, gstore := gameStore(cstr, ustore)
+
+	g, nower, cancel, donechan, consumer := makeGame(cfg, ustore, gstore)
+
+	cge := &pb.ClientGameplayEvent{
+		Type:           pb.ClientGameplayEvent_TILE_PLACEMENT,
+		GameId:         g.GameID(),
+		PositionCoords: "8D",
+		Tiles:          "BANJOER",
+	}
+	g.SetChallengeRule(macondopb.ChallengeRule_DOUBLE)
+	g.SetRacksForBoth([]*alphabet.Rack{
+		alphabet.RackFromString("AGLSYYZ", g.Alphabet()),
+		alphabet.RackFromString("ABEJNOR", g.Alphabet()),
+	})
+	// "jesse" plays a word after some time
+	nower.Sleep(3750) // 3.75 secs
+	_, err := HandleEvent(context.Background(), gstore, ustore, lstore,
+		"3xpEkpRAy3AizbVmDg3kdi", cge)
+
+	is.NoErr(err)
+	// "cesar4" waits a while before challenging this very plausible word.
+	nower.Sleep(7620)
+	_, err = HandleEvent(context.Background(), gstore, ustore, lstore,
+		"xjCWug7EZtDxDHX5fRZTLo", &pb.ClientGameplayEvent{
+			Type:   pb.ClientGameplayEvent_CHALLENGE_PLAY,
+			GameId: g.GameID(),
+		})
+	is.NoErr(err)
+
+	// Kill the go-routine and let's see the events.
+	cancel()
+	<-donechan
+	log.Info().Interface("evts", consumer.evts).Msg("evts")
+	// evts: history, banjoer*, challenge, phony_tiles_returned
+	is.Equal(len(consumer.evts), 4)
+	// get some fields to make sure the move was played properly.
+	evt := consumer.evts[1].Event.(*pb.ServerGameplayEvent)
+	is.Equal(evt.Event.Score, int32(88))
+	is.Equal(evt.UserId, "3xpEkpRAy3AizbVmDg3kdi")
+	is.Equal(evt.TimeRemaining, int32((25*60000)+1250))
+	sge := consumer.evts[2].Event.(*pb.ServerChallengeResultEvent)
+	is.Equal(sge.Valid, false)
+	evt = consumer.evts[3].Event.(*pb.ServerGameplayEvent)
+	is.Equal(evt.Event.LostScore, int32(88))
+	is.Equal(evt.Event.Type, macondopb.GameEvent_PHONY_TILES_RETURNED)
+	// Time remaining here is for the person who made the challenge.
+	// We don't give them their time back. They get time back after they
+	// make some valid move, after challenging the play off.
+	is.Equal(evt.TimeRemaining, int32((25*60000)-7620))
+
+	ustore.(*user.DBStore).Disconnect()
+	lstore.(*stats.ListStatStore).Disconnect()
+	gstore.(*game.Cache).Disconnect()
+}
+
+func TestDoubleChallengeGoodWord(t *testing.T) {
+	is := is.New(t)
+	recreateDB()
+	cstr := TestingDBConnStr + " dbname=liwords_test"
+
+	ustore := userStore(cstr)
+	lstore := listStatStore(cstr)
+	cfg, gstore := gameStore(cstr, ustore)
+
+	g, nower, cancel, donechan, consumer := makeGame(cfg, ustore, gstore)
+
+	cge := &pb.ClientGameplayEvent{
+		Type:           pb.ClientGameplayEvent_TILE_PLACEMENT,
+		GameId:         g.GameID(),
+		PositionCoords: "8D",
+		Tiles:          "BANJO",
+	}
+	g.SetChallengeRule(macondopb.ChallengeRule_DOUBLE)
+	g.SetRacksForBoth([]*alphabet.Rack{
+		alphabet.RackFromString("AGLSYYZ", g.Alphabet()),
+		alphabet.RackFromString("ABEJNOR", g.Alphabet()),
+	})
+	// "jesse" plays a word after some time
+	nower.Sleep(3750) // 3.75 secs
+	_, err := HandleEvent(context.Background(), gstore, ustore, lstore,
+		"3xpEkpRAy3AizbVmDg3kdi", cge)
+
+	is.NoErr(err)
+	// "cesar4" waits a while before challenging BANJO for some reason.
+	nower.Sleep(7620)
+	_, err = HandleEvent(context.Background(), gstore, ustore, lstore,
+		"xjCWug7EZtDxDHX5fRZTLo", &pb.ClientGameplayEvent{
+			Type:   pb.ClientGameplayEvent_CHALLENGE_PLAY,
+			GameId: g.GameID(),
+		})
+	is.NoErr(err)
+
+	// Kill the go-routine and let's see the events.
+	cancel()
+	<-donechan
+	log.Info().Interface("evts", consumer.evts).Msg("evts")
+	// evts: history, banjo, challenge, unsuccessful_chall_turn_loss
+	is.Equal(len(consumer.evts), 4)
+	// get some fields to make sure the move was played properly.
+	evt := consumer.evts[1].Event.(*pb.ServerGameplayEvent)
+	is.Equal(evt.Event.Score, int32(34))
+	is.Equal(evt.UserId, "3xpEkpRAy3AizbVmDg3kdi")
+	is.Equal(evt.TimeRemaining, int32((25*60000)+1250))
+	sge := consumer.evts[2].Event.(*pb.ServerChallengeResultEvent)
+	is.Equal(sge.Valid, true)
+	evt = consumer.evts[3].Event.(*pb.ServerGameplayEvent)
+	is.Equal(evt.Event.Type, macondopb.GameEvent_UNSUCCESSFUL_CHALLENGE_TURN_LOSS)
+	// Time remaining here is for the person who made the challenge.
+	// They lose their turn but still get 5 seconds back.
+	is.Equal(evt.TimeRemaining, int32((25*60000)-2620))
 
 	ustore.(*user.DBStore).Disconnect()
 	lstore.(*stats.ListStatStore).Disconnect()

@@ -122,6 +122,8 @@ func FromState(timers entity.Timers, Started bool,
 		PlayerDBIDs:   [2]uint{p0id, p1id},
 		Stats:         stats,
 	}
+	g.SetTimerModule(&entity.GameTimer{})
+
 	// Now copy the request
 	req := &pb.GameRequest{}
 	err := proto.Unmarshal(reqBytes, req)

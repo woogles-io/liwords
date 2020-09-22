@@ -231,6 +231,24 @@ func handleChallenge(ctx context.Context, entGame *entity.Game,
 			Playing:       entGame.Game.Playing(),
 			// Does the user id matter?
 		}
+		// Handle this special case. If an unsuccessful challenge turn loss
+		// was added, we are not handling time increment properly.
+		// This is because macondo adds this move automatically without
+		// knowing anything about timers. So we must edit the event a little bit.
+		if sge.Event.Type == macondopb.GameEvent_UNSUCCESSFUL_CHALLENGE_TURN_LOSS {
+			// This is a bit of a hack. Temporarily set the onTurn to the
+			// player who made the challenge so we can record their time
+			// of move.
+			onTurn := entGame.PlayerOnTurn()
+			entGame.SetPlayerOnTurn(1 - onTurn)
+			entGame.RecordTimeOfMove(1 - onTurn)
+			// Then set the player on turn back.
+			entGame.SetPlayerOnTurn(onTurn)
+			// Set the time remaining to the actual time remaining that was
+			// calculated by RecordTimeOfMove for the relevant player.
+			sge.TimeRemaining = int32(entGame.Timers.TimeRemaining[1-onTurn])
+		}
+
 		evt = entity.WrapEvent(sge, pb.MessageType_SERVER_GAMEPLAY_EVENT,
 			entGame.GameID())
 		evt.AddAudience(entity.AudGameTV, entGame.GameID())
