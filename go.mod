@@ -4,7 +4,7 @@ go 1.14
 
 require (
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible
-	github.com/domino14/macondo v0.4.5-0.20200915013202-49741eaeab9f
+	github.com/domino14/macondo v0.4.5-0.20200923032030-a394644e70e2
 	github.com/golang/protobuf v1.4.2
 	github.com/gomodule/redigo v1.8.2
 	github.com/jinzhu/gorm v1.9.16
@@ -17,7 +17,6 @@ require (
 	github.com/nats-io/nats.go v1.10.0
 	github.com/niemeyer/pretty v0.0.0-20200227124842-a10e7caefd8e // indirect
 	github.com/pkg/errors v0.9.1 // indirect
-	github.com/rs/cors v1.7.0
 	github.com/rs/zerolog v1.19.0
 	github.com/twitchtv/twirp v5.12.1+incompatible
 	golang.org/x/crypto v0.0.0-20200820211705-5c72a883971a
