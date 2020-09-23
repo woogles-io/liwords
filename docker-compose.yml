@@ -40,6 +40,7 @@ services:
       DEBUG: 1
     volumes:
       - ../macondo:/opt/program:rw
+      - ./data/lexica:/opt/program/data/lexica
     command: sh -c "./bin/bot"
     depends_on: ["nats"]
     networks:
