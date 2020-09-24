@@ -35,7 +35,6 @@ jobs:
     machine: true
     steps:
       - checkout
-      - setup_remote_docker
       - run: echo $GHCR_TOKEN | docker login ghcr.io -u domino14 --password-stdin
       - run: docker build -t domino14/liwords-api:${CIRCLE_BRANCH}-${CIRCLE_BUILD_NUM} .
       - run: docker push domino14/liwords-api:${CIRCLE_BRANCH}-${CIRCLE_BUILD_NUM}
