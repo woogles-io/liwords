@@ -407,7 +407,6 @@ func (b *Bus) handleNatsPublish(ctx context.Context, subtopics []string, data []
 func (b *Bus) seekRequest(ctx context.Context, seekOrMatch, auth, userID string, data []byte) error {
 	var req proto.Message
 	var gameRequest *pb.GameRequest
-	var OriginalRequestId string
 
 	if auth == "anon" {
 		// Require login for now (forever?)

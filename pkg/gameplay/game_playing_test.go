@@ -315,7 +315,8 @@ func TestMetadata(t *testing.T) {
 	cfg, gstore := gameStore(cstr, ustore)
 
 	g, nower, cancel, donechan, _ := makeGame(cfg, ustore, gstore)
-
+	ctx := context.WithValue(context.Background(), ConfigCtxKey("config"), &DefaultConfig)
+	
 	cge1 := &pb.ClientGameplayEvent{
 		Type:           pb.ClientGameplayEvent_TILE_PLACEMENT,
 		GameId:         g.GameID(),
@@ -335,21 +336,21 @@ func TestMetadata(t *testing.T) {
 	})
 	// "jesse" plays a word after some time
 	nower.Sleep(3750) // 3.75 secs
-	_, err := HandleEvent(context.Background(), gstore, ustore, lstore,
+	_, err := HandleEvent(ctx, gstore, ustore, lstore,
 		"3xpEkpRAy3AizbVmDg3kdi", cge1)
 
 	is.NoErr(err)
 
 	// "cesar4" plays a word after some time
 	nower.Sleep(4750) // 4.75 secs
-	_, err = HandleEvent(context.Background(), gstore, ustore, lstore,
+	_, err = HandleEvent(ctx, gstore, ustore, lstore,
 		"xjCWug7EZtDxDHX5fRZTLo", cge2)
 
 	is.NoErr(err)
 
 	// "jesse" waits a while before challenging SYZYGAL for some reason.
 	nower.Sleep(7620)
-	entGame, err := HandleEvent(context.Background(), gstore, ustore, lstore,
+	entGame, err := HandleEvent(ctx, gstore, ustore, lstore,
 		"3xpEkpRAy3AizbVmDg3kdi", &pb.ClientGameplayEvent{
 			Type:   pb.ClientGameplayEvent_CHALLENGE_PLAY,
 			GameId: g.GameID(),
