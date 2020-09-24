@@ -1,0 +1,8 @@
+# Ignore more things when building for prod.
+.git
+liwords-ui
+scripts
+.vscode
+data/letterdistributions
+data/lexica
+docs

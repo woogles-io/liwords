@@ -31,6 +31,15 @@ jobs:
       - slack/status:
           webhook: "${SLACK_WEBHOOK}"
 
+  deploy_api_docker:
+    machine: true
+    steps:
+      - checkout
+      - setup_remote_docker
+      - run: echo $GHCR_TOKEN | docker login ghcr.io -u domino14 --password-stdin
+      - run: docker build -t domino14/liwords-api:${CIRCLE_BRANCH}-${CIRCLE_BUILD_NUM} .
+      - run: docker push domino14/liwords-api:${CIRCLE_BRANCH}-${CIRCLE_BUILD_NUM}
+
   build_fe:
     working_directory: /opt/liwords
     docker:
@@ -68,6 +77,17 @@ workflows:
     jobs:
       - build_api_srv
       - build_fe
+      # XXX: change these filters to master
+      - deploy_api_docker:
+          context:
+            - woogles-deploy
+          requires:
+            - build_api_srv
+          filters:
+            branches:
+              only:
+                - develop
+
       - deploy_fe:
           requires:
             - build_fe
