@@ -229,7 +229,7 @@ export const Table = React.memo((props: Props) => {
         connectedToSocket={props.connectedToSocket}
       />
       <div className="game-table">
-        <div className="chat-area">
+        <div className="chat-area" id="left-sidebar">
           <Card className="left-menu">
             <a href="/">
               <HomeOutlined />
@@ -289,6 +289,7 @@ export const Table = React.memo((props: Props) => {
             events={gameContext.turns}
             board={gameContext.board}
             playerMeta={gameInfo.players}
+            poolFormat={poolFormat}
           />
         </div>
       </div>

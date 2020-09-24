@@ -8,14 +8,12 @@ p {
 }
 .chat-area {
   order: 3;
-  width: 100%;
-  margin: 12px 12px 0 12px;
   .ant-card {
-    height: 640px;
+    height: $main-container-width-tablet + 60px;
     margin-bottom: 24px;
     .entities {
       overflow-y: auto;
-      max-height: 435px;
+      max-height: $main-container-width-tablet - 110px;
     }
   }
   .ant-card.chat .ant-card-body {
@@ -111,20 +109,6 @@ p {
   margin: 6px;
 }
 
-.game-table {
-  .chat-area .ant-card {
-    .entities {
-      max-height: 470px;
-    }
-  }
-}
-
-@media (min-width: $screen-tablet-min) {
-  .chat-area .ant-card .entities {
-    max-height: 455px;
-    overflow-y: auto;
-  }
-}
 @media (min-width: $screen-laptop-min) {
   .lobby .chat-area .ant-card.chat .entities {
     max-height: calc(100vh - 265px)
@@ -136,14 +120,6 @@ p {
     width: 25%;
     min-width: 25%;
     margin: 0;
-  }
-  .game-table {
-    .chat-area .ant-card {
-      height: 600px;
-      .entities {
-        max-height: 430px;
-      }
-    }
   }
 }
 

@@ -1,0 +1,119 @@
+// Phone & defaults
+
+// Center area
+.play-area, .game-lists, .chat-area, .data-area, .announcements {
+  min-width: $main-container-width-mobile;
+  max-width: $main-container-width-mobile;
+  padding: 6px;
+  margin: 0;
+}
+
+.lobby, .game-table, .top-header .container {
+  @include container();
+  padding: 12px;
+  display: flex;
+  flex-wrap: wrap;
+  flex-direction: row;
+  justify-content: center;
+  align-items: flex-start;
+  margin: 0 auto;
+}
+.top-header .container {
+  flex-wrap: nowrap;
+  align-items: center;
+  justify-content: space-around;
+  padding: 12px;
+ }
+
+.game-container {
+  .top-header {
+    display: none;
+  }
+}
+
+.top-header {
+  .game-container {
+    .top-header {
+      display: none;
+    }
+  }
+
+}
+
+.lobby {
+  .ant-card {
+    height: $main-container-width-tablet + 60px;
+  }
+}
+// Landscape tablet
+@media (min-width: $screen-tablet-min) {
+  .lobby, .game-table {
+    padding-top: 0;
+  }
+  .top-header .container {
+    padding: 12px 48px;
+  }
+  .play-area, .game-lists {
+    min-width: $main-container-width-tablet;
+    max-width: $main-container-width-tablet;
+  }
+  .play-area {
+    padding-top: 12px;
+  }
+  .data-area, .announcements {
+    min-width: $sidebar-width-tablet;
+    max-width: $sidebar-width-tablet
+  }
+  .chat-area {
+    width: 100%;
+    min-width: auto;
+    max-width: none;
+    margin: 12px;
+  }
+}
+
+// Laptop
+@media (min-width: $screen-laptop-min) {
+  .game-table, .lobby {
+    flex-wrap: nowrap;
+  }
+  .play-area, .game-lists {
+    min-width: $main-container-width-laptop;
+    max-width: $main-container-width-laptop;
+    padding-top: 12px;
+  }
+  .data-area, .announcements, .chat-area {
+    min-width: $sidebar-width-laptop;
+    max-width: $sidebar-width-laptop;
+    padding: 12px;
+    margin: 0;
+  }
+
+  .lobby {
+    .play-area, .game-lists, .chat-area, .data-area, .announcements {
+      height: calc(100vh - #{$header-height-desktop} - 30px);
+    }
+    .ant-card, .ant-card.chat, .announcements .ant-card {
+      height: calc(100vh - #{$header-height-desktop} - 30px);
+    }
+  }
+
+}
+
+// Desktop
+@media (min-height: $screen-min-height-desktop-min) and (min-width: $screen-desktop-min) {
+  .play-area, .game-lists {
+    min-width: $main-container-width-desktop;
+    max-width: $main-container-width-desktop;
+  }
+  .data-area, .announcements, .chat-area {
+    min-width: $sidebar-width-desktop;
+    max-width: $sidebar-width-desktop;
+  }
+
+  .game-container {
+    .top-header {
+      display: flex;
+    }
+  }
+}

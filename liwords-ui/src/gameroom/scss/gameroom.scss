@@ -1,4 +1,5 @@
 @import '../../base';
+@import '../../shared/layout';
 @include button;
 @include notification;
 
@@ -12,17 +13,7 @@
 }
 
 .game-table {
-  @include container();
-  display: flex;
-  flex-wrap: wrap;
-  margin: 0 auto;
-  flex-direction: row;
-  justify-content: center;
-  align-items: flex-start;
-  padding: 0;
   .chat-area {
-    min-width: $board-size-mobile;
-    max-width: $board-size-mobile;
     .ant-card.left-menu {
       text-transform: uppercase;
       letter-spacing: 1px;
@@ -78,7 +69,6 @@
   user-select: none;
   text-align: center;
   padding: 0;
-  margin: 6px;
   outline-style: none;
   display: flex;
   flex-direction: column;
@@ -90,8 +80,6 @@
 }
 
 .data-area {
-  min-width: $board-size-mobile;
-  max-width: $board-size-mobile;
   text-align: left;
   .ant-card {
     margin-bottom: 12px;
@@ -651,9 +639,6 @@
 }
 
 @media (min-width: $screen-mobile-min) {
-  .game-table .chat-area {
-    max-width: $screen-tablet-min;
-  }
   .board-spaces-container, .board-spaces, .tiles {
     width: $board-size-mobile;
     height: $board-size-mobile;
@@ -666,18 +651,6 @@
   }
 }
 @media (min-width: $screen-tablet-min) {
-  .play-area {
-    flex: 0 0 50%;
-  }
-  .data-area {
-    min-width: 420px;
-    max-width: 420px;
-  }
-  .game-table .chat-area {
-    min-width: $screen-tablet-min;
-    max-width: $screen-tablet-min;
-    padding: 0 24px;
-  }
   .board-spaces-container, .board-spaces, .tiles {
     width: $board-size-tablet;
     height: $board-size-tablet;
@@ -711,15 +684,6 @@
 
 @media (min-width: $screen-laptop-min) {
   .game-container {
-    .chat-area, .data-area {
-      min-width: 340px;
-      max-width: 340px;
-      padding: 0;
-    }
-
-    .data-area .ant-card {
-      margin-bottom: 6px;
-    }
     .ant-card {
       .ant-card-head {
         .ant-card-head-title,
@@ -738,7 +702,7 @@
 
   .play-area {
     flex: 0 0 0;
-    padding: 0 12px 0 24px;
+    padding: 12px 12px 0 30px;
   }
   .board-spaces-container, .board-spaces, .tiles {
     width: $board-size-laptop;
@@ -746,10 +710,6 @@
   }
   .coord-labels {
     width: $board-size-laptop;
-  }
-  .game-table {
-    flex-wrap: nowrap;
-
   }
   .format-dropdown {
     .ant-dropdown-menu {
