@@ -1,8 +1,6 @@
 export const toAPIUrl = (service: string, method: string) => {
   const loc = window.location;
+  const apiEndpoint = window.RUNTIME_CONFIGURATION.apiEndpoint || loc.host;
 
-  return (
-    `${loc.protocol}//${window.RUNTIME_CONFIGURATION.apiEndpoint}/` +
-    `twirp/${service}/${method}`
-  );
+  return `${loc.protocol}//${apiEndpoint}/twirp/${service}/${method}`;
 };

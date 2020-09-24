@@ -10,16 +10,15 @@ import { toAPIUrl } from '../api/api';
 
 const getSocketURI = (): string => {
   const loc = window.location;
-  let socketURI;
+  let protocol;
   if (loc.protocol === 'https:') {
-    socketURI = 'wss:';
+    protocol = 'wss:';
   } else {
-    socketURI = 'ws:';
+    protocol = 'ws:';
   }
+  const host = window.RUNTIME_CONFIGURATION.socketEndpoint || loc.host;
 
-  socketURI += `//${window.RUNTIME_CONFIGURATION.socketEndpoint}/ws`;
-
-  return socketURI;
+  return `${protocol}//${host}/ws`;
 };
 
 type TokenResponse = {
