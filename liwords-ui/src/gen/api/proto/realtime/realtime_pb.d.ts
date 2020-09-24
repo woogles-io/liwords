@@ -65,6 +65,9 @@ export class GameRequest extends jspb.Message {
   getPlayerVsBot(): boolean;
   setPlayerVsBot(value: boolean): void;
 
+  getOriginalRequestId(): string;
+  setOriginalRequestId(value: string): void;
+
   serializeBinary(): Uint8Array;
   toObject(includeInstance?: boolean): GameRequest.AsObject;
   static toObject(includeInstance: boolean, msg: GameRequest): GameRequest.AsObject;
@@ -87,6 +90,7 @@ export namespace GameRequest {
     requestId: string,
     maxOvertimeMinutes: number,
     playerVsBot: boolean,
+    originalRequestId: string,
   }
 }
 

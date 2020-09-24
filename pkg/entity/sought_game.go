@@ -25,6 +25,14 @@ func NewSoughtGame(seekRequest *pb.SeekRequest) *SoughtGame {
 	}
 
 	sg.SeekRequest.GameRequest.RequestId = shortuuid.New()
+	// Note that even though sought games are never rematches,
+	// we must set the OriginalRequestId since they can start
+	// a streak of rematches, from which an OriginalRequestId
+	// is needed.
+	if sg.SeekRequest.GameRequest.OriginalRequestId == "" {
+		sg.SeekRequest.GameRequest.OriginalRequestId =
+		  sg.SeekRequest.GameRequest.RequestId
+	}
 	return sg
 }
 
@@ -33,6 +41,10 @@ func NewMatchRequest(matchRequest *pb.MatchRequest) *SoughtGame {
 		MatchRequest: matchRequest,
 	}
 	sg.MatchRequest.GameRequest.RequestId = shortuuid.New()
+	if sg.MatchRequest.GameRequest.OriginalRequestId == "" {
+		sg.MatchRequest.GameRequest.OriginalRequestId =
+		  sg.MatchRequest.GameRequest.RequestId
+	}
 	return sg
 }
 

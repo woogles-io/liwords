@@ -122,6 +122,11 @@ func performEndgameDuties(ctx context.Context, g *entity.Game,
 	// However we are possibly editing it above.
 	g.History().Winner = int32(g.WinnerIdx)
 
+	// Set the game metadata
+	metadata := &entity.GameMetadata{PlayerScores: [2]int32{g.History().FinalScores[0], g.History().FinalScores[1]},
+		OriginalRequestId: g.GameReq.OriginalRequestId}
+	g.Metadata = metadata
+
 	// Send a gameEndedEvent, which rates the game.
 	evt := gameEndedEvent(ctx, g, userStore)
 	wrapped := entity.WrapEvent(evt,

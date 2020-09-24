@@ -51,6 +51,11 @@ func (f *FakeNower) Sleep(t int64) {
 	f.fakeMeow += t
 }
 
+type GameMetadata struct {
+	OriginalRequestId string `json:"o"`
+	PlayerScores [2]int32 `json:"s"`
+}
+
 // A Game should be saved to the database or store. It wraps a macondo.Game,
 // and we should save most of the included fields here, especially the
 // macondo.game.History (which can be exported as GCG, etc in the future)
@@ -77,6 +82,8 @@ type Game struct {
 
 	ChangeHook chan<- *EventWrapper
 	nower      Nower
+
+	Metadata *GameMetadata
 }
 
 // GameTimer uses the standard library's `time` package to determine how much time

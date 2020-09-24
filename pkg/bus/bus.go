@@ -407,6 +407,7 @@ func (b *Bus) handleNatsPublish(ctx context.Context, subtopics []string, data []
 func (b *Bus) seekRequest(ctx context.Context, seekOrMatch, auth, userID string, data []byte) error {
 	var req proto.Message
 	var gameRequest *pb.GameRequest
+	var OriginalRequestId string
 
 	if auth == "anon" {
 		// Require login for now (forever?)
@@ -438,6 +439,13 @@ func (b *Bus) seekRequest(ctx context.Context, seekOrMatch, auth, userID string,
 				return err
 			}
 			gameRequest = proto.Clone(g.GameReq).(*pb.GameRequest)
+			// If this game is a rematch, set the OriginalRequestId
+			// to the previous game's OriginalRequestId. In this way,
+			// we maintain a constant OriginalRequestId value across
+			// rematch streaks. The OriginalRequestId is set in
+			// NewSoughtGame and NewMatchRequest in sought_game.go
+			// if it is not set here.
+			gameRequest.OriginalRequestId = g.GameReq.OriginalRequestId
 			// This will get overwritten later:
 			gameRequest.RequestId = ""
 			req.(*pb.MatchRequest).GameRequest = gameRequest
