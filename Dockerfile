@@ -19,7 +19,7 @@ RUN go build
 FROM alpine
 COPY --from=build-env /opt/program/cmd/liwords-api/liwords-api /opt/liwords-api
 
-EXPOSE 8180
+EXPOSE 8001
 
 WORKDIR /opt
 CMD ./liwords-api
