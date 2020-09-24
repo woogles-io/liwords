@@ -36,7 +36,7 @@ jobs:
     steps:
       - checkout
       - run: echo $GHCR_TOKEN | docker login ghcr.io -u domino14 --password-stdin
-      - run: docker build -t domino14/liwords-api:${CIRCLE_BRANCH}-${CIRCLE_BUILD_NUM} .
+      - run: docker build -t ghcr.io/domino14/liwords-api:${CIRCLE_BRANCH}-${CIRCLE_BUILD_NUM} .
       - run: docker push ghcr.io/domino14/liwords-api:${CIRCLE_BRANCH}-${CIRCLE_BUILD_NUM}
       - slack/status:
           webhook: "${SLACK_WEBHOOK}"
