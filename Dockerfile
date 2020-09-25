@@ -18,7 +18,7 @@ RUN go build
 # Build minimal image:
 FROM alpine
 COPY --from=build-env /opt/program/cmd/liwords-api/liwords-api /opt/liwords-api
-
+RUN apk --no-cache add curl
 EXPOSE 8001
 
 WORKDIR /opt
