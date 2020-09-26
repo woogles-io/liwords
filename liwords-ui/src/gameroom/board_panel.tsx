@@ -445,7 +445,7 @@ export const BoardPanel = React.memo((props: Props) => {
       {!gameEndMessage ? (
         <div className="rack-container">
           <Tooltip
-            title="Reset Rack"
+            title="Reset Rack &darr;"
             placement="bottomRight"
             mouseEnterDelay={0.1}
             mouseLeaveDelay={0.01}
@@ -468,7 +468,7 @@ export const BoardPanel = React.memo((props: Props) => {
             }}
           />
           <Tooltip
-            title="Shuffle"
+            title="Shuffle &uarr;"
             placement="bottomLeft"
             mouseEnterDelay={0.1}
             mouseLeaveDelay={0.01}
