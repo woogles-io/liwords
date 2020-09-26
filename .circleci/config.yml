@@ -77,7 +77,6 @@ workflows:
     jobs:
       - build_api_srv
       - build_fe
-      # XXX: change these filters to master
       - deploy_api_docker:
           context:
             - woogles-deploy
@@ -86,7 +85,7 @@ workflows:
           filters:
             branches:
               only:
-                - develop
+                - master
 
       - deploy_fe:
           requires:
@@ -94,4 +93,4 @@ workflows:
           filters:
             branches:
               only:
-                - develop
+                - master
