@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Card, Modal } from 'antd';
+import { Card, Modal, Button } from 'antd';
 import { SoughtGames } from './sought_games';
 import { ActiveGames } from './active_games';
 import { SeekForm } from './seek_form';
@@ -101,6 +101,14 @@ export const GameLists = React.memo((props: Props) => {
         setFormDisabled(false);
       }}
       footer={[
+        <Button
+          key="back"
+          onClick={() => {
+            setSeekModalVisible(false);
+          }}
+        >
+          Cancel
+        </Button>,
         <button
           className="primary"
           key="submit"
@@ -130,6 +138,14 @@ export const GameLists = React.memo((props: Props) => {
         setFormDisabled(false);
       }}
       footer={[
+        <Button
+          key="back"
+          onClick={() => {
+            setMatchModalVisible(false);
+          }}
+        >
+          Cancel
+        </Button>,
         <button
           className="primary"
           key="submit"
@@ -159,6 +175,14 @@ export const GameLists = React.memo((props: Props) => {
         setFormDisabled(false);
       }}
       footer={[
+        <Button
+          key="back"
+          onClick={() => {
+            setBotModalVisible(false);
+          }}
+        >
+          Cancel
+        </Button>,
         <button
           className="primary"
           key="submit"

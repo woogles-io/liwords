@@ -13,6 +13,7 @@ import {
   returnTileToRack,
   designateBlank,
 } from '../utils/cwgame/tile_placement';
+import { uniqueTileIdx } from '../utils/cwgame/common';
 import { EphemeralTile, EmptySpace } from '../utils/cwgame/common';
 import {
   tilesetToMoveEvent,
@@ -162,12 +163,12 @@ export const BoardPanel = React.memo((props: Props) => {
     // some state further up (the tiles layout with a "just played" type
     // marker)
 
-    if (!arrowProperties.show) {
+    if (key === EnterKey) {
+      makeMove('commit');
       return;
     }
 
-    if (key === EnterKey) {
-      makeMove('commit');
+    if (!arrowProperties.show) {
       return;
     }
 
@@ -215,6 +216,55 @@ export const BoardPanel = React.memo((props: Props) => {
     }
   };
 
+  const clickToBoard = (rackIndex: number) => {
+    if (!arrowProperties.show) {
+      return null;
+    }
+    const handlerReturn = handleDroppedTile(
+      arrowProperties.row,
+      arrowProperties.col,
+      props.board,
+      displayedRack,
+      placedTiles,
+      rackIndex,
+      uniqueTileIdx(arrowProperties.row, arrowProperties.col)
+    );
+    if (handlerReturn === null) {
+      return;
+    }
+    setDisplayedRack(handlerReturn.newDisplayedRack);
+    setPlacedTiles(handlerReturn.newPlacedTiles);
+    setPlacedTilesTempScore(handlerReturn.playScore);
+    if (handlerReturn.isUndesignated) {
+      setBlankModalVisible(true);
+    }
+    let newrow = arrowProperties.row;
+    let newcol = arrowProperties.col;
+
+    if (arrowProperties.horizontal) {
+      do {
+        newcol += 1;
+      } while (
+        newcol < props.board.dim &&
+        newcol >= 0 &&
+        props.board.letterAt(newrow, newcol) !== EmptySpace
+      );
+    } else {
+      do {
+        newrow += 1;
+      } while (
+        newrow < props.board.dim &&
+        newrow >= 0 &&
+        props.board.letterAt(newrow, newcol) !== EmptySpace
+      );
+    }
+    setArrowProperties({
+      col: newcol,
+      horizontal: arrowProperties.horizontal,
+      show: !(newcol === props.board.dim || newrow === props.board.dim),
+      row: newrow,
+    });
+  };
   const handleBlankSelection = (rune: string) => {
     const handlerReturn = designateBlank(
       props.board,
@@ -402,6 +452,7 @@ export const BoardPanel = React.memo((props: Props) => {
             letters={displayedRack}
             grabbable
             returnToRack={returnToRack}
+            onTileClick={clickToBoard}
             moveRackTile={(
               indexA: number | undefined,
               indexB: number | undefined

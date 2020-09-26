@@ -8,13 +8,18 @@
     background-image: linear-gradient($color-primary-middle 0%, white 100%);
   }
   button {
-    font-size: 14px;
+    font-size: 13px;
   }
   .ant-form-item-label {
     text-align: left;
     & > label::after {
       content: '';
     }
+  }
+  .ant-modal-footer .ant-btn {
+    border: 0;
+    font-size: 13px;
+    text-transform: none;
   }
 }
 
