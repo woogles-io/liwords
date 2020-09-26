@@ -105,21 +105,23 @@ export const BoardPanel = React.memo((props: Props) => {
   const [blankModalVisible, setBlankModalVisible] = useState(false);
   const { stopClock, gameContext, gameEndMessage } = useStoreContext();
 
-  // Need to sync state to props here whenever the props.currentRack changes.
-  // We want to take back all the tiles also if the board changes.
+  // Only reset the displayed tiles if they've actually changed
+  // so we don't undo the player's rearrangement
   useEffect(() => {
-    // Only reset the displayed tiles if they've changed
-    // so we don't undo the player's rearrangement
     if (
       displayedRack.split('').sort().join('') !==
       props.currentRack.split('').sort().join('')
     ) {
       setDisplayedRack(props.currentRack);
     }
+  }, [props.currentRack, displayedRack]);
+
+  // Need to sync state to props here whenever the board changes.
+  useEffect(() => {
     setPlacedTiles(new Set<EphemeralTile>());
     setPlacedTilesTempScore(0);
     setArrowProperties({ row: 0, col: 0, horizontal: false, show: false });
-  }, [props.currentRack, props.board.letters]);
+  }, [props.board.letters, props.currentRack]);
 
   useEffect(() => {
     // Stop the clock if we unload the board panel.
