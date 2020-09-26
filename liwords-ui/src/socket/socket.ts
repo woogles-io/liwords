@@ -6,19 +6,19 @@ import { useLocation } from 'react-router-dom';
 import { useStoreContext } from '../store/store';
 import { onSocketMsg } from '../store/socket_handlers';
 import { decodeToMsg } from '../utils/protobuf';
+import { toAPIUrl } from '../api/api';
 
 const getSocketURI = (): string => {
   const loc = window.location;
-  let socketURI;
+  let protocol;
   if (loc.protocol === 'https:') {
-    socketURI = 'wss:';
+    protocol = 'wss:';
   } else {
-    socketURI = 'ws:';
+    protocol = 'ws:';
   }
+  const host = window.RUNTIME_CONFIGURATION.socketEndpoint || loc.host;
 
-  socketURI += `//${loc.host}/ws`;
-
-  return socketURI;
+  return `${protocol}//${host}/ws`;
 };
 
 type TokenResponse = {
@@ -54,8 +54,9 @@ export const useLiwordsSocket = () => {
 
     axios
       .post<TokenResponse>(
-        '/twirp/user_service.AuthenticationService/GetSocketToken',
-        {}
+        toAPIUrl('user_service.AuthenticationService', 'GetSocketToken'),
+        {},
+        { withCredentials: true }
       )
       .then((resp) => {
         setSocketToken(resp.data.token);

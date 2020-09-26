@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { Form, Input, Button, Alert, Row, Col } from 'antd';
 // import { Link } from 'react-router-dom';
 import axios from 'axios';
+import { toAPIUrl } from '../api/api';
 
 const layout = {
   labelCol: {
@@ -24,10 +25,14 @@ export const Login = () => {
   const [loggedIn, setLoggedIn] = useState(false);
   const onFinish = (values: { [key: string]: string }) => {
     axios
-      .post('/twirp/user_service.AuthenticationService/Login', {
-        username: values.username,
-        password: values.password,
-      })
+      .post(
+        toAPIUrl('user_service.AuthenticationService', 'Login'),
+        {
+          username: values.username,
+          password: values.password,
+        },
+        { withCredentials: true }
+      )
       .then(() => {
         // Automatically will set cookie
         setLoggedIn(true);

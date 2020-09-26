@@ -50,6 +50,12 @@ func newPool(addr string) *redis.Pool {
 	}
 }
 
+func pingEndpoint(w http.ResponseWriter, r *http.Request) {
+	w.Header().Add("Content-Type", "application/json")
+	w.WriteHeader(200)
+	w.Write([]byte(`{"status":"copacetic"}`))
+}
+
 func main() {
 
 	cfg := &config.Config{}
@@ -103,6 +109,8 @@ func main() {
 	registrationService := registration.NewRegistrationService(userStore)
 	gameService := gameplay.NewGameService(userStore, gameStore)
 	profileService := pkguser.NewProfileService(userStore)
+
+	router.Handle("/ping", http.HandlerFunc(pingEndpoint))
 
 	router.Handle(userservice.AuthenticationServicePathPrefix,
 		middlewares.Then(userservice.NewAuthenticationServiceServer(authenticationService, nil)))

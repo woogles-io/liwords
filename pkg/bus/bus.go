@@ -262,7 +262,8 @@ func (b *Bus) handleBotMove(ctx context.Context, g *entity.Game) {
 	// This function should only be called if it's the bot's turn.
 	onTurn := g.Game.PlayerOnTurn()
 	userID := g.Game.PlayerIDOnTurn()
-
+	g.Lock()
+	defer g.Unlock()
 	// We check if that game is not over because a triple challenge
 	// could have ended it
 	for g.PlayerOnTurn() == onTurn && g.Game.Playing() != macondopb.PlayState_GAME_OVER {
@@ -361,15 +362,19 @@ func (b *Bus) handleNatsPublish(ctx context.Context, subtopics []string, data []
 		if err != nil {
 			return err
 		}
+		entGame.RLock()
 		// Determine if one of our players is a bot (no bot-vs-bot supported yet?)
 		// and if it is the bot's turn.
-		if entGame.Game.Playing() != macondopb.PlayState_GAME_OVER &&
-			entGame.GameReq != nil &&
+		if entGame.GameReq != nil &&
 			entGame.GameReq.PlayerVsBot &&
+			entGame.Game.Playing() != macondopb.PlayState_GAME_OVER &&
 			entGame.PlayerIDOnTurn() != userid {
 
+			entGame.RUnlock()
 			// Do this in a separate goroutine as it blocks while waiting for bot move.
 			go b.handleBotMove(ctx, entGame)
+		} else {
+			entGame.RUnlock()
 		}
 		return nil
 
@@ -642,9 +647,13 @@ func (b *Bus) instantiateAndStartGame(ctx context.Context, accUser *entity.User,
 			log.Err(err).Msg("starting-game")
 		}
 
+		g.RLock()
 		if accUser.IsBot && g.PlayerIDOnTurn() == accUser.UUID {
 			// Make a bot move if it's the bot's turn at the beginning.
+			g.RUnlock()
 			go b.handleBotMove(ctx, g)
+		} else {
+			g.RUnlock()
 		}
 
 	})

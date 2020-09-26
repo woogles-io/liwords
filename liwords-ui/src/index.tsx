@@ -6,6 +6,12 @@ import App from './App';
 import * as serviceWorker from './serviceWorker';
 import { Store } from './store/store';
 
+declare global {
+  interface Window {
+    RUNTIME_CONFIGURATION: { [key: string]: string };
+  }
+}
+
 ReactDOM.render(
   <React.StrictMode>
     <Store>

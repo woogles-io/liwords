@@ -24,6 +24,7 @@ import { ScoreCard } from './scorecard';
 import { GameInfo, GameMetadata, PlayerMetadata } from './game_info';
 import { PlayState } from '../gen/macondo/api/proto/macondo/macondo_pb';
 import { BoopSounds } from '../sound/boop';
+import { toAPIUrl } from '../api/api';
 // import { GameInfoResponse } from '../gen/api/proto/game_service/game_service_pb';
 type Props = {
   sendSocketMsg: (msg: Uint8Array) => void;
@@ -101,7 +102,7 @@ export const Table = React.memo((props: Props) => {
     // Request game API to get info about the game at the beginning.
     axios
       .post<GameMetadata>(
-        '/twirp/game_service.GameMetadataService/GetMetadata',
+        toAPIUrl('game_service.GameMetadataService', 'GetMetadata'),
         {
           gameId: gameID,
         }

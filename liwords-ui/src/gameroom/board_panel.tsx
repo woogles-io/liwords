@@ -33,6 +33,7 @@ import { BlankSelector } from './blank_selector';
 import { GameEndMessage } from './game_end_message';
 import { PlayerMetadata, GCGResponse } from './game_info';
 import { GameEvent } from '../gen/macondo/api/proto/macondo/macondo_pb';
+import { toAPIUrl } from '../api/api';
 
 // The frame atop is 24 height
 // The frames on the sides are 24 in width, surrounded by a 14 pix gutter
@@ -66,7 +67,7 @@ const shuffleString = (a: string): string => {
 
 const gcgExport = (gameID: string) => {
   axios
-    .post<GCGResponse>('/twirp/game_service.GameMetadataService/GetGCG', {
+    .post<GCGResponse>(toAPIUrl('game_service.GameMetadataService', 'GetGCG'), {
       gameId: gameID,
     })
     .then((resp) => {

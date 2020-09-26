@@ -4,6 +4,7 @@ import axios from 'axios';
 import qs from 'qs';
 import { useLocation } from 'react-router-dom';
 import { TopBar } from '../topbar/topbar';
+import { toAPIUrl } from '../api/api';
 
 const layout = {
   labelCol: {
@@ -38,10 +39,14 @@ export const NewPassword = (props: Props) => {
     }
     setErr('');
     axios
-      .post('/twirp/user_service.AuthenticationService/ResetPasswordStep2', {
-        password: values.newPassword,
-        resetCode: params.t,
-      })
+      .post(
+        toAPIUrl('user_service.AuthenticationService', 'ResetPasswordStep2'),
+        {
+          password: values.newPassword,
+          resetCode: params.t,
+        },
+        { withCredentials: true }
+      )
       .then(() => {
         notification.info({
           message: 'Changed',

@@ -4,6 +4,7 @@ import { Form, Input, Button, Alert, notification, Row, Col } from 'antd';
 // import { Link } from 'react-router-dom';
 import axios from 'axios';
 import { TopBar } from '../topbar/topbar';
+import { toAPIUrl } from '../api/api';
 
 const layout = {
   labelCol: {
@@ -35,10 +36,16 @@ export const PasswordChange = (props: Props) => {
     }
 
     axios
-      .post('/twirp/user_service.AuthenticationService/ChangePassword', {
-        oldPassword: values.oldPassword,
-        newPassword: values.newPassword,
-      })
+      .post(
+        toAPIUrl('user_service.AuthenticationService', 'ChangePassword'),
+        {
+          oldPassword: values.oldPassword,
+          newPassword: values.newPassword,
+        },
+        {
+          withCredentials: true,
+        }
+      )
       .then(() => {
         notification.info({
           message: 'Success',
