@@ -4,9 +4,10 @@ go 1.14
 
 require (
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible
-	github.com/domino14/macondo v0.4.5-0.20200923032030-a394644e70e2
+	github.com/domino14/macondo v0.4.5-0.20200926023632-90e54ff6b544
 	github.com/golang/protobuf v1.4.2
 	github.com/gomodule/redigo v1.8.2
+	github.com/hashicorp/golang-lru v0.5.4
 	github.com/jinzhu/gorm v1.9.16
 	github.com/justinas/alice v1.2.0
 	github.com/kr/text v0.2.0 // indirect

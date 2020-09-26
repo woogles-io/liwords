@@ -15,9 +15,10 @@ services:
       REGISTRATION_CODE: foobar
       MAILGUN_KEY: ${MAILGUN_KEY:-default}
       REDIS_URL: "redis://redis:6379"
+      GORACE: history_size=7
     volumes:
       - .:/opt/program:rw
-    command: sh -c "go run cmd/liwords-api/*.go"
+    command: sh -c "go run -race cmd/liwords-api/*.go"
     depends_on: ["db", "proxy", "nats", "socket", "redis"]
     networks:
       - aeronet
@@ -56,7 +57,7 @@ services:
       NATS_URL: nats://nats:4222
     volumes:
       - ../liwords-socket:/opt/program:rw
-    command: sh -c "go run cmd/socketsrv/*.go"
+    command: sh -c "go run -race cmd/socketsrv/*.go"
     networks:
       - aeronet
     ports:
