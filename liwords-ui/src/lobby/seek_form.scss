@@ -16,6 +16,21 @@
       content: '';
     }
   }
+  .ant-slider {
+    width: 320px;
+  }
+  .ant-switch-checked {
+    background-color: $color-primary-dark;
+  }
+
+  .ant-form-item-control {
+    flex-direction: row;
+    align-items: center;
+    width: calc(100% - 24px);
+    .ant-form-item-extra {
+      margin-left: 6px;
+    }
+  }
   .ant-modal-footer .ant-btn {
     border: 0;
     font-size: 13px;

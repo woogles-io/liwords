@@ -83,7 +83,6 @@ export const SeekForm = (props: Props) => {
     ...defaultValues,
     ...storedValues,
   };
-
   const [itc, itt] = timeCtrlToDisplayName(
     timeScaleToNum(initTimeDiscreteScale[initialValues.initialtime]) * 60,
     initialValues.incOrOT === 'increment'
@@ -105,6 +104,9 @@ export const SeekForm = (props: Props) => {
     initialValues.incOrOT === 'overtime' ? 5 : 60
   );
   const onFormChange = (val: Store, allvals: Store) => {
+    if (window.localStorage) {
+      localStorage.setItem(storageKey, JSON.stringify(allvals));
+    }
     if (allvals.incOrOT === 'increment') {
       setTimeSetting(incLabel);
       setMaxTimeSetting(60);
@@ -123,9 +125,6 @@ export const SeekForm = (props: Props) => {
         ? 0
         : Math.round(allvals.extratime as number)
     );
-    if (window.localStorage) {
-      localStorage.setItem(storageKey, JSON.stringify(allvals));
-    }
     setTimectrl(tc);
     setTtag(tt);
   };
@@ -200,9 +199,8 @@ export const SeekForm = (props: Props) => {
           <Radio.Button value="increment">Use Increment</Radio.Button>
         </Radio.Group>
       </Form.Item>
-      <Form.Item label={timeSetting} name="extratime">
+      <Form.Item label={timeSetting} name="extratime" extra={extraTimeLabel}>
         <InputNumber min={0} max={maxTimeSetting} />
-        &nbsp;{extraTimeLabel}
       </Form.Item>
       <Form.Item label="Rated" name="rated" valuePropName="checked">
         <Switch />
