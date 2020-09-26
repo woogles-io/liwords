@@ -292,8 +292,8 @@ ul
 }
 @mixin button {
   /* buttons */
-  button,
   button.ant-btn,
+  button.primary,
   button.ant-btn-primary,
   .ant-modal-root button.ant-btn-secondary {
     font-family: $font-default;

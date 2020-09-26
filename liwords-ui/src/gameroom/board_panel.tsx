@@ -162,7 +162,14 @@ export const BoardPanel = React.memo((props: Props) => {
     // This should return a new set of arrow properties, and also set
     // some state further up (the tiles layout with a "just played" type
     // marker)
-
+    if (key === 'ArrowDown') {
+      recallTiles();
+      return;
+    }
+    if (key === 'ArrowUp') {
+      shuffleTiles();
+      return;
+    }
     if (key === EnterKey) {
       makeMove('commit');
       return;
@@ -472,6 +479,7 @@ export const BoardPanel = React.memo((props: Props) => {
               icon={<SyncOutlined />}
               type="primary"
               onClick={shuffleTiles}
+              autoFocus={true}
             />
           </Tooltip>
         </div>
