@@ -105,19 +105,9 @@ export const BoardPanel = React.memo((props: Props) => {
   const [blankModalVisible, setBlankModalVisible] = useState(false);
   const { stopClock, gameContext, gameEndMessage } = useStoreContext();
 
-  // Only reset the displayed tiles if they've actually changed
-  // so we don't undo the player's rearrangement
-  useEffect(() => {
-    if (
-      displayedRack.split('').sort().join('') !==
-      props.currentRack.split('').sort().join('')
-    ) {
-      setDisplayedRack(props.currentRack);
-    }
-  }, [props.currentRack, displayedRack]);
-
   // Need to sync state to props here whenever the board changes.
   useEffect(() => {
+    setDisplayedRack(props.currentRack);
     setPlacedTiles(new Set<EphemeralTile>());
     setPlacedTilesTempScore(0);
     setArrowProperties({ row: 0, col: 0, horizontal: false, show: false });
