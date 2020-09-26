@@ -13,6 +13,7 @@ import {
   returnTileToRack,
   designateBlank,
 } from '../utils/cwgame/tile_placement';
+import { uniqueTileIdx } from '../utils/cwgame/common';
 import { EphemeralTile, EmptySpace } from '../utils/cwgame/common';
 import {
   tilesetToMoveEvent,
@@ -42,7 +43,6 @@ const colors = require('../base.scss');
 
 type Props = {
   username: string;
-  showBonusLabels: boolean;
   currentRack: string;
   events: Array<GameEvent>;
   gameID: string;
@@ -106,14 +106,23 @@ export const BoardPanel = React.memo((props: Props) => {
   const [blankModalVisible, setBlankModalVisible] = useState(false);
   const { stopClock, gameContext, gameEndMessage } = useStoreContext();
 
-  // Need to sync state to props here whenever the props.currentRack changes.
-  // We want to take back all the tiles also if the board changes.
+  // Only reset the displayed tiles if they've actually changed
+  // so we don't undo the player's rearrangement
   useEffect(() => {
-    setDisplayedRack(props.currentRack);
+    if (
+      displayedRack.split('').sort().join('') !==
+      props.currentRack.split('').sort().join('')
+    ) {
+      setDisplayedRack(props.currentRack);
+    }
+  }, [props.currentRack, displayedRack]);
+
+  // Need to sync state to props here whenever the board changes.
+  useEffect(() => {
     setPlacedTiles(new Set<EphemeralTile>());
     setPlacedTilesTempScore(0);
     setArrowProperties({ row: 0, col: 0, horizontal: false, show: false });
-  }, [props.currentRack, props.board.letters]);
+  }, [props.board.letters, props.currentRack]);
 
   useEffect(() => {
     // Stop the clock if we unload the board panel.
@@ -163,13 +172,20 @@ export const BoardPanel = React.memo((props: Props) => {
     // This should return a new set of arrow properties, and also set
     // some state further up (the tiles layout with a "just played" type
     // marker)
-
-    if (!arrowProperties.show) {
+    if (key === 'ArrowDown') {
+      recallTiles();
+      return;
+    }
+    if (key === 'ArrowUp') {
+      shuffleTiles();
+      return;
+    }
+    if (key === EnterKey) {
+      makeMove('commit');
       return;
     }
 
-    if (key === EnterKey) {
-      makeMove('commit');
+    if (!arrowProperties.show) {
       return;
     }
 
@@ -217,6 +233,55 @@ export const BoardPanel = React.memo((props: Props) => {
     }
   };
 
+  const clickToBoard = (rackIndex: number) => {
+    if (!arrowProperties.show) {
+      return null;
+    }
+    const handlerReturn = handleDroppedTile(
+      arrowProperties.row,
+      arrowProperties.col,
+      props.board,
+      displayedRack,
+      placedTiles,
+      rackIndex,
+      uniqueTileIdx(arrowProperties.row, arrowProperties.col)
+    );
+    if (handlerReturn === null) {
+      return;
+    }
+    setDisplayedRack(handlerReturn.newDisplayedRack);
+    setPlacedTiles(handlerReturn.newPlacedTiles);
+    setPlacedTilesTempScore(handlerReturn.playScore);
+    if (handlerReturn.isUndesignated) {
+      setBlankModalVisible(true);
+    }
+    let newrow = arrowProperties.row;
+    let newcol = arrowProperties.col;
+
+    if (arrowProperties.horizontal) {
+      do {
+        newcol += 1;
+      } while (
+        newcol < props.board.dim &&
+        newcol >= 0 &&
+        props.board.letterAt(newrow, newcol) !== EmptySpace
+      );
+    } else {
+      do {
+        newrow += 1;
+      } while (
+        newrow < props.board.dim &&
+        newrow >= 0 &&
+        props.board.letterAt(newrow, newcol) !== EmptySpace
+      );
+    }
+    setArrowProperties({
+      col: newcol,
+      horizontal: arrowProperties.horizontal,
+      show: !(newcol === props.board.dim || newrow === props.board.dim),
+      row: newrow,
+    });
+  };
   const handleBlankSelection = (rune: string) => {
     const handlerReturn = designateBlank(
       props.board,
@@ -380,7 +445,6 @@ export const BoardPanel = React.memo((props: Props) => {
         gridLayout={props.board.gridLayout}
         handleTileDrop={handleTileDrop}
         tilesLayout={props.board.letters}
-        showBonusLabels={false}
         lastPlayedTiles={gameContext.lastPlayedTiles}
         tentativeTiles={placedTiles}
         tentativeTileScore={placedTilesTempScore}
@@ -391,7 +455,7 @@ export const BoardPanel = React.memo((props: Props) => {
       {!gameEndMessage ? (
         <div className="rack-container">
           <Tooltip
-            title="Reset Rack"
+            title="Reset Rack &darr;"
             placement="bottomRight"
             mouseEnterDelay={0.1}
             mouseLeaveDelay={0.01}
@@ -405,6 +469,7 @@ export const BoardPanel = React.memo((props: Props) => {
             letters={displayedRack}
             grabbable
             returnToRack={returnToRack}
+            onTileClick={clickToBoard}
             moveRackTile={(
               indexA: number | undefined,
               indexB: number | undefined
@@ -413,7 +478,7 @@ export const BoardPanel = React.memo((props: Props) => {
             }}
           />
           <Tooltip
-            title="Shuffle"
+            title="Shuffle &uarr;"
             placement="bottomLeft"
             mouseEnterDelay={0.1}
             mouseLeaveDelay={0.01}
@@ -424,6 +489,7 @@ export const BoardPanel = React.memo((props: Props) => {
               icon={<SyncOutlined />}
               type="primary"
               onClick={shuffleTiles}
+              autoFocus={true}
             />
           </Tooltip>
         </div>

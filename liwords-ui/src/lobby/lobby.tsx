@@ -80,9 +80,6 @@ type Props = {
 };
 
 export const Lobby = (props: Props) => {
-  const [seekModalVisible, setSeekModalVisible] = useState(false);
-  const [matchModalVisible, setMatchModalVisible] = useState(false);
-  const [botModalVisible, setBotModalVisible] = useState(false);
   const [selectedGameTab, setSelectedGameTab] = useState(
     props.loggedIn ? 'PLAY' : 'WATCH'
   );
@@ -93,35 +90,8 @@ export const Lobby = (props: Props) => {
     setSelectedGameTab(props.loggedIn ? 'PLAY' : 'WATCH');
   }, [props.loggedIn]);
 
-  const showSeekModal = () => {
-    setSeekModalVisible(true);
-  };
-
-  const showMatchModal = () => {
-    setMatchModalVisible(true);
-  };
-
-  const showBotModal = () => {
-    setBotModalVisible(true);
-  };
-
-  const handleSeekModalCancel = () => {
-    setSeekModalVisible(false);
-  };
-
-  const handleBotModalCancel = () => {
-    setBotModalVisible(false);
-  };
-
-  const handleMatchModalCancel = () => {
-    setMatchModalVisible(false);
-  };
-
   const onSeekSubmit = (g: SoughtGame) => {
     sendSeek(g, props.sendSocketMsg);
-    setMatchModalVisible(false);
-    setSeekModalVisible(false);
-    setBotModalVisible(false);
   };
 
   const sendChat = (msg: string) => {
@@ -157,15 +127,6 @@ export const Lobby = (props: Props) => {
           newGame={(seekID: string) => sendAccept(seekID, props.sendSocketMsg)}
           selectedGameTab={selectedGameTab}
           setSelectedGameTab={setSelectedGameTab}
-          showSeekModal={showSeekModal}
-          showMatchModal={showMatchModal}
-          showBotModal={showBotModal}
-          matchModalVisible={matchModalVisible}
-          seekModalVisible={seekModalVisible}
-          botModalVisible={botModalVisible}
-          handleMatchModalCancel={handleMatchModalCancel}
-          handleSeekModalCancel={handleSeekModalCancel}
-          handleBotModalCancel={handleBotModalCancel}
           onSeekSubmit={onSeekSubmit}
         />
         <div className="announcements">

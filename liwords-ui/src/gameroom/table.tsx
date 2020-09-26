@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Card, message, notification, Popconfirm } from 'antd';
+import { Card, message, Popconfirm } from 'antd';
 import { HomeOutlined } from '@ant-design/icons/lib';
 import axios from 'axios';
 
@@ -109,6 +109,9 @@ export const Table = React.memo((props: Props) => {
       )
       .then((resp) => {
         setGameInfo(resp.data);
+        if (localStorage?.getItem('poolFormat')) {
+          setPoolFormat(parseInt(localStorage.getItem('poolFormat') || '0'));
+        }
       });
     BoopSounds.startgameSound.play();
 
@@ -150,7 +153,7 @@ export const Table = React.memo((props: Props) => {
       gameContext.playState === PlayState.WAITING_FOR_FINAL_PASS &&
       gameContext.nickToPlayerOrder[props.username] === `p${gameContext.onturn}`
     ) {
-      notification.info({
+      message.info({
         message: 'Pass or challenge?',
         description:
           'Your opponent has played their final tiles. You must pass or challenge.',
@@ -227,7 +230,7 @@ export const Table = React.memo((props: Props) => {
         connectedToSocket={props.connectedToSocket}
       />
       <div className="game-table">
-        <div className="chat-area">
+        <div className="chat-area" id="left-sidebar">
           <Card className="left-menu">
             <a href="/">
               <HomeOutlined />
@@ -248,7 +251,6 @@ export const Table = React.memo((props: Props) => {
           <BoardPanel
             username={props.username}
             board={gameContext.board}
-            showBonusLabels={false}
             currentRack={rack || ''}
             events={gameContext.turns}
             gameID={gameID}
@@ -288,6 +290,7 @@ export const Table = React.memo((props: Props) => {
             events={gameContext.turns}
             board={gameContext.board}
             playerMeta={gameInfo.players}
+            poolFormat={poolFormat}
           />
         </div>
       </div>

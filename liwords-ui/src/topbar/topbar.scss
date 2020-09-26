@@ -4,15 +4,6 @@ body {
   height: auto;
 }
 
-.game-container {
-  .top-header {
-    display: none;
-    @media (min-height: $screen-min-height-desktop-max) and (min-width: $screen-desktop-min) {
-      display: flex;
-    }
-  }
-}
-
 .top-header {
   width: 100%;
   display: flex;
@@ -26,13 +17,7 @@ body {
   font-size: 12px;
   font-weight: bold;
   text-transform: uppercase;
-  .container {
-    @include container();
-    display: flex;
-    flex-wrap: nowrap;
-    align-items: center;
-    justify-content: space-around;
-  }
+
 }
 
 .top-header-menu {

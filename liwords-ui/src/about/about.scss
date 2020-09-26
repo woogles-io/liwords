@@ -35,7 +35,6 @@
   .bio {
     background: $color-secondary-lighter;
     .container {
-      @include container();
       display: flex;
       align-items: flex-start;
     }

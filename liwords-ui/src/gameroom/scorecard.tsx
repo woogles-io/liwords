@@ -7,12 +7,14 @@ import { millisToTimeStr } from '../store/timer_controller';
 import { tilePlacementEventDisplay } from '../utils/cwgame/game_event';
 import { PlayerMetadata } from './game_info';
 import { Turn, gameEventsToTurns } from '../store/reducers/turns';
+import { PoolFormatType } from '../constants/pool_formats';
 
 type Props = {
   playing: boolean;
   username: string;
   events: Array<GameEvent>;
   board: Board;
+  poolFormat: PoolFormatType;
   playerMeta: Array<PlayerMetadata>;
 };
 
@@ -149,7 +151,7 @@ const ScorecardTurn = (props: turnProps) => {
   return (
     <>
       <div className="turn">
-        <PlayerAvatar player={memoizedTurn.player} />
+        <PlayerAvatar player={memoizedTurn.player} withTooltip />
         <div className="coords-time">
           {memoizedTurn.coords ? (
             <p className="coord">{memoizedTurn.coords}</p>
@@ -185,17 +187,15 @@ export const ScoreCard = React.memo((props: Props) => {
     const currentEl = el.current;
     if (currentEl) {
       currentEl.scrollTop = currentEl.scrollHeight || 0;
-      const parentHeight = document.getElementById('board-container')
+      const parentHeight = document.getElementById('left-sidebar')
         ?.clientHeight;
       let navHeight = document.getElementById('main-nav')?.clientHeight || 0;
-      if (navHeight > 0) {
-        navHeight += 12;
-      }
       if (parentHeight) {
         setCardHeight(
           parentHeight -
             currentEl?.getBoundingClientRect().top -
-            window.scrollY +
+            window.scrollY -
+            30 +
             navHeight
         );
       }
@@ -205,7 +205,7 @@ export const ScoreCard = React.memo((props: Props) => {
     if (props.events.length) {
       resizeListener();
     }
-  }, [props.events]);
+  }, [props.events, props.poolFormat]);
   useEffect(() => {
     window.addEventListener('resize', resizeListener);
     return () => {

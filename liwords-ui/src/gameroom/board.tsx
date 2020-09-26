@@ -16,7 +16,6 @@ type Props = {
     tileIndex: number | undefined
   ) => void;
   tilesLayout: string;
-  showBonusLabels: boolean;
   lastPlayedTiles: PlayedTiles;
   currentRack: string;
   squareClicked: (row: number, col: number) => void;
@@ -37,7 +36,6 @@ const Board = React.memo((props: Props) => {
           gridDim={props.gridSize}
           gridLayout={props.gridLayout}
           handleTileDrop={props.handleTileDrop}
-          showBonusLabels={props.showBonusLabels}
           placementArrow={props.placementArrowProperties}
           squareClicked={props.squareClicked}
         />

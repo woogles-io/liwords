@@ -12,7 +12,6 @@ type Props = {
     rackIndex: number | undefined,
     tileIndex: number | undefined
   ) => void;
-  showBonusLabels: boolean;
   gridLayout: Array<string>;
   placementArrow: PlacementArrow;
   squareClicked: (row: number, col: number) => void;
@@ -33,7 +32,6 @@ const BoardSpaces = React.memo((props: Props) => {
         <BoardSpace
           bonusType={sq as BonusType}
           key={`sq_${x}_${y}`}
-          showBonusLabel={props.showBonusLabels && !startingSquare}
           arrow={showArrow}
           arrowHoriz={props.placementArrow.horizontal}
           startingSquare={startingSquare}

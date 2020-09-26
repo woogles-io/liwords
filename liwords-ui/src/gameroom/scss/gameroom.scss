@@ -1,6 +1,8 @@
 @import '../../base';
+@import '../../shared/layout';
 @include button;
 @include notification;
+@include modal;
 
 .ant-modal-footer {
   display: flex;
@@ -12,17 +14,7 @@
 }
 
 .game-table {
-  @include container();
-  display: flex;
-  flex-wrap: wrap;
-  margin: 0 auto;
-  flex-direction: row;
-  justify-content: center;
-  align-items: flex-start;
-  padding: 0;
   .chat-area {
-    min-width: $board-size-mobile;
-    max-width: $board-size-mobile;
     .ant-card.left-menu {
       text-transform: uppercase;
       letter-spacing: 1px;
@@ -54,17 +46,18 @@
 
     .ant-card-head {
       min-height: auto;
+      padding: 0 12px;
       .ant-card-head-title,
       .ant-card-extra {
         padding: 6px 3px;
-        font-size: 12px;
+        font-size: 13px;
         line-height: 1em;
       }
       .ant-card-extra {
         @include type-default;
         font-weight: bold;
         line-height: 2em;
-        font-size: 12px;
+        font-size: 13px;
       }
     }
   }
@@ -77,11 +70,11 @@
   user-select: none;
   text-align: center;
   padding: 0;
-  margin: 6px;
   outline-style: none;
   display: flex;
   flex-direction: column;
   align-items: center;
+  height: 100%;
 }
 
 .board {
@@ -89,8 +82,6 @@
 }
 
 .data-area {
-  min-width: $board-size-mobile;
-  max-width: $board-size-mobile;
   text-align: left;
   .ant-card {
     margin-bottom: 12px;
@@ -124,11 +115,11 @@
   grid-template-columns: repeat(15, 1fr);
   grid-template-rows: repeat(15, 1fr);
   gap: 1px;
-  background-color: #ddd;
+  background-color: $color-grid;
 }
 .board-spaces {
   // Using a box shadow that looks like a border to not mess up the
-  box-shadow: 0 0 4px rgba(0,0,0,0.3);
+  box-shadow: 0 0 6px scale-color($color-grid, $lightness: -20%);;
 }
 
 .tiles {
@@ -151,7 +142,7 @@
   align-items: center;
   color: $color-board-empty;
   border: transparent 1px solid;
-  border-color: transparent transparent #ddd #ddd;
+  border-color: transparent transparent $color-grid $color-grid;
 }
 
 .board-space::before {
@@ -161,10 +152,33 @@
   vertical-align: top;
 }
 .board-space {
+  display: flex;
   .anticon {
     position: absolute;
     color: $color-timer-dark;
     font-size: $tile-font-size-mobile;
+  }
+  .bonus-label {
+    text-align: center;
+    color: white;
+    font-family: $font-default;
+    font-size: 10px;
+    font-weight: 800;
+    max-width: 30px;
+    position: absolute;
+    line-height: 1em;
+    padding: 0 0 1px;
+    opacity: 0;
+   }
+  &:hover {
+    .bonus-label {
+      animation: fadeIn 700ms cubic-bezier(.17,.67,.29, 1) 400ms forwards;
+    }
+  }
+  &.selected {
+    .bonus-label {
+      display: none;
+    }
   }
   &.bonus-none {
     background-color: $color-board-empty;
@@ -172,7 +186,11 @@
   &.bonus-3WS {
     background-color: $color-board-tws;
     &.selected {
-      background-color: mix($color-board-tws, $color-timer-light, $weight: 30%)
+      background-color: mix($color-board-tws, white, $weight: 50%);
+      border-color: scale-color($color-timer-light, $lightness: -10%);
+      .anticon {
+        color: scale-color($color-timer-light, $lightness: -10%);
+      }
     }
   }
   &.bonus-2WS {
@@ -186,11 +204,18 @@
         display: none;
       }
     }
+    .bonus-label {
+      color: mix($color-board-tws, black, $weight: 90%);
+    }
   }
   &.bonus-3LS {
     background-color: $color-board-tls;
     &.selected {
-      background-color: mix($color-board-tls, $color-timer-light, $weight: 50%)
+      background-color: mix($color-board-tls, $color-timer-light, $weight: 70%);
+      border-color: scale-color($color-timer-light, $lightness: -10%);
+      .anticon {
+        color: scale-color($color-timer-light, $lightness: -10%);
+      }
     }
   }
   &.bonus-2LS {
@@ -198,22 +223,23 @@
     &.selected {
       background-color: mix($color-board-dls, $color-timer-light, $weight: 30%)
     }
+    .bonus-label {
+      color: mix($color-board-tls, black, $weight: 50%);
+    }
   }
   &.selected {
     border: 1px solid $color-timer-dark;
     background: $color-timer-light;
   }
 }
-
-.bonus-label {
-  position: absolute;
-  top: 50%;
-  width: 100%;
-  text-align: center;
-  color: white;
-  font-size: 12px;
+@keyframes fadeIn {
+  0% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 1;
+  }
 }
-
 /* Coordinate labels */
 
 .coord-labels {
@@ -398,15 +424,20 @@
   pointer-events: none;
   align-items: center;
   justify-content: center;
-  width: 90%;
-  height: 70%;
-  border-radius: 15%;
-  font-size: 1.1vw;
+  width: 100%;
+  height:100%;
+  border-radius: 10%;
+  font-size: 12px;
   font-weight: bold;
-  margin: 0;
-  left: -95%;
-  background: #999;
-  color: white;
+  margin: 1px;
+  left: -100%;
+  border: 1px solid $color-timer-dark;
+  background: $color-timer-light;
+  color: $color-timer-dark;
+}
+.tile:hover {
+  .tentative-score {
+  }
 }
 
 .tile.dragging .tentative-score {
@@ -550,7 +581,7 @@
     width: 24px;
     min-width: 24px;
     height: 24px;
-    font-size: 18px;
+    font-size: 16px;
   }
 
   .turn {
@@ -610,9 +641,6 @@
 }
 
 @media (min-width: $screen-mobile-min) {
-  .game-table .chat-area {
-    max-width: $screen-tablet-min;
-  }
   .board-spaces-container, .board-spaces, .tiles {
     width: $board-size-mobile;
     height: $board-size-mobile;
@@ -625,18 +653,6 @@
   }
 }
 @media (min-width: $screen-tablet-min) {
-  .play-area {
-    flex: 0 0 50%;
-  }
-  .data-area {
-    min-width: 420px;
-    max-width: 420px;
-  }
-  .game-table .chat-area {
-    min-width: $screen-tablet-min;
-    max-width: $screen-tablet-min;
-    padding: 0 24px;
-  }
   .board-spaces-container, .board-spaces, .tiles {
     width: $board-size-tablet;
     height: $board-size-tablet;
@@ -670,15 +686,6 @@
 
 @media (min-width: $screen-laptop-min) {
   .game-container {
-    .chat-area, .data-area {
-      min-width: 340px;
-      max-width: 340px;
-      padding: 0;
-    }
-
-    .data-area .ant-card {
-      margin-bottom: 6px;
-    }
     .ant-card {
       .ant-card-head {
         .ant-card-head-title,
@@ -697,7 +704,7 @@
 
   .play-area {
     flex: 0 0 0;
-    padding: 0 12px 0 24px;
+    padding: 12px 12px 0 30px;
   }
   .board-spaces-container, .board-spaces, .tiles {
     width: $board-size-laptop;
@@ -705,10 +712,6 @@
   }
   .coord-labels {
     width: $board-size-laptop;
-  }
-  .game-table {
-    flex-wrap: nowrap;
-
   }
   .format-dropdown {
     .ant-dropdown-menu {
@@ -828,9 +831,6 @@
 @media (min-height: $screen-min-height-desktop-max) and (min-width: $screen-desktop-min) {
   .chat-area .ant-card.left-menu {
     display: none;
-  }
-  .game-table {
-    margin-top: 24px;
   }
   .score-card {
     .ant-card-body {

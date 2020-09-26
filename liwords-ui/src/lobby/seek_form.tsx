@@ -1,14 +1,5 @@
 import React, { useState } from 'react';
-import {
-  Form,
-  Radio,
-  InputNumber,
-  Switch,
-  Tag,
-  Input,
-  Slider,
-  Button,
-} from 'antd';
+import { Form, Radio, InputNumber, Switch, Tag, Input, Slider } from 'antd';
 
 import { Store } from 'antd/lib/form/interface';
 import { ChallengeRule } from '../gen/macondo/api/proto/macondo/macondo_pb';
@@ -58,10 +49,13 @@ type Props = {
   loggedIn: boolean;
   showFriendInput: boolean;
   vsBot?: boolean;
+  id: string;
 };
 
-const otLabel = 'Max Overtime (minutes)';
-const incLabel = 'Increment (seconds)';
+const otLabel = 'Overtime';
+const incLabel = 'Increment';
+const otUnitLabel = 'minutes';
+const incUnitLabel = 'seconds';
 
 export const SeekForm = (props: Props) => {
   let storageKey = 'lastSeekForm';
@@ -90,10 +84,22 @@ export const SeekForm = (props: Props) => {
     ...storedValues,
   };
 
-  const [timectrl, setTimectrl] = useState('Rapid');
-  const [ttag, setTtag] = useState('gold');
+  const [itc, itt] = timeCtrlToDisplayName(
+    timeScaleToNum(initTimeDiscreteScale[initialValues.initialtime]) * 60,
+    initialValues.incOrOT === 'increment'
+      ? Math.round(initialValues.extratime as number)
+      : 0,
+    initialValues.incOrOT === 'increment'
+      ? 0
+      : Math.round(initialValues.extratime as number)
+  );
+  const [timectrl, setTimectrl] = useState(itc);
+  const [ttag, setTtag] = useState(itt);
   const [timeSetting, setTimeSetting] = useState(
     initialValues.incOrOT === 'overtime' ? otLabel : incLabel
+  );
+  const [extraTimeLabel, setExtraTimeLabel] = useState(
+    initialValues.incOrOT === 'overtime' ? otUnitLabel : incUnitLabel
   );
   const [maxTimeSetting, setMaxTimeSetting] = useState(
     initialValues.incOrOT === 'overtime' ? 5 : 60
@@ -102,9 +108,11 @@ export const SeekForm = (props: Props) => {
     if (allvals.incOrOT === 'increment') {
       setTimeSetting(incLabel);
       setMaxTimeSetting(60);
+      setExtraTimeLabel(incUnitLabel);
     } else {
       setTimeSetting(otLabel);
       setMaxTimeSetting(5);
+      setExtraTimeLabel(otUnitLabel);
     }
     const [tc, tt] = timeCtrlToDisplayName(
       timeScaleToNum(initTimeDiscreteScale[allvals.initialtime]) * 60,
@@ -149,22 +157,26 @@ export const SeekForm = (props: Props) => {
 
   return (
     <Form
+      id={props.id}
       onValuesChange={onFormChange}
       initialValues={initialValues}
       onFinish={onFormSubmit}
+      labelCol={{ span: 6 }}
+      wrapperCol={{ span: 24 }}
+      layout="horizontal"
     >
       {props.showFriendInput && (
         <Form.Item label="Friend" name="friend">
           <Input />
         </Form.Item>
       )}
-      <Form.Item label="Lexicon" name="lexicon">
+      <Form.Item label="Dictionary" name="lexicon">
         <Radio.Group>
           <Radio.Button value="CSW19">CSW19</Radio.Button>
           <Radio.Button value="NWL18">NWL18</Radio.Button>
         </Radio.Group>
       </Form.Item>
-      <Form.Item label="Challenge Rule" name="challengerule">
+      <Form.Item label="Challenge rule" name="challengerule">
         <Radio.Group>
           <Radio.Button value={ChallengeRule.FIVE_POINT}>5-pt</Radio.Button>
           <Radio.Button value={ChallengeRule.TEN_POINT}>10-pt</Radio.Button>
@@ -174,7 +186,7 @@ export const SeekForm = (props: Props) => {
           <Radio.Button value={ChallengeRule.TRIPLE}>Triple</Radio.Button>
         </Radio.Group>
       </Form.Item>
-      <Form.Item label="Initial Time (minutes)" name="initialtime">
+      <Form.Item label="Initial Minutes" name="initialtime">
         <Slider
           tipFormatter={initTimeFormatter}
           min={0}
@@ -190,15 +202,13 @@ export const SeekForm = (props: Props) => {
       </Form.Item>
       <Form.Item label={timeSetting} name="extratime">
         <InputNumber min={0} max={maxTimeSetting} />
+        &nbsp;{extraTimeLabel}
       </Form.Item>
       <Form.Item label="Rated" name="rated" valuePropName="checked">
         <Switch />
       </Form.Item>
-      Time Control: <Tag color={ttag}>{timectrl}</Tag>
-      <Form.Item>
-        <Button type="primary" htmlType="submit" style={{ marginTop: 10 }}>
-          Send Request
-        </Button>
+      <Form.Item label="Time Control">
+        <Tag color={ttag}>{timectrl}</Tag>
       </Form.Item>
     </Form>
   );

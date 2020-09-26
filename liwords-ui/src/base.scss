@@ -31,6 +31,7 @@ $color-board-empty: white;
 $color-gray-middle: #bebebe;
 $color-gray-dark: #414141;
 
+$color-grid: #c3c3c3;
 // Magic that makes variables available to the tsx code
 :export {
   colorSecondary: $color-secondary;
@@ -52,17 +53,18 @@ $screen-mobile-min: 768px;
 $screen-tablet-min: 1024px;
 $screen-laptop-min: 1280px;
 $screen-desktop-min: 1440px;
+$screen-desktop-l-min: 1920px;
 
 $screen-min-height-laptop-min: 680px;
-$screen-min-height-desktop-min: 768px;
-$screen-min-height-desktop-max: 940px;
+$screen-min-height-desktop-min: 830px;
+$screen-min-height-desktop-max: 910px;
 
 $font-deco: 'Fjalla One', sans-serif;
 $font-default: 'Muli', sans-serif;
 $font-monospaced: 'Roboto Mono', monospace;
 
 $tile-size-mobile: 34px;
-$tile-size-tablet: $tile-size-mobile;
+$tile-size-tablet: 34px;
 $tile-size-laptop:  34px;
 $tile-size-desktop: 44px;
 
@@ -70,6 +72,15 @@ $board-size-mobile: $tile-size-mobile * 15;
 $board-size-tablet: $tile-size-tablet * 15;
 $board-size-laptop: $tile-size-laptop * 15;
 $board-size-desktop: $tile-size-desktop * 15;
+
+$main-container-width-mobile: $board-size-mobile + 24px;
+$main-container-width-tablet: $board-size-tablet + 24px;
+$main-container-width-laptop: $board-size-laptop + 24px;
+$main-container-width-desktop: $board-size-desktop + 24px;
+
+$sidebar-width-tablet: calc((100% - #{$main-container-width-laptop}) - 24px);
+$sidebar-width-laptop:  calc((100% - #{$main-container-width-laptop}) / 2  - 12px);
+$sidebar-width-desktop:  calc((100% - #{$main-container-width-desktop}) / 2  - 12px);
 
 $tile-font-size-mobile: $tile-size-mobile * 0.68;
 $tile-font-size-tablet: $tile-size-tablet * 0.68;
@@ -80,6 +91,20 @@ $point-size-mobile: $tile-font-size-mobile / 3;
 $point-size-tablet: $tile-font-size-tablet / 3;
 $point-size-laptop: $tile-font-size-laptop / 3;
 $point-size-desktop: $tile-font-size-desktop / 3;
+
+@mixin container {
+  width: 100%;
+  max-width: $main-container-width-mobile;
+  position: relative;
+  margin: 0 auto;
+  padding: 0 12px;
+  @media (min-width: $screen-tablet-min) {
+    max-width: $main-container-width-tablet * 2;
+  }
+  @media (min-width: $screen-laptop-min) {
+    max-width: $screen-desktop-l-min;
+  }
+}
 
 @mixin type-default {
   color: black;
@@ -252,10 +277,23 @@ ul
     }
   }
 }
-
+@mixin modal {
+  .ant-modal-root {
+    .ant-modal-content {
+      border-radius: 8px;
+    }
+    .ant-modal-header {
+      border-radius: 8px 8px 0 0;
+    }
+    .ant-modal-footer {
+      border: 0;
+    }
+  }
+}
 @mixin button {
   /* buttons */
   button.ant-btn,
+  button.primary,
   button.ant-btn-primary,
   .ant-modal-root button.ant-btn-secondary {
     font-family: $font-default;
@@ -266,7 +304,7 @@ ul
     text-transform: uppercase;
     transition: none;
     margin: 0 6px;
-    padding: 3px 12px;
+    padding: 3px 18px;
     &,
     &:hover,
     &:focus,
@@ -287,14 +325,17 @@ ul
     height: 32px;
   }
 
-  button.ant-btn-primary {
+  button.ant-btn-primary, button.primary {
     height: 36px;
     margin: 6px 3px;
     background: $color-primary-dark;
     color: white;
     text-transform: uppercase;
     border-radius: 3px;
+    border: 0;
+    outline: 0;
     transition: none;
+    cursor: pointer;
     &,
     &:hover,
     &:focus,
@@ -308,14 +349,6 @@ ul
       background: $color-gray-middle;
       color: white;
     }
-  }
-}
-
-@mixin fullHeight {
-  height: calc(100vh - #{$header-height-desktop} - 30px);
-
-  @media (min-height: $screen-min-height-laptop-min) and (min-width: $screen-tablet-min) {
-    height: calc(100vh - #{$header-height-desktop} - 30px);
   }
 }
 
@@ -342,24 +375,3 @@ ul
   }
 }
 
-@mixin container {
-  width: 100%;
-  position: relative;
-  margin: 0 auto;
-  padding: 0 12px;
-
-  @media (min-width: $screen-tablet-min) {
-    min-width: $screen-tablet-min;
-    max-width: $screen-tablet-min;
-  }
-
-  @media (min-width: $screen-laptop-min) {
-    min-width: $screen-laptop-min;
-    max-width: $screen-laptop-min;
-  }
-
-  @media (min-width: $screen-desktop-min) {
-    min-width: $screen-desktop-min;
-    max-width: $screen-desktop-min;
-  }
-}

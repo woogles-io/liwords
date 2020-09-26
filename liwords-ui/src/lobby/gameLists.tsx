@@ -1,10 +1,11 @@
-import React from 'react';
-import { Button, Card, Modal } from 'antd';
+import React, { useState } from 'react';
+import { Card, Modal, Button } from 'antd';
 import { SoughtGames } from './sought_games';
 import { ActiveGames } from './active_games';
 import { SeekForm } from './seek_form';
 import { useStoreContext } from '../store/store';
 import { ActiveGame, SoughtGame } from '../store/reducers/lobby_reducer';
+import './seek_form.scss';
 
 type Props = {
   loggedIn: boolean;
@@ -13,15 +14,6 @@ type Props = {
   username?: string;
   selectedGameTab: string;
   setSelectedGameTab: (tab: string) => void;
-  showMatchModal: () => void;
-  showSeekModal: () => void;
-  showBotModal: () => void;
-  matchModalVisible: boolean;
-  seekModalVisible: boolean;
-  botModalVisible: boolean;
-  handleMatchModalCancel: () => void;
-  handleSeekModalCancel: () => void;
-  handleBotModalCancel: () => void;
   onSeekSubmit: (g: SoughtGame) => void;
 };
 
@@ -33,18 +25,13 @@ export const GameLists = React.memo((props: Props) => {
     newGame,
     selectedGameTab,
     setSelectedGameTab,
-    showMatchModal,
-    showSeekModal,
-    showBotModal,
-    matchModalVisible,
-    seekModalVisible,
-    botModalVisible,
-    handleMatchModalCancel,
-    handleSeekModalCancel,
-    handleBotModalCancel,
     onSeekSubmit,
   } = props;
   const { lobbyContext, setRedirGame } = useStoreContext();
+  const [formDisabled, setFormDisabled] = useState(false);
+  const [seekModalVisible, setSeekModalVisible] = useState(false);
+  const [matchModalVisible, setMatchModalVisible] = useState(false);
+  const [botModalVisible, setBotModalVisible] = useState(false);
   const currentGame: ActiveGame | null =
     lobbyContext.activeGames.find((ag) =>
       ag.players.some((p) => p.displayName === username)
@@ -92,19 +79,50 @@ export const GameLists = React.memo((props: Props) => {
       </>
     );
   };
+  const onFormSubmit = (sg: SoughtGame) => {
+    setSeekModalVisible(false);
+    setMatchModalVisible(false);
+    setBotModalVisible(false);
+    setFormDisabled(true);
+    if (!formDisabled) {
+      onSeekSubmit(sg);
+      setTimeout(() => {
+        setFormDisabled(false);
+      }, 500);
+    }
+  };
   const seekModal = (
     <Modal
-      title="Seek New Game"
+      title="Create a Game"
+      className="seek-modal"
       visible={seekModalVisible}
-      onCancel={handleSeekModalCancel}
+      onCancel={() => {
+        setSeekModalVisible(false);
+        setFormDisabled(false);
+      }}
       footer={[
-        <Button key="back" onClick={handleSeekModalCancel}>
+        <Button
+          key="back"
+          onClick={() => {
+            setSeekModalVisible(false);
+          }}
+        >
           Cancel
         </Button>,
+        <button
+          className="primary"
+          key="submit"
+          form="open-seek"
+          type="submit"
+          disabled={formDisabled}
+        >
+          Create Game
+        </button>,
       ]}
     >
       <SeekForm
-        onFormSubmit={onSeekSubmit}
+        id="open-seek"
+        onFormSubmit={onFormSubmit}
         loggedIn={props.loggedIn}
         showFriendInput={false}
       />
@@ -112,19 +130,38 @@ export const GameLists = React.memo((props: Props) => {
   );
   const matchModal = (
     <Modal
+      className="seek-modal"
       title="Match a Friend"
       visible={matchModalVisible}
-      onCancel={handleMatchModalCancel}
+      onCancel={() => {
+        setMatchModalVisible(false);
+        setFormDisabled(false);
+      }}
       footer={[
-        <Button key="back" onClick={handleMatchModalCancel}>
+        <Button
+          key="back"
+          onClick={() => {
+            setMatchModalVisible(false);
+          }}
+        >
           Cancel
         </Button>,
+        <button
+          className="primary"
+          key="submit"
+          form="match-seek"
+          type="submit"
+          disabled={formDisabled}
+        >
+          Create Game
+        </button>,
       ]}
     >
       <SeekForm
-        onFormSubmit={onSeekSubmit}
+        onFormSubmit={onFormSubmit}
         loggedIn={props.loggedIn}
         showFriendInput={true}
+        id="match-seek"
       />
     </Modal>
   );
@@ -132,18 +169,37 @@ export const GameLists = React.memo((props: Props) => {
     <Modal
       title="Play a Bot"
       visible={botModalVisible}
-      onCancel={handleBotModalCancel}
+      className="seek-modal"
+      onCancel={() => {
+        setBotModalVisible(false);
+        setFormDisabled(false);
+      }}
       footer={[
-        <Button key="back" onClick={handleBotModalCancel}>
+        <Button
+          key="back"
+          onClick={() => {
+            setBotModalVisible(false);
+          }}
+        >
           Cancel
         </Button>,
+        <button
+          className="primary"
+          key="submit"
+          form="bot-seek"
+          type="submit"
+          disabled={formDisabled}
+        >
+          Create Game
+        </button>,
       ]}
     >
       <SeekForm
-        onFormSubmit={onSeekSubmit}
+        onFormSubmit={onFormSubmit}
         loggedIn={props.loggedIn}
         showFriendInput={false}
         vsBot={true}
+        id="bot-seek"
       />
     </Modal>
   );
@@ -164,17 +220,32 @@ export const GameLists = React.memo((props: Props) => {
       );
     } else {
       actions.push(
-        <div className="bot" onClick={showBotModal}>
+        <div
+          className="bot"
+          onClick={() => {
+            setBotModalVisible(true);
+          }}
+        >
           Play a bot
         </div>
       );
       actions.push(
-        <div className="match" onClick={showMatchModal}>
+        <div
+          className="match"
+          onClick={() => {
+            setMatchModalVisible(true);
+          }}
+        >
           Match a friend
         </div>
       );
       actions.push(
-        <div className="seek" onClick={showSeekModal}>
+        <div
+          className="seek"
+          onClick={() => {
+            setSeekModalVisible(true);
+          }}
+        >
           New game
         </div>
       );

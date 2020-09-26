@@ -1,33 +1,19 @@
 @import '../base';
 @include button;
 @include notification;
+@include modal;
 
 .lobby {
-  @include container();
   display: flex;
   flex-direction: row;
   justify-content: center;
   align-items: flex-start;
-  padding: 12px 24px 12px 12px;
   flex-wrap: wrap;
-  .ant-card {
-    @include fullHeight();
-    height: 600px;
-    &.chat .entities {
-        max-height: 430px;
-      }
-  }
 }
 .announcements {
   order: 0;
-  max-height: 100px;
-
-  min-width: 300px;
-  flex-grow: 1;
-  margin: 0px 12px 24px 12px;
   .ant-card {
     height: auto;
-    margin-bottom: 12px;
   }
   .ant-card-body {
     max-height: 130px;
@@ -35,8 +21,6 @@
   }
 }
 .game-lists {
-  margin: 12px 12px 0;
-  max-width: none;
   order: 2;
   flex-grow: 2;
   @include type-default;
@@ -167,25 +151,11 @@
   }
 }
 @media (min-width: $screen-tablet-min) {
-  .lobby {
-    padding: 12px 0;
-    flex-wrap: wrap;
-    .ant-card {
-      @include fullHeight();
-      &.chat {
-        height: 600px;
-      }
-    }
-  }
   .announcements {
     order: initial;
-    max-height: auto;
-    margin: 0;
-    min-width: 300px;
-    max-width: 38%;
     flex-grow: 1;
     .ant-card {
-      @include fullHeight();
+      height: $main-container-width-tablet + 60px;
     }
     .ant-card-body {
       max-height: none;
@@ -193,22 +163,5 @@
   }
   .game-lists {
     order: initial;
-    margin: 0 12px;
   }
-}
-@media (min-width: $screen-laptop-min) {
-  .announcements {
-    max-width: 25%;
-  }
-  .lobby {
-    .ant-card {
-      &.chat {
-        @include fullHeight();
-      }
-    }
-  }
-}
-
-#challengerule .ant-radio-button-wrapper {
-  padding: 0 10px;
 }

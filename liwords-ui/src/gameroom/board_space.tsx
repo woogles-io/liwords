@@ -8,26 +8,26 @@ import {
 
 interface BonusProperties {
   bonusText: string;
+  bonusClass: string;
 }
 
 function getBonusProperties(bt: BonusType): BonusProperties {
   switch (bt) {
     case BonusType.DoubleWord:
-      return { bonusText: '2WS' };
+      return { bonusText: '2x word', bonusClass: '2WS' };
     case BonusType.TripleWord:
-      return { bonusText: '3WS' };
+      return { bonusText: '3x word', bonusClass: '3WS' };
     case BonusType.DoubleLetter:
-      return { bonusText: '2LS' };
+      return { bonusText: '2x letter', bonusClass: '2LS' };
     case BonusType.TripleLetter:
-      return { bonusText: '3LS' };
+      return { bonusText: '3x letter', bonusClass: '3LS' };
   }
-  return { bonusText: '' };
+  return { bonusText: '', bonusClass: '' };
 }
 
 type Props = {
   bonusType: BonusType;
   handleTileDrop: (e: any) => void;
-  showBonusLabel: boolean;
   startingSquare: boolean;
   arrow: boolean;
   arrowHoriz: boolean;
@@ -35,16 +35,15 @@ type Props = {
 };
 
 const BoardSpace = React.memo((props: Props) => {
-  const { bonusText } = getBonusProperties(props.bonusType);
+  const { bonusText, bonusClass } = getBonusProperties(props.bonusType);
   let bonusLabel = null;
   let startingSquare = null;
   let arrow = null;
-  if (props.showBonusLabel && bonusText !== '') {
-    bonusLabel = <p className="bonus-label">{bonusText}</p>;
-  }
   // ✩✪✫
   if (props.startingSquare) {
     startingSquare = <StarOutlined className="center-square" />;
+  } else if (bonusText !== '') {
+    bonusLabel = <p className="bonus-label">{bonusText}</p>;
   }
   if (props.arrow) {
     if (props.arrowHoriz) {
@@ -62,7 +61,7 @@ const BoardSpace = React.memo((props: Props) => {
     <div
       className={`board-space droppable ${
         props.arrow ? 'selected' : ''
-      } bonus-${bonusText ? bonusText : 'none'}`}
+      } bonus-${bonusClass ? bonusClass : 'none'}`}
       onClick={props.clicked}
       onDragOver={handleDropOver}
       onDrop={props.handleTileDrop}
