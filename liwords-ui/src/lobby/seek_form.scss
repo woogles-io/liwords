@@ -1,0 +1,23 @@
+@import '../base';
+@include button;
+@include notification;
+@include modal;
+
+.seek-modal {
+  .ant-modal-header {
+    background-image: linear-gradient($color-primary-middle 0%, white 100%);
+  }
+  button {
+    font-size: 14px;
+  }
+  .ant-form-item-label {
+    text-align: left;
+    & > label::after {
+      content: '';
+    }
+  }
+}
+
+#challengerule .ant-radio-button-wrapper {
+  padding: 0 10px;
+}

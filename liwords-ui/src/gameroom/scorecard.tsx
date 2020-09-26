@@ -195,7 +195,7 @@ export const ScoreCard = React.memo((props: Props) => {
           parentHeight -
             currentEl?.getBoundingClientRect().top -
             window.scrollY -
-            24 +
+            30 +
             navHeight
         );
       }

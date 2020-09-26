@@ -1,6 +1,7 @@
 @import '../base';
 @include button;
 @include notification;
+@include modal;
 
 .lobby {
   display: flex;
@@ -163,8 +164,4 @@
   .game-lists {
     order: initial;
   }
-}
-
-#challengerule .ant-radio-button-wrapper {
-  padding: 0 10px;
 }

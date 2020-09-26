@@ -56,8 +56,8 @@ $screen-desktop-min: 1440px;
 $screen-desktop-l-min: 1920px;
 
 $screen-min-height-laptop-min: 680px;
-$screen-min-height-desktop-min: 768px;
-$screen-min-height-desktop-max: 940px;
+$screen-min-height-desktop-min: 830px;
+$screen-min-height-desktop-max: 910px;
 
 $font-deco: 'Fjalla One', sans-serif;
 $font-default: 'Muli', sans-serif;
@@ -277,9 +277,22 @@ ul
     }
   }
 }
-
+@mixin modal {
+  .ant-modal-root {
+    .ant-modal-content {
+      border-radius: 8px;
+    }
+    .ant-modal-header {
+      border-radius: 8px 8px 0 0;
+    }
+    .ant-modal-footer {
+      border: 0;
+    }
+  }
+}
 @mixin button {
   /* buttons */
+  button,
   button.ant-btn,
   button.ant-btn-primary,
   .ant-modal-root button.ant-btn-secondary {
@@ -291,7 +304,7 @@ ul
     text-transform: uppercase;
     transition: none;
     margin: 0 6px;
-    padding: 3px 12px;
+    padding: 3px 18px;
     &,
     &:hover,
     &:focus,
@@ -312,14 +325,17 @@ ul
     height: 32px;
   }
 
-  button.ant-btn-primary {
+  button.ant-btn-primary, button.primary {
     height: 36px;
     margin: 6px 3px;
     background: $color-primary-dark;
     color: white;
     text-transform: uppercase;
     border-radius: 3px;
+    border: 0;
+    outline: 0;
     transition: none;
+    cursor: pointer;
     &,
     &:hover,
     &:focus,

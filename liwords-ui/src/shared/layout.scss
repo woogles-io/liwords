@@ -10,7 +10,7 @@
 
 .lobby, .game-table, .top-header .container {
   @include container();
-  padding: 12px;
+  padding: 15px 12px 0px;
   display: flex;
   flex-wrap: wrap;
   flex-direction: row;
@@ -48,7 +48,7 @@
 // Landscape tablet
 @media (min-width: $screen-tablet-min) {
   .lobby, .game-table {
-    padding-top: 0;
+    padding-top: 12px;
   }
   .top-header .container {
     padding: 12px 48px;
@@ -85,16 +85,16 @@
   .data-area, .announcements, .chat-area {
     min-width: $sidebar-width-laptop;
     max-width: $sidebar-width-laptop;
-    padding: 12px;
+    padding: 12px 12px 0;
     margin: 0;
   }
 
   .lobby {
     .play-area, .game-lists, .chat-area, .data-area, .announcements {
-      height: calc(100vh - #{$header-height-desktop} - 30px);
+      height: calc(100vh - #{$header-height-desktop + 48px});
     }
     .ant-card, .ant-card.chat, .announcements .ant-card {
-      height: calc(100vh - #{$header-height-desktop} - 30px);
+      height: calc(100vh - #{$header-height-desktop + 48px});
     }
   }
 
@@ -110,7 +110,12 @@
     min-width: $sidebar-width-desktop;
     max-width: $sidebar-width-desktop;
   }
+}
 
+@media (min-height: $screen-min-height-desktop-max) and (min-width: $screen-desktop-min) {
+  .lobby, .game-table {
+    padding-top: 0px;
+  }
   .game-container {
     .top-header {
       display: flex;
