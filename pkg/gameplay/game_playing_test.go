@@ -358,10 +358,10 @@ func TestMetadata(t *testing.T) {
 	is.NoErr(err)
 
 	// Check the metadata
-	is.Equal(entGame.Metadata.PlayerScores[0], 34)
-	is.Equal(entGame.Metadata.PlayerScores[1], 93)
-	is.Equal(entGame.Metadata.OriginalRequestId, "")
-
+	is.Equal(entGame.Metadata.PlayerScores[0], int32(93))
+	is.Equal(entGame.Metadata.PlayerScores[1], int32(34))
+	is.Equal(entGame.Metadata.OriginalRequestId, gameReq.OriginalRequestId)
+	
 	// Kill the go-routine
 	cancel()
 	<-donechan
