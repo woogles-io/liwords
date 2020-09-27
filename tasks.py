@@ -63,22 +63,3 @@ def build_protobuf(c):
         c.run(r'printf "/* eslint-disable */\n" > ' + tmp)
         c.run(f"cat {gen_filename} >> " + tmp)
         c.run(f"mv {tmp} {gen_filename}")
-
-
-@task
-def deploy(c):
-    with c.cd("liwords-ui"):
-        c.run("npm run build")
-        c.run("rsync -avz --del build/ ubuntu@woogles.io:~/liwords-ui-build")
-    with c.cd("cmd/liwords-api"):
-        c.run("GOOS=linux GOARCH=amd64 go build -o liwords-api-linux-amd64")
-        c.run("scp liwords-api-linux-amd64 ubuntu@woogles.io:.")
-    with c.cd("../liwords-socket/cmd/socketsrv"):
-        c.run("GOOS=linux GOARCH=amd64 go build -o liwords-socket-linux-amd64")
-        c.run("scp liwords-socket-linux-amd64 ubuntu@woogles.io:.")
-    with c.cd("../macondo/cmd/bot"):
-        c.run("GOOS=linux GOARCH=amd64 go build -o macondo-bot-linux-amd64")
-        c.run("scp macondo-bot-linux-amd64 ubuntu@woogles.io:.")
-    # with c.cd("scripts/migrations/rerate"):
-    #     c.run("GOOS=linux GOARCH=amd64 go build -o rerate-linux-amd64")
-    #     c.run("scp rerate-linux-amd64 ubuntu@woogles.io:.")

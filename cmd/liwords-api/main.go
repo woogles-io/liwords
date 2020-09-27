@@ -41,6 +41,13 @@ const (
 	GracefulShutdownTimeout = 30 * time.Second
 )
 
+var (
+	// BuildHash is the git hash, set by go build flags
+	BuildHash = "unknown"
+	// BuildDate is the build date, set by go build flags
+	BuildDate = "unknown"
+)
+
 func newPool(addr string) *redis.Pool {
 	return &redis.Pool{
 		MaxIdle:     3,
@@ -60,7 +67,8 @@ func main() {
 
 	cfg := &config.Config{}
 	cfg.Load(os.Args[1:])
-	log.Info().Msgf("Loaded config: %v", cfg)
+	log.Info().Interface("config", cfg).
+		Str("build-date", BuildDate).Str("build-hash", BuildHash).Msg("started")
 
 	if cfg.SecretKey == "" {
 		panic("secret key must be non blank")

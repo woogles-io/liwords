@@ -13,7 +13,11 @@ RUN go mod download
 COPY . .
 
 WORKDIR /opt/program/cmd/liwords-api
-RUN go build
+
+ARG BUILD_HASH=unknown
+ARG BUILD_DATE=unknown
+
+RUN go build -ldflags  "-X=main.BuildDate=${BUILD_DATE} -X=main.BuildHash=${BUILD_HASH}"
 
 # Build minimal image:
 FROM alpine
