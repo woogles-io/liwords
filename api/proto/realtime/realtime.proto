@@ -229,7 +229,10 @@ message GameHistoryRefresher {
 
 // A NewGameEvent gets sent from the server to the involved clients when a new
 // game is about to begin. It should follow a SoughtGameProcessEvent.
-message NewGameEvent { string game_id = 1; }
+message NewGameEvent {
+  string game_id = 1;
+  string request_id = 2;
+}
 
 message ErrorMessage {
   string message = 1;

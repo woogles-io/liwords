@@ -177,8 +177,7 @@ func StartGame(ctx context.Context, gameStore GameStore, eventChan chan<- *entit
 	log.Debug().Interface("history", entGame.Game.History()).Msg("game history")
 
 	evt := entGame.HistoryRefresherEvent()
-	wrapped := entity.WrapEvent(evt, pb.MessageType_GAME_HISTORY_REFRESHER,
-		entGame.GameID())
+	wrapped := entity.WrapEvent(evt, pb.MessageType_GAME_HISTORY_REFRESHER)
 	wrapped.AddAudience(entity.AudGameTV, entGame.GameID())
 	for _, p := range players(entGame) {
 		wrapped.AddAudience(entity.AudUser, p)
@@ -215,8 +214,7 @@ func handleChallenge(ctx context.Context, entGame *entity.Game,
 		ChallengeRule: entGame.ChallengeRule(),
 		Challenger:    challengerID,
 	}
-	evt := entity.WrapEvent(resultEvent, pb.MessageType_SERVER_CHALLENGE_RESULT_EVENT,
-		entGame.GameID())
+	evt := entity.WrapEvent(resultEvent, pb.MessageType_SERVER_CHALLENGE_RESULT_EVENT)
 	evt.AddAudience(entity.AudGame, entGame.GameID())
 	evt.AddAudience(entity.AudGameTV, entGame.GameID())
 	entGame.SendChange(evt)
@@ -249,8 +247,7 @@ func handleChallenge(ctx context.Context, entGame *entity.Game,
 			sge.TimeRemaining = int32(entGame.Timers.TimeRemaining[1-onTurn])
 		}
 
-		evt = entity.WrapEvent(sge, pb.MessageType_SERVER_GAMEPLAY_EVENT,
-			entGame.GameID())
+		evt = entity.WrapEvent(sge, pb.MessageType_SERVER_GAMEPLAY_EVENT)
 		evt.AddAudience(entity.AudGameTV, entGame.GameID())
 		for _, uid := range players(entGame) {
 			evt.AddAudience(entity.AudUser, uid)
@@ -325,8 +322,7 @@ func PlayMove(ctx context.Context, entGame *entity.Game, userStore user.Store,
 	playing := entGame.Game.Playing()
 	players := players(entGame)
 	for _, sge := range evts {
-		wrapped := entity.WrapEvent(sge, pb.MessageType_SERVER_GAMEPLAY_EVENT,
-			entGame.GameID())
+		wrapped := entity.WrapEvent(sge, pb.MessageType_SERVER_GAMEPLAY_EVENT)
 		wrapped.AddAudience(entity.AudGameTV, entGame.GameID())
 		for _, p := range players {
 			wrapped.AddAudience(entity.AudUser, p)

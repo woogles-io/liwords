@@ -103,7 +103,12 @@ const defaultGameState = startingGameState(
 // This is annoying, but we have to add a default for everything in this
 // declaration. Declaring it as a Partial<StoreData> breaks things elsewhere.
 export const Context = createContext<StoreData>({
-  lobbyContext: { soughtGames: [], activeGames: [], matchRequests: [] },
+  lobbyContext: {
+    soughtGames: [],
+    activeGames: [],
+    matchRequests: [],
+    outstandingAcceptReq: '',
+  },
   dispatchLobbyContext: defaultFunction,
   redirGame: '',
   setRedirGame: defaultFunction,
@@ -179,6 +184,7 @@ export const Store = ({ children, ...props }: Props) => {
     soughtGames: [],
     activeGames: [],
     matchRequests: [],
+    outstandingAcceptReq: '',
   });
 
   const [gameContext, dispatchGameContext] = useReducer(GameReducer, null, () =>

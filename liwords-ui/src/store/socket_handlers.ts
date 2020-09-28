@@ -103,6 +103,7 @@ export const onSocketMsg = (username: string, storeData: StoreData) => {
             actionType: ActionType.AddSoughtGame,
             payload: soughtGame,
           });
+
           break;
         }
 
@@ -239,6 +240,15 @@ export const onSocketMsg = (username: string, storeData: StoreData) => {
         case MessageType.NEW_GAME_EVENT: {
           const nge = parsedMsg as NewGameEvent;
           console.log('got new game event', nge);
+
+          // Determine if this is the tab that should accept the game.
+          if (
+            nge.getRequestId() !== storeData.lobbyContext.outstandingAcceptReq
+          ) {
+            console.log('ignoring on this tab...');
+            break;
+          }
+
           storeData.dispatchGameContext({
             actionType: ActionType.ClearHistory,
             payload: '',

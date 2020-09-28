@@ -4993,7 +4993,8 @@ proto.liwords.NewGameEvent.prototype.toObject = function(opt_includeInstance) {
  */
 proto.liwords.NewGameEvent.toObject = function(includeInstance, msg) {
   var f, obj = {
-    gameId: jspb.Message.getFieldWithDefault(msg, 1, "")
+    gameId: jspb.Message.getFieldWithDefault(msg, 1, ""),
+    requestId: jspb.Message.getFieldWithDefault(msg, 2, "")
   };
 
   if (includeInstance) {
@@ -5034,6 +5035,10 @@ proto.liwords.NewGameEvent.deserializeBinaryFromReader = function(msg, reader) {
       var value = /** @type {string} */ (reader.readString());
       msg.setGameId(value);
       break;
+    case 2:
+      var value = /** @type {string} */ (reader.readString());
+      msg.setRequestId(value);
+      break;
     default:
       reader.skipField();
       break;
@@ -5070,6 +5075,13 @@ proto.liwords.NewGameEvent.serializeBinaryToWriter = function(message, writer) {
       f
     );
   }
+  f = message.getRequestId();
+  if (f.length > 0) {
+    writer.writeString(
+      2,
+      f
+    );
+  }
 };
 
 
@@ -5088,6 +5100,24 @@ proto.liwords.NewGameEvent.prototype.getGameId = function() {
  */
 proto.liwords.NewGameEvent.prototype.setGameId = function(value) {
   return jspb.Message.setProto3StringField(this, 1, value);
+};
+
+
+/**
+ * optional string request_id = 2;
+ * @return {string}
+ */
+proto.liwords.NewGameEvent.prototype.getRequestId = function() {
+  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 2, ""));
+};
+
+
+/**
+ * @param {string} value
+ * @return {!proto.liwords.NewGameEvent} returns this
+ */
+proto.liwords.NewGameEvent.prototype.setRequestId = function(value) {
+  return jspb.Message.setProto3StringField(this, 2, value);
 };
 
 

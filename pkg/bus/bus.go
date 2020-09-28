@@ -35,6 +35,10 @@ const (
 	AdjudicateInterval = 300 * time.Second
 )
 
+const (
+	BotRequestID = "bot-request"
+)
+
 // Bus is the struct; it should contain all the stores to verify messages, etc.
 type Bus struct {
 	natsconn        *nats.Conn
@@ -131,7 +135,7 @@ outerfor:
 					if len(subtopics) > 4 {
 						userID := subtopics[4]
 						b.pubToUser(userID, entity.WrapEvent(&pb.ErrorMessage{Message: err.Error()},
-							pb.MessageType_ERROR_MESSAGE, ""))
+							pb.MessageType_ERROR_MESSAGE))
 					}
 				}
 			}()
@@ -319,9 +323,22 @@ func (b *Bus) handleBotMove(ctx context.Context, g *entity.Game) {
 // handleNatsPublish runs in a separate goroutine
 func (b *Bus) handleNatsPublish(ctx context.Context, subtopics []string, data []byte) error {
 	log.Debug().Interface("subtopics", subtopics).Msg("handling nats publish")
-	switch subtopics[0] {
+
+	msgType := subtopics[0]
+	auth := ""
+	userID := ""
+	if len(subtopics) > 2 {
+		auth = subtopics[1]
+		userID = subtopics[2]
+	}
+	// wsConnID := ""
+	// if len(subtopics) > 3 {
+	// 	wsConnID = subtopics[3]
+	// }
+
+	switch msgType {
 	case "seekRequest", "matchRequest":
-		return b.seekRequest(ctx, subtopics[0], subtopics[1], subtopics[2], data)
+		return b.seekRequest(ctx, msgType, auth, userID, data)
 	case "chat":
 		// The user is subtopics[2]
 		evt := &pb.ChatMessage{}
@@ -329,16 +346,16 @@ func (b *Bus) handleNatsPublish(ctx context.Context, subtopics []string, data []
 		if err != nil {
 			return err
 		}
-		log.Debug().Str("user", subtopics[2]).Str("msg", evt.Message).Str("channel", evt.Channel).Msg("chat")
-		return b.chat(ctx, subtopics[2], evt)
+		log.Debug().Str("user", userID).Str("msg", evt.Message).Str("channel", evt.Channel).Msg("chat")
+		return b.chat(ctx, userID, evt)
 	case "declineMatchRequest":
 		evt := &pb.DeclineMatchRequest{}
 		err := proto.Unmarshal(data, evt)
 		if err != nil {
 			return err
 		}
-		log.Debug().Str("user", subtopics[2]).Str("reqid", evt.RequestId).Msg("decline-rematch")
-		return b.matchDeclined(ctx, evt, subtopics[2])
+		log.Debug().Str("user", userID).Str("reqid", evt.RequestId).Msg("decline-rematch")
+		return b.matchDeclined(ctx, evt, userID)
 
 	case "soughtGameProcess":
 		evt := &pb.SoughtGameProcessEvent{}
@@ -346,8 +363,8 @@ func (b *Bus) handleNatsPublish(ctx context.Context, subtopics []string, data []
 		if err != nil {
 			return err
 		}
-		// subtopics[2] is the user ID of the requester.
-		return b.gameAccepted(ctx, evt, subtopics[2])
+
+		return b.gameAccepted(ctx, evt, userID)
 
 	case "gameplayEvent":
 		evt := &pb.ClientGameplayEvent{}
@@ -355,10 +372,8 @@ func (b *Bus) handleNatsPublish(ctx context.Context, subtopics []string, data []
 		if err != nil {
 			return err
 		}
-		userid := subtopics[2]
-		// subtopics[2] is the user ID of the requester.
 		entGame, err := gameplay.HandleEvent(ctx, b.gameStore, b.userStore, b.listStatStore,
-			userid, evt)
+			userID, evt)
 		if err != nil {
 			return err
 		}
@@ -368,7 +383,7 @@ func (b *Bus) handleNatsPublish(ctx context.Context, subtopics []string, data []
 		if entGame.GameReq != nil &&
 			entGame.GameReq.PlayerVsBot &&
 			entGame.Game.Playing() != macondopb.PlayState_GAME_OVER &&
-			entGame.PlayerIDOnTurn() != userid {
+			entGame.PlayerIDOnTurn() != userID {
 
 			entGame.RUnlock()
 			// Do this in a separate goroutine as it blocks while waiting for bot move.
@@ -396,8 +411,6 @@ func (b *Bus) handleNatsPublish(ctx context.Context, subtopics []string, data []
 
 	case "leaveSite":
 		// There is no event here. We have the user ID in the subject.
-		// req.User.IsAnonymous = subtopics[1] == "anon"
-		userID := subtopics[2]
 		return b.leaveSite(ctx, userID)
 	default:
 		return fmt.Errorf("unhandled-publish-topic: %v", subtopics)
@@ -477,7 +490,7 @@ func (b *Bus) seekRequest(ctx context.Context, seekOrMatch, auth, userID string,
 		if err != nil {
 			return err
 		}
-		evt := entity.WrapEvent(sg.SeekRequest, pb.MessageType_SEEK_REQUEST, "")
+		evt := entity.WrapEvent(sg.SeekRequest, pb.MessageType_SEEK_REQUEST)
 		data, err := evt.Serialize()
 		if err != nil {
 			return err
@@ -505,7 +518,7 @@ func (b *Bus) seekRequest(ctx context.Context, seekOrMatch, auth, userID string,
 		if err != nil {
 			return err
 		}
-		evt := entity.WrapEvent(mg.MatchRequest, pb.MessageType_MATCH_REQUEST, "")
+		evt := entity.WrapEvent(mg.MatchRequest, pb.MessageType_MATCH_REQUEST)
 		log.Debug().Interface("evt", evt).Interface("receiver", mg.MatchRequest.ReceivingUser).
 			Str("sender", reqUser.UserId).Msg("publishing match request to user")
 		b.pubToUser(receiver.UUID, evt)
@@ -525,7 +538,7 @@ func (b *Bus) newBotGame(ctx context.Context, req *pb.MatchRequest) error {
 	}
 	sg := &entity.SoughtGame{MatchRequest: req}
 	return b.instantiateAndStartGame(ctx, accUser, req.User.UserId, req.GameRequest,
-		sg, "")
+		sg, BotRequestID)
 }
 
 func (b *Bus) gameAccepted(ctx context.Context, evt *pb.SoughtGameProcessEvent, userID string) error {
@@ -615,7 +628,7 @@ func (b *Bus) instantiateAndStartGame(ctx context.Context, accUser *entity.User,
 		return err
 	}
 	// Broadcast a seek delete event, and send both parties a game redirect.
-	if reqID != "" {
+	if reqID != BotRequestID {
 		b.soughtGameStore.Delete(ctx, reqID)
 		err = b.broadcastSeekDeletion(reqID)
 		if err != nil {
@@ -629,14 +642,16 @@ func (b *Bus) instantiateAndStartGame(ctx context.Context, accUser *entity.User,
 	}
 	// This event will result in a redirect.
 	ngevt := entity.WrapEvent(&pb.NewGameEvent{
-		GameId: g.GameID(),
-	}, pb.MessageType_NEW_GAME_EVENT, "")
+		GameId:    g.GameID(),
+		RequestId: reqID,
+	}, pb.MessageType_NEW_GAME_EVENT)
 	b.pubToUser(accUser.UUID, ngevt)
 	b.pubToUser(reqUser.UUID, ngevt)
 
 	log.Info().Str("newgameid", g.History().Uid).
 		Str("sender", accUser.UUID).
 		Str("requester", requester).
+		Str("reqID", reqID).
 		Interface("starting-in", GameStartDelay).
 		Str("onturn", g.NickOnTurn()).Msg("game-accepted")
 
@@ -684,7 +699,7 @@ func (b *Bus) matchDeclined(ctx context.Context, evt *pb.DeclineMatchRequest, us
 	requester := sg.MatchRequest.User.UserId
 	decliner := userID
 
-	wrapped := entity.WrapEvent(evt, pb.MessageType_DECLINE_MATCH_REQUEST, "")
+	wrapped := entity.WrapEvent(evt, pb.MessageType_DECLINE_MATCH_REQUEST)
 
 	// Publish decline to requester
 	err = b.pubToUser(requester, wrapped)
@@ -692,13 +707,13 @@ func (b *Bus) matchDeclined(ctx context.Context, evt *pb.DeclineMatchRequest, us
 		return err
 	}
 	wrapped = entity.WrapEvent(&pb.SoughtGameProcessEvent{RequestId: evt.RequestId},
-		pb.MessageType_SOUGHT_GAME_PROCESS_EVENT, "")
+		pb.MessageType_SOUGHT_GAME_PROCESS_EVENT)
 	return b.pubToUser(decliner, wrapped)
 }
 
 func (b *Bus) broadcastSeekDeletion(seekID string) error {
 	toSend := entity.WrapEvent(&pb.SoughtGameProcessEvent{RequestId: seekID},
-		pb.MessageType_SOUGHT_GAME_PROCESS_EVENT, "")
+		pb.MessageType_SOUGHT_GAME_PROCESS_EVENT)
 	data, err := toSend.Serialize()
 	if err != nil {
 		return err
@@ -721,7 +736,7 @@ func (b *Bus) broadcastGameCreation(g *entity.Game, acceptor, requester *entity.
 
 	toSend := entity.WrapEvent(&pb.GameMeta{Users: users,
 		GameRequest: g.GameReq, Id: g.GameID()},
-		pb.MessageType_GAME_META_EVENT, "")
+		pb.MessageType_GAME_META_EVENT)
 	data, err := toSend.Serialize()
 	if err != nil {
 		return err
@@ -749,7 +764,7 @@ func (b *Bus) broadcastPresence(username, userID string, anon bool, presenceChan
 		Channel:     evtChannel,
 		IsAnonymous: anon,
 	},
-		pb.MessageType_USER_PRESENCE, "")
+		pb.MessageType_USER_PRESENCE)
 	data, err := toSend.Serialize()
 	if err != nil {
 		return err
@@ -872,7 +887,7 @@ func (b *Bus) getPresence(ctx context.Context, presenceChan string) (*entity.Eve
 
 	log.Debug().Interface("presences", pbobj.Presences).Msg("get-presences")
 
-	evt := entity.WrapEvent(pbobj, pb.MessageType_USER_PRESENCES, "")
+	evt := entity.WrapEvent(pbobj, pb.MessageType_USER_PRESENCES)
 	return evt, nil
 }
 
@@ -918,7 +933,7 @@ func (b *Bus) openSeeks(ctx context.Context) (*entity.EventWrapper, error) {
 	for _, sg := range sgs {
 		pbobj.Requests = append(pbobj.Requests, sg.SeekRequest)
 	}
-	evt := entity.WrapEvent(pbobj, pb.MessageType_SEEK_REQUESTS, "")
+	evt := entity.WrapEvent(pbobj, pb.MessageType_SEEK_REQUESTS)
 	return evt, nil
 }
 
@@ -932,7 +947,7 @@ func (b *Bus) openMatches(ctx context.Context, receiverID string) (*entity.Event
 	for _, sg := range sgs {
 		pbobj.Requests = append(pbobj.Requests, sg.MatchRequest)
 	}
-	evt := entity.WrapEvent(pbobj, pb.MessageType_MATCH_REQUESTS, "")
+	evt := entity.WrapEvent(pbobj, pb.MessageType_MATCH_REQUESTS)
 	return evt, nil
 }
 
@@ -948,7 +963,7 @@ func (b *Bus) activeGames(ctx context.Context) (*entity.EventWrapper, error) {
 	for _, g := range gs {
 		pbobj.Games = append(pbobj.Games, g)
 	}
-	evt := entity.WrapEvent(pbobj, pb.MessageType_ACTIVE_GAMES, "")
+	evt := entity.WrapEvent(pbobj, pb.MessageType_ACTIVE_GAMES)
 	return evt, nil
 }
 
@@ -984,9 +999,9 @@ func (b *Bus) gameRefresher(ctx context.Context, gameID string) (*entity.EventWr
 	}
 	if !entGame.Started {
 		return entity.WrapEvent(&pb.ServerMessage{Message: "Game is starting soon!"},
-			pb.MessageType_SERVER_MESSAGE, entGame.GameID()), nil
+			pb.MessageType_SERVER_MESSAGE), nil
 	}
 	evt := entity.WrapEvent(entGame.HistoryRefresherEvent(),
-		pb.MessageType_GAME_HISTORY_REFRESHER, entGame.GameID())
+		pb.MessageType_GAME_HISTORY_REFRESHER)
 	return evt, nil
 }
