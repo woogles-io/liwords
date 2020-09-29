@@ -74,10 +74,29 @@ func (gs *GameService) GetMetadata(ctx context.Context, req *pb.GameInfoRequest)
 		Done:               done,
 		GameEndReason:      entGame.GameEndReason,
 		IncrementSeconds:   gamereq.IncrementSeconds,
-	}
+		Scores:             entGame.History().FinalScores,
+		Winner:             int32(entGame.WinnerIdx)}
 
 	return resp, nil
 
+}
+
+//  GetRematchStreak gets metadata for the given rematch streak.
+func (gs *GameService) GetRematchStreak(ctx context.Context, originalRequestId string) ([]*pb.GameInfoResponse, error) {
+	resp, err := gs.gameStore.GetRematchStreak(ctx, originalRequestId)
+	if err != nil {
+		return nil, err
+	}
+	return resp, nil
+}
+
+//  GetRecentGames gets metadata for the n most recent games of the player.
+func (gs *GameService) GetRecentGames(ctx context.Context, playerId string, n int) ([]*pb.GameInfoResponse, error) {
+	resp, err := gs.gameStore.GetRecentGames(ctx, playerId, n)
+	if err != nil {
+		return nil, err
+	}
+	return resp, nil
 }
 
 // GetGCG downloads a GCG for a finished game.

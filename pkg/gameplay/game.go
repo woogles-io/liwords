@@ -25,6 +25,7 @@ import (
 	"github.com/domino14/liwords/pkg/entity"
 	"github.com/domino14/liwords/pkg/stats"
 	"github.com/domino14/liwords/pkg/user"
+	gs "github.com/domino14/liwords/rpc/api/proto/game_service"
 	pb "github.com/domino14/liwords/rpc/api/proto/realtime"
 )
 
@@ -37,6 +38,8 @@ var (
 // GameStore is an interface for getting a full game.
 type GameStore interface {
 	Get(ctx context.Context, id string) (*entity.Game, error)
+	GetRematchStreak(ctx context.Context, originalRequestId string) ([]*gs.GameInfoResponse, error)
+	GetRecentGames(ctx context.Context, playerId string, n int) ([]*gs.GameInfoResponse, error)
 	Set(context.Context, *entity.Game) error
 	Create(context.Context, *entity.Game) error
 	ListActive(context.Context) ([]*pb.GameMeta, error)

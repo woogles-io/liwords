@@ -316,7 +316,7 @@ func TestMetadata(t *testing.T) {
 
 	g, nower, cancel, donechan, _ := makeGame(cfg, ustore, gstore)
 	ctx := context.WithValue(context.Background(), ConfigCtxKey("config"), &DefaultConfig)
-	
+
 	cge1 := &pb.ClientGameplayEvent{
 		Type:           pb.ClientGameplayEvent_TILE_PLACEMENT,
 		GameId:         g.GameID(),
@@ -358,10 +358,10 @@ func TestMetadata(t *testing.T) {
 	is.NoErr(err)
 
 	// Check the metadata
-	is.Equal(entGame.Metadata.PlayerScores[0], int32(93))
-	is.Equal(entGame.Metadata.PlayerScores[1], int32(34))
+	is.Equal(entGame.Metadata.FinalScores[0], int32(93))
+	is.Equal(entGame.Metadata.FinalScores[1], int32(34))
 	is.Equal(entGame.Metadata.OriginalRequestId, gameReq.OriginalRequestId)
-	
+
 	// Kill the go-routine
 	cancel()
 	<-donechan

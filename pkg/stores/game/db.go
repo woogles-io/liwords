@@ -16,6 +16,7 @@ import (
 	"github.com/domino14/liwords/pkg/entity"
 	"github.com/domino14/liwords/pkg/stores/user"
 	pkguser "github.com/domino14/liwords/pkg/user"
+	gs "github.com/domino14/liwords/rpc/api/proto/game_service"
 	pb "github.com/domino14/liwords/rpc/api/proto/realtime"
 	"github.com/domino14/macondo/alphabet"
 	"github.com/domino14/macondo/board"
@@ -54,6 +55,8 @@ type game struct {
 	GameEndReason int `gorm:"index"`
 	WinnerIdx     int
 	LoserIdx      int
+
+	Metadata postgres.Jsonb // A JSON blob containing the game metadata.
 
 	// Protobuf representations of the game request and history.
 	Request []byte
@@ -104,6 +107,40 @@ func (s *DBStore) Get(ctx context.Context, id string) (*entity.Game, error) {
 
 	return FromState(tdata, g.Started, g.GameEndReason, g.Player0ID, g.Player1ID,
 		g.WinnerIdx, g.LoserIdx, g.Request, g.History, sdata, s.gameEventChan, s.cfg)
+}
+
+func (s *DBStore) GetRematchStreak(ctx context.Context, originalRequestId string) ([]*gs.GameInfoResponse, error) {
+	games := []*game{}
+	if results := s.db.Where("metadata->>'s' = ?", originalRequestId).Order("updated_at desc").Find(games); results.Error != nil {
+		return nil, results.Error
+	}
+	return convertGamesToInfoReponses(games)
+}
+
+func (s *DBStore) GetRecentGames(ctx context.Context, playerId string, n int) ([]*gs.GameInfoResponse, error) {
+	games := []*game{}
+	if results := s.db.Limit(n).Where("uuid = ?", playerId).Order("updated_at desc").Find(games); results.Error != nil {
+		return nil, results.Error
+	}
+	return convertGamesToInfoReponses(games)
+}
+
+func convertGamesToInfoReponses(games []*game) ([]*gs.GameInfoResponse, error) {
+	responses := []*gs.GameInfoResponse{}
+	for _, g := range games {
+		var mdata entity.GameMetadata
+		err := json.Unmarshal(g.Metadata.RawMessage, &mdata)
+		if err != nil {
+			return nil, err
+		}
+		info := &gs.GameInfoResponse{
+			GameEndReason: pb.GameEndReason(g.GameEndReason),
+			Scores:        mdata.FinalScores,
+			Winner:        int32(g.WinnerIdx),
+			UpdatedAt:     g.UpdatedAt.Unix()}
+		responses = append(responses, info)
+	}
+	return responses, nil
 }
 
 // FromState returns an entity.Game from a DB State.

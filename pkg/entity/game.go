@@ -52,8 +52,8 @@ func (f *FakeNower) Sleep(t int64) {
 }
 
 type GameMetadata struct {
-	OriginalRequestId string `json:"o"`
-	PlayerScores [2]int32 `json:"s"`
+	OriginalRequestId string  `json:"o"`
+	FinalScores       []int32 `json:"s"`
 }
 
 // A Game should be saved to the database or store. It wraps a macondo.Game,

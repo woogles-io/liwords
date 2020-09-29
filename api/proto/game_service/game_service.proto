@@ -38,6 +38,9 @@ message GameInfoResponse {
   int32 max_overtime_minutes = 10;
   liwords.GameEndReason game_end_reason = 11;
   int32 increment_seconds = 12;
+  repeated int32 scores = 13;
+  int32 winner = 14;
+  int64 updated_at = 15;
 }
 
 message GCGRequest { string game_id = 1; }

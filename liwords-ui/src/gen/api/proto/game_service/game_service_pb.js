@@ -602,7 +602,7 @@ proto.game_service.PlayerInfo.prototype.setIsBot = function(value) {
  * @private {!Array<number>}
  * @const
  */
-proto.game_service.GameInfoResponse.repeatedFields_ = [1];
+proto.game_service.GameInfoResponse.repeatedFields_ = [1,13];
 
 
 
@@ -647,7 +647,10 @@ proto.game_service.GameInfoResponse.toObject = function(includeInstance, msg) {
     done: jspb.Message.getBooleanFieldWithDefault(msg, 9, false),
     maxOvertimeMinutes: jspb.Message.getFieldWithDefault(msg, 10, 0),
     gameEndReason: jspb.Message.getFieldWithDefault(msg, 11, 0),
-    incrementSeconds: jspb.Message.getFieldWithDefault(msg, 12, 0)
+    incrementSeconds: jspb.Message.getFieldWithDefault(msg, 12, 0),
+    scoresList: (f = jspb.Message.getRepeatedField(msg, 13)) == null ? undefined : f,
+    winner: jspb.Message.getFieldWithDefault(msg, 14, 0),
+    updatedAt: jspb.Message.getFieldWithDefault(msg, 15, 0)
   };
 
   if (includeInstance) {
@@ -732,6 +735,18 @@ proto.game_service.GameInfoResponse.deserializeBinaryFromReader = function(msg, 
     case 12:
       var value = /** @type {number} */ (reader.readInt32());
       msg.setIncrementSeconds(value);
+      break;
+    case 13:
+      var value = /** @type {!Array<number>} */ (reader.readPackedInt32());
+      msg.setScoresList(value);
+      break;
+    case 14:
+      var value = /** @type {number} */ (reader.readInt32());
+      msg.setWinner(value);
+      break;
+    case 15:
+      var value = /** @type {number} */ (reader.readInt64());
+      msg.setUpdatedAt(value);
       break;
     default:
       reader.skipField();
@@ -844,6 +859,27 @@ proto.game_service.GameInfoResponse.serializeBinaryToWriter = function(message, 
   if (f !== 0) {
     writer.writeInt32(
       12,
+      f
+    );
+  }
+  f = message.getScoresList();
+  if (f.length > 0) {
+    writer.writePackedInt32(
+      13,
+      f
+    );
+  }
+  f = message.getWinner();
+  if (f !== 0) {
+    writer.writeInt32(
+      14,
+      f
+    );
+  }
+  f = message.getUpdatedAt();
+  if (f !== 0) {
+    writer.writeInt64(
+      15,
       f
     );
   }
@@ -1083,6 +1119,79 @@ proto.game_service.GameInfoResponse.prototype.getIncrementSeconds = function() {
  */
 proto.game_service.GameInfoResponse.prototype.setIncrementSeconds = function(value) {
   return jspb.Message.setProto3IntField(this, 12, value);
+};
+
+
+/**
+ * repeated int32 scores = 13;
+ * @return {!Array<number>}
+ */
+proto.game_service.GameInfoResponse.prototype.getScoresList = function() {
+  return /** @type {!Array<number>} */ (jspb.Message.getRepeatedField(this, 13));
+};
+
+
+/**
+ * @param {!Array<number>} value
+ * @return {!proto.game_service.GameInfoResponse} returns this
+ */
+proto.game_service.GameInfoResponse.prototype.setScoresList = function(value) {
+  return jspb.Message.setField(this, 13, value || []);
+};
+
+
+/**
+ * @param {number} value
+ * @param {number=} opt_index
+ * @return {!proto.game_service.GameInfoResponse} returns this
+ */
+proto.game_service.GameInfoResponse.prototype.addScores = function(value, opt_index) {
+  return jspb.Message.addToRepeatedField(this, 13, value, opt_index);
+};
+
+
+/**
+ * Clears the list making it empty but non-null.
+ * @return {!proto.game_service.GameInfoResponse} returns this
+ */
+proto.game_service.GameInfoResponse.prototype.clearScoresList = function() {
+  return this.setScoresList([]);
+};
+
+
+/**
+ * optional int32 winner = 14;
+ * @return {number}
+ */
+proto.game_service.GameInfoResponse.prototype.getWinner = function() {
+  return /** @type {number} */ (jspb.Message.getFieldWithDefault(this, 14, 0));
+};
+
+
+/**
+ * @param {number} value
+ * @return {!proto.game_service.GameInfoResponse} returns this
+ */
+proto.game_service.GameInfoResponse.prototype.setWinner = function(value) {
+  return jspb.Message.setProto3IntField(this, 14, value);
+};
+
+
+/**
+ * optional int64 updated_at = 15;
+ * @return {number}
+ */
+proto.game_service.GameInfoResponse.prototype.getUpdatedAt = function() {
+  return /** @type {number} */ (jspb.Message.getFieldWithDefault(this, 15, 0));
+};
+
+
+/**
+ * @param {number} value
+ * @return {!proto.game_service.GameInfoResponse} returns this
+ */
+proto.game_service.GameInfoResponse.prototype.setUpdatedAt = function(value) {
+  return jspb.Message.setProto3IntField(this, 15, value);
 };
 
 

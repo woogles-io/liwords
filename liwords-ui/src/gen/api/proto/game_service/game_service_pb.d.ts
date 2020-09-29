@@ -112,6 +112,17 @@ export class GameInfoResponse extends jspb.Message {
   getIncrementSeconds(): number;
   setIncrementSeconds(value: number): void;
 
+  clearScoresList(): void;
+  getScoresList(): Array<number>;
+  setScoresList(value: Array<number>): void;
+  addScores(value: number, index?: number): number;
+
+  getWinner(): number;
+  setWinner(value: number): void;
+
+  getUpdatedAt(): number;
+  setUpdatedAt(value: number): void;
+
   serializeBinary(): Uint8Array;
   toObject(includeInstance?: boolean): GameInfoResponse.AsObject;
   static toObject(includeInstance: boolean, msg: GameInfoResponse): GameInfoResponse.AsObject;
@@ -136,6 +147,9 @@ export namespace GameInfoResponse {
     maxOvertimeMinutes: number,
     gameEndReason: api_proto_realtime_realtime_pb.GameEndReasonMap[keyof api_proto_realtime_realtime_pb.GameEndReasonMap],
     incrementSeconds: number,
+    scoresList: Array<number>,
+    winner: number,
+    updatedAt: number,
   }
 }
 
