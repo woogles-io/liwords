@@ -19,7 +19,7 @@ require (
 	github.com/niemeyer/pretty v0.0.0-20200227124842-a10e7caefd8e // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/rs/zerolog v1.19.0
-	github.com/twitchtv/twirp v5.12.1+incompatible
+	github.com/twitchtv/twirp v7.1.0+incompatible
 	golang.org/x/crypto v0.0.0-20200820211705-5c72a883971a
 	golang.org/x/sys v0.0.0-20200828194041-157a740278f4 // indirect
 	golang.org/x/text v0.3.3 // indirect

@@ -327,6 +327,9 @@ export class SeekRequest extends jspb.Message {
   getMaximumRating(): number;
   setMaximumRating(value: number): void;
 
+  getConnectionId(): string;
+  setConnectionId(value: string): void;
+
   serializeBinary(): Uint8Array;
   toObject(includeInstance?: boolean): SeekRequest.AsObject;
   static toObject(includeInstance: boolean, msg: SeekRequest): SeekRequest.AsObject;
@@ -343,6 +346,7 @@ export namespace SeekRequest {
     user?: MatchUser.AsObject,
     minimumRating: number,
     maximumRating: number,
+    connectionId: string,
   }
 }
 
@@ -365,6 +369,9 @@ export class MatchRequest extends jspb.Message {
   getRematchFor(): string;
   setRematchFor(value: string): void;
 
+  getConnectionId(): string;
+  setConnectionId(value: string): void;
+
   serializeBinary(): Uint8Array;
   toObject(includeInstance?: boolean): MatchRequest.AsObject;
   static toObject(includeInstance: boolean, msg: MatchRequest): MatchRequest.AsObject;
@@ -381,6 +388,7 @@ export namespace MatchRequest {
     user?: MatchUser.AsObject,
     receivingUser?: MatchUser.AsObject,
     rematchFor: string,
+    connectionId: string,
   }
 }
 
@@ -620,6 +628,9 @@ export class NewGameEvent extends jspb.Message {
   getGameId(): string;
   setGameId(value: string): void;
 
+  getRequestId(): string;
+  setRequestId(value: string): void;
+
   serializeBinary(): Uint8Array;
   toObject(includeInstance?: boolean): NewGameEvent.AsObject;
   static toObject(includeInstance: boolean, msg: NewGameEvent): NewGameEvent.AsObject;
@@ -633,6 +644,7 @@ export class NewGameEvent extends jspb.Message {
 export namespace NewGameEvent {
   export type AsObject = {
     gameId: string,
+    requestId: string,
   }
 }
 

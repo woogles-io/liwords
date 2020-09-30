@@ -19,6 +19,7 @@ import { GameLists } from './gameLists';
 import { Chat } from '../chat/chat';
 import { useStoreContext } from '../store/store';
 import './lobby.scss';
+import { ActionType } from '../actions/actions';
 
 const sendSeek = (
   game: SoughtGame,
@@ -43,6 +44,7 @@ const sendSeek = (
   gr.setPlayerVsBot(game.playerVsBot);
   if (game.receiver.getDisplayName() === '' && game.playerVsBot === false) {
     sr.setGameRequest(gr);
+
     sendSocketMsg(
       encodeToSocketFmt(MessageType.SEEK_REQUEST, sr.serializeBinary())
     );
@@ -84,13 +86,30 @@ export const Lobby = (props: Props) => {
     props.loggedIn ? 'PLAY' : 'WATCH'
   );
 
-  const { chat, presences } = useStoreContext();
+  const { chat, presences, dispatchLobbyContext } = useStoreContext();
 
   useEffect(() => {
     setSelectedGameTab(props.loggedIn ? 'PLAY' : 'WATCH');
   }, [props.loggedIn]);
 
   const onSeekSubmit = (g: SoughtGame) => {
+    if (g.playerVsBot) {
+      dispatchLobbyContext({
+        // This is actually a seek, but it behaves like an accept because
+        // we get immediate feedback. We use a special payload of "bot-request"
+        // so we don't redirect every open tab to this bot game when it comes
+        // in. (see socket_handlers.ts - NEW_GAME_EVENT case)
+        actionType: ActionType.AddOutstandingAccept,
+        payload: 'bot-request',
+      });
+    } else {
+      dispatchLobbyContext({
+        actionType: ActionType.AddOutstandingSeek,
+        // This is a temporary payload; it will get replaced with a proper
+        // seek request ID once it comes in via the socket.
+        payload: 'seek-request',
+      });
+    }
     sendSeek(g, props.sendSocketMsg);
   };
 
@@ -124,7 +143,13 @@ export const Lobby = (props: Props) => {
           loggedIn={props.loggedIn}
           userID={props.userID}
           username={props.username}
-          newGame={(seekID: string) => sendAccept(seekID, props.sendSocketMsg)}
+          newGame={(seekID: string) => {
+            dispatchLobbyContext({
+              actionType: ActionType.AddOutstandingAccept,
+              payload: seekID,
+            });
+            sendAccept(seekID, props.sendSocketMsg);
+          }}
           selectedGameTab={selectedGameTab}
           setSelectedGameTab={setSelectedGameTab}
           onSeekSubmit={onSeekSubmit}
