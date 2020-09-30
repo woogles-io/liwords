@@ -114,7 +114,7 @@ func (s *DBStore) GetRematchStreak(ctx context.Context, originalRequestId string
 	if results := s.db.Where("metadata->>'s' = ?", originalRequestId).Order("updated_at desc").Find(games); results.Error != nil {
 		return nil, results.Error
 	}
-	return convertGamesToInfoReponses(games)
+	return convertGamesToInfoResponses(games)
 }
 
 func (s *DBStore) GetRecentGames(ctx context.Context, playerId string, n int) ([]*gs.GameInfoResponse, error) {
@@ -122,10 +122,10 @@ func (s *DBStore) GetRecentGames(ctx context.Context, playerId string, n int) ([
 	if results := s.db.Limit(n).Where("uuid = ?", playerId).Order("updated_at desc").Find(games); results.Error != nil {
 		return nil, results.Error
 	}
-	return convertGamesToInfoReponses(games)
+	return convertGamesToInfoResponses(games)
 }
 
-func convertGamesToInfoReponses(games []*game) ([]*gs.GameInfoResponse, error) {
+func convertGamesToInfoResponses(games []*game) ([]*gs.GameInfoResponse, error) {
 	responses := []*gs.GameInfoResponse{}
 	for _, g := range games {
 		var mdata entity.GameMetadata
@@ -133,7 +133,14 @@ func convertGamesToInfoReponses(games []*game) ([]*gs.GameInfoResponse, error) {
 		if err != nil {
 			return nil, err
 		}
+
+		playerInfo := []*gs.PlayerInfo{
+			&gs.PlayerInfo{UserId: g.Player0.UUID, Nickname: g.Player0.Username},
+			&gs.PlayerInfo{UserId: g.Player1.UUID, Nickname: g.Player1.Username},
+		}
+
 		info := &gs.GameInfoResponse{
+			Players:       playerInfo,
 			GameEndReason: pb.GameEndReason(g.GameEndReason),
 			Scores:        mdata.FinalScores,
 			Winner:        int32(g.WinnerIdx),
@@ -321,6 +328,10 @@ func (s *DBStore) toDBObj(ctx context.Context, g *entity.Game) (*game, error) {
 	if err != nil {
 		return nil, err
 	}
+	metadata, err := json.Marshal(g.Metadata)
+	if err != nil {
+		return nil, err
+	}
 	req, err := proto.Marshal(g.GameReq)
 	if err != nil {
 		return nil, err
@@ -336,6 +347,7 @@ func (s *DBStore) toDBObj(ctx context.Context, g *entity.Game) (*game, error) {
 		Player1ID:     g.PlayerDBIDs[1],
 		Timers:        postgres.Jsonb{RawMessage: timers},
 		Stats:         postgres.Jsonb{RawMessage: stats},
+		Metadata:      postgres.Jsonb{RawMessage: metadata},
 		Started:       g.Started,
 		GameEndReason: int(g.GameEndReason),
 		WinnerIdx:     g.WinnerIdx,

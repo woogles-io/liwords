@@ -123,7 +123,7 @@ func performEndgameDuties(ctx context.Context, g *entity.Game,
 	g.History().Winner = int32(g.WinnerIdx)
 
 	// Set the game metadata
-	metadata := &entity.GameMetadata{FinalScores: []int32{g.History().FinalScores[0], g.History().FinalScores[1]},
+	metadata := &entity.GameMetadata{FinalScores: g.History().FinalScores,
 		OriginalRequestId: g.GameReq.OriginalRequestId}
 	g.Metadata = metadata
 

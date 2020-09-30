@@ -14,7 +14,7 @@ import (
 )
 
 func main() {
-	// Rerate all games in game store. Assumes that ratings are blanked out.
+	// Populate every game with its metadata
 	cfg := &config.Config{}
 	cfg.Load(os.Args[1:])
 	log.Info().Msgf("Loaded config: %v", cfg)
@@ -54,7 +54,7 @@ func main() {
 		// it here just so it's not null and it doesn't matter
 		// because it's only used to obtain current rematch streaks.
 		metadata := &entity.GameMetadata{OriginalRequestId: g.GameReq.RequestId,
-			FinalScores: []int32{int32(g.PointsFor(0)), int32(g.PointsFor(1))}}
+			FinalScores: g.History().FinalScores}
 
 		g.Metadata = metadata
 
