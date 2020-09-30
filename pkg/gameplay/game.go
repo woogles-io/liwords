@@ -180,7 +180,7 @@ func StartGame(ctx context.Context, gameStore GameStore, eventChan chan<- *entit
 	wrapped := entity.WrapEvent(evt, pb.MessageType_GAME_HISTORY_REFRESHER)
 	wrapped.AddAudience(entity.AudGameTV, entGame.GameID())
 	for _, p := range players(entGame) {
-		wrapped.AddAudience(entity.AudUser, p)
+		wrapped.AddAudience(entity.AudUser, p+".game."+id)
 	}
 	entGame.SendChange(wrapped)
 
@@ -250,7 +250,7 @@ func handleChallenge(ctx context.Context, entGame *entity.Game,
 		evt = entity.WrapEvent(sge, pb.MessageType_SERVER_GAMEPLAY_EVENT)
 		evt.AddAudience(entity.AudGameTV, entGame.GameID())
 		for _, uid := range players(entGame) {
-			evt.AddAudience(entity.AudUser, uid)
+			evt.AddAudience(entity.AudUser, uid+".game."+entGame.GameID())
 		}
 		entGame.SendChange(evt)
 	}
@@ -325,7 +325,7 @@ func PlayMove(ctx context.Context, entGame *entity.Game, userStore user.Store,
 		wrapped := entity.WrapEvent(sge, pb.MessageType_SERVER_GAMEPLAY_EVENT)
 		wrapped.AddAudience(entity.AudGameTV, entGame.GameID())
 		for _, p := range players {
-			wrapped.AddAudience(entity.AudUser, p)
+			wrapped.AddAudience(entity.AudUser, p+".game."+entGame.GameID())
 		}
 		entGame.SendChange(wrapped)
 	}

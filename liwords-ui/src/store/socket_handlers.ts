@@ -103,7 +103,17 @@ export const onSocketMsg = (username: string, storeData: StoreData) => {
             actionType: ActionType.AddSoughtGame,
             payload: soughtGame,
           });
-
+          if (
+            soughtGame.seeker === username &&
+            storeData.lobbyContext.outstandingSeekReq
+          ) {
+            // This is us. Add it to the right place.
+            // XXX: clear when canceling seek.
+            storeData.dispatchLobbyContext({
+              actionType: ActionType.AddOutstandingSeek,
+              payload: soughtGame.seekID,
+            });
+          }
           break;
         }
 
@@ -176,6 +186,9 @@ export const onSocketMsg = (username: string, storeData: StoreData) => {
 
         case MessageType.CHAT_MESSAGE: {
           const cm = parsedMsg as ChatMessage;
+          // We should ignore this chat message if it's not for the right
+          // channel.
+
           storeData.addChat({
             entityType: ChatEntityType.UserChat,
             sender: cm.getUsername(),
@@ -243,7 +256,9 @@ export const onSocketMsg = (username: string, storeData: StoreData) => {
 
           // Determine if this is the tab that should accept the game.
           if (
-            nge.getRequestId() !== storeData.lobbyContext.outstandingAcceptReq
+            nge.getRequestId() !==
+              storeData.lobbyContext.outstandingAcceptReq &&
+            nge.getRequestId() !== storeData.lobbyContext.outstandingSeekReq
           ) {
             console.log('ignoring on this tab...');
             break;
@@ -307,6 +322,16 @@ export const onSocketMsg = (username: string, storeData: StoreData) => {
             actionType: ActionType.RemoveSoughtGame,
             payload: gae.getRequestId(),
           });
+          if (
+            gae.getRequestId() === storeData.lobbyContext.outstandingSeekReq
+          ) {
+            // If this is our own outstanding seek, delete it.
+            storeData.dispatchLobbyContext({
+              actionType: ActionType.AddOutstandingSeek,
+              payload: '',
+            });
+          }
+
           break;
         }
 

@@ -22,6 +22,7 @@ type MemoryStore struct {
 
 	soughtGames             map[string]*entity.SoughtGame
 	soughtGamesByUser       map[string]*entity.SoughtGame
+	soughtGamesByConnID     map[string]*entity.SoughtGame
 	matchRequestsByReceiver map[string][]*entity.SoughtGame
 }
 
@@ -29,15 +30,27 @@ func NewMemoryStore() *MemoryStore {
 	return &MemoryStore{
 		soughtGames:             make(map[string]*entity.SoughtGame),
 		soughtGamesByUser:       make(map[string]*entity.SoughtGame),
+		soughtGamesByConnID:     make(map[string]*entity.SoughtGame),
 		matchRequestsByReceiver: make(map[string][]*entity.SoughtGame),
 	}
 }
 
-// Get gets the game with the given ID.
+// Get gets the sought game with the given ID.
 func (m *MemoryStore) Get(ctx context.Context, id string) (*entity.SoughtGame, error) {
 	m.RLock()
 	defer m.RUnlock()
 	g, ok := m.soughtGames[id]
+	if !ok {
+		return nil, errNotFound
+	}
+	return g, nil
+}
+
+// GetByConnID gets the sought game with the given socket connection ID.
+func (m *MemoryStore) GetByConnID(ctx context.Context, connID string) (*entity.SoughtGame, error) {
+	m.RLock()
+	defer m.RUnlock()
+	g, ok := m.soughtGamesByConnID[connID]
 	if !ok {
 		return nil, errNotFound
 	}
@@ -50,6 +63,7 @@ func (m *MemoryStore) Set(ctx context.Context, game *entity.SoughtGame) error {
 	defer m.Unlock()
 	m.soughtGames[game.ID()] = game
 	m.soughtGamesByUser[game.Seeker()] = game
+	m.soughtGamesByConnID[game.ConnID()] = game
 	if game.Type() == entity.TypeMatch {
 		if m.matchRequestsByReceiver[game.MatchRequest.ReceivingUser.UserId] == nil {
 			m.matchRequestsByReceiver[game.MatchRequest.ReceivingUser.UserId] = []*entity.SoughtGame{}
@@ -77,6 +91,7 @@ func (m *MemoryStore) Delete(ctx context.Context, id string) error {
 	userID := g.Seeker()
 	delete(m.soughtGames, id)
 	delete(m.soughtGamesByUser, userID)
+	delete(m.soughtGamesByConnID, g.ConnID())
 	if g.Type() == entity.TypeMatch {
 		m.deleteFromReqsByReceiver(g)
 	}
@@ -109,10 +124,33 @@ func (m *MemoryStore) DeleteForUser(ctx context.Context, userID string) (string,
 		return "", nil
 	}
 	delete(m.soughtGamesByUser, userID)
+	delete(m.soughtGamesByConnID, game.ConnID())
 	delete(m.soughtGames, game.ID())
 	if game.Type() == entity.TypeMatch {
 		m.deleteFromReqsByReceiver(game)
 	}
+	return game.ID(), nil
+}
+
+// DeleteForConnID deletes the game by connection ID
+func (m *MemoryStore) DeleteForConnID(ctx context.Context, connID string) (string, error) {
+	m.Lock()
+	defer m.Unlock()
+
+	game, ok := m.soughtGamesByConnID[connID]
+	if !ok {
+		// Do nothing, game never existed
+		return "", nil
+	}
+
+	delete(m.soughtGamesByUser, game.Seeker())
+	delete(m.soughtGamesByConnID, connID)
+	delete(m.soughtGames, game.ID())
+
+	if game.Type() == entity.TypeMatch {
+		m.deleteFromReqsByReceiver(game)
+	}
+
 	return game.ID(), nil
 }
 

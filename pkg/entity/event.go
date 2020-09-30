@@ -58,12 +58,12 @@ func (e *EventWrapper) SetSerializationProtocol(protocol string) {
 // AddAudience sets the audience(s) for this event. It is in the form of a NATS
 // channel name. This is not required to be set in order to deliver a message,
 // but certain functions will use it in the gameplay/entity module.
-func (e *EventWrapper) AddAudience(audType EventAudienceType, specific string) {
+func (e *EventWrapper) AddAudience(audType EventAudienceType, suffix string) {
 	if e.audience == nil {
 		e.audience = []string{}
 	}
-	if specific != "" {
-		e.audience = append(e.audience, string(audType)+"."+specific)
+	if suffix != "" {
+		e.audience = append(e.audience, string(audType)+"."+suffix)
 	} else {
 		e.audience = append(e.audience, string(audType))
 	}

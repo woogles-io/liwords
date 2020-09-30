@@ -49,6 +49,7 @@ export type LobbyState = {
   // should put it here. That way we know which client to redirect once
   // the socket server comes back with data.
   outstandingAcceptReq: string;
+  outstandingSeekReq: string;
 };
 
 export const SeekRequestToSoughtGame = (
@@ -215,6 +216,13 @@ export function LobbyReducer(state: LobbyState, action: Action): LobbyState {
       return {
         ...state,
         outstandingAcceptReq: action.payload as string,
+      };
+    }
+
+    case ActionType.AddOutstandingSeek: {
+      return {
+        ...state,
+        outstandingSeekReq: action.payload as string,
       };
     }
   }

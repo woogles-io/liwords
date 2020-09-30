@@ -108,6 +108,7 @@ export const Context = createContext<StoreData>({
     activeGames: [],
     matchRequests: [],
     outstandingAcceptReq: '',
+    outstandingSeekReq: '',
   },
   dispatchLobbyContext: defaultFunction,
   redirGame: '',
@@ -185,6 +186,7 @@ export const Store = ({ children, ...props }: Props) => {
     activeGames: [],
     matchRequests: [],
     outstandingAcceptReq: '',
+    outstandingSeekReq: '',
   });
 
   const [gameContext, dispatchGameContext] = useReducer(GameReducer, null, () =>

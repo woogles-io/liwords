@@ -126,5 +126,5 @@ func (b *Bus) sendOldChats(userID, chatChannel string) error {
 	}, pb.MessageType_CHAT_MESSAGES)
 
 	log.Debug().Int("num-chats", len(messages)).Msg("sending-chats")
-	return b.pubToUser(userID, toSend)
+	return b.pubToUser(userID, toSend, chatChannel)
 }

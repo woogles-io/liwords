@@ -45,6 +45,15 @@ func (sg *SoughtGame) ID() string {
 	return ""
 }
 
+func (sg *SoughtGame) ConnID() string {
+	if sg.SeekRequest != nil {
+		return sg.SeekRequest.ConnectionId
+	} else if sg.MatchRequest != nil {
+		return sg.MatchRequest.ConnectionId
+	}
+	return ""
+}
+
 func (sg *SoughtGame) Type() SoughtGameType {
 	if sg.SeekRequest != nil {
 		return TypeSeek

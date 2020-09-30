@@ -102,6 +102,13 @@ export const Lobby = (props: Props) => {
         actionType: ActionType.AddOutstandingAccept,
         payload: 'bot-request',
       });
+    } else {
+      dispatchLobbyContext({
+        actionType: ActionType.AddOutstandingSeek,
+        // This is a temporary payload; it will get replaced with a proper
+        // seek request ID once it comes in via the socket.
+        payload: 'seek-request',
+      });
     }
     sendSeek(g, props.sendSocketMsg);
   };

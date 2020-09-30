@@ -2793,7 +2793,8 @@ proto.liwords.SeekRequest.toObject = function(includeInstance, msg) {
     gameRequest: (f = msg.getGameRequest()) && proto.liwords.GameRequest.toObject(includeInstance, f),
     user: (f = msg.getUser()) && proto.liwords.MatchUser.toObject(includeInstance, f),
     minimumRating: jspb.Message.getFieldWithDefault(msg, 3, 0),
-    maximumRating: jspb.Message.getFieldWithDefault(msg, 4, 0)
+    maximumRating: jspb.Message.getFieldWithDefault(msg, 4, 0),
+    connectionId: jspb.Message.getFieldWithDefault(msg, 5, "")
   };
 
   if (includeInstance) {
@@ -2847,6 +2848,10 @@ proto.liwords.SeekRequest.deserializeBinaryFromReader = function(msg, reader) {
     case 4:
       var value = /** @type {number} */ (reader.readInt32());
       msg.setMaximumRating(value);
+      break;
+    case 5:
+      var value = /** @type {string} */ (reader.readString());
+      msg.setConnectionId(value);
       break;
     default:
       reader.skipField();
@@ -2904,6 +2909,13 @@ proto.liwords.SeekRequest.serializeBinaryToWriter = function(message, writer) {
   if (f !== 0) {
     writer.writeInt32(
       4,
+      f
+    );
+  }
+  f = message.getConnectionId();
+  if (f.length > 0) {
+    writer.writeString(
+      5,
       f
     );
   }
@@ -3020,6 +3032,24 @@ proto.liwords.SeekRequest.prototype.setMaximumRating = function(value) {
 };
 
 
+/**
+ * optional string connection_id = 5;
+ * @return {string}
+ */
+proto.liwords.SeekRequest.prototype.getConnectionId = function() {
+  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 5, ""));
+};
+
+
+/**
+ * @param {string} value
+ * @return {!proto.liwords.SeekRequest} returns this
+ */
+proto.liwords.SeekRequest.prototype.setConnectionId = function(value) {
+  return jspb.Message.setProto3StringField(this, 5, value);
+};
+
+
 
 
 
@@ -3055,7 +3085,8 @@ proto.liwords.MatchRequest.toObject = function(includeInstance, msg) {
     gameRequest: (f = msg.getGameRequest()) && proto.liwords.GameRequest.toObject(includeInstance, f),
     user: (f = msg.getUser()) && proto.liwords.MatchUser.toObject(includeInstance, f),
     receivingUser: (f = msg.getReceivingUser()) && proto.liwords.MatchUser.toObject(includeInstance, f),
-    rematchFor: jspb.Message.getFieldWithDefault(msg, 4, "")
+    rematchFor: jspb.Message.getFieldWithDefault(msg, 4, ""),
+    connectionId: jspb.Message.getFieldWithDefault(msg, 5, "")
   };
 
   if (includeInstance) {
@@ -3110,6 +3141,10 @@ proto.liwords.MatchRequest.deserializeBinaryFromReader = function(msg, reader) {
     case 4:
       var value = /** @type {string} */ (reader.readString());
       msg.setRematchFor(value);
+      break;
+    case 5:
+      var value = /** @type {string} */ (reader.readString());
+      msg.setConnectionId(value);
       break;
     default:
       reader.skipField();
@@ -3168,6 +3203,13 @@ proto.liwords.MatchRequest.serializeBinaryToWriter = function(message, writer) {
   if (f.length > 0) {
     writer.writeString(
       4,
+      f
+    );
+  }
+  f = message.getConnectionId();
+  if (f.length > 0) {
+    writer.writeString(
+      5,
       f
     );
   }
@@ -3300,6 +3342,24 @@ proto.liwords.MatchRequest.prototype.getRematchFor = function() {
  */
 proto.liwords.MatchRequest.prototype.setRematchFor = function(value) {
   return jspb.Message.setProto3StringField(this, 4, value);
+};
+
+
+/**
+ * optional string connection_id = 5;
+ * @return {string}
+ */
+proto.liwords.MatchRequest.prototype.getConnectionId = function() {
+  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 5, ""));
+};
+
+
+/**
+ * @param {string} value
+ * @return {!proto.liwords.MatchRequest} returns this
+ */
+proto.liwords.MatchRequest.prototype.setConnectionId = function(value) {
+  return jspb.Message.setProto3StringField(this, 5, value);
 };
 
 

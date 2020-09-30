@@ -17,6 +17,7 @@ export enum ActionType {
   RemoveActiveGame,
 
   AddOutstandingAccept,
+  AddOutstandingSeek,
 
   /* game actions */
   AddGameEvent,
