@@ -977,7 +977,8 @@ type SeekRequest struct {
 	User          *MatchUser   `protobuf:"bytes,2,opt,name=user,proto3" json:"user,omitempty"`
 	MinimumRating int32        `protobuf:"varint,3,opt,name=minimum_rating,json=minimumRating,proto3" json:"minimum_rating,omitempty"`
 	MaximumRating int32        `protobuf:"varint,4,opt,name=maximum_rating,json=maximumRating,proto3" json:"maximum_rating,omitempty"`
-	ConnectionId  string       `protobuf:"bytes,5,opt,name=connection_id,json=connectionId,proto3" json:"connection_id,omitempty"`
+	// connection_id is the websocket ID via which this game was requested.
+	ConnectionId string `protobuf:"bytes,5,opt,name=connection_id,json=connectionId,proto3" json:"connection_id,omitempty"`
 }
 
 func (x *SeekRequest) Reset() {
@@ -1057,7 +1058,8 @@ type MatchRequest struct {
 	ReceivingUser *MatchUser   `protobuf:"bytes,3,opt,name=receiving_user,json=receivingUser,proto3" json:"receiving_user,omitempty"`
 	// rematch_for is the game ID that this Match Request is a rematch for (empty
 	// if it isn't a rematch)
-	RematchFor   string `protobuf:"bytes,4,opt,name=rematch_for,json=rematchFor,proto3" json:"rematch_for,omitempty"`
+	RematchFor string `protobuf:"bytes,4,opt,name=rematch_for,json=rematchFor,proto3" json:"rematch_for,omitempty"`
+	// connection_id is the websocket ID via which this game was requested.
 	ConnectionId string `protobuf:"bytes,5,opt,name=connection_id,json=connectionId,proto3" json:"connection_id,omitempty"`
 }
 
