@@ -26,4 +26,4 @@ RUN apk --no-cache add curl
 EXPOSE 8001
 
 WORKDIR /opt
-CMD ./liwords-api
+CMD ["./liwords-api"]

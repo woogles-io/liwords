@@ -55,7 +55,7 @@ func sanitize(evt *entity.EventWrapper, userID string) (*entity.EventWrapper, er
 		} else if cloned.History.Players[1].UserId == userID {
 			cloned.History.LastKnownRacks[0] = ""
 		}
-		return entity.WrapEvent(cloned, pb.MessageType_GAME_HISTORY_REFRESHER, evt.GameID()), nil
+		return entity.WrapEvent(cloned, pb.MessageType_GAME_HISTORY_REFRESHER), nil
 
 	case pb.MessageType_SERVER_GAMEPLAY_EVENT:
 		// Server gameplay events
@@ -78,7 +78,7 @@ func sanitize(evt *entity.EventWrapper, userID string) (*entity.EventWrapper, er
 		if cloned.Event.Type == macondopb.GameEvent_EXCHANGE {
 			cloned.Event.Exchanged = strconv.Itoa(len(cloned.Event.Exchanged))
 		}
-		return entity.WrapEvent(cloned, pb.MessageType_SERVER_GAMEPLAY_EVENT, evt.GameID()), nil
+		return entity.WrapEvent(cloned, pb.MessageType_SERVER_GAMEPLAY_EVENT), nil
 
 	default:
 		return evt, nil

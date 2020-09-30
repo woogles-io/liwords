@@ -12,6 +12,10 @@ declare global {
   }
 }
 
+window.console.info(
+  'Woogles.io is open source! https://github.com/domino14/liwords'
+);
+
 ReactDOM.render(
   <React.StrictMode>
     <Store>

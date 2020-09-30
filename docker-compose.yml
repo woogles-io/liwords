@@ -57,7 +57,7 @@ services:
       NATS_URL: nats://nats:4222
     volumes:
       - ../liwords-socket:/opt/program:rw
-    command: sh -c "go run -race cmd/socketsrv/*.go"
+    command: ["go", "run", "-race", "cmd/socketsrv/main.go"]
     networks:
       - aeronet
     ports:

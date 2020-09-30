@@ -82,8 +82,7 @@ func performEndgameDuties(ctx context.Context, g *entity.Game,
 	}
 
 	for _, sge := range evts {
-		wrapped := entity.WrapEvent(sge, pb.MessageType_SERVER_GAMEPLAY_EVENT,
-			g.GameID())
+		wrapped := entity.WrapEvent(sge, pb.MessageType_SERVER_GAMEPLAY_EVENT)
 		wrapped.AddAudience(entity.AudGameTV, g.GameID())
 		wrapped.AddAudience(entity.AudGame, g.GameID())
 		g.SendChange(wrapped)
@@ -124,8 +123,7 @@ func performEndgameDuties(ctx context.Context, g *entity.Game,
 
 	// Send a gameEndedEvent, which rates the game.
 	evt := gameEndedEvent(ctx, g, userStore)
-	wrapped := entity.WrapEvent(evt,
-		pb.MessageType_GAME_ENDED_EVENT, g.GameID())
+	wrapped := entity.WrapEvent(evt, pb.MessageType_GAME_ENDED_EVENT)
 	// Once the game ends, we do not need to "sanitize" the packets
 	// going to the users anymore. So just send the data to the right
 	// audiences.
@@ -149,7 +147,7 @@ func performEndgameDuties(ctx context.Context, g *entity.Game,
 	// And finally, send a notification to the lobby that this
 	// game ended. This will remove it from the list of live games.
 	wrapped = entity.WrapEvent(&pb.GameDeletion{Id: g.GameID()},
-		pb.MessageType_GAME_DELETION, "")
+		pb.MessageType_GAME_DELETION)
 	wrapped.AddAudience(entity.AudLobby, "gameEnded")
 	g.SendChange(wrapped)
 }

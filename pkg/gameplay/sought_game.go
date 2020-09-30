@@ -15,12 +15,14 @@ var errMatchAlreadyExists = errors.New("The user you are trying to match has alr
 // SoughtGameStore is an interface for getting a sought game.
 type SoughtGameStore interface {
 	Get(ctx context.Context, id string) (*entity.SoughtGame, error)
+	GetByConnID(ctx context.Context, connID string) (*entity.SoughtGame, error)
 	Set(context.Context, *entity.SoughtGame) error
 	Delete(ctx context.Context, id string) error
 	ListOpenSeeks(ctx context.Context) ([]*entity.SoughtGame, error)
 	ListOpenMatches(ctx context.Context, receiverID string) ([]*entity.SoughtGame, error)
 	ExistsForUser(ctx context.Context, userID string) (bool, error)
 	DeleteForUser(ctx context.Context, userID string) (string, error)
+	DeleteForConnID(ctx context.Context, connID string) (string, error)
 	UserMatchedBy(ctx context.Context, userID, matcher string) (bool, error)
 }
 

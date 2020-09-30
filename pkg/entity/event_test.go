@@ -18,7 +18,7 @@ func TestDeserialize(t *testing.T) {
 			GameId:         "foo123",
 			PositionCoords: "G3",
 			Tiles:          "ALMIBAR",
-		}, pb.MessageType_CLIENT_GAMEPLAY_EVENT, "foo")
+		}, pb.MessageType_CLIENT_GAMEPLAY_EVENT)
 		w.SetSerializationProtocol(protocol)
 
 		arr, err := w.Serialize()
