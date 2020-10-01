@@ -132,15 +132,15 @@ const ScorecardTurn = (props: turnProps) => {
           case GameEvent.Type.CHALLENGE_BONUS:
             turn.score = `${turn.score} + ${evts[i].getBonus()}`;
             break;
-          // case GameEvent.Type.END_RACK_PENALTY:
-          //   turn.score = `${turn.score}-${evts[i].getLostScore()}`;
-          //   break;
+          case GameEvent.Type.END_RACK_PENALTY:
+            turn.score = `${turn.score}-${evts[i].getLostScore()}`;
+            https://github.com/domino14/liwords/pull/71break;
           case GameEvent.Type.END_RACK_PTS:
             turn.score = `${turn.score}+${evts[i].getEndRackPoints()}`;
             break;
-          // case GameEvent.Type.TIME_PENALTY:
-          //   turn.score = `${turn.score}-${evts[i].getLostScore()}`;
-          //   break;
+          case GameEvent.Type.TIME_PENALTY:
+            turn.score = `${turn.score}-${evts[i].getLostScore()}`;
+            break;
         }
         turn.cumulative = evts[i].getCumulative();
       }
