@@ -23,10 +23,10 @@ import { encodeToSocketFmt } from '../utils/protobuf';
 import './scss/gameroom.scss';
 import { ScoreCard } from './scorecard';
 import { GameInfo, GameMetadata, PlayerMetadata } from './game_info';
-import { PlayState } from '../gen/macondo/api/proto/macondo/macondo_pb';
 import { BoopSounds } from '../sound/boop';
 import { toAPIUrl } from '../api/api';
 // import { GameInfoResponse } from '../gen/api/proto/game_service/game_service_pb';
+
 type Props = {
   sendSocketMsg: (msg: Uint8Array) => void;
   username: string;
@@ -151,20 +151,6 @@ export const Table = React.memo((props: Props) => {
     setPTimedOut(undefined);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pTimedOut, gameContext.nickToPlayerOrder, gameID]);
-
-  useEffect(() => {
-    if (
-      gameContext.playState === PlayState.WAITING_FOR_FINAL_PASS &&
-      gameContext.nickToPlayerOrder[props.username] === `p${gameContext.onturn}`
-    ) {
-      message.info({
-        message: 'Pass or challenge?',
-        description:
-          'Your opponent has played their final tiles. You must pass or challenge.',
-      });
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [gameContext.playState]);
 
   useEffect(() => {
     let observer = true;
