@@ -201,8 +201,6 @@ func FromState(timers entity.Timers, Started bool,
 // the database.
 func (s *DBStore) Set(ctx context.Context, g *entity.Game) error {
 	// s.db.LogMode(true)
-	g.RLock()
-	defer g.RUnlock()
 	dbg, err := s.toDBObj(ctx, g)
 	if err != nil {
 		return err
@@ -222,8 +220,6 @@ func (s *DBStore) Set(ctx context.Context, g *entity.Game) error {
 
 // Create saves a brand new entity to the database
 func (s *DBStore) Create(ctx context.Context, g *entity.Game) error {
-	g.RLock()
-	defer g.RUnlock()
 	dbg, err := s.toDBObj(ctx, g)
 	if err != nil {
 		return err

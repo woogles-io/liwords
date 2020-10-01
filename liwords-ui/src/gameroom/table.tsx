@@ -16,7 +16,8 @@ import {
   MatchRequest,
   SoughtGameProcessEvent,
   DeclineMatchRequest,
-  ChatMessage,, ReadyForGame
+  ChatMessage,
+  ReadyForGame,
 } from '../gen/api/proto/realtime/realtime_pb';
 import { encodeToSocketFmt } from '../utils/protobuf';
 import './scss/gameroom.scss';
@@ -177,10 +178,12 @@ export const Table = React.memo((props: Props) => {
     // If we are not the observer, tell the server we're ready for the game to start.
     if (!gameInfo.done && !observer) {
       const evt = new ReadyForGame();
-      evt.setGameId(gameID)
-      sendSocketMsg(encodeToSocketFmt(MessageType.READY_FOR_GAME, evt.serializeBinary()));
+      evt.setGameId(gameID);
+      sendSocketMsg(
+        encodeToSocketFmt(MessageType.READY_FOR_GAME, evt.serializeBinary())
+      );
     }
-
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [username, gameInfo]);
 
   const acceptRematch = (reqID: string) => {

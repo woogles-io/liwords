@@ -418,7 +418,13 @@ func (b *Bus) handleNatsPublish(ctx context.Context, subtopics []string, data []
 			return err
 		}
 		return b.initRealmInfo(ctx, evt)
-
+	case "readyForGame":
+		evt := &pb.ReadyForGame{}
+		err := proto.Unmarshal(data, evt)
+		if err != nil {
+			return err
+		}
+		return b.readyForGame(ctx, evt, userID)
 	case "leaveSite":
 		// There is no event here. We have the user ID in the subject.
 		return b.leaveSite(ctx, userID)
@@ -697,25 +703,42 @@ func (b *Bus) instantiateAndStartGame(ctx context.Context, accUser *entity.User,
 		Interface("starting-in", GameStartDelay).
 		Str("onturn", g.NickOnTurn()).Msg("game-accepted")
 
-	// Now, reset the timer and register the event change hook.
+	return nil
+}
 
-	// time.AfterFunc(GameStartDelay, func() {
-	// 	g.Lock()
-	// 	err = gameplay.StartGame(ctx, b.gameStore, b.gameEventChan, g.GameID())
-	// 	if err != nil {
-	// 		log.Err(err).Msg("starting-game")
-	// 	}
+func (b *Bus) readyForGame(ctx context.Context, evt *pb.ReadyForGame, userID string) error {
+	g, err := b.gameStore.Get(ctx, evt.GameId)
+	if err != nil {
+		return err
+	}
+	g.Lock()
+	defer g.Unlock()
+	log.Debug().Str("userID", userID).Interface("playing", g.Playing()).Msg("ready-for-game")
+	if g.Playing() != macondopb.PlayState_PLAYING {
+		return errors.New("game is over")
+	}
 
-	// 	if accUser.IsBot && g.PlayerIDOnTurn() == accUser.UUID {
-	// 		// Make a bot move if it's the bot's turn at the beginning.
-	// 		g.Unlock()
-	// 		go b.handleBotMove(ctx, g)
-	// 	} else {
-	// 		g.Unlock()
-	// 	}
+	if g.History().Players[0].UserId == userID {
+		g.PlayersReady[0] = true
+	} else if g.History().Players[1].UserId == userID {
+		g.PlayersReady[1] = true
+	} else {
+		log.Error().Str("userID", userID).Str("gameID", evt.GameId).Msg("not-in-game")
+		return errors.New("ready for game but not in game")
+	}
 
-	// })
+	// Start the game if both players are ready (or if it's a bot game).
+	if g.PlayersReady[0] && g.PlayersReady[1] || g.GameReq.PlayerVsBot {
+		err = gameplay.StartGame(ctx, b.gameStore, b.gameEventChan, g.GameID())
+		if err != nil {
+			log.Err(err).Msg("starting-game")
+		}
 
+		if g.GameReq.PlayerVsBot && g.PlayerIDOnTurn() != userID {
+			// Make a bot move if it's the bot's turn at the beginning.
+			go b.handleBotMove(ctx, g)
+		}
+	}
 	return nil
 }
 

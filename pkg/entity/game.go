@@ -116,8 +116,6 @@ func (g *Game) SetTimerModule(n Nower) {
 func (g *Game) ResetTimersAndStart() {
 	log.Debug().Msg("reset-timers")
 	ts := g.nower.Now()
-	g.Lock()
-	defer g.Unlock()
 	g.Timers.TimeOfLastUpdate = ts
 	g.Timers.TimeStarted = ts
 	g.Started = true
@@ -202,13 +200,9 @@ func (g *Game) RecordTimeOfMove(idx int) {
 func (g *Game) HistoryRefresherEvent() *pb.GameHistoryRefresher {
 	now := g.nower.Now()
 
-	g.Lock()
 	g.calculateAndSetTimeRemaining(0, now, false)
 	g.calculateAndSetTimeRemaining(1, now, false)
-	g.Unlock()
 
-	g.RLock()
-	defer g.RUnlock()
 	return &pb.GameHistoryRefresher{
 		History:            g.History(),
 		TimePlayer1:        int32(g.TimeRemaining(0)),
