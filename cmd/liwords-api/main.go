@@ -41,6 +41,13 @@ const (
 	GracefulShutdownTimeout = 30 * time.Second
 )
 
+var (
+	// BuildHash is the git hash, set by go build flags
+	BuildHash = "unknown"
+	// BuildDate is the build date, set by go build flags
+	BuildDate = "unknown"
+)
+
 func newPool(addr string) *redis.Pool {
 	return &redis.Pool{
 		MaxIdle:     3,
@@ -50,11 +57,18 @@ func newPool(addr string) *redis.Pool {
 	}
 }
 
+func pingEndpoint(w http.ResponseWriter, r *http.Request) {
+	w.Header().Add("Content-Type", "application/json")
+	w.WriteHeader(200)
+	w.Write([]byte(`{"status":"copacetic"}`))
+}
+
 func main() {
 
 	cfg := &config.Config{}
 	cfg.Load(os.Args[1:])
-	log.Info().Msgf("Loaded config: %v", cfg)
+	log.Info().Interface("config", cfg).
+		Str("build-date", BuildDate).Str("build-hash", BuildHash).Msg("started")
 
 	if cfg.SecretKey == "" {
 		panic("secret key must be non blank")
@@ -103,6 +117,8 @@ func main() {
 	registrationService := registration.NewRegistrationService(userStore)
 	gameService := gameplay.NewGameService(userStore, gameStore)
 	profileService := pkguser.NewProfileService(userStore)
+
+	router.Handle("/ping", http.HandlerFunc(pingEndpoint))
 
 	router.Handle(userservice.AuthenticationServicePathPrefix,
 		middlewares.Then(userservice.NewAuthenticationServiceServer(authenticationService, nil)))

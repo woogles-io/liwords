@@ -5,6 +5,7 @@ import axios, { AxiosError } from 'axios';
 import { TopBar } from '../topbar/topbar';
 import { useLiwordsSocket } from '../socket/socket';
 import './profile.scss';
+import { toAPIUrl } from '../api/api';
 
 type ProfileResponse = {
   first_name: string;
@@ -210,9 +211,12 @@ export const UserProfile = (props: Props) => {
   const { username: viewer } = useLiwordsSocket();
   useEffect(() => {
     axios
-      .post<ProfileResponse>('/twirp/user_service.ProfileService/GetProfile', {
-        username,
-      })
+      .post<ProfileResponse>(
+        toAPIUrl('user_service.ProfileService', 'GetProfile'),
+        {
+          username,
+        }
+      )
       .then((resp) => {
         console.log('prof', resp, JSON.parse(resp.data.ratings_json).Data);
         setRatings(JSON.parse(resp.data.ratings_json).Data);

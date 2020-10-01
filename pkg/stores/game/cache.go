@@ -2,11 +2,11 @@ package game
 
 import (
 	"context"
-	"sync"
 	"time"
 
 	"github.com/domino14/liwords/pkg/entity"
 	pb "github.com/domino14/liwords/rpc/api/proto/realtime"
+	lru "github.com/hashicorp/golang-lru"
 	"github.com/rs/zerolog/log"
 )
 
@@ -21,12 +21,17 @@ type backingStore interface {
 	Disconnect()
 }
 
+const (
+	// Assume every game takes up roughly 50KB in memory
+	// This is roughly 200 MB and allows for 4000 simultaneous games.
+	// We will want to increase this as we grow (as well as the size of our container)
+	CacheCap = 4000
+)
+
 // Cache will reside in-memory, and will be per-node. If we add more nodes
 // we will need to make sure only the right nodes respond to game requests.
 type Cache struct {
-	sync.Mutex
-
-	games       map[string]*entity.Game
+	cache       *lru.Cache
 	activeGames []*pb.GameMeta
 
 	activeGamesTTL         time.Duration
@@ -36,9 +41,17 @@ type Cache struct {
 }
 
 func NewCache(backing backingStore) *Cache {
+
+	lrucache, err := lru.New(CacheCap)
+	if err != nil {
+		panic(err)
+	}
+
 	return &Cache{
 		backing: backing,
-		games:   make(map[string]*entity.Game),
+		cache:   lrucache,
+
+		// games:   make(map[string]*entity.Game),
 		// Have a non-trivial TTL for the cache of active games.
 		// XXX: This might act poorly if the following happens within the TTL:
 		//  - active games gets cached
@@ -54,15 +67,9 @@ func NewCache(backing backingStore) *Cache {
 	}
 }
 
-// Exists lets us know whether the game is in the cache
-func (c *Cache) Exists(ctx context.Context, id string) bool {
-	_, ok := c.games[id]
-	return ok
-}
-
 // Unload unloads the game from the cache
 func (c *Cache) Unload(ctx context.Context, id string) {
-	delete(c.games, id)
+	c.cache.Remove(id)
 }
 
 // SetGameEventChan sets the game event channel to the passed in channel.
@@ -70,22 +77,19 @@ func (c *Cache) SetGameEventChan(ch chan<- *entity.EventWrapper) {
 	c.backing.SetGameEventChan(ch)
 }
 
-// Get gets a game from the cache. It doesn't try to get it from the backing
-// store, if it can't find it in the cache.
+// Get gets a game from the cache.. it loads it into the cache if it's not there.
 func (c *Cache) Get(ctx context.Context, id string) (*entity.Game, error) {
-	g, ok := c.games[id]
-	if !ok {
-
-		g, err := c.backing.Get(ctx, id)
-		if err != nil {
-			return nil, err
-		}
-		c.Lock()
-		defer c.Unlock()
-		c.games[id] = g
-		return g, nil
+	g, ok := c.cache.Get(id)
+	if ok && g != nil {
+		return g.(*entity.Game), nil
 	}
-	return g, nil
+	log.Info().Str("gameid", id).Msg("not-in-cache")
+	uncachedGame, err := c.backing.Get(ctx, id)
+	if err == nil {
+		c.cache.Add(id, uncachedGame)
+	}
+	return uncachedGame, err
+
 }
 
 // Set sets a game in the cache, AND in the backing store. This ensures if the
@@ -113,9 +117,7 @@ func (c *Cache) setOrCreate(ctx context.Context, game *entity.Game, isNew bool) 
 	if err != nil {
 		return err
 	}
-	c.Lock()
-	defer c.Unlock()
-	c.games[gameID] = game
+	c.cache.Add(gameID, game)
 	return nil
 }
 

@@ -57,13 +57,14 @@ func (b *Bus) chat(ctx context.Context, userID string, evt *pb.ChatMessage) erro
 	if err != nil {
 		return err
 	}
-
-	toSend := entity.WrapEvent(&pb.ChatMessage{
+	chatMessage := &pb.ChatMessage{
 		Username:  username,
 		Channel:   evt.Channel, // this info might be redundant
 		Message:   evt.Message,
 		Timestamp: ts,
-	}, pb.MessageType_CHAT_MESSAGE, "")
+	}
+
+	toSend := entity.WrapEvent(chatMessage, pb.MessageType_CHAT_MESSAGE)
 	data, err := toSend.Serialize()
 
 	if err != nil {
@@ -76,6 +77,7 @@ func (b *Bus) chat(ctx context.Context, userID string, evt *pb.ChatMessage) erro
 			return err
 		}
 	}
+	log.Debug().Interface("chat-message", chatMessage).Msg("publish-chat")
 	return b.natsconn.Publish(evt.Channel, data)
 }
 
@@ -121,8 +123,8 @@ func (b *Bus) sendOldChats(userID, chatChannel string) error {
 
 	toSend := entity.WrapEvent(&pb.ChatMessages{
 		Messages: messages,
-	}, pb.MessageType_CHAT_MESSAGES, "")
+	}, pb.MessageType_CHAT_MESSAGES)
 
 	log.Debug().Int("num-chats", len(messages)).Msg("sending-chats")
-	return b.pubToUser(userID, toSend)
+	return b.pubToUser(userID, toSend, chatChannel)
 }

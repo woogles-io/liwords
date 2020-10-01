@@ -80,7 +80,11 @@ export const parseMsgs = (msg: Uint8Array) => {
   return msgs;
 };
 
-export const onSocketMsg = (username: string, storeData: StoreData) => {
+export const onSocketMsg = (
+  username: string,
+  connID: string,
+  storeData: StoreData
+) => {
   return (reader: FileReader) => {
     if (!reader.result) {
       return;
@@ -93,7 +97,7 @@ export const onSocketMsg = (username: string, storeData: StoreData) => {
       switch (msgType) {
         case MessageType.SEEK_REQUEST: {
           const sr = parsedMsg as SeekRequest;
-
+          console.log('Got a seek request', sr);
           const soughtGame = SeekRequestToSoughtGame(sr);
           if (soughtGame === null) {
             return;
@@ -103,6 +107,7 @@ export const onSocketMsg = (username: string, storeData: StoreData) => {
             actionType: ActionType.AddSoughtGame,
             payload: soughtGame,
           });
+
           break;
         }
 
@@ -175,6 +180,9 @@ export const onSocketMsg = (username: string, storeData: StoreData) => {
 
         case MessageType.CHAT_MESSAGE: {
           const cm = parsedMsg as ChatMessage;
+          // We should ignore this chat message if it's not for the right
+          // channel.
+
           storeData.addChat({
             entityType: ChatEntityType.UserChat,
             sender: cm.getUsername(),
@@ -239,6 +247,23 @@ export const onSocketMsg = (username: string, storeData: StoreData) => {
         case MessageType.NEW_GAME_EVENT: {
           const nge = parsedMsg as NewGameEvent;
           console.log('got new game event', nge);
+
+          // Determine if this is the tab that should accept the game.
+          if (
+            nge.getAccepterCid() !== connID &&
+            nge.getRequesterCid() !== connID
+          ) {
+            console.log(
+              'ignoring on this tab...',
+              nge.getAccepterCid(),
+              '-',
+              nge.getRequesterCid(),
+              '-',
+              connID
+            );
+            break;
+          }
+
           storeData.dispatchGameContext({
             actionType: ActionType.ClearHistory,
             payload: '',
@@ -297,6 +322,7 @@ export const onSocketMsg = (username: string, storeData: StoreData) => {
             actionType: ActionType.RemoveSoughtGame,
             payload: gae.getRequestId(),
           });
+
           break;
         }
 

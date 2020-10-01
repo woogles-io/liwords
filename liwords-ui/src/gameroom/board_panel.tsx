@@ -14,8 +14,12 @@ import {
   returnTileToRack,
   designateBlank,
 } from '../utils/cwgame/tile_placement';
-import { uniqueTileIdx } from '../utils/cwgame/common';
-import { EphemeralTile, EmptySpace } from '../utils/cwgame/common';
+import {
+  uniqueTileIdx,
+  EphemeralTile,
+  EmptySpace,
+} from '../utils/cwgame/common';
+
 import {
   tilesetToMoveEvent,
   exchangeMoveEvent,
@@ -38,6 +42,7 @@ import {
   GameEvent,
   PlayState,
 } from '../gen/macondo/api/proto/macondo/macondo_pb';
+import { toAPIUrl } from '../api/api';
 
 // The frame atop is 24 height
 // The frames on the sides are 24 in width, surrounded by a 14 pix gutter
@@ -70,7 +75,7 @@ const shuffleString = (a: string): string => {
 
 const gcgExport = (gameID: string) => {
   axios
-    .post<GCGResponse>('/twirp/game_service.GameMetadataService/GetGCG', {
+    .post<GCGResponse>(toAPIUrl('game_service.GameMetadataService', 'GetGCG'), {
       gameId: gameID,
     })
     .then((resp) => {
@@ -495,6 +500,7 @@ export const BoardPanel = React.memo((props: Props) => {
     props.sendSocketMsg(
       encodeToSocketFmt(MessageType.MATCH_REQUEST, evt.serializeBinary())
     );
+
     notification.info({
       message: 'Rematch',
       description: `Sent rematch request to ${opp}`,

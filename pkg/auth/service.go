@@ -50,8 +50,10 @@ type AuthenticationService struct {
 	mailgunKey   string
 }
 
-func NewAuthenticationService(u user.Store, ss user.SessionStore, secretKey, mailgunKey string) *AuthenticationService {
-	return &AuthenticationService{userStore: u, sessionStore: ss, secretKey: secretKey, mailgunKey: mailgunKey}
+func NewAuthenticationService(u user.Store, ss user.SessionStore, secretKey,
+	mailgunKey string) *AuthenticationService {
+	return &AuthenticationService{userStore: u, sessionStore: ss, secretKey: secretKey,
+		mailgunKey: mailgunKey}
 }
 
 // Login sets a cookie.
@@ -70,6 +72,7 @@ func (as *AuthenticationService) Login(ctx context.Context, r *pb.UserLoginReque
 	if err != nil {
 		return nil, err
 	}
+
 	err = apiserver.SetCookie(ctx, &http.Cookie{
 		Name:  "sessionid",
 		Value: sess.ID,
@@ -80,6 +83,7 @@ func (as *AuthenticationService) Login(ctx context.Context, r *pb.UserLoginReque
 		Expires:  time.Now().Add(365 * 24 * time.Hour),
 		HttpOnly: true,
 	})
+	log.Info().Str("value", sess.ID).Msg("setting-cookie")
 	if err != nil {
 		return nil, err
 	}
@@ -143,6 +147,7 @@ func (as *AuthenticationService) GetSocketToken(ctx context.Context, r *pb.Socke
 	}
 	return &pb.SocketTokenResponse{
 		Token: tokenString,
+		Cid:   shortuuid.New()[2:10],
 	}, nil
 }
 

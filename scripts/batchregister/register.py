@@ -32,14 +32,12 @@ def register(incsv, outcsv):
 
     """
     with open(outcsv, "w", newline="") as fout:
-        spamwriter = csv.writer(fout)
-        spamwriter.writerow(["username", "email", "password"])
+        csvwriter = csv.writer(fout)
+        csvwriter.writerow(["username", "email", "password"])
         with open(incsv, newline="") as f:
-            reader = csv.reader(f)
+            reader = csv.DictReader(f)
             for row in reader:
                 if not row:
-                    continue
-                if row[0] == "username" and row[1] == "email":
                     continue
                 password = gen_pw()
                 # use twirp api to register
@@ -47,8 +45,8 @@ def register(incsv, outcsv):
                     registration_api,
                     headers={"Content-Type": "application/json"},
                     json={
-                        "username": row[0],
-                        "email": row[1],
+                        "username": row["username"],
+                        "email": row["email"],
                         "password": password,
                         "registration_code": registration_code,
                     },
@@ -57,7 +55,7 @@ def register(incsv, outcsv):
                     print(resp.status_code, resp.text)
                     raise Exception("Failed to register")
 
-                spamwriter.writerow([row[0], row[1], password])
+                csvwriter.writerow([row["username"], row["email"], password])
 
 
 if __name__ == "__main__":

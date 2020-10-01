@@ -40,7 +40,10 @@ message ResetPasswordResponse {}
 // SocketTokenRequest requests a token in order to authenticate with the
 // socket server
 message SocketTokenRequest {}
-message SocketTokenResponse { string token = 1; }
+message SocketTokenResponse {
+  string token = 1;
+  string cid = 2;
+}
 
 message UserLogoutRequest {}
 message LogoutResponse {}

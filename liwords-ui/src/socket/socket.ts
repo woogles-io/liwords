@@ -6,23 +6,24 @@ import { useLocation } from 'react-router-dom';
 import { useStoreContext } from '../store/store';
 import { onSocketMsg } from '../store/socket_handlers';
 import { decodeToMsg } from '../utils/protobuf';
+import { toAPIUrl } from '../api/api';
 
 const getSocketURI = (): string => {
   const loc = window.location;
-  let socketURI;
+  let protocol;
   if (loc.protocol === 'https:') {
-    socketURI = 'wss:';
+    protocol = 'wss:';
   } else {
-    socketURI = 'ws:';
+    protocol = 'ws:';
   }
+  const host = window.RUNTIME_CONFIGURATION.socketEndpoint || loc.host;
 
-  socketURI += `//${loc.host}/ws`;
-
-  return socketURI;
+  return `${protocol}//${host}/ws`;
 };
 
 type TokenResponse = {
   token: string;
+  cid: string;
 };
 
 type DecodedToken = {
@@ -38,6 +39,7 @@ export const useLiwordsSocket = () => {
 
   const [socketToken, setSocketToken] = useState('');
   const [username, setUsername] = useState('Anonymous');
+  const [connID, setConnID] = useState('');
   const [userID, setUserID] = useState('');
   const [loggedIn, setLoggedIn] = useState(false);
   const [connectedToSocket, setConnectedToSocket] = useState(false);
@@ -54,11 +56,13 @@ export const useLiwordsSocket = () => {
 
     axios
       .post<TokenResponse>(
-        '/twirp/user_service.AuthenticationService/GetSocketToken',
-        {}
+        toAPIUrl('user_service.AuthenticationService', 'GetSocketToken'),
+        {},
+        { withCredentials: true }
       )
       .then((resp) => {
         setSocketToken(resp.data.token);
+        setConnID(resp.data.cid);
         const decoded = jwt.decode(resp.data.token) as DecodedToken;
         setUsername(decoded.unn);
         setUserID(decoded.uid);
@@ -73,7 +77,7 @@ export const useLiwordsSocket = () => {
   }, [connectedToSocket]);
 
   const { sendMessage } = useWebSocket(
-    `${socketUrl}?token=${socketToken}&path=${location.pathname}`,
+    `${socketUrl}?token=${socketToken}&path=${location.pathname}&cid=${connID}`,
     {
       onOpen: () => {
         console.log('connected to socket');
@@ -89,14 +93,16 @@ export const useLiwordsSocket = () => {
       // Will attempt to reconnect on all close events, such as server shutting down
       shouldReconnect: (closeEvent) => true,
       onMessage: (event: MessageEvent) =>
-        decodeToMsg(event.data, onSocketMsg(username, store)),
+        decodeToMsg(event.data, onSocketMsg(username, connID, store)),
     },
-    socketToken !== '' /* only connect if the socket token is not null */
+    socketToken !== '' &&
+      connID !== '' /* only connect if the socket token is not null */
   );
 
   return {
     sendMessage,
     userID,
+    connID,
     username,
     loggedIn,
     connectedToSocket,

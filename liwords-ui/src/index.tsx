@@ -6,6 +6,16 @@ import App from './App';
 import * as serviceWorker from './serviceWorker';
 import { Store } from './store/store';
 
+declare global {
+  interface Window {
+    RUNTIME_CONFIGURATION: { [key: string]: string };
+  }
+}
+
+window.console.info(
+  'Woogles.io is open source! https://github.com/domino14/liwords'
+);
+
 ReactDOM.render(
   <React.StrictMode>
     <Store>

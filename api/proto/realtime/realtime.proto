@@ -134,6 +134,8 @@ message SeekRequest {
   MatchUser user = 2;
   int32 minimum_rating = 3;
   int32 maximum_rating = 4;
+  // connection_id is the websocket ID via which this game was requested.
+  string connection_id = 5;
 }
 
 message MatchRequest {
@@ -143,6 +145,8 @@ message MatchRequest {
   // rematch_for is the game ID that this Match Request is a rematch for (empty
   // if it isn't a rematch)
   string rematch_for = 4;
+  // connection_id is the websocket ID via which this game was requested.
+  string connection_id = 5;
 }
 
 // A SoughtGameProcessEvent gets sent when a match request (or seek request)
@@ -229,7 +233,12 @@ message GameHistoryRefresher {
 
 // A NewGameEvent gets sent from the server to the involved clients when a new
 // game is about to begin. It should follow a SoughtGameProcessEvent.
-message NewGameEvent { string game_id = 1; }
+message NewGameEvent {
+  string game_id = 1;
+  // These are the connection IDs of the requesting and accepting users.
+  string requester_cid = 2;
+  string accepter_cid = 3;
+}
 
 message ErrorMessage {
   string message = 1;

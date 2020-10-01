@@ -28,8 +28,22 @@ jobs:
       - run: cd cmd/liwords-api && go build # persist executable to workspace for deploy step
       # Tests must not be run in parallel; postgres issues happen otherwise.
       - run: go test -p 1 ./...
-      - slack/status:
+      - slack/status: &slack-webhook-setting
           webhook: "${SLACK_WEBHOOK}"
+          success_message: ":tada: A $CIRCLE_JOB job has succeeded! (Branch: $CIRCLE_BRANCH)"
+          failure_message: ":red_circle: A $CIRCLE_JOB job has failed! (Branch: $CIRCLE_BRANCH)"
+
+  deploy_api_docker:
+    machine: true
+    steps:
+      - checkout
+      - run: echo $GHCR_TOKEN | docker login ghcr.io -u domino14 --password-stdin
+      - run: >
+          docker build --build-arg BUILD_HASH=${CIRCLE_SHA1}
+          --build-arg BUILD_DATE=$(date -Iseconds -u)
+          -t ghcr.io/domino14/liwords-api:${CIRCLE_BRANCH}-${CIRCLE_BUILD_NUM} .
+      - run: docker push ghcr.io/domino14/liwords-api:${CIRCLE_BRANCH}-${CIRCLE_BUILD_NUM}
+      - slack/status: *slack-webhook-setting
 
   build_fe:
     working_directory: /opt/liwords
@@ -45,8 +59,7 @@ jobs:
           root: liwords-ui
           paths:
             - build
-      - slack/status:
-          webhook: "${SLACK_WEBHOOK}"
+      - slack/status: *slack-webhook-setting
 
   deploy_fe:
     docker:
@@ -57,10 +70,9 @@ jobs:
           at: /tmp/liwords-ui
       - run: ls -al /tmp/liwords-ui
       # cache everything except index.html
-      - run: cd /tmp/liwords-ui/build && aws s3 sync --cache-control 'max-age=604800' --exclude index.html . s3://xword.club
-      - run: cd /tmp/liwords-ui/build && aws s3 sync --cache-control 'no-cache' . s3://xword.club
-      - slack/status:
-          webhook: "${SLACK_WEBHOOK}"
+      - run: cd /tmp/liwords-ui/build && aws s3 sync --cache-control 'max-age=604800' --exclude index.html --exclude config.js . s3://woogles.io
+      - run: cd /tmp/liwords-ui/build && aws s3 sync --cache-control 'no-cache' . s3://woogles.io
+      - slack/status: *slack-webhook-setting
 
 workflows:
   version: 2
@@ -68,6 +80,16 @@ workflows:
     jobs:
       - build_api_srv
       - build_fe
+      - deploy_api_docker:
+          context:
+            - woogles-deploy
+          requires:
+            - build_api_srv
+          filters:
+            branches:
+              only:
+                - master
+
       - deploy_fe:
           requires:
             - build_fe
@@ -75,4 +97,3 @@ workflows:
             branches:
               only:
                 - master
-                - develop

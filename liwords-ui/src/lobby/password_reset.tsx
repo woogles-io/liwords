@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Row, Col, Input, Form, Alert, notification, Button } from 'antd';
 import axios from 'axios';
+import { toAPIUrl } from '../api/api';
 
 const layout = {
   labelCol: {
@@ -22,9 +23,12 @@ export const PasswordReset = () => {
 
   const onFinish = (values: { [key: string]: string }) => {
     axios
-      .post('/twirp/user_service.AuthenticationService/ResetPasswordStep1', {
-        email: values.email,
-      })
+      .post(
+        toAPIUrl('user_service.AuthenticationService', 'ResetPasswordStep1'),
+        {
+          email: values.email,
+        }
+      )
       .then(() => {
         notification.info({
           message: 'Sent',

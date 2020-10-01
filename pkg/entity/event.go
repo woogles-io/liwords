@@ -34,9 +34,6 @@ type EventWrapper struct {
 	Type pb.MessageType
 	// The actual event should therefore be a proto object
 	Event proto.Message
-	// The gameID is the game this event belongs to. This will not be
-	// serialized.
-	gameID string
 
 	// Serialization protocol
 	protocol string
@@ -44,12 +41,11 @@ type EventWrapper struct {
 }
 
 // WrapEvent wraps a protobuf event.
-func WrapEvent(event proto.Message, messageType pb.MessageType, gameID string) *EventWrapper {
+func WrapEvent(event proto.Message, messageType pb.MessageType) *EventWrapper {
 	return &EventWrapper{
 		Type:     messageType,
 		Event:    event,
 		protocol: protobufSerializationProtocol,
-		gameID:   gameID,
 	}
 }
 
@@ -62,12 +58,12 @@ func (e *EventWrapper) SetSerializationProtocol(protocol string) {
 // AddAudience sets the audience(s) for this event. It is in the form of a NATS
 // channel name. This is not required to be set in order to deliver a message,
 // but certain functions will use it in the gameplay/entity module.
-func (e *EventWrapper) AddAudience(audType EventAudienceType, specific string) {
+func (e *EventWrapper) AddAudience(audType EventAudienceType, suffix string) {
 	if e.audience == nil {
 		e.audience = []string{}
 	}
-	if specific != "" {
-		e.audience = append(e.audience, string(audType)+"."+specific)
+	if suffix != "" {
+		e.audience = append(e.audience, string(audType)+"."+suffix)
 	} else {
 		e.audience = append(e.audience, string(audType))
 	}
@@ -102,10 +98,6 @@ func (e *EventWrapper) Serialize() ([]byte, error) {
 	binary.Write(&b, binary.BigEndian, int8(e.Type))
 	b.Write(data)
 	return b.Bytes(), nil
-}
-
-func (e *EventWrapper) GameID() string {
-	return e.gameID
 }
 
 // EventFromByteArray takes in a serialized event and deserializes it.
@@ -152,8 +144,6 @@ func EventFromByteArray(arr []byte) (*EventWrapper, error) {
 			return nil, err
 		}
 	}
-	// The game ID doesn't matter here. This function handles incoming events,
-	// and the downstream handlers already know how to decode the gameID,
-	// if any, from them.
-	return WrapEvent(message, msgType, ""), nil
+
+	return WrapEvent(message, msgType), nil
 }

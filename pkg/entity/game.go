@@ -55,7 +55,7 @@ func (f *FakeNower) Sleep(t int64) {
 // and we should save most of the included fields here, especially the
 // macondo.game.History (which can be exported as GCG, etc in the future)
 type Game struct {
-	sync.Mutex
+	sync.RWMutex
 	game.Game
 
 	PlayerDBIDs [2]uint

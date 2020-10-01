@@ -43,6 +43,7 @@ const sendSeek = (
   gr.setPlayerVsBot(game.playerVsBot);
   if (game.receiver.getDisplayName() === '' && game.playerVsBot === false) {
     sr.setGameRequest(gr);
+
     sendSocketMsg(
       encodeToSocketFmt(MessageType.SEEK_REQUEST, sr.serializeBinary())
     );
@@ -74,6 +75,7 @@ const sendAccept = (
 type Props = {
   username: string;
   userID: string;
+  connID: string;
   loggedIn: boolean;
   sendSocketMsg: (msg: Uint8Array) => void;
   connectedToSocket: boolean;
@@ -124,7 +126,9 @@ export const Lobby = (props: Props) => {
           loggedIn={props.loggedIn}
           userID={props.userID}
           username={props.username}
-          newGame={(seekID: string) => sendAccept(seekID, props.sendSocketMsg)}
+          newGame={(seekID: string) => {
+            sendAccept(seekID, props.sendSocketMsg);
+          }}
           selectedGameTab={selectedGameTab}
           setSelectedGameTab={setSelectedGameTab}
           onSeekSubmit={onSeekSubmit}
