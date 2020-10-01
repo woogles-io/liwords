@@ -25,6 +25,7 @@ import {
   ChatMessages,
   UserPresence,
   UserPresences,
+  ReadyForGame,
 } from '../gen/api/proto/realtime/realtime_pb';
 import { ActionType } from '../actions/actions';
 import { endGameMessage } from './end_of_game';
@@ -66,6 +67,7 @@ export const parseMsgs = (msg: Uint8Array) => {
       [MessageType.CHAT_MESSAGES]: ChatMessages,
       [MessageType.USER_PRESENCE]: UserPresence,
       [MessageType.USER_PRESENCES]: UserPresences,
+      [MessageType.READY_FOR_GAME]: ReadyForGame,
     };
 
     const parsedMsg = msgTypes[msgType];

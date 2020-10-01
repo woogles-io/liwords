@@ -152,6 +152,7 @@ outerfor:
 					log.Err(err).Msg("process-message-request-error")
 					// just send a blank response so there isn't a timeout on
 					// the other side.
+					// XXX: this is a very specific response to a handleNatsRequest func
 					rrResp := &pb.RegisterRealmResponse{
 						Realm: "",
 					}
@@ -417,7 +418,13 @@ func (b *Bus) handleNatsPublish(ctx context.Context, subtopics []string, data []
 			return err
 		}
 		return b.initRealmInfo(ctx, evt)
-
+	case "readyForGame":
+		evt := &pb.ReadyForGame{}
+		err := proto.Unmarshal(data, evt)
+		if err != nil {
+			return err
+		}
+		return b.readyForGame(ctx, evt, userID)
 	case "leaveSite":
 		// There is no event here. We have the user ID in the subject.
 		return b.leaveSite(ctx, userID)
@@ -696,24 +703,42 @@ func (b *Bus) instantiateAndStartGame(ctx context.Context, accUser *entity.User,
 		Interface("starting-in", GameStartDelay).
 		Str("onturn", g.NickOnTurn()).Msg("game-accepted")
 
-	// Now, reset the timer and register the event change hook.
-	time.AfterFunc(GameStartDelay, func() {
+	return nil
+}
+
+func (b *Bus) readyForGame(ctx context.Context, evt *pb.ReadyForGame, userID string) error {
+	g, err := b.gameStore.Get(ctx, evt.GameId)
+	if err != nil {
+		return err
+	}
+	g.Lock()
+	defer g.Unlock()
+	log.Debug().Str("userID", userID).Interface("playing", g.Playing()).Msg("ready-for-game")
+	if g.Playing() != macondopb.PlayState_PLAYING {
+		return errors.New("game is over")
+	}
+
+	if g.History().Players[0].UserId == userID {
+		g.PlayersReady[0] = true
+	} else if g.History().Players[1].UserId == userID {
+		g.PlayersReady[1] = true
+	} else {
+		log.Error().Str("userID", userID).Str("gameID", evt.GameId).Msg("not-in-game")
+		return errors.New("ready for game but not in game")
+	}
+
+	// Start the game if both players are ready (or if it's a bot game).
+	if g.PlayersReady[0] && g.PlayersReady[1] || g.GameReq.PlayerVsBot {
 		err = gameplay.StartGame(ctx, b.gameStore, b.gameEventChan, g.GameID())
 		if err != nil {
 			log.Err(err).Msg("starting-game")
 		}
 
-		g.RLock()
-		if accUser.IsBot && g.PlayerIDOnTurn() == accUser.UUID {
+		if g.GameReq.PlayerVsBot && g.PlayerIDOnTurn() != userID {
 			// Make a bot move if it's the bot's turn at the beginning.
-			g.RUnlock()
 			go b.handleBotMove(ctx, g)
-		} else {
-			g.RUnlock()
 		}
-
-	})
-
+	}
 	return nil
 }
 
@@ -1064,6 +1089,8 @@ func (b *Bus) gameRefresher(ctx context.Context, gameID string) (*entity.EventWr
 	if err != nil {
 		return nil, err
 	}
+	entGame.RLock()
+	defer entGame.RUnlock()
 	if !entGame.Started {
 		return entity.WrapEvent(&pb.ServerMessage{Message: "Game is starting soon!"},
 			pb.MessageType_SERVER_MESSAGE), nil
