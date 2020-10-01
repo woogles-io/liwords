@@ -130,7 +130,7 @@ export const BoardPanel = React.memo((props: Props) => {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-  useEffect(() => {}, [props.board]);
+
   useEffect(() => {
     if (
       gameContext.playState === PlayState.WAITING_FOR_FINAL_PASS &&
@@ -418,7 +418,7 @@ export const BoardPanel = React.memo((props: Props) => {
 
   const isMyTurn = () => {
     const iam = gameContext.nickToPlayerOrder[props.username];
-    return iam && iam && iam === `p${gameContext.onturn}`;
+    return iam && iam === `p${gameContext.onturn}`;
   };
   const makeMove = (move: string, addl?: string) => {
     let moveEvt;
