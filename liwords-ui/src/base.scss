@@ -305,6 +305,14 @@ ul
     transition: none;
     margin: 0 6px;
     padding: 3px 18px;
+    span.key-command {
+      position: absolute;
+      top: 0;
+      right: 0;
+      padding: 0 4px;
+      font-size: 10px;
+      opacity: 0;
+    }
     &,
     &:hover,
     &:focus,
@@ -314,6 +322,11 @@ ul
       color: $color-primary-dark;
       background: white;
       transition: none;
+    }
+    &:hover {
+      span.key-command {
+        opacity: 1;
+      }
     }
   }
 
@@ -367,6 +380,11 @@ ul
       .ant-notification-notice-message {
         font-weight: 1000;
         color: white;
+      }
+      span.message-action {
+        font-weight: 600;
+        text-decoration: underline;
+        cursor: pointer;
       }
       .anticon {
         color: $color-primary-light;
