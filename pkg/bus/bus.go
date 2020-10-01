@@ -373,7 +373,7 @@ func (b *Bus) handleNatsPublish(ctx context.Context, subtopics []string, data []
 			return err
 		}
 
-		return b.gameAccepted(ctx, evt, userID)
+		return b.gameAccepted(ctx, evt, userID, wsConnID)
 
 	case "gameplayEvent":
 		evt := &pb.ClientGameplayEvent{}
@@ -448,6 +448,8 @@ func (b *Bus) seekRequest(ctx context.Context, seekOrMatch, auth, userID, connID
 	if err != nil {
 		return err
 	}
+	isRematch := false
+	lastOpp := ""
 
 	if seekOrMatch == "seekRequest" {
 		gameRequest = req.(*pb.SeekRequest).GameRequest
@@ -459,9 +461,17 @@ func (b *Bus) seekRequest(ctx context.Context, seekOrMatch, auth, userID, connID
 		if gameID == "" {
 			gameRequest = req.(*pb.MatchRequest).GameRequest
 		} else { // It's a rematch.
+			isRematch = true
 			g, err := b.gameStore.Get(ctx, gameID)
 			if err != nil {
 				return err
+			}
+			// Figure out who we played against.
+			for _, u := range g.History().Players {
+				if u.UserId == userID {
+					continue
+				}
+				lastOpp = u.UserId
 			}
 			gameRequest = proto.Clone(g.GameReq).(*pb.GameRequest)
 			// This will get overwritten later:
@@ -515,13 +525,18 @@ func (b *Bus) seekRequest(ctx context.Context, seekOrMatch, auth, userID, connID
 		b.natsconn.Publish("lobby.seekRequest", data)
 	} else {
 		mr := req.(*pb.MatchRequest)
+		mr.ConnectionId = connID
 		// It's a direct match request.
 		if gameRequest.PlayerVsBot {
 			// There is no user being matched. Find a bot to play instead.
 			// No need to create a match request in the store.
-			return b.newBotGame(ctx, mr)
+			botToPlay := ""
+			if isRematch {
+				botToPlay = lastOpp
+				log.Debug().Str("bot", botToPlay).Msg("forcing-bot")
+			}
+			return b.newBotGame(ctx, mr, botToPlay)
 		}
-		mr.ConnectionId = connID
 		// Check if the user being matched exists.
 		receiver, err := b.userStore.Get(ctx, mr.ReceivingUser.DisplayName)
 		if err != nil {
@@ -535,7 +550,7 @@ func (b *Bus) seekRequest(ctx context.Context, seekOrMatch, auth, userID, connID
 			return err
 		}
 		evt := entity.WrapEvent(mg.MatchRequest, pb.MessageType_MATCH_REQUEST)
-		log.Debug().Interface("evt", evt).Interface("receiver", mg.MatchRequest.ReceivingUser).
+		log.Debug().Interface("evt", evt).Interface("req", mr).Interface("receiver", mg.MatchRequest.ReceivingUser).
 			Str("sender", reqUser.UserId).Msg("publishing match request to user")
 		b.pubToUser(receiver.UUID, evt, "")
 		// Publish it to the requester as well. This is so they can see it on
@@ -545,19 +560,25 @@ func (b *Bus) seekRequest(ctx context.Context, seekOrMatch, auth, userID, connID
 	return nil
 }
 
-func (b *Bus) newBotGame(ctx context.Context, req *pb.MatchRequest) error {
+func (b *Bus) newBotGame(ctx context.Context, req *pb.MatchRequest, botUserID string) error {
 	// NewBotGame creates and starts a new game against a bot!
-
-	accUser, err := b.userStore.GetRandomBot(ctx)
+	var err error
+	var accUser *entity.User
+	if botUserID == "" {
+		accUser, err = b.userStore.GetRandomBot(ctx)
+	} else {
+		accUser, err = b.userStore.GetByUUID(ctx, botUserID)
+	}
 	if err != nil {
 		return err
 	}
 	sg := &entity.SoughtGame{MatchRequest: req}
 	return b.instantiateAndStartGame(ctx, accUser, req.User.UserId, req.GameRequest,
-		sg, BotRequestID)
+		sg, BotRequestID, "")
 }
 
-func (b *Bus) gameAccepted(ctx context.Context, evt *pb.SoughtGameProcessEvent, userID string) error {
+func (b *Bus) gameAccepted(ctx context.Context, evt *pb.SoughtGameProcessEvent,
+	userID, connID string) error {
 	sg, err := b.soughtGameStore.Get(ctx, evt.RequestId)
 	if err != nil {
 		return err
@@ -592,11 +613,11 @@ func (b *Bus) gameAccepted(ctx context.Context, evt *pb.SoughtGameProcessEvent, 
 		return err
 	}
 
-	return b.instantiateAndStartGame(ctx, accUser, requester, gameReq, sg, evt.RequestId)
+	return b.instantiateAndStartGame(ctx, accUser, requester, gameReq, sg, evt.RequestId, connID)
 }
 
 func (b *Bus) instantiateAndStartGame(ctx context.Context, accUser *entity.User, requester string,
-	gameReq *pb.GameRequest, sg *entity.SoughtGame, reqID string) error {
+	gameReq *pb.GameRequest, sg *entity.SoughtGame, reqID, acceptingConnID string) error {
 
 	reqUser, err := b.userStore.GetByUUID(ctx, requester)
 	if err != nil {
@@ -611,7 +632,9 @@ func (b *Bus) instantiateAndStartGame(ctx context.Context, accUser *entity.User,
 		return errors.New("anonymous-players-cant-play-rated")
 	}
 
-	log.Debug().Interface("req", sg).Msg("game-request-accepted")
+	log.Debug().Interface("req", sg).
+		Str("seek-conn", sg.ConnID()).
+		Str("accepting-conn", acceptingConnID).Msg("game-request-accepted")
 	assignedFirst := -1
 	if sg.Type() == entity.TypeMatch {
 		if sg.MatchRequest.RematchFor != "" {
@@ -629,7 +652,6 @@ func (b *Bus) instantiateAndStartGame(ctx context.Context, accUser *entity.User,
 			log.Debug().Str("went-first", players[wentFirst].Nickname).Msg("determining-first")
 
 			// These are indices in the array passed to InstantiateNewGame
-			// XXX: this doesn't work for bots since they switch off players! FIX.
 			if accUser.UUID == players[wentFirst].UserId {
 				assignedFirst = 1 // reqUser should go first
 			} else if reqUser.UUID == players[wentFirst].UserId {
@@ -658,8 +680,9 @@ func (b *Bus) instantiateAndStartGame(ctx context.Context, accUser *entity.User,
 	}
 	// This event will result in a redirect.
 	ngevt := entity.WrapEvent(&pb.NewGameEvent{
-		GameId:    g.GameID(),
-		RequestId: reqID,
+		GameId:       g.GameID(),
+		AccepterCid:  acceptingConnID,
+		RequesterCid: sg.ConnID(),
 	}, pb.MessageType_NEW_GAME_EVENT)
 	// The front end keeps track of which tabs seek/accept games etc
 	// so we don't attach any extra channel info here.

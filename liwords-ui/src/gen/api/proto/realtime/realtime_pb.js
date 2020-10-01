@@ -5054,7 +5054,8 @@ proto.liwords.NewGameEvent.prototype.toObject = function(opt_includeInstance) {
 proto.liwords.NewGameEvent.toObject = function(includeInstance, msg) {
   var f, obj = {
     gameId: jspb.Message.getFieldWithDefault(msg, 1, ""),
-    requestId: jspb.Message.getFieldWithDefault(msg, 2, "")
+    requesterCid: jspb.Message.getFieldWithDefault(msg, 2, ""),
+    accepterCid: jspb.Message.getFieldWithDefault(msg, 3, "")
   };
 
   if (includeInstance) {
@@ -5097,7 +5098,11 @@ proto.liwords.NewGameEvent.deserializeBinaryFromReader = function(msg, reader) {
       break;
     case 2:
       var value = /** @type {string} */ (reader.readString());
-      msg.setRequestId(value);
+      msg.setRequesterCid(value);
+      break;
+    case 3:
+      var value = /** @type {string} */ (reader.readString());
+      msg.setAccepterCid(value);
       break;
     default:
       reader.skipField();
@@ -5135,10 +5140,17 @@ proto.liwords.NewGameEvent.serializeBinaryToWriter = function(message, writer) {
       f
     );
   }
-  f = message.getRequestId();
+  f = message.getRequesterCid();
   if (f.length > 0) {
     writer.writeString(
       2,
+      f
+    );
+  }
+  f = message.getAccepterCid();
+  if (f.length > 0) {
+    writer.writeString(
+      3,
       f
     );
   }
@@ -5164,10 +5176,10 @@ proto.liwords.NewGameEvent.prototype.setGameId = function(value) {
 
 
 /**
- * optional string request_id = 2;
+ * optional string requester_cid = 2;
  * @return {string}
  */
-proto.liwords.NewGameEvent.prototype.getRequestId = function() {
+proto.liwords.NewGameEvent.prototype.getRequesterCid = function() {
   return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 2, ""));
 };
 
@@ -5176,8 +5188,26 @@ proto.liwords.NewGameEvent.prototype.getRequestId = function() {
  * @param {string} value
  * @return {!proto.liwords.NewGameEvent} returns this
  */
-proto.liwords.NewGameEvent.prototype.setRequestId = function(value) {
+proto.liwords.NewGameEvent.prototype.setRequesterCid = function(value) {
   return jspb.Message.setProto3StringField(this, 2, value);
+};
+
+
+/**
+ * optional string accepter_cid = 3;
+ * @return {string}
+ */
+proto.liwords.NewGameEvent.prototype.getAccepterCid = function() {
+  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 3, ""));
+};
+
+
+/**
+ * @param {string} value
+ * @return {!proto.liwords.NewGameEvent} returns this
+ */
+proto.liwords.NewGameEvent.prototype.setAccepterCid = function(value) {
+  return jspb.Message.setProto3StringField(this, 3, value);
 };
 
 

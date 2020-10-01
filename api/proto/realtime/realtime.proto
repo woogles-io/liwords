@@ -235,7 +235,9 @@ message GameHistoryRefresher {
 // game is about to begin. It should follow a SoughtGameProcessEvent.
 message NewGameEvent {
   string game_id = 1;
-  string request_id = 2;
+  // These are the connection IDs of the requesting and accepting users.
+  string requester_cid = 2;
+  string accepter_cid = 3;
 }
 
 message ErrorMessage {

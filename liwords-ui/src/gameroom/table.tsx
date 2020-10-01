@@ -29,6 +29,7 @@ import { toAPIUrl } from '../api/api';
 type Props = {
   sendSocketMsg: (msg: Uint8Array) => void;
   username: string;
+  connID: string;
   loggedIn: boolean;
   connectedToSocket: boolean;
 };

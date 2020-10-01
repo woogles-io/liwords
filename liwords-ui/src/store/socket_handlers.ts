@@ -80,7 +80,11 @@ export const parseMsgs = (msg: Uint8Array) => {
   return msgs;
 };
 
-export const onSocketMsg = (username: string, storeData: StoreData) => {
+export const onSocketMsg = (
+  username: string,
+  connID: string,
+  storeData: StoreData
+) => {
   return (reader: FileReader) => {
     if (!reader.result) {
       return;
@@ -93,7 +97,7 @@ export const onSocketMsg = (username: string, storeData: StoreData) => {
       switch (msgType) {
         case MessageType.SEEK_REQUEST: {
           const sr = parsedMsg as SeekRequest;
-
+          console.log('Got a seek request', sr);
           const soughtGame = SeekRequestToSoughtGame(sr);
           if (soughtGame === null) {
             return;
@@ -103,17 +107,7 @@ export const onSocketMsg = (username: string, storeData: StoreData) => {
             actionType: ActionType.AddSoughtGame,
             payload: soughtGame,
           });
-          if (
-            soughtGame.seeker === username &&
-            storeData.lobbyContext.outstandingSeekReq
-          ) {
-            // This is us. Add it to the right place.
-            // XXX: clear when canceling seek.
-            storeData.dispatchLobbyContext({
-              actionType: ActionType.AddOutstandingSeek,
-              payload: soughtGame.seekID,
-            });
-          }
+
           break;
         }
 
@@ -256,11 +250,17 @@ export const onSocketMsg = (username: string, storeData: StoreData) => {
 
           // Determine if this is the tab that should accept the game.
           if (
-            nge.getRequestId() !==
-              storeData.lobbyContext.outstandingAcceptReq &&
-            nge.getRequestId() !== storeData.lobbyContext.outstandingSeekReq
+            nge.getAccepterCid() !== connID &&
+            nge.getRequesterCid() !== connID
           ) {
-            console.log('ignoring on this tab...');
+            console.log(
+              'ignoring on this tab...',
+              nge.getAccepterCid(),
+              '-',
+              nge.getRequesterCid(),
+              '-',
+              connID
+            );
             break;
           }
 
@@ -322,15 +322,6 @@ export const onSocketMsg = (username: string, storeData: StoreData) => {
             actionType: ActionType.RemoveSoughtGame,
             payload: gae.getRequestId(),
           });
-          if (
-            gae.getRequestId() === storeData.lobbyContext.outstandingSeekReq
-          ) {
-            // If this is our own outstanding seek, delete it.
-            storeData.dispatchLobbyContext({
-              actionType: ActionType.AddOutstandingSeek,
-              payload: '',
-            });
-          }
 
           break;
         }

@@ -147,6 +147,7 @@ func (as *AuthenticationService) GetSocketToken(ctx context.Context, r *pb.Socke
 	}
 	return &pb.SocketTokenResponse{
 		Token: tokenString,
+		Cid:   shortuuid.New()[2:10],
 	}, nil
 }
 

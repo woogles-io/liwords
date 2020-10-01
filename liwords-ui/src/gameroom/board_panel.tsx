@@ -13,8 +13,12 @@ import {
   returnTileToRack,
   designateBlank,
 } from '../utils/cwgame/tile_placement';
-import { uniqueTileIdx } from '../utils/cwgame/common';
-import { EphemeralTile, EmptySpace } from '../utils/cwgame/common';
+import {
+  uniqueTileIdx,
+  EphemeralTile,
+  EmptySpace,
+} from '../utils/cwgame/common';
+
 import {
   tilesetToMoveEvent,
   exchangeMoveEvent,
@@ -413,6 +417,7 @@ export const BoardPanel = React.memo((props: Props) => {
     props.sendSocketMsg(
       encodeToSocketFmt(MessageType.MATCH_REQUEST, evt.serializeBinary())
     );
+
     notification.info({
       message: 'Rematch',
       description: `Sent rematch request to ${opp}`,

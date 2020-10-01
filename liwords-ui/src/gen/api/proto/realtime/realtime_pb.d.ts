@@ -624,8 +624,11 @@ export class NewGameEvent extends jspb.Message {
   getGameId(): string;
   setGameId(value: string): void;
 
-  getRequestId(): string;
-  setRequestId(value: string): void;
+  getRequesterCid(): string;
+  setRequesterCid(value: string): void;
+
+  getAccepterCid(): string;
+  setAccepterCid(value: string): void;
 
   serializeBinary(): Uint8Array;
   toObject(includeInstance?: boolean): NewGameEvent.AsObject;
@@ -640,7 +643,8 @@ export class NewGameEvent extends jspb.Message {
 export namespace NewGameEvent {
   export type AsObject = {
     gameId: string,
-    requestId: string,
+    requesterCid: string,
+    accepterCid: string,
   }
 }
 

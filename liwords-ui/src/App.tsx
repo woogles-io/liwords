@@ -21,6 +21,7 @@ const App = React.memo(() => {
   const {
     username,
     userID,
+    connID,
     sendMessage,
     loggedIn,
     connectedToSocket,
@@ -38,6 +39,7 @@ const App = React.memo(() => {
           <Lobby
             username={username}
             userID={userID}
+            connID={connID}
             sendSocketMsg={sendMessage}
             loggedIn={loggedIn}
             connectedToSocket={connectedToSocket}
@@ -48,6 +50,7 @@ const App = React.memo(() => {
           <Table
             sendSocketMsg={sendMessage}
             username={username}
+            connID={connID}
             loggedIn={loggedIn}
             // can use some visual indicator to show the user if they disconnected
             connectedToSocket={connectedToSocket}

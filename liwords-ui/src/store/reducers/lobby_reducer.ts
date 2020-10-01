@@ -45,11 +45,6 @@ export type LobbyState = {
   matchRequests: Array<SoughtGame>;
   // + Other things in the lobby here that have state.
   activeGames: Array<ActiveGame>;
-  // If we make a game accept request with _this_ FE client, we
-  // should put it here. That way we know which client to redirect once
-  // the socket server comes back with data.
-  outstandingAcceptReq: string;
-  outstandingSeekReq: string;
 };
 
 export const SeekRequestToSoughtGame = (
@@ -209,20 +204,6 @@ export function LobbyReducer(state: LobbyState, action: Action): LobbyState {
       return {
         ...state,
         activeGames: newArr,
-      };
-    }
-
-    case ActionType.AddOutstandingAccept: {
-      return {
-        ...state,
-        outstandingAcceptReq: action.payload as string,
-      };
-    }
-
-    case ActionType.AddOutstandingSeek: {
-      return {
-        ...state,
-        outstandingSeekReq: action.payload as string,
       };
     }
   }
