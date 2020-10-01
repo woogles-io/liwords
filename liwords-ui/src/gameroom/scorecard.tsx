@@ -134,7 +134,7 @@ const ScorecardTurn = (props: turnProps) => {
             break;
           case GameEvent.Type.END_RACK_PENALTY:
             turn.score = `${turn.score}-${evts[i].getLostScore()}`;
-            https://github.com/domino14/liwords/pull/71break;
+            break;
           case GameEvent.Type.END_RACK_PTS:
             turn.score = `${turn.score}+${evts[i].getEndRackPoints()}`;
             break;
