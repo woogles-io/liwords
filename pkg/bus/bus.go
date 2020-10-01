@@ -152,6 +152,7 @@ outerfor:
 					log.Err(err).Msg("process-message-request-error")
 					// just send a blank response so there isn't a timeout on
 					// the other side.
+					// XXX: this is a very specific response to a handleNatsRequest func
 					rrResp := &pb.RegisterRealmResponse{
 						Realm: "",
 					}
@@ -697,22 +698,23 @@ func (b *Bus) instantiateAndStartGame(ctx context.Context, accUser *entity.User,
 		Str("onturn", g.NickOnTurn()).Msg("game-accepted")
 
 	// Now, reset the timer and register the event change hook.
-	time.AfterFunc(GameStartDelay, func() {
-		err = gameplay.StartGame(ctx, b.gameStore, b.gameEventChan, g.GameID())
-		if err != nil {
-			log.Err(err).Msg("starting-game")
-		}
 
-		g.RLock()
-		if accUser.IsBot && g.PlayerIDOnTurn() == accUser.UUID {
-			// Make a bot move if it's the bot's turn at the beginning.
-			g.RUnlock()
-			go b.handleBotMove(ctx, g)
-		} else {
-			g.RUnlock()
-		}
+	// time.AfterFunc(GameStartDelay, func() {
+	// 	g.Lock()
+	// 	err = gameplay.StartGame(ctx, b.gameStore, b.gameEventChan, g.GameID())
+	// 	if err != nil {
+	// 		log.Err(err).Msg("starting-game")
+	// 	}
 
-	})
+	// 	if accUser.IsBot && g.PlayerIDOnTurn() == accUser.UUID {
+	// 		// Make a bot move if it's the bot's turn at the beginning.
+	// 		g.Unlock()
+	// 		go b.handleBotMove(ctx, g)
+	// 	} else {
+	// 		g.Unlock()
+	// 	}
+
+	// })
 
 	return nil
 }
@@ -1064,6 +1066,8 @@ func (b *Bus) gameRefresher(ctx context.Context, gameID string) (*entity.EventWr
 	if err != nil {
 		return nil, err
 	}
+	entGame.RLock()
+	defer entGame.RUnlock()
 	if !entGame.Started {
 		return entity.WrapEvent(&pb.ServerMessage{Message: "Game is starting soon!"},
 			pb.MessageType_SERVER_MESSAGE), nil

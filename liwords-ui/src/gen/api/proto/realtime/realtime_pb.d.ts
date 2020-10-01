@@ -388,6 +388,26 @@ export namespace MatchRequest {
   }
 }
 
+export class ReadyForGame extends jspb.Message {
+  getGameId(): string;
+  setGameId(value: string): void;
+
+  serializeBinary(): Uint8Array;
+  toObject(includeInstance?: boolean): ReadyForGame.AsObject;
+  static toObject(includeInstance: boolean, msg: ReadyForGame): ReadyForGame.AsObject;
+  static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+  static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+  static serializeBinaryToWriter(message: ReadyForGame, writer: jspb.BinaryWriter): void;
+  static deserializeBinary(bytes: Uint8Array): ReadyForGame;
+  static deserializeBinaryFromReader(message: ReadyForGame, reader: jspb.BinaryReader): ReadyForGame;
+}
+
+export namespace ReadyForGame {
+  export type AsObject = {
+    gameId: string,
+  }
+}
+
 export class SoughtGameProcessEvent extends jspb.Message {
   getRequestId(): string;
   setRequestId(value: string): void;
@@ -847,6 +867,7 @@ export interface MessageTypeMap {
   USER_PRESENCE: 22;
   USER_PRESENCES: 23;
   SERVER_MESSAGE: 24;
+  READY_FOR_GAME: 25;
 }
 
 export const MessageType: MessageTypeMap;

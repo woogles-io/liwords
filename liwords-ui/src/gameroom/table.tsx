@@ -16,7 +16,7 @@ import {
   MatchRequest,
   SoughtGameProcessEvent,
   DeclineMatchRequest,
-  ChatMessage,
+  ChatMessage,, ReadyForGame
 } from '../gen/api/proto/realtime/realtime_pb';
 import { encodeToSocketFmt } from '../utils/protobuf';
 import './scss/gameroom.scss';
@@ -111,7 +111,9 @@ export const Table = React.memo((props: Props) => {
       .then((resp) => {
         setGameInfo(resp.data);
         if (localStorage?.getItem('poolFormat')) {
-          setPoolFormat(parseInt(localStorage.getItem('poolFormat') || '0'));
+          setPoolFormat(
+            parseInt(localStorage.getItem('poolFormat') || '0', 10)
+          );
         }
       });
     BoopSounds.startgameSound.play();
@@ -171,6 +173,14 @@ export const Table = React.memo((props: Props) => {
       }
     });
     setIsObserver(observer);
+
+    // If we are not the observer, tell the server we're ready for the game to start.
+    if (!gameInfo.done && !observer) {
+      const evt = new ReadyForGame();
+      evt.setGameId(gameID)
+      sendSocketMsg(encodeToSocketFmt(MessageType.READY_FOR_GAME, evt.serializeBinary()));
+    }
+
   }, [username, gameInfo]);
 
   const acceptRematch = (reqID: string) => {
