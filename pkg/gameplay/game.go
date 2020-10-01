@@ -169,11 +169,13 @@ func StartGame(ctx context.Context, gameStore GameStore, eventChan chan<- *entit
 	}
 	log.Debug().Str("gameid", id).Msg("reset timers (and start)")
 	entGame.ResetTimersAndStart()
-
+	log.Debug().Msg("going-to-save")
 	// Save the game back to the store always.
 	if err := gameStore.Set(ctx, entGame); err != nil {
+		log.Err(err).Msg("error-saving")
 		return err
 	}
+	log.Debug().Msg("saved-game-to-store")
 	if err := entGame.RegisterChangeHook(eventChan); err != nil {
 		return err
 	}

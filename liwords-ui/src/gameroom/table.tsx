@@ -17,18 +17,20 @@ import {
   SoughtGameProcessEvent,
   DeclineMatchRequest,
   ChatMessage,
+  ReadyForGame,
 } from '../gen/api/proto/realtime/realtime_pb';
 import { encodeToSocketFmt } from '../utils/protobuf';
 import './scss/gameroom.scss';
 import { ScoreCard } from './scorecard';
 import { GameInfo, GameMetadata, PlayerMetadata } from './game_info';
-import { PlayState } from '../gen/macondo/api/proto/macondo/macondo_pb';
 import { BoopSounds } from '../sound/boop';
 import { toAPIUrl } from '../api/api';
 // import { GameInfoResponse } from '../gen/api/proto/game_service/game_service_pb';
+
 type Props = {
   sendSocketMsg: (msg: Uint8Array) => void;
   username: string;
+  connID: string;
   loggedIn: boolean;
   connectedToSocket: boolean;
 };
@@ -110,7 +112,9 @@ export const Table = React.memo((props: Props) => {
       .then((resp) => {
         setGameInfo(resp.data);
         if (localStorage?.getItem('poolFormat')) {
-          setPoolFormat(parseInt(localStorage.getItem('poolFormat') || '0'));
+          setPoolFormat(
+            parseInt(localStorage.getItem('poolFormat') || '0', 10)
+          );
         }
       });
     BoopSounds.startgameSound.play();
@@ -149,20 +153,6 @@ export const Table = React.memo((props: Props) => {
   }, [pTimedOut, gameContext.nickToPlayerOrder, gameID]);
 
   useEffect(() => {
-    if (
-      gameContext.playState === PlayState.WAITING_FOR_FINAL_PASS &&
-      gameContext.nickToPlayerOrder[props.username] === `p${gameContext.onturn}`
-    ) {
-      message.info({
-        message: 'Pass or challenge?',
-        description:
-          'Your opponent has played their final tiles. You must pass or challenge.',
-      });
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [gameContext.playState]);
-
-  useEffect(() => {
     let observer = true;
     gameInfo.players.forEach((p) => {
       if (username === p.nickname) {
@@ -170,6 +160,16 @@ export const Table = React.memo((props: Props) => {
       }
     });
     setIsObserver(observer);
+
+    // If we are not the observer, tell the server we're ready for the game to start.
+    if (!gameInfo.done && !observer) {
+      const evt = new ReadyForGame();
+      evt.setGameId(gameID);
+      sendSocketMsg(
+        encodeToSocketFmt(MessageType.READY_FOR_GAME, evt.serializeBinary())
+      );
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [username, gameInfo]);
 
   const acceptRematch = (reqID: string) => {

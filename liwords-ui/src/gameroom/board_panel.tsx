@@ -6,6 +6,7 @@ import axios from 'axios';
 import GameBoard from './board';
 import GameControls from './game_controls';
 import { Rack } from './rack';
+import { ExchangeTiles } from './exchange_tiles';
 import {
   nextArrowPropertyState,
   handleKeyPress,
@@ -13,8 +14,12 @@ import {
   returnTileToRack,
   designateBlank,
 } from '../utils/cwgame/tile_placement';
-import { uniqueTileIdx } from '../utils/cwgame/common';
-import { EphemeralTile, EmptySpace } from '../utils/cwgame/common';
+import {
+  uniqueTileIdx,
+  EphemeralTile,
+  EmptySpace,
+} from '../utils/cwgame/common';
+
 import {
   tilesetToMoveEvent,
   exchangeMoveEvent,
@@ -33,7 +38,10 @@ import { useStoreContext } from '../store/store';
 import { BlankSelector } from './blank_selector';
 import { GameEndMessage } from './game_end_message';
 import { PlayerMetadata, GCGResponse } from './game_info';
-import { GameEvent } from '../gen/macondo/api/proto/macondo/macondo_pb';
+import {
+  GameEvent,
+  PlayState,
+} from '../gen/macondo/api/proto/macondo/macondo_pb';
 import { toAPIUrl } from '../api/api';
 
 // The frame atop is 24 height
@@ -105,6 +113,7 @@ export const BoardPanel = React.memo((props: Props) => {
   const [placedTilesTempScore, setPlacedTilesTempScore] = useState<number>();
   const [blankModalVisible, setBlankModalVisible] = useState(false);
   const { stopClock, gameContext, gameEndMessage } = useStoreContext();
+  const [exchangeModalVisible, setExchangeModalVisible] = useState(false);
 
   // Need to sync state to props here whenever the board changes.
   useEffect(() => {
@@ -121,6 +130,44 @@ export const BoardPanel = React.memo((props: Props) => {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    if (
+      gameContext.playState === PlayState.WAITING_FOR_FINAL_PASS &&
+      isMyTurn()
+    ) {
+      const finalAction = (
+        <>
+          Your opponent has played their final tiles. You must{' '}
+          <span
+            className="message-action"
+            onClick={() => makeMove('pass')}
+            role="button"
+          >
+            pass
+          </span>{' '}
+          or{' '}
+          <span
+            className="message-action"
+            role="button"
+            onClick={() => makeMove('challenge')}
+          >
+            challenge
+          </span>
+          .
+        </>
+      );
+
+      message.info(
+        {
+          content: finalAction,
+          className: 'board-hud-message',
+        },
+        15
+      );
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [gameContext.playState]);
 
   useEffect(() => {
     if (!props.events.length) {
@@ -157,11 +204,30 @@ export const BoardPanel = React.memo((props: Props) => {
     }
     setArrowProperties(nextArrowPropertyState(arrowProperties, row, col));
   };
-
   const keydown = (key: string) => {
-    // This should return a new set of arrow properties, and also set
-    // some state further up (the tiles layout with a "just played" type
-    // marker)
+    if (key === '2') {
+      makeMove('pass');
+      return;
+    }
+    if (key === '3') {
+      makeMove('challenge');
+      return;
+    }
+    if (key === '4') {
+      setExchangeModalVisible(true);
+      return;
+    }
+    if (key === '$') {
+      makeMove('exchange', props.currentRack);
+      return;
+    }
+    if (key === 'ArrowLeft' || key === 'ArrowRight') {
+      setArrowProperties({
+        ...arrowProperties,
+        horizontal: !arrowProperties.horizontal,
+      });
+      return;
+    }
     if (key === 'ArrowDown') {
       recallTiles();
       return;
@@ -170,15 +236,20 @@ export const BoardPanel = React.memo((props: Props) => {
       shuffleTiles();
       return;
     }
-    if (key === EnterKey) {
+    if (key === EnterKey && !exchangeModalVisible) {
       makeMove('commit');
       return;
     }
-
+    if (exchangeModalVisible) {
+      return;
+    }
     if (!arrowProperties.show) {
       return;
     }
 
+    // This should return a new set of arrow properties, and also set
+    // some state further up (the tiles layout with a "just played" type
+    // marker)
     const handlerReturn = handleKeyPress(
       arrowProperties,
       props.board,
@@ -336,26 +407,42 @@ export const BoardPanel = React.memo((props: Props) => {
     }
   };
 
+  const showExchangeModal = () => {
+    setExchangeModalVisible(true);
+  };
+
+  const handleExchangeModalOk = (exchangedTiles: string) => {
+    setExchangeModalVisible(false);
+    makeMove('exchange', exchangedTiles);
+  };
+
+  const isMyTurn = () => {
+    const iam = gameContext.nickToPlayerOrder[props.username];
+    return iam && iam === `p${gameContext.onturn}`;
+  };
   const makeMove = (move: string, addl?: string) => {
     let moveEvt;
+    if (!isMyTurn()) {
+      console.log(
+        'off turn move attempts',
+        gameContext.nickToPlayerOrder,
+        props.username,
+        gameContext.onturn
+      );
+      // It is not my turn. Ignore this event.
+      message.warn({
+        content: 'It is not your turn.',
+        className: 'board-hud-message',
+        duration: 1.5,
+      });
+      return;
+    }
     console.log(
       'making move',
       gameContext.nickToPlayerOrder,
       props.username,
       gameContext.onturn
     );
-    const iam = gameContext.nickToPlayerOrder[props.username];
-    if (!(iam && iam === `p${gameContext.onturn}`)) {
-      // It is not my turn. Ignore this event.
-      notification.warning({
-        key: 'notyourturn',
-        message: 'Attention',
-        description: 'It is not your turn.',
-        duration: 1.5,
-      });
-      return;
-    }
-
     switch (move) {
       case 'exchange':
         moveEvt = exchangeMoveEvent(addl!, props.gameID);
@@ -413,6 +500,7 @@ export const BoardPanel = React.memo((props: Props) => {
     props.sendSocketMsg(
       encodeToSocketFmt(MessageType.MATCH_REQUEST, evt.serializeBinary())
     );
+
     notification.info({
       message: 'Rematch',
       description: `Sent rematch request to ${opp}`,
@@ -487,9 +575,13 @@ export const BoardPanel = React.memo((props: Props) => {
         <GameEndMessage message={gameEndMessage} />
       )}
       <GameControls
+        myTurn={isMyTurn()}
+        finalPassOrChallenge={
+          gameContext.playState === PlayState.WAITING_FOR_FINAL_PASS
+        }
         observer={observer}
         onRecall={recallTiles}
-        onExchange={(rack: string) => makeMove('exchange', rack)}
+        showExchangeModal={showExchangeModal}
         onPass={() => makeMove('pass')}
         onResign={() => makeMove('resign')}
         onChallenge={() => makeMove('challenge')}
@@ -499,6 +591,16 @@ export const BoardPanel = React.memo((props: Props) => {
         showRematch={gameEndMessage !== ''}
         gameEndControls={gameEndMessage !== '' || props.gameDone}
         currentRack={props.currentRack}
+      />
+      <ExchangeTiles
+        rack={props.currentRack}
+        modalVisible={exchangeModalVisible}
+        onOk={(exchangedTiles) => {
+          handleExchangeModalOk(exchangedTiles);
+        }}
+        onCancel={() => {
+          setExchangeModalVisible(false);
+        }}
       />
       <Modal
         className="blank-modal"

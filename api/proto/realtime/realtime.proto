@@ -89,6 +89,8 @@ enum MessageType {
   USER_PRESENCE = 22;
   USER_PRESENCES = 23;
   SERVER_MESSAGE = 24;
+  READY_FOR_GAME = 25;
+
   // Add more events here. The total number of events should fit in a byte.
   // We should definitely not be using anywhere close to 255 events, and
   // in order to enforce that I'll be forcing the event type header to just be
@@ -149,6 +151,8 @@ message MatchRequest {
   // connection_id is the websocket ID via which this game was requested.
   string connection_id = 5;
 }
+
+message ReadyForGame { string game_id = 1; }
 
 // A SoughtGameProcessEvent gets sent when a match request (or seek request)
 // get accepted (from client to server), or canceled -- when sent from server to
@@ -236,7 +240,9 @@ message GameHistoryRefresher {
 // game is about to begin. It should follow a SoughtGameProcessEvent.
 message NewGameEvent {
   string game_id = 1;
-  string request_id = 2;
+  // These are the connection IDs of the requesting and accepting users.
+  string requester_cid = 2;
+  string accepter_cid = 3;
 }
 
 message ErrorMessage {

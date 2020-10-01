@@ -117,6 +117,7 @@ func (as *AuthenticationService) Logout(ctx context.Context, r *pb.UserLogoutReq
 func (as *AuthenticationService) GetSocketToken(ctx context.Context, r *pb.SocketTokenRequest) (*pb.SocketTokenResponse, error) {
 	// This view requires authentication.
 	sess, err := apiserver.GetSession(ctx)
+	cid := shortuuid.New()[1:10]
 	if err != nil {
 		// Create an unauth token.
 		uuid := shortuuid.New()
@@ -132,6 +133,7 @@ func (as *AuthenticationService) GetSocketToken(ctx context.Context, r *pb.Socke
 		}
 		return &pb.SocketTokenResponse{
 			Token: tokenString,
+			Cid:   cid,
 		}, nil
 	}
 
@@ -147,6 +149,7 @@ func (as *AuthenticationService) GetSocketToken(ctx context.Context, r *pb.Socke
 	}
 	return &pb.SocketTokenResponse{
 		Token: tokenString,
+		Cid:   cid,
 	}, nil
 }
 

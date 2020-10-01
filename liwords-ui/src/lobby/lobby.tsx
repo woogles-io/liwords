@@ -19,7 +19,6 @@ import { GameLists } from './gameLists';
 import { Chat } from '../chat/chat';
 import { useStoreContext } from '../store/store';
 import './lobby.scss';
-import { ActionType } from '../actions/actions';
 
 const sendSeek = (
   game: SoughtGame,
@@ -76,6 +75,7 @@ const sendAccept = (
 type Props = {
   username: string;
   userID: string;
+  connID: string;
   loggedIn: boolean;
   sendSocketMsg: (msg: Uint8Array) => void;
   connectedToSocket: boolean;
@@ -86,30 +86,13 @@ export const Lobby = (props: Props) => {
     props.loggedIn ? 'PLAY' : 'WATCH'
   );
 
-  const { chat, presences, dispatchLobbyContext } = useStoreContext();
+  const { chat, presences } = useStoreContext();
 
   useEffect(() => {
     setSelectedGameTab(props.loggedIn ? 'PLAY' : 'WATCH');
   }, [props.loggedIn]);
 
   const onSeekSubmit = (g: SoughtGame) => {
-    if (g.playerVsBot) {
-      dispatchLobbyContext({
-        // This is actually a seek, but it behaves like an accept because
-        // we get immediate feedback. We use a special payload of "bot-request"
-        // so we don't redirect every open tab to this bot game when it comes
-        // in. (see socket_handlers.ts - NEW_GAME_EVENT case)
-        actionType: ActionType.AddOutstandingAccept,
-        payload: 'bot-request',
-      });
-    } else {
-      dispatchLobbyContext({
-        actionType: ActionType.AddOutstandingSeek,
-        // This is a temporary payload; it will get replaced with a proper
-        // seek request ID once it comes in via the socket.
-        payload: 'seek-request',
-      });
-    }
     sendSeek(g, props.sendSocketMsg);
   };
 
@@ -144,10 +127,6 @@ export const Lobby = (props: Props) => {
           userID={props.userID}
           username={props.username}
           newGame={(seekID: string) => {
-            dispatchLobbyContext({
-              actionType: ActionType.AddOutstandingAccept,
-              payload: seekID,
-            });
             sendAccept(seekID, props.sendSocketMsg);
           }}
           selectedGameTab={selectedGameTab}
