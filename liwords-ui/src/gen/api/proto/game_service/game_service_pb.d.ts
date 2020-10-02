@@ -193,3 +193,73 @@ export namespace GCGResponse {
   }
 }
 
+export class GameInfoResponses extends jspb.Message {
+  clearGameInfoList(): void;
+  getGameInfoList(): Array<GameInfoResponse>;
+  setGameInfoList(value: Array<GameInfoResponse>): void;
+  addGameInfo(value?: GameInfoResponse, index?: number): GameInfoResponse;
+
+  serializeBinary(): Uint8Array;
+  toObject(includeInstance?: boolean): GameInfoResponses.AsObject;
+  static toObject(includeInstance: boolean, msg: GameInfoResponses): GameInfoResponses.AsObject;
+  static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+  static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+  static serializeBinaryToWriter(message: GameInfoResponses, writer: jspb.BinaryWriter): void;
+  static deserializeBinary(bytes: Uint8Array): GameInfoResponses;
+  static deserializeBinaryFromReader(message: GameInfoResponses, reader: jspb.BinaryReader): GameInfoResponses;
+}
+
+export namespace GameInfoResponses {
+  export type AsObject = {
+    gameInfoList: Array<GameInfoResponse.AsObject>,
+  }
+}
+
+export class RecentGamesRequest extends jspb.Message {
+  getPlayerId(): string;
+  setPlayerId(value: string): void;
+
+  getNumGames(): number;
+  setNumGames(value: number): void;
+
+  getOffset(): number;
+  setOffset(value: number): void;
+
+  serializeBinary(): Uint8Array;
+  toObject(includeInstance?: boolean): RecentGamesRequest.AsObject;
+  static toObject(includeInstance: boolean, msg: RecentGamesRequest): RecentGamesRequest.AsObject;
+  static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+  static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+  static serializeBinaryToWriter(message: RecentGamesRequest, writer: jspb.BinaryWriter): void;
+  static deserializeBinary(bytes: Uint8Array): RecentGamesRequest;
+  static deserializeBinaryFromReader(message: RecentGamesRequest, reader: jspb.BinaryReader): RecentGamesRequest;
+}
+
+export namespace RecentGamesRequest {
+  export type AsObject = {
+    playerId: string,
+    numGames: number,
+    offset: number,
+  }
+}
+
+export class RematchStreakRequest extends jspb.Message {
+  getOriginalRequestId(): string;
+  setOriginalRequestId(value: string): void;
+
+  serializeBinary(): Uint8Array;
+  toObject(includeInstance?: boolean): RematchStreakRequest.AsObject;
+  static toObject(includeInstance: boolean, msg: RematchStreakRequest): RematchStreakRequest.AsObject;
+  static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+  static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+  static serializeBinaryToWriter(message: RematchStreakRequest, writer: jspb.BinaryWriter): void;
+  static deserializeBinary(bytes: Uint8Array): RematchStreakRequest;
+  static deserializeBinaryFromReader(message: RematchStreakRequest, reader: jspb.BinaryReader): RematchStreakRequest;
+}
+
+export namespace RematchStreakRequest {
+  export type AsObject = {
+    originalRequestId: string,
+  }
+}
+

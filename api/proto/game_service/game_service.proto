@@ -47,7 +47,19 @@ message GCGRequest { string game_id = 1; }
 
 message GCGResponse { string gcg = 1; }
 
+message GameInfoResponses { repeated GameInfoResponse game_info = 1; }
+
+message RecentGamesRequest {
+  string player_id = 1;
+  int32 num_games = 2;
+  int32 offset = 3;
+}
+
+message RematchStreakRequest { string original_request_id = 1; }
+
 service GameMetadataService {
   rpc GetMetadata(GameInfoRequest) returns (GameInfoResponse);
   rpc GetGCG(GCGRequest) returns (GCGResponse);
+  rpc GetRecentGames(RecentGamesRequest) returns (GameInfoResponses);
+  rpc GetRematchStreak(RematchStreakRequest) returns (GameInfoResponses);
 }
