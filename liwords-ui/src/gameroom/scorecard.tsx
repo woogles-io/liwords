@@ -89,6 +89,13 @@ const ScorecardTurn = (props: turnProps) => {
     } else {
       oldScore = evts[0].getCumulative() - evts[0].getScore();
     }
+    let timeRemaining = '';
+    if (
+      evts[0].getType() !== GameEvent.Type.END_RACK_PTS &&
+      evts[0].getType() !== GameEvent.Type.END_RACK_PENALTY
+    ) {
+      timeRemaining = millisToTimeStr(evts[0].getMillisRemaining(), false);
+    }
 
     const turn = {
       player: {
@@ -98,7 +105,7 @@ const ScorecardTurn = (props: turnProps) => {
         avatar_url: '',
       },
       coords: evts[0].getPosition(),
-      timeRemaining: millisToTimeStr(evts[0].getMillisRemaining(), false),
+      timeRemaining: timeRemaining,
       rack: evts[0].getRack(),
       play: displaySummary(evts[0], props.board),
       score: `${evts[0].getScore()}`,
