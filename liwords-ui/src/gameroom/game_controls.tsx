@@ -1,10 +1,11 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { Button, Popconfirm } from 'antd';
-import { ExchangeTiles } from './exchange_tiles';
 
 type Props = {
+  finalPassOrChallenge?: boolean;
+  myTurn?: boolean;
   observer?: boolean;
-  onExchange: (rack: string) => void;
+  showExchangeModal: () => void;
   onPass: () => void;
   onResign: () => void;
   onRecall: () => void;
@@ -17,51 +18,13 @@ type Props = {
   currentRack: string;
 };
 
-const exchangeSetToString = (
-  origRack: string,
-  selectedTiles: Set<number>
-): string => {
-  const indices = Array.from(selectedTiles.keys());
-  indices.sort();
-  const e = indices.map((idx) => origRack[idx]);
-  return e.join('');
-};
-
 const GameControls = React.memo((props: Props) => {
-  const [modalVisible, setModalVisible] = useState(false);
-  const [exchangedRack, setExchangedRack] = useState(new Set<number>());
-
-  const showChallengeModal = () => {
-    // reset exchange rack when opening modal.
-    setExchangedRack(new Set<number>());
-    setModalVisible(true);
-  };
-
-  const handleModalOk = () => {
-    setModalVisible(false);
-    props.onExchange(exchangeSetToString(props.currentRack, exchangedRack));
-  };
-
-  const handleModalCancel = () => {
-    setModalVisible(false);
-  };
-
-  const selectTileForExchange = (idx: number) => {
-    const newExchangedRack = new Set(exchangedRack);
-    if (newExchangedRack.has(idx)) {
-      newExchangedRack.delete(idx);
-    } else {
-      newExchangedRack.add(idx);
-    }
-    setExchangedRack(newExchangedRack);
-  };
-
   if (props.gameEndControls) {
     return (
       <EndGameControls
         onRematch={props.onRematch}
         onExamine={props.onExamine}
-        showRematch={props.showRematch}
+        showRematch={props.showRematch && !props.observer}
       />
     );
   }
@@ -81,26 +44,33 @@ const GameControls = React.memo((props: Props) => {
         <Button danger>Resign</Button>
       </Popconfirm>
 
-      <Button onClick={props.onPass} danger>
+      <Button
+        onClick={props.onPass}
+        danger
+        disabled={!props.myTurn}
+        type={
+          props.finalPassOrChallenge && props.myTurn ? 'primary' : 'default'
+        }
+      >
         Pass
+        <span className="key-command">2</span>
       </Button>
 
-      <Button onClick={props.onChallenge}>Challenge</Button>
+      <Button onClick={props.onChallenge} disabled={!props.myTurn}>
+        Challenge
+        <span className="key-command">3</span>
+      </Button>
 
-      <Button type="primary" onClick={showChallengeModal}>
+      <Button onClick={props.showExchangeModal} disabled={!props.myTurn}>
         Exchange
+        <span className="key-command">4</span>
       </Button>
 
-      <ExchangeTiles
-        rack={props.currentRack}
-        exchangedRack={exchangedRack}
-        selectTile={(idx) => selectTileForExchange(idx)}
-        modalVisible={modalVisible}
-        onOk={handleModalOk}
-        onCancel={handleModalCancel}
-      />
-
-      <Button type="primary" onClick={props.onCommit}>
+      <Button
+        type="primary"
+        onClick={props.onCommit}
+        disabled={!props.myTurn || props.finalPassOrChallenge}
+      >
         Play
       </Button>
     </div>
