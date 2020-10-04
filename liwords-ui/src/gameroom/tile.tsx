@@ -76,6 +76,7 @@ type TileProps = {
   scale?: boolean;
   tentative?: boolean;
   tentativeScore?: number;
+  tentativeScoreIsHorizontal?: boolean | undefined;
   grabbable: boolean;
   rackIndex?: number | undefined;
   selected?: boolean;
@@ -163,7 +164,10 @@ const Tile = React.memo((props: TileProps) => {
     >
       <TileLetter rune={props.rune} />
       <PointValue value={props.value} />
-      <TentativeScore score={props.tentativeScore} />
+      <TentativeScore
+        score={props.tentativeScore}
+        horizontal={props.tentativeScoreIsHorizontal}
+      />
     </div>
   );
 });
