@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import axios from 'axios';
 import jwt from 'jsonwebtoken';
 import useWebSocket from 'react-use-websocket';
@@ -32,9 +32,6 @@ type DecodedToken = {
   a: boolean; // authed
 };
 
-const BACKOFF_BEGIN = 2500;
-const BACKOFF_END = 75000;
-
 export const useLiwordsSocket = (disconnect = false) => {
   const socketUrl = getSocketURI();
   const store = useStoreContext();
@@ -48,20 +45,17 @@ export const useLiwordsSocket = (disconnect = false) => {
   const [loggedIn, setLoggedIn] = useState(false);
   const [connectedToSocket, setConnectedToSocket] = useState(false);
   const [justDisconnected, setJustDisconnected] = useState(false);
-  const [tryConnecting, setTryConnecting] = useState(true);
-  const [curBackoff, setCurBackoff] = useState(BACKOFF_BEGIN);
 
   useEffect(() => {
-    if (!tryConnecting || connectedToSocket) {
+    if (connectedToSocket) {
       // Only call this function if we are not connected to the socket.
       // If we go from unconnected to connected, there is no need to call
       // it again. If we go from connected to unconnected, then we call it
       // to fetch a new token.
-      console.log(tryConnecting, connectedToSocket);
+      console.log('already connected');
       return;
     }
     console.log('About to request token');
-    setTryConnecting(false);
 
     axios
       .post<TokenResponse>(
@@ -83,50 +77,31 @@ export const useLiwordsSocket = (disconnect = false) => {
         setUserID(decoded.uid);
         setLoggedIn(decoded.a);
         console.log('Got token, setting state, and will try to connect...');
-        console.log('backoff reconnecting in', curBackoff, 'ms (if needed)');
-        setTimeout(() => {
-          setTryConnecting(true);
-        }, curBackoff);
-        setCurBackoff(Math.min(BACKOFF_END, curBackoff * 1.5));
       })
       .catch((e) => {
         if (e.response) {
           window.console.log(e.response);
         }
-        setTimeout(() => {
-          setTryConnecting(true);
-        }, curBackoff);
-        setCurBackoff(Math.min(BACKOFF_END, curBackoff * 1.5));
       });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tryConnecting, connectedToSocket]);
+  }, [connectedToSocket]);
 
   const { sendMessage } = useWebSocket(
-    fullSocketUrl,
+    useCallback(() => fullSocketUrl, [fullSocketUrl]),
     {
       onOpen: () => {
         console.log('connected to socket');
         setConnectedToSocket(true);
         setJustDisconnected(false);
-        setCurBackoff(BACKOFF_BEGIN);
       },
       onClose: () => {
         console.log('disconnected from socket :(');
         setConnectedToSocket(false);
         setJustDisconnected(true);
-        setFullSocketUrl('');
         setConnID('');
-
-        setTimeout(() => {
-          console.log('first attempt at reconnecting...');
-          setTryConnecting(true);
-        }, curBackoff);
       },
-      // don't attempt to auto-reconnect on error or close. This behavior
-      // should be handled by a controller of some sort. It won't work as
-      // expected here anyway because the socketToken / connID would change.
-      retryOnError: false,
-      shouldReconnect: (closeEvent) => false,
+      retryOnError: true,
+      shouldReconnect: (closeEvent) => true,
       onMessage: (event: MessageEvent) =>
         decodeToMsg(event.data, onSocketMsg(username, connID, store)),
     },
