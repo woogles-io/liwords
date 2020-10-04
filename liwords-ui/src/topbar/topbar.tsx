@@ -9,7 +9,9 @@ const Menu = (
     <div className="top-header-left-frame-crossword-game">
       <a href="/">OMGWords</a>
     </div>
-    <div className="top-header-left-frame-aerolith">Aerolith</div>
+    <div className="top-header-left-frame-aerolith">
+      <a href="https://aerolith.org">Aerolith</a>
+    </div>
     <div className="top-header-left-frame-blog">Random.Racer</div>
     <div className="top-header-left-frame-special-land">
       <a href="/about">About Us</a>

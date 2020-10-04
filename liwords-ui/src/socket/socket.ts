@@ -72,7 +72,7 @@ export const useLiwordsSocket = (disconnect = false) => {
           actionType: ActionType.SetAuthentication,
           payload: {
             username: decoded.unn,
-            payload: decoded.uid,
+            userID: decoded.uid,
             loggedIn: decoded.a,
             connID: cid,
           },
