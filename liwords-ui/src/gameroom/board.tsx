@@ -45,6 +45,7 @@ const Board = React.memo((props: Props) => {
           lastPlayedTiles={props.lastPlayedTiles}
           tentativeTiles={props.tentativeTiles}
           scaleTiles={true}
+          placementArrow={props.placementArrowProperties}
           tentativeTileScore={props.tentativeTileScore}
         />
       </div>
