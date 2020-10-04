@@ -65,7 +65,7 @@ export const Table = React.memo((props: Props) => {
     presences,
     loginState,
   } = useStoreContext();
-  const { loggedIn, username, connectedToSocket } = loginState;
+  const { username } = loginState;
 
   const { sendSocketMsg } = props;
   // const location = useLocation();
