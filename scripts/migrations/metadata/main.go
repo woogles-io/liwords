@@ -53,7 +53,7 @@ func main() {
 		// as the RequestId in the GameRequest, but we set
 		// it here just so it's not null and it doesn't matter
 		// because it's only used to obtain current rematch streaks.
-		quickdata := &entity.GameQuickdata{OriginalRequestId: g.GameReq.RequestId,
+		quickdata := &entity.Quickdata{OriginalRequestId: g.GameReq.RequestId,
 			FinalScores: g.History().FinalScores}
 
 		g.Quickdata = quickdata
