@@ -1,11 +1,23 @@
 import React, { useState } from 'react';
-import { Form, Radio, InputNumber, Switch, Tag, Input, Slider } from 'antd';
+import {
+  Form,
+  Radio,
+  InputNumber,
+  Switch,
+  Tag,
+  Slider,
+  AutoComplete,
+} from 'antd';
+
+import axios from 'axios';
 
 import { Store } from 'antd/lib/form/interface';
 import { ChallengeRule } from '../gen/macondo/api/proto/macondo/macondo_pb';
 import { timeCtrlToDisplayName } from '../store/constants';
 import { MatchUser } from '../gen/api/proto/realtime/realtime_pb';
 import { SoughtGame } from '../store/reducers/lobby_reducer';
+import { toAPIUrl } from '../api/api';
+import { debounce } from '../utils/debounce';
 
 export type seekPropVals = { [val: string]: string | number | boolean };
 
@@ -42,6 +54,10 @@ const timeScaleToNum = (val: string) => {
     default:
       return parseInt(val, 10);
   }
+};
+
+type SearchResponse = {
+  usernames: Array<string>;
 };
 
 type Props = {
@@ -103,6 +119,8 @@ export const SeekForm = (props: Props) => {
   const [maxTimeSetting, setMaxTimeSetting] = useState(
     initialValues.incOrOT === 'overtime' ? 5 : 60
   );
+  const [sliderTooltipVisible, setSliderTooltipVisible] = useState(true);
+  const [usernameOptions, setUsernameOptions] = useState<Array<string>>([]);
   const onFormChange = (val: Store, allvals: Store) => {
     if (window.localStorage) {
       localStorage.setItem(storageKey, JSON.stringify(allvals));
@@ -128,6 +146,22 @@ export const SeekForm = (props: Props) => {
     setTimectrl(tc);
     setTtag(tt);
   };
+
+  const onUsernameSearch = (searchText: string) => {
+    axios
+      .post<SearchResponse>(
+        toAPIUrl('user_service.AutocompleteService', 'GetCompletion'),
+        {
+          prefix: searchText,
+        }
+      )
+      .then((resp) => {
+        console.log('resp', resp.data);
+        setUsernameOptions(!searchText ? [] : resp.data.usernames);
+      });
+  };
+
+  const searchUsernameDebounced = debounce(onUsernameSearch, 1000);
 
   const onFormSubmit = (val: Store) => {
     const receiver = new MatchUser();
@@ -166,7 +200,21 @@ export const SeekForm = (props: Props) => {
     >
       {props.showFriendInput && (
         <Form.Item label="Friend" name="friend">
-          <Input />
+          <AutoComplete
+            onSearch={searchUsernameDebounced}
+            placeholder="username..."
+            style={{
+              width: 200,
+            }}
+            onFocus={() => setSliderTooltipVisible(false)}
+            onBlur={() => setSliderTooltipVisible(true)}
+          >
+            {usernameOptions.map((username) => (
+              <AutoComplete.Option key={username} value={username}>
+                {username}
+              </AutoComplete.Option>
+            ))}
+          </AutoComplete>
         </Form.Item>
       )}
       <Form.Item label="Dictionary" name="lexicon">
@@ -190,7 +238,7 @@ export const SeekForm = (props: Props) => {
           tipFormatter={initTimeFormatter}
           min={0}
           max={initTimeDiscreteScale.length - 1}
-          tooltipVisible
+          tooltipVisible={sliderTooltipVisible}
         />
       </Form.Item>
       <Form.Item label="Time Setting" name="incOrOT">

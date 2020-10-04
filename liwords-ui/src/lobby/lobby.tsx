@@ -73,24 +73,21 @@ const sendAccept = (
 };
 
 type Props = {
-  username: string;
-  userID: string;
-  connID: string;
-  loggedIn: boolean;
   sendSocketMsg: (msg: Uint8Array) => void;
-  connectedToSocket: boolean;
+  DISCONNECT: () => void;
 };
 
 export const Lobby = (props: Props) => {
+  const { chat, presences, loginState } = useStoreContext();
+  const { loggedIn, username, userID } = loginState;
+
   const [selectedGameTab, setSelectedGameTab] = useState(
-    props.loggedIn ? 'PLAY' : 'WATCH'
+    loggedIn ? 'PLAY' : 'WATCH'
   );
 
-  const { chat, presences } = useStoreContext();
-
   useEffect(() => {
-    setSelectedGameTab(props.loggedIn ? 'PLAY' : 'WATCH');
-  }, [props.loggedIn]);
+    setSelectedGameTab(loggedIn ? 'PLAY' : 'WATCH');
+  }, [loggedIn]);
 
   const onSeekSubmit = (g: SoughtGame) => {
     sendSeek(g, props.sendSocketMsg);
@@ -107,11 +104,7 @@ export const Lobby = (props: Props) => {
 
   return (
     <>
-      <TopBar
-        username={props.username}
-        loggedIn={props.loggedIn}
-        connectedToSocket={props.connectedToSocket}
-      />
+      <TopBar />
       <div className="lobby">
         <div className="chat-area">
           <Chat
@@ -120,12 +113,13 @@ export const Lobby = (props: Props) => {
             description="Lobby chat"
             peopleOnlineContext="Players"
             presences={presences}
+            DISCONNECT={props.DISCONNECT}
           />
         </div>
         <GameLists
-          loggedIn={props.loggedIn}
-          userID={props.userID}
-          username={props.username}
+          loggedIn={loggedIn}
+          userID={userID}
+          username={username}
           newGame={(seekID: string) => {
             sendAccept(seekID, props.sendSocketMsg);
           }}

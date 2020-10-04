@@ -1,6 +1,8 @@
 import React from 'react';
 import './topbar.scss';
 import { DisconnectOutlined } from '@ant-design/icons/lib';
+import { Tooltip } from 'antd';
+import { useStoreContext } from '../store/store';
 
 const Menu = (
   <div className="top-header-menu">
@@ -15,13 +17,15 @@ const Menu = (
   </div>
 );
 
-type Props = {
-  username: string;
-  loggedIn: boolean;
-  connectedToSocket: boolean;
-};
+type Props = {};
 
 export const TopBar = React.memo((props: Props) => {
+  const {
+    username,
+    loggedIn,
+    connectedToSocket,
+    currentLagMs,
+  } = useStoreContext().loginState;
   return (
     <nav className="top-header" id="main-nav">
       <div className="container">
@@ -32,10 +36,12 @@ export const TopBar = React.memo((props: Props) => {
           <div className="top-header-left-frame-site-name">Woogles.io</div>
         </a>
         {Menu}
-        {props.loggedIn ? (
+        {loggedIn ? (
           <div className="user-info">
-            <a href={`/profile/${props.username}`}>{props.username}</a>
-            {!props.connectedToSocket ? (
+            <Tooltip title={`Latency: ${currentLagMs || '...'} ms.`}>
+              <a href={`/profile/${username}`}>{username}</a>
+            </Tooltip>
+            {!connectedToSocket ? (
               <DisconnectOutlined style={{ color: 'red', marginLeft: 5 }} />
             ) : null}
           </div>

@@ -29,10 +29,6 @@ import { toAPIUrl } from '../api/api';
 
 type Props = {
   sendSocketMsg: (msg: Uint8Array) => void;
-  username: string;
-  connID: string;
-  loggedIn: boolean;
-  connectedToSocket: boolean;
 };
 
 const defaultGameInfo = {
@@ -67,8 +63,11 @@ export const Table = React.memo((props: Props) => {
     rematchRequest,
     setRematchRequest,
     presences,
+    loginState,
   } = useStoreContext();
-  const { username, sendSocketMsg } = props;
+  const { username } = loginState;
+
+  const { sendSocketMsg } = props;
   // const location = useLocation();
   const [gameInfo, setGameInfo] = useState<GameMetadata>(defaultGameInfo);
   const [isObserver, setIsObserver] = useState(false);
@@ -212,7 +211,7 @@ export const Table = React.memo((props: Props) => {
   // If we are NOT one of the players (so an observer), display the rack of
   // the player on turn.
   let rack;
-  const us = gameInfo.players.find((p) => p.nickname === props.username);
+  const us = gameInfo.players.find((p) => p.nickname === username);
   if (us) {
     rack = gameContext.players.find((p) => p.userID === us.user_id)
       ?.currentRack;
@@ -224,11 +223,7 @@ export const Table = React.memo((props: Props) => {
 
   return (
     <div className="game-container">
-      <TopBar
-        username={props.username}
-        loggedIn={props.loggedIn}
-        connectedToSocket={props.connectedToSocket}
-      />
+      <TopBar />
       <div className="game-table">
         <div className="chat-area" id="left-sidebar">
           <Card className="left-menu">
@@ -249,7 +244,7 @@ export const Table = React.memo((props: Props) => {
 
         <div className="play-area">
           <BoardPanel
-            username={props.username}
+            username={username}
             board={gameContext.board}
             currentRack={rack || ''}
             events={gameContext.turns}
@@ -285,7 +280,7 @@ export const Table = React.memo((props: Props) => {
             cancelText="Decline"
           />
           <ScoreCard
-            username={props.username}
+            username={username}
             playing={us !== undefined}
             events={gameContext.turns}
             board={gameContext.board}
