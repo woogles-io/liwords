@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"math/rand"
+	"sort"
 	"strings"
 
 	"github.com/jinzhu/gorm"
@@ -404,6 +405,31 @@ func (s *DBStore) Username(ctx context.Context, uuid string) (string, bool, erro
 		return "", false, result.Error
 	}
 	return user.Username, false, nil
+}
+
+func (s *DBStore) UsernamesByPrefix(ctx context.Context, prefix string) ([]string, error) {
+
+	type u struct {
+		Username string
+	}
+
+	var us []u
+	if result := s.db.Table("users").Select("username").
+		Where("lower(username) like ? AND internal_bot = ?",
+			strings.ToLower(prefix)+"%", false).
+		Limit(20).
+		Scan(&us); result.Error != nil {
+		return nil, result.Error
+	}
+	log.Debug().Str("prefix", prefix).Int("byprefix", len(us)).Msg("found-matches")
+
+	usernames := make([]string, len(us))
+	for idx, u := range us {
+		usernames[idx] = u.Username
+	}
+	sort.Strings(usernames)
+
+	return usernames, nil
 }
 
 func (s *DBStore) Disconnect() {
