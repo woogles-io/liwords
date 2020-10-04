@@ -56,7 +56,7 @@ type game struct {
 	WinnerIdx     int
 	LoserIdx      int
 
-	Metadata postgres.Jsonb // A JSON blob containing the game metadata.
+	Quickdata postgres.Jsonb // A JSON blob containing the game quickdata.
 
 	// Protobuf representations of the game request and history.
 	Request []byte
@@ -109,27 +109,40 @@ func (s *DBStore) Get(ctx context.Context, id string) (*entity.Game, error) {
 		g.WinnerIdx, g.LoserIdx, g.Request, g.History, sdata, s.gameEventChan, s.cfg)
 }
 
-func (s *DBStore) GetRematchStreak(ctx context.Context, originalRequestId string) ([]*gs.GameInfoResponse, error) {
+// Similar to get but does not unmarshal the stats and timers and does
+// not play the game
+func (s *DBStore) GetQuickdata(ctx context.Context, id string) (*entity.Game, error) {
+	g := &game{}
+
+	if result := s.db.Where("uuid = ?", id).First(g); result.Error != nil {
+		return nil, result.Error
+	}
+
+	return FromStateQuickdata(g.Started, g.GameEndReason, g.Player0ID, g.Player1ID,
+		g.WinnerIdx, g.LoserIdx, g.Request, g.History, s.gameEventChan, s.cfg)
+}
+
+func (s *DBStore) GetRematchStreak(ctx context.Context, originalRequestId string) (*gs.GameInfoResponses, error) {
 	games := []*game{}
-	if results := s.db.Where("metadata->>'s' = ?", originalRequestId).Order("updated_at desc").Find(games); results.Error != nil {
+	if results := s.db.Where("quickdata->>'s' = ?", originalRequestId).Order("updated_at desc").Find(games); results.Error != nil {
 		return nil, results.Error
 	}
 	return convertGamesToInfoResponses(games)
 }
 
-func (s *DBStore) GetRecentGames(ctx context.Context, playerId string, n int) ([]*gs.GameInfoResponse, error) {
+func (s *DBStore) GetRecentGames(ctx context.Context, playerId string, numGames int, offset int) (*gs.GameInfoResponses, error) {
 	games := []*game{}
-	if results := s.db.Limit(n).Where("uuid = ?", playerId).Order("updated_at desc").Find(games); results.Error != nil {
+	if results := s.db.Limit(numGames).Offset(offset).Where("uuid = ?", playerId).Order("updated_at desc").Find(games); results.Error != nil {
 		return nil, results.Error
 	}
 	return convertGamesToInfoResponses(games)
 }
 
-func convertGamesToInfoResponses(games []*game) ([]*gs.GameInfoResponse, error) {
+func convertGamesToInfoResponses(games []*game) (*gs.GameInfoResponses, error) {
 	responses := []*gs.GameInfoResponse{}
 	for _, g := range games {
-		var mdata entity.GameMetadata
-		err := json.Unmarshal(g.Metadata.RawMessage, &mdata)
+		var mdata entity.Quickdata
+		err := json.Unmarshal(g.Quickdata.RawMessage, &mdata)
 		if err != nil {
 			return nil, err
 		}
@@ -147,7 +160,7 @@ func convertGamesToInfoResponses(games []*game) ([]*gs.GameInfoResponse, error) 
 			UpdatedAt:     g.UpdatedAt.Unix()}
 		responses = append(responses, info)
 	}
-	return responses, nil
+	return &gs.GameInfoResponses{GameInfo: responses}, nil
 }
 
 // FromState returns an entity.Game from a DB State.
@@ -241,6 +254,42 @@ func FromState(timers entity.Timers, Started bool,
 	return g, nil
 }
 
+// FromStateQuickdata returns an entity.Game from a DB State.
+// It does not load the letter distribution, gaddag, or game rules.
+// It does not play the game.
+func FromStateQuickdata(Started bool,
+	GameEndReason int, p0id, p1id uint, WinnerIdx, LoserIdx int, reqBytes, histBytes []byte,
+	gameEventChan chan<- *entity.EventWrapper, cfg *config.Config) (*entity.Game, error) {
+
+	g := &entity.Game{
+		Started:       Started,
+		GameEndReason: pb.GameEndReason(GameEndReason),
+		WinnerIdx:     WinnerIdx,
+		LoserIdx:      LoserIdx,
+		ChangeHook:    gameEventChan,
+		PlayerDBIDs:   [2]uint{p0id, p1id},
+	}
+	g.SetTimerModule(&entity.GameTimer{})
+
+	// Now copy the request
+	req := &pb.GameRequest{}
+	err := proto.Unmarshal(reqBytes, req)
+	if err != nil {
+		return nil, err
+	}
+	g.GameReq = req
+	log.Debug().Interface("req", req).Msg("req-unmarshal-quickdata")
+	// Then unmarshal the history and start a game from it.
+	hist := &macondopb.GameHistory{}
+	err = proto.Unmarshal(histBytes, hist)
+	if err != nil {
+		return nil, err
+	}
+	log.Info().Interface("hist", hist).Msg("hist-unmarshal-quickdata")
+
+	return g, nil
+}
+
 // Set takes in a game entity that _already exists_ in the DB, and writes it to
 // the database.
 func (s *DBStore) Set(ctx context.Context, g *entity.Game) error {
@@ -328,7 +377,7 @@ func (s *DBStore) toDBObj(ctx context.Context, g *entity.Game) (*game, error) {
 	if err != nil {
 		return nil, err
 	}
-	metadata, err := json.Marshal(g.Metadata)
+	quickdata, err := json.Marshal(g.Quickdata)
 	if err != nil {
 		return nil, err
 	}
@@ -347,7 +396,7 @@ func (s *DBStore) toDBObj(ctx context.Context, g *entity.Game) (*game, error) {
 		Player1ID:     g.PlayerDBIDs[1],
 		Timers:        postgres.Jsonb{RawMessage: timers},
 		Stats:         postgres.Jsonb{RawMessage: stats},
-		Metadata:      postgres.Jsonb{RawMessage: metadata},
+		Quickdata:     postgres.Jsonb{RawMessage: quickdata},
 		Started:       g.Started,
 		GameEndReason: int(g.GameEndReason),
 		WinnerIdx:     g.WinnerIdx,

@@ -15,8 +15,9 @@ import (
 // in defining the backing store (i.e. it may not necessarily be a SQL db store)
 type backingStore interface {
 	Get(ctx context.Context, id string) (*entity.Game, error)
-	GetRematchStreak(ctx context.Context, originalRequestId string) ([]*gs.GameInfoResponse, error)
-	GetRecentGames(ctx context.Context, playerId string, n int) ([]*gs.GameInfoResponse, error)
+	GetQuickdata(ctx context.Context, id string) (*entity.Game, error)
+	GetRematchStreak(ctx context.Context, originalRequestId string) (*gs.GameInfoResponses, error)
+	GetRecentGames(ctx context.Context, playerId string, numGames int, offset int) (*gs.GameInfoResponses, error)
 	Set(context.Context, *entity.Game) error
 	Create(context.Context, *entity.Game) error
 	ListActive(ctx context.Context) ([]*pb.GameMeta, error)
@@ -65,7 +66,7 @@ func NewCache(backing backingStore) *Cache {
 		//  when a new game is created/ended.
 		// Problem: this won't work for distributed nodes. Once we
 		// add multiple nodes we should probably have a Redis cache for a
-		// few things (especially game metadata).
+		// few things (especially game quickdata).
 		activeGamesTTL: time.Second * 5,
 	}
 }
@@ -96,12 +97,18 @@ func (c *Cache) Get(ctx context.Context, id string) (*entity.Game, error) {
 }
 
 // Just call the DB implementation for now
-func (c *Cache) GetRematchStreak(ctx context.Context, originalRequestId string) ([]*gs.GameInfoResponse, error) {
+func (c *Cache) GetRematchStreak(ctx context.Context, originalRequestId string) (*gs.GameInfoResponses, error) {
 	return c.backing.GetRematchStreak(ctx, originalRequestId)
 }
 
-func (c *Cache) GetRecentGames(ctx context.Context, playerId string, n int) ([]*gs.GameInfoResponse, error) {
-	return c.backing.GetRecentGames(ctx, playerId, n)
+func (c *Cache) GetRecentGames(ctx context.Context, playerId string, numGames int, offset int) (*gs.GameInfoResponses, error) {
+	return c.backing.GetRecentGames(ctx, playerId, numGames, offset)
+}
+
+// Similar to get but does not unmarshal the stats and timers and does
+// not play the game
+func (c *Cache) GetQuickdata(ctx context.Context, id string) (*entity.Game, error) {
+	return c.backing.GetQuickdata(ctx, id)
 }
 
 // Set sets a game in the cache, AND in the backing store. This ensures if the

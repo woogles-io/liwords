@@ -51,7 +51,7 @@ func (f *FakeNower) Sleep(t int64) {
 	f.fakeMeow += t
 }
 
-type GameMetadata struct {
+type Quickdata struct {
 	OriginalRequestId string  `json:"o"`
 	FinalScores       []int32 `json:"s"`
 }
@@ -85,7 +85,7 @@ type Game struct {
 	ChangeHook chan<- *EventWrapper
 	nower      Nower
 
-	Metadata *GameMetadata
+	Quickdata *Quickdata
 }
 
 // GameTimer uses the standard library's `time` package to determine how much time

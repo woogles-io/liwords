@@ -14,7 +14,7 @@ import (
 )
 
 func main() {
-	// Populate every game with its metadata
+	// Populate every game with its quickdata
 	cfg := &config.Config{}
 	cfg.Load(os.Args[1:])
 	log.Info().Msgf("Loaded config: %v", cfg)
@@ -45,7 +45,7 @@ func main() {
 			continue
 		}
 
-		// Currently, Metadata contains the following:
+		// Currently, Quickdata contains the following:
 		//   OriginalRequestId
 		//   FinalScores
 		//
@@ -53,10 +53,10 @@ func main() {
 		// as the RequestId in the GameRequest, but we set
 		// it here just so it's not null and it doesn't matter
 		// because it's only used to obtain current rematch streaks.
-		metadata := &entity.GameMetadata{OriginalRequestId: g.GameReq.RequestId,
+		quickdata := &entity.GameQuickdata{OriginalRequestId: g.GameReq.RequestId,
 			FinalScores: g.History().FinalScores}
 
-		g.Metadata = metadata
+		g.Quickdata = quickdata
 
 		// Write the game back to the database
 		gameStore.Set(ctx, g)

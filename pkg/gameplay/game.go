@@ -38,8 +38,9 @@ var (
 // GameStore is an interface for getting a full game.
 type GameStore interface {
 	Get(ctx context.Context, id string) (*entity.Game, error)
-	GetRematchStreak(ctx context.Context, originalRequestId string) ([]*gs.GameInfoResponse, error)
-	GetRecentGames(ctx context.Context, playerId string, n int) ([]*gs.GameInfoResponse, error)
+	GetQuickdata(ctx context.Context, id string) (*entity.Game, error)
+	GetRematchStreak(ctx context.Context, originalRequestId string) (*gs.GameInfoResponses, error)
+	GetRecentGames(ctx context.Context, playerId string, numGames int, offset int) (*gs.GameInfoResponses, error)
 	Set(context.Context, *entity.Game) error
 	Create(context.Context, *entity.Game) error
 	ListActive(context.Context) ([]*pb.GameMeta, error)

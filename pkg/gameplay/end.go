@@ -121,10 +121,10 @@ func performEndgameDuties(ctx context.Context, g *entity.Game,
 	// However we are possibly editing it above.
 	g.History().Winner = int32(g.WinnerIdx)
 
-	// Set the game metadata
-	metadata := &entity.GameMetadata{FinalScores: g.History().FinalScores,
+	// Set the game quickdata
+	quickdata := &entity.Quickdata{FinalScores: g.History().FinalScores,
 		OriginalRequestId: g.GameReq.OriginalRequestId}
-	g.Metadata = metadata
+	g.Quickdata = quickdata
 
 	// Send a gameEndedEvent, which rates the game.
 	evt := gameEndedEvent(ctx, g, userStore)

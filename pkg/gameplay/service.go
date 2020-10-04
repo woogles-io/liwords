@@ -29,7 +29,7 @@ func NewGameService(u user.Store, gs GameStore) *GameService {
 // GetMetadata gets metadata for the given game.
 func (gs *GameService) GetMetadata(ctx context.Context, req *pb.GameInfoRequest) (*pb.GameInfoResponse, error) {
 
-	entGame, err := gs.gameStore.Get(ctx, req.GameId)
+	entGame, err := gs.gameStore.GetQuickdata(ctx, req.GameId)
 	if err != nil {
 		return nil, err
 	}
@@ -81,18 +81,19 @@ func (gs *GameService) GetMetadata(ctx context.Context, req *pb.GameInfoRequest)
 
 }
 
-//  GetRematchStreak gets metadata for the given rematch streak.
-func (gs *GameService) GetRematchStreak(ctx context.Context, originalRequestId string) ([]*pb.GameInfoResponse, error) {
-	resp, err := gs.gameStore.GetRematchStreak(ctx, originalRequestId)
+//  GetRematchStreak gets quickdata for the given rematch streak.
+func (gs *GameService) GetRematchStreak(ctx context.Context, req *pb.RematchStreakRequest) (*pb.GameInfoResponses, error) {
+	resp, err := gs.gameStore.GetRematchStreak(ctx, req.OriginalRequestId)
 	if err != nil {
 		return nil, err
 	}
 	return resp, nil
 }
 
-//  GetRecentGames gets metadata for the n most recent games of the player.
-func (gs *GameService) GetRecentGames(ctx context.Context, playerId string, n int) ([]*pb.GameInfoResponse, error) {
-	resp, err := gs.gameStore.GetRecentGames(ctx, playerId, n)
+//  GetRecentGames gets quickdata for the numGames most recent games of the player
+// offset by offset.
+func (gs *GameService) GetRecentGames(ctx context.Context, req *pb.RecentGamesRequest) (*pb.GameInfoResponses, error) {
+	resp, err := gs.gameStore.GetRecentGames(ctx, req.PlayerId, int(req.NumGames), int(req.Offset))
 	if err != nil {
 		return nil, err
 	}

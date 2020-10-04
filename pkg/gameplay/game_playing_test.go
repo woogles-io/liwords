@@ -305,7 +305,7 @@ func TestDoubleChallengeGoodWord(t *testing.T) {
 	gstore.(*game.Cache).Disconnect()
 }
 
-func TestMetadata(t *testing.T) {
+func TestQuickdata(t *testing.T) {
 	is := is.New(t)
 	recreateDB()
 	cstr := TestingDBConnStr + " dbname=liwords_test"
@@ -357,10 +357,10 @@ func TestMetadata(t *testing.T) {
 		})
 	is.NoErr(err)
 
-	// Check the metadata
-	is.Equal(entGame.Metadata.FinalScores[0], int32(93))
-	is.Equal(entGame.Metadata.FinalScores[1], int32(34))
-	is.Equal(entGame.Metadata.OriginalRequestId, gameReq.OriginalRequestId)
+	// Check the quickdata
+	is.Equal(entGame.Quickdata.FinalScores[0], int32(93))
+	is.Equal(entGame.Quickdata.FinalScores[1], int32(34))
+	is.Equal(entGame.Quickdata.OriginalRequestId, gameReq.OriginalRequestId)
 
 	// Kill the go-routine
 	cancel()
