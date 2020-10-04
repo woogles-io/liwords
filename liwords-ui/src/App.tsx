@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Route, Switch } from 'react-router-dom';
 import './App.scss';
 import 'antd/dist/antd.css';
@@ -18,6 +18,7 @@ import { NewPassword } from './lobby/new_password';
 
 const App = React.memo(() => {
   const store = useStoreContext();
+  const [shouldDisconnect, setShouldDisconnect] = useState(false);
   const {
     username,
     userID,
@@ -25,12 +26,20 @@ const App = React.memo(() => {
     sendMessage,
     loggedIn,
     connectedToSocket,
-  } = useLiwordsSocket();
+  } = useLiwordsSocket(shouldDisconnect);
 
   if (store.redirGame !== '') {
     store.setRedirGame('');
     window.location.replace(`/game/${store.redirGame}`);
   }
+
+  const disconnectSocket = () => {
+    setShouldDisconnect(true);
+    setTimeout(() => {
+      // reconnect after 5 seconds.
+      setShouldDisconnect(false);
+    }, 5000);
+  };
 
   return (
     <div className="App">
@@ -43,6 +52,7 @@ const App = React.memo(() => {
             sendSocketMsg={sendMessage}
             loggedIn={loggedIn}
             connectedToSocket={connectedToSocket}
+            DISCONNECT={disconnectSocket}
           />
         </Route>
         <Route path="/game/:gameID">

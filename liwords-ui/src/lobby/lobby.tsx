@@ -79,6 +79,7 @@ type Props = {
   loggedIn: boolean;
   sendSocketMsg: (msg: Uint8Array) => void;
   connectedToSocket: boolean;
+  DISCONNECT: () => void;
 };
 
 export const Lobby = (props: Props) => {
@@ -120,6 +121,7 @@ export const Lobby = (props: Props) => {
             description="Lobby chat"
             peopleOnlineContext="Players"
             presences={presences}
+            DISCONNECT={props.DISCONNECT}
           />
         </div>
         <GameLists
