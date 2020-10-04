@@ -21,4 +21,9 @@ export enum ActionType {
   RefreshTurns,
   RefreshHistory,
   ClearHistory,
+
+  /* login state actions */
+  SetAuthentication,
+  SetConnectedToSocket,
+  SetCurrentLagMs,
 }

@@ -10,22 +10,14 @@ import lola from '../assets/bio/bio_lola.jpg';
 import macondo from '../assets/bio/bio_macondo.jpg';
 import woogles from '../assets/bio/bio_woogles.jpg';
 
-type Props = {
-  myUsername: string;
-  loggedIn: boolean;
-  connectedToSocket: boolean;
-};
+type Props = {};
 
 export const About = (props: Props) => {
   return (
     <>
       <Row>
         <Col span={24}>
-          <TopBar
-            username={props.myUsername}
-            loggedIn={props.loggedIn}
-            connectedToSocket={props.connectedToSocket}
-          />
+          <TopBar />
         </Col>
       </Row>
       <Row>

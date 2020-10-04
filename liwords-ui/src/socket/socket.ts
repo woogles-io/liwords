@@ -7,6 +7,7 @@ import { useStoreContext } from '../store/store';
 import { onSocketMsg } from '../store/socket_handlers';
 import { decodeToMsg } from '../utils/protobuf';
 import { toAPIUrl } from '../api/api';
+import { ActionType } from '../actions/actions';
 
 const getSocketURI = (): string => {
   const loc = window.location;
@@ -38,16 +39,11 @@ export const useLiwordsSocket = (disconnect = false) => {
   const location = useLocation();
 
   // const [socketToken, setSocketToken] = useState('');
-  const [username, setUsername] = useState('Anonymous');
-  const [connID, setConnID] = useState('');
   const [fullSocketUrl, setFullSocketUrl] = useState('');
-  const [userID, setUserID] = useState('');
-  const [loggedIn, setLoggedIn] = useState(false);
-  const [connectedToSocket, setConnectedToSocket] = useState(false);
   const [justDisconnected, setJustDisconnected] = useState(false);
 
   useEffect(() => {
-    if (connectedToSocket) {
+    if (store.loginState.connectedToSocket) {
       // Only call this function if we are not connected to the socket.
       // If we go from unconnected to connected, there is no need to call
       // it again. If we go from connected to unconnected, then we call it
@@ -66,16 +62,21 @@ export const useLiwordsSocket = (disconnect = false) => {
       .then((resp) => {
         const socketToken = resp.data.token;
         const { cid } = resp.data;
-        setConnID(cid);
 
         setFullSocketUrl(
           `${socketUrl}?token=${socketToken}&path=${location.pathname}&cid=${cid}`
         );
 
         const decoded = jwt.decode(socketToken) as DecodedToken;
-        setUsername(decoded.unn);
-        setUserID(decoded.uid);
-        setLoggedIn(decoded.a);
+        store.dispatchLoginState({
+          actionType: ActionType.SetAuthentication,
+          payload: {
+            username: decoded.unn,
+            payload: decoded.uid,
+            loggedIn: decoded.a,
+            connID: cid,
+          },
+        });
         console.log('Got token, setting state, and will try to connect...');
       })
       .catch((e) => {
@@ -84,26 +85,31 @@ export const useLiwordsSocket = (disconnect = false) => {
         }
       });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [connectedToSocket]);
+  }, [store.loginState.connectedToSocket]);
 
   const { sendMessage } = useWebSocket(
     useCallback(() => fullSocketUrl, [fullSocketUrl]),
     {
       onOpen: () => {
         console.log('connected to socket');
-        setConnectedToSocket(true);
+        store.dispatchLoginState({
+          actionType: ActionType.SetConnectedToSocket,
+          payload: true,
+        });
         setJustDisconnected(false);
       },
       onClose: () => {
         console.log('disconnected from socket :(');
-        setConnectedToSocket(false);
+        store.dispatchLoginState({
+          actionType: ActionType.SetConnectedToSocket,
+          payload: false,
+        });
         setJustDisconnected(true);
-        setConnID('');
       },
       retryOnError: true,
       shouldReconnect: (closeEvent) => true,
       onMessage: (event: MessageEvent) =>
-        decodeToMsg(event.data, onSocketMsg(username, connID, store)),
+        decodeToMsg(event.data, onSocketMsg(store)),
     },
     !disconnect &&
       fullSocketUrl !== '' /* only connect if the socket token is not null */
@@ -111,11 +117,6 @@ export const useLiwordsSocket = (disconnect = false) => {
 
   return {
     sendMessage,
-    userID,
-    connID,
-    username,
-    loggedIn,
-    connectedToSocket,
     justDisconnected,
   };
 };

@@ -198,6 +198,26 @@ export namespace GameDeletion {
   }
 }
 
+export class LagMeasurement extends jspb.Message {
+  getLagMs(): number;
+  setLagMs(value: number): void;
+
+  serializeBinary(): Uint8Array;
+  toObject(includeInstance?: boolean): LagMeasurement.AsObject;
+  static toObject(includeInstance: boolean, msg: LagMeasurement): LagMeasurement.AsObject;
+  static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+  static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+  static serializeBinaryToWriter(message: LagMeasurement, writer: jspb.BinaryWriter): void;
+  static deserializeBinary(bytes: Uint8Array): LagMeasurement;
+  static deserializeBinaryFromReader(message: LagMeasurement, reader: jspb.BinaryReader): LagMeasurement;
+}
+
+export namespace LagMeasurement {
+  export type AsObject = {
+    lagMs: number,
+  }
+}
+
 export class ChatMessage extends jspb.Message {
   getUsername(): string;
   setUsername(value: string): void;
@@ -868,6 +888,7 @@ export interface MessageTypeMap {
   USER_PRESENCES: 23;
   SERVER_MESSAGE: 24;
   READY_FOR_GAME: 25;
+  LAG_MEASUREMENT: 26;
 }
 
 export const MessageType: MessageTypeMap;

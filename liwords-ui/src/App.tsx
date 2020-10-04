@@ -19,14 +19,7 @@ import { NewPassword } from './lobby/new_password';
 const App = React.memo(() => {
   const store = useStoreContext();
   const [shouldDisconnect, setShouldDisconnect] = useState(false);
-  const {
-    username,
-    userID,
-    connID,
-    sendMessage,
-    loggedIn,
-    connectedToSocket,
-  } = useLiwordsSocket(shouldDisconnect);
+  const { sendMessage } = useLiwordsSocket(shouldDisconnect);
 
   if (store.redirGame !== '') {
     store.setRedirGame('');
@@ -45,33 +38,14 @@ const App = React.memo(() => {
     <div className="App">
       <Switch>
         <Route path="/" exact>
-          <Lobby
-            username={username}
-            userID={userID}
-            connID={connID}
-            sendSocketMsg={sendMessage}
-            loggedIn={loggedIn}
-            connectedToSocket={connectedToSocket}
-            DISCONNECT={disconnectSocket}
-          />
+          <Lobby sendSocketMsg={sendMessage} DISCONNECT={disconnectSocket} />
         </Route>
         <Route path="/game/:gameID">
           {/* Table meaning a game table */}
-          <Table
-            sendSocketMsg={sendMessage}
-            username={username}
-            connID={connID}
-            loggedIn={loggedIn}
-            // can use some visual indicator to show the user if they disconnected
-            connectedToSocket={connectedToSocket}
-          />
+          <Table sendSocketMsg={sendMessage} />
         </Route>
         <Route path="/about">
-          <About
-            myUsername={username}
-            loggedIn={loggedIn}
-            connectedToSocket={connectedToSocket}
-          />
+          <About />
         </Route>
         <Route path="/login">
           <Login />
@@ -80,30 +54,18 @@ const App = React.memo(() => {
           <Register />
         </Route>
         <Route path="/password/change">
-          <PasswordChange
-            username={username}
-            loggedIn={loggedIn}
-            connectedToSocket={connectedToSocket}
-          />
+          <PasswordChange />
         </Route>
         <Route path="/password/reset">
           <PasswordReset />
         </Route>
 
         <Route path="/password/new">
-          <NewPassword
-            username={username}
-            loggedIn={loggedIn}
-            connectedToSocket={connectedToSocket}
-          />
+          <NewPassword />
         </Route>
 
         <Route path="/profile/:username">
-          <UserProfile
-            myUsername={username}
-            loggedIn={loggedIn}
-            connectedToSocket={connectedToSocket}
-          />
+          <UserProfile />
         </Route>
       </Switch>
     </div>
