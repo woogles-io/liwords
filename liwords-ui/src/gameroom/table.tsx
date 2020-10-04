@@ -49,7 +49,7 @@ const defaultGameInfo = {
     | 'DOUBLE'
     | 'TRIPLE'
     | 'VOID',
-  rating_mode: 0, // 0 is rated and 1 is casual; see realtime proto.
+  rating_mode: 'RATED',
   max_overtime_minutes: 0,
   done: false,
 };

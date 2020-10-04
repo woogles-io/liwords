@@ -73,7 +73,7 @@ export const parseMsgs = (msg: Uint8Array) => {
     const parsedMsg = msgTypes[msgType];
     const topush = {
       msgType,
-      parsedMsg: parsedMsg.deserializeBinary(msgBytes),
+      parsedMsg: parsedMsg?.deserializeBinary(msgBytes),
     };
     msgs.push(topush);
     // eslint-disable-next-line no-param-reassign
