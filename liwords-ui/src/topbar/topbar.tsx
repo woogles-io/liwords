@@ -38,7 +38,7 @@ export const TopBar = React.memo((props: Props) => {
         {Menu}
         {loggedIn ? (
           <div className="user-info">
-            <Tooltip title={`Latency: ${currentLagMs} ms.`}>
+            <Tooltip title={`Latency: ${currentLagMs || '...'} ms.`}>
               <a href={`/profile/${username}`}>{username}</a>
             </Tooltip>
             {!connectedToSocket ? (
