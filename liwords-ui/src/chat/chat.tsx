@@ -1,7 +1,7 @@
 /* eslint-disable jsx-a11y/click-events-have-key-events */
 /* eslint-disable jsx-a11y/no-static-element-interactions */
 import React, { useEffect, useRef, useState } from 'react';
-import { Button, Card, Input, Tabs } from 'antd';
+import { Card, Input, Tabs } from 'antd';
 import { ChatEntity } from './chat_entity';
 import { ChatEntityObj, PresenceEntity } from '../store/store';
 import './chat.scss';
@@ -126,7 +126,7 @@ export const Chat = React.memo((props: Props) => {
             onChange={onChange}
             value={curMsg}
           />
-          <Button onClick={props.DISCONNECT}>DISCONNECT</Button>
+          {/* <Button onClick={props.DISCONNECT}>DISCONNECT</Button> */}
         </TabPane>
       </Tabs>
     </Card>
