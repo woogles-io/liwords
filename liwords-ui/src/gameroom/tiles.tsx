@@ -76,7 +76,7 @@ const Tiles = React.memo((props: Props) => {
       let x = minCol;
       do --x;
       while (
-        x > 0 &&
+        x >= 0 &&
         props.tilesLayout[minRow * props.gridDim + x] !== EmptySpace
       );
       tentativeScoreStyle = { row: minRow, col: x + 1 };
@@ -84,7 +84,7 @@ const Tiles = React.memo((props: Props) => {
       let y = minRow;
       do --y;
       while (
-        y > 0 &&
+        y >= 0 &&
         props.tilesLayout[y * props.gridDim + minCol] !== EmptySpace
       );
       tentativeScoreStyle = { row: y + 1, col: minCol };
