@@ -3,9 +3,9 @@ import { useParams, useLocation } from 'react-router-dom';
 import { notification, Card, Table, Row, Col } from 'antd';
 import axios, { AxiosError } from 'axios';
 import { TopBar } from '../topbar/topbar';
-import { useLiwordsSocket } from '../socket/socket';
 import './profile.scss';
 import { toAPIUrl } from '../api/api';
+import { useStoreContext } from '../store/store';
 
 type ProfileResponse = {
   first_name: string;
@@ -196,11 +196,7 @@ const StatsCard = (props: StatsProps) => {
   );
 };
 
-type Props = {
-  loggedIn: boolean;
-  myUsername: string;
-  connectedToSocket: boolean;
-};
+type Props = {};
 
 export const UserProfile = (props: Props) => {
   const { username } = useParams();
@@ -208,7 +204,7 @@ export const UserProfile = (props: Props) => {
   // Show username's profile
   const [ratings, setRatings] = useState({});
   const [stats, setStats] = useState({});
-  const { username: viewer } = useLiwordsSocket();
+  const { username: viewer } = useStoreContext().loginState;
   useEffect(() => {
     axios
       .post<ProfileResponse>(
@@ -229,11 +225,7 @@ export const UserProfile = (props: Props) => {
     <>
       <Row>
         <Col span={24}>
-          <TopBar
-            username={props.myUsername}
-            loggedIn={props.loggedIn}
-            connectedToSocket={props.connectedToSocket}
-          />
+          <TopBar />
         </Col>
       </Row>
 
@@ -244,6 +236,7 @@ export const UserProfile = (props: Props) => {
             <a href="/password/change">Change your password</a>
           ) : null}
         </header>
+
         <RatingsCard ratings={ratings} />
         <StatsCard stats={stats} />
       </div>

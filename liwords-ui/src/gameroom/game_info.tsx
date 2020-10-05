@@ -20,7 +20,7 @@ export type GameMetadata = {
     | 'DOUBLE'
     | 'TRIPLE'
     | 'VOID';
-  rating_mode: number;
+  rating_mode: string;
   done: boolean;
 };
 
@@ -45,29 +45,19 @@ type Props = {
 
 export const GameInfo = (props: Props) => {
   let variant;
-  let rated;
   if (props.meta.variant === 'classic') {
     variant = 'Classic';
   }
-  // It is missing from the props.meta if rated.
-  if (!props.meta.rating_mode) {
-    rated = 'Rated';
-  } else {
-    rated = 'Unrated';
-  }
-  // Default to void, see macondo.proto; void is zero or default value of enum.
-  let challenge = 'Void';
 
-  if (props.meta.challenge_rule) {
-    challenge = {
-      FIVE_POINT: '5 point',
-      TEN_POINT: '10 point',
-      SINGLE: 'Single',
-      DOUBLE: 'Double',
-      TRIPLE: 'Triple',
-      VOID: 'Void',
-    }[props.meta.challenge_rule];
-  }
+  const rated = props.meta.rating_mode === 'RATED' ? 'Rated' : 'Unrated';
+  const challenge = {
+    FIVE_POINT: '5 point',
+    TEN_POINT: '10 point',
+    SINGLE: 'Single',
+    DOUBLE: 'Double',
+    TRIPLE: 'Triple',
+    VOID: 'Void',
+  }[props.meta.challenge_rule];
 
   return (
     <Card className="game-info">

@@ -117,6 +117,7 @@ func main() {
 	registrationService := registration.NewRegistrationService(userStore)
 	gameService := gameplay.NewGameService(userStore, gameStore)
 	profileService := pkguser.NewProfileService(userStore)
+	autocompleteService := pkguser.NewAutocompleteService(userStore)
 
 	router.Handle("/ping", http.HandlerFunc(pingEndpoint))
 
@@ -131,6 +132,9 @@ func main() {
 
 	router.Handle(userservice.ProfileServicePathPrefix,
 		middlewares.Then(userservice.NewProfileServiceServer(profileService, nil)))
+
+	router.Handle(userservice.AutocompleteServicePathPrefix,
+		middlewares.Then(userservice.NewAutocompleteServiceServer(autocompleteService, nil)))
 
 	// Create any caches
 	alphabet.CreateLetterDistributionCache()

@@ -26,6 +26,7 @@ import {
   UserPresence,
   UserPresences,
   ReadyForGame,
+  LagMeasurement,
 } from '../gen/api/proto/realtime/realtime_pb';
 import { ActionType } from '../actions/actions';
 import { endGameMessage } from './end_of_game';
@@ -68,12 +69,13 @@ export const parseMsgs = (msg: Uint8Array) => {
       [MessageType.USER_PRESENCE]: UserPresence,
       [MessageType.USER_PRESENCES]: UserPresences,
       [MessageType.READY_FOR_GAME]: ReadyForGame,
+      [MessageType.LAG_MEASUREMENT]: LagMeasurement,
     };
 
     const parsedMsg = msgTypes[msgType];
     const topush = {
       msgType,
-      parsedMsg: parsedMsg.deserializeBinary(msgBytes),
+      parsedMsg: parsedMsg?.deserializeBinary(msgBytes),
     };
     msgs.push(topush);
     // eslint-disable-next-line no-param-reassign
@@ -82,11 +84,7 @@ export const parseMsgs = (msg: Uint8Array) => {
   return msgs;
 };
 
-export const onSocketMsg = (
-  username: string,
-  connID: string,
-  storeData: StoreData
-) => {
+export const onSocketMsg = (storeData: StoreData) => {
   return (reader: FileReader) => {
     if (!reader.result) {
       return;
@@ -132,7 +130,7 @@ export const onSocketMsg = (
           if (soughtGame === null) {
             return;
           }
-          if (receiver === username) {
+          if (receiver === storeData.loginState.username) {
             BoopSounds.matchReqSound.play();
             if (mr.getRematchFor() !== '') {
               // Only display the rematch modal if we are the recipient
@@ -162,6 +160,15 @@ export const onSocketMsg = (
         case MessageType.SERVER_MESSAGE: {
           const sm = parsedMsg as ServerMessage;
           message.warning(sm.getMessage(), 2);
+          break;
+        }
+
+        case MessageType.LAG_MEASUREMENT: {
+          const lag = parsedMsg as LagMeasurement;
+          storeData.dispatchLoginState({
+            actionType: ActionType.SetCurrentLagMs,
+            payload: lag.getLagMs(),
+          });
           break;
         }
 
@@ -252,8 +259,8 @@ export const onSocketMsg = (
 
           // Determine if this is the tab that should accept the game.
           if (
-            nge.getAccepterCid() !== connID &&
-            nge.getRequesterCid() !== connID
+            nge.getAccepterCid() !== storeData.loginState.connID &&
+            nge.getRequesterCid() !== storeData.loginState.connID
           ) {
             console.log(
               'ignoring on this tab...',
@@ -261,7 +268,7 @@ export const onSocketMsg = (
               '-',
               nge.getRequesterCid(),
               '-',
-              connID
+              storeData.loginState.connID
             );
             break;
           }
@@ -299,7 +306,7 @@ export const onSocketMsg = (
             payload: sge,
           });
           // play sound
-          if (username === sge.getEvent()?.getNickname()) {
+          if (storeData.loginState.username === sge.getEvent()?.getNickname()) {
             BoopSounds.makeMoveSound.play();
           } else {
             BoopSounds.oppMoveSound.play();

@@ -90,6 +90,7 @@ enum MessageType {
   USER_PRESENCES = 23;
   SERVER_MESSAGE = 24;
   READY_FOR_GAME = 25;
+  LAG_MEASUREMENT = 26;
 
   // Add more events here. The total number of events should fit in a byte.
   // We should definitely not be using anywhere close to 255 events, and
@@ -110,6 +111,8 @@ message GameMeta {
 }
 
 message GameDeletion { string id = 1; }
+
+message LagMeasurement { int32 lag_ms = 1; }
 
 // Bi-directional messages
 

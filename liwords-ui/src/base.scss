@@ -323,7 +323,7 @@ ul
       background: white;
       transition: none;
     }
-    &:hover {
+    &:not([disabled]):hover {
       span.key-command {
         opacity: 1;
       }
@@ -349,6 +349,17 @@ ul
     outline: 0;
     transition: none;
     cursor: pointer;
+    &.ant-btn-dangerous {
+      &,
+      &:hover,
+      &:focus,
+      &:visited,
+      &:active {
+        background: $color-timer-out-dark;
+        border: $color-timer-out-dark;
+        transition: none;
+      }
+    }
     &,
     &:hover,
     &:focus,
@@ -358,7 +369,7 @@ ul
       color: white;
       transition: none;
     }
-    &:disabled {
+    &:disabled, &:disabled:hover {
       background: $color-gray-middle;
       color: white;
     }

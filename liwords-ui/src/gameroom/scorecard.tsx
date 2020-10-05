@@ -35,6 +35,8 @@ type MoveEntityObj = {
   score: string;
   oldScore: number;
   cumulative: number;
+  bonus: number;
+  endRackPts: number;
   lostScore: number;
 };
 
@@ -78,6 +80,23 @@ const ScorecardTurn = (props: turnProps) => {
     // Create a base turn, and modify it accordingly. This is memoized as we
     // don't want to do this relatively expensive computation all the time.
     const evts = props.turn;
+
+    let oldScore;
+    if (evts[0].getLostScore()) {
+      oldScore = evts[0].getCumulative() + evts[0].getLostScore();
+    } else if (evts[0].getEndRackPoints()) {
+      oldScore = evts[0].getCumulative() - evts[0].getEndRackPoints();
+    } else {
+      oldScore = evts[0].getCumulative() - evts[0].getScore();
+    }
+    let timeRemaining = '';
+    if (
+      evts[0].getType() !== GameEvent.Type.END_RACK_PTS &&
+      evts[0].getType() !== GameEvent.Type.END_RACK_PENALTY
+    ) {
+      timeRemaining = millisToTimeStr(evts[0].getMillisRemaining(), false);
+    }
+
     const turn = {
       player: {
         nickname: evts[0].getNickname(),
@@ -86,16 +105,16 @@ const ScorecardTurn = (props: turnProps) => {
         avatar_url: '',
       },
       coords: evts[0].getPosition(),
-      timeRemaining: millisToTimeStr(evts[0].getMillisRemaining(), false),
+      timeRemaining: timeRemaining,
       rack: evts[0].getRack(),
       play: displaySummary(evts[0], props.board),
       score: `${evts[0].getScore()}`,
       lostScore: evts[0].getLostScore(),
       moveType: displayType(evts[0]),
       cumulative: evts[0].getCumulative(),
-      oldScore: evts[0].getLostScore()
-        ? evts[0].getCumulative() + evts[0].getLostScore()
-        : evts[0].getCumulative() - evts[0].getScore(),
+      bonus: evts[0].getBonus(),
+      endRackPts: evts[0].getEndRackPoints(),
+      oldScore: oldScore,
     };
     if (evts.length === 1) {
       return turn;
@@ -132,15 +151,9 @@ const ScorecardTurn = (props: turnProps) => {
           case GameEvent.Type.CHALLENGE_BONUS:
             turn.score = `${turn.score} + ${evts[i].getBonus()}`;
             break;
-          // case GameEvent.Type.END_RACK_PENALTY:
-          //   turn.score = `${turn.score}-${evts[i].getLostScore()}`;
-          //   break;
           case GameEvent.Type.END_RACK_PTS:
             turn.score = `${turn.score}+${evts[i].getEndRackPoints()}`;
             break;
-          // case GameEvent.Type.TIME_PENALTY:
-          //   turn.score = `${turn.score}-${evts[i].getLostScore()}`;
-          //   break;
         }
         turn.cumulative = evts[i].getCumulative();
       }
@@ -148,6 +161,16 @@ const ScorecardTurn = (props: turnProps) => {
     return turn;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [props.turn]);
+
+  let scoreChange;
+  if (memoizedTurn.lostScore > 0) {
+    scoreChange = `${memoizedTurn.oldScore} - ${memoizedTurn.lostScore}`;
+  } else if (memoizedTurn.endRackPts > 0) {
+    scoreChange = `${memoizedTurn.oldScore} + ${memoizedTurn.endRackPts}`;
+  } else {
+    scoreChange = `${memoizedTurn.oldScore} + ${memoizedTurn.score}`;
+  }
+
   return (
     <>
       <div className="turn">
@@ -165,11 +188,7 @@ const ScorecardTurn = (props: turnProps) => {
           <p>{memoizedTurn.rack}</p>
         </div>
         <div className="scores">
-          <p className="score-change">
-            {memoizedTurn.lostScore > 0
-              ? `${memoizedTurn.oldScore} - ${memoizedTurn.lostScore}`
-              : `${memoizedTurn.oldScore} + ${memoizedTurn.score}`}
-          </p>
+          <p className="score-change">{scoreChange}</p>
           <p className="cumulative">{memoizedTurn.cumulative}</p>
         </div>
       </div>
@@ -189,7 +208,7 @@ export const ScoreCard = React.memo((props: Props) => {
       currentEl.scrollTop = currentEl.scrollHeight || 0;
       const parentHeight = document.getElementById('left-sidebar')
         ?.clientHeight;
-      let navHeight = document.getElementById('main-nav')?.clientHeight || 0;
+      const navHeight = document.getElementById('main-nav')?.clientHeight || 0;
       if (parentHeight) {
         setCardHeight(
           parentHeight -

@@ -15,6 +15,7 @@ type Props = {
   sendChat: (msg: string) => void;
   description: string;
   presences: { [uuid: string]: PresenceEntity };
+  DISCONNECT?: () => void;
 };
 
 export const Chat = React.memo((props: Props) => {
@@ -125,6 +126,7 @@ export const Chat = React.memo((props: Props) => {
             onChange={onChange}
             value={curMsg}
           />
+          {/* <Button onClick={props.DISCONNECT}>DISCONNECT</Button> */}
         </TabPane>
       </Tabs>
     </Card>

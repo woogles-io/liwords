@@ -21,6 +21,7 @@ import {
 import { ClockController, Times, Millis } from './timer_controller';
 import { PlayerOrder } from './constants';
 import { PoolFormatType } from '../constants/pool_formats';
+import { LoginState, LoginStateReducer } from './login_state';
 
 export enum ChatEntityType {
   UserChat,
@@ -57,6 +58,10 @@ export type StoreData = {
   // Functions and data to deal with the global store.
   lobbyContext: LobbyState;
   dispatchLobbyContext: (action: Action) => void;
+
+  loginState: LoginState;
+  dispatchLoginState: (action: Action) => void;
+
   redirGame: string;
   setRedirGame: React.Dispatch<React.SetStateAction<string>>;
 
@@ -109,6 +114,16 @@ export const Context = createContext<StoreData>({
     matchRequests: [],
   },
   dispatchLobbyContext: defaultFunction,
+
+  loginState: {
+    username: '',
+    userID: '',
+    loggedIn: false,
+    connectedToSocket: false,
+    connID: '',
+  },
+  dispatchLoginState: defaultFunction,
+
   redirGame: '',
   setRedirGame: defaultFunction,
 
@@ -183,6 +198,13 @@ export const Store = ({ children, ...props }: Props) => {
     soughtGames: [],
     activeGames: [],
     matchRequests: [],
+  });
+  const [loginState, dispatchLoginState] = useReducer(LoginStateReducer, {
+    username: '',
+    userID: '',
+    loggedIn: false,
+    connectedToSocket: false,
+    connID: '',
   });
 
   const [gameContext, dispatchGameContext] = useReducer(GameReducer, null, () =>
@@ -277,6 +299,8 @@ export const Store = ({ children, ...props }: Props) => {
   const store = {
     lobbyContext,
     dispatchLobbyContext,
+    loginState,
+    dispatchLoginState,
     gameContext,
     dispatchGameContext,
     redirGame,

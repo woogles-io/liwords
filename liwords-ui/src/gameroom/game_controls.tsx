@@ -2,6 +2,7 @@ import React from 'react';
 import { Button, Popconfirm } from 'antd';
 
 type Props = {
+  exchangeAllowed?: boolean;
   finalPassOrChallenge?: boolean;
   myTurn?: boolean;
   observer?: boolean;
@@ -61,7 +62,10 @@ const GameControls = React.memo((props: Props) => {
         <span className="key-command">3</span>
       </Button>
 
-      <Button onClick={props.showExchangeModal} disabled={!props.myTurn}>
+      <Button
+        onClick={props.showExchangeModal}
+        disabled={!(props.myTurn && props.exchangeAllowed)}
+      >
         Exchange
         <span className="key-command">4</span>
       </Button>

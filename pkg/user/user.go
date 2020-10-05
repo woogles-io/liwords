@@ -22,6 +22,7 @@ type Store interface {
 	RemoveFollower(ctx context.Context, targetUser, follower uint) error
 	// GetFollows gets all the users that the passed-in DB ID is following.
 	GetFollows(ctx context.Context, uid uint) ([]*entity.User, error)
+	UsernamesByPrefix(ctx context.Context, prefix string) ([]string, error)
 }
 
 // SessionStore is a session store

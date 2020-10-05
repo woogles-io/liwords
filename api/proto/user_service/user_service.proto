@@ -100,3 +100,11 @@ service ProfileService {
   rpc GetStats(StatsRequest) returns (StatsResponse);
   rpc GetProfile(ProfileRequest) returns (ProfileResponse);
 }
+
+// Autocomplete
+
+message UsernameSearchRequest { string prefix = 1; }
+message UsernameSearchResponse { repeated string usernames = 1; }
+service AutocompleteService {
+  rpc GetCompletion(UsernameSearchRequest) returns (UsernameSearchResponse);
+}

@@ -21,11 +21,7 @@ const tailLayout = {
   },
 };
 
-type Props = {
-  username: string;
-  loggedIn: boolean;
-  connectedToSocket: boolean;
-};
+type Props = {};
 
 export const PasswordChange = (props: Props) => {
   const [err, setErr] = useState('');
@@ -68,11 +64,7 @@ export const PasswordChange = (props: Props) => {
     <>
       <Row>
         <Col span={24}>
-          <TopBar
-            username={props.username}
-            loggedIn={props.loggedIn}
-            connectedToSocket={props.connectedToSocket}
-          />
+          <TopBar />
         </Col>
       </Row>
       <Form

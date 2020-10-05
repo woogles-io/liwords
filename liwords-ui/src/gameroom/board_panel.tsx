@@ -114,6 +114,9 @@ export const BoardPanel = React.memo((props: Props) => {
   const [blankModalVisible, setBlankModalVisible] = useState(false);
   const { stopClock, gameContext, gameEndMessage } = useStoreContext();
   const [exchangeModalVisible, setExchangeModalVisible] = useState(false);
+  const [exchangeAllowed, setexchangeAllowed] = useState(true);
+
+  const observer = !props.playerMeta.some((p) => p.nickname === props.username);
 
   // Need to sync state to props here whenever the board changes.
   useEffect(() => {
@@ -131,6 +134,20 @@ export const BoardPanel = React.memo((props: Props) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  useEffect(() => {
+    const bag = { ...gameContext.pool };
+    for (let i = 0; i < props.currentRack.length; i += 1) {
+      bag[props.currentRack[i]] -= 1;
+    }
+    const tilesRemaining =
+      Object.values(bag).reduce((acc, cur) => {
+        return acc + cur;
+      }, 0) - 7;
+    // Subtract 7 for opponent rack, won't matter when the
+    // rack is smaller than that because past the threshold by then
+    setexchangeAllowed(tilesRemaining >= 7);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [gameContext.pool]);
   useEffect(() => {
     if (
       gameContext.playState === PlayState.WAITING_FOR_FINAL_PASS &&
@@ -205,21 +222,23 @@ export const BoardPanel = React.memo((props: Props) => {
     setArrowProperties(nextArrowPropertyState(arrowProperties, row, col));
   };
   const keydown = (key: string) => {
-    if (key === '2') {
-      makeMove('pass');
-      return;
-    }
-    if (key === '3') {
-      makeMove('challenge');
-      return;
-    }
-    if (key === '4') {
-      setExchangeModalVisible(true);
-      return;
-    }
-    if (key === '$') {
-      makeMove('exchange', props.currentRack);
-      return;
+    if (isMyTurn() && !props.gameDone) {
+      if (key === '2') {
+        makeMove('pass');
+        return;
+      }
+      if (key === '3') {
+        makeMove('challenge');
+        return;
+      }
+      if (key === '4' && exchangeAllowed) {
+        setExchangeModalVisible(true);
+        return;
+      }
+      if (key === '$' && exchangeAllowed) {
+        makeMove('exchange', props.currentRack);
+        return;
+      }
     }
     if (key === 'ArrowLeft' || key === 'ArrowRight') {
       setArrowProperties({
@@ -478,7 +497,6 @@ export const BoardPanel = React.memo((props: Props) => {
     // stopClock();
   };
 
-  const observer = !props.playerMeta.some((p) => p.nickname === props.username);
   const rematch = () => {
     const evt = new MatchRequest();
     const receiver = new MatchUser();
@@ -579,6 +597,7 @@ export const BoardPanel = React.memo((props: Props) => {
         finalPassOrChallenge={
           gameContext.playState === PlayState.WAITING_FOR_FINAL_PASS
         }
+        exchangeAllowed={exchangeAllowed}
         observer={observer}
         onRecall={recallTiles}
         showExchangeModal={showExchangeModal}

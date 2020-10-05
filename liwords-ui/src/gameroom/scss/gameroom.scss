@@ -429,12 +429,19 @@
   border-radius: 10%;
   font-size: 12px;
   font-weight: bold;
-  margin: 1px;
-  left: -100%;
   border: 1px solid $color-timer-dark;
   background: $color-timer-light;
   color: $color-timer-dark;
 }
+
+.tile .tentative-score.tentative-score-horizontal {
+  right: 100%;
+}
+
+.tile .tentative-score.tentative-score-vertical {
+  bottom: 100%;
+}
+
 .tile:hover {
   .tentative-score {
   }
