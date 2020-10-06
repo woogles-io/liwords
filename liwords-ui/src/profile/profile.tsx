@@ -204,6 +204,8 @@ type RecentGamesResponse = {
   game_info: Array<GameMetadata>;
 };
 
+const gamesPageSize = 10;
+
 export const UserProfile = (props: Props) => {
   const { username } = useParams();
   const location = useLocation();
@@ -212,6 +214,7 @@ export const UserProfile = (props: Props) => {
   const [stats, setStats] = useState({});
   const [recentGames, setRecentGames] = useState<Array<GameMetadata>>([]);
   const { username: viewer } = useStoreContext().loginState;
+  const [recentGamesOffset, setRecentGamesOffset] = useState(0);
   useEffect(() => {
     axios
       .post<ProfileResponse>(
@@ -226,13 +229,16 @@ export const UserProfile = (props: Props) => {
         setStats(JSON.parse(resp.data.stats_json).Data);
       })
       .catch(errorCatcher);
+  }, [username, location.pathname]);
 
+  useEffect(() => {
     axios
       .post<RecentGamesResponse>(
         toAPIUrl('game_service.GameMetadataService', 'GetRecentGames'),
         {
           username,
-          numGames: 20,
+          numGames: gamesPageSize,
+          offset: recentGamesOffset,
         }
       )
       .then((resp) => {
@@ -240,7 +246,7 @@ export const UserProfile = (props: Props) => {
         setRecentGames(resp.data.game_info);
       })
       .catch(errorCatcher);
-  }, [username, location.pathname]);
+  }, [username, recentGamesOffset]);
 
   return (
     <>
@@ -261,7 +267,16 @@ export const UserProfile = (props: Props) => {
         <RatingsCard ratings={ratings} />
         <StatsCard stats={stats} />
         <h3>Recent Games</h3>
-        <GamesHistoryCard games={recentGames} username={username} />
+        <GamesHistoryCard
+          games={recentGames}
+          username={username}
+          fetchPrev={() =>
+            setRecentGamesOffset(Math.max(recentGamesOffset - gamesPageSize, 0))
+          }
+          fetchNext={() =>
+            setRecentGamesOffset(recentGamesOffset + gamesPageSize)
+          }
+        />
       </div>
     </>
   );

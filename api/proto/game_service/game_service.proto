@@ -4,6 +4,7 @@ option go_package = "github.com/domino14/liwords/rpc/api/proto/game_service";
 
 import "api/proto/realtime/realtime.proto";
 import "macondo/api/proto/macondo/macondo.proto";
+import "google/protobuf/timestamp.proto";
 
 // Meta information about a game, including its players.
 message GameInfoRequest { string game_id = 1; }
@@ -42,7 +43,7 @@ message GameInfoResponse {
   int32 increment_seconds = 12;
   repeated int32 scores = 13;
   int32 winner = 14;
-  int64 updated_at = 15;
+  google.protobuf.Timestamp created_at = 15;
   string game_id = 16;
 }
 

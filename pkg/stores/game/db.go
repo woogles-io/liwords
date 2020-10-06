@@ -8,6 +8,7 @@ import (
 	"github.com/rs/zerolog/log"
 
 	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/types/known/timestamppb"
 
 	"gorm.io/datatypes"
 	"gorm.io/driver/postgres"
@@ -168,7 +169,7 @@ func (s *DBStore) GetRematchStreak(ctx context.Context, originalRequestId string
 	games := []*game{}
 	if results := s.db.
 		Where("quickdata->>'s' = ? AND game_end_reason != 0", originalRequestId).
-		Order("updated_at desc").
+		Order("created_at desc").
 		Find(&games); results.Error != nil {
 		return nil, results.Error
 	}
@@ -185,7 +186,7 @@ func (s *DBStore) GetRecentGames(ctx context.Context, username string, numGames 
 		Joins("JOIN users as u0  ON u0.id = games.player0_id").
 		Joins("JOIN users as u1  ON u1.id = games.player1_id").
 		Where("u0.username = ? OR u1.username = ? AND game_end_reason != 0", username, username).
-		Order("updated_at desc").
+		Order("created_at desc").
 		Find(&games); results.Error != nil {
 		return nil, results.Error
 	}
@@ -237,7 +238,7 @@ func convertGameToInfoResponse(g *game) (*gs.GameInfoResponse, error) {
 		IncrementSeconds:   gamereq.IncrementSeconds,
 		ChallengeRule:      gamereq.ChallengeRule,
 		RatingMode:         gamereq.RatingMode,
-		UpdatedAt:          g.UpdatedAt.Unix(),
+		CreatedAt:          timestamppb.New(g.CreatedAt),
 		GameId:             g.UUID,
 	}
 	return info, nil

@@ -1,15 +1,13 @@
-import { List, Skeleton } from 'antd';
+import { Button, List, Skeleton } from 'antd';
 import React from 'react';
+import moment from 'moment';
 import { GameMetadata } from '../gameroom/game_info';
-import { GameMeta } from '../gen/api/proto/realtime/realtime_pb';
 
 type Props = {
   games: Array<GameMetadata>;
   username: string;
-};
-
-type SGHProps = {
-  game: GameMetadata;
+  fetchPrev: () => void;
+  fetchNext: () => void;
 };
 
 const itemTitle = (item: GameMetadata, username: string) => {
@@ -66,17 +64,26 @@ const itemDescription = (item: GameMetadata, username: string) => {
   return description;
 };
 
-export const SingleGameHistory = (props: SGHProps) => {};
-
 export const GamesHistoryCard = (props: Props) => {
   // Turn the game metadata into a list.
   return (
     <List
-      itemLayout="horizontal"
+      itemLayout="vertical"
       dataSource={props.games}
+      header={
+        <>
+          <Button onClick={props.fetchPrev}>Prev</Button>
+          <Button onClick={props.fetchNext}>Next</Button>
+        </>
+      }
       renderItem={(item) => (
         <List.Item>
-          <List.Item.Meta title={itemTitle(item, props.username)} />
+          <List.Item.Meta
+            title={itemTitle(item, props.username)}
+            description={moment(
+              item.created_at ? item.created_at : ''
+            ).fromNow()}
+          />
           <div>{itemDescription(item, props.username)}</div>
         </List.Item>
       )}

@@ -23,7 +23,7 @@ export type GameMetadata = {
     | 'VOID';
   rating_mode: string;
   game_end_reason: string; // ?
-  updated_at?: string;
+  created_at?: string;
   winner?: number;
   scores?: Array<number>;
   game_id?: string;

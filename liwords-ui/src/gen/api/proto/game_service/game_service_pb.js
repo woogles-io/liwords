@@ -16,6 +16,8 @@ var api_proto_realtime_realtime_pb = require('../../../api/proto/realtime/realti
 goog.object.extend(proto, api_proto_realtime_realtime_pb);
 var macondo_api_proto_macondo_macondo_pb = require('../../../macondo/api/proto/macondo/macondo_pb.js');
 goog.object.extend(proto, macondo_api_proto_macondo_macondo_pb);
+var google_protobuf_timestamp_pb = require('google-protobuf/google/protobuf/timestamp_pb.js');
+goog.object.extend(proto, google_protobuf_timestamp_pb);
 goog.exportSymbol('proto.game_service.GCGRequest', null, global);
 goog.exportSymbol('proto.game_service.GCGResponse', null, global);
 goog.exportSymbol('proto.game_service.GameInfoRequest', null, global);
@@ -745,7 +747,7 @@ proto.game_service.GameInfoResponse.toObject = function(includeInstance, msg) {
     incrementSeconds: jspb.Message.getFieldWithDefault(msg, 12, 0),
     scoresList: (f = jspb.Message.getRepeatedField(msg, 13)) == null ? undefined : f,
     winner: jspb.Message.getFieldWithDefault(msg, 14, 0),
-    updatedAt: jspb.Message.getFieldWithDefault(msg, 15, 0),
+    createdAt: (f = msg.getCreatedAt()) && google_protobuf_timestamp_pb.Timestamp.toObject(includeInstance, f),
     gameId: jspb.Message.getFieldWithDefault(msg, 16, "")
   };
 
@@ -837,8 +839,9 @@ proto.game_service.GameInfoResponse.deserializeBinaryFromReader = function(msg, 
       msg.setWinner(value);
       break;
     case 15:
-      var value = /** @type {number} */ (reader.readInt64());
-      msg.setUpdatedAt(value);
+      var value = new google_protobuf_timestamp_pb.Timestamp;
+      reader.readMessage(value,google_protobuf_timestamp_pb.Timestamp.deserializeBinaryFromReader);
+      msg.setCreatedAt(value);
       break;
     case 16:
       var value = /** @type {string} */ (reader.readString());
@@ -965,11 +968,12 @@ proto.game_service.GameInfoResponse.serializeBinaryToWriter = function(message, 
       f
     );
   }
-  f = message.getUpdatedAt();
-  if (f !== 0) {
-    writer.writeInt64(
+  f = message.getCreatedAt();
+  if (f != null) {
+    writer.writeMessage(
       15,
-      f
+      f,
+      google_protobuf_timestamp_pb.Timestamp.serializeBinaryToWriter
     );
   }
   f = message.getGameId();
@@ -1256,20 +1260,39 @@ proto.game_service.GameInfoResponse.prototype.setWinner = function(value) {
 
 
 /**
- * optional int64 updated_at = 15;
- * @return {number}
+ * optional google.protobuf.Timestamp created_at = 15;
+ * @return {?proto.google.protobuf.Timestamp}
  */
-proto.game_service.GameInfoResponse.prototype.getUpdatedAt = function() {
-  return /** @type {number} */ (jspb.Message.getFieldWithDefault(this, 15, 0));
+proto.game_service.GameInfoResponse.prototype.getCreatedAt = function() {
+  return /** @type{?proto.google.protobuf.Timestamp} */ (
+    jspb.Message.getWrapperField(this, google_protobuf_timestamp_pb.Timestamp, 15));
 };
 
 
 /**
- * @param {number} value
+ * @param {?proto.google.protobuf.Timestamp|undefined} value
+ * @return {!proto.game_service.GameInfoResponse} returns this
+*/
+proto.game_service.GameInfoResponse.prototype.setCreatedAt = function(value) {
+  return jspb.Message.setWrapperField(this, 15, value);
+};
+
+
+/**
+ * Clears the message field making it undefined.
  * @return {!proto.game_service.GameInfoResponse} returns this
  */
-proto.game_service.GameInfoResponse.prototype.setUpdatedAt = function(value) {
-  return jspb.Message.setProto3IntField(this, 15, value);
+proto.game_service.GameInfoResponse.prototype.clearCreatedAt = function() {
+  return this.setCreatedAt(undefined);
+};
+
+
+/**
+ * Returns whether this field is set.
+ * @return {boolean}
+ */
+proto.game_service.GameInfoResponse.prototype.hasCreatedAt = function() {
+  return jspb.Message.getField(this, 15) != null;
 };
 
 

@@ -4,6 +4,7 @@
 import * as jspb from "google-protobuf";
 import * as api_proto_realtime_realtime_pb from "../../../api/proto/realtime/realtime_pb";
 import * as macondo_api_proto_macondo_macondo_pb from "../../../macondo/api/proto/macondo/macondo_pb";
+import * as google_protobuf_timestamp_pb from "google-protobuf/google/protobuf/timestamp_pb";
 
 export class GameInfoRequest extends jspb.Message {
   getGameId(): string;
@@ -121,8 +122,10 @@ export class GameInfoResponse extends jspb.Message {
   getWinner(): number;
   setWinner(value: number): void;
 
-  getUpdatedAt(): number;
-  setUpdatedAt(value: number): void;
+  hasCreatedAt(): boolean;
+  clearCreatedAt(): void;
+  getCreatedAt(): google_protobuf_timestamp_pb.Timestamp | undefined;
+  setCreatedAt(value?: google_protobuf_timestamp_pb.Timestamp): void;
 
   getGameId(): string;
   setGameId(value: string): void;
@@ -152,7 +155,7 @@ export namespace GameInfoResponse {
     incrementSeconds: number,
     scoresList: Array<number>,
     winner: number,
-    updatedAt: number,
+    createdAt?: google_protobuf_timestamp_pb.Timestamp.AsObject,
     gameId: string,
   }
 }
