@@ -260,6 +260,9 @@ func handleChallenge(ctx context.Context, entGame *entity.Game,
 	if entGame.Game.Playing() == macondopb.PlayState_GAME_OVER {
 		if entGame.ChallengeRule() == macondopb.ChallengeRule_TRIPLE {
 			entGame.SetGameEndReason(pb.GameEndReason_TRIPLE_CHALLENGE)
+			// Player may have accrued overtime penalties before challenging.
+			onTurn := entGame.PlayerOnTurn()
+			entGame.RecordTimeOfMove(onTurn)
 			winner := int(entGame.History().Winner)
 			entGame.SetWinnerIdx(winner)
 			entGame.SetLoserIdx(1 - winner)
