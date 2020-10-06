@@ -31,20 +31,23 @@ func performEndgameDuties(ctx context.Context, g *entity.Game,
 	evts := []*pb.ServerGameplayEvent{}
 
 	var p0penalty, p1penalty int
-	if g.CachedTimeRemaining(0) < 0 {
-		p0penalty = 10 * int(math.Ceil(float64(-g.CachedTimeRemaining(0))/60000.0))
-	}
-	if g.CachedTimeRemaining(1) < 0 {
-		p1penalty = 10 * int(math.Ceil(float64(-g.CachedTimeRemaining(1))/60000.0))
-	}
 	// Limit time penalties to the max OT. This is so that we don't get situations
 	// where a game was adjudicated days after the fact and a user ends up with
 	// a score of -37500
-	if p0penalty > 50 {
-		p0penalty = 50
+	maxOvertimeMs := g.Timers.MaxOvertime * 60000
+	p0overtimeMs := -g.CachedTimeRemaining(0)
+	if p0overtimeMs > maxOvertimeMs {
+		p0overtimeMs = maxOvertimeMs
 	}
-	if p1penalty > 50 {
-		p1penalty = 50
+	p1overtimeMs := -g.CachedTimeRemaining(1)
+	if p1overtimeMs > maxOvertimeMs {
+		p1overtimeMs = maxOvertimeMs
+	}
+	if p0overtimeMs > 0 {
+		p0penalty = 10 * int(math.Ceil(float64(p0overtimeMs)/60000.0))
+	}
+	if p1overtimeMs > 0 {
+		p1penalty = 10 * int(math.Ceil(float64(p1overtimeMs)/60000.0))
 	}
 
 	if p0penalty > 0 {
@@ -233,6 +236,11 @@ func setTimedOut(ctx context.Context, entGame *entity.Game, pidx int, gameStore 
 	userStore user.Store, listStatStore stats.ListStatStore) error {
 	log.Debug().Interface("playing", entGame.Game.Playing()).Msg("timed out!")
 	entGame.Game.SetPlaying(macondopb.PlayState_GAME_OVER)
+
+	// The losing player always overtimes by the maximum amount.
+	// Not less, even if no moves in the final minute.
+	// Not more, even if game is abandoned and resumed/adjudicated much later.
+	entGame.Timers.TimeRemaining[pidx] = entGame.Timers.MaxOvertime * -60000
 
 	// And send a game end event.
 	entGame.SetGameEndReason(pb.GameEndReason_TIME)
