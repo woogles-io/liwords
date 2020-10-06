@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Button, Modal, notification, message, Tooltip } from 'antd';
 import { SyncOutlined } from '@ant-design/icons';
 import axios from 'axios';
@@ -118,12 +118,90 @@ export const BoardPanel = React.memo((props: Props) => {
 
   const observer = !props.playerMeta.some((p) => p.nickname === props.username);
 
+  const isMyTurn = React.useCallback(() => {
+    const iam = gameContext.nickToPlayerOrder[props.username];
+    return iam && iam === `p${gameContext.onturn}`;
+  }, [gameContext.nickToPlayerOrder, props.username, gameContext.onturn]);
+
+  const lastLettersRef = useRef<string>();
+  const readOnlyEffectDependenciesRef = useRef<{
+    displayedRack: string;
+    isMyTurn: () => boolean;
+    placedTiles: Set<EphemeralTile>;
+    dim: number;
+  }>();
+  readOnlyEffectDependenciesRef.current = {
+    displayedRack,
+    isMyTurn,
+    placedTiles,
+    dim: props.board.dim,
+  };
+
   // Need to sync state to props here whenever the board changes.
   useEffect(() => {
-    setDisplayedRack(props.currentRack);
-    setPlacedTiles(new Set<EphemeralTile>());
-    setPlacedTilesTempScore(0);
-    setArrowProperties({ row: 0, col: 0, horizontal: false, show: false });
+    let fullReset = false;
+    const lastLetters = lastLettersRef.current;
+    const dep = readOnlyEffectDependenciesRef.current!;
+    if (lastLetters === undefined) {
+      // First load.
+      fullReset = true;
+    } else if (
+      props.currentRack &&
+      !dep.displayedRack &&
+      !dep.placedTiles.size
+    ) {
+      // First load after receiving rack.
+      fullReset = true;
+    } else if (!dep.isMyTurn()) {
+      // Opponent's turn means we have just made a move. (Assumption: there are only two players.)
+      fullReset = true;
+    } else {
+      // Opponent just did something. Check if it affects any premove.
+      // TODO: revisit when supporting non-square boards.
+      const letterAt = (row: number, col: number, letters: string) =>
+        row < 0 || row >= dep.dim || col < 0 || col >= dep.dim
+          ? null
+          : letters[row * dep.dim + col];
+      const letterChanged = (row: number, col: number) =>
+        letterAt(row, col, lastLetters) !==
+        letterAt(row, col, props.board.letters);
+      const hookChanged = (
+        row: number,
+        col: number,
+        drow: number,
+        dcol: number
+      ) => {
+        while (true) {
+          row += drow;
+          col += dcol;
+          if (letterChanged(row, col)) return true;
+          const letter = letterAt(row, col, props.board.letters);
+          if (letter === null || letter === EmptySpace) {
+            return false;
+          }
+        }
+      };
+      const placedTileAffected = (row: number, col: number) =>
+        letterChanged(row, col) ||
+        hookChanged(row, col, -1, 0) ||
+        hookChanged(row, col, +1, 0) ||
+        hookChanged(row, col, 0, -1) ||
+        hookChanged(row, col, 0, +1);
+      if (
+        Array.from(dep.placedTiles).some(({ row, col }) =>
+          placedTileAffected(row, col)
+        )
+      ) {
+        fullReset = true;
+      }
+    }
+    if (fullReset) {
+      setDisplayedRack(props.currentRack);
+      setPlacedTiles(new Set<EphemeralTile>());
+      setPlacedTilesTempScore(0);
+      setArrowProperties({ row: 0, col: 0, horizontal: false, show: false });
+    }
+    lastLettersRef.current = props.board.letters;
   }, [props.board.letters, props.currentRack]);
 
   useEffect(() => {
@@ -435,10 +513,6 @@ export const BoardPanel = React.memo((props: Props) => {
     makeMove('exchange', exchangedTiles);
   };
 
-  const isMyTurn = () => {
-    const iam = gameContext.nickToPlayerOrder[props.username];
-    return iam && iam === `p${gameContext.onturn}`;
-  };
   const makeMove = (move: string, addl?: string) => {
     let moveEvt;
     if (!isMyTurn()) {
