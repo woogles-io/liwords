@@ -50,6 +50,9 @@ export class PlayerInfo extends jspb.Message {
   getIsBot(): boolean;
   setIsBot(value: boolean): void;
 
+  getFirst(): boolean;
+  setFirst(value: boolean): void;
+
   serializeBinary(): Uint8Array;
   toObject(includeInstance?: boolean): PlayerInfo.AsObject;
   static toObject(includeInstance: boolean, msg: PlayerInfo): PlayerInfo.AsObject;
@@ -70,6 +73,7 @@ export namespace PlayerInfo {
     title: string,
     avatarUrl: string,
     isBot: boolean,
+    first: boolean,
   }
 }
 
@@ -100,9 +104,6 @@ export class GameInfoResponse extends jspb.Message {
   getRatingMode(): api_proto_realtime_realtime_pb.RatingModeMap[keyof api_proto_realtime_realtime_pb.RatingModeMap];
   setRatingMode(value: api_proto_realtime_realtime_pb.RatingModeMap[keyof api_proto_realtime_realtime_pb.RatingModeMap]): void;
 
-  getDone(): boolean;
-  setDone(value: boolean): void;
-
   getMaxOvertimeMinutes(): number;
   setMaxOvertimeMinutes(value: number): void;
 
@@ -122,6 +123,9 @@ export class GameInfoResponse extends jspb.Message {
 
   getUpdatedAt(): number;
   setUpdatedAt(value: number): void;
+
+  getGameId(): string;
+  setGameId(value: string): void;
 
   serializeBinary(): Uint8Array;
   toObject(includeInstance?: boolean): GameInfoResponse.AsObject;
@@ -143,13 +147,13 @@ export namespace GameInfoResponse {
     tournamentName: string,
     challengeRule: macondo_api_proto_macondo_macondo_pb.ChallengeRuleMap[keyof macondo_api_proto_macondo_macondo_pb.ChallengeRuleMap],
     ratingMode: api_proto_realtime_realtime_pb.RatingModeMap[keyof api_proto_realtime_realtime_pb.RatingModeMap],
-    done: boolean,
     maxOvertimeMinutes: number,
     gameEndReason: api_proto_realtime_realtime_pb.GameEndReasonMap[keyof api_proto_realtime_realtime_pb.GameEndReasonMap],
     incrementSeconds: number,
     scoresList: Array<number>,
     winner: number,
     updatedAt: number,
+    gameId: string,
   }
 }
 
@@ -216,8 +220,8 @@ export namespace GameInfoResponses {
 }
 
 export class RecentGamesRequest extends jspb.Message {
-  getPlayerId(): string;
-  setPlayerId(value: string): void;
+  getUsername(): string;
+  setUsername(value: string): void;
 
   getNumGames(): number;
   setNumGames(value: number): void;
@@ -237,7 +241,7 @@ export class RecentGamesRequest extends jspb.Message {
 
 export namespace RecentGamesRequest {
   export type AsObject = {
-    playerId: string,
+    username: string,
     numGames: number,
     offset: number,
   }

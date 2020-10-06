@@ -361,7 +361,8 @@ proto.game_service.PlayerInfo.toObject = function(includeInstance, msg) {
     rating: jspb.Message.getFieldWithDefault(msg, 5, ""),
     title: jspb.Message.getFieldWithDefault(msg, 6, ""),
     avatarUrl: jspb.Message.getFieldWithDefault(msg, 7, ""),
-    isBot: jspb.Message.getBooleanFieldWithDefault(msg, 8, false)
+    isBot: jspb.Message.getBooleanFieldWithDefault(msg, 8, false),
+    first: jspb.Message.getBooleanFieldWithDefault(msg, 9, false)
   };
 
   if (includeInstance) {
@@ -429,6 +430,10 @@ proto.game_service.PlayerInfo.deserializeBinaryFromReader = function(msg, reader
     case 8:
       var value = /** @type {boolean} */ (reader.readBool());
       msg.setIsBot(value);
+      break;
+    case 9:
+      var value = /** @type {boolean} */ (reader.readBool());
+      msg.setFirst(value);
       break;
     default:
       reader.skipField();
@@ -512,6 +517,13 @@ proto.game_service.PlayerInfo.serializeBinaryToWriter = function(message, writer
   if (f) {
     writer.writeBool(
       8,
+      f
+    );
+  }
+  f = message.getFirst();
+  if (f) {
+    writer.writeBool(
+      9,
       f
     );
   }
@@ -662,6 +674,24 @@ proto.game_service.PlayerInfo.prototype.setIsBot = function(value) {
 };
 
 
+/**
+ * optional bool first = 9;
+ * @return {boolean}
+ */
+proto.game_service.PlayerInfo.prototype.getFirst = function() {
+  return /** @type {boolean} */ (jspb.Message.getBooleanFieldWithDefault(this, 9, false));
+};
+
+
+/**
+ * @param {boolean} value
+ * @return {!proto.game_service.PlayerInfo} returns this
+ */
+proto.game_service.PlayerInfo.prototype.setFirst = function(value) {
+  return jspb.Message.setProto3BooleanField(this, 9, value);
+};
+
+
 
 /**
  * List of repeated fields within this message type.
@@ -710,13 +740,13 @@ proto.game_service.GameInfoResponse.toObject = function(includeInstance, msg) {
     tournamentName: jspb.Message.getFieldWithDefault(msg, 6, ""),
     challengeRule: jspb.Message.getFieldWithDefault(msg, 7, 0),
     ratingMode: jspb.Message.getFieldWithDefault(msg, 8, 0),
-    done: jspb.Message.getBooleanFieldWithDefault(msg, 9, false),
     maxOvertimeMinutes: jspb.Message.getFieldWithDefault(msg, 10, 0),
     gameEndReason: jspb.Message.getFieldWithDefault(msg, 11, 0),
     incrementSeconds: jspb.Message.getFieldWithDefault(msg, 12, 0),
     scoresList: (f = jspb.Message.getRepeatedField(msg, 13)) == null ? undefined : f,
     winner: jspb.Message.getFieldWithDefault(msg, 14, 0),
-    updatedAt: jspb.Message.getFieldWithDefault(msg, 15, 0)
+    updatedAt: jspb.Message.getFieldWithDefault(msg, 15, 0),
+    gameId: jspb.Message.getFieldWithDefault(msg, 16, "")
   };
 
   if (includeInstance) {
@@ -786,10 +816,6 @@ proto.game_service.GameInfoResponse.deserializeBinaryFromReader = function(msg, 
       var value = /** @type {!proto.liwords.RatingMode} */ (reader.readEnum());
       msg.setRatingMode(value);
       break;
-    case 9:
-      var value = /** @type {boolean} */ (reader.readBool());
-      msg.setDone(value);
-      break;
     case 10:
       var value = /** @type {number} */ (reader.readInt32());
       msg.setMaxOvertimeMinutes(value);
@@ -813,6 +839,10 @@ proto.game_service.GameInfoResponse.deserializeBinaryFromReader = function(msg, 
     case 15:
       var value = /** @type {number} */ (reader.readInt64());
       msg.setUpdatedAt(value);
+      break;
+    case 16:
+      var value = /** @type {string} */ (reader.readString());
+      msg.setGameId(value);
       break;
     default:
       reader.skipField();
@@ -900,13 +930,6 @@ proto.game_service.GameInfoResponse.serializeBinaryToWriter = function(message, 
       f
     );
   }
-  f = message.getDone();
-  if (f) {
-    writer.writeBool(
-      9,
-      f
-    );
-  }
   f = message.getMaxOvertimeMinutes();
   if (f !== 0) {
     writer.writeInt32(
@@ -946,6 +969,13 @@ proto.game_service.GameInfoResponse.serializeBinaryToWriter = function(message, 
   if (f !== 0) {
     writer.writeInt64(
       15,
+      f
+    );
+  }
+  f = message.getGameId();
+  if (f.length > 0) {
+    writer.writeString(
+      16,
       f
     );
   }
@@ -1117,24 +1147,6 @@ proto.game_service.GameInfoResponse.prototype.setRatingMode = function(value) {
 
 
 /**
- * optional bool done = 9;
- * @return {boolean}
- */
-proto.game_service.GameInfoResponse.prototype.getDone = function() {
-  return /** @type {boolean} */ (jspb.Message.getBooleanFieldWithDefault(this, 9, false));
-};
-
-
-/**
- * @param {boolean} value
- * @return {!proto.game_service.GameInfoResponse} returns this
- */
-proto.game_service.GameInfoResponse.prototype.setDone = function(value) {
-  return jspb.Message.setProto3BooleanField(this, 9, value);
-};
-
-
-/**
  * optional int32 max_overtime_minutes = 10;
  * @return {number}
  */
@@ -1258,6 +1270,24 @@ proto.game_service.GameInfoResponse.prototype.getUpdatedAt = function() {
  */
 proto.game_service.GameInfoResponse.prototype.setUpdatedAt = function(value) {
   return jspb.Message.setProto3IntField(this, 15, value);
+};
+
+
+/**
+ * optional string game_id = 16;
+ * @return {string}
+ */
+proto.game_service.GameInfoResponse.prototype.getGameId = function() {
+  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 16, ""));
+};
+
+
+/**
+ * @param {string} value
+ * @return {!proto.game_service.GameInfoResponse} returns this
+ */
+proto.game_service.GameInfoResponse.prototype.setGameId = function(value) {
+  return jspb.Message.setProto3StringField(this, 16, value);
 };
 
 
@@ -1713,7 +1743,7 @@ proto.game_service.RecentGamesRequest.prototype.toObject = function(opt_includeI
  */
 proto.game_service.RecentGamesRequest.toObject = function(includeInstance, msg) {
   var f, obj = {
-    playerId: jspb.Message.getFieldWithDefault(msg, 1, ""),
+    username: jspb.Message.getFieldWithDefault(msg, 1, ""),
     numGames: jspb.Message.getFieldWithDefault(msg, 2, 0),
     offset: jspb.Message.getFieldWithDefault(msg, 3, 0)
   };
@@ -1754,7 +1784,7 @@ proto.game_service.RecentGamesRequest.deserializeBinaryFromReader = function(msg
     switch (field) {
     case 1:
       var value = /** @type {string} */ (reader.readString());
-      msg.setPlayerId(value);
+      msg.setUsername(value);
       break;
     case 2:
       var value = /** @type {number} */ (reader.readInt32());
@@ -1793,7 +1823,7 @@ proto.game_service.RecentGamesRequest.prototype.serializeBinary = function() {
  */
 proto.game_service.RecentGamesRequest.serializeBinaryToWriter = function(message, writer) {
   var f = undefined;
-  f = message.getPlayerId();
+  f = message.getUsername();
   if (f.length > 0) {
     writer.writeString(
       1,
@@ -1818,10 +1848,10 @@ proto.game_service.RecentGamesRequest.serializeBinaryToWriter = function(message
 
 
 /**
- * optional string player_id = 1;
+ * optional string username = 1;
  * @return {string}
  */
-proto.game_service.RecentGamesRequest.prototype.getPlayerId = function() {
+proto.game_service.RecentGamesRequest.prototype.getUsername = function() {
   return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 1, ""));
 };
 
@@ -1830,7 +1860,7 @@ proto.game_service.RecentGamesRequest.prototype.getPlayerId = function() {
  * @param {string} value
  * @return {!proto.game_service.RecentGamesRequest} returns this
  */
-proto.game_service.RecentGamesRequest.prototype.setPlayerId = function(value) {
+proto.game_service.RecentGamesRequest.prototype.setUsername = function(value) {
   return jspb.Message.setProto3StringField(this, 1, value);
 };
 

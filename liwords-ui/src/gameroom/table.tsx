@@ -47,7 +47,9 @@ const defaultGameInfo = {
     | 'VOID',
   rating_mode: 'RATED',
   max_overtime_minutes: 0,
-  done: false,
+  game_end_reason: 'NONE',
+  time_control_name: '',
+  // done: false,
 };
 
 export const Table = React.memo((props: Props) => {
@@ -161,7 +163,7 @@ export const Table = React.memo((props: Props) => {
     setIsObserver(observer);
 
     // If we are not the observer, tell the server we're ready for the game to start.
-    if (!gameInfo.done && !observer) {
+    if (gameInfo.game_end_reason === 'NONE' && !observer) {
       const evt = new ReadyForGame();
       evt.setGameId(gameID);
       sendSocketMsg(
@@ -250,7 +252,7 @@ export const Table = React.memo((props: Props) => {
             events={gameContext.turns}
             gameID={gameID}
             sendSocketMsg={props.sendSocketMsg}
-            gameDone={gameInfo.done}
+            gameDone={gameInfo.game_end_reason !== 'NONE'}
             playerMeta={gameInfo.players}
           />
         </div>

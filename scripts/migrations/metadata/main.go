@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"os"
+	"strings"
 
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
@@ -11,6 +12,7 @@ import (
 	"github.com/domino14/liwords/pkg/entity"
 	"github.com/domino14/liwords/pkg/stores/game"
 	"github.com/domino14/liwords/pkg/stores/user"
+	gs "github.com/domino14/liwords/rpc/api/proto/game_service"
 )
 
 func main() {
@@ -48,13 +50,34 @@ func main() {
 		// Currently, Quickdata contains the following:
 		//   OriginalRequestId
 		//   FinalScores
+		//   UserInfo
 		//
 		// Technically, the OriginalRequestId is not the same
 		// as the RequestId in the GameRequest, but we set
 		// it here just so it's not null and it doesn't matter
 		// because it's only used to obtain current rematch streaks.
+
+		playerinfos := make([]*gs.PlayerInfo, 2)
+
+		for idx, u := range g.History().Players {
+			first := idx == 0
+			if g.History().SecondWentFirst {
+				first = !first
+			}
+
+			playerinfos[idx] = &gs.PlayerInfo{
+				Nickname: u.Nickname,
+				UserId:   u.UserId,
+				// This migration script will only be run once.
+				IsBot: strings.HasPrefix(u.Nickname, "MacondoBot"),
+				First: first,
+			}
+		}
+
 		quickdata := &entity.Quickdata{OriginalRequestId: g.GameReq.RequestId,
-			FinalScores: g.History().FinalScores}
+			FinalScores: g.History().FinalScores,
+			PlayerInfo:  playerinfos,
+		}
 
 		g.Quickdata = quickdata
 

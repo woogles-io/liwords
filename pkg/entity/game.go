@@ -4,6 +4,7 @@ import (
 	"sync"
 	"time"
 
+	gameservicepb "github.com/domino14/liwords/rpc/api/proto/game_service"
 	pb "github.com/domino14/liwords/rpc/api/proto/realtime"
 	"github.com/domino14/macondo/game"
 	macondopb "github.com/domino14/macondo/gen/api/proto/macondo"
@@ -51,9 +52,13 @@ func (f *FakeNower) Sleep(t int64) {
 	f.fakeMeow += t
 }
 
+// Quickdata represents data that we might need quick access to, for the purposes
+// of aggregating large numbers of games rapidly. This should get saved in
+// its own blob in the store, as opposed to being buried within a game history.
 type Quickdata struct {
-	OriginalRequestId string  `json:"o"`
-	FinalScores       []int32 `json:"s"`
+	OriginalRequestId string                      `json:"o"`
+	FinalScores       []int32                     `json:"s"`
+	PlayerInfo        []*gameservicepb.PlayerInfo `json:"pi"`
 }
 
 // A Game should be saved to the database or store. It wraps a macondo.Game,
@@ -109,8 +114,9 @@ func NewGame(mcg *game.Game, req *pb.GameRequest) *Game {
 			TimeRemaining: []int{ms, ms},
 			MaxOvertime:   int(req.MaxOvertimeMinutes),
 		},
-		GameReq: req,
-		nower:   &GameTimer{},
+		GameReq:   req,
+		nower:     &GameTimer{},
+		Quickdata: &Quickdata{},
 	}
 }
 

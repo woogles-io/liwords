@@ -22,6 +22,8 @@ message PlayerInfo {
   // otherwise. It'll probably be a fixed pattern for the url.
   string avatar_url = 7;
   bool is_bot = 8;
+  // first is true if the player went first
+  bool first = 9;
 }
 
 message GameInfoResponse {
@@ -34,13 +36,14 @@ message GameInfoResponse {
   macondo.ChallengeRule challenge_rule = 7;
   liwords.RatingMode rating_mode = 8;
   // done - is game done?
-  bool done = 9;
+  // bool done = 9;
   int32 max_overtime_minutes = 10;
   liwords.GameEndReason game_end_reason = 11;
   int32 increment_seconds = 12;
   repeated int32 scores = 13;
   int32 winner = 14;
   int64 updated_at = 15;
+  string game_id = 16;
 }
 
 message GCGRequest { string game_id = 1; }
@@ -50,7 +53,7 @@ message GCGResponse { string gcg = 1; }
 message GameInfoResponses { repeated GameInfoResponse game_info = 1; }
 
 message RecentGamesRequest {
-  string player_id = 1;
+  string username = 1;
   int32 num_games = 2;
   int32 offset = 3;
 }

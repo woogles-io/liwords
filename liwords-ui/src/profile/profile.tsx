@@ -6,6 +6,8 @@ import { TopBar } from '../topbar/topbar';
 import './profile.scss';
 import { toAPIUrl } from '../api/api';
 import { useStoreContext } from '../store/store';
+import { GameMetadata } from '../gameroom/game_info';
+import { GamesHistoryCard } from './games_history';
 
 type ProfileResponse = {
   first_name: string;
@@ -198,12 +200,17 @@ const StatsCard = (props: StatsProps) => {
 
 type Props = {};
 
+type RecentGamesResponse = {
+  game_info: Array<GameMetadata>;
+};
+
 export const UserProfile = (props: Props) => {
   const { username } = useParams();
   const location = useLocation();
   // Show username's profile
   const [ratings, setRatings] = useState({});
   const [stats, setStats] = useState({});
+  const [recentGames, setRecentGames] = useState<Array<GameMetadata>>([]);
   const { username: viewer } = useStoreContext().loginState;
   useEffect(() => {
     axios
@@ -217,6 +224,20 @@ export const UserProfile = (props: Props) => {
         console.log('prof', resp, JSON.parse(resp.data.ratings_json).Data);
         setRatings(JSON.parse(resp.data.ratings_json).Data);
         setStats(JSON.parse(resp.data.stats_json).Data);
+      })
+      .catch(errorCatcher);
+
+    axios
+      .post<RecentGamesResponse>(
+        toAPIUrl('game_service.GameMetadataService', 'GetRecentGames'),
+        {
+          username,
+          numGames: 20,
+        }
+      )
+      .then((resp) => {
+        console.log('resp');
+        setRecentGames(resp.data.game_info);
       })
       .catch(errorCatcher);
   }, [username, location.pathname]);
@@ -239,6 +260,8 @@ export const UserProfile = (props: Props) => {
 
         <RatingsCard ratings={ratings} />
         <StatsCard stats={stats} />
+        <h3>Recent Games</h3>
+        <GamesHistoryCard games={recentGames} username={username} />
       </div>
     </>
   );

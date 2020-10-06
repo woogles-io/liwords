@@ -15,9 +15,9 @@ import (
 // in defining the backing store (i.e. it may not necessarily be a SQL db store)
 type backingStore interface {
 	Get(ctx context.Context, id string) (*entity.Game, error)
-	GetQuickdata(ctx context.Context, id string) (*entity.Game, error)
+	GetMetadata(ctx context.Context, id string) (*gs.GameInfoResponse, error)
 	GetRematchStreak(ctx context.Context, originalRequestId string) (*gs.GameInfoResponses, error)
-	GetRecentGames(ctx context.Context, playerId string, numGames int, offset int) (*gs.GameInfoResponses, error)
+	GetRecentGames(ctx context.Context, username string, numGames int, offset int) (*gs.GameInfoResponses, error)
 	Set(context.Context, *entity.Game) error
 	Create(context.Context, *entity.Game) error
 	ListActive(ctx context.Context) ([]*pb.GameMeta, error)
@@ -101,14 +101,14 @@ func (c *Cache) GetRematchStreak(ctx context.Context, originalRequestId string) 
 	return c.backing.GetRematchStreak(ctx, originalRequestId)
 }
 
-func (c *Cache) GetRecentGames(ctx context.Context, playerId string, numGames int, offset int) (*gs.GameInfoResponses, error) {
-	return c.backing.GetRecentGames(ctx, playerId, numGames, offset)
+func (c *Cache) GetRecentGames(ctx context.Context, username string, numGames int, offset int) (*gs.GameInfoResponses, error) {
+	return c.backing.GetRecentGames(ctx, username, numGames, offset)
 }
 
 // Similar to get but does not unmarshal the stats and timers and does
 // not play the game
-func (c *Cache) GetQuickdata(ctx context.Context, id string) (*entity.Game, error) {
-	return c.backing.GetQuickdata(ctx, id)
+func (c *Cache) GetMetadata(ctx context.Context, id string) (*gs.GameInfoResponse, error) {
+	return c.backing.GetMetadata(ctx, id)
 }
 
 // Set sets a game in the cache, AND in the backing store. This ensures if the

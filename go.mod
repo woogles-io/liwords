@@ -25,4 +25,7 @@ require (
 	golang.org/x/text v0.3.3 // indirect
 	google.golang.org/protobuf v1.25.0
 	gopkg.in/check.v1 v1.0.0-20200227125254-8fa46927fb4f // indirect
+	gorm.io/datatypes v0.0.0-20200924071644-3967db6857cf
+	gorm.io/driver/postgres v1.0.2
+	gorm.io/gorm v1.20.2
 )

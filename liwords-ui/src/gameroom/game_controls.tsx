@@ -42,7 +42,7 @@ const GameControls = React.memo((props: Props) => {
         okText="Yes"
         cancelText="No"
       >
-        <Button danger>Resign</Button>
+        <Button danger>Ragequit</Button>
       </Popconfirm>
 
       <Button
