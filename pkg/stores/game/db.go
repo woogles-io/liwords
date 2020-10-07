@@ -128,47 +128,19 @@ func (s *DBStore) Get(ctx context.Context, id string) (*entity.Game, error) {
 func (s *DBStore) GetMetadata(ctx context.Context, id string) (*gs.GameInfoResponse, error) {
 	g := &game{}
 
-	result := s.db.Debug().Where("uuid = ?", id).First(g)
+	result := s.db.Where("uuid = ?", id).First(g)
 	if result.Error != nil {
 		return nil, result.Error
 	}
 
-	// g := &entity.Game{
-	// 	Started:       Started,
-	// 	GameEndReason: pb.GameEndReason(GameEndReason),
-	// 	WinnerIdx:     WinnerIdx,
-	// 	LoserIdx:      LoserIdx,
-	// 	ChangeHook:    gameEventChan,
-	// 	PlayerDBIDs:   [2]uint{p0id, p1id},
-	// }
-
-	// // Now copy the request
-	// req := &pb.GameRequest{}
-	// err := proto.Unmarshal(reqBytes, req)
-	// if err != nil {
-	// 	return nil, err
-	// }
-	// g.GameReq = req
-	// log.Debug().Interface("req", req).Msg("req-unmarshal-quickdata")
-	// // Then unmarshal the history.
-	// hist := &macondopb.GameHistory{}
-	// err = proto.Unmarshal(histBytes, hist)
-	// if err != nil {
-	// 	return nil, err
-	// }
-	// log.Info().Interface("hist", hist).Msg("hist-unmarshal-quickdata")
-	// g.History = hist
-
 	return convertGameToInfoResponse(g)
 
-	// return FromStateQuickdata(g.Started, g.GameEndReason, g.Player0ID, g.Player1ID,
-	// 	g.WinnerIdx, g.LoserIdx, g.Request, g.History, s.gameEventChan, s.cfg)
 }
 
 func (s *DBStore) GetRematchStreak(ctx context.Context, originalRequestId string) (*gs.GameInfoResponses, error) {
 	games := []*game{}
 	if results := s.db.
-		Where("quickdata->>'s' = ? AND game_end_reason != 0", originalRequestId).
+		Where("quickdata->>'o' = ? AND game_end_reason != 0", originalRequestId).
 		Order("created_at desc").
 		Find(&games); results.Error != nil {
 		return nil, results.Error
@@ -181,7 +153,7 @@ func (s *DBStore) GetRecentGames(ctx context.Context, username string, numGames 
 		return nil, errors.New("too many games")
 	}
 	var games []*game
-	if results := s.db.Debug().Limit(numGames).
+	if results := s.db.Limit(numGames).
 		Offset(offset).
 		Joins("JOIN users as u0  ON u0.id = games.player0_id").
 		Joins("JOIN users as u1  ON u1.id = games.player1_id").
@@ -240,6 +212,7 @@ func convertGameToInfoResponse(g *game) (*gs.GameInfoResponse, error) {
 		RatingMode:         gamereq.RatingMode,
 		CreatedAt:          timestamppb.New(g.CreatedAt),
 		GameId:             g.UUID,
+		OriginalRequestId:  mdata.OriginalRequestId,
 	}
 	return info, nil
 }
@@ -356,7 +329,7 @@ func (s *DBStore) Set(ctx context.Context, g *entity.Game) error {
 
 	// XXX: not sure this select for update is working. Might consider
 	// moving to select for share??
-	result := s.db.Debug().Model(&game{}).Clauses(clause.Locking{Strength: "UPDATE"}).
+	result := s.db.Model(&game{}).Clauses(clause.Locking{Strength: "UPDATE"}).
 		Where("uuid = ?", g.GameID()).Updates(dbg)
 
 	return result.Error

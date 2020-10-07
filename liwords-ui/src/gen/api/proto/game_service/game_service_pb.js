@@ -748,7 +748,8 @@ proto.game_service.GameInfoResponse.toObject = function(includeInstance, msg) {
     scoresList: (f = jspb.Message.getRepeatedField(msg, 13)) == null ? undefined : f,
     winner: jspb.Message.getFieldWithDefault(msg, 14, 0),
     createdAt: (f = msg.getCreatedAt()) && google_protobuf_timestamp_pb.Timestamp.toObject(includeInstance, f),
-    gameId: jspb.Message.getFieldWithDefault(msg, 16, "")
+    gameId: jspb.Message.getFieldWithDefault(msg, 16, ""),
+    originalRequestId: jspb.Message.getFieldWithDefault(msg, 17, "")
   };
 
   if (includeInstance) {
@@ -846,6 +847,10 @@ proto.game_service.GameInfoResponse.deserializeBinaryFromReader = function(msg, 
     case 16:
       var value = /** @type {string} */ (reader.readString());
       msg.setGameId(value);
+      break;
+    case 17:
+      var value = /** @type {string} */ (reader.readString());
+      msg.setOriginalRequestId(value);
       break;
     default:
       reader.skipField();
@@ -980,6 +985,13 @@ proto.game_service.GameInfoResponse.serializeBinaryToWriter = function(message, 
   if (f.length > 0) {
     writer.writeString(
       16,
+      f
+    );
+  }
+  f = message.getOriginalRequestId();
+  if (f.length > 0) {
+    writer.writeString(
+      17,
       f
     );
   }
@@ -1311,6 +1323,24 @@ proto.game_service.GameInfoResponse.prototype.getGameId = function() {
  */
 proto.game_service.GameInfoResponse.prototype.setGameId = function(value) {
   return jspb.Message.setProto3StringField(this, 16, value);
+};
+
+
+/**
+ * optional string original_request_id = 17;
+ * @return {string}
+ */
+proto.game_service.GameInfoResponse.prototype.getOriginalRequestId = function() {
+  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 17, ""));
+};
+
+
+/**
+ * @param {string} value
+ * @return {!proto.game_service.GameInfoResponse} returns this
+ */
+proto.game_service.GameInfoResponse.prototype.setOriginalRequestId = function(value) {
+  return jspb.Message.setProto3StringField(this, 17, value);
 };
 
 

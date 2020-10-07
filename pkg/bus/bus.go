@@ -469,6 +469,7 @@ func (b *Bus) seekRequest(ctx context.Context, seekOrMatch, auth, userID, connID
 			gameRequest = req.(*pb.MatchRequest).GameRequest
 		} else { // It's a rematch.
 			isRematch = true
+			// XXX: rewrite to call the less expensive GetMetadata.
 			g, err := b.gameStore.Get(ctx, gameID)
 			if err != nil {
 				return err
@@ -586,7 +587,7 @@ func (b *Bus) newBotGame(ctx context.Context, req *pb.MatchRequest, botUserID st
 	if err != nil {
 		return err
 	}
-	sg := &entity.SoughtGame{MatchRequest: req}
+	sg := entity.NewMatchRequest(req)
 	return b.instantiateAndStartGame(ctx, accUser, req.User.UserId, req.GameRequest,
 		sg, BotRequestID, "")
 }

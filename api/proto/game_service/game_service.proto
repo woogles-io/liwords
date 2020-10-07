@@ -45,6 +45,7 @@ message GameInfoResponse {
   int32 winner = 14;
   google.protobuf.Timestamp created_at = 15;
   string game_id = 16;
+  string original_request_id = 17;
 }
 
 message GCGRequest { string game_id = 1; }

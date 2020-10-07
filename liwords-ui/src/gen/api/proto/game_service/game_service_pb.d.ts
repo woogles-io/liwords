@@ -130,6 +130,9 @@ export class GameInfoResponse extends jspb.Message {
   getGameId(): string;
   setGameId(value: string): void;
 
+  getOriginalRequestId(): string;
+  setOriginalRequestId(value: string): void;
+
   serializeBinary(): Uint8Array;
   toObject(includeInstance?: boolean): GameInfoResponse.AsObject;
   static toObject(includeInstance: boolean, msg: GameInfoResponse): GameInfoResponse.AsObject;
@@ -157,6 +160,7 @@ export namespace GameInfoResponse {
     winner: number,
     createdAt?: google_protobuf_timestamp_pb.Timestamp.AsObject,
     gameId: string,
+    originalRequestId: string,
   }
 }
 

@@ -27,6 +27,11 @@ export type GameMetadata = {
   winner?: number;
   scores?: Array<number>;
   game_id?: string;
+  original_request_id?: string;
+};
+
+export type RecentGamesResponse = {
+  game_info: Array<GameMetadata>;
 };
 
 export type PlayerMetadata = {

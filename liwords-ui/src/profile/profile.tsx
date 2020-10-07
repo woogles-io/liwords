@@ -6,7 +6,7 @@ import { TopBar } from '../topbar/topbar';
 import './profile.scss';
 import { toAPIUrl } from '../api/api';
 import { useStoreContext } from '../store/store';
-import { GameMetadata } from '../gameroom/game_info';
+import { GameMetadata, RecentGamesResponse } from '../gameroom/game_info';
 import { GamesHistoryCard } from './games_history';
 
 type ProfileResponse = {
@@ -199,10 +199,6 @@ const StatsCard = (props: StatsProps) => {
 };
 
 type Props = {};
-
-type RecentGamesResponse = {
-  game_info: Array<GameMetadata>;
-};
 
 const gamesPageSize = 10;
 

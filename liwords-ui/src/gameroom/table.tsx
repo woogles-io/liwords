@@ -22,9 +22,15 @@ import {
 import { encodeToSocketFmt } from '../utils/protobuf';
 import './scss/gameroom.scss';
 import { ScoreCard } from './scorecard';
-import { GameInfo, GameMetadata, PlayerMetadata } from './game_info';
+import {
+  GameInfo,
+  GameMetadata,
+  PlayerMetadata,
+  RecentGamesResponse,
+} from './game_info';
 import { BoopSounds } from '../sound/boop';
 import { toAPIUrl } from '../api/api';
+import { StreakWidget } from './streak_widget';
 // import { GameInfoResponse } from '../gen/api/proto/game_service/game_service_pb';
 
 type Props = {
@@ -66,12 +72,14 @@ export const Table = React.memo((props: Props) => {
     setRematchRequest,
     presences,
     loginState,
+    gameEndMessage,
   } = useStoreContext();
   const { username } = loginState;
 
   const { sendSocketMsg } = props;
   // const location = useLocation();
   const [gameInfo, setGameInfo] = useState<GameMetadata>(defaultGameInfo);
+  const [streakGameInfo, setStreakGameInfo] = useState<Array<GameMetadata>>([]);
   const [isObserver, setIsObserver] = useState(false);
 
   useEffect(() => {
@@ -127,6 +135,24 @@ export const Table = React.memo((props: Props) => {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [gameID]);
+
+  useEffect(() => {
+    // Request streak info.
+    if (gameInfo.original_request_id) {
+      axios
+        .post<RecentGamesResponse>(
+          toAPIUrl('game_service.GameMetadataService', 'GetRematchStreak'),
+          {
+            original_request_id: gameInfo.original_request_id,
+          }
+        )
+        .then((streakresp) => {
+          setStreakGameInfo(streakresp.data.game_info);
+        });
+    }
+    // Call this when a gameEndMessage comes in, so the streak updates
+    // at the end of the game.
+  }, [gameInfo.original_request_id, gameEndMessage]);
 
   useEffect(() => {
     if (pTimedOut === undefined) return;
@@ -255,6 +281,7 @@ export const Table = React.memo((props: Props) => {
             gameDone={gameInfo.game_end_reason !== 'NONE'}
             playerMeta={gameInfo.players}
           />
+          <StreakWidget recentGames={streakGameInfo} />
         </div>
         <div className="data-area">
           <PlayerCards playerMeta={gameInfo.players} />
