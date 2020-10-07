@@ -129,8 +129,7 @@ export const Table = React.memo((props: Props) => {
   useEffect(() => {
     if (pTimedOut === undefined) return;
     // Otherwise, player timed out. This will only send once.
-    // Send the time out if we're either of both players that are in the game.
-    if (isObserver) return;
+    // Observers also send the time out, to clean up noticed abandoned games.
 
     let timedout = '';
 
