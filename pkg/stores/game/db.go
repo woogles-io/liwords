@@ -101,22 +101,20 @@ func (s *DBStore) Get(ctx context.Context, id string) (*entity.Game, error) {
 	var tdata entity.Timers
 	err := json.Unmarshal(g.Timers, &tdata)
 	if err != nil {
-		log.Err(err).Msg("scan-tdata")
 		return nil, err
 	}
 
 	var sdata *entity.Stats
 	err = json.Unmarshal(g.Stats, sdata)
 	if err != nil {
-		log.Err(err).Msg("scan-stats")
 		// it could be that the stats are empty, so don't worry.
 	}
 
 	var qdata *entity.Quickdata
 	err = json.Unmarshal(g.Quickdata, qdata)
 	if err != nil {
-		log.Err(err).Msg("scan-qdata")
 		// qdata could be empty, although it shouldn't be after we do a migration.
+		// Uncomment out the following after the migration:
 		// return nil, err
 	}
 
