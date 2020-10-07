@@ -633,11 +633,19 @@
 }
 .game-controls {
   margin: 0 auto;
+  white-space: nowrap;
   button {
     margin: 0 6px;
     padding: 0;
   }
+  & > :first-child {
+    margin-left: 0;
+  }
+  & > :last-child {
+    margin-right: 0;
+  }
 }
+
 .end-message {
   background-color: $color-primary-middle;
   .ant-card-body {
