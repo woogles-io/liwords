@@ -81,7 +81,7 @@ export const startingGameState = (
     lastPlayedTiles: {},
     nickToPlayerOrder: {},
     uidToPlayerOrder: {},
-    playState: PlayState.PLAYING,
+    playState: PlayState.GAME_OVER,
     clockController: null,
     onClockTick: () => {},
     onClockTimeout: () => {},

@@ -31,11 +31,14 @@ import {
 import { BoopSounds } from '../sound/boop';
 import { toAPIUrl } from '../api/api';
 import { StreakWidget } from './streak_widget';
+import { PlayState } from '../gen/macondo/api/proto/macondo/macondo_pb';
 // import { GameInfoResponse } from '../gen/api/proto/game_service/game_service_pb';
 
 type Props = {
   sendSocketMsg: (msg: Uint8Array) => void;
 };
+
+const StreakFetchDelay = 2000;
 
 const defaultGameInfo = {
   players: new Array<PlayerMetadata>(),
@@ -137,8 +140,21 @@ export const Table = React.memo((props: Props) => {
   }, [gameID]);
 
   useEffect(() => {
-    // Request streak info.
-    if (gameInfo.original_request_id) {
+    // Request streak info only if a few conditions are true.
+    // We want to request it as soon as the original request ID comes in,
+    // but only if this is an ongoing game. Also, we want to request it
+    // as soon as the game ends (so the streak updates without having to go
+    // to a new game).
+
+    if (!gameInfo.original_request_id) {
+      return;
+    }
+    if (gameContext.playState === PlayState.GAME_OVER && !gameEndMessage) {
+      // if the game has long been over don't request this. Only request it
+      // when we are going to play a game (or observe), or when the game just ended.
+      return;
+    }
+    setTimeout(() => {
       axios
         .post<RecentGamesResponse>(
           toAPIUrl('game_service.GameMetadataService', 'GetRematchStreak'),
@@ -149,10 +165,13 @@ export const Table = React.memo((props: Props) => {
         .then((streakresp) => {
           setStreakGameInfo(streakresp.data.game_info);
         });
-    }
+      // Put this on a delay. Otherwise the game might not be saved to the
+      // db as having finished before the gameEndMessage comes in.
+    }, StreakFetchDelay);
+
     // Call this when a gameEndMessage comes in, so the streak updates
     // at the end of the game.
-  }, [gameInfo.original_request_id, gameEndMessage]);
+  }, [gameInfo.original_request_id, gameEndMessage, gameContext.playState]);
 
   useEffect(() => {
     if (pTimedOut === undefined) return;
