@@ -1,4 +1,4 @@
-import { Button, List, Skeleton } from 'antd';
+import { Button, List } from 'antd';
 import React from 'react';
 import moment from 'moment';
 import { GameMetadata } from '../gameroom/game_info';
