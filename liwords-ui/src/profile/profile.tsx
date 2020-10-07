@@ -6,6 +6,8 @@ import { TopBar } from '../topbar/topbar';
 import './profile.scss';
 import { toAPIUrl } from '../api/api';
 import { useStoreContext } from '../store/store';
+import { GameMetadata, RecentGamesResponse } from '../gameroom/game_info';
+import { GamesHistoryCard } from './games_history';
 
 type ProfileResponse = {
   first_name: string;
@@ -198,13 +200,17 @@ const StatsCard = (props: StatsProps) => {
 
 type Props = {};
 
+const gamesPageSize = 10;
+
 export const UserProfile = (props: Props) => {
   const { username } = useParams();
   const location = useLocation();
   // Show username's profile
   const [ratings, setRatings] = useState({});
   const [stats, setStats] = useState({});
+  const [recentGames, setRecentGames] = useState<Array<GameMetadata>>([]);
   const { username: viewer } = useStoreContext().loginState;
+  const [recentGamesOffset, setRecentGamesOffset] = useState(0);
   useEffect(() => {
     axios
       .post<ProfileResponse>(
@@ -220,6 +226,23 @@ export const UserProfile = (props: Props) => {
       })
       .catch(errorCatcher);
   }, [username, location.pathname]);
+
+  useEffect(() => {
+    axios
+      .post<RecentGamesResponse>(
+        toAPIUrl('game_service.GameMetadataService', 'GetRecentGames'),
+        {
+          username,
+          numGames: gamesPageSize,
+          offset: recentGamesOffset,
+        }
+      )
+      .then((resp) => {
+        console.log('resp');
+        setRecentGames(resp.data.game_info);
+      })
+      .catch(errorCatcher);
+  }, [username, recentGamesOffset]);
 
   return (
     <>
@@ -239,6 +262,17 @@ export const UserProfile = (props: Props) => {
 
         <RatingsCard ratings={ratings} />
         <StatsCard stats={stats} />
+        <h3>Recent Games</h3>
+        <GamesHistoryCard
+          games={recentGames}
+          username={username}
+          fetchPrev={() =>
+            setRecentGamesOffset(Math.max(recentGamesOffset - gamesPageSize, 0))
+          }
+          fetchNext={() =>
+            setRecentGamesOffset(recentGamesOffset + gamesPageSize)
+          }
+        />
       </div>
     </>
   );

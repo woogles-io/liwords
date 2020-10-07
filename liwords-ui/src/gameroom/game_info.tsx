@@ -9,10 +9,11 @@ export type GameMetadata = {
   players: Array<PlayerMetadata>;
   lexicon: string;
   variant: string;
+  time_control_name: string;
   initial_time_seconds: number;
+  tournament_name: string;
   max_overtime_minutes: number;
   increment_seconds: number;
-  tournament_name: string;
   challenge_rule:
     | 'FIVE_POINT'
     | 'TEN_POINT'
@@ -21,7 +22,16 @@ export type GameMetadata = {
     | 'TRIPLE'
     | 'VOID';
   rating_mode: string;
-  done: boolean;
+  game_end_reason: string; // ?
+  created_at?: string;
+  winner?: number;
+  scores?: Array<number>;
+  game_id?: string;
+  original_request_id?: string;
+};
+
+export type RecentGamesResponse = {
+  game_info: Array<GameMetadata>;
 };
 
 export type PlayerMetadata = {
@@ -33,6 +43,7 @@ export type PlayerMetadata = {
   title: string;
   avatar_url: string;
   is_bot: boolean;
+  first: boolean;
 };
 
 export type GCGResponse = {

@@ -8,14 +8,18 @@ import (
 	"github.com/rs/zerolog/log"
 
 	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/types/known/timestamppb"
 
-	"github.com/jinzhu/gorm"
-	"github.com/jinzhu/gorm/dialects/postgres"
+	"gorm.io/datatypes"
+	"gorm.io/driver/postgres"
+	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 
 	"github.com/domino14/liwords/pkg/config"
 	"github.com/domino14/liwords/pkg/entity"
 	"github.com/domino14/liwords/pkg/stores/user"
 	pkguser "github.com/domino14/liwords/pkg/user"
+	gs "github.com/domino14/liwords/rpc/api/proto/game_service"
 	pb "github.com/domino14/liwords/rpc/api/proto/realtime"
 	"github.com/domino14/macondo/alphabet"
 	"github.com/domino14/macondo/board"
@@ -23,6 +27,10 @@ import (
 	"github.com/domino14/macondo/gaddag"
 	macondogame "github.com/domino14/macondo/game"
 	macondopb "github.com/domino14/macondo/gen/api/proto/macondo"
+)
+
+const (
+	MaxRecentGames = 20
 )
 
 // DBStore is a postgres-backed store for games.
@@ -42,35 +50,35 @@ type game struct {
 	gorm.Model
 	UUID string `gorm:"type:varchar(24);index"`
 
-	Player0ID uint
+	Player0ID uint `gorm:"foreignKey"`
 	Player0   user.User
 
-	Player1ID uint
+	Player1ID uint `gorm:"foreignKey"`
 	Player1   user.User
 
-	Timers postgres.Jsonb // A JSON blob containing the game timers.
+	Timers datatypes.JSON // A JSON blob containing the game timers.
 
 	Started       bool
 	GameEndReason int `gorm:"index"`
 	WinnerIdx     int
 	LoserIdx      int
 
+	Quickdata datatypes.JSON // A JSON blob containing the game quickdata.
+
 	// Protobuf representations of the game request and history.
 	Request []byte
 	History []byte
 
-	Stats postgres.Jsonb
+	Stats datatypes.JSON
 }
 
 // NewDBStore creates a new DB store for games.
 func NewDBStore(config *config.Config, userStore pkguser.Store) (*DBStore, error) {
-	db, err := gorm.Open("postgres", config.DBConnString)
+	db, err := gorm.Open(postgres.Open(config.DBConnString), &gorm.Config{})
 	if err != nil {
 		return nil, err
 	}
 	db.AutoMigrate(&game{})
-	db.Model(&game{}).AddForeignKey("player0_id", "users(id)", "RESTRICT", "RESTRICT")
-	db.Model(&game{}).AddForeignKey("player1_id", "users(id)", "RESTRICT", "RESTRICT")
 	return &DBStore{db: db, cfg: config, userStore: userStore}, nil
 }
 
@@ -91,23 +99,124 @@ func (s *DBStore) Get(ctx context.Context, id string) (*entity.Game, error) {
 	}
 
 	var tdata entity.Timers
-	err := json.Unmarshal(g.Timers.RawMessage, &tdata)
+	err := json.Unmarshal(g.Timers, &tdata)
 	if err != nil {
 		return nil, err
 	}
 
 	var sdata *entity.Stats
-	err = json.Unmarshal(g.Stats.RawMessage, sdata)
+	err = json.Unmarshal(g.Stats, sdata)
 	if err != nil {
 		// it could be that the stats are empty, so don't worry.
 	}
 
-	return FromState(tdata, g.Started, g.GameEndReason, g.Player0ID, g.Player1ID,
+	var qdata *entity.Quickdata
+	err = json.Unmarshal(g.Quickdata, qdata)
+	if err != nil {
+		// qdata could be empty, although it shouldn't be after we do a migration.
+		// Uncomment out the following after the migration:
+		// return nil, err
+	}
+
+	return FromState(tdata, qdata, g.Started, g.GameEndReason, g.Player0ID, g.Player1ID,
 		g.WinnerIdx, g.LoserIdx, g.Request, g.History, sdata, s.gameEventChan, s.cfg)
 }
 
+// GetMetadata gets metadata about the game, but does not actually play the game.
+func (s *DBStore) GetMetadata(ctx context.Context, id string) (*gs.GameInfoResponse, error) {
+	g := &game{}
+
+	result := s.db.Where("uuid = ?", id).First(g)
+	if result.Error != nil {
+		return nil, result.Error
+	}
+
+	return convertGameToInfoResponse(g)
+
+}
+
+func (s *DBStore) GetRematchStreak(ctx context.Context, originalRequestId string) (*gs.GameInfoResponses, error) {
+	games := []*game{}
+	if results := s.db.
+		Where("quickdata->>'o' = ? AND game_end_reason != 0", originalRequestId).
+		Order("created_at desc").
+		Find(&games); results.Error != nil {
+		return nil, results.Error
+	}
+	return convertGamesToInfoResponses(games)
+}
+
+func (s *DBStore) GetRecentGames(ctx context.Context, username string, numGames int, offset int) (*gs.GameInfoResponses, error) {
+	if numGames > MaxRecentGames {
+		return nil, errors.New("too many games")
+	}
+	var games []*game
+	if results := s.db.Limit(numGames).
+		Offset(offset).
+		Joins("JOIN users as u0  ON u0.id = games.player0_id").
+		Joins("JOIN users as u1  ON u1.id = games.player1_id").
+		Where("u0.username = ? OR u1.username = ? AND game_end_reason != 0", username, username).
+		Order("created_at desc").
+		Find(&games); results.Error != nil {
+		return nil, results.Error
+	}
+	return convertGamesToInfoResponses(games)
+}
+
+func convertGamesToInfoResponses(games []*game) (*gs.GameInfoResponses, error) {
+	responses := []*gs.GameInfoResponse{}
+	for _, g := range games {
+		info, err := convertGameToInfoResponse(g)
+		if err != nil {
+			return nil, err
+		}
+		responses = append(responses, info)
+	}
+	return &gs.GameInfoResponses{GameInfo: responses}, nil
+}
+
+func convertGameToInfoResponse(g *game) (*gs.GameInfoResponse, error) {
+	var mdata entity.Quickdata
+
+	err := json.Unmarshal(g.Quickdata, &mdata)
+	if err != nil {
+		log.Debug().Err(err).Msg("convert-game-quickdata")
+		// If it's empty or unconvertible don't quit. We need this
+		// for backwards compatibility.
+	}
+
+	gamereq := &pb.GameRequest{}
+	err = proto.Unmarshal(g.Request, gamereq)
+	if err != nil {
+		return nil, err
+	}
+	timefmt, variant, err := entity.VariantFromGameReq(gamereq)
+	if err != nil {
+		return nil, err
+	}
+
+	info := &gs.GameInfoResponse{
+		Players:            mdata.PlayerInfo,
+		GameEndReason:      pb.GameEndReason(g.GameEndReason),
+		Scores:             mdata.FinalScores,
+		Winner:             int32(g.WinnerIdx),
+		Lexicon:            gamereq.Lexicon,
+		Variant:            string(variant),
+		TimeControlName:    string(timefmt),
+		InitialTimeSeconds: gamereq.InitialTimeSeconds,
+		MaxOvertimeMinutes: gamereq.MaxOvertimeMinutes,
+		IncrementSeconds:   gamereq.IncrementSeconds,
+		ChallengeRule:      gamereq.ChallengeRule,
+		RatingMode:         gamereq.RatingMode,
+		CreatedAt:          timestamppb.New(g.CreatedAt),
+		GameId:             g.UUID,
+		OriginalRequestId:  mdata.OriginalRequestId,
+	}
+	return info, nil
+}
+
 // FromState returns an entity.Game from a DB State.
-func FromState(timers entity.Timers, Started bool,
+func FromState(timers entity.Timers, qdata *entity.Quickdata, Started bool,
 	GameEndReason int, p0id, p1id uint, WinnerIdx, LoserIdx int, reqBytes, histBytes []byte,
 	stats *entity.Stats,
 	gameEventChan chan<- *entity.EventWrapper, cfg *config.Config) (*entity.Game, error) {
@@ -121,6 +230,7 @@ func FromState(timers entity.Timers, Started bool,
 		ChangeHook:    gameEventChan,
 		PlayerDBIDs:   [2]uint{p0id, p1id},
 		Stats:         stats,
+		Quickdata:     qdata,
 	}
 	g.SetTimerModule(&entity.GameTimer{})
 
@@ -211,9 +321,14 @@ func (s *DBStore) Set(ctx context.Context, g *entity.Game) error {
 		return err
 	}
 
-	result := s.db.Model(&game{}).Set("gorm:query_option", "FOR UPDATE").
-		Where("uuid = ?", g.GameID()).Update(dbg)
+	// result := s.db.Model(&game{}).Set("gorm:query_option", "FOR UPDATE").
+	// 	Where("uuid = ?", g.GameID()).Update(dbg)
 	// s.db.LogMode(false)
+
+	// XXX: not sure this select for update is working. Might consider
+	// moving to select for share??
+	result := s.db.Model(&game{}).Clauses(clause.Locking{Strength: "UPDATE"}).
+		Where("uuid = ?", g.GameID()).Updates(dbg)
 
 	return result.Error
 }
@@ -232,6 +347,7 @@ func (s *DBStore) ListActive(ctx context.Context) ([]*pb.GameMeta, error) {
 	var games []activeGame
 
 	// Create query manually
+	// XXX: use the game quickdata to get rating info.
 	result := s.db.Table("games").Select(
 		"u0.username as p0_username, u1.username as p1_username, "+
 			"p0.ratings as p0_ratings, p1.ratings as p1_ratings, "+
@@ -284,6 +400,10 @@ func (s *DBStore) toDBObj(ctx context.Context, g *entity.Game) (*game, error) {
 	if err != nil {
 		return nil, err
 	}
+	quickdata, err := json.Marshal(g.Quickdata)
+	if err != nil {
+		return nil, err
+	}
 	req, err := proto.Marshal(g.GameReq)
 	if err != nil {
 		return nil, err
@@ -297,8 +417,9 @@ func (s *DBStore) toDBObj(ctx context.Context, g *entity.Game) (*game, error) {
 		UUID:          g.GameID(),
 		Player0ID:     g.PlayerDBIDs[0],
 		Player1ID:     g.PlayerDBIDs[1],
-		Timers:        postgres.Jsonb{RawMessage: timers},
-		Stats:         postgres.Jsonb{RawMessage: stats},
+		Timers:        timers,
+		Stats:         stats,
+		Quickdata:     quickdata,
 		Started:       g.Started,
 		GameEndReason: int(g.GameEndReason),
 		WinnerIdx:     g.WinnerIdx,
@@ -310,14 +431,20 @@ func (s *DBStore) toDBObj(ctx context.Context, g *entity.Game) (*game, error) {
 }
 
 func (s *DBStore) Disconnect() {
-	s.db.Close()
+	dbSQL, err := s.db.DB()
+	if err == nil {
+		log.Info().Msg("disconnecting SQL db")
+		dbSQL.Close()
+		return
+	}
+	log.Err(err).Msg("unable to disconnect")
 }
 
 type activeGame struct {
 	P0Username string
 	P1Username string
-	P0Ratings  postgres.Jsonb
-	P1Ratings  postgres.Jsonb
+	P0Ratings  datatypes.JSON
+	P1Ratings  datatypes.JSON
 	Request    []byte
 	Uuid       string
 }
@@ -333,12 +460,13 @@ func (a *activeGame) ToGameMeta() (*pb.GameMeta, error) {
 	ratingKey := entity.ToVariantKey(req.Lexicon, variant, timefmt)
 
 	var p0data entity.Ratings
-	err = json.Unmarshal(a.P0Ratings.RawMessage, &p0data)
+
+	err = json.Unmarshal(a.P0Ratings, &p0data)
 	if err != nil {
 		log.Err(err).Msg("unmarshal-p0-rating")
 	}
 	var p1data entity.Ratings
-	err = json.Unmarshal(a.P1Ratings.RawMessage, &p1data)
+	err = json.Unmarshal(a.P1Ratings, &p1data)
 	if err != nil {
 		log.Err(err).Msg("unmarshal-p0-rating")
 	}

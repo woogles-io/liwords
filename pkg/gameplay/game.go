@@ -25,6 +25,7 @@ import (
 	"github.com/domino14/liwords/pkg/entity"
 	"github.com/domino14/liwords/pkg/stats"
 	"github.com/domino14/liwords/pkg/user"
+	gs "github.com/domino14/liwords/rpc/api/proto/game_service"
 	pb "github.com/domino14/liwords/rpc/api/proto/realtime"
 )
 
@@ -37,6 +38,9 @@ var (
 // GameStore is an interface for getting a full game.
 type GameStore interface {
 	Get(ctx context.Context, id string) (*entity.Game, error)
+	GetMetadata(ctx context.Context, id string) (*gs.GameInfoResponse, error)
+	GetRematchStreak(ctx context.Context, originalRequestId string) (*gs.GameInfoResponses, error)
+	GetRecentGames(ctx context.Context, username string, numGames int, offset int) (*gs.GameInfoResponses, error)
 	Set(context.Context, *entity.Game) error
 	Create(context.Context, *entity.Game) error
 	ListActive(context.Context) ([]*pb.GameMeta, error)
@@ -105,6 +109,38 @@ func InstantiateNewGame(ctx context.Context, gameStore GameStore, cfg *config.Co
 
 	entGame := entity.NewGame(&runner.Game, req)
 	entGame.PlayerDBIDs = dbids
+
+	ratingKey, err := entGame.RatingKey()
+	if err != nil {
+		return nil, err
+	}
+
+	// Create player info in entGame.Quickdata
+	playerinfos := make([]*gs.PlayerInfo, len(players))
+
+	for idx, u := range users {
+		playerinfos[idx] = &gs.PlayerInfo{
+			Nickname: u.Username,
+			UserId:   u.UUID,
+			Rating:   u.GetRelevantRating(ratingKey),
+			IsBot:    u.IsBot,
+			First:    runner.FirstPlayer().UserId == u.UUID,
+		}
+		if u.Profile != nil {
+			playerinfos[idx].FullName = u.RealName()
+			playerinfos[idx].CountryCode = u.Profile.CountryCode
+			playerinfos[idx].Title = u.Profile.Title
+			// There is no avatar URL yet.
+			// playerinfos[idx].AvatarUrl = u.Profile.AvatarUrl
+		}
+	}
+
+	// Create the Quickdata now with the original player info.
+	entGame.Quickdata = &entity.Quickdata{
+		OriginalRequestId: req.OriginalRequestId,
+		PlayerInfo:        playerinfos,
+	}
+
 	// Save the game to the store.
 	if err = gameStore.Create(ctx, entGame); err != nil {
 		return nil, err

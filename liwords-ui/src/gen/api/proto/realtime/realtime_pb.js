@@ -911,7 +911,8 @@ proto.liwords.GameRequest.toObject = function(includeInstance, msg) {
     ratingMode: jspb.Message.getFieldWithDefault(msg, 7, 0),
     requestId: jspb.Message.getFieldWithDefault(msg, 8, ""),
     maxOvertimeMinutes: jspb.Message.getFieldWithDefault(msg, 9, 0),
-    playerVsBot: jspb.Message.getBooleanFieldWithDefault(msg, 10, false)
+    playerVsBot: jspb.Message.getBooleanFieldWithDefault(msg, 10, false),
+    originalRequestId: jspb.Message.getFieldWithDefault(msg, 11, "")
   };
 
   if (includeInstance) {
@@ -988,6 +989,10 @@ proto.liwords.GameRequest.deserializeBinaryFromReader = function(msg, reader) {
     case 10:
       var value = /** @type {boolean} */ (reader.readBool());
       msg.setPlayerVsBot(value);
+      break;
+    case 11:
+      var value = /** @type {string} */ (reader.readString());
+      msg.setOriginalRequestId(value);
       break;
     default:
       reader.skipField();
@@ -1086,6 +1091,13 @@ proto.liwords.GameRequest.serializeBinaryToWriter = function(message, writer) {
   if (f) {
     writer.writeBool(
       10,
+      f
+    );
+  }
+  f = message.getOriginalRequestId();
+  if (f.length > 0) {
+    writer.writeString(
+      11,
       f
     );
   }
@@ -1288,6 +1300,24 @@ proto.liwords.GameRequest.prototype.getPlayerVsBot = function() {
  */
 proto.liwords.GameRequest.prototype.setPlayerVsBot = function(value) {
   return jspb.Message.setProto3BooleanField(this, 10, value);
+};
+
+
+/**
+ * optional string original_request_id = 11;
+ * @return {string}
+ */
+proto.liwords.GameRequest.prototype.getOriginalRequestId = function() {
+  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 11, ""));
+};
+
+
+/**
+ * @param {string} value
+ * @return {!proto.liwords.GameRequest} returns this
+ */
+proto.liwords.GameRequest.prototype.setOriginalRequestId = function(value) {
+  return jspb.Message.setProto3StringField(this, 11, value);
 };
 
 

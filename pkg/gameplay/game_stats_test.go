@@ -37,6 +37,7 @@ var gameReq = &pb.GameRequest{Lexicon: "CSW19",
 	GameMode:           pb.GameMode_REAL_TIME,
 	RatingMode:         pb.RatingMode_RATED,
 	RequestId:          "yeet",
+	OriginalRequestId:  "originalyeet",
 	MaxOvertimeMinutes: 10}
 
 var DefaultConfig = macondoconfig.Config{

@@ -6,8 +6,6 @@ import (
 
 	"github.com/domino14/macondo/gcgio"
 
-	"github.com/domino14/liwords/pkg/entity"
-
 	"github.com/domino14/liwords/pkg/user"
 	pb "github.com/domino14/liwords/rpc/api/proto/game_service"
 	macondopb "github.com/domino14/macondo/gen/api/proto/macondo"
@@ -29,55 +27,27 @@ func NewGameService(u user.Store, gs GameStore) *GameService {
 // GetMetadata gets metadata for the given game.
 func (gs *GameService) GetMetadata(ctx context.Context, req *pb.GameInfoRequest) (*pb.GameInfoResponse, error) {
 
-	entGame, err := gs.gameStore.Get(ctx, req.GameId)
+	return gs.gameStore.GetMetadata(ctx, req.GameId)
+
+}
+
+//  GetRematchStreak gets quickdata for the given rematch streak.
+func (gs *GameService) GetRematchStreak(ctx context.Context, req *pb.RematchStreakRequest) (*pb.GameInfoResponses, error) {
+	resp, err := gs.gameStore.GetRematchStreak(ctx, req.OriginalRequestId)
 	if err != nil {
 		return nil, err
 	}
-	gamereq := entGame.CreationRequest()
-	timefmt, variant, err := entity.VariantFromGameReq(gamereq)
-	if err != nil {
-		return nil, err
-	}
-	players := entGame.History().Players
-	done := entGame.History().PlayState == macondopb.PlayState_GAME_OVER
-	ratingKey := entity.ToVariantKey(gamereq.Lexicon, variant, timefmt)
-	playerInfo := []*pb.PlayerInfo{}
-	for _, p := range players {
-		u, err := gs.userStore.GetByUUID(ctx, p.UserId)
-		if err != nil {
-			return nil, err
-		}
-
-		pinfo := &pb.PlayerInfo{
-			UserId:   p.UserId,
-			Nickname: p.Nickname,
-			Rating:   u.GetRelevantRating(ratingKey),
-			IsBot:    u.IsBot,
-		}
-		if u.Profile != nil {
-			pinfo.FullName = u.RealName()
-			pinfo.CountryCode = u.Profile.CountryCode
-			pinfo.Title = u.Profile.Title
-		}
-		playerInfo = append(playerInfo, pinfo)
-	}
-
-	resp := &pb.GameInfoResponse{
-		Players:            playerInfo,
-		Lexicon:            gamereq.Lexicon,
-		Variant:            string(variant),
-		TimeControlName:    string(timefmt),
-		InitialTimeSeconds: gamereq.InitialTimeSeconds,
-		MaxOvertimeMinutes: gamereq.MaxOvertimeMinutes,
-		ChallengeRule:      gamereq.ChallengeRule,
-		RatingMode:         gamereq.RatingMode,
-		Done:               done,
-		GameEndReason:      entGame.GameEndReason,
-		IncrementSeconds:   gamereq.IncrementSeconds,
-	}
-
 	return resp, nil
+}
 
+//  GetRecentGames gets quickdata for the numGames most recent games of the player
+// offset by offset.
+func (gs *GameService) GetRecentGames(ctx context.Context, req *pb.RecentGamesRequest) (*pb.GameInfoResponses, error) {
+	resp, err := gs.gameStore.GetRecentGames(ctx, req.Username, int(req.NumGames), int(req.Offset))
+	if err != nil {
+		return nil, err
+	}
+	return resp, nil
 }
 
 // GetGCG downloads a GCG for a finished game.

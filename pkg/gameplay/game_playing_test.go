@@ -14,6 +14,7 @@ import (
 	"github.com/domino14/liwords/pkg/stores/stats"
 	"github.com/domino14/liwords/pkg/stores/user"
 	pkguser "github.com/domino14/liwords/pkg/user"
+	gs "github.com/domino14/liwords/rpc/api/proto/game_service"
 	pb "github.com/domino14/liwords/rpc/api/proto/realtime"
 	"github.com/domino14/macondo/alphabet"
 	macondopb "github.com/domino14/macondo/gen/api/proto/macondo"
@@ -300,6 +301,75 @@ func TestDoubleChallengeGoodWord(t *testing.T) {
 	// They lose their turn but still get 5 seconds back.
 	is.Equal(evt.TimeRemaining, int32((25*60000)-2620))
 
+	ustore.(*user.DBStore).Disconnect()
+	lstore.(*stats.ListStatStore).Disconnect()
+	gstore.(*game.Cache).Disconnect()
+}
+
+func TestQuickdata(t *testing.T) {
+	is := is.New(t)
+	recreateDB()
+	cstr := TestingDBConnStr + " dbname=liwords_test"
+
+	ustore := userStore(cstr)
+	lstore := listStatStore(cstr)
+	cfg, gstore := gameStore(cstr, ustore)
+
+	g, nower, cancel, donechan, _ := makeGame(cfg, ustore, gstore)
+	ctx := context.WithValue(context.Background(), ConfigCtxKey("config"), &DefaultConfig)
+
+	cge1 := &pb.ClientGameplayEvent{
+		Type:           pb.ClientGameplayEvent_TILE_PLACEMENT,
+		GameId:         g.GameID(),
+		PositionCoords: "8D",
+		Tiles:          "BANJO",
+	}
+	cge2 := &pb.ClientGameplayEvent{
+		Type:           pb.ClientGameplayEvent_TILE_PLACEMENT,
+		GameId:         g.GameID(),
+		PositionCoords: "I8",
+		Tiles:          "SYZYGAL",
+	}
+	g.SetChallengeRule(macondopb.ChallengeRule_TRIPLE)
+	g.SetRacksForBoth([]*alphabet.Rack{
+		alphabet.RackFromString("AGLSYYZ", g.Alphabet()),
+		alphabet.RackFromString("ABEJNOR", g.Alphabet()),
+	})
+	// "jesse" plays a word after some time
+	nower.Sleep(3750) // 3.75 secs
+	_, err := HandleEvent(ctx, gstore, ustore, lstore,
+		"3xpEkpRAy3AizbVmDg3kdi", cge1)
+
+	is.NoErr(err)
+
+	// "cesar4" plays a word after some time
+	nower.Sleep(4750) // 4.75 secs
+	_, err = HandleEvent(ctx, gstore, ustore, lstore,
+		"xjCWug7EZtDxDHX5fRZTLo", cge2)
+
+	is.NoErr(err)
+
+	// "jesse" waits a while before challenging SYZYGAL for some reason.
+	nower.Sleep(7620)
+	entGame, err := HandleEvent(ctx, gstore, ustore, lstore,
+		"3xpEkpRAy3AizbVmDg3kdi", &pb.ClientGameplayEvent{
+			Type:   pb.ClientGameplayEvent_CHALLENGE_PLAY,
+			GameId: g.GameID(),
+		})
+	is.NoErr(err)
+
+	// Check the quickdata
+	is.Equal(entGame.Quickdata.PlayerInfo, []*gs.PlayerInfo{
+		{UserId: "xjCWug7EZtDxDHX5fRZTLo", Nickname: "cesar4", First: false, Rating: "1500?"},
+		{UserId: "3xpEkpRAy3AizbVmDg3kdi", Nickname: "jesse", First: true, Rating: "1500?"},
+	})
+	is.Equal(entGame.Quickdata.FinalScores[0], int32(93))
+	is.Equal(entGame.Quickdata.FinalScores[1], int32(34))
+	is.Equal(entGame.Quickdata.OriginalRequestId, gameReq.OriginalRequestId)
+
+	// Kill the go-routine
+	cancel()
+	<-donechan
 	ustore.(*user.DBStore).Disconnect()
 	lstore.(*stats.ListStatStore).Disconnect()
 	gstore.(*game.Cache).Disconnect()

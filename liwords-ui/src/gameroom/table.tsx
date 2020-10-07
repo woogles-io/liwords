@@ -22,14 +22,23 @@ import {
 import { encodeToSocketFmt } from '../utils/protobuf';
 import './scss/gameroom.scss';
 import { ScoreCard } from './scorecard';
-import { GameInfo, GameMetadata, PlayerMetadata } from './game_info';
+import {
+  GameInfo,
+  GameMetadata,
+  PlayerMetadata,
+  RecentGamesResponse,
+} from './game_info';
 import { BoopSounds } from '../sound/boop';
 import { toAPIUrl } from '../api/api';
+import { StreakWidget } from './streak_widget';
+import { PlayState } from '../gen/macondo/api/proto/macondo/macondo_pb';
 // import { GameInfoResponse } from '../gen/api/proto/game_service/game_service_pb';
 
 type Props = {
   sendSocketMsg: (msg: Uint8Array) => void;
 };
+
+const StreakFetchDelay = 2000;
 
 const defaultGameInfo = {
   players: new Array<PlayerMetadata>(),
@@ -47,7 +56,9 @@ const defaultGameInfo = {
     | 'VOID',
   rating_mode: 'RATED',
   max_overtime_minutes: 0,
-  done: false,
+  game_end_reason: 'NONE',
+  time_control_name: '',
+  // done: false,
 };
 
 export const Table = React.memo((props: Props) => {
@@ -64,12 +75,14 @@ export const Table = React.memo((props: Props) => {
     setRematchRequest,
     presences,
     loginState,
+    gameEndMessage,
   } = useStoreContext();
   const { username } = loginState;
 
   const { sendSocketMsg } = props;
   // const location = useLocation();
   const [gameInfo, setGameInfo] = useState<GameMetadata>(defaultGameInfo);
+  const [streakGameInfo, setStreakGameInfo] = useState<Array<GameMetadata>>([]);
   const [isObserver, setIsObserver] = useState(false);
 
   useEffect(() => {
@@ -127,6 +140,40 @@ export const Table = React.memo((props: Props) => {
   }, [gameID]);
 
   useEffect(() => {
+    // Request streak info only if a few conditions are true.
+    // We want to request it as soon as the original request ID comes in,
+    // but only if this is an ongoing game. Also, we want to request it
+    // as soon as the game ends (so the streak updates without having to go
+    // to a new game).
+
+    if (!gameInfo.original_request_id) {
+      return;
+    }
+    if (gameContext.playState === PlayState.GAME_OVER && !gameEndMessage) {
+      // if the game has long been over don't request this. Only request it
+      // when we are going to play a game (or observe), or when the game just ended.
+      return;
+    }
+    setTimeout(() => {
+      axios
+        .post<RecentGamesResponse>(
+          toAPIUrl('game_service.GameMetadataService', 'GetRematchStreak'),
+          {
+            original_request_id: gameInfo.original_request_id,
+          }
+        )
+        .then((streakresp) => {
+          setStreakGameInfo(streakresp.data.game_info);
+        });
+      // Put this on a delay. Otherwise the game might not be saved to the
+      // db as having finished before the gameEndMessage comes in.
+    }, StreakFetchDelay);
+
+    // Call this when a gameEndMessage comes in, so the streak updates
+    // at the end of the game.
+  }, [gameInfo.original_request_id, gameEndMessage, gameContext.playState]);
+
+  useEffect(() => {
     if (pTimedOut === undefined) return;
     // Otherwise, player timed out. This will only send once.
     // Observers also send the time out, to clean up noticed abandoned games.
@@ -160,7 +207,7 @@ export const Table = React.memo((props: Props) => {
     setIsObserver(observer);
 
     // If we are not the observer, tell the server we're ready for the game to start.
-    if (!gameInfo.done && !observer) {
+    if (gameInfo.game_end_reason === 'NONE' && !observer) {
       const evt = new ReadyForGame();
       evt.setGameId(gameID);
       sendSocketMsg(
@@ -249,9 +296,10 @@ export const Table = React.memo((props: Props) => {
             events={gameContext.turns}
             gameID={gameID}
             sendSocketMsg={props.sendSocketMsg}
-            gameDone={gameInfo.done}
+            gameDone={gameInfo.game_end_reason !== 'NONE'}
             playerMeta={gameInfo.players}
           />
+          <StreakWidget recentGames={streakGameInfo} />
         </div>
         <div className="data-area">
           <PlayerCards playerMeta={gameInfo.players} />

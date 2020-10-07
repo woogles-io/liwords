@@ -45,6 +45,7 @@ message GameRequest {
   string request_id = 8;
   int32 max_overtime_minutes = 9;
   bool player_vs_bot = 10;
+  string original_request_id = 11;
 }
 
 // A MatchUser requests or receives a match via a seek or a match request.
@@ -99,6 +100,7 @@ enum MessageType {
 
 // GameMeta is meant to be a quick summary of a game for watching purposes,
 // for display in a list in the lobby e.g.
+// XXX: THIS IS OBSOLETE -- USE GameInfoResponse in game_service.proto
 message GameMeta {
   message UserMeta {
     string relevant_rating = 1;
