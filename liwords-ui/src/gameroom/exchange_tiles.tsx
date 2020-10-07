@@ -115,7 +115,6 @@ export const ExchangeTiles = (props: Props) => {
           >
             Exchange
           </Button>
-          ,
         </>,
       ]}
     >
