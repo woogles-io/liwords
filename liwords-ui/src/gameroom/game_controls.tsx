@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Button, Popconfirm } from 'antd';
 
-type Props = {
+export type Props = {
   exchangeAllowed?: boolean;
   finalPassOrChallenge?: boolean;
   myTurn?: boolean;
@@ -97,6 +97,7 @@ const EndGameControls = (props: EGCProps) => {
       {props.showRematch && !rematchDisabled && (
         <Button
           type="primary"
+          data-testid="rematch-button"
           onClick={() => {
             setRematchDisabled(true);
             if (!rematchDisabled) {
