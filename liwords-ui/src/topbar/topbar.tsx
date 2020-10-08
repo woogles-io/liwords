@@ -1,10 +1,13 @@
 import React from 'react';
 import './topbar.scss';
-import { DisconnectOutlined } from '@ant-design/icons/lib';
-import { Tooltip } from 'antd';
+import { DisconnectOutlined, SettingOutlined } from '@ant-design/icons/lib';
+import { notification, Dropdown, Tooltip } from 'antd';
 import { useStoreContext } from '../store/store';
+import axios from 'axios';
+import { toAPIUrl } from '../api/api';
 
-const Menu = (
+const colors = require('../base.scss');
+const topMenu = (
   <div className="top-header-menu">
     <div className="top-header-left-frame-crossword-game">
       <a href="/">OMGWords</a>
@@ -30,21 +33,62 @@ export const TopBar = React.memo((props: Props) => {
     connectedToSocket,
     currentLagMs,
   } = useStoreContext().loginState;
+  const handleLogout = (e: React.MouseEvent) => {
+    e.preventDefault();
+    axios
+      .post(toAPIUrl('user_service.AuthenticationService', 'Logout'), {
+        withCredentials: true,
+      })
+      .then(() => {
+        notification.info({
+          message: 'Success',
+          description: 'You have been logged out.',
+        });
+      })
+      .catch((e) => {
+        console.log(e);
+      });
+  };
+  const userMenu = (
+    <ul>
+      <li>
+        <a className="plain" href={`/profile/${username}`}>
+          View Profile
+        </a>
+      </li>
+      <li onClick={handleLogout} className="link plain">
+        Log out
+      </li>
+    </ul>
+  );
   return (
     <nav className="top-header" id="main-nav">
       <div className="container">
-        <a href="/" className="site-icon">
-          <div className="top-header-site-icon-rect">
-            <div className="top-header-site-icon-m">W</div>
-          </div>
-          <div className="top-header-left-frame-site-name">Woogles.io</div>
-        </a>
-        {Menu}
+        <Tooltip
+          placement="bottomLeft"
+          color={colors.colorPrimary}
+          title={`Latency: ${currentLagMs || '...'} ms.`}
+        >
+          <a href="/" className="site-icon">
+            <div className="top-header-site-icon-rect">
+              <div className="top-header-site-icon-m">W</div>
+            </div>
+            <div className="top-header-left-frame-site-name">Woogles.io</div>
+          </a>
+        </Tooltip>
+        {topMenu}
         {loggedIn ? (
           <div className="user-info">
-            <Tooltip title={`Latency: ${currentLagMs || '...'} ms.`}>
-              <a href={`/profile/${username}`}>{username}</a>
-            </Tooltip>
+            <Dropdown
+              overlayClassName="user-menu"
+              overlay={userMenu}
+              placement="bottomRight"
+            >
+              <button className="link">
+                {username}
+                <SettingOutlined />
+              </button>
+            </Dropdown>
             {!connectedToSocket ? (
               <DisconnectOutlined style={{ color: 'red', marginLeft: 5 }} />
             ) : null}

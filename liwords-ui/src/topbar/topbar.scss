@@ -12,12 +12,20 @@ body {
   z-index: 2;
   min-height: 60px;
   background: $color-primary-middle;
-  @include type-default;
-  letter-spacing: 0.25em;
-  font-size: 12px;
-  font-weight: bold;
-  text-transform: uppercase;
+  *, button.link {
+    @include type-default;
+    background: transparent;
+    letter-spacing: 0.25em;
+    font-size: 12px;
+    font-weight: bold;
+    text-transform: uppercase;
+    .anticon {
+      display: inline;
+      margin-left: 6px;
+      color: $color-gray-dark;
+    }
 
+  }
 }
 
 .top-header-menu {
@@ -68,7 +76,7 @@ body {
   }
   /* M */
   .top-header-site-icon-m {
-    left: 3px;
+    left: 6px;
     top: 0px;
     transform: rotate(-10deg);
     position: relative;
@@ -83,6 +91,7 @@ body {
 
   .top-header-left-frame-site-name {
     /* Inside Auto Layout */
+    color: $color-primary-dark;
     flex: none;
     text-transform: none;
     align-self: center;
