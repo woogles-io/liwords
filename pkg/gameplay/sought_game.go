@@ -60,6 +60,9 @@ func NewMatchRequest(ctx context.Context, gameStore SoughtGameStore,
 	}
 
 	// Check that the user we are matching hasn't already matched us.
+	// XXX: Move to Redis store, and put this in an atomic script
+	// create match only if not already matched by, to avoid
+	// race conditions.
 	matched, err := gameStore.UserMatchedBy(ctx, req.User.UserId, req.ReceivingUser.UserId)
 	if err != nil {
 		return nil, err
