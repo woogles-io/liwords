@@ -1,7 +1,7 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Button, Popconfirm } from 'antd';
 
-type Props = {
+export type Props = {
   exchangeAllowed?: boolean;
   finalPassOrChallenge?: boolean;
   myTurn?: boolean;
@@ -87,17 +87,29 @@ type EGCProps = {
   onExamine: () => void;
 };
 
-const EndGameControls = (props: EGCProps) => (
-  <div className="game-controls">
-    <Button>Options</Button>
-    <Button onClick={props.onExamine}>Export GCG</Button>
-    <Button onClick={() => window.location.replace('/')}>Exit</Button>
-    {props.showRematch && (
-      <Button type="primary" onClick={props.onRematch}>
-        Rematch
-      </Button>
-    )}
-  </div>
-);
+const EndGameControls = (props: EGCProps) => {
+  const [rematchDisabled, setRematchDisabled] = useState(false);
+  return (
+    <div className="game-controls">
+      <Button>Options</Button>
+      <Button onClick={props.onExamine}>Export GCG</Button>
+      <Button onClick={() => window.location.replace('/')}>Exit</Button>
+      {props.showRematch && !rematchDisabled && (
+        <Button
+          type="primary"
+          data-testid="rematch-button"
+          onClick={() => {
+            setRematchDisabled(true);
+            if (!rematchDisabled) {
+              props.onRematch();
+            }
+          }}
+        >
+          Rematch
+        </Button>
+      )}
+    </div>
+  );
+};
 
 export default GameControls;
