@@ -117,7 +117,7 @@ func (s *DBStore) Get(ctx context.Context, id string) (*entity.Game, error) {
 		return nil, err
 	}
 
-	return FromState(tdata, &qdata, g.Started, g.GameEndReason, g.Player0ID, g.Player1ID,
+	return fromState(tdata, &qdata, g.Started, g.GameEndReason, g.Player0ID, g.Player1ID,
 		g.WinnerIdx, g.LoserIdx, g.Request, g.History, &sdata, s.gameEventChan, s.cfg)
 }
 
@@ -214,8 +214,8 @@ func convertGameToInfoResponse(g *game) (*gs.GameInfoResponse, error) {
 	return info, nil
 }
 
-// FromState returns an entity.Game from a DB State.
-func FromState(timers entity.Timers, qdata *entity.Quickdata, Started bool,
+// fromState returns an entity.Game from a DB State.
+func fromState(timers entity.Timers, qdata *entity.Quickdata, Started bool,
 	GameEndReason int, p0id, p1id uint, WinnerIdx, LoserIdx int, reqBytes, histBytes []byte,
 	stats *entity.Stats,
 	gameEventChan chan<- *entity.EventWrapper, cfg *config.Config) (*entity.Game, error) {
@@ -330,6 +330,19 @@ func (s *DBStore) Set(ctx context.Context, g *entity.Game) error {
 		Where("uuid = ?", g.GameID()).Updates(dbg)
 
 	return result.Error
+}
+
+func (s *DBStore) Exists(ctx context.Context, id string) (bool, error) {
+
+	var count int64
+	result := s.db.Model(&game{}).Where("uuid = ?", id).Count(&count)
+	if result.Error != nil {
+		return false, result.Error
+	}
+	if count > 1 {
+		return true, errors.New("unexpected duplicate ids")
+	}
+	return count == 1, nil
 }
 
 // Create saves a brand new entity to the database

@@ -72,13 +72,22 @@ type following struct {
 	Follower   User
 }
 
+type blocking struct {
+	// blocker blocks user
+	UserID uint
+	User   User
+
+	BlockerID uint
+	Blocker   User
+}
+
 // NewDBStore creates a new DB store
 func NewDBStore(dbURL string) (*DBStore, error) {
 	db, err := gorm.Open("postgres", dbURL)
 	if err != nil {
 		return nil, err
 	}
-	db.AutoMigrate(&User{}, &profile{}, &following{})
+	db.AutoMigrate(&User{}, &profile{}, &following{}, &blocking{})
 	db.Model(&User{}).
 		AddUniqueIndex("username_idx", "lower(username)").
 		AddUniqueIndex("email_idx", "lower(email)")
@@ -89,6 +98,11 @@ func NewDBStore(dbURL string) (*DBStore, error) {
 		AddForeignKey("user_id", "users(id)", "RESTRICT", "RESTRICT").
 		AddForeignKey("follower_id", "users(id)", "RESTRICT", "RESTRICT").
 		AddUniqueIndex("user_follower_idx", "user_id", "follower_id")
+
+	db.Model(&blocking{}).
+		AddForeignKey("user_id", "users(id)", "RESTRICT", "RESTRICT").
+		AddForeignKey("blocker_id", "users(id)", "RESTRICT", "RESTRICT").
+		AddUniqueIndex("user_blocker_idx", "user_id", "blocker_id")
 
 	return &DBStore{db: db}, nil
 }
@@ -381,6 +395,39 @@ func (s *DBStore) GetFollows(ctx context.Context, uid uint) ([]*entity.User, err
 		return nil, result.Error
 	}
 	log.Debug().Int("num-followed", len(users)).Msg("found-followed")
+	entUsers := make([]*entity.User, len(users))
+	for idx, u := range users {
+		entUsers[idx] = &entity.User{UUID: u.Uuid, Username: u.Username}
+	}
+	return entUsers, nil
+}
+
+func (s *DBStore) AddBlock(ctx context.Context, targetUser, blocker uint) error {
+	dbb := &blocking{UserID: targetUser, BlockerID: blocker}
+	result := s.db.Create(dbb)
+	return result.Error
+}
+
+func (s *DBStore) RemoveBlock(ctx context.Context, targetUser, blocker uint) error {
+	return s.db.Where("user_id = ? AND blocker_id = ?", targetUser, blocker).Delete(&blocking{}).Error
+}
+
+// GetBlocks gets all the users that the passed-in user DB ID is blocking.
+func (s *DBStore) GetBlocks(ctx context.Context, uid uint) ([]*entity.User, error) {
+	type blocked struct {
+		Username string
+		Uuid     string
+	}
+
+	var users []blocked
+
+	if result := s.db.Table("blockings").Select("u0.username, u0.uuid").
+		Joins("JOIN users as u0 ON u0.id = user_id").
+		Where("blocker_id = ?", uid).Scan(&users); result.Error != nil {
+
+		return nil, result.Error
+	}
+	log.Debug().Int("num-blocked", len(users)).Msg("found-blocked")
 	entUsers := make([]*entity.User, len(users))
 	for idx, u := range users {
 		entUsers[idx] = &entity.User{UUID: u.Uuid, Username: u.Username}

@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/domino14/liwords/pkg/emailer"
+	"github.com/domino14/liwords/pkg/sessions"
 
 	"github.com/rs/zerolog/log"
 
@@ -45,12 +46,12 @@ The Woogles.io team
 
 type AuthenticationService struct {
 	userStore    user.Store
-	sessionStore user.SessionStore
+	sessionStore sessions.SessionStore
 	secretKey    string
 	mailgunKey   string
 }
 
-func NewAuthenticationService(u user.Store, ss user.SessionStore, secretKey,
+func NewAuthenticationService(u user.Store, ss sessions.SessionStore, secretKey,
 	mailgunKey string) *AuthenticationService {
 	return &AuthenticationService{userStore: u, sessionStore: ss, secretKey: secretKey,
 		mailgunKey: mailgunKey}
@@ -221,6 +222,9 @@ func (as *AuthenticationService) ResetPasswordStep2(ctx context.Context, r *pb.R
 func (as *AuthenticationService) ChangePassword(ctx context.Context, r *pb.ChangePasswordRequest) (*pb.ChangePasswordResponse, error) {
 	// This view requires authentication.
 	sess, err := apiserver.GetSession(ctx)
+	if err != nil {
+		return nil, err
+	}
 
 	user, err := as.userStore.Get(ctx, sess.Username)
 	if err != nil {

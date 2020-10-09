@@ -6,7 +6,7 @@ import (
 	"net/http"
 
 	"github.com/domino14/liwords/pkg/entity"
-	"github.com/domino14/liwords/pkg/user"
+	"github.com/domino14/liwords/pkg/sessions"
 	"github.com/rs/zerolog"
 )
 
@@ -40,7 +40,7 @@ const sesskey ctxkey = "session"
 
 // AuthenticationMiddlewareGenerator generates auth middleware that looks up
 // a session ID
-func AuthenticationMiddlewareGenerator(sessionStore user.SessionStore) (mw func(http.Handler) http.Handler) {
+func AuthenticationMiddlewareGenerator(sessionStore sessions.SessionStore) (mw func(http.Handler) http.Handler) {
 	mw = func(h http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			log := zerolog.Ctx(r.Context())

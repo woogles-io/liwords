@@ -14,7 +14,7 @@ const domain = "mg.woogles.io"
 func SendSimpleMessage(apiKey, recipient, subject, body string) (string, error) {
 	mg := mailgun.NewMailgun(domain, apiKey)
 	m := mg.NewMessage(
-		"Woogles <mailgun@"+domain+">",
+		"Woogles <woogles@"+domain+">",
 		subject,
 		body,
 		recipient,

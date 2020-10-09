@@ -108,3 +108,34 @@ message UsernameSearchResponse { repeated string usernames = 1; }
 service AutocompleteService {
   rpc GetCompletion(UsernameSearchRequest) returns (UsernameSearchResponse);
 }
+
+// Follows and Blocks
+
+message AddFollowRequest { string uuid = 1; }
+message RemoveFollowRequest { string uuid = 1; }
+message GetFollowsRequest {}
+
+message AddBlockRequest { string uuid = 1; }
+message RemoveBlockRequest { string uuid = 1; }
+message GetBlocksRequest {}
+
+message OKResponse {}
+
+message BasicUser {
+  string uuid = 1;
+  string username = 2;
+}
+
+message GetFollowsResponse { repeated BasicUser users = 1; }
+message GetBlocksResponse { repeated BasicUser users = 1; }
+
+// Yeah I know
+service SocializeService {
+  rpc AddFollow(AddFollowRequest) returns (OKResponse);
+  rpc RemoveFollow(RemoveFollowRequest) returns (OKResponse);
+  rpc GetFollows(GetFollowsRequest) returns (GetFollowsResponse);
+
+  rpc AddBlock(AddBlockRequest) returns (OKResponse);
+  rpc RemoveBlock(RemoveBlockRequest) returns (OKResponse);
+  rpc GetBlocks(GetBlocksRequest) returns (GetBlocksResponse);
+}
