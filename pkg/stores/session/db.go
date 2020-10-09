@@ -98,5 +98,6 @@ func (s *DBStore) Delete(ctx context.Context, sess *entity.Session) error {
 	if sess.ID == "" {
 		return errors.New("session has a blank ID, cannot be deleted")
 	}
-	return s.db.Delete(sess).Error
+	// We want to delete from db_sessions, not delete from sessions
+	return s.db.Delete(&dbSession{UUID: sess.ID}).Error
 }
