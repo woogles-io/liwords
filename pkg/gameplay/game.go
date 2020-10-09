@@ -394,7 +394,7 @@ func HandleEvent(ctx context.Context, gameStore GameStore, userStore user.Store,
 	onTurn := entGame.Game.PlayerOnTurn()
 
 	// Ensure that it is actually the correct player's turn
-	if entGame.Game.PlayerIDOnTurn() != userID {
+	if cge.Type != pb.ClientGameplayEvent_RESIGN && entGame.Game.PlayerIDOnTurn() != userID {
 		log.Info().Interface("client-event", cge).Msg("not on turn")
 		return entGame, errNotOnTurn
 	}
@@ -416,6 +416,10 @@ func HandleEvent(ctx context.Context, gameStore GameStore, userStore user.Store,
 		// Player may have accrued overtime penalties before resigning.
 		entGame.RecordTimeOfMove(onTurn)
 		winner := 1 - onTurn
+		// If opponent is the one who resigned, current player wins.
+		if entGame.Game.PlayerIDOnTurn() != userID {
+			winner = onTurn
+		}
 		entGame.History().Winner = int32(winner)
 		entGame.SetWinnerIdx(winner)
 		entGame.SetLoserIdx(1 - winner)

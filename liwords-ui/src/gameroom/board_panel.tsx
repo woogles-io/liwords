@@ -515,7 +515,7 @@ export const BoardPanel = React.memo((props: Props) => {
 
   const makeMove = (move: string, addl?: string) => {
     let moveEvt;
-    if (!isMyTurn()) {
+    if (move !== 'resign' && !isMyTurn()) {
       console.log(
         'off turn move attempts',
         gameContext.nickToPlayerOrder,
