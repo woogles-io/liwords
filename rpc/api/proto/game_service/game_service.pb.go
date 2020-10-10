@@ -198,6 +198,7 @@ type GameInfoResponse struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
+	// XXX: Why doesn't this just have the game request embedded in it?
 	Players            []*PlayerInfo         `protobuf:"bytes,1,rep,name=players,proto3" json:"players,omitempty"`
 	Lexicon            string                `protobuf:"bytes,2,opt,name=lexicon,proto3" json:"lexicon,omitempty"`
 	Variant            string                `protobuf:"bytes,3,opt,name=variant,proto3" json:"variant,omitempty"`

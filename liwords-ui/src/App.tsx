@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Route, Switch } from 'react-router-dom';
 import './App.scss';
+import axios from 'axios';
 import 'antd/dist/antd.css';
 
 import { Table } from './gameroom/table';
@@ -15,6 +16,16 @@ import { UserProfile } from './profile/profile';
 import { PasswordChange } from './lobby/password_change';
 import { PasswordReset } from './lobby/password_reset';
 import { NewPassword } from './lobby/new_password';
+import { toAPIUrl } from './api/api';
+
+type BasicUser = {
+  uuid: string;
+  username: string;
+};
+
+type Blocks = {
+  users: Array<BasicUser>;
+};
 
 const App = React.memo(() => {
   const store = useStoreContext();
@@ -33,6 +44,19 @@ const App = React.memo(() => {
       setShouldDisconnect(false);
     }, 5000);
   };
+
+  useEffect(() => {
+    axios
+      .post<Blocks>(
+        toAPIUrl('user_service.SocializeService', 'GetFullBlocks'),
+        { foo: 'bar' },
+        { withCredentials: true, headers: { contentLength: 0 } }
+      )
+      .then((resp) => {
+        store.setExcludedPlayers(resp.data.users.map((u) => u.uuid));
+      });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
     <div className="App">

@@ -106,3 +106,57 @@ func (ss *SocializeService) GetBlocks(ctx context.Context, req *pb.GetBlocksRequ
 
 	return &pb.GetBlocksResponse{Users: basicUsers}, nil
 }
+
+func (ss *SocializeService) GetFullBlocks(ctx context.Context, req *pb.GetFullBlocksRequest) (*pb.GetFullBlocksResponse, error) {
+	sess, err := apiserver.GetSession(ctx)
+	if err != nil {
+		return nil, err
+	}
+	user, err := ss.userStore.Get(ctx, sess.Username)
+	if err != nil {
+		log.Err(err).Msg("getting-user")
+		return nil, err
+	}
+
+	users, err := ss.userStore.GetFullBlocks(ctx, user.ID)
+	if err != nil {
+		return nil, err
+	}
+
+	basicUsers := make([]*pb.BasicUser, len(users))
+	for i, u := range users {
+		basicUsers[i] = &pb.BasicUser{
+			Uuid:     u.UUID,
+			Username: u.Username,
+		}
+	}
+
+	return &pb.GetFullBlocksResponse{Users: basicUsers}, nil
+}
+
+// func (ss *SocializeService) GetBlockedBy(ctx context.Context, req *pb.GetBlocksRequest) (*pb.GetBlockedByResponse, error) {
+// 	sess, err := apiserver.GetSession(ctx)
+// 	if err != nil {
+// 		return nil, err
+// 	}
+// 	user, err := ss.userStore.Get(ctx, sess.Username)
+// 	if err != nil {
+// 		log.Err(err).Msg("getting-user")
+// 		return nil, err
+// 	}
+
+// 	users, err := ss.userStore.GetBlockedBy(ctx, user.ID)
+// 	if err != nil {
+// 		return nil, err
+// 	}
+
+// 	basicUsers := make([]*pb.BasicUser, len(users))
+// 	for i, u := range users {
+// 		basicUsers[i] = &pb.BasicUser{
+// 			Uuid:     u.UUID,
+// 			Username: u.Username,
+// 		}
+// 	}
+
+// 	return &pb.GetBlockedByResponse{Users: basicUsers}, nil
+// }

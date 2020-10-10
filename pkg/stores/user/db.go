@@ -435,6 +435,59 @@ func (s *DBStore) GetBlocks(ctx context.Context, uid uint) ([]*entity.User, erro
 	return entUsers, nil
 }
 
+// GetBlockedBy gets all the users that are blocking the passed-in user DB ID.
+func (s *DBStore) GetBlockedBy(ctx context.Context, uid uint) ([]*entity.User, error) {
+	type blockedby struct {
+		Username string
+		Uuid     string
+	}
+
+	var users []blockedby
+
+	if result := s.db.Table("blockings").Select("u0.username, u0.uuid").
+		Joins("JOIN users as u0 ON u0.id = blocker_id").
+		Where("user_id = ?", uid).Scan(&users); result.Error != nil {
+
+		return nil, result.Error
+	}
+	log.Debug().Int("num-blocked-by", len(users)).Msg("found-blocked-by")
+	entUsers := make([]*entity.User, len(users))
+	for idx, u := range users {
+		entUsers[idx] = &entity.User{UUID: u.Uuid, Username: u.Username}
+	}
+	return entUsers, nil
+}
+
+// GetFullBlocks gets users uid is blocking AND users blocking uid
+func (s *DBStore) GetFullBlocks(ctx context.Context, uid uint) ([]*entity.User, error) {
+	// There's probably a way to do this with one db query but eh.
+	players := map[string]*entity.User{}
+
+	blocks, err := s.GetBlocks(ctx, uid)
+	if err != nil {
+		return nil, err
+	}
+	blockedby, err := s.GetBlockedBy(ctx, uid)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, u := range blocks {
+		players[u.UUID] = u
+	}
+	for _, u := range blockedby {
+		players[u.UUID] = u
+	}
+
+	plist := make([]*entity.User, len(players))
+	idx := 0
+	for _, v := range players {
+		plist[idx] = v
+		idx++
+	}
+	return plist, nil
+}
+
 // Username gets the username from the uuid. If not found, return a deterministic username,
 // and return true for isAnonymous.
 func (s *DBStore) Username(ctx context.Context, uuid string) (string, bool, error) {

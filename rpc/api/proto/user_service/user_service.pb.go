@@ -1353,6 +1353,44 @@ func (*GetBlocksRequest) Descriptor() ([]byte, []int) {
 	return file_api_proto_user_service_user_service_proto_rawDescGZIP(), []int{26}
 }
 
+type GetFullBlocksRequest struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+}
+
+func (x *GetFullBlocksRequest) Reset() {
+	*x = GetFullBlocksRequest{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_api_proto_user_service_user_service_proto_msgTypes[27]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *GetFullBlocksRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetFullBlocksRequest) ProtoMessage() {}
+
+func (x *GetFullBlocksRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_api_proto_user_service_user_service_proto_msgTypes[27]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetFullBlocksRequest.ProtoReflect.Descriptor instead.
+func (*GetFullBlocksRequest) Descriptor() ([]byte, []int) {
+	return file_api_proto_user_service_user_service_proto_rawDescGZIP(), []int{27}
+}
+
 type OKResponse struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
@@ -1362,7 +1400,7 @@ type OKResponse struct {
 func (x *OKResponse) Reset() {
 	*x = OKResponse{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_api_proto_user_service_user_service_proto_msgTypes[27]
+		mi := &file_api_proto_user_service_user_service_proto_msgTypes[28]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -1375,7 +1413,7 @@ func (x *OKResponse) String() string {
 func (*OKResponse) ProtoMessage() {}
 
 func (x *OKResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_proto_user_service_user_service_proto_msgTypes[27]
+	mi := &file_api_proto_user_service_user_service_proto_msgTypes[28]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1388,7 +1426,7 @@ func (x *OKResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use OKResponse.ProtoReflect.Descriptor instead.
 func (*OKResponse) Descriptor() ([]byte, []int) {
-	return file_api_proto_user_service_user_service_proto_rawDescGZIP(), []int{27}
+	return file_api_proto_user_service_user_service_proto_rawDescGZIP(), []int{28}
 }
 
 type BasicUser struct {
@@ -1403,7 +1441,7 @@ type BasicUser struct {
 func (x *BasicUser) Reset() {
 	*x = BasicUser{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_api_proto_user_service_user_service_proto_msgTypes[28]
+		mi := &file_api_proto_user_service_user_service_proto_msgTypes[29]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -1416,7 +1454,7 @@ func (x *BasicUser) String() string {
 func (*BasicUser) ProtoMessage() {}
 
 func (x *BasicUser) ProtoReflect() protoreflect.Message {
-	mi := &file_api_proto_user_service_user_service_proto_msgTypes[28]
+	mi := &file_api_proto_user_service_user_service_proto_msgTypes[29]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1429,7 +1467,7 @@ func (x *BasicUser) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use BasicUser.ProtoReflect.Descriptor instead.
 func (*BasicUser) Descriptor() ([]byte, []int) {
-	return file_api_proto_user_service_user_service_proto_rawDescGZIP(), []int{28}
+	return file_api_proto_user_service_user_service_proto_rawDescGZIP(), []int{29}
 }
 
 func (x *BasicUser) GetUuid() string {
@@ -1457,7 +1495,7 @@ type GetFollowsResponse struct {
 func (x *GetFollowsResponse) Reset() {
 	*x = GetFollowsResponse{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_api_proto_user_service_user_service_proto_msgTypes[29]
+		mi := &file_api_proto_user_service_user_service_proto_msgTypes[30]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -1470,7 +1508,7 @@ func (x *GetFollowsResponse) String() string {
 func (*GetFollowsResponse) ProtoMessage() {}
 
 func (x *GetFollowsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_proto_user_service_user_service_proto_msgTypes[29]
+	mi := &file_api_proto_user_service_user_service_proto_msgTypes[30]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1483,7 +1521,7 @@ func (x *GetFollowsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetFollowsResponse.ProtoReflect.Descriptor instead.
 func (*GetFollowsResponse) Descriptor() ([]byte, []int) {
-	return file_api_proto_user_service_user_service_proto_rawDescGZIP(), []int{29}
+	return file_api_proto_user_service_user_service_proto_rawDescGZIP(), []int{30}
 }
 
 func (x *GetFollowsResponse) GetUsers() []*BasicUser {
@@ -1504,7 +1542,7 @@ type GetBlocksResponse struct {
 func (x *GetBlocksResponse) Reset() {
 	*x = GetBlocksResponse{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_api_proto_user_service_user_service_proto_msgTypes[30]
+		mi := &file_api_proto_user_service_user_service_proto_msgTypes[31]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -1517,7 +1555,7 @@ func (x *GetBlocksResponse) String() string {
 func (*GetBlocksResponse) ProtoMessage() {}
 
 func (x *GetBlocksResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_proto_user_service_user_service_proto_msgTypes[30]
+	mi := &file_api_proto_user_service_user_service_proto_msgTypes[31]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1530,10 +1568,59 @@ func (x *GetBlocksResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetBlocksResponse.ProtoReflect.Descriptor instead.
 func (*GetBlocksResponse) Descriptor() ([]byte, []int) {
-	return file_api_proto_user_service_user_service_proto_rawDescGZIP(), []int{30}
+	return file_api_proto_user_service_user_service_proto_rawDescGZIP(), []int{31}
 }
 
 func (x *GetBlocksResponse) GetUsers() []*BasicUser {
+	if x != nil {
+		return x.Users
+	}
+	return nil
+}
+
+// XXX: We should eventually obsolete this and handle blocks purely on
+// the backend but we need to write a lot of hard code for that.
+type GetFullBlocksResponse struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	Users []*BasicUser `protobuf:"bytes,1,rep,name=users,proto3" json:"users,omitempty"`
+}
+
+func (x *GetFullBlocksResponse) Reset() {
+	*x = GetFullBlocksResponse{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_api_proto_user_service_user_service_proto_msgTypes[32]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *GetFullBlocksResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetFullBlocksResponse) ProtoMessage() {}
+
+func (x *GetFullBlocksResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_api_proto_user_service_user_service_proto_msgTypes[32]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetFullBlocksResponse.ProtoReflect.Descriptor instead.
+func (*GetFullBlocksResponse) Descriptor() ([]byte, []int) {
+	return file_api_proto_user_service_user_service_proto_rawDescGZIP(), []int{32}
+}
+
+func (x *GetFullBlocksResponse) GetUsers() []*BasicUser {
 	if x != nil {
 		return x.Users
 	}
@@ -1640,17 +1727,23 @@ var file_api_proto_user_service_user_service_proto_rawDesc = []byte{
 	0x0a, 0x12, 0x52, 0x65, 0x6d, 0x6f, 0x76, 0x65, 0x42, 0x6c, 0x6f, 0x63, 0x6b, 0x52, 0x65, 0x71,
 	0x75, 0x65, 0x73, 0x74, 0x12, 0x12, 0x0a, 0x04, 0x75, 0x75, 0x69, 0x64, 0x18, 0x01, 0x20, 0x01,
 	0x28, 0x09, 0x52, 0x04, 0x75, 0x75, 0x69, 0x64, 0x22, 0x12, 0x0a, 0x10, 0x47, 0x65, 0x74, 0x42,
-	0x6c, 0x6f, 0x63, 0x6b, 0x73, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x22, 0x0c, 0x0a, 0x0a,
-	0x4f, 0x4b, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x22, 0x3b, 0x0a, 0x09, 0x42, 0x61,
-	0x73, 0x69, 0x63, 0x55, 0x73, 0x65, 0x72, 0x12, 0x12, 0x0a, 0x04, 0x75, 0x75, 0x69, 0x64, 0x18,
-	0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x04, 0x75, 0x75, 0x69, 0x64, 0x12, 0x1a, 0x0a, 0x08, 0x75,
-	0x73, 0x65, 0x72, 0x6e, 0x61, 0x6d, 0x65, 0x18, 0x02, 0x20, 0x01, 0x28, 0x09, 0x52, 0x08, 0x75,
-	0x73, 0x65, 0x72, 0x6e, 0x61, 0x6d, 0x65, 0x22, 0x43, 0x0a, 0x12, 0x47, 0x65, 0x74, 0x46, 0x6f,
-	0x6c, 0x6c, 0x6f, 0x77, 0x73, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12, 0x2d, 0x0a,
-	0x05, 0x75, 0x73, 0x65, 0x72, 0x73, 0x18, 0x01, 0x20, 0x03, 0x28, 0x0b, 0x32, 0x17, 0x2e, 0x75,
-	0x73, 0x65, 0x72, 0x5f, 0x73, 0x65, 0x72, 0x76, 0x69, 0x63, 0x65, 0x2e, 0x42, 0x61, 0x73, 0x69,
-	0x63, 0x55, 0x73, 0x65, 0x72, 0x52, 0x05, 0x75, 0x73, 0x65, 0x72, 0x73, 0x22, 0x42, 0x0a, 0x11,
-	0x47, 0x65, 0x74, 0x42, 0x6c, 0x6f, 0x63, 0x6b, 0x73, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73,
+	0x6c, 0x6f, 0x63, 0x6b, 0x73, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x22, 0x16, 0x0a, 0x14,
+	0x47, 0x65, 0x74, 0x46, 0x75, 0x6c, 0x6c, 0x42, 0x6c, 0x6f, 0x63, 0x6b, 0x73, 0x52, 0x65, 0x71,
+	0x75, 0x65, 0x73, 0x74, 0x22, 0x0c, 0x0a, 0x0a, 0x4f, 0x4b, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e,
+	0x73, 0x65, 0x22, 0x3b, 0x0a, 0x09, 0x42, 0x61, 0x73, 0x69, 0x63, 0x55, 0x73, 0x65, 0x72, 0x12,
+	0x12, 0x0a, 0x04, 0x75, 0x75, 0x69, 0x64, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x04, 0x75,
+	0x75, 0x69, 0x64, 0x12, 0x1a, 0x0a, 0x08, 0x75, 0x73, 0x65, 0x72, 0x6e, 0x61, 0x6d, 0x65, 0x18,
+	0x02, 0x20, 0x01, 0x28, 0x09, 0x52, 0x08, 0x75, 0x73, 0x65, 0x72, 0x6e, 0x61, 0x6d, 0x65, 0x22,
+	0x43, 0x0a, 0x12, 0x47, 0x65, 0x74, 0x46, 0x6f, 0x6c, 0x6c, 0x6f, 0x77, 0x73, 0x52, 0x65, 0x73,
+	0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12, 0x2d, 0x0a, 0x05, 0x75, 0x73, 0x65, 0x72, 0x73, 0x18, 0x01,
+	0x20, 0x03, 0x28, 0x0b, 0x32, 0x17, 0x2e, 0x75, 0x73, 0x65, 0x72, 0x5f, 0x73, 0x65, 0x72, 0x76,
+	0x69, 0x63, 0x65, 0x2e, 0x42, 0x61, 0x73, 0x69, 0x63, 0x55, 0x73, 0x65, 0x72, 0x52, 0x05, 0x75,
+	0x73, 0x65, 0x72, 0x73, 0x22, 0x42, 0x0a, 0x11, 0x47, 0x65, 0x74, 0x42, 0x6c, 0x6f, 0x63, 0x6b,
+	0x73, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12, 0x2d, 0x0a, 0x05, 0x75, 0x73, 0x65,
+	0x72, 0x73, 0x18, 0x01, 0x20, 0x03, 0x28, 0x0b, 0x32, 0x17, 0x2e, 0x75, 0x73, 0x65, 0x72, 0x5f,
+	0x73, 0x65, 0x72, 0x76, 0x69, 0x63, 0x65, 0x2e, 0x42, 0x61, 0x73, 0x69, 0x63, 0x55, 0x73, 0x65,
+	0x72, 0x52, 0x05, 0x75, 0x73, 0x65, 0x72, 0x73, 0x22, 0x46, 0x0a, 0x15, 0x47, 0x65, 0x74, 0x46,
+	0x75, 0x6c, 0x6c, 0x42, 0x6c, 0x6f, 0x63, 0x6b, 0x73, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73,
 	0x65, 0x12, 0x2d, 0x0a, 0x05, 0x75, 0x73, 0x65, 0x72, 0x73, 0x18, 0x01, 0x20, 0x03, 0x28, 0x0b,
 	0x32, 0x17, 0x2e, 0x75, 0x73, 0x65, 0x72, 0x5f, 0x73, 0x65, 0x72, 0x76, 0x69, 0x63, 0x65, 0x2e,
 	0x42, 0x61, 0x73, 0x69, 0x63, 0x55, 0x73, 0x65, 0x72, 0x52, 0x05, 0x75, 0x73, 0x65, 0x72, 0x73,
@@ -1717,7 +1810,7 @@ var file_api_proto_user_service_user_service_proto_rawDesc = []byte{
 	0x65, 0x53, 0x65, 0x61, 0x72, 0x63, 0x68, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x24,
 	0x2e, 0x75, 0x73, 0x65, 0x72, 0x5f, 0x73, 0x65, 0x72, 0x76, 0x69, 0x63, 0x65, 0x2e, 0x55, 0x73,
 	0x65, 0x72, 0x6e, 0x61, 0x6d, 0x65, 0x53, 0x65, 0x61, 0x72, 0x63, 0x68, 0x52, 0x65, 0x73, 0x70,
-	0x6f, 0x6e, 0x73, 0x65, 0x32, 0xd5, 0x03, 0x0a, 0x10, 0x53, 0x6f, 0x63, 0x69, 0x61, 0x6c, 0x69,
+	0x6f, 0x6e, 0x73, 0x65, 0x32, 0xaf, 0x04, 0x0a, 0x10, 0x53, 0x6f, 0x63, 0x69, 0x61, 0x6c, 0x69,
 	0x7a, 0x65, 0x53, 0x65, 0x72, 0x76, 0x69, 0x63, 0x65, 0x12, 0x45, 0x0a, 0x09, 0x41, 0x64, 0x64,
 	0x46, 0x6f, 0x6c, 0x6c, 0x6f, 0x77, 0x12, 0x1e, 0x2e, 0x75, 0x73, 0x65, 0x72, 0x5f, 0x73, 0x65,
 	0x72, 0x76, 0x69, 0x63, 0x65, 0x2e, 0x41, 0x64, 0x64, 0x46, 0x6f, 0x6c, 0x6c, 0x6f, 0x77, 0x52,
@@ -1746,11 +1839,17 @@ var file_api_proto_user_service_user_service_proto_rawDesc = []byte{
 	0x65, 0x72, 0x5f, 0x73, 0x65, 0x72, 0x76, 0x69, 0x63, 0x65, 0x2e, 0x47, 0x65, 0x74, 0x42, 0x6c,
 	0x6f, 0x63, 0x6b, 0x73, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x1f, 0x2e, 0x75, 0x73,
 	0x65, 0x72, 0x5f, 0x73, 0x65, 0x72, 0x76, 0x69, 0x63, 0x65, 0x2e, 0x47, 0x65, 0x74, 0x42, 0x6c,
-	0x6f, 0x63, 0x6b, 0x73, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x42, 0x38, 0x5a, 0x36,
-	0x67, 0x69, 0x74, 0x68, 0x75, 0x62, 0x2e, 0x63, 0x6f, 0x6d, 0x2f, 0x64, 0x6f, 0x6d, 0x69, 0x6e,
-	0x6f, 0x31, 0x34, 0x2f, 0x6c, 0x69, 0x77, 0x6f, 0x72, 0x64, 0x73, 0x2f, 0x72, 0x70, 0x63, 0x2f,
-	0x61, 0x70, 0x69, 0x2f, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x2f, 0x75, 0x73, 0x65, 0x72, 0x5f, 0x73,
-	0x65, 0x72, 0x76, 0x69, 0x63, 0x65, 0x62, 0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
+	0x6f, 0x63, 0x6b, 0x73, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12, 0x58, 0x0a, 0x0d,
+	0x47, 0x65, 0x74, 0x46, 0x75, 0x6c, 0x6c, 0x42, 0x6c, 0x6f, 0x63, 0x6b, 0x73, 0x12, 0x22, 0x2e,
+	0x75, 0x73, 0x65, 0x72, 0x5f, 0x73, 0x65, 0x72, 0x76, 0x69, 0x63, 0x65, 0x2e, 0x47, 0x65, 0x74,
+	0x46, 0x75, 0x6c, 0x6c, 0x42, 0x6c, 0x6f, 0x63, 0x6b, 0x73, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73,
+	0x74, 0x1a, 0x23, 0x2e, 0x75, 0x73, 0x65, 0x72, 0x5f, 0x73, 0x65, 0x72, 0x76, 0x69, 0x63, 0x65,
+	0x2e, 0x47, 0x65, 0x74, 0x46, 0x75, 0x6c, 0x6c, 0x42, 0x6c, 0x6f, 0x63, 0x6b, 0x73, 0x52, 0x65,
+	0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x42, 0x38, 0x5a, 0x36, 0x67, 0x69, 0x74, 0x68, 0x75, 0x62,
+	0x2e, 0x63, 0x6f, 0x6d, 0x2f, 0x64, 0x6f, 0x6d, 0x69, 0x6e, 0x6f, 0x31, 0x34, 0x2f, 0x6c, 0x69,
+	0x77, 0x6f, 0x72, 0x64, 0x73, 0x2f, 0x72, 0x70, 0x63, 0x2f, 0x61, 0x70, 0x69, 0x2f, 0x70, 0x72,
+	0x6f, 0x74, 0x6f, 0x2f, 0x75, 0x73, 0x65, 0x72, 0x5f, 0x73, 0x65, 0x72, 0x76, 0x69, 0x63, 0x65,
+	0x62, 0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
 }
 
 var (
@@ -1765,7 +1864,7 @@ func file_api_proto_user_service_user_service_proto_rawDescGZIP() []byte {
 	return file_api_proto_user_service_user_service_proto_rawDescData
 }
 
-var file_api_proto_user_service_user_service_proto_msgTypes = make([]protoimpl.MessageInfo, 31)
+var file_api_proto_user_service_user_service_proto_msgTypes = make([]protoimpl.MessageInfo, 33)
 var file_api_proto_user_service_user_service_proto_goTypes = []interface{}{
 	(*UserLoginRequest)(nil),          // 0: user_service.UserLoginRequest
 	(*ChangePasswordRequest)(nil),     // 1: user_service.ChangePasswordRequest
@@ -1794,53 +1893,58 @@ var file_api_proto_user_service_user_service_proto_goTypes = []interface{}{
 	(*AddBlockRequest)(nil),           // 24: user_service.AddBlockRequest
 	(*RemoveBlockRequest)(nil),        // 25: user_service.RemoveBlockRequest
 	(*GetBlocksRequest)(nil),          // 26: user_service.GetBlocksRequest
-	(*OKResponse)(nil),                // 27: user_service.OKResponse
-	(*BasicUser)(nil),                 // 28: user_service.BasicUser
-	(*GetFollowsResponse)(nil),        // 29: user_service.GetFollowsResponse
-	(*GetBlocksResponse)(nil),         // 30: user_service.GetBlocksResponse
+	(*GetFullBlocksRequest)(nil),      // 27: user_service.GetFullBlocksRequest
+	(*OKResponse)(nil),                // 28: user_service.OKResponse
+	(*BasicUser)(nil),                 // 29: user_service.BasicUser
+	(*GetFollowsResponse)(nil),        // 30: user_service.GetFollowsResponse
+	(*GetBlocksResponse)(nil),         // 31: user_service.GetBlocksResponse
+	(*GetFullBlocksResponse)(nil),     // 32: user_service.GetFullBlocksResponse
 }
 var file_api_proto_user_service_user_service_proto_depIdxs = []int32{
-	28, // 0: user_service.GetFollowsResponse.users:type_name -> user_service.BasicUser
-	28, // 1: user_service.GetBlocksResponse.users:type_name -> user_service.BasicUser
-	0,  // 2: user_service.AuthenticationService.Login:input_type -> user_service.UserLoginRequest
-	9,  // 3: user_service.AuthenticationService.Logout:input_type -> user_service.UserLogoutRequest
-	7,  // 4: user_service.AuthenticationService.GetSocketToken:input_type -> user_service.SocketTokenRequest
-	4,  // 5: user_service.AuthenticationService.ResetPasswordStep1:input_type -> user_service.ResetPasswordRequestStep1
-	5,  // 6: user_service.AuthenticationService.ResetPasswordStep2:input_type -> user_service.ResetPasswordRequestStep2
-	1,  // 7: user_service.AuthenticationService.ChangePassword:input_type -> user_service.ChangePasswordRequest
-	11, // 8: user_service.RegistrationService.Register:input_type -> user_service.UserRegistrationRequest
-	13, // 9: user_service.ProfileService.GetRatings:input_type -> user_service.RatingsRequest
-	15, // 10: user_service.ProfileService.GetStats:input_type -> user_service.StatsRequest
-	17, // 11: user_service.ProfileService.GetProfile:input_type -> user_service.ProfileRequest
-	19, // 12: user_service.AutocompleteService.GetCompletion:input_type -> user_service.UsernameSearchRequest
-	21, // 13: user_service.SocializeService.AddFollow:input_type -> user_service.AddFollowRequest
-	22, // 14: user_service.SocializeService.RemoveFollow:input_type -> user_service.RemoveFollowRequest
-	23, // 15: user_service.SocializeService.GetFollows:input_type -> user_service.GetFollowsRequest
-	24, // 16: user_service.SocializeService.AddBlock:input_type -> user_service.AddBlockRequest
-	25, // 17: user_service.SocializeService.RemoveBlock:input_type -> user_service.RemoveBlockRequest
-	26, // 18: user_service.SocializeService.GetBlocks:input_type -> user_service.GetBlocksRequest
-	2,  // 19: user_service.AuthenticationService.Login:output_type -> user_service.LoginResponse
-	10, // 20: user_service.AuthenticationService.Logout:output_type -> user_service.LogoutResponse
-	8,  // 21: user_service.AuthenticationService.GetSocketToken:output_type -> user_service.SocketTokenResponse
-	6,  // 22: user_service.AuthenticationService.ResetPasswordStep1:output_type -> user_service.ResetPasswordResponse
-	6,  // 23: user_service.AuthenticationService.ResetPasswordStep2:output_type -> user_service.ResetPasswordResponse
-	3,  // 24: user_service.AuthenticationService.ChangePassword:output_type -> user_service.ChangePasswordResponse
-	12, // 25: user_service.RegistrationService.Register:output_type -> user_service.RegistrationResponse
-	14, // 26: user_service.ProfileService.GetRatings:output_type -> user_service.RatingsResponse
-	16, // 27: user_service.ProfileService.GetStats:output_type -> user_service.StatsResponse
-	18, // 28: user_service.ProfileService.GetProfile:output_type -> user_service.ProfileResponse
-	20, // 29: user_service.AutocompleteService.GetCompletion:output_type -> user_service.UsernameSearchResponse
-	27, // 30: user_service.SocializeService.AddFollow:output_type -> user_service.OKResponse
-	27, // 31: user_service.SocializeService.RemoveFollow:output_type -> user_service.OKResponse
-	29, // 32: user_service.SocializeService.GetFollows:output_type -> user_service.GetFollowsResponse
-	27, // 33: user_service.SocializeService.AddBlock:output_type -> user_service.OKResponse
-	27, // 34: user_service.SocializeService.RemoveBlock:output_type -> user_service.OKResponse
-	30, // 35: user_service.SocializeService.GetBlocks:output_type -> user_service.GetBlocksResponse
-	19, // [19:36] is the sub-list for method output_type
-	2,  // [2:19] is the sub-list for method input_type
-	2,  // [2:2] is the sub-list for extension type_name
-	2,  // [2:2] is the sub-list for extension extendee
-	0,  // [0:2] is the sub-list for field type_name
+	29, // 0: user_service.GetFollowsResponse.users:type_name -> user_service.BasicUser
+	29, // 1: user_service.GetBlocksResponse.users:type_name -> user_service.BasicUser
+	29, // 2: user_service.GetFullBlocksResponse.users:type_name -> user_service.BasicUser
+	0,  // 3: user_service.AuthenticationService.Login:input_type -> user_service.UserLoginRequest
+	9,  // 4: user_service.AuthenticationService.Logout:input_type -> user_service.UserLogoutRequest
+	7,  // 5: user_service.AuthenticationService.GetSocketToken:input_type -> user_service.SocketTokenRequest
+	4,  // 6: user_service.AuthenticationService.ResetPasswordStep1:input_type -> user_service.ResetPasswordRequestStep1
+	5,  // 7: user_service.AuthenticationService.ResetPasswordStep2:input_type -> user_service.ResetPasswordRequestStep2
+	1,  // 8: user_service.AuthenticationService.ChangePassword:input_type -> user_service.ChangePasswordRequest
+	11, // 9: user_service.RegistrationService.Register:input_type -> user_service.UserRegistrationRequest
+	13, // 10: user_service.ProfileService.GetRatings:input_type -> user_service.RatingsRequest
+	15, // 11: user_service.ProfileService.GetStats:input_type -> user_service.StatsRequest
+	17, // 12: user_service.ProfileService.GetProfile:input_type -> user_service.ProfileRequest
+	19, // 13: user_service.AutocompleteService.GetCompletion:input_type -> user_service.UsernameSearchRequest
+	21, // 14: user_service.SocializeService.AddFollow:input_type -> user_service.AddFollowRequest
+	22, // 15: user_service.SocializeService.RemoveFollow:input_type -> user_service.RemoveFollowRequest
+	23, // 16: user_service.SocializeService.GetFollows:input_type -> user_service.GetFollowsRequest
+	24, // 17: user_service.SocializeService.AddBlock:input_type -> user_service.AddBlockRequest
+	25, // 18: user_service.SocializeService.RemoveBlock:input_type -> user_service.RemoveBlockRequest
+	26, // 19: user_service.SocializeService.GetBlocks:input_type -> user_service.GetBlocksRequest
+	27, // 20: user_service.SocializeService.GetFullBlocks:input_type -> user_service.GetFullBlocksRequest
+	2,  // 21: user_service.AuthenticationService.Login:output_type -> user_service.LoginResponse
+	10, // 22: user_service.AuthenticationService.Logout:output_type -> user_service.LogoutResponse
+	8,  // 23: user_service.AuthenticationService.GetSocketToken:output_type -> user_service.SocketTokenResponse
+	6,  // 24: user_service.AuthenticationService.ResetPasswordStep1:output_type -> user_service.ResetPasswordResponse
+	6,  // 25: user_service.AuthenticationService.ResetPasswordStep2:output_type -> user_service.ResetPasswordResponse
+	3,  // 26: user_service.AuthenticationService.ChangePassword:output_type -> user_service.ChangePasswordResponse
+	12, // 27: user_service.RegistrationService.Register:output_type -> user_service.RegistrationResponse
+	14, // 28: user_service.ProfileService.GetRatings:output_type -> user_service.RatingsResponse
+	16, // 29: user_service.ProfileService.GetStats:output_type -> user_service.StatsResponse
+	18, // 30: user_service.ProfileService.GetProfile:output_type -> user_service.ProfileResponse
+	20, // 31: user_service.AutocompleteService.GetCompletion:output_type -> user_service.UsernameSearchResponse
+	28, // 32: user_service.SocializeService.AddFollow:output_type -> user_service.OKResponse
+	28, // 33: user_service.SocializeService.RemoveFollow:output_type -> user_service.OKResponse
+	30, // 34: user_service.SocializeService.GetFollows:output_type -> user_service.GetFollowsResponse
+	28, // 35: user_service.SocializeService.AddBlock:output_type -> user_service.OKResponse
+	28, // 36: user_service.SocializeService.RemoveBlock:output_type -> user_service.OKResponse
+	31, // 37: user_service.SocializeService.GetBlocks:output_type -> user_service.GetBlocksResponse
+	32, // 38: user_service.SocializeService.GetFullBlocks:output_type -> user_service.GetFullBlocksResponse
+	21, // [21:39] is the sub-list for method output_type
+	3,  // [3:21] is the sub-list for method input_type
+	3,  // [3:3] is the sub-list for extension type_name
+	3,  // [3:3] is the sub-list for extension extendee
+	0,  // [0:3] is the sub-list for field type_name
 }
 
 func init() { file_api_proto_user_service_user_service_proto_init() }
@@ -2174,7 +2278,7 @@ func file_api_proto_user_service_user_service_proto_init() {
 			}
 		}
 		file_api_proto_user_service_user_service_proto_msgTypes[27].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*OKResponse); i {
+			switch v := v.(*GetFullBlocksRequest); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -2186,7 +2290,7 @@ func file_api_proto_user_service_user_service_proto_init() {
 			}
 		}
 		file_api_proto_user_service_user_service_proto_msgTypes[28].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*BasicUser); i {
+			switch v := v.(*OKResponse); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -2198,7 +2302,7 @@ func file_api_proto_user_service_user_service_proto_init() {
 			}
 		}
 		file_api_proto_user_service_user_service_proto_msgTypes[29].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*GetFollowsResponse); i {
+			switch v := v.(*BasicUser); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -2210,7 +2314,31 @@ func file_api_proto_user_service_user_service_proto_init() {
 			}
 		}
 		file_api_proto_user_service_user_service_proto_msgTypes[30].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*GetFollowsResponse); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_api_proto_user_service_user_service_proto_msgTypes[31].Exporter = func(v interface{}, i int) interface{} {
 			switch v := v.(*GetBlocksResponse); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_api_proto_user_service_user_service_proto_msgTypes[32].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*GetFullBlocksResponse); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -2228,7 +2356,7 @@ func file_api_proto_user_service_user_service_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: file_api_proto_user_service_user_service_proto_rawDesc,
 			NumEnums:      0,
-			NumMessages:   31,
+			NumMessages:   33,
 			NumExtensions: 0,
 			NumServices:   5,
 		},

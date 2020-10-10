@@ -28,6 +28,8 @@ type Store interface {
 	RemoveBlock(ctx context.Context, targetUser, blocker uint) error
 	// GetBlocks gets all the users that the passed-in DB ID is blocking
 	GetBlocks(ctx context.Context, uid uint) ([]*entity.User, error)
+	GetBlockedBy(ctx context.Context, uid uint) ([]*entity.User, error)
+	GetFullBlocks(ctx context.Context, uid uint) ([]*entity.User, error)
 
 	UsernamesByPrefix(ctx context.Context, prefix string) ([]string, error)
 }

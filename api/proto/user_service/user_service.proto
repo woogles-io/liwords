@@ -118,6 +118,7 @@ message GetFollowsRequest {}
 message AddBlockRequest { string uuid = 1; }
 message RemoveBlockRequest { string uuid = 1; }
 message GetBlocksRequest {}
+message GetFullBlocksRequest {}
 
 message OKResponse {}
 
@@ -128,6 +129,9 @@ message BasicUser {
 
 message GetFollowsResponse { repeated BasicUser users = 1; }
 message GetBlocksResponse { repeated BasicUser users = 1; }
+// XXX: We should eventually obsolete this and handle blocks purely on
+// the backend but we need to write a lot of hard code for that.
+message GetFullBlocksResponse { repeated BasicUser users = 1; }
 
 // Yeah I know
 service SocializeService {
@@ -138,4 +142,7 @@ service SocializeService {
   rpc AddBlock(AddBlockRequest) returns (OKResponse);
   rpc RemoveBlock(RemoveBlockRequest) returns (OKResponse);
   rpc GetBlocks(GetBlocksRequest) returns (GetBlocksResponse);
+  // GetFullBlocks gets players who blocked us AND players we've blocked
+  // together.
+  rpc GetFullBlocks(GetFullBlocksRequest) returns (GetFullBlocksResponse);
 }

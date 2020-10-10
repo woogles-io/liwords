@@ -12,21 +12,9 @@ import (
 	pb "github.com/domino14/liwords/rpc/api/proto/realtime"
 )
 
-// A somewhat silly function to get around Go's lack of generics
-func setMatchUser(msg proto.Message, reqUser *pb.MatchUser) {
-	switch sought := msg.(type) {
-	case *pb.SeekRequest:
-		sought.User = reqUser
-	case *pb.MatchRequest:
-		// lol
-		sought.User = reqUser
-	}
-}
-
-func (b *Bus) seekRequest(ctx context.Context, seekOrMatch, auth, userID, connID string,
+func (b *Bus) seekRequest(ctx context.Context, auth, userID, connID string,
 	data []byte) error {
 
-	var req proto.Message
 	var gameRequest *pb.GameRequest
 
 	if auth == "anon" {
@@ -34,54 +22,13 @@ func (b *Bus) seekRequest(ctx context.Context, seekOrMatch, auth, userID, connID
 		return errors.New("please log in to start a game")
 	}
 
-	if seekOrMatch == "seekRequest" {
-		req = &pb.SeekRequest{}
-	} else {
-		req = &pb.MatchRequest{}
-	}
+	req := &pb.SeekRequest{}
 	err := proto.Unmarshal(data, req)
 	if err != nil {
 		return err
 	}
-	isRematch := false
-	lastOpp := ""
 
-	if seekOrMatch == "seekRequest" {
-		gameRequest = req.(*pb.SeekRequest).GameRequest
-	} else {
-		// Get the game request from the passed in "rematchFor", if it
-		// is provided. Otherwise, the game request must have been provided
-		// in the request itself.
-		gameID := req.(*pb.MatchRequest).RematchFor
-		if gameID == "" {
-			gameRequest = req.(*pb.MatchRequest).GameRequest
-		} else { // It's a rematch.
-			isRematch = true
-			// XXX: rewrite to call the less expensive GetMetadata.
-			g, err := b.gameStore.Get(ctx, gameID)
-			if err != nil {
-				return err
-			}
-			// Figure out who we played against.
-			for _, u := range g.History().Players {
-				if u.UserId == userID {
-					continue
-				}
-				lastOpp = u.UserId
-			}
-			gameRequest = proto.Clone(g.GameReq).(*pb.GameRequest)
-			// If this game is a rematch, set the OriginalRequestId
-			// to the previous game's OriginalRequestId. In this way,
-			// we maintain a constant OriginalRequestId value across
-			// rematch streaks. The OriginalRequestId is set in
-			// NewSoughtGame and NewMatchRequest in sought_game.go
-			// if it is not set here.
-			gameRequest.OriginalRequestId = g.GameReq.OriginalRequestId
-			// This will get overwritten later:
-			gameRequest.RequestId = ""
-			req.(*pb.MatchRequest).GameRequest = gameRequest
-		}
-	}
+	gameRequest = req.GameRequest
 	if gameRequest == nil {
 		return errors.New("no game request was found")
 	}
@@ -91,7 +38,7 @@ func (b *Bus) seekRequest(ctx context.Context, seekOrMatch, auth, userID, connID
 	reqUser := &pb.MatchUser{}
 	reqUser.IsAnonymous = auth == "anon" // this is never true here anymore, see check above
 	reqUser.UserId = userID
-	setMatchUser(req, reqUser)
+	req.User = reqUser
 
 	err = gameplay.ValidateSoughtGame(ctx, gameRequest)
 	if err != nil {
@@ -109,58 +56,163 @@ func (b *Bus) seekRequest(ctx context.Context, seekOrMatch, auth, userID, connID
 	reqUser.RelevantRating = u.GetRelevantRating(ratingKey)
 	reqUser.DisplayName = u.Username
 
+	req.ConnectionId = connID
+	sg, err := gameplay.NewSoughtGame(ctx, b.soughtGameStore, req)
+	if err != nil {
+		return err
+	}
+	evt := entity.WrapEvent(sg.SeekRequest, pb.MessageType_SEEK_REQUEST)
+	outdata, err := evt.Serialize()
+	if err != nil {
+		return err
+	}
+
+	log.Debug().Interface("evt", evt).Msg("publishing seek request to lobby topic")
+
+	b.natsconn.Publish("lobby.seekRequest", outdata)
+
+	return nil
+}
+
+func (b *Bus) matchRequest(ctx context.Context, auth, userID, connID string,
+	data []byte) error {
+
+	if auth == "anon" {
+		// Require login for now (forever?)
+		return errors.New("please log in to start a game")
+	}
+
+	req := &pb.MatchRequest{}
+	err := proto.Unmarshal(data, req)
+	if err != nil {
+		return err
+	}
+
+	gameRequest, lastOpp, err := b.gameRequestForMatch(ctx, req, userID)
+	if err != nil {
+		return err
+	}
+	if gameRequest == nil {
+		return errors.New("no game request was found")
+	}
+	if req.GameRequest == nil {
+		req.GameRequest = gameRequest
+	}
+
+	err = gameplay.ValidateSoughtGame(ctx, gameRequest)
+	if err != nil {
+		return err
+	}
+
+	// Look up user.
+	// Note that the seek request should not come with a requesting user;
+	// instead this is in the topic/subject. It is HERE in the API server that
+	// we set the requesting user's display name, rating, etc.
+	reqUser := &pb.MatchUser{}
+	reqUser.IsAnonymous = auth == "anon" // this is never true here anymore, see check above
+	reqUser.UserId = userID
+	req.User = reqUser
+
+	timefmt, variant, err := entity.VariantFromGameReq(gameRequest)
+	ratingKey := entity.ToVariantKey(gameRequest.Lexicon, variant, timefmt)
+
+	u, err := b.userStore.GetByUUID(ctx, reqUser.UserId)
+	if err != nil {
+		return err
+	}
+	reqUser.RelevantRating = u.GetRelevantRating(ratingKey)
+	reqUser.DisplayName = u.Username
+
 	log.Debug().Bool("vsBot", gameRequest.PlayerVsBot).Msg("seeking-bot?")
 
-	if seekOrMatch == "seekRequest" {
-		sr := req.(*pb.SeekRequest)
-		sr.ConnectionId = connID
-		sg, err := gameplay.NewSoughtGame(ctx, b.soughtGameStore, sr)
-		if err != nil {
-			return err
+	req.ConnectionId = connID
+	// It's a direct match request.
+	if gameRequest.PlayerVsBot {
+		// There is no user being matched. Find a bot to play instead.
+		// No need to create a match request in the store.
+		botToPlay := ""
+		if req.RematchFor != "" {
+			botToPlay = lastOpp
+			log.Debug().Str("bot", botToPlay).Msg("forcing-bot")
 		}
-		evt := entity.WrapEvent(sg.SeekRequest, pb.MessageType_SEEK_REQUEST)
-		data, err := evt.Serialize()
-		if err != nil {
-			return err
-		}
-
-		log.Debug().Interface("evt", evt).Msg("publishing seek request to lobby topic")
-		b.natsconn.Publish("lobby.seekRequest", data)
-	} else {
-		mr := req.(*pb.MatchRequest)
-		mr.ConnectionId = connID
-		// It's a direct match request.
-		if gameRequest.PlayerVsBot {
-			// There is no user being matched. Find a bot to play instead.
-			// No need to create a match request in the store.
-			botToPlay := ""
-			if isRematch {
-				botToPlay = lastOpp
-				log.Debug().Str("bot", botToPlay).Msg("forcing-bot")
-			}
-			return b.newBotGame(ctx, mr, botToPlay)
-		}
-		// Check if the user being matched exists.
-		receiver, err := b.userStore.Get(ctx, mr.ReceivingUser.DisplayName)
-		if err != nil {
-			// No such user, most likely.
-			return err
-		}
-		// Set the actual UUID of the receiving user.
-		mr.ReceivingUser.UserId = receiver.UUID
-		mg, err := gameplay.NewMatchRequest(ctx, b.soughtGameStore, mr)
-		if err != nil {
-			return err
-		}
-		evt := entity.WrapEvent(mg.MatchRequest, pb.MessageType_MATCH_REQUEST)
-		log.Debug().Interface("evt", evt).Interface("req", mr).Interface("receiver", mg.MatchRequest.ReceivingUser).
-			Str("sender", reqUser.UserId).Msg("publishing match request to user")
-		b.pubToUser(receiver.UUID, evt, "")
-		// Publish it to the requester as well. This is so they can see it on
-		// their own screen and cancel it if they wish.
-		b.pubToUser(reqUser.UserId, evt, "")
+		return b.newBotGame(ctx, req, botToPlay)
 	}
+	// Check if the user being matched exists.
+	receiver, err := b.userStore.Get(ctx, req.ReceivingUser.DisplayName)
+	if err != nil {
+		// No such user, most likely.
+		return err
+	}
+	// Set the actual UUID of the receiving user.
+	req.ReceivingUser.UserId = receiver.UUID
+
+	// Check if receiving user is blocking the reqUser.
+	blockedUsers, err := b.userStore.GetBlocks(ctx, receiver.ID)
+	if err != nil {
+		return err
+	}
+	for _, bu := range blockedUsers {
+		if bu.UUID == reqUser.UserId {
+			evt := entity.WrapEvent(&pb.ErrorMessage{
+				Message: reqUser.DisplayName + " is not available for match requests",
+			}, pb.MessageType_ERROR_MESSAGE)
+			b.pubToUser(reqUser.UserId, evt, "")
+			return nil
+		}
+	}
+
+	mg, err := gameplay.NewMatchRequest(ctx, b.soughtGameStore, req)
+	if err != nil {
+		return err
+	}
+	evt := entity.WrapEvent(mg.MatchRequest, pb.MessageType_MATCH_REQUEST)
+	log.Debug().Interface("evt", evt).Interface("req", req).Interface("receiver", mg.MatchRequest.ReceivingUser).
+		Str("sender", reqUser.UserId).Msg("publishing match request to user")
+	b.pubToUser(receiver.UUID, evt, "")
+	// Publish it to the requester as well. This is so they can see it on
+	// their own screen and cancel it if they wish.
+	b.pubToUser(reqUser.UserId, evt, "")
+
 	return nil
+}
+
+func (b *Bus) gameRequestForMatch(ctx context.Context, req *pb.MatchRequest,
+	userID string) (*pb.GameRequest, string, error) {
+	// Get the game request from the passed in "rematchFor", if it
+	// is provided. Otherwise, the game request must have been provided
+	// in the request itself.
+
+	var gameRequest *pb.GameRequest
+	gameID := req.RematchFor
+	lastOpp := ""
+
+	if gameID == "" {
+		gameRequest = req.GameRequest
+	} else { // It's a rematch.
+		// XXX: rewrite to call the less expensive GetMetadata.
+		g, err := b.gameStore.Get(ctx, gameID)
+		if err != nil {
+			return nil, "", err
+		}
+		// Figure out who we played against.
+		for _, u := range g.History().Players {
+			if u.UserId == userID {
+				continue
+			}
+			lastOpp = u.UserId
+		}
+		gameRequest = proto.Clone(g.GameReq).(*pb.GameRequest)
+		// If this game is a rematch, set the OriginalRequestId
+		// to the previous game's OriginalRequestId. In this way,
+		// we maintain a constant OriginalRequestId value across
+		// rematch streaks. The OriginalRequestId is set in
+		// NewSoughtGame and NewMatchRequest in sought_game.go
+		// if it is not set here.
+		gameRequest.OriginalRequestId = g.GameReq.OriginalRequestId
+		// This will get overwritten later:
+		gameRequest.RequestId = ""
+	}
+	return gameRequest, lastOpp, nil
 }
 
 func (b *Bus) newBotGame(ctx context.Context, req *pb.MatchRequest, botUserID string) error {
