@@ -23,7 +23,7 @@ export const tilesetToMoveEvent = (
   let undesignatedBlank = false;
   wordTiles.forEach((t) => {
     wordStr += t.fresh ? t.letter : ThroughTileMarker;
-    if (t.letter == Blank) {
+    if (t.letter === Blank) {
       undesignatedBlank = true;
     }
   });
