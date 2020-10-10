@@ -1,4 +1,4 @@
-import { EphemeralTile, Direction, isBlank } from './common';
+import { EphemeralTile, Direction, Blank } from './common';
 import { ClientGameplayEvent } from '../../gen/api/proto/realtime/realtime_pb';
 import { contiguousTilesFromTileSet } from './scoring';
 import { Board } from './board';
@@ -23,7 +23,7 @@ export const tilesetToMoveEvent = (
   let undesignatedBlank = false;
   wordTiles.forEach((t) => {
     wordStr += t.fresh ? t.letter : ThroughTileMarker;
-    if (isBlank(t.letter)) {
+    if (t.letter == Blank) {
       undesignatedBlank = true;
     }
   });
