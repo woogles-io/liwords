@@ -31,8 +31,16 @@ export const ExchangeTiles = (props: Props) => {
       if (delayInput || !props.modalVisible) {
         return;
       }
-      if (e.key === 'Enter' && exchangedRack.length) {
-        props.onOk(exchangedRack);
+      if (e.key === 'Enter') {
+        // Prevent also activating the focused button.
+        // Previously, if the Exchange button was clicked,
+        // pressing Enter would reactivate the exchange modal.
+        // This did not happen when using the shortcut.
+        e.preventDefault();
+        if (exchangedRack.length) {
+          props.onOk(exchangedRack);
+        }
+        return;
       }
       const key = e.key.toLocaleUpperCase();
       const tempToExchange = new Set<number>(exchangedRackIndices);

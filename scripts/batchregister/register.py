@@ -41,6 +41,9 @@ def register(incsv, outcsv):
                     continue
                 password = gen_pw()
                 # use twirp api to register
+                if row["username"] == "" or row["email"] == "":
+                    print("missing info:", row["username"], row["email"])
+                    continue
                 resp = requests.post(
                     registration_api,
                     headers={"Content-Type": "application/json"},
@@ -53,7 +56,10 @@ def register(incsv, outcsv):
                 )
                 if resp.status_code != 200:
                     print(resp.status_code, resp.text)
-                    raise Exception("Failed to register")
+                    print(
+                        "failed to register: ", row["username"], row["email"]
+                    )
+                    continue
 
                 csvwriter.writerow([row["username"], row["email"], password])
 

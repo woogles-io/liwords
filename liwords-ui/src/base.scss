@@ -28,7 +28,8 @@ $color-board-tws: #a92e2e;
 $color-board-tls: #3b88ca;
 $color-board-empty: white;
 
-$color-gray-middle: #bebebe;
+$color-gray-light: #bebebe;
+$color-gray-medium: #999999;
 $color-gray-dark: #414141;
 
 $color-grid: #c3c3c3;
@@ -370,7 +371,7 @@ ul
       transition: none;
     }
     &:disabled, &:disabled:hover {
-      background: $color-gray-middle;
+      background: $color-gray-light;
       color: white;
     }
   }

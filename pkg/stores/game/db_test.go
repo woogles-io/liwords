@@ -132,11 +132,11 @@ func addfakeGames(ustore pkguser.Store) {
 
 	db := store.db.Exec("INSERT INTO games(created_at, updated_at, uuid, "+
 		"player0_id, player1_id, timers, started, game_end_reason, winner_idx, loser_idx, "+
-		"request, history) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+		"request, history, quickdata) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
 		"2020-07-27 04:33:45.938304+00", "2020-07-27 04:33:45.938304+00",
 		"wJxURccCgSAPivUvj4QdYL", 2, 1,
 		`{"lu": 1595824425928, "mo": 0, "tr": [60000, 60000], "ts": 1595824425928}`,
-		true, 0, 0, 0, req, protocts)
+		true, 0, 0, 0, req, protocts, `{}`)
 
 	if db.Error != nil {
 		log.Fatal().Err(db.Error).Msg("error")
@@ -167,7 +167,7 @@ func TestMain(m *testing.M) {
 	os.Exit(code)
 }
 
-func createGame(p0, p1 string, initTime int32, is *is.I) {
+func createGame(p0, p1 string, initTime int32, is *is.I) *entity.Game {
 	ustore := userStore(TestingDBConnStr + " dbname=liwords_test")
 	store, err := NewDBStore(&config.Config{
 		DBConnString: TestingDBConnStr + " dbname=liwords_test"}, ustore)
@@ -196,16 +196,38 @@ func createGame(p0, p1 string, initTime int32, is *is.I) {
 
 	err = store.Create(context.Background(), entGame)
 	is.NoErr(err)
+
 	// Clean up connections
 	ustore.(*user.DBStore).Disconnect()
 	store.Disconnect()
+
+	return entGame
 }
 
 func TestCreate(t *testing.T) {
 	log.Info().Msg("TestCreate")
 	recreateDB()
 	is := is.New(t)
-	createGame("cesar", "mina", int32(60), is)
+	entGame := createGame("cesar", "mina", int32(60), is)
+
+	is.True(entGame.Quickdata != nil)
+
+	ustore := userStore(TestingDBConnStr + " dbname=liwords_test")
+	store, err := NewDBStore(&config.Config{
+		MacondoConfig: DefaultConfig,
+		DBConnString:  TestingDBConnStr + " dbname=liwords_test",
+	}, ustore)
+	is.NoErr(err)
+	// Make sure we can fetch the game from the DB.
+	log.Debug().Str("entGameID", entGame.GameID()).Msg("trying-to-fetch")
+	cpy, err := store.Get(context.Background(), entGame.GameID())
+	is.NoErr(err)
+	is.True(cpy.Quickdata != nil)
+
+	// Clean up connections
+	ustore.(*user.DBStore).Disconnect()
+	store.Disconnect()
+
 }
 
 func TestSet(t *testing.T) {

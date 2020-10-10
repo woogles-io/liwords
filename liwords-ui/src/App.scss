@@ -1,20 +1,46 @@
 @import 'base';
-.App {
+body {
   background-color: white;
-  /* Prevent squashing board until we get to responsive for mobile */
-  a, button.link {
+}
+
+.ant-dropdown.user-menu {
+  background: white;
+  padding: 6px 24px 6px 12px;
+  min-width: 200px;
+  box-shadow: $card-shadow-lower;
+}
+a, button.link {
+  cursor: pointer;
+  color: $color-primary-dark;
+  font-weight: bold;
+  border: 0;
+  outline: 0;
+  &:hover,
+  &:active {
+    color: $color-primary-midDark;
+  }
+}
+button.link {
+  background: white;
+}
+
+a.plain, .link.plain {
+  cursor: pointer;
+  font-weight: 700;
+  color: $color-gray-dark;
+  transition: none;
+  font-family: $font-default;
+  line-height: 34px;
+  &:hover,
+  &:active {
     color: $color-primary-dark;
-    font-weight: bold;
-    border: 0;
-    outline: 0;
-    &:hover,
-    &:active {
-      color: $color-primary-midDark;
-    }
   }
-  button.link {
-    background: white;
-  }
+}
+.note {
+  font-size: 12px;
+  line-height: 18px;
+  margin-bottom: 6px;
+  color: $color-primary-dark;
 }
 
 .App-logo {
