@@ -104,22 +104,21 @@ func (s *DBStore) Get(ctx context.Context, id string) (*entity.Game, error) {
 		return nil, err
 	}
 
-	var sdata *entity.Stats
-	err = json.Unmarshal(g.Stats, sdata)
+	var sdata entity.Stats
+	err = json.Unmarshal(g.Stats, &sdata)
 	if err != nil {
 		// it could be that the stats are empty, so don't worry.
-	}
-
-	var qdata *entity.Quickdata
-	err = json.Unmarshal(g.Quickdata, qdata)
-	if err != nil {
-		// qdata could be empty, although it shouldn't be after we do a migration.
-		// Uncomment out the following after the migration:
 		// return nil, err
 	}
 
-	return FromState(tdata, qdata, g.Started, g.GameEndReason, g.Player0ID, g.Player1ID,
-		g.WinnerIdx, g.LoserIdx, g.Request, g.History, sdata, s.gameEventChan, s.cfg)
+	var qdata entity.Quickdata
+	err = json.Unmarshal(g.Quickdata, &qdata)
+	if err != nil {
+		return nil, err
+	}
+
+	return FromState(tdata, &qdata, g.Started, g.GameEndReason, g.Player0ID, g.Player1ID,
+		g.WinnerIdx, g.LoserIdx, g.Request, g.History, &sdata, s.gameEventChan, s.cfg)
 }
 
 // GetMetadata gets metadata about the game, but does not actually play the game.
@@ -339,6 +338,7 @@ func (s *DBStore) Create(ctx context.Context, g *entity.Game) error {
 	if err != nil {
 		return err
 	}
+	log.Debug().Interface("dbg", dbg).Msg("dbg")
 	result := s.db.Create(dbg)
 	return result.Error
 }
@@ -404,6 +404,7 @@ func (s *DBStore) toDBObj(ctx context.Context, g *entity.Game) (*game, error) {
 	if err != nil {
 		return nil, err
 	}
+	log.Debug().Str("quickdata", string(quickdata)).Msg("quickdata")
 	req, err := proto.Marshal(g.GameReq)
 	if err != nil {
 		return nil, err
