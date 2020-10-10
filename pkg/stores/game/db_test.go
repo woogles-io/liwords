@@ -132,11 +132,11 @@ func addfakeGames(ustore pkguser.Store) {
 
 	db := store.db.Exec("INSERT INTO games(created_at, updated_at, uuid, "+
 		"player0_id, player1_id, timers, started, game_end_reason, winner_idx, loser_idx, "+
-		"request, history) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+		"request, history, quickdata) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
 		"2020-07-27 04:33:45.938304+00", "2020-07-27 04:33:45.938304+00",
 		"wJxURccCgSAPivUvj4QdYL", 2, 1,
 		`{"lu": 1595824425928, "mo": 0, "tr": [60000, 60000], "ts": 1595824425928}`,
-		true, 0, 0, 0, req, protocts)
+		true, 0, 0, 0, req, protocts, `{}`)
 
 	if db.Error != nil {
 		log.Fatal().Err(db.Error).Msg("error")
