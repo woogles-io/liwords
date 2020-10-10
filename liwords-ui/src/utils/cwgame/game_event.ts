@@ -1,4 +1,4 @@
-import { EphemeralTile, Direction } from './common';
+import { EphemeralTile, Direction, isBlank } from './common';
 import { ClientGameplayEvent } from '../../gen/api/proto/realtime/realtime_pb';
 import { contiguousTilesFromTileSet } from './scoring';
 import { Board } from './board';
@@ -20,10 +20,18 @@ export const tilesetToMoveEvent = (
   const [wordTiles, wordDir] = ret;
   let wordStr = '';
   let wordPos = '';
+  let undesignatedBlank = false;
   wordTiles.forEach((t) => {
     wordStr += t.fresh ? t.letter : ThroughTileMarker;
+    if (isBlank(t.letter)) {
+      undesignatedBlank = true;
+    }
   });
-
+  if (undesignatedBlank) {
+    // Play has an undesignated blank. Not valid.
+    console.log('Undesignated blank');
+    return null;
+  }
   const row = String(wordTiles[0].row + 1);
   const col = String.fromCharCode(wordTiles[0].col + 'A'.charCodeAt(0));
 

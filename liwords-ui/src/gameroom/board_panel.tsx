@@ -15,6 +15,7 @@ import {
   designateBlank,
 } from '../utils/cwgame/tile_placement';
 import {
+  Blank,
   uniqueTileIdx,
   EphemeralTile,
   EmptySpace,
@@ -333,7 +334,7 @@ export const BoardPanel = React.memo((props: Props) => {
       shuffleTiles();
       return;
     }
-    if (key === EnterKey && !exchangeModalVisible) {
+    if (key === EnterKey && !exchangeModalVisible && !blankModalVisible) {
       makeMove('commit');
       return;
     }
@@ -343,7 +344,9 @@ export const BoardPanel = React.memo((props: Props) => {
     if (!arrowProperties.show) {
       return;
     }
-
+    if (key === '?') {
+      return;
+    }
     // This should return a new set of arrow properties, and also set
     // some state further up (the tiles layout with a "just played" type
     // marker)
@@ -440,6 +443,13 @@ export const BoardPanel = React.memo((props: Props) => {
       row: newrow,
     });
   };
+
+  const handleBoardTileClick = (rune: string) => {
+    if (rune === Blank) {
+      setBlankModalVisible(true);
+    }
+  };
+
   const handleBlankSelection = (rune: string) => {
     const handlerReturn = designateBlank(
       props.board,
@@ -613,6 +623,7 @@ export const BoardPanel = React.memo((props: Props) => {
       <GameBoard
         gridSize={props.board.dim}
         gridLayout={props.board.gridLayout}
+        handleBoardTileClick={handleBoardTileClick}
         handleTileDrop={handleTileDrop}
         tilesLayout={props.board.letters}
         lastPlayedTiles={gameContext.lastPlayedTiles}
