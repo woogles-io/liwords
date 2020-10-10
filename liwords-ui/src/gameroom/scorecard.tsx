@@ -4,6 +4,7 @@ import { GameEvent } from '../gen/macondo/api/proto/macondo/macondo_pb';
 import { Board } from '../utils/cwgame/board';
 import { PlayerAvatar } from '../shared/player_avatar';
 import { millisToTimeStr } from '../store/timer_controller';
+import { Blank } from '../utils/cwgame/common';
 import { tilePlacementEventDisplay } from '../utils/cwgame/game_event';
 import { PlayerMetadata } from './game_info';
 import { Turn, gameEventsToTurns } from '../store/reducers/turns';
@@ -40,12 +41,27 @@ type MoveEntityObj = {
   lostScore: number;
 };
 
+const sortBlanksLast = (rack: string) => {
+  let letters = '';
+  let blanks = '';
+  for (const tile of rack) {
+    if (tile === Blank) {
+      blanks += tile;
+    } else {
+      letters += tile;
+    }
+  }
+  return letters + blanks;
+};
+
 const displaySummary = (evt: GameEvent, board: Board) => {
   // Handle just a subset of the possible moves here. These may be modified
   // later on.
   switch (evt.getType()) {
     case GameEvent.Type.EXCHANGE:
-      return <span className="exchanged">-{evt.getExchanged()}</span>;
+      return (
+        <span className="exchanged">-{sortBlanksLast(evt.getExchanged())}</span>
+      );
 
     case GameEvent.Type.PASS:
       return <span className="pass">Passed turn</span>;
@@ -117,6 +133,7 @@ const ScorecardTurn = (props: turnProps) => {
       oldScore: oldScore,
     };
     if (evts.length === 1) {
+      turn.rack = sortBlanksLast(turn.rack);
       return turn;
     }
     // Otherwise, we have to make some modifications.
@@ -143,7 +160,7 @@ const ScorecardTurn = (props: turnProps) => {
             </span>
           </>
         );
-        turn.rack = `Play is valid ${evts[0].getRack()}`;
+        turn.rack = `Play is valid ${sortBlanksLast(evts[0].getRack())}`;
       }
       // Otherwise, just add/subtract as needed.
       for (let i = 1; i < evts.length; i++) {
