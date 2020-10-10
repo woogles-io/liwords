@@ -18,7 +18,7 @@ def send_email(recipient, username, password, email_template):
         "https://api.mailgun.net/v3/mg.woogles.io/messages",
         auth=("api", MAILGUN_KEY),
         data={
-            "from": "Woogles <mailgun@mg.woogles.io>",
+            "from": "Woogles <woogles@mg.woogles.io>",
             "to": [recipient],
             "subject": "Welcome to the Woogles.io alpha!",
             "text": email_template.format(
