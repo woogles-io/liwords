@@ -44,6 +44,7 @@ export const TopBar = React.memo((props: Props) => {
           message: 'Success',
           description: 'You have been logged out.',
         });
+        setTimeout(window.location.reload.bind(window.location), 1000);
       })
       .catch((e) => {
         console.log(e);
