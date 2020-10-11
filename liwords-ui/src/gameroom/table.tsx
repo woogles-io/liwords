@@ -110,7 +110,7 @@ export const Table = React.memo((props: Props) => {
       document.removeEventListener('keydown', evtHandler);
       document.removeEventListener('keypress', evtHandler);
     };
-  });
+  }, []);
 
   useEffect(() => {
     // Request game API to get info about the game at the beginning.
