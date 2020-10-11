@@ -388,6 +388,15 @@ func HandleEvent(ctx context.Context, gameStore GameStore, userStore user.Store,
 	}
 	entGame.Lock()
 	defer entGame.Unlock()
+
+	return handleEventAfterLockingGame(ctx, gameStore, userStore, listStatStore, userID, cge, entGame)
+}
+
+// Assume entGame is already locked.
+func handleEventAfterLockingGame(ctx context.Context, gameStore GameStore, userStore user.Store,
+	listStatStore stats.ListStatStore, userID string, cge *pb.ClientGameplayEvent,
+	entGame *entity.Game) (*entity.Game, error) {
+
 	if entGame.Game.Playing() == macondopb.PlayState_GAME_OVER {
 		return entGame, errGameNotActive
 	}
@@ -401,11 +410,25 @@ func HandleEvent(ctx context.Context, gameStore GameStore, userStore user.Store,
 	timeRemaining := entGame.TimeRemaining(onTurn)
 	log.Debug().Int("time-remaining", timeRemaining).Msg("checking-time-remaining")
 	// Check that we didn't run out of time.
-	if entGame.TimeRanOut(onTurn) {
+	// Allow auto-passing.
+	if !(entGame.Game.Playing() == macondopb.PlayState_WAITING_FOR_FINAL_PASS &&
+		cge.Type == pb.ClientGameplayEvent_PASS) &&
+		entGame.TimeRanOut(onTurn) {
 		// Game is over!
 		log.Debug().Msg("got-move-too-late")
-		// Basically skip to the bottom and exit.
-		return entGame, setTimedOut(ctx, entGame, onTurn, gameStore, userStore, listStatStore)
+
+		// If an ending game gets "challenge" just before "timed out",
+		// ignore the challenge, pass instead.
+		if entGame.Game.Playing() == macondopb.PlayState_WAITING_FOR_FINAL_PASS {
+			log.Debug().Msg("timed out, so passing instead of processing the submitted move")
+			cge = &pb.ClientGameplayEvent{
+				Type:   pb.ClientGameplayEvent_PASS,
+				GameId: cge.GameId,
+			}
+		} else {
+			// Basically skip to the bottom and exit.
+			return entGame, setTimedOut(ctx, entGame, onTurn, gameStore, userStore, listStatStore)
+		}
 	}
 
 	log.Debug().Msg("going to turn into a macondo gameevent")
@@ -436,7 +459,7 @@ func HandleEvent(ctx context.Context, gameStore GameStore, userStore user.Store,
 		}
 	}
 
-	err = gameStore.Set(ctx, entGame)
+	err := gameStore.Set(ctx, entGame)
 	if err != nil {
 		return entGame, err
 	}
@@ -478,6 +501,17 @@ func TimedOut(ctx context.Context, gameStore GameStore, userStore user.Store,
 		return errTimeDidntRunOut
 	}
 	// Ok, the time did run out after all.
+
+	// If opponent played out, auto-pass instead of forfeiting.
+	if entGame.Game.Playing() == macondopb.PlayState_WAITING_FOR_FINAL_PASS {
+		log.Debug().Msg("timed out, so auto-passing instead of forfeiting")
+		_, err = handleEventAfterLockingGame(ctx, gameStore, userStore, listStatStore,
+			entGame.Game.PlayerIDOnTurn(), &pb.ClientGameplayEvent{
+				Type:   pb.ClientGameplayEvent_PASS,
+				GameId: gameID,
+			}, entGame)
+		return err
+	}
 
 	return setTimedOut(ctx, entGame, onTurn, gameStore, userStore, listStatStore)
 }
