@@ -12,6 +12,7 @@ type Props = {
   gridDim: number;
   tilesLayout: string;
   lastPlayedTiles: PlayedTiles;
+  onClick: (rune: string) => void;
   placementArrow: PlacementArrow;
   scaleTiles: boolean;
   tentativeTiles: Set<EphemeralTile>;
@@ -125,6 +126,9 @@ const Tiles = React.memo((props: Props) => {
         if (tentativeTile) {
           tiles.push(
             <Tile
+              onClick={() => {
+                props.onClick(tentativeTile.letter);
+              }}
               rune={tentativeTile.letter}
               value={runeToValues(
                 tentativeTile.letter,
@@ -143,10 +147,7 @@ const Tiles = React.memo((props: Props) => {
           );
         } else {
           tiles.push(
-            <div
-              className="empty-space"
-              key={`tile_${x}_${y}`}
-            >
+            <div className="empty-space" key={`tile_${x}_${y}`}>
               &nbsp;
             </div>
           );

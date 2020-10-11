@@ -104,6 +104,29 @@ it('tests invalid play', () => {
   expect(evt).toBeNull();
 });
 
+it('should not commit undesignated blank', () => {
+  const placedTiles = new Set<EphemeralTile>();
+  placedTiles.add({
+    row: 4,
+    col: 3,
+    letter: 'I',
+  });
+  placedTiles.add({
+    row: 4,
+    col: 4,
+    letter: '?',
+  });
+  placedTiles.add({
+    row: 4,
+    col: 5,
+    letter: 'B',
+  });
+  const board = new Board();
+  board.setTileLayout(oxyTilesLayout);
+  const evt = tilesetToMoveEvent(placedTiles, board, '');
+  expect(evt).toBeNull();
+});
+
 it('tests event with blank', () => {
   const placedTiles = new Set<EphemeralTile>();
   placedTiles.add({
