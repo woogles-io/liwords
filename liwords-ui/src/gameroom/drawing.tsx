@@ -1,6 +1,6 @@
 import React from 'react';
 
-export const useDrawing = () => {
+export const useDrawing = (isEnabled: boolean) => {
   // Drawing functionalities.
   // Right-drag = draw.
   // RightClick several times = clear drawing.
@@ -34,9 +34,10 @@ export const useDrawing = () => {
     [resizeFunc]
   );
   React.useEffect(() => {
+    if (!isEnabled) return;
     window.addEventListener('resize', resizeFunc);
     return () => window.removeEventListener('resize', resizeFunc);
-  }, [resizeFunc]);
+  }, [isEnabled, resizeFunc]);
   const getXY = React.useCallback(
     (evt: React.MouseEvent): { x: number; y: number } => {
       const x = Math.max(
@@ -147,16 +148,18 @@ export const useDrawing = () => {
   }, [picture, boardSize]);
 
   return {
-    outerDivProps: {
-      ref: boardRef,
-      onContextMenu: handleContextMenu,
-      onMouseDown: handleMouseDown,
-      onMouseUp: handleMouseUp,
-      onMouseMove: handleMouseMove,
-      onPointerDown: handlePointerDown,
-      onPointerUp: handlePointerUp,
-    },
-    svgDrawing: (
+    outerDivProps: isEnabled
+      ? {
+          ref: boardRef,
+          onContextMenu: handleContextMenu,
+          onMouseDown: handleMouseDown,
+          onMouseUp: handleMouseUp,
+          onMouseMove: handleMouseMove,
+          onPointerDown: handlePointerDown,
+          onPointerUp: handlePointerUp,
+        }
+      : {},
+    svgDrawing: isEnabled ? (
       <svg
         viewBox={`0 0 ${boardSize.width} ${boardSize.height}`}
         style={{
@@ -170,6 +173,6 @@ export const useDrawing = () => {
       >
         {currentDrawing}
       </svg>
-    ),
+    ) : null,
   };
 };

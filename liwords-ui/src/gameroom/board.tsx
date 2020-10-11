@@ -30,7 +30,10 @@ const Board = React.memo((props: Props) => {
   // Keep frames the same size, and shrink or grow the
   // board squares as necessary.
 
-  const { outerDivProps, svgDrawing } = useDrawing();
+  const [enableDrawing, setEnableDrawing] = React.useState(false);
+  const { outerDivProps, svgDrawing } = useDrawing(enableDrawing);
+
+  void setEnableDrawing; // for now, no way to enable
 
   return (
     <div className="board">
