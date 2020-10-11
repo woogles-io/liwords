@@ -148,6 +148,12 @@ const Board = React.memo((props: Props) => {
     },
     [getXY]
   );
+  const handlePointerDown = React.useCallback((evt: React.PointerEvent) => {
+    (evt.target as Element).setPointerCapture(evt.pointerId);
+  }, []);
+  const handlePointerUp = React.useCallback((evt: React.PointerEvent) => {
+    (evt.target as Element).releasePointerCapture(evt.pointerId);
+  }, []);
   const currentDrawing = React.useMemo(() => {
     let path = '';
     for (const stroke of picture.picture) {
@@ -178,6 +184,8 @@ const Board = React.memo((props: Props) => {
         onMouseDown={handleMouseDown}
         onMouseUp={handleMouseUp}
         onMouseMove={handleMouseMove}
+        onPointerDown={handlePointerDown}
+        onPointerUp={handlePointerUp}
       >
         <BoardSpaces
           gridDim={props.gridSize}
