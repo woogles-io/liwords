@@ -392,7 +392,11 @@ export const BoardPanel = React.memo((props: Props) => {
   };
 
   const clickToBoard = (rackIndex: number) => {
-    if (!arrowProperties.show) {
+    if (
+      !arrowProperties.show ||
+      arrowProperties.row >= props.board.dim ||
+      arrowProperties.col >= props.board.dim
+    ) {
       return null;
     }
     const handlerReturn = handleDroppedTile(
