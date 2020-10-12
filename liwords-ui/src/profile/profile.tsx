@@ -312,6 +312,7 @@ export const UserProfile = (props: Props) => {
         <GamesHistoryCard
           games={recentGames}
           username={username}
+          userID={userID}
           fetchPrev={() =>
             setRecentGamesOffset(Math.max(recentGamesOffset - gamesPageSize, 0))
           }

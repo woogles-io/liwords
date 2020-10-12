@@ -8,11 +8,11 @@ type Props = {
   username: string;
   fetchPrev: () => void;
   fetchNext: () => void;
+  userID: string;
 };
 
-const itemTitle = (item: GameMetadata, username: string) => {
-  // XXX: this breaks if you change your username
-  const userplace = item.players[0].nickname === username ? 0 : 1;
+const itemTitle = (item: GameMetadata, userID: string) => {
+  const userplace = item.players[0].user_id === userID ? 0 : 1;
   const opponent = item.players[1 - userplace].nickname;
   let wlt = '';
   if (item.winner === -1) {
@@ -25,8 +25,8 @@ const itemTitle = (item: GameMetadata, username: string) => {
   return <a href={`/game/${item.game_id}`}>{`${wlt} vs. ${opponent}`}</a>;
 };
 
-const itemDescription = (item: GameMetadata, username: string) => {
-  const userplace = item.players[0].nickname === username ? 0 : 1;
+const itemDescription = (item: GameMetadata, userID: string) => {
+  const userplace = item.players[0].user_id === userID ? 0 : 1;
   let description = '';
   let scores = '';
   if (item.scores) {
@@ -79,12 +79,12 @@ export const GamesHistoryCard = (props: Props) => {
       renderItem={(item) => (
         <List.Item>
           <List.Item.Meta
-            title={itemTitle(item, props.username)}
+            title={itemTitle(item, props.userID)}
             description={moment(
               item.created_at ? item.created_at : ''
             ).fromNow()}
           />
-          <div>{itemDescription(item, props.username)}</div>
+          <div>{itemDescription(item, props.userID)}</div>
         </List.Item>
       )}
     />
