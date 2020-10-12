@@ -55,7 +55,8 @@ export const useDrawing = (isEnabled: boolean) => {
   const [picture, setPicture] = React.useState<{
     drawing: boolean;
     strokes: Array<{
-      points: Array<{ x: number; y: number }>;
+      points: Array<{ x: number; y: number }>; // scaled to [0,1)
+      path: string; // Mx,yLx,yLx,y... based on current boardSize
     }>;
   }>({ drawing: false, strokes: [] });
   const hasPicture = picture.strokes.length > 0;
@@ -74,17 +75,22 @@ export const useDrawing = (isEnabled: boolean) => {
     },
     [hasPicture]
   );
+  const scaledXYStr = React.useCallback(
+    ({ x, y }: { x: number; y: number }) =>
+      `${x * boardSize.width},${y * boardSize.height}`,
+    [boardSize.width, boardSize.height]
+  );
   const handleMouseDown = React.useCallback(
     (evt: React.MouseEvent) => {
       if (evt.button === 2 && !evt.shiftKey) {
         const newXY = getXY(evt);
         setPicture((pic) => {
-          pic.strokes.push({ points: [newXY] }); // mutate
+          pic.strokes.push({ points: [newXY], path: `M${scaledXYStr(newXY)}` }); // mutate
           return { ...pic, drawing: true }; // shallow clone for performance
         });
       }
     },
-    [getXY]
+    [getXY, scaledXYStr]
   );
   const handleMouseUp = React.useCallback((evt: React.MouseEvent) => {
     setPicture((pic) => {
@@ -123,10 +129,11 @@ export const useDrawing = (isEnabled: boolean) => {
         const lastPoint = lastPoints[lastPoints.length - 1];
         if (lastPoint.x === newXY.x && lastPoint.y === newXY.y) return pic;
         lastPoints.push(newXY); // mutate
+        lastStroke.path += `L${scaledXYStr(newXY)}`;
         return { ...pic }; // shallow clone for performance
       });
     },
-    [getXY]
+    [getXY, scaledXYStr]
   );
   const handlePointerDown = React.useCallback((evt: React.PointerEvent) => {
     (evt.target as Element).setPointerCapture(evt.pointerId);
@@ -134,22 +141,30 @@ export const useDrawing = (isEnabled: boolean) => {
   const handlePointerUp = React.useCallback((evt: React.PointerEvent) => {
     (evt.target as Element).releasePointerCapture(evt.pointerId);
   }, []);
+  React.useEffect(() => {
+    setPicture((pic) => {
+      // Board size changed, recompute path.
+      for (const stroke of pic.strokes) {
+        let path = `M${scaledXYStr(stroke.points[0])}`;
+        for (let i = 1; i < stroke.points.length; ++i) {
+          path += `L${scaledXYStr(stroke.points[i])}`;
+        }
+        stroke.path = path; // mutate
+      }
+      return { ...pic }; // shallow clone for performance
+    });
+  }, [scaledXYStr]);
   const currentDrawing = React.useMemo(() => {
     let path = '';
-    for (const { points } of picture.strokes) {
-      for (let i = 0; i < points.length; ++i) {
-        const { x, y } = points[i];
-        const scaledX = x * boardSize.width;
-        const scaledY = y * boardSize.height;
-        path += `${i === 0 ? 'M' : 'L'}${scaledX},${scaledY}`;
-      }
+    for (const { points, path: thisPath } of picture.strokes) {
+      path += thisPath;
       if (points.length === 1) {
         // Draw a diamond to represent a single point.
         path += 'm-1,0l1,1l1,-1l-1,-1l-1,1l1,1';
       }
     }
     return <path d={path} fill="none" strokeWidth={5} stroke="red" />;
-  }, [picture, boardSize]);
+  }, [picture]);
 
   return {
     outerDivProps: isEnabled
