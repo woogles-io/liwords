@@ -236,7 +236,12 @@ const TheBlocker = (props: BlockerProps) => {
       });
   };
 
-  return <Button onClick={blockAction}>{blockText}</Button>;
+  // HIDE the blocker button for now:
+  return (
+    <Button onClick={blockAction} style={{ display: 'none' }}>
+      {blockText}
+    </Button>
+  );
 };
 
 export const UserProfile = (props: Props) => {
@@ -296,8 +301,9 @@ export const UserProfile = (props: Props) => {
           <h3>{username}</h3>
           {viewer === username ? (
             <a href="/password/change">Change your password</a>
-          ) : // <TheBlocker target={userID} />
-          null}
+          ) : (
+            <TheBlocker target={userID} />
+          )}
         </header>
 
         <RatingsCard ratings={ratings} />
