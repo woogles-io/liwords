@@ -524,10 +524,10 @@ func TestTournamentClassicElimination(t *testing.T) {
 	is := is.New(t)
 
 	// Try and make an elimination tournament with too many rounds
-	tc, err := NewTournamentClassic(players, 3, Elimination, 3);
+	tc, err := NewTournamentClassic(players, 3, Elimination, 3)
 	is.True(err != nil)
 
-	tc, err = NewTournamentClassic(players, 2, Elimination, 3);
+	tc, err = NewTournamentClassic(players, 2, Elimination, 3)
 	is.NoErr(err)
 	is.True(tc != nil)
 
