@@ -48,7 +48,7 @@ func (b *Bus) chat(ctx context.Context, userID string, evt *pb.ChatMessage) erro
 	redisKey := "chat:" + evt.Channel
 
 	ret, err := redis.String(conn.Do("XADD", redisKey, "MAXLEN", "~", "500", "*",
-		"username", username, "message", evt.Message))
+		"username", username, "message", evt.Message, "userID", userID))
 	if err != nil {
 		return err
 	}
@@ -59,6 +59,7 @@ func (b *Bus) chat(ctx context.Context, userID string, evt *pb.ChatMessage) erro
 	}
 	chatMessage := &pb.ChatMessage{
 		Username:  username,
+		UserId:    userID,
 		Channel:   evt.Channel, // this info might be redundant
 		Message:   evt.Message,
 		Timestamp: ts,
@@ -113,10 +114,15 @@ func (b *Bus) sendOldChats(userID, chatChannel string) error {
 		}
 		msg.Timestamp = ts
 
-		// val[1] is an array of arrays. ["username", username, "message", message]
+		// val[1] is an array of arrays. ["username", username, "message", message, "userID", userID]
 		msgvals := val[1].([]interface{})
 		msg.Username = string(msgvals[1].([]byte))
 		msg.Message = string(msgvals[3].([]byte))
+		if len(msgvals) > 5 {
+			// We need this check because we didn't always store userID -- although
+			// we can likely remove this once old chats have expired.
+			msg.UserId = string(msgvals[5].([]byte))
+		}
 
 		messages[len(vals)-1-idx] = msg
 	}

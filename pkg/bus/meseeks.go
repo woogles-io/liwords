@@ -154,7 +154,7 @@ func (b *Bus) matchRequest(ctx context.Context, auth, userID, connID string,
 	for _, bu := range blockedUsers {
 		if bu.UUID == reqUser.UserId {
 			evt := entity.WrapEvent(&pb.ErrorMessage{
-				Message: reqUser.DisplayName + " is not available for match requests",
+				Message: receiver.Username + " is not available for match requests",
 			}, pb.MessageType_ERROR_MESSAGE)
 			b.pubToUser(reqUser.UserId, evt, "")
 			return nil

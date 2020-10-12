@@ -123,15 +123,12 @@ func (ss *SocializeService) GetFullBlocks(ctx context.Context, req *pb.GetFullBl
 		return nil, err
 	}
 
-	basicUsers := make([]*pb.BasicUser, len(users))
+	basicUsers := make([]string, len(users))
 	for i, u := range users {
-		basicUsers[i] = &pb.BasicUser{
-			Uuid:     u.UUID,
-			Username: u.Username,
-		}
+		basicUsers[i] = u.UUID
 	}
 
-	return &pb.GetFullBlocksResponse{Users: basicUsers}, nil
+	return &pb.GetFullBlocksResponse{UserIds: basicUsers}, nil
 }
 
 // func (ss *SocializeService) GetBlockedBy(ctx context.Context, req *pb.GetBlocksRequest) (*pb.GetBlockedByResponse, error) {

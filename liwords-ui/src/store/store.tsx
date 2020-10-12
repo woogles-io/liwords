@@ -67,8 +67,8 @@ export type StoreData = {
 
   challengeResultEvent: (sge: ServerChallengeResultEvent) => void;
 
-  excludedPlayers: Array<string>;
-  setExcludedPlayers: React.Dispatch<React.SetStateAction<Array<string>>>;
+  excludedPlayers: Set<string>;
+  setExcludedPlayers: React.Dispatch<React.SetStateAction<Set<string>>>;
 
   gameContext: GameState;
   dispatchGameContext: (action: Action) => void;
@@ -128,7 +128,7 @@ export const Context = createContext<StoreData>({
   dispatchLoginState: defaultFunction,
 
   // we do not see any messages from excludedPlayers
-  excludedPlayers: [],
+  excludedPlayers: new Set<string>(),
   setExcludedPlayers: defaultFunction,
 
   redirGame: '',
@@ -231,7 +231,7 @@ export const Store = ({ children, ...props }: Props) => {
   const [gameEndMessage, setGameEndMessage] = useState('');
   const [rematchRequest, setRematchRequest] = useState(new MatchRequest());
   const [chat, setChat] = useState(new Array<ChatEntityObj>());
-  const [excludedPlayers, setExcludedPlayers] = useState(new Array<string>());
+  const [excludedPlayers, setExcludedPlayers] = useState(new Set<string>());
   const [presences, setPresences] = useState(
     {} as { [uuid: string]: PresenceEntity }
   );

@@ -18,13 +18,8 @@ import { PasswordReset } from './lobby/password_reset';
 import { NewPassword } from './lobby/new_password';
 import { toAPIUrl } from './api/api';
 
-type BasicUser = {
-  uuid: string;
-  username: string;
-};
-
 type Blocks = {
-  users: Array<BasicUser>;
+  user_ids: Array<string>;
 };
 
 const App = React.memo(() => {
@@ -49,11 +44,11 @@ const App = React.memo(() => {
     axios
       .post<Blocks>(
         toAPIUrl('user_service.SocializeService', 'GetFullBlocks'),
-        { foo: 'bar' },
-        { withCredentials: true, headers: { contentLength: 0 } }
+        {},
+        { withCredentials: true }
       )
       .then((resp) => {
-        store.setExcludedPlayers(resp.data.users.map((u) => u.uuid));
+        store.setExcludedPlayers(new Set<string>(resp.data.user_ids));
       });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

@@ -2237,7 +2237,8 @@ proto.liwords.ChatMessage.toObject = function(includeInstance, msg) {
     username: jspb.Message.getFieldWithDefault(msg, 1, ""),
     channel: jspb.Message.getFieldWithDefault(msg, 2, ""),
     message: jspb.Message.getFieldWithDefault(msg, 3, ""),
-    timestamp: jspb.Message.getFieldWithDefault(msg, 4, 0)
+    timestamp: jspb.Message.getFieldWithDefault(msg, 4, 0),
+    userId: jspb.Message.getFieldWithDefault(msg, 5, "")
   };
 
   if (includeInstance) {
@@ -2289,6 +2290,10 @@ proto.liwords.ChatMessage.deserializeBinaryFromReader = function(msg, reader) {
     case 4:
       var value = /** @type {number} */ (reader.readInt64());
       msg.setTimestamp(value);
+      break;
+    case 5:
+      var value = /** @type {string} */ (reader.readString());
+      msg.setUserId(value);
       break;
     default:
       reader.skipField();
@@ -2344,6 +2349,13 @@ proto.liwords.ChatMessage.serializeBinaryToWriter = function(message, writer) {
   if (f !== 0) {
     writer.writeInt64(
       4,
+      f
+    );
+  }
+  f = message.getUserId();
+  if (f.length > 0) {
+    writer.writeString(
+      5,
       f
     );
   }
@@ -2419,6 +2431,24 @@ proto.liwords.ChatMessage.prototype.getTimestamp = function() {
  */
 proto.liwords.ChatMessage.prototype.setTimestamp = function(value) {
   return jspb.Message.setProto3IntField(this, 4, value);
+};
+
+
+/**
+ * optional string user_id = 5;
+ * @return {string}
+ */
+proto.liwords.ChatMessage.prototype.getUserId = function() {
+  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 5, ""));
+};
+
+
+/**
+ * @param {string} value
+ * @return {!proto.liwords.ChatMessage} returns this
+ */
+proto.liwords.ChatMessage.prototype.setUserId = function(value) {
+  return jspb.Message.setProto3StringField(this, 5, value);
 };
 
 

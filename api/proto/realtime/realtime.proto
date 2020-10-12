@@ -123,6 +123,7 @@ message ChatMessage {
   string message = 3;
   // millis.
   int64 timestamp = 4;
+  string user_id = 5;
 }
 
 message ChatMessages { repeated ChatMessage messages = 1; }

@@ -93,6 +93,7 @@ message ProfileResponse {
   string about = 5;
   string ratings_json = 6;
   string stats_json = 7;
+  string user_id = 8;
 }
 
 service ProfileService {
@@ -131,7 +132,7 @@ message GetFollowsResponse { repeated BasicUser users = 1; }
 message GetBlocksResponse { repeated BasicUser users = 1; }
 // XXX: We should eventually obsolete this and handle blocks purely on
 // the backend but we need to write a lot of hard code for that.
-message GetFullBlocksResponse { repeated BasicUser users = 1; }
+message GetFullBlocksResponse { repeated string user_ids = 1; }
 
 // Yeah I know
 service SocializeService {

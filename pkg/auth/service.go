@@ -83,6 +83,7 @@ func (as *AuthenticationService) Login(ctx context.Context, r *pb.UserLoginReque
 		// it's ok to require the user to log in once a year.
 		Expires:  time.Now().Add(365 * 24 * time.Hour),
 		HttpOnly: true,
+		Path:     "/",
 	})
 	log.Info().Str("value", sess.ID).Msg("setting-cookie")
 	if err != nil {
@@ -105,9 +106,23 @@ func (as *AuthenticationService) Logout(ctx context.Context, r *pb.UserLogoutReq
 	// Delete the cookie as well.
 	err = apiserver.SetCookie(ctx, &http.Cookie{
 		Name:     "sessionid",
-		Value:    "",
+		Value:    sess.ID,
 		MaxAge:   -1,
 		HttpOnly: true,
+		Path:     "/",
+		Expires:  time.Now().Add(-100 * time.Hour),
+	})
+	if err != nil {
+		return nil, err
+	}
+	err = apiserver.SetCookie(ctx, &http.Cookie{
+		Name:     "sessionid",
+		Value:    sess.ID,
+		MaxAge:   -1,
+		HttpOnly: true,
+		Expires:  time.Now().Add(-100 * time.Hour),
+		// Delete old cookies that had this dumb path.
+		Path: "/twirp/user_service.AuthenticationService",
 	})
 	if err != nil {
 		return nil, err

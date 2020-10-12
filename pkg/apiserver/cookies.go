@@ -5,6 +5,8 @@ import (
 	"errors"
 	"net/http"
 
+	twirp "github.com/twitchtv/twirp"
+
 	"github.com/domino14/liwords/pkg/entity"
 	"github.com/domino14/liwords/pkg/sessions"
 	"github.com/rs/zerolog"
@@ -76,11 +78,11 @@ func AuthenticationMiddlewareGenerator(sessionStore sessions.SessionStore) (mw f
 func GetSession(ctx context.Context) (*entity.Session, error) {
 	sessval := ctx.Value(sesskey)
 	if sessval == nil {
-		return nil, errors.New("authentication required")
+		return nil, twirp.NewError(twirp.Unauthenticated, "authentication required")
 	}
 	sess, ok := sessval.(*entity.Session)
 	if !ok {
-		return nil, errors.New("unexpected error with type inference")
+		return nil, twirp.InternalErrorWith(errors.New("unexpected error with type inference"))
 	}
 	return sess, nil
 }
