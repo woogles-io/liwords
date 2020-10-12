@@ -36,9 +36,12 @@ export const millisToTimeStr = (
   let secs;
   let secStr;
   let mins;
+  // Show tenths for (negativeShowTenthsCutoff, positiveShowTenthsCutoff].
+  // Both cases round up, so when counting down the string changes at exact multiples of 100ms or 1000ms.
+  // As a special case, (while 1 to 100 is "00:00.1") 0 is "00:00.0" but -1 to -99 is "-00:00.0".
   if (
     ms > positiveShowTenthsCutoff ||
-    ms < negativeShowTenthsCutoff ||
+    ms <= negativeShowTenthsCutoff ||
     !showTenths
   ) {
     let totalSecs;
@@ -51,9 +54,18 @@ export const millisToTimeStr = (
     mins = Math.floor(totalSecs / 60);
     secStr = secs.toString().padStart(2, '0');
   } else {
-    secs = absms / 1000;
-    mins = Math.floor(secs / 60);
-    secStr = secs.toFixed(1).padStart(4, '0');
+    let totalDecisecs;
+    if (!neg) {
+      totalDecisecs = Math.ceil(absms / 100);
+    } else {
+      totalDecisecs = Math.floor(absms / 100);
+    }
+    secs = totalDecisecs % 600;
+    mins = Math.floor(totalDecisecs / 600);
+    // Avoid using .toFixed(1), which elicits floating-point off-by-one errors.
+    secStr = secs.toString().padStart(3, '0');
+    const dot = secStr.length - 1;
+    secStr = secStr.substr(0, dot) + '.' + secStr.substr(dot);
   }
   const minStr = mins.toString().padStart(2, '0');
   return `${neg ? '-' : ''}${minStr}:${secStr}`;
@@ -71,8 +83,6 @@ const minsToMillis = (m: number) => {
 };
 
 export class ClockController {
-  showTenths: (millis: Millis) => boolean;
-
   times: Times;
 
   private tickCallback?: number;
@@ -88,10 +98,6 @@ export class ClockController {
     onTimeout: (activePlayer: PlayerOrder) => void,
     onTick: (p: PlayerOrder, t: Millis) => void
   ) {
-    // Show tenths after 10 seconds.
-    this.showTenths = (time) =>
-      time < positiveShowTenthsCutoff && time > negativeShowTenthsCutoff;
-
     this.times = { ...ts };
     this.onTimeout = onTimeout;
     this.onTick = onTick;
@@ -142,9 +148,28 @@ export class ClockController {
     if (this.tickCallback !== undefined) {
       clearTimeout(this.tickCallback);
     }
+
+    let delay; // millis to next millisToTimeStr change.
+    if (time > positiveShowTenthsCutoff) {
+      // 1000ms resolution, non-negative remainder.
+      delay = Math.min(
+        ((time + 999) % 1000) + 1,
+        time - positiveShowTenthsCutoff
+      );
+    } else if (time >= 0) {
+      // 100ms resolution, non-negative remainder.
+      delay = Math.min(((time + 99) % 100) + 1, time - -1);
+    } else if (time > negativeShowTenthsCutoff) {
+      // 100ms resolution, negative remainder.
+      delay = Math.min((time % 100) + 100, time - negativeShowTenthsCutoff);
+    } else {
+      // 1000ms resolution, negative remainder.
+      delay = (time % 1000) + 1000;
+    }
+
     this.tickCallback = window.setTimeout(
       this.tick,
-      (time % (this.showTenths(time) ? 100 : 500)) + 1 + extraDelay
+      delay + Math.max(extraDelay, 0)
     );
   };
 
