@@ -7,7 +7,7 @@ import { Table } from './gameroom/table';
 import { Lobby } from './lobby/lobby';
 import { useStoreContext } from './store/store';
 
-import { useLiwordsSocket } from './socket/socket';
+import { LiwordsSocket } from './socket/socket';
 import { About } from './about/about';
 import { Login } from './lobby/login';
 import { Register } from './lobby/register';
@@ -19,7 +19,12 @@ import { NewPassword } from './lobby/new_password';
 const App = React.memo(() => {
   const store = useStoreContext();
   const [shouldDisconnect, setShouldDisconnect] = useState(false);
-  const { sendMessage } = useLiwordsSocket(shouldDisconnect);
+
+  const [liwordsSocketValues, setLiwordsSocketValues] = useState({
+    sendMessage: (msg: Uint8Array) => {},
+    justDisconnected: false,
+  });
+  const { sendMessage } = liwordsSocketValues;
 
   if (store.redirGame !== '') {
     store.setRedirGame('');
@@ -36,6 +41,10 @@ const App = React.memo(() => {
 
   return (
     <div className="App">
+      <LiwordsSocket
+        disconnect={shouldDisconnect}
+        setValues={setLiwordsSocketValues}
+      />
       <Switch>
         <Route path="/" exact>
           <Lobby sendSocketMsg={sendMessage} DISCONNECT={disconnectSocket} />

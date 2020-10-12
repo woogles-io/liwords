@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import axios from 'axios';
 import jwt from 'jsonwebtoken';
 import useWebSocket from 'react-use-websocket';
@@ -33,7 +33,15 @@ type DecodedToken = {
   a: boolean; // authed
 };
 
-export const useLiwordsSocket = (disconnect = false) => {
+export const LiwordsSocket = (props: {
+  disconnect: boolean;
+  setValues: (_: {
+    sendMessage: (msg: Uint8Array) => void;
+    justDisconnected: boolean;
+  }) => void;
+}): null => {
+  const { disconnect, setValues } = props;
+
   const socketUrl = getSocketURI();
   const store = useStoreContext();
   const location = useLocation();
@@ -115,8 +123,13 @@ export const useLiwordsSocket = (disconnect = false) => {
       fullSocketUrl !== '' /* only connect if the socket token is not null */
   );
 
-  return {
+  const ret = useMemo(() => ({ sendMessage, justDisconnected }), [
     sendMessage,
     justDisconnected,
-  };
+  ]);
+  useEffect(() => {
+    setValues(ret);
+  }, [setValues, ret]);
+
+  return null;
 };
