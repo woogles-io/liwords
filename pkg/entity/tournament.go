@@ -105,10 +105,10 @@ func NewTournamentClassic(players []string, numberOfRounds int, method PairingMe
 	// For now, assume we require exactly n round and 2 ^ n players
 	if method == Elimination {
 		expectedNumberOfPlayers := twoPower(numberOfRounds)
-		if  expectedNumberOfPlayers != numberOfPlayers {
+		if expectedNumberOfPlayers != numberOfPlayers {
 			return nil, errors.New(fmt.Sprintf("Invalid number of round for the given player list."+
 				" Have %d players, expected %d players based on the number of rounds\n",
-				expectedNumberOfPlayers, numberOfPlayers))	
+				expectedNumberOfPlayers, numberOfPlayers))
 		}
 
 	}
@@ -293,9 +293,8 @@ func (t *TournamentClassic) SubmitResult(round int,
 		pri1.Record[pairing.Outcomes[0]] += 1
 		pri2.Record[pairing.Outcomes[1]] += 1
 		pri1.Spread += p1Score - p2Score
-		pri2.Spread += p2Score - p1Score	
+		pri2.Spread += p2Score - p1Score
 	}
-
 
 	complete, err := t.IsRoundComplete(round)
 	if err != nil {
@@ -448,7 +447,7 @@ func pairRoundClassic(t *TournamentClassic, round int) error {
 			// If we are past the first round in an elimination tournament,
 			// the bottom half of the standings have been eliminated.
 			if t.PairingMethod == Elimination && round > 0 && i >= l/2 {
-				newPairing = newEliminatedPairing(playerOne, playerTwo) 
+				newPairing = newEliminatedPairing(playerOne, playerTwo)
 			} else {
 				newPairing = newClassicPairing(playerOne, playerTwo, t.GamesPerRound)
 			}
@@ -579,7 +578,7 @@ func getEliminationOutcomes(games []*TournamentGame, gamesPerRound int) []Result
 	// Determines if a player is eliminated for a given round in an
 	// elimination tournament. The convertResult function gives 2 for a win,
 	// 1 for a draw, and 0 otherwise. If a player's score is greater than
-	// twice the games per round, they have won.
+	// the games per round, they have won.
 	p1Wins := 0
 	p2Wins := 0
 	p1Spread := 0
