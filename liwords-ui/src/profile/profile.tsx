@@ -296,9 +296,8 @@ export const UserProfile = (props: Props) => {
           <h3>{username}</h3>
           {viewer === username ? (
             <a href="/password/change">Change your password</a>
-          ) : (
-            <TheBlocker target={userID} />
-          )}
+          ) : // <TheBlocker target={userID} />
+          null}
         </header>
 
         <RatingsCard ratings={ratings} />
