@@ -74,7 +74,7 @@ const shuffleString = (a: string): string => {
   return alist.join('');
 };
 
-const gcgExport = (gameID: string) => {
+const gcgExport = (gameID: string, playerMeta: Array<PlayerMetadata>) => {
   axios
     .post<GCGResponse>(toAPIUrl('game_service.GameMetadataService', 'GetGCG'), {
       gameId: gameID,
@@ -83,7 +83,18 @@ const gcgExport = (gameID: string) => {
       const url = window.URL.createObjectURL(new Blob([resp.data.gcg]));
       const link = document.createElement('a');
       link.href = url;
-      link.setAttribute('download', `${gameID}.gcg`);
+      let downloadFilename = `${gameID}.gcg`;
+      // TODO: allow more characters as applicable
+      if (playerMeta.every((x) => /^[0-9A-Za-z]+$/.test(x.nickname))) {
+        const byStarts: Array<Array<string>> = [[], []];
+        for (const x of playerMeta) {
+          byStarts[+!!x.first].push(x.nickname);
+        }
+        downloadFilename = `${[...byStarts[1], ...byStarts[0]].join(
+          '-'
+        )}-${gameID}.gcg`;
+      }
+      link.setAttribute('download', downloadFilename);
       document.body.appendChild(link);
       link.click();
     })
@@ -695,7 +706,7 @@ export const BoardPanel = React.memo((props: Props) => {
         onChallenge={() => makeMove('challenge')}
         onCommit={() => makeMove('commit')}
         onRematch={rematch}
-        onExamine={() => gcgExport(props.gameID)}
+        onExamine={() => gcgExport(props.gameID, props.playerMeta)}
         showRematch={gameEndMessage !== ''}
         gameEndControls={gameEndMessage !== '' || props.gameDone}
         currentRack={props.currentRack}

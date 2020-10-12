@@ -196,6 +196,15 @@ func (g *Game) calculateAndSetTimeRemaining(pidx int, now int64, accountForIncre
 		if accountForIncrement {
 			g.Timers.TimeRemaining[pidx] += (int(g.GameReq.IncrementSeconds) * 1000)
 		}
+
+		// Cap the overtime, because auto-passing always happens after time has expired.
+		maxOvertimeMs := g.Timers.MaxOvertime * 60000
+		if g.Timers.TimeRemaining[pidx] < -maxOvertimeMs {
+			log.Debug().Int("proposed-remaining", g.Timers.TimeRemaining[pidx]).
+				Msg("calculate-and-set-remaining-capped")
+			g.Timers.TimeRemaining[pidx] = -maxOvertimeMs
+		}
+
 		g.Timers.TimeOfLastUpdate = now
 		log.Debug().Int("actual-remaining", g.Timers.TimeRemaining[pidx]).
 			Msg("player-on-turn")
