@@ -54,9 +54,11 @@ export const useDrawing = (isEnabled: boolean) => {
   );
   const [picture, setPicture] = React.useState<{
     drawing: boolean;
-    picture: Array<Array<{ x: number; y: number }>>;
-  }>({ drawing: false, picture: [] });
-  const hasPicture = picture.picture.length > 0;
+    strokes: Array<{
+      points: Array<{ x: number; y: number }>;
+    }>;
+  }>({ drawing: false, strokes: [] });
+  const hasPicture = picture.strokes.length > 0;
   const handleContextMenu = React.useCallback(
     (evt: React.MouseEvent) => {
       if (!evt.shiftKey) {
@@ -64,7 +66,7 @@ export const useDrawing = (isEnabled: boolean) => {
         evt.preventDefault();
       } else if (hasPicture) {
         // Shift+RightClick clears drawing.
-        setPicture((pic) => ({ ...pic, drawing: false, picture: [] }));
+        setPicture((pic) => ({ ...pic, drawing: false, strokes: [] }));
         evt.preventDefault();
       } else {
         // Shift+RightClick accesses context menu if no drawing.
@@ -77,7 +79,7 @@ export const useDrawing = (isEnabled: boolean) => {
       if (evt.button === 2 && !evt.shiftKey) {
         const newXY = getXY(evt);
         setPicture((pic) => {
-          pic.picture.push([newXY]); // mutate
+          pic.strokes.push({ points: [newXY] }); // mutate
           return { ...pic, drawing: true }; // shallow clone for performance
         });
       }
@@ -89,22 +91,23 @@ export const useDrawing = (isEnabled: boolean) => {
       if (!pic.drawing) return pic;
       // Right-click this many times to clear drawing.
       const howMany = 3;
-      if (pic.picture.length >= howMany) {
+      if (pic.strokes.length >= howMany) {
+        const lastPoint = pic.strokes[pic.strokes.length - 1].points[0];
         let i = 0;
         for (; i < howMany; ++i) {
+          const ithLastPoints =
+            pic.strokes[pic.strokes.length - (i + 1)].points;
           if (
             !(
-              pic.picture[pic.picture.length - (i + 1)].length < 2 &&
-              pic.picture[pic.picture.length - (i + 1)][0].x ===
-                pic.picture[pic.picture.length - 1][0].x &&
-              pic.picture[pic.picture.length - (i + 1)][0].y ===
-                pic.picture[pic.picture.length - 1][0].y
+              ithLastPoints.length < 2 &&
+              ithLastPoints[0].x === lastPoint.x &&
+              ithLastPoints[0].y === lastPoint.y
             )
           )
             break;
         }
         if (i === howMany) {
-          return { ...pic, drawing: false, picture: [] };
+          return { ...pic, drawing: false, strokes: [] };
         }
       }
       return { ...pic, drawing: false };
@@ -115,10 +118,11 @@ export const useDrawing = (isEnabled: boolean) => {
       const newXY = getXY(evt);
       setPicture((pic) => {
         if (!pic.drawing) return pic;
-        const lastStroke = pic.picture[pic.picture.length - 1];
-        const lastPoint = lastStroke[lastStroke.length - 1];
+        const lastStroke = pic.strokes[pic.strokes.length - 1];
+        const lastPoints = lastStroke.points;
+        const lastPoint = lastPoints[lastPoints.length - 1];
         if (lastPoint.x === newXY.x && lastPoint.y === newXY.y) return pic;
-        lastStroke.push(newXY); // mutate
+        lastPoints.push(newXY); // mutate
         return { ...pic }; // shallow clone for performance
       });
     },
@@ -132,14 +136,14 @@ export const useDrawing = (isEnabled: boolean) => {
   }, []);
   const currentDrawing = React.useMemo(() => {
     let path = '';
-    for (const stroke of picture.picture) {
-      for (let i = 0; i < stroke.length; ++i) {
-        const { x, y } = stroke[i];
+    for (const { points } of picture.strokes) {
+      for (let i = 0; i < points.length; ++i) {
+        const { x, y } = points[i];
         const scaledX = x * boardSize.width;
         const scaledY = y * boardSize.height;
         path += `${i === 0 ? 'M' : 'L'}${scaledX},${scaledY}`;
       }
-      if (stroke.length === 1) {
+      if (points.length === 1) {
         // Draw a diamond to represent a single point.
         path += 'm-1,0l1,1l1,-1l-1,-1l-1,1l1,1';
       }
