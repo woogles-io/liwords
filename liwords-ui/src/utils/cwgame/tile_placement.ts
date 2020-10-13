@@ -215,6 +215,11 @@ export const handleKeyPress = (
     if (newcol > board.dim - 1) {
       newcol = board.dim - 1;
     }
+    if (ephTileMap[uniqueTileIdx(newrow, newcol)] !== undefined) {
+      // Just after placing a tile at the right or bottom edge,
+      // pressing Space should not place the newArrow on the tile.
+      return null;
+    }
     return {
       newArrow: {
         row: newrow,
