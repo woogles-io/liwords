@@ -1,11 +1,34 @@
 import React from 'react';
 
-export const useDrawing = (isEnabled: boolean) => {
+export const makeDrawingHandlersSetterContext = () => {
+  const keyDownHandlers = new Set<(evt: React.KeyboardEvent) => void>();
+
+  return {
+    setHandleKeyDown: (handler: (evt: React.KeyboardEvent) => void) => {
+      keyDownHandlers.add(handler);
+    },
+    unsetHandleKeyDown: (handler: (evt: React.KeyboardEvent) => void) => {
+      keyDownHandlers.delete(handler);
+    },
+    handleKeyDown: (evt: React.KeyboardEvent) => {
+      keyDownHandlers.forEach((handler) => handler(evt));
+    },
+  };
+};
+
+// Just abusing this as a global variable.
+export const DrawingHandlersSetterContext = React.createContext(
+  makeDrawingHandlersSetterContext()
+);
+
+export const useDrawing = () => {
   // Drawing functionalities.
   // Right-drag = draw.
   // RightClick several times = clear drawing.
   // Shift+RightClick = clear drawing.
   // Shift+RightClick (when no drawing) = context menu.
+
+  const [isEnabled, setIsEnabled] = React.useState(false);
 
   const boardEltRef = React.useRef<HTMLElement>();
   const [boardSize, setBoardSize] = React.useState({
@@ -58,6 +81,7 @@ export const useDrawing = (isEnabled: boolean) => {
     [boardSize.width, boardSize.height]
   );
 
+  const [penColor, setPenColor] = React.useState('red');
   const boardResizedSinceLastPaintRef = React.useRef(true);
   const penRef = React.useRef<string>();
   const strokesRef = React.useRef<
@@ -169,6 +193,13 @@ export const useDrawing = (isEnabled: boolean) => {
     );
 
     setCurrentDrawing(ret);
+
+    setPenColor((x) => {
+      if (x === 'erase' && strokesRef.current.length === 0) {
+        return 'red'; // Deactivate eraser when no drawing.
+      }
+      return x;
+    });
   }, [scaledXYStr, boardSize.width, boardSize.height]);
 
   const scheduleRepaint = React.useCallback(() => {
@@ -200,7 +231,7 @@ export const useDrawing = (isEnabled: boolean) => {
     (evt: React.MouseEvent) => {
       if (evt.button === 2 && !evt.shiftKey) {
         const newXY = getXY(evt);
-        penRef.current = strokesRef.current.length % 3 === 2 ? 'erase' : 'red';
+        penRef.current = penColor;
         strokesRef.current.push({
           points: [newXY],
           path: `M${scaledXYStr(newXY)}`,
@@ -210,7 +241,7 @@ export const useDrawing = (isEnabled: boolean) => {
         scheduleRepaint();
       }
     },
-    [getXY, scaledXYStr, scheduleRepaint]
+    [penColor, getXY, scaledXYStr, scheduleRepaint]
   );
 
   const handleMouseUp = React.useCallback(
@@ -276,6 +307,79 @@ export const useDrawing = (isEnabled: boolean) => {
       scheduleRepaint();
     }
   }, [scaledXYStr, scheduleRepaint]);
+
+  React.useEffect(() => {
+    // Auto pen-up if disabling.
+    if (!isEnabled && penRef.current) {
+      penRef.current = undefined;
+      scheduleRepaint();
+    }
+  }, [isEnabled, scheduleRepaint]);
+
+  const handleKeyDown = React.useCallback(
+    (evt: React.KeyboardEvent) => {
+      const key = evt.key.toUpperCase();
+      if (key === '0') {
+        // Toggle drawing.
+        setIsEnabled((x) => !x);
+      } else if (isEnabled) {
+        if (key === 'R') {
+          setPenColor('red');
+        }
+        if (key === 'G') {
+          setPenColor('green');
+        }
+        if (key === 'B') {
+          setPenColor('blue');
+        }
+        if (key === 'Y') {
+          setPenColor('yellow');
+        }
+        if (key === 'E') {
+          setPenColor('erase');
+        }
+        if (key === 'U') {
+          // Undo.
+          strokesRef.current.pop();
+          penRef.current = undefined;
+          scheduleRepaint();
+        }
+        if (key === 'W') {
+          // Wipe.
+          strokesRef.current = [];
+          penRef.current = undefined;
+          scheduleRepaint();
+        }
+      }
+    },
+    [isEnabled, scheduleRepaint]
+  );
+
+  const { setHandleKeyDown, unsetHandleKeyDown } = React.useContext(
+    DrawingHandlersSetterContext
+  );
+
+  // Register handlers for board_panel to call.
+  React.useEffect(() => {
+    setHandleKeyDown(handleKeyDown);
+    return () => unsetHandleKeyDown(handleKeyDown);
+  }, [handleKeyDown, setHandleKeyDown, unsetHandleKeyDown]);
+
+  // Instructions text for now, until there's a better UI.
+  React.useEffect(() => {
+    if (isEnabled) {
+      console.log('Drawing enabled.');
+    } else {
+      console.log('Drawing disabled. To enable, type 00.');
+    }
+  }, [isEnabled]);
+  React.useEffect(() => {
+    if (isEnabled) {
+      console.log(
+        `Pen color: ${penColor}. To draw on the board, use the right mouse button. For menu, press 0.`
+      );
+    }
+  }, [isEnabled, penColor]);
 
   const outerDivProps = React.useMemo(
     () =>
