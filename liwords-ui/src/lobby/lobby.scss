@@ -67,6 +67,9 @@
   .games {
     .game-listing {
       cursor: pointer;
+      td {
+        vertical-align: top;
+      }
       .details {
         display: flex;
         align-items: center;
@@ -108,8 +111,11 @@
         position: relative;
         vertical-align: bottom;
         background-color: $color-timer-low-light;
-        td.details {
-          padding-top: 36px;
+        td.ant-table-column-sort {
+          background-color: scale-color($color-timer-low-light, $lightness: -3%);;
+        }
+        td {
+          padding-top: 42px;
         }
         td.players {
           min-height: 78px;
