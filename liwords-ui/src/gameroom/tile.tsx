@@ -62,12 +62,12 @@ type PointValueProps = {
   value: number;
 };
 
-const PointValue = (props: PointValueProps) => {
+const PointValue = React.memo((props: PointValueProps) => {
   if (!props.value) {
     return null;
   }
   return <p className="point-value">{props.value}</p>;
-};
+});
 
 type TileProps = {
   lastPlayed: boolean;

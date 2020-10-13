@@ -54,7 +54,7 @@ type Props = {
   meta: GameMetadata;
 };
 
-export const GameInfo = (props: Props) => {
+export const GameInfo = React.memo((props: Props) => {
   let variant;
   if (props.meta.variant === 'classic') {
     variant = 'Classic';
@@ -89,4 +89,4 @@ export const GameInfo = (props: Props) => {
       </Row>
     </Card>
   );
-};
+});
