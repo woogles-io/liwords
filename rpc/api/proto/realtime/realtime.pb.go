@@ -627,7 +627,8 @@ func (x *MatchUser) GetDisplayName() string {
 
 // GameMeta is meant to be a quick summary of a game for watching purposes,
 // for display in a list in the lobby e.g.
-// XXX: THIS IS OBSOLETE -- USE GameInfoResponse in game_service.proto
+// Note: this is very similar to the GameInfoResponse in game_service.proto,
+// but it is annoying to combine them now. The latter has some more info.
 type GameMeta struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
