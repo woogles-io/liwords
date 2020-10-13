@@ -55,38 +55,57 @@ const defaultTimerContext = {
 };
 const defaultFunction = () => {};
 
-export type StoreData = {
-  // Functions and data to deal with the global store.
+// Functions and data to deal with the global store.
+
+type LobbyStoreData = {
   lobbyContext: LobbyState;
   dispatchLobbyContext: (action: Action) => void;
+};
 
+type LoginStateStoreData = {
   loginState: LoginState;
   dispatchLoginState: (action: Action) => void;
+};
 
+type RedirGameStoreData = {
   redirGame: string;
   setRedirGame: React.Dispatch<React.SetStateAction<string>>;
+};
 
+type ChallengeResultEventStoreData = {
   challengeResultEvent: (sge: ServerChallengeResultEvent) => void;
+};
 
+type GameContextStoreData = {
   gameContext: GameState;
   dispatchGameContext: (action: Action) => void;
+};
 
+type ChatStoreData = {
   addChat: (chat: ChatEntityObj) => void;
   addChats: (chats: Array<ChatEntityObj>) => void;
   clearChat: () => void;
   chat: Array<ChatEntityObj>;
+};
 
+type PresenceStoreData = {
   setPresence: (presence: PresenceEntity) => void;
   addPresences: (presences: Array<PresenceEntity>) => void;
   presences: { [uuid: string]: PresenceEntity };
+};
 
+type GameEndMessageStoreData = {
   // This variable is set when the game just ended.
   gameEndMessage: string;
   setGameEndMessage: React.Dispatch<React.SetStateAction<string>>;
+};
 
+type RematchRequestStoreData = {
   rematchRequest: MatchRequest;
   setRematchRequest: React.Dispatch<React.SetStateAction<MatchRequest>>;
+};
 
+type TimerStoreData = {
   // initClockController: (
   //   ghr: GameHistoryRefresher,
   //   onTimeout: () => void
@@ -94,10 +113,13 @@ export type StoreData = {
   stopClock: () => void;
   // setClock: (sge: ServerGameplayEvent, delay: Centis) => void;
   timerContext: Times;
-  poolFormat: PoolFormatType;
-  setPoolFormat: (format: PoolFormatType) => void;
   pTimedOut: PlayerOrder | undefined;
   setPTimedOut: (p: PlayerOrder | undefined) => void;
+};
+
+type PoolFormatStoreData = {
+  poolFormat: PoolFormatType;
+  setPoolFormat: (format: PoolFormatType) => void;
 };
 
 const defaultGameState = startingGameState(
@@ -108,14 +130,18 @@ const defaultGameState = startingGameState(
 
 // This is annoying, but we have to add a default for everything in this
 // declaration. Declaring it as a Partial<StoreData> breaks things elsewhere.
-export const Context = createContext<StoreData>({
+// For context, these used to be a single StoreData that contained everything.
+
+const LobbyContext = createContext<LobbyStoreData>({
   lobbyContext: {
     soughtGames: [],
     activeGames: [],
     matchRequests: [],
   },
   dispatchLobbyContext: defaultFunction,
+});
 
+const LoginStateContext = createContext<LoginStateStoreData>({
   loginState: {
     username: '',
     userID: '',
@@ -124,37 +150,59 @@ export const Context = createContext<StoreData>({
     connID: '',
   },
   dispatchLoginState: defaultFunction,
+});
 
+const RedirGameContext = createContext<RedirGameStoreData>({
   redirGame: '',
   setRedirGame: defaultFunction,
+});
 
+const ChallengeResultEventContext = createContext<
+  ChallengeResultEventStoreData
+>({
   challengeResultEvent: defaultFunction,
+});
+
+const GameContextContext = createContext<GameContextStoreData>({
   gameContext: defaultGameState,
   dispatchGameContext: defaultFunction,
+});
 
+const ChatContext = createContext<ChatStoreData>({
   addChat: defaultFunction,
   addChats: defaultFunction,
   clearChat: defaultFunction,
   chat: [],
+});
 
+const PresenceContext = createContext<PresenceStoreData>({
   setPresence: defaultFunction,
   addPresences: defaultFunction,
   presences: {},
+});
 
+const GameEndMessageContext = createContext<GameEndMessageStoreData>({
   gameEndMessage: '',
   setGameEndMessage: defaultFunction,
+});
 
+const RematchRequestContext = createContext<RematchRequestStoreData>({
   rematchRequest: new MatchRequest(),
   setRematchRequest: defaultFunction,
+});
 
+const TimerContext = createContext<TimerStoreData>({
   // initClockController: defaultFunction,
   stopClock: defaultFunction,
   // setClock: defaultFunction,
   timerContext: defaultTimerContext,
-  poolFormat: PoolFormatType.Alphabet,
-  setPoolFormat: defaultFunction,
   pTimedOut: undefined,
   setPTimedOut: defaultFunction,
+});
+
+const PoolFormatContext = createContext<PoolFormatStoreData>({
+  poolFormat: PoolFormatType.Alphabet,
+  setPoolFormat: defaultFunction,
 });
 
 type Props = {
@@ -300,43 +348,129 @@ export const Store = ({ children, ...props }: Props) => {
     setTimerContext({ ...clockController.current.times });
   }, []);
 
-  const store = {
-    lobbyContext,
-    dispatchLobbyContext,
-    loginState,
-    dispatchLoginState,
-    gameContext,
-    dispatchGameContext,
-    redirGame,
-    setRedirGame,
-    gameEndMessage,
-    setGameEndMessage,
-    challengeResultEvent,
-    addChat,
-    addChats,
-    clearChat,
-    chat,
-    setPresence,
-    addPresences,
-    presences,
+  let ret = children;
+  ret = (
+    <LobbyContext.Provider
+      value={{
+        lobbyContext,
+        dispatchLobbyContext,
+      }}
+      children={ret}
+    />
+  );
+  ret = (
+    <LoginStateContext.Provider
+      value={{
+        loginState,
+        dispatchLoginState,
+      }}
+      children={ret}
+    />
+  );
+  ret = (
+    <RedirGameContext.Provider
+      value={{
+        redirGame,
+        setRedirGame,
+      }}
+      children={ret}
+    />
+  );
+  ret = (
+    <ChallengeResultEventContext.Provider
+      value={{
+        challengeResultEvent,
+      }}
+      children={ret}
+    />
+  );
+  ret = (
+    <GameContextContext.Provider
+      value={{
+        gameContext,
+        dispatchGameContext,
+      }}
+      children={ret}
+    />
+  );
+  ret = (
+    <ChatContext.Provider
+      value={{
+        addChat,
+        addChats,
+        clearChat,
+        chat,
+      }}
+      children={ret}
+    />
+  );
+  ret = (
+    <PresenceContext.Provider
+      value={{
+        setPresence,
+        addPresences,
+        presences,
+      }}
+      children={ret}
+    />
+  );
+  ret = (
+    <GameEndMessageContext.Provider
+      value={{
+        gameEndMessage,
+        setGameEndMessage,
+      }}
+      children={ret}
+    />
+  );
+  ret = (
+    <RematchRequestContext.Provider
+      value={{
+        rematchRequest,
+        setRematchRequest,
+      }}
+      children={ret}
+    />
+  );
+  ret = (
+    <TimerContext.Provider
+      value={{
+        // initClockController,
+        stopClock,
+        timerContext,
+        pTimedOut,
+        setPTimedOut,
+      }}
+      children={ret}
+    />
+  );
+  ret = (
+    <PoolFormatContext.Provider
+      value={{
+        poolFormat,
+        setPoolFormat,
+      }}
+      children={ret}
+    />
+  );
 
-    rematchRequest,
-    setRematchRequest,
-
-    // initClockController,
-    poolFormat,
-    setPoolFormat,
-    pTimedOut,
-    setPTimedOut,
-    stopClock,
-    timerContext,
-  };
-
-  return <Context.Provider value={store}>{children}</Context.Provider>;
+  // typescript did not like "return ret;"
+  return <React.Fragment children={ret} />;
 };
 
-export function useStoreContext() {
-  return useContext(Context);
-}
+export const useLobbyStoreContext = () => useContext(LobbyContext);
+export const useLoginStateStoreContext = () => useContext(LoginStateContext);
+export const useRedirGameStoreContext = () => useContext(RedirGameContext);
+export const useChallengeResultEventStoreContext = () =>
+  useContext(ChallengeResultEventContext);
+export const useGameContextStoreContext = () => useContext(GameContextContext);
+export const useChatStoreContext = () => useContext(ChatContext);
+export const usePresenceStoreContext = () => useContext(PresenceContext);
+export const useGameEndMessageStoreContext = () =>
+  useContext(GameEndMessageContext);
+export const useRematchRequestStoreContext = () =>
+  useContext(RematchRequestContext);
+export const useTimerStoreContext = () => useContext(TimerContext);
+export const usePoolFormatStoreContext = () => useContext(PoolFormatContext);
 
 // https://dev.to/nazmifeeroz/using-usecontext-and-usestate-hooks-as-a-store-mnm

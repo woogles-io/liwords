@@ -5,7 +5,7 @@ import axios, { AxiosError } from 'axios';
 import { TopBar } from '../topbar/topbar';
 import './profile.scss';
 import { toAPIUrl } from '../api/api';
-import { useStoreContext } from '../store/store';
+import { useLoginStateStoreContext } from '../store/store';
 import { GameMetadata, RecentGamesResponse } from '../gameroom/game_info';
 import { GamesHistoryCard } from './games_history';
 
@@ -209,7 +209,8 @@ export const UserProfile = (props: Props) => {
   const [ratings, setRatings] = useState({});
   const [stats, setStats] = useState({});
   const [recentGames, setRecentGames] = useState<Array<GameMetadata>>([]);
-  const { username: viewer } = useStoreContext().loginState;
+  const { loginState } = useLoginStateStoreContext();
+  const { username: viewer } = loginState;
   const [recentGamesOffset, setRecentGamesOffset] = useState(0);
   useEffect(() => {
     axios

@@ -1,6 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import Rack from './rack';
-import { useStoreContext } from '../store/store';
+import {
+  useGameContextStoreContext,
+  usePoolFormatStoreContext,
+} from '../store/store';
 import Pool from './pool';
 import { PoolFormatType } from '../constants/pool_formats';
 import { Button, Modal } from 'antd';
@@ -88,7 +91,8 @@ export const ExchangeTiles = (props: Props) => {
     const e = indices.map((idx) => props.rack[idx]);
     setExchangedRack(e.join(''));
   }, [exchangedRackIndices, props.rack]);
-  const { gameContext, setPoolFormat } = useStoreContext();
+  const { gameContext } = useGameContextStoreContext();
+  const { setPoolFormat } = usePoolFormatStoreContext();
   const selectTileForExchange = (idx: number) => {
     const newExchangedRackIndices = new Set(exchangedRackIndices);
     if (newExchangedRackIndices.has(idx)) {

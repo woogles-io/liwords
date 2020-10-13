@@ -35,7 +35,11 @@ import {
   MatchRequest,
   MatchUser,
 } from '../gen/api/proto/realtime/realtime_pb';
-import { useStoreContext } from '../store/store';
+import {
+  useGameContextStoreContext,
+  useGameEndMessageStoreContext,
+  useTimerStoreContext,
+} from '../store/store';
 import { BlankSelector } from './blank_selector';
 import { GameEndMessage } from './game_end_message';
 import { PlayerMetadata, GCGResponse } from './game_info';
@@ -124,7 +128,9 @@ export const BoardPanel = React.memo((props: Props) => {
   const [placedTiles, setPlacedTiles] = useState(new Set<EphemeralTile>());
   const [placedTilesTempScore, setPlacedTilesTempScore] = useState<number>();
   const [blankModalVisible, setBlankModalVisible] = useState(false);
-  const { stopClock, gameContext, gameEndMessage } = useStoreContext();
+  const { gameContext } = useGameContextStoreContext();
+  const { gameEndMessage } = useGameEndMessageStoreContext();
+  const { stopClock } = useTimerStoreContext();
   const [exchangeModalVisible, setExchangeModalVisible] = useState(false);
   const [exchangeAllowed, setexchangeAllowed] = useState(true);
 

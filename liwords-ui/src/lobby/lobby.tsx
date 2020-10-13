@@ -17,7 +17,11 @@ import { SoughtGame } from '../store/reducers/lobby_reducer';
 import { ChallengeRuleMap } from '../gen/macondo/api/proto/macondo/macondo_pb';
 import { GameLists } from './gameLists';
 import { Chat } from '../chat/chat';
-import { useStoreContext } from '../store/store';
+import {
+  useChatStoreContext,
+  useLoginStateStoreContext,
+  usePresenceStoreContext,
+} from '../store/store';
 import './lobby.scss';
 
 const sendSeek = (
@@ -78,7 +82,9 @@ type Props = {
 };
 
 export const Lobby = (props: Props) => {
-  const { chat, presences, loginState } = useStoreContext();
+  const { chat } = useChatStoreContext();
+  const { loginState } = useLoginStateStoreContext();
+  const { presences } = usePresenceStoreContext();
   const { loggedIn, username, userID } = loginState;
 
   const [selectedGameTab, setSelectedGameTab] = useState(

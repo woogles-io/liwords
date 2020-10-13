@@ -1,7 +1,10 @@
 import React from 'react';
 import { Card, Row, Button } from 'antd';
 import { RawPlayerInfo } from '../store/reducers/game_reducer';
-import { useStoreContext } from '../store/store';
+import {
+  useGameContextStoreContext,
+  useTimerStoreContext,
+} from '../store/store';
 import { Millis, millisToTimeStr } from '../store/timer_controller';
 import { PlayerAvatar } from '../shared/player_avatar';
 import './scss/playerCards.scss';
@@ -89,7 +92,8 @@ type Props = {
 };
 
 export const PlayerCards = React.memo((props: Props) => {
-  const { gameContext, timerContext } = useStoreContext();
+  const { gameContext } = useGameContextStoreContext();
+  const { timerContext } = useTimerStoreContext();
 
   // If the gameContext is not yet available, we should try displaying player cards
   // from the meta information, until the information comes in.

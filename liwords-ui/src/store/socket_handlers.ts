@@ -35,7 +35,18 @@ import {
   GameMetaToActiveGame,
 } from './reducers/lobby_reducer';
 import { BoopSounds } from '../sound/boop';
-import { useStoreContext } from '../store/store';
+import {
+  useChallengeResultEventStoreContext,
+  useChatStoreContext,
+  useGameContextStoreContext,
+  useGameEndMessageStoreContext,
+  useLobbyStoreContext,
+  useLoginStateStoreContext,
+  usePresenceStoreContext,
+  useRedirGameStoreContext,
+  useRematchRequestStoreContext,
+  useTimerStoreContext,
+} from '../store/store';
 
 export const parseMsgs = (msg: Uint8Array) => {
   // Multiple msgs can come in the same packet.
@@ -86,7 +97,16 @@ export const parseMsgs = (msg: Uint8Array) => {
 };
 
 export const useOnSocketMsg = () => {
-  const storeData = useStoreContext();
+  const { challengeResultEvent } = useChallengeResultEventStoreContext();
+  const { addChat, addChats } = useChatStoreContext();
+  const { dispatchGameContext } = useGameContextStoreContext();
+  const { setGameEndMessage } = useGameEndMessageStoreContext();
+  const { dispatchLobbyContext } = useLobbyStoreContext();
+  const { loginState, dispatchLoginState } = useLoginStateStoreContext();
+  const { setPresence, addPresences } = usePresenceStoreContext();
+  const { setRedirGame } = useRedirGameStoreContext();
+  const { setRematchRequest } = useRematchRequestStoreContext();
+  const { stopClock } = useTimerStoreContext();
 
   return (reader: FileReader) => {
     if (!reader.result) {
@@ -106,7 +126,7 @@ export const useOnSocketMsg = () => {
             return;
           }
 
-          storeData.dispatchLobbyContext({
+          dispatchLobbyContext({
             actionType: ActionType.AddSoughtGame,
             payload: soughtGame,
           });
@@ -116,7 +136,7 @@ export const useOnSocketMsg = () => {
 
         case MessageType.SEEK_REQUESTS: {
           const sr = parsedMsg as SeekRequests;
-          storeData.dispatchLobbyContext({
+          dispatchLobbyContext({
             actionType: ActionType.AddSoughtGames,
             payload: sr
               .getRequestsList()
@@ -133,16 +153,16 @@ export const useOnSocketMsg = () => {
           if (soughtGame === null) {
             return;
           }
-          if (receiver === storeData.loginState.username) {
+          if (receiver === loginState.username) {
             BoopSounds.matchReqSound.play();
             if (mr.getRematchFor() !== '') {
               // Only display the rematch modal if we are the recipient
               // of the rematch request.
-              storeData.setRematchRequest(mr);
+              setRematchRequest(mr);
             }
           }
 
-          storeData.dispatchLobbyContext({
+          dispatchLobbyContext({
             actionType: ActionType.AddMatchRequest,
             payload: soughtGame,
           });
@@ -151,7 +171,7 @@ export const useOnSocketMsg = () => {
 
         case MessageType.MATCH_REQUESTS: {
           const mr = parsedMsg as MatchRequests;
-          storeData.dispatchLobbyContext({
+          dispatchLobbyContext({
             actionType: ActionType.AddMatchRequests,
             payload: mr
               .getRequestsList()
@@ -168,7 +188,7 @@ export const useOnSocketMsg = () => {
 
         case MessageType.LAG_MEASUREMENT: {
           const lag = parsedMsg as LagMeasurement;
-          storeData.dispatchLoginState({
+          dispatchLoginState({
             actionType: ActionType.SetCurrentLagMs,
             payload: lag.getLagMs(),
           });
@@ -182,7 +202,7 @@ export const useOnSocketMsg = () => {
             message: 'Error',
             description: err.getMessage(),
           });
-          storeData.addChat({
+          addChat({
             entityType: ChatEntityType.ErrorMsg,
             sender: 'Woogles',
             message: err.getMessage(),
@@ -195,7 +215,7 @@ export const useOnSocketMsg = () => {
           // We should ignore this chat message if it's not for the right
           // channel.
 
-          storeData.addChat({
+          addChat({
             entityType: ChatEntityType.UserChat,
             sender: cm.getUsername(),
             message: cm.getMessage(),
@@ -216,7 +236,7 @@ export const useOnSocketMsg = () => {
             id: randomID(),
           }));
 
-          storeData.addChats(entities);
+          addChats(entities);
           break;
         }
 
@@ -224,7 +244,7 @@ export const useOnSocketMsg = () => {
           console.log('userpresence', parsedMsg);
 
           const up = parsedMsg as UserPresence;
-          storeData.setPresence({
+          setPresence({
             uuid: up.getUserId(),
             username: up.getUsername(),
             channel: up.getChannel(),
@@ -243,15 +263,15 @@ export const useOnSocketMsg = () => {
           }));
           console.log('userpresences', toAdd);
 
-          storeData.addPresences(toAdd);
+          addPresences(toAdd);
           break;
         }
 
         case MessageType.GAME_ENDED_EVENT: {
           console.log('got game end evt');
           const gee = parsedMsg as GameEndedEvent;
-          storeData.setGameEndMessage(endGameMessage(gee));
-          storeData.stopClock();
+          setGameEndMessage(endGameMessage(gee));
+          stopClock();
           BoopSounds.endgameSound.play();
           break;
         }
@@ -262,8 +282,8 @@ export const useOnSocketMsg = () => {
 
           // Determine if this is the tab that should accept the game.
           if (
-            nge.getAccepterCid() !== storeData.loginState.connID &&
-            nge.getRequesterCid() !== storeData.loginState.connID
+            nge.getAccepterCid() !== loginState.connID &&
+            nge.getRequesterCid() !== loginState.connID
           ) {
             console.log(
               'ignoring on this tab...',
@@ -271,29 +291,29 @@ export const useOnSocketMsg = () => {
               '-',
               nge.getRequesterCid(),
               '-',
-              storeData.loginState.connID
+              loginState.connID
             );
             break;
           }
 
-          storeData.dispatchGameContext({
+          dispatchGameContext({
             actionType: ActionType.ClearHistory,
             payload: '',
           });
           const gid = nge.getGameId();
-          storeData.setRedirGame(gid);
-          storeData.setGameEndMessage('');
+          setRedirGame(gid);
+          setGameEndMessage('');
           break;
         }
 
         case MessageType.GAME_HISTORY_REFRESHER: {
           const ghr = parsedMsg as GameHistoryRefresher;
           console.log('got refresher event', ghr);
-          storeData.dispatchGameContext({
+          dispatchGameContext({
             actionType: ActionType.RefreshHistory,
             payload: ghr,
           });
-          storeData.setGameEndMessage('');
+          setGameEndMessage('');
 
           // If there is an Antd message about "waiting for game", destroy it.
           // XXX: This is a bit unideal.
@@ -304,12 +324,12 @@ export const useOnSocketMsg = () => {
         case MessageType.SERVER_GAMEPLAY_EVENT: {
           const sge = parsedMsg as ServerGameplayEvent;
           console.log('got server event', sge);
-          storeData.dispatchGameContext({
+          dispatchGameContext({
             actionType: ActionType.AddGameEvent,
             payload: sge,
           });
           // play sound
-          if (storeData.loginState.username === sge.getEvent()?.getNickname()) {
+          if (loginState.username === sge.getEvent()?.getNickname()) {
             BoopSounds.makeMoveSound.play();
           } else {
             BoopSounds.oppMoveSound.play();
@@ -320,7 +340,7 @@ export const useOnSocketMsg = () => {
         case MessageType.SERVER_CHALLENGE_RESULT_EVENT: {
           const sge = parsedMsg as ServerChallengeResultEvent;
           console.log('got server challenge result event', sge);
-          storeData.challengeResultEvent(sge);
+          challengeResultEvent(sge);
           if (!sge.getValid()) {
             BoopSounds.woofSound.play();
           }
@@ -330,7 +350,7 @@ export const useOnSocketMsg = () => {
         case MessageType.SOUGHT_GAME_PROCESS_EVENT: {
           const gae = parsedMsg as SoughtGameProcessEvent;
           console.log('got game accepted event', gae);
-          storeData.dispatchLobbyContext({
+          dispatchLobbyContext({
             actionType: ActionType.RemoveSoughtGame,
             payload: gae.getRequestId(),
           });
@@ -341,7 +361,7 @@ export const useOnSocketMsg = () => {
         case MessageType.DECLINE_MATCH_REQUEST: {
           const dec = parsedMsg as DeclineMatchRequest;
           console.log('got decline match request', dec);
-          storeData.dispatchLobbyContext({
+          dispatchLobbyContext({
             actionType: ActionType.RemoveSoughtGame,
             payload: dec.getRequestId(),
           });
@@ -356,7 +376,7 @@ export const useOnSocketMsg = () => {
           // lobby context, set list of active games
           const age = parsedMsg as ActiveGames;
           console.log('got active games', age);
-          storeData.dispatchLobbyContext({
+          dispatchLobbyContext({
             actionType: ActionType.AddActiveGames,
             payload: age.getGamesList().map((g) => GameMetaToActiveGame(g)),
           });
@@ -367,7 +387,7 @@ export const useOnSocketMsg = () => {
           // lobby context, remove active game
           const gde = parsedMsg as GameDeletion;
           console.log('delete active game', gde);
-          storeData.dispatchLobbyContext({
+          dispatchLobbyContext({
             actionType: ActionType.RemoveActiveGame,
             payload: gde.getId(),
           });
@@ -382,7 +402,7 @@ export const useOnSocketMsg = () => {
           if (!activeGame) {
             return;
           }
-          storeData.dispatchLobbyContext({
+          dispatchLobbyContext({
             actionType: ActionType.AddActiveGame,
             payload: activeGame,
           });

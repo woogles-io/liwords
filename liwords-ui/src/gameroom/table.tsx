@@ -7,7 +7,16 @@ import { useParams } from 'react-router-dom';
 import { BoardPanel } from './board_panel';
 import { TopBar } from '../topbar/topbar';
 import { Chat } from '../chat/chat';
-import { useStoreContext } from '../store/store';
+import {
+  useChatStoreContext,
+  useGameContextStoreContext,
+  useGameEndMessageStoreContext,
+  useLoginStateStoreContext,
+  usePoolFormatStoreContext,
+  usePresenceStoreContext,
+  useRematchRequestStoreContext,
+  useTimerStoreContext,
+} from '../store/store';
 import { PlayerCards } from './player_cards';
 import Pool from './pool';
 import {
@@ -63,20 +72,14 @@ const defaultGameInfo = {
 
 export const Table = React.memo((props: Props) => {
   const { gameID } = useParams();
-  const {
-    gameContext,
-    chat,
-    clearChat,
-    pTimedOut,
-    poolFormat,
-    setPoolFormat,
-    setPTimedOut,
-    rematchRequest,
-    setRematchRequest,
-    presences,
-    loginState,
-    gameEndMessage,
-  } = useStoreContext();
+  const { chat, clearChat } = useChatStoreContext();
+  const { gameContext } = useGameContextStoreContext();
+  const { gameEndMessage } = useGameEndMessageStoreContext();
+  const { loginState } = useLoginStateStoreContext();
+  const { poolFormat, setPoolFormat } = usePoolFormatStoreContext();
+  const { presences } = usePresenceStoreContext();
+  const { rematchRequest, setRematchRequest } = useRematchRequestStoreContext();
+  const { pTimedOut, setPTimedOut } = useTimerStoreContext();
   const { username } = loginState;
 
   const { sendSocketMsg } = props;

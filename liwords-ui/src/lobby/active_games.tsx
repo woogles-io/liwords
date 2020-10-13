@@ -1,7 +1,7 @@
 import { Table, Tooltip } from 'antd';
 import React, { ReactNode } from 'react';
 import { FundOutlined } from '@ant-design/icons/lib';
-import { useStoreContext } from '../store/store';
+import { useRedirGameStoreContext } from '../store/store';
 import { RatingBadge } from './rating_badge';
 import { challengeFormat, timeFormat } from './sought_games';
 import { ActiveGame } from '../store/reducers/lobby_reducer';
@@ -12,7 +12,7 @@ type Props = {
 };
 
 export const ActiveGames = (props: Props) => {
-  const { setRedirGame } = useStoreContext();
+  const { setRedirGame } = useRedirGameStoreContext();
 
   type ActiveGameTableData = {
     gameID: string;

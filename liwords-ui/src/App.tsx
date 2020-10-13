@@ -5,7 +5,7 @@ import 'antd/dist/antd.css';
 
 import { Table } from './gameroom/table';
 import { Lobby } from './lobby/lobby';
-import { useStoreContext } from './store/store';
+import { useRedirGameStoreContext } from './store/store';
 
 import { LiwordsSocket } from './socket/socket';
 import { About } from './about/about';
@@ -17,7 +17,7 @@ import { PasswordReset } from './lobby/password_reset';
 import { NewPassword } from './lobby/new_password';
 
 const App = React.memo(() => {
-  const store = useStoreContext();
+  const { redirGame, setRedirGame } = useRedirGameStoreContext();
   const [shouldDisconnect, setShouldDisconnect] = useState(false);
 
   const [liwordsSocketValues, setLiwordsSocketValues] = useState({
@@ -26,9 +26,9 @@ const App = React.memo(() => {
   });
   const { sendMessage } = liwordsSocketValues;
 
-  if (store.redirGame !== '') {
-    store.setRedirGame('');
-    window.location.replace(`/game/${store.redirGame}`);
+  if (redirGame !== '') {
+    setRedirGame('');
+    window.location.replace(`/game/${redirGame}`);
   }
 
   const disconnectSocket = useCallback(() => {

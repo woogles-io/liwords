@@ -3,7 +3,7 @@ import axios from 'axios';
 import jwt from 'jsonwebtoken';
 import useWebSocket from 'react-use-websocket';
 import { useLocation } from 'react-router-dom';
-import { useStoreContext } from '../store/store';
+import { useLoginStateStoreContext } from '../store/store';
 import { useOnSocketMsg } from '../store/socket_handlers';
 import { decodeToMsg } from '../utils/protobuf';
 import { toAPIUrl } from '../api/api';
@@ -44,7 +44,7 @@ export const LiwordsSocket = (props: {
   const onSocketMsg = useOnSocketMsg();
 
   const socketUrl = getSocketURI();
-  const store = useStoreContext();
+  const loginStateStore = useLoginStateStoreContext();
   const location = useLocation();
 
   // const [socketToken, setSocketToken] = useState('');
@@ -52,7 +52,7 @@ export const LiwordsSocket = (props: {
   const [justDisconnected, setJustDisconnected] = useState(false);
 
   useEffect(() => {
-    if (store.loginState.connectedToSocket) {
+    if (loginStateStore.loginState.connectedToSocket) {
       // Only call this function if we are not connected to the socket.
       // If we go from unconnected to connected, there is no need to call
       // it again. If we go from connected to unconnected, then we call it
@@ -77,7 +77,7 @@ export const LiwordsSocket = (props: {
         );
 
         const decoded = jwt.decode(socketToken) as DecodedToken;
-        store.dispatchLoginState({
+        loginStateStore.dispatchLoginState({
           actionType: ActionType.SetAuthentication,
           payload: {
             username: decoded.unn,
@@ -94,14 +94,14 @@ export const LiwordsSocket = (props: {
         }
       });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [store.loginState.connectedToSocket]);
+  }, [loginStateStore.loginState.connectedToSocket]);
 
   const { sendMessage } = useWebSocket(
     useCallback(() => fullSocketUrl, [fullSocketUrl]),
     {
       onOpen: () => {
         console.log('connected to socket');
-        store.dispatchLoginState({
+        loginStateStore.dispatchLoginState({
           actionType: ActionType.SetConnectedToSocket,
           payload: true,
         });
@@ -109,7 +109,7 @@ export const LiwordsSocket = (props: {
       },
       onClose: () => {
         console.log('disconnected from socket :(');
-        store.dispatchLoginState({
+        loginStateStore.dispatchLoginState({
           actionType: ActionType.SetConnectedToSocket,
           payload: false,
         });
