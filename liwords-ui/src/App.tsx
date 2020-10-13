@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import { Route, Switch } from 'react-router-dom';
 import './App.scss';
 import 'antd/dist/antd.css';
@@ -31,13 +31,13 @@ const App = React.memo(() => {
     window.location.replace(`/game/${store.redirGame}`);
   }
 
-  const disconnectSocket = () => {
+  const disconnectSocket = useCallback(() => {
     setShouldDisconnect(true);
     setTimeout(() => {
       // reconnect after 5 seconds.
       setShouldDisconnect(false);
     }, 5000);
-  };
+  }, []);
 
   return (
     <div className="App">
