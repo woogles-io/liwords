@@ -2,7 +2,7 @@ import React from 'react';
 import './topbar.scss';
 import { DisconnectOutlined, SettingOutlined } from '@ant-design/icons/lib';
 import { notification, Dropdown, Tooltip } from 'antd';
-import { useLoginStateStoreContext } from '../store/store';
+import { useLagStoreContext, useLoginStateStoreContext } from '../store/store';
 import axios from 'axios';
 import { toAPIUrl } from '../api/api';
 
@@ -27,8 +27,9 @@ const topMenu = (
 type Props = {};
 
 export const TopBar = React.memo((props: Props) => {
+  const { currentLagMs } = useLagStoreContext();
   const { loginState } = useLoginStateStoreContext();
-  const { username, loggedIn, connectedToSocket, currentLagMs } = loginState;
+  const { username, loggedIn, connectedToSocket } = loginState;
   const handleLogout = (e: React.MouseEvent) => {
     e.preventDefault();
     axios

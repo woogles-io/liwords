@@ -47,6 +47,7 @@ import {
   useExcludedPlayersStoreContext,
   useGameContextStoreContext,
   useGameEndMessageStoreContext,
+  useLagStoreContext,
   useLobbyStoreContext,
   useLoginStateStoreContext,
   usePresenceStoreContext,
@@ -109,8 +110,9 @@ export const useOnSocketMsg = () => {
   const { excludedPlayers } = useExcludedPlayersStoreContext();
   const { dispatchGameContext } = useGameContextStoreContext();
   const { setGameEndMessage } = useGameEndMessageStoreContext();
+  const { setCurrentLagMs } = useLagStoreContext();
   const { dispatchLobbyContext } = useLobbyStoreContext();
-  const { loginState, dispatchLoginState } = useLoginStateStoreContext();
+  const { loginState } = useLoginStateStoreContext();
   const { setPresence, addPresences } = usePresenceStoreContext();
   const { setRedirGame } = useRedirGameStoreContext();
   const { setRematchRequest } = useRematchRequestStoreContext();
@@ -232,10 +234,7 @@ export const useOnSocketMsg = () => {
 
         case MessageType.LAG_MEASUREMENT: {
           const lag = parsedMsg as LagMeasurement;
-          dispatchLoginState({
-            actionType: ActionType.SetCurrentLagMs,
-            payload: lag.getLagMs(),
-          });
+          setCurrentLagMs(lag.getLagMs());
           break;
         }
 

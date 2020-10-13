@@ -67,6 +67,11 @@ type LoginStateStoreData = {
   dispatchLoginState: (action: Action) => void;
 };
 
+type LagStoreData = {
+  currentLagMs: number;
+  setCurrentLagMs: React.Dispatch<React.SetStateAction<number>>;
+};
+
 type ExcludedPlayersStoreData = {
   excludedPlayers: Set<string>;
   setExcludedPlayers: React.Dispatch<React.SetStateAction<Set<string>>>;
@@ -155,6 +160,11 @@ const LoginStateContext = createContext<LoginStateStoreData>({
     connID: '',
   },
   dispatchLoginState: defaultFunction,
+});
+
+const LagContext = createContext<LagStoreData>({
+  currentLagMs: NaN,
+  setCurrentLagMs: defaultFunction,
 });
 
 const ExcludedPlayersContext = createContext<ExcludedPlayersStoreData>({
@@ -266,6 +276,7 @@ export const Store = ({ children, ...props }: Props) => {
     connectedToSocket: false,
     connID: '',
   });
+  const [currentLagMs, setCurrentLagMs] = useState(NaN);
 
   const [gameContext, dispatchGameContext] = useReducer(GameReducer, null, () =>
     gameStateInitializer(clockController, onClockTick, onClockTimeout)
@@ -380,6 +391,15 @@ export const Store = ({ children, ...props }: Props) => {
     />
   );
   ret = (
+    <LagContext.Provider
+      value={{
+        currentLagMs,
+        setCurrentLagMs,
+      }}
+      children={ret}
+    />
+  );
+  ret = (
     <ExcludedPlayersContext.Provider
       value={{
         excludedPlayers,
@@ -481,6 +501,7 @@ export const Store = ({ children, ...props }: Props) => {
 
 export const useLobbyStoreContext = () => useContext(LobbyContext);
 export const useLoginStateStoreContext = () => useContext(LoginStateContext);
+export const useLagStoreContext = () => useContext(LagContext);
 export const useExcludedPlayersStoreContext = () =>
   useContext(ExcludedPlayersContext);
 export const useRedirGameStoreContext = () => useContext(RedirGameContext);
