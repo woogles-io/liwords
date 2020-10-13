@@ -1,5 +1,6 @@
 import React, {
   createContext,
+  useCallback,
   useContext,
   useState,
   useReducer,
@@ -182,17 +183,17 @@ const gameStateInitializer = (
 export const Store = ({ children, ...props }: Props) => {
   const clockController = useRef<ClockController | null>(null);
 
-  const onClockTick = (p: PlayerOrder, t: Millis) => {
+  const onClockTick = useCallback((p: PlayerOrder, t: Millis) => {
     if (!clockController || !clockController.current) {
       return;
     }
     const newCtx = { ...clockController.current!.times, [p]: t };
     setTimerContext(newCtx);
-  };
+  }, []);
 
-  const onClockTimeout = (p: PlayerOrder) => {
+  const onClockTimeout = useCallback((p: PlayerOrder) => {
     setPTimedOut(p);
-  };
+  }, []);
 
   const [lobbyContext, dispatchLobbyContext] = useReducer(LobbyReducer, {
     soughtGames: [],
@@ -228,19 +229,7 @@ export const Store = ({ children, ...props }: Props) => {
     {} as { [uuid: string]: PresenceEntity }
   );
 
-  const challengeResultEvent = (sge: ServerChallengeResultEvent) => {
-    console.log('sge', sge);
-    addChat({
-      entityType: ChatEntityType.ServerMsg,
-      sender: '',
-      message: sge.getValid()
-        ? 'Challenged play was valid'
-        : 'Play was challenged off the board!',
-      id: randomID(),
-    });
-  };
-
-  const addChat = (entity: ChatEntityObj) => {
+  const addChat = useCallback((entity: ChatEntityObj) => {
     setChat((oldChat) => {
       if (!entity.id) {
         // eslint-disable-next-line no-param-reassign
@@ -254,17 +243,32 @@ export const Store = ({ children, ...props }: Props) => {
       }
       return chatCopy;
     });
-  };
+  }, []);
 
-  const addChats = (entities: Array<ChatEntityObj>) => {
+  const challengeResultEvent = useCallback(
+    (sge: ServerChallengeResultEvent) => {
+      console.log('sge', sge);
+      addChat({
+        entityType: ChatEntityType.ServerMsg,
+        sender: '',
+        message: sge.getValid()
+          ? 'Challenged play was valid'
+          : 'Play was challenged off the board!',
+        id: randomID(),
+      });
+    },
+    [addChat]
+  );
+
+  const addChats = useCallback((entities: Array<ChatEntityObj>) => {
     setChat([...entities]);
-  };
+  }, []);
 
-  const clearChat = () => {
+  const clearChat = useCallback(() => {
     setChat([]);
-  };
+  }, []);
 
-  const setPresence = (entity: PresenceEntity) => {
+  const setPresence = useCallback((entity: PresenceEntity) => {
     // XXX: This looks slow.
     setPresences((prevPresences) => {
       const presencesCopy = { ...prevPresences };
@@ -276,9 +280,9 @@ export const Store = ({ children, ...props }: Props) => {
       }
       return presencesCopy;
     });
-  };
+  }, []);
 
-  const addPresences = (entities: Array<PresenceEntity>) => {
+  const addPresences = useCallback((entities: Array<PresenceEntity>) => {
     const presencesCopy = {} as { [uuid: string]: PresenceEntity };
     entities.forEach((p) => {
       presencesCopy[p.uuid] = p;
@@ -286,15 +290,15 @@ export const Store = ({ children, ...props }: Props) => {
     console.log('in addPresences', presencesCopy);
 
     setPresences(presencesCopy);
-  };
+  }, []);
 
-  const stopClock = () => {
+  const stopClock = useCallback(() => {
     if (!clockController.current) {
       return;
     }
     clockController.current.stopClock();
     setTimerContext({ ...clockController.current.times });
-  };
+  }, []);
 
   const store = {
     lobbyContext,
