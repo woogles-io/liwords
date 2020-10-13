@@ -23,6 +23,7 @@ import (
 	"github.com/domino14/liwords/pkg/entity"
 	"github.com/domino14/liwords/pkg/stores/user"
 	pkguser "github.com/domino14/liwords/pkg/user"
+	gs "github.com/domino14/liwords/rpc/api/proto/game_service"
 	pb "github.com/domino14/liwords/rpc/api/proto/realtime"
 )
 
@@ -136,7 +137,8 @@ func addfakeGames(ustore pkguser.Store) {
 		"2020-07-27 04:33:45.938304+00", "2020-07-27 04:33:45.938304+00",
 		"wJxURccCgSAPivUvj4QdYL", 2, 1,
 		`{"lu": 1595824425928, "mo": 0, "tr": [60000, 60000], "ts": 1595824425928}`,
-		true, 0, 0, 0, req, protocts, `{}`)
+		true, 0, 0, 0, req, protocts,
+		`{"pi":[{"nickname":"mina","rating":"1600?"},{"nickname":"cesar","rating":"500?"}]}`)
 
 	if db.Error != nil {
 		log.Fatal().Err(db.Error).Msg("error")
@@ -192,6 +194,12 @@ func createGame(p0, p1 string, initTime int32, is *is.I) *entity.Game {
 		},
 	})
 	entGame.PlayerDBIDs = [2]uint{u1.ID, u2.ID}
+	entGame.Quickdata = &entity.Quickdata{
+		PlayerInfo: []*gs.PlayerInfo{
+			{Nickname: u1.Username, Rating: "1500?"},
+			{Nickname: u2.Username, Rating: "1500?"},
+		},
+	}
 	entGame.ResetTimersAndStart()
 
 	err = store.Create(context.Background(), entGame)
@@ -325,8 +333,8 @@ func TestListActive(t *testing.T) {
 	is.NoErr(err)
 	is.Equal(len(games), 3)
 	is.Equal(games[0].Users, []*pb.GameMeta_UserMeta{
-		{RelevantRating: "1500?", DisplayName: "mina"},
-		{RelevantRating: "1500?", DisplayName: "cesar"},
+		{RelevantRating: "1600?", DisplayName: "mina"},
+		{RelevantRating: "500?", DisplayName: "cesar"},
 	})
 	is.Equal(games[1].Users, []*pb.GameMeta_UserMeta{
 		{RelevantRating: "1500?", DisplayName: "cesar"},

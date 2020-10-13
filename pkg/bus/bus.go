@@ -420,37 +420,6 @@ func (b *Bus) pubToUser(userID string, evt *entity.EventWrapper,
 	return b.natsconn.Publish(fullChannel, bts)
 }
 
-// Return a list of users that should be excluded from seeing a message
-// from userDBID. This should be all the users that are blocking, or are
-// blocked by, the passed-in user.
-/*func (b *Bus) excludedUsers(ctx context.Context, userDBID uint) ([]string, error) {
-
-	excludeUsers := map[string]bool{}
-
-	blockedUsers, err := b.userStore.GetBlocks(ctx, userDBID)
-	if err != nil {
-		return nil, err
-	}
-
-	blockedBy, err := b.userStore.GetBlockedBy(ctx, userDBID)
-	if err != nil {
-		return nil, err
-	}
-
-	for _, bu := range blockedUsers {
-		excludeUsers[bu.UUID] = true
-	}
-	for _, bu := range blockedBy {
-		excludeUsers[bu.UUID] = true
-	}
-
-	retList := []string{}
-	for k := range excludeUsers {
-		retList = append(retList, k)
-	}
-	return retList, nil
-}*/
-
 func (b *Bus) initRealmInfo(ctx context.Context, evt *pb.InitRealmInfo) error {
 	// For consistency sake, use the `dotted` channels for presence
 	// i.e. game.<gameID>, gametv.<gameID>

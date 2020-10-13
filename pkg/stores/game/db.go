@@ -222,6 +222,7 @@ func convertGamesToGameMetas(games []*game) ([]*pb.GameMeta, error) {
 		var mdata entity.Quickdata
 
 		err := json.Unmarshal(g.Quickdata, &mdata)
+		log.Debug().Interface("mdata", mdata).Msg("FOO")
 		if err != nil {
 			log.Debug().Err(err).Msg("convert-game-quickdata")
 			return nil, err
