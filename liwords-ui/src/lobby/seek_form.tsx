@@ -117,7 +117,7 @@ export const SeekForm = (props: Props) => {
     initialValues.incOrOT === 'overtime' ? otUnitLabel : incUnitLabel
   );
   const [maxTimeSetting, setMaxTimeSetting] = useState(
-    initialValues.incOrOT === 'overtime' ? 5 : 60
+    initialValues.incOrOT === 'overtime' ? 10 : 60
   );
   const [sliderTooltipVisible, setSliderTooltipVisible] = useState(true);
   const [usernameOptions, setUsernameOptions] = useState<Array<string>>([]);
@@ -131,7 +131,7 @@ export const SeekForm = (props: Props) => {
       setExtraTimeLabel(incUnitLabel);
     } else {
       setTimeSetting(otLabel);
-      setMaxTimeSetting(5);
+      setMaxTimeSetting(10);
       setExtraTimeLabel(otUnitLabel);
     }
     const [tc, tt] = timeCtrlToDisplayName(
