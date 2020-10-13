@@ -73,5 +73,6 @@ func (ps *ProfileService) GetProfile(ctx context.Context, r *pb.ProfileRequest) 
 		About:       user.Profile.About,
 		RatingsJson: string(ratjson),
 		StatsJson:   string(statjson),
+		UserId:      user.UUID,
 	}, nil
 }

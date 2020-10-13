@@ -100,7 +100,8 @@ enum MessageType {
 
 // GameMeta is meant to be a quick summary of a game for watching purposes,
 // for display in a list in the lobby e.g.
-// XXX: THIS IS OBSOLETE -- USE GameInfoResponse in game_service.proto
+// Note: this is very similar to the GameInfoResponse in game_service.proto,
+// but it is annoying to combine them now. The latter has some more info.
 message GameMeta {
   message UserMeta {
     string relevant_rating = 1;
@@ -123,6 +124,7 @@ message ChatMessage {
   string message = 3;
   // millis.
   int64 timestamp = 4;
+  string user_id = 5;
 }
 
 message ChatMessages { repeated ChatMessage messages = 1; }

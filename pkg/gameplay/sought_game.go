@@ -60,6 +60,9 @@ func NewMatchRequest(ctx context.Context, gameStore SoughtGameStore,
 	}
 
 	// Check that the user we are matching hasn't already matched us.
+	// XXX: Move to Redis store, and put this in an atomic script
+	// create match only if not already matched by, to avoid
+	// race conditions.
 	matched, err := gameStore.UserMatchedBy(ctx, req.User.UserId, req.ReceivingUser.UserId)
 	if err != nil {
 		return nil, err
@@ -80,8 +83,8 @@ func ValidateSoughtGame(ctx context.Context, req *pb.GameRequest) error {
 	if req.InitialTimeSeconds < 15 {
 		return errors.New("the initial time must be at least 15 seconds")
 	}
-	if req.MaxOvertimeMinutes < 0 || req.MaxOvertimeMinutes > 5 {
-		return errors.New("overtime minutes must be between 0 and 5")
+	if req.MaxOvertimeMinutes < 0 || req.MaxOvertimeMinutes > 10 {
+		return errors.New("overtime minutes must be between 0 and 10")
 	}
 	if req.IncrementSeconds < 0 {
 		return errors.New("you cannot have a negative time increment")

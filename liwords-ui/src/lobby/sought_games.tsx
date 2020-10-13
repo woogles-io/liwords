@@ -4,6 +4,7 @@ import { Table, Tooltip } from 'antd';
 import React, { ReactNode } from 'react';
 import { FundOutlined, ExportOutlined } from '@ant-design/icons/lib';
 import {
+  calculateTotalTime,
   challRuleToStr,
   timeCtrlToDisplayName,
   initialTimeLabel,
@@ -93,7 +94,7 @@ export const SoughtGames = (props: Props) => {
       dataIndex: 'time',
       key: 'time',
       sorter: (a: SoughtGameTableData, b: SoughtGameTableData) =>
-        a.time.localeCompare(b.time),
+        a.totalTime - b.totalTime,
     },
     {
       title: 'Details',
@@ -108,6 +109,7 @@ export const SoughtGames = (props: Props) => {
     rating: string;
     lexicon: string;
     time: string;
+    totalTime: number;
     details?: ReactNode;
     outgoing: boolean;
     seekID: string;
@@ -148,6 +150,11 @@ export const SoughtGames = (props: Props) => {
             sg.incrementSecs,
             sg.maxOvertimeMinutes
           ),
+          totalTime: calculateTotalTime(
+            sg.initialTimeSecs,
+            sg.incrementSecs,
+            sg.maxOvertimeMinutes
+          ),
           details: getDetails(),
           outgoing,
           seekID: sg.seekID,
@@ -168,6 +175,7 @@ export const SoughtGames = (props: Props) => {
           hideOnSinglePage: true,
         }}
         rowKey="seekID"
+        showSorterTooltip={false}
         onRow={(record) => {
           return {
             onClick: (event) => {

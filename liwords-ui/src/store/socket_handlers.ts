@@ -1,5 +1,10 @@
 import { message, notification } from 'antd';
-import { ChatEntityType, randomID } from './store';
+import {
+  ChatEntityType,
+  randomID,
+  ChatEntityObj,
+  PresenceEntity,
+} from './store';
 import {
   MessageType,
   SeekRequest,
@@ -33,11 +38,13 @@ import { endGameMessage } from './end_of_game';
 import {
   SeekRequestToSoughtGame,
   GameMetaToActiveGame,
+  SoughtGame,
 } from './reducers/lobby_reducer';
 import { BoopSounds } from '../sound/boop';
 import {
   useChallengeResultEventStoreContext,
   useChatStoreContext,
+  useExcludedPlayersStoreContext,
   useGameContextStoreContext,
   useGameEndMessageStoreContext,
   useLobbyStoreContext,
@@ -99,6 +106,7 @@ export const parseMsgs = (msg: Uint8Array) => {
 export const useOnSocketMsg = () => {
   const { challengeResultEvent } = useChallengeResultEventStoreContext();
   const { addChat, addChats } = useChatStoreContext();
+  const { excludedPlayers } = useExcludedPlayersStoreContext();
   const { dispatchGameContext } = useGameContextStoreContext();
   const { setGameEndMessage } = useGameEndMessageStoreContext();
   const { dispatchLobbyContext } = useLobbyStoreContext();
@@ -121,9 +129,15 @@ export const useOnSocketMsg = () => {
         case MessageType.SEEK_REQUEST: {
           const sr = parsedMsg as SeekRequest;
           console.log('Got a seek request', sr);
+
+          const userID = sr.getUser()?.getUserId();
+          if (!userID || excludedPlayers.has(userID)) {
+            break;
+          }
+
           const soughtGame = SeekRequestToSoughtGame(sr);
           if (soughtGame === null) {
-            return;
+            break;
           }
 
           dispatchLobbyContext({
@@ -136,11 +150,23 @@ export const useOnSocketMsg = () => {
 
         case MessageType.SEEK_REQUESTS: {
           const sr = parsedMsg as SeekRequests;
+
+          const soughtGames = new Array<SoughtGame>();
+
+          sr.getRequestsList().forEach((r) => {
+            const userID = r.getUser()?.getUserId();
+            if (!userID || excludedPlayers.has(userID)) {
+              return;
+            }
+            const sg = SeekRequestToSoughtGame(r);
+            if (sg) {
+              soughtGames.push(sg);
+            }
+          });
+
           dispatchLobbyContext({
             actionType: ActionType.AddSoughtGames,
-            payload: sr
-              .getRequestsList()
-              .map((r) => SeekRequestToSoughtGame(r)),
+            payload: soughtGames,
           });
 
           break;
@@ -148,10 +174,16 @@ export const useOnSocketMsg = () => {
 
         case MessageType.MATCH_REQUEST: {
           const mr = parsedMsg as MatchRequest;
+
+          const userID = mr.getUser()?.getUserId();
+          if (!userID || excludedPlayers.has(userID)) {
+            break;
+          }
+
           const receiver = mr.getReceivingUser()?.getDisplayName();
           const soughtGame = SeekRequestToSoughtGame(mr);
           if (soughtGame === null) {
-            return;
+            break;
           }
           if (receiver === loginState.username) {
             BoopSounds.matchReqSound.play();
@@ -171,11 +203,23 @@ export const useOnSocketMsg = () => {
 
         case MessageType.MATCH_REQUESTS: {
           const mr = parsedMsg as MatchRequests;
+
+          const soughtGames = new Array<SoughtGame>();
+
+          mr.getRequestsList().forEach((r) => {
+            const userID = r.getUser()?.getUserId();
+            if (!userID || excludedPlayers.has(userID)) {
+              return;
+            }
+            const sg = SeekRequestToSoughtGame(r);
+            if (sg) {
+              soughtGames.push(sg);
+            }
+          });
+
           dispatchLobbyContext({
             actionType: ActionType.AddMatchRequests,
-            payload: mr
-              .getRequestsList()
-              .map((r) => SeekRequestToSoughtGame(r)),
+            payload: soughtGames,
           });
           break;
         }
@@ -212,7 +256,11 @@ export const useOnSocketMsg = () => {
 
         case MessageType.CHAT_MESSAGE: {
           const cm = parsedMsg as ChatMessage;
-          // We should ignore this chat message if it's not for the right
+          if (excludedPlayers.has(cm.getUserId())) {
+            break;
+          }
+
+          // XXX: We should ignore this chat message if it's not for the right
           // channel.
 
           addChat({
@@ -228,13 +276,19 @@ export const useOnSocketMsg = () => {
           // These replace all existing messages.
           const cms = parsedMsg as ChatMessages;
 
-          const entities = cms.getMessagesList().map((cm) => ({
-            entityType: ChatEntityType.UserChat,
-            sender: cm.getUsername(),
-            message: cm.getMessage(),
-            timestamp: cm.getTimestamp(),
-            id: randomID(),
-          }));
+          const entities = new Array<ChatEntityObj>();
+
+          cms.getMessagesList().forEach((cm) => {
+            if (!excludedPlayers.has(cm.getUserId())) {
+              entities.push({
+                entityType: ChatEntityType.UserChat,
+                sender: cm.getUsername(),
+                message: cm.getMessage(),
+                timestamp: cm.getTimestamp(),
+                id: randomID(),
+              });
+            }
+          });
 
           addChats(entities);
           break;
@@ -244,6 +298,9 @@ export const useOnSocketMsg = () => {
           console.log('userpresence', parsedMsg);
 
           const up = parsedMsg as UserPresence;
+          if (excludedPlayers.has(up.getUserId())) {
+            break;
+          }
           setPresence({
             uuid: up.getUserId(),
             username: up.getUsername(),
@@ -255,13 +312,19 @@ export const useOnSocketMsg = () => {
 
         case MessageType.USER_PRESENCES: {
           const ups = parsedMsg as UserPresences;
-          const toAdd = ups.getPresencesList().map((p) => ({
-            uuid: p.getUserId(),
-            username: p.getUsername(),
-            channel: p.getChannel(),
-            anon: p.getIsAnonymous(),
-          }));
-          console.log('userpresences', toAdd);
+
+          const toAdd = new Array<PresenceEntity>();
+
+          ups.getPresencesList().forEach((p) => {
+            if (!excludedPlayers.has(p.getUserId())) {
+              toAdd.push({
+                uuid: p.getUserId(),
+                username: p.getUsername(),
+                channel: p.getChannel(),
+                anon: p.getIsAnonymous(),
+              });
+            }
+          });
 
           addPresences(toAdd);
           break;

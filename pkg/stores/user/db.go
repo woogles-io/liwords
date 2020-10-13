@@ -72,13 +72,22 @@ type following struct {
 	Follower   User
 }
 
+type blocking struct {
+	// blocker blocks user
+	UserID uint
+	User   User
+
+	BlockerID uint
+	Blocker   User
+}
+
 // NewDBStore creates a new DB store
 func NewDBStore(dbURL string) (*DBStore, error) {
 	db, err := gorm.Open("postgres", dbURL)
 	if err != nil {
 		return nil, err
 	}
-	db.AutoMigrate(&User{}, &profile{}, &following{})
+	db.AutoMigrate(&User{}, &profile{}, &following{}, &blocking{})
 	db.Model(&User{}).
 		AddUniqueIndex("username_idx", "lower(username)").
 		AddUniqueIndex("email_idx", "lower(email)")
@@ -89,6 +98,11 @@ func NewDBStore(dbURL string) (*DBStore, error) {
 		AddForeignKey("user_id", "users(id)", "RESTRICT", "RESTRICT").
 		AddForeignKey("follower_id", "users(id)", "RESTRICT", "RESTRICT").
 		AddUniqueIndex("user_follower_idx", "user_id", "follower_id")
+
+	db.Model(&blocking{}).
+		AddForeignKey("user_id", "users(id)", "RESTRICT", "RESTRICT").
+		AddForeignKey("blocker_id", "users(id)", "RESTRICT", "RESTRICT").
+		AddUniqueIndex("user_blocker_idx", "user_id", "blocker_id")
 
 	return &DBStore{db: db}, nil
 }
@@ -386,6 +400,92 @@ func (s *DBStore) GetFollows(ctx context.Context, uid uint) ([]*entity.User, err
 		entUsers[idx] = &entity.User{UUID: u.Uuid, Username: u.Username}
 	}
 	return entUsers, nil
+}
+
+func (s *DBStore) AddBlock(ctx context.Context, targetUser, blocker uint) error {
+	dbb := &blocking{UserID: targetUser, BlockerID: blocker}
+	result := s.db.Create(dbb)
+	return result.Error
+}
+
+func (s *DBStore) RemoveBlock(ctx context.Context, targetUser, blocker uint) error {
+	return s.db.Where("user_id = ? AND blocker_id = ?", targetUser, blocker).Delete(&blocking{}).Error
+}
+
+// GetBlocks gets all the users that the passed-in user DB ID is blocking.
+func (s *DBStore) GetBlocks(ctx context.Context, uid uint) ([]*entity.User, error) {
+	type blocked struct {
+		Username string
+		Uuid     string
+	}
+
+	var users []blocked
+
+	if result := s.db.Table("blockings").Select("u0.username, u0.uuid").
+		Joins("JOIN users as u0 ON u0.id = user_id").
+		Where("blocker_id = ?", uid).Scan(&users); result.Error != nil {
+
+		return nil, result.Error
+	}
+	log.Debug().Int("num-blocked", len(users)).Msg("found-blocked")
+	entUsers := make([]*entity.User, len(users))
+	for idx, u := range users {
+		entUsers[idx] = &entity.User{UUID: u.Uuid, Username: u.Username}
+	}
+	return entUsers, nil
+}
+
+// GetBlockedBy gets all the users that are blocking the passed-in user DB ID.
+func (s *DBStore) GetBlockedBy(ctx context.Context, uid uint) ([]*entity.User, error) {
+	type blockedby struct {
+		Username string
+		Uuid     string
+	}
+
+	var users []blockedby
+
+	if result := s.db.Table("blockings").Select("u0.username, u0.uuid").
+		Joins("JOIN users as u0 ON u0.id = blocker_id").
+		Where("user_id = ?", uid).Scan(&users); result.Error != nil {
+
+		return nil, result.Error
+	}
+	log.Debug().Int("num-blocked-by", len(users)).Msg("found-blocked-by")
+	entUsers := make([]*entity.User, len(users))
+	for idx, u := range users {
+		entUsers[idx] = &entity.User{UUID: u.Uuid, Username: u.Username}
+	}
+	return entUsers, nil
+}
+
+// GetFullBlocks gets users uid is blocking AND users blocking uid
+func (s *DBStore) GetFullBlocks(ctx context.Context, uid uint) ([]*entity.User, error) {
+	// There's probably a way to do this with one db query but eh.
+	players := map[string]*entity.User{}
+
+	blocks, err := s.GetBlocks(ctx, uid)
+	if err != nil {
+		return nil, err
+	}
+	blockedby, err := s.GetBlockedBy(ctx, uid)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, u := range blocks {
+		players[u.UUID] = u
+	}
+	for _, u := range blockedby {
+		players[u.UUID] = u
+	}
+
+	plist := make([]*entity.User, len(players))
+	idx := 0
+	for _, v := range players {
+		plist[idx] = v
+		idx++
+	}
+	return plist, nil
 }
 
 // Username gets the username from the uuid. If not found, return a deterministic username,

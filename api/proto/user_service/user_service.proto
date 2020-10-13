@@ -93,6 +93,7 @@ message ProfileResponse {
   string about = 5;
   string ratings_json = 6;
   string stats_json = 7;
+  string user_id = 8;
 }
 
 service ProfileService {
@@ -107,4 +108,42 @@ message UsernameSearchRequest { string prefix = 1; }
 message UsernameSearchResponse { repeated string usernames = 1; }
 service AutocompleteService {
   rpc GetCompletion(UsernameSearchRequest) returns (UsernameSearchResponse);
+}
+
+// Follows and Blocks
+
+message AddFollowRequest { string uuid = 1; }
+message RemoveFollowRequest { string uuid = 1; }
+message GetFollowsRequest {}
+
+message AddBlockRequest { string uuid = 1; }
+message RemoveBlockRequest { string uuid = 1; }
+message GetBlocksRequest {}
+message GetFullBlocksRequest {}
+
+message OKResponse {}
+
+message BasicUser {
+  string uuid = 1;
+  string username = 2;
+}
+
+message GetFollowsResponse { repeated BasicUser users = 1; }
+message GetBlocksResponse { repeated BasicUser users = 1; }
+// XXX: We should eventually obsolete this and handle blocks purely on
+// the backend but we need to write a lot of hard code for that.
+message GetFullBlocksResponse { repeated string user_ids = 1; }
+
+// Yeah I know
+service SocializeService {
+  rpc AddFollow(AddFollowRequest) returns (OKResponse);
+  rpc RemoveFollow(RemoveFollowRequest) returns (OKResponse);
+  rpc GetFollows(GetFollowsRequest) returns (GetFollowsResponse);
+
+  rpc AddBlock(AddBlockRequest) returns (OKResponse);
+  rpc RemoveBlock(RemoveBlockRequest) returns (OKResponse);
+  rpc GetBlocks(GetBlocksRequest) returns (GetBlocksResponse);
+  // GetFullBlocks gets players who blocked us AND players we've blocked
+  // together.
+  rpc GetFullBlocks(GetFullBlocksRequest) returns (GetFullBlocksResponse);
 }

@@ -1,11 +1,14 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useLocation } from 'react-router-dom';
-import { notification, Card, Table, Row, Col } from 'antd';
+import { notification, Card, Table, Row, Col, Button } from 'antd';
 import axios, { AxiosError } from 'axios';
 import { TopBar } from '../topbar/topbar';
 import './profile.scss';
 import { toAPIUrl } from '../api/api';
-import { useLoginStateStoreContext } from '../store/store';
+import {
+  useExcludedPlayersStoreContext,
+  useLoginStateStoreContext,
+} from '../store/store';
 import { GameMetadata, RecentGamesResponse } from '../gameroom/game_info';
 import { GamesHistoryCard } from './games_history';
 
@@ -17,6 +20,7 @@ type ProfileResponse = {
   about: string;
   ratings_json: string;
   stats_json: string;
+  user_id: string;
 };
 
 const errorCatcher = (e: AxiosError) => {
@@ -202,12 +206,54 @@ type Props = {};
 
 const gamesPageSize = 10;
 
+// Move me to a better place.
+type BlockerProps = {
+  target: string;
+};
+
+const TheBlocker = (props: BlockerProps) => {
+  const { excludedPlayers } = useExcludedPlayersStoreContext();
+  let apiFunc: string;
+  let blockText: string;
+
+  if (excludedPlayers.has(props.target)) {
+    apiFunc = 'Remove';
+    blockText = 'Unblock this user';
+  } else {
+    apiFunc = 'Add';
+    blockText = 'Block this user';
+    // Add some confirmation.
+  }
+
+  const blockAction = () => {
+    axios
+      .post(
+        toAPIUrl('user_service.SocializeService', `${apiFunc}Block`),
+        {
+          uuid: props.target,
+        },
+        { withCredentials: true }
+      )
+      .then(() => {
+        setTimeout(window.location.reload.bind(window.location), 1000);
+      });
+  };
+
+  // HIDE the blocker button for now:
+  return (
+    <Button onClick={blockAction} style={{ display: 'none' }}>
+      {blockText}
+    </Button>
+  );
+};
+
 export const UserProfile = (props: Props) => {
   const { username } = useParams();
   const location = useLocation();
   // Show username's profile
   const [ratings, setRatings] = useState({});
   const [stats, setStats] = useState({});
+  const [userID, setUserID] = useState('');
   const [recentGames, setRecentGames] = useState<Array<GameMetadata>>([]);
   const { loginState } = useLoginStateStoreContext();
   const { username: viewer } = loginState;
@@ -224,6 +270,7 @@ export const UserProfile = (props: Props) => {
         console.log('prof', resp, JSON.parse(resp.data.ratings_json).Data);
         setRatings(JSON.parse(resp.data.ratings_json).Data);
         setStats(JSON.parse(resp.data.stats_json).Data);
+        setUserID(resp.data.user_id);
       })
       .catch(errorCatcher);
   }, [username, location.pathname]);
@@ -258,7 +305,9 @@ export const UserProfile = (props: Props) => {
           <h3>{username}</h3>
           {viewer === username ? (
             <a href="/password/change">Change your password</a>
-          ) : null}
+          ) : (
+            <TheBlocker target={userID} />
+          )}
         </header>
 
         <RatingsCard ratings={ratings} />
@@ -267,6 +316,7 @@ export const UserProfile = (props: Props) => {
         <GamesHistoryCard
           games={recentGames}
           username={username}
+          userID={userID}
           fetchPrev={() =>
             setRecentGamesOffset(Math.max(recentGamesOffset - gamesPageSize, 0))
           }

@@ -67,6 +67,11 @@ type LoginStateStoreData = {
   dispatchLoginState: (action: Action) => void;
 };
 
+type ExcludedPlayersStoreData = {
+  excludedPlayers: Set<string>;
+  setExcludedPlayers: React.Dispatch<React.SetStateAction<Set<string>>>;
+};
+
 type RedirGameStoreData = {
   redirGame: string;
   setRedirGame: React.Dispatch<React.SetStateAction<string>>;
@@ -150,6 +155,12 @@ const LoginStateContext = createContext<LoginStateStoreData>({
     connID: '',
   },
   dispatchLoginState: defaultFunction,
+});
+
+const ExcludedPlayersContext = createContext<ExcludedPlayersStoreData>({
+  // we do not see any messages from excludedPlayers
+  excludedPlayers: new Set<string>(),
+  setExcludedPlayers: defaultFunction,
 });
 
 const RedirGameContext = createContext<RedirGameStoreData>({
@@ -273,6 +284,7 @@ export const Store = ({ children, ...props }: Props) => {
   const [gameEndMessage, setGameEndMessage] = useState('');
   const [rematchRequest, setRematchRequest] = useState(new MatchRequest());
   const [chat, setChat] = useState(new Array<ChatEntityObj>());
+  const [excludedPlayers, setExcludedPlayers] = useState(new Set<string>());
   const [presences, setPresences] = useState(
     {} as { [uuid: string]: PresenceEntity }
   );
@@ -363,6 +375,15 @@ export const Store = ({ children, ...props }: Props) => {
       value={{
         loginState,
         dispatchLoginState,
+      }}
+      children={ret}
+    />
+  );
+  ret = (
+    <ExcludedPlayersContext.Provider
+      value={{
+        excludedPlayers,
+        setExcludedPlayers,
       }}
       children={ret}
     />
@@ -460,6 +481,8 @@ export const Store = ({ children, ...props }: Props) => {
 
 export const useLobbyStoreContext = () => useContext(LobbyContext);
 export const useLoginStateStoreContext = () => useContext(LoginStateContext);
+export const useExcludedPlayersStoreContext = () =>
+  useContext(ExcludedPlayersContext);
 export const useRedirGameStoreContext = () => useContext(RedirGameContext);
 export const useChallengeResultEventStoreContext = () =>
   useContext(ChallengeResultEventContext);

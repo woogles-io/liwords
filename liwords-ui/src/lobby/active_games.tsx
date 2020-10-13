@@ -5,7 +5,7 @@ import { useRedirGameStoreContext } from '../store/store';
 import { RatingBadge } from './rating_badge';
 import { challengeFormat, timeFormat } from './sought_games';
 import { ActiveGame } from '../store/reducers/lobby_reducer';
-
+import { calculateTotalTime } from '../store/constants';
 type Props = {
   activeGames: ActiveGame[];
   username?: string;
@@ -19,6 +19,7 @@ export const ActiveGames = (props: Props) => {
     players: ReactNode;
     lexicon: string;
     time: string;
+    totalTime: number;
     details?: ReactNode;
     player1: string;
     player2: string;
@@ -55,6 +56,11 @@ export const ActiveGames = (props: Props) => {
           ),
           lexicon: ag.lexicon,
           time: timeFormat(
+            ag.initialTimeSecs,
+            ag.incrementSecs,
+            ag.maxOvertimeMinutes
+          ),
+          totalTime: calculateTotalTime(
             ag.initialTimeSecs,
             ag.incrementSecs,
             ag.maxOvertimeMinutes
@@ -101,7 +107,7 @@ export const ActiveGames = (props: Props) => {
       dataIndex: 'time',
       key: 'time',
       sorter: (a: ActiveGameTableData, b: ActiveGameTableData) =>
-        a.time.localeCompare(b.time),
+        a.totalTime - b.totalTime,
     },
     {
       title: 'Details',
@@ -121,6 +127,7 @@ export const ActiveGames = (props: Props) => {
           hideOnSinglePage: true,
         }}
         rowKey="gameID"
+        showSorterTooltip={false}
         onRow={(record) => {
           return {
             onClick: (event) => {
