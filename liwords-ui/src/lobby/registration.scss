@@ -1,0 +1,66 @@
+@import '../base';
+@import '../shared/layout';
+
+@include button;
+
+div.registration {
+  display: flex;
+  flex-direction: row;
+  margin: 48px;
+  align-items: flex-start;
+  justify-content: center;
+  .woogles {
+    display: none;
+    width: 256px;
+    height: 418px;
+    margin-top: 64px;
+  }
+  .registration-form {
+    max-width: 634px;
+    h3 {
+      font-family: $font-default;
+      letter-spacing: 0;
+      font-weight: 800;
+    }
+    p {
+      margin: 2em 0;
+    }
+    input {
+      width: 300px;
+      height: 48px;
+      margin-bottom: 12px;
+    }
+    .ant-checkbox-wrapper {
+      max-width: calc(100vw - 64px);
+      padding-right: 24px;
+      display: flex;
+      align-items: center;
+      margin: 12px 0 36px 0;
+      .ant-checkbox-inner {
+        margin-right: 12px;
+      }
+    }
+    .ant-row.ant-form-item.password {
+      input {
+        position: relative;
+        width: 258px;
+        height: 27px;
+        top: 6px;
+      }
+    }
+  }
+}
+
+@media (min-width: $screen-tablet-min) {
+  div.registration {
+    .registration-form {
+      margin-left: 95px;
+      .ant-checkbox-wrapper {
+        max-width: 540px;
+      }
+    }
+    .woogles {
+      display: block;
+    }
+  }
+}
