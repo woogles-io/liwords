@@ -685,13 +685,29 @@ export const BoardPanel = React.memo((props: Props) => {
     console.log('rematching');
   }, [observer, gameID, playerMeta, sendSocketMsg, username]);
 
+  const handleKeyDown = useCallback(
+    (e) => {
+      keydown(e.key);
+    },
+    [keydown]
+  );
+  const handlePass = useCallback(() => makeMove('pass'), [makeMove]);
+  const handleResign = useCallback(() => makeMove('resign'), [makeMove]);
+  const handleChallenge = useCallback(() => makeMove('challenge'), [makeMove]);
+  const handleCommit = useCallback(() => makeMove('commit'), [makeMove]);
+  const handleExamine = useCallback(
+    () => gcgExport(props.gameID, props.playerMeta),
+    [props.gameID, props.playerMeta]
+  );
+  const handleExchangeTilesCancel = useCallback(() => {
+    setExchangeModalVisible(false);
+  }, []);
+
   return (
     <div
       id="board-container"
       className="board-container"
-      onKeyDown={(e) => {
-        keydown(e.key);
-      }}
+      onKeyDown={handleKeyDown}
       tabIndex={-1}
       role="textbox"
     >
@@ -726,12 +742,7 @@ export const BoardPanel = React.memo((props: Props) => {
             grabbable
             returnToRack={returnToRack}
             onTileClick={clickToBoard}
-            moveRackTile={(
-              indexA: number | undefined,
-              indexB: number | undefined
-            ) => {
-              moveRackTile(indexA, indexB);
-            }}
+            moveRackTile={moveRackTile}
           />
           <Tooltip
             title="Shuffle &uarr;"
@@ -761,12 +772,12 @@ export const BoardPanel = React.memo((props: Props) => {
         observer={observer}
         onRecall={recallTiles}
         showExchangeModal={showExchangeModal}
-        onPass={() => makeMove('pass')}
-        onResign={() => makeMove('resign')}
-        onChallenge={() => makeMove('challenge')}
-        onCommit={() => makeMove('commit')}
+        onPass={handlePass}
+        onResign={handleResign}
+        onChallenge={handleChallenge}
+        onCommit={handleCommit}
         onRematch={rematch}
-        onExamine={() => gcgExport(props.gameID, props.playerMeta)}
+        onExamine={handleExamine}
         showRematch={gameEndMessage !== ''}
         gameEndControls={gameEndMessage !== '' || props.gameDone}
         currentRack={props.currentRack}
@@ -774,12 +785,8 @@ export const BoardPanel = React.memo((props: Props) => {
       <ExchangeTiles
         rack={props.currentRack}
         modalVisible={exchangeModalVisible}
-        onOk={(exchangedTiles) => {
-          handleExchangeModalOk(exchangedTiles);
-        }}
-        onCancel={() => {
-          setExchangeModalVisible(false);
-        }}
+        onOk={handleExchangeModalOk}
+        onCancel={handleExchangeTilesCancel}
       />
       <Modal
         className="blank-modal"
