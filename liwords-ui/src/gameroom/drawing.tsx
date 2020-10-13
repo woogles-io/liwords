@@ -52,57 +52,122 @@ export const useDrawing = (isEnabled: boolean) => {
     },
     [boardSize]
   );
-  const [picture, setPicture] = React.useState<{
-    drawing: boolean;
-    strokes: Array<{
-      points: Array<{ x: number; y: number }>; // scaled to [0,1)
-      path: string; // Mx,yLx,yLx,y... based on current boardSize
-    }>;
-  }>({ drawing: false, strokes: [] });
-  const hasPicture = picture.strokes.length > 0;
-  const handleContextMenu = React.useCallback(
-    (evt: React.MouseEvent) => {
-      if (!evt.shiftKey) {
-        // Draw when not holding shift.
-        evt.preventDefault();
-      } else if (hasPicture) {
-        // Shift+RightClick clears drawing.
-        setPicture((pic) => ({ ...pic, drawing: false, strokes: [] }));
-        evt.preventDefault();
-      } else {
-        // Shift+RightClick accesses context menu if no drawing.
-      }
-    },
-    [hasPicture]
-  );
   const scaledXYStr = React.useCallback(
     ({ x, y }: { x: number; y: number }) =>
       `${x * boardSize.width},${y * boardSize.height}`,
     [boardSize.width, boardSize.height]
   );
+
+  const boardResizedSinceLastPaintRef = React.useRef(true);
+  const penRef = React.useRef<string>();
+  const strokesRef = React.useRef<
+    Array<{
+      points: Array<{ x: number; y: number }>; // scaled to [0,1)
+      path: string; // Mx,yLx,yLx,y... based on current boardSize
+      pen: string; // "red"
+      elt: React.ReactElement | undefined;
+    }>
+  >([]);
+  const [currentDrawing, setCurrentDrawing] = React.useState();
+  const plannedRepaintRef = React.useRef<number>();
+
+  const repaintNow = React.useCallback(() => {
+    if (plannedRepaintRef.current != null) {
+      cancelAnimationFrame(plannedRepaintRef.current);
+      plannedRepaintRef.current = undefined;
+    }
+
+    if (boardResizedSinceLastPaintRef.current) {
+      // Rescale everything.
+      for (const stroke of strokesRef.current) {
+        let path = `M${scaledXYStr(stroke.points[0])}`;
+        for (let i = 1; i < stroke.points.length; ++i) {
+          path += `L${scaledXYStr(stroke.points[i])}`;
+        }
+        stroke.path = path;
+        stroke.elt = undefined;
+      }
+      boardResizedSinceLastPaintRef.current = false;
+    }
+
+    for (const stroke of strokesRef.current) {
+      if (!stroke.elt) {
+        let path = stroke.path;
+        if (stroke.points.length === 1) {
+          // Draw a diamond to represent a single point.
+          path += 'm-1,0l1,1l1,-1l-1,-1l-1,1l1,1';
+        }
+        stroke.elt = (
+          <path d={path} fill="none" strokeWidth={5} stroke={stroke.pen} />
+        );
+      }
+    }
+
+    const ret = (
+      <React.Fragment>
+        {strokesRef.current.map((stroke, idx) => (
+          <React.Fragment key={idx}>{stroke.elt}</React.Fragment>
+        ))}
+      </React.Fragment>
+    );
+
+    setCurrentDrawing(ret);
+  }, [scaledXYStr]);
+
+  const scheduleRepaint = React.useCallback(() => {
+    if (plannedRepaintRef.current != null) {
+      cancelAnimationFrame(plannedRepaintRef.current);
+    }
+    plannedRepaintRef.current = requestAnimationFrame(repaintNow);
+  }, [repaintNow]);
+
+  const handleContextMenu = React.useCallback(
+    (evt: React.MouseEvent) => {
+      if (!evt.shiftKey) {
+        // Draw when not holding shift.
+        evt.preventDefault();
+      } else if (strokesRef.current.length > 0) {
+        // Shift+RightClick clears drawing.
+        evt.preventDefault();
+        penRef.current = undefined;
+        strokesRef.current = [];
+        scheduleRepaint();
+      } else {
+        // Shift+RightClick accesses context menu if no drawing.
+      }
+    },
+    [scheduleRepaint]
+  );
+
   const handleMouseDown = React.useCallback(
     (evt: React.MouseEvent) => {
       if (evt.button === 2 && !evt.shiftKey) {
         const newXY = getXY(evt);
-        setPicture((pic) => {
-          pic.strokes.push({ points: [newXY], path: `M${scaledXYStr(newXY)}` }); // mutate
-          return { ...pic, drawing: true }; // shallow clone for performance
+        penRef.current = 'red';
+        strokesRef.current.push({
+          points: [newXY],
+          path: `M${scaledXYStr(newXY)}`,
+          pen: penRef.current,
+          elt: undefined,
         });
+        scheduleRepaint();
       }
     },
-    [getXY, scaledXYStr]
+    [getXY, scaledXYStr, scheduleRepaint]
   );
-  const handleMouseUp = React.useCallback((evt: React.MouseEvent) => {
-    setPicture((pic) => {
-      if (!pic.drawing) return pic;
+
+  const handleMouseUp = React.useCallback(
+    (evt: React.MouseEvent) => {
+      if (!penRef.current) return;
       // Right-click this many times to clear drawing.
       const howMany = 3;
-      if (pic.strokes.length >= howMany) {
-        const lastPoint = pic.strokes[pic.strokes.length - 1].points[0];
+      if (strokesRef.current.length >= howMany) {
+        const lastPoint =
+          strokesRef.current[strokesRef.current.length - 1].points[0];
         let i = 0;
         for (; i < howMany; ++i) {
           const ithLastPoints =
-            pic.strokes[pic.strokes.length - (i + 1)].points;
+            strokesRef.current[strokesRef.current.length - (i + 1)].points;
           if (
             !(
               ithLastPoints.length < 2 &&
@@ -112,86 +177,100 @@ export const useDrawing = (isEnabled: boolean) => {
           )
             break;
         }
-        if (i === howMany) {
-          return { ...pic, drawing: false, strokes: [] };
-        }
+        if (i === howMany) strokesRef.current = [];
       }
-      return { ...pic, drawing: false };
-    });
-  }, []);
+      penRef.current = undefined;
+      scheduleRepaint();
+    },
+    [scheduleRepaint]
+  );
+
   const handleMouseMove = React.useCallback(
     (evt: React.MouseEvent) => {
+      if (!penRef.current) return;
       const newXY = getXY(evt);
-      setPicture((pic) => {
-        if (!pic.drawing) return pic;
-        const lastStroke = pic.strokes[pic.strokes.length - 1];
-        const lastPoints = lastStroke.points;
-        const lastPoint = lastPoints[lastPoints.length - 1];
-        if (lastPoint.x === newXY.x && lastPoint.y === newXY.y) return pic;
-        lastPoints.push(newXY); // mutate
-        lastStroke.path += `L${scaledXYStr(newXY)}`;
-        return { ...pic }; // shallow clone for performance
-      });
+      const lastStroke = strokesRef.current[strokesRef.current.length - 1];
+      const lastPoints = lastStroke.points;
+      const lastPoint = lastPoints[lastPoints.length - 1];
+      if (lastPoint.x === newXY.x && lastPoint.y === newXY.y) return;
+      lastPoints.push(newXY);
+      lastStroke.path += `L${scaledXYStr(newXY)}`;
+      lastStroke.elt = undefined; // will be recomputed later
+      scheduleRepaint();
     },
-    [getXY, scaledXYStr]
+    [getXY, scaledXYStr, scheduleRepaint]
   );
+
   const handlePointerDown = React.useCallback((evt: React.PointerEvent) => {
     (evt.target as Element).setPointerCapture(evt.pointerId);
   }, []);
-  const handlePointerUp = React.useCallback((evt: React.PointerEvent) => {
-    (evt.target as Element).releasePointerCapture(evt.pointerId);
-  }, []);
-  React.useEffect(() => {
-    setPicture((pic) => {
-      // Board size changed, recompute path.
-      for (const stroke of pic.strokes) {
-        let path = `M${scaledXYStr(stroke.points[0])}`;
-        for (let i = 1; i < stroke.points.length; ++i) {
-          path += `L${scaledXYStr(stroke.points[i])}`;
-        }
-        stroke.path = path; // mutate
-      }
-      return { ...pic }; // shallow clone for performance
-    });
-  }, [scaledXYStr]);
-  const currentDrawing = React.useMemo(() => {
-    let path = '';
-    for (const { points, path: thisPath } of picture.strokes) {
-      path += thisPath;
-      if (points.length === 1) {
-        // Draw a diamond to represent a single point.
-        path += 'm-1,0l1,1l1,-1l-1,-1l-1,1l1,1';
-      }
-    }
-    return <path d={path} fill="none" strokeWidth={5} stroke="red" />;
-  }, [picture]);
+  const handlePointerUp = React.useCallback(
+    (evt: React.PointerEvent) => {
+      (evt.target as Element).releasePointerCapture(evt.pointerId);
+      handleMouseUp(evt);
+    },
+    [handleMouseUp]
+  );
 
-  return {
-    outerDivProps: isEnabled
-      ? {
-          ref: boardRef,
-          onContextMenu: handleContextMenu,
-          onMouseDown: handleMouseDown,
-          onMouseUp: handleMouseUp,
-          onMouseMove: handleMouseMove,
-          onPointerDown: handlePointerDown,
-          onPointerUp: handlePointerUp,
-        }
-      : {},
-    svgDrawing: isEnabled ? (
-      <svg
-        viewBox={`0 0 ${boardSize.width} ${boardSize.height}`}
-        style={{
-          position: 'absolute',
-          left: 0,
-          top: 0,
-          width: boardSize.width,
-          height: boardSize.height,
-          pointerEvents: 'none',
-        }}
-      >
-        {currentDrawing}
-      </svg>
-    ) : null,
-  };
+  React.useEffect(() => {
+    // Board size changed, invalidate path.
+    if (strokesRef.current.length > 0) {
+      boardResizedSinceLastPaintRef.current = true;
+      scheduleRepaint();
+    }
+  }, [scaledXYStr, scheduleRepaint]);
+
+  const outerDivProps = React.useMemo(
+    () =>
+      isEnabled
+        ? {
+            ref: boardRef,
+            onContextMenu: handleContextMenu,
+            onMouseDown: handleMouseDown,
+            onMouseUp: handleMouseUp,
+            onMouseMove: handleMouseMove,
+            onPointerDown: handlePointerDown,
+            onPointerUp: handlePointerUp,
+          }
+        : {},
+    [
+      isEnabled,
+      boardRef,
+      handleContextMenu,
+      handleMouseDown,
+      handleMouseUp,
+      handleMouseMove,
+      handlePointerDown,
+      handlePointerUp,
+    ]
+  );
+  const svgProps: React.SVGProps<SVGSVGElement> = React.useMemo(
+    () =>
+      isEnabled
+        ? {
+            viewBox: `0 0 ${boardSize.width} ${boardSize.height}`,
+            style: {
+              position: 'absolute',
+              left: 0,
+              top: 0,
+              width: boardSize.width,
+              height: boardSize.height,
+              pointerEvents: 'none',
+            },
+          }
+        : {},
+    [isEnabled, boardSize.width, boardSize.height]
+  );
+  const svgDrawing = React.useMemo(
+    () =>
+      isEnabled && currentDrawing ? (
+        <svg {...svgProps}>{currentDrawing}</svg>
+      ) : null,
+    [isEnabled, svgProps, currentDrawing]
+  );
+  const ret = React.useMemo(() => ({ outerDivProps, svgDrawing }), [
+    outerDivProps,
+    svgDrawing,
+  ]);
+  return ret;
 };
