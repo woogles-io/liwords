@@ -5,7 +5,8 @@ import (
 	"fmt"
 	"math/rand"
 	"sort"
-	"time"
+	// FIXME: For
+	// "time"
 
 	realtime "github.com/domino14/liwords/rpc/api/proto/realtime"
 )
@@ -53,7 +54,7 @@ type Standing struct {
 
 type Tournament interface {
 	GetPlayerRoundInfo(string, int) (*PlayerRoundInfo, error)
-	SubmitResult(int, string, string, int, int, Result, Result, realtime.GameEndReason, bool) error
+	SubmitResult(int, string, string, int, int, Result, Result, realtime.GameEndReason, bool, int) error
 	GetStandings(int) ([]*Standing, error)
 	SetPairing(string, string, int) error
 	IsRoundComplete(int) (bool, error)
@@ -426,6 +427,17 @@ func pairRoundClassic(t *TournamentClassic, round int) error {
 	copyRecords(t.Matrix, round-1)
 
 	roundPairings := t.Matrix[round]
+
+	// This automatic pairing could be the result of an
+	// amendment. Undo all the pairings so byes can be
+	// properly assigned (bye assignment checks for nil pairing).
+	// Do not do this for manual pairings
+	if t.PairingMethod != Manual {
+		for i := 0; i < len(roundPairings); i++ {
+			roundPairings[i].Pairing = nil
+		}
+	}
+
 	if t.PairingMethod == KingOfTheHill || t.PairingMethod == Elimination {
 		standingsRound := round - 1
 		// If this is the first round, just pair
@@ -446,7 +458,9 @@ func pairRoundClassic(t *TournamentClassic, round int) error {
 			var newPairing *Pairing
 			// If we are past the first round in an elimination tournament,
 			// the bottom half of the standings have been eliminated.
-			if t.PairingMethod == Elimination && round > 0 && i >= l/2 {
+			// Each successive round eliminates half as many players,
+			// hence the l / twoPower(l) determines which players are eliminated.
+			if t.PairingMethod == Elimination && round > 0 && i >= l/twoPower(round) {
 				newPairing = newEliminatedPairing(playerOne, playerTwo)
 			} else {
 				newPairing = newClassicPairing(playerOne, playerTwo, t.GamesPerRound)
@@ -459,12 +473,15 @@ func pairRoundClassic(t *TournamentClassic, round int) error {
 		for _, v := range t.PlayerIndexMap {
 			playerIndexes = append(playerIndexes, v)
 		}
-		rand.Seed(time.Now().UnixNano())
+		// FIXME: Is this necessary?
+		// It was kind of annoying not to have
+		// nondeterministc results for testing,
+		// but maybe we should have it in production?
+		// rand.Seed(time.Now().UnixNano())
 		rand.Shuffle(len(playerIndexes),
 			func(i, j int) {
 				playerIndexes[i], playerIndexes[j] = playerIndexes[j], playerIndexes[i]
 			})
-
 		for i := 0; i < len(playerIndexes)-1; i += 2 {
 			newPairing := newClassicPairing(t.Players[playerIndexes[i]], t.Players[playerIndexes[i+1]], t.GamesPerRound)
 			roundPairings[playerIndexes[i]].Pairing = newPairing
@@ -478,7 +495,6 @@ func pairRoundClassic(t *TournamentClassic, round int) error {
 		}
 
 		roundRobinPairings := getRoundRobinPairings(roundRobinPlayers, round)
-		// fmt.Sprintf("the pairings: %s\n", strings.Join(roundRobinPairings, ", "))
 		for i := 0; i < len(roundRobinPairings)-1; i += 2 {
 			playerOne := roundRobinPairings[i]
 			playerTwo := roundRobinPairings[i+1]
@@ -513,6 +529,9 @@ func pairRoundClassic(t *TournamentClassic, round int) error {
 			pri := roundPairings[i]
 			if pri.Pairing == nil {
 				pri.Pairing = newClassicPairing(t.Players[i], t.Players[i], t.GamesPerRound)
+			}
+			if t.PairingMethod == Random {
+
 			}
 		}
 	}
@@ -599,9 +618,10 @@ func getEliminationOutcomes(games []*TournamentGame, gamesPerRound int) []Result
 		p1Wins == gamesPerRound && p2Wins == gamesPerRound && p1Spread < p2Spread {
 		p1Outcome = Eliminated
 		p2Outcome = Win
+		// FIXME: Need need to determine a behavior for ties in elimination tournaments
 	} else if p1Wins == gamesPerRound && p2Wins == gamesPerRound && p1Spread == p2Spread {
-		p1Outcome = Draw
-		p2Outcome = Draw
+		p1Outcome = Win
+		p2Outcome = Eliminated
 	}
 	return []Result{p1Outcome, p2Outcome}
 }

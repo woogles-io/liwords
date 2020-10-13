@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/matryer/is"
+	"math/rand"
 	"strings"
 	"testing"
 
@@ -474,7 +475,8 @@ func TestTournamentClassicManual(t *testing.T) {
 
 	// Submit results for round 1
 
-	// Here, amend is set to true, but it should matter.
+	// FIXME
+	// Here, amend is set to true, but it should not matter.
 	// Maybe at some point we want to be stricter and
 	// reject submissions that think they are amending
 	// when really there is no result.
@@ -730,6 +732,165 @@ func TestTournamentClassicElimination(t *testing.T) {
 	is.True(tournamentIsFinished)
 }
 
+func TestTournamentClassicRandomData(t *testing.T) {
+	is := is.New(t)
+
+	is.NoErr(runRandomTournaments(Random))
+	is.NoErr(runRandomTournaments(RoundRobin))
+	is.NoErr(runRandomTournaments(KingOfTheHill))
+	is.NoErr(runRandomTournaments(Elimination))
+}
+
+func runRandomTournaments(method PairingMethod) error {
+	for numberOfPlayers := 2; numberOfPlayers <= 512; numberOfPlayers++ {
+		var numberOfRounds int
+		var gamesPerRound int
+		if method == Elimination {
+			// numberOfRounds will be -1 if number of players
+			// is not of the form 2 ^ n
+			numberOfRounds = logTwo(numberOfPlayers)
+			if numberOfRounds < 0 {
+				continue
+			}
+			gamesPerRound = rand.Intn(10) + 1
+		} else {
+			numberOfRounds = rand.Intn(10) + 10
+			gamesPerRound = 1
+		}
+
+		players := []string{}
+		for i := 0; i < numberOfPlayers; i++ {
+			players = append(players, fmt.Sprintf("%d", i))
+		}
+
+		tc, err := NewTournamentClassic(players, numberOfRounds, method, gamesPerRound)
+		if err != nil {
+			return err
+		}
+
+		for round := 0; round < numberOfRounds; round++ {
+
+			err = validatePairings(tc, round)
+
+			if err != nil {
+				return err
+			}
+
+			pairings := getPlayerPairings(tc.Players, tc.Matrix[round])
+			for game := 0; game < tc.GamesPerRound; game++ {
+				for l := 0; l < len(pairings); l += 2 {
+
+					// The outcome might already be decided in an elimination tournament, skip the submission
+					if method == Elimination && tc.Matrix[round][tc.PlayerIndexMap[pairings[l]]].Pairing.Outcomes[0] != None &&
+						tc.Matrix[round][tc.PlayerIndexMap[pairings[l]]].Pairing.Outcomes[1] != None {
+						continue
+					}
+
+					// For Elimination tournaments, force a decisive result
+					// otherwise the round may not be over when we check for it
+					var res1 Result
+					var res2 Result
+					if method == Elimination {
+						if rand.Intn(2) == 0 {
+							res1 = Win
+							res2 = Loss
+						} else {
+							res1 = Loss
+							res2 = Win
+						}
+					} else {
+						res1 = Result(rand.Intn(6) + 1)
+						res2 = Result(rand.Intn(6) + 1)
+					}
+
+					err = tc.SubmitResult(round,
+						pairings[l],
+						pairings[l+1],
+						rand.Intn(300)+300,
+						rand.Intn(300)+300,
+						res1,
+						res2,
+						realtime.GameEndReason_STANDARD,
+						false,
+						game)
+					if err != nil {
+						fmt.Printf("(%d) Error on round %d game %d pairing (%s, %s)\n", numberOfPlayers, round, game, pairings[l], pairings[l+1])
+						return err
+					}
+				} // Pairings
+			} // Games
+
+			// Skip testing amendments for elimination events here.
+			// Because of the random data a match may have gone from
+			// decided to undecided based on the amendment. This will
+			// cause a failure when the round is checked for completion.
+			if method != Elimination {
+				numberOfAmendments := rand.Intn(5)
+				for l := 0; l < numberOfAmendments; l++ {
+					randPairing := rand.Intn(len(pairings)/2) * 2
+					err = tc.SubmitResult(round,
+						pairings[randPairing],
+						pairings[randPairing+1],
+						rand.Intn(300)+300,
+						rand.Intn(300)+300,
+						Result(rand.Intn(6)+1),
+						Result(rand.Intn(6)+1),
+						realtime.GameEndReason_STANDARD,
+						true,
+						rand.Intn(tc.GamesPerRound))
+					if err != nil {
+						return err
+					}
+				} // Amendments
+			}
+
+			roundIsComplete, err := tc.IsRoundComplete(round)
+			if err != nil {
+				return err
+			}
+			if !roundIsComplete {
+				return errors.New(fmt.Sprintf("(%d) Round %d is not complete (%d, %d)\n", numberOfPlayers, round, method, numberOfPlayers))
+			}
+
+			_, err = tc.GetStandings(round)
+			if err != nil {
+				return err
+			}
+
+		} // Tournament
+		tournamentIsFinished, err := tc.IsFinished()
+		if err != nil {
+			return err
+		}
+		if !tournamentIsFinished {
+			return errors.New(fmt.Sprintf("Tournament is not complete (%d, %d)\n", method, numberOfPlayers))
+		}
+		if tc.PairingMethod == Elimination {
+			standings, err := tc.GetStandings(numberOfRounds - 1)
+			if err != nil {
+				return err
+			}
+			bottomHalfSize := numberOfPlayers / 2
+			eliminationPlayerIndex := numberOfPlayers - 1
+			eliminatedInRound := 0
+			for bottomHalfSize > 0 {
+				for i := 0; i < bottomHalfSize; i++ {
+					if standings[eliminationPlayerIndex].Wins != eliminatedInRound {
+						return errors.New(fmt.Sprintf("Player has incorrect number of wins (%d, %d, %d)\n",
+							eliminationPlayerIndex,
+							eliminatedInRound,
+							standings[eliminationPlayerIndex].Wins))
+					}
+					eliminationPlayerIndex--
+				}
+				eliminatedInRound++
+				bottomHalfSize = bottomHalfSize / 2
+			}
+		}
+	} // Number of players
+	return nil
+}
+
 func validatePairings(tc *TournamentClassic, round int) error {
 	// For each pairing, check that
 	//   - Player's opponent is nonnull
@@ -741,8 +902,13 @@ func validatePairings(tc *TournamentClassic, round int) error {
 
 	for i, pri := range tc.Matrix[round] {
 		pairing := pri.Pairing
-		if pri.Pairing == nil {
-			return errors.New(fmt.Sprintf("Player %s is unpaired", players[i]))
+		if pairing.Players == nil {
+			// Some pairings can be nil for Elimination tournaments
+			if tc.PairingMethod != Elimination {
+				return errors.New(fmt.Sprintf("Player %d is unpaired", i))
+			} else {
+				continue
+			}
 		}
 		// Check that the pairing refs are correct
 		opponent, err := opponentOf(pairing, tc.Players[i])
@@ -802,7 +968,8 @@ func getPlayerPairings(players []string, pris []*PlayerRoundInfo) []string {
 
 	playerPairings := []string{}
 	for _, pri := range pris {
-		if m[pri.Pairing.Players[0]] == 0 {
+		// An eliminated player could have nil for Players, skip them
+		if pri.Pairing.Players != nil && m[pri.Pairing.Players[0]] == 0 {
 			playerPairings = append(playerPairings, pri.Pairing.Players[0])
 			playerPairings = append(playerPairings, pri.Pairing.Players[1])
 			m[pri.Pairing.Players[0]] = 1
@@ -917,4 +1084,16 @@ func printStandings(standings []*Standing) {
 	for _, standing := range standings {
 		fmt.Println(standing)
 	}
+}
+
+func logTwo(n int) int {
+	res := 0
+	for n > 1 {
+		if n%2 != 0 {
+			return -1
+		}
+		res++
+		n = n / 2
+	}
+	return res
 }
