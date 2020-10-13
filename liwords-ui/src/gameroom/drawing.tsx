@@ -1,5 +1,9 @@
 import React from 'react';
 
+// Feature flag.
+const drawingCanBeEnabled =
+  localStorage?.getItem('enableScreenDrawing') === 'true';
+
 export const makeDrawingHandlersSetterContext = () => {
   const keyDownHandlers = new Set<(evt: React.KeyboardEvent) => void>();
 
@@ -10,6 +14,7 @@ export const makeDrawingHandlersSetterContext = () => {
     unsetHandleKeyDown: (handler: (evt: React.KeyboardEvent) => void) => {
       keyDownHandlers.delete(handler);
     },
+    drawingCanBeEnabled, // Just a constant.
     handleKeyDown: (evt: React.KeyboardEvent) => {
       keyDownHandlers.forEach((handler) => handler(evt));
     },
@@ -27,7 +32,10 @@ export const useDrawing = () => {
   // RightClick several times = clear drawing.
   // Shift+RightClick = context menu.
 
-  const [isEnabled, setIsEnabled] = React.useState(false);
+  const canBeEnabled = drawingCanBeEnabled;
+
+  const [isEnabledState, setIsEnabled] = React.useState(false);
+  const isEnabled = canBeEnabled && isEnabledState;
 
   const boardEltRef = React.useRef<HTMLElement>();
   const [boardSize, setBoardSize] = React.useState({
@@ -351,25 +359,31 @@ export const useDrawing = () => {
 
   // Register handlers for board_panel to call.
   React.useEffect(() => {
-    setHandleKeyDown(handleKeyDown);
-    return () => unsetHandleKeyDown(handleKeyDown);
-  }, [handleKeyDown, setHandleKeyDown, unsetHandleKeyDown]);
+    if (canBeEnabled) {
+      setHandleKeyDown(handleKeyDown);
+      return () => unsetHandleKeyDown(handleKeyDown);
+    }
+  }, [canBeEnabled, handleKeyDown, setHandleKeyDown, unsetHandleKeyDown]);
 
   // Instructions text for now, until there's a better UI.
   React.useEffect(() => {
-    if (isEnabled) {
-      console.log('Drawing enabled.');
-    } else {
-      console.log('Drawing disabled. To enable, type 00.');
+    if (canBeEnabled) {
+      if (isEnabled) {
+        console.log('Drawing enabled.');
+      } else {
+        console.log('Drawing disabled. To enable, type 00.');
+      }
     }
-  }, [isEnabled]);
+  }, [canBeEnabled, isEnabled]);
   React.useEffect(() => {
-    if (isEnabled) {
-      console.log(
-        `Pen color: ${penColor}. To draw on the board, use the right mouse button. For menu, press 0.`
-      );
+    if (canBeEnabled) {
+      if (isEnabled) {
+        console.log(
+          `Pen color: ${penColor}. To draw on the board, use the right mouse button. For menu, press 0.`
+        );
+      }
     }
-  }, [isEnabled, penColor]);
+  }, [canBeEnabled, isEnabled, penColor]);
 
   const outerDivProps = React.useMemo(
     () =>

@@ -115,9 +115,10 @@ const gcgExport = (gameID: string, playerMeta: Array<PlayerMetadata>) => {
 
 export const BoardPanel = React.memo((props: Props) => {
   const [drawingKeyMode, setDrawingKeyMode] = useState(false);
-  const { handleKeyDown: handleDrawingKeyDown } = React.useContext(
-    DrawingHandlersSetterContext
-  );
+  const {
+    drawingCanBeEnabled,
+    handleKeyDown: handleDrawingKeyDown,
+  } = React.useContext(DrawingHandlersSetterContext);
   const [arrowProperties, setArrowProperties] = useState({
     row: 0,
     col: 0,
@@ -635,28 +636,30 @@ export const BoardPanel = React.memo((props: Props) => {
       id="board-container"
       className="board-container"
       onKeyDown={(e) => {
-        // To activate a drawing hotkey, type 0, then the hotkey.
-        if (!exchangeModalVisible && !blankModalVisible) {
-          if (drawingKeyMode) {
-            e.preventDefault();
-            setDrawingKeyMode(false);
-            handleDrawingKeyDown(e);
-            return;
-          } else if (e.key === '0') {
-            e.preventDefault();
-            setDrawingKeyMode(true);
-            console.log(
-              'You pressed 0. Now press one of these keys:' +
-                '\n0 = Toggle drawing' +
-                '\nU = Undo' +
-                '\nW = Wipe' +
-                '\nR = Red pen' +
-                '\nG = Green pen' +
-                '\nB = Blue pen' +
-                '\nY = Yellow pen' +
-                '\nE = Eraser'
-            );
-            return;
+        if (drawingCanBeEnabled) {
+          // To activate a drawing hotkey, type 0, then the hotkey.
+          if (!exchangeModalVisible && !blankModalVisible) {
+            if (drawingKeyMode) {
+              e.preventDefault();
+              setDrawingKeyMode(false);
+              handleDrawingKeyDown(e);
+              return;
+            } else if (e.key === '0') {
+              e.preventDefault();
+              setDrawingKeyMode(true);
+              console.log(
+                'You pressed 0. Now press one of these keys:' +
+                  '\n0 = Toggle drawing' +
+                  '\nU = Undo' +
+                  '\nW = Wipe' +
+                  '\nR = Red pen' +
+                  '\nG = Green pen' +
+                  '\nB = Blue pen' +
+                  '\nY = Yellow pen' +
+                  '\nE = Eraser'
+              );
+              return;
+            }
           }
         }
         keydown(e.key);
