@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useCallback, useState, useEffect, useRef } from 'react';
 import { Button, Modal, notification, message, Tooltip } from 'antd';
 import { SyncOutlined } from '@ant-design/icons';
 import axios from 'axios';
@@ -136,10 +136,94 @@ export const BoardPanel = React.memo((props: Props) => {
 
   const observer = !props.playerMeta.some((p) => p.nickname === props.username);
 
-  const isMyTurn = React.useCallback(() => {
+  const isMyTurn = useCallback(() => {
     const iam = gameContext.nickToPlayerOrder[props.username];
     return iam && iam === `p${gameContext.onturn}`;
   }, [gameContext.nickToPlayerOrder, props.username, gameContext.onturn]);
+
+  const { board, gameID, playerMeta, sendSocketMsg, username } = props;
+
+  const makeMove = useCallback(
+    (move: string, addl?: string) => {
+      let moveEvt;
+      if (move !== 'resign' && !isMyTurn()) {
+        console.log(
+          'off turn move attempts',
+          gameContext.nickToPlayerOrder,
+          username,
+          gameContext.onturn
+        );
+        // It is not my turn. Ignore this event.
+        message.warn({
+          content: 'It is not your turn.',
+          className: 'board-hud-message',
+          duration: 1.5,
+        });
+        return;
+      }
+      console.log(
+        'making move',
+        gameContext.nickToPlayerOrder,
+        username,
+        gameContext.onturn
+      );
+      switch (move) {
+        case 'exchange':
+          moveEvt = exchangeMoveEvent(addl!, gameID);
+          break;
+        case 'pass':
+          moveEvt = passMoveEvent(gameID);
+          break;
+        case 'resign':
+          moveEvt = resignMoveEvent(gameID);
+          break;
+        case 'challenge':
+          moveEvt = challengeMoveEvent(gameID);
+          break;
+        case 'commit':
+          moveEvt = tilesetToMoveEvent(placedTiles, board, gameID);
+          if (!moveEvt) {
+            // this is an invalid play
+            return;
+          }
+          break;
+      }
+      if (!moveEvt) {
+        return;
+      }
+      sendSocketMsg(
+        encodeToSocketFmt(
+          MessageType.CLIENT_GAMEPLAY_EVENT,
+          moveEvt.serializeBinary()
+        )
+      );
+      // Don't stop the clock; the next user event to come in will change the
+      // clock over.
+      // stopClock();
+    },
+    [
+      gameContext.nickToPlayerOrder,
+      gameContext.onturn,
+      isMyTurn,
+      placedTiles,
+      board,
+      gameID,
+      sendSocketMsg,
+      username,
+    ]
+  );
+
+  const recallTiles = useCallback(() => {
+    setPlacedTilesTempScore(0);
+    setPlacedTiles(new Set<EphemeralTile>());
+    setDisplayedRack(props.currentRack);
+  }, [props.currentRack]);
+
+  const shuffleTiles = useCallback(() => {
+    setPlacedTilesTempScore(0);
+    setPlacedTiles(new Set<EphemeralTile>());
+    setDisplayedRack(shuffleString(props.currentRack));
+  }, [props.currentRack]);
 
   const lastLettersRef = useRef<string>();
   const readOnlyEffectDependenciesRef = useRef<{
@@ -310,305 +394,275 @@ export const BoardPanel = React.memo((props: Props) => {
       );
     }
   }, [props.events, props.username]);
-  const squareClicked = (row: number, col: number) => {
-    if (props.board.letterAt(row, col) !== EmptySpace) {
-      // If there is a tile on this square, ignore the click.
-      return;
-    }
-    setArrowProperties(nextArrowPropertyState(arrowProperties, row, col));
-  };
-  const keydown = (key: string) => {
-    if (isMyTurn() && !props.gameDone) {
-      if (key === '2') {
-        makeMove('pass');
+  const squareClicked = useCallback(
+    (row: number, col: number) => {
+      if (props.board.letterAt(row, col) !== EmptySpace) {
+        // If there is a tile on this square, ignore the click.
         return;
       }
-      if (key === '3') {
-        makeMove('challenge');
+      setArrowProperties(nextArrowPropertyState(arrowProperties, row, col));
+    },
+    [arrowProperties, props.board]
+  );
+  const keydown = useCallback(
+    (key: string) => {
+      if (isMyTurn() && !props.gameDone) {
+        if (key === '2') {
+          makeMove('pass');
+          return;
+        }
+        if (key === '3') {
+          makeMove('challenge');
+          return;
+        }
+        if (key === '4' && exchangeAllowed) {
+          setExchangeModalVisible(true);
+          return;
+        }
+        if (key === '$' && exchangeAllowed) {
+          makeMove('exchange', props.currentRack);
+          return;
+        }
+      }
+      if (key === 'ArrowLeft' || key === 'ArrowRight') {
+        setArrowProperties({
+          ...arrowProperties,
+          horizontal: !arrowProperties.horizontal,
+        });
         return;
       }
-      if (key === '4' && exchangeAllowed) {
-        setExchangeModalVisible(true);
+      if (key === 'ArrowDown') {
+        recallTiles();
         return;
       }
-      if (key === '$' && exchangeAllowed) {
-        makeMove('exchange', props.currentRack);
+      if (key === 'ArrowUp') {
+        shuffleTiles();
         return;
       }
-    }
-    if (key === 'ArrowLeft' || key === 'ArrowRight') {
-      setArrowProperties({
-        ...arrowProperties,
-        horizontal: !arrowProperties.horizontal,
-      });
-      return;
-    }
-    if (key === 'ArrowDown') {
-      recallTiles();
-      return;
-    }
-    if (key === 'ArrowUp') {
-      shuffleTiles();
-      return;
-    }
-    if (key === EnterKey && !exchangeModalVisible && !blankModalVisible) {
-      makeMove('commit');
-      return;
-    }
-    if (exchangeModalVisible) {
-      return;
-    }
-    if (!arrowProperties.show) {
-      return;
-    }
-    if (key === '?') {
-      return;
-    }
-    // This should return a new set of arrow properties, and also set
-    // some state further up (the tiles layout with a "just played" type
-    // marker)
-    const handlerReturn = handleKeyPress(
+      if (key === EnterKey && !exchangeModalVisible && !blankModalVisible) {
+        makeMove('commit');
+        return;
+      }
+      if (exchangeModalVisible) {
+        return;
+      }
+      if (!arrowProperties.show) {
+        return;
+      }
+      if (key === '?') {
+        return;
+      }
+      // This should return a new set of arrow properties, and also set
+      // some state further up (the tiles layout with a "just played" type
+      // marker)
+      const handlerReturn = handleKeyPress(
+        arrowProperties,
+        props.board,
+        key,
+        displayedRack,
+        placedTiles
+      );
+
+      if (handlerReturn === null) {
+        return;
+      }
+      setDisplayedRack(handlerReturn.newDisplayedRack);
+      setArrowProperties(handlerReturn.newArrow);
+      setPlacedTiles(handlerReturn.newPlacedTiles);
+      setPlacedTilesTempScore(handlerReturn.playScore);
+    },
+    [
       arrowProperties,
-      props.board,
-      key,
+      blankModalVisible,
       displayedRack,
-      placedTiles
-    );
-
-    if (handlerReturn === null) {
-      return;
-    }
-    setDisplayedRack(handlerReturn.newDisplayedRack);
-    setArrowProperties(handlerReturn.newArrow);
-    setPlacedTiles(handlerReturn.newPlacedTiles);
-    setPlacedTilesTempScore(handlerReturn.playScore);
-  };
-
-  const handleTileDrop = (
-    row: number,
-    col: number,
-    rackIndex: number = -1,
-    tileIndex: number = -1
-  ) => {
-    const handlerReturn = handleDroppedTile(
-      row,
-      col,
-      props.board,
-      displayedRack,
+      exchangeAllowed,
+      exchangeModalVisible,
+      isMyTurn,
+      makeMove,
       placedTiles,
-      rackIndex,
-      tileIndex
-    );
-    if (handlerReturn === null) {
-      return;
-    }
-    setDisplayedRack(handlerReturn.newDisplayedRack);
-    setPlacedTiles(handlerReturn.newPlacedTiles);
-    setPlacedTilesTempScore(handlerReturn.playScore);
-    setArrowProperties({ row: 0, col: 0, horizontal: false, show: false });
-    if (handlerReturn.isUndesignated) {
-      setBlankModalVisible(true);
-    }
-  };
+      props.board,
+      props.currentRack,
+      props.gameDone,
+      recallTiles,
+      shuffleTiles,
+    ]
+  );
 
-  const clickToBoard = (rackIndex: number) => {
-    if (
-      !arrowProperties.show ||
-      arrowProperties.row >= props.board.dim ||
-      arrowProperties.col >= props.board.dim
-    ) {
-      return null;
-    }
-    const handlerReturn = handleDroppedTile(
-      arrowProperties.row,
+  const handleTileDrop = useCallback(
+    (
+      row: number,
+      col: number,
+      rackIndex: number = -1,
+      tileIndex: number = -1
+    ) => {
+      const handlerReturn = handleDroppedTile(
+        row,
+        col,
+        props.board,
+        displayedRack,
+        placedTiles,
+        rackIndex,
+        tileIndex
+      );
+      if (handlerReturn === null) {
+        return;
+      }
+      setDisplayedRack(handlerReturn.newDisplayedRack);
+      setPlacedTiles(handlerReturn.newPlacedTiles);
+      setPlacedTilesTempScore(handlerReturn.playScore);
+      setArrowProperties({ row: 0, col: 0, horizontal: false, show: false });
+      if (handlerReturn.isUndesignated) {
+        setBlankModalVisible(true);
+      }
+    },
+    [displayedRack, placedTiles, props.board]
+  );
+
+  const clickToBoard = useCallback(
+    (rackIndex: number) => {
+      if (
+        !arrowProperties.show ||
+        arrowProperties.row >= props.board.dim ||
+        arrowProperties.col >= props.board.dim
+      ) {
+        return null;
+      }
+      const handlerReturn = handleDroppedTile(
+        arrowProperties.row,
+        arrowProperties.col,
+        props.board,
+        displayedRack,
+        placedTiles,
+        rackIndex,
+        uniqueTileIdx(arrowProperties.row, arrowProperties.col)
+      );
+      if (handlerReturn === null) {
+        return;
+      }
+      setDisplayedRack(handlerReturn.newDisplayedRack);
+      setPlacedTiles(handlerReturn.newPlacedTiles);
+      setPlacedTilesTempScore(handlerReturn.playScore);
+      if (handlerReturn.isUndesignated) {
+        setBlankModalVisible(true);
+      }
+      let newrow = arrowProperties.row;
+      let newcol = arrowProperties.col;
+
+      if (arrowProperties.horizontal) {
+        do {
+          newcol += 1;
+        } while (
+          newcol < props.board.dim &&
+          newcol >= 0 &&
+          props.board.letterAt(newrow, newcol) !== EmptySpace
+        );
+      } else {
+        do {
+          newrow += 1;
+        } while (
+          newrow < props.board.dim &&
+          newrow >= 0 &&
+          props.board.letterAt(newrow, newcol) !== EmptySpace
+        );
+      }
+      setArrowProperties({
+        col: newcol,
+        horizontal: arrowProperties.horizontal,
+        show: !(newcol === props.board.dim || newrow === props.board.dim),
+        row: newrow,
+      });
+    },
+    [
       arrowProperties.col,
-      props.board,
+      arrowProperties.horizontal,
+      arrowProperties.row,
+      arrowProperties.show,
       displayedRack,
       placedTiles,
-      rackIndex,
-      uniqueTileIdx(arrowProperties.row, arrowProperties.col)
-    );
-    if (handlerReturn === null) {
-      return;
-    }
-    setDisplayedRack(handlerReturn.newDisplayedRack);
-    setPlacedTiles(handlerReturn.newPlacedTiles);
-    setPlacedTilesTempScore(handlerReturn.playScore);
-    if (handlerReturn.isUndesignated) {
-      setBlankModalVisible(true);
-    }
-    let newrow = arrowProperties.row;
-    let newcol = arrowProperties.col;
+      props.board,
+    ]
+  );
 
-    if (arrowProperties.horizontal) {
-      do {
-        newcol += 1;
-      } while (
-        newcol < props.board.dim &&
-        newcol >= 0 &&
-        props.board.letterAt(newrow, newcol) !== EmptySpace
-      );
-    } else {
-      do {
-        newrow += 1;
-      } while (
-        newrow < props.board.dim &&
-        newrow >= 0 &&
-        props.board.letterAt(newrow, newcol) !== EmptySpace
-      );
-    }
-    setArrowProperties({
-      col: newcol,
-      horizontal: arrowProperties.horizontal,
-      show: !(newcol === props.board.dim || newrow === props.board.dim),
-      row: newrow,
-    });
-  };
-
-  const handleBoardTileClick = (rune: string) => {
+  const handleBoardTileClick = useCallback((rune: string) => {
     if (rune === Blank) {
       setBlankModalVisible(true);
     }
-  };
+  }, []);
 
-  const handleBlankSelection = (rune: string) => {
-    const handlerReturn = designateBlank(
-      props.board,
-      placedTiles,
-      displayedRack,
-      rune
-    );
-    if (handlerReturn === null) {
-      return;
-    }
-    setBlankModalVisible(false);
-    setPlacedTiles(handlerReturn.newPlacedTiles);
-    setPlacedTilesTempScore(handlerReturn.playScore);
-  };
-
-  const handleBlankModalCancel = () => {
-    setBlankModalVisible(false);
-  };
-
-  const returnToRack = (
-    rackIndex: number | undefined,
-    tileIndex: number | undefined
-  ) => {
-    const handlerReturn = returnTileToRack(
-      props.board,
-      displayedRack,
-      placedTiles,
-      rackIndex,
-      tileIndex
-    );
-    if (handlerReturn === null) {
-      return;
-    }
-    setDisplayedRack(handlerReturn.newDisplayedRack);
-    setPlacedTiles(handlerReturn.newPlacedTiles);
-    setPlacedTilesTempScore(handlerReturn.playScore);
-    setArrowProperties({ row: 0, col: 0, horizontal: false, show: false });
-  };
-
-  const recallTiles = () => {
-    setPlacedTilesTempScore(0);
-    setPlacedTiles(new Set<EphemeralTile>());
-    setDisplayedRack(props.currentRack);
-  };
-
-  const shuffleTiles = () => {
-    setPlacedTilesTempScore(0);
-    setPlacedTiles(new Set<EphemeralTile>());
-    setDisplayedRack(shuffleString(props.currentRack));
-  };
-
-  const moveRackTile = (
-    newIndex: number | undefined,
-    oldIndex: number | undefined
-  ) => {
-    if (typeof newIndex === 'number' && typeof oldIndex === 'number') {
-      const newRack = displayedRack.split('');
-      newRack.splice(oldIndex, 1);
-      newRack.splice(newIndex, 0, displayedRack[oldIndex]);
-      setPlacedTilesTempScore(0);
-      setDisplayedRack(newRack.join(''));
-    }
-  };
-
-  const showExchangeModal = () => {
-    setExchangeModalVisible(true);
-  };
-
-  const handleExchangeModalOk = (exchangedTiles: string) => {
-    setExchangeModalVisible(false);
-    makeMove('exchange', exchangedTiles);
-  };
-
-  const makeMove = (move: string, addl?: string) => {
-    let moveEvt;
-    if (move !== 'resign' && !isMyTurn()) {
-      console.log(
-        'off turn move attempts',
-        gameContext.nickToPlayerOrder,
-        props.username,
-        gameContext.onturn
+  const handleBlankSelection = useCallback(
+    (rune: string) => {
+      const handlerReturn = designateBlank(
+        props.board,
+        placedTiles,
+        displayedRack,
+        rune
       );
-      // It is not my turn. Ignore this event.
-      message.warn({
-        content: 'It is not your turn.',
-        className: 'board-hud-message',
-        duration: 1.5,
-      });
-      return;
-    }
-    console.log(
-      'making move',
-      gameContext.nickToPlayerOrder,
-      props.username,
-      gameContext.onturn
-    );
-    switch (move) {
-      case 'exchange':
-        moveEvt = exchangeMoveEvent(addl!, props.gameID);
-        break;
-      case 'pass':
-        moveEvt = passMoveEvent(props.gameID);
-        break;
-      case 'resign':
-        moveEvt = resignMoveEvent(props.gameID);
-        break;
-      case 'challenge':
-        moveEvt = challengeMoveEvent(props.gameID);
-        break;
-      case 'commit':
-        moveEvt = tilesetToMoveEvent(placedTiles, props.board, props.gameID);
-        if (!moveEvt) {
-          // this is an invalid play
-          return;
-        }
-        break;
-    }
-    if (!moveEvt) {
-      return;
-    }
-    props.sendSocketMsg(
-      encodeToSocketFmt(
-        MessageType.CLIENT_GAMEPLAY_EVENT,
-        moveEvt.serializeBinary()
-      )
-    );
-    // Don't stop the clock; the next user event to come in will change the
-    // clock over.
-    // stopClock();
-  };
+      if (handlerReturn === null) {
+        return;
+      }
+      setBlankModalVisible(false);
+      setPlacedTiles(handlerReturn.newPlacedTiles);
+      setPlacedTilesTempScore(handlerReturn.playScore);
+    },
+    [displayedRack, placedTiles, props.board]
+  );
 
-  const rematch = () => {
+  const handleBlankModalCancel = useCallback(() => {
+    setBlankModalVisible(false);
+  }, []);
+
+  const returnToRack = useCallback(
+    (rackIndex: number | undefined, tileIndex: number | undefined) => {
+      const handlerReturn = returnTileToRack(
+        props.board,
+        displayedRack,
+        placedTiles,
+        rackIndex,
+        tileIndex
+      );
+      if (handlerReturn === null) {
+        return;
+      }
+      setDisplayedRack(handlerReturn.newDisplayedRack);
+      setPlacedTiles(handlerReturn.newPlacedTiles);
+      setPlacedTilesTempScore(handlerReturn.playScore);
+      setArrowProperties({ row: 0, col: 0, horizontal: false, show: false });
+    },
+    [displayedRack, placedTiles, props.board]
+  );
+
+  const moveRackTile = useCallback(
+    (newIndex: number | undefined, oldIndex: number | undefined) => {
+      if (typeof newIndex === 'number' && typeof oldIndex === 'number') {
+        const newRack = displayedRack.split('');
+        newRack.splice(oldIndex, 1);
+        newRack.splice(newIndex, 0, displayedRack[oldIndex]);
+        setPlacedTilesTempScore(0);
+        setDisplayedRack(newRack.join(''));
+      }
+    },
+    [displayedRack]
+  );
+
+  const showExchangeModal = useCallback(() => {
+    setExchangeModalVisible(true);
+  }, []);
+
+  const handleExchangeModalOk = useCallback(
+    (exchangedTiles: string) => {
+      setExchangeModalVisible(false);
+      makeMove('exchange', exchangedTiles);
+    },
+    [makeMove]
+  );
+
+  const rematch = useCallback(() => {
     const evt = new MatchRequest();
     const receiver = new MatchUser();
 
     let opp = '';
-    props.playerMeta.forEach((p) => {
-      if (!(p.nickname === props.username)) {
+    playerMeta.forEach((p) => {
+      if (!(p.nickname === username)) {
         opp = p.nickname;
       }
     });
@@ -619,8 +673,8 @@ export const BoardPanel = React.memo((props: Props) => {
 
     receiver.setDisplayName(opp);
     evt.setReceivingUser(receiver);
-    evt.setRematchFor(props.gameID);
-    props.sendSocketMsg(
+    evt.setRematchFor(gameID);
+    sendSocketMsg(
       encodeToSocketFmt(MessageType.MATCH_REQUEST, evt.serializeBinary())
     );
 
@@ -629,7 +683,7 @@ export const BoardPanel = React.memo((props: Props) => {
       description: `Sent rematch request to ${opp}`,
     });
     console.log('rematching');
-  };
+  }, [observer, gameID, playerMeta, sendSocketMsg, username]);
 
   return (
     <div
