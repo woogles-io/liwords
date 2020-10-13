@@ -4,7 +4,7 @@ import jwt from 'jsonwebtoken';
 import useWebSocket from 'react-use-websocket';
 import { useLocation } from 'react-router-dom';
 import { useStoreContext } from '../store/store';
-import { onSocketMsg } from '../store/socket_handlers';
+import { useOnSocketMsg } from '../store/socket_handlers';
 import { decodeToMsg } from '../utils/protobuf';
 import { toAPIUrl } from '../api/api';
 import { ActionType } from '../actions/actions';
@@ -41,6 +41,7 @@ export const LiwordsSocket = (props: {
   }) => void;
 }): null => {
   const { disconnect, setValues } = props;
+  const onSocketMsg = useOnSocketMsg();
 
   const socketUrl = getSocketURI();
   const store = useStoreContext();
@@ -116,8 +117,7 @@ export const LiwordsSocket = (props: {
       },
       retryOnError: true,
       shouldReconnect: (closeEvent) => true,
-      onMessage: (event: MessageEvent) =>
-        decodeToMsg(event.data, onSocketMsg(store)),
+      onMessage: (event: MessageEvent) => decodeToMsg(event.data, onSocketMsg),
     },
     !disconnect &&
       fullSocketUrl !== '' /* only connect if the socket token is not null */

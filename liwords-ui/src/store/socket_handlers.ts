@@ -1,5 +1,5 @@
 import { message, notification } from 'antd';
-import { StoreData, ChatEntityType, randomID } from './store';
+import { ChatEntityType, randomID } from './store';
 import {
   MessageType,
   SeekRequest,
@@ -35,6 +35,7 @@ import {
   GameMetaToActiveGame,
 } from './reducers/lobby_reducer';
 import { BoopSounds } from '../sound/boop';
+import { useStoreContext } from '../store/store';
 
 export const parseMsgs = (msg: Uint8Array) => {
   // Multiple msgs can come in the same packet.
@@ -84,7 +85,9 @@ export const parseMsgs = (msg: Uint8Array) => {
   return msgs;
 };
 
-export const onSocketMsg = (storeData: StoreData) => {
+export const useOnSocketMsg = () => {
+  const storeData = useStoreContext();
+
   return (reader: FileReader) => {
     if (!reader.result) {
       return;
