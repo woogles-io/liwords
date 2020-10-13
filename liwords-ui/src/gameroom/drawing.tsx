@@ -71,6 +71,9 @@ export const useDrawing = (isEnabled: boolean) => {
   const [currentDrawing, setCurrentDrawing] = React.useState();
   const plannedRepaintRef = React.useRef<number>();
 
+  // For hopefully-unique id generation.
+  const imagePrefixRef = React.useRef(`img${Date.now() + Math.random()}`);
+
   const repaintNow = React.useCallback(() => {
     if (plannedRepaintRef.current != null) {
       cancelAnimationFrame(plannedRepaintRef.current);
@@ -90,29 +93,83 @@ export const useDrawing = (isEnabled: boolean) => {
       boardResizedSinceLastPaintRef.current = false;
     }
 
-    for (const stroke of strokesRef.current) {
+    for (let i = 0; i < strokesRef.current.length; ++i) {
+      const stroke = strokesRef.current[i];
       if (!stroke.elt) {
         let path = stroke.path;
         if (stroke.points.length === 1) {
           // Draw a diamond to represent a single point.
           path += 'm-1,0l1,1l1,-1l-1,-1l-1,1l1,1';
         }
-        stroke.elt = (
-          <path d={path} fill="none" strokeWidth={5} stroke={stroke.pen} />
-        );
+        stroke.elt =
+          stroke.pen === 'erase' ? (
+            <path key={i} d={path} fill="none" strokeWidth={5} stroke="black" />
+          ) : (
+            <path
+              key={i}
+              d={path}
+              fill="none"
+              strokeWidth={5}
+              stroke={stroke.pen}
+            />
+          );
+      }
+    }
+
+    let toDraw: Array<React.ReactElement> = [];
+    let toErase: Array<React.ReactElement> = [];
+    const eraseMasks: Array<React.ReactElement> = [];
+    let numMasks = 0;
+    for (let i = 0; i < strokesRef.current.length; ) {
+      for (
+        ;
+        i < strokesRef.current.length && strokesRef.current[i].pen !== 'erase';
+        ++i
+      ) {
+        toDraw.push(strokesRef.current[i].elt!);
+      }
+      for (
+        ;
+        i < strokesRef.current.length && strokesRef.current[i].pen === 'erase';
+        ++i
+      ) {
+        toErase.push(strokesRef.current[i].elt!);
+      }
+      if (toErase.length > 0) {
+        if (toDraw.length > 0) {
+          // Otherwise nothing worth erasing.
+          const maskId = `${imagePrefixRef.current}.${++numMasks}`;
+          eraseMasks.push(
+            <mask key={i - 1} id={maskId}>
+              <rect
+                width={boardSize.width}
+                height={boardSize.height}
+                fill="white"
+              />
+              {toErase}
+            </mask>
+          );
+          toDraw = [
+            <g key={i - 1} mask={`url(#${maskId})`}>
+              {toDraw}
+            </g>,
+          ];
+        }
+        toErase = [];
+      } else if (toDraw.length > 0) {
+        toDraw = [<g key={i - 1}>{toDraw}</g>];
       }
     }
 
     const ret = (
       <React.Fragment>
-        {strokesRef.current.map((stroke, idx) => (
-          <React.Fragment key={idx}>{stroke.elt}</React.Fragment>
-        ))}
+        {eraseMasks}
+        {toDraw}
       </React.Fragment>
     );
 
     setCurrentDrawing(ret);
-  }, [scaledXYStr]);
+  }, [scaledXYStr, boardSize.width, boardSize.height]);
 
   const scheduleRepaint = React.useCallback(() => {
     if (plannedRepaintRef.current != null) {
@@ -143,7 +200,7 @@ export const useDrawing = (isEnabled: boolean) => {
     (evt: React.MouseEvent) => {
       if (evt.button === 2 && !evt.shiftKey) {
         const newXY = getXY(evt);
-        penRef.current = 'red';
+        penRef.current = strokesRef.current.length % 3 === 2 ? 'erase' : 'red';
         strokesRef.current.push({
           points: [newXY],
           path: `M${scaledXYStr(newXY)}`,
