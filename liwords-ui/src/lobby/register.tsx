@@ -74,11 +74,15 @@ export const Register = () => {
           <Form layout="inline" name="login" onFinish={onFinish}>
             <Form.Item
               name="email"
+              hasFeedback
               rules={[
                 {
                   required: true,
-                  message:
-                    'Please input your email. We promise not to spam you.',
+                  message: "We need your email. We won't spam you",
+                },
+                {
+                  type: 'email',
+                  message: 'This is not a valid email',
                 },
               ]}
             >
@@ -86,35 +90,53 @@ export const Register = () => {
             </Form.Item>
             <Form.Item
               name="username"
+              hasFeedback
               rules={[
                 {
                   required: true,
-                  message: 'Please input your username!',
+                  message: 'Please input your username',
+                },
+                {
+                  max: 20,
+                  message: 'Max username length is 20',
+                },
+                {
+                  pattern: new RegExp(/^[0-9a-zA-Z\-_.]+$/),
+                  message: 'Valid characters are A-Z a-z 0-9 . _ -',
                 },
               ]}
             >
-              <Input placeholder="Username" />
+              <Input placeholder="Username" maxLength={20} />
             </Form.Item>
 
             <Form.Item
               name="password"
               className="password"
+              hasFeedback
               rules={[
                 {
                   required: true,
-                  message: 'Please input your password!',
+                  message: 'Please input your password',
+                },
+                {
+                  min: 8,
+                  message: 'Password should be at least 8 characters',
                 },
               ]}
             >
-              <Input.Password placeholder="Password" />
+              <Input.Password
+                placeholder="Password"
+                autoComplete="new-password"
+              />
             </Form.Item>
 
             <Form.Item
               name="registrationCode"
+              hasFeedback
               rules={[
                 {
                   required: true,
-                  message: 'You need a registration code.',
+                  message: 'You need a registration code',
                 },
               ]}
             >
@@ -135,8 +157,10 @@ export const Register = () => {
               name="nocheating"
             >
               <Checkbox>
-                I promise not to use word finders or game analyzers without the
-                express permission of my opponent.
+                <p className="no-cheat">
+                  I promise not to use word finders or game analyzers without
+                  the express permission of my opponent.
+                </p>
               </Checkbox>
             </Form.Item>
 

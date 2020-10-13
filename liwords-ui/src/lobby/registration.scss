@@ -30,22 +30,43 @@ div.registration {
       height: 48px;
       margin-bottom: 12px;
     }
+    .ant-form-item-has-feedback .ant-form-item-children-icon {
+      top: auto;
+    }
     .ant-checkbox-wrapper {
       max-width: calc(100vw - 64px);
       padding-right: 24px;
       display: flex;
       align-items: center;
-      margin: 12px 0 36px 0;
-      .ant-checkbox-inner {
-        margin-right: 12px;
+      margin: 0;
+      padding-bottom: 24px;
+      p.no-cheat {
+        padding-left: 16px;
+        margin: 12px 0 0 0;
       }
     }
     .ant-row.ant-form-item.password {
+      &, * {
+        transition: none;
+      }
       input {
         position: relative;
         width: 258px;
-        height: 27px;
+        height: 26px;
         top: 6px;
+      }
+
+      margin-bottom: 12px;
+      .ant-form-item-explain {
+        margin-top: 12px;
+      }
+      &.ant-form-item-has-feedback {
+        input {
+          width: 240px;
+        }
+        .ant-form-item-children-icon {
+          top: 50%;
+        }
       }
     }
   }
