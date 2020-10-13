@@ -64,7 +64,7 @@ const itemDescription = (item: GameMetadata, userID: string) => {
   return description;
 };
 
-export const GamesHistoryCard = (props: Props) => {
+export const GamesHistoryCard = React.memo((props: Props) => {
   // Turn the game metadata into a list.
   return (
     <List
@@ -89,4 +89,4 @@ export const GamesHistoryCard = (props: Props) => {
       )}
     />
   );
-};
+});

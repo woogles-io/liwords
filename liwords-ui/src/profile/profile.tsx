@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { useParams, useLocation } from 'react-router-dom';
 import { notification, Card, Table, Row, Col, Button } from 'antd';
 import axios, { AxiosError } from 'axios';
@@ -78,7 +78,7 @@ const variantToName = (variant: string) => {
   return `${arr[0]} (${timectrl})`;
 };
 
-const RatingsCard = (props: RatingsProps) => {
+const RatingsCard = React.memo((props: RatingsProps) => {
   const variants = props.ratings ? Object.keys(props.ratings) : [];
   console.log('ratings', props.ratings, variants);
   const dataSource = variants.map((v) => ({
@@ -125,9 +125,9 @@ const RatingsCard = (props: RatingsProps) => {
       />
     </Card>
   );
-};
+});
 
-const StatsCard = (props: StatsProps) => {
+const StatsCard = React.memo((props: StatsProps) => {
   const variants = props.stats ? Object.keys(props.stats) : [];
 
   console.log('stats', props.stats, variants);
@@ -200,7 +200,7 @@ const StatsCard = (props: StatsProps) => {
       />
     </Card>
   );
-};
+});
 
 type Props = {};
 
@@ -292,6 +292,15 @@ export const UserProfile = (props: Props) => {
       .catch(errorCatcher);
   }, [username, recentGamesOffset]);
 
+  const fetchPrev = useCallback(
+    () => setRecentGamesOffset(Math.max(recentGamesOffset - gamesPageSize, 0)),
+    [recentGamesOffset]
+  );
+  const fetchNext = useCallback(
+    () => setRecentGamesOffset(recentGamesOffset + gamesPageSize),
+    [recentGamesOffset]
+  );
+
   return (
     <>
       <Row>
@@ -317,12 +326,8 @@ export const UserProfile = (props: Props) => {
           games={recentGames}
           username={username}
           userID={userID}
-          fetchPrev={() =>
-            setRecentGamesOffset(Math.max(recentGamesOffset - gamesPageSize, 0))
-          }
-          fetchNext={() =>
-            setRecentGamesOffset(recentGamesOffset + gamesPageSize)
-          }
+          fetchPrev={fetchPrev}
+          fetchNext={fetchNext}
         />
       </div>
     </>
