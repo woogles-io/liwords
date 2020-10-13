@@ -96,6 +96,11 @@ const gcgExport = (gameID: string, playerMeta: Array<PlayerMetadata>) => {
       }
       link.setAttribute('download', downloadFilename);
       document.body.appendChild(link);
+      link.onclick = () => {
+        setTimeout(() => {
+          window.URL.revokeObjectURL(url);
+        }, 1000);
+      };
       link.click();
     })
     .catch((e) => {
