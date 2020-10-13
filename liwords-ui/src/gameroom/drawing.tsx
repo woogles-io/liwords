@@ -25,8 +25,7 @@ export const useDrawing = () => {
   // Drawing functionalities.
   // Right-drag = draw.
   // RightClick several times = clear drawing.
-  // Shift+RightClick = clear drawing.
-  // Shift+RightClick (when no drawing) = context menu.
+  // Shift+RightClick = context menu.
 
   const [isEnabled, setIsEnabled] = React.useState(false);
 
@@ -209,23 +208,14 @@ export const useDrawing = () => {
     plannedRepaintRef.current = requestAnimationFrame(repaintNow);
   }, [repaintNow]);
 
-  const handleContextMenu = React.useCallback(
-    (evt: React.MouseEvent) => {
-      if (!evt.shiftKey) {
-        // Draw when not holding shift.
-        evt.preventDefault();
-      } else if (strokesRef.current.length > 0) {
-        // Shift+RightClick clears drawing.
-        evt.preventDefault();
-        penRef.current = undefined;
-        strokesRef.current = [];
-        scheduleRepaint();
-      } else {
-        // Shift+RightClick accesses context menu if no drawing.
-      }
-    },
-    [scheduleRepaint]
-  );
+  const handleContextMenu = React.useCallback((evt: React.MouseEvent) => {
+    if (!evt.shiftKey) {
+      // Draw when not holding shift.
+      evt.preventDefault();
+    } else {
+      // Shift+RightClick accesses context menu.
+    }
+  }, []);
 
   const handleMouseDown = React.useCallback(
     (evt: React.MouseEvent) => {
