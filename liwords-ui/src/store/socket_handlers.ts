@@ -1,5 +1,11 @@
 import { message, notification } from 'antd';
-import { StoreData, ChatEntityType, randomID } from './store';
+import {
+  StoreData,
+  ChatEntityType,
+  randomID,
+  ChatEntityObj,
+  PresenceEntity,
+} from './store';
 import {
   MessageType,
   SeekRequest,
@@ -33,6 +39,7 @@ import { endGameMessage } from './end_of_game';
 import {
   SeekRequestToSoughtGame,
   GameMetaToActiveGame,
+  SoughtGame,
 } from './reducers/lobby_reducer';
 import { BoopSounds } from '../sound/boop';
 
@@ -98,9 +105,15 @@ export const onSocketMsg = (storeData: StoreData) => {
         case MessageType.SEEK_REQUEST: {
           const sr = parsedMsg as SeekRequest;
           console.log('Got a seek request', sr);
+
+          const userID = sr.getUser()?.getUserId();
+          if (!userID || storeData.excludedPlayers.has(userID)) {
+            break;
+          }
+
           const soughtGame = SeekRequestToSoughtGame(sr);
           if (soughtGame === null) {
-            return;
+            break;
           }
 
           storeData.dispatchLobbyContext({
@@ -113,11 +126,23 @@ export const onSocketMsg = (storeData: StoreData) => {
 
         case MessageType.SEEK_REQUESTS: {
           const sr = parsedMsg as SeekRequests;
+
+          const soughtGames = new Array<SoughtGame>();
+
+          sr.getRequestsList().forEach((r) => {
+            const userID = r.getUser()?.getUserId();
+            if (!userID || storeData.excludedPlayers.has(userID)) {
+              return;
+            }
+            const sg = SeekRequestToSoughtGame(r);
+            if (sg) {
+              soughtGames.push(sg);
+            }
+          });
+
           storeData.dispatchLobbyContext({
             actionType: ActionType.AddSoughtGames,
-            payload: sr
-              .getRequestsList()
-              .map((r) => SeekRequestToSoughtGame(r)),
+            payload: soughtGames,
           });
 
           break;
@@ -125,10 +150,16 @@ export const onSocketMsg = (storeData: StoreData) => {
 
         case MessageType.MATCH_REQUEST: {
           const mr = parsedMsg as MatchRequest;
+
+          const userID = mr.getUser()?.getUserId();
+          if (!userID || storeData.excludedPlayers.has(userID)) {
+            break;
+          }
+
           const receiver = mr.getReceivingUser()?.getDisplayName();
           const soughtGame = SeekRequestToSoughtGame(mr);
           if (soughtGame === null) {
-            return;
+            break;
           }
           if (receiver === storeData.loginState.username) {
             BoopSounds.matchReqSound.play();
@@ -148,11 +179,23 @@ export const onSocketMsg = (storeData: StoreData) => {
 
         case MessageType.MATCH_REQUESTS: {
           const mr = parsedMsg as MatchRequests;
+
+          const soughtGames = new Array<SoughtGame>();
+
+          mr.getRequestsList().forEach((r) => {
+            const userID = r.getUser()?.getUserId();
+            if (!userID || storeData.excludedPlayers.has(userID)) {
+              return;
+            }
+            const sg = SeekRequestToSoughtGame(r);
+            if (sg) {
+              soughtGames.push(sg);
+            }
+          });
+
           storeData.dispatchLobbyContext({
             actionType: ActionType.AddMatchRequests,
-            payload: mr
-              .getRequestsList()
-              .map((r) => SeekRequestToSoughtGame(r)),
+            payload: soughtGames,
           });
           break;
         }
@@ -189,7 +232,11 @@ export const onSocketMsg = (storeData: StoreData) => {
 
         case MessageType.CHAT_MESSAGE: {
           const cm = parsedMsg as ChatMessage;
-          // We should ignore this chat message if it's not for the right
+          if (storeData.excludedPlayers.has(cm.getUserId())) {
+            break;
+          }
+
+          // XXX: We should ignore this chat message if it's not for the right
           // channel.
 
           storeData.addChat({
@@ -205,13 +252,19 @@ export const onSocketMsg = (storeData: StoreData) => {
           // These replace all existing messages.
           const cms = parsedMsg as ChatMessages;
 
-          const entities = cms.getMessagesList().map((cm) => ({
-            entityType: ChatEntityType.UserChat,
-            sender: cm.getUsername(),
-            message: cm.getMessage(),
-            timestamp: cm.getTimestamp(),
-            id: randomID(),
-          }));
+          const entities = new Array<ChatEntityObj>();
+
+          cms.getMessagesList().forEach((cm) => {
+            if (!storeData.excludedPlayers.has(cm.getUserId())) {
+              entities.push({
+                entityType: ChatEntityType.UserChat,
+                sender: cm.getUsername(),
+                message: cm.getMessage(),
+                timestamp: cm.getTimestamp(),
+                id: randomID(),
+              });
+            }
+          });
 
           storeData.addChats(entities);
           break;
@@ -221,6 +274,9 @@ export const onSocketMsg = (storeData: StoreData) => {
           console.log('userpresence', parsedMsg);
 
           const up = parsedMsg as UserPresence;
+          if (storeData.excludedPlayers.has(up.getUserId())) {
+            break;
+          }
           storeData.setPresence({
             uuid: up.getUserId(),
             username: up.getUsername(),
@@ -232,13 +288,19 @@ export const onSocketMsg = (storeData: StoreData) => {
 
         case MessageType.USER_PRESENCES: {
           const ups = parsedMsg as UserPresences;
-          const toAdd = ups.getPresencesList().map((p) => ({
-            uuid: p.getUserId(),
-            username: p.getUsername(),
-            channel: p.getChannel(),
-            anon: p.getIsAnonymous(),
-          }));
-          console.log('userpresences', toAdd);
+
+          const toAdd = new Array<PresenceEntity>();
+
+          ups.getPresencesList().forEach((p) => {
+            if (!storeData.excludedPlayers.has(p.getUserId())) {
+              toAdd.push({
+                uuid: p.getUserId(),
+                username: p.getUsername(),
+                channel: p.getChannel(),
+                anon: p.getIsAnonymous(),
+              });
+            }
+          });
 
           storeData.addPresences(toAdd);
           break;

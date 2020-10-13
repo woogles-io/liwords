@@ -20,6 +20,7 @@ type backingStore interface {
 	GetRecentGames(ctx context.Context, username string, numGames int, offset int) (*gs.GameInfoResponses, error)
 	Set(context.Context, *entity.Game) error
 	Create(context.Context, *entity.Game) error
+	Exists(context.Context, string) (bool, error)
 	ListActive(ctx context.Context) ([]*pb.GameMeta, error)
 	SetGameEventChan(ch chan<- *entity.EventWrapper)
 	Disconnect()
@@ -120,6 +121,10 @@ func (c *Cache) Set(ctx context.Context, game *entity.Game) error {
 // Create creates the game in the cache as well as the store.
 func (c *Cache) Create(ctx context.Context, game *entity.Game) error {
 	return c.setOrCreate(ctx, game, true)
+}
+
+func (c *Cache) Exists(ctx context.Context, id string) (bool, error) {
+	return c.backing.Exists(ctx, id)
 }
 
 func (c *Cache) setOrCreate(ctx context.Context, game *entity.Game, isNew bool) error {

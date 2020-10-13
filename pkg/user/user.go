@@ -18,18 +18,20 @@ type Store interface {
 	SetRating(ctx context.Context, uuid string, variant entity.VariantKey, rating entity.SingleRating) error
 	SetStats(ctx context.Context, uuid string, variant entity.VariantKey, stats *entity.Stats) error
 	GetRandomBot(ctx context.Context) (*entity.User, error)
+
 	AddFollower(ctx context.Context, targetUser, follower uint) error
 	RemoveFollower(ctx context.Context, targetUser, follower uint) error
 	// GetFollows gets all the users that the passed-in DB ID is following.
 	GetFollows(ctx context.Context, uid uint) ([]*entity.User, error)
-	UsernamesByPrefix(ctx context.Context, prefix string) ([]string, error)
-}
 
-// SessionStore is a session store
-type SessionStore interface {
-	Get(ctx context.Context, sessionID string) (*entity.Session, error)
-	New(ctx context.Context, user *entity.User) (*entity.Session, error)
-	Delete(ctx context.Context, sess *entity.Session) error
+	AddBlock(ctx context.Context, targetUser, blocker uint) error
+	RemoveBlock(ctx context.Context, targetUser, blocker uint) error
+	// GetBlocks gets all the users that the passed-in DB ID is blocking
+	GetBlocks(ctx context.Context, uid uint) ([]*entity.User, error)
+	GetBlockedBy(ctx context.Context, uid uint) ([]*entity.User, error)
+	GetFullBlocks(ctx context.Context, uid uint) ([]*entity.User, error)
+
+	UsernamesByPrefix(ctx context.Context, prefix string) ([]string, error)
 }
 
 // PresenceStore stores user presence. Since it is meant to be easily user-visible,
