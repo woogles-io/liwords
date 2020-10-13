@@ -396,7 +396,7 @@ func (s *DBStore) ListActive(ctx context.Context) ([]*pb.GameMeta, error) {
 	var games []*game
 
 	ctxDB := s.db.WithContext(ctx)
-	result := ctxDB.Table("games").Select("quickdata, request, uuid").
+	result := ctxDB.Table("games").Select("quickdata, request, uuid, started").
 		Where("games.game_end_reason = ?", 0 /* ongoing games only*/).
 		Order("games.id").
 		Scan(&games)

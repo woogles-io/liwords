@@ -215,19 +215,23 @@ func (b *Bus) adjudicateGames(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	log.Debug().Interface("active-games", gs).Msg("adjudicating...")
+	log.Debug().Interface("active-games", gs).Msg("maybe-adjudicating...")
 	for _, g := range gs {
 		// These will likely be in the cache.
 		entGame, err := b.gameStore.Get(ctx, g.Id)
 		if err != nil {
 			return err
 		}
+		entGame.RLock()
 		onTurn := entGame.Game.PlayerOnTurn()
-		if entGame.TimeRanOut(onTurn) {
-			log.Debug().Str("gid", g.Id).Msg("time-ran-out")
+		started := entGame.Started
+		timeRanOut := entGame.TimeRanOut(onTurn)
+		entGame.RUnlock()
+		if started && timeRanOut {
+			log.Debug().Str("gid", g.Id).Msg("adjudicating-time-ran-out")
 			err = gameplay.TimedOut(ctx, b.gameStore, b.userStore,
 				b.listStatStore, entGame.Game.PlayerIDOnTurn(), g.Id)
-			log.Err(err).Msg("gameplay-timed-out")
+			log.Err(err).Msg("adjudicating-after-gameplay-timed-out")
 		}
 	}
 	return nil

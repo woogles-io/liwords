@@ -30,7 +30,7 @@ const (
 
 	MaxMessageLength = 500
 
-	AdjudicateInterval = 300 * time.Second
+	AdjudicateInterval = 5 * time.Second
 )
 
 const (
@@ -113,9 +113,9 @@ func (b *Bus) ProcessMessages(ctx context.Context) {
 
 	ctx = context.WithValue(ctx, gameplay.ConfigCtxKey("config"), &b.config.MacondoConfig)
 
-	// Adjudicate unfinished games every few minutes.
-	// adjudicator := time.NewTicker(AdjudicateInterval)
-	// defer adjudicator.Stop()
+	// Adjudicate unfinished games every few seconds.
+	adjudicator := time.NewTicker(AdjudicateInterval)
+	defer adjudicator.Stop()
 outerfor:
 	for {
 		select {
@@ -191,12 +191,12 @@ outerfor:
 			log.Info().Msg("context done, breaking")
 			break outerfor
 
-			// case <-adjudicator.C:
-			// 	err := b.adjudicateGames(ctx)
-			// 	if err != nil {
-			// 		log.Err(err).Msg("adjudicate-error")
-			// 		break
-			// 	}
+		case <-adjudicator.C:
+			err := b.adjudicateGames(ctx)
+			if err != nil {
+				log.Err(err).Msg("adjudicate-error")
+				break
+			}
 
 		}
 
