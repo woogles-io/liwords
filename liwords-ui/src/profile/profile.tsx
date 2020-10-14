@@ -317,16 +317,8 @@ export const UserProfile = React.memo((props: Props) => {
           games={recentGames}
           username={username}
           userID={userID}
-          fetchPrev={
-            recentGamesOffset > 0
-              ? fetchPrev
-              : undefined
-          }
-          fetchNext={
-            recentGames.length < gamesPageSize
-              ? fetchNext
-              : () => setRecentGamesOffset(recentGamesOffset + gamesPageSize)
-          }
+          fetchPrev={recentGamesOffset > 0 ? fetchPrev : undefined}
+          fetchNext={recentGames.length < gamesPageSize ? undefined : fetchNext}
         />
         <StatsCard stats={stats} />
       </div>
