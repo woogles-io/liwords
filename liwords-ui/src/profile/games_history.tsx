@@ -49,7 +49,7 @@ export const GamesHistoryCard = React.memo((props: Props) => {
             <span className={`challenge-rule mode_${challenge}`}>
               {challenge}
             </span>
-            {item.rating_mode ? (
+            {item.rating_mode === 'RATED' ? (
               <Tooltip title="Rated">
                 <FundOutlined />
               </Tooltip>
