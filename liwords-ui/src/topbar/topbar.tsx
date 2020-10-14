@@ -1,7 +1,7 @@
-import React from 'react';
+import React, { useState } from 'react';
 import './topbar.scss';
 import { DisconnectOutlined, SettingOutlined } from '@ant-design/icons/lib';
-import { notification, Dropdown, Tooltip } from 'antd';
+import { notification, Dropdown, Tooltip, Modal } from 'antd';
 import { useLagStoreContext, useLoginStateStoreContext } from '../store/store';
 import axios from 'axios';
 import { toAPIUrl } from '../api/api';
@@ -30,6 +30,8 @@ export const TopBar = React.memo((props: Props) => {
   const { currentLagMs } = useLagStoreContext();
   const { loginState } = useLoginStateStoreContext();
   const { username, loggedIn, connectedToSocket } = loginState;
+  const [loginModalVisible, setLoginModalVisible] = useState(false);
+
   const handleLogout = (e: React.MouseEvent) => {
     e.preventDefault();
     axios
@@ -93,7 +95,12 @@ export const TopBar = React.memo((props: Props) => {
           </div>
         ) : (
           <div className="user-info">
-            <a href="/login">Log In</a>
+            <button className="link" onClick={() => setLoginModalVisible(true)}>
+              Log In
+            </button>
+            <a href="/register">
+              <button className="primary">Sign Up</button>
+            </a>
           </div>
         )}
       </div>

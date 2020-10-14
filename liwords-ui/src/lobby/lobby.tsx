@@ -146,9 +146,14 @@ export const Lobby = (props: Props) => {
         />
         <div className="announcements">
           <Card>
-            <h3>Woogles is coming soon!</h3>
+            <h3>Woogles is live!</h3>
             <p>
-              In the meantime, why not watch some of our alpha testers play?
+              Welcome to our open beta. Sign up and play some games. We still
+              have a lot to do, but please{' '}
+              <a className="link" href="https://discord.gg/5yCJjmW">
+                join our Discord server
+              </a>{' '}
+              and let us know if you find any issues.
             </p>
           </Card>
         </div>

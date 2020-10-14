@@ -130,6 +130,7 @@ export const Register = () => {
               />
             </Form.Item>
 
+            {/* This is probably obsolete but in case we have to pause registration
             <Form.Item
               name="registrationCode"
               hasFeedback
@@ -142,7 +143,7 @@ export const Register = () => {
             >
               <Input placeholder="Secret code" />
             </Form.Item>
-
+            */}
             <Form.Item
               rules={[
                 {

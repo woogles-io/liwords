@@ -295,6 +295,7 @@ ul
   /* buttons */
   button.ant-btn,
   button.primary,
+  a.btn-primary,
   button.ant-btn-primary,
   .ant-modal-root button.ant-btn-secondary {
     font-family: $font-default;
@@ -339,7 +340,7 @@ ul
     height: 32px;
   }
 
-  button.ant-btn-primary, button.primary {
+  button.ant-btn-primary, button.primary, a.btn-primary {
     height: 36px;
     margin: 6px 3px;
     background: $color-primary-dark;
