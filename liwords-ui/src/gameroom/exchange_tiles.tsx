@@ -112,7 +112,7 @@ export const ExchangeTiles = (props: Props) => {
       }}
       onCancel={props.onCancel}
       width={360}
-      footer={[
+      footer={
         <>
           {exchangedRackIndices.size > 0 ? (
             <p className="label">{`${exchangedRackIndices.size} tiles selected`}</p>
@@ -127,8 +127,8 @@ export const ExchangeTiles = (props: Props) => {
           >
             Exchange
           </Button>
-        </>,
-      ]}
+        </>
+      }
     >
       <Rack
         letters={props.rack}
