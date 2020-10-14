@@ -5,6 +5,7 @@ import { notification, Dropdown, Tooltip, Modal } from 'antd';
 import { useLagStoreContext, useLoginStateStoreContext } from '../store/store';
 import axios from 'axios';
 import { toAPIUrl } from '../api/api';
+import { Login } from '../lobby/login';
 
 const colors = require('../base.scss');
 const topMenu = (
@@ -101,6 +102,18 @@ export const TopBar = React.memo((props: Props) => {
             <a href="/register">
               <button className="primary">Sign Up</button>
             </a>
+            <Modal
+              className="login-modal"
+              title="Welcome back, friend!"
+              visible={loginModalVisible}
+              onCancel={() => {
+                setLoginModalVisible(false);
+              }}
+              footer={null}
+              width={300}
+            >
+              <Login />
+            </Modal>
           </div>
         )}
       </div>

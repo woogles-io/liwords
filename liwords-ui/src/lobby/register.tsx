@@ -3,7 +3,7 @@ import axios from 'axios';
 import { TopBar } from '../topbar/topbar';
 import { Input, Form, Button, Alert, Checkbox } from 'antd';
 import { toAPIUrl } from '../api/api';
-import './registration.scss';
+import './accountForms.scss';
 import woogles from '../assets/woogles.png';
 
 export const Register = () => {
@@ -61,9 +61,9 @@ export const Register = () => {
   return (
     <>
       <TopBar />
-      <div className="registration">
+      <div className="account">
         <img src={woogles} className="woogles" alt="Woogles" />
-        <div className="registration-form">
+        <div className="account-form register">
           <h3>Welcome to Woogles!</h3>
           <p>
             Welcome to Woogles, the online home for word games! If you want to
@@ -71,7 +71,7 @@ export const Register = () => {
             friendly match you’re in the right place.
           </p>
           <p>- Woogles and team</p>
-          <Form layout="inline" name="login" onFinish={onFinish}>
+          <Form layout="inline" name="register" onFinish={onFinish}>
             <Form.Item
               name="email"
               hasFeedback

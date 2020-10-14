@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Row, Col, Input, Form, Alert, notification, Button } from 'antd';
 import axios from 'axios';
 import { toAPIUrl } from '../api/api';
+import { TopBar } from '../topbar/topbar';
 
 const layout = {
   labelCol: {
@@ -46,6 +47,7 @@ export const PasswordReset = () => {
     <>
       <Row>
         <Col span={24}>
+          <TopBar />
           <Form
             {...layout}
             name="resetpassword"

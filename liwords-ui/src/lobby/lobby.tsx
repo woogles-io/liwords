@@ -149,12 +149,14 @@ export const Lobby = (props: Props) => {
             <h3>Woogles is live!</h3>
             <p>
               Welcome to our open beta. Sign up and play some games. We still
-              have a lot to do, but please{' '}
+              have a lot of features and designs to build, but please{' '}
               <a className="link" href="https://discord.gg/5yCJjmW">
                 join our Discord server
               </a>{' '}
               and let us know if you find any issues.
             </p>
+            <br />
+            <p>Thanks for Woogling!</p>
           </Card>
         </div>
       </div>

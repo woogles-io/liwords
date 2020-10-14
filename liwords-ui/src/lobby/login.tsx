@@ -1,26 +1,12 @@
 import React, { useState } from 'react';
+import './accountForms.scss';
 
-import { Form, Input, Button, Alert, Row, Col } from 'antd';
+import { Form, Input, Button, Alert } from 'antd';
 // import { Link } from 'react-router-dom';
 import axios from 'axios';
 import { toAPIUrl } from '../api/api';
 
-const layout = {
-  labelCol: {
-    span: 8,
-  },
-  wrapperCol: {
-    span: 12,
-  },
-};
-const tailLayout = {
-  wrapperCol: {
-    offset: 8,
-    span: 12,
-  },
-};
-
-export const Login = () => {
+export const Login = React.memo(() => {
   const [err, setErr] = useState('');
   const [loggedIn, setLoggedIn] = useState(false);
   const onFinish = (values: { [key: string]: string }) => {
@@ -53,55 +39,42 @@ export const Login = () => {
   }
 
   return (
-    <>
-      <Form
-        {...layout}
-        name="login"
-        onFinish={onFinish}
-        style={{ marginTop: 20 }}
-      >
-        <Form.Item
-          label="Username"
-          name="username"
-          rules={[
-            {
-              required: true,
-              message: 'Please input your username!',
-            },
-          ]}
-        >
-          <Input />
-        </Form.Item>
+    <div className="account">
+      <div className="account-form login">
+        <Form name="login" onFinish={onFinish}>
+          <Form.Item
+            name="username"
+            rules={[
+              {
+                required: true,
+                message: 'Please input your username!',
+              },
+            ]}
+          >
+            <Input placeholder="Username" maxLength={20} />
+          </Form.Item>
 
-        <Form.Item
-          label="Password"
-          name="password"
-          rules={[
-            {
-              required: true,
-              message: 'Please input your password!',
-            },
-          ]}
-        >
-          <Input.Password />
-        </Form.Item>
+          <Form.Item
+            name="password"
+            rules={[
+              {
+                required: true,
+                message: 'Please input your password!',
+              },
+            ]}
+          >
+            <Input.Password placeholder="Password" />
+          </Form.Item>
 
-        <Form.Item {...tailLayout}>
-          <Button type="primary" htmlType="submit">
-            Submit
-          </Button>
-        </Form.Item>
-      </Form>
-      {err !== '' ? <Alert message={err} type="error" /> : null}
-      {/* uncomment after the alpha */}
-      {/* <Link to="/register">Register a new name</Link> */}
-      <Row style={{ marginTop: 20 }}>
-        <Col span={12} offset={12}>
-          <a href="/password/reset">
-            <big>Forgot your password?</big>
-          </a>
-        </Col>
-      </Row>
-    </>
+          <Form.Item>
+            <Button type="primary" htmlType="submit">
+              Log In
+            </Button>
+          </Form.Item>
+        </Form>
+        {err !== '' ? <Alert message={err} type="error" /> : null}
+        <a href="/password/reset">I’m drawing a blank on my password. Help!</a>
+      </div>
+    </div>
   );
-};
+});
