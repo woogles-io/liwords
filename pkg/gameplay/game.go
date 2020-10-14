@@ -324,7 +324,10 @@ func handleChallenge(ctx context.Context, entGame *entity.Game,
 			entGame.SetWinnerIdx(winner)
 			entGame.SetLoserIdx(1 - winner)
 		}
-		performEndgameDuties(ctx, entGame, userStore, listStatStore)
+		err = performEndgameDuties(ctx, entGame, userStore, listStatStore)
+		if err != nil {
+			return err
+		}
 	}
 
 	return nil
@@ -392,7 +395,10 @@ func PlayMove(ctx context.Context, entGame *entity.Game, userStore user.Store,
 		entGame.SendChange(wrapped)
 	}
 	if playing == macondopb.PlayState_GAME_OVER {
-		performEndgameDuties(ctx, entGame, userStore, listStatStore)
+		err = performEndgameDuties(ctx, entGame, userStore, listStatStore)
+		if err != nil {
+			return err
+		}
 	}
 	return nil
 }
@@ -467,7 +473,10 @@ func handleEventAfterLockingGame(ctx context.Context, gameStore GameStore, userS
 		entGame.History().Winner = int32(winner)
 		entGame.SetWinnerIdx(winner)
 		entGame.SetLoserIdx(1 - winner)
-		performEndgameDuties(ctx, entGame, userStore, listStatStore)
+		err := performEndgameDuties(ctx, entGame, userStore, listStatStore)
+		if err != nil {
+			return entGame, err
+		}
 	} else {
 		m, err := clientEventToMove(cge, &entGame.Game)
 		if err != nil {

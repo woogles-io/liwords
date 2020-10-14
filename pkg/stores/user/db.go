@@ -271,44 +271,11 @@ func (s *DBStore) SetPassword(ctx context.Context, uuid string, hashpass string)
 	return s.db.Model(u).Update("password", hashpass).Error
 }
 
-// SetRating sets the specific rating for the given variant.
-func (s *DBStore) SetRating(ctx context.Context, uuid string, variant entity.VariantKey,
-	rating entity.SingleRating) error {
-	u := &User{}
-	p := &profile{}
-
-	if result := s.db.Where("uuid = ?", uuid).First(u); result.Error != nil {
-		return result.Error
-	}
-	if result := s.db.Model(u).Related(p); result.Error != nil {
-		return result.Error
-	}
-
-	var existingRatings entity.Ratings
-	err := json.Unmarshal(p.Ratings.RawMessage, &existingRatings)
-	if err != nil {
-		log.Err(err).Msg("existing ratings missing; initializing...")
-		existingRatings = entity.Ratings{Data: map[entity.VariantKey]entity.SingleRating{}}
-	}
-
-	if existingRatings.Data == nil {
-		existingRatings.Data = make(map[entity.VariantKey]entity.SingleRating)
-	}
-	existingRatings.Data[variant] = rating
-
-	bytes, err := json.Marshal(existingRatings)
-	if err != nil {
-		return err
-	}
-
-	return s.db.Model(p).Update("ratings", postgres.Jsonb{RawMessage: bytes}).Error
-}
-
 // SetRatings set the specific ratings for the given variant in a transaction.
 func (s *DBStore) SetRatings(ctx context.Context, p0uuid string, p1uuid string, variant entity.VariantKey,
-	p1Rating entity.SingleRating, p2Rating entity.SingleRating) error {
+	p0Rating entity.SingleRating, p1Rating entity.SingleRating) error {
 
-	p0Profile, p0RatingBytes, err := getRatingBytes(s, ctx, p0uuid, variant, p1Rating)
+	p0Profile, p0RatingBytes, err := getRatingBytes(s, ctx, p0uuid, variant, p0Rating)
 	if err != nil {
 		return err
 	}
@@ -347,6 +314,17 @@ func getRatingBytes(s *DBStore, ctx context.Context, uuid string, variant entity
 		return nil, nil, result.Error
 	}
 
+	existingRatings := getExistingRatings(p)
+	existingRatings.Data[variant] = rating
+
+	bytes, err := json.Marshal(existingRatings)
+	if err != nil {
+		return nil, nil, err
+	}
+	return p, bytes, nil
+}
+
+func getExistingRatings(p *profile) (*entity.Ratings) {
 	var existingRatings entity.Ratings
 	err := json.Unmarshal(p.Ratings.RawMessage, &existingRatings)
 	if err != nil {
@@ -357,28 +335,62 @@ func getRatingBytes(s *DBStore, ctx context.Context, uuid string, variant entity
 	if existingRatings.Data == nil {
 		existingRatings.Data = make(map[entity.VariantKey]entity.SingleRating)
 	}
-	existingRatings.Data[variant] = rating
+	return &existingRatings
+}
 
-	bytes, err := json.Marshal(existingRatings)
+func (s *DBStore) SetStats(ctx context.Context, p0uuid string, p1uuid string, variant entity.VariantKey,
+	p0Stats *entity.Stats, p1Stats *entity.Stats) error {
+
+	p0Profile, p0StatsBytes, err := getStatsBytes(s, ctx, p0uuid, variant, p0Stats)
+	if err != nil {
+		return err
+	}
+
+	p1Profile, p1StatsBytes, err := getStatsBytes(s, ctx, p1uuid, variant, p1Stats)
+	if err != nil {
+		return err
+	}
+
+	return s.db.Transaction(func(tx *gorm.DB) error {
+		err := s.db.Model(p0Profile).Update("stats", postgres.Jsonb{RawMessage: p0StatsBytes}).Error
+
+		if err != nil {
+			return err
+		}
+
+		err = s.db.Model(p1Profile).Update("stats", postgres.Jsonb{RawMessage: p1StatsBytes}).Error
+
+		if err != nil {
+			return err
+		}
+		// return nil will commit the whole transaction
+		return nil
+	})
+}
+
+func getStatsBytes(s *DBStore, ctx context.Context, uuid string, variant entity.VariantKey,
+	stats *entity.Stats) (*profile, []byte, error) {
+	u := &User{}
+	p := &profile{}
+
+	if result := s.db.Where("uuid = ?", uuid).First(u); result.Error != nil {
+		return nil, nil, result.Error
+	}
+	if result := s.db.Model(u).Related(p); result.Error != nil {
+		return nil, nil, result.Error
+	}
+
+	existingProfileStats := getExistingProfileStats(p)
+	existingProfileStats.Data[variant] = stats
+
+	bytes, err := json.Marshal(existingProfileStats)
 	if err != nil {
 		return nil, nil, err
 	}
 	return p, bytes, nil
 }
 
-func (s *DBStore) SetStats(ctx context.Context, uuid string, variant entity.VariantKey,
-	stats *entity.Stats) error {
-
-	u := &User{}
-	p := &profile{}
-
-	if result := s.db.Where("uuid = ?", uuid).First(u); result.Error != nil {
-		return result.Error
-	}
-	if result := s.db.Model(u).Related(p); result.Error != nil {
-		return result.Error
-	}
-
+func getExistingProfileStats(p *profile) (*entity.ProfileStats) {
 	var existingProfileStats entity.ProfileStats
 	err := json.Unmarshal(p.Stats.RawMessage, &existingProfileStats)
 	if err != nil {
@@ -388,12 +400,7 @@ func (s *DBStore) SetStats(ctx context.Context, uuid string, variant entity.Vari
 	if existingProfileStats.Data == nil {
 		existingProfileStats.Data = make(map[entity.VariantKey]*entity.Stats)
 	}
-	existingProfileStats.Data[variant] = stats
-	bytes, err := json.Marshal(existingProfileStats)
-	if err != nil {
-		return err
-	}
-	return s.db.Model(p).Update("stats", postgres.Jsonb{RawMessage: bytes}).Error
+	return &existingProfileStats
 }
 
 func (s *DBStore) GetRandomBot(ctx context.Context) (*entity.User, error) {

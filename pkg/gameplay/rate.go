@@ -37,21 +37,6 @@ func Rate(ctx context.Context, scores map[string]int32, g *entity.Game,
 		g.GameEndReason == pb.GameEndReason_TIME ||
 		g.GameEndReason == pb.GameEndReason_TRIPLE_CHALLENGE
 
-	// Grab a lock on both users to ensure that the following
-	// ratings calculations are not interleaved across threads.
-	// Enforce an arbitrary locking order to ensure no deadlocks
-	// occur between threads.
-
-	firstLockingIndex := 0
-	if usernames[0] > usernames[1] {
-		firstLockingIndex = 1
-	}
-
-	users[firstLockingIndex].Lock()
-	defer users[firstLockingIndex].Unlock()
-	users[1-firstLockingIndex].Lock()
-	defer users[1-firstLockingIndex].Unlock()
-
 	// Get the user ratings
 	rat0, err := users[0].GetRating(ratingKey)
 	if err != nil {

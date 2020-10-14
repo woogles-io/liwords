@@ -15,7 +15,7 @@ import (
 )
 
 func performEndgameDuties(ctx context.Context, g *entity.Game,
-	userStore user.Store, listStatStore stats.ListStatStore) {
+	userStore user.Store, listStatStore stats.ListStatStore) error {
 
 	log.Debug().Interface("game-end-reason", g.GameEndReason).Msg("checking-game-over")
 	// The game is over already. Set an end game reason if there hasn't been
@@ -128,6 +128,31 @@ func performEndgameDuties(ctx context.Context, g *entity.Game,
 
 	g.Quickdata.FinalScores = g.History().FinalScores
 
+	// Grab a lock on both users to ensure that the following
+	// ratings calculations are not interleaved across threads.
+	// Enforce an arbitrary locking order to ensure no deadlocks
+	// occur between threads.
+
+	u0, err := userStore.GetByUUID(ctx, g.History().Players[0].UserId)
+	if err != nil {
+		return err
+	}
+	u1, err := userStore.GetByUUID(ctx, g.History().Players[1].UserId)
+	if err != nil {
+		return err
+	}
+	users := []*entity.User{u0, u1}
+
+	firstLockingIndex := 0
+	if users[0].UUID > users[1].UUID {
+		firstLockingIndex = 1
+	}
+
+	users[firstLockingIndex].Lock()
+	defer users[firstLockingIndex].Unlock()
+	users[1-firstLockingIndex].Lock()
+	defer users[1-firstLockingIndex].Unlock()
+
 	// Send a gameEndedEvent, which rates the game.
 	evt := gameEndedEvent(ctx, g, userStore)
 	wrapped := entity.WrapEvent(evt, pb.MessageType_GAME_ENDED_EVENT)
@@ -157,6 +182,7 @@ func performEndgameDuties(ctx context.Context, g *entity.Game,
 		pb.MessageType_GAME_DELETION)
 	wrapped.AddAudience(entity.AudLobby, "gameEnded")
 	g.SendChange(wrapped)
+	return nil
 }
 
 func computeGameStats(ctx context.Context, history *macondopb.GameHistory, req *pb.GameRequest,
@@ -229,11 +255,7 @@ func computeGameStats(ctx context.Context, history *macondopb.GameHistory, req *
 		}
 
 		// Save all stats back to the database.
-		err = userStore.SetStats(ctx, p0id, variantKey, p0NewProfileStats)
-		if err != nil {
-			return nil, err
-		}
-		err = userStore.SetStats(ctx, p1id, variantKey, p1NewProfileStats)
+		err = userStore.SetStats(ctx, p0id, p1id, variantKey, p0NewProfileStats, p1NewProfileStats)
 		if err != nil {
 			return nil, err
 		}
@@ -256,10 +278,13 @@ func setTimedOut(ctx context.Context, entGame *entity.Game, pidx int, gameStore 
 	entGame.SetGameEndReason(pb.GameEndReason_TIME)
 	entGame.SetWinnerIdx(1 - pidx)
 	entGame.SetLoserIdx(pidx)
-	performEndgameDuties(ctx, entGame, userStore, listStatStore)
+	err := performEndgameDuties(ctx, entGame, userStore, listStatStore)
+	if err != nil {
+		return err
+	}
 
 	// Store the game back into the store
-	err := gameStore.Set(ctx, entGame)
+	err = gameStore.Set(ctx, entGame)
 	if err != nil {
 		return err
 	}
