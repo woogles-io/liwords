@@ -59,6 +59,7 @@ func NewAuthenticationService(u user.Store, ss sessions.SessionStore, secretKey,
 
 // Login sets a cookie.
 func (as *AuthenticationService) Login(ctx context.Context, r *pb.UserLoginRequest) (*pb.LoginResponse, error) {
+
 	r.Username = strings.TrimSpace(r.Username)
 	user, err := as.userStore.Get(ctx, r.Username)
 	if err != nil {
@@ -74,17 +75,8 @@ func (as *AuthenticationService) Login(ctx context.Context, r *pb.UserLoginReque
 		return nil, err
 	}
 
-	err = apiserver.SetCookie(ctx, &http.Cookie{
-		Name:  "sessionid",
-		Value: sess.ID,
-		// Tell the browser the cookie expires after a year, but the actual
-		// session ID in the database will expire sooner than that.
-		// We will write middleware to extend the expiration length but maybe
-		// it's ok to require the user to log in once a year.
-		Expires:  time.Now().Add(365 * 24 * time.Hour),
-		HttpOnly: true,
-		Path:     "/",
-	})
+	err = apiserver.SetDefaultCookie(ctx, sess.ID)
+
 	log.Info().Str("value", sess.ID).Msg("setting-cookie")
 	if err != nil {
 		return nil, err
@@ -105,7 +97,7 @@ func (as *AuthenticationService) Logout(ctx context.Context, r *pb.UserLogoutReq
 	}
 	// Delete the cookie as well.
 	err = apiserver.SetCookie(ctx, &http.Cookie{
-		Name:     "sessionid",
+		Name:     "session",
 		Value:    sess.ID,
 		MaxAge:   -1,
 		HttpOnly: true,
@@ -115,18 +107,7 @@ func (as *AuthenticationService) Logout(ctx context.Context, r *pb.UserLogoutReq
 	if err != nil {
 		return nil, err
 	}
-	err = apiserver.SetCookie(ctx, &http.Cookie{
-		Name:     "sessionid",
-		Value:    sess.ID,
-		MaxAge:   -1,
-		HttpOnly: true,
-		Expires:  time.Now().Add(-100 * time.Hour),
-		// Delete old cookies that had this dumb path.
-		Path: "/twirp/user_service.AuthenticationService",
-	})
-	if err != nil {
-		return nil, err
-	}
+
 	return &pb.LogoutResponse{}, nil
 }
 
