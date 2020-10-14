@@ -110,7 +110,7 @@ export const TopBar = React.memo((props: Props) => {
                 setLoginModalVisible(false);
               }}
               footer={null}
-              width={300}
+              width={332}
             >
               <Login />
             </Modal>
