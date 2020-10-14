@@ -3,7 +3,7 @@ import { Card, Modal, Button } from 'antd';
 import { SoughtGames } from './sought_games';
 import { ActiveGames } from './active_games';
 import { SeekForm } from './seek_form';
-import { useStoreContext } from '../store/store';
+import { useLobbyStoreContext, useRedirGameStoreContext } from '../store/store';
 import { ActiveGame, SoughtGame } from '../store/reducers/lobby_reducer';
 import './seek_form.scss';
 
@@ -27,7 +27,8 @@ export const GameLists = React.memo((props: Props) => {
     setSelectedGameTab,
     onSeekSubmit,
   } = props;
-  const { lobbyContext, setRedirGame } = useStoreContext();
+  const { lobbyContext } = useLobbyStoreContext();
+  const { setRedirGame } = useRedirGameStoreContext();
   const [formDisabled, setFormDisabled] = useState(false);
   const [seekModalVisible, setSeekModalVisible] = useState(false);
   const [matchModalVisible, setMatchModalVisible] = useState(false);

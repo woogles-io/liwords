@@ -1,11 +1,14 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { useParams, useLocation } from 'react-router-dom';
 import { notification, Card, Table, Row, Col, Button } from 'antd';
 import axios, { AxiosError } from 'axios';
 import { TopBar } from '../topbar/topbar';
 import './profile.scss';
 import { toAPIUrl } from '../api/api';
-import { useStoreContext } from '../store/store';
+import {
+  useExcludedPlayersStoreContext,
+  useLoginStateStoreContext,
+} from '../store/store';
 import { GameMetadata, RecentGamesResponse } from '../gameroom/game_info';
 import { GamesHistoryCard } from './games_history';
 
@@ -75,7 +78,7 @@ const variantToName = (variant: string) => {
   return `${arr[0]} (${timectrl})`;
 };
 
-const RatingsCard = (props: RatingsProps) => {
+const RatingsCard = React.memo((props: RatingsProps) => {
   const variants = props.ratings ? Object.keys(props.ratings) : [];
   console.log('ratings', props.ratings, variants);
   const dataSource = variants.map((v) => ({
@@ -122,9 +125,9 @@ const RatingsCard = (props: RatingsProps) => {
       />
     </Card>
   );
-};
+});
 
-const StatsCard = (props: StatsProps) => {
+const StatsCard = React.memo((props: StatsProps) => {
   const variants = props.stats ? Object.keys(props.stats) : [];
 
   console.log('stats', props.stats, variants);
@@ -197,7 +200,7 @@ const StatsCard = (props: StatsProps) => {
       />
     </Card>
   );
-};
+});
 
 type Props = {};
 
@@ -209,7 +212,7 @@ type BlockerProps = {
 };
 
 const TheBlocker = (props: BlockerProps) => {
-  const { excludedPlayers } = useStoreContext();
+  const { excludedPlayers } = useExcludedPlayersStoreContext();
   let apiFunc: string;
   let blockText: string;
 
@@ -252,7 +255,8 @@ export const UserProfile = (props: Props) => {
   const [stats, setStats] = useState({});
   const [userID, setUserID] = useState('');
   const [recentGames, setRecentGames] = useState<Array<GameMetadata>>([]);
-  const { username: viewer } = useStoreContext().loginState;
+  const { loginState } = useLoginStateStoreContext();
+  const { username: viewer } = loginState;
   const [recentGamesOffset, setRecentGamesOffset] = useState(0);
   useEffect(() => {
     axios
@@ -288,6 +292,15 @@ export const UserProfile = (props: Props) => {
       .catch(errorCatcher);
   }, [username, recentGamesOffset]);
 
+  const fetchPrev = useCallback(
+    () => setRecentGamesOffset(Math.max(recentGamesOffset - gamesPageSize, 0)),
+    [recentGamesOffset]
+  );
+  const fetchNext = useCallback(
+    () => setRecentGamesOffset(recentGamesOffset + gamesPageSize),
+    [recentGamesOffset]
+  );
+
   return (
     <>
       <Row>
@@ -313,12 +326,8 @@ export const UserProfile = (props: Props) => {
           games={recentGames}
           username={username}
           userID={userID}
-          fetchPrev={() =>
-            setRecentGamesOffset(Math.max(recentGamesOffset - gamesPageSize, 0))
-          }
-          fetchNext={() =>
-            setRecentGamesOffset(recentGamesOffset + gamesPageSize)
-          }
+          fetchPrev={fetchPrev}
+          fetchNext={fetchNext}
         />
       </div>
     </>

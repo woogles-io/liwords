@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useCallback, useState, useEffect } from 'react';
 import { Card } from 'antd';
 
 import { TopBar } from '../topbar/topbar';
@@ -17,7 +17,11 @@ import { SoughtGame } from '../store/reducers/lobby_reducer';
 import { ChallengeRuleMap } from '../gen/macondo/api/proto/macondo/macondo_pb';
 import { GameLists } from './gameLists';
 import { Chat } from '../chat/chat';
-import { useStoreContext } from '../store/store';
+import {
+  useChatStoreContext,
+  useLoginStateStoreContext,
+  usePresenceStoreContext,
+} from '../store/store';
 import './lobby.scss';
 
 const sendSeek = (
@@ -78,7 +82,10 @@ type Props = {
 };
 
 export const Lobby = (props: Props) => {
-  const { chat, presences, loginState } = useStoreContext();
+  const { sendSocketMsg } = props;
+  const { chat } = useChatStoreContext();
+  const { loginState } = useLoginStateStoreContext();
+  const { presences } = usePresenceStoreContext();
   const { loggedIn, username, userID } = loginState;
 
   const [selectedGameTab, setSelectedGameTab] = useState(
@@ -89,18 +96,30 @@ export const Lobby = (props: Props) => {
     setSelectedGameTab(loggedIn ? 'PLAY' : 'WATCH');
   }, [loggedIn]);
 
-  const onSeekSubmit = (g: SoughtGame) => {
-    sendSeek(g, props.sendSocketMsg);
-  };
+  const handleNewGame = useCallback(
+    (seekID: string) => {
+      sendAccept(seekID, sendSocketMsg);
+    },
+    [sendSocketMsg]
+  );
+  const onSeekSubmit = useCallback(
+    (g: SoughtGame) => {
+      sendSeek(g, sendSocketMsg);
+    },
+    [sendSocketMsg]
+  );
 
-  const sendChat = (msg: string) => {
-    const evt = new ChatMessage();
-    evt.setMessage(msg);
-    evt.setChannel('lobby.chat');
-    props.sendSocketMsg(
-      encodeToSocketFmt(MessageType.CHAT_MESSAGE, evt.serializeBinary())
-    );
-  };
+  const sendChat = useCallback(
+    (msg: string) => {
+      const evt = new ChatMessage();
+      evt.setMessage(msg);
+      evt.setChannel('lobby.chat');
+      sendSocketMsg(
+        encodeToSocketFmt(MessageType.CHAT_MESSAGE, evt.serializeBinary())
+      );
+    },
+    [sendSocketMsg]
+  );
 
   return (
     <>
@@ -120,9 +139,7 @@ export const Lobby = (props: Props) => {
           loggedIn={loggedIn}
           userID={userID}
           username={username}
-          newGame={(seekID: string) => {
-            sendAccept(seekID, props.sendSocketMsg);
-          }}
+          newGame={handleNewGame}
           selectedGameTab={selectedGameTab}
           setSelectedGameTab={setSelectedGameTab}
           onSeekSubmit={onSeekSubmit}

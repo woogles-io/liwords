@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { Card, message, Popconfirm } from 'antd';
 import { HomeOutlined } from '@ant-design/icons/lib';
 import axios from 'axios';
@@ -7,7 +7,16 @@ import { useParams } from 'react-router-dom';
 import { BoardPanel } from './board_panel';
 import { TopBar } from '../topbar/topbar';
 import { Chat } from '../chat/chat';
-import { useStoreContext } from '../store/store';
+import {
+  useChatStoreContext,
+  useGameContextStoreContext,
+  useGameEndMessageStoreContext,
+  useLoginStateStoreContext,
+  usePoolFormatStoreContext,
+  usePresenceStoreContext,
+  useRematchRequestStoreContext,
+  useTimerStoreContext,
+} from '../store/store';
 import { PlayerCards } from './player_cards';
 import Pool from './pool';
 import {
@@ -63,20 +72,14 @@ const defaultGameInfo = {
 
 export const Table = React.memo((props: Props) => {
   const { gameID } = useParams();
-  const {
-    gameContext,
-    chat,
-    clearChat,
-    pTimedOut,
-    poolFormat,
-    setPoolFormat,
-    setPTimedOut,
-    rematchRequest,
-    setRematchRequest,
-    presences,
-    loginState,
-    gameEndMessage,
-  } = useStoreContext();
+  const { chat, clearChat } = useChatStoreContext();
+  const { gameContext } = useGameContextStoreContext();
+  const { gameEndMessage } = useGameEndMessageStoreContext();
+  const { loginState } = useLoginStateStoreContext();
+  const { poolFormat, setPoolFormat } = usePoolFormatStoreContext();
+  const { presences } = usePresenceStoreContext();
+  const { rematchRequest, setRematchRequest } = useRematchRequestStoreContext();
+  const { pTimedOut, setPTimedOut } = useTimerStoreContext();
   const { username } = loginState;
 
   const { sendSocketMsg } = props;
@@ -217,40 +220,59 @@ export const Table = React.memo((props: Props) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [username, gameInfo]);
 
-  const acceptRematch = (reqID: string) => {
-    const evt = new SoughtGameProcessEvent();
-    evt.setRequestId(reqID);
-    sendSocketMsg(
-      encodeToSocketFmt(
-        MessageType.SOUGHT_GAME_PROCESS_EVENT,
-        evt.serializeBinary()
-      )
-    );
-  };
+  const acceptRematch = useCallback(
+    (reqID: string) => {
+      const evt = new SoughtGameProcessEvent();
+      evt.setRequestId(reqID);
+      sendSocketMsg(
+        encodeToSocketFmt(
+          MessageType.SOUGHT_GAME_PROCESS_EVENT,
+          evt.serializeBinary()
+        )
+      );
+    },
+    [sendSocketMsg]
+  );
 
-  const declineRematch = (reqID: string) => {
-    const evt = new DeclineMatchRequest();
-    evt.setRequestId(reqID);
-    sendSocketMsg(
-      encodeToSocketFmt(
-        MessageType.DECLINE_MATCH_REQUEST,
-        evt.serializeBinary()
-      )
-    );
-  };
+  const handleAcceptRematch = useCallback(() => {
+    acceptRematch(rematchRequest.getGameRequest()!.getRequestId());
+    setRematchRequest(new MatchRequest());
+  }, [acceptRematch, rematchRequest, setRematchRequest]);
 
-  const sendChat = (msg: string) => {
-    const evt = new ChatMessage();
-    evt.setMessage(msg);
+  const declineRematch = useCallback(
+    (reqID: string) => {
+      const evt = new DeclineMatchRequest();
+      evt.setRequestId(reqID);
+      sendSocketMsg(
+        encodeToSocketFmt(
+          MessageType.DECLINE_MATCH_REQUEST,
+          evt.serializeBinary()
+        )
+      );
+    },
+    [sendSocketMsg]
+  );
 
-    const chan = isObserver ? 'gametv' : 'game';
-    // XXX: Backend should figure out channels; also separate game and gameTV channels
-    // Right now everyone will get this.
-    evt.setChannel(`${chan}.${gameID}`);
-    sendSocketMsg(
-      encodeToSocketFmt(MessageType.CHAT_MESSAGE, evt.serializeBinary())
-    );
-  };
+  const handleDeclineRematch = useCallback(() => {
+    declineRematch(rematchRequest.getGameRequest()!.getRequestId());
+    setRematchRequest(new MatchRequest());
+  }, [declineRematch, rematchRequest, setRematchRequest]);
+
+  const sendChat = useCallback(
+    (msg: string) => {
+      const evt = new ChatMessage();
+      evt.setMessage(msg);
+
+      const chan = isObserver ? 'gametv' : 'game';
+      // XXX: Backend should figure out channels; also separate game and gameTV channels
+      // Right now everyone will get this.
+      evt.setChannel(`${chan}.${gameID}`);
+      sendSocketMsg(
+        encodeToSocketFmt(MessageType.CHAT_MESSAGE, evt.serializeBinary())
+      );
+    },
+    [gameID, isObserver, sendSocketMsg]
+  );
 
   // Figure out what rack we should display.
   // If we are one of the players, display our rack.
@@ -315,14 +337,8 @@ export const Table = React.memo((props: Props) => {
               .getUser()
               ?.getDisplayName()} sent you a rematch request`}
             visible={rematchRequest.getRematchFor() !== ''}
-            onConfirm={() => {
-              acceptRematch(rematchRequest.getGameRequest()!.getRequestId());
-              setRematchRequest(new MatchRequest());
-            }}
-            onCancel={() => {
-              declineRematch(rematchRequest.getGameRequest()!.getRequestId());
-              setRematchRequest(new MatchRequest());
-            }}
+            onConfirm={handleAcceptRematch}
+            onCancel={handleDeclineRematch}
             okText="Accept"
             cancelText="Decline"
           />
