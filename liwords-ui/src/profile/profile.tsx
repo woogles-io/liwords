@@ -1,16 +1,14 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { useParams, useLocation } from 'react-router-dom';
-import { notification, Card, Table, Row, Col, Button } from 'antd';
+import { notification, Card, Table, Row, Col } from 'antd';
 import axios, { AxiosError } from 'axios';
 import { TopBar } from '../topbar/topbar';
 import './profile.scss';
 import { toAPIUrl } from '../api/api';
-import {
-  useExcludedPlayersStoreContext,
-  useLoginStateStoreContext,
-} from '../store/store';
+import { useLoginStateStoreContext } from '../store/store';
 import { GameMetadata, RecentGamesResponse } from '../gameroom/game_info';
 import { GamesHistoryCard } from './games_history';
+import { UsernameWithContext } from '../shared/usernameWithContext';
 
 type ProfileResponse = {
   first_name: string;
@@ -201,47 +199,6 @@ type Props = {};
 
 const gamesPageSize = 10;
 
-// Move me to a better place.
-type BlockerProps = {
-  target: string;
-};
-
-const TheBlocker = (props: BlockerProps) => {
-  const { excludedPlayers } = useExcludedPlayersStoreContext();
-  let apiFunc: string;
-  let blockText: string;
-
-  if (excludedPlayers.has(props.target)) {
-    apiFunc = 'Remove';
-    blockText = 'Unblock this user';
-  } else {
-    apiFunc = 'Add';
-    blockText = 'Block this user';
-    // Add some confirmation.
-  }
-
-  const blockAction = () => {
-    axios
-      .post(
-        toAPIUrl('user_service.SocializeService', `${apiFunc}Block`),
-        {
-          uuid: props.target,
-        },
-        { withCredentials: true }
-      )
-      .then(() => {
-        setTimeout(window.location.reload.bind(window.location), 1000);
-      });
-  };
-
-  // HIDE the blocker button for now:
-  return (
-    <Button onClick={blockAction} style={{ display: 'none' }}>
-      {blockText}
-    </Button>
-  );
-};
-
 export const UserProfile = React.memo((props: Props) => {
   const { username } = useParams();
   const location = useLocation();
@@ -304,14 +261,21 @@ export const UserProfile = React.memo((props: Props) => {
 
       <div className="profile">
         <header>
-          <h3>{username}</h3>
+          <h3>
+            {viewer !== username ? (
+              <UsernameWithContext
+                omitProfileLink
+                username={username}
+                userID={userID}
+              />
+            ) : (
+              username
+            )}
+          </h3>
           {viewer === username ? (
             <a href="/password/change">Change your password</a>
-          ) : (
-            <TheBlocker target={userID} />
-          )}
+          ) : null}
         </header>
-
         <RatingsCard ratings={ratings} />
         <GamesHistoryCard
           games={recentGames}

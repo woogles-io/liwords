@@ -269,6 +269,7 @@ export const useOnSocketMsg = () => {
               sender: cm.getUsername(),
               message: cm.getMessage(),
               timestamp: cm.getTimestamp(),
+              senderId: cm.getUserId(),
             });
             break;
           }
@@ -286,6 +287,7 @@ export const useOnSocketMsg = () => {
                   sender: cm.getUsername(),
                   message: cm.getMessage(),
                   timestamp: cm.getTimestamp(),
+                  senderId: cm.getUserId(),
                   id: randomID(),
                 });
               }

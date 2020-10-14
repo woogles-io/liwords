@@ -58,6 +58,7 @@ export const Chat = React.memo((props: Props) => {
         entityType={ent.entityType}
         key={ent.id}
         sender={ent.sender}
+        senderId={ent.senderId}
         message={ent.message}
         timestamp={ent.timestamp}
       />

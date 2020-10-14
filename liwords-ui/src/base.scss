@@ -181,6 +181,9 @@ ul
   margin: 0;
 }
 
+.user-context-menu {
+  cursor: context-menu;
+}
 @mixin action-blocks {
   padding-bottom: 64px;
   .ant-card-body {

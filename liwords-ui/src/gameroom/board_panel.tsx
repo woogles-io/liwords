@@ -725,6 +725,9 @@ export const BoardPanel = React.memo((props: Props) => {
           }
         }
       }
+      if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+        e.preventDefault();
+      }
       keydown(e.key);
     },
     [
