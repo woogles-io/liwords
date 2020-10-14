@@ -1,11 +1,14 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { useParams, useLocation } from 'react-router-dom';
 import { notification, Card, Table, Row, Col, Button } from 'antd';
 import axios, { AxiosError } from 'axios';
 import { TopBar } from '../topbar/topbar';
 import './profile.scss';
 import { toAPIUrl } from '../api/api';
-import { useStoreContext } from '../store/store';
+import {
+  useExcludedPlayersStoreContext,
+  useLoginStateStoreContext,
+} from '../store/store';
 import { GameMetadata, RecentGamesResponse } from '../gameroom/game_info';
 import { GamesHistoryCard } from './games_history';
 
@@ -204,7 +207,7 @@ type BlockerProps = {
 };
 
 const TheBlocker = (props: BlockerProps) => {
-  const { excludedPlayers } = useStoreContext();
+  const { excludedPlayers } = useExcludedPlayersStoreContext();
   let apiFunc: string;
   let blockText: string;
 
@@ -247,7 +250,8 @@ export const UserProfile = React.memo((props: Props) => {
   const [stats, setStats] = useState({});
   const [userID, setUserID] = useState('');
   const [recentGames, setRecentGames] = useState<Array<GameMetadata>>([]);
-  const { username: viewer } = useStoreContext().loginState;
+  const { loginState } = useLoginStateStoreContext();
+  const { username: viewer } = loginState;
   const [recentGamesOffset, setRecentGamesOffset] = useState(0);
   useEffect(() => {
     axios
@@ -280,6 +284,16 @@ export const UserProfile = React.memo((props: Props) => {
       })
       .catch(errorCatcher);
   }, [username, recentGamesOffset]);
+
+  const fetchPrev = useCallback(
+    () => setRecentGamesOffset(Math.max(recentGamesOffset - gamesPageSize, 0)),
+    [recentGamesOffset]
+  );
+  const fetchNext = useCallback(
+    () => setRecentGamesOffset(recentGamesOffset + gamesPageSize),
+    [recentGamesOffset]
+  );
+
   return (
     <>
       <Row>
@@ -305,15 +319,12 @@ export const UserProfile = React.memo((props: Props) => {
           userID={userID}
           fetchPrev={
             recentGamesOffset > 0
-              ? () =>
-                  setRecentGamesOffset(
-                    Math.max(recentGamesOffset - gamesPageSize, 0)
-                  )
+              ? fetchPrev
               : undefined
           }
           fetchNext={
             recentGames.length < gamesPageSize
-              ? undefined
+              ? fetchNext
               : () => setRecentGamesOffset(recentGamesOffset + gamesPageSize)
           }
         />
