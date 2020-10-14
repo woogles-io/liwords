@@ -13,11 +13,15 @@
   }
   .ant-table-thead > tr > th, .ant-table-tbody > tr > td {
     padding: 8px;
+    vertical-align: top;
     &.result {
       padding-right: 0;
     }
     &.details {
       padding-right: 8px;
+    }
+    &.when {
+      white-space: nowrap;
     }
   }
   .tabs {
@@ -46,9 +50,6 @@
   .games {
     .game-listing {
       cursor: pointer;
-      td {
-        vertical-align: top;
-      }
       &.resume,
       &.outgoing {
         background-color: #f2f2f2;
@@ -123,7 +124,7 @@
     width: 40px;
   }
   td.score, th.score {
-    width: 100px;
+    min-width: 100px;
   }
   td.details {
     display: flex;

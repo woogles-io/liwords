@@ -22,10 +22,18 @@ export const GamesHistoryCard = React.memo((props: Props) => {
     .filter((item) => item.players?.length)
     .map((item) => {
       const userplace = item.players[0].user_id === userID ? 0 : 1;
-      const opponent = item.players[1 - userplace].nickname;
-      const scores = item.scores
-        ? `${item.scores[userplace]} - ${item.scores[1 - userplace]}`
-        : '';
+      const opponent = (
+        <a href={`/profile/${item.players[1 - userplace].nickname}`}>
+          {item.players[1 - userplace].nickname}
+        </a>
+      );
+      const scores = item.scores ? (
+        <a href={`/game/${item.game_id}`}>
+          {item.scores[userplace]} - {item.scores[1 - userplace]}
+        </a>
+      ) : (
+        ''
+      );
       let result = <Tag color={colors.colorBoardTWS}>Loss</Tag>;
       const challenge = {
         FIVE_POINT: '-5',
