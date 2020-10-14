@@ -7,7 +7,6 @@ import {
   calculateTotalTime,
   challRuleToStr,
   timeCtrlToDisplayName,
-  initialTimeLabel,
   timeToString,
 } from '../store/constants';
 import { SoughtGame } from '../store/reducers/lobby_reducer';

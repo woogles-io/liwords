@@ -1,5 +1,5 @@
 import React from 'react';
-import { Card, Row, Tooltip } from 'antd';
+import { Card, Row } from 'antd';
 import { timeCtrlToDisplayName, timeToString } from '../store/constants';
 
 // At some point we should get this from the pb but then we have to use
