@@ -75,9 +75,8 @@ const variantToName = (variant: string) => {
   return `${arr[0]} (${timectrl})`;
 };
 
-const RatingsCard = (props: RatingsProps) => {
+const RatingsCard = React.memo((props: RatingsProps) => {
   const variants = props.ratings ? Object.keys(props.ratings) : [];
-  console.log('ratings', props.ratings, variants);
   const dataSource = variants.map((v) => ({
     key: v,
     name: variantToName(v),
@@ -85,7 +84,6 @@ const RatingsCard = (props: RatingsProps) => {
     deviation: props.ratings[v].rd.toFixed(2),
     volatility: props.ratings[v].v.toFixed(2),
   }));
-  console.log('datasource', dataSource);
 
   const columns = [
     {
@@ -118,16 +116,13 @@ const RatingsCard = (props: RatingsProps) => {
         }}
         dataSource={dataSource}
         columns={columns}
-        scroll={{ x: 500 }}
       />
     </Card>
   );
-};
+});
 
-const StatsCard = (props: StatsProps) => {
+const StatsCard = React.memo((props: StatsProps) => {
   const variants = props.stats ? Object.keys(props.stats) : [];
-
-  console.log('stats', props.stats, variants);
 
   const dataSource = variants.map((v) => ({
     key: v,
@@ -197,7 +192,7 @@ const StatsCard = (props: StatsProps) => {
       />
     </Card>
   );
-};
+});
 
 type Props = {};
 
@@ -244,7 +239,7 @@ const TheBlocker = (props: BlockerProps) => {
   );
 };
 
-export const UserProfile = (props: Props) => {
+export const UserProfile = React.memo((props: Props) => {
   const { username } = useParams();
   const location = useLocation();
   // Show username's profile
@@ -263,7 +258,6 @@ export const UserProfile = (props: Props) => {
         }
       )
       .then((resp) => {
-        console.log('prof', resp, JSON.parse(resp.data.ratings_json).Data);
         setRatings(JSON.parse(resp.data.ratings_json).Data);
         setStats(JSON.parse(resp.data.stats_json).Data);
         setUserID(resp.data.user_id);
@@ -282,12 +276,10 @@ export const UserProfile = (props: Props) => {
         }
       )
       .then((resp) => {
-        console.log('resp');
         setRecentGames(resp.data.game_info);
       })
       .catch(errorCatcher);
   }, [username, recentGamesOffset]);
-
   return (
     <>
       <Row>
@@ -307,20 +299,26 @@ export const UserProfile = (props: Props) => {
         </header>
 
         <RatingsCard ratings={ratings} />
-        <StatsCard stats={stats} />
-        <h3>Recent Games</h3>
         <GamesHistoryCard
           games={recentGames}
           username={username}
           userID={userID}
-          fetchPrev={() =>
-            setRecentGamesOffset(Math.max(recentGamesOffset - gamesPageSize, 0))
+          fetchPrev={
+            recentGamesOffset > 0
+              ? () =>
+                  setRecentGamesOffset(
+                    Math.max(recentGamesOffset - gamesPageSize, 0)
+                  )
+              : undefined
           }
-          fetchNext={() =>
-            setRecentGamesOffset(recentGamesOffset + gamesPageSize)
+          fetchNext={
+            recentGames.length < gamesPageSize
+              ? undefined
+              : () => setRecentGamesOffset(recentGamesOffset + gamesPageSize)
           }
         />
+        <StatsCard stats={stats} />
       </div>
     </>
   );
-};
+});
