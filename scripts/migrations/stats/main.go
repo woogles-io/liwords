@@ -12,7 +12,6 @@ import (
 )
 
 func main() {
-	// Populate every game with its quickdata
 	cfg := &config.Config{}
 	cfg.Load(os.Args[1:])
 	log.Info().Msgf("Loaded config: %v", cfg)
