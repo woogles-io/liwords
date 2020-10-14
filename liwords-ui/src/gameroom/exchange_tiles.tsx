@@ -132,7 +132,9 @@ export const ExchangeTiles = React.memo((props: Props) => {
       footer={
         <>
           {exchangedRackIndices.size > 0 ? (
-            <p className="label">{`${exchangedRackIndices.size} tiles selected`}</p>
+            <p className="label">{`${exchangedRackIndices.size} ${
+              exchangedRackIndices.size === 1 ? 'tile' : 'tiles'
+            } selected`}</p>
           ) : null}
           <Button
             key="submit"
