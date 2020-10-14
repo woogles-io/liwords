@@ -41,7 +41,9 @@ export const Chat = React.memo((props: Props) => {
   const onChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setCurMsg(e.target.value);
   };
-
+  const knownUsers =
+    Object.keys(props.presences).filter((p) => !props.presences[p].anon) || [];
+  console.log(knownUsers);
   useEffect(() => {
     const tabContainer = el.current;
     if (tabContainer && selectedChatTab === 'CHAT') {
@@ -53,6 +55,7 @@ export const Chat = React.memo((props: Props) => {
   }, [props.chatEntities, selectedChatTab]);
 
   const entities = props.chatEntities?.map((ent) => {
+    const anon = ent.senderId ? !knownUsers.includes(ent.senderId) : true;
     return (
       <ChatEntity
         entityType={ent.entityType}
@@ -61,6 +64,7 @@ export const Chat = React.memo((props: Props) => {
         senderId={ent.senderId}
         message={ent.message}
         timestamp={ent.timestamp}
+        anonymous={anon}
       />
     );
   });
