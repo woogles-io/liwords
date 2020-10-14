@@ -44,9 +44,9 @@ func sanitize(evt *entity.EventWrapper, userID string) (*entity.EventWrapper, er
 		for _, evt := range cloned.History.Events {
 			if evt.Nickname != mynick {
 				evt.Rack = ""
-			}
-			if evt.Type == macondopb.GameEvent_EXCHANGE {
-				evt.Exchanged = strconv.Itoa(len(evt.Exchanged))
+				if evt.Type == macondopb.GameEvent_EXCHANGE {
+					evt.Exchanged = strconv.Itoa(len(evt.Exchanged))
+				}
 			}
 		}
 
