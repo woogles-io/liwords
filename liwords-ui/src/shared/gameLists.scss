@@ -13,7 +13,6 @@
   }
   .ant-table-thead > tr > th, .ant-table-tbody > tr > td {
     padding: 8px;
-    vertical-align: top;
     &.result {
       padding-right: 0;
     }
@@ -23,6 +22,9 @@
     &.when {
       white-space: nowrap;
     }
+  }
+  .ant-table-thead > tr > td {
+    vertical-align: top;
   }
   .tabs {
     display: flex;
