@@ -28,6 +28,7 @@ message PlayerInfo {
 }
 
 message GameInfoResponse {
+  // XXX: Why doesn't this just have the game request embedded in it?
   repeated PlayerInfo players = 1;
   string lexicon = 2;
   string variant = 3;

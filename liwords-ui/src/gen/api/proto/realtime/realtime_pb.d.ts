@@ -235,6 +235,9 @@ export class ChatMessage extends jspb.Message {
   getTimestamp(): number;
   setTimestamp(value: number): void;
 
+  getUserId(): string;
+  setUserId(value: string): void;
+
   serializeBinary(): Uint8Array;
   toObject(includeInstance?: boolean): ChatMessage.AsObject;
   static toObject(includeInstance: boolean, msg: ChatMessage): ChatMessage.AsObject;
@@ -251,6 +254,7 @@ export namespace ChatMessage {
     channel: string,
     message: string,
     timestamp: number,
+    userId: string,
   }
 }
 

@@ -17,8 +17,10 @@ func RegisterUser(ctx context.Context, username string, password string, email s
 	if len(username) < 1 || len(username) > 20 {
 		return errors.New("username must be between 1 and 20 letters in length")
 	}
-	if len(strings.Fields(username)) != 1 {
-		return errors.New("username must not contain any whitespace")
+	if strings.IndexFunc(username, func(c rune) bool {
+		return !(c >= 'A' && c <= 'Z' || c >= 'a' && c <= 'z' || c >= '0' && c <= '9' || c=='-' || c=='.' || c=='_')
+	}) != -1 {
+		return errors.New("username can only contain letters, digits, period, hyphen or underscore")
 	}
 	// Should we have other unacceptable usernames?
 	if strings.ToLower(username) == "anonymous" {

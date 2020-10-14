@@ -9,6 +9,8 @@ import (
 	"errors"
 	"strconv"
 
+	"github.com/domino14/macondo/runner"
+
 	"github.com/rs/zerolog/log"
 	"google.golang.org/protobuf/proto"
 
@@ -19,7 +21,6 @@ import (
 	"github.com/domino14/macondo/game"
 	macondopb "github.com/domino14/macondo/gen/api/proto/macondo"
 	"github.com/domino14/macondo/move"
-	"github.com/domino14/macondo/runner"
 
 	"github.com/domino14/liwords/pkg/config"
 	"github.com/domino14/liwords/pkg/entity"
@@ -43,6 +44,7 @@ type GameStore interface {
 	GetRecentGames(ctx context.Context, username string, numGames int, offset int) (*gs.GameInfoResponses, error)
 	Set(context.Context, *entity.Game) error
 	Create(context.Context, *entity.Game) error
+	Exists(ctx context.Context, id string) (bool, error)
 	ListActive(context.Context) ([]*pb.GameMeta, error)
 	SetGameEventChan(c chan<- *entity.EventWrapper)
 	Unload(context.Context, string)
@@ -98,16 +100,35 @@ func InstantiateNewGame(ctx context.Context, gameStore GameStore, cfg *config.Co
 		&gaddag.Lexicon{GenericDawg: gd},
 		cross_set.CrossScoreOnlyGenerator{Dist: dist})
 
-	runner, err := runner.NewGameRunnerFromRules(&runner.GameOptions{
-		FirstIsAssigned: firstAssigned,
-		GoesFirst:       assignedFirst,
-		ChallengeRule:   req.ChallengeRule,
-	}, players, rules)
-	if err != nil {
-		return nil, err
+	var gameRunner *runner.GameRunner
+	for {
+		gameRunner, err = runner.NewGameRunnerFromRules(&runner.GameOptions{
+			FirstIsAssigned: firstAssigned,
+			GoesFirst:       assignedFirst,
+			ChallengeRule:   req.ChallengeRule,
+		}, players, rules)
+		if err != nil {
+			return nil, err
+		}
+
+		exists, err := gameStore.Exists(ctx, gameRunner.Game.Uid())
+		if err != nil {
+			return nil, err
+		}
+		if exists {
+			continue
+			// This UUID exists in the database. This is only possible because
+			// we are purposely shortening the UUID in macondo for nicer URLs.
+			// 57^8 should still give us 111 trillion games. (and we can add more
+			// characters if we get close to that number)
+		}
+		break
+		// There's still a chance of a race condition here if another thread
+		// creates the same game ID at the same time, but the chances
+		// of that are so astronomically unlikely we won't bother.
 	}
 
-	entGame := entity.NewGame(&runner.Game, req)
+	entGame := entity.NewGame(&gameRunner.Game, req)
 	entGame.PlayerDBIDs = dbids
 
 	ratingKey, err := entGame.RatingKey()
@@ -124,7 +145,7 @@ func InstantiateNewGame(ctx context.Context, gameStore GameStore, cfg *config.Co
 			UserId:   u.UUID,
 			Rating:   u.GetRelevantRating(ratingKey),
 			IsBot:    u.IsBot,
-			First:    runner.FirstPlayer().UserId == u.UUID,
+			First:    gameRunner.FirstPlayer().UserId == u.UUID,
 		}
 		if u.Profile != nil {
 			playerinfos[idx].FullName = u.RealName()

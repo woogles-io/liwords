@@ -6,7 +6,6 @@ export type LoginState = {
   loggedIn: boolean;
   connID: string;
   connectedToSocket: boolean;
-  currentLagMs?: number;
 };
 
 export type AuthInfo = {
@@ -34,13 +33,6 @@ export function LoginStateReducer(
       return {
         ...state,
         connectedToSocket,
-      };
-    }
-    case ActionType.SetCurrentLagMs: {
-      const lagms = action.payload as number;
-      return {
-        ...state,
-        currentLagMs: lagms,
       };
     }
   }

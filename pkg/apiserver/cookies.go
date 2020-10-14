@@ -5,8 +5,10 @@ import (
 	"errors"
 	"net/http"
 
+	twirp "github.com/twitchtv/twirp"
+
 	"github.com/domino14/liwords/pkg/entity"
-	"github.com/domino14/liwords/pkg/user"
+	"github.com/domino14/liwords/pkg/sessions"
 	"github.com/rs/zerolog"
 )
 
@@ -40,7 +42,7 @@ const sesskey ctxkey = "session"
 
 // AuthenticationMiddlewareGenerator generates auth middleware that looks up
 // a session ID
-func AuthenticationMiddlewareGenerator(sessionStore user.SessionStore) (mw func(http.Handler) http.Handler) {
+func AuthenticationMiddlewareGenerator(sessionStore sessions.SessionStore) (mw func(http.Handler) http.Handler) {
 	mw = func(h http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			log := zerolog.Ctx(r.Context())
@@ -76,11 +78,11 @@ func AuthenticationMiddlewareGenerator(sessionStore user.SessionStore) (mw func(
 func GetSession(ctx context.Context) (*entity.Session, error) {
 	sessval := ctx.Value(sesskey)
 	if sessval == nil {
-		return nil, errors.New("authentication required")
+		return nil, twirp.NewError(twirp.Unauthenticated, "authentication required")
 	}
 	sess, ok := sessval.(*entity.Session)
 	if !ok {
-		return nil, errors.New("unexpected error with type inference")
+		return nil, twirp.InternalErrorWith(errors.New("unexpected error with type inference"))
 	}
 	return sess, nil
 }

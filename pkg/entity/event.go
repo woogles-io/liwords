@@ -36,8 +36,9 @@ type EventWrapper struct {
 	Event proto.Message
 
 	// Serialization protocol
-	protocol string
-	audience []string
+	protocol     string
+	audience     []string
+	excludeUsers []string
 }
 
 // WrapEvent wraps a protobuf event.
@@ -72,6 +73,11 @@ func (e *EventWrapper) AddAudience(audType EventAudienceType, suffix string) {
 // Audience gets the audience(s) for this event, in the form of NATS channel names.
 func (e *EventWrapper) Audience() []string {
 	return e.audience
+}
+
+// AddExcludedUsers excludes the given users from receiving this message
+func (e *EventWrapper) AddExcludedUsers(ids []string) {
+	e.excludeUsers = ids
 }
 
 // Serialize serializes the event to a byte array.

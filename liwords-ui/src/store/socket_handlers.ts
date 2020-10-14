@@ -1,5 +1,11 @@
+import { useCallback } from 'react';
 import { message, notification } from 'antd';
-import { StoreData, ChatEntityType, randomID } from './store';
+import {
+  ChatEntityType,
+  randomID,
+  ChatEntityObj,
+  PresenceEntity,
+} from './store';
 import {
   MessageType,
   SeekRequest,
@@ -33,8 +39,23 @@ import { endGameMessage } from './end_of_game';
 import {
   SeekRequestToSoughtGame,
   GameMetaToActiveGame,
+  SoughtGame,
 } from './reducers/lobby_reducer';
 import { BoopSounds } from '../sound/boop';
+import {
+  useChallengeResultEventStoreContext,
+  useChatStoreContext,
+  useExcludedPlayersStoreContext,
+  useGameContextStoreContext,
+  useGameEndMessageStoreContext,
+  useLagStoreContext,
+  useLobbyStoreContext,
+  useLoginStateStoreContext,
+  usePresenceStoreContext,
+  useRedirGameStoreContext,
+  useRematchRequestStoreContext,
+  useTimerStoreContext,
+} from '../store/store';
 
 export const parseMsgs = (msg: Uint8Array) => {
   // Multiple msgs can come in the same packet.
@@ -84,308 +105,392 @@ export const parseMsgs = (msg: Uint8Array) => {
   return msgs;
 };
 
-export const onSocketMsg = (storeData: StoreData) => {
-  return (reader: FileReader) => {
-    if (!reader.result) {
-      return;
-    }
-    const msgs = parseMsgs(new Uint8Array(reader.result as ArrayBuffer));
+export const useOnSocketMsg = () => {
+  const { challengeResultEvent } = useChallengeResultEventStoreContext();
+  const { addChat, addChats } = useChatStoreContext();
+  const { excludedPlayers } = useExcludedPlayersStoreContext();
+  const { dispatchGameContext } = useGameContextStoreContext();
+  const { setGameEndMessage } = useGameEndMessageStoreContext();
+  const { setCurrentLagMs } = useLagStoreContext();
+  const { dispatchLobbyContext } = useLobbyStoreContext();
+  const { loginState } = useLoginStateStoreContext();
+  const { setPresence, addPresences } = usePresenceStoreContext();
+  const { setRedirGame } = useRedirGameStoreContext();
+  const { setRematchRequest } = useRematchRequestStoreContext();
+  const { stopClock } = useTimerStoreContext();
 
-    msgs.forEach((msg) => {
-      const { msgType, parsedMsg } = msg;
+  return useCallback(
+    (reader: FileReader) => {
+      if (!reader.result) {
+        return;
+      }
+      const msgs = parseMsgs(new Uint8Array(reader.result as ArrayBuffer));
 
-      switch (msgType) {
-        case MessageType.SEEK_REQUEST: {
-          const sr = parsedMsg as SeekRequest;
-          console.log('Got a seek request', sr);
-          const soughtGame = SeekRequestToSoughtGame(sr);
-          if (soughtGame === null) {
-            return;
-          }
+      msgs.forEach((msg) => {
+        const { msgType, parsedMsg } = msg;
 
-          storeData.dispatchLobbyContext({
-            actionType: ActionType.AddSoughtGame,
-            payload: soughtGame,
-          });
+        switch (msgType) {
+          case MessageType.SEEK_REQUEST: {
+            const sr = parsedMsg as SeekRequest;
+            console.log('Got a seek request', sr);
 
-          break;
-        }
-
-        case MessageType.SEEK_REQUESTS: {
-          const sr = parsedMsg as SeekRequests;
-          storeData.dispatchLobbyContext({
-            actionType: ActionType.AddSoughtGames,
-            payload: sr
-              .getRequestsList()
-              .map((r) => SeekRequestToSoughtGame(r)),
-          });
-
-          break;
-        }
-
-        case MessageType.MATCH_REQUEST: {
-          const mr = parsedMsg as MatchRequest;
-          const receiver = mr.getReceivingUser()?.getDisplayName();
-          const soughtGame = SeekRequestToSoughtGame(mr);
-          if (soughtGame === null) {
-            return;
-          }
-          if (receiver === storeData.loginState.username) {
-            BoopSounds.matchReqSound.play();
-            if (mr.getRematchFor() !== '') {
-              // Only display the rematch modal if we are the recipient
-              // of the rematch request.
-              storeData.setRematchRequest(mr);
+            const userID = sr.getUser()?.getUserId();
+            if (!userID || excludedPlayers.has(userID)) {
+              break;
             }
-          }
 
-          storeData.dispatchLobbyContext({
-            actionType: ActionType.AddMatchRequest,
-            payload: soughtGame,
-          });
-          break;
-        }
+            const soughtGame = SeekRequestToSoughtGame(sr);
+            if (soughtGame === null) {
+              break;
+            }
 
-        case MessageType.MATCH_REQUESTS: {
-          const mr = parsedMsg as MatchRequests;
-          storeData.dispatchLobbyContext({
-            actionType: ActionType.AddMatchRequests,
-            payload: mr
-              .getRequestsList()
-              .map((r) => SeekRequestToSoughtGame(r)),
-          });
-          break;
-        }
+            dispatchLobbyContext({
+              actionType: ActionType.AddSoughtGame,
+              payload: soughtGame,
+            });
 
-        case MessageType.SERVER_MESSAGE: {
-          const sm = parsedMsg as ServerMessage;
-          message.warning(sm.getMessage(), 2);
-          break;
-        }
-
-        case MessageType.LAG_MEASUREMENT: {
-          const lag = parsedMsg as LagMeasurement;
-          storeData.dispatchLoginState({
-            actionType: ActionType.SetCurrentLagMs,
-            payload: lag.getLagMs(),
-          });
-          break;
-        }
-
-        case MessageType.ERROR_MESSAGE: {
-          console.log('got error msg');
-          const err = parsedMsg as ErrorMessage;
-          notification.error({
-            message: 'Error',
-            description: err.getMessage(),
-          });
-          storeData.addChat({
-            entityType: ChatEntityType.ErrorMsg,
-            sender: 'Woogles',
-            message: err.getMessage(),
-          });
-          break;
-        }
-
-        case MessageType.CHAT_MESSAGE: {
-          const cm = parsedMsg as ChatMessage;
-          // We should ignore this chat message if it's not for the right
-          // channel.
-
-          storeData.addChat({
-            entityType: ChatEntityType.UserChat,
-            sender: cm.getUsername(),
-            message: cm.getMessage(),
-            timestamp: cm.getTimestamp(),
-          });
-          break;
-        }
-
-        case MessageType.CHAT_MESSAGES: {
-          // These replace all existing messages.
-          const cms = parsedMsg as ChatMessages;
-
-          const entities = cms.getMessagesList().map((cm) => ({
-            entityType: ChatEntityType.UserChat,
-            sender: cm.getUsername(),
-            message: cm.getMessage(),
-            timestamp: cm.getTimestamp(),
-            id: randomID(),
-          }));
-
-          storeData.addChats(entities);
-          break;
-        }
-
-        case MessageType.USER_PRESENCE: {
-          console.log('userpresence', parsedMsg);
-
-          const up = parsedMsg as UserPresence;
-          storeData.setPresence({
-            uuid: up.getUserId(),
-            username: up.getUsername(),
-            channel: up.getChannel(),
-            anon: up.getIsAnonymous(),
-          });
-          break;
-        }
-
-        case MessageType.USER_PRESENCES: {
-          const ups = parsedMsg as UserPresences;
-          const toAdd = ups.getPresencesList().map((p) => ({
-            uuid: p.getUserId(),
-            username: p.getUsername(),
-            channel: p.getChannel(),
-            anon: p.getIsAnonymous(),
-          }));
-          console.log('userpresences', toAdd);
-
-          storeData.addPresences(toAdd);
-          break;
-        }
-
-        case MessageType.GAME_ENDED_EVENT: {
-          console.log('got game end evt');
-          const gee = parsedMsg as GameEndedEvent;
-          storeData.setGameEndMessage(endGameMessage(gee));
-          storeData.stopClock();
-          BoopSounds.endgameSound.play();
-          break;
-        }
-
-        case MessageType.NEW_GAME_EVENT: {
-          const nge = parsedMsg as NewGameEvent;
-          console.log('got new game event', nge);
-
-          // Determine if this is the tab that should accept the game.
-          if (
-            nge.getAccepterCid() !== storeData.loginState.connID &&
-            nge.getRequesterCid() !== storeData.loginState.connID
-          ) {
-            console.log(
-              'ignoring on this tab...',
-              nge.getAccepterCid(),
-              '-',
-              nge.getRequesterCid(),
-              '-',
-              storeData.loginState.connID
-            );
             break;
           }
 
-          storeData.dispatchGameContext({
-            actionType: ActionType.ClearHistory,
-            payload: '',
-          });
-          const gid = nge.getGameId();
-          storeData.setRedirGame(gid);
-          storeData.setGameEndMessage('');
-          break;
-        }
+          case MessageType.SEEK_REQUESTS: {
+            const sr = parsedMsg as SeekRequests;
 
-        case MessageType.GAME_HISTORY_REFRESHER: {
-          const ghr = parsedMsg as GameHistoryRefresher;
-          console.log('got refresher event', ghr);
-          storeData.dispatchGameContext({
-            actionType: ActionType.RefreshHistory,
-            payload: ghr,
-          });
-          storeData.setGameEndMessage('');
+            const soughtGames = new Array<SoughtGame>();
 
-          // If there is an Antd message about "waiting for game", destroy it.
-          // XXX: This is a bit unideal.
-          message.destroy();
-          break;
-        }
+            sr.getRequestsList().forEach((r) => {
+              const userID = r.getUser()?.getUserId();
+              if (!userID || excludedPlayers.has(userID)) {
+                return;
+              }
+              const sg = SeekRequestToSoughtGame(r);
+              if (sg) {
+                soughtGames.push(sg);
+              }
+            });
 
-        case MessageType.SERVER_GAMEPLAY_EVENT: {
-          const sge = parsedMsg as ServerGameplayEvent;
-          console.log('got server event', sge);
-          storeData.dispatchGameContext({
-            actionType: ActionType.AddGameEvent,
-            payload: sge,
-          });
-          // play sound
-          if (storeData.loginState.username === sge.getEvent()?.getNickname()) {
-            BoopSounds.makeMoveSound.play();
-          } else {
-            BoopSounds.oppMoveSound.play();
+            dispatchLobbyContext({
+              actionType: ActionType.AddSoughtGames,
+              payload: soughtGames,
+            });
+
+            break;
           }
-          break;
-        }
 
-        case MessageType.SERVER_CHALLENGE_RESULT_EVENT: {
-          const sge = parsedMsg as ServerChallengeResultEvent;
-          console.log('got server challenge result event', sge);
-          storeData.challengeResultEvent(sge);
-          if (!sge.getValid()) {
-            BoopSounds.woofSound.play();
+          case MessageType.MATCH_REQUEST: {
+            const mr = parsedMsg as MatchRequest;
+
+            const userID = mr.getUser()?.getUserId();
+            if (!userID || excludedPlayers.has(userID)) {
+              break;
+            }
+
+            const receiver = mr.getReceivingUser()?.getDisplayName();
+            const soughtGame = SeekRequestToSoughtGame(mr);
+            if (soughtGame === null) {
+              break;
+            }
+            if (receiver === loginState.username) {
+              BoopSounds.matchReqSound.play();
+              if (mr.getRematchFor() !== '') {
+                // Only display the rematch modal if we are the recipient
+                // of the rematch request.
+                setRematchRequest(mr);
+              }
+            }
+
+            dispatchLobbyContext({
+              actionType: ActionType.AddMatchRequest,
+              payload: soughtGame,
+            });
+            break;
           }
-          break;
-        }
 
-        case MessageType.SOUGHT_GAME_PROCESS_EVENT: {
-          const gae = parsedMsg as SoughtGameProcessEvent;
-          console.log('got game accepted event', gae);
-          storeData.dispatchLobbyContext({
-            actionType: ActionType.RemoveSoughtGame,
-            payload: gae.getRequestId(),
-          });
+          case MessageType.MATCH_REQUESTS: {
+            const mr = parsedMsg as MatchRequests;
 
-          break;
-        }
+            const soughtGames = new Array<SoughtGame>();
 
-        case MessageType.DECLINE_MATCH_REQUEST: {
-          const dec = parsedMsg as DeclineMatchRequest;
-          console.log('got decline match request', dec);
-          storeData.dispatchLobbyContext({
-            actionType: ActionType.RemoveSoughtGame,
-            payload: dec.getRequestId(),
-          });
-          notification.info({
-            message: 'Declined',
-            description: 'Your match request was declined.',
-          });
-          break;
-        }
+            mr.getRequestsList().forEach((r) => {
+              const userID = r.getUser()?.getUserId();
+              if (!userID || excludedPlayers.has(userID)) {
+                return;
+              }
+              const sg = SeekRequestToSoughtGame(r);
+              if (sg) {
+                soughtGames.push(sg);
+              }
+            });
 
-        case MessageType.ACTIVE_GAMES: {
-          // lobby context, set list of active games
-          const age = parsedMsg as ActiveGames;
-          console.log('got active games', age);
-          storeData.dispatchLobbyContext({
-            actionType: ActionType.AddActiveGames,
-            payload: age.getGamesList().map((g) => GameMetaToActiveGame(g)),
-          });
-          break;
-        }
-
-        case MessageType.GAME_DELETION: {
-          // lobby context, remove active game
-          const gde = parsedMsg as GameDeletion;
-          console.log('delete active game', gde);
-          storeData.dispatchLobbyContext({
-            actionType: ActionType.RemoveActiveGame,
-            payload: gde.getId(),
-          });
-          break;
-        }
-
-        case MessageType.GAME_META_EVENT: {
-          // lobby context, add active game
-          const gme = parsedMsg as GameMeta;
-          console.log('add active game', gme);
-          const activeGame = GameMetaToActiveGame(gme);
-          if (!activeGame) {
-            return;
+            dispatchLobbyContext({
+              actionType: ActionType.AddMatchRequests,
+              payload: soughtGames,
+            });
+            break;
           }
-          storeData.dispatchLobbyContext({
-            actionType: ActionType.AddActiveGame,
-            payload: activeGame,
-          });
-          break;
+
+          case MessageType.SERVER_MESSAGE: {
+            const sm = parsedMsg as ServerMessage;
+            message.warning(sm.getMessage(), 2);
+            break;
+          }
+
+          case MessageType.LAG_MEASUREMENT: {
+            const lag = parsedMsg as LagMeasurement;
+            setCurrentLagMs(lag.getLagMs());
+            break;
+          }
+
+          case MessageType.ERROR_MESSAGE: {
+            console.log('got error msg');
+            const err = parsedMsg as ErrorMessage;
+            notification.error({
+              message: 'Error',
+              description: err.getMessage(),
+            });
+            addChat({
+              entityType: ChatEntityType.ErrorMsg,
+              sender: 'Woogles',
+              message: err.getMessage(),
+            });
+            break;
+          }
+
+          case MessageType.CHAT_MESSAGE: {
+            const cm = parsedMsg as ChatMessage;
+            if (excludedPlayers.has(cm.getUserId())) {
+              break;
+            }
+
+            // XXX: We should ignore this chat message if it's not for the right
+            // channel.
+
+            addChat({
+              entityType: ChatEntityType.UserChat,
+              sender: cm.getUsername(),
+              message: cm.getMessage(),
+              timestamp: cm.getTimestamp(),
+            });
+            break;
+          }
+
+          case MessageType.CHAT_MESSAGES: {
+            // These replace all existing messages.
+            const cms = parsedMsg as ChatMessages;
+
+            const entities = new Array<ChatEntityObj>();
+
+            cms.getMessagesList().forEach((cm) => {
+              if (!excludedPlayers.has(cm.getUserId())) {
+                entities.push({
+                  entityType: ChatEntityType.UserChat,
+                  sender: cm.getUsername(),
+                  message: cm.getMessage(),
+                  timestamp: cm.getTimestamp(),
+                  id: randomID(),
+                });
+              }
+            });
+
+            addChats(entities);
+            break;
+          }
+
+          case MessageType.USER_PRESENCE: {
+            console.log('userpresence', parsedMsg);
+
+            const up = parsedMsg as UserPresence;
+            if (excludedPlayers.has(up.getUserId())) {
+              break;
+            }
+            setPresence({
+              uuid: up.getUserId(),
+              username: up.getUsername(),
+              channel: up.getChannel(),
+              anon: up.getIsAnonymous(),
+            });
+            break;
+          }
+
+          case MessageType.USER_PRESENCES: {
+            const ups = parsedMsg as UserPresences;
+
+            const toAdd = new Array<PresenceEntity>();
+
+            ups.getPresencesList().forEach((p) => {
+              if (!excludedPlayers.has(p.getUserId())) {
+                toAdd.push({
+                  uuid: p.getUserId(),
+                  username: p.getUsername(),
+                  channel: p.getChannel(),
+                  anon: p.getIsAnonymous(),
+                });
+              }
+            });
+
+            addPresences(toAdd);
+            break;
+          }
+
+          case MessageType.GAME_ENDED_EVENT: {
+            console.log('got game end evt');
+            const gee = parsedMsg as GameEndedEvent;
+            setGameEndMessage(endGameMessage(gee));
+            stopClock();
+            BoopSounds.endgameSound.play();
+            break;
+          }
+
+          case MessageType.NEW_GAME_EVENT: {
+            const nge = parsedMsg as NewGameEvent;
+            console.log('got new game event', nge);
+
+            // Determine if this is the tab that should accept the game.
+            if (
+              nge.getAccepterCid() !== loginState.connID &&
+              nge.getRequesterCid() !== loginState.connID
+            ) {
+              console.log(
+                'ignoring on this tab...',
+                nge.getAccepterCid(),
+                '-',
+                nge.getRequesterCid(),
+                '-',
+                loginState.connID
+              );
+              break;
+            }
+
+            dispatchGameContext({
+              actionType: ActionType.ClearHistory,
+              payload: '',
+            });
+            const gid = nge.getGameId();
+            setRedirGame(gid);
+            setGameEndMessage('');
+            break;
+          }
+
+          case MessageType.GAME_HISTORY_REFRESHER: {
+            const ghr = parsedMsg as GameHistoryRefresher;
+            console.log('got refresher event', ghr);
+            dispatchGameContext({
+              actionType: ActionType.RefreshHistory,
+              payload: ghr,
+            });
+            setGameEndMessage('');
+
+            // If there is an Antd message about "waiting for game", destroy it.
+            // XXX: This is a bit unideal.
+            message.destroy();
+            break;
+          }
+
+          case MessageType.SERVER_GAMEPLAY_EVENT: {
+            const sge = parsedMsg as ServerGameplayEvent;
+            console.log('got server event', sge);
+            dispatchGameContext({
+              actionType: ActionType.AddGameEvent,
+              payload: sge,
+            });
+            // play sound
+            if (loginState.username === sge.getEvent()?.getNickname()) {
+              BoopSounds.makeMoveSound.play();
+            } else {
+              BoopSounds.oppMoveSound.play();
+            }
+            break;
+          }
+
+          case MessageType.SERVER_CHALLENGE_RESULT_EVENT: {
+            const sge = parsedMsg as ServerChallengeResultEvent;
+            console.log('got server challenge result event', sge);
+            challengeResultEvent(sge);
+            if (!sge.getValid()) {
+              BoopSounds.woofSound.play();
+            }
+            break;
+          }
+
+          case MessageType.SOUGHT_GAME_PROCESS_EVENT: {
+            const gae = parsedMsg as SoughtGameProcessEvent;
+            console.log('got game accepted event', gae);
+            dispatchLobbyContext({
+              actionType: ActionType.RemoveSoughtGame,
+              payload: gae.getRequestId(),
+            });
+
+            break;
+          }
+
+          case MessageType.DECLINE_MATCH_REQUEST: {
+            const dec = parsedMsg as DeclineMatchRequest;
+            console.log('got decline match request', dec);
+            dispatchLobbyContext({
+              actionType: ActionType.RemoveSoughtGame,
+              payload: dec.getRequestId(),
+            });
+            notification.info({
+              message: 'Declined',
+              description: 'Your match request was declined.',
+            });
+            break;
+          }
+
+          case MessageType.ACTIVE_GAMES: {
+            // lobby context, set list of active games
+            const age = parsedMsg as ActiveGames;
+            console.log('got active games', age);
+            dispatchLobbyContext({
+              actionType: ActionType.AddActiveGames,
+              payload: age.getGamesList().map((g) => GameMetaToActiveGame(g)),
+            });
+            break;
+          }
+
+          case MessageType.GAME_DELETION: {
+            // lobby context, remove active game
+            const gde = parsedMsg as GameDeletion;
+            console.log('delete active game', gde);
+            dispatchLobbyContext({
+              actionType: ActionType.RemoveActiveGame,
+              payload: gde.getId(),
+            });
+            break;
+          }
+
+          case MessageType.GAME_META_EVENT: {
+            // lobby context, add active game
+            const gme = parsedMsg as GameMeta;
+            console.log('add active game', gme);
+            const activeGame = GameMetaToActiveGame(gme);
+            if (!activeGame) {
+              return;
+            }
+            dispatchLobbyContext({
+              actionType: ActionType.AddActiveGame,
+              payload: activeGame,
+            });
+            break;
+          }
         }
-      }
-    });
-  };
+      });
+    },
+    [
+      addChat,
+      addChats,
+      addPresences,
+      challengeResultEvent,
+      dispatchGameContext,
+      dispatchLobbyContext,
+      excludedPlayers,
+      loginState.connID,
+      loginState.username,
+      setCurrentLagMs,
+      setGameEndMessage,
+      setPresence,
+      setRedirGame,
+      setRematchRequest,
+      stopClock,
+    ]
+  );
 };
