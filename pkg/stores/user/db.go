@@ -15,8 +15,6 @@ import (
 	"github.com/rs/zerolog/log"
 
 	"github.com/domino14/liwords/pkg/entity"
-	"github.com/domino14/liwords/pkg/glicko"
-	"github.com/domino14/liwords/pkg/stats"
 )
 
 // DBStore is a postgres-backed store for users.
@@ -611,57 +609,35 @@ func (s *DBStore) ListAllIDs(ctx context.Context) ([]string, error) {
 }
 
 func (s *DBStore) ResetStatsAndRatings(ctx context.Context, uid string) error {
-	u, err := s.Get(ctx, uid)
+	u, err := s.GetByUUID(ctx, uid)
 	if err != nil {
-		return errors.New(fmt.Sprintf("Error retrieving user %s\n", uid))
+		return err
 	}
 	p := &profile{}
 	if result := s.db.Model(u).Related(p); result.Error != nil {
-		return errors.New(fmt.Sprintf("Error getting profile for "))
+		return errors.New(fmt.Sprintf("Error getting profile for %s", uid))
 	}
 
-	// Reset profile stats
-	var existingProfileStats entity.ProfileStats
-	err = json.Unmarshal(p.Stats.RawMessage, &existingProfileStats)
+	emptyRatings := &entity.Ratings{}
+	bytes, err := json.Marshal(emptyRatings)
 	if err != nil {
-		log.Err(err).Msg("existing stats missing; initializing...")
-		existingProfileStats = entity.ProfileStats{Data: map[entity.VariantKey]*entity.Stats{}}
+		return err
 	}
-	if existingProfileStats.Data == nil {
-		existingProfileStats.Data = make(map[entity.VariantKey]*entity.Stats)
-	}
-
-	for key, _ := range existingProfileStats.Data {
-		newStats := stats.InstantiateNewStats(uid, "")
-		err = s.SetStats(ctx, uid, key, newStats)
-		if err != nil {
-			log.Err(err).Str("uid-key", uid+string(key)).Msg("failed-on-variant-stats")
-			continue
-		}
-	}
-
-	// Reset ratings
-	var existingRatings entity.Ratings
-	err = json.Unmarshal(p.Ratings.RawMessage, &existingRatings)
+	err = s.db.Model(p).Update("ratings", bytes).Error
 	if err != nil {
-		log.Err(err).Msg("existing ratings missing; initializing...")
-		existingRatings = entity.Ratings{Data: map[entity.VariantKey]entity.SingleRating{}}
+		return err
 	}
 
-	if existingRatings.Data == nil {
-		existingRatings.Data = make(map[entity.VariantKey]entity.SingleRating)
+	emptyStats := &entity.Stats{}
+	bytes, err = json.Marshal(emptyStats)
+	if err != nil {
+		return err
+	}
+	err = s.db.Model(p).Update("stats", bytes).Error
+	if err != nil {
+		return err
 	}
 
-	for key, _ := range existingRatings.Data {
-		err = s.SetRating(ctx, uid, key, entity.SingleRating{Rating: float64(glicko.InitialRating),
-			RatingDeviation: float64(glicko.InitialRatingDeviation),
-			Volatility:      glicko.InitialVolatility})
-
-		if err != nil {
-			log.Err(err).Str("uid-key", uid+string(key)).Msg("failed-on-variant-ratings")
-			continue
-		}
-	}
 	return nil
 }
 

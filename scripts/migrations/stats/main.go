@@ -30,7 +30,7 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	log.Info().Interface("ids", ids).Msg("listed-game-ids")
+	log.Info().Interface("ids", ids).Msg("listed-user-ids")
 
 	for _, uid := range ids {
 		err = userStore.ResetStatsAndRatings(ctx, uid)
