@@ -37,8 +37,8 @@ export const GamesHistoryCard = React.memo((props: Props) => {
       );
       let result = <Tag color={colors.colorBoardTWS}>Loss</Tag>;
       const challenge = {
-        FIVE_POINT: '-5',
-        TEN_POINT: '-10',
+        FIVE_POINT: '+5',
+        TEN_POINT: '+10',
         SINGLE: 'x1',
         DOUBLE: 'x2',
         TRIPLE: 'x3',
