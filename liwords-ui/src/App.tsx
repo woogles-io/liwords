@@ -13,7 +13,6 @@ import {
 
 import { LiwordsSocket } from './socket/socket';
 import { About } from './about/about';
-import { Login } from './lobby/login';
 import { Register } from './lobby/register';
 import { UserProfile } from './profile/profile';
 import { PasswordChange } from './lobby/password_change';
