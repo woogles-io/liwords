@@ -129,9 +129,7 @@
     min-width: 100px;
   }
   td.details {
-    display: flex;
-    align-items: center;
-    justify-content: flex-end;
+    text-align: right;
     .anticon-fund {
       color: $color-primary-dark;
       font-size: 18px;

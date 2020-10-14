@@ -7,7 +7,7 @@ import {
   calculateTotalTime,
   challRuleToStr,
   timeCtrlToDisplayName,
-  initialTimeLabel,
+  timeToString,
 } from '../store/constants';
 import { SoughtGame } from '../store/reducers/lobby_reducer';
 
@@ -30,7 +30,11 @@ export const timeFormat = (
     maxOvertime
   )[0];
 
-  return `${label} ${initialTimeLabel(initialTimeSecs)}/${incrementSecs}`;
+  return `${label} ${timeToString(
+    initialTimeSecs,
+    incrementSecs,
+    maxOvertime
+  )}`;
 };
 
 export const challengeFormat = (cr: number) => {

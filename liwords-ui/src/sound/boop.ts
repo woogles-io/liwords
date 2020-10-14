@@ -14,11 +14,29 @@ const endgameSound = new Audio(endgameMP3);
 const woofSound = new Audio(woofWav);
 woofSound.volume = 0.25;
 
-export const BoopSounds = {
+const playableSounds: { [key: string]: HTMLAudioElement } = {
   makeMoveSound,
   oppMoveSound,
   matchReqSound,
   startgameSound,
   endgameSound,
   woofSound,
+};
+
+const playSound = (soundName: string) => {
+  const audio = playableSounds[soundName];
+  if (!audio) {
+    throw new TypeError(`unsupported sound: ${soundName}`);
+  }
+  (async () => {
+    try {
+      await audio.play();
+    } catch (e) {
+      console.warn(`cannot play ${soundName}:`, e);
+    }
+  })();
+};
+
+export const BoopSounds = {
+  playSound,
 };

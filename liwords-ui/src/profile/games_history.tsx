@@ -4,6 +4,7 @@ import { GameMetadata } from '../gameroom/game_info';
 import { Button, Card, Table, Tag, Tooltip } from 'antd';
 import { CheckCircleTwoTone } from '@ant-design/icons';
 import { FundOutlined } from '@ant-design/icons/lib';
+import { timeToString } from '../store/constants';
 
 const colors = require('../base.scss');
 
@@ -36,8 +37,8 @@ export const GamesHistoryCard = React.memo((props: Props) => {
       );
       let result = <Tag color={colors.colorBoardTWS}>Loss</Tag>;
       const challenge = {
-        FIVE_POINT: '-5',
-        TEN_POINT: '-10',
+        FIVE_POINT: '+5',
+        TEN_POINT: '+10',
         SINGLE: 'x1',
         DOUBLE: 'x2',
         TRIPLE: 'x3',
@@ -49,7 +50,7 @@ export const GamesHistoryCard = React.memo((props: Props) => {
             <span className={`challenge-rule mode_${challenge}`}>
               {challenge}
             </span>
-            {item.rating_mode ? (
+            {item.rating_mode === 'RATED' ? (
               <Tooltip title="Rated">
                 <FundOutlined />
               </Tooltip>
@@ -87,9 +88,11 @@ export const GamesHistoryCard = React.memo((props: Props) => {
         case 'STANDARD':
           endReason = 'Completed';
       }
-      const time = `${item.time_control_name} (${
-        item.initial_time_seconds / 60
-      }/${item.increment_seconds})`;
+      const time = `${item.time_control_name} ${timeToString(
+        item.initial_time_seconds,
+        item.increment_seconds,
+        item.max_overtime_minutes
+      )}`;
       return {
         details: getDetails(),
         result,

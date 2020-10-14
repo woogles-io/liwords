@@ -190,7 +190,7 @@ export const useOnSocketMsg = () => {
               break;
             }
             if (receiver === loginState.username) {
-              BoopSounds.matchReqSound.play();
+              BoopSounds.playSound('matchReqSound');
               if (mr.getRematchFor() !== '') {
                 // Only display the rematch modal if we are the recipient
                 // of the rematch request.
@@ -336,7 +336,7 @@ export const useOnSocketMsg = () => {
             const gee = parsedMsg as GameEndedEvent;
             setGameEndMessage(endGameMessage(gee));
             stopClock();
-            BoopSounds.endgameSound.play();
+            BoopSounds.playSound('endgameSound');
             break;
           }
 
@@ -394,9 +394,9 @@ export const useOnSocketMsg = () => {
             });
             // play sound
             if (loginState.username === sge.getEvent()?.getNickname()) {
-              BoopSounds.makeMoveSound.play();
+              BoopSounds.playSound('makeMoveSound');
             } else {
-              BoopSounds.oppMoveSound.play();
+              BoopSounds.playSound('oppMoveSound');
             }
             break;
           }
@@ -406,7 +406,7 @@ export const useOnSocketMsg = () => {
             console.log('got server challenge result event', sge);
             challengeResultEvent(sge);
             if (!sge.getValid()) {
-              BoopSounds.woofSound.play();
+              BoopSounds.playSound('woofSound');
             }
             break;
           }
