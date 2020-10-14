@@ -194,45 +194,51 @@ func computeGameStats(ctx context.Context, history *macondopb.GameHistory, req *
 		}
 	}
 
-	p0NewProfileStats := stats.InstantiateNewStats(p0id, "")
-	p1NewProfileStats := stats.InstantiateNewStats(p1id, "")
+	// Only add the game to profile stats if the game was rated
+	// and was not triple challenge.
+	if req.RatingMode == pb.RatingMode_RATED &&
+		history.ChallengeRule != macondopb.ChallengeRule_TRIPLE {
+		p0NewProfileStats := stats.InstantiateNewStats(p0id, "")
+		p1NewProfileStats := stats.InstantiateNewStats(p1id, "")
 
-	p0ProfileStats, err := statsForUser(ctx, p0id, userStore, variantKey)
-	if err != nil {
-		return nil, err
+		p0ProfileStats, err := statsForUser(ctx, p0id, userStore, variantKey)
+		if err != nil {
+			return nil, err
+		}
+
+		p1ProfileStats, err := statsForUser(ctx, p1id, userStore, variantKey)
+		if err != nil {
+			return nil, err
+		}
+
+		err = stats.AddStats(p0NewProfileStats, p0ProfileStats)
+		if err != nil {
+			return nil, err
+		}
+		err = stats.AddStats(p1NewProfileStats, p1ProfileStats)
+		if err != nil {
+			return nil, err
+		}
+		err = stats.AddStats(p0NewProfileStats, gameStats)
+		if err != nil {
+			return nil, err
+		}
+		err = stats.AddStats(p1NewProfileStats, gameStats)
+		if err != nil {
+			return nil, err
+		}
+
+		// Save all stats back to the database.
+		err = userStore.SetStats(ctx, p0id, variantKey, p0NewProfileStats)
+		if err != nil {
+			return nil, err
+		}
+		err = userStore.SetStats(ctx, p1id, variantKey, p1NewProfileStats)
+		if err != nil {
+			return nil, err
+		}
 	}
 
-	p1ProfileStats, err := statsForUser(ctx, p1id, userStore, variantKey)
-	if err != nil {
-		return nil, err
-	}
-
-	err = stats.AddStats(p0NewProfileStats, p0ProfileStats)
-	if err != nil {
-		return nil, err
-	}
-	err = stats.AddStats(p1NewProfileStats, p1ProfileStats)
-	if err != nil {
-		return nil, err
-	}
-	err = stats.AddStats(p0NewProfileStats, gameStats)
-	if err != nil {
-		return nil, err
-	}
-	err = stats.AddStats(p1NewProfileStats, gameStats)
-	if err != nil {
-		return nil, err
-	}
-
-	// Save all stats back to the database.
-	err = userStore.SetStats(ctx, p0id, variantKey, p0NewProfileStats)
-	if err != nil {
-		return nil, err
-	}
-	err = userStore.SetStats(ctx, p1id, variantKey, p1NewProfileStats)
-	if err != nil {
-		return nil, err
-	}
 	return gameStats, nil
 }
 

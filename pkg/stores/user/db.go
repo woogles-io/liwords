@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"math/rand"
 	"sort"
 	"strings"
@@ -14,6 +15,8 @@ import (
 	"github.com/rs/zerolog/log"
 
 	"github.com/domino14/liwords/pkg/entity"
+	"github.com/domino14/liwords/pkg/glicko"
+	"github.com/domino14/liwords/pkg/stats"
 )
 
 // DBStore is a postgres-backed store for users.
@@ -303,6 +306,68 @@ func (s *DBStore) SetRating(ctx context.Context, uuid string, variant entity.Var
 	return s.db.Model(p).Update("ratings", postgres.Jsonb{RawMessage: bytes}).Error
 }
 
+// SetRatings set the specific ratings for the given variant in a transaction.
+func (s *DBStore) SetRatings(ctx context.Context, p0uuid string, p1uuid string, variant entity.VariantKey,
+	p1Rating entity.SingleRating, p2Rating entity.SingleRating) error {
+
+	p0Profile, p0RatingBytes, err := getRatingBytes(s, ctx, p0uuid, variant, p1Rating)
+	if err != nil {
+		return err
+	}
+
+	p1Profile, p1RatingBytes, err := getRatingBytes(s, ctx, p1uuid, variant, p1Rating)
+	if err != nil {
+		return err
+	}
+
+	return s.db.Transaction(func(tx *gorm.DB) error {
+		err := s.db.Model(p0Profile).Update("ratings", postgres.Jsonb{RawMessage: p0RatingBytes}).Error
+
+		if err != nil {
+			return err
+		}
+
+		err = s.db.Model(p1Profile).Update("ratings", postgres.Jsonb{RawMessage: p1RatingBytes}).Error
+
+		if err != nil {
+			return err
+		}
+		// return nil will commit the whole transaction
+		return nil
+	})
+}
+
+func getRatingBytes(s *DBStore, ctx context.Context, uuid string, variant entity.VariantKey,
+	rating entity.SingleRating) (*profile, []byte, error) {
+	u := &User{}
+	p := &profile{}
+
+	if result := s.db.Where("uuid = ?", uuid).First(u); result.Error != nil {
+		return nil, nil, result.Error
+	}
+	if result := s.db.Model(u).Related(p); result.Error != nil {
+		return nil, nil, result.Error
+	}
+
+	var existingRatings entity.Ratings
+	err := json.Unmarshal(p.Ratings.RawMessage, &existingRatings)
+	if err != nil {
+		log.Err(err).Msg("existing ratings missing; initializing...")
+		existingRatings = entity.Ratings{Data: map[entity.VariantKey]entity.SingleRating{}}
+	}
+
+	if existingRatings.Data == nil {
+		existingRatings.Data = make(map[entity.VariantKey]entity.SingleRating)
+	}
+	existingRatings.Data[variant] = rating
+
+	bytes, err := json.Marshal(existingRatings)
+	if err != nil {
+		return nil, nil, err
+	}
+	return p, bytes, nil
+}
+
 func (s *DBStore) SetStats(ctx context.Context, uuid string, variant entity.VariantKey,
 	stats *entity.Stats) error {
 
@@ -530,6 +595,74 @@ func (s *DBStore) UsernamesByPrefix(ctx context.Context, prefix string) ([]strin
 	sort.Strings(usernames)
 
 	return usernames, nil
+}
+
+// List all user IDs.
+func (s *DBStore) ListAllIDs(ctx context.Context) ([]string, error) {
+	var uids []struct{ Uuid string }
+	result := s.db.Table("users").Select("uuid").Scan(&uids)
+
+	ids := make([]string, len(uids))
+	for idx, uid := range uids {
+		ids[idx] = uid.Uuid
+	}
+
+	return ids, result.Error
+}
+
+func (s *DBStore) ResetStatsAndRatings(ctx context.Context, uid string) error {
+	u, err := s.Get(ctx, uid)
+	if err != nil {
+		return errors.New(fmt.Sprintf("Error retrieving user %s\n", uid))
+	}
+	p := &profile{}
+	if result := s.db.Model(u).Related(p); result.Error != nil {
+		return errors.New(fmt.Sprintf("Error getting profile for "))
+	}
+
+	// Reset profile stats
+	var existingProfileStats entity.ProfileStats
+	err = json.Unmarshal(p.Stats.RawMessage, &existingProfileStats)
+	if err != nil {
+		log.Err(err).Msg("existing stats missing; initializing...")
+		existingProfileStats = entity.ProfileStats{Data: map[entity.VariantKey]*entity.Stats{}}
+	}
+	if existingProfileStats.Data == nil {
+		existingProfileStats.Data = make(map[entity.VariantKey]*entity.Stats)
+	}
+
+	for key, _ := range existingProfileStats.Data {
+		newStats := stats.InstantiateNewStats(uid, "")
+		err = s.SetStats(ctx, uid, key, newStats)
+		if err != nil {
+			log.Err(err).Str("uid-key", uid+string(key)).Msg("failed-on-variant-stats")
+			continue
+		}
+	}
+
+	// Reset ratings
+	var existingRatings entity.Ratings
+	err = json.Unmarshal(p.Ratings.RawMessage, &existingRatings)
+	if err != nil {
+		log.Err(err).Msg("existing ratings missing; initializing...")
+		existingRatings = entity.Ratings{Data: map[entity.VariantKey]entity.SingleRating{}}
+	}
+
+	if existingRatings.Data == nil {
+		existingRatings.Data = make(map[entity.VariantKey]entity.SingleRating)
+	}
+
+	for key, _ := range existingRatings.Data {
+		err = s.SetRating(ctx, uid, key, entity.SingleRating{Rating: float64(glicko.InitialRating),
+			RatingDeviation: float64(glicko.InitialRatingDeviation),
+			Volatility:      glicko.InitialVolatility})
+
+		if err != nil {
+			log.Err(err).Str("uid-key", uid+string(key)).Msg("failed-on-variant-ratings")
+			continue
+		}
+	}
+	return nil
 }
 
 func (s *DBStore) Disconnect() {
