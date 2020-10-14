@@ -4,6 +4,7 @@ import { GameMetadata } from '../gameroom/game_info';
 import { Button, Card, Table, Tag, Tooltip } from 'antd';
 import { CheckCircleTwoTone } from '@ant-design/icons';
 import { FundOutlined } from '@ant-design/icons/lib';
+import { timeToString } from '../store/constants';
 
 const colors = require('../base.scss');
 
@@ -87,9 +88,11 @@ export const GamesHistoryCard = React.memo((props: Props) => {
         case 'STANDARD':
           endReason = 'Completed';
       }
-      const time = `${item.time_control_name} (${
-        item.initial_time_seconds / 60
-      }/${item.increment_seconds})`;
+      const time = `${item.time_control_name} ${timeToString(
+        item.initial_time_seconds,
+        item.increment_seconds,
+        item.max_overtime_minutes
+      )}`;
       return {
         details: getDetails(),
         result,
