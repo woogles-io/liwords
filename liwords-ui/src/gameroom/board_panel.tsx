@@ -89,7 +89,8 @@ const gcgExport = (gameID: string, playerMeta: Array<PlayerMetadata>) => {
       link.href = url;
       let downloadFilename = `${gameID}.gcg`;
       // TODO: allow more characters as applicable
-      if (playerMeta.every((x) => /^[0-9A-Za-z]+$/.test(x.nickname))) {
+      // Note: does not actively prevent saving .dotfiles or nul.something
+      if (playerMeta.every((x) => /^[-0-9A-Za-z_.]+$/.test(x.nickname))) {
         const byStarts: Array<Array<string>> = [[], []];
         for (const x of playerMeta) {
           byStarts[+!!x.first].push(x.nickname);
