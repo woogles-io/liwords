@@ -127,6 +127,17 @@ export const useOnSocketMsg = () => {
       msgs.forEach((msg) => {
         const { msgType, parsedMsg } = msg;
 
+        const msgTypeStr = Object.keys(MessageType).find(
+          (k) => (MessageType as { [key: string]: any })[k] === msgType
+        );
+        console.log(
+          '%crcvd',
+          'background: pink',
+          msgTypeStr || msgType,
+          parsedMsg.toObject(),
+          performance.now()
+        );
+
         switch (msgType) {
           case MessageType.SEEK_REQUEST: {
             const sr = parsedMsg as SeekRequest;

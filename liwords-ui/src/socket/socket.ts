@@ -10,6 +10,8 @@ import { useOnSocketMsg } from '../store/socket_handlers';
 import { decodeToMsg } from '../utils/protobuf';
 import { toAPIUrl } from '../api/api';
 import { ActionType } from '../actions/actions';
+import { parseMsgs } from '../store/socket_handlers';
+import { MessageType } from '../gen/api/proto/realtime/realtime_pb';
 
 const getSocketURI = (): string => {
   const loc = window.location;
@@ -121,7 +123,7 @@ export const LiwordsSocket = (props: {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loginStateStore.loginState.connectedToSocket]);
 
-  const { sendMessage } = useWebSocket(
+  const { sendMessage: originalSendMessage } = useWebSocket(
     useCallback(() => fullSocketUrl, [fullSocketUrl]),
     {
       onOpen: () => {
@@ -146,6 +148,30 @@ export const LiwordsSocket = (props: {
     },
     !disconnect &&
       fullSocketUrl !== '' /* only connect if the socket token is not null */
+  );
+
+  const sendMessage: (msg: Uint8Array) => void = useCallback(
+    (msg) => {
+      const msgs = parseMsgs(msg);
+
+      msgs.forEach((msg) => {
+        const { msgType, parsedMsg } = msg;
+
+        const msgTypeStr = Object.keys(MessageType).find(
+          (k) => (MessageType as { [key: string]: any })[k] === msgType
+        );
+        console.log(
+          '%csent',
+          'background: cyan',
+          msgTypeStr || msgType,
+          parsedMsg.toObject(),
+          performance.now()
+        );
+      });
+
+      return originalSendMessage(msg);
+    },
+    [originalSendMessage]
   );
 
   const ret = useMemo(() => ({ sendMessage, justDisconnected }), [
