@@ -2,7 +2,6 @@ package registration
 
 import (
 	"context"
-	"errors"
 	"os"
 
 	"github.com/domino14/liwords/pkg/user"
@@ -27,9 +26,9 @@ func (rs *RegistrationService) Register(ctx context.Context, r *pb.UserRegistrat
 	code := os.Getenv("REGISTRATION_CODE")
 	codebot := "bot" + code
 
-	if r.RegistrationCode != code && r.RegistrationCode != codebot {
-		return nil, errors.New("unauthorized")
-	}
+	// if r.RegistrationCode != code && r.RegistrationCode != codebot {
+	// 	return nil, errors.New("unauthorized")
+	// }
 	err := RegisterUser(ctx, r.Username, r.Password, r.Email, rs.userStore,
 		r.RegistrationCode == codebot)
 	if err != nil {

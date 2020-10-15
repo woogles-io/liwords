@@ -1,10 +1,11 @@
-import React from 'react';
+import React, { useState } from 'react';
 import './topbar.scss';
 import { DisconnectOutlined, SettingOutlined } from '@ant-design/icons/lib';
-import { notification, Dropdown, Tooltip } from 'antd';
+import { notification, Dropdown, Tooltip, Modal } from 'antd';
 import { useLagStoreContext, useLoginStateStoreContext } from '../store/store';
 import axios from 'axios';
 import { toAPIUrl } from '../api/api';
+import { Login } from '../lobby/login';
 
 const colors = require('../base.scss');
 const topMenu = (
@@ -30,6 +31,8 @@ export const TopBar = React.memo((props: Props) => {
   const { currentLagMs } = useLagStoreContext();
   const { loginState } = useLoginStateStoreContext();
   const { username, loggedIn, connectedToSocket } = loginState;
+  const [loginModalVisible, setLoginModalVisible] = useState(false);
+
   const handleLogout = (e: React.MouseEvent) => {
     e.preventDefault();
     axios
@@ -93,7 +96,24 @@ export const TopBar = React.memo((props: Props) => {
           </div>
         ) : (
           <div className="user-info">
-            <a href="/login">Log In</a>
+            <button className="link" onClick={() => setLoginModalVisible(true)}>
+              Log In
+            </button>
+            <a href="/register">
+              <button className="primary">Sign Up</button>
+            </a>
+            <Modal
+              className="login-modal"
+              title="Welcome back, friend!"
+              visible={loginModalVisible}
+              onCancel={() => {
+                setLoginModalVisible(false);
+              }}
+              footer={null}
+              width={332}
+            >
+              <Login />
+            </Modal>
           </div>
         )}
       </div>

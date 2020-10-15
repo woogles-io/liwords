@@ -3,19 +3,22 @@
 
 @include button;
 
-div.registration {
+div.account {
   display: flex;
   flex-direction: row;
-  margin: 48px;
+
   align-items: flex-start;
   justify-content: center;
+  .register {
+    margin: 48px;
+  }
   .woogles {
     display: none;
     width: 256px;
     height: 418px;
     margin-top: 64px;
   }
-  .registration-form {
+  .account-form.register {
     max-width: 634px;
     h3 {
       font-family: $font-default;
@@ -72,10 +75,57 @@ div.registration {
   }
 }
 
+.ant-modal.login-modal {
+  .ant-modal-body {
+    padding-top: 12px;
+  }
+  .ant-modal-title {
+    font-size: 18px;
+    line-height: 2em;
+  }
+  .ant-modal-close {
+    display: none;
+  }
+  input {
+    height: 48px;
+  }
+  button {
+    margin-top: 6px;
+  }
+  .ant-row.ant-form-item.password {
+    &, * {
+      transition: none;
+    }
+    input {
+      height: 48px;
+      border-radius: 4px;
+    }
+
+    margin-bottom: 12px;
+    .ant-form-item-explain {
+      margin-top: 12px;
+    }
+  }
+  a {
+    cursor: pointer;
+    letter-spacing: 0;
+    color: $color-primary-dark;
+    font-weight: bold;
+    font-size: 13px;
+    border: 0;
+    outline: 0;
+    &:hover,
+    &:active {
+      color: $color-primary-midDark;
+    }
+  }
+}
 @media (min-width: $screen-tablet-min) {
-  div.registration {
-    .registration-form {
-      margin-left: 95px;
+  div.account {
+    .account-form {
+      &.register {
+        margin-left: 95px;
+      }
       .ant-checkbox-wrapper {
         max-width: 540px;
       }
