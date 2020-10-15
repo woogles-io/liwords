@@ -14,8 +14,8 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-func performEndgameDuties(ctx context.Context, g *entity.Game,
-	userStore user.Store, listStatStore stats.ListStatStore) {
+func performEndgameDuties(ctx context.Context, g *entity.Game, gameStore GameStore,
+	userStore user.Store, listStatStore stats.ListStatStore) error {
 
 	log.Debug().Interface("game-end-reason", g.GameEndReason).Msg("checking-game-over")
 	// The game is over already. Set an end game reason if there hasn't been
@@ -151,12 +151,23 @@ func performEndgameDuties(ctx context.Context, g *entity.Game,
 			g.Stats = gameStats
 		}
 	}
+
 	// And finally, send a notification to the lobby that this
 	// game ended. This will remove it from the list of live games.
 	wrapped = entity.WrapEvent(&pb.GameDeletion{Id: g.GameID()},
 		pb.MessageType_GAME_DELETION)
 	wrapped.AddAudience(entity.AudLobby, "gameEnded")
 	g.SendChange(wrapped)
+
+	// Save and unload the game from the cache.
+
+	err = gameStore.Set(ctx, g)
+	if err != nil {
+		return err
+	}
+	log.Info().Str("gameID", g.GameID()).Msg("game-ended-unload-cache")
+	gameStore.Unload(ctx, g.GameID())
+	return nil
 }
 
 func computeGameStats(ctx context.Context, history *macondopb.GameHistory, req *pb.GameRequest,
@@ -250,17 +261,29 @@ func setTimedOut(ctx context.Context, entGame *entity.Game, pidx int, gameStore 
 	entGame.SetGameEndReason(pb.GameEndReason_TIME)
 	entGame.SetWinnerIdx(1 - pidx)
 	entGame.SetLoserIdx(pidx)
-	performEndgameDuties(ctx, entGame, userStore, listStatStore)
+	return performEndgameDuties(ctx, entGame, gameStore, userStore, listStatStore)
+}
 
-	// Store the game back into the store
-	err := gameStore.Set(ctx, entGame)
+// AbortGame aborts a game. This should only be done for games that never started.
+func AbortGame(ctx context.Context, gameStore GameStore, gameID string) error {
+	entGame, err := gameStore.Get(ctx, gameID)
+	if err != nil {
+		return err
+	}
+	entGame.Lock()
+	defer entGame.Unlock()
+	entGame.SetGameEndReason(pb.GameEndReason_ABANDONED)
+
+	entGame.History().PlayState = macondopb.PlayState_GAME_OVER
+
+	// save the game back into the store
+	err = gameStore.Set(ctx, entGame)
 	if err != nil {
 		return err
 	}
 	// Unload the game
-
-	gameStore.Unload(ctx, entGame.GameID())
-
+	log.Info().Str("gameID", gameID).Msg("game-aborted-unload-cache")
+	gameStore.Unload(ctx, gameID)
 	return nil
 }
 

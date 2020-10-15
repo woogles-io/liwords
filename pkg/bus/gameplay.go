@@ -92,7 +92,6 @@ func (b *Bus) instantiateAndStartGame(ctx context.Context, accUser *entity.User,
 		Str("sender", accUser.UUID).
 		Str("requester", requester).
 		Str("reqID", reqID).
-		Interface("starting-in", GameStartDelay).
 		Str("onturn", g.NickOnTurn()).Msg("game-accepted")
 
 	return nil
@@ -136,7 +135,7 @@ func (b *Bus) handleBotMove(ctx context.Context, g *entity.Game) {
 			timeRemaining := g.TimeRemaining(onTurn)
 
 			m := game.MoveFromEvent(r.Move, g.Alphabet(), g.Board())
-			err = gameplay.PlayMove(ctx, g, b.userStore, b.listStatStore, userID, onTurn, timeRemaining, m)
+			err = gameplay.PlayMove(ctx, g, b.gameStore, b.userStore, b.listStatStore, userID, onTurn, timeRemaining, m)
 			if err != nil {
 				log.Err(err).Msg("bot-cant-move-play-error")
 				return
@@ -215,6 +214,7 @@ func (b *Bus) adjudicateGames(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
+	now := time.Now()
 	log.Debug().Interface("active-games", gs).Msg("maybe-adjudicating...")
 	for _, g := range gs {
 		// These will likely be in the cache.
@@ -232,6 +232,20 @@ func (b *Bus) adjudicateGames(ctx context.Context) error {
 			err = gameplay.TimedOut(ctx, b.gameStore, b.userStore,
 				b.listStatStore, entGame.Game.PlayerIDOnTurn(), g.Id)
 			log.Err(err).Msg("adjudicating-after-gameplay-timed-out")
+		} else if !started && now.Sub(entGame.CreatedAt) > CancelAfter {
+			log.Debug().Str("gid", g.Id).
+				Interface("now", now).
+				Interface("created", entGame.CreatedAt).
+				Msg("canceling-never-started")
+			err = gameplay.AbortGame(ctx, b.gameStore, g.Id)
+			log.Err(err).Msg("adjudicating-after-abort-game")
+			// Delete the game from the lobby. We do this here instead
+			// of inside the gameplay package because the game event channel
+			// was never registered with an unstarted game.
+			wrapped := entity.WrapEvent(&pb.GameDeletion{Id: g.Id},
+				pb.MessageType_GAME_DELETION)
+			wrapped.AddAudience(entity.AudLobby, "gameEnded")
+			b.gameEventChan <- wrapped
 		}
 	}
 	return nil

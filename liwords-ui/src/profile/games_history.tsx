@@ -1,9 +1,9 @@
 import React from 'react';
 import moment from 'moment';
-import { GameMetadata } from '../gameroom/game_info';
 import { Button, Card, Table, Tag, Tooltip } from 'antd';
 import { CheckCircleTwoTone } from '@ant-design/icons';
 import { FundOutlined } from '@ant-design/icons/lib';
+import { GameMetadata } from '../gameroom/game_info';
 import { timeToString } from '../store/constants';
 
 const colors = require('../base.scss');
@@ -20,7 +20,9 @@ export const GamesHistoryCard = React.memo((props: Props) => {
   const { userID } = props;
 
   const formattedGames = props.games
-    .filter((item) => item.players?.length)
+    .filter(
+      (item) => item.players?.length && item.game_end_reason !== 'ABANDONED'
+    )
     .map((item) => {
       const userplace = item.players[0].user_id === userID ? 0 : 1;
       const opponent = (
@@ -80,7 +82,7 @@ export const GamesHistoryCard = React.memo((props: Props) => {
           endReason = 'Resignation';
           break;
         case 'ABANDONED':
-          endReason = 'Abandoned';
+          endReason = 'Cancelled';
           break;
         case 'TRIPLE_CHALLENGE':
           endReason = 'Triple Challenge';

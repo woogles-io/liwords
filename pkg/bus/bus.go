@@ -26,11 +26,11 @@ import (
 )
 
 const (
-	GameStartDelay = 3 * time.Second
-
 	MaxMessageLength = 500
 
-	AdjudicateInterval = 5 * time.Second
+	AdjudicateInterval = 10 * time.Second
+	// Cancel a game if it hasn't started after this much time.
+	CancelAfter = 30 * time.Second
 )
 
 const (

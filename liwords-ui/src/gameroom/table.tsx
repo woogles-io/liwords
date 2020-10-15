@@ -106,11 +106,8 @@ export const Table = React.memo((props: Props) => {
       }
     };
 
-
     document.addEventListener('keydown', evtHandler);
     document.addEventListener('keypress', evtHandler);
-
-
 
     return () => {
       document.removeEventListener('keydown', evtHandler);
@@ -119,28 +116,24 @@ export const Table = React.memo((props: Props) => {
   }, []);
 
   useEffect(() => {
-    console.log('playstate', gameContext.playState, 'isObserver', isObserver);
     if (gameContext.playState === PlayState.GAME_OVER || isObserver) {
-      return;
+      return () => {};
     }
 
     const evtHandler = (evt: BeforeUnloadEvent) => {
-      console.log(gameContext.playState, isObserver);
       if (gameContext.playState !== PlayState.GAME_OVER && !isObserver) {
         const msg = 'You are currently in a game!';
+        // eslint-disable-next-line no-param-reassign
         evt.returnValue = msg;
         return msg;
       }
-    }
-    console.log('adding event listener')
+      return true;
+    };
     window.addEventListener('beforeunload', evtHandler);
     return () => {
-      console.log('removing event listener')
       window.removeEventListener('beforeunload', evtHandler);
-    }
-
-  }, [gameContext.playState, isObserver])
-
+    };
+  }, [gameContext.playState, isObserver]);
 
   useEffect(() => {
     // Request game API to get info about the game at the beginning.

@@ -5,6 +5,18 @@ import {
   randomID,
   ChatEntityObj,
   PresenceEntity,
+  useChallengeResultEventStoreContext,
+  useChatStoreContext,
+  useExcludedPlayersStoreContext,
+  useGameContextStoreContext,
+  useGameEndMessageStoreContext,
+  useLagStoreContext,
+  useLobbyStoreContext,
+  useLoginStateStoreContext,
+  usePresenceStoreContext,
+  useRedirGameStoreContext,
+  useRematchRequestStoreContext,
+  useTimerStoreContext,
 } from './store';
 import {
   MessageType,
@@ -42,20 +54,6 @@ import {
   SoughtGame,
 } from './reducers/lobby_reducer';
 import { BoopSounds } from '../sound/boop';
-import {
-  useChallengeResultEventStoreContext,
-  useChatStoreContext,
-  useExcludedPlayersStoreContext,
-  useGameContextStoreContext,
-  useGameEndMessageStoreContext,
-  useLagStoreContext,
-  useLobbyStoreContext,
-  useLoginStateStoreContext,
-  usePresenceStoreContext,
-  useRedirGameStoreContext,
-  useRematchRequestStoreContext,
-  useTimerStoreContext,
-} from '../store/store';
 
 export const parseMsgs = (msg: Uint8Array) => {
   // Multiple msgs can come in the same packet.
