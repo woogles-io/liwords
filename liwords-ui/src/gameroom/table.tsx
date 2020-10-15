@@ -116,6 +116,26 @@ export const Table = React.memo((props: Props) => {
   }, []);
 
   useEffect(() => {
+    if (gameContext.playState === PlayState.GAME_OVER || isObserver) {
+      return () => {};
+    }
+
+    const evtHandler = (evt: BeforeUnloadEvent) => {
+      if (gameContext.playState !== PlayState.GAME_OVER && !isObserver) {
+        const msg = 'You are currently in a game!';
+        // eslint-disable-next-line no-param-reassign
+        evt.returnValue = msg;
+        return msg;
+      }
+      return true;
+    };
+    window.addEventListener('beforeunload', evtHandler);
+    return () => {
+      window.removeEventListener('beforeunload', evtHandler);
+    };
+  }, [gameContext.playState, isObserver]);
+
+  useEffect(() => {
     // Request game API to get info about the game at the beginning.
     axios
       .post<GameMetadata>(
@@ -132,7 +152,7 @@ export const Table = React.memo((props: Props) => {
           );
         }
       });
-    BoopSounds.startgameSound.play();
+    BoopSounds.playSound('startgameSound');
 
     return () => {
       clearChat();

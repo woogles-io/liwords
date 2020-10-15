@@ -1,0 +1,155 @@
+@import '../base';
+
+.game-lists, .game-history {
+  .ant-table-thead > tr > th {
+    background: white;
+    font-size: 12px;
+    font-weight: bold;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    &.details {
+      text-align: right;
+    }
+  }
+  .ant-table-thead > tr > th, .ant-table-tbody > tr > td {
+    padding: 8px;
+    &.result {
+      padding-right: 0;
+    }
+    &.details {
+      padding-right: 8px;
+    }
+    &.when {
+      white-space: nowrap;
+    }
+  }
+  .ant-table-thead > tr > td {
+    vertical-align: top;
+  }
+  .tabs {
+    display: flex;
+    flex-direction: row;
+    justify-content: space-around;
+    border-bottom: 1px solid #eee;
+    height: 36px;
+    .tab {
+      padding: 0px 24px 6px;
+      text-transform: uppercase;
+      font-size: 12px;
+      line-height: 24px;
+      font-weight: bold;
+      letter-spacing: 0.16em;
+      cursor: pointer;
+      &:hover,
+      &.active {
+        color: $color-primary-dark;
+      }
+      &.active {
+        border-bottom: 2px solid $color-primary-dark;
+      }
+    }
+  }
+  .games {
+    .game-listing {
+      cursor: pointer;
+      &.resume,
+      &.outgoing {
+        background-color: #f2f2f2;
+        font-weight: bold;
+        .anticon {
+          margin-left: 6px;
+        }
+        &:hover {
+          background-color: inherit;
+        }
+      }
+      &.resume {
+        position: relative;
+        vertical-align: bottom;
+        background-color: $color-timer-low-light;
+        td.ant-table-column-sort {
+          background-color: scale-color($color-timer-low-light, $lightness: -3%);;
+        }
+        td {
+          padding-top: 42px;
+        }
+        td.players {
+          min-height: 78px;
+        }
+        td.players:after {
+          content: 'Resume';
+          text-align: center;
+          font-size: 12px;
+          font-weight: bold;
+          letter-spacing: 0.3em;
+          text-transform: uppercase;
+          position: absolute;
+          top: 12px;
+          left: 18px;
+        }
+      }
+    }
+  }
+  .requests {
+    display: flex;
+    flex-direction: row;
+    justify-content: center;
+    position: absolute;
+    bottom: 12px;
+    width: 100%;
+  }
+  .ant-empty {
+    display: none;
+  }
+  h4 {
+    @include type-default;
+    background: $color-primary-light;
+    font-size: 22px;
+    font-weight: bold;
+    text-align: left;
+    padding: 12px;
+    letter-spacing: 0;
+    margin: 0;
+  }
+
+  td.opponent {
+    font-weight: bold;
+    font-size: 16px;
+  }
+  td.turn-order {
+    font-size: 21px;
+  }
+  td.time {
+    text-transform: capitalize;
+  }
+  td.result, th.result {
+    width: 40px;
+  }
+  td.score, th.score {
+    min-width: 100px;
+  }
+  td.details {
+    text-align: right;
+    .anticon-fund {
+      color: $color-primary-dark;
+      font-size: 18px;
+      margin-left: 6px;
+    }
+    .challenge-rule {
+      font-size: 14px;
+      font-weight: bold;
+      letter-spacing: 0;
+      color: $color-timer-dark;
+      &.mode_x2 {
+        color: $color-timer-out-dark;
+      }
+      &.mode_Void {
+        @include type-deco;
+        font-size: 12px;
+        letter-spacing: 0;
+        color: $color-timer-low-dark;
+        text-transform: uppercase;
+      }
+    }
+  }
+}

@@ -8,6 +8,7 @@ import (
 	"context"
 	"errors"
 	"strconv"
+	"time"
 
 	"github.com/domino14/macondo/runner"
 
@@ -161,6 +162,10 @@ func InstantiateNewGame(ctx context.Context, gameStore GameStore, cfg *config.Co
 		OriginalRequestId: req.OriginalRequestId,
 		PlayerInfo:        playerinfos,
 	}
+	// This timestamp will be very close to whatever gets saved in the DB
+	// as the CreatedAt date. We need to put it here though in order to
+	// keep the cached version in sync with the saved version at the beginning.
+	entGame.CreatedAt = time.Now()
 
 	// Save the game to the store.
 	if err = gameStore.Create(ctx, entGame); err != nil {
@@ -255,7 +260,7 @@ func players(entGame *entity.Game) []string {
 	return ps
 }
 
-func handleChallenge(ctx context.Context, entGame *entity.Game,
+func handleChallenge(ctx context.Context, entGame *entity.Game, gameStore GameStore,
 	userStore user.Store, listStatStore stats.ListStatStore,
 	timeRemaining int, challengerID string) error {
 	if entGame.ChallengeRule() == macondopb.ChallengeRule_VOID {
@@ -324,7 +329,7 @@ func handleChallenge(ctx context.Context, entGame *entity.Game,
 			entGame.SetWinnerIdx(winner)
 			entGame.SetLoserIdx(1 - winner)
 		}
-		err = performEndgameDuties(ctx, entGame, userStore, listStatStore)
+		err = performEndgameDuties(ctx, entGame, gameStore, userStore, listStatStore)
 		if err != nil {
 			return err
 		}
@@ -333,7 +338,7 @@ func handleChallenge(ctx context.Context, entGame *entity.Game,
 	return nil
 }
 
-func PlayMove(ctx context.Context, entGame *entity.Game, userStore user.Store,
+func PlayMove(ctx context.Context, entGame *entity.Game, gameStore GameStore, userStore user.Store,
 	listStatStore stats.ListStatStore, userID string, onTurn, timeRemaining int, m *move.Move) error {
 
 	log.Debug().Msg("validating")
@@ -345,7 +350,7 @@ func PlayMove(ctx context.Context, entGame *entity.Game, userStore user.Store,
 
 	if m.Action() == move.MoveTypeChallenge {
 		// Handle in another way
-		return handleChallenge(ctx, entGame, userStore, listStatStore, timeRemaining, userID)
+		return handleChallenge(ctx, entGame, gameStore, userStore, listStatStore, timeRemaining, userID)
 	}
 
 	oldTurnLength := len(entGame.Game.History().Events)
@@ -395,7 +400,7 @@ func PlayMove(ctx context.Context, entGame *entity.Game, userStore user.Store,
 		entGame.SendChange(wrapped)
 	}
 	if playing == macondopb.PlayState_GAME_OVER {
-		err = performEndgameDuties(ctx, entGame, userStore, listStatStore)
+		err = performEndgameDuties(ctx, entGame, gameStore, userStore, listStatStore)
 		if err != nil {
 			return err
 		}
@@ -473,7 +478,7 @@ func handleEventAfterLockingGame(ctx context.Context, gameStore GameStore, userS
 		entGame.History().Winner = int32(winner)
 		entGame.SetWinnerIdx(winner)
 		entGame.SetLoserIdx(1 - winner)
-		err := performEndgameDuties(ctx, entGame, userStore, listStatStore)
+		err := performEndgameDuties(ctx, entGame, gameStore, userStore, listStatStore)
 		if err != nil {
 			return entGame, err
 		}
@@ -483,21 +488,12 @@ func handleEventAfterLockingGame(ctx context.Context, gameStore GameStore, userS
 			return entGame, err
 		}
 
-		err = PlayMove(ctx, entGame, userStore, listStatStore, userID, onTurn, timeRemaining, m)
+		err = PlayMove(ctx, entGame, gameStore, userStore, listStatStore, userID, onTurn, timeRemaining, m)
 		if err != nil {
 			return entGame, err
 		}
 	}
 
-	err := gameStore.Set(ctx, entGame)
-	if err != nil {
-		return entGame, err
-	}
-
-	if entGame.GameEndReason != pb.GameEndReason_NONE {
-		// Game is over; unload
-		gameStore.Unload(ctx, entGame.GameID())
-	}
 	return entGame, nil
 }
 

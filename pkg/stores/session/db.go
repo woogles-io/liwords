@@ -9,6 +9,7 @@ import (
 	"github.com/jinzhu/gorm"
 	"github.com/jinzhu/gorm/dialects/postgres"
 	"github.com/lithammer/shortuuid"
+	"github.com/rs/zerolog/log"
 
 	"github.com/domino14/liwords/pkg/entity"
 )
@@ -42,6 +43,7 @@ func (s *DBStore) Get(ctx context.Context, sessionID string) (*entity.Session, e
 		return nil, result.Error
 	}
 	if time.Now().After(u.ExpiresAt) {
+		log.Debug().Interface("expires", u.ExpiresAt).Msg("expired?")
 		return nil, errors.New("session expired, log in again")
 	}
 

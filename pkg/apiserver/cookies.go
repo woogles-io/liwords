@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"net/http"
+	"time"
 
 	twirp "github.com/twitchtv/twirp"
 
@@ -35,6 +36,20 @@ func SetCookie(ctx context.Context, cookie *http.Cookie) error {
 	return nil
 }
 
+func SetDefaultCookie(ctx context.Context, sessID string) error {
+	return SetCookie(ctx, &http.Cookie{
+		Name:  "session",
+		Value: sessID,
+		// Tell the browser the cookie expires after a year, but the actual
+		// session ID in the database will expire sooner than that.
+		// We will write middleware to extend the expiration length but maybe
+		// it's ok to require the user to log in once a year.
+		Expires:  time.Now().Add(365 * 24 * time.Hour),
+		HttpOnly: true,
+		Path:     "/",
+	})
+}
+
 type ctxkey string
 
 const rwkey ctxkey = "responsewriter"
@@ -45,27 +60,66 @@ const sesskey ctxkey = "session"
 func AuthenticationMiddlewareGenerator(sessionStore sessions.SessionStore) (mw func(http.Handler) http.Handler) {
 	mw = func(h http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			log := zerolog.Ctx(r.Context())
-			sessionID, err := r.Cookie("sessionid")
+			ctx := r.Context()
+			log := zerolog.Ctx(ctx)
+			var session *entity.Session
+			var err error
+			// Migrate old sessionid to session
+			oldSessionID, err := r.Cookie("sessionid")
+			authed := false
 			if err != nil {
-				if err != http.ErrNoCookie {
-					log.Err(err).Msg("error-getting-cookie")
-				} else {
+				// Don't worry about it, do nothing.
+				log.Debug().Msg("old session cookie error")
+			} else {
+				session, err = sessionStore.Get(ctx, oldSessionID.Value)
+				if err != nil {
+					log.Err(err).Msg("error-getting-session")
+					// Just serve, unauthenticated.
+					h.ServeHTTP(w, r)
+					return
+				}
+				authed = true
+				// Make new cookie
+				SetDefaultCookie(r.Context(), oldSessionID.Value)
+				// Delete old cookies
+				SetCookie(r.Context(), &http.Cookie{
+					Name:     "sessionid",
+					Value:    oldSessionID.Value,
+					Expires:  time.Now().Add(-100 * time.Hour),
+					HttpOnly: true,
+					Path:     "/",
+				})
+				SetCookie(r.Context(), &http.Cookie{
+					Name:     "sessionid",
+					Value:    oldSessionID.Value,
+					Expires:  time.Now().Add(-100 * time.Hour),
+					HttpOnly: true,
+					Path:     "/twirp/user_service.AuthenticationService",
+				})
+				log.Debug().Msg("deleted-old-cookies")
+			}
+
+			if !authed {
+				// Try the new cookie.
+				sessionID, err := r.Cookie("session")
+				if err != nil {
+					if err != http.ErrNoCookie {
+						log.Err(err).Msg("error-getting-new-cookie")
+					}
 					// No problem, this user will not be authenticated.
 					log.Debug().Msg("unauthenticated request")
 					h.ServeHTTP(w, r)
 					return
 				}
+				session, err = sessionStore.Get(ctx, sessionID.Value)
+				if err != nil {
+					log.Err(err).Msg("error-getting-session")
+					// Just serve, unauthenticated.
+					h.ServeHTTP(w, r)
+					return
+				}
 			}
 
-			ctx := r.Context()
-			session, err := sessionStore.Get(ctx, sessionID.Value)
-			if err != nil {
-				log.Err(err).Msg("error-getting-session")
-				// Just serve, unauthenticated.
-				h.ServeHTTP(w, r)
-				return
-			}
 			ctx = context.WithValue(ctx, sesskey, session)
 			r = r.WithContext(ctx)
 			// printContextInternals(r.Context(), true)

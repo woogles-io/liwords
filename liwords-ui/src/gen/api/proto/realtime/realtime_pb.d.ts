@@ -909,6 +909,7 @@ export interface GameEndReasonMap {
   RESIGNED: 4;
   ABANDONED: 5;
   TRIPLE_CHALLENGE: 6;
+  CANCELLED: 7;
 }
 
 export const GameEndReason: GameEndReasonMap;

@@ -4,6 +4,7 @@ import { SyncOutlined } from '@ant-design/icons';
 import axios from 'axios';
 
 import GameBoard from './board';
+import { DrawingHandlersSetterContext } from './drawing';
 import GameControls from './game_controls';
 import { Rack } from './rack';
 import { ExchangeTiles } from './exchange_tiles';
@@ -123,6 +124,11 @@ const gcgExport = (gameID: string, playerMeta: Array<PlayerMetadata>) => {
 };
 
 export const BoardPanel = React.memo((props: Props) => {
+  const [drawingKeyMode, setDrawingKeyMode] = useState(false);
+  const {
+    drawingCanBeEnabled,
+    handleKeyDown: handleDrawingKeyDown,
+  } = React.useContext(DrawingHandlersSetterContext);
   const [arrowProperties, setArrowProperties] = useState({
     row: 0,
     col: 0,
@@ -411,7 +417,18 @@ export const BoardPanel = React.memo((props: Props) => {
     [arrowProperties, props.board]
   );
   const keydown = useCallback(
-    (key: string) => {
+    (evt: React.KeyboardEvent) => {
+      let key = evt.key;
+      // Neutralize caps lock to prevent accidental blank usage.
+      if (key.length === 1) {
+        if (!evt.shiftKey && key >= 'A' && key <= 'Z') {
+          // Without shift, can only type lowercase.
+          key = key.toLowerCase();
+        } else if (evt.shiftKey && key >= 'a' && key <= 'z') {
+          // With shift, can only type uppercase.
+          key = key.toUpperCase();
+        }
+      }
       if (isMyTurn() && !props.gameDone) {
         if (key === '2') {
           makeMove('pass');
@@ -693,9 +710,46 @@ export const BoardPanel = React.memo((props: Props) => {
 
   const handleKeyDown = useCallback(
     (e) => {
-      keydown(e.key);
+      if (drawingCanBeEnabled) {
+        // To activate a drawing hotkey, type 0, then the hotkey.
+        if (!exchangeModalVisible && !blankModalVisible) {
+          if (drawingKeyMode) {
+            e.preventDefault();
+            setDrawingKeyMode(false);
+            handleDrawingKeyDown(e);
+            return;
+          } else if (e.key === '0') {
+            e.preventDefault();
+            setDrawingKeyMode(true);
+            console.log(
+              'You pressed 0. Now press one of these keys:' +
+                '\n0 = Toggle drawing' +
+                '\nU = Undo' +
+                '\nW = Wipe' +
+                '\nR = Red pen' +
+                '\nG = Green pen' +
+                '\nB = Blue pen' +
+                '\nY = Yellow pen' +
+                '\nE = Eraser'
+            );
+            return;
+          }
+        }
+      }
+      //prevent page from scrolling
+      if (e.key === 'ArrowDown' || e.key === 'ArrowUp' || e.key === ' ') {
+        e.preventDefault();
+      }
+      keydown(e);
     },
-    [keydown]
+    [
+      blankModalVisible,
+      drawingCanBeEnabled,
+      drawingKeyMode,
+      exchangeModalVisible,
+      handleDrawingKeyDown,
+      keydown,
+    ]
   );
   const handlePass = useCallback(() => makeMove('pass'), [makeMove]);
   const handleResign = useCallback(() => makeMove('resign'), [makeMove]);

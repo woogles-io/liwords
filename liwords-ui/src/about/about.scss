@@ -98,6 +98,8 @@
 
 @media (min-width: $screen-laptop-min) {
   .bios {
+    max-width: $screen-laptop-min;
+    margin: 0 auto;
     p {
       line-height: 2em;
     }
