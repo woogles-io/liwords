@@ -84,10 +84,12 @@ func main() {
 
 	router := http.NewServeMux() // here you could also go with third party packages to create a router
 
-	userStore, err := user.NewDBStore(cfg.DBConnString)
+	tmpUserStore, err := user.NewDBStore(cfg.DBConnString)
 	if err != nil {
 		panic(err)
 	}
+	userStore := user.NewCache(tmpUserStore)
+
 	sessionStore, err := session.NewDBStore(cfg.DBConnString)
 
 	middlewares := alice.New(

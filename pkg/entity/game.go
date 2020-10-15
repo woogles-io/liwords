@@ -91,6 +91,7 @@ type Game struct {
 	nower      Nower
 
 	Quickdata *Quickdata
+	CreatedAt time.Time
 }
 
 // GameTimer uses the standard library's `time` package to determine how much time

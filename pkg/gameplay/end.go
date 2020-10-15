@@ -14,8 +14,8 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-func performEndgameDuties(ctx context.Context, g *entity.Game,
-	userStore user.Store, listStatStore stats.ListStatStore) {
+func performEndgameDuties(ctx context.Context, g *entity.Game, gameStore GameStore,
+	userStore user.Store, listStatStore stats.ListStatStore) error {
 
 	log.Debug().Interface("game-end-reason", g.GameEndReason).Msg("checking-game-over")
 	// The game is over already. Set an end game reason if there hasn't been
@@ -128,6 +128,31 @@ func performEndgameDuties(ctx context.Context, g *entity.Game,
 
 	g.Quickdata.FinalScores = g.History().FinalScores
 
+	// Grab a lock on both users to ensure that the following
+	// ratings calculations are not interleaved across threads.
+	// Enforce an arbitrary locking order to ensure no deadlocks
+	// occur between threads.
+
+	u0, err := userStore.GetByUUID(ctx, g.History().Players[0].UserId)
+	if err != nil {
+		return err
+	}
+	u1, err := userStore.GetByUUID(ctx, g.History().Players[1].UserId)
+	if err != nil {
+		return err
+	}
+	users := []*entity.User{u0, u1}
+
+	firstLockingIndex := 0
+	if users[0].UUID > users[1].UUID {
+		firstLockingIndex = 1
+	}
+
+	users[firstLockingIndex].Lock()
+	defer users[firstLockingIndex].Unlock()
+	users[1-firstLockingIndex].Lock()
+	defer users[1-firstLockingIndex].Unlock()
+
 	// Send a gameEndedEvent, which rates the game.
 	evt := gameEndedEvent(ctx, g, userStore)
 	wrapped := entity.WrapEvent(evt, pb.MessageType_GAME_ENDED_EVENT)
@@ -151,12 +176,23 @@ func performEndgameDuties(ctx context.Context, g *entity.Game,
 			g.Stats = gameStats
 		}
 	}
+
 	// And finally, send a notification to the lobby that this
 	// game ended. This will remove it from the list of live games.
 	wrapped = entity.WrapEvent(&pb.GameDeletion{Id: g.GameID()},
 		pb.MessageType_GAME_DELETION)
 	wrapped.AddAudience(entity.AudLobby, "gameEnded")
 	g.SendChange(wrapped)
+
+	// Save and unload the game from the cache.
+
+	err = gameStore.Set(ctx, g)
+	if err != nil {
+		return err
+	}
+	log.Info().Str("gameID", g.GameID()).Msg("game-ended-unload-cache")
+	gameStore.Unload(ctx, g.GameID())
+	return nil
 }
 
 func computeGameStats(ctx context.Context, history *macondopb.GameHistory, req *pb.GameRequest,
@@ -194,45 +230,47 @@ func computeGameStats(ctx context.Context, history *macondopb.GameHistory, req *
 		}
 	}
 
-	p0NewProfileStats := stats.InstantiateNewStats(p0id, "")
-	p1NewProfileStats := stats.InstantiateNewStats(p1id, "")
+	// Only add the game to profile stats if the game was rated
+	// and was not triple challenge.
+	if req.RatingMode == pb.RatingMode_RATED &&
+		history.ChallengeRule != macondopb.ChallengeRule_TRIPLE {
+		p0NewProfileStats := stats.InstantiateNewStats(p0id, "")
+		p1NewProfileStats := stats.InstantiateNewStats(p1id, "")
 
-	p0ProfileStats, err := statsForUser(ctx, p0id, userStore, variantKey)
-	if err != nil {
-		return nil, err
+		p0ProfileStats, err := statsForUser(ctx, p0id, userStore, variantKey)
+		if err != nil {
+			return nil, err
+		}
+
+		p1ProfileStats, err := statsForUser(ctx, p1id, userStore, variantKey)
+		if err != nil {
+			return nil, err
+		}
+
+		err = stats.AddStats(p0NewProfileStats, p0ProfileStats)
+		if err != nil {
+			return nil, err
+		}
+		err = stats.AddStats(p1NewProfileStats, p1ProfileStats)
+		if err != nil {
+			return nil, err
+		}
+		err = stats.AddStats(p0NewProfileStats, gameStats)
+		if err != nil {
+			return nil, err
+		}
+		err = stats.AddStats(p1NewProfileStats, gameStats)
+		if err != nil {
+			return nil, err
+		}
+
+		// Save all stats back to the database.
+		err = userStore.SetStats(ctx, p0id, p1id, variantKey, p0NewProfileStats, p1NewProfileStats)
+		if err != nil {
+			return nil, err
+		}
 	}
 
-	p1ProfileStats, err := statsForUser(ctx, p1id, userStore, variantKey)
-	if err != nil {
-		return nil, err
-	}
-
-	err = stats.AddStats(p0NewProfileStats, p0ProfileStats)
-	if err != nil {
-		return nil, err
-	}
-	err = stats.AddStats(p1NewProfileStats, p1ProfileStats)
-	if err != nil {
-		return nil, err
-	}
-	err = stats.AddStats(p0NewProfileStats, gameStats)
-	if err != nil {
-		return nil, err
-	}
-	err = stats.AddStats(p1NewProfileStats, gameStats)
-	if err != nil {
-		return nil, err
-	}
-
-	// Save all stats back to the database.
-	err = userStore.SetStats(ctx, p0id, variantKey, p0NewProfileStats)
-	if err != nil {
-		return nil, err
-	}
-	err = userStore.SetStats(ctx, p1id, variantKey, p1NewProfileStats)
-	if err != nil {
-		return nil, err
-	}
 	return gameStats, nil
 }
 
@@ -250,17 +288,30 @@ func setTimedOut(ctx context.Context, entGame *entity.Game, pidx int, gameStore 
 	entGame.SetGameEndReason(pb.GameEndReason_TIME)
 	entGame.SetWinnerIdx(1 - pidx)
 	entGame.SetLoserIdx(pidx)
-	performEndgameDuties(ctx, entGame, userStore, listStatStore)
+	return performEndgameDuties(ctx, entGame, gameStore, userStore, listStatStore)
+}
 
-	// Store the game back into the store
-	err := gameStore.Set(ctx, entGame)
+// AbortGame aborts a game. This should only be done for games that never started.
+func AbortGame(ctx context.Context, gameStore GameStore, gameID string) error {
+	entGame, err := gameStore.Get(ctx, gameID)
+
+	if err != nil {
+		return err
+	}
+	entGame.Lock()
+	defer entGame.Unlock()
+	entGame.SetGameEndReason(pb.GameEndReason_CANCELLED)
+
+	entGame.History().PlayState = macondopb.PlayState_GAME_OVER
+
+	// save the game back into the store
+	err = gameStore.Set(ctx, entGame)
 	if err != nil {
 		return err
 	}
 	// Unload the game
-
-	gameStore.Unload(ctx, entGame.GameID())
-
+	log.Info().Str("gameID", gameID).Msg("game-aborted-unload-cache")
+	gameStore.Unload(ctx, gameID)
 	return nil
 }
 

@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"time"
 
 	"github.com/rs/zerolog/log"
 
@@ -118,7 +119,7 @@ func (s *DBStore) Get(ctx context.Context, id string) (*entity.Game, error) {
 	}
 
 	return fromState(tdata, &qdata, g.Started, g.GameEndReason, g.Player0ID, g.Player1ID,
-		g.WinnerIdx, g.LoserIdx, g.Request, g.History, &sdata, s.gameEventChan, s.cfg)
+		g.WinnerIdx, g.LoserIdx, g.Request, g.History, &sdata, s.gameEventChan, s.cfg, g.CreatedAt)
 }
 
 // GetMetadata gets metadata about the game, but does not actually play the game.
@@ -252,7 +253,7 @@ func convertGamesToGameMetas(games []*game) ([]*pb.GameMeta, error) {
 func fromState(timers entity.Timers, qdata *entity.Quickdata, Started bool,
 	GameEndReason int, p0id, p1id uint, WinnerIdx, LoserIdx int, reqBytes, histBytes []byte,
 	stats *entity.Stats,
-	gameEventChan chan<- *entity.EventWrapper, cfg *config.Config) (*entity.Game, error) {
+	gameEventChan chan<- *entity.EventWrapper, cfg *config.Config, createdAt time.Time) (*entity.Game, error) {
 
 	g := &entity.Game{
 		Started:       Started,
@@ -264,6 +265,7 @@ func fromState(timers entity.Timers, qdata *entity.Quickdata, Started bool,
 		PlayerDBIDs:   [2]uint{p0id, p1id},
 		Stats:         stats,
 		Quickdata:     qdata,
+		CreatedAt:     createdAt,
 	}
 	g.SetTimerModule(&entity.GameTimer{})
 
@@ -396,7 +398,7 @@ func (s *DBStore) ListActive(ctx context.Context) ([]*pb.GameMeta, error) {
 	var games []*game
 
 	ctxDB := s.db.WithContext(ctx)
-	result := ctxDB.Table("games").Select("quickdata, request, uuid").
+	result := ctxDB.Table("games").Select("quickdata, request, uuid, started").
 		Where("games.game_end_reason = ?", 0 /* ongoing games only*/).
 		Order("games.id").
 		Scan(&games)

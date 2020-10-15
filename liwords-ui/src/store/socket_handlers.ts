@@ -5,6 +5,18 @@ import {
   randomID,
   ChatEntityObj,
   PresenceEntity,
+  useChallengeResultEventStoreContext,
+  useChatStoreContext,
+  useExcludedPlayersStoreContext,
+  useGameContextStoreContext,
+  useGameEndMessageStoreContext,
+  useLagStoreContext,
+  useLobbyStoreContext,
+  useLoginStateStoreContext,
+  usePresenceStoreContext,
+  useRedirGameStoreContext,
+  useRematchRequestStoreContext,
+  useTimerStoreContext,
 } from './store';
 import {
   MessageType,
@@ -42,20 +54,6 @@ import {
   SoughtGame,
 } from './reducers/lobby_reducer';
 import { BoopSounds } from '../sound/boop';
-import {
-  useChallengeResultEventStoreContext,
-  useChatStoreContext,
-  useExcludedPlayersStoreContext,
-  useGameContextStoreContext,
-  useGameEndMessageStoreContext,
-  useLagStoreContext,
-  useLobbyStoreContext,
-  useLoginStateStoreContext,
-  usePresenceStoreContext,
-  useRedirGameStoreContext,
-  useRematchRequestStoreContext,
-  useTimerStoreContext,
-} from '../store/store';
 
 export const parseMsgs = (msg: Uint8Array) => {
   // Multiple msgs can come in the same packet.
@@ -195,6 +193,11 @@ export const useOnSocketMsg = () => {
                 // Only display the rematch modal if we are the recipient
                 // of the rematch request.
                 setRematchRequest(mr);
+              } else {
+                notification.info({
+                  message: 'New Match Request',
+                  description: `You have a new match request from ${soughtGame.seeker}`,
+                });
               }
             }
 
@@ -202,6 +205,7 @@ export const useOnSocketMsg = () => {
               actionType: ActionType.AddMatchRequest,
               payload: soughtGame,
             });
+
             break;
           }
 
@@ -335,9 +339,16 @@ export const useOnSocketMsg = () => {
 
           case MessageType.GAME_ENDED_EVENT: {
             console.log('got game end evt');
+
             const gee = parsedMsg as GameEndedEvent;
             setGameEndMessage(endGameMessage(gee));
             stopClock();
+
+            dispatchGameContext({
+              actionType: ActionType.EndGame,
+              payload: gee,
+            });
+
             BoopSounds.playSound('endgameSound');
             break;
           }
