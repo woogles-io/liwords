@@ -2,6 +2,7 @@ package game
 
 import (
 	"context"
+	"sync"
 	"time"
 
 	"github.com/domino14/liwords/pkg/entity"
@@ -36,8 +37,9 @@ const (
 // Cache will reside in-memory, and will be per-node. If we add more nodes
 // we will need to make sure only the right nodes respond to game requests.
 type Cache struct {
-	cache       *lru.Cache
-	activeGames []*pb.GameMeta
+	sync.RWMutex // used for the activeGames cache.
+	cache        *lru.Cache
+	activeGames  []*pb.GameMeta
 
 	activeGamesTTL         time.Duration
 	activeGamesLastUpdated time.Time
@@ -146,17 +148,21 @@ func (c *Cache) setOrCreate(ctx context.Context, game *entity.Game, isNew bool) 
 }
 
 func (c *Cache) ListActive(ctx context.Context) ([]*pb.GameMeta, error) {
-
+	c.RLock()
 	if time.Now().Sub(c.activeGamesLastUpdated) < c.activeGamesTTL {
 		log.Debug().Msg("returning active games from cache")
+		c.RUnlock()
 		return c.activeGames, nil
 	}
+	c.RUnlock()
 	log.Debug().Msg("active games not in cache, fetching from backing")
 
 	games, err := c.backing.ListActive(ctx)
 	if err == nil {
+		c.Lock()
 		c.activeGames = games
 		c.activeGamesLastUpdated = time.Now()
+		c.Unlock()
 	}
 	return games, err
 }

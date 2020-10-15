@@ -19,15 +19,9 @@ message GameRules {
   string variant_name = 3;
 }
 
-enum GameMode {
-  REAL_TIME = 0;
-  CORRESPONDENCE = 1;
-}
+enum GameMode { REAL_TIME = 0; CORRESPONDENCE = 1; }
 
-enum RatingMode {
-  RATED = 0;
-  CASUAL = 1;
-}
+enum RatingMode { RATED = 0; CASUAL = 1; }
 
 // Game initialization
 // Both SeekRequest and MatchRequest encapsulate a more general GameRequest
@@ -67,9 +61,7 @@ message MatchUser {
 // Whenever we add a new client <-> server socket message type,
 // add it to this list.
 enum MessageType {
-  SEEK_REQUEST = 0;
-  MATCH_REQUEST = 1;
-  SOUGHT_GAME_PROCESS_EVENT = 2;
+  SEEK_REQUEST = 0; MATCH_REQUEST = 1; SOUGHT_GAME_PROCESS_EVENT = 2;
   CLIENT_GAMEPLAY_EVENT = 3;
   SERVER_GAMEPLAY_EVENT = 4;
   GAME_ENDED_EVENT = 5;
@@ -275,17 +267,14 @@ enum GameEndReason {
   RESIGNED = 4;
   ABANDONED = 5;
   TRIPLE_CHALLENGE = 6;
+  CANCELLED = 7;
 }
 
 // We encapsulate the game event here from the client's point of view. The
 // server will validate that the event is permissible.
 message ClientGameplayEvent {
   enum EventType {
-    TILE_PLACEMENT = 0;
-    PASS = 1;
-    EXCHANGE = 2;
-    CHALLENGE_PLAY = 3;
-    RESIGN = 4;
+    TILE_PLACEMENT = 0; PASS = 1; EXCHANGE = 2; CHALLENGE_PLAY = 3; RESIGN = 4;
   }
 
   EventType type = 1;
