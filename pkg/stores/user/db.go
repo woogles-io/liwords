@@ -35,6 +35,7 @@ type User struct {
 	// Password will be hashed.
 	Password    string `gorm:"type:varchar(128)"`
 	InternalBot bool   `gorm:"default:false;index"`
+	IsAdmin     bool   `gorm:"default:false"`
 }
 
 // A user profile is in a one-to-one relationship with a user. It is the
@@ -131,6 +132,7 @@ func (s *DBStore) Get(ctx context.Context, username string) (*entity.User, error
 		IsBot:     u.InternalBot,
 		Anonymous: false,
 		Profile:   profile,
+		IsAdmin:   u.IsAdmin,
 	}
 
 	return entu, nil
@@ -153,6 +155,7 @@ func (s *DBStore) GetByEmail(ctx context.Context, email string) (*entity.User, e
 		Password:  u.Password,
 		Anonymous: false,
 		IsBot:     u.InternalBot,
+		IsAdmin:   u.IsAdmin,
 	}
 
 	return entu, nil
@@ -218,6 +221,7 @@ func (s *DBStore) GetByUUID(ctx context.Context, uuid string) (*entity.User, err
 			Password: u.Password,
 			IsBot:    u.InternalBot,
 			Profile:  profile,
+			IsAdmin:  u.IsAdmin,
 		}
 	}
 
@@ -235,6 +239,7 @@ func (s *DBStore) New(ctx context.Context, u *entity.User) error {
 		Email:       u.Email,
 		Password:    u.Password,
 		InternalBot: u.IsBot,
+		IsAdmin:     u.IsAdmin,
 	}
 	result := s.db.Create(dbu)
 	if result.Error != nil {
@@ -324,7 +329,7 @@ func getRatingBytes(s *DBStore, ctx context.Context, uuid string, variant entity
 	return p, bytes, nil
 }
 
-func getExistingRatings(p *profile) (*entity.Ratings) {
+func getExistingRatings(p *profile) *entity.Ratings {
 	var existingRatings entity.Ratings
 	err := json.Unmarshal(p.Ratings.RawMessage, &existingRatings)
 	if err != nil {
@@ -390,7 +395,7 @@ func getStatsBytes(s *DBStore, ctx context.Context, uuid string, variant entity.
 	return p, bytes, nil
 }
 
-func getExistingProfileStats(p *profile) (*entity.ProfileStats) {
+func getExistingProfileStats(p *profile) *entity.ProfileStats {
 	var existingProfileStats entity.ProfileStats
 	err := json.Unmarshal(p.Stats.RawMessage, &existingProfileStats)
 	if err != nil {

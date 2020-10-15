@@ -15,10 +15,12 @@ import (
 	"github.com/domino14/liwords/pkg/apiserver"
 	"github.com/domino14/liwords/pkg/bus"
 	"github.com/domino14/liwords/pkg/gameplay"
+	cfgstore "github.com/domino14/liwords/pkg/stores/config"
 	"github.com/domino14/liwords/pkg/stores/game"
 	"github.com/domino14/liwords/pkg/stores/session"
 	"github.com/domino14/liwords/pkg/stores/soughtgame"
 	"github.com/domino14/liwords/pkg/stores/stats"
+
 	"github.com/domino14/macondo/alphabet"
 
 	"github.com/domino14/liwords/pkg/registration"
@@ -33,6 +35,7 @@ import (
 	"github.com/domino14/liwords/pkg/config"
 	"github.com/domino14/liwords/pkg/stores/user"
 	pkguser "github.com/domino14/liwords/pkg/user"
+	configservice "github.com/domino14/liwords/rpc/api/proto/config_service"
 	gameservice "github.com/domino14/liwords/rpc/api/proto/game_service"
 	userservice "github.com/domino14/liwords/rpc/api/proto/user_service"
 )
@@ -110,6 +113,7 @@ func main() {
 
 	gameStore := game.NewCache(tmpGameStore)
 	soughtGameStore := soughtgame.NewMemoryStore()
+	configStore := cfgstore.NewRedisConfigStore(redisPool)
 	listStatStore, err := stats.NewListStatStore(cfg.DBConnString)
 	if err != nil {
 		panic(err)
@@ -121,6 +125,7 @@ func main() {
 	profileService := pkguser.NewProfileService(userStore)
 	autocompleteService := pkguser.NewAutocompleteService(userStore)
 	socializeService := pkguser.NewSocializeService(userStore)
+	configService := config.NewConfigService(configStore, userStore)
 
 	router.Handle("/ping", http.HandlerFunc(pingEndpoint))
 
@@ -142,6 +147,9 @@ func main() {
 	router.Handle(userservice.SocializeServicePathPrefix,
 		middlewares.Then(userservice.NewSocializeServiceServer(socializeService, nil)))
 
+	router.Handle(configservice.ConfigServicePathPrefix,
+		middlewares.Then(configservice.NewConfigServiceServer(configService, nil)))
+
 	// Create any caches
 	alphabet.CreateLetterDistributionCache()
 	gaddag.CreateGaddagCache()
@@ -158,7 +166,7 @@ func main() {
 	presenceStore := user.NewRedisPresenceStore(redisPool)
 	// Handle bus.
 	pubsubBus, err := bus.NewBus(cfg, userStore, gameStore, soughtGameStore,
-		presenceStore, listStatStore, redisPool)
+		presenceStore, listStatStore, configStore, redisPool)
 	if err != nil {
 		panic(err)
 	}

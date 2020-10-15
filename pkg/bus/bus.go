@@ -46,6 +46,7 @@ type Bus struct {
 	soughtGameStore gameplay.SoughtGameStore
 	presenceStore   user.PresenceStore
 	listStatStore   stats.ListStatStore
+	configStore     config.ConfigStore
 
 	redisPool *redis.Pool
 
@@ -57,7 +58,7 @@ type Bus struct {
 
 func NewBus(cfg *config.Config, userStore user.Store, gameStore gameplay.GameStore,
 	soughtGameStore gameplay.SoughtGameStore, presenceStore user.PresenceStore,
-	listStatStore stats.ListStatStore, redisPool *redis.Pool) (*Bus, error) {
+	listStatStore stats.ListStatStore, configStore config.ConfigStore, redisPool *redis.Pool) (*Bus, error) {
 
 	natsconn, err := nats.Connect(cfg.NatsURL)
 
@@ -71,6 +72,7 @@ func NewBus(cfg *config.Config, userStore user.Store, gameStore gameplay.GameSto
 		soughtGameStore: soughtGameStore,
 		presenceStore:   presenceStore,
 		listStatStore:   listStatStore,
+		configStore:     configStore,
 		subscriptions:   []*nats.Subscription{},
 		subchans:        map[string]chan *nats.Msg{},
 		config:          cfg,

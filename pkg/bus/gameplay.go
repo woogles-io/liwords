@@ -22,6 +22,15 @@ func (b *Bus) instantiateAndStartGame(ctx context.Context, accUser *entity.User,
 	if err != nil {
 		return err
 	}
+
+	enabled, err := b.configStore.GamesEnabled(ctx)
+	if err != nil {
+		return err
+	}
+	if !enabled {
+		return errors.New("new games are temporarily disabled; please try again in a few minutes")
+	}
+
 	// disallow anon game acceptance for now.
 	if accUser.Anonymous || reqUser.Anonymous {
 		return errors.New("you must log in to play games")
