@@ -21,6 +21,7 @@ export enum ActionType {
   RefreshTurns,
   RefreshHistory,
   ClearHistory,
+  EndGame,
 
   /* login state actions */
   SetAuthentication,

@@ -36,6 +36,7 @@ export type ChatEntityObj = {
   message: string;
   id?: string;
   timestamp?: number;
+  senderId?: string;
 };
 
 export type PresenceEntity = {

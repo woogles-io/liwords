@@ -474,6 +474,7 @@ export const GameReducer = (state: GameState, action: Action): GameState => {
       if (sge.getGameId() !== state.gameID) {
         return state; // no change
       }
+      console.log('add game event', sge)
       const ngs = newGameState(state, sge);
 
       // Always pass the clock ref along. Begin imperative section:
@@ -492,6 +493,20 @@ export const GameReducer = (state: GameState, action: Action): GameState => {
       }
       // Otherwise if it is null, we have an issue, but there's no need to
       // throw an Error..
+      return newState;
+    }
+
+    case ActionType.EndGame: {
+      // If the game ends, we should set this in the store, if it hasn't
+      // already been set. This can happen if it ends in an "abnormal" way
+      // like a resignation or a timeout -- these aren't ServerGamePlayEvents per se.
+      const newState = {
+        ...state,
+        playState: PlayState.GAME_OVER,
+      }
+      if (newState.clockController) {
+        newState.clockController.current?.stopClock();
+      }
       return newState;
     }
   }

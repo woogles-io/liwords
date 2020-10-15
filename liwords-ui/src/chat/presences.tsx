@@ -1,5 +1,6 @@
 import React from 'react';
 import { PresenceEntity } from '../store/store';
+import { UsernameWithContext } from '../shared/usernameWithContext';
 
 type Props = {
   players: { [uuid: string]: PresenceEntity };
@@ -10,14 +11,7 @@ export const Presences = React.memo((props: Props) => {
   vals.sort((a, b) => (a.username < b.username ? -1 : 1));
 
   const profileLink = (player: PresenceEntity) => (
-    <a
-      rel="noopener noreferrer"
-      target="_blank"
-      href={`../profile/${player.username}`}
-      key={player.uuid}
-    >
-      {player.username}
-    </a>
+    <UsernameWithContext username={player.username} userID={player.uuid} />
   );
   const knownUsers = Object.keys(props.players).filter(
     (p) => !props.players[p].anon

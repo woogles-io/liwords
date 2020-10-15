@@ -4,6 +4,7 @@ import (
 	"errors"
 	"math"
 	"strconv"
+	"sync"
 	"time"
 
 	"github.com/domino14/liwords/pkg/glicko"
@@ -16,6 +17,8 @@ const (
 
 // User - the db-specific details are in the store package.
 type User struct {
+	sync.RWMutex
+
 	Anonymous bool
 	// ID is the database ID. Since this increases monotonically, we should
 	// not expose it to the user
