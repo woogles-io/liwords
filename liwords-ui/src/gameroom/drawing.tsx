@@ -316,6 +316,9 @@ export const useDrawing = () => {
 
   const handleKeyDown = React.useCallback(
     (evt: React.KeyboardEvent) => {
+      if (evt.ctrlKey || evt.altKey || evt.metaKey) {
+        return;
+      }
       const key = evt.key.toUpperCase();
       if (key === '0') {
         // Toggle drawing.
