@@ -51,6 +51,16 @@ export const initialTimeLabel = (secs: number) => {
   return initTLabel;
 };
 
+export const timeToString = (
+  secs: number,
+  incrementSecs: number,
+  maxOvertimeMinutes: number
+) => {
+  return `${initialTimeLabel(secs)}${
+    maxOvertimeMinutes ? '/' + maxOvertimeMinutes : ''
+  }${incrementSecs ? '+' + incrementSecs : ''}`;
+};
+
 export const ratingToColor = (rating: string): [number, string] => {
   let ratNum;
   if (rating.endsWith('?')) {

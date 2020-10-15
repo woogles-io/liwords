@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import Rack from './rack';
 import {
   useGameContextStoreContext,
@@ -21,7 +21,7 @@ type SelectedTile = {
   index: number;
 };
 
-export const ExchangeTiles = (props: Props) => {
+export const ExchangeTiles = React.memo((props: Props) => {
   const [exchangedRackIndices, setExchangedRackIndices] = useState(
     new Set<number>()
   );
@@ -29,8 +29,10 @@ export const ExchangeTiles = (props: Props) => {
 
   const [delayInput, setDelayInput] = useState(true);
 
-  useEffect(() => {
-    const keydown = (e: KeyboardEvent) => {
+  const propsOnOk = props.onOk;
+
+  const keydown = useCallback(
+    (e: KeyboardEvent) => {
       if (delayInput || !props.modalVisible) {
         return;
       }
@@ -41,7 +43,7 @@ export const ExchangeTiles = (props: Props) => {
         // This did not happen when using the shortcut.
         e.preventDefault();
         if (exchangedRack.length) {
-          props.onOk(exchangedRack);
+          propsOnOk(exchangedRack);
         }
         return;
       }
@@ -68,13 +70,22 @@ export const ExchangeTiles = (props: Props) => {
         }
       }
       setExchangedRackIndices(tempToExchange);
-    };
+    },
+    [
+      delayInput,
+      exchangedRack,
+      exchangedRackIndices,
+      props.modalVisible,
+      props.rack,
+      propsOnOk,
+    ]
+  );
+  useEffect(() => {
     window.addEventListener('keydown', keydown);
     return () => {
       window.removeEventListener('keydown', keydown);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  });
+  }, [keydown]);
   useEffect(() => {
     // Wait to start taking keys so we don't "preselect" whatever key they
     // hit to open the exchange modal.
@@ -93,48 +104,54 @@ export const ExchangeTiles = (props: Props) => {
   }, [exchangedRackIndices, props.rack]);
   const { gameContext } = useGameContextStoreContext();
   const { setPoolFormat } = usePoolFormatStoreContext();
-  const selectTileForExchange = (idx: number) => {
-    const newExchangedRackIndices = new Set(exchangedRackIndices);
-    if (newExchangedRackIndices.has(idx)) {
-      newExchangedRackIndices.delete(idx);
-    } else {
-      newExchangedRackIndices.add(idx);
-    }
-    setExchangedRackIndices(newExchangedRackIndices);
-  };
+  const selectTileForExchange = useCallback(
+    (idx: number) => {
+      const newExchangedRackIndices = new Set(exchangedRackIndices);
+      if (newExchangedRackIndices.has(idx)) {
+        newExchangedRackIndices.delete(idx);
+      } else {
+        newExchangedRackIndices.add(idx);
+      }
+      setExchangedRackIndices(newExchangedRackIndices);
+    },
+    [exchangedRackIndices]
+  );
+  const doNothing = useCallback(() => {}, []);
+  const handleOnOk = useCallback(() => {
+    propsOnOk(exchangedRack);
+  }, [propsOnOk, exchangedRack]);
+
   return (
     <Modal
       className="exchange"
       title="Exchange tiles"
       visible={props.modalVisible}
-      onOk={() => {
-        props.onOk(exchangedRack);
-      }}
+      onOk={handleOnOk}
       onCancel={props.onCancel}
       width={360}
-      footer={[
+      footer={
         <>
           {exchangedRackIndices.size > 0 ? (
-            <p className="label">{`${exchangedRackIndices.size} tiles selected`}</p>
+            <p className="label">{`${exchangedRackIndices.size} ${
+              exchangedRackIndices.size === 1 ? 'tile' : 'tiles'
+            } selected`}</p>
           ) : null}
           <Button
             key="submit"
             type="primary"
-            onClick={() => {
-              props.onOk(exchangedRack);
-            }}
+            onClick={handleOnOk}
             disabled={exchangedRackIndices.size < 1}
           >
             Exchange
           </Button>
-        </>,
-      ]}
+        </>
+      }
     >
       <Rack
         letters={props.rack}
         grabbable={false}
         onTileClick={selectTileForExchange}
-        moveRackTile={() => {}}
+        moveRackTile={doNothing}
         selected={exchangedRackIndices}
       />
 
@@ -147,4 +164,4 @@ export const ExchangeTiles = (props: Props) => {
       />
     </Modal>
   );
-};
+});

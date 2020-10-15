@@ -4,11 +4,13 @@ import './about.scss';
 import { Col, Row } from 'antd';
 import cesar from '../assets/bio/bio_cesar.jpg';
 import conrad from '../assets/bio/bio_conrad.jpg';
+import doug from '../assets/bio/bio_doug.jpg';
 import jesse from '../assets/bio/bio_jesse.jpg';
 import josh from '../assets/bio/bio_josh.jpg';
 import lola from '../assets/bio/bio_lola.jpg';
 import macondo from '../assets/bio/bio_macondo.jpg';
 import woogles from '../assets/bio/bio_woogles.jpg';
+import will from '../assets/bio/bio_will.jpg';
 
 type Props = {};
 
@@ -167,6 +169,53 @@ export const About = (props: Props) => {
                   Council annual awards. Besides Scrabble©, she's also
                   enthusiastically bad at standup comedy, playing the bass
                   guitar, singing, and painting. Ketchup is gross.
+                </p>
+              </div>
+            </div>
+          </Col>
+        </Row>
+        <Row>
+          <Col span={24} className="bio">
+            <div className="container">
+              <img src={doug} alt="Doug Brockmeier" />
+              <div className="team-info">
+                <h3>Doug Brockmeier</h3>
+                <p>
+                  Doug has been playing Scrabble for over 30 years -- a Guinness
+                  World Record. This makes him feel old, but still dignified.
+                  Early on, his Grandma Elaine taught him the importance of
+                  maximizing Power Tiles through crushing two-way
+                  Double-Letter-Score plays for a whopping 20 points at a time!
+                  As a teen, he discovered the club and tournament scene at a
+                  local bookstore, where he was welcomed to compete responsibly
+                  for $1 scratchoff jackpots against a wide range of Scrabble
+                  personalities who proved that scoring 300 points per game
+                  wouldn't cut it anymore, kid. Now an expert player, Doug is
+                  dizzily euphoric to be part of the Woogles team and believes,
+                  of course, that all Woogles are good Woogles.
+                </p>
+              </div>
+            </div>
+          </Col>
+        </Row>
+        <Row>
+          <Col span={24} className="bio">
+            <div className="container">
+              <img src={will} alt="Will Anderson" />
+              <div className="team-info">
+                <h3>Will Anderson</h3>
+                <p>
+                  Will is a competitive Scrabble© player and former national
+                  champion with a passion for bringing the joy of the game to a
+                  wider audience. Whether providing commentary for live events,
+                  streaming on his Twitch channel, or producing online Scrabble
+                  events for others, his goal is the same - translate the depth
+                  and beauty of the game in a way that resonates with even
+                  casual fans. He firmly believes that Woogles is a critical
+                  component of the future of word games, and his role on the
+                  team is to leverage existing platforms and develop content to
+                  bring Woogles the exposure it deserves. He vehemently rejects
+                  condiments of all kinds.
                 </p>
               </div>
             </div>

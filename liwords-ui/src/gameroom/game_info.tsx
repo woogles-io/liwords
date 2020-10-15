@@ -1,6 +1,6 @@
 import React from 'react';
-import { Card, Row, Tooltip } from 'antd';
-import { initialTimeLabel } from '../store/constants';
+import { Card, Row } from 'antd';
+import { timeCtrlToDisplayName, timeToString } from '../store/constants';
 
 // At some point we should get this from the pb but then we have to use
 // twirp for this and we really shouldn't need to. Wait on it probably.
@@ -73,15 +73,17 @@ export const GameInfo = React.memo((props: Props) => {
   return (
     <Card className="game-info">
       <Row className="variant">
-        {`${initialTimeLabel(props.meta.initial_time_seconds)} ${
-          props.meta.increment_seconds || 0
-        }`}{' '}
-        •
-        <Tooltip title="The maximum amount of overtime, in minutes">
-          <span>
-            &nbsp;{`OT: ${props.meta.max_overtime_minutes || 0}`}&nbsp;
-          </span>
-        </Tooltip>
+        {`${
+          timeCtrlToDisplayName(
+            props.meta.initial_time_seconds,
+            props.meta.increment_seconds,
+            props.meta.max_overtime_minutes
+          )[0]
+        } ${timeToString(
+          props.meta.initial_time_seconds,
+          props.meta.increment_seconds,
+          props.meta.max_overtime_minutes
+        )}`}{' '}
         • {variant} • {props.meta.lexicon}
       </Row>
       <Row>
