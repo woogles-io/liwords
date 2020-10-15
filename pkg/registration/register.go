@@ -18,7 +18,7 @@ func RegisterUser(ctx context.Context, username string, password string, email s
 		return errors.New("username must be between 1 and 20 letters in length")
 	}
 	if strings.IndexFunc(username, func(c rune) bool {
-		return !(c >= 'A' && c <= 'Z' || c >= 'a' && c <= 'z' || c >= '0' && c <= '9' || c=='-' || c=='.' || c=='_')
+		return !(c >= 'A' && c <= 'Z' || c >= 'a' && c <= 'z' || c >= '0' && c <= '9' || c == '-' || c == '.' || c == '_')
 	}) != -1 {
 		return errors.New("username can only contain letters, digits, period, hyphen or underscore")
 	}
@@ -26,6 +26,10 @@ func RegisterUser(ctx context.Context, username string, password string, email s
 	if strings.ToLower(username) == "anonymous" {
 		return errors.New("username is not acceptable")
 	}
+	if strings.HasPrefix(username, ".") || strings.HasPrefix(username, "-") {
+		return errors.New("username must start with a number or a letter")
+	}
+
 	if len(password) < 8 {
 		return errors.New("your new password is too short, use 8 or more characters")
 	}
