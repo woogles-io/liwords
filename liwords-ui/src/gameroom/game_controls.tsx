@@ -30,7 +30,7 @@ const ExamineGameControls = React.memo((props: {}) => {
       <Button>Options</Button>
       <Tooltip
         title="First"
-        placement="top"
+        placement="bottom"
         mouseEnterDelay={0.1}
         mouseLeaveDelay={0.01}
         color={colors.colorPrimary}
@@ -45,7 +45,7 @@ const ExamineGameControls = React.memo((props: {}) => {
       </Tooltip>
       <Tooltip
         title="Previous"
-        placement="top"
+        placement="bottom"
         mouseEnterDelay={0.1}
         mouseLeaveDelay={0.01}
         color={colors.colorPrimary}
@@ -60,7 +60,7 @@ const ExamineGameControls = React.memo((props: {}) => {
       </Tooltip>
       <Tooltip
         title="Next"
-        placement="top"
+        placement="bottom"
         mouseEnterDelay={0.1}
         mouseLeaveDelay={0.01}
         color={colors.colorPrimary}
@@ -75,7 +75,7 @@ const ExamineGameControls = React.memo((props: {}) => {
       </Tooltip>
       <Tooltip
         title="Last"
-        placement="top"
+        placement="bottom"
         mouseEnterDelay={0.1}
         mouseLeaveDelay={0.01}
         color={colors.colorPrimary}
