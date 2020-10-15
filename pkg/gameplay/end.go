@@ -128,6 +128,31 @@ func performEndgameDuties(ctx context.Context, g *entity.Game, gameStore GameSto
 
 	g.Quickdata.FinalScores = g.History().FinalScores
 
+	// Grab a lock on both users to ensure that the following
+	// ratings calculations are not interleaved across threads.
+	// Enforce an arbitrary locking order to ensure no deadlocks
+	// occur between threads.
+
+	u0, err := userStore.GetByUUID(ctx, g.History().Players[0].UserId)
+	if err != nil {
+		return err
+	}
+	u1, err := userStore.GetByUUID(ctx, g.History().Players[1].UserId)
+	if err != nil {
+		return err
+	}
+	users := []*entity.User{u0, u1}
+
+	firstLockingIndex := 0
+	if users[0].UUID > users[1].UUID {
+		firstLockingIndex = 1
+	}
+
+	users[firstLockingIndex].Lock()
+	defer users[firstLockingIndex].Unlock()
+	users[1-firstLockingIndex].Lock()
+	defer users[1-firstLockingIndex].Unlock()
+
 	// Send a gameEndedEvent, which rates the game.
 	evt := gameEndedEvent(ctx, g, userStore)
 	wrapped := entity.WrapEvent(evt, pb.MessageType_GAME_ENDED_EVENT)
@@ -205,45 +230,47 @@ func computeGameStats(ctx context.Context, history *macondopb.GameHistory, req *
 		}
 	}
 
-	p0NewProfileStats := stats.InstantiateNewStats(p0id, "")
-	p1NewProfileStats := stats.InstantiateNewStats(p1id, "")
+	// Only add the game to profile stats if the game was rated
+	// and was not triple challenge.
+	if req.RatingMode == pb.RatingMode_RATED &&
+		history.ChallengeRule != macondopb.ChallengeRule_TRIPLE {
+		p0NewProfileStats := stats.InstantiateNewStats(p0id, "")
+		p1NewProfileStats := stats.InstantiateNewStats(p1id, "")
 
-	p0ProfileStats, err := statsForUser(ctx, p0id, userStore, variantKey)
-	if err != nil {
-		return nil, err
+		p0ProfileStats, err := statsForUser(ctx, p0id, userStore, variantKey)
+		if err != nil {
+			return nil, err
+		}
+
+		p1ProfileStats, err := statsForUser(ctx, p1id, userStore, variantKey)
+		if err != nil {
+			return nil, err
+		}
+
+		err = stats.AddStats(p0NewProfileStats, p0ProfileStats)
+		if err != nil {
+			return nil, err
+		}
+		err = stats.AddStats(p1NewProfileStats, p1ProfileStats)
+		if err != nil {
+			return nil, err
+		}
+		err = stats.AddStats(p0NewProfileStats, gameStats)
+		if err != nil {
+			return nil, err
+		}
+		err = stats.AddStats(p1NewProfileStats, gameStats)
+		if err != nil {
+			return nil, err
+		}
+
+		// Save all stats back to the database.
+		err = userStore.SetStats(ctx, p0id, p1id, variantKey, p0NewProfileStats, p1NewProfileStats)
+		if err != nil {
+			return nil, err
+		}
 	}
 
-	p1ProfileStats, err := statsForUser(ctx, p1id, userStore, variantKey)
-	if err != nil {
-		return nil, err
-	}
-
-	err = stats.AddStats(p0NewProfileStats, p0ProfileStats)
-	if err != nil {
-		return nil, err
-	}
-	err = stats.AddStats(p1NewProfileStats, p1ProfileStats)
-	if err != nil {
-		return nil, err
-	}
-	err = stats.AddStats(p0NewProfileStats, gameStats)
-	if err != nil {
-		return nil, err
-	}
-	err = stats.AddStats(p1NewProfileStats, gameStats)
-	if err != nil {
-		return nil, err
-	}
-
-	// Save all stats back to the database.
-	err = userStore.SetStats(ctx, p0id, variantKey, p0NewProfileStats)
-	if err != nil {
-		return nil, err
-	}
-	err = userStore.SetStats(ctx, p1id, variantKey, p1NewProfileStats)
-	if err != nil {
-		return nil, err
-	}
 	return gameStats, nil
 }
 
@@ -267,6 +294,7 @@ func setTimedOut(ctx context.Context, entGame *entity.Game, pidx int, gameStore 
 // AbortGame aborts a game. This should only be done for games that never started.
 func AbortGame(ctx context.Context, gameStore GameStore, gameID string) error {
 	entGame, err := gameStore.Get(ctx, gameID)
+
 	if err != nil {
 		return err
 	}

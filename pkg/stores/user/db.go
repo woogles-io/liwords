@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"math/rand"
 	"sort"
 	"strings"
@@ -270,19 +271,60 @@ func (s *DBStore) SetPassword(ctx context.Context, uuid string, hashpass string)
 	return s.db.Model(u).Update("password", hashpass).Error
 }
 
-// SetRating sets the specific rating for the given variant.
-func (s *DBStore) SetRating(ctx context.Context, uuid string, variant entity.VariantKey,
-	rating entity.SingleRating) error {
+// SetRatings set the specific ratings for the given variant in a transaction.
+func (s *DBStore) SetRatings(ctx context.Context, p0uuid string, p1uuid string, variant entity.VariantKey,
+	p0Rating entity.SingleRating, p1Rating entity.SingleRating) error {
+
+	p0Profile, p0RatingBytes, err := getRatingBytes(s, ctx, p0uuid, variant, p0Rating)
+	if err != nil {
+		return err
+	}
+
+	p1Profile, p1RatingBytes, err := getRatingBytes(s, ctx, p1uuid, variant, p1Rating)
+	if err != nil {
+		return err
+	}
+
+	return s.db.Transaction(func(tx *gorm.DB) error {
+		err := s.db.Model(p0Profile).Update("ratings", postgres.Jsonb{RawMessage: p0RatingBytes}).Error
+
+		if err != nil {
+			return err
+		}
+
+		err = s.db.Model(p1Profile).Update("ratings", postgres.Jsonb{RawMessage: p1RatingBytes}).Error
+
+		if err != nil {
+			return err
+		}
+		// return nil will commit the whole transaction
+		return nil
+	})
+}
+
+func getRatingBytes(s *DBStore, ctx context.Context, uuid string, variant entity.VariantKey,
+	rating entity.SingleRating) (*profile, []byte, error) {
 	u := &User{}
 	p := &profile{}
 
 	if result := s.db.Where("uuid = ?", uuid).First(u); result.Error != nil {
-		return result.Error
+		return nil, nil, result.Error
 	}
 	if result := s.db.Model(u).Related(p); result.Error != nil {
-		return result.Error
+		return nil, nil, result.Error
 	}
 
+	existingRatings := getExistingRatings(p)
+	existingRatings.Data[variant] = rating
+
+	bytes, err := json.Marshal(existingRatings)
+	if err != nil {
+		return nil, nil, err
+	}
+	return p, bytes, nil
+}
+
+func getExistingRatings(p *profile) (*entity.Ratings) {
 	var existingRatings entity.Ratings
 	err := json.Unmarshal(p.Ratings.RawMessage, &existingRatings)
 	if err != nil {
@@ -293,29 +335,62 @@ func (s *DBStore) SetRating(ctx context.Context, uuid string, variant entity.Var
 	if existingRatings.Data == nil {
 		existingRatings.Data = make(map[entity.VariantKey]entity.SingleRating)
 	}
-	existingRatings.Data[variant] = rating
+	return &existingRatings
+}
 
-	bytes, err := json.Marshal(existingRatings)
+func (s *DBStore) SetStats(ctx context.Context, p0uuid string, p1uuid string, variant entity.VariantKey,
+	p0Stats *entity.Stats, p1Stats *entity.Stats) error {
+
+	p0Profile, p0StatsBytes, err := getStatsBytes(s, ctx, p0uuid, variant, p0Stats)
 	if err != nil {
 		return err
 	}
 
-	return s.db.Model(p).Update("ratings", postgres.Jsonb{RawMessage: bytes}).Error
+	p1Profile, p1StatsBytes, err := getStatsBytes(s, ctx, p1uuid, variant, p1Stats)
+	if err != nil {
+		return err
+	}
+
+	return s.db.Transaction(func(tx *gorm.DB) error {
+		err := s.db.Model(p0Profile).Update("stats", postgres.Jsonb{RawMessage: p0StatsBytes}).Error
+
+		if err != nil {
+			return err
+		}
+
+		err = s.db.Model(p1Profile).Update("stats", postgres.Jsonb{RawMessage: p1StatsBytes}).Error
+
+		if err != nil {
+			return err
+		}
+		// return nil will commit the whole transaction
+		return nil
+	})
 }
 
-func (s *DBStore) SetStats(ctx context.Context, uuid string, variant entity.VariantKey,
-	stats *entity.Stats) error {
-
+func getStatsBytes(s *DBStore, ctx context.Context, uuid string, variant entity.VariantKey,
+	stats *entity.Stats) (*profile, []byte, error) {
 	u := &User{}
 	p := &profile{}
 
 	if result := s.db.Where("uuid = ?", uuid).First(u); result.Error != nil {
-		return result.Error
+		return nil, nil, result.Error
 	}
 	if result := s.db.Model(u).Related(p); result.Error != nil {
-		return result.Error
+		return nil, nil, result.Error
 	}
 
+	existingProfileStats := getExistingProfileStats(p)
+	existingProfileStats.Data[variant] = stats
+
+	bytes, err := json.Marshal(existingProfileStats)
+	if err != nil {
+		return nil, nil, err
+	}
+	return p, bytes, nil
+}
+
+func getExistingProfileStats(p *profile) (*entity.ProfileStats) {
 	var existingProfileStats entity.ProfileStats
 	err := json.Unmarshal(p.Stats.RawMessage, &existingProfileStats)
 	if err != nil {
@@ -325,12 +400,7 @@ func (s *DBStore) SetStats(ctx context.Context, uuid string, variant entity.Vari
 	if existingProfileStats.Data == nil {
 		existingProfileStats.Data = make(map[entity.VariantKey]*entity.Stats)
 	}
-	existingProfileStats.Data[variant] = stats
-	bytes, err := json.Marshal(existingProfileStats)
-	if err != nil {
-		return err
-	}
-	return s.db.Model(p).Update("stats", postgres.Jsonb{RawMessage: bytes}).Error
+	return &existingProfileStats
 }
 
 func (s *DBStore) GetRandomBot(ctx context.Context) (*entity.User, error) {
@@ -530,6 +600,52 @@ func (s *DBStore) UsernamesByPrefix(ctx context.Context, prefix string) ([]strin
 	sort.Strings(usernames)
 
 	return usernames, nil
+}
+
+// List all user IDs.
+func (s *DBStore) ListAllIDs(ctx context.Context) ([]string, error) {
+	var uids []struct{ Uuid string }
+	result := s.db.Table("users").Select("uuid").Scan(&uids)
+
+	ids := make([]string, len(uids))
+	for idx, uid := range uids {
+		ids[idx] = uid.Uuid
+	}
+
+	return ids, result.Error
+}
+
+func (s *DBStore) ResetStatsAndRatings(ctx context.Context, uid string) error {
+	u, err := s.GetByUUID(ctx, uid)
+	if err != nil {
+		return err
+	}
+	p := &profile{}
+	if result := s.db.Model(u).Related(p); result.Error != nil {
+		return errors.New(fmt.Sprintf("Error getting profile for %s", uid))
+	}
+
+	emptyRatings := &entity.Ratings{}
+	bytes, err := json.Marshal(emptyRatings)
+	if err != nil {
+		return err
+	}
+	err = s.db.Model(p).Update("ratings", bytes).Error
+	if err != nil {
+		return err
+	}
+
+	emptyStats := &entity.Stats{}
+	bytes, err = json.Marshal(emptyStats)
+	if err != nil {
+		return err
+	}
+	err = s.db.Model(p).Update("stats", bytes).Error
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (s *DBStore) Disconnect() {

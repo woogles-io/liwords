@@ -36,6 +36,7 @@ func Rate(ctx context.Context, scores map[string]int32, g *entity.Game,
 		g.GameEndReason == pb.GameEndReason_ABANDONED ||
 		g.GameEndReason == pb.GameEndReason_TIME ||
 		g.GameEndReason == pb.GameEndReason_TRIPLE_CHALLENGE
+
 	// Get the user ratings
 	rat0, err := users[0].GetRating(ratingKey)
 	if err != nil {
@@ -86,23 +87,20 @@ func Rate(ctx context.Context, scores map[string]int32, g *entity.Game,
 		-spread, int(now-rat1.LastGameTimestamp),
 	)
 
-	// Save the new ratings. This should probably be in some sort of
-	// transaction, but ..
-	err = userStore.SetRating(ctx, users[0].UUID, ratingKey, entity.SingleRating{
+	p0SingleRating := entity.SingleRating{
 		Rating:            p0rat,
 		RatingDeviation:   p0rd,
 		Volatility:        p0v,
 		LastGameTimestamp: now,
-	})
-	if err != nil {
-		return nil, err
 	}
-	err = userStore.SetRating(ctx, users[1].UUID, ratingKey, entity.SingleRating{
+	p1SingleRating := entity.SingleRating{
 		Rating:            p1rat,
 		RatingDeviation:   p1rd,
 		Volatility:        p1v,
 		LastGameTimestamp: now,
-	})
+	}
+
+	err = userStore.SetRatings(ctx, users[0].UUID, users[1].UUID, ratingKey, p0SingleRating, p1SingleRating)
 	if err != nil {
 		return nil, err
 	}
