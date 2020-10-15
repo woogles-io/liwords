@@ -40,7 +40,7 @@ export const endGameMessage = (gee: GameEndedEvent): string => {
       break;
 
     case GameEndReason.RESIGNED:
-      summaryReason = ` (${loser} resigned...)`;
+      summaryReason = ` (${loser} resigned)`;
       break;
     case GameEndReason.TRIPLE_CHALLENGE:
       summaryReason = ' (triple challenge!)';
