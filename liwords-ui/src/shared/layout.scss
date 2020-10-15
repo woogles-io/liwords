@@ -8,6 +8,10 @@
   margin: 0;
 }
 
+
+span.user-context-menu.ant-dropdown-trigger {
+  display: inline-block;
+}
 .lobby, .game-table, .top-header .container {
   @include container();
   padding: 15px 12px 0px;
