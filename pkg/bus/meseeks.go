@@ -247,6 +247,7 @@ func (b *Bus) gameAccepted(ctx context.Context, evt *pb.SoughtGameProcessEvent,
 		requester = sg.MatchRequest.User.UserId
 		gameReq = sg.MatchRequest.GameRequest
 	}
+
 	if requester == userID {
 		log.Info().Str("sender", requester).Msg("canceling seek")
 		err := gameplay.CancelSoughtGame(ctx, b.soughtGameStore, evt.RequestId)
@@ -256,14 +257,35 @@ func (b *Bus) gameAccepted(ctx context.Context, evt *pb.SoughtGameProcessEvent,
 		// broadcast a seek deletion.
 		return b.broadcastSeekDeletion(evt.RequestId)
 	}
-	// Otherwise create a game
-	// If the ACCEPTOR of the seek has a seek request open, we must cancel it.
-	err = b.deleteSoughtForUser(ctx, userID)
+
+	accUser, err := b.userStore.GetByUUID(ctx, userID)
 	if err != nil {
 		return err
 	}
 
-	accUser, err := b.userStore.GetByUUID(ctx, userID)
+	reqUser, err := b.userStore.GetByUUID(ctx, requester)
+	if err != nil {
+		return err
+	}
+
+	// Check if requesting user is blocking the accepting user.
+	blockedUsers, err := b.userStore.GetBlocks(ctx, reqUser.ID)
+	if err != nil {
+		return err
+	}
+	for _, bu := range blockedUsers {
+		if bu.UUID == accUser.UUID {
+			evt := entity.WrapEvent(&pb.ErrorMessage{
+				Message: reqUser.Username + " is not available for seek requests",
+			}, pb.MessageType_ERROR_MESSAGE)
+			b.pubToUser(accUser.UUID, evt, "")
+			return nil
+		}
+	}
+
+	// Otherwise create a game
+	// If the ACCEPTOR of the seek has a seek request open, we must cancel it.
+	err = b.deleteSoughtForUser(ctx, userID)
 	if err != nil {
 		return err
 	}
