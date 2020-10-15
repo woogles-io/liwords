@@ -418,6 +418,10 @@ export const BoardPanel = React.memo((props: Props) => {
   );
   const keydown = useCallback(
     (evt: React.KeyboardEvent) => {
+      if (evt.ctrlKey || evt.altKey || evt.metaKey) {
+        // Alt+3 should not challenge. Ignore Ctrl, Alt/Opt, and Win/Cmd.
+        return;
+      }
       let key = evt.key;
       // Neutralize caps lock to prevent accidental blank usage.
       if (key.length === 1) {
