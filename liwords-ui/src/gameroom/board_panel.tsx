@@ -417,7 +417,18 @@ export const BoardPanel = React.memo((props: Props) => {
     [arrowProperties, props.board]
   );
   const keydown = useCallback(
-    (key: string) => {
+    (evt: React.KeyboardEvent) => {
+      let key = evt.key;
+      // Neutralize caps lock to prevent accidental blank usage.
+      if (key.length === 1) {
+        if (!evt.shiftKey && key >= 'A' && key <= 'Z') {
+          // Without shift, can only type lowercase.
+          key = key.toLowerCase();
+        } else if (evt.shiftKey && key >= 'a' && key <= 'z') {
+          // With shift, can only type uppercase.
+          key = key.toUpperCase();
+        }
+      }
       if (isMyTurn() && !props.gameDone) {
         if (key === '2') {
           makeMove('pass');
@@ -725,7 +736,7 @@ export const BoardPanel = React.memo((props: Props) => {
           }
         }
       }
-      keydown(e.key);
+      keydown(e);
     },
     [
       blankModalVisible,
