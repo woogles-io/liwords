@@ -725,6 +725,10 @@ export const BoardPanel = React.memo((props: Props) => {
           }
         }
       }
+      //prevent page from scrolling
+      if (e.key === 'ArrowDown' || e.key === 'ArrowUp' || e.key === ' ') {
+        e.preventDefault();
+      }
       keydown(e.key);
     },
     [
