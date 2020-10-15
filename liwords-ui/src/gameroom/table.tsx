@@ -132,7 +132,7 @@ export const Table = React.memo((props: Props) => {
           );
         }
       });
-    BoopSounds.startgameSound.play();
+    BoopSounds.playSound('startgameSound');
 
     return () => {
       clearChat();
