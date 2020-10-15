@@ -494,6 +494,20 @@ export const GameReducer = (state: GameState, action: Action): GameState => {
       // throw an Error..
       return newState;
     }
+
+    case ActionType.EndGame: {
+      // If the game ends, we should set this in the store, if it hasn't
+      // already been set. This can happen if it ends in an "abnormal" way
+      // like a resignation or a timeout -- these aren't ServerGamePlayEvents per se.
+      const newState = {
+        ...state,
+        playState: PlayState.GAME_OVER,
+      }
+      if (newState.clockController) {
+        newState.clockController.current?.stopClock();
+      }
+      return newState;
+    }
   }
   // This should never be reached, but the compiler is complaining.
   throw new Error(`Unhandled action type ${action.actionType}`);

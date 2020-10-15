@@ -333,9 +333,16 @@ export const useOnSocketMsg = () => {
 
           case MessageType.GAME_ENDED_EVENT: {
             console.log('got game end evt');
+
             const gee = parsedMsg as GameEndedEvent;
             setGameEndMessage(endGameMessage(gee));
             stopClock();
+
+            dispatchGameContext({
+              actionType: ActionType.EndGame,
+              payload: gee,
+            });
+
             BoopSounds.playSound('endgameSound');
             break;
           }
