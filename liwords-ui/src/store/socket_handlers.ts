@@ -193,6 +193,11 @@ export const useOnSocketMsg = () => {
                 // Only display the rematch modal if we are the recipient
                 // of the rematch request.
                 setRematchRequest(mr);
+              } else {
+                notification.info({
+                  message: 'New Match Request',
+                  description: `You have a new match request from ${soughtGame.seeker}`,
+                });
               }
             }
 
@@ -200,6 +205,7 @@ export const useOnSocketMsg = () => {
               actionType: ActionType.AddMatchRequest,
               payload: soughtGame,
             });
+
             break;
           }
 
