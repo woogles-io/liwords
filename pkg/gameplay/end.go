@@ -272,7 +272,7 @@ func AbortGame(ctx context.Context, gameStore GameStore, gameID string) error {
 	}
 	entGame.Lock()
 	defer entGame.Unlock()
-	entGame.SetGameEndReason(pb.GameEndReason_ABANDONED)
+	entGame.SetGameEndReason(pb.GameEndReason_CANCELLED)
 
 	entGame.History().PlayState = macondopb.PlayState_GAME_OVER
 

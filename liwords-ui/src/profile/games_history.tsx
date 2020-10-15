@@ -21,7 +21,7 @@ export const GamesHistoryCard = React.memo((props: Props) => {
 
   const formattedGames = props.games
     .filter(
-      (item) => item.players?.length && item.game_end_reason !== 'ABANDONED'
+      (item) => item.players?.length && item.game_end_reason !== 'CANCELLED'
     )
     .map((item) => {
       const userplace = item.players[0].user_id === userID ? 0 : 1;
@@ -82,6 +82,9 @@ export const GamesHistoryCard = React.memo((props: Props) => {
           endReason = 'Resignation';
           break;
         case 'ABANDONED':
+          endReason = 'Abandoned';
+          break;
+        case 'CANCELLED':
           endReason = 'Cancelled';
           break;
         case 'TRIPLE_CHALLENGE':
