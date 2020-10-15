@@ -1,7 +1,100 @@
 import React, { useState } from 'react';
-import { Button, Popconfirm } from 'antd';
+import { Button, Popconfirm, Tooltip } from 'antd';
+import {
+  DoubleLeftOutlined,
+  DoubleRightOutlined,
+  LeftOutlined,
+  RightOutlined,
+} from '@ant-design/icons';
+import {
+  useExamineStoreContext,
+  useGameContextStoreContext,
+} from '../store/store';
+
+const colors = require('../base.scss');
+
+const ExamineGameControls = React.memo((props: {}) => {
+  const {
+    examinedTurn,
+    handleExamineEnd,
+    handleExamineFirst,
+    handleExaminePrev,
+    handleExamineNext,
+    handleExamineLast,
+  } = useExamineStoreContext();
+  const { gameContext } = useGameContextStoreContext();
+  const numberOfTurns = gameContext.turns.length;
+
+  return (
+    <div className="game-controls">
+      <Button>Options</Button>
+      <Tooltip
+        title="First"
+        placement="top"
+        mouseEnterDelay={0.1}
+        mouseLeaveDelay={0.01}
+        color={colors.colorPrimary}
+      >
+        <Button
+          shape="circle"
+          icon={<DoubleLeftOutlined />}
+          type="primary"
+          onClick={handleExamineFirst}
+          disabled={examinedTurn <= 0}
+        />
+      </Tooltip>
+      <Tooltip
+        title="Previous"
+        placement="top"
+        mouseEnterDelay={0.1}
+        mouseLeaveDelay={0.01}
+        color={colors.colorPrimary}
+      >
+        <Button
+          shape="circle"
+          icon={<LeftOutlined />}
+          type="primary"
+          onClick={handleExaminePrev}
+          disabled={examinedTurn <= 0}
+        />
+      </Tooltip>
+      <Tooltip
+        title="Next"
+        placement="top"
+        mouseEnterDelay={0.1}
+        mouseLeaveDelay={0.01}
+        color={colors.colorPrimary}
+      >
+        <Button
+          shape="circle"
+          icon={<RightOutlined />}
+          type="primary"
+          onClick={handleExamineNext}
+          disabled={examinedTurn >= numberOfTurns}
+        />
+      </Tooltip>
+      <Tooltip
+        title="Last"
+        placement="top"
+        mouseEnterDelay={0.1}
+        mouseLeaveDelay={0.01}
+        color={colors.colorPrimary}
+      >
+        <Button
+          shape="circle"
+          icon={<DoubleRightOutlined />}
+          type="primary"
+          onClick={handleExamineLast}
+          disabled={examinedTurn >= numberOfTurns}
+        />
+      </Tooltip>
+      <Button onClick={handleExamineEnd}>Done</Button>
+    </div>
+  );
+});
 
 export type Props = {
+  isExamining: boolean;
   exchangeAllowed?: boolean;
   finalPassOrChallenge?: boolean;
   myTurn?: boolean;
@@ -13,6 +106,7 @@ export type Props = {
   onChallenge: () => void;
   onCommit: () => void;
   onExamine: () => void;
+  onExportGCG: () => void;
   onRematch: () => void;
   gameEndControls: boolean;
   showRematch: boolean;
@@ -20,16 +114,30 @@ export type Props = {
 };
 
 const GameControls = React.memo((props: Props) => {
+  if (props.isExamining) {
+    return <ExamineGameControls />;
+  }
+
   if (props.gameEndControls) {
     return (
       <EndGameControls
         onRematch={props.onRematch}
         onExamine={props.onExamine}
+        onExportGCG={props.onExportGCG}
         showRematch={props.showRematch && !props.observer}
       />
     );
   }
 
+  if (props.observer) {
+    return (
+      <div className="game-controls">
+        <Button onClick={props.onExamine}>Examine</Button>
+      </div>
+    );
+  }
+
+  // Temporary dead code.
   if (props.observer) {
     return null;
   }
@@ -85,6 +193,7 @@ type EGCProps = {
   onRematch: () => void;
   showRematch: boolean;
   onExamine: () => void;
+  onExportGCG: () => void;
 };
 
 const EndGameControls = (props: EGCProps) => {
@@ -92,7 +201,8 @@ const EndGameControls = (props: EGCProps) => {
   return (
     <div className="game-controls">
       <Button>Options</Button>
-      <Button onClick={props.onExamine}>Export GCG</Button>
+      <Button onClick={props.onExamine}>Examine</Button>
+      <Button onClick={props.onExportGCG}>Export GCG</Button>
       <Button onClick={() => window.location.replace('/')}>Exit</Button>
       {props.showRematch && !rematchDisabled && (
         <Button

@@ -2,6 +2,7 @@ import React, {
   createContext,
   useCallback,
   useContext,
+  useMemo,
   useState,
   useReducer,
   useRef,
@@ -16,6 +17,7 @@ import { LobbyState, LobbyReducer } from './reducers/lobby_reducer';
 import { Action } from '../actions/actions';
 import {
   GameState,
+  pushTurns,
   startingGameState,
   GameReducer,
 } from './reducers/game_reducer';
@@ -133,6 +135,17 @@ type PoolFormatStoreData = {
   setPoolFormat: (format: PoolFormatType) => void;
 };
 
+type ExamineStoreData = {
+  isExamining: boolean;
+  examinedTurn: number;
+  handleExamineStart: () => void;
+  handleExamineEnd: () => void;
+  handleExamineFirst: () => void;
+  handleExaminePrev: () => void;
+  handleExamineNext: () => void;
+  handleExamineLast: () => void;
+};
+
 const defaultGameState = startingGameState(
   EnglishCrosswordGameDistribution,
   [],
@@ -185,10 +198,14 @@ const ChallengeResultEventContext = createContext<
   challengeResultEvent: defaultFunction,
 });
 
-const GameContextContext = createContext<GameContextStoreData>({
-  gameContext: defaultGameState,
-  dispatchGameContext: defaultFunction,
-});
+const [GameContextContext, ExaminableGameContextContext] = Array.from(
+  new Array(2),
+  () =>
+    createContext<GameContextStoreData>({
+      gameContext: defaultGameState,
+      dispatchGameContext: defaultFunction,
+    })
+);
 
 const ChatContext = createContext<ChatStoreData>({
   addChat: defaultFunction,
@@ -203,28 +220,45 @@ const PresenceContext = createContext<PresenceStoreData>({
   presences: {},
 });
 
-const GameEndMessageContext = createContext<GameEndMessageStoreData>({
-  gameEndMessage: '',
-  setGameEndMessage: defaultFunction,
-});
+const [GameEndMessageContext, ExaminableGameEndMessageContext] = Array.from(
+  new Array(2),
+  () =>
+    createContext<GameEndMessageStoreData>({
+      gameEndMessage: '',
+      setGameEndMessage: defaultFunction,
+    })
+);
 
 const RematchRequestContext = createContext<RematchRequestStoreData>({
   rematchRequest: new MatchRequest(),
   setRematchRequest: defaultFunction,
 });
 
-const TimerContext = createContext<TimerStoreData>({
-  // initClockController: defaultFunction,
-  stopClock: defaultFunction,
-  // setClock: defaultFunction,
-  timerContext: defaultTimerContext,
-  pTimedOut: undefined,
-  setPTimedOut: defaultFunction,
-});
+const [TimerContext, ExaminableTimerContext] = Array.from(new Array(2), () =>
+  createContext<TimerStoreData>({
+    // initClockController: defaultFunction,
+    stopClock: defaultFunction,
+    // setClock: defaultFunction,
+    timerContext: defaultTimerContext,
+    pTimedOut: undefined,
+    setPTimedOut: defaultFunction,
+  })
+);
 
 const PoolFormatContext = createContext<PoolFormatStoreData>({
   poolFormat: PoolFormatType.Alphabet,
   setPoolFormat: defaultFunction,
+});
+
+const ExamineContext = createContext<ExamineStoreData>({
+  isExamining: false,
+  examinedTurn: Infinity,
+  handleExamineStart: defaultFunction,
+  handleExamineEnd: defaultFunction,
+  handleExamineFirst: defaultFunction,
+  handleExaminePrev: defaultFunction,
+  handleExamineNext: defaultFunction,
+  handleExamineLast: defaultFunction,
 });
 
 type Props = {
@@ -249,6 +283,176 @@ const gameStateInitializer = (
   state.onClockTimeout = onClockTimeout;
   return state;
 };
+
+// Support for examining. Must be nested deeper than the Real Stuffs.
+
+const doNothing = () => {}; // defaultFunction currently is the same as this.
+
+const ExaminableStore = ({ children }: { children: React.ReactNode }) => {
+  const gameContextStore = useGameContextStoreContext();
+  const gameEndMessageStore = useGameEndMessageStoreContext();
+  const timerStore = useTimerStoreContext();
+
+  const { gameContext } = gameContextStore;
+  const numberOfTurns = gameContext.turns.length;
+  const [isExamining, setIsExamining] = useState(false);
+  const [examinedTurn, setExaminedTurn] = useState(Infinity);
+  const handleExamineStart = useCallback(() => {
+    setIsExamining(true);
+  }, []);
+  const handleExamineEnd = useCallback(() => {
+    setIsExamining(false);
+  }, []);
+  const handleExamineFirst = useCallback(() => {
+    setExaminedTurn(0);
+  }, []);
+  const handleExaminePrev = useCallback(() => {
+    setExaminedTurn((x) => Math.max(Math.min(x, numberOfTurns) - 1, 0));
+  }, [numberOfTurns]);
+  const handleExamineNext = useCallback(() => {
+    setExaminedTurn((x) => (x >= numberOfTurns - 1 ? Infinity : x + 1));
+  }, [numberOfTurns]);
+  const handleExamineLast = useCallback(() => {
+    setExaminedTurn(Infinity);
+  }, []);
+
+  const examinableGameContext = useMemo(() => {
+    if (!isExamining) return gameContext;
+    const ret = startingGameState(
+      gameContext.tileDistribution,
+      gameContext.players.map(({ userID }) => ({
+        userID: userID,
+        score: 0,
+        onturn: false,
+        currentRack: '',
+      })),
+      gameContext.gameID
+    );
+    ret.nickToPlayerOrder = gameContext.nickToPlayerOrder;
+    ret.uidToPlayerOrder = gameContext.uidToPlayerOrder;
+    const replayedTurns = gameContext.turns.slice(0, examinedTurn);
+    pushTurns(ret, replayedTurns);
+
+    // Fix players and clockController.
+    const times = { p0: 0, p1: 0, lastUpdate: 0 };
+    for (let i = 0; i < ret.players.length; ++i) {
+      const userID = ret.players[i].userID;
+      const playerOrder = gameContext.uidToPlayerOrder[userID];
+      let nickname = '';
+      for (const nick in gameContext.nickToPlayerOrder) {
+        if (playerOrder === gameContext.nickToPlayerOrder[nick]) {
+          nickname = nick;
+          break;
+        }
+      }
+      // Score and time comes from the most recent past.
+      let score = 0;
+      let time = Infinity; // No gameInfo here, patch in PlayerCard.
+      for (let j = replayedTurns.length; --j >= 0; ) {
+        const turn = gameContext.turns[j];
+        if (turn.getNickname() === nickname) {
+          score = turn.getCumulative();
+          time = turn.getMillisRemaining();
+          break;
+        }
+      }
+      ret.players[i].score = score;
+      times[playerOrder] = time;
+      ret.players[i].onturn = i === ret.onturn;
+      // Rack comes from the closest future.
+      let rack = gameContext.players[i].currentRack;
+      for (let j = replayedTurns.length; j < gameContext.turns.length; ++j) {
+        const turn = gameContext.turns[j];
+        if (turn.getNickname() === nickname) {
+          rack = turn.getRack();
+          break;
+        }
+      }
+      ret.players[i].currentRack = rack;
+    }
+    ret.clockController = {
+      current: new ClockController(times, doNothing, doNothing),
+    };
+    return ret;
+  }, [isExamining, examinedTurn, gameContext]);
+
+  const isShowingLatest = !isExamining || examinedTurn >= numberOfTurns;
+  const examinableGameContextStore = useMemo(() => {
+    return {
+      gameContext: examinableGameContext,
+      dispatchGameContext: doNothing,
+    };
+  }, [examinableGameContext]);
+
+  const { gameEndMessage } = gameEndMessageStore;
+  const examinableGameEndMessageStore = useMemo(() => {
+    return {
+      gameEndMessage: isShowingLatest ? gameEndMessage : '',
+      setGameEndMessage: doNothing,
+    };
+  }, [isShowingLatest, gameEndMessage]);
+
+  const shownTimes = isExamining
+    ? examinableGameContext.clockController!.current!.times
+    : timerStore.timerContext;
+  const examinableTimerStore = useMemo(() => {
+    return {
+      stopClock: doNothing,
+      timerContext: shownTimes,
+      pTimedOut: undefined,
+      setPTimedOut: doNothing,
+    };
+  }, [shownTimes]);
+
+  const examineContext = useMemo(
+    () => ({
+      isExamining,
+      examinedTurn,
+      handleExamineStart,
+      handleExamineEnd,
+      handleExamineFirst,
+      handleExaminePrev,
+      handleExamineNext,
+      handleExamineLast,
+    }),
+    [
+      isExamining,
+      examinedTurn,
+      handleExamineStart,
+      handleExamineEnd,
+      handleExamineFirst,
+      handleExaminePrev,
+      handleExamineNext,
+      handleExamineLast,
+    ]
+  );
+
+  let ret = children;
+  ret = (
+    <ExaminableGameContextContext.Provider
+      value={examinableGameContextStore}
+      children={ret}
+    />
+  );
+  ret = (
+    <ExaminableGameEndMessageContext.Provider
+      value={examinableGameEndMessageStore}
+      children={ret}
+    />
+  );
+  ret = (
+    <ExaminableTimerContext.Provider
+      value={examinableTimerStore}
+      children={ret}
+    />
+  );
+  ret = <ExamineContext.Provider value={examineContext} children={ret} />;
+
+  // typescript did not like "return ret;"
+  return <React.Fragment children={ret} />;
+};
+
+// The Real Store.
 
 export const Store = ({ children, ...props }: Props) => {
   const clockController = useRef<ClockController | null>(null);
@@ -372,7 +576,7 @@ export const Store = ({ children, ...props }: Props) => {
     setTimerContext({ ...clockController.current.times });
   }, []);
 
-  let ret = children;
+  let ret = <ExaminableStore children={children} />;
   ret = (
     <LobbyContext.Provider
       value={{
@@ -517,5 +721,13 @@ export const useRematchRequestStoreContext = () =>
   useContext(RematchRequestContext);
 export const useTimerStoreContext = () => useContext(TimerContext);
 export const usePoolFormatStoreContext = () => useContext(PoolFormatContext);
+
+export const useExaminableGameContextStoreContext = () =>
+  useContext(ExaminableGameContextContext);
+export const useExaminableGameEndMessageStoreContext = () =>
+  useContext(ExaminableGameEndMessageContext);
+export const useExaminableTimerStoreContext = () =>
+  useContext(ExaminableTimerContext);
+export const useExamineStoreContext = () => useContext(ExamineContext);
 
 // https://dev.to/nazmifeeroz/using-usecontext-and-usestate-hooks-as-a-store-mnm

@@ -242,7 +242,7 @@ const unplaceOnBoard = (
 };
 
 // pushTurns mutates the gs (GameState).
-const pushTurns = (gs: GameState, events: Array<GameEvent>) => {
+export const pushTurns = (gs: GameState, events: Array<GameEvent>) => {
   events.forEach((evt, idx) => {
     // We only care about placement and unplacement events here:
     switch (evt.getType()) {

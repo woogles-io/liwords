@@ -9,6 +9,8 @@ import { TopBar } from '../topbar/topbar';
 import { Chat } from '../chat/chat';
 import {
   useChatStoreContext,
+  useExaminableGameContextStoreContext,
+  useExamineStoreContext,
   useGameContextStoreContext,
   useGameEndMessageStoreContext,
   useLoginStateStoreContext,
@@ -73,6 +75,10 @@ const defaultGameInfo = {
 export const Table = React.memo((props: Props) => {
   const { gameID } = useParams();
   const { chat, clearChat } = useChatStoreContext();
+  const {
+    gameContext: examinableGameContext,
+  } = useExaminableGameContextStoreContext();
+  const { isExamining } = useExamineStoreContext();
   const { gameContext } = useGameContextStoreContext();
   const { gameEndMessage } = useGameEndMessageStoreContext();
   const { loginState } = useLoginStateStoreContext();
@@ -299,12 +305,14 @@ export const Table = React.memo((props: Props) => {
   // If we are NOT one of the players (so an observer), display the rack of
   // the player on turn.
   let rack;
+  const gameDone = gameInfo.game_end_reason !== 'NONE';
   const us = gameInfo.players.find((p) => p.nickname === username);
-  if (us) {
-    rack = gameContext.players.find((p) => p.userID === us.user_id)
+  if (us && !(gameDone && isExamining)) {
+    rack = examinableGameContext.players.find((p) => p.userID === us.user_id)
       ?.currentRack;
   } else {
-    rack = gameContext.players.find((p) => p.onturn)?.currentRack || '';
+    rack =
+      examinableGameContext.players.find((p) => p.onturn)?.currentRack || '';
   }
 
   // The game "starts" when the GameHistoryRefresher object comes in via the socket.
@@ -333,21 +341,21 @@ export const Table = React.memo((props: Props) => {
         <div className="play-area">
           <BoardPanel
             username={username}
-            board={gameContext.board}
+            board={examinableGameContext.board}
             currentRack={rack || ''}
-            events={gameContext.turns}
+            events={examinableGameContext.turns}
             gameID={gameID}
             sendSocketMsg={props.sendSocketMsg}
-            gameDone={gameInfo.game_end_reason !== 'NONE'}
+            gameDone={gameDone}
             playerMeta={gameInfo.players}
           />
           <StreakWidget recentGames={streakGameInfo} />
         </div>
         <div className="data-area">
-          <PlayerCards playerMeta={gameInfo.players} />
+          <PlayerCards gameMeta={gameInfo} playerMeta={gameInfo.players} />
           <GameInfo meta={gameInfo} />
           <Pool
-            pool={gameContext?.pool}
+            pool={examinableGameContext?.pool}
             currentRack={rack || ''}
             poolFormat={poolFormat}
             setPoolFormat={setPoolFormat}
@@ -365,8 +373,8 @@ export const Table = React.memo((props: Props) => {
           <ScoreCard
             username={username}
             playing={us !== undefined}
-            events={gameContext.turns}
-            board={gameContext.board}
+            events={examinableGameContext.turns}
+            board={examinableGameContext.board}
             playerMeta={gameInfo.players}
             poolFormat={poolFormat}
           />

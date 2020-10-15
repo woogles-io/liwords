@@ -37,8 +37,10 @@ import {
   MatchUser,
 } from '../gen/api/proto/realtime/realtime_pb';
 import {
+  useExaminableGameContextStoreContext,
+  useExaminableGameEndMessageStoreContext,
+  useExamineStoreContext,
   useGameContextStoreContext,
-  useGameEndMessageStoreContext,
   useTimerStoreContext,
 } from '../store/store';
 import { BlankSelector } from './blank_selector';
@@ -140,8 +142,14 @@ export const BoardPanel = React.memo((props: Props) => {
   const [placedTiles, setPlacedTiles] = useState(new Set<EphemeralTile>());
   const [placedTilesTempScore, setPlacedTilesTempScore] = useState<number>();
   const [blankModalVisible, setBlankModalVisible] = useState(false);
+  const {
+    gameContext: examinableGameContext,
+  } = useExaminableGameContextStoreContext();
+  const {
+    gameEndMessage: examinableGameEndMessage,
+  } = useExaminableGameEndMessageStoreContext();
+  const { isExamining, handleExamineStart } = useExamineStoreContext();
   const { gameContext } = useGameContextStoreContext();
-  const { gameEndMessage } = useGameEndMessageStoreContext();
   const { stopClock } = useTimerStoreContext();
   const [exchangeModalVisible, setExchangeModalVisible] = useState(false);
   const [exchangeAllowed, setexchangeAllowed] = useState(true);
@@ -150,20 +158,25 @@ export const BoardPanel = React.memo((props: Props) => {
 
   const isMyTurn = useCallback(() => {
     const iam = gameContext.nickToPlayerOrder[props.username];
-    return iam && iam === `p${gameContext.onturn}`;
-  }, [gameContext.nickToPlayerOrder, props.username, gameContext.onturn]);
+    return iam && iam === `p${examinableGameContext.onturn}`;
+  }, [
+    gameContext.nickToPlayerOrder,
+    props.username,
+    examinableGameContext.onturn,
+  ]);
 
   const { board, gameID, playerMeta, sendSocketMsg, username } = props;
 
   const makeMove = useCallback(
     (move: string, addl?: string) => {
+      if (isExamining) return;
       let moveEvt;
       if (move !== 'resign' && !isMyTurn()) {
         console.log(
           'off turn move attempts',
           gameContext.nickToPlayerOrder,
           username,
-          gameContext.onturn
+          examinableGameContext.onturn
         );
         // It is not my turn. Ignore this event.
         message.warn({
@@ -177,7 +190,7 @@ export const BoardPanel = React.memo((props: Props) => {
         'making move',
         gameContext.nickToPlayerOrder,
         username,
-        gameContext.onturn
+        examinableGameContext.onturn
       );
       switch (move) {
         case 'exchange':
@@ -215,7 +228,8 @@ export const BoardPanel = React.memo((props: Props) => {
     },
     [
       gameContext.nickToPlayerOrder,
-      gameContext.onturn,
+      examinableGameContext.onturn,
+      isExamining,
       isMyTurn,
       placedTiles,
       board,
@@ -265,6 +279,9 @@ export const BoardPanel = React.memo((props: Props) => {
       !dep.placedTiles.size
     ) {
       // First load after receiving rack.
+      fullReset = true;
+    } else if (isExamining) {
+      // Prevent stuck tiles.
       fullReset = true;
     } else if (!dep.isMyTurn()) {
       // Opponent's turn means we have just made a move. (Assumption: there are only two players.)
@@ -316,7 +333,7 @@ export const BoardPanel = React.memo((props: Props) => {
       setArrowProperties({ row: 0, col: 0, horizontal: false, show: false });
     }
     lastLettersRef.current = props.board.letters;
-  }, [props.board.letters, props.currentRack]);
+  }, [isExamining, props.board.letters, props.currentRack]);
 
   useEffect(() => {
     // Stop the clock if we unload the board panel.
@@ -342,7 +359,7 @@ export const BoardPanel = React.memo((props: Props) => {
   }, [gameContext.pool]);
   useEffect(() => {
     if (
-      gameContext.playState === PlayState.WAITING_FOR_FINAL_PASS &&
+      examinableGameContext.playState === PlayState.WAITING_FOR_FINAL_PASS &&
       isMyTurn()
     ) {
       const finalAction = (
@@ -376,7 +393,7 @@ export const BoardPanel = React.memo((props: Props) => {
       );
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [gameContext.playState]);
+  }, [examinableGameContext.playState]);
 
   useEffect(() => {
     if (!props.events.length) {
@@ -755,7 +772,7 @@ export const BoardPanel = React.memo((props: Props) => {
   const handleResign = useCallback(() => makeMove('resign'), [makeMove]);
   const handleChallenge = useCallback(() => makeMove('challenge'), [makeMove]);
   const handleCommit = useCallback(() => makeMove('commit'), [makeMove]);
-  const handleExamine = useCallback(
+  const handleExportGCG = useCallback(
     () => gcgExport(props.gameID, props.playerMeta),
     [props.gameID, props.playerMeta]
   );
@@ -777,14 +794,14 @@ export const BoardPanel = React.memo((props: Props) => {
         handleBoardTileClick={handleBoardTileClick}
         handleTileDrop={handleTileDrop}
         tilesLayout={props.board.letters}
-        lastPlayedTiles={gameContext.lastPlayedTiles}
+        lastPlayedTiles={examinableGameContext.lastPlayedTiles}
         tentativeTiles={placedTiles}
         tentativeTileScore={placedTilesTempScore}
         currentRack={props.currentRack}
         squareClicked={squareClicked}
         placementArrowProperties={arrowProperties}
       />
-      {!gameEndMessage ? (
+      {!examinableGameEndMessage ? (
         <div className="rack-container">
           <Tooltip
             title="Reset Rack &darr;"
@@ -821,12 +838,13 @@ export const BoardPanel = React.memo((props: Props) => {
           </Tooltip>
         </div>
       ) : (
-        <GameEndMessage message={gameEndMessage} />
+        <GameEndMessage message={examinableGameEndMessage} />
       )}
       <GameControls
+        isExamining={isExamining}
         myTurn={isMyTurn()}
         finalPassOrChallenge={
-          gameContext.playState === PlayState.WAITING_FOR_FINAL_PASS
+          examinableGameContext.playState === PlayState.WAITING_FOR_FINAL_PASS
         }
         exchangeAllowed={exchangeAllowed}
         observer={observer}
@@ -837,9 +855,10 @@ export const BoardPanel = React.memo((props: Props) => {
         onChallenge={handleChallenge}
         onCommit={handleCommit}
         onRematch={rematch}
-        onExamine={handleExamine}
-        showRematch={gameEndMessage !== ''}
-        gameEndControls={gameEndMessage !== '' || props.gameDone}
+        onExamine={handleExamineStart}
+        onExportGCG={handleExportGCG}
+        showRematch={examinableGameEndMessage !== ''}
+        gameEndControls={examinableGameEndMessage !== '' || props.gameDone}
         currentRack={props.currentRack}
       />
       <ExchangeTiles
