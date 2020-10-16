@@ -25,7 +25,7 @@ window.console.info(
     // Should not happen because this is in public/index.html.
     throw new Error('missing meta');
   }
-  window.addEventListener('resize', () => {
+  const resizeFunc = () => {
     let desiredViewport = 'width=device-width, initial-scale=1';
     const deviceWidth = window.outerWidth;
     if (deviceWidth < minimumViableWidth) {
@@ -34,7 +34,9 @@ window.console.info(
       }`;
     }
     metaViewport.setAttribute('content', desiredViewport);
-  });
+  };
+  window.addEventListener('resize', resizeFunc);
+  resizeFunc();
 }
 
 ReactDOM.render(
