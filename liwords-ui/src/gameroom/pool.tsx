@@ -109,13 +109,24 @@ const Pool = React.memo((props: Props) => {
     </Dropdown>
   );
 
+  const singularCount = (n: number, singular: string, plural: string) =>
+    `${n} ${n === 1 ? singular : plural}`;
+
   const renderContents = (title?: string) => (
     <div className="pool">
       {title ? <p className="label">{title}</p> : null}
       <div className="tiles-remaining">{letterSections}</div>
       <div className="vc-distribution">
-        <div>{getPoolCount(pool, VOWELS)} vowels</div>
-        <div>{getPoolCount(pool, CONSONANTS)} consonants</div>
+        <div>
+          {singularCount(getPoolCount(pool, VOWELS), 'vowel', 'vowels')}
+        </div>
+        <div>
+          {singularCount(
+            getPoolCount(pool, CONSONANTS),
+            'consonant',
+            'consonants'
+          )}
+        </div>
       </div>
     </div>
   );
@@ -125,9 +136,9 @@ const Pool = React.memo((props: Props) => {
 
   let title: string;
   if (inbag === 0) {
-    title = `Opponent has ${unseen} ${unseen === 1 ? 'tile' : 'tiles'}`;
+    title = `Opponent has ${singularCount(unseen, 'tile', 'tiles')}`;
   } else {
-    title = `${inbag} ${inbag === 1 ? 'tile' : 'tiles'} in bag`;
+    title = `${singularCount(inbag, 'tile', 'tiles')} in bag`;
   }
 
   if (props.omitCard) {
