@@ -16,6 +16,27 @@ window.console.info(
   'Woogles.io is open source! https://github.com/domino14/liwords'
 );
 
+// Scope the variables declared here.
+{
+  // Adjust this constant accordingly.
+  const minimumViableWidth = 558;
+  const metaViewport = document.querySelector("meta[name='viewport']");
+  if (!metaViewport) {
+    // Should not happen because this is in public/index.html.
+    throw new Error('missing meta');
+  }
+  window.addEventListener('resize', () => {
+    let desiredViewport = 'width=device-width, initial-scale=1';
+    const deviceWidth = window.outerWidth;
+    if (deviceWidth < minimumViableWidth) {
+      desiredViewport = `width=${minimumViableWidth}, initial-scale=${
+        deviceWidth / minimumViableWidth
+      }`;
+    }
+    metaViewport.setAttribute('content', desiredViewport);
+  });
+}
+
 ReactDOM.render(
   <React.StrictMode>
     <Store>
