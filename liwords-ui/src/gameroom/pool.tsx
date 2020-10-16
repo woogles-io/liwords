@@ -125,9 +125,9 @@ const Pool = React.memo((props: Props) => {
 
   let title: string;
   if (inbag === 0) {
-    title = `Opponent has ${unseen} tiles`;
+    title = `Opponent has ${unseen} ${unseen === 1 ? 'tile' : 'tiles'}`;
   } else {
-    title = `${inbag} tiles in bag`;
+    title = `${inbag} ${inbag === 1 ? 'tile' : 'tiles'} in bag`;
   }
 
   if (props.omitCard) {
