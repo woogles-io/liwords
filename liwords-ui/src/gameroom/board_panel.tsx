@@ -435,23 +435,28 @@ export const BoardPanel = React.memo((props: Props) => {
       }
       if (isMyTurn() && !props.gameDone) {
         if (key === '2') {
+          evt.preventDefault();
           makeMove('pass');
           return;
         }
         if (key === '3') {
+          evt.preventDefault();
           makeMove('challenge');
           return;
         }
         if (key === '4' && exchangeAllowed) {
+          evt.preventDefault();
           setExchangeModalVisible(true);
           return;
         }
         if (key === '$' && exchangeAllowed) {
+          evt.preventDefault();
           makeMove('exchange', props.currentRack);
           return;
         }
       }
       if (key === 'ArrowLeft' || key === 'ArrowRight') {
+        evt.preventDefault();
         setArrowProperties({
           ...arrowProperties,
           horizontal: !arrowProperties.horizontal,
@@ -459,14 +464,17 @@ export const BoardPanel = React.memo((props: Props) => {
         return;
       }
       if (key === 'ArrowDown') {
+        evt.preventDefault();
         recallTiles();
         return;
       }
       if (key === 'ArrowUp') {
+        evt.preventDefault();
         shuffleTiles();
         return;
       }
       if (key === EnterKey && !exchangeModalVisible && !blankModalVisible) {
+        evt.preventDefault();
         makeMove('commit');
         return;
       }
@@ -493,6 +501,7 @@ export const BoardPanel = React.memo((props: Props) => {
       if (handlerReturn === null) {
         return;
       }
+      evt.preventDefault();
       setDisplayedRack(handlerReturn.newDisplayedRack);
       setArrowProperties(handlerReturn.newArrow);
       setPlacedTiles(handlerReturn.newPlacedTiles);
@@ -763,6 +772,11 @@ export const BoardPanel = React.memo((props: Props) => {
       keydown,
     ]
   );
+  // Just put this in onKeyPress to block all typeable keys so that typos from
+  // placing a tile not on rack also do not trigger type-to-find on firefox.
+  const preventFirefoxTypeToSearch = useCallback((e) => {
+    e.preventDefault();
+  }, []);
   const handlePass = useCallback(() => makeMove('pass'), [makeMove]);
   const handleResign = useCallback(() => makeMove('resign'), [makeMove]);
   const handleChallenge = useCallback(() => makeMove('challenge'), [makeMove]);
@@ -780,6 +794,7 @@ export const BoardPanel = React.memo((props: Props) => {
       id="board-container"
       className="board-container"
       onKeyDown={handleKeyDown}
+      onKeyPress={preventFirefoxTypeToSearch}
       tabIndex={-1}
       role="textbox"
     >

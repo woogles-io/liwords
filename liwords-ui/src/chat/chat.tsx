@@ -27,6 +27,7 @@ export const Chat = React.memo((props: Props) => {
   const el = useRef<HTMLDivElement>(null);
   const onKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') {
+      e.preventDefault();
       // Send if non-trivial
       const msg = curMsg.trim();
       setCurMsg('');
