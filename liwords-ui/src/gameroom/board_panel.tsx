@@ -764,6 +764,11 @@ export const BoardPanel = React.memo((props: Props) => {
       keydown,
     ]
   );
+  // Just put this in onKeyPress to block all typeable keys so that typos from
+  // placing a tile not on rack also do not trigger type-to-find on firefox.
+  const preventFirefoxTypeToSearch = useCallback((e) => {
+    e.preventDefault();
+  }, []);
   const handlePass = useCallback(() => makeMove('pass'), [makeMove]);
   const handleResign = useCallback(() => makeMove('resign'), [makeMove]);
   const handleChallenge = useCallback(() => makeMove('challenge'), [makeMove]);
@@ -781,6 +786,7 @@ export const BoardPanel = React.memo((props: Props) => {
       id="board-container"
       className="board-container"
       onKeyDown={handleKeyDown}
+      onKeyPress={preventFirefoxTypeToSearch}
       tabIndex={-1}
       role="textbox"
     >
