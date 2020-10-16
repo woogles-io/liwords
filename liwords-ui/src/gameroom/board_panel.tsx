@@ -1,6 +1,6 @@
 import React, { useCallback, useState, useEffect, useRef } from 'react';
 import { Button, Modal, notification, message, Tooltip } from 'antd';
-import { SyncOutlined } from '@ant-design/icons';
+import { ArrowDownOutlined, SyncOutlined } from '@ant-design/icons';
 import axios from 'axios';
 
 import GameBoard from './board';
@@ -820,9 +820,12 @@ export const BoardPanel = React.memo((props: Props) => {
             mouseLeaveDelay={0.01}
             color={colors.colorPrimary}
           >
-            <Button shape="circle" type="primary" onClick={recallTiles}>
-              &#8595;
-            </Button>
+            <Button
+              shape="circle"
+              icon={<ArrowDownOutlined />}
+              type="primary"
+              onClick={recallTiles}
+            />
           </Tooltip>
           <Rack
             letters={displayedRack}
