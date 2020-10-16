@@ -435,23 +435,28 @@ export const BoardPanel = React.memo((props: Props) => {
       }
       if (isMyTurn() && !props.gameDone) {
         if (key === '2') {
+          evt.preventDefault();
           makeMove('pass');
           return;
         }
         if (key === '3') {
+          evt.preventDefault();
           makeMove('challenge');
           return;
         }
         if (key === '4' && exchangeAllowed) {
+          evt.preventDefault();
           setExchangeModalVisible(true);
           return;
         }
         if (key === '$' && exchangeAllowed) {
+          evt.preventDefault();
           makeMove('exchange', props.currentRack);
           return;
         }
       }
       if (key === 'ArrowLeft' || key === 'ArrowRight') {
+        evt.preventDefault();
         setArrowProperties({
           ...arrowProperties,
           horizontal: !arrowProperties.horizontal,
@@ -459,14 +464,17 @@ export const BoardPanel = React.memo((props: Props) => {
         return;
       }
       if (key === 'ArrowDown') {
+        evt.preventDefault();
         recallTiles();
         return;
       }
       if (key === 'ArrowUp') {
+        evt.preventDefault();
         shuffleTiles();
         return;
       }
       if (key === EnterKey && !exchangeModalVisible && !blankModalVisible) {
+        evt.preventDefault();
         makeMove('commit');
         return;
       }
@@ -493,6 +501,7 @@ export const BoardPanel = React.memo((props: Props) => {
       if (handlerReturn === null) {
         return;
       }
+      evt.preventDefault();
       setDisplayedRack(handlerReturn.newDisplayedRack);
       setArrowProperties(handlerReturn.newArrow);
       setPlacedTiles(handlerReturn.newPlacedTiles);
