@@ -9,6 +9,7 @@ import React, {
 } from 'react';
 
 import { EnglishCrosswordGameDistribution } from '../constants/tile_distributions';
+import { GameEvent } from '../gen/macondo/api/proto/macondo/macondo_pb';
 import {
   ServerChallengeResultEvent,
   MatchRequest,
@@ -345,20 +346,45 @@ const ExaminableStore = ({ children }: { children: React.ReactNode }) => {
           break;
         }
       }
-      // Score and time comes from the most recent past.
+
+      // Score comes from the most recent past.
       let score = 0;
-      let time = Infinity; // No gameInfo here, patch in PlayerCard.
       for (let j = replayedTurns.length; --j >= 0; ) {
         const turn = gameContext.turns[j];
         if (turn.getNickname() === nickname) {
           score = turn.getCumulative();
-          time = turn.getMillisRemaining();
           break;
         }
       }
       ret.players[i].score = score;
+
+      // Time comes from the most recent past.
+      // But may belong to either player, depending on event type.
+      let time = Infinity; // No gameInfo here, patch in PlayerCard.
+      for (let j = replayedTurns.length; --j >= 0; ) {
+        const turn = gameContext.turns[j];
+
+        // Logic from game_reducer setClock.
+        let flipTimeRemaining = false;
+        if (
+          turn.getType() === GameEvent.Type.CHALLENGE_BONUS ||
+          turn.getType() === GameEvent.Type.PHONY_TILES_RETURNED
+        ) {
+          // For these particular two events, the time remaining is for the CHALLENGER.
+          // Therefore, it's not the time remaining of the player whose nickname is
+          // in the event, so we must flip the times here.
+          flipTimeRemaining = true;
+        }
+
+        if ((turn.getNickname() === nickname) !== flipTimeRemaining) {
+          time = turn.getMillisRemaining();
+          break;
+        }
+      }
       times[playerOrder] = time;
+
       ret.players[i].onturn = i === ret.onturn;
+
       // Rack comes from the closest future.
       let rack = gameContext.players[i].currentRack;
       for (let j = replayedTurns.length; j < gameContext.turns.length; ++j) {
