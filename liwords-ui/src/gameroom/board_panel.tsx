@@ -717,7 +717,7 @@ export const BoardPanel = React.memo((props: Props) => {
       if (drawingCanBeEnabled) {
         // To activate a drawing hotkey, type 0, then the hotkey.
         if (!exchangeModalVisible && !blankModalVisible) {
-          if (evt.ctrlKey || evt.altKey || evt.metaKey) {
+          if (e.ctrlKey || e.altKey || e.metaKey) {
             // Do not prevent Ctrl+0/Cmd+0.
           } else {
             if (drawingKeyMode) {
@@ -744,7 +744,7 @@ export const BoardPanel = React.memo((props: Props) => {
           }
         }
       }
-      if (evt.ctrlKey || evt.altKey || evt.metaKey) {
+      if (e.ctrlKey || e.altKey || e.metaKey) {
         // If a modifier key is held, never mind.
       } else {
         //prevent page from scrolling
