@@ -4,7 +4,7 @@ import './App.scss';
 import axios from 'axios';
 import 'antd/dist/antd.css';
 
-import { Table } from './gameroom/table';
+import { Table as GameTable } from './gameroom/table';
 import { Lobby } from './lobby/lobby';
 import {
   useExcludedPlayersStoreContext,
@@ -74,7 +74,7 @@ const App = React.memo(() => {
         </Route>
         <Route path="/game/:gameID">
           {/* Table meaning a game table */}
-          <Table sendSocketMsg={sendMessage} />
+          <GameTable sendSocketMsg={sendMessage} />
         </Route>
         <Route path="/about">
           <About />
