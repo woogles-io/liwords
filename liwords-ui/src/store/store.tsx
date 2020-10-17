@@ -145,6 +145,7 @@ type ExamineStoreData = {
   handleExaminePrev: () => void;
   handleExamineNext: () => void;
   handleExamineLast: () => void;
+  handleExamineGoTo: (x: number) => void;
 };
 
 const defaultGameState = startingGameState(
@@ -260,6 +261,7 @@ const ExamineContext = createContext<ExamineStoreData>({
   handleExaminePrev: defaultFunction,
   handleExamineNext: defaultFunction,
   handleExamineLast: defaultFunction,
+  handleExamineGoTo: defaultFunction,
 });
 
 type Props = {
@@ -316,6 +318,16 @@ const ExaminableStore = ({ children }: { children: React.ReactNode }) => {
   const handleExamineLast = useCallback(() => {
     setExaminedTurn(Infinity);
   }, []);
+  const handleExamineGoTo = useCallback(
+    (x) => {
+      if (x >= numberOfTurns) {
+        setExaminedTurn(Infinity);
+      } else {
+        setExaminedTurn(Math.max(Math.min(x, numberOfTurns), 0));
+      }
+    },
+    [numberOfTurns]
+  );
 
   const examinableGameContext = useMemo(() => {
     if (!isExamining) return gameContext;
@@ -452,6 +464,7 @@ const ExaminableStore = ({ children }: { children: React.ReactNode }) => {
       handleExaminePrev,
       handleExamineNext,
       handleExamineLast,
+      handleExamineGoTo,
     }),
     [
       isExamining,
@@ -462,6 +475,7 @@ const ExaminableStore = ({ children }: { children: React.ReactNode }) => {
       handleExaminePrev,
       handleExamineNext,
       handleExamineLast,
+      handleExamineGoTo,
     ]
   );
 
