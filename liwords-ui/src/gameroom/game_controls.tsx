@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Button, Popconfirm, Tooltip } from 'antd';
+import { Button, Popconfirm } from 'antd';
 import {
   DoubleLeftOutlined,
   DoubleRightOutlined,
@@ -28,66 +28,34 @@ const ExamineGameControls = React.memo((props: {}) => {
   return (
     <div className="game-controls">
       <Button>Options</Button>
-      <Tooltip
-        title="First"
-        placement="bottom"
-        mouseEnterDelay={0.1}
-        mouseLeaveDelay={0.01}
-        color={colors.colorPrimary}
-      >
-        <Button
-          shape="circle"
-          icon={<DoubleLeftOutlined />}
-          type="primary"
-          onClick={handleExamineFirst}
-          disabled={examinedTurn <= 0}
-        />
-      </Tooltip>
-      <Tooltip
-        title="Previous"
-        placement="bottom"
-        mouseEnterDelay={0.1}
-        mouseLeaveDelay={0.01}
-        color={colors.colorPrimary}
-      >
-        <Button
-          shape="circle"
-          icon={<LeftOutlined />}
-          type="primary"
-          onClick={handleExaminePrev}
-          disabled={examinedTurn <= 0}
-        />
-      </Tooltip>
-      <Tooltip
-        title="Next"
-        placement="bottom"
-        mouseEnterDelay={0.1}
-        mouseLeaveDelay={0.01}
-        color={colors.colorPrimary}
-      >
-        <Button
-          shape="circle"
-          icon={<RightOutlined />}
-          type="primary"
-          onClick={handleExamineNext}
-          disabled={examinedTurn >= numberOfTurns}
-        />
-      </Tooltip>
-      <Tooltip
-        title="Last"
-        placement="bottom"
-        mouseEnterDelay={0.1}
-        mouseLeaveDelay={0.01}
-        color={colors.colorPrimary}
-      >
-        <Button
-          shape="circle"
-          icon={<DoubleRightOutlined />}
-          type="primary"
-          onClick={handleExamineLast}
-          disabled={examinedTurn >= numberOfTurns}
-        />
-      </Tooltip>
+      <Button
+        shape="circle"
+        icon={<DoubleLeftOutlined />}
+        type="primary"
+        onClick={handleExamineFirst}
+        disabled={examinedTurn <= 0}
+      />
+      <Button
+        shape="circle"
+        icon={<LeftOutlined />}
+        type="primary"
+        onClick={handleExaminePrev}
+        disabled={examinedTurn <= 0}
+      />
+      <Button
+        shape="circle"
+        icon={<RightOutlined />}
+        type="primary"
+        onClick={handleExamineNext}
+        disabled={examinedTurn >= numberOfTurns}
+      />
+      <Button
+        shape="circle"
+        icon={<DoubleRightOutlined />}
+        type="primary"
+        onClick={handleExamineLast}
+        disabled={examinedTurn >= numberOfTurns}
+      />
       <Button onClick={handleExamineEnd}>Done</Button>
     </div>
   );
