@@ -3,45 +3,6 @@ import TentativeScore from './tentative_score';
 import { Blank, uniqueTileIdx } from '../utils/cwgame/common';
 const colors = require('../base.scss');
 
-type TileStyle = {
-  backgroundColor: string;
-  outline: string;
-  color: string;
-  blankTextColor: string;
-  strokeWidth: string;
-};
-
-const TILE_STYLES: { [name: string]: TileStyle } = {
-  primary: {
-    backgroundColor: colors.colorSecondary,
-    outline: '#ffffff',
-    color: '#ffffff',
-    blankTextColor: '#11fefe',
-    strokeWidth: '0px',
-  },
-  primaryJustPlayed: {
-    backgroundColor: colors.colorSecondaryMedium,
-    outline: '#ffffff',
-    color: '#ffffff',
-    blankTextColor: '#11fefe',
-    strokeWidth: '0px',
-  },
-  primaryTentative: {
-    backgroundColor: colors.colorSecondary,
-    outline: colors.colorSecondaryMedium,
-    color: colors.colorSecondaryLight,
-    blankTextColor: '#fe1111',
-    strokeWidth: '0px',
-  },
-  primarySelectedForExchange: {
-    backgroundColor: colors.colorPrimary,
-    outline: colors.colorPrimary,
-    color: '#ffffff',
-    blankTextColor: '#fe1111',
-    strokeWidth: '0px',
-  },
-};
-
 type TileLetterProps = {
   rune: string;
 };
@@ -95,16 +56,6 @@ type TileProps = {
 
 const Tile = React.memo((props: TileProps) => {
   const [isDragging, setIsDragging] = useState(false);
-  let tileStyle = TILE_STYLES.primary;
-  if (props.lastPlayed) {
-    tileStyle = TILE_STYLES.primaryJustPlayed;
-  }
-  if (props.tentative) {
-    tileStyle = TILE_STYLES.primaryTentative;
-  }
-  if (props.selected) {
-    tileStyle = TILE_STYLES.primarySelectedForExchange;
-  }
 
   const handleStartDrag = (e: any) => {
     if (e) {
@@ -149,12 +100,14 @@ const Tile = React.memo((props: TileProps) => {
 
   const computedClassName = `tile${isDragging ? ' dragging' : ''}${
     props.grabbable ? ' droppable' : ''
-  }${props.selected ? ' selected' : ''}`;
+  }${props.selected ? ' selected' : ''}${props.tentative ? ' tentative' : ''}${
+    props.lastPlayed ? ' last-played' : ''
+  }`;
   return (
     <div
       className={computedClassName}
       data-rune={props.rune}
-      style={{ ...tileStyle, cursor: props.grabbable ? 'grab' : 'default' }}
+      style={{ cursor: props.grabbable ? 'grab' : 'default' }}
       onClick={props.onClick ? props.onClick : () => {}}
       onDragStart={handleStartDrag}
       onDragEnd={handleEndDrag}
