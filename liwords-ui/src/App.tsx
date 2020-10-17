@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { Route, Switch } from 'react-router-dom';
+import { Route, Switch, useHistory } from 'react-router-dom';
 import './App.scss';
 import axios from 'axios';
 import 'antd/dist/antd.css';
@@ -9,6 +9,7 @@ import { Lobby } from './lobby/lobby';
 import {
   useExcludedPlayersStoreContext,
   useRedirGameStoreContext,
+  useResetStoreContext,
 } from './store/store';
 
 import { LiwordsSocket } from './socket/socket';
@@ -30,6 +31,7 @@ const App = React.memo(() => {
 
   const { setExcludedPlayers } = useExcludedPlayersStoreContext();
   const { redirGame, setRedirGame } = useRedirGameStoreContext();
+  const { resetStore } = useResetStoreContext();
   const [shouldDisconnect, setShouldDisconnect] = useState(false);
 
   const [liwordsSocketValues, setLiwordsSocketValues] = useState({
@@ -38,10 +40,14 @@ const App = React.memo(() => {
   });
   const { sendMessage } = liwordsSocketValues;
 
-  if (redirGame !== '') {
-    setRedirGame('');
-    window.location.replace(`/game/${encodeURIComponent(redirGame)}`);
-  }
+  const history = useHistory();
+  useEffect(() => {
+    if (redirGame !== '') {
+      setRedirGame('');
+      resetStore();
+      history.replace(`/game/${encodeURIComponent(redirGame)}`);
+    }
+  }, [history, redirGame, resetStore, setRedirGame]);
 
   const disconnectSocket = useCallback(() => {
     setShouldDisconnect(true);

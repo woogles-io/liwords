@@ -1,4 +1,6 @@
 import React, { useState } from 'react';
+import { useHistory } from 'react-router-dom';
+import { useResetStoreContext } from '../store/store';
 import './accountForms.scss';
 
 import { Form, Input, Button, Alert } from 'antd';
@@ -9,6 +11,7 @@ import { toAPIUrl } from '../api/api';
 export const Login = React.memo(() => {
   const stillMountedRef = React.useRef(true);
   React.useEffect(() => () => void (stillMountedRef.current = false), []);
+  const { resetStore } = useResetStoreContext();
 
   const [err, setErr] = useState('');
   const [loggedIn, setLoggedIn] = useState(false);
@@ -43,9 +46,13 @@ export const Login = React.memo(() => {
       });
   };
 
-  if (loggedIn) {
-    window.location.replace('/');
-  }
+  const history = useHistory();
+  React.useEffect(() => {
+    if (loggedIn) {
+      resetStore();
+      history.replace('/');
+    }
+  }, [history, loggedIn, resetStore]);
 
   return (
     <div className="account">

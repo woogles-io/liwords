@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useHistory } from 'react-router-dom';
 import { Button, Popconfirm, Tooltip } from 'antd';
 import {
   DoubleLeftOutlined,
@@ -198,12 +199,17 @@ type EGCProps = {
 
 const EndGameControls = (props: EGCProps) => {
   const [rematchDisabled, setRematchDisabled] = useState(false);
+  const history = useHistory();
+  const handleExitToLobby = React.useCallback(() => {
+    history.replace('/');
+  }, [history]);
+
   return (
     <div className="game-controls">
       <Button>Options</Button>
       <Button onClick={props.onExamine}>Examine</Button>
       <Button onClick={props.onExportGCG}>Export GCG</Button>
-      <Button onClick={() => window.location.replace('/')}>Exit</Button>
+      <Button onClick={handleExitToLobby}>Exit</Button>
       {props.showRematch && !rematchDisabled && (
         <Button
           type="primary"

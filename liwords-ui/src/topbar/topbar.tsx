@@ -2,7 +2,11 @@ import React, { useState } from 'react';
 import './topbar.scss';
 import { DisconnectOutlined, SettingOutlined } from '@ant-design/icons/lib';
 import { notification, Dropdown, Tooltip, Modal } from 'antd';
-import { useLagStoreContext, useLoginStateStoreContext } from '../store/store';
+import {
+  useLagStoreContext,
+  useLoginStateStoreContext,
+  useResetStoreContext,
+} from '../store/store';
 import axios from 'axios';
 import { toAPIUrl } from '../api/api';
 import { Login } from '../lobby/login';
@@ -30,6 +34,7 @@ type Props = {};
 export const TopBar = React.memo((props: Props) => {
   const { currentLagMs } = useLagStoreContext();
   const { loginState } = useLoginStateStoreContext();
+  const { resetStore } = useResetStoreContext();
   const { username, loggedIn, connectedToSocket } = loginState;
   const [loginModalVisible, setLoginModalVisible] = useState(false);
 
@@ -44,7 +49,7 @@ export const TopBar = React.memo((props: Props) => {
           message: 'Success',
           description: 'You have been logged out.',
         });
-        setTimeout(window.location.reload.bind(window.location), 1000);
+        resetStore();
       })
       .catch((e) => {
         console.log(e);
