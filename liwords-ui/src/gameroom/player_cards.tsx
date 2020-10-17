@@ -137,7 +137,7 @@ export const PlayerCards = React.memo((props: Props) => {
   if (p1Time === Infinity) p1Time = initialTimeSeconds;
 
   return (
-    <Card className="player-cards">
+    <Card className="player-cards" id="player-cards">
       <PlayerCard
         player={p0}
         meta={props.playerMeta}

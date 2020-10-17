@@ -82,6 +82,8 @@
 }
 
 .data-area {
+  display: flex;
+  flex-direction: column;
   text-align: left;
   .ant-card {
     margin-bottom: 12px;
@@ -335,6 +337,25 @@
     }
   }
 }
+.tile {
+  background-color: $color-secondary;
+}
+.tile.tentative {
+  background-color: $color-secondary-medium;
+}
+.tile.last-played {
+  background-color: $color-secondary-medium;
+  animation: lastPlayed 1s ease-in-out 2s forwards;
+}
+
+@keyframes lastPlayed {
+  0% {
+    background-color: $color-secondary-medium;
+  }
+  100% {
+    background-color: $color-secondary-middark;
+  }
+}
 
 // squareness fix
 .tile::before {
@@ -558,8 +579,12 @@
     font-size: 16px;
   }
 }
+.player-cards {
+  order: 4;
+}
 // Scorecard
 .score-card {
+  order: 2;
   .ant-card-body {
     padding: 0;
     & > div {

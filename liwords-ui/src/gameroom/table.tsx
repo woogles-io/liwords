@@ -384,7 +384,7 @@ export const Table = React.memo((props: Props) => {
           />
           <StreakWidget recentGames={streakGameInfo} />
         </div>
-        <div className="data-area">
+        <div className="data-area" id="right-sidebar">
           <PlayerCards gameMeta={gameInfo} playerMeta={gameInfo.players} />
           <GameInfo meta={gameInfo} />
           <Pool
