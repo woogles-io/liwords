@@ -77,7 +77,11 @@ export const LiwordsSocket = (props: {
 
         if (stillMountedRef.current) {
           setFullSocketUrl(
-            `${socketUrl}?token=${socketToken}&path=${location.pathname}&cid=${cid}`
+            `${socketUrl}?${new URLSearchParams({
+              token: socketToken,
+              path: location.pathname,
+              cid,
+            })}`
           );
         }
 

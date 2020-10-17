@@ -53,7 +53,7 @@ export const TopBar = React.memo((props: Props) => {
   const userMenu = (
     <ul>
       <li>
-        <a className="plain" href={`/profile/${username}`}>
+        <a className="plain" href={`/profile/${encodeURIComponent(username)}`}>
           View Profile
         </a>
       </li>

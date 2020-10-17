@@ -16,7 +16,7 @@ export const UsernameWithContext = (props: UsernameWithContextProps) => {
         <li>
           <a
             className="plain"
-            href={`/profile/${props.username}`}
+            href={`/profile/${encodeURIComponent(props.username)}`}
             rel="noopener noreferrer"
             target="_blank"
           >

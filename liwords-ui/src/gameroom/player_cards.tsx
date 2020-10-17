@@ -69,7 +69,7 @@ const PlayerCard = React.memo((props: CardProps) => {
             <a
               rel="noopener noreferrer"
               target="_blank"
-              href={`/profile/${meta?.nickname}`}
+              href={`/profile/${encodeURIComponent(meta?.nickname ?? '')}`}
             >
               View Profile
             </a>

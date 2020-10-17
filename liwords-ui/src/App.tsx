@@ -40,7 +40,7 @@ const App = React.memo(() => {
 
   if (redirGame !== '') {
     setRedirGame('');
-    window.location.replace(`/game/${redirGame}`);
+    window.location.replace(`/game/${encodeURIComponent(redirGame)}`);
   }
 
   const disconnectSocket = useCallback(() => {

@@ -48,7 +48,9 @@ const SingleGame = (props: SGProps) => {
 
   return (
     <span>
-      <a href={`/game/${props.game.game_id}`}>{innerel}</a>
+      <a href={`/game/${encodeURIComponent(String(props.game.game_id ?? ''))}`}>
+        {innerel}
+      </a>
     </span>
   );
 };

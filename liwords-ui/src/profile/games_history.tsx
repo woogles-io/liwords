@@ -26,12 +26,16 @@ export const GamesHistoryCard = React.memo((props: Props) => {
     .map((item) => {
       const userplace = item.players[0].user_id === userID ? 0 : 1;
       const opponent = (
-        <a href={`/profile/${item.players[1 - userplace].nickname}`}>
+        <a
+          href={`/profile/${encodeURIComponent(
+            item.players[1 - userplace].nickname
+          )}`}
+        >
           {item.players[1 - userplace].nickname}
         </a>
       );
       const scores = item.scores ? (
-        <a href={`/game/${item.game_id}`}>
+        <a href={`/game/${encodeURIComponent(String(item.game_id ?? ''))}`}>
           {item.scores[userplace]} - {item.scores[1 - userplace]}
         </a>
       ) : (
