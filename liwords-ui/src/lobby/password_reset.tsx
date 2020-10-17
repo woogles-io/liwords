@@ -20,6 +20,9 @@ const tailLayout = {
 };
 
 export const PasswordReset = () => {
+  const stillMountedRef = React.useRef(true);
+  React.useEffect(() => () => void (stillMountedRef.current = false), []);
+
   const [err, setErr] = useState('');
 
   const onFinish = (values: { [key: string]: string }) => {
@@ -38,7 +41,9 @@ export const PasswordReset = () => {
       })
       .catch((e) => {
         if (e.response) {
-          setErr(e.response.data.msg);
+          if (stillMountedRef.current) {
+            setErr(e.response.data.msg);
+          }
         }
       });
   };

@@ -7,6 +7,9 @@ import axios from 'axios';
 import { toAPIUrl } from '../api/api';
 
 export const Login = React.memo(() => {
+  const stillMountedRef = React.useRef(true);
+  React.useEffect(() => () => void (stillMountedRef.current = false), []);
+
   const [err, setErr] = useState('');
   const [loggedIn, setLoggedIn] = useState(false);
   const onFinish = (values: { [key: string]: string }) => {
@@ -21,14 +24,20 @@ export const Login = React.memo(() => {
       )
       .then(() => {
         // Automatically will set cookie
-        setLoggedIn(true);
+        if (stillMountedRef.current) {
+          setLoggedIn(true);
+        }
       })
       .catch((e) => {
         if (e.response) {
           // From Twirp
-          setErr(e.response.data.msg);
+          if (stillMountedRef.current) {
+            setErr(e.response.data.msg);
+          }
         } else {
-          setErr('unknown error, see console');
+          if (stillMountedRef.current) {
+            setErr('unknown error, see console');
+          }
           console.log(e);
         }
       });

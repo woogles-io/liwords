@@ -25,6 +25,9 @@ type Blocks = {
 };
 
 const App = React.memo(() => {
+  const stillMountedRef = React.useRef(true);
+  React.useEffect(() => () => void (stillMountedRef.current = false), []);
+
   const { setExcludedPlayers } = useExcludedPlayersStoreContext();
   const { redirGame, setRedirGame } = useRedirGameStoreContext();
   const [shouldDisconnect, setShouldDisconnect] = useState(false);
@@ -56,7 +59,9 @@ const App = React.memo(() => {
         { withCredentials: true }
       )
       .then((resp) => {
-        setExcludedPlayers(new Set<string>(resp.data.user_ids));
+        if (stillMountedRef.current) {
+          setExcludedPlayers(new Set<string>(resp.data.user_ids));
+        }
       });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

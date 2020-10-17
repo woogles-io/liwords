@@ -18,6 +18,9 @@ type Props = {
 };
 
 export const GameLists = React.memo((props: Props) => {
+  const stillMountedRef = React.useRef(true);
+  React.useEffect(() => () => void (stillMountedRef.current = false), []);
+
   const {
     loggedIn,
     userID,
@@ -88,7 +91,9 @@ export const GameLists = React.memo((props: Props) => {
     if (!formDisabled) {
       onSeekSubmit(sg);
       setTimeout(() => {
-        setFormDisabled(false);
+        if (stillMountedRef.current) {
+          setFormDisabled(false);
+        }
       }, 500);
     }
   };

@@ -200,6 +200,9 @@ type Props = {};
 const gamesPageSize = 10;
 
 export const UserProfile = React.memo((props: Props) => {
+  const stillMountedRef = React.useRef(true);
+  React.useEffect(() => () => void (stillMountedRef.current = false), []);
+
   const { username } = useParams();
   const location = useLocation();
   // Show username's profile
@@ -219,9 +222,11 @@ export const UserProfile = React.memo((props: Props) => {
         }
       )
       .then((resp) => {
-        setRatings(JSON.parse(resp.data.ratings_json).Data);
-        setStats(JSON.parse(resp.data.stats_json).Data);
-        setUserID(resp.data.user_id);
+        if (stillMountedRef.current) {
+          setRatings(JSON.parse(resp.data.ratings_json).Data);
+          setStats(JSON.parse(resp.data.stats_json).Data);
+          setUserID(resp.data.user_id);
+        }
       })
       .catch(errorCatcher);
   }, [username, location.pathname]);
@@ -237,7 +242,9 @@ export const UserProfile = React.memo((props: Props) => {
         }
       )
       .then((resp) => {
-        setRecentGames(resp.data.game_info);
+        if (stillMountedRef.current) {
+          setRecentGames(resp.data.game_info);
+        }
       })
       .catch(errorCatcher);
   }, [username, recentGamesOffset]);

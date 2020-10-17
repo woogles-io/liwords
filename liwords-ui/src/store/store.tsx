@@ -507,6 +507,9 @@ const ExaminableStore = ({ children }: { children: React.ReactNode }) => {
 // The Real Store.
 
 export const Store = ({ children, ...props }: Props) => {
+  const stillMountedRef = React.useRef(true);
+  React.useEffect(() => () => void (stillMountedRef.current = false), []);
+
   const clockController = useRef<ClockController | null>(null);
 
   const onClockTick = useCallback((p: PlayerOrder, t: Millis) => {
@@ -514,11 +517,15 @@ export const Store = ({ children, ...props }: Props) => {
       return;
     }
     const newCtx = { ...clockController.current!.times, [p]: t };
-    setTimerContext(newCtx);
+    if (stillMountedRef.current) {
+      setTimerContext(newCtx);
+    }
   }, []);
 
   const onClockTimeout = useCallback((p: PlayerOrder) => {
-    setPTimedOut(p);
+    if (stillMountedRef.current) {
+      setPTimedOut(p);
+    }
   }, []);
 
   const [lobbyContext, dispatchLobbyContext] = useReducer(LobbyReducer, {

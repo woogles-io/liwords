@@ -22,6 +22,9 @@ type SelectedTile = {
 };
 
 export const ExchangeTiles = React.memo((props: Props) => {
+  const stillMountedRef = React.useRef(true);
+  React.useEffect(() => () => void (stillMountedRef.current = false), []);
+
   const [exchangedRackIndices, setExchangedRackIndices] = useState(
     new Set<number>()
   );
@@ -92,8 +95,10 @@ export const ExchangeTiles = React.memo((props: Props) => {
     // reset exchange rack when opening modal.
 
     window.setTimeout(() => {
-      setDelayInput(false);
-      setExchangedRackIndices(new Set<number>());
+      if (stillMountedRef.current) {
+        setDelayInput(false);
+        setExchangedRackIndices(new Set<number>());
+      }
     }, 100);
   }, [props.modalVisible]);
   useEffect(() => {
