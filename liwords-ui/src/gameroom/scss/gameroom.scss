@@ -341,20 +341,12 @@
   background-color: $color-secondary;
 }
 .tile.tentative {
-  background-color: $color-secondary-medium;
+  border: 1px solid $color-secondary;
+  background-color:$color-secondary;
+  box-shadow:  inset 0px 0px 0px 2px $color-secondary-light;
 }
 .tile.last-played {
   background-color: $color-secondary-medium;
-  animation: lastPlayed 1s ease-in-out 2s forwards;
-}
-
-@keyframes lastPlayed {
-  0% {
-    background-color: $color-secondary-medium;
-  }
-  100% {
-    background-color: $color-secondary-middark;
-  }
 }
 
 // squareness fix
@@ -445,8 +437,8 @@
   pointer-events: none;
   align-items: center;
   justify-content: center;
-  width: 100%;
-  height:100%;
+  width: calc(100% - 4px);
+  height: calc(100% - 12px);
   border-radius: 10%;
   font-size: 12px;
   font-weight: bold;
@@ -456,11 +448,12 @@
 }
 
 .tile .tentative-score.tentative-score-horizontal {
-  right: 100%;
+  right: calc(100% + 2px);
 }
 
 .tile .tentative-score.tentative-score-vertical {
-  bottom: 100%;
+  right: 2px;
+  bottom: calc(100% + 4px);
 }
 
 .tile:hover {
@@ -474,6 +467,7 @@
 
 // Pool
 .pool {
+  order: 3;
   header {
     @include type-title;
   }
