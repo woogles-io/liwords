@@ -2,13 +2,14 @@ import React from 'react';
 import { Card, Row, Button } from 'antd';
 import { RawPlayerInfo } from '../store/reducers/game_reducer';
 import {
-  useGameContextStoreContext,
-  useTimerStoreContext,
+  useExaminableGameContextStoreContext,
+  useExaminableTimerStoreContext,
+  useExamineStoreContext,
 } from '../store/store';
 import { Millis, millisToTimeStr } from '../store/timer_controller';
 import { PlayerAvatar } from '../shared/player_avatar';
 import './scss/playerCards.scss';
-import { PlayerMetadata } from './game_info';
+import { GameMetadata, PlayerMetadata } from './game_info';
 import { PlayState } from '../gen/macondo/api/proto/macondo/macondo_pb';
 
 type CardProps = {
@@ -31,13 +32,16 @@ const timepenalty = (time: Millis) => {
 };
 
 const PlayerCard = React.memo((props: CardProps) => {
+  const { isExamining } = useExamineStoreContext();
+
   if (!props.player) {
     return <Card />;
   }
 
   // Find the metadata for this player.
   const meta = props.meta.find((pi) => pi.user_id === props.player?.userID);
-  const timeStr = props.playing ? millisToTimeStr(props.time) : '--:--';
+  const timeStr =
+    isExamining || props.playing ? millisToTimeStr(props.time) : '--:--';
   // TODO: what we consider low time likely be set somewhere and not a magic number
   const timeLow = props.time <= 180000 && props.time > 0;
   const timeOut = props.time <= 0;
@@ -74,7 +78,7 @@ const PlayerCard = React.memo((props: CardProps) => {
       </Row>
       <Row className="score-timer">
         <Button className="score" type="primary">
-          {props.playing
+          {!isExamining || props.playing
             ? // If we're still playing the time penalty has not yet been calculated.
               props.player.score - timepenalty(props.time)
             : props.player.score}
@@ -88,17 +92,22 @@ const PlayerCard = React.memo((props: CardProps) => {
 });
 
 type Props = {
+  gameMeta: GameMetadata;
   playerMeta: Array<PlayerMetadata>;
 };
 
 export const PlayerCards = React.memo((props: Props) => {
-  const { gameContext } = useGameContextStoreContext();
-  const { timerContext } = useTimerStoreContext();
+  const {
+    gameContext: examinableGameContext,
+  } = useExaminableGameContextStoreContext();
+  const {
+    timerContext: examinableTimerContext,
+  } = useExaminableTimerStoreContext();
 
   // If the gameContext is not yet available, we should try displaying player cards
   // from the meta information, until the information comes in.
-  let p0 = gameContext?.players[0];
-  let p1 = gameContext?.players[1];
+  let p0 = examinableGameContext?.players[0];
+  let p1 = examinableGameContext?.players[1];
   if (!p0) {
     if (props.playerMeta[0]) {
       p0 = {
@@ -121,19 +130,25 @@ export const PlayerCards = React.memo((props: Props) => {
     }
   }
 
+  const initialTimeSeconds = props.gameMeta.initial_time_seconds * 1000;
+  let p0Time = examinableTimerContext.p0;
+  if (p0Time === Infinity) p0Time = initialTimeSeconds;
+  let p1Time = examinableTimerContext.p1;
+  if (p1Time === Infinity) p1Time = initialTimeSeconds;
+
   return (
     <Card className="player-cards">
       <PlayerCard
         player={p0}
         meta={props.playerMeta}
-        time={timerContext.p0}
-        playing={gameContext.playState !== PlayState.GAME_OVER}
+        time={p0Time}
+        playing={examinableGameContext.playState !== PlayState.GAME_OVER}
       />
       <PlayerCard
         player={p1}
         meta={props.playerMeta}
-        time={timerContext.p1}
-        playing={gameContext.playState !== PlayState.GAME_OVER}
+        time={p1Time}
+        playing={examinableGameContext.playState !== PlayState.GAME_OVER}
       />
     </Card>
   );

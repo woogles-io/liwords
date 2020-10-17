@@ -1,14 +1,22 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { Card, message, Popconfirm } from 'antd';
 import { HomeOutlined } from '@ant-design/icons/lib';
 import axios from 'axios';
 
-import { useParams } from 'react-router-dom';
+import { useLocation, useParams } from 'react-router-dom';
 import { BoardPanel } from './board_panel';
 import { TopBar } from '../topbar/topbar';
 import { Chat } from '../chat/chat';
 import {
   useChatStoreContext,
+  useExaminableGameContextStoreContext,
+  useExamineStoreContext,
   useGameContextStoreContext,
   useGameEndMessageStoreContext,
   useLoginStateStoreContext,
@@ -73,6 +81,14 @@ const defaultGameInfo = {
 export const Table = React.memo((props: Props) => {
   const { gameID } = useParams();
   const { chat, clearChat } = useChatStoreContext();
+  const {
+    gameContext: examinableGameContext,
+  } = useExaminableGameContextStoreContext();
+  const {
+    isExamining,
+    handleExamineStart,
+    handleExamineGoTo,
+  } = useExamineStoreContext();
   const { gameContext } = useGameContextStoreContext();
   const { gameEndMessage } = useGameEndMessageStoreContext();
   const { loginState } = useLoginStateStoreContext();
@@ -299,15 +315,40 @@ export const Table = React.memo((props: Props) => {
   // If we are NOT one of the players (so an observer), display the rack of
   // the player on turn.
   let rack;
-  const us = gameInfo.players.find((p) => p.nickname === username);
-  if (us) {
-    rack = gameContext.players.find((p) => p.userID === us.user_id)
+  const gameDone = gameInfo.game_end_reason !== 'NONE';
+  const us = useMemo(
+    () => gameInfo.players.find((p) => p.nickname === username),
+    [gameInfo.players, username]
+  );
+  if (us && !(gameDone && isExamining)) {
+    rack = examinableGameContext.players.find((p) => p.userID === us.user_id)
       ?.currentRack;
   } else {
-    rack = gameContext.players.find((p) => p.onturn)?.currentRack || '';
+    rack =
+      examinableGameContext.players.find((p) => p.onturn)?.currentRack || '';
   }
 
   // The game "starts" when the GameHistoryRefresher object comes in via the socket.
+  // At that point gameID will be filled in.
+  const location = useLocation();
+  const searchParams = useMemo(() => new URLSearchParams(location.search), [
+    location,
+  ]);
+  const searchedTurn = useMemo(() => searchParams.get('turn'), [searchParams]);
+  const turnAsStr = us && !gameDone ? '' : searchedTurn ?? ''; // Do not examine our current games.
+  const hasActivatedExamineRef = useRef(false);
+  useEffect(() => {
+    if (gameContext.gameID) {
+      if (!hasActivatedExamineRef.current) {
+        hasActivatedExamineRef.current = true;
+        const turnAsInt = parseInt(turnAsStr, 10);
+        if (isFinite(turnAsInt) && turnAsStr === String(turnAsInt)) {
+          handleExamineStart();
+          handleExamineGoTo(turnAsInt - 1); // ?turn= should start from one.
+        }
+      }
+    }
+  }, [gameContext.gameID, turnAsStr, handleExamineStart, handleExamineGoTo]);
 
   return (
     <div className="game-container">
@@ -333,21 +374,21 @@ export const Table = React.memo((props: Props) => {
         <div className="play-area">
           <BoardPanel
             username={username}
-            board={gameContext.board}
+            board={examinableGameContext.board}
             currentRack={rack || ''}
-            events={gameContext.turns}
+            events={examinableGameContext.turns}
             gameID={gameID}
             sendSocketMsg={props.sendSocketMsg}
-            gameDone={gameInfo.game_end_reason !== 'NONE'}
+            gameDone={gameDone}
             playerMeta={gameInfo.players}
           />
           <StreakWidget recentGames={streakGameInfo} />
         </div>
         <div className="data-area">
-          <PlayerCards playerMeta={gameInfo.players} />
+          <PlayerCards gameMeta={gameInfo} playerMeta={gameInfo.players} />
           <GameInfo meta={gameInfo} />
           <Pool
-            pool={gameContext?.pool}
+            pool={examinableGameContext?.pool}
             currentRack={rack || ''}
             poolFormat={poolFormat}
             setPoolFormat={setPoolFormat}
@@ -365,8 +406,8 @@ export const Table = React.memo((props: Props) => {
           <ScoreCard
             username={username}
             playing={us !== undefined}
-            events={gameContext.turns}
-            board={gameContext.board}
+            events={examinableGameContext.turns}
+            board={examinableGameContext.board}
             playerMeta={gameInfo.players}
             poolFormat={poolFormat}
           />
