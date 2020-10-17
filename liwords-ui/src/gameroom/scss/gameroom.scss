@@ -340,12 +340,13 @@
 .tile {
   background-color: $color-secondary;
 }
-.tile.tentative {
+
+.tile.last-played {
   border: 1px solid $color-secondary;
   background-color:$color-secondary;
   box-shadow:  inset 0px 0px 0px 2px $color-secondary-light;
 }
-.tile.last-played {
+.tile.tentative {
   background-color: $color-secondary-medium;
 }
 
