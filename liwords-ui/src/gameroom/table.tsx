@@ -9,7 +9,7 @@ import { Card, message, Popconfirm } from 'antd';
 import { HomeOutlined } from '@ant-design/icons/lib';
 import axios from 'axios';
 
-import { useLocation, useParams } from 'react-router-dom';
+import { Link, useLocation, useParams } from 'react-router-dom';
 import { BoardPanel } from './board_panel';
 import { TopBar } from '../topbar/topbar';
 import { Chat } from '../chat/chat';
@@ -363,10 +363,10 @@ export const Table = React.memo((props: Props) => {
       <div className="game-table">
         <div className="chat-area" id="left-sidebar">
           <Card className="left-menu">
-            <a href="/">
+            <Link to="/">
               <HomeOutlined />
               Back to lobby
-            </a>
+            </Link>
           </Card>
           <Chat
             chatEntities={chat}

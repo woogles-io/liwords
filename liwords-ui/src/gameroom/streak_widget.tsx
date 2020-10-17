@@ -1,5 +1,6 @@
 import { Card, Col, Row } from 'antd';
 import React from 'react';
+import { Link } from 'react-router-dom';
 import { GameMetadata } from './game_info';
 
 type Props = {
@@ -48,9 +49,11 @@ const SingleGame = (props: SGProps) => {
 
   return (
     <span>
-      <a href={`/game/${encodeURIComponent(String(props.game.game_id ?? ''))}`}>
+      <Link
+        to={`/game/${encodeURIComponent(String(props.game.game_id ?? ''))}`}
+      >
         {innerel}
-      </a>
+      </Link>
     </span>
   );
 };

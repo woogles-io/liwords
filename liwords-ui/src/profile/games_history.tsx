@@ -1,4 +1,5 @@
 import React from 'react';
+import { Link } from 'react-router-dom';
 import moment from 'moment';
 import { Button, Card, Table, Tag, Tooltip } from 'antd';
 import { CheckCircleTwoTone } from '@ant-design/icons';
@@ -26,18 +27,18 @@ export const GamesHistoryCard = React.memo((props: Props) => {
     .map((item) => {
       const userplace = item.players[0].user_id === userID ? 0 : 1;
       const opponent = (
-        <a
-          href={`/profile/${encodeURIComponent(
+        <Link
+          to={`/profile/${encodeURIComponent(
             item.players[1 - userplace].nickname
           )}`}
         >
           {item.players[1 - userplace].nickname}
-        </a>
+        </Link>
       );
       const scores = item.scores ? (
-        <a href={`/game/${encodeURIComponent(String(item.game_id ?? ''))}`}>
+        <Link to={`/game/${encodeURIComponent(String(item.game_id ?? ''))}`}>
           {item.scores[userplace]} - {item.scores[1 - userplace]}
-        </a>
+        </Link>
       ) : (
         ''
       );

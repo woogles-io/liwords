@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Link } from 'react-router-dom';
 import './topbar.scss';
 import { DisconnectOutlined, SettingOutlined } from '@ant-design/icons/lib';
 import { notification, Dropdown, Tooltip, Modal } from 'antd';
@@ -15,7 +16,7 @@ const colors = require('../base.scss');
 const topMenu = (
   <div className="top-header-menu">
     <div className="top-header-left-frame-crossword-game">
-      <a href="/">OMGWords</a>
+      <Link to="/">OMGWords</Link>
     </div>
     <div className="top-header-left-frame-aerolith">
       <a href="https://aerolith.org">Aerolith</a>
@@ -24,7 +25,7 @@ const topMenu = (
       <a href="http://randomracer.com">Random.Racer</a>
     </div>
     <div className="top-header-left-frame-special-land">
-      <a href="/about">About Us</a>
+      <Link to="/about">About Us</Link>
     </div>
   </div>
 );
@@ -58,9 +59,9 @@ export const TopBar = React.memo((props: Props) => {
   const userMenu = (
     <ul>
       <li>
-        <a className="plain" href={`/profile/${encodeURIComponent(username)}`}>
+        <Link className="plain" to={`/profile/${encodeURIComponent(username)}`}>
           View Profile
-        </a>
+        </Link>
       </li>
       <li onClick={handleLogout} className="link plain">
         Log out
@@ -75,12 +76,12 @@ export const TopBar = React.memo((props: Props) => {
           color={colors.colorPrimary}
           title={`Latency: ${currentLagMs || '...'} ms.`}
         >
-          <a href="/" className="site-icon">
+          <Link to="/" className="site-icon">
             <div className="top-header-site-icon-rect">
               <div className="top-header-site-icon-m">W</div>
             </div>
             <div className="top-header-left-frame-site-name">Woogles.io</div>
-          </a>
+          </Link>
         </Tooltip>
         {topMenu}
         {loggedIn ? (
@@ -104,9 +105,9 @@ export const TopBar = React.memo((props: Props) => {
             <button className="link" onClick={() => setLoginModalVisible(true)}>
               Log In
             </button>
-            <a href="/register">
+            <Link to="/register">
               <button className="primary">Sign Up</button>
-            </a>
+            </Link>
             <Modal
               className="login-modal"
               title="Welcome back, friend!"

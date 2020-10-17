@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { useParams, useLocation } from 'react-router-dom';
+import { Link, useParams, useLocation } from 'react-router-dom';
 import { notification, Card, Table, Row, Col } from 'antd';
 import axios, { AxiosError } from 'axios';
 import { TopBar } from '../topbar/topbar';
@@ -280,7 +280,7 @@ export const UserProfile = React.memo((props: Props) => {
             )}
           </h3>
           {viewer === username ? (
-            <a href="/password/change">Change your password</a>
+            <Link to="/password/change">Change your password</Link>
           ) : null}
         </header>
         <RatingsCard ratings={ratings} />

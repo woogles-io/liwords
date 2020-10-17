@@ -1,4 +1,5 @@
 import React from 'react';
+import { Link } from 'react-router-dom';
 import { Dropdown } from 'antd';
 import { TheBlocker } from './blocker';
 
@@ -14,14 +15,13 @@ export const UsernameWithContext = (props: UsernameWithContextProps) => {
     <ul>
       {!props.omitProfileLink && (
         <li>
-          <a
+          <Link
             className="plain"
-            href={`/profile/${encodeURIComponent(props.username)}`}
-            rel="noopener noreferrer"
+            to={`/profile/${encodeURIComponent(props.username)}`}
             target="_blank"
           >
             View Profile
-          </a>
+          </Link>
         </li>
       )}
       {props.userID ? (
