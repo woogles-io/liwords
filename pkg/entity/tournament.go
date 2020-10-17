@@ -530,9 +530,6 @@ func pairRoundClassic(t *TournamentClassic, round int) error {
 			if pri.Pairing == nil {
 				pri.Pairing = newClassicPairing(t.Players[i], t.Players[i], t.GamesPerRound)
 			}
-			if t.PairingMethod == Random {
-
-			}
 		}
 	}
 	return nil
