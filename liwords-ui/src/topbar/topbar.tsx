@@ -13,22 +13,40 @@ import { toAPIUrl } from '../api/api';
 import { Login } from '../lobby/login';
 
 const colors = require('../base.scss');
-const topMenu = (
-  <div className="top-header-menu">
-    <div className="top-header-left-frame-crossword-game">
-      <Link to="/">OMGWords</Link>
+const TopMenu = React.memo((props: Props) => {
+  const { resetStore } = useResetStoreContext();
+
+  return (
+    <div className="top-header-menu">
+      <div className="top-header-left-frame-crossword-game">
+        <Link
+          to="/"
+          onClick={() => {
+            resetStore();
+          }}
+        >
+          OMGWords
+        </Link>
+      </div>
+      <div className="top-header-left-frame-aerolith">
+        <a href="https://aerolith.org">Aerolith</a>
+      </div>
+      <div className="top-header-left-frame-blog">
+        <a href="http://randomracer.com">Random.Racer</a>
+      </div>
+      <div className="top-header-left-frame-special-land">
+        <Link
+          to="/about"
+          onClick={() => {
+            resetStore();
+          }}
+        >
+          About Us
+        </Link>
+      </div>
     </div>
-    <div className="top-header-left-frame-aerolith">
-      <a href="https://aerolith.org">Aerolith</a>
-    </div>
-    <div className="top-header-left-frame-blog">
-      <a href="http://randomracer.com">Random.Racer</a>
-    </div>
-    <div className="top-header-left-frame-special-land">
-      <Link to="/about">About Us</Link>
-    </div>
-  </div>
-);
+  );
+});
 
 type Props = {};
 
@@ -59,7 +77,13 @@ export const TopBar = React.memo((props: Props) => {
   const userMenu = (
     <ul>
       <li>
-        <Link className="plain" to={`/profile/${encodeURIComponent(username)}`}>
+        <Link
+          className="plain"
+          to={`/profile/${encodeURIComponent(username)}`}
+          onClick={() => {
+            resetStore();
+          }}
+        >
           View Profile
         </Link>
       </li>
@@ -76,14 +100,20 @@ export const TopBar = React.memo((props: Props) => {
           color={colors.colorPrimary}
           title={`Latency: ${currentLagMs || '...'} ms.`}
         >
-          <Link to="/" className="site-icon">
+          <Link
+            to="/"
+            className="site-icon"
+            onClick={() => {
+              resetStore();
+            }}
+          >
             <div className="top-header-site-icon-rect">
               <div className="top-header-site-icon-m">W</div>
             </div>
             <div className="top-header-left-frame-site-name">Woogles.io</div>
           </Link>
         </Tooltip>
-        {topMenu}
+        <TopMenu />
         {loggedIn ? (
           <div className="user-info">
             <Dropdown
@@ -105,7 +135,12 @@ export const TopBar = React.memo((props: Props) => {
             <button className="link" onClick={() => setLoginModalVisible(true)}>
               Log In
             </button>
-            <Link to="/register">
+            <Link
+              to="/register"
+              onClick={() => {
+                resetStore();
+              }}
+            >
               <button className="primary">Sign Up</button>
             </Link>
             <Modal

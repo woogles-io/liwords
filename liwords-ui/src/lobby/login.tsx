@@ -88,7 +88,12 @@ export const Login = React.memo(() => {
           </Form.Item>
         </Form>
         {err !== '' ? <Alert message={err} type="error" /> : null}
-        <Link to="/password/reset">
+        <Link
+          to="/password/reset"
+          onClick={() => {
+            resetStore();
+          }}
+        >
           I’m drawing a blank on my password. Help!
         </Link>
       </div>

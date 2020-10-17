@@ -6,6 +6,7 @@ import { CheckCircleTwoTone } from '@ant-design/icons';
 import { FundOutlined } from '@ant-design/icons/lib';
 import { GameMetadata } from '../gameroom/game_info';
 import { timeToString } from '../store/constants';
+import { useResetStoreContext } from '../store/store';
 
 const colors = require('../base.scss');
 
@@ -18,6 +19,7 @@ type Props = {
 };
 
 export const GamesHistoryCard = React.memo((props: Props) => {
+  const { resetStore } = useResetStoreContext();
   const { userID } = props;
 
   const formattedGames = props.games
@@ -31,12 +33,20 @@ export const GamesHistoryCard = React.memo((props: Props) => {
           to={`/profile/${encodeURIComponent(
             item.players[1 - userplace].nickname
           )}`}
+          onClick={() => {
+            resetStore();
+          }}
         >
           {item.players[1 - userplace].nickname}
         </Link>
       );
       const scores = item.scores ? (
-        <Link to={`/game/${encodeURIComponent(String(item.game_id ?? ''))}`}>
+        <Link
+          to={`/game/${encodeURIComponent(String(item.game_id ?? ''))}`}
+          onClick={() => {
+            resetStore();
+          }}
+        >
           {item.scores[userplace]} - {item.scores[1 - userplace]}
         </Link>
       ) : (

@@ -10,6 +10,7 @@ import {
 import {
   useExamineStoreContext,
   useGameContextStoreContext,
+  useResetStoreContext,
 } from '../store/store';
 
 const colors = require('../base.scss');
@@ -199,10 +200,12 @@ type EGCProps = {
 
 const EndGameControls = (props: EGCProps) => {
   const [rematchDisabled, setRematchDisabled] = useState(false);
+  const { resetStore } = useResetStoreContext();
   const history = useHistory();
   const handleExitToLobby = React.useCallback(() => {
+    resetStore();
     history.replace('/');
-  }, [history]);
+  }, [history, resetStore]);
 
   return (
     <div className="game-controls">
