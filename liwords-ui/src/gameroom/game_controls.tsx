@@ -11,8 +11,6 @@ import {
   useGameContextStoreContext,
 } from '../store/store';
 
-const colors = require('../base.scss');
-
 const ExamineGameControls = React.memo((props: {}) => {
   const {
     examinedTurn,
