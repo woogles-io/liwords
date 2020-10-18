@@ -223,15 +223,19 @@ export const ScoreCard = React.memo((props: Props) => {
     const currentEl = el.current;
     if (currentEl) {
       currentEl.scrollTop = currentEl.scrollHeight || 0;
-      const parentHeight = document.getElementById('left-sidebar')
+      const boardHeight = document.getElementById('board-container')
         ?.clientHeight;
+      const poolTop = document.getElementById('pool')?.clientHeight || 0;
+      const playerCardTop =
+        document.getElementById('player-cards')?.clientHeight || 0;
       const navHeight = document.getElementById('main-nav')?.clientHeight || 0;
-      if (parentHeight) {
+      if (boardHeight) {
         setCardHeight(
-          parentHeight -
+          boardHeight -
             currentEl?.getBoundingClientRect().top -
-            window.scrollY -
-            30 +
+            poolTop -
+            playerCardTop -
+            15 +
             navHeight
         );
       }

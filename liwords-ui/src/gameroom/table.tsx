@@ -9,7 +9,7 @@ import { Card, message, Popconfirm } from 'antd';
 import { HomeOutlined } from '@ant-design/icons/lib';
 import axios from 'axios';
 
-import { Link, useLocation, useParams } from 'react-router-dom';
+import { Link, useHistory, useLocation, useParams } from 'react-router-dom';
 import { BoardPanel } from './board_panel';
 import { TopBar } from '../topbar/topbar';
 import { Chat } from '../chat/chat';
@@ -346,6 +346,7 @@ export const Table = React.memo((props: Props) => {
   const searchedTurn = useMemo(() => searchParams.get('turn'), [searchParams]);
   const turnAsStr = us && !gameDone ? '' : searchedTurn ?? ''; // Do not examine our current games.
   const hasActivatedExamineRef = useRef(false);
+  const [autocorrectURL, setAutocorrectURL] = useState(false);
   useEffect(() => {
     if (gameContext.gameID) {
       if (!hasActivatedExamineRef.current) {
@@ -355,9 +356,38 @@ export const Table = React.memo((props: Props) => {
           handleExamineStart();
           handleExamineGoTo(turnAsInt - 1); // ?turn= should start from one.
         }
+        setAutocorrectURL(true); // Trigger rerender.
       }
     }
   }, [gameContext.gameID, turnAsStr, handleExamineStart, handleExamineGoTo]);
+
+  // Autocorrect the turn on the URL.
+  const history = useHistory();
+  useEffect(() => {
+    if (!autocorrectURL) return; // Too early if examining has not started.
+    const turnParamShouldBe = isExamining
+      ? String(examinableGameContext.turns.length + 1)
+      : null;
+    if (turnParamShouldBe !== searchedTurn) {
+      if (turnParamShouldBe == null) {
+        searchParams.delete('turn');
+      } else {
+        searchParams.set('turn', turnParamShouldBe);
+      }
+      history.push({
+        ...location,
+        search: String(searchParams),
+      });
+    }
+  }, [
+    autocorrectURL,
+    examinableGameContext.turns.length,
+    history,
+    isExamining,
+    location,
+    searchParams,
+    searchedTurn,
+  ]);
 
   return (
     <div className="game-container">
@@ -398,7 +428,7 @@ export const Table = React.memo((props: Props) => {
           />
           <StreakWidget recentGames={streakGameInfo} />
         </div>
-        <div className="data-area">
+        <div className="data-area" id="right-sidebar">
           <PlayerCards gameMeta={gameInfo} playerMeta={gameInfo.players} />
           <GameInfo meta={gameInfo} />
           <Pool

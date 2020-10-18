@@ -146,7 +146,7 @@ const Pool = React.memo((props: Props) => {
     return <>{renderContents(title)}</>;
   }
   return (
-    <Card className="pool" title={title} extra={dropDown}>
+    <Card className="pool" id="pool" title={title} extra={dropDown}>
       {renderContents()}
     </Card>
   );

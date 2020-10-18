@@ -105,6 +105,7 @@ const gcgExport = (gameID: string, playerMeta: Array<PlayerMetadata>) => {
       link.setAttribute('download', downloadFilename);
       document.body.appendChild(link);
       link.onclick = () => {
+        link.remove();
         setTimeout(() => {
           window.URL.revokeObjectURL(url);
         }, 1000);

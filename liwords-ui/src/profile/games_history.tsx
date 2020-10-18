@@ -114,6 +114,7 @@ export const GamesHistoryCard = React.memo((props: Props) => {
         item.max_overtime_minutes
       )}`;
       return {
+        game_id: item.game_id, // used by rowKey
         details: getDetails(),
         result,
         opponent,
