@@ -355,7 +355,11 @@ export const handleDroppedTile = (
   if (rackIndex > -1) {
     rune = unplacedTiles[rackIndex];
   } else {
-    rune = ephTileMap[tileIndex] ? ephTileMap[tileIndex].letter : '';
+    if (!(tileIndex in ephTileMap)) {
+      // Dragged tile no longer at source, likely because opponent moved there.
+      return null;
+    }
+    rune = ephTileMap[tileIndex].letter;
     newPlacedTiles.delete(ephTileMap[tileIndex]);
   }
 
