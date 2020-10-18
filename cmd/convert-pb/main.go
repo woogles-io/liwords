@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
 	"flag"
@@ -16,16 +17,23 @@ import (
 func main() {
 	protofile := flag.String("protofile", "macondo", "the name of the protofile: macondo or realtime")
 	messageName := flag.String("messagename", "", "the name of the pb message")
-	convertfrom := flag.String("convertfrom", "binary", "binary or json (to the other)")
+	convertfrom := flag.String("convertfrom", "hex", "hex: hex->json,  b64: b64->json,  json: json->hex")
+	// pb packets that get sent through the socket have two bytes for length and one for msg type; skip these in this case.
+	skipheader := flag.Bool("skipheader", false, "if the format is a binary one, and this flag is enabled, skip the first three bytes of the packet")
 
-	msg := flag.String("msg", "", "the message, in hexadecimal or json")
+	msg := flag.String("msg", "", "the message, in hexadecimal, base64, or json")
 	flag.Parse()
 
 	var pbmsg proto.Message
 	var raw []byte
 	var err error
-	if *convertfrom == "binary" {
+	if *convertfrom == "hex" {
 		raw, err = hex.DecodeString(*msg)
+		if err != nil {
+			panic(err)
+		}
+	} else if *convertfrom == "b64" {
+		raw, err = base64.StdEncoding.DecodeString(*msg)
 		if err != nil {
 			panic(err)
 		}
@@ -44,6 +52,8 @@ func main() {
 		switch *messageName {
 		case "GameRequest":
 			pbmsg = &realtime.GameRequest{}
+		case "GameHistoryRefresher":
+			pbmsg = &realtime.GameHistoryRefresher{}
 		default:
 			panic("message " + *messageName + " not handled")
 		}
@@ -53,7 +63,10 @@ func main() {
 	var b []byte
 	var bstr string
 
-	if *convertfrom == "binary" {
+	if *convertfrom == "hex" || *convertfrom == "b64" {
+		if *skipheader {
+			raw = raw[3:]
+		}
 		err = proto.Unmarshal(raw, pbmsg)
 		if err != nil {
 			panic(err)
