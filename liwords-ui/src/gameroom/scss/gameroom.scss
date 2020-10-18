@@ -575,7 +575,9 @@
   }
 }
 .player-cards {
+  @media (min-width: $screen-tablet-min) {
   order: 4;
+  }
 }
 // Scorecard
 .score-card {
