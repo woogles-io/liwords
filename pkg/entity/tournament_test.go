@@ -22,14 +22,18 @@ func TestTournamentClassicRandom(t *testing.T) {
 	is := is.New(t)
 
 	// Tournaments must have at least two players
-	tc, err := NewTournamentClassic([]string{"Sad"}, rounds, Random, 1)
+	tc, err := NewTournamentClassic([]string{"Sad"}, rounds, []PairingMethod{Random, Random}, 1)
 	is.True(err != nil)
 
 	// Tournaments must have at least 1 round
-	tc, err = NewTournamentClassic(players, 0, Random, 1)
+	tc, err = NewTournamentClassic(players, 0, []PairingMethod{Random, Random}, 1)
 	is.True(err != nil)
 
-	tc, err = NewTournamentClassic(players, rounds, Random, 1)
+	// Tournaments must have an equal number of rounds and pairing methods
+	tc, err = NewTournamentClassic(players, rounds, []PairingMethod{Random}, 1)
+	is.True(err != nil)
+
+	tc, err = NewTournamentClassic(players, rounds, []PairingMethod{Random, Random}, 1)
 	is.NoErr(err)
 	is.True(tc != nil)
 
@@ -207,7 +211,7 @@ func TestTournamentClassicRandom(t *testing.T) {
 	is.NoErr(err)
 
 	// Check that pairings are correct with an odd number of players
-	tc, err = NewTournamentClassic(playersOdd, rounds, Random, 1)
+	tc, err = NewTournamentClassic(playersOdd, rounds, []PairingMethod{Random, Random}, 1)
 	is.NoErr(err)
 	is.True(tc != nil)
 
@@ -221,7 +225,7 @@ func TestTournamentClassicKingOfTheHill(t *testing.T) {
 
 	is := is.New(t)
 
-	tc, err := NewTournamentClassic(players, rounds, KingOfTheHill, 1)
+	tc, err := NewTournamentClassic(players, rounds, []PairingMethod{KingOfTheHill, KingOfTheHill}, 1)
 	is.NoErr(err)
 	is.True(tc != nil)
 
@@ -296,7 +300,7 @@ func TestTournamentClassicKingOfTheHill(t *testing.T) {
 	is.True(tournamentIsFinished)
 
 	// Check that pairings are correct with an odd number of players
-	tc, err = NewTournamentClassic(playersOdd, rounds, KingOfTheHill, 1)
+	tc, err = NewTournamentClassic(playersOdd, rounds, []PairingMethod{KingOfTheHill, KingOfTheHill}, 1)
 	is.NoErr(err)
 	is.True(tc != nil)
 
@@ -362,7 +366,11 @@ func TestTournamentClassicRoundRobin(t *testing.T) {
 
 	is := is.New(t)
 
-	tc, err := NewTournamentClassic(players, 6, RoundRobin, 1)
+	tc, err := NewTournamentClassic(players, 6, []PairingMethod{RoundRobin,
+		RoundRobin,
+		RoundRobin,
+		RoundRobin,
+		RoundRobin, RoundRobin}, 1)
 	is.NoErr(err)
 	is.True(tc != nil)
 
@@ -395,7 +403,16 @@ func TestTournamentClassicRoundRobin(t *testing.T) {
 
 	// Test Round Robin with an odd number of players (a bye)
 
-	tc, err = NewTournamentClassic(playersOdd, 10, RoundRobin, 1)
+	tc, err = NewTournamentClassic(playersOdd, 10, []PairingMethod{RoundRobin,
+		RoundRobin,
+		RoundRobin,
+		RoundRobin,
+		RoundRobin,
+		RoundRobin,
+		RoundRobin,
+		RoundRobin,
+		RoundRobin,
+		RoundRobin}, 1)
 	is.NoErr(err)
 	is.True(tc != nil)
 
@@ -436,7 +453,7 @@ func TestTournamentClassicRoundRobin(t *testing.T) {
 func TestTournamentClassicManual(t *testing.T) {
 	is := is.New(t)
 
-	tc, err := NewTournamentClassic(players, rounds, Manual, 1)
+	tc, err := NewTournamentClassic(players, rounds, []PairingMethod{Manual, Manual}, 1)
 	is.NoErr(err)
 	is.True(tc != nil)
 
@@ -526,10 +543,20 @@ func TestTournamentClassicElimination(t *testing.T) {
 	is := is.New(t)
 
 	// Try and make an elimination tournament with too many rounds
-	tc, err := NewTournamentClassic(players, 3, Elimination, 3)
+	tc, err := NewTournamentClassic(players, 3, []PairingMethod{Elimination,
+		Elimination,
+		Elimination}, 3)
 	is.True(err != nil)
 
-	tc, err = NewTournamentClassic(players, 2, Elimination, 3)
+	// Try and make an elimination tournament with other types
+	// of pairings
+	tc, err = NewTournamentClassic(players, 3, []PairingMethod{Elimination,
+		Random,
+		Elimination}, 3)
+	is.True(err != nil)
+
+	tc, err = NewTournamentClassic(players, 2, []PairingMethod{Elimination,
+		Elimination}, 3)
 	is.NoErr(err)
 	is.True(tc != nil)
 
@@ -735,13 +762,16 @@ func TestTournamentClassicElimination(t *testing.T) {
 func TestTournamentClassicRandomData(t *testing.T) {
 	is := is.New(t)
 
-	is.NoErr(runRandomTournaments(Random))
-	is.NoErr(runRandomTournaments(RoundRobin))
-	is.NoErr(runRandomTournaments(KingOfTheHill))
-	is.NoErr(runRandomTournaments(Elimination))
+	is.NoErr(runRandomTournaments(Random, false))
+	is.NoErr(runRandomTournaments(RoundRobin, false))
+	is.NoErr(runRandomTournaments(KingOfTheHill, false))
+	is.NoErr(runRandomTournaments(Elimination, false))
+	// Randomize the pairing method for each round
+	// Given pairing method is irrelevant
+	is.NoErr(runRandomTournaments(Manual, true))
 }
 
-func runRandomTournaments(method PairingMethod) error {
+func runRandomTournaments(method PairingMethod, randomizePairings bool) error {
 	for numberOfPlayers := 2; numberOfPlayers <= 512; numberOfPlayers++ {
 		var numberOfRounds int
 		var gamesPerRound int
@@ -763,7 +793,18 @@ func runRandomTournaments(method PairingMethod) error {
 			players = append(players, fmt.Sprintf("%d", i))
 		}
 
-		tc, err := NewTournamentClassic(players, numberOfRounds, method, gamesPerRound)
+		methods := []PairingMethod{}
+		if randomizePairings {
+			for i := 0; i < numberOfRounds; i++ {
+				methods = append(methods, PairingMethod(rand.Intn(3)))
+			}
+		} else {
+			for i := 0; i < numberOfRounds; i++ {
+				methods = append(methods, method)
+			}
+		}
+
+		tc, err := NewTournamentClassic(players, numberOfRounds, methods, gamesPerRound)
 		if err != nil {
 			return err
 		}
@@ -865,7 +906,7 @@ func runRandomTournaments(method PairingMethod) error {
 		if !tournamentIsFinished {
 			return errors.New(fmt.Sprintf("Tournament is not complete (%d, %d)\n", method, numberOfPlayers))
 		}
-		if tc.PairingMethod == Elimination {
+		if tc.PairingMethods[0] == Elimination {
 			standings, err := tc.GetStandings(numberOfRounds - 1)
 			if err != nil {
 				return err
@@ -904,7 +945,7 @@ func validatePairings(tc *TournamentClassic, round int) error {
 		pairing := pri.Pairing
 		if pairing.Players == nil {
 			// Some pairings can be nil for Elimination tournaments
-			if tc.PairingMethod != Elimination {
+			if tc.PairingMethods[0] != Elimination {
 				return errors.New(fmt.Sprintf("Player %d is unpaired", i))
 			} else {
 				continue

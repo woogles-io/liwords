@@ -88,11 +88,11 @@ type TournamentClassic struct {
 	Matrix         [][]*PlayerRoundInfo
 	Players        []string
 	PlayerIndexMap map[string]int
-	PairingMethod  PairingMethod
+	PairingMethods []PairingMethod
 	GamesPerRound  int
 }
 
-func NewTournamentClassic(players []string, numberOfRounds int, method PairingMethod, gamesPerRound int) (*TournamentClassic, error) {
+func NewTournamentClassic(players []string, numberOfRounds int, methods []PairingMethod, gamesPerRound int) (*TournamentClassic, error) {
 	numberOfPlayers := len(players)
 
 	if numberOfPlayers < 2 {
@@ -103,13 +103,27 @@ func NewTournamentClassic(players []string, numberOfRounds int, method PairingMe
 		return nil, errors.New("Classic Tournaments must have at least 1 round")
 	}
 
-	// For now, assume we require exactly n round and 2 ^ n players
-	if method == Elimination {
+	if numberOfRounds != len(methods) {
+		return nil, errors.New("Pairing methods length does not match the number of rounds!")
+	}
+
+	isElimination := false
+	for _, method := range methods {
+		if method == Elimination {
+			isElimination = true
+		} else if isElimination && method != Elimination {
+			return nil, errors.New("")
+		}
+	}
+
+	// For now, assume we require exactly n round and 2 ^ n players for an elimination tournament
+
+	if methods[0] == Elimination {
 		expectedNumberOfPlayers := twoPower(numberOfRounds)
 		if expectedNumberOfPlayers != numberOfPlayers {
-			return nil, errors.New(fmt.Sprintf("Invalid number of round for the given player list."+
-				" Have %d players, expected %d players based on the number of rounds\n",
-				expectedNumberOfPlayers, numberOfPlayers))
+			return nil, errors.New(fmt.Sprintf("Invalid number of players based on the number of rounds."+
+				" Have %d players, expected %d players based on the number of rounds (%d)\n",
+				expectedNumberOfPlayers, numberOfPlayers, numberOfRounds))
 		}
 
 	}
@@ -119,15 +133,15 @@ func NewTournamentClassic(players []string, numberOfRounds int, method PairingMe
 	t := &TournamentClassic{Matrix: pairings,
 		Players:        players,
 		PlayerIndexMap: playerIndexMap,
-		PairingMethod:  method,
+		PairingMethods: methods,
 		GamesPerRound:  gamesPerRound}
 	pairRoundClassic(t, 0)
 
-	// For round robins, we can pair the whole
-	// tournament right now.
-	if method == RoundRobin {
-		for i := 1; i < numberOfRounds; i++ {
+	// We can make all non-standings dependent pairings right now
+	for i := 1; i < numberOfRounds; i++ {
+		if methods[i] == RoundRobin || methods[i] == Random {
 			pairRoundClassic(t, i)
+			isElimination = true
 		}
 	}
 
@@ -236,7 +250,9 @@ func (t *TournamentClassic) SubmitResult(round int,
 		return errors.New("This result is already submitted")
 	}
 
-	if t.PairingMethod == Elimination {
+	pairingMethod := t.PairingMethods[round]
+
+	if pairingMethod == Elimination {
 		if amend {
 
 			p1ScoreOld := pairing.Games[gameIndex].Scores[0]
@@ -305,11 +321,18 @@ func (t *TournamentClassic) SubmitResult(round int,
 	if err != nil {
 		return err
 	}
+
+	// Copy the records over to the next round is the round is
+	// over.
 	// Only pair if this round is complete and the tournament
-	// is not over. Don't pair for round robin since all pairings
-	// were made when the tournament was created
-	if !finished && complete && t.PairingMethod != RoundRobin {
-		pairRoundClassic(t, round+1)
+	// is not over. Don't pair for round robin and random since those pairings
+	// were made when the tournament was created.
+	if !finished && complete {
+		copyRecords(t.Matrix, round)
+		nextPairingMethod := t.PairingMethods[round+1]
+		if nextPairingMethod != RoundRobin && nextPairingMethod != Random {
+			pairRoundClassic(t, round+1)
+		}
 	}
 
 	return nil
@@ -329,6 +352,8 @@ func (t *TournamentClassic) GetStandings(round int) ([]*Standing, error) {
 			Spread: pri.Spread})
 	}
 
+	pairingMethod := t.PairingMethods[round]
+
 	// The difference for Elimination is that the original order
 	// of the player list must be preserved. This is how we keep
 	// track of the "bracket", which is simply modeled by an
@@ -336,7 +361,7 @@ func (t *TournamentClassic) GetStandings(round int) ([]*Standing, error) {
 	// index in the tournament matrix is used as a tie breaker
 	// for wins. In this way, The groupings are preserved across
 	// rounds.
-	if t.PairingMethod == Elimination {
+	if pairingMethod == Elimination {
 		sort.Slice(records,
 			func(i, j int) bool {
 				if records[i].Wins == records[j].Wins {
@@ -424,21 +449,19 @@ func pairRoundClassic(t *TournamentClassic, round int) error {
 		return errors.New("Round number out of range")
 	}
 
-	copyRecords(t.Matrix, round-1)
-
 	roundPairings := t.Matrix[round]
-
+	pairingMethod := t.PairingMethods[round]
 	// This automatic pairing could be the result of an
 	// amendment. Undo all the pairings so byes can be
 	// properly assigned (bye assignment checks for nil pairing).
 	// Do not do this for manual pairings
-	if t.PairingMethod != Manual {
+	if pairingMethod != Manual {
 		for i := 0; i < len(roundPairings); i++ {
 			roundPairings[i].Pairing = nil
 		}
 	}
 
-	if t.PairingMethod == KingOfTheHill || t.PairingMethod == Elimination {
+	if pairingMethod == KingOfTheHill || pairingMethod == Elimination {
 		standingsRound := round - 1
 		// If this is the first round, just pair
 		// based on the order of the player list,
@@ -460,7 +483,7 @@ func pairRoundClassic(t *TournamentClassic, round int) error {
 			// the bottom half of the standings have been eliminated.
 			// Each successive round eliminates half as many players,
 			// hence the l / twoPower(l) determines which players are eliminated.
-			if t.PairingMethod == Elimination && round > 0 && i >= l/twoPower(round) {
+			if pairingMethod == Elimination && round > 0 && i >= l/twoPower(round) {
 				newPairing = newEliminatedPairing(playerOne, playerTwo)
 			} else {
 				newPairing = newClassicPairing(playerOne, playerTwo, t.GamesPerRound)
@@ -468,7 +491,7 @@ func pairRoundClassic(t *TournamentClassic, round int) error {
 			roundPairings[t.PlayerIndexMap[playerOne]].Pairing = newPairing
 			roundPairings[t.PlayerIndexMap[playerTwo]].Pairing = newPairing
 		}
-	} else if t.PairingMethod == Random {
+	} else if pairingMethod == Random {
 		playerIndexes := []int{}
 		for _, v := range t.PlayerIndexMap {
 			playerIndexes = append(playerIndexes, v)
@@ -487,7 +510,7 @@ func pairRoundClassic(t *TournamentClassic, round int) error {
 			roundPairings[playerIndexes[i]].Pairing = newPairing
 			roundPairings[playerIndexes[i+1]].Pairing = newPairing
 		}
-	} else if t.PairingMethod == RoundRobin {
+	} else if pairingMethod == RoundRobin {
 		roundRobinPlayers := t.Players
 		// The empty string represents the bye
 		if len(roundRobinPlayers)%2 == 1 {
@@ -524,7 +547,7 @@ func pairRoundClassic(t *TournamentClassic, round int) error {
 	// Give all unpaired players a bye
 	// Byes are always designated as a player
 	// paired with themselves
-	if t.PairingMethod != Manual {
+	if pairingMethod != Manual {
 		for i := 0; i < len(roundPairings); i++ {
 			pri := roundPairings[i]
 			if pri.Pairing == nil {
