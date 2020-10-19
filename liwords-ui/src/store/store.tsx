@@ -770,6 +770,17 @@ export const Store = ({ children }: { children: React.ReactNode }) => {
   // In JS the | 0 loops within int32 and avoids reaching Number.MAX_SAFE_INTEGER.
   const [storeId, resetStore] = React.useReducer((n) => (n + 1) | 0, 0);
 
+  // Reset on browser navigation.
+  React.useEffect(() => {
+    const handleBrowserNavigation = (evt: PopStateEvent) => {
+      resetStore();
+    };
+    window.addEventListener('popstate', handleBrowserNavigation);
+    return () => {
+      window.removeEventListener('popstate', handleBrowserNavigation);
+    };
+  }, [resetStore]);
+
   return (
     <ResetStoreContext.Provider value={{ resetStore }}>
       <RealStore key={storeId} children={children} />
