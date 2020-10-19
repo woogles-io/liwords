@@ -51,28 +51,43 @@ export const ExchangeTiles = React.memo((props: Props) => {
         return;
       }
       const key = e.key.toLocaleUpperCase();
-      const tempToExchange = new Set<number>(exchangedRackIndices);
-      if (!exchangedRack.includes(key)) {
-        const temporaryRack = props.rack.split('');
-        // Add all instances of the key the first time it is picked
-        while (temporaryRack.includes(key)) {
-          tempToExchange.add(temporaryRack.lastIndexOf(key));
-          temporaryRack.splice(temporaryRack.lastIndexOf(key), 1);
-        }
-      } else {
-        // Find the last one that's currently selected and deselect
-        let searchPoint = props.rack.length;
-        while (searchPoint > 0) {
-          const candidate = props.rack.lastIndexOf(key, searchPoint - 1);
-          if (tempToExchange.has(candidate)) {
-            tempToExchange.delete(candidate);
-            searchPoint = 0;
-          } else {
-            searchPoint = candidate;
+
+      // Toggle all. To keep selected tiles, toggle just before exchanging.
+      if (key === '-') {
+        if (props.rack.length > 0) {
+          const tempToExchange = new Set<number>();
+          for (let i = 0; i < props.rack.length; ++i) {
+            if (!exchangedRackIndices.has(i)) {
+              tempToExchange.add(i);
+            }
           }
+          setExchangedRackIndices(tempToExchange);
+        }
+        return;
+      }
+
+      // Select one more instance if any.
+      let canDeselect = false;
+      for (let i = 0; i < props.rack.length; ++i) {
+        if (props.rack[i] === key) {
+          if (!exchangedRackIndices.has(i)) {
+            setExchangedRackIndices(new Set(exchangedRackIndices).add(i));
+            return;
+          }
+          canDeselect = true;
         }
       }
-      setExchangedRackIndices(tempToExchange);
+
+      if (canDeselect) {
+        // Deselect all instances at once.
+        const tempToExchange = new Set(exchangedRackIndices);
+        for (let i = 0; i < props.rack.length; ++i) {
+          if (props.rack[i] === key) {
+            tempToExchange.delete(i);
+          }
+        }
+        setExchangedRackIndices(tempToExchange);
+      }
     },
     [
       delayInput,
