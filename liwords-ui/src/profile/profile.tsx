@@ -286,12 +286,7 @@ export const UserProfile = React.memo((props: Props) => {
             )}
           </h3>
           {viewer === username ? (
-            <Link
-              to="/password/change"
-              onClick={() => {
-                resetStore();
-              }}
-            >
+            <Link to="/password/change" onClick={resetStore}>
               Change your password
             </Link>
           ) : null}

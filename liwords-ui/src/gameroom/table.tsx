@@ -395,12 +395,7 @@ export const Table = React.memo((props: Props) => {
       <div className="game-table">
         <div className="chat-area" id="left-sidebar">
           <Card className="left-menu">
-            <Link
-              to="/"
-              onClick={() => {
-                resetStore();
-              }}
-            >
+            <Link to="/" onClick={resetStore}>
               <HomeOutlined />
               Back to lobby
             </Link>
