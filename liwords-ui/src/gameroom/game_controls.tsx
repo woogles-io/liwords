@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useHistory } from 'react-router-dom';
 import { Button, Popconfirm } from 'antd';
 import {
   DoubleLeftOutlined,
@@ -9,6 +10,7 @@ import {
 import {
   useExamineStoreContext,
   useGameContextStoreContext,
+  useResetStoreContext,
 } from '../store/store';
 
 const ExamineGameControls = React.memo((props: {}) => {
@@ -164,12 +166,19 @@ type EGCProps = {
 
 const EndGameControls = (props: EGCProps) => {
   const [rematchDisabled, setRematchDisabled] = useState(false);
+  const { resetStore } = useResetStoreContext();
+  const history = useHistory();
+  const handleExitToLobby = React.useCallback(() => {
+    resetStore();
+    history.replace('/');
+  }, [history, resetStore]);
+
   return (
     <div className="game-controls">
       <Button>Options</Button>
       <Button onClick={props.onExamine}>Examine</Button>
       <Button onClick={props.onExportGCG}>Export GCG</Button>
-      <Button onClick={() => window.location.replace('/')}>Exit</Button>
+      <Button onClick={handleExitToLobby}>Exit</Button>
       {props.showRematch && !rematchDisabled && (
         <Button
           type="primary"

@@ -1,4 +1,6 @@
 import React, { useState } from 'react';
+import { useHistory } from 'react-router-dom';
+import { useResetStoreContext } from '../store/store';
 import axios from 'axios';
 import { TopBar } from '../topbar/topbar';
 import { Input, Form, Button, Alert, Checkbox } from 'antd';
@@ -7,6 +9,10 @@ import './accountForms.scss';
 import woogles from '../assets/woogles.png';
 
 export const Register = () => {
+  const stillMountedRef = React.useRef(true);
+  React.useEffect(() => () => void (stillMountedRef.current = false), []);
+  const { resetStore } = useResetStoreContext();
+
   const [err, setErr] = useState('');
   const [loggedIn, setLoggedIn] = useState(false);
 
@@ -31,14 +37,20 @@ export const Register = () => {
           )
           .then(() => {
             // Automatically will set cookie
-            setLoggedIn(true);
+            if (stillMountedRef.current) {
+              setLoggedIn(true);
+            }
           })
           .catch((e) => {
             if (e.response) {
               // From Twirp
-              setErr(e.response.data.msg);
+              if (stillMountedRef.current) {
+                setErr(e.response.data.msg);
+              }
             } else {
-              setErr('unknown error, see console');
+              if (stillMountedRef.current) {
+                setErr('unknown error, see console');
+              }
               console.log(e);
             }
           });
@@ -46,17 +58,25 @@ export const Register = () => {
       .catch((e) => {
         if (e.response) {
           // From Twirp
-          setErr(e.response.data.msg);
+          if (stillMountedRef.current) {
+            setErr(e.response.data.msg);
+          }
         } else {
-          setErr('unknown error, see console');
+          if (stillMountedRef.current) {
+            setErr('unknown error, see console');
+          }
           console.log(e);
         }
       });
   };
 
-  if (loggedIn) {
-    window.location.replace('/');
-  }
+  const history = useHistory();
+  React.useEffect(() => {
+    if (loggedIn) {
+      resetStore();
+      history.replace('/');
+    }
+  }, [history, loggedIn, resetStore]);
 
   return (
     <>

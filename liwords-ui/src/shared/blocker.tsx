@@ -1,6 +1,7 @@
 import {
   useExcludedPlayersStoreContext,
   useLoginStateStoreContext,
+  useResetStoreContext,
 } from '../store/store';
 import axios from 'axios';
 import { toAPIUrl } from '../api/api';
@@ -15,6 +16,7 @@ type BlockerProps = {
 export const TheBlocker = (props: BlockerProps) => {
   const { excludedPlayers } = useExcludedPlayersStoreContext();
   const { loginState } = useLoginStateStoreContext();
+  const { resetStore } = useResetStoreContext();
   const { userID } = loginState;
 
   // Don't block yourself. It makes chat annoying.
@@ -44,7 +46,7 @@ export const TheBlocker = (props: BlockerProps) => {
         { withCredentials: true }
       )
       .then(() => {
-        setTimeout(window.location.reload.bind(window.location), 1000);
+        resetStore();
       });
   };
 

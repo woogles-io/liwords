@@ -74,6 +74,9 @@ const otUnitLabel = 'minutes';
 const incUnitLabel = 'seconds';
 
 export const SeekForm = (props: Props) => {
+  const stillMountedRef = React.useRef(true);
+  React.useEffect(() => () => void (stillMountedRef.current = false), []);
+
   let storageKey = 'lastSeekForm';
   if (props.vsBot) {
     storageKey = 'lastBotForm';
@@ -157,7 +160,9 @@ export const SeekForm = (props: Props) => {
       )
       .then((resp) => {
         console.log('resp', resp.data);
-        setUsernameOptions(!searchText ? [] : resp.data.usernames);
+        if (stillMountedRef.current) {
+          setUsernameOptions(!searchText ? [] : resp.data.usernames);
+        }
       });
   };
 

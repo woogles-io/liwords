@@ -9,7 +9,7 @@ import { Card, message, Popconfirm } from 'antd';
 import { HomeOutlined } from '@ant-design/icons/lib';
 import axios from 'axios';
 
-import { useHistory, useLocation, useParams } from 'react-router-dom';
+import { Link, useHistory, useLocation, useParams } from 'react-router-dom';
 import { BoardPanel } from './board_panel';
 import { TopBar } from '../topbar/topbar';
 import { Chat } from '../chat/chat';
@@ -23,6 +23,7 @@ import {
   usePoolFormatStoreContext,
   usePresenceStoreContext,
   useRematchRequestStoreContext,
+  useResetStoreContext,
   useTimerStoreContext,
 } from '../store/store';
 import { PlayerCards } from './player_cards';
@@ -79,6 +80,9 @@ const defaultGameInfo = {
 };
 
 export const Table = React.memo((props: Props) => {
+  const stillMountedRef = React.useRef(true);
+  React.useEffect(() => () => void (stillMountedRef.current = false), []);
+
   const { gameID } = useParams();
   const { chat, clearChat } = useChatStoreContext();
   const {
@@ -95,6 +99,7 @@ export const Table = React.memo((props: Props) => {
   const { poolFormat, setPoolFormat } = usePoolFormatStoreContext();
   const { presences } = usePresenceStoreContext();
   const { rematchRequest, setRematchRequest } = useRematchRequestStoreContext();
+  const { resetStore } = useResetStoreContext();
   const { pTimedOut, setPTimedOut } = useTimerStoreContext();
   const { username } = loginState;
 
@@ -161,11 +166,13 @@ export const Table = React.memo((props: Props) => {
         }
       )
       .then((resp) => {
-        setGameInfo(resp.data);
-        if (localStorage?.getItem('poolFormat')) {
-          setPoolFormat(
-            parseInt(localStorage.getItem('poolFormat') || '0', 10)
-          );
+        if (stillMountedRef.current) {
+          setGameInfo(resp.data);
+          if (localStorage?.getItem('poolFormat')) {
+            setPoolFormat(
+              parseInt(localStorage.getItem('poolFormat') || '0', 10)
+            );
+          }
         }
       });
     BoopSounds.playSound('startgameSound');
@@ -202,7 +209,9 @@ export const Table = React.memo((props: Props) => {
           }
         )
         .then((streakresp) => {
-          setStreakGameInfo(streakresp.data.game_info);
+          if (stillMountedRef.current) {
+            setStreakGameInfo(streakresp.data.game_info);
+          }
         });
       // Put this on a delay. Otherwise the game might not be saved to the
       // db as having finished before the gameEndMessage comes in.
@@ -386,10 +395,15 @@ export const Table = React.memo((props: Props) => {
       <div className="game-table">
         <div className="chat-area" id="left-sidebar">
           <Card className="left-menu">
-            <a href="/">
+            <Link
+              to="/"
+              onClick={() => {
+                resetStore();
+              }}
+            >
               <HomeOutlined />
               Back to lobby
-            </a>
+            </Link>
           </Card>
           <Chat
             chatEntities={chat}

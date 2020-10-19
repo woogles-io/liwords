@@ -1,4 +1,5 @@
 import React from 'react';
+import { Link } from 'react-router-dom';
 import { Card, Dropdown, Menu } from 'antd';
 import { PoolFormatType, PoolFormats } from '../constants/pool_formats';
 
@@ -103,9 +104,9 @@ const Pool = React.memo((props: Props) => {
       placement="bottomRight"
       overlayClassName="format-dropdown"
     >
-      <a href="/" onClick={(e) => e.preventDefault()}>
+      <Link to="/" onClick={(e) => e.preventDefault()}>
         Rearrange
-      </a>
+      </Link>
     </Dropdown>
   );
 

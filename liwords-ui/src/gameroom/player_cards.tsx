@@ -1,4 +1,5 @@
 import React from 'react';
+import { Link } from 'react-router-dom';
 import { Card, Row, Button } from 'antd';
 import { RawPlayerInfo } from '../store/reducers/game_reducer';
 import {
@@ -66,13 +67,12 @@ const PlayerCard = React.memo((props: CardProps) => {
           )}
           <div className="player-details">
             {meta?.rating || 'Unrated'} •{' '}
-            <a
-              rel="noopener noreferrer"
+            <Link
               target="_blank"
-              href={`/profile/${meta?.nickname}`}
+              to={`/profile/${encodeURIComponent(meta?.nickname ?? '')}`}
             >
               View Profile
-            </a>
+            </Link>
           </div>
         </div>
       </Row>

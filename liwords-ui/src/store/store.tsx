@@ -506,7 +506,10 @@ const ExaminableStore = ({ children }: { children: React.ReactNode }) => {
 
 // The Real Store.
 
-export const Store = ({ children, ...props }: Props) => {
+const RealStore = ({ children, ...props }: Props) => {
+  const stillMountedRef = React.useRef(true);
+  React.useEffect(() => () => void (stillMountedRef.current = false), []);
+
   const clockController = useRef<ClockController | null>(null);
 
   const onClockTick = useCallback((p: PlayerOrder, t: Millis) => {
@@ -514,11 +517,15 @@ export const Store = ({ children, ...props }: Props) => {
       return;
     }
     const newCtx = { ...clockController.current!.times, [p]: t };
-    setTimerContext(newCtx);
+    if (stillMountedRef.current) {
+      setTimerContext(newCtx);
+    }
   }, []);
 
   const onClockTimeout = useCallback((p: PlayerOrder) => {
-    setPTimedOut(p);
+    if (stillMountedRef.current) {
+      setPTimedOut(p);
+    }
   }, []);
 
   const [lobbyContext, dispatchLobbyContext] = useReducer(LobbyReducer, {
@@ -754,6 +761,20 @@ export const Store = ({ children, ...props }: Props) => {
 
   // typescript did not like "return ret;"
   return <React.Fragment children={ret} />;
+};
+
+const ResetStoreContext = createContext({ resetStore: defaultFunction });
+export const useResetStoreContext = () => useContext(ResetStoreContext);
+
+export const Store = ({ children }: { children: React.ReactNode }) => {
+  // In JS the | 0 loops within int32 and avoids reaching Number.MAX_SAFE_INTEGER.
+  const [storeId, resetStore] = React.useReducer((n) => (n + 1) | 0, 0);
+
+  return (
+    <ResetStoreContext.Provider value={{ resetStore }}>
+      <RealStore key={storeId} children={children} />
+    </ResetStoreContext.Provider>
+  );
 };
 
 export const useLobbyStoreContext = () => useContext(LobbyContext);

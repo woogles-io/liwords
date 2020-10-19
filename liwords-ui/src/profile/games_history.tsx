@@ -1,10 +1,12 @@
 import React from 'react';
+import { Link } from 'react-router-dom';
 import moment from 'moment';
 import { Button, Card, Table, Tag, Tooltip } from 'antd';
 import { CheckCircleTwoTone } from '@ant-design/icons';
 import { FundOutlined } from '@ant-design/icons/lib';
 import { GameMetadata } from '../gameroom/game_info';
 import { timeToString } from '../store/constants';
+import { useResetStoreContext } from '../store/store';
 
 const colors = require('../base.scss');
 
@@ -17,6 +19,7 @@ type Props = {
 };
 
 export const GamesHistoryCard = React.memo((props: Props) => {
+  const { resetStore } = useResetStoreContext();
   const { userID } = props;
 
   const formattedGames = props.games
@@ -26,14 +29,26 @@ export const GamesHistoryCard = React.memo((props: Props) => {
     .map((item) => {
       const userplace = item.players[0].user_id === userID ? 0 : 1;
       const opponent = (
-        <a href={`/profile/${item.players[1 - userplace].nickname}`}>
+        <Link
+          to={`/profile/${encodeURIComponent(
+            item.players[1 - userplace].nickname
+          )}`}
+          onClick={() => {
+            resetStore();
+          }}
+        >
           {item.players[1 - userplace].nickname}
-        </a>
+        </Link>
       );
       const scores = item.scores ? (
-        <a href={`/game/${item.game_id}`}>
+        <Link
+          to={`/game/${encodeURIComponent(String(item.game_id ?? ''))}`}
+          onClick={() => {
+            resetStore();
+          }}
+        >
           {item.scores[userplace]} - {item.scores[1 - userplace]}
-        </a>
+        </Link>
       ) : (
         ''
       );

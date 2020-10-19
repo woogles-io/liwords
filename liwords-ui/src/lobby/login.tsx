@@ -1,12 +1,17 @@
 import React, { useState } from 'react';
+import { Link, useHistory } from 'react-router-dom';
+import { useResetStoreContext } from '../store/store';
 import './accountForms.scss';
 
 import { Form, Input, Button, Alert } from 'antd';
-// import { Link } from 'react-router-dom';
 import axios from 'axios';
 import { toAPIUrl } from '../api/api';
 
 export const Login = React.memo(() => {
+  const stillMountedRef = React.useRef(true);
+  React.useEffect(() => () => void (stillMountedRef.current = false), []);
+  const { resetStore } = useResetStoreContext();
+
   const [err, setErr] = useState('');
   const [loggedIn, setLoggedIn] = useState(false);
   const onFinish = (values: { [key: string]: string }) => {
@@ -21,22 +26,32 @@ export const Login = React.memo(() => {
       )
       .then(() => {
         // Automatically will set cookie
-        setLoggedIn(true);
+        if (stillMountedRef.current) {
+          setLoggedIn(true);
+        }
       })
       .catch((e) => {
         if (e.response) {
           // From Twirp
-          setErr(e.response.data.msg);
+          if (stillMountedRef.current) {
+            setErr(e.response.data.msg);
+          }
         } else {
-          setErr('unknown error, see console');
+          if (stillMountedRef.current) {
+            setErr('unknown error, see console');
+          }
           console.log(e);
         }
       });
   };
 
-  if (loggedIn) {
-    window.location.replace('/');
-  }
+  const history = useHistory();
+  React.useEffect(() => {
+    if (loggedIn) {
+      resetStore();
+      history.replace('/');
+    }
+  }, [history, loggedIn, resetStore]);
 
   return (
     <div className="account">
@@ -73,7 +88,14 @@ export const Login = React.memo(() => {
           </Form.Item>
         </Form>
         {err !== '' ? <Alert message={err} type="error" /> : null}
-        <a href="/password/reset">I’m drawing a blank on my password. Help!</a>
+        <Link
+          to="/password/reset"
+          onClick={() => {
+            resetStore();
+          }}
+        >
+          I’m drawing a blank on my password. Help!
+        </Link>
       </div>
     </div>
   );

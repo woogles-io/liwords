@@ -24,6 +24,9 @@ const tailLayout = {
 type Props = {};
 
 export const PasswordChange = (props: Props) => {
+  const stillMountedRef = React.useRef(true);
+  React.useEffect(() => () => void (stillMountedRef.current = false), []);
+
   const [err, setErr] = useState('');
   const onFinish = (values: { [key: string]: string }) => {
     if (values.newPassword !== values.confirmnewPassword) {
@@ -47,14 +50,20 @@ export const PasswordChange = (props: Props) => {
           message: 'Success',
           description: 'Your password was changed.',
         });
-        setErr('');
+        if (stillMountedRef.current) {
+          setErr('');
+        }
       })
       .catch((e) => {
         if (e.response) {
           // From Twirp
-          setErr(e.response.data.msg);
+          if (stillMountedRef.current) {
+            setErr(e.response.data.msg);
+          }
         } else {
-          setErr('unknown error, see console');
+          if (stillMountedRef.current) {
+            setErr('unknown error, see console');
+          }
           console.log(e);
         }
       });

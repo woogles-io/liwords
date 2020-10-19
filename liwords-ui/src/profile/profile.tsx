@@ -1,11 +1,14 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { useParams, useLocation } from 'react-router-dom';
+import { Link, useParams, useLocation } from 'react-router-dom';
 import { notification, Card, Table, Row, Col } from 'antd';
 import axios, { AxiosError } from 'axios';
 import { TopBar } from '../topbar/topbar';
 import './profile.scss';
 import { toAPIUrl } from '../api/api';
-import { useLoginStateStoreContext } from '../store/store';
+import {
+  useLoginStateStoreContext,
+  useResetStoreContext,
+} from '../store/store';
 import { GameMetadata, RecentGamesResponse } from '../gameroom/game_info';
 import { GamesHistoryCard } from './games_history';
 import { UsernameWithContext } from '../shared/usernameWithContext';
@@ -200,6 +203,9 @@ type Props = {};
 const gamesPageSize = 10;
 
 export const UserProfile = React.memo((props: Props) => {
+  const stillMountedRef = React.useRef(true);
+  React.useEffect(() => () => void (stillMountedRef.current = false), []);
+
   const { username } = useParams();
   const location = useLocation();
   // Show username's profile
@@ -208,6 +214,7 @@ export const UserProfile = React.memo((props: Props) => {
   const [userID, setUserID] = useState('');
   const [recentGames, setRecentGames] = useState<Array<GameMetadata>>([]);
   const { loginState } = useLoginStateStoreContext();
+  const { resetStore } = useResetStoreContext();
   const { username: viewer } = loginState;
   const [recentGamesOffset, setRecentGamesOffset] = useState(0);
   useEffect(() => {
@@ -219,9 +226,11 @@ export const UserProfile = React.memo((props: Props) => {
         }
       )
       .then((resp) => {
-        setRatings(JSON.parse(resp.data.ratings_json).Data);
-        setStats(JSON.parse(resp.data.stats_json).Data);
-        setUserID(resp.data.user_id);
+        if (stillMountedRef.current) {
+          setRatings(JSON.parse(resp.data.ratings_json).Data);
+          setStats(JSON.parse(resp.data.stats_json).Data);
+          setUserID(resp.data.user_id);
+        }
       })
       .catch(errorCatcher);
   }, [username, location.pathname]);
@@ -237,7 +246,9 @@ export const UserProfile = React.memo((props: Props) => {
         }
       )
       .then((resp) => {
-        setRecentGames(resp.data.game_info);
+        if (stillMountedRef.current) {
+          setRecentGames(resp.data.game_info);
+        }
       })
       .catch(errorCatcher);
   }, [username, recentGamesOffset]);
@@ -273,7 +284,14 @@ export const UserProfile = React.memo((props: Props) => {
             )}
           </h3>
           {viewer === username ? (
-            <a href="/password/change">Change your password</a>
+            <Link
+              to="/password/change"
+              onClick={() => {
+                resetStore();
+              }}
+            >
+              Change your password
+            </Link>
           ) : null}
         </header>
         <RatingsCard ratings={ratings} />

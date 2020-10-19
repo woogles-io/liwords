@@ -24,6 +24,9 @@ const tailLayout = {
 type Props = {};
 
 export const NewPassword = (props: Props) => {
+  const stillMountedRef = React.useRef(true);
+  React.useEffect(() => () => void (stillMountedRef.current = false), []);
+
   const [err, setErr] = useState('');
   const location = useLocation();
   const params = qs.parse(location.search, { ignoreQueryPrefix: true });
@@ -52,7 +55,9 @@ export const NewPassword = (props: Props) => {
       })
       .catch((e) => {
         if (e.response) {
-          setErr(e.response.data.msg);
+          if (stillMountedRef.current) {
+            setErr(e.response.data.msg);
+          }
         }
       });
   };
