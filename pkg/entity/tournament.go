@@ -92,7 +92,10 @@ type TournamentClassic struct {
 	GamesPerRound  int
 }
 
-func NewTournamentClassic(players []string, numberOfRounds int, methods []PairingMethod, gamesPerRound int) (*TournamentClassic, error) {
+func NewTournamentClassic(players []string,
+	numberOfRounds int,
+	methods []PairingMethod,
+	gamesPerRound int) (*TournamentClassic, error) {
 	numberOfPlayers := len(players)
 
 	if numberOfPlayers < 2 {
@@ -245,12 +248,24 @@ func (t *TournamentClassic) SubmitResult(round int,
 	}
 
 	pairing := pri1.Pairing
+	pairingMethod := t.PairingMethods[round]
 
-	if pairing.Outcomes[0] != None && pairing.Outcomes[1] != None && !amend {
-		return errors.New("This result is already submitted")
+	// For Elimination tournaments only.
+	// Could be a tiebreaking result or could be an out of range
+	// game index
+	if pairingMethod == Elimination && gameIndex >= t.GamesPerRound {
+		if gameIndex != len(pairing.Games) {
+			return errors.New(fmt.Sprintf("Submitted tiebreaking result with invalid game index."+
+				" Player 1: %s, Player 2: %s, Round: %d, GameIndex: %d\n", p1, p2, round, gameIndex))
+		} else {
+			pairing.Games = append(pairing.Games, &TournamentGame{Scores: []int{0, 0}, Results: []Result{None, None}})
+		}
 	}
 
-	pairingMethod := t.PairingMethods[round]
+	if !amend && ((pairing.Outcomes[0] != None && pairing.Outcomes[1] != None) ||
+		pairing.Games[gameIndex].Results[0] != None && pairing.Games[gameIndex].Results[1] != None) {
+		return errors.New("This result is already submitted")
+	}
 
 	if pairingMethod == Elimination {
 		if amend {
@@ -628,20 +643,35 @@ func getEliminationOutcomes(games []*TournamentGame, gamesPerRound int) []Result
 		p1Spread += game.Scores[0] - game.Scores[1]
 		p2Spread += game.Scores[1] - game.Scores[0]
 	}
+
 	p1Outcome := None
 	p2Outcome := None
-	if p1Wins > gamesPerRound ||
-		p1Wins == gamesPerRound && p2Wins == gamesPerRound && p1Spread > p2Spread {
-		p1Outcome = Win
-		p2Outcome = Eliminated
-	} else if p2Wins > gamesPerRound ||
-		p1Wins == gamesPerRound && p2Wins == gamesPerRound && p1Spread < p2Spread {
-		p1Outcome = Eliminated
-		p2Outcome = Win
-		// FIXME: Need need to determine a behavior for ties in elimination tournaments
-	} else if p1Wins == gamesPerRound && p2Wins == gamesPerRound && p1Spread == p2Spread {
-		p1Outcome = Win
-		p2Outcome = Eliminated
+
+	// In case of a tie by spread, more games need to be
+	// submitted to break the tie. In the future we
+	// might want to allow for Elimination tournaments
+	// to disregard spread as a tiebreak entirely, but
+	// this is an extreme edge case.
+	if len(games) > gamesPerRound { // Tiebreaking results are present
+		if p1Wins > p2Wins ||
+			p1Wins == p2Wins && p1Spread > p2Spread {
+			p1Outcome = Win
+			p2Outcome = Eliminated
+		} else if p2Wins > p1Wins ||
+			p2Wins == p1Wins && p2Spread > p1Spread {
+			p1Outcome = Eliminated
+			p2Outcome = Win
+		}
+	} else {
+		if p1Wins > gamesPerRound ||
+			p1Wins == gamesPerRound && p2Wins == gamesPerRound && p1Spread > p2Spread {
+			p1Outcome = Win
+			p2Outcome = Eliminated
+		} else if p2Wins > gamesPerRound ||
+			p1Wins == gamesPerRound && p2Wins == gamesPerRound && p1Spread < p2Spread {
+			p1Outcome = Eliminated
+			p2Outcome = Win
+		}
 	}
 	return []Result{p1Outcome, p2Outcome}
 }

@@ -690,7 +690,7 @@ func TestTournamentClassicElimination(t *testing.T) {
 	expectedpri1.Spread = 60
 	is.NoErr(equalPRI(expectedpri1, pri1))
 
-	// The usual pri comparison methd will fail since the
+	// The usual pri comparison method will fail since the
 	// Games and Players are nil for elimianted players
 	is.True(pri2.Pairing.Outcomes[0] == Eliminated)
 	is.True(pri2.Pairing.Outcomes[1] == Eliminated)
@@ -757,6 +757,113 @@ func TestTournamentClassicElimination(t *testing.T) {
 	tournamentIsFinished, err := tc.IsFinished()
 	is.NoErr(err)
 	is.True(tournamentIsFinished)
+
+	// Test ties and submitting tiebreaking results
+	// Since this test is copied from above, the usual
+	// validations are skipped, since they would be redundant.
+
+	tc, err = NewTournamentClassic(players, 2, []PairingMethod{Elimination,
+		Elimination}, 3)
+	is.NoErr(err)
+	is.True(tc != nil)
+
+	player1 = players[0]
+	player2 = players[1]
+	player3 = players[2]
+	player4 = players[3]
+
+	pri2, err = tc.GetPlayerRoundInfo(player3, 0)
+	is.NoErr(err)
+
+	expectedpri1 = newPlayerRoundInfo(player1, player2, tc.GamesPerRound)
+	expectedpri2 = newPlayerRoundInfo(player3, player4, tc.GamesPerRound)
+
+	// The match is decided in two games
+	err = tc.SubmitResult(0, player1, player2, 500, 490, Win, Loss, realtime.GameEndReason_STANDARD, false, 0)
+	is.NoErr(err)
+
+	err = tc.SubmitResult(0, player1, player2, 50, 0, ForfeitWin, ForfeitLoss, realtime.GameEndReason_ABANDONED, false, 1)
+	is.NoErr(err)
+
+	// The next match ends up tied at 1.5 - 1.5
+	// with both players having the same spread.
+	err = tc.SubmitResult(0, player3, player4, 500, 400, Win, Loss, realtime.GameEndReason_STANDARD, false, 0)
+	is.NoErr(err)
+
+	err = tc.SubmitResult(0, player3, player4, 400, 500, Loss, Win, realtime.GameEndReason_STANDARD, false, 1)
+	is.NoErr(err)
+
+	err = tc.SubmitResult(0, player3, player4, 500, 500, Draw, Draw, realtime.GameEndReason_STANDARD, false, 2)
+	is.NoErr(err)
+
+	expectedpri2.Pairing.Games[0].Results = []Result{Win, Loss}
+	expectedpri2.Pairing.Games[1].Results = []Result{Loss, Win}
+	expectedpri2.Pairing.Games[2].Results = []Result{Draw, Draw}
+	expectedpri2.Pairing.Games[0].Scores[0] = 500
+	expectedpri2.Pairing.Games[1].Scores[0] = 400
+	expectedpri2.Pairing.Games[2].Scores[0] = 500
+	expectedpri2.Pairing.Games[0].Scores[1] = 400
+	expectedpri2.Pairing.Games[1].Scores[1] = 500
+	expectedpri2.Pairing.Games[2].Scores[1] = 500
+	expectedpri2.Pairing.Games[0].GameEndReason = realtime.GameEndReason_STANDARD
+	expectedpri2.Pairing.Games[1].GameEndReason = realtime.GameEndReason_STANDARD
+	expectedpri2.Pairing.Games[2].GameEndReason = realtime.GameEndReason_STANDARD
+	expectedpri2.Spread = 0
+	expectedpri2.Pairing.Outcomes[0] = None
+	expectedpri2.Pairing.Outcomes[1] = None
+	is.NoErr(equalPRI(expectedpri2, pri2))
+
+	// Round should not be over
+	roundIsComplete, err = tc.IsRoundComplete(0)
+	is.NoErr(err)
+	is.True(!roundIsComplete)
+
+	// Submit a tiebreaking result, unfortunately, it's another draw
+	err = tc.SubmitResult(0, player3, player4, 500, 500, Draw, Draw, realtime.GameEndReason_STANDARD, false, 3)
+	is.NoErr(err)
+
+	expectedpri2.Pairing.Games = append(expectedpri2.Pairing.Games, &TournamentGame{Scores: []int{500, 500}, Results: []Result{Draw, Draw}})
+	expectedpri2.Pairing.Games[3].GameEndReason = realtime.GameEndReason_STANDARD
+	is.NoErr(equalPRI(expectedpri2, pri2))
+
+	// Round should still not be over
+	roundIsComplete, err = tc.IsRoundComplete(0)
+	is.NoErr(err)
+	is.True(!roundIsComplete)
+
+	// Attempt to submit a tiebreaking result, unfortunately, the game index is wrong
+	err = tc.SubmitResult(0, player3, player4, 500, 500, Draw, Draw, realtime.GameEndReason_STANDARD, false, 5)
+	is.True(err != nil)
+
+	// Still wrong! Silly director (and definitely not code another layer up)
+	err = tc.SubmitResult(0, player3, player4, 500, 500, Draw, Draw, realtime.GameEndReason_STANDARD, false, 2)
+	is.True(err != nil)
+
+	// Round should still not be over
+	roundIsComplete, err = tc.IsRoundComplete(0)
+	is.NoErr(err)
+	is.True(!roundIsComplete)
+
+	// The players finally reach a decisive result
+	err = tc.SubmitResult(0, player3, player4, 600, 300, Win, Loss, realtime.GameEndReason_STANDARD, false, 4)
+	is.NoErr(err)
+
+	// Round is finally over
+	roundIsComplete, err = tc.IsRoundComplete(0)
+	is.NoErr(err)
+	is.True(roundIsComplete)
+
+	// Get the standings for round 1
+	standings, err = tc.GetStandings(0)
+	is.NoErr(err)
+
+	expectedstandings = []*Standing{&Standing{Player: player1, Wins: 1, Losses: 0, Draws: 0, Spread: 60},
+		&Standing{Player: player3, Wins: 1, Losses: 0, Draws: 0, Spread: 300},
+		&Standing{Player: player2, Wins: 0, Losses: 0, Draws: 0, Spread: -60},
+		&Standing{Player: player4, Wins: 0, Losses: 0, Draws: 0, Spread: -300},
+	}
+
+	is.NoErr(equalStandings(expectedstandings, standings))
 }
 
 func TestTournamentClassicRandomData(t *testing.T) {
