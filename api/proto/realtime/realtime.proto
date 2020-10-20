@@ -208,6 +208,11 @@ message GameEndedEvent {
   bool tie = 6;
   // Time that the game ended
   int64 time = 7;
+
+  map<string, int32> rating_deltas = 8;
+
+  // All racks for this game; one per game history event.
+  repeated string racks = 9;
 }
 
 // A GameHistoryRefresher is sent to both players when the game starts,

@@ -13,7 +13,7 @@ import (
 )
 
 func Rate(ctx context.Context, scores map[string]int32, g *entity.Game,
-	winner string, userStore user.Store, now int64) (map[string]int32, error) {
+	winner string, userStore user.Store, now int64) (map[string][2]int32, error) {
 
 	// Fetch the users from the store.
 	users := []*entity.User{}
@@ -105,8 +105,8 @@ func Rate(ctx context.Context, scores map[string]int32, g *entity.Game,
 		return nil, err
 	}
 
-	return map[string]int32{
-		usernames[0]: int32(math.Round(p0rat)),
-		usernames[1]: int32(math.Round(p1rat)),
+	return map[string][2]int32{
+		usernames[0]: [2]int32{int32(math.Round(rat0.Rating)), int32(math.Round(p0rat))},
+		usernames[1]: [2]int32{int32(math.Round(rat1.Rating)), int32(math.Round(p1rat))},
 	}, nil
 }

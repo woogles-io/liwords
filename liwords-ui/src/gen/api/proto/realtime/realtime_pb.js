@@ -481,7 +481,7 @@ if (goog.DEBUG && !COMPILED) {
  * @constructor
  */
 proto.liwords.GameEndedEvent = function(opt_data) {
-  jspb.Message.initialize(this, opt_data, 0, -1, null, null);
+  jspb.Message.initialize(this, opt_data, 0, -1, proto.liwords.GameEndedEvent.repeatedFields_, null);
 };
 goog.inherits(proto.liwords.GameEndedEvent, jspb.Message);
 if (goog.DEBUG && !COMPILED) {
@@ -4829,6 +4829,13 @@ proto.liwords.ServerChallengeResultEvent.prototype.setChallengeRule = function(v
 
 
 
+/**
+ * List of repeated fields within this message type.
+ * @private {!Array<number>}
+ * @const
+ */
+proto.liwords.GameEndedEvent.repeatedFields_ = [9];
+
 
 
 if (jspb.Message.GENERATE_TO_OBJECT) {
@@ -4866,7 +4873,9 @@ proto.liwords.GameEndedEvent.toObject = function(includeInstance, msg) {
     winner: jspb.Message.getFieldWithDefault(msg, 4, ""),
     loser: jspb.Message.getFieldWithDefault(msg, 5, ""),
     tie: jspb.Message.getBooleanFieldWithDefault(msg, 6, false),
-    time: jspb.Message.getFieldWithDefault(msg, 7, 0)
+    time: jspb.Message.getFieldWithDefault(msg, 7, 0),
+    ratingDeltasMap: (f = msg.getRatingDeltasMap()) ? f.toObject(includeInstance, undefined) : [],
+    racksList: (f = jspb.Message.getRepeatedField(msg, 9)) == null ? undefined : f
   };
 
   if (includeInstance) {
@@ -4934,6 +4943,16 @@ proto.liwords.GameEndedEvent.deserializeBinaryFromReader = function(msg, reader)
     case 7:
       var value = /** @type {number} */ (reader.readInt64());
       msg.setTime(value);
+      break;
+    case 8:
+      var value = msg.getRatingDeltasMap();
+      reader.readMessage(value, function(message, reader) {
+        jspb.Map.deserializeBinary(message, reader, jspb.BinaryReader.prototype.readString, jspb.BinaryReader.prototype.readInt32, null, "", 0);
+         });
+      break;
+    case 9:
+      var value = /** @type {string} */ (reader.readString());
+      msg.addRacks(value);
       break;
     default:
       reader.skipField();
@@ -5004,6 +5023,17 @@ proto.liwords.GameEndedEvent.serializeBinaryToWriter = function(message, writer)
   if (f !== 0) {
     writer.writeInt64(
       7,
+      f
+    );
+  }
+  f = message.getRatingDeltasMap(true);
+  if (f && f.getLength() > 0) {
+    f.serializeBinary(8, writer, jspb.BinaryWriter.prototype.writeString, jspb.BinaryWriter.prototype.writeInt32);
+  }
+  f = message.getRacksList();
+  if (f.length > 0) {
+    writer.writeRepeatedString(
+      9,
       f
     );
   }
@@ -5141,6 +5171,65 @@ proto.liwords.GameEndedEvent.prototype.getTime = function() {
  */
 proto.liwords.GameEndedEvent.prototype.setTime = function(value) {
   return jspb.Message.setProto3IntField(this, 7, value);
+};
+
+
+/**
+ * map<string, int32> rating_deltas = 8;
+ * @param {boolean=} opt_noLazyCreate Do not create the map if
+ * empty, instead returning `undefined`
+ * @return {!jspb.Map<string,number>}
+ */
+proto.liwords.GameEndedEvent.prototype.getRatingDeltasMap = function(opt_noLazyCreate) {
+  return /** @type {!jspb.Map<string,number>} */ (
+      jspb.Message.getMapField(this, 8, opt_noLazyCreate,
+      null));
+};
+
+
+/**
+ * Clears values from the map. The map will be non-null.
+ * @return {!proto.liwords.GameEndedEvent} returns this
+ */
+proto.liwords.GameEndedEvent.prototype.clearRatingDeltasMap = function() {
+  this.getRatingDeltasMap().clear();
+  return this;};
+
+
+/**
+ * repeated string racks = 9;
+ * @return {!Array<string>}
+ */
+proto.liwords.GameEndedEvent.prototype.getRacksList = function() {
+  return /** @type {!Array<string>} */ (jspb.Message.getRepeatedField(this, 9));
+};
+
+
+/**
+ * @param {!Array<string>} value
+ * @return {!proto.liwords.GameEndedEvent} returns this
+ */
+proto.liwords.GameEndedEvent.prototype.setRacksList = function(value) {
+  return jspb.Message.setField(this, 9, value || []);
+};
+
+
+/**
+ * @param {string} value
+ * @param {number=} opt_index
+ * @return {!proto.liwords.GameEndedEvent} returns this
+ */
+proto.liwords.GameEndedEvent.prototype.addRacks = function(value, opt_index) {
+  return jspb.Message.addToRepeatedField(this, 9, value, opt_index);
+};
+
+
+/**
+ * Clears the list making it empty but non-null.
+ * @return {!proto.liwords.GameEndedEvent} returns this
+ */
+proto.liwords.GameEndedEvent.prototype.clearRacksList = function() {
+  return this.setRacksList([]);
 };
 
 

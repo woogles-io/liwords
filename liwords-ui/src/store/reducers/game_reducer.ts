@@ -8,6 +8,7 @@ import { Action, ActionType } from '../../actions/actions';
 import {
   ServerGameplayEvent,
   GameHistoryRefresher,
+  GameEndedEvent,
 } from '../../gen/api/proto/realtime/realtime_pb';
 import {
   Direction,
@@ -474,7 +475,7 @@ export const GameReducer = (state: GameState, action: Action): GameState => {
       if (sge.getGameId() !== state.gameID) {
         return state; // no change
       }
-      console.log('add game event', sge)
+      console.log('add game event', sge);
       const ngs = newGameState(state, sge);
 
       // Always pass the clock ref along. Begin imperative section:
@@ -500,10 +501,18 @@ export const GameReducer = (state: GameState, action: Action): GameState => {
       // If the game ends, we should set this in the store, if it hasn't
       // already been set. This can happen if it ends in an "abnormal" way
       // like a resignation or a timeout -- these aren't ServerGamePlayEvents per se.
+      const gee = action.payload as GameEndedEvent;
+
+      // Add racks to store.
+
+      const turns = [...state.turns];
+      gee.getRacksList().forEach((rack, idx) => turns[idx].setRack(rack));
+
       const newState = {
         ...state,
+        turns,
         playState: PlayState.GAME_OVER,
-      }
+      };
       if (newState.clockController) {
         newState.clockController.current?.stopClock();
       }

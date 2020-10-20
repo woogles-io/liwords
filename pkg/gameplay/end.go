@@ -158,10 +158,9 @@ func performEndgameDuties(ctx context.Context, g *entity.Game, gameStore GameSto
 	// Send a gameEndedEvent, which rates the game.
 	evt := gameEndedEvent(ctx, g, userStore)
 	wrapped := entity.WrapEvent(evt, pb.MessageType_GAME_ENDED_EVENT)
-	// Once the game ends, we do not need to "sanitize" the packets
-	// going to the users anymore. So just send the data to the right
-	// audiences.
-	wrapped.AddAudience(entity.AudGame, g.GameID())
+	for _, p := range players(g) {
+		wrapped.AddAudience(entity.AudUser, p+".game."+g.GameID())
+	}
 	wrapped.AddAudience(entity.AudGameTV, g.GameID())
 	g.SendChange(wrapped)
 
@@ -192,13 +191,6 @@ func performEndgameDuties(ctx context.Context, g *entity.Game, gameStore GameSto
 	if err != nil {
 		return err
 	}
-	// Send one more history refresher to the players. This will populate
-	// their opponent's rack info without them having to refresh.
-
-	wrapped = entity.WrapEvent(g.HistoryRefresherEvent(),
-		pb.MessageType_GAME_HISTORY_REFRESHER)
-	wrapped.AddAudience(entity.AudGame, g.GameID())
-	g.SendChange(wrapped)
 
 	log.Info().Str("gameID", g.GameID()).Msg("game-ended-unload-cache")
 	gameStore.Unload(ctx, g.GameID())
@@ -344,7 +336,9 @@ func gameEndedEvent(ctx context.Context, g *entity.Game, userStore user.Store) *
 		g.History().Players[0].Nickname: int32(g.PointsFor(0)),
 		g.History().Players[1].Nickname: int32(g.PointsFor(1))}
 
-	ratings := map[string]int32{}
+	ratings := map[string][2]int32{}
+	deltas := map[string]int32{}
+	newRatings := map[string]int32{}
 	var err error
 	var now = time.Now().Unix()
 	if g.CreationRequest().RatingMode == pb.RatingMode_RATED {
@@ -353,14 +347,26 @@ func gameEndedEvent(ctx context.Context, g *entity.Game, userStore user.Store) *
 			log.Err(err).Msg("rating-error")
 		}
 	}
+	for u, rat := range ratings {
+		newRatings[u] = rat[1]
+		deltas[u] = rat[1] - rat[0]
+	}
+
+	racks := make([]string, len(g.History().Events))
+	for idx, evt := range g.History().Events {
+		racks[idx] = evt.Rack
+	}
+
 	evt := &pb.GameEndedEvent{
-		Scores:     scores,
-		NewRatings: ratings,
-		EndReason:  g.GameEndReason,
-		Winner:     winner,
-		Loser:      loser,
-		Tie:        tie,
-		Time:       g.Timers.TimeOfLastUpdate,
+		Scores:       scores,
+		NewRatings:   newRatings,
+		EndReason:    g.GameEndReason,
+		Winner:       winner,
+		Loser:        loser,
+		Tie:          tie,
+		Time:         g.Timers.TimeOfLastUpdate,
+		RatingDeltas: deltas,
+		Racks:        racks,
 	}
 
 	log.Debug().Interface("game-ended-event", evt).Msg("game-ended")

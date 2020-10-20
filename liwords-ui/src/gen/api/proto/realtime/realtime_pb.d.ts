@@ -612,6 +612,13 @@ export class GameEndedEvent extends jspb.Message {
   getTime(): number;
   setTime(value: number): void;
 
+  getRatingDeltasMap(): jspb.Map<string, number>;
+  clearRatingDeltasMap(): void;
+  clearRacksList(): void;
+  getRacksList(): Array<string>;
+  setRacksList(value: Array<string>): void;
+  addRacks(value: string, index?: number): string;
+
   serializeBinary(): Uint8Array;
   toObject(includeInstance?: boolean): GameEndedEvent.AsObject;
   static toObject(includeInstance: boolean, msg: GameEndedEvent): GameEndedEvent.AsObject;
@@ -631,6 +638,8 @@ export namespace GameEndedEvent {
     loser: string,
     tie: boolean,
     time: number,
+    ratingDeltasMap: Array<[string, number]>,
+    racksList: Array<string>,
   }
 }
 

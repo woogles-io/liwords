@@ -76,7 +76,6 @@ const defaultGameInfo = {
   max_overtime_minutes: 0,
   game_end_reason: 'NONE',
   time_control_name: '',
-  // done: false,
 };
 
 export const Table = React.memo((props: Props) => {
@@ -324,11 +323,11 @@ export const Table = React.memo((props: Props) => {
   // If we are NOT one of the players (so an observer), display the rack of
   // the player on turn.
   let rack;
-  const gameDone = gameInfo.game_end_reason !== 'NONE';
-  const us = useMemo(
-    () => gameInfo.players.find((p) => p.user_id === userID),
-    [gameInfo.players, userID]
-  );
+  const gameDone = gameContext.playState === PlayState.GAME_OVER;
+  const us = useMemo(() => gameInfo.players.find((p) => p.user_id === userID), [
+    gameInfo.players,
+    userID,
+  ]);
   if (us && !(gameDone && isExamining)) {
     rack = examinableGameContext.players.find((p) => p.userID === us.user_id)
       ?.currentRack;
