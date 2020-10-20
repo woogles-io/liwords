@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"math/rand"
 	"sort"
-	// FIXME: For
 	// "time"
 
 	realtime "github.com/domino14/liwords/rpc/api/proto/realtime"
@@ -511,10 +510,6 @@ func pairRoundClassic(t *TournamentClassic, round int) error {
 		for _, v := range t.PlayerIndexMap {
 			playerIndexes = append(playerIndexes, v)
 		}
-		// FIXME: Is this necessary?
-		// It was kind of annoying not to have
-		// nondeterministc results for testing,
-		// but maybe we should have it in production?
 		// rand.Seed(time.Now().UnixNano())
 		rand.Shuffle(len(playerIndexes),
 			func(i, j int) {
