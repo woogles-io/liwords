@@ -179,7 +179,7 @@ func performEndgameDuties(ctx context.Context, g *entity.Game, gameStore GameSto
 		}
 	}
 
-	// And finally, send a notification to the lobby that this
+	// Send a notification to the lobby that this
 	// game ended. This will remove it from the list of live games.
 	wrapped = entity.WrapEvent(&pb.GameDeletion{Id: g.GameID()},
 		pb.MessageType_GAME_DELETION)
@@ -192,6 +192,14 @@ func performEndgameDuties(ctx context.Context, g *entity.Game, gameStore GameSto
 	if err != nil {
 		return err
 	}
+	// Send one more history refresher to the players. This will populate
+	// their opponent's rack info without them having to refresh.
+
+	wrapped = entity.WrapEvent(g.HistoryRefresherEvent(),
+		pb.MessageType_GAME_HISTORY_REFRESHER)
+	wrapped.AddAudience(entity.AudGame, g.GameID())
+	g.SendChange(wrapped)
+
 	log.Info().Str("gameID", g.GameID()).Msg("game-ended-unload-cache")
 	gameStore.Unload(ctx, g.GameID())
 	return nil

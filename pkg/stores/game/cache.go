@@ -23,6 +23,7 @@ type backingStore interface {
 	Create(context.Context, *entity.Game) error
 	Exists(context.Context, string) (bool, error)
 	ListActive(ctx context.Context) ([]*pb.GameMeta, error)
+	Count(ctx context.Context) (int64, error)
 	SetGameEventChan(ch chan<- *entity.EventWrapper)
 	Disconnect()
 }
@@ -171,6 +172,10 @@ func (c *Cache) ListActive(ctx context.Context) ([]*pb.GameMeta, error) {
 		c.Unlock()
 	}
 	return games, err
+}
+
+func (c *Cache) Count(ctx context.Context) (int64, error) {
+	return c.backing.Count(ctx)
 }
 
 func (c *Cache) Disconnect() {

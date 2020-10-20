@@ -47,6 +47,7 @@ type GameStore interface {
 	Create(context.Context, *entity.Game) error
 	Exists(ctx context.Context, id string) (bool, error)
 	ListActive(context.Context) ([]*pb.GameMeta, error)
+	Count(ctx context.Context) (int64, error)
 	SetGameEventChan(c chan<- *entity.EventWrapper)
 	Unload(context.Context, string)
 }

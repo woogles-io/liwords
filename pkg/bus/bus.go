@@ -28,7 +28,8 @@ import (
 const (
 	MaxMessageLength = 500
 
-	AdjudicateInterval = 10 * time.Second
+	AdjudicateInterval   = 10 * time.Second
+	GamesCounterInterval = 60 * time.Minute
 	// Cancel a game if it hasn't started after this much time.
 	CancelAfter = 30 * time.Second
 )
@@ -118,6 +119,10 @@ func (b *Bus) ProcessMessages(ctx context.Context) {
 	// Adjudicate unfinished games every few seconds.
 	adjudicator := time.NewTicker(AdjudicateInterval)
 	defer adjudicator.Stop()
+
+	gameCounter := time.NewTicker(GamesCounterInterval)
+	defer gameCounter.Stop()
+
 outerfor:
 	for {
 		select {
@@ -200,6 +205,13 @@ outerfor:
 				break
 			}
 
+		case <-gameCounter.C:
+			n, err := b.gameStore.Count(ctx)
+			if err != nil {
+				log.Err(err).Msg("count-error")
+				break
+			}
+			log.Info().Int64("game-count", n).Msg("game-stats")
 		}
 
 	}

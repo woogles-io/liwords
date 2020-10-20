@@ -97,10 +97,18 @@ func (b *Bus) instantiateAndStartGame(ctx context.Context, accUser *entity.User,
 	b.pubToUser(accUser.UUID, ngevt, "")
 	b.pubToUser(reqUser.UUID, ngevt, "")
 
+	tcname, variant, err := entity.VariantFromGameReq(gameReq)
+	if err != nil {
+		return err
+	}
+
 	log.Info().Str("newgameid", g.History().Uid).
 		Str("sender", accUser.UUID).
 		Str("requester", requester).
 		Str("reqID", reqID).
+		Str("lexicon", gameReq.Lexicon).
+		Str("timectrl", string(tcname)).
+		Str("variant", string(variant)).
 		Str("onturn", g.NickOnTurn()).Msg("game-accepted")
 
 	return nil
@@ -208,7 +216,7 @@ func (b *Bus) gameRefresher(ctx context.Context, gameID string) (*entity.EventWr
 	}
 	entGame.RLock()
 	defer entGame.RUnlock()
-	if !entGame.Started {
+	if !entGame.Started && entGame.GameEndReason == pb.GameEndReason_NONE {
 		return entity.WrapEvent(&pb.ServerMessage{Message: "Game is starting soon!"},
 			pb.MessageType_SERVER_MESSAGE), nil
 	}
