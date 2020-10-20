@@ -400,7 +400,7 @@ export const useOnSocketMsg = () => {
 
           case MessageType.SERVER_GAMEPLAY_EVENT: {
             const sge = parsedMsg as ServerGameplayEvent;
-            console.log('got server event', sge);
+            console.log('got server event', sge.toObject());
             dispatchGameContext({
               actionType: ActionType.AddGameEvent,
               payload: sge,

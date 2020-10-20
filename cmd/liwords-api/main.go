@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	_ "expvar"
 	"net/http"
 	"os"
 	"os/signal"
