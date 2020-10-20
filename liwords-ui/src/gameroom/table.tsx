@@ -101,7 +101,7 @@ export const Table = React.memo((props: Props) => {
   const { rematchRequest, setRematchRequest } = useRematchRequestStoreContext();
   const { resetStore } = useResetStoreContext();
   const { pTimedOut, setPTimedOut } = useTimerStoreContext();
-  const { username } = loginState;
+  const { username, userID } = loginState;
 
   const { sendSocketMsg } = props;
   // const location = useLocation();
@@ -248,7 +248,7 @@ export const Table = React.memo((props: Props) => {
   useEffect(() => {
     let observer = true;
     gameInfo.players.forEach((p) => {
-      if (username === p.nickname) {
+      if (userID === p.user_id) {
         observer = false;
       }
     });
@@ -263,7 +263,7 @@ export const Table = React.memo((props: Props) => {
       );
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [username, gameInfo]);
+  }, [userID, gameInfo]);
 
   const acceptRematch = useCallback(
     (reqID: string) => {
@@ -326,8 +326,8 @@ export const Table = React.memo((props: Props) => {
   let rack;
   const gameDone = gameInfo.game_end_reason !== 'NONE';
   const us = useMemo(
-    () => gameInfo.players.find((p) => p.nickname === username),
-    [gameInfo.players, username]
+    () => gameInfo.players.find((p) => p.user_id === userID),
+    [gameInfo.players, userID]
   );
   if (us && !(gameDone && isExamining)) {
     rack = examinableGameContext.players.find((p) => p.userID === us.user_id)

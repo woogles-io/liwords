@@ -87,7 +87,9 @@ func performEndgameDuties(ctx context.Context, g *entity.Game, gameStore GameSto
 	for _, sge := range evts {
 		wrapped := entity.WrapEvent(sge, pb.MessageType_SERVER_GAMEPLAY_EVENT)
 		wrapped.AddAudience(entity.AudGameTV, g.GameID())
-		wrapped.AddAudience(entity.AudGame, g.GameID())
+		for _, p := range players(g) {
+			wrapped.AddAudience(entity.AudUser, p+".game."+g.GameID())
+		}
 		g.SendChange(wrapped)
 		g.History().Events = append(g.History().Events, sge.Event)
 	}

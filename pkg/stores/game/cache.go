@@ -77,6 +77,12 @@ func NewCache(backing backingStore) *Cache {
 // Unload unloads the game from the cache
 func (c *Cache) Unload(ctx context.Context, id string) {
 	c.cache.Remove(id)
+	// Let's also expire the active games cache. The only time we ever
+	// call Unload is when a game is over - so we don't want to go back
+	// to the lobby and still show our game as active.
+	c.Lock()
+	defer c.Unlock()
+	c.activeGamesLastUpdated = time.Time{}
 }
 
 // SetGameEventChan sets the game event channel to the passed in channel.
