@@ -155,7 +155,7 @@ func (s *DBStore) GetRecentGames(ctx context.Context, username string, numGames 
 		Offset(offset).
 		Joins("JOIN users as u0  ON u0.id = games.player0_id").
 		Joins("JOIN users as u1  ON u1.id = games.player1_id").
-		Where("u0.username = ? OR u1.username = ? AND game_end_reason != 0", username, username).
+		Where("(u0.username = ? OR u1.username = ?) AND game_end_reason != 0", username, username).
 		Order("created_at desc").
 		Find(&games); results.Error != nil {
 		return nil, results.Error
