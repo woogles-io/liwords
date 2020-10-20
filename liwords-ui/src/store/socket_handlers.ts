@@ -390,7 +390,6 @@ export const useOnSocketMsg = () => {
               actionType: ActionType.RefreshHistory,
               payload: ghr,
             });
-            setGameEndMessage('');
 
             // If there is an Antd message about "waiting for game", destroy it.
             // XXX: This is a bit unideal.

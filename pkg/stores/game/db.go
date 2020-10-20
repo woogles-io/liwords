@@ -410,6 +410,15 @@ func (s *DBStore) ListActive(ctx context.Context) ([]*pb.GameMeta, error) {
 	return convertGamesToGameMetas(games)
 }
 
+func (s *DBStore) Count(ctx context.Context) (int64, error) {
+	var count int64
+	result := s.db.Model(&game{}).Count(&count)
+	if result.Error != nil {
+		return 0, result.Error
+	}
+	return count, nil
+}
+
 // List all game IDs, ordered by date played. Should not be used by anything
 // other than debug or migration code when the db is still small.
 func (s *DBStore) ListAllIDs(ctx context.Context) ([]string, error) {
