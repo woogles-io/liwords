@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { Link, useHistory } from 'react-router-dom';
+import { useMountedState } from '../utils/mounted';
 import { useResetStoreContext } from '../store/store';
 import './accountForms.scss';
 
@@ -8,8 +9,7 @@ import axios from 'axios';
 import { toAPIUrl } from '../api/api';
 
 export const Login = React.memo(() => {
-  const stillMountedRef = React.useRef(true);
-  React.useEffect(() => () => void (stillMountedRef.current = false), []);
+  const { useState } = useMountedState();
   const { resetStore } = useResetStoreContext();
 
   const [err, setErr] = useState('');
@@ -26,20 +26,14 @@ export const Login = React.memo(() => {
       )
       .then(() => {
         // Automatically will set cookie
-        if (stillMountedRef.current) {
-          setLoggedIn(true);
-        }
+        setLoggedIn(true);
       })
       .catch((e) => {
         if (e.response) {
           // From Twirp
-          if (stillMountedRef.current) {
-            setErr(e.response.data.msg);
-          }
+          setErr(e.response.data.msg);
         } else {
-          if (stillMountedRef.current) {
-            setErr('unknown error, see console');
-          }
+          setErr('unknown error, see console');
           console.log(e);
         }
       });

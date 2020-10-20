@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React from 'react';
+import { useMountedState } from '../utils/mounted';
 import TentativeScore from './tentative_score';
 import { Blank, uniqueTileIdx } from '../utils/cwgame/common';
 
@@ -54,6 +55,8 @@ type TileProps = {
 };
 
 const Tile = React.memo((props: TileProps) => {
+  const { useState } = useMountedState();
+
   const [isDragging, setIsDragging] = useState(false);
 
   const handleStartDrag = (e: any) => {

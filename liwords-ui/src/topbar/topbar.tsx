@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { Link } from 'react-router-dom';
+import { useMountedState } from '../utils/mounted';
 import './topbar.scss';
 import { DisconnectOutlined, SettingOutlined } from '@ant-design/icons/lib';
 import { notification, Dropdown, Tooltip, Modal } from 'antd';
@@ -41,6 +42,8 @@ const TopMenu = React.memo((props: Props) => {
 type Props = {};
 
 export const TopBar = React.memo((props: Props) => {
+  const { useState } = useMountedState();
+
   const { currentLagMs } = useLagStoreContext();
   const { loginState } = useLoginStateStoreContext();
   const { resetStore } = useResetStoreContext();

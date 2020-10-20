@@ -1,5 +1,6 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect } from 'react';
 import { Route, Switch, useHistory } from 'react-router-dom';
+import { useMountedState } from './utils/mounted';
 import './App.scss';
 import axios from 'axios';
 import 'antd/dist/antd.css';
@@ -26,8 +27,7 @@ type Blocks = {
 };
 
 const App = React.memo(() => {
-  const stillMountedRef = React.useRef(true);
-  React.useEffect(() => () => void (stillMountedRef.current = false), []);
+  const { useState } = useMountedState();
 
   const { setExcludedPlayers } = useExcludedPlayersStoreContext();
   const { redirGame, setRedirGame } = useRedirGameStoreContext();
@@ -65,9 +65,7 @@ const App = React.memo(() => {
         { withCredentials: true }
       )
       .then((resp) => {
-        if (stillMountedRef.current) {
-          setExcludedPlayers(new Set<string>(resp.data.user_ids));
-        }
+        setExcludedPlayers(new Set<string>(resp.data.user_ids));
       });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

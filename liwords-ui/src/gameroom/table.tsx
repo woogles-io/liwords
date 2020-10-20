@@ -1,10 +1,5 @@
-import React, {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from 'react';
+import React, { useCallback, useEffect, useMemo, useRef } from 'react';
+import { useMountedState } from '../utils/mounted';
 import { Card, message, Popconfirm } from 'antd';
 import { HomeOutlined } from '@ant-design/icons/lib';
 import axios from 'axios';
@@ -80,8 +75,7 @@ const defaultGameInfo = {
 };
 
 export const Table = React.memo((props: Props) => {
-  const stillMountedRef = React.useRef(true);
-  React.useEffect(() => () => void (stillMountedRef.current = false), []);
+  const { useState } = useMountedState();
 
   const { gameID } = useParams();
   const { chat, clearChat } = useChatStoreContext();
@@ -166,13 +160,11 @@ export const Table = React.memo((props: Props) => {
         }
       )
       .then((resp) => {
-        if (stillMountedRef.current) {
-          setGameInfo(resp.data);
-          if (localStorage?.getItem('poolFormat')) {
-            setPoolFormat(
-              parseInt(localStorage.getItem('poolFormat') || '0', 10)
-            );
-          }
+        setGameInfo(resp.data);
+        if (localStorage?.getItem('poolFormat')) {
+          setPoolFormat(
+            parseInt(localStorage.getItem('poolFormat') || '0', 10)
+          );
         }
       });
     BoopSounds.playSound('startgameSound');
@@ -209,9 +201,7 @@ export const Table = React.memo((props: Props) => {
           }
         )
         .then((streakresp) => {
-          if (stillMountedRef.current) {
-            setStreakGameInfo(streakresp.data.game_info);
-          }
+          setStreakGameInfo(streakresp.data.game_info);
         });
       // Put this on a delay. Otherwise the game might not be saved to the
       // db as having finished before the gameEndMessage comes in.

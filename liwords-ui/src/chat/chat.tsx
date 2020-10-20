@@ -1,12 +1,7 @@
 /* eslint-disable jsx-a11y/click-events-have-key-events */
 /* eslint-disable jsx-a11y/no-static-element-interactions */
-import React, {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from 'react';
+import React, { useCallback, useEffect, useMemo, useRef } from 'react';
+import { useMountedState } from '../utils/mounted';
 import { Card, Input, Tabs } from 'antd';
 import { ChatEntity } from './chat_entity';
 import { ChatEntityObj, PresenceEntity } from '../store/store';
@@ -25,6 +20,8 @@ type Props = {
 };
 
 export const Chat = React.memo((props: Props) => {
+  const { useState } = useMountedState();
+
   const [curMsg, setCurMsg] = useState('');
   const [hasScroll, setHasScroll] = useState(false);
   const [selectedChatTab, setSelectedChatTab] = useState('CHAT');

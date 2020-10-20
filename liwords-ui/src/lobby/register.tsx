@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { useHistory } from 'react-router-dom';
+import { useMountedState } from '../utils/mounted';
 import { useResetStoreContext } from '../store/store';
 import axios from 'axios';
 import { TopBar } from '../topbar/topbar';
@@ -9,8 +10,7 @@ import './accountForms.scss';
 import woogles from '../assets/woogles.png';
 
 export const Register = () => {
-  const stillMountedRef = React.useRef(true);
-  React.useEffect(() => () => void (stillMountedRef.current = false), []);
+  const { useState } = useMountedState();
   const { resetStore } = useResetStoreContext();
 
   const [err, setErr] = useState('');
@@ -37,20 +37,14 @@ export const Register = () => {
           )
           .then(() => {
             // Automatically will set cookie
-            if (stillMountedRef.current) {
-              setLoggedIn(true);
-            }
+            setLoggedIn(true);
           })
           .catch((e) => {
             if (e.response) {
               // From Twirp
-              if (stillMountedRef.current) {
-                setErr(e.response.data.msg);
-              }
+              setErr(e.response.data.msg);
             } else {
-              if (stillMountedRef.current) {
-                setErr('unknown error, see console');
-              }
+              setErr('unknown error, see console');
               console.log(e);
             }
           });
@@ -58,13 +52,9 @@ export const Register = () => {
       .catch((e) => {
         if (e.response) {
           // From Twirp
-          if (stillMountedRef.current) {
-            setErr(e.response.data.msg);
-          }
+          setErr(e.response.data.msg);
         } else {
-          if (stillMountedRef.current) {
-            setErr('unknown error, see console');
-          }
+          setErr('unknown error, see console');
           console.log(e);
         }
       });

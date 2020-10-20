@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React from 'react';
+import { useMountedState } from '../utils/mounted';
 import { Card, Modal, Button } from 'antd';
 import { SoughtGames } from './sought_games';
 import { ActiveGames } from './active_games';
@@ -18,8 +19,7 @@ type Props = {
 };
 
 export const GameLists = React.memo((props: Props) => {
-  const stillMountedRef = React.useRef(true);
-  React.useEffect(() => () => void (stillMountedRef.current = false), []);
+  const { useState } = useMountedState();
 
   const {
     loggedIn,
@@ -91,9 +91,7 @@ export const GameLists = React.memo((props: Props) => {
     if (!formDisabled) {
       onSeekSubmit(sg);
       setTimeout(() => {
-        if (stillMountedRef.current) {
-          setFormDisabled(false);
-        }
+        setFormDisabled(false);
       }, 500);
     }
   };
