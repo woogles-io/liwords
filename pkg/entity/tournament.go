@@ -632,7 +632,7 @@ func getEliminationOutcomes(games []*TournamentGame, gamesPerRound int) []Result
 	// Determines if a player is eliminated for a given round in an
 	// elimination tournament. The convertResult function gives 2 for a win,
 	// 1 for a draw, and 0 otherwise. If a player's score is greater than
-	// the games per round, they have won.
+	// the games per round, they have won, unless there is a tie.
 	p1Wins := 0
 	p2Wins := 0
 	p1Spread := 0
