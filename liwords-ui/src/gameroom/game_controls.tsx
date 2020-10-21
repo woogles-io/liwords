@@ -34,14 +34,14 @@ const ExamineGameControls = React.memo((props: {}) => {
         icon={<DoubleLeftOutlined />}
         type="primary"
         onClick={handleExamineFirst}
-        disabled={examinedTurn <= 0}
+        disabled={examinedTurn <= 0 || numberOfTurns <= 0}
       />
       <Button
         shape="circle"
         icon={<LeftOutlined />}
         type="primary"
         onClick={handleExaminePrev}
-        disabled={examinedTurn <= 0}
+        disabled={examinedTurn <= 0 || numberOfTurns <= 0}
       />
       <Button
         shape="circle"
