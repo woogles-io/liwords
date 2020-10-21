@@ -62,7 +62,6 @@ export const endGameMessage = (gee: GameEndedEvent): string => {
 };
 
 export const endGameMessageFromGameInfo = (info: GameMetadata): string => {
-
   // construct an artificial GameEndedEvent
 
   const gee = new GameEndedEvent();
@@ -75,12 +74,18 @@ export const endGameMessageFromGameInfo = (info: GameMetadata): string => {
     gee.setTie(true);
   } else {
     gee.setWinner(info.players[info.winner ?? 0].nickname);
-    gee.setLoser(info.players[1-(info.winner??0)].nickname);
+    gee.setLoser(info.players[1 - (info.winner ?? 0)].nickname);
   }
 
-  const ger = info.game_end_reason as 'NONE' | 'STANDARD' | 'TIME' | 'CONSECUTIVE_ZEROES' | 'RESIGNED' | 'TRIPLE_CHALLENGE';
+  const ger = info.game_end_reason as
+    | 'NONE'
+    | 'STANDARD'
+    | 'TIME'
+    | 'CONSECUTIVE_ZEROES'
+    | 'RESIGNED'
+    | 'TRIPLE_CHALLENGE';
 
-  gee.setEndReason(GameEndReason[ger])
+  gee.setEndReason(GameEndReason[ger]);
 
   return endGameMessage(gee);
-}
+};

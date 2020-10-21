@@ -43,20 +43,21 @@ message SocketTokenRequest {}
 message SocketTokenResponse {
   string token = 1;
   string cid = 2;
+  string app_version = 3;
 }
 
 message UserLogoutRequest {}
 message LogoutResponse {}
 
 service AuthenticationService {
-  rpc Login(UserLoginRequest) returns (LoginResponse);
-  rpc Logout(UserLogoutRequest) returns (LogoutResponse);
-  rpc GetSocketToken(SocketTokenRequest) returns (SocketTokenResponse);
+  rpc Login(UserLoginRequest) returns(LoginResponse);
+  rpc Logout(UserLogoutRequest) returns(LogoutResponse);
+  rpc GetSocketToken(SocketTokenRequest) returns(SocketTokenResponse);
   rpc ResetPasswordStep1(ResetPasswordRequestStep1)
-      returns (ResetPasswordResponse);
+      returns(ResetPasswordResponse);
   rpc ResetPasswordStep2(ResetPasswordRequestStep2)
-      returns (ResetPasswordResponse);
-  rpc ChangePassword(ChangePasswordRequest) returns (ChangePasswordResponse);
+      returns(ResetPasswordResponse);
+  rpc ChangePassword(ChangePasswordRequest) returns(ChangePasswordResponse);
 }
 
 message UserRegistrationRequest {
@@ -69,7 +70,7 @@ message UserRegistrationRequest {
 message RegistrationResponse { string message = 1; }
 
 service RegistrationService {
-  rpc Register(UserRegistrationRequest) returns (RegistrationResponse);
+  rpc Register(UserRegistrationRequest) returns(RegistrationResponse);
 }
 
 message RatingsRequest { string username = 1; }
@@ -97,9 +98,9 @@ message ProfileResponse {
 }
 
 service ProfileService {
-  rpc GetRatings(RatingsRequest) returns (RatingsResponse);
-  rpc GetStats(StatsRequest) returns (StatsResponse);
-  rpc GetProfile(ProfileRequest) returns (ProfileResponse);
+  rpc GetRatings(RatingsRequest) returns(RatingsResponse);
+  rpc GetStats(StatsRequest) returns(StatsResponse);
+  rpc GetProfile(ProfileRequest) returns(ProfileResponse);
 }
 
 // Autocomplete
@@ -107,7 +108,7 @@ service ProfileService {
 message UsernameSearchRequest { string prefix = 1; }
 message UsernameSearchResponse { repeated string usernames = 1; }
 service AutocompleteService {
-  rpc GetCompletion(UsernameSearchRequest) returns (UsernameSearchResponse);
+  rpc GetCompletion(UsernameSearchRequest) returns(UsernameSearchResponse);
 }
 
 // Follows and Blocks
@@ -136,14 +137,14 @@ message GetFullBlocksResponse { repeated string user_ids = 1; }
 
 // Yeah I know
 service SocializeService {
-  rpc AddFollow(AddFollowRequest) returns (OKResponse);
-  rpc RemoveFollow(RemoveFollowRequest) returns (OKResponse);
-  rpc GetFollows(GetFollowsRequest) returns (GetFollowsResponse);
+  rpc AddFollow(AddFollowRequest) returns(OKResponse);
+  rpc RemoveFollow(RemoveFollowRequest) returns(OKResponse);
+  rpc GetFollows(GetFollowsRequest) returns(GetFollowsResponse);
 
-  rpc AddBlock(AddBlockRequest) returns (OKResponse);
-  rpc RemoveBlock(RemoveBlockRequest) returns (OKResponse);
-  rpc GetBlocks(GetBlocksRequest) returns (GetBlocksResponse);
+  rpc AddBlock(AddBlockRequest) returns(OKResponse);
+  rpc RemoveBlock(RemoveBlockRequest) returns(OKResponse);
+  rpc GetBlocks(GetBlocksRequest) returns(GetBlocksResponse);
   // GetFullBlocks gets players who blocked us AND players we've blocked
   // together.
-  rpc GetFullBlocks(GetFullBlocksRequest) returns (GetFullBlocksResponse);
+  rpc GetFullBlocks(GetFullBlocksRequest) returns(GetFullBlocksResponse);
 }
