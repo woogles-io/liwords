@@ -120,7 +120,7 @@ func main() {
 		panic(err)
 	}
 
-	authenticationService := auth.NewAuthenticationService(userStore, sessionStore, cfg.SecretKey, cfg.MailgunKey)
+	authenticationService := auth.NewAuthenticationService(userStore, sessionStore, cfg.SecretKey, cfg.MailgunKey, BuildHash)
 	registrationService := registration.NewRegistrationService(userStore)
 	gameService := gameplay.NewGameService(userStore, gameStore)
 	profileService := pkguser.NewProfileService(userStore)

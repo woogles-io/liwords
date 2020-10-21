@@ -208,6 +208,10 @@ message GameEndedEvent {
   bool tie = 6;
   // Time that the game ended
   int64 time = 7;
+
+  map<string, int32> rating_deltas = 8;
+  // Send the full game history again. This will have rack information in it.
+  macondo.GameHistory history = 9;
 }
 
 // A GameHistoryRefresher is sent to both players when the game starts,

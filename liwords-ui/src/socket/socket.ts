@@ -9,6 +9,7 @@ import { useOnSocketMsg } from '../store/socket_handlers';
 import { decodeToMsg } from '../utils/protobuf';
 import { toAPIUrl } from '../api/api';
 import { ActionType } from '../actions/actions';
+import { message } from 'antd';
 
 const getSocketURI = (): string => {
   const loc = window.location;
@@ -26,6 +27,7 @@ const getSocketURI = (): string => {
 type TokenResponse = {
   token: string;
   cid: string;
+  app_version: string;
 };
 
 type DecodedToken = {
@@ -73,7 +75,7 @@ export const LiwordsSocket = (props: {
       )
       .then((resp) => {
         const socketToken = resp.data.token;
-        const { cid } = resp.data;
+        const { cid, app_version } = resp.data;
 
         setFullSocketUrl(
           `${socketUrl}?${new URLSearchParams({
@@ -94,6 +96,19 @@ export const LiwordsSocket = (props: {
           },
         });
         console.log('Got token, setting state, and will try to connect...');
+        if (window.RUNTIME_CONFIGURATION.appVersion !== app_version) {
+          console.log(
+            'app version mismatch',
+            'local',
+            window.RUNTIME_CONFIGURATION.appVersion,
+            'remote',
+            app_version
+          );
+          message.warning(
+            'Woogles has been updated. Please refresh this page at your leisure.',
+            0
+          );
+        }
       })
       .catch((e) => {
         if (e.response) {

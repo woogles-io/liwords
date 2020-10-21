@@ -49,12 +49,13 @@ type AuthenticationService struct {
 	sessionStore sessions.SessionStore
 	secretKey    string
 	mailgunKey   string
+	appVersion   string
 }
 
 func NewAuthenticationService(u user.Store, ss sessions.SessionStore, secretKey,
-	mailgunKey string) *AuthenticationService {
+	mailgunKey string, appVersion string) *AuthenticationService {
 	return &AuthenticationService{userStore: u, sessionStore: ss, secretKey: secretKey,
-		mailgunKey: mailgunKey}
+		mailgunKey: mailgunKey, appVersion: appVersion}
 }
 
 // Login sets a cookie.
@@ -129,8 +130,9 @@ func (as *AuthenticationService) GetSocketToken(ctx context.Context, r *pb.Socke
 			return nil, err
 		}
 		return &pb.SocketTokenResponse{
-			Token: tokenString,
-			Cid:   cid,
+			Token:      tokenString,
+			Cid:        cid,
+			AppVersion: as.appVersion,
 		}, nil
 	}
 
@@ -145,8 +147,9 @@ func (as *AuthenticationService) GetSocketToken(ctx context.Context, r *pb.Socke
 		return nil, err
 	}
 	return &pb.SocketTokenResponse{
-		Token: tokenString,
-		Cid:   cid,
+		Token:      tokenString,
+		Cid:        cid,
+		AppVersion: as.appVersion,
 	}, nil
 }
 
