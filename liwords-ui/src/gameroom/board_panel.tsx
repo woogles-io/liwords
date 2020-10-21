@@ -1,4 +1,5 @@
-import React, { useCallback, useState, useEffect, useRef } from 'react';
+import React, { useCallback, useEffect, useRef } from 'react';
+import { useMountedState } from '../utils/mounted';
 import { Button, Modal, notification, message, Tooltip } from 'antd';
 import { ArrowDownOutlined, SyncOutlined } from '@ant-design/icons';
 import axios from 'axios';
@@ -127,6 +128,8 @@ const gcgExport = (gameID: string, playerMeta: Array<PlayerMetadata>) => {
 };
 
 export const BoardPanel = React.memo((props: Props) => {
+  const { useState } = useMountedState();
+
   const [drawingKeyMode, setDrawingKeyMode] = useState(false);
   const {
     drawingCanBeEnabled,
@@ -141,7 +144,9 @@ export const BoardPanel = React.memo((props: Props) => {
 
   const [displayedRack, setDisplayedRack] = useState(props.currentRack);
   const [placedTiles, setPlacedTiles] = useState(new Set<EphemeralTile>());
-  const [placedTilesTempScore, setPlacedTilesTempScore] = useState<number>();
+  const [placedTilesTempScore, setPlacedTilesTempScore] = useState<
+    number | undefined
+  >(undefined);
   const [blankModalVisible, setBlankModalVisible] = useState(false);
   const {
     gameContext: examinableGameContext,

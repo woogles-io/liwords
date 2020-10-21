@@ -1,4 +1,5 @@
 import React from 'react';
+import { useMountedState } from '../utils/mounted';
 
 // Feature flag.
 const drawingCanBeEnabled =
@@ -27,6 +28,8 @@ export const DrawingHandlersSetterContext = React.createContext(
 );
 
 export const useDrawing = () => {
+  const { useState } = useMountedState();
+
   // Drawing functionalities.
   // Right-drag = draw.
   // RightClick several times = clear drawing.
@@ -34,11 +37,11 @@ export const useDrawing = () => {
 
   const canBeEnabled = drawingCanBeEnabled;
 
-  const [isEnabledState, setIsEnabled] = React.useState(false);
+  const [isEnabledState, setIsEnabled] = useState(false);
   const isEnabled = canBeEnabled && isEnabledState;
 
   const boardEltRef = React.useRef<HTMLElement>();
-  const [boardSize, setBoardSize] = React.useState({
+  const [boardSize, setBoardSize] = useState({
     left: 0,
     top: 0,
     width: 1,
@@ -88,7 +91,7 @@ export const useDrawing = () => {
     [boardSize.width, boardSize.height]
   );
 
-  const [penColor, setPenColor] = React.useState('red');
+  const [penColor, setPenColor] = useState('red');
   const boardResizedSinceLastPaintRef = React.useRef(true);
   const penRef = React.useRef<string>();
   const strokesRef = React.useRef<
@@ -99,7 +102,9 @@ export const useDrawing = () => {
       elt: React.ReactElement | undefined;
     }>
   >([]);
-  const [currentDrawing, setCurrentDrawing] = React.useState();
+  const [currentDrawing, setCurrentDrawing] = useState<JSX.Element | undefined>(
+    undefined
+  );
   const plannedRepaintRef = React.useRef<number>();
 
   // For hopefully-unique id generation.

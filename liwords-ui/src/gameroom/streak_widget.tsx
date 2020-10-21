@@ -53,9 +53,7 @@ const SingleGame = (props: SGProps) => {
     <span>
       <Link
         to={`/game/${encodeURIComponent(String(props.game.game_id ?? ''))}`}
-        onClick={() => {
-          resetStore();
-        }}
+        onClick={resetStore}
       >
         {innerel}
       </Link>

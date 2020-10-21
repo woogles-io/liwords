@@ -1,5 +1,6 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect } from 'react';
 import { Link, useParams, useLocation } from 'react-router-dom';
+import { useMountedState } from '../utils/mounted';
 import { notification, Card, Table, Row, Col } from 'antd';
 import axios, { AxiosError } from 'axios';
 import { TopBar } from '../topbar/topbar';
@@ -203,8 +204,7 @@ type Props = {};
 const gamesPageSize = 10;
 
 export const UserProfile = React.memo((props: Props) => {
-  const stillMountedRef = React.useRef(true);
-  React.useEffect(() => () => void (stillMountedRef.current = false), []);
+  const { useState } = useMountedState();
 
   const { username } = useParams();
   const location = useLocation();
@@ -226,11 +226,9 @@ export const UserProfile = React.memo((props: Props) => {
         }
       )
       .then((resp) => {
-        if (stillMountedRef.current) {
-          setRatings(JSON.parse(resp.data.ratings_json).Data);
-          setStats(JSON.parse(resp.data.stats_json).Data);
-          setUserID(resp.data.user_id);
-        }
+        setRatings(JSON.parse(resp.data.ratings_json).Data);
+        setStats(JSON.parse(resp.data.stats_json).Data);
+        setUserID(resp.data.user_id);
       })
       .catch(errorCatcher);
   }, [username, location.pathname]);
@@ -246,21 +244,21 @@ export const UserProfile = React.memo((props: Props) => {
         }
       )
       .then((resp) => {
-        if (stillMountedRef.current) {
-          setRecentGames(resp.data.game_info);
-        }
+        setRecentGames(resp.data.game_info);
       })
       .catch(errorCatcher);
   }, [username, recentGamesOffset]);
 
-  const fetchPrev = useCallback(
-    () => setRecentGamesOffset(Math.max(recentGamesOffset - gamesPageSize, 0)),
-    [recentGamesOffset]
-  );
-  const fetchNext = useCallback(
-    () => setRecentGamesOffset(recentGamesOffset + gamesPageSize),
-    [recentGamesOffset]
-  );
+  const fetchPrev = useCallback(() => {
+    setRecentGamesOffset((recentGamesOffset) =>
+      Math.max(recentGamesOffset - gamesPageSize, 0)
+    );
+  }, []);
+  const fetchNext = useCallback(() => {
+    setRecentGamesOffset(
+      (recentGamesOffset) => recentGamesOffset + gamesPageSize
+    );
+  }, []);
 
   return (
     <>
@@ -284,12 +282,7 @@ export const UserProfile = React.memo((props: Props) => {
             )}
           </h3>
           {viewer === username ? (
-            <Link
-              to="/password/change"
-              onClick={() => {
-                resetStore();
-              }}
-            >
+            <Link to="/password/change" onClick={resetStore}>
               Change your password
             </Link>
           ) : null}

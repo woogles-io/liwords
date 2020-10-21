@@ -1,4 +1,5 @@
-import React, { useCallback, useState, useEffect } from 'react';
+import React, { useCallback, useEffect } from 'react';
+import { useMountedState } from '../utils/mounted';
 import { Card } from 'antd';
 
 import { TopBar } from '../topbar/topbar';
@@ -82,6 +83,8 @@ type Props = {
 };
 
 export const Lobby = (props: Props) => {
+  const { useState } = useMountedState();
+
   const { sendSocketMsg } = props;
   const { chat } = useChatStoreContext();
   const { loginState } = useLoginStateStoreContext();

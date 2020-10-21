@@ -1,4 +1,5 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect } from 'react';
+import { useMountedState } from '../utils/mounted';
 import Rack from './rack';
 import {
   useGameContextStoreContext,
@@ -22,8 +23,7 @@ type SelectedTile = {
 };
 
 export const ExchangeTiles = React.memo((props: Props) => {
-  const stillMountedRef = React.useRef(true);
-  React.useEffect(() => () => void (stillMountedRef.current = false), []);
+  const { useState } = useMountedState();
 
   const [exchangedRackIndices, setExchangedRackIndices] = useState(
     new Set<number>()
@@ -95,10 +95,8 @@ export const ExchangeTiles = React.memo((props: Props) => {
     // reset exchange rack when opening modal.
 
     window.setTimeout(() => {
-      if (stillMountedRef.current) {
-        setDelayInput(false);
-        setExchangedRackIndices(new Set<number>());
-      }
+      setDelayInput(false);
+      setExchangedRackIndices(new Set<number>());
     }, 100);
   }, [props.modalVisible]);
   useEffect(() => {

@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { useHistory } from 'react-router-dom';
+import { useMountedState } from '../utils/mounted';
 import { Button, Popconfirm } from 'antd';
 import {
   DoubleLeftOutlined,
@@ -165,6 +166,8 @@ type EGCProps = {
 };
 
 const EndGameControls = (props: EGCProps) => {
+  const { useState } = useMountedState();
+
   const [rematchDisabled, setRematchDisabled] = useState(false);
   const { resetStore } = useResetStoreContext();
   const history = useHistory();
