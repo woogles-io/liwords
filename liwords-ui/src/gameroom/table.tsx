@@ -73,6 +73,81 @@ const defaultGameInfo = {
   time_control_name: '',
 };
 
+const DEFAULT_TITLE = 'Woogles.io';
+
+const ManageWindowTitle = (props: {}) => {
+  const { gameContext } = useGameContextStoreContext();
+  const { loginState } = useLoginStateStoreContext();
+  const { userID } = loginState;
+
+  const userIDToNick = useMemo(() => {
+    const ret: { [key: string]: string } = {};
+    for (const userID in gameContext.uidToPlayerOrder) {
+      const playerOrder = gameContext.uidToPlayerOrder[userID];
+      for (const nick in gameContext.nickToPlayerOrder) {
+        if (playerOrder === gameContext.nickToPlayerOrder[nick]) {
+          ret[userID] = nick;
+          break;
+        }
+      }
+    }
+    return ret;
+  }, [gameContext.uidToPlayerOrder, gameContext.nickToPlayerOrder]);
+
+  const playerNicks = useMemo(() => {
+    return gameContext.players.map((player) => userIDToNick[player.userID]);
+  }, [gameContext.players, userIDToNick]);
+
+  const myId = useMemo(() => {
+    const myPlayerOrder = gameContext.uidToPlayerOrder[userID];
+    return myPlayerOrder === 'p0' ? 0 : myPlayerOrder === 'p1' ? 1 : null;
+  }, [gameContext.uidToPlayerOrder, userID]);
+
+  const gameDone = gameContext.playState === PlayState.GAME_OVER;
+
+  const desiredTitle = useMemo(() => {
+    let title = '';
+    if (!gameDone && myId === gameContext.onturn) {
+      title += '*';
+    }
+    let first = true;
+    for (let i = 0; i < gameContext.players.length; ++i) {
+      if (gameContext.players[i].userID === userID) continue;
+      if (first) {
+        first = false;
+      } else {
+        title += ' vs ';
+      }
+      title += playerNicks[i] ?? '?';
+      if (!gameDone && myId == null && i === gameContext.onturn) {
+        title += '*';
+      }
+    }
+    if (title.length > 0) title += ' - ';
+    title += DEFAULT_TITLE;
+    return title;
+  }, [
+    gameContext.onturn,
+    gameContext.players,
+    gameDone,
+    myId,
+    playerNicks,
+    userID,
+  ]);
+
+  useEffect(() => {
+    document.title = desiredTitle;
+  }, [desiredTitle]);
+
+  useEffect(() => {
+    return () => {
+      document.title = DEFAULT_TITLE;
+    };
+  }, []);
+
+  return null;
+};
+
 export const Table = React.memo((props: Props) => {
   const { useState } = useMountedState();
 
@@ -385,6 +460,7 @@ export const Table = React.memo((props: Props) => {
 
   return (
     <div className="game-container">
+      <ManageWindowTitle />
       <TopBar />
       <div className="game-table">
         <div className="chat-area" id="left-sidebar">
