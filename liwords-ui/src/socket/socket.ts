@@ -1,15 +1,15 @@
 import { useCallback, useEffect, useMemo } from 'react';
-import { useMountedState } from '../utils/mounted';
 import axios from 'axios';
 import jwt from 'jsonwebtoken';
 import useWebSocket from 'react-use-websocket';
 import { useLocation } from 'react-router-dom';
+// import { message } from 'antd';
+import { useMountedState } from '../utils/mounted';
 import { useLoginStateStoreContext } from '../store/store';
 import { useOnSocketMsg } from '../store/socket_handlers';
 import { decodeToMsg } from '../utils/protobuf';
 import { toAPIUrl } from '../api/api';
 import { ActionType } from '../actions/actions';
-import { message } from 'antd';
 
 const getSocketURI = (): string => {
   const loc = window.location;
@@ -104,10 +104,13 @@ export const LiwordsSocket = (props: {
             'remote',
             app_version
           );
+
+          // bring back when we fix circleci sed
+          /*
           message.warning(
             'Woogles has been updated. Please refresh this page at your leisure.',
             0
-          );
+          ); */
         }
       })
       .catch((e) => {
