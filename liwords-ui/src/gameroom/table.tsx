@@ -50,7 +50,7 @@ import { BoopSounds } from '../sound/boop';
 import { toAPIUrl } from '../api/api';
 import { StreakWidget } from './streak_widget';
 import { PlayState } from '../gen/macondo/api/proto/macondo/macondo_pb';
-// import { GameInfoResponse } from '../gen/api/proto/game_service/game_service_pb';
+import { endGameMessageFromGameInfo } from '../store/end_of_game';
 
 type Props = {
   sendSocketMsg: (msg: Uint8Array) => void;
@@ -93,7 +93,7 @@ export const Table = React.memo((props: Props) => {
     handleExamineGoTo,
   } = useExamineStoreContext();
   const { gameContext } = useGameContextStoreContext();
-  const { gameEndMessage } = useGameEndMessageStoreContext();
+  const { gameEndMessage, setGameEndMessage } = useGameEndMessageStoreContext();
   const { loginState } = useLoginStateStoreContext();
   const { poolFormat, setPoolFormat } = usePoolFormatStoreContext();
   const { presences } = usePresenceStoreContext();
@@ -171,6 +171,11 @@ export const Table = React.memo((props: Props) => {
             setPoolFormat(
               parseInt(localStorage.getItem('poolFormat') || '0', 10)
             );
+          }
+          if (resp.data.game_end_reason !== 'NONE') {
+            // Basically if we are here, we've reloaded the page after the game
+            // ended. We want to synthesize a new GameEnd message
+            setGameEndMessage(endGameMessageFromGameInfo(resp.data));
           }
         }
       });

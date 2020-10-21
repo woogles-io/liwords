@@ -1,3 +1,4 @@
+import { GameMetadata } from '../gameroom/game_info';
 import {
   GameEndedEvent,
   GameEndReason,
@@ -59,3 +60,27 @@ export const endGameMessage = (gee: GameEndedEvent): string => {
   }
   return summary.join('\n');
 };
+
+export const endGameMessageFromGameInfo = (info: GameMetadata): string => {
+
+  // construct an artificial GameEndedEvent
+
+  const gee = new GameEndedEvent();
+  const scores = gee.getScoresMap();
+  if (info.scores) {
+    scores.set(info.players[0].nickname, info.scores[0]);
+    scores.set(info.players[1].nickname, info.scores[1]);
+  }
+  if (info.winner === -1) {
+    gee.setTie(true);
+  } else {
+    gee.setWinner(info.players[info.winner ?? 0].nickname);
+    gee.setLoser(info.players[1-(info.winner??0)].nickname);
+  }
+
+  const ger = info.game_end_reason as 'NONE' | 'STANDARD' | 'TIME' | 'CONSECUTIVE_ZEROES' | 'RESIGNED' | 'TRIPLE_CHALLENGE';
+
+  gee.setEndReason(GameEndReason[ger])
+
+  return endGameMessage(gee);
+}
