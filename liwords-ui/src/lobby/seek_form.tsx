@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React from 'react';
+import { useMountedState } from '../utils/mounted';
 import {
   Form,
   Radio,
@@ -74,8 +75,7 @@ const otUnitLabel = 'minutes';
 const incUnitLabel = 'seconds';
 
 export const SeekForm = (props: Props) => {
-  const stillMountedRef = React.useRef(true);
-  React.useEffect(() => () => void (stillMountedRef.current = false), []);
+  const { useState } = useMountedState();
 
   let storageKey = 'lastSeekForm';
   if (props.vsBot) {
@@ -160,9 +160,7 @@ export const SeekForm = (props: Props) => {
       )
       .then((resp) => {
         console.log('resp', resp.data);
-        if (stillMountedRef.current) {
-          setUsernameOptions(!searchText ? [] : resp.data.usernames);
-        }
+        setUsernameOptions(!searchText ? [] : resp.data.usernames);
       });
   };
 

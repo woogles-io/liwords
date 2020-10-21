@@ -3,10 +3,10 @@ import React, {
   useCallback,
   useContext,
   useMemo,
-  useState,
   useReducer,
   useRef,
 } from 'react';
+import { useMountedState } from '../utils/mounted';
 
 import { EnglishCrosswordGameDistribution } from '../constants/tile_distributions';
 import { GameEvent } from '../gen/macondo/api/proto/macondo/macondo_pb';
@@ -292,6 +292,8 @@ const gameStateInitializer = (
 const doNothing = () => {}; // defaultFunction currently is the same as this.
 
 const ExaminableStore = ({ children }: { children: React.ReactNode }) => {
+  const { useState } = useMountedState();
+
   const gameContextStore = useGameContextStoreContext();
   const gameEndMessageStore = useGameEndMessageStoreContext();
   const timerStore = useTimerStoreContext();
@@ -507,8 +509,7 @@ const ExaminableStore = ({ children }: { children: React.ReactNode }) => {
 // The Real Store.
 
 const RealStore = ({ children, ...props }: Props) => {
-  const stillMountedRef = React.useRef(true);
-  React.useEffect(() => () => void (stillMountedRef.current = false), []);
+  const { useState } = useMountedState();
 
   const clockController = useRef<ClockController | null>(null);
 
@@ -517,15 +518,11 @@ const RealStore = ({ children, ...props }: Props) => {
       return;
     }
     const newCtx = { ...clockController.current!.times, [p]: t };
-    if (stillMountedRef.current) {
-      setTimerContext(newCtx);
-    }
+    setTimerContext(newCtx);
   }, []);
 
   const onClockTimeout = useCallback((p: PlayerOrder) => {
-    if (stillMountedRef.current) {
-      setPTimedOut(p);
-    }
+    setPTimedOut(p);
   }, []);
 
   const [lobbyContext, dispatchLobbyContext] = useReducer(LobbyReducer, {

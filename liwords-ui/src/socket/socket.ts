@@ -1,4 +1,5 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo } from 'react';
+import { useMountedState } from '../utils/mounted';
 import axios from 'axios';
 import jwt from 'jsonwebtoken';
 import useWebSocket from 'react-use-websocket';
@@ -40,8 +41,7 @@ export const LiwordsSocket = (props: {
     justDisconnected: boolean;
   }) => void;
 }): null => {
-  const stillMountedRef = React.useRef(true);
-  React.useEffect(() => () => void (stillMountedRef.current = false), []);
+  const { useState } = useMountedState();
 
   const { disconnect, setValues } = props;
   const onSocketMsg = useOnSocketMsg();
@@ -75,15 +75,13 @@ export const LiwordsSocket = (props: {
         const socketToken = resp.data.token;
         const { cid } = resp.data;
 
-        if (stillMountedRef.current) {
-          setFullSocketUrl(
-            `${socketUrl}?${new URLSearchParams({
-              token: socketToken,
-              path: location.pathname,
-              cid,
-            })}`
-          );
-        }
+        setFullSocketUrl(
+          `${socketUrl}?${new URLSearchParams({
+            token: socketToken,
+            path: location.pathname,
+            cid,
+          })}`
+        );
 
         const decoded = jwt.decode(socketToken) as DecodedToken;
         loginStateStore.dispatchLoginState({

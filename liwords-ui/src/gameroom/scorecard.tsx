@@ -1,4 +1,5 @@
-import React, { ReactNode, useState, useEffect, useMemo, useRef } from 'react';
+import React, { ReactNode, useEffect, useMemo, useRef } from 'react';
+import { useMountedState } from '../utils/mounted';
 import { Card } from 'antd';
 import { GameEvent } from '../gen/macondo/api/proto/macondo/macondo_pb';
 import { Board } from '../utils/cwgame/board';
@@ -214,6 +215,8 @@ const ScorecardTurn = (props: turnProps) => {
 };
 
 export const ScoreCard = React.memo((props: Props) => {
+  const { useState } = useMountedState();
+
   const el = useRef<HTMLDivElement>(null);
   const notepad = useRef<HTMLTextAreaElement>(null);
   const [cardHeight, setCardHeight] = useState(0);
