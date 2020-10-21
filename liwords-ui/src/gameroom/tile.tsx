@@ -15,6 +15,9 @@ const TileLetter = React.memo((props: TileLetterProps) => {
   if (rune === Blank) {
     rune = ' ';
   }
+  if (rune === 'l') {
+    rune = '\u{2113}';
+  }
 
   return <p className="rune">{rune}</p>;
 });
