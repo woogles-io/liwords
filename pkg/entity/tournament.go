@@ -1,11 +1,14 @@
 package entity
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"math/rand"
 	"sort"
+	"sync"
 	// "time"
+	"gorm.io/datatypes"
 
 	realtime "github.com/domino14/liwords/rpc/api/proto/realtime"
 )
@@ -38,9 +41,9 @@ type Pairing struct {
 }
 
 type PlayerRoundInfo struct {
-	Pairing *Pairing
-	Record  []int
-	Spread  int
+	Pairing *Pairing `json:"p"`
+	Record  []int    `json:"r"`
+	Spread  int      `json:"s"`
 }
 
 type Standing struct {
@@ -58,12 +61,7 @@ type Tournament interface {
 	SetPairing(string, string, int) error
 	IsRoundComplete(int) (bool, error)
 	IsFinished() (bool, error)
-}
-
-type TournamentManager struct {
-	Tournament Tournament
-	// StartTime time.Time
-	// RoundDuration time.Time
+	Serialize() (datatypes.JSON, error)
 }
 
 type PairingMethod int
@@ -84,11 +82,29 @@ const (
 )
 
 type TournamentClassic struct {
-	Matrix         [][]*PlayerRoundInfo
-	Players        []string
-	PlayerIndexMap map[string]int
-	PairingMethods []PairingMethod
-	GamesPerRound  int
+	Matrix         [][]*PlayerRoundInfo `json:"t"`
+	Players        []string             `json:"p"`
+	PlayerIndexMap map[string]int       `json:"m"`
+	PairingMethods []PairingMethod      `json:"m"`
+	GamesPerRound  int                  `json:"g"`
+}
+
+type TournamentType int
+
+const (
+	ClassicTournamentType TournamentType = iota
+	// It's gonna be lit:
+	ArenaTournamentType
+)
+
+type TournamentManager struct {
+	sync.RWMutex
+	UUID string `json:"u"`
+
+	Name       string         `json:"n"`
+	Directors  []string       `json:"d"`
+	Type       TournamentType `json:"t"`
+	Tournament Tournament     `json:"m"`
 }
 
 func NewTournamentClassic(players []string,
@@ -148,6 +164,23 @@ func NewTournamentClassic(players []string,
 	}
 
 	return t, nil
+}
+
+func (t *TournamentClassic) Serialize() (datatypes.JSON, error) {
+	json, err := json.Marshal(t)
+	if err != nil {
+		return nil, err
+	}
+	return json, err
+}
+
+func TournamentClassicUnserialize(blob datatypes.JSON) (*TournamentClassic, error) {
+	var tc TournamentClassic
+	err := json.Unmarshal(blob, &tc)
+	if err != nil {
+		return nil, err
+	}
+	return &tc, nil
 }
 
 func (t *TournamentClassic) GetPlayerRoundInfo(player string, round int) (*PlayerRoundInfo, error) {

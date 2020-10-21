@@ -34,6 +34,7 @@ import (
 	"github.com/rs/zerolog/log"
 
 	"github.com/domino14/liwords/pkg/config"
+	"github.com/domino14/liwords/pkg/stores/tournament"
 	"github.com/domino14/liwords/pkg/stores/user"
 	pkguser "github.com/domino14/liwords/pkg/user"
 	configservice "github.com/domino14/liwords/rpc/api/proto/config_service"
@@ -93,6 +94,12 @@ func main() {
 		panic(err)
 	}
 	userStore := user.NewCache(tmpUserStore)
+
+	tmpTournamentStore, err := tournament.NewDBStore(cfg.DBConnString)
+	if err != nil {
+		panic(err)
+	}
+	tournamentStore := tournament.NewCache(tmpTournamentStore)
 
 	sessionStore, err := session.NewDBStore(cfg.DBConnString)
 
