@@ -3,6 +3,7 @@ import {
   PlayerInfo,
   GameEvent,
   PlayState,
+  GameHistory,
 } from '../../gen/macondo/api/proto/macondo/macondo_pb';
 import { Action, ActionType } from '../../actions/actions';
 import {
@@ -272,13 +273,12 @@ export const pushTurns = (gs: GameState, events: Array<GameEvent>) => {
   });
 };
 
-const stateFromHistory = (refresher: GameHistoryRefresher): GameState => {
+const stateFromHistory = (history: GameHistory): GameState => {
   // XXX: Do this for now. We will eventually want to put the tile
   // distribution itself in the history protobuf.
   // if (['NWL18', 'CSW19'].includes(history!.getLexicon())) {
   //   const dist = EnglishCrosswordGameDistribution;
   // }
-  const history = refresher.getHistory()!;
   let playerList = history.getPlayersList();
   const flipPlayers = history.getSecondWentFirst();
   // If flipPlayers is on, we want to flip the players in the playerList.
@@ -308,7 +308,6 @@ const stateFromHistory = (refresher: GameHistoryRefresher): GameState => {
   // racks are given in the original order that the playerList came in.
   // so if we reversed the player list, we must reverse the racks.
   let racks = history.getLastKnownRacksList();
-  // let timers = [refresher.getTimePlayer1(), refresher.getTimePlayer2()];
   if (flipPlayers) {
     racks = [...racks].reverse();
     // timers = timers.reverse();
@@ -486,7 +485,7 @@ export const GameReducer = (state: GameState, action: Action): GameState => {
 
     case ActionType.RefreshHistory: {
       const ghr = action.payload as GameHistoryRefresher;
-      const newState = stateFromHistory(ghr);
+      const newState = stateFromHistory(ghr.getHistory()!);
 
       if (state.clockController !== null) {
         newState.clockController = state.clockController;
@@ -502,17 +501,7 @@ export const GameReducer = (state: GameState, action: Action): GameState => {
       // already been set. This can happen if it ends in an "abnormal" way
       // like a resignation or a timeout -- these aren't ServerGamePlayEvents per se.
       const gee = action.payload as GameEndedEvent;
-
-      // Add racks to store.
-
-      const turns = [...state.turns];
-      gee.getRacksList().forEach((rack, idx) => turns[idx].setRack(rack));
-
-      const newState = {
-        ...state,
-        turns,
-        playState: PlayState.GAME_OVER,
-      };
+      const newState = stateFromHistory(gee.getHistory()!);
       if (newState.clockController) {
         newState.clockController.current?.stopClock();
       }

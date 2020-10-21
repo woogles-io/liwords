@@ -22,7 +22,6 @@ export enum ActionType {
   RefreshHistory,
   ClearHistory,
   EndGame,
-  SetAllRacks,
 
   /* login state actions */
   SetAuthentication,

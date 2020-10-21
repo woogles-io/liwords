@@ -614,10 +614,10 @@ export class GameEndedEvent extends jspb.Message {
 
   getRatingDeltasMap(): jspb.Map<string, number>;
   clearRatingDeltasMap(): void;
-  clearRacksList(): void;
-  getRacksList(): Array<string>;
-  setRacksList(value: Array<string>): void;
-  addRacks(value: string, index?: number): string;
+  hasHistory(): boolean;
+  clearHistory(): void;
+  getHistory(): macondo_api_proto_macondo_macondo_pb.GameHistory | undefined;
+  setHistory(value?: macondo_api_proto_macondo_macondo_pb.GameHistory): void;
 
   serializeBinary(): Uint8Array;
   toObject(includeInstance?: boolean): GameEndedEvent.AsObject;
@@ -639,7 +639,7 @@ export namespace GameEndedEvent {
     tie: boolean,
     time: number,
     ratingDeltasMap: Array<[string, number]>,
-    racksList: Array<string>,
+    history?: macondo_api_proto_macondo_macondo_pb.GameHistory.AsObject,
   }
 }
 

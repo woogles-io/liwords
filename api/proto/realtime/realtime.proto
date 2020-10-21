@@ -210,9 +210,8 @@ message GameEndedEvent {
   int64 time = 7;
 
   map<string, int32> rating_deltas = 8;
-
-  // All racks for this game; one per game history event.
-  repeated string racks = 9;
+  // Send the full game history again. This will have rack information in it.
+  macondo.GameHistory history = 9;
 }
 
 // A GameHistoryRefresher is sent to both players when the game starts,

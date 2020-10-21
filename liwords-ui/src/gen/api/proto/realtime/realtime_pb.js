@@ -481,7 +481,7 @@ if (goog.DEBUG && !COMPILED) {
  * @constructor
  */
 proto.liwords.GameEndedEvent = function(opt_data) {
-  jspb.Message.initialize(this, opt_data, 0, -1, proto.liwords.GameEndedEvent.repeatedFields_, null);
+  jspb.Message.initialize(this, opt_data, 0, -1, null, null);
 };
 goog.inherits(proto.liwords.GameEndedEvent, jspb.Message);
 if (goog.DEBUG && !COMPILED) {
@@ -4829,13 +4829,6 @@ proto.liwords.ServerChallengeResultEvent.prototype.setChallengeRule = function(v
 
 
 
-/**
- * List of repeated fields within this message type.
- * @private {!Array<number>}
- * @const
- */
-proto.liwords.GameEndedEvent.repeatedFields_ = [9];
-
 
 
 if (jspb.Message.GENERATE_TO_OBJECT) {
@@ -4875,7 +4868,7 @@ proto.liwords.GameEndedEvent.toObject = function(includeInstance, msg) {
     tie: jspb.Message.getBooleanFieldWithDefault(msg, 6, false),
     time: jspb.Message.getFieldWithDefault(msg, 7, 0),
     ratingDeltasMap: (f = msg.getRatingDeltasMap()) ? f.toObject(includeInstance, undefined) : [],
-    racksList: (f = jspb.Message.getRepeatedField(msg, 9)) == null ? undefined : f
+    history: (f = msg.getHistory()) && macondo_api_proto_macondo_macondo_pb.GameHistory.toObject(includeInstance, f)
   };
 
   if (includeInstance) {
@@ -4951,8 +4944,9 @@ proto.liwords.GameEndedEvent.deserializeBinaryFromReader = function(msg, reader)
          });
       break;
     case 9:
-      var value = /** @type {string} */ (reader.readString());
-      msg.addRacks(value);
+      var value = new macondo_api_proto_macondo_macondo_pb.GameHistory;
+      reader.readMessage(value,macondo_api_proto_macondo_macondo_pb.GameHistory.deserializeBinaryFromReader);
+      msg.setHistory(value);
       break;
     default:
       reader.skipField();
@@ -5030,11 +5024,12 @@ proto.liwords.GameEndedEvent.serializeBinaryToWriter = function(message, writer)
   if (f && f.getLength() > 0) {
     f.serializeBinary(8, writer, jspb.BinaryWriter.prototype.writeString, jspb.BinaryWriter.prototype.writeInt32);
   }
-  f = message.getRacksList();
-  if (f.length > 0) {
-    writer.writeRepeatedString(
+  f = message.getHistory();
+  if (f != null) {
+    writer.writeMessage(
       9,
-      f
+      f,
+      macondo_api_proto_macondo_macondo_pb.GameHistory.serializeBinaryToWriter
     );
   }
 };
@@ -5197,39 +5192,39 @@ proto.liwords.GameEndedEvent.prototype.clearRatingDeltasMap = function() {
 
 
 /**
- * repeated string racks = 9;
- * @return {!Array<string>}
+ * optional macondo.GameHistory history = 9;
+ * @return {?proto.macondo.GameHistory}
  */
-proto.liwords.GameEndedEvent.prototype.getRacksList = function() {
-  return /** @type {!Array<string>} */ (jspb.Message.getRepeatedField(this, 9));
+proto.liwords.GameEndedEvent.prototype.getHistory = function() {
+  return /** @type{?proto.macondo.GameHistory} */ (
+    jspb.Message.getWrapperField(this, macondo_api_proto_macondo_macondo_pb.GameHistory, 9));
 };
 
 
 /**
- * @param {!Array<string>} value
+ * @param {?proto.macondo.GameHistory|undefined} value
  * @return {!proto.liwords.GameEndedEvent} returns this
- */
-proto.liwords.GameEndedEvent.prototype.setRacksList = function(value) {
-  return jspb.Message.setField(this, 9, value || []);
+*/
+proto.liwords.GameEndedEvent.prototype.setHistory = function(value) {
+  return jspb.Message.setWrapperField(this, 9, value);
 };
 
 
 /**
- * @param {string} value
- * @param {number=} opt_index
+ * Clears the message field making it undefined.
  * @return {!proto.liwords.GameEndedEvent} returns this
  */
-proto.liwords.GameEndedEvent.prototype.addRacks = function(value, opt_index) {
-  return jspb.Message.addToRepeatedField(this, 9, value, opt_index);
+proto.liwords.GameEndedEvent.prototype.clearHistory = function() {
+  return this.setHistory(undefined);
 };
 
 
 /**
- * Clears the list making it empty but non-null.
- * @return {!proto.liwords.GameEndedEvent} returns this
+ * Returns whether this field is set.
+ * @return {boolean}
  */
-proto.liwords.GameEndedEvent.prototype.clearRacksList = function() {
-  return this.setRacksList([]);
+proto.liwords.GameEndedEvent.prototype.hasHistory = function() {
+  return jspb.Message.getField(this, 9) != null;
 };
 
 

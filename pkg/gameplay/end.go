@@ -28,7 +28,7 @@ func performEndgameDuties(ctx context.Context, g *entity.Game, gameStore GameSto
 		}
 	}
 
-	evts := []*pb.ServerGameplayEvent{}
+	// evts := []*pb.ServerGameplayEvent{}
 
 	var p0penalty, p1penalty int
 	// Limit time penalties to the max OT. This is so that we don't get situations
@@ -49,49 +49,34 @@ func performEndgameDuties(ctx context.Context, g *entity.Game, gameStore GameSto
 	if p1overtimeMs > 0 {
 		p1penalty = 10 * int(math.Ceil(float64(p1overtimeMs)/60000.0))
 	}
+	penaltyApplied := false
 
 	if p0penalty > 0 {
+		penaltyApplied = true
 		newscore := g.PointsFor(0) - p0penalty
 		// >Pakorn: ISBALI (time) -10 409
-		evts = append(evts, &pb.ServerGameplayEvent{
-			Event: &macondopb.GameEvent{
-				Nickname:        g.History().Players[0].Nickname,
-				Rack:            g.RackLettersFor(0),
-				Type:            macondopb.GameEvent_TIME_PENALTY,
-				LostScore:       int32(p0penalty),
-				Cumulative:      int32(newscore),
-				MillisRemaining: int32(g.CachedTimeRemaining(0)),
-			},
-			GameId:  g.GameID(),
-			Playing: macondopb.PlayState_GAME_OVER,
+		g.History().Events = append(g.History().Events, &macondopb.GameEvent{
+			Nickname:        g.History().Players[0].Nickname,
+			Rack:            g.RackLettersFor(0),
+			Type:            macondopb.GameEvent_TIME_PENALTY,
+			LostScore:       int32(p0penalty),
+			Cumulative:      int32(newscore),
+			MillisRemaining: int32(g.CachedTimeRemaining(0)),
 		})
 		g.SetPointsFor(0, newscore)
 	}
 	if p1penalty > 0 {
+		penaltyApplied = true
 		newscore := g.PointsFor(1) - p1penalty
-		evts = append(evts, &pb.ServerGameplayEvent{
-			Event: &macondopb.GameEvent{
-				Nickname:        g.History().Players[1].Nickname,
-				Rack:            g.RackLettersFor(1),
-				Type:            macondopb.GameEvent_TIME_PENALTY,
-				LostScore:       int32(p1penalty),
-				Cumulative:      int32(newscore),
-				MillisRemaining: int32(g.CachedTimeRemaining(1)),
-			},
-			GameId:  g.GameID(),
-			Playing: macondopb.PlayState_GAME_OVER,
+		g.History().Events = append(g.History().Events, &macondopb.GameEvent{
+			Nickname:        g.History().Players[1].Nickname,
+			Rack:            g.RackLettersFor(1),
+			Type:            macondopb.GameEvent_TIME_PENALTY,
+			LostScore:       int32(p1penalty),
+			Cumulative:      int32(newscore),
+			MillisRemaining: int32(g.CachedTimeRemaining(1)),
 		})
 		g.SetPointsFor(1, newscore)
-	}
-
-	for _, sge := range evts {
-		wrapped := entity.WrapEvent(sge, pb.MessageType_SERVER_GAMEPLAY_EVENT)
-		wrapped.AddAudience(entity.AudGameTV, g.GameID())
-		for _, p := range players(g) {
-			wrapped.AddAudience(entity.AudUser, p+".game."+g.GameID())
-		}
-		g.SendChange(wrapped)
-		g.History().Events = append(g.History().Events, sge.Event)
 	}
 
 	if !g.WinnerWasSet() {
@@ -115,7 +100,7 @@ func performEndgameDuties(ctx context.Context, g *entity.Game, gameStore GameSto
 	// One more thing -- if the Macondo game doesn't know the game is over, which
 	// can happen if the game didn't end normally (for example, a timeout or a resign)
 	// Then we need to set the final scores here.
-	if len(g.History().FinalScores) == 0 || len(evts) > 0 {
+	if len(g.History().FinalScores) == 0 || penaltyApplied {
 		g.AddFinalScoresToHistory()
 	}
 
@@ -366,7 +351,7 @@ func gameEndedEvent(ctx context.Context, g *entity.Game, userStore user.Store) *
 		Tie:          tie,
 		Time:         g.Timers.TimeOfLastUpdate,
 		RatingDeltas: deltas,
-		Racks:        racks,
+		History:      g.History(),
 	}
 
 	log.Debug().Interface("game-ended-event", evt).Msg("game-ended")
