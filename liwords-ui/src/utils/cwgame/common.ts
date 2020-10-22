@@ -28,6 +28,13 @@ export const isBlank = (letter: string): boolean => {
   return false;
 };
 
+export const isDesignatedBlank = (letter: string): boolean => {
+  if (letter.toLowerCase() === letter && letter.toUpperCase() !== letter) {
+    return true;
+  }
+  return false;
+};
+
 // String.charAt implementation that handles surrogate pairs
 // modified from:
 // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String/charAt#Fixing_charAt()_to_support_non-Basic-Multilingual-Plane_(BMP)_characters
