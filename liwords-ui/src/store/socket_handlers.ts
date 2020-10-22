@@ -103,6 +103,14 @@ export const parseMsgs = (msg: Uint8Array) => {
   return msgs;
 };
 
+export const ReverseMessageType = (() => {
+  const ret = [];
+  for (const k in MessageType) {
+    ret[(MessageType as { [key: string]: any })[k]] = k;
+  }
+  return ret;
+})();
+
 export const useOnSocketMsg = () => {
   const { challengeResultEvent } = useChallengeResultEventStoreContext();
   const { addChat, addChats } = useChatStoreContext();
@@ -127,16 +135,15 @@ export const useOnSocketMsg = () => {
       msgs.forEach((msg) => {
         const { msgType, parsedMsg } = msg;
 
-        const msgTypeStr = Object.keys(MessageType).find(
-          (k) => (MessageType as { [key: string]: any })[k] === msgType
-        );
-        console.log(
-          '%crcvd',
-          'background: pink',
-          msgTypeStr || msgType,
-          parsedMsg.toObject(),
-          performance.now()
-        );
+        if (true) {
+          console.log(
+            '%crcvd',
+            'background: pink',
+            ReverseMessageType[msgType] ?? msgType,
+            parsedMsg.toObject(),
+            performance.now()
+          );
+        }
 
         switch (msgType) {
           case MessageType.SEEK_REQUEST: {

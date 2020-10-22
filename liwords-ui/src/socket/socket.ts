@@ -10,8 +10,7 @@ import { useOnSocketMsg } from '../store/socket_handlers';
 import { decodeToMsg } from '../utils/protobuf';
 import { toAPIUrl } from '../api/api';
 import { ActionType } from '../actions/actions';
-import { parseMsgs } from '../store/socket_handlers';
-import { MessageType } from '../gen/api/proto/realtime/realtime_pb';
+import { ReverseMessageType, parseMsgs } from '../store/socket_handlers';
 
 const getSocketURI = (): string => {
   const loc = window.location;
@@ -150,29 +149,25 @@ export const LiwordsSocket = (props: {
       fullSocketUrl !== '' /* only connect if the socket token is not null */
   );
 
-  const sendMessage: (msg: Uint8Array) => void = useCallback(
-    (msg) => {
+  const sendMessage = useMemo(() => {
+    return (msg: Uint8Array) => {
       const msgs = parseMsgs(msg);
 
       msgs.forEach((msg) => {
         const { msgType, parsedMsg } = msg;
 
-        const msgTypeStr = Object.keys(MessageType).find(
-          (k) => (MessageType as { [key: string]: any })[k] === msgType
-        );
         console.log(
           '%csent',
           'background: cyan',
-          msgTypeStr || msgType,
+          ReverseMessageType[msgType] ?? msgType,
           parsedMsg.toObject(),
           performance.now()
         );
       });
 
       return originalSendMessage(msg);
-    },
-    [originalSendMessage]
-  );
+    };
+  }, [originalSendMessage]);
 
   const ret = useMemo(() => ({ sendMessage, justDisconnected }), [
     sendMessage,
