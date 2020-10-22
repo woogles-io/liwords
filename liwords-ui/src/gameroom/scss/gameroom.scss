@@ -340,7 +340,20 @@
 .tile {
   background-color: $color-secondary;
 }
-
+.tile.blank .rune {
+  background-color: transparentize($color-secondary-lighter, 0.3);
+  color: $color-secondary;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding-top: 2px;
+  width: 70%;
+  height: 70%;
+  border-radius: 50%;
+  text-transform: capitalize;
+  transform: rotate(-10deg) translateX(25%) translateY(4%);
+  font-size: $tile-font-size-mobile * 0.95;
+}
 .tile.last-played {
   border: 1px solid $color-secondary;
   background-color:$color-secondary;
@@ -348,6 +361,9 @@
 }
 .tile.tentative {
   background-color: $color-secondary-medium;
+  &.blank .rune {
+    background-color: transparentize($color-secondary-lighter, 0.4);
+  }
 }
 
 // squareness fix
@@ -379,7 +395,9 @@
   width: 100%;
   padding-bottom: 3px;
 }
-
+.tile.blank .rune {
+  font-size: $tile-font-size-mobile * 0.9;
+}
 .tile .point-value {
   position: absolute;
   bottom: 4px;
@@ -721,6 +739,9 @@
     line-height: 1.2em;
     position: relative;
   }
+  .tile.blank .rune {
+    font-size: $tile-font-size-tablet * 0.9;
+  }
   .tile .point-value {
     font-size: $point-size-tablet;
     padding: 5px 2px;
@@ -781,6 +802,9 @@
   }
   .tile .rune {
     font-size: $tile-font-size-laptop;
+  }
+  .tile.blank .rune {
+    font-size: $tile-font-size-laptop * 0.9;
   }
   .tile .point-value {
     font-size: $point-size-laptop;
@@ -844,6 +868,9 @@
 
   .tile .rune {
     font-size: $tile-font-size-desktop;
+  }
+  .tile.blank .rune {
+    font-size: $tile-font-size-desktop * 0.9;
   }
   .tile .point-value {
     font-size: $point-size-desktop;

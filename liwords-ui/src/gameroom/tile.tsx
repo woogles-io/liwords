@@ -1,7 +1,11 @@
 import React from 'react';
 import { useMountedState } from '../utils/mounted';
 import TentativeScore from './tentative_score';
-import { Blank, uniqueTileIdx } from '../utils/cwgame/common';
+import {
+  Blank,
+  isDesignatedBlank,
+  uniqueTileIdx,
+} from '../utils/cwgame/common';
 
 type TileLetterProps = {
   rune: string;
@@ -104,7 +108,7 @@ const Tile = React.memo((props: TileProps) => {
     props.grabbable ? ' droppable' : ''
   }${props.selected ? ' selected' : ''}${props.tentative ? ' tentative' : ''}${
     props.lastPlayed ? ' last-played' : ''
-  }`;
+  }${isDesignatedBlank(props.rune) ? ' blank' : ''}`;
   return (
     <div
       className={computedClassName}

@@ -22,10 +22,11 @@ export const uniqueTileIdx = (row: number, col: number): number => {
 };
 
 export const isBlank = (letter: string): boolean => {
-  if (letter.toLowerCase() === letter) {
-    return true;
-  }
-  return false;
+  return letter.toLowerCase() === letter;
+};
+
+export const isDesignatedBlank = (letter: string): boolean => {
+  return letter.toLowerCase() === letter && letter.toUpperCase() !== letter;
 };
 
 // String.charAt implementation that handles surrogate pairs
