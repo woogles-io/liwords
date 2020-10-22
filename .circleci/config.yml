@@ -68,7 +68,7 @@ jobs:
       - run: yum install -y tar gzip
       - attach_workspace:
           at: /tmp/liwords-ui
-      - run: sed -i 's:unknown:${CIRCLE_SHA1}/' /tmp/liwords-ui/public/config.js
+      - run: sed -i 's:unknown:${CIRCLE_SHA1}:' /tmp/liwords-ui/public/config.js
       # cache everything except index.html and config.js
       - run: cd /tmp/liwords-ui/build && aws s3 sync --cache-control 'max-age=604800' --exclude index.html --exclude config.js . s3://woogles.io
       - run: cd /tmp/liwords-ui/build && aws s3 sync --cache-control 'no-cache' . s3://woogles.io
