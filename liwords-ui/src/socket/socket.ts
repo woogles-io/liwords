@@ -10,7 +10,11 @@ import { useOnSocketMsg } from '../store/socket_handlers';
 import { decodeToMsg } from '../utils/protobuf';
 import { toAPIUrl } from '../api/api';
 import { ActionType } from '../actions/actions';
-import { ReverseMessageType, parseMsgs } from '../store/socket_handlers';
+import {
+  ReverseMessageType,
+  enableShowSocket,
+  parseMsgs,
+} from '../store/socket_handlers';
 
 const getSocketURI = (): string => {
   const loc = window.location;
@@ -150,6 +154,8 @@ export const LiwordsSocket = (props: {
   );
 
   const sendMessage = useMemo(() => {
+    if (!enableShowSocket) return originalSendMessage;
+
     return (msg: Uint8Array) => {
       const msgs = parseMsgs(msg);
 

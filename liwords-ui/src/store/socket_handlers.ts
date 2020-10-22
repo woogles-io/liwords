@@ -55,6 +55,10 @@ import {
 } from './reducers/lobby_reducer';
 import { BoopSounds } from '../sound/boop';
 
+// Feature flag.
+export const enableShowSocket =
+  localStorage?.getItem('enableShowSocket') === 'true';
+
 export const parseMsgs = (msg: Uint8Array) => {
   // Multiple msgs can come in the same packet.
   const msgs = [];
@@ -135,7 +139,7 @@ export const useOnSocketMsg = () => {
       msgs.forEach((msg) => {
         const { msgType, parsedMsg } = msg;
 
-        if (true) {
+        if (enableShowSocket) {
           console.log(
             '%crcvd',
             'background: pink',
