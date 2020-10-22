@@ -130,7 +130,11 @@ const gcgExport = (gameID: string, playerMeta: Array<PlayerMetadata>) => {
 export const BoardPanel = React.memo((props: Props) => {
   const { useState } = useMountedState();
 
-  const [drawingKeyMode, setDrawingKeyMode] = useState(false);
+  // Poka-yoke against accidentally having multiple modes active.
+  const [currentMode, setCurrentMode] = useState<
+    'BLANK_MODAL' | 'DRAWING_HOTKEY' | 'EXCHANGE_MODAL' | 'NORMAL'
+  >('NORMAL');
+
   const {
     drawingCanBeEnabled,
     handleKeyDown: handleDrawingKeyDown,
@@ -147,7 +151,6 @@ export const BoardPanel = React.memo((props: Props) => {
   const [placedTilesTempScore, setPlacedTilesTempScore] = useState<
     number | undefined
   >(undefined);
-  const [blankModalVisible, setBlankModalVisible] = useState(false);
   const {
     gameContext: examinableGameContext,
   } = useExaminableGameContextStoreContext();
@@ -157,7 +160,6 @@ export const BoardPanel = React.memo((props: Props) => {
   const { isExamining, handleExamineStart } = useExamineStoreContext();
   const { gameContext } = useGameContextStoreContext();
   const { stopClock } = useTimerStoreContext();
-  const [exchangeModalVisible, setExchangeModalVisible] = useState(false);
   const [exchangeAllowed, setexchangeAllowed] = useState(true);
 
   const observer = !props.playerMeta.some((p) => p.nickname === props.username);
@@ -469,7 +471,7 @@ export const BoardPanel = React.memo((props: Props) => {
         }
         if (key === '4' && exchangeAllowed) {
           evt.preventDefault();
-          setExchangeModalVisible(true);
+          setCurrentMode('EXCHANGE_MODAL');
           return;
         }
         if (key === '$' && exchangeAllowed) {
@@ -496,12 +498,12 @@ export const BoardPanel = React.memo((props: Props) => {
         shuffleTiles();
         return;
       }
-      if (key === EnterKey && !exchangeModalVisible && !blankModalVisible) {
+      if (key === EnterKey && currentMode === 'NORMAL') {
         evt.preventDefault();
         makeMove('commit');
         return;
       }
-      if (exchangeModalVisible) {
+      if (currentMode === 'EXCHANGE_MODAL') {
         return;
       }
       if (!arrowProperties.show) {
@@ -532,10 +534,9 @@ export const BoardPanel = React.memo((props: Props) => {
     },
     [
       arrowProperties,
-      blankModalVisible,
+      currentMode,
       displayedRack,
       exchangeAllowed,
-      exchangeModalVisible,
       isMyTurn,
       makeMove,
       placedTiles,
@@ -571,7 +572,7 @@ export const BoardPanel = React.memo((props: Props) => {
       setPlacedTilesTempScore(handlerReturn.playScore);
       setArrowProperties({ row: 0, col: 0, horizontal: false, show: false });
       if (handlerReturn.isUndesignated) {
-        setBlankModalVisible(true);
+        setCurrentMode('BLANK_MODAL');
       }
     },
     [displayedRack, placedTiles, props.board]
@@ -602,7 +603,7 @@ export const BoardPanel = React.memo((props: Props) => {
       setPlacedTiles(handlerReturn.newPlacedTiles);
       setPlacedTilesTempScore(handlerReturn.playScore);
       if (handlerReturn.isUndesignated) {
-        setBlankModalVisible(true);
+        setCurrentMode('BLANK_MODAL');
       }
       let newrow = arrowProperties.row;
       let newcol = arrowProperties.col;
@@ -644,7 +645,7 @@ export const BoardPanel = React.memo((props: Props) => {
 
   const handleBoardTileClick = useCallback((rune: string) => {
     if (rune === Blank) {
-      setBlankModalVisible(true);
+      setCurrentMode('BLANK_MODAL');
     }
   }, []);
 
@@ -659,7 +660,7 @@ export const BoardPanel = React.memo((props: Props) => {
       if (handlerReturn === null) {
         return;
       }
-      setBlankModalVisible(false);
+      setCurrentMode('NORMAL');
       setPlacedTiles(handlerReturn.newPlacedTiles);
       setPlacedTilesTempScore(handlerReturn.playScore);
     },
@@ -667,7 +668,7 @@ export const BoardPanel = React.memo((props: Props) => {
   );
 
   const handleBlankModalCancel = useCallback(() => {
-    setBlankModalVisible(false);
+    setCurrentMode('NORMAL');
   }, []);
 
   const returnToRack = useCallback(
@@ -704,12 +705,12 @@ export const BoardPanel = React.memo((props: Props) => {
   );
 
   const showExchangeModal = useCallback(() => {
-    setExchangeModalVisible(true);
+    setCurrentMode('EXCHANGE_MODAL');
   }, []);
 
   const handleExchangeModalOk = useCallback(
     (exchangedTiles: string) => {
-      setExchangeModalVisible(false);
+      setCurrentMode('NORMAL');
       makeMove('exchange', exchangedTiles);
     },
     [makeMove]
@@ -748,18 +749,18 @@ export const BoardPanel = React.memo((props: Props) => {
     (e) => {
       if (drawingCanBeEnabled) {
         // To activate a drawing hotkey, type 0, then the hotkey.
-        if (!exchangeModalVisible && !blankModalVisible) {
+        if (currentMode === 'NORMAL' || currentMode === 'DRAWING_HOTKEY') {
           if (e.ctrlKey || e.altKey || e.metaKey) {
             // Do not prevent Ctrl+0/Cmd+0.
           } else {
-            if (drawingKeyMode) {
+            if (currentMode === 'DRAWING_HOTKEY') {
               e.preventDefault();
-              setDrawingKeyMode(false);
+              setCurrentMode('NORMAL');
               handleDrawingKeyDown(e);
               return;
             } else if (e.key === '0') {
               e.preventDefault();
-              setDrawingKeyMode(true);
+              setCurrentMode('DRAWING_HOTKEY');
               console.log(
                 'You pressed 0. Now press one of these keys:' +
                   '\n0 = Toggle drawing' +
@@ -786,14 +787,7 @@ export const BoardPanel = React.memo((props: Props) => {
       }
       keydown(e);
     },
-    [
-      blankModalVisible,
-      drawingCanBeEnabled,
-      drawingKeyMode,
-      exchangeModalVisible,
-      handleDrawingKeyDown,
-      keydown,
-    ]
+    [currentMode, drawingCanBeEnabled, handleDrawingKeyDown, keydown]
   );
   // Just put this in onKeyPress to block all typeable keys so that typos from
   // placing a tile not on rack also do not trigger type-to-find on firefox.
@@ -809,7 +803,7 @@ export const BoardPanel = React.memo((props: Props) => {
     [props.gameID, props.playerMeta]
   );
   const handleExchangeTilesCancel = useCallback(() => {
-    setExchangeModalVisible(false);
+    setCurrentMode('NORMAL');
   }, []);
 
   return (
@@ -899,14 +893,14 @@ export const BoardPanel = React.memo((props: Props) => {
       />
       <ExchangeTiles
         rack={props.currentRack}
-        modalVisible={exchangeModalVisible}
+        modalVisible={currentMode === 'EXCHANGE_MODAL'}
         onOk={handleExchangeModalOk}
         onCancel={handleExchangeTilesCancel}
       />
       <Modal
         className="blank-modal"
         title="Designate your blank"
-        visible={blankModalVisible}
+        visible={currentMode === 'BLANK_MODAL'}
         onCancel={handleBlankModalCancel}
         width={360}
         footer={null}
