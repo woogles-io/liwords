@@ -458,79 +458,80 @@ export const BoardPanel = React.memo((props: Props) => {
           key = key.toUpperCase();
         }
       }
-      if (isMyTurn() && !props.gameDone) {
-        if (key === '2') {
+      if (currentMode === 'NORMAL') {
+        if (isMyTurn() && !props.gameDone) {
+          if (key === '2') {
+            evt.preventDefault();
+            makeMove('pass');
+            return;
+          }
+          if (key === '3') {
+            evt.preventDefault();
+            makeMove('challenge');
+            return;
+          }
+          if (key === '4' && exchangeAllowed) {
+            evt.preventDefault();
+            setCurrentMode('EXCHANGE_MODAL');
+            return;
+          }
+          if (key === '$' && exchangeAllowed) {
+            evt.preventDefault();
+            makeMove('exchange', props.currentRack);
+            return;
+          }
+        }
+        if (key === 'ArrowLeft' || key === 'ArrowRight') {
           evt.preventDefault();
-          makeMove('pass');
+          setArrowProperties({
+            ...arrowProperties,
+            horizontal: !arrowProperties.horizontal,
+          });
           return;
         }
-        if (key === '3') {
+        if (key === 'ArrowDown') {
           evt.preventDefault();
-          makeMove('challenge');
+          recallTiles();
           return;
         }
-        if (key === '4' && exchangeAllowed) {
+        if (key === 'ArrowUp') {
           evt.preventDefault();
-          setCurrentMode('EXCHANGE_MODAL');
+          shuffleTiles();
           return;
         }
-        if (key === '$' && exchangeAllowed) {
+        if (key === EnterKey) {
           evt.preventDefault();
-          makeMove('exchange', props.currentRack);
+          makeMove('commit');
           return;
         }
       }
-      if (key === 'ArrowLeft' || key === 'ArrowRight') {
-        evt.preventDefault();
-        setArrowProperties({
-          ...arrowProperties,
-          horizontal: !arrowProperties.horizontal,
-        });
-        return;
-      }
-      if (key === 'ArrowDown') {
-        evt.preventDefault();
-        recallTiles();
-        return;
-      }
-      if (key === 'ArrowUp') {
-        evt.preventDefault();
-        shuffleTiles();
-        return;
-      }
-      if (key === EnterKey && currentMode === 'NORMAL') {
-        evt.preventDefault();
-        makeMove('commit');
-        return;
-      }
-      if (currentMode === 'EXCHANGE_MODAL') {
-        return;
-      }
-      if (!arrowProperties.show) {
-        return;
-      }
-      if (key === '?') {
-        return;
-      }
-      // This should return a new set of arrow properties, and also set
-      // some state further up (the tiles layout with a "just played" type
-      // marker)
-      const handlerReturn = handleKeyPress(
-        arrowProperties,
-        props.board,
-        key,
-        displayedRack,
-        placedTiles
-      );
+      if (currentMode === 'NORMAL' || currentMode === 'BLANK_MODAL') {
+        if (!arrowProperties.show) {
+          return;
+        }
+        if (key === '?') {
+          return;
+        }
+        // This should return a new set of arrow properties, and also set
+        // some state further up (the tiles layout with a "just played" type
+        // marker)
+        const handlerReturn = handleKeyPress(
+          arrowProperties,
+          props.board,
+          key,
+          displayedRack,
+          placedTiles
+        );
 
-      if (handlerReturn === null) {
-        return;
+        if (handlerReturn === null) {
+          return;
+        }
+        evt.preventDefault();
+        setDisplayedRack(handlerReturn.newDisplayedRack);
+        setArrowProperties(handlerReturn.newArrow);
+        setPlacedTiles(handlerReturn.newPlacedTiles);
+        setPlacedTilesTempScore(handlerReturn.playScore);
       }
-      evt.preventDefault();
-      setDisplayedRack(handlerReturn.newDisplayedRack);
-      setArrowProperties(handlerReturn.newArrow);
-      setPlacedTiles(handlerReturn.newPlacedTiles);
-      setPlacedTilesTempScore(handlerReturn.playScore);
     },
     [
       arrowProperties,
