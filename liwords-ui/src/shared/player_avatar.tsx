@@ -13,6 +13,12 @@ type AvatarProps = {
 export const PlayerAvatar = (props: AvatarProps) => {
   let avatarStyle = {};
 
+  if (props.player?.first) {
+    avatarStyle = {
+      transform: 'rotate(-10deg)',
+    };
+  }
+
   // XXX temporary code!
   if (props.player?.is_bot) {
     // eslint-disable-next-line no-param-reassign
