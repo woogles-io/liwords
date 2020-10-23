@@ -48,7 +48,7 @@ jobs:
   build_fe:
     working_directory: /opt/liwords
     docker:
-      - image: node:alpine
+      - image: node:14-alpine3.10
     steps:
       - checkout
       - run: apk add bash curl
