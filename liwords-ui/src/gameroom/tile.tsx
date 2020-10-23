@@ -110,23 +110,23 @@ const Tile = React.memo((props: TileProps) => {
     props.lastPlayed ? ' last-played' : ''
   }${isDesignatedBlank(props.rune) ? ' blank' : ''}`;
   return (
-    <div
-      className={computedClassName}
-      data-rune={props.rune}
-      style={{ cursor: props.grabbable ? 'grab' : 'default' }}
-      onClick={props.onClick}
-      onDragStart={handleStartDrag}
-      onDragEnd={handleEndDrag}
-      onDragOver={handleDropOver}
-      onDrop={handleDrop}
-      draggable={props.grabbable}
-    >
-      <TileLetter rune={props.rune} />
-      <PointValue value={props.value} />
-      <TentativeScore
-        score={props.tentativeScore}
-        horizontal={props.tentativeScoreIsHorizontal}
-      />
+    <div onDragOver={handleDropOver} onDrop={handleDrop}>
+      <div
+        className={computedClassName}
+        data-rune={props.rune}
+        style={{ cursor: props.grabbable ? 'grab' : 'default' }}
+        onClick={props.onClick}
+        onDragStart={handleStartDrag}
+        onDragEnd={handleEndDrag}
+        draggable={props.grabbable}
+      >
+        <TileLetter rune={props.rune} />
+        <PointValue value={props.value} />
+        <TentativeScore
+          score={props.tentativeScore}
+          horizontal={props.tentativeScoreIsHorizontal}
+        />
+      </div>
     </div>
   );
 });
