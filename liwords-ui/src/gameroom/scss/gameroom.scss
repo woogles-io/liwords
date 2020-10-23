@@ -340,6 +340,10 @@
 .tile {
   background-color: $color-secondary;
 }
+.tile.blank {
+  display: flex;
+  justify-content: center;
+}
 .tile.blank .rune {
   background-color: transparentize($color-secondary-lighter, 0.3);
   color: $color-secondary;
@@ -351,7 +355,7 @@
   height: 70%;
   border-radius: 50%;
   text-transform: capitalize;
-  transform: rotate(-10deg) translateX(25%) translateY(4%);
+  transform: rotate(-10deg);
   font-size: $tile-font-size-mobile * 0.95;
 }
 .tile.last-played {
