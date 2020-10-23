@@ -11,7 +11,7 @@ import { Presences } from './presences';
 const { TabPane } = Tabs;
 
 type Props = {
-  peopleOnlineContext: string; // the name for the people in this chat channel
+  peopleOnlineContext: (n: number) => string; // should return "1 person" or "2 people"
   chatEntities: Array<ChatEntityObj> | undefined;
   sendChat: (msg: string) => void;
   description: string;
@@ -112,9 +112,7 @@ export const Chat = React.memo((props: Props) => {
             {presenceCount ? (
               <>
                 <p className="presence-count">
-                  <span>
-                    {presenceCount} {props.peopleOnlineContext}
-                  </span>
+                  <span>{props.peopleOnlineContext(presenceCount)}</span>
                   {presenceVisible ? (
                     <span className="list-trigger" onClick={handleHideList}>
                       Hide list

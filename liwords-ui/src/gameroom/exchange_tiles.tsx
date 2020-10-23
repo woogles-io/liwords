@@ -7,6 +7,7 @@ import {
 } from '../store/store';
 import Pool from './pool';
 import { PoolFormatType } from '../constants/pool_formats';
+import { singularCount } from '../utils/plural';
 import { Button, Modal } from 'antd';
 // Render an exchange widget.
 
@@ -33,6 +34,15 @@ export const ExchangeTiles = React.memo((props: Props) => {
   const [delayInput, setDelayInput] = useState(true);
 
   const propsOnOk = props.onOk;
+
+  // Temporary message until UI shows it.
+  useEffect(() => {
+    if (props.modalVisible) {
+      console.log(
+        'When exchanging, press - to toggle the tiles selected. For example, type 4 E - Enter to exchange 6 and keep E.'
+      );
+    }
+  }, [props.modalVisible]);
 
   const keydown = useCallback(
     (e: KeyboardEvent) => {
@@ -150,9 +160,11 @@ export const ExchangeTiles = React.memo((props: Props) => {
       footer={
         <>
           {exchangedRackIndices.size > 0 ? (
-            <p className="label">{`${exchangedRackIndices.size} ${
-              exchangedRackIndices.size === 1 ? 'tile' : 'tiles'
-            } selected`}</p>
+            <p className="label">{`${singularCount(
+              exchangedRackIndices.size,
+              'tile',
+              'tiles'
+            )} selected`}</p>
           ) : null}
           <Button
             key="submit"
