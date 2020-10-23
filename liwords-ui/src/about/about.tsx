@@ -181,14 +181,14 @@ export const About = (props: Props) => {
               <div className="team-info">
                 <h3>Doug Brockmeier</h3>
                 <p>
-                  Doug has been playing Scrabble for over 30 years -- a Guinness
-                  World Record. This makes him feel old, but still dignified.
-                  Early on, his Grandma Elaine taught him the importance of
-                  maximizing Power Tiles through crushing two-way
+                  Doug has been playing Scrabble© for over 30 years -- a
+                  Guinness World Record. This makes him feel old, but still
+                  dignified. Early on, his Grandma Elaine taught him the
+                  importance of maximizing Power Tiles through crushing two-way
                   Double-Letter-Score plays for a whopping 20 points at a time!
                   As a teen, he discovered the club and tournament scene at a
                   local bookstore, where he was welcomed to compete responsibly
-                  for $1 scratchoff jackpots against a wide range of Scrabble
+                  for $1 scratchoff jackpots against a wide range of Scrabble©
                   personalities who proved that scoring 300 points per game
                   wouldn't cut it anymore, kid. Now an expert player, Doug is
                   dizzily euphoric to be part of the Woogles team and believes,
@@ -208,7 +208,7 @@ export const About = (props: Props) => {
                   Will is a competitive Scrabble© player and former national
                   champion with a passion for bringing the joy of the game to a
                   wider audience. Whether providing commentary for live events,
-                  streaming on his Twitch channel, or producing online Scrabble
+                  streaming on his Twitch channel, or producing online Scrabble©
                   events for others, his goal is the same - translate the depth
                   and beauty of the game in a way that resonates with even
                   casual fans. He firmly believes that Woogles is a critical
