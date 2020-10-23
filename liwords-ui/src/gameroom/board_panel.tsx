@@ -506,9 +506,6 @@ export const BoardPanel = React.memo((props: Props) => {
         }
       }
       if (currentMode === 'NORMAL' || currentMode === 'BLANK_MODAL') {
-        if (!arrowProperties.show) {
-          return;
-        }
         if (key === '?') {
           return;
         }
