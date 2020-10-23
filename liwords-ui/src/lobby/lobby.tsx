@@ -23,6 +23,7 @@ import {
   useLoginStateStoreContext,
   usePresenceStoreContext,
 } from '../store/store';
+import { singularCount } from '../utils/plural';
 import './lobby.scss';
 
 const sendSeek = (
@@ -123,6 +124,10 @@ export const Lobby = (props: Props) => {
     },
     [sendSocketMsg]
   );
+  const peopleOnlineContext = useCallback(
+    (n: number) => singularCount(n, 'Player', 'Players'),
+    []
+  );
 
   return (
     <>
@@ -133,7 +138,7 @@ export const Lobby = (props: Props) => {
             chatEntities={chat}
             sendChat={sendChat}
             description="Lobby chat"
-            peopleOnlineContext="Players"
+            peopleOnlineContext={peopleOnlineContext}
             presences={presences}
             DISCONNECT={props.DISCONNECT}
           />
