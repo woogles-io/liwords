@@ -248,10 +248,74 @@ export const BoardPanel = React.memo((props: Props) => {
   );
 
   const recallTiles = useCallback(() => {
+    if (arrowProperties.show) {
+      let { row, col, horizontal } = arrowProperties;
+      const matchesLocation = ({
+        row: tentativeRow,
+        col: tentativeCol,
+      }: {
+        row: number;
+        col: number;
+      }) => row === tentativeRow && col === tentativeCol;
+      if (
+        horizontal &&
+        row >= 0 &&
+        row < props.board.dim &&
+        col > 0 &&
+        col <= props.board.dim
+      ) {
+        // Inefficient way to get around TypeScript restriction.
+        const placedTilesArray = Array.from(placedTiles);
+        let best = col;
+        while (col > 0) {
+          --col;
+          if (props.board.letters[row * props.board.dim + col] !== EmptySpace) {
+            // continue
+          } else if (placedTilesArray.some(matchesLocation)) {
+            best = col;
+          } else {
+            break;
+          }
+        }
+        if (best !== arrowProperties.col) {
+          setArrowProperties({ ...arrowProperties, col: best });
+        }
+      } else if (
+        !horizontal &&
+        col >= 0 &&
+        col < props.board.dim &&
+        row > 0 &&
+        row <= props.board.dim
+      ) {
+        // Inefficient way to get around TypeScript restriction.
+        const placedTilesArray = Array.from(placedTiles);
+        let best = row;
+        while (row > 0) {
+          --row;
+          if (props.board.letters[row * props.board.dim + col] !== EmptySpace) {
+            // continue
+          } else if (placedTilesArray.some(matchesLocation)) {
+            best = row;
+          } else {
+            break;
+          }
+        }
+        if (best !== arrowProperties.row) {
+          setArrowProperties({ ...arrowProperties, row: best });
+        }
+      }
+    }
+
     setPlacedTilesTempScore(0);
     setPlacedTiles(new Set<EphemeralTile>());
     setDisplayedRack(props.currentRack);
-  }, [props.currentRack]);
+  }, [
+    arrowProperties,
+    placedTiles,
+    props.board.dim,
+    props.board.letters,
+    props.currentRack,
+  ]);
 
   const shuffleTiles = useCallback(() => {
     setPlacedTilesTempScore(0);
