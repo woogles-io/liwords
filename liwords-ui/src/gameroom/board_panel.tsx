@@ -504,8 +504,6 @@ export const BoardPanel = React.memo((props: Props) => {
           makeMove('commit');
           return;
         }
-      }
-      if (currentMode === 'NORMAL' || currentMode === 'BLANK_MODAL') {
         if (key === '?') {
           return;
         }
