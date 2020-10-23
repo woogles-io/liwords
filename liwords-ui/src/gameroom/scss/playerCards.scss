@@ -1,11 +1,37 @@
 @import '../../base.scss';
 
+.player-cards.vertical {
+  display: none;
+  @media (min-width: $screen-tablet-min) {
+    display: flex;
+    order: 4;
+  }
+}
+.player-cards.ant-card.horizontal {
+  width: 100%;
+  display: flex;
+  @media (min-width: $screen-tablet-min) {
+    display: none;
+  }
+  .ant-card-body {
+    display: flex;
+  }
+  .player-card{
+    width: 50%;
+    &:last-child .player {
+      order: 0;
+    }
+  }
+
+}
+
 .player-cards.ant-card {
   p {
     color: black;
   }
   .ant-card-body {
     padding: 0;
+    width: 100%;
   }
   button.ant-btn {
     color: white;

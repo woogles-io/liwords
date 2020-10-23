@@ -94,6 +94,7 @@ const PlayerCard = React.memo((props: CardProps) => {
 type Props = {
   gameMeta: GameMetadata;
   playerMeta: Array<PlayerMetadata>;
+  horizontal?: boolean;
 };
 
 export const PlayerCards = React.memo((props: Props) => {
@@ -137,7 +138,12 @@ export const PlayerCards = React.memo((props: Props) => {
   if (p1Time === Infinity) p1Time = initialTimeSeconds;
 
   return (
-    <Card className="player-cards" id="player-cards">
+    <Card
+      className={`player-cards${
+        props.horizontal ? ' horizontal' : ' vertical'
+      }`}
+      id={`player-cards-${props.horizontal ? 'horizontal' : 'vertical'}`}
+    >
       <PlayerCard
         player={p0}
         meta={props.playerMeta}

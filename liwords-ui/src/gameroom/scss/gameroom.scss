@@ -110,6 +110,7 @@
 }
 .board-spaces,
 .tiles {
+  touch-action: manipulation;
   width: $board-size-mobile;
   height: $board-size-mobile;
   min-width: 360px;
@@ -138,6 +139,7 @@
 
 .board-space {
   box-sizing: border-box;
+  touch-action: manipulation;
   position: relative;
   display: flex;
   justify-content: center;
@@ -297,22 +299,26 @@
   align-items: center;
   outline-style: none;
   margin-top: 12px;
-.ant-btn.ant-btn-primary.ant-btn-circle {
-  border-radius: 50%;
-  width: $tile-size-laptop;
-  height: $tile-size-laptop;
-  margin: 0 6px;
-  padding: 1px 0 0;
-  line-height: 0;
-  span {
-    font-family: $font-monospaced;
-    font-weight: 500;
-    font-size: 28px;
+  .rack {
+    width: $tile-size-desktop * 8;
   }
-  .anticon {
-    font-size: 20px;
+  .ant-btn.ant-btn-primary.ant-btn-circle {
+    border-radius: 50%;
+    width: $tile-size-laptop;
+    height: $tile-size-laptop;
+    margin: 0 6px;
+    padding: 1px 0 0;
+    line-height: 0;
+    span {
+      font-family: $font-monospaced;
+      font-weight: 500;
+      font-size: 28px;
+    }
+
+    .anticon {
+      font-size: 20px;
+    }
   }
-}
   .empty-rack {
     height: 100%;
     flex-grow: 2;
@@ -411,11 +417,17 @@
 }
 
 .rack .tile {
-  width: $tile-size-mobile;
-  height: $tile-size-mobile;
+  width: $tile-size-desktop;
+  height: $tile-size-desktop;
   margin: 2px;
+  .rune {
+    font-size: $tile-font-size-desktop;
+  }
+  .point-value {
+    font-size: $point-size-desktop;
+  }
   &.dragging {
-    opacity: 0.1;
+    opacity: 1;
   }
 }
 
@@ -592,11 +604,7 @@
     font-size: 16px;
   }
 }
-.player-cards {
-  @media (min-width: $screen-tablet-min) {
-  order: 4;
-  }
-}
+
 // Scorecard
 .score-card {
   order: 2;
@@ -726,8 +734,8 @@
     width: (48 + $tile-size-tablet * 8);
   }
   .rack .tile {
-    width: $tile-size-tablet;
-    height: $tile-size-tablet;
+    width: $tile-size-desktop;
+    height: $tile-size-desktop;
   }
   .tile,
   .empty-space {
@@ -816,6 +824,12 @@
   .rack .tile {
     height: $tile-size-laptop;
     width: $tile-size-laptop;
+    .rune {
+      font-size: $tile-font-size-laptop;
+    }
+    .point-value {
+      font-size: $point-size-laptop;
+    }
   }
   .game-info {
     font-size: 12px;
@@ -864,6 +878,12 @@
   .rack .tile {
     height: $tile-size-desktop;
     width: $tile-size-desktop;
+    .rune {
+      font-size: $tile-font-size-desktop;
+    }
+    .point-value {
+      font-size: $point-size-desktop;
+    }
   }
 
   .tile .rune {
