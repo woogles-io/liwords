@@ -34,6 +34,15 @@ export const ExchangeTiles = React.memo((props: Props) => {
 
   const propsOnOk = props.onOk;
 
+  // Temporary message until UI shows it.
+  useEffect(() => {
+    if (props.modalVisible) {
+      console.log(
+        'When exchanging, press - to toggle the tiles selected. For example, type 4 E - Enter to exchange 6 and keep E.'
+      );
+    }
+  }, [props.modalVisible]);
+
   const keydown = useCallback(
     (e: KeyboardEvent) => {
       if (delayInput || !props.modalVisible) {
