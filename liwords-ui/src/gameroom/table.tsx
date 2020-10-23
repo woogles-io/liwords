@@ -46,6 +46,7 @@ import { toAPIUrl } from '../api/api';
 import { StreakWidget } from './streak_widget';
 import { PlayState } from '../gen/macondo/api/proto/macondo/macondo_pb';
 import { endGameMessageFromGameInfo } from '../store/end_of_game';
+import { singularCount } from '../utils/plural';
 
 type Props = {
   sendSocketMsg: (msg: Uint8Array) => void;
@@ -457,6 +458,13 @@ export const Table = React.memo((props: Props) => {
     searchParams,
     searchedTurn,
   ]);
+  const peopleOnlineContext = useCallback(
+    (n: number) =>
+      isObserver
+        ? singularCount(n, 'Observer', 'Observers')
+        : singularCount(n, 'Player', 'Players'),
+    [isObserver]
+  );
 
   return (
     <div className="game-container">
@@ -475,7 +483,7 @@ export const Table = React.memo((props: Props) => {
             sendChat={sendChat}
             description={isObserver ? 'Observer chat' : 'Game chat'}
             presences={presences}
-            peopleOnlineContext={isObserver ? 'Observers' : 'Players'}
+            peopleOnlineContext={peopleOnlineContext}
           />
         </div>
         {/* we only put the Popconfirm here so that we can physically place it */}
