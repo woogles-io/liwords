@@ -146,6 +146,7 @@ func TestWrongTurn(t *testing.T) {
 	ustore.(*user.DBStore).Disconnect()
 	lstore.(*stats.ListStatStore).Disconnect()
 	gstore.(*game.Cache).Disconnect()
+	tstore.(*ts.Cache).Disconnect()
 }
 
 func Test5ptBadWord(t *testing.T) {
@@ -193,6 +194,7 @@ func Test5ptBadWord(t *testing.T) {
 	ustore.(*user.DBStore).Disconnect()
 	lstore.(*stats.ListStatStore).Disconnect()
 	gstore.(*game.Cache).Disconnect()
+	tstore.(*ts.Cache).Disconnect()
 }
 
 func TestDoubleChallengeBadWord(t *testing.T) {
@@ -257,6 +259,7 @@ func TestDoubleChallengeBadWord(t *testing.T) {
 	ustore.(*user.DBStore).Disconnect()
 	lstore.(*stats.ListStatStore).Disconnect()
 	gstore.(*game.Cache).Disconnect()
+	tstore.(*ts.Cache).Disconnect()
 }
 
 func TestDoubleChallengeGoodWord(t *testing.T) {
@@ -319,6 +322,7 @@ func TestDoubleChallengeGoodWord(t *testing.T) {
 	ustore.(*user.DBStore).Disconnect()
 	lstore.(*stats.ListStatStore).Disconnect()
 	gstore.(*game.Cache).Disconnect()
+	tstore.(*ts.Cache).Disconnect()
 }
 
 func TestQuickdata(t *testing.T) {
@@ -389,4 +393,5 @@ func TestQuickdata(t *testing.T) {
 	ustore.(*user.DBStore).Disconnect()
 	lstore.(*stats.ListStatStore).Disconnect()
 	gstore.(*game.Cache).Disconnect()
+	tstore.(*ts.Cache).Disconnect()
 }
