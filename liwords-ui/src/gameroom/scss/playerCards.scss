@@ -10,6 +10,9 @@
 .player-cards.ant-card.horizontal {
   width: 100%;
   display: flex;
+  position: relative;
+  left: 12px;
+  margin-bottom: 12px;
   @media (min-width: $screen-tablet-min) {
     display: none;
   }

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useHistory } from 'react-router-dom';
 import { useMountedState } from '../utils/mounted';
 import { Button, Popconfirm } from 'antd';
@@ -83,6 +83,10 @@ export type Props = {
 };
 
 const GameControls = React.memo((props: Props) => {
+  const [passVisible, setPassVisible] = useState(false);
+  const [challengeVisible, setChallengeVisible] = useState(false);
+  const [resignVisible, setResignVisible] = useState(false);
+
   if (props.isExamining) {
     return <ExamineGameControls />;
   }
@@ -113,42 +117,105 @@ const GameControls = React.memo((props: Props) => {
 
   return (
     <div className="game-controls">
-      <Popconfirm
-        title="Are you sure you wish to resign?"
-        onConfirm={props.onResign}
-        okText="Yes"
-        cancelText="No"
-      >
-        <Button danger>Ragequit</Button>
-      </Popconfirm>
+      <div className="secondary-controls">
+        <Popconfirm
+          title="Are you sure you wish to resign?"
+          onCancel={() => {
+            setResignVisible(false);
+          }}
+          onConfirm={() => {
+            props.onResign();
+            setResignVisible(false);
+          }}
+          onVisibleChange={(visible) => {
+            setResignVisible(visible);
+          }}
+          okText="Yes"
+          cancelText="No"
+          visible={resignVisible}
+        >
+          <Button
+            danger
+            onDoubleClick={() => {
+              props.onResign();
+              setResignVisible(false);
+            }}
+          >
+            Ragequit
+          </Button>
+        </Popconfirm>
 
-      <Button
-        onClick={props.onPass}
-        danger
-        disabled={!props.myTurn}
-        type={
-          props.finalPassOrChallenge && props.myTurn ? 'primary' : 'default'
-        }
-      >
-        Pass
-        <span className="key-command">2</span>
-      </Button>
-
-      <Button onClick={props.onChallenge} disabled={!props.myTurn}>
-        Challenge
-        <span className="key-command">3</span>
-      </Button>
-
-      <Button
-        onClick={props.showExchangeModal}
-        disabled={!(props.myTurn && props.exchangeAllowed)}
-      >
-        Exchange
-        <span className="key-command">4</span>
-      </Button>
-
+        <Popconfirm
+          title="Are you sure you wish to pass?"
+          onCancel={() => {
+            setPassVisible(false);
+          }}
+          onConfirm={() => {
+            props.onPass();
+            setPassVisible(false);
+          }}
+          onVisibleChange={(visible) => {
+            setPassVisible(visible);
+          }}
+          okText="Yes"
+          cancelText="No"
+          visible={passVisible}
+        >
+          <Button
+            onDoubleClick={() => {
+              props.onPass();
+              setPassVisible(false);
+            }}
+            danger
+            disabled={!props.myTurn}
+            type={
+              props.finalPassOrChallenge && props.myTurn ? 'primary' : 'default'
+            }
+          >
+            Pass
+            <span className="key-command">2</span>
+          </Button>
+        </Popconfirm>
+      </div>
+      <div className="secondary-controls">
+        <Popconfirm
+          title="Are you sure you wish to challenge?"
+          onCancel={() => {
+            setChallengeVisible(false);
+          }}
+          onConfirm={() => {
+            props.onChallenge();
+            setChallengeVisible(false);
+          }}
+          onVisibleChange={(visible) => {
+            setChallengeVisible(visible);
+          }}
+          okText="Yes"
+          cancelText="No"
+          visible={challengeVisible}
+        >
+          <Button
+            onDoubleClick={() => {
+              props.onChallenge();
+              setChallengeVisible(false);
+            }}
+            disabled={!props.myTurn}
+          >
+            Challenge
+            <span className="key-command">3</span>
+          </Button>
+        </Popconfirm>
+        <Button
+          onClick={props.showExchangeModal}
+          disabled={!(props.myTurn && props.exchangeAllowed)}
+        >
+          Exchange
+          <span className="key-command">4</span>
+        </Button>
+      </div>
       <Button
         type="primary"
+        className="play"
         onClick={props.onCommit}
         disabled={!props.myTurn || props.finalPassOrChallenge}
       >

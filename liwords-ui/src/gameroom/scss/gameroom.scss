@@ -75,6 +75,8 @@
   flex-direction: column;
   align-items: center;
   height: 100%;
+  position: relative;
+  left: 12px;
 }
 
 .board {
@@ -250,6 +252,7 @@
   display: flex;
   justify-content: space-around;
   width: $board-size-mobile;
+  font-size: 18px;
   p {
     color: black;
   }
@@ -257,7 +260,7 @@
 
 .coord-labels.vert {
   position: absolute;
-  left: -24px;
+  left: -30px;
   bottom: 0;
   flex-direction: column;
   width: auto;
@@ -298,7 +301,9 @@
   justify-content: center;
   align-items: center;
   outline-style: none;
-  margin-top: 12px;
+  margin: 12px 0;
+  position: relative;
+  left: -12px;
   .rack {
     width: $tile-size-desktop * 8;
   }
@@ -680,17 +685,41 @@
   }
 }
 .game-controls {
-  margin: 0 auto;
+  display: flex;
+  position: relative;
+  left: -12px;
+  width: 100%;
+  margin: 0 auto 12px;
+  justify-content: space-evenly;
   white-space: nowrap;
-  button {
-    margin: 0 6px;
-    padding: 0;
+  .secondary-controls {
+    display: inline-flex;
+    justify-content: space-between;
+    flex-direction: column;
+    width: 100%;
+    &:last-child {
+      order: 2;
+    }
+    button {
+      height: calc(50% - 9px);
+    }
+  }
+  button.ant-btn {
+    margin: 0 12px;
+    font-size: 16px;
     &.ant-btn-circle {
       border-radius: 50%;
       width: $tile-size-laptop;
       height: $tile-size-laptop;
       padding: 1px 0 0;
       line-height: 0;
+    }
+    &.play {
+      order: 1;
+      min-width: $board-size-mobile / 4;
+      width: $board-size-mobile / 4;
+      height: $board-size-mobile / 4;
+      margin: 0 6px;
     }
   }
   & > :first-child {
@@ -723,12 +752,22 @@
   }
 }
 @media (min-width: $screen-tablet-min) {
+  .board-container {
+    left: 0;
+  }
   .board-spaces-container, .board-spaces, .tiles {
     width: $board-size-tablet;
     height: $board-size-tablet;
   }
   .coord-labels {
     width: $board-size-tablet;
+    font-size: 15px;
+  }
+  .coord-labels.vert {
+    left: -24px;
+  }
+  .rack-container {
+    left: 0;
   }
   .rack {
     width: (48 + $tile-size-tablet * 8);
@@ -754,6 +793,30 @@
     font-size: $point-size-tablet;
     padding: 5px 2px;
     bottom: 1px;
+  }
+  .game-controls {
+    justify-content: center;
+    left: 0;
+    .secondary-controls {
+      flex-direction: row;
+      width: auto;
+      button {
+        height: 32px;
+      }
+      &:last-child {
+        order: 1;
+      }
+    }
+    button.ant-btn {
+      font-size: 12px;
+      margin: 0 6px;
+      &.play {
+        order: 2;
+        min-width: auto;
+        width: auto;
+        height: 32px;
+      }
+    }
   }
 }
 
