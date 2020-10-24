@@ -60,6 +60,12 @@ const defaultTimerContext = {
 const defaultFunction = () => {};
 
 // Functions and data to deal with the global store.
+type DragStoreData = {
+  dragTileIndex: number;
+  dragRackIndex: number;
+  setDragTileIndex: React.Dispatch<React.SetStateAction<number>>;
+  setDragRackIndex: React.Dispatch<React.SetStateAction<number>>;
+};
 
 type LobbyStoreData = {
   lobbyContext: LobbyState;
@@ -181,6 +187,13 @@ const LoginStateContext = createContext<LoginStateStoreData>({
 const LagContext = createContext<LagStoreData>({
   currentLagMs: NaN,
   setCurrentLagMs: defaultFunction,
+});
+
+const DragContext = createContext<DragStoreData>({
+  dragTileIndex: NaN,
+  dragRackIndex: NaN,
+  setDragTileIndex: defaultFunction,
+  setDragRackIndex: defaultFunction,
 });
 
 const ExcludedPlayersContext = createContext<ExcludedPlayersStoreData>({
@@ -538,7 +551,8 @@ const RealStore = ({ children, ...props }: Props) => {
     connID: '',
   });
   const [currentLagMs, setCurrentLagMs] = useState(NaN);
-
+  const [dragRackIndex, setDragRackIndex] = useState(NaN);
+  const [dragTileIndex, setDragTileIndex] = useState(NaN);
   const [gameContext, dispatchGameContext] = useReducer(GameReducer, null, () =>
     gameStateInitializer(clockController, onClockTick, onClockTimeout)
   );
@@ -656,6 +670,17 @@ const RealStore = ({ children, ...props }: Props) => {
       value={{
         currentLagMs,
         setCurrentLagMs,
+      }}
+      children={ret}
+    />
+  );
+  ret = (
+    <DragContext.Provider
+      value={{
+        dragRackIndex,
+        dragTileIndex,
+        setDragTileIndex,
+        setDragRackIndex,
       }}
       children={ret}
     />
@@ -788,6 +813,8 @@ export const Store = ({ children }: { children: React.ReactNode }) => {
 export const useLobbyStoreContext = () => useContext(LobbyContext);
 export const useLoginStateStoreContext = () => useContext(LoginStateContext);
 export const useLagStoreContext = () => useContext(LagContext);
+export const useDragStoreContext = () => useContext(DragContext);
+
 export const useExcludedPlayersStoreContext = () =>
   useContext(ExcludedPlayersContext);
 export const useRedirGameStoreContext = () => useContext(RedirGameContext);
