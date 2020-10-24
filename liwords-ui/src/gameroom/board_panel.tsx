@@ -318,10 +318,8 @@ export const BoardPanel = React.memo((props: Props) => {
   ]);
 
   const shuffleTiles = useCallback(() => {
-    setPlacedTilesTempScore(0);
-    setPlacedTiles(new Set<EphemeralTile>());
-    setDisplayedRack(shuffleString(props.currentRack));
-  }, [props.currentRack]);
+    setDisplayedRack((displayedRack) => shuffleString(displayedRack));
+  }, []);
 
   const lastLettersRef = useRef<string>();
   const readOnlyEffectDependenciesRef = useRef<{
