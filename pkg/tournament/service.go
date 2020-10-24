@@ -3,6 +3,8 @@ package tournament
 import (
 	"context"
 
+	"github.com/domino14/liwords/pkg/entity"
+
 	pb "github.com/domino14/liwords/rpc/api/proto/tournament_service"
 	"github.com/golang/protobuf/ptypes"
 )
@@ -41,28 +43,28 @@ func (ts *TournamentService) SetTournamentControls(ctx context.Context, req *pb.
 	return &pb.TournamentResponse{}, nil
 }
 func (ts *TournamentService) AddDirectors(ctx context.Context, req *pb.TournamentPersons) (*pb.TournamentResponse, error) {
-	err := ts.tournamentStore.AddDirectors(ctx, req.TournamentId, convertPersonsToStringArray(req))
+	err := ts.tournamentStore.AddDirectors(ctx, req.TournamentId, convertPersonsToStringMap(req))
 	if err != nil {
 		return nil, err
 	}
 	return &pb.TournamentResponse{}, nil
 }
 func (ts *TournamentService) RemoveDirectors(ctx context.Context, req *pb.TournamentPersons) (*pb.TournamentResponse, error) {
-	err := ts.tournamentStore.RemoveDirectors(ctx, req.TournamentId, convertPersonsToStringArray(req))
+	err := ts.tournamentStore.RemoveDirectors(ctx, req.TournamentId, convertPersonsToStringMap(req))
 	if err != nil {
 		return nil, err
 	}
 	return &pb.TournamentResponse{}, nil
 }
 func (ts *TournamentService) AddPlayers(ctx context.Context, req *pb.TournamentPersons) (*pb.TournamentResponse, error) {
-	err := ts.tournamentStore.AddPlayers(ctx, req.TournamentId, convertPersonsToStringArray(req))
+	err := ts.tournamentStore.AddPlayers(ctx, req.TournamentId, convertPersonsToStringMap(req))
 	if err != nil {
 		return nil, err
 	}
 	return &pb.TournamentResponse{}, nil
 }
 func (ts *TournamentService) RemovePlayers(ctx context.Context, req *pb.TournamentPersons) (*pb.TournamentResponse, error) {
-	err := ts.tournamentStore.RemovePlayers(ctx, req.TournamentId, convertPersonsToStringArray(req))
+	err := ts.tournamentStore.RemovePlayers(ctx, req.TournamentId, convertPersonsToStringMap(req))
 	if err != nil {
 		return nil, err
 	}
@@ -105,10 +107,10 @@ func (ts *TournamentService) StartRound(ctx context.Context, req *pb.TournamentS
 	return &pb.TournamentResponse{}, nil
 }
 
-func convertPersonsToStringArray(req *pb.TournamentPersons) []string {
-	persons := []string{}
+func convertPersonsToStringMap(req *pb.TournamentPersons) *entity.TournamentPersons {
+	personsMap := map[string]int{}
 	for _, person := range req.Persons {
-		persons = append(persons, person.PersonId)
+		personsMap[person.PersonId] = int(person.PersonInt)
 	}
-	return persons
+	return &entity.TournamentPersons{Persons: personsMap}
 }

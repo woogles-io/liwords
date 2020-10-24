@@ -115,72 +115,61 @@ func (c *Cache) SetTournamentControls(ctx context.Context,
 	return c.backing.Set(ctx, t)
 }
 
-func (c *Cache) AddDirectors(ctx context.Context, id string, directors []string) error {
+func (c *Cache) AddDirectors(ctx context.Context, id string, directors *entity.TournamentPersons) error {
 
 	t, err := c.Get(ctx, id)
 	if err != nil {
 		return err
 	}
 
-	// This is really slow but it shouldn't matter
-	// because this operation should be relatively
-	// extremely rare.
-	indexesToRemove := indexesToRemove(directors, t.Directors)
-
-	for i := len(indexesToRemove) - 1; i >= 0; i-- {
-		remove(directors, indexesToRemove[i])
-	}
-
-	t.Directors = append(t.Directors, directors...)
-
-	return c.backing.Set(ctx, t)
-}
-
-func (c *Cache) RemoveDirectors(ctx context.Context, id string, directors []string) error {
-
-	t, err := c.Get(ctx, id)
+	err = entity.AddDirectors(t, directors)
 	if err != nil {
 		return err
-	}
-
-	indexesToRemove := indexesToRemove(t.Directors, directors)
-
-	for i := len(indexesToRemove) - 1; i >= 0; i-- {
-		remove(t.Directors, indexesToRemove[i])
 	}
 
 	return c.backing.Set(ctx, t)
 }
 
-func (c *Cache) AddPlayers(ctx context.Context, id string, players []string) error {
+func (c *Cache) RemoveDirectors(ctx context.Context, id string, directors *entity.TournamentPersons) error {
 
 	t, err := c.Get(ctx, id)
 	if err != nil {
 		return err
 	}
 
-	indexesToRemove := indexesToRemove(players, t.Players)
-
-	for i := len(indexesToRemove) - 1; i >= 0; i-- {
-		remove(players, indexesToRemove[i])
+	err = entity.RemoveDirectors(t, directors)
+	if err != nil {
+		return err
 	}
-
-	t.Players = append(t.Players, players...)
 
 	return c.backing.Set(ctx, t)
 }
 
-func (c *Cache) RemovePlayers(ctx context.Context, id string, players []string) error {
+func (c *Cache) AddPlayers(ctx context.Context, id string, players *entity.TournamentPersons) error {
 
 	t, err := c.Get(ctx, id)
 	if err != nil {
 		return err
 	}
 
-	indexesToRemove := indexesToRemove(t.Players, players)
+	err = entity.AddPlayers(t, players)
+	if err != nil {
+		return err
+	}
 
-	for i := len(indexesToRemove) - 1; i >= 0; i-- {
-		remove(t.Players, indexesToRemove[i])
+	return c.backing.Set(ctx, t)
+}
+
+func (c *Cache) RemovePlayers(ctx context.Context, id string, players *entity.TournamentPersons) error {
+
+	t, err := c.Get(ctx, id)
+	if err != nil {
+		return err
+	}
+
+	err = entity.RemovePlayers(t, players)
+	if err != nil {
+		return err
 	}
 
 	return c.backing.Set(ctx, t)

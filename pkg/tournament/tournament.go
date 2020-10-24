@@ -3,6 +3,7 @@ package tournament
 import (
 	"context"
 	"errors"
+	"sort"
 	"time"
 
 	"github.com/domino14/liwords/pkg/config"
@@ -18,10 +19,10 @@ type TournamentStore interface {
 	Create(context.Context, *entity.Tournament) error
 	SetTournamentControls(context.Context, string, string, string, string, string, int32,
 		macondopb.ChallengeRule, pb.RatingMode, int32, int32, time.Time) error
-	AddDirectors(context.Context, string, []string) error
-	RemoveDirectors(context.Context, string, []string) error
-	AddPlayers(context.Context, string, []string) error
-	RemovePlayers(context.Context, string, []string) error
+	AddDirectors(context.Context, string, *entity.TournamentPersons) error
+	RemoveDirectors(context.Context, string, *entity.TournamentPersons) error
+	AddPlayers(context.Context, string, *entity.TournamentPersons) error
+	RemovePlayers(context.Context, string, *entity.TournamentPersons) error
 	SetPairing(context.Context, string, string, string, int) error
 	SetResult(context.Context, string, string, string, int, int,
 		pb.TournamentGameResult, pb.TournamentGameResult, pb.GameEndReason, int, int, bool) error
@@ -36,8 +37,8 @@ func InstantiateNewTournament(ctx context.Context,
 	tournamentStore TournamentStore,
 	cfg *config.Config,
 	tournamentName string,
-	players []string,
-	directors []string,
+	players *entity.TournamentPersons,
+	directors *entity.TournamentPersons,
 	req *pb.GameRequest,
 	pairingMethods []entity.PairingMethod,
 	numberOfRounds int,
@@ -45,8 +46,21 @@ func InstantiateNewTournament(ctx context.Context,
 	ttype entity.TournamentType) (*entity.Tournament, error) {
 
 	var entTournament *entity.Tournament
+
+	// Sort players by descending int (which is probably rating)
+	var values []int
+	for _, v := range players.Persons {
+		values = append(values, v)
+	}
+	sort.Ints(values)
+	reversedPlayersMap := reverseMap(players.Persons)
+	rankedPlayers := []string{}
+	for i := len(values) - 1; i >= 0; i-- {
+		rankedPlayers = append(rankedPlayers, reversedPlayersMap[values[i]])
+	}
+
 	if ttype == entity.ClassicTournamentType {
-		tm, err := entity.NewTournamentClassic(players, numberOfRounds, pairingMethods, gamesPerRound)
+		tm, err := entity.NewTournamentClassic(rankedPlayers, numberOfRounds, pairingMethods, gamesPerRound)
 		if err != nil {
 			return nil, err
 		}
@@ -116,4 +130,12 @@ func TournamentGameEndedEvent(ctx context.Context, tournamentStore TournamentSto
 func TournamentSetPairingsEvent(ctx context.Context, tournamentStore TournamentStore) error {
 	// Do something probably
 	return nil
+}
+
+func reverseMap(m map[string]int) map[int]string {
+	n := make(map[int]string)
+	for k, v := range m {
+		n[v] = k
+	}
+	return n
 }

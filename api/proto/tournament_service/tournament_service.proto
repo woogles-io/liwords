@@ -27,6 +27,7 @@ message TournamentControlsRequest {
 
 message TournamentPerson {
 	string person_id = 1;
+  int32 person_int = 2;
 }
 
 message TournamentPersons {
