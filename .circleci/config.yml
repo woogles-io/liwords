@@ -48,7 +48,7 @@ jobs:
   build_fe:
     working_directory: /opt/liwords
     docker:
-      - image: node:alpine
+      - image: node:14-alpine3.10
     steps:
       - checkout
       - run: apk add bash curl
@@ -68,7 +68,7 @@ jobs:
       - run: yum install -y tar gzip
       - attach_workspace:
           at: /tmp/liwords-ui
-      - run: sed -i 's:unknown:${CIRCLE_SHA1}:' /tmp/liwords-ui/build/config.js
+      - run: sed -i "s:unknown:${CIRCLE_WORKFLOW_ID}:" /tmp/liwords-ui/build/config.js
       # cache everything except index.html and config.js
       - run: cd /tmp/liwords-ui/build && aws s3 sync --cache-control 'max-age=604800' --exclude index.html --exclude config.js . s3://woogles.io
       - run: cd /tmp/liwords-ui/build && aws s3 sync --cache-control 'no-cache' . s3://woogles.io

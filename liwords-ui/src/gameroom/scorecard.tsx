@@ -21,6 +21,7 @@ type Props = {
 };
 
 type turnProps = {
+  playerMeta: Array<PlayerMetadata>;
   playing: boolean;
   username: string;
   turn: Turn;
@@ -113,9 +114,10 @@ const ScorecardTurn = (props: turnProps) => {
     ) {
       timeRemaining = millisToTimeStr(evts[0].getMillisRemaining(), false);
     }
-
     const turn = {
-      player: {
+      player: props.playerMeta.find(
+        (playerMeta) => playerMeta.nickname === evts[0].getNickname()
+      ) ?? {
         nickname: evts[0].getNickname(),
         // XXX: FIX THIS. avatar url should be set.
         full_name: '',
@@ -178,7 +180,7 @@ const ScorecardTurn = (props: turnProps) => {
     }
     return turn;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [props.turn]);
+  }, [props.playerMeta, props.turn]);
 
   let scoreChange;
   if (memoizedTurn.lostScore > 0) {
@@ -316,6 +318,7 @@ export const ScoreCard = React.memo((props: Props) => {
                 turn={t}
                 board={props.board}
                 key={`t_${idx + 0}`}
+                playerMeta={props.playerMeta}
                 playing={props.playing}
                 username={props.username}
               />
