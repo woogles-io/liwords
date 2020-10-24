@@ -293,6 +293,21 @@ message TimedOut {
 
 message DeclineMatchRequest { string request_id = 1; }
 
+// Tournaments
+
+enum TournamentGameResult {
+  // NO_RESULT: the game is not over
+  NO_RESULT = 0;
+  WIN = 1;
+  LOSS = 2;
+  DRAW = 3;
+  BYE = 4;
+  FORFEIT_WIN = 5;
+  FORFEIT_LOSS = 6;
+  // ELIMINATED: player is eliminated in a bracket tournament
+  ELIMINATED = 7;
+}
+
 // Communication
 
 // When we go to a new path in our SPA, we send a JoinPath. When we leave the

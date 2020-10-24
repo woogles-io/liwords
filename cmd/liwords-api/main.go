@@ -21,6 +21,7 @@ import (
 	"github.com/domino14/liwords/pkg/stores/session"
 	"github.com/domino14/liwords/pkg/stores/soughtgame"
 	"github.com/domino14/liwords/pkg/stores/stats"
+	"github.com/domino14/liwords/pkg/tournament"
 
 	"github.com/domino14/macondo/alphabet"
 
@@ -34,11 +35,12 @@ import (
 	"github.com/rs/zerolog/log"
 
 	"github.com/domino14/liwords/pkg/config"
-	"github.com/domino14/liwords/pkg/stores/tournament"
+	tournamentstore "github.com/domino14/liwords/pkg/stores/tournament"
 	"github.com/domino14/liwords/pkg/stores/user"
 	pkguser "github.com/domino14/liwords/pkg/user"
 	configservice "github.com/domino14/liwords/rpc/api/proto/config_service"
 	gameservice "github.com/domino14/liwords/rpc/api/proto/game_service"
+	tournamentservice "github.com/domino14/liwords/rpc/api/proto/tournament_service"
 	userservice "github.com/domino14/liwords/rpc/api/proto/user_service"
 )
 
@@ -95,11 +97,11 @@ func main() {
 	}
 	userStore := user.NewCache(tmpUserStore)
 
-	tmpTournamentStore, err := tournament.NewDBStore(cfg.DBConnString)
+	tmpTournamentStore, err := tournamentstore.NewDBStore(cfg)
 	if err != nil {
 		panic(err)
 	}
-	tournamentStore := tournament.NewCache(tmpTournamentStore)
+	tournamentStore := tournamentstore.NewCache(tmpTournamentStore)
 
 	sessionStore, err := session.NewDBStore(cfg.DBConnString)
 
@@ -134,6 +136,7 @@ func main() {
 	autocompleteService := pkguser.NewAutocompleteService(userStore)
 	socializeService := pkguser.NewSocializeService(userStore)
 	configService := config.NewConfigService(configStore, userStore)
+	tournamentService := tournament.NewTournamentService(tournamentStore)
 
 	router.Handle("/ping", http.HandlerFunc(pingEndpoint))
 
@@ -158,6 +161,9 @@ func main() {
 	router.Handle(configservice.ConfigServicePathPrefix,
 		middlewares.Then(configservice.NewConfigServiceServer(configService, nil)))
 
+	router.Handle(tournamentservice.TournamentServicePathPrefix,
+		middlewares.Then(tournamentservice.NewTournamentServiceServer(tournamentService, nil)))
+
 	// Create any caches
 	alphabet.CreateLetterDistributionCache()
 	gaddag.CreateGaddagCache()
@@ -174,7 +180,7 @@ func main() {
 	presenceStore := user.NewRedisPresenceStore(redisPool)
 	// Handle bus.
 	pubsubBus, err := bus.NewBus(cfg, userStore, gameStore, soughtGameStore,
-		presenceStore, listStatStore, configStore, redisPool)
+		presenceStore, listStatStore, tournamentStore, configStore, redisPool)
 	if err != nil {
 		panic(err)
 	}

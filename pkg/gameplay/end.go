@@ -7,6 +7,7 @@ import (
 
 	"github.com/domino14/liwords/pkg/entity"
 	"github.com/domino14/liwords/pkg/stats"
+	"github.com/domino14/liwords/pkg/tournament"
 	"github.com/domino14/liwords/pkg/user"
 	pb "github.com/domino14/liwords/rpc/api/proto/realtime"
 	macondoconfig "github.com/domino14/macondo/config"
@@ -15,7 +16,7 @@ import (
 )
 
 func performEndgameDuties(ctx context.Context, g *entity.Game, gameStore GameStore,
-	userStore user.Store, listStatStore stats.ListStatStore) error {
+	userStore user.Store, listStatStore stats.ListStatStore, tournamentStore tournament.TournamentStore) error {
 
 	log.Debug().Interface("game-end-reason", g.GameEndReason).Msg("checking-game-over")
 	// The game is over already. Set an end game reason if there hasn't been
@@ -186,6 +187,10 @@ func performEndgameDuties(ctx context.Context, g *entity.Game, gameStore GameSto
 	wrapped.AddAudience(entity.AudLobby, "gameEnded")
 	g.SendChange(wrapped)
 
+	if g.Tournamentdata != nil {
+		tournament.HandleTournamentGameEnded(ctx, tournamentStore, g)
+	}
+
 	// Save and unload the game from the cache.
 
 	err = gameStore.Set(ctx, g)
@@ -277,7 +282,7 @@ func computeGameStats(ctx context.Context, history *macondopb.GameHistory, req *
 }
 
 func setTimedOut(ctx context.Context, entGame *entity.Game, pidx int, gameStore GameStore,
-	userStore user.Store, listStatStore stats.ListStatStore) error {
+	userStore user.Store, listStatStore stats.ListStatStore, tournamentStore tournament.TournamentStore) error {
 	log.Debug().Interface("playing", entGame.Game.Playing()).Msg("timed out!")
 	entGame.Game.SetPlaying(macondopb.PlayState_GAME_OVER)
 
@@ -290,7 +295,7 @@ func setTimedOut(ctx context.Context, entGame *entity.Game, pidx int, gameStore 
 	entGame.SetGameEndReason(pb.GameEndReason_TIME)
 	entGame.SetWinnerIdx(1 - pidx)
 	entGame.SetLoserIdx(pidx)
-	return performEndgameDuties(ctx, entGame, gameStore, userStore, listStatStore)
+	return performEndgameDuties(ctx, entGame, gameStore, userStore, listStatStore, tournamentStore)
 }
 
 // AbortGame aborts a game. This should only be done for games that never started.

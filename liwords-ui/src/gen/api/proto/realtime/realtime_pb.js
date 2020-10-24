@@ -47,6 +47,7 @@ goog.exportSymbol('proto.liwords.ServerGameplayEvent', null, global);
 goog.exportSymbol('proto.liwords.ServerMessage', null, global);
 goog.exportSymbol('proto.liwords.SoughtGameProcessEvent', null, global);
 goog.exportSymbol('proto.liwords.TimedOut', null, global);
+goog.exportSymbol('proto.liwords.TournamentGameResult', null, global);
 goog.exportSymbol('proto.liwords.UnjoinRealm', null, global);
 goog.exportSymbol('proto.liwords.UserPresence', null, global);
 goog.exportSymbol('proto.liwords.UserPresences', null, global);
@@ -6645,6 +6646,20 @@ proto.liwords.GameEndReason = {
   ABANDONED: 5,
   TRIPLE_CHALLENGE: 6,
   CANCELLED: 7
+};
+
+/**
+ * @enum {number}
+ */
+proto.liwords.TournamentGameResult = {
+  NO_RESULT: 0,
+  WIN: 1,
+  LOSS: 2,
+  DRAW: 3,
+  BYE: 4,
+  FORFEIT_WIN: 5,
+  FORFEIT_LOSS: 6,
+  ELIMINATED: 7
 };
 
 goog.object.extend(exports, proto.liwords);

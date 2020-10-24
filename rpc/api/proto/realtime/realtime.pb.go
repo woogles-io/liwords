@@ -303,6 +303,72 @@ func (GameEndReason) EnumDescriptor() ([]byte, []int) {
 	return file_api_proto_realtime_realtime_proto_rawDescGZIP(), []int{3}
 }
 
+type TournamentGameResult int32
+
+const (
+	// NO_RESULT: the game is not over
+	TournamentGameResult_NO_RESULT    TournamentGameResult = 0
+	TournamentGameResult_WIN          TournamentGameResult = 1
+	TournamentGameResult_LOSS         TournamentGameResult = 2
+	TournamentGameResult_DRAW         TournamentGameResult = 3
+	TournamentGameResult_BYE          TournamentGameResult = 4
+	TournamentGameResult_FORFEIT_WIN  TournamentGameResult = 5
+	TournamentGameResult_FORFEIT_LOSS TournamentGameResult = 6
+	// ELIMINATED: player is eliminated in a bracket tournament
+	TournamentGameResult_ELIMINATED TournamentGameResult = 7
+)
+
+// Enum value maps for TournamentGameResult.
+var (
+	TournamentGameResult_name = map[int32]string{
+		0: "NO_RESULT",
+		1: "WIN",
+		2: "LOSS",
+		3: "DRAW",
+		4: "BYE",
+		5: "FORFEIT_WIN",
+		6: "FORFEIT_LOSS",
+		7: "ELIMINATED",
+	}
+	TournamentGameResult_value = map[string]int32{
+		"NO_RESULT":    0,
+		"WIN":          1,
+		"LOSS":         2,
+		"DRAW":         3,
+		"BYE":          4,
+		"FORFEIT_WIN":  5,
+		"FORFEIT_LOSS": 6,
+		"ELIMINATED":   7,
+	}
+)
+
+func (x TournamentGameResult) Enum() *TournamentGameResult {
+	p := new(TournamentGameResult)
+	*p = x
+	return p
+}
+
+func (x TournamentGameResult) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (TournamentGameResult) Descriptor() protoreflect.EnumDescriptor {
+	return file_api_proto_realtime_realtime_proto_enumTypes[4].Descriptor()
+}
+
+func (TournamentGameResult) Type() protoreflect.EnumType {
+	return &file_api_proto_realtime_realtime_proto_enumTypes[4]
+}
+
+func (x TournamentGameResult) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use TournamentGameResult.Descriptor instead.
+func (TournamentGameResult) EnumDescriptor() ([]byte, []int) {
+	return file_api_proto_realtime_realtime_proto_rawDescGZIP(), []int{4}
+}
+
 type ClientGameplayEvent_EventType int32
 
 const (
@@ -342,11 +408,11 @@ func (x ClientGameplayEvent_EventType) String() string {
 }
 
 func (ClientGameplayEvent_EventType) Descriptor() protoreflect.EnumDescriptor {
-	return file_api_proto_realtime_realtime_proto_enumTypes[4].Descriptor()
+	return file_api_proto_realtime_realtime_proto_enumTypes[5].Descriptor()
 }
 
 func (ClientGameplayEvent_EventType) Type() protoreflect.EnumType {
-	return &file_api_proto_realtime_realtime_proto_enumTypes[4]
+	return &file_api_proto_realtime_realtime_proto_enumTypes[5]
 }
 
 func (x ClientGameplayEvent_EventType) Number() protoreflect.EnumNumber {
@@ -2563,6 +2629,14 @@ var file_api_proto_realtime_realtime_proto_rawDesc = []byte{
 	0x0d, 0x0a, 0x09, 0x41, 0x42, 0x41, 0x4e, 0x44, 0x4f, 0x4e, 0x45, 0x44, 0x10, 0x05, 0x12, 0x14,
 	0x0a, 0x10, 0x54, 0x52, 0x49, 0x50, 0x4c, 0x45, 0x5f, 0x43, 0x48, 0x41, 0x4c, 0x4c, 0x45, 0x4e,
 	0x47, 0x45, 0x10, 0x06, 0x12, 0x0d, 0x0a, 0x09, 0x43, 0x41, 0x4e, 0x43, 0x45, 0x4c, 0x4c, 0x45,
+	0x44, 0x10, 0x07, 0x2a, 0x7e, 0x0a, 0x14, 0x54, 0x6f, 0x75, 0x72, 0x6e, 0x61, 0x6d, 0x65, 0x6e,
+	0x74, 0x47, 0x61, 0x6d, 0x65, 0x52, 0x65, 0x73, 0x75, 0x6c, 0x74, 0x12, 0x0d, 0x0a, 0x09, 0x4e,
+	0x4f, 0x5f, 0x52, 0x45, 0x53, 0x55, 0x4c, 0x54, 0x10, 0x00, 0x12, 0x07, 0x0a, 0x03, 0x57, 0x49,
+	0x4e, 0x10, 0x01, 0x12, 0x08, 0x0a, 0x04, 0x4c, 0x4f, 0x53, 0x53, 0x10, 0x02, 0x12, 0x08, 0x0a,
+	0x04, 0x44, 0x52, 0x41, 0x57, 0x10, 0x03, 0x12, 0x07, 0x0a, 0x03, 0x42, 0x59, 0x45, 0x10, 0x04,
+	0x12, 0x0f, 0x0a, 0x0b, 0x46, 0x4f, 0x52, 0x46, 0x45, 0x49, 0x54, 0x5f, 0x57, 0x49, 0x4e, 0x10,
+	0x05, 0x12, 0x10, 0x0a, 0x0c, 0x46, 0x4f, 0x52, 0x46, 0x45, 0x49, 0x54, 0x5f, 0x4c, 0x4f, 0x53,
+	0x53, 0x10, 0x06, 0x12, 0x0e, 0x0a, 0x0a, 0x45, 0x4c, 0x49, 0x4d, 0x49, 0x4e, 0x41, 0x54, 0x45,
 	0x44, 0x10, 0x07, 0x42, 0x34, 0x5a, 0x32, 0x67, 0x69, 0x74, 0x68, 0x75, 0x62, 0x2e, 0x63, 0x6f,
 	0x6d, 0x2f, 0x64, 0x6f, 0x6d, 0x69, 0x6e, 0x6f, 0x31, 0x34, 0x2f, 0x6c, 0x69, 0x77, 0x6f, 0x72,
 	0x64, 0x73, 0x2f, 0x72, 0x70, 0x63, 0x2f, 0x61, 0x70, 0x69, 0x2f, 0x70, 0x72, 0x6f, 0x74, 0x6f,
@@ -2582,76 +2656,77 @@ func file_api_proto_realtime_realtime_proto_rawDescGZIP() []byte {
 	return file_api_proto_realtime_realtime_proto_rawDescData
 }
 
-var file_api_proto_realtime_realtime_proto_enumTypes = make([]protoimpl.EnumInfo, 5)
+var file_api_proto_realtime_realtime_proto_enumTypes = make([]protoimpl.EnumInfo, 6)
 var file_api_proto_realtime_realtime_proto_msgTypes = make([]protoimpl.MessageInfo, 32)
 var file_api_proto_realtime_realtime_proto_goTypes = []interface{}{
 	(GameMode)(0),                      // 0: liwords.GameMode
 	(RatingMode)(0),                    // 1: liwords.RatingMode
 	(MessageType)(0),                   // 2: liwords.MessageType
 	(GameEndReason)(0),                 // 3: liwords.GameEndReason
-	(ClientGameplayEvent_EventType)(0), // 4: liwords.ClientGameplayEvent.EventType
-	(*GameRules)(nil),                  // 5: liwords.GameRules
-	(*GameRequest)(nil),                // 6: liwords.GameRequest
-	(*MatchUser)(nil),                  // 7: liwords.MatchUser
-	(*GameMeta)(nil),                   // 8: liwords.GameMeta
-	(*GameDeletion)(nil),               // 9: liwords.GameDeletion
-	(*LagMeasurement)(nil),             // 10: liwords.LagMeasurement
-	(*ChatMessage)(nil),                // 11: liwords.ChatMessage
-	(*ChatMessages)(nil),               // 12: liwords.ChatMessages
-	(*UserPresence)(nil),               // 13: liwords.UserPresence
-	(*UserPresences)(nil),              // 14: liwords.UserPresences
-	(*SeekRequest)(nil),                // 15: liwords.SeekRequest
-	(*MatchRequest)(nil),               // 16: liwords.MatchRequest
-	(*ReadyForGame)(nil),               // 17: liwords.ReadyForGame
-	(*SoughtGameProcessEvent)(nil),     // 18: liwords.SoughtGameProcessEvent
-	(*SeekRequests)(nil),               // 19: liwords.SeekRequests
-	(*MatchRequests)(nil),              // 20: liwords.MatchRequests
-	(*ActiveGames)(nil),                // 21: liwords.ActiveGames
-	(*ServerGameplayEvent)(nil),        // 22: liwords.ServerGameplayEvent
-	(*ServerChallengeResultEvent)(nil), // 23: liwords.ServerChallengeResultEvent
-	(*GameEndedEvent)(nil),             // 24: liwords.GameEndedEvent
-	(*GameHistoryRefresher)(nil),       // 25: liwords.GameHistoryRefresher
-	(*NewGameEvent)(nil),               // 26: liwords.NewGameEvent
-	(*ErrorMessage)(nil),               // 27: liwords.ErrorMessage
-	(*ServerMessage)(nil),              // 28: liwords.ServerMessage
-	(*ClientGameplayEvent)(nil),        // 29: liwords.ClientGameplayEvent
-	(*TimedOut)(nil),                   // 30: liwords.TimedOut
-	(*DeclineMatchRequest)(nil),        // 31: liwords.DeclineMatchRequest
-	(*JoinPath)(nil),                   // 32: liwords.JoinPath
-	(*UnjoinRealm)(nil),                // 33: liwords.UnjoinRealm
-	(*GameMeta_UserMeta)(nil),          // 34: liwords.GameMeta.UserMeta
-	nil,                                // 35: liwords.GameEndedEvent.ScoresEntry
-	nil,                                // 36: liwords.GameEndedEvent.NewRatingsEntry
-	(macondo.ChallengeRule)(0),         // 37: macondo.ChallengeRule
-	(*macondo.GameEvent)(nil),          // 38: macondo.GameEvent
-	(macondo.PlayState)(0),             // 39: macondo.PlayState
-	(*macondo.GameHistory)(nil),        // 40: macondo.GameHistory
+	(TournamentGameResult)(0),          // 4: liwords.TournamentGameResult
+	(ClientGameplayEvent_EventType)(0), // 5: liwords.ClientGameplayEvent.EventType
+	(*GameRules)(nil),                  // 6: liwords.GameRules
+	(*GameRequest)(nil),                // 7: liwords.GameRequest
+	(*MatchUser)(nil),                  // 8: liwords.MatchUser
+	(*GameMeta)(nil),                   // 9: liwords.GameMeta
+	(*GameDeletion)(nil),               // 10: liwords.GameDeletion
+	(*LagMeasurement)(nil),             // 11: liwords.LagMeasurement
+	(*ChatMessage)(nil),                // 12: liwords.ChatMessage
+	(*ChatMessages)(nil),               // 13: liwords.ChatMessages
+	(*UserPresence)(nil),               // 14: liwords.UserPresence
+	(*UserPresences)(nil),              // 15: liwords.UserPresences
+	(*SeekRequest)(nil),                // 16: liwords.SeekRequest
+	(*MatchRequest)(nil),               // 17: liwords.MatchRequest
+	(*ReadyForGame)(nil),               // 18: liwords.ReadyForGame
+	(*SoughtGameProcessEvent)(nil),     // 19: liwords.SoughtGameProcessEvent
+	(*SeekRequests)(nil),               // 20: liwords.SeekRequests
+	(*MatchRequests)(nil),              // 21: liwords.MatchRequests
+	(*ActiveGames)(nil),                // 22: liwords.ActiveGames
+	(*ServerGameplayEvent)(nil),        // 23: liwords.ServerGameplayEvent
+	(*ServerChallengeResultEvent)(nil), // 24: liwords.ServerChallengeResultEvent
+	(*GameEndedEvent)(nil),             // 25: liwords.GameEndedEvent
+	(*GameHistoryRefresher)(nil),       // 26: liwords.GameHistoryRefresher
+	(*NewGameEvent)(nil),               // 27: liwords.NewGameEvent
+	(*ErrorMessage)(nil),               // 28: liwords.ErrorMessage
+	(*ServerMessage)(nil),              // 29: liwords.ServerMessage
+	(*ClientGameplayEvent)(nil),        // 30: liwords.ClientGameplayEvent
+	(*TimedOut)(nil),                   // 31: liwords.TimedOut
+	(*DeclineMatchRequest)(nil),        // 32: liwords.DeclineMatchRequest
+	(*JoinPath)(nil),                   // 33: liwords.JoinPath
+	(*UnjoinRealm)(nil),                // 34: liwords.UnjoinRealm
+	(*GameMeta_UserMeta)(nil),          // 35: liwords.GameMeta.UserMeta
+	nil,                                // 36: liwords.GameEndedEvent.ScoresEntry
+	nil,                                // 37: liwords.GameEndedEvent.NewRatingsEntry
+	(macondo.ChallengeRule)(0),         // 38: macondo.ChallengeRule
+	(*macondo.GameEvent)(nil),          // 39: macondo.GameEvent
+	(macondo.PlayState)(0),             // 40: macondo.PlayState
+	(*macondo.GameHistory)(nil),        // 41: macondo.GameHistory
 }
 var file_api_proto_realtime_realtime_proto_depIdxs = []int32{
-	5,  // 0: liwords.GameRequest.rules:type_name -> liwords.GameRules
-	37, // 1: liwords.GameRequest.challenge_rule:type_name -> macondo.ChallengeRule
+	6,  // 0: liwords.GameRequest.rules:type_name -> liwords.GameRules
+	38, // 1: liwords.GameRequest.challenge_rule:type_name -> macondo.ChallengeRule
 	0,  // 2: liwords.GameRequest.game_mode:type_name -> liwords.GameMode
 	1,  // 3: liwords.GameRequest.rating_mode:type_name -> liwords.RatingMode
-	34, // 4: liwords.GameMeta.users:type_name -> liwords.GameMeta.UserMeta
-	6,  // 5: liwords.GameMeta.game_request:type_name -> liwords.GameRequest
-	11, // 6: liwords.ChatMessages.messages:type_name -> liwords.ChatMessage
-	13, // 7: liwords.UserPresences.presences:type_name -> liwords.UserPresence
-	6,  // 8: liwords.SeekRequest.game_request:type_name -> liwords.GameRequest
-	7,  // 9: liwords.SeekRequest.user:type_name -> liwords.MatchUser
-	6,  // 10: liwords.MatchRequest.game_request:type_name -> liwords.GameRequest
-	7,  // 11: liwords.MatchRequest.user:type_name -> liwords.MatchUser
-	7,  // 12: liwords.MatchRequest.receiving_user:type_name -> liwords.MatchUser
-	15, // 13: liwords.SeekRequests.requests:type_name -> liwords.SeekRequest
-	16, // 14: liwords.MatchRequests.requests:type_name -> liwords.MatchRequest
-	8,  // 15: liwords.ActiveGames.games:type_name -> liwords.GameMeta
-	38, // 16: liwords.ServerGameplayEvent.event:type_name -> macondo.GameEvent
-	39, // 17: liwords.ServerGameplayEvent.playing:type_name -> macondo.PlayState
-	37, // 18: liwords.ServerChallengeResultEvent.challenge_rule:type_name -> macondo.ChallengeRule
-	35, // 19: liwords.GameEndedEvent.scores:type_name -> liwords.GameEndedEvent.ScoresEntry
-	36, // 20: liwords.GameEndedEvent.new_ratings:type_name -> liwords.GameEndedEvent.NewRatingsEntry
+	35, // 4: liwords.GameMeta.users:type_name -> liwords.GameMeta.UserMeta
+	7,  // 5: liwords.GameMeta.game_request:type_name -> liwords.GameRequest
+	12, // 6: liwords.ChatMessages.messages:type_name -> liwords.ChatMessage
+	14, // 7: liwords.UserPresences.presences:type_name -> liwords.UserPresence
+	7,  // 8: liwords.SeekRequest.game_request:type_name -> liwords.GameRequest
+	8,  // 9: liwords.SeekRequest.user:type_name -> liwords.MatchUser
+	7,  // 10: liwords.MatchRequest.game_request:type_name -> liwords.GameRequest
+	8,  // 11: liwords.MatchRequest.user:type_name -> liwords.MatchUser
+	8,  // 12: liwords.MatchRequest.receiving_user:type_name -> liwords.MatchUser
+	16, // 13: liwords.SeekRequests.requests:type_name -> liwords.SeekRequest
+	17, // 14: liwords.MatchRequests.requests:type_name -> liwords.MatchRequest
+	9,  // 15: liwords.ActiveGames.games:type_name -> liwords.GameMeta
+	39, // 16: liwords.ServerGameplayEvent.event:type_name -> macondo.GameEvent
+	40, // 17: liwords.ServerGameplayEvent.playing:type_name -> macondo.PlayState
+	38, // 18: liwords.ServerChallengeResultEvent.challenge_rule:type_name -> macondo.ChallengeRule
+	36, // 19: liwords.GameEndedEvent.scores:type_name -> liwords.GameEndedEvent.ScoresEntry
+	37, // 20: liwords.GameEndedEvent.new_ratings:type_name -> liwords.GameEndedEvent.NewRatingsEntry
 	3,  // 21: liwords.GameEndedEvent.end_reason:type_name -> liwords.GameEndReason
-	40, // 22: liwords.GameHistoryRefresher.history:type_name -> macondo.GameHistory
-	4,  // 23: liwords.ClientGameplayEvent.type:type_name -> liwords.ClientGameplayEvent.EventType
+	41, // 22: liwords.GameHistoryRefresher.history:type_name -> macondo.GameHistory
+	5,  // 23: liwords.ClientGameplayEvent.type:type_name -> liwords.ClientGameplayEvent.EventType
 	24, // [24:24] is the sub-list for method output_type
 	24, // [24:24] is the sub-list for method input_type
 	24, // [24:24] is the sub-list for extension type_name
@@ -3031,7 +3106,7 @@ func file_api_proto_realtime_realtime_proto_init() {
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: file_api_proto_realtime_realtime_proto_rawDesc,
-			NumEnums:      5,
+			NumEnums:      6,
 			NumMessages:   32,
 			NumExtensions: 0,
 			NumServices:   0,

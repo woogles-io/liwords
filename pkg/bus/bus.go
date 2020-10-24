@@ -19,6 +19,7 @@ import (
 	"github.com/domino14/liwords/pkg/entity"
 	"github.com/domino14/liwords/pkg/gameplay"
 	"github.com/domino14/liwords/pkg/stats"
+	"github.com/domino14/liwords/pkg/tournament"
 	"github.com/domino14/liwords/pkg/user"
 
 	pb "github.com/domino14/liwords/rpc/api/proto/realtime"
@@ -46,6 +47,7 @@ type Bus struct {
 	soughtGameStore gameplay.SoughtGameStore
 	presenceStore   user.PresenceStore
 	listStatStore   stats.ListStatStore
+	tournamentStore tournament.TournamentStore
 	configStore     config.ConfigStore
 
 	redisPool *redis.Pool
@@ -58,7 +60,8 @@ type Bus struct {
 
 func NewBus(cfg *config.Config, userStore user.Store, gameStore gameplay.GameStore,
 	soughtGameStore gameplay.SoughtGameStore, presenceStore user.PresenceStore,
-	listStatStore stats.ListStatStore, configStore config.ConfigStore, redisPool *redis.Pool) (*Bus, error) {
+	listStatStore stats.ListStatStore, tournamentStore tournament.TournamentStore,
+	configStore config.ConfigStore, redisPool *redis.Pool) (*Bus, error) {
 
 	natsconn, err := nats.Connect(cfg.NatsURL)
 
@@ -72,6 +75,7 @@ func NewBus(cfg *config.Config, userStore user.Store, gameStore gameplay.GameSto
 		soughtGameStore: soughtGameStore,
 		presenceStore:   presenceStore,
 		listStatStore:   listStatStore,
+		tournamentStore: tournamentStore,
 		configStore:     configStore,
 		subscriptions:   []*nats.Subscription{},
 		subchans:        map[string]chan *nats.Msg{},
@@ -317,7 +321,7 @@ func (b *Bus) handleNatsPublish(ctx context.Context, subtopics []string, data []
 			return err
 		}
 		entGame, err := gameplay.HandleEvent(ctx, b.gameStore, b.userStore, b.listStatStore,
-			userID, evt)
+			b.tournamentStore, userID, evt)
 		if err != nil {
 			return err
 		}
@@ -343,7 +347,7 @@ func (b *Bus) handleNatsPublish(ctx context.Context, subtopics []string, data []
 		if err != nil {
 			return err
 		}
-		return gameplay.TimedOut(ctx, b.gameStore, b.userStore, b.listStatStore, evt.UserId, evt.GameId)
+		return gameplay.TimedOut(ctx, b.gameStore, b.userStore, b.listStatStore, b.tournamentStore, evt.UserId, evt.GameId)
 
 	case "initRealmInfo":
 		evt := &pb.InitRealmInfo{}

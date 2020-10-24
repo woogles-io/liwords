@@ -1,0 +1,74 @@
+syntax = "proto3";
+package tournament_service;
+option go_package = "github.com/domino14/liwords/rpc/api/proto/tournament_service";
+
+import "api/proto/realtime/realtime.proto";
+import "macondo/api/proto/macondo/macondo.proto";
+import "google/protobuf/timestamp.proto";
+
+message StartRoundRequest {
+  string tournament_id = 1;
+  int32 round = 2;	
+}
+
+message TournamentControlsRequest {
+  string tournament_id = 1;
+  string tournament_name = 2;
+  string lexicon = 3;
+  string variant = 4;
+  string time_control_name = 5;
+  int32 initial_time_seconds = 6;
+  macondo.ChallengeRule challenge_rule = 8;
+  liwords.RatingMode rating_mode = 9;
+  int32 max_overtime_minutes = 10;
+  int32 increment_seconds = 11;
+  google.protobuf.Timestamp start_time = 12;
+}
+
+message TournamentPerson {
+	string person_id = 1;
+}
+
+message TournamentPersons {
+  string tournament_id = 1;
+  repeated TournamentPerson persons = 2;
+}
+
+message TournamentPairingRequest {
+	string tournament_id = 1;
+	string player_one_id = 2;
+	string player_two_id = 3;
+	int32 round = 4;
+}
+
+message TournamentResultRequest {
+	string tournament_id = 1;
+	string player_one_id = 2;
+	string player_two_id = 3;
+	int32 round = 4;
+	int32 player_one_score = 5;
+	int32 player_two_score = 6;
+	liwords.TournamentGameResult player_one_result = 7;
+	liwords.TournamentGameResult player_two_result = 8;
+  liwords.GameEndReason game_end_reason = 9;
+	bool amendment = 10;
+  int32 game_index = 11;
+}
+
+message TournamentStartRoundRequest {
+  string tournament_id = 1;
+  int32 round = 2;
+}
+
+message TournamentResponse {}
+
+service TournamentService {
+  rpc SetTournamentControls(TournamentControlsRequest) returns (TournamentResponse);
+  rpc AddDirectors(TournamentPersons) returns (TournamentResponse);
+  rpc RemoveDirectors(TournamentPersons) returns (TournamentResponse);
+  rpc AddPlayers(TournamentPersons) returns (TournamentResponse);
+  rpc RemovePlayers(TournamentPersons) returns (TournamentResponse);
+  rpc SetPairing(TournamentPairingRequest) returns (TournamentResponse);
+  rpc SetResult(TournamentResultRequest) returns (TournamentResponse);
+  rpc StartRound(TournamentStartRoundRequest) returns (TournamentResponse);
+}

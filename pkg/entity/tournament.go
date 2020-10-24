@@ -4,31 +4,18 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"gorm.io/datatypes"
 	"math/rand"
 	"sort"
 	"sync"
-	// "time"
-	"gorm.io/datatypes"
+	"time"
 
 	realtime "github.com/domino14/liwords/rpc/api/proto/realtime"
 )
 
-type Result int
-
-const (
-	None Result = iota
-	Win
-	Loss
-	Draw
-	Bye
-	ForfeitLoss
-	ForfeitWin
-	Eliminated
-)
-
 type TournamentGame struct {
 	Scores        []int
-	Results       []Result
+	Results       []realtime.TournamentGameResult
 	GameEndReason realtime.GameEndReason
 }
 
@@ -37,7 +24,7 @@ const Unpaired = -1
 type Pairing struct {
 	Players  []string
 	Games    []*TournamentGame
-	Outcomes []Result
+	Outcomes []realtime.TournamentGameResult
 }
 
 type PlayerRoundInfo struct {
@@ -54,9 +41,18 @@ type Standing struct {
 	Spread int
 }
 
-type Tournament interface {
+type TournamentManager interface {
 	GetPlayerRoundInfo(string, int) (*PlayerRoundInfo, error)
-	SubmitResult(int, string, string, int, int, Result, Result, realtime.GameEndReason, bool, int) error
+	SubmitResult(int,
+		string,
+		string,
+		int,
+		int,
+		realtime.TournamentGameResult,
+		realtime.TournamentGameResult,
+		realtime.GameEndReason,
+		bool,
+		int) error
 	GetStandings(int) ([]*Standing, error)
 	SetPairing(string, string, int) error
 	IsRoundComplete(int) (bool, error)
@@ -97,14 +93,19 @@ const (
 	ArenaTournamentType
 )
 
-type TournamentManager struct {
+type Tournament struct {
 	sync.RWMutex
 	UUID string `json:"u"`
 
-	Name       string         `json:"n"`
-	Directors  []string       `json:"d"`
-	Type       TournamentType `json:"t"`
-	Tournament Tournament     `json:"m"`
+	Name              string            `json:"n"`
+	Description       string            `json:"e"`
+	StartTime         time.Time         `json:"t"`
+	Directors         []string          `json:"d"`
+	Type              TournamentType    `json:"t"`
+	TournamentManager TournamentManager `json:"m"`
+
+	Controls realtime.GameRequest `json:"r"`
+	Players  []string             `json:"p"`
 }
 
 func NewTournamentClassic(players []string,
@@ -249,8 +250,8 @@ func (t *TournamentClassic) SubmitResult(round int,
 	p2 string,
 	p1Score int,
 	p2Score int,
-	p1Result Result,
-	p2Result Result,
+	p1Result realtime.TournamentGameResult,
+	p2Result realtime.TournamentGameResult,
 	reason realtime.GameEndReason,
 	amend bool,
 	gameIndex int) error {
@@ -290,12 +291,17 @@ func (t *TournamentClassic) SubmitResult(round int,
 			return errors.New(fmt.Sprintf("Submitted tiebreaking result with invalid game index."+
 				" Player 1: %s, Player 2: %s, Round: %d, GameIndex: %d\n", p1, p2, round, gameIndex))
 		} else {
-			pairing.Games = append(pairing.Games, &TournamentGame{Scores: []int{0, 0}, Results: []Result{None, None}})
+			pairing.Games = append(pairing.Games,
+				&TournamentGame{Scores: []int{0, 0},
+					Results: []realtime.TournamentGameResult{realtime.TournamentGameResult_NO_RESULT,
+						realtime.TournamentGameResult_NO_RESULT}})
 		}
 	}
 
-	if !amend && ((pairing.Outcomes[0] != None && pairing.Outcomes[1] != None) ||
-		pairing.Games[gameIndex].Results[0] != None && pairing.Games[gameIndex].Results[1] != None) {
+	if !amend && ((pairing.Outcomes[0] != realtime.TournamentGameResult_NO_RESULT &&
+		pairing.Outcomes[1] != realtime.TournamentGameResult_NO_RESULT) ||
+		pairing.Games[gameIndex].Results[0] != realtime.TournamentGameResult_NO_RESULT &&
+			pairing.Games[gameIndex].Results[1] != realtime.TournamentGameResult_NO_RESULT) {
 		return errors.New("This result is already submitted")
 	}
 
@@ -319,7 +325,8 @@ func (t *TournamentClassic) SubmitResult(round int,
 		// A possible amendment to the outcomes.
 		// If the outcomes remain unchanged, this will
 		// just be undone in the next if block.
-		if pairing.Outcomes[0] != None && pairing.Outcomes[1] != None {
+		if pairing.Outcomes[0] != realtime.TournamentGameResult_NO_RESULT &&
+			pairing.Outcomes[1] != realtime.TournamentGameResult_NO_RESULT {
 			pri1.Record[pairing.Outcomes[0]] -= 1
 			pri2.Record[pairing.Outcomes[1]] -= 1
 		}
@@ -329,7 +336,8 @@ func (t *TournamentClassic) SubmitResult(round int,
 		pairing.Outcomes[0] = newOutcomes[0]
 		pairing.Outcomes[1] = newOutcomes[1]
 
-		if pairing.Outcomes[0] != None && pairing.Outcomes[1] != None {
+		if pairing.Outcomes[0] != realtime.TournamentGameResult_NO_RESULT &&
+			pairing.Outcomes[1] != realtime.TournamentGameResult_NO_RESULT {
 			pri1.Record[pairing.Outcomes[0]] += 1
 			pri2.Record[pairing.Outcomes[1]] += 1
 		}
@@ -438,7 +446,8 @@ func (t *TournamentClassic) IsRoundComplete(round int) (bool, error) {
 		return false, errors.New(fmt.Sprintf("Round number out of range: %d\n", round))
 	}
 	for _, pri := range t.Matrix[round] {
-		if pri.Pairing == nil || pri.Pairing.Outcomes[0] == None || pri.Pairing.Outcomes[1] == None {
+		if pri.Pairing == nil || pri.Pairing.Outcomes[0] == realtime.TournamentGameResult_NO_RESULT ||
+			pri.Pairing.Outcomes[1] == realtime.TournamentGameResult_NO_RESULT {
 			return false, nil
 		}
 	}
@@ -450,9 +459,12 @@ func (t *TournamentClassic) IsFinished() (bool, error) {
 }
 
 func resultsToScores(results []int) (int, int, int) {
-	wins := results[int(Win)] + results[int(Bye)] + results[int(ForfeitWin)]
-	losses := results[int(Loss)] + results[int(ForfeitLoss)]
-	draws := results[int(Draw)]
+	wins := results[int(realtime.TournamentGameResult_WIN)] +
+		results[int(realtime.TournamentGameResult_BYE)] +
+		results[int(realtime.TournamentGameResult_FORFEIT_WIN)]
+	losses := results[int(realtime.TournamentGameResult_LOSS)] +
+		results[int(realtime.TournamentGameResult_FORFEIT_LOSS)]
+	draws := results[int(realtime.TournamentGameResult_DRAW)]
 
 	return wins, losses, draws
 }
@@ -472,15 +484,19 @@ func newPairingMatrix(numberOfRounds int, numberOfPlayers int) [][]*PlayerRoundI
 func newClassicPairing(playerOne string, playerTwo string, gamesPerRound int) *Pairing {
 	games := []*TournamentGame{}
 	for i := 0; i < gamesPerRound; i++ {
-		games = append(games, &TournamentGame{Scores: []int{0, 0}, Results: []Result{None, None}})
+		games = append(games, &TournamentGame{Scores: []int{0, 0},
+			Results: []realtime.TournamentGameResult{realtime.TournamentGameResult_NO_RESULT,
+				realtime.TournamentGameResult_NO_RESULT}})
 	}
 	return &Pairing{Players: []string{playerOne, playerTwo},
-		Games:    games,
-		Outcomes: []Result{None, None}}
+		Games: games,
+		Outcomes: []realtime.TournamentGameResult{realtime.TournamentGameResult_NO_RESULT,
+			realtime.TournamentGameResult_NO_RESULT}}
 }
 
 func newEliminatedPairing(playerOne string, playerTwo string) *Pairing {
-	return &Pairing{Outcomes: []Result{Eliminated, Eliminated}}
+	return &Pairing{Outcomes: []realtime.TournamentGameResult{realtime.TournamentGameResult_ELIMINATED,
+		realtime.TournamentGameResult_ELIMINATED}}
 }
 
 func newPlayerIndexMap(players []string) map[string]int {
@@ -588,7 +604,7 @@ func pairRoundClassic(t *TournamentClassic, round int) error {
 		}
 	}
 	// Give all unpaired players a bye
-	// Byes are always designated as a player
+	// realtime.TournamentGameResult_BYEs are always designated as a player
 	// paired with themselves
 	if pairingMethod != Manual {
 		for i := 0; i < len(roundPairings); i++ {
@@ -656,7 +672,7 @@ func getRoundRobinPairings(players []string, round int) []string {
 	return pairings
 }
 
-func getEliminationOutcomes(games []*TournamentGame, gamesPerRound int) []Result {
+func getEliminationOutcomes(games []*TournamentGame, gamesPerRound int) []realtime.TournamentGameResult {
 	// Determines if a player is eliminated for a given round in an
 	// elimination tournament. The convertResult function gives 2 for a win,
 	// 1 for a draw, and 0 otherwise. If a player's score is greater than
@@ -672,8 +688,8 @@ func getEliminationOutcomes(games []*TournamentGame, gamesPerRound int) []Result
 		p2Spread += game.Scores[1] - game.Scores[0]
 	}
 
-	p1Outcome := None
-	p2Outcome := None
+	p1Outcome := realtime.TournamentGameResult_NO_RESULT
+	p2Outcome := realtime.TournamentGameResult_NO_RESULT
 
 	// In case of a tie by spread, more games need to be
 	// submitted to break the tie. In the future we
@@ -683,32 +699,32 @@ func getEliminationOutcomes(games []*TournamentGame, gamesPerRound int) []Result
 	if len(games) > gamesPerRound { // Tiebreaking results are present
 		if p1Wins > p2Wins ||
 			p1Wins == p2Wins && p1Spread > p2Spread {
-			p1Outcome = Win
-			p2Outcome = Eliminated
+			p1Outcome = realtime.TournamentGameResult_WIN
+			p2Outcome = realtime.TournamentGameResult_ELIMINATED
 		} else if p2Wins > p1Wins ||
 			p2Wins == p1Wins && p2Spread > p1Spread {
-			p1Outcome = Eliminated
-			p2Outcome = Win
+			p1Outcome = realtime.TournamentGameResult_ELIMINATED
+			p2Outcome = realtime.TournamentGameResult_WIN
 		}
 	} else {
 		if p1Wins > gamesPerRound ||
 			p1Wins == gamesPerRound && p2Wins == gamesPerRound && p1Spread > p2Spread {
-			p1Outcome = Win
-			p2Outcome = Eliminated
+			p1Outcome = realtime.TournamentGameResult_WIN
+			p2Outcome = realtime.TournamentGameResult_ELIMINATED
 		} else if p2Wins > gamesPerRound ||
 			p1Wins == gamesPerRound && p2Wins == gamesPerRound && p1Spread < p2Spread {
-			p1Outcome = Eliminated
-			p2Outcome = Win
+			p1Outcome = realtime.TournamentGameResult_ELIMINATED
+			p2Outcome = realtime.TournamentGameResult_WIN
 		}
 	}
-	return []Result{p1Outcome, p2Outcome}
+	return []realtime.TournamentGameResult{p1Outcome, p2Outcome}
 }
 
-func convertResult(result Result) int {
+func convertResult(result realtime.TournamentGameResult) int {
 	convertedResult := 0
-	if result == Win || result == Bye || result == ForfeitWin {
+	if result == realtime.TournamentGameResult_WIN || result == realtime.TournamentGameResult_BYE || result == realtime.TournamentGameResult_FORFEIT_WIN {
 		convertedResult = 2
-	} else if result == Draw {
+	} else if result == realtime.TournamentGameResult_DRAW {
 		convertedResult = 1
 	}
 	return convertedResult
@@ -732,7 +748,7 @@ func copyRecords(m [][]*PlayerRoundInfo, round int) error {
 
 func emptyRecord() []int {
 	record := []int{}
-	for i := 0; i < int(Eliminated)+1; i++ {
+	for i := 0; i < int(realtime.TournamentGameResult_ELIMINATED)+1; i++ {
 		record = append(record, 0)
 	}
 	return record
