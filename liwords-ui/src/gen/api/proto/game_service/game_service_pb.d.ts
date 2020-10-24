@@ -96,8 +96,8 @@ export class GameInfoResponse extends jspb.Message {
   getInitialTimeSeconds(): number;
   setInitialTimeSeconds(value: number): void;
 
-  getTournamentName(): string;
-  setTournamentName(value: string): void;
+  getTournamentId(): string;
+  setTournamentId(value: string): void;
 
   getChallengeRule(): macondo_api_proto_macondo_macondo_pb.ChallengeRuleMap[keyof macondo_api_proto_macondo_macondo_pb.ChallengeRuleMap];
   setChallengeRule(value: macondo_api_proto_macondo_macondo_pb.ChallengeRuleMap[keyof macondo_api_proto_macondo_macondo_pb.ChallengeRuleMap]): void;
@@ -150,7 +150,7 @@ export namespace GameInfoResponse {
     variant: string,
     timeControlName: string,
     initialTimeSeconds: number,
-    tournamentName: string,
+    tournamentId: string,
     challengeRule: macondo_api_proto_macondo_macondo_pb.ChallengeRuleMap[keyof macondo_api_proto_macondo_macondo_pb.ChallengeRuleMap],
     ratingMode: api_proto_realtime_realtime_pb.RatingModeMap[keyof api_proto_realtime_realtime_pb.RatingModeMap],
     maxOvertimeMinutes: number,

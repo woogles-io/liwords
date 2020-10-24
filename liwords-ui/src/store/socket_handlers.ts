@@ -45,6 +45,8 @@ import {
   UserPresences,
   ReadyForGame,
   LagMeasurement,
+  MatchRequestCancellation,
+  TournamentGameEndedEvent,
 } from '../gen/api/proto/realtime/realtime_pb';
 import { ActionType } from '../actions/actions';
 import { endGameMessage } from './end_of_game';
@@ -93,6 +95,8 @@ export const parseMsgs = (msg: Uint8Array) => {
       [MessageType.USER_PRESENCES]: UserPresences,
       [MessageType.READY_FOR_GAME]: ReadyForGame,
       [MessageType.LAG_MEASUREMENT]: LagMeasurement,
+      [MessageType.MATCH_REQUEST_CANCELLATION]: MatchRequestCancellation,
+      [MessageType.TOURNAMENT_GAME_ENDED_EVENT]: TournamentGameEndedEvent,
     };
 
     const parsedMsg = msgTypes[msgType];
@@ -375,6 +379,12 @@ export const useOnSocketMsg = () => {
             break;
           }
 
+          case MessageType.TOURNAMENT_GAME_ENDED_EVENT: {
+            const gee = parsedMsg as TournamentGameEndedEvent;
+            // XXX: display this game in the tournament lobby.
+            break;
+          }
+
           case MessageType.NEW_GAME_EVENT: {
             const nge = parsedMsg as NewGameEvent;
             console.log('got new game event', nge);
@@ -453,6 +463,15 @@ export const useOnSocketMsg = () => {
               payload: gae.getRequestId(),
             });
 
+            break;
+          }
+
+          case MessageType.MATCH_REQUEST_CANCELLATION: {
+            const mrc = parsedMsg as MatchRequestCancellation;
+            dispatchLobbyContext({
+              actionType: ActionType.RemoveSoughtGame,
+              payload: mrc.getRequestId(),
+            });
             break;
           }
 

@@ -80,6 +80,9 @@ const App = React.memo(() => {
         <Route path="/" exact>
           <Lobby sendSocketMsg={sendMessage} DISCONNECT={disconnectSocket} />
         </Route>
+        <Route path="/tournament/:tournamentID">
+          <Lobby sendSocketMsg={sendMessage} DISCONNECT={disconnectSocket} />
+        </Route>
         <Route path="/game/:gameID">
           {/* Table meaning a game table */}
           <GameTable sendSocketMsg={sendMessage} />

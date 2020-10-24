@@ -149,6 +149,22 @@ func performEndgameDuties(ctx context.Context, g *entity.Game, gameStore GameSto
 	wrapped.AddAudience(entity.AudGameTV, g.GameID())
 	g.SendChange(wrapped)
 
+	// Send a TournamentGameEndedEvent if this is a tournament game.
+	if g.TournamentID != "" {
+		tevt := &pb.TournamentGameEndedEvent{
+			GameId:    g.GameID(),
+			Scores:    evt.Scores,
+			EndReason: evt.EndReason,
+			Winner:    evt.Winner,
+			Loser:     evt.Loser,
+			Tie:       evt.Tie,
+			Time:      evt.Time,
+		}
+		wrapped = entity.WrapEvent(tevt, pb.MessageType_TOURNAMENT_GAME_ENDED_EVENT)
+		wrapped.AddAudience(entity.AudTournament, g.TournamentID)
+		g.SendChange(wrapped)
+	}
+
 	// Compute stats for the player and for the game.
 	variantKey, err := g.RatingKey()
 	if err != nil {

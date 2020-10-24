@@ -21,6 +21,7 @@ export type SoughtGame = {
   // Only for direct match requests:
   receiver: MatchUser;
   rematchFor: string;
+  tournamentID: string;
 };
 
 type playerMeta = {

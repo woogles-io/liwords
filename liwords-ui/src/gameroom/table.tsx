@@ -1,10 +1,10 @@
 import React, { useCallback, useEffect, useMemo, useRef } from 'react';
-import { useMountedState } from '../utils/mounted';
 import { Card, message, Popconfirm } from 'antd';
 import { HomeOutlined } from '@ant-design/icons/lib';
 import axios from 'axios';
 
 import { Link, useHistory, useLocation, useParams } from 'react-router-dom';
+import { useMountedState } from '../utils/mounted';
 import { BoardPanel } from './board_panel';
 import { TopBar } from '../topbar/topbar';
 import { Chat } from '../chat/chat';
@@ -60,7 +60,7 @@ const defaultGameInfo = {
   variant: '',
   initial_time_seconds: 0,
   increment_seconds: 0,
-  tournament_name: '',
+  tournament_id: '',
   challenge_rule: 'VOID' as  // wtf typescript? is there a better way?
     | 'FIVE_POINT'
     | 'TEN_POINT'

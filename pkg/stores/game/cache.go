@@ -19,6 +19,7 @@ type backingStore interface {
 	GetMetadata(ctx context.Context, id string) (*gs.GameInfoResponse, error)
 	GetRematchStreak(ctx context.Context, originalRequestId string) (*gs.GameInfoResponses, error)
 	GetRecentGames(ctx context.Context, username string, numGames int, offset int) (*gs.GameInfoResponses, error)
+	GetRecentTourneyGames(ctx context.Context, tourneyID string, numGames int, offset int) (*gs.GameInfoResponses, error)
 	Set(context.Context, *entity.Game) error
 	Create(context.Context, *entity.Game) error
 	Exists(context.Context, string) (bool, error)
@@ -113,6 +114,10 @@ func (c *Cache) GetRematchStreak(ctx context.Context, originalRequestId string) 
 
 func (c *Cache) GetRecentGames(ctx context.Context, username string, numGames int, offset int) (*gs.GameInfoResponses, error) {
 	return c.backing.GetRecentGames(ctx, username, numGames, offset)
+}
+
+func (c *Cache) GetRecentTourneyGames(ctx context.Context, tourneyID string, numGames int, offset int) (*gs.GameInfoResponses, error) {
+	return c.backing.GetRecentTourneyGames(ctx, tourneyID, numGames, offset)
 }
 
 // Similar to get but does not unmarshal the stats and timers and does

@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect } from 'react';
-import { useMountedState } from '../utils/mounted';
 import { Card } from 'antd';
+import { useParams } from 'react-router-dom';
+import { useMountedState } from '../utils/mounted';
 
 import { TopBar } from '../topbar/topbar';
 import {
@@ -47,6 +48,7 @@ const sendSeek = (
   gr.setRules(rules);
   gr.setRatingMode(game.rated ? RatingMode.RATED : RatingMode.CASUAL);
   gr.setPlayerVsBot(game.playerVsBot);
+
   if (game.receiver.getDisplayName() === '' && game.playerVsBot === false) {
     sr.setGameRequest(gr);
 
@@ -57,6 +59,7 @@ const sendSeek = (
     // We make it a match request if the receiver is non-empty, or if playerVsBot.
     mr.setGameRequest(gr);
     mr.setReceivingUser(game.receiver);
+    mr.setTournamentId(game.tournamentID);
     sendSocketMsg(
       encodeToSocketFmt(MessageType.MATCH_REQUEST, mr.serializeBinary())
     );
@@ -85,7 +88,7 @@ type Props = {
 
 export const Lobby = (props: Props) => {
   const { useState } = useMountedState();
-
+  const { tournamentID } = useParams();
   const { sendSocketMsg } = props;
   const { chat } = useChatStoreContext();
   const { loginState } = useLoginStateStoreContext();
@@ -117,12 +120,14 @@ export const Lobby = (props: Props) => {
     (msg: string) => {
       const evt = new ChatMessage();
       evt.setMessage(msg);
-      evt.setChannel('lobby.chat');
+      evt.setChannel(
+        !tournamentID ? 'lobby.chat' : `tournament.${tournamentID}`
+      );
       sendSocketMsg(
         encodeToSocketFmt(MessageType.CHAT_MESSAGE, evt.serializeBinary())
       );
     },
-    [sendSocketMsg]
+    [sendSocketMsg, tournamentID]
   );
   const peopleOnlineContext = useCallback(
     (n: number) => singularCount(n, 'Player', 'Players'),
@@ -137,7 +142,7 @@ export const Lobby = (props: Props) => {
           <Chat
             chatEntities={chat}
             sendChat={sendChat}
-            description="Lobby chat"
+            description={tournamentID ? 'Tournament chat' : 'Lobby chat'}
             peopleOnlineContext={peopleOnlineContext}
             presences={presences}
             DISCONNECT={props.DISCONNECT}
@@ -151,20 +156,27 @@ export const Lobby = (props: Props) => {
           selectedGameTab={selectedGameTab}
           setSelectedGameTab={setSelectedGameTab}
           onSeekSubmit={onSeekSubmit}
+          tournamentID={tournamentID}
         />
         <div className="announcements">
           <Card>
-            <h3>Woogles is live!</h3>
-            <p>
-              Welcome to our open beta. Sign up and play some games. We still
-              have a lot of features and designs to build, but please{' '}
-              <a className="link" href="https://discord.gg/5yCJjmW">
-                join our Discord server
-              </a>{' '}
-              and let us know if you find any issues.
-            </p>
-            <br />
-            <p>Thanks for Woogling!</p>
+            {tournamentID ? (
+              <h3>Tourney {tournamentID} </h3>
+            ) : (
+              <>
+                <h3>Woogles is live!</h3>
+                <p>
+                  Welcome to our open beta. Sign up and play some games. We
+                  still have a lot of features and designs to build, but please{' '}
+                  <a className="link" href="https://discord.gg/5yCJjmW">
+                    join our Discord server
+                  </a>{' '}
+                  and let us know if you find any issues.
+                </p>
+                <br />
+                <p>Thanks for Woogling!</p>
+              </>
+            )}
           </Card>
         </div>
       </div>

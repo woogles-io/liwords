@@ -1,5 +1,5 @@
 import React from 'react';
-import { Card, Row } from 'antd';
+import { Badge, Card, Row } from 'antd';
 import { timeCtrlToDisplayName, timeToString } from '../store/constants';
 
 // At some point we should get this from the pb but then we have to use
@@ -11,7 +11,7 @@ export type GameMetadata = {
   variant: string;
   time_control_name: string;
   initial_time_seconds: number;
-  tournament_name: string;
+  tournament_id: string;
   max_overtime_minutes: number;
   increment_seconds: number;
   challenge_rule:
@@ -70,7 +70,7 @@ export const GameInfo = React.memo((props: Props) => {
     VOID: 'Void',
   }[props.meta.challenge_rule];
 
-  return (
+  const card = (
     <Card className="game-info">
       <Row className="variant">
         {`${
@@ -91,4 +91,8 @@ export const GameInfo = React.memo((props: Props) => {
       </Row>
     </Card>
   );
+  if (props.meta.tournament_id) {
+    return <Badge.Ribbon text={props.meta.tournament_id}>{card}</Badge.Ribbon>;
+  }
+  return card;
 });

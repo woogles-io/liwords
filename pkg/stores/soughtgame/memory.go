@@ -114,14 +114,14 @@ func (m *MemoryStore) deleteFromReqsByReceiver(g *entity.SoughtGame) {
 }
 
 // DeleteForUser deletes the game by seeker ID.
-func (m *MemoryStore) DeleteForUser(ctx context.Context, userID string) (string, error) {
+func (m *MemoryStore) DeleteForUser(ctx context.Context, userID string) (*entity.SoughtGame, error) {
 	m.Lock()
 	defer m.Unlock()
 
 	game, ok := m.soughtGamesByUser[userID]
 	if !ok {
 		// Do nothing, game never existed
-		return "", nil
+		return nil, nil
 	}
 	delete(m.soughtGamesByUser, userID)
 	delete(m.soughtGamesByConnID, game.ConnID())
@@ -129,18 +129,18 @@ func (m *MemoryStore) DeleteForUser(ctx context.Context, userID string) (string,
 	if game.Type() == entity.TypeMatch {
 		m.deleteFromReqsByReceiver(game)
 	}
-	return game.ID(), nil
+	return game, nil
 }
 
 // DeleteForConnID deletes the game by connection ID
-func (m *MemoryStore) DeleteForConnID(ctx context.Context, connID string) (string, error) {
+func (m *MemoryStore) DeleteForConnID(ctx context.Context, connID string) (*entity.SoughtGame, error) {
 	m.Lock()
 	defer m.Unlock()
 
 	game, ok := m.soughtGamesByConnID[connID]
 	if !ok {
 		// Do nothing, game never existed
-		return "", nil
+		return nil, nil
 	}
 
 	delete(m.soughtGamesByUser, game.Seeker())
@@ -151,7 +151,7 @@ func (m *MemoryStore) DeleteForConnID(ctx context.Context, connID string) (strin
 		m.deleteFromReqsByReceiver(game)
 	}
 
-	return game.ID(), nil
+	return game, nil
 }
 
 // ListOpenSeeks lists all open seek requests

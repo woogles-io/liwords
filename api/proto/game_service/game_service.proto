@@ -34,7 +34,7 @@ message GameInfoResponse {
   string variant = 3;
   string time_control_name = 4;
   int32 initial_time_seconds = 5;
-  string tournament_name = 6;
+  string tournament_id = 6;
   macondo.ChallengeRule challenge_rule = 7;
   liwords.RatingMode rating_mode = 8;
   // done - is game done?
@@ -64,8 +64,8 @@ message RecentGamesRequest {
 message RematchStreakRequest { string original_request_id = 1; }
 
 service GameMetadataService {
-  rpc GetMetadata(GameInfoRequest) returns (GameInfoResponse);
-  rpc GetGCG(GCGRequest) returns (GCGResponse);
-  rpc GetRecentGames(RecentGamesRequest) returns (GameInfoResponses);
-  rpc GetRematchStreak(RematchStreakRequest) returns (GameInfoResponses);
+  rpc GetMetadata(GameInfoRequest) returns(GameInfoResponse);
+  rpc GetGCG(GCGRequest) returns(GCGResponse);
+  rpc GetRecentGames(RecentGamesRequest) returns(GameInfoResponses);
+  rpc GetRematchStreak(RematchStreakRequest) returns(GameInfoResponses);
 }
