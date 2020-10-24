@@ -71,7 +71,7 @@ export const About = (props: Props) => {
                 <h3>César Del Solar</h3>
                 <p>
                   Although César hovers around the top 20 in North America in
-                  Scrabble©, he loves coding even more than playing, and thus
+                  Scrabble®, he loves coding even more than playing, and thus
                   hasn’t reached the heights he’s dreamed of because he spends
                   most of his free time thinking up and building new apps. He
                   built Aerolith, a word study app which is used by hundreds of
@@ -94,7 +94,7 @@ export const About = (props: Props) => {
               <div className="team-info">
                 <h3>Jesse Day</h3>
                 <p>
-                  Jesse has been playing competitive Scrabble© since 2004. His
+                  Jesse has been playing competitive Scrabble® since 2004. His
                   career highlights include winning the 2019 US National
                   Championship and finishing second at the World Championship
                   twice. His lowlight was playing the phony two-letter word IR
@@ -117,7 +117,7 @@ export const About = (props: Props) => {
                 <p>
                   Conrad is a product designer whose work in the tech industry
                   is used daily by millions of people around the world. He
-                  started playing competitive Scrabble© at the ripe old age of
+                  started playing competitive Scrabble® at the ripe old age of
                   14, peaking competitively in his early 20s: he held the world
                   #1 ranking at 22, and won the 2014 US National Championship at
                   24. As one of the word game community’s only professional
@@ -137,7 +137,7 @@ export const About = (props: Props) => {
               <div className="team-info">
                 <h3>Josh Castellano</h3>
                 <p>
-                  Josh is a competitive Scrabble© player and the creator of
+                  Josh is a competitive Scrabble® player and the creator of
                   RandomRacer.com, a site that aggregates annotated games from
                   cross-tables.com into a variety of notable statistics for each
                   player. He hopes to use his experience with GCG parsing and
@@ -159,14 +159,14 @@ export const About = (props: Props) => {
               <div className="team-info">
                 <h3>BriAnna "Lola" McKissen</h3>
                 <p>
-                  As someone who has been learning to play competitive Scrabble©
+                  As someone who has been learning to play competitive Scrabble®
                   since 2002, Lola considers herself the voice of the passionate
                   non-expert on the team. She has been coding for 3 decades,
                   spending 12 of those years on her own startups. She currently
                   works as a Principal Software Development Engineer creating
                   user interfaces used by over a million experts in their
                   fields. In 2016, she was a finalist for the Women’s Tech
-                  Council annual awards. Besides Scrabble©, she's also
+                  Council annual awards. Besides Scrabble®, she's also
                   enthusiastically bad at standup comedy, playing the bass
                   guitar, singing, and painting. Ketchup is gross.
                 </p>
@@ -181,14 +181,14 @@ export const About = (props: Props) => {
               <div className="team-info">
                 <h3>Doug Brockmeier</h3>
                 <p>
-                  Doug has been playing Scrabble© for over 30 years -- a
+                  Doug has been playing Scrabble® for over 30 years -- a
                   Guinness World Record. This makes him feel old, but still
                   dignified. Early on, his Grandma Elaine taught him the
                   importance of maximizing Power Tiles through crushing two-way
                   Double-Letter-Score plays for a whopping 20 points at a time!
                   As a teen, he discovered the club and tournament scene at a
                   local bookstore, where he was welcomed to compete responsibly
-                  for $1 scratchoff jackpots against a wide range of Scrabble©
+                  for $1 scratchoff jackpots against a wide range of Scrabble®
                   personalities who proved that scoring 300 points per game
                   wouldn't cut it anymore, kid. Now an expert player, Doug is
                   dizzily euphoric to be part of the Woogles team and believes,
@@ -205,10 +205,10 @@ export const About = (props: Props) => {
               <div className="team-info">
                 <h3>Will Anderson</h3>
                 <p>
-                  Will is a competitive Scrabble© player and former national
+                  Will is a competitive Scrabble® player and former national
                   champion with a passion for bringing the joy of the game to a
                   wider audience. Whether providing commentary for live events,
-                  streaming on his Twitch channel, or producing online Scrabble©
+                  streaming on his Twitch channel, or producing online Scrabble®
                   events for others, his goal is the same - translate the depth
                   and beauty of the game in a way that resonates with even
                   casual fans. He firmly believes that Woogles is a critical
