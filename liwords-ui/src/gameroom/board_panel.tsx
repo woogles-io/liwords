@@ -73,12 +73,35 @@ const shuffleString = (a: string): string => {
   const alist = a.split('');
   const n = a.length;
 
+  let somethingChanged = false;
   for (let i = n - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
-    const tmp = alist[i];
-    alist[i] = alist[j];
-    alist[j] = tmp;
+    if (alist[i] !== alist[j]) {
+      somethingChanged = true;
+      const tmp = alist[i];
+      alist[i] = alist[j];
+      alist[j] = tmp;
+    }
   }
+
+  if (!somethingChanged) {
+    // Let's change something if possible.
+    const j = Math.floor(Math.random() * n);
+    let x = [];
+    for (let i = 0; i < n; ++i) {
+      if (alist[i] !== alist[j]) {
+        x.push(i);
+      }
+    }
+
+    if (x.length > 0) {
+      const i = x[Math.floor(Math.random() * x.length)];
+      const tmp = alist[i];
+      alist[i] = alist[j];
+      alist[j] = tmp;
+    }
+  }
+
   return alist.join('');
 };
 
@@ -318,10 +341,8 @@ export const BoardPanel = React.memo((props: Props) => {
   ]);
 
   const shuffleTiles = useCallback(() => {
-    setPlacedTilesTempScore(0);
-    setPlacedTiles(new Set<EphemeralTile>());
-    setDisplayedRack(shuffleString(props.currentRack));
-  }, [props.currentRack]);
+    setDisplayedRack((displayedRack) => shuffleString(displayedRack));
+  }, []);
 
   const lastLettersRef = useRef<string>();
   const readOnlyEffectDependenciesRef = useRef<{
