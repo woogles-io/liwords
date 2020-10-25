@@ -1,7 +1,10 @@
 import React, { useCallback, useEffect, useRef } from 'react';
+import { TouchBackend } from 'react-dnd-touch-backend';
 import { useMountedState } from '../utils/mounted';
 import { Button, Modal, notification, message, Tooltip } from 'antd';
+import { DndProvider } from 'react-dnd';
 import { ArrowDownOutlined, SyncOutlined } from '@ant-design/icons';
+import { isTouchDevice } from '../utils/cwgame/common';
 import axios from 'axios';
 
 import GameBoard from './board';
@@ -866,7 +869,7 @@ export const BoardPanel = React.memo((props: Props) => {
     setCurrentMode('NORMAL');
   }, []);
 
-  return (
+  const gameBoard = (
     <div
       id="board-container"
       className="board-container"
@@ -969,4 +972,8 @@ export const BoardPanel = React.memo((props: Props) => {
       </Modal>
     </div>
   );
+  if (!isTouchDevice) {
+    return gameBoard;
+  }
+  return <DndProvider backend={TouchBackend}>{gameBoard}</DndProvider>;
 });

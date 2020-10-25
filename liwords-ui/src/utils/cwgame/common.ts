@@ -16,6 +16,10 @@ export enum Direction {
   Vertical,
 }
 
+export const isTouchDevice = () => {
+  return !!('ontouchstart' in window);
+};
+
 export const uniqueTileIdx = (row: number, col: number): number => {
   // Just a unique number to identify a row,col coordinate.
   return row * 100 + col;
