@@ -757,7 +757,6 @@ export const BoardPanel = React.memo((props: Props) => {
         const newRack = displayedRack.split('');
         newRack.splice(oldIndex, 1);
         newRack.splice(newIndex, 0, displayedRack[oldIndex]);
-        setPlacedTilesTempScore(0);
         setDisplayedRack(newRack.join(''));
       }
     },
