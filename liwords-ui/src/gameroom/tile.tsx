@@ -1,15 +1,19 @@
-import React from 'react';
+import React, { useRef } from 'react';
 import { useMountedState } from '../utils/mounted';
+import { useDrag } from 'react-dnd';
 import TentativeScore from './tentative_score';
 import {
   Blank,
   isDesignatedBlank,
+  isTouchDevice,
   uniqueTileIdx,
 } from '../utils/cwgame/common';
 
 type TileLetterProps = {
   rune: string;
 };
+
+export const TILE_TYPE = 'TILE_TYPE';
 
 const TileLetter = React.memo((props: TileLetterProps) => {
   let { rune } = props;
@@ -61,11 +65,11 @@ type TileProps = {
 const Tile = React.memo((props: TileProps) => {
   const { useState } = useMountedState();
 
-  const [isDragging, setIsDragging] = useState(false);
+  const [isMouseDragging, setIsMouseDragging] = useState(false);
 
   const handleStartDrag = (e: any) => {
     if (e) {
-      setIsDragging(true);
+      setIsMouseDragging(true);
       e.dataTransfer.dropEffect = 'move';
       if (
         props.tentative &&
@@ -80,7 +84,7 @@ const Tile = React.memo((props: TileProps) => {
   };
 
   const handleEndDrag = () => {
-    setIsDragging(false);
+    setIsMouseDragging(false);
   };
 
   const handleDrop = (e: any) => {
@@ -104,13 +108,37 @@ const Tile = React.memo((props: TileProps) => {
     e.stopPropagation();
   };
 
-  const computedClassName = `tile${isDragging ? ' dragging' : ''}${
-    props.grabbable ? ' droppable' : ''
-  }${props.selected ? ' selected' : ''}${props.tentative ? ' tentative' : ''}${
-    props.lastPlayed ? ' last-played' : ''
-  }${isDesignatedBlank(props.rune) ? ' blank' : ''}`;
+  const [{ isDragging }, drag] = useDrag({
+    item: {
+      type: TILE_TYPE,
+      rackIndex:
+        typeof props.rackIndex === 'number'
+          ? props.rackIndex.toString()
+          : undefined,
+      tileIndex:
+        typeof props.x === 'number' && typeof props.y === 'number'
+          ? uniqueTileIdx(props.y, props.x).toString()
+          : undefined,
+    },
+    collect: (monitor) => ({
+      isDragging: monitor.isDragging(),
+    }),
+  });
+
+  const tileRef = useRef(null);
+  if (props.grabbable && isTouchDevice()) {
+    drag(tileRef);
+  }
+
+  const computedClassName = `tile${
+    isDragging || isMouseDragging ? ' dragging' : ''
+  }${props.grabbable ? ' droppable' : ''}${props.selected ? ' selected' : ''}${
+    props.tentative ? ' tentative' : ''
+  }${props.lastPlayed ? ' last-played' : ''}${
+    isDesignatedBlank(props.rune) ? ' blank' : ''
+  }`;
   return (
-    <div onDragOver={handleDropOver} onDrop={handleDrop}>
+    <div onDragOver={handleDropOver} onDrop={handleDrop} ref={tileRef}>
       <div
         className={computedClassName}
         data-rune={props.rune}

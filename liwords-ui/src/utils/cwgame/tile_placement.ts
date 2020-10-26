@@ -349,7 +349,7 @@ export const handleDroppedTile = (
   currentlyPlacedTiles.forEach((t) => {
     ephTileMap[uniqueTileIdx(t.row, t.col)] = t;
   });
-
+  console.log(row, col, unplacedTiles, rackIndex, tileIndex);
   let newUnplacedTiles = unplacedTiles;
   const newPlacedTiles = new Set(currentlyPlacedTiles);
   let rune;

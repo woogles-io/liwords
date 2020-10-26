@@ -17,6 +17,10 @@ export enum Direction {
 }
 
 export const isTouchDevice = () => {
+  var userAgent = navigator.userAgent || navigator.vendor;
+  if (/android/i.test(userAgent) || /iPad|iPhone|iPod/.test(userAgent)) {
+    return true;
+  }
   return !!('ontouchstart' in window);
 };
 
