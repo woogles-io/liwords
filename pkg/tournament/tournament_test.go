@@ -60,23 +60,25 @@ func tournamentStore(dbURL string) (*config.Config, TournamentStore) {
 	return cfg, tournamentStore
 }
 
+func makeControls() *entity.TournamentControls {
+	return &entity.TournamentControls{
+		GameRequest:    gameReq,
+		PairingMethods: []entity.PairingMethod{entity.RoundRobin, entity.RoundRobin, entity.RoundRobin, entity.KingOfTheHill},
+		NumberOfRounds: 4,
+		GamesPerRound:  1,
+		Type:           entity.ClassicTournamentType,
+		StartTime:      time.Now()}
+}
+
 func makeTournament(ctx context.Context, ts TournamentStore, cfg *config.Config) (*entity.Tournament, error) {
-
-	pm := []entity.PairingMethod{entity.RoundRobin, entity.RoundRobin, entity.RoundRobin, entity.KingOfTheHill}
-
 	return InstantiateNewTournament(ctx,
 		ts,
 		cfg,
 		"Tournament",
 		"This is a test Tournament",
-		time.Now(),
 		players,
 		directors,
-		gameReq,
-		entity.ClassicTournamentType,
-		pm,
-		4,
-		1)
+		makeControls())
 }
 
 func TestTournament(t *testing.T) {
@@ -140,14 +142,7 @@ func TestTournament(t *testing.T) {
 		te.UUID,
 		"The Changed Tournament Name",
 		"It has been changed",
-		gameReq.Lexicon,
-		gameReq.Rules.VariantName,
-		gameReq.InitialTimeSeconds,
-		gameReq.ChallengeRule,
-		gameReq.RatingMode,
-		gameReq.MaxOvertimeMinutes,
-		gameReq.IncrementSeconds,
-		time.Now())
+		makeControls())
 
 	// Tournament should not be started
 	isStarted, err := tstore.IsStarted(ctx, te.UUID)
@@ -188,14 +183,7 @@ func TestTournament(t *testing.T) {
 		te.UUID,
 		"The Changed Tournament Name",
 		"It has been changed",
-		gameReq.Lexicon,
-		gameReq.Rules.VariantName,
-		gameReq.InitialTimeSeconds,
-		gameReq.ChallengeRule,
-		gameReq.RatingMode,
-		gameReq.MaxOvertimeMinutes,
-		gameReq.IncrementSeconds,
-		time.Now())
+		makeControls())
 	is.True(err != nil)
 
 	// Tournament pairings and results are tested in the

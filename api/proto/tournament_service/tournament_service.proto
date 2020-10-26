@@ -13,8 +13,8 @@ message StartRoundRequest {
 
 message TournamentControlsRequest {
   string tournament_id = 1;
-  string tournament_name = 2;
-  string tournament_description = 3;
+  string name = 2;
+  string description = 3;
   string lexicon = 4;
   string variant = 5;
   int32 initial_time_seconds = 6;
@@ -22,7 +22,10 @@ message TournamentControlsRequest {
   liwords.RatingMode rating_mode = 8;
   int32 max_overtime_minutes = 9;
   int32 increment_seconds = 10;
-  google.protobuf.Timestamp start_time = 11;
+  repeated int32 pairing_methods = 11;
+  int32 number_of_rounds = 12;
+  int32 games_per_round = 13;
+  google.protobuf.Timestamp start_time = 14;
 }
 
 message TournamentPerson {

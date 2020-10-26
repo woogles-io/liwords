@@ -4,14 +4,12 @@ import (
 	"context"
 	"errors"
 	"sort"
-	"time"
 
 	"github.com/domino14/liwords/pkg/entity"
 	lru "github.com/hashicorp/golang-lru"
 	"github.com/rs/zerolog/log"
 
 	realtime "github.com/domino14/liwords/rpc/api/proto/realtime"
-	macondo "github.com/domino14/macondo/gen/api/proto/macondo"
 )
 
 type backingStore interface {
@@ -86,18 +84,7 @@ func (c *Cache) setOrCreate(ctx context.Context, tm *entity.Tournament, isNew bo
 	return nil
 }
 
-func (c *Cache) SetTournamentControls(ctx context.Context,
-	id string,
-	name string,
-	description string,
-	lexicon string,
-	variant string,
-	initialTimeSeconds int32,
-	challengeRule macondo.ChallengeRule,
-	ratingMode realtime.RatingMode,
-	maxOvertimeMinutes int32,
-	incrementSeconds int32,
-	startTime time.Time) error {
+func (c *Cache) SetTournamentControls(ctx context.Context, id string, name string, description string, controls *entity.TournamentControls) error {
 
 	t, err := c.Get(ctx, id)
 	if err != nil {
@@ -110,14 +97,7 @@ func (c *Cache) SetTournamentControls(ctx context.Context,
 
 	t.Name = name
 	t.Description = description
-	t.Controls.Lexicon = lexicon
-	t.Controls.Rules.VariantName = variant
-	t.Controls.InitialTimeSeconds = initialTimeSeconds
-	t.Controls.ChallengeRule = challengeRule
-	t.Controls.RatingMode = ratingMode
-	t.Controls.MaxOvertimeMinutes = maxOvertimeMinutes
-	t.Controls.IncrementSeconds = incrementSeconds
-	t.StartTime = startTime
+	t.Controls = controls
 
 	return c.backing.Set(ctx, t)
 }
@@ -307,9 +287,9 @@ func (c *Cache) Disconnect() {
 func startTournament(t *entity.Tournament) error {
 	rankedPlayers := rankPlayers(t.Players)
 
-	if t.Type == entity.ClassicTournamentType {
+	if t.Controls.Type == entity.ClassicTournamentType {
 		tm, err := entity.NewTournamentClassic(rankedPlayers,
-			t.NumberOfRounds, t.PairingMethods, t.GamesPerRound)
+			t.Controls.NumberOfRounds, t.Controls.PairingMethods, t.Controls.GamesPerRound)
 		if err != nil {
 			return err
 		}

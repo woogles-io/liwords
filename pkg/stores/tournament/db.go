@@ -13,7 +13,6 @@ import (
 
 	"github.com/domino14/liwords/pkg/config"
 	"github.com/domino14/liwords/pkg/entity"
-	realtime "github.com/domino14/liwords/rpc/api/proto/realtime"
 )
 
 // DBStore is a postgres-backed store for games.
@@ -63,7 +62,7 @@ func (s *DBStore) Get(ctx context.Context, id string) (*entity.Tournament, error
 		return nil, err
 	}
 
-	var controls realtime.GameRequest
+	var controls entity.TournamentControls
 	err = json.Unmarshal(tm.Controls, &controls)
 	if err != nil {
 		return nil, err
@@ -90,15 +89,10 @@ func (s *DBStore) Get(ctx context.Context, id string) (*entity.Tournament, error
 	tme := &entity.Tournament{UUID: tm.UUID,
 		Name:              tm.Name,
 		Description:       tm.Description,
-		StartTime:         tm.StartTime,
 		Directors:         &directors,
 		Controls:          &controls,
 		Players:           &players,
-		PairingMethods:    pairingMethods,
-		NumberOfRounds:    tm.NumberOfRounds,
-		GamesPerRound:     tm.GamesPerRound,
 		IsStarted:         tm.IsStarted,
-		Type:              tm.Type,
 		TournamentManager: tc}
 
 	return tme, nil
@@ -164,24 +158,14 @@ func (s *DBStore) toDBObj(t *entity.Tournament) (*tournament, error) {
 		return nil, err
 	}
 
-	pairingMethods, err := json.Marshal(t.PairingMethods)
-	if err != nil {
-		return nil, err
-	}
-
 	dbt := &tournament{
 		UUID:              t.UUID,
 		Name:              t.Name,
 		Description:       t.Description,
-		StartTime:         t.StartTime,
 		Directors:         directors,
 		Controls:          controls,
 		Players:           players,
-		PairingMethods:    pairingMethods,
-		NumberOfRounds:    t.NumberOfRounds,
-		GamesPerRound:     t.GamesPerRound,
 		IsStarted:         t.IsStarted,
-		Type:              t.Type,
 		TournamentManager: tm}
 	return dbt, nil
 }

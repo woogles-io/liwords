@@ -90,21 +90,25 @@ type TournamentPersons struct {
 	Persons map[string]int `json:"p"`
 }
 
+type TournamentControls struct {
+	GameRequest    *realtime.GameRequest `json:"r"`
+	PairingMethods []PairingMethod       `json:"a"`
+	NumberOfRounds int                   `json:"u"`
+	GamesPerRound  int                   `json:"g"`
+	Type           TournamentType        `json:"t"`
+	StartTime      time.Time             `json:"s"`
+}
+
 type Tournament struct {
 	sync.RWMutex
-	UUID              string                `json:"u"`
-	Name              string                `json:"n"`
-	Description       string                `json:"e"`
-	StartTime         time.Time             `json:"s"`
-	Directors         *TournamentPersons    `json:"d"`
-	Players           *TournamentPersons    `json:"p"`
-	Controls          *realtime.GameRequest `json:"r"`
-	PairingMethods    []PairingMethod       `json:"a"`
-	NumberOfRounds    int                   `json:"u"`
-	GamesPerRound     int                   `json:"g"`
-	Type              TournamentType        `json:"t"`
-	IsStarted         bool                  `json:"i"`
-	TournamentManager TournamentManager     `json:"m"`
+	UUID              string              `json:"u"`
+	Name              string              `json:"n"`
+	Description       string              `json:"e"`
+	Directors         *TournamentPersons  `json:"d"`
+	Players           *TournamentPersons  `json:"p"`
+	Controls          *TournamentControls `json:"c"`
+	IsStarted         bool                `json:"i"`
+	TournamentManager TournamentManager   `json:"m"`
 }
 
 func NewTournamentClassic(players []string,

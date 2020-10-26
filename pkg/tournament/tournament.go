@@ -2,21 +2,18 @@ package tournament
 
 import (
 	"context"
-	"time"
 
 	"github.com/domino14/liwords/pkg/config"
 	"github.com/domino14/liwords/pkg/entity"
 
 	pb "github.com/domino14/liwords/rpc/api/proto/realtime"
-	macondopb "github.com/domino14/macondo/gen/api/proto/macondo"
 )
 
 type TournamentStore interface {
 	Get(context.Context, string) (*entity.Tournament, error)
 	Set(context.Context, *entity.Tournament) error
 	Create(context.Context, *entity.Tournament) error
-	SetTournamentControls(context.Context, string, string, string, string, string, int32,
-		macondopb.ChallengeRule, pb.RatingMode, int32, int32, time.Time) error
+	SetTournamentControls(context.Context, string, string, string, *entity.TournamentControls) error
 	AddDirectors(context.Context, string, *entity.TournamentPersons) error
 	RemoveDirectors(context.Context, string, *entity.TournamentPersons) error
 	AddPlayers(context.Context, string, *entity.TournamentPersons) error
@@ -37,25 +34,15 @@ func InstantiateNewTournament(ctx context.Context,
 	cfg *config.Config,
 	name string,
 	description string,
-	startTime time.Time,
 	players *entity.TournamentPersons,
 	directors *entity.TournamentPersons,
-	controls *pb.GameRequest,
-	ttype entity.TournamentType,
-	pairingMethods []entity.PairingMethod,
-	numberOfRounds int,
-	gamesPerRound int) (*entity.Tournament, error) {
+	controls *entity.TournamentControls) (*entity.Tournament, error) {
 
 	entTournament := &entity.Tournament{Name: name,
-		Description:    description,
-		StartTime:      startTime,
-		Directors:      directors,
-		Players:        players,
-		Controls:       controls,
-		NumberOfRounds: numberOfRounds,
-		PairingMethods: pairingMethods,
-		GamesPerRound:  gamesPerRound,
-		Type:           ttype}
+		Description: description,
+		Directors:   directors,
+		Players:     players,
+		Controls:    controls}
 
 	// Save the tournament to the store.
 	if err := tournamentStore.Create(ctx, entTournament); err != nil {

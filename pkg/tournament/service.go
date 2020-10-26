@@ -4,8 +4,9 @@ import (
 	"context"
 
 	"github.com/domino14/liwords/pkg/entity"
-
+	realtime "github.com/domino14/liwords/rpc/api/proto/realtime"
 	pb "github.com/domino14/liwords/rpc/api/proto/tournament_service"
+
 	"github.com/golang/protobuf/ptypes"
 )
 
@@ -25,18 +26,26 @@ func (ts *TournamentService) SetTournamentControls(ctx context.Context, req *pb.
 	if err != nil {
 		return nil, err
 	}
-	err = ts.tournamentStore.SetTournamentControls(ctx,
-		req.TournamentId,
-		req.TournamentName,
-		req.TournamentDescription,
-		req.Lexicon,
-		req.Variant,
-		req.InitialTimeSeconds,
-		req.ChallengeRule,
-		req.RatingMode,
-		req.MaxOvertimeMinutes,
-		req.IncrementSeconds,
-		time)
+
+	newGameRequest := &realtime.GameRequest{
+		Lexicon: req.Lexicon,
+		Rules: &realtime.GameRules{BoardLayoutName: entity.CrosswordGame,
+			LetterDistributionName: "English",
+			VariantName:            req.Variant},
+		InitialTimeSeconds: req.InitialTimeSeconds,
+		IncrementSeconds:   req.IncrementSeconds,
+		ChallengeRule:      req.ChallengeRule,
+		RatingMode:         req.RatingMode,
+		MaxOvertimeMinutes: req.MaxOvertimeMinutes}
+
+	newControls := &entity.TournamentControls{GameRequest: newGameRequest,
+		PairingMethods: convertIntsToPairingMethods(req.PairingMethods),
+		NumberOfRounds: int(req.NumberOfRounds),
+		GamesPerRound:  int(req.GamesPerRound),
+		StartTime:      time}
+
+	err = ts.tournamentStore.SetTournamentControls(ctx, req.TournamentId, req.Name, req.Description, newControls)
+
 	if err != nil {
 		return nil, err
 	}
@@ -117,4 +126,12 @@ func convertPersonsToStringMap(req *pb.TournamentPersons) *entity.TournamentPers
 		personsMap[person.PersonId] = int(person.PersonInt)
 	}
 	return &entity.TournamentPersons{Persons: personsMap}
+}
+
+func convertIntsToPairingMethods(pairings []int32) []entity.PairingMethod {
+	pairingMethods := []entity.PairingMethod{}
+	for i := 0; i < len(pairings)-1; i++ {
+		pairingMethods = append(pairingMethods, entity.PairingMethod(pairings[i]))
+	}
+	return pairingMethods
 }
