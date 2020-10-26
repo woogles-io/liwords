@@ -264,7 +264,10 @@ func (c *Cache) StartRound(ctx context.Context, id string, round int) error {
 		if t.IsStarted {
 			return errors.New("The tournament has already been started.")
 		}
-		startTournament(t)
+		err = startTournament(t)
+		if err != nil {
+			return err
+		}
 	}
 
 	err = t.TournamentManager.StartRound(round)
