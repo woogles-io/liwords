@@ -14,17 +14,17 @@ import (
 )
 
 type TournamentGame struct {
-	Scores        []int
-	Results       []realtime.TournamentGameResult
-	GameEndReason realtime.GameEndReason
+	Scores        []int                           `json:"s"`
+	Results       []realtime.TournamentGameResult `json:"r"`
+	GameEndReason realtime.GameEndReason          `json:"g"`
 }
 
 const Unpaired = -1
 
 type Pairing struct {
-	Players  []string
-	Games    []*TournamentGame
-	Outcomes []realtime.TournamentGameResult
+	Players  []string                        `json:"p"`
+	Games    []*TournamentGame               `json:"g"`
+	Outcomes []realtime.TournamentGameResult `json:"o"`
 }
 
 type PlayerRoundInfo struct {
