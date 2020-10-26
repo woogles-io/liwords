@@ -31,10 +31,13 @@ type tournament struct {
 	StartTime         time.Time
 	Directors         datatypes.JSON
 	Type              entity.TournamentType
+	Controls          datatypes.JSON
+	Players           datatypes.JSON
+	PairingMethods    datatypes.JSON
+	NumberOfRounds    int
+	GamesPerRound     int
+	IsStarted         bool
 	TournamentManager datatypes.JSON
-
-	Controls datatypes.JSON
-	Players  datatypes.JSON
 }
 
 // NewDBStore creates a new DB store for tournament managers.
@@ -78,14 +81,24 @@ func (s *DBStore) Get(ctx context.Context, id string) (*entity.Tournament, error
 		return nil, err
 	}
 
+	var pairingMethods []entity.PairingMethod
+	err = json.Unmarshal(tm.PairingMethods, &pairingMethods)
+	if err != nil {
+		return nil, err
+	}
+
 	tme := &entity.Tournament{UUID: tm.UUID,
 		Name:              tm.Name,
 		Description:       tm.Description,
 		StartTime:         tm.StartTime,
 		Directors:         &directors,
-		Type:              tm.Type,
 		Controls:          &controls,
 		Players:           &players,
+		PairingMethods:    pairingMethods,
+		NumberOfRounds:    tm.NumberOfRounds,
+		GamesPerRound:     tm.GamesPerRound,
+		IsStarted:         tm.IsStarted,
+		Type:              tm.Type,
 		TournamentManager: tc}
 
 	return tme, nil
@@ -126,9 +139,14 @@ func (s *DBStore) Disconnect() {
 }
 
 func (s *DBStore) toDBObj(t *entity.Tournament) (*tournament, error) {
-	tm, err := t.TournamentManager.Serialize()
-	if err != nil {
-		return nil, err
+
+	var tm datatypes.JSON
+	if t.TournamentManager != nil {
+		json, err := t.TournamentManager.Serialize()
+		if err != nil {
+			return nil, err
+		}
+		tm = json
 	}
 
 	controls, err := json.Marshal(t.Controls)
@@ -146,15 +164,24 @@ func (s *DBStore) toDBObj(t *entity.Tournament) (*tournament, error) {
 		return nil, err
 	}
 
+	pairingMethods, err := json.Marshal(t.PairingMethods)
+	if err != nil {
+		return nil, err
+	}
+
 	dbt := &tournament{
 		UUID:              t.UUID,
 		Name:              t.Name,
 		Description:       t.Description,
 		StartTime:         t.StartTime,
 		Directors:         directors,
-		Type:              t.Type,
 		Controls:          controls,
 		Players:           players,
+		PairingMethods:    pairingMethods,
+		NumberOfRounds:    t.NumberOfRounds,
+		GamesPerRound:     t.GamesPerRound,
+		IsStarted:         t.IsStarted,
+		Type:              t.Type,
 		TournamentManager: tm}
 	return dbt, nil
 }

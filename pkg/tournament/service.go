@@ -28,9 +28,9 @@ func (ts *TournamentService) SetTournamentControls(ctx context.Context, req *pb.
 	err = ts.tournamentStore.SetTournamentControls(ctx,
 		req.TournamentId,
 		req.TournamentName,
+		req.TournamentDescription,
 		req.Lexicon,
 		req.Variant,
-		req.TimeControlName,
 		req.InitialTimeSeconds,
 		req.ChallengeRule,
 		req.RatingMode,
@@ -104,6 +104,10 @@ func (ts *TournamentService) SetResult(ctx context.Context, req *pb.TournamentRe
 
 // What this does is not yet clear. Need more designs.
 func (ts *TournamentService) StartRound(ctx context.Context, req *pb.TournamentStartRoundRequest) (*pb.TournamentResponse, error) {
+	err := ts.tournamentStore.StartRound(ctx, req.TournamentId, int(req.Round))
+	if err != nil {
+		return nil, err
+	}
 	return &pb.TournamentResponse{}, nil
 }
 

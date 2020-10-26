@@ -47,6 +47,7 @@ type TournamentManager interface {
 		realtime.TournamentGameResult, realtime.GameEndReason, bool, int) error
 	GetStandings(int) ([]*Standing, error)
 	SetPairing(string, string, int) error
+	StartRound(int) error
 	IsRoundComplete(int) (bool, error)
 	IsFinished() (bool, error)
 	Serialize() (datatypes.JSON, error)
@@ -72,7 +73,7 @@ const (
 type TournamentClassic struct {
 	Matrix         [][]*PlayerRoundInfo `json:"t"`
 	Players        []string             `json:"p"`
-	PlayerIndexMap map[string]int       `json:"m"`
+	PlayerIndexMap map[string]int       `json:"i"`
 	PairingMethods []PairingMethod      `json:"m"`
 	GamesPerRound  int                  `json:"g"`
 }
@@ -91,17 +92,19 @@ type TournamentPersons struct {
 
 type Tournament struct {
 	sync.RWMutex
-	UUID string `json:"u"`
-
-	Name              string             `json:"n"`
-	Description       string             `json:"e"`
-	StartTime         time.Time          `json:"t"`
-	Directors         *TournamentPersons `json:"d"`
-	Type              TournamentType     `json:"t"`
-	TournamentManager TournamentManager  `json:"m"`
-
-	Controls *realtime.GameRequest `json:"r"`
-	Players  *TournamentPersons    `json:"p"`
+	UUID              string                `json:"u"`
+	Name              string                `json:"n"`
+	Description       string                `json:"e"`
+	StartTime         time.Time             `json:"s"`
+	Directors         *TournamentPersons    `json:"d"`
+	Players           *TournamentPersons    `json:"p"`
+	Controls          *realtime.GameRequest `json:"r"`
+	PairingMethods    []PairingMethod       `json:"a"`
+	NumberOfRounds    int                   `json:"u"`
+	GamesPerRound     int                   `json:"g"`
+	Type              TournamentType        `json:"t"`
+	IsStarted         bool                  `json:"i"`
+	TournamentManager TournamentManager     `json:"m"`
 }
 
 func NewTournamentClassic(players []string,
@@ -178,6 +181,11 @@ func TournamentClassicUnserialize(blob datatypes.JSON) (*TournamentClassic, erro
 		return nil, err
 	}
 	return &tc, nil
+}
+
+func (t *TournamentClassic) StartRound(round int) error {
+	// Not sure yet
+	return nil
 }
 
 func (t *TournamentClassic) GetPlayerRoundInfo(player string, round int) (*PlayerRoundInfo, error) {
@@ -479,13 +487,16 @@ func addTournamentPersons(t *Tournament, persons *TournamentPersons, isPlayers b
 		personsMap = t.Directors.Persons
 	}
 
-	for k, v := range persons.Persons {
+	// Only perform the add operation if all persons can be added.
+	for k, _ := range persons.Persons {
 		_, ok := personsMap[k]
 		if ok {
 			return errors.New(fmt.Sprintf("Person (%s, %d) already exists.", k, personsMap[k]))
-		} else {
-			personsMap[k] = v
 		}
+	}
+
+	for k, v := range persons.Persons {
+		personsMap[k] = v
 	}
 	return nil
 }
@@ -499,13 +510,16 @@ func removeTournamentPersons(t *Tournament, persons *TournamentPersons, isPlayer
 		personsMap = t.Directors.Persons
 	}
 
+	// Only perform the remove operation if all persons can be removed.
 	for k, _ := range persons.Persons {
 		_, ok := personsMap[k]
 		if !ok {
 			return errors.New(fmt.Sprintf("Person (%s, %d) does not.", k, personsMap[k]))
-		} else {
-			delete(personsMap, k)
 		}
+	}
+
+	for k, _ := range persons.Persons {
+		delete(personsMap, k)
 	}
 	return nil
 }

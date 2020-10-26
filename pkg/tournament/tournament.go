@@ -2,8 +2,6 @@ package tournament
 
 import (
 	"context"
-	"errors"
-	"sort"
 	"time"
 
 	"github.com/domino14/liwords/pkg/config"
@@ -27,6 +25,7 @@ type TournamentStore interface {
 	SetResult(context.Context, string, string, string, int, int,
 		pb.TournamentGameResult, pb.TournamentGameResult, pb.GameEndReason, int, int, bool) error
 	StartRound(context.Context, string, int) error
+	IsStarted(context.Context, string) (bool, error)
 	IsRoundComplete(context.Context, string, int) (bool, error)
 	IsFinished(context.Context, string) (bool, error)
 	Unload(context.Context, string)
@@ -36,41 +35,27 @@ type TournamentStore interface {
 func InstantiateNewTournament(ctx context.Context,
 	tournamentStore TournamentStore,
 	cfg *config.Config,
-	tournamentName string,
+	name string,
+	description string,
+	startTime time.Time,
 	players *entity.TournamentPersons,
 	directors *entity.TournamentPersons,
-	req *pb.GameRequest,
+	controls *pb.GameRequest,
+	ttype entity.TournamentType,
 	pairingMethods []entity.PairingMethod,
 	numberOfRounds int,
-	gamesPerRound int,
-	ttype entity.TournamentType) (*entity.Tournament, error) {
+	gamesPerRound int) (*entity.Tournament, error) {
 
-	var entTournament *entity.Tournament
-
-	// Sort players by descending int (which is probably rating)
-	var values []int
-	for _, v := range players.Persons {
-		values = append(values, v)
-	}
-	sort.Ints(values)
-	reversedPlayersMap := reverseMap(players.Persons)
-	rankedPlayers := []string{}
-	for i := len(values) - 1; i >= 0; i-- {
-		rankedPlayers = append(rankedPlayers, reversedPlayersMap[values[i]])
-	}
-
-	if ttype == entity.ClassicTournamentType {
-		tm, err := entity.NewTournamentClassic(rankedPlayers, numberOfRounds, pairingMethods, gamesPerRound)
-		if err != nil {
-			return nil, err
-		}
-		entTournament = &entity.Tournament{Directors: directors,
-			Name:              tournamentName,
-			Type:              ttype,
-			TournamentManager: tm}
-	} else {
-		return nil, errors.New("Only Classic Tournaments have been implemented")
-	}
+	entTournament := &entity.Tournament{Name: name,
+		Description:    description,
+		StartTime:      startTime,
+		Directors:      directors,
+		Players:        players,
+		Controls:       controls,
+		NumberOfRounds: numberOfRounds,
+		PairingMethods: pairingMethods,
+		GamesPerRound:  gamesPerRound,
+		Type:           ttype}
 
 	// Save the tournament to the store.
 	if err := tournamentStore.Create(ctx, entTournament); err != nil {
@@ -130,12 +115,4 @@ func TournamentGameEndedEvent(ctx context.Context, tournamentStore TournamentSto
 func TournamentSetPairingsEvent(ctx context.Context, tournamentStore TournamentStore) error {
 	// Do something probably
 	return nil
-}
-
-func reverseMap(m map[string]int) map[int]string {
-	n := make(map[int]string)
-	for k, v := range m {
-		n[v] = k
-	}
-	return n
 }

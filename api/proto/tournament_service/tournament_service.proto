@@ -14,15 +14,15 @@ message StartRoundRequest {
 message TournamentControlsRequest {
   string tournament_id = 1;
   string tournament_name = 2;
-  string lexicon = 3;
-  string variant = 4;
-  string time_control_name = 5;
+  string tournament_description = 3;
+  string lexicon = 4;
+  string variant = 5;
   int32 initial_time_seconds = 6;
-  macondo.ChallengeRule challenge_rule = 8;
-  liwords.RatingMode rating_mode = 9;
-  int32 max_overtime_minutes = 10;
-  int32 increment_seconds = 11;
-  google.protobuf.Timestamp start_time = 12;
+  macondo.ChallengeRule challenge_rule = 7;
+  liwords.RatingMode rating_mode = 8;
+  int32 max_overtime_minutes = 9;
+  int32 increment_seconds = 10;
+  google.protobuf.Timestamp start_time = 11;
 }
 
 message TournamentPerson {

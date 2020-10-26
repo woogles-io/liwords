@@ -2,6 +2,8 @@ package tournament
 
 import (
 	"context"
+	"errors"
+	"sort"
 	"time"
 
 	"github.com/domino14/liwords/pkg/entity"
@@ -87,9 +89,9 @@ func (c *Cache) setOrCreate(ctx context.Context, tm *entity.Tournament, isNew bo
 func (c *Cache) SetTournamentControls(ctx context.Context,
 	id string,
 	name string,
+	description string,
 	lexicon string,
 	variant string,
-	timeControlName string,
 	initialTimeSeconds int32,
 	challengeRule macondo.ChallengeRule,
 	ratingMode realtime.RatingMode,
@@ -102,7 +104,12 @@ func (c *Cache) SetTournamentControls(ctx context.Context,
 		return err
 	}
 
+	if t.IsStarted {
+		return errors.New("Cannot change tournament controls after it has started.")
+	}
+
 	t.Name = name
+	t.Description = description
 	t.Controls.Lexicon = lexicon
 	t.Controls.Rules.VariantName = variant
 	t.Controls.InitialTimeSeconds = initialTimeSeconds
@@ -182,6 +189,10 @@ func (c *Cache) SetPairing(ctx context.Context, id string, playerOneId string, p
 		return err
 	}
 
+	if !t.IsStarted {
+		return errors.New("Cannot set tournament pairings before the tournament has started.")
+	}
+
 	err = t.TournamentManager.SetPairing(playerOneId, playerTwoId, round)
 	if err != nil {
 		return err
@@ -208,6 +219,10 @@ func (c *Cache) SetResult(ctx context.Context,
 		return err
 	}
 
+	if !t.IsStarted {
+		return errors.New("Cannot set tournament results before the tournament has started.")
+	}
+
 	err = t.TournamentManager.SubmitResult(round,
 		playerOneId,
 		playerTwoId,
@@ -225,11 +240,24 @@ func (c *Cache) SetResult(ctx context.Context,
 	return c.backing.Set(ctx, t)
 }
 
+func (c *Cache) IsStarted(ctx context.Context, id string) (bool, error) {
+	t, err := c.Get(ctx, id)
+	if err != nil {
+		return false, err
+	}
+	return t.IsStarted, nil
+}
+
 func (c *Cache) IsRoundComplete(ctx context.Context, id string, round int) (bool, error) {
 	t, err := c.Get(ctx, id)
 	if err != nil {
 		return false, err
 	}
+
+	if !t.IsStarted {
+		return false, errors.New("Cannot check if round is complete before the tournament has started.")
+	}
+
 	return t.TournamentManager.IsRoundComplete(round)
 }
 
@@ -238,11 +266,33 @@ func (c *Cache) IsFinished(ctx context.Context, id string) (bool, error) {
 	if err != nil {
 		return false, err
 	}
+
+	if !t.IsStarted {
+		return false, errors.New("Cannot check if tournament is finished before the tournament has started.")
+	}
+
 	return t.TournamentManager.IsFinished()
 }
 
 func (c *Cache) StartRound(ctx context.Context, id string, round int) error {
-	return nil
+	t, err := c.Get(ctx, id)
+	if err != nil {
+		return err
+	}
+
+	if round == 0 {
+		if t.IsStarted {
+			return errors.New("The tournament has already been started.")
+		}
+		startTournament(t)
+	}
+
+	err = t.TournamentManager.StartRound(round)
+	if err != nil {
+		return err
+	}
+
+	return c.backing.Set(ctx, t)
 }
 
 // Unload unloads the tournament from the cache
@@ -252,6 +302,38 @@ func (c *Cache) Unload(ctx context.Context, id string) {
 
 func (c *Cache) Disconnect() {
 	c.backing.Disconnect()
+}
+
+func startTournament(t *entity.Tournament) error {
+	rankedPlayers := rankPlayers(t.Players)
+
+	if t.Type == entity.ClassicTournamentType {
+		tm, err := entity.NewTournamentClassic(rankedPlayers,
+			t.NumberOfRounds, t.PairingMethods, t.GamesPerRound)
+		if err != nil {
+			return err
+		}
+		t.TournamentManager = tm
+	} else {
+		return errors.New("Only Classic Tournaments have been implemented")
+	}
+	t.IsStarted = true
+	return nil
+}
+
+func rankPlayers(players *entity.TournamentPersons) []string {
+	// Sort players by descending int (which is probably rating)
+	var values []int
+	for _, v := range players.Persons {
+		values = append(values, v)
+	}
+	sort.Ints(values)
+	reversedPlayersMap := reverseMap(players.Persons)
+	rankedPlayers := []string{}
+	for i := len(values) - 1; i >= 0; i-- {
+		rankedPlayers = append(rankedPlayers, reversedPlayersMap[values[i]])
+	}
+	return rankedPlayers
 }
 
 func indexesToRemove(alteredArray []string, referenceArray []string) []int {
@@ -264,6 +346,14 @@ func indexesToRemove(alteredArray []string, referenceArray []string) []int {
 		}
 	}
 	return indexesToRemove
+}
+
+func reverseMap(m map[string]int) map[int]string {
+	n := make(map[int]string)
+	for k, v := range m {
+		n[v] = k
+	}
+	return n
 }
 
 func remove(slice []string, s int) []string {
