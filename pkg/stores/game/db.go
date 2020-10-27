@@ -129,6 +129,7 @@ func (s *DBStore) Get(ctx context.Context, id string) (*entity.Game, error) {
 		return nil, err
 	}
 	entGame.TournamentID = g.TournamentID
+	return entGame, nil
 }
 
 // GetMetadata gets metadata about the game, but does not actually play the game.
