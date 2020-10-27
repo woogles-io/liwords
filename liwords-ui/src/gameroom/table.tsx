@@ -487,11 +487,13 @@ export const Table = React.memo((props: Props) => {
           />
         </div>
         {/* There are two player cards, css hides one of them. */}
-        <PlayerCards
-          horizontal
-          gameMeta={gameInfo}
-          playerMeta={gameInfo.players}
-        />
+        <div className="sticky-player-card-container">
+          <PlayerCards
+            horizontal
+            gameMeta={gameInfo}
+            playerMeta={gameInfo.players}
+          />
+        </div>
         <div className="play-area">
           <BoardPanel
             username={username}
