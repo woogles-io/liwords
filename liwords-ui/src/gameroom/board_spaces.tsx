@@ -96,7 +96,7 @@ const BoardSpaces = React.memo((props: Props) => {
     }
   }
   return (
-    <div className="board-spaces" ref={boardRef}>
+    <div className="board-spaces" ref={boardRef} id="board-spaces">
       {spaces}
     </div>
   );

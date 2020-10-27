@@ -245,14 +245,19 @@ const EndGameControls = (props: EGCProps) => {
 
   return (
     <div className="game-controls">
-      <Button>Options</Button>
-      <Button onClick={props.onExamine}>Examine</Button>
-      <Button onClick={props.onExportGCG}>Export GCG</Button>
-      <Button onClick={handleExitToLobby}>Exit</Button>
+      <div className="secondary-controls">
+        <Button>Options</Button>
+        <Button onClick={props.onExamine}>Examine</Button>
+      </div>
+      <div className="secondary-controls">
+        <Button onClick={props.onExportGCG}>Export GCG</Button>
+        <Button onClick={handleExitToLobby}>Exit</Button>
+      </div>
       {props.showRematch && !rematchDisabled && (
         <Button
           type="primary"
           data-testid="rematch-button"
+          className="play"
           onClick={() => {
             setRematchDisabled(true);
             if (!rematchDisabled) {

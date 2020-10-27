@@ -55,6 +55,7 @@ import {
   PlayState,
 } from '../gen/macondo/api/proto/macondo/macondo_pb';
 import { toAPIUrl } from '../api/api';
+import { TilePreview } from './tile';
 
 // The frame atop is 24 height
 // The frames on the sides are 24 in width, surrounded by a 14 pix gutter
@@ -953,6 +954,7 @@ export const BoardPanel = React.memo((props: Props) => {
       ) : (
         <GameEndMessage message={examinableGameEndMessage} />
       )}
+      {isTouchDevice() ? <TilePreview gridDim={props.board.dim} /> : null}
       <GameControls
         isExamining={isExamining}
         myTurn={isMyTurn()}
