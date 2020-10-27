@@ -91,9 +91,9 @@ type TournamentPersons struct {
 }
 
 type TournamentControls struct {
-	GameRequest    *realtime.GameRequest `json:"r"`
-	PairingMethods []PairingMethod       `json:"a"`
-	NumberOfRounds int                   `json:"u"`
+	GameRequest    *realtime.GameRequest `json:"g"`
+	PairingMethods []PairingMethod       `json:"p"`
+	NumberOfRounds int                   `json:"n"`
 	GamesPerRound  int                   `json:"g"`
 	Type           TournamentType        `json:"t"`
 	StartTime      time.Time             `json:"s"`
@@ -134,7 +134,7 @@ func NewTournamentClassic(players []string,
 		if method == Elimination {
 			isElimination = true
 		} else if isElimination && method != Elimination {
-			return nil, errors.New("")
+			return nil, errors.New("Cannot mix Elimination pairings with any other pairing method.")
 		}
 	}
 
@@ -518,7 +518,7 @@ func removeTournamentPersons(t *Tournament, persons *TournamentPersons, isPlayer
 	for k, _ := range persons.Persons {
 		_, ok := personsMap[k]
 		if !ok {
-			return errors.New(fmt.Sprintf("Person (%s, %d) does not.", k, personsMap[k]))
+			return errors.New(fmt.Sprintf("Person (%s, %d) does not exist.", k, personsMap[k]))
 		}
 	}
 
@@ -768,21 +768,21 @@ func getEliminationOutcomes(games []*TournamentGame, gamesPerRound int) []realti
 	// this is an extreme edge case.
 	if len(games) > gamesPerRound { // Tiebreaking results are present
 		if p1Wins > p2Wins ||
-			p1Wins == p2Wins && p1Spread > p2Spread {
+			(p1Wins == p2Wins && p1Spread > p2Spread) {
 			p1Outcome = realtime.TournamentGameResult_WIN
 			p2Outcome = realtime.TournamentGameResult_ELIMINATED
 		} else if p2Wins > p1Wins ||
-			p2Wins == p1Wins && p2Spread > p1Spread {
+			(p2Wins == p1Wins && p2Spread > p1Spread) {
 			p1Outcome = realtime.TournamentGameResult_ELIMINATED
 			p2Outcome = realtime.TournamentGameResult_WIN
 		}
 	} else {
 		if p1Wins > gamesPerRound ||
-			p1Wins == gamesPerRound && p2Wins == gamesPerRound && p1Spread > p2Spread {
+			(p1Wins == gamesPerRound && p2Wins == gamesPerRound && p1Spread > p2Spread) {
 			p1Outcome = realtime.TournamentGameResult_WIN
 			p2Outcome = realtime.TournamentGameResult_ELIMINATED
 		} else if p2Wins > gamesPerRound ||
-			p1Wins == gamesPerRound && p2Wins == gamesPerRound && p1Spread < p2Spread {
+			(p1Wins == gamesPerRound && p2Wins == gamesPerRound && p1Spread < p2Spread) {
 			p1Outcome = realtime.TournamentGameResult_ELIMINATED
 			p2Outcome = realtime.TournamentGameResult_WIN
 		}
