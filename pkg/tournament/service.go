@@ -4,7 +4,6 @@ import (
 	"context"
 
 	"github.com/domino14/liwords/pkg/entity"
-	realtime "github.com/domino14/liwords/rpc/api/proto/realtime"
 	pb "github.com/domino14/liwords/rpc/api/proto/tournament_service"
 
 	"github.com/golang/protobuf/ptypes"
@@ -27,24 +26,14 @@ func (ts *TournamentService) SetTournamentControls(ctx context.Context, req *pb.
 		return nil, err
 	}
 
-	newGameRequest := &realtime.GameRequest{
-		Lexicon: req.Lexicon,
-		Rules: &realtime.GameRules{BoardLayoutName: entity.CrosswordGame,
-			LetterDistributionName: "English",
-			VariantName:            req.Variant},
-		InitialTimeSeconds: req.InitialTimeSeconds,
-		IncrementSeconds:   req.IncrementSeconds,
-		ChallengeRule:      req.ChallengeRule,
-		RatingMode:         req.RatingMode,
-		MaxOvertimeMinutes: req.MaxOvertimeMinutes}
-
-	newControls := &entity.TournamentControls{GameRequest: newGameRequest,
+	newControls := &entity.TournamentControls{GameRequest: req.GameRequest,
 		PairingMethods: convertIntsToPairingMethods(req.PairingMethods),
+		FirstMethods:   convertIntsToFirstMethods(req.FirstMethods),
 		NumberOfRounds: int(req.NumberOfRounds),
 		GamesPerRound:  int(req.GamesPerRound),
 		StartTime:      time}
 
-	err = ts.tournamentStore.SetTournamentControls(ctx, req.TournamentId, req.Name, req.Description, newControls)
+	err = SetTournamentControls(ctx, ts.tournamentStore, req.Id, req.Division, req.Name, req.Description, newControls)
 
 	if err != nil {
 		return nil, err
@@ -52,46 +41,45 @@ func (ts *TournamentService) SetTournamentControls(ctx context.Context, req *pb.
 	return &pb.TournamentResponse{}, nil
 }
 func (ts *TournamentService) AddDirectors(ctx context.Context, req *pb.TournamentPersons) (*pb.TournamentResponse, error) {
-	err := ts.tournamentStore.AddDirectors(ctx, req.TournamentId, convertPersonsToStringMap(req))
+	err := AddDirectors(ctx, ts.tournamentStore, req.Id, convertPersonsToStringMap(req))
 	if err != nil {
 		return nil, err
 	}
 	return &pb.TournamentResponse{}, nil
 }
 func (ts *TournamentService) RemoveDirectors(ctx context.Context, req *pb.TournamentPersons) (*pb.TournamentResponse, error) {
-	err := ts.tournamentStore.RemoveDirectors(ctx, req.TournamentId, convertPersonsToStringMap(req))
+	err := RemoveDirectors(ctx, ts.tournamentStore, req.Id, convertPersonsToStringMap(req))
 	if err != nil {
 		return nil, err
 	}
 	return &pb.TournamentResponse{}, nil
 }
 func (ts *TournamentService) AddPlayers(ctx context.Context, req *pb.TournamentPersons) (*pb.TournamentResponse, error) {
-	err := ts.tournamentStore.AddPlayers(ctx, req.TournamentId, convertPersonsToStringMap(req))
+	err := AddPlayers(ctx, ts.tournamentStore, req.Id, req.Division, convertPersonsToStringMap(req))
 	if err != nil {
 		return nil, err
 	}
 	return &pb.TournamentResponse{}, nil
 }
 func (ts *TournamentService) RemovePlayers(ctx context.Context, req *pb.TournamentPersons) (*pb.TournamentResponse, error) {
-	err := ts.tournamentStore.RemovePlayers(ctx, req.TournamentId, convertPersonsToStringMap(req))
+	err := RemovePlayers(ctx, ts.tournamentStore, req.Id, req.Division, convertPersonsToStringMap(req))
 	if err != nil {
 		return nil, err
 	}
 	return &pb.TournamentResponse{}, nil
 }
 func (ts *TournamentService) SetPairing(ctx context.Context, req *pb.TournamentPairingRequest) (*pb.TournamentResponse, error) {
-	err := ts.tournamentStore.SetPairing(ctx, req.TournamentId, req.PlayerOneId, req.PlayerTwoId, int(req.Round))
+	err := SetPairing(ctx, ts.tournamentStore, req.Id, req.Division, req.PlayerOneId, req.PlayerTwoId, int(req.Round))
 	if err != nil {
 		return nil, err
 	}
-
-	TournamentSetPairingsEvent(ctx, ts.tournamentStore)
-
 	return &pb.TournamentResponse{}, nil
 }
-func (ts *TournamentService) SetResult(ctx context.Context, req *pb.TournamentResultRequest) (*pb.TournamentResponse, error) {
-	err := ts.tournamentStore.SetResult(ctx,
-		req.TournamentId,
+func (ts *TournamentService) SetResult(ctx context.Context, req *pb.TournamentResultOverrideRequest) (*pb.TournamentResponse, error) {
+	err := SetResult(ctx,
+		ts.tournamentStore,
+		req.Id,
+		req.Division,
 		req.PlayerOneId,
 		req.PlayerTwoId,
 		int(req.PlayerOneScore),
@@ -105,15 +93,12 @@ func (ts *TournamentService) SetResult(ctx context.Context, req *pb.TournamentRe
 	if err != nil {
 		return nil, err
 	}
-
-	TournamentGameEndedEvent(ctx, ts.tournamentStore, req.TournamentId, int(req.Round))
-
 	return &pb.TournamentResponse{}, nil
 }
 
 // What this does is not yet clear. Need more designs.
 func (ts *TournamentService) StartRound(ctx context.Context, req *pb.TournamentStartRoundRequest) (*pb.TournamentResponse, error) {
-	err := ts.tournamentStore.StartRound(ctx, req.TournamentId, int(req.Round))
+	err := StartRound(ctx, ts.tournamentStore, req.Id, req.Division, int(req.Round))
 	if err != nil {
 		return nil, err
 	}
@@ -128,10 +113,18 @@ func convertPersonsToStringMap(req *pb.TournamentPersons) *entity.TournamentPers
 	return &entity.TournamentPersons{Persons: personsMap}
 }
 
-func convertIntsToPairingMethods(pairings []int32) []entity.PairingMethod {
+func convertIntsToPairingMethods(methods []int32) []entity.PairingMethod {
 	pairingMethods := []entity.PairingMethod{}
-	for i := 0; i < len(pairings)-1; i++ {
-		pairingMethods = append(pairingMethods, entity.PairingMethod(pairings[i]))
+	for i := 0; i < len(methods)-1; i++ {
+		pairingMethods = append(pairingMethods, entity.PairingMethod(methods[i]))
 	}
 	return pairingMethods
+}
+
+func convertIntsToFirstMethods(methods []int32) []entity.FirstMethod {
+	firstMethods := []entity.FirstMethod{}
+	for i := 0; i < len(methods)-1; i++ {
+		firstMethods = append(firstMethods, entity.FirstMethod(methods[i]))
+	}
+	return firstMethods
 }

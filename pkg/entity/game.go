@@ -64,9 +64,10 @@ type Quickdata struct {
 // Holds the tournament data for a game.
 // This is nil if the game is not a tournament game.
 type Tournamentdata struct {
-	TournamentId string
-	Round        int
-	GameIndex    int
+	Id        string
+	Division  string
+	Round     int
+	GameIndex int
 }
 
 // A Game should be saved to the database or store. It wraps a macondo.Game,

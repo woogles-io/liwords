@@ -3,7 +3,6 @@ package tournament
 import (
 	"context"
 	"encoding/json"
-	"time"
 
 	"github.com/rs/zerolog/log"
 	"gorm.io/datatypes"
@@ -25,18 +24,12 @@ type tournament struct {
 	gorm.Model
 	UUID string `gorm:"type:varchar(24);index"`
 
-	Name              string
-	Description       string
-	StartTime         time.Time
-	Directors         datatypes.JSON
-	Type              entity.TournamentType
-	Controls          datatypes.JSON
-	Players           datatypes.JSON
-	PairingMethods    datatypes.JSON
-	NumberOfRounds    int
-	GamesPerRound     int
-	IsStarted         bool
-	TournamentManager datatypes.JSON
+	Name        string
+	Description string
+	Directors   datatypes.JSON
+	Type        entity.TournamentType
+	IsStarted   bool
+	Divisions   datatypes.JSON
 }
 
 // NewDBStore creates a new DB store for tournament managers.
@@ -56,20 +49,8 @@ func (s *DBStore) Get(ctx context.Context, id string) (*entity.Tournament, error
 		return nil, result.Error
 	}
 
-	// Have to fix this a bit for Arena mode
-	tc, err := entity.TournamentClassicUnserialize(tm.TournamentManager)
-	if err != nil {
-		return nil, err
-	}
-
-	var controls entity.TournamentControls
-	err = json.Unmarshal(tm.Controls, &controls)
-	if err != nil {
-		return nil, err
-	}
-
-	var players entity.TournamentPersons
-	err = json.Unmarshal(tm.Players, &players)
+	var divisions map[string]*entity.TournamentDivision
+	err := json.Unmarshal(tm.Divisions, &divisions)
 	if err != nil {
 		return nil, err
 	}
@@ -80,20 +61,12 @@ func (s *DBStore) Get(ctx context.Context, id string) (*entity.Tournament, error
 		return nil, err
 	}
 
-	var pairingMethods []entity.PairingMethod
-	err = json.Unmarshal(tm.PairingMethods, &pairingMethods)
-	if err != nil {
-		return nil, err
-	}
-
 	tme := &entity.Tournament{UUID: tm.UUID,
-		Name:              tm.Name,
-		Description:       tm.Description,
-		Directors:         &directors,
-		Controls:          &controls,
-		Players:           &players,
-		IsStarted:         tm.IsStarted,
-		TournamentManager: tc}
+		Name:        tm.Name,
+		Description: tm.Description,
+		Directors:   &directors,
+		IsStarted:   tm.IsStarted,
+		Divisions:   divisions}
 
 	return tme, nil
 }
@@ -134,38 +107,22 @@ func (s *DBStore) Disconnect() {
 
 func (s *DBStore) toDBObj(t *entity.Tournament) (*tournament, error) {
 
-	var tm datatypes.JSON
-	if t.TournamentManager != nil {
-		json, err := t.TournamentManager.Serialize()
-		if err != nil {
-			return nil, err
-		}
-		tm = json
-	}
-
-	controls, err := json.Marshal(t.Controls)
-	if err != nil {
-		return nil, err
-	}
-
 	directors, err := json.Marshal(t.Directors)
 	if err != nil {
 		return nil, err
 	}
 
-	players, err := json.Marshal(t.Players)
+	divisions, err := json.Marshal(t.Divisions)
 	if err != nil {
 		return nil, err
 	}
 
 	dbt := &tournament{
-		UUID:              t.UUID,
-		Name:              t.Name,
-		Description:       t.Description,
-		Directors:         directors,
-		Controls:          controls,
-		Players:           players,
-		IsStarted:         t.IsStarted,
-		TournamentManager: tm}
+		UUID:        t.UUID,
+		Name:        t.Name,
+		Description: t.Description,
+		Directors:   directors,
+		IsStarted:   t.IsStarted,
+		Divisions:   divisions}
 	return dbt, nil
 }

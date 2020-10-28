@@ -11,7 +11,6 @@ require (
 	github.com/jinzhu/gorm v1.9.16
 	github.com/justinas/alice v1.2.0
 	github.com/kr/text v0.2.0 // indirect
-	github.com/lib/pq v1.3.0
 	github.com/lithammer/shortuuid v3.0.0+incompatible
 	github.com/mailgun/mailgun-go/v4 v4.1.4
 	github.com/matryer/is v1.4.0
@@ -23,7 +22,6 @@ require (
 	github.com/twitchtv/twirp v7.1.0+incompatible
 	golang.org/x/crypto v0.0.0-20200820211705-5c72a883971a
 	golang.org/x/sys v0.0.0-20200828194041-157a740278f4 // indirect
-	golang.org/x/text v0.3.3 // indirect
 	google.golang.org/protobuf v1.25.0
 	gopkg.in/check.v1 v1.0.0-20200227125254-8fa46927fb4f // indirect
 	gorm.io/datatypes v0.0.0-20200924071644-3967db6857cf

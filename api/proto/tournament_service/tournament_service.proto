@@ -3,7 +3,6 @@ package tournament_service;
 option go_package = "github.com/domino14/liwords/rpc/api/proto/tournament_service";
 
 import "api/proto/realtime/realtime.proto";
-import "macondo/api/proto/macondo/macondo.proto";
 import "google/protobuf/timestamp.proto";
 
 message StartRoundRequest {
@@ -12,20 +11,16 @@ message StartRoundRequest {
 }
 
 message TournamentControlsRequest {
-  string tournament_id = 1;
-  string name = 2;
-  string description = 3;
-  string lexicon = 4;
-  string variant = 5;
-  int32 initial_time_seconds = 6;
-  macondo.ChallengeRule challenge_rule = 7;
-  liwords.RatingMode rating_mode = 8;
-  int32 max_overtime_minutes = 9;
-  int32 increment_seconds = 10;
-  repeated int32 pairing_methods = 11;
-  int32 number_of_rounds = 12;
-  int32 games_per_round = 13;
-  google.protobuf.Timestamp start_time = 14;
+  string id = 1;
+  string division = 2;
+  string name = 3;
+  string description = 4;
+  liwords.GameRequest game_request = 5;
+  repeated int32 pairing_methods = 6;
+  repeated int32 first_methods = 7;
+  int32 number_of_rounds = 8;
+  int32 games_per_round = 9;
+  google.protobuf.Timestamp start_time = 10;
 }
 
 message TournamentPerson {
@@ -34,34 +29,38 @@ message TournamentPerson {
 }
 
 message TournamentPersons {
-  string tournament_id = 1;
-  repeated TournamentPerson persons = 2;
+  string id = 1;
+  string division = 2;
+  repeated TournamentPerson persons = 3;
 }
 
 message TournamentPairingRequest {
-	string tournament_id = 1;
-	string player_one_id = 2;
-	string player_two_id = 3;
-	int32 round = 4;
+	string id = 1;
+  string division = 2;
+	string player_one_id = 3;
+	string player_two_id = 4;
+	int32 round = 5;
 }
 
-message TournamentResultRequest {
-	string tournament_id = 1;
-	string player_one_id = 2;
-	string player_two_id = 3;
-	int32 round = 4;
-	int32 player_one_score = 5;
-	int32 player_two_score = 6;
-	liwords.TournamentGameResult player_one_result = 7;
-	liwords.TournamentGameResult player_two_result = 8;
-  liwords.GameEndReason game_end_reason = 9;
-	bool amendment = 10;
-  int32 game_index = 11;
+message TournamentResultOverrideRequest {
+	string id = 1;
+  string division = 2;
+	string player_one_id = 3;
+	string player_two_id = 4;
+	int32 round = 5;
+	int32 player_one_score = 6;
+	int32 player_two_score = 7;
+	liwords.TournamentGameResult player_one_result = 8;
+	liwords.TournamentGameResult player_two_result = 9;
+  liwords.GameEndReason game_end_reason = 10;
+	bool amendment = 11;
+  int32 game_index = 12;
 }
 
 message TournamentStartRoundRequest {
-  string tournament_id = 1;
-  int32 round = 2;
+  string id = 1;
+  string division = 2;
+  int32 round = 3;
 }
 
 message TournamentResponse {}
@@ -73,6 +72,6 @@ service TournamentService {
   rpc AddPlayers(TournamentPersons) returns (TournamentResponse);
   rpc RemovePlayers(TournamentPersons) returns (TournamentResponse);
   rpc SetPairing(TournamentPairingRequest) returns (TournamentResponse);
-  rpc SetResult(TournamentResultRequest) returns (TournamentResponse);
+  rpc SetResult(TournamentResultOverrideRequest) returns (TournamentResponse);
   rpc StartRound(TournamentStartRoundRequest) returns (TournamentResponse);
 }
