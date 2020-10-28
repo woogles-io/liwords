@@ -1,5 +1,5 @@
 
-FROM node:alpine
+FROM node:14-alpine3.10
 
 WORKDIR /opt/liwords-ui/
 
@@ -8,7 +8,7 @@ ENV PATH /opt/liwords-ui/node_modules/.bin:$PATH
 COPY ./liwords-ui/package.json ./
 COPY ./liwords-ui/package-lock.json ./
 
-RUN npm install
+RUN npm ci
 
 COPY . /opt/liwords-ui/
 
