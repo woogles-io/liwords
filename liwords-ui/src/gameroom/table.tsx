@@ -486,8 +486,14 @@ export const Table = React.memo((props: Props) => {
             peopleOnlineContext={peopleOnlineContext}
           />
         </div>
-        {/* we only put the Popconfirm here so that we can physically place it */}
-
+        {/* There are two player cards, css hides one of them. */}
+        <div className="sticky-player-card-container">
+          <PlayerCards
+            horizontal
+            gameMeta={gameInfo}
+            playerMeta={gameInfo.players}
+          />
+        </div>
         <div className="play-area">
           <BoardPanel
             username={username}
@@ -502,6 +508,7 @@ export const Table = React.memo((props: Props) => {
           <StreakWidget recentGames={streakGameInfo} />
         </div>
         <div className="data-area" id="right-sidebar">
+          {/* There are two player cards, css hides one of them. */}
           <PlayerCards gameMeta={gameInfo} playerMeta={gameInfo.players} />
           <GameInfo meta={gameInfo} />
           <Pool

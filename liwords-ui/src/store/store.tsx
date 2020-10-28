@@ -60,7 +60,6 @@ const defaultTimerContext = {
 const defaultFunction = () => {};
 
 // Functions and data to deal with the global store.
-
 type LobbyStoreData = {
   lobbyContext: LobbyState;
   dispatchLobbyContext: (action: Action) => void;
@@ -538,7 +537,6 @@ const RealStore = ({ children, ...props }: Props) => {
     connID: '',
   });
   const [currentLagMs, setCurrentLagMs] = useState(NaN);
-
   const [gameContext, dispatchGameContext] = useReducer(GameReducer, null, () =>
     gameStateInitializer(clockController, onClockTick, onClockTimeout)
   );
@@ -788,6 +786,7 @@ export const Store = ({ children }: { children: React.ReactNode }) => {
 export const useLobbyStoreContext = () => useContext(LobbyContext);
 export const useLoginStateStoreContext = () => useContext(LoginStateContext);
 export const useLagStoreContext = () => useContext(LagContext);
+
 export const useExcludedPlayersStoreContext = () =>
   useContext(ExcludedPlayersContext);
 export const useRedirGameStoreContext = () => useContext(RedirGameContext);

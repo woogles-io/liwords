@@ -3,6 +3,7 @@
 @include button;
 @include notification;
 @include modal;
+$tile-transition: width ease-in 100ms, height ease-in 100ms, background-color ease-in 100ms;
 
 .ant-modal-footer {
   display: flex;
@@ -75,6 +76,16 @@
   flex-direction: column;
   align-items: center;
   height: 100%;
+  position: relative;
+  left: 12px;
+  .tile.preview {
+    position: absolute;
+    pointer-events: none;
+    margin-top: 10px;
+    z-index: 5;
+    background-color: $color-secondary-medium;
+    transition: $tile-transition;
+  }
 }
 
 .board {
@@ -110,6 +121,7 @@
 }
 .board-spaces,
 .tiles {
+  touch-action: manipulation;
   width: $board-size-mobile;
   height: $board-size-mobile;
   min-width: 360px;
@@ -138,6 +150,7 @@
 
 .board-space {
   box-sizing: border-box;
+  touch-action: manipulation;
   position: relative;
   display: flex;
   justify-content: center;
@@ -248,6 +261,8 @@
   display: flex;
   justify-content: space-around;
   width: $board-size-mobile;
+  font-size: 18px;
+  padding-top: 5px;
   p {
     color: black;
   }
@@ -255,9 +270,10 @@
 
 .coord-labels.vert {
   position: absolute;
-  left: -24px;
+  left: -30px;
   bottom: 0;
   flex-direction: column;
+  padding-top: 0;
   width: auto;
   height: calc(100% - 24px);
 }
@@ -296,23 +312,29 @@
   justify-content: center;
   align-items: center;
   outline-style: none;
-  margin-top: 12px;
-.ant-btn.ant-btn-primary.ant-btn-circle {
-  border-radius: 50%;
-  width: $tile-size-laptop;
-  height: $tile-size-laptop;
-  margin: 0 6px;
-  padding: 1px 0 0;
-  line-height: 0;
-  span {
-    font-family: $font-monospaced;
-    font-weight: 500;
-    font-size: 28px;
+  margin: 12px 0;
+  position: relative;
+  left: -12px;
+  .rack {
+    width: $tile-size-desktop * 8.5;
   }
-  .anticon {
-    font-size: 20px;
+  .ant-btn.ant-btn-primary.ant-btn-circle {
+    border-radius: 50%;
+    width: $tile-size-desktop ;
+    height: $tile-size-desktop ;
+    margin: 0 6px;
+    padding: 1px 0 0;
+    line-height: 0;
+    span {
+      font-family: $font-monospaced;
+      font-weight: 500;
+      font-size: 28px;
+    }
+
+    .anticon {
+      font-size: 20px;
+    }
   }
-}
   .empty-rack {
     height: 100%;
     flex-grow: 2;
@@ -414,13 +436,22 @@
   color: white;
 }
 
-.rack .tile {
-  width: $tile-size-mobile;
-  height: $tile-size-mobile;
+.rack .tile, .tile.preview:not(.over-board) {
+  width: $tile-size-desktop;
+  height: $tile-size-desktop;
+  background-color: $color-secondary-medium;
   margin: 2px;
-  &.dragging {
-    opacity: 0.1;
+  .rune {
+    font-size: $tile-font-size-desktop;
   }
+  .point-value {
+    font-size: $point-size-desktop;
+  }
+  &.dragging {
+    opacity: 0.4;
+  }
+  background-color: $color-secondary;
+  transition: $tile-transition;
 }
 
 .exchange .rack .tile {
@@ -596,11 +627,7 @@
     font-size: 16px;
   }
 }
-.player-cards {
-  @media (min-width: $screen-tablet-min) {
-  order: 4;
-  }
-}
+
 // Scorecard
 .score-card {
   order: 2;
@@ -676,17 +703,49 @@
   }
 }
 .game-controls {
-  margin: 0 auto;
+  display: flex;
+  position: relative;
+  left: -12px;
+  width: 100%;
+  min-height: 32px;
+  margin: 0 auto 12px;
+  justify-content: space-evenly;
   white-space: nowrap;
-  button {
-    margin: 0 6px;
-    padding: 0;
+  .secondary-controls {
+    display: inline-flex;
+    justify-content: space-between;
+    flex-direction: column;
+    width: 100%;
+    &:nth-child(2) {
+      order: 2;
+    }
+    .ant-popover-disabled-compatible-wrapper {
+      display: flex !important;
+      button {
+        width: 100%;
+      }
+    }
+    button {
+      height: calc((#{$board-size-mobile} / 8) - 9px);
+    }
+  }
+  button.ant-btn {
+    margin: 0 12px;
+    font-size: 16px;
+    touch-action: manipulation;
     &.ant-btn-circle {
       border-radius: 50%;
       width: $tile-size-laptop;
       height: $tile-size-laptop;
       padding: 1px 0 0;
       line-height: 0;
+    }
+    &.play {
+      order: 1;
+      min-width: $board-size-mobile / 4;
+      width: $board-size-mobile / 4;
+      height: $board-size-mobile / 4;
+      margin: 0 6px;
     }
   }
   & > :first-child {
@@ -699,6 +758,7 @@
 
 .end-message {
   background-color: $color-primary-middle;
+  margin-bottom: 12px;
   .ant-card-body {
     p {
       color: black;
@@ -719,19 +779,33 @@
   }
 }
 @media (min-width: $screen-tablet-min) {
+  .board-container {
+    left: 0;
+    .tile.preview {
+      margin-top: 0;
+    }
+  }
   .board-spaces-container, .board-spaces, .tiles {
     width: $board-size-tablet;
     height: $board-size-tablet;
   }
   .coord-labels {
     width: $board-size-tablet;
+    font-size: 15px;
+    padding-top: 0;
+  }
+  .coord-labels.vert {
+    left: -24px;
+  }
+  .rack-container {
+    left: 0;
   }
   .rack {
     width: (48 + $tile-size-tablet * 8);
   }
   .rack .tile {
-    width: $tile-size-tablet;
-    height: $tile-size-tablet;
+    width: $tile-size-desktop;
+    height: $tile-size-desktop;
   }
   .tile,
   .empty-space {
@@ -750,6 +824,30 @@
     font-size: $point-size-tablet;
     padding: 5px 2px;
     bottom: 1px;
+  }
+  .game-controls {
+    justify-content: center;
+    left: 0;
+    .secondary-controls {
+      flex-direction: row;
+      width: auto;
+      button {
+        height: 32px;
+      }
+      &:nth-child(2) {
+        order: 1;
+      }
+    }
+    button.ant-btn {
+      font-size: 12px;
+      margin: 0 6px;
+      &.play {
+        order: 2;
+        min-width: auto;
+        width: auto;
+        height: 32px;
+      }
+    }
   }
 }
 
@@ -820,6 +918,12 @@
   .rack .tile {
     height: $tile-size-laptop;
     width: $tile-size-laptop;
+    .rune {
+      font-size: $tile-font-size-laptop;
+    }
+    .point-value {
+      font-size: $point-size-laptop;
+    }
   }
   .game-info {
     font-size: 12px;
@@ -868,6 +972,12 @@
   .rack .tile {
     height: $tile-size-desktop;
     width: $tile-size-desktop;
+    .rune {
+      font-size: $tile-font-size-desktop;
+    }
+    .point-value {
+      font-size: $point-size-desktop;
+    }
   }
 
   .tile .rune {

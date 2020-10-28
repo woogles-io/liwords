@@ -232,7 +232,7 @@ export const ScoreCard = React.memo((props: Props) => {
         ?.clientHeight;
       const poolTop = document.getElementById('pool')?.clientHeight || 0;
       const playerCardTop =
-        document.getElementById('player-cards')?.clientHeight || 0;
+        document.getElementById('player-cards-vertical')?.clientHeight || 0;
       const navHeight = document.getElementById('main-nav')?.clientHeight || 0;
       if (boardHeight) {
         setCardHeight(

@@ -1,7 +1,10 @@
 import React, { useCallback, useEffect, useRef } from 'react';
+import { TouchBackend } from 'react-dnd-touch-backend';
 import { useMountedState } from '../utils/mounted';
 import { Button, Modal, notification, message, Tooltip } from 'antd';
+import { DndProvider } from 'react-dnd';
 import { ArrowDownOutlined, SyncOutlined } from '@ant-design/icons';
+import { isTouchDevice } from '../utils/cwgame/common';
 import axios from 'axios';
 
 import GameBoard from './board';
@@ -52,6 +55,7 @@ import {
   PlayState,
 } from '../gen/macondo/api/proto/macondo/macondo_pb';
 import { toAPIUrl } from '../api/api';
+import { TilePreview } from './tile';
 
 // The frame atop is 24 height
 // The frames on the sides are 24 in width, surrounded by a 14 pix gutter
@@ -886,7 +890,7 @@ export const BoardPanel = React.memo((props: Props) => {
     setCurrentMode('NORMAL');
   }, []);
 
-  return (
+  const gameBoard = (
     <div
       id="board-container"
       className="board-container"
@@ -950,6 +954,7 @@ export const BoardPanel = React.memo((props: Props) => {
       ) : (
         <GameEndMessage message={examinableGameEndMessage} />
       )}
+      {isTouchDevice() ? <TilePreview gridDim={props.board.dim} /> : null}
       <GameControls
         isExamining={isExamining}
         myTurn={isMyTurn()}
@@ -989,4 +994,8 @@ export const BoardPanel = React.memo((props: Props) => {
       </Modal>
     </div>
   );
+  if (!isTouchDevice) {
+    return gameBoard;
+  }
+  return <DndProvider backend={TouchBackend}>{gameBoard}</DndProvider>;
 });
