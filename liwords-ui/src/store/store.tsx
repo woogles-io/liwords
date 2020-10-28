@@ -173,6 +173,7 @@ const LoginStateContext = createContext<LoginStateStoreData>({
     loggedIn: false,
     connectedToSocket: false,
     connID: '',
+    path: '',
   },
   dispatchLoginState: defaultFunction,
 });
@@ -335,7 +336,7 @@ const ExaminableStore = ({ children }: { children: React.ReactNode }) => {
     const ret = startingGameState(
       gameContext.tileDistribution,
       gameContext.players.map(({ userID }) => ({
-        userID: userID,
+        userID,
         score: 0,
         onturn: false,
         currentRack: '',
@@ -350,7 +351,7 @@ const ExaminableStore = ({ children }: { children: React.ReactNode }) => {
     // Fix players and clockController.
     const times = { p0: 0, p1: 0, lastUpdate: 0 };
     for (let i = 0; i < ret.players.length; ++i) {
-      const userID = ret.players[i].userID;
+      const { userID } = ret.players[i];
       const playerOrder = gameContext.uidToPlayerOrder[userID];
       let nickname = '';
       for (const nick in gameContext.nickToPlayerOrder) {
@@ -535,6 +536,7 @@ const RealStore = ({ children, ...props }: Props) => {
     loggedIn: false,
     connectedToSocket: false,
     connID: '',
+    path: '',
   });
   const [currentLagMs, setCurrentLagMs] = useState(NaN);
   const [gameContext, dispatchGameContext] = useReducer(GameReducer, null, () =>

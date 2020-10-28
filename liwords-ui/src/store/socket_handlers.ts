@@ -217,13 +217,13 @@ export const useOnSocketMsg = () => {
             if (receiver === loginState.username) {
               BoopSounds.playSound('matchReqSound');
               const rematchFor = mr.getRematchFor();
-              const path = loginState.path;
+              const { path } = loginState;
 
               if (soughtGame.tournamentID) {
                 // This is a match game attached to a tourney.
                 // XXX: When we have a tourney reducer we should refer to said reducer's
                 //  state instead of looking at the path
-                if (path === '/tournament/' + soughtGame.tournamentID) {
+                if (path === `/tournament/${soughtGame.tournamentID}`) {
                   dispatchLobbyContext({
                     actionType: ActionType.AddMatchRequest,
                     payload: soughtGame,

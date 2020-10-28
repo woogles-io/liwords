@@ -101,6 +101,7 @@ const ManageWindowTitle = (props: {}) => {
 
   const myId = useMemo(() => {
     const myPlayerOrder = gameContext.uidToPlayerOrder[userID];
+    // eslint-disable-next-line no-nested-ternary
     return myPlayerOrder === 'p0' ? 0 : myPlayerOrder === 'p1' ? 1 : null;
   }, [gameContext.uidToPlayerOrder, userID]);
 
@@ -113,6 +114,7 @@ const ManageWindowTitle = (props: {}) => {
     }
     let first = true;
     for (let i = 0; i < gameContext.players.length; ++i) {
+      // eslint-disable-next-line no-continue
       if (gameContext.players[i].userID === userID) continue;
       if (first) {
         first = false;
