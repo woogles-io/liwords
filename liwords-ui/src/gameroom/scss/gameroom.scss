@@ -732,7 +732,7 @@ $tile-transition: width ease-in 100ms, height ease-in 100ms, background-color ea
   button.ant-btn {
     margin: 0 12px;
     font-size: 16px;
-
+    touch-action: manipulation;
     &.ant-btn-circle {
       border-radius: 50%;
       width: $tile-size-laptop;
