@@ -415,6 +415,8 @@ func (b *Bus) broadcastPresence(username, userID string, anon bool, presenceChan
 	return nil
 }
 
+// XXX: this function needs to be rewritten to be something like pubToConnectionID
+// for the most part.
 func (b *Bus) pubToUser(userID string, evt *entity.EventWrapper,
 	channel string) error {
 	// Publish to a user, but pass in a specific channel. Only publish to those
@@ -463,7 +465,7 @@ func (b *Bus) initRealmInfo(ctx context.Context, evt *pb.InitRealmInfo) error {
 			return err
 		}
 		// live games
-		activeGames, err := b.activeGames(ctx)
+		activeGames, err := b.activeGames(ctx, "")
 		if err != nil {
 			return err
 		}
@@ -472,7 +474,7 @@ func (b *Bus) initRealmInfo(ctx context.Context, evt *pb.InitRealmInfo) error {
 			return err
 		}
 		// open match reqs
-		matches, err := b.openMatches(ctx, evt.UserId)
+		matches, err := b.openMatches(ctx, evt.UserId, "")
 		if err != nil {
 			return err
 		}
@@ -495,6 +497,30 @@ func (b *Bus) initRealmInfo(ctx context.Context, evt *pb.InitRealmInfo) error {
 		if err != nil {
 			return err
 		}
+	} else if strings.HasPrefix(evt.Realm, "tournament-") {
+		components := strings.Split(evt.Realm, "-")
+		prefix := components[0]
+		// Get a sanitized history
+		tourneyID := components[1]
+		// live games
+		activeGames, err := b.activeGames(ctx, tourneyID)
+		if err != nil {
+			return err
+		}
+		err = b.pubToUser(evt.UserId, activeGames, prefix+"."+tourneyID)
+		if err != nil {
+			return err
+		}
+		// open match reqs
+		matches, err := b.openMatches(ctx, evt.UserId, tourneyID)
+		if err != nil {
+			return err
+		}
+		err = b.pubToUser(evt.UserId, matches, prefix+"."+tourneyID)
+		if err != nil {
+			return err
+		}
+
 	} else {
 		log.Debug().Interface("evt", evt).Msg("no init realm info")
 	}
@@ -561,8 +587,8 @@ func (b *Bus) leaveSite(ctx context.Context, userID string) error {
 	return nil
 }
 
-func (b *Bus) activeGames(ctx context.Context) (*entity.EventWrapper, error) {
-	gs, err := b.gameStore.ListActive(ctx)
+func (b *Bus) activeGames(ctx context.Context, tourneyID string) (*entity.EventWrapper, error) {
+	gs, err := b.gameStore.ListActive(ctx, tourneyID)
 
 	if err != nil {
 		return nil, err

@@ -167,7 +167,7 @@ func (m *MemoryStore) ListOpenSeeks(ctx context.Context) ([]*entity.SoughtGame, 
 	return ret, nil
 }
 
-func (m *MemoryStore) ListOpenMatches(ctx context.Context, receiver string) ([]*entity.SoughtGame, error) {
+func (m *MemoryStore) ListOpenMatches(ctx context.Context, receiver, tourneyID string) ([]*entity.SoughtGame, error) {
 	m.RLock()
 	defer m.RUnlock()
 
@@ -175,6 +175,9 @@ func (m *MemoryStore) ListOpenMatches(ctx context.Context, receiver string) ([]*
 	for _, v := range m.matchRequestsByReceiver[receiver] {
 		if v.Type() != entity.TypeMatch {
 			return nil, errors.New("unexpected type")
+		}
+		if tourneyID != "" && v.MatchRequest.TournamentId != tourneyID {
+			continue
 		}
 		ret = append(ret, v)
 	}

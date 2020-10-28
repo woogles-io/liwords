@@ -228,7 +228,7 @@ func (b *Bus) gameRefresher(ctx context.Context, gameID string) (*entity.EventWr
 }
 
 func (b *Bus) adjudicateGames(ctx context.Context) error {
-	gs, err := b.gameStore.ListActive(ctx)
+	gs, err := b.gameStore.ListActive(ctx, "")
 
 	if err != nil {
 		return err

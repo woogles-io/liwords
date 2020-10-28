@@ -419,8 +419,8 @@ func (b *Bus) openSeeks(ctx context.Context) (*entity.EventWrapper, error) {
 	return evt, nil
 }
 
-func (b *Bus) openMatches(ctx context.Context, receiverID string) (*entity.EventWrapper, error) {
-	sgs, err := b.soughtGameStore.ListOpenMatches(ctx, receiverID)
+func (b *Bus) openMatches(ctx context.Context, receiverID string, tourneyID string) (*entity.EventWrapper, error) {
+	sgs, err := b.soughtGameStore.ListOpenMatches(ctx, receiverID, tourneyID)
 	if err != nil {
 		return nil, err
 	}

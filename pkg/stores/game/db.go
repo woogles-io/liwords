@@ -420,14 +420,18 @@ func (s *DBStore) Create(ctx context.Context, g *entity.Game) error {
 	return result.Error
 }
 
-func (s *DBStore) ListActive(ctx context.Context) ([]*pb.GameMeta, error) {
+func (s *DBStore) ListActive(ctx context.Context, tourneyID string) ([]*pb.GameMeta, error) {
 	var games []*game
 
 	ctxDB := s.db.WithContext(ctx)
-	result := ctxDB.Table("games").Select("quickdata, request, uuid, started").
-		Where("games.game_end_reason = ?", 0 /* ongoing games only*/).
-		Order("games.id").
-		Scan(&games)
+	query := ctxDB.Table("games").Select("quickdata, request, uuid, started").
+		Where("games.game_end_reason = ?", 0 /* ongoing games only*/)
+
+	if tourneyID != "" {
+		query = query.Where("games.tournament_id = ?", tourneyID)
+	}
+
+	result := query.Order("games.id").Scan(&games)
 
 	if result.Error != nil {
 		return nil, result.Error
