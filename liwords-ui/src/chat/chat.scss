@@ -16,6 +16,12 @@ p {
       max-height: $main-container-width-tablet - 110px;
     }
   }
+  .game-table & .ant-card {
+    height: ($main-container-width-tablet + 60px) / 2;
+    .entities {
+      max-height: ($main-container-width-tablet - 110px) / 2 - 90px;
+    }
+  }
   .ant-card.chat .ant-card-body {
     padding: 0 0 40px 0;
   }
@@ -124,12 +130,11 @@ p {
 }
 
 @media (min-height: $screen-min-height-desktop-min) and (min-width: $screen-desktop-min) {
-
   .game-table {
     .chat-area .ant-card {
-      height: 745px;
+      height: 745px / 2;
       .entities {
-        max-height: 570px;
+        max-height: 570px / 2 - 160px;
       }
     }
   }
@@ -138,9 +143,9 @@ p {
 @media (min-height: $screen-min-height-desktop-max) and (min-width: $screen-desktop-min) {
   .game-table {
     .chat-area .ant-card {
-      height: 810px;
+      height: 810px / 2;
       .entities {
-        max-height: 635px;
+        max-height: 635px / 2 - 190px;
       }
     }
   }

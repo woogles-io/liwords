@@ -9,6 +9,7 @@ import { BoardPanel } from './board_panel';
 import { TopBar } from '../topbar/topbar';
 import { Chat } from '../chat/chat';
 import {
+  Store,
   useChatStoreContext,
   useExaminableGameContextStoreContext,
   useExamineStoreContext,
@@ -47,6 +48,8 @@ import { StreakWidget } from './streak_widget';
 import { PlayState } from '../gen/macondo/api/proto/macondo/macondo_pb';
 import { endGameMessageFromGameInfo } from '../store/end_of_game';
 import { singularCount } from '../utils/plural';
+import { LobbyChat as RenderLobbyChat } from '../lobby/lobby';
+import { LiwordsSocket } from '../socket/socket';
 
 type Props = {
   sendSocketMsg: (msg: Uint8Array) => void;
@@ -147,6 +150,32 @@ const ManageWindowTitle = (props: {}) => {
   }, []);
 
   return null;
+};
+
+const doNothing = () => {};
+
+// Very Ugly Hack, we have our own store and socket here.
+const LobbyChat = (props: {}) => {
+  const { useState } = useMountedState();
+
+  const [liwordsSocketValues, setLiwordsSocketValues] = useState({
+    sendMessage: (msg: Uint8Array) => {},
+    justDisconnected: false,
+  });
+  const { sendMessage } = liwordsSocketValues;
+
+  const fakeLocation = useMemo(() => ({ pathname: '/' }), []);
+
+  return (
+    <Store>
+      <LiwordsSocket
+        disconnect={false}
+        setValues={setLiwordsSocketValues}
+        fakeLocation={fakeLocation}
+      />
+      <RenderLobbyChat sendSocketMsg={sendMessage} DISCONNECT={doNothing} />
+    </Store>
+  );
 };
 
 export const Table = React.memo((props: Props) => {
@@ -485,6 +514,7 @@ export const Table = React.memo((props: Props) => {
             presences={presences}
             peopleOnlineContext={peopleOnlineContext}
           />
+          <LobbyChat />
         </div>
         {/* There are two player cards, css hides one of them. */}
         <div className="sticky-player-card-container">

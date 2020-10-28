@@ -47,6 +47,7 @@ export const LiwordsSocket = (props: {
     sendMessage: (msg: Uint8Array) => void;
     justDisconnected: boolean;
   }) => void;
+  fakeLocation?: { pathname: string };
 }): null => {
   const { useState } = useMountedState();
 
@@ -55,7 +56,8 @@ export const LiwordsSocket = (props: {
 
   const socketUrl = getSocketURI();
   const loginStateStore = useLoginStateStoreContext();
-  const location = useLocation();
+  const actualLocation = useLocation();
+  const location = props.fakeLocation ?? actualLocation;
 
   // const [socketToken, setSocketToken] = useState('');
   const [fullSocketUrl, setFullSocketUrl] = useState('');

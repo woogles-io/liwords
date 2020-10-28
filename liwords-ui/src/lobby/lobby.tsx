@@ -83,13 +83,44 @@ type Props = {
   DISCONNECT: () => void;
 };
 
+export const LobbyChat = (props: Props) => {
+  const { sendSocketMsg } = props;
+  const { chat } = useChatStoreContext();
+  const { presences } = usePresenceStoreContext();
+
+  const sendChat = useCallback(
+    (msg: string) => {
+      const evt = new ChatMessage();
+      evt.setMessage(msg);
+      evt.setChannel('lobby.chat');
+      sendSocketMsg(
+        encodeToSocketFmt(MessageType.CHAT_MESSAGE, evt.serializeBinary())
+      );
+    },
+    [sendSocketMsg]
+  );
+  const peopleOnlineContext = useCallback(
+    (n: number) => singularCount(n, 'Player', 'Players'),
+    []
+  );
+
+  return (
+    <Chat
+      chatEntities={chat}
+      sendChat={sendChat}
+      description="Lobby chat"
+      peopleOnlineContext={peopleOnlineContext}
+      presences={presences}
+      DISCONNECT={props.DISCONNECT}
+    />
+  );
+};
+
 export const Lobby = (props: Props) => {
   const { useState } = useMountedState();
 
   const { sendSocketMsg } = props;
-  const { chat } = useChatStoreContext();
   const { loginState } = useLoginStateStoreContext();
-  const { presences } = usePresenceStoreContext();
   const { loggedIn, username, userID } = loginState;
 
   const [selectedGameTab, setSelectedGameTab] = useState(
@@ -113,35 +144,12 @@ export const Lobby = (props: Props) => {
     [sendSocketMsg]
   );
 
-  const sendChat = useCallback(
-    (msg: string) => {
-      const evt = new ChatMessage();
-      evt.setMessage(msg);
-      evt.setChannel('lobby.chat');
-      sendSocketMsg(
-        encodeToSocketFmt(MessageType.CHAT_MESSAGE, evt.serializeBinary())
-      );
-    },
-    [sendSocketMsg]
-  );
-  const peopleOnlineContext = useCallback(
-    (n: number) => singularCount(n, 'Player', 'Players'),
-    []
-  );
-
   return (
     <>
       <TopBar />
       <div className="lobby">
         <div className="chat-area">
-          <Chat
-            chatEntities={chat}
-            sendChat={sendChat}
-            description="Lobby chat"
-            peopleOnlineContext={peopleOnlineContext}
-            presences={presences}
-            DISCONNECT={props.DISCONNECT}
-          />
+          <LobbyChat {...props} />
         </div>
         <GameLists
           loggedIn={loggedIn}
