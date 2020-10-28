@@ -56,7 +56,11 @@ export const TilePreview = React.memo((props: TilePreviewProps) => {
   const [position, setPosition] = useState(initialPosition);
   const boardElement = document.getElementById('board-spaces');
   useEffect(() => {
+    // This makes us only re-render 1/5 of the time, to improve performance
     setUpdateCount(updateCount + 1);
+    if (!xyPosition) {
+      setPosition(null);
+    }
     if (updateCount % 5 === 0 && xyPosition) {
       setPosition(xyPosition);
     }

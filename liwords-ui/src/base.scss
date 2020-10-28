@@ -302,6 +302,7 @@ ul
   a.btn-primary,
   button.ant-btn-primary,
   .ant-modal-root button.ant-btn-secondary {
+    touch-action: manipulation;
     font-family: $font-default;
     font-size: 12px;
     height: 36px;
