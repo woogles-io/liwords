@@ -19,14 +19,12 @@ message TournamentMetadataRequest {
 message TournamentControlsRequest {
   string id = 1;
   string division = 2;
-  string name = 3;
-  string description = 4;
-  liwords.GameRequest game_request = 5;
-  repeated int32 pairing_methods = 6;
-  repeated int32 first_methods = 7;
-  int32 number_of_rounds = 8;
-  repeated int32 games_per_round = 9;
-  google.protobuf.Timestamp start_time = 10;
+  liwords.GameRequest game_request = 3;
+  repeated int32 pairing_methods = 4;
+  repeated int32 first_methods = 5;
+  int32 number_of_rounds = 6;
+  repeated int32 games_per_round = 7;
+  google.protobuf.Timestamp start_time = 8;
 }
 
 message TournamentPerson {
