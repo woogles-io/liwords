@@ -45,6 +45,7 @@ var DefaultConfig = macondoconfig.Config{
 }
 
 var divOneName = "Division 1"
+var divTwoName = "Division 2"
 
 func tournamentStore(dbURL string) (*config.Config, TournamentStore) {
 	cfg := &config.Config{}
@@ -65,7 +66,7 @@ func makeControls() *entity.TournamentControls {
 		PairingMethods: []entity.PairingMethod{entity.RoundRobin, entity.RoundRobin, entity.RoundRobin, entity.KingOfTheHill},
 		FirstMethods:   []entity.FirstMethod{entity.AutomaticFirst, entity.AutomaticFirst, entity.AutomaticFirst, entity.AutomaticFirst},
 		NumberOfRounds: 4,
-		GamesPerRound:  1,
+		GamesPerRound:  []int{1, 1, 1, 1},
 		Type:           entity.ClassicTournamentType,
 		StartTime:      time.Now()}
 }
@@ -97,6 +98,9 @@ func TestTournamentSingleDivision(t *testing.T) {
 	is.True(err != nil)
 
 	tournament, err = makeTournament(ctx, tstore, cfg, directors)
+	is.NoErr(err)
+
+	err = SetTournamentMetadata(ctx, tstore, tournament.UUID, "New Name", "New Description")
 	is.NoErr(err)
 
 	// Check that directors are set correctly
@@ -330,6 +334,143 @@ func TestTournamentSingleDivision(t *testing.T) {
 	is.True(err != nil)
 
 	tstore.(*ts.Cache).Disconnect()
+}
+
+func TestTournamentMultipleDivisions(t *testing.T) {
+	is := is.New(t)
+	ctx := context.Background()
+	cstr := TestingDBConnStr + " dbname=liwords_test"
+	cfg, tstore := tournamentStore(cstr)
+
+	divOnePlayers := &entity.TournamentPersons{Persons: map[string]int{"Will": 1000, "Josh": 3000, "Conrad": 2200, "Jesse": 2100}}
+	divTwoPlayers := &entity.TournamentPersons{Persons: map[string]int{"Guy": 1000, "Dude": 3000, "Comrade": 2200, "Valued Customer": 2100}}
+	directors := &entity.TournamentPersons{Persons: map[string]int{"Kieran": 0, "Vince": 2, "Jennifer": 2}}
+
+	tournament, err := makeTournament(ctx, tstore, cfg, directors)
+	is.NoErr(err)
+
+	// Add divisions
+	err = AddDivision(ctx, tstore, tournament.UUID, divOneName)
+	is.NoErr(err)
+
+	err = AddDivision(ctx, tstore, tournament.UUID, divTwoName)
+	is.NoErr(err)
+
+	// Set tournament controls
+	err = SetTournamentControls(ctx,
+		tstore,
+		tournament.UUID,
+		divOneName,
+		makeControls())
+	is.NoErr(err)
+
+	err = SetTournamentControls(ctx,
+		tstore,
+		tournament.UUID,
+		divTwoName,
+		makeControls())
+	is.NoErr(err)
+
+	div1 := tournament.Divisions[divOneName]
+	div2 := tournament.Divisions[divTwoName]
+
+	// Add players
+	err = AddPlayers(ctx, tstore, tournament.UUID, divOneName, divOnePlayers)
+	is.NoErr(err)
+	is.NoErr(equalTournamentPersons(divOnePlayers, div1.Players))
+
+	err = AddPlayers(ctx, tstore, tournament.UUID, divTwoName, divTwoPlayers)
+	is.NoErr(err)
+	is.NoErr(equalTournamentPersons(divTwoPlayers, div2.Players))
+
+	err = SetPairing(ctx, tstore, tournament.UUID, divOneName, "Will", "Jesse", 0)
+	is.NoErr(err)
+
+	err = SetPairing(ctx, tstore, tournament.UUID, divTwoName, "Guy", "Comrade", 0)
+	is.NoErr(err)
+
+	err = SetPairing(ctx, tstore, tournament.UUID, divOneName, "Conrad", "Josh", 0)
+	is.NoErr(err)
+
+	err = SetPairing(ctx, tstore, tournament.UUID, divTwoName, "Dude", "Valued Customer", 0)
+	is.NoErr(err)
+
+	// Start the tournament
+
+	err = StartTournament(ctx, tstore, tournament.UUID)
+	is.NoErr(err)
+
+	err = SetResult(ctx,
+		tstore,
+		tournament.UUID,
+		divOneName,
+		"Will",
+		"Jesse",
+		500,
+		400,
+		realtime.TournamentGameResult_WIN,
+		realtime.TournamentGameResult_LOSS,
+		realtime.GameEndReason_STANDARD,
+		0,
+		0,
+		false)
+	is.NoErr(err)
+
+	err = SetResult(ctx,
+		tstore,
+		tournament.UUID,
+		divTwoName,
+		"Comrade",
+		"Guy",
+		500,
+		400,
+		realtime.TournamentGameResult_WIN,
+		realtime.TournamentGameResult_LOSS,
+		realtime.GameEndReason_STANDARD,
+		0,
+		0,
+		false)
+	is.NoErr(err)
+
+	err = SetResult(ctx,
+		tstore,
+		tournament.UUID,
+		divOneName,
+		"Conrad",
+		"Josh",
+		500,
+		400,
+		realtime.TournamentGameResult_WIN,
+		realtime.TournamentGameResult_LOSS,
+		realtime.GameEndReason_STANDARD,
+		0,
+		0,
+		false)
+	is.NoErr(err)
+
+	err = SetResult(ctx,
+		tstore,
+		tournament.UUID,
+		divTwoName,
+		"Valued Customer",
+		"Dude",
+		500,
+		400,
+		realtime.TournamentGameResult_WIN,
+		realtime.TournamentGameResult_LOSS,
+		realtime.GameEndReason_STANDARD,
+		0,
+		0,
+		false)
+	is.NoErr(err)
+
+	divOneComplete, err := IsRoundComplete(ctx, tstore, tournament.UUID, divOneName, 0)
+	is.NoErr(err)
+	is.True(divOneComplete)
+
+	divTwoComplete, err := IsRoundComplete(ctx, tstore, tournament.UUID, divTwoName, 0)
+	is.NoErr(err)
+	is.True(divTwoComplete)
 }
 
 func equalTournamentPersons(tp1 *entity.TournamentPersons, tp2 *entity.TournamentPersons) error {

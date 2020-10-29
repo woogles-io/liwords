@@ -101,6 +101,22 @@ func TournamentSetPairingsEvent(ctx context.Context, tournamentStore TournamentS
 	return nil
 }
 
+func SetTournamentMetadata(ctx context.Context, ts TournamentStore, id string, name string, description string) error {
+
+	t, err := ts.Get(ctx, id)
+	if err != nil {
+		return err
+	}
+
+	t.Lock()
+	defer t.Unlock()
+
+	t.Name = name
+	t.Description = name
+
+	return ts.Set(ctx, t)
+}
+
 func SetTournamentControls(ctx context.Context, ts TournamentStore, id string, division string, controls *entity.TournamentControls) error {
 
 	t, err := ts.Get(ctx, id)
@@ -504,7 +520,7 @@ func createDivisionManager(t *entity.Tournament, division string) error {
 	// otherwise, destroy the old one.
 	if len(divisionObject.Players.Persons) > 1 &&
 		divisionObject.Controls.NumberOfRounds > 0 &&
-		divisionObject.Controls.GamesPerRound > 0 &&
+		divisionObject.Controls.GamesPerRound != nil &&
 		divisionObject.Controls.PairingMethods != nil &&
 		divisionObject.Controls.FirstMethods != nil {
 		rankedPlayers := rankPlayers(divisionObject.Players)

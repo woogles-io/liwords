@@ -18,12 +18,12 @@ type ClassicDivision struct {
 	PlayerIndexMap map[string]int              `json:"i"`
 	PairingMethods []entity.PairingMethod      `json:"m"`
 	FirstMethods   []entity.FirstMethod        `json:"f"`
-	GamesPerRound  int                         `json:"g"`
+	GamesPerRound  []int                       `json:"g"`
 }
 
 func NewClassicDivision(players []string,
 	numberOfRounds int,
-	gamesPerRound int,
+	gamesPerRound []int,
 	pmethods []entity.PairingMethod,
 	fmethods []entity.FirstMethod) (*ClassicDivision, error) {
 	numberOfPlayers := len(players)
@@ -42,6 +42,10 @@ func NewClassicDivision(players []string,
 
 	if numberOfRounds != len(fmethods) {
 		return nil, errors.New("First methods length does not match the number of rounds!")
+	}
+
+	if numberOfRounds != len(gamesPerRound) {
+		return nil, errors.New("Games per round length does not match the number of rounds!")
 	}
 
 	isElimination := false
@@ -188,7 +192,7 @@ func (t *ClassicDivision) SubmitResult(round int,
 	// For Elimination tournaments only.
 	// Could be a tiebreaking result or could be an out of range
 	// game index
-	if pairingMethod == entity.Elimination && gameIndex >= t.GamesPerRound {
+	if pairingMethod == entity.Elimination && gameIndex >= t.GamesPerRound[round] {
 		if gameIndex != len(pairing.Games) {
 			return errors.New(fmt.Sprintf("Submitted tiebreaking result with invalid game index."+
 				" Player 1: %s, Player 2: %s, Round: %d, GameIndex: %d\n", p1, p2, round, gameIndex))
@@ -222,7 +226,7 @@ func (t *ClassicDivision) SubmitResult(round int,
 		// Get elimination outcomes will take care of the indexing
 		// for us because the newOutcomes are aligned with the data
 		// in pairing.Games
-		newOutcomes := getEliminationOutcomes(pairing.Games, t.GamesPerRound)
+		newOutcomes := getEliminationOutcomes(pairing.Games, t.GamesPerRound[round])
 
 		pairing.Outcomes[0] = newOutcomes[0]
 		pairing.Outcomes[1] = newOutcomes[1]
@@ -404,7 +408,7 @@ func newClassicPairing(t *ClassicDivision,
 	round int) *entity.Pairing {
 
 	games := []*entity.TournamentGame{}
-	for i := 0; i < t.GamesPerRound; i++ {
+	for i := 0; i < t.GamesPerRound[round]; i++ {
 		games = append(games, &entity.TournamentGame{Scores: []int{0, 0},
 			Results: []realtime.TournamentGameResult{realtime.TournamentGameResult_NO_RESULT,
 				realtime.TournamentGameResult_NO_RESULT}})

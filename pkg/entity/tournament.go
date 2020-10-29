@@ -98,7 +98,7 @@ type TournamentControls struct {
 	PairingMethods []PairingMethod       `json:"p"`
 	FirstMethods   []FirstMethod         `json:"f"`
 	NumberOfRounds int                   `json:"n"`
-	GamesPerRound  int                   `json:"g"`
+	GamesPerRound  []int                 `json:"g"`
 	Type           TournamentType        `json:"t"`
 	StartTime      time.Time             `json:"s"`
 }

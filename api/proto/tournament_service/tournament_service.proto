@@ -10,6 +10,12 @@ message StartRoundRequest {
   int32 round = 2;	
 }
 
+message TournamentMetadataRequest {
+  string id = 1;
+  string name = 2;
+  string description = 3;
+}
+
 message TournamentControlsRequest {
   string id = 1;
   string division = 2;
@@ -19,7 +25,7 @@ message TournamentControlsRequest {
   repeated int32 pairing_methods = 6;
   repeated int32 first_methods = 7;
   int32 number_of_rounds = 8;
-  int32 games_per_round = 9;
+  repeated int32 games_per_round = 9;
   google.protobuf.Timestamp start_time = 10;
 }
 
@@ -71,6 +77,7 @@ message TournamentStartRoundRequest {
 message TournamentResponse {}
 
 service TournamentService {
+  rpc SetTournamentMetadata(TournamentMetadataRequest) returns (TournamentResponse);
   rpc SetTournamentControls(TournamentControlsRequest) returns (TournamentResponse);
   rpc AddDirectors(TournamentPersons) returns (TournamentResponse);
   rpc RemoveDirectors(TournamentPersons) returns (TournamentResponse);

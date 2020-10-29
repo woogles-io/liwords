@@ -36,6 +36,14 @@ func (ts *TournamentService) RemoveDivision(ctx context.Context, req *pb.Tournam
 	return &pb.TournamentResponse{}, nil
 }
 
+func (ts *TournamentService) SetTournamentMetadata(ctx context.Context, req *pb.TournamentMetadataRequest) (*pb.TournamentResponse, error) {
+	err := SetTournamentMetadata(ctx, ts.tournamentStore, req.Id, req.Name, req.Description)
+	if err != nil {
+		return nil, err
+	}
+	return &pb.TournamentResponse{}, nil
+}
+
 func (ts *TournamentService) SetTournamentControls(ctx context.Context, req *pb.TournamentControlsRequest) (*pb.TournamentResponse, error) {
 	time, err := ptypes.Timestamp(req.StartTime)
 	if err != nil {
@@ -46,7 +54,7 @@ func (ts *TournamentService) SetTournamentControls(ctx context.Context, req *pb.
 		PairingMethods: convertIntsToPairingMethods(req.PairingMethods),
 		FirstMethods:   convertIntsToFirstMethods(req.FirstMethods),
 		NumberOfRounds: int(req.NumberOfRounds),
-		GamesPerRound:  int(req.GamesPerRound),
+		GamesPerRound:  convertIntsToGamesPerRound(req.GamesPerRound),
 		StartTime:      time}
 
 	err = SetTournamentControls(ctx, ts.tournamentStore, req.Id, req.Division, newControls)
@@ -143,4 +151,12 @@ func convertIntsToFirstMethods(methods []int32) []entity.FirstMethod {
 		firstMethods = append(firstMethods, entity.FirstMethod(methods[i]))
 	}
 	return firstMethods
+}
+
+func convertIntsToGamesPerRound(gpr []int32) []int {
+	ints := []int{}
+	for i := 0; i < len(gpr)-1; i++ {
+		ints = append(ints, int(gpr[i]))
+	}
+	return ints
 }
