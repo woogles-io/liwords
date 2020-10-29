@@ -471,14 +471,24 @@ export const Table = React.memo((props: Props) => {
   return (
     <div className="game-container">
       <ManageWindowTitle />
-      <TopBar />
+      <TopBar tournamentID={gameInfo.tournament_id} />
       <div className="game-table">
         <div className="chat-area" id="left-sidebar">
           <Card className="left-menu">
-            <Link to="/" onClick={resetStore}>
-              <HomeOutlined />
-              Back to lobby
-            </Link>
+            {gameInfo.tournament_id ? (
+              <Link
+                to={`/tournament/${gameInfo.tournament_id}`}
+                onClick={resetStore}
+              >
+                <HomeOutlined />
+                Back to Tournament
+              </Link>
+            ) : (
+              <Link to="/" onClick={resetStore}>
+                <HomeOutlined />
+                Back to lobby
+              </Link>
+            )}
           </Card>
           <Chat
             chatEntities={chat}
@@ -506,6 +516,7 @@ export const Table = React.memo((props: Props) => {
             sendSocketMsg={props.sendSocketMsg}
             gameDone={gameDone}
             playerMeta={gameInfo.players}
+            tournamentID={gameInfo.tournament_id}
           />
           <StreakWidget recentGames={streakGameInfo} />
         </div>

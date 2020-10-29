@@ -49,7 +49,7 @@ export type PresenceEntity = {
   anon: boolean;
 };
 
-const MaxChatLength = 100;
+const MaxChatLength = 150;
 
 const defaultTimerContext = {
   p0: 0,
