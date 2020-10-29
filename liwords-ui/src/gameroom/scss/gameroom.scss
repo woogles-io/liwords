@@ -521,7 +521,10 @@ $tile-transition: width ease-in 100ms, height ease-in 100ms, background-color ea
 
 // Pool
 .pool {
-  order: 3;
+  order: -1;
+  @media (min-width: $screen-tablet-min) {
+    order: 3;
+  }
   header {
     @include type-title;
   }
