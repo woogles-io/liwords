@@ -94,7 +94,7 @@ type TournamentPersons struct {
 }
 
 type TournamentControls struct {
-	GameRequest    *realtime.GameRequest `json:"g"`
+	GameRequest    *realtime.GameRequest `json:"r"`
 	PairingMethods []PairingMethod       `json:"p"`
 	FirstMethods   []FirstMethod         `json:"f"`
 	NumberOfRounds int                   `json:"n"`
