@@ -34,6 +34,20 @@ $color-gray-medium: #999999;
 $color-gray-dark: #414141;
 
 $color-grid: #c3c3c3;
+
+$screen-mobile-min: 768px;
+$screen-tablet-min: 1024px;
+$screen-laptop-min: 1280px;
+$screen-desktop-min: 1440px;
+$screen-desktop-l-min: 1920px;
+
+@function strip-unit($number) {
+  @if type-of($number) == 'number' and not unitless($number) {
+    @return $number / ($number * 0 + 1);
+  }
+
+  @return $number;
+}
 // Magic that makes variables available to the tsx code
 :export {
   colorSecondary: $color-secondary;
@@ -49,13 +63,11 @@ $color-grid: #c3c3c3;
   colorBoardTLS: $color-board-tls;
   colorBoardTWS: $color-board-tws;
   colorBoardEmpty: $color-board-empty;
-}
 
-$screen-mobile-min: 768px;
-$screen-tablet-min: 1024px;
-$screen-laptop-min: 1280px;
-$screen-desktop-min: 1440px;
-$screen-desktop-l-min: 1920px;
+  screenSizeTablet: strip-unit($screen-tablet-min);
+  screenSizeLaptop: strip-unit($screen-laptop-min);
+  screenSizeDesktop: strip-unit($screen-desktop-min);
+}
 
 $screen-min-height-laptop-min: 680px;
 $screen-min-height-desktop-min: 830px;
