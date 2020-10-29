@@ -14,24 +14,10 @@ type DivisionManager interface {
 		realtime.TournamentGameResult, realtime.GameEndReason, bool, int) error
 	GetStandings(int) ([]*Standing, error)
 	SetPairing(string, string, int) error
-	StartRound(int) error
+	IsRoundReady(int) (bool, error)
 	IsRoundComplete(int) (bool, error)
 	IsFinished() (bool, error)
 	Serialize() (datatypes.JSON, error)
-}
-
-type TournamentGame struct {
-	Scores        []int                           `json:"s"`
-	Results       []realtime.TournamentGameResult `json:"r"`
-	GameEndReason realtime.GameEndReason          `json:"g"`
-}
-
-const Unpaired = -1
-
-type Pairing struct {
-	Players  []string                        `json:"p"`
-	Games    []*TournamentGame               `json:"g"`
-	Outcomes []realtime.TournamentGameResult `json:"o"`
 }
 
 type FirstMethod int
@@ -52,11 +38,22 @@ const (
 	AutomaticFirst
 )
 
+const Unpaired = -1
+
+type TournamentGame struct {
+	Scores        []int                           `json:"s"`
+	Results       []realtime.TournamentGameResult `json:"r"`
+	GameEndReason realtime.GameEndReason          `json:"g"`
+}
+
+type Pairing struct {
+	Players  []string                        `json:"p"`
+	Games    []*TournamentGame               `json:"g"`
+	Outcomes []realtime.TournamentGameResult `json:"o"`
+}
+
 type PlayerRoundInfo struct {
-	Pairing          *Pairing `json:"p"`
-	Record           []int    `json:"r"`
-	Spread           int      `json:"s"`
-	FirstsAndSeconds []int    `json:"f"`
+	Pairing *Pairing `json:"p"`
 }
 
 type Standing struct {
@@ -114,10 +111,11 @@ type TournamentDivision struct {
 
 type Tournament struct {
 	sync.RWMutex
-	UUID        string                         `json:"u"`
-	Name        string                         `json:"n"`
-	Description string                         `json:"e"`
-	Directors   *TournamentPersons             `json:"d"`
-	IsStarted   bool                           `json:"i"`
-	Divisions   map[string]*TournamentDivision `json:"m"`
+	UUID              string                         `json:"u"`
+	Name              string                         `json:"n"`
+	Description       string                         `json:"e"`
+	ExecutiveDirector string                         `json:"x"`
+	Directors         *TournamentPersons             `json:"d"`
+	IsStarted         bool                           `json:"i"`
+	Divisions         map[string]*TournamentDivision `json:"m"`
 }

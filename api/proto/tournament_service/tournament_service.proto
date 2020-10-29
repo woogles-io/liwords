@@ -34,6 +34,11 @@ message TournamentPersons {
   repeated TournamentPerson persons = 3;
 }
 
+message TournamentDivisionRequest {
+  string id = 1;
+  string division = 2;
+}
+
 message TournamentPairingRequest {
 	string id = 1;
   string division = 2;
@@ -69,6 +74,8 @@ service TournamentService {
   rpc SetTournamentControls(TournamentControlsRequest) returns (TournamentResponse);
   rpc AddDirectors(TournamentPersons) returns (TournamentResponse);
   rpc RemoveDirectors(TournamentPersons) returns (TournamentResponse);
+  rpc AddDivision(TournamentDivisionRequest) returns (TournamentResponse);
+  rpc RemoveDivision(TournamentDivisionRequest) returns (TournamentResponse);
   rpc AddPlayers(TournamentPersons) returns (TournamentResponse);
   rpc RemovePlayers(TournamentPersons) returns (TournamentResponse);
   rpc SetPairing(TournamentPairingRequest) returns (TournamentResponse);

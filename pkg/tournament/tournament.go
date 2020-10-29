@@ -53,12 +53,19 @@ func NewTournament(ctx context.Context,
 	cfg *config.Config,
 	name string,
 	description string,
-	directors *entity.TournamentPersons,
-	ttype *entity.TournamentType) (*entity.Tournament, error) {
+	directors *entity.TournamentPersons) (*entity.Tournament, error) {
+
+	executiveDirector, err := getExecutiveDirector(directors)
+	if err != nil {
+		return nil, err
+	}
 
 	entTournament := &entity.Tournament{Name: name,
-		Description: description,
-		Directors:   directors}
+		Description:       description,
+		Directors:         directors,
+		ExecutiveDirector: executiveDirector,
+		IsStarted:         false,
+		Divisions:         map[string]*entity.TournamentDivision{}}
 
 	// Save the tournament to the store.
 	if err := tournamentStore.Create(ctx, entTournament); err != nil {
@@ -94,12 +101,15 @@ func TournamentSetPairingsEvent(ctx context.Context, tournamentStore TournamentS
 	return nil
 }
 
-func SetTournamentControls(ctx context.Context, ts TournamentStore, id string, division string, name string, description string, controls *entity.TournamentControls) error {
+func SetTournamentControls(ctx context.Context, ts TournamentStore, id string, division string, controls *entity.TournamentControls) error {
 
 	t, err := ts.Get(ctx, id)
 	if err != nil {
 		return err
 	}
+
+	t.Lock()
+	defer t.Unlock()
 
 	divisionObject, ok := t.Divisions[division]
 
@@ -111,12 +121,12 @@ func SetTournamentControls(ctx context.Context, ts TournamentStore, id string, d
 		return errors.New("Cannot change tournament controls after it has started.")
 	}
 
-	t.Lock()
-	defer t.Unlock()
-
-	t.Name = name
-	t.Description = description
 	divisionObject.Controls = controls
+
+	err = createDivisionManager(t, division)
+	if err != nil {
+		return err
+	}
 
 	return ts.Set(ctx, t)
 }
@@ -127,12 +137,18 @@ func AddDivision(ctx context.Context, ts TournamentStore, id string, division st
 		return err
 	}
 
-	if !t.IsStarted {
+	t.Lock()
+	defer t.Unlock()
+
+	if t.IsStarted {
 		return errors.New("Cannot add division after the tournament has started.")
 	}
 
-	t.Lock()
-	defer t.Unlock()
+	_, ok := t.Divisions[division]
+
+	if ok {
+		return errors.New(fmt.Sprintf("Division %s already exists.", division))
+	}
 
 	t.Divisions[division] = emptyDivision()
 
@@ -145,18 +161,18 @@ func RemoveDivision(ctx context.Context, ts TournamentStore, id string, division
 		return err
 	}
 
+	t.Lock()
+	defer t.Unlock()
+
 	_, ok := t.Divisions[division]
 
 	if !ok {
 		return errors.New(fmt.Sprintf("Division %s does not exist.", division))
 	}
 
-	if !t.IsStarted {
+	if t.IsStarted {
 		return errors.New("Cannot remove division after the tournament has started.")
 	}
-
-	t.Lock()
-	defer t.Unlock()
 
 	delete(t.Divisions, division)
 	return ts.Set(ctx, t)
@@ -185,13 +201,18 @@ func SetPairing(ctx context.Context, ts TournamentStore, id string, division str
 		return err
 	}
 
+	t.Lock()
+	defer t.Unlock()
+
 	divisionObject, ok := t.Divisions[division]
 
 	if !ok {
 		return errors.New(fmt.Sprintf("Division %s does not exist.", division))
 	}
 
-	t.Lock()
+	if divisionObject.DivisionManager == nil {
+		return errors.New(fmt.Sprintf("Division %s does not have enough players or controls to set pairings.", division))
+	}
 
 	err = divisionObject.DivisionManager.SetPairing(playerOneId, playerTwoId, round)
 	if err != nil {
@@ -202,7 +223,6 @@ func SetPairing(ctx context.Context, ts TournamentStore, id string, division str
 	if err != nil {
 		return err
 	}
-	t.Unlock()
 	return TournamentSetPairingsEvent(ctx, ts)
 }
 
@@ -226,6 +246,9 @@ func SetResult(ctx context.Context,
 		return err
 	}
 
+	t.Lock()
+	defer t.Unlock()
+
 	divisionObject, ok := t.Divisions[division]
 
 	if !ok {
@@ -235,8 +258,6 @@ func SetResult(ctx context.Context,
 	if !t.IsStarted {
 		return errors.New("Cannot set tournament results before the tournament has started.")
 	}
-
-	t.Lock()
 
 	err = divisionObject.DivisionManager.SubmitResult(round,
 		playerOneId,
@@ -256,8 +277,25 @@ func SetResult(ctx context.Context,
 	if err != nil {
 		return err
 	}
-	t.Unlock()
 	return TournamentGameEndedEvent(ctx, ts, id, division, round)
+}
+
+func StartTournament(ctx context.Context, ts TournamentStore, id string) error {
+	t, err := ts.Get(ctx, id)
+	if err != nil {
+		return err
+	}
+
+	// Do not lock, StartRound will do that
+
+	for division, _ := range t.Divisions {
+		err := StartRound(ctx, ts, id, division, 0)
+		if err != nil {
+			return err
+		}
+	}
+	t.IsStarted = true
+	return nil
 }
 
 func StartRound(ctx context.Context, ts TournamentStore, id string, division string, round int) error {
@@ -266,43 +304,27 @@ func StartRound(ctx context.Context, ts TournamentStore, id string, division str
 		return err
 	}
 
+	t.Lock()
+	defer t.Unlock()
+
 	divisionObject, ok := t.Divisions[division]
 
 	if !ok {
 		return errors.New(fmt.Sprintf("Division %s does not exist.", division))
 	}
 
-	t.Lock()
-	defer t.Unlock()
-
-	if round == 0 {
-		if divisionObject.DivisionManager != nil {
-			return errors.New("This division has already been started.")
-		}
-
-		rankedPlayers := rankPlayers(t.Divisions[division].Players)
-
-		if divisionObject.Controls.Type == entity.ClassicTournamentType {
-			d, err := NewClassicDivision(rankedPlayers,
-				divisionObject.Controls.NumberOfRounds,
-				divisionObject.Controls.GamesPerRound,
-				divisionObject.Controls.PairingMethods,
-				divisionObject.Controls.FirstMethods)
-			if err != nil {
-				return err
-			}
-			divisionObject.DivisionManager = d
-		} else {
-			return errors.New("Only Classic Tournaments have been implemented")
-		}
-		t.IsStarted = true
+	if divisionObject.DivisionManager == nil {
+		return errors.New(fmt.Sprintf("Division %s does not have enough players or controls to set pairings.", division))
 	}
 
-	err = divisionObject.DivisionManager.StartRound(round)
+	ready, err := divisionObject.DivisionManager.IsRoundReady(round)
 	if err != nil {
 		return err
 	}
 
+	if ready {
+		// Send some stuff to the channels
+	}
 	return ts.Set(ctx, t)
 }
 
@@ -324,6 +346,12 @@ func IsRoundComplete(ctx context.Context, ts TournamentStore, id string, divisio
 		return false, errors.New("Cannot check if round is complete before the tournament has started.")
 	}
 
+	_, ok := t.Divisions[division]
+
+	if !ok {
+		return false, errors.New(fmt.Sprintf("Division %s does not exist.", division))
+	}
+
 	return t.Divisions[division].DivisionManager.IsRoundComplete(round)
 }
 
@@ -335,6 +363,12 @@ func IsFinished(ctx context.Context, ts TournamentStore, id string, division str
 
 	if !t.IsStarted {
 		return false, errors.New("Cannot check if tournament is finished before the tournament has started.")
+	}
+
+	_, ok := t.Divisions[division]
+
+	if !ok {
+		return false, errors.New(fmt.Sprintf("Division %s does not exist.", division))
 	}
 
 	return t.Divisions[division].DivisionManager.IsFinished()
@@ -357,20 +391,27 @@ func addTournamentPersons(ctx context.Context,
 		return err
 	}
 
+	t.Lock()
+	defer t.Unlock()
+
 	divisionObject, ok := t.Divisions[division]
 
-	if !ok {
+	if isPlayers && !ok {
 		return errors.New(fmt.Sprintf("Division %s does not exist.", division))
 	}
 
-	t.Lock()
-	defer t.Unlock()
+	if t.IsStarted {
+		return errors.New("Cannot cannot change players or directors after the tournament has started.")
+	}
 
 	var personsMap map[string]int
 	if isPlayers {
 		personsMap = divisionObject.Players.Persons
 	} else {
 		personsMap = t.Directors.Persons
+		if executiveDirectorExists(persons.Persons) {
+			return errors.New("Cannot add another executive director.")
+		}
 	}
 
 	// Only perform the add operation if all persons can be added.
@@ -383,6 +424,13 @@ func addTournamentPersons(ctx context.Context,
 
 	for k, v := range persons.Persons {
 		personsMap[k] = v
+	}
+
+	if isPlayers {
+		err = createDivisionManager(t, division)
+		if err != nil {
+			return err
+		}
 	}
 
 	return ts.Set(ctx, t)
@@ -399,20 +447,27 @@ func removeTournamentPersons(ctx context.Context,
 		return err
 	}
 
+	t.Lock()
+	defer t.Unlock()
+
 	divisionObject, ok := t.Divisions[division]
 
-	if !ok {
+	if isPlayers && !ok {
 		return errors.New(fmt.Sprintf("Division %s does not exist.", division))
 	}
 
-	t.Lock()
-	defer t.Unlock()
+	if t.IsStarted {
+		return errors.New("Cannot cannot change players or directors after the tournament has started.")
+	}
 
 	var personsMap map[string]int
 	if isPlayers {
 		personsMap = divisionObject.Players.Persons
 	} else {
 		personsMap = t.Directors.Persons
+		if executiveDirectorExists(persons.Persons) {
+			return errors.New("Cannot remove the executive director.")
+		}
 	}
 
 	// Only perform the remove operation if all persons can be removed.
@@ -427,7 +482,45 @@ func removeTournamentPersons(ctx context.Context,
 		delete(personsMap, k)
 	}
 
+	if isPlayers {
+		err = createDivisionManager(t, division)
+		if err != nil {
+			return err
+		}
+	}
+
 	return ts.Set(ctx, t)
+}
+
+func createDivisionManager(t *entity.Tournament, division string) error {
+
+	divisionObject, ok := t.Divisions[division]
+
+	if !ok {
+		return errors.New(fmt.Sprintf("Division %s does not exist.", division))
+	}
+
+	// Create a new division if there are sufficient players
+	// otherwise, destroy the old one.
+	if len(divisionObject.Players.Persons) > 1 &&
+		divisionObject.Controls.NumberOfRounds > 0 &&
+		divisionObject.Controls.GamesPerRound > 0 &&
+		divisionObject.Controls.PairingMethods != nil &&
+		divisionObject.Controls.FirstMethods != nil {
+		rankedPlayers := rankPlayers(divisionObject.Players)
+		d, err := NewClassicDivision(rankedPlayers,
+			divisionObject.Controls.NumberOfRounds,
+			divisionObject.Controls.GamesPerRound,
+			divisionObject.Controls.PairingMethods,
+			divisionObject.Controls.FirstMethods)
+		if err != nil {
+			return err
+		}
+		divisionObject.DivisionManager = d
+	} else {
+		divisionObject.DivisionManager = nil
+	}
+	return nil
 }
 
 func rankPlayers(players *entity.TournamentPersons) []string {
@@ -445,15 +538,31 @@ func rankPlayers(players *entity.TournamentPersons) []string {
 	return rankedPlayers
 }
 
-func resultsToScores(results []int) (int, int, int) {
-	wins := results[int(realtime.TournamentGameResult_WIN)] +
-		results[int(realtime.TournamentGameResult_BYE)] +
-		results[int(realtime.TournamentGameResult_FORFEIT_WIN)]
-	losses := results[int(realtime.TournamentGameResult_LOSS)] +
-		results[int(realtime.TournamentGameResult_FORFEIT_LOSS)]
-	draws := results[int(realtime.TournamentGameResult_DRAW)]
+func getExecutiveDirector(directors *entity.TournamentPersons) (string, error) {
+	err := errors.New("Tournament must have exactly one executive director.")
+	ed := ""
+	for k, v := range directors.Persons {
+		if v == 0 {
+			if ed != "" {
+				return "", err
+			} else {
+				ed = k
+			}
+		}
+	}
+	if ed == "" {
+		return "", err
+	}
+	return ed, nil
+}
 
-	return wins, losses, draws
+func executiveDirectorExists(directors map[string]int) bool {
+	for _, v := range directors {
+		if v == 0 {
+			return true
+		}
+	}
+	return false
 }
 
 func reverseMap(m map[string]int) map[int]string {

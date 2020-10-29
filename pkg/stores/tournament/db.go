@@ -22,14 +22,13 @@ type DBStore struct {
 
 type tournament struct {
 	gorm.Model
-	UUID string `gorm:"type:varchar(24);index"`
-
-	Name        string
-	Description string
-	Directors   datatypes.JSON
-	Type        entity.TournamentType
-	IsStarted   bool
-	Divisions   datatypes.JSON
+	UUID              string `gorm:"type:varchar(24);index"`
+	Name              string
+	Description       string
+	Directors         datatypes.JSON
+	ExecutiveDirector string
+	IsStarted         bool
+	Divisions         datatypes.JSON
 }
 
 // NewDBStore creates a new DB store for tournament managers.
@@ -62,11 +61,12 @@ func (s *DBStore) Get(ctx context.Context, id string) (*entity.Tournament, error
 	}
 
 	tme := &entity.Tournament{UUID: tm.UUID,
-		Name:        tm.Name,
-		Description: tm.Description,
-		Directors:   &directors,
-		IsStarted:   tm.IsStarted,
-		Divisions:   divisions}
+		Name:              tm.Name,
+		Description:       tm.Description,
+		Directors:         &directors,
+		ExecutiveDirector: tm.ExecutiveDirector,
+		IsStarted:         tm.IsStarted,
+		Divisions:         divisions}
 
 	return tme, nil
 }
@@ -118,11 +118,12 @@ func (s *DBStore) toDBObj(t *entity.Tournament) (*tournament, error) {
 	}
 
 	dbt := &tournament{
-		UUID:        t.UUID,
-		Name:        t.Name,
-		Description: t.Description,
-		Directors:   directors,
-		IsStarted:   t.IsStarted,
-		Divisions:   divisions}
+		UUID:              t.UUID,
+		Name:              t.Name,
+		Description:       t.Description,
+		Directors:         directors,
+		ExecutiveDirector: t.ExecutiveDirector,
+		IsStarted:         t.IsStarted,
+		Divisions:         divisions}
 	return dbt, nil
 }

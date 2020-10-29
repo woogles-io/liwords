@@ -20,6 +20,22 @@ func NewTournamentService(ts TournamentStore) *TournamentService {
 	return &TournamentService{ts}
 }
 
+func (ts *TournamentService) AddDivision(ctx context.Context, req *pb.TournamentDivisionRequest) (*pb.TournamentResponse, error) {
+	err := AddDivision(ctx, ts.tournamentStore, req.Id, req.Division)
+	if err != nil {
+		return nil, err
+	}
+	return &pb.TournamentResponse{}, nil
+}
+
+func (ts *TournamentService) RemoveDivision(ctx context.Context, req *pb.TournamentDivisionRequest) (*pb.TournamentResponse, error) {
+	err := RemoveDivision(ctx, ts.tournamentStore, req.Id, req.Division)
+	if err != nil {
+		return nil, err
+	}
+	return &pb.TournamentResponse{}, nil
+}
+
 func (ts *TournamentService) SetTournamentControls(ctx context.Context, req *pb.TournamentControlsRequest) (*pb.TournamentResponse, error) {
 	time, err := ptypes.Timestamp(req.StartTime)
 	if err != nil {
@@ -33,7 +49,7 @@ func (ts *TournamentService) SetTournamentControls(ctx context.Context, req *pb.
 		GamesPerRound:  int(req.GamesPerRound),
 		StartTime:      time}
 
-	err = SetTournamentControls(ctx, ts.tournamentStore, req.Id, req.Division, req.Name, req.Description, newControls)
+	err = SetTournamentControls(ctx, ts.tournamentStore, req.Id, req.Division, newControls)
 
 	if err != nil {
 		return nil, err
