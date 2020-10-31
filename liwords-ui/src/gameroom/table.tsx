@@ -444,7 +444,7 @@ export const Table = React.memo((props: Props) => {
       } else {
         searchParams.set('turn', turnParamShouldBe);
       }
-      history.push({
+      history.replace({
         ...location,
         search: String(searchParams),
       });
@@ -504,6 +504,7 @@ export const Table = React.memo((props: Props) => {
             sendSocketMsg={props.sendSocketMsg}
             gameDone={gameDone}
             playerMeta={gameInfo.players}
+            lexicon={gameInfo.lexicon}
           />
           <StreakWidget recentGames={streakGameInfo} />
         </div>

@@ -72,6 +72,7 @@ type Props = {
   sendSocketMsg: (msg: Uint8Array) => void;
   gameDone: boolean;
   playerMeta: Array<PlayerMetadata>;
+  lexicon: string;
 };
 
 const shuffleString = (a: string): string => {
@@ -979,6 +980,7 @@ export const BoardPanel = React.memo((props: Props) => {
         showRematch={examinableGameEndMessage !== ''}
         gameEndControls={examinableGameEndMessage !== '' || props.gameDone}
         currentRack={props.currentRack}
+        lexicon={props.lexicon}
       />
       <ExchangeTiles
         rack={props.currentRack}

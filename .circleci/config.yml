@@ -65,13 +65,28 @@ jobs:
     docker:
       - image: amazon/aws-cli
     steps:
-      - run: yum install -y tar gzip
+      - run: yum install -y tar gzip md5sum
       - attach_workspace:
           at: /tmp/liwords-ui
       - run: sed -i "s:unknown:${CIRCLE_WORKFLOW_ID}:" /tmp/liwords-ui/build/config.js
+      - run: >
+          md5=`md5sum /tmp/liwords-ui/build/wasm/macondo.wasm | awk '{ print $1 }'` &&
+          sed -i "s:macondo.wasm:macondo.${md5}.wasm:" /tmp/liwords-ui/build/config.js &&
+          mv /tmp/liwords-ui/build/wasm/macondo.wasm /tmp/liwords-ui/build/wasm/macondo.${md5}.wasm
+
       # cache everything except index.html and config.js
-      - run: cd /tmp/liwords-ui/build && aws s3 sync --cache-control 'max-age=604800' --exclude index.html --exclude config.js . s3://woogles.io
-      - run: cd /tmp/liwords-ui/build && aws s3 sync --cache-control 'no-cache' . s3://woogles.io
+      - run: >
+          cd /tmp/liwords-ui/build &&
+          aws s3 sync --cache-control 'max-age=3024000'
+          --exclude index.html --exclude config.js --exclude 'wasm/*.wasm'
+          . s3://woogles.io
+      - run: >
+          cd /tmp/liwords-ui/build &&
+          aws s3 sync --cache-control 'no-cache' --exclude 'wasm/*.wasm' . s3://woogles.io
+      - run: >
+          cd /tmp/liwords-ui/build &&
+          aws s3 sync --cache-control 'max-age=3024000' --exclude '*' --include 'wasm/*.wasm'
+          --content-type 'application/wasm' . s3://woogles.io
       - slack/status: *slack-webhook-setting
 
 workflows:
