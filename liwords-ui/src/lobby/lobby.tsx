@@ -1,6 +1,5 @@
 import React, { useCallback, useEffect } from 'react';
 import { useMountedState } from '../utils/mounted';
-import { Card } from 'antd';
 
 import { TopBar } from '../topbar/topbar';
 import {
@@ -25,6 +24,7 @@ import {
 } from '../store/store';
 import { singularCount } from '../utils/plural';
 import './lobby.scss';
+import { Announcements } from './announcements';
 
 const sendSeek = (
   game: SoughtGame,
@@ -152,21 +152,7 @@ export const Lobby = (props: Props) => {
           setSelectedGameTab={setSelectedGameTab}
           onSeekSubmit={onSeekSubmit}
         />
-        <div className="announcements">
-          <Card>
-            <h3>Woogles is live!</h3>
-            <p>
-              Welcome to our open beta. Sign up and play some games. We still
-              have a lot of features and designs to build, but please{' '}
-              <a className="link" href="https://discord.gg/5yCJjmW">
-                join our Discord server
-              </a>{' '}
-              and let us know if you find any issues.
-            </p>
-            <br />
-            <p>Thanks for Woogling!</p>
-          </Card>
-        </div>
+        <Announcements />
       </div>
     </>
   );
