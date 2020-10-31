@@ -42,7 +42,8 @@ export const getMacondo = async () => {
     // Check if wasm_exec.js is loaded in public/index.html
     if (!Go) throw new Error('Go not loaded');
     const go = new Go();
-    const resp = fetch('/wasm/macondo.wasm');
+    const macondoFilename = window.RUNTIME_CONFIGURATION.macondoFilename;
+    const resp = fetch(`/wasm/${macondoFilename}`);
     let resultPromise;
     if (WebAssembly.instantiateStreaming) {
       // Better browsers.
