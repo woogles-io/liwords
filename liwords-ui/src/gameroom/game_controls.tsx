@@ -9,12 +9,49 @@ import {
   RightOutlined,
 } from '@ant-design/icons';
 import {
+  useExaminableGameContextStoreContext,
   useExamineStoreContext,
   useGameContextStoreContext,
   useResetStoreContext,
 } from '../store/store';
+import { Unrace } from '../utils/unrace';
+import { fetchAndPrecache, getMacondo } from '../wasm/loader';
 
-const ExamineGameControls = React.memo((props: {}) => {
+const unrace = new Unrace();
+
+const filesByLexicon = [
+  {
+    lexicons: ['CSW19', 'NWL18'],
+    cacheKey: 'data/letterdistributions/english.csv',
+    path: '/wasm/english.csv',
+  },
+  {
+    lexicons: ['CSW19', 'NWL18'],
+    cacheKey: 'data/strategy/default_english/leaves.idx',
+    path: '/wasm/leaves.idx',
+  },
+  {
+    lexicons: ['CSW19', 'NWL18'],
+    cacheKey: 'data/strategy/default_english/preendgame.json',
+    path: '/wasm/preendgame.json',
+  },
+  {
+    lexicons: ['CSW19'],
+    cacheKey: 'data/lexica/gaddag/CSW19.gaddag',
+    path: '/wasm/CSW19.gaddag',
+  },
+  {
+    lexicons: ['NWL18'],
+    cacheKey: 'data/lexica/gaddag/NWL18.gaddag',
+    path: '/wasm/NWL18.gaddag',
+  },
+];
+
+const ExamineGameControls = React.memo((props: { lexicon: string }) => {
+  const { lexicon } = props;
+  const {
+    gameContext: examinableGameContext,
+  } = useExaminableGameContextStoreContext();
   const {
     examinedTurn,
     handleExamineEnd,
@@ -26,9 +63,47 @@ const ExamineGameControls = React.memo((props: {}) => {
   const { gameContext } = useGameContextStoreContext();
   const numberOfTurns = gameContext.turns.length;
 
+  const handleExaminer = React.useCallback(() => {
+    (async () => {
+      const {
+        board: { dim, letters },
+        onturn,
+        players,
+      } = examinableGameContext;
+
+      const boardObj = {
+        size: dim,
+        rack: players[onturn].currentRack,
+        board: Array.from(new Array(dim), (_, row) =>
+          letters.substr(row * dim, dim)
+        ),
+        lexicon,
+      };
+      console.log(boardObj); // for debugging
+
+      const macondo = await getMacondo();
+      await unrace.run(() =>
+        Promise.all(
+          filesByLexicon.map(({ lexicons, cacheKey, path }) =>
+            lexicons.includes(lexicon)
+              ? fetchAndPrecache(macondo, cacheKey, path)
+              : null
+          )
+        )
+      );
+
+      const boardStr = JSON.stringify(boardObj);
+      const movesStr = await macondo.analyze(boardStr);
+      const movesObj = JSON.parse(movesStr);
+
+      // Just log for now.
+      console.log(movesObj); // for debugging
+    })();
+  }, [examinableGameContext, lexicon]);
+
   return (
     <div className="game-controls">
-      <Button>Options</Button>
+      <Button onClick={handleExaminer}>Options</Button>
       <Button
         shape="circle"
         icon={<DoubleLeftOutlined />}
@@ -80,6 +155,7 @@ export type Props = {
   gameEndControls: boolean;
   showRematch: boolean;
   currentRack: string;
+  lexicon: string;
 };
 
 const GameControls = React.memo((props: Props) => {
@@ -88,7 +164,7 @@ const GameControls = React.memo((props: Props) => {
   const [resignVisible, setResignVisible] = useState(false);
 
   if (props.isExamining) {
-    return <ExamineGameControls />;
+    return <ExamineGameControls lexicon={props.lexicon} />;
   }
 
   if (props.gameEndControls) {
