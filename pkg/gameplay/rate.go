@@ -87,6 +87,11 @@ func Rate(ctx context.Context, scores map[string]int32, g *entity.Game,
 		-spread, int(now-rat1.LastGameTimestamp),
 	)
 
+	g.Quickdata.OriginalRatings[0] = rat0.Rating
+	g.Quickdata.OriginalRatings[1] = rat1.Rating
+	g.Quickdata.NewRatings[0] = p0rat
+	g.Quickdata.NewRatings[1] = p1rat
+
 	p0SingleRating := entity.SingleRating{
 		Rating:            p0rat,
 		RatingDeviation:   p0rd,
