@@ -39,6 +39,12 @@ import (
 	configservice "github.com/domino14/liwords/rpc/api/proto/config_service"
 	gameservice "github.com/domino14/liwords/rpc/api/proto/game_service"
 	userservice "github.com/domino14/liwords/rpc/api/proto/user_service"
+
+	"fmt"
+	"runtime"
+	"expvar"
+	/*"runtime/pprof"*/
+	/*"flag"*/
 )
 
 const (
@@ -67,7 +73,23 @@ func pingEndpoint(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte(`{"status":"copacetic"}`))
 }
 
+/*var cpuprofile = flag.String("cpuprofile", "cpu.prof", "write cpu profile to `file`")
+var memprofile = flag.String("memprofile", "mem.prof", "write memory profile to `file`")
+*/
 func main() {
+
+/*    flag.Parse()
+    if *cpuprofile != "" {
+        f, err := os.Create(*cpuprofile)
+        if err != nil {
+            panic("could not create CPU profile: ")
+        }
+        defer f.Close() // error handling omitted for example
+        if err := pprof.StartCPUProfile(f); err != nil {
+            panic("could not start CPU profile: ")
+        }
+        defer pprof.StopCPUProfile()
+    }*/
 
 	cfg := &config.Config{}
 	cfg.Load(os.Args[1:])
@@ -150,6 +172,13 @@ func main() {
 
 	router.Handle(configservice.ConfigServicePathPrefix,
 		middlewares.Then(configservice.NewConfigServiceServer(configService, nil)))
+	
+	expvar.Publish("goroutines", expvar.Func(func() interface{} {
+		return fmt.Sprintf("%d", runtime.NumGoroutine())
+	}))
+
+	router.Handle("/debug/vars", http.DefaultServeMux)
+	
 
 	// Create any caches
 	alphabet.CreateLetterDistributionCache()
@@ -195,4 +224,16 @@ func main() {
 	}
 	<-idleConnsClosed
 	log.Info().Msg("server gracefully shutting down")
+
+/*    if *memprofile != "" {
+        f, err := os.Create(*memprofile)
+        if err != nil {
+            panic("could not create memory profile: ")
+        }
+        defer f.Close() // error handling omitted for example
+        runtime.GC() // get up-to-date statistics
+        if err := pprof.WriteHeapProfile(f); err != nil {
+            panic("could not write memory profile: ")
+        }
+    }*/
 }
