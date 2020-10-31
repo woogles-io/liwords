@@ -11,6 +11,7 @@ import { PlayerMetadata } from './game_info';
 import { Turn, gameEventsToTurns } from '../store/reducers/turns';
 import { PoolFormatType } from '../constants/pool_formats';
 import { Notepad } from './notepad';
+import { sortBlanksLast } from '../store/constants';
 const screenSizes = require('../base.scss');
 
 type Props = {
@@ -43,19 +44,6 @@ type MoveEntityObj = {
   bonus: number;
   endRackPts: number;
   lostScore: number;
-};
-
-const sortBlanksLast = (rack: string) => {
-  let letters = '';
-  let blanks = '';
-  for (const tile of rack) {
-    if (tile === Blank) {
-      blanks += tile;
-    } else {
-      letters += tile;
-    }
-  }
-  return letters + blanks;
 };
 
 const displaySummary = (evt: GameEvent, board: Board) => {
@@ -223,7 +211,7 @@ export const ScoreCard = React.memo((props: Props) => {
 
   const el = useRef<HTMLDivElement>(null);
   const [cardHeight, setCardHeight] = useState(0);
-  const [notepadVisible, setNotepadVisible] = useState(false);
+  const [notepadHidden, setNotepadHidden] = useState(true);
   const resizeListener = () => {
     const currentEl = el.current;
     const vw = Math.max(
@@ -275,11 +263,11 @@ export const ScoreCard = React.memo((props: Props) => {
   const notepadStyle = cardHeight
     ? {
         height: cardHeight - 60,
-        display: notepadVisible ? 'block' : 'none',
+        display: notepadHidden ? 'none' : 'block',
       }
     : undefined;
-  const title = notepadVisible ? 'Notepad' : `Turn ${turns.length + 1}`;
-  const extra = notepadVisible ? 'View Scorecard' : 'View Notepad';
+  const title = !notepadHidden ? 'Notepad' : `Turn ${turns.length + 1}`;
+  const extra = !notepadHidden ? 'View Scorecard' : 'View Notepad';
   return (
     <Card
       className="score-card"
@@ -289,10 +277,10 @@ export const ScoreCard = React.memo((props: Props) => {
         <button
           className="link"
           onClick={() => {
-            if (notepadVisible) {
-              setNotepadVisible(false);
+            if (notepadHidden) {
+              setNotepadHidden(false);
             } else {
-              setNotepadVisible(true);
+              setNotepadHidden(true);
             }
           }}
         >
@@ -302,7 +290,7 @@ export const ScoreCard = React.memo((props: Props) => {
     >
       <div ref={el} style={cardStyle}>
         <Notepad style={notepadStyle} />
-        {!notepadVisible
+        {notepadHidden
           ? turns.map((t, idx) =>
               t.length === 0 ? null : (
                 <ScorecardTurn
