@@ -40,10 +40,8 @@ import (
 	gameservice "github.com/domino14/liwords/rpc/api/proto/game_service"
 	userservice "github.com/domino14/liwords/rpc/api/proto/user_service"
 
-	"fmt"
-	"runtime"
-	"expvar"
-	/*"runtime/pprof"*/
+	_ "net/http/pprof"
+	"net/http/pprof"
 	/*"flag"*/
 )
 
@@ -172,13 +170,16 @@ func main() {
 
 	router.Handle(configservice.ConfigServicePathPrefix,
 		middlewares.Then(configservice.NewConfigServiceServer(configService, nil)))
-	
-	expvar.Publish("goroutines", expvar.Func(func() interface{} {
-		return fmt.Sprintf("%d", runtime.NumGoroutine())
-	}))
 
-	router.Handle("/debug/vars", http.DefaultServeMux)
-	
+    router.Handle(
+        "/debug/pprof/goroutine", pprof.Handler("goroutine"),
+    )
+    router.Handle(
+        "/debug/pprof/heap", pprof.Handler("heap"),
+    )
+    router.Handle(
+        "/debug/vars", http.DefaultServeMux,
+    )
 
 	// Create any caches
 	alphabet.CreateLetterDistributionCache()
