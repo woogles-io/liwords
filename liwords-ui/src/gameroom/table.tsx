@@ -444,7 +444,7 @@ export const Table = React.memo((props: Props) => {
       } else {
         searchParams.set('turn', turnParamShouldBe);
       }
-      history.push({
+      history.replace({
         ...location,
         search: String(searchParams),
       });
