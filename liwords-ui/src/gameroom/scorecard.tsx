@@ -10,6 +10,7 @@ import { tilePlacementEventDisplay } from '../utils/cwgame/game_event';
 import { PlayerMetadata } from './game_info';
 import { Turn, gameEventsToTurns } from '../store/reducers/turns';
 import { PoolFormatType } from '../constants/pool_formats';
+import { Notepad } from './notepad';
 const screenSizes = require('../base.scss');
 
 type Props = {
@@ -221,9 +222,7 @@ export const ScoreCard = React.memo((props: Props) => {
   const { useState } = useMountedState();
 
   const el = useRef<HTMLDivElement>(null);
-  const notepad = useRef<HTMLTextAreaElement>(null);
   const [cardHeight, setCardHeight] = useState(0);
-  const [curNotepad, setCurNotepad] = useState('');
   const [notepadVisible, setNotepadVisible] = useState(false);
   const resizeListener = () => {
     const currentEl = el.current;
@@ -265,12 +264,7 @@ export const ScoreCard = React.memo((props: Props) => {
       window.removeEventListener('resize', resizeListener);
     };
   }, []);
-  useEffect(() => {
-    const currentEl = notepad.current;
-    if (notepadVisible && currentEl) {
-      currentEl.scrollTop = currentEl.scrollHeight || 0;
-    }
-  }, [notepadVisible]);
+
   const turns = gameEventsToTurns(props.events);
   const cardStyle = cardHeight
     ? {
@@ -280,7 +274,8 @@ export const ScoreCard = React.memo((props: Props) => {
     : undefined;
   const notepadStyle = cardHeight
     ? {
-        height: cardHeight - 24,
+        height: cardHeight - 60,
+        display: notepadVisible ? 'block' : 'none',
       }
     : undefined;
   const title = notepadVisible ? 'Notepad' : `Turn ${turns.length + 1}`;
@@ -306,33 +301,21 @@ export const ScoreCard = React.memo((props: Props) => {
       }
     >
       <div ref={el} style={cardStyle}>
-        {notepadVisible ? (
-          <div className="notepad-container">
-            <textarea
-              className="notepad"
-              value={curNotepad}
-              ref={notepad}
-              spellCheck={false}
-              style={notepadStyle}
-              onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => {
-                setCurNotepad(e.target.value);
-              }}
-            />
-          </div>
-        ) : (
-          turns.map((t, idx) =>
-            t.length === 0 ? null : (
-              <ScorecardTurn
-                turn={t}
-                board={props.board}
-                key={`t_${idx + 0}`}
-                playerMeta={props.playerMeta}
-                playing={props.playing}
-                username={props.username}
-              />
+        <Notepad style={notepadStyle} />
+        {!notepadVisible
+          ? turns.map((t, idx) =>
+              t.length === 0 ? null : (
+                <ScorecardTurn
+                  turn={t}
+                  board={props.board}
+                  key={`t_${idx + 0}`}
+                  playerMeta={props.playerMeta}
+                  playing={props.playing}
+                  username={props.username}
+                />
+              )
             )
-          )
-        )}
+          : null}
       </div>
     </Card>
   );

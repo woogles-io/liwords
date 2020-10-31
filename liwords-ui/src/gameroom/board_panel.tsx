@@ -45,6 +45,7 @@ import {
   useExaminableGameEndMessageStoreContext,
   useExamineStoreContext,
   useGameContextStoreContext,
+  useTentativeTileContext,
   useTimerStoreContext,
 } from '../store/store';
 import { BlankSelector } from './blank_selector';
@@ -173,11 +174,6 @@ export const BoardPanel = React.memo((props: Props) => {
     show: false,
   });
 
-  const [displayedRack, setDisplayedRack] = useState(props.currentRack);
-  const [placedTiles, setPlacedTiles] = useState(new Set<EphemeralTile>());
-  const [placedTilesTempScore, setPlacedTilesTempScore] = useState<
-    number | undefined
-  >(undefined);
   const {
     gameContext: examinableGameContext,
   } = useExaminableGameContextStoreContext();
@@ -189,8 +185,16 @@ export const BoardPanel = React.memo((props: Props) => {
   const { stopClock } = useTimerStoreContext();
   const [exchangeAllowed, setexchangeAllowed] = useState(true);
 
-  const observer = !props.playerMeta.some((p) => p.nickname === props.username);
+  const {
+    displayedRack,
+    setDisplayedRack,
+    placedTiles,
+    setPlacedTiles,
+    placedTilesTempScore,
+    setPlacedTilesTempScore,
+  } = useTentativeTileContext();
 
+  const observer = !props.playerMeta.some((p) => p.nickname === props.username);
   const isMyTurn = useCallback(() => {
     const iam = gameContext.nickToPlayerOrder[props.username];
     return iam && iam === `p${examinableGameContext.onturn}`;
@@ -345,8 +349,8 @@ export const BoardPanel = React.memo((props: Props) => {
   ]);
 
   const shuffleTiles = useCallback(() => {
-    setDisplayedRack((displayedRack) => shuffleString(displayedRack));
-  }, []);
+    setDisplayedRack(shuffleString(displayedRack));
+  }, [setDisplayedRack, displayedRack]);
 
   const lastLettersRef = useRef<string>();
   const readOnlyEffectDependenciesRef = useRef<{

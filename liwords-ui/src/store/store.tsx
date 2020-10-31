@@ -26,6 +26,7 @@ import { ClockController, Times, Millis } from './timer_controller';
 import { PlayerOrder } from './constants';
 import { PoolFormatType } from '../constants/pool_formats';
 import { LoginState, LoginStateReducer } from './login_state';
+import { EphemeralTile } from '../utils/cwgame/common';
 
 export enum ChatEntityType {
   UserChat,
@@ -130,6 +131,15 @@ type TimerStoreData = {
   setPTimedOut: (p: PlayerOrder | undefined) => void;
 };
 
+type TentativePlayData = {
+  placedTilesTempScore: number | undefined;
+  placedTiles: Set<EphemeralTile>;
+  displayedRack: string;
+  setPlacedTilesTempScore: (s: number | undefined) => void;
+  setPlacedTiles: (t: Set<EphemeralTile>) => void;
+  setDisplayedRack: (l: string) => void;
+};
+
 type PoolFormatStoreData = {
   poolFormat: PoolFormatType;
   setPoolFormat: (format: PoolFormatType) => void;
@@ -180,6 +190,15 @@ const LoginStateContext = createContext<LoginStateStoreData>({
 const LagContext = createContext<LagStoreData>({
   currentLagMs: NaN,
   setCurrentLagMs: defaultFunction,
+});
+
+const TentativePlayContext = createContext<TentativePlayData>({
+  placedTilesTempScore: undefined,
+  placedTiles: new Set<EphemeralTile>(),
+  displayedRack: '',
+  setPlacedTilesTempScore: defaultFunction,
+  setPlacedTiles: defaultFunction,
+  setDisplayedRack: defaultFunction,
 });
 
 const ExcludedPlayersContext = createContext<ExcludedPlayersStoreData>({
@@ -536,6 +555,13 @@ const RealStore = ({ children, ...props }: Props) => {
     connID: '',
   });
   const [currentLagMs, setCurrentLagMs] = useState(NaN);
+
+  const [placedTilesTempScore, setPlacedTilesTempScore] = useState<
+    number | undefined
+  >(undefined);
+  const [placedTiles, setPlacedTiles] = useState(new Set<EphemeralTile>());
+  const [displayedRack, setDisplayedRack] = useState('');
+
   const [gameContext, dispatchGameContext] = useReducer(GameReducer, null, () =>
     gameStateInitializer(clockController, onClockTick, onClockTimeout)
   );
@@ -653,6 +679,19 @@ const RealStore = ({ children, ...props }: Props) => {
       value={{
         currentLagMs,
         setCurrentLagMs,
+      }}
+      children={ret}
+    />
+  );
+  ret = (
+    <TentativePlayContext.Provider
+      value={{
+        placedTilesTempScore,
+        placedTiles,
+        displayedRack,
+        setPlacedTilesTempScore,
+        setPlacedTiles,
+        setDisplayedRack,
       }}
       children={ret}
     />
@@ -785,7 +824,7 @@ export const Store = ({ children }: { children: React.ReactNode }) => {
 export const useLobbyStoreContext = () => useContext(LobbyContext);
 export const useLoginStateStoreContext = () => useContext(LoginStateContext);
 export const useLagStoreContext = () => useContext(LagContext);
-
+export const useTentativeTileContext = () => useContext(TentativePlayContext);
 export const useExcludedPlayersStoreContext = () =>
   useContext(ExcludedPlayersContext);
 export const useRedirGameStoreContext = () => useContext(RedirGameContext);
