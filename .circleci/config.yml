@@ -77,10 +77,16 @@ jobs:
       # cache everything except index.html and config.js
       - run: >
           cd /tmp/liwords-ui/build &&
-          aws s3 sync --cache-control 'max-age=604800'
-          --exclude index.html --exclude config.js
+          aws s3 sync --cache-control 'max-age=3024000'
+          --exclude index.html --exclude config.js --exclude 'wasm/*.wasm'
           . s3://woogles.io
-      - run: cd /tmp/liwords-ui/build && aws s3 sync --cache-control 'no-cache' . s3://woogles.io
+      - run: >
+          cd /tmp/liwords-ui/build &&
+          aws s3 sync --cache-control 'no-cache' --exclude 'wasm/*.wasm' . s3://woogles.io
+      - run: >
+          cd /tmp/liwords-ui/build &&
+          aws s3 sync --cache-control 'max-age=3024000' --exclude '*' --include 'wasm/*.wasm'
+          --content-type 'application/wasm' . s3://woogles.io
       - slack/status: *slack-webhook-setting
 
 workflows:
