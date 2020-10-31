@@ -504,6 +504,7 @@ export const Table = React.memo((props: Props) => {
             sendSocketMsg={props.sendSocketMsg}
             gameDone={gameDone}
             playerMeta={gameInfo.players}
+            lexicon={gameInfo.lexicon}
           />
           <StreakWidget recentGames={streakGameInfo} />
         </div>
