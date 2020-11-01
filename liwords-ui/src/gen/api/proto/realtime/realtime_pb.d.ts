@@ -992,3 +992,16 @@ export interface GameEndReasonMap {
 
 export const GameEndReason: GameEndReasonMap;
 
+export interface TournamentGameResultMap {
+  NO_RESULT: 0;
+  WIN: 1;
+  LOSS: 2;
+  DRAW: 3;
+  BYE: 4;
+  FORFEIT_WIN: 5;
+  FORFEIT_LOSS: 6;
+  ELIMINATED: 7;
+}
+
+export const TournamentGameResult: TournamentGameResultMap;
+

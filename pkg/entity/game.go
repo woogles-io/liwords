@@ -63,6 +63,15 @@ type Quickdata struct {
 	NewRatings        []float64
 }
 
+// Holds the tournament data for a game.
+// This is nil if the game is not a tournament game.
+type Tournamentdata struct {
+	Id        string
+	Division  string
+	Round     int
+	GameIndex int
+}
+
 // A Game should be saved to the database or store. It wraps a macondo.Game,
 // and we should save most of the included fields here, especially the
 // macondo.game.History (which can be exported as GCG, etc in the future)
@@ -92,9 +101,9 @@ type Game struct {
 	ChangeHook chan<- *EventWrapper
 	nower      Nower
 
-	Quickdata    *Quickdata
-	CreatedAt    time.Time
-	TournamentID string
+	Quickdata      *Quickdata
+	Tournamentdata *Tournamentdata
+	CreatedAt      time.Time
 }
 
 // GameTimer uses the standard library's `time` package to determine how much time

@@ -12,7 +12,9 @@ import (
 	"github.com/domino14/liwords/pkg/entity"
 	"github.com/domino14/liwords/pkg/stores/game"
 	"github.com/domino14/liwords/pkg/stores/stats"
+	ts "github.com/domino14/liwords/pkg/stores/tournament"
 	"github.com/domino14/liwords/pkg/stores/user"
+	"github.com/domino14/liwords/pkg/tournament"
 	pkguser "github.com/domino14/liwords/pkg/user"
 	gs "github.com/domino14/liwords/rpc/api/proto/game_service"
 	pb "github.com/domino14/liwords/rpc/api/proto/realtime"
@@ -31,6 +33,15 @@ func gameStore(dbURL string, userStore pkguser.Store) (*config.Config, GameStore
 	}
 	gameStore := game.NewCache(tmp)
 	return cfg, gameStore
+}
+
+func tournamentStore(cfg *config.Config) tournament.TournamentStore {
+	tmp, err := ts.NewDBStore(cfg)
+	if err != nil {
+		log.Fatal().Err(err).Msg("error")
+	}
+	tournamentStore := ts.NewCache(tmp)
+	return tournamentStore
 }
 
 type evtConsumer struct {
@@ -109,6 +120,7 @@ func TestWrongTurn(t *testing.T) {
 	ustore := userStore(cstr)
 	lstore := listStatStore(cstr)
 	cfg, gstore := gameStore(cstr, ustore)
+	tstore := tournamentStore(cfg)
 
 	g, _, cancel, donechan, consumer := makeGame(cfg, ustore, gstore)
 
@@ -122,7 +134,7 @@ func TestWrongTurn(t *testing.T) {
 	}
 
 	// User ID below is "cesar4" who's not on turn.
-	_, err := HandleEvent(context.Background(), gstore, ustore, lstore,
+	_, err := HandleEvent(context.Background(), gstore, ustore, lstore, tstore,
 		"xjCWug7EZtDxDHX5fRZTLo", cge)
 
 	is.Equal(err.Error(), "player not on turn")
@@ -134,6 +146,7 @@ func TestWrongTurn(t *testing.T) {
 	ustore.(*user.DBStore).Disconnect()
 	lstore.(*stats.ListStatStore).Disconnect()
 	gstore.(*game.Cache).Disconnect()
+	tstore.(*ts.Cache).Disconnect()
 }
 
 func Test5ptBadWord(t *testing.T) {
@@ -144,6 +157,7 @@ func Test5ptBadWord(t *testing.T) {
 	ustore := userStore(cstr)
 	lstore := listStatStore(cstr)
 	cfg, gstore := gameStore(cstr, ustore)
+	tstore := tournamentStore(cfg)
 
 	g, nower, cancel, donechan, consumer := makeGame(cfg, ustore, gstore)
 
@@ -159,7 +173,7 @@ func Test5ptBadWord(t *testing.T) {
 	})
 	// "jesse" plays a word after some time
 	nower.Sleep(3750) // 3.75 secs
-	_, err := HandleEvent(context.Background(), gstore, ustore, lstore,
+	_, err := HandleEvent(context.Background(), gstore, ustore, lstore, tstore,
 		"3xpEkpRAy3AizbVmDg3kdi", cge)
 
 	is.NoErr(err)
@@ -180,6 +194,7 @@ func Test5ptBadWord(t *testing.T) {
 	ustore.(*user.DBStore).Disconnect()
 	lstore.(*stats.ListStatStore).Disconnect()
 	gstore.(*game.Cache).Disconnect()
+	tstore.(*ts.Cache).Disconnect()
 }
 
 func TestDoubleChallengeBadWord(t *testing.T) {
@@ -190,6 +205,7 @@ func TestDoubleChallengeBadWord(t *testing.T) {
 	ustore := userStore(cstr)
 	lstore := listStatStore(cstr)
 	cfg, gstore := gameStore(cstr, ustore)
+	tstore := tournamentStore(cfg)
 
 	g, nower, cancel, donechan, consumer := makeGame(cfg, ustore, gstore)
 
@@ -206,13 +222,13 @@ func TestDoubleChallengeBadWord(t *testing.T) {
 	})
 	// "jesse" plays a word after some time
 	nower.Sleep(3750) // 3.75 secs
-	_, err := HandleEvent(context.Background(), gstore, ustore, lstore,
+	_, err := HandleEvent(context.Background(), gstore, ustore, lstore, tstore,
 		"3xpEkpRAy3AizbVmDg3kdi", cge)
 
 	is.NoErr(err)
 	// "cesar4" waits a while before challenging this very plausible word.
 	nower.Sleep(7620)
-	_, err = HandleEvent(context.Background(), gstore, ustore, lstore,
+	_, err = HandleEvent(context.Background(), gstore, ustore, lstore, tstore,
 		"xjCWug7EZtDxDHX5fRZTLo", &pb.ClientGameplayEvent{
 			Type:   pb.ClientGameplayEvent_CHALLENGE_PLAY,
 			GameId: g.GameID(),
@@ -243,6 +259,7 @@ func TestDoubleChallengeBadWord(t *testing.T) {
 	ustore.(*user.DBStore).Disconnect()
 	lstore.(*stats.ListStatStore).Disconnect()
 	gstore.(*game.Cache).Disconnect()
+	tstore.(*ts.Cache).Disconnect()
 }
 
 func TestDoubleChallengeGoodWord(t *testing.T) {
@@ -253,6 +270,7 @@ func TestDoubleChallengeGoodWord(t *testing.T) {
 	ustore := userStore(cstr)
 	lstore := listStatStore(cstr)
 	cfg, gstore := gameStore(cstr, ustore)
+	tstore := tournamentStore(cfg)
 
 	g, nower, cancel, donechan, consumer := makeGame(cfg, ustore, gstore)
 
@@ -269,13 +287,13 @@ func TestDoubleChallengeGoodWord(t *testing.T) {
 	})
 	// "jesse" plays a word after some time
 	nower.Sleep(3750) // 3.75 secs
-	_, err := HandleEvent(context.Background(), gstore, ustore, lstore,
+	_, err := HandleEvent(context.Background(), gstore, ustore, lstore, tstore,
 		"3xpEkpRAy3AizbVmDg3kdi", cge)
 
 	is.NoErr(err)
 	// "cesar4" waits a while before challenging BANJO for some reason.
 	nower.Sleep(7620)
-	_, err = HandleEvent(context.Background(), gstore, ustore, lstore,
+	_, err = HandleEvent(context.Background(), gstore, ustore, lstore, tstore,
 		"xjCWug7EZtDxDHX5fRZTLo", &pb.ClientGameplayEvent{
 			Type:   pb.ClientGameplayEvent_CHALLENGE_PLAY,
 			GameId: g.GameID(),
@@ -304,6 +322,7 @@ func TestDoubleChallengeGoodWord(t *testing.T) {
 	ustore.(*user.DBStore).Disconnect()
 	lstore.(*stats.ListStatStore).Disconnect()
 	gstore.(*game.Cache).Disconnect()
+	tstore.(*ts.Cache).Disconnect()
 }
 
 func TestQuickdata(t *testing.T) {
@@ -314,6 +333,7 @@ func TestQuickdata(t *testing.T) {
 	ustore := userStore(cstr)
 	lstore := listStatStore(cstr)
 	cfg, gstore := gameStore(cstr, ustore)
+	tstore := tournamentStore(cfg)
 
 	g, nower, cancel, donechan, _ := makeGame(cfg, ustore, gstore)
 	ctx := context.WithValue(context.Background(), ConfigCtxKey("config"), &DefaultConfig)
@@ -337,21 +357,21 @@ func TestQuickdata(t *testing.T) {
 	})
 	// "jesse" plays a word after some time
 	nower.Sleep(3750) // 3.75 secs
-	_, err := HandleEvent(ctx, gstore, ustore, lstore,
+	_, err := HandleEvent(ctx, gstore, ustore, lstore, tstore,
 		"3xpEkpRAy3AizbVmDg3kdi", cge1)
 
 	is.NoErr(err)
 
 	// "cesar4" plays a word after some time
 	nower.Sleep(4750) // 4.75 secs
-	_, err = HandleEvent(ctx, gstore, ustore, lstore,
+	_, err = HandleEvent(ctx, gstore, ustore, lstore, tstore,
 		"xjCWug7EZtDxDHX5fRZTLo", cge2)
 
 	is.NoErr(err)
 
 	// "jesse" waits a while before challenging SYZYGAL for some reason.
 	nower.Sleep(7620)
-	entGame, err := HandleEvent(ctx, gstore, ustore, lstore,
+	entGame, err := HandleEvent(ctx, gstore, ustore, lstore, tstore,
 		"3xpEkpRAy3AizbVmDg3kdi", &pb.ClientGameplayEvent{
 			Type:   pb.ClientGameplayEvent_CHALLENGE_PLAY,
 			GameId: g.GameID(),
@@ -373,4 +393,5 @@ func TestQuickdata(t *testing.T) {
 	ustore.(*user.DBStore).Disconnect()
 	lstore.(*stats.ListStatStore).Disconnect()
 	gstore.(*game.Cache).Disconnect()
+	tstore.(*ts.Cache).Disconnect()
 }
