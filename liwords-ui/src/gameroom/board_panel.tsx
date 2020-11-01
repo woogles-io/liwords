@@ -347,6 +347,9 @@ export const BoardPanel = React.memo((props: Props) => {
     props.board.dim,
     props.board.letters,
     props.currentRack,
+    setPlacedTilesTempScore,
+    setPlacedTiles,
+    setDisplayedRack,
   ]);
 
   const shuffleTiles = useCallback(() => {
@@ -435,7 +438,14 @@ export const BoardPanel = React.memo((props: Props) => {
       setArrowProperties({ row: 0, col: 0, horizontal: false, show: false });
     }
     lastLettersRef.current = props.board.letters;
-  }, [isExamining, props.board.letters, props.currentRack]);
+  }, [
+    isExamining,
+    props.board.letters,
+    props.currentRack,
+    setPlacedTilesTempScore,
+    setPlacedTiles,
+    setDisplayedRack,
+  ]);
 
   useEffect(() => {
     // Stop the clock if we unload the board panel.
@@ -635,6 +645,9 @@ export const BoardPanel = React.memo((props: Props) => {
       props.gameDone,
       recallTiles,
       shuffleTiles,
+      setPlacedTilesTempScore,
+      setPlacedTiles,
+      setDisplayedRack,
     ]
   );
 
@@ -665,7 +678,14 @@ export const BoardPanel = React.memo((props: Props) => {
         setCurrentMode('BLANK_MODAL');
       }
     },
-    [displayedRack, placedTiles, props.board]
+    [
+      displayedRack,
+      placedTiles,
+      props.board,
+      setPlacedTilesTempScore,
+      setPlacedTiles,
+      setDisplayedRack,
+    ]
   );
 
   const clickToBoard = useCallback(
@@ -730,6 +750,9 @@ export const BoardPanel = React.memo((props: Props) => {
       displayedRack,
       placedTiles,
       props.board,
+      setPlacedTilesTempScore,
+      setPlacedTiles,
+      setDisplayedRack,
     ]
   );
 
@@ -754,7 +777,13 @@ export const BoardPanel = React.memo((props: Props) => {
       setPlacedTiles(handlerReturn.newPlacedTiles);
       setPlacedTilesTempScore(handlerReturn.playScore);
     },
-    [displayedRack, placedTiles, props.board]
+    [
+      displayedRack,
+      placedTiles,
+      props.board,
+      setPlacedTiles,
+      setPlacedTilesTempScore,
+    ]
   );
 
   const handleBlankModalCancel = useCallback(() => {
@@ -778,7 +807,14 @@ export const BoardPanel = React.memo((props: Props) => {
       setPlacedTilesTempScore(handlerReturn.playScore);
       setArrowProperties({ row: 0, col: 0, horizontal: false, show: false });
     },
-    [displayedRack, placedTiles, props.board]
+    [
+      displayedRack,
+      placedTiles,
+      props.board,
+      setPlacedTilesTempScore,
+      setPlacedTiles,
+      setDisplayedRack,
+    ]
   );
 
   const moveRackTile = useCallback(
@@ -790,7 +826,7 @@ export const BoardPanel = React.memo((props: Props) => {
         setDisplayedRack(newRack.join(''));
       }
     },
-    [displayedRack]
+    [displayedRack, setDisplayedRack]
   );
 
   const showExchangeModal = useCallback(() => {

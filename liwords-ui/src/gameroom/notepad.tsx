@@ -1,4 +1,4 @@
-import React, { useRef, useState, useCallback } from 'react';
+import React, { useRef, useState, useCallback, useEffect } from 'react';
 import { Button } from 'antd';
 import { PlusOutlined } from '@ant-design/icons';
 import {
@@ -10,7 +10,7 @@ import {
   contiguousTilesFromTileSet,
   simpletile,
 } from '../utils/cwgame/scoring';
-import { Direction } from '../utils/cwgame/common';
+import { Direction, isMobile } from '../utils/cwgame/common';
 
 type NotepadProps = {
   style?: React.CSSProperties;
@@ -29,7 +29,7 @@ const humanReadablePosition = (
 };
 
 export const Notepad = React.memo((props: NotepadProps) => {
-  const notepad = useRef<HTMLTextAreaElement>(null);
+  const notepadEl = useRef<HTMLTextAreaElement>(null);
   const [curNotepad, setCurNotepad] = useState('');
   const {
     displayedRack,
@@ -59,14 +59,22 @@ export const Notepad = React.memo((props: NotepadProps) => {
         play ? position + ' ' + play + ' ' : ''
       }${placedTilesTempScore ? placedTilesTempScore + ' ' : ''}${leave}`
     );
-    document.getElementById('board-container')?.focus();
-  }, [displayedRack, placedTiles, placedTilesTempScore, curNotepad]);
+    // Return focus to board on all but mobile so the key commands can be used immediately
+    if (!isMobile()) {
+      document.getElementById('board-container')?.focus();
+    }
+  }, [displayedRack, placedTiles, placedTilesTempScore, curNotepad, board]);
+  useEffect(() => {
+    if (notepadEl.current && !(notepadEl.current === document.activeElement)) {
+      notepadEl.current.scrollTop = notepadEl.current.scrollHeight || 0;
+    }
+  }, [curNotepad]);
   return (
     <div className="notepad-container" style={props.style}>
       <textarea
         className="notepad"
         value={curNotepad}
-        ref={notepad}
+        ref={notepadEl}
         spellCheck={false}
         style={props.style}
         onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => {

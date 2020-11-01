@@ -5,13 +5,13 @@ import { GameEvent } from '../gen/macondo/api/proto/macondo/macondo_pb';
 import { Board } from '../utils/cwgame/board';
 import { PlayerAvatar } from '../shared/player_avatar';
 import { millisToTimeStr } from '../store/timer_controller';
-import { Blank } from '../utils/cwgame/common';
 import { tilePlacementEventDisplay } from '../utils/cwgame/game_event';
 import { PlayerMetadata } from './game_info';
 import { Turn, gameEventsToTurns } from '../store/reducers/turns';
 import { PoolFormatType } from '../constants/pool_formats';
 import { Notepad } from './notepad';
 import { sortBlanksLast } from '../store/constants';
+import { getVW, isTablet } from '../utils/cwgame/common';
 const screenSizes = require('../base.scss');
 
 type Props = {
@@ -212,12 +212,16 @@ export const ScoreCard = React.memo((props: Props) => {
   const el = useRef<HTMLDivElement>(null);
   const [cardHeight, setCardHeight] = useState(0);
   const [notepadHidden, setNotepadHidden] = useState(true);
+  const [enableNotepadFlip, setEnableNotepadFlip] = useState(isTablet());
   const resizeListener = () => {
     const currentEl = el.current;
-    const vw = Math.max(
-      document.documentElement.clientWidth || 0,
-      window.innerWidth || 0
-    );
+
+    if (isTablet()) {
+      setEnableNotepadFlip(true);
+    } else {
+      setEnableNotepadFlip(false);
+      setNotepadHidden(true);
+    }
     if (currentEl) {
       currentEl.scrollTop = currentEl.scrollHeight || 0;
       const boardHeight = document.getElementById('board-container')
@@ -226,7 +230,7 @@ export const ScoreCard = React.memo((props: Props) => {
       const playerCardTop =
         document.getElementById('player-cards-vertical')?.clientHeight || 0;
       const navHeight = document.getElementById('main-nav')?.clientHeight || 0;
-      if (boardHeight && vw > parseInt(screenSizes.screenSizeTablet, 10)) {
+      if (boardHeight && getVW() > parseInt(screenSizes.screenSizeTablet, 10)) {
         setCardHeight(
           boardHeight -
             currentEl?.getBoundingClientRect().top -
@@ -242,9 +246,7 @@ export const ScoreCard = React.memo((props: Props) => {
     }
   };
   useEffect(() => {
-    if (props.events.length) {
-      resizeListener();
-    }
+    resizeListener();
   }, [props.events, props.poolFormat]);
   useEffect(() => {
     window.addEventListener('resize', resizeListener);
@@ -266,26 +268,32 @@ export const ScoreCard = React.memo((props: Props) => {
         display: notepadHidden ? 'none' : 'block',
       }
     : undefined;
-  const title = !notepadHidden ? 'Notepad' : `Turn ${turns.length + 1}`;
-  const extra = !notepadHidden ? 'View Scorecard' : 'View Notepad';
+  let title = `Turn ${turns.length + 1}`;
+  let extra = null;
+  if (enableNotepadFlip) {
+    title = !notepadHidden ? 'Notepad' : `Turn ${turns.length + 1}`;
+    extra = !notepadHidden ? 'View Scorecard' : 'View Notepad';
+  }
   return (
     <Card
       className="score-card"
       title={title}
       // eslint-disable-next-line jsx-a11y/anchor-is-valid
       extra={
-        <button
-          className="link"
-          onClick={() => {
-            if (notepadHidden) {
-              setNotepadHidden(false);
-            } else {
-              setNotepadHidden(true);
-            }
-          }}
-        >
-          {extra}
-        </button>
+        isTablet ? (
+          <button
+            className="link"
+            onClick={() => {
+              if (notepadHidden) {
+                setNotepadHidden(false);
+              } else {
+                setNotepadHidden(true);
+              }
+            }}
+          >
+            {extra}
+          </button>
+        ) : null
       }
     >
       <div ref={el} style={cardStyle}>

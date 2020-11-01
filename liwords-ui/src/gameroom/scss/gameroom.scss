@@ -62,6 +62,31 @@ $tile-transition: width ease-in 100ms, height ease-in 100ms, background-color ea
       }
     }
   }
+  .notepad-container {
+    text-align: right;
+    button.ant-btn-icon-only > * {
+      font-size: inherit;
+    }
+  }
+  .notepad {
+    resize: none;
+    width: 100%;
+    height: 176px;
+    @include type-monospace;
+    font-size: 15px;
+    line-height: 1.8em;
+    letter-spacing: 0.05em;
+    padding: 12px;
+  }
+  .notepad-card {
+    .ant-card-head-wrapper {
+      padding: 6px 0;
+    }
+    .ant-card-body {
+      padding: 12px;
+      height: 240px;
+    }
+  }
 }
 .ant-dropdown-menu {
   padding: 0;
@@ -519,6 +544,7 @@ $tile-transition: width ease-in 100ms, height ease-in 100ms, background-color ea
   opacity: 0;
 }
 
+
 // Pool
 .pool {
   order: -1;
@@ -645,16 +671,6 @@ $tile-transition: width ease-in 100ms, height ease-in 100ms, background-color ea
     .notepad-container {
       display: none;
       height: 100%;
-    }
-    .notepad {
-      resize: none;
-      width: 100%;
-      height: 110px;
-      @include type-monospace;
-      font-size: 15px;
-      line-height: 1.8em;
-      letter-spacing: 0.05em;
-      padding: 12px;
     }
   }
   .player-avatar {
@@ -828,6 +844,20 @@ $tile-transition: width ease-in 100ms, height ease-in 100ms, background-color ea
     padding: 5px 2px;
     bottom: 1px;
   }
+  .notepad-card {
+    display: none;
+  }
+  .score-card {
+    .ant-card-body {
+      & > div {
+        max-height: 140px;
+        min-height: 140px;
+      }
+      .notepad {
+        height: 100px;
+      }
+    }
+  }
   .game-controls {
     justify-content: center;
     left: 0;
@@ -869,7 +899,19 @@ $tile-transition: width ease-in 100ms, height ease-in 100ms, background-color ea
         }
       }
     }
-
+    .notepad-card {
+      display: block;
+      .ant-card-head-wrapper {
+        padding: 0;
+      }
+      .ant-card-body {
+        padding: 12px;
+        height: 190px;
+      }
+      .notepad {
+        height: 120px;
+      }
+    }
   }
 
   .play-area {
@@ -1006,11 +1048,11 @@ $tile-transition: width ease-in 100ms, height ease-in 100ms, background-color ea
     }
     .ant-card-body {
       & > div {
-        max-height: 252px;
-        min-height: 252px;
+        max-height: 152px;
+        min-height: 152px;
       }
       .notepad {
-        height: 228px;
+        height: 128px;
       }
     }
   }

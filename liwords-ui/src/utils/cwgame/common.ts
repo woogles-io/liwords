@@ -1,5 +1,6 @@
 export const EmptySpace = ' ';
 export const Blank = '?';
+const screenSizes = require('../../base.scss');
 
 export type EphemeralTile = {
   // ephemeron <3 you are missed
@@ -32,6 +33,16 @@ export const uniqueTileIdx = (row: number, col: number): number => {
 export const isBlank = (letter: string): boolean => {
   return letter.toLowerCase() === letter;
 };
+
+export const getVW = () =>
+  Math.max(document.documentElement.clientWidth || 0, window.innerWidth || 0);
+
+export const isMobile = () =>
+  getVW() < parseInt(screenSizes.screenSizeTablet, 10);
+
+export const isTablet = () =>
+  getVW() >= parseInt(screenSizes.screenSizeTablet, 10) &&
+  getVW() < parseInt(screenSizes.screenSizeLaptop, 10);
 
 export const isDesignatedBlank = (letter: string): boolean => {
   return letter.toLowerCase() === letter && letter.toUpperCase() !== letter;
