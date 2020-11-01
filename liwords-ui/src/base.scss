@@ -194,6 +194,17 @@ ul
   margin: 0;
 }
 
+.ant-card {
+  h1,
+  h2,
+  h3,
+  h4 {
+    font-family: $font-default;
+    font-weight: bold;
+    letter-spacing: 0;
+  }
+
+}
 .user-context-menu {
   cursor: context-menu;
 }
