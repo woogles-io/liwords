@@ -1,5 +1,5 @@
 import React, { useRef, useCallback, useEffect } from 'react';
-import { Button } from 'antd';
+import { Button, Card } from 'antd';
 import { PlusOutlined } from '@ant-design/icons';
 import {
   useGameContextStoreContext,
@@ -10,11 +10,12 @@ import {
   contiguousTilesFromTileSet,
   simpletile,
 } from '../utils/cwgame/scoring';
-import { Direction, isMobile } from '../utils/cwgame/common';
+import { Direction, isMobile, isTablet } from '../utils/cwgame/common';
 import { useMountedState } from '../utils/mounted';
 
 type NotepadProps = {
   style?: React.CSSProperties;
+  includeCard?: boolean;
 };
 
 const humanReadablePosition = (
@@ -71,7 +72,7 @@ export const Notepad = React.memo((props: NotepadProps) => {
       notepadEl.current.scrollTop = notepadEl.current.scrollHeight || 0;
     }
   }, [curNotepad]);
-  return (
+  const notepadContainer = (
     <div className="notepad-container" style={props.style}>
       <textarea
         className="notepad"
@@ -91,4 +92,23 @@ export const Notepad = React.memo((props: NotepadProps) => {
       />
     </div>
   );
+  if (props.includeCard) {
+    return (
+      <Card
+        title="Notepad"
+        className="notepad-card"
+        extra={
+          <Button
+            shape="circle"
+            icon={<PlusOutlined />}
+            type="primary"
+            onClick={addPlay}
+          />
+        }
+      >
+        {notepadContainer}{' '}
+      </Card>
+    );
+  }
+  return notepadContainer;
 });

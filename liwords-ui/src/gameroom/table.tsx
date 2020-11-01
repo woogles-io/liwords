@@ -486,9 +486,7 @@ export const Table = React.memo((props: Props) => {
             presences={presences}
             peopleOnlineContext={peopleOnlineContext}
           />
-          <Card title="Notepad" className="notepad-card">
-            <Notepad />
-          </Card>
+          <Notepad includeCard />
         </div>
         {/* There are two player cards, css hides one of them. */}
         <div className="sticky-player-card-container">

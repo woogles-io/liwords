@@ -273,8 +273,8 @@ export const ScoreCard = React.memo((props: Props) => {
     : undefined;
   const notepadStyle = cardHeight
     ? {
-        height: cardHeight - 60,
-        display: notepadHidden ? 'none' : 'block',
+        height: cardHeight - 24,
+        display: notepadHidden ? 'none' : 'flex',
       }
     : undefined;
   let title = `Turn ${turns.length + 1}`;
