@@ -59,7 +59,7 @@
       height: $main-container-width-tablet + 60px;
     }
     .ant-card-body {
-      max-height: none;
+      max-height: calc(100% - 70px);
     }
   }
   .lobby .game-lists {
