@@ -1,4 +1,5 @@
 import { ChallengeRule } from '../gen/macondo/api/proto/macondo/macondo_pb';
+import { Blank } from '../utils/cwgame/common';
 
 export type PlayerOrder = 'p0' | 'p1';
 
@@ -106,4 +107,17 @@ export const challRuleToStr = (n: number): string => {
       return 'Void';
   }
   return 'Unsupported';
+};
+
+export const sortBlanksLast = (rack: string) => {
+  let letters = '';
+  let blanks = '';
+  for (const tile of rack) {
+    if (tile === Blank) {
+      blanks += tile;
+    } else {
+      letters += tile;
+    }
+  }
+  return letters + blanks;
 };

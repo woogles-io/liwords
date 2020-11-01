@@ -4,7 +4,11 @@ import React, { useCallback, useEffect, useMemo, useRef } from 'react';
 import { useMountedState } from '../utils/mounted';
 import { Card, Input, Tabs } from 'antd';
 import { ChatEntity } from './chat_entity';
-import { ChatEntityObj, PresenceEntity } from '../store/store';
+import {
+  ChatEntityObj,
+  PresenceEntity,
+  useLoginStateStoreContext,
+} from '../store/store';
 import './chat.scss';
 import { Presences } from './presences';
 
@@ -21,7 +25,8 @@ type Props = {
 
 export const Chat = React.memo((props: Props) => {
   const { useState } = useMountedState();
-
+  const { loginState } = useLoginStateStoreContext();
+  const { loggedIn } = loginState;
   const [curMsg, setCurMsg] = useState('');
   const [hasScroll, setHasScroll] = useState(false);
   const [selectedChatTab, setSelectedChatTab] = useState('CHAT');
@@ -55,7 +60,6 @@ export const Chat = React.memo((props: Props) => {
       [],
     [props.presences]
   );
-  console.log(knownUsers);
   useEffect(() => {
     const tabContainer = el.current;
     if (tabContainer && selectedChatTab === 'CHAT') {
@@ -136,6 +140,7 @@ export const Chat = React.memo((props: Props) => {
           </div>
           <Input
             placeholder="chat..."
+            disabled={!loggedIn}
             onKeyDown={onKeyDown}
             onChange={onChange}
             value={curMsg}

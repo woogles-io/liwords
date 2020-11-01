@@ -14,7 +14,7 @@ import {
 } from '../../constants/tile_values';
 import { Board } from './board';
 
-type simpletile = {
+export type simpletile = {
   fresh: boolean;
   letter: string;
   row: number;

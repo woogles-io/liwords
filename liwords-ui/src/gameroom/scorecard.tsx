@@ -1,15 +1,23 @@
-import React, { ReactNode, useEffect, useMemo, useRef } from 'react';
+import React, {
+  ReactNode,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+} from 'react';
 import { useMountedState } from '../utils/mounted';
 import { Card } from 'antd';
 import { GameEvent } from '../gen/macondo/api/proto/macondo/macondo_pb';
 import { Board } from '../utils/cwgame/board';
 import { PlayerAvatar } from '../shared/player_avatar';
 import { millisToTimeStr } from '../store/timer_controller';
-import { Blank } from '../utils/cwgame/common';
 import { tilePlacementEventDisplay } from '../utils/cwgame/game_event';
 import { PlayerMetadata } from './game_info';
 import { Turn, gameEventsToTurns } from '../store/reducers/turns';
 import { PoolFormatType } from '../constants/pool_formats';
+import { Notepad } from './notepad';
+import { sortBlanksLast } from '../store/constants';
+import { getVW, isTablet } from '../utils/cwgame/common';
 const screenSizes = require('../base.scss');
 
 type Props = {
@@ -42,19 +50,6 @@ type MoveEntityObj = {
   bonus: number;
   endRackPts: number;
   lostScore: number;
-};
-
-const sortBlanksLast = (rack: string) => {
-  let letters = '';
-  let blanks = '';
-  for (const tile of rack) {
-    if (tile === Blank) {
-      blanks += tile;
-    } else {
-      letters += tile;
-    }
-  }
-  return letters + blanks;
 };
 
 const displaySummary = (evt: GameEvent, board: Board) => {
@@ -221,16 +216,21 @@ export const ScoreCard = React.memo((props: Props) => {
   const { useState } = useMountedState();
 
   const el = useRef<HTMLDivElement>(null);
-  const notepad = useRef<HTMLTextAreaElement>(null);
   const [cardHeight, setCardHeight] = useState(0);
-  const [curNotepad, setCurNotepad] = useState('');
-  const [notepadVisible, setNotepadVisible] = useState(false);
+  const [notepadHidden, setNotepadHidden] = useState(true);
+  const [enableNotepadFlip, setEnableNotepadFlip] = useState(isTablet());
+  const toggleNotepadVisibility = useCallback(() => {
+    setNotepadHidden((x) => !x);
+  }, []);
   const resizeListener = () => {
     const currentEl = el.current;
-    const vw = Math.max(
-      document.documentElement.clientWidth || 0,
-      window.innerWidth || 0
-    );
+
+    if (isTablet()) {
+      setEnableNotepadFlip(true);
+    } else {
+      setEnableNotepadFlip(false);
+      setNotepadHidden(true);
+    }
     if (currentEl) {
       currentEl.scrollTop = currentEl.scrollHeight || 0;
       const boardHeight = document.getElementById('board-container')
@@ -239,7 +239,7 @@ export const ScoreCard = React.memo((props: Props) => {
       const playerCardTop =
         document.getElementById('player-cards-vertical')?.clientHeight || 0;
       const navHeight = document.getElementById('main-nav')?.clientHeight || 0;
-      if (boardHeight && vw > parseInt(screenSizes.screenSizeTablet, 10)) {
+      if (boardHeight && getVW() > parseInt(screenSizes.screenSizeTablet, 10)) {
         setCardHeight(
           boardHeight -
             currentEl?.getBoundingClientRect().top -
@@ -255,9 +255,7 @@ export const ScoreCard = React.memo((props: Props) => {
     }
   };
   useEffect(() => {
-    if (props.events.length) {
-      resizeListener();
-    }
+    resizeListener();
   }, [props.events, props.poolFormat]);
   useEffect(() => {
     window.addEventListener('resize', resizeListener);
@@ -265,12 +263,7 @@ export const ScoreCard = React.memo((props: Props) => {
       window.removeEventListener('resize', resizeListener);
     };
   }, []);
-  useEffect(() => {
-    const currentEl = notepad.current;
-    if (notepadVisible && currentEl) {
-      currentEl.scrollTop = currentEl.scrollHeight || 0;
-    }
-  }, [notepadVisible]);
+
   const turns = gameEventsToTurns(props.events);
   const cardStyle = cardHeight
     ? {
@@ -281,58 +274,44 @@ export const ScoreCard = React.memo((props: Props) => {
   const notepadStyle = cardHeight
     ? {
         height: cardHeight - 24,
+        display: notepadHidden ? 'none' : 'flex',
       }
     : undefined;
-  const title = notepadVisible ? 'Notepad' : `Turn ${turns.length + 1}`;
-  const extra = notepadVisible ? 'View Scorecard' : 'View Notepad';
+  let title = `Turn ${turns.length + 1}`;
+  let extra = null;
+  if (enableNotepadFlip) {
+    title = !notepadHidden ? 'Notepad' : `Turn ${turns.length + 1}`;
+    extra = !notepadHidden ? 'View Scorecard' : 'View Notepad';
+  }
   return (
     <Card
       className="score-card"
       title={title}
       // eslint-disable-next-line jsx-a11y/anchor-is-valid
       extra={
-        <button
-          className="link"
-          onClick={() => {
-            if (notepadVisible) {
-              setNotepadVisible(false);
-            } else {
-              setNotepadVisible(true);
-            }
-          }}
-        >
-          {extra}
-        </button>
+        isTablet ? (
+          <button className="link" onClick={toggleNotepadVisibility}>
+            {extra}
+          </button>
+        ) : null
       }
     >
       <div ref={el} style={cardStyle}>
-        {notepadVisible ? (
-          <div className="notepad-container">
-            <textarea
-              className="notepad"
-              value={curNotepad}
-              ref={notepad}
-              spellCheck={false}
-              style={notepadStyle}
-              onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => {
-                setCurNotepad(e.target.value);
-              }}
-            />
-          </div>
-        ) : (
-          turns.map((t, idx) =>
-            t.length === 0 ? null : (
-              <ScorecardTurn
-                turn={t}
-                board={props.board}
-                key={`t_${idx + 0}`}
-                playerMeta={props.playerMeta}
-                playing={props.playing}
-                username={props.username}
-              />
+        <Notepad style={notepadStyle} />
+        {notepadHidden
+          ? turns.map((t, idx) =>
+              t.length === 0 ? null : (
+                <ScorecardTurn
+                  turn={t}
+                  board={props.board}
+                  key={`t_${idx + 0}`}
+                  playerMeta={props.playerMeta}
+                  playing={props.playing}
+                  username={props.username}
+                />
+              )
             )
-          )
-        )}
+          : null}
       </div>
     </Card>
   );
