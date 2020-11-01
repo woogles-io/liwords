@@ -22,10 +22,11 @@ const (
 type EventAudienceType string
 
 const (
-	AudGame   EventAudienceType = "game"
-	AudGameTV                   = "gametv"
-	AudUser                     = "user"
-	AudLobby                    = "lobby"
+	AudGame       EventAudienceType = "game"
+	AudGameTV                       = "gametv"
+	AudUser                         = "user"
+	AudLobby                        = "lobby"
+	AudTournament                   = "tournament"
 )
 
 // An EventWrapper is a real-time update, whether it is a played move,

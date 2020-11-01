@@ -19,10 +19,10 @@ type SoughtGameStore interface {
 	Set(context.Context, *entity.SoughtGame) error
 	Delete(ctx context.Context, id string) error
 	ListOpenSeeks(ctx context.Context) ([]*entity.SoughtGame, error)
-	ListOpenMatches(ctx context.Context, receiverID string) ([]*entity.SoughtGame, error)
+	ListOpenMatches(ctx context.Context, receiverID, tourneyID string) ([]*entity.SoughtGame, error)
 	ExistsForUser(ctx context.Context, userID string) (bool, error)
-	DeleteForUser(ctx context.Context, userID string) (string, error)
-	DeleteForConnID(ctx context.Context, connID string) (string, error)
+	DeleteForUser(ctx context.Context, userID string) (*entity.SoughtGame, error)
+	DeleteForConnID(ctx context.Context, connID string) (*entity.SoughtGame, error)
 	UserMatchedBy(ctx context.Context, userID, matcher string) (bool, error)
 }
 

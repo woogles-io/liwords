@@ -21,6 +21,7 @@ export type SoughtGame = {
   // Only for direct match requests:
   receiver: MatchUser;
   rematchFor: string;
+  tournamentID: string;
 };
 
 type playerMeta = {
@@ -58,10 +59,12 @@ export const SeekRequestToSoughtGame = (
 
   let receivingUser = new MatchUser();
   let rematchFor = '';
+  let tournamentID = '';
   if (req instanceof MatchRequest) {
     console.log('ismatchrequest');
     receivingUser = req.getReceivingUser()!;
     rematchFor = req.getRematchFor();
+    tournamentID = req.getTournamentId();
   }
 
   return {
@@ -77,6 +80,7 @@ export const SeekRequestToSoughtGame = (
     rematchFor,
     incrementSecs: gameReq.getIncrementSeconds(),
     playerVsBot: gameReq.getPlayerVsBot(),
+    tournamentID,
   };
 };
 

@@ -71,6 +71,11 @@ type game struct {
 	History []byte
 
 	Stats datatypes.JSON
+
+	// This is purposefully not a foreign key. It can be empty/NULL, and
+	// also for legacy tourneys (before we create a tournament table) there's
+	// nothing to refer to.
+	TournamentID string `gorm:"index"`
 }
 
 // NewDBStore creates a new DB store for games.
@@ -118,8 +123,13 @@ func (s *DBStore) Get(ctx context.Context, id string) (*entity.Game, error) {
 		return nil, err
 	}
 
-	return fromState(tdata, &qdata, g.Started, g.GameEndReason, g.Player0ID, g.Player1ID,
+	entGame, err := fromState(tdata, &qdata, g.Started, g.GameEndReason, g.Player0ID, g.Player1ID,
 		g.WinnerIdx, g.LoserIdx, g.Request, g.History, &sdata, s.gameEventChan, s.cfg, g.CreatedAt)
+	if err != nil {
+		return nil, err
+	}
+	entGame.TournamentID = g.TournamentID
+	return entGame, nil
 }
 
 // GetMetadata gets metadata about the game, but does not actually play the game.
@@ -156,6 +166,21 @@ func (s *DBStore) GetRecentGames(ctx context.Context, username string, numGames 
 		Joins("JOIN users as u0  ON u0.id = games.player0_id").
 		Joins("JOIN users as u1  ON u1.id = games.player1_id").
 		Where("(lower(u0.username) = lower(?) OR lower(u1.username) = lower(?)) AND game_end_reason != 0", username, username).
+		Order("created_at desc").
+		Find(&games); results.Error != nil {
+		return nil, results.Error
+	}
+	return convertGamesToInfoResponses(games)
+}
+
+func (s *DBStore) GetRecentTourneyGames(ctx context.Context, tourneyID string, numGames int, offset int) (*gs.GameInfoResponses, error) {
+	if numGames > MaxRecentGames {
+		return nil, errors.New("too many games")
+	}
+	var games []*game
+	if results := s.db.Limit(numGames).
+		Offset(offset).
+		Where("tournament_id = ? AND game_end_reason != 0", tourneyID).
 		Order("created_at desc").
 		Find(&games); results.Error != nil {
 		return nil, results.Error
@@ -211,6 +236,7 @@ func convertGameToInfoResponse(g *game) (*gs.GameInfoResponse, error) {
 		CreatedAt:          timestamppb.New(g.CreatedAt),
 		GameId:             g.UUID,
 		OriginalRequestId:  mdata.OriginalRequestId,
+		TournamentId:       g.TournamentID,
 	}
 	return info, nil
 }
@@ -394,14 +420,18 @@ func (s *DBStore) Create(ctx context.Context, g *entity.Game) error {
 	return result.Error
 }
 
-func (s *DBStore) ListActive(ctx context.Context) ([]*pb.GameMeta, error) {
+func (s *DBStore) ListActive(ctx context.Context, tourneyID string) ([]*pb.GameMeta, error) {
 	var games []*game
 
 	ctxDB := s.db.WithContext(ctx)
-	result := ctxDB.Table("games").Select("quickdata, request, uuid, started").
-		Where("games.game_end_reason = ?", 0 /* ongoing games only*/).
-		Order("games.id").
-		Scan(&games)
+	query := ctxDB.Table("games").Select("quickdata, request, uuid, started").
+		Where("games.game_end_reason = ?", 0 /* ongoing games only*/)
+
+	if tourneyID != "" {
+		query = query.Where("games.tournament_id = ?", tourneyID)
+	}
+
+	result := query.Order("games.id").Scan(&games)
 
 	if result.Error != nil {
 		return nil, result.Error
@@ -469,6 +499,7 @@ func (s *DBStore) toDBObj(g *entity.Game) (*game, error) {
 		LoserIdx:      g.LoserIdx,
 		Request:       req,
 		History:       hist,
+		TournamentID:  g.TournamentID,
 	}
 	return dbg, nil
 }

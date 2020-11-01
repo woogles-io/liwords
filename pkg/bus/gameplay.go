@@ -44,6 +44,7 @@ func (b *Bus) instantiateAndStartGame(ctx context.Context, accUser *entity.User,
 		Str("seek-conn", sg.ConnID()).
 		Str("accepting-conn", acceptingConnID).Msg("game-request-accepted")
 	assignedFirst := -1
+	var tournamentID string
 	if sg.Type() == entity.TypeMatch {
 		if sg.MatchRequest.RematchFor != "" {
 			// Assign firsts to be the the other player.
@@ -66,10 +67,11 @@ func (b *Bus) instantiateAndStartGame(ctx context.Context, accUser *entity.User,
 				assignedFirst = 0 // accUser should go first
 			}
 		}
+		tournamentID = sg.MatchRequest.TournamentId
 	}
 
 	g, err := gameplay.InstantiateNewGame(ctx, b.gameStore, b.config,
-		[2]*entity.User{accUser, reqUser}, assignedFirst, gameReq)
+		[2]*entity.User{accUser, reqUser}, assignedFirst, gameReq, tournamentID)
 	if err != nil {
 		return err
 	}
@@ -226,7 +228,7 @@ func (b *Bus) gameRefresher(ctx context.Context, gameID string) (*entity.EventWr
 }
 
 func (b *Bus) adjudicateGames(ctx context.Context) error {
-	gs, err := b.gameStore.ListActive(ctx)
+	gs, err := b.gameStore.ListActive(ctx, "")
 
 	if err != nil {
 		return err

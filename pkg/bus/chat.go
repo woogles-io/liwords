@@ -18,7 +18,7 @@ const ChannelExpiration = 86400
 
 const LobbyChannel = "lobby.chat"
 
-const ChatsOnReload = 50
+const ChatsOnReload = 100
 
 func redisStreamTS(key string) (int64, error) {
 	tskey := strings.Split(key, "-")

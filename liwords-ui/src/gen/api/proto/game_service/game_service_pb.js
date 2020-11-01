@@ -739,7 +739,7 @@ proto.game_service.GameInfoResponse.toObject = function(includeInstance, msg) {
     variant: jspb.Message.getFieldWithDefault(msg, 3, ""),
     timeControlName: jspb.Message.getFieldWithDefault(msg, 4, ""),
     initialTimeSeconds: jspb.Message.getFieldWithDefault(msg, 5, 0),
-    tournamentName: jspb.Message.getFieldWithDefault(msg, 6, ""),
+    tournamentId: jspb.Message.getFieldWithDefault(msg, 6, ""),
     challengeRule: jspb.Message.getFieldWithDefault(msg, 7, 0),
     ratingMode: jspb.Message.getFieldWithDefault(msg, 8, 0),
     maxOvertimeMinutes: jspb.Message.getFieldWithDefault(msg, 10, 0),
@@ -809,7 +809,7 @@ proto.game_service.GameInfoResponse.deserializeBinaryFromReader = function(msg, 
       break;
     case 6:
       var value = /** @type {string} */ (reader.readString());
-      msg.setTournamentName(value);
+      msg.setTournamentId(value);
       break;
     case 7:
       var value = /** @type {!proto.macondo.ChallengeRule} */ (reader.readEnum());
@@ -917,7 +917,7 @@ proto.game_service.GameInfoResponse.serializeBinaryToWriter = function(message, 
       f
     );
   }
-  f = message.getTournamentName();
+  f = message.getTournamentId();
   if (f.length > 0) {
     writer.writeString(
       6,
@@ -1109,10 +1109,10 @@ proto.game_service.GameInfoResponse.prototype.setInitialTimeSeconds = function(v
 
 
 /**
- * optional string tournament_name = 6;
+ * optional string tournament_id = 6;
  * @return {string}
  */
-proto.game_service.GameInfoResponse.prototype.getTournamentName = function() {
+proto.game_service.GameInfoResponse.prototype.getTournamentId = function() {
   return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 6, ""));
 };
 
@@ -1121,7 +1121,7 @@ proto.game_service.GameInfoResponse.prototype.getTournamentName = function() {
  * @param {string} value
  * @return {!proto.game_service.GameInfoResponse} returns this
  */
-proto.game_service.GameInfoResponse.prototype.setTournamentName = function(value) {
+proto.game_service.GameInfoResponse.prototype.setTournamentId = function(value) {
   return jspb.Message.setProto3StringField(this, 6, value);
 };
 

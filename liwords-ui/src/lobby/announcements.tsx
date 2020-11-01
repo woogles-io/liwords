@@ -1,6 +1,9 @@
 import React from 'react';
 import { Card } from 'antd';
-type AnnouncementsProps = {};
+
+type AnnouncementsProps = {
+  tournamentID: string;
+};
 
 export const Announcements = React.memo((props: AnnouncementsProps) => {
   // Todo: admin to add these and a backend to store and retrieve them

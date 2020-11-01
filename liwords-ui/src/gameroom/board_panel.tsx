@@ -1,11 +1,17 @@
 import React, { useCallback, useEffect, useRef } from 'react';
 import { TouchBackend } from 'react-dnd-touch-backend';
-import { useMountedState } from '../utils/mounted';
 import { Button, Modal, notification, message, Tooltip } from 'antd';
 import { DndProvider } from 'react-dnd';
 import { ArrowDownOutlined, SyncOutlined } from '@ant-design/icons';
-import { isTouchDevice } from '../utils/cwgame/common';
 import axios from 'axios';
+import {
+  isTouchDevice,
+  Blank,
+  uniqueTileIdx,
+  EphemeralTile,
+  EmptySpace,
+} from '../utils/cwgame/common';
+import { useMountedState } from '../utils/mounted';
 
 import GameBoard from './board';
 import { DrawingHandlersSetterContext } from './drawing';
@@ -19,12 +25,6 @@ import {
   returnTileToRack,
   designateBlank,
 } from '../utils/cwgame/tile_placement';
-import {
-  Blank,
-  uniqueTileIdx,
-  EphemeralTile,
-  EmptySpace,
-} from '../utils/cwgame/common';
 
 import {
   tilesetToMoveEvent,
@@ -71,6 +71,7 @@ type Props = {
   sendSocketMsg: (msg: Uint8Array) => void;
   gameDone: boolean;
   playerMeta: Array<PlayerMetadata>;
+  tournamentID?: string;
   lexicon: string;
 };
 
@@ -92,7 +93,7 @@ const shuffleString = (a: string): string => {
   if (!somethingChanged) {
     // Let's change something if possible.
     const j = Math.floor(Math.random() * n);
-    let x = [];
+    const x = [];
     for (let i = 0; i < n; ++i) {
       if (alist[i] !== alist[j]) {
         x.push(i);
@@ -537,7 +538,7 @@ export const BoardPanel = React.memo((props: Props) => {
         // Alt+3 should not challenge. Ignore Ctrl, Alt/Opt, and Win/Cmd.
         return;
       }
-      let key = evt.key;
+      let { key } = evt;
       // Neutralize caps lock to prevent accidental blank usage.
       if (key.length === 1) {
         if (!evt.shiftKey && key >= 'A' && key <= 'Z') {
@@ -843,7 +844,8 @@ export const BoardPanel = React.memo((props: Props) => {
               setCurrentMode('NORMAL');
               handleDrawingKeyDown(e);
               return;
-            } else if (e.key === '0') {
+            }
+            if (e.key === '0') {
               e.preventDefault();
               setCurrentMode('DRAWING_HOTKEY');
               console.log(
@@ -865,7 +867,7 @@ export const BoardPanel = React.memo((props: Props) => {
       if (e.ctrlKey || e.altKey || e.metaKey) {
         // If a modifier key is held, never mind.
       } else {
-        //prevent page from scrolling
+        // prevent page from scrolling
         if (e.key === 'ArrowDown' || e.key === 'ArrowUp' || e.key === ' ') {
           e.preventDefault();
         }
@@ -976,6 +978,7 @@ export const BoardPanel = React.memo((props: Props) => {
         showRematch={examinableGameEndMessage !== ''}
         gameEndControls={examinableGameEndMessage !== '' || props.gameDone}
         currentRack={props.currentRack}
+        tournamentID={props.tournamentID}
         lexicon={props.lexicon}
       />
       <ExchangeTiles

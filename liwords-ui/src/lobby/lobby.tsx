@@ -1,4 +1,6 @@
 import React, { useCallback, useEffect } from 'react';
+import { Card } from 'antd';
+import { useParams } from 'react-router-dom';
 import { useMountedState } from '../utils/mounted';
 
 import { TopBar } from '../topbar/topbar';
@@ -47,6 +49,7 @@ const sendSeek = (
   gr.setRules(rules);
   gr.setRatingMode(game.rated ? RatingMode.RATED : RatingMode.CASUAL);
   gr.setPlayerVsBot(game.playerVsBot);
+
   if (game.receiver.getDisplayName() === '' && game.playerVsBot === false) {
     sr.setGameRequest(gr);
 
@@ -57,6 +60,7 @@ const sendSeek = (
     // We make it a match request if the receiver is non-empty, or if playerVsBot.
     mr.setGameRequest(gr);
     mr.setReceivingUser(game.receiver);
+    mr.setTournamentId(game.tournamentID);
     sendSocketMsg(
       encodeToSocketFmt(MessageType.MATCH_REQUEST, mr.serializeBinary())
     );
@@ -85,7 +89,7 @@ type Props = {
 
 export const Lobby = (props: Props) => {
   const { useState } = useMountedState();
-
+  const { tournamentID } = useParams();
   const { sendSocketMsg } = props;
   const { chat } = useChatStoreContext();
   const { loginState } = useLoginStateStoreContext();
@@ -117,12 +121,14 @@ export const Lobby = (props: Props) => {
     (msg: string) => {
       const evt = new ChatMessage();
       evt.setMessage(msg);
-      evt.setChannel('lobby.chat');
+      evt.setChannel(
+        !tournamentID ? 'lobby.chat' : `tournament.${tournamentID}`
+      );
       sendSocketMsg(
         encodeToSocketFmt(MessageType.CHAT_MESSAGE, evt.serializeBinary())
       );
     },
-    [sendSocketMsg]
+    [sendSocketMsg, tournamentID]
   );
   const peopleOnlineContext = useCallback(
     (n: number) => singularCount(n, 'Player', 'Players'),
@@ -137,7 +143,7 @@ export const Lobby = (props: Props) => {
           <Chat
             chatEntities={chat}
             sendChat={sendChat}
-            description="Lobby chat"
+            description={tournamentID ? 'Tournament chat' : 'Lobby chat'}
             peopleOnlineContext={peopleOnlineContext}
             presences={presences}
             DISCONNECT={props.DISCONNECT}
@@ -151,8 +157,10 @@ export const Lobby = (props: Props) => {
           selectedGameTab={selectedGameTab}
           setSelectedGameTab={setSelectedGameTab}
           onSeekSubmit={onSeekSubmit}
+          tournamentID={tournamentID}
         />
-        <Announcements />
+
+        <Announcements tournamentID={tournamentID} />
       </div>
     </>
   );

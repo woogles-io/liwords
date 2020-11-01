@@ -70,6 +70,7 @@ enum MessageType {
   NEW_GAME_EVENT = 8;
   SERVER_CHALLENGE_RESULT_EVENT = 9;
   SEEK_REQUESTS = 10;
+  MATCH_REQUEST_CANCELLATION = 11;
   TIMED_OUT = 13;
   GAME_META_EVENT = 15;
   ACTIVE_GAMES = 16;
@@ -83,6 +84,7 @@ enum MessageType {
   SERVER_MESSAGE = 24;
   READY_FOR_GAME = 25;
   LAG_MEASUREMENT = 26;
+  TOURNAMENT_GAME_ENDED_EVENT = 27;
 
   // Add more events here. The total number of events should fit in a byte.
   // We should definitely not be using anywhere close to 255 events, and
@@ -148,6 +150,9 @@ message MatchRequest {
   string rematch_for = 4;
   // connection_id is the websocket ID via which this game was requested.
   string connection_id = 5;
+  // If this match request is part of a tournament, it is treated in a special
+  // way.
+  string tournament_id = 6;
 }
 
 message ReadyForGame { string game_id = 1; }
@@ -158,6 +163,8 @@ message ReadyForGame { string game_id = 1; }
 message SoughtGameProcessEvent { string request_id = 1; }
 
 // Server to client messages:
+// When a Seeker cancels their outgoing match request:
+message MatchRequestCancellation { string request_id = 1; }
 
 // SeekRequests sends all open seek requests.
 message SeekRequests { repeated SeekRequest requests = 1; }
@@ -212,6 +219,21 @@ message GameEndedEvent {
   map<string, int32> rating_deltas = 8;
   // Send the full game history again. This will have rack information in it.
   macondo.GameHistory history = 9;
+}
+
+// TournamentGameEndedEvent gets sent to a tournament channel when a game is
+// over. This shows tournament results right in the tournament lobby in real
+// time.
+message TournamentGameEndedEvent {
+  string game_id = 1;
+  map<string, int32> scores = 2;
+  GameEndReason end_reason = 3;
+  string winner = 4;
+  string loser = 5;
+  // If it was a tie, the winner and loser above can be interchanged.
+  bool tie = 6;
+  // Time that the game ended
+  int64 time = 7;
 }
 
 // A GameHistoryRefresher is sent to both players when the game starts,
@@ -295,6 +317,7 @@ message TimedOut {
   string user_id = 2;
 }
 
+// When a Receiver declines a Seeker:
 message DeclineMatchRequest { string request_id = 1; }
 
 // Tournaments

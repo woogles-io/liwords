@@ -47,7 +47,7 @@ type GameStore interface {
 	Set(context.Context, *entity.Game) error
 	Create(context.Context, *entity.Game) error
 	Exists(ctx context.Context, id string) (bool, error)
-	ListActive(context.Context) ([]*pb.GameMeta, error)
+	ListActive(context.Context, string) ([]*pb.GameMeta, error)
 	Count(ctx context.Context) (int64, error)
 	SetGameEventChan(c chan<- *entity.EventWrapper)
 	Unload(context.Context, string)
@@ -57,7 +57,7 @@ type ConfigCtxKey string
 
 // InstantiateNewGame instantiates a game and returns it.
 func InstantiateNewGame(ctx context.Context, gameStore GameStore, cfg *config.Config,
-	users [2]*entity.User, assignedFirst int, req *pb.GameRequest) (*entity.Game, error) {
+	users [2]*entity.User, assignedFirst int, req *pb.GameRequest, tid string) (*entity.Game, error) {
 
 	var players []*macondopb.PlayerInfo
 	var dbids [2]uint
@@ -133,6 +133,7 @@ func InstantiateNewGame(ctx context.Context, gameStore GameStore, cfg *config.Co
 
 	entGame := entity.NewGame(&gameRunner.Game, req)
 	entGame.PlayerDBIDs = dbids
+	entGame.TournamentID = tid
 
 	ratingKey, err := entGame.RatingKey()
 	if err != nil {

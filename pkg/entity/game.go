@@ -79,7 +79,7 @@ type Game struct {
 	sync.RWMutex
 	game.Game
 
-	PlayerDBIDs  [2]uint
+	PlayerDBIDs  [2]uint // needed to associate the games to the player IDs in the db.
 	PlayersReady [2]bool
 
 	GameReq *pb.GameRequest

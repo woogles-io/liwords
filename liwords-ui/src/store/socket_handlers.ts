@@ -45,6 +45,8 @@ import {
   UserPresences,
   ReadyForGame,
   LagMeasurement,
+  MatchRequestCancellation,
+  TournamentGameEndedEvent,
 } from '../gen/api/proto/realtime/realtime_pb';
 import { ActionType } from '../actions/actions';
 import { endGameMessage } from './end_of_game';
@@ -93,6 +95,8 @@ export const parseMsgs = (msg: Uint8Array) => {
       [MessageType.USER_PRESENCES]: UserPresences,
       [MessageType.READY_FOR_GAME]: ReadyForGame,
       [MessageType.LAG_MEASUREMENT]: LagMeasurement,
+      [MessageType.MATCH_REQUEST_CANCELLATION]: MatchRequestCancellation,
+      [MessageType.TOURNAMENT_GAME_ENDED_EVENT]: TournamentGameEndedEvent,
     };
 
     const parsedMsg = msgTypes[msgType];
@@ -119,7 +123,7 @@ export const useOnSocketMsg = () => {
   const { challengeResultEvent } = useChallengeResultEventStoreContext();
   const { addChat, addChats } = useChatStoreContext();
   const { excludedPlayers } = useExcludedPlayersStoreContext();
-  const { dispatchGameContext } = useGameContextStoreContext();
+  const { dispatchGameContext, gameContext } = useGameContextStoreContext();
   const { setGameEndMessage } = useGameEndMessageStoreContext();
   const { setCurrentLagMs } = useLagStoreContext();
   const { dispatchLobbyContext } = useLobbyStoreContext();
@@ -209,25 +213,49 @@ export const useOnSocketMsg = () => {
             if (soughtGame === null) {
               break;
             }
+            let inReceiverGameList = false;
             if (receiver === loginState.username) {
               BoopSounds.playSound('matchReqSound');
-              if (mr.getRematchFor() !== '') {
-                // Only display the rematch modal if we are the recipient
-                // of the rematch request.
-                setRematchRequest(mr);
-              } else {
-                notification.info({
-                  message: 'New Match Request',
-                  description: `You have a new match request from ${soughtGame.seeker}`,
-                });
-              }
+              const rematchFor = mr.getRematchFor();
+              const { path } = loginState;
+
+              if (soughtGame.tournamentID) {
+                // This is a match game attached to a tourney.
+                // XXX: When we have a tourney reducer we should refer to said reducer's
+                //  state instead of looking at the path
+                if (path === `/tournament/${soughtGame.tournamentID}`) {
+                  dispatchLobbyContext({
+                    actionType: ActionType.AddMatchRequest,
+                    payload: soughtGame,
+                  });
+                  inReceiverGameList = true;
+                } else {
+                  notification.info({
+                    message: 'Tournament Match Request',
+                    description: `You have a tournament match request from ${soughtGame.seeker}. Please return to your tournament at your convenience.`,
+                  });
+                }
+              } else if (gameContext.gameID) {
+                if (rematchFor === gameContext.gameID) {
+                  // Only display the rematch modal if we are the recipient
+                  // of the rematch request.
+                  setRematchRequest(mr);
+                } else {
+                  notification.info({
+                    message: 'Match Request',
+                    description: `You have a match request from ${soughtGame.seeker}, in the lobby.`,
+                  });
+                  inReceiverGameList = true;
+                }
+              } // else, we're in the lobby. Handle it below.
             }
 
-            dispatchLobbyContext({
-              actionType: ActionType.AddMatchRequest,
-              payload: soughtGame,
-            });
-
+            if (!inReceiverGameList) {
+              dispatchLobbyContext({
+                actionType: ActionType.AddMatchRequest,
+                payload: soughtGame,
+              });
+            }
             break;
           }
 
@@ -375,6 +403,12 @@ export const useOnSocketMsg = () => {
             break;
           }
 
+          case MessageType.TOURNAMENT_GAME_ENDED_EVENT: {
+            const gee = parsedMsg as TournamentGameEndedEvent;
+            // XXX: display this game in the tournament lobby.
+            break;
+          }
+
           case MessageType.NEW_GAME_EVENT: {
             const nge = parsedMsg as NewGameEvent;
             console.log('got new game event', nge);
@@ -453,6 +487,15 @@ export const useOnSocketMsg = () => {
               payload: gae.getRequestId(),
             });
 
+            break;
+          }
+
+          case MessageType.MATCH_REQUEST_CANCELLATION: {
+            const mrc = parsedMsg as MatchRequestCancellation;
+            dispatchLobbyContext({
+              actionType: ActionType.RemoveSoughtGame,
+              payload: mrc.getRequestId(),
+            });
             break;
           }
 

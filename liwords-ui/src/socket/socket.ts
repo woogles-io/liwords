@@ -98,6 +98,7 @@ export const LiwordsSocket = (props: {
             userID: decoded.uid,
             loggedIn: decoded.a,
             connID: cid,
+            path: location.pathname,
           },
         });
         console.log('Got token, setting state, and will try to connect...');

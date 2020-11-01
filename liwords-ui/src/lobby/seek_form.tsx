@@ -1,5 +1,4 @@
 import React from 'react';
-import { useMountedState } from '../utils/mounted';
 import {
   Form,
   Radio,
@@ -13,6 +12,7 @@ import {
 import axios from 'axios';
 
 import { Store } from 'antd/lib/form/interface';
+import { useMountedState } from '../utils/mounted';
 import { ChallengeRule } from '../gen/macondo/api/proto/macondo/macondo_pb';
 import { timeCtrlToDisplayName } from '../store/constants';
 import { MatchUser } from '../gen/api/proto/realtime/realtime_pb';
@@ -67,6 +67,7 @@ type Props = {
   showFriendInput: boolean;
   vsBot?: boolean;
   id: string;
+  tournamentID?: string;
 };
 
 const otLabel = 'Overtime';
@@ -187,6 +188,7 @@ export const SeekForm = (props: Props) => {
       receiver,
       rematchFor: '',
       playerVsBot: props.vsBot || false,
+      tournamentID: props.tournamentID || '',
     };
     props.onFormSubmit(obj);
   };

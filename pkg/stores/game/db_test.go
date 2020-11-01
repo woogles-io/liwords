@@ -329,7 +329,7 @@ func TestListActive(t *testing.T) {
 		DBConnString:  TestingDBConnStr + " dbname=liwords_test",
 	}, ustore)
 
-	games, err := store.ListActive(context.Background())
+	games, err := store.ListActive(context.Background(), "")
 	is.NoErr(err)
 	is.Equal(len(games), 3)
 	is.Equal(games[0].Users, []*pb.GameMeta_UserMeta{

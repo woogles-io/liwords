@@ -232,6 +232,15 @@ func (b *Bus) newBotGame(ctx context.Context, req *pb.MatchRequest, botUserID st
 		sg, BotRequestID, "")
 }
 
+func (b *Bus) sendSoughtGameDeletion(ctx context.Context, sg *entity.SoughtGame) error {
+	if sg.Type() == entity.TypeSeek {
+		return b.broadcastSeekDeletion(sg.ID())
+	} else if sg.Type() == entity.TypeMatch {
+		return b.sendMatchCancellation(sg.MatchRequest.ReceivingUser.UserId, sg.Seeker(), sg.ID())
+	}
+	return errors.New("no-sg-type-match")
+}
+
 func (b *Bus) gameAccepted(ctx context.Context, evt *pb.SoughtGameProcessEvent,
 	userID, connID string) error {
 	sg, err := b.soughtGameStore.Get(ctx, evt.RequestId)
@@ -255,7 +264,7 @@ func (b *Bus) gameAccepted(ctx context.Context, evt *pb.SoughtGameProcessEvent,
 			return err
 		}
 		// broadcast a seek deletion.
-		return b.broadcastSeekDeletion(evt.RequestId)
+		return b.sendSoughtGameDeletion(ctx, sg)
 	}
 
 	accUser, err := b.userStore.GetByUUID(ctx, userID)
@@ -338,6 +347,16 @@ func (b *Bus) broadcastSeekDeletion(seekID string) error {
 	return b.natsconn.Publish("lobby.soughtGameProcess", data)
 }
 
+func (b *Bus) sendMatchCancellation(userID, seekerID, requestID string) error {
+	toSend := entity.WrapEvent(&pb.MatchRequestCancellation{RequestId: requestID},
+		pb.MessageType_MATCH_REQUEST_CANCELLATION)
+	err := b.pubToUser(userID, toSend, "")
+	if err != nil {
+		return err
+	}
+	return b.pubToUser(seekerID, toSend, "")
+}
+
 func (b *Bus) broadcastGameCreation(g *entity.Game, acceptor, requester *entity.User) error {
 	timefmt, variant, err := entity.VariantFromGameReq(g.GameReq)
 	if err != nil {
@@ -362,27 +381,27 @@ func (b *Bus) broadcastGameCreation(g *entity.Game, acceptor, requester *entity.
 }
 
 func (b *Bus) deleteSoughtForUser(ctx context.Context, userID string) error {
-	reqID, err := b.soughtGameStore.DeleteForUser(ctx, userID)
+	req, err := b.soughtGameStore.DeleteForUser(ctx, userID)
 	if err != nil {
 		return err
 	}
-	if reqID == "" {
+	if req == nil {
 		return nil
 	}
-	log.Debug().Str("reqID", reqID).Str("userID", userID).Msg("deleting-sought")
-	return b.broadcastSeekDeletion(reqID)
+	log.Debug().Interface("req", req).Str("userID", userID).Msg("deleting-sought")
+	return b.sendSoughtGameDeletion(ctx, req)
 }
 
 func (b *Bus) deleteSoughtForConnID(ctx context.Context, connID string) error {
-	reqID, err := b.soughtGameStore.DeleteForConnID(ctx, connID)
+	req, err := b.soughtGameStore.DeleteForConnID(ctx, connID)
 	if err != nil {
 		return err
 	}
-	if reqID == "" {
+	if req == nil {
 		return nil
 	}
-	log.Debug().Str("reqID", reqID).Str("connID", connID).Msg("deleting-sought")
-	return b.broadcastSeekDeletion(reqID)
+	log.Debug().Interface("req", req).Str("connID", connID).Msg("deleting-sought-for-connid")
+	return b.sendSoughtGameDeletion(ctx, req)
 }
 
 func (b *Bus) openSeeks(ctx context.Context) (*entity.EventWrapper, error) {
@@ -400,8 +419,8 @@ func (b *Bus) openSeeks(ctx context.Context) (*entity.EventWrapper, error) {
 	return evt, nil
 }
 
-func (b *Bus) openMatches(ctx context.Context, receiverID string) (*entity.EventWrapper, error) {
-	sgs, err := b.soughtGameStore.ListOpenMatches(ctx, receiverID)
+func (b *Bus) openMatches(ctx context.Context, receiverID string, tourneyID string) (*entity.EventWrapper, error) {
+	sgs, err := b.soughtGameStore.ListOpenMatches(ctx, receiverID, tourneyID)
 	if err != nil {
 		return nil, err
 	}
