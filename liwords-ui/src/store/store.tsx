@@ -473,7 +473,7 @@ const ExaminableStore = ({ children }: { children: React.ReactNode }) => {
     };
   }, [shownTimes]);
 
-  const examineContext = useMemo(
+  const examineStore = useMemo(
     () => ({
       isExamining,
       examinedTurn,
@@ -517,7 +517,7 @@ const ExaminableStore = ({ children }: { children: React.ReactNode }) => {
       children={ret}
     />
   );
-  ret = <ExamineContext.Provider value={examineContext} children={ret} />;
+  ret = <ExamineContext.Provider value={examineStore} children={ret} />;
 
   // typescript did not like "return ret;"
   return <React.Fragment children={ret} />;
@@ -655,142 +655,164 @@ const RealStore = ({ children, ...props }: Props) => {
     setTimerContext({ ...clockController.current.times });
   }, []);
 
+  const lobbyStore = useMemo(
+    () => ({
+      lobbyContext,
+      dispatchLobbyContext,
+    }),
+    [lobbyContext, dispatchLobbyContext]
+  );
+  const loginStateStore = useMemo(
+    () => ({
+      loginState,
+      dispatchLoginState,
+    }),
+    [loginState, dispatchLoginState]
+  );
+  const lagStore = useMemo(
+    () => ({
+      currentLagMs,
+      setCurrentLagMs,
+    }),
+    [currentLagMs, setCurrentLagMs]
+  );
+  const tentativePlayStore = useMemo(
+    () => ({
+      placedTilesTempScore,
+      placedTiles,
+      displayedRack,
+      setPlacedTilesTempScore,
+      setPlacedTiles,
+      setDisplayedRack,
+    }),
+    [
+      placedTilesTempScore,
+      placedTiles,
+      displayedRack,
+      setPlacedTilesTempScore,
+      setPlacedTiles,
+      setDisplayedRack,
+    ]
+  );
+  const excludedPlayersStore = useMemo(
+    () => ({
+      excludedPlayers,
+      setExcludedPlayers,
+    }),
+    [excludedPlayers, setExcludedPlayers]
+  );
+  const redirGameStore = useMemo(
+    () => ({
+      redirGame,
+      setRedirGame,
+    }),
+    [redirGame, setRedirGame]
+  );
+  const challengeResultEventStore = useMemo(
+    () => ({
+      challengeResultEvent,
+    }),
+    [challengeResultEvent]
+  );
+  const gameContextStore = useMemo(
+    () => ({
+      gameContext,
+      dispatchGameContext,
+    }),
+    [gameContext, dispatchGameContext]
+  );
+  const chatStore = useMemo(
+    () => ({
+      addChat,
+      addChats,
+      clearChat,
+      chat,
+    }),
+    [addChat, addChats, clearChat, chat]
+  );
+  const presenceStore = useMemo(
+    () => ({
+      setPresence,
+      addPresences,
+      presences,
+    }),
+    [setPresence, addPresences, presences]
+  );
+  const gameEndMessageStore = useMemo(
+    () => ({
+      gameEndMessage,
+      setGameEndMessage,
+    }),
+    [gameEndMessage, setGameEndMessage]
+  );
+  const rematchRequestStore = useMemo(
+    () => ({
+      rematchRequest,
+      setRematchRequest,
+    }),
+    [rematchRequest, setRematchRequest]
+  );
+  const timerStore = useMemo(
+    () => ({
+      // initClockController,
+      stopClock,
+      timerContext,
+      pTimedOut,
+      setPTimedOut,
+    }),
+    [
+      // initClockController,
+      stopClock,
+      timerContext,
+      pTimedOut,
+      setPTimedOut,
+    ]
+  );
+  const poolFormatStore = useMemo(
+    () => ({
+      poolFormat,
+      setPoolFormat,
+    }),
+    [poolFormat, setPoolFormat]
+  );
+
   let ret = <ExaminableStore children={children} />;
+  ret = <LobbyContext.Provider value={lobbyStore} children={ret} />;
+  ret = <LoginStateContext.Provider value={loginStateStore} children={ret} />;
+  ret = <LagContext.Provider value={lagStore} children={ret} />;
   ret = (
-    <LobbyContext.Provider
-      value={{
-        lobbyContext,
-        dispatchLobbyContext,
-      }}
-      children={ret}
-    />
-  );
-  ret = (
-    <LoginStateContext.Provider
-      value={{
-        loginState,
-        dispatchLoginState,
-      }}
-      children={ret}
-    />
-  );
-  ret = (
-    <LagContext.Provider
-      value={{
-        currentLagMs,
-        setCurrentLagMs,
-      }}
-      children={ret}
-    />
-  );
-  ret = (
-    <TentativePlayContext.Provider
-      value={{
-        placedTilesTempScore,
-        placedTiles,
-        displayedRack,
-        setPlacedTilesTempScore,
-        setPlacedTiles,
-        setDisplayedRack,
-      }}
-      children={ret}
-    />
+    <TentativePlayContext.Provider value={tentativePlayStore} children={ret} />
   );
   ret = (
     <ExcludedPlayersContext.Provider
-      value={{
-        excludedPlayers,
-        setExcludedPlayers,
-      }}
+      value={excludedPlayersStore}
       children={ret}
     />
   );
-  ret = (
-    <RedirGameContext.Provider
-      value={{
-        redirGame,
-        setRedirGame,
-      }}
-      children={ret}
-    />
-  );
+  ret = <RedirGameContext.Provider value={redirGameStore} children={ret} />;
   ret = (
     <ChallengeResultEventContext.Provider
-      value={{
-        challengeResultEvent,
-      }}
+      value={challengeResultEventStore}
       children={ret}
     />
   );
-  ret = (
-    <GameContextContext.Provider
-      value={{
-        gameContext,
-        dispatchGameContext,
-      }}
-      children={ret}
-    />
-  );
-  ret = (
-    <ChatContext.Provider
-      value={{
-        addChat,
-        addChats,
-        clearChat,
-        chat,
-      }}
-      children={ret}
-    />
-  );
-  ret = (
-    <PresenceContext.Provider
-      value={{
-        setPresence,
-        addPresences,
-        presences,
-      }}
-      children={ret}
-    />
-  );
+  ret = <GameContextContext.Provider value={gameContextStore} children={ret} />;
+  ret = <ChatContext.Provider value={chatStore} children={ret} />;
+  ret = <PresenceContext.Provider value={presenceStore} children={ret} />;
   ret = (
     <GameEndMessageContext.Provider
-      value={{
-        gameEndMessage,
-        setGameEndMessage,
-      }}
+      value={gameEndMessageStore}
       children={ret}
     />
   );
   ret = (
     <RematchRequestContext.Provider
-      value={{
-        rematchRequest,
-        setRematchRequest,
-      }}
+      value={rematchRequestStore}
       children={ret}
     />
   );
-  ret = (
-    <TimerContext.Provider
-      value={{
-        // initClockController,
-        stopClock,
-        timerContext,
-        pTimedOut,
-        setPTimedOut,
-      }}
-      children={ret}
-    />
-  );
-  ret = (
-    <PoolFormatContext.Provider
-      value={{
-        poolFormat,
-        setPoolFormat,
-      }}
-      children={ret}
-    />
-  );
+  ret = <TimerContext.Provider value={timerStore} children={ret} />;
+  ret = <PoolFormatContext.Provider value={poolFormatStore} children={ret} />;
 
   // typescript did not like "return ret;"
   return <React.Fragment children={ret} />;
