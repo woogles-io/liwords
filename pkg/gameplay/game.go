@@ -133,7 +133,8 @@ func InstantiateNewGame(ctx context.Context, gameStore GameStore, cfg *config.Co
 
 	entGame := entity.NewGame(&gameRunner.Game, req)
 	entGame.PlayerDBIDs = dbids
-	entGame.TournamentID = tid
+	// XXX: This should take in a tournament data.
+	entGame.TournamentData = &entity.TournamentData{Id: tid}
 
 	ratingKey, err := entGame.RatingKey()
 	if err != nil {

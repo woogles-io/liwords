@@ -151,7 +151,7 @@ func performEndgameDuties(ctx context.Context, g *entity.Game, gameStore GameSto
 	g.SendChange(wrapped)
 
 	// Send a TournamentGameEndedEvent if this is a tournament game.
-	if g.TournamentID != "" {
+	if g.TournamentData != nil && g.TournamentData.Id != "" {
 		tevt := &pb.TournamentGameEndedEvent{
 			GameId:    g.GameID(),
 			Scores:    evt.Scores,
@@ -162,7 +162,7 @@ func performEndgameDuties(ctx context.Context, g *entity.Game, gameStore GameSto
 			Time:      evt.Time,
 		}
 		wrapped = entity.WrapEvent(tevt, pb.MessageType_TOURNAMENT_GAME_ENDED_EVENT)
-		wrapped.AddAudience(entity.AudTournament, g.TournamentID)
+		wrapped.AddAudience(entity.AudTournament, g.TournamentData.Id)
 		g.SendChange(wrapped)
 	}
 
@@ -187,7 +187,7 @@ func performEndgameDuties(ctx context.Context, g *entity.Game, gameStore GameSto
 	wrapped.AddAudience(entity.AudLobby, "gameEnded")
 	g.SendChange(wrapped)
 
-	if g.Tournamentdata != nil {
+	if g.TournamentData != nil {
 		tournament.HandleTournamentGameEnded(ctx, tournamentStore, g)
 	}
 

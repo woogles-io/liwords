@@ -28,8 +28,8 @@ func HandleTournamentGameEnded(ctx context.Context, ts TournamentStore, g *entit
 
 	err := SetResult(ctx,
 		ts,
-		g.Tournamentdata.Id,
-		g.Tournamentdata.Division,
+		g.TournamentData.Id,
+		g.TournamentData.Division,
 		g.History().Players[0].UserId,
 		g.History().Players[1].UserId,
 		int(g.History().FinalScores[0]),
@@ -37,15 +37,15 @@ func HandleTournamentGameEnded(ctx context.Context, ts TournamentStore, g *entit
 		Results[g.WinnerIdx+1],
 		Results[g.LoserIdx+1],
 		g.GameEndReason,
-		g.Tournamentdata.Round,
-		g.Tournamentdata.GameIndex,
+		g.TournamentData.Round,
+		g.TournamentData.GameIndex,
 		false)
 
 	if err != nil {
 		return err
 	}
 
-	return TournamentGameEndedEvent(ctx, ts, g.Tournamentdata.Id, g.Tournamentdata.Division, g.Tournamentdata.Round)
+	return TournamentGameEndedEvent(ctx, ts, g.TournamentData.Id, g.TournamentData.Division, g.TournamentData.Round)
 }
 
 func NewTournament(ctx context.Context,

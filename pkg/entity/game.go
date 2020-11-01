@@ -65,11 +65,11 @@ type Quickdata struct {
 
 // Holds the tournament data for a game.
 // This is nil if the game is not a tournament game.
-type Tournamentdata struct {
+type TournamentData struct {
 	Id        string
-	Division  string
-	Round     int
-	GameIndex int
+	Division  string `json:"d"`
+	Round     int    `json:"r"`
+	GameIndex int    `json:"i"`
 }
 
 // A Game should be saved to the database or store. It wraps a macondo.Game,
@@ -102,7 +102,7 @@ type Game struct {
 	nower      Nower
 
 	Quickdata      *Quickdata
-	Tournamentdata *Tournamentdata
+	TournamentData *TournamentData
 	CreatedAt      time.Time
 }
 

@@ -72,10 +72,10 @@ type game struct {
 
 	Stats datatypes.JSON
 
-	// This is purposefully not a foreign key. It can be empty/NULL, and
-	// also for legacy tourneys (before we create a tournament table) there's
-	// nothing to refer to.
-	TournamentID string `gorm:"index"`
+	// This is purposefully not a foreign key. It can be empty/NULL for
+	// most games.
+	TournamentID   string `gorm:"index"`
+	TournamentData datatypes.JSON
 }
 
 // NewDBStore creates a new DB store for games.
@@ -128,7 +128,14 @@ func (s *DBStore) Get(ctx context.Context, id string) (*entity.Game, error) {
 	if err != nil {
 		return nil, err
 	}
-	entGame.TournamentID = g.TournamentID
+
+	var trdata entity.TournamentData
+	err = json.Unmarshal(g.TournamentData, &trdata)
+	if err == nil {
+		// it's ok for a game to not have tournament data
+		entGame.TournamentData = &trdata
+	}
+	entGame.TournamentData.Id = g.TournamentID
 	return entGame, nil
 }
 
@@ -499,7 +506,7 @@ func (s *DBStore) toDBObj(g *entity.Game) (*game, error) {
 		LoserIdx:      g.LoserIdx,
 		Request:       req,
 		History:       hist,
-		TournamentID:  g.TournamentID,
+		TournamentID:  g.TournamentData.Id,
 	}
 	return dbg, nil
 }
