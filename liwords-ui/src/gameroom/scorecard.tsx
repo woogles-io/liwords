@@ -1,4 +1,10 @@
-import React, { ReactNode, useEffect, useMemo, useRef } from 'react';
+import React, {
+  ReactNode,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+} from 'react';
 import { useMountedState } from '../utils/mounted';
 import { Card } from 'antd';
 import { GameEvent } from '../gen/macondo/api/proto/macondo/macondo_pb';
@@ -213,6 +219,9 @@ export const ScoreCard = React.memo((props: Props) => {
   const [cardHeight, setCardHeight] = useState(0);
   const [notepadHidden, setNotepadHidden] = useState(true);
   const [enableNotepadFlip, setEnableNotepadFlip] = useState(isTablet());
+  const toggleNotepadVisibility = useCallback(() => {
+    setNotepadHidden((x) => !x);
+  }, []);
   const resizeListener = () => {
     const currentEl = el.current;
 
@@ -281,16 +290,7 @@ export const ScoreCard = React.memo((props: Props) => {
       // eslint-disable-next-line jsx-a11y/anchor-is-valid
       extra={
         isTablet ? (
-          <button
-            className="link"
-            onClick={() => {
-              if (notepadHidden) {
-                setNotepadHidden(false);
-              } else {
-                setNotepadHidden(true);
-              }
-            }}
-          >
+          <button className="link" onClick={toggleNotepadVisibility}>
             {extra}
           </button>
         ) : null

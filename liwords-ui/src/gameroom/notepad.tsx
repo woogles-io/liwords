@@ -1,4 +1,4 @@
-import React, { useRef, useState, useCallback, useEffect } from 'react';
+import React, { useRef, useCallback, useEffect } from 'react';
 import { Button } from 'antd';
 import { PlusOutlined } from '@ant-design/icons';
 import {
@@ -11,6 +11,7 @@ import {
   simpletile,
 } from '../utils/cwgame/scoring';
 import { Direction, isMobile } from '../utils/cwgame/common';
+import { useMountedState } from '../utils/mounted';
 
 type NotepadProps = {
   style?: React.CSSProperties;
@@ -29,6 +30,7 @@ const humanReadablePosition = (
 };
 
 export const Notepad = React.memo((props: NotepadProps) => {
+  const { useState } = useMountedState();
   const notepadEl = useRef<HTMLTextAreaElement>(null);
   const [curNotepad, setCurNotepad] = useState('');
   const {
