@@ -68,8 +68,8 @@ export const Announcements = React.memo((props: AnnouncementsProps) => {
       ),
     },
   ];
-  const renderAnnouncements = announcements.map((a) => (
-    <li>
+  const renderAnnouncements = announcements.map((a, idx) => (
+    <li key={idx}>
       <h4>{a.title}</h4>
       {a.body}
     </li>
