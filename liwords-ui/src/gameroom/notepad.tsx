@@ -52,9 +52,7 @@ export const Notepad = React.memo((props: NotepadProps) => {
         contiguousTiles[0][0]
       );
       play = contiguousTiles[0]
-        .map((tile) =>
-          tile.fresh ? tile.letter : `(${tile.letter.toLowerCase()})`
-        )
+        .map((tile) => (tile.fresh ? tile.letter : `(${tile.letter})`))
         .join('');
     }
     setCurNotepad(
