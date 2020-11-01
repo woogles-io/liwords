@@ -48,7 +48,6 @@ goog.exportSymbol('proto.liwords.ServerGameplayEvent', null, global);
 goog.exportSymbol('proto.liwords.ServerMessage', null, global);
 goog.exportSymbol('proto.liwords.SoughtGameProcessEvent', null, global);
 goog.exportSymbol('proto.liwords.TimedOut', null, global);
-
 goog.exportSymbol('proto.liwords.TournamentGameEndedEvent', null, global);
 goog.exportSymbol('proto.liwords.TournamentGameResult', null, global);
 goog.exportSymbol('proto.liwords.UnjoinRealm', null, global);
