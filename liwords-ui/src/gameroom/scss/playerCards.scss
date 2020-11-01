@@ -1,11 +1,48 @@
 @import '../../base.scss';
 
+.player-cards.vertical {
+  display: none;
+  @media (min-width: $screen-tablet-min) {
+    display: flex;
+    order: 4;
+  }
+}
+.sticky-player-card-container {
+  width: 100vw;
+  position: sticky;
+  position: -webkit-sticky; /* Safari */
+  top: 0;
+  z-index: 4;
+  background: white;
+  padding: 24px 24px 0px;
+  margin: -16px -24px 0px;
+  @media (min-width: $screen-tablet-min) {
+    display: none;
+  }
+}
+.player-cards.ant-card.horizontal {
+  display: flex;
+  margin-bottom: 12px;
+
+  .ant-card-body {
+    display: flex;
+  }
+  .player-card{
+    width: 50%;
+    &:last-child .player {
+      order: 0;
+    }
+  }
+
+}
+
 .player-cards.ant-card {
   p {
     color: black;
   }
   .ant-card-body {
     padding: 0;
+    width: 100%;
   }
   button.ant-btn {
     color: white;
@@ -138,7 +175,7 @@
           width: 40px;
           min-width: 40px;
           height: 40px;
-          font-size: 20px;
+          font-size: 30px;
         }
       }
 

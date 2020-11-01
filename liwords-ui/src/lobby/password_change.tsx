@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React from 'react';
+import { useMountedState } from '../utils/mounted';
 
 import { Form, Input, Button, Alert, notification, Row, Col } from 'antd';
 // import { Link } from 'react-router-dom';
@@ -24,8 +25,7 @@ const tailLayout = {
 type Props = {};
 
 export const PasswordChange = (props: Props) => {
-  const stillMountedRef = React.useRef(true);
-  React.useEffect(() => () => void (stillMountedRef.current = false), []);
+  const { useState } = useMountedState();
 
   const [err, setErr] = useState('');
   const onFinish = (values: { [key: string]: string }) => {
@@ -50,20 +50,14 @@ export const PasswordChange = (props: Props) => {
           message: 'Success',
           description: 'Your password was changed.',
         });
-        if (stillMountedRef.current) {
-          setErr('');
-        }
+        setErr('');
       })
       .catch((e) => {
         if (e.response) {
           // From Twirp
-          if (stillMountedRef.current) {
-            setErr(e.response.data.msg);
-          }
+          setErr(e.response.data.msg);
         } else {
-          if (stillMountedRef.current) {
-            setErr('unknown error, see console');
-          }
+          setErr('unknown error, see console');
           console.log(e);
         }
       });

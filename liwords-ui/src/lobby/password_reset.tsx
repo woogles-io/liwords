@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React from 'react';
+import { useMountedState } from '../utils/mounted';
 import { Row, Col, Input, Form, Alert, notification, Button } from 'antd';
 import axios from 'axios';
 import { toAPIUrl } from '../api/api';
@@ -20,8 +21,7 @@ const tailLayout = {
 };
 
 export const PasswordReset = () => {
-  const stillMountedRef = React.useRef(true);
-  React.useEffect(() => () => void (stillMountedRef.current = false), []);
+  const { useState } = useMountedState();
 
   const [err, setErr] = useState('');
 
@@ -41,9 +41,7 @@ export const PasswordReset = () => {
       })
       .catch((e) => {
         if (e.response) {
-          if (stillMountedRef.current) {
-            setErr(e.response.data.msg);
-          }
+          setErr(e.response.data.msg);
         }
       });
   };

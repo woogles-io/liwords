@@ -1,10 +1,5 @@
-import React, {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from 'react';
+import React, { useCallback, useEffect, useMemo, useRef } from 'react';
+import { useMountedState } from '../utils/mounted';
 import { Card, message, Popconfirm } from 'antd';
 import { HomeOutlined } from '@ant-design/icons/lib';
 import axios from 'axios';
@@ -50,7 +45,8 @@ import { BoopSounds } from '../sound/boop';
 import { toAPIUrl } from '../api/api';
 import { StreakWidget } from './streak_widget';
 import { PlayState } from '../gen/macondo/api/proto/macondo/macondo_pb';
-// import { GameInfoResponse } from '../gen/api/proto/game_service/game_service_pb';
+import { endGameMessageFromGameInfo } from '../store/end_of_game';
+import { singularCount } from '../utils/plural';
 
 type Props = {
   sendSocketMsg: (msg: Uint8Array) => void;
@@ -76,12 +72,85 @@ const defaultGameInfo = {
   max_overtime_minutes: 0,
   game_end_reason: 'NONE',
   time_control_name: '',
-  // done: false,
+};
+
+const DEFAULT_TITLE = 'Woogles.io';
+
+const ManageWindowTitle = (props: {}) => {
+  const { gameContext } = useGameContextStoreContext();
+  const { loginState } = useLoginStateStoreContext();
+  const { userID } = loginState;
+
+  const userIDToNick = useMemo(() => {
+    const ret: { [key: string]: string } = {};
+    for (const userID in gameContext.uidToPlayerOrder) {
+      const playerOrder = gameContext.uidToPlayerOrder[userID];
+      for (const nick in gameContext.nickToPlayerOrder) {
+        if (playerOrder === gameContext.nickToPlayerOrder[nick]) {
+          ret[userID] = nick;
+          break;
+        }
+      }
+    }
+    return ret;
+  }, [gameContext.uidToPlayerOrder, gameContext.nickToPlayerOrder]);
+
+  const playerNicks = useMemo(() => {
+    return gameContext.players.map((player) => userIDToNick[player.userID]);
+  }, [gameContext.players, userIDToNick]);
+
+  const myId = useMemo(() => {
+    const myPlayerOrder = gameContext.uidToPlayerOrder[userID];
+    return myPlayerOrder === 'p0' ? 0 : myPlayerOrder === 'p1' ? 1 : null;
+  }, [gameContext.uidToPlayerOrder, userID]);
+
+  const gameDone = gameContext.playState === PlayState.GAME_OVER;
+
+  const desiredTitle = useMemo(() => {
+    let title = '';
+    if (!gameDone && myId === gameContext.onturn) {
+      title += '*';
+    }
+    let first = true;
+    for (let i = 0; i < gameContext.players.length; ++i) {
+      if (gameContext.players[i].userID === userID) continue;
+      if (first) {
+        first = false;
+      } else {
+        title += ' vs ';
+      }
+      title += playerNicks[i] ?? '?';
+      if (!gameDone && myId == null && i === gameContext.onturn) {
+        title += '*';
+      }
+    }
+    if (title.length > 0) title += ' - ';
+    title += DEFAULT_TITLE;
+    return title;
+  }, [
+    gameContext.onturn,
+    gameContext.players,
+    gameDone,
+    myId,
+    playerNicks,
+    userID,
+  ]);
+
+  useEffect(() => {
+    document.title = desiredTitle;
+  }, [desiredTitle]);
+
+  useEffect(() => {
+    return () => {
+      document.title = DEFAULT_TITLE;
+    };
+  }, []);
+
+  return null;
 };
 
 export const Table = React.memo((props: Props) => {
-  const stillMountedRef = React.useRef(true);
-  React.useEffect(() => () => void (stillMountedRef.current = false), []);
+  const { useState } = useMountedState();
 
   const { gameID } = useParams();
   const { chat, clearChat } = useChatStoreContext();
@@ -94,7 +163,7 @@ export const Table = React.memo((props: Props) => {
     handleExamineGoTo,
   } = useExamineStoreContext();
   const { gameContext } = useGameContextStoreContext();
-  const { gameEndMessage } = useGameEndMessageStoreContext();
+  const { gameEndMessage, setGameEndMessage } = useGameEndMessageStoreContext();
   const { loginState } = useLoginStateStoreContext();
   const { poolFormat, setPoolFormat } = usePoolFormatStoreContext();
   const { presences } = usePresenceStoreContext();
@@ -166,13 +235,16 @@ export const Table = React.memo((props: Props) => {
         }
       )
       .then((resp) => {
-        if (stillMountedRef.current) {
-          setGameInfo(resp.data);
-          if (localStorage?.getItem('poolFormat')) {
-            setPoolFormat(
-              parseInt(localStorage.getItem('poolFormat') || '0', 10)
-            );
-          }
+        setGameInfo(resp.data);
+        if (localStorage?.getItem('poolFormat')) {
+          setPoolFormat(
+            parseInt(localStorage.getItem('poolFormat') || '0', 10)
+          );
+        }
+        if (resp.data.game_end_reason !== 'NONE') {
+          // Basically if we are here, we've reloaded the page after the game
+          // ended. We want to synthesize a new GameEnd message
+          setGameEndMessage(endGameMessageFromGameInfo(resp.data));
         }
       });
     BoopSounds.playSound('startgameSound');
@@ -209,9 +281,7 @@ export const Table = React.memo((props: Props) => {
           }
         )
         .then((streakresp) => {
-          if (stillMountedRef.current) {
-            setStreakGameInfo(streakresp.data.game_info);
-          }
+          setStreakGameInfo(streakresp.data.game_info);
         });
       // Put this on a delay. Otherwise the game might not be saved to the
       // db as having finished before the gameEndMessage comes in.
@@ -324,11 +394,11 @@ export const Table = React.memo((props: Props) => {
   // If we are NOT one of the players (so an observer), display the rack of
   // the player on turn.
   let rack;
-  const gameDone = gameInfo.game_end_reason !== 'NONE';
-  const us = useMemo(
-    () => gameInfo.players.find((p) => p.user_id === userID),
-    [gameInfo.players, userID]
-  );
+  const gameDone = gameContext.playState === PlayState.GAME_OVER;
+  const us = useMemo(() => gameInfo.players.find((p) => p.user_id === userID), [
+    gameInfo.players,
+    userID,
+  ]);
   if (us && !(gameDone && isExamining)) {
     rack = examinableGameContext.players.find((p) => p.userID === us.user_id)
       ?.currentRack;
@@ -374,7 +444,7 @@ export const Table = React.memo((props: Props) => {
       } else {
         searchParams.set('turn', turnParamShouldBe);
       }
-      history.push({
+      history.replace({
         ...location,
         search: String(searchParams),
       });
@@ -388,19 +458,22 @@ export const Table = React.memo((props: Props) => {
     searchParams,
     searchedTurn,
   ]);
+  const peopleOnlineContext = useCallback(
+    (n: number) =>
+      isObserver
+        ? singularCount(n, 'Observer', 'Observers')
+        : singularCount(n, 'Player', 'Players'),
+    [isObserver]
+  );
 
   return (
     <div className="game-container">
+      <ManageWindowTitle />
       <TopBar />
       <div className="game-table">
         <div className="chat-area" id="left-sidebar">
           <Card className="left-menu">
-            <Link
-              to="/"
-              onClick={() => {
-                resetStore();
-              }}
-            >
+            <Link to="/" onClick={resetStore}>
               <HomeOutlined />
               Back to lobby
             </Link>
@@ -410,11 +483,17 @@ export const Table = React.memo((props: Props) => {
             sendChat={sendChat}
             description={isObserver ? 'Observer chat' : 'Game chat'}
             presences={presences}
-            peopleOnlineContext={isObserver ? 'Observers' : 'Players'}
+            peopleOnlineContext={peopleOnlineContext}
           />
         </div>
-        {/* we only put the Popconfirm here so that we can physically place it */}
-
+        {/* There are two player cards, css hides one of them. */}
+        <div className="sticky-player-card-container">
+          <PlayerCards
+            horizontal
+            gameMeta={gameInfo}
+            playerMeta={gameInfo.players}
+          />
+        </div>
         <div className="play-area">
           <BoardPanel
             username={username}
@@ -425,10 +504,12 @@ export const Table = React.memo((props: Props) => {
             sendSocketMsg={props.sendSocketMsg}
             gameDone={gameDone}
             playerMeta={gameInfo.players}
+            lexicon={gameInfo.lexicon}
           />
           <StreakWidget recentGames={streakGameInfo} />
         </div>
         <div className="data-area" id="right-sidebar">
+          {/* There are two player cards, css hides one of them. */}
           <PlayerCards gameMeta={gameInfo} playerMeta={gameInfo.players} />
           <GameInfo meta={gameInfo} />
           <Pool

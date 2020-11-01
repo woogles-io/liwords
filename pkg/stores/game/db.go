@@ -155,7 +155,7 @@ func (s *DBStore) GetRecentGames(ctx context.Context, username string, numGames 
 		Offset(offset).
 		Joins("JOIN users as u0  ON u0.id = games.player0_id").
 		Joins("JOIN users as u1  ON u1.id = games.player1_id").
-		Where("u0.username = ? OR u1.username = ? AND game_end_reason != 0", username, username).
+		Where("(lower(u0.username) = lower(?) OR lower(u1.username) = lower(?)) AND game_end_reason != 0", username, username).
 		Order("created_at desc").
 		Find(&games); results.Error != nil {
 		return nil, results.Error
@@ -408,6 +408,15 @@ func (s *DBStore) ListActive(ctx context.Context) ([]*pb.GameMeta, error) {
 	}
 
 	return convertGamesToGameMetas(games)
+}
+
+func (s *DBStore) Count(ctx context.Context) (int64, error) {
+	var count int64
+	result := s.db.Model(&game{}).Count(&count)
+	if result.Error != nil {
+		return 0, result.Error
+	}
+	return count, nil
 }
 
 // List all game IDs, ordered by date played. Should not be used by anything

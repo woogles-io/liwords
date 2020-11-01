@@ -141,6 +141,7 @@ export const handleKeyPress = (
 
   // Make sure we're not trying to type off the edge of the board.
   if (
+    !arrowProperty.show ||
     arrowProperty.row >= board.dim ||
     arrowProperty.col >= board.dim ||
     arrowProperty.row < 0 ||
@@ -348,7 +349,6 @@ export const handleDroppedTile = (
   currentlyPlacedTiles.forEach((t) => {
     ephTileMap[uniqueTileIdx(t.row, t.col)] = t;
   });
-
   let newUnplacedTiles = unplacedTiles;
   const newPlacedTiles = new Set(currentlyPlacedTiles);
   let rune;

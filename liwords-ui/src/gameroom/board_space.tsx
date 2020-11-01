@@ -5,7 +5,6 @@ import {
   ArrowDownOutlined,
   StarOutlined,
 } from '@ant-design/icons/lib';
-
 interface BonusProperties {
   bonusText: string;
   bonusClass: string;

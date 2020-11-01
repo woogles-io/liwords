@@ -1,4 +1,5 @@
-import React, { ReactNode, useState, useEffect, useMemo, useRef } from 'react';
+import React, { ReactNode, useEffect, useMemo, useRef } from 'react';
+import { useMountedState } from '../utils/mounted';
 import { Card } from 'antd';
 import { GameEvent } from '../gen/macondo/api/proto/macondo/macondo_pb';
 import { Board } from '../utils/cwgame/board';
@@ -9,6 +10,7 @@ import { tilePlacementEventDisplay } from '../utils/cwgame/game_event';
 import { PlayerMetadata } from './game_info';
 import { Turn, gameEventsToTurns } from '../store/reducers/turns';
 import { PoolFormatType } from '../constants/pool_formats';
+const screenSizes = require('../base.scss');
 
 type Props = {
   playing: boolean;
@@ -20,6 +22,7 @@ type Props = {
 };
 
 type turnProps = {
+  playerMeta: Array<PlayerMetadata>;
   playing: boolean;
   username: string;
   turn: Turn;
@@ -112,9 +115,10 @@ const ScorecardTurn = (props: turnProps) => {
     ) {
       timeRemaining = millisToTimeStr(evts[0].getMillisRemaining(), false);
     }
-
     const turn = {
-      player: {
+      player: props.playerMeta.find(
+        (playerMeta) => playerMeta.nickname === evts[0].getNickname()
+      ) ?? {
         nickname: evts[0].getNickname(),
         // XXX: FIX THIS. avatar url should be set.
         full_name: '',
@@ -177,7 +181,7 @@ const ScorecardTurn = (props: turnProps) => {
     }
     return turn;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [props.turn]);
+  }, [props.playerMeta, props.turn]);
 
   let scoreChange;
   if (memoizedTurn.lostScore > 0) {
@@ -214,6 +218,8 @@ const ScorecardTurn = (props: turnProps) => {
 };
 
 export const ScoreCard = React.memo((props: Props) => {
+  const { useState } = useMountedState();
+
   const el = useRef<HTMLDivElement>(null);
   const notepad = useRef<HTMLTextAreaElement>(null);
   const [cardHeight, setCardHeight] = useState(0);
@@ -221,23 +227,30 @@ export const ScoreCard = React.memo((props: Props) => {
   const [notepadVisible, setNotepadVisible] = useState(false);
   const resizeListener = () => {
     const currentEl = el.current;
+    const vw = Math.max(
+      document.documentElement.clientWidth || 0,
+      window.innerWidth || 0
+    );
     if (currentEl) {
       currentEl.scrollTop = currentEl.scrollHeight || 0;
       const boardHeight = document.getElementById('board-container')
         ?.clientHeight;
       const poolTop = document.getElementById('pool')?.clientHeight || 0;
       const playerCardTop =
-        document.getElementById('player-cards')?.clientHeight || 0;
+        document.getElementById('player-cards-vertical')?.clientHeight || 0;
       const navHeight = document.getElementById('main-nav')?.clientHeight || 0;
-      if (boardHeight) {
+      if (boardHeight && vw > parseInt(screenSizes.screenSizeTablet, 10)) {
         setCardHeight(
           boardHeight -
             currentEl?.getBoundingClientRect().top -
+            window.pageYOffset -
             poolTop -
             playerCardTop -
             15 +
             navHeight
         );
+      } else {
+        setCardHeight(0);
       }
     }
   };
@@ -313,6 +326,7 @@ export const ScoreCard = React.memo((props: Props) => {
                 turn={t}
                 board={props.board}
                 key={`t_${idx + 0}`}
+                playerMeta={props.playerMeta}
                 playing={props.playing}
                 username={props.username}
               />

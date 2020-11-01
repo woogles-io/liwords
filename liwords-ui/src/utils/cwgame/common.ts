@@ -16,16 +16,25 @@ export enum Direction {
   Vertical,
 }
 
+export const isTouchDevice = () => {
+  var userAgent = navigator.userAgent || navigator.vendor;
+  if (/android/i.test(userAgent) || /iPad|iPhone|iPod/.test(userAgent)) {
+    return true;
+  }
+  return !!('ontouchstart' in window);
+};
+
 export const uniqueTileIdx = (row: number, col: number): number => {
   // Just a unique number to identify a row,col coordinate.
   return row * 100 + col;
 };
 
 export const isBlank = (letter: string): boolean => {
-  if (letter.toLowerCase() === letter) {
-    return true;
-  }
-  return false;
+  return letter.toLowerCase() === letter;
+};
+
+export const isDesignatedBlank = (letter: string): boolean => {
+  return letter.toLowerCase() === letter && letter.toUpperCase() !== letter;
 };
 
 // String.charAt implementation that handles surrogate pairs

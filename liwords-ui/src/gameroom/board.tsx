@@ -35,7 +35,7 @@ const Board = React.memo((props: Props) => {
   return (
     <div className="board">
       <BoardCoordLabels gridDim={props.gridSize} />
-      <div className="board-spaces-container" {...outerDivProps}>
+      <div className="board-spaces-container" id="board" {...outerDivProps}>
         <BoardSpaces
           gridDim={props.gridSize}
           gridLayout={props.gridLayout}

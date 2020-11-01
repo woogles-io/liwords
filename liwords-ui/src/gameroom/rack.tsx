@@ -1,12 +1,29 @@
-import React from 'react';
-
+import React, { useRef } from 'react';
+import { useDrop, XYCoord } from 'react-dnd';
 import {
   CrosswordGameTileValues,
   runeToValues,
 } from '../constants/tile_values';
-import Tile from './tile';
+import Tile, { TILE_TYPE } from './tile';
+import { isTouchDevice } from '../utils/cwgame/common';
 
 // const TileSpacing = 6;
+
+const calculatePosition = (
+  position: XYCoord,
+  rackElement: HTMLElement,
+  rackEmptyLeftElement: HTMLElement,
+  rackSize: number
+) => {
+  const rackLeft = rackElement.getBoundingClientRect().left;
+  const rackWidth = rackElement.clientWidth;
+  const rackEmptyWidth = rackEmptyLeftElement.clientWidth;
+  const tileSize = (rackWidth - 2 * rackEmptyWidth) / rackSize;
+  const relativePosition = position.x - rackLeft;
+  if (relativePosition < rackEmptyWidth) return 0;
+  if (relativePosition > rackWidth - rackEmptyWidth) return rackSize;
+  return Math.floor((relativePosition - rackEmptyWidth) / tileSize);
+};
 
 type Props = {
   letters: string;
@@ -41,6 +58,37 @@ export const Rack = React.memo((props: Props) => {
       );
     }
   };
+  const [, drop] = useDrop({
+    accept: TILE_TYPE,
+    drop: (item: any, monitor) => {
+      const clientOffset = monitor.getClientOffset();
+      const rackElement = document.getElementById('rack');
+      const rackEmptyElement = document.getElementById('left-empty');
+      let rackPosition = 0;
+      if (clientOffset && rackElement && rackEmptyElement) {
+        rackPosition = calculatePosition(
+          clientOffset,
+          rackElement,
+          rackEmptyElement,
+          props.letters.length
+        );
+      }
+      if (props.moveRackTile && item.rackIndex) {
+        props.moveRackTile(rackPosition, parseInt(item.rackIndex, 10));
+      }
+      if (props.returnToRack && item.tileIndex) {
+        props.returnToRack(rackPosition, item.tileIndex);
+      }
+    },
+    collect: (monitor) => ({
+      isOver: !!monitor.isOver(),
+      canDrop: !!monitor.canDrop(),
+    }),
+  });
+  const rackRef = useRef(null);
+  if (props.moveRackTile && isTouchDevice()) {
+    drop(rackRef);
+  }
   const renderTiles = () => {
     const tiles = [];
     if (!props.letters || props.letters.length === 0) {
@@ -73,9 +121,14 @@ export const Rack = React.memo((props: Props) => {
   };
 
   return (
-    <div className="rack">
+    <div
+      className="rack"
+      ref={rackRef}
+      id={props.moveRackTile ? 'rack' : 'exchangeRack'}
+    >
       <div
         className="empty-rack droppable"
+        id={props.moveRackTile ? 'left-empty' : 'exch-left-empty'}
         onDragOver={handleDropOver}
         onDrop={(e) => {
           handleDrop(e, 0);

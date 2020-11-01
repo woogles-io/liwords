@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { Card, Row, Button } from 'antd';
+import { Card, Row, Button, Tooltip } from 'antd';
 import { RawPlayerInfo } from '../store/reducers/game_reducer';
 import {
   useExaminableGameContextStoreContext,
@@ -13,11 +13,15 @@ import './scss/playerCards.scss';
 import { GameMetadata, PlayerMetadata } from './game_info';
 import { PlayState } from '../gen/macondo/api/proto/macondo/macondo_pb';
 
+const colors = require('../base.scss');
+
 type CardProps = {
   player: RawPlayerInfo | undefined;
   time: Millis;
   meta: Array<PlayerMetadata>;
   playing: boolean;
+  score: number;
+  spread: number;
 };
 
 const timepenalty = (time: Millis) => {
@@ -77,12 +81,15 @@ const PlayerCard = React.memo((props: CardProps) => {
         </div>
       </Row>
       <Row className="score-timer">
-        <Button className="score" type="primary">
-          {!isExamining && props.playing
-            ? // If we're still playing the time penalty has not yet been calculated.
-              props.player.score - timepenalty(props.time)
-            : props.player.score}
-        </Button>
+        <Tooltip
+          placement="left"
+          color={colors.colorPrimary}
+          title={`${props.spread >= 0 ? '+' : ''}${props.spread}`}
+        >
+          <Button className="score" type="primary">
+            {props.score}
+          </Button>
+        </Tooltip>
         <Button className="timer" type="primary">
           {timeStr}
         </Button>
@@ -94,6 +101,7 @@ const PlayerCard = React.memo((props: CardProps) => {
 type Props = {
   gameMeta: GameMetadata;
   playerMeta: Array<PlayerMetadata>;
+  horizontal?: boolean;
 };
 
 export const PlayerCards = React.memo((props: Props) => {
@@ -103,6 +111,7 @@ export const PlayerCards = React.memo((props: Props) => {
   const {
     timerContext: examinableTimerContext,
   } = useExaminableTimerStoreContext();
+  const { isExamining } = useExamineStoreContext();
 
   // If the gameContext is not yet available, we should try displaying player cards
   // from the meta information, until the information comes in.
@@ -136,19 +145,36 @@ export const PlayerCards = React.memo((props: Props) => {
   let p1Time = examinableTimerContext.p1;
   if (p1Time === Infinity) p1Time = initialTimeSeconds;
 
+  const playing = examinableGameContext.playState !== PlayState.GAME_OVER;
+  const applyTimePenalty = !isExamining && playing;
+  let p0Score = p0?.score ?? 0;
+  if (applyTimePenalty) p0Score -= timepenalty(p0Time);
+  let p1Score = p1?.score ?? 0;
+  if (applyTimePenalty) p1Score -= timepenalty(p1Time);
+  const p0Spread = p0Score - p1Score;
+
   return (
-    <Card className="player-cards" id="player-cards">
+    <Card
+      className={`player-cards${
+        props.horizontal ? ' horizontal' : ' vertical'
+      }`}
+      id={`player-cards-${props.horizontal ? 'horizontal' : 'vertical'}`}
+    >
       <PlayerCard
         player={p0}
         meta={props.playerMeta}
         time={p0Time}
-        playing={examinableGameContext.playState !== PlayState.GAME_OVER}
+        score={p0Score}
+        spread={p0Spread}
+        playing={playing}
       />
       <PlayerCard
         player={p1}
         meta={props.playerMeta}
         time={p1Time}
-        playing={examinableGameContext.playState !== PlayState.GAME_OVER}
+        score={p1Score}
+        spread={-p0Spread}
+        playing={playing}
       />
     </Card>
   );

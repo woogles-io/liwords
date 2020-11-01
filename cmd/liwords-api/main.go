@@ -42,7 +42,10 @@ import (
 	gameservice "github.com/domino14/liwords/rpc/api/proto/game_service"
 	tournamentservice "github.com/domino14/liwords/rpc/api/proto/tournament_service"
 	userservice "github.com/domino14/liwords/rpc/api/proto/user_service"
-)
+
+	"net/http/pprof"
+	_ "net/http/pprof"
+	/*"flag"*/)
 
 const (
 	GracefulShutdownTimeout = 30 * time.Second
@@ -70,7 +73,23 @@ func pingEndpoint(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte(`{"status":"copacetic"}`))
 }
 
+/*var cpuprofile = flag.String("cpuprofile", "cpu.prof", "write cpu profile to `file`")
+var memprofile = flag.String("memprofile", "mem.prof", "write memory profile to `file`")
+*/
 func main() {
+
+	/*    flag.Parse()
+	      if *cpuprofile != "" {
+	          f, err := os.Create(*cpuprofile)
+	          if err != nil {
+	              panic("could not create CPU profile: ")
+	          }
+	          defer f.Close() // error handling omitted for example
+	          if err := pprof.StartCPUProfile(f); err != nil {
+	              panic("could not start CPU profile: ")
+	          }
+	          defer pprof.StopCPUProfile()
+	      }*/
 
 	cfg := &config.Config{}
 	cfg.Load(os.Args[1:])
@@ -129,7 +148,7 @@ func main() {
 		panic(err)
 	}
 
-	authenticationService := auth.NewAuthenticationService(userStore, sessionStore, cfg.SecretKey, cfg.MailgunKey)
+	authenticationService := auth.NewAuthenticationService(userStore, sessionStore, cfg.SecretKey, cfg.MailgunKey, BuildHash)
 	registrationService := registration.NewRegistrationService(userStore)
 	gameService := gameplay.NewGameService(userStore, gameStore)
 	profileService := pkguser.NewProfileService(userStore)
@@ -163,6 +182,16 @@ func main() {
 
 	router.Handle(tournamentservice.TournamentServicePathPrefix,
 		middlewares.Then(tournamentservice.NewTournamentServiceServer(tournamentService, nil)))
+
+	router.Handle(
+		"/debug/pprof/goroutine", pprof.Handler("goroutine"),
+	)
+	router.Handle(
+		"/debug/pprof/heap", pprof.Handler("heap"),
+	)
+	router.Handle(
+		"/debug/vars", http.DefaultServeMux,
+	)
 
 	// Create any caches
 	alphabet.CreateLetterDistributionCache()
@@ -208,4 +237,16 @@ func main() {
 	}
 	<-idleConnsClosed
 	log.Info().Msg("server gracefully shutting down")
+
+	/*    if *memprofile != "" {
+	      f, err := os.Create(*memprofile)
+	      if err != nil {
+	          panic("could not create memory profile: ")
+	      }
+	      defer f.Close() // error handling omitted for example
+	      runtime.GC() // get up-to-date statistics
+	      if err := pprof.WriteHeapProfile(f); err != nil {
+	          panic("could not write memory profile: ")
+	      }
+	  }*/
 }

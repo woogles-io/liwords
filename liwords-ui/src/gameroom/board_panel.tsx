@@ -1,6 +1,10 @@
-import React, { useCallback, useState, useEffect, useRef } from 'react';
+import React, { useCallback, useEffect, useRef } from 'react';
+import { TouchBackend } from 'react-dnd-touch-backend';
+import { useMountedState } from '../utils/mounted';
 import { Button, Modal, notification, message, Tooltip } from 'antd';
+import { DndProvider } from 'react-dnd';
 import { ArrowDownOutlined, SyncOutlined } from '@ant-design/icons';
+import { isTouchDevice } from '../utils/cwgame/common';
 import axios from 'axios';
 
 import GameBoard from './board';
@@ -51,6 +55,7 @@ import {
   PlayState,
 } from '../gen/macondo/api/proto/macondo/macondo_pb';
 import { toAPIUrl } from '../api/api';
+import { TilePreview } from './tile';
 
 // The frame atop is 24 height
 // The frames on the sides are 24 in width, surrounded by a 14 pix gutter
@@ -66,18 +71,42 @@ type Props = {
   sendSocketMsg: (msg: Uint8Array) => void;
   gameDone: boolean;
   playerMeta: Array<PlayerMetadata>;
+  lexicon: string;
 };
 
 const shuffleString = (a: string): string => {
   const alist = a.split('');
   const n = a.length;
 
+  let somethingChanged = false;
   for (let i = n - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
-    const tmp = alist[i];
-    alist[i] = alist[j];
-    alist[j] = tmp;
+    if (alist[i] !== alist[j]) {
+      somethingChanged = true;
+      const tmp = alist[i];
+      alist[i] = alist[j];
+      alist[j] = tmp;
+    }
   }
+
+  if (!somethingChanged) {
+    // Let's change something if possible.
+    const j = Math.floor(Math.random() * n);
+    let x = [];
+    for (let i = 0; i < n; ++i) {
+      if (alist[i] !== alist[j]) {
+        x.push(i);
+      }
+    }
+
+    if (x.length > 0) {
+      const i = x[Math.floor(Math.random() * x.length)];
+      const tmp = alist[i];
+      alist[i] = alist[j];
+      alist[j] = tmp;
+    }
+  }
+
   return alist.join('');
 };
 
@@ -127,7 +156,13 @@ const gcgExport = (gameID: string, playerMeta: Array<PlayerMetadata>) => {
 };
 
 export const BoardPanel = React.memo((props: Props) => {
-  const [drawingKeyMode, setDrawingKeyMode] = useState(false);
+  const { useState } = useMountedState();
+
+  // Poka-yoke against accidentally having multiple modes active.
+  const [currentMode, setCurrentMode] = useState<
+    'BLANK_MODAL' | 'DRAWING_HOTKEY' | 'EXCHANGE_MODAL' | 'NORMAL'
+  >('NORMAL');
+
   const {
     drawingCanBeEnabled,
     handleKeyDown: handleDrawingKeyDown,
@@ -141,8 +176,9 @@ export const BoardPanel = React.memo((props: Props) => {
 
   const [displayedRack, setDisplayedRack] = useState(props.currentRack);
   const [placedTiles, setPlacedTiles] = useState(new Set<EphemeralTile>());
-  const [placedTilesTempScore, setPlacedTilesTempScore] = useState<number>();
-  const [blankModalVisible, setBlankModalVisible] = useState(false);
+  const [placedTilesTempScore, setPlacedTilesTempScore] = useState<
+    number | undefined
+  >(undefined);
   const {
     gameContext: examinableGameContext,
   } = useExaminableGameContextStoreContext();
@@ -152,7 +188,6 @@ export const BoardPanel = React.memo((props: Props) => {
   const { isExamining, handleExamineStart } = useExamineStoreContext();
   const { gameContext } = useGameContextStoreContext();
   const { stopClock } = useTimerStoreContext();
-  const [exchangeModalVisible, setExchangeModalVisible] = useState(false);
   const [exchangeAllowed, setexchangeAllowed] = useState(true);
 
   const observer = !props.playerMeta.some((p) => p.nickname === props.username);
@@ -241,16 +276,78 @@ export const BoardPanel = React.memo((props: Props) => {
   );
 
   const recallTiles = useCallback(() => {
+    if (arrowProperties.show) {
+      let { row, col, horizontal } = arrowProperties;
+      const matchesLocation = ({
+        row: tentativeRow,
+        col: tentativeCol,
+      }: {
+        row: number;
+        col: number;
+      }) => row === tentativeRow && col === tentativeCol;
+      if (
+        horizontal &&
+        row >= 0 &&
+        row < props.board.dim &&
+        col > 0 &&
+        col <= props.board.dim
+      ) {
+        // Inefficient way to get around TypeScript restriction.
+        const placedTilesArray = Array.from(placedTiles);
+        let best = col;
+        while (col > 0) {
+          --col;
+          if (props.board.letters[row * props.board.dim + col] !== EmptySpace) {
+            // continue
+          } else if (placedTilesArray.some(matchesLocation)) {
+            best = col;
+          } else {
+            break;
+          }
+        }
+        if (best !== arrowProperties.col) {
+          setArrowProperties({ ...arrowProperties, col: best });
+        }
+      } else if (
+        !horizontal &&
+        col >= 0 &&
+        col < props.board.dim &&
+        row > 0 &&
+        row <= props.board.dim
+      ) {
+        // Inefficient way to get around TypeScript restriction.
+        const placedTilesArray = Array.from(placedTiles);
+        let best = row;
+        while (row > 0) {
+          --row;
+          if (props.board.letters[row * props.board.dim + col] !== EmptySpace) {
+            // continue
+          } else if (placedTilesArray.some(matchesLocation)) {
+            best = row;
+          } else {
+            break;
+          }
+        }
+        if (best !== arrowProperties.row) {
+          setArrowProperties({ ...arrowProperties, row: best });
+        }
+      }
+    }
+
     setPlacedTilesTempScore(0);
     setPlacedTiles(new Set<EphemeralTile>());
     setDisplayedRack(props.currentRack);
-  }, [props.currentRack]);
+  }, [
+    arrowProperties,
+    placedTiles,
+    props.board.dim,
+    props.board.letters,
+    props.currentRack,
+  ]);
 
   const shuffleTiles = useCallback(() => {
-    setPlacedTilesTempScore(0);
-    setPlacedTiles(new Set<EphemeralTile>());
-    setDisplayedRack(shuffleString(props.currentRack));
-  }, [props.currentRack]);
+    setDisplayedRack((displayedRack) => shuffleString(displayedRack));
+  }, []);
 
   const lastLettersRef = useRef<string>();
   const readOnlyEffectDependenciesRef = useRef<{
@@ -451,86 +548,81 @@ export const BoardPanel = React.memo((props: Props) => {
           key = key.toUpperCase();
         }
       }
-      if (isMyTurn() && !props.gameDone) {
-        if (key === '2') {
+      if (currentMode === 'NORMAL') {
+        if (isMyTurn() && !props.gameDone) {
+          if (key === '2') {
+            evt.preventDefault();
+            makeMove('pass');
+            return;
+          }
+          if (key === '3') {
+            evt.preventDefault();
+            makeMove('challenge');
+            return;
+          }
+          if (key === '4' && exchangeAllowed) {
+            evt.preventDefault();
+            setCurrentMode('EXCHANGE_MODAL');
+            return;
+          }
+          if (key === '$' && exchangeAllowed) {
+            evt.preventDefault();
+            makeMove('exchange', props.currentRack);
+            return;
+          }
+        }
+        if (key === 'ArrowLeft' || key === 'ArrowRight') {
           evt.preventDefault();
-          makeMove('pass');
+          setArrowProperties({
+            ...arrowProperties,
+            horizontal: !arrowProperties.horizontal,
+          });
           return;
         }
-        if (key === '3') {
+        if (key === 'ArrowDown') {
           evt.preventDefault();
-          makeMove('challenge');
+          recallTiles();
           return;
         }
-        if (key === '4' && exchangeAllowed) {
+        if (key === 'ArrowUp') {
           evt.preventDefault();
-          setExchangeModalVisible(true);
+          shuffleTiles();
           return;
         }
-        if (key === '$' && exchangeAllowed) {
+        if (key === EnterKey) {
           evt.preventDefault();
-          makeMove('exchange', props.currentRack);
+          makeMove('commit');
           return;
         }
-      }
-      if (key === 'ArrowLeft' || key === 'ArrowRight') {
-        evt.preventDefault();
-        setArrowProperties({
-          ...arrowProperties,
-          horizontal: !arrowProperties.horizontal,
-        });
-        return;
-      }
-      if (key === 'ArrowDown') {
-        evt.preventDefault();
-        recallTiles();
-        return;
-      }
-      if (key === 'ArrowUp') {
-        evt.preventDefault();
-        shuffleTiles();
-        return;
-      }
-      if (key === EnterKey && !exchangeModalVisible && !blankModalVisible) {
-        evt.preventDefault();
-        makeMove('commit');
-        return;
-      }
-      if (exchangeModalVisible) {
-        return;
-      }
-      if (!arrowProperties.show) {
-        return;
-      }
-      if (key === '?') {
-        return;
-      }
-      // This should return a new set of arrow properties, and also set
-      // some state further up (the tiles layout with a "just played" type
-      // marker)
-      const handlerReturn = handleKeyPress(
-        arrowProperties,
-        props.board,
-        key,
-        displayedRack,
-        placedTiles
-      );
+        if (key === '?') {
+          return;
+        }
+        // This should return a new set of arrow properties, and also set
+        // some state further up (the tiles layout with a "just played" type
+        // marker)
+        const handlerReturn = handleKeyPress(
+          arrowProperties,
+          props.board,
+          key,
+          displayedRack,
+          placedTiles
+        );
 
-      if (handlerReturn === null) {
-        return;
+        if (handlerReturn === null) {
+          return;
+        }
+        evt.preventDefault();
+        setDisplayedRack(handlerReturn.newDisplayedRack);
+        setArrowProperties(handlerReturn.newArrow);
+        setPlacedTiles(handlerReturn.newPlacedTiles);
+        setPlacedTilesTempScore(handlerReturn.playScore);
       }
-      evt.preventDefault();
-      setDisplayedRack(handlerReturn.newDisplayedRack);
-      setArrowProperties(handlerReturn.newArrow);
-      setPlacedTiles(handlerReturn.newPlacedTiles);
-      setPlacedTilesTempScore(handlerReturn.playScore);
     },
     [
       arrowProperties,
-      blankModalVisible,
+      currentMode,
       displayedRack,
       exchangeAllowed,
-      exchangeModalVisible,
       isMyTurn,
       makeMove,
       placedTiles,
@@ -566,7 +658,7 @@ export const BoardPanel = React.memo((props: Props) => {
       setPlacedTilesTempScore(handlerReturn.playScore);
       setArrowProperties({ row: 0, col: 0, horizontal: false, show: false });
       if (handlerReturn.isUndesignated) {
-        setBlankModalVisible(true);
+        setCurrentMode('BLANK_MODAL');
       }
     },
     [displayedRack, placedTiles, props.board]
@@ -597,7 +689,7 @@ export const BoardPanel = React.memo((props: Props) => {
       setPlacedTiles(handlerReturn.newPlacedTiles);
       setPlacedTilesTempScore(handlerReturn.playScore);
       if (handlerReturn.isUndesignated) {
-        setBlankModalVisible(true);
+        setCurrentMode('BLANK_MODAL');
       }
       let newrow = arrowProperties.row;
       let newcol = arrowProperties.col;
@@ -639,7 +731,7 @@ export const BoardPanel = React.memo((props: Props) => {
 
   const handleBoardTileClick = useCallback((rune: string) => {
     if (rune === Blank) {
-      setBlankModalVisible(true);
+      setCurrentMode('BLANK_MODAL');
     }
   }, []);
 
@@ -654,7 +746,7 @@ export const BoardPanel = React.memo((props: Props) => {
       if (handlerReturn === null) {
         return;
       }
-      setBlankModalVisible(false);
+      setCurrentMode('NORMAL');
       setPlacedTiles(handlerReturn.newPlacedTiles);
       setPlacedTilesTempScore(handlerReturn.playScore);
     },
@@ -662,7 +754,7 @@ export const BoardPanel = React.memo((props: Props) => {
   );
 
   const handleBlankModalCancel = useCallback(() => {
-    setBlankModalVisible(false);
+    setCurrentMode('NORMAL');
   }, []);
 
   const returnToRack = useCallback(
@@ -691,7 +783,6 @@ export const BoardPanel = React.memo((props: Props) => {
         const newRack = displayedRack.split('');
         newRack.splice(oldIndex, 1);
         newRack.splice(newIndex, 0, displayedRack[oldIndex]);
-        setPlacedTilesTempScore(0);
         setDisplayedRack(newRack.join(''));
       }
     },
@@ -699,12 +790,12 @@ export const BoardPanel = React.memo((props: Props) => {
   );
 
   const showExchangeModal = useCallback(() => {
-    setExchangeModalVisible(true);
+    setCurrentMode('EXCHANGE_MODAL');
   }, []);
 
   const handleExchangeModalOk = useCallback(
     (exchangedTiles: string) => {
-      setExchangeModalVisible(false);
+      setCurrentMode('NORMAL');
       makeMove('exchange', exchangedTiles);
     },
     [makeMove]
@@ -743,18 +834,18 @@ export const BoardPanel = React.memo((props: Props) => {
     (e) => {
       if (drawingCanBeEnabled) {
         // To activate a drawing hotkey, type 0, then the hotkey.
-        if (!exchangeModalVisible && !blankModalVisible) {
+        if (currentMode === 'NORMAL' || currentMode === 'DRAWING_HOTKEY') {
           if (e.ctrlKey || e.altKey || e.metaKey) {
             // Do not prevent Ctrl+0/Cmd+0.
           } else {
-            if (drawingKeyMode) {
+            if (currentMode === 'DRAWING_HOTKEY') {
               e.preventDefault();
-              setDrawingKeyMode(false);
+              setCurrentMode('NORMAL');
               handleDrawingKeyDown(e);
               return;
             } else if (e.key === '0') {
               e.preventDefault();
-              setDrawingKeyMode(true);
+              setCurrentMode('DRAWING_HOTKEY');
               console.log(
                 'You pressed 0. Now press one of these keys:' +
                   '\n0 = Toggle drawing' +
@@ -781,14 +872,7 @@ export const BoardPanel = React.memo((props: Props) => {
       }
       keydown(e);
     },
-    [
-      blankModalVisible,
-      drawingCanBeEnabled,
-      drawingKeyMode,
-      exchangeModalVisible,
-      handleDrawingKeyDown,
-      keydown,
-    ]
+    [currentMode, drawingCanBeEnabled, handleDrawingKeyDown, keydown]
   );
   // Just put this in onKeyPress to block all typeable keys so that typos from
   // placing a tile not on rack also do not trigger type-to-find on firefox.
@@ -804,10 +888,10 @@ export const BoardPanel = React.memo((props: Props) => {
     [props.gameID, props.playerMeta]
   );
   const handleExchangeTilesCancel = useCallback(() => {
-    setExchangeModalVisible(false);
+    setCurrentMode('NORMAL');
   }, []);
 
-  return (
+  const gameBoard = (
     <div
       id="board-container"
       className="board-container"
@@ -871,6 +955,7 @@ export const BoardPanel = React.memo((props: Props) => {
       ) : (
         <GameEndMessage message={examinableGameEndMessage} />
       )}
+      {isTouchDevice() ? <TilePreview gridDim={props.board.dim} /> : null}
       <GameControls
         isExamining={isExamining}
         myTurn={isMyTurn()}
@@ -891,17 +976,18 @@ export const BoardPanel = React.memo((props: Props) => {
         showRematch={examinableGameEndMessage !== ''}
         gameEndControls={examinableGameEndMessage !== '' || props.gameDone}
         currentRack={props.currentRack}
+        lexicon={props.lexicon}
       />
       <ExchangeTiles
         rack={props.currentRack}
-        modalVisible={exchangeModalVisible}
+        modalVisible={currentMode === 'EXCHANGE_MODAL'}
         onOk={handleExchangeModalOk}
         onCancel={handleExchangeTilesCancel}
       />
       <Modal
         className="blank-modal"
         title="Designate your blank"
-        visible={blankModalVisible}
+        visible={currentMode === 'BLANK_MODAL'}
         onCancel={handleBlankModalCancel}
         width={360}
         footer={null}
@@ -910,4 +996,8 @@ export const BoardPanel = React.memo((props: Props) => {
       </Modal>
     </div>
   );
+  if (!isTouchDevice) {
+    return gameBoard;
+  }
+  return <DndProvider backend={TouchBackend}>{gameBoard}</DndProvider>;
 });

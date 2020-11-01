@@ -1,5 +1,5 @@
-import React, { useCallback, useState, useEffect } from 'react';
-import { Card } from 'antd';
+import React, { useCallback, useEffect } from 'react';
+import { useMountedState } from '../utils/mounted';
 
 import { TopBar } from '../topbar/topbar';
 import {
@@ -22,7 +22,9 @@ import {
   useLoginStateStoreContext,
   usePresenceStoreContext,
 } from '../store/store';
+import { singularCount } from '../utils/plural';
 import './lobby.scss';
+import { Announcements } from './announcements';
 
 const sendSeek = (
   game: SoughtGame,
@@ -82,6 +84,8 @@ type Props = {
 };
 
 export const Lobby = (props: Props) => {
+  const { useState } = useMountedState();
+
   const { sendSocketMsg } = props;
   const { chat } = useChatStoreContext();
   const { loginState } = useLoginStateStoreContext();
@@ -120,6 +124,10 @@ export const Lobby = (props: Props) => {
     },
     [sendSocketMsg]
   );
+  const peopleOnlineContext = useCallback(
+    (n: number) => singularCount(n, 'Player', 'Players'),
+    []
+  );
 
   return (
     <>
@@ -130,7 +138,7 @@ export const Lobby = (props: Props) => {
             chatEntities={chat}
             sendChat={sendChat}
             description="Lobby chat"
-            peopleOnlineContext="Players"
+            peopleOnlineContext={peopleOnlineContext}
             presences={presences}
             DISCONNECT={props.DISCONNECT}
           />
@@ -144,21 +152,7 @@ export const Lobby = (props: Props) => {
           setSelectedGameTab={setSelectedGameTab}
           onSeekSubmit={onSeekSubmit}
         />
-        <div className="announcements">
-          <Card>
-            <h3>Woogles is live!</h3>
-            <p>
-              Welcome to our open beta. Sign up and play some games. We still
-              have a lot of features and designs to build, but please{' '}
-              <a className="link" href="https://discord.gg/5yCJjmW">
-                join our Discord server
-              </a>{' '}
-              and let us know if you find any issues.
-            </p>
-            <br />
-            <p>Thanks for Woogling!</p>
-          </Card>
-        </div>
+        <Announcements />
       </div>
     </>
   );

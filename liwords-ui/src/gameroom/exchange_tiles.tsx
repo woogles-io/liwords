@@ -1,4 +1,5 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect } from 'react';
+import { useMountedState } from '../utils/mounted';
 import Rack from './rack';
 import {
   useGameContextStoreContext,
@@ -6,6 +7,7 @@ import {
 } from '../store/store';
 import Pool from './pool';
 import { PoolFormatType } from '../constants/pool_formats';
+import { singularCount } from '../utils/plural';
 import { Button, Modal } from 'antd';
 // Render an exchange widget.
 
@@ -22,8 +24,7 @@ type SelectedTile = {
 };
 
 export const ExchangeTiles = React.memo((props: Props) => {
-  const stillMountedRef = React.useRef(true);
-  React.useEffect(() => () => void (stillMountedRef.current = false), []);
+  const { useState } = useMountedState();
 
   const [exchangedRackIndices, setExchangedRackIndices] = useState(
     new Set<number>()
@@ -33,6 +34,15 @@ export const ExchangeTiles = React.memo((props: Props) => {
   const [delayInput, setDelayInput] = useState(true);
 
   const propsOnOk = props.onOk;
+
+  // Temporary message until UI shows it.
+  useEffect(() => {
+    if (props.modalVisible) {
+      console.log(
+        'When exchanging, press - to toggle the tiles selected. For example, type 4 E - Enter to exchange 6 and keep E.'
+      );
+    }
+  }, [props.modalVisible]);
 
   const keydown = useCallback(
     (e: KeyboardEvent) => {
@@ -51,28 +61,43 @@ export const ExchangeTiles = React.memo((props: Props) => {
         return;
       }
       const key = e.key.toLocaleUpperCase();
-      const tempToExchange = new Set<number>(exchangedRackIndices);
-      if (!exchangedRack.includes(key)) {
-        const temporaryRack = props.rack.split('');
-        // Add all instances of the key the first time it is picked
-        while (temporaryRack.includes(key)) {
-          tempToExchange.add(temporaryRack.lastIndexOf(key));
-          temporaryRack.splice(temporaryRack.lastIndexOf(key), 1);
-        }
-      } else {
-        // Find the last one that's currently selected and deselect
-        let searchPoint = props.rack.length;
-        while (searchPoint > 0) {
-          const candidate = props.rack.lastIndexOf(key, searchPoint - 1);
-          if (tempToExchange.has(candidate)) {
-            tempToExchange.delete(candidate);
-            searchPoint = 0;
-          } else {
-            searchPoint = candidate;
+
+      // Toggle all. To keep selected tiles, toggle just before exchanging.
+      if (key === '-') {
+        if (props.rack.length > 0) {
+          const tempToExchange = new Set<number>();
+          for (let i = 0; i < props.rack.length; ++i) {
+            if (!exchangedRackIndices.has(i)) {
+              tempToExchange.add(i);
+            }
           }
+          setExchangedRackIndices(tempToExchange);
+        }
+        return;
+      }
+
+      // Select one more instance if any.
+      let canDeselect = false;
+      for (let i = 0; i < props.rack.length; ++i) {
+        if (props.rack[i] === key) {
+          if (!exchangedRackIndices.has(i)) {
+            setExchangedRackIndices(new Set(exchangedRackIndices).add(i));
+            return;
+          }
+          canDeselect = true;
         }
       }
-      setExchangedRackIndices(tempToExchange);
+
+      if (canDeselect) {
+        // Deselect all instances at once.
+        const tempToExchange = new Set(exchangedRackIndices);
+        for (let i = 0; i < props.rack.length; ++i) {
+          if (props.rack[i] === key) {
+            tempToExchange.delete(i);
+          }
+        }
+        setExchangedRackIndices(tempToExchange);
+      }
     },
     [
       delayInput,
@@ -95,10 +120,8 @@ export const ExchangeTiles = React.memo((props: Props) => {
     // reset exchange rack when opening modal.
 
     window.setTimeout(() => {
-      if (stillMountedRef.current) {
-        setDelayInput(false);
-        setExchangedRackIndices(new Set<number>());
-      }
+      setDelayInput(false);
+      setExchangedRackIndices(new Set<number>());
     }, 100);
   }, [props.modalVisible]);
   useEffect(() => {
@@ -137,9 +160,11 @@ export const ExchangeTiles = React.memo((props: Props) => {
       footer={
         <>
           {exchangedRackIndices.size > 0 ? (
-            <p className="label">{`${exchangedRackIndices.size} ${
-              exchangedRackIndices.size === 1 ? 'tile' : 'tiles'
-            } selected`}</p>
+            <p className="label">{`${singularCount(
+              exchangedRackIndices.size,
+              'tile',
+              'tiles'
+            )} selected`}</p>
           ) : null}
           <Button
             key="submit"

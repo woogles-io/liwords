@@ -2,6 +2,7 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { Card, Dropdown, Menu } from 'antd';
 import { PoolFormatType, PoolFormats } from '../constants/pool_formats';
+import { singularCount } from '../utils/plural';
 
 type poolType = { [rune: string]: number };
 
@@ -109,9 +110,6 @@ const Pool = React.memo((props: Props) => {
       </Link>
     </Dropdown>
   );
-
-  const singularCount = (n: number, singular: string, plural: string) =>
-    `${n} ${n === 1 ? singular : plural}`;
 
   const renderContents = (title?: string) => (
     <div className="pool">

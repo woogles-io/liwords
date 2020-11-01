@@ -4867,7 +4867,9 @@ proto.liwords.GameEndedEvent.toObject = function(includeInstance, msg) {
     winner: jspb.Message.getFieldWithDefault(msg, 4, ""),
     loser: jspb.Message.getFieldWithDefault(msg, 5, ""),
     tie: jspb.Message.getBooleanFieldWithDefault(msg, 6, false),
-    time: jspb.Message.getFieldWithDefault(msg, 7, 0)
+    time: jspb.Message.getFieldWithDefault(msg, 7, 0),
+    ratingDeltasMap: (f = msg.getRatingDeltasMap()) ? f.toObject(includeInstance, undefined) : [],
+    history: (f = msg.getHistory()) && macondo_api_proto_macondo_macondo_pb.GameHistory.toObject(includeInstance, f)
   };
 
   if (includeInstance) {
@@ -4935,6 +4937,17 @@ proto.liwords.GameEndedEvent.deserializeBinaryFromReader = function(msg, reader)
     case 7:
       var value = /** @type {number} */ (reader.readInt64());
       msg.setTime(value);
+      break;
+    case 8:
+      var value = msg.getRatingDeltasMap();
+      reader.readMessage(value, function(message, reader) {
+        jspb.Map.deserializeBinary(message, reader, jspb.BinaryReader.prototype.readString, jspb.BinaryReader.prototype.readInt32, null, "", 0);
+         });
+      break;
+    case 9:
+      var value = new macondo_api_proto_macondo_macondo_pb.GameHistory;
+      reader.readMessage(value,macondo_api_proto_macondo_macondo_pb.GameHistory.deserializeBinaryFromReader);
+      msg.setHistory(value);
       break;
     default:
       reader.skipField();
@@ -5006,6 +5019,18 @@ proto.liwords.GameEndedEvent.serializeBinaryToWriter = function(message, writer)
     writer.writeInt64(
       7,
       f
+    );
+  }
+  f = message.getRatingDeltasMap(true);
+  if (f && f.getLength() > 0) {
+    f.serializeBinary(8, writer, jspb.BinaryWriter.prototype.writeString, jspb.BinaryWriter.prototype.writeInt32);
+  }
+  f = message.getHistory();
+  if (f != null) {
+    writer.writeMessage(
+      9,
+      f,
+      macondo_api_proto_macondo_macondo_pb.GameHistory.serializeBinaryToWriter
     );
   }
 };
@@ -5142,6 +5167,65 @@ proto.liwords.GameEndedEvent.prototype.getTime = function() {
  */
 proto.liwords.GameEndedEvent.prototype.setTime = function(value) {
   return jspb.Message.setProto3IntField(this, 7, value);
+};
+
+
+/**
+ * map<string, int32> rating_deltas = 8;
+ * @param {boolean=} opt_noLazyCreate Do not create the map if
+ * empty, instead returning `undefined`
+ * @return {!jspb.Map<string,number>}
+ */
+proto.liwords.GameEndedEvent.prototype.getRatingDeltasMap = function(opt_noLazyCreate) {
+  return /** @type {!jspb.Map<string,number>} */ (
+      jspb.Message.getMapField(this, 8, opt_noLazyCreate,
+      null));
+};
+
+
+/**
+ * Clears values from the map. The map will be non-null.
+ * @return {!proto.liwords.GameEndedEvent} returns this
+ */
+proto.liwords.GameEndedEvent.prototype.clearRatingDeltasMap = function() {
+  this.getRatingDeltasMap().clear();
+  return this;};
+
+
+/**
+ * optional macondo.GameHistory history = 9;
+ * @return {?proto.macondo.GameHistory}
+ */
+proto.liwords.GameEndedEvent.prototype.getHistory = function() {
+  return /** @type{?proto.macondo.GameHistory} */ (
+    jspb.Message.getWrapperField(this, macondo_api_proto_macondo_macondo_pb.GameHistory, 9));
+};
+
+
+/**
+ * @param {?proto.macondo.GameHistory|undefined} value
+ * @return {!proto.liwords.GameEndedEvent} returns this
+*/
+proto.liwords.GameEndedEvent.prototype.setHistory = function(value) {
+  return jspb.Message.setWrapperField(this, 9, value);
+};
+
+
+/**
+ * Clears the message field making it undefined.
+ * @return {!proto.liwords.GameEndedEvent} returns this
+ */
+proto.liwords.GameEndedEvent.prototype.clearHistory = function() {
+  return this.setHistory(undefined);
+};
+
+
+/**
+ * Returns whether this field is set.
+ * @return {boolean}
+ */
+proto.liwords.GameEndedEvent.prototype.hasHistory = function() {
+  return jspb.Message.getField(this, 9) != null;
 };
 
 

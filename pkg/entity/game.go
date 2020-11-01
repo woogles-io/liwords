@@ -59,6 +59,8 @@ type Quickdata struct {
 	OriginalRequestId string                      `json:"o"`
 	FinalScores       []int32                     `json:"s"`
 	PlayerInfo        []*gameservicepb.PlayerInfo `json:"pi"`
+	OriginalRatings   []float64
+	NewRatings        []float64
 }
 
 // Holds the tournament data for a game.

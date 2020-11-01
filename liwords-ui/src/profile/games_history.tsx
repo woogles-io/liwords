@@ -33,9 +33,7 @@ export const GamesHistoryCard = React.memo((props: Props) => {
           to={`/profile/${encodeURIComponent(
             item.players[1 - userplace].nickname
           )}`}
-          onClick={() => {
-            resetStore();
-          }}
+          onClick={resetStore}
         >
           {item.players[1 - userplace].nickname}
         </Link>
@@ -43,9 +41,7 @@ export const GamesHistoryCard = React.memo((props: Props) => {
       const scores = item.scores ? (
         <Link
           to={`/game/${encodeURIComponent(String(item.game_id ?? ''))}`}
-          onClick={() => {
-            resetStore();
-          }}
+          onClick={resetStore}
         >
           {item.scores[userplace]} - {item.scores[1 - userplace]}
         </Link>

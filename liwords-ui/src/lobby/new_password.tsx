@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React from 'react';
+import { useMountedState } from '../utils/mounted';
 import { Row, Col, Input, Form, Alert, notification, Button } from 'antd';
 import axios from 'axios';
 import qs from 'qs';
@@ -24,8 +25,7 @@ const tailLayout = {
 type Props = {};
 
 export const NewPassword = (props: Props) => {
-  const stillMountedRef = React.useRef(true);
-  React.useEffect(() => () => void (stillMountedRef.current = false), []);
+  const { useState } = useMountedState();
 
   const [err, setErr] = useState('');
   const location = useLocation();
@@ -55,9 +55,7 @@ export const NewPassword = (props: Props) => {
       })
       .catch((e) => {
         if (e.response) {
-          if (stillMountedRef.current) {
-            setErr(e.response.data.msg);
-          }
+          setErr(e.response.data.msg);
         }
       });
   };
