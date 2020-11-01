@@ -74,15 +74,18 @@ jobs:
           sed -i "s:macondo.wasm:macondo.${md5}.wasm:" /tmp/liwords-ui/build/config.js &&
           mv /tmp/liwords-ui/build/wasm/macondo.wasm /tmp/liwords-ui/build/wasm/macondo.${md5}.wasm
 
-      # cache everything except index.html and config.js
+      # cache everything except index.html, config files, and macondo executables
       - run: >
           cd /tmp/liwords-ui/build &&
           aws s3 sync --cache-control 'max-age=3024000'
-          --exclude index.html --exclude config.js --exclude 'wasm/*.wasm'
+          --exclude index.html --exclude config.js --exclude wasm/macondo.js --exclude 'wasm/*.wasm'
           . s3://woogles.io
+      # no-cache everything except the wasm file
       - run: >
           cd /tmp/liwords-ui/build &&
           aws s3 sync --cache-control 'no-cache' --exclude 'wasm/*.wasm' . s3://woogles.io
+      # cache the wasm file separately. We can't put it in the first sync call above
+      # because we require the content-type to be set properly.
       - run: >
           cd /tmp/liwords-ui/build &&
           aws s3 sync --cache-control 'max-age=3024000' --exclude '*' --include 'wasm/*.wasm'
