@@ -1,71 +1,90 @@
 export interface Macondo {
-  precache: (cacheKey: string, rawBytes: Uint8Array) => void;
-  analyze: (jsonBoard: string) => string;
+  precache: (cacheKey: string, path: string) => Promise<unknown>;
+  analyze: (jsonBoard: string) => Promise<string>;
 }
 
-const macondoCache = new WeakMap();
-
-export const fetchAndPrecache = async (
-  macondo: Macondo,
-  cacheKey: string,
-  path: string
-) => {
-  let cachedStuffs = macondoCache.get(macondo);
-  if (!cachedStuffs) {
-    macondoCache.set(macondo, (cachedStuffs = {}));
-  }
-  if (!cachedStuffs[cacheKey]) {
-    const resp = await fetch(path);
-    if (resp.ok) {
-      macondo.precache(cacheKey, new Uint8Array(await resp.arrayBuffer()));
-      cachedStuffs[cacheKey] = true;
-    } else {
-      throw new Error(`Unable to cache ${cacheKey}`);
-    }
-  }
-};
-
-// Good enough for now. If need to reload, just refresh the whole page.
-const macondoPromise = new Promise<Macondo>((res, rej) => {
-  const w = window as any;
-  w.resMacondo = res;
-  w.rejMacondo = rej;
-});
-
-let macondoLoadAttempted = false;
+let wrappedWorker: Macondo;
 
 export const getMacondo = async () => {
-  if (macondoLoadAttempted) return await macondoPromise;
-  macondoLoadAttempted = true;
-  try {
-    const Go = (window as any).Go;
-    // Check if wasm_exec.js is loaded in public/index.html
-    if (!Go) throw new Error('Go not loaded');
-    const go = new Go();
-    const macondoFilename = window.RUNTIME_CONFIGURATION.macondoFilename;
-    const resp = fetch(`/wasm/${macondoFilename}`);
-    let resultPromise;
-    if (WebAssembly.instantiateStreaming) {
-      // Better browsers.
-      resultPromise = WebAssembly.instantiateStreaming(resp, go.importObject);
-    } else {
-      // Apple browsers.
-      resultPromise = WebAssembly.instantiate(
-        await (await resp).arrayBuffer(),
-        go.importObject
-      );
-    }
-    const result = await resultPromise;
-    const instance = go.run(result.instance);
-    instance.finally(() => {
-      // Good enough for now. Note that we can no longer call the returned functions.
-      (window as any).rejMacondo(
-        new Error('Go did not resolve macondoPromise')
-      );
+  if (!wrappedWorker) {
+    let pendings: {
+      [key: string]: {
+        promise: Promise<unknown>;
+        res: (a: any) => void;
+        rej: (a: any) => void;
+      };
+    } = {};
+
+    const newPendingId = () => {
+      while (true) {
+        const d = String(performance.now());
+        if (d in pendings) continue;
+
+        let promRes: (a: any) => void;
+        let promRej: (a: any) => void;
+        const prom = new Promise((res, rej) => {
+          promRes = res;
+          promRej = rej;
+        });
+
+        pendings[d] = {
+          promise: prom,
+          res: promRes!,
+          rej: promRej!,
+        };
+
+        return d;
+      }
+    };
+
+    // First-time load.
+    const worker = new Worker('/wasm/macondo.js');
+
+    worker.postMessage([
+      'getMacondo',
+      window.RUNTIME_CONFIGURATION.macondoFilename,
+    ]);
+
+    await new Promise((res, rej) => {
+      worker.onmessage = (msg) => {
+        if (msg.data[0] === 'response') {
+          // ["response", id, true, resp]
+          // ["response", id, false] (error)
+          const pending = pendings[msg.data[1]];
+          if (pending) {
+            if (msg.data[2]) {
+              pending.res!(msg.data[3]);
+            } else {
+              pending.rej!(undefined);
+            }
+          }
+        } else if (msg.data[0] === 'getMacondo') {
+          // ["getMacondo", true] (ok)
+          // ["getMacondo", false] (error)
+          msg.data[1] ? res() : rej();
+        }
+      };
     });
-    return await macondoPromise;
-  } catch (e) {
-    (window as any).rejMacondo(e);
-    throw e;
+
+    const sendRequest = async (req: any) => {
+      const id = newPendingId();
+      worker.postMessage(['request', id, req]);
+      try {
+        return await pendings[id].promise;
+      } finally {
+        delete pendings[id];
+      }
+    };
+
+    wrappedWorker = {
+      precache: async (cacheKey: string, path: string) => {
+        return await sendRequest(['precache', cacheKey, path]);
+      },
+      analyze: async (jsonBoard: string) => {
+        return (await sendRequest(['analyze', jsonBoard])) as string;
+      },
+    };
   }
+
+  return wrappedWorker;
 };
