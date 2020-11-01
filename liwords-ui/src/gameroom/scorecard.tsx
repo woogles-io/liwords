@@ -10,6 +10,7 @@ import { tilePlacementEventDisplay } from '../utils/cwgame/game_event';
 import { PlayerMetadata } from './game_info';
 import { Turn, gameEventsToTurns } from '../store/reducers/turns';
 import { PoolFormatType } from '../constants/pool_formats';
+const screenSizes = require('../base.scss');
 
 type Props = {
   playing: boolean;
@@ -226,6 +227,10 @@ export const ScoreCard = React.memo((props: Props) => {
   const [notepadVisible, setNotepadVisible] = useState(false);
   const resizeListener = () => {
     const currentEl = el.current;
+    const vw = Math.max(
+      document.documentElement.clientWidth || 0,
+      window.innerWidth || 0
+    );
     if (currentEl) {
       currentEl.scrollTop = currentEl.scrollHeight || 0;
       const boardHeight = document.getElementById('board-container')
@@ -234,15 +239,18 @@ export const ScoreCard = React.memo((props: Props) => {
       const playerCardTop =
         document.getElementById('player-cards-vertical')?.clientHeight || 0;
       const navHeight = document.getElementById('main-nav')?.clientHeight || 0;
-      if (boardHeight) {
+      if (boardHeight && vw > parseInt(screenSizes.screenSizeTablet, 10)) {
         setCardHeight(
           boardHeight -
             currentEl?.getBoundingClientRect().top -
+            window.pageYOffset -
             poolTop -
             playerCardTop -
             15 +
             navHeight
         );
+      } else {
+        setCardHeight(0);
       }
     }
   };

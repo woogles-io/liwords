@@ -6,6 +6,7 @@ import axios from 'axios';
 import 'antd/dist/antd.css';
 
 import { Table as GameTable } from './gameroom/table';
+import TileImages from './gameroom/tile_images';
 import { Lobby } from './lobby/lobby';
 import {
   useExcludedPlayersStoreContext,
@@ -106,6 +107,9 @@ const App = React.memo(() => {
 
         <Route path="/profile/:username">
           <UserProfile />
+        </Route>
+        <Route path="/tile_images">
+          <TileImages />
         </Route>
       </Switch>
     </div>

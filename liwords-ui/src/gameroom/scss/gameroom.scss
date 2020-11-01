@@ -521,7 +521,10 @@ $tile-transition: width ease-in 100ms, height ease-in 100ms, background-color ea
 
 // Pool
 .pool {
-  order: 3;
+  order: -1;
+  @media (min-width: $screen-tablet-min) {
+    order: 3;
+  }
   header {
     @include type-title;
   }
@@ -634,8 +637,8 @@ $tile-transition: width ease-in 100ms, height ease-in 100ms, background-color ea
   .ant-card-body {
     padding: 0;
     & > div {
-      min-height: 134px;
-      max-height: 134px;
+      min-height: 300px;
+      max-height: 300px;
       padding: 8px 16px 16px;
       overflow-y: auto;
     }
@@ -665,7 +668,7 @@ $tile-transition: width ease-in 100ms, height ease-in 100ms, background-color ea
   .turn {
     @include type-monospace;
     color: $color-gray-dark;
-    font-size: 11px;
+    font-size: 14px;
     display: flex;
     padding: 6px 0;
     justify-content: space-between;

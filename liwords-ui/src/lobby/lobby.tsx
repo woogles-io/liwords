@@ -26,6 +26,7 @@ import {
 } from '../store/store';
 import { singularCount } from '../utils/plural';
 import './lobby.scss';
+import { Announcements } from './announcements';
 
 const sendSeek = (
   game: SoughtGame,
@@ -158,27 +159,8 @@ export const Lobby = (props: Props) => {
           onSeekSubmit={onSeekSubmit}
           tournamentID={tournamentID}
         />
-        <div className="announcements">
-          <Card>
-            {tournamentID ? (
-              <h3>Tourney {tournamentID} </h3>
-            ) : (
-              <>
-                <h3>Woogles is live!</h3>
-                <p>
-                  Welcome to our open beta. Sign up and play some games. We
-                  still have a lot of features and designs to build, but please{' '}
-                  <a className="link" href="https://discord.gg/5yCJjmW">
-                    join our Discord server
-                  </a>{' '}
-                  and let us know if you find any issues.
-                </p>
-                <br />
-                <p>Thanks for Woogling!</p>
-              </>
-            )}
-          </Card>
-        </div>
+
+        <Announcements tournamentID={tournamentID} />
       </div>
     </>
   );

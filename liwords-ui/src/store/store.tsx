@@ -279,13 +279,12 @@ const gameStateInitializer = (
   clockController: React.MutableRefObject<ClockController | null>,
   onClockTick: (p: PlayerOrder, t: Millis) => void,
   onClockTimeout: (p: PlayerOrder) => void
-) => {
-  const state = defaultGameState;
-  state.clockController = clockController;
-  state.onClockTick = onClockTick;
-  state.onClockTimeout = onClockTimeout;
-  return state;
-};
+) => ({
+  ...defaultGameState,
+  clockController,
+  onClockTick,
+  onClockTimeout,
+});
 
 // Support for examining. Must be nested deeper than the Real Stuffs.
 

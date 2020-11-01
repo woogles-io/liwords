@@ -72,6 +72,7 @@ type Props = {
   gameDone: boolean;
   playerMeta: Array<PlayerMetadata>;
   tournamentID?: string;
+  lexicon: string;
 };
 
 const shuffleString = (a: string): string => {
@@ -978,6 +979,7 @@ export const BoardPanel = React.memo((props: Props) => {
         gameEndControls={examinableGameEndMessage !== '' || props.gameDone}
         currentRack={props.currentRack}
         tournamentID={props.tournamentID}
+        lexicon={props.lexicon}
       />
       <ExchangeTiles
         rack={props.currentRack}
