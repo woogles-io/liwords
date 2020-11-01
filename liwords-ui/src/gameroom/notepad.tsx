@@ -24,7 +24,7 @@ const humanReadablePosition = (
 ): string => {
   const readableCol = String.fromCodePoint(firstLetter.col + 65);
   const readableRow = (firstLetter.row + 1).toString();
-  if (direction === 1) {
+  if (direction === Direction.Horizontal) {
     return readableRow + readableCol;
   }
   return readableCol + readableRow;
