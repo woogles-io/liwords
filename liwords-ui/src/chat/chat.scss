@@ -144,9 +144,9 @@ p {
 @media (min-height: $screen-min-height-desktop-min) and (min-width: $screen-desktop-min) {
   .game-table {
     .chat-area .ant-card.chat {
-      height: 545px;
+      height: 495px;
       .entities {
-        max-height: 370px;
+        max-height: 320px;
       }
     }
   }

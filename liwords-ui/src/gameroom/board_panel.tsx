@@ -438,14 +438,8 @@ export const BoardPanel = React.memo((props: Props) => {
       setArrowProperties({ row: 0, col: 0, horizontal: false, show: false });
     }
     lastLettersRef.current = props.board.letters;
-  }, [
-    isExamining,
-    props.board.letters,
-    props.currentRack,
-    setPlacedTilesTempScore,
-    setPlacedTiles,
-    setDisplayedRack,
-  ]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isExamining, props.board.letters, props.currentRack]);
 
   useEffect(() => {
     // Stop the clock if we unload the board panel.
@@ -632,6 +626,7 @@ export const BoardPanel = React.memo((props: Props) => {
         setPlacedTilesTempScore(handlerReturn.playScore);
       }
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [
       arrowProperties,
       currentMode,
@@ -645,9 +640,6 @@ export const BoardPanel = React.memo((props: Props) => {
       props.gameDone,
       recallTiles,
       shuffleTiles,
-      setPlacedTilesTempScore,
-      setPlacedTiles,
-      setDisplayedRack,
     ]
   );
 
@@ -678,14 +670,8 @@ export const BoardPanel = React.memo((props: Props) => {
         setCurrentMode('BLANK_MODAL');
       }
     },
-    [
-      displayedRack,
-      placedTiles,
-      props.board,
-      setPlacedTilesTempScore,
-      setPlacedTiles,
-      setDisplayedRack,
-    ]
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [displayedRack, placedTiles, props.board]
   );
 
   const clickToBoard = useCallback(
@@ -742,6 +728,7 @@ export const BoardPanel = React.memo((props: Props) => {
         row: newrow,
       });
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [
       arrowProperties.col,
       arrowProperties.horizontal,
@@ -750,9 +737,6 @@ export const BoardPanel = React.memo((props: Props) => {
       displayedRack,
       placedTiles,
       props.board,
-      setPlacedTilesTempScore,
-      setPlacedTiles,
-      setDisplayedRack,
     ]
   );
 
@@ -777,13 +761,8 @@ export const BoardPanel = React.memo((props: Props) => {
       setPlacedTiles(handlerReturn.newPlacedTiles);
       setPlacedTilesTempScore(handlerReturn.playScore);
     },
-    [
-      displayedRack,
-      placedTiles,
-      props.board,
-      setPlacedTiles,
-      setPlacedTilesTempScore,
-    ]
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [displayedRack, placedTiles, props.board]
   );
 
   const handleBlankModalCancel = useCallback(() => {
@@ -807,14 +786,8 @@ export const BoardPanel = React.memo((props: Props) => {
       setPlacedTilesTempScore(handlerReturn.playScore);
       setArrowProperties({ row: 0, col: 0, horizontal: false, show: false });
     },
-    [
-      displayedRack,
-      placedTiles,
-      props.board,
-      setPlacedTilesTempScore,
-      setPlacedTiles,
-      setDisplayedRack,
-    ]
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [displayedRack, placedTiles, props.board]
   );
 
   const moveRackTile = useCallback(
@@ -826,7 +799,8 @@ export const BoardPanel = React.memo((props: Props) => {
         setDisplayedRack(newRack.join(''));
       }
     },
-    [displayedRack, setDisplayedRack]
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [displayedRack]
   );
 
   const showExchangeModal = useCallback(() => {

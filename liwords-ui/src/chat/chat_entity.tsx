@@ -42,14 +42,10 @@ export const ChatEntity = (props: EntityProps) => {
           <p className="timestamp">{ts}</p>
           <p className="message-body">
             <span className="sender">
-              {props.senderId && !props.anonymous ? (
-                <UsernameWithContext
-                  username={props.sender}
-                  userID={props.senderId}
-                />
-              ) : (
-                props.sender
-              )}
+              <UsernameWithContext
+                username={props.sender}
+                userID={props.senderId}
+              />
             </span>
             <span className="message">{props.message}</span>
           </p>
