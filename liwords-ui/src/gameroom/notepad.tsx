@@ -10,7 +10,7 @@ import {
   contiguousTilesFromTileSet,
   simpletile,
 } from '../utils/cwgame/scoring';
-import { Direction, isMobile, isTablet } from '../utils/cwgame/common';
+import { Direction, isMobile } from '../utils/cwgame/common';
 import { useMountedState } from '../utils/mounted';
 
 type NotepadProps = {
