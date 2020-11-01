@@ -20,12 +20,7 @@ export const useMountedState: () => {
 } = () => {
   const isMountedRef = React.useRef(true);
   React.useEffect(() => () => void (isMountedRef.current = false), []);
-  const identsRef = React.useRef<
-    Array<{
-      setState: React.Dispatch<any>;
-      safelySetState: React.Dispatch<any>;
-    }>
-  >([]);
+  const identsRef = React.useRef<Array<React.Dispatch<any>>>([]);
   const idRef = React.useRef(-1);
   idRef.current = -1;
   const safeUseState = React.useCallback((initialState) => {
@@ -33,17 +28,12 @@ export const useMountedState: () => {
     const id = ++idRef.current;
     const ret = JustUseState(initialState);
     const [state, setState] = ret;
-    if (idents[id]?.setState === setState) {
-      // can reuse the same function
-    } else {
-      idents[id] = {
-        setState,
-        safelySetState: (value) => {
-          if (isMountedRef.current) return setState(value);
-        },
-      };
+    if (id >= idents.length) {
+      idents.push((value) => {
+        if (isMountedRef.current) return setState(value);
+      });
     }
-    return [state, idents[id].safelySetState] as typeof ret;
+    return [state, idents[id]] as typeof ret;
   }, []);
   // "useState" so linter allows omitting returned setter as dependency
   return { useState: safeUseState };
