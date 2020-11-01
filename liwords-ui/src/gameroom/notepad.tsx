@@ -51,9 +51,22 @@ export const Notepad = React.memo((props: NotepadProps) => {
         contiguousTiles[1],
         contiguousTiles[0][0]
       );
-      play = contiguousTiles[0]
-        .map((tile) => (tile.fresh ? tile.letter : `(${tile.letter})`))
-        .join('');
+      let inParen = false;
+      for (const tile of contiguousTiles[0]) {
+        if (!tile.fresh) {
+          if (!inParen) {
+            play += '(';
+            inParen = true;
+          }
+        } else {
+          if (inParen) {
+            play += ')';
+            inParen = false;
+          }
+        }
+        play += tile.letter;
+      }
+      if (inParen) play += ')';
     }
     setCurNotepad(
       `${curNotepad ? curNotepad + '\n' : ''}${
