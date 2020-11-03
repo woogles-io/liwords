@@ -334,7 +334,10 @@ ul
     text-transform: uppercase;
     transition: none;
     margin: 0 6px;
-    padding: 3px 18px;
+
+    &:not(.ant-btn-circle) {
+      padding: 3px 18px;
+    }
     span.key-command {
       position: absolute;
       top: 0;
@@ -369,16 +372,18 @@ ul
   }
 
   button.ant-btn-primary, button.primary, a.btn-primary {
-    height: 36px;
     margin: 6px 3px;
     background: $color-primary-dark;
     color: white;
     text-transform: uppercase;
-    border-radius: 3px;
     border: 0;
     outline: 0;
     transition: none;
     cursor: pointer;
+    &:not(.ant-btn-circle) {
+      height: 36px;
+      border-radius: 3px;
+    }
     &.ant-btn-dangerous {
       &,
       &:hover,

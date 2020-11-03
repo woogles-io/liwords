@@ -15,7 +15,7 @@ import {
   useResetStoreContext,
 } from '../store/store';
 import { Unrace } from '../utils/unrace';
-import { fetchAndPrecache, getMacondo } from '../wasm/loader';
+import { getMacondo } from '../wasm/loader';
 
 const unrace = new Unrace();
 
@@ -98,9 +98,7 @@ const ExamineGameControls = React.memo((props: { lexicon: string }) => {
       await unrace.run(() =>
         Promise.all(
           filesByLexicon.map(({ lexicons, cacheKey, path }) =>
-            lexicons.includes(lexicon)
-              ? fetchAndPrecache(macondo, cacheKey, path)
-              : null
+            lexicons.includes(lexicon) ? macondo.precache(cacheKey, path) : null
           )
         )
       );

@@ -47,6 +47,7 @@ import { StreakWidget } from './streak_widget';
 import { PlayState } from '../gen/macondo/api/proto/macondo/macondo_pb';
 import { endGameMessageFromGameInfo } from '../store/end_of_game';
 import { singularCount } from '../utils/plural';
+import { Notepad } from './notepad';
 
 type Props = {
   sendSocketMsg: (msg: Uint8Array) => void;
@@ -497,6 +498,7 @@ export const Table = React.memo((props: Props) => {
             presences={presences}
             peopleOnlineContext={peopleOnlineContext}
           />
+          <Notepad includeCard />
         </div>
         {/* There are two player cards, css hides one of them. */}
         <div className="sticky-player-card-container">

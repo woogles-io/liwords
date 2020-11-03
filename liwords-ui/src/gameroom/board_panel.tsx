@@ -45,6 +45,7 @@ import {
   useExaminableGameEndMessageStoreContext,
   useExamineStoreContext,
   useGameContextStoreContext,
+  useTentativeTileContext,
   useTimerStoreContext,
 } from '../store/store';
 import { BlankSelector } from './blank_selector';
@@ -175,11 +176,6 @@ export const BoardPanel = React.memo((props: Props) => {
     show: false,
   });
 
-  const [displayedRack, setDisplayedRack] = useState(props.currentRack);
-  const [placedTiles, setPlacedTiles] = useState(new Set<EphemeralTile>());
-  const [placedTilesTempScore, setPlacedTilesTempScore] = useState<
-    number | undefined
-  >(undefined);
   const {
     gameContext: examinableGameContext,
   } = useExaminableGameContextStoreContext();
@@ -191,8 +187,16 @@ export const BoardPanel = React.memo((props: Props) => {
   const { stopClock } = useTimerStoreContext();
   const [exchangeAllowed, setexchangeAllowed] = useState(true);
 
-  const observer = !props.playerMeta.some((p) => p.nickname === props.username);
+  const {
+    displayedRack,
+    setDisplayedRack,
+    placedTiles,
+    setPlacedTiles,
+    placedTilesTempScore,
+    setPlacedTilesTempScore,
+  } = useTentativeTileContext();
 
+  const observer = !props.playerMeta.some((p) => p.nickname === props.username);
   const isMyTurn = useCallback(() => {
     const iam = gameContext.nickToPlayerOrder[props.username];
     return iam && iam === `p${examinableGameContext.onturn}`;
@@ -344,11 +348,14 @@ export const BoardPanel = React.memo((props: Props) => {
     props.board.dim,
     props.board.letters,
     props.currentRack,
+    setPlacedTilesTempScore,
+    setPlacedTiles,
+    setDisplayedRack,
   ]);
 
   const shuffleTiles = useCallback(() => {
-    setDisplayedRack((displayedRack) => shuffleString(displayedRack));
-  }, []);
+    setDisplayedRack(shuffleString(displayedRack));
+  }, [setDisplayedRack, displayedRack]);
 
   const lastLettersRef = useRef<string>();
   const readOnlyEffectDependenciesRef = useRef<{
@@ -432,6 +439,7 @@ export const BoardPanel = React.memo((props: Props) => {
       setArrowProperties({ row: 0, col: 0, horizontal: false, show: false });
     }
     lastLettersRef.current = props.board.letters;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isExamining, props.board.letters, props.currentRack]);
 
   useEffect(() => {
@@ -619,6 +627,7 @@ export const BoardPanel = React.memo((props: Props) => {
         setPlacedTilesTempScore(handlerReturn.playScore);
       }
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [
       arrowProperties,
       currentMode,
@@ -662,6 +671,7 @@ export const BoardPanel = React.memo((props: Props) => {
         setCurrentMode('BLANK_MODAL');
       }
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [displayedRack, placedTiles, props.board]
   );
 
@@ -719,6 +729,7 @@ export const BoardPanel = React.memo((props: Props) => {
         row: newrow,
       });
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [
       arrowProperties.col,
       arrowProperties.horizontal,
@@ -751,6 +762,7 @@ export const BoardPanel = React.memo((props: Props) => {
       setPlacedTiles(handlerReturn.newPlacedTiles);
       setPlacedTilesTempScore(handlerReturn.playScore);
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [displayedRack, placedTiles, props.board]
   );
 
@@ -775,6 +787,7 @@ export const BoardPanel = React.memo((props: Props) => {
       setPlacedTilesTempScore(handlerReturn.playScore);
       setArrowProperties({ row: 0, col: 0, horizontal: false, show: false });
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [displayedRack, placedTiles, props.board]
   );
 
@@ -787,6 +800,7 @@ export const BoardPanel = React.memo((props: Props) => {
         setDisplayedRack(newRack.join(''));
       }
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [displayedRack]
   );
 

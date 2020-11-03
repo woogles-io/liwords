@@ -504,7 +504,15 @@ func handleEventAfterLockingGame(ctx context.Context, gameStore GameStore, userS
 			return entGame, err
 		}
 	}
-
+	// If the game hasn't ended yet, save it to the store. If it HAS ended,
+	// it was already saved to the store somewhere above (in performEndgameDuties)
+	// and we don't want to save it again as it will reload it into the cache.
+	if entGame.GameEndReason == pb.GameEndReason_NONE {
+		if err := gameStore.Set(ctx, entGame); err != nil {
+			log.Err(err).Msg("error-saving")
+			return entGame, err
+		}
+	}
 	return entGame, nil
 }
 
