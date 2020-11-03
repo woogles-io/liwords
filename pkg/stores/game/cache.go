@@ -33,7 +33,9 @@ const (
 	// Assume every game takes up roughly 50KB in memory
 	// This is roughly 200 MB and allows for 4000 simultaneous games.
 	// We will want to increase this as we grow (as well as the size of our container)
-	CacheCap = 4000
+	// XXX: The comments above are outdated until we figure out more scientifically
+	// how much memory a game takes up. This can be done by looking at the heap and estimating.
+	CacheCap = 400
 )
 
 // Cache will reside in-memory, and will be per-node. If we add more nodes

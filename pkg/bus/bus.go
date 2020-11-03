@@ -199,7 +199,7 @@ outerfor:
 				}
 			}
 		case <-ctx.Done():
-			log.Info().Msg("context done, breaking")
+			log.Info().Msg("pubsub context done, breaking")
 			break outerfor
 
 		case <-adjudicator.C:

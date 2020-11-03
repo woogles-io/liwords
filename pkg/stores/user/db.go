@@ -656,3 +656,12 @@ func (s *DBStore) ResetStatsAndRatings(ctx context.Context, uid string) error {
 func (s *DBStore) Disconnect() {
 	s.db.Close()
 }
+
+func (s *DBStore) Count(ctx context.Context) (int64, error) {
+	var count int64
+	result := s.db.Model(&User{}).Count(&count)
+	if result.Error != nil {
+		return 0, result.Error
+	}
+	return count, nil
+}

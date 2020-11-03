@@ -134,8 +134,8 @@ func (s *DBStore) Get(ctx context.Context, id string) (*entity.Game, error) {
 	if err == nil {
 		// it's ok for a game to not have tournament data
 		entGame.TournamentData = &trdata
+		entGame.TournamentData.Id = g.TournamentID
 	}
-	entGame.TournamentData.Id = g.TournamentID
 	return entGame, nil
 }
 
@@ -493,21 +493,30 @@ func (s *DBStore) toDBObj(g *entity.Game) (*game, error) {
 		return nil, err
 	}
 
-	dbg := &game{
-		UUID:          g.GameID(),
-		Player0ID:     g.PlayerDBIDs[0],
-		Player1ID:     g.PlayerDBIDs[1],
-		Timers:        timers,
-		Stats:         stats,
-		Quickdata:     quickdata,
-		Started:       g.Started,
-		GameEndReason: int(g.GameEndReason),
-		WinnerIdx:     g.WinnerIdx,
-		LoserIdx:      g.LoserIdx,
-		Request:       req,
-		History:       hist,
-		TournamentID:  g.TournamentData.Id,
+	tourneydata, err := json.Marshal(g.TournamentData)
+	if err != nil {
+		return nil, err
 	}
+
+	dbg := &game{
+		UUID:           g.GameID(),
+		Player0ID:      g.PlayerDBIDs[0],
+		Player1ID:      g.PlayerDBIDs[1],
+		Timers:         timers,
+		Stats:          stats,
+		Quickdata:      quickdata,
+		Started:        g.Started,
+		GameEndReason:  int(g.GameEndReason),
+		WinnerIdx:      g.WinnerIdx,
+		LoserIdx:       g.LoserIdx,
+		Request:        req,
+		History:        hist,
+		TournamentData: tourneydata,
+	}
+	if g.TournamentData != nil {
+		dbg.TournamentID = g.TournamentData.Id
+	}
+
 	return dbg, nil
 }
 

@@ -37,6 +37,7 @@ type backingStore interface {
 	GetFullBlocks(ctx context.Context, uid uint) ([]*entity.User, error)
 
 	UsernamesByPrefix(ctx context.Context, prefix string) ([]string, error)
+	Count(ctx context.Context) (int64, error)
 }
 
 const (
@@ -198,4 +199,8 @@ func (c *Cache) GetFullBlocks(ctx context.Context, uid uint) ([]*entity.User, er
 
 func (c *Cache) UsernamesByPrefix(ctx context.Context, prefix string) ([]string, error) {
 	return c.backing.UsernamesByPrefix(ctx, prefix)
+}
+
+func (c *Cache) Count(ctx context.Context) (int64, error) {
+	return c.backing.Count(ctx)
 }

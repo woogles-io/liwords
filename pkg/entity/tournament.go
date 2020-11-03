@@ -1,9 +1,10 @@
 package entity
 
 import (
-	"gorm.io/datatypes"
 	"sync"
 	"time"
+
+	"gorm.io/datatypes"
 
 	realtime "github.com/domino14/liwords/rpc/api/proto/realtime"
 )
@@ -41,19 +42,19 @@ const (
 const Unpaired = -1
 
 type TournamentGame struct {
-	Scores        []int                           `json:"s"`
-	Results       []realtime.TournamentGameResult `json:"r"`
-	GameEndReason realtime.GameEndReason          `json:"g"`
+	Scores        []int                           `json:"scores"`
+	Results       []realtime.TournamentGameResult `json:"results"`
+	GameEndReason realtime.GameEndReason          `json:"endReason"`
 }
 
 type Pairing struct {
-	Players  []string                        `json:"p"`
-	Games    []*TournamentGame               `json:"g"`
-	Outcomes []realtime.TournamentGameResult `json:"o"`
+	Players  []string                        `json:"players"`
+	Games    []*TournamentGame               `json:"games"`
+	Outcomes []realtime.TournamentGameResult `json:"outcomes"`
 }
 
 type PlayerRoundInfo struct {
-	Pairing *Pairing `json:"p"`
+	Pairing *Pairing `json:"pairing"`
 }
 
 type Standing struct {
@@ -94,28 +95,28 @@ type TournamentPersons struct {
 }
 
 type TournamentControls struct {
-	GameRequest    *realtime.GameRequest `json:"r"`
-	PairingMethods []PairingMethod       `json:"p"`
-	FirstMethods   []FirstMethod         `json:"f"`
-	NumberOfRounds int                   `json:"n"`
-	GamesPerRound  []int                 `json:"g"`
-	Type           TournamentType        `json:"t"`
-	StartTime      time.Time             `json:"s"`
+	GameRequest    *realtime.GameRequest `json:"req"`
+	PairingMethods []PairingMethod       `json:"pairingMethods"`
+	FirstMethods   []FirstMethod         `json:"firstMethods"`
+	NumberOfRounds int                   `json:"rounds"`
+	GamesPerRound  []int                 `json:"gamesPerRound"`
+	Type           TournamentType        `json:"type"`
+	StartTime      time.Time             `json:"startTime"`
 }
 
 type TournamentDivision struct {
-	Players         *TournamentPersons  `json:"p"`
-	Controls        *TournamentControls `json:"c"`
-	DivisionManager DivisionManager     `json:"m"`
+	Players         *TournamentPersons  `json:"players"`
+	Controls        *TournamentControls `json:"controls"`
+	DivisionManager DivisionManager     `json:"manager"`
 }
 
 type Tournament struct {
 	sync.RWMutex
-	UUID              string                         `json:"u"`
-	Name              string                         `json:"n"`
-	Description       string                         `json:"e"`
-	ExecutiveDirector string                         `json:"x"`
-	Directors         *TournamentPersons             `json:"d"`
-	IsStarted         bool                           `json:"i"`
-	Divisions         map[string]*TournamentDivision `json:"m"`
+	UUID              string                         `json:"uuid"`
+	Name              string                         `json:"name"`
+	Description       string                         `json:"desc"`
+	ExecutiveDirector string                         `json:"execDirector"`
+	Directors         *TournamentPersons             `json:"directors"`
+	IsStarted         bool                           `json:"started"`
+	Divisions         map[string]*TournamentDivision `json:"divs"`
 }
