@@ -6,6 +6,7 @@ import (
 	"encoding/base64"
 	"fmt"
 	"strings"
+	"sync"
 
 	"golang.org/x/crypto/argon2"
 )
@@ -22,6 +23,8 @@ func NewPasswordConfig(time uint32, memory uint32, threads uint8, keyLen uint32)
 	return &PasswordConfig{time, memory, threads, keyLen}
 }
 
+var argonMutex sync.Mutex
+
 // GeneratePassword is used to generate a new password hash for storing and
 // comparing at a later date.
 func GeneratePassword(c *PasswordConfig, password string) (string, error) {
@@ -32,7 +35,11 @@ func GeneratePassword(c *PasswordConfig, password string) (string, error) {
 		return "", err
 	}
 
-	hash := argon2.IDKey([]byte(password), salt, c.time, c.memory, c.threads, c.keyLen)
+	hash := func() []byte {
+		argonMutex.Lock()
+		defer argonMutex.Unlock()
+		return argon2.IDKey([]byte(password), salt, c.time, c.memory, c.threads, c.keyLen)
+	}()
 
 	// Base64 encode the salt and hashed password.
 	b64Salt := base64.RawStdEncoding.EncodeToString(salt)
@@ -66,7 +73,11 @@ func ComparePassword(password, hash string) (bool, error) {
 	}
 	c.keyLen = uint32(len(decodedHash))
 
-	comparisonHash := argon2.IDKey([]byte(password), salt, c.time, c.memory, c.threads, c.keyLen)
+	comparisonHash := func() []byte {
+		argonMutex.Lock()
+		defer argonMutex.Unlock()
+		return argon2.IDKey([]byte(password), salt, c.time, c.memory, c.threads, c.keyLen)
+	}()
 
 	return (subtle.ConstantTimeCompare(decodedHash, comparisonHash) == 1), nil
 }
