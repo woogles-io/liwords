@@ -97,6 +97,14 @@ func (c *Cache) Get(ctx context.Context, id string) (*entity.Game, error) {
 	if ok && g != nil {
 		return g.(*entity.Game), nil
 	}
+
+	// Recheck after locking, to ensure it is still not there.
+	c.Lock()
+	defer c.Unlock()
+	g, ok = c.cache.Get(id)
+	if ok && g != nil {
+		return g.(*entity.Game), nil
+	}
 	log.Info().Str("gameid", id).Msg("not-in-cache")
 	uncachedGame, err := c.backing.Get(ctx, id)
 	if err == nil {
