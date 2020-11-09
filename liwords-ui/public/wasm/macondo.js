@@ -31,32 +31,41 @@
 
   let macondoLoadAttempted = false;
 
+  // Declared here to avoid capturing too many variables in the closure.
+  const giveUp = () => {
+    // Good enough for now. Note that we can no longer call the returned functions.
+    self.rejMacondo(new Error('Go did not resolve macondoPromise'));
+  };
+
   const getMacondo = async (macondoFilename) => {
     if (macondoLoadAttempted) return await macondoPromise;
     macondoLoadAttempted = true;
     try {
-      importScripts('wasm_exec.js');
-      const Go = self.Go;
-      if (!Go) throw new Error('Go not loaded');
-      const go = new Go();
-      const resp = fetch(`/wasm/${macondoFilename}`);
-      let resultPromise;
-      if (WebAssembly.instantiateStreaming) {
-        // Better browsers.
-        resultPromise = WebAssembly.instantiateStreaming(resp, go.importObject);
-      } else {
-        // Apple browsers.
-        resultPromise = WebAssembly.instantiate(
-          await (await resp).arrayBuffer(),
-          go.importObject
+      {
+        importScripts('wasm_exec.js');
+        const Go = self.Go;
+        if (!Go) throw new Error('Go not loaded');
+        const go = new Go();
+        const instance = go.run(
+          (
+            await (async () => {
+              let resp = fetch(`/wasm/${macondoFilename}`);
+              if (WebAssembly.instantiateStreaming) {
+                // Better browsers.
+                return WebAssembly.instantiateStreaming(resp, go.importObject);
+              } else {
+                // Apple browsers.
+                let awaitedResp = await resp;
+                resp = null; // Early gc.
+                let arrayBuffer = await awaitedResp.arrayBuffer();
+                awaitedResp = null; // Early gc.
+                return WebAssembly.instantiate(arrayBuffer, go.importObject);
+              }
+            })()
+          ).instance
         );
-      }
-      const result = await resultPromise;
-      const instance = go.run(result.instance);
-      instance.finally(() => {
-        // Good enough for now. Note that we can no longer call the returned functions.
-        self.rejMacondo(new Error('Go did not resolve macondoPromise'));
-      });
+        instance.finally(giveUp);
+      } // unscope
       return await macondoPromise;
     } catch (e) {
       self.rejMacondo(e);
