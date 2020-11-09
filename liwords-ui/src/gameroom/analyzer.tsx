@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef } from 'react';
 import { Button, Card } from 'antd';
 import { BulbOutlined } from '@ant-design/icons';
 import {
@@ -115,11 +115,12 @@ export const Analyzer = React.memo((props: AnalyzerProps) => {
     setPlacedTilesTempScore,
   } = useTentativeTileContext();
 
+  const examinerId = useRef(0);
+
   useEffect(() => {
-    if (moves.length > 0) {
-      setExaminerLoading(false);
-    }
-  }, [moves, setMoves, examinerLoading, setExaminerLoading]);
+    setExaminerLoading(false);
+    examinerId.current = (examinerId.current + 1) | 0;
+  }, [moves]);
 
   const placeMove = useCallback(
     (move) => {
@@ -177,6 +178,7 @@ export const Analyzer = React.memo((props: AnalyzerProps) => {
     if (examinerLoading) {
       return;
     }
+    const examinerIdAtStart = examinerId.current;
     (async () => {
       const {
         board: { dim, letters },
@@ -194,10 +196,13 @@ export const Analyzer = React.memo((props: AnalyzerProps) => {
       };
 
       const macondo = await getMacondo();
+      if (examinerIdAtStart !== examinerId.current) return;
       await macondo.loadLexicon(lexicon);
+      if (examinerIdAtStart !== examinerId.current) return;
 
       const boardStr = JSON.stringify(boardObj);
       const movesStr = await macondo.analyze(boardStr);
+      if (examinerIdAtStart !== examinerId.current) return;
       const movesObj = JSON.parse(movesStr) as Array<JsonMove>;
 
       const formattedMoves = movesObj.map((move) =>
@@ -209,7 +214,7 @@ export const Analyzer = React.memo((props: AnalyzerProps) => {
 
   useEffect(() => {
     setMoves(new Array<AnalyzerMove>());
-  }, [examinableGameContext.lastPlayedTiles, setMoves]);
+  }, [examinableGameContext.lastPlayedTiles]);
 
   const renderAnalyzerMoves = useMemo(
     () =>
