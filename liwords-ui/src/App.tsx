@@ -67,6 +67,9 @@ const App = React.memo(() => {
       )
       .then((resp) => {
         setExcludedPlayers(new Set<string>(resp.data.user_ids));
+      })
+      .catch((e) => {
+        console.log(e);
       });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
