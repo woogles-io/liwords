@@ -1,4 +1,4 @@
-import React, { useRef, useCallback, useEffect } from 'react';
+import React, { useRef, useCallback, useContext, useEffect } from 'react';
 import { Button, Card } from 'antd';
 import { PlusOutlined } from '@ant-design/icons';
 import {
@@ -30,10 +30,29 @@ const humanReadablePosition = (
   return readableCol + readableRow;
 };
 
-export const Notepad = React.memo((props: NotepadProps) => {
+const NotepadContext = React.createContext({
+  curNotepad: '',
+  setCurNotepad: (a: string) => {},
+});
+
+export const NotepadContextProvider = ({
+  children,
+}: {
+  children: React.ReactNode;
+}) => {
   const { useState } = useMountedState();
-  const notepadEl = useRef<HTMLTextAreaElement>(null);
   const [curNotepad, setCurNotepad] = useState('');
+  return (
+    <NotepadContext.Provider
+      value={{ curNotepad, setCurNotepad }}
+      children={children}
+    />
+  );
+};
+
+export const Notepad = React.memo((props: NotepadProps) => {
+  const notepadEl = useRef<HTMLTextAreaElement>(null);
+  const { curNotepad, setCurNotepad } = useContext(NotepadContext);
   const {
     displayedRack,
     placedTiles,
@@ -77,7 +96,14 @@ export const Notepad = React.memo((props: NotepadProps) => {
     if (!isMobile()) {
       document.getElementById('board-container')?.focus();
     }
-  }, [displayedRack, placedTiles, placedTilesTempScore, curNotepad, board]);
+  }, [
+    displayedRack,
+    placedTiles,
+    placedTilesTempScore,
+    curNotepad,
+    setCurNotepad,
+    board,
+  ]);
   useEffect(() => {
     if (notepadEl.current && !(notepadEl.current === document.activeElement)) {
       notepadEl.current.scrollTop = notepadEl.current.scrollHeight || 0;

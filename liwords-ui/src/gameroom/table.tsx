@@ -47,7 +47,7 @@ import { StreakWidget } from './streak_widget';
 import { PlayState } from '../gen/macondo/api/proto/macondo/macondo_pb';
 import { endGameMessageFromGameInfo } from '../store/end_of_game';
 import { singularCount } from '../utils/plural';
-import { Notepad } from './notepad';
+import { Notepad, NotepadContextProvider } from './notepad';
 import { Analyzer } from './analyzer';
 
 type Props = {
@@ -468,7 +468,7 @@ export const Table = React.memo((props: Props) => {
     [isObserver]
   );
 
-  return (
+  let ret = (
     <div className="game-container">
       <ManageWindowTitle />
       <TopBar />
@@ -549,4 +549,6 @@ export const Table = React.memo((props: Props) => {
       </div>
     </div>
   );
+  ret = <NotepadContextProvider children={ret} />;
+  return ret;
 });
