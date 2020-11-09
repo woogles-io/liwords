@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { useMountedState } from '../utils/mounted';
 import { useDrag, useDragLayer } from 'react-dnd';
 import TentativeScore from './tentative_score';
@@ -43,6 +43,7 @@ type TilePreviewProps = {
 };
 
 export const TilePreview = React.memo((props: TilePreviewProps) => {
+  const { useState } = useMountedState();
   const [updateCount, setUpdateCount] = useState(0);
   const { isDragging, xyPosition, initialPosition, rune, value } = useDragLayer(
     (monitor) => ({
