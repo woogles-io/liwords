@@ -273,14 +273,17 @@ export const pushTurns = (gs: GameState, events: Array<GameEvent>) => {
   });
 };
 
-const stateFromHistory = (history: GameHistory): GameState => {
+const stateFromHistory = (
+  history: GameHistory,
+  allowFlip: boolean
+): GameState => {
   // XXX: Do this for now. We will eventually want to put the tile
   // distribution itself in the history protobuf.
   // if (['NWL18', 'CSW19'].includes(history!.getLexicon())) {
   //   const dist = EnglishCrosswordGameDistribution;
   // }
   let playerList = history.getPlayersList();
-  const flipPlayers = history.getSecondWentFirst();
+  const flipPlayers = allowFlip && history.getSecondWentFirst();
   // If flipPlayers is on, we want to flip the players in the playerList.
   // The backend doesn't do this because of Reasons.
   if (flipPlayers) {
@@ -485,7 +488,7 @@ export const GameReducer = (state: GameState, action: Action): GameState => {
 
     case ActionType.RefreshHistory: {
       const ghr = action.payload as GameHistoryRefresher;
-      const newState = stateFromHistory(ghr.getHistory()!);
+      const newState = stateFromHistory(ghr.getHistory()!, true);
 
       if (state.clockController !== null) {
         newState.clockController = state.clockController;
@@ -501,7 +504,8 @@ export const GameReducer = (state: GameState, action: Action): GameState => {
       // already been set. This can happen if it ends in an "abnormal" way
       // like a resignation or a timeout -- these aren't ServerGamePlayEvents per se.
       const gee = action.payload as GameEndedEvent;
-      const newState = stateFromHistory(gee.getHistory()!);
+      // This "fixes" examining first rack, but breaks no-move case.
+      const newState = stateFromHistory(gee.getHistory()!, false);
       if (newState.clockController) {
         newState.clockController.current?.stopClock();
       }
