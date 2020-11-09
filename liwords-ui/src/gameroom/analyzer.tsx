@@ -8,7 +8,7 @@ import {
 import { getMacondo } from '../wasm/loader';
 import { useMountedState } from '../utils/mounted';
 import { RedoOutlined } from '@ant-design/icons/lib';
-import { EphemeralTile } from '../utils/cwgame/common';
+import { EmptySpace, EphemeralTile } from '../utils/cwgame/common';
 
 type AnalyzerProps = {
   includeCard?: boolean;
@@ -39,6 +39,7 @@ type AnalyzerMove = {
   col: number;
   vertical: boolean;
   tiles: string;
+  isExchange: boolean;
 };
 
 export const analyzerMoveFromJsonMove = (
@@ -47,6 +48,7 @@ export const analyzerMoveFromJsonMove = (
   letters: string
 ): AnalyzerMove => {
   let displayMove = '';
+  let isExchange = false;
   switch (move.Action) {
     case 'Play': {
       let r = move.Row;
@@ -74,6 +76,7 @@ export const analyzerMoveFromJsonMove = (
     }
     case 'Exchange': {
       displayMove = `Exch. ${move.Tiles}`;
+      isExchange = true;
       break;
     }
     case 'Pass': {
@@ -94,6 +97,7 @@ export const analyzerMoveFromJsonMove = (
     score: move.Score,
     equity: move.Equity.toFixed(2),
     tiles: move.Tiles,
+    isExchange,
   };
 };
 
@@ -119,10 +123,34 @@ export const Analyzer = React.memo((props: AnalyzerProps) => {
 
   const placeMove = useCallback(
     (move) => {
+      const {
+        board: { dim, letters },
+      } = examinableGameContext;
       let newPlacedTiles = new Set<EphemeralTile>();
       let row = move.row;
       let col = move.col;
+      let vertical = move.vertical;
+      if (move.isExchange) {
+        row = 0;
+        col = 0;
+        vertical = false;
+      }
       for (const t of move.tiles) {
+        if (move.isExchange) {
+          while (letters[row * dim + col] !== EmptySpace) {
+            ++col;
+            if (col >= dim) {
+              ++row;
+              if (row >= dim) {
+                // Cannot happen with the standard number of tiles and squares.
+                row = dim - 1;
+                col = dim - 1;
+                break;
+              }
+              col = 0;
+            }
+          }
+        }
         if (t !== '.') {
           newPlacedTiles.add({
             row,
@@ -130,14 +158,19 @@ export const Analyzer = React.memo((props: AnalyzerProps) => {
             letter: t,
           });
         }
-        if (move.vertical) ++row;
+        if (vertical) ++row;
         else ++col;
       }
       setDisplayedRack(move.leave);
       setPlacedTiles(newPlacedTiles);
       setPlacedTilesTempScore(move.score);
     },
-    [setDisplayedRack, setPlacedTiles, setPlacedTilesTempScore]
+    [
+      examinableGameContext,
+      setDisplayedRack,
+      setPlacedTiles,
+      setPlacedTilesTempScore,
+    ]
   );
 
   const handleExaminer = React.useCallback(() => {
