@@ -217,9 +217,9 @@ export const Analyzer = React.memo((props: AnalyzerProps) => {
     setMoves(new Array<AnalyzerMove>());
   }, [examinableGameContext.lastPlayedTiles, setMoves]);
 
-  const renderAnalyzerMoves = moves.map((m: AnalyzerMove) => (
+  const renderAnalyzerMoves = moves.map((m: AnalyzerMove, idx) => (
     <tr
-      key={`${m.coordinates}${m.tiles}${m.vertical}`}
+      key={idx}
       onClick={() => {
         placeMove(m);
       }}
