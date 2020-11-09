@@ -150,22 +150,6 @@ func performEndgameDuties(ctx context.Context, g *entity.Game, gameStore GameSto
 	wrapped.AddAudience(entity.AudGameTV, g.GameID())
 	g.SendChange(wrapped)
 
-	// Send a TournamentGameEndedEvent if this is a tournament game.
-	if g.TournamentData != nil && g.TournamentData.Id != "" {
-		tevt := &pb.TournamentGameEndedEvent{
-			GameId:    g.GameID(),
-			Scores:    evt.Scores,
-			EndReason: evt.EndReason,
-			Winner:    evt.Winner,
-			Loser:     evt.Loser,
-			Tie:       evt.Tie,
-			Time:      evt.Time,
-		}
-		wrapped = entity.WrapEvent(tevt, pb.MessageType_TOURNAMENT_GAME_ENDED_EVENT)
-		wrapped.AddAudience(entity.AudTournament, g.TournamentData.Id)
-		g.SendChange(wrapped)
-	}
-
 	// Compute stats for the player and for the game.
 	variantKey, err := g.RatingKey()
 	if err != nil {
@@ -187,8 +171,8 @@ func performEndgameDuties(ctx context.Context, g *entity.Game, gameStore GameSto
 	wrapped.AddAudience(entity.AudLobby, "gameEnded")
 	g.SendChange(wrapped)
 
-	if g.TournamentData != nil {
-		tournament.HandleTournamentGameEnded(ctx, tournamentStore, g)
+	if g.TournamentData != nil && g.TournamentData.Id != "" {
+		tournament.HandleTournamentGameEnded(ctx, tournamentStore, userStore, g)
 	}
 
 	// Save and unload the game from the cache.
@@ -356,11 +340,6 @@ func gameEndedEvent(ctx context.Context, g *entity.Game, userStore user.Store) *
 	for u, rat := range ratings {
 		newRatings[u] = rat[1]
 		deltas[u] = rat[1] - rat[0]
-	}
-
-	racks := make([]string, len(g.History().Events))
-	for idx, evt := range g.History().Events {
-		racks[idx] = evt.Rack
 	}
 
 	evt := &pb.GameEndedEvent{

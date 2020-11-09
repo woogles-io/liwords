@@ -13,7 +13,6 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/domino14/macondo/gaddag"
 	"github.com/gomodule/redigo/redis"
 
 	"github.com/domino14/liwords/pkg/apiserver"
@@ -25,8 +24,6 @@ import (
 	"github.com/domino14/liwords/pkg/stores/soughtgame"
 	"github.com/domino14/liwords/pkg/stores/stats"
 	"github.com/domino14/liwords/pkg/tournament"
-
-	"github.com/domino14/macondo/alphabet"
 
 	"github.com/domino14/liwords/pkg/registration"
 
@@ -141,7 +138,7 @@ func main() {
 	autocompleteService := pkguser.NewAutocompleteService(userStore)
 	socializeService := pkguser.NewSocializeService(userStore)
 	configService := config.NewConfigService(configStore, userStore)
-	tournamentService := tournament.NewTournamentService(tournamentStore)
+	tournamentService := tournament.NewTournamentService(tournamentStore, userStore)
 
 	router.Handle("/ping", http.HandlerFunc(pingEndpoint))
 
@@ -193,10 +190,6 @@ func main() {
 		return fmt.Sprintf("%d", ct)
 	}))
 
-	// Create any caches
-	alphabet.CreateLetterDistributionCache()
-	gaddag.CreateGaddagCache()
-
 	srv := &http.Server{
 		Addr:         cfg.ListenAddr,
 		Handler:      router,
@@ -207,12 +200,14 @@ func main() {
 	sig := make(chan os.Signal, 1)
 
 	presenceStore := user.NewRedisPresenceStore(redisPool)
+
 	// Handle bus.
 	pubsubBus, err := bus.NewBus(cfg, userStore, gameStore, soughtGameStore,
 		presenceStore, listStatStore, tournamentStore, configStore, redisPool)
 	if err != nil {
 		panic(err)
 	}
+	tournamentService.SetEventChannel(pubsubBus.TournamentEventChannel())
 
 	ctx, pubsubCancel := context.WithCancel(context.Background())
 

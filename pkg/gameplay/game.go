@@ -88,12 +88,12 @@ func InstantiateNewGame(ctx context.Context, gameStore GameStore, cfg *config.Co
 		firstAssigned = true
 	}
 
-	dist, err := alphabet.LoadLetterDistribution(&cfg.MacondoConfig, req.Rules.LetterDistributionName)
+	dist, err := alphabet.Get(&cfg.MacondoConfig, req.Rules.LetterDistributionName)
 	if err != nil {
 		return nil, err
 	}
 
-	gd, err := gaddag.LoadFromCache(&cfg.MacondoConfig, req.Lexicon)
+	gd, err := gaddag.Get(&cfg.MacondoConfig, req.Lexicon)
 	if err != nil {
 		return nil, err
 	}
@@ -133,7 +133,7 @@ func InstantiateNewGame(ctx context.Context, gameStore GameStore, cfg *config.Co
 
 	entGame := entity.NewGame(&gameRunner.Game, req)
 	entGame.PlayerDBIDs = dbids
-	// XXX: This should take in a tournament data.
+	// XXX: This func should take in a tournament data.
 	entGame.TournamentData = &entity.TournamentData{Id: tid}
 
 	ratingKey, err := entGame.RatingKey()

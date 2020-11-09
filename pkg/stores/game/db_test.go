@@ -40,12 +40,12 @@ var TestDBHost = os.Getenv("TEST_DB_HOST")
 var TestingDBConnStr = "host=" + TestDBHost + " port=5432 user=postgres password=pass sslmode=disable"
 
 func newMacondoGame(users [2]*entity.User) *macondogame.Game {
-	dist, err := alphabet.LoadLetterDistribution(&DefaultConfig, DefaultConfig.DefaultLetterDistribution)
+	dist, err := alphabet.Get(&DefaultConfig, DefaultConfig.DefaultLetterDistribution)
 	if err != nil {
 		panic(err)
 	}
 
-	gd, err := gaddag.LoadFromCache(&DefaultConfig, DefaultConfig.DefaultLexicon)
+	gd, err := gaddag.Get(&DefaultConfig, DefaultConfig.DefaultLexicon)
 	if err != nil {
 		panic(err)
 	}

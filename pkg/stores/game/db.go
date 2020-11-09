@@ -326,7 +326,7 @@ func fromState(timers entity.Timers, qdata *entity.Quickdata, Started bool,
 		return nil, errors.New("unsupported board layout")
 	}
 
-	dist, err := alphabet.LoadLetterDistribution(&cfg.MacondoConfig, req.Rules.LetterDistributionName)
+	dist, err := alphabet.Get(&cfg.MacondoConfig, req.Rules.LetterDistributionName)
 	if err != nil {
 		return nil, err
 	}
@@ -337,7 +337,7 @@ func fromState(timers entity.Timers, qdata *entity.Quickdata, Started bool,
 		lexicon = req.Lexicon
 	}
 
-	gd, err := gaddag.LoadFromCache(&cfg.MacondoConfig, lexicon)
+	gd, err := gaddag.Get(&cfg.MacondoConfig, lexicon)
 	if err != nil {
 		return nil, err
 	}

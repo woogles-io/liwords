@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/domino14/liwords/pkg/entity"
+	"github.com/domino14/liwords/pkg/user"
 	pb "github.com/domino14/liwords/rpc/api/proto/tournament_service"
 
 	"github.com/golang/protobuf/ptypes"
@@ -13,11 +14,17 @@ import (
 // allow directors to interact with their tournaments
 type TournamentService struct {
 	tournamentStore TournamentStore
+	userStore       user.Store
+	eventChannel    chan *entity.EventWrapper
 }
 
 // NewTournamentService creates a Twirp TournamentService
-func NewTournamentService(ts TournamentStore) *TournamentService {
-	return &TournamentService{ts}
+func NewTournamentService(ts TournamentStore, us user.Store) *TournamentService {
+	return &TournamentService{ts, us, nil}
+}
+
+func (ts *TournamentService) SetEventChannel(c chan *entity.EventWrapper) {
+	ts.eventChannel = c
 }
 
 func (ts *TournamentService) AddDivision(ctx context.Context, req *pb.TournamentDivisionRequest) (*pb.TournamentResponse, error) {
@@ -64,6 +71,22 @@ func (ts *TournamentService) SetTournamentControls(ctx context.Context, req *pb.
 	}
 	return &pb.TournamentResponse{}, nil
 }
+
+func (ts *TournamentService) NewTournament(ctx context.Context, req *pb.NewTournamentRequest) (*pb.NewTournamentResponse, error) {
+
+	directors := &entity.TournamentPersons{
+		Persons: map[string]int{req.DirectorId: 0},
+	}
+
+	t, err := NewTournament(ctx, ts.tournamentStore, req.Slug, req.Name, req.Description, directors)
+	if err != nil {
+		return nil, err
+	}
+	return &pb.NewTournamentResponse{
+		Id: t.UUID,
+	}, nil
+}
+
 func (ts *TournamentService) AddDirectors(ctx context.Context, req *pb.TournamentPersons) (*pb.TournamentResponse, error) {
 	err := AddDirectors(ctx, ts.tournamentStore, req.Id, convertPersonsToStringMap(req))
 	if err != nil {
@@ -99,9 +122,11 @@ func (ts *TournamentService) SetPairing(ctx context.Context, req *pb.TournamentP
 	}
 	return &pb.TournamentResponse{}, nil
 }
+
 func (ts *TournamentService) SetResult(ctx context.Context, req *pb.TournamentResultOverrideRequest) (*pb.TournamentResponse, error) {
 	err := SetResult(ctx,
 		ts.tournamentStore,
+		ts.userStore,
 		req.Id,
 		req.Division,
 		req.PlayerOneId,
@@ -113,7 +138,9 @@ func (ts *TournamentService) SetResult(ctx context.Context, req *pb.TournamentRe
 		req.GameEndReason,
 		int(req.Round),
 		int(req.GameIndex),
-		req.Amendment)
+		req.Amendment,
+		nil,
+		ts.eventChannel)
 	if err != nil {
 		return nil, err
 	}

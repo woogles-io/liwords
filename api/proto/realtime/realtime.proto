@@ -234,6 +234,7 @@ message TournamentGameEndedEvent {
   bool tie = 6;
   // Time that the game ended
   int64 time = 7;
+  string went_first = 8;
 }
 
 // A GameHistoryRefresher is sent to both players when the game starts,
@@ -324,12 +325,7 @@ message DeclineMatchRequest { string request_id = 1; }
 
 enum TournamentGameResult {
   // NO_RESULT: the game is not over
-  NO_RESULT = 0;
-  WIN = 1;
-  LOSS = 2;
-  DRAW = 3;
-  BYE = 4;
-  FORFEIT_WIN = 5;
+  NO_RESULT = 0; WIN = 1; LOSS = 2; DRAW = 3; BYE = 4; FORFEIT_WIN = 5;
   FORFEIT_LOSS = 6;
   // ELIMINATED: player is eliminated in a bracket tournament
   ELIMINATED = 7;

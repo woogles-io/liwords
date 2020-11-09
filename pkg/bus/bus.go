@@ -56,7 +56,8 @@ type Bus struct {
 	subscriptions []*nats.Subscription
 	subchans      map[string]chan *nats.Msg
 
-	gameEventChan chan *entity.EventWrapper
+	gameEventChan       chan *entity.EventWrapper
+	tournamentEventChan chan *entity.EventWrapper
 }
 
 func NewBus(cfg *config.Config, userStore user.Store, gameStore gameplay.GameStore,
@@ -70,21 +71,23 @@ func NewBus(cfg *config.Config, userStore user.Store, gameStore gameplay.GameSto
 		return nil, err
 	}
 	bus := &Bus{
-		natsconn:        natsconn,
-		userStore:       userStore,
-		gameStore:       gameStore,
-		soughtGameStore: soughtGameStore,
-		presenceStore:   presenceStore,
-		listStatStore:   listStatStore,
-		tournamentStore: tournamentStore,
-		configStore:     configStore,
-		subscriptions:   []*nats.Subscription{},
-		subchans:        map[string]chan *nats.Msg{},
-		config:          cfg,
-		gameEventChan:   make(chan *entity.EventWrapper, 64),
-		redisPool:       redisPool,
+		natsconn:            natsconn,
+		userStore:           userStore,
+		gameStore:           gameStore,
+		soughtGameStore:     soughtGameStore,
+		presenceStore:       presenceStore,
+		listStatStore:       listStatStore,
+		tournamentStore:     tournamentStore,
+		configStore:         configStore,
+		subscriptions:       []*nats.Subscription{},
+		subchans:            map[string]chan *nats.Msg{},
+		config:              cfg,
+		gameEventChan:       make(chan *entity.EventWrapper, 64),
+		tournamentEventChan: make(chan *entity.EventWrapper, 64),
+		redisPool:           redisPool,
 	}
 	gameStore.SetGameEventChan(bus.gameEventChan)
+	tournamentStore.SetTournamentEventChan(bus.tournamentEventChan)
 
 	topics := []string{
 		// ipc.pb are generic publishes
@@ -176,7 +179,6 @@ outerfor:
 
 		case msg := <-b.gameEventChan:
 			// A game event. Publish directly to the right realm.
-			log.Debug().Interface("msg", msg).Msg("game event chan")
 			topics := msg.Audience()
 			data, err := msg.Serialize()
 			if err != nil {
@@ -198,6 +200,20 @@ outerfor:
 					b.natsconn.Publish(topic, data)
 				}
 			}
+
+		case msg := <-b.tournamentEventChan:
+			// A tournament event. Publish to the right realm.
+			log.Debug().Interface("msg", msg).Msg("tournament event chan")
+			topics := msg.Audience()
+			data, err := msg.Serialize()
+			if err != nil {
+				log.Err(err).Msg("serialize-error")
+				break
+			}
+			for _, topic := range topics {
+				b.natsconn.Publish(topic, data)
+			}
+
 		case <-ctx.Done():
 			log.Info().Msg("pubsub context done, breaking")
 			break outerfor
@@ -383,6 +399,10 @@ func (b *Bus) handleNatsPublish(ctx context.Context, subtopics []string, data []
 	default:
 		return fmt.Errorf("unhandled-publish-topic: %v", subtopics)
 	}
+}
+
+func (b *Bus) TournamentEventChannel() chan *entity.EventWrapper {
+	return b.tournamentEventChan
 }
 
 func (b *Bus) broadcastPresence(username, userID string, anon bool, presenceChan string, deleting bool) error {

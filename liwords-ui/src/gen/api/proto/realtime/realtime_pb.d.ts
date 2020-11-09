@@ -688,6 +688,9 @@ export class TournamentGameEndedEvent extends jspb.Message {
   getTime(): number;
   setTime(value: number): void;
 
+  getWentFirst(): string;
+  setWentFirst(value: string): void;
+
   serializeBinary(): Uint8Array;
   toObject(includeInstance?: boolean): TournamentGameEndedEvent.AsObject;
   static toObject(includeInstance: boolean, msg: TournamentGameEndedEvent): TournamentGameEndedEvent.AsObject;
@@ -707,6 +710,7 @@ export namespace TournamentGameEndedEvent {
     loser: string,
     tie: boolean,
     time: number,
+    wentFirst: string,
   }
 }
 

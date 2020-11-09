@@ -13,6 +13,8 @@ type backingStore interface {
 	Set(context.Context, *entity.Tournament) error
 	Create(context.Context, *entity.Tournament) error
 	Disconnect()
+	SetTournamentEventChan(c chan<- *entity.EventWrapper)
+	TournamentEventChan() chan<- *entity.EventWrapper
 }
 
 const (
@@ -87,4 +89,13 @@ func (c *Cache) Unload(ctx context.Context, id string) {
 
 func (c *Cache) Disconnect() {
 	c.backing.Disconnect()
+}
+
+// SetTournamentEventChan sets the tournament event channel to the passed in channel.
+func (c *Cache) SetTournamentEventChan(ch chan<- *entity.EventWrapper) {
+	c.backing.SetTournamentEventChan(ch)
+}
+
+func (c *Cache) TournamentEventChan() chan<- *entity.EventWrapper {
+	return c.backing.TournamentEventChan()
 }

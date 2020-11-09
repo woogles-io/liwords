@@ -5,9 +5,12 @@ import (
 	"errors"
 	"fmt"
 	"sort"
+	"time"
 
-	"github.com/domino14/liwords/pkg/config"
 	"github.com/domino14/liwords/pkg/entity"
+	"github.com/domino14/liwords/pkg/user"
+	"github.com/lithammer/shortuuid"
+	"github.com/rs/zerolog/log"
 
 	pb "github.com/domino14/liwords/rpc/api/proto/realtime"
 	realtime "github.com/domino14/liwords/rpc/api/proto/realtime"
@@ -18,39 +21,46 @@ type TournamentStore interface {
 	Set(context.Context, *entity.Tournament) error
 	Create(context.Context, *entity.Tournament) error
 	Unload(context.Context, string)
+	SetTournamentEventChan(c chan<- *entity.EventWrapper)
+	TournamentEventChan() chan<- *entity.EventWrapper
 }
 
-func HandleTournamentGameEnded(ctx context.Context, ts TournamentStore, g *entity.Game) error {
+func HandleTournamentGameEnded(ctx context.Context, ts TournamentStore, us user.Store,
+	g *entity.Game) error {
 
 	Results := []pb.TournamentGameResult{pb.TournamentGameResult_DRAW,
 		pb.TournamentGameResult_WIN,
 		pb.TournamentGameResult_LOSS}
 
-	err := SetResult(ctx,
+	p1idx, p2idx := 0, 1
+	p1result, p2result := Results[g.WinnerIdx+1], Results[g.LoserIdx+1]
+	if g.History().SecondWentFirst {
+		p1idx, p2idx = p2idx, p1idx
+		p1result, p2result = p2result, p1result
+	}
+
+	return SetResult(ctx,
 		ts,
+		us,
 		g.TournamentData.Id,
 		g.TournamentData.Division,
-		g.History().Players[0].UserId,
-		g.History().Players[1].UserId,
-		int(g.History().FinalScores[0]),
-		int(g.History().FinalScores[1]),
-		Results[g.WinnerIdx+1],
-		Results[g.LoserIdx+1],
+		g.History().Players[p1idx].UserId,
+		g.History().Players[p2idx].UserId,
+		int(g.History().FinalScores[p1idx]),
+		int(g.History().FinalScores[p2idx]),
+		p1result,
+		p2result,
 		g.GameEndReason,
 		g.TournamentData.Round,
 		g.TournamentData.GameIndex,
-		false)
-
-	if err != nil {
-		return err
-	}
-
-	return TournamentGameEndedEvent(ctx, ts, g.TournamentData.Id, g.TournamentData.Division, g.TournamentData.Round)
+		false,
+		g,
+		ts.TournamentEventChan())
 }
 
 func NewTournament(ctx context.Context,
 	tournamentStore TournamentStore,
-	cfg *config.Config,
+	id string,
 	name string,
 	description string,
 	directors *entity.TournamentPersons) (*entity.Tournament, error) {
@@ -60,23 +70,39 @@ func NewTournament(ctx context.Context,
 		return nil, err
 	}
 
+	if id == "" {
+		id = shortuuid.New()[2:8]
+	}
+
 	entTournament := &entity.Tournament{Name: name,
 		Description:       description,
 		Directors:         directors,
 		ExecutiveDirector: executiveDirector,
 		IsStarted:         false,
-		Divisions:         map[string]*entity.TournamentDivision{}}
+		Divisions:         map[string]*entity.TournamentDivision{},
+		UUID:              id,
+	}
+	for {
+		// Save the tournament to the store.
+		err = tournamentStore.Create(ctx, entTournament)
+		if err == nil {
+			break
+		}
+		log.Err(err).Msg("tournament-create-error")
+		entTournament.UUID = shortuuid.New()[2:8]
 
-	// Save the tournament to the store.
-	if err := tournamentStore.Create(ctx, entTournament); err != nil {
-		return nil, err
 	}
 	return entTournament, nil
 }
 
-func TournamentGameEndedEvent(ctx context.Context, ts TournamentStore, id string, division string, round int) error {
+// SendTournamentGameEndedEvent sends end results to a channel.
+func SendTournamentGameEndedEvent(ctx context.Context, ts TournamentStore, id string,
+	division string, round int, evtChan chan<- *entity.EventWrapper, gameID string,
+	scores map[string]int32, gameEndReason realtime.GameEndReason, winner, loser string,
+	tie bool, first string) error {
 
-	// Send new results to some socket or something
+	// Send new results to some socket or something.
+	// Check if this division is just finished.
 	isFinished, err := IsFinished(ctx, ts, id, division)
 	if err != nil {
 		return err
@@ -84,6 +110,7 @@ func TournamentGameEndedEvent(ctx context.Context, ts TournamentStore, id string
 	if isFinished {
 		// Send stuff to sockets and whatnot
 	} else {
+		// Is the entire round complete?
 		isRoundComplete, err := IsRoundComplete(ctx, ts, id, division, round)
 		if err != nil {
 			return err
@@ -93,6 +120,19 @@ func TournamentGameEndedEvent(ctx context.Context, ts TournamentStore, id string
 		}
 	}
 
+	tevt := &realtime.TournamentGameEndedEvent{
+		GameId:    gameID,
+		Scores:    scores,
+		EndReason: gameEndReason,
+		Time:      time.Now().Unix(),
+		Winner:    winner,
+		Loser:     loser,
+		Tie:       tie,
+		WentFirst: first,
+	}
+	wrapped := entity.WrapEvent(tevt, pb.MessageType_TOURNAMENT_GAME_ENDED_EVENT)
+	wrapped.AddAudience(entity.AudTournament, id)
+	evtChan <- wrapped
 	return nil
 }
 
@@ -242,8 +282,11 @@ func SetPairing(ctx context.Context, ts TournamentStore, id string, division str
 	return TournamentSetPairingsEvent(ctx, ts)
 }
 
+// SetResult sets the result for the game. Note: playerOne and playerTwo
+// went first and second, respectively.
 func SetResult(ctx context.Context,
 	ts TournamentStore,
+	us user.Store,
 	id string,
 	division string,
 	playerOneId string,
@@ -255,7 +298,9 @@ func SetResult(ctx context.Context,
 	reason realtime.GameEndReason,
 	round int,
 	gameIndex int,
-	amendment bool) error {
+	amendment bool,
+	g *entity.Game,
+	eventChan chan<- *entity.EventWrapper) error {
 
 	t, err := ts.Get(ctx, id)
 	if err != nil {
@@ -293,7 +338,39 @@ func SetResult(ctx context.Context,
 	if err != nil {
 		return err
 	}
-	return TournamentGameEndedEvent(ctx, ts, id, division, round)
+	p1user, err := us.GetByUUID(ctx, playerOneId)
+	if err != nil {
+		return err
+	}
+	p2user, err := us.GetByUUID(ctx, playerTwoId)
+	if err != nil {
+		return err
+	}
+
+	// Here just send info about the actual completed game.
+	scores := map[string]int32{
+		p1user.Username: int32(playerOneScore),
+		p2user.Username: int32(playerTwoScore)}
+	var tie bool
+	winner := p1user.Username
+	loser := p2user.Username
+
+	if playerOneResult == pb.TournamentGameResult_LOSS {
+		winner, loser = loser, winner
+	}
+
+	if playerOneResult == pb.TournamentGameResult_DRAW {
+		tie = true
+	}
+
+	first := p1user.Username
+	gid := ""
+	if g != nil {
+		gid = g.GameID()
+	}
+
+	return SendTournamentGameEndedEvent(ctx, ts, id, division, round, eventChan,
+		gid, scores, reason, winner, loser, tie, first)
 }
 
 func StartTournament(ctx context.Context, ts TournamentStore, id string) error {

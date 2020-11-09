@@ -11,6 +11,14 @@ message StartRoundRequest {
   int32 round = 2;
 }
 
+message NewTournamentRequest {
+  // If slug is not assigned, a random ID will be chosen.
+  string slug = 1;
+  string name = 2;
+  string description = 3;
+  string director_id = 4;
+}
+
 message TournamentMetadataRequest {
   string id = 1;
   string name = 2;
@@ -52,6 +60,10 @@ message TournamentPairingRequest {
   int32 round = 5;
 }
 
+// TournamentResultOverrideRequest is sent when a score needs to be edited
+// or added by a director. Note that player one and player two need to be
+// the players that went first and second, respectively; otherwise,
+// we will not be able to accurately track firsts/seconds.
 message TournamentResultOverrideRequest {
   string id = 1;
   string division = 2;
@@ -74,8 +86,11 @@ message TournamentStartRoundRequest {
 }
 
 message TournamentResponse {}
+message NewTournamentResponse { string id = 1; }
 
 service TournamentService {
+  rpc NewTournament(NewTournamentRequest) returns(NewTournamentResponse);
+
   rpc SetTournamentMetadata(TournamentMetadataRequest)
       returns(TournamentResponse);
   rpc SetTournamentControls(TournamentControlsRequest)

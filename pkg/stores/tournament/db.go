@@ -16,13 +16,14 @@ import (
 
 // DBStore is a postgres-backed store for games.
 type DBStore struct {
-	cfg *config.Config
-	db  *gorm.DB
+	cfg                 *config.Config
+	db                  *gorm.DB
+	tournamentEventChan chan<- *entity.EventWrapper
 }
 
 type tournament struct {
 	gorm.Model
-	UUID              string `gorm:"type:varchar(24);index"`
+	UUID              string `gorm:"uniqueIndex"`
 	Name              string
 	Description       string
 	Directors         datatypes.JSON
@@ -69,6 +70,10 @@ func (s *DBStore) Get(ctx context.Context, id string) (*entity.Tournament, error
 		Divisions:         divisions}
 
 	return tme, nil
+}
+
+func (s *DBStore) TournamentEventChan() chan<- *entity.EventWrapper {
+	return s.tournamentEventChan
 }
 
 func (s *DBStore) Set(ctx context.Context, tm *entity.Tournament) error {
@@ -126,4 +131,9 @@ func (s *DBStore) toDBObj(t *entity.Tournament) (*tournament, error) {
 		IsStarted:         t.IsStarted,
 		Divisions:         divisions}
 	return dbt, nil
+}
+
+// SetTournamentEventChan sets the tournament event channel to the passed in channel.
+func (s *DBStore) SetTournamentEventChan(c chan<- *entity.EventWrapper) {
+	s.tournamentEventChan = c
 }
