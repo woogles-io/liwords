@@ -178,8 +178,7 @@ const ScorecardTurn = (props: turnProps) => {
       }
     }
     return turn;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [props.playerMeta, props.turn]);
+  }, [props.board, props.playerMeta, props.turn]);
 
   let scoreChange;
   if (memoizedTurn.lostScore > 0) {
@@ -313,7 +312,6 @@ export const ScoreCard = React.memo((props: Props) => {
     <Card
       className={`score-card${flipHidden ? '' : ' flipped'}`}
       title={title}
-      // eslint-disable-next-line jsx-a11y/anchor-is-valid
       extra={
         isTablet() ? (
           <button className="link" onClick={toggleFlipVisibility}>
