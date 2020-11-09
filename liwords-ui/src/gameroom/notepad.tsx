@@ -147,7 +147,7 @@ export const Notepad = React.memo((props: NotepadProps) => {
           />
         }
       >
-        {notepadContainer}{' '}
+        {notepadContainer}
       </Card>
     );
   }
