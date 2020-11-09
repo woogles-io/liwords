@@ -267,25 +267,37 @@ export const ScoreCard = React.memo((props: Props) => {
     };
   }, [resizeListener]);
 
-  const turns = gameEventsToTurns(props.events);
-  const cardStyle = cardHeight
-    ? {
-        maxHeight: cardHeight,
-        minHeight: cardHeight,
-      }
-    : undefined;
-  const notepadStyle = cardHeight
-    ? {
-        height: cardHeight - 24,
-        display: flipHidden ? 'none' : 'flex',
-      }
-    : undefined;
-  const analyzerStyle = cardHeight
-    ? {
-        height: cardHeight,
-        display: flipHidden ? 'none' : 'flex',
-      }
-    : undefined;
+  const turns = useMemo(() => gameEventsToTurns(props.events), [props.events]);
+  const cardStyle = useMemo(
+    () =>
+      cardHeight
+        ? {
+            maxHeight: cardHeight,
+            minHeight: cardHeight,
+          }
+        : undefined,
+    [cardHeight]
+  );
+  const notepadStyle = useMemo(
+    () =>
+      cardHeight
+        ? {
+            height: cardHeight - 24,
+            display: flipHidden ? 'none' : 'flex',
+          }
+        : undefined,
+    [cardHeight, flipHidden]
+  );
+  const analyzerStyle = useMemo(
+    () =>
+      cardHeight
+        ? {
+            height: cardHeight,
+            display: flipHidden ? 'none' : 'flex',
+          }
+        : undefined,
+    [cardHeight, flipHidden]
+  );
   let title = `Turn ${turns.length + 1}`;
   let extra = null;
   if (flipEnabled) {
