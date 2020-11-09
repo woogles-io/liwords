@@ -5,7 +5,6 @@ import {
   useExaminableGameContextStoreContext,
   useTentativeTileContext,
 } from '../store/store';
-import { Unrace } from '../utils/unrace';
 import { getMacondo } from '../wasm/loader';
 import { useMountedState } from '../utils/mounted';
 import { RedoOutlined } from '@ant-design/icons/lib';
@@ -16,36 +15,6 @@ type AnalyzerProps = {
   style?: React.CSSProperties;
   lexicon: string;
 };
-
-const filesByLexicon = [
-  {
-    lexicons: ['CSW19', 'NWL18'],
-    cacheKey: 'data/letterdistributions/english.csv',
-    path: '/wasm/english.csv',
-  },
-  {
-    lexicons: ['CSW19', 'NWL18'],
-    cacheKey: 'data/strategy/default_english/leaves.idx',
-    path: '/wasm/leaves.idx',
-  },
-  {
-    lexicons: ['CSW19', 'NWL18'],
-    cacheKey: 'data/strategy/default_english/preendgame.json',
-    path: '/wasm/preendgame.json',
-  },
-  {
-    lexicons: ['CSW19'],
-    cacheKey: 'data/lexica/gaddag/CSW19.gaddag',
-    path: '/wasm/CSW19.gaddag',
-  },
-  {
-    lexicons: ['NWL18'],
-    cacheKey: 'data/lexica/gaddag/NWL18.gaddag',
-    path: '/wasm/NWL18.gaddag',
-  },
-];
-
-const unrace = new Unrace();
 
 // See analyzer/analyzer.go JsonMove.
 type JsonMove = {
@@ -192,15 +161,7 @@ export const Analyzer = React.memo((props: AnalyzerProps) => {
       };
 
       const macondo = await getMacondo();
-      await unrace.run(() =>
-        Promise.all(
-          filesByLexicon.map(({ lexicons, cacheKey, path }) =>
-            lexicons.includes(lexicon)
-              ? macondo.precache(cacheKey, path.toString())
-              : null
-          )
-        )
-      );
+      await macondo.loadLexicon(lexicon);
 
       const boardStr = JSON.stringify(boardObj);
       const movesStr = await macondo.analyze(boardStr);
