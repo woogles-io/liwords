@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect } from 'react';
+import React, { useCallback, useEffect, useMemo } from 'react';
 import { Button, Card } from 'antd';
 import { BulbOutlined } from '@ant-design/icons';
 import {
@@ -217,20 +217,25 @@ export const Analyzer = React.memo((props: AnalyzerProps) => {
     setMoves(new Array<AnalyzerMove>());
   }, [examinableGameContext.lastPlayedTiles, setMoves]);
 
-  const renderAnalyzerMoves = moves.map((m: AnalyzerMove, idx) => (
-    <tr
-      key={idx}
-      onClick={() => {
-        placeMove(m);
-      }}
-    >
-      <td className="move-coords">{m.coordinates}</td>
-      <td className="move">{m.displayMove}</td>
-      <td className="move-score">{m.score}</td>
-      <td className="move-leave">{m.leave}</td>
-      <td className="move-equity">{m.equity}</td>
-    </tr>
-  ));
+  const renderAnalyzerMoves = useMemo(
+    () =>
+      moves.map((m: AnalyzerMove, idx) => (
+        <tr
+          key={idx}
+          onClick={() => {
+            placeMove(m);
+          }}
+        >
+          <td className="move-coords">{m.coordinates}</td>
+          <td className="move">{m.displayMove}</td>
+          <td className="move-score">{m.score}</td>
+          <td className="move-leave">{m.leave}</td>
+          <td className="move-equity">{m.equity}</td>
+        </tr>
+      )),
+    [moves, placeMove]
+  );
+
   const analyzerContainer = (
     <div className="analyzer-container">
       {!examinerLoading ? (
