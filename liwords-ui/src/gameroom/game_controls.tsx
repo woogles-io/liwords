@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect } from 'react';
 import { useHistory } from 'react-router-dom';
 import { useMountedState } from '../utils/mounted';
 import { Button, Popconfirm } from 'antd';
@@ -9,62 +9,14 @@ import {
   RightOutlined,
 } from '@ant-design/icons';
 import {
-  useExaminableGameContextStoreContext,
   useExamineStoreContext,
   useGameContextStoreContext,
   useResetStoreContext,
+  useTentativeTileContext,
 } from '../store/store';
-import { Unrace } from '../utils/unrace';
-import { getMacondo } from '../wasm/loader';
-
-const unrace = new Unrace();
-
-// See analyzer/analyzer.go JsonMove.
-type JsonMove = {
-  Action: string;
-  Row: number; // int
-  Column: number; // int
-  Vertical: boolean;
-  DisplayCoordinates: string;
-  Tiles: string;
-  Leave: string;
-  Equity: number; // float64
-  Score: number; // int
-};
-
-const filesByLexicon = [
-  {
-    lexicons: ['CSW19', 'NWL18'],
-    cacheKey: 'data/letterdistributions/english.csv',
-    path: '/wasm/english.csv',
-  },
-  {
-    lexicons: ['CSW19', 'NWL18'],
-    cacheKey: 'data/strategy/default_english/leaves.idx',
-    path: '/wasm/leaves.idx',
-  },
-  {
-    lexicons: ['CSW19', 'NWL18'],
-    cacheKey: 'data/strategy/default_english/preendgame.json',
-    path: '/wasm/preendgame.json',
-  },
-  {
-    lexicons: ['CSW19'],
-    cacheKey: 'data/lexica/gaddag/CSW19.gaddag',
-    path: '/wasm/CSW19.gaddag',
-  },
-  {
-    lexicons: ['NWL18'],
-    cacheKey: 'data/lexica/gaddag/NWL18.gaddag',
-    path: '/wasm/NWL18.gaddag',
-  },
-];
+import { EphemeralTile } from '../utils/cwgame/common';
 
 const ExamineGameControls = React.memo((props: { lexicon: string }) => {
-  const { lexicon } = props;
-  const {
-    gameContext: examinableGameContext,
-  } = useExaminableGameContextStoreContext();
   const {
     examinedTurn,
     handleExamineEnd,
@@ -74,137 +26,15 @@ const ExamineGameControls = React.memo((props: { lexicon: string }) => {
     handleExamineLast,
   } = useExamineStoreContext();
   const { gameContext } = useGameContextStoreContext();
+  const { setPlacedTiles, setPlacedTilesTempScore } = useTentativeTileContext();
+  useEffect(() => {
+    setPlacedTilesTempScore(undefined);
+    setPlacedTiles(new Set<EphemeralTile>());
+  }, [examinedTurn, setPlacedTiles, setPlacedTilesTempScore]);
   const numberOfTurns = gameContext.turns.length;
-
-  const handleExaminer = React.useCallback(() => {
-    (async () => {
-      const {
-        board: { dim, letters },
-        onturn,
-        players,
-      } = examinableGameContext;
-
-      const boardObj = {
-        size: dim,
-        rack: players[onturn].currentRack,
-        board: Array.from(new Array(dim), (_, row) =>
-          letters.substr(row * dim, dim)
-        ),
-        lexicon,
-      };
-      console.log(boardObj); // for debugging
-
-      const macondo = await getMacondo();
-      await unrace.run(() =>
-        Promise.all(
-          filesByLexicon.map(({ lexicons, cacheKey, path }) =>
-            lexicons.includes(lexicon) ? macondo.precache(cacheKey, path) : null
-          )
-        )
-      );
-
-      const boardStr = JSON.stringify(boardObj);
-      const movesStr = await macondo.analyze(boardStr);
-      const movesObj = JSON.parse(movesStr) as Array<JsonMove>;
-
-      // Just log for now.
-      console.log(movesObj); // for debugging
-
-      const suggestions = [];
-      for (const move of movesObj) {
-        if (move.Action === 'Play') {
-          // move.Tiles may have '.', read the board to complete it.
-          let tiles = '';
-          let r = move.Row;
-          let c = move.Column;
-          let inParen = false;
-          for (const t of move.Tiles) {
-            if (t === '.') {
-              if (!inParen) {
-                tiles += '(';
-                inParen = true;
-              }
-              tiles += letters[r * dim + c];
-            } else {
-              if (inParen) {
-                tiles += ')';
-                inParen = false;
-              }
-              tiles += t;
-            }
-            if (move.Vertical) ++r;
-            else ++c;
-          }
-          if (inParen) tiles += ')';
-          suggestions.push({
-            move: `${move.DisplayCoordinates} ${tiles}`,
-            score: move.Score,
-            leave: move.Leave,
-            valuation: move.Equity,
-          });
-        } else if (move.Action === 'Exchange' && move.Score === 0) {
-          suggestions.push({
-            move: `Exch. ${move.Tiles}`,
-            score: 0,
-            leave: move.Leave,
-            valuation: move.Equity,
-          });
-        } else if (move.Action === 'Pass' && move.Score === 0) {
-          suggestions.push({
-            move: 'Pass',
-            score: 0,
-            leave: move.Leave,
-            valuation: move.Equity,
-          });
-        } else if (move.Action === '' && move.Score === 0) {
-          // This happens at end of game. Ignore.
-        } else {
-          throw new Error(`unhandled case`);
-        }
-      }
-      let lastValuation = 0;
-      let lastRank = 1;
-      const suggestionStrs = suggestions.map(
-        ({ move, score, leave, valuation }, idx) => {
-          if (lastValuation !== valuation) {
-            lastValuation = valuation;
-            lastRank = idx + 1;
-          }
-          return [
-            String(lastRank),
-            move,
-            String(score),
-            leave,
-            valuation.toFixed(1),
-          ] as Array<string>;
-        }
-      );
-      const suggestionMaxLengths = Array.from(new Array(5), (_, idx) =>
-        suggestionStrs.reduce(
-          (maxLength, suggestionStr) =>
-            Math.max(maxLength, suggestionStr[idx].length),
-          0
-        )
-      );
-      const formattedSuggestions = suggestionStrs.map(
-        (suggestionStr) =>
-          `${suggestionStr[0].padStart(
-            suggestionMaxLengths[0]
-          )} ${suggestionStr[1].padEnd(
-            suggestionMaxLengths[1]
-          )} ${suggestionStr[2].padStart(
-            suggestionMaxLengths[2]
-          )} ${suggestionStr[3].padEnd(
-            suggestionMaxLengths[3]
-          )} ${suggestionStr[4].padStart(suggestionMaxLengths[4])}`
-      );
-      console.log(formattedSuggestions.join('\n'));
-    })();
-  }, [examinableGameContext, lexicon]);
-
   return (
     <div className="game-controls">
-      <Button onClick={handleExaminer}>Options</Button>
+      <Button disabled>Options</Button>
       <Button
         shape="circle"
         icon={<DoubleLeftOutlined />}
@@ -260,6 +90,7 @@ export type Props = {
 };
 
 const GameControls = React.memo((props: Props) => {
+  const { useState } = useMountedState();
   const [passVisible, setPassVisible] = useState(false);
   const [challengeVisible, setChallengeVisible] = useState(false);
   const [resignVisible, setResignVisible] = useState(false);
@@ -423,7 +254,7 @@ const EndGameControls = (props: EGCProps) => {
   return (
     <div className="game-controls">
       <div className="secondary-controls">
-        <Button>Options</Button>
+        <Button disabled>Options</Button>
         <Button onClick={props.onExamine}>Examine</Button>
       </div>
       <div className="secondary-controls">

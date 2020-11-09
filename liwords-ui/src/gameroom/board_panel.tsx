@@ -438,16 +438,21 @@ export const BoardPanel = React.memo((props: Props) => {
       setArrowProperties({ row: 0, col: 0, horizontal: false, show: false });
     }
     lastLettersRef.current = props.board.letters;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isExamining, props.board.letters, props.currentRack]);
+  }, [
+    isExamining,
+    props.board.letters,
+    props.currentRack,
+    setDisplayedRack,
+    setPlacedTiles,
+    setPlacedTilesTempScore,
+  ]);
 
   useEffect(() => {
     // Stop the clock if we unload the board panel.
     return () => {
       stopClock();
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [stopClock]);
 
   useEffect(() => {
     const bag = { ...gameContext.pool };
@@ -461,8 +466,7 @@ export const BoardPanel = React.memo((props: Props) => {
     // Subtract 7 for opponent rack, won't matter when the
     // rack is smaller than that because past the threshold by then
     setexchangeAllowed(tilesRemaining >= 7);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [gameContext.pool]);
+  }, [gameContext.pool, props.currentRack]);
   useEffect(() => {
     if (
       examinableGameContext.playState === PlayState.WAITING_FOR_FINAL_PASS &&
@@ -498,8 +502,7 @@ export const BoardPanel = React.memo((props: Props) => {
         15
       );
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [examinableGameContext.playState]);
+  }, [examinableGameContext.playState, isMyTurn, makeMove]);
 
   useEffect(() => {
     if (!props.events.length) {
@@ -626,12 +629,14 @@ export const BoardPanel = React.memo((props: Props) => {
         setPlacedTilesTempScore(handlerReturn.playScore);
       }
     },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     [
       arrowProperties,
       currentMode,
       displayedRack,
       exchangeAllowed,
+      setDisplayedRack,
+      setPlacedTiles,
+      setPlacedTilesTempScore,
       isMyTurn,
       makeMove,
       placedTiles,
@@ -670,8 +675,14 @@ export const BoardPanel = React.memo((props: Props) => {
         setCurrentMode('BLANK_MODAL');
       }
     },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [displayedRack, placedTiles, props.board]
+    [
+      displayedRack,
+      placedTiles,
+      props.board,
+      setDisplayedRack,
+      setPlacedTilesTempScore,
+      setPlacedTiles,
+    ]
   );
 
   const clickToBoard = useCallback(
@@ -728,7 +739,6 @@ export const BoardPanel = React.memo((props: Props) => {
         row: newrow,
       });
     },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     [
       arrowProperties.col,
       arrowProperties.horizontal,
@@ -736,6 +746,9 @@ export const BoardPanel = React.memo((props: Props) => {
       arrowProperties.show,
       displayedRack,
       placedTiles,
+      setDisplayedRack,
+      setPlacedTiles,
+      setPlacedTilesTempScore,
       props.board,
     ]
   );
@@ -761,8 +774,13 @@ export const BoardPanel = React.memo((props: Props) => {
       setPlacedTiles(handlerReturn.newPlacedTiles);
       setPlacedTilesTempScore(handlerReturn.playScore);
     },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [displayedRack, placedTiles, props.board]
+    [
+      displayedRack,
+      placedTiles,
+      props.board,
+      setPlacedTiles,
+      setPlacedTilesTempScore,
+    ]
   );
 
   const handleBlankModalCancel = useCallback(() => {
@@ -786,8 +804,14 @@ export const BoardPanel = React.memo((props: Props) => {
       setPlacedTilesTempScore(handlerReturn.playScore);
       setArrowProperties({ row: 0, col: 0, horizontal: false, show: false });
     },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [displayedRack, placedTiles, props.board]
+    [
+      displayedRack,
+      placedTiles,
+      setPlacedTilesTempScore,
+      setDisplayedRack,
+      setPlacedTiles,
+      props.board,
+    ]
   );
 
   const moveRackTile = useCallback(
@@ -799,8 +823,7 @@ export const BoardPanel = React.memo((props: Props) => {
         setDisplayedRack(newRack.join(''));
       }
     },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [displayedRack]
+    [displayedRack, setDisplayedRack]
   );
 
   const showExchangeModal = useCallback(() => {
