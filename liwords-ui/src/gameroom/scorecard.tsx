@@ -225,7 +225,7 @@ export const ScoreCard = React.memo((props: Props) => {
   const toggleFlipVisibility = useCallback(() => {
     setFlipHidden((x) => !x);
   }, []);
-  const resizeListener = () => {
+  const resizeListener = useCallback(() => {
     const currentEl = el.current;
 
     if (isTablet()) {
@@ -256,16 +256,16 @@ export const ScoreCard = React.memo((props: Props) => {
         setCardHeight(0);
       }
     }
-  };
+  }, []);
   useEffect(() => {
     resizeListener();
-  }, [props.events, props.poolFormat]);
+  }, [props.events, props.poolFormat, resizeListener]);
   useEffect(() => {
     window.addEventListener('resize', resizeListener);
     return () => {
       window.removeEventListener('resize', resizeListener);
     };
-  }, []);
+  }, [resizeListener]);
 
   const turns = gameEventsToTurns(props.events);
   const cardStyle = cardHeight
