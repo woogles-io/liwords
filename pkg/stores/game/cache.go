@@ -32,7 +32,12 @@ const (
 	// Assume every game takes up roughly 50KB in memory
 	// This is roughly 200 MB and allows for 4000 simultaneous games.
 	// We will want to increase this as we grow (as well as the size of our container)
-	CacheCap = 4000
+
+	// Note: above is overly optimistic.
+	// It seems each cache slot is taking about 750kB.
+	// That's in addition to about 200MB base.
+	// Reduced cache cap accordingly.
+	CacheCap = 400
 )
 
 // Cache will reside in-memory, and will be per-node. If we add more nodes
@@ -94,6 +99,14 @@ func (c *Cache) SetGameEventChan(ch chan<- *entity.EventWrapper) {
 // Get gets a game from the cache.. it loads it into the cache if it's not there.
 func (c *Cache) Get(ctx context.Context, id string) (*entity.Game, error) {
 	g, ok := c.cache.Get(id)
+	if ok && g != nil {
+		return g.(*entity.Game), nil
+	}
+
+	// Recheck after locking, to ensure it is still not there.
+	c.Lock()
+	defer c.Unlock()
+	g, ok = c.cache.Get(id)
 	if ok && g != nil {
 		return g.(*entity.Game), nil
 	}
