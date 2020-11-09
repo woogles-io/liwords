@@ -18,13 +18,16 @@ import { PoolFormatType } from '../constants/pool_formats';
 import { Notepad } from './notepad';
 import { sortBlanksLast } from '../store/constants';
 import { getVW, isTablet } from '../utils/cwgame/common';
+import { Analyzer } from './analyzer';
 const screenSizes = require('../base.scss');
 
 type Props = {
+  isExamining?: boolean;
   playing: boolean;
   username: string;
   events: Array<GameEvent>;
   board: Board;
+  lexicon: string;
   poolFormat: PoolFormatType;
   playerMeta: Array<PlayerMetadata>;
 };
@@ -217,19 +220,19 @@ export const ScoreCard = React.memo((props: Props) => {
 
   const el = useRef<HTMLDivElement>(null);
   const [cardHeight, setCardHeight] = useState(0);
-  const [notepadHidden, setNotepadHidden] = useState(true);
-  const [enableNotepadFlip, setEnableNotepadFlip] = useState(isTablet());
-  const toggleNotepadVisibility = useCallback(() => {
-    setNotepadHidden((x) => !x);
+  const [flipHidden, setFlipHidden] = useState(true);
+  const [flipEnabled, setEnableFlip] = useState(isTablet());
+  const toggleFlipVisibility = useCallback(() => {
+    setFlipHidden((x) => !x);
   }, []);
   const resizeListener = () => {
     const currentEl = el.current;
 
     if (isTablet()) {
-      setEnableNotepadFlip(true);
+      setEnableFlip(true);
     } else {
-      setEnableNotepadFlip(false);
-      setNotepadHidden(true);
+      setEnableFlip(false);
+      setFlipHidden(true);
     }
     if (currentEl) {
       currentEl.scrollTop = currentEl.scrollHeight || 0;
@@ -274,31 +277,46 @@ export const ScoreCard = React.memo((props: Props) => {
   const notepadStyle = cardHeight
     ? {
         height: cardHeight - 24,
-        display: notepadHidden ? 'none' : 'flex',
+        display: flipHidden ? 'none' : 'flex',
+      }
+    : undefined;
+  const analyzerStyle = cardHeight
+    ? {
+        height: cardHeight,
+        display: flipHidden ? 'none' : 'flex',
       }
     : undefined;
   let title = `Turn ${turns.length + 1}`;
   let extra = null;
-  if (enableNotepadFlip) {
-    title = !notepadHidden ? 'Notepad' : `Turn ${turns.length + 1}`;
-    extra = !notepadHidden ? 'View Scorecard' : 'View Notepad';
+  if (flipEnabled) {
+    if (props.isExamining) {
+      title = !flipHidden ? 'Analyzer' : `Turn ${turns.length + 1}`;
+      extra = !flipHidden ? 'View Scorecard' : 'View Analyzer';
+    } else {
+      title = !flipHidden ? 'Notepad' : `Turn ${turns.length + 1}`;
+      extra = !flipHidden ? 'View Scorecard' : 'View Notepad';
+    }
   }
   return (
     <Card
-      className="score-card"
+      className={`score-card${flipHidden ? '' : ' flipped'}`}
       title={title}
       // eslint-disable-next-line jsx-a11y/anchor-is-valid
       extra={
         isTablet ? (
-          <button className="link" onClick={toggleNotepadVisibility}>
+          <button className="link" onClick={toggleFlipVisibility}>
             {extra}
           </button>
         ) : null
       }
     >
       <div ref={el} style={cardStyle}>
-        <Notepad style={notepadStyle} />
-        {notepadHidden
+        {props.isExamining ? (
+          <Analyzer lexicon={props.lexicon} style={analyzerStyle} />
+        ) : (
+          <Notepad style={notepadStyle} />
+        )}
+        {flipHidden
           ? turns.map((t, idx) =>
               t.length === 0 ? null : (
                 <ScorecardTurn
