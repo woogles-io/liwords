@@ -303,7 +303,7 @@ export const ScoreCard = React.memo((props: Props) => {
       title={title}
       // eslint-disable-next-line jsx-a11y/anchor-is-valid
       extra={
-        isTablet ? (
+        isTablet() ? (
           <button className="link" onClick={toggleFlipVisibility}>
             {extra}
           </button>
