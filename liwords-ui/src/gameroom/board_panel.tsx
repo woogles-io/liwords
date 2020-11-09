@@ -675,7 +675,14 @@ export const BoardPanel = React.memo((props: Props) => {
         setCurrentMode('BLANK_MODAL');
       }
     },
-    [displayedRack, placedTiles, props.board, setDisplayedRack, setPlacedTiles]
+    [
+      displayedRack,
+      placedTiles,
+      props.board,
+      setDisplayedRack,
+      setPlacedTilesTempScore,
+      setPlacedTiles,
+    ]
   );
 
   const clickToBoard = useCallback(
