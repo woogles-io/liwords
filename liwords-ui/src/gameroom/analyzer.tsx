@@ -212,9 +212,11 @@ export const Analyzer = React.memo((props: AnalyzerProps) => {
     })();
   }, [examinableGameContext, lexicon, examinerLoading]);
 
+  // When at the last move, examineStoreContext.examinedTurn === Infinity.
+  // To also detect new moves, we use examinableGameContext.turns.length.
   useEffect(() => {
     setMoves(new Array<AnalyzerMove>());
-  }, [examinableGameContext.lastPlayedTiles]);
+  }, [examinableGameContext.turns.length]);
 
   const renderAnalyzerMoves = useMemo(
     () =>
