@@ -109,6 +109,12 @@ export const Notepad = React.memo((props: NotepadProps) => {
       notepadEl.current.scrollTop = notepadEl.current.scrollHeight || 0;
     }
   }, [curNotepad]);
+  const handleNotepadChange = useCallback(
+    (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+      setCurNotepad(e.target.value);
+    },
+    [setCurNotepad]
+  );
   const notepadContainer = (
     <div className="notepad-container" style={props.style}>
       <textarea
@@ -117,9 +123,7 @@ export const Notepad = React.memo((props: NotepadProps) => {
         ref={notepadEl}
         spellCheck={false}
         style={props.style}
-        onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => {
-          setCurNotepad(e.target.value);
-        }}
+        onChange={handleNotepadChange}
       />
       <Button
         shape="circle"
