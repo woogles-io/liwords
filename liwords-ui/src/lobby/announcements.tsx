@@ -19,7 +19,7 @@ export const Announcements = React.memo((props: AnnouncementsProps) => {
           <p>
             A single elimination best 3 out of 5 CSW tournament on Woogles.io
             with an automatic side tournament, November 16 - December 20, 2020.
-            $15.00{' '}
+            $15.00
           </p>
         </a>
       ),
@@ -34,7 +34,7 @@ export const Announcements = React.memo((props: AnnouncementsProps) => {
         >
           <p>
             13 games on Woogles.io, NWL and CSW divisions, November 14 and 15,
-            2020. Free!{' '}
+            2020. Free!
           </p>
         </a>
       ),

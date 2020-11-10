@@ -178,8 +178,7 @@ const ScorecardTurn = (props: turnProps) => {
       }
     }
     return turn;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [props.playerMeta, props.turn]);
+  }, [props.board, props.playerMeta, props.turn]);
 
   let scoreChange;
   if (memoizedTurn.lostScore > 0) {
@@ -225,7 +224,7 @@ export const ScoreCard = React.memo((props: Props) => {
   const toggleFlipVisibility = useCallback(() => {
     setFlipHidden((x) => !x);
   }, []);
-  const resizeListener = () => {
+  const resizeListener = useCallback(() => {
     const currentEl = el.current;
 
     if (isTablet()) {
@@ -256,36 +255,48 @@ export const ScoreCard = React.memo((props: Props) => {
         setCardHeight(0);
       }
     }
-  };
+  }, []);
   useEffect(() => {
     resizeListener();
-  }, [props.events, props.poolFormat]);
+  }, [props.events, props.poolFormat, resizeListener]);
   useEffect(() => {
     window.addEventListener('resize', resizeListener);
     return () => {
       window.removeEventListener('resize', resizeListener);
     };
-  }, []);
+  }, [resizeListener]);
 
-  const turns = gameEventsToTurns(props.events);
-  const cardStyle = cardHeight
-    ? {
-        maxHeight: cardHeight,
-        minHeight: cardHeight,
-      }
-    : undefined;
-  const notepadStyle = cardHeight
-    ? {
-        height: cardHeight - 24,
-        display: flipHidden ? 'none' : 'flex',
-      }
-    : undefined;
-  const analyzerStyle = cardHeight
-    ? {
-        height: cardHeight,
-        display: flipHidden ? 'none' : 'flex',
-      }
-    : undefined;
+  const turns = useMemo(() => gameEventsToTurns(props.events), [props.events]);
+  const cardStyle = useMemo(
+    () =>
+      cardHeight
+        ? {
+            maxHeight: cardHeight,
+            minHeight: cardHeight,
+          }
+        : undefined,
+    [cardHeight]
+  );
+  const notepadStyle = useMemo(
+    () =>
+      cardHeight
+        ? {
+            height: cardHeight - 24,
+            display: flipHidden ? 'none' : 'flex',
+          }
+        : undefined,
+    [cardHeight, flipHidden]
+  );
+  const analyzerStyle = useMemo(
+    () =>
+      cardHeight
+        ? {
+            height: cardHeight,
+            display: flipHidden ? 'none' : 'flex',
+          }
+        : undefined,
+    [cardHeight, flipHidden]
+  );
   let title = `Turn ${turns.length + 1}`;
   let extra = null;
   if (flipEnabled) {
@@ -301,9 +312,8 @@ export const ScoreCard = React.memo((props: Props) => {
     <Card
       className={`score-card${flipHidden ? '' : ' flipped'}`}
       title={title}
-      // eslint-disable-next-line jsx-a11y/anchor-is-valid
       extra={
-        isTablet ? (
+        isTablet() ? (
           <button className="link" onClick={toggleFlipVisibility}>
             {extra}
           </button>

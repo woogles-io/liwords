@@ -1,4 +1,37 @@
+import { Unrace } from '../utils/unrace';
+
+const filesByLexicon = [
+  {
+    lexicons: ['CSW19', 'NWL18'],
+    cacheKey: 'data/letterdistributions/english.csv',
+    path: '/wasm/english.csv',
+  },
+  {
+    lexicons: ['CSW19', 'NWL18'],
+    cacheKey: 'data/strategy/default_english/leaves.idx',
+    path: '/wasm/leaves.idx',
+  },
+  {
+    lexicons: ['CSW19', 'NWL18'],
+    cacheKey: 'data/strategy/default_english/preendgame.json',
+    path: '/wasm/preendgame.json',
+  },
+  {
+    lexicons: ['CSW19'],
+    cacheKey: 'data/lexica/gaddag/CSW19.gaddag',
+    path: '/wasm/CSW19.gaddag',
+  },
+  {
+    lexicons: ['NWL18'],
+    cacheKey: 'data/lexica/gaddag/NWL18.gaddag',
+    path: '/wasm/NWL18.gaddag',
+  },
+];
+
+const unrace = new Unrace();
+
 export interface Macondo {
+  loadLexicon: (lexicon: string) => Promise<unknown>;
   precache: (cacheKey: string, path: string) => Promise<unknown>;
   analyze: (jsonBoard: string) => Promise<string>;
 }
@@ -76,14 +109,27 @@ export const getMacondo = async () => {
       }
     };
 
-    wrappedWorker = {
-      precache: async (cacheKey: string, path: string) => {
+    class WrappedMacondo {
+      loadLexicon = async (lexicon: string) => {
+        return await unrace.run(() =>
+          Promise.all(
+            filesByLexicon.map(({ lexicons, cacheKey, path }) =>
+              lexicons.includes(lexicon) ? this.precache(cacheKey, path) : null
+            )
+          )
+        );
+      };
+
+      precache = async (cacheKey: string, path: string) => {
         return await sendRequest(['precache', cacheKey, path]);
-      },
-      analyze: async (jsonBoard: string) => {
+      };
+
+      analyze = async (jsonBoard: string) => {
         return (await sendRequest(['analyze', jsonBoard])) as string;
-      },
-    };
+      };
+    }
+
+    wrappedWorker = new WrappedMacondo();
   }
 
   return wrappedWorker;
