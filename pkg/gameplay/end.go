@@ -147,7 +147,6 @@ func performEndgameDuties(ctx context.Context, g *entity.Game, gameStore GameSto
 		wrapped.AddAudience(entity.AudUser, p+".game."+g.GameID())
 	}
 	wrapped.AddAudience(entity.AudGameTV, g.GameID())
-	g.SendChange(wrapped)
 
 	// Compute stats for the player and for the game.
 	variantKey, err := g.RatingKey()
@@ -162,6 +161,10 @@ func performEndgameDuties(ctx context.Context, g *entity.Game, gameStore GameSto
 			g.Stats = gameStats
 		}
 	}
+
+	// Send the event here instead of above the computation of Game Stats
+	// to avoid race conditions (computeGameStats modifies the history).
+	g.SendChange(wrapped)
 
 	// Send a notification to the lobby that this
 	// game ended. This will remove it from the list of live games.
