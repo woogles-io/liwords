@@ -5,7 +5,7 @@
 
 .seek-modal {
   .ant-modal-header {
-    background-image: linear-gradient($color-primary-middle 0%, white 100%);
+    background-image: linear-gradient($color-primary-middle 0%, $color-background 100%);
   }
   button {
     font-size: 13px;

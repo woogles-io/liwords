@@ -26,7 +26,7 @@ p {
     color: black;
     min-height: 48px;
     width: 100%;
-    background: white;
+    background: $color-background;
     font-size: 16px;
     font-weight: bold;
     z-index: 1;
@@ -47,7 +47,7 @@ p {
       display: flex;
       width: 100%;
       justify-content: space-between;
-      color: #707070;
+      color: $color-gray-medium;
       text-transform: uppercase;
       font-size: 12px;
       letter-spacing: 0.16em;
@@ -58,21 +58,21 @@ p {
       font-weight: bold;
       z-index: 2;
       span.anonymous {
-        color: #444;
+        color: $color-gray-extreme;
         font-weight: normal;
         display: inline;
       }
     }
     &.scrolling {
       padding-bottom: 12px;
-      border-bottom: 1px solid #ddd;
+      border-bottom: 1px solid $color-off-background;
       .presence {
         position: absolute;
         width: 100%;
-        background: white;
+        background: $color-background;
         padding: 12px 24px;
         left: 0;
-        border-bottom: 1px solid #ddd;
+        border-bottom: 1px solid $color-off-background;
       }
     }
   }
@@ -90,7 +90,7 @@ p {
         line-height: 1.4em;
       }
       .timestamp {
-        color: #6b268b;
+        color: $color-secondary;
         font-size: 75%;
         margin: 0;
         position: relative;

@@ -7,6 +7,15 @@ $header-height-mobile: 96px;
 $header-height-desktop: 60px;
 /* colors */
 
+$color-background: #ffffff;
+$color-off-background: #eeeeee;
+
+$color-gray-subtle: #bebebe;
+$color-gray-medium: #999999;
+$color-gray-extreme: #414141;
+
+$color-grid: #c3c3c3;
+
 $color-primary-light: #e2f8ff;
 $color-primary-middle: #c9f0ff;
 $color-primary-midDark: #3b88ca;
@@ -27,13 +36,7 @@ $color-board-dls: desaturate(darken(#e2f8ff, 10%), 25%);
 $color-board-dws: desaturate(darken(#ffeaea, 10%), 25%);
 $color-board-tws: #a92e2e;
 $color-board-tls: #3b88ca;
-$color-board-empty: white;
-
-$color-gray-light: #bebebe;
-$color-gray-medium: #999999;
-$color-gray-dark: #414141;
-
-$color-grid: #c3c3c3;
+$color-board-empty: $color-background;
 
 $screen-mobile-min: 768px;
 $screen-tablet-min: 1024px;
@@ -225,7 +228,7 @@ ul
       margin: 0;
       height: 100%;
       border: 0;
-      background: white;
+      background: $color-background;
       color: black;
       @include type-link;
       span {
@@ -251,7 +254,7 @@ ul
       &:nth-child(3), &:only-child {
         background: $color-primary-dark;
         div {
-          color: white;
+          color: $color-background;
         }
         &:hover div {
           color: $color-primary-middle;
@@ -277,7 +280,7 @@ ul
     }
     .ant-tabs-nav {
       margin: 0;
-      border-bottom: 1px solid #EEE;
+      border-bottom: 1px solid $color-off-background;
       .ant-tabs-nav-operations {
         display: none;
       }
@@ -330,7 +333,7 @@ ul
     font-size: 12px;
     height: 36px;
     font-weight: 800;
-    background: white;
+    background: $color-background;
     text-transform: uppercase;
     transition: none;
     margin: 0 6px;
@@ -353,7 +356,7 @@ ul
     &:active {
       border-color: $color-primary-dark;
       color: $color-primary-dark;
-      background: white;
+      background: $color-background;
       transition: none;
     }
     &:not([disabled]):hover {
@@ -374,7 +377,7 @@ ul
   button.ant-btn-primary, button.primary, a.btn-primary {
     margin: 6px 3px;
     background: $color-primary-dark;
-    color: white;
+    color: $color-background;
     text-transform: uppercase;
     border: 0;
     outline: 0;
@@ -401,12 +404,12 @@ ul
     &:visited,
     &:active {
       background: $color-primary-dark;
-      color: white;
+      color: $color-background;
       transition: none;
     }
     &:disabled, &:disabled:hover {
-      background: $color-gray-light;
-      color: white;
+      background: $color-gray-subtle;
+      color: $color-background;
     }
   }
 }
@@ -419,13 +422,13 @@ ul
     .ant-notification-notice, .ant-message-notice-content {
       @include type-default;
       background: $color-primary-dark;
-      color: white;
+      color: $color-background;
       font-size: 15px;
       font-weight: 600;
       letter-spacing: 0.06em;
       .ant-notification-notice-message {
         font-weight: 1000;
-        color: white;
+        color: $color-background;
       }
       span.message-action {
         font-weight: 600;

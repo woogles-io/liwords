@@ -13,7 +13,7 @@
   position: -webkit-sticky; /* Safari */
   top: 0;
   z-index: 4;
-  background: white;
+  background: $color-background;
   padding: 24px 24px 0px;
   margin: -16px -24px 0px;
   @media (min-width: $screen-tablet-min) {
@@ -45,7 +45,7 @@
     width: 100%;
   }
   button.ant-btn {
-    color: white;
+    color: $color-background;
   }
   .player-card {
     padding: 5px 12px;
@@ -106,10 +106,10 @@
       button {
         @include type-monospace;
         font-size: 20px;
-        color: white;
+        color: $color-background;
         font-weight: bold;
         &.timer {
-          background-color: white;
+          background-color: $color-background;
           color: $color-primary-dark;
           border-color: $color-primary-dark;
           font-weight: 500;
@@ -127,7 +127,7 @@
       button.ant-btn {
         background-color: $color-timer-dark;
         &.timer {
-          background-color: white;
+          background-color: $color-background;
           color: $color-timer-dark;
           border-color: $color-timer-dark;
         }
@@ -139,7 +139,7 @@
           background-color: $color-timer-low-dark;
           color: black;
           &.timer {
-            background: white;
+            background: $color-background;
             border-color: $color-timer-low-dark;
             color: black;
           }
@@ -151,7 +151,7 @@
           background-color: $color-timer-out-dark;
           border-color: $color-timer-out-dark;
           &.timer {
-            background: white;
+            background: $color-background;
             border-color: $color-timer-out-dark;
             color: $color-timer-out-dark;;
           }

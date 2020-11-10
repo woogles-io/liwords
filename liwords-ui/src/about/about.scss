@@ -6,7 +6,7 @@
   display: flex;
   justify-content: center;
   align-items: center;
-  background-image: linear-gradient($color-primary-middle 20%, white 70%);
+  background-image: linear-gradient($color-primary-middle 20%, $color-background 70%);
   height: 140px;
   h1 {
     margin-bottom: 0;

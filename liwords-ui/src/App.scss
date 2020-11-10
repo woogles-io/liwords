@@ -1,6 +1,6 @@
 @import 'base';
 body {
-  background-color: white;
+  background-color: $color-background;
 }
 @keyframes disappear {
   0% {
@@ -19,7 +19,7 @@ body {
 }
 
 .ant-dropdown.user-menu {
-  background: white;
+  background: $color-background;
   padding: 6px 24px 6px 12px;
   min-width: 200px;
   box-shadow: $card-shadow-lower;
@@ -36,13 +36,13 @@ a, button.link {
   }
 }
 button.link {
-  background: white;
+  background: $color-background;
 }
 
 a.plain, .link.plain {
   cursor: pointer;
   font-weight: 700;
-  color: $color-gray-dark;
+  color: $color-gray-extreme;
   transition: none;
   font-family: $font-default;
   line-height: 34px;
@@ -58,41 +58,3 @@ a.plain, .link.plain {
   color: $color-primary-dark;
 }
 
-.App-logo {
-  height: 40vmin;
-  pointer-events: none;
-}
-
-.App-header {
-  background-color: #282c34;
-  min-height: 100vh;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  font-size: calc(10px + 2vmin);
-  color: white;
-}
-
-.App-link {
-  color: #61dafb;
-}
-
-@media (prefers-reduced-motion: no-preference) {
-  .App-logo {
-    animation: App-logo-spin infinite 20s linear;
-  }
-}
-
-@keyframes App-logo-spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-/* g:focus {
-  outline: none;
-} */

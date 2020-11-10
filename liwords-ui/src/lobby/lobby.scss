@@ -46,7 +46,7 @@
       font-weight: inherit;
     }
     a p:hover {
-      background-color: #f5f5f5;
+      background-color: mix($color-off-background, $color-background, $weight: 50%);
     }
   }
 }
