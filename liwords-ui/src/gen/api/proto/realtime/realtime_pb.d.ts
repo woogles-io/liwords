@@ -671,25 +671,16 @@ export class TournamentGameEndedEvent extends jspb.Message {
   getGameId(): string;
   setGameId(value: string): void;
 
-  getScoresMap(): jspb.Map<string, number>;
-  clearScoresMap(): void;
+  clearPlayersList(): void;
+  getPlayersList(): Array<TournamentGameEndedEvent.Player>;
+  setPlayersList(value: Array<TournamentGameEndedEvent.Player>): void;
+  addPlayers(value?: TournamentGameEndedEvent.Player, index?: number): TournamentGameEndedEvent.Player;
+
   getEndReason(): GameEndReasonMap[keyof GameEndReasonMap];
   setEndReason(value: GameEndReasonMap[keyof GameEndReasonMap]): void;
 
-  getWinner(): string;
-  setWinner(value: string): void;
-
-  getLoser(): string;
-  setLoser(value: string): void;
-
-  getTie(): boolean;
-  setTie(value: boolean): void;
-
   getTime(): number;
   setTime(value: number): void;
-
-  getWentFirst(): string;
-  setWentFirst(value: string): void;
 
   serializeBinary(): Uint8Array;
   toObject(includeInstance?: boolean): TournamentGameEndedEvent.AsObject;
@@ -704,13 +695,37 @@ export class TournamentGameEndedEvent extends jspb.Message {
 export namespace TournamentGameEndedEvent {
   export type AsObject = {
     gameId: string,
-    scoresMap: Array<[string, number]>,
+    playersList: Array<TournamentGameEndedEvent.Player.AsObject>,
     endReason: GameEndReasonMap[keyof GameEndReasonMap],
-    winner: string,
-    loser: string,
-    tie: boolean,
     time: number,
-    wentFirst: string,
+  }
+
+  export class Player extends jspb.Message {
+    getUsername(): string;
+    setUsername(value: string): void;
+
+    getScore(): number;
+    setScore(value: number): void;
+
+    getResult(): TournamentGameResultMap[keyof TournamentGameResultMap];
+    setResult(value: TournamentGameResultMap[keyof TournamentGameResultMap]): void;
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): Player.AsObject;
+    static toObject(includeInstance: boolean, msg: Player): Player.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: Player, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): Player;
+    static deserializeBinaryFromReader(message: Player, reader: jspb.BinaryReader): Player;
+  }
+
+  export namespace Player {
+    export type AsObject = {
+      username: string,
+      score: number,
+      result: TournamentGameResultMap[keyof TournamentGameResultMap],
+    }
   }
 }
 

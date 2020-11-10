@@ -213,12 +213,18 @@ export const useOnSocketMsg = () => {
             if (soughtGame === null) {
               break;
             }
+            console.log('gameContext', gameContext);
             let inReceiverGameList = false;
             if (receiver === loginState.username) {
               BoopSounds.playSound('matchReqSound');
               const rematchFor = mr.getRematchFor();
               const { path } = loginState;
-
+              console.log(
+                'sg',
+                soughtGame.tournamentID,
+                'gc',
+                gameContext.gameID
+              );
               if (soughtGame.tournamentID) {
                 // This is a match game attached to a tourney.
                 // XXX: When we have a tourney reducer we should refer to said reducer's
@@ -560,8 +566,8 @@ export const useOnSocketMsg = () => {
       dispatchGameContext,
       dispatchLobbyContext,
       excludedPlayers,
-      loginState.connID,
-      loginState.username,
+      gameContext,
+      loginState,
       setCurrentLagMs,
       setGameEndMessage,
       setPresence,

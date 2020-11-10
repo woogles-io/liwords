@@ -225,16 +225,18 @@ message GameEndedEvent {
 // over. This shows tournament results right in the tournament lobby in real
 // time.
 message TournamentGameEndedEvent {
+
+  message Player {
+    string username = 1;
+    int32 score = 2;
+    TournamentGameResult result = 3;
+  }
+
   string game_id = 1;
-  map<string, int32> scores = 2;
+  repeated Player players = 2;
   GameEndReason end_reason = 3;
-  string winner = 4;
-  string loser = 5;
-  // If it was a tie, the winner and loser above can be interchanged.
-  bool tie = 6;
   // Time that the game ended
-  int64 time = 7;
-  string went_first = 8;
+  int64 time = 4;
 }
 
 // A GameHistoryRefresher is sent to both players when the game starts,

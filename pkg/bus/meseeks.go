@@ -377,7 +377,22 @@ func (b *Bus) broadcastGameCreation(g *entity.Game, acceptor, requester *entity.
 	if err != nil {
 		return err
 	}
-	return b.natsconn.Publish("lobby.newLiveGame", data)
+
+	err = b.natsconn.Publish("lobby.newLiveGame", data)
+	if err != nil {
+		return err
+	}
+
+	// Also publish to tournament channel if this is a tournament game.
+	if g.TournamentData != nil && g.TournamentData.Id != "" {
+		channelName := "tournament." + g.TournamentData.Id + ".newLiveGame"
+		err = b.natsconn.Publish(channelName, data)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+
 }
 
 func (b *Bus) deleteSoughtForUser(ctx context.Context, userID string) error {
