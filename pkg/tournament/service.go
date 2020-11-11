@@ -87,6 +87,25 @@ func (ts *TournamentService) NewTournament(ctx context.Context, req *pb.NewTourn
 	}, nil
 }
 
+func (ts *TournamentService) GetTournamentMetadata(ctx context.Context, req *pb.GetTournamentMetadataRequest) (*pb.TournamentMetadataResponse, error) {
+	t, err := ts.tournamentStore.Get(ctx, req.Id)
+	if err != nil {
+		return nil, err
+	}
+
+	execdir, err := ts.userStore.GetByUUID(ctx, t.ExecutiveDirector)
+	if err != nil {
+		return nil, err
+	}
+
+	return &pb.TournamentMetadataResponse{
+		Name:             t.Name,
+		Description:      t.Description,
+		DirectorUsername: execdir.Username,
+	}, nil
+
+}
+
 func (ts *TournamentService) AddDirectors(ctx context.Context, req *pb.TournamentPersons) (*pb.TournamentResponse, error) {
 	err := AddDirectors(ctx, ts.tournamentStore, req.Id, convertPersonsToStringMap(req))
 	if err != nil {

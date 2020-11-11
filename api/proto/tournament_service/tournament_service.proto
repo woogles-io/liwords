@@ -88,9 +88,18 @@ message TournamentStartRoundRequest {
 message TournamentResponse {}
 message NewTournamentResponse { string id = 1; }
 
+message GetTournamentMetadataRequest { string id = 1; }
+
+message TournamentMetadataResponse {
+  string name = 1;
+  string description = 2;
+  string director_username = 3;
+}
+
 service TournamentService {
   rpc NewTournament(NewTournamentRequest) returns(NewTournamentResponse);
-
+  rpc GetTournamentMetadata(GetTournamentMetadataRequest)
+      returns(TournamentMetadataResponse);
   rpc SetTournamentMetadata(TournamentMetadataRequest)
       returns(TournamentResponse);
   rpc SetTournamentControls(TournamentControlsRequest)

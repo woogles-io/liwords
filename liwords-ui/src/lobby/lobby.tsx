@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect } from 'react';
-import { Card } from 'antd';
+import { Card, message } from 'antd';
 import { useParams } from 'react-router-dom';
+import axios from 'axios';
 import { useMountedState } from '../utils/mounted';
 
 import { TopBar } from '../topbar/topbar';
@@ -27,6 +28,8 @@ import {
 import { singularCount } from '../utils/plural';
 import './lobby.scss';
 import { Announcements } from './announcements';
+import { toAPIUrl } from '../api/api';
+import { TournamentInfo, TournamentMetadata } from './tournament_info';
 
 const sendSeek = (
   game: SoughtGame,
@@ -95,7 +98,11 @@ export const Lobby = (props: Props) => {
   const { loginState } = useLoginStateStoreContext();
   const { presences } = usePresenceStoreContext();
   const { loggedIn, username, userID } = loginState;
-
+  const [tournamentInfo, setTournamentInfo] = useState<TournamentMetadata>({
+    name: '',
+    description: '',
+    director_username: '',
+  });
   const [selectedGameTab, setSelectedGameTab] = useState(
     loggedIn ? 'PLAY' : 'WATCH'
   );
@@ -103,6 +110,31 @@ export const Lobby = (props: Props) => {
   useEffect(() => {
     setSelectedGameTab(loggedIn ? 'PLAY' : 'WATCH');
   }, [loggedIn]);
+
+  useEffect(() => {
+    if (!tournamentID) {
+      return;
+    }
+    axios
+      .post<TournamentMetadata>(
+        toAPIUrl(
+          'tournament_service.TournamentService',
+          'GetTournamentMetadata'
+        ),
+        {
+          id: tournamentID,
+        }
+      )
+      .then((resp) => {
+        setTournamentInfo(resp.data);
+      })
+      .catch((err) => {
+        message.error({
+          content: 'Tournament does not exist',
+          duration: 5,
+        });
+      });
+  }, [tournamentID]);
 
   const handleNewGame = useCallback(
     (seekID: string) => {
@@ -159,8 +191,14 @@ export const Lobby = (props: Props) => {
           onSeekSubmit={onSeekSubmit}
           tournamentID={tournamentID}
         />
-
-        <Announcements tournamentID={tournamentID} />
+        {tournamentID ? (
+          <TournamentInfo
+            tournamentID={tournamentID}
+            tournamentInfo={tournamentInfo}
+          />
+        ) : (
+          <Announcements />
+        )}
       </div>
     </>
   );

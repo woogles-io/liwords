@@ -70,6 +70,8 @@ func NewTournament(ctx context.Context,
 		return nil, err
 	}
 
+	desiredID := id != ""
+
 	if id == "" {
 		id = shortuuid.New()[2:8]
 	}
@@ -87,6 +89,10 @@ func NewTournament(ctx context.Context,
 		err = tournamentStore.Create(ctx, entTournament)
 		if err == nil {
 			break
+		}
+		if desiredID {
+			// Don't try to modify the ID, instead quit with an error!
+			return nil, err
 		}
 		log.Err(err).Msg("tournament-create-error")
 		entTournament.UUID = shortuuid.New()[2:8]
