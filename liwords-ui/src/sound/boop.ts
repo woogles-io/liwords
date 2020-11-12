@@ -8,13 +8,12 @@ class Booper {
 
   constructor(readonly soundName: string, src: string, private volume: number) {
     this.audio = new Audio(src);
-    this.callPlay = this.callPlay.bind(this);
     this.audio.addEventListener('ended', () => {
       if (this.times > 0) this.unlock();
     });
   }
 
-  private async callPlay() {
+  callPlay = async () => {
     const isPlaying = this.times > 0;
     try {
       this.audio.volume = isPlaying ? this.volume : 0;
@@ -27,17 +26,17 @@ class Booper {
         e
       );
     }
-  }
+  };
 
-  async unlock() {
+  unlock = async () => {
     await this.unrace.run(this.callPlay);
     return this.unlocked;
-  }
+  };
 
-  async play() {
+  play = async () => {
     ++this.times;
     return await this.unlock();
-  }
+  };
 }
 
 const playableSounds: { [key: string]: Booper } = {};
