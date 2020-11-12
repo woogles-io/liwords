@@ -28,6 +28,13 @@ export const Wooglinkify = (props: { message: string }) => {
       );
       pos = index + chunk.length;
     }
+    if (pos < message.length) {
+      arr.push(
+        <React.Fragment key={arr.length}>
+          {message.substring(pos)}
+        </React.Fragment>
+      );
+    }
     return <React.Fragment>{arr}</React.Fragment>;
   }, [message]);
 
