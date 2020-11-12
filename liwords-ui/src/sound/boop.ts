@@ -1,7 +1,7 @@
 import { Unrace } from '../utils/unrace';
 
 class Booper {
-  private soundName: string;
+  readonly soundName: string;
   private src: string;
   private volume: number;
   private audio: HTMLAudioElement;
@@ -46,26 +46,18 @@ class Booper {
   }
 }
 
-const playableSounds: { [key: string]: Booper } = {
-  makeMoveSound: new Booper(
-    'makeMoveSound',
-    require('../assets/makemove.mp3'),
-    1
-  ),
-  oppMoveSound: new Booper('oppMoveSound', require('../assets/oppmove.mp3'), 1),
-  matchReqSound: new Booper(
-    'matchReqSound',
-    require('../assets/matchreq.mp3'),
-    1
-  ),
-  startgameSound: new Booper(
-    'startgameSound',
-    require('../assets/startgame.mp3'),
-    1
-  ),
-  endgameSound: new Booper('endgameSound', require('../assets/endgame.mp3'), 1),
-  woofSound: new Booper('woofSound', require('../assets/woof.wav'), 0.25),
-};
+const playableSounds: { [key: string]: Booper } = {};
+
+for (const booper of [
+  new Booper('makeMoveSound', require('../assets/makemove.mp3'), 1),
+  new Booper('oppMoveSound', require('../assets/oppmove.mp3'), 1),
+  new Booper('matchReqSound', require('../assets/matchreq.mp3'), 1),
+  new Booper('startgameSound', require('../assets/startgame.mp3'), 1),
+  new Booper('endgameSound', require('../assets/endgame.mp3'), 1),
+  new Booper('woofSound', require('../assets/woof.wav'), 0.25),
+]) {
+  playableSounds[booper.soundName] = booper;
+}
 
 const unlockSounds = () => {
   (async () => {
