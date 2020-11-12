@@ -1,18 +1,12 @@
 import { Unrace } from '../utils/unrace';
 
 class Booper {
-  readonly soundName: string;
-  private src: string;
-  private volume: number;
   private audio: HTMLAudioElement;
   private unrace = new Unrace();
   private times = 0;
   private unlocked = false;
 
-  constructor(soundName: string, src: string, volume: number) {
-    this.soundName = soundName;
-    this.src = src; // not really used
-    this.volume = volume;
+  constructor(readonly soundName: string, src: string, private volume: number) {
     this.audio = new Audio(src);
     this.callPlay = this.callPlay.bind(this);
     this.audio.addEventListener('ended', () => {
