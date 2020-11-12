@@ -1,4 +1,10 @@
-import React, { useRef, useCallback, useContext, useEffect } from 'react';
+import React, {
+  useRef,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+} from 'react';
 import { Button, Card } from 'antd';
 import { PlusOutlined } from '@ant-design/icons';
 import {
@@ -42,12 +48,12 @@ export const NotepadContextProvider = ({
 }) => {
   const { useState } = useMountedState();
   const [curNotepad, setCurNotepad] = useState('');
-  return (
-    <NotepadContext.Provider
-      value={{ curNotepad, setCurNotepad }}
-      children={children}
-    />
-  );
+  const contextValue = useMemo(() => ({ curNotepad, setCurNotepad }), [
+    curNotepad,
+    setCurNotepad,
+  ]);
+
+  return <NotepadContext.Provider value={contextValue} children={children} />;
 };
 
 export const Notepad = React.memo((props: NotepadProps) => {

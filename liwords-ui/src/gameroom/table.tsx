@@ -48,7 +48,7 @@ import { PlayState } from '../gen/macondo/api/proto/macondo/macondo_pb';
 import { endGameMessageFromGameInfo } from '../store/end_of_game';
 import { singularCount } from '../utils/plural';
 import { Notepad, NotepadContextProvider } from './notepad';
-import { Analyzer } from './analyzer';
+import { Analyzer, AnalyzerContextProvider } from './analyzer';
 
 type Props = {
   sendSocketMsg: (msg: Uint8Array) => void;
@@ -553,5 +553,6 @@ export const Table = React.memo((props: Props) => {
     </div>
   );
   ret = <NotepadContextProvider children={ret} />;
+  ret = <AnalyzerContextProvider children={ret} />;
   return ret;
 });
