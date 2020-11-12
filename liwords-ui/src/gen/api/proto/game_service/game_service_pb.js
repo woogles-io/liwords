@@ -749,7 +749,8 @@ proto.game_service.GameInfoResponse.toObject = function(includeInstance, msg) {
     winner: jspb.Message.getFieldWithDefault(msg, 14, 0),
     createdAt: (f = msg.getCreatedAt()) && google_protobuf_timestamp_pb.Timestamp.toObject(includeInstance, f),
     gameId: jspb.Message.getFieldWithDefault(msg, 16, ""),
-    originalRequestId: jspb.Message.getFieldWithDefault(msg, 17, "")
+    originalRequestId: jspb.Message.getFieldWithDefault(msg, 17, ""),
+    lastUpdate: (f = msg.getLastUpdate()) && google_protobuf_timestamp_pb.Timestamp.toObject(includeInstance, f)
   };
 
   if (includeInstance) {
@@ -851,6 +852,11 @@ proto.game_service.GameInfoResponse.deserializeBinaryFromReader = function(msg, 
     case 17:
       var value = /** @type {string} */ (reader.readString());
       msg.setOriginalRequestId(value);
+      break;
+    case 18:
+      var value = new google_protobuf_timestamp_pb.Timestamp;
+      reader.readMessage(value,google_protobuf_timestamp_pb.Timestamp.deserializeBinaryFromReader);
+      msg.setLastUpdate(value);
       break;
     default:
       reader.skipField();
@@ -993,6 +999,14 @@ proto.game_service.GameInfoResponse.serializeBinaryToWriter = function(message, 
     writer.writeString(
       17,
       f
+    );
+  }
+  f = message.getLastUpdate();
+  if (f != null) {
+    writer.writeMessage(
+      18,
+      f,
+      google_protobuf_timestamp_pb.Timestamp.serializeBinaryToWriter
     );
   }
 };
@@ -1341,6 +1355,43 @@ proto.game_service.GameInfoResponse.prototype.getOriginalRequestId = function() 
  */
 proto.game_service.GameInfoResponse.prototype.setOriginalRequestId = function(value) {
   return jspb.Message.setProto3StringField(this, 17, value);
+};
+
+
+/**
+ * optional google.protobuf.Timestamp last_update = 18;
+ * @return {?proto.google.protobuf.Timestamp}
+ */
+proto.game_service.GameInfoResponse.prototype.getLastUpdate = function() {
+  return /** @type{?proto.google.protobuf.Timestamp} */ (
+    jspb.Message.getWrapperField(this, google_protobuf_timestamp_pb.Timestamp, 18));
+};
+
+
+/**
+ * @param {?proto.google.protobuf.Timestamp|undefined} value
+ * @return {!proto.game_service.GameInfoResponse} returns this
+*/
+proto.game_service.GameInfoResponse.prototype.setLastUpdate = function(value) {
+  return jspb.Message.setWrapperField(this, 18, value);
+};
+
+
+/**
+ * Clears the message field making it undefined.
+ * @return {!proto.game_service.GameInfoResponse} returns this
+ */
+proto.game_service.GameInfoResponse.prototype.clearLastUpdate = function() {
+  return this.setLastUpdate(undefined);
+};
+
+
+/**
+ * Returns whether this field is set.
+ * @return {boolean}
+ */
+proto.game_service.GameInfoResponse.prototype.hasLastUpdate = function() {
+  return jspb.Message.getField(this, 18) != null;
 };
 
 

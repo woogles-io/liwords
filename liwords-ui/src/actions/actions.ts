@@ -16,6 +16,10 @@ export enum ActionType {
   AddActiveGames,
   RemoveActiveGame,
 
+  /* tourney actions */
+  AddTourneyGame,
+  AddTourneyGames,
+
   /* game actions */
   AddGameEvent,
   RefreshTurns,

@@ -6,12 +6,15 @@ import (
 	"github.com/domino14/liwords/pkg/entity"
 	lru "github.com/hashicorp/golang-lru"
 	"github.com/rs/zerolog/log"
+
+	pb "github.com/domino14/liwords/rpc/api/proto/tournament_service"
 )
 
 type backingStore interface {
 	Get(ctx context.Context, id string) (*entity.Tournament, error)
 	Set(context.Context, *entity.Tournament) error
 	Create(context.Context, *entity.Tournament) error
+	GetRecentGames(ctx context.Context, tourneyID string, numGames int, offset int) (*pb.RecentGamesResponse, error)
 	Disconnect()
 	SetTournamentEventChan(c chan<- *entity.EventWrapper)
 	TournamentEventChan() chan<- *entity.EventWrapper
@@ -98,4 +101,8 @@ func (c *Cache) SetTournamentEventChan(ch chan<- *entity.EventWrapper) {
 
 func (c *Cache) TournamentEventChan() chan<- *entity.EventWrapper {
 	return c.backing.TournamentEventChan()
+}
+
+func (c *Cache) GetRecentGames(ctx context.Context, tourneyID string, numGames int, offset int) (*pb.RecentGamesResponse, error) {
+	return c.backing.GetRecentGames(ctx, tourneyID, numGames, offset)
 }

@@ -175,7 +175,10 @@ func performEndgameDuties(ctx context.Context, g *entity.Game, gameStore GameSto
 	g.SendChange(wrapped)
 
 	if g.TournamentData != nil && g.TournamentData.Id != "" {
-		tournament.HandleTournamentGameEnded(ctx, tournamentStore, userStore, g)
+		err := tournament.HandleTournamentGameEnded(ctx, tournamentStore, userStore, g)
+		if err != nil {
+			log.Err(err).Msg("error-tourney-game-ended")
+		}
 	}
 
 	// Save and unload the game from the cache.

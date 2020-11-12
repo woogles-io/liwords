@@ -857,6 +857,9 @@ export const BoardPanel = React.memo((props: Props) => {
     receiver.setDisplayName(opp);
     evt.setReceivingUser(receiver);
     evt.setRematchFor(gameID);
+    if (props.tournamentID) {
+      evt.setTournamentId(props.tournamentID);
+    }
     sendSocketMsg(
       encodeToSocketFmt(MessageType.MATCH_REQUEST, evt.serializeBinary())
     );

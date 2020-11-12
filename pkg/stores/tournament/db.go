@@ -12,6 +12,9 @@ import (
 
 	"github.com/domino14/liwords/pkg/config"
 	"github.com/domino14/liwords/pkg/entity"
+	"github.com/domino14/liwords/pkg/gameplay"
+	"github.com/domino14/liwords/rpc/api/proto/realtime"
+	pb "github.com/domino14/liwords/rpc/api/proto/tournament_service"
 )
 
 // DBStore is a postgres-backed store for games.
@@ -19,6 +22,7 @@ type DBStore struct {
 	cfg                 *config.Config
 	db                  *gorm.DB
 	tournamentEventChan chan<- *entity.EventWrapper
+	gameStore           gameplay.GameStore
 }
 
 type tournament struct {
@@ -33,19 +37,19 @@ type tournament struct {
 }
 
 // NewDBStore creates a new DB store for tournament managers.
-func NewDBStore(config *config.Config) (*DBStore, error) {
+func NewDBStore(config *config.Config, gs gameplay.GameStore) (*DBStore, error) {
 	db, err := gorm.Open(postgres.Open(config.DBConnString), &gorm.Config{})
 	if err != nil {
 		return nil, err
 	}
 	db.AutoMigrate(&tournament{})
-	return &DBStore{db: db, cfg: config}, nil
+	return &DBStore{db: db, gameStore: gs, cfg: config}, nil
 }
 
 func (s *DBStore) Get(ctx context.Context, id string) (*entity.Tournament, error) {
 	tm := &tournament{}
 	ctxDB := s.db.WithContext(ctx)
-	if result := ctxDB.Where("uuid = ?", tm.UUID).First(tm); result.Error != nil {
+	if result := ctxDB.Where("uuid = ?", id).First(tm); result.Error != nil {
 		return nil, result.Error
 	}
 
@@ -136,4 +140,47 @@ func (s *DBStore) toDBObj(t *entity.Tournament) (*tournament, error) {
 // SetTournamentEventChan sets the tournament event channel to the passed in channel.
 func (s *DBStore) SetTournamentEventChan(c chan<- *entity.EventWrapper) {
 	s.tournamentEventChan = c
+}
+
+func (s *DBStore) GetRecentGames(ctx context.Context, tourneyID string, numGames int, offset int) (*pb.RecentGamesResponse, error) {
+	infos, err := s.gameStore.GetRecentTourneyGames(ctx, tourneyID, numGames, offset)
+	if err != nil {
+		return nil, err
+	}
+
+	evts := []*realtime.TournamentGameEndedEvent{}
+	for _, info := range infos.GameInfo {
+
+		var res1, res2 realtime.TournamentGameResult
+		switch info.Winner {
+		case -1:
+			res1 = realtime.TournamentGameResult_DRAW
+			res2 = realtime.TournamentGameResult_DRAW
+		case 0:
+			res1 = realtime.TournamentGameResult_WIN
+			res2 = realtime.TournamentGameResult_LOSS
+		case 1:
+			res1 = realtime.TournamentGameResult_LOSS
+			res2 = realtime.TournamentGameResult_WIN
+		}
+
+		players := []*realtime.TournamentGameEndedEvent_Player{
+			{Username: info.Players[0].Nickname, Score: info.Scores[0], Result: res1},
+			{Username: info.Players[1].Nickname, Score: info.Scores[1], Result: res2},
+		}
+		if info.Players[1].First {
+			players[0], players[1] = players[1], players[0]
+		}
+
+		evt := &realtime.TournamentGameEndedEvent{
+			Players:   players,
+			GameId:    tourneyID,
+			EndReason: info.GameEndReason,
+			Time:      info.LastUpdate.Seconds,
+		}
+		evts = append(evts, evt)
+	}
+	return &pb.RecentGamesResponse{
+		Games: evts,
+	}, nil
 }

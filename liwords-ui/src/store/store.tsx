@@ -172,6 +172,7 @@ const LobbyContext = createContext<LobbyStoreData>({
     soughtGames: [],
     activeGames: [],
     matchRequests: [],
+    tourneyGames: [],
   },
   dispatchLobbyContext: defaultFunction,
 });
@@ -547,6 +548,7 @@ const RealStore = ({ children, ...props }: Props) => {
     soughtGames: [],
     activeGames: [],
     matchRequests: [],
+    tourneyGames: [],
   });
   const [loginState, dispatchLoginState] = useReducer(LoginStateReducer, {
     username: '',

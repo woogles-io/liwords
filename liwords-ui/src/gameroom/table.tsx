@@ -49,6 +49,7 @@ import { endGameMessageFromGameInfo } from '../store/end_of_game';
 import { singularCount } from '../utils/plural';
 import { Notepad, NotepadContextProvider } from './notepad';
 import { Analyzer } from './analyzer';
+import { TournamentMetadata } from '../tournament/tournament_info';
 
 type Props = {
   sendSocketMsg: (msg: Uint8Array) => void;
@@ -175,6 +176,7 @@ export const Table = React.memo((props: Props) => {
   const { resetStore } = useResetStoreContext();
   const { pTimedOut, setPTimedOut } = useTimerStoreContext();
   const { username, userID } = loginState;
+  const [tournamentName, setTournamentName] = useState('');
 
   const { sendSocketMsg } = props;
   // const location = useLocation();
@@ -260,6 +262,25 @@ export const Table = React.memo((props: Props) => {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [gameID]);
+
+  useEffect(() => {
+    if (!gameInfo.tournament_id) {
+      return;
+    }
+    axios
+      .post<TournamentMetadata>(
+        toAPIUrl(
+          'tournament_service.TournamentService',
+          'GetTournamentMetadata'
+        ),
+        {
+          id: gameInfo.tournament_id,
+        }
+      )
+      .then((resp) => {
+        setTournamentName(resp.data.name);
+      });
+  }, [gameInfo.tournament_id]);
 
   useEffect(() => {
     // Request streak info only if a few conditions are true.
@@ -531,7 +552,7 @@ export const Table = React.memo((props: Props) => {
         <div className="data-area" id="right-sidebar">
           {/* There are two player cards, css hides one of them. */}
           <PlayerCards gameMeta={gameInfo} playerMeta={gameInfo.players} />
-          <GameInfo meta={gameInfo} />
+          <GameInfo meta={gameInfo} tournamentName={tournamentName} />
           <Pool
             pool={examinableGameContext?.pool}
             currentRack={rack || ''}

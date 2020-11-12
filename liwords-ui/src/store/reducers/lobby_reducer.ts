@@ -1,11 +1,15 @@
 import { Action, ActionType } from '../../actions/actions';
+import { GameMetadata } from '../../gameroom/game_info';
 import {
   GameMeta,
   SeekRequest,
   RatingMode,
   MatchRequest,
   MatchUser,
+  TournamentGameEndedEvent,
+  TournamentGameResult,
 } from '../../gen/api/proto/realtime/realtime_pb';
+import { RecentGame } from '../../tournament/recent_game';
 
 export type SoughtGame = {
   seeker: string;
@@ -46,6 +50,53 @@ export type LobbyState = {
   matchRequests: Array<SoughtGame>;
   // + Other things in the lobby here that have state.
   activeGames: Array<ActiveGame>;
+
+  tourneyGames: Array<RecentGame>;
+};
+
+const toResultStr = (r: 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7) => {
+  return {
+    0: 'NO_RESULT',
+    1: 'WIN',
+    2: 'LOSS',
+    3: 'DRAW',
+    4: 'BYE',
+    5: 'FORFEIT_WIN',
+    6: 'FORFEIT_LOSS',
+    7: 'ELIMINATED',
+  }[r];
+};
+
+const toEndReason = (r: 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7) => {
+  return {
+    0: 'NONE',
+    1: 'TIME',
+    2: 'STANDARD',
+    3: 'CONSECUTIVE_ZEROES',
+    4: 'RESIGNED',
+    5: 'ABANDONED',
+    6: 'TRIPLE_CHALLENGE',
+    7: 'CANCELLED',
+  }[r];
+};
+
+export const TourneyGameEndedEvtToRecentGame = (
+  evt: TournamentGameEndedEvent
+): RecentGame => {
+  const evtPlayers = evt.getPlayersList();
+
+  const players = evtPlayers.map((ep) => ({
+    username: ep.getUsername(),
+    score: ep.getScore(),
+    result: toResultStr(ep.getResult()),
+  }));
+
+  return {
+    players,
+    end_reason: toEndReason(evt.getEndReason()),
+    game_id: evt.getGameId(),
+    time: evt.getTime(),
+  };
 };
 
 export const SeekRequestToSoughtGame = (
@@ -208,6 +259,24 @@ export function LobbyReducer(state: LobbyState, action: Action): LobbyState {
       return {
         ...state,
         activeGames: newArr,
+      };
+    }
+
+    case ActionType.AddTourneyGame: {
+      const { tourneyGames } = state;
+      const tourneyGame = action.payload as RecentGame;
+      return {
+        ...state,
+        // Bring to the top.
+        tourneyGames: [tourneyGame, ...tourneyGames],
+      };
+    }
+
+    case ActionType.AddTourneyGames: {
+      const tourneyGames = action.payload as Array<RecentGame>;
+      return {
+        ...state,
+        tourneyGames,
       };
     }
   }

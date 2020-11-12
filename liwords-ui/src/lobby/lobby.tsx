@@ -22,6 +22,7 @@ import { GameLists } from './gameLists';
 import { Chat } from '../chat/chat';
 import {
   useChatStoreContext,
+  useLobbyStoreContext,
   useLoginStateStoreContext,
   usePresenceStoreContext,
 } from '../store/store';
@@ -29,7 +30,15 @@ import { singularCount } from '../utils/plural';
 import './lobby.scss';
 import { Announcements } from './announcements';
 import { toAPIUrl } from '../api/api';
-import { TournamentInfo, TournamentMetadata } from './tournament_info';
+import {
+  TournamentInfo,
+  TournamentMetadata,
+  RecentTournamentGames,
+} from '../tournament/tournament_info';
+import { RecentGame } from '../tournament/recent_game';
+import { ActionType } from '../actions/actions';
+
+const gamesPageSize = 10;
 
 const sendSeek = (
   game: SoughtGame,
@@ -95,9 +104,11 @@ export const Lobby = (props: Props) => {
   const { tournamentID } = useParams();
   const { sendSocketMsg } = props;
   const { chat } = useChatStoreContext();
+  const { lobbyContext, dispatchLobbyContext } = useLobbyStoreContext();
   const { loginState } = useLoginStateStoreContext();
   const { presences } = usePresenceStoreContext();
   const { loggedIn, username, userID } = loginState;
+
   const [tournamentInfo, setTournamentInfo] = useState<TournamentMetadata>({
     name: '',
     description: '',
@@ -106,6 +117,7 @@ export const Lobby = (props: Props) => {
   const [selectedGameTab, setSelectedGameTab] = useState(
     loggedIn ? 'PLAY' : 'WATCH'
   );
+  const [recentGamesOffset, setRecentGamesOffset] = useState(0);
 
   useEffect(() => {
     setSelectedGameTab(loggedIn ? 'PLAY' : 'WATCH');
@@ -135,6 +147,26 @@ export const Lobby = (props: Props) => {
         });
       });
   }, [tournamentID]);
+
+  useEffect(() => {
+    if (!tournamentID) {
+      return;
+    }
+    axios
+      .post<RecentTournamentGames>(
+        toAPIUrl('tournament_service.TournamentService', 'RecentGames'),
+        {
+          num_games: gamesPageSize,
+          offset: recentGamesOffset,
+        }
+      )
+      .then((resp) => {
+        dispatchLobbyContext({
+          actionType: ActionType.AddTourneyGames,
+          payload: resp.data.games,
+        });
+      });
+  }, [tournamentID, dispatchLobbyContext, recentGamesOffset]);
 
   const handleNewGame = useCallback(
     (seekID: string) => {
@@ -195,6 +227,7 @@ export const Lobby = (props: Props) => {
           <TournamentInfo
             tournamentID={tournamentID}
             tournamentInfo={tournamentInfo}
+            games={lobbyContext.tourneyGames}
           />
         ) : (
           <Announcements />

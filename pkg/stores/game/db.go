@@ -80,6 +80,7 @@ type game struct {
 
 // NewDBStore creates a new DB store for games.
 func NewDBStore(config *config.Config, userStore pkguser.Store) (*DBStore, error) {
+
 	db, err := gorm.Open(postgres.Open(config.DBConnString), &gorm.Config{})
 	if err != nil {
 		return nil, err
@@ -241,6 +242,7 @@ func convertGameToInfoResponse(g *game) (*gs.GameInfoResponse, error) {
 		ChallengeRule:      gamereq.ChallengeRule,
 		RatingMode:         gamereq.RatingMode,
 		CreatedAt:          timestamppb.New(g.CreatedAt),
+		LastUpdate:         timestamppb.New(g.UpdatedAt),
 		GameId:             g.UUID,
 		OriginalRequestId:  mdata.OriginalRequestId,
 		TournamentId:       g.TournamentID,

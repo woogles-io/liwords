@@ -96,6 +96,17 @@ message TournamentMetadataResponse {
   string director_username = 3;
 }
 
+message RecentGamesRequest {
+  // tournament id
+  string id = 1;
+  int32 num_games = 2;
+  int32 offset = 3;
+}
+
+message RecentGamesResponse {
+  repeated liwords.TournamentGameEndedEvent games = 1;
+}
+
 service TournamentService {
   rpc NewTournament(NewTournamentRequest) returns(NewTournamentResponse);
   rpc GetTournamentMetadata(GetTournamentMetadataRequest)
@@ -113,4 +124,6 @@ service TournamentService {
   rpc SetPairing(TournamentPairingRequest) returns(TournamentResponse);
   rpc SetResult(TournamentResultOverrideRequest) returns(TournamentResponse);
   rpc StartRound(TournamentStartRoundRequest) returns(TournamentResponse);
+
+  rpc RecentGames(RecentGamesRequest) returns(RecentGamesResponse);
 }

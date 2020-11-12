@@ -99,12 +99,6 @@ func main() {
 	}
 	userStore := user.NewCache(tmpUserStore)
 
-	tmpTournamentStore, err := tournamentstore.NewDBStore(cfg)
-	if err != nil {
-		panic(err)
-	}
-	tournamentStore := tournamentstore.NewCache(tmpTournamentStore)
-
 	sessionStore, err := session.NewDBStore(cfg.DBConnString)
 
 	middlewares := alice.New(
@@ -124,6 +118,13 @@ func main() {
 	}
 
 	gameStore := game.NewCache(tmpGameStore)
+
+	tmpTournamentStore, err := tournamentstore.NewDBStore(cfg, gameStore)
+	if err != nil {
+		panic(err)
+	}
+	tournamentStore := tournamentstore.NewCache(tmpTournamentStore)
+
 	soughtGameStore := soughtgame.NewMemoryStore()
 	configStore := cfgstore.NewRedisConfigStore(redisPool)
 	listStatStore, err := stats.NewListStatStore(cfg.DBConnString)

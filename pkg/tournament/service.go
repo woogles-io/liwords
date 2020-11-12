@@ -166,6 +166,10 @@ func (ts *TournamentService) SetResult(ctx context.Context, req *pb.TournamentRe
 	return &pb.TournamentResponse{}, nil
 }
 
+func (ts *TournamentService) RecentGames(ctx context.Context, req *pb.RecentGamesRequest) (*pb.RecentGamesResponse, error) {
+	return ts.tournamentStore.GetRecentGames(ctx, req.Id, int(req.NumGames), int(req.Offset))
+}
+
 // What this does is not yet clear. Need more designs.
 func (ts *TournamentService) StartRound(ctx context.Context, req *pb.TournamentStartRoundRequest) (*pb.TournamentResponse, error) {
 	err := StartRound(ctx, ts.tournamentStore, req.Id, req.Division, int(req.Round))

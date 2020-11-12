@@ -412,6 +412,10 @@ export const useOnSocketMsg = () => {
           case MessageType.TOURNAMENT_GAME_ENDED_EVENT: {
             const gee = parsedMsg as TournamentGameEndedEvent;
             // XXX: display this game in the tournament lobby.
+            dispatchLobbyContext({
+              actionType: ActionType.AddTourneyGame,
+              payload: gee,
+            });
             break;
           }
 

@@ -52,6 +52,7 @@ export type GCGResponse = {
 
 type Props = {
   meta: GameMetadata;
+  tournamentName: string;
 };
 
 export const GameInfo = React.memo((props: Props) => {
@@ -72,6 +73,12 @@ export const GameInfo = React.memo((props: Props) => {
 
   const card = (
     <Card className="game-info">
+      {props.meta.tournament_id ? (
+        <Row>
+          {/* please make me better */}
+          <small style={{ color: '#6b268b' }}>{props.tournamentName}</small>
+        </Row>
+      ) : null}
       <Row className="variant">
         {`${
           timeCtrlToDisplayName(
@@ -91,8 +98,5 @@ export const GameInfo = React.memo((props: Props) => {
       </Row>
     </Card>
   );
-  if (props.meta.tournament_id) {
-    return <Badge.Ribbon text={props.meta.tournament_id}>{card}</Badge.Ribbon>;
-  }
   return card;
 });

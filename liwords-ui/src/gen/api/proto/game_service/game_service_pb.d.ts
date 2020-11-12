@@ -133,6 +133,11 @@ export class GameInfoResponse extends jspb.Message {
   getOriginalRequestId(): string;
   setOriginalRequestId(value: string): void;
 
+  hasLastUpdate(): boolean;
+  clearLastUpdate(): void;
+  getLastUpdate(): google_protobuf_timestamp_pb.Timestamp | undefined;
+  setLastUpdate(value?: google_protobuf_timestamp_pb.Timestamp): void;
+
   serializeBinary(): Uint8Array;
   toObject(includeInstance?: boolean): GameInfoResponse.AsObject;
   static toObject(includeInstance: boolean, msg: GameInfoResponse): GameInfoResponse.AsObject;
@@ -161,6 +166,7 @@ export namespace GameInfoResponse {
     createdAt?: google_protobuf_timestamp_pb.Timestamp.AsObject,
     gameId: string,
     originalRequestId: string,
+    lastUpdate?: google_protobuf_timestamp_pb.Timestamp.AsObject,
   }
 }
 
