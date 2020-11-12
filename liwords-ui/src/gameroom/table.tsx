@@ -249,7 +249,6 @@ export const Table = React.memo((props: Props) => {
           setGameEndMessage(endGameMessageFromGameInfo(resp.data));
         }
       });
-    BoopSounds.playSound('startgameSound');
 
     return () => {
       clearChat();
@@ -257,6 +256,10 @@ export const Table = React.memo((props: Props) => {
       message.destroy();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [gameID]);
+
+  useEffect(() => {
+    BoopSounds.playSound('startgameSound');
   }, [gameID]);
 
   useEffect(() => {
