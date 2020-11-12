@@ -1,40 +1,96 @@
-const makemoveMP3 = require('../assets/makemove.mp3');
-const startgameMP3 = require('../assets/startgame.mp3');
-const oppMoveMP3 = require('../assets/oppmove.mp3');
-const matchReqMP3 = require('../assets/matchreq.mp3');
-const woofWav = require('../assets/woof.wav');
-const endgameMP3 = require('../assets/endgame.mp3');
+import { Unrace } from '../utils/unrace';
 
-const makeMoveSound = new Audio(makemoveMP3);
-const oppMoveSound = new Audio(oppMoveMP3);
-const matchReqSound = new Audio(matchReqMP3);
+class Booper {
+  private soundName: string;
+  private src: string;
+  private volume: number;
+  private audio: HTMLAudioElement;
+  private unrace = new Unrace();
+  private times = 0;
+  private unlocked = false;
 
-const startgameSound = new Audio(startgameMP3);
-const endgameSound = new Audio(endgameMP3);
-const woofSound = new Audio(woofWav);
-woofSound.volume = 0.25;
+  constructor(soundName: string, src: string, volume: number) {
+    this.soundName = soundName;
+    this.src = src; // not really used
+    this.volume = volume;
+    this.audio = new Audio(src);
+    this.callPlay = this.callPlay.bind(this);
+    this.audio.addEventListener('ended', () => {
+      if (this.times > 0) this.unlock();
+    });
+  }
 
-const playableSounds: { [key: string]: HTMLAudioElement } = {
-  makeMoveSound,
-  oppMoveSound,
-  matchReqSound,
-  startgameSound,
-  endgameSound,
-  woofSound,
+  private async callPlay() {
+    const isPlaying = this.times > 0;
+    try {
+      this.audio.volume = isPlaying ? this.volume : 0;
+      await this.audio.play();
+      this.unlocked = true;
+      if (isPlaying) --this.times;
+    } catch (e) {
+      console.warn(
+        `cannot ${isPlaying ? 'play' : 'initialize'} ${this.soundName}:`,
+        e
+      );
+    }
+  }
+
+  async unlock() {
+    await this.unrace.run(this.callPlay);
+    return this.unlocked;
+  }
+
+  async play() {
+    ++this.times;
+    return await this.unlock();
+  }
+}
+
+const playableSounds: { [key: string]: Booper } = {
+  makeMoveSound: new Booper(
+    'makeMoveSound',
+    require('../assets/makemove.mp3'),
+    1
+  ),
+  oppMoveSound: new Booper('oppMoveSound', require('../assets/oppmove.mp3'), 1),
+  matchReqSound: new Booper(
+    'matchReqSound',
+    require('../assets/matchreq.mp3'),
+    1
+  ),
+  startgameSound: new Booper(
+    'startgameSound',
+    require('../assets/startgame.mp3'),
+    1
+  ),
+  endgameSound: new Booper('endgameSound', require('../assets/endgame.mp3'), 1),
+  woofSound: new Booper('woofSound', require('../assets/woof.wav'), 0.25),
 };
 
-const playSound = (soundName: string) => {
-  const audio = playableSounds[soundName];
-  if (!audio) {
-    throw new TypeError(`unsupported sound: ${soundName}`);
-  }
+const unlockSounds = () => {
   (async () => {
-    try {
-      await audio.play();
-    } catch (e) {
-      console.warn(`cannot play ${soundName}:`, e);
+    if (
+      (
+        await Promise.all(
+          Object.values(playableSounds).map((booper) => booper.unlock())
+        )
+      ).every((x) => x)
+    ) {
+      window.removeEventListener('click', unlockSounds, true);
+      window.removeEventListener('keydown', unlockSounds, true);
     }
   })();
+};
+
+window.addEventListener('click', unlockSounds, true);
+window.addEventListener('keydown', unlockSounds, true);
+
+const playSound = (soundName: string) => {
+  const booper = playableSounds[soundName];
+  if (!booper) {
+    throw new TypeError(`unsupported sound: ${soundName}`);
+  }
+  booper.play();
 };
 
 export const BoopSounds = {
