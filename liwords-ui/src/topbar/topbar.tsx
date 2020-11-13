@@ -105,6 +105,9 @@ export const TopBar = React.memo((props: Props) => {
               overlayClassName="user-menu"
               overlay={userMenu}
               placement="bottomRight"
+              getPopupContainer={() =>
+                document.getElementById('root') as HTMLElement
+              }
             >
               <button className="link">
                 {username}

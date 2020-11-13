@@ -134,14 +134,11 @@ export const SoughtGames = (props: Props) => {
             </>
           );
         };
-        let outgoing = !!sg.receiver.getUserId();
-        if (sg.receiver.getUserId() === props.userID) {
-          outgoing = false;
-        }
+        const outgoing = sg.seeker === props.username;
         return {
           seeker: outgoing ? (
             <>
-              {sg.receiver.getDisplayName()}
+              {props.username}
               <ExportOutlined />
             </>
           ) : (

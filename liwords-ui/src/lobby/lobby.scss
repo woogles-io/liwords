@@ -40,13 +40,18 @@
   }
   li {
     padding-bottom: 18px;
+    @include colorModed() {
+      color: m($gray-extreme);
+    }
     a, a:focus, a:active, a:hover {
       color: inherit;
       letter-spacing: 0;
       font-weight: inherit;
     }
     a p:hover {
-      background-color: mix($color-off-background, $color-background, $weight: 50%);
+      @include colorModed() {
+        background-color: mix(m($primary-middle), m($background), $weight: 50%);
+      }
     }
   }
 }

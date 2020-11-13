@@ -8,8 +8,6 @@ import { GameMetadata } from '../gameroom/game_info';
 import { timeToString } from '../store/constants';
 import { useResetStoreContext } from '../store/store';
 
-const colors = require('../base.scss');
-
 type Props = {
   games: Array<GameMetadata>;
   username: string;
@@ -48,7 +46,7 @@ export const GamesHistoryCard = React.memo((props: Props) => {
       ) : (
         ''
       );
-      let result = <Tag color={colors.colorBoardTWS}>Loss</Tag>;
+      let result = <Tag color="blue">Loss</Tag>;
       const challenge = {
         FIVE_POINT: '+5',
         TEN_POINT: '+10',
@@ -72,9 +70,9 @@ export const GamesHistoryCard = React.memo((props: Props) => {
         );
       };
       if (item.winner === -1) {
-        result = <Tag color="#888">Tie</Tag>;
+        result = <Tag color="gray">Tie</Tag>;
       } else if (item.winner === userplace) {
-        result = <Tag color={colors.colorPrimary}>Win</Tag>;
+        result = <Tag color="red">Win</Tag>;
       }
       let turnOrder = null;
       if (item.players[userplace].first) {

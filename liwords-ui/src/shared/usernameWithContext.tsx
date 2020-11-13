@@ -34,6 +34,7 @@ export const UsernameWithContext = (props: UsernameWithContextProps) => {
     <Dropdown
       overlayClassName="user-menu"
       overlay={userMenu}
+      getPopupContainer={() => document.getElementById('root') as HTMLElement}
       placement="bottomLeft"
       trigger={['click']}
     >

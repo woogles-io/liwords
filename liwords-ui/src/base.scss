@@ -1,3 +1,5 @@
+@import 'color_modes';
+
 $card-shadow: 0px 0px 12px rgba(0, 0, 0, 0.15);
 $card-shadow-lower: 0px 0px 6px rgba(0, 0, 0, 0.15);
 $card-padding: 16px;
@@ -5,38 +7,6 @@ $card-padding-md: ($card-padding / 2);
 
 $header-height-mobile: 96px;
 $header-height-desktop: 60px;
-/* colors */
-
-$color-background: #ffffff;
-$color-off-background: #eeeeee;
-
-$color-gray-subtle: #bebebe;
-$color-gray-medium: #999999;
-$color-gray-extreme: #414141;
-
-$color-grid: #c3c3c3;
-
-$color-primary-light: #e2f8ff;
-$color-primary-middle: #c9f0ff;
-$color-primary-midDark: #3b88ca;
-$color-primary-dark: #2d6a9e;
-$color-secondary: #6b268b;
-$color-secondary-dark: #4d116a;
-$color-secondary-light: #d5cad6;
-$color-secondary-lighter: #f8f2fc;
-$color-secondary-medium: #955f9a;
-$color-timer-light: #e5ffdf;
-$color-timer-dark: #449e2d;
-$color-timer-low-light: #fff4d8;
-$color-timer-low-dark: #f4b000;
-$color-timer-out-light: #ffeaea;
-$color-timer-out-dark: #a92e2e;
-
-$color-board-dls: desaturate(darken(#e2f8ff, 10%), 25%);
-$color-board-dws: desaturate(darken(#ffeaea, 10%), 25%);
-$color-board-tws: #a92e2e;
-$color-board-tls: #3b88ca;
-$color-board-empty: $color-background;
 
 $screen-mobile-min: 768px;
 $screen-tablet-min: 1024px;
@@ -53,20 +23,7 @@ $screen-desktop-l-min: 1920px;
 }
 // Magic that makes variables available to the tsx code
 :export {
-  colorSecondary: $color-secondary;
-  colorSecondaryMedium: $color-secondary-medium;
-  colorSecondaryLight: $color-secondary-light;
-
-  colorPrimary: $color-primary-dark;
-  colorPrimaryMedium: $color-primary-midDark;
-  colorPrimaryLight: $color-primary-light;
-
-  colorBoardDLS: $color-board-dls;
-  colorBoardDWS: $color-board-dws;
-  colorBoardTLS: $color-board-tls;
-  colorBoardTWS: $color-board-tws;
-  colorBoardEmpty: $color-board-empty;
-
+  colorPrimary: #2d6a9e;
   screenSizeTablet: strip-unit($screen-tablet-min);
   screenSizeLaptop: strip-unit($screen-laptop-min);
   screenSizeDesktop: strip-unit($screen-desktop-min);
@@ -124,15 +81,16 @@ $point-size-desktop: $tile-font-size-desktop / 3;
 }
 
 @mixin type-default {
-  color: black;
   font-family: $font-default;
   font-style: normal;
   font-size: 14px;
   line-height: 18px;
+  @include colorModed() {
+    color: m($gray-extreme);
+  }
 }
 
 @mixin type-monospace {
-  color: black;
   font-family: $font-monospaced;
   font-style: normal;
   font-size: 14px;
@@ -172,6 +130,9 @@ h2,
 h3,
 h4 {
   @include type-deco;
+  @include colorModed() {
+    color: m($gray-extreme);
+  }
 }
 
 h1 {
@@ -206,7 +167,140 @@ ul
     font-weight: bold;
     letter-spacing: 0;
   }
+  @include colorModed() {
+    color: m($gray-extreme);
+    background-color: m($card-background);
+    box-shadow: m($shadow);
+  }
+}
 
+.ant-tag {
+  font-weight: 800;
+  color: #414141;
+}
+
+.ant-tag-gold {
+  background: #fcc65e;
+  color: #414141;
+  border-color: #fcc65e;
+}
+
+.ant-tag-blue {
+  background: #b2dcf0;
+  color: #414141;
+  border-color: #b2dcf0;
+}
+.ant-tag-red {
+  background: #8a0f23;
+  color: #ffffff;
+  border-color: #8a0f23;
+}
+
+.ant-tag-volcano {
+  background: #b3263c;
+  color: #ffffff;
+  border-color: #b3263c;
+}
+
+.ant-tag-magenta {
+  background: #9c3e9b;
+  color: #ffffff;
+  border-color: #9c3e9b;
+}
+
+.ant-card-head-title {
+  @include colorModed() {
+    color: m($gray-extreme);
+  }
+}
+
+.ant-card-bordered {
+  @include colorModed() {
+    border: 1px solid m($off-background);
+  }
+}
+
+.ant-dropdown-menu, .ant-select-dropdown, .ant-select-item {
+  padding: 0;
+  @include colorModed() {
+    background: m($background);
+    color: m($gray-extreme);
+  }
+}
+
+.ant-dropdown-menu-item, .ant-dropdown-menu-submenu-title, .ant-radio-wrapper {
+  transition: none;
+  &, .ant-radio-wrapper {
+    @include colorModed() {
+      background: m($background);
+      color: m($gray-extreme);
+    }
+  }
+  &:hover {
+    @include colorModed() {
+      background: m($background);
+      color: m($gray-extreme);
+    }
+  }
+}
+
+.ant-select-item {
+  padding: 4px;
+  &:hover {
+    @include colorModed() {
+      background: m($off-background);
+      color: m($primary-dark);
+    }
+  }
+}
+
+.ant-select-item-option-selected:not(.ant-select-item-option-disabled) {
+  @include colorModed() {
+    background: m($gray-subtle);
+    color: m($primary-dark);
+  }
+}
+
+.ant-table-filter-dropdown-btns {
+  display: flex;
+  align-items: center;
+  @include colorModed() {
+    background: m($background);
+    color: m($gray-extreme);
+    border-top: 1px solid m($card-background);
+  }
+}
+
+.ant-empty-normal {
+  @include colorModed() {
+    background-color: m($card-background);
+  }
+}
+
+.ant-popover-inner {
+  @include colorModed() {
+    background-color: m($card-background);
+    color: m($gray-extreme);
+  }
+}
+
+.ant-modal-close-x {
+  @include colorModed() {
+    color: m($gray-extreme);
+  }
+}
+.ant-popover-message {
+  @include colorModed() {
+    color: m($gray-extreme);
+  }
+}
+.ant-popover-placement-top > .ant-popover-content > .ant-popover-arrow, .ant-popover-placement-topLeft > .ant-popover-content > .ant-popover-arrow, .ant-popover-placement-topRight > .ant-popover-content > .ant-popover-arrow
+{
+  @include colorModed() {
+    border-right-color: m($card-background);
+    border-bottom-color: m($card-background);
+
+  }
 }
 .user-context-menu {
   cursor: context-menu;
@@ -223,13 +317,18 @@ ul
     width: 100%;
     height: 64px;
     background: transparent;
+    @include colorModed() {
+      border-top: 1px solid m($off-background);
+    }
     li {
       cursor: pointer;
       margin: 0;
       height: 100%;
       border: 0;
-      background: $color-background;
-      color: black;
+      @include colorModed() {
+        background: m($background);
+        color: m($gray-extreme);
+      }
       @include type-link;
       span {
         transition: none !important;
@@ -240,24 +339,36 @@ ul
         display: flex;
         align-items: center;
         justify-content: center;
-        color: black;
+        @include colorModed() {
+          color: m($gray-extreme);
+        }
         font-size: 12px;
         width: 100%;
         height: 100%;
       }
       &:hover div {
-        color: $color-primary-dark;
+        @include colorModed() {
+          color: m($primary-dark);
+        }
       }
       &:nth-child(2) {
-        background: $color-primary-light;
+        @include colorModed() {
+          background: m($primary-light);
+        }
       }
       &:nth-child(3), &:only-child {
-        background: $color-primary-dark;
+        @include colorModed() {
+          background: m($primary-dark);
+        }
         div {
-          color: $color-background;
+          @include colorModed() {
+            color: m($background);
+          }
         }
         &:hover div {
-          color: $color-primary-middle;
+          @include colorModed() {
+            color: m($primary-middle);
+          }
         }
       }
       &:first-child {
@@ -276,11 +387,20 @@ ul
   .ant-tabs {
     overflow: visible;
     .ant-tabs-ink-bar {
-      background: $color-primary-dark;
+      @include colorModed() {
+        background: m($primary-dark);
+      }
+    }
+    &.ant-tabs-top .ant-tabs-nav::before {
+      @include colorModed() {
+        border-bottom: 1px solid m($off-background);
+      }
     }
     .ant-tabs-nav {
       margin: 0;
-      border-bottom: 1px solid $color-off-background;
+      @include colorModed() {
+        border-bottom: 1px solid m($off-background);
+      }
       .ant-tabs-nav-operations {
         display: none;
       }
@@ -294,6 +414,9 @@ ul
       padding: 12px 24px;
       margin: 0;
       width: 100%;
+      @include colorModed() {
+        color: m($gray-extreme);
+      }
       .ant-tabs-tab-btn {
         @include type-link;
         display: flex;
@@ -302,8 +425,11 @@ ul
       }
       &:active, &:hover, &.ant-tabs-tab-active  {
         .ant-tabs-tab-btn {
-          color: $color-primary-dark;
+          @include colorModed() {
+            color: m($primary-dark);
+          }
         }
+
       }
     }
   }
@@ -312,9 +438,22 @@ ul
   .ant-modal-root {
     .ant-modal-content {
       border-radius: 8px;
+      @include colorModed() {
+        background: m($background);
+        color: m($gray-extreme);
+      }
     }
     .ant-modal-header {
       border-radius: 8px 8px 0 0;
+      @include colorModed() {
+        background: m($background);
+        color: m($gray-extreme);
+      }
+      .ant-modal-title {
+        @include colorModed() {
+          color: m($gray-extreme);
+        }
+      }
     }
     .ant-modal-footer {
       border: 0;
@@ -333,11 +472,14 @@ ul
     font-size: 12px;
     height: 36px;
     font-weight: 800;
-    background: $color-background;
     text-transform: uppercase;
     transition: none;
     margin: 0 6px;
-
+    @include colorModed() {
+      background-color: m($background);
+      border-color: m($primary-dark);
+      color:  m($primary-dark);
+    }
     &:not(.ant-btn-circle) {
       padding: 3px 18px;
     }
@@ -354,10 +496,12 @@ ul
     &:focus,
     &:visited,
     &:active {
-      border-color: $color-primary-dark;
-      color: $color-primary-dark;
-      background: $color-background;
       transition: none;
+      @include colorModed() {
+        background-color: m($background);
+        border-color: m($primary-dark);
+        color:  m($primary-dark);
+      }
     }
     &:not([disabled]):hover {
       span.key-command {
@@ -376,8 +520,10 @@ ul
 
   button.ant-btn-primary, button.primary, a.btn-primary {
     margin: 6px 3px;
-    background: $color-primary-dark;
-    color: $color-background;
+    @include colorModed() {
+      background-color: m($button);
+      color: m($button-text);
+    }
     text-transform: uppercase;
     border: 0;
     outline: 0;
@@ -393,8 +539,10 @@ ul
       &:focus,
       &:visited,
       &:active {
-        background: $color-timer-out-dark;
-        border: $color-timer-out-dark;
+        @include colorModed() {
+          background: m($timer-out-dark);
+          border: m($timer-out-dark);
+        }
         transition: none;
       }
     }
@@ -403,13 +551,17 @@ ul
     &:focus,
     &:visited,
     &:active {
-      background: $color-primary-dark;
-      color: $color-background;
+      @include colorModed() {
+        background-color: m($button);
+        color: m($button-text);
+      }
       transition: none;
     }
     &:disabled, &:disabled:hover {
-      background: $color-gray-subtle;
-      color: $color-background;
+      @include colorModed() {
+        background-color: m($gray-subtle);
+        color: m($background);
+      }
     }
   }
 }
@@ -421,14 +573,18 @@ ul
   .ant-notification, .ant-message {
     .ant-notification-notice, .ant-message-notice-content {
       @include type-default;
-      background: $color-primary-dark;
-      color: $color-background;
       font-size: 15px;
       font-weight: 600;
       letter-spacing: 0.06em;
+      @include colorModed() {
+        background: m($primary-dark);
+        color: m($background);
+      }
       .ant-notification-notice-message {
         font-weight: 1000;
-        color: $color-background;
+        @include colorModed() {
+          color: m($background);
+        }
       }
       span.message-action {
         font-weight: 600;
@@ -436,7 +592,9 @@ ul
         cursor: pointer;
       }
       .anticon {
-        color: $color-primary-light;
+        @include colorModed() {
+          color: m($primary-light);
+        }
       }
     }
   }

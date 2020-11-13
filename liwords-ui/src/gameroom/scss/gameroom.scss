@@ -1,8 +1,10 @@
 @import '../../base';
 @import '../../shared/layout';
+
 @include button;
 @include notification;
 @include modal;
+
 $tile-transition: width ease-in 100ms, height ease-in 100ms, background-color ease-in 100ms;
 
 .ant-modal-footer {
@@ -14,6 +16,16 @@ $tile-transition: width ease-in 100ms, height ease-in 100ms, background-color ea
   }
 }
 
+p.streak-win {
+  @include colorModed() {
+    color: m($timer-dark);
+  }
+}
+p.streak-loss {
+  @include colorModed() {
+    color: m($primary-dark);
+  }
+}
 .game-table {
   .chat-area {
     .ant-card.left-menu {
@@ -39,7 +51,6 @@ $tile-transition: width ease-in 100ms, height ease-in 100ms, background-color ea
 }
 .game-container {
   .ant-card {
-    box-shadow: $card-shadow;
     border-radius: 8px;
     .ant-card-body {
       padding: 0;
@@ -78,6 +89,18 @@ $tile-transition: width ease-in 100ms, height ease-in 100ms, background-color ea
       letter-spacing: 0.05em;
       padding: 12px;
       margin: 6px 12px 0 0;
+      @include colorModed() {
+        background: m($background);
+        border: 1px solid m($gray-extreme);
+        outline: 0;
+      }
+      &:focus {
+
+        @include colorModed() {
+          border: 1px solid m($primary-midDark);
+          outline: 1px solid m($primary-midDark);
+        }
+      }
     }
   }
 
@@ -116,11 +139,6 @@ $tile-transition: width ease-in 100ms, height ease-in 100ms, background-color ea
         height: 100%;
         align-items: center;
         justify-content: center;
-        .anticon.anticon-redo {
-          font-size: 28px;
-          margin-bottom: 18px;
-          color: $color-gray-medium;
-        }
         .suggestions {
           max-height: 244px;
           overflow-y: auto;
@@ -129,16 +147,29 @@ $tile-transition: width ease-in 100ms, height ease-in 100ms, background-color ea
     }
   }
   .analyzer-container {
+    .anticon.anticon-redo {
+      font-size: 28px;
+      margin-bottom: 18px;
+      @include colorModed() {
+        color: m($gray-medium);
+      }
+    }
     .suggestions {
       font-family: $font-monospaced;
       width: 100%;
+      text-align: center;
+      align-items: center;
+      justify-content: center;
       table {
         width: 100%;
       }
       tr {
         cursor: pointer;
+        text-align: left;
         &:hover {
-          background: $color-off-background;
+          @include colorModed() {
+            background-color: m($off-background);
+          }
         }
       }
       td {
@@ -187,8 +218,16 @@ $tile-transition: width ease-in 100ms, height ease-in 100ms, background-color ea
     pointer-events: none;
     margin-top: 10px;
     z-index: 5;
-    background-color: $color-secondary-medium;
     transition: $tile-transition;
+    @include colorModed() {
+      background-color: m($tile-background);
+      color: m($background);
+    }
+    p.rune {
+      @include colorModed() {
+        color: m($background);
+      }
+    }
   }
 }
 
@@ -222,6 +261,9 @@ $tile-transition: width ease-in 100ms, height ease-in 100ms, background-color ea
   flex-wrap: wrap;
   width: $board-size-mobile;
   height: $board-size-mobile;
+  @include colorModed() {
+    background: m($grid);
+  }
 }
 .board-spaces,
 .tiles {
@@ -233,11 +275,12 @@ $tile-transition: width ease-in 100ms, height ease-in 100ms, background-color ea
   grid-template-columns: repeat(15, 1fr);
   grid-template-rows: repeat(15, 1fr);
   gap: 1px;
-  background-color: $color-grid;
 }
 .board-spaces {
-  // Using a box shadow that looks like a border to not mess up the
-  box-shadow: 0 0 6px scale-color($color-grid, $lightness: -20%);;
+  // Using a box shadow that looks like a border to not mess up the grid
+  @include colorModed() {
+    box-shadow: m($board-shadow);
+  }
 }
 
 .tiles {
@@ -248,7 +291,9 @@ $tile-transition: width ease-in 100ms, height ease-in 100ms, background-color ea
   border: 0;
   pointer-events: none;
   p {
-    color: $color-background;
+    @include colorModed() {
+      color: m($tile-text);
+    }
   }
 }
 
@@ -259,9 +304,12 @@ $tile-transition: width ease-in 100ms, height ease-in 100ms, background-color ea
   display: flex;
   justify-content: center;
   align-items: center;
-  color: $color-board-empty;
+  @include colorModed() {
+    background-color: m($background);
+    border-color: transparent transparent m($grid) m($grid);
+  }
   border: transparent 1px solid;
-  border-color: transparent transparent $color-grid $color-grid;
+
 }
 
 .board-space::before {
@@ -274,12 +322,13 @@ $tile-transition: width ease-in 100ms, height ease-in 100ms, background-color ea
   display: flex;
   .anticon {
     position: absolute;
-    color: $color-timer-dark;
     font-size: $tile-font-size-mobile;
+    @include colorModed() {
+      color: m($timer-dark);
+    }
   }
   .bonus-label {
     text-align: center;
-    color: $color-background;
     font-family: $font-default;
     font-size: 10px;
     font-weight: 800;
@@ -288,6 +337,9 @@ $tile-transition: width ease-in 100ms, height ease-in 100ms, background-color ea
     line-height: 1em;
     padding: 0 0 1px;
     opacity: 0;
+    @include colorModed() {
+      color: m($background);
+    }
    }
   &:hover {
     .bonus-label {
@@ -300,55 +352,95 @@ $tile-transition: width ease-in 100ms, height ease-in 100ms, background-color ea
     }
   }
   &.bonus-none {
-    background-color: $color-board-empty;
+    @include colorModed() {
+      background: m($board-empty);
+    }
   }
   &.bonus-3WS {
-    background-color: $color-board-tws;
+    @include colorModed() {
+      background-color: m($board-tws);
+    }
+    .bonus-label {
+      @include colorModed() {
+        color: m($white);
+      }
+    }
     &.selected {
-      background-color: mix($color-board-tws, $color-background, $weight: 50%);
-      border-color: scale-color($color-timer-light, $lightness: -10%);
+      @include colorModed() {
+        background-color: mix(m($board-tws), m($white), $weight: 70%);
+        border-color: scale-color(m($timer-light), $lightness: -10%);
+      };
       .anticon {
-        color: scale-color($color-timer-light, $lightness: -10%);
+        @include colorModed() {
+          color: scale-color(m($timer-light), $lightness: -10%);
+        }
       }
     }
   }
   &.bonus-2WS {
-    background-color: $color-board-dws;
+    @include colorModed() {
+      background-color: m($board-dws);
+    }
     .anticon-star {
-      color: $color-board-tws;
+      @include colorModed() {
+        color: m($board-tws);
+      }
     }
     &.selected {
-      background-color: mix($color-board-dws, $color-timer-light, $weight: 60%);
+      @include colorModed() {
+        background-color: mix(m($board-dws), m($timer-light), $weight: 60%);
+      };
       .anticon-star {
         display: none;
       }
     }
     .bonus-label {
-      color: mix($color-board-tws, black, $weight: 90%);
+      @include colorModed() {
+        color: mix(m($board-tws), m($gray-extreme), $weight: 30%);
+      };
     }
   }
   &.bonus-3LS {
-    background-color: $color-board-tls;
+    @include colorModed() {
+      background-color: m($board-tls);
+    };
+    .bonus-label {
+      @include colorModed() {
+        color: m($white);
+      };
+    }
     &.selected {
-      background-color: mix($color-board-tls, $color-timer-light, $weight: 70%);
-      border-color: scale-color($color-timer-light, $lightness: -10%);
+      @include colorModed() {
+        background-color: mix(m($board-tls), m($white), $weight: 70%);
+        border-color: scale-color(m($timer-light), $lightness: -10%);
+      };
       .anticon {
-        color: scale-color($color-timer-light, $lightness: -10%);
+        @include colorModed() {
+          color: scale-color(m($timer-light), $lightness: -10%);
+        }
       }
     }
   }
   &.bonus-2LS {
-    background-color: $color-board-dls;
+    @include colorModed() {
+      background-color: m($board-dls);
+    };
     &.selected {
-      background-color: mix($color-board-dls, $color-timer-light, $weight: 30%)
+      @include colorModed() {
+        background-color: mix(m($board-dls), m($timer-light), $weight: 30%);
+      };
     }
     .bonus-label {
-      color: mix($color-board-tls, black, $weight: 50%);
+      @include colorModed() {
+        color: mix(m($board-tls), m($gray-extreme), $weight: 20%);
+      };
     }
   }
   &.selected {
-    border: 1px solid $color-timer-dark;
-    background: $color-timer-light;
+    @include colorModed() {
+      border: 1px solid m($timer-dark);
+      background-color: m($timer-light);
+    };
   }
 }
 @keyframes fadeIn {
@@ -368,7 +460,9 @@ $tile-transition: width ease-in 100ms, height ease-in 100ms, background-color ea
   font-size: 18px;
   padding-top: 5px;
   p {
-    color: black;
+    @include colorModed() {
+      color: m($gray-extreme);
+    }
   }
 }
 
@@ -383,13 +477,15 @@ $tile-transition: width ease-in 100ms, height ease-in 100ms, background-color ea
 }
 
 .coord-label {
-  color: black;
   text-align: right;
   margin: 0;
   font-size: 100%;
   font-weight: 600;
   font-family: 'Source Code Pro', monospace;
   overflow: hidden;
+  @include colorModed() {
+    color: m($gray-extreme);
+  }
 }
 
 /* Rack */
@@ -424,8 +520,8 @@ $tile-transition: width ease-in 100ms, height ease-in 100ms, background-color ea
   }
   .ant-btn.ant-btn-primary.ant-btn-circle {
     border-radius: 50%;
-    width: $tile-size-desktop ;
-    height: $tile-size-desktop ;
+    width: $tile-size-desktop;
+    height: $tile-size-desktop;
     margin: 0 6px;
     padding: 1px 0 0;
     line-height: 0;
@@ -457,22 +553,22 @@ $tile-transition: width ease-in 100ms, height ease-in 100ms, background-color ea
   width: $tile-size-mobile;
   height: $tile-size-mobile;
   &[data-rune="Q"] {
-    .rune {
+    p.rune {
       position: relative;
       left: -3px;
     }
   }
 }
 .tile {
-  background-color: $color-secondary;
+  @include colorModed() {
+    background: m($tile-background);
+  }
 }
 .tile.blank {
   display: flex;
   justify-content: center;
 }
-.tile.blank .rune {
-  background-color: transparentize($color-secondary-lighter, 0.3);
-  color: $color-secondary;
+.tile.blank p.rune {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -483,16 +579,27 @@ $tile-transition: width ease-in 100ms, height ease-in 100ms, background-color ea
   text-transform: capitalize;
   transform: rotate(-10deg);
   font-size: $tile-font-size-mobile * 0.95;
+  @include colorModed() {
+    color: m($tile-background);
+    background-color: m($tile-background-secondary);
+  }
 }
 .tile.last-played {
-  border: 1px solid $color-secondary;
-  background-color:$color-secondary;
-  box-shadow:  inset 0px 0px 0px 2px $color-secondary-light;
+  @include colorModed() {
+    border: 1px solid m($tile-background);
+    background-color: m($tile-background);
+    box-shadow:  inset 0px 0px 0px 2px m($tile-background-secondary);
+  }
 }
 .tile.tentative {
-  background-color: $color-secondary-medium;
-  &.blank .rune {
-    background-color: transparentize($color-secondary-lighter, 0.4);
+  @include colorModed() {
+    background-color: m($tile-background-tertiary);
+  }
+  &.blank p.rune {
+    @include colorModed() {
+      background-color: m($tile-background-quartenary);
+      color: m($tile-background);
+    }
   }
 }
 
@@ -515,17 +622,19 @@ $tile-transition: width ease-in 100ms, height ease-in 100ms, background-color ea
   opacity: 0.4;
 }
 
-.rune {
+p.rune {
   @include type-monospace;
-  color: $color-background;
   margin: 0;
   line-height: 0;
   font-size: $tile-font-size-mobile;
   font-weight: 600;
   width: 100%;
   padding-bottom: 3px;
+  @include colorModed() {
+    color: m($background);
+  }
 }
-.tile.blank .rune {
+.tile.blank p.rune {
   font-size: $tile-font-size-mobile * 0.9;
 }
 .tile .point-value {
@@ -537,16 +646,23 @@ $tile-transition: width ease-in 100ms, height ease-in 100ms, background-color ea
   margin: 0;
   font-size: $point-size-mobile;
   font-weight: bold;
-  color: $color-background;
+  @include colorModed() {
+    color: m($background);
+  }
 }
 
 .rack .tile, .tile.preview:not(.over-board) {
   width: $tile-size-desktop;
   height: $tile-size-desktop;
-  background-color: $color-secondary-medium;
+  @include colorModed() {
+    background-color: m($tile-background);
+  }
   margin: 2px;
-  .rune {
+  p.rune {
     font-size: $tile-font-size-desktop;
+    @include colorModed() {
+      color: m($background);
+    }
   }
   .point-value {
     font-size: $point-size-desktop;
@@ -554,7 +670,9 @@ $tile-transition: width ease-in 100ms, height ease-in 100ms, background-color ea
   &.dragging {
     opacity: 0.4;
   }
-  background-color: $color-secondary;
+  @include colorModed() {
+    background-color: m($tile-background);
+  }
   transition: $tile-transition;
 }
 
@@ -566,7 +684,7 @@ $tile-transition: width ease-in 100ms, height ease-in 100ms, background-color ea
     top: -30px;
     box-shadow: $card-shadow;
   }
-  .rune {
+  p.rune {
     font-size: $tile-font-size-laptop;
     line-height: 35px;
   }
@@ -583,7 +701,7 @@ $tile-transition: width ease-in 100ms, height ease-in 100ms, background-color ea
     width: $tile-size-desktop;
     height: $tile-size-desktop;
     margin: 0 2px 2px 0;
-    .rune {
+    p.rune {
       font-size: 30px;
     }
   }
@@ -600,9 +718,12 @@ $tile-transition: width ease-in 100ms, height ease-in 100ms, background-color ea
   border-radius: 10%;
   font-size: 12px;
   font-weight: bold;
-  border: 1px solid $color-timer-dark;
-  background: $color-timer-light;
-  color: $color-timer-dark;
+  @include colorModed() {
+    background-color: m($timer-light);
+    border: 1px solid m($timer-dark);
+    color: m($timer-dark);
+  }
+
 }
 
 .tile .tentative-score.tentative-score-horizontal {
@@ -644,15 +765,19 @@ $tile-transition: width ease-in 100ms, height ease-in 100ms, background-color ea
     font-weight: bold;
     display: flex;
     border-radius: 0 0 8px 8px;
-    background: $color-primary-dark;
-    color: $color-background;
+    @include colorModed() {
+      background: m($primary-dark);
+      color: m($background);
+    }
     div {
       width: 50%;
       text-align: center;
       padding: 4px;
       &:first-child {
-        background: $color-primary-light;
-        color: black;
+        @include colorModed() {
+          background: m($primary-light);
+          color: m($gray-extreme);
+        }
       }
     }
   }
@@ -686,13 +811,16 @@ $tile-transition: width ease-in 100ms, height ease-in 100ms, background-color ea
       background: transparent;
       justify-content: space-between;
       div {
-        background-color: $color-primary-dark;
         border-radius: 8px;
         width: calc(50% - 4px);
         letter-spacing: 1px;
-
+        @include colorModed() {
+          background: m($primary-dark);
+        }
         &:first-child {
-          background-color: $color-primary-middle;
+          @include colorModed() {
+            background: m($primary-middle);
+          }
         }
       }
     }
@@ -719,8 +847,13 @@ $tile-transition: width ease-in 100ms, height ease-in 100ms, background-color ea
       padding: 0px 12px;
       width: 100px;
       line-height: 2.3em;
+      @include colorModed() {
+        color: m($gray-extreme);
+      }
       &:hover {
-        background: $color-secondary-light;
+        @include colorModed() {
+          background: m($primary-light);
+        }
       }
     }
   }
@@ -762,11 +895,13 @@ $tile-transition: width ease-in 100ms, height ease-in 100ms, background-color ea
 
   .turn {
     @include type-monospace;
-    color: $color-gray-extreme;
     font-size: 14px;
     display: flex;
     padding: 6px 0;
     justify-content: space-between;
+    @include colorModed() {
+      color: m($gray-extreme);
+    }
     p {
       line-height: 1.2em;
       margin-bottom: 3px;
@@ -776,16 +911,22 @@ $tile-transition: width ease-in 100ms, height ease-in 100ms, background-color ea
     }
     .main-word {
       display: block;
-      color: $color-gray-extreme;
+      @include colorModed() {
+        color: m($gray-extreme);
+      }
     }
     .pass, .exchanged, .time-penalty, .tiles-left, .challenge {
-      color: $color-timer-out-dark;
+      @include colorModed() {
+        color: m($timer-out-dark);
+      }
       display: inline-block;
       margin-bottom: 3px;
     }
 
     .challenge.unsuccessful {
-      color: $color-timer-dark;
+      @include colorModed() {
+        color: m($timer-dark);
+      }
     }
     .coords-time {
       flex: 2;
@@ -855,11 +996,15 @@ $tile-transition: width ease-in 100ms, height ease-in 100ms, background-color ea
 }
 
 .end-message {
-  background-color: $color-primary-middle;
+  @include colorModed() {
+    background-color: m($primary-middle);
+  }
   margin-bottom: 12px;
   .ant-card-body {
     p {
-      color: black;
+      @include colorModed() {
+        background-color: m($gray-extreme);
+      }
     }
   }
 }
@@ -910,12 +1055,12 @@ $tile-transition: width ease-in 100ms, height ease-in 100ms, background-color ea
     height: $tile-size-tablet;
     width: $tile-size-tablet;
   }
-  .tile .rune {
+  .tile p.rune {
     font-size: $tile-font-size-tablet;
     line-height: 1.2em;
     position: relative;
   }
-  .tile.blank .rune {
+  .tile.blank p.rune {
     font-size: $tile-font-size-tablet * 0.9;
   }
   .tile .point-value {
@@ -948,6 +1093,9 @@ $tile-transition: width ease-in 100ms, height ease-in 100ms, background-color ea
         position: relative;
         align-items: center;
         justify-content: space-between;
+        .anticon.anticon-redo {
+          margin-bottom: 0;
+        }
         .suggestions {
           width: calc(100% - 60px);
           overflow-y: auto;
@@ -1045,7 +1193,10 @@ $tile-transition: width ease-in 100ms, height ease-in 100ms, background-color ea
         width: 120px;
         line-height: 2.3em;
         &:hover {
-          background: $color-secondary-light;
+          @include colorModed() {
+            background: m($primary-light);
+            color: m($gray-extreme);
+          }
         }
       }
     }
@@ -1059,10 +1210,10 @@ $tile-transition: width ease-in 100ms, height ease-in 100ms, background-color ea
     pointer-events: all;
     cursor: grab;
   }
-  .tile .rune {
+  .tile p.rune {
     font-size: $tile-font-size-laptop;
   }
-  .tile.blank .rune {
+  .tile.blank p.rune {
     font-size: $tile-font-size-laptop * 0.9;
   }
   .tile .point-value {
@@ -1075,7 +1226,7 @@ $tile-transition: width ease-in 100ms, height ease-in 100ms, background-color ea
   .rack .tile {
     height: $tile-size-laptop;
     width: $tile-size-laptop;
-    .rune {
+    p.rune {
       font-size: $tile-font-size-laptop;
     }
     .point-value {
@@ -1129,7 +1280,7 @@ $tile-transition: width ease-in 100ms, height ease-in 100ms, background-color ea
   .rack .tile {
     height: $tile-size-desktop;
     width: $tile-size-desktop;
-    .rune {
+    p.rune {
       font-size: $tile-font-size-desktop;
     }
     .point-value {
@@ -1137,10 +1288,10 @@ $tile-transition: width ease-in 100ms, height ease-in 100ms, background-color ea
     }
   }
 
-  .tile .rune {
+  .tile p.rune {
     font-size: $tile-font-size-desktop;
   }
-  .tile.blank .rune {
+  .tile.blank p.rune {
     font-size: $tile-font-size-desktop * 0.9;
   }
   .tile .point-value {

@@ -3,15 +3,76 @@
 @include notification;
 @include modal;
 
-.seek-modal {
+.ant-modal-root .seek-modal {
   .ant-modal-header {
-    background-image: linear-gradient($color-primary-middle 0%, $color-background 100%);
+    @include colorModed() {
+      background-image: linear-gradient(m($header) 30%, m($background) 100%);
+    }
+    .ant-modal-title {
+      @include colorModed() {
+        color: m($gray-extreme);
+      }
+    }
   }
   button {
     font-size: 13px;
   }
-  .ant-form-item-label {
+
+  .ant-radio-button-wrapper:not(.ant-radio-button-wrapper-disabled) {
+    @include colorModed() {
+      background: m($background);
+      border-color: m($gray-medium);
+      color: m($gray-extreme);
+    }
+    &:before {
+      @include colorModed() {
+        background: m($gray-medium);
+      }
+    }
+  }
+  .ant-radio-button-wrapper-checked:not(.ant-radio-button-wrapper-disabled) {
+    @include colorModed() {
+      background: m($background);
+      border-color: m($primary-dark);
+      color: m($primary-dark);
+    }
+    &:before {
+      @include colorModed() {
+        background: m($primary-dark);
+      }
+    }
+  }
+  .ant-form-item-explain, .ant-form-item-extra {
+    @include colorModed() {
+      color: m($gray-extreme);
+    }
+  }
+  .ant-select-selector, .ant-select-item , .ant-select-dropdown{
+    @include colorModed() {
+      background: m($background);
+      color: m($gray-extreme);
+    }
+  }
+  .ant-form-item input, .ant-select-single:not(.ant-select-customize-input) .ant-select-selector .ant-select-selection-search-input {
+    @include colorModed() {
+      background: m($background);
+      color: m($gray-extreme);
+    }
+  }
+  .ant-input-number-input {
+    @include colorModed() {
+      background: m($card-background);
+      color: m($gray-extreme);
+    }
+  }
+  .ant-form-item .ant-form-item-label {
     text-align: left;
+    & > label {
+      text-align: left;
+      @include colorModed() {
+        color: m($gray-extreme);
+      }
+    }
     & > label::after {
       content: '';
     }
@@ -19,8 +80,22 @@
   .ant-slider {
     width: 320px;
   }
+
+
+  .ant-switch-handle:before {
+    @include colorModed() {
+      background-color: m($gray-medium);
+    }
+  }
   .ant-switch-checked {
-    background-color: $color-primary-dark;
+    @include colorModed() {
+      background-color: m($primary-dark);
+    }
+    .ant-switch-handle:before {
+      @include colorModed() {
+        background-color: m($background);
+      }
+    }
   }
 
   .ant-form-item-control {

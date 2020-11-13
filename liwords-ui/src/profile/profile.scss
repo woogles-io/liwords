@@ -16,6 +16,19 @@
     width: auto;
     display: inline-block;
   }
+  label {
+    @include colorModed() {
+      color: m($gray-extreme);
+    }
+  }
+  .dark-toggle {
+    margin: 0 24px 0 6px;
+    &.ant-switch-checked {
+      @include colorModed() {
+        background: m($header);
+      }
+    }
+  }
   .ant-card {
     margin-bottom: 12px;
   }
@@ -23,7 +36,10 @@
     padding: 0;
   }
   .ant-card-head {
-    background: $color-primary-light;
+    @include colorModed() {
+      background-color: m($primary-light);
+    }
+
   }
   a {
     font-size: 14px;

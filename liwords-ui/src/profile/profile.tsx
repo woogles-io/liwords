@@ -4,6 +4,7 @@ import { useMountedState } from '../utils/mounted';
 import { notification, Card, Table, Row, Col } from 'antd';
 import axios, { AxiosError } from 'axios';
 import { TopBar } from '../topbar/topbar';
+import { Switch } from 'antd';
 import './profile.scss';
 import { toAPIUrl } from '../api/api';
 import {
@@ -212,6 +213,9 @@ export const UserProfile = React.memo((props: Props) => {
   const [ratings, setRatings] = useState({});
   const [stats, setStats] = useState({});
   const [userID, setUserID] = useState('');
+  const [darkMode, setDarkMode] = useState(
+    localStorage?.getItem('darkMode') === 'true'
+  );
   const [recentGames, setRecentGames] = useState<Array<GameMetadata>>([]);
   const { loginState } = useLoginStateStoreContext();
   const { resetStore } = useResetStoreContext();
@@ -248,7 +252,18 @@ export const UserProfile = React.memo((props: Props) => {
       })
       .catch(errorCatcher);
   }, [username, recentGamesOffset]);
-
+  const toggleDarkMode = useCallback(() => {
+    const useDarkMode = localStorage?.getItem('darkMode') !== 'true';
+    localStorage.setItem('darkMode', useDarkMode ? 'true' : 'false');
+    if (useDarkMode) {
+      document?.body?.classList?.add('mode--dark');
+      document?.body?.classList?.remove('mode--default');
+    } else {
+      document?.body?.classList?.add('mode--default');
+      document?.body?.classList?.remove('mode--dark');
+    }
+    setDarkMode((x) => !x);
+  }, []);
   const fetchPrev = useCallback(() => {
     setRecentGamesOffset((recentGamesOffset) =>
       Math.max(recentGamesOffset - gamesPageSize, 0)
@@ -282,9 +297,17 @@ export const UserProfile = React.memo((props: Props) => {
             )}
           </h3>
           {viewer === username ? (
-            <Link to="/password/change" onClick={resetStore}>
-              Change your password
-            </Link>
+            <div>
+              <label>Enable dark mode</label>
+              <Switch
+                defaultChecked={darkMode}
+                onChange={toggleDarkMode}
+                className="dark-toggle"
+              />
+              <Link to="/password/change" onClick={resetStore}>
+                Change your password
+              </Link>
+            </div>
           ) : null}
         </header>
         <RatingsCard ratings={ratings} />

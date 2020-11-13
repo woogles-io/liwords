@@ -1,0 +1,194 @@
+// The body itself is an outlier
+body.mode--dark {
+  background: #2E2E2E;
+}
+
+// Theming system by Katie McTigue https://medium.com/@katiemctigue/how-to-create-a-dark-mode-in-sass-609f131a3995
+
+//Strings for calling the mixin
+
+$white: 'color-white'; //always white
+$black: 'color-black'; //always our darkest
+
+$background: 'color-background';
+$off-background: 'color-off-background';
+$card-background: 'color-card-background';
+
+$gray-subtle: 'color-gray-subtle';
+$gray-medium: 'color-gray-medium';
+$gray-extreme: 'color-gray-extreme';
+$grid: 'color-grid';
+
+
+$primary-light: 'color-primary-light';
+$primary-middle: 'color-primary-middle';
+$primary-midDark: 'color-primary-midDark';
+$primary-dark: 'color-primary-dark';
+$secondary: 'color-secondary';
+$secondary-dark: 'color-secondary-dark';
+$secondary-light: 'color-secondary-light';
+$secondary-lighter: 'color-secondary-lighter';
+$secondary-medium: 'color-secondary-medium';
+
+$button: 'color-button';
+$button-text: 'color-button-text';
+$logo: 'color-logo';
+$logo-text: 'color-logo-text';
+$header: 'color-header';
+
+$board-dls: 'color-board-dls';
+$board-dws: 'color-board-dws';
+$board-tws: 'color-board-tws';
+$board-tls: 'color-board-tls';
+$board-empty: 'color-board-empty';
+
+$tile-background: 'color-tile-background';
+$tile-background-secondary: 'color-tile-background-secondary';
+$tile-background-tertiary: 'color-tile-background-tertiary';
+$tile-background-quartenary: 'color-tile-background-quartenary';
+$tile-text: 'color-tile-text';
+
+$list-header: 'color-list-header';
+$list-header-text: 'color-list-header-text';
+
+$timer-light: 'color-timer-light';
+$timer-dark: 'color-timer-dark';
+$timer-low-light: 'color-timer-low-light';
+$timer-low-dark: 'color-timer-low-dark';
+$timer-out-light: 'color-timer-out-light';
+$timer-out-dark: 'color-timer-out-dark';
+
+$shadow: 'shadow';
+$shadow-lower: 'shadow-lower';
+$board-shadow: 'board-shadow';
+
+$modes: (
+        default: (
+          shadow: 0px 0px 12px rgba(0, 0, 0, 0.1),
+          shadow-lower: 0px 0px 6px rgba(0, 0, 0, 0.1),
+          board-shadow: 0 0 6px #777777,
+
+          color-white: #ffffff,
+          color-black: #414141,
+
+          color-background: #ffffff,
+          color-card-background: #ffffff,
+          color-off-background: #eeeeee,
+
+          color-gray-subtle: #bebebe,
+          color-gray-medium: #999999,
+          color-gray-extreme: #414141,
+
+          color-grid: #c3c3c3,
+
+          color-primary-light: #e2f8ff,
+          color-primary-middle: #c9f0ff,
+          color-primary-midDark: #3b88ca,
+          color-primary-dark: #2d6a9e,
+          color-secondary: #6b268b,
+          color-secondary-dark: #4d116a,
+          color-secondary-light: #d5cad6,
+          color-secondary-lighter: #f8f2fc,
+          color-secondary-medium: #955f9a,
+
+          color-button: #2d6a9e,
+          color-button-text: #ffffff,
+          color-header: #c9f0ff,
+          color-logo: #2d6a9e,
+          color-logo-text: #ffffff,
+          color-list-header: #e2f8ff,
+          color-list-header-text: #414141,
+
+          color-board-dls: #b9e7f5,
+          color-board-dws: #f6c0c0,
+          color-board-tws: #a92e2e,
+          color-board-tls: #3b88ca,
+          color-board-empty: #ffffff,
+
+          color-tile-background: #6b268b,
+          color-tile-background-secondary: #cfb7d1,
+          color-tile-background-tertiary: #955f9a,
+          color-tile-background-quartenary: #dec5e4,
+          color-tile-text: #ffffff,
+
+          color-timer-light: #e5ffdf,
+          color-timer-dark: #449e2d,
+          color-timer-low-light: #fbe5ae,
+          color-timer-low-dark: #f4b000,
+          color-timer-out-light: #ffeaea,
+          color-timer-out-dark: #a92e2e,
+        ),
+        dark: (
+          shadow: 0px 0px 12px rgba(0, 0, 0, 0.2),
+          shadow-lower: 0px 0px 6px rgba(0, 0, 0, 0.2),
+          board-shadow: 0 0 6px #1a1a1a,
+
+          color-white: #ffffff,
+          color-black: #414141,
+
+          color-background: #282828,
+          color-off-background: #313131,
+          color-card-background: #3A3A3A,
+
+          color-gray-subtle: #515151,
+          color-gray-medium: #cccccc,
+          color-gray-extreme: #ffffff,
+
+          color-grid: #232323,
+
+          color-primary-light: #193a57,
+          color-primary-middle: #1f4a6f,
+          color-primary-midDark: #8bbad8,
+          color-primary-dark: #b2dcf0,
+          color-secondary: #d79fdd,
+          color-secondary-dark: #f4b6fb,
+          color-secondary-light: #6b268b,
+          color-secondary-lighter: #4d116a,
+          color-secondary-medium: #955f9a,
+
+          color-button: #8bbad8,
+          color-button-text: #313131,
+          color-header: #193a57,
+          color-logo: #b2dcf0,
+          color-logo-text: #193a57,
+          color-list-header: #313131,
+          color-list-header-text: #b2dcf0,
+
+          color-board-dls: #2e6279,
+          color-board-tls: #0f2b44,
+          color-board-dws: #a9545a,
+          color-board-tws: #561f21,
+          color-board-empty: #313131,
+
+          color-tile-background: #baadbb,
+          color-tile-background-secondary: #643e69,
+          color-tile-background-tertiary: #b094b3,
+          color-tile-background-quartenary: #5d4269,
+          color-tile-text: #313131,
+
+          color-timer-light: #24542d,
+          color-timer-dark: #b2e49b,
+          color-timer-low-light: #fbe5ae,
+          color-timer-low-dark: #f4b000,
+          color-timer-out-light: #254c2c,
+          color-timer-out-dark: #ce5f66,
+        ),
+);
+
+@mixin colorModed() {
+  @each $mode, $map in $modes {
+    .mode--#{$mode} & {
+      $mode-map: () !global;
+      @each $key, $submap in $map {
+        $value: map-get(map-get($modes, $mode), '#{$key}');
+        $mode-map: map-merge($mode-map, ($key: $value)) !global;
+      }
+      @content;
+      $mode-map: null !global;
+    }
+  }
+}
+
+@function m($key) {
+  @return map-get($mode-map, $key);
+}

@@ -246,7 +246,9 @@ export const Analyzer = React.memo((props: AnalyzerProps) => {
           </table>
         </div>
       ) : (
-        <RedoOutlined spin />
+        <div className="suggestions" style={props.style}>
+          <RedoOutlined spin />
+        </div>
       )}
       {!props.includeCard ? (
         <Button
