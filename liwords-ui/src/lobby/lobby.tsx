@@ -22,7 +22,6 @@ import { GameLists } from './gameLists';
 import { Chat } from '../chat/chat';
 import {
   useChatStoreContext,
-  useLobbyStoreContext,
   useLoginStateStoreContext,
   usePresenceStoreContext,
 } from '../store/store';

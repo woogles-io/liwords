@@ -869,7 +869,14 @@ export const BoardPanel = React.memo((props: Props) => {
       description: `Sent rematch request to ${opp}`,
     });
     console.log('rematching');
-  }, [observer, gameID, playerMeta, sendSocketMsg, username]);
+  }, [
+    observer,
+    gameID,
+    playerMeta,
+    sendSocketMsg,
+    username,
+    props.tournamentID,
+  ]);
 
   const handleKeyDown = useCallback(
     (e) => {

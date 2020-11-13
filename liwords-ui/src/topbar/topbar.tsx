@@ -1,10 +1,10 @@
 import React from 'react';
+import axios from 'axios';
+
 import { Link } from 'react-router-dom';
-import { useMountedState } from '../utils/mounted';
 import './topbar.scss';
 import { DisconnectOutlined, SettingOutlined } from '@ant-design/icons/lib';
-import { notification, Dropdown, Tooltip, Modal, Badge } from 'antd';
-import axios from 'axios';
+import { notification, Dropdown, Tooltip, Modal } from 'antd';
 import {
   useLagStoreContext,
   useLoginStateStoreContext,
@@ -12,6 +12,7 @@ import {
 } from '../store/store';
 import { toAPIUrl } from '../api/api';
 import { Login } from '../lobby/login';
+import { useMountedState } from '../utils/mounted';
 
 const colors = require('../base.scss');
 

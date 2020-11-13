@@ -14,7 +14,12 @@ import (
 
 	"github.com/domino14/liwords/pkg/config"
 	"github.com/domino14/liwords/pkg/entity"
+	"github.com/domino14/liwords/pkg/gameplay"
+	"github.com/domino14/liwords/pkg/stores/game"
 	ts "github.com/domino14/liwords/pkg/stores/tournament"
+	"github.com/domino14/liwords/pkg/stores/user"
+	"github.com/domino14/liwords/pkg/tournament"
+	pkguser "github.com/domino14/liwords/pkg/user"
 	pb "github.com/domino14/liwords/rpc/api/proto/realtime"
 	realtime "github.com/domino14/liwords/rpc/api/proto/realtime"
 	macondoconfig "github.com/domino14/macondo/config"
@@ -47,12 +52,12 @@ var DefaultConfig = macondoconfig.Config{
 var divOneName = "Division 1"
 var divTwoName = "Division 2"
 
-func tournamentStore(dbURL string) (*config.Config, TournamentStore) {
+func tournamentStore(dbURL string, gs gameplay.GameStore) (*config.Config, tournament.TournamentStore) {
 	cfg := &config.Config{}
 	cfg.MacondoConfig = DefaultConfig
 	cfg.DBConnString = dbURL
 
-	tmp, err := ts.NewDBStore(cfg)
+	tmp, err := ts.NewDBStore(cfg, gs)
 	if err != nil {
 		log.Fatal().Err(err).Msg("error")
 	}
@@ -71,20 +76,44 @@ func makeControls() *entity.TournamentControls {
 		StartTime:      time.Now()}
 }
 
-func makeTournament(ctx context.Context, ts TournamentStore, cfg *config.Config, directors *entity.TournamentPersons) (*entity.Tournament, error) {
-	return NewTournament(ctx,
+func makeTournament(ctx context.Context, ts tournament.TournamentStore, cfg *config.Config, directors *entity.TournamentPersons) (*entity.Tournament, error) {
+	return tournament.NewTournament(ctx,
 		ts,
-		cfg,
+		"tid",
 		"Tournament",
 		"This is a test Tournament",
 		directors)
+}
+
+func userStore(dbURL string) pkguser.Store {
+	ustore, err := user.NewDBStore(TestingDBConnStr + " dbname=liwords_test")
+	if err != nil {
+		log.Fatal().Err(err).Msg("error")
+	}
+	return ustore
+}
+
+func gameStore(dbURL string, userStore pkguser.Store) (*config.Config, gameplay.GameStore) {
+	cfg := &config.Config{}
+	cfg.MacondoConfig = DefaultConfig
+	cfg.DBConnString = dbURL
+
+	tmp, err := game.NewDBStore(cfg, userStore)
+	if err != nil {
+		log.Fatal().Err(err).Msg("error")
+	}
+	gameStore := game.NewCache(tmp)
+	return cfg, gameStore
 }
 
 func TestTournamentSingleDivision(t *testing.T) {
 	is := is.New(t)
 	ctx := context.Background()
 	cstr := TestingDBConnStr + " dbname=liwords_test"
-	cfg, tstore := tournamentStore(cstr)
+
+	us := userStore(cstr)
+	_, gs := gameStore(cstr, us)
+	cfg, tstore := tournamentStore(cstr, gs)
 
 	players := &entity.TournamentPersons{Persons: map[string]int{"Will": 1000, "Josh": 3000, "Conrad": 2200, "Jesse": 2100}}
 	directors := &entity.TournamentPersons{Persons: map[string]int{"Kieran": 0, "Vince": 2, "Jennifer": 2}}
