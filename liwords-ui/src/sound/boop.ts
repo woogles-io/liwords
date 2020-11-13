@@ -6,7 +6,7 @@ class Booper {
   private times = 0;
   private unlocked = false;
 
-  constructor(readonly soundName: string, src: string, private volume: number) {
+  constructor(readonly soundName: string, src: string) {
     this.audio = new Audio(src);
     this.audio.addEventListener('ended', () => {
       if (this.times > 0) this.unlock();
@@ -16,7 +16,7 @@ class Booper {
   callPlay = async () => {
     const isPlaying = this.times > 0;
     try {
-      this.audio.volume = isPlaying ? this.volume : 0;
+      this.audio.muted = !isPlaying;
       await this.audio.play();
       this.unlocked = true;
       if (isPlaying) --this.times;
@@ -42,12 +42,12 @@ class Booper {
 const playableSounds: { [key: string]: Booper } = {};
 
 for (const booper of [
-  new Booper('makeMoveSound', require('../assets/makemove.mp3'), 1),
-  new Booper('oppMoveSound', require('../assets/oppmove.mp3'), 1),
-  new Booper('matchReqSound', require('../assets/matchreq.mp3'), 1),
-  new Booper('startgameSound', require('../assets/startgame.mp3'), 1),
-  new Booper('endgameSound', require('../assets/endgame.mp3'), 1),
-  new Booper('woofSound', require('../assets/woof.wav'), 0.25),
+  new Booper('makeMoveSound', require('../assets/makemove.mp3')),
+  new Booper('oppMoveSound', require('../assets/oppmove.mp3')),
+  new Booper('matchReqSound', require('../assets/matchreq.mp3')),
+  new Booper('startgameSound', require('../assets/startgame.mp3')),
+  new Booper('endgameSound', require('../assets/endgame.mp3')),
+  new Booper('woofSound', require('../assets/woof.mp3')),
 ]) {
   playableSounds[booper.soundName] = booper;
 }
