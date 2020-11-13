@@ -99,7 +99,6 @@ export const Lobby = (props: Props) => {
   const { tournamentID } = useParams();
   const { sendSocketMsg } = props;
   const { chat } = useChatStoreContext();
-  const { lobbyContext } = useLobbyStoreContext();
   const { loginState } = useLoginStateStoreContext();
   const { presences } = usePresenceStoreContext();
   const { loggedIn, username, userID } = loginState;
@@ -185,6 +184,7 @@ export const Lobby = (props: Props) => {
             peopleOnlineContext={peopleOnlineContext}
             presences={presences}
             DISCONNECT={props.DISCONNECT}
+            highlight={tournamentInfo.directors}
           />
         </div>
         <GameLists

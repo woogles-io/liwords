@@ -14,6 +14,7 @@ type EntityProps = {
   message: string;
   timestamp?: number;
   anonymous?: boolean;
+  highlight: boolean;
 };
 
 export const ChatEntity = (props: EntityProps) => {
@@ -22,6 +23,10 @@ export const ChatEntity = (props: EntityProps) => {
     ts = moment(props.timestamp).format('MMM Do - LT');
   }
   let el;
+  let senderClass = 'sender';
+  if (props.highlight) {
+    senderClass = 'special-sender';
+  }
   switch (props.entityType) {
     case ChatEntityType.ServerMsg:
       el = (
@@ -42,7 +47,7 @@ export const ChatEntity = (props: EntityProps) => {
         <div className="chat-entity">
           <p className="timestamp">{ts}</p>
           <p className="message-body">
-            <span className="sender">
+            <span className={senderClass}>
               <UsernameWithContext
                 username={props.sender}
                 userID={props.senderId}
