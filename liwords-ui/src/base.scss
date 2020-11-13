@@ -208,6 +208,12 @@ ul
   border-color: #9c3e9b;
 }
 
+.ant-card-head {
+  @include colorModed() {
+    border-color: m($card-background);
+  }
+}
+
 .ant-card-head-title {
   @include colorModed() {
     color: m($gray-extreme);
