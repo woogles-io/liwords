@@ -48,7 +48,7 @@ import { PlayState } from '../gen/macondo/api/proto/macondo/macondo_pb';
 import { endGameMessageFromGameInfo } from '../store/end_of_game';
 import { singularCount } from '../utils/plural';
 import { Notepad, NotepadContextProvider } from './notepad';
-import { Analyzer } from './analyzer';
+import { Analyzer, AnalyzerContextProvider } from './analyzer';
 import { TournamentMetadata } from '../tournament/tournament_info';
 
 type Props = {
@@ -253,7 +253,6 @@ export const Table = React.memo((props: Props) => {
           setGameEndMessage(endGameMessageFromGameInfo(resp.data));
         }
       });
-    BoopSounds.playSound('startgameSound');
 
     return () => {
       clearChat();
@@ -281,6 +280,10 @@ export const Table = React.memo((props: Props) => {
         setTournamentName(resp.data.name);
       });
   }, [gameInfo.tournament_id]);
+
+  useEffect(() => {
+    BoopSounds.playSound('startgameSound');
+  }, [gameID]);
 
   useEffect(() => {
     // Request streak info only if a few conditions are true.
@@ -584,5 +587,6 @@ export const Table = React.memo((props: Props) => {
     </div>
   );
   ret = <NotepadContextProvider children={ret} />;
+  ret = <AnalyzerContextProvider children={ret} />;
   return ret;
 });

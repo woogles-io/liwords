@@ -3,7 +3,6 @@ import React, {
   useCallback,
   useContext,
   useMemo,
-  useReducer,
   useRef,
 } from 'react';
 import { useMountedState } from '../utils/mounted';
@@ -547,7 +546,7 @@ const RealStore = ({ children, ...props }: Props) => {
     setPTimedOut(p);
   }, []);
 
-  const [lobbyContext, dispatchLobbyContext] = useReducer(LobbyReducer, {
+  const [lobbyContext, setLobbyContext] = useState<LobbyState>({
     soughtGames: [],
     activeGames: [],
     matchRequests: [],
@@ -555,7 +554,11 @@ const RealStore = ({ children, ...props }: Props) => {
     gamesPageSize: pageSize,
     gamesOffset: 0,
   });
-  const [loginState, dispatchLoginState] = useReducer(LoginStateReducer, {
+  const dispatchLobbyContext = useCallback(
+    (action) => setLobbyContext((state) => LobbyReducer(state, action)),
+    []
+  );
+  const [loginState, setLoginState] = useState({
     username: '',
     userID: '',
     loggedIn: false,
@@ -563,6 +566,10 @@ const RealStore = ({ children, ...props }: Props) => {
     connID: '',
     path: '',
   });
+  const dispatchLoginState = useCallback(
+    (action) => setLoginState((state) => LoginStateReducer(state, action)),
+    []
+  );
   const [currentLagMs, setCurrentLagMs] = useState(NaN);
 
   const [placedTilesTempScore, setPlacedTilesTempScore] = useState<
@@ -571,8 +578,12 @@ const RealStore = ({ children, ...props }: Props) => {
   const [placedTiles, setPlacedTiles] = useState(new Set<EphemeralTile>());
   const [displayedRack, setDisplayedRack] = useState('');
 
-  const [gameContext, dispatchGameContext] = useReducer(GameReducer, null, () =>
+  const [gameContext, setGameContext] = useState<GameState>(() =>
     gameStateInitializer(clockController, onClockTick, onClockTimeout)
+  );
+  const dispatchGameContext = useCallback(
+    (action) => setGameContext((state) => GameReducer(state, action)),
+    []
   );
 
   const [timerContext, setTimerContext] = useState<Times>(defaultTimerContext);
@@ -831,8 +842,11 @@ const ResetStoreContext = createContext({ resetStore: defaultFunction });
 export const useResetStoreContext = () => useContext(ResetStoreContext);
 
 export const Store = ({ children }: { children: React.ReactNode }) => {
+  const { useState } = useMountedState();
+
   // In JS the | 0 loops within int32 and avoids reaching Number.MAX_SAFE_INTEGER.
-  const [storeId, resetStore] = React.useReducer((n) => (n + 1) | 0, 0);
+  const [storeId, setStoreId] = useState(0);
+  const resetStore = useCallback(() => setStoreId((n) => (n + 1) | 0), []);
 
   // Reset on browser navigation.
   React.useEffect(() => {

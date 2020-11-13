@@ -2,6 +2,7 @@ import React from 'react';
 import moment from 'moment';
 import { ChatEntityType } from '../store/store';
 import { UsernameWithContext } from '../shared/usernameWithContext';
+import { Wooglinkify } from '../shared/wooglinkify';
 
 const ServerMsgColor = '#237804';
 const ServerErrColor = '#a8071a';
@@ -47,7 +48,9 @@ export const ChatEntity = (props: EntityProps) => {
                 userID={props.senderId}
               />
             </span>
-            <span className="message">{props.message}</span>
+            <span className="message">
+              <Wooglinkify message={props.message} />
+            </span>
           </p>
         </div>
       );
