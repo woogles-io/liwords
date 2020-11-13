@@ -2,6 +2,9 @@
 // So, it is open-source.
 
 (() => {
+  // Load this in parallel.
+  importScripts('wasm_exec.js');
+
   const macondoCache = new WeakMap();
 
   const precache = async (macondo, cacheKey, path, arrayBuffer) => {
@@ -34,7 +37,6 @@
     macondoLoadAttempted = true;
     try {
       {
-        importScripts('wasm_exec.js');
         const Go = self.Go;
         if (!Go) throw new Error('Go not loaded');
         const go = new Go();
