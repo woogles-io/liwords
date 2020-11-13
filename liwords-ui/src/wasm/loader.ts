@@ -35,6 +35,18 @@ class Loadable {
     this.whichStep = 0; // Allow reloading (useful when previous fetch failed).
     this.fetchPromise = undefined;
   };
+
+  getSingleUseArrayBuffer = async () => {
+    try {
+      const arrayBuffer = await this.getArrayBuffer();
+      await this.disownArrayBuffer();
+      return arrayBuffer;
+    } catch (e) {
+      console.error(`failed to load ${this.cacheKey}`, e);
+      await this.reset();
+      throw e;
+    }
+  };
 }
 
 const loadablesByLexicon: { [key: string]: Array<Loadable> } = {};
@@ -75,6 +87,11 @@ for (const { lexicons, cacheKey, path } of [
   }
 }
 
+const macondoWasmLoadable = new Loadable(
+  'macondo.wasm',
+  `/wasm/${window.RUNTIME_CONFIGURATION.macondoFilename}`
+);
+
 const unrace = new Unrace();
 
 export interface Macondo {
@@ -88,6 +105,7 @@ let wrappedWorker: Macondo;
 export const getMacondo = async (lexicon: string) =>
   unrace.run(async () => {
     // Allow these files to start loading.
+    macondoWasmLoadable.startFetch();
     for (const loadable of loadablesByLexicon[lexicon] ?? []) {
       loadable.startFetch();
     }
@@ -126,10 +144,13 @@ export const getMacondo = async (lexicon: string) =>
       // First-time load.
       const worker = new Worker('/wasm/macondo.js');
 
-      worker.postMessage([
-        'getMacondo',
-        window.RUNTIME_CONFIGURATION.macondoFilename,
-      ]);
+      {
+        const macondoWasmArrayBuffer = (await macondoWasmLoadable.getSingleUseArrayBuffer())!;
+        worker.postMessage(
+          ['getMacondo', macondoWasmArrayBuffer],
+          [macondoWasmArrayBuffer]
+        );
+      } // unscope
 
       await new Promise((res, rej) => {
         worker.onmessage = (msg) => {
@@ -176,19 +197,12 @@ export const getMacondo = async (lexicon: string) =>
         };
 
         precache = async (loadable: Loadable) => {
-          try {
-            const arrayBuffer = (await loadable.getArrayBuffer())!;
-            if (arrayBuffer) {
-              await loadable.disownArrayBuffer();
-              await sendRequest(
-                ['precache', loadable.cacheKey, loadable.path, arrayBuffer],
-                [arrayBuffer]
-              );
-            }
-          } catch (e) {
-            console.error(`failed to precache ${loadable.cacheKey}`, e);
-            await loadable.reset();
-            throw e;
+          const arrayBuffer = await loadable.getSingleUseArrayBuffer();
+          if (arrayBuffer) {
+            await sendRequest(
+              ['precache', loadable.cacheKey, loadable.path, arrayBuffer],
+              [arrayBuffer]
+            );
           }
         };
 

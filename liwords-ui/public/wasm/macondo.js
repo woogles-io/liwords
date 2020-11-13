@@ -29,7 +29,7 @@
     self.rejMacondo(new Error('Go did not resolve macondoPromise'));
   };
 
-  const getMacondo = async (macondoFilename) => {
+  const getMacondo = async (macondoWasmArrayBuffer) => {
     if (macondoLoadAttempted) return await macondoPromise;
     macondoLoadAttempted = true;
     try {
@@ -40,20 +40,10 @@
         const go = new Go();
         const instance = go.run(
           (
-            await (async () => {
-              let resp = fetch(`/wasm/${macondoFilename}`);
-              if (WebAssembly.instantiateStreaming) {
-                // Better browsers.
-                return WebAssembly.instantiateStreaming(resp, go.importObject);
-              } else {
-                // Apple browsers.
-                let awaitedResp = await resp;
-                resp = null; // Early gc.
-                let arrayBuffer = await awaitedResp.arrayBuffer();
-                awaitedResp = null; // Early gc.
-                return WebAssembly.instantiate(arrayBuffer, go.importObject);
-              }
-            })()
+            await WebAssembly.instantiate(
+              macondoWasmArrayBuffer,
+              go.importObject
+            )
           ).instance
         );
         instance.finally(giveUp);
@@ -87,11 +77,11 @@
         }
       })();
     } else if (msg.data[0] === 'getMacondo') {
-      // ["getMacondo", filename]
-      const macondoFilename = msg.data[1];
+      // ["getMacondo", wasmArrayBuffer]
+      const macondoWasmArrayBuffer = msg.data[1];
       (async () => {
         try {
-          await getMacondo(macondoFilename);
+          await getMacondo(macondoWasmArrayBuffer);
           postMessage(['getMacondo', true]);
         } catch (e) {
           postMessage(['getMacondo', false]);
