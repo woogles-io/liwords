@@ -4,22 +4,14 @@
 (() => {
   const macondoCache = new WeakMap();
 
-  const fetchAndPrecache = async (macondo, cacheKey, path) => {
+  const precache = async (macondo, cacheKey, path, arrayBuffer) => {
     let cachedStuffs = macondoCache.get(macondo);
     if (!cachedStuffs) {
       macondoCache.set(macondo, (cachedStuffs = {}));
     }
     if (!cachedStuffs[cacheKey]) {
-      const resp = await fetch(path);
-      if (resp.ok) {
-        await macondo.precache(
-          cacheKey,
-          new Uint8Array(await resp.arrayBuffer())
-        );
-        cachedStuffs[cacheKey] = true;
-      } else {
-        throw new Error(`Unable to cache ${cacheKey}`);
-      }
+      await macondo.precache(cacheKey, new Uint8Array(arrayBuffer));
+      cachedStuffs[cacheKey] = true;
     }
   };
 
@@ -77,7 +69,7 @@
     if (req[0] === 'analyze') {
       return await (await getMacondo()).analyze(req[1]);
     } else if (req[0] === 'precache') {
-      return await fetchAndPrecache(await getMacondo(), req[1], req[2]);
+      return await precache(await getMacondo(), req[1], req[2], req[3]);
     } else {
       throw new Error('unknown request');
     }
