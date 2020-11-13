@@ -221,7 +221,6 @@ export const AnalyzerContextProvider = ({
 
 export const Analyzer = React.memo((props: AnalyzerProps) => {
   const { lexicon } = props;
-  const { useState } = useMountedState();
   const {
     cachedMoves,
     examinerLoading,
@@ -284,8 +283,7 @@ export const Analyzer = React.memo((props: AnalyzerProps) => {
       setPlacedTilesTempScore(move.score);
     },
     [
-      examinableGameContext.board.dim,
-      examinableGameContext.board.letters,
+      examinableGameContext,
       setDisplayedRack,
       setPlacedTiles,
       setPlacedTilesTempScore,
@@ -295,13 +293,18 @@ export const Analyzer = React.memo((props: AnalyzerProps) => {
   const handleExaminer = useCallback(() => {
     setShowMovesForTurn(examinableGameContext.turns.length);
     requestAnalysis(lexicon);
-  }, [examinableGameContext.turns.length, lexicon, requestAnalysis]);
+  }, [
+    examinableGameContext.turns.length,
+    lexicon,
+    requestAnalysis,
+    setShowMovesForTurn,
+  ]);
 
   // When at the last move, examineStoreContext.examinedTurn === Infinity.
   // To also detect new moves, we use examinableGameContext.turns.length.
   useEffect(() => {
     setShowMovesForTurn(-1);
-  }, [examinableGameContext.turns.length]);
+  }, [examinableGameContext.turns.length, setShowMovesForTurn]);
 
   const showMoves = showMovesForTurn === examinableGameContext.turns.length;
   const moves = useMemo(() => (showMoves ? cachedMoves : null), [
