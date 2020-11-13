@@ -483,6 +483,13 @@ ul
     &:not(.ant-btn-circle) {
       padding: 3px 18px;
     }
+    &:disabled {
+      @include colorModed() {
+        border-color: m($gray-subtle);
+        color: m($gray-subtle);
+      }
+    }
+
     span.key-command {
       position: absolute;
       top: 0;
