@@ -27,6 +27,7 @@ import { PlayerOrder } from './constants';
 import { PoolFormatType } from '../constants/pool_formats';
 import { LoginState, LoginStateReducer } from './login_state';
 import { EphemeralTile } from '../utils/cwgame/common';
+import { pageSize } from '../tournament/recent_game';
 
 export enum ChatEntityType {
   UserChat,
@@ -173,6 +174,8 @@ const LobbyContext = createContext<LobbyStoreData>({
     activeGames: [],
     matchRequests: [],
     tourneyGames: [],
+    gamesPageSize: pageSize,
+    gamesOffset: 0,
   },
   dispatchLobbyContext: defaultFunction,
 });
@@ -549,6 +552,8 @@ const RealStore = ({ children, ...props }: Props) => {
     activeGames: [],
     matchRequests: [],
     tourneyGames: [],
+    gamesPageSize: pageSize,
+    gamesOffset: 0,
   });
   const [loginState, dispatchLoginState] = useReducer(LoginStateReducer, {
     username: '',

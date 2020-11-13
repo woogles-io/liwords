@@ -19,6 +19,7 @@ export enum ActionType {
   /* tourney actions */
   AddTourneyGame,
   AddTourneyGames,
+  SetTourneyGamesOffset,
 
   /* game actions */
   AddGameEvent,

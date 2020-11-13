@@ -1,5 +1,4 @@
 import { Action, ActionType } from '../../actions/actions';
-import { GameMetadata } from '../../gameroom/game_info';
 import {
   GameMeta,
   SeekRequest,
@@ -7,7 +6,6 @@ import {
   MatchRequest,
   MatchUser,
   TournamentGameEndedEvent,
-  TournamentGameResult,
 } from '../../gen/api/proto/realtime/realtime_pb';
 import { RecentGame } from '../../tournament/recent_game';
 
@@ -52,6 +50,8 @@ export type LobbyState = {
   activeGames: Array<ActiveGame>;
 
   tourneyGames: Array<RecentGame>;
+  gamesPageSize: number;
+  gamesOffset: number;
 };
 
 const toResultStr = (r: 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7) => {
@@ -263,12 +263,22 @@ export function LobbyReducer(state: LobbyState, action: Action): LobbyState {
     }
 
     case ActionType.AddTourneyGame: {
-      const { tourneyGames } = state;
-      const tourneyGame = action.payload as RecentGame;
+      const { tourneyGames, gamesOffset, gamesPageSize } = state;
+      const evt = action.payload as TournamentGameEndedEvent;
+      const game = TourneyGameEndedEvtToRecentGame(evt);
+      // If a tourney game comes in while we're looking at another page,
+      // do nothing.
+      if (gamesOffset > 0) {
+        return state;
+      }
+
+      // Bring newest game to the top.
+      const newGames = [game, ...tourneyGames];
+      newGames.length = gamesPageSize;
+
       return {
         ...state,
-        // Bring to the top.
-        tourneyGames: [tourneyGame, ...tourneyGames],
+        tourneyGames: newGames,
       };
     }
 
@@ -277,6 +287,14 @@ export function LobbyReducer(state: LobbyState, action: Action): LobbyState {
       return {
         ...state,
         tourneyGames,
+      };
+    }
+
+    case ActionType.SetTourneyGamesOffset: {
+      const offset = action.payload as number;
+      return {
+        ...state,
+        gamesOffset: offset,
       };
     }
   }

@@ -235,6 +235,8 @@ export const useOnSocketMsg = () => {
                     payload: soughtGame,
                   });
                   inReceiverGameList = true;
+                } else if (rematchFor === gameContext.gameID) {
+                  setRematchRequest(mr);
                 } else {
                   notification.info({
                     message: 'Tournament Match Request',

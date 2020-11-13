@@ -1,7 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import moment from 'moment';
-import { Button, Card, Table, Tag, Tooltip } from 'antd';
+import { Button, Table, Tag } from 'antd';
 import { useResetStoreContext } from '../store/store';
 import { RecentGame } from './recent_game';
 
@@ -28,6 +28,7 @@ const PlayerLink = (props: playerLinkProps) => {
       onClick={resetStore}
     >
       {props.username}
+      <br />
       {props.winner ? <Tag color={colors.colorPrimary}>Win</Tag> : null}
       {props.loser ? <Tag color={colors.colorBoardTWS}>Loss</Tag> : null}
     </Link>
@@ -129,7 +130,7 @@ export const RecentTourneyGames = React.memo((props: Props) => {
   ];
   // TODO: use the normal Ant table pagination when the backend can give us a total
   return (
-    <Card title="Game History">
+    <>
       <Table
         className="game-history"
         columns={columns}
@@ -143,6 +144,6 @@ export const RecentTourneyGames = React.memo((props: Props) => {
         {props.fetchPrev && <Button onClick={props.fetchPrev}>Prev</Button>}
         {props.fetchNext && <Button onClick={props.fetchNext}>Next</Button>}
       </div>
-    </Card>
+    </>
   );
 });

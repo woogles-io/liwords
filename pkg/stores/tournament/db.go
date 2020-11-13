@@ -174,7 +174,7 @@ func (s *DBStore) GetRecentGames(ctx context.Context, tourneyID string, numGames
 
 		evt := &realtime.TournamentGameEndedEvent{
 			Players:   players,
-			GameId:    tourneyID,
+			GameId:    info.GameId,
 			EndReason: info.GameEndReason,
 			Time:      info.LastUpdate.Seconds,
 		}

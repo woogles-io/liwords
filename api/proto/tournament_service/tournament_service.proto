@@ -16,7 +16,7 @@ message NewTournamentRequest {
   string slug = 1;
   string name = 2;
   string description = 3;
-  string director_id = 4;
+  repeated string director_ids = 4;
 }
 
 message TournamentMetadataRequest {
@@ -93,7 +93,7 @@ message GetTournamentMetadataRequest { string id = 1; }
 message TournamentMetadataResponse {
   string name = 1;
   string description = 2;
-  string director_username = 3;
+  repeated string directors = 3;
 }
 
 message RecentGamesRequest {

@@ -10,3 +10,5 @@ export type RecentGame = {
   game_id: string;
   time: number;
 };
+
+export const pageSize = 8;

@@ -1,8 +1,8 @@
 import React, { useCallback, useEffect } from 'react';
 import { Link, useParams, useLocation } from 'react-router-dom';
-import { useMountedState } from '../utils/mounted';
 import { notification, Card, Table, Row, Col } from 'antd';
 import axios, { AxiosError } from 'axios';
+import { useMountedState } from '../utils/mounted';
 import { TopBar } from '../topbar/topbar';
 import './profile.scss';
 import { toAPIUrl } from '../api/api';
@@ -250,14 +250,10 @@ export const UserProfile = React.memo((props: Props) => {
   }, [username, recentGamesOffset]);
 
   const fetchPrev = useCallback(() => {
-    setRecentGamesOffset((recentGamesOffset) =>
-      Math.max(recentGamesOffset - gamesPageSize, 0)
-    );
+    setRecentGamesOffset((r) => Math.max(r - gamesPageSize, 0));
   }, []);
   const fetchNext = useCallback(() => {
-    setRecentGamesOffset(
-      (recentGamesOffset) => recentGamesOffset + gamesPageSize
-    );
+    setRecentGamesOffset((r) => r + gamesPageSize);
   }, []);
 
   return (
