@@ -174,9 +174,7 @@ export const AnalyzerContextProvider = ({
           lexicon,
         };
 
-        const macondo = await getMacondo();
-        if (examinerIdAtStart !== examinerId.current) return;
-        await macondo.loadLexicon(lexicon);
+        const macondo = await getMacondo(lexicon);
         if (examinerIdAtStart !== examinerId.current) return;
 
         const boardStr = JSON.stringify(boardObj);

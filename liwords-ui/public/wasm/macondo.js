@@ -2,24 +2,19 @@
 // So, it is open-source.
 
 (() => {
+  // Load this in parallel.
+  importScripts('wasm_exec.js');
+
   const macondoCache = new WeakMap();
 
-  const fetchAndPrecache = async (macondo, cacheKey, path) => {
+  const precache = async (macondo, cacheKey, path, arrayBuffer) => {
     let cachedStuffs = macondoCache.get(macondo);
     if (!cachedStuffs) {
       macondoCache.set(macondo, (cachedStuffs = {}));
     }
     if (!cachedStuffs[cacheKey]) {
-      const resp = await fetch(path);
-      if (resp.ok) {
-        await macondo.precache(
-          cacheKey,
-          new Uint8Array(await resp.arrayBuffer())
-        );
-        cachedStuffs[cacheKey] = true;
-      } else {
-        throw new Error(`Unable to cache ${cacheKey}`);
-      }
+      await macondo.precache(cacheKey, new Uint8Array(arrayBuffer));
+      cachedStuffs[cacheKey] = true;
     }
   };
 
@@ -37,31 +32,20 @@
     self.rejMacondo(new Error('Go did not resolve macondoPromise'));
   };
 
-  const getMacondo = async (macondoFilename) => {
+  const getMacondo = async (macondoWasmArrayBuffer) => {
     if (macondoLoadAttempted) return await macondoPromise;
     macondoLoadAttempted = true;
     try {
       {
-        importScripts('wasm_exec.js');
         const Go = self.Go;
         if (!Go) throw new Error('Go not loaded');
         const go = new Go();
         const instance = go.run(
           (
-            await (async () => {
-              let resp = fetch(`/wasm/${macondoFilename}`);
-              if (WebAssembly.instantiateStreaming) {
-                // Better browsers.
-                return WebAssembly.instantiateStreaming(resp, go.importObject);
-              } else {
-                // Apple browsers.
-                let awaitedResp = await resp;
-                resp = null; // Early gc.
-                let arrayBuffer = await awaitedResp.arrayBuffer();
-                awaitedResp = null; // Early gc.
-                return WebAssembly.instantiate(arrayBuffer, go.importObject);
-              }
-            })()
+            await WebAssembly.instantiate(
+              macondoWasmArrayBuffer,
+              go.importObject
+            )
           ).instance
         );
         instance.finally(giveUp);
@@ -77,7 +61,7 @@
     if (req[0] === 'analyze') {
       return await (await getMacondo()).analyze(req[1]);
     } else if (req[0] === 'precache') {
-      return await fetchAndPrecache(await getMacondo(), req[1], req[2]);
+      return await precache(await getMacondo(), req[1], req[2], req[3]);
     } else {
       throw new Error('unknown request');
     }
@@ -95,11 +79,11 @@
         }
       })();
     } else if (msg.data[0] === 'getMacondo') {
-      // ["getMacondo", filename]
-      const macondoFilename = msg.data[1];
+      // ["getMacondo", wasmArrayBuffer]
+      const macondoWasmArrayBuffer = msg.data[1];
       (async () => {
         try {
-          await getMacondo(macondoFilename);
+          await getMacondo(macondoWasmArrayBuffer);
           postMessage(['getMacondo', true]);
         } catch (e) {
           postMessage(['getMacondo', false]);
