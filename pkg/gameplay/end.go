@@ -147,7 +147,6 @@ func performEndgameDuties(ctx context.Context, g *entity.Game, gameStore GameSto
 		wrapped.AddAudience(entity.AudUser, p+".game."+g.GameID())
 	}
 	wrapped.AddAudience(entity.AudGameTV, g.GameID())
-	g.SendChange(wrapped)
 
 	// Compute stats for the player and for the game.
 	variantKey, err := g.RatingKey()
@@ -162,6 +161,10 @@ func performEndgameDuties(ctx context.Context, g *entity.Game, gameStore GameSto
 			g.Stats = gameStats
 		}
 	}
+
+	// Send the event here instead of above the computation of Game Stats
+	// to avoid race conditions (computeGameStats modifies the history).
+	g.SendChange(wrapped)
 
 	// Send a notification to the lobby that this
 	// game ended. This will remove it from the list of live games.
@@ -182,39 +185,35 @@ func performEndgameDuties(ctx context.Context, g *entity.Game, gameStore GameSto
 	return nil
 }
 
+// Dangerous function that should not have existed.
+func flipPlayersInHistoryIfNecessary(history *macondopb.GameHistory) {
+	if history.SecondWentFirst {
+		history.Players[0], history.Players[1] = history.Players[1], history.Players[0]
+		history.FinalScores[0], history.FinalScores[1] = history.FinalScores[1], history.FinalScores[0]
+		if history.Winner != -1 {
+			history.Winner = 1 - history.Winner
+		}
+	}
+}
+
 func computeGameStats(ctx context.Context, history *macondopb.GameHistory, req *pb.GameRequest,
 	variantKey entity.VariantKey, evt *pb.GameEndedEvent, userStore user.Store,
 	listStatStore stats.ListStatStore) (*entity.Stats, error) {
 
 	// stats := entity.InstantiateNewStats(1, 2)
-	p0id, p1id := history.Players[0].UserId, history.Players[1].UserId
-	if history.SecondWentFirst {
-		p0id, p1id = p1id, p0id
-		history.Players[0], history.Players[1] = history.Players[1], history.Players[0]
-		history.FinalScores[0], history.FinalScores[1] = history.FinalScores[1], history.FinalScores[0]
-		if history.Winner != -1 {
-			history.Winner = 1 - history.Winner
-		}
-	}
+	flipPlayersInHistoryIfNecessary(history)
+	defer flipPlayersInHistoryIfNecessary(history)
 
 	// Fetch the Macondo config
 	config := ctx.Value(ConfigCtxKey("config")).(*macondoconfig.Config)
 
 	// Here, p0 went first and p1 went second, no matter what.
+	p0id, p1id := history.Players[0].UserId, history.Players[1].UserId
 	gameStats := stats.InstantiateNewStats(p0id, p1id)
 
 	err := stats.AddGame(gameStats, listStatStore, history, req, config, evt, history.Uid)
 	if err != nil {
 		return nil, err
-	}
-
-	if history.SecondWentFirst {
-		// Flip it back
-		history.Players[0], history.Players[1] = history.Players[1], history.Players[0]
-		history.FinalScores[0], history.FinalScores[1] = history.FinalScores[1], history.FinalScores[0]
-		if history.Winner != -1 {
-			history.Winner = 1 - history.Winner
-		}
 	}
 
 	// Only add the game to profile stats if the game was rated

@@ -2,6 +2,7 @@ import React from 'react';
 import moment from 'moment';
 import { ChatEntityType } from '../store/store';
 import { UsernameWithContext } from '../shared/usernameWithContext';
+import { Wooglinkify } from '../shared/wooglinkify';
 
 type EntityProps = {
   entityType: ChatEntityType;
@@ -44,7 +45,9 @@ export const ChatEntity = (props: EntityProps) => {
                 userID={props.senderId}
               />
             </span>
-            <span className="message">{props.message}</span>
+            <span className="message">
+              <Wooglinkify message={props.message} />
+            </span>
           </p>
         </div>
       );
