@@ -23,10 +23,12 @@ p {
     padding: 24px;
   }
   .chat-context {
-    color: black;
     min-height: 48px;
     width: 100%;
-    background: white;
+    @include colorModed() {
+      background: m($card-background);
+      color: m($gray-extreme);
+    }
     font-size: 16px;
     font-weight: bold;
     z-index: 1;
@@ -37,7 +39,9 @@ p {
     .list-trigger {
       letter-spacing: 0;
       cursor: pointer;
-      color: $color-primary-dark;
+      @include colorModed() {
+        color: m($primary-dark);
+      }
       font-weight: bold;
       text-transform: none;
     }
@@ -47,32 +51,42 @@ p {
       display: flex;
       width: 100%;
       justify-content: space-between;
-      color: #707070;
       text-transform: uppercase;
       font-size: 12px;
       letter-spacing: 0.16em;
       margin: 6px 0;
+      @include colorModed() {
+        color: m($gray-medium);
+      }
     }
     .presence {
-      color: $color-primary-dark;
       font-weight: bold;
       z-index: 2;
+      @include colorModed() {
+        color: m($primary-dark);
+      }
       span.anonymous {
-        color: #444;
         font-weight: normal;
         display: inline;
+        @include colorModed() {
+          color: m($gray-medium);
+        }
       }
     }
     &.scrolling {
       padding-bottom: 12px;
-      border-bottom: 1px solid #ddd;
+      @include colorModed() {
+        border-bottom: 1px solid m($off-background);
+      }
       .presence {
         position: absolute;
         width: 100%;
-        background: white;
         padding: 12px 24px;
         left: 0;
-        border-bottom: 1px solid #ddd;
+        @include colorModed() {
+          background: m($card-background);
+          border-bottom: 1px solid m($off-background);
+        }
       }
     }
   }
@@ -80,21 +94,37 @@ p {
     padding: 12px 24px;
     .chat-entity {
       .sender {
-        color: $color-primary-dark;
         font-weight: 800;
         margin: 0 9px 0 0;
+        @include colorModed() {
+          color: m($primary-dark);
+        }
       }
       .message-body {
-        color: black;
         margin-bottom: 4px;
         line-height: 1.4em;
+        @include colorModed() {
+          color: m($gray-extreme);
+        }
       }
       .timestamp {
-        color: #6b268b;
+        @include colorModed() {
+          color: m($secondary);
+        }
         font-size: 75%;
         margin: 0;
         position: relative;
         top: 2px;
+      }
+    }
+    .server-error {
+      @include colorModed() {
+        color: m($timer-out-dark);
+      }
+    }
+    .server-message {
+      @include colorModed() {
+        color: m($timer-dark);
       }
     }
   }
@@ -116,6 +146,10 @@ p {
   left: 0;
   width: calc(100% - 12px);
   margin: 6px;
+  @include colorModed() {
+    background: m($card-background);
+    color: m($gray-extreme);
+  }
 }
 
 @media (min-width: $screen-laptop-min) {

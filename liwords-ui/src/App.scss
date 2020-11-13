@@ -1,7 +1,18 @@
 @import 'base';
-body {
-  background-color: white;
+
+.App {
+  min-height: 100vh;
+  @include colorModed() {
+    background-color: m($background);
+  }
+
+  p, h1, h2, h3, h4, h5, h6 {
+    @include colorModed() {
+      color: m($gray-extreme);
+    }
+  }
 }
+
 @keyframes disappear {
   0% {
     opacity: 1;
@@ -19,80 +30,57 @@ body {
 }
 
 .ant-dropdown.user-menu {
-  background: white;
+  @include colorModed() {
+    background-color: m($background);
+    box-shadow: m($shadow);
+  }
   padding: 6px 24px 6px 12px;
   min-width: 200px;
-  box-shadow: $card-shadow-lower;
 }
 a, button.link {
   cursor: pointer;
-  color: $color-primary-dark;
+  @include colorModed() {
+    color: m($primary-dark);
+    background: transparent;
+  }
   font-weight: bold;
   border: 0;
   outline: 0;
   &:hover,
   &:active {
-    color: $color-primary-midDark;
+    @include colorModed() {
+      color: m($primary-dark);
+    }
   }
 }
 button.link {
-  background: white;
+  @include colorModed() {
+    color: m($primary-dark);
+  }
 }
 
 a.plain, .link.plain {
   cursor: pointer;
   font-weight: 700;
-  color: $color-gray-dark;
+  @include colorModed() {
+    color: m($gray-extreme);
+  }
   transition: none;
   font-family: $font-default;
   line-height: 34px;
   &:hover,
   &:active {
-    color: $color-primary-dark;
+    @include colorModed() {
+      color: m($primary-dark);
+    }
   }
 }
 .note {
   font-size: 12px;
   line-height: 18px;
   margin-bottom: 6px;
-  color: $color-primary-dark;
-}
-
-.App-logo {
-  height: 40vmin;
-  pointer-events: none;
-}
-
-.App-header {
-  background-color: #282c34;
-  min-height: 100vh;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  font-size: calc(10px + 2vmin);
-  color: white;
-}
-
-.App-link {
-  color: #61dafb;
-}
-
-@media (prefers-reduced-motion: no-preference) {
-  .App-logo {
-    animation: App-logo-spin infinite 20s linear;
+  @include colorModed() {
+    color: m($primary-dark);
   }
 }
 
-@keyframes App-logo-spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-/* g:focus {
-  outline: none;
-} */

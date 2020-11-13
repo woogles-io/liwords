@@ -1,12 +1,14 @@
 @import '../base.scss';
-
+@import '../color_modes.scss';
 .section-head {
   position: relative;
   top: -1px;
   display: flex;
   justify-content: center;
   align-items: center;
-  background-image: linear-gradient($color-primary-middle 20%, white 70%);
+  @include colorModed() {
+    background-image: linear-gradient(m($header) 20%, m($background) 70%);
+  }
   height: 140px;
   h1 {
     margin-bottom: 0;
@@ -18,13 +20,19 @@
     @include type-default;
     font-weight: 500;
     line-height: 1.5em;
+    @include colorModed() {
+      background: transparent;
+      color: m($gray-extreme);
+    }
   }
   .intro {
     margin: 0 auto;
     max-width: $screen-mobile-min;
     padding: 12px 12px 48px;
     h4 {
-      color: $color-secondary;
+      @include colorModed() {
+        color: m($secondary);
+      }
     }
     p + h4 {
       margin-top: 36px;
@@ -34,7 +42,9 @@
     }
   }
   .bio {
-    background: $color-secondary-lighter;
+    @include colorModed() {
+      background: m($secondary-lighter);
+    }
     .container {
       display: flex;
       align-items: flex-start;
@@ -45,7 +55,9 @@
       height: 380px;
     }
     h3 {
-      color: $color-secondary;
+      @include colorModed() {
+        color: m($secondary);
+      }
       font-size: 24px;
       margin-bottom: 0.5em;
     }
@@ -54,9 +66,13 @@
     }
   }
   .ant-row:nth-child(odd) .bio {
-    background: $color-primary-light;
+    @include colorModed() {
+      background: m($primary-light);
+    }
     h3 {
-      color: $color-primary-dark;
+      @include colorModed() {
+        color: m($primary-dark);
+      }
       font-size: 21px;
       margin-bottom: 0.5em;
     }

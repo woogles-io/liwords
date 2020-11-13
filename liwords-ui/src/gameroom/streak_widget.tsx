@@ -16,9 +16,9 @@ type SGProps = {
 
 const SingleGame = (props: SGProps) => {
   const { resetStore } = useResetStoreContext();
-  const win = <p style={{ color: 'green' }}>1</p>;
-  const loss = <p style={{ color: 'lightgray' }}>0</p>;
-  const tie = <p style={{ color: 'blue' }}>½</p>;
+  const win = <p className="streak-win">1</p>;
+  const loss = <p className="streak-loss">0</p>;
+  const tie = <p className="streak-tie">½</p>;
 
   let cells;
 

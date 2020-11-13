@@ -27,6 +27,10 @@ type Blocks = {
   user_ids: Array<string>;
 };
 
+const useDarkMode = localStorage?.getItem('darkMode') === 'true';
+
+document?.body?.classList?.add(`mode--${useDarkMode ? 'dark' : 'default'}`);
+
 const App = React.memo(() => {
   const { useState } = useMountedState();
 

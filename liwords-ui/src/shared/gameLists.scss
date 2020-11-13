@@ -1,8 +1,26 @@
 @import '../base';
+@import '../color_modes';
 
-.game-lists, .game-history {
+.game-lists, .game-history, .profile {
+  .ant-table-filter-trigger-container {
+    transition: none;
+  }
+  .ant-table-filter-trigger-container-open .ant-table-filter-trigger, .ant-table-filter-trigger:hover {
+    @include colorModed() {
+      background: m($off-background);
+      color: m($gray-medium);
+      transition: none;
+    }
+  }
+  .ant-table-thead > tr, .ant-table-tbody > tr {
+    @include colorModed() {
+      background: m($card-background);
+    }
+  }
   .ant-table-thead > tr > th {
-    background: white;
+    @include colorModed() {
+      color: m($gray-extreme);
+    }
     font-size: 12px;
     font-weight: bold;
     letter-spacing: 0.16em;
@@ -13,6 +31,11 @@
   }
   .ant-table-thead > tr > th, .ant-table-tbody > tr > td {
     padding: 8px;
+    @include colorModed() {
+      color: m($gray-extreme);
+      border-color: m($off-background);
+      background: transparent;
+    }
     &.result {
       padding-right: 0;
     }
@@ -30,7 +53,9 @@
     display: flex;
     flex-direction: row;
     justify-content: space-around;
-    border-bottom: 1px solid #eee;
+    @include colorModed() {
+      border-bottom: 1px solid m($off-background);
+    }
     height: 36px;
     .tab {
       padding: 0px 24px 6px;
@@ -42,42 +67,86 @@
       cursor: pointer;
       &:hover,
       &.active {
-        color: $color-primary-dark;
+        @include colorModed() {
+          color: m($primary-dark);
+        }
       }
       &.active {
-        border-bottom: 2px solid $color-primary-dark;
+        @include colorModed() {
+          border-bottom: 2px solid m($primary-dark);
+        }
       }
     }
   }
   .games {
-    .game-listing {
+    tr.ant-table-row.game-listing {
       cursor: pointer;
       &.resume,
       &.outgoing {
-        background-color: #f2f2f2;
         font-weight: bold;
         .anticon {
           margin-left: 6px;
         }
-        &:hover {
-          background-color: inherit;
-        }
       }
-      &.resume {
+      &.resume, &.outgoing {
         position: relative;
         vertical-align: bottom;
-        background-color: $color-timer-low-light;
+        @include colorModed() {
+          background-color: m($timer-low-light);
+          color: #414141;
+        }
+        &:hover {
+          @include colorModed() {
+            background-color: scale-color(m($timer-low-light), $lightness: 10%);
+          }
+        }
         td.ant-table-column-sort {
-          background-color: scale-color($color-timer-low-light, $lightness: -3%);;
+          @include colorModed() {
+            background-color: mix(m($card-background), m($timer-low-light), $weight: 90%);
+          }
         }
         td {
           padding-top: 42px;
+          color: #414141;
         }
         td.players {
           min-height: 78px;
         }
         td.players:after {
           content: 'Resume';
+          @include colorModed() {
+            color: m($gray-extreme);
+          }
+          text-align: center;
+          font-size: 12px;
+          font-weight: bold;
+          letter-spacing: 0.3em;
+          text-transform: uppercase;
+          position: absolute;
+          top: 12px;
+          left: 18px;
+        }
+      }
+      &.outgoing {
+        @include colorModed() {
+          background-color: m($off-background);
+          color: m($gray-extreme);
+        }
+        td {
+          @include colorModed() {
+            color: m($gray-extreme);
+          }
+        }
+        &:hover {
+          @include colorModed() {
+            background-color: scale-color(m($off-background), $lightness: 10%);
+          }
+        }
+        td.seeker:after {
+          @include colorModed() {
+            color: m($gray-extreme);
+          }
+          content: 'Cancel';
           text-align: center;
           font-size: 12px;
           font-weight: bold;
@@ -103,7 +172,10 @@
   }
   h4 {
     @include type-default;
-    background: $color-primary-light;
+    @include colorModed() {
+      color: m($list-header-text);
+      background-color: m($list-header);
+    }
     font-size: 22px;
     font-weight: bold;
     text-align: left;
@@ -131,7 +203,9 @@
   td.details {
     text-align: right;
     .anticon-fund {
-      color: $color-primary-dark;
+      @include colorModed() {
+        color: m($primary-dark);
+      }
       font-size: 18px;
       margin-left: 6px;
     }
@@ -139,15 +213,21 @@
       font-size: 14px;
       font-weight: bold;
       letter-spacing: 0;
-      color: $color-timer-dark;
+      @include colorModed() {
+        color: m($timer-dark);
+      }
       &.mode_x2 {
-        color: $color-timer-out-dark;
+        @include colorModed() {
+          color: m($timer-out-dark);
+        }
       }
       &.mode_Void {
         @include type-deco;
         font-size: 12px;
         letter-spacing: 0;
-        color: $color-timer-low-dark;
+        @include colorModed() {
+          color: m($timer-low-dark);
+        }
         text-transform: uppercase;
       }
     }

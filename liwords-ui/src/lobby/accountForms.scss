@@ -3,6 +3,14 @@
 
 @include button;
 
+.ant-form .ant-form-item{
+  label {
+    @include colorModed() {
+      color: m($gray-extreme);
+    }
+  }
+}
+
 div.account {
   display: flex;
   flex-direction: row;
@@ -109,14 +117,18 @@ div.account {
   a {
     cursor: pointer;
     letter-spacing: 0;
-    color: $color-primary-dark;
+    @include colorModed() {
+      color: m($primary-dark);
+    }
     font-weight: bold;
     font-size: 13px;
     border: 0;
     outline: 0;
     &:hover,
     &:active {
-      color: $color-primary-midDark;
+      @include colorModed() {
+        color: m($primary-midDark);
+      }
     }
   }
 }

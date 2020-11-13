@@ -8,16 +8,17 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background-color: $color-primary-dark;
   background-position: center center;
   background-repeat: no-repeat;
   background-size: cover;
   font-family: $font-default;
   font-weight: 700;
-  color: white;
   text-transform: capitalize;
   font-size: 15px;
   line-height: 0;
+  //thming outlier
+  background-color: #2d6a9e;
+  color: white;
 }
 
 @media (min-width: $screen-tablet-min) {

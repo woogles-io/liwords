@@ -4,9 +4,6 @@ import { ChatEntityType } from '../store/store';
 import { UsernameWithContext } from '../shared/usernameWithContext';
 import { Wooglinkify } from '../shared/wooglinkify';
 
-const ServerMsgColor = '#237804';
-const ServerErrColor = '#a8071a';
-
 type EntityProps = {
   entityType: ChatEntityType;
   sender: string;
@@ -26,14 +23,14 @@ export const ChatEntity = (props: EntityProps) => {
     case ChatEntityType.ServerMsg:
       el = (
         <div>
-          <span style={{ color: ServerMsgColor }}>{props.message}</span>
+          <span className="server-message">{props.message}</span>
         </div>
       );
       break;
     case ChatEntityType.ErrorMsg:
       el = (
         <div>
-          <span style={{ color: ServerErrColor }}>{props.message}</span>
+          <span className="server-error">{props.message}</span>
         </div>
       );
       break;
