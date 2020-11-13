@@ -59,8 +59,8 @@ for (const { lexicons, cacheKey, path } of [
   },
   {
     lexicons: ['CSW19', 'NWL18'],
-    cacheKey: 'data/strategy/default_english/leaves.idx',
-    path: '/wasm/leaves.idx',
+    cacheKey: 'data/strategy/default_english/leaves.olv',
+    path: '/wasm/leaves.olv',
   },
   {
     lexicons: ['CSW19', 'NWL18'],
