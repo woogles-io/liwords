@@ -78,9 +78,9 @@ func (b *Bus) instantiateAndStartGame(ctx context.Context, accUser *entity.User,
 	// Broadcast a seek delete event, and send both parties a game redirect.
 	if reqID != BotRequestID {
 		b.soughtGameStore.Delete(ctx, reqID)
-		err = b.broadcastSeekDeletion(reqID)
+		err = b.sendSoughtGameDeletion(ctx, sg)
 		if err != nil {
-			log.Err(err).Msg("broadcasting-seek")
+			log.Err(err).Msg("broadcasting-sg-deletion")
 		}
 	}
 
@@ -263,6 +263,7 @@ func (b *Bus) adjudicateGames(ctx context.Context) error {
 			// was never registered with an unstarted game.
 			wrapped := entity.WrapEvent(&pb.GameDeletion{Id: g.Id},
 				pb.MessageType_GAME_DELETION)
+			// XXX: Fix for tourneys ?
 			wrapped.AddAudience(entity.AudLobby, "gameEnded")
 			b.gameEventChan <- wrapped
 		}
