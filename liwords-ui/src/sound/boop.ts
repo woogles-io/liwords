@@ -8,6 +8,10 @@ class Booper {
 
   constructor(readonly soundName: string, src: string) {
     this.audio = new Audio(src);
+    // On iOS, if not yet loaded, audio.play() will silently play a short
+    // silent sound instead, and fire ended event on that.
+    // Try to load first, so hopefully it's already loaded when needed.
+    this.audio.load();
     this.audio.addEventListener('ended', () => {
       if (this.times > 0) this.unlock();
     });
@@ -16,7 +20,10 @@ class Booper {
   callPlay = async () => {
     const isPlaying = this.times > 0;
     try {
+      // Use .muted, because iOS does not support .volume.
       this.audio.muted = !isPlaying;
+      // On some browsers (desktop included), audio may start midway.
+      this.audio.currentTime = isPlaying ? 0 : this.audio.duration;
       await this.audio.play();
       this.unlocked = true;
       if (isPlaying) --this.times;
@@ -53,6 +60,8 @@ for (const booper of [
 }
 
 const unlockSounds = () => {
+  // Browser settings may disallow autoplay until user interacts with document.
+  // Use that chance to play() all known sounds muted.
   (async () => {
     if (
       (
