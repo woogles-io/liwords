@@ -134,6 +134,7 @@
         }
       }
       &.outgoing {
+        cursor: pointer;
         @include colorModed() {
           background-color: m($off-background);
           color: m($gray-extreme);
@@ -146,6 +147,11 @@
         &:hover {
           @include colorModed() {
             background-color: scale-color(m($off-background), $lightness: 10%);
+          }
+        }
+        td.seeker {
+          & > div {
+            width: 100%;
           }
         }
         td.seeker:after {

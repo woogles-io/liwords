@@ -123,9 +123,7 @@ export const ActiveGames = (props: Props) => {
         className="games observe"
         dataSource={formatGameData(props.activeGames)}
         columns={columns}
-        pagination={{
-          hideOnSinglePage: true,
-        }}
+        pagination={false}
         rowKey="gameID"
         showSorterTooltip={false}
         onRow={(record) => {

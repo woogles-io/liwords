@@ -62,7 +62,10 @@
       margin-bottom: 0.5em;
     }
     .team-info {
-      padding: 24px 0 0 24px;
+      padding: 24px 24px 0 24px;
+    }
+    p {
+      padding: 0 24px 0 0;
     }
   }
   .ant-row:nth-child(odd) .bio {
@@ -114,7 +117,7 @@
 
 @media (min-width: $screen-laptop-min) {
   .bios {
-    max-width: $screen-laptop-min;
+    max-width: none;
     margin: 0 auto;
     p {
       line-height: 2em;
