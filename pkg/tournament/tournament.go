@@ -200,7 +200,7 @@ func SetTournamentMetadata(ctx context.Context, ts TournamentStore, id string, n
 	defer t.Unlock()
 
 	t.Name = name
-	t.Description = name
+	t.Description = description
 
 	return ts.Set(ctx, t)
 }

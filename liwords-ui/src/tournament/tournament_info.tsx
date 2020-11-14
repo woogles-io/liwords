@@ -2,6 +2,7 @@ import React, { useCallback, useEffect } from 'react';
 import { Card, Divider } from 'antd';
 import axios from 'axios';
 import { useParams } from 'react-router-dom';
+import ReactMarkdown from 'react-markdown';
 import { RecentTourneyGames } from './recent_games';
 import { pageSize, RecentGame } from './recent_game';
 import { toAPIUrl } from '../api/api';
@@ -78,7 +79,7 @@ export const TournamentInfo = (props: TournamentInfoProps) => {
       <Card title="Tournament Information">
         <h3 className="tournament-name">{props.tournamentInfo.name}</h3>
         <h4>Directors: {props.tournamentInfo.directors.join(', ')}</h4>
-        <p>{props.tournamentInfo.description}</p>
+        <ReactMarkdown>{props.tournamentInfo.description}</ReactMarkdown>
         <Divider />
         <h3 className="recent-header">Recent Games</h3>
         <RecentTourneyGames
