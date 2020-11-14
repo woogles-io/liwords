@@ -67,7 +67,7 @@ export const RecentTourneyGames = React.memo((props: Props) => {
       let endReason = '';
       switch (item.end_reason) {
         case 'TIME':
-          endReason = 'TO';
+          endReason = 'Time';
           break;
         case 'CONSECUTIVE_ZEROES':
           endReason = 'Six 0';
