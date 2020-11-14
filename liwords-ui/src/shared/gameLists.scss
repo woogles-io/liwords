@@ -109,13 +109,19 @@
           padding-top: 42px;
           color: #414141;
         }
+        .anticon.anticon-export {
+          margin-right: 6px;
+        }
+        td.rating {
+          text-align: center;
+        }
         td.players {
           min-height: 78px;
         }
         td.players:after {
           content: 'Resume';
           @include colorModed() {
-            color: m($gray-extreme);
+            color: m($black);
           }
           text-align: center;
           font-size: 12px;
