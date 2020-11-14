@@ -89,7 +89,7 @@ func recreateDB() {
 			log.Fatal().Err(err).Msg("error")
 		}
 	}
-
+	ustore.(*user.DBStore).Disconnect()
 }
 
 func tournamentStore(dbURL string, gs gameplay.GameStore) (*config.Config, tournament.TournamentStore) {
