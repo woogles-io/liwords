@@ -274,7 +274,9 @@ export function LobbyReducer(state: LobbyState, action: Action): LobbyState {
 
       // Bring newest game to the top.
       const newGames = [game, ...tourneyGames];
-      newGames.length = gamesPageSize;
+      if (newGames.length > gamesPageSize) {
+        newGames.length = gamesPageSize;
+      }
 
       return {
         ...state,
