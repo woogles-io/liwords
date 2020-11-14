@@ -414,7 +414,9 @@ func TestTournamentSingleDivision(t *testing.T) {
 	isFinished, err = tournament.IsFinished(ctx, tstore, ty.UUID, divOneName+"but wait there's more")
 	is.True(err != nil)
 
+	us.(*user.DBStore).Disconnect()
 	tstore.(*ts.Cache).Disconnect()
+	gs.(*game.Cache).Disconnect()
 }
 
 func TestTournamentMultipleDivisions(t *testing.T) {
@@ -568,6 +570,10 @@ func TestTournamentMultipleDivisions(t *testing.T) {
 	divTwoComplete, err := tournament.IsRoundComplete(ctx, tstore, ty.UUID, divTwoName, 0)
 	is.NoErr(err)
 	is.True(divTwoComplete)
+
+	us.(*user.DBStore).Disconnect()
+	tstore.(*ts.Cache).Disconnect()
+	gs.(*game.Cache).Disconnect()
 }
 
 func equalTournamentPersons(tp1 *entity.TournamentPersons, tp2 *entity.TournamentPersons) error {
