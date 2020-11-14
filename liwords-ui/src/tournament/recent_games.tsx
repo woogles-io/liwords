@@ -134,9 +134,7 @@ export const RecentTourneyGames = React.memo((props: Props) => {
         className="game-history"
         columns={columns}
         dataSource={formattedGames}
-        pagination={{
-          hideOnSinglePage: true,
-        }}
+        pagination={false}
         rowKey="game_id"
       />
       <div className="game-history-controls">
