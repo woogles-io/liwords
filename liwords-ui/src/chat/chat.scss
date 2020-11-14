@@ -101,7 +101,9 @@ p {
         }
       }
       .special-sender {
-        color: $color-board-tws;
+        @include colorModed() {
+          color: m($timer-out-dark);
+        }
         font-weight: 800;
         margin: 0 9px 0 0;
       }
