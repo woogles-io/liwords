@@ -189,7 +189,7 @@ func (s *DBStore) GetRecentTourneyGames(ctx context.Context, tourneyID string, n
 	if results := s.db.Limit(numGames).
 		Offset(offset).
 		Where("tournament_id = ? AND game_end_reason != 0", tourneyID).
-		Order("created_at desc").
+		Order("updated_at desc").
 		Find(&games); results.Error != nil {
 		return nil, results.Error
 	}
