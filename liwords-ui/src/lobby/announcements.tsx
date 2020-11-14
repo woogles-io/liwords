@@ -7,6 +7,22 @@ export const Announcements = React.memo((props: AnnouncementsProps) => {
   // Todo: admin to add these and a backend to store and retrieve them
   const announcements = [
     {
+      title: 'Live Tournament - 37th Annual Wisconsin Dells Tourney',
+      body: (
+        <a
+          href="https://woogles.io/tournament/dells2020"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          <p>
+            Eight games on Saturday; top 2 in each lexicon go on to a 5-game
+            match on Sunday. If you are registered, click here to attend the
+            tournament.
+          </p>
+        </a>
+      ),
+    },
+    {
       title: 'Upcoming Tournament - The WETO',
       body: (
         <a
@@ -23,16 +39,17 @@ export const Announcements = React.memo((props: AnnouncementsProps) => {
       ),
     },
     {
-      title: 'Upcoming Tournament - 37th Annual Wisconsin Dells Tourney',
+      title: 'Want to help?',
       body: (
         <a
-          href="https://docs.google.com/document/d/1d38HOaiQANqK5WAVzKKLd_v_ZR9Jw45OnOek1MVU0io"
+          href="https://woogles.io/about"
           target="_blank"
           rel="noopener noreferrer"
         >
           <p>
-            13 games on Woogles.io, NWL and CSW divisions, November 14 and 15,
-            2020. Free!
+            Woogles is a nonprofit, funded completely by donations, and
+            committed to being ad-free and free for everyone. Want to make a
+            donation and ensure its future?
           </p>
         </a>
       ),

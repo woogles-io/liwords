@@ -58,7 +58,7 @@
 
 .tournament-info {
   h3 {
-    font-size: 24px;
+    font-size: 18px;
     &.recent-header {
       font-size: 18px;
       @include colorModed() {
@@ -68,6 +68,7 @@
   }
 
   h3.tournament-name {
+    font-size: 24px;
     @include colorModed() {
       color: m($primary-dark);
     }

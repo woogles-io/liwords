@@ -47,15 +47,45 @@ export const About = (props: Props) => {
             <p>3) Build the best AI our community has ever seen.</p>
             <h4>Can I help?</h4>
             <p>
-              Absolutely. Financially, you can help the team by backing our{' '}
-              <a href="https://www.kickstarter.com/projects/woogles/woogles">
-                Kickstarter
-              </a>
-              . We are registered as a non-profit in the state of New Jersey,
-              and will have a way for you to donate directly.{' '}
+              Absolutely. Financially, you can help the team by donating. We are
+              funded completely by players like you. We are registered as a
+              non-profit in the state of New Jersey.{' '}
               <a href="https://docs.google.com/spreadsheets/d/1RCdyjgq-QF2OihNKXDOhW6WDQyayxhmjhMakfUNNuLQ">
                 Here's our plan for the funds.
               </a>
+            </p>
+            <p>
+              <form
+                action="https://www.paypal.com/donate"
+                method="post"
+                target="_top"
+              >
+                <input
+                  type="hidden"
+                  name="hosted_button_id"
+                  value="AW5H2F4WFEFVJ"
+                />
+                <input
+                  type="image"
+                  src="https://www.paypalobjects.com/en_US/i/btn/btn_donateCC_LG.gif"
+                  name="submit"
+                  title="PayPal - The safer, easier way to pay online!"
+                  alt="Donate with PayPal button"
+                  style={{
+                    border: '0',
+                    margin: '24px 0',
+                  }}
+                />
+                <img
+                  alt=""
+                  src="https://www.paypal.com/en_US/i/scr/pixel.gif"
+                  style={{
+                    border: '0',
+                    width: '1px',
+                    height: '1px',
+                  }}
+                />
+              </form>
             </p>
             <p>
               If you have skills you think we can use, please let us know. We

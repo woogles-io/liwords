@@ -1,6 +1,6 @@
 /* eslint-disable jsx-a11y/click-events-have-key-events */
 /* eslint-disable jsx-a11y/no-noninteractive-element-interactions */
-import { Table, Tooltip } from 'antd';
+import { Popconfirm, Table, Tooltip } from 'antd';
 import React, { ReactNode } from 'react';
 import { FundOutlined, ExportOutlined } from '@ant-design/icons/lib';
 import {
@@ -10,6 +10,7 @@ import {
   timeToString,
 } from '../store/constants';
 import { SoughtGame } from '../store/reducers/lobby_reducer';
+import { useMountedState } from '../utils/mounted';
 
 export const timeFormat = (
   initialTimeSecs: number,
@@ -47,8 +48,8 @@ type Props = {
 };
 
 export const SoughtGames = (props: Props) => {
-  // @ts-ignore
-  // @ts-ignore
+  const { useState } = useMountedState();
+  const [cancelVisible, setCancelVisible] = useState(false);
   const columns = [
     {
       title: 'Player',
@@ -130,10 +131,28 @@ export const SoughtGames = (props: Props) => {
         const outgoing = sg.seeker === props.username;
         return {
           seeker: outgoing ? (
-            <>
-              <ExportOutlined />
-              {` ${sg.receiver?.getDisplayName() || 'Seeking...'}`}
-            </>
+            <Popconfirm
+              title={`Do you want to cancel this game?`}
+              onConfirm={() => {
+                props.newGame(sg.seekID);
+                setCancelVisible(false);
+              }}
+              okText="Yes"
+              cancelText="No"
+              onCancel={() => {
+                console.log('trying', setCancelVisible, cancelVisible);
+                setCancelVisible(false);
+              }}
+              onVisibleChange={(visible) => {
+                setCancelVisible(visible);
+              }}
+              visible={cancelVisible}
+            >
+              <div>
+                <ExportOutlined />
+                {` ${sg.receiver?.getDisplayName() || 'Seeking...'}`}
+              </div>
+            </Popconfirm>
           ) : (
             sg.seeker
           ),
@@ -165,15 +184,17 @@ export const SoughtGames = (props: Props) => {
         className={`games ${props.isMatch ? 'match' : 'seek'}`}
         dataSource={formatGameData(props.requests)}
         columns={columns}
-        pagination={{
-          hideOnSinglePage: true,
-        }}
+        pagination={false}
         rowKey="seekID"
         showSorterTooltip={false}
         onRow={(record) => {
           return {
-            onClick: (event) => {
-              props.newGame(record.seekID);
+            onClick: () => {
+              if (!record.outgoing) {
+                props.newGame(record.seekID);
+              } else if (!cancelVisible) {
+                setCancelVisible(true);
+              }
             },
           };
         }}
