@@ -79,7 +79,9 @@ export const TournamentInfo = (props: TournamentInfoProps) => {
       <Card title="Tournament Information">
         <h3 className="tournament-name">{props.tournamentInfo.name}</h3>
         <h4>Directors: {props.tournamentInfo.directors.join(', ')}</h4>
-        <ReactMarkdown>{props.tournamentInfo.description}</ReactMarkdown>
+        <ReactMarkdown linkTarget="_blank">
+          {props.tournamentInfo.description}
+        </ReactMarkdown>
         <Divider />
         <h3 className="recent-header">Recent Games</h3>
         <RecentTourneyGames
