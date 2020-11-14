@@ -138,8 +138,8 @@ export const SoughtGames = (props: Props) => {
         return {
           seeker: outgoing ? (
             <>
-              {props.username}
               <ExportOutlined />
+              {` ${sg.receiver?.getDisplayName() || 'Seeking...'}`}
             </>
           ) : (
             sg.seeker

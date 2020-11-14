@@ -80,7 +80,7 @@ export const ratingToColor = (rating: string): [number, string] => {
     [700, 'purple'],
     [500, 'gold'],
     [300, 'lime'],
-    [100, 'geekblue'],
+    [100, 'gray'],
   ];
   for (let r = 0; r < ratingCutoffs.length; r++) {
     if (ratNum >= ratingCutoffs[r][0]) {
