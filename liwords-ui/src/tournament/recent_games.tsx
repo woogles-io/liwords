@@ -5,8 +5,6 @@ import { Button, Table, Tag } from 'antd';
 import { useResetStoreContext } from '../store/store';
 import { RecentGame } from './recent_game';
 
-const colors = require('../base.scss');
-
 type Props = {
   games: Array<RecentGame>;
   fetchPrev?: () => void;
@@ -29,8 +27,9 @@ const PlayerLink = (props: playerLinkProps) => {
     >
       {props.username}
       <br />
-      {props.winner ? <Tag color={colors.colorPrimary}>Win</Tag> : null}
-      {props.loser ? <Tag color={colors.colorBoardTWS}>Loss</Tag> : null}
+      {props.winner ? <Tag color="red">Win</Tag> : null}
+      {props.loser ? <Tag color="blue">Loss</Tag> : null}
+      {!props.winner && !props.loser ? <Tag color="gray">Tie</Tag> : null}
     </Link>
   );
 };
@@ -64,29 +63,29 @@ export const RecentTourneyGames = React.memo((props: Props) => {
         </Link>
       );
 
-      const when = moment.unix(item.time ? item.time : 0).fromNow();
+      const when = moment.unix(item.time ? item.time : 0).format('HH:mm');
       let endReason = '';
       switch (item.end_reason) {
         case 'TIME':
-          endReason = 'Time out';
+          endReason = 'TO';
           break;
         case 'CONSECUTIVE_ZEROES':
-          endReason = 'Six-zero rule';
+          endReason = 'Six 0';
           break;
         case 'RESIGNED':
-          endReason = 'Resignation';
+          endReason = 'Resign';
           break;
         case 'ABANDONED':
-          endReason = 'Abandoned';
+          endReason = 'Abandon';
           break;
         case 'CANCELLED':
-          endReason = 'Cancelled';
+          endReason = 'Cancel';
           break;
         case 'TRIPLE_CHALLENGE':
-          endReason = 'Triple Challenge';
+          endReason = 'Triple';
           break;
         case 'STANDARD':
-          endReason = 'Completed';
+          endReason = 'Complete';
       }
 
       return {
@@ -101,31 +100,31 @@ export const RecentTourneyGames = React.memo((props: Props) => {
     .filter((item) => item !== null);
   const columns = [
     {
-      className: 'when',
-      dataIndex: 'when',
-      key: 'when',
-    },
-    {
       dataIndex: 'p1',
       key: 'p1',
-      title: 'First',
+      title: '1st',
     },
     {
       dataIndex: 'p2',
       key: 'p2',
-      title: 'Second',
+      title: '2nd',
     },
     {
       className: 'score',
       dataIndex: 'scores',
       key: 'scores',
-      title: 'Final Score',
+      title: 'Score',
     },
     {
       className: 'end-reason',
       dataIndex: 'endReason',
       key: 'endReason',
       title: 'End',
+    },
+    {
+      className: 'when',
+      dataIndex: 'when',
+      key: 'when',
     },
   ];
   // TODO: use the normal Ant table pagination when the backend can give us a total

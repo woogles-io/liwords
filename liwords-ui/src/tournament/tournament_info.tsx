@@ -74,13 +74,13 @@ export const TournamentInfo = (props: TournamentInfoProps) => {
   ]);
 
   return (
-    <div className="announcements">
+    <div className="tournament-info">
       <Card title="Tournament Information">
-        <h3>{props.tournamentInfo.name}</h3>
+        <h3 className="tournament-name">{props.tournamentInfo.name}</h3>
         <h4>Directors: {props.tournamentInfo.directors.join(', ')}</h4>
         <p>{props.tournamentInfo.description}</p>
         <Divider />
-        <h3>Recent Games</h3>
+        <h3 className="recent-header">Recent Games</h3>
         <RecentTourneyGames
           games={lobbyContext.tourneyGames}
           fetchPrev={lobbyContext.gamesOffset > 0 ? fetchPrev : undefined}

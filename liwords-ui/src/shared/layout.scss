@@ -1,7 +1,7 @@
 // Phone & defaults
 
 // Center area
-.play-area, .game-lists, .chat-area, .data-area, .announcements {
+.play-area, .game-lists, .chat-area, .data-area, .announcements, .tournament-info {
   min-width: $main-container-width-mobile;
   max-width: $main-container-width-mobile;
   padding: 6px;
@@ -64,7 +64,7 @@ span.user-context-menu.ant-dropdown-trigger {
   .play-area {
     padding-top: 12px;
   }
-  .data-area, .announcements {
+  .data-area, .announcements, .tournament-info {
     min-width: $sidebar-width-tablet;
     max-width: $sidebar-width-tablet
   }
@@ -86,7 +86,7 @@ span.user-context-menu.ant-dropdown-trigger {
     max-width: $main-container-width-laptop;
     padding-top: 12px;
   }
-  .data-area, .announcements, .chat-area {
+  .data-area, .announcements, .tournament-info, .chat-area {
     min-width: $sidebar-width-laptop;
     max-width: $sidebar-width-laptop;
     padding: 12px 12px 0;
@@ -94,10 +94,10 @@ span.user-context-menu.ant-dropdown-trigger {
   }
 
   .lobby {
-    .play-area, .game-lists, .chat-area, .data-area, .announcements {
+    .play-area, .game-lists, .chat-area, .data-area, .tournament-info, .announcements {
       height: calc(100vh - #{$header-height-desktop + 48px});
     }
-    .ant-card, .ant-card.chat, .announcements .ant-card {
+    .ant-card, .ant-card.chat, .announcements .ant-card, .tournament-info .ant-card {
       height: calc(100vh - #{$header-height-desktop + 48px});
     }
   }
@@ -110,7 +110,7 @@ span.user-context-menu.ant-dropdown-trigger {
     min-width: $main-container-width-desktop;
     max-width: $main-container-width-desktop;
   }
-  .data-area, .announcements, .chat-area {
+  .data-area, .announcements, .tournament-info, .chat-area {
     min-width: $sidebar-width-desktop;
     max-width: $sidebar-width-desktop;
   }
