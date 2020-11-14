@@ -1,4 +1,4 @@
-package tournament
+package tournament_test
 
 import (
 	"context"
@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/jinzhu/gorm"
 	"github.com/matryer/is"
 	"github.com/rs/zerolog/log"
 
@@ -51,6 +52,45 @@ var DefaultConfig = macondoconfig.Config{
 
 var divOneName = "Division 1"
 var divTwoName = "Division 2"
+
+func recreateDB() {
+	// Create a database.
+	db, err := gorm.Open("postgres", TestingDBConnStr+" dbname=postgres")
+	if err != nil {
+		log.Fatal().Err(err).Msg("error")
+	}
+	defer db.Close()
+	db = db.Exec("DROP DATABASE IF EXISTS liwords_test")
+	if db.Error != nil {
+		log.Fatal().Err(db.Error).Msg("error")
+	}
+	db = db.Exec("CREATE DATABASE liwords_test")
+	if db.Error != nil {
+		log.Fatal().Err(db.Error).Msg("error")
+	}
+
+	ustore := userStore(TestingDBConnStr + " dbname=liwords_test")
+
+	for _, u := range []*entity.User{
+		{Username: "Will", Email: "cesar@woogles.io", UUID: "Will"},
+		{Username: "Josh", Email: "mina@gmail.com", UUID: "Josh"},
+		{Username: "Conrad", Email: "crad@woogles.io", UUID: "Conrad"},
+		{Username: "Jesse", Email: "jesse@woogles.io", UUID: "Jesse"},
+		{Username: "Kieran", Email: "kieran@woogles.io", UUID: "Kieran"},
+		{Username: "Vince", Email: "vince@woogles.io", UUID: "Vince"},
+		{Username: "Jennifer", Email: "jenn@woogles.io", UUID: "Jennifer"},
+		{Username: "Guy", Email: "guy@woogles.io", UUID: "Guy"},
+		{Username: "Dude", Email: "dude@woogles.io", UUID: "Dude"},
+		{Username: "Comrade", Email: "comrade@woogles.io", UUID: "Comrade"},
+		{Username: "Valued Customer", Email: "valued@woogles.io", UUID: "Valued Customer"},
+	} {
+		err = ustore.New(context.Background(), u)
+		if err != nil {
+			log.Fatal().Err(err).Msg("error")
+		}
+	}
+
+}
 
 func tournamentStore(dbURL string, gs gameplay.GameStore) (*config.Config, tournament.TournamentStore) {
 	cfg := &config.Config{}
@@ -110,7 +150,7 @@ func TestTournamentSingleDivision(t *testing.T) {
 	is := is.New(t)
 	ctx := context.Background()
 	cstr := TestingDBConnStr + " dbname=liwords_test"
-
+	recreateDB()
 	us := userStore(cstr)
 	_, gs := gameStore(cstr, us)
 	cfg, tstore := tournamentStore(cstr, gs)
@@ -120,141 +160,142 @@ func TestTournamentSingleDivision(t *testing.T) {
 	directorsTwoExecutives := &entity.TournamentPersons{Persons: map[string]int{"Kieran": 0, "Vince": 0, "Jennifer": 2}}
 	directorsNoExecutives := &entity.TournamentPersons{Persons: map[string]int{"Kieran": 1, "Vince": 3, "Jennifer": 2}}
 
-	tournament, err := makeTournament(ctx, tstore, cfg, directorsTwoExecutives)
+	ty, err := makeTournament(ctx, tstore, cfg, directorsTwoExecutives)
 	is.True(err != nil)
 
-	tournament, err = makeTournament(ctx, tstore, cfg, directorsNoExecutives)
+	ty, err = makeTournament(ctx, tstore, cfg, directorsNoExecutives)
 	is.True(err != nil)
 
-	tournament, err = makeTournament(ctx, tstore, cfg, directors)
+	ty, err = makeTournament(ctx, tstore, cfg, directors)
 	is.NoErr(err)
 
-	err = SetTournamentMetadata(ctx, tstore, tournament.UUID, "New Name", "New Description")
+	err = tournament.SetTournamentMetadata(ctx, tstore, ty.UUID, "New Name", "New Description")
 	is.NoErr(err)
 
 	// Check that directors are set correctly
-	is.NoErr(equalTournamentPersons(directors, tournament.Directors))
+	is.NoErr(equalTournamentPersons(directors, ty.Directors))
 
 	// Attempt to remove a division that doesn't exist in the empty tournament
-	err = RemoveDivision(ctx, tstore, tournament.UUID, "The Big Boys")
+	err = tournament.RemoveDivision(ctx, tstore, ty.UUID, "The Big Boys")
 	is.True(err != nil)
 
 	// Add a division
-	err = AddDivision(ctx, tstore, tournament.UUID, divOneName)
+	err = tournament.AddDivision(ctx, tstore, ty.UUID, divOneName)
 	is.NoErr(err)
 
 	// Attempt to remove a division that doesn't exist when other
 	// divisions are present
-	err = RemoveDivision(ctx, tstore, tournament.UUID, "Nope")
+	err = tournament.RemoveDivision(ctx, tstore, ty.UUID, "Nope")
 	is.True(err != nil)
 
 	// Attempt to add a division that already exists
-	err = AddDivision(ctx, tstore, tournament.UUID, divOneName)
+	err = tournament.AddDivision(ctx, tstore, ty.UUID, divOneName)
 	is.True(err != nil)
 
 	// Attempt to add directors that already exist
-	err = AddDirectors(ctx, tstore, tournament.UUID, &entity.TournamentPersons{Persons: map[string]int{"Guy": 1, "Vince": 2}})
+	err = tournament.AddDirectors(ctx, tstore, ty.UUID, &entity.TournamentPersons{Persons: map[string]int{"Guy": 1, "Vince": 2}})
 	is.True(err != nil)
-	is.NoErr(equalTournamentPersons(directors, tournament.Directors))
+	is.NoErr(equalTournamentPersons(directors, ty.Directors))
 
 	// Attempt to add another executive director
-	err = AddDirectors(ctx, tstore, tournament.UUID, &entity.TournamentPersons{Persons: map[string]int{"Guy": 1, "Harry": 0}})
+	err = tournament.AddDirectors(ctx, tstore, ty.UUID, &entity.TournamentPersons{Persons: map[string]int{"Guy": 1, "Harry": 0}})
 	is.True(err != nil)
-	is.NoErr(equalTournamentPersons(directors, tournament.Directors))
+	is.NoErr(equalTournamentPersons(directors, ty.Directors))
 
 	// Add directors
-	err = AddDirectors(ctx, tstore, tournament.UUID, &entity.TournamentPersons{Persons: map[string]int{"Evans": 4, "Oof": 2}})
+	err = tournament.AddDirectors(ctx, tstore, ty.UUID, &entity.TournamentPersons{Persons: map[string]int{"Evans": 4, "Oof": 2}})
 	is.NoErr(err)
-	is.NoErr(equalTournamentPersons(&entity.TournamentPersons{Persons: map[string]int{"Kieran": 0, "Vince": 2, "Jennifer": 2, "Evans": 4, "Oof": 2}}, tournament.Directors))
+	is.NoErr(equalTournamentPersons(&entity.TournamentPersons{Persons: map[string]int{"Kieran": 0, "Vince": 2, "Jennifer": 2, "Evans": 4, "Oof": 2}}, ty.Directors))
 
 	// Attempt to remove directors that don't exist
-	err = RemoveDirectors(ctx, tstore, tournament.UUID, &entity.TournamentPersons{Persons: map[string]int{"Evans": -1, "Zoof": 2}})
+	err = tournament.RemoveDirectors(ctx, tstore, ty.UUID, &entity.TournamentPersons{Persons: map[string]int{"Evans": -1, "Zoof": 2}})
 	is.True(err != nil)
-	is.NoErr(equalTournamentPersons(&entity.TournamentPersons{Persons: map[string]int{"Kieran": 0, "Vince": 2, "Jennifer": 2, "Evans": 4, "Oof": 2}}, tournament.Directors))
+	is.NoErr(equalTournamentPersons(&entity.TournamentPersons{Persons: map[string]int{"Kieran": 0, "Vince": 2, "Jennifer": 2, "Evans": 4, "Oof": 2}}, ty.Directors))
 
 	// Attempt to remove the executive director
-	err = RemoveDirectors(ctx, tstore, tournament.UUID, &entity.TournamentPersons{Persons: map[string]int{"Evans": -1, "Kieran": 0}})
+	err = tournament.RemoveDirectors(ctx, tstore, ty.UUID, &entity.TournamentPersons{Persons: map[string]int{"Evans": -1, "Kieran": 0}})
 	is.True(err != nil)
-	is.NoErr(equalTournamentPersons(&entity.TournamentPersons{Persons: map[string]int{"Kieran": 0, "Vince": 2, "Jennifer": 2, "Evans": 4, "Oof": 2}}, tournament.Directors))
+	is.NoErr(equalTournamentPersons(&entity.TournamentPersons{Persons: map[string]int{"Kieran": 0, "Vince": 2, "Jennifer": 2, "Evans": 4, "Oof": 2}}, ty.Directors))
 
 	// Remove directors
-	err = RemoveDirectors(ctx, tstore, tournament.UUID, &entity.TournamentPersons{Persons: map[string]int{"Evans": -1, "Oof": 2}})
+	err = tournament.RemoveDirectors(ctx, tstore, ty.UUID, &entity.TournamentPersons{Persons: map[string]int{"Evans": -1, "Oof": 2}})
 	is.NoErr(err)
-	is.NoErr(equalTournamentPersons(&entity.TournamentPersons{Persons: map[string]int{"Kieran": 0, "Vince": 2, "Jennifer": 2}}, tournament.Directors))
+	is.NoErr(equalTournamentPersons(&entity.TournamentPersons{Persons: map[string]int{"Kieran": 0, "Vince": 2, "Jennifer": 2}}, ty.Directors))
 
 	// Attempt to remove the executive director
-	err = RemoveDirectors(ctx, tstore, tournament.UUID, &entity.TournamentPersons{Persons: map[string]int{"Vince": -1, "Kieran": 0}})
+	err = tournament.RemoveDirectors(ctx, tstore, ty.UUID, &entity.TournamentPersons{Persons: map[string]int{"Vince": -1, "Kieran": 0}})
 	is.True(err != nil)
-	is.NoErr(equalTournamentPersons(&entity.TournamentPersons{Persons: map[string]int{"Kieran": 0, "Vince": 2, "Jennifer": 2}}, tournament.Directors))
+	is.NoErr(equalTournamentPersons(&entity.TournamentPersons{Persons: map[string]int{"Kieran": 0, "Vince": 2, "Jennifer": 2}}, ty.Directors))
 
 	// Same thing for players.
-	div1 := tournament.Divisions[divOneName]
+	div1 := ty.Divisions[divOneName]
 
 	// Add players
-	err = AddPlayers(ctx, tstore, tournament.UUID, divOneName, players)
+	err = tournament.AddPlayers(ctx, tstore, ty.UUID, divOneName, players)
 	is.NoErr(err)
 	is.NoErr(equalTournamentPersons(players, div1.Players))
 
 	// Add players to a division that doesn't exist
-	err = AddPlayers(ctx, tstore, tournament.UUID, divOneName+"not quite", &entity.TournamentPersons{Persons: map[string]int{"Noah": 4, "Bob": 2}})
+	err = tournament.AddPlayers(ctx, tstore, ty.UUID, divOneName+"not quite", &entity.TournamentPersons{Persons: map[string]int{"Noah": 4, "Bob": 2}})
 	is.True(err != nil)
 	is.NoErr(equalTournamentPersons(players, div1.Players))
 
 	// Add players
-	err = AddPlayers(ctx, tstore, tournament.UUID, divOneName, &entity.TournamentPersons{Persons: map[string]int{"Noah": 4, "Bob": 2}})
+	err = tournament.AddPlayers(ctx, tstore, ty.UUID, divOneName, &entity.TournamentPersons{Persons: map[string]int{"Noah": 4, "Bob": 2}})
 	is.NoErr(err)
 	is.NoErr(equalTournamentPersons(&entity.TournamentPersons{Persons: map[string]int{"Will": 1000, "Josh": 3000, "Conrad": 2200, "Jesse": 2100, "Noah": 4, "Bob": 2}}, div1.Players))
 
 	// Remove players that don't exist
-	err = RemovePlayers(ctx, tstore, tournament.UUID, divOneName, &entity.TournamentPersons{Persons: map[string]int{"Evans": -1, "Zoof": 2}})
+	err = tournament.RemovePlayers(ctx, tstore, ty.UUID, divOneName, &entity.TournamentPersons{Persons: map[string]int{"Evans": -1, "Zoof": 2}})
 	is.True(err != nil)
 	is.NoErr(equalTournamentPersons(&entity.TournamentPersons{Persons: map[string]int{"Will": 1000, "Josh": 3000, "Conrad": 2200, "Jesse": 2100, "Noah": 4, "Bob": 2}}, div1.Players))
 
 	// Remove players from a division that doesn't exist
-	err = RemovePlayers(ctx, tstore, tournament.UUID, divOneName+"hmm", &entity.TournamentPersons{Persons: map[string]int{"Josh": -1, "Conrad": 2}})
+	err = tournament.RemovePlayers(ctx, tstore, ty.UUID, divOneName+"hmm", &entity.TournamentPersons{Persons: map[string]int{"Josh": -1, "Conrad": 2}})
 	is.True(err != nil)
 	is.NoErr(equalTournamentPersons(&entity.TournamentPersons{Persons: map[string]int{"Will": 1000, "Josh": 3000, "Conrad": 2200, "Jesse": 2100, "Noah": 4, "Bob": 2}}, div1.Players))
 
 	// Remove players
-	err = RemovePlayers(ctx, tstore, tournament.UUID, divOneName, &entity.TournamentPersons{Persons: map[string]int{"Josh": -1, "Conrad": 2}})
+	err = tournament.RemovePlayers(ctx, tstore, ty.UUID, divOneName, &entity.TournamentPersons{Persons: map[string]int{"Josh": -1, "Conrad": 2}})
 	is.NoErr(err)
 	is.NoErr(equalTournamentPersons(&entity.TournamentPersons{Persons: map[string]int{"Will": 1000, "Jesse": 2100, "Noah": 4, "Bob": 2}}, div1.Players))
 
 	// Set tournament controls
-	err = SetTournamentControls(ctx,
+	err = tournament.SetTournamentControls(ctx,
 		tstore,
-		tournament.UUID,
+		ty.UUID,
 		divOneName,
 		makeControls())
 	is.NoErr(err)
 
 	// Set tournament controls for a division that does not exist
-	err = SetTournamentControls(ctx,
+	err = tournament.SetTournamentControls(ctx,
 		tstore,
-		tournament.UUID,
+		ty.UUID,
 		divOneName+" another one",
 		makeControls())
 	is.True(err != nil)
 
 	// Tournament should not be started
-	isStarted, err := IsStarted(ctx, tstore, tournament.UUID)
+	isStarted, err := tournament.IsStarted(ctx, tstore, ty.UUID)
 	is.NoErr(err)
 	is.True(!isStarted)
 
 	// Set pairing should work before the tournament starts
-	err = SetPairing(ctx, tstore, tournament.UUID, divOneName, "Will", "Jesse", 0)
+	err = tournament.SetPairing(ctx, tstore, ty.UUID, divOneName, "Will", "Jesse", 0)
 	is.NoErr(err)
 
 	// Remove players and attempt to set pairings
-	err = RemovePlayers(ctx, tstore, tournament.UUID, divOneName, &entity.TournamentPersons{Persons: map[string]int{"Will": 1000, "Jesse": 2100, "Noah": 4, "Bob": 2}})
+	err = tournament.RemovePlayers(ctx, tstore, ty.UUID, divOneName, &entity.TournamentPersons{Persons: map[string]int{"Will": 1000, "Jesse": 2100, "Noah": 4, "Bob": 2}})
 	is.NoErr(err)
 
-	err = SetPairing(ctx, tstore, tournament.UUID, divOneName, "Will", "Jesse", 0)
+	err = tournament.SetPairing(ctx, tstore, ty.UUID, divOneName, "Will", "Jesse", 0)
 	is.True(err != nil)
 
-	err = SetResult(ctx,
+	err = tournament.SetResult(ctx,
 		tstore,
-		tournament.UUID,
+		us,
+		ty.UUID,
 		divOneName,
 		"Will",
 		"Jesse",
@@ -265,53 +306,57 @@ func TestTournamentSingleDivision(t *testing.T) {
 		realtime.GameEndReason_STANDARD,
 		0,
 		0,
-		false)
+		false,
+		nil,
+		nil,
+	)
 	is.True(err != nil)
 
-	isRoundComplete, err := IsRoundComplete(ctx, tstore, tournament.UUID, divOneName, 0)
+	isRoundComplete, err := tournament.IsRoundComplete(ctx, tstore, ty.UUID, divOneName, 0)
 	is.True(err != nil)
 
-	isFinished, err := IsFinished(ctx, tstore, tournament.UUID, divOneName)
+	isFinished, err := tournament.IsFinished(ctx, tstore, ty.UUID, divOneName)
 	is.True(err != nil)
 
 	// Add players back in
-	err = AddPlayers(ctx, tstore, tournament.UUID, divOneName, players)
+	err = tournament.AddPlayers(ctx, tstore, ty.UUID, divOneName, players)
 	is.NoErr(err)
 	is.NoErr(equalTournamentPersons(players, div1.Players))
 
 	// Start the tournament
 
-	err = StartTournament(ctx, tstore, tournament.UUID)
+	err = tournament.StartTournament(ctx, tstore, ty.UUID)
 	is.NoErr(err)
 
 	// Attempt to add a division after the tournament has started
-	err = AddDivision(ctx, tstore, tournament.UUID, divOneName+" this time it's different")
+	err = tournament.AddDivision(ctx, tstore, ty.UUID, divOneName+" this time it's different")
 	is.True(err != nil)
 
 	// Attempt to remove a division after the tournament has started
-	err = RemoveDivision(ctx, tstore, tournament.UUID, divOneName)
+	err = tournament.RemoveDivision(ctx, tstore, ty.UUID, divOneName)
 	is.True(err != nil)
 
 	// Trying setting the controls after the tournament has started, this should fail
-	err = SetTournamentControls(ctx,
+	err = tournament.SetTournamentControls(ctx,
 		tstore,
-		tournament.UUID,
+		ty.UUID,
 		divOneName,
 		makeControls())
 	is.True(err != nil)
 
 	// Tournament pairings and results are tested in the
 	// entity package
-	err = SetPairing(ctx, tstore, tournament.UUID, divOneName, "Will", "Jesse", 0)
+	err = tournament.SetPairing(ctx, tstore, ty.UUID, divOneName, "Will", "Jesse", 0)
 	is.NoErr(err)
 
 	// Set pairings for division that does not exist
-	err = SetPairing(ctx, tstore, tournament.UUID, divOneName+"yeet", "Will", "Jesse", 0)
+	err = tournament.SetPairing(ctx, tstore, ty.UUID, divOneName+"yeet", "Will", "Jesse", 0)
 	is.True(err != nil)
 
-	err = SetResult(ctx,
+	err = tournament.SetResult(ctx,
 		tstore,
-		tournament.UUID,
+		us,
+		ty.UUID,
 		divOneName,
 		"Will",
 		"Jesse",
@@ -322,13 +367,17 @@ func TestTournamentSingleDivision(t *testing.T) {
 		realtime.GameEndReason_STANDARD,
 		0,
 		0,
-		false)
+		false,
+		nil,
+		nil,
+	)
 	is.NoErr(err)
 
 	// Set results for a division that does not exist
-	err = SetResult(ctx,
+	err = tournament.SetResult(ctx,
 		tstore,
-		tournament.UUID,
+		us,
+		ty.UUID,
 		divOneName+"big boi",
 		"Will",
 		"Jesse",
@@ -339,27 +388,30 @@ func TestTournamentSingleDivision(t *testing.T) {
 		realtime.GameEndReason_STANDARD,
 		0,
 		0,
-		false)
+		false,
+		nil,
+		nil,
+	)
 	is.True(err != nil)
 
-	isStarted, err = IsStarted(ctx, tstore, tournament.UUID)
+	isStarted, err = tournament.IsStarted(ctx, tstore, ty.UUID)
 	is.NoErr(err)
 	is.True(isStarted)
 
-	isRoundComplete, err = IsRoundComplete(ctx, tstore, tournament.UUID, divOneName, 0)
+	isRoundComplete, err = tournament.IsRoundComplete(ctx, tstore, ty.UUID, divOneName, 0)
 	is.NoErr(err)
 	is.True(!isRoundComplete)
 
 	// See if round is complete for division that does not exist
-	isRoundComplete, err = IsRoundComplete(ctx, tstore, tournament.UUID, divOneName+"yah", 0)
+	isRoundComplete, err = tournament.IsRoundComplete(ctx, tstore, ty.UUID, divOneName+"yah", 0)
 	is.True(err != nil)
 
-	isFinished, err = IsFinished(ctx, tstore, tournament.UUID, divOneName)
+	isFinished, err = tournament.IsFinished(ctx, tstore, ty.UUID, divOneName)
 	is.NoErr(err)
 	is.True(!isFinished)
 
 	// See if division is finished (except it doesn't exist)
-	isFinished, err = IsFinished(ctx, tstore, tournament.UUID, divOneName+"but wait there's more")
+	isFinished, err = tournament.IsFinished(ctx, tstore, ty.UUID, divOneName+"but wait there's more")
 	is.True(err != nil)
 
 	tstore.(*ts.Cache).Disconnect()
@@ -369,69 +421,74 @@ func TestTournamentMultipleDivisions(t *testing.T) {
 	is := is.New(t)
 	ctx := context.Background()
 	cstr := TestingDBConnStr + " dbname=liwords_test"
-	cfg, tstore := tournamentStore(cstr)
+
+	recreateDB()
+	us := userStore(cstr)
+	_, gs := gameStore(cstr, us)
+	cfg, tstore := tournamentStore(cstr, gs)
 
 	divOnePlayers := &entity.TournamentPersons{Persons: map[string]int{"Will": 1000, "Josh": 3000, "Conrad": 2200, "Jesse": 2100}}
 	divTwoPlayers := &entity.TournamentPersons{Persons: map[string]int{"Guy": 1000, "Dude": 3000, "Comrade": 2200, "Valued Customer": 2100}}
 	directors := &entity.TournamentPersons{Persons: map[string]int{"Kieran": 0, "Vince": 2, "Jennifer": 2}}
 
-	tournament, err := makeTournament(ctx, tstore, cfg, directors)
+	ty, err := makeTournament(ctx, tstore, cfg, directors)
 	is.NoErr(err)
 
 	// Add divisions
-	err = AddDivision(ctx, tstore, tournament.UUID, divOneName)
+	err = tournament.AddDivision(ctx, tstore, ty.UUID, divOneName)
 	is.NoErr(err)
 
-	err = AddDivision(ctx, tstore, tournament.UUID, divTwoName)
+	err = tournament.AddDivision(ctx, tstore, ty.UUID, divTwoName)
 	is.NoErr(err)
 
 	// Set tournament controls
-	err = SetTournamentControls(ctx,
+	err = tournament.SetTournamentControls(ctx,
 		tstore,
-		tournament.UUID,
+		ty.UUID,
 		divOneName,
 		makeControls())
 	is.NoErr(err)
 
-	err = SetTournamentControls(ctx,
+	err = tournament.SetTournamentControls(ctx,
 		tstore,
-		tournament.UUID,
+		ty.UUID,
 		divTwoName,
 		makeControls())
 	is.NoErr(err)
 
-	div1 := tournament.Divisions[divOneName]
-	div2 := tournament.Divisions[divTwoName]
+	div1 := ty.Divisions[divOneName]
+	div2 := ty.Divisions[divTwoName]
 
 	// Add players
-	err = AddPlayers(ctx, tstore, tournament.UUID, divOneName, divOnePlayers)
+	err = tournament.AddPlayers(ctx, tstore, ty.UUID, divOneName, divOnePlayers)
 	is.NoErr(err)
 	is.NoErr(equalTournamentPersons(divOnePlayers, div1.Players))
 
-	err = AddPlayers(ctx, tstore, tournament.UUID, divTwoName, divTwoPlayers)
+	err = tournament.AddPlayers(ctx, tstore, ty.UUID, divTwoName, divTwoPlayers)
 	is.NoErr(err)
 	is.NoErr(equalTournamentPersons(divTwoPlayers, div2.Players))
 
-	err = SetPairing(ctx, tstore, tournament.UUID, divOneName, "Will", "Jesse", 0)
+	err = tournament.SetPairing(ctx, tstore, ty.UUID, divOneName, "Will", "Jesse", 0)
 	is.NoErr(err)
 
-	err = SetPairing(ctx, tstore, tournament.UUID, divTwoName, "Guy", "Comrade", 0)
+	err = tournament.SetPairing(ctx, tstore, ty.UUID, divTwoName, "Guy", "Comrade", 0)
 	is.NoErr(err)
 
-	err = SetPairing(ctx, tstore, tournament.UUID, divOneName, "Conrad", "Josh", 0)
+	err = tournament.SetPairing(ctx, tstore, ty.UUID, divOneName, "Conrad", "Josh", 0)
 	is.NoErr(err)
 
-	err = SetPairing(ctx, tstore, tournament.UUID, divTwoName, "Dude", "Valued Customer", 0)
+	err = tournament.SetPairing(ctx, tstore, ty.UUID, divTwoName, "Dude", "Valued Customer", 0)
 	is.NoErr(err)
 
 	// Start the tournament
 
-	err = StartTournament(ctx, tstore, tournament.UUID)
+	err = tournament.StartTournament(ctx, tstore, ty.UUID)
 	is.NoErr(err)
 
-	err = SetResult(ctx,
+	err = tournament.SetResult(ctx,
 		tstore,
-		tournament.UUID,
+		us,
+		ty.UUID,
 		divOneName,
 		"Will",
 		"Jesse",
@@ -442,12 +499,15 @@ func TestTournamentMultipleDivisions(t *testing.T) {
 		realtime.GameEndReason_STANDARD,
 		0,
 		0,
-		false)
+		false,
+		nil,
+		nil)
 	is.NoErr(err)
 
-	err = SetResult(ctx,
+	err = tournament.SetResult(ctx,
 		tstore,
-		tournament.UUID,
+		us,
+		ty.UUID,
 		divTwoName,
 		"Comrade",
 		"Guy",
@@ -458,12 +518,15 @@ func TestTournamentMultipleDivisions(t *testing.T) {
 		realtime.GameEndReason_STANDARD,
 		0,
 		0,
-		false)
+		false,
+		nil,
+		nil)
 	is.NoErr(err)
 
-	err = SetResult(ctx,
+	err = tournament.SetResult(ctx,
 		tstore,
-		tournament.UUID,
+		us,
+		ty.UUID,
 		divOneName,
 		"Conrad",
 		"Josh",
@@ -474,12 +537,15 @@ func TestTournamentMultipleDivisions(t *testing.T) {
 		realtime.GameEndReason_STANDARD,
 		0,
 		0,
-		false)
+		false,
+		nil,
+		nil)
 	is.NoErr(err)
 
-	err = SetResult(ctx,
+	err = tournament.SetResult(ctx,
 		tstore,
-		tournament.UUID,
+		us,
+		ty.UUID,
 		divTwoName,
 		"Valued Customer",
 		"Dude",
@@ -490,14 +556,16 @@ func TestTournamentMultipleDivisions(t *testing.T) {
 		realtime.GameEndReason_STANDARD,
 		0,
 		0,
-		false)
+		false,
+		nil,
+		nil)
 	is.NoErr(err)
 
-	divOneComplete, err := IsRoundComplete(ctx, tstore, tournament.UUID, divOneName, 0)
+	divOneComplete, err := tournament.IsRoundComplete(ctx, tstore, ty.UUID, divOneName, 0)
 	is.NoErr(err)
 	is.True(divOneComplete)
 
-	divTwoComplete, err := IsRoundComplete(ctx, tstore, tournament.UUID, divTwoName, 0)
+	divTwoComplete, err := tournament.IsRoundComplete(ctx, tstore, ty.UUID, divTwoName, 0)
 	is.NoErr(err)
 	is.True(divTwoComplete)
 }

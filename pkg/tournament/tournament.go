@@ -177,7 +177,9 @@ func SendTournamentGameEndedEvent(ctx context.Context, ts TournamentStore, id st
 	log.Debug().Interface("tevt", tevt).Msg("sending tournament game ended evt")
 	wrapped := entity.WrapEvent(tevt, realtime.MessageType_TOURNAMENT_GAME_ENDED_EVENT)
 	wrapped.AddAudience(entity.AudTournament, id)
-	evtChan <- wrapped
+	if evtChan != nil {
+		evtChan <- wrapped
+	}
 	log.Debug().Str("tid", id).Msg("sent tournament game ended event")
 	return nil
 }
