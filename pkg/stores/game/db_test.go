@@ -161,8 +161,6 @@ func teardown() {
 }
 
 func TestMain(m *testing.M) {
-	alphabet.CreateLetterDistributionCache()
-	gaddag.CreateGaddagCache()
 
 	code := m.Run()
 	//teardown()

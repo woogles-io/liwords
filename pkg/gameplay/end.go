@@ -154,7 +154,7 @@ func performEndgameDuties(ctx context.Context, g *entity.Game, gameStore GameSto
 	if err != nil {
 		log.Err(err).Msg("getting variant key")
 	} else {
-		gameStats, err := computeGameStats(ctx, g.History(), g.GameReq, variantKey,
+		gameStats, err := ComputeGameStats(ctx, g.History(), g.GameReq, variantKey,
 			evt, userStore, listStatStore)
 		if err != nil {
 			log.Err(err).Msg("computing stats")
@@ -164,7 +164,7 @@ func performEndgameDuties(ctx context.Context, g *entity.Game, gameStore GameSto
 	}
 
 	// Send the event here instead of above the computation of Game Stats
-	// to avoid race conditions (computeGameStats modifies the history).
+	// to avoid race conditions (ComputeGameStats modifies the history).
 	g.SendChange(wrapped)
 
 	// Send a notification to the lobby that this
@@ -204,7 +204,7 @@ func flipPlayersInHistoryIfNecessary(history *macondopb.GameHistory) {
 	}
 }
 
-func computeGameStats(ctx context.Context, history *macondopb.GameHistory, req *pb.GameRequest,
+func ComputeGameStats(ctx context.Context, history *macondopb.GameHistory, req *pb.GameRequest,
 	variantKey entity.VariantKey, evt *pb.GameEndedEvent, userStore user.Store,
 	listStatStore stats.ListStatStore) (*entity.Stats, error) {
 
