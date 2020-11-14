@@ -100,12 +100,21 @@ export const TopBar = React.memo((props: Props) => {
           color={colors.colorPrimary}
           title={`Latency: ${currentLagMs || '...'} ms.`}
         >
-          <Link to={homeLink} className="site-icon" onClick={resetStore}>
+          <Link
+            to={homeLink}
+            className={`site-icon${
+              props.tournamentID ? ' tournament-mode' : ''
+            }`}
+            onClick={resetStore}
+          >
             <div className="top-header-site-icon-rect">
               <div className="top-header-site-icon-m">W</div>
             </div>
 
             <div className="top-header-left-frame-site-name">Woogles.io</div>
+            {props.tournamentID ? (
+              <div className="tournament">Back to tournament</div>
+            ) : null}
           </Link>
         </Tooltip>
         <TopMenu />

@@ -74,10 +74,7 @@ export const GameInfo = React.memo((props: Props) => {
   const card = (
     <Card className="game-info">
       {props.meta.tournament_id ? (
-        <Row>
-          {/* please make me better */}
-          <small style={{ color: '#6b268b' }}>{props.tournamentName}</small>
-        </Row>
+        <Row className="tournament-name">{props.tournamentName}</Row>
       ) : null}
       <Row className="variant">
         {`${

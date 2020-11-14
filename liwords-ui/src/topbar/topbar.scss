@@ -123,4 +123,21 @@ body {
     line-height: 35px;
     letter-spacing: 0;
   }
+
+  .tournament {
+    position: absolute;
+    bottom: 6px;
+    left: 120px;
+    font-size: 10px;
+    background: transparent;
+    @include colorModed() {
+      color: m($primary-dark);
+    }
+  }
+}
+.tournament-mode {
+  .top-header-left-frame-site-name {
+    position: relative;
+    top: -9px;
+  }
 }

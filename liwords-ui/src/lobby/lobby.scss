@@ -24,7 +24,7 @@
     }
   }
 }
-.announcements {
+.announcements, .tournament-info {
   order: 0;
   .ant-card {
     height: auto;
@@ -56,8 +56,34 @@
   }
 }
 
+.tournament-info {
+  h3 {
+    font-size: 24px;
+    &.recent-header {
+      font-size: 18px;
+      @include colorModed() {
+        color: m($gray-medium);
+      }
+    }
+  }
+
+  h3.tournament-name {
+    @include colorModed() {
+      color: m($primary-dark);
+    }
+  }
+  .ant-card-head {
+    @include colorModed() {
+      background-image: linear-gradient(m($header) 30%, m($card-background) 100%);
+    }
+    .ant-card-head-title {
+      font-size: 18px;
+    }
+  }
+}
+
 @media (min-width: $screen-tablet-min) {
-  .announcements {
+  .announcements, .tournament-info{
     order: initial;
     flex-grow: 1;
     .ant-card {

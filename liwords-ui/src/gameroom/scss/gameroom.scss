@@ -860,6 +860,12 @@ p.rune {
 }
 .game-info {
   font-size: 14px;
+  .tournament-name {
+    @include colorModed() {
+      color: m($secondary);
+    }
+    font-size: 12px;
+  }
   &.ant-card .ant-card-body {
     padding: 12px;
   }
