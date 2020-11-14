@@ -11,7 +11,7 @@ export type GameMetadata = {
   variant: string;
   time_control_name: string;
   initial_time_seconds: number;
-  tournament_name: string;
+  tournament_id: string;
   max_overtime_minutes: number;
   increment_seconds: number;
   challenge_rule:
@@ -52,6 +52,7 @@ export type GCGResponse = {
 
 type Props = {
   meta: GameMetadata;
+  tournamentName: string;
 };
 
 export const GameInfo = React.memo((props: Props) => {
@@ -70,8 +71,14 @@ export const GameInfo = React.memo((props: Props) => {
     VOID: 'Void',
   }[props.meta.challenge_rule];
 
-  return (
+  const card = (
     <Card className="game-info">
+      {props.meta.tournament_id ? (
+        <Row>
+          {/* please make me better */}
+          <small style={{ color: '#6b268b' }}>{props.tournamentName}</small>
+        </Row>
+      ) : null}
       <Row className="variant">
         {`${
           timeCtrlToDisplayName(
@@ -91,4 +98,5 @@ export const GameInfo = React.memo((props: Props) => {
       </Row>
     </Card>
   );
+  return card;
 });

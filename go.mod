@@ -4,7 +4,7 @@ go 1.14
 
 require (
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible
-	github.com/domino14/macondo v0.4.5-0.20201009032901-672d78dc92a1
+	github.com/domino14/macondo v0.4.5-0.20201106203718-f45b6910c827
 	github.com/golang/protobuf v1.4.2
 	github.com/gomodule/redigo v1.8.2
 	github.com/hashicorp/golang-lru v0.5.4
@@ -21,8 +21,6 @@ require (
 	github.com/rs/zerolog v1.19.0
 	github.com/twitchtv/twirp v7.1.0+incompatible
 	golang.org/x/crypto v0.0.0-20200820211705-5c72a883971a
-	golang.org/x/sys v0.0.0-20200828194041-157a740278f4 // indirect
-	golang.org/x/text v0.3.3 // indirect
 	google.golang.org/protobuf v1.25.0
 	gopkg.in/check.v1 v1.0.0-20200227125254-8fa46927fb4f // indirect
 	gorm.io/datatypes v0.0.0-20200924071644-3967db6857cf

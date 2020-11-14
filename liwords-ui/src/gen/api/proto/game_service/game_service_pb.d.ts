@@ -96,8 +96,8 @@ export class GameInfoResponse extends jspb.Message {
   getInitialTimeSeconds(): number;
   setInitialTimeSeconds(value: number): void;
 
-  getTournamentName(): string;
-  setTournamentName(value: string): void;
+  getTournamentId(): string;
+  setTournamentId(value: string): void;
 
   getChallengeRule(): macondo_api_proto_macondo_macondo_pb.ChallengeRuleMap[keyof macondo_api_proto_macondo_macondo_pb.ChallengeRuleMap];
   setChallengeRule(value: macondo_api_proto_macondo_macondo_pb.ChallengeRuleMap[keyof macondo_api_proto_macondo_macondo_pb.ChallengeRuleMap]): void;
@@ -133,6 +133,11 @@ export class GameInfoResponse extends jspb.Message {
   getOriginalRequestId(): string;
   setOriginalRequestId(value: string): void;
 
+  hasLastUpdate(): boolean;
+  clearLastUpdate(): void;
+  getLastUpdate(): google_protobuf_timestamp_pb.Timestamp | undefined;
+  setLastUpdate(value?: google_protobuf_timestamp_pb.Timestamp): void;
+
   serializeBinary(): Uint8Array;
   toObject(includeInstance?: boolean): GameInfoResponse.AsObject;
   static toObject(includeInstance: boolean, msg: GameInfoResponse): GameInfoResponse.AsObject;
@@ -150,7 +155,7 @@ export namespace GameInfoResponse {
     variant: string,
     timeControlName: string,
     initialTimeSeconds: number,
-    tournamentName: string,
+    tournamentId: string,
     challengeRule: macondo_api_proto_macondo_macondo_pb.ChallengeRuleMap[keyof macondo_api_proto_macondo_macondo_pb.ChallengeRuleMap],
     ratingMode: api_proto_realtime_realtime_pb.RatingModeMap[keyof api_proto_realtime_realtime_pb.RatingModeMap],
     maxOvertimeMinutes: number,
@@ -161,6 +166,7 @@ export namespace GameInfoResponse {
     createdAt?: google_protobuf_timestamp_pb.Timestamp.AsObject,
     gameId: string,
     originalRequestId: string,
+    lastUpdate?: google_protobuf_timestamp_pb.Timestamp.AsObject,
   }
 }
 

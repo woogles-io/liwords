@@ -69,7 +69,6 @@ func AuthenticationMiddlewareGenerator(sessionStore sessions.SessionStore) (mw f
 			authed := false
 			if err != nil {
 				// Don't worry about it, do nothing.
-				log.Debug().Msg("old session cookie error")
 			} else {
 				session, err = sessionStore.Get(ctx, oldSessionID.Value)
 				if err != nil {

@@ -36,6 +36,7 @@ func RegisterUser(ctx context.Context, username string, password string, email s
 	if len(email) < 3 {
 		return errors.New("please use a valid email address")
 	}
+	email = strings.TrimSpace(email)
 
 	// time, memory, threads, keyLen for argon2:
 	config := auth.NewPasswordConfig(1, 64*1024, 4, 32)

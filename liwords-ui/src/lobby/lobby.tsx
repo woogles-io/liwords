@@ -1,4 +1,7 @@
 import React, { useCallback, useEffect } from 'react';
+import { message } from 'antd';
+import { useParams } from 'react-router-dom';
+import axios from 'axios';
 import { useMountedState } from '../utils/mounted';
 
 import { TopBar } from '../topbar/topbar';
@@ -25,6 +28,11 @@ import {
 import { singularCount } from '../utils/plural';
 import './lobby.scss';
 import { Announcements } from './announcements';
+import { toAPIUrl } from '../api/api';
+import {
+  TournamentInfo,
+  TournamentMetadata,
+} from '../tournament/tournament_info';
 
 const sendSeek = (
   game: SoughtGame,
@@ -47,6 +55,7 @@ const sendSeek = (
   gr.setRules(rules);
   gr.setRatingMode(game.rated ? RatingMode.RATED : RatingMode.CASUAL);
   gr.setPlayerVsBot(game.playerVsBot);
+
   if (game.receiver.getDisplayName() === '' && game.playerVsBot === false) {
     sr.setGameRequest(gr);
 
@@ -57,6 +66,7 @@ const sendSeek = (
     // We make it a match request if the receiver is non-empty, or if playerVsBot.
     mr.setGameRequest(gr);
     mr.setReceivingUser(game.receiver);
+    mr.setTournamentId(game.tournamentID);
     sendSocketMsg(
       encodeToSocketFmt(MessageType.MATCH_REQUEST, mr.serializeBinary())
     );
@@ -85,13 +95,18 @@ type Props = {
 
 export const Lobby = (props: Props) => {
   const { useState } = useMountedState();
-
+  const { tournamentID } = useParams();
   const { sendSocketMsg } = props;
   const { chat } = useChatStoreContext();
   const { loginState } = useLoginStateStoreContext();
   const { presences } = usePresenceStoreContext();
   const { loggedIn, username, userID } = loginState;
 
+  const [tournamentInfo, setTournamentInfo] = useState<TournamentMetadata>({
+    name: '',
+    description: '',
+    directors: [],
+  });
   const [selectedGameTab, setSelectedGameTab] = useState(
     loggedIn ? 'PLAY' : 'WATCH'
   );
@@ -99,6 +114,31 @@ export const Lobby = (props: Props) => {
   useEffect(() => {
     setSelectedGameTab(loggedIn ? 'PLAY' : 'WATCH');
   }, [loggedIn]);
+
+  useEffect(() => {
+    if (!tournamentID) {
+      return;
+    }
+    axios
+      .post<TournamentMetadata>(
+        toAPIUrl(
+          'tournament_service.TournamentService',
+          'GetTournamentMetadata'
+        ),
+        {
+          id: tournamentID,
+        }
+      )
+      .then((resp) => {
+        setTournamentInfo(resp.data);
+      })
+      .catch((err) => {
+        message.error({
+          content: 'Tournament does not exist',
+          duration: 5,
+        });
+      });
+  }, [tournamentID]);
 
   const handleNewGame = useCallback(
     (seekID: string) => {
@@ -117,12 +157,14 @@ export const Lobby = (props: Props) => {
     (msg: string) => {
       const evt = new ChatMessage();
       evt.setMessage(msg);
-      evt.setChannel('lobby.chat');
+      evt.setChannel(
+        !tournamentID ? 'lobby.chat' : `tournament.${tournamentID}`
+      );
       sendSocketMsg(
         encodeToSocketFmt(MessageType.CHAT_MESSAGE, evt.serializeBinary())
       );
     },
-    [sendSocketMsg]
+    [sendSocketMsg, tournamentID]
   );
   const peopleOnlineContext = useCallback(
     (n: number) => singularCount(n, 'Player', 'Players'),
@@ -137,10 +179,11 @@ export const Lobby = (props: Props) => {
           <Chat
             chatEntities={chat}
             sendChat={sendChat}
-            description="Lobby chat"
+            description={tournamentID ? 'Tournament chat' : 'Lobby chat'}
             peopleOnlineContext={peopleOnlineContext}
             presences={presences}
             DISCONNECT={props.DISCONNECT}
+            highlight={tournamentInfo.directors}
           />
         </div>
         <GameLists
@@ -151,8 +194,16 @@ export const Lobby = (props: Props) => {
           selectedGameTab={selectedGameTab}
           setSelectedGameTab={setSelectedGameTab}
           onSeekSubmit={onSeekSubmit}
+          tournamentID={tournamentID}
         />
-        <Announcements />
+        {tournamentID ? (
+          <TournamentInfo
+            tournamentID={tournamentID}
+            tournamentInfo={tournamentInfo}
+          />
+        ) : (
+          <Announcements />
+        )}
       </div>
     </>
   );

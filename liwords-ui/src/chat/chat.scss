@@ -100,6 +100,11 @@ p {
           color: m($primary-dark);
         }
       }
+      .special-sender {
+        color: $color-board-tws;
+        font-weight: 800;
+        margin: 0 9px 0 0;
+      }
       .message-body {
         margin-bottom: 4px;
         line-height: 1.4em;
@@ -154,7 +159,7 @@ p {
 
 @media (min-width: $screen-laptop-min) {
   .lobby .chat-area .ant-card.chat .entities {
-    max-height: calc(100vh - 270px)
+    max-height: calc(100vh - 270px);
   }
   .game-table {
     .chat-area .ant-card.chat {

@@ -19,6 +19,7 @@ import (
 	"github.com/domino14/liwords/pkg/entity"
 	"github.com/domino14/liwords/pkg/gameplay"
 	"github.com/domino14/liwords/pkg/stats"
+	"github.com/domino14/liwords/pkg/tournament"
 	"github.com/domino14/liwords/pkg/user"
 
 	pb "github.com/domino14/liwords/rpc/api/proto/realtime"
@@ -47,6 +48,7 @@ type Bus struct {
 	soughtGameStore gameplay.SoughtGameStore
 	presenceStore   user.PresenceStore
 	listStatStore   stats.ListStatStore
+	tournamentStore tournament.TournamentStore
 	configStore     config.ConfigStore
 
 	redisPool *redis.Pool
@@ -54,12 +56,14 @@ type Bus struct {
 	subscriptions []*nats.Subscription
 	subchans      map[string]chan *nats.Msg
 
-	gameEventChan chan *entity.EventWrapper
+	gameEventChan       chan *entity.EventWrapper
+	tournamentEventChan chan *entity.EventWrapper
 }
 
 func NewBus(cfg *config.Config, userStore user.Store, gameStore gameplay.GameStore,
 	soughtGameStore gameplay.SoughtGameStore, presenceStore user.PresenceStore,
-	listStatStore stats.ListStatStore, configStore config.ConfigStore, redisPool *redis.Pool) (*Bus, error) {
+	listStatStore stats.ListStatStore, tournamentStore tournament.TournamentStore,
+	configStore config.ConfigStore, redisPool *redis.Pool) (*Bus, error) {
 
 	natsconn, err := nats.Connect(cfg.NatsURL)
 
@@ -67,20 +71,23 @@ func NewBus(cfg *config.Config, userStore user.Store, gameStore gameplay.GameSto
 		return nil, err
 	}
 	bus := &Bus{
-		natsconn:        natsconn,
-		userStore:       userStore,
-		gameStore:       gameStore,
-		soughtGameStore: soughtGameStore,
-		presenceStore:   presenceStore,
-		listStatStore:   listStatStore,
-		configStore:     configStore,
-		subscriptions:   []*nats.Subscription{},
-		subchans:        map[string]chan *nats.Msg{},
-		config:          cfg,
-		gameEventChan:   make(chan *entity.EventWrapper, 64),
-		redisPool:       redisPool,
+		natsconn:            natsconn,
+		userStore:           userStore,
+		gameStore:           gameStore,
+		soughtGameStore:     soughtGameStore,
+		presenceStore:       presenceStore,
+		listStatStore:       listStatStore,
+		tournamentStore:     tournamentStore,
+		configStore:         configStore,
+		subscriptions:       []*nats.Subscription{},
+		subchans:            map[string]chan *nats.Msg{},
+		config:              cfg,
+		gameEventChan:       make(chan *entity.EventWrapper, 64),
+		tournamentEventChan: make(chan *entity.EventWrapper, 64),
+		redisPool:           redisPool,
 	}
 	gameStore.SetGameEventChan(bus.gameEventChan)
+	tournamentStore.SetTournamentEventChan(bus.tournamentEventChan)
 
 	topics := []string{
 		// ipc.pb are generic publishes
@@ -172,7 +179,6 @@ outerfor:
 
 		case msg := <-b.gameEventChan:
 			// A game event. Publish directly to the right realm.
-			log.Debug().Interface("msg", msg).Msg("game event chan")
 			topics := msg.Audience()
 			data, err := msg.Serialize()
 			if err != nil {
@@ -194,8 +200,22 @@ outerfor:
 					b.natsconn.Publish(topic, data)
 				}
 			}
+
+		case msg := <-b.tournamentEventChan:
+			// A tournament event. Publish to the right realm.
+			log.Debug().Interface("msg", msg).Msg("tournament event chan")
+			topics := msg.Audience()
+			data, err := msg.Serialize()
+			if err != nil {
+				log.Err(err).Msg("serialize-error")
+				break
+			}
+			for _, topic := range topics {
+				b.natsconn.Publish(topic, data)
+			}
+
 		case <-ctx.Done():
-			log.Info().Msg("context done, breaking")
+			log.Info().Msg("pubsub context done, breaking")
 			break outerfor
 
 		case <-adjudicator.C:
@@ -329,7 +349,7 @@ func (b *Bus) handleNatsPublish(ctx context.Context, subtopics []string, data []
 			return err
 		}
 		entGame, err := gameplay.HandleEvent(ctx, b.gameStore, b.userStore, b.listStatStore,
-			userID, evt)
+			b.tournamentStore, userID, evt)
 		if err != nil {
 			return err
 		}
@@ -355,7 +375,7 @@ func (b *Bus) handleNatsPublish(ctx context.Context, subtopics []string, data []
 		if err != nil {
 			return err
 		}
-		return gameplay.TimedOut(ctx, b.gameStore, b.userStore, b.listStatStore, evt.UserId, evt.GameId)
+		return gameplay.TimedOut(ctx, b.gameStore, b.userStore, b.listStatStore, b.tournamentStore, evt.UserId, evt.GameId)
 
 	case "initRealmInfo":
 		evt := &pb.InitRealmInfo{}
@@ -379,6 +399,10 @@ func (b *Bus) handleNatsPublish(ctx context.Context, subtopics []string, data []
 	default:
 		return fmt.Errorf("unhandled-publish-topic: %v", subtopics)
 	}
+}
+
+func (b *Bus) TournamentEventChannel() chan *entity.EventWrapper {
+	return b.tournamentEventChan
 }
 
 func (b *Bus) broadcastPresence(username, userID string, anon bool, presenceChan string, deleting bool) error {
@@ -415,6 +439,8 @@ func (b *Bus) broadcastPresence(username, userID string, anon bool, presenceChan
 	return nil
 }
 
+// XXX: this function needs to be rewritten to be something like pubToConnectionID
+// for the most part.
 func (b *Bus) pubToUser(userID string, evt *entity.EventWrapper,
 	channel string) error {
 	// Publish to a user, but pass in a specific channel. Only publish to those
@@ -463,7 +489,7 @@ func (b *Bus) initRealmInfo(ctx context.Context, evt *pb.InitRealmInfo) error {
 			return err
 		}
 		// live games
-		activeGames, err := b.activeGames(ctx)
+		activeGames, err := b.activeGames(ctx, "")
 		if err != nil {
 			return err
 		}
@@ -472,7 +498,7 @@ func (b *Bus) initRealmInfo(ctx context.Context, evt *pb.InitRealmInfo) error {
 			return err
 		}
 		// open match reqs
-		matches, err := b.openMatches(ctx, evt.UserId)
+		matches, err := b.openMatches(ctx, evt.UserId, "")
 		if err != nil {
 			return err
 		}
@@ -495,6 +521,30 @@ func (b *Bus) initRealmInfo(ctx context.Context, evt *pb.InitRealmInfo) error {
 		if err != nil {
 			return err
 		}
+	} else if strings.HasPrefix(evt.Realm, "tournament-") {
+		components := strings.Split(evt.Realm, "-")
+		prefix := components[0]
+		// Get a sanitized history
+		tourneyID := components[1]
+		// live games
+		activeGames, err := b.activeGames(ctx, tourneyID)
+		if err != nil {
+			return err
+		}
+		err = b.pubToUser(evt.UserId, activeGames, prefix+"."+tourneyID)
+		if err != nil {
+			return err
+		}
+		// open match reqs
+		matches, err := b.openMatches(ctx, evt.UserId, tourneyID)
+		if err != nil {
+			return err
+		}
+		err = b.pubToUser(evt.UserId, matches, prefix+"."+tourneyID)
+		if err != nil {
+			return err
+		}
+
 	} else {
 		log.Debug().Interface("evt", evt).Msg("no init realm info")
 	}
@@ -561,8 +611,8 @@ func (b *Bus) leaveSite(ctx context.Context, userID string) error {
 	return nil
 }
 
-func (b *Bus) activeGames(ctx context.Context) (*entity.EventWrapper, error) {
-	gs, err := b.gameStore.ListActive(ctx)
+func (b *Bus) activeGames(ctx context.Context, tourneyID string) (*entity.EventWrapper, error) {
+	gs, err := b.gameStore.ListActive(ctx, tourneyID)
 
 	if err != nil {
 		return nil, err

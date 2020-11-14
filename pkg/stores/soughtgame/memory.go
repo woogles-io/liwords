@@ -114,14 +114,14 @@ func (m *MemoryStore) deleteFromReqsByReceiver(g *entity.SoughtGame) {
 }
 
 // DeleteForUser deletes the game by seeker ID.
-func (m *MemoryStore) DeleteForUser(ctx context.Context, userID string) (string, error) {
+func (m *MemoryStore) DeleteForUser(ctx context.Context, userID string) (*entity.SoughtGame, error) {
 	m.Lock()
 	defer m.Unlock()
 
 	game, ok := m.soughtGamesByUser[userID]
 	if !ok {
 		// Do nothing, game never existed
-		return "", nil
+		return nil, nil
 	}
 	delete(m.soughtGamesByUser, userID)
 	delete(m.soughtGamesByConnID, game.ConnID())
@@ -129,18 +129,18 @@ func (m *MemoryStore) DeleteForUser(ctx context.Context, userID string) (string,
 	if game.Type() == entity.TypeMatch {
 		m.deleteFromReqsByReceiver(game)
 	}
-	return game.ID(), nil
+	return game, nil
 }
 
 // DeleteForConnID deletes the game by connection ID
-func (m *MemoryStore) DeleteForConnID(ctx context.Context, connID string) (string, error) {
+func (m *MemoryStore) DeleteForConnID(ctx context.Context, connID string) (*entity.SoughtGame, error) {
 	m.Lock()
 	defer m.Unlock()
 
 	game, ok := m.soughtGamesByConnID[connID]
 	if !ok {
 		// Do nothing, game never existed
-		return "", nil
+		return nil, nil
 	}
 
 	delete(m.soughtGamesByUser, game.Seeker())
@@ -151,7 +151,7 @@ func (m *MemoryStore) DeleteForConnID(ctx context.Context, connID string) (strin
 		m.deleteFromReqsByReceiver(game)
 	}
 
-	return game.ID(), nil
+	return game, nil
 }
 
 // ListOpenSeeks lists all open seek requests
@@ -167,7 +167,7 @@ func (m *MemoryStore) ListOpenSeeks(ctx context.Context) ([]*entity.SoughtGame, 
 	return ret, nil
 }
 
-func (m *MemoryStore) ListOpenMatches(ctx context.Context, receiver string) ([]*entity.SoughtGame, error) {
+func (m *MemoryStore) ListOpenMatches(ctx context.Context, receiver, tourneyID string) ([]*entity.SoughtGame, error) {
 	m.RLock()
 	defer m.RUnlock()
 
@@ -175,6 +175,9 @@ func (m *MemoryStore) ListOpenMatches(ctx context.Context, receiver string) ([]*
 	for _, v := range m.matchRequestsByReceiver[receiver] {
 		if v.Type() != entity.TypeMatch {
 			return nil, errors.New("unexpected type")
+		}
+		if tourneyID != "" && v.MatchRequest.TournamentId != tourneyID {
+			continue
 		}
 		ret = append(ret, v)
 	}

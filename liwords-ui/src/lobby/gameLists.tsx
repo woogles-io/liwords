@@ -1,6 +1,6 @@
 import React from 'react';
-import { useMountedState } from '../utils/mounted';
 import { Card, Modal, Button } from 'antd';
+import { useMountedState } from '../utils/mounted';
 import { SoughtGames } from './sought_games';
 import { ActiveGames } from './active_games';
 import { SeekForm } from './seek_form';
@@ -16,6 +16,7 @@ type Props = {
   selectedGameTab: string;
   setSelectedGameTab: (tab: string) => void;
   onSeekSubmit: (g: SoughtGame) => void;
+  tournamentID?: string;
 };
 
 export const GameLists = React.memo((props: Props) => {
@@ -29,6 +30,7 @@ export const GameLists = React.memo((props: Props) => {
     selectedGameTab,
     setSelectedGameTab,
     onSeekSubmit,
+    tournamentID,
   } = props;
   const { lobbyContext } = useLobbyStoreContext();
   const { setRedirGame } = useRedirGameStoreContext();
@@ -52,16 +54,19 @@ export const GameLists = React.memo((props: Props) => {
               userID={userID}
               username={username}
               newGame={newGame}
+              tournamentID={tournamentID}
               requests={lobbyContext?.matchRequests}
             />
           ) : null}
-          <SoughtGames
-            isMatch={false}
-            userID={userID}
-            username={username}
-            newGame={newGame}
-            requests={lobbyContext?.soughtGames}
-          />
+          {!tournamentID ? (
+            <SoughtGames
+              isMatch={false}
+              userID={userID}
+              username={username}
+              newGame={newGame}
+              requests={lobbyContext?.soughtGames}
+            />
+          ) : null}
         </>
       );
     }
@@ -135,7 +140,7 @@ export const GameLists = React.memo((props: Props) => {
   const matchModal = (
     <Modal
       className="seek-modal"
-      title="Match a Friend"
+      title={!tournamentID ? 'Match a Friend' : 'Send Match Request'}
       visible={matchModalVisible}
       onCancel={() => {
         setMatchModalVisible(false);
@@ -166,12 +171,13 @@ export const GameLists = React.memo((props: Props) => {
         loggedIn={props.loggedIn}
         showFriendInput={true}
         id="match-seek"
+        tournamentID={tournamentID}
       />
     </Modal>
   );
   const botModal = (
     <Modal
-      title="Play a Bot"
+      title="Play a Computer"
       visible={botModalVisible}
       className="seek-modal"
       onCancel={() => {
@@ -223,16 +229,18 @@ export const GameLists = React.memo((props: Props) => {
         </div>
       );
     } else {
-      actions.push(
-        <div
-          className="bot"
-          onClick={() => {
-            setBotModalVisible(true);
-          }}
-        >
-          Play a bot
-        </div>
-      );
+      // If this is a tournament, only show match modal.
+      !tournamentID &&
+        actions.push(
+          <div
+            className="bot"
+            onClick={() => {
+              setBotModalVisible(true);
+            }}
+          >
+            Play a computer
+          </div>
+        );
       actions.push(
         <div
           className="match"
@@ -240,19 +248,20 @@ export const GameLists = React.memo((props: Props) => {
             setMatchModalVisible(true);
           }}
         >
-          Match a friend
+          {!tournamentID ? 'Match a friend' : 'Start Tournament Game'}
         </div>
       );
-      actions.push(
-        <div
-          className="seek"
-          onClick={() => {
-            setSeekModalVisible(true);
-          }}
-        >
-          New game
-        </div>
-      );
+      !tournamentID &&
+        actions.push(
+          <div
+            className="seek"
+            onClick={() => {
+              setSeekModalVisible(true);
+            }}
+          >
+            Create a game
+          </div>
+        );
     }
   }
   return (

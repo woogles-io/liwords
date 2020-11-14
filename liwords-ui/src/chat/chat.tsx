@@ -1,8 +1,8 @@
 /* eslint-disable jsx-a11y/click-events-have-key-events */
 /* eslint-disable jsx-a11y/no-static-element-interactions */
 import React, { useCallback, useEffect, useMemo, useRef } from 'react';
-import { useMountedState } from '../utils/mounted';
 import { Card, Input, Tabs } from 'antd';
+import { useMountedState } from '../utils/mounted';
 import { ChatEntity } from './chat_entity';
 import {
   ChatEntityObj,
@@ -21,6 +21,7 @@ type Props = {
   description: string;
   presences: { [uuid: string]: PresenceEntity };
   DISCONNECT?: () => void;
+  highlight?: Array<string>;
 };
 
 export const Chat = React.memo((props: Props) => {
@@ -74,6 +75,9 @@ export const Chat = React.memo((props: Props) => {
     () =>
       props.chatEntities?.map((ent) => {
         const anon = ent.senderId ? !knownUsers.includes(ent.senderId) : true;
+        const specialSender = props.highlight
+          ? props.highlight.includes(ent.sender)
+          : false;
         return (
           <ChatEntity
             entityType={ent.entityType}
@@ -83,10 +87,11 @@ export const Chat = React.memo((props: Props) => {
             message={ent.message}
             timestamp={ent.timestamp}
             anonymous={anon}
+            highlight={specialSender}
           />
         );
       }),
-    [knownUsers, props.chatEntities]
+    [knownUsers, props.chatEntities, props.highlight]
   );
 
   const handleTabClick = useCallback((key) => {

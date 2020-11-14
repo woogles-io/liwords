@@ -1,5 +1,6 @@
 import React from 'react';
 import { Card } from 'antd';
+
 type AnnouncementsProps = {};
 
 export const Announcements = React.memo((props: AnnouncementsProps) => {

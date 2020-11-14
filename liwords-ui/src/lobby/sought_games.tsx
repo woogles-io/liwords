@@ -11,14 +11,6 @@ import {
 } from '../store/constants';
 import { SoughtGame } from '../store/reducers/lobby_reducer';
 
-type SoughtGameProps = {
-  game: SoughtGame;
-  newGame: (seekID: string) => void;
-  userID?: string;
-  username?: string;
-  requests: SoughtGame[];
-};
-
 export const timeFormat = (
   initialTimeSecs: number,
   incrementSecs: number,
@@ -51,6 +43,7 @@ type Props = {
   userID?: string;
   username?: string;
   requests: Array<SoughtGame>;
+  tournamentID?: string;
 };
 
 export const SoughtGames = (props: Props) => {

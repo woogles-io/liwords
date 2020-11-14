@@ -1,6 +1,5 @@
 import React, { useEffect } from 'react';
 import { useHistory } from 'react-router-dom';
-import { useMountedState } from '../utils/mounted';
 import { Button, Popconfirm } from 'antd';
 import {
   DoubleLeftOutlined,
@@ -8,6 +7,7 @@ import {
   LeftOutlined,
   RightOutlined,
 } from '@ant-design/icons';
+import { useMountedState } from '../utils/mounted';
 import {
   useExamineStoreContext,
   useGameContextStoreContext,
@@ -86,6 +86,7 @@ export type Props = {
   gameEndControls: boolean;
   showRematch: boolean;
   currentRack: string;
+  tournamentID?: string;
   lexicon: string;
 };
 
@@ -106,6 +107,7 @@ const GameControls = React.memo((props: Props) => {
         onExamine={props.onExamine}
         onExportGCG={props.onExportGCG}
         showRematch={props.showRematch && !props.observer}
+        tournamentID={props.tournamentID}
       />
     );
   }
@@ -238,6 +240,7 @@ type EGCProps = {
   showRematch: boolean;
   onExamine: () => void;
   onExportGCG: () => void;
+  tournamentID?: string;
 };
 
 const EndGameControls = (props: EGCProps) => {
@@ -248,8 +251,10 @@ const EndGameControls = (props: EGCProps) => {
   const history = useHistory();
   const handleExitToLobby = React.useCallback(() => {
     resetStore();
-    history.replace('/');
-  }, [history, resetStore]);
+    props.tournamentID
+      ? history.replace(`/tournament/${props.tournamentID}`)
+      : history.replace('/');
+  }, [history, resetStore, props.tournamentID]);
 
   return (
     <div className="game-controls">

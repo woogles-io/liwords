@@ -1,6 +1,7 @@
 import React from 'react';
+import axios from 'axios';
+
 import { Link } from 'react-router-dom';
-import { useMountedState } from '../utils/mounted';
 import './topbar.scss';
 import { DisconnectOutlined, SettingOutlined } from '@ant-design/icons/lib';
 import { notification, Dropdown, Tooltip, Modal } from 'antd';
@@ -9,11 +10,12 @@ import {
   useLoginStateStoreContext,
   useResetStoreContext,
 } from '../store/store';
-import axios from 'axios';
 import { toAPIUrl } from '../api/api';
 import { Login } from '../lobby/login';
+import { useMountedState } from '../utils/mounted';
 
 const colors = require('../base.scss');
+
 const TopMenu = React.memo((props: Props) => {
   const { resetStore } = useResetStoreContext();
 
@@ -39,7 +41,9 @@ const TopMenu = React.memo((props: Props) => {
   );
 });
 
-type Props = {};
+type Props = {
+  tournamentID?: string;
+};
 
 export const TopBar = React.memo((props: Props) => {
   const { useState } = useMountedState();
@@ -83,6 +87,11 @@ export const TopBar = React.memo((props: Props) => {
       </li>
     </ul>
   );
+
+  const homeLink = props.tournamentID
+    ? `/tournament/${props.tournamentID}`
+    : '/';
+
   return (
     <nav className="top-header" id="main-nav">
       <div className="container">
@@ -91,10 +100,11 @@ export const TopBar = React.memo((props: Props) => {
           color={colors.colorPrimary}
           title={`Latency: ${currentLagMs || '...'} ms.`}
         >
-          <Link to="/" className="site-icon" onClick={resetStore}>
+          <Link to={homeLink} className="site-icon" onClick={resetStore}>
             <div className="top-header-site-icon-rect">
               <div className="top-header-site-icon-m">W</div>
             </div>
+
             <div className="top-header-left-frame-site-name">Woogles.io</div>
           </Link>
         </Tooltip>

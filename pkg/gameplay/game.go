@@ -26,6 +26,7 @@ import (
 	"github.com/domino14/liwords/pkg/config"
 	"github.com/domino14/liwords/pkg/entity"
 	"github.com/domino14/liwords/pkg/stats"
+	"github.com/domino14/liwords/pkg/tournament"
 	"github.com/domino14/liwords/pkg/user"
 	gs "github.com/domino14/liwords/rpc/api/proto/game_service"
 	pb "github.com/domino14/liwords/rpc/api/proto/realtime"
@@ -43,10 +44,11 @@ type GameStore interface {
 	GetMetadata(ctx context.Context, id string) (*gs.GameInfoResponse, error)
 	GetRematchStreak(ctx context.Context, originalRequestId string) (*gs.GameInfoResponses, error)
 	GetRecentGames(ctx context.Context, username string, numGames int, offset int) (*gs.GameInfoResponses, error)
+	GetRecentTourneyGames(ctx context.Context, tourneyID string, numGames int, offset int) (*gs.GameInfoResponses, error)
 	Set(context.Context, *entity.Game) error
 	Create(context.Context, *entity.Game) error
 	Exists(ctx context.Context, id string) (bool, error)
-	ListActive(context.Context) ([]*pb.GameMeta, error)
+	ListActive(context.Context, string) ([]*pb.GameMeta, error)
 	Count(ctx context.Context) (int64, error)
 	SetGameEventChan(c chan<- *entity.EventWrapper)
 	Unload(context.Context, string)
@@ -56,7 +58,7 @@ type ConfigCtxKey string
 
 // InstantiateNewGame instantiates a game and returns it.
 func InstantiateNewGame(ctx context.Context, gameStore GameStore, cfg *config.Config,
-	users [2]*entity.User, assignedFirst int, req *pb.GameRequest) (*entity.Game, error) {
+	users [2]*entity.User, assignedFirst int, req *pb.GameRequest, tid string) (*entity.Game, error) {
 
 	var players []*macondopb.PlayerInfo
 	var dbids [2]uint
@@ -87,12 +89,12 @@ func InstantiateNewGame(ctx context.Context, gameStore GameStore, cfg *config.Co
 		firstAssigned = true
 	}
 
-	dist, err := alphabet.LoadLetterDistribution(&cfg.MacondoConfig, req.Rules.LetterDistributionName)
+	dist, err := alphabet.Get(&cfg.MacondoConfig, req.Rules.LetterDistributionName)
 	if err != nil {
 		return nil, err
 	}
 
-	gd, err := gaddag.LoadFromCache(&cfg.MacondoConfig, req.Lexicon)
+	gd, err := gaddag.Get(&cfg.MacondoConfig, req.Lexicon)
 	if err != nil {
 		return nil, err
 	}
@@ -132,6 +134,8 @@ func InstantiateNewGame(ctx context.Context, gameStore GameStore, cfg *config.Co
 
 	entGame := entity.NewGame(&gameRunner.Game, req)
 	entGame.PlayerDBIDs = dbids
+	// XXX: This func should take in a tournament data.
+	entGame.TournamentData = &entity.TournamentData{Id: tid}
 
 	ratingKey, err := entGame.RatingKey()
 	if err != nil {
@@ -262,7 +266,7 @@ func players(entGame *entity.Game) []string {
 }
 
 func handleChallenge(ctx context.Context, entGame *entity.Game, gameStore GameStore,
-	userStore user.Store, listStatStore stats.ListStatStore,
+	userStore user.Store, listStatStore stats.ListStatStore, tournamentStore tournament.TournamentStore,
 	timeRemaining int, challengerID string) error {
 	if entGame.ChallengeRule() == macondopb.ChallengeRule_VOID {
 		// The front-end shouldn't even show the button.
@@ -330,7 +334,7 @@ func handleChallenge(ctx context.Context, entGame *entity.Game, gameStore GameSt
 			entGame.SetWinnerIdx(winner)
 			entGame.SetLoserIdx(1 - winner)
 		}
-		err = performEndgameDuties(ctx, entGame, gameStore, userStore, listStatStore)
+		err = performEndgameDuties(ctx, entGame, gameStore, userStore, listStatStore, tournamentStore)
 		if err != nil {
 			return err
 		}
@@ -339,8 +343,15 @@ func handleChallenge(ctx context.Context, entGame *entity.Game, gameStore GameSt
 	return nil
 }
 
-func PlayMove(ctx context.Context, entGame *entity.Game, gameStore GameStore, userStore user.Store,
-	listStatStore stats.ListStatStore, userID string, onTurn, timeRemaining int, m *move.Move) error {
+func PlayMove(ctx context.Context,
+	entGame *entity.Game,
+	gameStore GameStore,
+	userStore user.Store,
+	listStatStore stats.ListStatStore,
+	tournamentStore tournament.TournamentStore,
+	userID string, onTurn,
+	timeRemaining int,
+	m *move.Move) error {
 
 	log.Debug().Msg("validating")
 
@@ -351,7 +362,7 @@ func PlayMove(ctx context.Context, entGame *entity.Game, gameStore GameStore, us
 
 	if m.Action() == move.MoveTypeChallenge {
 		// Handle in another way
-		return handleChallenge(ctx, entGame, gameStore, userStore, listStatStore, timeRemaining, userID)
+		return handleChallenge(ctx, entGame, gameStore, userStore, listStatStore, tournamentStore, timeRemaining, userID)
 	}
 
 	oldTurnLength := len(entGame.Game.History().Events)
@@ -401,7 +412,7 @@ func PlayMove(ctx context.Context, entGame *entity.Game, gameStore GameStore, us
 		entGame.SendChange(wrapped)
 	}
 	if playing == macondopb.PlayState_GAME_OVER {
-		err = performEndgameDuties(ctx, entGame, gameStore, userStore, listStatStore)
+		err = performEndgameDuties(ctx, entGame, gameStore, userStore, listStatStore, tournamentStore)
 		if err != nil {
 			return err
 		}
@@ -411,7 +422,7 @@ func PlayMove(ctx context.Context, entGame *entity.Game, gameStore GameStore, us
 
 // HandleEvent handles a gameplay event from the socket
 func HandleEvent(ctx context.Context, gameStore GameStore, userStore user.Store,
-	listStatStore stats.ListStatStore, userID string, cge *pb.ClientGameplayEvent) (*entity.Game, error) {
+	listStatStore stats.ListStatStore, tournamentStore tournament.TournamentStore, userID string, cge *pb.ClientGameplayEvent) (*entity.Game, error) {
 
 	// XXX: VERIFY THAT THE CLIENT GAME ID CORRESPONDS TO THE GAME
 	// THE PLAYER IS PLAYING!
@@ -422,12 +433,12 @@ func HandleEvent(ctx context.Context, gameStore GameStore, userStore user.Store,
 	entGame.Lock()
 	defer entGame.Unlock()
 
-	return handleEventAfterLockingGame(ctx, gameStore, userStore, listStatStore, userID, cge, entGame)
+	return handleEventAfterLockingGame(ctx, gameStore, userStore, listStatStore, tournamentStore, userID, cge, entGame)
 }
 
 // Assume entGame is already locked.
 func handleEventAfterLockingGame(ctx context.Context, gameStore GameStore, userStore user.Store,
-	listStatStore stats.ListStatStore, userID string, cge *pb.ClientGameplayEvent,
+	listStatStore stats.ListStatStore, tournamentStore tournament.TournamentStore, userID string, cge *pb.ClientGameplayEvent,
 	entGame *entity.Game) (*entity.Game, error) {
 
 	if entGame.Game.Playing() == macondopb.PlayState_GAME_OVER {
@@ -460,7 +471,7 @@ func handleEventAfterLockingGame(ctx context.Context, gameStore GameStore, userS
 			}
 		} else {
 			// Basically skip to the bottom and exit.
-			return entGame, setTimedOut(ctx, entGame, onTurn, gameStore, userStore, listStatStore)
+			return entGame, setTimedOut(ctx, entGame, onTurn, gameStore, userStore, listStatStore, tournamentStore)
 		}
 	}
 
@@ -479,7 +490,7 @@ func handleEventAfterLockingGame(ctx context.Context, gameStore GameStore, userS
 		entGame.History().Winner = int32(winner)
 		entGame.SetWinnerIdx(winner)
 		entGame.SetLoserIdx(1 - winner)
-		err := performEndgameDuties(ctx, entGame, gameStore, userStore, listStatStore)
+		err := performEndgameDuties(ctx, entGame, gameStore, userStore, listStatStore, tournamentStore)
 		if err != nil {
 			return entGame, err
 		}
@@ -489,7 +500,7 @@ func handleEventAfterLockingGame(ctx context.Context, gameStore GameStore, userS
 			return entGame, err
 		}
 
-		err = PlayMove(ctx, entGame, gameStore, userStore, listStatStore, userID, onTurn, timeRemaining, m)
+		err = PlayMove(ctx, entGame, gameStore, userStore, listStatStore, tournamentStore, userID, onTurn, timeRemaining, m)
 		if err != nil {
 			return entGame, err
 		}
@@ -509,7 +520,7 @@ func handleEventAfterLockingGame(ctx context.Context, gameStore GameStore, userS
 // TimedOut gets called when the client thinks the user's time ran out. We
 // verify that that is actually the case.
 func TimedOut(ctx context.Context, gameStore GameStore, userStore user.Store,
-	listStatStore stats.ListStatStore, timedout string, gameID string) error {
+	listStatStore stats.ListStatStore, tournamentStore tournament.TournamentStore, timedout string, gameID string) error {
 	// XXX: VERIFY THAT THE GAME ID is the client's current game!!
 	// Note: we can get this event multiple times; the opponent and the player on turn
 	// both send it.
@@ -540,7 +551,7 @@ func TimedOut(ctx context.Context, gameStore GameStore, userStore user.Store,
 	// If opponent played out, auto-pass instead of forfeiting.
 	if entGame.Game.Playing() == macondopb.PlayState_WAITING_FOR_FINAL_PASS {
 		log.Debug().Msg("timed out, so auto-passing instead of forfeiting")
-		_, err = handleEventAfterLockingGame(ctx, gameStore, userStore, listStatStore,
+		_, err = handleEventAfterLockingGame(ctx, gameStore, userStore, listStatStore, tournamentStore,
 			entGame.Game.PlayerIDOnTurn(), &pb.ClientGameplayEvent{
 				Type:   pb.ClientGameplayEvent_PASS,
 				GameId: gameID,
@@ -548,7 +559,7 @@ func TimedOut(ctx context.Context, gameStore GameStore, userStore user.Store,
 		return err
 	}
 
-	return setTimedOut(ctx, entGame, onTurn, gameStore, userStore, listStatStore)
+	return setTimedOut(ctx, entGame, onTurn, gameStore, userStore, listStatStore, tournamentStore)
 }
 
 // sanitizeEvent removes rack information from the event; it is meant to be

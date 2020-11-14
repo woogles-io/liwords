@@ -15,7 +15,7 @@ def build_protobuf(c):
         f"--proto_path={code_dir} macondo/api/proto/macondo/macondo.proto"
     )
     # Build the liwords proto files.
-    twirp_apis = ["user_service", "game_service", "config_service"]
+    twirp_apis = ["user_service", "game_service", "config_service", "tournament_service"]
     for tapi in twirp_apis:
         c.run(
             "protoc "

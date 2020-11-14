@@ -26,6 +26,7 @@ import { PlayerOrder } from './constants';
 import { PoolFormatType } from '../constants/pool_formats';
 import { LoginState, LoginStateReducer } from './login_state';
 import { EphemeralTile } from '../utils/cwgame/common';
+import { pageSize } from '../tournament/recent_game';
 
 export enum ChatEntityType {
   UserChat,
@@ -49,7 +50,7 @@ export type PresenceEntity = {
   anon: boolean;
 };
 
-const MaxChatLength = 100;
+const MaxChatLength = 150;
 
 const defaultTimerContext = {
   p0: 0,
@@ -171,6 +172,9 @@ const LobbyContext = createContext<LobbyStoreData>({
     soughtGames: [],
     activeGames: [],
     matchRequests: [],
+    tourneyGames: [],
+    gamesPageSize: pageSize,
+    gamesOffset: 0,
   },
   dispatchLobbyContext: defaultFunction,
 });
@@ -182,6 +186,7 @@ const LoginStateContext = createContext<LoginStateStoreData>({
     loggedIn: false,
     connectedToSocket: false,
     connID: '',
+    path: '',
   },
   dispatchLoginState: defaultFunction,
 });
@@ -352,7 +357,7 @@ const ExaminableStore = ({ children }: { children: React.ReactNode }) => {
     const ret = startingGameState(
       gameContext.tileDistribution,
       gameContext.players.map(({ userID }) => ({
-        userID: userID,
+        userID,
         score: 0,
         onturn: false,
         currentRack: '',
@@ -367,7 +372,7 @@ const ExaminableStore = ({ children }: { children: React.ReactNode }) => {
     // Fix players and clockController.
     const times = { p0: 0, p1: 0, lastUpdate: 0 };
     for (let i = 0; i < ret.players.length; ++i) {
-      const userID = ret.players[i].userID;
+      const { userID } = ret.players[i];
       const playerOrder = gameContext.uidToPlayerOrder[userID];
       let nickname = '';
       for (const nick in gameContext.nickToPlayerOrder) {
@@ -545,6 +550,9 @@ const RealStore = ({ children, ...props }: Props) => {
     soughtGames: [],
     activeGames: [],
     matchRequests: [],
+    tourneyGames: [],
+    gamesPageSize: pageSize,
+    gamesOffset: 0,
   });
   const dispatchLobbyContext = useCallback(
     (action) => setLobbyContext((state) => LobbyReducer(state, action)),
@@ -556,6 +564,7 @@ const RealStore = ({ children, ...props }: Props) => {
     loggedIn: false,
     connectedToSocket: false,
     connID: '',
+    path: '',
   });
   const dispatchLoginState = useCallback(
     (action) => setLoginState((state) => LoginStateReducer(state, action)),

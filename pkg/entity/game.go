@@ -63,6 +63,15 @@ type Quickdata struct {
 	NewRatings        []float64
 }
 
+// Holds the tournament data for a game.
+// This is nil if the game is not a tournament game.
+type TournamentData struct {
+	Id        string
+	Division  string `json:"d"`
+	Round     int    `json:"r"`
+	GameIndex int    `json:"i"`
+}
+
 // A Game should be saved to the database or store. It wraps a macondo.Game,
 // and we should save most of the included fields here, especially the
 // macondo.game.History (which can be exported as GCG, etc in the future)
@@ -70,7 +79,7 @@ type Game struct {
 	sync.RWMutex
 	game.Game
 
-	PlayerDBIDs  [2]uint
+	PlayerDBIDs  [2]uint // needed to associate the games to the player IDs in the db.
 	PlayersReady [2]bool
 
 	GameReq *pb.GameRequest
@@ -92,8 +101,9 @@ type Game struct {
 	ChangeHook chan<- *EventWrapper
 	nower      Nower
 
-	Quickdata *Quickdata
-	CreatedAt time.Time
+	Quickdata      *Quickdata
+	TournamentData *TournamentData
+	CreatedAt      time.Time
 }
 
 // GameTimer uses the standard library's `time` package to determine how much time

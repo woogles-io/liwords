@@ -396,6 +396,9 @@ export class MatchRequest extends jspb.Message {
   getConnectionId(): string;
   setConnectionId(value: string): void;
 
+  getTournamentId(): string;
+  setTournamentId(value: string): void;
+
   serializeBinary(): Uint8Array;
   toObject(includeInstance?: boolean): MatchRequest.AsObject;
   static toObject(includeInstance: boolean, msg: MatchRequest): MatchRequest.AsObject;
@@ -413,6 +416,7 @@ export namespace MatchRequest {
     receivingUser?: MatchUser.AsObject,
     rematchFor: string,
     connectionId: string,
+    tournamentId: string,
   }
 }
 
@@ -451,6 +455,26 @@ export class SoughtGameProcessEvent extends jspb.Message {
 }
 
 export namespace SoughtGameProcessEvent {
+  export type AsObject = {
+    requestId: string,
+  }
+}
+
+export class MatchRequestCancellation extends jspb.Message {
+  getRequestId(): string;
+  setRequestId(value: string): void;
+
+  serializeBinary(): Uint8Array;
+  toObject(includeInstance?: boolean): MatchRequestCancellation.AsObject;
+  static toObject(includeInstance: boolean, msg: MatchRequestCancellation): MatchRequestCancellation.AsObject;
+  static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+  static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+  static serializeBinaryToWriter(message: MatchRequestCancellation, writer: jspb.BinaryWriter): void;
+  static deserializeBinary(bytes: Uint8Array): MatchRequestCancellation;
+  static deserializeBinaryFromReader(message: MatchRequestCancellation, reader: jspb.BinaryReader): MatchRequestCancellation;
+}
+
+export namespace MatchRequestCancellation {
   export type AsObject = {
     requestId: string,
   }
@@ -640,6 +664,68 @@ export namespace GameEndedEvent {
     time: number,
     ratingDeltasMap: Array<[string, number]>,
     history?: macondo_api_proto_macondo_macondo_pb.GameHistory.AsObject,
+  }
+}
+
+export class TournamentGameEndedEvent extends jspb.Message {
+  getGameId(): string;
+  setGameId(value: string): void;
+
+  clearPlayersList(): void;
+  getPlayersList(): Array<TournamentGameEndedEvent.Player>;
+  setPlayersList(value: Array<TournamentGameEndedEvent.Player>): void;
+  addPlayers(value?: TournamentGameEndedEvent.Player, index?: number): TournamentGameEndedEvent.Player;
+
+  getEndReason(): GameEndReasonMap[keyof GameEndReasonMap];
+  setEndReason(value: GameEndReasonMap[keyof GameEndReasonMap]): void;
+
+  getTime(): number;
+  setTime(value: number): void;
+
+  serializeBinary(): Uint8Array;
+  toObject(includeInstance?: boolean): TournamentGameEndedEvent.AsObject;
+  static toObject(includeInstance: boolean, msg: TournamentGameEndedEvent): TournamentGameEndedEvent.AsObject;
+  static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+  static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+  static serializeBinaryToWriter(message: TournamentGameEndedEvent, writer: jspb.BinaryWriter): void;
+  static deserializeBinary(bytes: Uint8Array): TournamentGameEndedEvent;
+  static deserializeBinaryFromReader(message: TournamentGameEndedEvent, reader: jspb.BinaryReader): TournamentGameEndedEvent;
+}
+
+export namespace TournamentGameEndedEvent {
+  export type AsObject = {
+    gameId: string,
+    playersList: Array<TournamentGameEndedEvent.Player.AsObject>,
+    endReason: GameEndReasonMap[keyof GameEndReasonMap],
+    time: number,
+  }
+
+  export class Player extends jspb.Message {
+    getUsername(): string;
+    setUsername(value: string): void;
+
+    getScore(): number;
+    setScore(value: number): void;
+
+    getResult(): TournamentGameResultMap[keyof TournamentGameResultMap];
+    setResult(value: TournamentGameResultMap[keyof TournamentGameResultMap]): void;
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): Player.AsObject;
+    static toObject(includeInstance: boolean, msg: Player): Player.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: Player, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): Player;
+    static deserializeBinaryFromReader(message: Player, reader: jspb.BinaryReader): Player;
+  }
+
+  export namespace Player {
+    export type AsObject = {
+      username: string,
+      score: number,
+      result: TournamentGameResultMap[keyof TournamentGameResultMap],
+    }
   }
 }
 
@@ -893,6 +979,7 @@ export interface MessageTypeMap {
   NEW_GAME_EVENT: 8;
   SERVER_CHALLENGE_RESULT_EVENT: 9;
   SEEK_REQUESTS: 10;
+  MATCH_REQUEST_CANCELLATION: 11;
   TIMED_OUT: 13;
   GAME_META_EVENT: 15;
   ACTIVE_GAMES: 16;
@@ -906,6 +993,7 @@ export interface MessageTypeMap {
   SERVER_MESSAGE: 24;
   READY_FOR_GAME: 25;
   LAG_MEASUREMENT: 26;
+  TOURNAMENT_GAME_ENDED_EVENT: 27;
 }
 
 export const MessageType: MessageTypeMap;
@@ -922,4 +1010,17 @@ export interface GameEndReasonMap {
 }
 
 export const GameEndReason: GameEndReasonMap;
+
+export interface TournamentGameResultMap {
+  NO_RESULT: 0;
+  WIN: 1;
+  LOSS: 2;
+  DRAW: 3;
+  BYE: 4;
+  FORFEIT_WIN: 5;
+  FORFEIT_LOSS: 6;
+  ELIMINATED: 7;
+}
+
+export const TournamentGameResult: TournamentGameResultMap;
 

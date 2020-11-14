@@ -1,4 +1,4 @@
-package gameplay
+package gameplay_test
 
 import (
 	"context"
@@ -13,14 +13,13 @@ import (
 	"github.com/jinzhu/gorm"
 
 	"github.com/domino14/liwords/pkg/entity"
+	"github.com/domino14/liwords/pkg/gameplay"
 	pkgstats "github.com/domino14/liwords/pkg/stats"
 	"github.com/domino14/liwords/pkg/stores/stats"
 	"github.com/domino14/liwords/pkg/stores/user"
 	pkguser "github.com/domino14/liwords/pkg/user"
 	pb "github.com/domino14/liwords/rpc/api/proto/realtime"
-	"github.com/domino14/macondo/alphabet"
 	macondoconfig "github.com/domino14/macondo/config"
-	"github.com/domino14/macondo/gaddag"
 	macondopb "github.com/domino14/macondo/gen/api/proto/macondo"
 )
 
@@ -109,8 +108,6 @@ func recreateDB() {
 }
 
 func TestMain(m *testing.M) {
-	alphabet.CreateLetterDistributionCache()
-	gaddag.CreateGaddagCache()
 	code := m.Run()
 	os.Exit(code)
 }
@@ -141,8 +138,8 @@ func TestComputeGameStats(t *testing.T) {
 	err = json.Unmarshal(reqjson, req)
 	is.NoErr(err)
 
-	ctx := context.WithValue(context.Background(), ConfigCtxKey("config"), &DefaultConfig)
-	s, err := computeGameStats(ctx, hist, gameReq, variantKey(req), gameEndedEventObj, ustore, lstore)
+	ctx := context.WithValue(context.Background(), gameplay.ConfigCtxKey("config"), &DefaultConfig)
+	s, err := gameplay.ComputeGameStats(ctx, hist, gameReq, variantKey(req), gameEndedEventObj, ustore, lstore)
 	is.NoErr(err)
 	pkgstats.Finalize(s, lstore, []string{"m5ktbp4qPVTqaAhg6HJMsb"},
 		"qUQkST8CendYA3baHNoPjk", "xjCWug7EZtDxDHX5fRZTLo",
@@ -195,8 +192,8 @@ func TestComputeGameStats2(t *testing.T) {
 	err = json.Unmarshal(reqjson, req)
 	is.NoErr(err)
 
-	ctx := context.WithValue(context.Background(), ConfigCtxKey("config"), &DefaultConfig)
-	s, err := computeGameStats(ctx, hist, gameReq, variantKey(req), gameEndedEventObj, ustore, lstore)
+	ctx := context.WithValue(context.Background(), gameplay.ConfigCtxKey("config"), &DefaultConfig)
+	s, err := gameplay.ComputeGameStats(ctx, hist, gameReq, variantKey(req), gameEndedEventObj, ustore, lstore)
 	is.NoErr(err)
 
 	pkgstats.Finalize(s, lstore, []string{"ycj5de5gArFF3ap76JyiUA"},
@@ -245,8 +242,8 @@ func TestComputePlayerStats(t *testing.T) {
 	err = json.Unmarshal(reqjson, req)
 	is.NoErr(err)
 
-	ctx := context.WithValue(context.Background(), ConfigCtxKey("config"), &DefaultConfig)
-	_, err = computeGameStats(ctx, hist, gameReq, variantKey(req), gameEndedEventObj, ustore, lstore)
+	ctx := context.WithValue(context.Background(), gameplay.ConfigCtxKey("config"), &DefaultConfig)
+	_, err = gameplay.ComputeGameStats(ctx, hist, gameReq, variantKey(req), gameEndedEventObj, ustore, lstore)
 	is.NoErr(err)
 
 	p0id, p1id := hist.Players[0].UserId, hist.Players[1].UserId
@@ -307,8 +304,8 @@ func TestComputePlayerStatsMultipleGames(t *testing.T) {
 		err = json.Unmarshal(reqjson, req)
 		is.NoErr(err)
 
-		ctx := context.WithValue(context.Background(), ConfigCtxKey("config"), &DefaultConfig)
-		_, err = computeGameStats(ctx, hist, gameReq, variantKey(req), gameEndedEventObj, ustore, lstore)
+		ctx := context.WithValue(context.Background(), gameplay.ConfigCtxKey("config"), &DefaultConfig)
+		_, err = gameplay.ComputeGameStats(ctx, hist, gameReq, variantKey(req), gameEndedEventObj, ustore, lstore)
 		is.NoErr(err)
 	}
 

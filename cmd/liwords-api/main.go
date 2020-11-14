@@ -2,15 +2,17 @@ package main
 
 import (
 	"context"
+	"expvar"
 	_ "expvar"
+	"fmt"
 	"net/http"
 	"os"
 	"os/signal"
+	"runtime"
 	"strings"
 	"syscall"
 	"time"
 
-	"github.com/domino14/macondo/gaddag"
 	"github.com/gomodule/redigo/redis"
 
 	"github.com/domino14/liwords/pkg/apiserver"
@@ -21,8 +23,7 @@ import (
 	"github.com/domino14/liwords/pkg/stores/session"
 	"github.com/domino14/liwords/pkg/stores/soughtgame"
 	"github.com/domino14/liwords/pkg/stores/stats"
-
-	"github.com/domino14/macondo/alphabet"
+	"github.com/domino14/liwords/pkg/tournament"
 
 	"github.com/domino14/liwords/pkg/registration"
 
@@ -34,15 +35,15 @@ import (
 	"github.com/rs/zerolog/log"
 
 	"github.com/domino14/liwords/pkg/config"
+	tournamentstore "github.com/domino14/liwords/pkg/stores/tournament"
 	"github.com/domino14/liwords/pkg/stores/user"
 	pkguser "github.com/domino14/liwords/pkg/user"
 	configservice "github.com/domino14/liwords/rpc/api/proto/config_service"
 	gameservice "github.com/domino14/liwords/rpc/api/proto/game_service"
+	tournamentservice "github.com/domino14/liwords/rpc/api/proto/tournament_service"
 	userservice "github.com/domino14/liwords/rpc/api/proto/user_service"
 
-	_ "net/http/pprof"
 	"net/http/pprof"
-	/*"flag"*/
 )
 
 const (
@@ -71,23 +72,7 @@ func pingEndpoint(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte(`{"status":"copacetic"}`))
 }
 
-/*var cpuprofile = flag.String("cpuprofile", "cpu.prof", "write cpu profile to `file`")
-var memprofile = flag.String("memprofile", "mem.prof", "write memory profile to `file`")
-*/
 func main() {
-
-/*    flag.Parse()
-    if *cpuprofile != "" {
-        f, err := os.Create(*cpuprofile)
-        if err != nil {
-            panic("could not create CPU profile: ")
-        }
-        defer f.Close() // error handling omitted for example
-        if err := pprof.StartCPUProfile(f); err != nil {
-            panic("could not start CPU profile: ")
-        }
-        defer pprof.StopCPUProfile()
-    }*/
 
 	cfg := &config.Config{}
 	cfg.Load(os.Args[1:])
@@ -133,6 +118,13 @@ func main() {
 	}
 
 	gameStore := game.NewCache(tmpGameStore)
+
+	tmpTournamentStore, err := tournamentstore.NewDBStore(cfg, gameStore)
+	if err != nil {
+		panic(err)
+	}
+	tournamentStore := tournamentstore.NewCache(tmpTournamentStore)
+
 	soughtGameStore := soughtgame.NewMemoryStore()
 	configStore := cfgstore.NewRedisConfigStore(redisPool)
 	listStatStore, err := stats.NewListStatStore(cfg.DBConnString)
@@ -147,6 +139,7 @@ func main() {
 	autocompleteService := pkguser.NewAutocompleteService(userStore)
 	socializeService := pkguser.NewSocializeService(userStore)
 	configService := config.NewConfigService(configStore, userStore)
+	tournamentService := tournament.NewTournamentService(tournamentStore, userStore)
 
 	router.Handle("/ping", http.HandlerFunc(pingEndpoint))
 
@@ -171,19 +164,32 @@ func main() {
 	router.Handle(configservice.ConfigServicePathPrefix,
 		middlewares.Then(configservice.NewConfigServiceServer(configService, nil)))
 
-    router.Handle(
-        "/debug/pprof/goroutine", pprof.Handler("goroutine"),
-    )
-    router.Handle(
-        "/debug/pprof/heap", pprof.Handler("heap"),
-    )
-    router.Handle(
-        "/debug/vars", http.DefaultServeMux,
-    )
+	router.Handle(tournamentservice.TournamentServicePathPrefix,
+		middlewares.Then(tournamentservice.NewTournamentServiceServer(tournamentService, nil)))
 
-	// Create any caches
-	alphabet.CreateLetterDistributionCache()
-	gaddag.CreateGaddagCache()
+	router.Handle(
+		"/debug/pprof/goroutine", pprof.Handler("goroutine"),
+	)
+	router.Handle(
+		"/debug/pprof/heap", pprof.Handler("heap"),
+	)
+	router.Handle(
+		"/debug/vars", http.DefaultServeMux,
+	)
+
+	expvar.Publish("goroutines", expvar.Func(func() interface{} {
+		return fmt.Sprintf("%d", runtime.NumGoroutine())
+	}))
+
+	expvar.Publish("gameCacheSize", expvar.Func(func() interface{} {
+		ct, _ := gameStore.Count(context.Background())
+		return fmt.Sprintf("%d", ct)
+	}))
+
+	expvar.Publish("userCacheSize", expvar.Func(func() interface{} {
+		ct, _ := userStore.Count(context.Background())
+		return fmt.Sprintf("%d", ct)
+	}))
 
 	srv := &http.Server{
 		Addr:         cfg.ListenAddr,
@@ -195,12 +201,14 @@ func main() {
 	sig := make(chan os.Signal, 1)
 
 	presenceStore := user.NewRedisPresenceStore(redisPool)
+
 	// Handle bus.
 	pubsubBus, err := bus.NewBus(cfg, userStore, gameStore, soughtGameStore,
-		presenceStore, listStatStore, configStore, redisPool)
+		presenceStore, listStatStore, tournamentStore, configStore, redisPool)
 	if err != nil {
 		panic(err)
 	}
+	tournamentService.SetEventChannel(pubsubBus.TournamentEventChannel())
 
 	ctx, pubsubCancel := context.WithCancel(context.Background())
 
@@ -223,18 +231,8 @@ func main() {
 	if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 		log.Fatal().Err(err).Msg("")
 	}
+	// XXX: We need to wait until all goroutines end. Not just the pubsub but possibly the bot,
+	// etc.
 	<-idleConnsClosed
 	log.Info().Msg("server gracefully shutting down")
-
-/*    if *memprofile != "" {
-        f, err := os.Create(*memprofile)
-        if err != nil {
-            panic("could not create memory profile: ")
-        }
-        defer f.Close() // error handling omitted for example
-        runtime.GC() // get up-to-date statistics
-        if err := pprof.WriteHeapProfile(f); err != nil {
-            panic("could not write memory profile: ")
-        }
-    }*/
 }

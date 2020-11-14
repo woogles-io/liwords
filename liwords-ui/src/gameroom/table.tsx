@@ -1,10 +1,10 @@
 import React, { useCallback, useEffect, useMemo, useRef } from 'react';
-import { useMountedState } from '../utils/mounted';
 import { Card, message, Popconfirm } from 'antd';
 import { HomeOutlined } from '@ant-design/icons/lib';
 import axios from 'axios';
 
 import { Link, useHistory, useLocation, useParams } from 'react-router-dom';
+import { useMountedState } from '../utils/mounted';
 import { BoardPanel } from './board_panel';
 import { TopBar } from '../topbar/topbar';
 import { Chat } from '../chat/chat';
@@ -49,6 +49,7 @@ import { endGameMessageFromGameInfo } from '../store/end_of_game';
 import { singularCount } from '../utils/plural';
 import { Notepad, NotepadContextProvider } from './notepad';
 import { Analyzer, AnalyzerContextProvider } from './analyzer';
+import { TournamentMetadata } from '../tournament/tournament_info';
 
 type Props = {
   sendSocketMsg: (msg: Uint8Array) => void;
@@ -62,7 +63,7 @@ const defaultGameInfo = {
   variant: '',
   initial_time_seconds: 0,
   increment_seconds: 0,
-  tournament_name: '',
+  tournament_id: '',
   challenge_rule: 'VOID' as  // wtf typescript? is there a better way?
     | 'FIVE_POINT'
     | 'TEN_POINT'
@@ -103,6 +104,7 @@ const ManageWindowTitle = (props: {}) => {
 
   const myId = useMemo(() => {
     const myPlayerOrder = gameContext.uidToPlayerOrder[userID];
+    // eslint-disable-next-line no-nested-ternary
     return myPlayerOrder === 'p0' ? 0 : myPlayerOrder === 'p1' ? 1 : null;
   }, [gameContext.uidToPlayerOrder, userID]);
 
@@ -115,6 +117,7 @@ const ManageWindowTitle = (props: {}) => {
     }
     let first = true;
     for (let i = 0; i < gameContext.players.length; ++i) {
+      // eslint-disable-next-line no-continue
       if (gameContext.players[i].userID === userID) continue;
       if (first) {
         first = false;
@@ -173,6 +176,7 @@ export const Table = React.memo((props: Props) => {
   const { resetStore } = useResetStoreContext();
   const { pTimedOut, setPTimedOut } = useTimerStoreContext();
   const { username, userID } = loginState;
+  const [tournamentName, setTournamentName] = useState('');
 
   const { sendSocketMsg } = props;
   // const location = useLocation();
@@ -257,6 +261,25 @@ export const Table = React.memo((props: Props) => {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [gameID]);
+
+  useEffect(() => {
+    if (!gameInfo.tournament_id) {
+      return;
+    }
+    axios
+      .post<TournamentMetadata>(
+        toAPIUrl(
+          'tournament_service.TournamentService',
+          'GetTournamentMetadata'
+        ),
+        {
+          id: gameInfo.tournament_id,
+        }
+      )
+      .then((resp) => {
+        setTournamentName(resp.data.name);
+      });
+  }, [gameInfo.tournament_id]);
 
   useEffect(() => {
     BoopSounds.playSound('startgameSound');
@@ -474,14 +497,24 @@ export const Table = React.memo((props: Props) => {
   let ret = (
     <div className="game-container">
       <ManageWindowTitle />
-      <TopBar />
+      <TopBar tournamentID={gameInfo.tournament_id} />
       <div className="game-table">
         <div className="chat-area" id="left-sidebar">
           <Card className="left-menu">
-            <Link to="/" onClick={resetStore}>
-              <HomeOutlined />
-              Back to lobby
-            </Link>
+            {gameInfo.tournament_id ? (
+              <Link
+                to={`/tournament/${gameInfo.tournament_id}`}
+                onClick={resetStore}
+              >
+                <HomeOutlined />
+                Back to Tournament
+              </Link>
+            ) : (
+              <Link to="/" onClick={resetStore}>
+                <HomeOutlined />
+                Back to lobby
+              </Link>
+            )}
           </Card>
           <Chat
             chatEntities={chat}
@@ -514,6 +547,7 @@ export const Table = React.memo((props: Props) => {
             sendSocketMsg={props.sendSocketMsg}
             gameDone={gameDone}
             playerMeta={gameInfo.players}
+            tournamentID={gameInfo.tournament_id}
             lexicon={gameInfo.lexicon}
           />
           <StreakWidget recentGames={streakGameInfo} />
@@ -521,7 +555,7 @@ export const Table = React.memo((props: Props) => {
         <div className="data-area" id="right-sidebar">
           {/* There are two player cards, css hides one of them. */}
           <PlayerCards gameMeta={gameInfo} playerMeta={gameInfo.players} />
-          <GameInfo meta={gameInfo} />
+          <GameInfo meta={gameInfo} tournamentName={tournamentName} />
           <Pool
             pool={examinableGameContext?.pool}
             currentRack={rack || ''}

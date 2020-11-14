@@ -6,6 +6,7 @@ export type LoginState = {
   loggedIn: boolean;
   connID: string;
   connectedToSocket: boolean;
+  path: string;
 };
 
 export type AuthInfo = {

@@ -44,6 +44,7 @@ func (b *Bus) instantiateAndStartGame(ctx context.Context, accUser *entity.User,
 		Str("seek-conn", sg.ConnID()).
 		Str("accepting-conn", acceptingConnID).Msg("game-request-accepted")
 	assignedFirst := -1
+	var tournamentID string
 	if sg.Type() == entity.TypeMatch {
 		if sg.MatchRequest.RematchFor != "" {
 			// Assign firsts to be the the other player.
@@ -66,10 +67,11 @@ func (b *Bus) instantiateAndStartGame(ctx context.Context, accUser *entity.User,
 				assignedFirst = 0 // accUser should go first
 			}
 		}
+		tournamentID = sg.MatchRequest.TournamentId
 	}
 
 	g, err := gameplay.InstantiateNewGame(ctx, b.gameStore, b.config,
-		[2]*entity.User{accUser, reqUser}, assignedFirst, gameReq)
+		[2]*entity.User{accUser, reqUser}, assignedFirst, gameReq, tournamentID)
 	if err != nil {
 		return err
 	}
@@ -152,7 +154,7 @@ func (b *Bus) handleBotMove(ctx context.Context, g *entity.Game) {
 			timeRemaining := g.TimeRemaining(onTurn)
 
 			m := game.MoveFromEvent(r.Move, g.Alphabet(), g.Board())
-			err = gameplay.PlayMove(ctx, g, b.gameStore, b.userStore, b.listStatStore, userID, onTurn, timeRemaining, m)
+			err = gameplay.PlayMove(ctx, g, b.gameStore, b.userStore, b.listStatStore, b.tournamentStore, userID, onTurn, timeRemaining, m)
 			if err != nil {
 				log.Err(err).Msg("bot-cant-move-play-error")
 				return
@@ -226,7 +228,7 @@ func (b *Bus) gameRefresher(ctx context.Context, gameID string) (*entity.EventWr
 }
 
 func (b *Bus) adjudicateGames(ctx context.Context) error {
-	gs, err := b.gameStore.ListActive(ctx)
+	gs, err := b.gameStore.ListActive(ctx, "")
 
 	if err != nil {
 		return err
@@ -247,7 +249,7 @@ func (b *Bus) adjudicateGames(ctx context.Context) error {
 		if started && timeRanOut {
 			log.Debug().Str("gid", g.Id).Msg("adjudicating-time-ran-out")
 			err = gameplay.TimedOut(ctx, b.gameStore, b.userStore,
-				b.listStatStore, entGame.Game.PlayerIDOnTurn(), g.Id)
+				b.listStatStore, b.tournamentStore, entGame.Game.PlayerIDOnTurn(), g.Id)
 			log.Err(err).Msg("adjudicating-after-gameplay-timed-out")
 		} else if !started && now.Sub(entGame.CreatedAt) > CancelAfter {
 			log.Debug().Str("gid", g.Id).
