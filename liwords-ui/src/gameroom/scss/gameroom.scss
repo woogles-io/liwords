@@ -1105,6 +1105,9 @@ p.rune {
         .suggestions {
           width: calc(100% - 60px);
           overflow-y: auto;
+          table {
+            align-self: flex-start;
+          }
         }
         button {
           margin-right: 12px;
