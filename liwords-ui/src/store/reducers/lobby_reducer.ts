@@ -74,7 +74,7 @@ const toEndReason = (r: 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7) => {
     2: 'STANDARD',
     3: 'CONSECUTIVE_ZEROES',
     4: 'RESIGNED',
-    5: 'ABANDONED',
+    5: 'ABORTED',
     6: 'TRIPLE_CHALLENGE',
     7: 'CANCELLED',
   }[r];
