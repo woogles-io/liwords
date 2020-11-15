@@ -1,6 +1,4 @@
-/* eslint-disable jsx-a11y/click-events-have-key-events */
-/* eslint-disable jsx-a11y/no-static-element-interactions */
-import React, { useCallback, useEffect, useMemo, useRef } from 'react';
+import React, { useCallback, useEffect, useMemo } from 'react';
 import { Card, Input, Tabs } from 'antd';
 import { useMountedState } from '../utils/mounted';
 import { ChatEntity } from './chat_entity';
@@ -33,24 +31,13 @@ export const Chat = React.memo((props: Props) => {
   const [selectedChatTab, setSelectedChatTab] = useState('CHAT');
   const [presenceVisible, setPresenceVisible] = useState(false);
   const presenceCount = Object.keys(props.presences).length;
-  const el = useRef<HTMLDivElement>(null);
+  // We cannot useRef because we need to awoken effects relying on the element.
+  // For simplicity, the setter is used directly as a ref callback.
+  const [
+    tabContainerElement,
+    setTabContainerElement,
+  ] = useState<HTMLDivElement | null>(null);
   const propsSendChat = useMemo(() => props.sendChat, [props.sendChat]);
-  const onKeyDown = useCallback(
-    (e: React.KeyboardEvent<HTMLInputElement>) => {
-      if (e.key === 'Enter') {
-        e.preventDefault();
-        // Send if non-trivial
-        const msg = curMsg.trim();
-        setCurMsg('');
-
-        if (msg === '') {
-          return;
-        }
-        propsSendChat(msg);
-      }
-    },
-    [curMsg, propsSendChat]
-  );
 
   const onChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     setCurMsg(e.target.value);
@@ -61,15 +48,76 @@ export const Chat = React.memo((props: Props) => {
       [],
     [props.presences]
   );
+
+  // Chat auto-scrolls when the last entity is visible.
+  const [hasUnreadChat, setHasUnreadChat] = useState(false);
+  const chatTab = selectedChatTab === 'CHAT' ? tabContainerElement : null;
+  const [chatAutoScroll, setChatAutoScroll] = useState(true);
+  const doChatAutoScroll = useCallback(() => {
+    if (chatAutoScroll && chatTab) {
+      const desiredScrollTop = chatTab.scrollHeight - chatTab.clientHeight;
+      // Doing this conditionally may help browser performance.
+      // (Not sure.)
+      if (chatTab.scrollTop !== desiredScrollTop) {
+        chatTab.scrollTop = desiredScrollTop;
+      }
+    }
+  }, [chatAutoScroll, chatTab]);
+
   useEffect(() => {
-    const tabContainer = el.current;
-    if (tabContainer && selectedChatTab === 'CHAT') {
-      if (tabContainer.scrollHeight > tabContainer.clientHeight) {
+    if (chatTab) {
+      // This code needs comments.
+      // - Why do we need a hasScroll at all?
+      // - What will set hasScroll back to false?
+      if (chatTab.scrollHeight > chatTab.clientHeight) {
         setHasScroll(true);
       }
-      tabContainer.scrollTop = tabContainer.scrollHeight || 0;
+      doChatAutoScroll();
     }
-  }, [props.chatEntities, selectedChatTab]);
+    // Not sure if props.chatEntities should be a dependency.
+  }, [chatTab, doChatAutoScroll, props.chatEntities]);
+
+  useEffect(() => {
+    if (chatTab) {
+      // chatEntities changed. Assume it is because something was added.
+      // Mark as new if the newest things are unseen.
+      setHasUnreadChat(
+        chatTab.scrollTop < chatTab.scrollHeight - chatTab.clientHeight
+      );
+    }
+  }, [chatTab, props.chatEntities]);
+
+  // When window is shrunk, auto-scroll may be enabled. This is one-way.
+  // Hiding bookmarks bar or downloaded files bar should keep it enabled.
+  const enableChatAutoScroll = useCallback(() => {
+    if (
+      chatTab &&
+      chatTab.scrollTop >= chatTab.scrollHeight - chatTab.clientHeight
+    ) {
+      setChatAutoScroll(true);
+    }
+    // When window is shrunk, keep the bottom entity instead of the top.
+    doChatAutoScroll();
+  }, [chatTab, doChatAutoScroll]);
+  useEffect(() => {
+    window.addEventListener('resize', enableChatAutoScroll);
+    return () => {
+      window.removeEventListener('resize', enableChatAutoScroll);
+    };
+  }, [enableChatAutoScroll]);
+
+  // When user is scrolling, auto-scroll may be enabled or disabled.
+  // This handler is set through onScroll.
+  const handleChatScrolled = useCallback(() => {
+    if (chatTab) {
+      if (chatTab.scrollTop >= chatTab.scrollHeight - chatTab.clientHeight) {
+        setChatAutoScroll(true);
+        setHasUnreadChat(false);
+      } else {
+        setChatAutoScroll(false);
+      }
+    }
+  }, [chatTab]);
 
   const entities = useMemo(
     () =>
@@ -104,6 +152,26 @@ export const Chat = React.memo((props: Props) => {
     setPresenceVisible(true);
   }, []);
 
+  const onKeyDown = useCallback(
+    (e: React.KeyboardEvent<HTMLInputElement>) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        // Send if non-trivial
+        const msg = curMsg.trim();
+        setCurMsg('');
+
+        if (msg === '') {
+          return;
+        }
+        propsSendChat(msg);
+        // This may not be a good idea. User will miss unread messages.
+        setChatAutoScroll(true);
+        doChatAutoScroll();
+      }
+    },
+    [curMsg, doChatAutoScroll, propsSendChat]
+  );
+
   return (
     <Card className="chat">
       <Tabs defaultActiveKey="CHAT" centered onTabClick={handleTabClick}>
@@ -117,7 +185,10 @@ export const Chat = React.memo((props: Props) => {
         </TabPane>
         <TabPane tab="Chat" key="CHAT">
           <div className={`chat-context${hasScroll ? ' scrolling' : ''}`}>
-            <p>{props.description}</p>
+            <p>
+              {props.description}
+              {hasUnreadChat && ' •'}
+            </p>
             {presenceCount ? (
               <>
                 <p className="presence-count">
@@ -140,7 +211,11 @@ export const Chat = React.memo((props: Props) => {
               </>
             ) : null}
           </div>
-          <div className="entities" ref={el}>
+          <div
+            className="entities"
+            ref={setTabContainerElement}
+            onScroll={handleChatScrolled}
+          >
             {entities}
           </div>
           <Input
