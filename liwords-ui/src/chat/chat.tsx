@@ -187,7 +187,7 @@ export const Chat = React.memo((props: Props) => {
           <div className={`chat-context${hasScroll ? ' scrolling' : ''}`}>
             <p>
               {props.description}
-              {hasUnreadChat && '*'}
+              {hasUnreadChat && ' •'}
             </p>
             {presenceCount ? (
               <>
