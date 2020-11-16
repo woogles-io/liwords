@@ -25,15 +25,32 @@ message TournamentMetadataRequest {
   string description = 3;
 }
 
+message SingleRoundControls {
+  int32 pairing_method = 1;
+  int32 first_method = 2;
+  int32 games_per_round = 3;
+  int32 round = 4;
+  int32 factor = 5;
+  int32 max_repeats = 6;
+  bool allow_over_max_repeats = 7;
+  int32 repeat_weight = 8;
+  int32 win_difference_weight = 9;
+}
+
+message SingleRoundControlsRequest {
+  string id = 1;
+  string division = 2;
+  int32 round = 3;
+  SingleRoundControls round_controls = 4;
+}
+
 message TournamentControlsRequest {
   string id = 1;
   string division = 2;
   liwords.GameRequest game_request = 3;
-  repeated int32 pairing_methods = 4;
-  repeated int32 first_methods = 5;
-  int32 number_of_rounds = 6;
-  repeated int32 games_per_round = 7;
-  google.protobuf.Timestamp start_time = 8;
+  repeated SingleRoundControls round_controls = 4;
+  int32 number_of_rounds = 5;
+  google.protobuf.Timestamp start_time = 6;
 }
 
 message TournamentPerson {
@@ -112,6 +129,8 @@ service TournamentService {
   rpc GetTournamentMetadata(GetTournamentMetadataRequest)
       returns(TournamentMetadataResponse);
   rpc SetTournamentMetadata(TournamentMetadataRequest)
+      returns(TournamentResponse);
+  rpc SetSingleRoundControls(SingleRoundControlsRequest)
       returns(TournamentResponse);
   rpc SetTournamentControls(TournamentControlsRequest)
       returns(TournamentResponse);

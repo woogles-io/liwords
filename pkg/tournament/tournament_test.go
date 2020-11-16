@@ -105,13 +105,46 @@ func tournamentStore(dbURL string, gs gameplay.GameStore) (*config.Config, tourn
 	return cfg, tournamentStore
 }
 
+func makeRoundControls() []*entity.RoundControls {
+	return []*entity.RoundControls{&entity.RoundControls{FirstMethod: entity.AutomaticFirst,
+		PairingMethod:       entity.RoundRobin,
+		GamesPerRound:       1,
+		Factor:              1,
+		MaxRepeats:          1,
+		AllowOverMaxRepeats: true,
+		RepeatWeight:        1,
+		WinDifferenceWeight: 1},
+		&entity.RoundControls{FirstMethod: entity.AutomaticFirst,
+			PairingMethod:       entity.RoundRobin,
+			GamesPerRound:       1,
+			Factor:              1,
+			MaxRepeats:          1,
+			AllowOverMaxRepeats: true,
+			RepeatWeight:        1,
+			WinDifferenceWeight: 1},
+		&entity.RoundControls{FirstMethod: entity.AutomaticFirst,
+			PairingMethod:       entity.RoundRobin,
+			GamesPerRound:       1,
+			Factor:              1,
+			MaxRepeats:          1,
+			AllowOverMaxRepeats: true,
+			RepeatWeight:        1,
+			WinDifferenceWeight: 1},
+		&entity.RoundControls{FirstMethod: entity.AutomaticFirst,
+			PairingMethod:       entity.KingOfTheHill,
+			GamesPerRound:       1,
+			Factor:              1,
+			MaxRepeats:          1,
+			AllowOverMaxRepeats: true,
+			RepeatWeight:        1,
+			WinDifferenceWeight: 1}}
+}
+
 func makeControls() *entity.TournamentControls {
 	return &entity.TournamentControls{
 		GameRequest:    gameReq,
-		PairingMethods: []entity.PairingMethod{entity.RoundRobin, entity.RoundRobin, entity.RoundRobin, entity.KingOfTheHill},
-		FirstMethods:   []entity.FirstMethod{entity.AutomaticFirst, entity.AutomaticFirst, entity.AutomaticFirst, entity.AutomaticFirst},
+		RoundControls:  makeRoundControls(),
 		NumberOfRounds: 4,
-		GamesPerRound:  []int{1, 1, 1, 1},
 		Type:           entity.ClassicTournamentType,
 		StartTime:      time.Now()}
 }

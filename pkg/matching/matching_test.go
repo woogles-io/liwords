@@ -1,4 +1,4 @@
-package autopair
+package matching
 
 import (
 	"github.com/matryer/is"

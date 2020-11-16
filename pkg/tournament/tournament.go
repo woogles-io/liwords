@@ -205,6 +205,36 @@ func SetTournamentMetadata(ctx context.Context, ts TournamentStore, id string, n
 	return ts.Set(ctx, t)
 }
 
+func SetSingleRoundControls(ctx context.Context, ts TournamentStore, id string, division string, round int, controls *entity.RoundControls) error {
+
+	t, err := ts.Get(ctx, id)
+	if err != nil {
+		return err
+	}
+
+	t.Lock()
+	defer t.Unlock()
+
+	divisionObject, ok := t.Divisions[division]
+
+	if !ok {
+		return errors.New(fmt.Sprintf("Division %s does not exist.", division))
+	}
+
+	if t.IsStarted {
+		return errors.New("Cannot change tournament controls after it has started.")
+	}
+
+	divisionObject.Controls.RoundControls[round] = controls
+
+	err = createDivisionManager(t, division)
+	if err != nil {
+		return err
+	}
+
+	return ts.Set(ctx, t)
+}
+
 func SetTournamentControls(ctx context.Context, ts TournamentStore, id string, division string, controls *entity.TournamentControls) error {
 
 	t, err := ts.Get(ctx, id)
@@ -635,15 +665,11 @@ func createDivisionManager(t *entity.Tournament, division string) error {
 	// otherwise, destroy the old one.
 	if len(divisionObject.Players.Persons) > 1 &&
 		divisionObject.Controls.NumberOfRounds > 0 &&
-		divisionObject.Controls.GamesPerRound != nil &&
-		divisionObject.Controls.PairingMethods != nil &&
-		divisionObject.Controls.FirstMethods != nil {
+		divisionObject.Controls.RoundControls != nil {
 		rankedPlayers := rankPlayers(divisionObject.Players)
 		d, err := NewClassicDivision(rankedPlayers,
 			divisionObject.Controls.NumberOfRounds,
-			divisionObject.Controls.GamesPerRound,
-			divisionObject.Controls.PairingMethods,
-			divisionObject.Controls.FirstMethods)
+			divisionObject.Controls.RoundControls)
 		if err != nil {
 			return err
 		}
