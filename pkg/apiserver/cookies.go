@@ -55,6 +55,8 @@ type ctxkey string
 const rwkey ctxkey = "responsewriter"
 const sesskey ctxkey = "session"
 
+const RenewCookieTimer = time.Hour * 24 * 14
+
 // AuthenticationMiddlewareGenerator generates auth middleware that looks up
 // a session ID
 func AuthenticationMiddlewareGenerator(sessionStore sessions.SessionStore) (mw func(http.Handler) http.Handler) {
@@ -85,6 +87,7 @@ func AuthenticationMiddlewareGenerator(sessionStore sessions.SessionStore) (mw f
 					Name:     "sessionid",
 					Value:    oldSessionID.Value,
 					Expires:  time.Now().Add(-100 * time.Hour),
+					MaxAge:   -1,
 					HttpOnly: true,
 					Path:     "/",
 				})
@@ -92,6 +95,7 @@ func AuthenticationMiddlewareGenerator(sessionStore sessions.SessionStore) (mw f
 					Name:     "sessionid",
 					Value:    oldSessionID.Value,
 					Expires:  time.Now().Add(-100 * time.Hour),
+					MaxAge:   -1,
 					HttpOnly: true,
 					Path:     "/twirp/user_service.AuthenticationService",
 				})
@@ -118,7 +122,10 @@ func AuthenticationMiddlewareGenerator(sessionStore sessions.SessionStore) (mw f
 					return
 				}
 			}
-
+			if time.Until(session.Expiry) < RenewCookieTimer {
+				err := sessionStore.ExtendExpiry(ctx, session)
+				log.Err(err).Msg("extending-session")
+			}
 			ctx = context.WithValue(ctx, sesskey, session)
 			r = r.WithContext(ctx)
 			// printContextInternals(r.Context(), true)

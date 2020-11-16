@@ -40,6 +40,7 @@ type Session struct {
 	ID       string
 	Username string
 	UserUUID string
+	Expiry   time.Time
 }
 
 // Profile is a user profile. It might not be defined for anonymous users.

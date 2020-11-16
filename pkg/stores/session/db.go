@@ -58,6 +58,7 @@ func (s *DBStore) Get(ctx context.Context, sessionID string) (*entity.Session, e
 		ID:       u.UUID, // the session ID
 		Username: data.Username,
 		UserUUID: data.UserUUID,
+		Expiry:   u.ExpiresAt,
 	}, nil
 }
 
@@ -102,4 +103,11 @@ func (s *DBStore) Delete(ctx context.Context, sess *entity.Session) error {
 	}
 	// We want to delete from db_sessions, not delete from sessions
 	return s.db.Delete(&dbSession{UUID: sess.ID}).Error
+}
+
+// ExtendExpiry extends the expiry of the given cookie.
+func (s *DBStore) ExtendExpiry(ctx context.Context, sess *entity.Session) error {
+	result := s.db.Table("db_sessions").Where("uuid = ?", sess.ID).Updates(
+		map[string]interface{}{"expires_at": time.Now().Add(entity.SessionExpiration)})
+	return result.Error
 }
