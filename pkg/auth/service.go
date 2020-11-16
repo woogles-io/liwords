@@ -8,6 +8,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/twitchtv/twirp"
+
 	"github.com/domino14/liwords/pkg/emailer"
 	"github.com/domino14/liwords/pkg/sessions"
 
@@ -44,6 +46,8 @@ Love,
 The Woogles.io team
 `
 
+var errPasswordTooShort = errors.New("your password is too short, use 8 or more characters")
+
 type AuthenticationService struct {
 	userStore    user.Store
 	sessionStore sessions.SessionStore
@@ -65,11 +69,14 @@ func (as *AuthenticationService) Login(ctx context.Context, r *pb.UserLoginReque
 	user, err := as.userStore.Get(ctx, r.Username)
 	if err != nil {
 		log.Err(err).Msg("getting-user")
-		return nil, err
+		return nil, twirp.NewError(twirp.Unauthenticated, "bad login")
 	}
 	matches, err := ComparePassword(r.Password, user.Password)
+	if err != nil {
+		return nil, twirp.InternalErrorWith(err)
+	}
 	if !matches {
-		return nil, errors.New("password is incorrect")
+		return nil, twirp.NewError(twirp.Unauthenticated, "password incorrect")
 	}
 	sess, err := as.sessionStore.New(ctx, user)
 	if err != nil {
@@ -80,7 +87,7 @@ func (as *AuthenticationService) Login(ctx context.Context, r *pb.UserLoginReque
 
 	log.Info().Str("value", sess.ID).Msg("setting-cookie")
 	if err != nil {
-		return nil, err
+		return nil, twirp.InternalErrorWith(err)
 	}
 	return &pb.LoginResponse{}, nil
 }
@@ -90,11 +97,11 @@ func (as *AuthenticationService) Login(ctx context.Context, r *pb.UserLoginReque
 func (as *AuthenticationService) Logout(ctx context.Context, r *pb.UserLogoutRequest) (*pb.LogoutResponse, error) {
 	sess, err := apiserver.GetSession(ctx)
 	if err != nil {
-		return nil, err
+		return nil, twirp.NewError(twirp.InvalidArgument, err.Error())
 	}
 	err = as.sessionStore.Delete(ctx, sess)
 	if err != nil {
-		return nil, err
+		return nil, twirp.InternalErrorWith(err)
 	}
 	// Delete the cookie as well.
 	err = apiserver.SetCookie(ctx, &http.Cookie{
@@ -106,7 +113,7 @@ func (as *AuthenticationService) Logout(ctx context.Context, r *pb.UserLogoutReq
 		Expires:  time.Now().Add(-100 * time.Hour),
 	})
 	if err != nil {
-		return nil, err
+		return nil, twirp.InternalErrorWith(err)
 	}
 
 	return &pb.LogoutResponse{}, nil
@@ -127,7 +134,7 @@ func (as *AuthenticationService) GetSocketToken(ctx context.Context, r *pb.Socke
 		})
 		tokenString, err := token.SignedString([]byte(as.secretKey))
 		if err != nil {
-			return nil, err
+			return nil, twirp.InternalErrorWith(err)
 		}
 		return &pb.SocketTokenResponse{
 			Token:      tokenString,
@@ -144,7 +151,7 @@ func (as *AuthenticationService) GetSocketToken(ctx context.Context, r *pb.Socke
 	})
 	tokenString, err := token.SignedString([]byte(as.secretKey))
 	if err != nil {
-		return nil, err
+		return nil, twirp.InternalErrorWith(err)
 	}
 	return &pb.SocketTokenResponse{
 		Token:      tokenString,
@@ -156,7 +163,7 @@ func (as *AuthenticationService) GetSocketToken(ctx context.Context, r *pb.Socke
 func (as *AuthenticationService) ResetPasswordStep1(ctx context.Context, r *pb.ResetPasswordRequestStep1) (*pb.ResetPasswordResponse, error) {
 	u, err := as.userStore.GetByEmail(ctx, r.Email)
 	if err != nil {
-		return nil, err
+		return nil, twirp.NewError(twirp.Unauthenticated, err.Error())
 	}
 
 	// Create a token for the reset
@@ -166,14 +173,14 @@ func (as *AuthenticationService) ResetPasswordStep1(ctx context.Context, r *pb.R
 	})
 	tokenString, err := token.SignedString([]byte(as.secretKey))
 	if err != nil {
-		return nil, err
+		return nil, twirp.InternalErrorWith(err)
 	}
 	resetURL := "https://woogles.io/password/new?t=" + tokenString
 
 	id, err := emailer.SendSimpleMessage(as.mailgunKey, r.Email, "Password reset for Woogles.io",
 		fmt.Sprintf(ResetPasswordTemplate, resetURL, u.Username))
 	if err != nil {
-		return nil, err
+		return nil, twirp.InternalErrorWith(err)
 	}
 	log.Info().Str("id", id).Str("email", r.Email).Msg("sent-password-reset")
 
@@ -194,49 +201,54 @@ func (as *AuthenticationService) ResetPasswordStep2(ctx context.Context, r *pb.R
 		return []byte(as.secretKey), nil
 	})
 	if err != nil {
-		return nil, err
+		return nil, twirp.NewError(twirp.InvalidArgument, err.Error())
 	}
 	if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
 		uuid, ok := claims["uuid"].(string)
 		if !ok {
-			return nil, errors.New("wrongly formatted uuid in token")
+			return nil, twirp.NewError(twirp.Malformed, "wrongly formatted uuid in token")
 		}
 
 		config := NewPasswordConfig(1, 64*1024, 4, 32)
+		if len(r.Password) < 8 {
+			return nil, twirp.NewError(twirp.InvalidArgument, errPasswordTooShort.Error())
+		}
 		// XXX: do not hardcode, put in a config file
 		hashPass, err := GeneratePassword(config, r.Password)
 		if err != nil {
-			return nil, err
+			return nil, twirp.InternalErrorWith(err)
 		}
 		err = as.userStore.SetPassword(ctx, uuid, hashPass)
 		if err != nil {
-			return nil, err
+			return nil, twirp.InternalErrorWith(err)
 		}
 		return &pb.ResetPasswordResponse{}, nil
 	}
 
-	return nil, fmt.Errorf("reset code is invalid; please try again")
+	return nil, twirp.InternalErrorWith(errors.New("reset code is invalid; please try again"))
 }
 
 func (as *AuthenticationService) ChangePassword(ctx context.Context, r *pb.ChangePasswordRequest) (*pb.ChangePasswordResponse, error) {
 	// This view requires authentication.
 	sess, err := apiserver.GetSession(ctx)
 	if err != nil {
-		return nil, err
+		return nil, twirp.NewError(twirp.InvalidArgument, err.Error())
 	}
 
 	user, err := as.userStore.Get(ctx, sess.Username)
 	if err != nil {
 		log.Err(err).Msg("getting-user")
-		return nil, err
+		// The username should maybe not be in the session? We can't change
+		// usernames easily.
+		return nil, twirp.InternalErrorWith(err)
 	}
 	matches, err := ComparePassword(r.OldPassword, user.Password)
 	if !matches {
-		return nil, errors.New("your password is incorrect")
+		return nil, twirp.NewError(twirp.InvalidArgument, "your password is incorrect")
 	}
 
 	if len(r.NewPassword) < 8 {
-		return nil, errors.New("your password is too short, use 8 or more characters")
+		return nil, twirp.NewError(twirp.InvalidArgument, errPasswordTooShort.Error())
 	}
 
 	// time, memory, threads, keyLen for argon2:
@@ -244,11 +256,11 @@ func (as *AuthenticationService) ChangePassword(ctx context.Context, r *pb.Chang
 	// XXX: do not hardcode, put in a config file
 	hashPass, err := GeneratePassword(config, r.NewPassword)
 	if err != nil {
-		return nil, err
+		return nil, twirp.InternalErrorWith(err)
 	}
 	err = as.userStore.SetPassword(ctx, user.UUID, hashPass)
 	if err != nil {
-		return nil, err
+		return nil, twirp.InternalErrorWith(err)
 	}
 	return &pb.ChangePasswordResponse{}, nil
 }
