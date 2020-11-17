@@ -7,6 +7,22 @@ export const Announcements = React.memo((props: AnnouncementsProps) => {
   // Todo: admin to add these and a backend to store and retrieve them
   const announcements = [
     {
+      title: 'Live Tournament - 37th Annual Wisconsin Dells Tourney',
+      body: (
+        <a
+          href="https://woogles.io/tournament/dells2020"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          <p>
+            Eight games on Saturday; top 2 in each lexicon go on to a 5-game
+            match on Sunday. If you are registered, click here to attend the
+            tournament.
+          </p>
+        </a>
+      ),
+    },
+    {
       title: 'Upcoming Tournament - The WETO',
       body: (
         <a
