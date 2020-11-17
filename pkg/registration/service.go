@@ -6,6 +6,7 @@ import (
 
 	"github.com/domino14/liwords/pkg/user"
 	"github.com/rs/zerolog"
+	"github.com/twitchtv/twirp"
 
 	pb "github.com/domino14/liwords/rpc/api/proto/user_service"
 )
@@ -32,7 +33,7 @@ func (rs *RegistrationService) Register(ctx context.Context, r *pb.UserRegistrat
 	err := RegisterUser(ctx, r.Username, r.Password, r.Email, rs.userStore,
 		r.RegistrationCode == codebot)
 	if err != nil {
-		return nil, err
+		return nil, twirp.NewError(twirp.InvalidArgument, err.Error())
 	}
 	return &pb.RegistrationResponse{}, nil
 }

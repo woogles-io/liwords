@@ -3,6 +3,8 @@ package user
 import (
 	"context"
 
+	"github.com/twitchtv/twirp"
+
 	pb "github.com/domino14/liwords/rpc/api/proto/user_service"
 )
 
@@ -17,7 +19,7 @@ func NewAutocompleteService(u Store) *AutocompleteService {
 func (as *AutocompleteService) GetCompletion(ctx context.Context, req *pb.UsernameSearchRequest) (*pb.UsernameSearchResponse, error) {
 	usernames, err := as.userStore.UsernamesByPrefix(ctx, req.Prefix)
 	if err != nil {
-		return nil, err
+		return nil, twirp.InternalErrorWith(err)
 	}
 	return &pb.UsernameSearchResponse{
 		Usernames: usernames,

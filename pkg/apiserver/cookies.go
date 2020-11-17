@@ -58,7 +58,7 @@ const sesskey ctxkey = "session"
 const RenewCookieTimer = time.Hour * 24 * 14
 
 // AuthenticationMiddlewareGenerator generates auth middleware that looks up
-// a session ID
+// a session ID, and attaches a Session to the request context (at `sesskey`)
 func AuthenticationMiddlewareGenerator(sessionStore sessions.SessionStore) (mw func(http.Handler) http.Handler) {
 	mw = func(h http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

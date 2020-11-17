@@ -97,7 +97,7 @@ func (as *AuthenticationService) Login(ctx context.Context, r *pb.UserLoginReque
 func (as *AuthenticationService) Logout(ctx context.Context, r *pb.UserLogoutRequest) (*pb.LogoutResponse, error) {
 	sess, err := apiserver.GetSession(ctx)
 	if err != nil {
-		return nil, twirp.NewError(twirp.InvalidArgument, err.Error())
+		return nil, err
 	}
 	err = as.sessionStore.Delete(ctx, sess)
 	if err != nil {
@@ -232,7 +232,7 @@ func (as *AuthenticationService) ChangePassword(ctx context.Context, r *pb.Chang
 	// This view requires authentication.
 	sess, err := apiserver.GetSession(ctx)
 	if err != nil {
-		return nil, twirp.NewError(twirp.InvalidArgument, err.Error())
+		return nil, err
 	}
 
 	user, err := as.userStore.Get(ctx, sess.Username)

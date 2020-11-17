@@ -2,9 +2,9 @@ package gameplay
 
 import (
 	"context"
-	"errors"
 
 	"github.com/domino14/macondo/gcgio"
+	"github.com/twitchtv/twirp"
 
 	"github.com/domino14/liwords/pkg/user"
 	pb "github.com/domino14/liwords/rpc/api/proto/game_service"
@@ -35,7 +35,7 @@ func (gs *GameService) GetMetadata(ctx context.Context, req *pb.GameInfoRequest)
 func (gs *GameService) GetRematchStreak(ctx context.Context, req *pb.RematchStreakRequest) (*pb.GameInfoResponses, error) {
 	resp, err := gs.gameStore.GetRematchStreak(ctx, req.OriginalRequestId)
 	if err != nil {
-		return nil, err
+		return nil, twirp.InternalErrorWith(err)
 	}
 	return resp, nil
 }
@@ -45,7 +45,7 @@ func (gs *GameService) GetRematchStreak(ctx context.Context, req *pb.RematchStre
 func (gs *GameService) GetRecentGames(ctx context.Context, req *pb.RecentGamesRequest) (*pb.GameInfoResponses, error) {
 	resp, err := gs.gameStore.GetRecentGames(ctx, req.Username, int(req.NumGames), int(req.Offset))
 	if err != nil {
-		return nil, err
+		return nil, twirp.NewError(twirp.InvalidArgument, err.Error())
 	}
 	return resp, nil
 }
@@ -54,14 +54,14 @@ func (gs *GameService) GetRecentGames(ctx context.Context, req *pb.RecentGamesRe
 func (gs *GameService) GetGCG(ctx context.Context, req *pb.GCGRequest) (*pb.GCGResponse, error) {
 	entGame, err := gs.gameStore.Get(ctx, req.GameId)
 	if err != nil {
-		return nil, err
+		return nil, twirp.NewError(twirp.InvalidArgument, err.Error())
 	}
 	if entGame.Playing() != macondopb.PlayState_GAME_OVER {
-		return nil, errors.New("please wait until the game is over to download GCG")
+		return nil, twirp.NewError(twirp.InvalidArgument, "please wait until the game is over to download GCG")
 	}
 	gcg, err := gcgio.GameHistoryToGCG(entGame.History(), true)
 	if err != nil {
-		return nil, err
+		return nil, twirp.NewError(twirp.InvalidArgument, err.Error())
 	}
 	return &pb.GCGResponse{Gcg: gcg}, nil
 }
