@@ -1,9 +1,13 @@
+/* eslint-disable global-require */
 import { Unrace } from '../utils/unrace';
 
 class Booper {
   private audio: HTMLAudioElement;
+
   private unrace = new Unrace();
+
   private times = 0;
+
   private unlocked = false;
 
   constructor(readonly soundName: string, src: string) {
@@ -55,6 +59,7 @@ for (const booper of [
   new Booper('startgameSound', require('../assets/startgame.mp3')),
   new Booper('endgameSound', require('../assets/endgame.mp3')),
   new Booper('woofSound', require('../assets/woof.mp3')),
+  new Booper('receiveMsgSound', require('../assets/receivechat.mp3')),
 ]) {
   playableSounds[booper.soundName] = booper;
 }

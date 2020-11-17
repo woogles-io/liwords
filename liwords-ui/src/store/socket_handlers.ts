@@ -333,6 +333,9 @@ export const useOnSocketMsg = () => {
               timestamp: cm.getTimestamp(),
               senderId: cm.getUserId(),
             });
+            if (cm.getUsername() !== loginState.username) {
+              BoopSounds.playSound('receiveMsgSound');
+            }
             break;
           }
 
