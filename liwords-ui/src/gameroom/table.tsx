@@ -322,7 +322,8 @@ export const Table = React.memo((props: Props) => {
   useEffect(() => {
     if (pTimedOut === undefined) return;
     // Otherwise, player timed out. This will only send once.
-    // Observers also send the time out, to clean up noticed abandoned games.
+    // Send the time out if we're either of both players that are in the game.
+    if (isObserver) return;
 
     let timedout = '';
 
@@ -335,7 +336,6 @@ export const Table = React.memo((props: Props) => {
     const to = new TimedOut();
     to.setGameId(gameID);
     to.setUserId(timedout);
-    console.log('sending timeout to socket');
     sendSocketMsg(
       encodeToSocketFmt(MessageType.TIMED_OUT, to.serializeBinary())
     );
