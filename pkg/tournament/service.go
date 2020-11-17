@@ -160,6 +160,7 @@ func (ts *TournamentService) RemovePlayers(ctx context.Context, req *pb.Tourname
 	}
 	return &pb.TournamentResponse{}, nil
 }
+
 func (ts *TournamentService) SetPairing(ctx context.Context, req *pb.TournamentPairingRequest) (*pb.TournamentResponse, error) {
 	err := SetPairing(ctx, ts.tournamentStore, req.Id, req.Division, req.PlayerOneId, req.PlayerTwoId, int(req.Round))
 	if err != nil {
@@ -186,6 +187,14 @@ func (ts *TournamentService) SetResult(ctx context.Context, req *pb.TournamentRe
 		req.Amendment,
 		nil,
 		ts.eventChannel)
+	if err != nil {
+		return nil, err
+	}
+	return &pb.TournamentResponse{}, nil
+}
+
+func (ts *TournamentService) PairRound(ctx context.Context, req *pb.PairRoundRequest) (*pb.TournamentResponse, error) {
+	err := PairRound(ctx, ts.tournamentStore, req.Id, req.Division, int(req.Round))
 	if err != nil {
 		return nil, err
 	}

@@ -69,7 +69,7 @@ func NewClassicDivision(players []string,
 		PlayerIndexMap: playerIndexMap,
 		RoundControls:  roundControls}
 	if roundControls[0].PairingMethod != entity.Manual {
-		err := pairClassicRound(t, 0)
+		err := t.PairRound(0)
 		if err != nil {
 			return nil, err
 		}
@@ -78,7 +78,7 @@ func NewClassicDivision(players []string,
 	for i := 1; i < numberOfRounds; i++ {
 		pm := roundControls[i].PairingMethod
 		if pm == entity.RoundRobin || pm == entity.Random {
-			err := pairClassicRound(t, i)
+			err := t.PairRound(i)
 			if err != nil {
 				return nil, err
 			}
@@ -256,9 +256,110 @@ func (t *ClassicDivision) SubmitResult(round int,
 		t.RoundControls[round+1].PairingMethod != entity.RoundRobin &&
 		t.RoundControls[round+1].PairingMethod != entity.Random &&
 		t.RoundControls[round+1].PairingMethod != entity.Manual {
-		pairClassicRound(t, round+1)
+		err = t.PairRound(round + 1)
+		if err != nil {
+			return err
+		}
 	}
 
+	return nil
+}
+
+func (t *ClassicDivision) PairRound(round int) error {
+	if round < 0 || round >= len(t.Matrix) {
+		return errors.New(fmt.Sprintf("Round number out of range: %d\n", round))
+	}
+	roundPairings := t.Matrix[round]
+	pairingMethod := t.RoundControls[round].PairingMethod
+	// This automatic pairing could be the result of an
+	// amendment. Undo all the pairings so byes can be
+	// properly assigned (bye assignment checks for nil pairing).
+	for i := 0; i < len(roundPairings); i++ {
+		roundPairings[i].Pairing = nil
+	}
+
+	standingsRound := round
+	if standingsRound == 0 {
+		standingsRound = 1
+	}
+
+	standings, err := t.GetStandings(standingsRound - 1)
+	if err != nil {
+		return err
+	}
+
+	poolMembers := []*entity.PoolMember{}
+
+	// Round Robin must have the same ordering for each round
+	playerOrder := []string{}
+	if pairingMethod == entity.RoundRobin {
+		playerOrder = t.Players
+	} else {
+		for i := 0; i < len(standings); i++ {
+			playerOrder = append(playerOrder, standings[i].Player)
+		}
+	}
+
+	for i := 0; i < len(playerOrder); i++ {
+		pm := &entity.PoolMember{Id: playerOrder[i]}
+		// Wins do not matter for RoundRobin pairings
+		if pairingMethod != entity.RoundRobin {
+			pm.Wins = standings[i].Wins
+		} else {
+			pm.Wins = 0
+		}
+		poolMembers = append(poolMembers, pm)
+	}
+
+	repeats, err := getRepeats(t, round-1)
+	if err != nil {
+		return err
+	}
+
+	upm := &entity.UnpairedPoolMembers{RoundControls: t.RoundControls[round],
+		PoolMembers: poolMembers,
+		Repeats:     repeats}
+
+	pairings, err := pair.Pair(upm)
+
+	if err != nil {
+		return err
+	}
+
+	l := len(pairings)
+
+	if l != len(roundPairings) {
+		return errors.New("Pair package did not return the correct number of pairings")
+	}
+
+	for i := 0; i < l; i++ {
+		// Player order might be a different order than the players in roundPairings
+		playerIndex := t.PlayerIndexMap[playerOrder[i]]
+
+		if roundPairings[playerIndex].Pairing == nil {
+
+			var opponentIndex int
+			if pairings[i] < 0 {
+				opponentIndex = playerIndex
+			} else if pairings[i] >= l {
+				return errors.New(fmt.Sprintf("Invalid pairing for round %d: %d", round, pairings[i]))
+			} else {
+				opponentIndex = t.PlayerIndexMap[playerOrder[pairings[i]]]
+			}
+
+			playerName := t.Players[playerIndex]
+			opponentName := t.Players[opponentIndex]
+
+			var newPairing *entity.Pairing
+			if pairingMethod == entity.Elimination && round > 0 && i >= l/twoPower(round) {
+				newPairing = newEliminatedPairing(playerName, opponentName)
+			} else {
+				newPairing = newClassicPairing(t, playerName, opponentName, round)
+			}
+			roundPairings[playerIndex].Pairing = newPairing
+			roundPairings[opponentIndex].Pairing = newPairing
+		}
+	}
 	return nil
 }
 
@@ -478,97 +579,6 @@ func newPlayerIndexMap(players []string) map[string]int {
 		m[player] = i
 	}
 	return m
-}
-
-func pairClassicRound(t *ClassicDivision, round int) error {
-	if round < 0 || round >= len(t.Matrix) {
-		return errors.New(fmt.Sprintf("Round number out of range: %d\n", round))
-	}
-	roundPairings := t.Matrix[round]
-	pairingMethod := t.RoundControls[round].PairingMethod
-	// This automatic pairing could be the result of an
-	// amendment. Undo all the pairings so byes can be
-	// properly assigned (bye assignment checks for nil pairing).
-	for i := 0; i < len(roundPairings); i++ {
-		roundPairings[i].Pairing = nil
-	}
-
-	standingsRound := round
-	if standingsRound == 0 {
-		standingsRound = 1
-	}
-
-	standings, err := t.GetStandings(standingsRound - 1)
-	if err != nil {
-		return err
-	}
-
-	poolMembers := []*entity.PoolMember{}
-
-	// Round Robin must have the same ordering for each round
-	playerOrder := []string{}
-	if pairingMethod == entity.RoundRobin {
-		playerOrder = t.Players
-	} else {
-		for i := 0; i < len(standings); i++ {
-			playerOrder = append(playerOrder, standings[i].Player)
-		}
-	}
-
-	for i := 0; i < len(playerOrder); i++ {
-		poolMembers = append(poolMembers, &entity.PoolMember{Id: playerOrder[i]})
-	}
-
-	repeats, err := getRepeats(t, round-1)
-	if err != nil {
-		return err
-	}
-
-	upm := &entity.UnpairedPoolMembers{RoundControls: t.RoundControls[round],
-		PoolMembers: poolMembers,
-		Repeats:     repeats}
-
-	pairings, err := pair.Pair(upm)
-
-	if err != nil {
-		return err
-	}
-
-	l := len(pairings)
-
-	if l != len(roundPairings) {
-		return errors.New("Pair package did not return the correct number of pairings")
-	}
-
-	for i := 0; i < l; i++ {
-		// Player order might be a different order than the players in roundPairings
-		playerIndex := t.PlayerIndexMap[playerOrder[i]]
-
-		if roundPairings[playerIndex].Pairing == nil {
-
-			var opponentIndex int
-			if pairings[i] < 0 {
-				opponentIndex = playerIndex
-			} else if pairings[i] >= l {
-				return errors.New(fmt.Sprintf("Invalid pairing for round %d: %d", round, pairings[i]))
-			} else {
-				opponentIndex = t.PlayerIndexMap[playerOrder[pairings[i]]]
-			}
-
-			playerName := t.Players[playerIndex]
-			opponentName := t.Players[opponentIndex]
-
-			var newPairing *entity.Pairing
-			if pairingMethod == entity.Elimination && round > 0 && i >= l/twoPower(round) {
-				newPairing = newEliminatedPairing(playerName, opponentName)
-			} else {
-				newPairing = newClassicPairing(t, playerName, opponentName, round)
-			}
-			roundPairings[playerIndex].Pairing = newPairing
-			roundPairings[opponentIndex].Pairing = newPairing
-		}
-	}
-	return nil
 }
 
 func getRepeats(t *ClassicDivision, round int) (map[string]int, error) {

@@ -489,6 +489,34 @@ func StartRound(ctx context.Context, ts TournamentStore, id string, division str
 	return ts.Set(ctx, t)
 }
 
+func PairRound(ctx context.Context, ts TournamentStore, id string, division string, round int) error {
+	t, err := ts.Get(ctx, id)
+	if err != nil {
+		return err
+	}
+
+	t.Lock()
+	defer t.Unlock()
+
+	divisionObject, ok := t.Divisions[division]
+
+	if !ok {
+		return errors.New(fmt.Sprintf("Division %s does not exist.", division))
+	}
+
+	if !t.IsStarted {
+		return errors.New("Cannot pair a round before the tournament has started.")
+	}
+
+	err = divisionObject.DivisionManager.PairRound(round)
+
+	if err != nil {
+		return err
+	}
+
+	return ts.Set(ctx, t)
+}
+
 func IsStarted(ctx context.Context, ts TournamentStore, id string) (bool, error) {
 	t, err := ts.Get(ctx, id)
 	if err != nil {

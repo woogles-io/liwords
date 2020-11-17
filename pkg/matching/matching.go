@@ -39,7 +39,7 @@ func NewEdge(i int, j int, w int) *Edge {
 	return &Edge{i: i, j: j, w: w}
 }
 
-func MinWeightMatching(edges []*Edge, maxCardinality bool) ([]int, error) {
+func MinWeightMatching(edges []*Edge, maxCardinality bool) ([]int, int, error) {
 	maxEdgeWeight := -1
 	for _, edge := range edges {
 		if edge.w > maxEdgeWeight {
@@ -52,7 +52,7 @@ func MinWeightMatching(edges []*Edge, maxCardinality bool) ([]int, error) {
 	return maxWeightMatching(edges, maxCardinality)
 }
 
-func maxWeightMatching(edges []*Edge, maxCardinality bool) ([]int, error) {
+func maxWeightMatching(edges []*Edge, maxCardinality bool) ([]int, int, error) {
 
 	/*
 	   Compute a maximum-weighted matching in the general undirected
@@ -84,7 +84,7 @@ func maxWeightMatching(edges []*Edge, maxCardinality bool) ([]int, error) {
 	maxEdgeWeight := -1
 	for _, edge := range edges {
 		if !(edge.i >= 0 && edge.j >= 0 && edge.i != edge.j) {
-			return nil, errors.New("ERROR 1")
+			return nil, 0, errors.New("ERROR 1")
 		}
 		if edge.i >= numberOfVertexes {
 			numberOfVertexes = edge.i + 1
@@ -118,7 +118,7 @@ func maxWeightMatching(edges []*Edge, maxCardinality bool) ([]int, error) {
 	neighbendLength := len(neighbend)
 	for k, edge := range edges {
 		if !(edge.i < neighbendLength && edge.j < neighbendLength) {
-			return nil, errors.New("ERROR 2")
+			return nil, 0, errors.New("ERROR 2")
 		}
 		neighbend[edge.i] = append(neighbend[edge.i], 2*k+1)
 		neighbend[edge.j] = append(neighbend[edge.j], 2*k)
@@ -279,9 +279,20 @@ func maxWeightMatching(edges []*Edge, maxCardinality bool) ([]int, error) {
 
 	err := wm.solveMaxWeightMatching()
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
-	return wm.mate, nil
+	return wm.mate, wm.weightSolution(), nil
+}
+
+func (wm *MaxWeightMatching) weightSolution() int {
+	sum := 0
+	for _, edge := range wm.edges {
+		if wm.mate[edge.i] == edge.j &&
+			wm.mate[edge.j] == edge.i {
+			sum += edge.w
+		}
+	}
+	return sum
 }
 
 func (wm *MaxWeightMatching) slack(k int) (int, error) {

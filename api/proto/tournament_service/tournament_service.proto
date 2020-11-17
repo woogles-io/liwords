@@ -53,6 +53,12 @@ message TournamentControlsRequest {
   google.protobuf.Timestamp start_time = 6;
 }
 
+message PairRoundRequest {
+  string id = 1;
+  string division = 2;
+  int32 round = 3;
+}
+
 message TournamentPerson {
   string person_id = 1;
   int32 person_int = 2;
@@ -130,6 +136,7 @@ service TournamentService {
       returns(TournamentMetadataResponse);
   rpc SetTournamentMetadata(TournamentMetadataRequest)
       returns(TournamentResponse);
+  rpc PairRound(PairRoundRequest) returns(TournamentResponse);
   rpc SetSingleRoundControls(SingleRoundControlsRequest)
       returns(TournamentResponse);
   rpc SetTournamentControls(TournamentControlsRequest)

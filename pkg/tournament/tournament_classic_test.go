@@ -351,7 +351,106 @@ func TestClassicDivisionKingOfTheHill(t *testing.T) {
 	is.True(tc.Matrix[0][l].Pairing.Players[0] == lastPlayer)
 	is.True(tc.Matrix[0][l].Pairing.Players[1] == lastPlayer)
 }
+func TestClassicDivisionFactor(t *testing.T) {
+	// This test is used to ensure that factor
+	// pairings work correctly
 
+	is := is.New(t)
+
+	roundControls := []*entity.RoundControls{}
+
+	for i := 0; i < 2; i++ {
+		roundControls = append(roundControls, &entity.RoundControls{FirstMethod: entity.ManualFirst,
+			PairingMethod:       entity.Factor,
+			GamesPerRound:       defaultGamesPerRound,
+			Round:               i,
+			Factor:              i + 2,
+			MaxRepeats:          1,
+			AllowOverMaxRepeats: true,
+			RepeatWeight:        1,
+			WinDifferenceWeight: 1})
+	}
+	tc, err := NewClassicDivision([]string{"1", "2", "3", "4", "5", "6", "7", "8"}, 2, roundControls)
+	is.NoErr(err)
+	is.True(tc != nil)
+
+	is.NoErr(validatePairings(tc, 0))
+
+	err = tc.SubmitResult(0, "1", "3", 900, 500,
+		realtime.TournamentGameResult_WIN,
+		realtime.TournamentGameResult_LOSS,
+		realtime.GameEndReason_STANDARD, true, 0)
+	is.NoErr(err)
+
+	err = tc.SubmitResult(0, "2", "4", 800, 500,
+		realtime.TournamentGameResult_WIN,
+		realtime.TournamentGameResult_LOSS,
+		realtime.GameEndReason_STANDARD, true, 0)
+	is.NoErr(err)
+
+	err = tc.SubmitResult(0, "5", "6", 700, 500,
+		realtime.TournamentGameResult_WIN,
+		realtime.TournamentGameResult_LOSS,
+		realtime.GameEndReason_STANDARD, true, 0)
+	is.NoErr(err)
+
+	// This is an invalid factor for this number of
+	// players and an error should be returned
+	tc.RoundControls[1].Factor = 5
+
+	err = tc.SubmitResult(0, "8", "7", 600, 500,
+		realtime.TournamentGameResult_WIN,
+		realtime.TournamentGameResult_LOSS,
+		realtime.GameEndReason_STANDARD, true, 0)
+	is.True(err != nil)
+
+	// Get the standings for round 1
+	standings, err := tc.GetStandings(0)
+	is.NoErr(err)
+
+	expectedstandings := []*entity.Standing{&entity.Standing{Player: "1", Wins: 1, Losses: 0, Draws: 0, Spread: 400},
+		&entity.Standing{Player: "2", Wins: 1, Losses: 0, Draws: 0, Spread: 300},
+		&entity.Standing{Player: "5", Wins: 1, Losses: 0, Draws: 0, Spread: 200},
+		&entity.Standing{Player: "8", Wins: 1, Losses: 0, Draws: 0, Spread: 100},
+		&entity.Standing{Player: "7", Wins: 0, Losses: 1, Draws: 0, Spread: -100},
+		&entity.Standing{Player: "6", Wins: 0, Losses: 1, Draws: 0, Spread: -200},
+		&entity.Standing{Player: "4", Wins: 0, Losses: 1, Draws: 0, Spread: -300},
+		&entity.Standing{Player: "3", Wins: 0, Losses: 1, Draws: 0, Spread: -400},
+	}
+
+	is.NoErr(equalStandings(expectedstandings, standings))
+
+	tc.RoundControls[1].Factor = 3
+
+	err = tc.PairRound(1)
+	is.NoErr(err)
+
+	// Standings should be: 1, 2, 5, 8, 7, 6, 4, 3
+
+	err = tc.SubmitResult(1, "1", "8", 400, 500,
+		realtime.TournamentGameResult_LOSS,
+		realtime.TournamentGameResult_WIN,
+		realtime.GameEndReason_STANDARD, true, 0)
+	is.NoErr(err)
+
+	err = tc.SubmitResult(1, "2", "7", 400, 500,
+		realtime.TournamentGameResult_LOSS,
+		realtime.TournamentGameResult_WIN,
+		realtime.GameEndReason_STANDARD, true, 0)
+	is.NoErr(err)
+
+	err = tc.SubmitResult(1, "5", "6", 400, 500,
+		realtime.TournamentGameResult_LOSS,
+		realtime.TournamentGameResult_WIN,
+		realtime.GameEndReason_STANDARD, true, 0)
+	is.NoErr(err)
+
+	err = tc.SubmitResult(1, "4", "3", 400, 500,
+		realtime.TournamentGameResult_LOSS,
+		realtime.TournamentGameResult_WIN,
+		realtime.GameEndReason_STANDARD, true, 0)
+	is.NoErr(err)
+}
 func TestClassicDivisionRoundRobin(t *testing.T) {
 	// This test is used to ensure that round robin
 	// pairings work correctly

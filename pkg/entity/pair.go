@@ -1,5 +1,7 @@
 package entity
 
+const ProhibitiveWeight int = 1000000000
+
 type PairingMethod int
 
 const (
@@ -25,6 +27,7 @@ type PoolMember struct {
 	RatingRange [2]int
 	Blocking    []string
 	Misses      int
+	Wins        int
 }
 
 type UnpairedPoolMembers struct {

@@ -126,11 +126,11 @@ func pairFactor(members *entity.UnpairedPoolMembers) ([]int, error) {
 	numberOfPlayers := len(pairings)
 	for i := 0; i < members.RoundControls.Factor; i += 1 {
 		factor := i + members.RoundControls.Factor
-		if factor > numberOfPlayers/2 {
+		if factor >= numberOfPlayers {
 			return nil, errors.New(fmt.Sprintf("Cannot pair with factor %d on %d players", factor, numberOfPlayers))
 		}
-		pairings[i] = i + members.RoundControls.Factor
-		pairings[i+members.RoundControls.Factor] = i
+		pairings[i] = factor
+		pairings[factor] = i
 	}
 
 	return pairings, nil
@@ -151,7 +151,12 @@ func minWeightMatching(members *entity.UnpairedPoolMembers) ([]int, error) {
 		}
 	}
 
-	pairings, err := matching.MinWeightMatching(edges, true)
+	pairings, weight, err := matching.MinWeightMatching(edges, true)
+
+	if weight >= entity.ProhibitiveWeight {
+		return nil, errors.New("Prohibitive weight reached. Pairings are not possible with these settings.")
+	}
+
 	if err != nil {
 		// Log error here, be sure to record edges
 		return nil, err
@@ -205,7 +210,17 @@ func weigh(members *entity.UnpairedPoolMembers, i int, j int) (int, error) {
 }
 
 func weighSwiss(members *entity.UnpairedPoolMembers, i int, j int) int {
-	return 0
+	p1 := members.PoolMembers[i]
+	p2 := members.PoolMembers[j]
+	winDiffWeight := utilities.Abs(p1.Wins-p2.Wins) * members.RoundControls.WinDifferenceWeight
+	repeatsOverMax := utilities.Max(0, members.Repeats[GetRepeatKey(p1.Id, p2.Id)]-members.RoundControls.MaxRepeats)
+	var repeatWeight int
+	if members.RoundControls.AllowOverMaxRepeats {
+		repeatWeight = repeatsOverMax * members.RoundControls.RepeatWeight
+	} else {
+		repeatWeight = entity.ProhibitiveWeight
+	}
+	return winDiffWeight + repeatWeight
 }
 
 func weighQuickpair(members *entity.UnpairedPoolMembers, i int, j int) int {
