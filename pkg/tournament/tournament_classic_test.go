@@ -351,6 +351,7 @@ func TestClassicDivisionKingOfTheHill(t *testing.T) {
 	is.True(tc.Matrix[0][l].Pairing.Players[0] == lastPlayer)
 	is.True(tc.Matrix[0][l].Pairing.Players[1] == lastPlayer)
 }
+
 func TestClassicDivisionFactor(t *testing.T) {
 	// This test is used to ensure that factor
 	// pairings work correctly
@@ -361,15 +362,16 @@ func TestClassicDivisionFactor(t *testing.T) {
 
 	for i := 0; i < 2; i++ {
 		roundControls = append(roundControls, &entity.RoundControls{FirstMethod: entity.ManualFirst,
-			PairingMethod:       entity.Factor,
-			GamesPerRound:       defaultGamesPerRound,
-			Round:               i,
-			Factor:              i + 2,
-			MaxRepeats:          1,
-			AllowOverMaxRepeats: true,
-			RepeatWeight:        1,
-			WinDifferenceWeight: 1})
+			PairingMethod:               entity.Factor,
+			GamesPerRound:               defaultGamesPerRound,
+			Round:                       i,
+			Factor:                      i + 2,
+			MaxRepeats:                  1,
+			AllowOverMaxRepeats:         true,
+			RepeatRelativeWeight:        1,
+			WinDifferenceRelativeWeight: 1})
 	}
+
 	tc, err := NewClassicDivision([]string{"1", "2", "3", "4", "5", "6", "7", "8"}, 2, roundControls)
 	is.NoErr(err)
 	is.True(tc != nil)
@@ -451,6 +453,242 @@ func TestClassicDivisionFactor(t *testing.T) {
 		realtime.GameEndReason_STANDARD, true, 0)
 	is.NoErr(err)
 }
+
+func TestClassicDivisionSwiss(t *testing.T) {
+	// This test is used to ensure that round robin
+	// pairings work correctly
+
+	is := is.New(t)
+
+	roundControls := []*entity.RoundControls{}
+	numberOfRounds := 7
+
+	for i := 0; i < numberOfRounds; i++ {
+		roundControls = append(roundControls, &entity.RoundControls{FirstMethod: entity.ManualFirst,
+			PairingMethod:               entity.Swiss,
+			GamesPerRound:               defaultGamesPerRound,
+			Round:                       i,
+			Factor:                      1,
+			MaxRepeats:                  0,
+			AllowOverMaxRepeats:         true,
+			RepeatRelativeWeight:        1,
+			WinDifferenceRelativeWeight: 1})
+	}
+
+	roundControls[0].PairingMethod = entity.KingOfTheHill
+
+	tc, err := NewClassicDivision(playerStrings, numberOfRounds, roundControls)
+	is.NoErr(err)
+	is.True(tc != nil)
+
+	is.NoErr(validatePairings(tc, 0))
+
+	player1 := playerStrings[0]
+	player2 := playerStrings[1]
+	player3 := playerStrings[2]
+	player4 := playerStrings[3]
+
+	err = tc.SubmitResult(0, player1, player2, 900, 500,
+		realtime.TournamentGameResult_WIN,
+		realtime.TournamentGameResult_LOSS,
+		realtime.GameEndReason_STANDARD, true, 0)
+	is.NoErr(err)
+
+	err = tc.SubmitResult(0, player3, player4, 800, 500,
+		realtime.TournamentGameResult_WIN,
+		realtime.TournamentGameResult_LOSS,
+		realtime.GameEndReason_STANDARD, true, 0)
+	is.NoErr(err)
+
+	err = tc.SubmitResult(1, player1, player3, 900, 500,
+		realtime.TournamentGameResult_WIN,
+		realtime.TournamentGameResult_LOSS,
+		realtime.GameEndReason_STANDARD, true, 0)
+	is.NoErr(err)
+
+	err = tc.SubmitResult(1, player2, player4, 800, 500,
+		realtime.TournamentGameResult_WIN,
+		realtime.TournamentGameResult_LOSS,
+		realtime.GameEndReason_STANDARD, true, 0)
+	is.NoErr(err)
+
+	// Since repeats only have a weight of 1,
+	// player1 and player4 should be playing each other
+
+	err = tc.SubmitResult(2, player1, player4, 900, 500,
+		realtime.TournamentGameResult_WIN,
+		realtime.TournamentGameResult_LOSS,
+		realtime.GameEndReason_STANDARD, true, 0)
+	is.NoErr(err)
+
+	err = tc.SubmitResult(2, player2, player3, 800, 500,
+		realtime.TournamentGameResult_WIN,
+		realtime.TournamentGameResult_LOSS,
+		realtime.GameEndReason_STANDARD, true, 0)
+	is.NoErr(err)
+
+	repeats, err := getRepeats(tc, 2)
+
+	// Everyone should have played each other once at this point
+	for _, v := range repeats {
+		is.True(v == 1)
+	}
+
+	err = tc.SubmitResult(3, player2, player1, 900, 500,
+		realtime.TournamentGameResult_WIN,
+		realtime.TournamentGameResult_LOSS,
+		realtime.GameEndReason_STANDARD, true, 0)
+	is.NoErr(err)
+
+	// Use factor pairings to force deterministic pairings
+	tc.RoundControls[4].PairingMethod = entity.Factor
+	tc.RoundControls[4].Factor = 2
+
+	err = tc.SubmitResult(3, player3, player4, 800, 700,
+		realtime.TournamentGameResult_WIN,
+		realtime.TournamentGameResult_LOSS,
+		realtime.GameEndReason_STANDARD, true, 0)
+	is.NoErr(err)
+
+	// Get the standings for round 4
+	standings, err := tc.GetStandings(3)
+	is.NoErr(err)
+
+	expectedstandings := []*entity.Standing{&entity.Standing{Player: player1, Wins: 3, Losses: 1, Draws: 0, Spread: 800},
+		&entity.Standing{Player: player2, Wins: 3, Losses: 1, Draws: 0, Spread: 600},
+		&entity.Standing{Player: player3, Wins: 2, Losses: 2, Draws: 0, Spread: -300},
+		&entity.Standing{Player: player4, Wins: 0, Losses: 4, Draws: 0, Spread: -1100},
+	}
+
+	is.NoErr(equalStandings(expectedstandings, standings))
+
+	err = tc.SubmitResult(4, player1, player3, 900, 800,
+		realtime.TournamentGameResult_WIN,
+		realtime.TournamentGameResult_LOSS,
+		realtime.GameEndReason_STANDARD, true, 0)
+	is.NoErr(err)
+
+	// Test that using the prohibitive weight will
+	// lead to the correct pairings
+	tc.RoundControls[6].AllowOverMaxRepeats = false
+	tc.RoundControls[6].MaxRepeats = 2
+
+	err = tc.SubmitResult(4, player4, player2, 800, 500,
+		realtime.TournamentGameResult_WIN,
+		realtime.TournamentGameResult_LOSS,
+		realtime.GameEndReason_STANDARD, true, 0)
+	is.NoErr(err)
+
+	// Get the standings for round 5
+	standings, err = tc.GetStandings(4)
+	is.NoErr(err)
+
+	expectedstandings = []*entity.Standing{&entity.Standing{Player: player1, Wins: 4, Losses: 1, Draws: 0, Spread: 900},
+		&entity.Standing{Player: player2, Wins: 3, Losses: 2, Draws: 0, Spread: 300},
+		&entity.Standing{Player: player3, Wins: 2, Losses: 3, Draws: 0, Spread: -400},
+		&entity.Standing{Player: player4, Wins: 1, Losses: 4, Draws: 0, Spread: -800},
+	}
+
+	is.NoErr(equalStandings(expectedstandings, standings))
+
+	err = tc.SubmitResult(5, player1, player4, 900, 500,
+		realtime.TournamentGameResult_WIN,
+		realtime.TournamentGameResult_LOSS,
+		realtime.GameEndReason_STANDARD, true, 0)
+	is.NoErr(err)
+
+	// Once the next round is paired upon the completion
+	// of round 6, an error will occur since there is
+	// no possible pairing that does not give 3 repeats.
+	tc.RoundControls[6].AllowOverMaxRepeats = false
+	tc.RoundControls[6].MaxRepeats = 2
+
+	err = tc.SubmitResult(5, player2, player3, 800, 500,
+		realtime.TournamentGameResult_WIN,
+		realtime.TournamentGameResult_LOSS,
+		realtime.GameEndReason_STANDARD, true, 0)
+	is.True(fmt.Sprintf("%s", err) == "Prohibitive weight reached. Pairings are not possible with these settings.")
+
+	tc.RoundControls[6].AllowOverMaxRepeats = true
+
+	err = tc.PairRound(6)
+	is.NoErr(err)
+
+	roundControls = []*entity.RoundControls{}
+	numberOfRounds = 3
+	// This test onlyworks for values of the form 2 ^ n
+	numberOfPlayers := 32
+
+	for i := 0; i < numberOfRounds; i++ {
+		roundControls = append(roundControls, &entity.RoundControls{FirstMethod: entity.ManualFirst,
+			PairingMethod:               entity.KingOfTheHill,
+			GamesPerRound:               defaultGamesPerRound,
+			Round:                       i,
+			Factor:                      1,
+			MaxRepeats:                  0,
+			AllowOverMaxRepeats:         true,
+			RepeatRelativeWeight:        1,
+			WinDifferenceRelativeWeight: 1})
+	}
+
+	swissPlayers := []string{}
+	for i := 1; i <= numberOfPlayers; i++ {
+		swissPlayers = append(swissPlayers, fmt.Sprintf("%d", i))
+	}
+
+	roundControls[2].PairingMethod = entity.Swiss
+
+	tc, err = NewClassicDivision(swissPlayers, numberOfRounds, roundControls)
+	is.NoErr(err)
+	is.True(tc != nil)
+
+	for i := 0; i < numberOfPlayers; i += 2 {
+		err = tc.SubmitResult(0, swissPlayers[i], swissPlayers[i+1], (numberOfPlayers*100)-i*100, 0,
+			realtime.TournamentGameResult_WIN,
+			realtime.TournamentGameResult_LOSS,
+			realtime.GameEndReason_STANDARD, true, 0)
+	}
+
+	for i := 0; i < numberOfPlayers; i += 4 {
+		err = tc.SubmitResult(1, swissPlayers[i], swissPlayers[i+2], (numberOfPlayers*10)-i*10, 0,
+			realtime.TournamentGameResult_WIN,
+			realtime.TournamentGameResult_LOSS,
+			realtime.GameEndReason_STANDARD, true, 0)
+	}
+	for i := 1; i < numberOfPlayers; i += 4 {
+		err = tc.SubmitResult(1, swissPlayers[i], swissPlayers[i+2], 0, (numberOfPlayers*10)-i*10,
+			realtime.TournamentGameResult_LOSS,
+			realtime.TournamentGameResult_WIN,
+			realtime.GameEndReason_STANDARD, true, 0)
+	}
+
+	// Get the standings for round 2
+	standings, err = tc.GetStandings(1)
+	is.NoErr(err)
+
+	for i := 0; i < len(tc.Matrix[2]); i++ {
+		pri := tc.Matrix[2][i]
+		playerOne := pri.Pairing.Players[0]
+		playerTwo := pri.Pairing.Players[1]
+		var playerOneIndex int
+		var playerTwoIndex int
+		for i := 0; i < len(standings); i++ {
+			standingsPlayer := standings[i].Player
+			if playerOne == standingsPlayer {
+				playerOneIndex = i
+			} else if playerTwo == standingsPlayer {
+				playerTwoIndex = i
+			}
+		}
+		// Ensure players only played someone in with the same record
+		playerOneStandings := standings[playerOneIndex]
+		playerTwoStandings := standings[playerTwoIndex]
+		is.True(playerOneStandings.Wins == playerTwoStandings.Wins)
+		is.True(playerOneStandings.Losses == playerTwoStandings.Losses)
+		is.True(playerOneStandings.Draws == playerTwoStandings.Draws)
+	}
+}
+
 func TestClassicDivisionRoundRobin(t *testing.T) {
 	// This test is used to ensure that round robin
 	// pairings work correctly
@@ -458,20 +696,21 @@ func TestClassicDivisionRoundRobin(t *testing.T) {
 	is := is.New(t)
 
 	roundControls := []*entity.RoundControls{}
+	numberOfRounds := 6
 
-	for i := 0; i < 6; i++ {
+	for i := 0; i < numberOfRounds; i++ {
 		roundControls = append(roundControls, &entity.RoundControls{FirstMethod: entity.ManualFirst,
-			PairingMethod:       entity.RoundRobin,
-			GamesPerRound:       defaultGamesPerRound,
-			Round:               i,
-			Factor:              1,
-			MaxRepeats:          1,
-			AllowOverMaxRepeats: true,
-			RepeatWeight:        1,
-			WinDifferenceWeight: 1})
+			PairingMethod:               entity.RoundRobin,
+			GamesPerRound:               defaultGamesPerRound,
+			Round:                       i,
+			Factor:                      1,
+			MaxRepeats:                  1,
+			AllowOverMaxRepeats:         true,
+			RepeatRelativeWeight:        1,
+			WinDifferenceRelativeWeight: 1})
 	}
 
-	tc, err := NewClassicDivision(playerStrings, 6, roundControls)
+	tc, err := NewClassicDivision(playerStrings, numberOfRounds, roundControls)
 
 	is.NoErr(err)
 	is.True(tc != nil)
@@ -507,14 +746,14 @@ func TestClassicDivisionRoundRobin(t *testing.T) {
 
 	for i := 0; i < 4; i++ {
 		roundControls = append(roundControls, &entity.RoundControls{FirstMethod: entity.ManualFirst,
-			PairingMethod:       entity.RoundRobin,
-			GamesPerRound:       defaultGamesPerRound,
-			Round:               i + 6,
-			Factor:              1,
-			MaxRepeats:          1,
-			AllowOverMaxRepeats: true,
-			RepeatWeight:        1,
-			WinDifferenceWeight: 1})
+			PairingMethod:               entity.RoundRobin,
+			GamesPerRound:               defaultGamesPerRound,
+			Round:                       i + 6,
+			Factor:                      1,
+			MaxRepeats:                  1,
+			AllowOverMaxRepeats:         true,
+			RepeatRelativeWeight:        1,
+			WinDifferenceRelativeWeight: 1})
 	}
 
 	tc, err = NewClassicDivision(playersOddStrings, 10, roundControls)
@@ -1083,13 +1322,13 @@ func TestClassicDivisionFirsts(t *testing.T) {
 
 	for i := 0; i < firstRounds; i++ {
 		roundControls = append(roundControls, &entity.RoundControls{FirstMethod: firsts[i],
-			PairingMethod:       entity.Manual,
-			GamesPerRound:       defaultGamesPerRound,
-			Factor:              1,
-			MaxRepeats:          1,
-			AllowOverMaxRepeats: true,
-			RepeatWeight:        1,
-			WinDifferenceWeight: 1})
+			PairingMethod:               entity.Manual,
+			GamesPerRound:               defaultGamesPerRound,
+			Factor:                      1,
+			MaxRepeats:                  1,
+			AllowOverMaxRepeats:         true,
+			RepeatRelativeWeight:        1,
+			WinDifferenceRelativeWeight: 1})
 	}
 
 	tc, err := NewClassicDivision(playerStrings, firstRounds, roundControls)
@@ -1299,13 +1538,13 @@ func runRandomTournaments(method entity.PairingMethod, randomizePairings bool) e
 
 		for i := 0; i < numberOfRounds; i++ {
 			roundControls = append(roundControls, &entity.RoundControls{FirstMethod: entity.ManualFirst,
-				PairingMethod:       method,
-				GamesPerRound:       1,
-				Factor:              1,
-				MaxRepeats:          1,
-				AllowOverMaxRepeats: true,
-				RepeatWeight:        1,
-				WinDifferenceWeight: 1})
+				PairingMethod:               method,
+				GamesPerRound:               1,
+				Factor:                      1,
+				MaxRepeats:                  1,
+				AllowOverMaxRepeats:         true,
+				RepeatRelativeWeight:        1,
+				WinDifferenceRelativeWeight: 1})
 		}
 
 		playersRandom := []string{}
@@ -1629,14 +1868,14 @@ func defaultRoundControls(numberOfRounds int) []*entity.RoundControls {
 	roundControls := []*entity.RoundControls{}
 	for i := 0; i < numberOfRounds; i++ {
 		roundControls = append(roundControls, &entity.RoundControls{FirstMethod: entity.ManualFirst,
-			PairingMethod:       entity.Random,
-			GamesPerRound:       defaultGamesPerRound,
-			Round:               i,
-			Factor:              1,
-			MaxRepeats:          1,
-			AllowOverMaxRepeats: true,
-			RepeatWeight:        1,
-			WinDifferenceWeight: 1})
+			PairingMethod:               entity.Random,
+			GamesPerRound:               defaultGamesPerRound,
+			Round:                       i,
+			Factor:                      1,
+			MaxRepeats:                  1,
+			AllowOverMaxRepeats:         true,
+			RepeatRelativeWeight:        1,
+			WinDifferenceRelativeWeight: 1})
 	}
 	return roundControls
 }

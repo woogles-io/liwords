@@ -3,6 +3,7 @@ package pair
 import (
 	"errors"
 	"fmt"
+	"github.com/rs/zerolog/log"
 	"math/rand"
 
 	"github.com/domino14/liwords/pkg/entity"
@@ -139,6 +140,15 @@ func pairFactor(members *entity.UnpairedPoolMembers) ([]int, error) {
 func minWeightMatching(members *entity.UnpairedPoolMembers) ([]int, error) {
 	numberOfMembers := len(members.PoolMembers)
 	edges := []*matching.Edge{}
+
+	if members.RoundControls.RepeatRelativeWeight > entity.MaxRelativeWeight {
+		members.RoundControls.RepeatRelativeWeight = entity.MaxRelativeWeight
+	}
+
+	if members.RoundControls.WinDifferenceRelativeWeight > entity.MaxRelativeWeight {
+		members.RoundControls.WinDifferenceRelativeWeight = entity.MaxRelativeWeight
+	}
+
 	for i := 0; i < numberOfMembers; i++ {
 		for j := i + 1; j < numberOfMembers; j++ {
 			if pairable(members, i, j) {
@@ -153,17 +163,18 @@ func minWeightMatching(members *entity.UnpairedPoolMembers) ([]int, error) {
 
 	pairings, weight, err := matching.MinWeightMatching(edges, true)
 
-	if weight >= entity.ProhibitiveWeight {
-		return nil, errors.New("Prohibitive weight reached. Pairings are not possible with these settings.")
-	}
-
 	if err != nil {
-		// Log error here, be sure to record edges
+		log.Debug().Interface("edges", edges).Msg("matching failed")
 		return nil, err
 	}
+
 	if len(pairings) != numberOfMembers {
-		// Log error here, be sure to record edges
+		log.Debug().Interface("edges", edges).Msg("matching incomplete")
 		return nil, errors.New("Pairings and members are not the same length")
+	}
+
+	if weight >= entity.ProhibitiveWeight {
+		return nil, errors.New("Prohibitive weight reached. Pairings are not possible with these settings.")
 	}
 
 	if members.RoundControls.PairingMethod == entity.Quickpair {
@@ -194,10 +205,10 @@ func pairable(members *entity.UnpairedPoolMembers, i int, j int) bool {
 	return true
 }
 
-func weigh(members *entity.UnpairedPoolMembers, i int, j int) (int, error) {
+func weigh(members *entity.UnpairedPoolMembers, i int, j int) (uint64, error) {
 	// This way of dispatching is slightly clunky and will
 	// remain until we can think of a better way to do it.
-	var weight int
+	var weight uint64
 	pm := members.RoundControls.PairingMethod
 	if pm == entity.Swiss {
 		weight = weighSwiss(members, i, j)
@@ -209,27 +220,45 @@ func weigh(members *entity.UnpairedPoolMembers, i int, j int) (int, error) {
 	return weight, nil
 }
 
-func weighSwiss(members *entity.UnpairedPoolMembers, i int, j int) int {
+func weighSwiss(members *entity.UnpairedPoolMembers, i int, j int) uint64 {
 	p1 := members.PoolMembers[i]
 	p2 := members.PoolMembers[j]
-	winDiffWeight := utilities.Abs(p1.Wins-p2.Wins) * members.RoundControls.WinDifferenceWeight
-	repeatsOverMax := utilities.Max(0, members.Repeats[GetRepeatKey(p1.Id, p2.Id)]-members.RoundControls.MaxRepeats)
-	var repeatWeight int
+	// Scale up wins to ensure any single edge win difference weight
+	// outweighs the sum of all of the edge's possible spread weight
+
+	// The unscaled weight difference where a win is worth 2 and a draw is worth 1
+	unscaledWinDiffWeight := utilities.Abs(((p1.Wins - p2.Wins) * 2) + (p1.Draws - p2.Draws))
+
+	// Now scale the weight difference by WinWeightScaling, but divide by 2 because
+	// we have already multitplied by 2 in the previous step. This was so that
+	// all arithmetic can stay in integer form.
+	winDiffWeight := uint64(unscaledWinDiffWeight) * (entity.WinWeightScaling / 2) *
+		uint64(members.RoundControls.WinDifferenceRelativeWeight)
+
+	// Subtract the spread difference for swiss, since we would like to pair players
+	// that have similar records but large differences in spread.
+	spreadDiffWeight := entity.MaxSpreadWeight - uint64(utilities.Abs(p1.Spread-p2.Spread))
+
+	// Add one to account for the pairing of p1 and p2 for this round
+	repeatsOverMax := utilities.Max(0, members.Repeats[GetRepeatKey(p1.Id, p2.Id)]+1-members.RoundControls.MaxRepeats)
+	var repeatWeight uint64 = 0
 	if members.RoundControls.AllowOverMaxRepeats {
-		repeatWeight = repeatsOverMax * members.RoundControls.RepeatWeight
-	} else {
+		// Since wins were scaled, repeats have to be scaled up
+		// proportionally since we want them to have the same weight.
+		repeatWeight = uint64(repeatsOverMax) * entity.WinWeightScaling * uint64(members.RoundControls.RepeatRelativeWeight)
+	} else if repeatsOverMax > 0 {
 		repeatWeight = entity.ProhibitiveWeight
 	}
-	return winDiffWeight + repeatWeight
+	return winDiffWeight + spreadDiffWeight + repeatWeight
 }
 
-func weighQuickpair(members *entity.UnpairedPoolMembers, i int, j int) int {
+func weighQuickpair(members *entity.UnpairedPoolMembers, i int, j int) uint64 {
 	PoolMemberA := members.PoolMembers[i]
 	PoolMemberB := members.PoolMembers[j]
 	ratingDiff := utilities.Abs(PoolMemberA.Rating - PoolMemberB.Rating)
 	missBonus := utilities.Min(missBonus(PoolMemberA), missBonus(PoolMemberB))
 	rangeBonus := rangeBonus(PoolMemberA, PoolMemberB)
-	return ratingDiff - missBonus - rangeBonus
+	return uint64(ratingDiff - missBonus - rangeBonus)
 }
 
 func missBonus(p *entity.PoolMember) int {

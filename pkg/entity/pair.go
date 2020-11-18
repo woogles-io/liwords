@@ -1,6 +1,20 @@
 package entity
 
-const ProhibitiveWeight int = 1000000000
+// These weights were made very large
+// out of an abundance of caution so that
+// any single win weight outweighs the sum
+// of all possible spread weights
+
+const ProhibitiveWeight uint64 = 1 << 52
+
+// If spreads are greater than this number
+// stuff will break
+const MaxSpreadWeight uint64 = 1 << 12
+
+// Win weight must be much greater than
+// spread weight
+const WinWeightScaling uint64 = 1 << 22
+const MaxRelativeWeight int = 100
 
 type PairingMethod int
 
@@ -28,6 +42,8 @@ type PoolMember struct {
 	Blocking    []string
 	Misses      int
 	Wins        int
+	Draws       int
+	Spread      int
 }
 
 type UnpairedPoolMembers struct {

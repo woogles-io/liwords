@@ -79,15 +79,15 @@ type TournamentPersons struct {
 }
 
 type RoundControls struct {
-	PairingMethod       PairingMethod
-	FirstMethod         FirstMethod
-	GamesPerRound       int
-	Round               int
-	Factor              int
-	MaxRepeats          int
-	AllowOverMaxRepeats bool
-	RepeatWeight        int
-	WinDifferenceWeight int
+	PairingMethod               PairingMethod
+	FirstMethod                 FirstMethod
+	GamesPerRound               int
+	Round                       int
+	Factor                      int
+	MaxRepeats                  int
+	AllowOverMaxRepeats         bool
+	RepeatRelativeWeight        int
+	WinDifferenceRelativeWeight int
 }
 
 type TournamentControls struct {

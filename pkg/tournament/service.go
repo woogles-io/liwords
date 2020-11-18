@@ -224,14 +224,14 @@ func convertPersonsToStringMap(req *pb.TournamentPersons) *entity.TournamentPers
 
 func convertSingleRoundControls(reqRC *pb.SingleRoundControls) *entity.RoundControls {
 	return &entity.RoundControls{FirstMethod: entity.FirstMethod(reqRC.FirstMethod),
-		PairingMethod:       entity.PairingMethod(reqRC.PairingMethod),
-		GamesPerRound:       int(reqRC.GamesPerRound),
-		Round:               int(reqRC.Round),
-		Factor:              int(reqRC.Factor),
-		MaxRepeats:          int(reqRC.MaxRepeats),
-		AllowOverMaxRepeats: reqRC.AllowOverMaxRepeats,
-		RepeatWeight:        int(reqRC.RepeatWeight),
-		WinDifferenceWeight: int(reqRC.WinDifferenceWeight)}
+		PairingMethod:               entity.PairingMethod(reqRC.PairingMethod),
+		GamesPerRound:               int(reqRC.GamesPerRound),
+		Round:                       int(reqRC.Round),
+		Factor:                      int(reqRC.Factor),
+		MaxRepeats:                  int(reqRC.MaxRepeats),
+		AllowOverMaxRepeats:         reqRC.AllowOverMaxRepeats,
+		RepeatRelativeWeight:        int(reqRC.RepeatRelativeWeight),
+		WinDifferenceRelativeWeight: int(reqRC.WinDifferenceRelativeWeight)}
 }
 
 func convertRoundControls(reqRoundControls []*pb.SingleRoundControls) []*entity.RoundControls {

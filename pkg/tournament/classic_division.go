@@ -305,8 +305,12 @@ func (t *ClassicDivision) PairRound(round int) error {
 		// Wins do not matter for RoundRobin pairings
 		if pairingMethod != entity.RoundRobin {
 			pm.Wins = standings[i].Wins
+			pm.Draws = standings[i].Draws
+			pm.Spread = standings[i].Spread
 		} else {
 			pm.Wins = 0
+			pm.Draws = 0
+			pm.Spread = 0
 		}
 		poolMembers = append(poolMembers, pm)
 	}
@@ -589,7 +593,7 @@ func getRepeats(t *ClassicDivision, round int) (map[string]int, error) {
 		round = 0
 	}
 	repeats := make(map[string]int)
-	for i := 0; i < round; i++ {
+	for i := 0; i <= round; i++ {
 		roundPairings := t.Matrix[i]
 		for _, pri := range roundPairings {
 			if pri.Pairing != nil && pri.Pairing.Players != nil {

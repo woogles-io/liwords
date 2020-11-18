@@ -18,6 +18,19 @@ func MinArr(array []int) int {
 	return minInt
 }
 
+func UminArr(array []uint64) uint64 {
+	if len(array) == 0 {
+		return 0
+	}
+	minInt := array[0]
+	for _, j := range array {
+		if j < minInt {
+			minInt = j
+		}
+	}
+	return minInt
+}
+
 func Abs(x int) int {
 	if x < 0 {
 		return -x
@@ -33,6 +46,13 @@ func Min(x, y int) int {
 }
 
 func Max(x, y int) int {
+	if x < y {
+		return y
+	}
+	return x
+}
+
+func Umax(x, y uint64) uint64 {
 	if x < y {
 		return y
 	}
