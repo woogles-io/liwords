@@ -614,13 +614,13 @@ func equalTournamentPersons(tp1 *entity.TournamentPersons, tp2 *entity.Tournamen
 	for k, v1 := range tp1.Persons {
 		v2, ok := tp2.Persons[k]
 		if !ok || v1 != v2 {
-			return fmt.Errorf("TournamentPersons structs are not equal:\n%s\n%s\n", tp1String, tp2String)
+			return fmt.Errorf("tournamentPersons structs are not equal: %s, %s", tp1String, tp2String)
 		}
 	}
 	for k, v2 := range tp2.Persons {
 		v1, ok := tp1.Persons[k]
 		if !ok || v1 != v2 {
-			return fmt.Errorf("TournamentPersons structs are not equal:\n%s\n%s\n", tp1String, tp2String)
+			return fmt.Errorf("tournamentPersons structs are not equal: %s, %s", tp1String, tp2String)
 		}
 	}
 

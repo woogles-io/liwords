@@ -1,7 +1,6 @@
 package tournament
 
 import (
-	"errors"
 	"fmt"
 	"github.com/matryer/is"
 	"math/rand"
@@ -607,7 +606,7 @@ func TestClassicDivisionSwiss(t *testing.T) {
 		realtime.TournamentGameResult_WIN,
 		realtime.TournamentGameResult_LOSS,
 		realtime.GameEndReason_STANDARD, true, 0)
-	is.True(fmt.Sprintf("%s", err) == "Prohibitive weight reached. Pairings are not possible with these settings.")
+	is.True(fmt.Sprintf("%s", err) == "prohibitive weight reached, pairings are not possible with these settings.")
 
 	tc.RoundControls[6].AllowOverMaxRepeats = true
 
@@ -736,7 +735,7 @@ func TestClassicDivisionRoundRobin(t *testing.T) {
 		for _, opponent := range playerStrings {
 			var err error = nil
 			if m[opponent] != 2 {
-				err = fmt.Errorf("Player %s didn't play %s exactly twice: %d\n", player, opponent, m[opponent])
+				err = fmt.Errorf("player %s didn't play %s exactly twice: %d", player, opponent, m[opponent])
 			}
 			is.NoErr(err)
 		}
@@ -787,7 +786,7 @@ func TestClassicDivisionRoundRobin(t *testing.T) {
 		for _, opponent := range playersOddStrings {
 			var err error = nil
 			if m[opponent] != 2 {
-				err = fmt.Errorf("Player %s didn't play %s exactly twice!", player, opponent)
+				err = fmt.Errorf("player %s didn't play %s exactly twice!", player, opponent)
 			}
 			is.NoErr(err)
 		}
@@ -1483,7 +1482,7 @@ func completeManualRound(tc *ClassicDivision, round int, player1 string, player2
 	}
 
 	if !roundIsComplete {
-		return fmt.Errorf("Round %d is not complete.", round)
+		return fmt.Errorf("round %d is not complete.", round)
 	}
 
 	return err
@@ -1502,7 +1501,7 @@ func checkFirsts(tc *ClassicDivision, players []string, fs []int, round int) err
 		if actualfs[i] != fs[i] {
 			actualfsString := strings.Trim(strings.Join(strings.Fields(fmt.Sprint(actualfs)), ", "), "[]")
 			fsString := strings.Trim(strings.Join(strings.Fields(fmt.Sprint(fs)), ", "), "[]")
-			return fmt.Errorf("Firsts and Seconds are not equal in round %d:\n%s\n%s\n", round, fsString, actualfsString)
+			return fmt.Errorf("firsts and Seconds are not equal in round %d: %s, %s", round, fsString, actualfsString)
 		}
 	}
 	return nil
@@ -1624,7 +1623,7 @@ func runRandomTournaments(method entity.PairingMethod, randomizePairings bool) e
 						false,
 						game)
 					if err != nil {
-						fmt.Printf("(%d) Error on round %d game %d pairing (%s, %s)\n",
+						fmt.Printf("(%d) error on round %d game %d pairing (%s, %s)",
 							numberOfPlayers,
 							round,
 							game,
@@ -1664,7 +1663,7 @@ func runRandomTournaments(method entity.PairingMethod, randomizePairings bool) e
 				return err
 			}
 			if !roundIsComplete {
-				return fmt.Errorf("(%d) Round %d is not complete (%d, %d)\n",
+				return fmt.Errorf("(%d) round %d is not complete (%d, %d)",
 					numberOfPlayers, round, method, numberOfPlayers)
 			}
 
@@ -1679,7 +1678,7 @@ func runRandomTournaments(method entity.PairingMethod, randomizePairings bool) e
 			return err
 		}
 		if !tournamentIsFinished {
-			return fmt.Errorf("Tournament is not complete (%d, %d)\n",
+			return fmt.Errorf("tournament is not complete (%d, %d)",
 				method, numberOfPlayers)
 		}
 		if tc.RoundControls[0].PairingMethod == entity.Elimination {
@@ -1693,7 +1692,7 @@ func runRandomTournaments(method entity.PairingMethod, randomizePairings bool) e
 			for bottomHalfSize > 0 {
 				for i := 0; i < bottomHalfSize; i++ {
 					if standings[eliminationPlayerIndex].Wins != eliminatedInRound {
-						return fmt.Errorf("Player has incorrect number of wins (%d, %d, %d)\n",
+						return fmt.Errorf("player has incorrect number of wins (%d, %d, %d)",
 							eliminationPlayerIndex,
 							eliminatedInRound,
 							standings[eliminationPlayerIndex].Wins)
@@ -1714,18 +1713,18 @@ func validatePairings(tc *ClassicDivision, round int) error {
 	//   - Player's opponent's opponent is the player
 
 	if round < 0 || round >= len(tc.Matrix) {
-		return fmt.Errorf("Round number out of range: %d\n", round)
+		return fmt.Errorf("round number out of range: %d", round)
 	}
 
 	for i, pri := range tc.Matrix[round] {
 		pairing := pri.Pairing
 		if pairing == nil {
-			return fmt.Errorf("Round %d player %d pairing nil", round, i)
+			return fmt.Errorf("round %d player %d pairing nil", round, i)
 		}
 		if pairing.Players == nil {
 			// Some pairings can be nil for Elimination tournaments
 			if tc.RoundControls[0].PairingMethod != entity.Elimination {
-				return fmt.Errorf("Player %d is unpaired", i)
+				return fmt.Errorf("player %d is unpaired", i)
 			} else {
 				continue
 			}
@@ -1740,11 +1739,10 @@ func validatePairings(tc *ClassicDivision, round int) error {
 			return err
 		}
 		if tc.Players[i] != opponentOpponent {
-			return errors.New(
-				fmt.Sprintf("Player %s's opponent's (%s) opponent (%s) is not themself.",
-					tc.Players[i],
-					opponent,
-					opponentOpponent))
+			return fmt.Errorf("player %s's opponent's (%s) opponent (%s) is not themself.",
+				tc.Players[i],
+				opponent,
+				opponentOpponent)
 		}
 	}
 	return nil
@@ -1753,7 +1751,7 @@ func validatePairings(tc *ClassicDivision, round int) error {
 func equalStandings(sa1 []*entity.Standing, sa2 []*entity.Standing) error {
 
 	if len(sa1) != len(sa2) {
-		return fmt.Errorf("Length of the standings are not equal: %d != %d\n", len(sa1), len(sa2))
+		return fmt.Errorf("length of the standings are not equal: %d != %d", len(sa1), len(sa2))
 	}
 
 	for i := 0; i < len(sa1); i++ {
@@ -1773,7 +1771,7 @@ func equalStandingsRecord(s1 *entity.Standing, s2 *entity.Standing) error {
 		s1.Losses != s2.Losses ||
 		s1.Draws != s2.Draws ||
 		s1.Spread != s2.Spread {
-		return fmt.Errorf("Standings do not match: (%s, %d, %d, %d, %d) != (%s, %d, %d, %d, %d)",
+		return fmt.Errorf("standings do not match: (%s, %d, %d, %d, %d) != (%s, %d, %d, %d, %d)",
 			s1.Player, s1.Wins, s1.Losses, s1.Draws, s1.Spread,
 			s2.Player, s2.Wins, s2.Losses, s2.Draws, s2.Spread)
 	}
@@ -1816,21 +1814,21 @@ func equalPairing(p1 *entity.Pairing, p2 *entity.Pairing) error {
 	// Firsts and seconds are tested independently
 	if (p1.Players[0] != p2.Players[0] && p1.Players[0] != p2.Players[1]) ||
 		(p1.Players[1] != p2.Players[0] && p1.Players[1] != p2.Players[1]) {
-		return fmt.Errorf("Players are not the same: (%s, %s) != (%s, %s)",
+		return fmt.Errorf("players are not the same: (%s, %s) != (%s, %s)",
 			p1.Players[0],
 			p1.Players[1],
 			p2.Players[0],
 			p2.Players[1])
 	}
 	if p1.Outcomes[0] != p2.Outcomes[0] || p1.Outcomes[1] != p2.Outcomes[1] {
-		return fmt.Errorf("Outcomes are not the same: (%d, %d) != (%d, %d)",
+		return fmt.Errorf("outcomes are not the same: (%d, %d) != (%d, %d)",
 			p1.Outcomes[0],
 			p1.Outcomes[1],
 			p2.Outcomes[0],
 			p2.Outcomes[1])
 	}
 	if len(p1.Games) != len(p2.Games) {
-		return fmt.Errorf("Number of games are not the same: %d != %d", len(p1.Games), len(p2.Games))
+		return fmt.Errorf("number of games are not the same: %d != %d", len(p1.Games), len(p2.Games))
 	}
 	for i := 0; i < len(p1.Games); i++ {
 		err := equalTournamentGame(p1.Games[i], p2.Games[i], i)
@@ -1843,7 +1841,7 @@ func equalPairing(p1 *entity.Pairing, p2 *entity.Pairing) error {
 
 func equalTournamentGame(t1 *entity.TournamentGame, t2 *entity.TournamentGame, i int) error {
 	if t1.Scores[0] != t2.Scores[0] || t1.Scores[1] != t2.Scores[1] {
-		return fmt.Errorf("Scores are not the same at game %d: (%d, %d) != (%d, %d)",
+		return fmt.Errorf("scores are not the same at game %d: (%d, %d) != (%d, %d)",
 			i,
 			t1.Scores[0],
 			t1.Scores[1],
@@ -1851,7 +1849,7 @@ func equalTournamentGame(t1 *entity.TournamentGame, t2 *entity.TournamentGame, i
 			t2.Scores[1])
 	}
 	if t1.Results[0] != t2.Results[0] || t1.Results[1] != t2.Results[1] {
-		return fmt.Errorf("Results are not the same at game %d: (%d, %d) != (%d, %d)",
+		return fmt.Errorf("results are not the same at game %d: (%d, %d) != (%d, %d)",
 			i,
 			t1.Results[0],
 			t1.Results[1],
@@ -1859,7 +1857,7 @@ func equalTournamentGame(t1 *entity.TournamentGame, t2 *entity.TournamentGame, i
 			t2.Results[1])
 	}
 	if t1.GameEndReason != t2.GameEndReason {
-		return fmt.Errorf("Game end reasons are not the same for game %d: %d != %d", i, t1.GameEndReason, t2.GameEndReason)
+		return fmt.Errorf("game end reasons are not the same for game %d: %d != %d", i, t1.GameEndReason, t2.GameEndReason)
 	}
 	return nil
 }

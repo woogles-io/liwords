@@ -15,7 +15,7 @@ func Pair(members *entity.UnpairedPoolMembers) ([]int, error) {
 
 	pm := members.RoundControls.PairingMethod
 	if pm == entity.Manual {
-		return nil, errors.New("Cannot pair with the given pairing method")
+		return nil, errors.New("cannot pair with the given pairing method")
 	}
 	// This way of dispatching is slightly clunky and will
 	// remain until we can think of a better way to do it.
@@ -128,7 +128,7 @@ func pairFactor(members *entity.UnpairedPoolMembers) ([]int, error) {
 	for i := 0; i < members.RoundControls.Factor; i += 1 {
 		factor := i + members.RoundControls.Factor
 		if factor >= numberOfPlayers {
-			return nil, fmt.Errorf("Cannot pair with factor %d on %d players", factor, numberOfPlayers)
+			return nil, fmt.Errorf("cannot pair with factor %d on %d players", factor, numberOfPlayers)
 		}
 		pairings[i] = factor
 		pairings[factor] = i
@@ -170,11 +170,11 @@ func minWeightMatching(members *entity.UnpairedPoolMembers) ([]int, error) {
 
 	if len(pairings) != numberOfMembers {
 		log.Debug().Interface("edges", edges).Msg("matching incomplete")
-		return nil, errors.New("Pairings and members are not the same length")
+		return nil, errors.New("pairings and members are not the same length")
 	}
 
 	if weight >= entity.ProhibitiveWeight {
-		return nil, errors.New("Prohibitive weight reached. Pairings are not possible with these settings.")
+		return nil, errors.New("prohibitive weight reached, pairings are not possible with these settings.")
 	}
 
 	if members.RoundControls.PairingMethod == entity.Quickpair {
@@ -215,7 +215,7 @@ func weigh(members *entity.UnpairedPoolMembers, i int, j int) (int64, error) {
 	} else if pm == entity.Quickpair {
 		weight = weighQuickpair(members, i, j)
 	} else {
-		return 0, errors.New("This pairing method is either unimplemented or is not a reduction to minimum weight matching")
+		return 0, errors.New("pairing method is either unimplemented or is not a reduction to minimum weight matching")
 	}
 	return weight, nil
 }
