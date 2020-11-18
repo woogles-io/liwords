@@ -163,13 +163,16 @@ export const Chat = React.memo((props: Props) => {
         if (msg === '') {
           return;
         }
+        if (!loggedIn) {
+          return;
+        }
         propsSendChat(msg);
         // This may not be a good idea. User will miss unread messages.
         setChatAutoScroll(true);
         doChatAutoScroll();
       }
     },
-    [curMsg, doChatAutoScroll, propsSendChat]
+    [curMsg, doChatAutoScroll, loggedIn, propsSendChat]
   );
 
   return (
