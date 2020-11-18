@@ -500,7 +500,9 @@ export const Table = React.memo((props: Props) => {
         <div className="chat-area" id="left-sidebar">
           <Card className="left-menu">
             {gameInfo.tournament_id ? (
-              <Link to={`/tournament/${gameInfo.tournament_id}`}>
+              <Link
+                to={`/tournament/${encodeURIComponent(gameInfo.tournament_id)}`}
+              >
                 <HomeOutlined />
                 Back to Tournament
               </Link>

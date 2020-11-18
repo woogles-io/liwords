@@ -229,7 +229,10 @@ export const useOnSocketMsg = () => {
                 // This is a match game attached to a tourney.
                 // XXX: When we have a tourney reducer we should refer to said reducer's
                 //  state instead of looking at the path
-                if (path === `/tournament/${soughtGame.tournamentID}`) {
+                if (
+                  path ===
+                  `/tournament/${encodeURIComponent(soughtGame.tournamentID)}`
+                ) {
                   dispatchLobbyContext({
                     actionType: ActionType.AddMatchRequest,
                     payload: soughtGame,

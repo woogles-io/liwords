@@ -249,7 +249,7 @@ const EndGameControls = (props: EGCProps) => {
   const history = useHistory();
   const handleExitToLobby = React.useCallback(() => {
     props.tournamentID
-      ? history.replace(`/tournament/${props.tournamentID}`)
+      ? history.replace(`/tournament/${encodeURIComponent(props.tournamentID)}`)
       : history.replace('/');
   }, [history, props.tournamentID]);
 

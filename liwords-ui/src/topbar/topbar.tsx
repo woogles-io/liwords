@@ -79,7 +79,7 @@ export const TopBar = React.memo((props: Props) => {
   );
 
   const homeLink = props.tournamentID
-    ? `/tournament/${props.tournamentID}`
+    ? `/tournament/${encodeURIComponent(props.tournamentID)}`
     : '/';
 
   return (
