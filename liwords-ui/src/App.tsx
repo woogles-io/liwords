@@ -1,5 +1,5 @@
-import React, { useCallback, useEffect } from 'react';
-import { Route, Switch, useHistory } from 'react-router-dom';
+import React, { useCallback, useEffect, useRef } from 'react';
+import { Route, Switch, useHistory, useLocation } from 'react-router-dom';
 import { useMountedState } from './utils/mounted';
 import './App.scss';
 import axios from 'axios';
@@ -49,10 +49,18 @@ const App = React.memo(() => {
   useEffect(() => {
     if (redirGame !== '') {
       setRedirGame('');
-      resetStore();
       history.replace(`/game/${encodeURIComponent(redirGame)}`);
+      // reset store later as a separate side effect.
     }
-  }, [history, redirGame, resetStore, setRedirGame]);
+  }, [history, redirGame, setRedirGame]);
+
+  const location = useLocation();
+  const knownLocation = useRef(location.pathname); // Remember the location on first render.
+  useEffect(() => {
+    if (knownLocation.current !== location.pathname) {
+      resetStore();
+    }
+  }, [location.pathname, resetStore]);
 
   const disconnectSocket = useCallback(() => {
     setShouldDisconnect(true);
