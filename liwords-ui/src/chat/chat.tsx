@@ -224,6 +224,7 @@ export const Chat = React.memo((props: Props) => {
             onKeyDown={onKeyDown}
             onChange={onChange}
             value={curMsg}
+            spellCheck={false}
           />
           {/* <Button onClick={props.DISCONNECT}>DISCONNECT</Button> */}
         </TabPane>
