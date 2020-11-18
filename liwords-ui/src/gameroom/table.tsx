@@ -18,7 +18,6 @@ import {
   usePoolFormatStoreContext,
   usePresenceStoreContext,
   useRematchRequestStoreContext,
-  useResetStoreContext,
   useTimerStoreContext,
 } from '../store/store';
 import { PlayerCards } from './player_cards';
@@ -173,7 +172,6 @@ export const Table = React.memo((props: Props) => {
   const { poolFormat, setPoolFormat } = usePoolFormatStoreContext();
   const { presences } = usePresenceStoreContext();
   const { rematchRequest, setRematchRequest } = useRematchRequestStoreContext();
-  const { resetStore } = useResetStoreContext();
   const { pTimedOut, setPTimedOut } = useTimerStoreContext();
   const { username, userID } = loginState;
   const [tournamentName, setTournamentName] = useState('');
@@ -502,15 +500,12 @@ export const Table = React.memo((props: Props) => {
         <div className="chat-area" id="left-sidebar">
           <Card className="left-menu">
             {gameInfo.tournament_id ? (
-              <Link
-                to={`/tournament/${gameInfo.tournament_id}`}
-                onClick={resetStore}
-              >
+              <Link to={`/tournament/${gameInfo.tournament_id}`}>
                 <HomeOutlined />
                 Back to Tournament
               </Link>
             ) : (
-              <Link to="/" onClick={resetStore}>
+              <Link to="/">
                 <HomeOutlined />
                 Back to lobby
               </Link>
