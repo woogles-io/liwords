@@ -1,7 +1,7 @@
 import { Table, Tooltip } from 'antd';
 import React, { ReactNode } from 'react';
+import { useHistory } from 'react-router-dom';
 import { FundOutlined } from '@ant-design/icons/lib';
-import { useRedirGameStoreContext } from '../store/store';
 import { RatingBadge } from './rating_badge';
 import { challengeFormat, timeFormat } from './sought_games';
 import { ActiveGame } from '../store/reducers/lobby_reducer';
@@ -12,7 +12,7 @@ type Props = {
 };
 
 export const ActiveGames = (props: Props) => {
-  const { setRedirGame } = useRedirGameStoreContext();
+  const history = useHistory();
 
   type ActiveGameTableData = {
     gameID: string;
@@ -129,7 +129,7 @@ export const ActiveGames = (props: Props) => {
         onRow={(record) => {
           return {
             onClick: (event) => {
-              setRedirGame(record.gameID);
+              history.replace(`/game/${encodeURIComponent(record.gameID)}`);
               console.log('redirecting to', record.gameID);
             },
           };

@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef } from 'react';
-import { Route, Switch, useHistory, useLocation } from 'react-router-dom';
+import { Route, Switch, useLocation } from 'react-router-dom';
 import { useMountedState } from './utils/mounted';
 import './App.scss';
 import axios from 'axios';
@@ -10,7 +10,6 @@ import TileImages from './gameroom/tile_images';
 import { Lobby } from './lobby/lobby';
 import {
   useExcludedPlayersStoreContext,
-  useRedirGameStoreContext,
   useResetStoreContext,
 } from './store/store';
 
@@ -35,7 +34,6 @@ const App = React.memo(() => {
   const { useState } = useMountedState();
 
   const { setExcludedPlayers } = useExcludedPlayersStoreContext();
-  const { redirGame, setRedirGame } = useRedirGameStoreContext();
   const { resetStore } = useResetStoreContext();
   const [shouldDisconnect, setShouldDisconnect] = useState(false);
 
@@ -44,15 +42,6 @@ const App = React.memo(() => {
     justDisconnected: false,
   });
   const { sendMessage } = liwordsSocketValues;
-
-  const history = useHistory();
-  useEffect(() => {
-    if (redirGame !== '') {
-      setRedirGame('');
-      history.replace(`/game/${encodeURIComponent(redirGame)}`);
-      // reset store later as a separate side effect.
-    }
-  }, [history, redirGame, setRedirGame]);
 
   const location = useLocation();
   const knownLocation = useRef(location.pathname); // Remember the location on first render.
