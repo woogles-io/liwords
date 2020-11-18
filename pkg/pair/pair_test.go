@@ -1,7 +1,6 @@
 package pair
 
 import (
-	"errors"
 	"fmt"
 	"github.com/matryer/is"
 	"testing"
@@ -59,11 +58,11 @@ func TestRoundRobin(t *testing.T) {
 
 func equalRoundRobinPairings(s1 []int, s2 []int) error {
 	if len(s1) != len(s2) {
-		return errors.New(fmt.Sprintf("Pairing lengths do not match: %d != %d\n", len(s1), len(s2)))
+		return fmt.Errorf("Pairing lengths do not match: %d != %d\n", len(s1), len(s2))
 	}
 	for i := 0; i < len(s1); i++ {
 		if s1[i] != s2[i] {
-			return errors.New(fmt.Sprintf("Pairings are not equal:\n%s\n%s\n", utilities.IntArrayToString(s1), utilities.IntArrayToString(s2)))
+			return fmt.Errorf("Pairings are not equal:\n%s\n%s\n", utilities.IntArrayToString(s1), utilities.IntArrayToString(s2))
 		}
 	}
 	return nil

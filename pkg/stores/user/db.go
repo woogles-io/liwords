@@ -627,7 +627,7 @@ func (s *DBStore) ResetStatsAndRatings(ctx context.Context, uid string) error {
 	}
 	p := &profile{}
 	if result := s.db.Model(u).Related(p); result.Error != nil {
-		return errors.New(fmt.Sprintf("Error getting profile for %s", uid))
+		return fmt.Errorf("Error getting profile for %s", uid)
 	}
 
 	emptyRatings := &entity.Ratings{}

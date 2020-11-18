@@ -128,7 +128,7 @@ func pairFactor(members *entity.UnpairedPoolMembers) ([]int, error) {
 	for i := 0; i < members.RoundControls.Factor; i += 1 {
 		factor := i + members.RoundControls.Factor
 		if factor >= numberOfPlayers {
-			return nil, errors.New(fmt.Sprintf("Cannot pair with factor %d on %d players", factor, numberOfPlayers))
+			return nil, fmt.Errorf("Cannot pair with factor %d on %d players", factor, numberOfPlayers)
 		}
 		pairings[i] = factor
 		pairings[factor] = i
