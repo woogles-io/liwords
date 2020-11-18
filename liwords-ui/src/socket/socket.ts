@@ -153,6 +153,8 @@ export const LiwordsSocket = (props: {
         });
         setJustDisconnected(true);
       },
+      reconnectAttempts: Infinity,
+      reconnectInterval: 1000,
       retryOnError: true,
       shouldReconnect: (closeEvent) => true,
       onMessage: (event: MessageEvent) => decodeToMsg(event.data, onSocketMsg),
