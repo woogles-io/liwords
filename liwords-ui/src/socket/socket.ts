@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo } from 'react';
+import { useCallback, useEffect, useMemo, useRef } from 'react';
 import axios from 'axios';
 import jwt from 'jsonwebtoken';
 import useWebSocket from 'react-use-websocket';
@@ -29,6 +29,9 @@ const getSocketURI = (): string => {
   return `${protocol}//${host}/ws`;
 };
 
+// this only depends on protocol and host, will never change as we navigate SPA.
+const socketUrl = getSocketURI();
+
 type TokenResponse = {
   token: string;
   cid: string;
@@ -53,7 +56,6 @@ export const LiwordsSocket = (props: {
   const { disconnect, setValues } = props;
   const onSocketMsg = useOnSocketMsg();
 
-  const socketUrl = getSocketURI();
   const loginStateStore = useLoginStateStoreContext();
   const location = useLocation();
 
@@ -61,13 +63,19 @@ export const LiwordsSocket = (props: {
   const [fullSocketUrl, setFullSocketUrl] = useState('');
   const [justDisconnected, setJustDisconnected] = useState(false);
 
+  const isConnectedToSocket = loginStateStore.loginState.connectedToSocket;
+  const wasInitiallyConnectedToSocket = useRef(isConnectedToSocket);
+  const dispatchLoginState = loginStateStore.dispatchLoginState;
   useEffect(() => {
-    if (loginStateStore.loginState.connectedToSocket) {
+    if (wasInitiallyConnectedToSocket.current) {
       // Only call this function if we are not connected to the socket.
       // If we go from unconnected to connected, there is no need to call
       // it again. If we go from connected to unconnected, then we call it
       // to fetch a new token.
       console.log('already connected');
+      return;
+    }
+    if (isConnectedToSocket) {
       return;
     }
     console.log('About to request token');
@@ -91,7 +99,7 @@ export const LiwordsSocket = (props: {
         );
 
         const decoded = jwt.decode(socketToken) as DecodedToken;
-        loginStateStore.dispatchLoginState({
+        dispatchLoginState({
           actionType: ActionType.SetAuthentication,
           payload: {
             username: decoded.unn,
@@ -124,8 +132,7 @@ export const LiwordsSocket = (props: {
           window.console.log(e.response);
         }
       });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [loginStateStore.loginState.connectedToSocket]);
+  }, [dispatchLoginState, isConnectedToSocket, location.pathname]);
 
   const { sendMessage: originalSendMessage } = useWebSocket(
     useCallback(() => fullSocketUrl, [fullSocketUrl]),
