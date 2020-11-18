@@ -8,15 +8,15 @@ import (
 type Edge struct {
 	i int
 	j int
-	w uint64
-	o uint64
+	w int64
+	o int64
 }
 
 type MaxWeightMatching struct {
 	edges            []*Edge
 	numberOfEdges    int
 	numberOfVertexes int
-	maxEdgeWeight    uint64
+	maxEdgeWeight    int64
 	endpoints        []int
 	neighbend        [][]int
 	mate             []int
@@ -30,22 +30,18 @@ type MaxWeightMatching struct {
 	bestEdge         []int
 	blossomBestEdges [][]int
 	unusedBlossoms   []int
-	dualVar          []uint64
+	dualVar          []int64
 	allowEdge        []bool
 	queue            []int
 	maxCardinality   bool
 }
 
-func NewEdge(i int, j int, w uint64) *Edge {
-	// Add an extra field 'o' to preserve
-	// the original weight for weighing
-	// since the edge.w values are altered
-	// in MinWeightMatching
+func NewEdge(i int, j int, w int64) *Edge {
 	return &Edge{i: i, j: j, w: w, o: w}
 }
 
-func MinWeightMatching(edges []*Edge, maxCardinality bool) ([]int, uint64, error) {
-	var maxEdgeWeight uint64 = 0
+func MinWeightMatching(edges []*Edge, maxCardinality bool) ([]int, int64, error) {
+	var maxEdgeWeight int64 = -1
 	for _, edge := range edges {
 		if edge.w > maxEdgeWeight {
 			maxEdgeWeight = edge.w
@@ -57,7 +53,7 @@ func MinWeightMatching(edges []*Edge, maxCardinality bool) ([]int, uint64, error
 	return maxWeightMatching(edges, maxCardinality)
 }
 
-func maxWeightMatching(edges []*Edge, maxCardinality bool) ([]int, uint64, error) {
+func maxWeightMatching(edges []*Edge, maxCardinality bool) ([]int, int64, error) {
 
 	/*
 	   Compute a maximum-weighted matching in the general undirected
@@ -86,7 +82,7 @@ func maxWeightMatching(edges []*Edge, maxCardinality bool) ([]int, uint64, error
 	numberOfEdges := len(edges)
 	// Count vertexes and find maximum edge weight
 	numberOfVertexes := 0
-	var maxEdgeWeight uint64 = 0
+	var maxEdgeWeight int64 = -1
 	for _, edge := range edges {
 		if !(edge.i >= 0 && edge.j >= 0 && edge.i != edge.j) {
 			return nil, 0, errors.New("ERROR 1")
@@ -242,7 +238,7 @@ func maxWeightMatching(edges []*Edge, maxCardinality bool) ([]int, uint64, error
 	// If b is a non-trivial blossom,
 	// dualVar[b] = z(b) where z(b) is b's variable in the dual optimization
 	// problem.
-	dualVar := []uint64{}
+	dualVar := []int64{}
 	for i := 0; i < numberOfVertexes; i++ {
 		dualVar = append(dualVar, maxEdgeWeight)
 	}
@@ -289,8 +285,8 @@ func maxWeightMatching(edges []*Edge, maxCardinality bool) ([]int, uint64, error
 	return wm.mate, wm.weightSolution(), nil
 }
 
-func (wm *MaxWeightMatching) weightSolution() uint64 {
-	var sum uint64 = 0
+func (wm *MaxWeightMatching) weightSolution() int64 {
+	var sum int64 = 0
 	for _, edge := range wm.edges {
 		if wm.mate[edge.i] == edge.j &&
 			wm.mate[edge.j] == edge.i {
@@ -300,7 +296,7 @@ func (wm *MaxWeightMatching) weightSolution() uint64 {
 	return sum
 }
 
-func (wm *MaxWeightMatching) slack(k int) (uint64, error) {
+func (wm *MaxWeightMatching) slack(k int) (int64, error) {
 	if !(k < wm.numberOfEdges) {
 		return 0, errors.New("ERROR 3")
 	}
@@ -964,13 +960,13 @@ func (wm *MaxWeightMatching) augmentMatching(k int) error {
 }
 
 func (wm *MaxWeightMatching) verifyOptimum() error {
-	var vdualOffset uint64
-	minDualVarFirstHalf := utilities.UminArr(wm.dualVar[:wm.numberOfVertexes])
-	minDualVarSecondHalf := utilities.UminArr(wm.dualVar[wm.numberOfVertexes:])
+	var vdualOffset int64
+	minDualVarFirstHalf := utilities.BigMinArr(wm.dualVar[:wm.numberOfVertexes])
+	minDualVarSecondHalf := utilities.BigMinArr(wm.dualVar[wm.numberOfVertexes:])
 	if wm.maxCardinality {
 		// Vertexes may have negative dual;
 		// find a constant non-negative number to add to all vertex duals.
-		vdualOffset = utilities.Umax(0, -minDualVarFirstHalf)
+		vdualOffset = utilities.BigMax(0, -minDualVarFirstHalf)
 	} else {
 		vdualOffset = 0
 	}
@@ -1106,7 +1102,7 @@ func (wm *MaxWeightMatching) solveMaxWeightMatching() error {
 						// This edge is internal to a blossom; ignore it
 						continue
 					}
-					var kslack uint64
+					var kslack int64
 					var err error
 					if !wm.allowEdge[k] {
 						kslack, err = wm.slack(k)
@@ -1204,16 +1200,14 @@ func (wm *MaxWeightMatching) solveMaxWeightMatching() error {
 			// (Note that our vertex dual variables, edge slacks and deltas
 			// are premultipllied by two.)
 			deltaType := -1
-			var delta uint64 = 0
-			deltaInitialized := false
+			var delta int64 = -1
 			deltaEdge := -1
 			deltaBlossom := -1
 
 			// Compute delta1: the minimum value of any vertex dual.
 			if !wm.maxCardinality {
 				deltaType = 1
-				delta = utilities.UminArr(wm.dualVar[:wm.numberOfVertexes])
-				deltaInitialized = true
+				delta = utilities.BigMinArr(wm.dualVar[:wm.numberOfVertexes])
 			}
 
 			// Compute delta2: the minimum slack on any edge between
@@ -1226,7 +1220,6 @@ func (wm *MaxWeightMatching) solveMaxWeightMatching() error {
 					}
 					if deltaType == -1 || d < delta {
 						delta = d
-						deltaInitialized = true
 						deltaType = 2
 						deltaEdge = wm.bestEdge[v]
 					}
@@ -1245,7 +1238,6 @@ func (wm *MaxWeightMatching) solveMaxWeightMatching() error {
 					d := kslack / 2
 					if deltaType == -1 || d < delta {
 						delta = d
-						deltaInitialized = true
 						deltaType = 3
 						deltaEdge = wm.bestEdge[b]
 					}
@@ -1258,20 +1250,18 @@ func (wm *MaxWeightMatching) solveMaxWeightMatching() error {
 					wm.blossomParents[b] == -1 &&
 					wm.label[b] == 2 &&
 					(deltaType == -1 || wm.dualVar[b] < delta) {
-					deltaInitialized = true
 					delta = wm.dualVar[b]
 					deltaType = 4
 					deltaBlossom = b
 				}
 			}
 
-			if !deltaInitialized {
+			if deltaType == -1 {
 				// No further improvement possible; max-cardinality optimum
 				// reached. Do a final delta update to make the optimum
 				// verifyable
 				deltaType = 1
-				delta = utilities.Umax(0, utilities.UminArr(wm.dualVar[:wm.numberOfVertexes]))
-				deltaInitialized = true
+				delta = utilities.BigMax(0, utilities.BigMinArr(wm.dualVar[:wm.numberOfVertexes]))
 			}
 
 			// Update dual variables according to delta.

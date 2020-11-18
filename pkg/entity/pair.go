@@ -5,15 +5,15 @@ package entity
 // any single win weight outweighs the sum
 // of all possible spread weights
 
-const ProhibitiveWeight uint64 = 1 << 52
+const ProhibitiveWeight int64 = 1 << 52
 
 // If spreads are greater than this number
 // stuff will break
-const MaxSpreadWeight uint64 = 1 << 12
+const MaxSpreadWeight int64 = 1 << 12
 
 // Win weight must be much greater than
 // spread weight
-const WinWeightScaling uint64 = 1 << 22
+const WinWeightScaling int64 = 1 << 22
 const MaxRelativeWeight int = 100
 
 type PairingMethod int

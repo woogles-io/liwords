@@ -18,7 +18,7 @@ func MinArr(array []int) int {
 	return minInt
 }
 
-func UminArr(array []uint64) uint64 {
+func BigMinArr(array []int64) int64 {
 	if len(array) == 0 {
 		return 0
 	}
@@ -52,7 +52,7 @@ func Max(x, y int) int {
 	return x
 }
 
-func Umax(x, y uint64) uint64 {
+func BigMax(x, y int64) int64 {
 	if x < y {
 		return y
 	}
