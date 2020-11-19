@@ -2,12 +2,12 @@ package tournament
 
 import (
 	"context"
-	"errors"
 
 	"github.com/domino14/liwords/pkg/entity"
 	"github.com/domino14/liwords/pkg/user"
 	pb "github.com/domino14/liwords/rpc/api/proto/tournament_service"
 	"github.com/rs/zerolog/log"
+	"github.com/twitchtv/twirp"
 
 	"github.com/golang/protobuf/ptypes"
 )
@@ -76,7 +76,7 @@ func (ts *TournamentService) SetTournamentControls(ctx context.Context, req *pb.
 
 func (ts *TournamentService) NewTournament(ctx context.Context, req *pb.NewTournamentRequest) (*pb.NewTournamentResponse, error) {
 	if len(req.DirectorIds) < 1 {
-		return nil, errors.New("need at least one director id")
+		return nil, twirp.NewError(twirp.InvalidArgument, "need at least one director id")
 	}
 
 	directors := &entity.TournamentPersons{
@@ -89,7 +89,7 @@ func (ts *TournamentService) NewTournament(ctx context.Context, req *pb.NewTourn
 
 	t, err := NewTournament(ctx, ts.tournamentStore, req.Slug, req.Name, req.Description, directors)
 	if err != nil {
-		return nil, err
+		return nil, twirp.NewError(twirp.InvalidArgument, err.Error())
 	}
 	return &pb.NewTournamentResponse{
 		Id: t.UUID,
@@ -99,7 +99,7 @@ func (ts *TournamentService) NewTournament(ctx context.Context, req *pb.NewTourn
 func (ts *TournamentService) GetTournamentMetadata(ctx context.Context, req *pb.GetTournamentMetadataRequest) (*pb.TournamentMetadataResponse, error) {
 	t, err := ts.tournamentStore.Get(ctx, req.Id)
 	if err != nil {
-		return nil, err
+		return nil, twirp.NewError(twirp.InvalidArgument, err.Error())
 	}
 
 	directors := []string{}
@@ -107,7 +107,7 @@ func (ts *TournamentService) GetTournamentMetadata(ctx context.Context, req *pb.
 	for uid, n := range t.Directors.Persons {
 		u, err := ts.userStore.GetByUUID(ctx, uid)
 		if err != nil {
-			return nil, err
+			return nil, twirp.NewError(twirp.InvalidArgument, err.Error())
 		}
 		if n == 0 {
 			directors = append([]string{u.Username}, directors...)

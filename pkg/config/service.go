@@ -2,7 +2,8 @@ package config
 
 import (
 	"context"
-	"errors"
+
+	"github.com/twitchtv/twirp"
 
 	"github.com/domino14/liwords/pkg/apiserver"
 	"github.com/domino14/liwords/pkg/user"
@@ -34,16 +35,16 @@ func (cs *ConfigService) SetGamesEnabled(ctx context.Context, req *pb.EnableGame
 	user, err := cs.userStore.Get(ctx, sess.Username)
 	if err != nil {
 		log.Err(err).Msg("getting-user")
-		return nil, err
+		return nil, twirp.InternalErrorWith(err)
 	}
 
 	if !user.IsAdmin {
-		return nil, errors.New("this api endpoint requires an administrator")
+		return nil, twirp.NewError(twirp.Unauthenticated, "this api endpoint requires an administrator")
 	}
 
 	err = cs.store.SetGamesEnabled(ctx, req.Enabled)
 	if err != nil {
-		return nil, err
+		return nil, twirp.InternalErrorWith(err)
 	}
 	return &pb.ConfigResponse{}, nil
 }

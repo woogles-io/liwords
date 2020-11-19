@@ -23,10 +23,22 @@ const TopMenu = React.memo((props: Props) => {
         <Link to="/">OMGWords</Link>
       </div>
       <div className="top-header-left-frame-aerolith">
-        <a href="https://aerolith.org">Aerolith</a>
+        <a
+          href="https://aerolith.org"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          Aerolith
+        </a>
       </div>
       <div className="top-header-left-frame-blog">
-        <a href="http://randomracer.com">Random.Racer</a>
+        <a
+          href="http://randomracer.com"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          Random.Racer
+        </a>
       </div>
       <div className="top-header-left-frame-special-land">
         <Link to="/about">About Us</Link>

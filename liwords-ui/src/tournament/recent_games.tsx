@@ -64,8 +64,8 @@ export const RecentTourneyGames = React.memo((props: Props) => {
         case 'RESIGNED':
           endReason = 'Resign';
           break;
-        case 'ABANDONED':
-          endReason = 'Abandon';
+        case 'ABORTED':
+          endReason = 'Abort';
           break;
         case 'CANCELLED':
           endReason = 'Cancel';

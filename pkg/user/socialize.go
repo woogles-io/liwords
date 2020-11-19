@@ -6,6 +6,7 @@ import (
 	"github.com/domino14/liwords/pkg/apiserver"
 	pb "github.com/domino14/liwords/rpc/api/proto/user_service"
 	"github.com/rs/zerolog/log"
+	"github.com/twitchtv/twirp"
 )
 
 type SocializeService struct {
@@ -39,18 +40,18 @@ func (ss *SocializeService) AddBlock(ctx context.Context, req *pb.AddBlockReques
 	user, err := ss.userStore.Get(ctx, sess.Username)
 	if err != nil {
 		log.Err(err).Msg("getting-user")
-		return nil, err
+		return nil, twirp.InternalErrorWith(err)
 	}
 
 	blocked, err := ss.userStore.GetByUUID(ctx, req.Uuid)
 	if err != nil {
 		log.Err(err).Msg("getting-blocked")
-		return nil, err
+		return nil, twirp.NewError(twirp.InvalidArgument, err.Error())
 	}
 
 	err = ss.userStore.AddBlock(ctx, blocked.ID, user.ID)
 	if err != nil {
-		return nil, err
+		return nil, twirp.NewError(twirp.InvalidArgument, err.Error())
 	}
 	return &pb.OKResponse{}, nil
 }
@@ -64,18 +65,18 @@ func (ss *SocializeService) RemoveBlock(ctx context.Context, req *pb.RemoveBlock
 	user, err := ss.userStore.Get(ctx, sess.Username)
 	if err != nil {
 		log.Err(err).Msg("getting-user")
-		return nil, err
+		return nil, twirp.InternalErrorWith(err)
 	}
 
 	unblocked, err := ss.userStore.GetByUUID(ctx, req.Uuid)
 	if err != nil {
 		log.Err(err).Msg("getting-unblocked")
-		return nil, err
+		return nil, twirp.NewError(twirp.InvalidArgument, err.Error())
 	}
 
 	err = ss.userStore.RemoveBlock(ctx, unblocked.ID, user.ID)
 	if err != nil {
-		return nil, err
+		return nil, twirp.NewError(twirp.InvalidArgument, err.Error())
 	}
 	return &pb.OKResponse{}, nil
 }
@@ -88,12 +89,12 @@ func (ss *SocializeService) GetBlocks(ctx context.Context, req *pb.GetBlocksRequ
 	user, err := ss.userStore.Get(ctx, sess.Username)
 	if err != nil {
 		log.Err(err).Msg("getting-user")
-		return nil, err
+		return nil, twirp.InternalErrorWith(err)
 	}
 
 	users, err := ss.userStore.GetBlocks(ctx, user.ID)
 	if err != nil {
-		return nil, err
+		return nil, twirp.InternalErrorWith(err)
 	}
 
 	basicUsers := make([]*pb.BasicUser, len(users))
@@ -115,12 +116,12 @@ func (ss *SocializeService) GetFullBlocks(ctx context.Context, req *pb.GetFullBl
 	user, err := ss.userStore.Get(ctx, sess.Username)
 	if err != nil {
 		log.Err(err).Msg("getting-user")
-		return nil, err
+		return nil, twirp.InternalErrorWith(err)
 	}
 
 	users, err := ss.userStore.GetFullBlocks(ctx, user.ID)
 	if err != nil {
-		return nil, err
+		return nil, twirp.InternalErrorWith(err)
 	}
 
 	basicUsers := make([]string, len(users))

@@ -66,6 +66,12 @@ export const endGameMessageFromGameInfo = (info: GameMetadata): string => {
 
   const gee = new GameEndedEvent();
   const scores = gee.getScoresMap();
+  if (
+    info.game_end_reason === 'ABORTED' ||
+    info.game_end_reason === 'CANCELLED'
+  ) {
+    return `Game was ${info.game_end_reason.toLowerCase()}.`;
+  }
   if (info.scores) {
     scores.set(info.players[0].nickname, info.scores[0]);
     scores.set(info.players[1].nickname, info.scores[1]);

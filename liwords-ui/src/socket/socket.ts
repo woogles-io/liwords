@@ -3,18 +3,18 @@ import axios from 'axios';
 import jwt from 'jsonwebtoken';
 import useWebSocket from 'react-use-websocket';
 import { useLocation } from 'react-router-dom';
-// import { message } from 'antd';
+import { message } from 'antd';
 import { useMountedState } from '../utils/mounted';
 import { useLoginStateStoreContext } from '../store/store';
-import { useOnSocketMsg } from '../store/socket_handlers';
-import { decodeToMsg } from '../utils/protobuf';
-import { toAPIUrl } from '../api/api';
-import { ActionType } from '../actions/actions';
 import {
+  useOnSocketMsg,
   ReverseMessageType,
   enableShowSocket,
   parseMsgs,
 } from '../store/socket_handlers';
+import { decodeToMsg } from '../utils/protobuf';
+import { toAPIUrl } from '../api/api';
+import { ActionType } from '../actions/actions';
 
 const getSocketURI = (): string => {
   const loc = window.location;
@@ -65,7 +65,7 @@ export const LiwordsSocket = (props: {
 
   const isConnectedToSocket = loginStateStore.loginState.connectedToSocket;
   const wasInitiallyConnectedToSocket = useRef(isConnectedToSocket);
-  const dispatchLoginState = loginStateStore.dispatchLoginState;
+  const { dispatchLoginState } = loginStateStore;
   useEffect(() => {
     if (wasInitiallyConnectedToSocket.current) {
       // Only call this function if we are not connected to the socket.
@@ -78,6 +78,7 @@ export const LiwordsSocket = (props: {
     if (isConnectedToSocket) {
       return;
     }
+
     console.log('About to request token');
 
     axios
@@ -134,6 +135,22 @@ export const LiwordsSocket = (props: {
       });
   }, [dispatchLoginState, isConnectedToSocket, location.pathname]);
 
+  useEffect(() => {
+    if (isConnectedToSocket) {
+      return () => {};
+    }
+    const t = setTimeout(() => {
+      message.warning({
+        content: 'Connecting to server...',
+        duration: 0,
+        key: 'connecting-socket',
+      });
+    }, 2000);
+    return () => {
+      clearTimeout(t);
+    };
+  }, [isConnectedToSocket]);
+
   const { sendMessage: originalSendMessage } = useWebSocket(
     useCallback(() => fullSocketUrl, [fullSocketUrl]),
     {
@@ -143,6 +160,7 @@ export const LiwordsSocket = (props: {
           actionType: ActionType.SetConnectedToSocket,
           payload: true,
         });
+        message.destroy('connecting-socket');
         setJustDisconnected(false);
       },
       onClose: () => {

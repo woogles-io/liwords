@@ -3,10 +3,11 @@ package tournament
 import (
 	"errors"
 	"fmt"
-	"github.com/matryer/is"
 	"math/rand"
 	"strings"
 	"testing"
+
+	"github.com/matryer/is"
 
 	"github.com/domino14/liwords/pkg/entity"
 
@@ -141,7 +142,7 @@ func TestClassicDivisionRandom(t *testing.T) {
 	err = tc.SubmitResult(0, player3, player4, 1, 1,
 		realtime.TournamentGameResult_DRAW,
 		realtime.TournamentGameResult_DRAW,
-		realtime.GameEndReason_ABANDONED, false, 0)
+		realtime.GameEndReason_CANCELLED, false, 0)
 	is.NoErr(err)
 
 	expectedpri2.Pairing.Games[0].Results =
@@ -151,7 +152,7 @@ func TestClassicDivisionRandom(t *testing.T) {
 	expectedpri2.Pairing.Games[0].Scores[1] = 1
 	expectedpri2.Pairing.Outcomes[0] = realtime.TournamentGameResult_DRAW
 	expectedpri2.Pairing.Outcomes[1] = realtime.TournamentGameResult_DRAW
-	expectedpri2.Pairing.Games[0].GameEndReason = realtime.GameEndReason_ABANDONED
+	expectedpri2.Pairing.Games[0].GameEndReason = realtime.GameEndReason_CANCELLED
 	is.NoErr(equalPRI(expectedpri2, pri2))
 
 	roundIsComplete, err := tc.IsRoundComplete(0)
@@ -178,12 +179,12 @@ func TestClassicDivisionRandom(t *testing.T) {
 	err = tc.SubmitResult(1, player1, player2, 0, 0,
 		realtime.TournamentGameResult_FORFEIT_LOSS,
 		realtime.TournamentGameResult_FORFEIT_LOSS,
-		realtime.GameEndReason_ABANDONED, false, 0)
+		realtime.GameEndReason_FORCE_FORFEIT, false, 0)
 	is.NoErr(err)
 
 	expectedpri1.Pairing.Games[0].Scores[0] = 0
 	expectedpri1.Pairing.Games[0].Scores[1] = 0
-	expectedpri1.Pairing.Games[0].GameEndReason = realtime.GameEndReason_ABANDONED
+	expectedpri1.Pairing.Games[0].GameEndReason = realtime.GameEndReason_FORCE_FORFEIT
 	expectedpri1.Pairing.Outcomes[0] = realtime.TournamentGameResult_FORFEIT_LOSS
 	expectedpri1.Pairing.Outcomes[1] = realtime.TournamentGameResult_FORFEIT_LOSS
 	expectedpri1.Pairing.Games[0].Results =
@@ -195,14 +196,14 @@ func TestClassicDivisionRandom(t *testing.T) {
 	err = tc.SubmitResult(1, player3, player4, 50, 50,
 		realtime.TournamentGameResult_BYE,
 		realtime.TournamentGameResult_BYE,
-		realtime.GameEndReason_ABANDONED, false, 0)
+		realtime.GameEndReason_CANCELLED, false, 0)
 	is.NoErr(err)
 
 	expectedpri2.Pairing.Games[0].Results =
 		[]realtime.TournamentGameResult{realtime.TournamentGameResult_BYE, realtime.TournamentGameResult_BYE}
 	expectedpri2.Pairing.Games[0].Scores[0] = 50
 	expectedpri2.Pairing.Games[0].Scores[1] = 50
-	expectedpri2.Pairing.Games[0].GameEndReason = realtime.GameEndReason_ABANDONED
+	expectedpri2.Pairing.Games[0].GameEndReason = realtime.GameEndReason_CANCELLED
 	expectedpri2.Pairing.Outcomes[0] = realtime.TournamentGameResult_BYE
 	expectedpri2.Pairing.Outcomes[1] = realtime.TournamentGameResult_BYE
 	is.NoErr(equalPRI(expectedpri2, pri2))
@@ -666,7 +667,7 @@ func TestClassicDivisionElimination(t *testing.T) {
 	err = tc.SubmitResult(0, player1, player2, 50, 0,
 		realtime.TournamentGameResult_FORFEIT_WIN,
 		realtime.TournamentGameResult_FORFEIT_LOSS,
-		realtime.GameEndReason_ABANDONED, false, 1)
+		realtime.GameEndReason_FORCE_FORFEIT, false, 1)
 	is.NoErr(err)
 
 	// The outcomes should now be set
@@ -674,7 +675,7 @@ func TestClassicDivisionElimination(t *testing.T) {
 		[]realtime.TournamentGameResult{realtime.TournamentGameResult_FORFEIT_WIN, realtime.TournamentGameResult_FORFEIT_LOSS}
 	expectedpri1.Pairing.Games[1].Scores[0] = 50
 	expectedpri1.Pairing.Games[1].Scores[1] = 0
-	expectedpri1.Pairing.Games[1].GameEndReason = realtime.GameEndReason_ABANDONED
+	expectedpri1.Pairing.Games[1].GameEndReason = realtime.GameEndReason_FORCE_FORFEIT
 	expectedpri1.Pairing.Outcomes[0] = realtime.TournamentGameResult_WIN
 	expectedpri1.Pairing.Outcomes[1] = realtime.TournamentGameResult_ELIMINATED
 	is.NoErr(equalPRI(expectedpri1, pri1))
@@ -871,7 +872,7 @@ func TestClassicDivisionElimination(t *testing.T) {
 	err = tc.SubmitResult(0, player1, player2, 50, 0,
 		realtime.TournamentGameResult_FORFEIT_WIN,
 		realtime.TournamentGameResult_FORFEIT_LOSS,
-		realtime.GameEndReason_ABANDONED, false, 1)
+		realtime.GameEndReason_FORCE_FORFEIT, false, 1)
 	is.NoErr(err)
 
 	// The next match ends up tied at 1.5 - 1.5

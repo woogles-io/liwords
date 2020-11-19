@@ -84,8 +84,8 @@ export const GamesHistoryCard = React.memo((props: Props) => {
         case 'RESIGNED':
           endReason = 'Resignation';
           break;
-        case 'ABANDONED':
-          endReason = 'Abandoned';
+        case 'ABORTED':
+          endReason = 'Aborted';
           break;
         case 'CANCELLED':
           endReason = 'Cancelled';

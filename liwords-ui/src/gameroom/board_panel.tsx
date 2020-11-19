@@ -223,6 +223,7 @@ export const BoardPanel = React.memo((props: Props) => {
         message.warn({
           content: 'It is not your turn.',
           className: 'board-hud-message',
+          key: 'board-messages',
           duration: 1.5,
         });
         return;
@@ -499,6 +500,7 @@ export const BoardPanel = React.memo((props: Props) => {
         {
           content: finalAction,
           className: 'board-hud-message',
+          key: 'board-messages',
         },
         15
       );
@@ -527,6 +529,7 @@ export const BoardPanel = React.memo((props: Props) => {
         {
           content: boardMessage,
           className: 'board-hud-message',
+          key: 'board-messages',
         },
         3,
         undefined

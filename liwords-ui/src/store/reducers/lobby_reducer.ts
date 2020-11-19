@@ -67,16 +67,17 @@ const toResultStr = (r: 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7) => {
   }[r];
 };
 
-const toEndReason = (r: 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7) => {
+const toEndReason = (r: 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8) => {
   return {
     0: 'NONE',
     1: 'TIME',
     2: 'STANDARD',
     3: 'CONSECUTIVE_ZEROES',
     4: 'RESIGNED',
-    5: 'ABANDONED',
+    5: 'ABORTED',
     6: 'TRIPLE_CHALLENGE',
     7: 'CANCELLED',
+    8: 'FORCE_FORFEIT',
   }[r];
 };
 

@@ -294,9 +294,14 @@ enum GameEndReason {
   // 6 consecutive zeroes ends the game.
   CONSECUTIVE_ZEROES = 3;
   RESIGNED = 4;
-  ABANDONED = 5;
+  // Aborted games are aborted by mutual agreement.
+  ABORTED = 5;
   TRIPLE_CHALLENGE = 6;
+  // CANCELLED means the game never started. Game start signal was not sent.
   CANCELLED = 7;
+  // FORCE_FORFEIT is a way to force an opponent to take a loss if they left a
+  // game early without resigining.
+  FORCE_FORFEIT = 8;
 }
 
 // We encapsulate the game event here from the client's point of view. The
