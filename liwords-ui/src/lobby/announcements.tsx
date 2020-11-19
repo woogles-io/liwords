@@ -7,6 +7,22 @@ export const Announcements = React.memo((props: AnnouncementsProps) => {
   // Todo: admin to add these and a backend to store and retrieve them
   const announcements = [
     {
+      title: 'Upcoming Tournament - Crescent City Cup',
+      body: (
+        <a
+          href="https://sites.google.com/site/nolascrabble"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          <p>
+            The 10th Annual Crescent City Cup will be held on Woogles on January
+            17th and 18th. Twenty games with Open and Lite divisions for both
+            CSW19 and NWL2020. Register now.
+          </p>
+        </a>
+      ),
+    },
+    {
       title: 'Live Tournament - The WETO',
       body: (
         <a
