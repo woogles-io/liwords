@@ -1,4 +1,5 @@
-import { useCallback } from 'react';
+import { useCallback, useRef } from 'react';
+import { useHistory } from 'react-router-dom';
 import { message, notification } from 'antd';
 import {
   ChatEntityType,
@@ -14,7 +15,6 @@ import {
   useLobbyStoreContext,
   useLoginStateStoreContext,
   usePresenceStoreContext,
-  useRedirGameStoreContext,
   useRematchRequestStoreContext,
   useTimerStoreContext,
 } from './store';
@@ -129,9 +129,11 @@ export const useOnSocketMsg = () => {
   const { dispatchLobbyContext } = useLobbyStoreContext();
   const { loginState } = useLoginStateStoreContext();
   const { setPresence, addPresences } = usePresenceStoreContext();
-  const { setRedirGame } = useRedirGameStoreContext();
   const { setRematchRequest } = useRematchRequestStoreContext();
   const { stopClock } = useTimerStoreContext();
+  const history = useHistory();
+  const historyRef = useRef(history);
+  historyRef.current = history;
 
   return useCallback(
     (reader: FileReader) => {
@@ -229,7 +231,10 @@ export const useOnSocketMsg = () => {
                 // This is a match game attached to a tourney.
                 // XXX: When we have a tourney reducer we should refer to said reducer's
                 //  state instead of looking at the path
-                if (path === `/tournament/${soughtGame.tournamentID}`) {
+                if (
+                  path ===
+                  `/tournament/${encodeURIComponent(soughtGame.tournamentID)}`
+                ) {
                   dispatchLobbyContext({
                     actionType: ActionType.AddMatchRequest,
                     payload: soughtGame,
@@ -454,7 +459,7 @@ export const useOnSocketMsg = () => {
               payload: '',
             });
             const gid = nge.getGameId();
-            setRedirGame(gid);
+            historyRef.current.replace(`/game/${encodeURIComponent(gid)}`);
             setGameEndMessage('');
             break;
           }
@@ -585,7 +590,6 @@ export const useOnSocketMsg = () => {
       setCurrentLagMs,
       setGameEndMessage,
       setPresence,
-      setRedirGame,
       setRematchRequest,
       stopClock,
     ]

@@ -1,7 +1,6 @@
 import {
   useExcludedPlayersStoreContext,
   useLoginStateStoreContext,
-  useResetStoreContext,
 } from '../store/store';
 import axios from 'axios';
 import { toAPIUrl } from '../api/api';
@@ -16,7 +15,6 @@ type BlockerProps = {
 export const TheBlocker = (props: BlockerProps) => {
   const { excludedPlayers } = useExcludedPlayersStoreContext();
   const { loginState } = useLoginStateStoreContext();
-  const { resetStore } = useResetStoreContext();
   const { userID } = loginState;
 
   // Don't block yourself. It makes chat annoying.
@@ -37,17 +35,13 @@ export const TheBlocker = (props: BlockerProps) => {
   }
 
   const blockAction = () => {
-    axios
-      .post(
-        toAPIUrl('user_service.SocializeService', `${apiFunc}Block`),
-        {
-          uuid: props.target,
-        },
-        { withCredentials: true }
-      )
-      .then(() => {
-        resetStore();
-      });
+    axios.post(
+      toAPIUrl('user_service.SocializeService', `${apiFunc}Block`),
+      {
+        uuid: props.target,
+      },
+      { withCredentials: true }
+    );
   };
 
   const DynamicTagName = (props.tagName ||

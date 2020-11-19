@@ -163,13 +163,16 @@ export const Chat = React.memo((props: Props) => {
         if (msg === '') {
           return;
         }
+        if (!loggedIn) {
+          return;
+        }
         propsSendChat(msg);
         // This may not be a good idea. User will miss unread messages.
         setChatAutoScroll(true);
         doChatAutoScroll();
       }
     },
-    [curMsg, doChatAutoScroll, propsSendChat]
+    [curMsg, doChatAutoScroll, loggedIn, propsSendChat]
   );
 
   return (
@@ -224,6 +227,7 @@ export const Chat = React.memo((props: Props) => {
             onKeyDown={onKeyDown}
             onChange={onChange}
             value={curMsg}
+            spellCheck={false}
           />
           {/* <Button onClick={props.DISCONNECT}>DISCONNECT</Button> */}
         </TabPane>

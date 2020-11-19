@@ -1,7 +1,6 @@
 import { Card, Col, Row } from 'antd';
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { useResetStoreContext } from '../store/store';
 import { GameMetadata } from './game_info';
 
 type Props = {
@@ -15,7 +14,6 @@ type SGProps = {
 };
 
 const SingleGame = (props: SGProps) => {
-  const { resetStore } = useResetStoreContext();
   const win = <p className="streak-win">1</p>;
   const loss = <p className="streak-loss">0</p>;
   const tie = <p className="streak-tie">½</p>;
@@ -53,7 +51,6 @@ const SingleGame = (props: SGProps) => {
     <span>
       <Link
         to={`/game/${encodeURIComponent(String(props.game.game_id ?? ''))}`}
-        onClick={resetStore}
       >
         {innerel}
       </Link>

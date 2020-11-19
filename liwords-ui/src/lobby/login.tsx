@@ -1,5 +1,5 @@
 import React from 'react';
-import { Link, useHistory } from 'react-router-dom';
+import { Link, useHistory, useLocation } from 'react-router-dom';
 import { useMountedState } from '../utils/mounted';
 import { useResetStoreContext } from '../store/store';
 import './accountForms.scss';
@@ -40,12 +40,17 @@ export const Login = React.memo(() => {
   };
 
   const history = useHistory();
+  const location = useLocation();
   React.useEffect(() => {
     if (loggedIn) {
-      resetStore();
-      history.replace('/');
+      if (location.pathname === '/') {
+        resetStore();
+      } else {
+        // profile, tournament, etc.
+        history.replace('/');
+      }
     }
-  }, [history, loggedIn, resetStore]);
+  }, [history, location.pathname, loggedIn, resetStore]);
 
   return (
     <div className="account">
@@ -82,7 +87,7 @@ export const Login = React.memo(() => {
           </Form.Item>
         </Form>
         {err !== '' ? <Alert message={err} type="error" /> : null}
-        <Link to="/password/reset" onClick={resetStore}>
+        <Link to="/password/reset">
           I’m drawing a blank on my password. Help!
         </Link>
       </div>

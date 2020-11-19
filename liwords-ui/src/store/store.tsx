@@ -81,11 +81,6 @@ type ExcludedPlayersStoreData = {
   setExcludedPlayers: React.Dispatch<React.SetStateAction<Set<string>>>;
 };
 
-type RedirGameStoreData = {
-  redirGame: string;
-  setRedirGame: React.Dispatch<React.SetStateAction<string>>;
-};
-
 type ChallengeResultEventStoreData = {
   challengeResultEvent: (sge: ServerChallengeResultEvent) => void;
 };
@@ -209,11 +204,6 @@ const ExcludedPlayersContext = createContext<ExcludedPlayersStoreData>({
   // we do not see any messages from excludedPlayers
   excludedPlayers: new Set<string>(),
   setExcludedPlayers: defaultFunction,
-});
-
-const RedirGameContext = createContext<RedirGameStoreData>({
-  redirGame: '',
-  setRedirGame: defaultFunction,
 });
 
 const ChallengeResultEventContext = createContext<
@@ -595,7 +585,6 @@ const RealStore = ({ children, ...props }: Props) => {
     PoolFormatType.Alphabet
   );
 
-  const [redirGame, setRedirGame] = useState('');
   const [gameEndMessage, setGameEndMessage] = useState('');
   const [rematchRequest, setRematchRequest] = useState(new MatchRequest());
   const [chat, setChat] = useState(new Array<ChatEntityObj>());
@@ -721,13 +710,6 @@ const RealStore = ({ children, ...props }: Props) => {
     }),
     [excludedPlayers, setExcludedPlayers]
   );
-  const redirGameStore = useMemo(
-    () => ({
-      redirGame,
-      setRedirGame,
-    }),
-    [redirGame, setRedirGame]
-  );
   const challengeResultEventStore = useMemo(
     () => ({
       challengeResultEvent,
@@ -809,7 +791,6 @@ const RealStore = ({ children, ...props }: Props) => {
       children={ret}
     />
   );
-  ret = <RedirGameContext.Provider value={redirGameStore} children={ret} />;
   ret = (
     <ChallengeResultEventContext.Provider
       value={challengeResultEventStore}
@@ -872,7 +853,6 @@ export const useLagStoreContext = () => useContext(LagContext);
 export const useTentativeTileContext = () => useContext(TentativePlayContext);
 export const useExcludedPlayersStoreContext = () =>
   useContext(ExcludedPlayersContext);
-export const useRedirGameStoreContext = () => useContext(RedirGameContext);
 export const useChallengeResultEventStoreContext = () =>
   useContext(ChallengeResultEventContext);
 export const useGameContextStoreContext = () => useContext(GameContextContext);

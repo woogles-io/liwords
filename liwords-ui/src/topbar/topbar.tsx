@@ -17,14 +17,10 @@ import { useMountedState } from '../utils/mounted';
 const colors = require('../base.scss');
 
 const TopMenu = React.memo((props: Props) => {
-  const { resetStore } = useResetStoreContext();
-
   return (
     <div className="top-header-menu">
       <div className="top-header-left-frame-crossword-game">
-        <Link to="/" onClick={resetStore}>
-          OMGWords
-        </Link>
+        <Link to="/">OMGWords</Link>
       </div>
       <div className="top-header-left-frame-aerolith">
         <a href="https://aerolith.org">Aerolith</a>
@@ -33,9 +29,7 @@ const TopMenu = React.memo((props: Props) => {
         <a href="http://randomracer.com">Random.Racer</a>
       </div>
       <div className="top-header-left-frame-special-land">
-        <Link to="/about" onClick={resetStore}>
-          About Us
-        </Link>
+        <Link to="/about">About Us</Link>
       </div>
     </div>
   );
@@ -74,11 +68,7 @@ export const TopBar = React.memo((props: Props) => {
   const userMenu = (
     <ul>
       <li>
-        <Link
-          className="plain"
-          to={`/profile/${encodeURIComponent(username)}`}
-          onClick={resetStore}
-        >
+        <Link className="plain" to={`/profile/${encodeURIComponent(username)}`}>
           View Profile
         </Link>
       </li>
@@ -89,7 +79,7 @@ export const TopBar = React.memo((props: Props) => {
   );
 
   const homeLink = props.tournamentID
-    ? `/tournament/${props.tournamentID}`
+    ? `/tournament/${encodeURIComponent(props.tournamentID)}`
     : '/';
 
   return (
@@ -105,7 +95,6 @@ export const TopBar = React.memo((props: Props) => {
             className={`site-icon${
               props.tournamentID ? ' tournament-mode' : ''
             }`}
-            onClick={resetStore}
           >
             <div className="top-header-site-icon-rect">
               <div className="top-header-site-icon-m">W</div>
@@ -142,7 +131,7 @@ export const TopBar = React.memo((props: Props) => {
             <button className="link" onClick={() => setLoginModalVisible(true)}>
               Log In
             </button>
-            <Link to="/register" onClick={resetStore}>
+            <Link to="/register">
               <button className="primary">Sign Up</button>
             </Link>
             <Modal

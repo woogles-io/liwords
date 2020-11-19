@@ -7,7 +7,39 @@ export const Announcements = React.memo((props: AnnouncementsProps) => {
   // Todo: admin to add these and a backend to store and retrieve them
   const announcements = [
     {
-      title: 'Live Tournament - 37th Annual Wisconsin Dells Tourney',
+      title: 'Upcoming Tournament - Crescent City Cup',
+      body: (
+        <a
+          href="https://sites.google.com/site/nolascrabble"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          <p>
+            The 10th Annual Crescent City Cup will be held on Woogles on January
+            17th and 18th. Twenty games with Open and Lite divisions for both
+            CSW19 and NWL2020. Register now.
+          </p>
+        </a>
+      ),
+    },
+    {
+      title: 'Live Tournament - The WETO',
+      body: (
+        <a
+          href="https://woogles.io/tournament/weto"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          <p>
+            A single elimination best 3 out of 5 CSW tournament on Woogles.io
+            with an automatic side tournament, November 16 - December 20, 2020.
+            If you are registered, click here to attend the tournament.
+          </p>
+        </a>
+      ),
+    },
+    {
+      title: 'First tournament complete!',
       body: (
         <a
           href="https://woogles.io/tournament/dells2020"
@@ -15,25 +47,10 @@ export const Announcements = React.memo((props: AnnouncementsProps) => {
           rel="noopener noreferrer"
         >
           <p>
-            Eight games on Saturday; top 2 in each lexicon go on to a 5-game
-            match on Sunday. If you are registered, click here to attend the
-            tournament.
-          </p>
-        </a>
-      ),
-    },
-    {
-      title: 'Upcoming Tournament - The WETO',
-      body: (
-        <a
-          href="https://docs.google.com/document/d/1jqtNAnAbXChW86QyGUggJH5xn6FxhE8BJYWmo9mHXMw"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <p>
-            A single elimination best 3 out of 5 CSW tournament on Woogles.io
-            with an automatic side tournament, November 16 - December 20, 2020.
-            $15.00
+            The 37th Annual Wisconsin Dells Tourney was held on Woogles November
+            14th and 15th. If you missed it, take a look at the games here.
+            Congratulations to the winners, Lisa Odom (NWL) and Geoff Thevenot
+            (CSW)!
           </p>
         </a>
       ),

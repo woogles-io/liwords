@@ -7,10 +7,7 @@ import { TopBar } from '../topbar/topbar';
 import { Switch } from 'antd';
 import './profile.scss';
 import { toAPIUrl } from '../api/api';
-import {
-  useLoginStateStoreContext,
-  useResetStoreContext,
-} from '../store/store';
+import { useLoginStateStoreContext } from '../store/store';
 import { GameMetadata, RecentGamesResponse } from '../gameroom/game_info';
 import { GamesHistoryCard } from './games_history';
 import { UsernameWithContext } from '../shared/usernameWithContext';
@@ -218,7 +215,6 @@ export const UserProfile = React.memo((props: Props) => {
   );
   const [recentGames, setRecentGames] = useState<Array<GameMetadata>>([]);
   const { loginState } = useLoginStateStoreContext();
-  const { resetStore } = useResetStoreContext();
   const { username: viewer } = loginState;
   const [recentGamesOffset, setRecentGamesOffset] = useState(0);
   useEffect(() => {
@@ -300,9 +296,7 @@ export const UserProfile = React.memo((props: Props) => {
                 onChange={toggleDarkMode}
                 className="dark-toggle"
               />
-              <Link to="/password/change" onClick={resetStore}>
-                Change your password
-              </Link>
+              <Link to="/password/change">Change your password</Link>
             </div>
           ) : null}
         </header>
