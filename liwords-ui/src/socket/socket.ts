@@ -3,7 +3,6 @@ import axios from 'axios';
 import jwt from 'jsonwebtoken';
 import useWebSocket from 'react-use-websocket';
 import { useLocation } from 'react-router-dom';
-// import { message } from 'antd';
 import { message } from 'antd';
 import { useMountedState } from '../utils/mounted';
 import { useLoginStateStoreContext } from '../store/store';
@@ -79,11 +78,7 @@ export const LiwordsSocket = (props: {
     if (isConnectedToSocket) {
       return;
     }
-    message.warning({
-      content: 'Connecting to server...',
-      duration: 0,
-      key: 'connecting-socket',
-    });
+
     console.log('About to request token');
 
     axios
@@ -139,6 +134,22 @@ export const LiwordsSocket = (props: {
         }
       });
   }, [dispatchLoginState, isConnectedToSocket, location.pathname]);
+
+  useEffect(() => {
+    if (isConnectedToSocket) {
+      return () => {};
+    }
+    const t = setTimeout(() => {
+      message.warning({
+        content: 'Connecting to server...',
+        duration: 0,
+        key: 'connecting-socket',
+      });
+    }, 2000);
+    return () => {
+      clearTimeout(t);
+    };
+  }, [isConnectedToSocket]);
 
   const { sendMessage: originalSendMessage } = useWebSocket(
     useCallback(() => fullSocketUrl, [fullSocketUrl]),
