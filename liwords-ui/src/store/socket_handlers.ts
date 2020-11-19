@@ -343,7 +343,9 @@ export const useOnSocketMsg = () => {
               senderId: cm.getUserId(),
             });
             if (cm.getUsername() !== loginState.username) {
-              BoopSounds.playSound('receiveMsgSound');
+              // BoopSounds.playSound('receiveMsgSound');
+              // Not yet, until we figure out how to just play it for private
+              // msgs.
             }
             break;
           }
