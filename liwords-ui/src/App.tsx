@@ -45,11 +45,12 @@ const App = React.memo(() => {
 
   const location = useLocation();
   const knownLocation = useRef(location.pathname); // Remember the location on first render.
+  const isCurrentLocation = knownLocation.current === location.pathname;
   useEffect(() => {
-    if (knownLocation.current !== location.pathname) {
+    if (!isCurrentLocation) {
       resetStore();
     }
-  }, [location.pathname, resetStore]);
+  }, [isCurrentLocation, resetStore]);
 
   const disconnectSocket = useCallback(() => {
     setShouldDisconnect(true);
@@ -74,6 +75,9 @@ const App = React.memo(() => {
       });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Avoid useEffect in the new path triggering xhr twice.
+  if (!isCurrentLocation) return null;
 
   return (
     <div className="App">
