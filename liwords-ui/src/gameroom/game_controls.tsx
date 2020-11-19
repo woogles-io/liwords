@@ -11,7 +11,6 @@ import { useMountedState } from '../utils/mounted';
 import {
   useExamineStoreContext,
   useGameContextStoreContext,
-  useResetStoreContext,
   useTentativeTileContext,
 } from '../store/store';
 import { EphemeralTile } from '../utils/cwgame/common';
@@ -247,14 +246,12 @@ const EndGameControls = (props: EGCProps) => {
   const { useState } = useMountedState();
 
   const [rematchDisabled, setRematchDisabled] = useState(false);
-  const { resetStore } = useResetStoreContext();
   const history = useHistory();
   const handleExitToLobby = React.useCallback(() => {
-    resetStore();
     props.tournamentID
-      ? history.replace(`/tournament/${props.tournamentID}`)
+      ? history.replace(`/tournament/${encodeURIComponent(props.tournamentID)}`)
       : history.replace('/');
-  }, [history, resetStore, props.tournamentID]);
+  }, [history, props.tournamentID]);
 
   return (
     <div className="game-controls">

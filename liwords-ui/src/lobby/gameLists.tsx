@@ -1,10 +1,11 @@
 import React from 'react';
+import { useHistory } from 'react-router-dom';
 import { Card, Modal, Button } from 'antd';
 import { useMountedState } from '../utils/mounted';
 import { SoughtGames } from './sought_games';
 import { ActiveGames } from './active_games';
 import { SeekForm } from './seek_form';
-import { useLobbyStoreContext, useRedirGameStoreContext } from '../store/store';
+import { useLobbyStoreContext } from '../store/store';
 import { ActiveGame, SoughtGame } from '../store/reducers/lobby_reducer';
 import './seek_form.scss';
 
@@ -21,6 +22,7 @@ type Props = {
 
 export const GameLists = React.memo((props: Props) => {
   const { useState } = useMountedState();
+  const history = useHistory();
 
   const {
     loggedIn,
@@ -33,7 +35,6 @@ export const GameLists = React.memo((props: Props) => {
     tournamentID,
   } = props;
   const { lobbyContext } = useLobbyStoreContext();
-  const { setRedirGame } = useRedirGameStoreContext();
   const [formDisabled, setFormDisabled] = useState(false);
   const [seekModalVisible, setSeekModalVisible] = useState(false);
   const [matchModalVisible, setMatchModalVisible] = useState(false);
@@ -221,7 +222,7 @@ export const GameLists = React.memo((props: Props) => {
         <div
           className="resume"
           onClick={() => {
-            setRedirGame(currentGame.gameID);
+            history.replace(`/game/${encodeURIComponent(currentGame.gameID)}`);
             console.log('redirecting to', currentGame.gameID);
           }}
         >

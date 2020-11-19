@@ -1,7 +1,6 @@
 import React from 'react';
 import { useHistory } from 'react-router-dom';
 import { useMountedState } from '../utils/mounted';
-import { useResetStoreContext } from '../store/store';
 import axios from 'axios';
 import { TopBar } from '../topbar/topbar';
 import { Input, Form, Button, Alert, Checkbox } from 'antd';
@@ -11,7 +10,6 @@ import woogles from '../assets/woogles.png';
 
 export const Register = () => {
   const { useState } = useMountedState();
-  const { resetStore } = useResetStoreContext();
 
   const [err, setErr] = useState('');
   const [loggedIn, setLoggedIn] = useState(false);
@@ -63,10 +61,9 @@ export const Register = () => {
   const history = useHistory();
   React.useEffect(() => {
     if (loggedIn) {
-      resetStore();
       history.replace('/');
     }
-  }, [history, loggedIn, resetStore]);
+  }, [history, loggedIn]);
 
   return (
     <>

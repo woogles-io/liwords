@@ -2,7 +2,6 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import moment from 'moment';
 import { Button, Table, Tag } from 'antd';
-import { useResetStoreContext } from '../store/store';
 import { RecentGame } from './recent_game';
 
 type Props = {
@@ -18,13 +17,8 @@ type playerLinkProps = {
 };
 
 const PlayerLink = (props: playerLinkProps) => {
-  const { resetStore } = useResetStoreContext();
-
   return (
-    <Link
-      to={`/profile/${encodeURIComponent(props.username)}`}
-      onClick={resetStore}
-    >
+    <Link to={`/profile/${encodeURIComponent(props.username)}`}>
       {props.username}
       <br />
       {props.winner ? <Tag color="red">Win</Tag> : null}
@@ -35,8 +29,6 @@ const PlayerLink = (props: playerLinkProps) => {
 };
 
 export const RecentTourneyGames = React.memo((props: Props) => {
-  const { resetStore } = useResetStoreContext();
-
   const formattedGames = props.games
     .filter((item) => item.players?.length && item.end_reason !== 'CANCELLED')
     .map((item) => {
@@ -55,10 +47,7 @@ export const RecentTourneyGames = React.memo((props: Props) => {
         />
       );
       const scores = (
-        <Link
-          to={`/game/${encodeURIComponent(String(item.game_id ?? ''))}`}
-          onClick={resetStore}
-        >
+        <Link to={`/game/${encodeURIComponent(String(item.game_id ?? ''))}`}>
           {item.players[0].score} - {item.players[1].score}
         </Link>
       );
