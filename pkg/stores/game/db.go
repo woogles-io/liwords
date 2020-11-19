@@ -173,7 +173,8 @@ func (s *DBStore) GetRecentGames(ctx context.Context, username string, numGames 
 		Offset(offset).
 		Joins("JOIN users as u0  ON u0.id = games.player0_id").
 		Joins("JOIN users as u1  ON u1.id = games.player1_id").
-		Where("(lower(u0.username) = lower(?) OR lower(u1.username) = lower(?)) AND game_end_reason NOT IN (0, 5, 7)", username, username).
+		Where("(lower(u0.username) = lower(?) OR lower(u1.username) = lower(?)) AND game_end_reason NOT IN (?, ?, ?)",
+			username, username, pb.GameEndReason_NONE, pb.GameEndReason_ABORTED, pb.GameEndReason_CANCELLED).
 		Order("created_at desc").
 		Find(&games); results.Error != nil {
 		return nil, results.Error
@@ -189,7 +190,8 @@ func (s *DBStore) GetRecentTourneyGames(ctx context.Context, tourneyID string, n
 	if results := s.db.Limit(numGames).
 		Offset(offset).
 		// Basically, everything except for 0 (ongoing), 5 (aborted) or 7 (cancelled)
-		Where("tournament_id = ? AND game_end_reason NOT IN (0, 5, 7)", tourneyID).
+		Where("tournament_id = ? AND game_end_reason NOT IN (?, ?, ?)", tourneyID,
+			pb.GameEndReason_NONE, pb.GameEndReason_ABORTED, pb.GameEndReason_CANCELLED).
 		Order("updated_at desc").
 		Find(&games); results.Error != nil {
 		return nil, results.Error
@@ -259,7 +261,6 @@ func convertGamesToGameMetas(games []*game) ([]*pb.GameMeta, error) {
 		var mdata entity.Quickdata
 
 		err := json.Unmarshal(g.Quickdata, &mdata)
-		log.Debug().Interface("mdata", mdata).Msg("FOO")
 		if err != nil {
 			log.Debug().Err(err).Msg("convert-game-quickdata")
 			return nil, err
