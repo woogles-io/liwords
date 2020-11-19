@@ -32,7 +32,7 @@ const (
 	AdjudicateInterval   = 10 * time.Second
 	GamesCounterInterval = 60 * time.Minute
 	// Cancel a game if it hasn't started after this much time.
-	CancelAfter = 30 * time.Second
+	CancelAfter = 60 * time.Second
 )
 
 const (

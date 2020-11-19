@@ -79,7 +79,11 @@ export const LiwordsSocket = (props: {
     if (isConnectedToSocket) {
       return;
     }
-    message.warning('Connecting to server...', 0);
+    message.warning({
+      content: 'Connecting to server...',
+      duration: 0,
+      key: 'connecting-socket',
+    });
     console.log('About to request token');
 
     axios
@@ -145,7 +149,7 @@ export const LiwordsSocket = (props: {
           actionType: ActionType.SetConnectedToSocket,
           payload: true,
         });
-        message.destroy();
+        message.destroy('connecting-socket');
         setJustDisconnected(false);
       },
       onClose: () => {

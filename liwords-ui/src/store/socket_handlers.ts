@@ -297,7 +297,11 @@ export const useOnSocketMsg = () => {
 
           case MessageType.SERVER_MESSAGE: {
             const sm = parsedMsg as ServerMessage;
-            message.warning(sm.getMessage(), 2);
+            message.warning({
+              content: sm.getMessage(),
+              duration: 3,
+              key: 'server-message',
+            });
             break;
           }
 
@@ -474,7 +478,7 @@ export const useOnSocketMsg = () => {
 
             // If there is an Antd message about "waiting for game", destroy it.
             // XXX: This is a bit unideal.
-            message.destroy();
+            message.destroy('server-message');
             break;
           }
 

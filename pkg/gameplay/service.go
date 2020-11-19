@@ -26,7 +26,6 @@ func NewGameService(u user.Store, gs GameStore) *GameService {
 
 // GetMetadata gets metadata for the given game.
 func (gs *GameService) GetMetadata(ctx context.Context, req *pb.GameInfoRequest) (*pb.GameInfoResponse, error) {
-
 	return gs.gameStore.GetMetadata(ctx, req.GameId)
 
 }

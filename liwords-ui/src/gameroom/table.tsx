@@ -231,6 +231,7 @@ export const Table = React.memo((props: Props) => {
 
   useEffect(() => {
     // Request game API to get info about the game at the beginning.
+    console.log('gonna fetch metadata, game id is', gameID);
     axios
       .post<GameMetadata>(
         toAPIUrl('game_service.GameMetadataService', 'GetMetadata'),
@@ -250,12 +251,18 @@ export const Table = React.memo((props: Props) => {
           // ended. We want to synthesize a new GameEnd message
           setGameEndMessage(endGameMessageFromGameInfo(resp.data));
         }
+      })
+      .catch((err) => {
+        message.error({
+          content: `Failed to fetch game information; please refresh. (Error: ${err.message})`,
+          duration: 10,
+        });
       });
 
     return () => {
       clearChat();
       setGameInfo(defaultGameInfo);
-      message.destroy();
+      message.destroy('board-messages');
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [gameID]);
