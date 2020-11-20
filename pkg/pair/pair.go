@@ -38,15 +38,11 @@ func Pair(members *entity.UnpairedPoolMembers) ([]int, error) {
 }
 
 func GetRepeatKey(playerOne string, playerTwo string) string {
-	firstHalf := playerOne
-	secondHalf := playerTwo
-
 	if playerTwo < playerOne {
-		firstHalf = playerTwo
-		secondHalf = playerOne
+		playerOne, playerTwo = playerTwo, playerOne
 	}
 
-	return firstHalf + "::" + secondHalf
+	return playerOne + "::" + playerTwo
 }
 
 func pairRandom(members *entity.UnpairedPoolMembers) ([]int, error) {
@@ -164,12 +160,12 @@ func minWeightMatching(members *entity.UnpairedPoolMembers) ([]int, error) {
 	pairings, weight, err := matching.MinWeightMatching(edges, true)
 
 	if err != nil {
-		log.Debug().Interface("edges", edges).Msg("matching failed")
+		log.Debug().Msgf("matching failed: %v", edges)
 		return nil, err
 	}
 
 	if len(pairings) != numberOfMembers {
-		log.Debug().Interface("edges", edges).Msg("matching incomplete")
+		log.Debug().Msgf("matching incomplete: %v", edges)
 		return nil, errors.New("pairings and members are not the same length")
 	}
 

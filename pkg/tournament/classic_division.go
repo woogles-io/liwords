@@ -26,15 +26,15 @@ func NewClassicDivision(players []string,
 	numberOfPlayers := len(players)
 
 	if numberOfPlayers < 2 {
-		return nil, errors.New("classic Tournaments must have at least 2 players.")
+		return nil, errors.New("classic Tournaments must have at least 2 players")
 	}
 
 	if numberOfRounds < 1 {
-		return nil, errors.New("classic Tournaments must have at least 1 round.")
+		return nil, errors.New("classic Tournaments must have at least 1 round")
 	}
 
 	if numberOfRounds != len(roundControls) {
-		return nil, errors.New("round controls length does not match the number of rounds.")
+		return nil, errors.New("round controls length does not match the number of rounds")
 	}
 
 	isElimination := false
@@ -42,7 +42,7 @@ func NewClassicDivision(players []string,
 		if control.PairingMethod == entity.Elimination {
 			isElimination = true
 		} else if isElimination && control.PairingMethod != entity.Elimination {
-			return nil, errors.New("cannot mix Elimination pairings with any other pairing method.")
+			return nil, errors.New("cannot mix Elimination pairings with any other pairing method")
 		}
 	}
 
