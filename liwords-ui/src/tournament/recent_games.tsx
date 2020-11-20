@@ -29,6 +29,7 @@ const PlayerLink = (props: playerLinkProps) => {
 };
 
 export const RecentTourneyGames = React.memo((props: Props) => {
+  let lastDate = 0;
   const formattedGames = props.games
     .filter((item) => item.players?.length && item.end_reason !== 'CANCELLED')
     .map((item) => {
@@ -51,8 +52,13 @@ export const RecentTourneyGames = React.memo((props: Props) => {
           {item.players[0].score} - {item.players[1].score}
         </Link>
       );
+      const whenMoment = moment.unix(item.time ? item.time : 0);
 
-      const when = moment.unix(item.time ? item.time : 0).format('HH:mm');
+      let when = whenMoment.format('HH:mm');
+      if (whenMoment.dayOfYear() !== moment.unix(lastDate).dayOfYear()) {
+        when = whenMoment.format('MMM Do HH:mm');
+      }
+      lastDate = item.time;
       let endReason = '';
       switch (item.end_reason) {
         case 'TIME':
