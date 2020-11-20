@@ -1,20 +1,22 @@
-package autopair
+package matching
 
 import (
 	"errors"
+	"github.com/domino14/liwords/pkg/utilities"
 )
 
 type Edge struct {
 	i int
 	j int
-	w int
+	w int64
+	o int64
 }
 
 type MaxWeightMatching struct {
 	edges            []*Edge
 	numberOfEdges    int
 	numberOfVertexes int
-	maxEdgeWeight    int
+	maxEdgeWeight    int64
 	endpoints        []int
 	neighbend        [][]int
 	mate             []int
@@ -28,14 +30,18 @@ type MaxWeightMatching struct {
 	bestEdge         []int
 	blossomBestEdges [][]int
 	unusedBlossoms   []int
-	dualVar          []int
+	dualVar          []int64
 	allowEdge        []bool
 	queue            []int
 	maxCardinality   bool
 }
 
-func minWeightMatching(edges []*Edge, maxCardinality bool) ([]int, error) {
-	maxEdgeWeight := -1
+func NewEdge(i int, j int, w int64) *Edge {
+	return &Edge{i: i, j: j, w: w, o: w}
+}
+
+func MinWeightMatching(edges []*Edge, maxCardinality bool) ([]int, int64, error) {
+	var maxEdgeWeight int64 = -1
 	for _, edge := range edges {
 		if edge.w > maxEdgeWeight {
 			maxEdgeWeight = edge.w
@@ -47,7 +53,7 @@ func minWeightMatching(edges []*Edge, maxCardinality bool) ([]int, error) {
 	return maxWeightMatching(edges, maxCardinality)
 }
 
-func maxWeightMatching(edges []*Edge, maxCardinality bool) ([]int, error) {
+func maxWeightMatching(edges []*Edge, maxCardinality bool) ([]int, int64, error) {
 
 	/*
 	   Compute a maximum-weighted matching in the general undirected
@@ -76,10 +82,10 @@ func maxWeightMatching(edges []*Edge, maxCardinality bool) ([]int, error) {
 	numberOfEdges := len(edges)
 	// Count vertexes and find maximum edge weight
 	numberOfVertexes := 0
-	maxEdgeWeight := -1
+	var maxEdgeWeight int64 = -1
 	for _, edge := range edges {
 		if !(edge.i >= 0 && edge.j >= 0 && edge.i != edge.j) {
-			return nil, errors.New("ERROR 1")
+			return nil, 0, errors.New("ERROR 1")
 		}
 		if edge.i >= numberOfVertexes {
 			numberOfVertexes = edge.i + 1
@@ -113,7 +119,7 @@ func maxWeightMatching(edges []*Edge, maxCardinality bool) ([]int, error) {
 	neighbendLength := len(neighbend)
 	for k, edge := range edges {
 		if !(edge.i < neighbendLength && edge.j < neighbendLength) {
-			return nil, errors.New("ERROR 2")
+			return nil, 0, errors.New("ERROR 2")
 		}
 		neighbend[edge.i] = append(neighbend[edge.i], 2*k+1)
 		neighbend[edge.j] = append(neighbend[edge.j], 2*k)
@@ -232,7 +238,7 @@ func maxWeightMatching(edges []*Edge, maxCardinality bool) ([]int, error) {
 	// If b is a non-trivial blossom,
 	// dualVar[b] = z(b) where z(b) is b's variable in the dual optimization
 	// problem.
-	dualVar := []int{}
+	dualVar := []int64{}
 	for i := 0; i < numberOfVertexes; i++ {
 		dualVar = append(dualVar, maxEdgeWeight)
 	}
@@ -274,17 +280,28 @@ func maxWeightMatching(edges []*Edge, maxCardinality bool) ([]int, error) {
 
 	err := wm.solveMaxWeightMatching()
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
-	return wm.mate, nil
+	return wm.mate, wm.weightSolution(), nil
 }
 
-func (wm *MaxWeightMatching) slack(k int) (int, error) {
+func (wm *MaxWeightMatching) weightSolution() int64 {
+	var sum int64 = 0
+	for _, edge := range wm.edges {
+		if wm.mate[edge.i] == edge.j &&
+			wm.mate[edge.j] == edge.i {
+			sum += edge.o
+		}
+	}
+	return sum
+}
+
+func (wm *MaxWeightMatching) slack(k int) (int64, error) {
 	if !(k < wm.numberOfEdges) {
 		return 0, errors.New("ERROR 3")
 	}
 	edge := wm.edges[k]
-	if !(edge.i < len(wm.dualVar) && edge.j < len(wm.dualVar)) {
+	if !(edge.i < wm.numberOfVertexes*2 && edge.j < wm.numberOfVertexes*2) {
 		return 0, errors.New("ERROR 4")
 	}
 	return wm.dualVar[edge.i] + wm.dualVar[edge.j] - 2*edge.w, nil
@@ -320,11 +337,11 @@ func (wm *MaxWeightMatching) assignLabel(w int, t int, p int, d int) error {
 	if d > 1000 {
 		return errors.New("ERROR 7")
 	}
-	if !(w < len(wm.inblossoms) && w < len(wm.label) && w < len(wm.labelEnd) && w < len(wm.bestEdge)) {
+	if !(w < wm.numberOfVertexes) {
 		return errors.New("ERROR 8")
 	}
 	b := wm.inblossoms[w]
-	if !(b < len(wm.blossomBase) && b < len(wm.label) && b < len(wm.labelEnd) && b < len(wm.bestEdge)) {
+	if !(b < wm.numberOfVertexes*2) {
 		return errors.New("ERROR 9")
 	}
 	if !(wm.label[w] == 0 && wm.label[b] == 0) {
@@ -344,7 +361,7 @@ func (wm *MaxWeightMatching) assignLabel(w int, t int, p int, d int) error {
 		wm.queue = append(wm.queue, moreLeaves...)
 	} else if t == 2 {
 		base := wm.blossomBase[b]
-		if !(base < len(wm.mate) && wm.mate[base] >= 0 && wm.mate[base] < len(wm.endpoints)) {
+		if !(base < wm.numberOfVertexes && wm.mate[base] >= 0 && wm.mate[base] < wm.numberOfEdges*2) {
 			return errors.New("ERROR 11")
 		}
 		err := wm.assignLabel(wm.endpoints[wm.mate[base]], 1, wm.mate[base]^1, d+1)
@@ -362,11 +379,11 @@ func (wm *MaxWeightMatching) scanBlossom(v int, w int) (int, error) {
 	base := -1
 	for v != -1 || w != -1 {
 		// Look for a breadcrumb in v's blossom or put a new breadcrumb.
-		if !(v < len(wm.inblossoms)) {
+		if !(v < wm.numberOfVertexes) {
 			return 0, errors.New("ERROR 12")
 		}
 		b := wm.inblossoms[v]
-		if !(b < len(wm.label) && b < len(wm.labelEnd) && b < len(wm.blossomBase)) {
+		if !(b < wm.numberOfVertexes*2) {
 			return 0, errors.New("ERROR 13")
 		}
 		if wm.label[b]%8 >= 4 {
@@ -419,7 +436,7 @@ func (wm *MaxWeightMatching) addBlossom(base int, k int) error {
 	edge := wm.edges[k]
 	v := edge.i
 	w := edge.j
-	if !(base < len(wm.inblossoms) && v < len(wm.inblossoms) && w < len(wm.inblossoms)) {
+	if !(base < wm.numberOfVertexes && v < wm.numberOfVertexes && w < wm.numberOfVertexes) {
 		return errors.New("ERROR 19")
 	}
 	bb := wm.inblossoms[base]
@@ -427,15 +444,10 @@ func (wm *MaxWeightMatching) addBlossom(base int, k int) error {
 	bw := wm.inblossoms[w]
 	// Create blossom
 	b := wm.unusedBlossoms[len(wm.unusedBlossoms)-1]
-	if !(b < len(wm.blossomBase) &&
-		b < len(wm.blossomParents) &&
-		b < len(wm.blossomChildren) &&
-		b < len(wm.blossomEndpoints) &&
-		b < len(wm.blossomEndpoints) &&
-		b < len(wm.dualVar) &&
-		bb < len(wm.blossomParents) &&
-		bw < len(wm.blossomParents) &&
-		bv < len(wm.blossomParents)) {
+	if !(b < wm.numberOfVertexes*2 &&
+		bb < wm.numberOfVertexes*2 &&
+		bw < wm.numberOfVertexes*2 &&
+		bv < wm.numberOfVertexes*2) {
 		return errors.New("ERROR 20")
 	}
 	wm.unusedBlossoms = wm.unusedBlossoms[:len(wm.unusedBlossoms)-1]
@@ -447,9 +459,8 @@ func (wm *MaxWeightMatching) addBlossom(base int, k int) error {
 	wm.blossomEndpoints[b] = []int{}
 	// Trace back from v to base
 	for bv != bb {
-		if !(b < len(wm.blossomChildren) &&
-			b < len(wm.blossomEndpoints) &&
-			bv < len(wm.blossomParents)) {
+		if !(b < wm.numberOfVertexes*2 &&
+			bv < wm.numberOfVertexes*2) {
 			return errors.New("ERROR 21")
 		}
 		// Add bv to the new blossom.
@@ -460,7 +471,7 @@ func (wm *MaxWeightMatching) addBlossom(base int, k int) error {
 		if !(wm.labelEnd[bv] >= 0) {
 			return errors.New("ERROR 22")
 		}
-		if !(wm.labelEnd[bv] < len(wm.endpoints) && v < len(wm.inblossoms)) {
+		if !(wm.labelEnd[bv] < wm.numberOfEdges*2 && v < wm.numberOfVertexes) {
 			return errors.New("ERROR 23")
 		}
 		v = wm.endpoints[wm.labelEnd[bv]]
@@ -468,14 +479,13 @@ func (wm *MaxWeightMatching) addBlossom(base int, k int) error {
 	}
 	// Reverse lists, add endpoint that connects the pair of S vertices.
 	wm.blossomChildren[b] = append(wm.blossomChildren[b], bb)
-	reverse(wm.blossomChildren[b])
-	reverse(wm.blossomEndpoints[b])
+	utilities.Reverse(wm.blossomChildren[b])
+	utilities.Reverse(wm.blossomEndpoints[b])
 	wm.blossomEndpoints[b] = append(wm.blossomEndpoints[b], 2*k)
 	// Trace back from w to base
 	for bw != bb {
-		if !(b < len(wm.blossomChildren) &&
-			b < len(wm.blossomEndpoints) &&
-			bw < len(wm.blossomParents)) {
+		if !(b < wm.numberOfVertexes*2 &&
+			bw < wm.numberOfVertexes*2) {
 			return errors.New("ERROR 24")
 		}
 		// Add bw to the new blossom.
@@ -486,7 +496,7 @@ func (wm *MaxWeightMatching) addBlossom(base int, k int) error {
 		if !(wm.labelEnd[bw] >= 0) {
 			return errors.New("ERROR 25")
 		}
-		if !(wm.labelEnd[bw] < len(wm.endpoints) && w < len(wm.inblossoms)) {
+		if !(wm.labelEnd[bw] < wm.numberOfEdges*2 && w < wm.numberOfVertexes) {
 			return errors.New("ERROR 26")
 		}
 		w = wm.endpoints[wm.labelEnd[bw]]
@@ -503,7 +513,7 @@ func (wm *MaxWeightMatching) addBlossom(base int, k int) error {
 		return err
 	}
 	for _, leaf := range moreLeaves {
-		if !(wm.inblossoms[leaf] < len(wm.label)) {
+		if !(wm.inblossoms[leaf] < wm.numberOfVertexes*2) {
 			return errors.New("ERROR 27")
 		}
 		if wm.label[wm.inblossoms[leaf]] == 2 {
@@ -543,14 +553,14 @@ func (wm *MaxWeightMatching) addBlossom(base int, k int) error {
 				edge := wm.edges[edgeIndex]
 				i := edge.i
 				j := edge.j
-				if !(j < len(wm.inblossoms)) {
+				if !(j < wm.numberOfVertexes) {
 					return errors.New("ERROR 28")
 				}
 				if wm.inblossoms[j] == b {
 					i, j = j, i
 				}
 				bj := wm.inblossoms[j]
-				if !(bj < len(wm.label) && bj < len(bestEdgeTo)) {
+				if !(bj < wm.numberOfVertexes*2) {
 					return errors.New("ERROR 29")
 				}
 				if bj != b && wm.label[bj] == 1 {
@@ -606,16 +616,15 @@ func (wm *MaxWeightMatching) addBlossom(base int, k int) error {
 
 // Expand the given top-level blossom.
 func (wm *MaxWeightMatching) expandBlossom(b int, endStage bool, d int) error {
-	if (d > 1000) {
+	if d > 1000 {
 		return errors.New("ERROR expandBlossom recursion failure")
 	}
 	// Convert subblossoms into toplevel blossoms.
-	if !(b < len(wm.label)) {
+	if !(b < wm.numberOfVertexes*2) {
 		return errors.New("ERROR 34")
 	}
 	for _, s := range wm.blossomChildren[b] {
-		if !(s < len(wm.blossomParents) &&
-			s < len(wm.dualVar)) {
+		if !(s < wm.numberOfVertexes*2) {
 			return errors.New("ERROR 35")
 		}
 		wm.blossomParents[s] = -1
@@ -623,7 +632,7 @@ func (wm *MaxWeightMatching) expandBlossom(b int, endStage bool, d int) error {
 			wm.inblossoms[s] = s
 		} else if endStage && wm.dualVar[s] == 0 {
 			// Recursively expand this subblossom
-			err := wm.expandBlossom(s, endStage, d + 1)
+			err := wm.expandBlossom(s, endStage, d+1)
 			if err != nil {
 				return err
 			}
@@ -633,7 +642,7 @@ func (wm *MaxWeightMatching) expandBlossom(b int, endStage bool, d int) error {
 				return err
 			}
 			for _, v := range leaves {
-				if !(v < len(wm.inblossoms)) {
+				if !(v < wm.numberOfVertexes) {
 					return errors.New("ERROR 36")
 				}
 				wm.inblossoms[v] = s
@@ -653,7 +662,7 @@ func (wm *MaxWeightMatching) expandBlossom(b int, endStage bool, d int) error {
 		}
 		entryChild := wm.inblossoms[wm.endpoints[wm.labelEnd[b]^1]]
 		// Decide in which direction we will go round the blossom.
-		j := indexOf(entryChild, &wm.blossomChildren[b])
+		j := utilities.IndexOf(entryChild, &wm.blossomChildren[b])
 		var jstep int
 		var endptrick int
 		if j%2 == 1 {
@@ -756,9 +765,9 @@ func (wm *MaxWeightMatching) expandBlossom(b int, endStage bool, d int) error {
 					return errors.New("ERROR 41")
 				}
 				wm.label[reachableVertex] = 0
-				if !(bv < len(wm.blossomBase) &&
-					wm.blossomBase[bv] < len(wm.mate) &&
-					wm.endpoints[wm.mate[wm.blossomBase[bv]]] < len(wm.label)) {
+				if !(bv < wm.numberOfVertexes*2 &&
+					wm.blossomBase[bv] < wm.numberOfVertexes &&
+					wm.endpoints[wm.mate[wm.blossomBase[bv]]] < wm.numberOfVertexes*2) {
 					return errors.New("ERROR 42")
 				}
 				wm.label[wm.endpoints[wm.mate[wm.blossomBase[bv]]]] = 0
@@ -793,7 +802,7 @@ func (wm *MaxWeightMatching) augmentBlossom(b int, v int, d int) error {
 	if d > 1000 {
 		return errors.New("ERROR 43")
 	}
-	if !(v < len(wm.blossomParents) && b < len(wm.blossomChildren)) {
+	if !(v < wm.numberOfVertexes*2 && b < wm.numberOfVertexes*2) {
 		return errors.New("ERROR 44")
 	}
 	t := v
@@ -808,7 +817,7 @@ func (wm *MaxWeightMatching) augmentBlossom(b int, v int, d int) error {
 		}
 	}
 	// Decide in which direction we will go round the blossom.
-	i := indexOf(t, &wm.blossomChildren[b])
+	i := utilities.IndexOf(t, &wm.blossomChildren[b])
 	j := i
 	var jstep int
 	var endptrick int
@@ -891,7 +900,7 @@ func (wm *MaxWeightMatching) augmentMatching(k int) error {
 		p := pair[1]
 
 		for {
-			if !(s < len(wm.inblossoms)) {
+			if !(s < wm.numberOfVertexes) {
 				return errors.New("ERROR 48")
 			}
 			bs := wm.inblossoms[s]
@@ -916,7 +925,7 @@ func (wm *MaxWeightMatching) augmentMatching(k int) error {
 				// Reached single vertex; stop.
 				break
 			}
-			if !(wm.labelEnd[bs] < len(wm.endpoints)) {
+			if !(wm.labelEnd[bs] < wm.numberOfEdges*2) {
 				return errors.New("ERROR 51")
 			}
 			t := wm.endpoints[wm.labelEnd[bs]]
@@ -951,13 +960,13 @@ func (wm *MaxWeightMatching) augmentMatching(k int) error {
 }
 
 func (wm *MaxWeightMatching) verifyOptimum() error {
-	var vdualOffset int
-	minDualVarFirstHalf := minInt(wm.dualVar[:wm.numberOfVertexes])
-	minDualVarSecondHalf := minInt(wm.dualVar[wm.numberOfVertexes:])
+	var vdualOffset int64
+	minDualVarFirstHalf := utilities.BigMinArr(wm.dualVar[:wm.numberOfVertexes])
+	minDualVarSecondHalf := utilities.BigMinArr(wm.dualVar[wm.numberOfVertexes:])
 	if wm.maxCardinality {
 		// Vertexes may have negative dual;
 		// find a constant non-negative number to add to all vertex duals.
-		vdualOffset = max(0, -minDualVarFirstHalf)
+		vdualOffset = utilities.BigMax(0, -minDualVarFirstHalf)
 	} else {
 		vdualOffset = 0
 	}
@@ -982,8 +991,8 @@ func (wm *MaxWeightMatching) verifyOptimum() error {
 		for wm.blossomParents[jblossoms[len(jblossoms)-1]] != -1 {
 			jblossoms = append(jblossoms, wm.blossomParents[jblossoms[len(jblossoms)-1]])
 		}
-		reverse(iblossoms)
-		reverse(jblossoms)
+		utilities.Reverse(iblossoms)
+		utilities.Reverse(jblossoms)
 		ilen := len(iblossoms)
 		jlen := len(jblossoms)
 		ziplen := ilen
@@ -1093,7 +1102,7 @@ func (wm *MaxWeightMatching) solveMaxWeightMatching() error {
 						// This edge is internal to a blossom; ignore it
 						continue
 					}
-					var kslack int
+					var kslack int64
 					var err error
 					if !wm.allowEdge[k] {
 						kslack, err = wm.slack(k)
@@ -1191,14 +1200,14 @@ func (wm *MaxWeightMatching) solveMaxWeightMatching() error {
 			// (Note that our vertex dual variables, edge slacks and deltas
 			// are premultipllied by two.)
 			deltaType := -1
-			delta := -1
+			var delta int64 = -1
 			deltaEdge := -1
 			deltaBlossom := -1
 
 			// Compute delta1: the minimum value of any vertex dual.
 			if !wm.maxCardinality {
 				deltaType = 1
-				delta = minInt(wm.dualVar[:wm.numberOfVertexes])
+				delta = utilities.BigMinArr(wm.dualVar[:wm.numberOfVertexes])
 			}
 
 			// Compute delta2: the minimum slack on any edge between
@@ -1252,7 +1261,7 @@ func (wm *MaxWeightMatching) solveMaxWeightMatching() error {
 				// reached. Do a final delta update to make the optimum
 				// verifyable
 				deltaType = 1
-				delta = max(0, minInt(wm.dualVar[:wm.numberOfVertexes]))
+				delta = utilities.BigMax(0, utilities.BigMinArr(wm.dualVar[:wm.numberOfVertexes]))
 			}
 
 			// Update dual variables according to delta.
@@ -1292,7 +1301,7 @@ func (wm *MaxWeightMatching) solveMaxWeightMatching() error {
 					i, j = j, i
 				}
 				if wm.label[wm.inblossoms[i]] != 1 {
-					return errors.New("ERROR 665")
+					return errors.New("ERROR 65")
 				}
 				wm.queue = append(wm.queue, i)
 
@@ -1345,53 +1354,4 @@ func (wm *MaxWeightMatching) solveMaxWeightMatching() error {
 		}
 	}
 	return nil
-}
-
-func minInt(array []int) int {
-	if len(array) == 0 {
-		return 0
-	}
-	minInt := array[0]
-	for _, j := range array {
-		if j < minInt {
-			minInt = j
-		}
-	}
-	return minInt
-}
-
-func abs(x int) int {
-	if x < 0 {
-		return -x
-	}
-	return x
-}
-
-func min(x, y int) int {
-	if x < y {
-		return x
-	}
-	return y
-}
-
-func max(x, y int) int {
-	if x < y {
-		return y
-	}
-	return x
-}
-
-func indexOf(v int, array *[]int) int {
-	for i, j := range *array {
-		if v == j {
-			return i
-		}
-	}
-	return -1
-}
-
-func reverse(array []int) {
-	for i, j := 0, len(array)-1; i < j; i, j = i+1, j-1 {
-		array[i], array[j] = array[j], array[i]
-	}
 }

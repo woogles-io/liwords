@@ -2,7 +2,6 @@ package tournament_test
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"os"
 	"sort"
@@ -105,13 +104,46 @@ func tournamentStore(dbURL string, gs gameplay.GameStore) (*config.Config, tourn
 	return cfg, tournamentStore
 }
 
+func makeRoundControls() []*entity.RoundControls {
+	return []*entity.RoundControls{&entity.RoundControls{FirstMethod: entity.AutomaticFirst,
+		PairingMethod:               entity.RoundRobin,
+		GamesPerRound:               1,
+		Factor:                      1,
+		MaxRepeats:                  1,
+		AllowOverMaxRepeats:         true,
+		RepeatRelativeWeight:        1,
+		WinDifferenceRelativeWeight: 1},
+		&entity.RoundControls{FirstMethod: entity.AutomaticFirst,
+			PairingMethod:               entity.RoundRobin,
+			GamesPerRound:               1,
+			Factor:                      1,
+			MaxRepeats:                  1,
+			AllowOverMaxRepeats:         true,
+			RepeatRelativeWeight:        1,
+			WinDifferenceRelativeWeight: 1},
+		&entity.RoundControls{FirstMethod: entity.AutomaticFirst,
+			PairingMethod:               entity.RoundRobin,
+			GamesPerRound:               1,
+			Factor:                      1,
+			MaxRepeats:                  1,
+			AllowOverMaxRepeats:         true,
+			RepeatRelativeWeight:        1,
+			WinDifferenceRelativeWeight: 1},
+		&entity.RoundControls{FirstMethod: entity.AutomaticFirst,
+			PairingMethod:               entity.KingOfTheHill,
+			GamesPerRound:               1,
+			Factor:                      1,
+			MaxRepeats:                  1,
+			AllowOverMaxRepeats:         true,
+			RepeatRelativeWeight:        1,
+			WinDifferenceRelativeWeight: 1}}
+}
+
 func makeControls() *entity.TournamentControls {
 	return &entity.TournamentControls{
 		GameRequest:    gameReq,
-		PairingMethods: []entity.PairingMethod{entity.RoundRobin, entity.RoundRobin, entity.RoundRobin, entity.KingOfTheHill},
-		FirstMethods:   []entity.FirstMethod{entity.AutomaticFirst, entity.AutomaticFirst, entity.AutomaticFirst, entity.AutomaticFirst},
+		RoundControls:  makeRoundControls(),
 		NumberOfRounds: 4,
-		GamesPerRound:  []int{1, 1, 1, 1},
 		Type:           entity.ClassicTournamentType,
 		StartTime:      time.Now()}
 }
@@ -582,13 +614,13 @@ func equalTournamentPersons(tp1 *entity.TournamentPersons, tp2 *entity.Tournamen
 	for k, v1 := range tp1.Persons {
 		v2, ok := tp2.Persons[k]
 		if !ok || v1 != v2 {
-			return errors.New(fmt.Sprintf("TournamentPersons structs are not equal:\n%s\n%s\n", tp1String, tp2String))
+			return fmt.Errorf("tournamentPersons structs are not equal: %s, %s", tp1String, tp2String)
 		}
 	}
 	for k, v2 := range tp2.Persons {
 		v1, ok := tp1.Persons[k]
 		if !ok || v1 != v2 {
-			return errors.New(fmt.Sprintf("TournamentPersons structs are not equal:\n%s\n%s\n", tp1String, tp2String))
+			return fmt.Errorf("tournamentPersons structs are not equal: %s, %s", tp1String, tp2String)
 		}
 	}
 

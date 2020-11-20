@@ -1,7 +1,6 @@
 package tournament
 
 import (
-	"errors"
 	"fmt"
 	"math/rand"
 	"strings"
@@ -18,31 +17,32 @@ var playerStrings = []string{"Will", "Josh", "Conrad", "Jesse"}
 var playersOddStrings = []string{"Will", "Josh", "Conrad", "Jesse", "Matt"}
 var rounds = 2
 var defaultFirsts = []entity.FirstMethod{entity.ManualFirst, entity.ManualFirst}
-var defaultGamesPerRound = []int{1, 1}
+var defaultGamesPerRound = 1
 
 func TestClassicDivisionRandom(t *testing.T) {
 	// This test attempts to cover the basic
 	// functions of a Classic Tournament
 
+	roundControls := defaultRoundControls(rounds)
+
 	is := is.New(t)
 
 	// Tournaments must have at least two players
-	tc, err := NewClassicDivision([]string{"Sad"}, rounds, defaultGamesPerRound, []entity.PairingMethod{entity.Random, entity.Random}, defaultFirsts)
+	tc, err := NewClassicDivision([]string{"Sad"}, rounds, roundControls)
 	is.True(err != nil)
 
 	// Tournaments must have at least 1 round
-	tc, err = NewClassicDivision(playerStrings, 0, defaultGamesPerRound, []entity.PairingMethod{entity.Random, entity.Random}, defaultFirsts)
+	tc, err = NewClassicDivision(playerStrings, 0, roundControls)
 	is.True(err != nil)
 
-	// Tournaments must have an equal number of rounds and pairing methods
-	tc, err = NewClassicDivision(playerStrings, rounds, defaultGamesPerRound, []entity.PairingMethod{entity.Random}, defaultFirsts)
+	roundControls = append(roundControls, roundControls...)
+	// Tournaments must have an equal number of rounds and round controls
+	tc, err = NewClassicDivision(playerStrings, rounds, roundControls)
 	is.True(err != nil)
 
-	// Tournaments must have an equal number of rounds and first methods
-	tc, err = NewClassicDivision(playerStrings, rounds, defaultGamesPerRound, []entity.PairingMethod{entity.Random}, []entity.FirstMethod{})
-	is.True(err != nil)
+	roundControls = defaultRoundControls(rounds)
 
-	tc, err = NewClassicDivision(playerStrings, rounds, defaultGamesPerRound, []entity.PairingMethod{entity.Random, entity.Random}, defaultFirsts)
+	tc, err = NewClassicDivision(playerStrings, rounds, roundControls)
 	is.NoErr(err)
 	is.True(tc != nil)
 
@@ -67,8 +67,8 @@ func TestClassicDivisionRandom(t *testing.T) {
 	pri2, err := tc.GetPlayerRoundInfo(player3, 0)
 	is.NoErr(err)
 
-	expectedpri1 := newPlayerRoundInfo(tc, player1, player2, tc.GamesPerRound[0], 0)
-	expectedpri2 := newPlayerRoundInfo(tc, player3, player4, tc.GamesPerRound[0], 0)
+	expectedpri1 := newPlayerRoundInfo(tc, player1, player2, tc.RoundControls[0].GamesPerRound, 0)
+	expectedpri2 := newPlayerRoundInfo(tc, player3, player4, tc.RoundControls[0].GamesPerRound, 0)
 
 	// Submit result for an unpaired round
 	err = tc.SubmitResult(1, player1, player2, 10000, -40, realtime.TournamentGameResult_WIN,
@@ -79,7 +79,7 @@ func TestClassicDivisionRandom(t *testing.T) {
 	is.NoErr(equalPRI(expectedpri1, pri1))
 
 	// Submit result for players that didn't player each other
-	err = tc.SubmitResult(1, player1, player3, 10000, -40, realtime.TournamentGameResult_WIN,
+	err = tc.SubmitResult(0, player1, player3, 10000, -40, realtime.TournamentGameResult_WIN,
 		realtime.TournamentGameResult_LOSS, realtime.GameEndReason_STANDARD, false, 0)
 	is.True(err != nil)
 
@@ -170,8 +170,8 @@ func TestClassicDivisionRandom(t *testing.T) {
 	pri2, err = tc.GetPlayerRoundInfo(player3, 1)
 	is.NoErr(err)
 
-	expectedpri1 = newPlayerRoundInfo(tc, player1, player2, tc.GamesPerRound[1], 1)
-	expectedpri2 = newPlayerRoundInfo(tc, player3, player4, tc.GamesPerRound[1], 1)
+	expectedpri1 = newPlayerRoundInfo(tc, player1, player2, tc.RoundControls[1].GamesPerRound, 1)
+	expectedpri2 = newPlayerRoundInfo(tc, player3, player4, tc.RoundControls[1].GamesPerRound, 1)
 
 	// Round 2 should have been paired,
 	// submit a result
@@ -233,7 +233,7 @@ func TestClassicDivisionRandom(t *testing.T) {
 	is.NoErr(err)
 
 	// Check that pairings are correct with an odd number of players
-	tc, err = NewClassicDivision(playersOddStrings, rounds, defaultGamesPerRound, []entity.PairingMethod{entity.Random, entity.Random}, defaultFirsts)
+	tc, err = NewClassicDivision(playersOddStrings, rounds, roundControls)
 	is.NoErr(err)
 	is.True(tc != nil)
 
@@ -247,7 +247,13 @@ func TestClassicDivisionKingOfTheHill(t *testing.T) {
 
 	is := is.New(t)
 
-	tc, err := NewClassicDivision(playerStrings, rounds, defaultGamesPerRound, []entity.PairingMethod{entity.KingOfTheHill, entity.KingOfTheHill}, defaultFirsts)
+	roundControls := defaultRoundControls(rounds)
+
+	for i := 0; i < rounds; i++ {
+		roundControls[i].PairingMethod = entity.KingOfTheHill
+	}
+
+	tc, err := NewClassicDivision(playerStrings, rounds, roundControls)
 	is.NoErr(err)
 	is.True(tc != nil)
 
@@ -295,7 +301,6 @@ func TestClassicDivisionKingOfTheHill(t *testing.T) {
 	is.NoErr(equalStandings(expectedstandings, standings))
 
 	// The next round should have been paired
-
 	// Tournament should not be over
 
 	tournamentIsFinished, err = tc.IsFinished()
@@ -334,7 +339,7 @@ func TestClassicDivisionKingOfTheHill(t *testing.T) {
 	is.True(tournamentIsFinished)
 
 	// Check that pairings are correct with an odd number of players
-	tc, err = NewClassicDivision(playersOddStrings, rounds, defaultGamesPerRound, []entity.PairingMethod{entity.KingOfTheHill, entity.KingOfTheHill}, defaultFirsts)
+	tc, err = NewClassicDivision(playersOddStrings, rounds, roundControls)
 	is.NoErr(err)
 	is.True(tc != nil)
 
@@ -347,51 +352,341 @@ func TestClassicDivisionKingOfTheHill(t *testing.T) {
 	is.True(tc.Matrix[0][l].Pairing.Players[1] == lastPlayer)
 }
 
-func TestClassicDivisionRoundRobinAlgorithm(t *testing.T) {
-	// This test is used to ensure that round robin
-	// pairings work correctly. See the function in tournament.go
-	// for more details about the algorithm.
+func TestClassicDivisionFactor(t *testing.T) {
+	// This test is used to ensure that factor
+	// pairings work correctly
 
 	is := is.New(t)
 
-	roundRobinPlayers := []string{"1", "2", "3", "4", "5", "6", "7", "8"}
+	roundControls := []*entity.RoundControls{}
 
-	is.NoErr(equalRoundRobinPairings([]string{"1", "8", "2", "7", "3", "6", "4", "5"},
-		getRoundRobinPairings(roundRobinPlayers, 0)))
-	is.NoErr(equalRoundRobinPairings([]string{"1", "7", "8", "6", "2", "5", "3", "4"},
-		getRoundRobinPairings(roundRobinPlayers, 1)))
-	is.NoErr(equalRoundRobinPairings([]string{"1", "6", "7", "5", "8", "4", "2", "3"},
-		getRoundRobinPairings(roundRobinPlayers, 2)))
-	is.NoErr(equalRoundRobinPairings([]string{"1", "5", "6", "4", "7", "3", "8", "2"},
-		getRoundRobinPairings(roundRobinPlayers, 3)))
-	is.NoErr(equalRoundRobinPairings([]string{"1", "4", "5", "3", "6", "2", "7", "8"},
-		getRoundRobinPairings(roundRobinPlayers, 4)))
-	is.NoErr(equalRoundRobinPairings([]string{"1", "3", "4", "2", "5", "8", "6", "7"},
-		getRoundRobinPairings(roundRobinPlayers, 5)))
-	is.NoErr(equalRoundRobinPairings([]string{"1", "2", "3", "8", "4", "7", "5", "6"},
-		getRoundRobinPairings(roundRobinPlayers, 6)))
+	for i := 0; i < 2; i++ {
+		roundControls = append(roundControls, &entity.RoundControls{FirstMethod: entity.ManualFirst,
+			PairingMethod:               entity.Factor,
+			GamesPerRound:               defaultGamesPerRound,
+			Round:                       i,
+			Factor:                      i + 2,
+			MaxRepeats:                  1,
+			AllowOverMaxRepeats:         true,
+			RepeatRelativeWeight:        1,
+			WinDifferenceRelativeWeight: 1})
+	}
 
-	// Modulus operation should repeat the pairings past the first round robin
+	tc, err := NewClassicDivision([]string{"1", "2", "3", "4", "5", "6", "7", "8"}, 2, roundControls)
+	is.NoErr(err)
+	is.True(tc != nil)
 
-	is.NoErr(equalRoundRobinPairings([]string{"1", "8", "2", "7", "3", "6", "4", "5"},
-		getRoundRobinPairings(roundRobinPlayers, 7)))
-	is.NoErr(equalRoundRobinPairings([]string{"1", "7", "8", "6", "2", "5", "3", "4"},
-		getRoundRobinPairings(roundRobinPlayers, 8)))
-	is.NoErr(equalRoundRobinPairings([]string{"1", "6", "7", "5", "8", "4", "2", "3"},
-		getRoundRobinPairings(roundRobinPlayers, 9)))
-	is.NoErr(equalRoundRobinPairings([]string{"1", "5", "6", "4", "7", "3", "8", "2"},
-		getRoundRobinPairings(roundRobinPlayers, 10)))
-	is.NoErr(equalRoundRobinPairings([]string{"1", "4", "5", "3", "6", "2", "7", "8"},
-		getRoundRobinPairings(roundRobinPlayers, 11)))
-	is.NoErr(equalRoundRobinPairings([]string{"1", "3", "4", "2", "5", "8", "6", "7"},
-		getRoundRobinPairings(roundRobinPlayers, 12)))
-	is.NoErr(equalRoundRobinPairings([]string{"1", "2", "3", "8", "4", "7", "5", "6"},
-		getRoundRobinPairings(roundRobinPlayers, 13)))
+	is.NoErr(validatePairings(tc, 0))
 
-	// Test first pairing of third round robin just to be sure
+	err = tc.SubmitResult(0, "1", "3", 900, 500,
+		realtime.TournamentGameResult_WIN,
+		realtime.TournamentGameResult_LOSS,
+		realtime.GameEndReason_STANDARD, true, 0)
+	is.NoErr(err)
 
-	is.NoErr(equalRoundRobinPairings([]string{"1", "8", "2", "7", "3", "6", "4", "5"},
-		getRoundRobinPairings(roundRobinPlayers, 14)))
+	err = tc.SubmitResult(0, "2", "4", 800, 500,
+		realtime.TournamentGameResult_WIN,
+		realtime.TournamentGameResult_LOSS,
+		realtime.GameEndReason_STANDARD, true, 0)
+	is.NoErr(err)
+
+	err = tc.SubmitResult(0, "5", "6", 700, 500,
+		realtime.TournamentGameResult_WIN,
+		realtime.TournamentGameResult_LOSS,
+		realtime.GameEndReason_STANDARD, true, 0)
+	is.NoErr(err)
+
+	// This is an invalid factor for this number of
+	// players and an error should be returned
+	tc.RoundControls[1].Factor = 5
+
+	err = tc.SubmitResult(0, "8", "7", 600, 500,
+		realtime.TournamentGameResult_WIN,
+		realtime.TournamentGameResult_LOSS,
+		realtime.GameEndReason_STANDARD, true, 0)
+	is.True(err != nil)
+
+	// Get the standings for round 1
+	standings, err := tc.GetStandings(0)
+	is.NoErr(err)
+
+	expectedstandings := []*entity.Standing{&entity.Standing{Player: "1", Wins: 1, Losses: 0, Draws: 0, Spread: 400},
+		&entity.Standing{Player: "2", Wins: 1, Losses: 0, Draws: 0, Spread: 300},
+		&entity.Standing{Player: "5", Wins: 1, Losses: 0, Draws: 0, Spread: 200},
+		&entity.Standing{Player: "8", Wins: 1, Losses: 0, Draws: 0, Spread: 100},
+		&entity.Standing{Player: "7", Wins: 0, Losses: 1, Draws: 0, Spread: -100},
+		&entity.Standing{Player: "6", Wins: 0, Losses: 1, Draws: 0, Spread: -200},
+		&entity.Standing{Player: "4", Wins: 0, Losses: 1, Draws: 0, Spread: -300},
+		&entity.Standing{Player: "3", Wins: 0, Losses: 1, Draws: 0, Spread: -400},
+	}
+
+	is.NoErr(equalStandings(expectedstandings, standings))
+
+	tc.RoundControls[1].Factor = 3
+
+	err = tc.PairRound(1)
+	is.NoErr(err)
+
+	// Standings should be: 1, 2, 5, 8, 7, 6, 4, 3
+
+	err = tc.SubmitResult(1, "1", "8", 400, 500,
+		realtime.TournamentGameResult_LOSS,
+		realtime.TournamentGameResult_WIN,
+		realtime.GameEndReason_STANDARD, true, 0)
+	is.NoErr(err)
+
+	err = tc.SubmitResult(1, "2", "7", 400, 500,
+		realtime.TournamentGameResult_LOSS,
+		realtime.TournamentGameResult_WIN,
+		realtime.GameEndReason_STANDARD, true, 0)
+	is.NoErr(err)
+
+	err = tc.SubmitResult(1, "5", "6", 400, 500,
+		realtime.TournamentGameResult_LOSS,
+		realtime.TournamentGameResult_WIN,
+		realtime.GameEndReason_STANDARD, true, 0)
+	is.NoErr(err)
+
+	err = tc.SubmitResult(1, "4", "3", 400, 500,
+		realtime.TournamentGameResult_LOSS,
+		realtime.TournamentGameResult_WIN,
+		realtime.GameEndReason_STANDARD, true, 0)
+	is.NoErr(err)
+}
+
+func TestClassicDivisionSwiss(t *testing.T) {
+	// This test is used to ensure that round robin
+	// pairings work correctly
+
+	is := is.New(t)
+
+	roundControls := []*entity.RoundControls{}
+	numberOfRounds := 7
+
+	for i := 0; i < numberOfRounds; i++ {
+		roundControls = append(roundControls, &entity.RoundControls{FirstMethod: entity.ManualFirst,
+			PairingMethod:               entity.Swiss,
+			GamesPerRound:               defaultGamesPerRound,
+			Round:                       i,
+			Factor:                      1,
+			MaxRepeats:                  0,
+			AllowOverMaxRepeats:         true,
+			RepeatRelativeWeight:        1,
+			WinDifferenceRelativeWeight: 1})
+	}
+
+	roundControls[0].PairingMethod = entity.KingOfTheHill
+
+	tc, err := NewClassicDivision(playerStrings, numberOfRounds, roundControls)
+	is.NoErr(err)
+	is.True(tc != nil)
+
+	is.NoErr(validatePairings(tc, 0))
+
+	player1 := playerStrings[0]
+	player2 := playerStrings[1]
+	player3 := playerStrings[2]
+	player4 := playerStrings[3]
+
+	err = tc.SubmitResult(0, player1, player2, 900, 500,
+		realtime.TournamentGameResult_WIN,
+		realtime.TournamentGameResult_LOSS,
+		realtime.GameEndReason_STANDARD, true, 0)
+	is.NoErr(err)
+
+	err = tc.SubmitResult(0, player3, player4, 800, 500,
+		realtime.TournamentGameResult_WIN,
+		realtime.TournamentGameResult_LOSS,
+		realtime.GameEndReason_STANDARD, true, 0)
+	is.NoErr(err)
+
+	err = tc.SubmitResult(1, player1, player3, 900, 500,
+		realtime.TournamentGameResult_WIN,
+		realtime.TournamentGameResult_LOSS,
+		realtime.GameEndReason_STANDARD, true, 0)
+	is.NoErr(err)
+
+	err = tc.SubmitResult(1, player2, player4, 800, 500,
+		realtime.TournamentGameResult_WIN,
+		realtime.TournamentGameResult_LOSS,
+		realtime.GameEndReason_STANDARD, true, 0)
+	is.NoErr(err)
+
+	// Since repeats only have a weight of 1,
+	// player1 and player4 should be playing each other
+
+	err = tc.SubmitResult(2, player1, player4, 900, 500,
+		realtime.TournamentGameResult_WIN,
+		realtime.TournamentGameResult_LOSS,
+		realtime.GameEndReason_STANDARD, true, 0)
+	is.NoErr(err)
+
+	err = tc.SubmitResult(2, player2, player3, 800, 500,
+		realtime.TournamentGameResult_WIN,
+		realtime.TournamentGameResult_LOSS,
+		realtime.GameEndReason_STANDARD, true, 0)
+	is.NoErr(err)
+
+	repeats, err := getRepeats(tc, 2)
+
+	// Everyone should have played each other once at this point
+	for _, v := range repeats {
+		is.True(v == 1)
+	}
+
+	err = tc.SubmitResult(3, player2, player1, 900, 500,
+		realtime.TournamentGameResult_WIN,
+		realtime.TournamentGameResult_LOSS,
+		realtime.GameEndReason_STANDARD, true, 0)
+	is.NoErr(err)
+
+	// Use factor pairings to force deterministic pairings
+	tc.RoundControls[4].PairingMethod = entity.Factor
+	tc.RoundControls[4].Factor = 2
+
+	err = tc.SubmitResult(3, player3, player4, 800, 700,
+		realtime.TournamentGameResult_WIN,
+		realtime.TournamentGameResult_LOSS,
+		realtime.GameEndReason_STANDARD, true, 0)
+	is.NoErr(err)
+
+	// Get the standings for round 4
+	standings, err := tc.GetStandings(3)
+	is.NoErr(err)
+
+	expectedstandings := []*entity.Standing{&entity.Standing{Player: player1, Wins: 3, Losses: 1, Draws: 0, Spread: 800},
+		&entity.Standing{Player: player2, Wins: 3, Losses: 1, Draws: 0, Spread: 600},
+		&entity.Standing{Player: player3, Wins: 2, Losses: 2, Draws: 0, Spread: -300},
+		&entity.Standing{Player: player4, Wins: 0, Losses: 4, Draws: 0, Spread: -1100},
+	}
+
+	is.NoErr(equalStandings(expectedstandings, standings))
+
+	err = tc.SubmitResult(4, player1, player3, 900, 800,
+		realtime.TournamentGameResult_WIN,
+		realtime.TournamentGameResult_LOSS,
+		realtime.GameEndReason_STANDARD, true, 0)
+	is.NoErr(err)
+
+	// Test that using the prohibitive weight will
+	// lead to the correct pairings
+	tc.RoundControls[6].AllowOverMaxRepeats = false
+	tc.RoundControls[6].MaxRepeats = 2
+
+	err = tc.SubmitResult(4, player4, player2, 800, 500,
+		realtime.TournamentGameResult_WIN,
+		realtime.TournamentGameResult_LOSS,
+		realtime.GameEndReason_STANDARD, true, 0)
+	is.NoErr(err)
+
+	// Get the standings for round 5
+	standings, err = tc.GetStandings(4)
+	is.NoErr(err)
+
+	expectedstandings = []*entity.Standing{&entity.Standing{Player: player1, Wins: 4, Losses: 1, Draws: 0, Spread: 900},
+		&entity.Standing{Player: player2, Wins: 3, Losses: 2, Draws: 0, Spread: 300},
+		&entity.Standing{Player: player3, Wins: 2, Losses: 3, Draws: 0, Spread: -400},
+		&entity.Standing{Player: player4, Wins: 1, Losses: 4, Draws: 0, Spread: -800},
+	}
+
+	is.NoErr(equalStandings(expectedstandings, standings))
+
+	err = tc.SubmitResult(5, player1, player4, 900, 500,
+		realtime.TournamentGameResult_WIN,
+		realtime.TournamentGameResult_LOSS,
+		realtime.GameEndReason_STANDARD, true, 0)
+	is.NoErr(err)
+
+	// Once the next round is paired upon the completion
+	// of round 6, an error will occur since there is
+	// no possible pairing that does not give 3 repeats.
+	tc.RoundControls[6].AllowOverMaxRepeats = false
+	tc.RoundControls[6].MaxRepeats = 2
+
+	err = tc.SubmitResult(5, player2, player3, 800, 500,
+		realtime.TournamentGameResult_WIN,
+		realtime.TournamentGameResult_LOSS,
+		realtime.GameEndReason_STANDARD, true, 0)
+	is.True(fmt.Sprintf("%s", err) == "prohibitive weight reached, pairings are not possible with these settings.")
+
+	tc.RoundControls[6].AllowOverMaxRepeats = true
+
+	err = tc.PairRound(6)
+	is.NoErr(err)
+
+	roundControls = []*entity.RoundControls{}
+	numberOfRounds = 3
+	// This test onlyworks for values of the form 2 ^ n
+	numberOfPlayers := 32
+
+	for i := 0; i < numberOfRounds; i++ {
+		roundControls = append(roundControls, &entity.RoundControls{FirstMethod: entity.ManualFirst,
+			PairingMethod:               entity.KingOfTheHill,
+			GamesPerRound:               defaultGamesPerRound,
+			Round:                       i,
+			Factor:                      1,
+			MaxRepeats:                  0,
+			AllowOverMaxRepeats:         true,
+			RepeatRelativeWeight:        1,
+			WinDifferenceRelativeWeight: 1})
+	}
+
+	swissPlayers := []string{}
+	for i := 1; i <= numberOfPlayers; i++ {
+		swissPlayers = append(swissPlayers, fmt.Sprintf("%d", i))
+	}
+
+	roundControls[2].PairingMethod = entity.Swiss
+
+	tc, err = NewClassicDivision(swissPlayers, numberOfRounds, roundControls)
+	is.NoErr(err)
+	is.True(tc != nil)
+
+	for i := 0; i < numberOfPlayers; i += 2 {
+		err = tc.SubmitResult(0, swissPlayers[i], swissPlayers[i+1], (numberOfPlayers*100)-i*100, 0,
+			realtime.TournamentGameResult_WIN,
+			realtime.TournamentGameResult_LOSS,
+			realtime.GameEndReason_STANDARD, true, 0)
+	}
+
+	for i := 0; i < numberOfPlayers; i += 4 {
+		err = tc.SubmitResult(1, swissPlayers[i], swissPlayers[i+2], (numberOfPlayers*10)-i*10, 0,
+			realtime.TournamentGameResult_WIN,
+			realtime.TournamentGameResult_LOSS,
+			realtime.GameEndReason_STANDARD, true, 0)
+	}
+	for i := 1; i < numberOfPlayers; i += 4 {
+		err = tc.SubmitResult(1, swissPlayers[i], swissPlayers[i+2], 0, (numberOfPlayers*10)-i*10,
+			realtime.TournamentGameResult_LOSS,
+			realtime.TournamentGameResult_WIN,
+			realtime.GameEndReason_STANDARD, true, 0)
+	}
+
+	// Get the standings for round 2
+	standings, err = tc.GetStandings(1)
+	is.NoErr(err)
+
+	for i := 0; i < len(tc.Matrix[2]); i++ {
+		pri := tc.Matrix[2][i]
+		playerOne := pri.Pairing.Players[0]
+		playerTwo := pri.Pairing.Players[1]
+		var playerOneIndex int
+		var playerTwoIndex int
+		for i := 0; i < len(standings); i++ {
+			standingsPlayer := standings[i].Player
+			if playerOne == standingsPlayer {
+				playerOneIndex = i
+			} else if playerTwo == standingsPlayer {
+				playerTwoIndex = i
+			}
+		}
+		// Ensure players only played someone in with the same record
+		playerOneStandings := standings[playerOneIndex]
+		playerTwoStandings := standings[playerTwoIndex]
+		is.True(playerOneStandings.Wins == playerTwoStandings.Wins)
+		is.True(playerOneStandings.Losses == playerTwoStandings.Losses)
+		is.True(playerOneStandings.Draws == playerTwoStandings.Draws)
+	}
 }
 
 func TestClassicDivisionRoundRobin(t *testing.T) {
@@ -400,18 +695,22 @@ func TestClassicDivisionRoundRobin(t *testing.T) {
 
 	is := is.New(t)
 
-	tc, err := NewClassicDivision(playerStrings, 6, []int{1, 1, 1, 1, 1, 1}, []entity.PairingMethod{entity.RoundRobin,
-		entity.RoundRobin,
-		entity.RoundRobin,
-		entity.RoundRobin,
-		entity.RoundRobin,
-		entity.RoundRobin},
-		[]entity.FirstMethod{entity.ManualFirst,
-			entity.ManualFirst,
-			entity.ManualFirst,
-			entity.ManualFirst,
-			entity.ManualFirst,
-			entity.ManualFirst})
+	roundControls := []*entity.RoundControls{}
+	numberOfRounds := 6
+
+	for i := 0; i < numberOfRounds; i++ {
+		roundControls = append(roundControls, &entity.RoundControls{FirstMethod: entity.ManualFirst,
+			PairingMethod:               entity.RoundRobin,
+			GamesPerRound:               defaultGamesPerRound,
+			Round:                       i,
+			Factor:                      1,
+			MaxRepeats:                  1,
+			AllowOverMaxRepeats:         true,
+			RepeatRelativeWeight:        1,
+			WinDifferenceRelativeWeight: 1})
+	}
+
+	tc, err := NewClassicDivision(playerStrings, numberOfRounds, roundControls)
 
 	is.NoErr(err)
 	is.True(tc != nil)
@@ -437,7 +736,7 @@ func TestClassicDivisionRoundRobin(t *testing.T) {
 		for _, opponent := range playerStrings {
 			var err error = nil
 			if m[opponent] != 2 {
-				err = errors.New(fmt.Sprintf("Player %s didn't play %s exactly twice!", player, opponent))
+				err = fmt.Errorf("player %s didn't play %s exactly twice: %d", player, opponent, m[opponent])
 			}
 			is.NoErr(err)
 		}
@@ -445,25 +744,19 @@ func TestClassicDivisionRoundRobin(t *testing.T) {
 
 	// Test Round Robin with an odd number of players (a bye)
 
-	tc, err = NewClassicDivision(playersOddStrings, 10, []int{1, 1, 1, 1, 1, 1, 1, 1, 1, 1}, []entity.PairingMethod{entity.RoundRobin,
-		entity.RoundRobin,
-		entity.RoundRobin,
-		entity.RoundRobin,
-		entity.RoundRobin,
-		entity.RoundRobin,
-		entity.RoundRobin,
-		entity.RoundRobin,
-		entity.RoundRobin,
-		entity.RoundRobin}, []entity.FirstMethod{entity.ManualFirst,
-		entity.ManualFirst,
-		entity.ManualFirst,
-		entity.ManualFirst,
-		entity.ManualFirst,
-		entity.ManualFirst,
-		entity.ManualFirst,
-		entity.ManualFirst,
-		entity.ManualFirst,
-		entity.ManualFirst})
+	for i := 0; i < 4; i++ {
+		roundControls = append(roundControls, &entity.RoundControls{FirstMethod: entity.ManualFirst,
+			PairingMethod:               entity.RoundRobin,
+			GamesPerRound:               defaultGamesPerRound,
+			Round:                       i + 6,
+			Factor:                      1,
+			MaxRepeats:                  1,
+			AllowOverMaxRepeats:         true,
+			RepeatRelativeWeight:        1,
+			WinDifferenceRelativeWeight: 1})
+	}
+
+	tc, err = NewClassicDivision(playersOddStrings, 10, roundControls)
 	is.NoErr(err)
 	is.True(tc != nil)
 
@@ -481,7 +774,7 @@ func TestClassicDivisionRoundRobin(t *testing.T) {
 	// In a double round robin with 5 players,
 	// everyone should have played everyone else twice
 	// and everyone should have two byes
-	for i, player := range playerStrings {
+	for i, player := range playersOddStrings {
 		m := make(map[string]int)
 		// We don't assign the player as having played themselves
 		// twice in this case because the bye will do that.
@@ -491,10 +784,10 @@ func TestClassicDivisionRoundRobin(t *testing.T) {
 			is.NoErr(err)
 			m[opponent]++
 		}
-		for _, opponent := range playerStrings {
+		for _, opponent := range playersOddStrings {
 			var err error = nil
 			if m[opponent] != 2 {
-				err = errors.New(fmt.Sprintf("Player %s didn't play %s exactly twice!", player, opponent))
+				err = fmt.Errorf("player %s didn't play %s exactly twice!", player, opponent)
 			}
 			is.NoErr(err)
 		}
@@ -504,7 +797,13 @@ func TestClassicDivisionRoundRobin(t *testing.T) {
 func TestClassicDivisionManual(t *testing.T) {
 	is := is.New(t)
 
-	tc, err := NewClassicDivision(playerStrings, rounds, defaultGamesPerRound, []entity.PairingMethod{entity.Manual, entity.Manual}, defaultFirsts)
+	roundControls := defaultRoundControls(rounds)
+
+	for i := 0; i < rounds; i++ {
+		roundControls[i].PairingMethod = entity.Manual
+	}
+
+	tc, err := NewClassicDivision(playerStrings, rounds, roundControls)
 	is.NoErr(err)
 	is.True(tc != nil)
 
@@ -602,21 +901,31 @@ func TestClassicDivisionManual(t *testing.T) {
 func TestClassicDivisionElimination(t *testing.T) {
 	is := is.New(t)
 
+	roundControls := defaultRoundControls(rounds)
+
+	for i := 0; i < rounds; i++ {
+		roundControls[i].PairingMethod = entity.Elimination
+		roundControls[i].GamesPerRound = 3
+	}
+
 	// Try and make an elimination tournament with too many rounds
-	tc, err := NewClassicDivision(playerStrings, 3, []int{3, 3, 3}, []entity.PairingMethod{entity.Elimination,
-		entity.Elimination,
-		entity.Elimination}, defaultFirsts)
+	tc, err := NewClassicDivision(playerStrings, 3, roundControls)
 	is.True(err != nil)
 
+	roundControls[0].PairingMethod = entity.Random
 	// Try and make an elimination tournament with other types
 	// of pairings
-	tc, err = NewClassicDivision(playerStrings, 3, []int{3, 3, 3}, []entity.PairingMethod{entity.Elimination,
-		entity.Random,
-		entity.Elimination}, defaultFirsts)
+	tc, err = NewClassicDivision(playerStrings, 3, roundControls)
 	is.True(err != nil)
 
-	tc, err = NewClassicDivision(playerStrings, 2, []int{3, 3}, []entity.PairingMethod{entity.Elimination,
-		entity.Elimination}, defaultFirsts)
+	roundControls = defaultRoundControls(rounds)
+
+	for i := 0; i < rounds; i++ {
+		roundControls[i].PairingMethod = entity.Elimination
+		roundControls[i].GamesPerRound = 3
+	}
+
+	tc, err = NewClassicDivision(playerStrings, 2, roundControls)
 	is.NoErr(err)
 	is.True(tc != nil)
 
@@ -632,8 +941,8 @@ func TestClassicDivisionElimination(t *testing.T) {
 	pri2, err := tc.GetPlayerRoundInfo(player3, 0)
 	is.NoErr(err)
 
-	expectedpri1 := newPlayerRoundInfo(tc, player1, player2, tc.GamesPerRound[0], 0)
-	expectedpri2 := newPlayerRoundInfo(tc, player3, player4, tc.GamesPerRound[0], 0)
+	expectedpri1 := newPlayerRoundInfo(tc, player1, player2, tc.RoundControls[0].GamesPerRound, 0)
+	expectedpri2 := newPlayerRoundInfo(tc, player3, player4, tc.RoundControls[0].GamesPerRound, 0)
 
 	// Get the initial standings
 	standings, err := tc.GetStandings(0)
@@ -754,7 +1063,7 @@ func TestClassicDivisionElimination(t *testing.T) {
 	pri2, err = tc.GetPlayerRoundInfo(player4, 1)
 	is.NoErr(err)
 
-	expectedpri1 = newPlayerRoundInfo(tc, player1, player3, tc.GamesPerRound[1], 1)
+	expectedpri1 = newPlayerRoundInfo(tc, player1, player3, tc.RoundControls[1].GamesPerRound, 1)
 
 	// Half of the field should be eliminated
 
@@ -846,8 +1155,7 @@ func TestClassicDivisionElimination(t *testing.T) {
 	// Since this test is copied from above, the usual
 	// validations are skipped, since they would be redundant.
 
-	tc, err = NewClassicDivision(playerStrings, 2, []int{3, 3}, []entity.PairingMethod{entity.Elimination,
-		entity.Elimination}, defaultFirsts)
+	tc, err = NewClassicDivision(playerStrings, 2, roundControls)
 	is.NoErr(err)
 	is.True(tc != nil)
 
@@ -859,8 +1167,8 @@ func TestClassicDivisionElimination(t *testing.T) {
 	pri2, err = tc.GetPlayerRoundInfo(player3, 0)
 	is.NoErr(err)
 
-	expectedpri1 = newPlayerRoundInfo(tc, player1, player2, tc.GamesPerRound[0], 0)
-	expectedpri2 = newPlayerRoundInfo(tc, player3, player4, tc.GamesPerRound[0], 0)
+	expectedpri1 = newPlayerRoundInfo(tc, player1, player2, tc.RoundControls[0].GamesPerRound, 0)
+	expectedpri2 = newPlayerRoundInfo(tc, player3, player4, tc.RoundControls[0].GamesPerRound, 0)
 
 	// The match is decided in two games
 	err = tc.SubmitResult(0, player1, player2, 500, 490,
@@ -999,21 +1307,31 @@ func TestClassicDivisionFirsts(t *testing.T) {
 
 	firstRounds := 10
 
-	pairingMethods := []entity.PairingMethod{}
+	firsts := []entity.FirstMethod{entity.ManualFirst,
+		entity.ManualFirst,
+		entity.AutomaticFirst,
+		entity.AutomaticFirst,
+		entity.ManualFirst,
+		entity.ManualFirst,
+		entity.AutomaticFirst,
+		entity.AutomaticFirst,
+		entity.AutomaticFirst,
+		entity.RandomFirst}
+
+	roundControls := []*entity.RoundControls{}
+
 	for i := 0; i < firstRounds; i++ {
-		pairingMethods = append(pairingMethods, entity.Manual)
+		roundControls = append(roundControls, &entity.RoundControls{FirstMethod: firsts[i],
+			PairingMethod:               entity.Manual,
+			GamesPerRound:               defaultGamesPerRound,
+			Factor:                      1,
+			MaxRepeats:                  1,
+			AllowOverMaxRepeats:         true,
+			RepeatRelativeWeight:        1,
+			WinDifferenceRelativeWeight: 1})
 	}
 
-	tc, err := NewClassicDivision(playerStrings, firstRounds, []int{1, 1, 1, 1, 1, 1, 1, 1, 1, 1}, pairingMethods, []entity.FirstMethod{entity.ManualFirst,
-		entity.ManualFirst,
-		entity.AutomaticFirst,
-		entity.AutomaticFirst,
-		entity.ManualFirst,
-		entity.ManualFirst,
-		entity.AutomaticFirst,
-		entity.AutomaticFirst,
-		entity.AutomaticFirst,
-		entity.RandomFirst})
+	tc, err := NewClassicDivision(playerStrings, firstRounds, roundControls)
 	is.NoErr(err)
 	is.True(tc != nil)
 
@@ -1165,7 +1483,7 @@ func completeManualRound(tc *ClassicDivision, round int, player1 string, player2
 	}
 
 	if !roundIsComplete {
-		return errors.New(fmt.Sprintf("Round %d is not complete.", round))
+		return fmt.Errorf("round %d is not complete.", round)
 	}
 
 	return err
@@ -1184,7 +1502,7 @@ func checkFirsts(tc *ClassicDivision, players []string, fs []int, round int) err
 		if actualfs[i] != fs[i] {
 			actualfsString := strings.Trim(strings.Join(strings.Fields(fmt.Sprint(actualfs)), ", "), "[]")
 			fsString := strings.Trim(strings.Join(strings.Fields(fmt.Sprint(fs)), ", "), "[]")
-			return errors.New(fmt.Sprintf("Firsts and Seconds are not equal in round %d:\n%s\n%s\n", round, fsString, actualfsString))
+			return fmt.Errorf("firsts and Seconds are not equal in round %d: %s, %s", round, fsString, actualfsString)
 		}
 	}
 	return nil
@@ -1216,49 +1534,45 @@ func runRandomTournaments(method entity.PairingMethod, randomizePairings bool) e
 			numberOfRounds = rand.Intn(10) + 10
 		}
 
+		roundControls := []*entity.RoundControls{}
+
+		for i := 0; i < numberOfRounds; i++ {
+			roundControls = append(roundControls, &entity.RoundControls{FirstMethod: entity.ManualFirst,
+				PairingMethod:               method,
+				GamesPerRound:               1,
+				Factor:                      1,
+				MaxRepeats:                  1,
+				AllowOverMaxRepeats:         true,
+				RepeatRelativeWeight:        1,
+				WinDifferenceRelativeWeight: 1})
+		}
+
 		playersRandom := []string{}
 		for i := 0; i < numberOfPlayers; i++ {
 			playersRandom = append(playersRandom, fmt.Sprintf("%d", i))
 		}
 
-		firsts := []entity.FirstMethod{}
-		if method == entity.Elimination {
-			// Switching firsts and seconds can lead to incomplete
-			// elimination rounds.
+		if method != entity.Elimination {
 			for i := 0; i < numberOfRounds; i++ {
-				firsts = append(firsts, entity.ManualFirst)
-			}
-		} else {
-			for i := 0; i < numberOfRounds; i++ {
-				firsts = append(firsts, entity.FirstMethod(rand.Intn(3)))
+				roundControls[i].FirstMethod = entity.FirstMethod(rand.Intn(3))
 			}
 		}
 
-		methods := []entity.PairingMethod{}
 		if randomizePairings {
 			for i := 0; i < numberOfRounds; i++ {
-				methods = append(methods, entity.PairingMethod(rand.Intn(3)))
-			}
-		} else {
-			for i := 0; i < numberOfRounds; i++ {
-				methods = append(methods, method)
+				roundControls[i].PairingMethod = entity.PairingMethod(rand.Intn(3))
 			}
 		}
 
-		gpr := []int{}
 		if method == entity.Elimination {
 			// Even-numbered games per rounds was leading to ties
 			// which give inconclusive results, therefor not ending the round
 			for i := 0; i < numberOfRounds; i++ {
-				gpr = append(gpr, (rand.Intn(5)*2)+1)
-			}
-		} else {
-			for i := 0; i < numberOfRounds; i++ {
-				gpr = append(gpr, 1)
+				roundControls[i].GamesPerRound = (rand.Intn(5) * 2) + 1
 			}
 		}
 
-		tc, err := NewClassicDivision(playersRandom, numberOfRounds, gpr, methods, firsts)
+		tc, err := NewClassicDivision(playersRandom, numberOfRounds, roundControls)
 		if err != nil {
 			return err
 		}
@@ -1272,7 +1586,7 @@ func runRandomTournaments(method entity.PairingMethod, randomizePairings bool) e
 			}
 
 			pairings := getPlayerPairings(tc.Players, tc.Matrix[round])
-			for game := 0; game < tc.GamesPerRound[round]; game++ {
+			for game := 0; game < tc.RoundControls[round].GamesPerRound; game++ {
 				for l := 0; l < len(pairings); l += 2 {
 
 					// The outcome might already be decided in an elimination tournament, skip the submission
@@ -1310,7 +1624,7 @@ func runRandomTournaments(method entity.PairingMethod, randomizePairings bool) e
 						false,
 						game)
 					if err != nil {
-						fmt.Printf("(%d) Error on round %d game %d pairing (%s, %s)\n",
+						fmt.Printf("(%d) error on round %d game %d pairing (%s, %s)",
 							numberOfPlayers,
 							round,
 							game,
@@ -1338,7 +1652,7 @@ func runRandomTournaments(method entity.PairingMethod, randomizePairings bool) e
 						realtime.TournamentGameResult(rand.Intn(6)+1),
 						realtime.GameEndReason_STANDARD,
 						true,
-						rand.Intn(tc.GamesPerRound[round]))
+						rand.Intn(tc.RoundControls[round].GamesPerRound))
 					if err != nil {
 						return err
 					}
@@ -1350,8 +1664,8 @@ func runRandomTournaments(method entity.PairingMethod, randomizePairings bool) e
 				return err
 			}
 			if !roundIsComplete {
-				return errors.New(fmt.Sprintf("(%d) Round %d is not complete (%d, %d)\n",
-					numberOfPlayers, round, method, numberOfPlayers))
+				return fmt.Errorf("(%d) round %d is not complete (%d, %d)",
+					numberOfPlayers, round, method, numberOfPlayers)
 			}
 
 			_, err = tc.GetStandings(round)
@@ -1365,10 +1679,10 @@ func runRandomTournaments(method entity.PairingMethod, randomizePairings bool) e
 			return err
 		}
 		if !tournamentIsFinished {
-			return errors.New(fmt.Sprintf("Tournament is not complete (%d, %d)\n",
-				method, numberOfPlayers))
+			return fmt.Errorf("tournament is not complete (%d, %d)",
+				method, numberOfPlayers)
 		}
-		if tc.PairingMethods[0] == entity.Elimination {
+		if tc.RoundControls[0].PairingMethod == entity.Elimination {
 			standings, err := tc.GetStandings(numberOfRounds - 1)
 			if err != nil {
 				return err
@@ -1379,10 +1693,10 @@ func runRandomTournaments(method entity.PairingMethod, randomizePairings bool) e
 			for bottomHalfSize > 0 {
 				for i := 0; i < bottomHalfSize; i++ {
 					if standings[eliminationPlayerIndex].Wins != eliminatedInRound {
-						return errors.New(fmt.Sprintf("Player has incorrect number of wins (%d, %d, %d)\n",
+						return fmt.Errorf("player has incorrect number of wins (%d, %d, %d)",
 							eliminationPlayerIndex,
 							eliminatedInRound,
-							standings[eliminationPlayerIndex].Wins))
+							standings[eliminationPlayerIndex].Wins)
 					}
 					eliminationPlayerIndex--
 				}
@@ -1400,15 +1714,18 @@ func validatePairings(tc *ClassicDivision, round int) error {
 	//   - Player's opponent's opponent is the player
 
 	if round < 0 || round >= len(tc.Matrix) {
-		return errors.New(fmt.Sprintf("Round number out of range: %d\n", round))
+		return fmt.Errorf("round number out of range: %d", round)
 	}
 
 	for i, pri := range tc.Matrix[round] {
 		pairing := pri.Pairing
+		if pairing == nil {
+			return fmt.Errorf("round %d player %d pairing nil", round, i)
+		}
 		if pairing.Players == nil {
 			// Some pairings can be nil for Elimination tournaments
-			if tc.PairingMethods[0] != entity.Elimination {
-				return errors.New(fmt.Sprintf("Player %d is unpaired", i))
+			if tc.RoundControls[0].PairingMethod != entity.Elimination {
+				return fmt.Errorf("player %d is unpaired", i)
 			} else {
 				continue
 			}
@@ -1423,11 +1740,10 @@ func validatePairings(tc *ClassicDivision, round int) error {
 			return err
 		}
 		if tc.Players[i] != opponentOpponent {
-			return errors.New(
-				fmt.Sprintf("Player %s's opponent's (%s) opponent (%s) is not themself.",
-					tc.Players[i],
-					opponent,
-					opponentOpponent))
+			return fmt.Errorf("player %s's opponent's (%s) opponent (%s) is not themself.",
+				tc.Players[i],
+				opponent,
+				opponentOpponent)
 		}
 	}
 	return nil
@@ -1436,7 +1752,7 @@ func validatePairings(tc *ClassicDivision, round int) error {
 func equalStandings(sa1 []*entity.Standing, sa2 []*entity.Standing) error {
 
 	if len(sa1) != len(sa2) {
-		return errors.New(fmt.Sprintf("Length of the standings are not equal: %d != %d\n", len(sa1), len(sa2)))
+		return fmt.Errorf("length of the standings are not equal: %d != %d", len(sa1), len(sa2))
 	}
 
 	for i := 0; i < len(sa1); i++ {
@@ -1456,9 +1772,9 @@ func equalStandingsRecord(s1 *entity.Standing, s2 *entity.Standing) error {
 		s1.Losses != s2.Losses ||
 		s1.Draws != s2.Draws ||
 		s1.Spread != s2.Spread {
-		return errors.New(fmt.Sprintf("Standings do not match: (%s, %d, %d, %d, %d) != (%s, %d, %d, %d, %d)",
+		return fmt.Errorf("standings do not match: (%s, %d, %d, %d, %d) != (%s, %d, %d, %d, %d)",
 			s1.Player, s1.Wins, s1.Losses, s1.Draws, s1.Spread,
-			s2.Player, s2.Wins, s2.Losses, s2.Draws, s2.Spread))
+			s2.Player, s2.Wins, s2.Losses, s2.Draws, s2.Spread)
 	}
 	return nil
 }
@@ -1499,21 +1815,21 @@ func equalPairing(p1 *entity.Pairing, p2 *entity.Pairing) error {
 	// Firsts and seconds are tested independently
 	if (p1.Players[0] != p2.Players[0] && p1.Players[0] != p2.Players[1]) ||
 		(p1.Players[1] != p2.Players[0] && p1.Players[1] != p2.Players[1]) {
-		return errors.New(fmt.Sprintf("Players are not the same: (%s, %s) != (%s, %s)",
+		return fmt.Errorf("players are not the same: (%s, %s) != (%s, %s)",
 			p1.Players[0],
 			p1.Players[1],
 			p2.Players[0],
-			p2.Players[1]))
+			p2.Players[1])
 	}
 	if p1.Outcomes[0] != p2.Outcomes[0] || p1.Outcomes[1] != p2.Outcomes[1] {
-		return errors.New(fmt.Sprintf("Outcomes are not the same: (%d, %d) != (%d, %d)",
+		return fmt.Errorf("outcomes are not the same: (%d, %d) != (%d, %d)",
 			p1.Outcomes[0],
 			p1.Outcomes[1],
 			p2.Outcomes[0],
-			p2.Outcomes[1]))
+			p2.Outcomes[1])
 	}
 	if len(p1.Games) != len(p2.Games) {
-		return errors.New(fmt.Sprintf("Number of games are not the same: %d != %d", len(p1.Games), len(p2.Games)))
+		return fmt.Errorf("number of games are not the same: %d != %d", len(p1.Games), len(p2.Games))
 	}
 	for i := 0; i < len(p1.Games); i++ {
 		err := equalTournamentGame(p1.Games[i], p2.Games[i], i)
@@ -1526,41 +1842,46 @@ func equalPairing(p1 *entity.Pairing, p2 *entity.Pairing) error {
 
 func equalTournamentGame(t1 *entity.TournamentGame, t2 *entity.TournamentGame, i int) error {
 	if t1.Scores[0] != t2.Scores[0] || t1.Scores[1] != t2.Scores[1] {
-		return errors.New(fmt.Sprintf("Scores are not the same at game %d: (%d, %d) != (%d, %d)",
+		return fmt.Errorf("scores are not the same at game %d: (%d, %d) != (%d, %d)",
 			i,
 			t1.Scores[0],
 			t1.Scores[1],
 			t2.Scores[0],
-			t2.Scores[1]))
+			t2.Scores[1])
 	}
 	if t1.Results[0] != t2.Results[0] || t1.Results[1] != t2.Results[1] {
-		return errors.New(fmt.Sprintf("Results are not the same at game %d: (%d, %d) != (%d, %d)",
+		return fmt.Errorf("results are not the same at game %d: (%d, %d) != (%d, %d)",
 			i,
 			t1.Results[0],
 			t1.Results[1],
 			t2.Results[0],
-			t2.Results[1]))
+			t2.Results[1])
 	}
 	if t1.GameEndReason != t2.GameEndReason {
-		return errors.New(fmt.Sprintf("Game end reasons are not the same for game %d: %d != %d", i, t1.GameEndReason, t2.GameEndReason))
+		return fmt.Errorf("game end reasons are not the same for game %d: %d != %d", i, t1.GameEndReason, t2.GameEndReason)
 	}
 	return nil
 }
 
-func equalRoundRobinPairings(s1 []string, s2 []string) error {
-	if len(s1) != len(s2) {
-		return errors.New(fmt.Sprintf("Pairing lengths do not match: %d != %d\n", len(s1), len(s2)))
+func defaultRoundControls(numberOfRounds int) []*entity.RoundControls {
+	roundControls := []*entity.RoundControls{}
+	for i := 0; i < numberOfRounds; i++ {
+		roundControls = append(roundControls, &entity.RoundControls{FirstMethod: entity.ManualFirst,
+			PairingMethod:               entity.Random,
+			GamesPerRound:               defaultGamesPerRound,
+			Round:                       i,
+			Factor:                      1,
+			MaxRepeats:                  1,
+			AllowOverMaxRepeats:         true,
+			RepeatRelativeWeight:        1,
+			WinDifferenceRelativeWeight: 1})
 	}
-	for i := 0; i < len(s1); i++ {
-		if s1[i] != s2[i] {
-			return errors.New(fmt.Sprintf("Pairings are not equal:\n%s\n%s\n", strings.Join(s1, ", "), strings.Join(s2, ", ")))
-		}
-	}
-	return nil
+	return roundControls
 }
 
 func printPriPairings(pris []*entity.PlayerRoundInfo) {
 	for _, pri := range pris {
+		fmt.Printf("%p ", pri.Pairing)
 		fmt.Println(pri.Pairing)
 	}
 }
