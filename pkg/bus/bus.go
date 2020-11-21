@@ -166,7 +166,7 @@ outerfor:
 					// the other side.
 					// XXX: this is a very specific response to a handleNatsRequest func
 					rrResp := &pb.RegisterRealmResponse{
-						Realm: "",
+						Realms: []string{""},
 					}
 					data, err := proto.Marshal(rrResp)
 					if err != nil {
@@ -252,9 +252,9 @@ func (b *Bus) handleNatsRequest(ctx context.Context, topic string,
 		// The socket server needs to know what realm to subscribe the user to,
 		// given they went to the given path. Don't handle the lobby, the socket
 		// already handles that.
-		path := msg.Realm
+		path := msg.Path
 		userID := msg.UserId
-		var realm string
+		var realm, tourneyID string
 		if strings.HasPrefix(path, "/game/") {
 			gameID := strings.TrimPrefix(path, "/game/")
 			game, err := b.gameStore.Get(ctx, gameID)
@@ -275,11 +275,18 @@ func (b *Bus) handleNatsRequest(ctx context.Context, topic string,
 				realm = "game-" + gameID
 			}
 			log.Debug().Str("computed-realm", realm)
+			if game.TournamentData != nil {
+				tourneyID = game.TournamentData.Id
+				log.Debug().Str("tourney-realm-for", tourneyID)
+			}
 		} else {
 			log.Info().Str("path", path).Msg("realm-req-not-handled-sending-blank-realm")
 		}
 		resp := &pb.RegisterRealmResponse{}
-		resp.Realm = realm
+		resp.Realms = []string{realm}
+		if tourneyID != "" {
+			resp.Realms = append(resp.Realms, "tournament."+tourneyID)
+		}
 		retdata, err := proto.Marshal(resp)
 		if err != nil {
 			return err
