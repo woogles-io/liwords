@@ -465,9 +465,11 @@ export const Table = React.memo((props: Props) => {
   }, [gameContext.gameID, turnAsStr, handleExamineStart, handleExamineGoTo]);
 
   // Autocorrect the turn on the URL.
+  // Do not autocorrect when NEW_GAME_EVENT redirects to a rematch.
+  const canAutocorrectURL = autocorrectURL && gameID === gameContext.gameID;
   const history = useHistory();
   useEffect(() => {
-    if (!autocorrectURL) return; // Too early if examining has not started.
+    if (!canAutocorrectURL) return; // Too early if examining has not started.
     const turnParamShouldBe = isExamining
       ? String(examinableGameContext.turns.length + 1)
       : null;
@@ -483,7 +485,7 @@ export const Table = React.memo((props: Props) => {
       });
     }
   }, [
-    autocorrectURL,
+    canAutocorrectURL,
     examinableGameContext.turns.length,
     history,
     isExamining,
