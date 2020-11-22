@@ -729,6 +729,26 @@ export namespace TournamentGameEndedEvent {
   }
 }
 
+export class RematchStartedEvent extends jspb.Message {
+  getRematchGameId(): string;
+  setRematchGameId(value: string): void;
+
+  serializeBinary(): Uint8Array;
+  toObject(includeInstance?: boolean): RematchStartedEvent.AsObject;
+  static toObject(includeInstance: boolean, msg: RematchStartedEvent): RematchStartedEvent.AsObject;
+  static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+  static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+  static serializeBinaryToWriter(message: RematchStartedEvent, writer: jspb.BinaryWriter): void;
+  static deserializeBinary(bytes: Uint8Array): RematchStartedEvent;
+  static deserializeBinaryFromReader(message: RematchStartedEvent, reader: jspb.BinaryReader): RematchStartedEvent;
+}
+
+export namespace RematchStartedEvent {
+  export type AsObject = {
+    rematchGameId: string,
+  }
+}
+
 export class GameHistoryRefresher extends jspb.Message {
   hasHistory(): boolean;
   clearHistory(): void;
@@ -994,6 +1014,7 @@ export interface MessageTypeMap {
   READY_FOR_GAME: 25;
   LAG_MEASUREMENT: 26;
   TOURNAMENT_GAME_ENDED_EVENT: 27;
+  REMATCH_STARTED: 28;
 }
 
 export const MessageType: MessageTypeMap;

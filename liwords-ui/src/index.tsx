@@ -41,11 +41,11 @@ window.console.info(
 
 ReactDOM.render(
   <React.StrictMode>
-    <Store>
-      <BrowserRouter>
+    <BrowserRouter>
+      <Store>
         <App />
-      </BrowserRouter>
-    </Store>
+      </Store>
+    </BrowserRouter>
   </React.StrictMode>,
   document.getElementById('root')
 );
