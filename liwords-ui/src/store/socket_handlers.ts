@@ -8,6 +8,7 @@ import {
   PresenceEntity,
   useChallengeResultEventStoreContext,
   useChatStoreContext,
+  useExamineStoreContext,
   useExcludedPlayersStoreContext,
   useGameContextStoreContext,
   useGameEndMessageStoreContext,
@@ -17,7 +18,6 @@ import {
   usePresenceStoreContext,
   useRematchRequestStoreContext,
   useTimerStoreContext,
-  useExamineStoreContext,
 } from './store';
 import {
   MessageType,
