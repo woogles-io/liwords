@@ -1,5 +1,5 @@
 import React from 'react';
-import { Link, useHistory, useLocation } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { useMountedState } from '../utils/mounted';
 import { useResetStoreContext } from '../store/store';
 import './accountForms.scss';
@@ -39,18 +39,11 @@ export const Login = React.memo(() => {
       });
   };
 
-  const history = useHistory();
-  const location = useLocation();
   React.useEffect(() => {
     if (loggedIn) {
-      if (location.pathname === '/') {
-        resetStore();
-      } else {
-        // profile, tournament, etc.
-        history.replace('/');
-      }
+      resetStore();
     }
-  }, [history, location.pathname, loggedIn, resetStore]);
+  }, [loggedIn, resetStore]);
 
   return (
     <div className="account">
