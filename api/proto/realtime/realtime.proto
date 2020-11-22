@@ -242,10 +242,9 @@ message TournamentGameEndedEvent {
 
 // RematchStartedEvent gets sent to a game for which there is a rematch.
 // It notifies that observers of the game that a rematch has started.
-
 message RematchStartedEvent {
-  string game_id = 1;
-  string rematch_game_id = 2;
+  // rematch_game_id is the new game ID.
+  string rematch_game_id = 1;
 }
 
 // A GameHistoryRefresher is sent to both players when the game starts,

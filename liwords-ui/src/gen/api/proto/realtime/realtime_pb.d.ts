@@ -730,9 +730,6 @@ export namespace TournamentGameEndedEvent {
 }
 
 export class RematchStartedEvent extends jspb.Message {
-  getGameId(): string;
-  setGameId(value: string): void;
-
   getRematchGameId(): string;
   setRematchGameId(value: string): void;
 
@@ -748,7 +745,6 @@ export class RematchStartedEvent extends jspb.Message {
 
 export namespace RematchStartedEvent {
   export type AsObject = {
-    gameId: string,
     rematchGameId: string,
   }
 }

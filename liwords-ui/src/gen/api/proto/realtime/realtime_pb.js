@@ -5949,8 +5949,7 @@ proto.liwords.RematchStartedEvent.prototype.toObject = function(opt_includeInsta
  */
 proto.liwords.RematchStartedEvent.toObject = function(includeInstance, msg) {
   var f, obj = {
-    gameId: jspb.Message.getFieldWithDefault(msg, 1, ""),
-    rematchGameId: jspb.Message.getFieldWithDefault(msg, 2, "")
+    rematchGameId: jspb.Message.getFieldWithDefault(msg, 1, "")
   };
 
   if (includeInstance) {
@@ -5989,10 +5988,6 @@ proto.liwords.RematchStartedEvent.deserializeBinaryFromReader = function(msg, re
     switch (field) {
     case 1:
       var value = /** @type {string} */ (reader.readString());
-      msg.setGameId(value);
-      break;
-    case 2:
-      var value = /** @type {string} */ (reader.readString());
       msg.setRematchGameId(value);
       break;
     default:
@@ -6024,17 +6019,10 @@ proto.liwords.RematchStartedEvent.prototype.serializeBinary = function() {
  */
 proto.liwords.RematchStartedEvent.serializeBinaryToWriter = function(message, writer) {
   var f = undefined;
-  f = message.getGameId();
-  if (f.length > 0) {
-    writer.writeString(
-      1,
-      f
-    );
-  }
   f = message.getRematchGameId();
   if (f.length > 0) {
     writer.writeString(
-      2,
+      1,
       f
     );
   }
@@ -6042,10 +6030,10 @@ proto.liwords.RematchStartedEvent.serializeBinaryToWriter = function(message, wr
 
 
 /**
- * optional string game_id = 1;
+ * optional string rematch_game_id = 1;
  * @return {string}
  */
-proto.liwords.RematchStartedEvent.prototype.getGameId = function() {
+proto.liwords.RematchStartedEvent.prototype.getRematchGameId = function() {
   return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 1, ""));
 };
 
@@ -6054,26 +6042,8 @@ proto.liwords.RematchStartedEvent.prototype.getGameId = function() {
  * @param {string} value
  * @return {!proto.liwords.RematchStartedEvent} returns this
  */
-proto.liwords.RematchStartedEvent.prototype.setGameId = function(value) {
-  return jspb.Message.setProto3StringField(this, 1, value);
-};
-
-
-/**
- * optional string rematch_game_id = 2;
- * @return {string}
- */
-proto.liwords.RematchStartedEvent.prototype.getRematchGameId = function() {
-  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 2, ""));
-};
-
-
-/**
- * @param {string} value
- * @return {!proto.liwords.RematchStartedEvent} returns this
- */
 proto.liwords.RematchStartedEvent.prototype.setRematchGameId = function(value) {
-  return jspb.Message.setProto3StringField(this, 2, value);
+  return jspb.Message.setProto3StringField(this, 1, value);
 };
 
 
