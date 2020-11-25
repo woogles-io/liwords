@@ -74,6 +74,7 @@ type Props = {
   playerMeta: Array<PlayerMetadata>;
   tournamentID?: string;
   lexicon: string;
+  handleAcceptRematch: (() => void) | null;
 };
 
 const shuffleString = (a: string): string => {
@@ -1022,7 +1023,7 @@ export const BoardPanel = React.memo((props: Props) => {
         onResign={handleResign}
         onChallenge={handleChallenge}
         onCommit={handleCommit}
-        onRematch={rematch}
+        onRematch={props.handleAcceptRematch ?? rematch}
         onExamine={handleExamineStart}
         onExportGCG={handleExportGCG}
         showRematch={examinableGameEndMessage !== ''}
