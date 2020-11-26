@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useCallback } from 'react';
 import {
   Form,
   Radio,
@@ -124,6 +124,9 @@ export const SeekForm = (props: Props) => {
     initialValues.incOrOT === 'overtime' ? 10 : 60
   );
   const [sliderTooltipVisible, setSliderTooltipVisible] = useState(true);
+  const handleDropdownVisibleChange = useCallback((open) => {
+    setSliderTooltipVisible(!open);
+  }, []);
   const [usernameOptions, setUsernameOptions] = useState<Array<string>>([]);
   const onFormChange = (val: Store, allvals: Store) => {
     if (window.localStorage) {
@@ -211,8 +214,7 @@ export const SeekForm = (props: Props) => {
             style={{
               width: 200,
             }}
-            onFocus={() => setSliderTooltipVisible(false)}
-            onBlur={() => setSliderTooltipVisible(true)}
+            onDropdownVisibleChange={handleDropdownVisibleChange}
           >
             {usernameOptions.map((username) => (
               <AutoComplete.Option key={username} value={username}>
@@ -243,7 +245,7 @@ export const SeekForm = (props: Props) => {
           tipFormatter={initTimeFormatter}
           min={0}
           max={initTimeDiscreteScale.length - 1}
-          tooltipVisible={sliderTooltipVisible}
+          tooltipVisible={sliderTooltipVisible || usernameOptions.length === 0}
         />
       </Form.Item>
       <Form.Item label="Time Setting" name="incOrOT">
