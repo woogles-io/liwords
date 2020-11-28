@@ -553,6 +553,11 @@ export const Table = React.memo((props: Props) => {
             playerMeta={gameInfo.players}
             tournamentID={gameInfo.tournament_id}
             lexicon={gameInfo.lexicon}
+            handleAcceptRematch={
+              rematchRequest.getRematchFor() === gameID
+                ? handleAcceptRematch
+                : null
+            }
           />
           <StreakWidget recentGames={streakGameInfo} />
         </div>

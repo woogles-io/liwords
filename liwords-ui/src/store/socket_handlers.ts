@@ -8,6 +8,7 @@ import {
   PresenceEntity,
   useChallengeResultEventStoreContext,
   useChatStoreContext,
+  useExamineStoreContext,
   useExcludedPlayersStoreContext,
   useGameContextStoreContext,
   useGameEndMessageStoreContext,
@@ -47,6 +48,7 @@ import {
   LagMeasurement,
   MatchRequestCancellation,
   TournamentGameEndedEvent,
+  RematchStartedEvent,
 } from '../gen/api/proto/realtime/realtime_pb';
 import { ActionType } from '../actions/actions';
 import { endGameMessage } from './end_of_game';
@@ -97,6 +99,7 @@ export const parseMsgs = (msg: Uint8Array) => {
       [MessageType.LAG_MEASUREMENT]: LagMeasurement,
       [MessageType.MATCH_REQUEST_CANCELLATION]: MatchRequestCancellation,
       [MessageType.TOURNAMENT_GAME_ENDED_EVENT]: TournamentGameEndedEvent,
+      [MessageType.REMATCH_STARTED]: RematchStartedEvent,
     };
 
     const parsedMsg = msgTypes[msgType];
@@ -131,6 +134,8 @@ export const useOnSocketMsg = () => {
   const { setPresence, addPresences } = usePresenceStoreContext();
   const { setRematchRequest } = useRematchRequestStoreContext();
   const { stopClock } = useTimerStoreContext();
+  const { isExamining } = useExamineStoreContext();
+
   const history = useHistory();
   const historyRef = useRef(history);
   historyRef.current = history;
@@ -302,6 +307,28 @@ export const useOnSocketMsg = () => {
               duration: 3,
               key: 'server-message',
             });
+            break;
+          }
+
+          case MessageType.REMATCH_STARTED: {
+            const rs = parsedMsg as RematchStartedEvent;
+            const gid = rs.getRematchGameId();
+            const url = `/game/${encodeURIComponent(gid)}`;
+            if (isExamining) {
+              notification.info({
+                message: 'A rematch has started',
+                description: 'Click this notification to watch',
+                key: 'rematch-notification',
+                duration: 10, // 10 seconds,
+                onClick: () => {
+                  historyRef.current.replace(url);
+                  notification.close('rematch-notification');
+                },
+              });
+            } else {
+              historyRef.current.replace(url);
+              setGameEndMessage('');
+            }
             break;
           }
 
@@ -600,6 +627,7 @@ export const useOnSocketMsg = () => {
       setPresence,
       setRematchRequest,
       stopClock,
+      isExamining,
     ]
   );
 };

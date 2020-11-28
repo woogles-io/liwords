@@ -85,6 +85,7 @@ enum MessageType {
   READY_FOR_GAME = 25;
   LAG_MEASUREMENT = 26;
   TOURNAMENT_GAME_ENDED_EVENT = 27;
+  REMATCH_STARTED = 28;
 
   // Add more events here. The total number of events should fit in a byte.
   // We should definitely not be using anywhere close to 255 events, and
@@ -238,6 +239,13 @@ message TournamentGameEndedEvent {
   GameEndReason end_reason = 3;
   // Time that the game ended
   int64 time = 4;
+}
+
+// RematchStartedEvent gets sent to a game for which there is a rematch.
+// It notifies that observers of the game that a rematch has started.
+message RematchStartedEvent {
+  // rematch_game_id is the new game ID.
+  string rematch_game_id = 1;
 }
 
 // A GameHistoryRefresher is sent to both players when the game starts,

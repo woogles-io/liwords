@@ -106,6 +106,7 @@ export const GameLists = React.memo((props: Props) => {
       title="Create a Game"
       className="seek-modal"
       visible={seekModalVisible}
+      destroyOnClose
       onCancel={() => {
         setSeekModalVisible(false);
         setFormDisabled(false);
@@ -143,6 +144,7 @@ export const GameLists = React.memo((props: Props) => {
       className="seek-modal"
       title={!tournamentID ? 'Match a Friend' : 'Send Match Request'}
       visible={matchModalVisible}
+      destroyOnClose
       onCancel={() => {
         setMatchModalVisible(false);
         setFormDisabled(false);
@@ -181,6 +183,7 @@ export const GameLists = React.memo((props: Props) => {
       title="Play a Computer"
       visible={botModalVisible}
       className="seek-modal"
+      destroyOnClose
       onCancel={() => {
         setBotModalVisible(false);
         setFormDisabled(false);

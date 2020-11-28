@@ -3,14 +3,6 @@
 
 @include button;
 
-.ant-form .ant-form-item{
-  label {
-    @include colorModed() {
-      color: m($gray-extreme);
-    }
-  }
-}
-
 div.account {
   display: flex;
   flex-direction: row;
