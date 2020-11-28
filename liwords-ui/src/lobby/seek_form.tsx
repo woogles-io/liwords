@@ -209,6 +209,10 @@ export const SeekForm = (props: Props) => {
     props.onFormSubmit(obj);
   };
 
+  const validateMessages = {
+    required: 'Opponent name is required.',
+  };
+
   return (
     <Form
       id={props.id}
@@ -218,9 +222,18 @@ export const SeekForm = (props: Props) => {
       labelCol={{ span: 6 }}
       wrapperCol={{ span: 24 }}
       layout="horizontal"
+      validateMessages={validateMessages}
     >
       {props.showFriendInput && (
-        <Form.Item label="Friend" name="friend">
+        <Form.Item
+          label={props.tournamentID ? 'Opponent' : 'Friend'}
+          name="friend"
+          rules={[
+            {
+              required: true,
+            },
+          ]}
+        >
           <AutoComplete
             onSearch={searchUsernameDebounced}
             placeholder="username..."
