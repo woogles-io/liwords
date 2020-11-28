@@ -412,9 +412,7 @@ export const Table = React.memo((props: Props) => {
       evt.setMessage(msg);
 
       const chan = isObserver ? 'gametv' : 'game';
-      // XXX: Backend should figure out channels; also separate game and gameTV channels
-      // Right now everyone will get this.
-      evt.setChannel(`${chan}.${gameID}`);
+      evt.setChannel(`chat.${chan}.${gameID}`);
       sendSocketMsg(
         encodeToSocketFmt(MessageType.CHAT_MESSAGE, evt.serializeBinary())
       );

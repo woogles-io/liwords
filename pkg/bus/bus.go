@@ -250,8 +250,10 @@ func (b *Bus) handleNatsRequest(ctx context.Context, topic string,
 			return err
 		}
 		// The socket server needs to know what realm to subscribe the user to,
-		// given they went to the given path. Don't handle the lobby, the socket
-		// already handles that.
+		// given they went to the given path. Don't handle the lobby or tournaments,
+		// the socket already handles that. Other pages like /about, etc
+		// will get a blank realm back. (Eventually we'll create a "global" realm
+		// so we can track presence / deliver notifications even on non-game pages)
 		path := msg.Path
 		userID := msg.UserId
 		var realm, tourneyID string
@@ -284,8 +286,15 @@ func (b *Bus) handleNatsRequest(ctx context.Context, topic string,
 		}
 		resp := &pb.RegisterRealmResponse{}
 		resp.Realms = []string{realm}
-		if tourneyID != "" {
-			resp.Realms = append(resp.Realms, "tournament."+tourneyID)
+		if realm != "" {
+			if tourneyID != "" {
+				// Add to the tourney realm, but only the chat component.
+				// Players in game don't need to see all the other tourney events
+				// (pairings, standings, etc?)
+				resp.Realms = append(resp.Realms, "chat-tourney-"+tourneyID)
+			}
+			// Also add the chat- realm (whether chat-game- or chat-gametv-)
+			resp.Realms = append(resp.Realms, "chat-"+realm)
 		}
 		retdata, err := proto.Marshal(resp)
 		if err != nil {
@@ -390,7 +399,7 @@ func (b *Bus) handleNatsPublish(ctx context.Context, subtopics []string, data []
 		if err != nil {
 			return err
 		}
-		return b.initRealmInfo(ctx, evt)
+		return b.initRealmInfo(ctx, evt, wsConnID)
 	case "readyForGame":
 		evt := &pb.ReadyForGame{}
 		err := proto.Unmarshal(data, evt)
@@ -412,37 +421,33 @@ func (b *Bus) TournamentEventChannel() chan *entity.EventWrapper {
 	return b.tournamentEventChan
 }
 
-func (b *Bus) broadcastPresence(username, userID string, anon bool, presenceChan string, deleting bool) error {
-	// broadcast username's presence to the channel.
+func (b *Bus) broadcastPresence(username, userID string, anon bool,
+	presenceChannels []string, deleting bool) error {
+
+	// broadcast username's presence to the channels.
 	log.Debug().Str("username", username).Str("userID", userID).
 		Bool("anon", anon).
-		Str("presenceChan", presenceChan).
+		Interface("presenceChannels", presenceChannels).
 		Bool("deleting", deleting).
 		Msg("broadcast-presence")
 
-	evtChannel := presenceChan
-
-	if deleting {
-		evtChannel = ""
+	for _, c := range presenceChannels {
+		toSend := entity.WrapEvent(&pb.UserPresence{
+			Username:    username,
+			UserId:      userID,
+			Channel:     c,
+			IsAnonymous: anon,
+			Deleting:    deleting,
+		}, pb.MessageType_USER_PRESENCE)
+		data, err := toSend.Serialize()
+		if err != nil {
+			return err
+		}
+		err = b.natsconn.Publish(c, data)
+		if err != nil {
+			return err
+		}
 	}
-
-	toSend := entity.WrapEvent(&pb.UserPresence{
-		Username:    username,
-		UserId:      userID,
-		Channel:     evtChannel,
-		IsAnonymous: anon,
-	},
-		pb.MessageType_USER_PRESENCE)
-	data, err := toSend.Serialize()
-	if err != nil {
-		return err
-	}
-	if presenceChan != "" {
-		return b.natsconn.Publish(presenceChan, data)
-	}
-	// If the presence channel is empty we are in some other page, like the
-	// about page or something. We need to clean this up a bit, but we don't
-	// want to log errors here.
 	return nil
 }
 
@@ -467,7 +472,7 @@ func (b *Bus) pubToUser(userID string, evt *entity.EventWrapper,
 	return b.natsconn.Publish(fullChannel, bts)
 }
 
-func (b *Bus) initRealmInfo(ctx context.Context, evt *pb.InitRealmInfo) error {
+func (b *Bus) initRealmInfo(ctx context.Context, evt *pb.InitRealmInfo, connID string) error {
 	// For consistency sake, use the `dotted` channels for presence
 	// i.e. game.<gameID>, gametv.<gameID>
 	// The reasoning is that realms should only be cared about by the socket
@@ -477,13 +482,26 @@ func (b *Bus) initRealmInfo(ctx context.Context, evt *pb.InitRealmInfo) error {
 	if err != nil {
 		return err
 	}
+
+	// The channels with presence should be:
+	// lobby.presence
+	// chat.tournament.foo
+	// chat.game.bar
+	// chat.gametv.baz
+	// global.presence (when it comes, we edit this later)
+
 	presenceChan := strings.ReplaceAll(evt.Realm, "-", ".")
-	chatChan := presenceChan
 	if presenceChan == "lobby" {
 		presenceChan = "lobby.presence"
-		chatChan = "lobby.chat"
+	} else {
+		if !strings.HasPrefix(presenceChan, "chat.") {
+			presenceChan = ""
+		}
 	}
-	b.presenceStore.SetPresence(ctx, evt.UserId, username, anon, presenceChan)
+
+	if presenceChan != "" {
+		b.presenceStore.SetPresence(ctx, evt.UserId, username, anon, presenceChan, connID)
+	}
 
 	if evt.Realm == "lobby" {
 		// open seeks
@@ -552,6 +570,12 @@ func (b *Bus) initRealmInfo(ctx context.Context, evt *pb.InitRealmInfo) error {
 			return err
 		}
 
+	} else if strings.HasPrefix(evt.Realm, "chat-") {
+		chatChan := strings.ReplaceAll(evt.Realm, "-", ".")
+		err = b.sendOldChats(evt.UserId, chatChan)
+		if err != nil {
+			return err
+		}
 	} else {
 		log.Debug().Interface("evt", evt).Msg("no init realm info")
 	}
@@ -566,12 +590,13 @@ func (b *Bus) initRealmInfo(ctx context.Context, evt *pb.InitRealmInfo) error {
 		return err
 	}
 	// Also send OUR presence to users in this channel.
-	err = b.broadcastPresence(username, evt.UserId, anon, presenceChan, false)
+	err = b.broadcastPresence(username, evt.UserId, anon, []string{presenceChan}, false)
 	if err != nil {
 		return err
 	}
+	return nil
 	// send chat info
-	return b.sendOldChats(evt.UserId, chatChan)
+
 }
 
 func (b *Bus) getPresence(ctx context.Context, presenceChan string) (*entity.EventWrapper, error) {
@@ -596,25 +621,27 @@ func (b *Bus) getPresence(ctx context.Context, presenceChan string) (*entity.Eve
 }
 
 func (b *Bus) leaveTab(ctx context.Context, userID, connID string) error {
-	return b.deleteSoughtForConnID(ctx, connID)
-}
-
-func (b *Bus) leaveSite(ctx context.Context, userID string) error {
 	username, anon, err := b.userStore.Username(ctx, userID)
 	if err != nil {
 		return err
 	}
-	oldchannel, err := b.presenceStore.ClearPresence(ctx, userID, username, anon)
+	channels, err := b.presenceStore.ClearPresence(ctx, userID, username, anon, connID)
 	if err != nil {
 		return err
 	}
-	log.Debug().Str("oldchannel", oldchannel).Str("userid", userID).Msg("left-site")
+	log.Debug().Interface("channels", channels).Str("connID", connID).Str("username", username).
+		Msg("clear presence")
 
-	err = b.broadcastPresence(username, userID, anon, oldchannel, true)
+	err = b.broadcastPresence(username, userID, anon, channels, true)
 	if err != nil {
 		return err
 	}
 
+	return b.deleteSoughtForConnID(ctx, connID)
+}
+
+func (b *Bus) leaveSite(ctx context.Context, userID string) error {
+	log.Debug().Str("userid", userID).Msg("left-site")
 	return nil
 }
 

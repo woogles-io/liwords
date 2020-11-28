@@ -16,7 +16,7 @@ import (
 // (We may have other non-expiring channels as well later?)
 const ChannelExpiration = 86400
 
-const LobbyChannel = "lobby.chat"
+const LobbyChatChannel = "lobby.chat"
 
 const ChatsOnReload = 100
 
@@ -39,13 +39,27 @@ func (b *Bus) chat(ctx context.Context, userID string, evt *pb.ChatMessage) erro
 	if len(evt.Message) > MaxMessageLength {
 		return errors.New("message-too-long")
 	}
+
+	// XXX: temporary migration code. Remove once frontends stop sending
+	// on the wrong channel.
+	// All channels should be of the form:
+	// chat.a[.b]
+	// e.g. chat.gametv.abcdef, chat.pm.user1-user2, chat.lobby, chat.tournament.weto
+	if !strings.HasPrefix(evt.Channel, "chat.") {
+		evt.Channel = "chat." + evt.Channel
+		// Remove the .chat from the end -- legacy channel name.
+		if strings.HasSuffix(evt.Channel, ".chat") {
+			evt.Channel = strings.TrimSuffix(evt.Channel, ".chat")
+		}
+	}
+
 	username, _, err := b.userStore.Username(ctx, userID)
 	if err != nil {
 		return err
 	}
 	conn := b.redisPool.Get()
 	defer conn.Close()
-	redisKey := "chat:" + evt.Channel
+	redisKey := "chat:" + strings.TrimPrefix(evt.Channel, "chat.")
 
 	ret, err := redis.String(conn.Do("XADD", redisKey, "MAXLEN", "~", "500", "*",
 		"username", username, "message", evt.Message, "userID", userID))
@@ -72,7 +86,7 @@ func (b *Bus) chat(ctx context.Context, userID string, evt *pb.ChatMessage) erro
 		return err
 	}
 
-	if evt.Channel != LobbyChannel {
+	if evt.Channel != LobbyChatChannel {
 		_, err = conn.Do("EXPIRE", redisKey, ChannelExpiration)
 		if err != nil {
 			return err
@@ -89,7 +103,7 @@ func (b *Bus) sendOldChats(userID, chatChannel string) error {
 		// No chats for this channel.
 		return nil
 	}
-	redisKey := "chat:" + chatChannel
+	redisKey := "chat:" + strings.TrimPrefix(chatChannel, "chat.")
 	log.Debug().Str("redisKey", redisKey).Msg("get-old-chats")
 	conn := b.redisPool.Get()
 	defer conn.Close()

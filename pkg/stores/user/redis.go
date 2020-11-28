@@ -3,6 +3,7 @@ package user
 import (
 	"context"
 	"errors"
+	"fmt"
 	"strings"
 
 	"github.com/domino14/liwords/pkg/entity"
@@ -27,45 +28,44 @@ type RedisPresenceStore struct {
 // scripts.
 const SetPresenceScript = `
 -- Arguments to this Lua script:
--- uuid, username, authOrAnon, channel string  (ARGV[1] through [4])
+-- uuid, username, authOrAnon, connID, channel string  (ARGV[1] through [5])
 
-local presencekey = "presence:user:"..ARGV[1]
-local channelpresencekey = "presence:channel:"..ARGV[4]
-local userkey = ARGV[1].."#"..ARGV[2].."#"..ARGV[3]  -- uuid#username#auth
+local userpresencekey = "fullpresence:user:"..ARGV[1]
+local channelpresencekey = "fullpresence:channel:"..ARGV[5]
+local userkey = ARGV[1].."#"..ARGV[2].."#"..ARGV[3].."#"..ARGV[4] -- uuid#username#auth#connID
+local expiry = 259200  -- 3 days
 
--- get the current channel that this presence is in.
-local curchannel = redis.call("HGET", presencekey, "channel")
-
--- compare with false; Lua converts redis nil reply to false
-if curchannel ~= false then
-    -- the presence is already somewhere else. we must delete it from the right SET
-    redis.call("SREM", "presence:channel:"..curchannel, userkey)
-end
-
-redis.call("HSET", presencekey, "username", ARGV[2], "channel", ARGV[4])
+-- Add the connection ID to the channel so we can track presences per connected tab
+redis.call("SADD", userpresencekey, ARGV[5].."#"..ARGV[4])
 -- and add to the channel presence
 redis.call("SADD", channelpresencekey, userkey)
 
+redis.call("EXPIRE", userpresencekey, expiry)
+redis.call("EXPIRE", channelpresencekey, expiry)
+
 `
 
-// ClearPresenceScript clears the presence and returns the channel it was in.
+// ClearPresenceScript clears the presence and returns the channel(s) it was in.
 const ClearPresenceScript = `
 -- Arguments to this Lua script:
--- uuid, username, authOrAnon
+-- uuid, username, authOrAnon, connID
 
-local presencekey = "presence:user:"..ARGV[1]
-local userkey = ARGV[1].."#"..ARGV[2].."#"..ARGV[3]  -- uuid#username#anon
+local userpresencekey = "fullpresence:user:"..ARGV[1]
+local userkey = ARGV[1].."#"..ARGV[2].."#"..ARGV[3].."#"..ARGV[4]  -- uuid#username#anon#conn_id
 
--- get the current channel that this presence is in.
-local curchannel = redis.call("HGET", presencekey, "channel")
-if curchannel ~= false then
-    -- figure out what channel we are in
-    redis.call("SREM", "presence:channel:"..curchannel, userkey)
+-- get the current channels that this presence is in.
+local curchannels = redis.call("SMEMBERS", userpresencekey)
+
+for i,v in ipairs(curchannels) do
+	-- v looks like channel#conn_id, but we only want to remove from the channel
+	local chan = string.match(v, "([%a%d]+)#[%a%d]+")
+	redis.call("SREM", "fullpresence:channel:"..chan, userkey)
 end
-redis.call("DEL", presencekey)
 
--- return the channel where the user used to be.
-return curchannel
+redis.call("DEL", userpresencekey)
+
+-- return the channel(s) where this user connection used to be.
+return curchannels
 `
 
 func NewRedisPresenceStore(r *redis.Pool) *RedisPresenceStore {
@@ -79,7 +79,7 @@ func NewRedisPresenceStore(r *redis.Pool) *RedisPresenceStore {
 
 // SetPresence sets the user's presence channel.
 func (s *RedisPresenceStore) SetPresence(ctx context.Context, uuid, username string, anon bool,
-	channel string) error {
+	channel, connID string) error {
 	// We try to map channels closely to the pubsub NATS channels (and realms),
 	// with some exceptions.
 	// If the user is online in two different tabs, we go in priority order,
@@ -98,12 +98,12 @@ func (s *RedisPresenceStore) SetPresence(ctx context.Context, uuid, username str
 		authUser = "anon"
 	}
 
-	_, err := s.setPresenceScript.Do(conn, uuid, username, authUser, channel)
+	_, err := s.setPresenceScript.Do(conn, uuid, username, authUser, connID, channel)
 	return err
 }
 
 func (s *RedisPresenceStore) ClearPresence(ctx context.Context, uuid, username string,
-	anon bool) (string, error) {
+	anon bool, connID string) ([]string, error) {
 	conn := s.redisPool.Get()
 	defer conn.Close()
 
@@ -112,9 +112,9 @@ func (s *RedisPresenceStore) ClearPresence(ctx context.Context, uuid, username s
 		authUser = "anon"
 	}
 
-	ret, err := s.clearPresenceScript.Do(conn, uuid, username, authUser)
+	ret, err := s.clearPresenceScript.Do(conn, uuid, username, authUser, connID)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	log.Debug().Interface("ret", ret).Msg("clear-presence-return")
 
@@ -122,13 +122,27 @@ func (s *RedisPresenceStore) ClearPresence(ctx context.Context, uuid, username s
 	case bool:
 		// can only be false. User was not found anywhere, so nowhere to leave from.
 		if !v {
-			return "", nil
+			return nil, nil
 		}
-		return "", errors.New("unexpected bool")
-	case []byte:
-		return string(v), nil
+		return nil, errors.New("unexpected bool")
+	case []interface{}:
+		cvt := make([]string, len(v))
+		for i, el := range v {
+			barr, ok := el.([]byte)
+			if !ok {
+				return nil, fmt.Errorf("unexpected interface type: %T", el)
+			}
+			// The channels look like channel#conn_id for each user.
+			// We only need an array of channels.
+			sp := strings.Split(string(barr), "#")
+			if len(sp) != 2 {
+				return nil, fmt.Errorf("unexpected presence format: %v", string(barr))
+			}
+			cvt[i] = sp[0]
+		}
+		return cvt, nil
 	}
-	return "", errors.New("unexpected clear presence result")
+	return nil, fmt.Errorf("unexpected clear presence result: %T", ret)
 }
 
 func (s *RedisPresenceStore) GetInChannel(ctx context.Context, channel string) ([]*entity.User, error) {
@@ -136,7 +150,7 @@ func (s *RedisPresenceStore) GetInChannel(ctx context.Context, channel string) (
 	conn := s.redisPool.Get()
 	defer conn.Close()
 
-	key := "presence:channel:" + channel
+	key := "fullpresence:channel:" + channel
 
 	vals, err := redis.Strings(conn.Do("SMEMBERS", key))
 	if err != nil {
@@ -161,23 +175,31 @@ func (s *RedisPresenceStore) GetInChannel(ctx context.Context, channel string) (
 	return users, nil
 }
 
-// Get the current channel the given user is in. Return empty for no channel.
-func (s *RedisPresenceStore) GetPresence(ctx context.Context, uuid string) (string, error) {
+// Get the current channels the given user is in. Return empty for no channel.
+func (s *RedisPresenceStore) GetPresence(ctx context.Context, uuid string) ([]string, error) {
 	conn := s.redisPool.Get()
 	defer conn.Close()
 
-	key := "presence:user:" + uuid
+	key := "fullpresence:user:" + uuid
 
-	m, err := redis.StringMap(conn.Do("HGETALL", key))
+	m, err := redis.Strings(conn.Do("SMEMBERS", key))
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
 	if m == nil {
-		return "", nil
+		return nil, nil
 	}
 
-	return m["channel"], nil
+	ret := make([]string, len(m))
+	for i, el := range m {
+		p := strings.Split(el, "#")
+		if len(p) != 2 {
+			return nil, fmt.Errorf("unexpected presence member: %v (%v)", el, m)
+		}
+		ret[i] = p[0]
+	}
+	return ret, nil
 }
 
 func (s *RedisPresenceStore) CountInChannel(ctx context.Context, channel string) (int, error) {
@@ -185,7 +207,7 @@ func (s *RedisPresenceStore) CountInChannel(ctx context.Context, channel string)
 	conn := s.redisPool.Get()
 	defer conn.Close()
 
-	key := "presence:channel:" + channel
+	key := "fullpresence:channel:" + channel
 
 	val, err := redis.Int(conn.Do("SCARD", key))
 	if err != nil {

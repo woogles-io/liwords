@@ -293,6 +293,9 @@ export class UserPresence extends jspb.Message {
   getIsAnonymous(): boolean;
   setIsAnonymous(value: boolean): void;
 
+  getDeleting(): boolean;
+  setDeleting(value: boolean): void;
+
   serializeBinary(): Uint8Array;
   toObject(includeInstance?: boolean): UserPresence.AsObject;
   static toObject(includeInstance: boolean, msg: UserPresence): UserPresence.AsObject;
@@ -309,6 +312,7 @@ export namespace UserPresence {
     userId: string,
     channel: string,
     isAnonymous: boolean,
+    deleting: boolean,
   }
 }
 

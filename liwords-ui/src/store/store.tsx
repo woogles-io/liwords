@@ -48,6 +48,7 @@ export type PresenceEntity = {
   username: string;
   channel: string;
   anon: boolean;
+  deleting: boolean;
 };
 
 const MaxChatLength = 150;
@@ -636,7 +637,7 @@ const RealStore = ({ children, ...props }: Props) => {
     // XXX: This looks slow.
     setPresences((prevPresences) => {
       const presencesCopy = { ...prevPresences };
-      if (entity.channel === '') {
+      if (entity.deleting) {
         // This user signed off; remove
         delete presencesCopy[entity.uuid];
       } else {

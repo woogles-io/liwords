@@ -158,7 +158,7 @@ export const Lobby = (props: Props) => {
       const evt = new ChatMessage();
       evt.setMessage(msg);
       evt.setChannel(
-        !tournamentID ? 'lobby.chat' : `tournament.${tournamentID}`
+        !tournamentID ? 'chat.lobby' : `chat.tournament.${tournamentID}`
       );
       sendSocketMsg(
         encodeToSocketFmt(MessageType.CHAT_MESSAGE, evt.serializeBinary())

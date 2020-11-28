@@ -38,12 +38,15 @@ type Store interface {
 
 // PresenceStore stores user presence. Since it is meant to be easily user-visible,
 // we deal with unique usernames in addition to UUIDs.
+// Presence applies to chat channels, as well as an overall site-wide presence.
+// For example, we'd like to see who's online, as well as who's in our given channel
+// (i.e. who's watching a certain game with us?)
 type PresenceStore interface {
 	// SetPresence sets the presence. If channel is the string NULL this is
 	// equivalent to saying the user logged off.
-	SetPresence(ctx context.Context, uuid, username string, anon bool, channel string) error
-	ClearPresence(ctx context.Context, uuid, username string, anon bool) (string, error)
-	GetPresence(ctx context.Context, uuid string) (string, error)
+	SetPresence(ctx context.Context, uuid, username string, anon bool, channel string, connID string) error
+	ClearPresence(ctx context.Context, uuid, username string, anon bool, connID string) ([]string, error)
+	GetPresence(ctx context.Context, uuid string) ([]string, error)
 
 	CountInChannel(ctx context.Context, channel string) (int, error)
 	GetInChannel(ctx context.Context, channel string) ([]*entity.User, error)

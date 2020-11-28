@@ -2714,7 +2714,8 @@ proto.liwords.UserPresence.toObject = function(includeInstance, msg) {
     username: jspb.Message.getFieldWithDefault(msg, 1, ""),
     userId: jspb.Message.getFieldWithDefault(msg, 2, ""),
     channel: jspb.Message.getFieldWithDefault(msg, 3, ""),
-    isAnonymous: jspb.Message.getBooleanFieldWithDefault(msg, 4, false)
+    isAnonymous: jspb.Message.getBooleanFieldWithDefault(msg, 4, false),
+    deleting: jspb.Message.getBooleanFieldWithDefault(msg, 5, false)
   };
 
   if (includeInstance) {
@@ -2766,6 +2767,10 @@ proto.liwords.UserPresence.deserializeBinaryFromReader = function(msg, reader) {
     case 4:
       var value = /** @type {boolean} */ (reader.readBool());
       msg.setIsAnonymous(value);
+      break;
+    case 5:
+      var value = /** @type {boolean} */ (reader.readBool());
+      msg.setDeleting(value);
       break;
     default:
       reader.skipField();
@@ -2821,6 +2826,13 @@ proto.liwords.UserPresence.serializeBinaryToWriter = function(message, writer) {
   if (f) {
     writer.writeBool(
       4,
+      f
+    );
+  }
+  f = message.getDeleting();
+  if (f) {
+    writer.writeBool(
+      5,
       f
     );
   }
@@ -2896,6 +2908,24 @@ proto.liwords.UserPresence.prototype.getIsAnonymous = function() {
  */
 proto.liwords.UserPresence.prototype.setIsAnonymous = function(value) {
   return jspb.Message.setProto3BooleanField(this, 4, value);
+};
+
+
+/**
+ * optional bool deleting = 5;
+ * @return {boolean}
+ */
+proto.liwords.UserPresence.prototype.getDeleting = function() {
+  return /** @type {boolean} */ (jspb.Message.getBooleanFieldWithDefault(this, 5, false));
+};
+
+
+/**
+ * @param {boolean} value
+ * @return {!proto.liwords.UserPresence} returns this
+ */
+proto.liwords.UserPresence.prototype.setDeleting = function(value) {
+  return jspb.Message.setProto3BooleanField(this, 5, value);
 };
 
 

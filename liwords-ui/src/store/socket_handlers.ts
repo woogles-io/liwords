@@ -385,6 +385,7 @@ export const useOnSocketMsg = () => {
               username: up.getUsername(),
               channel: up.getChannel(),
               anon: up.getIsAnonymous(),
+              deleting: up.getDeleting(),
             });
             break;
           }
@@ -401,6 +402,7 @@ export const useOnSocketMsg = () => {
                   username: p.getUsername(),
                   channel: p.getChannel(),
                   anon: p.getIsAnonymous(),
+                  deleting: p.getDeleting(),
                 });
               }
             });

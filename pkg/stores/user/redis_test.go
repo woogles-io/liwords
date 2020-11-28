@@ -41,10 +41,10 @@ func TestSetPresence(t *testing.T) {
 
 	ctx := context.Background()
 
-	err := ps.SetPresence(ctx, "uuid1", "cesar", false, "lobby")
+	err := ps.SetPresence(ctx, "uuid1", "cesar", false, "lobby", "connx1")
 	is.NoErr(err)
 
-	err = ps.SetPresence(ctx, "uuid2", "mina", false, "lobby")
+	err = ps.SetPresence(ctx, "uuid2", "mina", false, "lobby", "connx2")
 	is.NoErr(err)
 
 	ct, err := ps.CountInChannel(ctx, "lobby")
@@ -60,15 +60,15 @@ func TestSetPresenceLeaveAndComeback(t *testing.T) {
 
 	ctx := context.Background()
 
-	err := ps.SetPresence(ctx, "uuid1", "cesar", false, "lobby")
+	err := ps.SetPresence(ctx, "uuid1", "cesar", false, "lobby", "connx1")
 	is.NoErr(err)
 
-	err = ps.SetPresence(ctx, "uuid2", "mina", false, "lobby")
+	err = ps.SetPresence(ctx, "uuid2", "mina", false, "lobby", "connx2")
 	is.NoErr(err)
 
-	val, err := ps.ClearPresence(ctx, "uuid1", "cesar", false)
+	val, err := ps.ClearPresence(ctx, "uuid1", "cesar", false, "connx1")
 	is.NoErr(err)
-	is.Equal(val, "lobby")
+	is.Equal(val, []string{"lobby"})
 
 	ct, err := ps.CountInChannel(ctx, "lobby")
 	is.NoErr(err)
@@ -83,19 +83,19 @@ func TestGetPresence(t *testing.T) {
 
 	ctx := context.Background()
 
-	err := ps.SetPresence(ctx, "uuid1", "cesar", false, "lobby")
+	err := ps.SetPresence(ctx, "uuid1", "cesar", false, "lobby", "connx1")
 	is.NoErr(err)
 
-	err = ps.SetPresence(ctx, "uuid2", "mina", false, "lobby")
+	err = ps.SetPresence(ctx, "uuid2", "mina", false, "lobby", "connx2")
 	is.NoErr(err)
 
-	channel, err := ps.GetPresence(ctx, "uuid2")
+	channels, err := ps.GetPresence(ctx, "uuid2")
 	is.NoErr(err)
-	is.Equal(channel, "lobby")
+	is.Equal(channels, []string{"lobby"})
 
-	channel, err = ps.GetPresence(ctx, "uuid3")
+	channels, err = ps.GetPresence(ctx, "uuid3")
 	is.NoErr(err)
-	is.Equal(channel, "")
+	is.Equal(channels, []string{})
 }
 
 func TestGetInChannel(t *testing.T) {
@@ -106,34 +106,34 @@ func TestGetInChannel(t *testing.T) {
 
 	ctx := context.Background()
 
-	err := ps.SetPresence(ctx, "uuid1", "cesar", false, "lobby")
+	err := ps.SetPresence(ctx, "uuid1", "cesar", false, "lobby", "connx1")
 	is.NoErr(err)
 
-	err = ps.SetPresence(ctx, "uuid2", "mina", false, "lobby")
+	err = ps.SetPresence(ctx, "uuid2", "mina", false, "lobby", "connx2")
 	is.NoErr(err)
 
-	err = ps.SetPresence(ctx, "uuid5", "jesse", false, "lobby")
+	err = ps.SetPresence(ctx, "uuid5", "jesse", false, "lobby", "connx5")
 	is.NoErr(err)
 
-	err = ps.SetPresence(ctx, "uuid6", "conrad", false, "lobby")
+	err = ps.SetPresence(ctx, "uuid6", "conrad", false, "lobby", "connx6")
 	is.NoErr(err)
 
-	_, err = ps.ClearPresence(ctx, "uuid1", "cesar", false)
+	_, err = ps.ClearPresence(ctx, "uuid1", "cesar", false, "connx1")
 	is.NoErr(err)
 
-	err = ps.SetPresence(ctx, "uuid1", "cesar", false, "gametv:abc")
+	err = ps.SetPresence(ctx, "uuid1", "cesar", false, "gametv:abc", "connx11")
 	is.NoErr(err)
 
-	err = ps.SetPresence(ctx, "uuid3", "josh", false, "game:abc")
+	err = ps.SetPresence(ctx, "uuid3", "josh", false, "game:abc", "connx3")
 	is.NoErr(err)
 
-	err = ps.SetPresence(ctx, "uuid4", "lola", false, "game:abc")
+	err = ps.SetPresence(ctx, "uuid4", "lola", false, "game:abc", "connx4")
 	is.NoErr(err)
 
-	err = ps.SetPresence(ctx, "uuid7", "puneet", false, "lobby")
+	err = ps.SetPresence(ctx, "uuid7", "puneet", false, "lobby", "connx7")
 	is.NoErr(err)
 
-	err = ps.SetPresence(ctx, "uuid2", "mina", false, "gametv:abc")
+	err = ps.SetPresence(ctx, "uuid2", "mina", false, "gametv:abc", "connx22")
 	is.NoErr(err)
 
 	ct, err := ps.CountInChannel(ctx, "game:abc")
@@ -146,7 +146,7 @@ func TestGetInChannel(t *testing.T) {
 
 	ct, err = ps.CountInChannel(ctx, "lobby")
 	is.NoErr(err)
-	is.Equal(ct, 3)
+	is.Equal(ct, 4)
 
 	users, err := ps.GetInChannel(ctx, "game:abc")
 	sort.Slice(users, func(a, b int) bool {
@@ -162,6 +162,7 @@ func TestGetInChannel(t *testing.T) {
 		return users[a].UUID < users[b].UUID
 	})
 	is.Equal(users, []*entity.User{
+		{Username: "mina", UUID: "uuid2"},
 		{Username: "jesse", UUID: "uuid5"},
 		{Username: "conrad", UUID: "uuid6"},
 		{Username: "puneet", UUID: "uuid7"},
