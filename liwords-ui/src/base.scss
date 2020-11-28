@@ -275,11 +275,32 @@ ul
   }
 }
 
-.ant-dropdown-menu, .ant-select-dropdown, .ant-select-item {
+.ant-dropdown-menu, .ant-select-dropdown {
   padding: 0;
   @include colorModed() {
     background: m($background);
     color: m($gray-extreme);
+  }
+}
+
+.ant-select-item {
+  padding: 0;
+  @include colorModed() {
+    background: m($card-background);
+    color: m($gray-extreme);
+  }
+}
+
+.ant-form .ant-form-item{
+  label {
+    @include colorModed() {
+      color: m($gray-extreme);
+    }
+  }
+  .ant-select-arrow {
+    @include colorModed() {
+      color: m($gray-medium);
+    }
   }
 }
 
@@ -301,10 +322,19 @@ ul
 
 .ant-select-item {
   padding: 4px;
+  .hover-help {
+    display: none;
+    @include colorModed() {
+      color: m($primary-midDark);
+    }
+  }
   &:hover {
     @include colorModed() {
       background: m($off-background);
       color: m($primary-dark);
+      .hover-help {
+        display: inline-block;
+      }
     }
   }
 }
@@ -313,6 +343,9 @@ ul
   @include colorModed() {
     background: m($gray-subtle);
     color: m($primary-dark);
+  }
+  .hover-help {
+    display: inline-block;
   }
 }
 
