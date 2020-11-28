@@ -101,7 +101,7 @@ export const SeekForm = (props: Props) => {
   const defaultValues: seekPropVals = {
     lexicon: 'CSW19',
     challengerule: ChallengeRule.FIVE_POINT,
-    initialtime: 17, // Note this isn't minutes, but the slider position.
+    initialtime: 22, // Note this isn't minutes, but the slider position.
     rated: true,
     extratime: 1,
     friend: '',
