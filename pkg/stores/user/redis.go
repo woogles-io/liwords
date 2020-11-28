@@ -62,13 +62,13 @@ local totalcount = 0
 -- only delete the users where the conn_id actually matches.
 for i,v in ipairs(curchannels) do
 	-- v looks like channel#conn_id, but we only want to remove from the channel
-	redis.log(redis.LOG_WARNING, "v: "..v.." our_conn_id: "..ARGV[4])
+	-- redis.log(redis.LOG_WARNING, "v: "..v.." our_conn_id: "..ARGV[4])
 	local chan = string.match(v, "([%a%.%d]+)#"..ARGV[4])
 	totalcount = totalcount + 1
 	if chan then
 		table.insert(deletedfrom, v)
 		deletedcount = deletedcount + 1
-		redis.log(redis.LOG_WARNING, "found, deleting")
+		-- redis.log(redis.LOG_WARNING, "found, deleting")
 		redis.call("SREM", "fullpresence:channel:"..chan, userkey)
 		redis.call("SREM", userpresencekey, v)
 	end

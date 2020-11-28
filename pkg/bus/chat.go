@@ -14,9 +14,11 @@ import (
 
 // Expire all non-lobby channels after this many seconds. Lobby channel doesn't expire.
 // (We may have other non-expiring channels as well later?)
-const ChannelExpiration = 86400
+const TournamentChannelExpiration = 86400 * 7
 
-const LobbyChatChannel = "lobby.chat"
+const GameChatChannelExpiration = 86400
+
+const LobbyChatChannel = "chat.lobby"
 
 const ChatsOnReload = 100
 
@@ -44,7 +46,7 @@ func (b *Bus) chat(ctx context.Context, userID string, evt *pb.ChatMessage) erro
 	// on the wrong channel.
 	// All channels should be of the form:
 	// chat.a[.b]
-	// e.g. chat.gametv.abcdef, chat.pm.user1-user2, chat.lobby, chat.tournament.weto
+	// e.g. chat.gametv.abcdef, chat.pm.user1_user2, chat.lobby, chat.tournament.weto
 	if !strings.HasPrefix(evt.Channel, "chat.") {
 		evt.Channel = "chat." + evt.Channel
 		// Remove the .chat from the end -- legacy channel name.
@@ -87,7 +89,13 @@ func (b *Bus) chat(ctx context.Context, userID string, evt *pb.ChatMessage) erro
 	}
 
 	if evt.Channel != LobbyChatChannel {
-		_, err = conn.Do("EXPIRE", redisKey, ChannelExpiration)
+		var exp int
+		if strings.HasPrefix(evt.Channel, "chat.tournament") {
+			exp = TournamentChannelExpiration
+		} else {
+			exp = GameChatChannelExpiration
+		}
+		_, err = conn.Do("EXPIRE", redisKey, exp)
 		if err != nil {
 			return err
 		}
@@ -137,7 +145,7 @@ func (b *Bus) sendOldChats(userID, chatChannel string) error {
 			// we can likely remove this once old chats have expired.
 			msg.UserId = string(msgvals[5].([]byte))
 		}
-
+		msg.Channel = chatChannel
 		messages[len(vals)-1-idx] = msg
 	}
 

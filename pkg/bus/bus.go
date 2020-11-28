@@ -291,7 +291,7 @@ func (b *Bus) handleNatsRequest(ctx context.Context, topic string,
 				// Add to the tourney realm, but only the chat component.
 				// Players in game don't need to see all the other tourney events
 				// (pairings, standings, etc?)
-				resp.Realms = append(resp.Realms, "chat-tourney-"+tourneyID)
+				resp.Realms = append(resp.Realms, "chat-tournament-"+tourneyID)
 			}
 			// Also add the chat- realm (whether chat-game- or chat-gametv-)
 			resp.Realms = append(resp.Realms, "chat-"+realm)

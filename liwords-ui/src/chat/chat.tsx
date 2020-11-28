@@ -15,7 +15,8 @@ const { TabPane } = Tabs;
 type Props = {
   peopleOnlineContext: (n: number) => string; // should return "1 person" or "2 people"
   chatEntities: Array<ChatEntityObj> | undefined;
-  sendChat: (msg: string) => void;
+  sendChat: (msg: string, chan: string) => void;
+  sendChannel: string;
   description: string;
   presences: { [uuid: string]: PresenceEntity };
   DISCONNECT?: () => void;
@@ -25,7 +26,7 @@ type Props = {
 export const Chat = React.memo((props: Props) => {
   const { useState } = useMountedState();
   const { loginState } = useLoginStateStoreContext();
-  const { loggedIn } = loginState;
+  const { loggedIn, userID } = loginState;
   const [curMsg, setCurMsg] = useState('');
   const [hasScroll, setHasScroll] = useState(false);
   const [selectedChatTab, setSelectedChatTab] = useState('CHAT');
@@ -119,6 +120,18 @@ export const Chat = React.memo((props: Props) => {
     }
   }, [chatTab]);
 
+  const sendPrivateMessage = useCallback(
+    (msg: string, receiver: string) => {
+      let u1 = userID;
+      let u2 = receiver;
+      if (u2 < u1) {
+        [u1, u2] = [u2, u1];
+      }
+      propsSendChat(msg, `chat.pm.${u1}_${u2}`);
+    },
+    [propsSendChat, userID]
+  );
+
   const entities = useMemo(
     () =>
       props.chatEntities?.map((ent) => {
@@ -136,10 +149,11 @@ export const Chat = React.memo((props: Props) => {
             timestamp={ent.timestamp}
             anonymous={anon}
             highlight={specialSender}
+            sendMessage={sendPrivateMessage}
           />
         );
       }),
-    [knownUsers, props.chatEntities, props.highlight]
+    [knownUsers, props.chatEntities, props.highlight, sendPrivateMessage]
   );
 
   const handleTabClick = useCallback((key) => {
@@ -166,13 +180,13 @@ export const Chat = React.memo((props: Props) => {
         if (!loggedIn) {
           return;
         }
-        propsSendChat(msg);
+        propsSendChat(msg, props.sendChannel);
         // This may not be a good idea. User will miss unread messages.
         setChatAutoScroll(true);
         doChatAutoScroll();
       }
     },
-    [curMsg, doChatAutoScroll, loggedIn, propsSendChat]
+    [curMsg, doChatAutoScroll, loggedIn, propsSendChat, props.sendChannel]
   );
 
   return (
@@ -208,7 +222,10 @@ export const Chat = React.memo((props: Props) => {
                 </p>
                 {presenceVisible ? (
                   <p className="presence">
-                    <Presences players={props.presences} />
+                    <Presences
+                      players={props.presences}
+                      sendMessage={sendPrivateMessage}
+                    />
                   </p>
                 ) : null}
               </>
