@@ -484,19 +484,15 @@ func (b *Bus) initRealmInfo(ctx context.Context, evt *pb.InitRealmInfo, connID s
 	}
 
 	// The channels with presence should be:
-	// lobby.presence
+	// chat.lobby
 	// chat.tournament.foo
 	// chat.game.bar
 	// chat.gametv.baz
 	// global.presence (when it comes, we edit this later)
 
 	presenceChan := strings.ReplaceAll(evt.Realm, "-", ".")
-	if presenceChan == "lobby" {
-		presenceChan = "lobby.presence"
-	} else {
-		if !strings.HasPrefix(presenceChan, "chat.") {
-			presenceChan = ""
-		}
+	if !strings.HasPrefix(presenceChan, "chat.") {
+		presenceChan = ""
 	}
 
 	if presenceChan != "" {
@@ -581,18 +577,20 @@ func (b *Bus) initRealmInfo(ctx context.Context, evt *pb.InitRealmInfo, connID s
 	}
 
 	// Get presence
-	pres, err := b.getPresence(ctx, presenceChan)
-	if err != nil {
-		return err
-	}
-	err = b.pubToUser(evt.UserId, pres, presenceChan)
-	if err != nil {
-		return err
-	}
-	// Also send OUR presence to users in this channel.
-	err = b.broadcastPresence(username, evt.UserId, anon, []string{presenceChan}, false)
-	if err != nil {
-		return err
+	if presenceChan != "" {
+		pres, err := b.getPresence(ctx, presenceChan)
+		if err != nil {
+			return err
+		}
+		err = b.pubToUser(evt.UserId, pres, presenceChan)
+		if err != nil {
+			return err
+		}
+		// Also send OUR presence to users in this channel.
+		err = b.broadcastPresence(username, evt.UserId, anon, []string{presenceChan}, false)
+		if err != nil {
+			return err
+		}
 	}
 	return nil
 	// send chat info

@@ -58,7 +58,8 @@ local curchannels = redis.call("SMEMBERS", userpresencekey)
 
 for i,v in ipairs(curchannels) do
 	-- v looks like channel#conn_id, but we only want to remove from the channel
-	local chan = string.match(v, "([%a%d]+)#[%a%d]+")
+	redis.log(redis.LOG_WARNING, "v"..v)
+	local chan = string.match(v, "([%a%.%d]+)#[%a%d]+")
 	redis.call("SREM", "fullpresence:channel:"..chan, userkey)
 end
 
@@ -92,6 +93,7 @@ func (s *RedisPresenceStore) SetPresence(ctx context.Context, uuid, username str
 
 	conn := s.redisPool.Get()
 	defer conn.Close()
+	log.Debug().Str("username", username).Str("connID", connID).Msg("set-presence")
 
 	authUser := "auth"
 	if anon {
@@ -111,6 +113,8 @@ func (s *RedisPresenceStore) ClearPresence(ctx context.Context, uuid, username s
 	if anon {
 		authUser = "anon"
 	}
+
+	log.Debug().Str("username", username).Str("connID", connID).Msg("clear-presence")
 
 	ret, err := s.clearPresenceScript.Do(conn, uuid, username, authUser, connID)
 	if err != nil {
