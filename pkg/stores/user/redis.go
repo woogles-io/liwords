@@ -56,17 +56,33 @@ local userkey = ARGV[1].."#"..ARGV[2].."#"..ARGV[3].."#"..ARGV[4]  -- uuid#usern
 -- get the current channels that this presence is in.
 local curchannels = redis.call("SMEMBERS", userpresencekey)
 
+local deletedfrom = {}
+local deletedcount = 0
+local totalcount = 0
+-- only delete the users where the conn_id actually matches.
 for i,v in ipairs(curchannels) do
 	-- v looks like channel#conn_id, but we only want to remove from the channel
-	redis.log(redis.LOG_WARNING, "v"..v)
-	local chan = string.match(v, "([%a%.%d]+)#[%a%d]+")
-	redis.call("SREM", "fullpresence:channel:"..chan, userkey)
+	redis.log(redis.LOG_WARNING, "v: "..v.." our_conn_id: "..ARGV[4])
+	local chan = string.match(v, "([%a%.%d]+)#"..ARGV[4])
+	totalcount = totalcount + 1
+	if chan then
+		table.insert(deletedfrom, v)
+		deletedcount = deletedcount + 1
+		redis.log(redis.LOG_WARNING, "found, deleting")
+		redis.call("SREM", "fullpresence:channel:"..chan, userkey)
+		redis.call("SREM", userpresencekey, v)
+	end
 end
 
-redis.call("DEL", userpresencekey)
+-- only delete the user presence key if we actually deleted it from all channels.
+-- note: the set should already be missing because the SREM calls above will have
+--  emptied it...
+if deletedcount > 0 and deletedcount == totalcount then
+	redis.call("DEL", userpresencekey)
+end
 
 -- return the channel(s) where this user connection used to be.
-return curchannels
+return deletedfrom
 `
 
 func NewRedisPresenceStore(r *redis.Pool) *RedisPresenceStore {
