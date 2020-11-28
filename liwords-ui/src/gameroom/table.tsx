@@ -28,7 +28,6 @@ import {
   MatchRequest,
   SoughtGameProcessEvent,
   DeclineMatchRequest,
-  ChatMessage,
   ReadyForGame,
 } from '../gen/api/proto/realtime/realtime_pb';
 import { encodeToSocketFmt } from '../utils/protobuf';

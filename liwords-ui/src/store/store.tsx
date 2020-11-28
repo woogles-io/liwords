@@ -41,6 +41,7 @@ export type ChatEntityObj = {
   id?: string;
   timestamp?: number;
   senderId?: string;
+  channel: string;
 };
 
 export type PresenceEntity = {
@@ -620,6 +621,7 @@ const RealStore = ({ children, ...props }: Props) => {
           ? 'Challenged play was valid'
           : 'Play was challenged off the board!',
         id: randomID(),
+        channel: 'server',
       });
     },
     [addChat]

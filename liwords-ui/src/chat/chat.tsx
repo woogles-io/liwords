@@ -146,6 +146,8 @@ export const Chat = React.memo((props: Props) => {
             sender={ent.sender}
             senderId={ent.senderId}
             message={ent.message}
+            channel={ent.channel}
+            sendChannel={props.sendChannel}
             timestamp={ent.timestamp}
             anonymous={anon}
             highlight={specialSender}

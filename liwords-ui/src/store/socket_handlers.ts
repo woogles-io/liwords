@@ -349,6 +349,7 @@ export const useOnSocketMsg = () => {
               entityType: ChatEntityType.ErrorMsg,
               sender: 'Woogles',
               message: err.getMessage(),
+              channel: 'server',
             });
             break;
           }
@@ -368,6 +369,7 @@ export const useOnSocketMsg = () => {
               message: cm.getMessage(),
               timestamp: cm.getTimestamp(),
               senderId: cm.getUserId(),
+              channel: cm.getChannel(),
             });
             if (cm.getUsername() !== loginState.username) {
               // BoopSounds.playSound('receiveMsgSound');
@@ -392,6 +394,7 @@ export const useOnSocketMsg = () => {
                   timestamp: cm.getTimestamp(),
                   senderId: cm.getUserId(),
                   id: randomID(),
+                  channel: cm.getChannel(),
                 });
               }
             });
