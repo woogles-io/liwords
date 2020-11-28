@@ -61,6 +61,7 @@
       background: m($background);
       color: m($gray-extreme);
     }
+    z-index: 1100;
     .hover-help {
       display: none;
     }
@@ -87,6 +88,12 @@
     .ant-form-item-control-input {
       width: auto;
     }
+  }
+  .initial {
+    margin-top: 48px;
+  }
+  .extra-time-setter {
+    margin-bottom: 48px;
   }
   .ant-form-item .ant-form-item-label {
     text-align: left;
