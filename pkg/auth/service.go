@@ -161,7 +161,8 @@ func (as *AuthenticationService) GetSocketToken(ctx context.Context, r *pb.Socke
 }
 
 func (as *AuthenticationService) ResetPasswordStep1(ctx context.Context, r *pb.ResetPasswordRequestStep1) (*pb.ResetPasswordResponse, error) {
-	u, err := as.userStore.GetByEmail(ctx, r.Email)
+	email := strings.TrimSpace(r.Email)
+	u, err := as.userStore.GetByEmail(ctx, email)
 	if err != nil {
 		return nil, twirp.NewError(twirp.Unauthenticated, err.Error())
 	}
@@ -177,12 +178,12 @@ func (as *AuthenticationService) ResetPasswordStep1(ctx context.Context, r *pb.R
 	}
 	resetURL := "https://woogles.io/password/new?t=" + tokenString
 
-	id, err := emailer.SendSimpleMessage(as.mailgunKey, r.Email, "Password reset for Woogles.io",
+	id, err := emailer.SendSimpleMessage(as.mailgunKey, email, "Password reset for Woogles.io",
 		fmt.Sprintf(ResetPasswordTemplate, resetURL, u.Username))
 	if err != nil {
 		return nil, twirp.InternalErrorWith(err)
 	}
-	log.Info().Str("id", id).Str("email", r.Email).Msg("sent-password-reset")
+	log.Info().Str("id", id).Str("email", email).Msg("sent-password-reset")
 
 	return &pb.ResetPasswordResponse{}, nil
 }
