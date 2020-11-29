@@ -155,7 +155,13 @@ export const Chat = React.memo((props: Props) => {
           />
         );
       }),
-    [knownUsers, props.chatEntities, props.highlight, sendPrivateMessage]
+    [
+      knownUsers,
+      props.chatEntities,
+      props.highlight,
+      sendPrivateMessage,
+      props.sendChannel,
+    ]
   );
 
   const handleTabClick = useCallback((key) => {

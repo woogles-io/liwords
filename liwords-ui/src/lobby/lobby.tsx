@@ -13,7 +13,6 @@ import {
   RatingMode,
   MatchRequest,
   SoughtGameProcessEvent,
-  ChatMessage,
 } from '../gen/api/proto/realtime/realtime_pb';
 import { encodeToSocketFmt } from '../utils/protobuf';
 import { SoughtGame } from '../store/reducers/lobby_reducer';
