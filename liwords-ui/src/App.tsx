@@ -35,7 +35,10 @@ const App = React.memo(() => {
 
   const { setExcludedPlayers } = useExcludedPlayersStoreContext();
   const { resetStore } = useResetStoreContext();
-  const [shouldDisconnect, setShouldDisconnect] = useState(false);
+
+  // See store.tsx for how this works.
+  const [socketId, setSocketId] = useState(0);
+  const resetSocket = useCallback(() => setSocketId((n) => (n + 1) | 0), []);
 
   const [liwordsSocketValues, setLiwordsSocketValues] = useState({
     sendMessage: (msg: Uint8Array) => {},
@@ -51,14 +54,6 @@ const App = React.memo(() => {
       resetStore();
     }
   }, [isCurrentLocation, resetStore]);
-
-  const disconnectSocket = useCallback(() => {
-    setShouldDisconnect(true);
-    setTimeout(() => {
-      // reconnect after 5 seconds.
-      setShouldDisconnect(false);
-    }, 5000);
-  }, []);
 
   useEffect(() => {
     axios
@@ -82,15 +77,17 @@ const App = React.memo(() => {
   return (
     <div className="App">
       <LiwordsSocket
-        disconnect={shouldDisconnect}
+        key={socketId}
+        disconnect={false}
+        resetSocket={resetSocket}
         setValues={setLiwordsSocketValues}
       />
       <Switch>
         <Route path="/" exact>
-          <Lobby sendSocketMsg={sendMessage} DISCONNECT={disconnectSocket} />
+          <Lobby sendSocketMsg={sendMessage} DISCONNECT={resetSocket} />
         </Route>
         <Route path="/tournament/:tournamentID">
-          <Lobby sendSocketMsg={sendMessage} DISCONNECT={disconnectSocket} />
+          <Lobby sendSocketMsg={sendMessage} DISCONNECT={resetSocket} />
         </Route>
         <Route path="/game/:gameID">
           {/* Table meaning a game table */}

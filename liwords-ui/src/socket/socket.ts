@@ -44,100 +44,132 @@ type DecodedToken = {
   a: boolean; // authed
 };
 
+// Returning undefined from useEffect is fine, but some linters dislike it.
+const doNothing = () => {};
+
 export const LiwordsSocket = (props: {
-  disconnect: boolean;
+  disconnect: false; // statically deprecate this.
+  resetSocket: () => void;
   setValues: (_: {
     sendMessage: (msg: Uint8Array) => void;
     justDisconnected: boolean;
   }) => void;
 }): null => {
+  const isMountedRef = useRef(true);
+  useEffect(() => () => void (isMountedRef.current = false), []);
   const { useState } = useMountedState();
 
-  const { disconnect, setValues } = props;
+  const { disconnect, resetSocket, setValues } = props;
+  void resetSocket; // for later use
   const onSocketMsg = useOnSocketMsg();
 
   const loginStateStore = useLoginStateStoreContext();
   const location = useLocation();
+  const { pathname } = location;
 
   // const [socketToken, setSocketToken] = useState('');
-  const [fullSocketUrl, setFullSocketUrl] = useState('');
   const [justDisconnected, setJustDisconnected] = useState(false);
 
-  const isConnectedToSocket = loginStateStore.loginState.connectedToSocket;
-  const wasInitiallyConnectedToSocket = useRef(isConnectedToSocket);
+  // Source-of-truth must be local, not the store.
+  const [isConnectedToSocket, setIsConnectedToSocket] = useState(false);
   const { dispatchLoginState } = loginStateStore;
-  useEffect(() => {
-    if (wasInitiallyConnectedToSocket.current) {
-      // Only call this function if we are not connected to the socket.
-      // If we go from unconnected to connected, there is no need to call
-      // it again. If we go from connected to unconnected, then we call it
-      // to fetch a new token.
-      console.log('already connected');
-      return;
-    }
-    if (isConnectedToSocket) {
-      return;
-    }
-
+  const getFullSocketUrlAsync = useCallback(async () => {
     console.log('About to request token');
+    // Unfortunately this function must return a valid url.
+    const failUrl = `${socketUrl}?${new URLSearchParams({
+      path: pathname,
+    })}`;
 
-    axios
-      .post<TokenResponse>(
+    try {
+      const resp = await axios.post<TokenResponse>(
         toAPIUrl('user_service.AuthenticationService', 'GetSocketToken'),
         {},
         { withCredentials: true }
-      )
-      .then((resp) => {
-        const socketToken = resp.data.token;
-        const { cid, app_version } = resp.data;
+      );
+      // Important: resetSocket does not resetStore, be very careful to avoid
+      // dispatching stuffs from a decommissioned socket after axios returns.
+      if (!isMountedRef.current) return failUrl;
 
-        setFullSocketUrl(
-          `${socketUrl}?${new URLSearchParams({
-            token: socketToken,
-            path: location.pathname,
-            cid,
-          })}`
+      const socketToken = resp.data.token;
+      const { cid, app_version } = resp.data;
+
+      const ret = `${socketUrl}?${new URLSearchParams({
+        token: socketToken,
+        path: pathname,
+        cid,
+      })}`;
+
+      const decoded = jwt.decode(socketToken) as DecodedToken;
+      dispatchLoginState({
+        actionType: ActionType.SetAuthentication,
+        payload: {
+          username: decoded.unn,
+          userID: decoded.uid,
+          loggedIn: decoded.a,
+          connID: cid,
+          path: pathname,
+        },
+      });
+      if (!isMountedRef.current) return failUrl;
+      console.log('Got token, setting state, and will try to connect...');
+      if (window.RUNTIME_CONFIGURATION.appVersion !== app_version) {
+        console.log(
+          'app version mismatch',
+          'local',
+          window.RUNTIME_CONFIGURATION.appVersion,
+          'remote',
+          app_version
         );
 
-        const decoded = jwt.decode(socketToken) as DecodedToken;
-        dispatchLoginState({
-          actionType: ActionType.SetAuthentication,
-          payload: {
-            username: decoded.unn,
-            userID: decoded.uid,
-            loggedIn: decoded.a,
-            connID: cid,
-            path: location.pathname,
-          },
-        });
-        console.log('Got token, setting state, and will try to connect...');
-        if (window.RUNTIME_CONFIGURATION.appVersion !== app_version) {
-          console.log(
-            'app version mismatch',
-            'local',
-            window.RUNTIME_CONFIGURATION.appVersion,
-            'remote',
-            app_version
-          );
-
-          // bring back when we fix circleci sed
-          /*
+        // bring back when we fix circleci sed
+        /*
           message.warning(
             'Woogles has been updated. Please refresh this page at your leisure.',
             0
           ); */
-        }
-      })
-      .catch((e) => {
-        if (e.response) {
-          window.console.log(e.response);
-        }
-      });
-  }, [dispatchLoginState, isConnectedToSocket, location.pathname]);
+      }
+
+      return ret;
+    } catch (e) {
+      if (e.response) {
+        window.console.log(e.response);
+      }
+      return failUrl;
+    }
+  }, [dispatchLoginState, pathname]);
 
   useEffect(() => {
     if (isConnectedToSocket) {
-      return () => {};
+      console.log('connected to socket');
+      dispatchLoginState({
+        actionType: ActionType.SetConnectedToSocket,
+        payload: true,
+      });
+      message.destroy('connecting-socket');
+      setJustDisconnected(false);
+      return () => {
+        if (isMountedRef.current) {
+          console.log('disconnected from socket :(');
+        } else {
+          // Yes, the smiley matters!
+          console.log('disconnected from socket :)');
+        }
+        // Special case: useEffect cleanups seem to be run in forward order,
+        // but resetSocket does not imply resetStore, and it is important that
+        // we inform loginStateStore of the unmount.
+        dispatchLoginState({
+          actionType: ActionType.SetConnectedToSocket,
+          payload: false,
+        });
+        setJustDisconnected(true);
+      };
+    }
+    return doNothing;
+  }, [dispatchLoginState, isConnectedToSocket]);
+
+  useEffect(() => {
+    if (isConnectedToSocket) {
+      return doNothing;
     }
     const t = setTimeout(() => {
       message.warning({
@@ -152,24 +184,13 @@ export const LiwordsSocket = (props: {
   }, [isConnectedToSocket]);
 
   const { sendMessage: originalSendMessage } = useWebSocket(
-    useCallback(() => fullSocketUrl, [fullSocketUrl]),
+    getFullSocketUrlAsync,
     {
       onOpen: () => {
-        console.log('connected to socket');
-        loginStateStore.dispatchLoginState({
-          actionType: ActionType.SetConnectedToSocket,
-          payload: true,
-        });
-        message.destroy('connecting-socket');
-        setJustDisconnected(false);
+        setIsConnectedToSocket(true);
       },
       onClose: () => {
-        console.log('disconnected from socket :(');
-        loginStateStore.dispatchLoginState({
-          actionType: ActionType.SetConnectedToSocket,
-          payload: false,
-        });
-        setJustDisconnected(true);
+        setIsConnectedToSocket(false);
       },
       reconnectAttempts: Infinity,
       reconnectInterval: 1000,
@@ -177,8 +198,7 @@ export const LiwordsSocket = (props: {
       shouldReconnect: (closeEvent) => true,
       onMessage: (event: MessageEvent) => decodeToMsg(event.data, onSocketMsg),
     },
-    !disconnect &&
-      fullSocketUrl !== '' /* only connect if the socket token is not null */
+    !disconnect
   );
 
   const sendMessage = useMemo(() => {
