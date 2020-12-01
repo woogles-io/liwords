@@ -3,6 +3,7 @@ package bus
 import (
 	"context"
 	"errors"
+	"strings"
 
 	"github.com/rs/zerolog/log"
 	"google.golang.org/protobuf/proto"
@@ -138,6 +139,7 @@ func (b *Bus) matchRequest(ctx context.Context, auth, userID, connID string,
 		return b.newBotGame(ctx, req, botToPlay)
 	}
 	// Check if the user being matched exists.
+	req.ReceivingUser.DisplayName = strings.TrimSpace(req.ReceivingUser.DisplayName)
 	receiver, err := b.userStore.Get(ctx, req.ReceivingUser.DisplayName)
 	if err != nil {
 		// No such user, most likely.
