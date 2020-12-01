@@ -78,7 +78,6 @@ const App = React.memo(() => {
     <div className="App">
       <LiwordsSocket
         key={socketId}
-        disconnect={false}
         resetSocket={resetSocket}
         setValues={setLiwordsSocketValues}
       />

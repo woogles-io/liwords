@@ -48,7 +48,6 @@ type DecodedToken = {
 const doNothing = () => {};
 
 export const LiwordsSocket = (props: {
-  disconnect: false; // statically deprecate this.
   resetSocket: () => void;
   setValues: (_: {
     sendMessage: (msg: Uint8Array) => void;
@@ -59,7 +58,7 @@ export const LiwordsSocket = (props: {
   useEffect(() => () => void (isMountedRef.current = false), []);
   const { useState } = useMountedState();
 
-  const { disconnect, resetSocket, setValues } = props;
+  const { resetSocket, setValues } = props;
   void resetSocket; // for later use
   const onSocketMsg = useOnSocketMsg();
 
@@ -197,8 +196,7 @@ export const LiwordsSocket = (props: {
       retryOnError: true,
       shouldReconnect: (closeEvent) => true,
       onMessage: (event: MessageEvent) => decodeToMsg(event.data, onSocketMsg),
-    },
-    !disconnect
+    }
   );
 
   const sendMessage = useMemo(() => {
