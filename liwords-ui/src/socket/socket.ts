@@ -59,7 +59,6 @@ export const LiwordsSocket = (props: {
   const { useState } = useMountedState();
 
   const { resetSocket, setValues } = props;
-  void resetSocket; // for later use
   const onSocketMsg = useOnSocketMsg();
 
   const loginStateStore = useLoginStateStoreContext();
@@ -182,6 +181,24 @@ export const LiwordsSocket = (props: {
     };
   }, [isConnectedToSocket]);
 
+  const [patienceId, setPatienceId] = useState(0);
+  const resetPatience = useCallback(
+    () => setPatienceId((n) => (n + 1) | 0),
+    []
+  );
+  useEffect(() => {
+    if (!isConnectedToSocket) {
+      return doNothing;
+    }
+    const t = setTimeout(() => {
+      console.log('no more msgs');
+      resetSocket();
+    }, 15000);
+    return () => {
+      clearTimeout(t);
+    };
+  }, [isConnectedToSocket, patienceId, resetSocket]);
+
   const { sendMessage: originalSendMessage } = useWebSocket(
     getFullSocketUrlAsync,
     {
@@ -195,7 +212,11 @@ export const LiwordsSocket = (props: {
       reconnectInterval: 1000,
       retryOnError: true,
       shouldReconnect: (closeEvent) => true,
-      onMessage: (event: MessageEvent) => decodeToMsg(event.data, onSocketMsg),
+      onMessage: (event: MessageEvent) => {
+        // Any incoming message resets the patience.
+        resetPatience();
+        return decodeToMsg(event.data, onSocketMsg);
+      },
     }
   );
 
