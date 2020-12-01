@@ -412,6 +412,8 @@ func (b *Bus) handleNatsPublish(ctx context.Context, subtopics []string, data []
 		return b.leaveSite(ctx, userID)
 	case "leaveTab":
 		return b.leaveTab(ctx, userID, wsConnID)
+	case "pongReceived":
+		return b.pongReceived(ctx, userID, wsConnID)
 	default:
 		return fmt.Errorf("unhandled-publish-topic: %v", subtopics)
 	}
@@ -641,6 +643,14 @@ func (b *Bus) leaveTab(ctx context.Context, userID, connID string) error {
 func (b *Bus) leaveSite(ctx context.Context, userID string) error {
 	log.Debug().Str("userid", userID).Msg("left-site")
 	return nil
+}
+
+func (b *Bus) pongReceived(ctx context.Context, userID, connID string) error {
+	username, anon, err := b.userStore.Username(ctx, userID)
+	if err != nil {
+		return err
+	}
+	return b.presenceStore.RenewPresence(ctx, userID, username, anon, connID)
 }
 
 func (b *Bus) activeGames(ctx context.Context, tourneyID string) (*entity.EventWrapper, error) {

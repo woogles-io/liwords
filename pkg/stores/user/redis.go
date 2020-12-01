@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/domino14/liwords/pkg/entity"
 	"github.com/gomodule/redigo/redis"
@@ -21,6 +22,7 @@ type RedisPresenceStore struct {
 
 	setPresenceScript   *redis.Script
 	clearPresenceScript *redis.Script
+	renewPresenceScript *redis.Script
 }
 
 // SetPresenceScript is a Lua script that handles presence in an atomic way.
@@ -28,21 +30,25 @@ type RedisPresenceStore struct {
 // scripts.
 const SetPresenceScript = `
 -- Arguments to this Lua script:
--- uuid, username, authOrAnon, connID, channel string  (ARGV[1] through [5])
+-- uuid, username, authOrAnon, connID, channel string, timestamp  (ARGV[1] through [6])
 
-local userpresencekey = "fullpresence:user:"..ARGV[1]
-local channelpresencekey = "fullpresence:channel:"..ARGV[5]
+local userpresencekey = "userpresence:"..ARGV[1]
+local channelpresencekey = "channelpresence:"..ARGV[5]
 local userkey = ARGV[1].."#"..ARGV[2].."#"..ARGV[3].."#"..ARGV[4] -- uuid#username#auth#connID
-local expiry = 259200  -- 3 days
+-- 3 minutes. We will renew these keys constantly.
+local expiry = 180
+local ts = tonumber(ARGV[6])
+local simpleuserkey = ARGV[4].."#"..ARGV[5] -- just conn_id#channel
+-- Set user presence:
+redis.call("ZADD", userpresencekey, ts + expiry, simpleuserkey)
+redis.call("ZADD", "userpresences", ts + expiry, simpleuserkey)
 
--- Add the connection ID to the channel so we can track presences per connected tab
-redis.call("SADD", userpresencekey, ARGV[5].."#"..ARGV[4])
--- and add to the channel presence
-redis.call("SADD", channelpresencekey, userkey)
+-- Set channel presence:
+redis.call("ZADD", channelpresencekey, ts + expiry, userkey)
+-- Expire ephemeral presence keys:
 
 redis.call("EXPIRE", userpresencekey, expiry)
 redis.call("EXPIRE", channelpresencekey, expiry)
-
 `
 
 // ClearPresenceScript clears the presence and returns the channel(s) it was in.
@@ -50,39 +56,73 @@ const ClearPresenceScript = `
 -- Arguments to this Lua script:
 -- uuid, username, authOrAnon, connID
 
-local userpresencekey = "fullpresence:user:"..ARGV[1]
+local userpresencekey = "userpresence:"..ARGV[1]
 local userkey = ARGV[1].."#"..ARGV[2].."#"..ARGV[3].."#"..ARGV[4]  -- uuid#username#anon#conn_id
 
 -- get the current channels that this presence is in.
-local curchannels = redis.call("SMEMBERS", userpresencekey)
+
+local curchannels = redis.call("ZRANGE", userpresencekey, 0, -1)
 
 local deletedfrom = {}
 local deletedcount = 0
 local totalcount = 0
--- only delete the users where the conn_id actually matches.
-for i,v in ipairs(curchannels) do
-	-- v looks like channel#conn_id, but we only want to remove from the channel
-	-- redis.log(redis.LOG_WARNING, "v: "..v.." our_conn_id: "..ARGV[4])
-	local chan = string.match(v, "([%a%.%d]+)#"..ARGV[4])
-	totalcount = totalcount + 1
+
+-- only delete the users where the conn_id actually matches
+for i, v in ipairs(curchannels) do
+	-- v looks like conn_id#channel
+	local chan = string.match(v, ARGV[4].."#([%a%.%d]+)")
 	if chan then
 		table.insert(deletedfrom, v)
-		deletedcount = deletedcount + 1
-		-- redis.log(redis.LOG_WARNING, "found, deleting")
-		redis.call("SREM", "fullpresence:channel:"..chan, userkey)
-		redis.call("SREM", userpresencekey, v)
+		-- delete from the relevant channel key
+		redis.call("ZREM", "channelpresence:"..chan, userkey)
+		redis.call("ZREM", userpresencekey, v)
 	end
-end
-
--- only delete the user presence key if we actually deleted it from all channels.
--- note: the set should already be missing because the SREM calls above will have
---  emptied it...
-if deletedcount > 0 and deletedcount == totalcount then
-	redis.call("DEL", userpresencekey)
 end
 
 -- return the channel(s) where this user connection used to be.
 return deletedfrom
+`
+
+const RenewPresenceScript = `
+-- Arguments to this Lua script:
+-- uuid, username, auth, connID, ts (ARGV[1] through [5])
+local userpresencekey = "userpresence:"..ARGV[1]
+local userkey = ARGV[1].."#"..ARGV[2].."#"..ARGV[3].."#"..ARGV[4] -- uuid#username#auth#connID
+
+local expiry = 180
+local ts = tonumber(ARGV[5])
+
+local purgeold = {}
+
+-- Get all members of userpresencekey
+local curchannels = redis.call("ZRANGE", userpresencekey, 0, -1)
+
+-- For every channel that we are in, we renew that channel, only for this conn id.
+for i, v in ipairs(curchannels) do
+	-- v looks like conn_id#channel
+	local chan = string.match(v, ARGV[4].."#([%a%.%d]+)")
+	if chan then
+		-- extend expiries of the channelpresence...
+		redis.call("ZADD", "channelpresence:"..chan, ts + expiry, userkey)
+		redis.call("EXPIRE", "channelpresence:"..chan, expiry)
+		-- and of the userpresence
+		redis.call("ZADD", userpresencekey, ts + expiry, v)
+		redis.call("EXPIRE", userpresencekey, expiry)
+		-- and the overall set of user presences.
+		redis.call("ZADD", "userpresences", ts + expiry, v)
+
+		table.insert(purgeold, "channelpresence:"..chan)
+		table.insert(purgeold, userpresencekey)
+		table.insert(purgeold, "userpresences")
+	end
+end
+
+-- remove all subkeys inside the zsets that have expired.
+for i, v in ipairs(purgeold) do
+	redis.call("ZREMRANGEBYSCORE", v, 0, ts)
+end
+
+return purgeold
 `
 
 func NewRedisPresenceStore(r *redis.Pool) *RedisPresenceStore {
@@ -91,6 +131,7 @@ func NewRedisPresenceStore(r *redis.Pool) *RedisPresenceStore {
 		redisPool:           r,
 		setPresenceScript:   redis.NewScript(0, SetPresenceScript),
 		clearPresenceScript: redis.NewScript(0, ClearPresenceScript),
+		renewPresenceScript: redis.NewScript(0, RenewPresenceScript),
 	}
 }
 
@@ -116,7 +157,9 @@ func (s *RedisPresenceStore) SetPresence(ctx context.Context, uuid, username str
 		authUser = "anon"
 	}
 
-	_, err := s.setPresenceScript.Do(conn, uuid, username, authUser, connID, channel)
+	ts := time.Now().UTC().Unix()
+
+	_, err := s.setPresenceScript.Do(conn, uuid, username, authUser, connID, channel, ts)
 	return err
 }
 
@@ -152,13 +195,13 @@ func (s *RedisPresenceStore) ClearPresence(ctx context.Context, uuid, username s
 			if !ok {
 				return nil, fmt.Errorf("unexpected interface type: %T", el)
 			}
-			// The channels look like channel#conn_id for each user.
+			// The channels look like conn_id#channel for each user.
 			// We only need an array of channels.
 			sp := strings.Split(string(barr), "#")
 			if len(sp) != 2 {
 				return nil, fmt.Errorf("unexpected presence format: %v", string(barr))
 			}
-			cvt[i] = sp[0]
+			cvt[i] = sp[1]
 		}
 		return cvt, nil
 	}
@@ -170,9 +213,9 @@ func (s *RedisPresenceStore) GetInChannel(ctx context.Context, channel string) (
 	conn := s.redisPool.Get()
 	defer conn.Close()
 
-	key := "fullpresence:channel:" + channel
+	key := "channelpresence:" + channel
 
-	vals, err := redis.Strings(conn.Do("SMEMBERS", key))
+	vals, err := redis.Strings(conn.Do("ZRANGE", key, 0, -1))
 	if err != nil {
 		return nil, err
 	}
@@ -200,9 +243,9 @@ func (s *RedisPresenceStore) GetPresence(ctx context.Context, uuid string) ([]st
 	conn := s.redisPool.Get()
 	defer conn.Close()
 
-	key := "fullpresence:user:" + uuid
+	key := "userpresence:" + uuid
 
-	m, err := redis.Strings(conn.Do("SMEMBERS", key))
+	m, err := redis.Strings(conn.Do("ZRANGE", key, 0, -1))
 	if err != nil {
 		return nil, err
 	}
@@ -213,13 +256,33 @@ func (s *RedisPresenceStore) GetPresence(ctx context.Context, uuid string) ([]st
 
 	ret := make([]string, len(m))
 	for i, el := range m {
+		// Format should be: conn_id#channel
 		p := strings.Split(el, "#")
 		if len(p) != 2 {
 			return nil, fmt.Errorf("unexpected presence member: %v (%v)", el, m)
 		}
-		ret[i] = p[0]
+		ret[i] = p[1]
 	}
 	return ret, nil
+}
+
+func (s *RedisPresenceStore) RenewPresence(ctx context.Context, userID, username string,
+	anon bool, connID string) error {
+
+	conn := s.redisPool.Get()
+	defer conn.Close()
+
+	log.Debug().Str("username", username).Str("connID", connID).Msg("renew-presence")
+
+	authUser := "auth"
+	if anon {
+		authUser = "anon"
+	}
+
+	ts := time.Now().UTC().Unix()
+	purged, err := s.renewPresenceScript.Do(conn, userID, username, authUser, connID, ts)
+	log.Debug().Interface("purged", purged).Msg("renew-presence-purge")
+	return err
 }
 
 func (s *RedisPresenceStore) CountInChannel(ctx context.Context, channel string) (int, error) {
@@ -227,9 +290,9 @@ func (s *RedisPresenceStore) CountInChannel(ctx context.Context, channel string)
 	conn := s.redisPool.Get()
 	defer conn.Close()
 
-	key := "fullpresence:channel:" + channel
+	key := "channelpresence:" + channel
 
-	val, err := redis.Int(conn.Do("SCARD", key))
+	val, err := redis.Int(conn.Do("ZCARD", key))
 	if err != nil {
 		return 0, err
 	}

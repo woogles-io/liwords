@@ -184,3 +184,33 @@ func TestGetInChannel(t *testing.T) {
 	is.Equal(users, []*entity.User{})
 
 }
+
+// func TestRenewPresence(t *testing.T) {
+// 	is := is.New(t)
+// 	redisPool := newPool(RedisURL)
+// 	ps := NewRedisPresenceStore(redisPool)
+// 	flushTestDB(redisPool)
+
+// 	ctx := context.Background()
+
+// 	err := ps.SetPresence(ctx, "uuid1", "cesar", false, "tournament.abc", "connx1")
+// 	is.NoErr(err)
+
+// 	err = ps.SetPresence(ctx, "uuid2", "mina", false, "lobby", "connx2")
+// 	is.NoErr(err)
+// 	// cesar is in the tournament abc and in a game with the same conn id.
+// 	err = ps.SetPresence(ctx, "uuid1", "cesar", false, "game.bar", "connx1")
+// 	is.NoErr(err)
+
+// 	err = ps.RenewPresence(ctx, "uuid1", "cesar", false, "connx1")
+
+// 	// Pretend that mina's connection died a few minutes ago.
+// 	ts := time.Now().UTC().Unix() + 300 // 5 minutes (expiry is only 3 minutes)
+
+// 	conn := redisPool.Get()
+// 	defer conn.Close()
+
+// 	// Renew just cesar's presence
+// 	purged, err := ps.renewPresenceScript.Do(conn, "uuid1", "cesar", "auth", "connx1", ts)
+
+// }
