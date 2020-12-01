@@ -41,7 +41,7 @@ local ts = tonumber(ARGV[6])
 local simpleuserkey = ARGV[4].."#"..ARGV[5] -- just conn_id#channel
 -- Set user presence:
 redis.call("ZADD", userpresencekey, ts + expiry, simpleuserkey)
-redis.call("ZADD", "userpresences", ts + expiry, simpleuserkey)
+redis.call("ZADD", "userpresences", ts + expiry, userkey.."#"..ARGV[5])
 
 -- Set channel presence:
 redis.call("ZADD", channelpresencekey, ts + expiry, userkey)
@@ -76,6 +76,7 @@ for i, v in ipairs(curchannels) do
 		-- delete from the relevant channel key
 		redis.call("ZREM", "channelpresence:"..chan, userkey)
 		redis.call("ZREM", userpresencekey, v)
+		redis.call("ZREM", "userpresences", userkey.."#"..chan)
 	end
 end
 
@@ -109,7 +110,7 @@ for i, v in ipairs(curchannels) do
 		redis.call("ZADD", userpresencekey, ts + expiry, v)
 		redis.call("EXPIRE", userpresencekey, expiry)
 		-- and the overall set of user presences.
-		redis.call("ZADD", "userpresences", ts + expiry, v)
+		redis.call("ZADD", "userpresences", ts + expiry, userkey.."#"..chan)
 
 		table.insert(purgeold, "channelpresence:"..chan)
 		table.insert(purgeold, userpresencekey)
