@@ -15,7 +15,7 @@ import (
 // Expire all non-lobby channels after this many seconds. Lobby channel doesn't expire.
 // (We may have other non-expiring channels as well later?)
 const TournamentChannelExpiration = 86400 * 7
-
+const PMChannelExpiration = 86400 * 7
 const GameChatChannelExpiration = 86400
 
 const LobbyChatChannel = "chat.lobby"
@@ -92,6 +92,8 @@ func (b *Bus) chat(ctx context.Context, userID string, evt *pb.ChatMessage) erro
 		var exp int
 		if strings.HasPrefix(evt.Channel, "chat.tournament") {
 			exp = TournamentChannelExpiration
+		} else if strings.HasPrefix(evt.Channel, "chat.pm") {
+			exp = PMChannelExpiration
 		} else {
 			exp = GameChatChannelExpiration
 		}

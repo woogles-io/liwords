@@ -278,7 +278,7 @@ func (b *Bus) handleNatsRequest(ctx context.Context, topic string,
 			}
 			log.Debug().Str("computed-realm", realm)
 			if game.TournamentData != nil {
-				tourneyID = game.TournamentData.Id
+				tourneyID = strings.ToLower(game.TournamentData.Id)
 				log.Debug().Str("tourney-realm-for", tourneyID)
 			}
 		} else {
@@ -498,6 +498,7 @@ func (b *Bus) initRealmInfo(ctx context.Context, evt *pb.InitRealmInfo, connID s
 	}
 
 	if presenceChan != "" {
+		log.Debug().Str("presence-chan", presenceChan).Str("username", username).Msg("SetPresence")
 		b.presenceStore.SetPresence(ctx, evt.UserId, username, anon, presenceChan, connID)
 	}
 

@@ -67,7 +67,13 @@ func (b *Bus) instantiateAndStartGame(ctx context.Context, accUser *entity.User,
 				assignedFirst = 0 // accUser should go first
 			}
 		}
-		tournamentID = sg.MatchRequest.TournamentId
+		if sg.MatchRequest.TournamentId != "" {
+			t, err := b.tournamentStore.Get(ctx, sg.MatchRequest.TournamentId)
+			if err != nil {
+				return errors.New("tournament not found")
+			}
+			tournamentID = t.UUID
+		}
 	}
 
 	g, err := gameplay.InstantiateNewGame(ctx, b.gameStore, b.config,

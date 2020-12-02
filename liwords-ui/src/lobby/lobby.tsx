@@ -134,7 +134,7 @@ export const Lobby = (props: Props) => {
       })
       .catch((err) => {
         message.error({
-          content: 'Tournament does not exist',
+          content: 'Error fetching tournament data',
           duration: 5,
         });
       });
@@ -167,7 +167,9 @@ export const Lobby = (props: Props) => {
             chatEntities={chat}
             sendChat={props.sendChat}
             sendChannel={
-              !tournamentID ? 'chat.lobby' : `chat.tournament.${tournamentID}`
+              !tournamentID
+                ? 'chat.lobby'
+                : `chat.tournament.${tournamentID.toLowerCase()}`
             }
             description={tournamentID ? 'Tournament chat' : 'Lobby chat'}
             peopleOnlineContext={peopleOnlineContext}

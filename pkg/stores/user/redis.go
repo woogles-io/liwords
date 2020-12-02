@@ -281,8 +281,7 @@ func (s *RedisPresenceStore) RenewPresence(ctx context.Context, userID, username
 	}
 
 	ts := time.Now().UTC().Unix()
-	purged, err := s.renewPresenceScript.Do(conn, userID, username, authUser, connID, ts)
-	log.Debug().Interface("purged", purged).Msg("renew-presence-purge")
+	_, err := s.renewPresenceScript.Do(conn, userID, username, authUser, connID, ts)
 	return err
 }
 
