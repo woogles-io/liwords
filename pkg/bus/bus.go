@@ -256,7 +256,9 @@ func (b *Bus) handleNatsRequest(ctx context.Context, topic string,
 		// so we can track presence / deliver notifications even on non-game pages)
 		path := msg.Path
 		userID := msg.UserId
-		var realm, tourneyID string
+
+		resp := &pb.RegisterRealmResponse{}
+
 		if strings.HasPrefix(path, "/game/") {
 			gameID := strings.TrimPrefix(path, "/game/")
 			game, err := b.gameStore.Get(ctx, gameID)
@@ -271,31 +273,33 @@ func (b *Bus) handleNatsRequest(ctx context.Context, topic string,
 					foundPlayer = true
 				}
 			}
+			var realm string
 			if !foundPlayer {
 				realm = "gametv-" + gameID
 			} else {
 				realm = "game-" + gameID
 			}
 			log.Debug().Str("computed-realm", realm)
+			resp.Realms = append(resp.Realms, realm, "chat-"+realm)
+
 			if game.TournamentData != nil {
-				tourneyID = strings.ToLower(game.TournamentData.Id)
+				tourneyID := strings.ToLower(game.TournamentData.Id)
 				log.Debug().Str("tourney-realm-for", tourneyID)
+				resp.Realms = append(resp.Realms, "chat-tournament-"+tourneyID)
 			}
+
+		} else if strings.HasPrefix(path, "/tournament/") {
+			tid := strings.TrimPrefix(path, "/tournament/")
+			_, err := b.tournamentStore.Get(ctx, tid)
+			if err != nil {
+				return err
+			}
+			normalized := strings.ToLower(tid)
+			resp.Realms = append(resp.Realms, "tournament-"+normalized, "chat-tournament-"+normalized)
 		} else {
 			log.Info().Str("path", path).Msg("realm-req-not-handled-sending-blank-realm")
 		}
-		resp := &pb.RegisterRealmResponse{}
-		resp.Realms = []string{realm}
-		if realm != "" {
-			if tourneyID != "" {
-				// Add to the tourney realm, but only the chat component.
-				// Players in game don't need to see all the other tourney events
-				// (pairings, standings, etc?)
-				resp.Realms = append(resp.Realms, "chat-tournament-"+tourneyID)
-			}
-			// Also add the chat- realm (whether chat-game- or chat-gametv-)
-			resp.Realms = append(resp.Realms, "chat-"+realm)
-		}
+
 		retdata, err := proto.Marshal(resp)
 		if err != nil {
 			return err
