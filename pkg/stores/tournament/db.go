@@ -30,6 +30,7 @@ type tournament struct {
 	UUID              string `gorm:"uniqueIndex"`
 	Name              string
 	Description       string
+	AliasOf           string
 	Directors         datatypes.JSON
 	ExecutiveDirector string
 	IsStarted         bool
@@ -68,6 +69,7 @@ func (s *DBStore) Get(ctx context.Context, id string) (*entity.Tournament, error
 	tme := &entity.Tournament{UUID: tm.UUID,
 		Name:              tm.Name,
 		Description:       tm.Description,
+		AliasOf:           tm.AliasOf,
 		Directors:         &directors,
 		ExecutiveDirector: tm.ExecutiveDirector,
 		IsStarted:         tm.IsStarted,
@@ -130,6 +132,7 @@ func (s *DBStore) toDBObj(t *entity.Tournament) (*tournament, error) {
 		UUID:              t.UUID,
 		Name:              t.Name,
 		Description:       t.Description,
+		AliasOf:           t.AliasOf,
 		Directors:         directors,
 		ExecutiveDirector: t.ExecutiveDirector,
 		IsStarted:         t.IsStarted,

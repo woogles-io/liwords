@@ -170,7 +170,7 @@ func minWeightMatching(members *entity.UnpairedPoolMembers) ([]int, error) {
 	}
 
 	if weight >= entity.ProhibitiveWeight {
-		return nil, errors.New("prohibitive weight reached, pairings are not possible with these settings.")
+		return nil, errors.New("prohibitive weight reached, pairings are not possible with these settings")
 	}
 
 	if members.RoundControls.PairingMethod == entity.Quickpair {
@@ -233,7 +233,7 @@ func weighSwiss(members *entity.UnpairedPoolMembers, i int, j int) int64 {
 
 	// Subtract the spread difference for swiss, since we would like to pair players
 	// that have similar records but large differences in spread.
-	spreadDiffWeight := -int64(utilities.Abs(p1.Spread-p2.Spread))
+	spreadDiffWeight := -int64(utilities.Abs(p1.Spread - p2.Spread))
 
 	// Add one to account for the pairing of p1 and p2 for this round
 	repeatsOverMax := utilities.Max(0, members.Repeats[GetRepeatKey(p1.Id, p2.Id)]+1-members.RoundControls.MaxRepeats)

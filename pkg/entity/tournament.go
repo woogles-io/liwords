@@ -19,6 +19,7 @@ type DivisionManager interface {
 	IsRoundReady(int) (bool, error)
 	IsRoundComplete(int) (bool, error)
 	IsFinished() (bool, error)
+	ToResponse() (*realtime.TournamentDivisionDataResponse, error)
 	Serialize() (datatypes.JSON, error)
 }
 
@@ -39,8 +40,6 @@ const (
 	// which player goes first.
 	AutomaticFirst
 )
-
-const Unpaired = -1
 
 type TournamentGame struct {
 	Scores        []int                           `json:"scores"`
@@ -96,6 +95,7 @@ type TournamentControls struct {
 	NumberOfRounds int                   `json:"rounds"`
 	Type           TournamentType        `json:"type"`
 	StartTime      time.Time             `json:"startTime"`
+	AutoStart      bool                  `json:"autoStart"`
 }
 
 type TournamentDivision struct {
@@ -109,6 +109,8 @@ type Tournament struct {
 	UUID              string                         `json:"uuid"`
 	Name              string                         `json:"name"`
 	Description       string                         `json:"desc"`
+	AliasOf           string                         `json:"aliasOf"`
+	URL               string                         `json:"url"`
 	ExecutiveDirector string                         `json:"execDirector"`
 	Directors         *TournamentPersons             `json:"directors"`
 	IsStarted         bool                           `json:"started"`

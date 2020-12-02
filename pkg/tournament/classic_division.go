@@ -18,6 +18,7 @@ type ClassicDivision struct {
 	Players        []string                    `json:"p"`
 	PlayerIndexMap map[string]int              `json:"i"`
 	RoundControls  []*entity.RoundControls     `json:"r"`
+	CurrentRound   int                         `json:"c"`
 }
 
 func NewClassicDivision(players []string,
@@ -67,7 +68,8 @@ func NewClassicDivision(players []string,
 	t := &ClassicDivision{Matrix: pairings,
 		Players:        players,
 		PlayerIndexMap: playerIndexMap,
-		RoundControls:  roundControls}
+		RoundControls:  roundControls,
+		CurrentRound:   0}
 	if roundControls[0].PairingMethod != entity.Manual {
 		err := t.PairRound(0)
 		if err != nil {
@@ -170,6 +172,11 @@ func (t *ClassicDivision) SubmitResult(round int,
 		return err
 	}
 
+	// Ensure that this is the current round
+	if round != t.CurrentRound && !amend {
+		return fmt.Errorf("submitted result for a round (%d) that is not the current round (%d)", round, t.CurrentRound)
+	}
+
 	// Ensure that the pairing exists
 	if pri1.Pairing == nil {
 		return fmt.Errorf("submitted result for a player with a null pairing: %s round (%d)", p1, round)
@@ -209,6 +216,11 @@ func (t *ClassicDivision) SubmitResult(round int,
 		return fmt.Errorf("result is already submitted for round %d, %s vs. %s", round, p1, p2)
 	}
 
+	if amend && (pairing.Games[gameIndex].Results[0] == realtime.TournamentGameResult_NO_RESULT &&
+		pairing.Games[gameIndex].Results[1] == realtime.TournamentGameResult_NO_RESULT) {
+		return fmt.Errorf("submitted amendment for a result that does not exist in round %d, %s vs. %s", round, p1, p2)
+	}
+
 	p1Index := 0
 	if pairing.Players[1] == p1 {
 		p1Index = 1
@@ -240,7 +252,7 @@ func (t *ClassicDivision) SubmitResult(round int,
 		pairing.Outcomes[1-p1Index] = p2Result
 	}
 
-	complete, err := t.IsRoundComplete(round)
+	roundComplete, err := t.IsRoundComplete(round)
 	if err != nil {
 		return err
 	}
@@ -252,13 +264,18 @@ func (t *ClassicDivision) SubmitResult(round int,
 	// Only pair if this round is complete and the tournament
 	// is not over. Don't pair for round robin and random since those pairings
 	// were made when the tournament was created.
-	if !finished && complete &&
-		t.RoundControls[round+1].PairingMethod != entity.RoundRobin &&
-		t.RoundControls[round+1].PairingMethod != entity.Random &&
-		t.RoundControls[round+1].PairingMethod != entity.Manual {
-		err = t.PairRound(round + 1)
-		if err != nil {
-			return err
+	if roundComplete {
+		if !amend {
+			t.CurrentRound = round + 1
+		}
+		if !finished &&
+			t.RoundControls[round+1].PairingMethod != entity.RoundRobin &&
+			t.RoundControls[round+1].PairingMethod != entity.Random &&
+			t.RoundControls[round+1].PairingMethod != entity.Manual {
+			err = t.PairRound(round + 1)
+			if err != nil {
+				return err
+			}
 		}
 	}
 
@@ -485,6 +502,58 @@ func (t *ClassicDivision) IsRoundComplete(round int) (bool, error) {
 
 func (t *ClassicDivision) IsFinished() (bool, error) {
 	return t.IsRoundComplete(len(t.Matrix) - 1)
+}
+
+func (t *ClassicDivision) ToResponse() (*realtime.TournamentDivisionDataResponse, error) {
+
+	realtimeTournamentControls := &realtime.TournamentControls{RoundControls: []*realtime.RoundControl{}}
+	for i := 0; i < len(t.RoundControls); i++ {
+		realtimeTournamentControls.RoundControls = append(realtimeTournamentControls.RoundControls,
+			convertRoundControlsToResponse(t.RoundControls[i]))
+	}
+
+	oneDimMatrix := []*realtime.PlayerRoundInfo{}
+
+	for i := 0; i < len(t.Matrix); i++ {
+		for j := 0; j < len(t.Matrix[i]); j++ {
+			oneDimMatrix = append(oneDimMatrix, convertPRIToResponse(t.Matrix[i][j]))
+		}
+	}
+
+	classicDivision := &realtime.ClassicDivision{Matrix: oneDimMatrix}
+
+	return &realtime.TournamentDivisionDataResponse{Players: t.Players,
+		Controls:     realtimeTournamentControls,
+		Division:     classicDivision,
+		CurrentRound: int32(t.CurrentRound)}, nil
+}
+
+func convertRoundControlsToResponse(rc *entity.RoundControls) *realtime.RoundControl {
+	return &realtime.RoundControl{PairingMethod: int32(rc.PairingMethod),
+		FirstMethod:                 int32(rc.FirstMethod),
+		GamesPerRound:               int32(rc.GamesPerRound),
+		Round:                       int32(rc.Round),
+		Factor:                      int32(rc.Factor),
+		MaxRepeats:                  int32(rc.MaxRepeats),
+		AllowOverMaxRepeats:         rc.AllowOverMaxRepeats,
+		RepeatRelativeWeight:        int32(rc.RepeatRelativeWeight),
+		WinDifferenceRelativeWeight: int32(rc.WinDifferenceRelativeWeight)}
+}
+
+func convertPRIToResponse(pri *entity.PlayerRoundInfo) *realtime.PlayerRoundInfo {
+	priResponse := &realtime.PlayerRoundInfo{}
+	if pri.Pairing != nil {
+		priResponse.Players = pri.Pairing.Players
+		priResponse.Outcomes = pri.Pairing.Outcomes
+		for i := 0; i < len(pri.Pairing.Games); i++ {
+			game := pri.Pairing.Games[i]
+			priResponse.Games = append(priResponse.Games, &realtime.TournamentGame{Scores: []int32{int32(game.Scores[0]), int32(game.Scores[1])},
+				Results:       game.Results,
+				GameEndReason: game.GameEndReason})
+		}
+	}
+
+	return priResponse
 }
 
 func (t *ClassicDivision) Serialize() (datatypes.JSON, error) {

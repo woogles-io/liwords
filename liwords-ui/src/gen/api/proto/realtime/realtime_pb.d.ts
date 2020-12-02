@@ -3,6 +3,7 @@
 
 import * as jspb from "google-protobuf";
 import * as macondo_api_proto_macondo_macondo_pb from "../../../macondo/api/proto/macondo/macondo_pb";
+import * as google_protobuf_timestamp_pb from "google-protobuf/google/protobuf/timestamp_pb";
 
 export class GameRules extends jspb.Message {
   getBoardLayoutName(): string;
@@ -937,6 +938,304 @@ export namespace DeclineMatchRequest {
   }
 }
 
+export class RoundControl extends jspb.Message {
+  getPairingMethod(): number;
+  setPairingMethod(value: number): void;
+
+  getFirstMethod(): number;
+  setFirstMethod(value: number): void;
+
+  getGamesPerRound(): number;
+  setGamesPerRound(value: number): void;
+
+  getRound(): number;
+  setRound(value: number): void;
+
+  getFactor(): number;
+  setFactor(value: number): void;
+
+  getMaxRepeats(): number;
+  setMaxRepeats(value: number): void;
+
+  getAllowOverMaxRepeats(): boolean;
+  setAllowOverMaxRepeats(value: boolean): void;
+
+  getRepeatRelativeWeight(): number;
+  setRepeatRelativeWeight(value: number): void;
+
+  getWinDifferenceRelativeWeight(): number;
+  setWinDifferenceRelativeWeight(value: number): void;
+
+  serializeBinary(): Uint8Array;
+  toObject(includeInstance?: boolean): RoundControl.AsObject;
+  static toObject(includeInstance: boolean, msg: RoundControl): RoundControl.AsObject;
+  static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+  static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+  static serializeBinaryToWriter(message: RoundControl, writer: jspb.BinaryWriter): void;
+  static deserializeBinary(bytes: Uint8Array): RoundControl;
+  static deserializeBinaryFromReader(message: RoundControl, reader: jspb.BinaryReader): RoundControl;
+}
+
+export namespace RoundControl {
+  export type AsObject = {
+    pairingMethod: number,
+    firstMethod: number,
+    gamesPerRound: number,
+    round: number,
+    factor: number,
+    maxRepeats: number,
+    allowOverMaxRepeats: boolean,
+    repeatRelativeWeight: number,
+    winDifferenceRelativeWeight: number,
+  }
+}
+
+export class TournamentControls extends jspb.Message {
+  hasGameRequest(): boolean;
+  clearGameRequest(): void;
+  getGameRequest(): GameRequest | undefined;
+  setGameRequest(value?: GameRequest): void;
+
+  clearRoundControlsList(): void;
+  getRoundControlsList(): Array<RoundControl>;
+  setRoundControlsList(value: Array<RoundControl>): void;
+  addRoundControls(value?: RoundControl, index?: number): RoundControl;
+
+  getType(): number;
+  setType(value: number): void;
+
+  serializeBinary(): Uint8Array;
+  toObject(includeInstance?: boolean): TournamentControls.AsObject;
+  static toObject(includeInstance: boolean, msg: TournamentControls): TournamentControls.AsObject;
+  static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+  static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+  static serializeBinaryToWriter(message: TournamentControls, writer: jspb.BinaryWriter): void;
+  static deserializeBinary(bytes: Uint8Array): TournamentControls;
+  static deserializeBinaryFromReader(message: TournamentControls, reader: jspb.BinaryReader): TournamentControls;
+}
+
+export namespace TournamentControls {
+  export type AsObject = {
+    gameRequest?: GameRequest.AsObject,
+    roundControlsList: Array<RoundControl.AsObject>,
+    type: number,
+  }
+}
+
+export class TournamentGame extends jspb.Message {
+  clearScoresList(): void;
+  getScoresList(): Array<number>;
+  setScoresList(value: Array<number>): void;
+  addScores(value: number, index?: number): number;
+
+  clearResultsList(): void;
+  getResultsList(): Array<TournamentGameResultMap[keyof TournamentGameResultMap]>;
+  setResultsList(value: Array<TournamentGameResultMap[keyof TournamentGameResultMap]>): void;
+  addResults(value: TournamentGameResultMap[keyof TournamentGameResultMap], index?: number): TournamentGameResultMap[keyof TournamentGameResultMap];
+
+  getGameEndReason(): GameEndReasonMap[keyof GameEndReasonMap];
+  setGameEndReason(value: GameEndReasonMap[keyof GameEndReasonMap]): void;
+
+  serializeBinary(): Uint8Array;
+  toObject(includeInstance?: boolean): TournamentGame.AsObject;
+  static toObject(includeInstance: boolean, msg: TournamentGame): TournamentGame.AsObject;
+  static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+  static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+  static serializeBinaryToWriter(message: TournamentGame, writer: jspb.BinaryWriter): void;
+  static deserializeBinary(bytes: Uint8Array): TournamentGame;
+  static deserializeBinaryFromReader(message: TournamentGame, reader: jspb.BinaryReader): TournamentGame;
+}
+
+export namespace TournamentGame {
+  export type AsObject = {
+    scoresList: Array<number>,
+    resultsList: Array<TournamentGameResultMap[keyof TournamentGameResultMap]>,
+    gameEndReason: GameEndReasonMap[keyof GameEndReasonMap],
+  }
+}
+
+export class PlayerRoundInfo extends jspb.Message {
+  clearPlayersList(): void;
+  getPlayersList(): Array<string>;
+  setPlayersList(value: Array<string>): void;
+  addPlayers(value: string, index?: number): string;
+
+  clearGamesList(): void;
+  getGamesList(): Array<TournamentGame>;
+  setGamesList(value: Array<TournamentGame>): void;
+  addGames(value?: TournamentGame, index?: number): TournamentGame;
+
+  clearOutcomesList(): void;
+  getOutcomesList(): Array<TournamentGameResultMap[keyof TournamentGameResultMap]>;
+  setOutcomesList(value: Array<TournamentGameResultMap[keyof TournamentGameResultMap]>): void;
+  addOutcomes(value: TournamentGameResultMap[keyof TournamentGameResultMap], index?: number): TournamentGameResultMap[keyof TournamentGameResultMap];
+
+  serializeBinary(): Uint8Array;
+  toObject(includeInstance?: boolean): PlayerRoundInfo.AsObject;
+  static toObject(includeInstance: boolean, msg: PlayerRoundInfo): PlayerRoundInfo.AsObject;
+  static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+  static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+  static serializeBinaryToWriter(message: PlayerRoundInfo, writer: jspb.BinaryWriter): void;
+  static deserializeBinary(bytes: Uint8Array): PlayerRoundInfo;
+  static deserializeBinaryFromReader(message: PlayerRoundInfo, reader: jspb.BinaryReader): PlayerRoundInfo;
+}
+
+export namespace PlayerRoundInfo {
+  export type AsObject = {
+    playersList: Array<string>,
+    gamesList: Array<TournamentGame.AsObject>,
+    outcomesList: Array<TournamentGameResultMap[keyof TournamentGameResultMap]>,
+  }
+}
+
+export class ClassicDivision extends jspb.Message {
+  clearMatrixList(): void;
+  getMatrixList(): Array<PlayerRoundInfo>;
+  setMatrixList(value: Array<PlayerRoundInfo>): void;
+  addMatrix(value?: PlayerRoundInfo, index?: number): PlayerRoundInfo;
+
+  serializeBinary(): Uint8Array;
+  toObject(includeInstance?: boolean): ClassicDivision.AsObject;
+  static toObject(includeInstance: boolean, msg: ClassicDivision): ClassicDivision.AsObject;
+  static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+  static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+  static serializeBinaryToWriter(message: ClassicDivision, writer: jspb.BinaryWriter): void;
+  static deserializeBinary(bytes: Uint8Array): ClassicDivision;
+  static deserializeBinaryFromReader(message: ClassicDivision, reader: jspb.BinaryReader): ClassicDivision;
+}
+
+export namespace ClassicDivision {
+  export type AsObject = {
+    matrixList: Array<PlayerRoundInfo.AsObject>,
+  }
+}
+
+export class TournamentDivisionDataResponse extends jspb.Message {
+  getId(): string;
+  setId(value: string): void;
+
+  getDivisionId(): string;
+  setDivisionId(value: string): void;
+
+  clearPlayersList(): void;
+  getPlayersList(): Array<string>;
+  setPlayersList(value: Array<string>): void;
+  addPlayers(value: string, index?: number): string;
+
+  hasControls(): boolean;
+  clearControls(): void;
+  getControls(): TournamentControls | undefined;
+  setControls(value?: TournamentControls): void;
+
+  hasDivision(): boolean;
+  clearDivision(): void;
+  getDivision(): ClassicDivision | undefined;
+  setDivision(value?: ClassicDivision): void;
+
+  getCurrentRound(): number;
+  setCurrentRound(value: number): void;
+
+  getRoundIsOver(): boolean;
+  setRoundIsOver(value: boolean): void;
+
+  getDivisionIsOver(): boolean;
+  setDivisionIsOver(value: boolean): void;
+
+  serializeBinary(): Uint8Array;
+  toObject(includeInstance?: boolean): TournamentDivisionDataResponse.AsObject;
+  static toObject(includeInstance: boolean, msg: TournamentDivisionDataResponse): TournamentDivisionDataResponse.AsObject;
+  static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+  static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+  static serializeBinaryToWriter(message: TournamentDivisionDataResponse, writer: jspb.BinaryWriter): void;
+  static deserializeBinary(bytes: Uint8Array): TournamentDivisionDataResponse;
+  static deserializeBinaryFromReader(message: TournamentDivisionDataResponse, reader: jspb.BinaryReader): TournamentDivisionDataResponse;
+}
+
+export namespace TournamentDivisionDataResponse {
+  export type AsObject = {
+    id: string,
+    divisionId: string,
+    playersList: Array<string>,
+    controls?: TournamentControls.AsObject,
+    division?: ClassicDivision.AsObject,
+    currentRound: number,
+    roundIsOver: boolean,
+    divisionIsOver: boolean,
+  }
+}
+
+export class TournamentDataResponse extends jspb.Message {
+  getId(): string;
+  setId(value: string): void;
+
+  getName(): string;
+  setName(value: string): void;
+
+  getDescription(): string;
+  setDescription(value: string): void;
+
+  getExecutiveDirector(): string;
+  setExecutiveDirector(value: string): void;
+
+  clearDirectorsList(): void;
+  getDirectorsList(): Array<string>;
+  setDirectorsList(value: Array<string>): void;
+  addDirectors(value: string, index?: number): string;
+
+  getIsStarted(): boolean;
+  setIsStarted(value: boolean): void;
+
+  hasStartTime(): boolean;
+  clearStartTime(): void;
+  getStartTime(): google_protobuf_timestamp_pb.Timestamp | undefined;
+  setStartTime(value?: google_protobuf_timestamp_pb.Timestamp): void;
+
+  serializeBinary(): Uint8Array;
+  toObject(includeInstance?: boolean): TournamentDataResponse.AsObject;
+  static toObject(includeInstance: boolean, msg: TournamentDataResponse): TournamentDataResponse.AsObject;
+  static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+  static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+  static serializeBinaryToWriter(message: TournamentDataResponse, writer: jspb.BinaryWriter): void;
+  static deserializeBinary(bytes: Uint8Array): TournamentDataResponse;
+  static deserializeBinaryFromReader(message: TournamentDataResponse, reader: jspb.BinaryReader): TournamentDataResponse;
+}
+
+export namespace TournamentDataResponse {
+  export type AsObject = {
+    id: string,
+    name: string,
+    description: string,
+    executiveDirector: string,
+    directorsList: Array<string>,
+    isStarted: boolean,
+    startTime?: google_protobuf_timestamp_pb.Timestamp.AsObject,
+  }
+}
+
+export class TournamentDivisionDeletedResponse extends jspb.Message {
+  getId(): string;
+  setId(value: string): void;
+
+  getDivision(): string;
+  setDivision(value: string): void;
+
+  serializeBinary(): Uint8Array;
+  toObject(includeInstance?: boolean): TournamentDivisionDeletedResponse.AsObject;
+  static toObject(includeInstance: boolean, msg: TournamentDivisionDeletedResponse): TournamentDivisionDeletedResponse.AsObject;
+  static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+  static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+  static serializeBinaryToWriter(message: TournamentDivisionDeletedResponse, writer: jspb.BinaryWriter): void;
+  static deserializeBinary(bytes: Uint8Array): TournamentDivisionDeletedResponse;
+  static deserializeBinaryFromReader(message: TournamentDivisionDeletedResponse, reader: jspb.BinaryReader): TournamentDivisionDeletedResponse;
+}
+
+export namespace TournamentDivisionDeletedResponse {
+  export type AsObject = {
+    id: string,
+    division: string,
+  }
+}
+
 export class JoinPath extends jspb.Message {
   getPath(): string;
   setPath(value: string): void;
@@ -1013,8 +1312,10 @@ export interface MessageTypeMap {
   SERVER_MESSAGE: 24;
   READY_FOR_GAME: 25;
   LAG_MEASUREMENT: 26;
-  TOURNAMENT_GAME_ENDED_EVENT: 27;
+  TOURNAMENT_MESSAGE: 27;
   REMATCH_STARTED: 28;
+  TOURNAMENT_DIVISION_MESSAGE: 29;
+  TOURNAMENT_DIVISION_DELETED_MESSAGE: 30;
 }
 
 export const MessageType: MessageTypeMap;

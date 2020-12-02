@@ -378,22 +378,30 @@ func TestClassicDivisionFactor(t *testing.T) {
 
 	is.NoErr(validatePairings(tc, 0))
 
+	// This should throw an error since it attempts
+	// to amend a result that never existed
 	err = tc.SubmitResult(0, "1", "3", 900, 500,
 		realtime.TournamentGameResult_WIN,
 		realtime.TournamentGameResult_LOSS,
 		realtime.GameEndReason_STANDARD, true, 0)
+	is.True(err != nil)
+
+	err = tc.SubmitResult(0, "1", "3", 900, 500,
+		realtime.TournamentGameResult_WIN,
+		realtime.TournamentGameResult_LOSS,
+		realtime.GameEndReason_STANDARD, false, 0)
 	is.NoErr(err)
 
 	err = tc.SubmitResult(0, "2", "4", 800, 500,
 		realtime.TournamentGameResult_WIN,
 		realtime.TournamentGameResult_LOSS,
-		realtime.GameEndReason_STANDARD, true, 0)
+		realtime.GameEndReason_STANDARD, false, 0)
 	is.NoErr(err)
 
 	err = tc.SubmitResult(0, "5", "6", 700, 500,
 		realtime.TournamentGameResult_WIN,
 		realtime.TournamentGameResult_LOSS,
-		realtime.GameEndReason_STANDARD, true, 0)
+		realtime.GameEndReason_STANDARD, false, 0)
 	is.NoErr(err)
 
 	// This is an invalid factor for this number of
@@ -403,8 +411,12 @@ func TestClassicDivisionFactor(t *testing.T) {
 	err = tc.SubmitResult(0, "8", "7", 600, 500,
 		realtime.TournamentGameResult_WIN,
 		realtime.TournamentGameResult_LOSS,
-		realtime.GameEndReason_STANDARD, true, 0)
+		realtime.GameEndReason_STANDARD, false, 0)
 	is.True(err != nil)
+
+	roundIsComplete, err := tc.IsRoundComplete(0)
+	is.NoErr(err)
+	is.True(roundIsComplete)
 
 	// Get the standings for round 1
 	standings, err := tc.GetStandings(0)
@@ -432,25 +444,25 @@ func TestClassicDivisionFactor(t *testing.T) {
 	err = tc.SubmitResult(1, "1", "8", 400, 500,
 		realtime.TournamentGameResult_LOSS,
 		realtime.TournamentGameResult_WIN,
-		realtime.GameEndReason_STANDARD, true, 0)
+		realtime.GameEndReason_STANDARD, false, 0)
 	is.NoErr(err)
 
 	err = tc.SubmitResult(1, "2", "7", 400, 500,
 		realtime.TournamentGameResult_LOSS,
 		realtime.TournamentGameResult_WIN,
-		realtime.GameEndReason_STANDARD, true, 0)
+		realtime.GameEndReason_STANDARD, false, 0)
 	is.NoErr(err)
 
 	err = tc.SubmitResult(1, "5", "6", 400, 500,
 		realtime.TournamentGameResult_LOSS,
 		realtime.TournamentGameResult_WIN,
-		realtime.GameEndReason_STANDARD, true, 0)
+		realtime.GameEndReason_STANDARD, false, 0)
 	is.NoErr(err)
 
 	err = tc.SubmitResult(1, "4", "3", 400, 500,
 		realtime.TournamentGameResult_LOSS,
 		realtime.TournamentGameResult_WIN,
-		realtime.GameEndReason_STANDARD, true, 0)
+		realtime.GameEndReason_STANDARD, false, 0)
 	is.NoErr(err)
 }
 
@@ -491,25 +503,25 @@ func TestClassicDivisionSwiss(t *testing.T) {
 	err = tc.SubmitResult(0, player1, player2, 900, 500,
 		realtime.TournamentGameResult_WIN,
 		realtime.TournamentGameResult_LOSS,
-		realtime.GameEndReason_STANDARD, true, 0)
+		realtime.GameEndReason_STANDARD, false, 0)
 	is.NoErr(err)
 
 	err = tc.SubmitResult(0, player3, player4, 800, 500,
 		realtime.TournamentGameResult_WIN,
 		realtime.TournamentGameResult_LOSS,
-		realtime.GameEndReason_STANDARD, true, 0)
+		realtime.GameEndReason_STANDARD, false, 0)
 	is.NoErr(err)
 
 	err = tc.SubmitResult(1, player1, player3, 900, 500,
 		realtime.TournamentGameResult_WIN,
 		realtime.TournamentGameResult_LOSS,
-		realtime.GameEndReason_STANDARD, true, 0)
+		realtime.GameEndReason_STANDARD, false, 0)
 	is.NoErr(err)
 
 	err = tc.SubmitResult(1, player2, player4, 800, 500,
 		realtime.TournamentGameResult_WIN,
 		realtime.TournamentGameResult_LOSS,
-		realtime.GameEndReason_STANDARD, true, 0)
+		realtime.GameEndReason_STANDARD, false, 0)
 	is.NoErr(err)
 
 	// Since repeats only have a weight of 1,
@@ -518,13 +530,13 @@ func TestClassicDivisionSwiss(t *testing.T) {
 	err = tc.SubmitResult(2, player1, player4, 900, 500,
 		realtime.TournamentGameResult_WIN,
 		realtime.TournamentGameResult_LOSS,
-		realtime.GameEndReason_STANDARD, true, 0)
+		realtime.GameEndReason_STANDARD, false, 0)
 	is.NoErr(err)
 
 	err = tc.SubmitResult(2, player2, player3, 800, 500,
 		realtime.TournamentGameResult_WIN,
 		realtime.TournamentGameResult_LOSS,
-		realtime.GameEndReason_STANDARD, true, 0)
+		realtime.GameEndReason_STANDARD, false, 0)
 	is.NoErr(err)
 
 	repeats, err := getRepeats(tc, 2)
@@ -537,7 +549,7 @@ func TestClassicDivisionSwiss(t *testing.T) {
 	err = tc.SubmitResult(3, player2, player1, 900, 500,
 		realtime.TournamentGameResult_WIN,
 		realtime.TournamentGameResult_LOSS,
-		realtime.GameEndReason_STANDARD, true, 0)
+		realtime.GameEndReason_STANDARD, false, 0)
 	is.NoErr(err)
 
 	// Use factor pairings to force deterministic pairings
@@ -547,7 +559,7 @@ func TestClassicDivisionSwiss(t *testing.T) {
 	err = tc.SubmitResult(3, player3, player4, 800, 700,
 		realtime.TournamentGameResult_WIN,
 		realtime.TournamentGameResult_LOSS,
-		realtime.GameEndReason_STANDARD, true, 0)
+		realtime.GameEndReason_STANDARD, false, 0)
 	is.NoErr(err)
 
 	// Get the standings for round 4
@@ -565,7 +577,7 @@ func TestClassicDivisionSwiss(t *testing.T) {
 	err = tc.SubmitResult(4, player1, player3, 900, 800,
 		realtime.TournamentGameResult_WIN,
 		realtime.TournamentGameResult_LOSS,
-		realtime.GameEndReason_STANDARD, true, 0)
+		realtime.GameEndReason_STANDARD, false, 0)
 	is.NoErr(err)
 
 	// Test that using the prohibitive weight will
@@ -576,7 +588,7 @@ func TestClassicDivisionSwiss(t *testing.T) {
 	err = tc.SubmitResult(4, player4, player2, 800, 500,
 		realtime.TournamentGameResult_WIN,
 		realtime.TournamentGameResult_LOSS,
-		realtime.GameEndReason_STANDARD, true, 0)
+		realtime.GameEndReason_STANDARD, false, 0)
 	is.NoErr(err)
 
 	// Get the standings for round 5
@@ -594,7 +606,7 @@ func TestClassicDivisionSwiss(t *testing.T) {
 	err = tc.SubmitResult(5, player1, player4, 900, 500,
 		realtime.TournamentGameResult_WIN,
 		realtime.TournamentGameResult_LOSS,
-		realtime.GameEndReason_STANDARD, true, 0)
+		realtime.GameEndReason_STANDARD, false, 0)
 	is.NoErr(err)
 
 	// Once the next round is paired upon the completion
@@ -606,8 +618,8 @@ func TestClassicDivisionSwiss(t *testing.T) {
 	err = tc.SubmitResult(5, player2, player3, 800, 500,
 		realtime.TournamentGameResult_WIN,
 		realtime.TournamentGameResult_LOSS,
-		realtime.GameEndReason_STANDARD, true, 0)
-	is.True(fmt.Sprintf("%s", err) == "prohibitive weight reached, pairings are not possible with these settings.")
+		realtime.GameEndReason_STANDARD, false, 0)
+	is.True(fmt.Sprintf("%s", err) == "prohibitive weight reached, pairings are not possible with these settings")
 
 	tc.RoundControls[6].AllowOverMaxRepeats = true
 
@@ -646,20 +658,23 @@ func TestClassicDivisionSwiss(t *testing.T) {
 		err = tc.SubmitResult(0, swissPlayers[i], swissPlayers[i+1], (numberOfPlayers*100)-i*100, 0,
 			realtime.TournamentGameResult_WIN,
 			realtime.TournamentGameResult_LOSS,
-			realtime.GameEndReason_STANDARD, true, 0)
+			realtime.GameEndReason_STANDARD, false, 0)
+		is.NoErr(err)
 	}
 
 	for i := 0; i < numberOfPlayers; i += 4 {
 		err = tc.SubmitResult(1, swissPlayers[i], swissPlayers[i+2], (numberOfPlayers*10)-i*10, 0,
 			realtime.TournamentGameResult_WIN,
 			realtime.TournamentGameResult_LOSS,
-			realtime.GameEndReason_STANDARD, true, 0)
+			realtime.GameEndReason_STANDARD, false, 0)
+		is.NoErr(err)
 	}
 	for i := 1; i < numberOfPlayers; i += 4 {
 		err = tc.SubmitResult(1, swissPlayers[i], swissPlayers[i+2], 0, (numberOfPlayers*10)-i*10,
 			realtime.TournamentGameResult_LOSS,
 			realtime.TournamentGameResult_WIN,
-			realtime.GameEndReason_STANDARD, true, 0)
+			realtime.GameEndReason_STANDARD, false, 0)
+		is.NoErr(err)
 	}
 
 	// Get the standings for round 2
@@ -850,12 +865,12 @@ func TestClassicDivisionManual(t *testing.T) {
 	err = tc.SubmitResult(0, player2, player3, 400, 500,
 		realtime.TournamentGameResult_LOSS,
 		realtime.TournamentGameResult_WIN,
-		realtime.GameEndReason_STANDARD, true, 0)
+		realtime.GameEndReason_STANDARD, false, 0)
 	is.NoErr(err)
 	err = tc.SubmitResult(0, player1, player4, 200, 450,
 		realtime.TournamentGameResult_LOSS,
 		realtime.TournamentGameResult_WIN,
-		realtime.GameEndReason_STANDARD, true, 0)
+		realtime.GameEndReason_STANDARD, false, 0)
 	is.NoErr(err)
 
 	roundIsComplete, err := tc.IsRoundComplete(0)
@@ -1442,7 +1457,7 @@ func completeManualRound(tc *ClassicDivision, round int, player1 string, player2
 	err := tc.SubmitResult(round, player1, player2, 400, 500,
 		realtime.TournamentGameResult_LOSS,
 		realtime.TournamentGameResult_WIN,
-		realtime.GameEndReason_STANDARD, true, 0)
+		realtime.GameEndReason_STANDARD, false, 0)
 
 	if err != nil {
 		return err
@@ -1470,7 +1485,7 @@ func completeManualRound(tc *ClassicDivision, round int, player1 string, player2
 		err = tc.SubmitResult(round, player3, player4, 200, 450,
 			realtime.TournamentGameResult_LOSS,
 			realtime.TournamentGameResult_WIN,
-			realtime.GameEndReason_STANDARD, true, 0)
+			realtime.GameEndReason_STANDARD, false, 0)
 
 		if err != nil {
 			return err

@@ -145,6 +145,7 @@ func makeControls() *entity.TournamentControls {
 		RoundControls:  makeRoundControls(),
 		NumberOfRounds: 4,
 		Type:           entity.ClassicTournamentType,
+		AutoStart:      false,
 		StartTime:      time.Now()}
 }
 
@@ -340,7 +341,6 @@ func TestTournamentSingleDivision(t *testing.T) {
 		0,
 		false,
 		nil,
-		nil,
 	)
 	is.True(err != nil)
 
@@ -357,7 +357,7 @@ func TestTournamentSingleDivision(t *testing.T) {
 
 	// Start the tournament
 
-	err = tournament.StartTournament(ctx, tstore, ty.UUID)
+	err = tournament.StartTournament(ctx, tstore, ty.UUID, true)
 	is.NoErr(err)
 
 	// Attempt to add a division after the tournament has started
@@ -400,9 +400,7 @@ func TestTournamentSingleDivision(t *testing.T) {
 		0,
 		0,
 		false,
-		nil,
-		nil,
-	)
+		nil)
 	is.NoErr(err)
 
 	// Set results for a division that does not exist
@@ -421,9 +419,7 @@ func TestTournamentSingleDivision(t *testing.T) {
 		0,
 		0,
 		false,
-		nil,
-		nil,
-	)
+		nil)
 	is.True(err != nil)
 
 	isStarted, err = tournament.IsStarted(ctx, tstore, ty.UUID)
@@ -516,7 +512,7 @@ func TestTournamentMultipleDivisions(t *testing.T) {
 
 	// Start the tournament
 
-	err = tournament.StartTournament(ctx, tstore, ty.UUID)
+	err = tournament.StartTournament(ctx, tstore, ty.UUID, true)
 	is.NoErr(err)
 
 	err = tournament.SetResult(ctx,
@@ -534,7 +530,6 @@ func TestTournamentMultipleDivisions(t *testing.T) {
 		0,
 		0,
 		false,
-		nil,
 		nil)
 	is.NoErr(err)
 
@@ -553,7 +548,6 @@ func TestTournamentMultipleDivisions(t *testing.T) {
 		0,
 		0,
 		false,
-		nil,
 		nil)
 	is.NoErr(err)
 
@@ -572,7 +566,6 @@ func TestTournamentMultipleDivisions(t *testing.T) {
 		0,
 		0,
 		false,
-		nil,
 		nil)
 	is.NoErr(err)
 
@@ -591,7 +584,6 @@ func TestTournamentMultipleDivisions(t *testing.T) {
 		0,
 		0,
 		false,
-		nil,
 		nil)
 	is.NoErr(err)
 

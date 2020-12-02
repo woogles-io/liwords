@@ -8,6 +8,7 @@ option go_package = "github.com/domino14/liwords/rpc/api/proto/realtime";
 // purposes.
 
 import "macondo/api/proto/macondo/macondo.proto";
+import "google/protobuf/timestamp.proto";
 
 // A GameRules is just the name of a board layout + the name of a letter
 // distribution. These must exist in a database or file somewhere.
@@ -84,8 +85,10 @@ enum MessageType {
   SERVER_MESSAGE = 24;
   READY_FOR_GAME = 25;
   LAG_MEASUREMENT = 26;
-  TOURNAMENT_GAME_ENDED_EVENT = 27;
+  TOURNAMENT_MESSAGE = 27;
   REMATCH_STARTED = 28;
+  TOURNAMENT_DIVISION_MESSAGE = 29;
+  TOURNAMENT_DIVISION_DELETED_MESSAGE = 30;
 
   // Add more events here. The total number of events should fit in a byte.
   // We should definitely not be using anywhere close to 255 events, and
@@ -344,6 +347,69 @@ enum TournamentGameResult {
   FORFEIT_LOSS = 6;
   // ELIMINATED: player is eliminated in a bracket tournament
   ELIMINATED = 7;
+}
+
+message RoundControl {
+  int32 pairing_method = 1;
+  int32 first_method = 2;
+  int32 games_per_round = 3;
+  int32 round = 4;
+  int32 factor = 5;
+  int32 max_repeats = 6;
+  bool allow_over_max_repeats = 7;
+  int32 repeat_relative_weight = 8;
+  int32 win_difference_relative_weight = 9;
+}
+
+message TournamentControls {
+   liwords.GameRequest game_request = 1;
+   repeated RoundControl round_controls = 2;
+   int32 type = 3;
+}
+
+message TournamentGame {
+  repeated int32 scores = 1;
+  repeated liwords.TournamentGameResult results = 2;
+  liwords.GameEndReason game_end_reason = 3;
+}
+
+message PlayerRoundInfo {
+  repeated string players = 1;
+  repeated TournamentGame games = 2;
+  repeated liwords.TournamentGameResult outcomes = 3;
+}
+
+message ClassicDivision {
+  repeated PlayerRoundInfo matrix = 1;
+}
+
+message TournamentDivisionDataResponse {
+  string id = 1;
+  string division_id = 2;
+  repeated string players = 3;
+  TournamentControls controls = 4;
+  // In the future we will add different
+  // types of tournament divisions and only
+  // one will be non nil
+  ClassicDivision division = 5;
+  int32 current_round = 6;
+  bool round_is_over = 7;
+  bool division_is_over = 8;
+}
+
+message TournamentDataResponse {
+  string id = 1;
+  string name = 2;
+  string description = 3;
+  string executive_director = 4;
+  repeated string directors = 5;
+  bool is_started = 6;
+  google.protobuf.Timestamp start_time = 7;
+}
+
+message TournamentDivisionDeletedResponse {
+  string id = 1;
+  string division = 2;
 }
 
 // Communication

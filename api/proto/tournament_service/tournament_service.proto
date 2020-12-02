@@ -51,6 +51,7 @@ message TournamentControlsRequest {
   repeated SingleRoundControls round_controls = 4;
   int32 number_of_rounds = 5;
   google.protobuf.Timestamp start_time = 6;
+  bool auto_start = 7;
 }
 
 message PairRoundRequest {
@@ -102,7 +103,7 @@ message TournamentResultOverrideRequest {
   int32 game_index = 12;
 }
 
-message TournamentStartRoundRequest {
+message TournamentStartRoundCountdownRequest {
   string id = 1;
   string division = 2;
   int32 round = 3;
@@ -112,6 +113,8 @@ message TournamentResponse {}
 message NewTournamentResponse { string id = 1; }
 
 message GetTournamentMetadataRequest { string id = 1; }
+
+message StartTournamentRequest { string id = 1; }
 
 message TournamentMetadataResponse {
   string name = 1;
@@ -134,6 +137,8 @@ service TournamentService {
   rpc NewTournament(NewTournamentRequest) returns(NewTournamentResponse);
   rpc GetTournamentMetadata(GetTournamentMetadataRequest)
       returns(TournamentMetadataResponse);
+  rpc StartTournament(StartTournamentRequest)
+      returns(TournamentResponse);
   rpc SetTournamentMetadata(TournamentMetadataRequest)
       returns(TournamentResponse);
   rpc PairRound(PairRoundRequest) returns(TournamentResponse);
@@ -149,7 +154,7 @@ service TournamentService {
   rpc RemovePlayers(TournamentPersons) returns(TournamentResponse);
   rpc SetPairing(TournamentPairingRequest) returns(TournamentResponse);
   rpc SetResult(TournamentResultOverrideRequest) returns(TournamentResponse);
-  rpc StartRound(TournamentStartRoundRequest) returns(TournamentResponse);
+  rpc StartRoundCountdown(TournamentStartRoundCountdownRequest) returns(TournamentResponse);
 
   rpc RecentGames(RecentGamesRequest) returns(RecentGamesResponse);
 }
