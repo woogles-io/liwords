@@ -47,8 +47,10 @@ import {
   ReadyForGame,
   LagMeasurement,
   MatchRequestCancellation,
-  TournamentGameEndedEvent,
   RematchStartedEvent,
+  TournamentDataResponse,
+  TournamentDivisionDataResponse,
+  TournamentDivisionDeletedResponse,
 } from '../gen/api/proto/realtime/realtime_pb';
 import { ActionType } from '../actions/actions';
 import { endGameMessage } from './end_of_game';
