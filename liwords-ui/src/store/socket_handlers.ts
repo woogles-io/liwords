@@ -98,8 +98,10 @@ export const parseMsgs = (msg: Uint8Array) => {
       [MessageType.READY_FOR_GAME]: ReadyForGame,
       [MessageType.LAG_MEASUREMENT]: LagMeasurement,
       [MessageType.MATCH_REQUEST_CANCELLATION]: MatchRequestCancellation,
-      [MessageType.TOURNAMENT_GAME_ENDED_EVENT]: TournamentGameEndedEvent,
       [MessageType.REMATCH_STARTED]: RematchStartedEvent,
+      [MessageType.TOURNAMENT_MESSAGE]: TournamentDataResponse,
+      [MessageType.TOURNAMENT_DIVISION_MESSAGE]: TournamentDivisionDataResponse,
+      [MessageType.TOURNAMENT_DIVISION_DELETED_MESSAGE]: TournamentDivisionDeletedResponse,
     };
 
     const parsedMsg = msgTypes[msgType];
