@@ -37,7 +37,7 @@ func (ts *TournamentService) AddDivision(ctx context.Context, req *pb.Tournament
 	}
 	err = AddDivision(ctx, ts.tournamentStore, req.Id, req.Division)
 	if err != nil {
-		return nil, err
+		return nil, twirp.InternalErrorWith(err)
 	}
 	return &pb.TournamentResponse{}, nil
 }
@@ -49,7 +49,7 @@ func (ts *TournamentService) RemoveDivision(ctx context.Context, req *pb.Tournam
 	}
 	err = RemoveDivision(ctx, ts.tournamentStore, req.Id, req.Division)
 	if err != nil {
-		return nil, err
+		return nil, twirp.InternalErrorWith(err)
 	}
 	return &pb.TournamentResponse{}, nil
 }
@@ -61,7 +61,7 @@ func (ts *TournamentService) SetTournamentMetadata(ctx context.Context, req *pb.
 	}
 	err = SetTournamentMetadata(ctx, ts.tournamentStore, req.Id, req.Name, req.Description)
 	if err != nil {
-		return nil, err
+		return nil, twirp.InternalErrorWith(err)
 	}
 	return &pb.TournamentResponse{}, nil
 }
@@ -75,7 +75,7 @@ func (ts *TournamentService) SetSingleRoundControls(ctx context.Context, req *pb
 
 	err = SetSingleRoundControls(ctx, ts.tournamentStore, req.Id, req.Division, int(req.Round), newControls)
 	if err != nil {
-		return nil, err
+		return nil, twirp.InternalErrorWith(err)
 	}
 	return &pb.TournamentResponse{}, nil
 }
@@ -87,7 +87,7 @@ func (ts *TournamentService) SetTournamentControls(ctx context.Context, req *pb.
 	}
 	time, err := ptypes.Timestamp(req.StartTime)
 	if err != nil {
-		return nil, err
+		return nil, twirp.InternalErrorWith(err)
 	}
 
 	newControls := &entity.TournamentControls{GameRequest: req.GameRequest,
@@ -99,7 +99,7 @@ func (ts *TournamentService) SetTournamentControls(ctx context.Context, req *pb.
 	err = SetTournamentControls(ctx, ts.tournamentStore, req.Id, req.Division, newControls)
 
 	if err != nil {
-		return nil, err
+		return nil, twirp.InternalErrorWith(err)
 	}
 	return &pb.TournamentResponse{}, nil
 }
@@ -166,7 +166,7 @@ func (ts *TournamentService) AddDirectors(ctx context.Context, req *pb.Tournamen
 	}
 	err = AddDirectors(ctx, ts.tournamentStore, req.Id, convertPersonsToStringMap(req))
 	if err != nil {
-		return nil, err
+		return nil, twirp.InternalErrorWith(err)
 	}
 	return &pb.TournamentResponse{}, nil
 }
@@ -177,7 +177,7 @@ func (ts *TournamentService) RemoveDirectors(ctx context.Context, req *pb.Tourna
 	}
 	err = RemoveDirectors(ctx, ts.tournamentStore, req.Id, convertPersonsToStringMap(req))
 	if err != nil {
-		return nil, err
+		return nil, twirp.InternalErrorWith(err)
 	}
 	return &pb.TournamentResponse{}, nil
 }
@@ -188,7 +188,7 @@ func (ts *TournamentService) AddPlayers(ctx context.Context, req *pb.TournamentP
 	}
 	err = AddPlayers(ctx, ts.tournamentStore, req.Id, req.Division, convertPersonsToStringMap(req))
 	if err != nil {
-		return nil, err
+		return nil, twirp.InternalErrorWith(err)
 	}
 	return &pb.TournamentResponse{}, nil
 }
@@ -199,7 +199,7 @@ func (ts *TournamentService) RemovePlayers(ctx context.Context, req *pb.Tourname
 	}
 	err = RemovePlayers(ctx, ts.tournamentStore, req.Id, req.Division, convertPersonsToStringMap(req))
 	if err != nil {
-		return nil, err
+		return nil, twirp.InternalErrorWith(err)
 	}
 	return &pb.TournamentResponse{}, nil
 }
@@ -211,7 +211,7 @@ func (ts *TournamentService) SetPairing(ctx context.Context, req *pb.TournamentP
 	}
 	err = SetPairing(ctx, ts.tournamentStore, req.Id, req.Division, req.PlayerOneId, req.PlayerTwoId, int(req.Round))
 	if err != nil {
-		return nil, err
+		return nil, twirp.InternalErrorWith(err)
 	}
 	return &pb.TournamentResponse{}, nil
 }
@@ -238,7 +238,7 @@ func (ts *TournamentService) SetResult(ctx context.Context, req *pb.TournamentRe
 		req.Amendment,
 		nil)
 	if err != nil {
-		return nil, err
+		return nil, twirp.InternalErrorWith(err)
 	}
 	return &pb.TournamentResponse{}, nil
 }
@@ -250,13 +250,17 @@ func (ts *TournamentService) PairRound(ctx context.Context, req *pb.PairRoundReq
 	}
 	err = PairRound(ctx, ts.tournamentStore, req.Id, req.Division, int(req.Round))
 	if err != nil {
-		return nil, err
+		return nil, twirp.InternalErrorWith(err)
 	}
 	return &pb.TournamentResponse{}, nil
 }
 
 func (ts *TournamentService) RecentGames(ctx context.Context, req *pb.RecentGamesRequest) (*pb.RecentGamesResponse, error) {
-	return ts.tournamentStore.GetRecentGames(ctx, req.Id, int(req.NumGames), int(req.Offset))
+	response, err := ts.tournamentStore.GetRecentGames(ctx, req.Id, int(req.NumGames), int(req.Offset))
+	if err != nil {
+		return nil, twirp.InternalErrorWith(err)
+	}
+	return response, nil
 }
 
 func (ts *TournamentService) StartTournament(ctx context.Context, req *pb.StartTournamentRequest) (*pb.TournamentResponse, error) {
@@ -266,7 +270,7 @@ func (ts *TournamentService) StartTournament(ctx context.Context, req *pb.StartT
 	}
 	err = StartTournament(ctx, ts.tournamentStore, req.Id, true)
 	if err != nil {
-		return nil, err
+		return nil, twirp.InternalErrorWith(err)
 	}
 	return &pb.TournamentResponse{}, nil
 }
@@ -278,7 +282,7 @@ func (ts *TournamentService) StartRoundCountdown(ctx context.Context, req *pb.To
 	}
 	err = StartRoundCountdown(ctx, ts.tournamentStore, req.Id, req.Division, int(req.Round), true)
 	if err != nil {
-		return nil, err
+		return nil, twirp.InternalErrorWith(err)
 	}
 	return &pb.TournamentResponse{}, nil
 }
@@ -286,7 +290,7 @@ func (ts *TournamentService) StartRoundCountdown(ctx context.Context, req *pb.To
 func isDirector(ctx context.Context, ts *TournamentService) (string, error) {
 	sess, err := apiserver.GetSession(ctx)
 	if err != nil {
-		return "", err
+		return "", twirp.InternalErrorWith(err)
 	}
 
 	user, err := ts.userStore.Get(ctx, sess.Username)
@@ -309,7 +313,7 @@ func authenticateDirector(ctx context.Context, ts *TournamentService, id string,
 
 	t, err := ts.tournamentStore.Get(ctx, id)
 	if err != nil {
-		return err
+		return twirp.InternalErrorWith(err)
 	}
 
 	if authenticateExecutive && user != t.ExecutiveDirector {
