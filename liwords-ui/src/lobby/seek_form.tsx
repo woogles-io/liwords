@@ -71,6 +71,7 @@ type Props = {
   tournamentID?: string;
 };
 
+const enableECWL = localStorage.getItem('enableECWL') === 'true';
 const otLabel = 'Overtime';
 const incLabel = 'Increment';
 const otUnitLabel = (
@@ -268,7 +269,9 @@ export const SeekForm = (props: Props) => {
         <Select>
           <Select.Option value="CSW19">CSW 19 (English)</Select.Option>
           <Select.Option value="NWL18">NWL 18 (North America)</Select.Option>
-          <Select.Option value="ECWL">English Common Word List</Select.Option>
+          {enableECWL && (
+            <Select.Option value="ECWL">English Common Word List</Select.Option>
+          )}
         </Select>
       </Form.Item>
       {showChallengeRule && (
