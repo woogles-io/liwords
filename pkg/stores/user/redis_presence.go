@@ -158,7 +158,7 @@ func (s *RedisPresenceStore) SetPresence(ctx context.Context, uuid, username str
 		authUser = "anon"
 	}
 
-	ts := time.Now().UTC().Unix()
+	ts := time.Now().Unix()
 
 	_, err := s.setPresenceScript.Do(conn, uuid, username, authUser, connID, channel, ts)
 	return err
@@ -280,7 +280,7 @@ func (s *RedisPresenceStore) RenewPresence(ctx context.Context, userID, username
 		authUser = "anon"
 	}
 
-	ts := time.Now().UTC().Unix()
+	ts := time.Now().Unix()
 	_, err := s.renewPresenceScript.Do(conn, userID, username, authUser, connID, ts)
 	return err
 }

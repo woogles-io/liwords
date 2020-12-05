@@ -145,23 +145,34 @@ func (b *Bus) matchRequest(ctx context.Context, auth, userID, connID string,
 		// No such user, most likely.
 		return err
 	}
-	// Set the actual UUID of the receiving user.
-	req.ReceivingUser.UserId = receiver.UUID
-
-	// Check if receiving user is blocking the reqUser.
-	blockedUsers, err := b.userStore.GetBlocks(ctx, receiver.ID)
+	requester, err := b.userStore.GetByUUID(ctx, reqUser.UserId)
 	if err != nil {
 		return err
 	}
-	for _, bu := range blockedUsers {
-		if bu.UUID == reqUser.UserId {
-			evt := entity.WrapEvent(&pb.ErrorMessage{
-				Message: receiver.Username + " is not available for match requests",
-			}, pb.MessageType_ERROR_MESSAGE)
-			b.pubToUser(reqUser.UserId, evt, "")
-			return nil
-		}
+
+	block, err := b.blockExists(ctx, receiver, requester)
+	if err != nil {
+		return err
 	}
+	if block == 0 {
+		// receiver is blocking requester. Should error message be this cryptic?
+		evt := entity.WrapEvent(&pb.ErrorMessage{
+			Message: receiver.Username + " is not available for match requests.",
+		}, pb.MessageType_ERROR_MESSAGE)
+		b.pubToUser(reqUser.UserId, evt, "")
+		return nil
+
+	} else if block == 1 {
+		// requester is blocking receiver.
+		evt := entity.WrapEvent(&pb.ErrorMessage{
+			Message: receiver.Username + " is on your block list. Please unblock them on your profile.",
+		}, pb.MessageType_ERROR_MESSAGE)
+		b.pubToUser(reqUser.UserId, evt, "")
+		return nil
+	}
+
+	// Set the actual UUID of the receiving user.
+	req.ReceivingUser.UserId = receiver.UUID
 
 	mg, err := gameplay.NewMatchRequest(ctx, b.soughtGameStore, req)
 	if err != nil {
@@ -279,19 +290,24 @@ func (b *Bus) gameAccepted(ctx context.Context, evt *pb.SoughtGameProcessEvent,
 		return err
 	}
 
-	// Check if requesting user is blocking the accepting user.
-	blockedUsers, err := b.userStore.GetBlocks(ctx, reqUser.ID)
+	block, err := b.blockExists(ctx, reqUser, accUser)
 	if err != nil {
 		return err
 	}
-	for _, bu := range blockedUsers {
-		if bu.UUID == accUser.UUID {
-			evt := entity.WrapEvent(&pb.ErrorMessage{
-				Message: reqUser.Username + " is not available for seek requests",
-			}, pb.MessageType_ERROR_MESSAGE)
-			b.pubToUser(accUser.UUID, evt, "")
-			return nil
-		}
+	if block == 0 {
+		// requesting user is blocking the accepting user.
+		evt := entity.WrapEvent(&pb.ErrorMessage{
+			Message: "You are not able to accept " + reqUser.Username + "'s requests.",
+		}, pb.MessageType_ERROR_MESSAGE)
+		b.pubToUser(accUser.UUID, evt, "")
+		return nil
+	} else if block == 1 {
+		// accepting user is blocking requesting user. They should not be able to
+		// see their requests but maybe they didn't refresh after blocking.
+		evt := entity.WrapEvent(&pb.ErrorMessage{
+			Message: reqUser.Username + " is on your block list, thus you cannot play against them.",
+		}, pb.MessageType_ERROR_MESSAGE)
+		b.pubToUser(accUser.UUID, evt, "")
 	}
 
 	// Otherwise create a game

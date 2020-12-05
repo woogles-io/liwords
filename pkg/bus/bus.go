@@ -39,6 +39,17 @@ const (
 	BotRequestID = "bot-request"
 )
 
+type Stores struct {
+	UserStore       user.Store
+	GameStore       gameplay.GameStore
+	SoughtGameStore gameplay.SoughtGameStore
+	PresenceStore   user.PresenceStore
+	ChatStore       user.ChatStore
+	ListStatStore   stats.ListStatStore
+	TournamentStore tournament.TournamentStore
+	ConfigStore     config.ConfigStore
+}
+
 // Bus is the struct; it should contain all the stores to verify messages, etc.
 type Bus struct {
 	natsconn        *nats.Conn
@@ -50,6 +61,7 @@ type Bus struct {
 	listStatStore   stats.ListStatStore
 	tournamentStore tournament.TournamentStore
 	configStore     config.ConfigStore
+	chatStore       user.ChatStore
 
 	redisPool *redis.Pool
 
@@ -60,10 +72,7 @@ type Bus struct {
 	tournamentEventChan chan *entity.EventWrapper
 }
 
-func NewBus(cfg *config.Config, userStore user.Store, gameStore gameplay.GameStore,
-	soughtGameStore gameplay.SoughtGameStore, presenceStore user.PresenceStore,
-	listStatStore stats.ListStatStore, tournamentStore tournament.TournamentStore,
-	configStore config.ConfigStore, redisPool *redis.Pool) (*Bus, error) {
+func NewBus(cfg *config.Config, stores Stores, redisPool *redis.Pool) (*Bus, error) {
 
 	natsconn, err := nats.Connect(cfg.NatsURL)
 
@@ -72,13 +81,14 @@ func NewBus(cfg *config.Config, userStore user.Store, gameStore gameplay.GameSto
 	}
 	bus := &Bus{
 		natsconn:            natsconn,
-		userStore:           userStore,
-		gameStore:           gameStore,
-		soughtGameStore:     soughtGameStore,
-		presenceStore:       presenceStore,
-		listStatStore:       listStatStore,
-		tournamentStore:     tournamentStore,
-		configStore:         configStore,
+		userStore:           stores.UserStore,
+		gameStore:           stores.GameStore,
+		soughtGameStore:     stores.SoughtGameStore,
+		presenceStore:       stores.PresenceStore,
+		listStatStore:       stores.ListStatStore,
+		tournamentStore:     stores.TournamentStore,
+		configStore:         stores.ConfigStore,
+		chatStore:           stores.ChatStore,
 		subscriptions:       []*nats.Subscription{},
 		subchans:            map[string]chan *nats.Msg{},
 		config:              cfg,
@@ -86,8 +96,8 @@ func NewBus(cfg *config.Config, userStore user.Store, gameStore gameplay.GameSto
 		tournamentEventChan: make(chan *entity.EventWrapper, 64),
 		redisPool:           redisPool,
 	}
-	gameStore.SetGameEventChan(bus.gameEventChan)
-	tournamentStore.SetTournamentEventChan(bus.tournamentEventChan)
+	bus.gameStore.SetGameEventChan(bus.gameEventChan)
+	bus.tournamentStore.SetTournamentEventChan(bus.tournamentEventChan)
 
 	topics := []string{
 		// ipc.pb are generic publishes
@@ -672,4 +682,31 @@ func (b *Bus) activeGames(ctx context.Context, tourneyID string) (*entity.EventW
 	}
 	evt := entity.WrapEvent(pbobj, pb.MessageType_ACTIVE_GAMES)
 	return evt, nil
+}
+
+// Return 0 if uid1 blocks uid2, 1 if uid2 blocks uid1, and -1 if neither blocks
+// the other. Note, if they both block each other it will return 0.
+func (b *Bus) blockExists(ctx context.Context, u1, u2 *entity.User) (int, error) {
+	blockedUsers, err := b.userStore.GetBlocks(ctx, u1.ID)
+	if err != nil {
+		return 0, err
+	}
+	for _, bu := range blockedUsers {
+		if bu.UUID == u2.UUID {
+			// u1 is blocking u2
+			return 0, nil
+		}
+	}
+	// Check in the other direction
+	blockedUsers, err = b.userStore.GetBlockedBy(ctx, u1.ID)
+	if err != nil {
+		return 0, err
+	}
+	for _, bu := range blockedUsers {
+		if bu.UUID == u2.UUID {
+			// u2 is blocking u1
+			return 1, nil
+		}
+	}
+	return -1, nil
 }

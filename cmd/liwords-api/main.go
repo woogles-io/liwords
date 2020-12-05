@@ -112,22 +112,24 @@ func main() {
 		}),
 	)
 
+	stores := bus.Stores{}
+
 	tmpGameStore, err := game.NewDBStore(cfg, userStore)
 	if err != nil {
 		panic(err)
 	}
 
-	gameStore := game.NewCache(tmpGameStore)
+	stores.GameStore = game.NewCache(tmpGameStore)
 
 	tmpTournamentStore, err := tournamentstore.NewDBStore(cfg, gameStore)
 	if err != nil {
 		panic(err)
 	}
-	tournamentStore := tournamentstore.NewCache(tmpTournamentStore)
+	stores.TournamentStore = tournamentstore.NewCache(tmpTournamentStore)
 
-	soughtGameStore := soughtgame.NewMemoryStore()
-	configStore := cfgstore.NewRedisConfigStore(redisPool)
-	listStatStore, err := stats.NewListStatStore(cfg.DBConnString)
+	stores.SoughtGameStore = soughtgame.NewMemoryStore()
+	stores.ConfigStore = cfgstore.NewRedisConfigStore(redisPool)
+	stores.ListStatStore, err = stats.NewListStatStore(cfg.DBConnString)
 	if err != nil {
 		panic(err)
 	}
@@ -200,11 +202,10 @@ func main() {
 	idleConnsClosed := make(chan struct{})
 	sig := make(chan os.Signal, 1)
 
-	presenceStore := user.NewRedisPresenceStore(redisPool)
-
+	stores.PresenceStore = user.NewRedisPresenceStore(redisPool)
+	stores.ChatStore = user.NewRedisChatStore(redisPool)
 	// Handle bus.
-	pubsubBus, err := bus.NewBus(cfg, userStore, gameStore, soughtGameStore,
-		presenceStore, listStatStore, tournamentStore, configStore, redisPool)
+	pubsubBus, err := bus.NewBus(cfg, stores, redisPool)
 	if err != nil {
 		panic(err)
 	}

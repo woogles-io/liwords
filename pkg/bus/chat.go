@@ -3,36 +3,13 @@ package bus
 import (
 	"context"
 	"errors"
-	"strconv"
+	"fmt"
 	"strings"
 
 	"github.com/domino14/liwords/pkg/entity"
 	pb "github.com/domino14/liwords/rpc/api/proto/realtime"
-	"github.com/gomodule/redigo/redis"
 	"github.com/rs/zerolog/log"
 )
-
-// Expire all non-lobby channels after this many seconds. Lobby channel doesn't expire.
-// (We may have other non-expiring channels as well later?)
-const TournamentChannelExpiration = 86400 * 7
-const PMChannelExpiration = 86400 * 7
-const GameChatChannelExpiration = 86400
-
-const LobbyChatChannel = "chat.lobby"
-
-const ChatsOnReload = 100
-
-func redisStreamTS(key string) (int64, error) {
-	tskey := strings.Split(key, "-")
-	if len(tskey) != 2 {
-		return 0, errors.New("wrong timestamp format")
-	}
-	ts, err := strconv.Atoi(tskey[0])
-	if err != nil {
-		return 0, err
-	}
-	return int64(ts), nil
-}
 
 // chat-related functionality should be here. Chat should be mostly ephemeral,
 // but will use Redis to keep a short history of previous chats in every channel.
@@ -55,26 +32,63 @@ func (b *Bus) chat(ctx context.Context, userID string, evt *pb.ChatMessage) erro
 		}
 	}
 
-	username, _, err := b.userStore.Username(ctx, userID)
-	if err != nil {
-		return err
-	}
-	conn := b.redisPool.Get()
-	defer conn.Close()
-	redisKey := "chat:" + strings.TrimPrefix(evt.Channel, "chat.")
-
-	ret, err := redis.String(conn.Do("XADD", redisKey, "MAXLEN", "~", "500", "*",
-		"username", username, "message", evt.Message, "userID", userID))
+	sendingUser, err := b.userStore.GetByUUID(ctx, userID)
 	if err != nil {
 		return err
 	}
 
-	ts, err := redisStreamTS(ret)
-	if err != nil {
-		return err
+	userFriendlyChannelName := ""
+	if strings.HasPrefix(evt.Channel, "chat.pm.") {
+		users := strings.Split(strings.TrimPrefix(evt.Channel, "chat.pm."), "_")
+		if len(users) != 2 {
+			return fmt.Errorf("malformed pm chat channel: %v", evt.Channel)
+		}
+		foundus := false
+		receiver := ""
+		for _, user := range users {
+			if user == userID {
+				foundus = true
+			} else {
+				receiver = user
+			}
+		}
+		if !foundus {
+			return errors.New("cannot send chat to a channel you are not part of")
+		}
+		if receiver == "" {
+			return errors.New("your chat does not have a receiver")
+		}
+		recUser, err := b.userStore.GetByUUID(ctx, receiver)
+		if err != nil {
+			return err
+		}
+		block, err := b.blockExists(ctx, recUser, sendingUser)
+		if err != nil {
+			return err
+		}
+		if block == 0 {
+			// receiver is blocking sender
+			return errors.New("your message could not be delivered to " + recUser.Username)
+		} else if block == 1 {
+			return errors.New("you cannot send messages to people you are blocking")
+		}
+		userFriendlyChannelName = "Chat with " + recUser.Username
+	} else if strings.HasPrefix(evt.Channel, "chat.tournament.") {
+		tid := strings.TrimPrefix(evt.Channel, "chat.tournament.")
+		if len(tid) == 0 {
+			return errors.New("nonexistent tournament")
+		}
+		t, err := b.tournamentStore.Get(ctx, tid)
+		if err != nil {
+			return err
+		}
+		userFriendlyChannelName = t.Name + " Chat"
 	}
+
+	ts, err := b.chatStore.AddChat(ctx, sendingUser.Username, userID, evt.Message, evt.Channel, userFriendlyChannelName)
+
 	chatMessage := &pb.ChatMessage{
-		Username:  username,
+		Username:  sendingUser.Username,
 		UserId:    userID,
 		Channel:   evt.Channel, // this info might be redundant
 		Message:   evt.Message,
@@ -88,20 +102,6 @@ func (b *Bus) chat(ctx context.Context, userID string, evt *pb.ChatMessage) erro
 		return err
 	}
 
-	if evt.Channel != LobbyChatChannel {
-		var exp int
-		if strings.HasPrefix(evt.Channel, "chat.tournament") {
-			exp = TournamentChannelExpiration
-		} else if strings.HasPrefix(evt.Channel, "chat.pm") {
-			exp = PMChannelExpiration
-		} else {
-			exp = GameChatChannelExpiration
-		}
-		_, err = conn.Do("EXPIRE", redisKey, exp)
-		if err != nil {
-			return err
-		}
-	}
 	log.Debug().Interface("chat-message", chatMessage).Msg("publish-chat")
 	return b.natsconn.Publish(evt.Channel, data)
 }
@@ -113,42 +113,10 @@ func (b *Bus) sendOldChats(userID, chatChannel string) error {
 		// No chats for this channel.
 		return nil
 	}
-	redisKey := "chat:" + strings.TrimPrefix(chatChannel, "chat.")
-	log.Debug().Str("redisKey", redisKey).Msg("get-old-chats")
-	conn := b.redisPool.Get()
-	defer conn.Close()
 
-	// Get the latest 50 chats to display to the user.
-	vals, err := redis.Values(conn.Do("XREVRANGE", redisKey, "+", "-", "COUNT", ChatsOnReload))
+	messages, err := b.chatStore.OldChats(ctx, chatChannel)
 	if err != nil {
 		return err
-	}
-
-	// This is kind of gross and fragile, but redigo doesn't have stream support yet 😥
-	messages := make([]*pb.ChatMessage, len(vals))
-	for idx, val := range vals {
-		msg := &pb.ChatMessage{}
-
-		val := val.([]interface{})
-		// val[0] is the timestamp key
-		tskey := string(val[0].([]byte))
-		ts, err := redisStreamTS(tskey)
-		if err != nil {
-			return err
-		}
-		msg.Timestamp = ts
-
-		// val[1] is an array of arrays. ["username", username, "message", message, "userID", userID]
-		msgvals := val[1].([]interface{})
-		msg.Username = string(msgvals[1].([]byte))
-		msg.Message = string(msgvals[3].([]byte))
-		if len(msgvals) > 5 {
-			// We need this check because we didn't always store userID -- although
-			// we can likely remove this once old chats have expired.
-			msg.UserId = string(msgvals[5].([]byte))
-		}
-		msg.Channel = chatChannel
-		messages[len(vals)-1-idx] = msg
 	}
 
 	toSend := entity.WrapEvent(&pb.ChatMessages{
