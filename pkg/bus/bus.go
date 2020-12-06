@@ -314,7 +314,8 @@ func (b *Bus) handleNatsPublish(ctx context.Context, subtopics []string, data []
 		return b.seekRequest(ctx, auth, userID, wsConnID, data)
 	case "matchRequest":
 		return b.matchRequest(ctx, auth, userID, wsConnID, data)
-
+	case "abortRequest":
+		return b.abortRequest(ctx, auth, userID, wsConnID, data)
 	case "chat":
 		// The user is subtopics[2]
 		evt := &pb.ChatMessage{}

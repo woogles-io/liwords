@@ -49,6 +49,7 @@ import {
   MatchRequestCancellation,
   TournamentGameEndedEvent,
   RematchStartedEvent,
+  AbortRequest,
 } from '../gen/api/proto/realtime/realtime_pb';
 import { ActionType } from '../actions/actions';
 import { endGameMessage } from './end_of_game';
@@ -100,6 +101,7 @@ export const parseMsgs = (msg: Uint8Array) => {
       [MessageType.MATCH_REQUEST_CANCELLATION]: MatchRequestCancellation,
       [MessageType.TOURNAMENT_GAME_ENDED_EVENT]: TournamentGameEndedEvent,
       [MessageType.REMATCH_STARTED]: RematchStartedEvent,
+      [MessageType.ABORT_REQUEST]: AbortRequest,
     };
 
     const parsedMsg = msgTypes[msgType];

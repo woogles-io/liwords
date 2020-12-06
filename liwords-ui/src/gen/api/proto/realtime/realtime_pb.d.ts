@@ -420,6 +420,38 @@ export namespace MatchRequest {
   }
 }
 
+export class AbortRequest extends jspb.Message {
+  getGameId(): string;
+  setGameId(value: string): void;
+
+  getUserId(): string;
+  setUserId(value: string): void;
+
+  getReceivingUserId(): string;
+  setReceivingUserId(value: string): void;
+
+  getConnectionId(): string;
+  setConnectionId(value: string): void;
+
+  serializeBinary(): Uint8Array;
+  toObject(includeInstance?: boolean): AbortRequest.AsObject;
+  static toObject(includeInstance: boolean, msg: AbortRequest): AbortRequest.AsObject;
+  static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+  static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+  static serializeBinaryToWriter(message: AbortRequest, writer: jspb.BinaryWriter): void;
+  static deserializeBinary(bytes: Uint8Array): AbortRequest;
+  static deserializeBinaryFromReader(message: AbortRequest, reader: jspb.BinaryReader): AbortRequest;
+}
+
+export namespace AbortRequest {
+  export type AsObject = {
+    gameId: string,
+    userId: string,
+    receivingUserId: string,
+    connectionId: string,
+  }
+}
+
 export class ReadyForGame extends jspb.Message {
   getGameId(): string;
   setGameId(value: string): void;
@@ -1015,6 +1047,7 @@ export interface MessageTypeMap {
   LAG_MEASUREMENT: 26;
   TOURNAMENT_GAME_ENDED_EVENT: 27;
   REMATCH_STARTED: 28;
+  ABORT_REQUEST: 29;
 }
 
 export const MessageType: MessageTypeMap;

@@ -75,6 +75,45 @@ func (b *Bus) seekRequest(ctx context.Context, auth, userID, connID string,
 	return nil
 }
 
+func (b *Bus) abortRequest(ctx context.Context, auth, userID, connID string,
+	data []byte) error {
+
+	req := &pb.AbortRequest{}
+	err := proto.Unmarshal(data, req)
+	if err != nil {
+		return err
+	}
+	// Check if the user being matched exists.
+	req.ReceivingUser.DisplayName = strings.TrimSpace(req.ReceivingUser.DisplayName)
+	receiver, err := b.userStore.GetByUUID(ctx, req.ReceivingUserId)
+	if err != nil {
+		// No such user, most likely.
+		return err
+	}
+	// Set the actual UUID of the receiving user.
+	req.ReceivingUser.UserId = receiver.UUID
+
+	evt := entity.WrapEvent(req, pb.MessageType_ABORT_REQUEST)
+	log.Debug().Interface("evt", evt).Interface("req", req).Interface("receiver", req.ReceivingUser).
+		Str("sender", req.User).Msg("publishing abort request to user")
+	b.pubToUser(receiver.UUID, evt, "")
+	// Publish it to the requester as well. This is so they can see it on
+	// their own screen and cancel it if they wish.
+	b.pubToUser(req.User, evt, "")
+
+	return nil
+}
+
+func (b *Bus) abortAccepted(ctx context.Context, evt *pb.AbortRequest,
+	userID, connID string) error {
+	req := &pb.AbortRequest{}
+	err := proto.Unmarshal(data, req)
+	if err != nil {
+		return err
+	}
+	return gameplay.AbortGame(ctx, b.gameStore, req.GameId)
+}
+
 func (b *Bus) matchRequest(ctx context.Context, auth, userID, connID string,
 	data []byte) error {
 

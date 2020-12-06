@@ -76,6 +76,7 @@ export type Props = {
   showExchangeModal: () => void;
   onPass: () => void;
   onResign: () => void;
+  onRequestAbort: () => void;
   onRecall: () => void;
   onChallenge: () => void;
   onCommit: () => void;
@@ -94,6 +95,7 @@ const GameControls = React.memo((props: Props) => {
   const [passVisible, setPassVisible] = useState(false);
   const [challengeVisible, setChallengeVisible] = useState(false);
   const [resignVisible, setResignVisible] = useState(false);
+  const [requestAbortVisible, setRequestAbortVisible] = useState(false);
 
   if (props.isExamining) {
     return <ExamineGameControls lexicon={props.lexicon} />;
@@ -151,6 +153,33 @@ const GameControls = React.memo((props: Props) => {
             }}
           >
             Ragequit
+          </Button>
+        </Popconfirm>
+
+        <Popconfirm
+          title="Are you sure you wish to request for the game to be aborted?"
+          onCancel={() => {
+            setRequestAbortVisible(false);
+          }}
+          onConfirm={() => {
+            props.onRequestAbort();
+            setRequestAbortVisible(false);
+          }}
+          onVisibleChange={(visible) => {
+            setRequestAbortVisible(visible);
+          }}
+          okText="Yes"
+          cancelText="No"
+          visible={requestAbortVisible}
+        >
+          <Button
+            danger
+            onDoubleClick={() => {
+              props.onRequestAbort();
+              setRequestAbortVisible(false);
+            }}
+          >
+            Abort
           </Button>
         </Popconfirm>
 
