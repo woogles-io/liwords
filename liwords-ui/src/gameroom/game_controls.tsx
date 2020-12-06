@@ -158,7 +158,7 @@ const GameControls = React.memo((props: Props) => {
               setResignVisible(false);
             }}
           >
-            Ragequit
+            Resign
           </Button>
         </Popconfirm>
 
