@@ -3,8 +3,9 @@ package bus
 import (
 	"context"
 	"errors"
-	"fmt"
 	"strings"
+
+	"github.com/domino14/liwords/pkg/user"
 
 	"github.com/domino14/liwords/pkg/entity"
 	pb "github.com/domino14/liwords/rpc/api/proto/realtime"
@@ -39,24 +40,9 @@ func (b *Bus) chat(ctx context.Context, userID string, evt *pb.ChatMessage) erro
 
 	userFriendlyChannelName := ""
 	if strings.HasPrefix(evt.Channel, "chat.pm.") {
-		users := strings.Split(strings.TrimPrefix(evt.Channel, "chat.pm."), "_")
-		if len(users) != 2 {
-			return fmt.Errorf("malformed pm chat channel: %v", evt.Channel)
-		}
-		foundus := false
-		receiver := ""
-		for _, user := range users {
-			if user == userID {
-				foundus = true
-			} else {
-				receiver = user
-			}
-		}
-		if !foundus {
-			return errors.New("cannot send chat to a channel you are not part of")
-		}
-		if receiver == "" {
-			return errors.New("your chat does not have a receiver")
+		receiver, err := user.ChatChannelReceiver(userID, evt.Channel)
+		if err != nil {
+			return err
 		}
 		recUser, err := b.userStore.GetByUUID(ctx, receiver)
 		if err != nil {
@@ -106,7 +92,7 @@ func (b *Bus) chat(ctx context.Context, userID string, evt *pb.ChatMessage) erro
 	return b.natsconn.Publish(evt.Channel, data)
 }
 
-func (b *Bus) sendOldChats(userID, chatChannel string) error {
+func (b *Bus) sendOldChats(ctx context.Context, userID, chatChannel string) error {
 	// Send chats in a chatChannel to the given user.
 	log.Debug().Str("chatChannel", chatChannel).Msg("send-old-chats")
 	if chatChannel == "" {

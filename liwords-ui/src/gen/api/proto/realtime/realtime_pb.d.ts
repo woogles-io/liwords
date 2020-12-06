@@ -1019,6 +1019,7 @@ export interface MessageTypeMap {
   LAG_MEASUREMENT: 26;
   TOURNAMENT_GAME_ENDED_EVENT: 27;
   REMATCH_STARTED: 28;
+  CHAT_CHANNELS: 38;
 }
 
 export const MessageType: MessageTypeMap;

@@ -5,6 +5,7 @@ import (
 
 	"github.com/domino14/liwords/pkg/entity"
 	pb "github.com/domino14/liwords/rpc/api/proto/realtime"
+	upb "github.com/domino14/liwords/rpc/api/proto/user_service"
 )
 
 // Store is an interface that user stores should implement.
@@ -35,6 +36,7 @@ type Store interface {
 	GetFullBlocks(ctx context.Context, uid uint) ([]*entity.User, error)
 
 	UsernamesByPrefix(ctx context.Context, prefix string) ([]string, error)
+	CachedCount(ctx context.Context) int
 }
 
 // PresenceStore stores user presence. Since it is meant to be easily user-visible,
@@ -58,11 +60,13 @@ type PresenceStore interface {
 	// BatchGetPresence returns a list of the users with their presence.
 	// Can use for buddy/follower lists.
 	BatchGetPresence(ctx context.Context, users []*entity.User) ([]*entity.User, error)
+
+	LastSeen(ctx context.Context, uuid string) (int64, error)
 }
 
 // ChatStore stores user and channel chats and messages
 type ChatStore interface {
 	AddChat(ctx context.Context, senderUsername, senderUID, msg, channel, channelFriendly string) (int64, error)
 	OldChats(ctx context.Context, channel string) ([]*pb.ChatMessage, error)
-	LatestChannels(ctx context.Context, count, offset int, uid string) ([]string, error)
+	LatestChannels(ctx context.Context, count, offset int, uid string) (*upb.ActiveChatChannels, error)
 }

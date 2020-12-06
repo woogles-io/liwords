@@ -159,7 +159,7 @@ func (b *Bus) matchRequest(ctx context.Context, auth, userID, connID string,
 		evt := entity.WrapEvent(&pb.ErrorMessage{
 			Message: receiver.Username + " is not available for match requests.",
 		}, pb.MessageType_ERROR_MESSAGE)
-		b.pubToUser(reqUser.UserId, evt, "")
+		b.pubToConnectionID(connID, reqUser.UserId, evt)
 		return nil
 
 	} else if block == 1 {
@@ -167,7 +167,7 @@ func (b *Bus) matchRequest(ctx context.Context, auth, userID, connID string,
 		evt := entity.WrapEvent(&pb.ErrorMessage{
 			Message: receiver.Username + " is on your block list. Please unblock them on your profile.",
 		}, pb.MessageType_ERROR_MESSAGE)
-		b.pubToUser(reqUser.UserId, evt, "")
+		b.pubToConnectionID(connID, reqUser.UserId, evt)
 		return nil
 	}
 
@@ -184,7 +184,7 @@ func (b *Bus) matchRequest(ctx context.Context, auth, userID, connID string,
 	b.pubToUser(receiver.UUID, evt, "")
 	// Publish it to the requester as well. This is so they can see it on
 	// their own screen and cancel it if they wish.
-	b.pubToUser(reqUser.UserId, evt, "")
+	b.pubToConnectionID(connID, reqUser.UserId, evt)
 
 	return nil
 }
@@ -299,7 +299,7 @@ func (b *Bus) gameAccepted(ctx context.Context, evt *pb.SoughtGameProcessEvent,
 		evt := entity.WrapEvent(&pb.ErrorMessage{
 			Message: "You are not able to accept " + reqUser.Username + "'s requests.",
 		}, pb.MessageType_ERROR_MESSAGE)
-		b.pubToUser(accUser.UUID, evt, "")
+		b.pubToConnectionID(connID, accUser.UUID, evt)
 		return nil
 	} else if block == 1 {
 		// accepting user is blocking requesting user. They should not be able to
@@ -307,7 +307,7 @@ func (b *Bus) gameAccepted(ctx context.Context, evt *pb.SoughtGameProcessEvent,
 		evt := entity.WrapEvent(&pb.ErrorMessage{
 			Message: reqUser.Username + " is on your block list, thus you cannot play against them.",
 		}, pb.MessageType_ERROR_MESSAGE)
-		b.pubToUser(accUser.UUID, evt, "")
+		b.pubToConnectionID(connID, accUser.UUID, evt)
 	}
 
 	// Otherwise create a game

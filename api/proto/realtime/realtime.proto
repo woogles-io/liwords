@@ -91,6 +91,8 @@ enum MessageType {
   // We should definitely not be using anywhere close to 255 events, and
   // in order to enforce that I'll be forcing the event type header to just be
   // a byte long.
+
+  CHAT_CHANNELS = 38;
 }
 
 // GameMeta is meant to be a quick summary of a game for watching purposes,
@@ -117,7 +119,7 @@ message ChatMessage {
   string username = 1;
   string channel = 2;
   string message = 3;
-  // millis.
+  // timestamp is in milliseconds!
   int64 timestamp = 4;
   string user_id = 5;
 }

@@ -204,6 +204,10 @@ func (c *Cache) Count(ctx context.Context) (int64, error) {
 	return c.backing.Count(ctx)
 }
 
+func (c *Cache) CachedCount(ctx context.Context) int {
+	return c.cache.Len()
+}
+
 func (c *Cache) Disconnect() {
 	c.backing.Disconnect()
 }

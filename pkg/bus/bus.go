@@ -18,6 +18,7 @@ import (
 	"github.com/domino14/liwords/pkg/config"
 	"github.com/domino14/liwords/pkg/entity"
 	"github.com/domino14/liwords/pkg/gameplay"
+	"github.com/domino14/liwords/pkg/sessions"
 	"github.com/domino14/liwords/pkg/stats"
 	"github.com/domino14/liwords/pkg/tournament"
 	"github.com/domino14/liwords/pkg/user"
@@ -48,6 +49,7 @@ type Stores struct {
 	ListStatStore   stats.ListStatStore
 	TournamentStore tournament.TournamentStore
 	ConfigStore     config.ConfigStore
+	SessionStore    sessions.SessionStore
 }
 
 // Bus is the struct; it should contain all the stores to verify messages, etc.
@@ -154,11 +156,11 @@ outerfor:
 					log.Err(err).Msg("process-message-publish-error")
 					// The user ID should have hopefully come in the topic name.
 					// It would be in subtopics[4]
-					if len(subtopics) > 4 {
+					if len(subtopics) > 5 {
 						userID := subtopics[4]
-						// XXX might have to make realm specific
-						b.pubToUser(userID, entity.WrapEvent(&pb.ErrorMessage{Message: err.Error()},
-							pb.MessageType_ERROR_MESSAGE), "")
+						connID := subtopics[5]
+						b.pubToConnectionID(connID, userID, entity.WrapEvent(&pb.ErrorMessage{Message: err.Error()},
+							pb.MessageType_ERROR_MESSAGE))
 					}
 				}
 			}()
@@ -292,7 +294,7 @@ func (b *Bus) handleNatsRequest(ctx context.Context, topic string,
 			log.Debug().Str("computed-realm", realm)
 			resp.Realms = append(resp.Realms, realm, "chat-"+realm)
 
-			if game.TournamentData != nil {
+			if game.TournamentData != nil && game.TournamentData.Id != "" {
 				tourneyID := strings.ToLower(game.TournamentData.Id)
 				log.Debug().Str("tourney-realm-for", tourneyID)
 				resp.Realms = append(resp.Realms, "chat-tournament-"+tourneyID)
@@ -467,8 +469,6 @@ func (b *Bus) broadcastPresence(username, userID string, anon bool,
 	return nil
 }
 
-// XXX: this function needs to be rewritten to be something like pubToConnectionID
-// for the most part.
 func (b *Bus) pubToUser(userID string, evt *entity.EventWrapper,
 	channel string) error {
 	// Publish to a user, but pass in a specific channel. Only publish to those
@@ -486,6 +486,16 @@ func (b *Bus) pubToUser(userID string, evt *entity.EventWrapper,
 	}
 
 	return b.natsconn.Publish(fullChannel, bts)
+}
+
+func (b *Bus) pubToConnectionID(connID, userID string, evt *entity.EventWrapper) error {
+	// Publish to a specific connection ID.
+	sanitized, err := sanitize(evt, userID)
+	bts, err := sanitized.Serialize()
+	if err != nil {
+		return err
+	}
+	return b.natsconn.Publish("connid."+connID, bts)
 }
 
 func (b *Bus) initRealmInfo(ctx context.Context, evt *pb.InitRealmInfo, connID string) error {
@@ -508,6 +518,7 @@ func (b *Bus) initRealmInfo(ctx context.Context, evt *pb.InitRealmInfo, connID s
 
 	presenceChan := strings.ReplaceAll(evt.Realm, "-", ".")
 	if !strings.HasPrefix(presenceChan, "chat.") {
+		// presenceChan / presenceStore is only used for chat purposes for now.
 		presenceChan = ""
 	}
 
@@ -517,75 +528,30 @@ func (b *Bus) initRealmInfo(ctx context.Context, evt *pb.InitRealmInfo, connID s
 	}
 
 	if evt.Realm == "lobby" {
-		// open seeks
-		seeks, err := b.openSeeks(ctx)
+		err := b.sendLobbyContext(ctx, evt.UserId, connID)
 		if err != nil {
 			return err
 		}
-		err = b.pubToUser(evt.UserId, seeks, "lobby")
-		if err != nil {
-			return err
-		}
-		// live games
-		activeGames, err := b.activeGames(ctx, "")
-		if err != nil {
-			return err
-		}
-		err = b.pubToUser(evt.UserId, activeGames, "lobby")
-		if err != nil {
-			return err
-		}
-		// open match reqs
-		matches, err := b.openMatches(ctx, evt.UserId, "")
-		if err != nil {
-			return err
-		}
-		err = b.pubToUser(evt.UserId, matches, "lobby")
-		if err != nil {
-			return err
-		}
-		// TODO: send followed online
-
 	} else if strings.HasPrefix(evt.Realm, "game-") || strings.HasPrefix(evt.Realm, "gametv-") {
 		components := strings.Split(evt.Realm, "-")
-		prefix := components[0]
 		// Get a sanitized history
 		gameID := components[1]
 		refresher, err := b.gameRefresher(ctx, gameID)
 		if err != nil {
 			return err
 		}
-		err = b.pubToUser(evt.UserId, refresher, prefix+"."+gameID)
+		err = b.pubToConnectionID(connID, evt.UserId, refresher)
 		if err != nil {
 			return err
 		}
 	} else if strings.HasPrefix(evt.Realm, "tournament-") {
-		components := strings.Split(evt.Realm, "-")
-		prefix := components[0]
-		// Get a sanitized history
-		tourneyID := components[1]
-		// live games
-		activeGames, err := b.activeGames(ctx, tourneyID)
+		err := b.sendTournamentContext(ctx, evt.Realm, evt.UserId, connID)
 		if err != nil {
 			return err
 		}
-		err = b.pubToUser(evt.UserId, activeGames, prefix+"."+tourneyID)
-		if err != nil {
-			return err
-		}
-		// open match reqs
-		matches, err := b.openMatches(ctx, evt.UserId, tourneyID)
-		if err != nil {
-			return err
-		}
-		err = b.pubToUser(evt.UserId, matches, prefix+"."+tourneyID)
-		if err != nil {
-			return err
-		}
-
 	} else if strings.HasPrefix(evt.Realm, "chat-") {
 		chatChan := strings.ReplaceAll(evt.Realm, "-", ".")
-		err = b.sendOldChats(evt.UserId, chatChan)
+		err = b.sendOldChats(ctx, evt.UserId, chatChan)
 		if err != nil {
 			return err
 		}
@@ -595,20 +561,12 @@ func (b *Bus) initRealmInfo(ctx context.Context, evt *pb.InitRealmInfo, connID s
 
 	// Get presence
 	if presenceChan != "" {
-		pres, err := b.getPresence(ctx, presenceChan)
-		if err != nil {
-			return err
-		}
-		err = b.pubToUser(evt.UserId, pres, presenceChan)
-		if err != nil {
-			return err
-		}
-		// Also send OUR presence to users in this channel.
-		err = b.broadcastPresence(username, evt.UserId, anon, []string{presenceChan}, false)
+		err := b.sendPresenceContext(ctx, evt.UserId, username, anon, presenceChan, connID)
 		if err != nil {
 			return err
 		}
 	}
+
 	return nil
 	// send chat info
 
@@ -709,4 +667,98 @@ func (b *Bus) blockExists(ctx context.Context, u1, u2 *entity.User) (int, error)
 		}
 	}
 	return -1, nil
+}
+
+func (b *Bus) sendLobbyContext(ctx context.Context, userID, connID string) error {
+	// open seeks
+	seeks, err := b.openSeeks(ctx)
+	if err != nil {
+		return err
+	}
+	err = b.pubToConnectionID(connID, userID, seeks)
+	if err != nil {
+		return err
+	}
+	// live games
+	activeGames, err := b.activeGames(ctx, "")
+	if err != nil {
+		return err
+	}
+	err = b.pubToConnectionID(connID, userID, activeGames)
+	if err != nil {
+		return err
+	}
+	// open match reqs
+	matches, err := b.openMatches(ctx, userID, "")
+	if err != nil {
+		return err
+	}
+	err = b.pubToConnectionID(connID, userID, matches)
+	if err != nil {
+		return err
+	}
+	// TODO: send followed online
+	return nil
+}
+
+func (b *Bus) sendTournamentContext(ctx context.Context, realm, userID, connID string) error {
+	components := strings.Split(realm, "-")
+	tourneyID := components[1]
+	// live games
+	activeGames, err := b.activeGames(ctx, tourneyID)
+	if err != nil {
+		return err
+	}
+	err = b.pubToConnectionID(connID, userID, activeGames)
+	if err != nil {
+		return err
+	}
+	// open match reqs
+	matches, err := b.openMatches(ctx, userID, tourneyID)
+	if err != nil {
+		return err
+	}
+	err = b.pubToConnectionID(connID, userID, matches)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (b *Bus) sendPresenceContext(ctx context.Context, userID, username string, anon bool,
+	presenceChan, connID string) error {
+
+	pres, err := b.getPresence(ctx, presenceChan)
+	if err != nil {
+		return err
+	}
+	err = b.pubToConnectionID(connID, userID, pres)
+	if err != nil {
+		return err
+	}
+	// Also send OUR presence to users in this channel.
+	err = b.broadcastPresence(username, userID, anon, []string{presenceChan}, false)
+	if err != nil {
+		return err
+	}
+	// Send user channels with new messages.
+	lastSeen, err := b.presenceStore.LastSeen(ctx, userID)
+	if err != nil {
+		// Don't die, this key might not yet exist.
+		log.Err(err).Msg("last-seen-error")
+		return nil
+	}
+	latestChannels, err := b.chatStore.LatestChannels(ctx, 20, 0, userID)
+	if err != nil {
+		return err
+	}
+
+	for _, ch := range latestChannels.Channels {
+		if ch.LastUpdate > lastSeen {
+			ch.HasUpdate = true
+		}
+	}
+
+	evt := entity.WrapEvent(latestChannels, pb.MessageType_CHAT_CHANNELS)
+	return b.pubToConnectionID(connID, userID, evt)
 }

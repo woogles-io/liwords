@@ -58,6 +58,7 @@ import {
   SoughtGame,
 } from './reducers/lobby_reducer';
 import { BoopSounds } from '../sound/boop';
+import { ActiveChatChannels } from '../gen/api/proto/user_service/user_service_pb';
 
 // Feature flag.
 export const enableShowSocket =
@@ -100,6 +101,7 @@ export const parseMsgs = (msg: Uint8Array) => {
       [MessageType.MATCH_REQUEST_CANCELLATION]: MatchRequestCancellation,
       [MessageType.TOURNAMENT_GAME_ENDED_EVENT]: TournamentGameEndedEvent,
       [MessageType.REMATCH_STARTED]: RematchStartedEvent,
+      [MessageType.CHAT_CHANNELS]: ActiveChatChannels,
     };
 
     const parsedMsg = msgTypes[msgType];
@@ -203,6 +205,13 @@ export const useOnSocketMsg = () => {
               actionType: ActionType.AddSoughtGames,
               payload: soughtGames,
             });
+
+            break;
+          }
+
+          case MessageType.CHAT_CHANNELS: {
+            const cc = parsedMsg as ActiveChatChannels;
+            console.log('got chat channels', cc);
 
             break;
           }
@@ -360,8 +369,15 @@ export const useOnSocketMsg = () => {
               break;
             }
 
-            // XXX: We should ignore this chat message if it's not for the right
-            // channel.
+            // XXX: This is a temporary fix while we can only display one
+            // channel's chat at once.
+            const { path } = loginState;
+            if (
+              path.startsWith('/game/') &&
+              cm.getChannel().startsWith('chat.tournament')
+            ) {
+              break;
+            }
 
             addChat({
               entityType: ChatEntityType.UserChat,
@@ -382,6 +398,20 @@ export const useOnSocketMsg = () => {
           case MessageType.CHAT_MESSAGES: {
             // These replace all existing messages.
             const cms = parsedMsg as ChatMessages;
+
+            // XXX: This is a temporary fix while we can only display one
+            // channel's chat at once.
+            const { path } = loginState;
+            if (
+              path.startsWith('/game/') &&
+              (cms.getMessagesList().length === 0 ||
+                cms
+                  .getMessagesList()[0]
+                  ?.getChannel()
+                  .startsWith('chat.tournament'))
+            ) {
+              break;
+            }
 
             const entities = new Array<ChatEntityObj>();
 
@@ -410,6 +440,15 @@ export const useOnSocketMsg = () => {
             if (excludedPlayers.has(up.getUserId())) {
               break;
             }
+            // XXX: This is a temporary fix while we can only display one
+            // channel's presence at once.
+            const { path } = loginState;
+            if (
+              path.startsWith('/game/') &&
+              up.getChannel().startsWith('chat.tournament')
+            ) {
+              break;
+            }
             setPresence({
               uuid: up.getUserId(),
               username: up.getUsername(),
@@ -424,6 +463,20 @@ export const useOnSocketMsg = () => {
             const ups = parsedMsg as UserPresences;
 
             const toAdd = new Array<PresenceEntity>();
+
+            // XXX: This is a temporary fix while we can only display one
+            // channel's presence at once.
+            const { path } = loginState;
+            if (
+              path.startsWith('/game/') &&
+              (ups.getPresencesList().length === 0 ||
+                ups
+                  .getPresencesList()[0]
+                  ?.getChannel()
+                  .startsWith('chat.tournament'))
+            ) {
+              break;
+            }
 
             ups.getPresencesList().forEach((p) => {
               if (!excludedPlayers.has(p.getUserId())) {

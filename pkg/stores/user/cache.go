@@ -204,3 +204,7 @@ func (c *Cache) UsernamesByPrefix(ctx context.Context, prefix string) ([]string,
 func (c *Cache) Count(ctx context.Context) (int64, error) {
 	return c.backing.Count(ctx)
 }
+
+func (c *Cache) CachedCount(ctx context.Context) int {
+	return c.cache.Len()
+}

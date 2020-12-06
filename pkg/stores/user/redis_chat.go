@@ -19,9 +19,7 @@ import (
 // Expire all non-lobby channels after this many seconds. Lobby channel doesn't expire.
 // (We may have other non-expiring channels as well later?)
 
-// These should expire at the same time:
-const TournamentChannelExpiration = 86400 * 14
-const PMChannelExpiration = 86400 * 14
+const LongChannelExpiration = 86400 * 14
 
 const GameChatChannelExpiration = 86400
 
@@ -41,6 +39,7 @@ func NewRedisChatStore(r *redis.Pool) *RedisChatStore {
 	}
 }
 
+// redisStreamTS returns the timestamp of the stream data object, in MILLISECONDS.
 func redisStreamTS(key string) (int64, error) {
 	tskey := strings.Split(key, "-")
 	if len(tskey) != 2 {
@@ -67,17 +66,17 @@ func (r *RedisChatStore) AddChat(ctx context.Context, senderUsername, senderUID,
 		return 0, err
 	}
 
+	// ts is in milliseconds
 	ts, err := redisStreamTS(ret)
 	if err != nil {
 		return 0, err
 	}
+	tsSeconds := ts / 1000
 
 	if channel != LobbyChatChannel {
 		var exp int
-		if strings.HasPrefix(channel, "chat.tournament") {
-			exp = TournamentChannelExpiration
-		} else if strings.HasPrefix(channel, "chat.pm") {
-			exp = PMChannelExpiration
+		if strings.HasPrefix(channel, "chat.tournament") || strings.HasPrefix(channel, "chat.pm") {
+			exp = LongChannelExpiration
 		} else {
 			exp = GameChatChannelExpiration
 		}
@@ -96,22 +95,22 @@ func (r *RedisChatStore) AddChat(ctx context.Context, senderUsername, senderUID,
 			key := lcKeyPrefix + user
 			// Update the entry for each latestchannel key for each user in this
 			// private-message channel.
-			_, err := conn.Do("ZADD", key, ts+PMChannelExpiration, channel+":"+channelFriendly)
+			_, err := conn.Do("ZADD", key, tsSeconds+LongChannelExpiration, channel+":"+channelFriendly)
 			if err != nil {
 				return 0, err
 			}
-			_, err = conn.Do("EXPIRE", key, TournamentChannelExpiration)
+			_, err = conn.Do("EXPIRE", key, LongChannelExpiration)
 			if err != nil {
 				return 0, err
 			}
 		}
 	} else if strings.HasPrefix(channel, "chat.tournament.") {
 		key := lcKeyPrefix + senderUID
-		_, err := conn.Do("ZADD", key, ts+TournamentChannelExpiration, channel+":"+channelFriendly)
+		_, err := conn.Do("ZADD", key, tsSeconds+LongChannelExpiration, channel+":"+channelFriendly)
 		if err != nil {
 			return 0, err
 		}
-		_, err = conn.Do("EXPIRE", key, TournamentChannelExpiration)
+		_, err = conn.Do("EXPIRE", key, LongChannelExpiration)
 		if err != nil {
 			return 0, err
 		}
@@ -180,19 +179,30 @@ func (r *RedisChatStore) LatestChannels(ctx context.Context, count, offset int, 
 	}
 
 	vals, err := redis.Strings(
-		conn.Do("ZREVRANGEBYSCORE", lcKey, "+inf", "-inf", "LIMIT", offset, count))
+		conn.Do("ZREVRANGEBYSCORE", lcKey, "+inf", "-inf", "WITHSCORES", "LIMIT", offset, count))
 	if err != nil {
 		return nil, err
 	}
-	chans := make([]*upb.ActiveChatChannels_Channel, len(vals))
-	for idx, member := range vals {
-		chanName := strings.Split(member, ":")
+	// XXX this function is getting triggered twice in tournament games. FIX.
+	log.Debug().Interface("vals", vals).Msg("vals-from-redis")
+	chans := make([]*upb.ActiveChatChannels_Channel, len(vals)>>1)
+	for idx := 0; idx < len(chans); idx++ {
+
+		chanName := strings.Split(vals[idx*2], ":")
 		if len(chanName) != 2 {
 			return nil, fmt.Errorf("unexpected channel name: %v", chanName)
 		}
+		ts, err := strconv.ParseInt(vals[idx*2+1], 10, 64)
+		if err != nil {
+			return nil, err
+		}
+		// This timestamp is used for expiration purposes, but here we need
+		// to read what it is without the extra expiration time.
+		ts -= LongChannelExpiration
 		chans[idx] = &upb.ActiveChatChannels_Channel{
 			Name:        chanName[0],
 			DisplayName: chanName[1],
+			LastUpdate:  ts,
 		}
 	}
 	return &upb.ActiveChatChannels{Channels: chans}, nil

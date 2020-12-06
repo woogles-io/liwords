@@ -2,6 +2,8 @@ syntax = "proto3";
 package user_service;
 option go_package = "github.com/domino14/liwords/rpc/api/proto/user_service";
 
+import "api/proto/realtime/realtime.proto";
+
 // User service contains an actual Twirp service for doing user-related things.
 // For example, registering, changing passwords, logging in, logging out, and
 // more. Instead of a RESTful API we will straight up use Twirp to make life
@@ -138,9 +140,14 @@ message ActiveChatChannels {
   message Channel {
     string name = 1;
     string display_name = 2;
+    // last_update is a unix timestamp, in seconds.
+    int64 last_update = 3;
+    bool has_update = 4;
   }
   repeated Channel channels = 1;
 }
+
+message GetChatsRequest { string channel = 1; }
 
 message GetFollowsResponse { repeated BasicUser users = 1; }
 message GetBlocksResponse { repeated BasicUser users = 1; }
@@ -162,4 +169,5 @@ service SocializeService {
   rpc GetFullBlocks(GetFullBlocksRequest) returns(GetFullBlocksResponse);
   rpc GetActiveChatChannels(GetActiveChatChannelsRequest)
       returns(ActiveChatChannels);
+  rpc GetChatsForChannel(GetChatsRequest) returns(liwords.ChatMessages);
 }
