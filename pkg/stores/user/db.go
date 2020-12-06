@@ -665,3 +665,7 @@ func (s *DBStore) Count(ctx context.Context) (int64, error) {
 	}
 	return count, nil
 }
+
+func (s *DBStore) CachedCount(ctx context.Context) int {
+	return 0
+}

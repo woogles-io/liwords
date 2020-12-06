@@ -533,3 +533,7 @@ func (s *DBStore) Disconnect() {
 	}
 	log.Err(err).Msg("unable to disconnect")
 }
+
+func (s *DBStore) CachedCount(ctx context.Context) int {
+	return 0
+}
