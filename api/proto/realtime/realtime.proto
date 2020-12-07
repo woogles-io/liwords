@@ -87,6 +87,7 @@ enum MessageType {
   TOURNAMENT_GAME_ENDED_EVENT = 27;
   REMATCH_STARTED = 28;
   ABORT_REQUEST = 29;
+  DECLINE_ABORT_REQUEST = 30;
 
   // Add more events here. The total number of events should fit in a byte.
   // We should definitely not be using anywhere close to 255 events, and
@@ -158,10 +159,11 @@ message MatchRequest {
 }
 
 message AbortRequest {
-  string game_id = 1;
-  string user_id = 2;
-  string receiving_user_id = 3;
-  string connection_id = 4;
+  string request_id = 1;
+  string game_id = 2;
+  string user_id = 3;
+  string receiving_user_id = 4;
+  string connection_id = 5;
 }
 
 message ReadyForGame { string game_id = 1; }
@@ -343,6 +345,9 @@ message TimedOut {
 
 // When a Receiver declines a Seeker:
 message DeclineMatchRequest { string request_id = 1; }
+
+// When the opponent declines the abort request
+message DeclineAbortRequest { string request_id = 1; }
 
 // Tournaments
 

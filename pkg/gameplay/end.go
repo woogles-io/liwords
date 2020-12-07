@@ -286,7 +286,7 @@ func setTimedOut(ctx context.Context, entGame *entity.Game, pidx int, gameStore 
 }
 
 // AbortGame aborts a game. This should only be done for games that never started.
-func AbortGame(ctx context.Context, gameStore GameStore, gameID string) error {
+func AbortGame(ctx context.Context, gameStore GameStore, gameID string, gameEndReason pb.GameEndReason) error {
 	entGame, err := gameStore.Get(ctx, gameID)
 
 	if err != nil {
@@ -294,7 +294,7 @@ func AbortGame(ctx context.Context, gameStore GameStore, gameID string) error {
 	}
 	entGame.Lock()
 	defer entGame.Unlock()
-	entGame.SetGameEndReason(pb.GameEndReason_CANCELLED)
+	entGame.SetGameEndReason(gameEndReason)
 
 	entGame.History().PlayState = macondopb.PlayState_GAME_OVER
 

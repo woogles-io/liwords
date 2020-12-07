@@ -40,6 +40,7 @@ import {
   GameDeletion,
   MatchRequests,
   DeclineMatchRequest,
+  DeclineAbortRequest,
   ChatMessage,
   ChatMessages,
   UserPresence,
@@ -102,6 +103,7 @@ export const parseMsgs = (msg: Uint8Array) => {
       [MessageType.TOURNAMENT_GAME_ENDED_EVENT]: TournamentGameEndedEvent,
       [MessageType.REMATCH_STARTED]: RematchStartedEvent,
       [MessageType.ABORT_REQUEST]: AbortRequest,
+      [MessageType.DECLINE_ABORT_REQUEST]: DeclineAbortRequest,
     };
 
     const parsedMsg = msgTypes[msgType];
@@ -569,6 +571,16 @@ export const useOnSocketMsg = () => {
             notification.info({
               message: 'Declined',
               description: 'Your match request was declined.',
+            });
+            break;
+          }
+
+          case MessageType.DECLINE_ABORT_REQUEST: {
+            const dec = parsedMsg as DeclineAbortRequest;
+            console.log('got decline abort request', dec);
+            notification.info({
+              message: 'Declined',
+              description: 'Your abort request was declined.',
             });
             break;
           }

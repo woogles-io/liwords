@@ -333,7 +333,14 @@ func (b *Bus) handleNatsPublish(ctx context.Context, subtopics []string, data []
 		}
 		log.Debug().Str("user", userID).Str("reqid", evt.RequestId).Msg("decline-rematch")
 		return b.matchDeclined(ctx, evt, userID)
-
+	case "declineAbortRequest":
+		evt := &pb.DeclineAbortRequest{}
+		err := proto.Unmarshal(data, evt)
+		if err != nil {
+			return err
+		}
+		log.Debug().Str("user", userID).Str("reqid", evt.RequestId).Msg("decline-abort")
+		return b.abortDeclined(ctx, evt, userID)
 	case "soughtGameProcess":
 		evt := &pb.SoughtGameProcessEvent{}
 		err := proto.Unmarshal(data, evt)

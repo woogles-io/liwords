@@ -256,7 +256,7 @@ func (b *Bus) adjudicateGames(ctx context.Context) error {
 				Interface("now", now).
 				Interface("created", entGame.CreatedAt).
 				Msg("canceling-never-started")
-			err = gameplay.AbortGame(ctx, b.gameStore, g.Id)
+			err = gameplay.AbortGame(ctx, b.gameStore, g.Id, pb.GameEndReason_CANCELLED)
 			log.Err(err).Msg("adjudicating-after-abort-game")
 			// Delete the game from the lobby. We do this here instead
 			// of inside the gameplay package because the game event channel

@@ -28,6 +28,7 @@ import {
   MatchRequest,
   SoughtGameProcessEvent,
   DeclineMatchRequest,
+  DeclineAbortRequest,
   ChatMessage,
   ReadyForGame,
 } from '../gen/api/proto/realtime/realtime_pb';
@@ -394,6 +395,20 @@ export const Table = React.memo((props: Props) => {
       sendSocketMsg(
         encodeToSocketFmt(
           MessageType.DECLINE_MATCH_REQUEST,
+          evt.serializeBinary()
+        )
+      );
+    },
+    [sendSocketMsg]
+  );
+
+  const declineAbort = useCallback(
+    (reqID: string) => {
+      const evt = new DeclineAbortRequest();
+      evt.setRequestId(reqID);
+      sendSocketMsg(
+        encodeToSocketFmt(
+          MessageType.DECLINE_ABORT_REQUEST,
           evt.serializeBinary()
         )
       );
