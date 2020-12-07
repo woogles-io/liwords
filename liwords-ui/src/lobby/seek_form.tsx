@@ -72,6 +72,7 @@ type Props = {
   tournamentID?: string;
 };
 
+const enableECWL = localStorage.getItem('enableECWL') === 'true';
 const otLabel = 'Overtime';
 const incLabel = 'Increment';
 const otUnitLabel = (
@@ -145,6 +146,9 @@ export const SeekForm = (props: Props) => {
   const [maxTimeSetting, setMaxTimeSetting] = useState(
     initialValues.incOrOT === 'overtime' ? 10 : 60
   );
+  const [showChallengeRule, setShowChallengeRule] = useState(
+    initialValues.lexicon !== 'ECWL'
+  );
   const [sliderTooltipVisible, setSliderTooltipVisible] = useState(true);
   const handleDropdownVisibleChange = useCallback((open) => {
     setSliderTooltipVisible(!open);
@@ -175,6 +179,11 @@ export const SeekForm = (props: Props) => {
         ? 0
         : Math.round(allvals.extratime as number)
     );
+    if (allvals.lexicon === 'ECWL') {
+      setShowChallengeRule(false);
+    } else {
+      setShowChallengeRule(true);
+    }
     setTimectrl(tc);
     setTtag(tt);
   };
@@ -205,7 +214,10 @@ export const SeekForm = (props: Props) => {
       seekID: '',
 
       lexicon: val.lexicon as string,
-      challengeRule: val.challengerule as number,
+      challengeRule:
+        (val.lexicon as string) === 'ECWL'
+          ? ChallengeRule.VOID
+          : (val.challengerule as number),
       initialTimeSecs:
         timeScaleToNum(initTimeDiscreteScale[val.initialtime]) * 60,
       incrementSecs:
@@ -269,44 +281,53 @@ export const SeekForm = (props: Props) => {
         <Select disabled={disableControls}>
           <Select.Option value="CSW19">CSW 19 (English)</Select.Option>
           <Select.Option value="NWL18">NWL 18 (North America)</Select.Option>
+          {enableECWL && (
+            <Select.Option value="ECWL">English Common Word List</Select.Option>
+          )}
         </Select>
       </Form.Item>
-      <Form.Item label="Challenge rule" name="challengerule">
-        <Select disabled={disableControls}>
-          <Select.Option value={ChallengeRule.FIVE_POINT}>
-            5 points{' '}
-            <span className="hover-help">(Reward for winning a challenge)</span>
-          </Select.Option>
-          <Select.Option value={ChallengeRule.TEN_POINT}>
-            10 points{' '}
-            <span className="hover-help">(Reward for winning a challenge)</span>
-          </Select.Option>
-          <Select.Option value={ChallengeRule.DOUBLE}>
-            Double{' '}
-            <span className="hover-help">
-              (Turn loss for challenging a valid word)
-            </span>
-          </Select.Option>
-          <Select.Option value={ChallengeRule.SINGLE}>
-            Single{' '}
-            <span className="hover-help">
-              (No penalty for challenging a valid word)
-            </span>
-          </Select.Option>
-          <Select.Option value={ChallengeRule.VOID}>
-            Void{' '}
-            <span className="hover-help">
-              (All words are checked before play)
-            </span>
-          </Select.Option>
-          <Select.Option value={ChallengeRule.TRIPLE}>
-            Triple{' '}
-            <span className="hover-help">
-              (Losing a challenge loses the game)
-            </span>
-          </Select.Option>
-        </Select>
-      </Form.Item>
+      {showChallengeRule && (
+        <Form.Item label="Challenge rule" name="challengerule">
+          <Select disabled={disableControls}>
+            <Select.Option value={ChallengeRule.FIVE_POINT}>
+              5 points{' '}
+              <span className="hover-help">
+                (Reward for winning a challenge)
+              </span>
+            </Select.Option>
+            <Select.Option value={ChallengeRule.TEN_POINT}>
+              10 points{' '}
+              <span className="hover-help">
+                (Reward for winning a challenge)
+              </span>
+            </Select.Option>
+            <Select.Option value={ChallengeRule.DOUBLE}>
+              Double{' '}
+              <span className="hover-help">
+                (Turn loss for challenging a valid word)
+              </span>
+            </Select.Option>
+            <Select.Option value={ChallengeRule.SINGLE}>
+              Single{' '}
+              <span className="hover-help">
+                (No penalty for challenging a valid word)
+              </span>
+            </Select.Option>
+            <Select.Option value={ChallengeRule.VOID}>
+              Void{' '}
+              <span className="hover-help">
+                (All words are checked before play)
+              </span>
+            </Select.Option>
+            <Select.Option value={ChallengeRule.TRIPLE}>
+              Triple{' '}
+              <span className="hover-help">
+                (Losing a challenge loses the game)
+              </span>
+            </Select.Option>
+          </Select>
+        </Form.Item>
+      )}
       <Form.Item
         className="initial"
         label="Initial Minutes"

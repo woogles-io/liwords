@@ -3,6 +3,7 @@ import { Unrace } from '../utils/unrace';
 // Good enough for now. If need to reload, just refresh the whole page.
 class Loadable {
   private whichStep = 0;
+
   private fetchPromise?: Promise<Response>;
 
   constructor(readonly cacheKey: string, readonly path: string) {}
@@ -20,9 +21,8 @@ class Loadable {
     const resp = await this.fetchPromise!;
     if (resp.ok) {
       return await resp.arrayBuffer();
-    } else {
-      throw new Error(`Unable to cache ${this.cacheKey}`);
     }
+    throw new Error(`Unable to cache ${this.cacheKey}`);
   };
 
   disownArrayBuffer = async () => {
@@ -53,17 +53,17 @@ const loadablesByLexicon: { [key: string]: Array<Loadable> } = {};
 
 for (const { lexicons, cacheKey, path } of [
   {
-    lexicons: ['CSW19', 'NWL18'],
+    lexicons: ['CSW19', 'NWL18', 'ECWL'],
     cacheKey: 'data/letterdistributions/english.csv',
     path: '/wasm/english.csv',
   },
   {
-    lexicons: ['CSW19', 'NWL18'],
+    lexicons: ['CSW19', 'NWL18', 'ECWL'],
     cacheKey: 'data/strategy/default_english/leaves.olv',
     path: '/wasm/leaves.olv',
   },
   {
-    lexicons: ['CSW19', 'NWL18'],
+    lexicons: ['CSW19', 'NWL18', 'ECWL'],
     cacheKey: 'data/strategy/default_english/preendgame.json',
     path: '/wasm/preendgame.json',
   },
@@ -76,6 +76,11 @@ for (const { lexicons, cacheKey, path } of [
     lexicons: ['NWL18'],
     cacheKey: 'data/lexica/gaddag/NWL18.gaddag',
     path: '/wasm/NWL18.gaddag',
+  },
+  {
+    lexicons: ['ECWL'],
+    cacheKey: 'data/lexica/gaddag/ECWL.gaddag',
+    path: '/wasm/ECWL.gaddag',
   },
 ]) {
   const loadable = new Loadable(cacheKey, path);
@@ -111,7 +116,7 @@ export const getMacondo = async (lexicon: string) =>
     }
 
     if (!wrappedWorker) {
-      let pendings: {
+      const pendings: {
         [key: string]: {
           promise: Promise<unknown>;
           res: (a: any) => void;
