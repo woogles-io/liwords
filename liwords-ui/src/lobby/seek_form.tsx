@@ -20,6 +20,7 @@ import { MatchUser } from '../gen/api/proto/realtime/realtime_pb';
 import { SoughtGame } from '../store/reducers/lobby_reducer';
 import { toAPIUrl } from '../api/api';
 import { debounce } from '../utils/debounce';
+import { fixedSettings } from './fixed_seek_controls';
 
 export type seekPropVals = { [val: string]: string | number | boolean };
 
@@ -109,11 +110,22 @@ export const SeekForm = (props: Props) => {
     incOrOT: 'overtime',
     vsBot: false,
   };
-  const initialValues = {
-    ...defaultValues,
-    ...storedValues,
-    friend: '',
-  };
+  let disableControls = false;
+  let initialValues;
+
+  if (props.tournamentID && props.tournamentID in fixedSettings) {
+    disableControls = true;
+    initialValues = {
+      ...fixedSettings[props.tournamentID],
+      friend: '',
+    };
+  } else {
+    initialValues = {
+      ...defaultValues,
+      ...storedValues,
+      friend: '',
+    };
+  }
   const [itc, itt] = timeCtrlToDisplayName(
     timeScaleToNum(initTimeDiscreteScale[initialValues.initialtime]) * 60,
     initialValues.incOrOT === 'increment'
@@ -266,7 +278,7 @@ export const SeekForm = (props: Props) => {
         </Form.Item>
       )}
       <Form.Item label="Dictionary" name="lexicon">
-        <Select>
+        <Select disabled={disableControls}>
           <Select.Option value="CSW19">CSW 19 (English)</Select.Option>
           <Select.Option value="NWL18">NWL 18 (North America)</Select.Option>
           {enableECWL && (
@@ -276,7 +288,7 @@ export const SeekForm = (props: Props) => {
       </Form.Item>
       {showChallengeRule && (
         <Form.Item label="Challenge rule" name="challengerule">
-          <Select>
+          <Select disabled={disableControls}>
             <Select.Option value={ChallengeRule.FIVE_POINT}>
               5 points{' '}
               <span className="hover-help">
@@ -323,6 +335,7 @@ export const SeekForm = (props: Props) => {
         extra={<Tag color={ttag}>{timectrl}</Tag>}
       >
         <Slider
+          disabled={disableControls}
           tipFormatter={initTimeFormatter}
           min={0}
           max={initTimeDiscreteScale.length - 1}
@@ -330,7 +343,7 @@ export const SeekForm = (props: Props) => {
         />
       </Form.Item>
       <Form.Item label="Time Setting" name="incOrOT">
-        <Radio.Group>
+        <Radio.Group disabled={disableControls}>
           <Radio.Button value="overtime">Use Max Overtime</Radio.Button>
           <Radio.Button value="increment">Use Increment</Radio.Button>
         </Radio.Group>
@@ -341,10 +354,10 @@ export const SeekForm = (props: Props) => {
         name="extratime"
         extra={extraTimeLabel}
       >
-        <InputNumber min={0} max={maxTimeSetting} />
+        <InputNumber min={0} max={maxTimeSetting} disabled={disableControls} />
       </Form.Item>
       <Form.Item label="Rated" name="rated" valuePropName="checked">
-        <Switch />
+        <Switch disabled={disableControls} />
       </Form.Item>
     </Form>
   );
