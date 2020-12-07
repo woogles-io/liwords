@@ -126,7 +126,7 @@ export const ReverseMessageType = (() => {
 
 export const useOnSocketMsg = () => {
   const { challengeResultEvent } = useChallengeResultEventStoreContext();
-  const { addChat, addChats } = useChatStoreContext();
+  const { addChat, addChats, setChatChannels } = useChatStoreContext();
   const { excludedPlayers } = useExcludedPlayersStoreContext();
   const { dispatchGameContext, gameContext } = useGameContextStoreContext();
   const { setGameEndMessage } = useGameEndMessageStoreContext();
@@ -213,6 +213,7 @@ export const useOnSocketMsg = () => {
             const cc = parsedMsg as ActiveChatChannels;
             console.log('got chat channels', cc);
 
+            setChatChannels(cc);
             break;
           }
 
@@ -678,6 +679,7 @@ export const useOnSocketMsg = () => {
       excludedPlayers,
       gameContext,
       loginState,
+      setChatChannels,
       setCurrentLagMs,
       setGameEndMessage,
       setPresence,

@@ -9,7 +9,6 @@ import { BoardPanel } from './board_panel';
 import { TopBar } from '../topbar/topbar';
 import { Chat } from '../chat/chat';
 import {
-  useChatStoreContext,
   useExaminableGameContextStoreContext,
   useExamineStoreContext,
   useGameContextStoreContext,
@@ -157,7 +156,6 @@ export const Table = React.memo((props: Props) => {
   const { useState } = useMountedState();
 
   const { gameID } = useParams();
-  const { chat, clearChat } = useChatStoreContext();
   const {
     gameContext: examinableGameContext,
   } = useExaminableGameContextStoreContext();
@@ -260,7 +258,6 @@ export const Table = React.memo((props: Props) => {
       });
 
     return () => {
-      clearChat();
       setGameInfo(defaultGameInfo);
       message.destroy('board-messages');
     };
@@ -507,10 +504,9 @@ export const Table = React.memo((props: Props) => {
             )}
           </Card>
           <Chat
-            chatEntities={chat}
             sendChat={props.sendChat}
-            sendChannel={`chat.${isObserver ? 'gametv' : 'game'}.${gameID}`}
-            description={isObserver ? 'Observer chat' : 'Game chat'}
+            defaultChannel={`chat.${isObserver ? 'gametv' : 'game'}.${gameID}`}
+            defaultDescription={isObserver ? 'Observer chat' : 'Game chat'}
             presences={presences}
             peopleOnlineContext={peopleOnlineContext}
           />

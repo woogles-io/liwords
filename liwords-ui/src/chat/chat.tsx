@@ -5,19 +5,23 @@ import { ChatEntity } from './chat_entity';
 import {
   ChatEntityObj,
   PresenceEntity,
+  useChatStoreContext,
   useLoginStateStoreContext,
 } from '../store/store';
+import { LeftOutlined } from '@ant-design/icons';
 import './chat.scss';
 import { Presences } from './presences';
+import { ChatChannels } from './chat_channels';
+import axios from 'axios';
+import { toAPIUrl } from '../api/api';
 
 const { TabPane } = Tabs;
 
 type Props = {
   peopleOnlineContext: (n: number) => string; // should return "1 person" or "2 people"
-  chatEntities: Array<ChatEntityObj> | undefined;
   sendChat: (msg: string, chan: string) => void;
-  sendChannel: string;
-  description: string;
+  defaultChannel: string;
+  defaultDescription: string;
   presences: { [uuid: string]: PresenceEntity };
   DISCONNECT?: () => void;
   highlight?: Array<string>;
@@ -29,6 +33,7 @@ export const Chat = React.memo((props: Props) => {
   const { loggedIn, userID } = loginState;
   const [curMsg, setCurMsg] = useState('');
   const [hasScroll, setHasScroll] = useState(false);
+  const [showChannels, setShowChannels] = useState(false);
   const [selectedChatTab, setSelectedChatTab] = useState('CHAT');
   const [presenceVisible, setPresenceVisible] = useState(false);
   const presenceCount = Object.keys(props.presences).length;
@@ -52,8 +57,11 @@ export const Chat = React.memo((props: Props) => {
 
   // Chat auto-scrolls when the last entity is visible.
   const [hasUnreadChat, setHasUnreadChat] = useState(false);
+  const { chat: chatEntities, clearChat, addChats } = useChatStoreContext();
   const chatTab = selectedChatTab === 'CHAT' ? tabContainerElement : null;
   const [chatAutoScroll, setChatAutoScroll] = useState(true);
+  const [channel, setChannel] = useState(props.defaultChannel);
+  const [description, setDescription] = useState(props.defaultDescription);
   const doChatAutoScroll = useCallback(() => {
     if (chatAutoScroll && chatTab) {
       const desiredScrollTop = chatTab.scrollHeight - chatTab.clientHeight;
@@ -75,18 +83,17 @@ export const Chat = React.memo((props: Props) => {
       }
       doChatAutoScroll();
     }
-    // Not sure if props.chatEntities should be a dependency.
-  }, [chatTab, doChatAutoScroll, props.chatEntities]);
+  }, [chatTab, doChatAutoScroll, chatEntities]);
 
   useEffect(() => {
     if (chatTab) {
-      // chatEntities changed. Assume it is because something was added.
+      // chat entities changed. Assume it is because something was added.
       // Mark as new if the newest things are unseen.
       setHasUnreadChat(
         chatTab.scrollTop < chatTab.scrollHeight - chatTab.clientHeight
       );
     }
-  }, [chatTab, props.chatEntities]);
+  }, [chatTab, chatEntities]);
 
   // When window is shrunk, auto-scroll may be enabled. This is one-way.
   // Hiding bookmarks bar or downloaded files bar should keep it enabled.
@@ -106,6 +113,16 @@ export const Chat = React.memo((props: Props) => {
       window.removeEventListener('resize', enableChatAutoScroll);
     };
   }, [enableChatAutoScroll]);
+
+  useEffect(() => {
+    axios.post(
+      toAPIUrl('user_service.SocializeService', 'GetChatsForChannel'),
+      {
+        channel: channel,
+      },
+      { withCredentials: true }
+    );
+  }, [channel]);
 
   // When user is scrolling, auto-scroll may be enabled or disabled.
   // This handler is set through onScroll.
@@ -134,7 +151,7 @@ export const Chat = React.memo((props: Props) => {
 
   const entities = useMemo(
     () =>
-      props.chatEntities?.map((ent) => {
+      chatEntities?.map((ent) => {
         const anon = ent.senderId ? !knownUsers.includes(ent.senderId) : true;
         const specialSender = props.highlight
           ? props.highlight.includes(ent.sender)
@@ -147,7 +164,7 @@ export const Chat = React.memo((props: Props) => {
             senderId={ent.senderId}
             message={ent.message}
             channel={ent.channel}
-            sendChannel={props.sendChannel}
+            sendChannel={channel}
             timestamp={ent.timestamp}
             anonymous={anon}
             highlight={specialSender}
@@ -155,13 +172,7 @@ export const Chat = React.memo((props: Props) => {
           />
         );
       }),
-    [
-      knownUsers,
-      props.chatEntities,
-      props.highlight,
-      sendPrivateMessage,
-      props.sendChannel,
-    ]
+    [knownUsers, chatEntities, props.highlight, sendPrivateMessage, channel]
   );
 
   const handleTabClick = useCallback((key) => {
@@ -188,13 +199,13 @@ export const Chat = React.memo((props: Props) => {
         if (!loggedIn) {
           return;
         }
-        propsSendChat(msg, props.sendChannel);
+        propsSendChat(msg, channel);
         // This may not be a good idea. User will miss unread messages.
         setChatAutoScroll(true);
         doChatAutoScroll();
       }
     },
-    [curMsg, doChatAutoScroll, loggedIn, propsSendChat, props.sendChannel]
+    [curMsg, doChatAutoScroll, loggedIn, propsSendChat, channel]
   );
 
   return (
@@ -205,55 +216,75 @@ export const Chat = React.memo((props: Props) => {
           It's not the same as the users in this current chat group.
          */}
         <TabPane tab={<>Players{/* Notification dot */}</>} key="PLAYERS">
-          Coming soon! This will be a list of friends and other players to chat
-          with.
+          Coming soon! This will be your friends list.
         </TabPane>
         <TabPane tab="Chat" key="CHAT">
-          <div className={`chat-context${hasScroll ? ' scrolling' : ''}`}>
-            <p>
-              {props.description}
-              {hasUnreadChat && ' •'}
-            </p>
-            {presenceCount ? (
-              <>
-                <p className="presence-count">
-                  <span>{props.peopleOnlineContext(presenceCount)}</span>
-                  {presenceVisible ? (
-                    <span className="list-trigger" onClick={handleHideList}>
-                      Hide list
-                    </span>
-                  ) : (
-                    <span className="list-trigger" onClick={handleShowList}>
-                      Show list
-                    </span>
-                  )}
+          {showChannels ? (
+            <ChatChannels
+              onChannelSelect={(channel: string, description: string) => {
+                setChannel(channel);
+                setDescription(description);
+                clearChat();
+                setShowChannels(false);
+              }}
+            />
+          ) : (
+            <>
+              <div className={`chat-context${hasScroll ? ' scrolling' : ''}`}>
+                <p
+                  className="breadcrumb"
+                  onClick={() => {
+                    setShowChannels(!showChannels);
+                  }}
+                >
+                  <LeftOutlined /> All Chats
                 </p>
-                {presenceVisible ? (
-                  <p className="presence">
-                    <Presences
-                      players={props.presences}
-                      sendMessage={sendPrivateMessage}
-                    />
-                  </p>
+                <p>
+                  {description}
+                  {hasUnreadChat && ' •'}
+                </p>
+                {presenceCount ? (
+                  <>
+                    <p className="presence-count">
+                      <span>{props.peopleOnlineContext(presenceCount)}</span>
+                      {presenceVisible ? (
+                        <span className="list-trigger" onClick={handleHideList}>
+                          Hide list
+                        </span>
+                      ) : (
+                        <span className="list-trigger" onClick={handleShowList}>
+                          Show list
+                        </span>
+                      )}
+                    </p>
+                    {presenceVisible ? (
+                      <p className="presence">
+                        <Presences
+                          players={props.presences}
+                          sendMessage={sendPrivateMessage}
+                        />
+                      </p>
+                    ) : null}
+                  </>
                 ) : null}
-              </>
-            ) : null}
-          </div>
-          <div
-            className="entities"
-            ref={setTabContainerElement}
-            onScroll={handleChatScrolled}
-          >
-            {entities}
-          </div>
-          <Input
-            placeholder="chat..."
-            disabled={!loggedIn}
-            onKeyDown={onKeyDown}
-            onChange={onChange}
-            value={curMsg}
-            spellCheck={false}
-          />
+              </div>
+              <div
+                className="entities"
+                ref={setTabContainerElement}
+                onScroll={handleChatScrolled}
+              >
+                {entities}
+              </div>
+              <Input
+                placeholder="chat..."
+                disabled={!loggedIn}
+                onKeyDown={onKeyDown}
+                onChange={onChange}
+                value={curMsg}
+                spellCheck={false}
+              />
+            </>
+          )}
           {/* <Button onClick={props.DISCONNECT}>DISCONNECT</Button> */}
         </TabPane>
       </Tabs>

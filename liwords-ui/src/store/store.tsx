@@ -27,6 +27,7 @@ import { PoolFormatType } from '../constants/pool_formats';
 import { LoginState, LoginStateReducer } from './login_state';
 import { EphemeralTile } from '../utils/cwgame/common';
 import { pageSize } from '../tournament/recent_game';
+import { ActiveChatChannels } from '../gen/api/proto/user_service/user_service_pb';
 
 export enum ChatEntityType {
   UserChat,
@@ -97,6 +98,8 @@ type ChatStoreData = {
   addChats: (chats: Array<ChatEntityObj>) => void;
   clearChat: () => void;
   chat: Array<ChatEntityObj>;
+  chatChannels: ActiveChatChannels | undefined;
+  setChatChannels: (chatChannels: ActiveChatChannels) => void;
 };
 
 type PresenceStoreData = {
@@ -228,6 +231,8 @@ const ChatContext = createContext<ChatStoreData>({
   addChats: defaultFunction,
   clearChat: defaultFunction,
   chat: [],
+  chatChannels: undefined,
+  setChatChannels: defaultFunction,
 });
 
 const PresenceContext = createContext<PresenceStoreData>({
@@ -590,6 +595,9 @@ const RealStore = ({ children, ...props }: Props) => {
   const [gameEndMessage, setGameEndMessage] = useState('');
   const [rematchRequest, setRematchRequest] = useState(new MatchRequest());
   const [chat, setChat] = useState(new Array<ChatEntityObj>());
+  const [chatChannels, setChatChannels] = useState<
+    ActiveChatChannels | undefined
+  >(undefined);
   const [excludedPlayers, setExcludedPlayers] = useState(new Set<string>());
   const [presences, setPresences] = useState(
     {} as { [uuid: string]: PresenceEntity }
@@ -732,8 +740,10 @@ const RealStore = ({ children, ...props }: Props) => {
       addChats,
       clearChat,
       chat,
+      chatChannels,
+      setChatChannels,
     }),
-    [addChat, addChats, clearChat, chat]
+    [addChat, addChats, clearChat, chat, chatChannels, setChatChannels]
   );
   const presenceStore = useMemo(
     () => ({

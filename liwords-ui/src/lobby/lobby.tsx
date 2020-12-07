@@ -97,7 +97,6 @@ export const Lobby = (props: Props) => {
   const { useState } = useMountedState();
   const { tournamentID } = useParams();
   const { sendSocketMsg } = props;
-  const { chat } = useChatStoreContext();
   const { loginState } = useLoginStateStoreContext();
   const { presences } = usePresenceStoreContext();
   const { loggedIn, username, userID } = loginState;
@@ -164,14 +163,13 @@ export const Lobby = (props: Props) => {
       <div className="lobby">
         <div className="chat-area">
           <Chat
-            chatEntities={chat}
             sendChat={props.sendChat}
-            sendChannel={
+            defaultChannel={
               !tournamentID
                 ? 'chat.lobby'
                 : `chat.tournament.${tournamentID.toLowerCase()}`
             }
-            description={tournamentID ? 'Tournament chat' : 'Lobby chat'}
+            defaultDescription={tournamentID ? 'Tournament chat' : 'Lobby chat'}
             peopleOnlineContext={peopleOnlineContext}
             presences={presences}
             DISCONNECT={props.DISCONNECT}
