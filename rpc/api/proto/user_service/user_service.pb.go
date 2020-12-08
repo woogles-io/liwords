@@ -1800,8 +1800,9 @@ type ActiveChatChannels_Channel struct {
 
 	Name        string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
 	DisplayName string `protobuf:"bytes,2,opt,name=display_name,json=displayName,proto3" json:"display_name,omitempty"`
-	LastUpdate  int64  `protobuf:"varint,3,opt,name=last_update,json=lastUpdate,proto3" json:"last_update,omitempty"`
-	HasUpdate   bool   `protobuf:"varint,4,opt,name=has_update,json=hasUpdate,proto3" json:"has_update,omitempty"`
+	// last_update is a unix timestamp, in seconds.
+	LastUpdate int64 `protobuf:"varint,3,opt,name=last_update,json=lastUpdate,proto3" json:"last_update,omitempty"`
+	HasUpdate  bool  `protobuf:"varint,4,opt,name=has_update,json=hasUpdate,proto3" json:"has_update,omitempty"`
 }
 
 func (x *ActiveChatChannels_Channel) Reset() {

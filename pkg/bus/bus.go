@@ -516,57 +516,60 @@ func (b *Bus) initRealmInfo(ctx context.Context, evt *pb.InitRealmInfo, connID s
 	// chat.gametv.baz
 	// global.presence (when it comes, we edit this later)
 
-	presenceChan := strings.ReplaceAll(evt.Realm, "-", ".")
-	if !strings.HasPrefix(presenceChan, "chat.") {
-		// presenceChan / presenceStore is only used for chat purposes for now.
-		presenceChan = ""
-	}
+	for _, realm := range evt.Realms {
 
-	if presenceChan != "" {
-		log.Debug().Str("presence-chan", presenceChan).Str("username", username).Msg("SetPresence")
-		b.presenceStore.SetPresence(ctx, evt.UserId, username, anon, presenceChan, connID)
-	}
+		presenceChan := strings.ReplaceAll(realm, "-", ".")
+		if !strings.HasPrefix(presenceChan, "chat.") {
+			// presenceChan / presenceStore is only used for chat purposes for now.
+			presenceChan = ""
+		}
 
-	if evt.Realm == "lobby" {
-		err := b.sendLobbyContext(ctx, evt.UserId, connID)
-		if err != nil {
-			return err
+		if presenceChan != "" {
+			log.Debug().Str("presence-chan", presenceChan).Str("username", username).Msg("SetPresence")
+			b.presenceStore.SetPresence(ctx, evt.UserId, username, anon, presenceChan, connID)
 		}
-	} else if strings.HasPrefix(evt.Realm, "game-") || strings.HasPrefix(evt.Realm, "gametv-") {
-		components := strings.Split(evt.Realm, "-")
-		// Get a sanitized history
-		gameID := components[1]
-		refresher, err := b.gameRefresher(ctx, gameID)
-		if err != nil {
-			return err
-		}
-		err = b.pubToConnectionID(connID, evt.UserId, refresher)
-		if err != nil {
-			return err
-		}
-	} else if strings.HasPrefix(evt.Realm, "tournament-") {
-		err := b.sendTournamentContext(ctx, evt.Realm, evt.UserId, connID)
-		if err != nil {
-			return err
-		}
-	} else if strings.HasPrefix(evt.Realm, "chat-") {
-		chatChan := strings.ReplaceAll(evt.Realm, "-", ".")
-		err = b.sendOldChats(ctx, evt.UserId, chatChan)
-		if err != nil {
-			return err
-		}
-	} else {
-		log.Debug().Interface("evt", evt).Msg("no init realm info")
-	}
 
-	// Get presence
-	if presenceChan != "" {
-		err := b.sendPresenceContext(ctx, evt.UserId, username, anon, presenceChan, connID)
-		if err != nil {
-			return err
+		if realm == "lobby" {
+			err := b.sendLobbyContext(ctx, evt.UserId, connID)
+			if err != nil {
+				return err
+			}
+		} else if strings.HasPrefix(realm, "game-") || strings.HasPrefix(realm, "gametv-") {
+			components := strings.Split(realm, "-")
+			// Get a sanitized history
+			gameID := components[1]
+			refresher, err := b.gameRefresher(ctx, gameID)
+			if err != nil {
+				return err
+			}
+			err = b.pubToConnectionID(connID, evt.UserId, refresher)
+			if err != nil {
+				return err
+			}
+		} else if strings.HasPrefix(realm, "tournament-") {
+			err := b.sendTournamentContext(ctx, realm, evt.UserId, connID)
+			if err != nil {
+				return err
+			}
+		} else if strings.HasPrefix(realm, "chat-") {
+			chatChan := strings.ReplaceAll(realm, "-", ".")
+			err = b.sendOldChats(ctx, evt.UserId, chatChan)
+			if err != nil {
+				return err
+			}
+		} else {
+			log.Debug().Interface("evt", evt).Msg("no init realm info")
 		}
-	}
 
+		// Get presence
+		if presenceChan != "" {
+			err := b.sendPresenceContext(ctx, evt.UserId, username, anon, presenceChan, connID)
+			if err != nil {
+				return err
+			}
+		}
+
+	}
 	return nil
 	// send chat info
 

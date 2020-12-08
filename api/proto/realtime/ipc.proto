@@ -21,6 +21,7 @@ message RegisterRealmResponse {
 // we would like lists of active games, chats, etc; for game realms, we would
 // like the game history.
 message InitRealmInfo {
-  string realm = 1;
+  string realm = 1; // obsolete; remove later
   string user_id = 2;
+  repeated string realms = 3;
 }

@@ -53,7 +53,7 @@ func redisStreamTS(key string) (int64, error) {
 }
 
 // AddChat takes in sender information, the message, and the name of the channel.
-// Additionally, a user-friendly name for the channel should be provided.
+// Additionally, a user-readable name for the channel should be provided.
 func (r *RedisChatStore) AddChat(ctx context.Context, senderUsername, senderUID, msg,
 	channel, channelFriendly string) (int64, error) {
 	conn := r.redisPool.Get()
@@ -95,7 +95,7 @@ func (r *RedisChatStore) AddChat(ctx context.Context, senderUsername, senderUID,
 			key := lcKeyPrefix + user
 			// Update the entry for each latestchannel key for each user in this
 			// private-message channel.
-			_, err := conn.Do("ZADD", key, tsSeconds+LongChannelExpiration, channel+":"+channelFriendly)
+			_, err := conn.Do("ZADD", key, tsSeconds+LongChannelExpiration, channel+"#"+channelFriendly)
 			if err != nil {
 				return 0, err
 			}
@@ -106,7 +106,7 @@ func (r *RedisChatStore) AddChat(ctx context.Context, senderUsername, senderUID,
 		}
 	} else if strings.HasPrefix(channel, "chat.tournament.") {
 		key := lcKeyPrefix + senderUID
-		_, err := conn.Do("ZADD", key, tsSeconds+LongChannelExpiration, channel+":"+channelFriendly)
+		_, err := conn.Do("ZADD", key, tsSeconds+LongChannelExpiration, channel+"#"+channelFriendly)
 		if err != nil {
 			return 0, err
 		}
@@ -188,7 +188,7 @@ func (r *RedisChatStore) LatestChannels(ctx context.Context, count, offset int, 
 	chans := make([]*upb.ActiveChatChannels_Channel, len(vals)>>1)
 	for idx := 0; idx < len(chans); idx++ {
 
-		chanName := strings.Split(vals[idx*2], ":")
+		chanName := strings.SplitN(vals[idx*2], "#", 2)
 		if len(chanName) != 2 {
 			return nil, fmt.Errorf("unexpected channel name: %v", chanName)
 		}

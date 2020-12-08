@@ -882,7 +882,7 @@ type ChatMessage struct {
 	Username string `protobuf:"bytes,1,opt,name=username,proto3" json:"username,omitempty"`
 	Channel  string `protobuf:"bytes,2,opt,name=channel,proto3" json:"channel,omitempty"`
 	Message  string `protobuf:"bytes,3,opt,name=message,proto3" json:"message,omitempty"`
-	// millis.
+	// timestamp is in milliseconds!
 	Timestamp int64  `protobuf:"varint,4,opt,name=timestamp,proto3" json:"timestamp,omitempty"`
 	UserId    string `protobuf:"bytes,5,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
 }
