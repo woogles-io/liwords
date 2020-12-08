@@ -563,14 +563,14 @@ func (b *Bus) initRealmInfo(ctx context.Context, evt *pb.InitRealmInfo, connID s
 
 		// Get presence
 		if presenceChan != "" {
-			err := b.sendPresenceContext(ctx, evt.UserId, username, anon, presenceChan, connID)
+			err := b.sendPresenceContext(ctx, evt.UserId, username, anon,
+				presenceChan, connID)
 			if err != nil {
 				return err
 			}
 		}
-
 	}
-	return nil
+	return b.sendLatestChannels(ctx, evt.UserId, connID)
 	// send chat info
 
 }
@@ -740,10 +740,10 @@ func (b *Bus) sendPresenceContext(ctx context.Context, userID, username string, 
 		return err
 	}
 	// Also send OUR presence to users in this channel.
-	err = b.broadcastPresence(username, userID, anon, []string{presenceChan}, false)
-	if err != nil {
-		return err
-	}
+	return b.broadcastPresence(username, userID, anon, []string{presenceChan}, false)
+}
+
+func (b *Bus) sendLatestChannels(ctx context.Context, userID, connID string) error {
 	// Send user channels with new messages.
 	lastSeen, err := b.presenceStore.LastSeen(ctx, userID)
 	if err != nil {
