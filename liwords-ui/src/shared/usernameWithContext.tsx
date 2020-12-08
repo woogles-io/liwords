@@ -37,7 +37,7 @@ export const UsernameWithContext = (props: UsernameWithContextProps) => {
       {props.userID ? (
         <TheBlocker className="link plain" target={props.userID} tagName="li" />
       ) : null}
-      {!props.omitSendMessage && props.userID ? (
+      {false && !props.omitSendMessage && props.userID ? (
         <li onClick={() => sendMessage(props.userID!, props.username)}>
           Message
         </li>
