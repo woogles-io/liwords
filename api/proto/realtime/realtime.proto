@@ -91,7 +91,8 @@ enum MessageType {
   // We should definitely not be using anywhere close to 255 events, and
   // in order to enforce that I'll be forcing the event type header to just be
   // a byte long.
-
+  USER_ACTIVITY = 36;
+  USER_ACTIVITIES = 37;
   CHAT_CHANNELS = 38;
 }
 
@@ -135,6 +136,26 @@ message UserPresence {
 }
 
 message UserPresences { repeated UserPresence presences = 1; }
+
+message UserActivity {
+  enum Type {
+    // IDLE - chilling, not playing a game, could be chatting/etc.
+    IDLE = 0; PLAYING_OMGWORDS = 1;
+    // IDLE becomes AWAY after some time
+    AWAY = 2;
+    // LEFT_SITE would get sent, but likely not stored.
+    ENTERED_SITE = 3;
+    LEFT_SITE = 4;
+  }
+
+  string user_id = 1;
+  Type activity_type = 2;
+  // corresponds to the activity_type. For example if playing omgwords,
+  // meta would be the game ID.
+  string meta = 3;
+}
+
+message UserActivities { repeated UserActivity activities = 1; }
 
 message SeekRequest {
   GameRequest game_request = 1;
