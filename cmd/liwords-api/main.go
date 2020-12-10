@@ -55,8 +55,6 @@ var (
 	BuildHash = "unknown"
 	// BuildDate is the build date, set by go build flags
 	BuildDate = "unknown"
-	// FEHash is the hash of the front-end build.
-	FEHash = "unknown"
 )
 
 func newPool(addr string) *redis.Pool {

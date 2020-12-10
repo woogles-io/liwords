@@ -68,13 +68,14 @@ jobs:
       - run: yum install -y tar gzip md5sum
       - attach_workspace:
           at: /tmp/liwords-ui
-      - run:
-          command: |
-            UI_HASH=$(find /tmp/liwords-ui/build -type f -exec md5sum {} \; | sort -k 2 | md5sum)
-            echo $UI_HASH
-            sed -i "s:unknown:${UI_HASH}:" /tmp/liwords-ui/build/config.js
-            curl -X POST -H "Content-Type: application/json" -H "X-API-KEY: ${ADMIN_WOOGLES_API_KEY}" https://woogles.io/twirp/config_service.ConfigService/SetFEHash -d '{"hash": "${UI_HASH}"}'
-      - run:
+      - run: >
+          UI_HASH=$(find /tmp/liwords-ui/build -type f -exec md5sum {} \; | sort -k 2 | md5sum) &&
+          echo $UI_HASH &&
+          sed -i "s:unknown:${UI_HASH}:" /tmp/liwords-ui/build/config.js &&
+          curl -X POST -H "Content-Type: application/json"
+            -H "X-API-KEY: ${ADMIN_WOOGLES_API_KEY}"
+            https://woogles.io/twirp/config_service.ConfigService/SetFEHash
+            -d '{"hash": "${UI_HASH}"}'
       - run: >
           md5=`md5sum /tmp/liwords-ui/build/wasm/macondo.wasm | awk '{ print $1 }'` &&
           sed -i "s:macondo.wasm:macondo.${md5}.wasm:" /tmp/liwords-ui/build/config.js &&
