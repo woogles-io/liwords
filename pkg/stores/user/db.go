@@ -36,6 +36,7 @@ type User struct {
 	Password    string `gorm:"type:varchar(128)"`
 	InternalBot bool   `gorm:"default:false;index"`
 	IsAdmin     bool   `gorm:"default:false"`
+	ApiKey      string
 }
 
 // A user profile is in a one-to-one relationship with a user. It is the
@@ -92,7 +93,8 @@ func NewDBStore(dbURL string) (*DBStore, error) {
 	db.AutoMigrate(&User{}, &profile{}, &following{}, &blocking{})
 	db.Model(&User{}).
 		AddUniqueIndex("username_idx", "lower(username)").
-		AddUniqueIndex("email_idx", "lower(email)")
+		AddUniqueIndex("email_idx", "lower(email)").
+		AddUniqueIndex("api_key_idx", "api_key")
 
 	// Can't get GORM to auto create these foreign keys, so do it myself /shrug
 	db.Model(&profile{}).AddForeignKey("user_id", "users(id)", "RESTRICT", "RESTRICT")
@@ -223,6 +225,31 @@ func (s *DBStore) GetByUUID(ctx context.Context, uuid string) (*entity.User, err
 			Profile:  profile,
 			IsAdmin:  u.IsAdmin,
 		}
+	}
+
+	return entu, nil
+}
+
+// GetByAPIKey gets a user by api key. It does not try to fetch the profile. We only
+// call this for API functions where we care about access levels, etc.
+func (s *DBStore) GetByAPIKey(ctx context.Context, apikey string) (*entity.User, error) {
+	if apikey == "" {
+		return nil, errors.New("api-key is blank")
+	}
+	u := &User{}
+	if result := s.db.Where("api_key = ?", apikey).First(u); result.Error != nil {
+		return nil, result.Error
+	}
+
+	entu := &entity.User{
+		ID:        u.ID,
+		Username:  u.Username,
+		UUID:      u.UUID,
+		Email:     u.Email,
+		Password:  u.Password,
+		Anonymous: false,
+		IsBot:     u.InternalBot,
+		IsAdmin:   u.IsAdmin,
 	}
 
 	return entu, nil

@@ -55,6 +55,8 @@ var (
 	BuildHash = "unknown"
 	// BuildDate is the build date, set by go build flags
 	BuildDate = "unknown"
+	// FEHash is the hash of the front-end build.
+	FEHash = "unknown"
 )
 
 func newPool(addr string) *redis.Pool {
@@ -105,6 +107,7 @@ func main() {
 		hlog.NewHandler(log.With().Str("service", "liwords").Logger()),
 		apiserver.WithCookiesMiddleware,
 		apiserver.AuthenticationMiddlewareGenerator(sessionStore),
+		apiserver.APIKeyMiddlewareGenerator(),
 		hlog.AccessHandler(func(r *http.Request, status int, size int, d time.Duration) {
 			path := strings.Split(r.URL.Path, "/")
 			method := path[len(path)-1]
@@ -132,7 +135,7 @@ func main() {
 		panic(err)
 	}
 
-	authenticationService := auth.NewAuthenticationService(userStore, sessionStore, cfg.SecretKey, cfg.MailgunKey, BuildHash)
+	authenticationService := auth.NewAuthenticationService(userStore, sessionStore, configStore, cfg.SecretKey, cfg.MailgunKey)
 	registrationService := registration.NewRegistrationService(userStore)
 	gameService := gameplay.NewGameService(userStore, gameStore)
 	profileService := pkguser.NewProfileService(userStore)
