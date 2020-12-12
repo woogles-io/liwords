@@ -94,7 +94,7 @@ func NewDBStore(dbURL string) (*DBStore, error) {
 	db.Model(&User{}).
 		AddUniqueIndex("username_idx", "lower(username)").
 		AddUniqueIndex("email_idx", "lower(email)").
-		AddUniqueIndex("api_key_idx", "api_key")
+		AddIndex("api_key_idx", "api_key")
 
 	// Can't get GORM to auto create these foreign keys, so do it myself /shrug
 	db.Model(&profile{}).AddForeignKey("user_id", "users(id)", "RESTRICT", "RESTRICT")
