@@ -15,6 +15,7 @@ import {
 import { decodeToMsg } from '../utils/protobuf';
 import { toAPIUrl } from '../api/api';
 import { ActionType } from '../actions/actions';
+import { reloadAction } from './reload';
 
 const getSocketURI = (): string => {
   const loc = window.location;
@@ -119,15 +120,14 @@ export const LiwordsSocket = (props: {
           front_end_version
         );
 
-        // bring back when we fix circleci sed
-        /*
-        if (front_end_version !== "") {
-          message.warning(
-            'Woogles has been updated. Please refresh this page at your leisure.',
-            0
-          );
-
-          } */
+        if (front_end_version !== '') {
+          message.warning({
+            content: reloadAction,
+            className: 'board-hud-message',
+            key: 'reload-warning',
+            duration: 0,
+          });
+        }
       }
 
       return ret;
