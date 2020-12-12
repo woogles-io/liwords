@@ -11,6 +11,7 @@ type Store interface {
 	Get(ctx context.Context, username string) (*entity.User, error)
 	GetByUUID(ctx context.Context, uuid string) (*entity.User, error)
 	GetByEmail(ctx context.Context, email string) (*entity.User, error)
+	GetByAPIKey(ctx context.Context, apiKey string) (*entity.User, error)
 	// Username by UUID. Good for fast lookups.
 	Username(ctx context.Context, uuid string) (string, bool, error)
 	New(ctx context.Context, user *entity.User) error

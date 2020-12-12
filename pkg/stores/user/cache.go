@@ -14,6 +14,7 @@ type backingStore interface {
 	Get(ctx context.Context, username string) (*entity.User, error)
 	GetByUUID(ctx context.Context, uuid string) (*entity.User, error)
 	GetByEmail(ctx context.Context, email string) (*entity.User, error)
+	GetByAPIKey(ctx context.Context, apikey string) (*entity.User, error)
 	// Username by UUID. Good for fast lookups.
 	Username(ctx context.Context, uuid string) (string, bool, error)
 	New(ctx context.Context, user *entity.User) error
@@ -84,6 +85,10 @@ func (c *Cache) GetByUUID(ctx context.Context, uuid string) (*entity.User, error
 
 func (c *Cache) GetByEmail(ctx context.Context, email string) (*entity.User, error) {
 	return c.backing.GetByEmail(ctx, email)
+}
+
+func (c *Cache) GetByAPIKey(ctx context.Context, apikey string) (*entity.User, error) {
+	return c.backing.GetByAPIKey(ctx, apikey)
 }
 
 func (c *Cache) Username(ctx context.Context, uuid string) (string, bool, error) {
