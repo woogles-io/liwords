@@ -259,6 +259,7 @@ export const BoardPanel = React.memo((props: Props) => {
       if (!moveEvt) {
         return;
       }
+      moveEvt.setEventIndex(gameContext.turns.length);
       sendSocketMsg(
         encodeToSocketFmt(
           MessageType.CLIENT_GAMEPLAY_EVENT,
@@ -271,6 +272,7 @@ export const BoardPanel = React.memo((props: Props) => {
     },
     [
       gameContext.nickToPlayerOrder,
+      gameContext.turns,
       examinableGameContext.onturn,
       isExamining,
       isMyTurn,

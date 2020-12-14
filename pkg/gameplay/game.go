@@ -26,6 +26,7 @@ import (
 	"github.com/domino14/liwords/pkg/config"
 	"github.com/domino14/liwords/pkg/entity"
 	"github.com/domino14/liwords/pkg/stats"
+	gstore "github.com/domino14/liwords/pkg/stores/game"
 	"github.com/domino14/liwords/pkg/tournament"
 	"github.com/domino14/liwords/pkg/user"
 	gs "github.com/domino14/liwords/rpc/api/proto/game_service"
@@ -34,6 +35,7 @@ import (
 
 var (
 	errGameNotActive   = errors.New("game is not currently active")
+	errGameSyncError   = errors.New("game synchronization error")
 	errNotOnTurn       = errors.New("player not on turn")
 	errTimeDidntRunOut = errors.New("got time ran out, but it did not actually")
 )
@@ -454,6 +456,20 @@ func HandleEvent(ctx context.Context, gameStore GameStore, userStore user.Store,
 func handleEventAfterLockingGame(ctx context.Context, gameStore GameStore, userStore user.Store,
 	listStatStore stats.ListStatStore, tournamentStore tournament.TournamentStore, userID string, cge *pb.ClientGameplayEvent,
 	entGame *entity.Game) (*entity.Game, error) {
+
+	var err error
+	if int(cge.EventIndex) != len(entGame.History().Events) {
+		// The cache is out of date. We need to pull the game from cache
+		entGame, err = gameStore.(*gstore.Cache).GetFromBacking(ctx, cge.GameId)
+		if err != nil {
+			return nil, err
+		}
+		// Don't need to lock this game, as this particular instance is not
+		// shared (GetFromBacking allocates a whole new game)
+		if int(cge.EventIndex) != len(entGame.History().Events) {
+			return entGame, errGameSyncError
+		}
+	}
 
 	if entGame.Game.Playing() == macondopb.PlayState_GAME_OVER {
 		return entGame, errGameNotActive

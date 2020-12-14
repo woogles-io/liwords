@@ -22,8 +22,6 @@ services:
     depends_on: ["db", "proxy", "nats", "socket", "redis"]
     networks:
       - aeronet
-    ports:
-      - "8001:8001"
     labels:
       - "traefik.http.routers.liwords.rule=Host(`liwords.localhost`) && PathPrefix(`/twirp/`)"
       - "traefik.http.routers.liwords.entrypoints=web"
@@ -61,8 +59,6 @@ services:
     command: ["go", "run", "-race", "cmd/socketsrv/main.go"]
     networks:
       - aeronet
-    ports:
-      - "8087:8087"
     labels:
       - "traefik.http.routers.liwords-socket.rule=Host(`liwords.localhost`) && PathPrefix(`/ws`)"
       - "traefik.http.routers.liwords-socket.entrypoints=web"
@@ -141,3 +137,7 @@ volumes:
     external: false
   redis-data-volume:
     external: false
+
+# bringing up multiple servers, e.g.
+# docker-compose up --scale socket=2
+# docker-compose up --scale app=2

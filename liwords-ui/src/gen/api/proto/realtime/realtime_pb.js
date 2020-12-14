@@ -6773,7 +6773,8 @@ proto.liwords.ClientGameplayEvent.toObject = function(includeInstance, msg) {
     type: jspb.Message.getFieldWithDefault(msg, 1, 0),
     gameId: jspb.Message.getFieldWithDefault(msg, 2, ""),
     positionCoords: jspb.Message.getFieldWithDefault(msg, 3, ""),
-    tiles: jspb.Message.getFieldWithDefault(msg, 4, "")
+    tiles: jspb.Message.getFieldWithDefault(msg, 4, ""),
+    eventIndex: jspb.Message.getFieldWithDefault(msg, 5, 0)
   };
 
   if (includeInstance) {
@@ -6825,6 +6826,10 @@ proto.liwords.ClientGameplayEvent.deserializeBinaryFromReader = function(msg, re
     case 4:
       var value = /** @type {string} */ (reader.readString());
       msg.setTiles(value);
+      break;
+    case 5:
+      var value = /** @type {number} */ (reader.readInt32());
+      msg.setEventIndex(value);
       break;
     default:
       reader.skipField();
@@ -6880,6 +6885,13 @@ proto.liwords.ClientGameplayEvent.serializeBinaryToWriter = function(message, wr
   if (f.length > 0) {
     writer.writeString(
       4,
+      f
+    );
+  }
+  f = message.getEventIndex();
+  if (f !== 0) {
+    writer.writeInt32(
+      5,
       f
     );
   }
@@ -6966,6 +6978,24 @@ proto.liwords.ClientGameplayEvent.prototype.getTiles = function() {
  */
 proto.liwords.ClientGameplayEvent.prototype.setTiles = function(value) {
   return jspb.Message.setProto3StringField(this, 4, value);
+};
+
+
+/**
+ * optional int32 event_index = 5;
+ * @return {number}
+ */
+proto.liwords.ClientGameplayEvent.prototype.getEventIndex = function() {
+  return /** @type {number} */ (jspb.Message.getFieldWithDefault(this, 5, 0));
+};
+
+
+/**
+ * @param {number} value
+ * @return {!proto.liwords.ClientGameplayEvent} returns this
+ */
+proto.liwords.ClientGameplayEvent.prototype.setEventIndex = function(value) {
+  return jspb.Message.setProto3IntField(this, 5, value);
 };
 
 

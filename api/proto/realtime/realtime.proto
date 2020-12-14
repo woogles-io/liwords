@@ -326,6 +326,9 @@ message ClientGameplayEvent {
   // tiles that are being played (or exchanged). The `.` character is used
   // for thru, and lowercase characters are used for blanks.
   string tiles = 4;
+  // event_index is a sequence number. If the server detects that we are
+  // out of sync it'll bust its cache.
+  int32 event_index = 5;
 }
 
 message TimedOut {
@@ -349,7 +352,7 @@ enum TournamentGameResult {
 // Communication
 
 // When we go to a new path in our SPA, we send a JoinPath. When we leave the
-// path, we send an Unjoin realm. d
+// path, we send an Unjoin realm.
 message JoinPath { string path = 1; }
 
 message UnjoinRealm {}

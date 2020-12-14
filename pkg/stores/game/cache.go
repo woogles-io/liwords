@@ -120,6 +120,10 @@ func (c *Cache) Get(ctx context.Context, id string) (*entity.Game, error) {
 
 }
 
+func (c *Cache) GetFromBacking(ctx context.Context, id string) (*entity.Game, error) {
+	return c.backing.Get(ctx, id)
+}
+
 // Just call the DB implementation for now
 func (c *Cache) GetRematchStreak(ctx context.Context, originalRequestId string) (*gs.GameInfoResponses, error) {
 	return c.backing.GetRematchStreak(ctx, originalRequestId)

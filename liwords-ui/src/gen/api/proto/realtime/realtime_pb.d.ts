@@ -864,6 +864,9 @@ export class ClientGameplayEvent extends jspb.Message {
   getTiles(): string;
   setTiles(value: string): void;
 
+  getEventIndex(): number;
+  setEventIndex(value: number): void;
+
   serializeBinary(): Uint8Array;
   toObject(includeInstance?: boolean): ClientGameplayEvent.AsObject;
   static toObject(includeInstance: boolean, msg: ClientGameplayEvent): ClientGameplayEvent.AsObject;
@@ -880,6 +883,7 @@ export namespace ClientGameplayEvent {
     gameId: string,
     positionCoords: string,
     tiles: string,
+    eventIndex: number,
   }
 
   export interface EventTypeMap {
