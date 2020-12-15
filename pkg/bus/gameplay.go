@@ -192,17 +192,25 @@ func (b *Bus) readyForGame(ctx context.Context, evt *pb.ReadyForGame, userID str
 		return errors.New("game is over")
 	}
 
+	var readyID int
+
 	if g.History().Players[0].UserId == userID {
-		g.PlayersReady[0] = true
+		readyID = 0
 	} else if g.History().Players[1].UserId == userID {
-		g.PlayersReady[1] = true
+		readyID = 1
 	} else {
 		log.Error().Str("userID", userID).Str("gameID", evt.GameId).Msg("not-in-game")
 		return errors.New("ready for game but not in game")
 	}
 
+	rf, err := b.gameStore.SetReady(ctx, evt.GameId, readyID)
+	if err != nil {
+		return err
+	}
+
 	// Start the game if both players are ready (or if it's a bot game).
-	if g.PlayersReady[0] && g.PlayersReady[1] || g.GameReq.PlayerVsBot {
+	// readyflag will be (01 | 10) = 3 for two players.
+	if rf == 3 || g.GameReq.PlayerVsBot {
 		err = gameplay.StartGame(ctx, b.gameStore, b.gameEventChan, g.GameID())
 		if err != nil {
 			log.Err(err).Msg("starting-game")

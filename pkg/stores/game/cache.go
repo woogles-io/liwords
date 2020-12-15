@@ -27,6 +27,7 @@ type backingStore interface {
 	Count(ctx context.Context) (int64, error)
 	SetGameEventChan(ch chan<- *entity.EventWrapper)
 	Disconnect()
+	SetReady(ctx context.Context, gid string, pidx int) (int, error)
 }
 
 const (
@@ -210,4 +211,8 @@ func (c *Cache) CachedCount(ctx context.Context) int {
 
 func (c *Cache) Disconnect() {
 	c.backing.Disconnect()
+}
+
+func (c *Cache) SetReady(ctx context.Context, gid string, pidx int) (int, error) {
+	return c.backing.SetReady(ctx, gid, pidx)
 }

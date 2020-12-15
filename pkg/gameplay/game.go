@@ -53,6 +53,7 @@ type GameStore interface {
 	CachedCount(ctx context.Context) int
 	SetGameEventChan(c chan<- *entity.EventWrapper)
 	Unload(context.Context, string)
+	SetReady(ctx context.Context, gid string, pidx int) (int, error)
 }
 
 type ConfigCtxKey string
