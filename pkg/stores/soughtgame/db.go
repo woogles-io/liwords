@@ -59,14 +59,14 @@ func (s *DBStore) sgFromDBObj(g *soughtgame) (*entity.SoughtGame, error) {
 		if err != nil {
 			return nil, err
 		}
-		return entity.NewSoughtGame(sr), nil
+		return &entity.SoughtGame{SeekRequest: sr}, nil
 	case typeMatch:
 		mr := &pb.MatchRequest{}
 		err = json.Unmarshal(g.Request, mr)
 		if err != nil {
 			return nil, err
 		}
-		return entity.NewMatchRequest(mr), nil
+		return &entity.SoughtGame{MatchRequest: mr}, nil
 	}
 	log.Error().Str("seekType", g.Type).Str("id", g.UUID).Msg("unexpected-seek-type")
 	return nil, errors.New("unknown error getting seek or match")
@@ -145,6 +145,9 @@ func (s *DBStore) Delete(ctx context.Context, id string) error {
 func (s *DBStore) DeleteForUser(ctx context.Context, userID string) (*entity.SoughtGame, error) {
 	sg, err := s.getBySeekerID(ctx, userID)
 	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, nil
+		}
 		return nil, err
 	}
 	return sg, s.deleteSoughtGame(ctx, sg.ID())
@@ -154,6 +157,9 @@ func (s *DBStore) DeleteForUser(ctx context.Context, userID string) (*entity.Sou
 func (s *DBStore) DeleteForConnID(ctx context.Context, connID string) (*entity.SoughtGame, error) {
 	sg, err := s.GetByConnID(ctx, connID)
 	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, nil
+		}
 		return nil, err
 	}
 	return sg, s.deleteSoughtGame(ctx, sg.ID())
@@ -167,7 +173,6 @@ func (s *DBStore) ListOpenSeeks(ctx context.Context) ([]*entity.SoughtGame, erro
 
 	ctxDB := s.db.WithContext(ctx)
 	if result := ctxDB.Table("soughtgames").
-		Select("request").
 		Where("type = ?", typeSeek).Scan(&games); result.Error != nil {
 
 		return nil, result.Error
@@ -185,10 +190,8 @@ func (s *DBStore) ListOpenSeeks(ctx context.Context) ([]*entity.SoughtGame, erro
 // ListOpenMatches lists all open match requests for receiverID, in tourneyID (optional)
 func (s *DBStore) ListOpenMatches(ctx context.Context, receiverID, tourneyID string) ([]*entity.SoughtGame, error) {
 	var games []soughtgame
-
 	ctxDB := s.db.WithContext(ctx)
 	if result := ctxDB.Table("soughtgames").
-		Select("request").
 		Where("receiver = ? AND type = ?", receiverID, typeMatch).Scan(&games); result.Error != nil {
 
 		return nil, result.Error
