@@ -54,6 +54,7 @@ type GameStore interface {
 	Count(ctx context.Context) (int64, error)
 	SetGameEventChan(c chan<- *entity.EventWrapper)
 	Unload(context.Context, string)
+	SetReady(ctx context.Context, gid string, pidx int) (int, error)
 }
 
 type ConfigCtxKey string

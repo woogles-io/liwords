@@ -57,6 +57,8 @@ type game struct {
 	Player1ID uint `gorm:"foreignKey"`
 	Player1   user.User
 
+	ReadyFlag uint // When both players are ready, this game starts.
+
 	Timers datatypes.JSON // A JSON blob containing the game timers.
 
 	Started       bool
@@ -472,6 +474,18 @@ func (s *DBStore) ListAllIDs(ctx context.Context) ([]string, error) {
 	}
 
 	return ids, result.Error
+}
+
+func (s *DBStore) SetReady(ctx context.Context, gid string, pidx int) (int, error) {
+	type f struct {
+		ReadyFlag int
+	}
+	var rf f
+
+	result := s.db.Raw(`update games set ready_flag = ready_flag | ? where uuid = ?
+		returning ready_flag`, 1<<pidx, gid).Scan(&rf)
+
+	return rf.ReadyFlag, result.Error
 }
 
 func (s *DBStore) toDBObj(g *entity.Game) (*game, error) {
