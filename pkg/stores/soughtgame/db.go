@@ -141,6 +141,19 @@ func (s *DBStore) Delete(ctx context.Context, id string) error {
 	return s.deleteSoughtGame(ctx, id)
 }
 
+// ExpireOld expires old seek requests. Usually this shouldn't be necessary
+// unless something weird happens.
+func (s *DBStore) ExpireOld(ctx context.Context) error {
+	ctxDB := s.db.WithContext(ctx)
+	longAgo := time.Now().Add(time.Hour * -1)
+
+	result := ctxDB.Where("created_at <", longAgo).Delete(&soughtgame{})
+	if result.Error == nil && result.RowsAffected > 0 {
+		log.Info().Int("rows-affected", int(result.RowsAffected)).Msg("expire-old-seeks")
+	}
+	return result.Error
+}
+
 // DeleteForUser deletes the game by seeker ID.
 func (s *DBStore) DeleteForUser(ctx context.Context, userID string) (*entity.SoughtGame, error) {
 	sg, err := s.getBySeekerID(ctx, userID)
