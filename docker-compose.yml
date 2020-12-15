@@ -1,7 +1,7 @@
 version: "3"
 
 services:
-  app:
+  app: &appsetup
     build:
       context: .
       dockerfile: Dockerfile-dev
@@ -27,6 +27,8 @@ services:
       - "traefik.http.routers.liwords.entrypoints=web"
       - "traefik.http.services.liwords.loadbalancer.server.port=8001"
       - traefik.enable=true
+  # Scaling.
+  app2: *appsetup
 
   bot:
     build:
@@ -46,7 +48,7 @@ services:
     networks:
       - aeronet
 
-  socket:
+  socket: &socketsetup
     build:
       context: ../liwords-socket
       dockerfile: Dockerfile-dev
@@ -64,6 +66,8 @@ services:
       - "traefik.http.routers.liwords-socket.entrypoints=web"
       - "traefik.http.services.liwords-socket.loadbalancer.server.port=8087"
       - traefik.enable=true
+
+  socket2: *socketsetup
 
   proxy:
     image: "traefik:v2.2"

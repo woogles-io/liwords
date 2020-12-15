@@ -145,9 +145,8 @@ func (s *DBStore) Delete(ctx context.Context, id string) error {
 // unless something weird happens.
 func (s *DBStore) ExpireOld(ctx context.Context) error {
 	ctxDB := s.db.WithContext(ctx)
-	longAgo := time.Now().Add(time.Hour * -1)
 
-	result := ctxDB.Where("created_at <", longAgo).Delete(&soughtgame{})
+	result := ctxDB.Where("created_at < now() - interval '1 hour'").Delete(&soughtgame{})
 	if result.Error == nil && result.RowsAffected > 0 {
 		log.Info().Int("rows-affected", int(result.RowsAffected)).Msg("expire-old-seeks")
 	}
@@ -203,24 +202,22 @@ func (s *DBStore) ListOpenSeeks(ctx context.Context) ([]*entity.SoughtGame, erro
 // ListOpenMatches lists all open match requests for receiverID, in tourneyID (optional)
 func (s *DBStore) ListOpenMatches(ctx context.Context, receiverID, tourneyID string) ([]*entity.SoughtGame, error) {
 	var games []soughtgame
+	var err error
 	ctxDB := s.db.WithContext(ctx)
-	if result := ctxDB.Table("soughtgames").
-		Where("receiver = ? AND type = ?", receiverID, typeMatch).Scan(&games); result.Error != nil {
-
+	query := ctxDB.Table("soughtgames").
+		Where("receiver = ? AND type = ?", receiverID, typeMatch)
+	if tourneyID != "" {
+		query = query.Where("request->>'tournament_id' = ?", tourneyID)
+	}
+	if result := query.Scan(&games); result.Error != nil {
 		return nil, result.Error
 	}
-	entGames := []*entity.SoughtGame{}
-	for _, g := range games {
-		sg, err := s.sgFromDBObj(&g)
+	entGames := make([]*entity.SoughtGame, len(games))
+	for idx, g := range games {
+		entGames[idx], err = s.sgFromDBObj(&g)
 		if err != nil {
 			return nil, err
 		}
-		// XXX: We can probably encode this condition in the query above as
-		// we're using JSONB:
-		if tourneyID != "" && sg.MatchRequest.TournamentId != tourneyID {
-			continue
-		}
-		entGames = append(entGames, sg)
 	}
 	return entGames, nil
 }

@@ -460,6 +460,7 @@ func handleEventAfterLockingGame(ctx context.Context, gameStore GameStore, userS
 	var err error
 	if int(cge.EventIndex) != len(entGame.History().Events) {
 		// The cache is out of date. We need to pull the game from cache
+		log.Info().Msg("cache-out-of-date")
 		entGame, err = gameStore.(*gstore.Cache).GetFromBacking(ctx, cge.GameId)
 		if err != nil {
 			return nil, err
