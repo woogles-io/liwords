@@ -131,7 +131,7 @@ type TentativePlayData = {
   placedTiles: Set<EphemeralTile>;
   displayedRack: string;
   setPlacedTilesTempScore: (s: number | undefined) => void;
-  setPlacedTiles: React.Dispatch<React.SetStateAction<Set<EphemeralTile>>>;
+  setPlacedTiles: (t: Set<EphemeralTile>) => void;
   setDisplayedRack: (l: string) => void;
 };
 
