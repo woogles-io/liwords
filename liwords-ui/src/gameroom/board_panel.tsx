@@ -362,9 +362,7 @@ export const BoardPanel = React.memo((props: Props) => {
   const lastExaminedTurnRef = useRef<number>();
   const lastLettersRef = useRef<string>();
   const lastMyTurnRef = useRef<boolean>();
-  const currentExaminedTurn = isExamining
-    ? examinableGameContext.turns.length
-    : -1;
+  const currentExaminedTurn = examinableGameContext.turns.length;
 
   // Need to sync state to props here whenever the board changes.
   useEffect(() => {
