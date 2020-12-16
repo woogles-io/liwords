@@ -426,9 +426,22 @@ export const BoardPanel = React.memo((props: Props) => {
     }
     if (fullReset) {
       setDisplayedRack(props.currentRack);
-      setPlacedTiles(new Set<EphemeralTile>());
+      setPlacedTiles((oldPlacedTiles) =>
+        oldPlacedTiles.size === 0 ? oldPlacedTiles : new Set<EphemeralTile>()
+      );
       setPlacedTilesTempScore(0);
-      setArrowProperties({ row: 0, col: 0, horizontal: false, show: false });
+      const newArrowProperties = {
+        row: 0,
+        col: 0,
+        horizontal: false,
+        show: false,
+      };
+      setArrowProperties((oldArrowProperties) =>
+        JSON.stringify(oldArrowProperties) ===
+        JSON.stringify(newArrowProperties)
+          ? oldArrowProperties
+          : newArrowProperties
+      );
     }
     lastLettersRef.current = props.board.letters;
     lastMyTurnRef.current = nowMyTurn;
