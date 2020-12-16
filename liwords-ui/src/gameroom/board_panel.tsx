@@ -426,10 +426,14 @@ export const BoardPanel = React.memo((props: Props) => {
         hookChanged(row, col, +1, 0) ||
         hookChanged(row, col, 0, -1) ||
         hookChanged(row, col, 0, +1);
+      // If no tiles have been placed, but placement arrow is shown,
+      // reset based on if that position is affected.
+      // This avoids having the placement arrow behind a tile.
       if (
-        Array.from(dep.placedTiles).some(({ row, col }) =>
-          placedTileAffected(row, col)
-        )
+        (dep.placedTiles.size === 0 && arrowProperties.show
+          ? [arrowProperties as { row: number; col: number }]
+          : Array.from(dep.placedTiles)
+        ).some(({ row, col }) => placedTileAffected(row, col))
       ) {
         fullReset = true;
       }
@@ -442,6 +446,7 @@ export const BoardPanel = React.memo((props: Props) => {
     }
     lastLettersRef.current = props.board.letters;
   }, [
+    arrowProperties,
     isExamining,
     props.board.letters,
     props.currentRack,
