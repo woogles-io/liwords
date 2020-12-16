@@ -359,48 +359,39 @@ export const BoardPanel = React.memo((props: Props) => {
     setDisplayedRack(shuffleString(displayedRack));
   }, [setDisplayedRack, displayedRack]);
 
+  const lastExaminedTurnRef = useRef<number>();
   const lastLettersRef = useRef<string>();
-  const readOnlyEffectDependenciesRef = useRef<{
-    displayedRack: string;
-    isMyTurn: () => boolean;
-    placedTiles: Set<EphemeralTile>;
-    dim: number;
-  }>();
-  readOnlyEffectDependenciesRef.current = {
-    displayedRack,
-    isMyTurn,
-    placedTiles,
-    dim: props.board.dim,
-  };
+  const lastMyTurnRef = useRef<boolean>();
+  const currentExaminedTurn = isExamining
+    ? examinableGameContext.turns.length
+    : -1;
 
   // Need to sync state to props here whenever the board changes.
   useEffect(() => {
     let fullReset = false;
+    const lastExaminedTurn = lastExaminedTurnRef.current;
     const lastLetters = lastLettersRef.current;
-    const dep = readOnlyEffectDependenciesRef.current!;
+    const wasMyTurn = lastMyTurnRef.current;
+    const nowMyTurn = isMyTurn();
     if (lastLetters === undefined) {
       // First load.
       fullReset = true;
-    } else if (
-      props.currentRack &&
-      !dep.displayedRack &&
-      !dep.placedTiles.size
-    ) {
+    } else if (props.currentRack && !displayedRack && !placedTiles.size) {
       // First load after receiving rack.
       fullReset = true;
-    } else if (isExamining) {
+    } else if (lastExaminedTurn !== currentExaminedTurn) {
       // Prevent stuck tiles.
       fullReset = true;
-    } else if (!dep.isMyTurn()) {
-      // Opponent's turn means we have just made a move. (Assumption: there are only two players.)
+    } else if (wasMyTurn && !nowMyTurn) {
+      // We have just made a move.
       fullReset = true;
     } else {
       // Opponent just did something. Check if it affects any premove.
       // TODO: revisit when supporting non-square boards.
       const letterAt = (row: number, col: number, letters: string) =>
-        row < 0 || row >= dep.dim || col < 0 || col >= dep.dim
+        row < 0 || row >= props.board.dim || col < 0 || col >= props.board.dim
           ? null
-          : letters[row * dep.dim + col];
+          : letters[row * props.board.dim + col];
       const letterChanged = (row: number, col: number) =>
         letterAt(row, col, lastLetters) !==
         letterAt(row, col, props.board.letters);
@@ -426,23 +417,47 @@ export const BoardPanel = React.memo((props: Props) => {
         hookChanged(row, col, +1, 0) ||
         hookChanged(row, col, 0, -1) ||
         hookChanged(row, col, 0, +1);
+      // If no tiles have been placed, but placement arrow is shown,
+      // reset based on if that position is affected.
+      // This avoids having the placement arrow behind a tile.
       if (
-        Array.from(dep.placedTiles).some(({ row, col }) =>
-          placedTileAffected(row, col)
-        )
+        (placedTiles.size === 0 && arrowProperties.show
+          ? [arrowProperties as { row: number; col: number }]
+          : Array.from(placedTiles)
+        ).some(({ row, col }) => placedTileAffected(row, col))
       ) {
         fullReset = true;
       }
     }
     if (fullReset) {
       setDisplayedRack(props.currentRack);
-      setPlacedTiles(new Set<EphemeralTile>());
+      setPlacedTiles((oldPlacedTiles) =>
+        oldPlacedTiles.size === 0 ? oldPlacedTiles : new Set<EphemeralTile>()
+      );
       setPlacedTilesTempScore(0);
-      setArrowProperties({ row: 0, col: 0, horizontal: false, show: false });
+      const newArrowProperties = {
+        row: 0,
+        col: 0,
+        horizontal: false,
+        show: false,
+      };
+      setArrowProperties((oldArrowProperties) =>
+        JSON.stringify(oldArrowProperties) ===
+        JSON.stringify(newArrowProperties)
+          ? oldArrowProperties
+          : newArrowProperties
+      );
     }
+    lastExaminedTurnRef.current = currentExaminedTurn;
     lastLettersRef.current = props.board.letters;
+    lastMyTurnRef.current = nowMyTurn;
   }, [
-    isExamining,
+    arrowProperties,
+    currentExaminedTurn,
+    displayedRack,
+    isMyTurn,
+    placedTiles,
+    props.board.dim,
     props.board.letters,
     props.currentRack,
     setDisplayedRack,
