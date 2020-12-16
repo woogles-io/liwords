@@ -359,12 +359,17 @@ export const BoardPanel = React.memo((props: Props) => {
     setDisplayedRack(shuffleString(displayedRack));
   }, [setDisplayedRack, displayedRack]);
 
+  const lastExaminedTurnRef = useRef<number>();
   const lastLettersRef = useRef<string>();
   const lastMyTurnRef = useRef<boolean>();
+  const currentExaminedTurn = isExamining
+    ? examinableGameContext.turns.length
+    : -1;
 
   // Need to sync state to props here whenever the board changes.
   useEffect(() => {
     let fullReset = false;
+    const lastExaminedTurn = lastExaminedTurnRef.current;
     const lastLetters = lastLettersRef.current;
     const wasMyTurn = lastMyTurnRef.current;
     const nowMyTurn = isMyTurn();
@@ -374,7 +379,7 @@ export const BoardPanel = React.memo((props: Props) => {
     } else if (props.currentRack && !displayedRack && !placedTiles.size) {
       // First load after receiving rack.
       fullReset = true;
-    } else if (isExamining) {
+    } else if (lastExaminedTurn !== currentExaminedTurn) {
       // Prevent stuck tiles.
       fullReset = true;
     } else if (wasMyTurn && !nowMyTurn) {
@@ -443,12 +448,13 @@ export const BoardPanel = React.memo((props: Props) => {
           : newArrowProperties
       );
     }
+    lastExaminedTurnRef.current = currentExaminedTurn;
     lastLettersRef.current = props.board.letters;
     lastMyTurnRef.current = nowMyTurn;
   }, [
     arrowProperties,
+    currentExaminedTurn,
     displayedRack,
-    isExamining,
     isMyTurn,
     placedTiles,
     props.board.dim,
