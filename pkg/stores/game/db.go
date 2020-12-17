@@ -477,12 +477,12 @@ func (s *DBStore) ListAllIDs(ctx context.Context) ([]string, error) {
 }
 
 func (s *DBStore) SetReady(ctx context.Context, gid string, pidx int) (int, error) {
-	type f struct {
+	var rf struct {
 		ReadyFlag int
 	}
-	var rf f
+	ctxDB := s.db.WithContext(ctx)
 
-	result := s.db.Raw(`update games set ready_flag = ready_flag | ? where uuid = ?
+	result := ctxDB.Raw(`update games set ready_flag = ready_flag | ? where uuid = ?
 		returning ready_flag`, 1<<pidx, gid).Scan(&rf)
 
 	return rf.ReadyFlag, result.Error
