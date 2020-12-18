@@ -50,7 +50,7 @@ func NewDBStore(config *config.Config, gs gameplay.GameStore) (*DBStore, error) 
 func (s *DBStore) Get(ctx context.Context, id string) (*entity.Tournament, error) {
 	tm := &tournament{}
 	ctxDB := s.db.WithContext(ctx)
-	if result := ctxDB.Where("lower(uuid) = lower(?)", strings.ToLower(id)).First(tm); result.Error != nil {
+	if result := ctxDB.Where("lower(uuid) = ?", strings.ToLower(id)).First(tm); result.Error != nil {
 		return nil, result.Error
 	}
 
@@ -89,7 +89,7 @@ func (s *DBStore) Set(ctx context.Context, tm *entity.Tournament) error {
 
 	ctxDB := s.db.WithContext(ctx)
 	result := ctxDB.Model(&tournament{}).Clauses(clause.Locking{Strength: "UPDATE"}).
-		Where("lower(uuid) = lower(?)", strings.ToLower(tm.UUID)).Updates(dbt)
+		Where("lower(uuid) = ?", strings.ToLower(tm.UUID)).Updates(dbt)
 
 	return result.Error
 }

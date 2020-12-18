@@ -120,7 +120,7 @@ func (r *RedisChatStore) AddChat(ctx context.Context, senderUsername, senderUID,
 
 	if channel != LobbyChatChannel {
 		var exp int
-		if strings.HasPrefix(channel, "chat.tournament") || strings.HasPrefix(channel, "chat.pm") {
+		if strings.HasPrefix(channel, "chat.tournament.") || strings.HasPrefix(channel, "chat.pm.") {
 			exp = LongChannelExpiration
 		} else {
 			exp = GameChatChannelExpiration
