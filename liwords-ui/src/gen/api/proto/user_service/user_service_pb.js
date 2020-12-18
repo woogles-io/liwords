@@ -5321,7 +5321,8 @@ proto.user_service.ActiveChatChannels.Channel.toObject = function(includeInstanc
     name: jspb.Message.getFieldWithDefault(msg, 1, ""),
     displayName: jspb.Message.getFieldWithDefault(msg, 2, ""),
     lastUpdate: jspb.Message.getFieldWithDefault(msg, 3, 0),
-    hasUpdate: jspb.Message.getBooleanFieldWithDefault(msg, 4, false)
+    hasUpdate: jspb.Message.getBooleanFieldWithDefault(msg, 4, false),
+    lastMessage: jspb.Message.getFieldWithDefault(msg, 5, "")
   };
 
   if (includeInstance) {
@@ -5373,6 +5374,10 @@ proto.user_service.ActiveChatChannels.Channel.deserializeBinaryFromReader = func
     case 4:
       var value = /** @type {boolean} */ (reader.readBool());
       msg.setHasUpdate(value);
+      break;
+    case 5:
+      var value = /** @type {string} */ (reader.readString());
+      msg.setLastMessage(value);
       break;
     default:
       reader.skipField();
@@ -5428,6 +5433,13 @@ proto.user_service.ActiveChatChannels.Channel.serializeBinaryToWriter = function
   if (f) {
     writer.writeBool(
       4,
+      f
+    );
+  }
+  f = message.getLastMessage();
+  if (f.length > 0) {
+    writer.writeString(
+      5,
       f
     );
   }
@@ -5503,6 +5515,24 @@ proto.user_service.ActiveChatChannels.Channel.prototype.getHasUpdate = function(
  */
 proto.user_service.ActiveChatChannels.Channel.prototype.setHasUpdate = function(value) {
   return jspb.Message.setProto3BooleanField(this, 4, value);
+};
+
+
+/**
+ * optional string last_message = 5;
+ * @return {string}
+ */
+proto.user_service.ActiveChatChannels.Channel.prototype.getLastMessage = function() {
+  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 5, ""));
+};
+
+
+/**
+ * @param {string} value
+ * @return {!proto.user_service.ActiveChatChannels.Channel} returns this
+ */
+proto.user_service.ActiveChatChannels.Channel.prototype.setLastMessage = function(value) {
+  return jspb.Message.setProto3StringField(this, 5, value);
 };
 
 

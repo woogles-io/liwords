@@ -696,6 +696,9 @@ export namespace ActiveChatChannels {
     getHasUpdate(): boolean;
     setHasUpdate(value: boolean): void;
 
+    getLastMessage(): string;
+    setLastMessage(value: string): void;
+
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): Channel.AsObject;
     static toObject(includeInstance: boolean, msg: Channel): Channel.AsObject;
@@ -712,6 +715,7 @@ export namespace ActiveChatChannels {
       displayName: string,
       lastUpdate: number,
       hasUpdate: boolean,
+      lastMessage: string,
     }
   }
 }

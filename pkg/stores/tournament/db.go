@@ -164,7 +164,11 @@ func (s *DBStore) GetRecentGames(ctx context.Context, tourneyID string, numGames
 			res1 = realtime.TournamentGameResult_LOSS
 			res2 = realtime.TournamentGameResult_WIN
 		}
-
+		if len(info.Scores) != 2 {
+			log.Error().Str("tourneyID", tourneyID).Str("gameID", info.GameId).
+				Msg("corrupted-recent-tourney-game")
+			continue
+		}
 		players := []*realtime.TournamentGameEndedEvent_Player{
 			{Username: info.Players[0].Nickname, Score: info.Scores[0], Result: res1},
 			{Username: info.Players[1].Nickname, Score: info.Scores[1], Result: res2},

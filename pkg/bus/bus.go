@@ -745,13 +745,14 @@ func (b *Bus) sendPresenceContext(ctx context.Context, userID, username string, 
 
 func (b *Bus) sendLatestChannels(ctx context.Context, userID, connID string) error {
 	// Send user channels with new messages.
+	const ChansToSend = 10
 	lastSeen, err := b.presenceStore.LastSeen(ctx, userID)
 	if err != nil {
 		// Don't die, this key might not yet exist.
 		log.Err(err).Msg("last-seen-error")
 		return nil
 	}
-	latestChannels, err := b.chatStore.LatestChannels(ctx, 20, 0, userID)
+	latestChannels, err := b.chatStore.LatestChannels(ctx, ChansToSend, 0, userID)
 	if err != nil {
 		return err
 	}

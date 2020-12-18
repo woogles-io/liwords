@@ -143,6 +143,7 @@ message ActiveChatChannels {
     // last_update is a unix timestamp, in seconds.
     int64 last_update = 3;
     bool has_update = 4;
+    string last_message = 5;
   }
   repeated Channel channels = 1;
 }
