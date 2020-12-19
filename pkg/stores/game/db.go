@@ -88,6 +88,11 @@ func NewDBStore(config *config.Config, userStore pkguser.Store) (*DBStore, error
 		return nil, err
 	}
 	db.AutoMigrate(&game{})
+	// Note: We need to manually add the following index on production:
+	// create index rematch_req_idx ON games using hash ((quickdata->>'o'));
+	// I don't know how to do this with GORM. This makes the GetRematchStreak function
+	// much faster.
+
 	return &DBStore{db: db, cfg: config, userStore: userStore}, nil
 }
 
@@ -158,7 +163,6 @@ func (s *DBStore) GetMetadata(ctx context.Context, id string) (*gs.GameInfoRespo
 func (s *DBStore) GetRematchStreak(ctx context.Context, originalRequestId string) (*gs.StreakInfoResponse, error) {
 	games := []*game{}
 	if results := s.db.
-		// XXX: INDEX quickdata->>'o' !! Otherwise this query will become super slow!
 		Where("quickdata->>'o' = ? AND game_end_reason != 0", originalRequestId).
 		Order("created_at desc").
 		Find(&games); results.Error != nil {
