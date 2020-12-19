@@ -23,18 +23,20 @@ type GameRules = {
   variant_name: string;
 };
 
+export type ChallengeRule =
+  | 'FIVE_POINT'
+  | 'TEN_POINT'
+  | 'SINGLE'
+  | 'DOUBLE'
+  | 'TRIPLE'
+  | 'VOID';
+
 export type GameRequest = {
   lexicon: string;
   rules: GameRules;
   initial_time_seconds: number;
   increment_seconds: number;
-  challenge_rule:
-    | 'FIVE_POINT'
-    | 'TEN_POINT'
-    | 'SINGLE'
-    | 'DOUBLE'
-    | 'TRIPLE'
-    | 'VOID';
+  challenge_rule: ChallengeRule;
   rating_mode: string;
   max_overtime_minutes: number;
   original_request_id: string;

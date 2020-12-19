@@ -630,7 +630,7 @@ func (b *Bus) pongReceived(ctx context.Context, userID, connID string) error {
 }
 
 func (b *Bus) activeGames(ctx context.Context, tourneyID string) (*entity.EventWrapper, error) {
-	games, err := b.gameStore.ListActive(ctx, tourneyID)
+	games, err := b.gameStore.ListActive(ctx, tourneyID, false)
 
 	if err != nil {
 		return nil, err

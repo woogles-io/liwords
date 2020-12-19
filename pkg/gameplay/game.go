@@ -48,7 +48,7 @@ type GameStore interface {
 	Set(context.Context, *entity.Game) error
 	Create(context.Context, *entity.Game) error
 	Exists(ctx context.Context, id string) (bool, error)
-	ListActive(context.Context, string) (*gs.GameInfoResponses, error)
+	ListActive(context.Context, string, bool) (*gs.GameInfoResponses, error)
 	Count(ctx context.Context) (int64, error)
 	CachedCount(ctx context.Context) int
 	SetGameEventChan(c chan<- *entity.EventWrapper)
@@ -96,7 +96,7 @@ func InstantiateNewGame(ctx context.Context, gameStore GameStore, cfg *config.Co
 		return nil, err
 	}
 
-	gd, err := gaddag.Get(&cfg.MacondoConfig, req.Lexicon)
+	gd, err := gaddag.GetDawg(&cfg.MacondoConfig, req.Lexicon)
 	if err != nil {
 		return nil, err
 	}

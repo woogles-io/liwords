@@ -553,6 +553,7 @@ export const Table = React.memo((props: Props) => {
             playerMeta={gameInfo.players}
             tournamentID={gameInfo.tournament_id}
             lexicon={gameInfo.game_request.lexicon}
+            challengeRule={gameInfo.game_request.challenge_rule}
             handleAcceptRematch={
               rematchRequest.getRematchFor() === gameID
                 ? handleAcceptRematch

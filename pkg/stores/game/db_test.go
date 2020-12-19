@@ -45,7 +45,7 @@ func newMacondoGame(users [2]*entity.User) *macondogame.Game {
 		panic(err)
 	}
 
-	gd, err := gaddag.Get(&DefaultConfig, DefaultConfig.DefaultLexicon)
+	gd, err := gaddag.GetDawg(&DefaultConfig, DefaultConfig.DefaultLexicon)
 	if err != nil {
 		panic(err)
 	}
