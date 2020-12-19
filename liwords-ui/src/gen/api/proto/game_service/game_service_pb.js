@@ -1,3 +1,4 @@
+/* eslint-disable */
 // source: api/proto/game_service/game_service.proto
 /**
  * @fileoverview
