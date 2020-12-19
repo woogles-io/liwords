@@ -46,14 +46,14 @@ func newMacondoGame(users [2]*entity.User) *macondogame.Game {
 		panic(err)
 	}
 
-	gd, err := gaddag.GetDawg(&DefaultConfig, DefaultConfig.DefaultLexicon)
+	dawg, err := gaddag.GetDawg(&DefaultConfig, DefaultConfig.DefaultLexicon)
 	if err != nil {
 		panic(err)
 	}
 
 	rules := macondogame.NewGameRules(&DefaultConfig, dist,
 		board.MakeBoard(board.CrosswordGameBoard),
-		&gaddag.Lexicon{GenericDawg: gd},
+		&gaddag.Lexicon{GenericDawg: dawg},
 		cross_set.CrossScoreOnlyGenerator{Dist: dist})
 
 	var players []*macondopb.PlayerInfo
