@@ -7,7 +7,6 @@ import (
 
 	"github.com/domino14/liwords/pkg/entity"
 	gs "github.com/domino14/liwords/rpc/api/proto/game_service"
-	pb "github.com/domino14/liwords/rpc/api/proto/realtime"
 	lru "github.com/hashicorp/golang-lru"
 	"github.com/rs/zerolog/log"
 )
@@ -23,7 +22,7 @@ type backingStore interface {
 	Set(context.Context, *entity.Game) error
 	Create(context.Context, *entity.Game) error
 	Exists(context.Context, string) (bool, error)
-	ListActive(ctx context.Context, tourneyID string) ([]*pb.GameMeta, error)
+	ListActive(ctx context.Context, tourneyID string) (*gs.GameInfoResponses, error)
 	Count(ctx context.Context) (int64, error)
 	SetGameEventChan(ch chan<- *entity.EventWrapper)
 	Disconnect()
@@ -47,7 +46,7 @@ const (
 type Cache struct {
 	sync.RWMutex // used for the activeGames cache.
 	cache        *lru.Cache
-	activeGames  []*pb.GameMeta
+	activeGames  *gs.GameInfoResponses
 
 	activeGamesTTL         time.Duration
 	activeGamesLastUpdated time.Time
@@ -173,7 +172,7 @@ func (c *Cache) setOrCreate(ctx context.Context, game *entity.Game, isNew bool) 
 	return nil
 }
 
-func (c *Cache) ListActive(ctx context.Context, tourneyID string) ([]*pb.GameMeta, error) {
+func (c *Cache) ListActive(ctx context.Context, tourneyID string) (*gs.GameInfoResponses, error) {
 	if tourneyID == "" {
 		return c.listAllActive(ctx)
 	}
@@ -181,7 +180,7 @@ func (c *Cache) ListActive(ctx context.Context, tourneyID string) ([]*pb.GameMet
 	return c.backing.ListActive(ctx, tourneyID)
 }
 
-func (c *Cache) listAllActive(ctx context.Context) ([]*pb.GameMeta, error) {
+func (c *Cache) listAllActive(ctx context.Context) (*gs.GameInfoResponses, error) {
 	c.RLock()
 	if time.Now().Sub(c.activeGamesLastUpdated) < c.activeGamesTTL {
 		log.Debug().Msg("returning active games from cache")

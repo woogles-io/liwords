@@ -10,6 +10,7 @@ import (
 
 	"github.com/domino14/liwords/pkg/entity"
 	"github.com/domino14/liwords/pkg/gameplay"
+	gs "github.com/domino14/liwords/rpc/api/proto/game_service"
 	pb "github.com/domino14/liwords/rpc/api/proto/realtime"
 )
 
@@ -381,16 +382,16 @@ func (b *Bus) broadcastGameCreation(g *entity.Game, acceptor, requester *entity.
 		return err
 	}
 	ratingKey := entity.ToVariantKey(g.GameReq.Lexicon, variant, timefmt)
-	users := []*pb.GameMeta_UserMeta{
-		{RelevantRating: acceptor.GetRelevantRating(ratingKey),
-			DisplayName: acceptor.Username},
-		{RelevantRating: requester.GetRelevantRating(ratingKey),
-			DisplayName: requester.Username},
+	players := []*gs.PlayerInfo{
+		{Rating: acceptor.GetRelevantRating(ratingKey),
+			Nickname: acceptor.Username},
+		{Rating: requester.GetRelevantRating(ratingKey),
+			Nickname: requester.Username},
 	}
 
-	toSend := entity.WrapEvent(&pb.GameMeta{Users: users,
-		GameRequest: g.GameReq, Id: g.GameID()},
-		pb.MessageType_GAME_META_EVENT)
+	toSend := entity.WrapEvent(&gs.GameInfoResponse{Players: players,
+		GameRequest: g.GameReq, GameId: g.GameID()},
+		pb.MessageType_ONGOING_GAME_EVENT)
 	data, err := toSend.Serialize()
 	if err != nil {
 		return err

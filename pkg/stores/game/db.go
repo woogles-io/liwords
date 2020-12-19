@@ -158,6 +158,7 @@ func (s *DBStore) GetMetadata(ctx context.Context, id string) (*gs.GameInfoRespo
 func (s *DBStore) GetRematchStreak(ctx context.Context, originalRequestId string) (*gs.StreakInfoResponse, error) {
 	games := []*game{}
 	if results := s.db.
+		// XXX: INDEX quickdata->>'o' !! Otherwise this query will become super slow!
 		Where("quickdata->>'o' = ? AND game_end_reason != 0", originalRequestId).
 		Order("created_at desc").
 		Find(&games); results.Error != nil {
@@ -272,38 +273,38 @@ func convertGameToInfoResponse(g *game) (*gs.GameInfoResponse, error) {
 	return info, nil
 }
 
-func convertGamesToGameMetas(games []*game) ([]*pb.GameMeta, error) {
-	responses := []*pb.GameMeta{}
+// func convertGamesToGameMetas(games []*game) ([]*pb.GameMeta, error) {
+// 	responses := []*pb.GameMeta{}
 
-	for _, g := range games {
+// 	for _, g := range games {
 
-		var mdata entity.Quickdata
+// 		var mdata entity.Quickdata
 
-		err := json.Unmarshal(g.Quickdata, &mdata)
-		if err != nil {
-			log.Debug().Err(err).Msg("convert-game-quickdata")
-			return nil, err
-		}
+// 		err := json.Unmarshal(g.Quickdata, &mdata)
+// 		if err != nil {
+// 			log.Debug().Err(err).Msg("convert-game-quickdata")
+// 			return nil, err
+// 		}
 
-		gamereq := &pb.GameRequest{}
-		err = proto.Unmarshal(g.Request, gamereq)
-		if err != nil {
-			return nil, err
-		}
+// 		gamereq := &pb.GameRequest{}
+// 		err = proto.Unmarshal(g.Request, gamereq)
+// 		if err != nil {
+// 			return nil, err
+// 		}
 
-		players := []*pb.GameMeta_UserMeta{
-			{RelevantRating: mdata.PlayerInfo[0].Rating, DisplayName: mdata.PlayerInfo[0].Nickname},
-			{RelevantRating: mdata.PlayerInfo[1].Rating, DisplayName: mdata.PlayerInfo[1].Nickname}}
+// 		players := []*pb.GameMeta_UserMeta{
+// 			{RelevantRating: mdata.PlayerInfo[0].Rating, DisplayName: mdata.PlayerInfo[0].Nickname},
+// 			{RelevantRating: mdata.PlayerInfo[1].Rating, DisplayName: mdata.PlayerInfo[1].Nickname}}
 
-		gameMeta := &pb.GameMeta{
-			Users:       players,
-			GameRequest: gamereq, // can i get away with passing this straight thru?
-			Id:          g.UUID,
-		}
-		responses = append(responses, gameMeta)
-	}
-	return responses, nil
-}
+// 		gameMeta := &pb.GameMeta{
+// 			Users:       players,
+// 			GameRequest: gamereq, // can i get away with passing this straight thru?
+// 			Id:          g.UUID,
+// 		}
+// 		responses = append(responses, gameMeta)
+// 	}
+// 	return responses, nil
+// }
 
 // fromState returns an entity.Game from a DB State.
 func fromState(timers entity.Timers, qdata *entity.Quickdata, Started bool,
@@ -450,7 +451,7 @@ func (s *DBStore) Create(ctx context.Context, g *entity.Game) error {
 	return result.Error
 }
 
-func (s *DBStore) ListActive(ctx context.Context, tourneyID string) ([]*pb.GameMeta, error) {
+func (s *DBStore) ListActive(ctx context.Context, tourneyID string) (*gs.GameInfoResponses, error) {
 	var games []*game
 
 	ctxDB := s.db.WithContext(ctx)
@@ -467,7 +468,7 @@ func (s *DBStore) ListActive(ctx context.Context, tourneyID string) ([]*pb.GameM
 		return nil, result.Error
 	}
 
-	return convertGamesToGameMetas(games)
+	return convertGamesToInfoResponses(games)
 }
 
 func (s *DBStore) Count(ctx context.Context) (int64, error) {

@@ -66,6 +66,7 @@ def build_protobuf(c):
         "liwords-ui/src/gen/macondo/api/proto/macondo/macondo_pb.js",
         "liwords-ui/src/gen/api/proto/realtime/realtime_pb.js",
         "liwords-ui/src/gen/api/proto/user_service/user_service_pb.js",
+        "liwords-ui/src/gen/api/proto/game_service/game_service_pb.js",
     ):
         tmp = c.run("mktemp").stdout.strip()
         c.run(r'printf "/* eslint-disable */\n" > ' + tmp)

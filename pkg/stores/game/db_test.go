@@ -329,23 +329,23 @@ func TestListActive(t *testing.T) {
 
 	games, err := store.ListActive(context.Background(), "")
 	is.NoErr(err)
-	is.Equal(len(games), 3)
-	is.Equal(games[0].Users, []*pb.GameMeta_UserMeta{
-		{RelevantRating: "1600?", DisplayName: "mina"},
-		{RelevantRating: "500?", DisplayName: "cesar"},
+	is.Equal(len(games.GameInfo), 3)
+	is.Equal(games.GameInfo[0].Players, []*gs.PlayerInfo{
+		{Rating: "1600?", Nickname: "mina"},
+		{Rating: "500?", Nickname: "cesar"},
 	})
-	is.Equal(games[1].Users, []*pb.GameMeta_UserMeta{
-		{RelevantRating: "1500?", DisplayName: "cesar"},
-		{RelevantRating: "1500?", DisplayName: "jesse"},
+	is.Equal(games.GameInfo[1].Players, []*gs.PlayerInfo{
+		{Rating: "1500?", Nickname: "cesar"},
+		{Rating: "1500?", Nickname: "jesse"},
 	})
-	is.Equal(games[2].Users, []*pb.GameMeta_UserMeta{
-		{RelevantRating: "1500?", DisplayName: "jesse"},
-		{RelevantRating: "1500?", DisplayName: "mina"},
+	is.Equal(games.GameInfo[2].Players, []*gs.PlayerInfo{
+		{Rating: "1500?", Nickname: "jesse"},
+		{Rating: "1500?", Nickname: "mina"},
 	})
 
-	is.Equal(games[1].GameRequest.InitialTimeSeconds, int32(120))
-	is.Equal(games[1].GameRequest.ChallengeRule, macondopb.ChallengeRule_FIVE_POINT)
-	is.Equal(games[1].GameRequest.Rules, &pb.GameRules{
+	is.Equal(games.GameInfo[1].GameRequest.InitialTimeSeconds, int32(120))
+	is.Equal(games.GameInfo[1].GameRequest.ChallengeRule, macondopb.ChallengeRule_FIVE_POINT)
+	is.Equal(games.GameInfo[1].GameRequest.Rules, &pb.GameRules{
 		BoardLayoutName:        "CrosswordGame",
 		LetterDistributionName: "english",
 	})
