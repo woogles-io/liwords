@@ -28,26 +28,28 @@ message PlayerInfo {
 }
 
 message GameInfoResponse {
-  // XXX: Why doesn't this just have the game request embedded in it?
+  // XXX: Delete all deprecated soon.
   repeated PlayerInfo players = 1;
-  string lexicon = 2;
-  string variant = 3;
+  string lexicon = 2 [deprecated = true];
+  string variant = 3 [deprecated = true];
   string time_control_name = 4;
-  int32 initial_time_seconds = 5;
+  int32 initial_time_seconds = 5 [deprecated = true];
   string tournament_id = 6;
-  macondo.ChallengeRule challenge_rule = 7;
-  liwords.RatingMode rating_mode = 8;
+  macondo.ChallengeRule challenge_rule = 7 [deprecated = true];
+  liwords.RatingMode rating_mode = 8 [deprecated = true];
   // done - is game done?
   // bool done = 9;
-  int32 max_overtime_minutes = 10;
+  int32 max_overtime_minutes = 10 [deprecated = true];
   liwords.GameEndReason game_end_reason = 11;
-  int32 increment_seconds = 12;
+  int32 increment_seconds = 12 [deprecated = true];
   repeated int32 scores = 13;
   int32 winner = 14;
   google.protobuf.Timestamp created_at = 15;
   string game_id = 16;
-  string original_request_id = 17;
+  string original_request_id = 17 [deprecated = true];
   google.protobuf.Timestamp last_update = 18;
+
+  liwords.GameRequest game_request = 19;
 }
 
 message GCGRequest { string game_id = 1; }
@@ -62,11 +64,21 @@ message RecentGamesRequest {
   int32 offset = 3;
 }
 
+message StreakInfoResponse {
+  message SingleGameInfo {
+    string game_id = 1;
+    repeated string players = 2; // player nicknames
+    int32 winner = 3; // the index in `players` or -1 if no winner (tie)
+  }
+
+  repeated SingleGameInfo streak = 1;
+}
+
 message RematchStreakRequest { string original_request_id = 1; }
 
 service GameMetadataService {
   rpc GetMetadata(GameInfoRequest) returns(GameInfoResponse);
   rpc GetGCG(GCGRequest) returns(GCGResponse);
   rpc GetRecentGames(RecentGamesRequest) returns(GameInfoResponses);
-  rpc GetRematchStreak(RematchStreakRequest) returns(GameInfoResponses);
+  rpc GetRematchStreak(RematchStreakRequest) returns(StreakInfoResponse);
 }

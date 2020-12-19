@@ -7,12 +7,26 @@ import { timeCtrlToDisplayName, timeToString } from '../store/constants';
 // See game_service.proto
 export type GameMetadata = {
   players: Array<PlayerMetadata>;
-  lexicon: string;
-  variant: string;
   time_control_name: string;
-  initial_time_seconds: number;
   tournament_id: string;
-  max_overtime_minutes: number;
+  game_end_reason: string;
+  created_at?: string;
+  winner?: number;
+  scores?: Array<number>;
+  game_id?: string;
+  game_request: GameRequest;
+};
+
+type GameRules = {
+  board_layout_name: string;
+  letter_distribution_name: string;
+  variant_name: string;
+};
+
+export type GameRequest = {
+  lexicon: string;
+  rules: GameRules;
+  initial_time_seconds: number;
   increment_seconds: number;
   challenge_rule:
     | 'FIVE_POINT'
@@ -22,12 +36,18 @@ export type GameMetadata = {
     | 'TRIPLE'
     | 'VOID';
   rating_mode: string;
-  game_end_reason: string; // ?
-  created_at?: string;
-  winner?: number;
-  scores?: Array<number>;
-  game_id?: string;
-  original_request_id?: string;
+  max_overtime_minutes: number;
+  original_request_id: string;
+};
+
+export type SingleGameStreakInfo = {
+  players: Array<string>;
+  game_id: string;
+  winner: number;
+};
+
+export type StreakInfoResponse = {
+  streak: Array<SingleGameStreakInfo>;
 };
 
 export type RecentGamesResponse = {
@@ -56,12 +76,13 @@ type Props = {
 };
 
 export const GameInfo = React.memo((props: Props) => {
-  let variant;
-  if (props.meta.variant === 'classic') {
+  let variant = props.meta.game_request.rules.variant_name || 'classic';
+  if (variant === 'classic') {
     variant = 'Classic';
   }
 
-  const rated = props.meta.rating_mode === 'RATED' ? 'Rated' : 'Unrated';
+  const rated =
+    props.meta.game_request.rating_mode === 'RATED' ? 'Rated' : 'Unrated';
   const challenge = {
     FIVE_POINT: '5 point',
     TEN_POINT: '10 point',
@@ -69,7 +90,7 @@ export const GameInfo = React.memo((props: Props) => {
     DOUBLE: 'Double',
     TRIPLE: 'Triple',
     VOID: 'Void',
-  }[props.meta.challenge_rule];
+  }[props.meta.game_request.challenge_rule];
 
   const card = (
     <Card className="game-info">
@@ -79,16 +100,16 @@ export const GameInfo = React.memo((props: Props) => {
       <Row className="variant">
         {`${
           timeCtrlToDisplayName(
-            props.meta.initial_time_seconds,
-            props.meta.increment_seconds,
-            props.meta.max_overtime_minutes
+            props.meta.game_request.initial_time_seconds,
+            props.meta.game_request.increment_seconds,
+            props.meta.game_request.max_overtime_minutes
           )[0]
         } ${timeToString(
-          props.meta.initial_time_seconds,
-          props.meta.increment_seconds,
-          props.meta.max_overtime_minutes
+          props.meta.game_request.initial_time_seconds,
+          props.meta.game_request.increment_seconds,
+          props.meta.game_request.max_overtime_minutes
         )}`}{' '}
-        • {variant} • {props.meta.lexicon}
+        • {variant} • {props.meta.game_request.lexicon}
       </Row>
       <Row>
         {challenge} challenge • {rated}

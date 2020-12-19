@@ -155,7 +155,7 @@ func (s *DBStore) GetMetadata(ctx context.Context, id string) (*gs.GameInfoRespo
 
 }
 
-func (s *DBStore) GetRematchStreak(ctx context.Context, originalRequestId string) (*gs.GameInfoResponses, error) {
+func (s *DBStore) GetRematchStreak(ctx context.Context, originalRequestId string) (*gs.StreakInfoResponse, error) {
 	games := []*game{}
 	if results := s.db.
 		Where("quickdata->>'o' = ? AND game_end_reason != 0", originalRequestId).
@@ -163,7 +163,31 @@ func (s *DBStore) GetRematchStreak(ctx context.Context, originalRequestId string
 		Find(&games); results.Error != nil {
 		return nil, results.Error
 	}
-	return convertGamesToInfoResponses(games)
+
+	resp := &gs.StreakInfoResponse{
+		Streak: make([]*gs.StreakInfoResponse_SingleGameInfo, len(games)),
+	}
+
+	for idx, g := range games {
+		var mdata entity.Quickdata
+		err := json.Unmarshal(g.Quickdata, &mdata)
+		if err != nil {
+			log.Debug().Err(err).Msg("convert-game-quickdata")
+			// If it's empty or unconvertible don't quit. We need this
+			// for backwards compatibility.
+		}
+		players := make([]string, len(mdata.PlayerInfo))
+		for i, p := range mdata.PlayerInfo {
+			players[i] = p.Nickname
+		}
+		resp.Streak[idx] = &gs.StreakInfoResponse_SingleGameInfo{
+			GameId:  g.UUID,
+			Winner:  int32(g.WinnerIdx),
+			Players: players,
+		}
+	}
+
+	return resp, nil
 }
 
 func (s *DBStore) GetRecentGames(ctx context.Context, username string, numGames int, offset int) (*gs.GameInfoResponses, error) {
@@ -228,29 +252,22 @@ func convertGameToInfoResponse(g *game) (*gs.GameInfoResponse, error) {
 	if err != nil {
 		return nil, err
 	}
-	timefmt, variant, err := entity.VariantFromGameReq(gamereq)
+	timefmt, _, err := entity.VariantFromGameReq(gamereq)
 	if err != nil {
 		return nil, err
 	}
 
 	info := &gs.GameInfoResponse{
-		Players:            mdata.PlayerInfo,
-		GameEndReason:      pb.GameEndReason(g.GameEndReason),
-		Scores:             mdata.FinalScores,
-		Winner:             int32(g.WinnerIdx),
-		Lexicon:            gamereq.Lexicon,
-		Variant:            string(variant),
-		TimeControlName:    string(timefmt),
-		InitialTimeSeconds: gamereq.InitialTimeSeconds,
-		MaxOvertimeMinutes: gamereq.MaxOvertimeMinutes,
-		IncrementSeconds:   gamereq.IncrementSeconds,
-		ChallengeRule:      gamereq.ChallengeRule,
-		RatingMode:         gamereq.RatingMode,
-		CreatedAt:          timestamppb.New(g.CreatedAt),
-		LastUpdate:         timestamppb.New(g.UpdatedAt),
-		GameId:             g.UUID,
-		OriginalRequestId:  mdata.OriginalRequestId,
-		TournamentId:       g.TournamentID,
+		Players:         mdata.PlayerInfo,
+		GameEndReason:   pb.GameEndReason(g.GameEndReason),
+		Scores:          mdata.FinalScores,
+		Winner:          int32(g.WinnerIdx),
+		TimeControlName: string(timefmt),
+		CreatedAt:       timestamppb.New(g.CreatedAt),
+		LastUpdate:      timestamppb.New(g.UpdatedAt),
+		GameId:          g.UUID,
+		TournamentId:    g.TournamentID,
+		GameRequest:     gamereq,
 	}
 	return info, nil
 }

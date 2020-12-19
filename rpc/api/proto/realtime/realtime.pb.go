@@ -2417,7 +2417,7 @@ func (x *DeclineMatchRequest) GetRequestId() string {
 }
 
 // When we go to a new path in our SPA, we send a JoinPath. When we leave the
-// path, we send an Unjoin realm. d
+// path, we send an Unjoin realm.
 type JoinPath struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache

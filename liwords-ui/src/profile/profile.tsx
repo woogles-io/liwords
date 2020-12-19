@@ -1,10 +1,10 @@
 import React, { useCallback, useEffect } from 'react';
 import { Link, useParams, useLocation } from 'react-router-dom';
-import { notification, Card, Table, Row, Col } from 'antd';
+import { notification, Card, Table, Row, Col, Switch } from 'antd';
 import axios, { AxiosError } from 'axios';
 import { useMountedState } from '../utils/mounted';
 import { TopBar } from '../topbar/topbar';
-import { Switch } from 'antd';
+
 import './profile.scss';
 import { toAPIUrl } from '../api/api';
 import { useLoginStateStoreContext } from '../store/store';

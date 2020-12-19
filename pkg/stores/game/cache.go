@@ -17,7 +17,7 @@ import (
 type backingStore interface {
 	Get(ctx context.Context, id string) (*entity.Game, error)
 	GetMetadata(ctx context.Context, id string) (*gs.GameInfoResponse, error)
-	GetRematchStreak(ctx context.Context, originalRequestId string) (*gs.GameInfoResponses, error)
+	GetRematchStreak(ctx context.Context, originalRequestId string) (*gs.StreakInfoResponse, error)
 	GetRecentGames(ctx context.Context, username string, numGames int, offset int) (*gs.GameInfoResponses, error)
 	GetRecentTourneyGames(ctx context.Context, tourneyID string, numGames int, offset int) (*gs.GameInfoResponses, error)
 	Set(context.Context, *entity.Game) error
@@ -126,7 +126,7 @@ func (c *Cache) GetFromBacking(ctx context.Context, id string) (*entity.Game, er
 }
 
 // Just call the DB implementation for now
-func (c *Cache) GetRematchStreak(ctx context.Context, originalRequestId string) (*gs.GameInfoResponses, error) {
+func (c *Cache) GetRematchStreak(ctx context.Context, originalRequestId string) (*gs.StreakInfoResponse, error) {
 	return c.backing.GetRematchStreak(ctx, originalRequestId)
 }
 
