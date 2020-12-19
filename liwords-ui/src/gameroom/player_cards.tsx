@@ -139,7 +139,8 @@ export const PlayerCards = React.memo((props: Props) => {
     }
   }
 
-  const initialTimeSeconds = props.gameMeta.initial_time_seconds * 1000;
+  const initialTimeSeconds =
+    props.gameMeta.game_request.initial_time_seconds * 1000;
   let p0Time = examinableTimerContext.p0;
   if (p0Time === Infinity) p0Time = initialTimeSeconds;
   let p1Time = examinableTimerContext.p1;

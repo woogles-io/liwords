@@ -42,7 +42,7 @@ var (
 type GameStore interface {
 	Get(ctx context.Context, id string) (*entity.Game, error)
 	GetMetadata(ctx context.Context, id string) (*gs.GameInfoResponse, error)
-	GetRematchStreak(ctx context.Context, originalRequestId string) (*gs.GameInfoResponses, error)
+	GetRematchStreak(ctx context.Context, originalRequestId string) (*gs.StreakInfoResponse, error)
 	GetRecentGames(ctx context.Context, username string, numGames int, offset int) (*gs.GameInfoResponses, error)
 	GetRecentTourneyGames(ctx context.Context, tourneyID string, numGames int, offset int) (*gs.GameInfoResponses, error)
 	Set(context.Context, *entity.Game) error
@@ -261,8 +261,8 @@ func StartGame(ctx context.Context, gameStore GameStore, eventChan chan<- *entit
 	if err != nil {
 		return err
 	}
-	if len(rematchStreak.GameInfo) > 0 {
-		previousGameID := rematchStreak.GameInfo[0].GameId
+	if len(rematchStreak.Streak) > 0 {
+		previousGameID := rematchStreak.Streak[0].GameId
 		evt := &pb.RematchStartedEvent{RematchGameId: entGame.GameID()}
 		wrappedRematch := entity.WrapEvent(evt, pb.MessageType_REMATCH_STARTED)
 		wrappedRematch.AddAudience(entity.AudGameTV, previousGameID)
