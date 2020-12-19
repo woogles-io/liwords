@@ -176,8 +176,11 @@ func (c *Cache) setOrCreate(ctx context.Context, game *entity.Game, isNew bool) 
 	return nil
 }
 
-func (c *Cache) ListActive(ctx context.Context, tourneyID string) (*gs.GameInfoResponses, error) {
-	if tourneyID == "" {
+// ListActive lists all active games in the given tournament ID (optional) or
+// site-wide if not provided. If `bust` is true, we will always query the backing
+// store.
+func (c *Cache) ListActive(ctx context.Context, tourneyID string, bust bool) (*gs.GameInfoResponses, error) {
+	if tourneyID == "" && !bust {
 		return c.listAllActive(ctx)
 	}
 	// Otherwise don't worry about caching; this list should be comparatively smaller.

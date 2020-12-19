@@ -273,39 +273,6 @@ func convertGameToInfoResponse(g *game) (*gs.GameInfoResponse, error) {
 	return info, nil
 }
 
-// func convertGamesToGameMetas(games []*game) ([]*pb.GameMeta, error) {
-// 	responses := []*pb.GameMeta{}
-
-// 	for _, g := range games {
-
-// 		var mdata entity.Quickdata
-
-// 		err := json.Unmarshal(g.Quickdata, &mdata)
-// 		if err != nil {
-// 			log.Debug().Err(err).Msg("convert-game-quickdata")
-// 			return nil, err
-// 		}
-
-// 		gamereq := &pb.GameRequest{}
-// 		err = proto.Unmarshal(g.Request, gamereq)
-// 		if err != nil {
-// 			return nil, err
-// 		}
-
-// 		players := []*pb.GameMeta_UserMeta{
-// 			{RelevantRating: mdata.PlayerInfo[0].Rating, DisplayName: mdata.PlayerInfo[0].Nickname},
-// 			{RelevantRating: mdata.PlayerInfo[1].Rating, DisplayName: mdata.PlayerInfo[1].Nickname}}
-
-// 		gameMeta := &pb.GameMeta{
-// 			Users:       players,
-// 			GameRequest: gamereq, // can i get away with passing this straight thru?
-// 			Id:          g.UUID,
-// 		}
-// 		responses = append(responses, gameMeta)
-// 	}
-// 	return responses, nil
-// }
-
 // fromState returns an entity.Game from a DB State.
 func fromState(timers entity.Timers, qdata *entity.Quickdata, Started bool,
 	GameEndReason int, p0id, p1id uint, WinnerIdx, LoserIdx int, reqBytes, histBytes []byte,
@@ -361,7 +328,7 @@ func fromState(timers entity.Timers, qdata *entity.Quickdata, Started bool,
 		lexicon = req.Lexicon
 	}
 
-	gd, err := gaddag.Get(&cfg.MacondoConfig, lexicon)
+	gd, err := gaddag.GetDawg(&cfg.MacondoConfig, lexicon)
 	if err != nil {
 		return nil, err
 	}

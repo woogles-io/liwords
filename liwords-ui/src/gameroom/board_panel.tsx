@@ -50,7 +50,7 @@ import {
 } from '../store/store';
 import { BlankSelector } from './blank_selector';
 import { GameEndMessage } from './game_end_message';
-import { PlayerMetadata, GCGResponse } from './game_info';
+import { PlayerMetadata, GCGResponse, ChallengeRule } from './game_info';
 import {
   GameEvent,
   PlayState,
@@ -68,6 +68,7 @@ type Props = {
   currentRack: string;
   events: Array<GameEvent>;
   gameID: string;
+  challengeRule: ChallengeRule;
   board: Board;
   sendSocketMsg: (msg: Uint8Array) => void;
   gameDone: boolean;
@@ -1033,6 +1034,7 @@ export const BoardPanel = React.memo((props: Props) => {
         currentRack={props.currentRack}
         tournamentID={props.tournamentID}
         lexicon={props.lexicon}
+        challengeRule={props.challengeRule}
       />
       <ExchangeTiles
         rack={props.currentRack}

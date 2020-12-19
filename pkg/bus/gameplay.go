@@ -236,7 +236,8 @@ func (b *Bus) gameRefresher(ctx context.Context, gameID string) (*entity.EventWr
 }
 
 func (b *Bus) adjudicateGames(ctx context.Context) error {
-	gs, err := b.gameStore.ListActive(ctx, "")
+	// Always bust the cache when we're adjudicating games.
+	gs, err := b.gameStore.ListActive(ctx, "", true)
 
 	if err != nil {
 		return err
