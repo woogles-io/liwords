@@ -332,14 +332,14 @@ func fromState(timers entity.Timers, qdata *entity.Quickdata, Started bool,
 		lexicon = req.Lexicon
 	}
 
-	gd, err := gaddag.GetDawg(&cfg.MacondoConfig, lexicon)
+	dawg, err := gaddag.GetDawg(&cfg.MacondoConfig, lexicon)
 	if err != nil {
 		return nil, err
 	}
 
 	rules := macondogame.NewGameRules(
 		&cfg.MacondoConfig, dist, board.MakeBoard(bd),
-		&gaddag.Lexicon{GenericDawg: gd},
+		&gaddag.Lexicon{GenericDawg: dawg},
 		cross_set.CrossScoreOnlyGenerator{Dist: dist})
 
 	if err != nil {

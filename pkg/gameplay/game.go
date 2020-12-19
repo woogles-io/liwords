@@ -96,14 +96,14 @@ func InstantiateNewGame(ctx context.Context, gameStore GameStore, cfg *config.Co
 		return nil, err
 	}
 
-	gd, err := gaddag.GetDawg(&cfg.MacondoConfig, req.Lexicon)
+	dawg, err := gaddag.GetDawg(&cfg.MacondoConfig, req.Lexicon)
 	if err != nil {
 		return nil, err
 	}
 
 	rules := game.NewGameRules(
 		&cfg.MacondoConfig, dist, board.MakeBoard(bd),
-		&gaddag.Lexicon{GenericDawg: gd},
+		&gaddag.Lexicon{GenericDawg: dawg},
 		cross_set.CrossScoreOnlyGenerator{Dist: dist})
 
 	var gameRunner *runner.GameRunner
