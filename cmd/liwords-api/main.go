@@ -133,6 +133,8 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
+	stores.PresenceStore = user.NewRedisPresenceStore(redisPool)
+	stores.ChatStore = user.NewRedisChatStore(redisPool)
 
 	authenticationService := auth.NewAuthenticationService(stores.UserStore, stores.SessionStore, cfg.SecretKey, cfg.MailgunKey, BuildHash)
 	registrationService := registration.NewRegistrationService(stores.UserStore)
@@ -202,8 +204,6 @@ func main() {
 	idleConnsClosed := make(chan struct{})
 	sig := make(chan os.Signal, 1)
 
-	stores.PresenceStore = user.NewRedisPresenceStore(redisPool)
-	stores.ChatStore = user.NewRedisChatStore(redisPool)
 	// Handle bus.
 	pubsubBus, err := bus.NewBus(cfg, stores, redisPool)
 	if err != nil {
