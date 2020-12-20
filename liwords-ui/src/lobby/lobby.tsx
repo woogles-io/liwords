@@ -20,7 +20,6 @@ import { ChallengeRuleMap } from '../gen/macondo/api/proto/macondo/macondo_pb';
 import { GameLists } from './gameLists';
 import { Chat } from '../chat/chat';
 import {
-  useChatStoreContext,
   useLoginStateStoreContext,
   usePresenceStoreContext,
 } from '../store/store';
@@ -169,7 +168,7 @@ export const Lobby = (props: Props) => {
                 ? 'chat.lobby'
                 : `chat.tournament.${tournamentID.toLowerCase()}`
             }
-            defaultDescription={tournamentID ? 'Tournament chat' : 'Lobby chat'}
+            defaultDescription={tournamentID ? tournamentInfo.name : 'Lobby'}
             peopleOnlineContext={peopleOnlineContext}
             presences={presences}
             DISCONNECT={props.DISCONNECT}

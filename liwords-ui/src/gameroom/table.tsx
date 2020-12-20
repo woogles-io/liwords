@@ -152,6 +152,20 @@ const ManageWindowTitle = (props: {}) => {
   return null;
 };
 
+const getChatTitle = (
+  playerNames: Array<string> | undefined,
+  username: string,
+  isObserver: boolean
+): string => {
+  if (!playerNames) {
+    return '';
+  }
+  if (isObserver) {
+    return playerNames.join(' versus ');
+  }
+  return playerNames.filter((n) => n !== username).shift() || '';
+};
+
 export const Table = React.memo((props: Props) => {
   const { useState } = useMountedState();
 
@@ -173,7 +187,7 @@ export const Table = React.memo((props: Props) => {
   const { pTimedOut, setPTimedOut } = useTimerStoreContext();
   const { username, userID } = loginState;
   const [tournamentName, setTournamentName] = useState('');
-
+  const [playerNames, setPlayerNames] = useState(new Array<string>());
   const { sendSocketMsg } = props;
   // const location = useLocation();
   const [gameInfo, setGameInfo] = useState<GameMetadata>(defaultGameInfo);
@@ -284,10 +298,6 @@ export const Table = React.memo((props: Props) => {
   }, [gameInfo.tournament_id]);
 
   useEffect(() => {
-    BoopSounds.playSound('startgameSound');
-  }, [gameID]);
-
-  useEffect(() => {
     // Request streak info only if a few conditions are true.
     // We want to request it as soon as the original request ID comes in,
     // but only if this is an ongoing game. Also, we want to request it
@@ -353,7 +363,7 @@ export const Table = React.memo((props: Props) => {
       }
     });
     setIsObserver(observer);
-
+    setPlayerNames(gameInfo.players.map((p) => p.nickname));
     // If we are not the observer, tell the server we're ready for the game to start.
     if (gameInfo.game_end_reason === 'NONE' && !observer) {
       const evt = new ReadyForGame();
@@ -423,6 +433,14 @@ export const Table = React.memo((props: Props) => {
 
   // The game "starts" when the GameHistoryRefresher object comes in via the socket.
   // At that point gameID will be filled in.
+
+  useEffect(() => {
+    // Don't play when loading from history
+    if (!gameDone) {
+      BoopSounds.playSound('startgameSound');
+    }
+  }, [gameID, gameDone]);
+
   const location = useLocation();
   const searchParams = useMemo(() => new URLSearchParams(location.search), [
     location,
@@ -503,13 +521,22 @@ export const Table = React.memo((props: Props) => {
               </Link>
             )}
           </Card>
-          <Chat
-            sendChat={props.sendChat}
-            defaultChannel={`chat.${isObserver ? 'gametv' : 'game'}.${gameID}`}
-            defaultDescription={isObserver ? 'Observer chat' : 'Game chat'}
-            presences={presences}
-            peopleOnlineContext={peopleOnlineContext}
-          />
+          {playerNames.length > 1 ? (
+            <Chat
+              sendChat={props.sendChat}
+              defaultChannel={`chat.${
+                isObserver ? 'gametv' : 'game'
+              }.${gameID}`}
+              defaultDescription={getChatTitle(
+                playerNames,
+                username,
+                isObserver
+              )}
+              presences={presences}
+              peopleOnlineContext={peopleOnlineContext}
+            />
+          ) : null}
+
           {isExamining ? (
             <Analyzer includeCard lexicon={gameInfo.lexicon} />
           ) : (

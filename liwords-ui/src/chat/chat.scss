@@ -101,6 +101,34 @@ p {
         }
       }
     }
+    .channel-listing {
+      cursor: pointer;
+      &.unread {
+        @include colorModed() {
+          color: m($primary-dark);
+        }
+      }
+    }
+  }
+  .channel-list .breadcrumb {
+    text-transform: uppercase;
+    padding-bottom: 12px;
+    margin-top: 12px;
+    font-size: 12px;
+  }
+  .breadcrumb.clickable {
+    display: inline-block;
+    cursor: pointer;
+    width: calc(100% - 18px);
+
+  }
+  .anticon-setting {
+    margin: 0;
+    cursor: pointer;
+    font-size: 18px;
+    @include colorModed() {
+      color: m($gray-medium);
+    }
   }
   .entities {
     padding: 12px 24px;

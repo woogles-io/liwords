@@ -35,7 +35,10 @@ document?.body?.classList?.add(`mode--${useDarkMode ? 'dark' : 'default'}`);
 const App = React.memo(() => {
   const { useState } = useMountedState();
 
-  const { setExcludedPlayers } = useExcludedPlayersStoreContext();
+  const {
+    setExcludedPlayers,
+    setExcludedPlayersFetched,
+  } = useExcludedPlayersStoreContext();
   const { resetStore } = useResetStoreContext();
 
   // See store.tsx for how this works.
@@ -66,6 +69,7 @@ const App = React.memo(() => {
       )
       .then((resp) => {
         setExcludedPlayers(new Set<string>(resp.data.user_ids));
+        setExcludedPlayersFetched(true);
       })
       .catch((e) => {
         console.log(e);

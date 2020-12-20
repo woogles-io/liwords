@@ -82,6 +82,8 @@ type LagStoreData = {
 type ExcludedPlayersStoreData = {
   excludedPlayers: Set<string>;
   setExcludedPlayers: React.Dispatch<React.SetStateAction<Set<string>>>;
+  excludedPlayersFetched: boolean;
+  setExcludedPlayersFetched: React.Dispatch<React.SetStateAction<boolean>>;
 };
 
 type ChallengeResultEventStoreData = {
@@ -209,6 +211,8 @@ const ExcludedPlayersContext = createContext<ExcludedPlayersStoreData>({
   // we do not see any messages from excludedPlayers
   excludedPlayers: new Set<string>(),
   setExcludedPlayers: defaultFunction,
+  excludedPlayersFetched: false,
+  setExcludedPlayersFetched: defaultFunction,
 });
 
 const ChallengeResultEventContext = createContext<
@@ -599,6 +603,7 @@ const RealStore = ({ children, ...props }: Props) => {
     ActiveChatChannels | undefined
   >(undefined);
   const [excludedPlayers, setExcludedPlayers] = useState(new Set<string>());
+  const [excludedPlayersFetched, setExcludedPlayersFetched] = useState(false);
   const [presences, setPresences] = useState(
     {} as { [uuid: string]: PresenceEntity }
   );
@@ -718,8 +723,15 @@ const RealStore = ({ children, ...props }: Props) => {
     () => ({
       excludedPlayers,
       setExcludedPlayers,
+      excludedPlayersFetched,
+      setExcludedPlayersFetched,
     }),
-    [excludedPlayers, setExcludedPlayers]
+    [
+      excludedPlayers,
+      setExcludedPlayers,
+      excludedPlayersFetched,
+      setExcludedPlayersFetched,
+    ]
   );
   const challengeResultEventStore = useMemo(
     () => ({

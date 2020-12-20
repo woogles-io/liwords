@@ -5,6 +5,7 @@ import { UsernameWithContext } from '../shared/usernameWithContext';
 type Props = {
   players: { [uuid: string]: PresenceEntity };
   sendMessage: (msg: string, receiver: string) => void;
+  channel: string;
 };
 
 export const Presences = React.memo((props: Props) => {
@@ -14,6 +15,7 @@ export const Presences = React.memo((props: Props) => {
   const profileLink = (player: PresenceEntity) => (
     <UsernameWithContext
       username={player.username}
+      key={player.uuid}
       userID={player.uuid}
       sendMessage={props.sendMessage}
     />
