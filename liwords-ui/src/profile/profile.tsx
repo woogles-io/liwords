@@ -281,6 +281,7 @@ export const UserProfile = React.memo((props: Props) => {
             {viewer !== username ? (
               <UsernameWithContext
                 omitProfileLink
+                omitSendMessage
                 username={username}
                 userID={userID}
               />

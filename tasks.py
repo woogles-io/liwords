@@ -30,15 +30,17 @@ def build_protobuf(c):
             "--twirp_opt=paths=source_relative "
             f"api/proto/{tapi}/{tapi}.proto"
         )
-    # create a game_service typescript proto file.
-    c.run(
-        "protoc "
-        '--plugin="protoc-gen-ts=liwords-ui/node_modules/.bin/protoc-gen-ts" '
-        "--js_out=import_style=commonjs,binary:liwords-ui/src/gen "
-        f"--ts_out=liwords-ui/src/gen --proto_path={code_dir}/ "
-        f"--proto_path={code_dir}/liwords "
-        "api/proto/game_service/game_service.proto"
-    )
+    # create some typescript proto files.
+    ts_apis = ["game_service", "user_service"]
+    for tapi in ts_apis:
+        c.run(
+            "protoc "
+            '--plugin="protoc-gen-ts=liwords-ui/node_modules/.bin/protoc-gen-ts" '
+            "--js_out=import_style=commonjs,binary:liwords-ui/src/gen "
+            f"--ts_out=liwords-ui/src/gen --proto_path={code_dir}/ "
+            f"--proto_path={code_dir}/liwords "
+            f"api/proto/{tapi}/{tapi}.proto"
+        )
 
     c.run(
         "protoc "
@@ -63,6 +65,7 @@ def build_protobuf(c):
     for gen_filename in (
         "liwords-ui/src/gen/macondo/api/proto/macondo/macondo_pb.js",
         "liwords-ui/src/gen/api/proto/realtime/realtime_pb.js",
+        "liwords-ui/src/gen/api/proto/user_service/user_service_pb.js",
         "liwords-ui/src/gen/api/proto/game_service/game_service_pb.js",
     ):
         tmp = c.run("mktemp").stdout.strip()

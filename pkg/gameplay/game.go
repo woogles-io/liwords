@@ -53,6 +53,7 @@ type GameStore interface {
 	Exists(ctx context.Context, id string) (bool, error)
 	ListActive(context.Context, string, bool) (*gs.GameInfoResponses, error)
 	Count(ctx context.Context) (int64, error)
+	CachedCount(ctx context.Context) int
 	SetGameEventChan(c chan<- *entity.EventWrapper)
 	Unload(context.Context, string)
 	SetReady(ctx context.Context, gid string, pidx int) (int, error)

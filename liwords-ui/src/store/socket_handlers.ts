@@ -58,6 +58,9 @@ import {
   GameInfoResponseToActiveGame,
 } from './reducers/lobby_reducer';
 import { BoopSounds } from '../sound/boop';
+
+import { ActiveChatChannels } from '../gen/api/proto/user_service/user_service_pb';
+
 import {
   GameInfoResponse,
   GameInfoResponses,
@@ -108,6 +111,7 @@ export const parseMsgs = (msg: Uint8Array) => {
       [MessageType.MATCH_REQUEST_CANCELLATION]: MatchRequestCancellation,
       [MessageType.TOURNAMENT_GAME_ENDED_EVENT]: TournamentGameEndedEvent,
       [MessageType.REMATCH_STARTED]: RematchStartedEvent,
+      [MessageType.CHAT_CHANNELS]: ActiveChatChannels,
     };
 
     const parsedMsg = msgTypes[msgType];
@@ -211,6 +215,13 @@ export const useOnSocketMsg = () => {
               actionType: ActionType.AddSoughtGames,
               payload: soughtGames,
             });
+
+            break;
+          }
+
+          case MessageType.CHAT_CHANNELS: {
+            const cc = parsedMsg as ActiveChatChannels;
+            console.log('got chat channels', cc);
 
             break;
           }
@@ -357,6 +368,7 @@ export const useOnSocketMsg = () => {
               entityType: ChatEntityType.ErrorMsg,
               sender: 'Woogles',
               message: err.getMessage(),
+              channel: 'server',
             });
             break;
           }
@@ -367,8 +379,15 @@ export const useOnSocketMsg = () => {
               break;
             }
 
-            // XXX: We should ignore this chat message if it's not for the right
-            // channel.
+            // XXX: This is a temporary fix while we can only display one
+            // channel's chat at once.
+            const { path } = loginState;
+            if (
+              path.startsWith('/game/') &&
+              cm.getChannel().startsWith('chat.tournament')
+            ) {
+              break;
+            }
 
             addChat({
               entityType: ChatEntityType.UserChat,
@@ -376,6 +395,7 @@ export const useOnSocketMsg = () => {
               message: cm.getMessage(),
               timestamp: cm.getTimestamp(),
               senderId: cm.getUserId(),
+              channel: cm.getChannel(),
             });
             if (cm.getUsername() !== loginState.username) {
               // BoopSounds.playSound('receiveMsgSound');
@@ -389,6 +409,20 @@ export const useOnSocketMsg = () => {
             // These replace all existing messages.
             const cms = parsedMsg as ChatMessages;
 
+            // XXX: This is a temporary fix while we can only display one
+            // channel's chat at once.
+            const { path } = loginState;
+            if (
+              path.startsWith('/game/') &&
+              (cms.getMessagesList().length === 0 ||
+                cms
+                  .getMessagesList()[0]
+                  ?.getChannel()
+                  .startsWith('chat.tournament'))
+            ) {
+              break;
+            }
+
             const entities = new Array<ChatEntityObj>();
 
             cms.getMessagesList().forEach((cm) => {
@@ -400,6 +434,7 @@ export const useOnSocketMsg = () => {
                   timestamp: cm.getTimestamp(),
                   senderId: cm.getUserId(),
                   id: randomID(),
+                  channel: cm.getChannel(),
                 });
               }
             });
@@ -415,11 +450,21 @@ export const useOnSocketMsg = () => {
             if (excludedPlayers.has(up.getUserId())) {
               break;
             }
+            // XXX: This is a temporary fix while we can only display one
+            // channel's presence at once.
+            const { path } = loginState;
+            if (
+              path.startsWith('/game/') &&
+              up.getChannel().startsWith('chat.tournament')
+            ) {
+              break;
+            }
             setPresence({
               uuid: up.getUserId(),
               username: up.getUsername(),
               channel: up.getChannel(),
               anon: up.getIsAnonymous(),
+              deleting: up.getDeleting(),
             });
             break;
           }
@@ -429,6 +474,20 @@ export const useOnSocketMsg = () => {
 
             const toAdd = new Array<PresenceEntity>();
 
+            // XXX: This is a temporary fix while we can only display one
+            // channel's presence at once.
+            const { path } = loginState;
+            if (
+              path.startsWith('/game/') &&
+              (ups.getPresencesList().length === 0 ||
+                ups
+                  .getPresencesList()[0]
+                  ?.getChannel()
+                  .startsWith('chat.tournament'))
+            ) {
+              break;
+            }
+
             ups.getPresencesList().forEach((p) => {
               if (!excludedPlayers.has(p.getUserId())) {
                 toAdd.push({
@@ -436,6 +495,7 @@ export const useOnSocketMsg = () => {
                   username: p.getUsername(),
                   channel: p.getChannel(),
                   anon: p.getIsAnonymous(),
+                  deleting: p.getDeleting(),
                 });
               }
             });

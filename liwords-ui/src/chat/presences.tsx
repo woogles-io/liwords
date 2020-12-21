@@ -4,6 +4,7 @@ import { UsernameWithContext } from '../shared/usernameWithContext';
 
 type Props = {
   players: { [uuid: string]: PresenceEntity };
+  sendMessage: (msg: string, receiver: string) => void;
 };
 
 export const Presences = React.memo((props: Props) => {
@@ -11,7 +12,11 @@ export const Presences = React.memo((props: Props) => {
   vals.sort((a, b) => (a.username < b.username ? -1 : 1));
 
   const profileLink = (player: PresenceEntity) => (
-    <UsernameWithContext username={player.username} userID={player.uuid} />
+    <UsernameWithContext
+      username={player.username}
+      userID={player.uuid}
+      sendMessage={props.sendMessage}
+    />
   );
   const knownUsers = Object.keys(props.players).filter(
     (p) => !props.players[p].anon

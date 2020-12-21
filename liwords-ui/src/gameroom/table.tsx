@@ -28,7 +28,6 @@ import {
   MatchRequest,
   SoughtGameProcessEvent,
   DeclineMatchRequest,
-  ChatMessage,
   ReadyForGame,
 } from '../gen/api/proto/realtime/realtime_pb';
 import { encodeToSocketFmt } from '../utils/protobuf';
@@ -52,6 +51,7 @@ import { TournamentMetadata } from '../tournament/tournament_info';
 
 type Props = {
   sendSocketMsg: (msg: Uint8Array) => void;
+  sendChat: (msg: string, chan: string) => void;
 };
 
 const StreakFetchDelay = 2000;
@@ -419,22 +419,6 @@ export const Table = React.memo((props: Props) => {
     setRematchRequest(new MatchRequest());
   }, [declineRematch, rematchRequest, setRematchRequest]);
 
-  const sendChat = useCallback(
-    (msg: string) => {
-      const evt = new ChatMessage();
-      evt.setMessage(msg);
-
-      const chan = isObserver ? 'gametv' : 'game';
-      // XXX: Backend should figure out channels; also separate game and gameTV channels
-      // Right now everyone will get this.
-      evt.setChannel(`${chan}.${gameID}`);
-      sendSocketMsg(
-        encodeToSocketFmt(MessageType.CHAT_MESSAGE, evt.serializeBinary())
-      );
-    },
-    [gameID, isObserver, sendSocketMsg]
-  );
-
   // Figure out what rack we should display.
   // If we are one of the players, display our rack.
   // If we are NOT one of the players (so an observer), display the rack of
@@ -537,7 +521,8 @@ export const Table = React.memo((props: Props) => {
           </Card>
           <Chat
             chatEntities={chat}
-            sendChat={sendChat}
+            sendChat={props.sendChat}
+            sendChannel={`chat.${isObserver ? 'gametv' : 'game'}.${gameID}`}
             description={isObserver ? 'Observer chat' : 'Game chat'}
             presences={presences}
             peopleOnlineContext={peopleOnlineContext}

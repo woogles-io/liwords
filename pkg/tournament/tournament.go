@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"sort"
+	"strings"
 	"time"
 
 	"github.com/domino14/liwords/pkg/entity"
@@ -110,8 +111,12 @@ func NewTournament(ctx context.Context,
 
 	desiredID := id != ""
 
+	randomtid := func() string {
+		return strings.ToLower(shortuuid.New()[2:10])
+	}
+
 	if id == "" {
-		id = shortuuid.New()[2:8]
+		id = randomtid()
 	}
 
 	entTournament := &entity.Tournament{Name: name,
@@ -133,7 +138,7 @@ func NewTournament(ctx context.Context,
 			return nil, err
 		}
 		log.Err(err).Msg("tournament-create-error")
-		entTournament.UUID = shortuuid.New()[2:8]
+		entTournament.UUID = randomtid()
 
 	}
 	return entTournament, nil
