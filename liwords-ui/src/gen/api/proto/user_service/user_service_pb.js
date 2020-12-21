@@ -1936,7 +1936,7 @@ proto.user_service.SocketTokenResponse.toObject = function(includeInstance, msg)
   var f, obj = {
     token: jspb.Message.getFieldWithDefault(msg, 1, ""),
     cid: jspb.Message.getFieldWithDefault(msg, 2, ""),
-    appVersion: jspb.Message.getFieldWithDefault(msg, 3, "")
+    frontEndVersion: jspb.Message.getFieldWithDefault(msg, 3, "")
   };
 
   if (includeInstance) {
@@ -1983,7 +1983,7 @@ proto.user_service.SocketTokenResponse.deserializeBinaryFromReader = function(ms
       break;
     case 3:
       var value = /** @type {string} */ (reader.readString());
-      msg.setAppVersion(value);
+      msg.setFrontEndVersion(value);
       break;
     default:
       reader.skipField();
@@ -2028,7 +2028,7 @@ proto.user_service.SocketTokenResponse.serializeBinaryToWriter = function(messag
       f
     );
   }
-  f = message.getAppVersion();
+  f = message.getFrontEndVersion();
   if (f.length > 0) {
     writer.writeString(
       3,
@@ -2075,10 +2075,10 @@ proto.user_service.SocketTokenResponse.prototype.setCid = function(value) {
 
 
 /**
- * optional string app_version = 3;
+ * optional string front_end_version = 3;
  * @return {string}
  */
-proto.user_service.SocketTokenResponse.prototype.getAppVersion = function() {
+proto.user_service.SocketTokenResponse.prototype.getFrontEndVersion = function() {
   return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 3, ""));
 };
 
@@ -2087,7 +2087,7 @@ proto.user_service.SocketTokenResponse.prototype.getAppVersion = function() {
  * @param {string} value
  * @return {!proto.user_service.SocketTokenResponse} returns this
  */
-proto.user_service.SocketTokenResponse.prototype.setAppVersion = function(value) {
+proto.user_service.SocketTokenResponse.prototype.setFrontEndVersion = function(value) {
   return jspb.Message.setProto3StringField(this, 3, value);
 };
 

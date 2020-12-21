@@ -41,6 +41,8 @@ const _ = twirp.TwirpPackageIsVersion7
 
 type ConfigService interface {
 	SetGamesEnabled(context.Context, *EnableGamesRequest) (*ConfigResponse, error)
+
+	SetFEHash(context.Context, *SetFEHashRequest) (*ConfigResponse, error)
 }
 
 // =============================
@@ -49,7 +51,7 @@ type ConfigService interface {
 
 type configServiceProtobufClient struct {
 	client      HTTPClient
-	urls        [1]string
+	urls        [2]string
 	interceptor twirp.Interceptor
 	opts        twirp.ClientOptions
 }
@@ -69,8 +71,9 @@ func NewConfigServiceProtobufClient(baseURL string, client HTTPClient, opts ...t
 	// Build method URLs: <baseURL>[<prefix>]/<package>.<Service>/<Method>
 	serviceURL := sanitizeBaseURL(baseURL)
 	serviceURL += baseServicePath(clientOpts.PathPrefix(), "config_service", "ConfigService")
-	urls := [1]string{
+	urls := [2]string{
 		serviceURL + "SetGamesEnabled",
+		serviceURL + "SetFEHash",
 	}
 
 	return &configServiceProtobufClient{
@@ -127,13 +130,59 @@ func (c *configServiceProtobufClient) callSetGamesEnabled(ctx context.Context, i
 	return out, nil
 }
 
+func (c *configServiceProtobufClient) SetFEHash(ctx context.Context, in *SetFEHashRequest) (*ConfigResponse, error) {
+	ctx = ctxsetters.WithPackageName(ctx, "config_service")
+	ctx = ctxsetters.WithServiceName(ctx, "ConfigService")
+	ctx = ctxsetters.WithMethodName(ctx, "SetFEHash")
+	caller := c.callSetFEHash
+	if c.interceptor != nil {
+		caller = func(ctx context.Context, req *SetFEHashRequest) (*ConfigResponse, error) {
+			resp, err := c.interceptor(
+				func(ctx context.Context, req interface{}) (interface{}, error) {
+					typedReq, ok := req.(*SetFEHashRequest)
+					if !ok {
+						return nil, twirp.InternalError("failed type assertion req.(*SetFEHashRequest) when calling interceptor")
+					}
+					return c.callSetFEHash(ctx, typedReq)
+				},
+			)(ctx, req)
+			if resp != nil {
+				typedResp, ok := resp.(*ConfigResponse)
+				if !ok {
+					return nil, twirp.InternalError("failed type assertion resp.(*ConfigResponse) when calling interceptor")
+				}
+				return typedResp, err
+			}
+			return nil, err
+		}
+	}
+	return caller(ctx, in)
+}
+
+func (c *configServiceProtobufClient) callSetFEHash(ctx context.Context, in *SetFEHashRequest) (*ConfigResponse, error) {
+	out := new(ConfigResponse)
+	ctx, err := doProtobufRequest(ctx, c.client, c.opts.Hooks, c.urls[1], in, out)
+	if err != nil {
+		twerr, ok := err.(twirp.Error)
+		if !ok {
+			twerr = twirp.InternalErrorWith(err)
+		}
+		callClientError(ctx, c.opts.Hooks, twerr)
+		return nil, err
+	}
+
+	callClientResponseReceived(ctx, c.opts.Hooks)
+
+	return out, nil
+}
+
 // =========================
 // ConfigService JSON Client
 // =========================
 
 type configServiceJSONClient struct {
 	client      HTTPClient
-	urls        [1]string
+	urls        [2]string
 	interceptor twirp.Interceptor
 	opts        twirp.ClientOptions
 }
@@ -153,8 +202,9 @@ func NewConfigServiceJSONClient(baseURL string, client HTTPClient, opts ...twirp
 	// Build method URLs: <baseURL>[<prefix>]/<package>.<Service>/<Method>
 	serviceURL := sanitizeBaseURL(baseURL)
 	serviceURL += baseServicePath(clientOpts.PathPrefix(), "config_service", "ConfigService")
-	urls := [1]string{
+	urls := [2]string{
 		serviceURL + "SetGamesEnabled",
+		serviceURL + "SetFEHash",
 	}
 
 	return &configServiceJSONClient{
@@ -197,6 +247,52 @@ func (c *configServiceJSONClient) SetGamesEnabled(ctx context.Context, in *Enabl
 func (c *configServiceJSONClient) callSetGamesEnabled(ctx context.Context, in *EnableGamesRequest) (*ConfigResponse, error) {
 	out := new(ConfigResponse)
 	ctx, err := doJSONRequest(ctx, c.client, c.opts.Hooks, c.urls[0], in, out)
+	if err != nil {
+		twerr, ok := err.(twirp.Error)
+		if !ok {
+			twerr = twirp.InternalErrorWith(err)
+		}
+		callClientError(ctx, c.opts.Hooks, twerr)
+		return nil, err
+	}
+
+	callClientResponseReceived(ctx, c.opts.Hooks)
+
+	return out, nil
+}
+
+func (c *configServiceJSONClient) SetFEHash(ctx context.Context, in *SetFEHashRequest) (*ConfigResponse, error) {
+	ctx = ctxsetters.WithPackageName(ctx, "config_service")
+	ctx = ctxsetters.WithServiceName(ctx, "ConfigService")
+	ctx = ctxsetters.WithMethodName(ctx, "SetFEHash")
+	caller := c.callSetFEHash
+	if c.interceptor != nil {
+		caller = func(ctx context.Context, req *SetFEHashRequest) (*ConfigResponse, error) {
+			resp, err := c.interceptor(
+				func(ctx context.Context, req interface{}) (interface{}, error) {
+					typedReq, ok := req.(*SetFEHashRequest)
+					if !ok {
+						return nil, twirp.InternalError("failed type assertion req.(*SetFEHashRequest) when calling interceptor")
+					}
+					return c.callSetFEHash(ctx, typedReq)
+				},
+			)(ctx, req)
+			if resp != nil {
+				typedResp, ok := resp.(*ConfigResponse)
+				if !ok {
+					return nil, twirp.InternalError("failed type assertion resp.(*ConfigResponse) when calling interceptor")
+				}
+				return typedResp, err
+			}
+			return nil, err
+		}
+	}
+	return caller(ctx, in)
+}
+
+func (c *configServiceJSONClient) callSetFEHash(ctx context.Context, in *SetFEHashRequest) (*ConfigResponse, error) {
+	out := new(ConfigResponse)
+	ctx, err := doJSONRequest(ctx, c.client, c.opts.Hooks, c.urls[1], in, out)
 	if err != nil {
 		twerr, ok := err.(twirp.Error)
 		if !ok {
@@ -297,6 +393,9 @@ func (s *configServiceServer) ServeHTTP(resp http.ResponseWriter, req *http.Requ
 	switch method {
 	case "SetGamesEnabled":
 		s.serveSetGamesEnabled(ctx, resp, req)
+		return
+	case "SetFEHash":
+		s.serveSetFEHash(ctx, resp, req)
 		return
 	default:
 		msg := fmt.Sprintf("no handler for path %q", req.URL.Path)
@@ -457,6 +556,181 @@ func (s *configServiceServer) serveSetGamesEnabledProtobuf(ctx context.Context, 
 	}
 	if respContent == nil {
 		s.writeError(ctx, resp, twirp.InternalError("received a nil *ConfigResponse and nil error while calling SetGamesEnabled. nil responses are not supported"))
+		return
+	}
+
+	ctx = callResponsePrepared(ctx, s.hooks)
+
+	respBytes, err := proto.Marshal(respContent)
+	if err != nil {
+		s.writeError(ctx, resp, wrapInternal(err, "failed to marshal proto response"))
+		return
+	}
+
+	ctx = ctxsetters.WithStatusCode(ctx, http.StatusOK)
+	resp.Header().Set("Content-Type", "application/protobuf")
+	resp.Header().Set("Content-Length", strconv.Itoa(len(respBytes)))
+	resp.WriteHeader(http.StatusOK)
+	if n, err := resp.Write(respBytes); err != nil {
+		msg := fmt.Sprintf("failed to write response, %d of %d bytes written: %s", n, len(respBytes), err.Error())
+		twerr := twirp.NewError(twirp.Unknown, msg)
+		ctx = callError(ctx, s.hooks, twerr)
+	}
+	callResponseSent(ctx, s.hooks)
+}
+
+func (s *configServiceServer) serveSetFEHash(ctx context.Context, resp http.ResponseWriter, req *http.Request) {
+	header := req.Header.Get("Content-Type")
+	i := strings.Index(header, ";")
+	if i == -1 {
+		i = len(header)
+	}
+	switch strings.TrimSpace(strings.ToLower(header[:i])) {
+	case "application/json":
+		s.serveSetFEHashJSON(ctx, resp, req)
+	case "application/protobuf":
+		s.serveSetFEHashProtobuf(ctx, resp, req)
+	default:
+		msg := fmt.Sprintf("unexpected Content-Type: %q", req.Header.Get("Content-Type"))
+		twerr := badRouteError(msg, req.Method, req.URL.Path)
+		s.writeError(ctx, resp, twerr)
+	}
+}
+
+func (s *configServiceServer) serveSetFEHashJSON(ctx context.Context, resp http.ResponseWriter, req *http.Request) {
+	var err error
+	ctx = ctxsetters.WithMethodName(ctx, "SetFEHash")
+	ctx, err = callRequestRouted(ctx, s.hooks)
+	if err != nil {
+		s.writeError(ctx, resp, err)
+		return
+	}
+
+	reqContent := new(SetFEHashRequest)
+	unmarshaler := jsonpb.Unmarshaler{AllowUnknownFields: true}
+	if err = unmarshaler.Unmarshal(req.Body, reqContent); err != nil {
+		s.writeError(ctx, resp, malformedRequestError("the json request could not be decoded"))
+		return
+	}
+
+	handler := s.ConfigService.SetFEHash
+	if s.interceptor != nil {
+		handler = func(ctx context.Context, req *SetFEHashRequest) (*ConfigResponse, error) {
+			resp, err := s.interceptor(
+				func(ctx context.Context, req interface{}) (interface{}, error) {
+					typedReq, ok := req.(*SetFEHashRequest)
+					if !ok {
+						return nil, twirp.InternalError("failed type assertion req.(*SetFEHashRequest) when calling interceptor")
+					}
+					return s.ConfigService.SetFEHash(ctx, typedReq)
+				},
+			)(ctx, req)
+			if resp != nil {
+				typedResp, ok := resp.(*ConfigResponse)
+				if !ok {
+					return nil, twirp.InternalError("failed type assertion resp.(*ConfigResponse) when calling interceptor")
+				}
+				return typedResp, err
+			}
+			return nil, err
+		}
+	}
+
+	// Call service method
+	var respContent *ConfigResponse
+	func() {
+		defer ensurePanicResponses(ctx, resp, s.hooks)
+		respContent, err = handler(ctx, reqContent)
+	}()
+
+	if err != nil {
+		s.writeError(ctx, resp, err)
+		return
+	}
+	if respContent == nil {
+		s.writeError(ctx, resp, twirp.InternalError("received a nil *ConfigResponse and nil error while calling SetFEHash. nil responses are not supported"))
+		return
+	}
+
+	ctx = callResponsePrepared(ctx, s.hooks)
+
+	var buf bytes.Buffer
+	marshaler := &jsonpb.Marshaler{OrigName: true, EmitDefaults: !s.jsonSkipDefaults}
+	if err = marshaler.Marshal(&buf, respContent); err != nil {
+		s.writeError(ctx, resp, wrapInternal(err, "failed to marshal json response"))
+		return
+	}
+
+	ctx = ctxsetters.WithStatusCode(ctx, http.StatusOK)
+	respBytes := buf.Bytes()
+	resp.Header().Set("Content-Type", "application/json")
+	resp.Header().Set("Content-Length", strconv.Itoa(len(respBytes)))
+	resp.WriteHeader(http.StatusOK)
+
+	if n, err := resp.Write(respBytes); err != nil {
+		msg := fmt.Sprintf("failed to write response, %d of %d bytes written: %s", n, len(respBytes), err.Error())
+		twerr := twirp.NewError(twirp.Unknown, msg)
+		ctx = callError(ctx, s.hooks, twerr)
+	}
+	callResponseSent(ctx, s.hooks)
+}
+
+func (s *configServiceServer) serveSetFEHashProtobuf(ctx context.Context, resp http.ResponseWriter, req *http.Request) {
+	var err error
+	ctx = ctxsetters.WithMethodName(ctx, "SetFEHash")
+	ctx, err = callRequestRouted(ctx, s.hooks)
+	if err != nil {
+		s.writeError(ctx, resp, err)
+		return
+	}
+
+	buf, err := ioutil.ReadAll(req.Body)
+	if err != nil {
+		s.writeError(ctx, resp, wrapInternal(err, "failed to read request body"))
+		return
+	}
+	reqContent := new(SetFEHashRequest)
+	if err = proto.Unmarshal(buf, reqContent); err != nil {
+		s.writeError(ctx, resp, malformedRequestError("the protobuf request could not be decoded"))
+		return
+	}
+
+	handler := s.ConfigService.SetFEHash
+	if s.interceptor != nil {
+		handler = func(ctx context.Context, req *SetFEHashRequest) (*ConfigResponse, error) {
+			resp, err := s.interceptor(
+				func(ctx context.Context, req interface{}) (interface{}, error) {
+					typedReq, ok := req.(*SetFEHashRequest)
+					if !ok {
+						return nil, twirp.InternalError("failed type assertion req.(*SetFEHashRequest) when calling interceptor")
+					}
+					return s.ConfigService.SetFEHash(ctx, typedReq)
+				},
+			)(ctx, req)
+			if resp != nil {
+				typedResp, ok := resp.(*ConfigResponse)
+				if !ok {
+					return nil, twirp.InternalError("failed type assertion resp.(*ConfigResponse) when calling interceptor")
+				}
+				return typedResp, err
+			}
+			return nil, err
+		}
+	}
+
+	// Call service method
+	var respContent *ConfigResponse
+	func() {
+		defer ensurePanicResponses(ctx, resp, s.hooks)
+		respContent, err = handler(ctx, reqContent)
+	}()
+
+	if err != nil {
+		s.writeError(ctx, resp, err)
+		return
+	}
+	if respContent == nil {
+		s.writeError(ctx, resp, twirp.InternalError("received a nil *ConfigResponse and nil error while calling SetFEHash. nil responses are not supported"))
 		return
 	}
 
@@ -1042,17 +1316,20 @@ func callClientError(ctx context.Context, h *twirp.ClientHooks, err twirp.Error)
 }
 
 var twirpFileDescriptor0 = []byte{
-	// 191 bytes of a gzipped FileDescriptorProto
+	// 236 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xe2, 0xd2, 0x4d, 0x2c, 0xc8, 0xd4,
 	0x2f, 0x28, 0xca, 0x2f, 0xc9, 0xd7, 0x4f, 0xce, 0xcf, 0x4b, 0xcb, 0x4c, 0x8f, 0x2f, 0x4e, 0x2d,
 	0x2a, 0xcb, 0x4c, 0x4e, 0x45, 0xe3, 0xea, 0x81, 0xd5, 0x08, 0xf1, 0xa1, 0x8a, 0x2a, 0xe9, 0x71,
 	0x09, 0xb9, 0xe6, 0x25, 0x26, 0xe5, 0xa4, 0xba, 0x27, 0xe6, 0xa6, 0x16, 0x07, 0xa5, 0x16, 0x96,
 	0xa6, 0x16, 0x97, 0x08, 0x49, 0x70, 0xb1, 0xa7, 0x82, 0x45, 0x53, 0x24, 0x18, 0x15, 0x18, 0x35,
-	0x38, 0x82, 0x60, 0x5c, 0x25, 0x01, 0x2e, 0x3e, 0x67, 0xb0, 0x09, 0x41, 0xa9, 0xc5, 0x05, 0xf9,
-	0x79, 0xc5, 0xa9, 0x46, 0x69, 0x5c, 0xbc, 0x10, 0x91, 0x60, 0x88, 0x91, 0x42, 0xa1, 0x5c, 0xfc,
-	0xc1, 0xa9, 0x25, 0x60, 0xf3, 0x20, 0x46, 0xa7, 0x08, 0x29, 0xe9, 0xa1, 0x39, 0x06, 0xd3, 0x4e,
-	0x29, 0x39, 0x74, 0x35, 0xa8, 0xf6, 0x38, 0x59, 0x45, 0x59, 0xa4, 0x67, 0x96, 0x64, 0x94, 0x26,
-	0xe9, 0x25, 0xe7, 0xe7, 0xea, 0xa7, 0xe4, 0xe7, 0x66, 0xe6, 0xe5, 0x1b, 0x9a, 0xe8, 0xe7, 0x64,
-	0x96, 0xe7, 0x17, 0xa5, 0x14, 0xeb, 0x17, 0x15, 0x24, 0xeb, 0xe3, 0x0a, 0x8a, 0x24, 0x36, 0xb0,
-	0xa8, 0x31, 0x20, 0x00, 0x00, 0xff, 0xff, 0x0e, 0x4d, 0x06, 0x36, 0x2d, 0x01, 0x00, 0x00,
+	0x38, 0x82, 0x60, 0x5c, 0x25, 0x35, 0x2e, 0x81, 0xe0, 0xd4, 0x12, 0x37, 0x57, 0x8f, 0xc4, 0xe2,
+	0x0c, 0x98, 0x6a, 0x21, 0x2e, 0x96, 0x8c, 0xc4, 0xe2, 0x0c, 0xb0, 0x52, 0xce, 0x20, 0x30, 0x5b,
+	0x49, 0x80, 0x8b, 0xcf, 0x19, 0x6c, 0x53, 0x50, 0x6a, 0x71, 0x41, 0x7e, 0x5e, 0x71, 0xaa, 0xd1,
+	0x56, 0x46, 0x2e, 0x5e, 0x88, 0x50, 0x30, 0xc4, 0x6e, 0xa1, 0x50, 0x2e, 0xfe, 0xe0, 0xd4, 0x12,
+	0xb0, 0xc5, 0x10, 0x37, 0xa4, 0x08, 0x29, 0xe9, 0xa1, 0xb9, 0x1a, 0xd3, 0x71, 0x52, 0x72, 0xe8,
+	0x6a, 0x50, 0x2d, 0x12, 0xf2, 0xe5, 0xe2, 0x84, 0x3b, 0x51, 0x48, 0x01, 0x5d, 0x31, 0xba, 0xeb,
+	0x09, 0x19, 0xe7, 0x64, 0x15, 0x65, 0x91, 0x9e, 0x59, 0x92, 0x51, 0x9a, 0xa4, 0x97, 0x9c, 0x9f,
+	0xab, 0x9f, 0x92, 0x9f, 0x9b, 0x99, 0x97, 0x6f, 0x68, 0xa2, 0x9f, 0x93, 0x59, 0x9e, 0x5f, 0x94,
+	0x52, 0xac, 0x5f, 0x54, 0x90, 0xac, 0x8f, 0x2b, 0x0a, 0x92, 0xd8, 0xc0, 0xa2, 0xc6, 0x80, 0x00,
+	0x00, 0x00, 0xff, 0xff, 0xb5, 0x63, 0x38, 0xca, 0xa5, 0x01, 0x00, 0x00,
 }

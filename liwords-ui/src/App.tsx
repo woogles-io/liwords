@@ -117,6 +117,9 @@ const App = React.memo(() => {
         <Route path="/clubs">
           <Clubs />
         </Route>
+        <Route path="/clubs">
+          <Clubs />
+        </Route>
         <Route path="/game/:gameID">
           {/* Table meaning a game table */}
           <GameTable sendSocketMsg={sendMessage} sendChat={sendChat} />

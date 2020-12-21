@@ -4,8 +4,12 @@ option go_package = "github.com/domino14/liwords/rpc/api/proto/config_service";
 
 message EnableGamesRequest { bool enabled = 1; }
 
+message SetFEHashRequest { string hash = 1; }
+
 message ConfigResponse {}
 
 service ConfigService {
   rpc SetGamesEnabled(EnableGamesRequest) returns(ConfigResponse);
+
+  rpc SetFEHash(SetFEHashRequest) returns(ConfigResponse);
 }

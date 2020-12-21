@@ -175,8 +175,8 @@ export class SocketTokenResponse extends jspb.Message {
   getCid(): string;
   setCid(value: string): void;
 
-  getAppVersion(): string;
-  setAppVersion(value: string): void;
+  getFrontEndVersion(): string;
+  setFrontEndVersion(value: string): void;
 
   serializeBinary(): Uint8Array;
   toObject(includeInstance?: boolean): SocketTokenResponse.AsObject;
@@ -192,7 +192,7 @@ export namespace SocketTokenResponse {
   export type AsObject = {
     token: string,
     cid: string,
-    appVersion: string,
+    frontEndVersion: string,
   }
 }
 

@@ -45,7 +45,7 @@ message SocketTokenRequest {}
 message SocketTokenResponse {
   string token = 1;
   string cid = 2;
-  string app_version = 3;
+  string front_end_version = 3;
 }
 
 message UserLogoutRequest {}
