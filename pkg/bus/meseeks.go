@@ -10,6 +10,7 @@ import (
 
 	"github.com/domino14/liwords/pkg/entity"
 	"github.com/domino14/liwords/pkg/gameplay"
+	gs "github.com/domino14/liwords/rpc/api/proto/game_service"
 	pb "github.com/domino14/liwords/rpc/api/proto/realtime"
 )
 
@@ -202,26 +203,26 @@ func (b *Bus) gameRequestForMatch(ctx context.Context, req *pb.MatchRequest,
 	if gameID == "" {
 		gameRequest = req.GameRequest
 	} else { // It's a rematch.
-		// XXX: rewrite to call the less expensive GetMetadata.
-		g, err := b.gameStore.Get(ctx, gameID)
+		gm, err := b.gameStore.GetMetadata(ctx, gameID)
 		if err != nil {
 			return nil, "", err
 		}
 		// Figure out who we played against.
-		for _, u := range g.History().Players {
+		for _, u := range gm.Players {
 			if u.UserId == userID {
 				continue
 			}
 			lastOpp = u.UserId
 		}
-		gameRequest = proto.Clone(g.GameReq).(*pb.GameRequest)
 		// If this game is a rematch, set the OriginalRequestId
 		// to the previous game's OriginalRequestId. In this way,
 		// we maintain a constant OriginalRequestId value across
 		// rematch streaks. The OriginalRequestId is set in
 		// NewSoughtGame and NewMatchRequest in sought_game.go
-		// if it is not set here.
-		gameRequest.OriginalRequestId = g.GameReq.OriginalRequestId
+		// if it is not set here. We copy the whole game request which includes
+		// the OriginalRequestId
+		gameRequest = proto.Clone(gm.GameRequest).(*pb.GameRequest)
+
 		// This will get overwritten later:
 		gameRequest.RequestId = ""
 	}
@@ -381,16 +382,16 @@ func (b *Bus) broadcastGameCreation(g *entity.Game, acceptor, requester *entity.
 		return err
 	}
 	ratingKey := entity.ToVariantKey(g.GameReq.Lexicon, variant, timefmt)
-	users := []*pb.GameMeta_UserMeta{
-		{RelevantRating: acceptor.GetRelevantRating(ratingKey),
-			DisplayName: acceptor.Username},
-		{RelevantRating: requester.GetRelevantRating(ratingKey),
-			DisplayName: requester.Username},
+	players := []*gs.PlayerInfo{
+		{Rating: acceptor.GetRelevantRating(ratingKey),
+			Nickname: acceptor.Username},
+		{Rating: requester.GetRelevantRating(ratingKey),
+			Nickname: requester.Username},
 	}
 
-	toSend := entity.WrapEvent(&pb.GameMeta{Users: users,
-		GameRequest: g.GameReq, Id: g.GameID()},
-		pb.MessageType_GAME_META_EVENT)
+	toSend := entity.WrapEvent(&gs.GameInfoResponse{Players: players,
+		GameRequest: g.GameReq, GameId: g.GameID()},
+		pb.MessageType_ONGOING_GAME_EVENT)
 	data, err := toSend.Serialize()
 	if err != nil {
 		return err

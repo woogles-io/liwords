@@ -54,11 +54,15 @@ import { ActionType } from '../actions/actions';
 import { endGameMessage } from './end_of_game';
 import {
   SeekRequestToSoughtGame,
-  GameMetaToActiveGame,
   SoughtGame,
+  GameInfoResponseToActiveGame,
 } from './reducers/lobby_reducer';
 import { BoopSounds } from '../sound/boop';
 import { ActiveChatChannels } from '../gen/api/proto/user_service/user_service_pb';
+import {
+  GameInfoResponse,
+  GameInfoResponses,
+} from '../gen/api/proto/game_service/game_service_pb';
 
 // Feature flag.
 export const enableShowSocket =
@@ -87,8 +91,12 @@ export const parseMsgs = (msg: Uint8Array) => {
       [MessageType.SERVER_CHALLENGE_RESULT_EVENT]: ServerChallengeResultEvent,
       [MessageType.SEEK_REQUESTS]: SeekRequests,
       [MessageType.TIMED_OUT]: TimedOut,
+      // XXX: delete these next two.
       [MessageType.GAME_META_EVENT]: GameMeta,
       [MessageType.ACTIVE_GAMES]: ActiveGames,
+      // ...
+      [MessageType.ONGOING_GAME_EVENT]: GameInfoResponse,
+      [MessageType.ONGOING_GAMES]: GameInfoResponses,
       [MessageType.GAME_DELETION]: GameDeletion,
       [MessageType.MATCH_REQUESTS]: MatchRequests,
       [MessageType.DECLINE_MATCH_REQUEST]: DeclineMatchRequest,
@@ -604,14 +612,12 @@ export const useOnSocketMsg = () => {
             break;
           }
 
+          // XXX: Delete me - obsolete
           case MessageType.ACTIVE_GAMES: {
             // lobby context, set list of active games
             const age = parsedMsg as ActiveGames;
-            console.log('got active games', age);
-            dispatchLobbyContext({
-              actionType: ActionType.AddActiveGames,
-              payload: age.getGamesList().map((g) => GameMetaToActiveGame(g)),
-            });
+            console.log('OBSOLETE, REFRESH APP', age);
+
             break;
           }
 
@@ -626,17 +632,38 @@ export const useOnSocketMsg = () => {
             break;
           }
 
+          // XXX: Delete me - obsolete
           case MessageType.GAME_META_EVENT: {
             // lobby context, add active game
             const gme = parsedMsg as GameMeta;
+            console.log('OBSOLETE, REFRESH APP', gme);
+
+            break;
+          }
+
+          case MessageType.ONGOING_GAME_EVENT: {
+            // lobby context, add active game
+            const gme = parsedMsg as GameInfoResponse;
             console.log('add active game', gme);
-            const activeGame = GameMetaToActiveGame(gme);
+            const activeGame = GameInfoResponseToActiveGame(gme);
             if (!activeGame) {
               return;
             }
             dispatchLobbyContext({
               actionType: ActionType.AddActiveGame,
               payload: activeGame,
+            });
+            break;
+          }
+
+          case MessageType.ONGOING_GAMES: {
+            const age = parsedMsg as GameInfoResponses;
+            console.log('got active games', age);
+            dispatchLobbyContext({
+              actionType: ActionType.AddActiveGames,
+              payload: age
+                .getGameInfoList()
+                .map((g) => GameInfoResponseToActiveGame(g)),
             });
             break;
           }

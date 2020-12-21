@@ -630,18 +630,14 @@ func (b *Bus) pongReceived(ctx context.Context, userID, connID string) error {
 }
 
 func (b *Bus) activeGames(ctx context.Context, tourneyID string) (*entity.EventWrapper, error) {
-	gs, err := b.gameStore.ListActive(ctx, tourneyID)
+	games, err := b.gameStore.ListActive(ctx, tourneyID, false)
 
 	if err != nil {
 		return nil, err
 	}
-	log.Debug().Interface("active-games", gs).Msg("active-games")
+	log.Debug().Interface("active-games", games).Msg("active-games")
 
-	pbobj := &pb.ActiveGames{Games: []*pb.GameMeta{}}
-	for _, g := range gs {
-		pbobj.Games = append(pbobj.Games, g)
-	}
-	evt := entity.WrapEvent(pbobj, pb.MessageType_ACTIVE_GAMES)
+	evt := entity.WrapEvent(games, pb.MessageType_ONGOING_GAMES)
 	return evt, nil
 }
 

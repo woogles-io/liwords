@@ -18,6 +18,7 @@ services:
       GORACE: history_size=7
     volumes:
       - .:/opt/program:rw
+      - ./data/lexica/dawg:/opt/program/data/lexica/dawg
     command: sh -c "go run -race cmd/liwords-api/*.go"
     depends_on: ["db", "proxy", "nats", "socket", "redis"]
     networks:
@@ -42,7 +43,8 @@ services:
       DEBUG: 1
     volumes:
       - ../macondo:/opt/program:rw
-      - ./data/lexica:/opt/program/data/lexica
+      # Use the same gaddag files we use for the WASM integration.
+      - ./data/lexica/gaddag:/opt/program/liwords-ui/public/wasm
     command: sh -c "go run -race cmd/bot/*.go"
     depends_on: ["nats"]
     networks:

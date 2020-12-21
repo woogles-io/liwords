@@ -15,6 +15,7 @@ import {
 import { decodeToMsg } from '../utils/protobuf';
 import { toAPIUrl } from '../api/api';
 import { ActionType } from '../actions/actions';
+import { reloadAction } from './reload';
 
 const getSocketURI = (): string => {
   const loc = window.location;
@@ -35,7 +36,7 @@ const socketUrl = getSocketURI();
 type TokenResponse = {
   token: string;
   cid: string;
-  app_version: string;
+  front_end_version: string;
 };
 
 type DecodedToken = {
@@ -89,7 +90,7 @@ export const LiwordsSocket = (props: {
       if (!isMountedRef.current) return failUrl;
 
       const socketToken = resp.data.token;
-      const { cid, app_version } = resp.data;
+      const { cid, front_end_version } = resp.data;
 
       const ret = `${socketUrl}?${new URLSearchParams({
         token: socketToken,
@@ -110,21 +111,23 @@ export const LiwordsSocket = (props: {
       });
       if (!isMountedRef.current) return failUrl;
       console.log('Got token, setting state, and will try to connect...');
-      if (window.RUNTIME_CONFIGURATION.appVersion !== app_version) {
+      if (window.RUNTIME_CONFIGURATION.appVersion !== front_end_version) {
         console.log(
           'app version mismatch',
           'local',
           window.RUNTIME_CONFIGURATION.appVersion,
           'remote',
-          app_version
+          front_end_version
         );
 
-        // bring back when we fix circleci sed
-        /*
-          message.warning(
-            'Woogles has been updated. Please refresh this page at your leisure.',
-            0
-          ); */
+        if (front_end_version !== '') {
+          message.warning({
+            content: reloadAction,
+            className: 'board-hud-message',
+            key: 'reload-warning',
+            duration: 0,
+          });
+        }
       }
 
       return ret;

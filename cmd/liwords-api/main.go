@@ -107,6 +107,7 @@ func main() {
 		hlog.NewHandler(log.With().Str("service", "liwords").Logger()),
 		apiserver.WithCookiesMiddleware,
 		apiserver.AuthenticationMiddlewareGenerator(stores.SessionStore),
+		apiserver.APIKeyMiddlewareGenerator(),
 		hlog.AccessHandler(func(r *http.Request, status int, size int, d time.Duration) {
 			path := strings.Split(r.URL.Path, "/")
 			method := path[len(path)-1]
@@ -136,7 +137,8 @@ func main() {
 	stores.PresenceStore = user.NewRedisPresenceStore(redisPool)
 	stores.ChatStore = user.NewRedisChatStore(redisPool)
 
-	authenticationService := auth.NewAuthenticationService(stores.UserStore, stores.SessionStore, cfg.SecretKey, cfg.MailgunKey, BuildHash)
+	authenticationService := auth.NewAuthenticationService(stores.UserStore, stores.SessionStore, stores.ConfigStore,
+		cfg.SecretKey, cfg.MailgunKey)
 	registrationService := registration.NewRegistrationService(stores.UserStore)
 	gameService := gameplay.NewGameService(stores.UserStore, stores.GameStore)
 	profileService := pkguser.NewProfileService(stores.UserStore)
