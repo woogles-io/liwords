@@ -23,6 +23,7 @@ import { NewPassword } from './lobby/new_password';
 import { toAPIUrl } from './api/api';
 import { ChatMessage, MessageType } from './gen/api/proto/realtime/realtime_pb';
 import { encodeToSocketFmt } from './utils/protobuf';
+import { Clubs } from './clubs';
 
 type Blocks = {
   user_ids: Array<string>;
@@ -112,6 +113,9 @@ const App = React.memo(() => {
             sendChat={sendChat}
             DISCONNECT={resetSocket}
           />
+        </Route>
+        <Route path="/clubs">
+          <Clubs />
         </Route>
         <Route path="/game/:gameID">
           {/* Table meaning a game table */}
