@@ -44,7 +44,18 @@ p {
     }
     .ant-select {
       width: 100%;
+      max-width: 500px;
       margin-bottom: 24px;
+      @include colorModed() {
+        background: m($card-background);
+        color: m($gray-extreme);
+      }
+      input, .ant-select-selector {
+        @include colorModed() {
+          background: m($card-background);
+          color: m($gray-extreme);
+        }
+      }
     }
     .breadcrumb {
       padding: 6px 0 0;
