@@ -363,7 +363,6 @@ func (b *Bus) handleNatsPublish(ctx context.Context, subtopics []string, data []
 		if err != nil {
 			return err
 		}
-		entGame.RLock()
 		// Determine if one of our players is a bot (no bot-vs-bot supported yet?)
 		// and if it is the bot's turn.
 		if entGame.GameReq != nil &&
@@ -371,11 +370,8 @@ func (b *Bus) handleNatsPublish(ctx context.Context, subtopics []string, data []
 			entGame.Game.Playing() != macondopb.PlayState_GAME_OVER &&
 			entGame.PlayerIDOnTurn() != userID {
 
-			entGame.RUnlock()
 			// Do this in a separate goroutine as it blocks while waiting for bot move.
 			go b.handleBotMove(ctx, entGame)
-		} else {
-			entGame.RUnlock()
 		}
 		return nil
 

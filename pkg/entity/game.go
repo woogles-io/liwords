@@ -1,7 +1,6 @@
 package entity
 
 import (
-	"sync"
 	"time"
 
 	gameservicepb "github.com/domino14/liwords/rpc/api/proto/game_service"
@@ -76,7 +75,6 @@ type TournamentData struct {
 // and we should save most of the included fields here, especially the
 // macondo.game.History (which can be exported as GCG, etc in the future)
 type Game struct {
-	sync.RWMutex
 	game.Game
 
 	PlayerDBIDs [2]uint // needed to associate the games to the player IDs in the db.

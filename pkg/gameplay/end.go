@@ -7,6 +7,7 @@ import (
 
 	"github.com/domino14/liwords/pkg/entity"
 	"github.com/domino14/liwords/pkg/stats"
+	"github.com/domino14/liwords/pkg/stores/game"
 	"github.com/domino14/liwords/pkg/tournament"
 	"github.com/domino14/liwords/pkg/user"
 	pb "github.com/domino14/liwords/rpc/api/proto/realtime"
@@ -29,7 +30,18 @@ func performEndgameDuties(ctx context.Context, g *entity.Game, gameStore GameSto
 		}
 	}
 
-	// evts := []*pb.ServerGameplayEvent{}
+	// this function should not run more than once. We call an atomic
+	// function in the game store to ensure this.
+	// The proper way to do this is to write a transaction around the latter
+	// functions, but this will have to do for now.
+	err := gameStore.SetGameEndReason(ctx, g)
+	if err != nil {
+		if err == game.ErrGameAlreadyOver {
+			log.Debug().Msg("not-executing-endgameduties-twice")
+			return nil
+		}
+		return err
+	}
 
 	var p0penalty, p1penalty int
 	// Limit time penalties to the max OT. This is so that we don't get situations
@@ -292,8 +304,6 @@ func AbortGame(ctx context.Context, gameStore GameStore, gameID string) error {
 	if err != nil {
 		return err
 	}
-	entGame.Lock()
-	defer entGame.Unlock()
 	entGame.SetGameEndReason(pb.GameEndReason_CANCELLED)
 
 	entGame.History().PlayState = macondopb.PlayState_GAME_OVER

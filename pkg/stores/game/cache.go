@@ -27,6 +27,7 @@ type backingStore interface {
 	SetGameEventChan(ch chan<- *entity.EventWrapper)
 	Disconnect()
 	SetReady(ctx context.Context, gid string, pidx int) (int, error)
+	SetGameEndReason(ctx context.Context, g *entity.Game) error
 }
 
 const (
@@ -97,31 +98,40 @@ func (c *Cache) SetGameEventChan(ch chan<- *entity.EventWrapper) {
 	c.backing.SetGameEventChan(ch)
 }
 
-// Get gets a game from the cache.. it loads it into the cache if it's not there.
-func (c *Cache) Get(ctx context.Context, id string) (*entity.Game, error) {
-	g, ok := c.cache.Get(id)
-	if ok && g != nil {
-		return g.(*entity.Game), nil
-	}
-
-	// Recheck after locking, to ensure it is still not there.
-	c.Lock()
-	defer c.Unlock()
-	g, ok = c.cache.Get(id)
-	if ok && g != nil {
-		return g.(*entity.Game), nil
-	}
-	log.Info().Str("gameid", id).Msg("not-in-cache")
-	uncachedGame, err := c.backing.Get(ctx, id)
-	if err == nil {
-		c.cache.Add(id, uncachedGame)
-	}
-	return uncachedGame, err
-
-}
-
 func (c *Cache) GetFromBacking(ctx context.Context, id string) (*entity.Game, error) {
 	return c.backing.Get(ctx, id)
+}
+
+// Get gets a game from the cache.. it loads it into the cache if it's not there.
+func (c *Cache) Get(ctx context.Context, id string) (*entity.Game, error) {
+	// XXX:remove cache soon.
+	return c.GetFromBacking(ctx, id)
+	/*
+		g, ok := c.cache.Get(id)
+		if ok && g != nil {
+			return g.(*entity.Game), nil
+		}
+
+		// Recheck after locking, to ensure it is still not there.
+		c.Lock()
+		defer c.Unlock()
+		g, ok = c.cache.Get(id)
+		if ok && g != nil {
+			return g.(*entity.Game), nil
+		}
+		log.Info().Str("gameid", id).Msg("not-in-cache")
+
+		uncachedGame, err := c.GetFromBacking(ctx, id)
+		if err != nil {
+			return nil, err
+		}
+		c.cache.Add(id, uncachedGame)
+		return uncachedGame, nil
+	*/
+}
+
+func (c *Cache) SetGameEndReason(ctx context.Context, g *entity.Game) error {
+	return c.backing.SetGameEndReason(ctx, g)
 }
 
 // Just call the DB implementation for now
@@ -172,7 +182,8 @@ func (c *Cache) setOrCreate(ctx context.Context, game *entity.Game, isNew bool) 
 	if err != nil {
 		return err
 	}
-	c.cache.Add(gameID, game)
+	// xxx: remove cache soon
+	//c.cache.Add(gameID, game)
 	return nil
 }
 

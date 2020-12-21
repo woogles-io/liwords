@@ -30,6 +30,10 @@ import (
 	macondopb "github.com/domino14/macondo/gen/api/proto/macondo"
 )
 
+var (
+	ErrGameAlreadyOver = errors.New("game is already over")
+)
+
 const (
 	MaxRecentGames = 20
 )
@@ -475,6 +479,24 @@ func (s *DBStore) SetReady(ctx context.Context, gid string, pidx int) (int, erro
 		returning ready_flag`, 1<<pidx, gid).Scan(&rf)
 
 	return rf.ReadyFlag, result.Error
+}
+
+// SetGameEndReason updates the endgame reason in an atomic fashion. It
+// will return an error if the endgame reason was already set.
+func (s *DBStore) SetGameEndReason(ctx context.Context, g *entity.Game) error {
+	ctxDB := s.db.WithContext(ctx)
+
+	result := ctxDB.Raw(`update games set game_end_reason = ? where uuid = ?
+		and game_end_reason = ?`, g.GameEndReason, pb.GameEndReason_NONE)
+
+	if result.Error != nil {
+		return result.Error
+	}
+	if result.RowsAffected == 0 {
+		return ErrGameAlreadyOver
+	}
+
+	return nil
 }
 
 func (s *DBStore) toDBObj(g *entity.Game) (*game, error) {

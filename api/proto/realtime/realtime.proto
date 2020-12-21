@@ -327,9 +327,6 @@ message ClientGameplayEvent {
   // tiles that are being played (or exchanged). The `.` character is used
   // for thru, and lowercase characters are used for blanks.
   string tiles = 4;
-  // event_index is a sequence number. If the server detects that we are
-  // out of sync it'll bust its cache.
-  int32 event_index = 5;
 }
 
 message TimedOut {

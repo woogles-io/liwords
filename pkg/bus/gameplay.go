@@ -10,6 +10,7 @@ import (
 
 	"github.com/domino14/liwords/pkg/entity"
 	"github.com/domino14/liwords/pkg/gameplay"
+	gstore "github.com/domino14/liwords/pkg/stores/game"
 	pb "github.com/domino14/liwords/rpc/api/proto/realtime"
 	"github.com/domino14/macondo/game"
 	macondopb "github.com/domino14/macondo/gen/api/proto/macondo"
@@ -245,16 +246,13 @@ func (b *Bus) adjudicateGames(ctx context.Context) error {
 	now := time.Now()
 	log.Debug().Interface("active-games", gs).Msg("maybe-adjudicating...")
 	for _, g := range gs.GameInfo {
-		// These will likely be in the cache.
-		entGame, err := b.gameStore.Get(ctx, g.GameId)
+		entGame, err := b.gameStore.(*gstore.Cache).GetFromBacking(ctx, g.GameId)
 		if err != nil {
 			return err
 		}
-		entGame.RLock()
 		onTurn := entGame.Game.PlayerOnTurn()
 		started := entGame.Started
 		timeRanOut := entGame.TimeRanOut(onTurn)
-		entGame.RUnlock()
 		if started && timeRanOut {
 			log.Debug().Str("gid", g.GameId).Msg("adjudicating-time-ran-out")
 			err = gameplay.TimedOut(ctx, b.gameStore, b.userStore,
