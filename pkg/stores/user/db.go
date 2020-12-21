@@ -15,6 +15,7 @@ import (
 	"github.com/rs/zerolog/log"
 
 	"github.com/domino14/liwords/pkg/entity"
+	pb "github.com/domino14/liwords/rpc/api/proto/user_service"
 )
 
 // DBStore is a postgres-backed store for users.
@@ -582,14 +583,15 @@ func (s *DBStore) Username(ctx context.Context, uuid string) (string, bool, erro
 	return user.Username, false, nil
 }
 
-func (s *DBStore) UsernamesByPrefix(ctx context.Context, prefix string) ([]string, error) {
+func (s *DBStore) UsersByPrefix(ctx context.Context, prefix string) ([]*pb.BasicUser, error) {
 
 	type u struct {
 		Username string
+		UUID     string
 	}
 
 	var us []u
-	if result := s.db.Table("users").Select("username").
+	if result := s.db.Table("users").Select("username, uuid").
 		Where("lower(username) like ? AND internal_bot = ?",
 			strings.ToLower(prefix)+"%", false).
 		Limit(20).
@@ -598,13 +600,15 @@ func (s *DBStore) UsernamesByPrefix(ctx context.Context, prefix string) ([]strin
 	}
 	log.Debug().Str("prefix", prefix).Int("byprefix", len(us)).Msg("found-matches")
 
-	usernames := make([]string, len(us))
+	users := make([]*pb.BasicUser, len(us))
 	for idx, u := range us {
-		usernames[idx] = u.Username
+		users[idx] = &pb.BasicUser{Username: u.Username, Uuid: u.UUID}
 	}
-	sort.Strings(usernames)
+	sort.Slice(users, func(i int, j int) bool {
+		return users[i].Username < users[j].Username
+	})
 
-	return usernames, nil
+	return users, nil
 }
 
 // List all user IDs.

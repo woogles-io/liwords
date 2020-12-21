@@ -3770,7 +3770,7 @@ proto.user_service.UsernameSearchRequest.prototype.setPrefix = function(value) {
  * @private {!Array<number>}
  * @const
  */
-proto.user_service.UsernameSearchResponse.repeatedFields_ = [1];
+proto.user_service.UsernameSearchResponse.repeatedFields_ = [1,2];
 
 
 
@@ -3803,7 +3803,9 @@ proto.user_service.UsernameSearchResponse.prototype.toObject = function(opt_incl
  */
 proto.user_service.UsernameSearchResponse.toObject = function(includeInstance, msg) {
   var f, obj = {
-    usernamesList: (f = jspb.Message.getRepeatedField(msg, 1)) == null ? undefined : f
+    usernamesList: (f = jspb.Message.getRepeatedField(msg, 1)) == null ? undefined : f,
+    usersList: jspb.Message.toObjectList(msg.getUsersList(),
+    proto.user_service.BasicUser.toObject, includeInstance)
   };
 
   if (includeInstance) {
@@ -3844,6 +3846,11 @@ proto.user_service.UsernameSearchResponse.deserializeBinaryFromReader = function
       var value = /** @type {string} */ (reader.readString());
       msg.addUsernames(value);
       break;
+    case 2:
+      var value = new proto.user_service.BasicUser;
+      reader.readMessage(value,proto.user_service.BasicUser.deserializeBinaryFromReader);
+      msg.addUsers(value);
+      break;
     default:
       reader.skipField();
       break;
@@ -3878,6 +3885,14 @@ proto.user_service.UsernameSearchResponse.serializeBinaryToWriter = function(mes
     writer.writeRepeatedString(
       1,
       f
+    );
+  }
+  f = message.getUsersList();
+  if (f.length > 0) {
+    writer.writeRepeatedMessage(
+      2,
+      f,
+      proto.user_service.BasicUser.serializeBinaryToWriter
     );
   }
 };
@@ -3917,6 +3932,44 @@ proto.user_service.UsernameSearchResponse.prototype.addUsernames = function(valu
  */
 proto.user_service.UsernameSearchResponse.prototype.clearUsernamesList = function() {
   return this.setUsernamesList([]);
+};
+
+
+/**
+ * repeated BasicUser users = 2;
+ * @return {!Array<!proto.user_service.BasicUser>}
+ */
+proto.user_service.UsernameSearchResponse.prototype.getUsersList = function() {
+  return /** @type{!Array<!proto.user_service.BasicUser>} */ (
+    jspb.Message.getRepeatedWrapperField(this, proto.user_service.BasicUser, 2));
+};
+
+
+/**
+ * @param {!Array<!proto.user_service.BasicUser>} value
+ * @return {!proto.user_service.UsernameSearchResponse} returns this
+*/
+proto.user_service.UsernameSearchResponse.prototype.setUsersList = function(value) {
+  return jspb.Message.setRepeatedWrapperField(this, 2, value);
+};
+
+
+/**
+ * @param {!proto.user_service.BasicUser=} opt_value
+ * @param {number=} opt_index
+ * @return {!proto.user_service.BasicUser}
+ */
+proto.user_service.UsernameSearchResponse.prototype.addUsers = function(opt_value, opt_index) {
+  return jspb.Message.addToRepeatedWrapperField(this, 2, opt_value, proto.user_service.BasicUser, opt_index);
+};
+
+
+/**
+ * Clears the list making it empty but non-null.
+ * @return {!proto.user_service.UsernameSearchResponse} returns this
+ */
+proto.user_service.UsernameSearchResponse.prototype.clearUsersList = function() {
+  return this.setUsersList([]);
 };
 
 

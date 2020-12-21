@@ -454,6 +454,11 @@ export class UsernameSearchResponse extends jspb.Message {
   setUsernamesList(value: Array<string>): void;
   addUsernames(value: string, index?: number): string;
 
+  clearUsersList(): void;
+  getUsersList(): Array<BasicUser>;
+  setUsersList(value: Array<BasicUser>): void;
+  addUsers(value?: BasicUser, index?: number): BasicUser;
+
   serializeBinary(): Uint8Array;
   toObject(includeInstance?: boolean): UsernameSearchResponse.AsObject;
   static toObject(includeInstance: boolean, msg: UsernameSearchResponse): UsernameSearchResponse.AsObject;
@@ -467,6 +472,7 @@ export class UsernameSearchResponse extends jspb.Message {
 export namespace UsernameSearchResponse {
   export type AsObject = {
     usernamesList: Array<string>,
+    usersList: Array<BasicUser.AsObject>,
   }
 }
 

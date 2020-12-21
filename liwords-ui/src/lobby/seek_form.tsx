@@ -58,9 +58,13 @@ const timeScaleToNum = (val: string) => {
       return parseInt(val, 10);
   }
 };
+type user = {
+  username: string;
+  uuid: string;
+};
 
 type SearchResponse = {
-  usernames: Array<string>;
+  users: Array<user>;
 };
 
 type Props = {
@@ -189,7 +193,9 @@ export const SeekForm = (props: Props) => {
       )
       .then((resp) => {
         console.log('resp', resp.data);
-        setUsernameOptions(!searchText ? [] : resp.data.usernames);
+        setUsernameOptions(
+          !searchText ? [] : resp.data.users.map((u) => u.username)
+        );
       });
   };
 
