@@ -97,14 +97,16 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	userStore := user.NewCache(tmpUserStore)
+	stores := bus.Stores{}
 
-	sessionStore, err := session.NewDBStore(cfg.DBConnString)
+	stores.UserStore = user.NewCache(tmpUserStore)
+
+	stores.SessionStore, err = session.NewDBStore(cfg.DBConnString)
 
 	middlewares := alice.New(
 		hlog.NewHandler(log.With().Str("service", "liwords").Logger()),
 		apiserver.WithCookiesMiddleware,
-		apiserver.AuthenticationMiddlewareGenerator(sessionStore),
+		apiserver.AuthenticationMiddlewareGenerator(stores.SessionStore),
 		apiserver.APIKeyMiddlewareGenerator(),
 		hlog.AccessHandler(func(r *http.Request, status int, size int, d time.Duration) {
 			path := strings.Split(r.URL.Path, "/")
@@ -113,34 +115,37 @@ func main() {
 		}),
 	)
 
-	tmpGameStore, err := game.NewDBStore(cfg, userStore)
+	tmpGameStore, err := game.NewDBStore(cfg, stores.UserStore)
 	if err != nil {
 		panic(err)
 	}
 
-	gameStore := game.NewCache(tmpGameStore)
+	stores.GameStore = game.NewCache(tmpGameStore)
 
-	tmpTournamentStore, err := tournamentstore.NewDBStore(cfg, gameStore)
+	tmpTournamentStore, err := tournamentstore.NewDBStore(cfg, stores.GameStore)
 	if err != nil {
 		panic(err)
 	}
-	tournamentStore := tournamentstore.NewCache(tmpTournamentStore)
+	stores.TournamentStore = tournamentstore.NewCache(tmpTournamentStore)
 
-	soughtGameStore := soughtgame.NewMemoryStore()
-	configStore := cfgstore.NewRedisConfigStore(redisPool)
-	listStatStore, err := stats.NewListStatStore(cfg.DBConnString)
+	stores.SoughtGameStore = soughtgame.NewMemoryStore()
+	stores.ConfigStore = cfgstore.NewRedisConfigStore(redisPool)
+	stores.ListStatStore, err = stats.NewListStatStore(cfg.DBConnString)
 	if err != nil {
 		panic(err)
 	}
+	stores.PresenceStore = user.NewRedisPresenceStore(redisPool)
+	stores.ChatStore = user.NewRedisChatStore(redisPool)
 
-	authenticationService := auth.NewAuthenticationService(userStore, sessionStore, configStore, cfg.SecretKey, cfg.MailgunKey)
-	registrationService := registration.NewRegistrationService(userStore)
-	gameService := gameplay.NewGameService(userStore, gameStore)
-	profileService := pkguser.NewProfileService(userStore)
-	autocompleteService := pkguser.NewAutocompleteService(userStore)
-	socializeService := pkguser.NewSocializeService(userStore)
-	configService := config.NewConfigService(configStore, userStore)
-	tournamentService := tournament.NewTournamentService(tournamentStore, userStore)
+	authenticationService := auth.NewAuthenticationService(stores.UserStore, stores.SessionStore, stores.ConfigStore,
+		cfg.SecretKey, cfg.MailgunKey)
+	registrationService := registration.NewRegistrationService(stores.UserStore)
+	gameService := gameplay.NewGameService(stores.UserStore, stores.GameStore)
+	profileService := pkguser.NewProfileService(stores.UserStore)
+	autocompleteService := pkguser.NewAutocompleteService(stores.UserStore)
+	socializeService := pkguser.NewSocializeService(stores.UserStore, stores.ChatStore)
+	configService := config.NewConfigService(stores.ConfigStore, stores.UserStore)
+	tournamentService := tournament.NewTournamentService(stores.TournamentStore, stores.UserStore)
 
 	router.Handle("/ping", http.HandlerFunc(pingEndpoint))
 
@@ -183,12 +188,12 @@ func main() {
 	}))
 
 	expvar.Publish("gameCacheSize", expvar.Func(func() interface{} {
-		ct, _ := gameStore.Count(context.Background())
+		ct := stores.GameStore.CachedCount(context.Background())
 		return fmt.Sprintf("%d", ct)
 	}))
 
 	expvar.Publish("userCacheSize", expvar.Func(func() interface{} {
-		ct, _ := userStore.Count(context.Background())
+		ct := stores.UserStore.CachedCount(context.Background())
 		return fmt.Sprintf("%d", ct)
 	}))
 
@@ -201,11 +206,8 @@ func main() {
 	idleConnsClosed := make(chan struct{})
 	sig := make(chan os.Signal, 1)
 
-	presenceStore := user.NewRedisPresenceStore(redisPool)
-
 	// Handle bus.
-	pubsubBus, err := bus.NewBus(cfg, userStore, gameStore, soughtGameStore,
-		presenceStore, listStatStore, tournamentStore, configStore, redisPool)
+	pubsubBus, err := bus.NewBus(cfg, stores, redisPool)
 	if err != nil {
 		panic(err)
 	}

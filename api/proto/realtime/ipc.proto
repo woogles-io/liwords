@@ -5,13 +5,23 @@ package liwords;
 option go_package = "github.com/domino14/liwords/rpc/api/proto/realtime";
 
 message RegisterRealmRequest {
-  string realm = 1;
+  string path = 1;
   string user_id = 2;
 }
 
-message RegisterRealmResponse { string realm = 1; }
+message RegisterRealmResponse {
+  // realm should be made obsolete. RegisterRealmResponse should always
+  // return a list of realms.
+  string realm = 1 [deprecated = true]; // obsolete, remove later.
+  repeated string realms = 2;
+}
 
+// InitRealmInfo is a request for the API server to send back information
+// about that realm back to the user. For example, for the lobby realm,
+// we would like lists of active games, chats, etc; for game realms, we would
+// like the game history.
 message InitRealmInfo {
-  string realm = 1;
+  string realm = 1 [deprecated = true]; // obsolete; remove later
   string user_id = 2;
+  repeated string realms = 3;
 }

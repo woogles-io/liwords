@@ -54,10 +54,15 @@ import { ActionType } from '../actions/actions';
 import { endGameMessage } from './end_of_game';
 import {
   SeekRequestToSoughtGame,
-  GameMetaToActiveGame,
   SoughtGame,
+  GameInfoResponseToActiveGame,
 } from './reducers/lobby_reducer';
 import { BoopSounds } from '../sound/boop';
+import { ActiveChatChannels } from '../gen/api/proto/user_service/user_service_pb';
+import {
+  GameInfoResponse,
+  GameInfoResponses,
+} from '../gen/api/proto/game_service/game_service_pb';
 
 // Feature flag.
 export const enableShowSocket =
@@ -86,8 +91,12 @@ export const parseMsgs = (msg: Uint8Array) => {
       [MessageType.SERVER_CHALLENGE_RESULT_EVENT]: ServerChallengeResultEvent,
       [MessageType.SEEK_REQUESTS]: SeekRequests,
       [MessageType.TIMED_OUT]: TimedOut,
+      // XXX: delete these next two.
       [MessageType.GAME_META_EVENT]: GameMeta,
       [MessageType.ACTIVE_GAMES]: ActiveGames,
+      // ...
+      [MessageType.ONGOING_GAME_EVENT]: GameInfoResponse,
+      [MessageType.ONGOING_GAMES]: GameInfoResponses,
       [MessageType.GAME_DELETION]: GameDeletion,
       [MessageType.MATCH_REQUESTS]: MatchRequests,
       [MessageType.DECLINE_MATCH_REQUEST]: DeclineMatchRequest,
@@ -100,6 +109,7 @@ export const parseMsgs = (msg: Uint8Array) => {
       [MessageType.MATCH_REQUEST_CANCELLATION]: MatchRequestCancellation,
       [MessageType.TOURNAMENT_GAME_ENDED_EVENT]: TournamentGameEndedEvent,
       [MessageType.REMATCH_STARTED]: RematchStartedEvent,
+      [MessageType.CHAT_CHANNELS]: ActiveChatChannels,
     };
 
     const parsedMsg = msgTypes[msgType];
@@ -203,6 +213,13 @@ export const useOnSocketMsg = () => {
               actionType: ActionType.AddSoughtGames,
               payload: soughtGames,
             });
+
+            break;
+          }
+
+          case MessageType.CHAT_CHANNELS: {
+            const cc = parsedMsg as ActiveChatChannels;
+            console.log('got chat channels', cc);
 
             break;
           }
@@ -349,6 +366,7 @@ export const useOnSocketMsg = () => {
               entityType: ChatEntityType.ErrorMsg,
               sender: 'Woogles',
               message: err.getMessage(),
+              channel: 'server',
             });
             break;
           }
@@ -359,8 +377,15 @@ export const useOnSocketMsg = () => {
               break;
             }
 
-            // XXX: We should ignore this chat message if it's not for the right
-            // channel.
+            // XXX: This is a temporary fix while we can only display one
+            // channel's chat at once.
+            const { path } = loginState;
+            if (
+              path.startsWith('/game/') &&
+              cm.getChannel().startsWith('chat.tournament')
+            ) {
+              break;
+            }
 
             addChat({
               entityType: ChatEntityType.UserChat,
@@ -368,6 +393,7 @@ export const useOnSocketMsg = () => {
               message: cm.getMessage(),
               timestamp: cm.getTimestamp(),
               senderId: cm.getUserId(),
+              channel: cm.getChannel(),
             });
             if (cm.getUsername() !== loginState.username) {
               // BoopSounds.playSound('receiveMsgSound');
@@ -381,6 +407,20 @@ export const useOnSocketMsg = () => {
             // These replace all existing messages.
             const cms = parsedMsg as ChatMessages;
 
+            // XXX: This is a temporary fix while we can only display one
+            // channel's chat at once.
+            const { path } = loginState;
+            if (
+              path.startsWith('/game/') &&
+              (cms.getMessagesList().length === 0 ||
+                cms
+                  .getMessagesList()[0]
+                  ?.getChannel()
+                  .startsWith('chat.tournament'))
+            ) {
+              break;
+            }
+
             const entities = new Array<ChatEntityObj>();
 
             cms.getMessagesList().forEach((cm) => {
@@ -392,6 +432,7 @@ export const useOnSocketMsg = () => {
                   timestamp: cm.getTimestamp(),
                   senderId: cm.getUserId(),
                   id: randomID(),
+                  channel: cm.getChannel(),
                 });
               }
             });
@@ -407,11 +448,21 @@ export const useOnSocketMsg = () => {
             if (excludedPlayers.has(up.getUserId())) {
               break;
             }
+            // XXX: This is a temporary fix while we can only display one
+            // channel's presence at once.
+            const { path } = loginState;
+            if (
+              path.startsWith('/game/') &&
+              up.getChannel().startsWith('chat.tournament')
+            ) {
+              break;
+            }
             setPresence({
               uuid: up.getUserId(),
               username: up.getUsername(),
               channel: up.getChannel(),
               anon: up.getIsAnonymous(),
+              deleting: up.getDeleting(),
             });
             break;
           }
@@ -421,6 +472,20 @@ export const useOnSocketMsg = () => {
 
             const toAdd = new Array<PresenceEntity>();
 
+            // XXX: This is a temporary fix while we can only display one
+            // channel's presence at once.
+            const { path } = loginState;
+            if (
+              path.startsWith('/game/') &&
+              (ups.getPresencesList().length === 0 ||
+                ups
+                  .getPresencesList()[0]
+                  ?.getChannel()
+                  .startsWith('chat.tournament'))
+            ) {
+              break;
+            }
+
             ups.getPresencesList().forEach((p) => {
               if (!excludedPlayers.has(p.getUserId())) {
                 toAdd.push({
@@ -428,6 +493,7 @@ export const useOnSocketMsg = () => {
                   username: p.getUsername(),
                   channel: p.getChannel(),
                   anon: p.getIsAnonymous(),
+                  deleting: p.getDeleting(),
                 });
               }
             });
@@ -571,14 +637,12 @@ export const useOnSocketMsg = () => {
             break;
           }
 
+          // XXX: Delete me - obsolete
           case MessageType.ACTIVE_GAMES: {
             // lobby context, set list of active games
             const age = parsedMsg as ActiveGames;
-            console.log('got active games', age);
-            dispatchLobbyContext({
-              actionType: ActionType.AddActiveGames,
-              payload: age.getGamesList().map((g) => GameMetaToActiveGame(g)),
-            });
+            console.log('OBSOLETE, REFRESH APP', age);
+
             break;
           }
 
@@ -593,17 +657,38 @@ export const useOnSocketMsg = () => {
             break;
           }
 
+          // XXX: Delete me - obsolete
           case MessageType.GAME_META_EVENT: {
             // lobby context, add active game
             const gme = parsedMsg as GameMeta;
+            console.log('OBSOLETE, REFRESH APP', gme);
+
+            break;
+          }
+
+          case MessageType.ONGOING_GAME_EVENT: {
+            // lobby context, add active game
+            const gme = parsedMsg as GameInfoResponse;
             console.log('add active game', gme);
-            const activeGame = GameMetaToActiveGame(gme);
+            const activeGame = GameInfoResponseToActiveGame(gme);
             if (!activeGame) {
               return;
             }
             dispatchLobbyContext({
               actionType: ActionType.AddActiveGame,
               payload: activeGame,
+            });
+            break;
+          }
+
+          case MessageType.ONGOING_GAMES: {
+            const age = parsedMsg as GameInfoResponses;
+            console.log('got active games', age);
+            dispatchLobbyContext({
+              actionType: ActionType.AddActiveGames,
+              payload: age
+                .getGameInfoList()
+                .map((g) => GameInfoResponseToActiveGame(g)),
             });
             break;
           }

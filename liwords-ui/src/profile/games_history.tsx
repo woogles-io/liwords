@@ -48,14 +48,14 @@ export const GamesHistoryCard = React.memo((props: Props) => {
         DOUBLE: 'x2',
         TRIPLE: 'x3',
         VOID: 'Void',
-      }[item.challenge_rule];
+      }[item.game_request.challenge_rule];
       const getDetails = () => {
         return (
           <>
             <span className={`challenge-rule mode_${challenge}`}>
               {challenge}
             </span>
-            {item.rating_mode === 'RATED' ? (
+            {item.game_request.rating_mode === 'RATED' ? (
               <Tooltip title="Rated">
                 <FundOutlined />
               </Tooltip>
@@ -97,9 +97,9 @@ export const GamesHistoryCard = React.memo((props: Props) => {
           endReason = 'Completed';
       }
       const time = `${item.time_control_name} ${timeToString(
-        item.initial_time_seconds,
-        item.increment_seconds,
-        item.max_overtime_minutes
+        item.game_request.initial_time_seconds,
+        item.game_request.increment_seconds,
+        item.game_request.max_overtime_minutes
       )}`;
       return {
         game_id: item.game_id, // used by rowKey
@@ -109,6 +109,7 @@ export const GamesHistoryCard = React.memo((props: Props) => {
         scores,
         turnOrder,
         endReason,
+        lexicon: item.game_request.lexicon,
         time,
         when,
       };
@@ -148,6 +149,12 @@ export const GamesHistoryCard = React.memo((props: Props) => {
       dataIndex: 'endReason',
       key: 'endReason',
       title: 'End',
+    },
+    {
+      className: 'lexicon',
+      dataIndex: 'lexicon',
+      key: 'lexicon',
+      title: 'Words',
     },
     {
       className: 'time',

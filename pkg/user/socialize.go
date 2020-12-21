@@ -2,8 +2,12 @@ package user
 
 import (
 	"context"
+	"errors"
+	"fmt"
+	"strings"
 
 	"github.com/domino14/liwords/pkg/apiserver"
+	realtime "github.com/domino14/liwords/rpc/api/proto/realtime"
 	pb "github.com/domino14/liwords/rpc/api/proto/user_service"
 	"github.com/rs/zerolog/log"
 	"github.com/twitchtv/twirp"
@@ -11,10 +15,11 @@ import (
 
 type SocializeService struct {
 	userStore Store
+	chatStore ChatStore
 }
 
-func NewSocializeService(u Store) *SocializeService {
-	return &SocializeService{userStore: u}
+func NewSocializeService(u Store, c ChatStore) *SocializeService {
+	return &SocializeService{userStore: u, chatStore: c}
 }
 
 func (ss *SocializeService) AddFollow(ctx context.Context, req *pb.AddFollowRequest) (*pb.OKResponse, error) {
@@ -130,6 +135,57 @@ func (ss *SocializeService) GetFullBlocks(ctx context.Context, req *pb.GetFullBl
 	}
 
 	return &pb.GetFullBlocksResponse{UserIds: basicUsers}, nil
+}
+
+func (ss *SocializeService) GetActiveChatChannels(ctx context.Context, req *pb.GetActiveChatChannelsRequest) (*pb.ActiveChatChannels, error) {
+	sess, err := apiserver.GetSession(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	return ss.chatStore.LatestChannels(ctx, int(req.Number), int(req.Offset), sess.UserUUID)
+}
+
+func ChatChannelReceiver(uid, name string) (string, error) {
+	users := strings.Split(strings.TrimPrefix(name, "chat.pm."), "_")
+	if len(users) != 2 {
+		return "", fmt.Errorf("malformed pm chat channel: %v", name)
+	}
+	foundus := false
+	receiver := ""
+	for _, user := range users {
+		if user == uid {
+			foundus = true
+		} else {
+			receiver = user
+		}
+	}
+	if !foundus {
+		return "", errors.New("cannot access chat in a channel you are not part of")
+	}
+	if receiver == "" {
+		return "", errors.New("bad channel")
+	}
+	return receiver, nil
+}
+
+func (ss *SocializeService) GetChatsForChannel(ctx context.Context, req *pb.GetChatsRequest) (*realtime.ChatMessages, error) {
+	sess, err := apiserver.GetSession(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if strings.HasPrefix(req.Channel, "chat.pm.") {
+		// Verify that this chat channel is well formed and we have access to it.
+		_, err := ChatChannelReceiver(sess.UserUUID, req.Channel)
+		if err != nil {
+			return nil, err
+		}
+	}
+	chats, err := ss.chatStore.OldChats(ctx, req.Channel)
+	if err != nil {
+		return nil, err
+	}
+	return &realtime.ChatMessages{Messages: chats}, err
 }
 
 // func (ss *SocializeService) GetBlockedBy(ctx context.Context, req *pb.GetBlocksRequest) (*pb.GetBlockedByResponse, error) {

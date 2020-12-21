@@ -14,6 +14,7 @@ import {
   useTentativeTileContext,
 } from '../store/store';
 import { EphemeralTile } from '../utils/cwgame/common';
+import { ChallengeRule } from './game_info';
 
 const ExamineGameControls = React.memo((props: { lexicon: string }) => {
   const {
@@ -87,6 +88,7 @@ export type Props = {
   currentRack: string;
   tournamentID?: string;
   lexicon: string;
+  challengeRule: ChallengeRule;
 };
 
 const GameControls = React.memo((props: Props) => {
@@ -217,6 +219,7 @@ const GameControls = React.memo((props: Props) => {
               setChallengeVisible(false);
             }}
             disabled={!props.myTurn}
+            hidden={props.challengeRule === 'VOID'}
           >
             Challenge
             <span className="key-command">3</span>

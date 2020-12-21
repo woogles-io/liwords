@@ -21,7 +21,8 @@ import { PasswordChange } from './lobby/password_change';
 import { PasswordReset } from './lobby/password_reset';
 import { NewPassword } from './lobby/new_password';
 import { toAPIUrl } from './api/api';
-
+import { ChatMessage, MessageType } from './gen/api/proto/realtime/realtime_pb';
+import { encodeToSocketFmt } from './utils/protobuf';
 import { Clubs } from './clubs';
 
 type Blocks = {
@@ -73,6 +74,21 @@ const App = React.memo(() => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  const sendChat = useCallback(
+    (msg: string, chan: string) => {
+      const evt = new ChatMessage();
+      evt.setMessage(msg);
+
+      // const chan = isObserver ? 'gametv' : 'game';
+      // evt.setChannel(`chat.${chan}.${gameID}`);
+      evt.setChannel(chan);
+      sendMessage(
+        encodeToSocketFmt(MessageType.CHAT_MESSAGE, evt.serializeBinary())
+      );
+    },
+    [sendMessage]
+  );
+
   // Avoid useEffect in the new path triggering xhr twice.
   if (!isCurrentLocation) return null;
 
@@ -85,17 +101,28 @@ const App = React.memo(() => {
       />
       <Switch>
         <Route path="/" exact>
-          <Lobby sendSocketMsg={sendMessage} DISCONNECT={resetSocket} />
+          <Lobby
+            sendSocketMsg={sendMessage}
+            sendChat={sendChat}
+            DISCONNECT={resetSocket}
+          />
         </Route>
         <Route path="/tournament/:tournamentID">
-          <Lobby sendSocketMsg={sendMessage} DISCONNECT={resetSocket} />
+          <Lobby
+            sendSocketMsg={sendMessage}
+            sendChat={sendChat}
+            DISCONNECT={resetSocket}
+          />
+        </Route>
+        <Route path="/clubs">
+          <Clubs />
         </Route>
         <Route path="/clubs">
           <Clubs />
         </Route>
         <Route path="/game/:gameID">
           {/* Table meaning a game table */}
-          <GameTable sendSocketMsg={sendMessage} />
+          <GameTable sendSocketMsg={sendMessage} sendChat={sendChat} />
         </Route>
         <Route path="/about">
           <About />

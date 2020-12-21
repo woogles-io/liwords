@@ -13,7 +13,6 @@ import {
   RatingMode,
   MatchRequest,
   SoughtGameProcessEvent,
-  ChatMessage,
 } from '../gen/api/proto/realtime/realtime_pb';
 import { encodeToSocketFmt } from '../utils/protobuf';
 import { SoughtGame } from '../store/reducers/lobby_reducer';
@@ -90,6 +89,7 @@ const sendAccept = (
 
 type Props = {
   sendSocketMsg: (msg: Uint8Array) => void;
+  sendChat: (msg: string, chan: string) => void;
   DISCONNECT: () => void;
 };
 
@@ -134,7 +134,7 @@ export const Lobby = (props: Props) => {
       })
       .catch((err) => {
         message.error({
-          content: 'Tournament does not exist',
+          content: 'Error fetching tournament data',
           duration: 5,
         });
       });
@@ -153,19 +153,6 @@ export const Lobby = (props: Props) => {
     [sendSocketMsg]
   );
 
-  const sendChat = useCallback(
-    (msg: string) => {
-      const evt = new ChatMessage();
-      evt.setMessage(msg);
-      evt.setChannel(
-        !tournamentID ? 'lobby.chat' : `tournament.${tournamentID}`
-      );
-      sendSocketMsg(
-        encodeToSocketFmt(MessageType.CHAT_MESSAGE, evt.serializeBinary())
-      );
-    },
-    [sendSocketMsg, tournamentID]
-  );
   const peopleOnlineContext = useCallback(
     (n: number) => singularCount(n, 'Player', 'Players'),
     []
@@ -178,7 +165,12 @@ export const Lobby = (props: Props) => {
         <div className="chat-area">
           <Chat
             chatEntities={chat}
-            sendChat={sendChat}
+            sendChat={props.sendChat}
+            sendChannel={
+              !tournamentID
+                ? 'chat.lobby'
+                : `chat.tournament.${tournamentID.toLowerCase()}`
+            }
             description={tournamentID ? 'Tournament chat' : 'Lobby chat'}
             peopleOnlineContext={peopleOnlineContext}
             presences={presences}

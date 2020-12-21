@@ -6,6 +6,8 @@ import (
 	"github.com/domino14/liwords/pkg/entity"
 	lru "github.com/hashicorp/golang-lru"
 	"github.com/rs/zerolog/log"
+
+	pb "github.com/domino14/liwords/rpc/api/proto/user_service"
 )
 
 // same as the GameStore in gameplay package, but this gives us a bit more flexibility
@@ -37,7 +39,7 @@ type backingStore interface {
 	GetBlockedBy(ctx context.Context, uid uint) ([]*entity.User, error)
 	GetFullBlocks(ctx context.Context, uid uint) ([]*entity.User, error)
 
-	UsernamesByPrefix(ctx context.Context, prefix string) ([]string, error)
+	UsersByPrefix(ctx context.Context, prefix string) ([]*pb.BasicUser, error)
 	Count(ctx context.Context) (int64, error)
 }
 
@@ -202,10 +204,14 @@ func (c *Cache) GetFullBlocks(ctx context.Context, uid uint) ([]*entity.User, er
 	return c.backing.GetFullBlocks(ctx, uid)
 }
 
-func (c *Cache) UsernamesByPrefix(ctx context.Context, prefix string) ([]string, error) {
-	return c.backing.UsernamesByPrefix(ctx, prefix)
+func (c *Cache) UsersByPrefix(ctx context.Context, prefix string) ([]*pb.BasicUser, error) {
+	return c.backing.UsersByPrefix(ctx, prefix)
 }
 
 func (c *Cache) Count(ctx context.Context) (int64, error) {
 	return c.backing.Count(ctx)
+}
+
+func (c *Cache) CachedCount(ctx context.Context) int {
+	return c.cache.Len()
 }

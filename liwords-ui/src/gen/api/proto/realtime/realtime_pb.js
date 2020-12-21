@@ -2736,7 +2736,8 @@ proto.liwords.UserPresence.toObject = function(includeInstance, msg) {
     username: jspb.Message.getFieldWithDefault(msg, 1, ""),
     userId: jspb.Message.getFieldWithDefault(msg, 2, ""),
     channel: jspb.Message.getFieldWithDefault(msg, 3, ""),
-    isAnonymous: jspb.Message.getBooleanFieldWithDefault(msg, 4, false)
+    isAnonymous: jspb.Message.getBooleanFieldWithDefault(msg, 4, false),
+    deleting: jspb.Message.getBooleanFieldWithDefault(msg, 5, false)
   };
 
   if (includeInstance) {
@@ -2788,6 +2789,10 @@ proto.liwords.UserPresence.deserializeBinaryFromReader = function(msg, reader) {
     case 4:
       var value = /** @type {boolean} */ (reader.readBool());
       msg.setIsAnonymous(value);
+      break;
+    case 5:
+      var value = /** @type {boolean} */ (reader.readBool());
+      msg.setDeleting(value);
       break;
     default:
       reader.skipField();
@@ -2843,6 +2848,13 @@ proto.liwords.UserPresence.serializeBinaryToWriter = function(message, writer) {
   if (f) {
     writer.writeBool(
       4,
+      f
+    );
+  }
+  f = message.getDeleting();
+  if (f) {
+    writer.writeBool(
+      5,
       f
     );
   }
@@ -2918,6 +2930,24 @@ proto.liwords.UserPresence.prototype.getIsAnonymous = function() {
  */
 proto.liwords.UserPresence.prototype.setIsAnonymous = function(value) {
   return jspb.Message.setProto3BooleanField(this, 4, value);
+};
+
+
+/**
+ * optional bool deleting = 5;
+ * @return {boolean}
+ */
+proto.liwords.UserPresence.prototype.getDeleting = function() {
+  return /** @type {boolean} */ (jspb.Message.getBooleanFieldWithDefault(this, 5, false));
+};
+
+
+/**
+ * @param {boolean} value
+ * @return {!proto.liwords.UserPresence} returns this
+ */
+proto.liwords.UserPresence.prototype.setDeleting = function(value) {
+  return jspb.Message.setProto3BooleanField(this, 5, value);
 };
 
 
@@ -7522,7 +7552,9 @@ proto.liwords.MessageType = {
   SERVER_CHALLENGE_RESULT_EVENT: 9,
   SEEK_REQUESTS: 10,
   MATCH_REQUEST_CANCELLATION: 11,
+  ONGOING_GAME_EVENT: 12,
   TIMED_OUT: 13,
+  ONGOING_GAMES: 14,
   GAME_META_EVENT: 15,
   ACTIVE_GAMES: 16,
   GAME_DELETION: 17,
@@ -7536,7 +7568,8 @@ proto.liwords.MessageType = {
   READY_FOR_GAME: 25,
   LAG_MEASUREMENT: 26,
   TOURNAMENT_GAME_ENDED_EVENT: 27,
-  REMATCH_STARTED: 28
+  REMATCH_STARTED: 28,
+  CHAT_CHANNELS: 38
 };
 
 /**

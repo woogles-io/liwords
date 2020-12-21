@@ -28,7 +28,6 @@ import {
   MatchRequest,
   SoughtGameProcessEvent,
   DeclineMatchRequest,
-  ChatMessage,
   ReadyForGame,
 } from '../gen/api/proto/realtime/realtime_pb';
 import { encodeToSocketFmt } from '../utils/protobuf';
@@ -38,7 +37,7 @@ import {
   GameInfo,
   GameMetadata,
   PlayerMetadata,
-  RecentGamesResponse,
+  StreakInfoResponse,
 } from './game_info';
 import { BoopSounds } from '../sound/boop';
 import { toAPIUrl } from '../api/api';
@@ -52,26 +51,34 @@ import { TournamentMetadata } from '../tournament/tournament_info';
 
 type Props = {
   sendSocketMsg: (msg: Uint8Array) => void;
+  sendChat: (msg: string, chan: string) => void;
 };
 
 const StreakFetchDelay = 2000;
 
 const defaultGameInfo = {
   players: new Array<PlayerMetadata>(),
-  lexicon: '',
-  variant: '',
-  initial_time_seconds: 0,
-  increment_seconds: 0,
+  game_request: {
+    lexicon: '',
+    rules: {
+      variant_name: '',
+      board_layout_name: 'CrosswordGame',
+      letter_distribution_name: 'english',
+    },
+    initial_time_seconds: 0,
+    increment_seconds: 0,
+    challenge_rule: 'VOID' as  // wtf typescript? is there a better way?
+      | 'FIVE_POINT'
+      | 'TEN_POINT'
+      | 'SINGLE'
+      | 'DOUBLE'
+      | 'TRIPLE'
+      | 'VOID',
+    rating_mode: 'RATED',
+    max_overtime_minutes: 0,
+    original_request_id: '',
+  },
   tournament_id: '',
-  challenge_rule: 'VOID' as  // wtf typescript? is there a better way?
-    | 'FIVE_POINT'
-    | 'TEN_POINT'
-    | 'SINGLE'
-    | 'DOUBLE'
-    | 'TRIPLE'
-    | 'VOID',
-  rating_mode: 'RATED',
-  max_overtime_minutes: 0,
   game_end_reason: 'NONE',
   time_control_name: '',
 };
@@ -179,7 +186,9 @@ export const Table = React.memo((props: Props) => {
   const { sendSocketMsg } = props;
   // const location = useLocation();
   const [gameInfo, setGameInfo] = useState<GameMetadata>(defaultGameInfo);
-  const [streakGameInfo, setStreakGameInfo] = useState<Array<GameMetadata>>([]);
+  const [streakGameInfo, setStreakGameInfo] = useState<StreakInfoResponse>({
+    streak: [],
+  });
   const [isObserver, setIsObserver] = useState(false);
 
   useEffect(() => {
@@ -297,7 +306,7 @@ export const Table = React.memo((props: Props) => {
     // as soon as the game ends (so the streak updates without having to go
     // to a new game).
 
-    if (!gameInfo.original_request_id) {
+    if (!gameInfo.game_request.original_request_id) {
       return;
     }
     if (gameContext.playState === PlayState.GAME_OVER && !gameEndMessage) {
@@ -307,14 +316,14 @@ export const Table = React.memo((props: Props) => {
     }
     setTimeout(() => {
       axios
-        .post<RecentGamesResponse>(
+        .post<StreakInfoResponse>(
           toAPIUrl('game_service.GameMetadataService', 'GetRematchStreak'),
           {
-            original_request_id: gameInfo.original_request_id,
+            original_request_id: gameInfo.game_request.original_request_id,
           }
         )
         .then((streakresp) => {
-          setStreakGameInfo(streakresp.data.game_info);
+          setStreakGameInfo(streakresp.data);
         });
       // Put this on a delay. Otherwise the game might not be saved to the
       // db as having finished before the gameEndMessage comes in.
@@ -322,7 +331,11 @@ export const Table = React.memo((props: Props) => {
 
     // Call this when a gameEndMessage comes in, so the streak updates
     // at the end of the game.
-  }, [gameInfo.original_request_id, gameEndMessage, gameContext.playState]);
+  }, [
+    gameInfo.game_request.original_request_id,
+    gameEndMessage,
+    gameContext.playState,
+  ]);
 
   useEffect(() => {
     if (pTimedOut === undefined) return;
@@ -405,22 +418,6 @@ export const Table = React.memo((props: Props) => {
     declineRematch(rematchRequest.getGameRequest()!.getRequestId());
     setRematchRequest(new MatchRequest());
   }, [declineRematch, rematchRequest, setRematchRequest]);
-
-  const sendChat = useCallback(
-    (msg: string) => {
-      const evt = new ChatMessage();
-      evt.setMessage(msg);
-
-      const chan = isObserver ? 'gametv' : 'game';
-      // XXX: Backend should figure out channels; also separate game and gameTV channels
-      // Right now everyone will get this.
-      evt.setChannel(`${chan}.${gameID}`);
-      sendSocketMsg(
-        encodeToSocketFmt(MessageType.CHAT_MESSAGE, evt.serializeBinary())
-      );
-    },
-    [gameID, isObserver, sendSocketMsg]
-  );
 
   // Figure out what rack we should display.
   // If we are one of the players, display our rack.
@@ -524,13 +521,14 @@ export const Table = React.memo((props: Props) => {
           </Card>
           <Chat
             chatEntities={chat}
-            sendChat={sendChat}
+            sendChat={props.sendChat}
+            sendChannel={`chat.${isObserver ? 'gametv' : 'game'}.${gameID}`}
             description={isObserver ? 'Observer chat' : 'Game chat'}
             presences={presences}
             peopleOnlineContext={peopleOnlineContext}
           />
           {isExamining ? (
-            <Analyzer includeCard lexicon={gameInfo.lexicon} />
+            <Analyzer includeCard lexicon={gameInfo.game_request.lexicon} />
           ) : (
             <Notepad includeCard />
           )}
@@ -554,14 +552,15 @@ export const Table = React.memo((props: Props) => {
             gameDone={gameDone}
             playerMeta={gameInfo.players}
             tournamentID={gameInfo.tournament_id}
-            lexicon={gameInfo.lexicon}
+            lexicon={gameInfo.game_request.lexicon}
+            challengeRule={gameInfo.game_request.challenge_rule}
             handleAcceptRematch={
               rematchRequest.getRematchFor() === gameID
                 ? handleAcceptRematch
                 : null
             }
           />
-          <StreakWidget recentGames={streakGameInfo} />
+          <StreakWidget streakInfo={streakGameInfo} />
         </div>
         <div className="data-area" id="right-sidebar">
           {/* There are two player cards, css hides one of them. */}
@@ -587,7 +586,7 @@ export const Table = React.memo((props: Props) => {
             isExamining={isExamining}
             username={username}
             playing={us !== undefined}
-            lexicon={gameInfo.lexicon}
+            lexicon={gameInfo.game_request.lexicon}
             events={examinableGameContext.turns}
             board={examinableGameContext.board}
             playerMeta={gameInfo.players}
