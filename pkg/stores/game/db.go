@@ -299,7 +299,13 @@ func fromState(timers entity.Timers, qdata *entity.Quickdata, Started bool,
 		Quickdata:     qdata,
 		CreatedAt:     createdAt,
 	}
-	g.SetTimerModule(&entity.GameTimer{})
+	if timers.Nower == "FakeNower" {
+		// For test purposes
+		g.SetTimerModule(&entity.FakeNower{})
+	} else {
+		// Pretty much anytime on production.
+		g.SetTimerModule(&entity.GameTimer{})
+	}
 
 	// Now copy the request
 	req := &pb.GameRequest{}
@@ -512,7 +518,6 @@ func (s *DBStore) toDBObj(g *entity.Game) (*game, error) {
 	if err != nil {
 		return nil, err
 	}
-	log.Debug().Str("quickdata", string(quickdata)).Msg("quickdata")
 	req, err := proto.Marshal(g.GameReq)
 	if err != nil {
 		return nil, err

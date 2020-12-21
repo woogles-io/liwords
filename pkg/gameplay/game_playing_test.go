@@ -65,7 +65,7 @@ func (ec *evtConsumer) consumeEventChan(ctx context.Context,
 }
 
 func makeGame(cfg *config.Config, ustore pkguser.Store, gstore gameplay.GameStore) (
-	*entity.Game, *entity.FakeNower, context.CancelFunc, chan bool, *evtConsumer) {
+	*entity.Game, context.CancelFunc, chan bool, *evtConsumer) {
 
 	ctx := context.Background()
 	cesar, _ := ustore.Get(ctx, "cesar4")
@@ -87,10 +87,11 @@ func makeGame(cfg *config.Config, ustore pkguser.Store, gstore gameplay.GameStor
 
 	nower := entity.NewFakeNower(1234)
 	g.SetTimerModule(nower)
+	gstore.Set(ctx, g)
 
 	gameplay.StartGame(ctx, gstore, ch, g.GameID())
 
-	return g, nower, cancel, donechan, consumer
+	return g, cancel, donechan, consumer
 }
 
 func TestInitializeGame(t *testing.T) {
@@ -102,7 +103,7 @@ func TestInitializeGame(t *testing.T) {
 	lstore := listStatStore(cstr)
 	cfg, gstore := gameStore(cstr, ustore)
 
-	g, _, cancel, donechan, consumer := makeGame(cfg, ustore, gstore)
+	g, cancel, donechan, consumer := makeGame(cfg, ustore, gstore)
 
 	is.Equal(g.PlayerOnTurn(), 1)
 	cancel()
@@ -124,7 +125,7 @@ func TestWrongTurn(t *testing.T) {
 	cfg, gstore := gameStore(cstr, ustore)
 	tstore := tournamentStore(cfg, gstore)
 
-	g, _, cancel, donechan, consumer := makeGame(cfg, ustore, gstore)
+	g, cancel, donechan, consumer := makeGame(cfg, ustore, gstore)
 
 	is.Equal(g.PlayerOnTurn(), 1)
 
@@ -161,7 +162,7 @@ func Test5ptBadWord(t *testing.T) {
 	cfg, gstore := gameStore(cstr, ustore)
 	tstore := tournamentStore(cfg, gstore)
 
-	g, nower, cancel, donechan, consumer := makeGame(cfg, ustore, gstore)
+	g, cancel, donechan, consumer := makeGame(cfg, ustore, gstore)
 
 	cge := &pb.ClientGameplayEvent{
 		Type:           pb.ClientGameplayEvent_TILE_PLACEMENT,
@@ -169,13 +170,13 @@ func Test5ptBadWord(t *testing.T) {
 		PositionCoords: "8D",
 		Tiles:          "BANJO",
 	}
-	g.SetRacksForBoth([]*alphabet.Rack{
-		alphabet.RackFromString("AGLSYYZ", g.Alphabet()),
-		alphabet.RackFromString("ABEJNOR", g.Alphabet()),
-	})
+	g.History().LastKnownRacks = []string{"AGLSYYZ", "ABEJNOR"}
+	err := gstore.Set(context.Background(), g)
+	is.NoErr(err)
+	nower := entity.NewFakeNower(0)
 	// "jesse" plays a word after some time
 	nower.Sleep(3750) // 3.75 secs
-	_, err := gameplay.HandleEvent(context.Background(), gstore, ustore, lstore, tstore,
+	_, err = gameplay.HandleEvent(context.Background(), gstore, ustore, lstore, tstore,
 		"3xpEkpRAy3AizbVmDg3kdi", cge)
 
 	is.NoErr(err)
@@ -209,7 +210,10 @@ func TestDoubleChallengeBadWord(t *testing.T) {
 	cfg, gstore := gameStore(cstr, ustore)
 	tstore := tournamentStore(cfg, gstore)
 
-	g, nower, cancel, donechan, consumer := makeGame(cfg, ustore, gstore)
+	g, cancel, donechan, consumer := makeGame(cfg, ustore, gstore)
+
+	nower := entity.NewFakeNower(1234)
+	g.SetTimerModule(nower)
 
 	cge := &pb.ClientGameplayEvent{
 		Type:           pb.ClientGameplayEvent_TILE_PLACEMENT,
@@ -274,8 +278,9 @@ func TestDoubleChallengeGoodWord(t *testing.T) {
 	cfg, gstore := gameStore(cstr, ustore)
 	tstore := tournamentStore(cfg, gstore)
 
-	g, nower, cancel, donechan, consumer := makeGame(cfg, ustore, gstore)
-
+	g, cancel, donechan, consumer := makeGame(cfg, ustore, gstore)
+	nower := entity.NewFakeNower(1234)
+	g.SetTimerModule(nower)
 	cge := &pb.ClientGameplayEvent{
 		Type:           pb.ClientGameplayEvent_TILE_PLACEMENT,
 		GameId:         g.GameID(),
@@ -337,8 +342,10 @@ func TestQuickdata(t *testing.T) {
 	cfg, gstore := gameStore(cstr, ustore)
 	tstore := tournamentStore(cfg, gstore)
 
-	g, nower, cancel, donechan, _ := makeGame(cfg, ustore, gstore)
+	g, cancel, donechan, _ := makeGame(cfg, ustore, gstore)
 	ctx := context.WithValue(context.Background(), gameplay.ConfigCtxKey("config"), &DefaultConfig)
+	nower := entity.NewFakeNower(1234)
+	g.SetTimerModule(nower)
 
 	cge1 := &pb.ClientGameplayEvent{
 		Type:           pb.ClientGameplayEvent_TILE_PLACEMENT,
@@ -408,8 +415,9 @@ func TestAtomicEnd(t *testing.T) {
 	cfg, gstore := gameStore(cstr, ustore)
 	tstore := tournamentStore(cfg, gstore)
 
-	g, nower, cancel, donechan, consumer := makeGame(cfg, ustore, gstore)
-
+	g, cancel, donechan, consumer := makeGame(cfg, ustore, gstore)
+	nower := entity.NewFakeNower(1234)
+	g.SetTimerModule(nower)
 	cge := &pb.ClientGameplayEvent{
 		Type:           pb.ClientGameplayEvent_TILE_PLACEMENT,
 		GameId:         g.GameID(),

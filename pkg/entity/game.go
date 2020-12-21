@@ -24,12 +24,15 @@ type Timers struct {
 	TimeRemaining []int `json:"tr"`
 	// MaxOvertime is in minutes. All others are in milliseconds.
 	MaxOvertime int `json:"mo"`
+	// Nower is the name of the timer module. Should only change for tests.
+	Nower string `json:"n,omitempty"`
 }
 
 // Nower is an interface for determining the current time
 type Nower interface {
 	// Now returns a timestamp in milliseconds
 	Now() int64
+	Name() string
 }
 
 // FakeNower uses a fake timer. It is used for tests so we don't actually sleep.
@@ -44,6 +47,10 @@ func NewFakeNower(f int64) *FakeNower {
 // Now returns now's value
 func (f FakeNower) Now() int64 {
 	return f.fakeMeow
+}
+
+func (f FakeNower) Name() string {
+	return "FakeNower"
 }
 
 // Sleep simulates a sleep.
@@ -112,6 +119,10 @@ func (g GameTimer) Now() int64 {
 	return time.Now().UnixNano() / (int64(time.Millisecond) / int64(time.Nanosecond))
 }
 
+func (g GameTimer) Name() string {
+	return ""
+}
+
 // NewGame takes in a Macondo game that was just "started". Note that
 // Macondo games when they start do not log any time, they just deal tiles.
 // The time of start must be logged later, when both players are in the table
@@ -133,6 +144,7 @@ func NewGame(mcg *game.Game, req *pb.GameRequest) *Game {
 // SetTimerModule sets the timer for a game to the given Nower.
 func (g *Game) SetTimerModule(n Nower) {
 	g.nower = n
+	g.Timers.Nower = n.Name()
 }
 
 // Reset timers to _now_. The game is actually starting.
@@ -258,7 +270,7 @@ func (g *Game) CreationRequest() *pb.GameRequest {
 // RegisterChangeHook registers a channel with the game. Events will
 // be sent down this channel.
 func (g *Game) RegisterChangeHook(eventChan chan<- *EventWrapper) error {
-	log.Debug().Msg("register-change-hook")
+	log.Debug().Msgf("register-change-hook: %v", eventChan)
 	g.ChangeHook = eventChan
 	return nil
 }
