@@ -126,7 +126,7 @@ export const ReverseMessageType = (() => {
 
 export const useOnSocketMsg = () => {
   const { challengeResultEvent } = useChallengeResultEventStoreContext();
-  const { addChat, addChats, setChatChannels } = useChatStoreContext();
+  const { addChat, addChats } = useChatStoreContext();
   const { excludedPlayers } = useExcludedPlayersStoreContext();
   const { dispatchGameContext, gameContext } = useGameContextStoreContext();
   const { setGameEndMessage } = useGameEndMessageStoreContext();
@@ -210,10 +210,9 @@ export const useOnSocketMsg = () => {
           }
 
           case MessageType.CHAT_CHANNELS: {
+            // to do: this message is deprecated, we are using xhr instead
             const cc = parsedMsg as ActiveChatChannels;
             console.log('got chat channels', cc);
-
-            setChatChannels(cc);
             break;
           }
 
@@ -405,7 +404,6 @@ export const useOnSocketMsg = () => {
                 });
               }
             });
-
             addChats(entities);
             break;
           }
@@ -655,7 +653,6 @@ export const useOnSocketMsg = () => {
       excludedPlayers,
       gameContext,
       loginState,
-      setChatChannels,
       setCurrentLagMs,
       setGameEndMessage,
       setPresence,

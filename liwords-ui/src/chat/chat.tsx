@@ -9,7 +9,7 @@ import {
   useChatStoreContext,
   useLoginStateStoreContext,
 } from '../store/store';
-import { LeftOutlined, SettingOutlined } from '@ant-design/icons';
+import { LeftOutlined } from '@ant-design/icons';
 import './chat.scss';
 import { Presences } from './presences';
 import { ChatChannels } from './chat_channels';
@@ -19,6 +19,7 @@ import {
   ChatMessageFromJSON,
   chatMessageToChatEntity,
 } from '../store/constants';
+import { ActiveChatChannels } from '../gen/api/proto/user_service/user_service_pb';
 
 const { TabPane } = Tabs;
 
@@ -52,18 +53,19 @@ export const Chat = React.memo((props: Props) => {
 
   // Chat auto-scrolls when the last entity is visible.
   const [hasUnreadChat, setHasUnreadChat] = useState(false);
+
   const {
     chat: chatEntities,
     chatChannels,
     clearChat,
     addChats,
+    setChatChannels,
   } = useChatStoreContext();
   const lastChannel = useRef(props.defaultChannel);
   const chatTab = selectedChatTab === 'CHAT' ? tabContainerElement : null;
   const [chatAutoScroll, setChatAutoScroll] = useState(true);
   const [channel, setChannel] = useState(props.defaultChannel);
   const [description, setDescription] = useState(props.defaultDescription);
-  const [lastSeen, setLastSeen] = useState(Date.now());
   const [channelSelectedTime, setChannelSelectedTime] = useState(Date.now());
   // Messages that come in for other channels
   const [unseenMessages, setUnseenMessages] = useState(
@@ -82,22 +84,52 @@ export const Chat = React.memo((props: Props) => {
       [],
     [props.presences]
   );
+
   const doChatAutoScroll = useCallback(() => {
     if (chatAutoScroll && chatTab) {
-      const desiredScrollTop = chatTab.scrollHeight - chatTab.clientHeight;
       // Doing this conditionally may help browser performance.
       // (Not sure.)
-      if (chatTab.scrollTop !== desiredScrollTop) {
-        chatTab.scrollTop = desiredScrollTop;
+      if (chatTab.scrollTop !== chatTab.scrollHeight) {
+        chatTab.scrollTop = chatTab.scrollHeight;
       }
     }
   }, [chatAutoScroll, chatTab]);
 
+  const fetchChannels = useCallback(() => {
+    axios
+      .post(
+        toAPIUrl('user_service.SocializeService', 'GetActiveChatChannels'),
+        {
+          number: 20,
+          offset: 0,
+        },
+        { withCredentials: true }
+      )
+      .then((res) => {
+        const newChannels: ActiveChatChannels.AsObject = {
+          channelsList:
+            res.data.channels.map((ch: any) => {
+              return {
+                displayName: ch.display_name,
+                lastUpdate: parseInt(ch.last_update, 10),
+                hasUpdate: ch.has_update,
+                lastMessage: ch.last_message || '',
+                name: ch.name,
+              };
+            }) || [],
+        };
+        setChatChannels(newChannels);
+      });
+  }, [setChatChannels]);
+
+  useEffect(() => {
+    // Initial load of channels
+    fetchChannels();
+  }, [fetchChannels]);
   useEffect(() => {
     // Chat channels have changed. Note them if hasUpdate is true
-    const changed = chatChannels
-      ?.toObject()
-      .channelsList?.map((ch) => {
+    const changed = chatChannels?.channelsList
+      ?.map((ch) => {
         return ch;
       })
       .filter((ch) => ch.hasUpdate)
@@ -138,15 +170,16 @@ export const Chat = React.memo((props: Props) => {
   }, [channel, description]);
 
   useEffect(() => {
-    if (chatTab) {
-      // chat entities changed. If there are new messages in this
+    if (chatTab || showChannels) {
+      // chat entities changed.
+      // If there are new messages in this
       // channel and we've scrolled up, mark this chat unread,
-      // otherwise add them to the unseenMessage, to indicate unread in the
-      // channels component
       const currentUnread = chatEntities
         .filter((ch) => {
           return (
-            ch.channel === channel && ch.timestamp && ch.timestamp > lastSeen
+            ch.channel === channel &&
+            ch.timestamp &&
+            ch.timestamp > channelSelectedTime
           );
         })
         .sort((chA, chB) => {
@@ -155,12 +188,13 @@ export const Chat = React.memo((props: Props) => {
           }
           return 0;
         });
-      if (currentUnread.length) {
+      if (currentUnread.length && chatTab) {
         setHasUnreadChat(
           chatTab.scrollTop < chatTab.scrollHeight - chatTab.clientHeight
         );
-        setLastSeen(currentUnread[0].timestamp || lastSeen);
       }
+      // If they're for other channels add them to the unseenMessage,
+      // to indicate unread in the channels component
       const otherUnreads = chatEntities
         .filter(
           // Only the ones since we switched to this channel
@@ -169,29 +203,23 @@ export const Chat = React.memo((props: Props) => {
             ch.timestamp &&
             ch.timestamp > channelSelectedTime
         )
-        .filter((ch) => {
-          // Only ones that came in since the last one in unreads
-          // A bit of gymnastics here to ignore that timestamps might be missing according
-          // to type definition. If it is actually empty for some reason, include anyway.
-          if (unseenMessages && unseenMessages.length > 0) {
-            return (
-              (ch.timestamp || Date.now()) >
-              (unseenMessages[unseenMessages.length - 1].timestamp || 0)
-            );
-          }
-          return true;
-        });
+        .filter(
+          (ch) =>
+            // And not our own
+            ch.senderId !== userID
+        );
       if (otherUnreads.length) {
-        setUnseenMessages(unseenMessages.concat(otherUnreads));
+        setUnseenMessages((u) => u.concat(otherUnreads));
       }
     }
   }, [
     chatTab,
     chatEntities,
     channel,
-    lastSeen,
+    fetchChannels,
     channelSelectedTime,
-    unseenMessages,
+    showChannels,
+    userID,
   ]);
 
   // When window is shrunk, auto-scroll may be enabled. This is one-way.
@@ -215,7 +243,9 @@ export const Chat = React.memo((props: Props) => {
 
   useEffect(() => {
     // If we actually changed the channel, get the new messages
-    if (channel != lastChannel.current) {
+    if (loggedIn && channel !== lastChannel.current) {
+      lastChannel.current = channel;
+      setChannelSelectedTime(Date.now());
       axios
         .post(
           toAPIUrl('user_service.SocializeService', 'GetChatsForChannel'),
@@ -226,29 +256,26 @@ export const Chat = React.memo((props: Props) => {
         )
         .then((res) => {
           clearChat();
-          lastChannel.current = channel;
           const messages: Array<ChatMessageFromJSON> = res.data?.messages;
           addChats(messages.map(chatMessageToChatEntity));
           setHasUnreadChat(false);
-          // Remove this from the unreadChannels
-          const newUpdatedChannels = new Set(updatedChannels);
-          newUpdatedChannels.delete(channel);
-          setUpdatedChannels(newUpdatedChannels);
-          setChannelSelectedTime(Date.now());
           setChatAutoScroll(true);
           // Remove this channel's messages from the unseen list
-          setUnseenMessages(
-            unseenMessages.filter((ch) => ch.channel !== channel)
-          );
+          setUnseenMessages((u) => u.filter((ch) => ch.channel !== channel));
         });
     }
-  }, [channel]);
+  }, [channel, addChats, clearChat, loggedIn]);
 
   // When user is scrolling, auto-scroll may be enabled or disabled.
   // This handler is set through onScroll.
   const handleChatScrolled = useCallback(() => {
     if (chatTab) {
-      if (chatTab.scrollTop >= chatTab.scrollHeight - chatTab.clientHeight) {
+      // Are we within a few pixels of the end? Then go ahead and autoscroll
+      // The wiggle room accounts for some throttling of onScroll
+      if (
+        chatTab.scrollTop >=
+        chatTab.scrollHeight - chatTab.clientHeight - 24
+      ) {
         setChatAutoScroll(true);
         setHasUnreadChat(false);
       } else {
@@ -257,16 +284,16 @@ export const Chat = React.memo((props: Props) => {
     }
   }, [chatTab]);
 
-  const sendPrivateMessage = useCallback(
-    (msg: string, receiver: string) => {
+  const calculatePMChannel = useCallback(
+    (receiverID: string) => {
       let u1 = userID;
-      let u2 = receiver;
+      let u2 = receiverID;
       if (u2 < u1) {
         [u1, u2] = [u2, u1];
       }
-      propsSendChat(msg, `chat.pm.${u1}_${u2}`);
+      return `chat.pm.${u1}_${u2}`;
     },
-    [propsSendChat, userID]
+    [userID]
   );
 
   const entities = useMemo(
@@ -295,11 +322,26 @@ export const Chat = React.memo((props: Props) => {
               timestamp={ent.timestamp}
               anonymous={anon}
               highlight={specialSender}
-              sendMessage={sendPrivateMessage}
+              sendMessage={
+                loggedIn
+                  ? (userID: string, username: string) => {
+                      setChannel(calculatePMChannel(userID));
+                      setDescription(`Chat with ${username}`);
+                      setShowChannels(false);
+                    }
+                  : undefined
+              }
             />
           );
         }),
-    [knownUsers, chatEntities, props.highlight, sendPrivateMessage, channel]
+    [
+      knownUsers,
+      chatEntities,
+      props.highlight,
+      channel,
+      loggedIn,
+      calculatePMChannel,
+    ]
   );
 
   const handleTabClick = useCallback((key) => {
@@ -351,26 +393,39 @@ export const Chat = React.memo((props: Props) => {
               defaultDescription={props.defaultDescription}
               updatedChannels={updatedChannels}
               unseenMessages={unseenMessages}
-              onChannelSelect={(channel: string, description: string) => {
-                setChannel(channel);
-                setDescription(description);
+              onChannelSelect={(ch: string, desc: string) => {
+                if (channel !== ch) {
+                  setChannel(ch);
+                  setDescription(desc);
+                }
                 setShowChannels(false);
               }}
+              sendMessage={
+                loggedIn
+                  ? (userID: string, username: string) => {
+                      setChannel(calculatePMChannel(userID));
+                      setDescription(`Chat with ${username}`);
+                      setShowChannels(false);
+                    }
+                  : undefined
+              }
             />
           ) : (
             <>
               <div className={`chat-context${hasScroll ? ' scrolling' : ''}`}>
-                <p
-                  className="breadcrumb clickable"
-                  onClick={() => {
-                    setShowChannels(!showChannels);
-                  }}
-                >
-                  <LeftOutlined /> All Chats
-                  {(updatedChannels.size > 0 || unseenMessages.length > 0) &&
-                    ' •'}
-                </p>
-                {channel.startsWith('chat.pm.') ? <SettingOutlined /> : null}
+                {loggedIn ? (
+                  <p
+                    className="breadcrumb clickable"
+                    onClick={() => {
+                      setShowChannels(!showChannels);
+                      fetchChannels();
+                    }}
+                  >
+                    <LeftOutlined /> All Chats
+                    {(updatedChannels.size > 0 || unseenMessages.length > 0) &&
+                      ' •'}
+                  </p>
+                ) : null}
                 <p>
                   {decoratedDescription}
                   {hasUnreadChat && ' •'}
@@ -394,7 +449,15 @@ export const Chat = React.memo((props: Props) => {
                         <Presences
                           players={props.presences}
                           channel={channel}
-                          sendMessage={sendPrivateMessage}
+                          sendMessage={
+                            loggedIn
+                              ? (userID: string, username: string) => {
+                                  setChannel(calculatePMChannel(userID));
+                                  setDescription(`Chat with ${username}`);
+                                  setShowChannels(false);
+                                }
+                              : undefined
+                          }
                         />
                       </p>
                     ) : null}

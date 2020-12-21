@@ -42,13 +42,30 @@ p {
       font-weight: bold;
       text-transform: none;
     }
+    .ant-select {
+      width: 100%;
+      margin-bottom: 24px;
+    }
     .breadcrumb {
-      font-size: 14px;
-      padding: 6px 0 18px;
+      padding: 6px 0 0;
       display: flex;
+      justify-content: space-between;
       align-items: center;
+      font-size: 12px;
       @include colorModed() {
         color: m($gray-medium);
+      }
+      p {
+        @include colorModed() {
+          color: m($gray-medium);
+        }
+      }
+      .link.plain {
+        text-transform: none;
+        font-size: 14px;
+        @include colorModed() {
+          color: m($primary-dark);
+        }
       }
       .anticon {
         font-size: 18px;
@@ -108,6 +125,9 @@ p {
           color: m($primary-dark);
         }
       }
+      &:first-child {
+        margin-top: 12px;
+      }
     }
   }
   .channel-list .breadcrumb {
@@ -115,12 +135,15 @@ p {
     padding-bottom: 12px;
     margin-top: 12px;
     font-size: 12px;
+    @include colorModed() {
+      color: m($gray-medium);
+    }
   }
   .breadcrumb.clickable {
     display: inline-block;
     cursor: pointer;
     width: calc(100% - 18px);
-
+    margin-bottom: 12px;
   }
   .anticon-setting {
     margin: 0;
@@ -131,7 +154,7 @@ p {
     }
   }
   .entities {
-    padding: 12px 24px;
+    padding: 12px 24px 24px;
     .chat-entity {
       .sender {
         font-weight: 800;

@@ -84,6 +84,8 @@ type ExcludedPlayersStoreData = {
   setExcludedPlayers: React.Dispatch<React.SetStateAction<Set<string>>>;
   excludedPlayersFetched: boolean;
   setExcludedPlayersFetched: React.Dispatch<React.SetStateAction<boolean>>;
+  pendingBlockRefresh: boolean;
+  setPendingBlockRefresh: React.Dispatch<React.SetStateAction<boolean>>;
 };
 
 type ChallengeResultEventStoreData = {
@@ -100,8 +102,8 @@ type ChatStoreData = {
   addChats: (chats: Array<ChatEntityObj>) => void;
   clearChat: () => void;
   chat: Array<ChatEntityObj>;
-  chatChannels: ActiveChatChannels | undefined;
-  setChatChannels: (chatChannels: ActiveChatChannels) => void;
+  chatChannels: ActiveChatChannels.AsObject | undefined;
+  setChatChannels: (chatChannels: ActiveChatChannels.AsObject) => void;
 };
 
 type PresenceStoreData = {
@@ -213,6 +215,8 @@ const ExcludedPlayersContext = createContext<ExcludedPlayersStoreData>({
   setExcludedPlayers: defaultFunction,
   excludedPlayersFetched: false,
   setExcludedPlayersFetched: defaultFunction,
+  pendingBlockRefresh: false,
+  setPendingBlockRefresh: defaultFunction,
 });
 
 const ChallengeResultEventContext = createContext<
@@ -600,10 +604,11 @@ const RealStore = ({ children, ...props }: Props) => {
   const [rematchRequest, setRematchRequest] = useState(new MatchRequest());
   const [chat, setChat] = useState(new Array<ChatEntityObj>());
   const [chatChannels, setChatChannels] = useState<
-    ActiveChatChannels | undefined
+    ActiveChatChannels.AsObject | undefined
   >(undefined);
   const [excludedPlayers, setExcludedPlayers] = useState(new Set<string>());
   const [excludedPlayersFetched, setExcludedPlayersFetched] = useState(false);
+  const [pendingBlockRefresh, setPendingBlockRefresh] = useState(false);
   const [presences, setPresences] = useState(
     {} as { [uuid: string]: PresenceEntity }
   );
@@ -725,12 +730,16 @@ const RealStore = ({ children, ...props }: Props) => {
       setExcludedPlayers,
       excludedPlayersFetched,
       setExcludedPlayersFetched,
+      pendingBlockRefresh,
+      setPendingBlockRefresh,
     }),
     [
       excludedPlayers,
       setExcludedPlayers,
       excludedPlayersFetched,
       setExcludedPlayersFetched,
+      pendingBlockRefresh,
+      setPendingBlockRefresh,
     ]
   );
   const challengeResultEventStore = useMemo(

@@ -39,6 +39,8 @@ const App = React.memo(() => {
   const {
     setExcludedPlayers,
     setExcludedPlayersFetched,
+    pendingBlockRefresh,
+    setPendingBlockRefresh,
   } = useExcludedPlayersStoreContext();
   const { resetStore } = useResetStoreContext();
 
@@ -61,7 +63,7 @@ const App = React.memo(() => {
     }
   }, [isCurrentLocation, resetStore]);
 
-  useEffect(() => {
+  const getFullBlocks = useCallback(() => {
     axios
       .post<Blocks>(
         toAPIUrl('user_service.SocializeService', 'GetFullBlocks'),
@@ -73,10 +75,20 @@ const App = React.memo(() => {
         setExcludedPlayersFetched(true);
       })
       .catch((e) => {
+        setExcludedPlayersFetched(true);
+        setPendingBlockRefresh(false);
         console.log(e);
       });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(getFullBlocks, [getFullBlocks]);
+
+  useEffect(() => {
+    if (pendingBlockRefresh) {
+      getFullBlocks();
+    }
+  }, [getFullBlocks, pendingBlockRefresh]);
 
   const sendChat = useCallback(
     (msg: string, chan: string) => {

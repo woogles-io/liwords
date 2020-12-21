@@ -14,7 +14,7 @@ type EntityProps = {
   timestamp?: number;
   anonymous?: boolean;
   highlight: boolean;
-  sendMessage: (msg: string, receiver: string) => void;
+  sendMessage?: (uuid: string, username: string) => void;
 };
 
 export const ChatEntity = (props: EntityProps) => {
@@ -78,6 +78,7 @@ export const ChatEntity = (props: EntityProps) => {
               <UsernameWithContext
                 username={props.sender}
                 userID={props.senderId}
+                omitSendMessage={!props.sendMessage}
                 sendMessage={props.sendMessage}
               />
             </span>

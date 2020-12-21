@@ -1,10 +1,15 @@
-import React, { ReactNode } from 'react';
+import React, { ReactNode, useCallback } from 'react';
 import {
   ChatEntityObj,
   useChatStoreContext,
   useExcludedPlayersStoreContext,
   useLoginStateStoreContext,
 } from '../store/store';
+import { useMountedState } from '../utils/mounted';
+import { AutoComplete } from 'antd';
+import axios from 'axios';
+import { toAPIUrl } from '../api/api';
+import { debounce } from '../utils/debounce';
 
 type Props = {
   defaultChannel: string;
@@ -12,6 +17,7 @@ type Props = {
   onChannelSelect: (name: string, displayName: string) => void;
   unseenMessages: Array<ChatEntityObj>;
   updatedChannels: Set<string>;
+  sendMessage?: (uuid: string, username: string) => void;
 };
 
 export type ChatChannelLabel = {
@@ -55,18 +61,61 @@ const getLocationLabel = (defaultChannel: string): string => {
     if (tokenized[1] === 'gametv') {
       return 'Observer Chat';
     }
+    if (tokenized[1] === 'lobby') {
+      return '';
+    }
+    if (tokenized[1] === 'tournament') {
+      return 'Tournament Chat';
+    }
   }
   return '';
 };
+type user = {
+  username: string;
+  uuid: string;
+};
+
+type SearchResponse = {
+  users: Array<user>;
+};
 
 export const ChatChannels = React.memo((props: Props) => {
+  const { useState } = useMountedState();
   const { chatChannels } = useChatStoreContext();
   const { loginState } = useLoginStateStoreContext();
   const { excludedPlayers } = useExcludedPlayersStoreContext();
-  const { username } = loginState;
-  const channelList = chatChannels
-    ?.toObject()
-    .channelsList.sort((chA, chB) => {
+  const { sendMessage } = props;
+  const { username, userID } = loginState;
+  const [showSearch, setShowSearch] = useState(false);
+  const [usernameOptions, setUsernameOptions] = useState<Array<user>>([]);
+  const onUsernameSearch = useCallback((searchText: string) => {
+    axios
+      .post<SearchResponse>(
+        toAPIUrl('user_service.AutocompleteService', 'GetCompletion'),
+        {
+          prefix: searchText,
+        }
+      )
+      .then((res) => {
+        setUsernameOptions(res.data.users);
+      });
+  }, []);
+
+  const searchUsernameDebounced = debounce(onUsernameSearch, 300);
+
+  const handleUsernameSelect = useCallback(
+    (data) => {
+      const user = data.split(':');
+      if (user.length > 1 && sendMessage) {
+        sendMessage(user[0], user[1]);
+      }
+      setShowSearch(false);
+    },
+    [sendMessage]
+  );
+
+  const channelList = chatChannels?.channelsList
+    .sort((chA, chB) => {
       return chB.lastUpdate - chA.lastUpdate;
     })
     .filter((ch) => {
@@ -82,9 +131,13 @@ export const ChatChannels = React.memo((props: Props) => {
       return ch.name !== props.defaultChannel;
     })
     .filter((ch) => {
-      // todo: remove this filter when we can receive messages regardless
-      // of our location
-      return ch.displayName.startsWith('pm');
+      // From the lobby, filter out channels we can't get new messages for
+      // Todo: Remove this when we send tournament messages to all enrollees
+      // regardless of their location
+      if (props.defaultChannel === 'chat.lobby') {
+        return ch.displayName.startsWith('pm');
+      }
+      return true;
     })
     .map((ch) => {
       const channelLabel = parseChannelLabel(ch.displayName, username);
@@ -106,19 +159,51 @@ export const ChatChannels = React.memo((props: Props) => {
         </p>
       );
     });
+  const defaultUnread =
+    props.updatedChannels.has(props.defaultChannel) ||
+    props.unseenMessages.some((uc) => uc.channel === props.defaultChannel);
   const locationLabel = getLocationLabel(props.defaultChannel);
   return (
     <div className="channel-list">
-      <p className="breadcrumb">{locationLabel}</p>
+      {locationLabel && <p className="breadcrumb">{locationLabel}</p>}
       <p
-        className="channel-listing"
+        className={`channel-listing default${defaultUnread ? ' unread' : ''}`}
         onClick={() => {
           props.onChannelSelect(props.defaultChannel, props.defaultDescription);
         }}
       >
         {props.defaultDescription}
       </p>
-      <p className="breadcrumb">YOUR CHATS</p>
+      <div className="breadcrumb">
+        <p>YOUR CHATS</p>
+        <p
+          className="link plain"
+          onClick={() => {
+            setShowSearch((s) => !s);
+          }}
+        >
+          + New chat
+        </p>
+      </div>
+      {showSearch && (
+        <AutoComplete
+          placeholder="Find player"
+          onSearch={searchUsernameDebounced}
+          onSelect={handleUsernameSelect}
+          filterOption={(inputValue, option) =>
+            !option || !(option.value === `${userID}:${username}`)
+          }
+        >
+          {usernameOptions.map((user) => (
+            <AutoComplete.Option
+              key={user.uuid}
+              value={`${user.uuid}:${user.username}`}
+            >
+              {user.username}
+            </AutoComplete.Option>
+          ))}
+        </AutoComplete>
+      )}
       {channelList}
     </div>
   );
