@@ -35,7 +35,7 @@ type Store interface {
 	GetBlockedBy(ctx context.Context, uid uint) ([]*entity.User, error)
 	GetFullBlocks(ctx context.Context, uid uint) ([]*entity.User, error)
 
-	UsernamesByPrefix(ctx context.Context, prefix string) ([]string, error)
+	UsersByPrefix(ctx context.Context, prefix string) ([]*upb.BasicUser, error)
 	CachedCount(ctx context.Context) int
 }
 
