@@ -7,6 +7,34 @@ export const Announcements = React.memo((props: AnnouncementsProps) => {
   // Todo: admin to add these and a backend to store and retrieve them
   const announcements = [
     {
+      title: 'Where is my club or tournament?',
+      body: (
+        <a href="/clubs" target="_blank" rel="noopener noreferrer">
+          <p>
+            Wondering where you can find a good club or tournament to play in?
+            See more info here!
+          </p>
+        </a>
+      ),
+    },
+    {
+      title: 'Upcoming Tournament - M.E.R.R.Y.',
+      body: (
+        <a
+          href="https://woogles.io/tournament/merry"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          <p>
+            The second annual MERRY tournament will be held on Woogles on
+            January 2, with an early bird on January 1. The main event is 8
+            games, with CSW19 and NWL18 divisions. See more info by clicking
+            here!
+          </p>
+        </a>
+      ),
+    },
+    {
       title: 'Upcoming Tournament - Crescent City Cup',
       body: (
         <a
@@ -22,8 +50,9 @@ export const Announcements = React.memo((props: AnnouncementsProps) => {
         </a>
       ),
     },
+
     {
-      title: 'Live Tournament - The WETO',
+      title: 'WETO complete!',
       body: (
         <a
           href="https://woogles.io/tournament/weto"
@@ -31,26 +60,10 @@ export const Announcements = React.memo((props: AnnouncementsProps) => {
           rel="noopener noreferrer"
         >
           <p>
-            A single elimination best 3 out of 5 CSW tournament on Woogles.io
-            with an automatic side tournament, November 16 - December 20, 2020.
-            If you are registered, click here to attend the tournament.
-          </p>
-        </a>
-      ),
-    },
-    {
-      title: 'First tournament complete!',
-      body: (
-        <a
-          href="https://woogles.io/tournament/dells2020"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <p>
-            The 37th Annual Wisconsin Dells Tourney was held on Woogles November
-            14th and 15th. If you missed it, take a look at the games here.
-            Congratulations to the winners, Lisa Odom (NWL) and Geoff Thevenot
-            (CSW)!
+            The WETO tournament was held over November and December, and was a
+            matchplay-style single elimination bracket tournament.
+            Congratulations to Waseem Khatri (WK) for winning the whole
+            tournament! You can check out the games here.
           </p>
         </a>
       ),

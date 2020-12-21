@@ -22,6 +22,8 @@ import { PasswordReset } from './lobby/password_reset';
 import { NewPassword } from './lobby/new_password';
 import { toAPIUrl } from './api/api';
 
+import { Clubs } from './clubs';
+
 type Blocks = {
   user_ids: Array<string>;
 };
@@ -87,6 +89,9 @@ const App = React.memo(() => {
         </Route>
         <Route path="/tournament/:tournamentID">
           <Lobby sendSocketMsg={sendMessage} DISCONNECT={resetSocket} />
+        </Route>
+        <Route path="/clubs">
+          <Clubs />
         </Route>
         <Route path="/game/:gameID">
           {/* Table meaning a game table */}
