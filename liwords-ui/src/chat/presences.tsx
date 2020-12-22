@@ -11,7 +11,6 @@ type Props = {
 export const Presences = React.memo((props: Props) => {
   const vals = Object.values(props.players);
   vals.sort((a, b) => (a.username < b.username ? -1 : 1));
-
   const profileLink = (player: PresenceEntity) => (
     <UsernameWithContext
       username={player.username}
@@ -26,8 +25,6 @@ export const Presences = React.memo((props: Props) => {
   );
   const presences = knownUsers.length
     ? knownUsers
-
-        .filter((u) => props.players[u].channel === props.channel)
         .map<React.ReactNode>((u) => profileLink(props.players[u]))
         .reduce((prev, curr) => [prev, ', ', curr])
     : null;

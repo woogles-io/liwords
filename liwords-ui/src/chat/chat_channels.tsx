@@ -14,6 +14,7 @@ import { debounce } from '../utils/debounce';
 type Props = {
   defaultChannel: string;
   defaultDescription: string;
+  defaultLastMessage: string;
   onChannelSelect: (name: string, displayName: string) => void;
   unseenMessages: Array<ChatEntityObj>;
   updatedChannels: Set<string>;
@@ -82,9 +83,9 @@ type SearchResponse = {
 export const ChatChannels = React.memo((props: Props) => {
   const { useState } = useMountedState();
   const { chatChannels } = useChatStoreContext();
-  const { loginState } = useLoginStateStoreContext();
   const { excludedPlayers } = useExcludedPlayersStoreContext();
   const { sendMessage } = props;
+  const { loginState } = useLoginStateStoreContext();
   const { username, userID } = loginState;
   const [showSearch, setShowSearch] = useState(false);
   const [usernameOptions, setUsernameOptions] = useState<Array<user>>([]);
@@ -148,15 +149,19 @@ export const ChatChannels = React.memo((props: Props) => {
         props.updatedChannels.has(ch.name) ||
         props.unseenMessages.some((uc) => uc.channel === ch.name);
       return (
-        <p
+        <div
           className={`channel-listing${isUnread ? ' unread' : ''}`}
           key={ch.name}
           onClick={() => {
             props.onChannelSelect(ch.name, channelLabel.title);
           }}
         >
-          {channelLabel.label}
-        </p>
+          <p className="listing-name">
+            {channelLabel.label}
+            {isUnread && <span className="unread-marker">•</span>}
+          </p>
+          <p className="listing-preview">{ch.lastMessage}</p>
+        </div>
       );
     });
   const defaultUnread =
@@ -166,14 +171,18 @@ export const ChatChannels = React.memo((props: Props) => {
   return (
     <div className="channel-list">
       {locationLabel && <p className="breadcrumb">{locationLabel}</p>}
-      <p
+      <div
         className={`channel-listing default${defaultUnread ? ' unread' : ''}`}
         onClick={() => {
           props.onChannelSelect(props.defaultChannel, props.defaultDescription);
         }}
       >
-        {props.defaultDescription}
-      </p>
+        <p className="listing-name">
+          {props.defaultDescription}
+          {defaultUnread && <span className="unread-marker">•</span>}
+        </p>
+        <p className="listing-preview">{props.defaultLastMessage}</p>
+      </div>
       <div className="breadcrumb">
         <p>YOUR CHATS</p>
         <p

@@ -3,8 +3,6 @@ import { useHistory } from 'react-router-dom';
 import { message, notification } from 'antd';
 import {
   ChatEntityType,
-  randomID,
-  ChatEntityObj,
   PresenceEntity,
   useChallengeResultEventStoreContext,
   useChatStoreContext,
@@ -134,7 +132,7 @@ export const ReverseMessageType = (() => {
 
 export const useOnSocketMsg = () => {
   const { challengeResultEvent } = useChallengeResultEventStoreContext();
-  const { addChat, addChats } = useChatStoreContext();
+  const { addChat } = useChatStoreContext();
   const { excludedPlayers } = useExcludedPlayersStoreContext();
   const { dispatchGameContext, gameContext } = useGameContextStoreContext();
   const { setGameEndMessage } = useGameEndMessageStoreContext();
@@ -394,25 +392,10 @@ export const useOnSocketMsg = () => {
           }
 
           case MessageType.CHAT_MESSAGES: {
-            // These replace all existing messages.
             const cms = parsedMsg as ChatMessages;
 
-            const entities = new Array<ChatEntityObj>();
-
-            cms.getMessagesList().forEach((cm) => {
-              if (!excludedPlayers.has(cm.getUserId())) {
-                entities.push({
-                  entityType: ChatEntityType.UserChat,
-                  sender: cm.getUsername(),
-                  message: cm.getMessage(),
-                  timestamp: cm.getTimestamp(),
-                  senderId: cm.getUserId(),
-                  id: randomID(),
-                  channel: cm.getChannel(),
-                });
-              }
-            });
-            addChats(entities);
+            // to do: this message is deprecated, we are using xhr instead
+            console.log('got chats from socket', cms);
             break;
           }
 
@@ -672,7 +655,6 @@ export const useOnSocketMsg = () => {
     },
     [
       addChat,
-      addChats,
       addPresences,
       challengeResultEvent,
       dispatchGameContext,

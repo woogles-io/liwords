@@ -131,13 +131,37 @@ p {
     }
     .channel-listing {
       cursor: pointer;
-      &.unread {
+      .listing-name {
+        font-weight: 400;
         @include colorModed() {
-          color: m($primary-dark);
+          color: m($gray-extreme);
+        }
+      }
+      &.unread {
+        .listing-name {
+          font-weight: 700;
+        }
+        .listing-preview {
+          font-weight: 700;
+            @include colorModed() {
+              color: m($primary-dark);
+            }
         }
       }
       &:first-child {
         margin-top: 12px;
+      }
+    }
+    .listing-preview {
+      font-size: 14px;
+      font-weight: 200;
+      width: 100%;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      padding-bottom: 6px;
+      @include colorModed() {
+        color: m($gray-medium);
       }
     }
   }
@@ -151,10 +175,17 @@ p {
     }
   }
   .breadcrumb.clickable {
-    display: inline-block;
+    display: flex;
+    justify-content: flex-start;
+    align-items: center;
     cursor: pointer;
     width: calc(100% - 18px);
     margin-bottom: 12px;
+    &.unread {
+      @include colorModed() {
+        color: m($primary-dark);
+      }
+    }
   }
   .anticon-setting {
     margin: 0;
@@ -162,6 +193,13 @@ p {
     font-size: 18px;
     @include colorModed() {
       color: m($gray-medium);
+    }
+  }
+  .unread-marker {
+    font-size: 21px;
+    padding: 0 6px 3px;
+    @include colorModed() {
+      color: m($primary-dark);
     }
   }
   .entities {
