@@ -73,6 +73,7 @@ const App = React.memo(() => {
       .then((resp) => {
         setExcludedPlayers(new Set<string>(resp.data.user_ids));
         setExcludedPlayersFetched(true);
+        setPendingBlockRefresh(false);
       })
       .catch((e) => {
         setExcludedPlayersFetched(true);
