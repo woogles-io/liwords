@@ -172,10 +172,15 @@ func ChatChannelReceiver(uid, name string) (string, error) {
 func (ss *SocializeService) GetChatsForChannel(ctx context.Context, req *pb.GetChatsRequest) (*realtime.ChatMessages, error) {
 	sess, err := apiserver.GetSession(ctx)
 	if err != nil {
-		return nil, err
+		log.Debug().Err(err).Msg("get-session-get-chats-for-channel")
+		// Don't exit on error. We should allow unauthenticated users to get
+		// chats, just not private ones.
 	}
 	if strings.HasPrefix(req.Channel, "chat.pm.") {
 		// Verify that this chat channel is well formed and we have access to it.
+		if sess == nil {
+			return nil, err
+		}
 		_, err := ChatChannelReceiver(sess.UserUUID, req.Channel)
 		if err != nil {
 			return nil, err
