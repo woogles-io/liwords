@@ -33,6 +33,13 @@ type Props = {
   highlight?: Array<string>;
 };
 
+type JSONChatChannel = {
+  display_name: string;
+  last_update: string;
+  has_update: boolean;
+  last_message?: string;
+  name: string;
+};
 export const Chat = React.memo((props: Props) => {
   const { useState } = useMountedState();
   const { loginState } = useLoginStateStoreContext();
@@ -108,7 +115,7 @@ export const Chat = React.memo((props: Props) => {
       .then((res) => {
         const newChannels: ActiveChatChannels.AsObject = {
           channelsList:
-            res.data.channels.map((ch: any) => {
+            res.data.channels.map((ch: JSONChatChannel) => {
               return {
                 displayName: ch.display_name,
                 lastUpdate: parseInt(ch.last_update, 10),
