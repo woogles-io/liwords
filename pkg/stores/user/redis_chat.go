@@ -8,12 +8,12 @@ import (
 	"strings"
 	"time"
 
-	pb "github.com/domino14/liwords/rpc/api/proto/realtime"
-	upb "github.com/domino14/liwords/rpc/api/proto/user_service"
-
+	"github.com/gomodule/redigo/redis"
 	"github.com/rs/zerolog/log"
 
-	"github.com/gomodule/redigo/redis"
+	"github.com/domino14/liwords/pkg/user"
+	pb "github.com/domino14/liwords/rpc/api/proto/realtime"
+	upb "github.com/domino14/liwords/rpc/api/proto/user_service"
 )
 
 const LatestChannelsScript = `
@@ -73,13 +73,15 @@ const ChatPreviewLength = 40
 // RedisChatStore implements a Redis store for chats.
 type RedisChatStore struct {
 	redisPool            *redis.Pool
+	presenceStore        user.PresenceStore
 	latestChannelsScript *redis.Script
 }
 
 // NewRedisChatStore instantiates a new store for chats, based on Redis.
-func NewRedisChatStore(r *redis.Pool) *RedisChatStore {
+func NewRedisChatStore(r *redis.Pool, p user.PresenceStore) *RedisChatStore {
 	return &RedisChatStore{
 		redisPool:            r,
+		presenceStore:        p,
 		latestChannelsScript: redis.NewScript(0, LatestChannelsScript),
 	}
 }
@@ -226,6 +228,12 @@ func (r *RedisChatStore) LatestChannels(ctx context.Context, count, offset int, 
 		return nil, err
 	}
 
+	lastSeen, err := r.presenceStore.LastSeen(ctx, uid)
+	if err != nil {
+		// Don't die, this key might not yet exist.
+		log.Err(err).Str("uid", uid).Msg("last-seen-not-exist")
+	}
+
 	log.Debug().Interface("vals", vals).Msg("vals-from-redis")
 	chans := make([]*upb.ActiveChatChannels_Channel, len(vals)/3)
 	for idx := 0; idx < len(chans); idx++ {
@@ -248,12 +256,14 @@ func (r *RedisChatStore) LatestChannels(ctx context.Context, count, offset int, 
 		if len(lastMsg) > ChatPreviewLength {
 			lastMsg = lastMsg[:ChatPreviewLength] + "…"
 		}
+		lastUpdate := ts / 1000
 
 		chans[idx] = &upb.ActiveChatChannels_Channel{
 			Name:        chanName[0],
 			DisplayName: chanName[1],
-			LastUpdate:  ts / 1000,
+			LastUpdate:  lastUpdate,
 			LastMessage: lastMsg,
+			HasUpdate:   lastUpdate > lastSeen,
 		}
 	}
 	return &upb.ActiveChatChannels{Channels: chans}, nil

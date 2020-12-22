@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"strings"
 	"time"
 
 	"github.com/rs/zerolog/log"
@@ -217,11 +218,12 @@ func (s *DBStore) GetRecentTourneyGames(ctx context.Context, tourneyID string, n
 	if numGames > MaxRecentGames {
 		return nil, errors.New("too many games")
 	}
+
 	var games []*game
 	if results := s.db.Limit(numGames).
 		Offset(offset).
 		// Basically, everything except for 0 (ongoing), 5 (aborted) or 7 (cancelled)
-		Where("tournament_id = ? AND game_end_reason NOT IN (?, ?, ?)", tourneyID,
+		Where("lower(tournament_id) = ? AND game_end_reason NOT IN (?, ?, ?)", strings.ToLower(tourneyID),
 			pb.GameEndReason_NONE, pb.GameEndReason_ABORTED, pb.GameEndReason_CANCELLED).
 		Order("updated_at desc").
 		Find(&games); results.Error != nil {

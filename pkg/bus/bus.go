@@ -570,7 +570,7 @@ func (b *Bus) initRealmInfo(ctx context.Context, evt *pb.InitRealmInfo, connID s
 			}
 		}
 	}
-	return b.sendLatestChannels(ctx, evt.UserId, connID)
+	return nil
 	// send chat info
 
 }
@@ -737,28 +737,4 @@ func (b *Bus) sendPresenceContext(ctx context.Context, userID, username string, 
 	}
 	// Also send OUR presence to users in this channel.
 	return b.broadcastPresence(username, userID, anon, []string{presenceChan}, false)
-}
-
-func (b *Bus) sendLatestChannels(ctx context.Context, userID, connID string) error {
-	// Send user channels with new messages.
-	const ChansToSend = 10
-	lastSeen, err := b.presenceStore.LastSeen(ctx, userID)
-	if err != nil {
-		// Don't die, this key might not yet exist.
-		log.Err(err).Msg("last-seen-error")
-		return nil
-	}
-	latestChannels, err := b.chatStore.LatestChannels(ctx, ChansToSend, 0, userID)
-	if err != nil {
-		return err
-	}
-
-	for _, ch := range latestChannels.Channels {
-		if ch.LastUpdate > lastSeen {
-			ch.HasUpdate = true
-		}
-	}
-
-	evt := entity.WrapEvent(latestChannels, pb.MessageType_CHAT_CHANNELS)
-	return b.pubToConnectionID(connID, userID, evt)
 }
