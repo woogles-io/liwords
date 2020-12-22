@@ -102,7 +102,7 @@ export const Chat = React.memo((props: Props) => {
     }
   }, [chatAutoScroll, chatTab]);
 
-  const fetchChannels = useCallback(() => {
+  const fetchChannels = useCallback((initial=false) => {
     axios
       .post(
         toAPIUrl('user_service.SocializeService', 'GetActiveChatChannels'),
@@ -119,7 +119,8 @@ export const Chat = React.memo((props: Props) => {
               return {
                 displayName: ch.display_name,
                 lastUpdate: parseInt(ch.last_update, 10),
-                hasUpdate: ch.has_update,
+                // Don't trust hasUpdate if this isn't the initial poll.
+                hasUpdate: ch.has_update && initial,
                 lastMessage: ch.last_message || '',
                 name: ch.name,
               };
@@ -131,7 +132,7 @@ export const Chat = React.memo((props: Props) => {
 
   useEffect(() => {
     // Initial load of channels
-    fetchChannels();
+    fetchChannels(true);
   }, [fetchChannels]);
   useEffect(() => {
     // Chat channels have changed. Note them if hasUpdate is true
