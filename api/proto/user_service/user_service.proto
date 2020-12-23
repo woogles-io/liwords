@@ -137,6 +137,9 @@ message BasicUser {
 message GetActiveChatChannelsRequest {
   int32 number = 1;
   int32 offset = 2;
+  // If a tournament_id is provided, we get active chat channels (private
+  // message channels) in addition to the given tournament channel.
+  string tournament_id = 3;
 }
 
 message ActiveChatChannels {

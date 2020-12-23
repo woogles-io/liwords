@@ -8,12 +8,13 @@ import (
 	"strings"
 	"time"
 
-	pb "github.com/domino14/liwords/rpc/api/proto/realtime"
-	upb "github.com/domino14/liwords/rpc/api/proto/user_service"
-
+	"github.com/gomodule/redigo/redis"
 	"github.com/rs/zerolog/log"
 
-	"github.com/gomodule/redigo/redis"
+	"github.com/domino14/liwords/pkg/tournament"
+	"github.com/domino14/liwords/pkg/user"
+	pb "github.com/domino14/liwords/rpc/api/proto/realtime"
+	upb "github.com/domino14/liwords/rpc/api/proto/user_service"
 )
 
 const LatestChannelsScript = `
@@ -73,13 +74,17 @@ const ChatPreviewLength = 40
 // RedisChatStore implements a Redis store for chats.
 type RedisChatStore struct {
 	redisPool            *redis.Pool
+	presenceStore        user.PresenceStore
+	tournamentStore      tournament.TournamentStore
 	latestChannelsScript *redis.Script
 }
 
 // NewRedisChatStore instantiates a new store for chats, based on Redis.
-func NewRedisChatStore(r *redis.Pool) *RedisChatStore {
+func NewRedisChatStore(r *redis.Pool, p user.PresenceStore, t tournament.TournamentStore) *RedisChatStore {
 	return &RedisChatStore{
 		redisPool:            r,
+		presenceStore:        p,
+		tournamentStore:      t,
 		latestChannelsScript: redis.NewScript(0, LatestChannelsScript),
 	}
 }
@@ -133,14 +138,17 @@ func (r *RedisChatStore) AddChat(ctx context.Context, senderUsername, senderUID,
 
 	if strings.HasPrefix(channel, "chat.pm.") {
 		users := strings.Split(strings.TrimPrefix(channel, "chat.pm."), "_")
+
 		for _, user := range users {
+			// Update the entry for each latestchannel key for each user in this
+			// private-message channel.
 			err := r.storeLatestChat(conn, msg, user, channel, channelFriendly, tsSeconds)
 			if err != nil {
 				return 0, err
 			}
 		}
 	} else if strings.HasPrefix(channel, "chat.tournament.") {
-		err := r.storeLatestChat(conn, msg, senderUID, channel, channelFriendly, tsSeconds)
+		err = r.storeLatestChat(conn, msg, senderUID, channel, channelFriendly, tsSeconds)
 		if err != nil {
 			return 0, err
 		}
@@ -155,8 +163,7 @@ func (r *RedisChatStore) storeLatestChat(conn redis.Conn,
 	lchanKeyPrefix := "latestchannel:"
 
 	key := lchanKeyPrefix + userID
-	// Update the entry for each latestchannel key for each user in this
-	// private-message channel.
+
 	_, err := conn.Do("ZADD", key, tsSeconds+LongChannelExpiration,
 		channel+LatestChatSeparator+channelFriendly)
 	if err != nil {
@@ -169,14 +176,14 @@ func (r *RedisChatStore) storeLatestChat(conn redis.Conn,
 	return nil
 }
 
-func (r *RedisChatStore) OldChats(ctx context.Context, channel string) ([]*pb.ChatMessage, error) {
+func (r *RedisChatStore) OldChats(ctx context.Context, channel string, n int) ([]*pb.ChatMessage, error) {
 	redisKey := "chat:" + strings.TrimPrefix(channel, "chat.")
 	log.Debug().Str("redisKey", redisKey).Msg("get-old-chats")
 	conn := r.redisPool.Get()
 	defer conn.Close()
 
-	// Get the latest 50 chats to display to the user.
-	vals, err := redis.Values(conn.Do("XREVRANGE", redisKey, "+", "-", "COUNT", ChatsOnReload))
+	// Get the latest chats to display to the user.
+	vals, err := redis.Values(conn.Do("XREVRANGE", redisKey, "+", "-", "COUNT", n))
 	if err != nil {
 		return nil, err
 	}
@@ -211,11 +218,23 @@ func (r *RedisChatStore) OldChats(ctx context.Context, channel string) ([]*pb.Ch
 	return messages, nil
 }
 
+func maybeTrim(msg string) string {
+	if len(msg) > ChatPreviewLength {
+		msg = msg[:ChatPreviewLength] + "…"
+	}
+	return msg
+}
+
 // LatestChannels returns a list of channel names for the given user. These
 // channels should be sorted in time order starting with the most recent.
 // The time associated with each channel is the time of the latest message sent in
 // that channel.
-func (r *RedisChatStore) LatestChannels(ctx context.Context, count, offset int, uid string) (*upb.ActiveChatChannels, error) {
+// If a non-blank tournamentID is passed, we force this function to return
+// the chat channel for the given tournament ID, even if the user has not
+// yet chatted in it.
+func (r *RedisChatStore) LatestChannels(ctx context.Context, count, offset int,
+	uid, tournamentID string) (*upb.ActiveChatChannels, error) {
+
 	conn := r.redisPool.Get()
 	defer conn.Close()
 
@@ -226,8 +245,17 @@ func (r *RedisChatStore) LatestChannels(ctx context.Context, count, offset int, 
 		return nil, err
 	}
 
+	lastSeen, err := r.presenceStore.LastSeen(ctx, uid)
+	if err != nil {
+		// Don't die, this key might not yet exist.
+		log.Err(err).Str("uid", uid).Msg("last-seen-not-exist")
+	}
+
 	log.Debug().Interface("vals", vals).Msg("vals-from-redis")
 	chans := make([]*upb.ActiveChatChannels_Channel, len(vals)/3)
+	tid := strings.ToLower(tournamentID)
+	getTournament := tid != ""
+
 	for idx := 0; idx < len(chans); idx++ {
 
 		chanName := strings.SplitN(vals[idx*3], LatestChatSeparator, 2)
@@ -244,17 +272,49 @@ func (r *RedisChatStore) LatestChannels(ctx context.Context, count, offset int, 
 		if err != nil {
 			return nil, err
 		}
-		lastMsg := vals[idx*3+2]
-		if len(lastMsg) > ChatPreviewLength {
-			lastMsg = lastMsg[:ChatPreviewLength] + "…"
-		}
+		lastMsg := maybeTrim(vals[idx*3+2])
+		lastUpdate := ts / 1000
 
 		chans[idx] = &upb.ActiveChatChannels_Channel{
 			Name:        chanName[0],
 			DisplayName: chanName[1],
-			LastUpdate:  ts / 1000,
+			LastUpdate:  lastUpdate,
 			LastMessage: lastMsg,
+			HasUpdate:   lastUpdate > lastSeen,
+		}
+		if tid != "" && chanName[0] == "chat.tournament."+tid {
+			getTournament = false
 		}
 	}
+
+	// If a tournament ID is passed in, we should fetch the tournament channel
+	// as well as the latest chat for this tournament.
+	if getTournament {
+		t, err := r.tournamentStore.Get(ctx, tid)
+		if err != nil {
+			return nil, err
+		}
+		// Get the last chat for this tournament channel.
+		chatChannel := "chat.tournament." + tid
+		cm, err := r.OldChats(ctx, chatChannel, 1)
+		if err != nil {
+			return nil, err
+		}
+		lastUpdate := int64(0)
+		lastMessage := ""
+		if len(cm) == 1 {
+			lastUpdate = int64(cm[0].Timestamp / 1000)
+			lastMessage = maybeTrim(cm[0].Message)
+		}
+
+		chans = append(chans, &upb.ActiveChatChannels_Channel{
+			Name:        chatChannel,
+			DisplayName: "tournament:" + t.Name,
+			LastUpdate:  lastUpdate,
+			LastMessage: lastMessage,
+			HasUpdate:   lastUpdate > lastSeen && lastMessage != "",
+		})
+	}
+
 	return &upb.ActiveChatChannels{Channels: chans}, nil
 }

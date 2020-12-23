@@ -36,7 +36,12 @@ document?.body?.classList?.add(`mode--${useDarkMode ? 'dark' : 'default'}`);
 const App = React.memo(() => {
   const { useState } = useMountedState();
 
-  const { setExcludedPlayers } = useExcludedPlayersStoreContext();
+  const {
+    setExcludedPlayers,
+    setExcludedPlayersFetched,
+    pendingBlockRefresh,
+    setPendingBlockRefresh,
+  } = useExcludedPlayersStoreContext();
   const { resetStore } = useResetStoreContext();
 
   // See store.tsx for how this works.
@@ -58,7 +63,7 @@ const App = React.memo(() => {
     }
   }, [isCurrentLocation, resetStore]);
 
-  useEffect(() => {
+  const getFullBlocks = useCallback(() => {
     axios
       .post<Blocks>(
         toAPIUrl('user_service.SocializeService', 'GetFullBlocks'),
@@ -70,9 +75,22 @@ const App = React.memo(() => {
       })
       .catch((e) => {
         console.log(e);
+      })
+      .finally(() => {
+        setExcludedPlayersFetched(true);
+        setPendingBlockRefresh(false);
       });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [setExcludedPlayers, setExcludedPlayersFetched, setPendingBlockRefresh]);
+
+  useEffect(() => {
+    getFullBlocks();
+  }, [getFullBlocks]);
+
+  useEffect(() => {
+    if (pendingBlockRefresh) {
+      getFullBlocks();
+    }
+  }, [getFullBlocks, pendingBlockRefresh]);
 
   const sendChat = useCallback(
     (msg: string, chan: string) => {

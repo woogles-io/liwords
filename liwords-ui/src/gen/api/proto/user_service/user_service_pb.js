@@ -5090,7 +5090,8 @@ proto.user_service.GetActiveChatChannelsRequest.prototype.toObject = function(op
 proto.user_service.GetActiveChatChannelsRequest.toObject = function(includeInstance, msg) {
   var f, obj = {
     number: jspb.Message.getFieldWithDefault(msg, 1, 0),
-    offset: jspb.Message.getFieldWithDefault(msg, 2, 0)
+    offset: jspb.Message.getFieldWithDefault(msg, 2, 0),
+    tournamentId: jspb.Message.getFieldWithDefault(msg, 3, "")
   };
 
   if (includeInstance) {
@@ -5135,6 +5136,10 @@ proto.user_service.GetActiveChatChannelsRequest.deserializeBinaryFromReader = fu
       var value = /** @type {number} */ (reader.readInt32());
       msg.setOffset(value);
       break;
+    case 3:
+      var value = /** @type {string} */ (reader.readString());
+      msg.setTournamentId(value);
+      break;
     default:
       reader.skipField();
       break;
@@ -5178,6 +5183,13 @@ proto.user_service.GetActiveChatChannelsRequest.serializeBinaryToWriter = functi
       f
     );
   }
+  f = message.getTournamentId();
+  if (f.length > 0) {
+    writer.writeString(
+      3,
+      f
+    );
+  }
 };
 
 
@@ -5214,6 +5226,24 @@ proto.user_service.GetActiveChatChannelsRequest.prototype.getOffset = function()
  */
 proto.user_service.GetActiveChatChannelsRequest.prototype.setOffset = function(value) {
   return jspb.Message.setProto3IntField(this, 2, value);
+};
+
+
+/**
+ * optional string tournament_id = 3;
+ * @return {string}
+ */
+proto.user_service.GetActiveChatChannelsRequest.prototype.getTournamentId = function() {
+  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 3, ""));
+};
+
+
+/**
+ * @param {string} value
+ * @return {!proto.user_service.GetActiveChatChannelsRequest} returns this
+ */
+proto.user_service.GetActiveChatChannelsRequest.prototype.setTournamentId = function(value) {
+  return jspb.Message.setProto3StringField(this, 3, value);
 };
 
 

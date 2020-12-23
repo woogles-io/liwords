@@ -104,7 +104,7 @@ func (b *Bus) sendOldChats(ctx context.Context, userID, chatChannel string) erro
 		return nil
 	}
 
-	messages, err := b.chatStore.OldChats(ctx, chatChannel)
+	messages, err := b.chatStore.OldChats(ctx, chatChannel, 50)
 	if err != nil {
 		return err
 	}

@@ -1,5 +1,6 @@
 import { ChallengeRule } from '../gen/macondo/api/proto/macondo/macondo_pb';
 import { Blank } from '../utils/cwgame/common';
+import { ChatEntityObj, ChatEntityType, randomID } from './store';
 
 export type PlayerOrder = 'p0' | 'p1';
 
@@ -60,6 +61,28 @@ export const timeToString = (
   return `${initialTimeLabel(secs)}${
     maxOvertimeMinutes ? '/' + maxOvertimeMinutes : ''
   }${incrementSecs ? '+' + incrementSecs : ''}`;
+};
+
+export type ChatMessageFromJSON = {
+  username: string;
+  channel: string;
+  message: string;
+  timestamp: string;
+  user_id: string;
+};
+
+export const chatMessageToChatEntity = (
+  cm: ChatMessageFromJSON
+): ChatEntityObj => {
+  return {
+    entityType: ChatEntityType.UserChat,
+    id: randomID(),
+    sender: cm.username,
+    message: cm.message,
+    timestamp: parseInt(cm.timestamp, 10),
+    senderId: cm.user_id,
+    channel: cm.channel,
+  };
 };
 
 export const ratingToColor = (rating: string): [number, string] => {

@@ -3,8 +3,6 @@ import { useHistory } from 'react-router-dom';
 import { message, notification } from 'antd';
 import {
   ChatEntityType,
-  randomID,
-  ChatEntityObj,
   PresenceEntity,
   useChallengeResultEventStoreContext,
   useChatStoreContext,
@@ -134,7 +132,7 @@ export const ReverseMessageType = (() => {
 
 export const useOnSocketMsg = () => {
   const { challengeResultEvent } = useChallengeResultEventStoreContext();
-  const { addChat, addChats } = useChatStoreContext();
+  const { addChat } = useChatStoreContext();
   const { excludedPlayers } = useExcludedPlayersStoreContext();
   const { dispatchGameContext, gameContext } = useGameContextStoreContext();
   const { setGameEndMessage } = useGameEndMessageStoreContext();
@@ -218,9 +216,9 @@ export const useOnSocketMsg = () => {
           }
 
           case MessageType.CHAT_CHANNELS: {
+            // to do: this message is deprecated, we are using xhr instead
             const cc = parsedMsg as ActiveChatChannels;
             console.log('got chat channels', cc);
-
             break;
           }
 
@@ -376,17 +374,6 @@ export const useOnSocketMsg = () => {
             if (excludedPlayers.has(cm.getUserId())) {
               break;
             }
-
-            // XXX: This is a temporary fix while we can only display one
-            // channel's chat at once.
-            const { path } = loginState;
-            if (
-              path.startsWith('/game/') &&
-              cm.getChannel().startsWith('chat.tournament')
-            ) {
-              break;
-            }
-
             addChat({
               entityType: ChatEntityType.UserChat,
               sender: cm.getUsername(),
@@ -396,48 +383,19 @@ export const useOnSocketMsg = () => {
               channel: cm.getChannel(),
             });
             if (cm.getUsername() !== loginState.username) {
-              // BoopSounds.playSound('receiveMsgSound');
-              // Not yet, until we figure out how to just play it for private
-              // msgs.
+              const tokenizedName = cm.getChannel().split('.');
+              if (tokenizedName.length > 1 && tokenizedName[1] === 'pm') {
+                BoopSounds.playSound('receiveMsgSound');
+              }
             }
             break;
           }
 
           case MessageType.CHAT_MESSAGES: {
-            // These replace all existing messages.
             const cms = parsedMsg as ChatMessages;
 
-            // XXX: This is a temporary fix while we can only display one
-            // channel's chat at once.
-            const { path } = loginState;
-            if (
-              path.startsWith('/game/') &&
-              (cms.getMessagesList().length === 0 ||
-                cms
-                  .getMessagesList()[0]
-                  ?.getChannel()
-                  .startsWith('chat.tournament'))
-            ) {
-              break;
-            }
-
-            const entities = new Array<ChatEntityObj>();
-
-            cms.getMessagesList().forEach((cm) => {
-              if (!excludedPlayers.has(cm.getUserId())) {
-                entities.push({
-                  entityType: ChatEntityType.UserChat,
-                  sender: cm.getUsername(),
-                  message: cm.getMessage(),
-                  timestamp: cm.getTimestamp(),
-                  senderId: cm.getUserId(),
-                  id: randomID(),
-                  channel: cm.getChannel(),
-                });
-              }
-            });
-
-            addChats(entities);
+            // to do: this message is deprecated, we are using xhr instead
+            console.log('got chats from socket', cms);
             break;
           }
 
@@ -448,15 +406,7 @@ export const useOnSocketMsg = () => {
             if (excludedPlayers.has(up.getUserId())) {
               break;
             }
-            // XXX: This is a temporary fix while we can only display one
-            // channel's presence at once.
-            const { path } = loginState;
-            if (
-              path.startsWith('/game/') &&
-              up.getChannel().startsWith('chat.tournament')
-            ) {
-              break;
-            }
+
             setPresence({
               uuid: up.getUserId(),
               username: up.getUsername(),
@@ -471,20 +421,6 @@ export const useOnSocketMsg = () => {
             const ups = parsedMsg as UserPresences;
 
             const toAdd = new Array<PresenceEntity>();
-
-            // XXX: This is a temporary fix while we can only display one
-            // channel's presence at once.
-            const { path } = loginState;
-            if (
-              path.startsWith('/game/') &&
-              (ups.getPresencesList().length === 0 ||
-                ups
-                  .getPresencesList()[0]
-                  ?.getChannel()
-                  .startsWith('chat.tournament'))
-            ) {
-              break;
-            }
 
             ups.getPresencesList().forEach((p) => {
               if (!excludedPlayers.has(p.getUserId())) {
@@ -697,7 +633,6 @@ export const useOnSocketMsg = () => {
     },
     [
       addChat,
-      addChats,
       addPresences,
       challengeResultEvent,
       dispatchGameContext,

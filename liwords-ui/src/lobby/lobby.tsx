@@ -19,11 +19,7 @@ import { SoughtGame } from '../store/reducers/lobby_reducer';
 import { ChallengeRuleMap } from '../gen/macondo/api/proto/macondo/macondo_pb';
 import { GameLists } from './gameLists';
 import { Chat } from '../chat/chat';
-import {
-  useChatStoreContext,
-  useLoginStateStoreContext,
-  usePresenceStoreContext,
-} from '../store/store';
+import { useLoginStateStoreContext } from '../store/store';
 import { singularCount } from '../utils/plural';
 import './lobby.scss';
 import { Announcements } from './announcements';
@@ -97,9 +93,7 @@ export const Lobby = (props: Props) => {
   const { useState } = useMountedState();
   const { tournamentID } = useParams();
   const { sendSocketMsg } = props;
-  const { chat } = useChatStoreContext();
   const { loginState } = useLoginStateStoreContext();
-  const { presences } = usePresenceStoreContext();
   const { loggedIn, username, userID } = loginState;
 
   const [tournamentInfo, setTournamentInfo] = useState<TournamentMetadata>({
@@ -164,18 +158,17 @@ export const Lobby = (props: Props) => {
       <div className="lobby">
         <div className="chat-area">
           <Chat
-            chatEntities={chat}
             sendChat={props.sendChat}
-            sendChannel={
+            defaultChannel={
               !tournamentID
                 ? 'chat.lobby'
                 : `chat.tournament.${tournamentID.toLowerCase()}`
             }
-            description={tournamentID ? 'Tournament chat' : 'Lobby chat'}
+            defaultDescription={tournamentID ? tournamentInfo.name : 'Lobby'}
             peopleOnlineContext={peopleOnlineContext}
-            presences={presences}
             DISCONNECT={props.DISCONNECT}
             highlight={tournamentInfo.directors}
+            tournamentID={tournamentID?.toLowerCase()}
           />
         </div>
         <GameLists
