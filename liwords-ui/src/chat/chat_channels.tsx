@@ -1,4 +1,6 @@
 import React, { ReactNode, useCallback } from 'react';
+import { AutoComplete } from 'antd';
+import axios from 'axios';
 import {
   ChatEntityObj,
   useChatStoreContext,
@@ -6,8 +8,6 @@ import {
   useLoginStateStoreContext,
 } from '../store/store';
 import { useMountedState } from '../utils/mounted';
-import { AutoComplete } from 'antd';
-import axios from 'axios';
 import { toAPIUrl } from '../api/api';
 import { debounce } from '../utils/debounce';
 
@@ -38,14 +38,14 @@ export const parseChannelLabel = (
       tokenized.shift();
       tokenized = tokenized.filter((player) => player !== currentUser);
       return {
-        title: 'Chat with ' + tokenized.join(', '),
+        title: `Chat with ${tokenized.join(', ')}`,
         label: tokenized.join(', '),
       };
     }
     if (tokenized[0] === 'tournament') {
       tokenized.shift();
       return {
-        title: tokenized[0] + ' chat',
+        title: `${tokenized[0]} chat`,
         label: tokenized[0],
       };
     }
@@ -55,7 +55,7 @@ export const parseChannelLabel = (
 };
 
 const getLocationLabel = (defaultChannel: string): string => {
-  let tokenized = defaultChannel.split('.');
+  const tokenized = defaultChannel.split('.');
   if (tokenized.length > 1) {
     if (tokenized[1] === 'game') {
       return 'Game Chat';
@@ -142,7 +142,7 @@ export const ChatChannels = React.memo((props: Props) => {
       if (props.tournamentID) {
         return (
           ch.displayName.startsWith('pm') ||
-          ch.name.includes(props.tournamentID)
+          ch.name === `chat.tournament.${props.tournamentID}`
         );
       }
       return true;

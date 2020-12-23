@@ -72,18 +72,19 @@ const App = React.memo(() => {
       )
       .then((resp) => {
         setExcludedPlayers(new Set<string>(resp.data.user_ids));
-        setExcludedPlayersFetched(true);
-        setPendingBlockRefresh(false);
       })
       .catch((e) => {
+        console.log(e);
+      })
+      .finally(() => {
         setExcludedPlayersFetched(true);
         setPendingBlockRefresh(false);
-        console.log(e);
       });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [setExcludedPlayers, setExcludedPlayersFetched, setPendingBlockRefresh]);
 
-  useEffect(getFullBlocks, [getFullBlocks]);
+  useEffect(() => {
+    getFullBlocks();
+  }, [getFullBlocks]);
 
   useEffect(() => {
     if (pendingBlockRefresh) {

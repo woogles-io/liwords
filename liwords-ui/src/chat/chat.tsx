@@ -87,7 +87,6 @@ export const Chat = React.memo((props: Props) => {
   // Channels other than the current that are flagged hasUpdate. Each one is removed
   // if we switch to it
   const [updatedChannels, setUpdatedChannels] = useState(new Set<string>());
-  const [decoratedDescription, setDecoratedDescription] = useState('');
   const onChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     setCurMsg(e.target.value);
   }, []);
@@ -141,7 +140,7 @@ export const Chat = React.memo((props: Props) => {
           });
       }
     },
-    [setChatChannels, loggedIn]
+    [setChatChannels, loggedIn, props.tournamentID]
   );
 
   useEffect(() => {
@@ -156,7 +155,7 @@ export const Chat = React.memo((props: Props) => {
     // Chat channels have changed. Note them if hasUpdate is true
     const changed = chatChannels?.channelsList
       ?.filter((ch) => ch.hasUpdate)
-      .map((ch) => {
+      ?.map((ch) => {
         return ch.name;
       });
     setUpdatedChannels(new Set(changed));
@@ -177,19 +176,15 @@ export const Chat = React.memo((props: Props) => {
     setDescription(defaultDescription);
   }, [defaultChannel, defaultDescription]);
 
-  useEffect(() => {
-    const channelType =
-      channel.split('.').length > 2 ? channel.split('.')[1] : '';
+  const decoratedDescription = useMemo(() => {
+    const channelType = channel.split('.')[1];
     switch (channelType) {
       case 'game':
-        setDecoratedDescription(`Game chat with ${description}`);
-        break;
+        return `Game chat with ${description}`;
       case 'gametv':
-        setDecoratedDescription(`Game chat for ${description}`);
-        break;
-      default:
-        setDecoratedDescription(description);
+        return `Game chat for ${description}`;
     }
+    return description;
   }, [channel, description]);
 
   useEffect(() => {
@@ -200,16 +195,17 @@ export const Chat = React.memo((props: Props) => {
     if (chatTab || showChannels) {
       // chat entities changed.
       // Update defaultLastMessage
-      const lastMessage = new Array<ChatEntityObj>()
-        .concat(chatEntities)
-        .sort((chA, chB) => {
-          if (chB.timestamp && chA.timestamp) {
-            return chB.timestamp - chA.timestamp;
-          }
-          return 0;
-        })
-        .filter((ch) => ch.channel === defaultChannel)
-        .shift();
+
+      const lastMessage = chatEntities.reduce(
+        (acc: ChatEntityObj | undefined, ch) =>
+          ch.channel === defaultChannel &&
+          'timestamp' in ch &&
+          (acc === undefined || ch.timestamp! > acc.timestamp!)
+            ? ch
+            : acc,
+        undefined
+      );
+
       setDefaultLastMessage((u) => lastMessage?.message || u);
       // If there are new messages in this
       // channel and we've scrolled up, mark this chat unread,
