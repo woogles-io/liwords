@@ -144,8 +144,9 @@ export const ChatChannels = React.memo((props: Props) => {
           ch.displayName.startsWith('pm') ||
           ch.name === `chat.tournament.${props.tournamentID}`
         );
+      } else {
+        return ch.displayName.startsWith('pm');
       }
-      return true;
     })
     .map((ch) => {
       const channelLabel = parseChannelLabel(ch.displayName, username);
