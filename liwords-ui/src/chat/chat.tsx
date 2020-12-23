@@ -19,6 +19,7 @@ import {
   ChatMessageFromJSON,
   chatMessageToChatEntity,
 } from '../store/constants';
+``;
 import { ActiveChatChannels } from '../gen/api/proto/user_service/user_service_pb';
 
 const { TabPane } = Tabs;
@@ -94,7 +95,6 @@ export const Chat = React.memo((props: Props) => {
 
   const doChatAutoScroll = useCallback(
     (force: boolean = false) => {
-      console.log(force, chatTab);
       if ((chatAutoScroll || force) && chatTab) {
         // Slight delay on this to let entities load, now that they're xhr
         setTimeout(() => {
