@@ -140,7 +140,10 @@ export const ChatChannels = React.memo((props: Props) => {
         return ch.displayName.startsWith('pm');
       }
       if (props.tournamentID) {
-        return ch.displayName.includes(props.tournamentID);
+        return (
+          ch.displayName.startsWith('pm') ||
+          ch.name.includes(props.tournamentID)
+        );
       }
       return true;
     })
