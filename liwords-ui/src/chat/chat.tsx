@@ -288,7 +288,7 @@ export const Chat = React.memo((props: Props) => {
 
   useEffect(() => {
     // If we actually changed the channel, get the new messages
-    if (channel !== lastChannel.current) {
+    if (channel && channel !== lastChannel.current) {
       lastChannel.current = channel || '';
       setChannelSelectedTime(Date.now());
       axios
