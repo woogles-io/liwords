@@ -76,7 +76,7 @@ export const Chat = React.memo((props: Props) => {
   const [presenceCount, setPresenceCount] = useState(0);
   const lastChannel = useRef('');
   const [chatAutoScroll, setChatAutoScroll] = useState(true);
-  const [channel, setChannel] = useState(defaultChannel);
+  const [channel, setChannel] = useState<string | undefined>(defaultChannel);
   const [description, setDescription] = useState(defaultDescription);
   const [defaultLastMessage, setDefaultLastMessage] = useState('');
   const [channelSelectedTime, setChannelSelectedTime] = useState(Date.now());
@@ -102,7 +102,7 @@ export const Chat = React.memo((props: Props) => {
           const desiredScrollTop = chatTab.scrollHeight - chatTab.clientHeight;
           chatTab.scrollTop = desiredScrollTop;
           setHasUnreadChat(false);
-        }, 300);
+        }, 100);
       }
     },
     [chatAutoScroll, chatTab]
@@ -177,7 +177,7 @@ export const Chat = React.memo((props: Props) => {
   }, [defaultChannel, defaultDescription]);
 
   const decoratedDescription = useMemo(() => {
-    const channelType = channel.split('.')[1];
+    const channelType = channel?.split('.')[1] || '';
     switch (channelType) {
       case 'game':
         return `Game chat with ${description}`;
@@ -285,7 +285,7 @@ export const Chat = React.memo((props: Props) => {
   useEffect(() => {
     // If we actually changed the channel, get the new messages
     if (channel !== lastChannel.current) {
-      lastChannel.current = channel;
+      lastChannel.current = channel || '';
       setChannelSelectedTime(Date.now());
       axios
         .post(
@@ -355,7 +355,6 @@ export const Chat = React.memo((props: Props) => {
               senderId={ent.senderId}
               message={ent.message}
               channel={ent.channel}
-              sendChannel={channel}
               timestamp={ent.timestamp}
               highlight={specialSender}
               sendMessage={
@@ -385,7 +384,7 @@ export const Chat = React.memo((props: Props) => {
 
   const onKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLInputElement>) => {
-      if (e.key === 'Enter') {
+      if (e.key === 'Enter' && channel) {
         e.preventDefault();
         // Send if non-trivial
         const msg = curMsg.trim();
@@ -442,81 +441,90 @@ export const Chat = React.memo((props: Props) => {
               tournamentID={props.tournamentID}
             />
           ) : (
-            <>
-              <div className={`chat-context${hasScroll ? ' scrolling' : ''}`}>
-                {loggedIn ? (
-                  <p
-                    className={`breadcrumb clickable${
-                      updatedChannels.size > 0 || unseenMessages.length > 0
-                        ? ' unread'
-                        : ''
-                    }`}
-                    onClick={() => {
-                      setShowChannels(!showChannels);
-                      fetchChannels();
-                    }}
-                  >
-                    <LeftOutlined /> All Chats
-                    {(updatedChannels.size > 0 ||
-                      unseenMessages.length > 0) && (
-                      <span className="unread-marker">•</span>
-                    )}
-                  </p>
-                ) : null}
-                <p>
-                  {decoratedDescription}
-                  {hasUnreadChat && <span className="unread-marker">•</span>}
-                </p>
-                {presenceCount && !channel.startsWith('chat.pm.') ? (
-                  <>
-                    <p className="presence-count">
-                      <span>{props.peopleOnlineContext(presenceCount)}</span>
-                      {presenceVisible ? (
-                        <span className="list-trigger" onClick={handleHideList}>
-                          Hide list
-                        </span>
-                      ) : (
-                        <span className="list-trigger" onClick={handleShowList}>
-                          Show list
-                        </span>
+            channel && (
+              <>
+                <div className={`chat-context${hasScroll ? ' scrolling' : ''}`}>
+                  {loggedIn ? (
+                    <p
+                      className={`breadcrumb clickable${
+                        updatedChannels.size > 0 || unseenMessages.length > 0
+                          ? ' unread'
+                          : ''
+                      }`}
+                      onClick={() => {
+                        setChannel(undefined);
+                        setShowChannels(true);
+                        fetchChannels();
+                      }}
+                    >
+                      <LeftOutlined /> All Chats
+                      {(updatedChannels.size > 0 ||
+                        unseenMessages.length > 0) && (
+                        <span className="unread-marker">•</span>
                       )}
                     </p>
-                    {presenceVisible ? (
-                      <p className="presence">
-                        <Presences
-                          players={presences}
-                          channel={channel}
-                          sendMessage={
-                            loggedIn
-                              ? (userID: string, username: string) => {
-                                  setChannel(calculatePMChannel(userID));
-                                  setDescription(`Chat with ${username}`);
-                                  setShowChannels(false);
-                                }
-                              : undefined
-                          }
-                        />
+                  ) : null}
+                  <p>
+                    {decoratedDescription}
+                    {hasUnreadChat && <span className="unread-marker">•</span>}
+                  </p>
+                  {presenceCount && !channel.startsWith('chat.pm.') ? (
+                    <>
+                      <p className="presence-count">
+                        <span>{props.peopleOnlineContext(presenceCount)}</span>
+                        {presenceVisible ? (
+                          <span
+                            className="list-trigger"
+                            onClick={handleHideList}
+                          >
+                            Hide list
+                          </span>
+                        ) : (
+                          <span
+                            className="list-trigger"
+                            onClick={handleShowList}
+                          >
+                            Show list
+                          </span>
+                        )}
                       </p>
-                    ) : null}
-                  </>
-                ) : null}
-              </div>
-              <div
-                className="entities"
-                ref={setTabContainerElement}
-                onScroll={handleChatScrolled}
-              >
-                {entities}
-              </div>
-              <Input
-                placeholder="chat..."
-                disabled={!loggedIn}
-                onKeyDown={onKeyDown}
-                onChange={onChange}
-                value={curMsg}
-                spellCheck={false}
-              />
-            </>
+                      {presenceVisible ? (
+                        <p className="presence">
+                          <Presences
+                            players={presences}
+                            channel={channel}
+                            sendMessage={
+                              loggedIn
+                                ? (userID: string, username: string) => {
+                                    setChannel(calculatePMChannel(userID));
+                                    setDescription(`Chat with ${username}`);
+                                    setShowChannels(false);
+                                  }
+                                : undefined
+                            }
+                          />
+                        </p>
+                      ) : null}
+                    </>
+                  ) : null}
+                </div>
+                <div
+                  className="entities"
+                  ref={setTabContainerElement}
+                  onScroll={handleChatScrolled}
+                >
+                  {entities}
+                </div>
+                <Input
+                  placeholder="chat..."
+                  disabled={!loggedIn}
+                  onKeyDown={onKeyDown}
+                  onChange={onChange}
+                  value={curMsg}
+                  spellCheck={false}
+                />
+              </>
+            )
           )}
           {/* <Button onClick={props.DISCONNECT}>DISCONNECT</Button> */}
         </TabPane>

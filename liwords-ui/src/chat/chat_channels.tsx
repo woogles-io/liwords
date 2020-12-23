@@ -152,9 +152,10 @@ export const ChatChannels = React.memo((props: Props) => {
       if (!channelLabel) {
         return null;
       }
-      const isUnread =
-        props.updatedChannels.has(ch.name) ||
-        props.unseenMessages.some((uc) => uc.channel === ch.name);
+      const lastUnread = props.unseenMessages
+        .filter((uc) => uc.channel === ch.name)
+        .pop();
+      const isUnread = props.updatedChannels.has(ch.name) || lastUnread;
       return (
         <div
           className={`channel-listing${isUnread ? ' unread' : ''}`}
@@ -167,7 +168,9 @@ export const ChatChannels = React.memo((props: Props) => {
             {channelLabel.label}
             {isUnread && <span className="unread-marker">•</span>}
           </p>
-          <p className="listing-preview">{ch.lastMessage}</p>
+          <p className="listing-preview">
+            {lastUnread?.message || ch.lastMessage}
+          </p>
         </div>
       );
     });

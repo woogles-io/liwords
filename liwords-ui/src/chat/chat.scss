@@ -119,6 +119,7 @@ p {
     }
     &.scrolling {
       padding-bottom: 12px;
+      box-shadow: 0px 2px 4px rgba(0, 0, 0, 0.06);
       @include colorModed() {
         border-bottom: 1px solid m($off-background);
       }
@@ -127,6 +128,7 @@ p {
         width: 100%;
         padding: 12px 24px;
         left: 0;
+        box-shadow: 0px 2px 4px rgba(0, 0, 0, 0.06);
         @include colorModed() {
           background: m($card-background);
           border-bottom: 1px solid m($off-background);
@@ -166,7 +168,7 @@ p {
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
-      padding-bottom: 6px;
+      margin-bottom: 18px;
       @include colorModed() {
         color: m($gray-extreme);
       }
