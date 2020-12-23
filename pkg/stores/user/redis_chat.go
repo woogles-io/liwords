@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -106,7 +105,7 @@ func redisStreamTS(key string) (int64, error) {
 // AddChat takes in sender information, the message, and the name of the channel.
 // Additionally, a user-readable name for the channel should be provided.
 func (r *RedisChatStore) AddChat(ctx context.Context, senderUsername, senderUID, msg,
-	channel string) (int64, error) {
+	channel, channelFriendly string) (int64, error) {
 	conn := r.redisPool.Get()
 	defer conn.Close()
 	redisKey := "chat:" + strings.TrimPrefix(channel, "chat.")
@@ -139,8 +138,6 @@ func (r *RedisChatStore) AddChat(ctx context.Context, senderUsername, senderUID,
 
 	if strings.HasPrefix(channel, "chat.pm.") {
 		users := strings.Split(strings.TrimPrefix(channel, "chat.pm."), "_")
-		sort.Strings(users)
-		channelFriendly := "pm:" + strings.Join(users, ":")
 
 		for _, user := range users {
 			// Update the entry for each latestchannel key for each user in this
@@ -151,14 +148,6 @@ func (r *RedisChatStore) AddChat(ctx context.Context, senderUsername, senderUID,
 			}
 		}
 	} else if strings.HasPrefix(channel, "chat.tournament.") {
-		tid := strings.TrimPrefix(channel, "chat.tournament.")
-		t, err := r.tournamentStore.Get(ctx, tid)
-		if err != nil {
-			return 0, err
-		}
-
-		channelFriendly := "tournament:" + t.Name
-
 		err = r.storeLatestChat(conn, msg, senderUID, channel, channelFriendly, tsSeconds)
 		if err != nil {
 			return 0, err

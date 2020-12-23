@@ -38,6 +38,7 @@ func (b *Bus) chat(ctx context.Context, userID string, evt *pb.ChatMessage) erro
 		return err
 	}
 
+	userFriendlyChannelName := ""
 	if strings.HasPrefix(evt.Channel, "chat.pm.") {
 		receiver, err := user.ChatChannelReceiver(userID, evt.Channel)
 		if err != nil {
@@ -57,14 +58,24 @@ func (b *Bus) chat(ctx context.Context, userID string, evt *pb.ChatMessage) erro
 		} else if block == 1 {
 			return errors.New("you cannot send messages to people you are blocking")
 		}
+		first, second := sendingUser.Username, recUser.Username
+		if first > second {
+			first, second = second, first
+		}
+		userFriendlyChannelName = "pm:" + first + ":" + second
 	} else if strings.HasPrefix(evt.Channel, "chat.tournament.") {
 		tid := strings.TrimPrefix(evt.Channel, "chat.tournament.")
 		if len(tid) == 0 {
 			return errors.New("nonexistent tournament")
 		}
+		t, err := b.tournamentStore.Get(ctx, tid)
+		if err != nil {
+			return err
+		}
+		userFriendlyChannelName = "tournament:" + t.Name
 	}
 
-	ts, err := b.chatStore.AddChat(ctx, sendingUser.Username, userID, evt.Message, evt.Channel)
+	ts, err := b.chatStore.AddChat(ctx, sendingUser.Username, userID, evt.Message, evt.Channel, userFriendlyChannelName)
 
 	chatMessage := &pb.ChatMessage{
 		Username:  sendingUser.Username,
