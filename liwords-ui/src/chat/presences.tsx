@@ -29,6 +29,7 @@ export const Presences = React.memo((props: Props) => {
         .reduce((prev, curr) => [prev, ', ', curr])
     : null;
   const anonCount = Object.keys(props.players).length - knownUsers.length;
+  console.log(vals);
   if (!knownUsers.length) {
     return <span className="anonymous">No logged in players.</span>;
   }

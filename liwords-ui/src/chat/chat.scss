@@ -210,7 +210,7 @@ p {
     }
   }
   .entities {
-    padding: 12px 24px 24px;
+    padding: 12px 24px 0px;
     .chat-entity {
       .sender {
         font-weight: 800;
@@ -283,7 +283,7 @@ p {
 
 @media (min-width: $screen-laptop-min) {
   .lobby .chat-area .ant-card.chat .entities {
-    max-height: calc(100vh - 312px);
+    max-height: calc(100vh - 324px);
   }
   .chat-area .channel-list {
     max-height: calc(100vh - 164px);

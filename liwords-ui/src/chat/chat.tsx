@@ -55,9 +55,10 @@ export const Chat = React.memo((props: Props) => {
     setTabContainerElement,
   ] = useState<HTMLDivElement | null>(null);
   const propsSendChat = useMemo(() => props.sendChat, [props.sendChat]);
+  const chatTab = selectedChatTab === 'CHAT' ? tabContainerElement : null;
+
   // Chat auto-scrolls when the last entity is visible.
   const [hasUnreadChat, setHasUnreadChat] = useState(false);
-
   const { defaultChannel, defaultDescription, presences } = props;
   const {
     chat: chatEntities,
@@ -67,7 +68,6 @@ export const Chat = React.memo((props: Props) => {
     setChatChannels,
   } = useChatStoreContext();
   const lastChannel = useRef('');
-  const chatTab = selectedChatTab === 'CHAT' ? tabContainerElement : null;
   const [chatAutoScroll, setChatAutoScroll] = useState(true);
   const [channel, setChannel] = useState(defaultChannel);
   const [description, setDescription] = useState(defaultDescription);
@@ -94,51 +94,51 @@ export const Chat = React.memo((props: Props) => {
 
   const doChatAutoScroll = useCallback(
     (force: boolean = false) => {
-      if (chatTab && (force || chatAutoScroll)) {
-        // Doing this conditionally may help browser performance.
-        // (Not sure.)
-        if (chatTab.scrollTop !== chatTab.scrollHeight) {
-          chatTab.scrollTop = chatTab.scrollHeight;
-        }
+      console.log(force, chatTab);
+      if ((chatAutoScroll || force) && chatTab) {
+        // Slight delay on this to let entities load, now that they're xhr
+        setTimeout(() => {
+          const desiredScrollTop = chatTab.scrollHeight - chatTab.clientHeight;
+          chatTab.scrollTop = desiredScrollTop;
+          setHasUnreadChat(false);
+        }, 300);
       }
     },
     [chatAutoScroll, chatTab]
   );
 
-  useEffect(() => {
-    // Scroll on initial load
-    doChatAutoScroll(true);
-  }, [doChatAutoScroll]);
   const fetchChannels = useCallback(
     (initial = false) => {
-      axios
-        .post(
-          toAPIUrl('user_service.SocializeService', 'GetActiveChatChannels'),
-          {
-            number: 20,
-            offset: 0,
-          },
-          { withCredentials: true }
-        )
-        .then((res) => {
-          console.log('Fetched channels:', res.data.channels);
-          const newChannels: ActiveChatChannels.AsObject = {
-            channelsList:
-              res.data.channels.map((ch: JSONChatChannel) => {
-                return {
-                  displayName: ch.display_name,
-                  lastUpdate: parseInt(ch.last_update, 10),
-                  // Don't trust hasUpdate if this isn't the initial poll.
-                  hasUpdate: ch.has_update && initial,
-                  lastMessage: ch.last_message || '',
-                  name: ch.name,
-                };
-              }) || [],
-          };
-          setChatChannels(newChannels);
-        });
+      if (loggedIn) {
+        axios
+          .post(
+            toAPIUrl('user_service.SocializeService', 'GetActiveChatChannels'),
+            {
+              number: 20,
+              offset: 0,
+            },
+            { withCredentials: true }
+          )
+          .then((res) => {
+            console.log('Fetched channels:', res.data.channels);
+            const newChannels: ActiveChatChannels.AsObject = {
+              channelsList:
+                res.data.channels.map((ch: JSONChatChannel) => {
+                  return {
+                    displayName: ch.display_name,
+                    lastUpdate: parseInt(ch.last_update, 10),
+                    // Don't trust hasUpdate if this isn't the initial poll.
+                    hasUpdate: ch.has_update && initial,
+                    lastMessage: ch.last_message || '',
+                    name: ch.name,
+                  };
+                }) || [],
+            };
+            setChatChannels(newChannels);
+          });
+      }
     },
-    [setChatChannels]
+    [setChatChannels, loggedIn]
   );
 
   useEffect(() => {
@@ -191,15 +191,14 @@ export const Chat = React.memo((props: Props) => {
 
   useEffect(() => {
     // Remove this channel's messages from the unseen list when we switch back to message view
-    if (!showChannels) {
-      setUnseenMessages((u) => u.filter((ch) => ch.channel !== channel));
-    }
+    setUnseenMessages((u) => u.filter((ch) => ch.channel !== channel));
   }, [channel, showChannels]);
   useEffect(() => {
     if (chatTab || showChannels) {
       // chat entities changed.
       // Update defaultLastMessage
-      const lastMessage = chatEntities
+      const lastMessage = new Array<ChatEntityObj>()
+        .concat(chatEntities)
         .sort((chA, chB) => {
           if (chB.timestamp && chA.timestamp) {
             return chB.timestamp - chA.timestamp;
@@ -208,7 +207,7 @@ export const Chat = React.memo((props: Props) => {
         })
         .filter((ch) => ch.channel === defaultChannel)
         .shift();
-      setDefaultLastMessage(lastMessage?.message || '');
+      setDefaultLastMessage((u) => lastMessage?.message || u);
       // If there are new messages in this
       // channel and we've scrolled up, mark this chat unread,
       const currentUnread = chatEntities
@@ -286,7 +285,7 @@ export const Chat = React.memo((props: Props) => {
 
   useEffect(() => {
     // If we actually changed the channel, get the new messages
-    if (loggedIn && channel !== lastChannel.current) {
+    if (channel !== lastChannel.current) {
       lastChannel.current = channel;
       setChannelSelectedTime(Date.now());
       axios
@@ -295,7 +294,7 @@ export const Chat = React.memo((props: Props) => {
           {
             channel: channel,
           },
-          { withCredentials: true }
+          { withCredentials: loggedIn }
         )
         .then((res) => {
           clearChat();
@@ -303,20 +302,18 @@ export const Chat = React.memo((props: Props) => {
           addChats(messages.map(chatMessageToChatEntity));
           setHasUnreadChat(false);
           setChatAutoScroll(true);
-          doChatAutoScroll(true);
         });
     }
-  }, [channel, addChats, clearChat, loggedIn, doChatAutoScroll]);
+  }, [channel, addChats, clearChat, loggedIn]);
 
   // When user is scrolling, auto-scroll may be enabled or disabled.
   // This handler is set through onScroll.
   const handleChatScrolled = useCallback(() => {
     if (chatTab) {
-      // Are we within a few pixels of the end? Then go ahead and autoscroll
-      // The wiggle room accounts for some throttling of onScroll
+      // Allow for 12 pixels of wiggle room for enabling auto scroll
       if (
-        chatTab.scrollTop >=
-        chatTab.scrollHeight - chatTab.clientHeight - 24
+        chatTab.scrollTop + 12 >=
+        chatTab.scrollHeight - chatTab.clientHeight
       ) {
         setChatAutoScroll(true);
         setHasUnreadChat(false);

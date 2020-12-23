@@ -406,15 +406,7 @@ export const useOnSocketMsg = () => {
             if (excludedPlayers.has(up.getUserId())) {
               break;
             }
-            // XXX: This is a temporary fix while we can only display one
-            // channel's presence at once.
-            /*const { path } = loginState;
-            if (
-              path.startsWith('/game/') &&
-              up.getChannel().startsWith('chat.tournament')
-            ) {
-              break;
-            }*/
+
             setPresence({
               uuid: up.getUserId(),
               username: up.getUsername(),
@@ -429,20 +421,6 @@ export const useOnSocketMsg = () => {
             const ups = parsedMsg as UserPresences;
 
             const toAdd = new Array<PresenceEntity>();
-
-            // XXX: This is a temporary fix while we can only display one
-            // channel's presence at once.
-            const { path } = loginState;
-            if (
-              path.startsWith('/game/') &&
-              (ups.getPresencesList().length === 0 ||
-                ups
-                  .getPresencesList()[0]
-                  ?.getChannel()
-                  .startsWith('chat.tournament'))
-            ) {
-              break;
-            }
 
             ups.getPresencesList().forEach((p) => {
               if (!excludedPlayers.has(p.getUserId())) {
