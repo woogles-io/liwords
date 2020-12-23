@@ -135,7 +135,7 @@ func main() {
 		panic(err)
 	}
 	stores.PresenceStore = user.NewRedisPresenceStore(redisPool)
-	stores.ChatStore = user.NewRedisChatStore(redisPool, stores.PresenceStore)
+	stores.ChatStore = user.NewRedisChatStore(redisPool, stores.PresenceStore, stores.TournamentStore)
 
 	authenticationService := auth.NewAuthenticationService(stores.UserStore, stores.SessionStore, stores.ConfigStore,
 		cfg.SecretKey, cfg.MailgunKey)

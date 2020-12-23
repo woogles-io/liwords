@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef } from 'react';
 import { Card, Input, Tabs } from 'antd';
+import { LeftOutlined } from '@ant-design/icons';
 import { useMountedState } from '../utils/mounted';
 import { ChatEntity } from './chat_entity';
 import {
@@ -9,7 +10,6 @@ import {
   useChatStoreContext,
   useLoginStateStoreContext,
 } from '../store/store';
-import { LeftOutlined } from '@ant-design/icons';
 import './chat.scss';
 import { Presences } from './presences';
 import { ChatChannels } from './chat_channels';
@@ -19,7 +19,6 @@ import {
   ChatMessageFromJSON,
   chatMessageToChatEntity,
 } from '../store/constants';
-``;
 import { ActiveChatChannels } from '../gen/api/proto/user_service/user_service_pb';
 
 const { TabPane } = Tabs;
@@ -32,6 +31,7 @@ type Props = {
   presences: { [uuid: string]: PresenceEntity };
   DISCONNECT?: () => void;
   highlight?: Array<string>;
+  tournamentID?: string;
 };
 
 type JSONChatChannel = {
@@ -41,6 +41,11 @@ type JSONChatChannel = {
   last_message?: string;
   name: string;
 };
+
+type JSONActiveChatChannels = {
+  channels: Array<JSONChatChannel>;
+};
+
 export const Chat = React.memo((props: Props) => {
   const { useState } = useMountedState();
   const { loginState } = useLoginStateStoreContext();
@@ -111,11 +116,12 @@ export const Chat = React.memo((props: Props) => {
     (initial = false) => {
       if (loggedIn) {
         axios
-          .post(
+          .post<JSONActiveChatChannels>(
             toAPIUrl('user_service.SocializeService', 'GetActiveChatChannels'),
             {
               number: 20,
               offset: 0,
+              tournament_id: props.tournamentID || '',
             },
             { withCredentials: true }
           )
@@ -123,7 +129,7 @@ export const Chat = React.memo((props: Props) => {
             console.log('Fetched channels:', res.data.channels);
             const newChannels: ActiveChatChannels.AsObject = {
               channelsList:
-                res.data.channels.map((ch: JSONChatChannel) => {
+                res.data.channels.map((ch) => {
                   return {
                     displayName: ch.display_name,
                     lastUpdate: parseInt(ch.last_update, 10),
@@ -179,10 +185,10 @@ export const Chat = React.memo((props: Props) => {
       channel.split('.').length > 2 ? channel.split('.')[1] : '';
     switch (channelType) {
       case 'game':
-        setDecoratedDescription('Game chat with ' + description);
+        setDecoratedDescription(`Game chat with ${description}`);
         break;
       case 'gametv':
-        setDecoratedDescription('Game chat for ' + description);
+        setDecoratedDescription(`Game chat for ${description}`);
         break;
       default:
         setDecoratedDescription(description);
@@ -292,7 +298,7 @@ export const Chat = React.memo((props: Props) => {
         .post(
           toAPIUrl('user_service.SocializeService', 'GetChatsForChannel'),
           {
-            channel: channel,
+            channel,
           },
           { withCredentials: loggedIn }
         )

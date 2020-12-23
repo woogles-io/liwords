@@ -547,6 +547,7 @@ export const Table = React.memo((props: Props) => {
               )}
               presences={presences}
               peopleOnlineContext={peopleOnlineContext}
+              tournamentID={gameInfo.tournament_id}
             />
           ) : null}
 

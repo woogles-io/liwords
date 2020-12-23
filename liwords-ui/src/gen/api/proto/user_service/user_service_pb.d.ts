@@ -651,6 +651,9 @@ export class GetActiveChatChannelsRequest extends jspb.Message {
   getOffset(): number;
   setOffset(value: number): void;
 
+  getTournamentId(): string;
+  setTournamentId(value: string): void;
+
   serializeBinary(): Uint8Array;
   toObject(includeInstance?: boolean): GetActiveChatChannelsRequest.AsObject;
   static toObject(includeInstance: boolean, msg: GetActiveChatChannelsRequest): GetActiveChatChannelsRequest.AsObject;
@@ -665,6 +668,7 @@ export namespace GetActiveChatChannelsRequest {
   export type AsObject = {
     number: number,
     offset: number,
+    tournamentId: string,
   }
 }
 

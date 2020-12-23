@@ -143,7 +143,7 @@ func (ss *SocializeService) GetActiveChatChannels(ctx context.Context, req *pb.G
 		return nil, err
 	}
 
-	return ss.chatStore.LatestChannels(ctx, int(req.Number), int(req.Offset), sess.UserUUID)
+	return ss.chatStore.LatestChannels(ctx, int(req.Number), int(req.Offset), sess.UserUUID, req.TournamentId)
 }
 
 func ChatChannelReceiver(uid, name string) (string, error) {
@@ -186,7 +186,7 @@ func (ss *SocializeService) GetChatsForChannel(ctx context.Context, req *pb.GetC
 			return nil, err
 		}
 	}
-	chats, err := ss.chatStore.OldChats(ctx, req.Channel)
+	chats, err := ss.chatStore.OldChats(ctx, req.Channel, 50)
 	if err != nil {
 		return nil, err
 	}
