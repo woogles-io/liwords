@@ -19,10 +19,7 @@ import { SoughtGame } from '../store/reducers/lobby_reducer';
 import { ChallengeRuleMap } from '../gen/macondo/api/proto/macondo/macondo_pb';
 import { GameLists } from './gameLists';
 import { Chat } from '../chat/chat';
-import {
-  useLoginStateStoreContext,
-  usePresenceStoreContext,
-} from '../store/store';
+import { useLoginStateStoreContext } from '../store/store';
 import { singularCount } from '../utils/plural';
 import './lobby.scss';
 import { Announcements } from './announcements';
@@ -97,7 +94,6 @@ export const Lobby = (props: Props) => {
   const { tournamentID } = useParams();
   const { sendSocketMsg } = props;
   const { loginState } = useLoginStateStoreContext();
-  const { presences } = usePresenceStoreContext();
   const { loggedIn, username, userID } = loginState;
 
   const [tournamentInfo, setTournamentInfo] = useState<TournamentMetadata>({
@@ -170,9 +166,9 @@ export const Lobby = (props: Props) => {
             }
             defaultDescription={tournamentID ? tournamentInfo.name : 'Lobby'}
             peopleOnlineContext={peopleOnlineContext}
-            presences={presences}
             DISCONNECT={props.DISCONNECT}
             highlight={tournamentInfo.directors}
+            tournamentID={tournamentID}
           />
         </div>
         <GameLists

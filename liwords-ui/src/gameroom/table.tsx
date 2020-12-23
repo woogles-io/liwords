@@ -15,7 +15,6 @@ import {
   useGameEndMessageStoreContext,
   useLoginStateStoreContext,
   usePoolFormatStoreContext,
-  usePresenceStoreContext,
   useRematchRequestStoreContext,
   useTimerStoreContext,
 } from '../store/store';
@@ -189,7 +188,6 @@ export const Table = React.memo((props: Props) => {
   const { gameEndMessage, setGameEndMessage } = useGameEndMessageStoreContext();
   const { loginState } = useLoginStateStoreContext();
   const { poolFormat, setPoolFormat } = usePoolFormatStoreContext();
-  const { presences } = usePresenceStoreContext();
   const { rematchRequest, setRematchRequest } = useRematchRequestStoreContext();
   const { pTimedOut, setPTimedOut } = useTimerStoreContext();
   const { username, userID } = loginState;
@@ -545,7 +543,6 @@ export const Table = React.memo((props: Props) => {
                 username,
                 isObserver
               )}
-              presences={presences}
               peopleOnlineContext={peopleOnlineContext}
               tournamentID={gameInfo.tournament_id}
             />

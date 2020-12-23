@@ -6,9 +6,9 @@ import { ChatEntity } from './chat_entity';
 import {
   ChatEntityObj,
   ChatEntityType,
-  PresenceEntity,
   useChatStoreContext,
   useLoginStateStoreContext,
+  usePresenceStoreContext,
 } from '../store/store';
 import './chat.scss';
 import { Presences } from './presences';
@@ -28,7 +28,6 @@ type Props = {
   sendChat: (msg: string, chan: string) => void;
   defaultChannel: string;
   defaultDescription: string;
-  presences: { [uuid: string]: PresenceEntity };
   DISCONNECT?: () => void;
   highlight?: Array<string>;
   tournamentID?: string;
@@ -65,7 +64,7 @@ export const Chat = React.memo((props: Props) => {
 
   // Chat auto-scrolls when the last entity is visible.
   const [hasUnreadChat, setHasUnreadChat] = useState(false);
-  const { defaultChannel, defaultDescription, presences } = props;
+  const { defaultChannel, defaultDescription } = props;
   const {
     chat: chatEntities,
     chatChannels,
@@ -73,6 +72,8 @@ export const Chat = React.memo((props: Props) => {
     addChats,
     setChatChannels,
   } = useChatStoreContext();
+  const { presences } = usePresenceStoreContext();
+  const [presenceCount, setPresenceCount] = useState(0);
   const lastChannel = useRef('');
   const [chatAutoScroll, setChatAutoScroll] = useState(true);
   const [channel, setChannel] = useState(defaultChannel);
@@ -90,19 +91,15 @@ export const Chat = React.memo((props: Props) => {
   const onChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     setCurMsg(e.target.value);
   }, []);
-  const knownUsers = useMemo(
-    () => Object.keys(presences).filter((p) => !presences[p].anon) || [],
-    [presences]
-  );
-  const presenceCount = useMemo(() => Object.keys(presences).length, [
-    presences,
-  ]);
 
   const doChatAutoScroll = useCallback(
     (force: boolean = false) => {
       if ((chatAutoScroll || force) && chatTab) {
         // Slight delay on this to let entities load, now that they're xhr
         setTimeout(() => {
+          if (chatTab.scrollHeight > chatTab.clientHeight) {
+            setHasScroll(true);
+          }
           const desiredScrollTop = chatTab.scrollHeight - chatTab.clientHeight;
           chatTab.scrollTop = desiredScrollTop;
           setHasUnreadChat(false);
@@ -153,12 +150,12 @@ export const Chat = React.memo((props: Props) => {
   }, [fetchChannels]);
 
   useEffect(() => {
+    setPresenceCount(presences.filter((p) => p.channel === channel).length);
+  }, [presences, channel]);
+  useEffect(() => {
     // Chat channels have changed. Note them if hasUpdate is true
     const changed = chatChannels?.channelsList
-      ?.map((ch) => {
-        return ch;
-      })
-      .filter((ch) => ch.hasUpdate)
+      ?.filter((ch) => ch.hasUpdate)
       .map((ch) => {
         return ch.name;
       });
@@ -351,7 +348,6 @@ export const Chat = React.memo((props: Props) => {
           return true;
         })
         .map((ent) => {
-          const anon = ent.senderId ? !knownUsers.includes(ent.senderId) : true;
           const specialSender = props.highlight
             ? props.highlight.includes(ent.sender)
             : false;
@@ -365,7 +361,6 @@ export const Chat = React.memo((props: Props) => {
               channel={ent.channel}
               sendChannel={channel}
               timestamp={ent.timestamp}
-              anonymous={anon}
               highlight={specialSender}
               sendMessage={
                 loggedIn
@@ -379,14 +374,7 @@ export const Chat = React.memo((props: Props) => {
             />
           );
         }),
-    [
-      knownUsers,
-      chatEntities,
-      props.highlight,
-      channel,
-      loggedIn,
-      calculatePMChannel,
-    ]
+    [chatEntities, props.highlight, channel, loggedIn, calculatePMChannel]
   );
 
   const handleTabClick = useCallback((key) => {
@@ -455,6 +443,7 @@ export const Chat = React.memo((props: Props) => {
                     }
                   : undefined
               }
+              tournamentID={props.tournamentID}
             />
           ) : (
             <>
@@ -499,7 +488,7 @@ export const Chat = React.memo((props: Props) => {
                     {presenceVisible ? (
                       <p className="presence">
                         <Presences
-                          players={props.presences}
+                          players={presences}
                           channel={channel}
                           sendMessage={
                             loggedIn

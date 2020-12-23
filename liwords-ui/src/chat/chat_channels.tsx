@@ -19,6 +19,7 @@ type Props = {
   unseenMessages: Array<ChatEntityObj>;
   updatedChannels: Set<string>;
   sendMessage?: (uuid: string, username: string) => void;
+  tournamentID?: string;
 };
 
 export type ChatChannelLabel = {
@@ -137,6 +138,9 @@ export const ChatChannels = React.memo((props: Props) => {
       // regardless of their location
       if (props.defaultChannel === 'chat.lobby') {
         return ch.displayName.startsWith('pm');
+      }
+      if (props.tournamentID) {
+        return ch.displayName.includes(props.tournamentID);
       }
       return true;
     })

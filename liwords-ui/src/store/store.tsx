@@ -109,7 +109,7 @@ type ChatStoreData = {
 type PresenceStoreData = {
   setPresence: (presence: PresenceEntity) => void;
   addPresences: (presences: Array<PresenceEntity>) => void;
-  presences: { [uuid: string]: PresenceEntity };
+  presences: Array<PresenceEntity>;
 };
 
 type GameEndMessageStoreData = {
@@ -246,7 +246,7 @@ const ChatContext = createContext<ChatStoreData>({
 const PresenceContext = createContext<PresenceStoreData>({
   setPresence: defaultFunction,
   addPresences: defaultFunction,
-  presences: {},
+  presences: new Array<PresenceEntity>(),
 });
 
 const [GameEndMessageContext, ExaminableGameEndMessageContext] = Array.from(
@@ -609,9 +609,7 @@ const RealStore = ({ children, ...props }: Props) => {
   const [excludedPlayers, setExcludedPlayers] = useState(new Set<string>());
   const [excludedPlayersFetched, setExcludedPlayersFetched] = useState(false);
   const [pendingBlockRefresh, setPendingBlockRefresh] = useState(false);
-  const [presences, setPresences] = useState(
-    {} as { [uuid: string]: PresenceEntity }
-  );
+  const [presences, setPresences] = useState(new Array<PresenceEntity>());
 
   const addChat = useCallback((entity: ChatEntityObj) => {
     setChat((oldChat) => {
@@ -654,28 +652,27 @@ const RealStore = ({ children, ...props }: Props) => {
   }, []);
 
   const setPresence = useCallback((entity: PresenceEntity) => {
-    // XXX: This looks slow.
     setPresences((prevPresences) => {
-      const presencesCopy = { ...prevPresences };
-      if (entity.deleting) {
-        // This user signed off; remove
-        delete presencesCopy[entity.uuid];
-      } else {
-        presencesCopy[entity.uuid] = entity;
+      // filter out the current entity then add it if we're not deleting
+      // (prevents duplicates)
+      const presencesCopy = prevPresences.filter(
+        (p) => !(p.channel === entity.channel && p.uuid === entity.uuid)
+      );
+      if (!entity.deleting) {
+        return presencesCopy.concat(entity);
       }
       return presencesCopy;
     });
   }, []);
 
-  const addPresences = useCallback((entities: Array<PresenceEntity>) => {
-    const presencesCopy = {} as { [uuid: string]: PresenceEntity };
-    entities.forEach((p) => {
-      presencesCopy[p.uuid] = p;
-    });
-    console.log('in addPresences', presencesCopy);
-
-    setPresences(presencesCopy);
-  }, []);
+  const addPresences = useCallback(
+    (entities: Array<PresenceEntity>) => {
+      entities.forEach((p) => {
+        setPresence(p);
+      });
+    },
+    [setPresence]
+  );
 
   const stopClock = useCallback(() => {
     if (!clockController.current) {
