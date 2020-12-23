@@ -54,6 +54,14 @@ p {
         background: m($card-background);
         color: m($gray-extreme);
       }
+      .ant-select-selection-placeholder {
+        z-index: 1;
+        font-weight: 400;
+        opacity: 0.8;
+        @include colorModed() {
+          color: m($gray-medium);
+        }
+      }
       input, .ant-select-selector {
         @include colorModed() {
           background: m($card-background);
