@@ -236,6 +236,7 @@ export const Chat = React.memo((props: Props) => {
           // Only the ones since we switched to this channel
           (ch) =>
             (ch.channel !== channel || showChannels) &&
+            channel &&
             ch.timestamp &&
             ch.timestamp > channelSelectedTime
         )
@@ -252,8 +253,6 @@ export const Chat = React.memo((props: Props) => {
           // if we have unread messages while looking at the channels, refetch them
           fetchChannels();
         }
-      } else {
-        setUnseenMessages((u) => u.filter((ch) => ch.channel !== channel));
       }
     }
   }, [
@@ -520,6 +519,7 @@ export const Chat = React.memo((props: Props) => {
                   {entities}
                 </div>
                 <Input
+                  autoFocus={!defaultChannel.startsWith('chat.game')}
                   placeholder="chat..."
                   disabled={!loggedIn}
                   onKeyDown={onKeyDown}
