@@ -152,9 +152,15 @@ export const ChatChannels = React.memo((props: Props) => {
       if (!channelLabel) {
         return null;
       }
-      const lastUnread = props.unseenMessages
-        .filter((uc) => uc.channel === ch.name)
-        .pop();
+      const lastUnread = props.unseenMessages.reduce(
+        (acc: ChatEntityObj | undefined, m) =>
+          m.channel === ch.name &&
+          'timestamp' in m &&
+          (acc === undefined || m.timestamp! > acc.timestamp!)
+            ? m
+            : acc,
+        undefined
+      );
       const isUnread = props.updatedChannels.has(ch.name) || lastUnread;
       return (
         <div

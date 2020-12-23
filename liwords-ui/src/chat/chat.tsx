@@ -248,6 +248,10 @@ export const Chat = React.memo((props: Props) => {
         setUnseenMessages((u) =>
           u.concat(otherUnreads).filter((ch) => ch.channel !== channel)
         );
+        if (showChannels) {
+          // if we have unread messages while looking at the channels, refetch them
+          fetchChannels();
+        }
       } else {
         setUnseenMessages((u) => u.filter((ch) => ch.channel !== channel));
       }
