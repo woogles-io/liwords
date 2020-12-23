@@ -168,7 +168,7 @@ export const Lobby = (props: Props) => {
             peopleOnlineContext={peopleOnlineContext}
             DISCONNECT={props.DISCONNECT}
             highlight={tournamentInfo.directors}
-            tournamentID={tournamentID.toLowerCase()}
+            tournamentID={tournamentID?.toLowerCase()}
           />
         </div>
         <GameLists
