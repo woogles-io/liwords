@@ -431,7 +431,7 @@ func (s *DBStore) ListActive(ctx context.Context, tourneyID string) (*gs.GameInf
 		Where("games.game_end_reason = ?", 0 /* ongoing games only*/)
 
 	if tourneyID != "" {
-		query = query.Where("games.tournament_id = ?", tourneyID)
+		query = query.Where("lower(games.tournament_id) = lower(?)", tourneyID)
 	}
 
 	result := query.Order("games.id").Scan(&games)

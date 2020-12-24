@@ -223,6 +223,11 @@ outerfor:
 				break
 			}
 			for _, topic := range topics {
+				// XXX: Remove this soon, once we migrate to the new
+				// id-independent url slugs.
+				if strings.HasPrefix(topic, "tournament.") {
+					topic = strings.ToLower(topic)
+				}
 				b.natsconn.Publish(topic, data)
 			}
 

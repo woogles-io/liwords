@@ -35,6 +35,8 @@ type tournament struct {
 	ExecutiveDirector string
 	IsStarted         bool
 	Divisions         datatypes.JSON
+	// Slug
+	// Slug              string `gorm:"uniqueIndex:,expression:lower(slug)"`
 }
 
 // NewDBStore creates a new DB store for tournament managers.
