@@ -108,10 +108,7 @@ service ProfileService {
 // Autocomplete
 
 message UsernameSearchRequest { string prefix = 1; }
-message UsernameSearchResponse {
-  repeated string usernames = 1 [deprecated = true];
-  repeated BasicUser users = 2;
-}
+message UsernameSearchResponse { repeated BasicUser users = 2; }
 service AutocompleteService {
   rpc GetCompletion(UsernameSearchRequest) returns(UsernameSearchResponse);
 }

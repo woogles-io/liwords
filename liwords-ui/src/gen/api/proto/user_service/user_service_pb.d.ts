@@ -449,11 +449,6 @@ export namespace UsernameSearchRequest {
 }
 
 export class UsernameSearchResponse extends jspb.Message {
-  clearUsernamesList(): void;
-  getUsernamesList(): Array<string>;
-  setUsernamesList(value: Array<string>): void;
-  addUsernames(value: string, index?: number): string;
-
   clearUsersList(): void;
   getUsersList(): Array<BasicUser>;
   setUsersList(value: Array<BasicUser>): void;
@@ -471,7 +466,6 @@ export class UsernameSearchResponse extends jspb.Message {
 
 export namespace UsernameSearchResponse {
   export type AsObject = {
-    usernamesList: Array<string>,
     usersList: Array<BasicUser.AsObject>,
   }
 }

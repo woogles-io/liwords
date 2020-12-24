@@ -33,13 +33,10 @@ import {
   ServerChallengeResultEvent,
   SeekRequests,
   TimedOut,
-  GameMeta,
-  ActiveGames,
   GameDeletion,
   MatchRequests,
   DeclineMatchRequest,
   ChatMessage,
-  ChatMessages,
   UserPresence,
   UserPresences,
   ReadyForGame,
@@ -56,7 +53,6 @@ import {
   GameInfoResponseToActiveGame,
 } from './reducers/lobby_reducer';
 import { BoopSounds } from '../sound/boop';
-import { ActiveChatChannels } from '../gen/api/proto/user_service/user_service_pb';
 import {
   GameInfoResponse,
   GameInfoResponses,
@@ -89,9 +85,6 @@ export const parseMsgs = (msg: Uint8Array) => {
       [MessageType.SERVER_CHALLENGE_RESULT_EVENT]: ServerChallengeResultEvent,
       [MessageType.SEEK_REQUESTS]: SeekRequests,
       [MessageType.TIMED_OUT]: TimedOut,
-      // XXX: delete these next two.
-      [MessageType.GAME_META_EVENT]: GameMeta,
-      [MessageType.ACTIVE_GAMES]: ActiveGames,
       // ...
       [MessageType.ONGOING_GAME_EVENT]: GameInfoResponse,
       [MessageType.ONGOING_GAMES]: GameInfoResponses,
@@ -99,7 +92,6 @@ export const parseMsgs = (msg: Uint8Array) => {
       [MessageType.MATCH_REQUESTS]: MatchRequests,
       [MessageType.DECLINE_MATCH_REQUEST]: DeclineMatchRequest,
       [MessageType.CHAT_MESSAGE]: ChatMessage,
-      [MessageType.CHAT_MESSAGES]: ChatMessages,
       [MessageType.USER_PRESENCE]: UserPresence,
       [MessageType.USER_PRESENCES]: UserPresences,
       [MessageType.READY_FOR_GAME]: ReadyForGame,
@@ -107,7 +99,6 @@ export const parseMsgs = (msg: Uint8Array) => {
       [MessageType.MATCH_REQUEST_CANCELLATION]: MatchRequestCancellation,
       [MessageType.TOURNAMENT_GAME_ENDED_EVENT]: TournamentGameEndedEvent,
       [MessageType.REMATCH_STARTED]: RematchStartedEvent,
-      [MessageType.CHAT_CHANNELS]: ActiveChatChannels,
     };
 
     const parsedMsg = msgTypes[msgType];
@@ -212,13 +203,6 @@ export const useOnSocketMsg = () => {
               payload: soughtGames,
             });
 
-            break;
-          }
-
-          case MessageType.CHAT_CHANNELS: {
-            // to do: this message is deprecated, we are using xhr instead
-            const cc = parsedMsg as ActiveChatChannels;
-            console.log('got chat channels', cc);
             break;
           }
 
@@ -388,14 +372,6 @@ export const useOnSocketMsg = () => {
                 BoopSounds.playSound('receiveMsgSound');
               }
             }
-            break;
-          }
-
-          case MessageType.CHAT_MESSAGES: {
-            const cms = parsedMsg as ChatMessages;
-
-            // to do: this message is deprecated, we are using xhr instead
-            console.log('got chats from socket', cms);
             break;
           }
 
@@ -573,15 +549,6 @@ export const useOnSocketMsg = () => {
             break;
           }
 
-          // XXX: Delete me - obsolete
-          case MessageType.ACTIVE_GAMES: {
-            // lobby context, set list of active games
-            const age = parsedMsg as ActiveGames;
-            console.log('OBSOLETE, REFRESH APP', age);
-
-            break;
-          }
-
           case MessageType.GAME_DELETION: {
             // lobby context, remove active game
             const gde = parsedMsg as GameDeletion;
@@ -590,15 +557,6 @@ export const useOnSocketMsg = () => {
               actionType: ActionType.RemoveActiveGame,
               payload: gde.getId(),
             });
-            break;
-          }
-
-          // XXX: Delete me - obsolete
-          case MessageType.GAME_META_EVENT: {
-            // lobby context, add active game
-            const gme = parsedMsg as GameMeta;
-            console.log('OBSOLETE, REFRESH APP', gme);
-
             break;
           }
 

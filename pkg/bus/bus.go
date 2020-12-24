@@ -556,12 +556,6 @@ func (b *Bus) initRealmInfo(ctx context.Context, evt *pb.InitRealmInfo, connID s
 			if err != nil {
 				return err
 			}
-		} else if strings.HasPrefix(realm, "chat-") {
-			chatChan := strings.ReplaceAll(realm, "-", ".")
-			err = b.sendOldChats(ctx, evt.UserId, chatChan)
-			if err != nil {
-				return err
-			}
 		} else {
 			log.Debug().Interface("evt", evt).Msg("no init realm info")
 		}

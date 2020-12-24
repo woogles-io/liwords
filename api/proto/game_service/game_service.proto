@@ -3,7 +3,6 @@ package game_service;
 option go_package = "github.com/domino14/liwords/rpc/api/proto/game_service";
 
 import "api/proto/realtime/realtime.proto";
-import "macondo/api/proto/macondo/macondo.proto";
 import "google/protobuf/timestamp.proto";
 
 // Meta information about a game, including its players.
@@ -28,25 +27,16 @@ message PlayerInfo {
 }
 
 message GameInfoResponse {
-  // XXX: Delete all deprecated soon.
   repeated PlayerInfo players = 1;
-  string lexicon = 2 [deprecated = true];
-  string variant = 3 [deprecated = true];
   string time_control_name = 4;
-  int32 initial_time_seconds = 5 [deprecated = true];
   string tournament_id = 6;
-  macondo.ChallengeRule challenge_rule = 7 [deprecated = true];
-  liwords.RatingMode rating_mode = 8 [deprecated = true];
   // done - is game done?
   // bool done = 9;
-  int32 max_overtime_minutes = 10 [deprecated = true];
   liwords.GameEndReason game_end_reason = 11;
-  int32 increment_seconds = 12 [deprecated = true];
   repeated int32 scores = 13;
   int32 winner = 14;
   google.protobuf.Timestamp created_at = 15;
   string game_id = 16;
-  string original_request_id = 17 [deprecated = true];
   google.protobuf.Timestamp last_update = 18;
 
   liwords.GameRequest game_request = 19;
