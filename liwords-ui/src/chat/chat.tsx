@@ -23,7 +23,7 @@ import { ActiveChatChannels } from '../gen/api/proto/user_service/user_service_p
 
 const { TabPane } = Tabs;
 
-type Props = {
+export type Props = {
   peopleOnlineContext: (n: number) => string; // should return "1 person" or "2 people"
   sendChat: (msg: string, chan: string) => void;
   defaultChannel: string;
@@ -302,9 +302,11 @@ export const Chat = React.memo((props: Props) => {
           clearChat();
           const messages: Array<ChatMessageFromJSON> = res.data?.messages;
           addChats(messages.map(chatMessageToChatEntity));
+          console.log('added', messages);
           setHasUnreadChat(false);
           setChatAutoScroll(true);
-        });
+        })
+        .catch((e) => console.log('error', e));
     }
   }, [channel, addChats, clearChat, loggedIn]);
 
@@ -375,6 +377,7 @@ export const Chat = React.memo((props: Props) => {
     [chatEntities, props.highlight, channel, loggedIn, calculatePMChannel]
   );
 
+  console.log('entities are now', entities, chatEntities);
   const handleTabClick = useCallback((key) => {
     setSelectedChatTab(key);
   }, []);
@@ -459,6 +462,7 @@ export const Chat = React.memo((props: Props) => {
                         setShowChannels(true);
                         fetchChannels();
                       }}
+                      data-testid="all-chats"
                     >
                       <LeftOutlined /> All Chats
                       {(updatedChannels.size > 0 ||
@@ -515,6 +519,7 @@ export const Chat = React.memo((props: Props) => {
                   className="entities"
                   ref={setTabContainerElement}
                   onScroll={handleChatScrolled}
+                  data-testid="chat-entities"
                 >
                   {entities}
                 </div>

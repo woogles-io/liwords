@@ -171,11 +171,11 @@ export const ChatChannels = React.memo((props: Props) => {
             props.onChannelSelect(ch.name, channelLabel.title);
           }}
         >
-          <p className="listing-name">
+          <p className="listing-name" data-testid="listing-name">
             {channelLabel.label}
             {isUnread && <span className="unread-marker">•</span>}
           </p>
-          <p className="listing-preview">
+          <p className="listing-preview" data-testid="listing-preview">
             {lastUnread?.message || ch.lastMessage}
           </p>
         </div>
