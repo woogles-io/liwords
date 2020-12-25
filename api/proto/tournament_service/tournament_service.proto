@@ -23,6 +23,7 @@ message TournamentMetadataRequest {
   string id = 1;
   string name = 2;
   string description = 3;
+  string slug = 4;
 }
 
 message SingleRoundControls {
@@ -117,6 +118,7 @@ message TournamentMetadataResponse {
   string name = 1;
   string description = 2;
   repeated string directors = 3;
+  string slug = 4;
 }
 
 message RecentGamesRequest {
@@ -152,4 +154,72 @@ service TournamentService {
   rpc StartRound(TournamentStartRoundRequest) returns(TournamentResponse);
 
   rpc RecentGames(RecentGamesRequest) returns(RecentGamesResponse);
+}
+
+//// Club stuff
+// Given the overlap and the desire to not make code diverge too much between
+// clubs and tournaments, let's keep some Club data structures here.
+message ClubMetadataResponse {
+  string name = 1;
+  string slug = 2;
+  string description = 3;
+  repeated string director_ids = 4;
+  liwords.GameRequest default_settings = 5;
+}
+
+message ClubResponse {}
+
+message NewClubSessionRequest {
+  // date is the date of the session
+  google.protobuf.Timestamp date = 1;
+  string club_id = 2;
+}
+
+message NewClubSessionResponse {
+  // Note that club sessions are tournaments in our backend. We return
+  // the created tournament ID here:
+  string tournament_id = 1;
+  // slug will look like /club/{club_name}/{date}. It should be
+  // case-insensitive.
+  string slug = 2;
+}
+
+message NewClubRequest {
+  string name = 1;
+  // /club/{slug}
+  string slug = 2;
+  string description = 3;
+  repeated string director_ids = 4;
+  liwords.GameRequest default_settings = 5;
+}
+
+message NewClubResponse { string id = 1; }
+
+message GetClubMetadataRequest { string id = 1; }
+
+message SetClubMetadataRequest {
+  string id = 1;
+  string name = 2;
+  string slug = 3;
+  string description = 4;
+  liwords.GameRequest default_settings = 5;
+}
+
+message RecentClubSessionsRequest {
+  // club_id
+  string id = 1;
+  int32 count = 2;
+  int32 offset = 3;
+}
+
+message ClubSessionsResponse { repeated NewClubSessionResponse sessions = 1; }
+
+service ClubService {
+  rpc NewClub(NewClubRequest) returns(NewClubResponse);
+  // GetClubMetadata also has the same parameters.
+  rpc GetClubMetadata(GetClubMetadataRequest) returns(ClubMetadataResponse);
+  rpc SetClubMetadata(SetClubMetadataRequest) returns(ClubResponse);
+  rpc CreateSession(NewClubSessionRequest) returns(NewClubSessionResponse);
+  rpc GetRecentSessions(RecentClubSessionsRequest)
+      returns(ClubSessionsResponse);
 }
