@@ -2,7 +2,7 @@ package tournament
 
 // Clubs and tournaments are closely related. Clubs can create club sessions,
 // which are interchangeable with tournaments.
-
+/*
 import (
 	"context"
 
@@ -12,13 +12,6 @@ import (
 	realtime "github.com/domino14/liwords/rpc/api/proto/realtime"
 	pb "github.com/domino14/liwords/rpc/api/proto/tournament_service"
 )
-
-type ClubStore interface {
-	Get(context.Context, string) (*entity.Club, error)
-	Create(context.Context, *entity.Club) error
-	Set(context.Context, *entity.Club) error
-	GetRecentSessions(ctx context.Context, clubID string, numSessions int, offset int) ([]*pb.ClubSessionsResponse, error)
-}
 
 func NewClub(ctx context.Context, clubStore ClubStore, name string,
 	description string, slug string, directors *entity.TournamentPersons,
@@ -86,3 +79,4 @@ func (cs *ClubService) CreateSession(ctx context.Context, req *pb.NewClubSession
 func (cs *ClubService) GetRecentSessions(ctx context.Context, req *pb.RecentClubSessionsRequest) (*pb.ClubSessionsResponse, error) {
 	return nil, nil
 }
+*/

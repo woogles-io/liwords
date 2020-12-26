@@ -71,6 +71,10 @@ type TournamentService interface {
 	StartRound(context.Context, *TournamentStartRoundRequest) (*TournamentResponse, error)
 
 	RecentGames(context.Context, *RecentGamesRequest) (*RecentGamesResponse, error)
+
+	CreateClubSession(context.Context, *NewClubSessionRequest) (*ClubSessionResponse, error)
+
+	GetRecentClubSessions(context.Context, *RecentClubSessionsRequest) (*ClubSessionsResponse, error)
 }
 
 // =================================
@@ -79,7 +83,7 @@ type TournamentService interface {
 
 type tournamentServiceProtobufClient struct {
 	client      HTTPClient
-	urls        [16]string
+	urls        [18]string
 	interceptor twirp.Interceptor
 	opts        twirp.ClientOptions
 }
@@ -99,7 +103,7 @@ func NewTournamentServiceProtobufClient(baseURL string, client HTTPClient, opts 
 	// Build method URLs: <baseURL>[<prefix>]/<package>.<Service>/<Method>
 	serviceURL := sanitizeBaseURL(baseURL)
 	serviceURL += baseServicePath(clientOpts.PathPrefix(), "tournament_service", "TournamentService")
-	urls := [16]string{
+	urls := [18]string{
 		serviceURL + "NewTournament",
 		serviceURL + "GetTournamentMetadata",
 		serviceURL + "SetTournamentMetadata",
@@ -116,6 +120,8 @@ func NewTournamentServiceProtobufClient(baseURL string, client HTTPClient, opts 
 		serviceURL + "SetResult",
 		serviceURL + "StartRound",
 		serviceURL + "RecentGames",
+		serviceURL + "CreateClubSession",
+		serviceURL + "GetRecentClubSessions",
 	}
 
 	return &tournamentServiceProtobufClient{
@@ -862,13 +868,105 @@ func (c *tournamentServiceProtobufClient) callRecentGames(ctx context.Context, i
 	return out, nil
 }
 
+func (c *tournamentServiceProtobufClient) CreateClubSession(ctx context.Context, in *NewClubSessionRequest) (*ClubSessionResponse, error) {
+	ctx = ctxsetters.WithPackageName(ctx, "tournament_service")
+	ctx = ctxsetters.WithServiceName(ctx, "TournamentService")
+	ctx = ctxsetters.WithMethodName(ctx, "CreateClubSession")
+	caller := c.callCreateClubSession
+	if c.interceptor != nil {
+		caller = func(ctx context.Context, req *NewClubSessionRequest) (*ClubSessionResponse, error) {
+			resp, err := c.interceptor(
+				func(ctx context.Context, req interface{}) (interface{}, error) {
+					typedReq, ok := req.(*NewClubSessionRequest)
+					if !ok {
+						return nil, twirp.InternalError("failed type assertion req.(*NewClubSessionRequest) when calling interceptor")
+					}
+					return c.callCreateClubSession(ctx, typedReq)
+				},
+			)(ctx, req)
+			if resp != nil {
+				typedResp, ok := resp.(*ClubSessionResponse)
+				if !ok {
+					return nil, twirp.InternalError("failed type assertion resp.(*ClubSessionResponse) when calling interceptor")
+				}
+				return typedResp, err
+			}
+			return nil, err
+		}
+	}
+	return caller(ctx, in)
+}
+
+func (c *tournamentServiceProtobufClient) callCreateClubSession(ctx context.Context, in *NewClubSessionRequest) (*ClubSessionResponse, error) {
+	out := new(ClubSessionResponse)
+	ctx, err := doProtobufRequest(ctx, c.client, c.opts.Hooks, c.urls[16], in, out)
+	if err != nil {
+		twerr, ok := err.(twirp.Error)
+		if !ok {
+			twerr = twirp.InternalErrorWith(err)
+		}
+		callClientError(ctx, c.opts.Hooks, twerr)
+		return nil, err
+	}
+
+	callClientResponseReceived(ctx, c.opts.Hooks)
+
+	return out, nil
+}
+
+func (c *tournamentServiceProtobufClient) GetRecentClubSessions(ctx context.Context, in *RecentClubSessionsRequest) (*ClubSessionsResponse, error) {
+	ctx = ctxsetters.WithPackageName(ctx, "tournament_service")
+	ctx = ctxsetters.WithServiceName(ctx, "TournamentService")
+	ctx = ctxsetters.WithMethodName(ctx, "GetRecentClubSessions")
+	caller := c.callGetRecentClubSessions
+	if c.interceptor != nil {
+		caller = func(ctx context.Context, req *RecentClubSessionsRequest) (*ClubSessionsResponse, error) {
+			resp, err := c.interceptor(
+				func(ctx context.Context, req interface{}) (interface{}, error) {
+					typedReq, ok := req.(*RecentClubSessionsRequest)
+					if !ok {
+						return nil, twirp.InternalError("failed type assertion req.(*RecentClubSessionsRequest) when calling interceptor")
+					}
+					return c.callGetRecentClubSessions(ctx, typedReq)
+				},
+			)(ctx, req)
+			if resp != nil {
+				typedResp, ok := resp.(*ClubSessionsResponse)
+				if !ok {
+					return nil, twirp.InternalError("failed type assertion resp.(*ClubSessionsResponse) when calling interceptor")
+				}
+				return typedResp, err
+			}
+			return nil, err
+		}
+	}
+	return caller(ctx, in)
+}
+
+func (c *tournamentServiceProtobufClient) callGetRecentClubSessions(ctx context.Context, in *RecentClubSessionsRequest) (*ClubSessionsResponse, error) {
+	out := new(ClubSessionsResponse)
+	ctx, err := doProtobufRequest(ctx, c.client, c.opts.Hooks, c.urls[17], in, out)
+	if err != nil {
+		twerr, ok := err.(twirp.Error)
+		if !ok {
+			twerr = twirp.InternalErrorWith(err)
+		}
+		callClientError(ctx, c.opts.Hooks, twerr)
+		return nil, err
+	}
+
+	callClientResponseReceived(ctx, c.opts.Hooks)
+
+	return out, nil
+}
+
 // =============================
 // TournamentService JSON Client
 // =============================
 
 type tournamentServiceJSONClient struct {
 	client      HTTPClient
-	urls        [16]string
+	urls        [18]string
 	interceptor twirp.Interceptor
 	opts        twirp.ClientOptions
 }
@@ -888,7 +986,7 @@ func NewTournamentServiceJSONClient(baseURL string, client HTTPClient, opts ...t
 	// Build method URLs: <baseURL>[<prefix>]/<package>.<Service>/<Method>
 	serviceURL := sanitizeBaseURL(baseURL)
 	serviceURL += baseServicePath(clientOpts.PathPrefix(), "tournament_service", "TournamentService")
-	urls := [16]string{
+	urls := [18]string{
 		serviceURL + "NewTournament",
 		serviceURL + "GetTournamentMetadata",
 		serviceURL + "SetTournamentMetadata",
@@ -905,6 +1003,8 @@ func NewTournamentServiceJSONClient(baseURL string, client HTTPClient, opts ...t
 		serviceURL + "SetResult",
 		serviceURL + "StartRound",
 		serviceURL + "RecentGames",
+		serviceURL + "CreateClubSession",
+		serviceURL + "GetRecentClubSessions",
 	}
 
 	return &tournamentServiceJSONClient{
@@ -1651,6 +1751,98 @@ func (c *tournamentServiceJSONClient) callRecentGames(ctx context.Context, in *R
 	return out, nil
 }
 
+func (c *tournamentServiceJSONClient) CreateClubSession(ctx context.Context, in *NewClubSessionRequest) (*ClubSessionResponse, error) {
+	ctx = ctxsetters.WithPackageName(ctx, "tournament_service")
+	ctx = ctxsetters.WithServiceName(ctx, "TournamentService")
+	ctx = ctxsetters.WithMethodName(ctx, "CreateClubSession")
+	caller := c.callCreateClubSession
+	if c.interceptor != nil {
+		caller = func(ctx context.Context, req *NewClubSessionRequest) (*ClubSessionResponse, error) {
+			resp, err := c.interceptor(
+				func(ctx context.Context, req interface{}) (interface{}, error) {
+					typedReq, ok := req.(*NewClubSessionRequest)
+					if !ok {
+						return nil, twirp.InternalError("failed type assertion req.(*NewClubSessionRequest) when calling interceptor")
+					}
+					return c.callCreateClubSession(ctx, typedReq)
+				},
+			)(ctx, req)
+			if resp != nil {
+				typedResp, ok := resp.(*ClubSessionResponse)
+				if !ok {
+					return nil, twirp.InternalError("failed type assertion resp.(*ClubSessionResponse) when calling interceptor")
+				}
+				return typedResp, err
+			}
+			return nil, err
+		}
+	}
+	return caller(ctx, in)
+}
+
+func (c *tournamentServiceJSONClient) callCreateClubSession(ctx context.Context, in *NewClubSessionRequest) (*ClubSessionResponse, error) {
+	out := new(ClubSessionResponse)
+	ctx, err := doJSONRequest(ctx, c.client, c.opts.Hooks, c.urls[16], in, out)
+	if err != nil {
+		twerr, ok := err.(twirp.Error)
+		if !ok {
+			twerr = twirp.InternalErrorWith(err)
+		}
+		callClientError(ctx, c.opts.Hooks, twerr)
+		return nil, err
+	}
+
+	callClientResponseReceived(ctx, c.opts.Hooks)
+
+	return out, nil
+}
+
+func (c *tournamentServiceJSONClient) GetRecentClubSessions(ctx context.Context, in *RecentClubSessionsRequest) (*ClubSessionsResponse, error) {
+	ctx = ctxsetters.WithPackageName(ctx, "tournament_service")
+	ctx = ctxsetters.WithServiceName(ctx, "TournamentService")
+	ctx = ctxsetters.WithMethodName(ctx, "GetRecentClubSessions")
+	caller := c.callGetRecentClubSessions
+	if c.interceptor != nil {
+		caller = func(ctx context.Context, req *RecentClubSessionsRequest) (*ClubSessionsResponse, error) {
+			resp, err := c.interceptor(
+				func(ctx context.Context, req interface{}) (interface{}, error) {
+					typedReq, ok := req.(*RecentClubSessionsRequest)
+					if !ok {
+						return nil, twirp.InternalError("failed type assertion req.(*RecentClubSessionsRequest) when calling interceptor")
+					}
+					return c.callGetRecentClubSessions(ctx, typedReq)
+				},
+			)(ctx, req)
+			if resp != nil {
+				typedResp, ok := resp.(*ClubSessionsResponse)
+				if !ok {
+					return nil, twirp.InternalError("failed type assertion resp.(*ClubSessionsResponse) when calling interceptor")
+				}
+				return typedResp, err
+			}
+			return nil, err
+		}
+	}
+	return caller(ctx, in)
+}
+
+func (c *tournamentServiceJSONClient) callGetRecentClubSessions(ctx context.Context, in *RecentClubSessionsRequest) (*ClubSessionsResponse, error) {
+	out := new(ClubSessionsResponse)
+	ctx, err := doJSONRequest(ctx, c.client, c.opts.Hooks, c.urls[17], in, out)
+	if err != nil {
+		twerr, ok := err.(twirp.Error)
+		if !ok {
+			twerr = twirp.InternalErrorWith(err)
+		}
+		callClientError(ctx, c.opts.Hooks, twerr)
+		return nil, err
+	}
+
+	callClientResponseReceived(ctx, c.opts.Hooks)
+
+	return out, nil
+}
+
 // ================================
 // TournamentService Server Handler
 // ================================
@@ -1782,6 +1974,12 @@ func (s *tournamentServiceServer) ServeHTTP(resp http.ResponseWriter, req *http.
 		return
 	case "RecentGames":
 		s.serveRecentGames(ctx, resp, req)
+		return
+	case "CreateClubSession":
+		s.serveCreateClubSession(ctx, resp, req)
+		return
+	case "GetRecentClubSessions":
+		s.serveGetRecentClubSessions(ctx, resp, req)
 		return
 	default:
 		msg := fmt.Sprintf("no handler for path %q", req.URL.Path)
@@ -4590,6 +4788,356 @@ func (s *tournamentServiceServer) serveRecentGamesProtobuf(ctx context.Context, 
 	callResponseSent(ctx, s.hooks)
 }
 
+func (s *tournamentServiceServer) serveCreateClubSession(ctx context.Context, resp http.ResponseWriter, req *http.Request) {
+	header := req.Header.Get("Content-Type")
+	i := strings.Index(header, ";")
+	if i == -1 {
+		i = len(header)
+	}
+	switch strings.TrimSpace(strings.ToLower(header[:i])) {
+	case "application/json":
+		s.serveCreateClubSessionJSON(ctx, resp, req)
+	case "application/protobuf":
+		s.serveCreateClubSessionProtobuf(ctx, resp, req)
+	default:
+		msg := fmt.Sprintf("unexpected Content-Type: %q", req.Header.Get("Content-Type"))
+		twerr := badRouteError(msg, req.Method, req.URL.Path)
+		s.writeError(ctx, resp, twerr)
+	}
+}
+
+func (s *tournamentServiceServer) serveCreateClubSessionJSON(ctx context.Context, resp http.ResponseWriter, req *http.Request) {
+	var err error
+	ctx = ctxsetters.WithMethodName(ctx, "CreateClubSession")
+	ctx, err = callRequestRouted(ctx, s.hooks)
+	if err != nil {
+		s.writeError(ctx, resp, err)
+		return
+	}
+
+	reqContent := new(NewClubSessionRequest)
+	unmarshaler := jsonpb.Unmarshaler{AllowUnknownFields: true}
+	if err = unmarshaler.Unmarshal(req.Body, reqContent); err != nil {
+		s.writeError(ctx, resp, malformedRequestError("the json request could not be decoded"))
+		return
+	}
+
+	handler := s.TournamentService.CreateClubSession
+	if s.interceptor != nil {
+		handler = func(ctx context.Context, req *NewClubSessionRequest) (*ClubSessionResponse, error) {
+			resp, err := s.interceptor(
+				func(ctx context.Context, req interface{}) (interface{}, error) {
+					typedReq, ok := req.(*NewClubSessionRequest)
+					if !ok {
+						return nil, twirp.InternalError("failed type assertion req.(*NewClubSessionRequest) when calling interceptor")
+					}
+					return s.TournamentService.CreateClubSession(ctx, typedReq)
+				},
+			)(ctx, req)
+			if resp != nil {
+				typedResp, ok := resp.(*ClubSessionResponse)
+				if !ok {
+					return nil, twirp.InternalError("failed type assertion resp.(*ClubSessionResponse) when calling interceptor")
+				}
+				return typedResp, err
+			}
+			return nil, err
+		}
+	}
+
+	// Call service method
+	var respContent *ClubSessionResponse
+	func() {
+		defer ensurePanicResponses(ctx, resp, s.hooks)
+		respContent, err = handler(ctx, reqContent)
+	}()
+
+	if err != nil {
+		s.writeError(ctx, resp, err)
+		return
+	}
+	if respContent == nil {
+		s.writeError(ctx, resp, twirp.InternalError("received a nil *ClubSessionResponse and nil error while calling CreateClubSession. nil responses are not supported"))
+		return
+	}
+
+	ctx = callResponsePrepared(ctx, s.hooks)
+
+	var buf bytes.Buffer
+	marshaler := &jsonpb.Marshaler{OrigName: true, EmitDefaults: !s.jsonSkipDefaults}
+	if err = marshaler.Marshal(&buf, respContent); err != nil {
+		s.writeError(ctx, resp, wrapInternal(err, "failed to marshal json response"))
+		return
+	}
+
+	ctx = ctxsetters.WithStatusCode(ctx, http.StatusOK)
+	respBytes := buf.Bytes()
+	resp.Header().Set("Content-Type", "application/json")
+	resp.Header().Set("Content-Length", strconv.Itoa(len(respBytes)))
+	resp.WriteHeader(http.StatusOK)
+
+	if n, err := resp.Write(respBytes); err != nil {
+		msg := fmt.Sprintf("failed to write response, %d of %d bytes written: %s", n, len(respBytes), err.Error())
+		twerr := twirp.NewError(twirp.Unknown, msg)
+		ctx = callError(ctx, s.hooks, twerr)
+	}
+	callResponseSent(ctx, s.hooks)
+}
+
+func (s *tournamentServiceServer) serveCreateClubSessionProtobuf(ctx context.Context, resp http.ResponseWriter, req *http.Request) {
+	var err error
+	ctx = ctxsetters.WithMethodName(ctx, "CreateClubSession")
+	ctx, err = callRequestRouted(ctx, s.hooks)
+	if err != nil {
+		s.writeError(ctx, resp, err)
+		return
+	}
+
+	buf, err := ioutil.ReadAll(req.Body)
+	if err != nil {
+		s.writeError(ctx, resp, wrapInternal(err, "failed to read request body"))
+		return
+	}
+	reqContent := new(NewClubSessionRequest)
+	if err = proto.Unmarshal(buf, reqContent); err != nil {
+		s.writeError(ctx, resp, malformedRequestError("the protobuf request could not be decoded"))
+		return
+	}
+
+	handler := s.TournamentService.CreateClubSession
+	if s.interceptor != nil {
+		handler = func(ctx context.Context, req *NewClubSessionRequest) (*ClubSessionResponse, error) {
+			resp, err := s.interceptor(
+				func(ctx context.Context, req interface{}) (interface{}, error) {
+					typedReq, ok := req.(*NewClubSessionRequest)
+					if !ok {
+						return nil, twirp.InternalError("failed type assertion req.(*NewClubSessionRequest) when calling interceptor")
+					}
+					return s.TournamentService.CreateClubSession(ctx, typedReq)
+				},
+			)(ctx, req)
+			if resp != nil {
+				typedResp, ok := resp.(*ClubSessionResponse)
+				if !ok {
+					return nil, twirp.InternalError("failed type assertion resp.(*ClubSessionResponse) when calling interceptor")
+				}
+				return typedResp, err
+			}
+			return nil, err
+		}
+	}
+
+	// Call service method
+	var respContent *ClubSessionResponse
+	func() {
+		defer ensurePanicResponses(ctx, resp, s.hooks)
+		respContent, err = handler(ctx, reqContent)
+	}()
+
+	if err != nil {
+		s.writeError(ctx, resp, err)
+		return
+	}
+	if respContent == nil {
+		s.writeError(ctx, resp, twirp.InternalError("received a nil *ClubSessionResponse and nil error while calling CreateClubSession. nil responses are not supported"))
+		return
+	}
+
+	ctx = callResponsePrepared(ctx, s.hooks)
+
+	respBytes, err := proto.Marshal(respContent)
+	if err != nil {
+		s.writeError(ctx, resp, wrapInternal(err, "failed to marshal proto response"))
+		return
+	}
+
+	ctx = ctxsetters.WithStatusCode(ctx, http.StatusOK)
+	resp.Header().Set("Content-Type", "application/protobuf")
+	resp.Header().Set("Content-Length", strconv.Itoa(len(respBytes)))
+	resp.WriteHeader(http.StatusOK)
+	if n, err := resp.Write(respBytes); err != nil {
+		msg := fmt.Sprintf("failed to write response, %d of %d bytes written: %s", n, len(respBytes), err.Error())
+		twerr := twirp.NewError(twirp.Unknown, msg)
+		ctx = callError(ctx, s.hooks, twerr)
+	}
+	callResponseSent(ctx, s.hooks)
+}
+
+func (s *tournamentServiceServer) serveGetRecentClubSessions(ctx context.Context, resp http.ResponseWriter, req *http.Request) {
+	header := req.Header.Get("Content-Type")
+	i := strings.Index(header, ";")
+	if i == -1 {
+		i = len(header)
+	}
+	switch strings.TrimSpace(strings.ToLower(header[:i])) {
+	case "application/json":
+		s.serveGetRecentClubSessionsJSON(ctx, resp, req)
+	case "application/protobuf":
+		s.serveGetRecentClubSessionsProtobuf(ctx, resp, req)
+	default:
+		msg := fmt.Sprintf("unexpected Content-Type: %q", req.Header.Get("Content-Type"))
+		twerr := badRouteError(msg, req.Method, req.URL.Path)
+		s.writeError(ctx, resp, twerr)
+	}
+}
+
+func (s *tournamentServiceServer) serveGetRecentClubSessionsJSON(ctx context.Context, resp http.ResponseWriter, req *http.Request) {
+	var err error
+	ctx = ctxsetters.WithMethodName(ctx, "GetRecentClubSessions")
+	ctx, err = callRequestRouted(ctx, s.hooks)
+	if err != nil {
+		s.writeError(ctx, resp, err)
+		return
+	}
+
+	reqContent := new(RecentClubSessionsRequest)
+	unmarshaler := jsonpb.Unmarshaler{AllowUnknownFields: true}
+	if err = unmarshaler.Unmarshal(req.Body, reqContent); err != nil {
+		s.writeError(ctx, resp, malformedRequestError("the json request could not be decoded"))
+		return
+	}
+
+	handler := s.TournamentService.GetRecentClubSessions
+	if s.interceptor != nil {
+		handler = func(ctx context.Context, req *RecentClubSessionsRequest) (*ClubSessionsResponse, error) {
+			resp, err := s.interceptor(
+				func(ctx context.Context, req interface{}) (interface{}, error) {
+					typedReq, ok := req.(*RecentClubSessionsRequest)
+					if !ok {
+						return nil, twirp.InternalError("failed type assertion req.(*RecentClubSessionsRequest) when calling interceptor")
+					}
+					return s.TournamentService.GetRecentClubSessions(ctx, typedReq)
+				},
+			)(ctx, req)
+			if resp != nil {
+				typedResp, ok := resp.(*ClubSessionsResponse)
+				if !ok {
+					return nil, twirp.InternalError("failed type assertion resp.(*ClubSessionsResponse) when calling interceptor")
+				}
+				return typedResp, err
+			}
+			return nil, err
+		}
+	}
+
+	// Call service method
+	var respContent *ClubSessionsResponse
+	func() {
+		defer ensurePanicResponses(ctx, resp, s.hooks)
+		respContent, err = handler(ctx, reqContent)
+	}()
+
+	if err != nil {
+		s.writeError(ctx, resp, err)
+		return
+	}
+	if respContent == nil {
+		s.writeError(ctx, resp, twirp.InternalError("received a nil *ClubSessionsResponse and nil error while calling GetRecentClubSessions. nil responses are not supported"))
+		return
+	}
+
+	ctx = callResponsePrepared(ctx, s.hooks)
+
+	var buf bytes.Buffer
+	marshaler := &jsonpb.Marshaler{OrigName: true, EmitDefaults: !s.jsonSkipDefaults}
+	if err = marshaler.Marshal(&buf, respContent); err != nil {
+		s.writeError(ctx, resp, wrapInternal(err, "failed to marshal json response"))
+		return
+	}
+
+	ctx = ctxsetters.WithStatusCode(ctx, http.StatusOK)
+	respBytes := buf.Bytes()
+	resp.Header().Set("Content-Type", "application/json")
+	resp.Header().Set("Content-Length", strconv.Itoa(len(respBytes)))
+	resp.WriteHeader(http.StatusOK)
+
+	if n, err := resp.Write(respBytes); err != nil {
+		msg := fmt.Sprintf("failed to write response, %d of %d bytes written: %s", n, len(respBytes), err.Error())
+		twerr := twirp.NewError(twirp.Unknown, msg)
+		ctx = callError(ctx, s.hooks, twerr)
+	}
+	callResponseSent(ctx, s.hooks)
+}
+
+func (s *tournamentServiceServer) serveGetRecentClubSessionsProtobuf(ctx context.Context, resp http.ResponseWriter, req *http.Request) {
+	var err error
+	ctx = ctxsetters.WithMethodName(ctx, "GetRecentClubSessions")
+	ctx, err = callRequestRouted(ctx, s.hooks)
+	if err != nil {
+		s.writeError(ctx, resp, err)
+		return
+	}
+
+	buf, err := ioutil.ReadAll(req.Body)
+	if err != nil {
+		s.writeError(ctx, resp, wrapInternal(err, "failed to read request body"))
+		return
+	}
+	reqContent := new(RecentClubSessionsRequest)
+	if err = proto.Unmarshal(buf, reqContent); err != nil {
+		s.writeError(ctx, resp, malformedRequestError("the protobuf request could not be decoded"))
+		return
+	}
+
+	handler := s.TournamentService.GetRecentClubSessions
+	if s.interceptor != nil {
+		handler = func(ctx context.Context, req *RecentClubSessionsRequest) (*ClubSessionsResponse, error) {
+			resp, err := s.interceptor(
+				func(ctx context.Context, req interface{}) (interface{}, error) {
+					typedReq, ok := req.(*RecentClubSessionsRequest)
+					if !ok {
+						return nil, twirp.InternalError("failed type assertion req.(*RecentClubSessionsRequest) when calling interceptor")
+					}
+					return s.TournamentService.GetRecentClubSessions(ctx, typedReq)
+				},
+			)(ctx, req)
+			if resp != nil {
+				typedResp, ok := resp.(*ClubSessionsResponse)
+				if !ok {
+					return nil, twirp.InternalError("failed type assertion resp.(*ClubSessionsResponse) when calling interceptor")
+				}
+				return typedResp, err
+			}
+			return nil, err
+		}
+	}
+
+	// Call service method
+	var respContent *ClubSessionsResponse
+	func() {
+		defer ensurePanicResponses(ctx, resp, s.hooks)
+		respContent, err = handler(ctx, reqContent)
+	}()
+
+	if err != nil {
+		s.writeError(ctx, resp, err)
+		return
+	}
+	if respContent == nil {
+		s.writeError(ctx, resp, twirp.InternalError("received a nil *ClubSessionsResponse and nil error while calling GetRecentClubSessions. nil responses are not supported"))
+		return
+	}
+
+	ctx = callResponsePrepared(ctx, s.hooks)
+
+	respBytes, err := proto.Marshal(respContent)
+	if err != nil {
+		s.writeError(ctx, resp, wrapInternal(err, "failed to marshal proto response"))
+		return
+	}
+
+	ctx = ctxsetters.WithStatusCode(ctx, http.StatusOK)
+	resp.Header().Set("Content-Type", "application/protobuf")
+	resp.Header().Set("Content-Length", strconv.Itoa(len(respBytes)))
+	resp.WriteHeader(http.StatusOK)
+	if n, err := resp.Write(respBytes); err != nil {
+		msg := fmt.Sprintf("failed to write response, %d of %d bytes written: %s", n, len(respBytes), err.Error())
+		twerr := twirp.NewError(twirp.Unknown, msg)
+		ctx = callError(ctx, s.hooks, twerr)
+	}
+	callResponseSent(ctx, s.hooks)
+}
+
 func (s *tournamentServiceServer) ServiceDescriptor() ([]byte, int) {
 	return twirpFileDescriptor0, 0
 }
@@ -4603,1563 +5151,6 @@ func (s *tournamentServiceServer) ProtocGenTwirpVersion() string {
 // for example to identify the requests that are targeted to this service in a mux.
 func (s *tournamentServiceServer) PathPrefix() string {
 	return baseServicePath(s.pathPrefix, "tournament_service", "TournamentService")
-}
-
-// =====================
-// ClubService Interface
-// =====================
-
-type ClubService interface {
-	NewClub(context.Context, *NewClubRequest) (*NewClubResponse, error)
-
-	// GetClubMetadata also has the same parameters.
-	GetClubMetadata(context.Context, *GetClubMetadataRequest) (*ClubMetadataResponse, error)
-
-	SetClubMetadata(context.Context, *SetClubMetadataRequest) (*ClubResponse, error)
-
-	CreateSession(context.Context, *NewClubSessionRequest) (*NewClubSessionResponse, error)
-
-	GetRecentSessions(context.Context, *RecentClubSessionsRequest) (*ClubSessionsResponse, error)
-}
-
-// ===========================
-// ClubService Protobuf Client
-// ===========================
-
-type clubServiceProtobufClient struct {
-	client      HTTPClient
-	urls        [5]string
-	interceptor twirp.Interceptor
-	opts        twirp.ClientOptions
-}
-
-// NewClubServiceProtobufClient creates a Protobuf client that implements the ClubService interface.
-// It communicates using Protobuf and can be configured with a custom HTTPClient.
-func NewClubServiceProtobufClient(baseURL string, client HTTPClient, opts ...twirp.ClientOption) ClubService {
-	if c, ok := client.(*http.Client); ok {
-		client = withoutRedirects(c)
-	}
-
-	clientOpts := twirp.ClientOptions{}
-	for _, o := range opts {
-		o(&clientOpts)
-	}
-
-	// Build method URLs: <baseURL>[<prefix>]/<package>.<Service>/<Method>
-	serviceURL := sanitizeBaseURL(baseURL)
-	serviceURL += baseServicePath(clientOpts.PathPrefix(), "tournament_service", "ClubService")
-	urls := [5]string{
-		serviceURL + "NewClub",
-		serviceURL + "GetClubMetadata",
-		serviceURL + "SetClubMetadata",
-		serviceURL + "CreateSession",
-		serviceURL + "GetRecentSessions",
-	}
-
-	return &clubServiceProtobufClient{
-		client:      client,
-		urls:        urls,
-		interceptor: twirp.ChainInterceptors(clientOpts.Interceptors...),
-		opts:        clientOpts,
-	}
-}
-
-func (c *clubServiceProtobufClient) NewClub(ctx context.Context, in *NewClubRequest) (*NewClubResponse, error) {
-	ctx = ctxsetters.WithPackageName(ctx, "tournament_service")
-	ctx = ctxsetters.WithServiceName(ctx, "ClubService")
-	ctx = ctxsetters.WithMethodName(ctx, "NewClub")
-	caller := c.callNewClub
-	if c.interceptor != nil {
-		caller = func(ctx context.Context, req *NewClubRequest) (*NewClubResponse, error) {
-			resp, err := c.interceptor(
-				func(ctx context.Context, req interface{}) (interface{}, error) {
-					typedReq, ok := req.(*NewClubRequest)
-					if !ok {
-						return nil, twirp.InternalError("failed type assertion req.(*NewClubRequest) when calling interceptor")
-					}
-					return c.callNewClub(ctx, typedReq)
-				},
-			)(ctx, req)
-			if resp != nil {
-				typedResp, ok := resp.(*NewClubResponse)
-				if !ok {
-					return nil, twirp.InternalError("failed type assertion resp.(*NewClubResponse) when calling interceptor")
-				}
-				return typedResp, err
-			}
-			return nil, err
-		}
-	}
-	return caller(ctx, in)
-}
-
-func (c *clubServiceProtobufClient) callNewClub(ctx context.Context, in *NewClubRequest) (*NewClubResponse, error) {
-	out := new(NewClubResponse)
-	ctx, err := doProtobufRequest(ctx, c.client, c.opts.Hooks, c.urls[0], in, out)
-	if err != nil {
-		twerr, ok := err.(twirp.Error)
-		if !ok {
-			twerr = twirp.InternalErrorWith(err)
-		}
-		callClientError(ctx, c.opts.Hooks, twerr)
-		return nil, err
-	}
-
-	callClientResponseReceived(ctx, c.opts.Hooks)
-
-	return out, nil
-}
-
-func (c *clubServiceProtobufClient) GetClubMetadata(ctx context.Context, in *GetClubMetadataRequest) (*ClubMetadataResponse, error) {
-	ctx = ctxsetters.WithPackageName(ctx, "tournament_service")
-	ctx = ctxsetters.WithServiceName(ctx, "ClubService")
-	ctx = ctxsetters.WithMethodName(ctx, "GetClubMetadata")
-	caller := c.callGetClubMetadata
-	if c.interceptor != nil {
-		caller = func(ctx context.Context, req *GetClubMetadataRequest) (*ClubMetadataResponse, error) {
-			resp, err := c.interceptor(
-				func(ctx context.Context, req interface{}) (interface{}, error) {
-					typedReq, ok := req.(*GetClubMetadataRequest)
-					if !ok {
-						return nil, twirp.InternalError("failed type assertion req.(*GetClubMetadataRequest) when calling interceptor")
-					}
-					return c.callGetClubMetadata(ctx, typedReq)
-				},
-			)(ctx, req)
-			if resp != nil {
-				typedResp, ok := resp.(*ClubMetadataResponse)
-				if !ok {
-					return nil, twirp.InternalError("failed type assertion resp.(*ClubMetadataResponse) when calling interceptor")
-				}
-				return typedResp, err
-			}
-			return nil, err
-		}
-	}
-	return caller(ctx, in)
-}
-
-func (c *clubServiceProtobufClient) callGetClubMetadata(ctx context.Context, in *GetClubMetadataRequest) (*ClubMetadataResponse, error) {
-	out := new(ClubMetadataResponse)
-	ctx, err := doProtobufRequest(ctx, c.client, c.opts.Hooks, c.urls[1], in, out)
-	if err != nil {
-		twerr, ok := err.(twirp.Error)
-		if !ok {
-			twerr = twirp.InternalErrorWith(err)
-		}
-		callClientError(ctx, c.opts.Hooks, twerr)
-		return nil, err
-	}
-
-	callClientResponseReceived(ctx, c.opts.Hooks)
-
-	return out, nil
-}
-
-func (c *clubServiceProtobufClient) SetClubMetadata(ctx context.Context, in *SetClubMetadataRequest) (*ClubResponse, error) {
-	ctx = ctxsetters.WithPackageName(ctx, "tournament_service")
-	ctx = ctxsetters.WithServiceName(ctx, "ClubService")
-	ctx = ctxsetters.WithMethodName(ctx, "SetClubMetadata")
-	caller := c.callSetClubMetadata
-	if c.interceptor != nil {
-		caller = func(ctx context.Context, req *SetClubMetadataRequest) (*ClubResponse, error) {
-			resp, err := c.interceptor(
-				func(ctx context.Context, req interface{}) (interface{}, error) {
-					typedReq, ok := req.(*SetClubMetadataRequest)
-					if !ok {
-						return nil, twirp.InternalError("failed type assertion req.(*SetClubMetadataRequest) when calling interceptor")
-					}
-					return c.callSetClubMetadata(ctx, typedReq)
-				},
-			)(ctx, req)
-			if resp != nil {
-				typedResp, ok := resp.(*ClubResponse)
-				if !ok {
-					return nil, twirp.InternalError("failed type assertion resp.(*ClubResponse) when calling interceptor")
-				}
-				return typedResp, err
-			}
-			return nil, err
-		}
-	}
-	return caller(ctx, in)
-}
-
-func (c *clubServiceProtobufClient) callSetClubMetadata(ctx context.Context, in *SetClubMetadataRequest) (*ClubResponse, error) {
-	out := new(ClubResponse)
-	ctx, err := doProtobufRequest(ctx, c.client, c.opts.Hooks, c.urls[2], in, out)
-	if err != nil {
-		twerr, ok := err.(twirp.Error)
-		if !ok {
-			twerr = twirp.InternalErrorWith(err)
-		}
-		callClientError(ctx, c.opts.Hooks, twerr)
-		return nil, err
-	}
-
-	callClientResponseReceived(ctx, c.opts.Hooks)
-
-	return out, nil
-}
-
-func (c *clubServiceProtobufClient) CreateSession(ctx context.Context, in *NewClubSessionRequest) (*NewClubSessionResponse, error) {
-	ctx = ctxsetters.WithPackageName(ctx, "tournament_service")
-	ctx = ctxsetters.WithServiceName(ctx, "ClubService")
-	ctx = ctxsetters.WithMethodName(ctx, "CreateSession")
-	caller := c.callCreateSession
-	if c.interceptor != nil {
-		caller = func(ctx context.Context, req *NewClubSessionRequest) (*NewClubSessionResponse, error) {
-			resp, err := c.interceptor(
-				func(ctx context.Context, req interface{}) (interface{}, error) {
-					typedReq, ok := req.(*NewClubSessionRequest)
-					if !ok {
-						return nil, twirp.InternalError("failed type assertion req.(*NewClubSessionRequest) when calling interceptor")
-					}
-					return c.callCreateSession(ctx, typedReq)
-				},
-			)(ctx, req)
-			if resp != nil {
-				typedResp, ok := resp.(*NewClubSessionResponse)
-				if !ok {
-					return nil, twirp.InternalError("failed type assertion resp.(*NewClubSessionResponse) when calling interceptor")
-				}
-				return typedResp, err
-			}
-			return nil, err
-		}
-	}
-	return caller(ctx, in)
-}
-
-func (c *clubServiceProtobufClient) callCreateSession(ctx context.Context, in *NewClubSessionRequest) (*NewClubSessionResponse, error) {
-	out := new(NewClubSessionResponse)
-	ctx, err := doProtobufRequest(ctx, c.client, c.opts.Hooks, c.urls[3], in, out)
-	if err != nil {
-		twerr, ok := err.(twirp.Error)
-		if !ok {
-			twerr = twirp.InternalErrorWith(err)
-		}
-		callClientError(ctx, c.opts.Hooks, twerr)
-		return nil, err
-	}
-
-	callClientResponseReceived(ctx, c.opts.Hooks)
-
-	return out, nil
-}
-
-func (c *clubServiceProtobufClient) GetRecentSessions(ctx context.Context, in *RecentClubSessionsRequest) (*ClubSessionsResponse, error) {
-	ctx = ctxsetters.WithPackageName(ctx, "tournament_service")
-	ctx = ctxsetters.WithServiceName(ctx, "ClubService")
-	ctx = ctxsetters.WithMethodName(ctx, "GetRecentSessions")
-	caller := c.callGetRecentSessions
-	if c.interceptor != nil {
-		caller = func(ctx context.Context, req *RecentClubSessionsRequest) (*ClubSessionsResponse, error) {
-			resp, err := c.interceptor(
-				func(ctx context.Context, req interface{}) (interface{}, error) {
-					typedReq, ok := req.(*RecentClubSessionsRequest)
-					if !ok {
-						return nil, twirp.InternalError("failed type assertion req.(*RecentClubSessionsRequest) when calling interceptor")
-					}
-					return c.callGetRecentSessions(ctx, typedReq)
-				},
-			)(ctx, req)
-			if resp != nil {
-				typedResp, ok := resp.(*ClubSessionsResponse)
-				if !ok {
-					return nil, twirp.InternalError("failed type assertion resp.(*ClubSessionsResponse) when calling interceptor")
-				}
-				return typedResp, err
-			}
-			return nil, err
-		}
-	}
-	return caller(ctx, in)
-}
-
-func (c *clubServiceProtobufClient) callGetRecentSessions(ctx context.Context, in *RecentClubSessionsRequest) (*ClubSessionsResponse, error) {
-	out := new(ClubSessionsResponse)
-	ctx, err := doProtobufRequest(ctx, c.client, c.opts.Hooks, c.urls[4], in, out)
-	if err != nil {
-		twerr, ok := err.(twirp.Error)
-		if !ok {
-			twerr = twirp.InternalErrorWith(err)
-		}
-		callClientError(ctx, c.opts.Hooks, twerr)
-		return nil, err
-	}
-
-	callClientResponseReceived(ctx, c.opts.Hooks)
-
-	return out, nil
-}
-
-// =======================
-// ClubService JSON Client
-// =======================
-
-type clubServiceJSONClient struct {
-	client      HTTPClient
-	urls        [5]string
-	interceptor twirp.Interceptor
-	opts        twirp.ClientOptions
-}
-
-// NewClubServiceJSONClient creates a JSON client that implements the ClubService interface.
-// It communicates using JSON and can be configured with a custom HTTPClient.
-func NewClubServiceJSONClient(baseURL string, client HTTPClient, opts ...twirp.ClientOption) ClubService {
-	if c, ok := client.(*http.Client); ok {
-		client = withoutRedirects(c)
-	}
-
-	clientOpts := twirp.ClientOptions{}
-	for _, o := range opts {
-		o(&clientOpts)
-	}
-
-	// Build method URLs: <baseURL>[<prefix>]/<package>.<Service>/<Method>
-	serviceURL := sanitizeBaseURL(baseURL)
-	serviceURL += baseServicePath(clientOpts.PathPrefix(), "tournament_service", "ClubService")
-	urls := [5]string{
-		serviceURL + "NewClub",
-		serviceURL + "GetClubMetadata",
-		serviceURL + "SetClubMetadata",
-		serviceURL + "CreateSession",
-		serviceURL + "GetRecentSessions",
-	}
-
-	return &clubServiceJSONClient{
-		client:      client,
-		urls:        urls,
-		interceptor: twirp.ChainInterceptors(clientOpts.Interceptors...),
-		opts:        clientOpts,
-	}
-}
-
-func (c *clubServiceJSONClient) NewClub(ctx context.Context, in *NewClubRequest) (*NewClubResponse, error) {
-	ctx = ctxsetters.WithPackageName(ctx, "tournament_service")
-	ctx = ctxsetters.WithServiceName(ctx, "ClubService")
-	ctx = ctxsetters.WithMethodName(ctx, "NewClub")
-	caller := c.callNewClub
-	if c.interceptor != nil {
-		caller = func(ctx context.Context, req *NewClubRequest) (*NewClubResponse, error) {
-			resp, err := c.interceptor(
-				func(ctx context.Context, req interface{}) (interface{}, error) {
-					typedReq, ok := req.(*NewClubRequest)
-					if !ok {
-						return nil, twirp.InternalError("failed type assertion req.(*NewClubRequest) when calling interceptor")
-					}
-					return c.callNewClub(ctx, typedReq)
-				},
-			)(ctx, req)
-			if resp != nil {
-				typedResp, ok := resp.(*NewClubResponse)
-				if !ok {
-					return nil, twirp.InternalError("failed type assertion resp.(*NewClubResponse) when calling interceptor")
-				}
-				return typedResp, err
-			}
-			return nil, err
-		}
-	}
-	return caller(ctx, in)
-}
-
-func (c *clubServiceJSONClient) callNewClub(ctx context.Context, in *NewClubRequest) (*NewClubResponse, error) {
-	out := new(NewClubResponse)
-	ctx, err := doJSONRequest(ctx, c.client, c.opts.Hooks, c.urls[0], in, out)
-	if err != nil {
-		twerr, ok := err.(twirp.Error)
-		if !ok {
-			twerr = twirp.InternalErrorWith(err)
-		}
-		callClientError(ctx, c.opts.Hooks, twerr)
-		return nil, err
-	}
-
-	callClientResponseReceived(ctx, c.opts.Hooks)
-
-	return out, nil
-}
-
-func (c *clubServiceJSONClient) GetClubMetadata(ctx context.Context, in *GetClubMetadataRequest) (*ClubMetadataResponse, error) {
-	ctx = ctxsetters.WithPackageName(ctx, "tournament_service")
-	ctx = ctxsetters.WithServiceName(ctx, "ClubService")
-	ctx = ctxsetters.WithMethodName(ctx, "GetClubMetadata")
-	caller := c.callGetClubMetadata
-	if c.interceptor != nil {
-		caller = func(ctx context.Context, req *GetClubMetadataRequest) (*ClubMetadataResponse, error) {
-			resp, err := c.interceptor(
-				func(ctx context.Context, req interface{}) (interface{}, error) {
-					typedReq, ok := req.(*GetClubMetadataRequest)
-					if !ok {
-						return nil, twirp.InternalError("failed type assertion req.(*GetClubMetadataRequest) when calling interceptor")
-					}
-					return c.callGetClubMetadata(ctx, typedReq)
-				},
-			)(ctx, req)
-			if resp != nil {
-				typedResp, ok := resp.(*ClubMetadataResponse)
-				if !ok {
-					return nil, twirp.InternalError("failed type assertion resp.(*ClubMetadataResponse) when calling interceptor")
-				}
-				return typedResp, err
-			}
-			return nil, err
-		}
-	}
-	return caller(ctx, in)
-}
-
-func (c *clubServiceJSONClient) callGetClubMetadata(ctx context.Context, in *GetClubMetadataRequest) (*ClubMetadataResponse, error) {
-	out := new(ClubMetadataResponse)
-	ctx, err := doJSONRequest(ctx, c.client, c.opts.Hooks, c.urls[1], in, out)
-	if err != nil {
-		twerr, ok := err.(twirp.Error)
-		if !ok {
-			twerr = twirp.InternalErrorWith(err)
-		}
-		callClientError(ctx, c.opts.Hooks, twerr)
-		return nil, err
-	}
-
-	callClientResponseReceived(ctx, c.opts.Hooks)
-
-	return out, nil
-}
-
-func (c *clubServiceJSONClient) SetClubMetadata(ctx context.Context, in *SetClubMetadataRequest) (*ClubResponse, error) {
-	ctx = ctxsetters.WithPackageName(ctx, "tournament_service")
-	ctx = ctxsetters.WithServiceName(ctx, "ClubService")
-	ctx = ctxsetters.WithMethodName(ctx, "SetClubMetadata")
-	caller := c.callSetClubMetadata
-	if c.interceptor != nil {
-		caller = func(ctx context.Context, req *SetClubMetadataRequest) (*ClubResponse, error) {
-			resp, err := c.interceptor(
-				func(ctx context.Context, req interface{}) (interface{}, error) {
-					typedReq, ok := req.(*SetClubMetadataRequest)
-					if !ok {
-						return nil, twirp.InternalError("failed type assertion req.(*SetClubMetadataRequest) when calling interceptor")
-					}
-					return c.callSetClubMetadata(ctx, typedReq)
-				},
-			)(ctx, req)
-			if resp != nil {
-				typedResp, ok := resp.(*ClubResponse)
-				if !ok {
-					return nil, twirp.InternalError("failed type assertion resp.(*ClubResponse) when calling interceptor")
-				}
-				return typedResp, err
-			}
-			return nil, err
-		}
-	}
-	return caller(ctx, in)
-}
-
-func (c *clubServiceJSONClient) callSetClubMetadata(ctx context.Context, in *SetClubMetadataRequest) (*ClubResponse, error) {
-	out := new(ClubResponse)
-	ctx, err := doJSONRequest(ctx, c.client, c.opts.Hooks, c.urls[2], in, out)
-	if err != nil {
-		twerr, ok := err.(twirp.Error)
-		if !ok {
-			twerr = twirp.InternalErrorWith(err)
-		}
-		callClientError(ctx, c.opts.Hooks, twerr)
-		return nil, err
-	}
-
-	callClientResponseReceived(ctx, c.opts.Hooks)
-
-	return out, nil
-}
-
-func (c *clubServiceJSONClient) CreateSession(ctx context.Context, in *NewClubSessionRequest) (*NewClubSessionResponse, error) {
-	ctx = ctxsetters.WithPackageName(ctx, "tournament_service")
-	ctx = ctxsetters.WithServiceName(ctx, "ClubService")
-	ctx = ctxsetters.WithMethodName(ctx, "CreateSession")
-	caller := c.callCreateSession
-	if c.interceptor != nil {
-		caller = func(ctx context.Context, req *NewClubSessionRequest) (*NewClubSessionResponse, error) {
-			resp, err := c.interceptor(
-				func(ctx context.Context, req interface{}) (interface{}, error) {
-					typedReq, ok := req.(*NewClubSessionRequest)
-					if !ok {
-						return nil, twirp.InternalError("failed type assertion req.(*NewClubSessionRequest) when calling interceptor")
-					}
-					return c.callCreateSession(ctx, typedReq)
-				},
-			)(ctx, req)
-			if resp != nil {
-				typedResp, ok := resp.(*NewClubSessionResponse)
-				if !ok {
-					return nil, twirp.InternalError("failed type assertion resp.(*NewClubSessionResponse) when calling interceptor")
-				}
-				return typedResp, err
-			}
-			return nil, err
-		}
-	}
-	return caller(ctx, in)
-}
-
-func (c *clubServiceJSONClient) callCreateSession(ctx context.Context, in *NewClubSessionRequest) (*NewClubSessionResponse, error) {
-	out := new(NewClubSessionResponse)
-	ctx, err := doJSONRequest(ctx, c.client, c.opts.Hooks, c.urls[3], in, out)
-	if err != nil {
-		twerr, ok := err.(twirp.Error)
-		if !ok {
-			twerr = twirp.InternalErrorWith(err)
-		}
-		callClientError(ctx, c.opts.Hooks, twerr)
-		return nil, err
-	}
-
-	callClientResponseReceived(ctx, c.opts.Hooks)
-
-	return out, nil
-}
-
-func (c *clubServiceJSONClient) GetRecentSessions(ctx context.Context, in *RecentClubSessionsRequest) (*ClubSessionsResponse, error) {
-	ctx = ctxsetters.WithPackageName(ctx, "tournament_service")
-	ctx = ctxsetters.WithServiceName(ctx, "ClubService")
-	ctx = ctxsetters.WithMethodName(ctx, "GetRecentSessions")
-	caller := c.callGetRecentSessions
-	if c.interceptor != nil {
-		caller = func(ctx context.Context, req *RecentClubSessionsRequest) (*ClubSessionsResponse, error) {
-			resp, err := c.interceptor(
-				func(ctx context.Context, req interface{}) (interface{}, error) {
-					typedReq, ok := req.(*RecentClubSessionsRequest)
-					if !ok {
-						return nil, twirp.InternalError("failed type assertion req.(*RecentClubSessionsRequest) when calling interceptor")
-					}
-					return c.callGetRecentSessions(ctx, typedReq)
-				},
-			)(ctx, req)
-			if resp != nil {
-				typedResp, ok := resp.(*ClubSessionsResponse)
-				if !ok {
-					return nil, twirp.InternalError("failed type assertion resp.(*ClubSessionsResponse) when calling interceptor")
-				}
-				return typedResp, err
-			}
-			return nil, err
-		}
-	}
-	return caller(ctx, in)
-}
-
-func (c *clubServiceJSONClient) callGetRecentSessions(ctx context.Context, in *RecentClubSessionsRequest) (*ClubSessionsResponse, error) {
-	out := new(ClubSessionsResponse)
-	ctx, err := doJSONRequest(ctx, c.client, c.opts.Hooks, c.urls[4], in, out)
-	if err != nil {
-		twerr, ok := err.(twirp.Error)
-		if !ok {
-			twerr = twirp.InternalErrorWith(err)
-		}
-		callClientError(ctx, c.opts.Hooks, twerr)
-		return nil, err
-	}
-
-	callClientResponseReceived(ctx, c.opts.Hooks)
-
-	return out, nil
-}
-
-// ==========================
-// ClubService Server Handler
-// ==========================
-
-type clubServiceServer struct {
-	ClubService
-	interceptor      twirp.Interceptor
-	hooks            *twirp.ServerHooks
-	pathPrefix       string // prefix for routing
-	jsonSkipDefaults bool   // do not include unpopulated fields (default values) in the response
-}
-
-// NewClubServiceServer builds a TwirpServer that can be used as an http.Handler to handle
-// HTTP requests that are routed to the right method in the provided svc implementation.
-// The opts are twirp.ServerOption modifiers, for example twirp.WithServerHooks(hooks).
-func NewClubServiceServer(svc ClubService, opts ...interface{}) TwirpServer {
-	serverOpts := twirp.ServerOptions{}
-	for _, opt := range opts {
-		switch o := opt.(type) {
-		case twirp.ServerOption:
-			o(&serverOpts)
-		case *twirp.ServerHooks: // backwards compatibility, allow to specify hooks as an argument
-			twirp.WithServerHooks(o)(&serverOpts)
-		case nil: // backwards compatibility, allow nil value for the argument
-			continue
-		default:
-			panic(fmt.Sprintf("Invalid option type %T on NewClubServiceServer", o))
-		}
-	}
-
-	return &clubServiceServer{
-		ClubService:      svc,
-		pathPrefix:       serverOpts.PathPrefix(),
-		interceptor:      twirp.ChainInterceptors(serverOpts.Interceptors...),
-		hooks:            serverOpts.Hooks,
-		jsonSkipDefaults: serverOpts.JSONSkipDefaults,
-	}
-}
-
-// writeError writes an HTTP response with a valid Twirp error format, and triggers hooks.
-// If err is not a twirp.Error, it will get wrapped with twirp.InternalErrorWith(err)
-func (s *clubServiceServer) writeError(ctx context.Context, resp http.ResponseWriter, err error) {
-	writeError(ctx, resp, err, s.hooks)
-}
-
-// ClubServicePathPrefix is a convenience constant that could used to identify URL paths.
-// Should be used with caution, it only matches routes generated by Twirp Go clients,
-// that add a "/twirp" prefix by default, and use CamelCase service and method names.
-// More info: https://twitchtv.github.io/twirp/docs/routing.html
-const ClubServicePathPrefix = "/twirp/tournament_service.ClubService/"
-
-func (s *clubServiceServer) ServeHTTP(resp http.ResponseWriter, req *http.Request) {
-	ctx := req.Context()
-	ctx = ctxsetters.WithPackageName(ctx, "tournament_service")
-	ctx = ctxsetters.WithServiceName(ctx, "ClubService")
-	ctx = ctxsetters.WithResponseWriter(ctx, resp)
-
-	var err error
-	ctx, err = callRequestReceived(ctx, s.hooks)
-	if err != nil {
-		s.writeError(ctx, resp, err)
-		return
-	}
-
-	if req.Method != "POST" {
-		msg := fmt.Sprintf("unsupported method %q (only POST is allowed)", req.Method)
-		s.writeError(ctx, resp, badRouteError(msg, req.Method, req.URL.Path))
-		return
-	}
-
-	// Verify path format: [<prefix>]/<package>.<Service>/<Method>
-	prefix, pkgService, method := parseTwirpPath(req.URL.Path)
-	if pkgService != "tournament_service.ClubService" {
-		msg := fmt.Sprintf("no handler for path %q", req.URL.Path)
-		s.writeError(ctx, resp, badRouteError(msg, req.Method, req.URL.Path))
-		return
-	}
-	if prefix != s.pathPrefix {
-		msg := fmt.Sprintf("invalid path prefix %q, expected %q, on path %q", prefix, s.pathPrefix, req.URL.Path)
-		s.writeError(ctx, resp, badRouteError(msg, req.Method, req.URL.Path))
-		return
-	}
-
-	switch method {
-	case "NewClub":
-		s.serveNewClub(ctx, resp, req)
-		return
-	case "GetClubMetadata":
-		s.serveGetClubMetadata(ctx, resp, req)
-		return
-	case "SetClubMetadata":
-		s.serveSetClubMetadata(ctx, resp, req)
-		return
-	case "CreateSession":
-		s.serveCreateSession(ctx, resp, req)
-		return
-	case "GetRecentSessions":
-		s.serveGetRecentSessions(ctx, resp, req)
-		return
-	default:
-		msg := fmt.Sprintf("no handler for path %q", req.URL.Path)
-		s.writeError(ctx, resp, badRouteError(msg, req.Method, req.URL.Path))
-		return
-	}
-}
-
-func (s *clubServiceServer) serveNewClub(ctx context.Context, resp http.ResponseWriter, req *http.Request) {
-	header := req.Header.Get("Content-Type")
-	i := strings.Index(header, ";")
-	if i == -1 {
-		i = len(header)
-	}
-	switch strings.TrimSpace(strings.ToLower(header[:i])) {
-	case "application/json":
-		s.serveNewClubJSON(ctx, resp, req)
-	case "application/protobuf":
-		s.serveNewClubProtobuf(ctx, resp, req)
-	default:
-		msg := fmt.Sprintf("unexpected Content-Type: %q", req.Header.Get("Content-Type"))
-		twerr := badRouteError(msg, req.Method, req.URL.Path)
-		s.writeError(ctx, resp, twerr)
-	}
-}
-
-func (s *clubServiceServer) serveNewClubJSON(ctx context.Context, resp http.ResponseWriter, req *http.Request) {
-	var err error
-	ctx = ctxsetters.WithMethodName(ctx, "NewClub")
-	ctx, err = callRequestRouted(ctx, s.hooks)
-	if err != nil {
-		s.writeError(ctx, resp, err)
-		return
-	}
-
-	reqContent := new(NewClubRequest)
-	unmarshaler := jsonpb.Unmarshaler{AllowUnknownFields: true}
-	if err = unmarshaler.Unmarshal(req.Body, reqContent); err != nil {
-		s.writeError(ctx, resp, malformedRequestError("the json request could not be decoded"))
-		return
-	}
-
-	handler := s.ClubService.NewClub
-	if s.interceptor != nil {
-		handler = func(ctx context.Context, req *NewClubRequest) (*NewClubResponse, error) {
-			resp, err := s.interceptor(
-				func(ctx context.Context, req interface{}) (interface{}, error) {
-					typedReq, ok := req.(*NewClubRequest)
-					if !ok {
-						return nil, twirp.InternalError("failed type assertion req.(*NewClubRequest) when calling interceptor")
-					}
-					return s.ClubService.NewClub(ctx, typedReq)
-				},
-			)(ctx, req)
-			if resp != nil {
-				typedResp, ok := resp.(*NewClubResponse)
-				if !ok {
-					return nil, twirp.InternalError("failed type assertion resp.(*NewClubResponse) when calling interceptor")
-				}
-				return typedResp, err
-			}
-			return nil, err
-		}
-	}
-
-	// Call service method
-	var respContent *NewClubResponse
-	func() {
-		defer ensurePanicResponses(ctx, resp, s.hooks)
-		respContent, err = handler(ctx, reqContent)
-	}()
-
-	if err != nil {
-		s.writeError(ctx, resp, err)
-		return
-	}
-	if respContent == nil {
-		s.writeError(ctx, resp, twirp.InternalError("received a nil *NewClubResponse and nil error while calling NewClub. nil responses are not supported"))
-		return
-	}
-
-	ctx = callResponsePrepared(ctx, s.hooks)
-
-	var buf bytes.Buffer
-	marshaler := &jsonpb.Marshaler{OrigName: true, EmitDefaults: !s.jsonSkipDefaults}
-	if err = marshaler.Marshal(&buf, respContent); err != nil {
-		s.writeError(ctx, resp, wrapInternal(err, "failed to marshal json response"))
-		return
-	}
-
-	ctx = ctxsetters.WithStatusCode(ctx, http.StatusOK)
-	respBytes := buf.Bytes()
-	resp.Header().Set("Content-Type", "application/json")
-	resp.Header().Set("Content-Length", strconv.Itoa(len(respBytes)))
-	resp.WriteHeader(http.StatusOK)
-
-	if n, err := resp.Write(respBytes); err != nil {
-		msg := fmt.Sprintf("failed to write response, %d of %d bytes written: %s", n, len(respBytes), err.Error())
-		twerr := twirp.NewError(twirp.Unknown, msg)
-		ctx = callError(ctx, s.hooks, twerr)
-	}
-	callResponseSent(ctx, s.hooks)
-}
-
-func (s *clubServiceServer) serveNewClubProtobuf(ctx context.Context, resp http.ResponseWriter, req *http.Request) {
-	var err error
-	ctx = ctxsetters.WithMethodName(ctx, "NewClub")
-	ctx, err = callRequestRouted(ctx, s.hooks)
-	if err != nil {
-		s.writeError(ctx, resp, err)
-		return
-	}
-
-	buf, err := ioutil.ReadAll(req.Body)
-	if err != nil {
-		s.writeError(ctx, resp, wrapInternal(err, "failed to read request body"))
-		return
-	}
-	reqContent := new(NewClubRequest)
-	if err = proto.Unmarshal(buf, reqContent); err != nil {
-		s.writeError(ctx, resp, malformedRequestError("the protobuf request could not be decoded"))
-		return
-	}
-
-	handler := s.ClubService.NewClub
-	if s.interceptor != nil {
-		handler = func(ctx context.Context, req *NewClubRequest) (*NewClubResponse, error) {
-			resp, err := s.interceptor(
-				func(ctx context.Context, req interface{}) (interface{}, error) {
-					typedReq, ok := req.(*NewClubRequest)
-					if !ok {
-						return nil, twirp.InternalError("failed type assertion req.(*NewClubRequest) when calling interceptor")
-					}
-					return s.ClubService.NewClub(ctx, typedReq)
-				},
-			)(ctx, req)
-			if resp != nil {
-				typedResp, ok := resp.(*NewClubResponse)
-				if !ok {
-					return nil, twirp.InternalError("failed type assertion resp.(*NewClubResponse) when calling interceptor")
-				}
-				return typedResp, err
-			}
-			return nil, err
-		}
-	}
-
-	// Call service method
-	var respContent *NewClubResponse
-	func() {
-		defer ensurePanicResponses(ctx, resp, s.hooks)
-		respContent, err = handler(ctx, reqContent)
-	}()
-
-	if err != nil {
-		s.writeError(ctx, resp, err)
-		return
-	}
-	if respContent == nil {
-		s.writeError(ctx, resp, twirp.InternalError("received a nil *NewClubResponse and nil error while calling NewClub. nil responses are not supported"))
-		return
-	}
-
-	ctx = callResponsePrepared(ctx, s.hooks)
-
-	respBytes, err := proto.Marshal(respContent)
-	if err != nil {
-		s.writeError(ctx, resp, wrapInternal(err, "failed to marshal proto response"))
-		return
-	}
-
-	ctx = ctxsetters.WithStatusCode(ctx, http.StatusOK)
-	resp.Header().Set("Content-Type", "application/protobuf")
-	resp.Header().Set("Content-Length", strconv.Itoa(len(respBytes)))
-	resp.WriteHeader(http.StatusOK)
-	if n, err := resp.Write(respBytes); err != nil {
-		msg := fmt.Sprintf("failed to write response, %d of %d bytes written: %s", n, len(respBytes), err.Error())
-		twerr := twirp.NewError(twirp.Unknown, msg)
-		ctx = callError(ctx, s.hooks, twerr)
-	}
-	callResponseSent(ctx, s.hooks)
-}
-
-func (s *clubServiceServer) serveGetClubMetadata(ctx context.Context, resp http.ResponseWriter, req *http.Request) {
-	header := req.Header.Get("Content-Type")
-	i := strings.Index(header, ";")
-	if i == -1 {
-		i = len(header)
-	}
-	switch strings.TrimSpace(strings.ToLower(header[:i])) {
-	case "application/json":
-		s.serveGetClubMetadataJSON(ctx, resp, req)
-	case "application/protobuf":
-		s.serveGetClubMetadataProtobuf(ctx, resp, req)
-	default:
-		msg := fmt.Sprintf("unexpected Content-Type: %q", req.Header.Get("Content-Type"))
-		twerr := badRouteError(msg, req.Method, req.URL.Path)
-		s.writeError(ctx, resp, twerr)
-	}
-}
-
-func (s *clubServiceServer) serveGetClubMetadataJSON(ctx context.Context, resp http.ResponseWriter, req *http.Request) {
-	var err error
-	ctx = ctxsetters.WithMethodName(ctx, "GetClubMetadata")
-	ctx, err = callRequestRouted(ctx, s.hooks)
-	if err != nil {
-		s.writeError(ctx, resp, err)
-		return
-	}
-
-	reqContent := new(GetClubMetadataRequest)
-	unmarshaler := jsonpb.Unmarshaler{AllowUnknownFields: true}
-	if err = unmarshaler.Unmarshal(req.Body, reqContent); err != nil {
-		s.writeError(ctx, resp, malformedRequestError("the json request could not be decoded"))
-		return
-	}
-
-	handler := s.ClubService.GetClubMetadata
-	if s.interceptor != nil {
-		handler = func(ctx context.Context, req *GetClubMetadataRequest) (*ClubMetadataResponse, error) {
-			resp, err := s.interceptor(
-				func(ctx context.Context, req interface{}) (interface{}, error) {
-					typedReq, ok := req.(*GetClubMetadataRequest)
-					if !ok {
-						return nil, twirp.InternalError("failed type assertion req.(*GetClubMetadataRequest) when calling interceptor")
-					}
-					return s.ClubService.GetClubMetadata(ctx, typedReq)
-				},
-			)(ctx, req)
-			if resp != nil {
-				typedResp, ok := resp.(*ClubMetadataResponse)
-				if !ok {
-					return nil, twirp.InternalError("failed type assertion resp.(*ClubMetadataResponse) when calling interceptor")
-				}
-				return typedResp, err
-			}
-			return nil, err
-		}
-	}
-
-	// Call service method
-	var respContent *ClubMetadataResponse
-	func() {
-		defer ensurePanicResponses(ctx, resp, s.hooks)
-		respContent, err = handler(ctx, reqContent)
-	}()
-
-	if err != nil {
-		s.writeError(ctx, resp, err)
-		return
-	}
-	if respContent == nil {
-		s.writeError(ctx, resp, twirp.InternalError("received a nil *ClubMetadataResponse and nil error while calling GetClubMetadata. nil responses are not supported"))
-		return
-	}
-
-	ctx = callResponsePrepared(ctx, s.hooks)
-
-	var buf bytes.Buffer
-	marshaler := &jsonpb.Marshaler{OrigName: true, EmitDefaults: !s.jsonSkipDefaults}
-	if err = marshaler.Marshal(&buf, respContent); err != nil {
-		s.writeError(ctx, resp, wrapInternal(err, "failed to marshal json response"))
-		return
-	}
-
-	ctx = ctxsetters.WithStatusCode(ctx, http.StatusOK)
-	respBytes := buf.Bytes()
-	resp.Header().Set("Content-Type", "application/json")
-	resp.Header().Set("Content-Length", strconv.Itoa(len(respBytes)))
-	resp.WriteHeader(http.StatusOK)
-
-	if n, err := resp.Write(respBytes); err != nil {
-		msg := fmt.Sprintf("failed to write response, %d of %d bytes written: %s", n, len(respBytes), err.Error())
-		twerr := twirp.NewError(twirp.Unknown, msg)
-		ctx = callError(ctx, s.hooks, twerr)
-	}
-	callResponseSent(ctx, s.hooks)
-}
-
-func (s *clubServiceServer) serveGetClubMetadataProtobuf(ctx context.Context, resp http.ResponseWriter, req *http.Request) {
-	var err error
-	ctx = ctxsetters.WithMethodName(ctx, "GetClubMetadata")
-	ctx, err = callRequestRouted(ctx, s.hooks)
-	if err != nil {
-		s.writeError(ctx, resp, err)
-		return
-	}
-
-	buf, err := ioutil.ReadAll(req.Body)
-	if err != nil {
-		s.writeError(ctx, resp, wrapInternal(err, "failed to read request body"))
-		return
-	}
-	reqContent := new(GetClubMetadataRequest)
-	if err = proto.Unmarshal(buf, reqContent); err != nil {
-		s.writeError(ctx, resp, malformedRequestError("the protobuf request could not be decoded"))
-		return
-	}
-
-	handler := s.ClubService.GetClubMetadata
-	if s.interceptor != nil {
-		handler = func(ctx context.Context, req *GetClubMetadataRequest) (*ClubMetadataResponse, error) {
-			resp, err := s.interceptor(
-				func(ctx context.Context, req interface{}) (interface{}, error) {
-					typedReq, ok := req.(*GetClubMetadataRequest)
-					if !ok {
-						return nil, twirp.InternalError("failed type assertion req.(*GetClubMetadataRequest) when calling interceptor")
-					}
-					return s.ClubService.GetClubMetadata(ctx, typedReq)
-				},
-			)(ctx, req)
-			if resp != nil {
-				typedResp, ok := resp.(*ClubMetadataResponse)
-				if !ok {
-					return nil, twirp.InternalError("failed type assertion resp.(*ClubMetadataResponse) when calling interceptor")
-				}
-				return typedResp, err
-			}
-			return nil, err
-		}
-	}
-
-	// Call service method
-	var respContent *ClubMetadataResponse
-	func() {
-		defer ensurePanicResponses(ctx, resp, s.hooks)
-		respContent, err = handler(ctx, reqContent)
-	}()
-
-	if err != nil {
-		s.writeError(ctx, resp, err)
-		return
-	}
-	if respContent == nil {
-		s.writeError(ctx, resp, twirp.InternalError("received a nil *ClubMetadataResponse and nil error while calling GetClubMetadata. nil responses are not supported"))
-		return
-	}
-
-	ctx = callResponsePrepared(ctx, s.hooks)
-
-	respBytes, err := proto.Marshal(respContent)
-	if err != nil {
-		s.writeError(ctx, resp, wrapInternal(err, "failed to marshal proto response"))
-		return
-	}
-
-	ctx = ctxsetters.WithStatusCode(ctx, http.StatusOK)
-	resp.Header().Set("Content-Type", "application/protobuf")
-	resp.Header().Set("Content-Length", strconv.Itoa(len(respBytes)))
-	resp.WriteHeader(http.StatusOK)
-	if n, err := resp.Write(respBytes); err != nil {
-		msg := fmt.Sprintf("failed to write response, %d of %d bytes written: %s", n, len(respBytes), err.Error())
-		twerr := twirp.NewError(twirp.Unknown, msg)
-		ctx = callError(ctx, s.hooks, twerr)
-	}
-	callResponseSent(ctx, s.hooks)
-}
-
-func (s *clubServiceServer) serveSetClubMetadata(ctx context.Context, resp http.ResponseWriter, req *http.Request) {
-	header := req.Header.Get("Content-Type")
-	i := strings.Index(header, ";")
-	if i == -1 {
-		i = len(header)
-	}
-	switch strings.TrimSpace(strings.ToLower(header[:i])) {
-	case "application/json":
-		s.serveSetClubMetadataJSON(ctx, resp, req)
-	case "application/protobuf":
-		s.serveSetClubMetadataProtobuf(ctx, resp, req)
-	default:
-		msg := fmt.Sprintf("unexpected Content-Type: %q", req.Header.Get("Content-Type"))
-		twerr := badRouteError(msg, req.Method, req.URL.Path)
-		s.writeError(ctx, resp, twerr)
-	}
-}
-
-func (s *clubServiceServer) serveSetClubMetadataJSON(ctx context.Context, resp http.ResponseWriter, req *http.Request) {
-	var err error
-	ctx = ctxsetters.WithMethodName(ctx, "SetClubMetadata")
-	ctx, err = callRequestRouted(ctx, s.hooks)
-	if err != nil {
-		s.writeError(ctx, resp, err)
-		return
-	}
-
-	reqContent := new(SetClubMetadataRequest)
-	unmarshaler := jsonpb.Unmarshaler{AllowUnknownFields: true}
-	if err = unmarshaler.Unmarshal(req.Body, reqContent); err != nil {
-		s.writeError(ctx, resp, malformedRequestError("the json request could not be decoded"))
-		return
-	}
-
-	handler := s.ClubService.SetClubMetadata
-	if s.interceptor != nil {
-		handler = func(ctx context.Context, req *SetClubMetadataRequest) (*ClubResponse, error) {
-			resp, err := s.interceptor(
-				func(ctx context.Context, req interface{}) (interface{}, error) {
-					typedReq, ok := req.(*SetClubMetadataRequest)
-					if !ok {
-						return nil, twirp.InternalError("failed type assertion req.(*SetClubMetadataRequest) when calling interceptor")
-					}
-					return s.ClubService.SetClubMetadata(ctx, typedReq)
-				},
-			)(ctx, req)
-			if resp != nil {
-				typedResp, ok := resp.(*ClubResponse)
-				if !ok {
-					return nil, twirp.InternalError("failed type assertion resp.(*ClubResponse) when calling interceptor")
-				}
-				return typedResp, err
-			}
-			return nil, err
-		}
-	}
-
-	// Call service method
-	var respContent *ClubResponse
-	func() {
-		defer ensurePanicResponses(ctx, resp, s.hooks)
-		respContent, err = handler(ctx, reqContent)
-	}()
-
-	if err != nil {
-		s.writeError(ctx, resp, err)
-		return
-	}
-	if respContent == nil {
-		s.writeError(ctx, resp, twirp.InternalError("received a nil *ClubResponse and nil error while calling SetClubMetadata. nil responses are not supported"))
-		return
-	}
-
-	ctx = callResponsePrepared(ctx, s.hooks)
-
-	var buf bytes.Buffer
-	marshaler := &jsonpb.Marshaler{OrigName: true, EmitDefaults: !s.jsonSkipDefaults}
-	if err = marshaler.Marshal(&buf, respContent); err != nil {
-		s.writeError(ctx, resp, wrapInternal(err, "failed to marshal json response"))
-		return
-	}
-
-	ctx = ctxsetters.WithStatusCode(ctx, http.StatusOK)
-	respBytes := buf.Bytes()
-	resp.Header().Set("Content-Type", "application/json")
-	resp.Header().Set("Content-Length", strconv.Itoa(len(respBytes)))
-	resp.WriteHeader(http.StatusOK)
-
-	if n, err := resp.Write(respBytes); err != nil {
-		msg := fmt.Sprintf("failed to write response, %d of %d bytes written: %s", n, len(respBytes), err.Error())
-		twerr := twirp.NewError(twirp.Unknown, msg)
-		ctx = callError(ctx, s.hooks, twerr)
-	}
-	callResponseSent(ctx, s.hooks)
-}
-
-func (s *clubServiceServer) serveSetClubMetadataProtobuf(ctx context.Context, resp http.ResponseWriter, req *http.Request) {
-	var err error
-	ctx = ctxsetters.WithMethodName(ctx, "SetClubMetadata")
-	ctx, err = callRequestRouted(ctx, s.hooks)
-	if err != nil {
-		s.writeError(ctx, resp, err)
-		return
-	}
-
-	buf, err := ioutil.ReadAll(req.Body)
-	if err != nil {
-		s.writeError(ctx, resp, wrapInternal(err, "failed to read request body"))
-		return
-	}
-	reqContent := new(SetClubMetadataRequest)
-	if err = proto.Unmarshal(buf, reqContent); err != nil {
-		s.writeError(ctx, resp, malformedRequestError("the protobuf request could not be decoded"))
-		return
-	}
-
-	handler := s.ClubService.SetClubMetadata
-	if s.interceptor != nil {
-		handler = func(ctx context.Context, req *SetClubMetadataRequest) (*ClubResponse, error) {
-			resp, err := s.interceptor(
-				func(ctx context.Context, req interface{}) (interface{}, error) {
-					typedReq, ok := req.(*SetClubMetadataRequest)
-					if !ok {
-						return nil, twirp.InternalError("failed type assertion req.(*SetClubMetadataRequest) when calling interceptor")
-					}
-					return s.ClubService.SetClubMetadata(ctx, typedReq)
-				},
-			)(ctx, req)
-			if resp != nil {
-				typedResp, ok := resp.(*ClubResponse)
-				if !ok {
-					return nil, twirp.InternalError("failed type assertion resp.(*ClubResponse) when calling interceptor")
-				}
-				return typedResp, err
-			}
-			return nil, err
-		}
-	}
-
-	// Call service method
-	var respContent *ClubResponse
-	func() {
-		defer ensurePanicResponses(ctx, resp, s.hooks)
-		respContent, err = handler(ctx, reqContent)
-	}()
-
-	if err != nil {
-		s.writeError(ctx, resp, err)
-		return
-	}
-	if respContent == nil {
-		s.writeError(ctx, resp, twirp.InternalError("received a nil *ClubResponse and nil error while calling SetClubMetadata. nil responses are not supported"))
-		return
-	}
-
-	ctx = callResponsePrepared(ctx, s.hooks)
-
-	respBytes, err := proto.Marshal(respContent)
-	if err != nil {
-		s.writeError(ctx, resp, wrapInternal(err, "failed to marshal proto response"))
-		return
-	}
-
-	ctx = ctxsetters.WithStatusCode(ctx, http.StatusOK)
-	resp.Header().Set("Content-Type", "application/protobuf")
-	resp.Header().Set("Content-Length", strconv.Itoa(len(respBytes)))
-	resp.WriteHeader(http.StatusOK)
-	if n, err := resp.Write(respBytes); err != nil {
-		msg := fmt.Sprintf("failed to write response, %d of %d bytes written: %s", n, len(respBytes), err.Error())
-		twerr := twirp.NewError(twirp.Unknown, msg)
-		ctx = callError(ctx, s.hooks, twerr)
-	}
-	callResponseSent(ctx, s.hooks)
-}
-
-func (s *clubServiceServer) serveCreateSession(ctx context.Context, resp http.ResponseWriter, req *http.Request) {
-	header := req.Header.Get("Content-Type")
-	i := strings.Index(header, ";")
-	if i == -1 {
-		i = len(header)
-	}
-	switch strings.TrimSpace(strings.ToLower(header[:i])) {
-	case "application/json":
-		s.serveCreateSessionJSON(ctx, resp, req)
-	case "application/protobuf":
-		s.serveCreateSessionProtobuf(ctx, resp, req)
-	default:
-		msg := fmt.Sprintf("unexpected Content-Type: %q", req.Header.Get("Content-Type"))
-		twerr := badRouteError(msg, req.Method, req.URL.Path)
-		s.writeError(ctx, resp, twerr)
-	}
-}
-
-func (s *clubServiceServer) serveCreateSessionJSON(ctx context.Context, resp http.ResponseWriter, req *http.Request) {
-	var err error
-	ctx = ctxsetters.WithMethodName(ctx, "CreateSession")
-	ctx, err = callRequestRouted(ctx, s.hooks)
-	if err != nil {
-		s.writeError(ctx, resp, err)
-		return
-	}
-
-	reqContent := new(NewClubSessionRequest)
-	unmarshaler := jsonpb.Unmarshaler{AllowUnknownFields: true}
-	if err = unmarshaler.Unmarshal(req.Body, reqContent); err != nil {
-		s.writeError(ctx, resp, malformedRequestError("the json request could not be decoded"))
-		return
-	}
-
-	handler := s.ClubService.CreateSession
-	if s.interceptor != nil {
-		handler = func(ctx context.Context, req *NewClubSessionRequest) (*NewClubSessionResponse, error) {
-			resp, err := s.interceptor(
-				func(ctx context.Context, req interface{}) (interface{}, error) {
-					typedReq, ok := req.(*NewClubSessionRequest)
-					if !ok {
-						return nil, twirp.InternalError("failed type assertion req.(*NewClubSessionRequest) when calling interceptor")
-					}
-					return s.ClubService.CreateSession(ctx, typedReq)
-				},
-			)(ctx, req)
-			if resp != nil {
-				typedResp, ok := resp.(*NewClubSessionResponse)
-				if !ok {
-					return nil, twirp.InternalError("failed type assertion resp.(*NewClubSessionResponse) when calling interceptor")
-				}
-				return typedResp, err
-			}
-			return nil, err
-		}
-	}
-
-	// Call service method
-	var respContent *NewClubSessionResponse
-	func() {
-		defer ensurePanicResponses(ctx, resp, s.hooks)
-		respContent, err = handler(ctx, reqContent)
-	}()
-
-	if err != nil {
-		s.writeError(ctx, resp, err)
-		return
-	}
-	if respContent == nil {
-		s.writeError(ctx, resp, twirp.InternalError("received a nil *NewClubSessionResponse and nil error while calling CreateSession. nil responses are not supported"))
-		return
-	}
-
-	ctx = callResponsePrepared(ctx, s.hooks)
-
-	var buf bytes.Buffer
-	marshaler := &jsonpb.Marshaler{OrigName: true, EmitDefaults: !s.jsonSkipDefaults}
-	if err = marshaler.Marshal(&buf, respContent); err != nil {
-		s.writeError(ctx, resp, wrapInternal(err, "failed to marshal json response"))
-		return
-	}
-
-	ctx = ctxsetters.WithStatusCode(ctx, http.StatusOK)
-	respBytes := buf.Bytes()
-	resp.Header().Set("Content-Type", "application/json")
-	resp.Header().Set("Content-Length", strconv.Itoa(len(respBytes)))
-	resp.WriteHeader(http.StatusOK)
-
-	if n, err := resp.Write(respBytes); err != nil {
-		msg := fmt.Sprintf("failed to write response, %d of %d bytes written: %s", n, len(respBytes), err.Error())
-		twerr := twirp.NewError(twirp.Unknown, msg)
-		ctx = callError(ctx, s.hooks, twerr)
-	}
-	callResponseSent(ctx, s.hooks)
-}
-
-func (s *clubServiceServer) serveCreateSessionProtobuf(ctx context.Context, resp http.ResponseWriter, req *http.Request) {
-	var err error
-	ctx = ctxsetters.WithMethodName(ctx, "CreateSession")
-	ctx, err = callRequestRouted(ctx, s.hooks)
-	if err != nil {
-		s.writeError(ctx, resp, err)
-		return
-	}
-
-	buf, err := ioutil.ReadAll(req.Body)
-	if err != nil {
-		s.writeError(ctx, resp, wrapInternal(err, "failed to read request body"))
-		return
-	}
-	reqContent := new(NewClubSessionRequest)
-	if err = proto.Unmarshal(buf, reqContent); err != nil {
-		s.writeError(ctx, resp, malformedRequestError("the protobuf request could not be decoded"))
-		return
-	}
-
-	handler := s.ClubService.CreateSession
-	if s.interceptor != nil {
-		handler = func(ctx context.Context, req *NewClubSessionRequest) (*NewClubSessionResponse, error) {
-			resp, err := s.interceptor(
-				func(ctx context.Context, req interface{}) (interface{}, error) {
-					typedReq, ok := req.(*NewClubSessionRequest)
-					if !ok {
-						return nil, twirp.InternalError("failed type assertion req.(*NewClubSessionRequest) when calling interceptor")
-					}
-					return s.ClubService.CreateSession(ctx, typedReq)
-				},
-			)(ctx, req)
-			if resp != nil {
-				typedResp, ok := resp.(*NewClubSessionResponse)
-				if !ok {
-					return nil, twirp.InternalError("failed type assertion resp.(*NewClubSessionResponse) when calling interceptor")
-				}
-				return typedResp, err
-			}
-			return nil, err
-		}
-	}
-
-	// Call service method
-	var respContent *NewClubSessionResponse
-	func() {
-		defer ensurePanicResponses(ctx, resp, s.hooks)
-		respContent, err = handler(ctx, reqContent)
-	}()
-
-	if err != nil {
-		s.writeError(ctx, resp, err)
-		return
-	}
-	if respContent == nil {
-		s.writeError(ctx, resp, twirp.InternalError("received a nil *NewClubSessionResponse and nil error while calling CreateSession. nil responses are not supported"))
-		return
-	}
-
-	ctx = callResponsePrepared(ctx, s.hooks)
-
-	respBytes, err := proto.Marshal(respContent)
-	if err != nil {
-		s.writeError(ctx, resp, wrapInternal(err, "failed to marshal proto response"))
-		return
-	}
-
-	ctx = ctxsetters.WithStatusCode(ctx, http.StatusOK)
-	resp.Header().Set("Content-Type", "application/protobuf")
-	resp.Header().Set("Content-Length", strconv.Itoa(len(respBytes)))
-	resp.WriteHeader(http.StatusOK)
-	if n, err := resp.Write(respBytes); err != nil {
-		msg := fmt.Sprintf("failed to write response, %d of %d bytes written: %s", n, len(respBytes), err.Error())
-		twerr := twirp.NewError(twirp.Unknown, msg)
-		ctx = callError(ctx, s.hooks, twerr)
-	}
-	callResponseSent(ctx, s.hooks)
-}
-
-func (s *clubServiceServer) serveGetRecentSessions(ctx context.Context, resp http.ResponseWriter, req *http.Request) {
-	header := req.Header.Get("Content-Type")
-	i := strings.Index(header, ";")
-	if i == -1 {
-		i = len(header)
-	}
-	switch strings.TrimSpace(strings.ToLower(header[:i])) {
-	case "application/json":
-		s.serveGetRecentSessionsJSON(ctx, resp, req)
-	case "application/protobuf":
-		s.serveGetRecentSessionsProtobuf(ctx, resp, req)
-	default:
-		msg := fmt.Sprintf("unexpected Content-Type: %q", req.Header.Get("Content-Type"))
-		twerr := badRouteError(msg, req.Method, req.URL.Path)
-		s.writeError(ctx, resp, twerr)
-	}
-}
-
-func (s *clubServiceServer) serveGetRecentSessionsJSON(ctx context.Context, resp http.ResponseWriter, req *http.Request) {
-	var err error
-	ctx = ctxsetters.WithMethodName(ctx, "GetRecentSessions")
-	ctx, err = callRequestRouted(ctx, s.hooks)
-	if err != nil {
-		s.writeError(ctx, resp, err)
-		return
-	}
-
-	reqContent := new(RecentClubSessionsRequest)
-	unmarshaler := jsonpb.Unmarshaler{AllowUnknownFields: true}
-	if err = unmarshaler.Unmarshal(req.Body, reqContent); err != nil {
-		s.writeError(ctx, resp, malformedRequestError("the json request could not be decoded"))
-		return
-	}
-
-	handler := s.ClubService.GetRecentSessions
-	if s.interceptor != nil {
-		handler = func(ctx context.Context, req *RecentClubSessionsRequest) (*ClubSessionsResponse, error) {
-			resp, err := s.interceptor(
-				func(ctx context.Context, req interface{}) (interface{}, error) {
-					typedReq, ok := req.(*RecentClubSessionsRequest)
-					if !ok {
-						return nil, twirp.InternalError("failed type assertion req.(*RecentClubSessionsRequest) when calling interceptor")
-					}
-					return s.ClubService.GetRecentSessions(ctx, typedReq)
-				},
-			)(ctx, req)
-			if resp != nil {
-				typedResp, ok := resp.(*ClubSessionsResponse)
-				if !ok {
-					return nil, twirp.InternalError("failed type assertion resp.(*ClubSessionsResponse) when calling interceptor")
-				}
-				return typedResp, err
-			}
-			return nil, err
-		}
-	}
-
-	// Call service method
-	var respContent *ClubSessionsResponse
-	func() {
-		defer ensurePanicResponses(ctx, resp, s.hooks)
-		respContent, err = handler(ctx, reqContent)
-	}()
-
-	if err != nil {
-		s.writeError(ctx, resp, err)
-		return
-	}
-	if respContent == nil {
-		s.writeError(ctx, resp, twirp.InternalError("received a nil *ClubSessionsResponse and nil error while calling GetRecentSessions. nil responses are not supported"))
-		return
-	}
-
-	ctx = callResponsePrepared(ctx, s.hooks)
-
-	var buf bytes.Buffer
-	marshaler := &jsonpb.Marshaler{OrigName: true, EmitDefaults: !s.jsonSkipDefaults}
-	if err = marshaler.Marshal(&buf, respContent); err != nil {
-		s.writeError(ctx, resp, wrapInternal(err, "failed to marshal json response"))
-		return
-	}
-
-	ctx = ctxsetters.WithStatusCode(ctx, http.StatusOK)
-	respBytes := buf.Bytes()
-	resp.Header().Set("Content-Type", "application/json")
-	resp.Header().Set("Content-Length", strconv.Itoa(len(respBytes)))
-	resp.WriteHeader(http.StatusOK)
-
-	if n, err := resp.Write(respBytes); err != nil {
-		msg := fmt.Sprintf("failed to write response, %d of %d bytes written: %s", n, len(respBytes), err.Error())
-		twerr := twirp.NewError(twirp.Unknown, msg)
-		ctx = callError(ctx, s.hooks, twerr)
-	}
-	callResponseSent(ctx, s.hooks)
-}
-
-func (s *clubServiceServer) serveGetRecentSessionsProtobuf(ctx context.Context, resp http.ResponseWriter, req *http.Request) {
-	var err error
-	ctx = ctxsetters.WithMethodName(ctx, "GetRecentSessions")
-	ctx, err = callRequestRouted(ctx, s.hooks)
-	if err != nil {
-		s.writeError(ctx, resp, err)
-		return
-	}
-
-	buf, err := ioutil.ReadAll(req.Body)
-	if err != nil {
-		s.writeError(ctx, resp, wrapInternal(err, "failed to read request body"))
-		return
-	}
-	reqContent := new(RecentClubSessionsRequest)
-	if err = proto.Unmarshal(buf, reqContent); err != nil {
-		s.writeError(ctx, resp, malformedRequestError("the protobuf request could not be decoded"))
-		return
-	}
-
-	handler := s.ClubService.GetRecentSessions
-	if s.interceptor != nil {
-		handler = func(ctx context.Context, req *RecentClubSessionsRequest) (*ClubSessionsResponse, error) {
-			resp, err := s.interceptor(
-				func(ctx context.Context, req interface{}) (interface{}, error) {
-					typedReq, ok := req.(*RecentClubSessionsRequest)
-					if !ok {
-						return nil, twirp.InternalError("failed type assertion req.(*RecentClubSessionsRequest) when calling interceptor")
-					}
-					return s.ClubService.GetRecentSessions(ctx, typedReq)
-				},
-			)(ctx, req)
-			if resp != nil {
-				typedResp, ok := resp.(*ClubSessionsResponse)
-				if !ok {
-					return nil, twirp.InternalError("failed type assertion resp.(*ClubSessionsResponse) when calling interceptor")
-				}
-				return typedResp, err
-			}
-			return nil, err
-		}
-	}
-
-	// Call service method
-	var respContent *ClubSessionsResponse
-	func() {
-		defer ensurePanicResponses(ctx, resp, s.hooks)
-		respContent, err = handler(ctx, reqContent)
-	}()
-
-	if err != nil {
-		s.writeError(ctx, resp, err)
-		return
-	}
-	if respContent == nil {
-		s.writeError(ctx, resp, twirp.InternalError("received a nil *ClubSessionsResponse and nil error while calling GetRecentSessions. nil responses are not supported"))
-		return
-	}
-
-	ctx = callResponsePrepared(ctx, s.hooks)
-
-	respBytes, err := proto.Marshal(respContent)
-	if err != nil {
-		s.writeError(ctx, resp, wrapInternal(err, "failed to marshal proto response"))
-		return
-	}
-
-	ctx = ctxsetters.WithStatusCode(ctx, http.StatusOK)
-	resp.Header().Set("Content-Type", "application/protobuf")
-	resp.Header().Set("Content-Length", strconv.Itoa(len(respBytes)))
-	resp.WriteHeader(http.StatusOK)
-	if n, err := resp.Write(respBytes); err != nil {
-		msg := fmt.Sprintf("failed to write response, %d of %d bytes written: %s", n, len(respBytes), err.Error())
-		twerr := twirp.NewError(twirp.Unknown, msg)
-		ctx = callError(ctx, s.hooks, twerr)
-	}
-	callResponseSent(ctx, s.hooks)
-}
-
-func (s *clubServiceServer) ServiceDescriptor() ([]byte, int) {
-	return twirpFileDescriptor0, 1
-}
-
-func (s *clubServiceServer) ProtocGenTwirpVersion() string {
-	return "v7.1.0"
-}
-
-// PathPrefix returns the base service path, in the form: "/<prefix>/<package>.<Service>/"
-// that is everything in a Twirp route except for the <Method>. This can be used for routing,
-// for example to identify the requests that are targeted to this service in a mux.
-func (s *clubServiceServer) PathPrefix() string {
-	return baseServicePath(s.pathPrefix, "tournament_service", "ClubService")
 }
 
 // =====
@@ -6709,105 +5700,99 @@ func callClientError(ctx context.Context, h *twirp.ClientHooks, err twirp.Error)
 }
 
 var twirpFileDescriptor0 = []byte{
-	// 1587 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xd4, 0x59, 0xcd, 0x6e, 0xdb, 0xc6,
-	0x16, 0x86, 0x2c, 0xf9, 0x47, 0x47, 0x96, 0x6c, 0x4f, 0x1c, 0x5f, 0x45, 0x4e, 0x6e, 0x6c, 0xe6,
-	0x26, 0x71, 0x82, 0x7b, 0xa5, 0x5b, 0x27, 0x45, 0x50, 0xa0, 0x48, 0x91, 0x3a, 0xa9, 0xa1, 0x45,
-	0x1c, 0x97, 0x32, 0x50, 0xa4, 0x45, 0xc3, 0xd0, 0x9a, 0x91, 0x4c, 0x80, 0xe2, 0xa8, 0xc3, 0xa1,
-	0x95, 0xac, 0x8a, 0x22, 0x45, 0x1f, 0xa0, 0xcf, 0xd0, 0x75, 0x37, 0x45, 0xb7, 0x5d, 0xf5, 0xc1,
-	0x8a, 0xf9, 0xe1, 0x8f, 0x24, 0x52, 0xa6, 0xed, 0x04, 0x68, 0x77, 0xe2, 0x99, 0x6f, 0xbe, 0x33,
-	0x73, 0xe6, 0xcc, 0x39, 0xdf, 0x40, 0xf0, 0xb1, 0x3d, 0x74, 0x5a, 0x43, 0x46, 0x39, 0x6d, 0x71,
-	0x1a, 0x30, 0xcf, 0x1e, 0x10, 0x8f, 0x5b, 0x3e, 0x61, 0xa7, 0x4e, 0x97, 0xa4, 0x98, 0x9a, 0x12,
-	0x8b, 0xd0, 0xf4, 0x48, 0x63, 0x3b, 0xa6, 0x62, 0xc4, 0x76, 0xb9, 0x33, 0x20, 0xd1, 0x0f, 0x35,
-	0xad, 0x71, 0xb3, 0x4f, 0x69, 0xdf, 0x25, 0x0a, 0x75, 0x1c, 0xf4, 0x5a, 0x62, 0xcc, 0xe7, 0xf6,
-	0x60, 0xa8, 0x00, 0xc6, 0x01, 0xac, 0x75, 0xb8, 0xcd, 0xb8, 0x49, 0x03, 0x0f, 0x9b, 0xe4, 0xbb,
-	0x80, 0xf8, 0x1c, 0xdd, 0x82, 0x6a, 0xc2, 0x9d, 0x83, 0xeb, 0x85, 0xad, 0xc2, 0x4e, 0xd9, 0x5c,
-	0x8e, 0x8d, 0x6d, 0x8c, 0xd6, 0x61, 0x9e, 0x89, 0x49, 0xf5, 0xb9, 0xad, 0xc2, 0xce, 0xbc, 0xa9,
-	0x3e, 0x8c, 0x77, 0x05, 0x58, 0x3f, 0x20, 0xa3, 0xa3, 0x08, 0x19, 0x72, 0x22, 0x28, 0xf9, 0x6e,
-	0xd0, 0xd7, 0x54, 0xf2, 0xb7, 0xb0, 0x09, 0x90, 0x64, 0x28, 0x9b, 0xf2, 0x37, 0xda, 0x82, 0x0a,
-	0x26, 0x7e, 0x97, 0x39, 0x43, 0xee, 0x50, 0xaf, 0x5e, 0x94, 0x43, 0x49, 0x13, 0xda, 0x86, 0x65,
-	0xec, 0x30, 0xd2, 0xe5, 0x94, 0x59, 0x0e, 0xf6, 0xeb, 0xa5, 0xad, 0xa2, 0x84, 0x68, 0x5b, 0x1b,
-	0xfb, 0x46, 0x00, 0xd7, 0xe2, 0x15, 0x3c, 0x27, 0xdc, 0xc6, 0x36, 0xb7, 0xc3, 0x95, 0xd4, 0x60,
-	0x2e, 0xda, 0xd2, 0x9c, 0x83, 0x2f, 0xb8, 0x8a, 0x70, 0x3f, 0xa5, 0x78, 0x3f, 0xc6, 0x4f, 0x45,
-	0xb8, 0xd2, 0x71, 0xbc, 0xbe, 0x4b, 0x64, 0x38, 0xf7, 0xa8, 0xc7, 0x19, 0x75, 0x7d, 0x74, 0x1b,
-	0x6a, 0x43, 0xdb, 0x61, 0x8e, 0xd7, 0xb7, 0x06, 0x84, 0x9f, 0x50, 0xe5, 0x7d, 0xde, 0xac, 0x6a,
-	0xeb, 0x73, 0x69, 0x14, 0x1b, 0xeb, 0x39, 0xcc, 0xe7, 0x21, 0x48, 0x05, 0xb6, 0x22, 0x6d, 0x1a,
-	0x72, 0x07, 0x56, 0xfa, 0xf6, 0x80, 0xf8, 0xd6, 0x90, 0x30, 0x4b, 0x85, 0xbf, 0xa8, 0xa8, 0xa4,
-	0xf9, 0x90, 0x30, 0xe9, 0x39, 0x3e, 0x9c, 0x52, 0xe2, 0x70, 0xd0, 0x06, 0x2c, 0xf4, 0x6c, 0x11,
-	0xa3, 0xfa, 0xbc, 0x34, 0xeb, 0x2f, 0x74, 0x13, 0x2a, 0x03, 0xfb, 0x8d, 0xc5, 0xc8, 0x90, 0xd8,
-	0xdc, 0xaf, 0x2f, 0xc8, 0x41, 0x18, 0xd8, 0x6f, 0x4c, 0x65, 0x41, 0x0f, 0x60, 0xc3, 0x76, 0x5d,
-	0x3a, 0xb2, 0xe8, 0x29, 0x61, 0x56, 0x12, 0xbb, 0xb8, 0x55, 0xd8, 0x59, 0x32, 0xaf, 0xc8, 0xd1,
-	0x17, 0xa7, 0x84, 0x3d, 0x8f, 0x27, 0x3d, 0x84, 0x0d, 0x85, 0xb2, 0x18, 0x71, 0x6d, 0xee, 0x9c,
-	0x12, 0x6b, 0x44, 0x9c, 0xfe, 0x09, 0xaf, 0x2f, 0x49, 0x07, 0xeb, 0x6a, 0xd4, 0xd4, 0x83, 0x5f,
-	0xc9, 0x31, 0xb4, 0x07, 0xff, 0x1e, 0x39, 0x9e, 0x85, 0x9d, 0x5e, 0x8f, 0x30, 0xe2, 0x75, 0xc9,
-	0xd4, 0xec, 0xb2, 0x9c, 0xbd, 0x39, 0x72, 0xbc, 0xa7, 0x11, 0x68, 0x9c, 0xc4, 0xf8, 0xb5, 0x00,
-	0x8d, 0x94, 0x83, 0xc8, 0xca, 0x80, 0x06, 0x2c, 0x61, 0xe7, 0xd4, 0xf1, 0xc5, 0x51, 0xab, 0x2c,
-	0x88, 0xbe, 0xe3, 0x48, 0x16, 0x93, 0x91, 0x3c, 0x80, 0x9a, 0xfc, 0x61, 0x75, 0x35, 0xb5, 0x0c,
-	0x74, 0x65, 0xf7, 0x6e, 0x33, 0xe5, 0x06, 0xa7, 0xad, 0xa4, 0xca, 0x92, 0x9f, 0xc6, 0xef, 0x73,
-	0xc9, 0x8c, 0xbd, 0xcc, 0x7a, 0x1f, 0xc1, 0xb2, 0x48, 0x05, 0x8b, 0xa9, 0xb9, 0x72, 0xd9, 0x95,
-	0xdd, 0xf5, 0xa6, 0xeb, 0x8c, 0x28, 0xc3, 0x7e, 0x73, 0xdf, 0x1e, 0x10, 0xcd, 0x6b, 0x56, 0xfa,
-	0xf1, 0x47, 0xea, 0x96, 0x8a, 0x17, 0xdf, 0x12, 0xda, 0x81, 0x55, 0x2f, 0x18, 0x1c, 0x13, 0x66,
-	0xd1, 0x9e, 0x4a, 0x55, 0x5f, 0xa7, 0x5d, 0x4d, 0xd9, 0x5f, 0xf4, 0xe4, 0x7c, 0x1f, 0x7d, 0x02,
-	0xe0, 0x8b, 0x1a, 0x64, 0x89, 0xe2, 0x24, 0xb3, 0xaf, 0xb2, 0xdb, 0x68, 0xaa, 0xca, 0xd5, 0x0c,
-	0x2b, 0x57, 0xf3, 0x28, 0xac, 0x5c, 0x66, 0x59, 0xa2, 0xc5, 0xb7, 0x71, 0x04, 0xab, 0x87, 0xb6,
-	0xc3, 0xc6, 0xaa, 0xd7, 0xa5, 0x4f, 0xd7, 0x38, 0x80, 0xd5, 0xf8, 0x30, 0x0e, 0x09, 0xf3, 0xa9,
-	0x87, 0x36, 0xa1, 0x3c, 0x94, 0xbf, 0xe2, 0x7a, 0xb8, 0xa4, 0x0c, 0x6d, 0x8c, 0x6e, 0x00, 0x84,
-	0x83, 0x1e, 0xd7, 0xf7, 0x56, 0xc3, 0xdb, 0x1e, 0x37, 0xbe, 0x87, 0xb5, 0x49, 0x3e, 0xff, 0x5c,
-	0xcb, 0x7c, 0x0c, 0x8b, 0x8a, 0xcd, 0xaf, 0x17, 0xe5, 0xa1, 0xfc, 0x27, 0xed, 0x50, 0x26, 0x7d,
-	0x98, 0xe1, 0x24, 0x63, 0x3f, 0x99, 0x5d, 0x4f, 0x35, 0xeb, 0x05, 0xe2, 0x65, 0xfc, 0x52, 0x80,
-	0x7a, 0xc2, 0x8d, 0x2a, 0x5f, 0x17, 0x09, 0xbc, 0x01, 0xd5, 0xa1, 0x6b, 0xbf, 0x15, 0xd9, 0xe1,
-	0x11, 0x11, 0x52, 0x5d, 0x62, 0x95, 0xf1, 0x85, 0x47, 0xda, 0x38, 0x81, 0xe1, 0x23, 0x2a, 0x30,
-	0xa5, 0x24, 0xe6, 0x68, 0x44, 0x93, 0x5d, 0x68, 0x3e, 0x79, 0x80, 0x3f, 0x97, 0xe0, 0x66, 0xb2,
-	0x05, 0xf9, 0x81, 0xcb, 0x45, 0x75, 0x62, 0x0e, 0x26, 0x7f, 0xbb, 0xd5, 0x8a, 0x9b, 0x92, 0x60,
-	0xf7, 0xbb, 0x94, 0x11, 0x5d, 0x83, 0x6b, 0x91, 0x83, 0x8e, 0xb0, 0x26, 0x90, 0xc2, 0x87, 0x42,
-	0x2e, 0x26, 0x91, 0x47, 0x23, 0xaa, 0x90, 0x6d, 0x58, 0x4b, 0x70, 0x32, 0x19, 0x01, 0x59, 0x77,
-	0x6b, 0xbb, 0x37, 0xa2, 0x5a, 0x10, 0x87, 0x48, 0x55, 0x05, 0x01, 0x32, 0x57, 0x22, 0x9f, 0xca,
-	0x90, 0xa0, 0x12, 0x4e, 0x35, 0x55, 0xf9, 0x1c, 0x54, 0x47, 0x23, 0xaa, 0xa9, 0x1e, 0xab, 0xf6,
-	0x65, 0x11, 0x0f, 0x5b, 0x8c, 0xd8, 0x3e, 0xf5, 0xea, 0x20, 0x89, 0x36, 0xc6, 0xea, 0xd3, 0x33,
-	0x71, 0x99, 0xc5, 0xa8, 0x6a, 0x6b, 0xd1, 0x27, 0xba, 0x0e, 0x65, 0xe1, 0x03, 0x0b, 0x3f, 0xf5,
-	0x8a, 0x6c, 0x3d, 0xb1, 0x41, 0xdc, 0x42, 0xc9, 0xee, 0x78, 0x98, 0xbc, 0xa9, 0x2f, 0xab, 0x5b,
-	0x28, 0x2c, 0x6d, 0x61, 0x30, 0x2c, 0xd8, 0x8c, 0x57, 0x39, 0x2d, 0x7a, 0x2e, 0x5f, 0x36, 0xd6,
-	0x01, 0x8d, 0x25, 0xdd, 0x90, 0x7a, 0x3e, 0x31, 0xee, 0xc2, 0xd5, 0x09, 0x41, 0xa4, 0x06, 0x26,
-	0x1d, 0x1a, 0x4d, 0xb8, 0xbe, 0x4f, 0x78, 0x6e, 0xdd, 0x62, 0xfc, 0x58, 0x80, 0x46, 0x1a, 0x5a,
-	0xd3, 0x87, 0xb2, 0xa6, 0x90, 0x2d, 0x6b, 0xe6, 0xa6, 0x65, 0xcd, 0x75, 0x28, 0x87, 0x42, 0x4a,
-	0xd5, 0x9a, 0xb2, 0x19, 0x1b, 0x52, 0x45, 0xcf, 0x4b, 0x40, 0x26, 0xe9, 0xea, 0x83, 0xcf, 0x6c,
-	0x59, 0x9b, 0x50, 0xf6, 0x82, 0x81, 0x25, 0x55, 0x8a, 0x2e, 0x90, 0x4b, 0x5e, 0x30, 0x90, 0x73,
-	0x84, 0x2e, 0xa1, 0xbd, 0x9e, 0x4f, 0xb8, 0x8e, 0xa7, 0xfe, 0x32, 0x0e, 0xe0, 0xca, 0x18, 0xb5,
-	0xde, 0xd9, 0x23, 0x98, 0x57, 0x3c, 0x05, 0x59, 0x0b, 0xb7, 0x33, 0x92, 0xf0, 0x99, 0x87, 0x09,
-	0x7e, 0x76, 0x2a, 0x42, 0xae, 0xf0, 0xc6, 0x9f, 0x05, 0x58, 0xdf, 0x73, 0x83, 0xe3, 0x5c, 0xb1,
-	0x0a, 0xf7, 0x3a, 0x97, 0x10, 0xac, 0xef, 0x43, 0x9c, 0xa2, 0xcf, 0x60, 0x15, 0x93, 0x9e, 0x1d,
-	0xb8, 0xa2, 0x72, 0x73, 0xee, 0x78, 0x7d, 0xd5, 0x18, 0xb3, 0xba, 0xf4, 0x8a, 0x46, 0x77, 0x34,
-	0xd8, 0xa8, 0xc1, 0xb2, 0xd8, 0x45, 0x94, 0x61, 0xaf, 0x65, 0x86, 0x09, 0x53, 0x87, 0xf8, 0xc9,
-	0xca, 0xde, 0x84, 0x12, 0xb6, 0xb9, 0xda, 0xd6, 0xec, 0x96, 0x2a, 0x71, 0xe8, 0x5f, 0xb0, 0xd8,
-	0x75, 0x83, 0x63, 0x51, 0xbc, 0xd4, 0xae, 0x17, 0xc4, 0x67, 0x1b, 0x1b, 0x5f, 0xc2, 0xc6, 0xa4,
-	0x07, 0x1d, 0xb9, 0x5c, 0x4f, 0x85, 0x94, 0x50, 0x1a, 0x7f, 0x14, 0xa0, 0xa6, 0x39, 0x13, 0x4f,
-	0x84, 0x7f, 0xd0, 0x29, 0x6c, 0xc3, 0x4a, 0xb4, 0xfe, 0x8c, 0x1b, 0xbd, 0x03, 0x1b, 0xfb, 0x84,
-	0x8f, 0x67, 0x5c, 0xfa, 0x5d, 0xfe, 0xad, 0x00, 0x1b, 0x9d, 0x5c, 0xd0, 0xd4, 0xe7, 0x4a, 0x18,
-	0xa5, 0x62, 0x76, 0x94, 0x4a, 0xd3, 0x51, 0xba, 0x74, 0x08, 0x5e, 0xc2, 0x35, 0x75, 0x3f, 0x13,
-	0x99, 0x91, 0x59, 0x01, 0xd6, 0x61, 0xbe, 0x4b, 0x83, 0x48, 0x1e, 0xa9, 0x8f, 0xcc, 0xab, 0xff,
-	0x4a, 0xdd, 0xd4, 0x98, 0x54, 0x87, 0xf8, 0x0b, 0x58, 0xf2, 0xb5, 0x4d, 0x5f, 0xff, 0xfb, 0x69,
-	0x52, 0x28, 0x3d, 0x5b, 0xcd, 0x68, 0xee, 0xee, 0xbb, 0x6a, 0x52, 0x93, 0x75, 0xd4, 0x34, 0x84,
-	0xa1, 0x3a, 0x56, 0xab, 0xd1, 0x4e, 0x06, 0xf9, 0xd4, 0xfb, 0xb6, 0x71, 0x2f, 0x07, 0x52, 0xef,
-	0xe1, 0x2d, 0x5c, 0x4d, 0x2d, 0xf4, 0xe8, 0xff, 0x69, 0x1c, 0xb3, 0x7a, 0x42, 0xa3, 0x39, 0x5b,
-	0x07, 0x4e, 0x15, 0x3a, 0x0f, 0xae, 0x76, 0x52, 0x5d, 0xff, 0x2f, 0x2f, 0x91, 0xf2, 0x7b, 0x67,
-	0x36, 0x3c, 0xf2, 0xf7, 0x12, 0xca, 0x91, 0x3e, 0x47, 0xa9, 0xa2, 0x75, 0x52, 0xbe, 0xe7, 0xa6,
-	0x1e, 0xca, 0x1b, 0x93, 0xf6, 0xdc, 0x6e, 0xe6, 0x7d, 0xb1, 0x9c, 0xd3, 0xe3, 0x64, 0xf0, 0x22,
-	0x87, 0x67, 0x04, 0xef, 0xa2, 0xfe, 0xbe, 0x85, 0xe5, 0x27, 0x18, 0x3f, 0x8d, 0xba, 0xef, 0xed,
-	0x3c, 0xa2, 0xdf, 0xcf, 0x4d, 0xff, 0x1a, 0x56, 0x4c, 0x32, 0xa0, 0xa7, 0xe4, 0x83, 0x79, 0xc0,
-	0x50, 0x91, 0x1b, 0xd0, 0xaa, 0xe9, 0x8c, 0x30, 0x4d, 0xbc, 0x4b, 0x72, 0x7b, 0xe9, 0x43, 0x2d,
-	0xdc, 0xc7, 0x87, 0x75, 0xf4, 0x0d, 0xc0, 0x13, 0x8c, 0x0f, 0xa5, 0xa6, 0x7d, 0xef, 0xb1, 0x7a,
-	0x05, 0x55, 0xb5, 0x8b, 0x0f, 0xc4, 0x7f, 0x0c, 0xd0, 0x21, 0xe1, 0x8b, 0x0d, 0xfd, 0xf7, 0x0c,
-	0xf2, 0xb1, 0x87, 0x5d, 0x6e, 0x1f, 0x27, 0x50, 0xee, 0x10, 0xfd, 0xdc, 0x42, 0x0f, 0xce, 0x9c,
-	0x34, 0xfd, 0x28, 0xcb, 0xed, 0x89, 0x00, 0xc4, 0x0a, 0x1e, 0xb5, 0x66, 0xcf, 0x9a, 0xd2, 0xfa,
-	0xe7, 0x38, 0x94, 0x4a, 0x42, 0x80, 0xa2, 0xd4, 0x69, 0xd3, 0xe2, 0xb7, 0x71, 0xf7, 0x4c, 0x9c,
-	0xe2, 0xdf, 0xfd, 0xa1, 0x04, 0x15, 0xd5, 0xa7, 0x54, 0xff, 0x31, 0x61, 0x51, 0x77, 0x2e, 0x64,
-	0xcc, 0x68, 0x6b, 0xa1, 0x9f, 0x5b, 0x33, 0x31, 0xd1, 0xf5, 0x58, 0x99, 0x10, 0x21, 0xe8, 0x7e,
-	0x46, 0x9f, 0x49, 0x91, 0x1f, 0x8d, 0xd4, 0x0e, 0x98, 0x2a, 0xa2, 0x2d, 0x58, 0xe9, 0xe4, 0x71,
-	0x94, 0xae, 0x73, 0x1a, 0x5b, 0x59, 0x8e, 0x22, 0x07, 0x3d, 0xa8, 0xee, 0x31, 0x62, 0x73, 0xa2,
-	0xdb, 0x3a, 0xba, 0x97, 0xa7, 0xf5, 0x2b, 0xf6, 0x73, 0xa8, 0x04, 0xe4, 0xc2, 0xda, 0xbe, 0x48,
-	0xe3, 0xae, 0x54, 0x06, 0x4a, 0x30, 0xa4, 0xd7, 0x94, 0x4c, 0xf5, 0x93, 0x1d, 0xb6, 0x49, 0x45,
-	0xf3, 0xf9, 0xe3, 0xaf, 0x3f, 0xed, 0x3b, 0xfc, 0x24, 0x38, 0x6e, 0x76, 0xe9, 0xa0, 0x85, 0xe9,
-	0xc0, 0xf1, 0xe8, 0x47, 0x0f, 0x5b, 0x5a, 0x80, 0xb5, 0xd8, 0xb0, 0xdb, 0x9a, 0xf5, 0x97, 0xc1,
-	0xf1, 0x82, 0x1c, 0x79, 0xf0, 0x57, 0x00, 0x00, 0x00, 0xff, 0xff, 0x78, 0xf1, 0xde, 0x90, 0x59,
-	0x18, 0x00, 0x00,
+	// 1502 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xcc, 0x58, 0x6f, 0x6f, 0x1a, 0x47,
+	0x13, 0x7f, 0xb0, 0xc1, 0x86, 0x01, 0x13, 0xbc, 0x26, 0x7e, 0x08, 0x4e, 0x9e, 0x38, 0xf7, 0x34,
+	0x09, 0xad, 0x1a, 0x68, 0x9c, 0x54, 0x51, 0xd5, 0x2a, 0x92, 0x63, 0x5b, 0x11, 0x52, 0x83, 0xad,
+	0x83, 0xaa, 0x4a, 0xa3, 0xf6, 0x72, 0xb0, 0x0b, 0x3e, 0x89, 0xbb, 0xbd, 0xee, 0x2d, 0x10, 0xbf,
+	0xea, 0xbb, 0x7e, 0x80, 0xaa, 0x1f, 0xa1, 0xaf, 0xfb, 0xa2, 0x52, 0xbf, 0x4e, 0x3f, 0x4b, 0xb5,
+	0x7f, 0xb8, 0x3b, 0xcc, 0x61, 0x63, 0xa7, 0x91, 0xfa, 0xee, 0x76, 0x76, 0xf6, 0x37, 0xb3, 0x33,
+	0xb3, 0x33, 0x3f, 0x80, 0xcf, 0x6d, 0xdf, 0x69, 0xf8, 0x8c, 0x72, 0xda, 0xe0, 0x74, 0xc4, 0x3c,
+	0xdb, 0x25, 0x1e, 0xb7, 0x02, 0xc2, 0xc6, 0x4e, 0x8f, 0x24, 0x88, 0xea, 0x52, 0x17, 0xa1, 0xf9,
+	0x9d, 0xea, 0xbd, 0x08, 0x8a, 0x11, 0x7b, 0xc8, 0x1d, 0x97, 0x84, 0x1f, 0xea, 0x58, 0xf5, 0xee,
+	0x80, 0xd2, 0xc1, 0x90, 0x28, 0xad, 0xee, 0xa8, 0xdf, 0x10, 0x7b, 0x01, 0xb7, 0x5d, 0x5f, 0x29,
+	0x18, 0x2d, 0xd8, 0x6c, 0x73, 0x9b, 0x71, 0x93, 0x8e, 0x3c, 0x6c, 0x92, 0x1f, 0x47, 0x24, 0xe0,
+	0xe8, 0xff, 0xb0, 0x11, 0x33, 0xe7, 0xe0, 0x4a, 0x6a, 0x37, 0x55, 0xcb, 0x99, 0x85, 0x48, 0xd8,
+	0xc4, 0xa8, 0x0c, 0x19, 0x26, 0x0e, 0x55, 0x56, 0x76, 0x53, 0xb5, 0x8c, 0xa9, 0x16, 0xc6, 0x1f,
+	0x29, 0x28, 0xb7, 0xc8, 0xa4, 0x13, 0x6a, 0x4e, 0x31, 0x11, 0xa4, 0x83, 0xe1, 0x68, 0xa0, 0xa1,
+	0xe4, 0xb7, 0x90, 0x09, 0x25, 0x89, 0x90, 0x33, 0xe5, 0x37, 0xda, 0x85, 0x3c, 0x26, 0x41, 0x8f,
+	0x39, 0x3e, 0x77, 0xa8, 0x57, 0x59, 0x95, 0x5b, 0x71, 0x11, 0xba, 0x07, 0x05, 0xec, 0x30, 0xd2,
+	0xe3, 0x94, 0x59, 0x0e, 0x0e, 0x2a, 0xe9, 0xdd, 0x55, 0xa9, 0xa2, 0x65, 0x4d, 0x1c, 0xa0, 0x47,
+	0x90, 0xe6, 0x67, 0x3e, 0xa9, 0x64, 0x76, 0x53, 0xb5, 0xe2, 0xde, 0xad, 0x7a, 0x42, 0x58, 0x3b,
+	0x9d, 0x33, 0x9f, 0x98, 0x52, 0xcd, 0xf8, 0x2d, 0x05, 0xb7, 0x22, 0x8f, 0x5f, 0x11, 0x6e, 0x63,
+	0x9b, 0xdb, 0x53, 0xcf, 0x8b, 0xb0, 0x12, 0x86, 0x60, 0xc5, 0xc1, 0xd7, 0xf4, 0x7a, 0x7a, 0xff,
+	0x74, 0xec, 0xfe, 0x57, 0x74, 0xf3, 0xe7, 0x55, 0xd8, 0x6a, 0x3b, 0xde, 0x60, 0x48, 0x64, 0xb6,
+	0x0e, 0xa8, 0xc7, 0x19, 0x1d, 0x06, 0xe8, 0x3e, 0x14, 0x7d, 0xdb, 0x61, 0x8e, 0x37, 0xb0, 0x5c,
+	0xc2, 0x4f, 0xa9, 0x72, 0x36, 0x63, 0x6e, 0x68, 0xe9, 0x2b, 0x29, 0x14, 0x71, 0xeb, 0x3b, 0x2c,
+	0xe0, 0x53, 0x25, 0x95, 0xb7, 0xbc, 0x94, 0x69, 0x95, 0x07, 0x70, 0x63, 0x60, 0xbb, 0x24, 0xb0,
+	0x7c, 0xc2, 0x2c, 0x95, 0xdd, 0x55, 0x05, 0x25, 0xc5, 0x27, 0x84, 0x49, 0xcb, 0x51, 0xee, 0xd3,
+	0xb1, 0xdc, 0xa3, 0x6d, 0x58, 0xeb, 0xdb, 0x22, 0x05, 0xf2, 0x42, 0x19, 0x53, 0xaf, 0xd0, 0x5d,
+	0xc8, 0xbb, 0xf6, 0x3b, 0x8b, 0x11, 0x9f, 0xd8, 0x3c, 0xa8, 0xac, 0xc9, 0x4d, 0x70, 0xed, 0x77,
+	0xa6, 0x92, 0xa0, 0x27, 0xb0, 0x6d, 0x0f, 0x87, 0x74, 0x62, 0xd1, 0x31, 0x61, 0x56, 0x5c, 0x77,
+	0x7d, 0x37, 0x55, 0xcb, 0x9a, 0x5b, 0x72, 0xf7, 0x78, 0x4c, 0xd8, 0xab, 0xe8, 0xd0, 0x53, 0xd8,
+	0x56, 0x5a, 0x16, 0x23, 0x43, 0x9b, 0x3b, 0x63, 0x62, 0x4d, 0x88, 0x33, 0x38, 0xe5, 0x95, 0xac,
+	0x34, 0x50, 0x56, 0xbb, 0xa6, 0xde, 0xfc, 0x56, 0xee, 0xa1, 0x03, 0xf8, 0xdf, 0xc4, 0xf1, 0x2c,
+	0xec, 0xf4, 0xfb, 0x84, 0x11, 0xaf, 0x47, 0xe6, 0x4e, 0xe7, 0xe4, 0xe9, 0x9d, 0x89, 0xe3, 0x1d,
+	0x86, 0x4a, 0xb3, 0x20, 0xc6, 0xef, 0x29, 0xa8, 0x26, 0x24, 0x62, 0x51, 0xc1, 0x54, 0x21, 0x8b,
+	0x9d, 0xb1, 0x13, 0x88, 0xca, 0x50, 0x45, 0x13, 0xae, 0xa3, 0x48, 0xae, 0xc6, 0x23, 0xd9, 0x82,
+	0xa2, 0xfc, 0xb0, 0x7a, 0x1a, 0x5a, 0x06, 0x3a, 0xbf, 0xf7, 0x30, 0xa9, 0x44, 0x92, 0x3c, 0xd9,
+	0x60, 0xf1, 0xa5, 0xf1, 0xe7, 0x4a, 0xbc, 0xc0, 0xdf, 0xc7, 0xdf, 0x67, 0x50, 0x10, 0xa5, 0x60,
+	0x31, 0x75, 0x56, 0xba, 0x9d, 0xdf, 0x2b, 0xd7, 0x87, 0xce, 0x84, 0x32, 0x1c, 0xd4, 0x5f, 0xda,
+	0x2e, 0xd1, 0xb8, 0x66, 0x7e, 0x10, 0x2d, 0x12, 0xaf, 0xb4, 0x7a, 0xfd, 0x2b, 0xa1, 0x1a, 0x94,
+	0xbc, 0x91, 0xdb, 0x25, 0xcc, 0xa2, 0x7d, 0x55, 0xaa, 0x81, 0x2e, 0xbb, 0xa2, 0x92, 0x1f, 0xf7,
+	0xe5, 0xf9, 0x00, 0x7d, 0x01, 0x10, 0x88, 0x16, 0x67, 0x89, 0xde, 0x27, 0xab, 0x2f, 0xbf, 0x57,
+	0xad, 0xab, 0xc6, 0x58, 0x9f, 0x36, 0xc6, 0x7a, 0x67, 0xda, 0x18, 0xcd, 0x9c, 0xd4, 0x16, 0x6b,
+	0xa3, 0x03, 0xa5, 0x13, 0xdb, 0x61, 0x33, 0xcd, 0xf1, 0xbd, 0xb3, 0x6b, 0xb4, 0xa0, 0x14, 0x25,
+	0xe3, 0x84, 0xb0, 0x80, 0x7a, 0x68, 0x07, 0x72, 0xbe, 0xfc, 0x8a, 0xda, 0x6d, 0x56, 0x09, 0x9a,
+	0x18, 0xdd, 0x01, 0x98, 0x6e, 0x7a, 0x5c, 0xbf, 0x5b, 0xad, 0xde, 0xf4, 0xb8, 0xf1, 0x13, 0x6c,
+	0x9e, 0xc7, 0x0b, 0xae, 0xe4, 0xe6, 0x73, 0x58, 0x57, 0x68, 0x41, 0x65, 0x55, 0x26, 0xe5, 0xa3,
+	0xc4, 0x56, 0x74, 0xce, 0x86, 0x39, 0x3d, 0x64, 0xbc, 0x8c, 0x57, 0xd7, 0xa1, 0x46, 0xbd, 0x46,
+	0xbc, 0x44, 0x23, 0xae, 0xc4, 0xcc, 0xa8, 0xf6, 0x75, 0x9d, 0xc0, 0x1b, 0xb0, 0xe1, 0x0f, 0xed,
+	0x33, 0x51, 0x1d, 0x1e, 0x11, 0x21, 0xd5, 0x1d, 0x59, 0x09, 0x8f, 0x3d, 0xd2, 0xc4, 0x31, 0x1d,
+	0x3e, 0xa1, 0x42, 0x27, 0x1d, 0xd7, 0xe9, 0x4c, 0x68, 0x7c, 0xc8, 0x65, 0xe2, 0x09, 0xfc, 0x25,
+	0x0d, 0x77, 0xe3, 0x13, 0x2e, 0x18, 0x0d, 0xb9, 0xe8, 0x4e, 0xcc, 0xc1, 0xe4, 0x5f, 0xe7, 0xad,
+	0x78, 0x29, 0x31, 0xf4, 0xa0, 0x47, 0x19, 0xd1, 0x3d, 0xb8, 0x18, 0x1a, 0x68, 0x0b, 0x69, 0x4c,
+	0x53, 0xd8, 0x50, 0x9a, 0xeb, 0x71, 0xcd, 0xce, 0x84, 0x2a, 0xcd, 0x26, 0x6c, 0xc6, 0x30, 0x99,
+	0x8c, 0x80, 0xec, 0xbb, 0xc5, 0xbd, 0x3b, 0x61, 0x2f, 0x88, 0x42, 0xa4, 0xba, 0x82, 0x50, 0x32,
+	0x6f, 0x84, 0x36, 0x95, 0x20, 0x06, 0x25, 0x8c, 0x6a, 0xa8, 0xdc, 0x15, 0xa0, 0x3a, 0x13, 0xaa,
+	0xa1, 0x9e, 0xab, 0xf1, 0x65, 0x11, 0x0f, 0x5b, 0x8c, 0xd8, 0x01, 0xf5, 0x2a, 0x20, 0x81, 0xb6,
+	0x67, 0xfa, 0xd3, 0x91, 0x78, 0xcc, 0x62, 0x57, 0x8d, 0xb5, 0x70, 0x89, 0x6e, 0x43, 0x4e, 0xd8,
+	0xc0, 0xc2, 0x4e, 0x25, 0x2f, 0x47, 0x4f, 0x24, 0x10, 0xaf, 0x50, 0xa2, 0x3b, 0x1e, 0x26, 0xef,
+	0x2a, 0x05, 0xf5, 0x0a, 0x85, 0xa4, 0x29, 0x04, 0x86, 0x05, 0x3b, 0x91, 0x97, 0xf3, 0x9c, 0xea,
+	0xfd, 0xdb, 0x46, 0x19, 0xd0, 0x4c, 0xd1, 0xf9, 0xd4, 0x0b, 0x88, 0xf1, 0x25, 0xdc, 0x3c, 0xc7,
+	0xb7, 0xd4, 0x46, 0x12, 0x6d, 0x91, 0x04, 0x64, 0x25, 0x22, 0x20, 0xc6, 0x0b, 0xb8, 0xfd, 0x92,
+	0xf0, 0x2b, 0x51, 0x9f, 0x39, 0x8c, 0x5f, 0x53, 0x50, 0x4d, 0x42, 0xd0, 0x6e, 0x4c, 0xd9, 0x52,
+	0x6a, 0x31, 0x5b, 0x5a, 0x99, 0x67, 0x4b, 0xb7, 0x21, 0x37, 0xe5, 0x73, 0xaa, 0x27, 0xe5, 0xcc,
+	0x48, 0x90, 0xc8, 0xa5, 0x94, 0xab, 0x99, 0xa9, 0xab, 0xc6, 0x6b, 0x40, 0x26, 0xe9, 0xe9, 0x82,
+	0x59, 0x38, 0xea, 0x76, 0x20, 0xe7, 0x8d, 0x5c, 0x4b, 0xb2, 0x1b, 0xdd, 0x58, 0xb3, 0xde, 0xc8,
+	0x95, 0x67, 0x04, 0x9f, 0xa1, 0xfd, 0x7e, 0x40, 0xb8, 0xce, 0x83, 0x5e, 0x19, 0x2d, 0xd8, 0x9a,
+	0x81, 0xd6, 0x37, 0x7d, 0x06, 0x19, 0x85, 0x93, 0x92, 0x3d, 0xf4, 0xde, 0x82, 0xe2, 0x3d, 0xf2,
+	0x30, 0xc1, 0x47, 0x63, 0x91, 0x2a, 0xa5, 0x6f, 0xbc, 0x95, 0x29, 0x3c, 0x18, 0x8e, 0xba, 0x6d,
+	0x12, 0xc4, 0x5b, 0x67, 0x1d, 0xd2, 0xd8, 0xe6, 0x2a, 0x76, 0x17, 0xcf, 0x2c, 0xa9, 0x87, 0xfe,
+	0x0b, 0xeb, 0xbd, 0xe1, 0xa8, 0x2b, 0xba, 0x83, 0x8a, 0xe9, 0x9a, 0x58, 0x36, 0xc5, 0xc4, 0xd9,
+	0x9a, 0x81, 0xd7, 0x1e, 0x2f, 0xc5, 0xf3, 0x93, 0x72, 0xfe, 0x1a, 0x6e, 0xa9, 0x08, 0xc4, 0x50,
+	0x17, 0xc6, 0xb8, 0x0c, 0x99, 0x1e, 0x1d, 0x85, 0x83, 0x4b, 0x2d, 0x16, 0x06, 0xf7, 0x0d, 0x94,
+	0x67, 0x41, 0xb5, 0xaf, 0x07, 0x90, 0x0d, 0xb4, 0x4c, 0x07, 0x38, 0x91, 0x39, 0x24, 0x5c, 0xd3,
+	0x0c, 0x0f, 0x7e, 0xf2, 0x18, 0x32, 0x92, 0x50, 0xa3, 0x02, 0x64, 0xdb, 0x9d, 0xfd, 0xd6, 0xe1,
+	0xbe, 0x79, 0x58, 0xfa, 0x0f, 0xca, 0x42, 0xfa, 0xe0, 0xeb, 0x6f, 0x5e, 0x94, 0x52, 0xa8, 0x04,
+	0x05, 0xf1, 0x65, 0xb5, 0x8f, 0xda, 0xed, 0xe6, 0x71, 0xab, 0xb4, 0xb2, 0xf7, 0x57, 0x31, 0x3e,
+	0x5d, 0xdb, 0xca, 0x0c, 0xc2, 0xb0, 0x31, 0xf3, 0xea, 0x50, 0x2d, 0xc9, 0x99, 0xa4, 0x1f, 0x42,
+	0xd5, 0x8f, 0x97, 0xd0, 0xd4, 0x77, 0x3e, 0x83, 0x9b, 0x89, 0xcf, 0x13, 0x7d, 0x96, 0x84, 0x71,
+	0xd1, 0x4b, 0xae, 0xd6, 0x2f, 0x9e, 0xe8, 0x73, 0xcf, 0xd6, 0x83, 0x9b, 0xed, 0x44, 0xd3, 0x8f,
+	0x96, 0x05, 0x52, 0x76, 0x1f, 0x5c, 0xac, 0x1e, 0xda, 0x7b, 0x0d, 0xb9, 0x90, 0x69, 0xa1, 0x44,
+	0xfa, 0x71, 0x9e, 0x88, 0x2d, 0x0d, 0xed, 0xc3, 0x76, 0x9b, 0xf0, 0xa4, 0x1f, 0x4e, 0xf5, 0x65,
+	0xb9, 0xe7, 0x15, 0x2d, 0x9e, 0x0f, 0x5e, 0x68, 0xf0, 0x92, 0xe0, 0x5d, 0xd7, 0xde, 0xf7, 0x50,
+	0xd8, 0xc7, 0xf8, 0x30, 0xec, 0x8f, 0xf7, 0x97, 0xa1, 0x6f, 0xc1, 0xd2, 0xf0, 0x6f, 0xe1, 0x86,
+	0x49, 0x5c, 0x3a, 0x26, 0x1f, 0xcc, 0x02, 0x86, 0xbc, 0xbc, 0x80, 0x9e, 0x7f, 0x97, 0x84, 0xe9,
+	0x1c, 0xc3, 0x5c, 0xda, 0xca, 0x00, 0x8a, 0xd3, 0x7b, 0x7c, 0x58, 0x43, 0x6f, 0x00, 0xf6, 0x31,
+	0x3e, 0x91, 0xec, 0xe4, 0x1f, 0x8f, 0xd5, 0x0f, 0xb0, 0xa1, 0x6e, 0xf1, 0x81, 0xf0, 0xbb, 0x00,
+	0x6d, 0x32, 0xe5, 0xde, 0xe8, 0xd3, 0x4b, 0xc0, 0x67, 0x28, 0xfa, 0xd2, 0x36, 0x4e, 0x21, 0xd7,
+	0x26, 0x9a, 0x38, 0xa3, 0x27, 0x97, 0x1e, 0x9a, 0xa7, 0xd7, 0x4b, 0x5b, 0x22, 0x00, 0x11, 0x17,
+	0x43, 0x8d, 0x8b, 0x4f, 0xcd, 0xb1, 0xb6, 0x2b, 0x24, 0x25, 0x1f, 0xa3, 0x04, 0x28, 0xf1, 0xd8,
+	0x3c, 0x1d, 0xa9, 0x3e, 0xbc, 0x54, 0x2f, 0x2c, 0xdd, 0xcd, 0x03, 0x46, 0x6c, 0x4e, 0x62, 0xf3,
+	0x0d, 0x2d, 0x9a, 0x24, 0xf3, 0x4c, 0xa2, 0xba, 0xec, 0xac, 0x44, 0xbe, 0x1c, 0x39, 0xf3, 0xc3,
+	0x3d, 0xf9, 0xa9, 0x2c, 0x24, 0x01, 0xd5, 0xda, 0x25, 0x06, 0xc3, 0xab, 0xbd, 0x78, 0xfe, 0xdd,
+	0x57, 0x03, 0x87, 0x9f, 0x8e, 0xba, 0xf5, 0x1e, 0x75, 0x1b, 0x98, 0xba, 0x8e, 0x47, 0x1f, 0x3f,
+	0x6d, 0x68, 0xf2, 0xd4, 0x60, 0x7e, 0xaf, 0x71, 0xd1, 0x5f, 0xa6, 0xdd, 0x35, 0xb9, 0xf3, 0xe4,
+	0xef, 0x00, 0x00, 0x00, 0xff, 0xff, 0x66, 0xaa, 0x85, 0x24, 0x59, 0x15, 0x00, 0x00,
 }

@@ -1,6 +1,6 @@
-import React, { useCallback, useEffect } from 'react';
+import React, { useCallback, useEffect, useMemo } from 'react';
 import { message } from 'antd';
-import { useParams } from 'react-router-dom';
+import { Link, useParams } from 'react-router-dom';
 import axios from 'axios';
 import { useMountedState } from '../utils/mounted';
 
@@ -91,15 +91,20 @@ type Props = {
 
 export const Lobby = (props: Props) => {
   const { useState } = useMountedState();
-  const { tournamentID } = useParams();
+  const { partialSlug } = useParams();
+  console.log('partialSlug is', partialSlug);
   const { sendSocketMsg } = props;
   const { loginState } = useLoginStateStoreContext();
   const { loggedIn, username, userID } = loginState;
+  const { path } = loginState;
+  const [badTournament, setBadTournament] = useState(false);
 
   const [tournamentInfo, setTournamentInfo] = useState<TournamentMetadata>({
     name: '',
     description: '',
     directors: [],
+    slug: '',
+    id: '',
   });
   const [selectedGameTab, setSelectedGameTab] = useState(
     loggedIn ? 'PLAY' : 'WATCH'
@@ -110,7 +115,7 @@ export const Lobby = (props: Props) => {
   }, [loggedIn]);
 
   useEffect(() => {
-    if (!tournamentID) {
+    if (!partialSlug || !path) {
       return;
     }
     axios
@@ -120,7 +125,7 @@ export const Lobby = (props: Props) => {
           'GetTournamentMetadata'
         ),
         {
-          id: tournamentID,
+          slug: path,
         }
       )
       .then((resp) => {
@@ -131,8 +136,13 @@ export const Lobby = (props: Props) => {
           content: 'Error fetching tournament data',
           duration: 5,
         });
+        setBadTournament(true);
       });
-  }, [tournamentID]);
+  }, [path, partialSlug]);
+
+  const tournamentID = useMemo(() => {
+    return tournamentInfo.id;
+  }, [tournamentInfo]);
 
   const handleNewGame = useCallback(
     (seekID: string) => {
@@ -152,6 +162,17 @@ export const Lobby = (props: Props) => {
     []
   );
 
+  if (badTournament) {
+    return (
+      <>
+        <TopBar />
+        <div className="lobby">
+          <h3>You tried to access a non-existing page.</h3>
+        </div>
+      </>
+    );
+  }
+
   return (
     <>
       <TopBar />
@@ -160,15 +181,13 @@ export const Lobby = (props: Props) => {
           <Chat
             sendChat={props.sendChat}
             defaultChannel={
-              !tournamentID
-                ? 'chat.lobby'
-                : `chat.tournament.${tournamentID.toLowerCase()}`
+              !tournamentID ? 'chat.lobby' : `chat.tournament.${tournamentID}`
             }
             defaultDescription={tournamentID ? tournamentInfo.name : 'Lobby'}
             peopleOnlineContext={peopleOnlineContext}
             DISCONNECT={props.DISCONNECT}
             highlight={tournamentInfo.directors}
-            tournamentID={tournamentID?.toLowerCase()}
+            tournamentID={tournamentID}
           />
         </div>
         <GameLists

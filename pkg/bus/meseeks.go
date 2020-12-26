@@ -404,7 +404,7 @@ func (b *Bus) broadcastGameCreation(g *entity.Game, acceptor, requester *entity.
 
 	// Also publish to tournament channel if this is a tournament game.
 	if g.TournamentData != nil && g.TournamentData.Id != "" {
-		channelName := "tournament." + strings.ToLower(g.TournamentData.Id) + ".newLiveGame"
+		channelName := "tournament." + g.TournamentData.Id + ".newLiveGame"
 		err = b.natsconn.Publish(channelName, data)
 		if err != nil {
 			return err

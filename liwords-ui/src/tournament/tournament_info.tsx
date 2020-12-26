@@ -1,7 +1,6 @@
 import React, { useCallback, useEffect } from 'react';
 import { Card, Divider } from 'antd';
 import axios from 'axios';
-import { useParams } from 'react-router-dom';
 import ReactMarkdown from 'react-markdown';
 import { RecentTourneyGames } from './recent_games';
 import { pageSize, RecentGame } from './recent_game';
@@ -22,12 +21,14 @@ export type TournamentMetadata = {
   name: string;
   description: string;
   directors: Array<string>;
+  slug: string;
+  id: string;
 };
 
 export const TournamentInfo = (props: TournamentInfoProps) => {
   const { lobbyContext, dispatchLobbyContext } = useLobbyStoreContext();
 
-  const { tournamentID } = useParams();
+  const { tournamentID } = props;
 
   useEffect(() => {
     if (!tournamentID) {

@@ -11,12 +11,23 @@ message StartRoundRequest {
   int32 round = 2;
 }
 
+enum TType {
+  // A Standard tournament
+  STANDARD = 0;
+  // A new "clubhouse"
+  CLUB = 1;
+  // A club session
+  CLUB_SESSION = 2;
+}
+
 message NewTournamentRequest {
   // If slug is not assigned, a random ID will be chosen.
   string slug = 1;
   string name = 2;
   string description = 3;
   repeated string director_ids = 4;
+
+  TType type = 5;
 }
 
 message TournamentMetadataRequest {
@@ -24,6 +35,7 @@ message TournamentMetadataRequest {
   string name = 2;
   string description = 3;
   string slug = 4;
+  TType type = 5;
 }
 
 message SingleRoundControls {
@@ -110,15 +122,23 @@ message TournamentStartRoundRequest {
 }
 
 message TournamentResponse {}
-message NewTournamentResponse { string id = 1; }
+message NewTournamentResponse {
+  string id = 1;
+  string slug = 2;
+}
 
-message GetTournamentMetadataRequest { string id = 1; }
+message GetTournamentMetadataRequest {
+  // User must provide the ID, or the slug (but not both)
+  string id = 1;
+  string slug = 2;
+}
 
 message TournamentMetadataResponse {
   string name = 1;
   string description = 2;
   repeated string directors = 3;
   string slug = 4;
+  string id = 5;
 }
 
 message RecentGamesRequest {
@@ -154,20 +174,11 @@ service TournamentService {
   rpc StartRound(TournamentStartRoundRequest) returns(TournamentResponse);
 
   rpc RecentGames(RecentGamesRequest) returns(RecentGamesResponse);
-}
 
-//// Club stuff
-// Given the overlap and the desire to not make code diverge too much between
-// clubs and tournaments, let's keep some Club data structures here.
-message ClubMetadataResponse {
-  string name = 1;
-  string slug = 2;
-  string description = 3;
-  repeated string director_ids = 4;
-  liwords.GameRequest default_settings = 5;
+  rpc CreateClubSession(NewClubSessionRequest) returns(ClubSessionResponse);
+  rpc GetRecentClubSessions(RecentClubSessionsRequest)
+      returns(ClubSessionsResponse);
 }
-
-message ClubResponse {}
 
 message NewClubSessionRequest {
   // date is the date of the session
@@ -175,34 +186,13 @@ message NewClubSessionRequest {
   string club_id = 2;
 }
 
-message NewClubSessionResponse {
+message ClubSessionResponse {
   // Note that club sessions are tournaments in our backend. We return
   // the created tournament ID here:
   string tournament_id = 1;
   // slug will look like /club/{club_name}/{date}. It should be
   // case-insensitive.
   string slug = 2;
-}
-
-message NewClubRequest {
-  string name = 1;
-  // /club/{slug}
-  string slug = 2;
-  string description = 3;
-  repeated string director_ids = 4;
-  liwords.GameRequest default_settings = 5;
-}
-
-message NewClubResponse { string id = 1; }
-
-message GetClubMetadataRequest { string id = 1; }
-
-message SetClubMetadataRequest {
-  string id = 1;
-  string name = 2;
-  string slug = 3;
-  string description = 4;
-  liwords.GameRequest default_settings = 5;
 }
 
 message RecentClubSessionsRequest {
@@ -212,14 +202,4 @@ message RecentClubSessionsRequest {
   int32 offset = 3;
 }
 
-message ClubSessionsResponse { repeated NewClubSessionResponse sessions = 1; }
-
-service ClubService {
-  rpc NewClub(NewClubRequest) returns(NewClubResponse);
-  // GetClubMetadata also has the same parameters.
-  rpc GetClubMetadata(GetClubMetadataRequest) returns(ClubMetadataResponse);
-  rpc SetClubMetadata(SetClubMetadataRequest) returns(ClubResponse);
-  rpc CreateSession(NewClubSessionRequest) returns(NewClubSessionResponse);
-  rpc GetRecentSessions(RecentClubSessionsRequest)
-      returns(ClubSessionsResponse);
-}
+message ClubSessionsResponse { repeated ClubSessionResponse sessions = 1; }

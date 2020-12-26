@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"sort"
-	"strings"
 	"time"
 
 	"github.com/domino14/liwords/pkg/entity"
@@ -19,12 +18,15 @@ import (
 
 type TournamentStore interface {
 	Get(context.Context, string) (*entity.Tournament, error)
+	GetBySlug(context.Context, string) (*entity.Tournament, error)
 	Set(context.Context, *entity.Tournament) error
 	Create(context.Context, *entity.Tournament) error
 	GetRecentGames(ctx context.Context, tourneyID string, numGames int, offset int) (*pb.RecentGamesResponse, error)
 	Unload(context.Context, string)
 	SetTournamentEventChan(c chan<- *entity.EventWrapper)
 	TournamentEventChan() chan<- *entity.EventWrapper
+
+	GetRecentClubSessions(ctx context.Context, clubID string, numSessions int, offset int) (*pb.ClubSessionsResponse, error)
 }
 
 func HandleTournamentGameEnded(ctx context.Context, ts TournamentStore, us user.Store,
@@ -99,25 +101,20 @@ func HandleTournamentGameEnded(ctx context.Context, ts TournamentStore, us user.
 
 func NewTournament(ctx context.Context,
 	tournamentStore TournamentStore,
-	id string,
 	name string,
 	description string,
-	directors *entity.TournamentPersons) (*entity.Tournament, error) {
+	directors *entity.TournamentPersons,
+	ttype entity.CompetitionType,
+	parent string,
+	slug string,
+) (*entity.Tournament, error) {
 
 	executiveDirector, err := getExecutiveDirector(directors)
 	if err != nil {
 		return nil, err
 	}
 
-	desiredID := id != ""
-
-	randomtid := func() string {
-		return strings.ToLower(shortuuid.New()[2:10])
-	}
-
-	if id == "" {
-		id = randomtid()
-	}
+	id := shortuuid.New()
 
 	entTournament := &entity.Tournament{Name: name,
 		Description:       description,
@@ -126,20 +123,14 @@ func NewTournament(ctx context.Context,
 		IsStarted:         false,
 		Divisions:         map[string]*entity.TournamentDivision{},
 		UUID:              id,
+		Type:              ttype,
+		ParentID:          parent,
+		Slug:              slug,
 	}
-	for {
-		// Save the tournament to the store.
-		err = tournamentStore.Create(ctx, entTournament)
-		if err == nil {
-			break
-		}
-		if desiredID {
-			// Don't try to modify the ID, instead quit with an error!
-			return nil, err
-		}
-		log.Err(err).Msg("tournament-create-error")
-		entTournament.UUID = randomtid()
 
+	err = tournamentStore.Create(ctx, entTournament)
+	if err == nil {
+		return nil, err
 	}
 	return entTournament, nil
 }
