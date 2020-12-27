@@ -17,10 +17,9 @@ const (
 	KingOfTheHill
 	Elimination
 	Factor
+	InitialFontes
 	Swiss
 	Quickpair
-	// Need to implement eventually
-	// Performance
 
 	// Manual simply does not make any
 	// pairings at all. The director

@@ -390,7 +390,7 @@ func TestClassicDivisionFactor(t *testing.T) {
 		realtime.GameEndReason_STANDARD, true, 0)
 	is.NoErr(err)
 
-	err = tc.SubmitResult(0, "5", "6", 700, 500,
+	err = tc.SubmitResult(0, "5", "8", 700, 500,
 		realtime.TournamentGameResult_WIN,
 		realtime.TournamentGameResult_LOSS,
 		realtime.GameEndReason_STANDARD, true, 0)
@@ -400,7 +400,7 @@ func TestClassicDivisionFactor(t *testing.T) {
 	// players and an error should be returned
 	tc.RoundControls[1].Factor = 5
 
-	err = tc.SubmitResult(0, "8", "7", 600, 500,
+	err = tc.SubmitResult(0, "6", "7", 600, 500,
 		realtime.TournamentGameResult_WIN,
 		realtime.TournamentGameResult_LOSS,
 		realtime.GameEndReason_STANDARD, true, 0)
@@ -413,9 +413,9 @@ func TestClassicDivisionFactor(t *testing.T) {
 	expectedstandings := []*entity.Standing{&entity.Standing{Player: "1", Wins: 1, Losses: 0, Draws: 0, Spread: 400},
 		&entity.Standing{Player: "2", Wins: 1, Losses: 0, Draws: 0, Spread: 300},
 		&entity.Standing{Player: "5", Wins: 1, Losses: 0, Draws: 0, Spread: 200},
-		&entity.Standing{Player: "8", Wins: 1, Losses: 0, Draws: 0, Spread: 100},
+		&entity.Standing{Player: "6", Wins: 1, Losses: 0, Draws: 0, Spread: 100},
 		&entity.Standing{Player: "7", Wins: 0, Losses: 1, Draws: 0, Spread: -100},
-		&entity.Standing{Player: "6", Wins: 0, Losses: 1, Draws: 0, Spread: -200},
+		&entity.Standing{Player: "8", Wins: 0, Losses: 1, Draws: 0, Spread: -200},
 		&entity.Standing{Player: "4", Wins: 0, Losses: 1, Draws: 0, Spread: -300},
 		&entity.Standing{Player: "3", Wins: 0, Losses: 1, Draws: 0, Spread: -400},
 	}
@@ -429,7 +429,7 @@ func TestClassicDivisionFactor(t *testing.T) {
 
 	// Standings should be: 1, 2, 5, 8, 7, 6, 4, 3
 
-	err = tc.SubmitResult(1, "1", "8", 400, 500,
+	err = tc.SubmitResult(1, "1", "6", 400, 500,
 		realtime.TournamentGameResult_LOSS,
 		realtime.TournamentGameResult_WIN,
 		realtime.GameEndReason_STANDARD, true, 0)
@@ -441,7 +441,7 @@ func TestClassicDivisionFactor(t *testing.T) {
 		realtime.GameEndReason_STANDARD, true, 0)
 	is.NoErr(err)
 
-	err = tc.SubmitResult(1, "5", "6", 400, 500,
+	err = tc.SubmitResult(1, "5", "8", 400, 500,
 		realtime.TournamentGameResult_LOSS,
 		realtime.TournamentGameResult_WIN,
 		realtime.GameEndReason_STANDARD, true, 0)
@@ -792,6 +792,45 @@ func TestClassicDivisionRoundRobin(t *testing.T) {
 			is.NoErr(err)
 		}
 	}
+}
+
+func TestClassicDivisionInitialFontes(t *testing.T) {
+	// This test only covers InitialFontes error conditions
+	// and a single nonerror case. More tests can be
+	// found in the pair package.
+
+	is := is.New(t)
+
+	roundControls := defaultRoundControls(rounds)
+
+	for i := 1; i < rounds; i++ {
+		roundControls[i].PairingMethod = entity.InitialFontes
+	}
+
+	// InitialFontes can only be used in contiguous rounds
+	// starting with round 1
+	tc, err := NewClassicDivision(playerStrings, rounds, roundControls)
+	is.True(err != nil)
+
+	roundControls[0].PairingMethod = entity.InitialFontes
+
+	// The number of InitialFontes pairings must be odd
+	tc, err = NewClassicDivision(playerStrings, rounds, roundControls)
+	is.True(err != nil)
+
+	numberOfRoundsForInitialFontesTest := 4
+	roundControls = defaultRoundControls(numberOfRoundsForInitialFontesTest)
+
+	for i := 0; i < 3; i++ {
+		roundControls[i].PairingMethod = entity.InitialFontes
+	}
+
+	tc, err = NewClassicDivision(playerStrings, numberOfRoundsForInitialFontesTest, roundControls)
+	is.NoErr(err)
+
+	is.NoErr(validatePairings(tc, 0))
+	is.NoErr(validatePairings(tc, 1))
+	is.NoErr(validatePairings(tc, 2))
 }
 
 func TestClassicDivisionManual(t *testing.T) {
