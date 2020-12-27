@@ -27,16 +27,16 @@ import (
 
 var TestDBHost = os.Getenv("TEST_DB_HOST")
 var TestingDBConnStr = "host=" + TestDBHost + " port=5432 user=postgres password=pass sslmode=disable"
-var gameReq = &pb.GameRequest{Lexicon: "CSW19",
-	Rules: &pb.GameRules{BoardLayoutName: entity.CrosswordGame,
+var gameReq = &realtime.GameRequest{Lexicon: "CSW19",
+	Rules: &realtime.GameRules{BoardLayoutName: entity.CrosswordGame,
 		LetterDistributionName: "English",
 		VariantName:            "classic"},
 
 	InitialTimeSeconds: 25 * 60,
 	IncrementSeconds:   0,
 	ChallengeRule:      macondopb.ChallengeRule_FIVE_POINT,
-	GameMode:           pb.GameMode_REAL_TIME,
-	RatingMode:         pb.RatingMode_RATED,
+	GameMode:           realtime.GameMode_REAL_TIME,
+	RatingMode:         realtime.RatingMode_RATED,
 	RequestId:          "yeet",
 	OriginalRequestId:  "originalyeet",
 	MaxOvertimeMinutes: 10}
