@@ -21,7 +21,6 @@ import (
 	"github.com/domino14/liwords/pkg/tournament"
 	pkguser "github.com/domino14/liwords/pkg/user"
 	realtime "github.com/domino14/liwords/rpc/api/proto/realtime"
-	pbt "github.com/domino14/liwords/rpc/api/proto/tournament_service"
 	macondoconfig "github.com/domino14/macondo/config"
 	macondopb "github.com/domino14/macondo/gen/api/proto/macondo"
 )
@@ -154,9 +153,9 @@ func makeTournament(ctx context.Context, ts tournament.TournamentStore, cfg *con
 		"Tournament",
 		"This is a test Tournament",
 		directors,
-		pbt.TType_CLUB,
+		entity.TypeStandard,
 		"",
-		"slug-tourney",
+		"/tournament/slug-tourney",
 	)
 }
 
