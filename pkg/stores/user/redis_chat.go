@@ -253,8 +253,7 @@ func (r *RedisChatStore) LatestChannels(ctx context.Context, count, offset int,
 
 	log.Debug().Interface("vals", vals).Msg("vals-from-redis")
 	chans := make([]*upb.ActiveChatChannels_Channel, len(vals)/3)
-	tid := strings.ToLower(tournamentID)
-	getTournament := tid != ""
+	getTournament := tournamentID != ""
 
 	for idx := 0; idx < len(chans); idx++ {
 
@@ -282,7 +281,7 @@ func (r *RedisChatStore) LatestChannels(ctx context.Context, count, offset int,
 			LastMessage: lastMsg,
 			HasUpdate:   lastUpdate > lastSeen,
 		}
-		if tid != "" && chanName[0] == "chat.tournament."+tid {
+		if tournamentID != "" && chanName[0] == "chat.tournament."+tournamentID {
 			getTournament = false
 		}
 	}
@@ -290,12 +289,12 @@ func (r *RedisChatStore) LatestChannels(ctx context.Context, count, offset int,
 	// If a tournament ID is passed in, we should fetch the tournament channel
 	// as well as the latest chat for this tournament.
 	if getTournament {
-		t, err := r.tournamentStore.Get(ctx, tid)
+		t, err := r.tournamentStore.Get(ctx, tournamentID)
 		if err != nil {
 			return nil, err
 		}
 		// Get the last chat for this tournament channel.
-		chatChannel := "chat.tournament." + tid
+		chatChannel := "chat.tournament." + tournamentID
 		cm, err := r.OldChats(ctx, chatChannel, 1)
 		if err != nil {
 			return nil, err

@@ -223,11 +223,6 @@ outerfor:
 				break
 			}
 			for _, topic := range topics {
-				// XXX: Remove this soon, once we migrate to the new
-				// id-independent url slugs.
-				if strings.HasPrefix(topic, "tournament.") {
-					topic = strings.ToLower(topic)
-				}
 				b.natsconn.Publish(topic, data)
 			}
 
@@ -300,19 +295,15 @@ func (b *Bus) handleNatsRequest(ctx context.Context, topic string,
 			resp.Realms = append(resp.Realms, realm, "chat-"+realm)
 
 			if game.TournamentData != nil && game.TournamentData.Id != "" {
-				tourneyID := strings.ToLower(game.TournamentData.Id)
-				log.Debug().Str("tourney-realm-for", tourneyID)
-				resp.Realms = append(resp.Realms, "chat-tournament-"+tourneyID)
+				resp.Realms = append(resp.Realms, "chat-tournament-"+game.TournamentData.Id)
 			}
 
-		} else if strings.HasPrefix(path, "/tournament/") {
-			tid := strings.TrimPrefix(path, "/tournament/")
-			_, err := b.tournamentStore.Get(ctx, tid)
+		} else if strings.HasPrefix(path, "/tournament/") || strings.HasPrefix(path, "/club/") {
+			t, err := b.tournamentStore.GetBySlug(ctx, path)
 			if err != nil {
 				return err
 			}
-			normalized := strings.ToLower(tid)
-			resp.Realms = append(resp.Realms, "tournament-"+normalized, "chat-tournament-"+normalized)
+			resp.Realms = append(resp.Realms, "tournament-"+t.UUID, "chat-tournament-"+t.UUID)
 		} else {
 			log.Info().Str("path", path).Msg("realm-req-not-handled-sending-blank-realm")
 		}

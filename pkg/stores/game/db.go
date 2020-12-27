@@ -199,8 +199,9 @@ func (s *DBStore) GetRecentGames(ctx context.Context, username string, numGames 
 	if numGames > MaxRecentGames {
 		return nil, errors.New("too many games")
 	}
+	ctxDB := s.db.WithContext(ctx)
 	var games []*game
-	if results := s.db.Limit(numGames).
+	if results := ctxDB.Limit(numGames).
 		Offset(offset).
 		Joins("JOIN users as u0  ON u0.id = games.player0_id").
 		Joins("JOIN users as u1  ON u1.id = games.player1_id").
@@ -217,12 +218,12 @@ func (s *DBStore) GetRecentTourneyGames(ctx context.Context, tourneyID string, n
 	if numGames > MaxRecentGames {
 		return nil, errors.New("too many games")
 	}
-
+	ctxDB := s.db.WithContext(ctx)
 	var games []*game
-	if results := s.db.Limit(numGames).
+	if results := ctxDB.Limit(numGames).
 		Offset(offset).
 		// Basically, everything except for 0 (ongoing), 5 (aborted) or 7 (cancelled)
-		Where("lower(tournament_id) = lower(?) AND game_end_reason NOT IN (?, ?, ?)", tourneyID,
+		Where("tournament_id = ? AND game_end_reason NOT IN (?, ?, ?)", tourneyID,
 			pb.GameEndReason_NONE, pb.GameEndReason_ABORTED, pb.GameEndReason_CANCELLED).
 		Order("updated_at desc").
 		Find(&games); results.Error != nil {
@@ -431,7 +432,7 @@ func (s *DBStore) ListActive(ctx context.Context, tourneyID string) (*gs.GameInf
 		Where("games.game_end_reason = ?", 0 /* ongoing games only*/)
 
 	if tourneyID != "" {
-		query = query.Where("lower(games.tournament_id) = lower(?)", tourneyID)
+		query = query.Where("games.tournament_id = ?", tourneyID)
 	}
 
 	result := query.Order("games.id").Scan(&games)

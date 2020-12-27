@@ -12,12 +12,14 @@ import (
 
 type backingStore interface {
 	Get(ctx context.Context, id string) (*entity.Tournament, error)
+	GetBySlug(ctx context.Context, id string) (*entity.Tournament, error)
 	Set(context.Context, *entity.Tournament) error
 	Create(context.Context, *entity.Tournament) error
 	GetRecentGames(ctx context.Context, tourneyID string, numGames int, offset int) (*pb.RecentGamesResponse, error)
 	Disconnect()
 	SetTournamentEventChan(c chan<- *entity.EventWrapper)
 	TournamentEventChan() chan<- *entity.EventWrapper
+	GetRecentClubSessions(ctx context.Context, clubID string, numSessions int, offset int) (*pb.ClubSessionsResponse, error)
 }
 
 const (
@@ -58,6 +60,10 @@ func (c *Cache) Get(ctx context.Context, id string) (*entity.Tournament, error) 
 		c.cache.Add(id, uncachedTournament)
 	}
 	return uncachedTournament, err
+}
+
+func (c *Cache) GetBySlug(ctx context.Context, id string) (*entity.Tournament, error) {
+	return c.backing.GetBySlug(ctx, id)
 }
 
 // Set sets a tournament in the cache, AND in the backing store. This ensures if the
@@ -105,4 +111,8 @@ func (c *Cache) TournamentEventChan() chan<- *entity.EventWrapper {
 
 func (c *Cache) GetRecentGames(ctx context.Context, tourneyID string, numGames int, offset int) (*pb.RecentGamesResponse, error) {
 	return c.backing.GetRecentGames(ctx, tourneyID, numGames, offset)
+}
+
+func (c *Cache) GetRecentClubSessions(ctx context.Context, clubID string, numSessions int, offset int) (*pb.ClubSessionsResponse, error) {
+	return c.backing.GetRecentClubSessions(ctx, clubID, numSessions, offset)
 }

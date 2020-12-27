@@ -28,6 +28,7 @@ import { LoginState, LoginStateReducer } from './login_state';
 import { EphemeralTile } from '../utils/cwgame/common';
 import { pageSize } from '../tournament/recent_game';
 import { ActiveChatChannels } from '../gen/api/proto/user_service/user_service_pb';
+import { defaultTournamentState, TournamentState } from '../tournament/state';
 
 export enum ChatEntityType {
   UserChat,
@@ -110,6 +111,11 @@ type PresenceStoreData = {
   setPresence: (presence: PresenceEntity) => void;
   addPresences: (presences: Array<PresenceEntity>) => void;
   presences: Array<PresenceEntity>;
+};
+
+type TournamentStoreData = {
+  tournamentContext: TournamentState;
+  setTournamentContext: React.Dispatch<React.SetStateAction<TournamentState>>;
 };
 
 type GameEndMessageStoreData = {
@@ -247,6 +253,11 @@ const PresenceContext = createContext<PresenceStoreData>({
   setPresence: defaultFunction,
   addPresences: defaultFunction,
   presences: new Array<PresenceEntity>(),
+});
+
+const TournamentContext = createContext<TournamentStoreData>({
+  tournamentContext: defaultTournamentState,
+  setTournamentContext: defaultFunction,
 });
 
 const [GameEndMessageContext, ExaminableGameEndMessageContext] = Array.from(
@@ -575,6 +586,11 @@ const RealStore = ({ children, ...props }: Props) => {
     (action) => setLoginState((state) => LoginStateReducer(state, action)),
     []
   );
+
+  const [tournamentContext, setTournamentContext] = useState(
+    defaultTournamentState
+  );
+
   const [currentLagMs, setCurrentLagMs] = useState(NaN);
 
   const [placedTilesTempScore, setPlacedTilesTempScore] = useState<
@@ -696,6 +712,13 @@ const RealStore = ({ children, ...props }: Props) => {
     }),
     [loginState, dispatchLoginState]
   );
+  const tournamentStateStore = useMemo(
+    () => ({
+      tournamentContext,
+      setTournamentContext,
+    }),
+    [tournamentContext, setTournamentContext]
+  );
   const lagStore = useMemo(
     () => ({
       currentLagMs,
@@ -814,6 +837,9 @@ const RealStore = ({ children, ...props }: Props) => {
   ret = <LoginStateContext.Provider value={loginStateStore} children={ret} />;
   ret = <LagContext.Provider value={lagStore} children={ret} />;
   ret = (
+    <TournamentContext.Provider value={tournamentStateStore} children={ret} />
+  );
+  ret = (
     <TentativePlayContext.Provider value={tentativePlayStore} children={ret} />
   );
   ret = (
@@ -881,6 +907,7 @@ export const Store = ({ children }: { children: React.ReactNode }) => {
 export const useLobbyStoreContext = () => useContext(LobbyContext);
 export const useLoginStateStoreContext = () => useContext(LoginStateContext);
 export const useLagStoreContext = () => useContext(LagContext);
+export const useTournamentStoreContext = () => useContext(TournamentContext);
 export const useTentativeTileContext = () => useContext(TentativePlayContext);
 export const useExcludedPlayersStoreContext = () =>
   useContext(ExcludedPlayersContext);
