@@ -156,7 +156,7 @@ func makeTournament(ctx context.Context, ts tournament.TournamentStore, cfg *con
 		directors,
 		pbt.TType_CLUB,
 		"",
-		"slug-tourney"
+		"slug-tourney",
 	)
 }
 
