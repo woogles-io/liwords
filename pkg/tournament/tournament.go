@@ -129,7 +129,7 @@ func NewTournament(ctx context.Context,
 	}
 
 	err = tournamentStore.Create(ctx, entTournament)
-	if err == nil {
+	if err != nil {
 		return nil, err
 	}
 	return entTournament, nil

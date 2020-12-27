@@ -45,7 +45,7 @@ import { endGameMessageFromGameInfo } from '../store/end_of_game';
 import { singularCount } from '../utils/plural';
 import { Notepad, NotepadContextProvider } from './notepad';
 import { Analyzer, AnalyzerContextProvider } from './analyzer';
-import { TournamentMetadata } from '../tournament/tournament_info';
+import { TournamentMetadata } from '../tournament/state';
 
 type Props = {
   sendSocketMsg: (msg: Uint8Array) => void;

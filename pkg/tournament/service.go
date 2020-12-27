@@ -3,6 +3,7 @@ package tournament
 import (
 	"context"
 	"errors"
+	"strings"
 
 	"github.com/domino14/liwords/pkg/entity"
 	"github.com/domino14/liwords/pkg/user"
@@ -97,8 +98,25 @@ func (ts *TournamentService) NewTournament(ctx context.Context, req *pb.NewTourn
 	}
 	log.Debug().Interface("directors", directors).Msg("directors")
 
+	var tt entity.CompetitionType
+	switch req.Type {
+	case pb.TType_CLUB:
+		tt = entity.TypeClub
+		if !strings.HasPrefix(req.Slug, "/club/") {
+			return nil, twirp.NewError(twirp.InvalidArgument, "club slug must start with /club/")
+		}
+	case pb.TType_STANDARD:
+		tt = entity.TypeStandard
+		if !strings.HasPrefix(req.Slug, "/tournament/") {
+			return nil, twirp.NewError(twirp.InvalidArgument, "tournament slug must start with /tournament/")
+		}
+	case pb.TType_CLUB_SESSION:
+		return nil, twirp.NewError(twirp.InvalidArgument, "please use the CreateClubSession endpoint to create a new club session")
+	default:
+		return nil, twirp.NewError(twirp.InvalidArgument, "invalid tournament type")
+	}
 	t, err := NewTournament(ctx, ts.tournamentStore, req.Name, req.Description, directors,
-		entity.TypeStandard, "", req.Slug)
+		tt, "", req.Slug)
 	if err != nil {
 		return nil, twirp.NewError(twirp.InvalidArgument, err.Error())
 	}

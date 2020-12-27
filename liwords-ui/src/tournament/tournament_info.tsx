@@ -5,30 +5,22 @@ import ReactMarkdown from 'react-markdown';
 import { RecentTourneyGames } from './recent_games';
 import { pageSize, RecentGame } from './recent_game';
 import { toAPIUrl } from '../api/api';
-import { useLobbyStoreContext } from '../store/store';
+import {
+  useLobbyStoreContext,
+  useTournamentStoreContext,
+} from '../store/store';
 import { ActionType } from '../actions/actions';
 
-type TournamentInfoProps = {
-  tournamentID: string;
-  tournamentInfo: TournamentMetadata;
-};
+type TournamentInfoProps = {};
 
 export type RecentTournamentGames = {
   games: Array<RecentGame>;
 };
 
-export type TournamentMetadata = {
-  name: string;
-  description: string;
-  directors: Array<string>;
-  slug: string;
-  id: string;
-};
-
 export const TournamentInfo = (props: TournamentInfoProps) => {
   const { lobbyContext, dispatchLobbyContext } = useLobbyStoreContext();
-
-  const { tournamentID } = props;
+  const { tournamentContext } = useTournamentStoreContext();
+  const tournamentID = tournamentContext.metadata.id;
 
   useEffect(() => {
     if (!tournamentID) {
@@ -78,10 +70,10 @@ export const TournamentInfo = (props: TournamentInfoProps) => {
   return (
     <div className="tournament-info">
       <Card title="Tournament Information">
-        <h3 className="tournament-name">{props.tournamentInfo.name}</h3>
-        <h4>Directors: {props.tournamentInfo.directors.join(', ')}</h4>
+        <h3 className="tournament-name">{tournamentContext.metadata.name}</h3>
+        <h4>Directors: {tournamentContext.metadata.directors.join(', ')}</h4>
         <ReactMarkdown linkTarget="_blank">
-          {props.tournamentInfo.description}
+          {tournamentContext.metadata.description}
         </ReactMarkdown>
         <Divider />
         <h3 className="recent-header">Recent Games</h3>

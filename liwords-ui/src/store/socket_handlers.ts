@@ -16,6 +16,7 @@ import {
   usePresenceStoreContext,
   useRematchRequestStoreContext,
   useTimerStoreContext,
+  useTournamentStoreContext,
 } from './store';
 import {
   MessageType,
@@ -129,6 +130,7 @@ export const useOnSocketMsg = () => {
   const { setGameEndMessage } = useGameEndMessageStoreContext();
   const { setCurrentLagMs } = useLagStoreContext();
   const { dispatchLobbyContext } = useLobbyStoreContext();
+  const { tournamentContext } = useTournamentStoreContext();
   const { loginState } = useLoginStateStoreContext();
   const { setPresence, addPresences } = usePresenceStoreContext();
   const { setRematchRequest } = useRematchRequestStoreContext();
@@ -224,29 +226,30 @@ export const useOnSocketMsg = () => {
             if (receiver === loginState.username) {
               BoopSounds.playSound('matchReqSound');
               const rematchFor = mr.getRematchFor();
-              const { path } = loginState;
               console.log(
                 'sg',
                 soughtGame.tournamentID,
                 'gc',
-                gameContext.gameID
+                gameContext.gameID,
+                'tc',
+                tournamentContext
               );
               if (soughtGame.tournamentID) {
                 // This is a match game attached to a tourney.
-                // XXX: When we have a tourney reducer we should refer to said reducer's
-                //  state instead of looking at the path
-                if (
-                  path ===
-                  `/tournament/${encodeURIComponent(soughtGame.tournamentID)}`
-                ) {
+                console.log('match attached to tourney');
+                if (tournamentContext.metadata.id === soughtGame.tournamentID) {
+                  console.log('matches this tourney');
+
                   dispatchLobbyContext({
                     actionType: ActionType.AddMatchRequest,
                     payload: soughtGame,
                   });
                   inReceiverGameList = true;
-                } else if (rematchFor === gameContext.gameID) {
+                } else if (rematchFor && rematchFor === gameContext.gameID) {
+                  console.log('it is a rematch');
                   setRematchRequest(mr);
                 } else {
+                  console.log('tourney match request elsewhere');
                   notification.info({
                     message: 'Tournament Match Request',
                     description: `You have a tournament match request from ${soughtGame.seeker}. Please return to your tournament at your convenience.`,
@@ -484,7 +487,6 @@ export const useOnSocketMsg = () => {
             });
 
             // If there is an Antd message about "waiting for game", destroy it.
-            // XXX: This is a bit unideal.
             message.destroy('server-message');
             break;
           }
@@ -603,6 +605,7 @@ export const useOnSocketMsg = () => {
       setPresence,
       setRematchRequest,
       stopClock,
+      tournamentContext,
       isExamining,
     ]
   );

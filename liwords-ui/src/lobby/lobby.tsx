@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo } from 'react';
 import { message } from 'antd';
-import { Link, useParams } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 import axios from 'axios';
 import { useMountedState } from '../utils/mounted';
 
@@ -19,15 +19,16 @@ import { SoughtGame } from '../store/reducers/lobby_reducer';
 import { ChallengeRuleMap } from '../gen/macondo/api/proto/macondo/macondo_pb';
 import { GameLists } from './gameLists';
 import { Chat } from '../chat/chat';
-import { useLoginStateStoreContext } from '../store/store';
+import {
+  useLoginStateStoreContext,
+  useTournamentStoreContext,
+} from '../store/store';
 import { singularCount } from '../utils/plural';
 import './lobby.scss';
 import { Announcements } from './announcements';
 import { toAPIUrl } from '../api/api';
-import {
-  TournamentInfo,
-  TournamentMetadata,
-} from '../tournament/tournament_info';
+import { TournamentInfo } from '../tournament/tournament_info';
+import { TournamentMetadata } from '../tournament/state';
 
 const sendSeek = (
   game: SoughtGame,
@@ -95,17 +96,14 @@ export const Lobby = (props: Props) => {
   console.log('partialSlug is', partialSlug);
   const { sendSocketMsg } = props;
   const { loginState } = useLoginStateStoreContext();
+  const {
+    tournamentContext,
+    setTournamentContext,
+  } = useTournamentStoreContext();
   const { loggedIn, username, userID } = loginState;
   const { path } = loginState;
   const [badTournament, setBadTournament] = useState(false);
 
-  const [tournamentInfo, setTournamentInfo] = useState<TournamentMetadata>({
-    name: '',
-    description: '',
-    directors: [],
-    slug: '',
-    id: '',
-  });
   const [selectedGameTab, setSelectedGameTab] = useState(
     loggedIn ? 'PLAY' : 'WATCH'
   );
@@ -129,7 +127,9 @@ export const Lobby = (props: Props) => {
         }
       )
       .then((resp) => {
-        setTournamentInfo(resp.data);
+        setTournamentContext({
+          metadata: resp.data,
+        });
       })
       .catch((err) => {
         message.error({
@@ -138,11 +138,11 @@ export const Lobby = (props: Props) => {
         });
         setBadTournament(true);
       });
-  }, [path, partialSlug]);
+  }, [path, partialSlug, setTournamentContext]);
 
   const tournamentID = useMemo(() => {
-    return tournamentInfo.id;
-  }, [tournamentInfo]);
+    return tournamentContext.metadata.id;
+  }, [tournamentContext.metadata]);
 
   const handleNewGame = useCallback(
     (seekID: string) => {
@@ -183,10 +183,12 @@ export const Lobby = (props: Props) => {
             defaultChannel={
               !tournamentID ? 'chat.lobby' : `chat.tournament.${tournamentID}`
             }
-            defaultDescription={tournamentID ? tournamentInfo.name : 'Lobby'}
+            defaultDescription={
+              tournamentID ? tournamentContext.metadata.name : 'Lobby'
+            }
             peopleOnlineContext={peopleOnlineContext}
             DISCONNECT={props.DISCONNECT}
-            highlight={tournamentInfo.directors}
+            highlight={tournamentContext.metadata.directors}
             tournamentID={tournamentID}
           />
         </div>
@@ -200,14 +202,7 @@ export const Lobby = (props: Props) => {
           onSeekSubmit={onSeekSubmit}
           tournamentID={tournamentID}
         />
-        {tournamentID ? (
-          <TournamentInfo
-            tournamentID={tournamentID}
-            tournamentInfo={tournamentInfo}
-          />
-        ) : (
-          <Announcements />
-        )}
+        {tournamentID ? <TournamentInfo /> : <Announcements />}
       </div>
     </>
   );
