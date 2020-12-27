@@ -20,8 +20,8 @@ import (
 	"github.com/domino14/liwords/pkg/stores/user"
 	"github.com/domino14/liwords/pkg/tournament"
 	pkguser "github.com/domino14/liwords/pkg/user"
-	pb "github.com/domino14/liwords/rpc/api/proto/realtime"
 	realtime "github.com/domino14/liwords/rpc/api/proto/realtime"
+	pbt "github.com/domino14/liwords/rpc/api/proto/tournament_service"
 	macondoconfig "github.com/domino14/macondo/config"
 	macondopb "github.com/domino14/macondo/gen/api/proto/macondo"
 )
@@ -151,10 +151,13 @@ func makeControls() *entity.TournamentControls {
 func makeTournament(ctx context.Context, ts tournament.TournamentStore, cfg *config.Config, directors *entity.TournamentPersons) (*entity.Tournament, error) {
 	return tournament.NewTournament(ctx,
 		ts,
-		"tid",
 		"Tournament",
 		"This is a test Tournament",
-		directors)
+		directors,
+		pbt.TType_CLUB,
+		"",
+		"slug-tourney"
+	)
 }
 
 func userStore(dbURL string) pkguser.Store {

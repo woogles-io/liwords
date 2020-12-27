@@ -111,7 +111,10 @@ func (ts *TournamentService) NewTournament(ctx context.Context, req *pb.NewTourn
 			return nil, twirp.NewError(twirp.InvalidArgument, "tournament slug must start with /tournament/")
 		}
 	case pb.TType_CLUB_SESSION:
-		return nil, twirp.NewError(twirp.InvalidArgument, "please use the CreateClubSession endpoint to create a new club session")
+		tt = entity.TypeClubSession
+		if !strings.HasPrefix(req.Slug, "/club/") {
+			return nil, twirp.NewError(twirp.InvalidArgument, "club-session slug must start with /club/")
+		}
 	default:
 		return nil, twirp.NewError(twirp.InvalidArgument, "invalid tournament type")
 	}
