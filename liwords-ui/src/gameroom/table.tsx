@@ -33,9 +33,9 @@ import { encodeToSocketFmt } from '../utils/protobuf';
 import './scss/gameroom.scss';
 import { ScoreCard } from './scorecard';
 import {
+  defaultGameInfo,
   GameInfo,
   GameMetadata,
-  PlayerMetadata,
   StreakInfoResponse,
 } from './game_info';
 import { BoopSounds } from '../sound/boop';
@@ -54,33 +54,6 @@ type Props = {
 };
 
 const StreakFetchDelay = 2000;
-
-const defaultGameInfo = {
-  players: new Array<PlayerMetadata>(),
-  game_request: {
-    lexicon: '',
-    rules: {
-      variant_name: '',
-      board_layout_name: 'CrosswordGame',
-      letter_distribution_name: 'english',
-    },
-    initial_time_seconds: 0,
-    increment_seconds: 0,
-    challenge_rule: 'VOID' as  // wtf typescript? is there a better way?
-      | 'FIVE_POINT'
-      | 'TEN_POINT'
-      | 'SINGLE'
-      | 'DOUBLE'
-      | 'TRIPLE'
-      | 'VOID',
-    rating_mode: 'RATED',
-    max_overtime_minutes: 0,
-    original_request_id: '',
-  },
-  tournament_id: '',
-  game_end_reason: 'NONE',
-  time_control_name: '',
-};
 
 const DEFAULT_TITLE = 'Woogles.io';
 

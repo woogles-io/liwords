@@ -5,7 +5,10 @@ import { useMountedState } from '../utils/mounted';
 import { SoughtGames } from './sought_games';
 import { ActiveGames } from './active_games';
 import { SeekForm } from './seek_form';
-import { useLobbyStoreContext } from '../store/store';
+import {
+  useLobbyStoreContext,
+  useTournamentStoreContext,
+} from '../store/store';
 import { ActiveGame, SoughtGame } from '../store/reducers/lobby_reducer';
 import './seek_form.scss';
 
@@ -35,6 +38,7 @@ export const GameLists = React.memo((props: Props) => {
     tournamentID,
   } = props;
   const { lobbyContext } = useLobbyStoreContext();
+  const { tournamentContext } = useTournamentStoreContext();
   const [formDisabled, setFormDisabled] = useState(false);
   const [seekModalVisible, setSeekModalVisible] = useState(false);
   const [matchModalVisible, setMatchModalVisible] = useState(false);
@@ -45,6 +49,30 @@ export const GameLists = React.memo((props: Props) => {
     ) || null;
   const opponent = currentGame?.players.find((p) => p.displayName !== username)
     ?.displayName;
+
+  let matchButtonText = 'Match a friend';
+  if (tournamentID) {
+    console.log('tid', tournamentID, tournamentContext.metadata);
+    if (['CLUB', 'CLUBSESSION'].includes(tournamentContext.metadata.type)) {
+      matchButtonText = 'Start Club Game';
+    } else if (tournamentContext.metadata.type === 'STANDARD') {
+      matchButtonText = 'Start Tournament Game';
+    }
+    // XXX: The following is temporary code; remove this when we deploy the
+    // backend that handles the above.
+    if (
+      history.location.pathname.startsWith('/club/') &&
+      matchButtonText === 'Match a friend'
+    ) {
+      matchButtonText = 'Start Club Game';
+    }
+    if (
+      history.location.pathname.startsWith('/tournament/') &&
+      matchButtonText === 'Match a friend'
+    ) {
+      matchButtonText = 'Start Tournament Game';
+    }
+  }
   const renderGames = () => {
     if (loggedIn && userID && username && selectedGameTab === 'PLAY') {
       return (
@@ -252,7 +280,7 @@ export const GameLists = React.memo((props: Props) => {
             setMatchModalVisible(true);
           }}
         >
-          {!tournamentID ? 'Match a friend' : 'Start Tournament Game'}
+          {matchButtonText}
         </div>
       );
       !tournamentID &&

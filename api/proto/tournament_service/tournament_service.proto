@@ -140,6 +140,7 @@ message TournamentMetadataResponse {
   repeated string directors = 3;
   string slug = 4;
   string id = 5;
+  TType type = 6;
 }
 
 message RecentGamesRequest {
