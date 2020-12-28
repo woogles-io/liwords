@@ -4,7 +4,7 @@ go 1.14
 
 require (
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible
-	github.com/domino14/macondo v0.4.5-0.20201219201109-37a7cdd1b985
+	github.com/domino14/macondo v0.4.5-0.20201220182339-824fc6974fc7
 	github.com/golang/protobuf v1.4.2
 	github.com/gomodule/redigo v1.8.2
 	github.com/hashicorp/golang-lru v0.5.4

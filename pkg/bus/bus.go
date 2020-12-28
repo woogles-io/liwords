@@ -32,6 +32,7 @@ const (
 
 	AdjudicateInterval   = 10 * time.Second
 	GamesCounterInterval = 60 * time.Minute
+	SeeksExpireInterval  = 10 * time.Minute
 	// Cancel a game if it hasn't started after this much time.
 	CancelAfter = 60 * time.Second
 )
@@ -142,6 +143,9 @@ func (b *Bus) ProcessMessages(ctx context.Context) {
 	gameCounter := time.NewTicker(GamesCounterInterval)
 	defer gameCounter.Stop()
 
+	seekExpirer := time.NewTicker(SeeksExpireInterval)
+	defer seekExpirer.Stop()
+
 outerfor:
 	for {
 		select {
@@ -244,8 +248,14 @@ outerfor:
 				break
 			}
 			log.Info().Int64("game-count", n).Msg("game-stats")
-		}
 
+		case <-seekExpirer.C:
+			err := b.soughtGameStore.ExpireOld(ctx)
+			if err != nil {
+				log.Err(err).Msg("expiration-error")
+				break
+			}
+		}
 	}
 
 	log.Info().Msg("exiting processMessages loop")

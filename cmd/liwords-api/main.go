@@ -128,7 +128,10 @@ func main() {
 	}
 	stores.TournamentStore = tournamentstore.NewCache(tmpTournamentStore)
 
-	stores.SoughtGameStore = soughtgame.NewMemoryStore()
+	stores.SoughtGameStore, err = soughtgame.NewDBStore(cfg)
+	if err != nil {
+		panic(err)
+	}
 	stores.ConfigStore = cfgstore.NewRedisConfigStore(redisPool)
 	stores.ListStatStore, err = stats.NewListStatStore(cfg.DBConnString)
 	if err != nil {

@@ -24,6 +24,7 @@ type SoughtGameStore interface {
 	DeleteForUser(ctx context.Context, userID string) (*entity.SoughtGame, error)
 	DeleteForConnID(ctx context.Context, connID string) (*entity.SoughtGame, error)
 	UserMatchedBy(ctx context.Context, userID, matcher string) (bool, error)
+	ExpireOld(ctx context.Context) error
 }
 
 func NewSoughtGame(ctx context.Context, gameStore SoughtGameStore,
