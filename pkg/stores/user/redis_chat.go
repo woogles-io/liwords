@@ -36,8 +36,12 @@ local results = {}
 for i, v in ipairs(rresp) do
 	-- channel looks like  channel:friendly_name
 	-- capture the channel.
-	local chan = string.match(v, "chat%.([%a%.%d_]+):.+")
-	redis.log(redis.LOG_WARNING, "matching "..v.." chan was "..chan)
+	-- Accepted characters in channel name (the thing after "chat." --
+	--  letters, numbers, period, dash and underscore.
+	-- Note: the dash is only there to fix a legacy crash. (liwords GH Issue #325)
+	-- We can remove this after a few weeks, once any old channels expire. It won't
+	-- work because presence channels use dashes as separators (realms).
+	local chan = string.match(v, "chat%.([%a%.%d%-_]+):.+")
 	if chan then
 		-- get the last chat msg
 		local chatkey = "chat:"..chan
