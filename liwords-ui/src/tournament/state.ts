@@ -1,9 +1,12 @@
+type tourneytypes = 'STANDARD' | 'CLUB' | 'CLUB_SESSION';
+
 export type TournamentMetadata = {
   name: string;
   description: string;
   directors: Array<string>;
   slug: string;
   id: string;
+  type: tourneytypes;
 };
 
 export type TournamentState = {
@@ -18,5 +21,6 @@ export const defaultTournamentState = {
     directors: new Array<string>(),
     slug: '',
     id: '',
+    type: 'STANDARD' as tourneytypes,
   },
 };

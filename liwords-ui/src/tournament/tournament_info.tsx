@@ -10,6 +10,7 @@ import {
   useTournamentStoreContext,
 } from '../store/store';
 import { ActionType } from '../actions/actions';
+import { UsernameWithContext } from '../shared/usernameWithContext';
 
 type TournamentInfoProps = {};
 
@@ -67,11 +68,15 @@ export const TournamentInfo = (props: TournamentInfoProps) => {
     lobbyContext.gamesPageSize,
   ]);
 
+  const directors = tournamentContext.metadata.directors.map((username) => (
+    <UsernameWithContext username={username} omitSendMessage key={username} />
+  ));
+
   return (
     <div className="tournament-info">
       <Card title="Tournament Information">
         <h3 className="tournament-name">{tournamentContext.metadata.name}</h3>
-        <h4>Directors: {tournamentContext.metadata.directors.join(', ')}</h4>
+        <h4>Directors: {directors}</h4>
         <ReactMarkdown linkTarget="_blank">
           {tournamentContext.metadata.description}
         </ReactMarkdown>
