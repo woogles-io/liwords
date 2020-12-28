@@ -6,6 +6,7 @@ import { RatingBadge } from './rating_badge';
 import { challengeFormat, timeFormat } from './sought_games';
 import { ActiveGame } from '../store/reducers/lobby_reducer';
 import { calculateTotalTime } from '../store/constants';
+
 type Props = {
   activeGames: ActiveGame[];
   username?: string;
@@ -93,6 +94,10 @@ export const ActiveGames = (props: Props) => {
         {
           text: 'NWL18',
           value: 'NWL18',
+        },
+        {
+          text: 'ECWL',
+          value: 'ECWL',
         },
       ],
       filterMultiple: false,

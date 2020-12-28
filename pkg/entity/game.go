@@ -79,8 +79,7 @@ type Game struct {
 	sync.RWMutex
 	game.Game
 
-	PlayerDBIDs  [2]uint // needed to associate the games to the player IDs in the db.
-	PlayersReady [2]bool
+	PlayerDBIDs [2]uint // needed to associate the games to the player IDs in the db.
 
 	GameReq *pb.GameRequest
 	// started is set when the game actually starts (when the game timers start).

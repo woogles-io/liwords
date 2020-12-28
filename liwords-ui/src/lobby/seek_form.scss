@@ -17,13 +17,20 @@
   button {
     font-size: 13px;
   }
+  .ant-modal-body {
+    padding-bottom: 0;
+  }
+  .ant-modal-footer {
+    padding: 0 24px 24px 0;
+  }
 
   .ant-radio-button-wrapper:not(.ant-radio-button-wrapper-disabled) {
     @include colorModed() {
       background: m($background);
       border-color: m($gray-medium);
-      color: m($gray-extreme);
+      color: m($gray-medium);
     }
+    opacity: 0.9;
     &:before {
       @include colorModed() {
         background: m($gray-medium);
@@ -32,10 +39,12 @@
   }
   .ant-radio-button-wrapper-checked:not(.ant-radio-button-wrapper-disabled) {
     @include colorModed() {
-      background: m($background);
       border-color: m($primary-dark);
-      color: m($primary-dark);
+      color: m($gray-extreme);
+      background: m($primary-light);
     }
+    opacity: 1;
+    transition: none;
     &:before {
       @include colorModed() {
         background: m($primary-dark);
@@ -52,7 +61,12 @@
       background: m($background);
       color: m($gray-extreme);
     }
+    z-index: 1100;
+    .hover-help {
+      display: none;
+    }
   }
+
   .ant-form-item input, .ant-select-single:not(.ant-select-customize-input) .ant-select-selector .ant-select-selection-search-input {
     @include colorModed() {
       background: m($background);
@@ -64,6 +78,22 @@
       background: m($card-background);
       color: m($gray-extreme);
     }
+  }
+  .ant-form-item-control-input {
+    width: 100%;
+  }
+  .extra-time-setter, .initial {
+    display: flex;
+    align-items: center;
+    .ant-form-item-control-input {
+      width: auto;
+    }
+  }
+  .initial {
+    margin-top: 48px;
+  }
+  .extra-time-setter {
+    margin-bottom: 48px;
   }
   .ant-form-item .ant-form-item-label {
     text-align: left;
@@ -78,7 +108,7 @@
     }
   }
   .ant-slider {
-    width: 320px;
+    width: 220px;
   }
 
 
@@ -103,7 +133,14 @@
     align-items: center;
     width: calc(100% - 24px);
     .ant-form-item-extra {
-      margin-left: 6px;
+      margin-left: 12px;
+      .help {
+        display: block;
+        font-size: 13px;
+        @include colorModed() {
+          color: m($primary-midDark);
+        }
+      }
     }
   }
   .ant-modal-footer .ant-btn {

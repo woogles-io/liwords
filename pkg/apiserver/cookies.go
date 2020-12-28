@@ -134,80 +134,6 @@ func AuthenticationMiddlewareGenerator(sessionStore sessions.SessionStore) (mw f
 	}
 	return
 }
-
-/*
-func AdminAuthMiddlewareGenerator() (mw func(http.Handler) http.Handler) {
-	mw = func(h http.Handler) http.Handler {
-		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			ctx := r.Context()
-			log := zerolog.Ctx(ctx)
-			var session *entity.Session
-			var err error
-			// Migrate old sessionid to session
-			oldSessionID, err := r.Cookie("sessionid")
-			authed := false
-			if err != nil {
-				// Don't worry about it, do nothing.
-				log.Debug().Msg("old session cookie error")
-			} else {
-				session, err = sessionStore.Get(ctx, oldSessionID.Value)
-				if err != nil {
-					log.Err(err).Msg("error-getting-session")
-					// Just serve, unauthenticated.
-					h.ServeHTTP(w, r)
-					return
-				}
-				authed = true
-				// Make new cookie
-				SetDefaultCookie(r.Context(), oldSessionID.Value)
-				// Delete old cookies
-				SetCookie(r.Context(), &http.Cookie{
-					Name:     "sessionid",
-					Value:    oldSessionID.Value,
-					Expires:  time.Now().Add(-100 * time.Hour),
-					HttpOnly: true,
-					Path:     "/",
-				})
-				SetCookie(r.Context(), &http.Cookie{
-					Name:     "sessionid",
-					Value:    oldSessionID.Value,
-					Expires:  time.Now().Add(-100 * time.Hour),
-					HttpOnly: true,
-					Path:     "/twirp/user_service.AuthenticationService",
-				})
-				log.Debug().Msg("deleted-old-cookies")
-			}
-
-			if !authed {
-				// Try the new cookie.
-				sessionID, err := r.Cookie("session")
-				if err != nil {
-					if err != http.ErrNoCookie {
-						log.Err(err).Msg("error-getting-new-cookie")
-					}
-					// No problem, this user will not be authenticated.
-					log.Debug().Msg("unauthenticated request")
-					h.ServeHTTP(w, r)
-					return
-				}
-				session, err = sessionStore.Get(ctx, sessionID.Value)
-				if err != nil {
-					log.Err(err).Msg("error-getting-session")
-					// Just serve, unauthenticated.
-					h.ServeHTTP(w, r)
-					return
-				}
-			}
-
-			ctx = context.WithValue(ctx, sesskey, session)
-			r = r.WithContext(ctx)
-			// printContextInternals(r.Context(), true)
-			h.ServeHTTP(w, r)
-		})
-	}
-	return
-} */
-
 func GetSession(ctx context.Context) (*entity.Session, error) {
 	sessval := ctx.Value(sesskey)
 	if sessval == nil {
@@ -215,7 +141,7 @@ func GetSession(ctx context.Context) (*entity.Session, error) {
 	}
 	sess, ok := sessval.(*entity.Session)
 	if !ok {
-		return nil, twirp.InternalErrorWith(errors.New("unexpected error with type inference"))
+		return nil, twirp.InternalErrorWith(errors.New("unexpected error with session type inference"))
 	}
 	return sess, nil
 }

@@ -11,18 +11,31 @@ message StartRoundRequest {
   int32 round = 2;
 }
 
+enum TType {
+  // A Standard tournament
+  STANDARD = 0;
+  // A new "clubhouse"
+  CLUB = 1;
+  // A club session
+  CLUB_SESSION = 2;
+}
+
 message NewTournamentRequest {
   // If slug is not assigned, a random ID will be chosen.
   string slug = 1;
   string name = 2;
   string description = 3;
   repeated string director_ids = 4;
+
+  TType type = 5;
 }
 
-message TournamentMetadataRequest {
+message SetTournamentMetadataRequest {
   string id = 1;
   string name = 2;
   string description = 3;
+  string slug = 4;
+  TType type = 5;
 }
 
 message SingleRoundControls {
@@ -31,10 +44,11 @@ message SingleRoundControls {
   int32 games_per_round = 3;
   int32 round = 4;
   int32 factor = 5;
-  int32 max_repeats = 6;
-  bool allow_over_max_repeats = 7;
-  int32 repeat_relative_weight = 8;
-  int32 win_difference_relative_weight = 9;
+  int32 initial_fontes = 6;
+  int32 max_repeats = 7;
+  bool allow_over_max_repeats = 8;
+  int32 repeat_relative_weight = 9;
+  int32 win_difference_relative_weight = 10;
 }
 
 message SingleRoundControlsRequest {
@@ -110,9 +124,16 @@ message TournamentStartRoundCountdownRequest {
 }
 
 message TournamentResponse {}
-message NewTournamentResponse { string id = 1; }
+message NewTournamentResponse {
+  string id = 1;
+  string slug = 2;
+}
 
-message GetTournamentMetadataRequest { string id = 1; }
+message GetTournamentMetadataRequest {
+  // User must provide the ID, or the slug (but not both)
+  string id = 1;
+  string slug = 2;
+}
 
 message StartTournamentRequest { string id = 1; }
 
@@ -120,6 +141,9 @@ message TournamentMetadataResponse {
   string name = 1;
   string description = 2;
   repeated string directors = 3;
+  string slug = 4;
+  string id = 5;
+  TType type = 6;
 }
 
 message RecentGamesRequest {
@@ -137,9 +161,8 @@ service TournamentService {
   rpc NewTournament(NewTournamentRequest) returns(NewTournamentResponse);
   rpc GetTournamentMetadata(GetTournamentMetadataRequest)
       returns(TournamentMetadataResponse);
-  rpc StartTournament(StartTournamentRequest)
-      returns(TournamentResponse);
-  rpc SetTournamentMetadata(TournamentMetadataRequest)
+  rpc StartTournament(StartTournamentRequest) returns(TournamentResponse);
+  rpc SetTournamentMetadata(SetTournamentMetadataRequest)
       returns(TournamentResponse);
   rpc PairRound(PairRoundRequest) returns(TournamentResponse);
   rpc SetSingleRoundControls(SingleRoundControlsRequest)
@@ -154,7 +177,36 @@ service TournamentService {
   rpc RemovePlayers(TournamentPersons) returns(TournamentResponse);
   rpc SetPairing(TournamentPairingRequest) returns(TournamentResponse);
   rpc SetResult(TournamentResultOverrideRequest) returns(TournamentResponse);
-  rpc StartRoundCountdown(TournamentStartRoundCountdownRequest) returns(TournamentResponse);
+  rpc StartRoundCountdown(TournamentStartRoundCountdownRequest)
+      returns(TournamentResponse);
 
   rpc RecentGames(RecentGamesRequest) returns(RecentGamesResponse);
+
+  rpc CreateClubSession(NewClubSessionRequest) returns(ClubSessionResponse);
+  rpc GetRecentClubSessions(RecentClubSessionsRequest)
+      returns(ClubSessionsResponse);
 }
+
+message NewClubSessionRequest {
+  // date is the date of the session
+  google.protobuf.Timestamp date = 1;
+  string club_id = 2;
+}
+
+message ClubSessionResponse {
+  // Note that club sessions are tournaments in our backend. We return
+  // the created tournament ID here:
+  string tournament_id = 1;
+  // slug will look like /club/{club_name}/{date}. It should be
+  // case-insensitive.
+  string slug = 2;
+}
+
+message RecentClubSessionsRequest {
+  // club_id
+  string id = 1;
+  int32 count = 2;
+  int32 offset = 3;
+}
+
+message ClubSessionsResponse { repeated ClubSessionResponse sessions = 1; }

@@ -79,6 +79,10 @@ export const SoughtGames = (props: Props) => {
           text: 'NWL18',
           value: 'NWL18',
         },
+        {
+          text: 'ECWL',
+          value: 'ECWL',
+        },
       ],
       filterMultiple: false,
       onFilter: (
@@ -132,7 +136,7 @@ export const SoughtGames = (props: Props) => {
         return {
           seeker: outgoing ? (
             <Popconfirm
-              title={`Do you want to cancel this game?`}
+              title="Do you want to cancel this game?"
               onConfirm={() => {
                 props.newGame(sg.seekID);
                 setCancelVisible(false);

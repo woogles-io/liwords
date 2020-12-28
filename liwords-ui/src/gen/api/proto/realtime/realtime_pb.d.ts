@@ -294,6 +294,9 @@ export class UserPresence extends jspb.Message {
   getIsAnonymous(): boolean;
   setIsAnonymous(value: boolean): void;
 
+  getDeleting(): boolean;
+  setDeleting(value: boolean): void;
+
   serializeBinary(): Uint8Array;
   toObject(includeInstance?: boolean): UserPresence.AsObject;
   static toObject(includeInstance: boolean, msg: UserPresence): UserPresence.AsObject;
@@ -310,6 +313,7 @@ export namespace UserPresence {
     userId: string,
     channel: string,
     isAnonymous: boolean,
+    deleting: boolean,
   }
 }
 
@@ -1299,14 +1303,13 @@ export interface MessageTypeMap {
   SERVER_CHALLENGE_RESULT_EVENT: 9;
   SEEK_REQUESTS: 10;
   MATCH_REQUEST_CANCELLATION: 11;
+  ONGOING_GAME_EVENT: 12;
   TIMED_OUT: 13;
-  GAME_META_EVENT: 15;
-  ACTIVE_GAMES: 16;
+  ONGOING_GAMES: 14;
   GAME_DELETION: 17;
   MATCH_REQUESTS: 18;
   DECLINE_MATCH_REQUEST: 19;
   CHAT_MESSAGE: 20;
-  CHAT_MESSAGES: 21;
   USER_PRESENCE: 22;
   USER_PRESENCES: 23;
   SERVER_MESSAGE: 24;

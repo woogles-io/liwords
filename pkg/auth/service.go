@@ -10,6 +10,7 @@ import (
 
 	"github.com/twitchtv/twirp"
 
+	"github.com/domino14/liwords/pkg/config"
 	"github.com/domino14/liwords/pkg/emailer"
 	"github.com/domino14/liwords/pkg/sessions"
 
@@ -51,15 +52,19 @@ var errPasswordTooShort = errors.New("your password is too short, use 8 or more 
 type AuthenticationService struct {
 	userStore    user.Store
 	sessionStore sessions.SessionStore
+	configStore  config.ConfigStore
 	secretKey    string
 	mailgunKey   string
-	appVersion   string
 }
 
-func NewAuthenticationService(u user.Store, ss sessions.SessionStore, secretKey,
-	mailgunKey string, appVersion string) *AuthenticationService {
-	return &AuthenticationService{userStore: u, sessionStore: ss, secretKey: secretKey,
-		mailgunKey: mailgunKey, appVersion: appVersion}
+func NewAuthenticationService(u user.Store, ss sessions.SessionStore, cs config.ConfigStore,
+	secretKey, mailgunKey string) *AuthenticationService {
+	return &AuthenticationService{
+		userStore:    u,
+		sessionStore: ss,
+		configStore:  cs,
+		secretKey:    secretKey,
+		mailgunKey:   mailgunKey}
 }
 
 // Login sets a cookie.
@@ -123,45 +128,48 @@ func (as *AuthenticationService) GetSocketToken(ctx context.Context, r *pb.Socke
 	// This view requires authentication.
 	sess, err := apiserver.GetSession(ctx)
 	cid := shortuuid.New()[1:10]
+	var unn, uuid string
+	var authed bool
 	if err != nil {
-		// Create an unauth token.
-		uuid := shortuuid.New()
-		token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-			"exp": time.Now().Add(TokenExpiration).Unix(),
-			"uid": uuid,
-			"unn": entity.DeterministicUsername(uuid),
-			"a":   false, // authed
-		})
-		tokenString, err := token.SignedString([]byte(as.secretKey))
-		if err != nil {
-			return nil, twirp.InternalErrorWith(err)
-		}
-		return &pb.SocketTokenResponse{
-			Token:      tokenString,
-			Cid:        cid,
-			AppVersion: as.appVersion,
-		}, nil
+		authed = false
+		uuid = shortuuid.New()
+		unn = entity.DeterministicUsername(uuid)
+	} else {
+		authed = true
+		uuid = sess.UserUUID
+		unn = sess.Username
 	}
 
+	// Create an unauth token.
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
 		"exp": time.Now().Add(TokenExpiration).Unix(),
-		"uid": sess.UserUUID,
-		"unn": sess.Username,
-		"a":   true,
+		"uid": uuid,
+		"unn": unn,
+		"a":   authed,
 	})
 	tokenString, err := token.SignedString([]byte(as.secretKey))
 	if err != nil {
 		return nil, twirp.InternalErrorWith(err)
 	}
+
+	// Maybe cache this?
+	feHash, err := as.configStore.FEHash(ctx)
+	if err != nil {
+		log.Err(err).Msg("error getting fe-hash")
+		// Continue anyway.
+	}
+
 	return &pb.SocketTokenResponse{
-		Token:      tokenString,
-		Cid:        cid,
-		AppVersion: as.appVersion,
+		Token:           tokenString,
+		Cid:             cid,
+		FrontEndVersion: feHash,
 	}, nil
+
 }
 
 func (as *AuthenticationService) ResetPasswordStep1(ctx context.Context, r *pb.ResetPasswordRequestStep1) (*pb.ResetPasswordResponse, error) {
-	u, err := as.userStore.GetByEmail(ctx, r.Email)
+	email := strings.TrimSpace(r.Email)
+	u, err := as.userStore.GetByEmail(ctx, email)
 	if err != nil {
 		return nil, twirp.NewError(twirp.Unauthenticated, err.Error())
 	}
@@ -177,12 +185,12 @@ func (as *AuthenticationService) ResetPasswordStep1(ctx context.Context, r *pb.R
 	}
 	resetURL := "https://woogles.io/password/new?t=" + tokenString
 
-	id, err := emailer.SendSimpleMessage(as.mailgunKey, r.Email, "Password reset for Woogles.io",
+	id, err := emailer.SendSimpleMessage(as.mailgunKey, email, "Password reset for Woogles.io",
 		fmt.Sprintf(ResetPasswordTemplate, resetURL, u.Username))
 	if err != nil {
 		return nil, twirp.InternalErrorWith(err)
 	}
-	log.Info().Str("id", id).Str("email", r.Email).Msg("sent-password-reset")
+	log.Info().Str("id", id).Str("email", email).Msg("sent-password-reset")
 
 	return &pb.ResetPasswordResponse{}, nil
 }

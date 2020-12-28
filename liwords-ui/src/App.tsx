@@ -21,6 +21,9 @@ import { PasswordChange } from './lobby/password_change';
 import { PasswordReset } from './lobby/password_reset';
 import { NewPassword } from './lobby/new_password';
 import { toAPIUrl } from './api/api';
+import { ChatMessage, MessageType } from './gen/api/proto/realtime/realtime_pb';
+import { encodeToSocketFmt } from './utils/protobuf';
+import { Clubs } from './clubs';
 
 type Blocks = {
   user_ids: Array<string>;
@@ -33,9 +36,17 @@ document?.body?.classList?.add(`mode--${useDarkMode ? 'dark' : 'default'}`);
 const App = React.memo(() => {
   const { useState } = useMountedState();
 
-  const { setExcludedPlayers } = useExcludedPlayersStoreContext();
+  const {
+    setExcludedPlayers,
+    setExcludedPlayersFetched,
+    pendingBlockRefresh,
+    setPendingBlockRefresh,
+  } = useExcludedPlayersStoreContext();
   const { resetStore } = useResetStoreContext();
-  const [shouldDisconnect, setShouldDisconnect] = useState(false);
+
+  // See store.tsx for how this works.
+  const [socketId, setSocketId] = useState(0);
+  const resetSocket = useCallback(() => setSocketId((n) => (n + 1) | 0), []);
 
   const [liwordsSocketValues, setLiwordsSocketValues] = useState({
     sendMessage: (msg: Uint8Array) => {},
@@ -52,15 +63,7 @@ const App = React.memo(() => {
     }
   }, [isCurrentLocation, resetStore]);
 
-  const disconnectSocket = useCallback(() => {
-    setShouldDisconnect(true);
-    setTimeout(() => {
-      // reconnect after 5 seconds.
-      setShouldDisconnect(false);
-    }, 5000);
-  }, []);
-
-  useEffect(() => {
+  const getFullBlocks = useCallback(() => {
     axios
       .post<Blocks>(
         toAPIUrl('user_service.SocializeService', 'GetFullBlocks'),
@@ -72,9 +75,37 @@ const App = React.memo(() => {
       })
       .catch((e) => {
         console.log(e);
+      })
+      .finally(() => {
+        setExcludedPlayersFetched(true);
+        setPendingBlockRefresh(false);
       });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [setExcludedPlayers, setExcludedPlayersFetched, setPendingBlockRefresh]);
+
+  useEffect(() => {
+    getFullBlocks();
+  }, [getFullBlocks]);
+
+  useEffect(() => {
+    if (pendingBlockRefresh) {
+      getFullBlocks();
+    }
+  }, [getFullBlocks, pendingBlockRefresh]);
+
+  const sendChat = useCallback(
+    (msg: string, chan: string) => {
+      const evt = new ChatMessage();
+      evt.setMessage(msg);
+
+      // const chan = isObserver ? 'gametv' : 'game';
+      // evt.setChannel(`chat.${chan}.${gameID}`);
+      evt.setChannel(chan);
+      sendMessage(
+        encodeToSocketFmt(MessageType.CHAT_MESSAGE, evt.serializeBinary())
+      );
+    },
+    [sendMessage]
+  );
 
   // Avoid useEffect in the new path triggering xhr twice.
   if (!isCurrentLocation) return null;
@@ -82,19 +113,38 @@ const App = React.memo(() => {
   return (
     <div className="App">
       <LiwordsSocket
-        disconnect={shouldDisconnect}
+        key={socketId}
+        resetSocket={resetSocket}
         setValues={setLiwordsSocketValues}
       />
       <Switch>
         <Route path="/" exact>
-          <Lobby sendSocketMsg={sendMessage} DISCONNECT={disconnectSocket} />
+          <Lobby
+            sendSocketMsg={sendMessage}
+            sendChat={sendChat}
+            DISCONNECT={resetSocket}
+          />
         </Route>
-        <Route path="/tournament/:tournamentID">
-          <Lobby sendSocketMsg={sendMessage} DISCONNECT={disconnectSocket} />
+        <Route path="/tournament/:partialSlug">
+          <Lobby
+            sendSocketMsg={sendMessage}
+            sendChat={sendChat}
+            DISCONNECT={resetSocket}
+          />
+        </Route>
+        <Route path="/club/:partialSlug">
+          <Lobby
+            sendSocketMsg={sendMessage}
+            sendChat={sendChat}
+            DISCONNECT={resetSocket}
+          />
+        </Route>
+        <Route path="/clubs">
+          <Clubs />
         </Route>
         <Route path="/game/:gameID">
           {/* Table meaning a game table */}
-          <GameTable sendSocketMsg={sendMessage} />
+          <GameTable sendSocketMsg={sendMessage} sendChat={sendChat} />
         </Route>
         <Route path="/about">
           <About />

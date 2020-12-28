@@ -1,10 +1,10 @@
 import React, { useCallback, useEffect } from 'react';
 import { Link, useParams, useLocation } from 'react-router-dom';
-import { notification, Card, Table, Row, Col } from 'antd';
+import { notification, Card, Table, Row, Col, Switch } from 'antd';
 import axios, { AxiosError } from 'axios';
 import { useMountedState } from '../utils/mounted';
 import { TopBar } from '../topbar/topbar';
-import { Switch } from 'antd';
+
 import './profile.scss';
 import { toAPIUrl } from '../api/api';
 import { useLoginStateStoreContext } from '../store/store';
@@ -43,6 +43,11 @@ type Rating = {
   r: number;
   rd: number;
   v: number;
+};
+
+type user = {
+  username: string;
+  uuid: string;
 };
 
 type ProfileRatings = { [variant: string]: Rating };
@@ -217,6 +222,7 @@ export const UserProfile = React.memo((props: Props) => {
   const { loginState } = useLoginStateStoreContext();
   const { username: viewer } = loginState;
   const [recentGamesOffset, setRecentGamesOffset] = useState(0);
+  const [blockedUsers, setBlockedUsers] = useState<Array<user>>([]);
   useEffect(() => {
     axios
       .post<ProfileResponse>(
@@ -232,7 +238,18 @@ export const UserProfile = React.memo((props: Props) => {
       })
       .catch(errorCatcher);
   }, [username, location.pathname]);
-
+  const refreshBlocks = useCallback(() => {
+    axios
+      .post(
+        toAPIUrl('user_service.SocializeService', 'GetBlocks'),
+        {},
+        { withCredentials: true }
+      )
+      .then((res) => {
+        setBlockedUsers(res.data.users);
+      });
+  }, []);
+  useEffect(refreshBlocks, [refreshBlocks]);
   useEffect(() => {
     axios
       .post<RecentGamesResponse>(
@@ -281,6 +298,7 @@ export const UserProfile = React.memo((props: Props) => {
             {viewer !== username ? (
               <UsernameWithContext
                 omitProfileLink
+                omitSendMessage
                 username={username}
                 userID={userID}
               />
@@ -309,6 +327,21 @@ export const UserProfile = React.memo((props: Props) => {
           fetchNext={recentGames.length < gamesPageSize ? undefined : fetchNext}
         />
         <StatsCard stats={stats} />
+
+        {viewer === username && blockedUsers.length > 0 && (
+          <Card title="Blocked Users" className="blocked-users">
+            {blockedUsers.map((u) => (
+              <UsernameWithContext
+                key={u.uuid}
+                blockCallback={refreshBlocks}
+                omitProfileLink
+                omitSendMessage
+                username={u.username}
+                userID={u.uuid}
+              />
+            ))}
+          </Card>
+        )}
       </div>
     </>
   );

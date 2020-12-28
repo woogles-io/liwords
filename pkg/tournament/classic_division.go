@@ -4,9 +4,10 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"gorm.io/datatypes"
 	"math/rand"
 	"sort"
+
+	"gorm.io/datatypes"
 
 	"github.com/domino14/liwords/pkg/entity"
 	"github.com/domino14/liwords/pkg/pair"
@@ -39,27 +40,43 @@ func NewClassicDivision(players []string,
 	}
 
 	isElimination := false
-	for _, control := range roundControls {
+	initialFontes := 0
+	for i := 0; i < len(roundControls); i++ {
+		control := roundControls[i]
 		if control.PairingMethod == entity.Elimination {
 			isElimination = true
 		} else if isElimination && control.PairingMethod != entity.Elimination {
 			return nil, errors.New("cannot mix Elimination pairings with any other pairing method")
+		} else if i != 0 {
+			if control.PairingMethod == entity.InitialFontes &&
+				roundControls[i-1].PairingMethod != entity.InitialFontes {
+				return nil, errors.New("cannot use Initial Fontes pairing when an earlier round used a different pairing method")
+			} else if control.PairingMethod != entity.InitialFontes &&
+				roundControls[i-1].PairingMethod == entity.InitialFontes {
+				initialFontes = i
+			}
 		}
+
 	}
 
-	// For now, assume we require exactly n round and 2 ^ n players for an elimination tournament
+	if initialFontes > 0 && initialFontes%2 == 0 {
+		return nil, fmt.Errorf("number of rounds paired with Initial Fontes must be odd, have %d instead", initialFontes)
+	}
+
+	// For now, assume we require exactly n rounds and 2 ^ n players for an elimination tournament
 
 	if roundControls[0].PairingMethod == entity.Elimination {
 		expectedNumberOfPlayers := 1 << numberOfRounds
 		if expectedNumberOfPlayers != numberOfPlayers {
-			return nil, fmt.Errorf("invalid number of players based on the number of rounds."+
-				" Have %d players, expected %d players based on the number of rounds (%d)",
+			return nil, fmt.Errorf("invalid number of players based on the number of rounds: "+
+				" have %d players, expected %d players based on the number of rounds which is %d",
 				numberOfPlayers, expectedNumberOfPlayers, numberOfRounds)
 		}
 
 	}
 
 	for i := 0; i < numberOfRounds; i++ {
+		roundControls[i].InitialFontes = initialFontes
 		roundControls[i].Round = i
 	}
 
@@ -76,10 +93,11 @@ func NewClassicDivision(players []string,
 			return nil, err
 		}
 	}
-	// We can make all non-standings dependent pairings right now
+
+	// We can make all standings independent pairings right now
 	for i := 1; i < numberOfRounds; i++ {
 		pm := roundControls[i].PairingMethod
-		if pm == entity.RoundRobin || pm == entity.Random {
+		if pair.IsStandingsIndependent(pm) && pm != entity.Manual {
 			err := t.PairRound(i)
 			if err != nil {
 				return nil, err
@@ -262,16 +280,13 @@ func (t *ClassicDivision) SubmitResult(round int,
 	}
 
 	// Only pair if this round is complete and the tournament
-	// is not over. Don't pair for round robin and random since those pairings
+	// is not over. Don't pair for standings independent pairings since those pairings
 	// were made when the tournament was created.
 	if roundComplete {
 		if !amend {
 			t.CurrentRound = round + 1
 		}
-		if !finished &&
-			t.RoundControls[round+1].PairingMethod != entity.RoundRobin &&
-			t.RoundControls[round+1].PairingMethod != entity.Random &&
-			t.RoundControls[round+1].PairingMethod != entity.Manual {
+		if !finished && !pair.IsStandingsIndependent(t.RoundControls[round+1].PairingMethod) {
 			err = t.PairRound(round + 1)
 			if err != nil {
 				return err
@@ -364,6 +379,7 @@ func (t *ClassicDivision) PairRound(round int) error {
 			if pairings[i] < 0 {
 				opponentIndex = playerIndex
 			} else if pairings[i] >= l {
+				fmt.Println(pairings)
 				return fmt.Errorf("invalid pairing for round %d: %d", round, pairings[i])
 			} else {
 				opponentIndex = t.PlayerIndexMap[playerOrder[pairings[i]]]

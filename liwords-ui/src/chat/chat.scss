@@ -13,7 +13,7 @@ p {
     margin-bottom: 24px;
     .entities {
       overflow-y: auto;
-      max-height: $main-container-width-tablet - 110px;
+      max-height: $main-container-width-tablet - 122px;
     }
   }
   .ant-card.chat .ant-card-body {
@@ -22,7 +22,11 @@ p {
   #rc-tabs-0-panel-PLAYERS {
     padding: 24px;
   }
-  .chat-context {
+  .channel-list {
+    overflow-y: auto;
+    max-height: $main-container-width-tablet;
+  }
+  .chat-context, .channel-list {
     min-height: 48px;
     width: 100%;
     @include colorModed() {
@@ -33,9 +37,6 @@ p {
     font-weight: bold;
     z-index: 1;
     padding: 12px 24px 0;
-    span {
-      display: block;
-    }
     .list-trigger {
       letter-spacing: 0;
       cursor: pointer;
@@ -45,7 +46,55 @@ p {
       font-weight: bold;
       text-transform: none;
     }
-
+    .ant-select {
+      width: 100%;
+      max-width: 500px;
+      margin-bottom: 24px;
+      @include colorModed() {
+        background: m($card-background);
+        color: m($gray-extreme);
+      }
+      .ant-select-selection-placeholder {
+        z-index: 1;
+        font-weight: 400;
+        opacity: 0.8;
+        @include colorModed() {
+          color: m($gray-medium);
+        }
+      }
+      input, .ant-select-selector {
+        @include colorModed() {
+          background: m($card-background);
+          color: m($gray-extreme);
+        }
+      }
+    }
+    .breadcrumb {
+      padding: 6px 0 0;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 12px;
+      @include colorModed() {
+        color: m($gray-medium);
+      }
+      p {
+        @include colorModed() {
+          color: m($gray-medium);
+        }
+      }
+      .link.plain {
+        text-transform: none;
+        font-size: 14px;
+        @include colorModed() {
+          color: m($primary-dark);
+        }
+      }
+      .anticon {
+        font-size: 18px;
+        margin-right: 12px;
+      }
+    }
     .presence-count {
       position: relative;
       display: flex;
@@ -57,6 +106,9 @@ p {
       margin: 6px 0;
       @include colorModed() {
         color: m($gray-medium);
+      }
+      span {
+        display: block;
       }
     }
     .presence {
@@ -75,6 +127,7 @@ p {
     }
     &.scrolling {
       padding-bottom: 12px;
+      box-shadow: 0px 2px 4px rgba(0, 0, 0, 0.06);
       @include colorModed() {
         border-bottom: 1px solid m($off-background);
       }
@@ -83,15 +136,91 @@ p {
         width: 100%;
         padding: 12px 24px;
         left: 0;
+        box-shadow: 0px 2px 4px rgba(0, 0, 0, 0.06);
         @include colorModed() {
           background: m($card-background);
           border-bottom: 1px solid m($off-background);
         }
       }
     }
+    .channel-listing {
+      cursor: pointer;
+      .listing-name {
+        font-weight: 400;
+        @include colorModed() {
+          color: m($gray-extreme);
+        }
+      }
+      &.unread {
+        .listing-name {
+          font-weight: 700;
+        }
+        .listing-preview {
+          font-weight: 700;
+            @include colorModed() {
+              color: m($primary-dark);
+            }
+        }
+      }
+      &:first-child {
+        margin-top: 12px;
+      }
+      &:last-child {
+        margin-bottom: 24px;
+      }
+    }
+    .listing-preview {
+      font-size: 14px;
+      font-weight: 200;
+      width: 100%;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      margin-bottom: 18px;
+      @include colorModed() {
+        color: m($gray-extreme);
+      }
+    }
+  }
+  .channel-list .breadcrumb {
+    text-transform: uppercase;
+    padding-bottom: 12px;
+    margin-top: 12px;
+    font-size: 12px;
+    @include colorModed() {
+      color: m($gray-medium);
+    }
+  }
+  .breadcrumb.clickable {
+    display: flex;
+    justify-content: flex-start;
+    align-items: center;
+    cursor: pointer;
+    width: calc(100% - 18px);
+    margin-bottom: 12px;
+    &.unread {
+      @include colorModed() {
+        color: m($primary-dark);
+      }
+    }
+  }
+  .anticon-setting {
+    margin: 0;
+    cursor: pointer;
+    font-size: 18px;
+    @include colorModed() {
+      color: m($gray-medium);
+    }
+  }
+  .unread-marker {
+    font-size: 21px;
+    padding: 0 6px 3px;
+    @include colorModed() {
+      color: m($primary-dark);
+    }
   }
   .entities {
-    padding: 12px 24px;
+    padding: 12px 24px 0px;
     .chat-entity {
       .sender {
         font-weight: 800;
@@ -140,8 +269,11 @@ p {
 .game-table {
   .chat-area .ant-card.chat {
     height: 300px;
+    .channel-list {
+      max-height: 240px;
+    }
     .entities {
-      max-height: 186px;
+      max-height: 90px;
     }
   }
 }
@@ -161,15 +293,22 @@ p {
 
 @media (min-width: $screen-laptop-min) {
   .lobby .chat-area .ant-card.chat .entities {
-    max-height: calc(100vh - 270px);
+    max-height: calc(100vh - 324px);
+  }
+  .chat-area .channel-list {
+    max-height: calc(100vh - 164px);
   }
   .game-table {
     .chat-area .ant-card.chat {
       height: 355px;
       margin-bottom: 12px;
       .entities {
-        max-height: 186px;
+        max-height: 140px;
       }
+
+    }
+    .chat-area .ant-card.chat .channel-list {
+      max-height: 295px;
     }
   }
   .chat-area {
@@ -187,8 +326,11 @@ p {
     .chat-area .ant-card.chat {
       height: 495px;
       .entities {
-        max-height: 320px;
+        max-height: 274px;
       }
+    }
+    .chat-area .ant-card.chat .channel-list {
+      max-height: 435px;
     }
   }
 }
@@ -198,8 +340,11 @@ p {
     .chat-area .ant-card.chat {
       height: 564px;
       .entities {
-        max-height: 389px;
+        max-height: 357px;
       }
+    }
+    .chat-area .ant-card.chat .channel-list {
+      max-height: 504px;
     }
   }
 }

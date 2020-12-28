@@ -31,7 +31,7 @@ func (gs *GameService) GetMetadata(ctx context.Context, req *pb.GameInfoRequest)
 }
 
 //  GetRematchStreak gets quickdata for the given rematch streak.
-func (gs *GameService) GetRematchStreak(ctx context.Context, req *pb.RematchStreakRequest) (*pb.GameInfoResponses, error) {
+func (gs *GameService) GetRematchStreak(ctx context.Context, req *pb.RematchStreakRequest) (*pb.StreakInfoResponse, error) {
 	resp, err := gs.gameStore.GetRematchStreak(ctx, req.OriginalRequestId)
 	if err != nil {
 		return nil, twirp.InternalErrorWith(err)

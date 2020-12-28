@@ -9,16 +9,15 @@ import { BoardPanel } from './board_panel';
 import { TopBar } from '../topbar/topbar';
 import { Chat } from '../chat/chat';
 import {
-  useChatStoreContext,
   useExaminableGameContextStoreContext,
   useExamineStoreContext,
   useGameContextStoreContext,
   useGameEndMessageStoreContext,
   useLoginStateStoreContext,
   usePoolFormatStoreContext,
-  usePresenceStoreContext,
   useRematchRequestStoreContext,
   useTimerStoreContext,
+  useTournamentStoreContext,
 } from '../store/store';
 import { PlayerCards } from './player_cards';
 import Pool from './pool';
@@ -28,7 +27,6 @@ import {
   MatchRequest,
   SoughtGameProcessEvent,
   DeclineMatchRequest,
-  ChatMessage,
   ReadyForGame,
 } from '../gen/api/proto/realtime/realtime_pb';
 import { encodeToSocketFmt } from '../utils/protobuf';
@@ -38,7 +36,7 @@ import {
   GameInfo,
   GameMetadata,
   PlayerMetadata,
-  RecentGamesResponse,
+  StreakInfoResponse,
 } from './game_info';
 import { BoopSounds } from '../sound/boop';
 import { toAPIUrl } from '../api/api';
@@ -48,30 +46,38 @@ import { endGameMessageFromGameInfo } from '../store/end_of_game';
 import { singularCount } from '../utils/plural';
 import { Notepad, NotepadContextProvider } from './notepad';
 import { Analyzer, AnalyzerContextProvider } from './analyzer';
-import { TournamentMetadata } from '../tournament/tournament_info';
+import { TournamentMetadata } from '../tournament/state';
 
 type Props = {
   sendSocketMsg: (msg: Uint8Array) => void;
+  sendChat: (msg: string, chan: string) => void;
 };
 
 const StreakFetchDelay = 2000;
 
 const defaultGameInfo = {
   players: new Array<PlayerMetadata>(),
-  lexicon: '',
-  variant: '',
-  initial_time_seconds: 0,
-  increment_seconds: 0,
+  game_request: {
+    lexicon: '',
+    rules: {
+      variant_name: '',
+      board_layout_name: 'CrosswordGame',
+      letter_distribution_name: 'english',
+    },
+    initial_time_seconds: 0,
+    increment_seconds: 0,
+    challenge_rule: 'VOID' as  // wtf typescript? is there a better way?
+      | 'FIVE_POINT'
+      | 'TEN_POINT'
+      | 'SINGLE'
+      | 'DOUBLE'
+      | 'TRIPLE'
+      | 'VOID',
+    rating_mode: 'RATED',
+    max_overtime_minutes: 0,
+    original_request_id: '',
+  },
   tournament_id: '',
-  challenge_rule: 'VOID' as  // wtf typescript? is there a better way?
-    | 'FIVE_POINT'
-    | 'TEN_POINT'
-    | 'SINGLE'
-    | 'DOUBLE'
-    | 'TRIPLE'
-    | 'VOID',
-  rating_mode: 'RATED',
-  max_overtime_minutes: 0,
   game_end_reason: 'NONE',
   time_control_name: '',
 };
@@ -153,11 +159,24 @@ const ManageWindowTitle = (props: {}) => {
   return null;
 };
 
+const getChatTitle = (
+  playerNames: Array<string> | undefined,
+  username: string,
+  isObserver: boolean
+): string => {
+  if (!playerNames) {
+    return '';
+  }
+  if (isObserver) {
+    return playerNames.join(' versus ');
+  }
+  return playerNames.filter((n) => n !== username).shift() || '';
+};
+
 export const Table = React.memo((props: Props) => {
   const { useState } = useMountedState();
 
   const { gameID } = useParams();
-  const { chat, clearChat } = useChatStoreContext();
   const {
     gameContext: examinableGameContext,
   } = useExaminableGameContextStoreContext();
@@ -170,16 +189,20 @@ export const Table = React.memo((props: Props) => {
   const { gameEndMessage, setGameEndMessage } = useGameEndMessageStoreContext();
   const { loginState } = useLoginStateStoreContext();
   const { poolFormat, setPoolFormat } = usePoolFormatStoreContext();
-  const { presences } = usePresenceStoreContext();
   const { rematchRequest, setRematchRequest } = useRematchRequestStoreContext();
   const { pTimedOut, setPTimedOut } = useTimerStoreContext();
   const { username, userID } = loginState;
-  const [tournamentName, setTournamentName] = useState('');
-
+  const {
+    tournamentContext,
+    setTournamentContext,
+  } = useTournamentStoreContext();
+  const [playerNames, setPlayerNames] = useState(new Array<string>());
   const { sendSocketMsg } = props;
   // const location = useLocation();
   const [gameInfo, setGameInfo] = useState<GameMetadata>(defaultGameInfo);
-  const [streakGameInfo, setStreakGameInfo] = useState<Array<GameMetadata>>([]);
+  const [streakGameInfo, setStreakGameInfo] = useState<StreakInfoResponse>({
+    streak: [],
+  });
   const [isObserver, setIsObserver] = useState(false);
 
   useEffect(() => {
@@ -260,7 +283,6 @@ export const Table = React.memo((props: Props) => {
       });
 
     return () => {
-      clearChat();
       setGameInfo(defaultGameInfo);
       message.destroy('board-messages');
     };
@@ -282,13 +304,11 @@ export const Table = React.memo((props: Props) => {
         }
       )
       .then((resp) => {
-        setTournamentName(resp.data.name);
+        setTournamentContext({
+          metadata: resp.data,
+        });
       });
-  }, [gameInfo.tournament_id]);
-
-  useEffect(() => {
-    BoopSounds.playSound('startgameSound');
-  }, [gameID]);
+  }, [gameInfo.tournament_id, setTournamentContext]);
 
   useEffect(() => {
     // Request streak info only if a few conditions are true.
@@ -297,7 +317,7 @@ export const Table = React.memo((props: Props) => {
     // as soon as the game ends (so the streak updates without having to go
     // to a new game).
 
-    if (!gameInfo.original_request_id) {
+    if (!gameInfo.game_request.original_request_id) {
       return;
     }
     if (gameContext.playState === PlayState.GAME_OVER && !gameEndMessage) {
@@ -307,14 +327,14 @@ export const Table = React.memo((props: Props) => {
     }
     setTimeout(() => {
       axios
-        .post<RecentGamesResponse>(
+        .post<StreakInfoResponse>(
           toAPIUrl('game_service.GameMetadataService', 'GetRematchStreak'),
           {
-            original_request_id: gameInfo.original_request_id,
+            original_request_id: gameInfo.game_request.original_request_id,
           }
         )
         .then((streakresp) => {
-          setStreakGameInfo(streakresp.data.game_info);
+          setStreakGameInfo(streakresp.data);
         });
       // Put this on a delay. Otherwise the game might not be saved to the
       // db as having finished before the gameEndMessage comes in.
@@ -322,7 +342,11 @@ export const Table = React.memo((props: Props) => {
 
     // Call this when a gameEndMessage comes in, so the streak updates
     // at the end of the game.
-  }, [gameInfo.original_request_id, gameEndMessage, gameContext.playState]);
+  }, [
+    gameInfo.game_request.original_request_id,
+    gameEndMessage,
+    gameContext.playState,
+  ]);
 
   useEffect(() => {
     if (pTimedOut === undefined) return;
@@ -356,7 +380,7 @@ export const Table = React.memo((props: Props) => {
       }
     });
     setIsObserver(observer);
-
+    setPlayerNames(gameInfo.players.map((p) => p.nickname));
     // If we are not the observer, tell the server we're ready for the game to start.
     if (gameInfo.game_end_reason === 'NONE' && !observer) {
       const evt = new ReadyForGame();
@@ -406,22 +430,6 @@ export const Table = React.memo((props: Props) => {
     setRematchRequest(new MatchRequest());
   }, [declineRematch, rematchRequest, setRematchRequest]);
 
-  const sendChat = useCallback(
-    (msg: string) => {
-      const evt = new ChatMessage();
-      evt.setMessage(msg);
-
-      const chan = isObserver ? 'gametv' : 'game';
-      // XXX: Backend should figure out channels; also separate game and gameTV channels
-      // Right now everyone will get this.
-      evt.setChannel(`${chan}.${gameID}`);
-      sendSocketMsg(
-        encodeToSocketFmt(MessageType.CHAT_MESSAGE, evt.serializeBinary())
-      );
-    },
-    [gameID, isObserver, sendSocketMsg]
-  );
-
   // Figure out what rack we should display.
   // If we are one of the players, display our rack.
   // If we are NOT one of the players (so an observer), display the rack of
@@ -442,6 +450,14 @@ export const Table = React.memo((props: Props) => {
 
   // The game "starts" when the GameHistoryRefresher object comes in via the socket.
   // At that point gameID will be filled in.
+
+  useEffect(() => {
+    // Don't play when loading from history
+    if (!gameDone) {
+      BoopSounds.playSound('startgameSound');
+    }
+  }, [gameID, gameDone]);
+
   const location = useLocation();
   const searchParams = useMemo(() => new URLSearchParams(location.search), [
     location,
@@ -509,9 +525,7 @@ export const Table = React.memo((props: Props) => {
         <div className="chat-area" id="left-sidebar">
           <Card className="left-menu">
             {gameInfo.tournament_id ? (
-              <Link
-                to={`/tournament/${encodeURIComponent(gameInfo.tournament_id)}`}
-              >
+              <Link to={tournamentContext.metadata.slug}>
                 <HomeOutlined />
                 Back to Tournament
               </Link>
@@ -522,15 +536,24 @@ export const Table = React.memo((props: Props) => {
               </Link>
             )}
           </Card>
-          <Chat
-            chatEntities={chat}
-            sendChat={sendChat}
-            description={isObserver ? 'Observer chat' : 'Game chat'}
-            presences={presences}
-            peopleOnlineContext={peopleOnlineContext}
-          />
+          {playerNames.length > 1 ? (
+            <Chat
+              sendChat={props.sendChat}
+              defaultChannel={`chat.${
+                isObserver ? 'gametv' : 'game'
+              }.${gameID}`}
+              defaultDescription={getChatTitle(
+                playerNames,
+                username,
+                isObserver
+              )}
+              peopleOnlineContext={peopleOnlineContext}
+              tournamentID={gameInfo.tournament_id}
+            />
+          ) : null}
+
           {isExamining ? (
-            <Analyzer includeCard lexicon={gameInfo.lexicon} />
+            <Analyzer includeCard lexicon={gameInfo.game_request.lexicon} />
           ) : (
             <Notepad includeCard />
           )}
@@ -554,14 +577,24 @@ export const Table = React.memo((props: Props) => {
             gameDone={gameDone}
             playerMeta={gameInfo.players}
             tournamentID={gameInfo.tournament_id}
-            lexicon={gameInfo.lexicon}
+            tournamentSlug={tournamentContext.metadata.slug}
+            lexicon={gameInfo.game_request.lexicon}
+            challengeRule={gameInfo.game_request.challenge_rule}
+            handleAcceptRematch={
+              rematchRequest.getRematchFor() === gameID
+                ? handleAcceptRematch
+                : null
+            }
           />
-          <StreakWidget recentGames={streakGameInfo} />
+          <StreakWidget streakInfo={streakGameInfo} />
         </div>
         <div className="data-area" id="right-sidebar">
           {/* There are two player cards, css hides one of them. */}
           <PlayerCards gameMeta={gameInfo} playerMeta={gameInfo.players} />
-          <GameInfo meta={gameInfo} tournamentName={tournamentName} />
+          <GameInfo
+            meta={gameInfo}
+            tournamentName={tournamentContext.metadata.name}
+          />
           <Pool
             pool={examinableGameContext?.pool}
             currentRack={rack || ''}
@@ -582,7 +615,7 @@ export const Table = React.memo((props: Props) => {
             isExamining={isExamining}
             username={username}
             playing={us !== undefined}
-            lexicon={gameInfo.lexicon}
+            lexicon={gameInfo.game_request.lexicon}
             events={examinableGameContext.turns}
             board={examinableGameContext.board}
             playerMeta={gameInfo.players}

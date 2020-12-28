@@ -14,6 +14,7 @@ import {
   useTentativeTileContext,
 } from '../store/store';
 import { EphemeralTile } from '../utils/cwgame/common';
+import { ChallengeRule } from './game_info';
 
 const ExamineGameControls = React.memo((props: { lexicon: string }) => {
   const {
@@ -85,8 +86,9 @@ export type Props = {
   gameEndControls: boolean;
   showRematch: boolean;
   currentRack: string;
-  tournamentID?: string;
+  tournamentSlug?: string;
   lexicon: string;
+  challengeRule: ChallengeRule;
 };
 
 const GameControls = React.memo((props: Props) => {
@@ -94,6 +96,13 @@ const GameControls = React.memo((props: Props) => {
   const [passVisible, setPassVisible] = useState(false);
   const [challengeVisible, setChallengeVisible] = useState(false);
   const [resignVisible, setResignVisible] = useState(false);
+
+  const history = useHistory();
+  const handleExitToLobby = React.useCallback(() => {
+    props.tournamentSlug
+      ? history.replace(props.tournamentSlug)
+      : history.replace('/');
+  }, [history, props.tournamentSlug]);
 
   if (props.isExamining) {
     return <ExamineGameControls lexicon={props.lexicon} />;
@@ -106,7 +115,7 @@ const GameControls = React.memo((props: Props) => {
         onExamine={props.onExamine}
         onExportGCG={props.onExportGCG}
         showRematch={props.showRematch && !props.observer}
-        tournamentID={props.tournamentID}
+        onExit={handleExitToLobby}
       />
     );
   }
@@ -115,6 +124,7 @@ const GameControls = React.memo((props: Props) => {
     return (
       <div className="game-controls">
         <Button onClick={props.onExamine}>Examine</Button>
+        <Button onClick={handleExitToLobby}>Exit</Button>
       </div>
     );
   }
@@ -150,7 +160,7 @@ const GameControls = React.memo((props: Props) => {
               setResignVisible(false);
             }}
           >
-            Ragequit
+            Resign
           </Button>
         </Popconfirm>
 
@@ -209,6 +219,7 @@ const GameControls = React.memo((props: Props) => {
               setChallengeVisible(false);
             }}
             disabled={!props.myTurn}
+            hidden={props.challengeRule === 'VOID'}
           >
             Challenge
             <span className="key-command">3</span>
@@ -239,19 +250,13 @@ type EGCProps = {
   showRematch: boolean;
   onExamine: () => void;
   onExportGCG: () => void;
-  tournamentID?: string;
+  onExit: () => void;
 };
 
 const EndGameControls = (props: EGCProps) => {
   const { useState } = useMountedState();
 
   const [rematchDisabled, setRematchDisabled] = useState(false);
-  const history = useHistory();
-  const handleExitToLobby = React.useCallback(() => {
-    props.tournamentID
-      ? history.replace(`/tournament/${encodeURIComponent(props.tournamentID)}`)
-      : history.replace('/');
-  }, [history, props.tournamentID]);
 
   return (
     <div className="game-controls">
@@ -261,7 +266,7 @@ const EndGameControls = (props: EGCProps) => {
       </div>
       <div className="secondary-controls">
         <Button onClick={props.onExportGCG}>Export GCG</Button>
-        <Button onClick={handleExitToLobby}>Exit</Button>
+        <Button onClick={props.onExit}>Exit</Button>
       </div>
       {props.showRematch && !rematchDisabled && (
         <Button

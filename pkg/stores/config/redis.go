@@ -9,6 +9,7 @@ import (
 
 const (
 	GamesDisabledKey = "config:games-disabled"
+	FEHashKey        = "config:fe-hash"
 )
 
 type RedisConfigStore struct {
@@ -34,10 +35,7 @@ func (s *RedisConfigStore) SetGamesEnabled(ctx context.Context, enabled bool) er
 	}
 
 	_, err := conn.Do("SET", GamesDisabledKey, val)
-	if err != nil {
-		return err
-	}
-	return nil
+	return err
 }
 
 func (s *RedisConfigStore) GamesEnabled(ctx context.Context) (bool, error) {
@@ -52,4 +50,18 @@ func (s *RedisConfigStore) GamesEnabled(ctx context.Context) (bool, error) {
 	}
 	// disabled == 0 means enabled:
 	return val == 0, nil
+}
+
+func (s *RedisConfigStore) SetFEHash(ctx context.Context, hash string) error {
+	conn := s.redisPool.Get()
+	defer conn.Close()
+
+	_, err := conn.Do("SET", FEHashKey, hash)
+	return err
+}
+
+func (s *RedisConfigStore) FEHash(ctx context.Context) (string, error) {
+	conn := s.redisPool.Get()
+	defer conn.Close()
+	return redis.String(conn.Do("GET", FEHashKey))
 }

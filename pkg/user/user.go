@@ -4,6 +4,8 @@ import (
 	"context"
 
 	"github.com/domino14/liwords/pkg/entity"
+	pb "github.com/domino14/liwords/rpc/api/proto/realtime"
+	upb "github.com/domino14/liwords/rpc/api/proto/user_service"
 )
 
 // Store is an interface that user stores should implement.
@@ -11,6 +13,7 @@ type Store interface {
 	Get(ctx context.Context, username string) (*entity.User, error)
 	GetByUUID(ctx context.Context, uuid string) (*entity.User, error)
 	GetByEmail(ctx context.Context, email string) (*entity.User, error)
+	GetByAPIKey(ctx context.Context, apiKey string) (*entity.User, error)
 	// Username by UUID. Good for fast lookups.
 	Username(ctx context.Context, uuid string) (string, bool, error)
 	New(ctx context.Context, user *entity.User) error
@@ -33,21 +36,38 @@ type Store interface {
 	GetBlockedBy(ctx context.Context, uid uint) ([]*entity.User, error)
 	GetFullBlocks(ctx context.Context, uid uint) ([]*entity.User, error)
 
-	UsernamesByPrefix(ctx context.Context, prefix string) ([]string, error)
+	UsersByPrefix(ctx context.Context, prefix string) ([]*upb.BasicUser, error)
+	CachedCount(ctx context.Context) int
 }
 
 // PresenceStore stores user presence. Since it is meant to be easily user-visible,
 // we deal with unique usernames in addition to UUIDs.
+// Presence applies to chat channels, as well as an overall site-wide presence.
+// For example, we'd like to see who's online, as well as who's in our given channel
+// (i.e. who's watching a certain game with us?)
 type PresenceStore interface {
 	// SetPresence sets the presence. If channel is the string NULL this is
 	// equivalent to saying the user logged off.
-	SetPresence(ctx context.Context, uuid, username string, anon bool, channel string) error
-	ClearPresence(ctx context.Context, uuid, username string, anon bool) (string, error)
-	GetPresence(ctx context.Context, uuid string) (string, error)
+	SetPresence(ctx context.Context, uuid, username string, anon bool, channel string, connID string) error
+	ClearPresence(ctx context.Context, uuid, username string, anon bool, connID string) ([]string, error)
+	GetPresence(ctx context.Context, uuid string) ([]string, error)
+	// RenewPresence prevents the presence store from expiring the relevant keys.
+	// Basically, we're telling the presence store "this user and connection are still here".
+	// Otherwise, missing a few of these events will destroy the relevant presences.
+	RenewPresence(ctx context.Context, uuid, username string, anon bool, connID string) error
 
 	CountInChannel(ctx context.Context, channel string) (int, error)
 	GetInChannel(ctx context.Context, channel string) ([]*entity.User, error)
 	// BatchGetPresence returns a list of the users with their presence.
 	// Can use for buddy/follower lists.
 	BatchGetPresence(ctx context.Context, users []*entity.User) ([]*entity.User, error)
+
+	LastSeen(ctx context.Context, uuid string) (int64, error)
+}
+
+// ChatStore stores user and channel chats and messages
+type ChatStore interface {
+	AddChat(ctx context.Context, senderUsername, senderUID, msg, channel, channelFriendly string) (int64, error)
+	OldChats(ctx context.Context, channel string, n int) ([]*pb.ChatMessage, error)
+	LatestChannels(ctx context.Context, count, offset int, uid, tid string) (*upb.ActiveChatChannels, error)
 }

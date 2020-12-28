@@ -41,6 +41,17 @@ const (
 	AutomaticFirst
 )
 
+type CompetitionType string
+
+const (
+	// TypeStandard is a standard tournament
+	TypeStandard CompetitionType = "tournament"
+	// TypeClub is a club/clubhouse
+	TypeClub = "club"
+	// TypeClubSession is spawned from a club
+	TypeClubSession = "clubsession"
+)
+
 type TournamentGame struct {
 	Scores        []int                           `json:"scores"`
 	Results       []realtime.TournamentGameResult `json:"results"`
@@ -83,6 +94,7 @@ type RoundControls struct {
 	GamesPerRound               int
 	Round                       int
 	Factor                      int
+	InitialFontes               int
 	MaxRepeats                  int
 	AllowOverMaxRepeats         bool
 	RepeatRelativeWeight        int
@@ -106,13 +118,19 @@ type TournamentDivision struct {
 
 type Tournament struct {
 	sync.RWMutex
-	UUID              string                         `json:"uuid"`
-	Name              string                         `json:"name"`
-	Description       string                         `json:"desc"`
-	AliasOf           string                         `json:"aliasOf"`
-	URL               string                         `json:"url"`
+	UUID        string `json:"uuid"`
+	Name        string `json:"name"`
+	Description string `json:"desc"`
+	// XXX: We will likely remove the following two fields
+	AliasOf string `json:"aliasOf"`
+	URL     string `json:"url"`
+	// XXX: Investigate above.
 	ExecutiveDirector string                         `json:"execDirector"`
 	Directors         *TournamentPersons             `json:"directors"`
 	IsStarted         bool                           `json:"started"`
 	Divisions         map[string]*TournamentDivision `json:"divs"`
+	DefaultSettings   *realtime.GameRequest          `json:"settings"`
+	Type              CompetitionType                `json:"type"`
+	ParentID          string                         `json:"parent"`
+	Slug              string                         `json:"slug"`
 }

@@ -103,7 +103,11 @@ p.streak-loss {
       }
     }
   }
-
+  .score-card {
+    .analyzer-container {
+      display: none;
+    }
+  }
   .notepad-card, .analyzer-card {
     .ant-card-head .ant-card-head-wrapper {
       padding: 0;

@@ -72,14 +72,14 @@ enum MessageType {
   SERVER_CHALLENGE_RESULT_EVENT = 9;
   SEEK_REQUESTS = 10;
   MATCH_REQUEST_CANCELLATION = 11;
+  ONGOING_GAME_EVENT = 12;
   TIMED_OUT = 13;
-  GAME_META_EVENT = 15;
-  ACTIVE_GAMES = 16;
+  ONGOING_GAMES = 14;
   GAME_DELETION = 17;
   MATCH_REQUESTS = 18;
   DECLINE_MATCH_REQUEST = 19;
   CHAT_MESSAGE = 20;
-  CHAT_MESSAGES = 21;
+
   USER_PRESENCE = 22;
   USER_PRESENCES = 23;
   SERVER_MESSAGE = 24;
@@ -97,10 +97,8 @@ enum MessageType {
   // a byte long.
 }
 
-// GameMeta is meant to be a quick summary of a game for watching purposes,
-// for display in a list in the lobby e.g.
-// Note: this is very similar to the GameInfoResponse in game_service.proto,
-// but it is annoying to combine them now. The latter has some more info.
+// XXX THIS MESSAGE IS OBSOLETE; replaced by GameInfoResponse in
+// game_service.proto
 message GameMeta {
   message UserMeta {
     string relevant_rating = 1;
@@ -121,7 +119,7 @@ message ChatMessage {
   string username = 1;
   string channel = 2;
   string message = 3;
-  // millis.
+  // timestamp is in milliseconds!
   int64 timestamp = 4;
   string user_id = 5;
 }
@@ -133,6 +131,7 @@ message UserPresence {
   string user_id = 2;
   string channel = 3;
   bool is_anonymous = 4;
+  bool deleting = 5;
 }
 
 message UserPresences { repeated UserPresence presences = 1; }
@@ -175,6 +174,7 @@ message MatchRequestCancellation { string request_id = 1; }
 message SeekRequests { repeated SeekRequest requests = 1; }
 message MatchRequests { repeated MatchRequest requests = 1; }
 
+// OBSOLETE: delete me:
 message ActiveGames { repeated GameMeta games = 1; }
 
 // The server will send back a ServerGameplayEvent to a ClientGameplayEvent.

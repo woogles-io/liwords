@@ -20,7 +20,6 @@ import (
 	"github.com/domino14/liwords/pkg/stores/user"
 	"github.com/domino14/liwords/pkg/tournament"
 	pkguser "github.com/domino14/liwords/pkg/user"
-	pb "github.com/domino14/liwords/rpc/api/proto/realtime"
 	realtime "github.com/domino14/liwords/rpc/api/proto/realtime"
 	macondoconfig "github.com/domino14/macondo/config"
 	macondopb "github.com/domino14/macondo/gen/api/proto/macondo"
@@ -28,16 +27,16 @@ import (
 
 var TestDBHost = os.Getenv("TEST_DB_HOST")
 var TestingDBConnStr = "host=" + TestDBHost + " port=5432 user=postgres password=pass sslmode=disable"
-var gameReq = &pb.GameRequest{Lexicon: "CSW19",
-	Rules: &pb.GameRules{BoardLayoutName: entity.CrosswordGame,
+var gameReq = &realtime.GameRequest{Lexicon: "CSW19",
+	Rules: &realtime.GameRules{BoardLayoutName: entity.CrosswordGame,
 		LetterDistributionName: "English",
 		VariantName:            "classic"},
 
 	InitialTimeSeconds: 25 * 60,
 	IncrementSeconds:   0,
 	ChallengeRule:      macondopb.ChallengeRule_FIVE_POINT,
-	GameMode:           pb.GameMode_REAL_TIME,
-	RatingMode:         pb.RatingMode_RATED,
+	GameMode:           realtime.GameMode_REAL_TIME,
+	RatingMode:         realtime.RatingMode_RATED,
 	RequestId:          "yeet",
 	OriginalRequestId:  "originalyeet",
 	MaxOvertimeMinutes: 10}
@@ -152,10 +151,13 @@ func makeControls() *entity.TournamentControls {
 func makeTournament(ctx context.Context, ts tournament.TournamentStore, cfg *config.Config, directors *entity.TournamentPersons) (*entity.Tournament, error) {
 	return tournament.NewTournament(ctx,
 		ts,
-		"tid",
 		"Tournament",
 		"This is a test Tournament",
-		directors)
+		directors,
+		entity.TypeStandard,
+		"",
+		"/tournament/slug-tourney",
+	)
 }
 
 func userStore(dbURL string) pkguser.Store {

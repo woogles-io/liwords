@@ -67,7 +67,13 @@ func (b *Bus) instantiateAndStartGame(ctx context.Context, accUser *entity.User,
 				assignedFirst = 0 // accUser should go first
 			}
 		}
-		tournamentID = sg.MatchRequest.TournamentId
+		if sg.MatchRequest.TournamentId != "" {
+			t, err := b.tournamentStore.Get(ctx, sg.MatchRequest.TournamentId)
+			if err != nil {
+				return errors.New("tournament not found")
+			}
+			tournamentID = t.UUID
+		}
 	}
 
 	g, err := gameplay.InstantiateNewGame(ctx, b.gameStore, b.config,
@@ -186,17 +192,25 @@ func (b *Bus) readyForGame(ctx context.Context, evt *pb.ReadyForGame, userID str
 		return errors.New("game is over")
 	}
 
+	var readyID int
+
 	if g.History().Players[0].UserId == userID {
-		g.PlayersReady[0] = true
+		readyID = 0
 	} else if g.History().Players[1].UserId == userID {
-		g.PlayersReady[1] = true
+		readyID = 1
 	} else {
 		log.Error().Str("userID", userID).Str("gameID", evt.GameId).Msg("not-in-game")
 		return errors.New("ready for game but not in game")
 	}
 
+	rf, err := b.gameStore.SetReady(ctx, evt.GameId, readyID)
+	if err != nil {
+		return err
+	}
+
 	// Start the game if both players are ready (or if it's a bot game).
-	if g.PlayersReady[0] && g.PlayersReady[1] || g.GameReq.PlayerVsBot {
+	// readyflag will be (01 | 10) = 3 for two players.
+	if rf == 3 || g.GameReq.PlayerVsBot {
 		err = gameplay.StartGame(ctx, b.gameStore, b.gameEventChan, g.GameID())
 		if err != nil {
 			log.Err(err).Msg("starting-game")
@@ -228,16 +242,17 @@ func (b *Bus) gameRefresher(ctx context.Context, gameID string) (*entity.EventWr
 }
 
 func (b *Bus) adjudicateGames(ctx context.Context) error {
-	gs, err := b.gameStore.ListActive(ctx, "")
+	// Always bust the cache when we're adjudicating games.
+	gs, err := b.gameStore.ListActive(ctx, "", true)
 
 	if err != nil {
 		return err
 	}
 	now := time.Now()
 	log.Debug().Interface("active-games", gs).Msg("maybe-adjudicating...")
-	for _, g := range gs {
+	for _, g := range gs.GameInfo {
 		// These will likely be in the cache.
-		entGame, err := b.gameStore.Get(ctx, g.Id)
+		entGame, err := b.gameStore.Get(ctx, g.GameId)
 		if err != nil {
 			return err
 		}
@@ -247,21 +262,21 @@ func (b *Bus) adjudicateGames(ctx context.Context) error {
 		timeRanOut := entGame.TimeRanOut(onTurn)
 		entGame.RUnlock()
 		if started && timeRanOut {
-			log.Debug().Str("gid", g.Id).Msg("adjudicating-time-ran-out")
+			log.Debug().Str("gid", g.GameId).Msg("adjudicating-time-ran-out")
 			err = gameplay.TimedOut(ctx, b.gameStore, b.userStore,
-				b.listStatStore, b.tournamentStore, entGame.Game.PlayerIDOnTurn(), g.Id)
+				b.listStatStore, b.tournamentStore, entGame.Game.PlayerIDOnTurn(), g.GameId)
 			log.Err(err).Msg("adjudicating-after-gameplay-timed-out")
 		} else if !started && now.Sub(entGame.CreatedAt) > CancelAfter {
-			log.Debug().Str("gid", g.Id).
+			log.Debug().Str("gid", g.GameId).
 				Interface("now", now).
 				Interface("created", entGame.CreatedAt).
 				Msg("canceling-never-started")
-			err = gameplay.AbortGame(ctx, b.gameStore, g.Id)
+			err = gameplay.AbortGame(ctx, b.gameStore, g.GameId)
 			log.Err(err).Msg("adjudicating-after-abort-game")
 			// Delete the game from the lobby. We do this here instead
 			// of inside the gameplay package because the game event channel
 			// was never registered with an unstarted game.
-			wrapped := entity.WrapEvent(&pb.GameDeletion{Id: g.Id},
+			wrapped := entity.WrapEvent(&pb.GameDeletion{Id: g.GameId},
 				pb.MessageType_GAME_DELETION)
 			// XXX: Fix for tourneys ?
 			wrapped.AddAudience(entity.AudLobby, "gameEnded")

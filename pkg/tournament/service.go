@@ -2,11 +2,14 @@ package tournament
 
 import (
 	"context"
+	"errors"
+	"strings"
 
 	"github.com/domino14/liwords/pkg/apiserver"
 	"github.com/domino14/liwords/pkg/entity"
 	"github.com/domino14/liwords/pkg/user"
 	pb "github.com/domino14/liwords/rpc/api/proto/tournament_service"
+	"github.com/lithammer/shortuuid"
 	"github.com/rs/zerolog/log"
 	"github.com/twitchtv/twirp"
 
@@ -122,19 +125,56 @@ func (ts *TournamentService) NewTournament(ctx context.Context, req *pb.NewTourn
 	}
 	log.Debug().Interface("directors", directors).Msg("directors")
 
-	t, err := NewTournament(ctx, ts.tournamentStore, req.Slug, req.Name, req.Description, directors)
+	var tt entity.CompetitionType
+	switch req.Type {
+	case pb.TType_CLUB:
+		tt = entity.TypeClub
+		if !strings.HasPrefix(req.Slug, "/club/") {
+			return nil, twirp.NewError(twirp.InvalidArgument, "club slug must start with /club/")
+		}
+	case pb.TType_STANDARD:
+		tt = entity.TypeStandard
+		if !strings.HasPrefix(req.Slug, "/tournament/") {
+			return nil, twirp.NewError(twirp.InvalidArgument, "tournament slug must start with /tournament/")
+		}
+	case pb.TType_CLUB_SESSION:
+		tt = entity.TypeClubSession
+		if !strings.HasPrefix(req.Slug, "/club/") {
+			return nil, twirp.NewError(twirp.InvalidArgument, "club-session slug must start with /club/")
+		}
+	default:
+		return nil, twirp.NewError(twirp.InvalidArgument, "invalid tournament type")
+	}
+	t, err := NewTournament(ctx, ts.tournamentStore, req.Name, req.Description, directors,
+		tt, "", req.Slug)
 	if err != nil {
 		return nil, twirp.NewError(twirp.InvalidArgument, err.Error())
 	}
 	return &pb.NewTournamentResponse{
-		Id: t.UUID,
+		Id:   t.UUID,
+		Slug: t.Slug,
 	}, nil
 }
 
 func (ts *TournamentService) GetTournamentMetadata(ctx context.Context, req *pb.GetTournamentMetadataRequest) (*pb.TournamentMetadataResponse, error) {
-	t, err := ts.tournamentStore.Get(ctx, req.Id)
-	if err != nil {
-		return nil, twirp.NewError(twirp.InvalidArgument, err.Error())
+	if req.Id != "" && req.Slug != "" {
+		return nil, twirp.NewError(twirp.InvalidArgument, "you must provide tournament ID or slug, but not both")
+	}
+	if req.Id == "" && req.Slug == "" {
+		return nil, twirp.NewError(twirp.InvalidArgument, "you must provide either a tournament ID, or a slug")
+	}
+	var t *entity.Tournament
+	var err error
+	if req.Id != "" {
+		t, err = ts.tournamentStore.Get(ctx, req.Id)
+		if err != nil {
+			return nil, twirp.NewError(twirp.InvalidArgument, err.Error())
+		}
+	} else if req.Slug != "" {
+		t, err = ts.tournamentStore.GetBySlug(ctx, req.Slug)
+		if err != nil {
+			return nil, twirp.NewError(twirp.InvalidArgument, err.Error())
+		}
 	}
 
 	directors := []string{}
@@ -155,6 +195,8 @@ func (ts *TournamentService) GetTournamentMetadata(ctx context.Context, req *pb.
 		Name:        t.Name,
 		Description: t.Description,
 		Directors:   directors,
+		Slug:        t.Slug,
+		Id:          t.UUID,
 	}, nil
 
 }
@@ -342,6 +384,7 @@ func convertSingleRoundControls(reqRC *pb.SingleRoundControls) *entity.RoundCont
 		GamesPerRound:               int(reqRC.GamesPerRound),
 		Round:                       int(reqRC.Round),
 		Factor:                      int(reqRC.Factor),
+		InitialFontes:               int(reqRC.InitialFontes),
 		MaxRepeats:                  int(reqRC.MaxRepeats),
 		AllowOverMaxRepeats:         reqRC.AllowOverMaxRepeats,
 		RepeatRelativeWeight:        int(reqRC.RepeatRelativeWeight),
@@ -354,4 +397,39 @@ func convertRoundControls(reqRoundControls []*pb.SingleRoundControls) []*entity.
 		rcs = append(rcs, convertSingleRoundControls(reqRoundControls[i]))
 	}
 	return rcs
+}
+
+// XXX: Add auth
+func (ts *TournamentService) CreateClubSession(ctx context.Context, req *pb.NewClubSessionRequest) (*pb.ClubSessionResponse, error) {
+
+	// Fetch the club
+	club, err := ts.tournamentStore.Get(ctx, req.ClubId)
+	if err != nil {
+		return nil, err
+	}
+	if club.Type != entity.TypeClub {
+		return nil, errors.New("club sessions can only be created for clubs")
+	}
+	// /club/madison/
+	slugPrefix := club.Slug + "/"
+	slug := slugPrefix + req.Date.AsTime().Format("2006-01-02-") + shortuuid.New()[2:5]
+
+	sessionDate := req.Date.AsTime().Format("Mon Jan 2, 2006")
+
+	name := club.Name + " - " + sessionDate
+	// Create a tournament / club session.
+	t, err := NewTournament(ctx, ts.tournamentStore, name, club.Description, club.Directors,
+		entity.TypeClubSession, club.UUID, slug)
+	if err != nil {
+		return nil, twirp.NewError(twirp.InvalidArgument, err.Error())
+	}
+	return &pb.ClubSessionResponse{
+		TournamentId: t.UUID,
+		Slug:         t.Slug,
+	}, nil
+
+}
+
+func (ts *TournamentService) GetRecentClubSessions(ctx context.Context, req *pb.RecentClubSessionsRequest) (*pb.ClubSessionsResponse, error) {
+	return ts.tournamentStore.GetRecentClubSessions(ctx, req.Id, int(req.Count), int(req.Offset))
 }

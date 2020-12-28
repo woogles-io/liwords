@@ -3,7 +3,6 @@
 
 import * as jspb from "google-protobuf";
 import * as api_proto_realtime_realtime_pb from "../../../api/proto/realtime/realtime_pb";
-import * as macondo_api_proto_macondo_macondo_pb from "../../../macondo/api/proto/macondo/macondo_pb";
 import * as google_protobuf_timestamp_pb from "google-protobuf/google/protobuf/timestamp_pb";
 
 export class GameInfoRequest extends jspb.Message {
@@ -84,35 +83,14 @@ export class GameInfoResponse extends jspb.Message {
   setPlayersList(value: Array<PlayerInfo>): void;
   addPlayers(value?: PlayerInfo, index?: number): PlayerInfo;
 
-  getLexicon(): string;
-  setLexicon(value: string): void;
-
-  getVariant(): string;
-  setVariant(value: string): void;
-
   getTimeControlName(): string;
   setTimeControlName(value: string): void;
-
-  getInitialTimeSeconds(): number;
-  setInitialTimeSeconds(value: number): void;
 
   getTournamentId(): string;
   setTournamentId(value: string): void;
 
-  getChallengeRule(): macondo_api_proto_macondo_macondo_pb.ChallengeRuleMap[keyof macondo_api_proto_macondo_macondo_pb.ChallengeRuleMap];
-  setChallengeRule(value: macondo_api_proto_macondo_macondo_pb.ChallengeRuleMap[keyof macondo_api_proto_macondo_macondo_pb.ChallengeRuleMap]): void;
-
-  getRatingMode(): api_proto_realtime_realtime_pb.RatingModeMap[keyof api_proto_realtime_realtime_pb.RatingModeMap];
-  setRatingMode(value: api_proto_realtime_realtime_pb.RatingModeMap[keyof api_proto_realtime_realtime_pb.RatingModeMap]): void;
-
-  getMaxOvertimeMinutes(): number;
-  setMaxOvertimeMinutes(value: number): void;
-
   getGameEndReason(): api_proto_realtime_realtime_pb.GameEndReasonMap[keyof api_proto_realtime_realtime_pb.GameEndReasonMap];
   setGameEndReason(value: api_proto_realtime_realtime_pb.GameEndReasonMap[keyof api_proto_realtime_realtime_pb.GameEndReasonMap]): void;
-
-  getIncrementSeconds(): number;
-  setIncrementSeconds(value: number): void;
 
   clearScoresList(): void;
   getScoresList(): Array<number>;
@@ -130,13 +108,15 @@ export class GameInfoResponse extends jspb.Message {
   getGameId(): string;
   setGameId(value: string): void;
 
-  getOriginalRequestId(): string;
-  setOriginalRequestId(value: string): void;
-
   hasLastUpdate(): boolean;
   clearLastUpdate(): void;
   getLastUpdate(): google_protobuf_timestamp_pb.Timestamp | undefined;
   setLastUpdate(value?: google_protobuf_timestamp_pb.Timestamp): void;
+
+  hasGameRequest(): boolean;
+  clearGameRequest(): void;
+  getGameRequest(): api_proto_realtime_realtime_pb.GameRequest | undefined;
+  setGameRequest(value?: api_proto_realtime_realtime_pb.GameRequest): void;
 
   serializeBinary(): Uint8Array;
   toObject(includeInstance?: boolean): GameInfoResponse.AsObject;
@@ -151,22 +131,15 @@ export class GameInfoResponse extends jspb.Message {
 export namespace GameInfoResponse {
   export type AsObject = {
     playersList: Array<PlayerInfo.AsObject>,
-    lexicon: string,
-    variant: string,
     timeControlName: string,
-    initialTimeSeconds: number,
     tournamentId: string,
-    challengeRule: macondo_api_proto_macondo_macondo_pb.ChallengeRuleMap[keyof macondo_api_proto_macondo_macondo_pb.ChallengeRuleMap],
-    ratingMode: api_proto_realtime_realtime_pb.RatingModeMap[keyof api_proto_realtime_realtime_pb.RatingModeMap],
-    maxOvertimeMinutes: number,
     gameEndReason: api_proto_realtime_realtime_pb.GameEndReasonMap[keyof api_proto_realtime_realtime_pb.GameEndReasonMap],
-    incrementSeconds: number,
     scoresList: Array<number>,
     winner: number,
     createdAt?: google_protobuf_timestamp_pb.Timestamp.AsObject,
     gameId: string,
-    originalRequestId: string,
     lastUpdate?: google_protobuf_timestamp_pb.Timestamp.AsObject,
+    gameRequest?: api_proto_realtime_realtime_pb.GameRequest.AsObject,
   }
 }
 
@@ -257,6 +230,58 @@ export namespace RecentGamesRequest {
     username: string,
     numGames: number,
     offset: number,
+  }
+}
+
+export class StreakInfoResponse extends jspb.Message {
+  clearStreakList(): void;
+  getStreakList(): Array<StreakInfoResponse.SingleGameInfo>;
+  setStreakList(value: Array<StreakInfoResponse.SingleGameInfo>): void;
+  addStreak(value?: StreakInfoResponse.SingleGameInfo, index?: number): StreakInfoResponse.SingleGameInfo;
+
+  serializeBinary(): Uint8Array;
+  toObject(includeInstance?: boolean): StreakInfoResponse.AsObject;
+  static toObject(includeInstance: boolean, msg: StreakInfoResponse): StreakInfoResponse.AsObject;
+  static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+  static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+  static serializeBinaryToWriter(message: StreakInfoResponse, writer: jspb.BinaryWriter): void;
+  static deserializeBinary(bytes: Uint8Array): StreakInfoResponse;
+  static deserializeBinaryFromReader(message: StreakInfoResponse, reader: jspb.BinaryReader): StreakInfoResponse;
+}
+
+export namespace StreakInfoResponse {
+  export type AsObject = {
+    streakList: Array<StreakInfoResponse.SingleGameInfo.AsObject>,
+  }
+
+  export class SingleGameInfo extends jspb.Message {
+    getGameId(): string;
+    setGameId(value: string): void;
+
+    clearPlayersList(): void;
+    getPlayersList(): Array<string>;
+    setPlayersList(value: Array<string>): void;
+    addPlayers(value: string, index?: number): string;
+
+    getWinner(): number;
+    setWinner(value: number): void;
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): SingleGameInfo.AsObject;
+    static toObject(includeInstance: boolean, msg: SingleGameInfo): SingleGameInfo.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: SingleGameInfo, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): SingleGameInfo;
+    static deserializeBinaryFromReader(message: SingleGameInfo, reader: jspb.BinaryReader): SingleGameInfo;
+  }
+
+  export namespace SingleGameInfo {
+    export type AsObject = {
+      gameId: string,
+      playersList: Array<string>,
+      winner: number,
+    }
   }
 }
 

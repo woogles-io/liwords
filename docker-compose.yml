@@ -18,6 +18,7 @@ services:
       GORACE: history_size=7
     volumes:
       - .:/opt/program:rw
+      - ./data/lexica/dawg:/opt/program/data/lexica/dawg
     command: sh -c "go run -race cmd/liwords-api/*.go"
     depends_on: ["db", "proxy", "nats", "socket", "redis"]
     networks:
@@ -42,13 +43,14 @@ services:
       DEBUG: 1
     volumes:
       - ../macondo:/opt/program:rw
-      - ./data/lexica:/opt/program/data/lexica
+      # Use the same gaddag files we use for the WASM integration.
+      - ./liwords-ui/public/wasm:/opt/program/data/lexica/gaddag
     command: sh -c "go run -race cmd/bot/*.go"
     depends_on: ["nats"]
     networks:
       - aeronet
 
-  socket:
+  socket: &socketsetup
     build:
       context: ../liwords-socket
       dockerfile: Dockerfile-dev
@@ -68,6 +70,8 @@ services:
       - "traefik.http.routers.liwords-socket.entrypoints=web"
       - "traefik.http.services.liwords-socket.loadbalancer.server.port=8087"
       - traefik.enable=true
+
+  socket2: *socketsetup
 
   proxy:
     image: "traefik:v2.2"

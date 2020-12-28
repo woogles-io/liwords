@@ -1,9 +1,10 @@
-import React from 'react';
+import React, { useCallback } from 'react';
 import {
   Form,
   Radio,
   InputNumber,
   Switch,
+  Select,
   Tag,
   Slider,
   AutoComplete,
@@ -19,6 +20,7 @@ import { MatchUser } from '../gen/api/proto/realtime/realtime_pb';
 import { SoughtGame } from '../store/reducers/lobby_reducer';
 import { toAPIUrl } from '../api/api';
 import { debounce } from '../utils/debounce';
+import { fixedSettings } from './fixed_seek_controls';
 
 export type seekPropVals = { [val: string]: string | number | boolean };
 
@@ -56,9 +58,13 @@ const timeScaleToNum = (val: string) => {
       return parseInt(val, 10);
   }
 };
+type user = {
+  username: string;
+  uuid: string;
+};
 
 type SearchResponse = {
-  usernames: Array<string>;
+  users: Array<user>;
 };
 
 type Props = {
@@ -70,10 +76,19 @@ type Props = {
   tournamentID?: string;
 };
 
+const enableECWL = localStorage.getItem('enableECWL') === 'true';
 const otLabel = 'Overtime';
 const incLabel = 'Increment';
-const otUnitLabel = 'minutes';
-const incUnitLabel = 'seconds';
+const otUnitLabel = (
+  <>
+    minutes <span className="help">(10 point penalty each extra minute)</span>
+  </>
+);
+const incUnitLabel = (
+  <>
+    seconds <span className="help">(Extra seconds are awarded each turn)</span>
+  </>
+);
 
 export const SeekForm = (props: Props) => {
   const { useState } = useMountedState();
@@ -92,17 +107,29 @@ export const SeekForm = (props: Props) => {
   const defaultValues: seekPropVals = {
     lexicon: 'CSW19',
     challengerule: ChallengeRule.FIVE_POINT,
-    initialtime: 12, // Note this isn't minutes, but the slider position.
+    initialtime: 22, // Note this isn't minutes, but the slider position.
     rated: true,
     extratime: 1,
     friend: '',
     incOrOT: 'overtime',
     vsBot: false,
   };
-  const initialValues = {
-    ...defaultValues,
-    ...storedValues,
-  };
+  let disableControls = false;
+  let initialValues;
+
+  if (props.tournamentID && props.tournamentID in fixedSettings) {
+    disableControls = true;
+    initialValues = {
+      ...fixedSettings[props.tournamentID],
+      friend: '',
+    };
+  } else {
+    initialValues = {
+      ...defaultValues,
+      ...storedValues,
+      friend: '',
+    };
+  }
   const [itc, itt] = timeCtrlToDisplayName(
     timeScaleToNum(initTimeDiscreteScale[initialValues.initialtime]) * 60,
     initialValues.incOrOT === 'increment'
@@ -123,11 +150,20 @@ export const SeekForm = (props: Props) => {
   const [maxTimeSetting, setMaxTimeSetting] = useState(
     initialValues.incOrOT === 'overtime' ? 10 : 60
   );
+  const [showChallengeRule, setShowChallengeRule] = useState(
+    initialValues.lexicon !== 'ECWL'
+  );
   const [sliderTooltipVisible, setSliderTooltipVisible] = useState(true);
+  const handleDropdownVisibleChange = useCallback((open) => {
+    setSliderTooltipVisible(!open);
+  }, []);
   const [usernameOptions, setUsernameOptions] = useState<Array<string>>([]);
   const onFormChange = (val: Store, allvals: Store) => {
     if (window.localStorage) {
-      localStorage.setItem(storageKey, JSON.stringify(allvals));
+      localStorage.setItem(
+        storageKey,
+        JSON.stringify({ ...allvals, friend: '' })
+      );
     }
     if (allvals.incOrOT === 'increment') {
       setTimeSetting(incLabel);
@@ -147,6 +183,11 @@ export const SeekForm = (props: Props) => {
         ? 0
         : Math.round(allvals.extratime as number)
     );
+    if (allvals.lexicon === 'ECWL') {
+      setShowChallengeRule(false);
+    } else {
+      setShowChallengeRule(true);
+    }
     setTimectrl(tc);
     setTtag(tt);
   };
@@ -161,11 +202,13 @@ export const SeekForm = (props: Props) => {
       )
       .then((resp) => {
         console.log('resp', resp.data);
-        setUsernameOptions(!searchText ? [] : resp.data.usernames);
+        setUsernameOptions(
+          !searchText ? [] : resp.data.users.map((u) => u.username)
+        );
       });
   };
 
-  const searchUsernameDebounced = debounce(onUsernameSearch, 1000);
+  const searchUsernameDebounced = debounce(onUsernameSearch, 300);
 
   const onFormSubmit = (val: Store) => {
     const receiver = new MatchUser();
@@ -177,7 +220,10 @@ export const SeekForm = (props: Props) => {
       seekID: '',
 
       lexicon: val.lexicon as string,
-      challengeRule: val.challengerule as number,
+      challengeRule:
+        (val.lexicon as string) === 'ECWL'
+          ? ChallengeRule.VOID
+          : (val.challengerule as number),
       initialTimeSecs:
         timeScaleToNum(initTimeDiscreteScale[val.initialtime]) * 60,
       incrementSecs:
@@ -193,6 +239,10 @@ export const SeekForm = (props: Props) => {
     props.onFormSubmit(obj);
   };
 
+  const validateMessages = {
+    required: 'Opponent name is required.',
+  };
+
   return (
     <Form
       id={props.id}
@@ -202,17 +252,28 @@ export const SeekForm = (props: Props) => {
       labelCol={{ span: 6 }}
       wrapperCol={{ span: 24 }}
       layout="horizontal"
+      validateMessages={validateMessages}
     >
       {props.showFriendInput && (
-        <Form.Item label="Friend" name="friend">
+        <Form.Item
+          label={props.tournamentID ? 'Opponent' : 'Friend'}
+          name="friend"
+          rules={[
+            {
+              required: true,
+            },
+          ]}
+        >
           <AutoComplete
             onSearch={searchUsernameDebounced}
             placeholder="username..."
-            style={{
-              width: 200,
-            }}
-            onFocus={() => setSliderTooltipVisible(false)}
-            onBlur={() => setSliderTooltipVisible(true)}
+            filterOption={(inputValue, option) =>
+              !option ||
+              !option.value ||
+              option.value.toUpperCase().indexOf(inputValue.toUpperCase()) !==
+                -1
+            }
+            onDropdownVisibleChange={handleDropdownVisibleChange}
           >
             {usernameOptions.map((username) => (
               <AutoComplete.Option key={username} value={username}>
@@ -223,43 +284,86 @@ export const SeekForm = (props: Props) => {
         </Form.Item>
       )}
       <Form.Item label="Dictionary" name="lexicon">
-        <Radio.Group>
-          <Radio.Button value="CSW19">CSW19</Radio.Button>
-          <Radio.Button value="NWL18">NWL18</Radio.Button>
-        </Radio.Group>
+        <Select disabled={disableControls}>
+          <Select.Option value="CSW19">CSW 19 (English)</Select.Option>
+          <Select.Option value="NWL18">NWL 18 (North America)</Select.Option>
+          {enableECWL && (
+            <Select.Option value="ECWL">English Common Word List</Select.Option>
+          )}
+        </Select>
       </Form.Item>
-      <Form.Item label="Challenge rule" name="challengerule">
-        <Radio.Group>
-          <Radio.Button value={ChallengeRule.FIVE_POINT}>5-pt</Radio.Button>
-          <Radio.Button value={ChallengeRule.TEN_POINT}>10-pt</Radio.Button>
-          <Radio.Button value={ChallengeRule.DOUBLE}>Double</Radio.Button>
-          <Radio.Button value={ChallengeRule.SINGLE}>Single</Radio.Button>
-          <Radio.Button value={ChallengeRule.VOID}>Void</Radio.Button>
-          <Radio.Button value={ChallengeRule.TRIPLE}>Triple</Radio.Button>
-        </Radio.Group>
-      </Form.Item>
-      <Form.Item label="Initial Minutes" name="initialtime">
+      {showChallengeRule && (
+        <Form.Item label="Challenge rule" name="challengerule">
+          <Select disabled={disableControls}>
+            <Select.Option value={ChallengeRule.FIVE_POINT}>
+              5 points{' '}
+              <span className="hover-help">
+                (Reward for winning a challenge)
+              </span>
+            </Select.Option>
+            <Select.Option value={ChallengeRule.TEN_POINT}>
+              10 points{' '}
+              <span className="hover-help">
+                (Reward for winning a challenge)
+              </span>
+            </Select.Option>
+            <Select.Option value={ChallengeRule.DOUBLE}>
+              Double{' '}
+              <span className="hover-help">
+                (Turn loss for challenging a valid word)
+              </span>
+            </Select.Option>
+            <Select.Option value={ChallengeRule.SINGLE}>
+              Single{' '}
+              <span className="hover-help">
+                (No penalty for challenging a valid word)
+              </span>
+            </Select.Option>
+            <Select.Option value={ChallengeRule.VOID}>
+              Void{' '}
+              <span className="hover-help">
+                (All words are checked before play)
+              </span>
+            </Select.Option>
+            <Select.Option value={ChallengeRule.TRIPLE}>
+              Triple{' '}
+              <span className="hover-help">
+                (Losing a challenge loses the game)
+              </span>
+            </Select.Option>
+          </Select>
+        </Form.Item>
+      )}
+      <Form.Item
+        className="initial"
+        label="Initial Minutes"
+        name="initialtime"
+        extra={<Tag color={ttag}>{timectrl}</Tag>}
+      >
         <Slider
+          disabled={disableControls}
           tipFormatter={initTimeFormatter}
           min={0}
           max={initTimeDiscreteScale.length - 1}
-          tooltipVisible={sliderTooltipVisible}
+          tooltipVisible={sliderTooltipVisible || usernameOptions.length === 0}
         />
       </Form.Item>
       <Form.Item label="Time Setting" name="incOrOT">
-        <Radio.Group>
+        <Radio.Group disabled={disableControls}>
           <Radio.Button value="overtime">Use Max Overtime</Radio.Button>
           <Radio.Button value="increment">Use Increment</Radio.Button>
         </Radio.Group>
       </Form.Item>
-      <Form.Item label={timeSetting} name="extratime" extra={extraTimeLabel}>
-        <InputNumber min={0} max={maxTimeSetting} />
+      <Form.Item
+        className="extra-time-setter"
+        label={timeSetting}
+        name="extratime"
+        extra={extraTimeLabel}
+      >
+        <InputNumber min={0} max={maxTimeSetting} disabled={disableControls} />
       </Form.Item>
       <Form.Item label="Rated" name="rated" valuePropName="checked">
-        <Switch />
-      </Form.Item>
-      <Form.Item label="Time Control">
-        <Tag color={ttag}>{timectrl}</Tag>
+        <Switch disabled={disableControls} />
       </Form.Item>
     </Form>
   );

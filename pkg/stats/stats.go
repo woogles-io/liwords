@@ -946,11 +946,11 @@ func isUnchallengedPhonyEvent(event *pb.GameEvent,
 	phony := false
 	var err error
 	if event.Type == pb.GameEvent_TILE_PLACEMENT_MOVE {
-		gaddag, err := gaddag.Get(cfg, history.Lexicon)
+		dawg, err := gaddag.GetDawg(cfg, history.Lexicon)
 		if err != nil {
 			return phony, err
 		}
-		phony, err = isPhony(gaddag, event.WordsFormed[0])
+		phony, err = isPhony(dawg, event.WordsFormed[0])
 	}
 	return phony, err
 }

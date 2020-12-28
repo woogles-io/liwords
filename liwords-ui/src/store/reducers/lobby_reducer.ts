@@ -1,6 +1,6 @@
 import { Action, ActionType } from '../../actions/actions';
+import { GameInfoResponse } from '../../gen/api/proto/game_service/game_service_pb';
 import {
-  GameMeta,
   SeekRequest,
   RatingMode,
   MatchRequest,
@@ -136,13 +136,15 @@ export const SeekRequestToSoughtGame = (
   };
 };
 
-export const GameMetaToActiveGame = (gm: GameMeta): ActiveGame | null => {
-  const users = gm.getUsersList();
-  const gameReq = gm.getGameRequest();
+export const GameInfoResponseToActiveGame = (
+  gi: GameInfoResponse
+): ActiveGame | null => {
+  const users = gi.getPlayersList();
+  const gameReq = gi.getGameRequest();
 
   const players = users.map((um) => ({
-    rating: um.getRelevantRating(),
-    displayName: um.getDisplayName(),
+    rating: um.getRating(),
+    displayName: um.getNickname(),
   }));
 
   if (!gameReq) {
@@ -161,7 +163,7 @@ export const GameMetaToActiveGame = (gm: GameMeta): ActiveGame | null => {
     challengeRule: gameReq.getChallengeRule(),
     rated: gameReq.getRatingMode() === RatingMode.RATED,
     maxOvertimeMinutes: gameReq.getMaxOvertimeMinutes(),
-    gameID: gm.getId(),
+    gameID: gi.getGameId(),
     incrementSecs: gameReq.getIncrementSeconds(),
   };
 };
