@@ -68,8 +68,11 @@ export const TournamentInfo = (props: TournamentInfoProps) => {
     lobbyContext.gamesPageSize,
   ]);
 
-  const directors = tournamentContext.metadata.directors.map((username) => (
-    <UsernameWithContext username={username} omitSendMessage key={username} />
+  const directors = tournamentContext.metadata.directors.map((username, i) => (
+    <span key={username}>
+      {i > 0 && ', '}
+      <UsernameWithContext username={username} omitSendMessage />
+    </span>
   ));
 
   return (
