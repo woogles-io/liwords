@@ -42,6 +42,27 @@ export type GameRequest = {
   original_request_id: string;
 };
 
+export const defaultGameInfo: GameMetadata = {
+  players: new Array<PlayerMetadata>(),
+  game_request: {
+    lexicon: '',
+    rules: {
+      variant_name: '',
+      board_layout_name: 'CrosswordGame',
+      letter_distribution_name: 'english',
+    },
+    initial_time_seconds: 0,
+    increment_seconds: 0,
+    challenge_rule: 'VOID' as ChallengeRule,
+    rating_mode: 'RATED',
+    max_overtime_minutes: 0,
+    original_request_id: '',
+  },
+  tournament_id: '',
+  game_end_reason: 'NONE',
+  time_control_name: '',
+};
+
 export type SingleGameStreakInfo = {
   players: Array<string>;
   game_id: string;

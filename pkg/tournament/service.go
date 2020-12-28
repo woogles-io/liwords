@@ -3,6 +3,7 @@ package tournament
 import (
 	"context"
 	"errors"
+	"fmt"
 	"strings"
 
 	"github.com/domino14/liwords/pkg/apiserver"
@@ -191,12 +192,25 @@ func (ts *TournamentService) GetTournamentMetadata(ctx context.Context, req *pb.
 		}
 	}
 
+	var tt pb.TType
+	switch t.Type {
+	case entity.TypeStandard:
+		tt = pb.TType_STANDARD
+	case entity.TypeClubSession:
+		tt = pb.TType_CLUB_SESSION
+	case entity.TypeClub:
+		tt = pb.TType_CLUB
+	default:
+		return nil, fmt.Errorf("unrecognized tournament type: %v", t.Type)
+	}
+
 	return &pb.TournamentMetadataResponse{
 		Name:        t.Name,
 		Description: t.Description,
 		Directors:   directors,
 		Slug:        t.Slug,
 		Id:          t.UUID,
+		Type:        tt,
 	}, nil
 
 }
