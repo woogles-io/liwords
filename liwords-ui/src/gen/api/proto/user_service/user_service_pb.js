@@ -3770,7 +3770,7 @@ proto.user_service.UsernameSearchRequest.prototype.setPrefix = function(value) {
  * @private {!Array<number>}
  * @const
  */
-proto.user_service.UsernameSearchResponse.repeatedFields_ = [1,2];
+proto.user_service.UsernameSearchResponse.repeatedFields_ = [2];
 
 
 
@@ -3803,7 +3803,6 @@ proto.user_service.UsernameSearchResponse.prototype.toObject = function(opt_incl
  */
 proto.user_service.UsernameSearchResponse.toObject = function(includeInstance, msg) {
   var f, obj = {
-    usernamesList: (f = jspb.Message.getRepeatedField(msg, 1)) == null ? undefined : f,
     usersList: jspb.Message.toObjectList(msg.getUsersList(),
     proto.user_service.BasicUser.toObject, includeInstance)
   };
@@ -3842,10 +3841,6 @@ proto.user_service.UsernameSearchResponse.deserializeBinaryFromReader = function
     }
     var field = reader.getFieldNumber();
     switch (field) {
-    case 1:
-      var value = /** @type {string} */ (reader.readString());
-      msg.addUsernames(value);
-      break;
     case 2:
       var value = new proto.user_service.BasicUser;
       reader.readMessage(value,proto.user_service.BasicUser.deserializeBinaryFromReader);
@@ -3880,13 +3875,6 @@ proto.user_service.UsernameSearchResponse.prototype.serializeBinary = function()
  */
 proto.user_service.UsernameSearchResponse.serializeBinaryToWriter = function(message, writer) {
   var f = undefined;
-  f = message.getUsernamesList();
-  if (f.length > 0) {
-    writer.writeRepeatedString(
-      1,
-      f
-    );
-  }
   f = message.getUsersList();
   if (f.length > 0) {
     writer.writeRepeatedMessage(
@@ -3895,43 +3883,6 @@ proto.user_service.UsernameSearchResponse.serializeBinaryToWriter = function(mes
       proto.user_service.BasicUser.serializeBinaryToWriter
     );
   }
-};
-
-
-/**
- * repeated string usernames = 1;
- * @return {!Array<string>}
- */
-proto.user_service.UsernameSearchResponse.prototype.getUsernamesList = function() {
-  return /** @type {!Array<string>} */ (jspb.Message.getRepeatedField(this, 1));
-};
-
-
-/**
- * @param {!Array<string>} value
- * @return {!proto.user_service.UsernameSearchResponse} returns this
- */
-proto.user_service.UsernameSearchResponse.prototype.setUsernamesList = function(value) {
-  return jspb.Message.setField(this, 1, value || []);
-};
-
-
-/**
- * @param {string} value
- * @param {number=} opt_index
- * @return {!proto.user_service.UsernameSearchResponse} returns this
- */
-proto.user_service.UsernameSearchResponse.prototype.addUsernames = function(value, opt_index) {
-  return jspb.Message.addToRepeatedField(this, 1, value, opt_index);
-};
-
-
-/**
- * Clears the list making it empty but non-null.
- * @return {!proto.user_service.UsernameSearchResponse} returns this
- */
-proto.user_service.UsernameSearchResponse.prototype.clearUsernamesList = function() {
-  return this.setUsernamesList([]);
 };
 
 
@@ -5090,7 +5041,8 @@ proto.user_service.GetActiveChatChannelsRequest.prototype.toObject = function(op
 proto.user_service.GetActiveChatChannelsRequest.toObject = function(includeInstance, msg) {
   var f, obj = {
     number: jspb.Message.getFieldWithDefault(msg, 1, 0),
-    offset: jspb.Message.getFieldWithDefault(msg, 2, 0)
+    offset: jspb.Message.getFieldWithDefault(msg, 2, 0),
+    tournamentId: jspb.Message.getFieldWithDefault(msg, 3, "")
   };
 
   if (includeInstance) {
@@ -5135,6 +5087,10 @@ proto.user_service.GetActiveChatChannelsRequest.deserializeBinaryFromReader = fu
       var value = /** @type {number} */ (reader.readInt32());
       msg.setOffset(value);
       break;
+    case 3:
+      var value = /** @type {string} */ (reader.readString());
+      msg.setTournamentId(value);
+      break;
     default:
       reader.skipField();
       break;
@@ -5178,6 +5134,13 @@ proto.user_service.GetActiveChatChannelsRequest.serializeBinaryToWriter = functi
       f
     );
   }
+  f = message.getTournamentId();
+  if (f.length > 0) {
+    writer.writeString(
+      3,
+      f
+    );
+  }
 };
 
 
@@ -5214,6 +5177,24 @@ proto.user_service.GetActiveChatChannelsRequest.prototype.getOffset = function()
  */
 proto.user_service.GetActiveChatChannelsRequest.prototype.setOffset = function(value) {
   return jspb.Message.setProto3IntField(this, 2, value);
+};
+
+
+/**
+ * optional string tournament_id = 3;
+ * @return {string}
+ */
+proto.user_service.GetActiveChatChannelsRequest.prototype.getTournamentId = function() {
+  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 3, ""));
+};
+
+
+/**
+ * @param {string} value
+ * @return {!proto.user_service.GetActiveChatChannelsRequest} returns this
+ */
+proto.user_service.GetActiveChatChannelsRequest.prototype.setTournamentId = function(value) {
+  return jspb.Message.setProto3StringField(this, 3, value);
 };
 
 

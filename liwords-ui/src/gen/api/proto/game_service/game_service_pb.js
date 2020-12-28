@@ -15,8 +15,6 @@ var global = Function('return this')();
 
 var api_proto_realtime_realtime_pb = require('../../../api/proto/realtime/realtime_pb.js');
 goog.object.extend(proto, api_proto_realtime_realtime_pb);
-var macondo_api_proto_macondo_macondo_pb = require('../../../macondo/api/proto/macondo/macondo_pb.js');
-goog.object.extend(proto, macondo_api_proto_macondo_macondo_pb);
 var google_protobuf_timestamp_pb = require('google-protobuf/google/protobuf/timestamp_pb.js');
 goog.object.extend(proto, google_protobuf_timestamp_pb);
 goog.exportSymbol('proto.game_service.GCGRequest', null, global);
@@ -780,21 +778,13 @@ proto.game_service.GameInfoResponse.toObject = function(includeInstance, msg) {
   var f, obj = {
     playersList: jspb.Message.toObjectList(msg.getPlayersList(),
     proto.game_service.PlayerInfo.toObject, includeInstance),
-    lexicon: jspb.Message.getFieldWithDefault(msg, 2, ""),
-    variant: jspb.Message.getFieldWithDefault(msg, 3, ""),
     timeControlName: jspb.Message.getFieldWithDefault(msg, 4, ""),
-    initialTimeSeconds: jspb.Message.getFieldWithDefault(msg, 5, 0),
     tournamentId: jspb.Message.getFieldWithDefault(msg, 6, ""),
-    challengeRule: jspb.Message.getFieldWithDefault(msg, 7, 0),
-    ratingMode: jspb.Message.getFieldWithDefault(msg, 8, 0),
-    maxOvertimeMinutes: jspb.Message.getFieldWithDefault(msg, 10, 0),
     gameEndReason: jspb.Message.getFieldWithDefault(msg, 11, 0),
-    incrementSeconds: jspb.Message.getFieldWithDefault(msg, 12, 0),
     scoresList: (f = jspb.Message.getRepeatedField(msg, 13)) == null ? undefined : f,
     winner: jspb.Message.getFieldWithDefault(msg, 14, 0),
     createdAt: (f = msg.getCreatedAt()) && google_protobuf_timestamp_pb.Timestamp.toObject(includeInstance, f),
     gameId: jspb.Message.getFieldWithDefault(msg, 16, ""),
-    originalRequestId: jspb.Message.getFieldWithDefault(msg, 17, ""),
     lastUpdate: (f = msg.getLastUpdate()) && google_protobuf_timestamp_pb.Timestamp.toObject(includeInstance, f),
     gameRequest: (f = msg.getGameRequest()) && api_proto_realtime_realtime_pb.GameRequest.toObject(includeInstance, f)
   };
@@ -838,45 +828,17 @@ proto.game_service.GameInfoResponse.deserializeBinaryFromReader = function(msg, 
       reader.readMessage(value,proto.game_service.PlayerInfo.deserializeBinaryFromReader);
       msg.addPlayers(value);
       break;
-    case 2:
-      var value = /** @type {string} */ (reader.readString());
-      msg.setLexicon(value);
-      break;
-    case 3:
-      var value = /** @type {string} */ (reader.readString());
-      msg.setVariant(value);
-      break;
     case 4:
       var value = /** @type {string} */ (reader.readString());
       msg.setTimeControlName(value);
-      break;
-    case 5:
-      var value = /** @type {number} */ (reader.readInt32());
-      msg.setInitialTimeSeconds(value);
       break;
     case 6:
       var value = /** @type {string} */ (reader.readString());
       msg.setTournamentId(value);
       break;
-    case 7:
-      var value = /** @type {!proto.macondo.ChallengeRule} */ (reader.readEnum());
-      msg.setChallengeRule(value);
-      break;
-    case 8:
-      var value = /** @type {!proto.liwords.RatingMode} */ (reader.readEnum());
-      msg.setRatingMode(value);
-      break;
-    case 10:
-      var value = /** @type {number} */ (reader.readInt32());
-      msg.setMaxOvertimeMinutes(value);
-      break;
     case 11:
       var value = /** @type {!proto.liwords.GameEndReason} */ (reader.readEnum());
       msg.setGameEndReason(value);
-      break;
-    case 12:
-      var value = /** @type {number} */ (reader.readInt32());
-      msg.setIncrementSeconds(value);
       break;
     case 13:
       var value = /** @type {!Array<number>} */ (reader.readPackedInt32());
@@ -894,10 +856,6 @@ proto.game_service.GameInfoResponse.deserializeBinaryFromReader = function(msg, 
     case 16:
       var value = /** @type {string} */ (reader.readString());
       msg.setGameId(value);
-      break;
-    case 17:
-      var value = /** @type {string} */ (reader.readString());
-      msg.setOriginalRequestId(value);
       break;
     case 18:
       var value = new google_protobuf_timestamp_pb.Timestamp;
@@ -946,31 +904,10 @@ proto.game_service.GameInfoResponse.serializeBinaryToWriter = function(message, 
       proto.game_service.PlayerInfo.serializeBinaryToWriter
     );
   }
-  f = message.getLexicon();
-  if (f.length > 0) {
-    writer.writeString(
-      2,
-      f
-    );
-  }
-  f = message.getVariant();
-  if (f.length > 0) {
-    writer.writeString(
-      3,
-      f
-    );
-  }
   f = message.getTimeControlName();
   if (f.length > 0) {
     writer.writeString(
       4,
-      f
-    );
-  }
-  f = message.getInitialTimeSeconds();
-  if (f !== 0) {
-    writer.writeInt32(
-      5,
       f
     );
   }
@@ -981,38 +918,10 @@ proto.game_service.GameInfoResponse.serializeBinaryToWriter = function(message, 
       f
     );
   }
-  f = message.getChallengeRule();
-  if (f !== 0.0) {
-    writer.writeEnum(
-      7,
-      f
-    );
-  }
-  f = message.getRatingMode();
-  if (f !== 0.0) {
-    writer.writeEnum(
-      8,
-      f
-    );
-  }
-  f = message.getMaxOvertimeMinutes();
-  if (f !== 0) {
-    writer.writeInt32(
-      10,
-      f
-    );
-  }
   f = message.getGameEndReason();
   if (f !== 0.0) {
     writer.writeEnum(
       11,
-      f
-    );
-  }
-  f = message.getIncrementSeconds();
-  if (f !== 0) {
-    writer.writeInt32(
-      12,
       f
     );
   }
@@ -1042,13 +951,6 @@ proto.game_service.GameInfoResponse.serializeBinaryToWriter = function(message, 
   if (f.length > 0) {
     writer.writeString(
       16,
-      f
-    );
-  }
-  f = message.getOriginalRequestId();
-  if (f.length > 0) {
-    writer.writeString(
-      17,
       f
     );
   }
@@ -1110,42 +1012,6 @@ proto.game_service.GameInfoResponse.prototype.clearPlayersList = function() {
 
 
 /**
- * optional string lexicon = 2;
- * @return {string}
- */
-proto.game_service.GameInfoResponse.prototype.getLexicon = function() {
-  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 2, ""));
-};
-
-
-/**
- * @param {string} value
- * @return {!proto.game_service.GameInfoResponse} returns this
- */
-proto.game_service.GameInfoResponse.prototype.setLexicon = function(value) {
-  return jspb.Message.setProto3StringField(this, 2, value);
-};
-
-
-/**
- * optional string variant = 3;
- * @return {string}
- */
-proto.game_service.GameInfoResponse.prototype.getVariant = function() {
-  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 3, ""));
-};
-
-
-/**
- * @param {string} value
- * @return {!proto.game_service.GameInfoResponse} returns this
- */
-proto.game_service.GameInfoResponse.prototype.setVariant = function(value) {
-  return jspb.Message.setProto3StringField(this, 3, value);
-};
-
-
-/**
  * optional string time_control_name = 4;
  * @return {string}
  */
@@ -1160,24 +1026,6 @@ proto.game_service.GameInfoResponse.prototype.getTimeControlName = function() {
  */
 proto.game_service.GameInfoResponse.prototype.setTimeControlName = function(value) {
   return jspb.Message.setProto3StringField(this, 4, value);
-};
-
-
-/**
- * optional int32 initial_time_seconds = 5;
- * @return {number}
- */
-proto.game_service.GameInfoResponse.prototype.getInitialTimeSeconds = function() {
-  return /** @type {number} */ (jspb.Message.getFieldWithDefault(this, 5, 0));
-};
-
-
-/**
- * @param {number} value
- * @return {!proto.game_service.GameInfoResponse} returns this
- */
-proto.game_service.GameInfoResponse.prototype.setInitialTimeSeconds = function(value) {
-  return jspb.Message.setProto3IntField(this, 5, value);
 };
 
 
@@ -1200,60 +1048,6 @@ proto.game_service.GameInfoResponse.prototype.setTournamentId = function(value) 
 
 
 /**
- * optional macondo.ChallengeRule challenge_rule = 7;
- * @return {!proto.macondo.ChallengeRule}
- */
-proto.game_service.GameInfoResponse.prototype.getChallengeRule = function() {
-  return /** @type {!proto.macondo.ChallengeRule} */ (jspb.Message.getFieldWithDefault(this, 7, 0));
-};
-
-
-/**
- * @param {!proto.macondo.ChallengeRule} value
- * @return {!proto.game_service.GameInfoResponse} returns this
- */
-proto.game_service.GameInfoResponse.prototype.setChallengeRule = function(value) {
-  return jspb.Message.setProto3EnumField(this, 7, value);
-};
-
-
-/**
- * optional liwords.RatingMode rating_mode = 8;
- * @return {!proto.liwords.RatingMode}
- */
-proto.game_service.GameInfoResponse.prototype.getRatingMode = function() {
-  return /** @type {!proto.liwords.RatingMode} */ (jspb.Message.getFieldWithDefault(this, 8, 0));
-};
-
-
-/**
- * @param {!proto.liwords.RatingMode} value
- * @return {!proto.game_service.GameInfoResponse} returns this
- */
-proto.game_service.GameInfoResponse.prototype.setRatingMode = function(value) {
-  return jspb.Message.setProto3EnumField(this, 8, value);
-};
-
-
-/**
- * optional int32 max_overtime_minutes = 10;
- * @return {number}
- */
-proto.game_service.GameInfoResponse.prototype.getMaxOvertimeMinutes = function() {
-  return /** @type {number} */ (jspb.Message.getFieldWithDefault(this, 10, 0));
-};
-
-
-/**
- * @param {number} value
- * @return {!proto.game_service.GameInfoResponse} returns this
- */
-proto.game_service.GameInfoResponse.prototype.setMaxOvertimeMinutes = function(value) {
-  return jspb.Message.setProto3IntField(this, 10, value);
-};
-
-
-/**
  * optional liwords.GameEndReason game_end_reason = 11;
  * @return {!proto.liwords.GameEndReason}
  */
@@ -1268,24 +1062,6 @@ proto.game_service.GameInfoResponse.prototype.getGameEndReason = function() {
  */
 proto.game_service.GameInfoResponse.prototype.setGameEndReason = function(value) {
   return jspb.Message.setProto3EnumField(this, 11, value);
-};
-
-
-/**
- * optional int32 increment_seconds = 12;
- * @return {number}
- */
-proto.game_service.GameInfoResponse.prototype.getIncrementSeconds = function() {
-  return /** @type {number} */ (jspb.Message.getFieldWithDefault(this, 12, 0));
-};
-
-
-/**
- * @param {number} value
- * @return {!proto.game_service.GameInfoResponse} returns this
- */
-proto.game_service.GameInfoResponse.prototype.setIncrementSeconds = function(value) {
-  return jspb.Message.setProto3IntField(this, 12, value);
 };
 
 
@@ -1396,24 +1172,6 @@ proto.game_service.GameInfoResponse.prototype.getGameId = function() {
  */
 proto.game_service.GameInfoResponse.prototype.setGameId = function(value) {
   return jspb.Message.setProto3StringField(this, 16, value);
-};
-
-
-/**
- * optional string original_request_id = 17;
- * @return {string}
- */
-proto.game_service.GameInfoResponse.prototype.getOriginalRequestId = function() {
-  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 17, ""));
-};
-
-
-/**
- * @param {string} value
- * @return {!proto.game_service.GameInfoResponse} returns this
- */
-proto.game_service.GameInfoResponse.prototype.setOriginalRequestId = function(value) {
-  return jspb.Message.setProto3StringField(this, 17, value);
 };
 
 

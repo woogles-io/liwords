@@ -10,10 +10,14 @@ type BlockerProps = {
   className?: string;
   target: string;
   tagName?: string;
+  blockCallback?: () => void;
 };
 
 export const TheBlocker = (props: BlockerProps) => {
-  const { excludedPlayers } = useExcludedPlayersStoreContext();
+  const {
+    excludedPlayers,
+    setPendingBlockRefresh,
+  } = useExcludedPlayersStoreContext();
   const { loginState } = useLoginStateStoreContext();
   const { userID } = loginState;
 
@@ -35,13 +39,20 @@ export const TheBlocker = (props: BlockerProps) => {
   }
 
   const blockAction = () => {
-    axios.post(
-      toAPIUrl('user_service.SocializeService', `${apiFunc}Block`),
-      {
-        uuid: props.target,
-      },
-      { withCredentials: true }
-    );
+    axios
+      .post(
+        toAPIUrl('user_service.SocializeService', `${apiFunc}Block`),
+        {
+          uuid: props.target,
+        },
+        { withCredentials: true }
+      )
+      .then(() => {
+        setPendingBlockRefresh(true);
+        if (props.blockCallback) {
+          props.blockCallback();
+        }
+      });
   };
 
   const DynamicTagName = (props.tagName ||

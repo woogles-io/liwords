@@ -305,19 +305,15 @@ func (b *Bus) handleNatsRequest(ctx context.Context, topic string,
 			resp.Realms = append(resp.Realms, realm, "chat-"+realm)
 
 			if game.TournamentData != nil && game.TournamentData.Id != "" {
-				tourneyID := strings.ToLower(game.TournamentData.Id)
-				log.Debug().Str("tourney-realm-for", tourneyID)
-				resp.Realms = append(resp.Realms, "chat-tournament-"+tourneyID)
+				resp.Realms = append(resp.Realms, "chat-tournament-"+game.TournamentData.Id)
 			}
 
-		} else if strings.HasPrefix(path, "/tournament/") {
-			tid := strings.TrimPrefix(path, "/tournament/")
-			_, err := b.tournamentStore.Get(ctx, tid)
+		} else if strings.HasPrefix(path, "/tournament/") || strings.HasPrefix(path, "/club/") {
+			t, err := b.tournamentStore.GetBySlug(ctx, path)
 			if err != nil {
 				return err
 			}
-			normalized := strings.ToLower(tid)
-			resp.Realms = append(resp.Realms, "tournament-"+normalized, "chat-tournament-"+normalized)
+			resp.Realms = append(resp.Realms, "tournament-"+t.UUID, "chat-tournament-"+t.UUID)
 		} else {
 			log.Info().Str("path", path).Msg("realm-req-not-handled-sending-blank-realm")
 		}
@@ -557,12 +553,6 @@ func (b *Bus) initRealmInfo(ctx context.Context, evt *pb.InitRealmInfo, connID s
 			if err != nil {
 				return err
 			}
-		} else if strings.HasPrefix(realm, "chat-") {
-			chatChan := strings.ReplaceAll(realm, "-", ".")
-			err = b.sendOldChats(ctx, evt.UserId, chatChan)
-			if err != nil {
-				return err
-			}
 		} else {
 			log.Debug().Interface("evt", evt).Msg("no init realm info")
 		}
@@ -576,7 +566,7 @@ func (b *Bus) initRealmInfo(ctx context.Context, evt *pb.InitRealmInfo, connID s
 			}
 		}
 	}
-	return b.sendLatestChannels(ctx, evt.UserId, connID)
+	return nil
 	// send chat info
 
 }
@@ -744,28 +734,4 @@ func (b *Bus) sendPresenceContext(ctx context.Context, userID, username string, 
 
 	// Also send OUR presence to users in this channel.
 	return b.broadcastPresence(username, userID, anon, []string{presenceChan}, false)
-}
-
-func (b *Bus) sendLatestChannels(ctx context.Context, userID, connID string) error {
-	// Send user channels with new messages.
-	const ChansToSend = 10
-	lastSeen, err := b.presenceStore.LastSeen(ctx, userID)
-	if err != nil {
-		// Don't die, this key might not yet exist.
-		log.Err(err).Msg("last-seen-error")
-		return nil
-	}
-	latestChannels, err := b.chatStore.LatestChannels(ctx, ChansToSend, 0, userID)
-	if err != nil {
-		return err
-	}
-
-	for _, ch := range latestChannels.Channels {
-		if ch.LastUpdate > lastSeen {
-			ch.HasUpdate = true
-		}
-	}
-
-	evt := entity.WrapEvent(latestChannels, pb.MessageType_CHAT_CHANNELS)
-	return b.pubToConnectionID(connID, userID, evt)
 }

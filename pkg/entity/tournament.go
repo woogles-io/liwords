@@ -40,6 +40,17 @@ const (
 	AutomaticFirst
 )
 
+type CompetitionType string
+
+const (
+	// TypeStandard is a standard tournament
+	TypeStandard CompetitionType = "tournament"
+	// TypeClub is a club/clubhouse
+	TypeClub = "club"
+	// TypeClubSession is spawned from a club
+	TypeClubSession = "clubsession"
+)
+
 const Unpaired = -1
 
 type TournamentGame struct {
@@ -84,6 +95,7 @@ type RoundControls struct {
 	GamesPerRound               int
 	Round                       int
 	Factor                      int
+	InitialFontes               int
 	MaxRepeats                  int
 	AllowOverMaxRepeats         bool
 	RepeatRelativeWeight        int
@@ -113,4 +125,8 @@ type Tournament struct {
 	Directors         *TournamentPersons             `json:"directors"`
 	IsStarted         bool                           `json:"started"`
 	Divisions         map[string]*TournamentDivision `json:"divs"`
+	DefaultSettings   *realtime.GameRequest          `json:"settings"`
+	Type              CompetitionType                `json:"type"`
+	ParentID          string                         `json:"parent"`
+	Slug              string                         `json:"slug"`
 }

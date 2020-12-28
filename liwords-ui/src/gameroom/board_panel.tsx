@@ -73,6 +73,7 @@ type Props = {
   sendSocketMsg: (msg: Uint8Array) => void;
   gameDone: boolean;
   playerMeta: Array<PlayerMetadata>;
+  tournamentSlug?: string;
   tournamentID?: string;
   lexicon: string;
   handleAcceptRematch: (() => void) | null;
@@ -117,8 +118,8 @@ const shuffleString = (a: string): string => {
 const gcgExport = (gameID: string, playerMeta: Array<PlayerMetadata>) => {
   axios
     .post<GCGResponse>(toAPIUrl('game_service.GameMetadataService', 'GetGCG'), {
-      gameId: gameID,
-    })
+    gameId: gameID,
+  })
     .then((resp) => {
       const url = window.URL.createObjectURL(new Blob([resp.data.gcg]));
       const link = document.createElement('a');
@@ -164,7 +165,7 @@ export const BoardPanel = React.memo((props: Props) => {
 
   // Poka-yoke against accidentally having multiple modes active.
   const [currentMode, setCurrentMode] = useState<
-    'BLANK_MODAL' | 'DRAWING_HOTKEY' | 'EXCHANGE_MODAL' | 'NORMAL'
+  'BLANK_MODAL' | 'DRAWING_HOTKEY' | 'EXCHANGE_MODAL' | 'NORMAL'
   >('NORMAL');
 
   const {
@@ -1043,7 +1044,7 @@ export const BoardPanel = React.memo((props: Props) => {
         showRematch={examinableGameEndMessage !== ''}
         gameEndControls={examinableGameEndMessage !== '' || props.gameDone}
         currentRack={props.currentRack}
-        tournamentID={props.tournamentID}
+        tournamentSlug={props.tournamentSlug}
         lexicon={props.lexicon}
         challengeRule={props.challengeRule}
       />

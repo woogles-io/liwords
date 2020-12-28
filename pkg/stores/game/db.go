@@ -203,8 +203,9 @@ func (s *DBStore) GetRecentGames(ctx context.Context, username string, numGames 
 	if numGames > MaxRecentGames {
 		return nil, errors.New("too many games")
 	}
+	ctxDB := s.db.WithContext(ctx)
 	var games []*game
-	if results := s.db.Limit(numGames).
+	if results := ctxDB.Limit(numGames).
 		Offset(offset).
 		Joins("JOIN users as u0  ON u0.id = games.player0_id").
 		Joins("JOIN users as u1  ON u1.id = games.player1_id").
@@ -221,8 +222,9 @@ func (s *DBStore) GetRecentTourneyGames(ctx context.Context, tourneyID string, n
 	if numGames > MaxRecentGames {
 		return nil, errors.New("too many games")
 	}
+	ctxDB := s.db.WithContext(ctx)
 	var games []*game
-	if results := s.db.Limit(numGames).
+	if results := ctxDB.Limit(numGames).
 		Offset(offset).
 		// Basically, everything except for 0 (ongoing), 5 (aborted) or 7 (cancelled)
 		Where("tournament_id = ? AND game_end_reason NOT IN (?, ?, ?)", tourneyID,

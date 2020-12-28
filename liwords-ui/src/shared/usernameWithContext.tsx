@@ -2,6 +2,7 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { Dropdown } from 'antd';
 import { TheBlocker } from './blocker';
+import { useLoginStateStoreContext } from '../store/store';
 
 type UsernameWithContextProps = {
   additionalMenuItems?: React.ReactNode;
@@ -9,17 +10,13 @@ type UsernameWithContextProps = {
   omitSendMessage?: boolean;
   username: string;
   userID?: string;
-  sendMessage?: (msg: string, receiver: string) => void;
+  sendMessage?: (uuid: string, username: string) => void;
+  blockCallback?: () => void;
 };
 
 export const UsernameWithContext = (props: UsernameWithContextProps) => {
-  const sendMessage = (uid: string, username: string) => {
-    // very temporary way to send messages to users
-    const msg = window.prompt(`Send a private message to ${username}`);
-    if (msg && props.sendMessage) {
-      props.sendMessage(msg, uid);
-    }
-  };
+  const { loginState } = useLoginStateStoreContext();
+  const { userID } = loginState;
 
   const userMenu = (
     <ul>
@@ -35,10 +32,22 @@ export const UsernameWithContext = (props: UsernameWithContextProps) => {
         </li>
       )}
       {props.userID ? (
-        <TheBlocker className="link plain" target={props.userID} tagName="li" />
+        <TheBlocker
+          blockCallback={props.blockCallback}
+          className="link plain"
+          target={props.userID}
+          tagName="li"
+        />
       ) : null}
-      {false && !props.omitSendMessage && props.userID ? (
-        <li onClick={() => sendMessage(props.userID!, props.username)}>
+      {!props.omitSendMessage && props.userID && props.userID !== userID ? (
+        <li
+          className="link plain"
+          onClick={() => {
+            if (props.sendMessage) {
+              props.sendMessage(props.userID!, props.username);
+            }
+          }}
+        >
           Message
         </li>
       ) : null}

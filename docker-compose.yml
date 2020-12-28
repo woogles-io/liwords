@@ -44,7 +44,7 @@ services:
     volumes:
       - ../macondo:/opt/program:rw
       # Use the same gaddag files we use for the WASM integration.
-      - ./data/lexica/gaddag:/opt/program/liwords-ui/public/wasm
+      - ./liwords-ui/public/wasm:/opt/program/data/lexica/gaddag
     command: sh -c "go run -race cmd/bot/*.go"
     depends_on: ["nats"]
     networks:

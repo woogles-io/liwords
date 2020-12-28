@@ -449,11 +449,6 @@ export namespace UsernameSearchRequest {
 }
 
 export class UsernameSearchResponse extends jspb.Message {
-  clearUsernamesList(): void;
-  getUsernamesList(): Array<string>;
-  setUsernamesList(value: Array<string>): void;
-  addUsernames(value: string, index?: number): string;
-
   clearUsersList(): void;
   getUsersList(): Array<BasicUser>;
   setUsersList(value: Array<BasicUser>): void;
@@ -471,7 +466,6 @@ export class UsernameSearchResponse extends jspb.Message {
 
 export namespace UsernameSearchResponse {
   export type AsObject = {
-    usernamesList: Array<string>,
     usersList: Array<BasicUser.AsObject>,
   }
 }
@@ -651,6 +645,9 @@ export class GetActiveChatChannelsRequest extends jspb.Message {
   getOffset(): number;
   setOffset(value: number): void;
 
+  getTournamentId(): string;
+  setTournamentId(value: string): void;
+
   serializeBinary(): Uint8Array;
   toObject(includeInstance?: boolean): GetActiveChatChannelsRequest.AsObject;
   static toObject(includeInstance: boolean, msg: GetActiveChatChannelsRequest): GetActiveChatChannelsRequest.AsObject;
@@ -665,6 +662,7 @@ export namespace GetActiveChatChannelsRequest {
   export type AsObject = {
     number: number,
     offset: number,
+    tournamentId: string,
   }
 }
 

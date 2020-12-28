@@ -22,3 +22,31 @@ export const fixedSettings: { [key: string]: settings } = {
   phillyvirtual,
   hcnj,
 };
+
+// A temporary map of club redirects. Map internal tournament ID to slug:
+export const clubRedirects: {[key: string]: string} = {
+  'channel275': '/club/channel275',
+  'phillyvirtual': '/club/phillyvirtual',
+  'madisonclub': '/club/madison',
+  'toucanet': '/club/toucanet',
+  'dallasbedford': '/club/dallasbedford',
+  'seattleclub': '/club/seattle',
+  'sfclub': '/club/sf',
+  'montrealscrabbleclub': '/club/montreal',
+  'vvsc': '/club/vvsc',
+  'OttawaClub': '/club/Ottawa',
+  'BrookfieldClub': '/club/Brookfield',
+  'RidgefieldClub': '/club/Ridgefield',
+  'HuaxiaScrabbleClub': '/club/Huaxia',
+  'WorkspaceScrabbleClub': '/club/Workspace',
+  'houstonclub': '/club/houston',
+  'pghscrabble': '/club/pgh',
+  'orlandoscrabble': '/club/orlando',
+  'CambridgeON': '/club/CambridgeON',
+  'delawareclub599': '/club/delawareclub599',
+  'scpnepal': '/club/scpnepal',
+  'uiscrabbleclub': '/club/ui',
+  'coloradosprings': '/club/coloradosprings',
+  'bridgewaterclub': '/club/bridgewater',
+  'cococlub': '/club/coco',
+}

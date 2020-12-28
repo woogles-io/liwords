@@ -74,13 +74,11 @@ enum MessageType {
   ONGOING_GAME_EVENT = 12;
   TIMED_OUT = 13;
   ONGOING_GAMES = 14;
-  GAME_META_EVENT = 15 [deprecated = true]; // delete me
-  ACTIVE_GAMES = 16 [deprecated = true];    // XXX delete me
   GAME_DELETION = 17;
   MATCH_REQUESTS = 18;
   DECLINE_MATCH_REQUEST = 19;
   CHAT_MESSAGE = 20;
-  CHAT_MESSAGES = 21;
+
   USER_PRESENCE = 22;
   USER_PRESENCES = 23;
   SERVER_MESSAGE = 24;
@@ -93,8 +91,6 @@ enum MessageType {
   // We should definitely not be using anywhere close to 255 events, and
   // in order to enforce that I'll be forcing the event type header to just be
   // a byte long.
-
-  CHAT_CHANNELS = 38;
 }
 
 // XXX THIS MESSAGE IS OBSOLETE; replaced by GameInfoResponse in

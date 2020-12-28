@@ -108,10 +108,7 @@ service ProfileService {
 // Autocomplete
 
 message UsernameSearchRequest { string prefix = 1; }
-message UsernameSearchResponse {
-  repeated string usernames = 1 [deprecated = true];
-  repeated BasicUser users = 2;
-}
+message UsernameSearchResponse { repeated BasicUser users = 2; }
 service AutocompleteService {
   rpc GetCompletion(UsernameSearchRequest) returns(UsernameSearchResponse);
 }
@@ -137,6 +134,9 @@ message BasicUser {
 message GetActiveChatChannelsRequest {
   int32 number = 1;
   int32 offset = 2;
+  // If a tournament_id is provided, we get active chat channels (private
+  // message channels) in addition to the given tournament channel.
+  string tournament_id = 3;
 }
 
 message ActiveChatChannels {

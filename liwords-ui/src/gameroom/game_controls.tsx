@@ -86,7 +86,7 @@ export type Props = {
   gameEndControls: boolean;
   showRematch: boolean;
   currentRack: string;
-  tournamentID?: string;
+  tournamentSlug?: string;
   lexicon: string;
   challengeRule: ChallengeRule;
 };
@@ -99,10 +99,10 @@ const GameControls = React.memo((props: Props) => {
 
   const history = useHistory();
   const handleExitToLobby = React.useCallback(() => {
-    props.tournamentID
-      ? history.replace(`/tournament/${encodeURIComponent(props.tournamentID)}`)
+    props.tournamentSlug
+      ? history.replace(props.tournamentSlug)
       : history.replace('/');
-  }, [history, props.tournamentID]);
+  }, [history, props.tournamentSlug]);
 
   if (props.isExamining) {
     return <ExamineGameControls lexicon={props.lexicon} />;
