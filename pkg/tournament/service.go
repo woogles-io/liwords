@@ -297,7 +297,7 @@ func (ts *TournamentService) CreateClubSession(ctx context.Context, req *pb.NewC
 	}
 	// /club/madison/
 	slugPrefix := club.Slug + "/"
-	slug := slugPrefix + req.Date.AsTime().Format("2006-01-02-") + shortuuid.New()[2:4]
+	slug := slugPrefix + req.Date.AsTime().Format("2006-01-02-") + shortuuid.New()[2:5]
 
 	sessionDate := req.Date.AsTime().Format("Mon Jan 2, 2006")
 

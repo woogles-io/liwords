@@ -29,6 +29,7 @@ import { Announcements } from './announcements';
 import { toAPIUrl } from '../api/api';
 import { TournamentInfo } from '../tournament/tournament_info';
 import { TournamentMetadata } from '../tournament/state';
+import { clubRedirects } from './fixed_seek_controls';
 
 const sendSeek = (
   game: SoughtGame,
@@ -116,6 +117,17 @@ export const Lobby = (props: Props) => {
     if (!partialSlug || !path) {
       return;
     }
+    // Temporary redirect code:
+    if (path.startsWith('/tournament/')) {
+      const oldslug = path.substr('/tournament/'.length);
+      if (oldslug in clubRedirects) {
+        const slug = clubRedirects[oldslug];
+        window.location.replace(
+          `${window.location.protocol}//${window.location.hostname}${slug}`
+        );
+      }
+    }
+
     axios
       .post<TournamentMetadata>(
         toAPIUrl(
