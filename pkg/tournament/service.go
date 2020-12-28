@@ -270,6 +270,7 @@ func convertSingleRoundControls(reqRC *pb.SingleRoundControls) *entity.RoundCont
 		GamesPerRound:               int(reqRC.GamesPerRound),
 		Round:                       int(reqRC.Round),
 		Factor:                      int(reqRC.Factor),
+		InitialFontes:               int(reqRC.InitialFontes),
 		MaxRepeats:                  int(reqRC.MaxRepeats),
 		AllowOverMaxRepeats:         reqRC.AllowOverMaxRepeats,
 		RepeatRelativeWeight:        int(reqRC.RepeatRelativeWeight),

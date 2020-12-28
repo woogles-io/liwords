@@ -95,6 +95,7 @@ type RoundControls struct {
 	GamesPerRound               int
 	Round                       int
 	Factor                      int
+	InitialFontes               int
 	MaxRepeats                  int
 	AllowOverMaxRepeats         bool
 	RepeatRelativeWeight        int

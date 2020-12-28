@@ -44,10 +44,11 @@ message SingleRoundControls {
   int32 games_per_round = 3;
   int32 round = 4;
   int32 factor = 5;
-  int32 max_repeats = 6;
-  bool allow_over_max_repeats = 7;
-  int32 repeat_relative_weight = 8;
-  int32 win_difference_relative_weight = 9;
+  int32 initial_fontes = 6;
+  int32 max_repeats = 7;
+  bool allow_over_max_repeats = 8;
+  int32 repeat_relative_weight = 9;
+  int32 win_difference_relative_weight = 10;
 }
 
 message SingleRoundControlsRequest {
