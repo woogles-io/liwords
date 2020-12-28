@@ -95,24 +95,3 @@ func (b *Bus) chat(ctx context.Context, userID string, evt *pb.ChatMessage) erro
 	log.Debug().Interface("chat-message", chatMessage).Msg("publish-chat")
 	return b.natsconn.Publish(evt.Channel, data)
 }
-
-func (b *Bus) sendOldChats(ctx context.Context, userID, chatChannel string) error {
-	// Send chats in a chatChannel to the given user.
-	log.Debug().Str("chatChannel", chatChannel).Msg("send-old-chats")
-	if chatChannel == "" {
-		// No chats for this channel.
-		return nil
-	}
-
-	messages, err := b.chatStore.OldChats(ctx, chatChannel, 50)
-	if err != nil {
-		return err
-	}
-
-	toSend := entity.WrapEvent(&pb.ChatMessages{
-		Messages: messages,
-	}, pb.MessageType_CHAT_MESSAGES)
-
-	log.Debug().Int("num-chats", len(messages)).Msg("sending-chats")
-	return b.pubToUser(userID, toSend, chatChannel)
-}

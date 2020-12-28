@@ -50,7 +50,7 @@ services:
     networks:
       - aeronet
 
-  socket:
+  socket: &socketsetup
     build:
       context: ../liwords-socket
       dockerfile: Dockerfile-dev
@@ -70,6 +70,8 @@ services:
       - "traefik.http.routers.liwords-socket.entrypoints=web"
       - "traefik.http.services.liwords-socket.loadbalancer.server.port=8087"
       - traefik.enable=true
+
+  socket2: *socketsetup
 
   proxy:
     image: "traefik:v2.2"

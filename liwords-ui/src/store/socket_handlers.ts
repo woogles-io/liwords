@@ -16,6 +16,7 @@ import {
   usePresenceStoreContext,
   useRematchRequestStoreContext,
   useTimerStoreContext,
+  useTournamentStoreContext,
 } from './store';
 import {
   MessageType,
@@ -33,13 +34,10 @@ import {
   ServerChallengeResultEvent,
   SeekRequests,
   TimedOut,
-  GameMeta,
-  ActiveGames,
   GameDeletion,
   MatchRequests,
   DeclineMatchRequest,
   ChatMessage,
-  ChatMessages,
   UserPresence,
   UserPresences,
   ReadyForGame,
@@ -56,7 +54,6 @@ import {
   GameInfoResponseToActiveGame,
 } from './reducers/lobby_reducer';
 import { BoopSounds } from '../sound/boop';
-import { ActiveChatChannels } from '../gen/api/proto/user_service/user_service_pb';
 import {
   GameInfoResponse,
   GameInfoResponses,
@@ -89,9 +86,6 @@ export const parseMsgs = (msg: Uint8Array) => {
       [MessageType.SERVER_CHALLENGE_RESULT_EVENT]: ServerChallengeResultEvent,
       [MessageType.SEEK_REQUESTS]: SeekRequests,
       [MessageType.TIMED_OUT]: TimedOut,
-      // XXX: delete these next two.
-      [MessageType.GAME_META_EVENT]: GameMeta,
-      [MessageType.ACTIVE_GAMES]: ActiveGames,
       // ...
       [MessageType.ONGOING_GAME_EVENT]: GameInfoResponse,
       [MessageType.ONGOING_GAMES]: GameInfoResponses,
@@ -99,7 +93,6 @@ export const parseMsgs = (msg: Uint8Array) => {
       [MessageType.MATCH_REQUESTS]: MatchRequests,
       [MessageType.DECLINE_MATCH_REQUEST]: DeclineMatchRequest,
       [MessageType.CHAT_MESSAGE]: ChatMessage,
-      [MessageType.CHAT_MESSAGES]: ChatMessages,
       [MessageType.USER_PRESENCE]: UserPresence,
       [MessageType.USER_PRESENCES]: UserPresences,
       [MessageType.READY_FOR_GAME]: ReadyForGame,
@@ -107,7 +100,6 @@ export const parseMsgs = (msg: Uint8Array) => {
       [MessageType.MATCH_REQUEST_CANCELLATION]: MatchRequestCancellation,
       [MessageType.TOURNAMENT_GAME_ENDED_EVENT]: TournamentGameEndedEvent,
       [MessageType.REMATCH_STARTED]: RematchStartedEvent,
-      [MessageType.CHAT_CHANNELS]: ActiveChatChannels,
     };
 
     const parsedMsg = msgTypes[msgType];
@@ -138,6 +130,7 @@ export const useOnSocketMsg = () => {
   const { setGameEndMessage } = useGameEndMessageStoreContext();
   const { setCurrentLagMs } = useLagStoreContext();
   const { dispatchLobbyContext } = useLobbyStoreContext();
+  const { tournamentContext } = useTournamentStoreContext();
   const { loginState } = useLoginStateStoreContext();
   const { setPresence, addPresences } = usePresenceStoreContext();
   const { setRematchRequest } = useRematchRequestStoreContext();
@@ -215,13 +208,6 @@ export const useOnSocketMsg = () => {
             break;
           }
 
-          case MessageType.CHAT_CHANNELS: {
-            // to do: this message is deprecated, we are using xhr instead
-            const cc = parsedMsg as ActiveChatChannels;
-            console.log('got chat channels', cc);
-            break;
-          }
-
           case MessageType.MATCH_REQUEST: {
             const mr = parsedMsg as MatchRequest;
 
@@ -240,29 +226,30 @@ export const useOnSocketMsg = () => {
             if (receiver === loginState.username) {
               BoopSounds.playSound('matchReqSound');
               const rematchFor = mr.getRematchFor();
-              const { path } = loginState;
               console.log(
                 'sg',
                 soughtGame.tournamentID,
                 'gc',
-                gameContext.gameID
+                gameContext.gameID,
+                'tc',
+                tournamentContext
               );
               if (soughtGame.tournamentID) {
                 // This is a match game attached to a tourney.
-                // XXX: When we have a tourney reducer we should refer to said reducer's
-                //  state instead of looking at the path
-                if (
-                  path ===
-                  `/tournament/${encodeURIComponent(soughtGame.tournamentID)}`
-                ) {
+                console.log('match attached to tourney');
+                if (tournamentContext.metadata.id === soughtGame.tournamentID) {
+                  console.log('matches this tourney');
+
                   dispatchLobbyContext({
                     actionType: ActionType.AddMatchRequest,
                     payload: soughtGame,
                   });
                   inReceiverGameList = true;
-                } else if (rematchFor === gameContext.gameID) {
+                } else if (rematchFor && rematchFor === gameContext.gameID) {
+                  console.log('it is a rematch');
                   setRematchRequest(mr);
                 } else {
+                  console.log('tourney match request elsewhere');
                   notification.info({
                     message: 'Tournament Match Request',
                     description: `You have a tournament match request from ${soughtGame.seeker}. Please return to your tournament at your convenience.`,
@@ -391,14 +378,6 @@ export const useOnSocketMsg = () => {
             break;
           }
 
-          case MessageType.CHAT_MESSAGES: {
-            const cms = parsedMsg as ChatMessages;
-
-            // to do: this message is deprecated, we are using xhr instead
-            console.log('got chats from socket', cms);
-            break;
-          }
-
           case MessageType.USER_PRESENCE: {
             console.log('userpresence', parsedMsg);
 
@@ -508,7 +487,6 @@ export const useOnSocketMsg = () => {
             });
 
             // If there is an Antd message about "waiting for game", destroy it.
-            // XXX: This is a bit unideal.
             message.destroy('server-message');
             break;
           }
@@ -573,15 +551,6 @@ export const useOnSocketMsg = () => {
             break;
           }
 
-          // XXX: Delete me - obsolete
-          case MessageType.ACTIVE_GAMES: {
-            // lobby context, set list of active games
-            const age = parsedMsg as ActiveGames;
-            console.log('OBSOLETE, REFRESH APP', age);
-
-            break;
-          }
-
           case MessageType.GAME_DELETION: {
             // lobby context, remove active game
             const gde = parsedMsg as GameDeletion;
@@ -590,15 +559,6 @@ export const useOnSocketMsg = () => {
               actionType: ActionType.RemoveActiveGame,
               payload: gde.getId(),
             });
-            break;
-          }
-
-          // XXX: Delete me - obsolete
-          case MessageType.GAME_META_EVENT: {
-            // lobby context, add active game
-            const gme = parsedMsg as GameMeta;
-            console.log('OBSOLETE, REFRESH APP', gme);
-
             break;
           }
 
@@ -645,6 +605,7 @@ export const useOnSocketMsg = () => {
       setPresence,
       setRematchRequest,
       stopClock,
+      tournamentContext,
       isExamining,
     ]
   );

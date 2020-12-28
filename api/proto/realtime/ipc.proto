@@ -12,7 +12,6 @@ message RegisterRealmRequest {
 message RegisterRealmResponse {
   // realm should be made obsolete. RegisterRealmResponse should always
   // return a list of realms.
-  string realm = 1 [deprecated = true]; // obsolete, remove later.
   repeated string realms = 2;
 }
 
@@ -21,7 +20,6 @@ message RegisterRealmResponse {
 // we would like lists of active games, chats, etc; for game realms, we would
 // like the game history.
 message InitRealmInfo {
-  string realm = 1 [deprecated = true]; // obsolete; remove later
   string user_id = 2;
   repeated string realms = 3;
 }

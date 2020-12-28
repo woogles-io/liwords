@@ -32,6 +32,7 @@ const (
 
 	AdjudicateInterval   = 10 * time.Second
 	GamesCounterInterval = 60 * time.Minute
+	SeeksExpireInterval  = 10 * time.Minute
 	// Cancel a game if it hasn't started after this much time.
 	CancelAfter = 60 * time.Second
 )
@@ -142,6 +143,9 @@ func (b *Bus) ProcessMessages(ctx context.Context) {
 	gameCounter := time.NewTicker(GamesCounterInterval)
 	defer gameCounter.Stop()
 
+	seekExpirer := time.NewTicker(SeeksExpireInterval)
+	defer seekExpirer.Stop()
+
 outerfor:
 	for {
 		select {
@@ -244,8 +248,14 @@ outerfor:
 				break
 			}
 			log.Info().Int64("game-count", n).Msg("game-stats")
-		}
 
+		case <-seekExpirer.C:
+			err := b.soughtGameStore.ExpireOld(ctx)
+			if err != nil {
+				log.Err(err).Msg("expiration-error")
+				break
+			}
+		}
 	}
 
 	log.Info().Msg("exiting processMessages loop")
@@ -295,19 +305,15 @@ func (b *Bus) handleNatsRequest(ctx context.Context, topic string,
 			resp.Realms = append(resp.Realms, realm, "chat-"+realm)
 
 			if game.TournamentData != nil && game.TournamentData.Id != "" {
-				tourneyID := strings.ToLower(game.TournamentData.Id)
-				log.Debug().Str("tourney-realm-for", tourneyID)
-				resp.Realms = append(resp.Realms, "chat-tournament-"+tourneyID)
+				resp.Realms = append(resp.Realms, "chat-tournament-"+game.TournamentData.Id)
 			}
 
-		} else if strings.HasPrefix(path, "/tournament/") {
-			tid := strings.TrimPrefix(path, "/tournament/")
-			_, err := b.tournamentStore.Get(ctx, tid)
+		} else if strings.HasPrefix(path, "/tournament/") || strings.HasPrefix(path, "/club/") {
+			t, err := b.tournamentStore.GetBySlug(ctx, path)
 			if err != nil {
 				return err
 			}
-			normalized := strings.ToLower(tid)
-			resp.Realms = append(resp.Realms, "tournament-"+normalized, "chat-tournament-"+normalized)
+			resp.Realms = append(resp.Realms, "tournament-"+t.UUID, "chat-tournament-"+t.UUID)
 		} else {
 			log.Info().Str("path", path).Msg("realm-req-not-handled-sending-blank-realm")
 		}
@@ -548,12 +554,6 @@ func (b *Bus) initRealmInfo(ctx context.Context, evt *pb.InitRealmInfo, connID s
 			}
 		} else if strings.HasPrefix(realm, "tournament-") {
 			err := b.sendTournamentContext(ctx, realm, evt.UserId, connID)
-			if err != nil {
-				return err
-			}
-		} else if strings.HasPrefix(realm, "chat-") {
-			chatChan := strings.ReplaceAll(realm, "-", ".")
-			err = b.sendOldChats(ctx, evt.UserId, chatChan)
 			if err != nil {
 				return err
 			}

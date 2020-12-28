@@ -36,8 +36,12 @@ local results = {}
 for i, v in ipairs(rresp) do
 	-- channel looks like  channel:friendly_name
 	-- capture the channel.
-	local chan = string.match(v, "chat%.([%a%.%d_]+):.+")
-	redis.log(redis.LOG_WARNING, "matching "..v.." chan was "..chan)
+	-- Accepted characters in channel name (the thing after "chat." --
+	--  letters, numbers, period, dash and underscore.
+	-- Note: the dash is only there to fix a legacy crash. (liwords GH Issue #325)
+	-- We can remove this after a few weeks, once any old channels expire. It won't
+	-- work because presence channels use dashes as separators (realms).
+	local chan = string.match(v, "chat%.([%a%.%d%-_]+):.+")
 	if chan then
 		-- get the last chat msg
 		local chatkey = "chat:"..chan
@@ -253,8 +257,7 @@ func (r *RedisChatStore) LatestChannels(ctx context.Context, count, offset int,
 
 	log.Debug().Interface("vals", vals).Msg("vals-from-redis")
 	chans := make([]*upb.ActiveChatChannels_Channel, len(vals)/3)
-	tid := strings.ToLower(tournamentID)
-	getTournament := tid != ""
+	getTournament := tournamentID != ""
 
 	for idx := 0; idx < len(chans); idx++ {
 
@@ -282,7 +285,7 @@ func (r *RedisChatStore) LatestChannels(ctx context.Context, count, offset int,
 			LastMessage: lastMsg,
 			HasUpdate:   lastUpdate > lastSeen,
 		}
-		if tid != "" && chanName[0] == "chat.tournament."+tid {
+		if tournamentID != "" && chanName[0] == "chat.tournament."+tournamentID {
 			getTournament = false
 		}
 	}
@@ -290,12 +293,12 @@ func (r *RedisChatStore) LatestChannels(ctx context.Context, count, offset int,
 	// If a tournament ID is passed in, we should fetch the tournament channel
 	// as well as the latest chat for this tournament.
 	if getTournament {
-		t, err := r.tournamentStore.Get(ctx, tid)
+		t, err := r.tournamentStore.Get(ctx, tournamentID)
 		if err != nil {
 			return nil, err
 		}
 		// Get the last chat for this tournament channel.
-		chatChannel := "chat.tournament." + tid
+		chatChannel := "chat.tournament." + tournamentID
 		cm, err := r.OldChats(ctx, chatChannel, 1)
 		if err != nil {
 			return nil, err

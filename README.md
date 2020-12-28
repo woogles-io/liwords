@@ -1,10 +1,14 @@
 # liwords
 
+### License
+
+This source code is AGPL-licensed. You can modify the source for this app, or for apps that communicate with this app through a network, but must make available any of your related code under the same license.
+
 ### Components
 
-- liwords (this repo) is an API server
+- liwords (this repo) is an API server, written in Go.
   - liwords-ui (inside this repo) is a TypeScript front-end, built using `create-react-app`
-- liwords-socket is a socket server. It handles all the real-time communication. It resides at https://github.com/domino14/liwords-socket
+- liwords-socket is a socket server, written in Go. It handles all the real-time communication. It resides at https://github.com/domino14/liwords-socket.
 - NATS for pubsub / req-response functionality between liwords, liwords-socket, and the user.
 - PostgreSQL
 
@@ -24,15 +28,13 @@
 127.0.0.1	liwords.localhost
 ```
 
-7. Access the dashboard at http://liwords.localhost
+7. Access the app at http://liwords.localhost
 8. If you wish to add a new front-end package, you can run `npm install` LOCALLY (in your host OS) in the `liwords-ui` directory. This adds the package to `package.json`. Then you can do `docker-compose build frontend` to rebuild the frontend and install the package in the internal node_modules directory.
-9. You can register a user by going to http://liwords.localhost/secretwoogles (TODO: change this link when we enter beta/public release)
-
-Use `foobar` as the registration code.
+9. You can register a user by going to http://liwords.localhost/ and clicking on `SIGN UP` at the top right.
 
 To have two players play each other you must have one browser window in incognito mode, or use another browser.
 
-10. To register a bot, follow the above step, except enter `botfoobar` as the registration code. You need to register at least one bot in order for bot games to work.
+10. To register a bot, register a user the regular way. Then change their `internal_bot` flag in the database (`users` table) to true, and restart the server. You need to register at least one bot in order for bot games to work.
 
 #### Tips
 
@@ -68,6 +70,12 @@ See the `tasks.py` file to see how this function works.
 
 ### Attributions
 
+#### Sounds
+
 This app uses these sounds from freesound:
 
 S: single dog bark 3 by crazymonke9 -- https://freesound.org/s/418105/
+
+#### Code
+
+Part of the front-end timer code borrows from https://github.com/ornicar/lila's code (AGPL licensed, like this app).

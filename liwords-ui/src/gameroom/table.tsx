@@ -17,6 +17,7 @@ import {
   usePoolFormatStoreContext,
   useRematchRequestStoreContext,
   useTimerStoreContext,
+  useTournamentStoreContext,
 } from '../store/store';
 import { PlayerCards } from './player_cards';
 import Pool from './pool';
@@ -45,7 +46,7 @@ import { endGameMessageFromGameInfo } from '../store/end_of_game';
 import { singularCount } from '../utils/plural';
 import { Notepad, NotepadContextProvider } from './notepad';
 import { Analyzer, AnalyzerContextProvider } from './analyzer';
-import { TournamentMetadata } from '../tournament/tournament_info';
+import { TournamentMetadata } from '../tournament/state';
 
 type Props = {
   sendSocketMsg: (msg: Uint8Array) => void;
@@ -191,7 +192,10 @@ export const Table = React.memo((props: Props) => {
   const { rematchRequest, setRematchRequest } = useRematchRequestStoreContext();
   const { pTimedOut, setPTimedOut } = useTimerStoreContext();
   const { username, userID } = loginState;
-  const [tournamentName, setTournamentName] = useState('');
+  const {
+    tournamentContext,
+    setTournamentContext,
+  } = useTournamentStoreContext();
   const [playerNames, setPlayerNames] = useState(new Array<string>());
   const { sendSocketMsg } = props;
   // const location = useLocation();
@@ -300,9 +304,11 @@ export const Table = React.memo((props: Props) => {
         }
       )
       .then((resp) => {
-        setTournamentName(resp.data.name);
+        setTournamentContext({
+          metadata: resp.data,
+        });
       });
-  }, [gameInfo.tournament_id]);
+  }, [gameInfo.tournament_id, setTournamentContext]);
 
   useEffect(() => {
     // Request streak info only if a few conditions are true.
@@ -519,9 +525,7 @@ export const Table = React.memo((props: Props) => {
         <div className="chat-area" id="left-sidebar">
           <Card className="left-menu">
             {gameInfo.tournament_id ? (
-              <Link
-                to={`/tournament/${encodeURIComponent(gameInfo.tournament_id)}`}
-              >
+              <Link to={tournamentContext.metadata.slug}>
                 <HomeOutlined />
                 Back to Tournament
               </Link>
@@ -573,6 +577,7 @@ export const Table = React.memo((props: Props) => {
             gameDone={gameDone}
             playerMeta={gameInfo.players}
             tournamentID={gameInfo.tournament_id}
+            tournamentSlug={tournamentContext.metadata.slug}
             lexicon={gameInfo.game_request.lexicon}
             challengeRule={gameInfo.game_request.challenge_rule}
             handleAcceptRematch={
@@ -586,7 +591,10 @@ export const Table = React.memo((props: Props) => {
         <div className="data-area" id="right-sidebar">
           {/* There are two player cards, css hides one of them. */}
           <PlayerCards gameMeta={gameInfo} playerMeta={gameInfo.players} />
-          <GameInfo meta={gameInfo} tournamentName={tournamentName} />
+          <GameInfo
+            meta={gameInfo}
+            tournamentName={tournamentContext.metadata.name}
+          />
           <Pool
             pool={examinableGameContext?.pool}
             currentRack={rack || ''}

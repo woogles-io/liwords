@@ -125,15 +125,19 @@ const App = React.memo(() => {
             DISCONNECT={resetSocket}
           />
         </Route>
-        <Route path="/tournament/:tournamentID">
+        <Route path="/tournament/:partialSlug">
           <Lobby
             sendSocketMsg={sendMessage}
             sendChat={sendChat}
             DISCONNECT={resetSocket}
           />
         </Route>
-        <Route path="/clubs">
-          <Clubs />
+        <Route path="/club/:partialSlug">
+          <Lobby
+            sendSocketMsg={sendMessage}
+            sendChat={sendChat}
+            DISCONNECT={resetSocket}
+          />
         </Route>
         <Route path="/clubs">
           <Clubs />
