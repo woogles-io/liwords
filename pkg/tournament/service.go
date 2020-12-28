@@ -57,7 +57,7 @@ func (ts *TournamentService) RemoveDivision(ctx context.Context, req *pb.Tournam
 	return &pb.TournamentResponse{}, nil
 }
 
-func (ts *TournamentService) SetTournamentMetadata(ctx context.Context, req *pb.TournamentMetadataRequest) (*pb.TournamentResponse, error) {
+func (ts *TournamentService) SetTournamentMetadata(ctx context.Context, req *pb.SetTournamentMetadataRequest) (*pb.TournamentResponse, error) {
 	err := authenticateDirector(ctx, ts, req.Id, false)
 	if err != nil {
 		return nil, err
