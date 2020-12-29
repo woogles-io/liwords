@@ -346,7 +346,7 @@ func (ts *TournamentService) StartRoundCountdown(ctx context.Context, req *pb.To
 func isDirector(ctx context.Context, ts *TournamentService) (string, error) {
 	sess, err := apiserver.GetSession(ctx)
 	if err != nil {
-		return "", twirp.InternalErrorWith(err)
+		return "", err
 	}
 
 	user, err := ts.userStore.Get(ctx, sess.Username)
@@ -413,9 +413,11 @@ func convertRoundControls(reqRoundControls []*pb.SingleRoundControls) []*entity.
 	return rcs
 }
 
-// XXX: Add auth
 func (ts *TournamentService) CreateClubSession(ctx context.Context, req *pb.NewClubSessionRequest) (*pb.ClubSessionResponse, error) {
-
+	err := authenticateDirector(ctx, ts, req.ClubId, false)
+	if err != nil {
+		return nil, err
+	}
 	// Fetch the club
 	club, err := ts.tournamentStore.Get(ctx, req.ClubId)
 	if err != nil {
