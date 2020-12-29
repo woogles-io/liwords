@@ -12,7 +12,7 @@ const BoardCoordLabels = React.memo((props: Props) => {
 
   // COLUMN labels.
   for (let i = 0; i < props.gridDim; i += 1) {
-      horizLabels.push(
+    horizLabels.push(
       <CoordLabel
         label={String.fromCharCode(i + 'A'.charCodeAt(0))}
         key={`collbl${i}`}
@@ -22,21 +22,14 @@ const BoardCoordLabels = React.memo((props: Props) => {
 
   // ROW labels
   for (let i = 0; i < props.gridDim; i += 1) {
-      vertLabels.push(
-      <CoordLabel
-        label={String(i + 1)}
-        key={`rowlbl${i}`}
-      />
-    );
+    vertLabels.push(<CoordLabel label={String(i + 1)} key={`rowlbl${i}`} />);
   }
-  return <>
-    <div className="coord-labels horiz">
-      {horizLabels}
-    </div>
-    <div className="coord-labels vert">
-      {vertLabels}
-    </div>
-  </>;
+  return (
+    <>
+      <div className="coord-labels horiz">{horizLabels}</div>
+      <div className="coord-labels vert">{vertLabels}</div>
+    </>
+  );
 });
 
 export default BoardCoordLabels;
