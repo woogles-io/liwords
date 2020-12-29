@@ -52,24 +52,9 @@ export const GameLists = React.memo((props: Props) => {
 
   let matchButtonText = 'Match a friend';
   if (tournamentID) {
-    console.log('tid', tournamentID, tournamentContext.metadata);
     if (['CLUB', 'CLUBSESSION'].includes(tournamentContext.metadata.type)) {
       matchButtonText = 'Start Club Game';
     } else if (tournamentContext.metadata.type === 'STANDARD') {
-      matchButtonText = 'Start Tournament Game';
-    }
-    // XXX: The following is temporary code; remove this when we deploy the
-    // backend that handles the above.
-    if (
-      history.location.pathname.startsWith('/club/') &&
-      matchButtonText === 'Match a friend'
-    ) {
-      matchButtonText = 'Start Club Game';
-    }
-    if (
-      history.location.pathname.startsWith('/tournament/') &&
-      matchButtonText === 'Match a friend'
-    ) {
       matchButtonText = 'Start Tournament Game';
     }
   }

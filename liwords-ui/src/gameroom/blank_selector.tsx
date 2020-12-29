@@ -1,10 +1,10 @@
 import React from 'react';
-import { CrosswordGameTileValues} from '../constants/tile_values';
+import { CrosswordGameTileValues } from '../constants/tile_values';
 import Tile from './tile';
 
 type Props = {
   handleSelection: (rune: string) => void;
-}
+};
 
 export const BlankSelector = (props: Props) => {
   return (
@@ -16,9 +16,11 @@ export const BlankSelector = (props: Props) => {
           value={0}
           grabbable={false}
           key={`blank_${rune}`}
-          onClick={() => { props.handleSelection(rune); }}
+          onClick={() => {
+            props.handleSelection(rune);
+          }}
         />
       ))}
     </div>
-  )
+  );
 };

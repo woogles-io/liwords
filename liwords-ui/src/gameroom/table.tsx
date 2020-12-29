@@ -500,7 +500,12 @@ export const Table = React.memo((props: Props) => {
             {gameInfo.tournament_id ? (
               <Link to={tournamentContext.metadata.slug}>
                 <HomeOutlined />
-                Back to Tournament
+                Back to
+                {['CLUB', 'CLUBSESSION'].includes(
+                  tournamentContext.metadata.type
+                )
+                  ? ' Club'
+                  : ' Tournament'}
               </Link>
             ) : (
               <Link to="/">
