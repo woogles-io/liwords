@@ -160,9 +160,9 @@ func TestClassicDivisionRandom(t *testing.T) {
 	is.True(roundIsComplete)
 
 	// Set pairings to test more easily
-	err = tc.SetPairing(player1, player2, 1)
+	err = tc.SetPairing(player1, player2, 1, false)
 	is.NoErr(err)
-	err = tc.SetPairing(player3, player4, 1)
+	err = tc.SetPairing(player3, player4, 1, false)
 	is.NoErr(err)
 
 	pri1, err = tc.GetPlayerRoundInfo(player1, 1)
@@ -873,15 +873,15 @@ func TestClassicDivisionManual(t *testing.T) {
 	}
 
 	// Pair round 1
-	err = tc.SetPairing(player1, player2, 0)
+	err = tc.SetPairing(player1, player2, 0, false)
 	is.NoErr(err)
-	err = tc.SetPairing(player3, player4, 0)
+	err = tc.SetPairing(player3, player4, 0, false)
 	is.NoErr(err)
 
 	is.NoErr(validatePairings(tc, 0))
 
 	// Amend a pairing
-	err = tc.SetPairing(player2, player3, 0)
+	err = tc.SetPairing(player2, player3, 0, false)
 	is.NoErr(err)
 
 	// Confirm that players 1 and 4 are now unpaired
@@ -889,7 +889,7 @@ func TestClassicDivisionManual(t *testing.T) {
 	is.True(tc.Matrix[0][tc.PlayerIndexMap[player4]].Pairing == nil)
 
 	// Complete the round 1 pairings
-	err = tc.SetPairing(player1, player4, 0)
+	err = tc.SetPairing(player1, player4, 0, false)
 	is.NoErr(err)
 
 	is.NoErr(validatePairings(tc, 0))
@@ -1457,25 +1457,25 @@ func TestClassicDivisionFirsts(t *testing.T) {
 }
 
 func runFirstMethodRound(tc *ClassicDivision, playerOrder []string, fs []int, round int, useByes bool) error {
-	err := tc.SetPairing(playerOrder[0], playerOrder[1], round)
+	err := tc.SetPairing(playerOrder[0], playerOrder[1], round, false)
 
 	if err != nil {
 		return err
 	}
 
 	if useByes {
-		err = tc.SetPairing(playerOrder[2], playerOrder[2], round)
+		err = tc.SetPairing(playerOrder[2], playerOrder[2], round, false)
 
 		if err != nil {
 			return err
 		}
-		err = tc.SetPairing(playerOrder[3], playerOrder[3], round)
+		err = tc.SetPairing(playerOrder[3], playerOrder[3], round, false)
 
 		if err != nil {
 			return err
 		}
 	} else {
-		err = tc.SetPairing(playerOrder[2], playerOrder[3], round)
+		err = tc.SetPairing(playerOrder[2], playerOrder[3], round, false)
 
 		if err != nil {
 			return err

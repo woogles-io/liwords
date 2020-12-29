@@ -121,7 +121,12 @@ func (t *ClassicDivision) GetPlayerRoundInfo(player string, round int) (*entity.
 	return roundPairings[playerIndex], nil
 }
 
-func (t *ClassicDivision) SetPairing(playerOne string, playerTwo string, round int) error {
+func (t *ClassicDivision) SetPairing(playerOne string, playerTwo string, round int, isForfeit bool) error {
+
+	if playerOne != playerTwo && isForfeit {
+		return fmt.Errorf("forfeit results require that player one and two are identical, instead have: %s, %s", playerOne, playerTwo)
+	}
+
 	playerOneInfo, err := t.GetPlayerRoundInfo(playerOne, round)
 	if err != nil {
 		return err
@@ -166,6 +171,28 @@ func (t *ClassicDivision) SetPairing(playerOne string, playerTwo string, round i
 	newPairing := newClassicPairing(t, playerOne, playerTwo, round)
 	playerOneInfo.Pairing = newPairing
 	playerTwoInfo.Pairing = newPairing
+
+	// This pairing is a bye or forfeit, the result
+	// can be submitted immediately
+	if playerOne == playerTwo {
+		score := ByeScore
+		tgr := realtime.TournamentGameResult_BYE
+		if isForfeit {
+			score = ForfeitScore
+			tgr = realtime.TournamentGameResult_FORFEIT_LOSS
+		}
+		t.SubmitResult(round,
+			playerOne,
+			playerOne,
+			score,
+			0,
+			tgr,
+			tgr,
+			realtime.GameEndReason_NONE,
+			false,
+			0)
+	}
+
 	return nil
 }
 
@@ -390,12 +417,49 @@ func (t *ClassicDivision) PairRound(round int) error {
 
 			var newPairing *entity.Pairing
 			if pairingMethod == entity.Elimination && round > 0 && i >= l>>round {
-				newPairing = newEliminatedPairing(playerName, opponentName)
+				roundPairings[playerIndex].Pairing = newEliminatedPairing(playerName, opponentName)
 			} else {
-				newPairing = newClassicPairing(t, playerName, opponentName, round)
+				err = t.SetPairing(playerName, opponentName, round, false)
+				if err != nil {
+					return err
+				}
 			}
-			roundPairings[playerIndex].Pairing = newPairing
-			roundPairings[opponentIndex].Pairing = newPairing
+		}
+	}
+	return nil
+}
+
+func (t *ClassicDivision) AddPlayers(persons *entity.TournamentPersons) error {
+
+	// Redundant players have already been checked for
+
+	for _, person := range persons.Persons {
+		t.Players = append(t.Players, person)
+		PlayerIndexMap[person] = len(t.Players - 1)
+	}
+
+	for i := 0; i < len(t.Matrix); i++ {
+		roundPairings := t.Matrix[i]
+		for _, person := range persons.Persons {
+			roundPairings = append(roundPairings, &entity.PlayerRoundInfo{})
+		}
+	}
+
+	for i := 0; i < len(t.Matrix); i++ {
+		if i <= t.CurrentRound {
+			for _, person := range persons.Persons {
+				// Set the pairing
+				// This is also automatically submit a forfeit result
+				t.SetPairing(person, person, i, true)
+			}
+		} else {
+			pm := t.RoundControls[i].PairingMethod
+			if pair.IsStandingsIndependent(pm) && pm != entity.Manual {
+				err := t.PairRound(i)
+				if err != nil {
+					return nil, err
+				}
+			}
 		}
 	}
 	return nil

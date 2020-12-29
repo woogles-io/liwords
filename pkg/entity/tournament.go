@@ -16,6 +16,7 @@ type DivisionManager interface {
 	PairRound(int) error
 	GetStandings(int) ([]*Standing, error)
 	SetPairing(string, string, int) error
+	AddPlayers(*TournamentPersons) error
 	IsRoundReady(int) (bool, error)
 	IsRoundComplete(int) (bool, error)
 	IsFinished() (bool, error)
@@ -32,7 +33,7 @@ const (
 	ManualFirst FirstMethod = iota
 
 	// Random pairings do not use any previous first/second
-	// data from the tournament and random assigns first and second
+	// data from the tournament and randomly assigns first and second
 	// for the round
 	RandomFirst
 
@@ -50,6 +51,11 @@ const (
 	TypeClub = "club"
 	// TypeClubSession is spawned from a club
 	TypeClubSession = "clubsession"
+)
+
+const (
+	ByeScore     int = 50
+	ForfeitScore int = -50
 )
 
 type TournamentGame struct {
