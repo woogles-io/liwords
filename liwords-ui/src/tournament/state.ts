@@ -7,6 +7,7 @@ export type TournamentMetadata = {
   slug: string;
   id: string;
   type: tourneytypes;
+  divisions: Array<string>;
 };
 
 export type TournamentState = {
@@ -22,5 +23,6 @@ export const defaultTournamentState = {
     slug: '',
     id: '',
     type: 'STANDARD' as tourneytypes,
+    divisions: new Array<string>(),
   },
 };

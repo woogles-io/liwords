@@ -425,6 +425,48 @@ export namespace MatchRequest {
   }
 }
 
+export class TournamentMatchRequest extends jspb.Message {
+  hasGameRequest(): boolean;
+  clearGameRequest(): void;
+  getGameRequest(): GameRequest | undefined;
+  setGameRequest(value?: GameRequest): void;
+
+  hasPlayer1(): boolean;
+  clearPlayer1(): void;
+  getPlayer1(): MatchUser | undefined;
+  setPlayer1(value?: MatchUser): void;
+
+  hasPlayer2(): boolean;
+  clearPlayer2(): void;
+  getPlayer2(): MatchUser | undefined;
+  setPlayer2(value?: MatchUser): void;
+
+  getForceFirst(): boolean;
+  setForceFirst(value: boolean): void;
+
+  getTournamentId(): string;
+  setTournamentId(value: string): void;
+
+  serializeBinary(): Uint8Array;
+  toObject(includeInstance?: boolean): TournamentMatchRequest.AsObject;
+  static toObject(includeInstance: boolean, msg: TournamentMatchRequest): TournamentMatchRequest.AsObject;
+  static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+  static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+  static serializeBinaryToWriter(message: TournamentMatchRequest, writer: jspb.BinaryWriter): void;
+  static deserializeBinary(bytes: Uint8Array): TournamentMatchRequest;
+  static deserializeBinaryFromReader(message: TournamentMatchRequest, reader: jspb.BinaryReader): TournamentMatchRequest;
+}
+
+export namespace TournamentMatchRequest {
+  export type AsObject = {
+    gameRequest?: GameRequest.AsObject,
+    player1?: MatchUser.AsObject,
+    player2?: MatchUser.AsObject,
+    forceFirst: boolean,
+    tournamentId: string,
+  }
+}
+
 export class ReadyForGame extends jspb.Message {
   getGameId(): string;
   setGameId(value: string): void;
@@ -529,25 +571,25 @@ export namespace MatchRequests {
   }
 }
 
-export class ActiveGames extends jspb.Message {
-  clearGamesList(): void;
-  getGamesList(): Array<GameMeta>;
-  setGamesList(value: Array<GameMeta>): void;
-  addGames(value?: GameMeta, index?: number): GameMeta;
+export class TournamentMatchRequests extends jspb.Message {
+  clearRequestsList(): void;
+  getRequestsList(): Array<TournamentMatchRequest>;
+  setRequestsList(value: Array<TournamentMatchRequest>): void;
+  addRequests(value?: TournamentMatchRequest, index?: number): TournamentMatchRequest;
 
   serializeBinary(): Uint8Array;
-  toObject(includeInstance?: boolean): ActiveGames.AsObject;
-  static toObject(includeInstance: boolean, msg: ActiveGames): ActiveGames.AsObject;
+  toObject(includeInstance?: boolean): TournamentMatchRequests.AsObject;
+  static toObject(includeInstance: boolean, msg: TournamentMatchRequests): TournamentMatchRequests.AsObject;
   static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
   static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
-  static serializeBinaryToWriter(message: ActiveGames, writer: jspb.BinaryWriter): void;
-  static deserializeBinary(bytes: Uint8Array): ActiveGames;
-  static deserializeBinaryFromReader(message: ActiveGames, reader: jspb.BinaryReader): ActiveGames;
+  static serializeBinaryToWriter(message: TournamentMatchRequests, writer: jspb.BinaryWriter): void;
+  static deserializeBinary(bytes: Uint8Array): TournamentMatchRequests;
+  static deserializeBinaryFromReader(message: TournamentMatchRequests, reader: jspb.BinaryReader): TournamentMatchRequests;
 }
 
-export namespace ActiveGames {
+export namespace TournamentMatchRequests {
   export type AsObject = {
-    gamesList: Array<GameMeta.AsObject>,
+    requestsList: Array<TournamentMatchRequest.AsObject>,
   }
 }
 
@@ -1310,6 +1352,7 @@ export interface MessageTypeMap {
   MATCH_REQUESTS: 18;
   DECLINE_MATCH_REQUEST: 19;
   CHAT_MESSAGE: 20;
+  TOURNAMENT_MATCH_REQUESTS: 21;
   USER_PRESENCE: 22;
   USER_PRESENCES: 23;
   SERVER_MESSAGE: 24;

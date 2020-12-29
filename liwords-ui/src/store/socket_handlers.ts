@@ -48,6 +48,7 @@ import {
   TournamentDataResponse,
   TournamentDivisionDataResponse,
   TournamentDivisionDeletedResponse,
+  TournamentMatchRequests,
 } from '../gen/api/proto/realtime/realtime_pb';
 import { ActionType } from '../actions/actions';
 import { endGameMessage } from './end_of_game';
@@ -94,6 +95,7 @@ export const parseMsgs = (msg: Uint8Array) => {
       [MessageType.ONGOING_GAMES]: GameInfoResponses,
       [MessageType.GAME_DELETION]: GameDeletion,
       [MessageType.MATCH_REQUESTS]: MatchRequests,
+      [MessageType.TOURNAMENT_MATCH_REQUESTS]: TournamentMatchRequests,
       [MessageType.DECLINE_MATCH_REQUEST]: DeclineMatchRequest,
       [MessageType.CHAT_MESSAGE]: ChatMessage,
       [MessageType.USER_PRESENCE]: UserPresence,

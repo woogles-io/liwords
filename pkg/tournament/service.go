@@ -203,6 +203,12 @@ func (ts *TournamentService) GetTournamentMetadata(ctx context.Context, req *pb.
 	default:
 		return nil, fmt.Errorf("unrecognized tournament type: %v", t.Type)
 	}
+	divNames := make([]string, len(t.Divisions))
+	idx := 0
+	for d := range t.Divisions {
+		divNames[idx] = d
+		idx++
+	}
 
 	return &pb.TournamentMetadataResponse{
 		Name:        t.Name,
@@ -211,6 +217,7 @@ func (ts *TournamentService) GetTournamentMetadata(ctx context.Context, req *pb.
 		Slug:        t.Slug,
 		Id:          t.UUID,
 		Type:        tt,
+		Divisions:   divNames,
 	}, nil
 
 }

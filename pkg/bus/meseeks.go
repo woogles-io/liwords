@@ -466,3 +466,17 @@ func (b *Bus) openMatches(ctx context.Context, receiverID string, tourneyID stri
 	evt := entity.WrapEvent(pbobj, pb.MessageType_MATCH_REQUESTS)
 	return evt, nil
 }
+
+func (b *Bus) openTournamentMatches(ctx context.Context, receiverID string, tourneyID string) (*entity.EventWrapper, error) {
+	sgs, err := b.soughtGameStore.ListTournamentMatches(ctx, receiverID, tourneyID)
+	if err != nil {
+		return nil, err
+	}
+	log.Debug().Str("receiver", receiverID).Interface("open-tournament-matches", sgs).Msg("open-tms")
+	pbobj := &pb.TournamentMatchRequests{Requests: []*pb.TournamentMatchRequest{}}
+	for _, sg := range sgs {
+		pbobj.Requests = append(pbobj.Requests, sg.TournamentMatchRequest)
+	}
+	evt := entity.WrapEvent(pbobj, pb.MessageType_TOURNAMENT_MATCH_REQUESTS)
+	return evt, nil
+}

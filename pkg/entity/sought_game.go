@@ -10,18 +10,22 @@ type SoughtGameType int
 const (
 	TypeSeek SoughtGameType = iota
 	TypeMatch
+	TypeTournamentMatch
 	TypeNone
 )
 
 type SoughtGame struct {
-	// A sought game has either of these two fields set
-	SeekRequest  *pb.SeekRequest
-	MatchRequest *pb.MatchRequest
+	// A sought game has either of these fields set
+	SeekRequest            *pb.SeekRequest
+	MatchRequest           *pb.MatchRequest
+	TournamentMatchRequest *pb.TournamentMatchRequest
+	sgtype                 SoughtGameType
 }
 
 func NewSoughtGame(seekRequest *pb.SeekRequest) *SoughtGame {
 	sg := &SoughtGame{
 		SeekRequest: seekRequest,
+		sgtype:      TypeSeek,
 	}
 
 	sg.SeekRequest.GameRequest.RequestId = shortuuid.New()
@@ -31,7 +35,7 @@ func NewSoughtGame(seekRequest *pb.SeekRequest) *SoughtGame {
 	// is needed.
 	if sg.SeekRequest.GameRequest.OriginalRequestId == "" {
 		sg.SeekRequest.GameRequest.OriginalRequestId =
-		  sg.SeekRequest.GameRequest.RequestId
+			sg.SeekRequest.GameRequest.RequestId
 	}
 	return sg
 }
@@ -39,46 +43,58 @@ func NewSoughtGame(seekRequest *pb.SeekRequest) *SoughtGame {
 func NewMatchRequest(matchRequest *pb.MatchRequest) *SoughtGame {
 	sg := &SoughtGame{
 		MatchRequest: matchRequest,
+		sgtype:       TypeMatch,
 	}
 	sg.MatchRequest.GameRequest.RequestId = shortuuid.New()
 	if sg.MatchRequest.GameRequest.OriginalRequestId == "" {
 		sg.MatchRequest.GameRequest.OriginalRequestId =
-		  sg.MatchRequest.GameRequest.RequestId
+			sg.MatchRequest.GameRequest.RequestId
 	}
 	return sg
 }
 
+func NewTournamentMatchRequest(tmr *pb.TournamentMatchRequest) *SoughtGame {
+	sg := &SoughtGame{
+		TournamentMatchRequest: tmr,
+		sgtype:                 TypeTournamentMatch,
+	}
+	sg.TournamentMatchRequest.GameRequest.RequestId = shortuuid.New()
+	return sg
+}
+
 func (sg *SoughtGame) ID() string {
-	if sg.SeekRequest != nil {
-		return sg.SeekRequest.GameRequest.RequestId
-	} else if sg.MatchRequest != nil {
+	switch sg.sgtype {
+	case TypeMatch:
 		return sg.MatchRequest.GameRequest.RequestId
+	case TypeSeek:
+		return sg.SeekRequest.GameRequest.RequestId
+	case TypeTournamentMatch:
+		return sg.TournamentMatchRequest.GameRequest.RequestId
 	}
 	return ""
 }
 
 func (sg *SoughtGame) ConnID() string {
-	if sg.SeekRequest != nil {
+	switch sg.sgtype {
+	case TypeSeek:
 		return sg.SeekRequest.ConnectionId
-	} else if sg.MatchRequest != nil {
+	case TypeMatch:
 		return sg.MatchRequest.ConnectionId
+		// Tournament matches don't have connection IDs as they are sent
+		// from the server to all the user's connections.
 	}
 	return ""
 }
 
 func (sg *SoughtGame) Type() SoughtGameType {
-	if sg.SeekRequest != nil {
-		return TypeSeek
-	} else if sg.MatchRequest != nil {
-		return TypeMatch
-	}
-	return TypeNone
+	return sg.sgtype
 }
 
 func (sg *SoughtGame) Seeker() string {
-	if sg.SeekRequest != nil {
+	switch sg.sgtype {
+	case TypeSeek:
 		return sg.SeekRequest.User.UserId
-	} else if sg.MatchRequest != nil {
+	case TypeMatch:
 		return sg.MatchRequest.User.UserId
 	}
 	return ""

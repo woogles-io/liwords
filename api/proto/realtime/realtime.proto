@@ -79,6 +79,7 @@ enum MessageType {
   MATCH_REQUESTS = 18;
   DECLINE_MATCH_REQUEST = 19;
   CHAT_MESSAGE = 20;
+  TOURNAMENT_MATCH_REQUESTS = 21;
 
   USER_PRESENCE = 22;
   USER_PRESENCES = 23;
@@ -155,8 +156,20 @@ message MatchRequest {
   // connection_id is the websocket ID via which this game was requested.
   string connection_id = 5;
   // If this match request is part of a tournament, it is treated in a special
-  // way.
+  // way. We are moving towards server-generated match requests for tournaments,
+  // so the following will only be used in "legacy mode" / more free-form clubs.
   string tournament_id = 6;
+}
+
+// TournamentMatchRequest should be sent by the server to both users.
+message TournamentMatchRequest {
+  GameRequest game_request = 1;
+  MatchUser player1 = 2;
+  MatchUser player2 = 3;
+  // if force_first is true, player1 will go first. Otherwise, it is
+  // randomly determined.
+  bool force_first = 4;
+  string tournament_id = 5;
 }
 
 message ReadyForGame { string game_id = 1; }
@@ -173,9 +186,9 @@ message MatchRequestCancellation { string request_id = 1; }
 // SeekRequests sends all open seek requests.
 message SeekRequests { repeated SeekRequest requests = 1; }
 message MatchRequests { repeated MatchRequest requests = 1; }
-
-// OBSOLETE: delete me:
-message ActiveGames { repeated GameMeta games = 1; }
+message TournamentMatchRequests {
+  repeated TournamentMatchRequest requests = 1;
+}
 
 // The server will send back a ServerGameplayEvent to a ClientGameplayEvent.
 // The server will also send these asynchronously for opponent gameplay
@@ -363,9 +376,9 @@ message RoundControl {
 }
 
 message TournamentControls {
-   liwords.GameRequest game_request = 1;
-   repeated RoundControl round_controls = 2;
-   int32 type = 3;
+  liwords.GameRequest game_request = 1;
+  repeated RoundControl round_controls = 2;
+  int32 type = 3;
 }
 
 message TournamentGame {
@@ -380,9 +393,7 @@ message PlayerRoundInfo {
   repeated liwords.TournamentGameResult outcomes = 3;
 }
 
-message ClassicDivision {
-  repeated PlayerRoundInfo matrix = 1;
-}
+message ClassicDivision { repeated PlayerRoundInfo matrix = 1; }
 
 message TournamentDivisionDataResponse {
   string id = 1;

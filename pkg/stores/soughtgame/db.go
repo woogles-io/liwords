@@ -18,8 +18,9 @@ import (
 )
 
 const (
-	typeSeek  = "seek"
-	typeMatch = "match"
+	typeSeek            = "seek"
+	typeMatch           = "match"
+	typeTournamentMatch = "tournamentmatch"
 )
 
 type DBStore struct {
@@ -30,9 +31,10 @@ type DBStore struct {
 type soughtgame struct {
 	CreatedAt time.Time
 	UUID      string `gorm:"index"`
-	Seeker    string `gorm:"index"`
+	// Seeker and Receiver are blank for tournamentmatch requests.
+	Seeker string `gorm:"index"`
 
-	Type   string // seek or match
+	Type   string // seek, match, or tournamentmatch
 	ConnID string `gorm:"index"`
 	// Only for match requests
 	Receiver string `gorm:"index"`
@@ -67,6 +69,13 @@ func (s *DBStore) sgFromDBObj(g *soughtgame) (*entity.SoughtGame, error) {
 			return nil, err
 		}
 		return &entity.SoughtGame{MatchRequest: mr}, nil
+	case typeTournamentMatch:
+		mr := &pb.TournamentMatchRequest{}
+		err = json.Unmarshal(g.Request, mr)
+		if err != nil {
+			return nil, err
+		}
+		return &entity.SoughtGame{TournamentMatchRequest: mr}, nil
 	}
 	log.Error().Str("seekType", g.Type).Str("id", g.UUID).Msg("unexpected-seek-type")
 	return nil, errors.New("unknown error getting seek or match")
@@ -112,6 +121,9 @@ func (s *DBStore) Set(ctx context.Context, game *entity.SoughtGame) error {
 	} else if game.Type() == entity.TypeMatch {
 		bts, err = json.Marshal(game.MatchRequest)
 		sgtype = typeMatch
+	} else if game.Type() == entity.TypeTournamentMatch {
+		bts, err = json.Marshal(game.TournamentMatchRequest)
+		sgtype = typeTournamentMatch
 	}
 	if err != nil {
 		return err
@@ -146,7 +158,8 @@ func (s *DBStore) Delete(ctx context.Context, id string) error {
 func (s *DBStore) ExpireOld(ctx context.Context) error {
 	ctxDB := s.db.WithContext(ctx)
 
-	result := ctxDB.Where("created_at < now() - interval '1 hour'").Delete(&soughtgame{})
+	// Don't expire tournament match requests; handle this elsewhere.
+	result := ctxDB.Where("created_at < now() - interval '1 hour' and type in ('match', 'seek')").Delete(&soughtgame{})
 	if result.Error == nil && result.RowsAffected > 0 {
 		log.Info().Int("rows-affected", int(result.RowsAffected)).Msg("expire-old-seeks")
 	}
@@ -209,6 +222,33 @@ func (s *DBStore) ListOpenMatches(ctx context.Context, receiverID, tourneyID str
 	if tourneyID != "" {
 		query = query.Where("request->>'tournament_id' = ?", tourneyID)
 	}
+	if result := query.Scan(&games); result.Error != nil {
+		return nil, result.Error
+	}
+	entGames := make([]*entity.SoughtGame, len(games))
+	for idx, g := range games {
+		entGames[idx], err = s.sgFromDBObj(&g)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return entGames, nil
+}
+
+// ListTournamentMatches lists all open tournament match requests for receiverID, in tourneyID.
+// This differs from the ListOpenMatches above in that the above function lists user-generated
+// match requests for free-form clubs/tourneys, whereas this function lists server-generated
+// specific tournament match requests.
+func (s *DBStore) ListTournamentMatches(ctx context.Context, receiverID, tourneyID string) ([]*entity.SoughtGame, error) {
+	var games []soughtgame
+	var err error
+	ctxDB := s.db.WithContext(ctx)
+
+	// XXX: Consider putting indices on these JSON fields as we grow.
+	query := ctxDB.Table("soughtgames").
+		Where("type = ?", typeTournamentMatch).
+		Where("request->>'player1' = ? OR request->>'player2' = ?", receiverID, receiverID).
+		Where("request->>'tournament_id' = ?", tourneyID)
 	if result := query.Scan(&games); result.Error != nil {
 		return nil, result.Error
 	}
