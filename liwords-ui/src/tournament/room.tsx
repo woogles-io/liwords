@@ -1,4 +1,8 @@
-import { useEffect } from 'react';
+import React from 'react';
+import '../App.scss';
+import 'antd/dist/antd.css';
+
+import { useCallback, useEffect, useMemo } from 'react';
 import { useParams } from 'react-router-dom';
 import axios from 'axios';
 import { message } from 'antd';
@@ -10,6 +14,13 @@ import {
 import { useMountedState } from '../utils/mounted';
 import { TournamentMetadata } from './state';
 import { toAPIUrl } from '../api/api';
+import { TopBar } from '../topbar/topbar';
+import { singularCount } from '../utils/plural';
+import { Chat } from '../chat/chat';
+import { GameLists } from '../lobby/gameLists';
+import { TournamentInfo } from './tournament_info';
+import { sendAccept, sendSeek } from '../lobby/sought_game_interactions';
+import { SoughtGame } from '../store/reducers/lobby_reducer';
 
 type Props = {
   sendSocketMsg: (msg: Uint8Array) => void;
@@ -26,6 +37,7 @@ export const TournamentRoom = (props: Props) => {
     setTournamentContext,
   } = useTournamentStoreContext();
   const { loggedIn, username, userID } = loginState;
+  const { sendSocketMsg } = props;
   const { path } = loginState;
   const [badTournament, setBadTournament] = useState(false);
   const [selectedGameTab, setSelectedGameTab] = useState(
@@ -74,4 +86,74 @@ export const TournamentRoom = (props: Props) => {
         setBadTournament(true);
       });
   }, [path, partialSlug, setTournamentContext]);
+
+  const tournamentID = useMemo(() => {
+    return tournamentContext.metadata.id;
+  }, [tournamentContext.metadata]);
+
+  const handleNewGame = useCallback(
+    (seekID: string) => {
+      sendAccept(seekID, sendSocketMsg);
+    },
+    [sendSocketMsg]
+  );
+  const onSeekSubmit = useCallback(
+    (g: SoughtGame) => {
+      sendSeek(g, sendSocketMsg);
+    },
+    [sendSocketMsg]
+  );
+
+  const peopleOnlineContext = useCallback(
+    (n: number) => singularCount(n, 'Player', 'Players'),
+    []
+  );
+
+  if (badTournament) {
+    return (
+      <>
+        <TopBar />
+        <div className="lobby">
+          <h3>You tried to access a non-existing page.</h3>
+        </div>
+      </>
+    );
+  }
+
+  if (!tournamentID) {
+    return (
+      <>
+        <TopBar />
+      </>
+    );
+  }
+
+  return (
+    <>
+      <TopBar />
+      <div className="lobby">
+        <div className="chat-area">
+          <Chat
+            sendChat={props.sendChat}
+            defaultChannel={`chat.tournament.${tournamentID}`}
+            defaultDescription={tournamentContext.metadata.name}
+            peopleOnlineContext={peopleOnlineContext}
+            highlight={tournamentContext.metadata.directors}
+            tournamentID={tournamentID}
+          />
+        </div>
+        <GameLists
+          loggedIn={loggedIn}
+          userID={userID}
+          username={username}
+          newGame={handleNewGame}
+          selectedGameTab={selectedGameTab}
+          setSelectedGameTab={setSelectedGameTab}
+          onSeekSubmit={onSeekSubmit}
+          tournamentID={tournamentID}
+        />
+        <TournamentInfo />
+      </div>
+    </>
+  );
 };

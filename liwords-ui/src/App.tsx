@@ -24,6 +24,7 @@ import { toAPIUrl } from './api/api';
 import { ChatMessage, MessageType } from './gen/api/proto/realtime/realtime_pb';
 import { encodeToSocketFmt } from './utils/protobuf';
 import { Clubs } from './clubs';
+import { TournamentRoom } from './tournament/room';
 
 type Blocks = {
   user_ids: Array<string>;
@@ -126,18 +127,10 @@ const App = React.memo(() => {
           />
         </Route>
         <Route path="/tournament/:partialSlug">
-          <Lobby
-            sendSocketMsg={sendMessage}
-            sendChat={sendChat}
-            DISCONNECT={resetSocket}
-          />
+          <TournamentRoom sendSocketMsg={sendMessage} sendChat={sendChat} />
         </Route>
         <Route path="/club/:partialSlug">
-          <Lobby
-            sendSocketMsg={sendMessage}
-            sendChat={sendChat}
-            DISCONNECT={resetSocket}
-          />
+          <TournamentRoom sendSocketMsg={sendMessage} sendChat={sendChat} />
         </Route>
         <Route path="/clubs">
           <Clubs />
