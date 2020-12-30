@@ -196,6 +196,7 @@ p {
     justify-content: flex-start;
     align-items: center;
     cursor: pointer;
+    max-height: 24px;
     width: calc(100% - 18px);
     margin-bottom: 12px;
     &.unread {
@@ -268,13 +269,7 @@ p {
 
 .game-table {
   .chat-area .ant-card.chat {
-    height: 300px;
-    .channel-list {
-      max-height: 240px;
-    }
-    .entities {
-      max-height: 90px;
-    }
+    height: 400px;
   }
 }
 
@@ -292,23 +287,10 @@ p {
 }
 
 @media (min-width: $screen-laptop-min) {
-  .lobby .chat-area .ant-card.chat .entities {
-    max-height: calc(100vh - 324px);
-  }
-  .chat-area .channel-list {
-    max-height: calc(100vh - 164px);
-  }
   .game-table {
     .chat-area .ant-card.chat {
       height: 355px;
       margin-bottom: 12px;
-      .entities {
-        max-height: 140px;
-      }
-
-    }
-    .chat-area .ant-card.chat .channel-list {
-      max-height: 295px;
     }
   }
   .chat-area {
@@ -325,12 +307,6 @@ p {
   .game-table {
     .chat-area .ant-card.chat {
       height: 495px;
-      .entities {
-        max-height: 274px;
-      }
-    }
-    .chat-area .ant-card.chat .channel-list {
-      max-height: 435px;
     }
   }
 }
@@ -339,12 +315,6 @@ p {
   .game-table {
     .chat-area .ant-card.chat {
       height: 564px;
-      .entities {
-        max-height: 357px;
-      }
-    }
-    .chat-area .ant-card.chat .channel-list {
-      max-height: 504px;
     }
   }
 }
