@@ -18,9 +18,21 @@ const phillyvirtual = {
 
 const hcnj = phillyvirtual;
 
+const cococlub = {
+  lexicon: 'CSW19',
+  challengerule: ChallengeRule.FIVE_POINT,
+  initialtime: 17, // 15 minutes
+  rated: true,
+  extratime: 1,
+  friend: '',
+  incOrOT: 'overtime',
+  vsBot: false,
+};
+
 export const fixedSettings: { [key: string]: settings } = {
   phillyvirtual,
   hcnj,
+  cococlub,
 };
 
 // A temporary map of club redirects. Map internal tournament ID to slug:
