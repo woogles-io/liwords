@@ -337,7 +337,7 @@ func SetPairing(ctx context.Context, ts TournamentStore, id string, division str
 		return fmt.Errorf("division %s does not have enough players or controls to set pairings", division)
 	}
 
-	err = divisionObject.DivisionManager.SetPairing(playerOneId, playerTwoId, round)
+	err = divisionObject.DivisionManager.SetPairing(playerOneId, playerTwoId, round, false)
 	if err != nil {
 		return err
 	}
@@ -420,8 +420,11 @@ func StartTournament(ctx context.Context, ts TournamentStore, id string, manual 
 		if err != nil {
 			return err
 		}
+		t.IsStarted = true
 	}
-	t.IsStarted = true
+	if !t.IsStarted {
+		return fmt.Errorf("cannot start tournament %s with no divisions", t.Name)
+	}
 	return ts.Set(ctx, t)
 }
 
@@ -607,10 +610,6 @@ func addTournamentPersons(ctx context.Context,
 		return fmt.Errorf("division %s does not exist", division)
 	}
 
-	if t.IsStarted {
-		return errors.New("cannot cannot change players or directors after the tournament has started")
-	}
-
 	var personsMap map[string]int
 	if isPlayers {
 		personsMap = divisionObject.Players.Persons
@@ -633,7 +632,12 @@ func addTournamentPersons(ctx context.Context,
 		personsMap[k] = v
 	}
 
-	if isPlayers {
+	if t.IsStarted {
+		err := divisionObject.DivisionManager.AddPlayers(persons)
+		if err != nil {
+			return err
+		}
+	} else if isPlayers {
 		err = createDivisionManager(t, division)
 		if err != nil {
 			return err
@@ -663,8 +667,8 @@ func removeTournamentPersons(ctx context.Context,
 		return fmt.Errorf("division %s does not exist", division)
 	}
 
-	if t.IsStarted {
-		return errors.New("cannot cannot change players or directors after the tournament has started")
+	if t.IsStarted && isPlayers {
+		return errors.New("cannot cannot remove players after the tournament has started.")
 	}
 
 	var personsMap map[string]int
