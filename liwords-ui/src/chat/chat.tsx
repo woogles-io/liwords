@@ -107,7 +107,7 @@ export const Chat = React.memo((props: Props) => {
           const desiredScrollTop = chatTab.scrollHeight - chatTab.clientHeight;
           // Slight wiggle room, since close enough to the bottom is close enough.
           // Otherwise it bounces on rounding errors for later changes to things that call this
-          if (chatTab.scrollTop < desiredScrollTop - 2) {
+          if (chatTab.scrollTop < desiredScrollTop - 6) {
             chatTab.scrollTop = desiredScrollTop;
           }
           setHasUnreadChat(false);
@@ -198,7 +198,13 @@ export const Chat = React.memo((props: Props) => {
           }
         });
     }
-  }, [setChatChannels, enableChatAutoScroll, loggedIn, props.tournamentID]);
+  }, [
+    setChatChannels,
+    enableChatAutoScroll,
+    channelsFetched,
+    loggedIn,
+    props.tournamentID,
+  ]);
 
   useEffect(() => {
     // Initial load of channels

@@ -215,7 +215,7 @@ p {
   }
   .unread-marker {
     font-size: 21px;
-    padding: 0 6px;
+    padding: 0 6px 3px;
     @include colorModed() {
       color: m($primary-dark);
     }
