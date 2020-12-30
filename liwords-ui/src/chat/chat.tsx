@@ -149,61 +149,61 @@ export const Chat = React.memo((props: Props) => {
     setHeight();
   }, [doChatAutoScroll, setHeight]);
 
-  const fetchChannels = useCallback(
-    (initial = false) => {
-      if (loggedIn) {
-        axios
-          .post<JSONActiveChatChannels>(
-            toAPIUrl('user_service.SocializeService', 'GetActiveChatChannels'),
-            {
-              number: 20,
-              offset: 0,
-              tournament_id: props.tournamentID || '',
-            },
-            { withCredentials: true }
-          )
-          .then((res) => {
-            console.log('Fetched channels:', res.data.channels);
-            const newChannels: ActiveChatChannels.AsObject = {
-              channelsList:
-                res.data.channels.map((ch) => {
-                  return {
-                    displayName: ch.display_name,
-                    lastUpdate: parseInt(ch.last_update, 10),
-                    // Don't trust hasUpdate if this isn't the initial poll.
-                    hasUpdate: ch.has_update && initial,
-                    lastMessage: ch.last_message || '',
-                    name: ch.name,
-                  };
-                }) || [],
-            };
-            setChatChannels(newChannels);
-            enableChatAutoScroll();
-            if (initial) {
-              // If these were set already, just return that list,
-              // otherwise respect the hasUpdate fields
-
-              setUpdatedChannels(
-                new Set(
-                  newChannels?.channelsList
-                    ?.filter((ch) => ch.hasUpdate)
-                    ?.map((ch) => {
-                      return ch.name;
-                    })
-                )
-              );
-            }
-          });
+  const fetchChannels = useCallback(() => {
+    if (loggedIn) {
+      const initial = !channelsFetched;
+      if (initial) {
+        setChannelsFetched(true);
       }
-    },
-    [setChatChannels, enableChatAutoScroll, loggedIn, props.tournamentID]
-  );
+      axios
+        .post<JSONActiveChatChannels>(
+          toAPIUrl('user_service.SocializeService', 'GetActiveChatChannels'),
+          {
+            number: 20,
+            offset: 0,
+            tournament_id: props.tournamentID || '',
+          },
+          { withCredentials: true }
+        )
+        .then((res) => {
+          console.log('Fetched channels:', res.data.channels);
+          const newChannels: ActiveChatChannels.AsObject = {
+            channelsList:
+              res.data.channels.map((ch) => {
+                return {
+                  displayName: ch.display_name,
+                  lastUpdate: parseInt(ch.last_update, 10),
+                  // Don't trust hasUpdate if this isn't the initial poll.
+                  hasUpdate: ch.has_update && initial,
+                  lastMessage: ch.last_message || '',
+                  name: ch.name,
+                };
+              }) || [],
+          };
+          setChatChannels(newChannels);
+          enableChatAutoScroll();
+          if (initial) {
+            // If these were set already, just return that list,
+            // otherwise respect the hasUpdate fields
+
+            setUpdatedChannels(
+              new Set(
+                newChannels?.channelsList
+                  ?.filter((ch) => ch.hasUpdate)
+                  ?.map((ch) => {
+                    return ch.name;
+                  })
+              )
+            );
+          }
+        });
+    }
+  }, [setChatChannels, enableChatAutoScroll, loggedIn, props.tournamentID]);
 
   useEffect(() => {
     // Initial load of channels
     if (!channelsFetched) {
-      fetchChannels(true);
-      setChannelsFetched(true);
+      fetchChannels();
     }
   }, [fetchChannels, channelsFetched]);
 
