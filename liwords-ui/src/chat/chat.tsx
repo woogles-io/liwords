@@ -105,7 +105,11 @@ export const Chat = React.memo((props: Props) => {
             setHasScroll(true);
           }
           const desiredScrollTop = chatTab.scrollHeight - chatTab.clientHeight;
-          chatTab.scrollTop = desiredScrollTop;
+          // Slight wiggle room, since close enough to the bottom is close enough.
+          // Otherwise it bounces on rounding errors for later changes to things that call this
+          if (chatTab.scrollTop < desiredScrollTop - 2) {
+            chatTab.scrollTop = desiredScrollTop;
+          }
           setHasUnreadChat(false);
         }, 100);
       }
@@ -123,8 +127,16 @@ export const Chat = React.memo((props: Props) => {
           (contextPanelHeight > 106 ? contextPanelHeight : 106) -
           100
         : undefined;
-    setMaxEntitiesHeight(calculatedEntitiesHeight);
-  }, []);
+    if (maxEntitiesHeight !== calculatedEntitiesHeight) {
+      setMaxEntitiesHeight(calculatedEntitiesHeight);
+      doChatAutoScroll();
+    }
+  }, [doChatAutoScroll, maxEntitiesHeight]);
+
+  useEffect(() => {
+    setHeight();
+  }, [updatedChannels, unseenMessages, presenceCount, setHeight]);
+
   // When window is shrunk, auto-scroll may be enabled. This is one-way.
   // Hiding bookmarks bar or downloaded files bar should keep it enabled.
   const enableChatAutoScroll = useCallback(() => {

@@ -196,6 +196,7 @@ p {
     justify-content: flex-start;
     align-items: center;
     cursor: pointer;
+    max-height: 24px;
     width: calc(100% - 18px);
     margin-bottom: 12px;
     &.unread {
@@ -214,7 +215,7 @@ p {
   }
   .unread-marker {
     font-size: 21px;
-    padding: 0 6px 3px;
+    padding: 0 6px;
     @include colorModed() {
       color: m($primary-dark);
     }
