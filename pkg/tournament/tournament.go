@@ -420,8 +420,11 @@ func StartTournament(ctx context.Context, ts TournamentStore, id string, manual 
 		if err != nil {
 			return err
 		}
+		t.IsStarted = true
 	}
-	t.IsStarted = true
+	if !t.IsStarted {
+		return fmt.Errorf("cannot start tournament %s with no divisions", t.Name)
+	}
 	return ts.Set(ctx, t)
 }
 
