@@ -38,7 +38,7 @@ export const TournamentInfo = (props: TournamentInfoProps) => {
       )
       .then((resp) => {
         dispatchLobbyContext({
-          actionType: ActionType.AddTourneyGames,
+          actionType: ActionType.AddTourneyGameResults,
           payload: resp.data.games,
         });
       });

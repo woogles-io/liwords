@@ -240,8 +240,9 @@ message GameEndedEvent {
 }
 
 // TournamentGameEndedEvent gets sent to a tournament channel when a game is
-// over. This shows tournament results right in the tournament lobby in real
-// time.
+// over. This is a legacy way of showing tournament results right in the
+// tournament lobby in realtime. New tournaments will use full tournament
+// messages (specifically, TournamentDivisionDataResponse et al).
 message TournamentGameEndedEvent {
 
   message Player {

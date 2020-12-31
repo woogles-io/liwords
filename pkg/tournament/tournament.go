@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"sort"
+	"time"
 
 	"github.com/domino14/liwords/pkg/entity"
 	"github.com/domino14/liwords/pkg/user"
@@ -375,6 +376,43 @@ func SetResult(ctx context.Context,
 
 	t.Lock()
 	defer t.Unlock()
+	if t.Type == entity.TypeClub {
+		// This game was played in a legacy "Clubhouse".
+		// This is a tournament of "club" type (note, not a club *session*). This
+		// is a casual type of tournament game with no defined divisions, pairings,
+		// game settings, etc, so we bypass all of this code and just send a
+		// tournament game ended message.
+
+		p1user, err := us.GetByUUID(ctx, playerOneId)
+		if err != nil {
+			return err
+		}
+		p2user, err := us.GetByUUID(ctx, playerTwoId)
+		if err != nil {
+			return err
+		}
+
+		players := []*realtime.TournamentGameEndedEvent_Player{
+			{Username: p1user.Username, Score: int32(playerOneScore), Result: playerOneResult},
+			{Username: p2user.Username, Score: int32(playerTwoScore), Result: playerTwoResult},
+		}
+
+		tevt := &realtime.TournamentGameEndedEvent{
+			GameId:    g.GameID(),
+			Players:   players,
+			EndReason: reason,
+			Time:      time.Now().Unix(),
+		}
+		log.Debug().Interface("tevt", tevt).Msg("sending legacy tournament game ended evt")
+		wrapped := entity.WrapEvent(tevt, realtime.MessageType_TOURNAMENT_GAME_ENDED_EVENT)
+		wrapped.AddAudience(entity.AudTournament, id)
+		evtChan := ts.TournamentEventChan()
+		if evtChan != nil {
+			evtChan <- wrapped
+		}
+		log.Debug().Str("tid", id).Msg("sent legacy tournament game ended event")
+		return nil
+	}
 
 	divisionObject, ok := t.Divisions[division]
 

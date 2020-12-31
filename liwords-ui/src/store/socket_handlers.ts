@@ -444,6 +444,21 @@ export const useOnSocketMsg = () => {
             break;
           }
 
+          case MessageType.TOURNAMENT_GAME_ENDED_EVENT: {
+            const gee = parsedMsg as TournamentGameEndedEvent;
+            dispatchLobbyContext({
+              actionType: ActionType.AddTourneyGameResult,
+              payload: gee,
+            });
+
+            dispatchLobbyContext({
+              actionType: ActionType.RemoveActiveGame,
+              payload: gee.getGameId(),
+            });
+
+            break;
+          }
+
           case MessageType.NEW_GAME_EVENT: {
             const nge = parsedMsg as NewGameEvent;
             console.log('got new game event', nge);
