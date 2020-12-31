@@ -18,6 +18,18 @@ var rounds = 2
 var defaultFirsts = []entity.FirstMethod{entity.ManualFirst, entity.ManualFirst}
 var defaultGamesPerRound = 1
 
+func TestClassicDivisionZeroOrOnePlayers(t *testing.T) {
+	// Division creation with zero or one players is a special
+	// case that should not fail
+	is := is.New(t)
+
+	_, err := NewClassicDivision([]string{}, defaultRoundControls(2))
+	is.NoErr(err)
+
+	_, err = NewClassicDivision([]string{"One"}, defaultRoundControls(2))
+	is.NoErr(err)
+}
+
 func TestClassicDivisionRandom(t *testing.T) {
 	// This test attempts to cover the basic
 	// functions of a Classic Tournament
@@ -26,22 +38,13 @@ func TestClassicDivisionRandom(t *testing.T) {
 
 	is := is.New(t)
 
-	// Tournaments must have at least two players
-	tc, err := NewClassicDivision([]string{"Sad"}, rounds, roundControls)
-	is.True(err != nil)
-
 	// Tournaments must have at least 1 round
-	tc, err = NewClassicDivision(playerStrings, 0, roundControls)
-	is.True(err != nil)
-
-	roundControls = append(roundControls, roundControls...)
-	// Tournaments must have an equal number of rounds and round controls
-	tc, err = NewClassicDivision(playerStrings, rounds, roundControls)
+	tc, err := NewClassicDivision(playerStrings, defaultRoundControls(0))
 	is.True(err != nil)
 
 	roundControls = defaultRoundControls(rounds)
 
-	tc, err = NewClassicDivision(playerStrings, rounds, roundControls)
+	tc, err = NewClassicDivision(playerStrings, roundControls)
 	is.NoErr(err)
 	is.True(tc != nil)
 
@@ -232,7 +235,7 @@ func TestClassicDivisionRandom(t *testing.T) {
 	is.NoErr(err)
 
 	// Check that pairings are correct with an odd number of players
-	tc, err = NewClassicDivision(playersOddStrings, rounds, roundControls)
+	tc, err = NewClassicDivision(playersOddStrings, roundControls)
 	is.NoErr(err)
 	is.True(tc != nil)
 
@@ -252,7 +255,7 @@ func TestClassicDivisionKingOfTheHill(t *testing.T) {
 		roundControls[i].PairingMethod = entity.KingOfTheHill
 	}
 
-	tc, err := NewClassicDivision(playerStrings, rounds, roundControls)
+	tc, err := NewClassicDivision(playerStrings, roundControls)
 	is.NoErr(err)
 	is.True(tc != nil)
 
@@ -353,7 +356,7 @@ func TestClassicDivisionFactor(t *testing.T) {
 			WinDifferenceRelativeWeight: 1})
 	}
 
-	tc, err := NewClassicDivision([]string{"h", "g", "f", "e", "d", "c", "b", "a"}, 2, roundControls)
+	tc, err := NewClassicDivision([]string{"h", "g", "f", "e", "d", "c", "b", "a"}, roundControls)
 	is.NoErr(err)
 	is.True(tc != nil)
 
@@ -470,7 +473,7 @@ func TestClassicDivisionSwiss(t *testing.T) {
 
 	roundControls[0].PairingMethod = entity.KingOfTheHill
 
-	tc, err := NewClassicDivision(playerStrings, numberOfRounds, roundControls)
+	tc, err := NewClassicDivision(playerStrings, roundControls)
 	is.NoErr(err)
 	is.True(tc != nil)
 
@@ -631,7 +634,7 @@ func TestClassicDivisionSwiss(t *testing.T) {
 
 	roundControls[2].PairingMethod = entity.Swiss
 
-	tc, err = NewClassicDivision(swissPlayers, numberOfRounds, roundControls)
+	tc, err = NewClassicDivision(swissPlayers, roundControls)
 	is.NoErr(err)
 	is.True(tc != nil)
 
@@ -706,7 +709,7 @@ func TestClassicDivisionRoundRobin(t *testing.T) {
 			WinDifferenceRelativeWeight: 1})
 	}
 
-	tc, err := NewClassicDivision(playerStrings, numberOfRounds, roundControls)
+	tc, err := NewClassicDivision(playerStrings, roundControls)
 
 	is.NoErr(err)
 	is.True(tc != nil)
@@ -752,7 +755,7 @@ func TestClassicDivisionRoundRobin(t *testing.T) {
 			WinDifferenceRelativeWeight: 1})
 	}
 
-	tc, err = NewClassicDivision(playersOddStrings, 10, roundControls)
+	tc, err = NewClassicDivision(playersOddStrings, roundControls)
 	is.NoErr(err)
 	is.True(tc != nil)
 
@@ -805,13 +808,13 @@ func TestClassicDivisionInitialFontes(t *testing.T) {
 
 	// InitialFontes can only be used in contiguous rounds
 	// starting with round 1
-	tc, err := NewClassicDivision(playerStrings, rounds, roundControls)
+	tc, err := NewClassicDivision(playerStrings, roundControls)
 	is.True(err != nil)
 
 	roundControls[0].PairingMethod = entity.InitialFontes
 
 	// The number of InitialFontes pairings must be odd
-	tc, err = NewClassicDivision(playerStrings, rounds, roundControls)
+	tc, err = NewClassicDivision(playerStrings, roundControls)
 	is.True(err != nil)
 
 	numberOfRoundsForInitialFontesTest := 4
@@ -821,7 +824,7 @@ func TestClassicDivisionInitialFontes(t *testing.T) {
 		roundControls[i].PairingMethod = entity.InitialFontes
 	}
 
-	tc, err = NewClassicDivision(playerStrings, numberOfRoundsForInitialFontesTest, roundControls)
+	tc, err = NewClassicDivision(playerStrings, roundControls)
 	is.NoErr(err)
 
 	is.NoErr(validatePairings(tc, 0))
@@ -838,7 +841,7 @@ func TestClassicDivisionManual(t *testing.T) {
 		roundControls[i].PairingMethod = entity.Manual
 	}
 
-	tc, err := NewClassicDivision(playerStrings, rounds, roundControls)
+	tc, err := NewClassicDivision(playerStrings, roundControls)
 	is.NoErr(err)
 	is.True(tc != nil)
 
@@ -943,14 +946,14 @@ func TestClassicDivisionElimination(t *testing.T) {
 		roundControls[i].GamesPerRound = 3
 	}
 
-	// Try and make an elimination tournament with too many rounds
-	tc, err := NewClassicDivision(playerStrings, 3, roundControls)
+	// Try and make an elimination tournament with the wrong number of rounds
+	tc, err := NewClassicDivision(playerStrings, roundControls[:1])
 	is.True(err != nil)
 
 	roundControls[0].PairingMethod = entity.Random
 	// Try and make an elimination tournament with other types
 	// of pairings
-	tc, err = NewClassicDivision(playerStrings, 3, roundControls)
+	tc, err = NewClassicDivision(playerStrings, roundControls)
 	is.True(err != nil)
 
 	roundControls = defaultRoundControls(rounds)
@@ -960,7 +963,7 @@ func TestClassicDivisionElimination(t *testing.T) {
 		roundControls[i].GamesPerRound = 3
 	}
 
-	tc, err = NewClassicDivision(playerStrings, 2, roundControls)
+	tc, err = NewClassicDivision(playerStrings, roundControls)
 	is.NoErr(err)
 	is.True(tc != nil)
 
@@ -1190,7 +1193,7 @@ func TestClassicDivisionElimination(t *testing.T) {
 	// Since this test is copied from above, the usual
 	// validations are skipped, since they would be redundant.
 
-	tc, err = NewClassicDivision(playerStrings, 2, roundControls)
+	tc, err = NewClassicDivision(playerStrings, roundControls)
 	is.NoErr(err)
 	is.True(tc != nil)
 
@@ -1340,7 +1343,7 @@ func TestClassicDivisionAddLatecomers(t *testing.T) {
 		roundControls[i].PairingMethod = entity.KingOfTheHill
 	}
 
-	tc, err := NewClassicDivision(playerStrings, numberOfRounds, roundControls)
+	tc, err := NewClassicDivision(playerStrings, roundControls)
 	is.NoErr(err)
 	is.True(tc != nil)
 
@@ -1533,7 +1536,7 @@ func TestClassicDivisionFirsts(t *testing.T) {
 			WinDifferenceRelativeWeight: 1})
 	}
 
-	tc, err := NewClassicDivision(playerStrings, firstRounds, roundControls)
+	tc, err := NewClassicDivision(playerStrings, roundControls)
 	is.NoErr(err)
 	is.True(tc != nil)
 
@@ -1757,7 +1760,7 @@ func runRandomTournaments(method entity.PairingMethod, randomizePairings bool) e
 			}
 		}
 
-		tc, err := NewClassicDivision(playersRandom, numberOfRounds, roundControls)
+		tc, err := NewClassicDivision(playersRandom, roundControls)
 		if err != nil {
 			return err
 		}
