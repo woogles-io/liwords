@@ -61,21 +61,22 @@ func (s *DBStore) sgFromDBObj(g *soughtgame) (*entity.SoughtGame, error) {
 		if err != nil {
 			return nil, err
 		}
-		return &entity.SoughtGame{SeekRequest: sr}, nil
+		return &entity.SoughtGame{SeekRequest: sr, Type: entity.TypeSeek}, nil
 	case typeMatch:
 		mr := &pb.MatchRequest{}
 		err = json.Unmarshal(g.Request, mr)
 		if err != nil {
 			return nil, err
 		}
-		return &entity.SoughtGame{MatchRequest: mr}, nil
+		return &entity.SoughtGame{MatchRequest: mr, Type: entity.TypeMatch}, nil
 	case typeTournamentMatch:
 		mr := &pb.TournamentMatchRequest{}
 		err = json.Unmarshal(g.Request, mr)
 		if err != nil {
 			return nil, err
 		}
-		return &entity.SoughtGame{TournamentMatchRequest: mr}, nil
+		return &entity.SoughtGame{TournamentMatchRequest: mr,
+			Type: entity.TypeTournamentMatch}, nil
 	}
 	log.Error().Str("seekType", g.Type).Str("id", g.UUID).Msg("unexpected-seek-type")
 	return nil, errors.New("unknown error getting seek or match")
@@ -115,13 +116,13 @@ func (s *DBStore) Set(ctx context.Context, game *entity.SoughtGame) error {
 	var bts []byte
 	var sgtype string
 	var err error
-	if game.Type() == entity.TypeSeek {
+	if game.Type == entity.TypeSeek {
 		bts, err = json.Marshal(game.SeekRequest)
 		sgtype = typeSeek
-	} else if game.Type() == entity.TypeMatch {
+	} else if game.Type == entity.TypeMatch {
 		bts, err = json.Marshal(game.MatchRequest)
 		sgtype = typeMatch
-	} else if game.Type() == entity.TypeTournamentMatch {
+	} else if game.Type == entity.TypeTournamentMatch {
 		bts, err = json.Marshal(game.TournamentMatchRequest)
 		sgtype = typeTournamentMatch
 	}
@@ -135,7 +136,7 @@ func (s *DBStore) Set(ctx context.Context, game *entity.SoughtGame) error {
 		Type:    sgtype,
 		Request: bts,
 	}
-	if game.Type() == entity.TypeMatch {
+	if game.Type == entity.TypeMatch {
 		dbg.Receiver = game.MatchRequest.ReceivingUser.UserId
 	}
 	ctxDB := s.db.WithContext(ctx)

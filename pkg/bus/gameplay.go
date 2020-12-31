@@ -45,7 +45,7 @@ func (b *Bus) instantiateAndStartGame(ctx context.Context, accUser *entity.User,
 		Str("accepting-conn", acceptingConnID).Msg("game-request-accepted")
 	assignedFirst := -1
 	var tournamentID string
-	if sg.Type() == entity.TypeMatch {
+	if sg.Type == entity.TypeMatch {
 		if sg.MatchRequest.RematchFor != "" {
 			// Assign firsts to be the the other player.
 			gameID := sg.MatchRequest.RematchFor

@@ -19,13 +19,13 @@ type SoughtGame struct {
 	SeekRequest            *pb.SeekRequest
 	MatchRequest           *pb.MatchRequest
 	TournamentMatchRequest *pb.TournamentMatchRequest
-	sgtype                 SoughtGameType
+	Type                   SoughtGameType
 }
 
 func NewSoughtGame(seekRequest *pb.SeekRequest) *SoughtGame {
 	sg := &SoughtGame{
 		SeekRequest: seekRequest,
-		sgtype:      TypeSeek,
+		Type:        TypeSeek,
 	}
 
 	sg.SeekRequest.GameRequest.RequestId = shortuuid.New()
@@ -43,7 +43,7 @@ func NewSoughtGame(seekRequest *pb.SeekRequest) *SoughtGame {
 func NewMatchRequest(matchRequest *pb.MatchRequest) *SoughtGame {
 	sg := &SoughtGame{
 		MatchRequest: matchRequest,
-		sgtype:       TypeMatch,
+		Type:         TypeMatch,
 	}
 	sg.MatchRequest.GameRequest.RequestId = shortuuid.New()
 	if sg.MatchRequest.GameRequest.OriginalRequestId == "" {
@@ -56,14 +56,14 @@ func NewMatchRequest(matchRequest *pb.MatchRequest) *SoughtGame {
 func NewTournamentMatchRequest(tmr *pb.TournamentMatchRequest) *SoughtGame {
 	sg := &SoughtGame{
 		TournamentMatchRequest: tmr,
-		sgtype:                 TypeTournamentMatch,
+		Type:                   TypeTournamentMatch,
 	}
 	sg.TournamentMatchRequest.GameRequest.RequestId = shortuuid.New()
 	return sg
 }
 
 func (sg *SoughtGame) ID() string {
-	switch sg.sgtype {
+	switch sg.Type {
 	case TypeMatch:
 		return sg.MatchRequest.GameRequest.RequestId
 	case TypeSeek:
@@ -75,7 +75,7 @@ func (sg *SoughtGame) ID() string {
 }
 
 func (sg *SoughtGame) ConnID() string {
-	switch sg.sgtype {
+	switch sg.Type {
 	case TypeSeek:
 		return sg.SeekRequest.ConnectionId
 	case TypeMatch:
@@ -86,12 +86,8 @@ func (sg *SoughtGame) ConnID() string {
 	return ""
 }
 
-func (sg *SoughtGame) Type() SoughtGameType {
-	return sg.sgtype
-}
-
 func (sg *SoughtGame) Seeker() string {
-	switch sg.sgtype {
+	switch sg.Type {
 	case TypeSeek:
 		return sg.SeekRequest.User.UserId
 	case TypeMatch:

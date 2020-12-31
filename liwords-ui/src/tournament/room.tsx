@@ -159,6 +159,9 @@ export const TournamentRoom = (props: Props) => {
           setSelectedGameTab={setSelectedGameTab}
           isDirector={isDirector}
           tournamentID={tournamentID}
+          onSeekSubmit={onSeekSubmit}
+          loggedIn={loggedIn}
+          newGame={handleNewGame}
         />
         <TournamentInfo />
       </div>
