@@ -22,30 +22,40 @@ type ClassicDivision struct {
 	CurrentRound   int                         `json:"c"`
 }
 
-func NewClassicDivision(players []string,
-	numberOfRounds int,
-	roundControls []*entity.RoundControls) (*ClassicDivision, error) {
+func NewClassicDivision(players []string, roundControls []*entity.RoundControls) (*ClassicDivision, error) {
 	numberOfPlayers := len(players)
 
-	if numberOfPlayers < 2 {
-		return nil, errors.New("classic Tournaments must have at least 2 players")
-	}
+	numberOfRounds := len(roundControls)
 
 	if numberOfRounds < 1 {
 		return nil, errors.New("classic Tournaments must have at least 1 round")
 	}
 
-	if numberOfRounds != len(roundControls) {
-		return nil, errors.New("round controls length does not match the number of rounds")
+	if numberOfPlayers < 2 {
+		pairings := newPairingMatrix(numberOfRounds, numberOfPlayers)
+		playerIndexMap := newPlayerIndexMap(players)
+		t := &ClassicDivision{Matrix: pairings,
+			Players:        players,
+			PlayerIndexMap: playerIndexMap,
+			RoundControls:  roundControls,
+			CurrentRound:   0}
+		return t, nil
 	}
 
 	isElimination := false
-	initialFontes := 0
-	for i := 0; i < len(roundControls); i++ {
+
+	for i := 0; i < numberOfRounds; i++ {
 		control := roundControls[i]
 		if control.PairingMethod == entity.Elimination {
 			isElimination = true
-		} else if isElimination && control.PairingMethod != entity.Elimination {
+			break
+		} 	
+	}
+
+	initialFontes := 0
+	for i := 0; i < numberOfRounds; i++ {
+		control := roundControls[i]
+		if isElimination && control.PairingMethod != entity.Elimination {
 			return nil, errors.New("cannot mix Elimination pairings with any other pairing method")
 		} else if i != 0 {
 			if control.PairingMethod == entity.InitialFontes &&
@@ -56,7 +66,6 @@ func NewClassicDivision(players []string,
 				initialFontes = i
 			}
 		}
-
 	}
 
 	if initialFontes > 0 && initialFontes%2 == 0 {
@@ -72,7 +81,6 @@ func NewClassicDivision(players []string,
 				" have %d players, expected %d players based on the number of rounds which is %d",
 				numberOfPlayers, expectedNumberOfPlayers, numberOfRounds)
 		}
-
 	}
 
 	for i := 0; i < numberOfRounds; i++ {
