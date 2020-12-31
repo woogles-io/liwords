@@ -245,8 +245,11 @@ export const useOnSocketMsg = () => {
               if (soughtGame.tournamentID) {
                 // This is a match game attached to a tourney.
                 console.log('match attached to tourney');
-                if (tournamentContext.metadata.id === soughtGame.tournamentID) {
-                  console.log('matches this tourney');
+                if (
+                  tournamentContext.metadata.id === soughtGame.tournamentID &&
+                  !gameContext.gameID
+                ) {
+                  console.log('matches this tourney, and we are not in a game');
 
                   dispatchLobbyContext({
                     actionType: ActionType.AddMatchRequest,
