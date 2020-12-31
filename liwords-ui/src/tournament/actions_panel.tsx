@@ -1,6 +1,6 @@
 import { Button, Card } from 'antd';
 import Modal from 'antd/lib/modal/Modal';
-import React from 'react';
+import React, { useCallback, useEffect } from 'react';
 import { ActiveGames } from '../lobby/active_games';
 import { SeekForm } from '../lobby/seek_form';
 import { SoughtGames } from '../lobby/sought_games';
@@ -11,6 +11,15 @@ import {
 } from '../store/store';
 import { useMountedState } from '../utils/mounted';
 import { DirectorTools } from './director_tools';
+import { RecentTourneyGames } from './recent_games';
+import { pageSize, RecentGame } from './recent_game';
+import { ActionType } from '../actions/actions';
+import axios from 'axios';
+import { toAPIUrl } from '../api/api';
+
+export type RecentTournamentGames = {
+  games: Array<RecentGame>;
+};
 
 type Props = {
   newGame: (seekID: string) => void;
@@ -43,7 +52,8 @@ export const ActionsPanel = React.memo((props: Props) => {
     return <DirectorTools tournamentID={props.tournamentID} />;
   };
   const { tournamentContext } = useTournamentStoreContext();
-  const { lobbyContext } = useLobbyStoreContext();
+  const tournamentID = tournamentContext.metadata.id;
+  const { lobbyContext, dispatchLobbyContext } = useLobbyStoreContext();
 
   let matchButtonText;
   if (['CLUB', 'CLUBSESSION'].includes(tournamentContext.metadata.type)) {
@@ -51,7 +61,29 @@ export const ActionsPanel = React.memo((props: Props) => {
   } else if (tournamentContext.metadata.type === 'STANDARD') {
     matchButtonText = 'Start Tournament Game';
   }
-
+  const fetchPrev = useCallback(() => {
+    dispatchLobbyContext({
+      actionType: ActionType.SetTourneyGamesOffset,
+      payload: Math.max(
+        lobbyContext.gamesOffset - lobbyContext.gamesPageSize,
+        0
+      ),
+    });
+  }, [
+    dispatchLobbyContext,
+    lobbyContext.gamesOffset,
+    lobbyContext.gamesPageSize,
+  ]);
+  const fetchNext = useCallback(() => {
+    dispatchLobbyContext({
+      actionType: ActionType.SetTourneyGamesOffset,
+      payload: lobbyContext.gamesOffset + lobbyContext.gamesPageSize,
+    });
+  }, [
+    dispatchLobbyContext,
+    lobbyContext.gamesOffset,
+    lobbyContext.gamesPageSize,
+  ]);
   const onFormSubmit = (sg: SoughtGame) => {
     setMatchModalVisible(false);
     setFormDisabled(true);
@@ -63,27 +95,80 @@ export const ActionsPanel = React.memo((props: Props) => {
     }
   };
 
-  const renderGamesTab = () => {
-    if (selectedGameTab !== 'GAMES') {
-      return null;
+  useEffect(() => {
+    if (!tournamentID) {
+      return;
     }
-    return (
-      <>
-        {lobbyContext?.matchRequests.length ? (
-          <SoughtGames
-            isMatch={true}
-            userID={userID}
+    axios
+      .post<RecentTournamentGames>(
+        toAPIUrl('tournament_service.TournamentService', 'RecentGames'),
+        {
+          id: tournamentID,
+          num_games: pageSize,
+          offset: lobbyContext.gamesOffset,
+        }
+      )
+      .then((resp) => {
+        dispatchLobbyContext({
+          actionType: ActionType.AddTourneyGameResults,
+          payload: resp.data.games,
+        });
+      });
+  }, [tournamentID, dispatchLobbyContext, lobbyContext.gamesOffset]);
+
+  const renderGamesTab = () => {
+    if (selectedGameTab === 'GAMES') {
+      return (
+        <>
+          {lobbyContext?.matchRequests.length ? (
+            <SoughtGames
+              isMatch={true}
+              userID={userID}
+              username={username}
+              newGame={newGame}
+              requests={lobbyContext?.matchRequests}
+            />
+          ) : null}
+          <ActiveGames
             username={username}
-            newGame={newGame}
-            requests={lobbyContext?.matchRequests}
+            activeGames={lobbyContext?.activeGames}
           />
-        ) : null}
-        <ActiveGames
-          username={username}
-          activeGames={lobbyContext?.activeGames}
-        />
-      </>
-    );
+        </>
+      );
+    }
+    if (selectedGameTab === 'RECENT') {
+      return (
+        <>
+          <h4>Recent Games</h4>
+          <RecentTourneyGames
+            games={lobbyContext.tourneyGames}
+            fetchPrev={lobbyContext.gamesOffset > 0 ? fetchPrev : undefined}
+            fetchNext={
+              lobbyContext.tourneyGames.length < pageSize
+                ? undefined
+                : fetchNext
+            }
+          />
+        </>
+      );
+    }
+    if (selectedGameTab === 'STANDINGS') {
+      return (
+        <>
+          <h4>Recent Games</h4>
+          <RecentTourneyGames
+            games={lobbyContext.tourneyGames}
+            fetchPrev={lobbyContext.gamesOffset > 0 ? fetchPrev : undefined}
+            fetchNext={
+              lobbyContext.tourneyGames.length < pageSize
+                ? undefined
+                : fetchNext
+            }
+          />
+        </>
+      );
+    }
+    return null;
   };
 
   const matchModal = (
@@ -153,14 +238,25 @@ export const ActionsPanel = React.memo((props: Props) => {
           >
             Games
           </div>
-          <div
-            onClick={() => {
-              setSelectedGameTab('STANDINGS');
-            }}
-            className={selectedGameTab === 'STANDINGS' ? 'tab active' : 'tab'}
-          >
-            Standings
-          </div>
+          {tournamentContext.metadata.type === 'CLUB' ? (
+            <div
+              onClick={() => {
+                setSelectedGameTab('RECENT');
+              }}
+              className={selectedGameTab === 'RECENT' ? 'tab active' : 'tab'}
+            >
+              Recent Games
+            </div>
+          ) : (
+            <div
+              onClick={() => {
+                setSelectedGameTab('STANDINGS');
+              }}
+              className={selectedGameTab === 'STANDINGS' ? 'tab active' : 'tab'}
+            >
+              Standings
+            </div>
+          )}
           {isDirector && (
             <div
               onClick={() => {

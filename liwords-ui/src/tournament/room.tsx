@@ -17,7 +17,6 @@ import { toAPIUrl } from '../api/api';
 import { TopBar } from '../topbar/topbar';
 import { singularCount } from '../utils/plural';
 import { Chat } from '../chat/chat';
-import { GameLists } from '../lobby/gameLists';
 import { TournamentInfo } from './tournament_info';
 import { sendAccept, sendSeek } from '../lobby/sought_game_interactions';
 import { SoughtGame } from '../store/reducers/lobby_reducer';
@@ -142,18 +141,6 @@ export const TournamentRoom = (props: Props) => {
             tournamentID={tournamentID}
           />
         </div>
-        {/* render GameLists for legacy tournament/club only, if club wishes
-        for more free-form games
-        <GameLists
-          loggedIn={loggedIn}
-          userID={userID}
-          username={username}
-          newGame={handleNewGame}
-          selectedGameTab={selectedGameTab}
-          setSelectedGameTab={setSelectedGameTab}
-          onSeekSubmit={onSeekSubmit}
-          tournamentID={tournamentID}
-        /> */}
         <ActionsPanel
           selectedGameTab={selectedGameTab}
           setSelectedGameTab={setSelectedGameTab}
