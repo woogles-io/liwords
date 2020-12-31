@@ -751,9 +751,8 @@ func createDivisionManager(t *entity.Tournament, division string) error {
 
 	// Create a new division if there are sufficient players
 	// otherwise, destroy the old one.
-	if len(divisionObject.Players.Persons) > 1 &&
-		divisionObject.Controls.NumberOfRounds > 0 &&
-		divisionObject.Controls.RoundControls != nil {
+	if divisionObject.Controls.RoundControls != nil &&
+	   len(divisionObject.Controls.RoundControls) > 0 {
 		rankedPlayers := rankPlayers(divisionObject.Players)
 		d, err := NewClassicDivision(rankedPlayers,
 			divisionObject.Controls.RoundControls)
