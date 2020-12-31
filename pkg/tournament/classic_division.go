@@ -27,11 +27,7 @@ func NewClassicDivision(players []string, roundControls []*entity.RoundControls)
 
 	numberOfRounds := len(roundControls)
 
-	if numberOfRounds < 1 {
-		return nil, errors.New("classic Tournaments must have at least 1 round")
-	}
-
-	if numberOfPlayers < 2 {
+	if numberOfPlayers < 2 || numberOfRounds < 1 {
 		pairings := newPairingMatrix(numberOfRounds, numberOfPlayers)
 		playerIndexMap := newPlayerIndexMap(players)
 		t := &ClassicDivision{Matrix: pairings,

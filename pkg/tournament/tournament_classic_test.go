@@ -23,7 +23,10 @@ func TestClassicDivisionZeroOrOnePlayers(t *testing.T) {
 	// case that should not fail
 	is := is.New(t)
 
-	_, err := NewClassicDivision([]string{}, defaultRoundControls(2))
+	_, err := NewClassicDivision([]string{"One", "Two", "Three"}, defaultRoundControls(0))
+	is.NoErr(err)
+
+	_, err = NewClassicDivision([]string{}, defaultRoundControls(2))
 	is.NoErr(err)
 
 	_, err = NewClassicDivision([]string{"One"}, defaultRoundControls(2))
@@ -38,13 +41,9 @@ func TestClassicDivisionRandom(t *testing.T) {
 
 	is := is.New(t)
 
-	// Tournaments must have at least 1 round
-	tc, err := NewClassicDivision(playerStrings, defaultRoundControls(0))
-	is.True(err != nil)
-
 	roundControls = defaultRoundControls(rounds)
 
-	tc, err = NewClassicDivision(playerStrings, roundControls)
+	tc, err := NewClassicDivision(playerStrings, roundControls)
 	is.NoErr(err)
 	is.True(tc != nil)
 
