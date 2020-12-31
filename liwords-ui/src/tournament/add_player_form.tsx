@@ -8,7 +8,6 @@ import { AutoComplete } from 'antd';
 import { useMountedState } from '../utils/mounted';
 import { Store } from 'antd/lib/form/interface';
 
-// hm.
 type user = {
   username: string;
   uuid: string;

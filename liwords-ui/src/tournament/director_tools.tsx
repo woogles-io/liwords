@@ -1,32 +1,27 @@
-import { AutoComplete, Col, Row } from 'antd';
+import { AutoComplete, Button, Col, Row } from 'antd';
 import React, { useCallback } from 'react';
 import { toAPIUrl } from '../api/api';
 import { useMountedState } from '../utils/mounted';
 import { debounce } from '../utils/debounce';
 import { AddPlayerForm, playersToAdd } from './add_player_form';
 import axios from 'axios';
+import { ModifyDivisionsForm } from './modify_divisions_form';
+import { useTournamentStoreContext } from '../store/store';
+import Modal from 'antd/lib/modal/Modal';
+import { Store } from 'antd/lib/form/interface';
+import { SoughtGame } from '../store/reducers/lobby_reducer';
 
 type DTProps = {
   tournamentID: string;
 };
 
-/**
- *
- * @param props
-message TournamentPerson {
-  string person_id = 1;
-  int32 person_int = 2;
-}
-
-message TournamentPersons {
-  string id = 1;
-  string division = 2;
-  repeated TournamentPerson persons = 3;
-}
- */
-
 // Style me later...
 export const DirectorTools = React.memo((props: DTProps) => {
+  const { useState } = useMountedState();
+
+  const [divisionModalVisible, setDivisionModalVisible] = useState(false);
+
+  const { tournamentContext } = useTournamentStoreContext();
   const addPlayers = (p: playersToAdd) => {
     Object.entries(p).forEach(([div, players]) => {
       axios
@@ -50,15 +45,66 @@ export const DirectorTools = React.memo((props: DTProps) => {
     });
   };
 
+  const divisions = tournamentContext.metadata.divisions;
   // Add players, divisions
+
+  const divisionFormSubmit = (g: SoughtGame, v?: Store) => {
+    setDivisionModalVisible(false);
+    console.log('g is', g, 'v is', v);
+  };
+
+  const addDivisionModal = (
+    <Modal
+      title="Add a Division"
+      className="seek-modal"
+      visible={divisionModalVisible}
+      destroyOnClose
+      onCancel={() => {
+        setDivisionModalVisible(false);
+      }}
+      footer={[
+        <Button
+          key="back"
+          onClick={() => {
+            setDivisionModalVisible(false);
+          }}
+        >
+          Cancel
+        </Button>,
+        <button
+          className="primary"
+          key="submit"
+          form="division-settings-form"
+          type="submit"
+        >
+          Add Division
+        </button>,
+      ]}
+    >
+      <ModifyDivisionsForm
+        tournamentID={props.tournamentID}
+        onFormSubmit={divisionFormSubmit}
+      />
+    </Modal>
+  );
+
   return (
     <div>
+      <h3>Divisions</h3>
+      Current Divisions:{' '}
+      <ul>
+        {divisions?.map((d) => (
+          <li key={d}>d</li>
+        ))}
+      </ul>
+      <Button onClick={() => setDivisionModalVisible(true)}>+ Division</Button>
       <h3>Entrants List</h3>
       <Row>
         <Col span={12}>
           <AddPlayerForm divisions={['foo', 'bar']} addPlayers={addPlayers} />
         </Col>
       </Row>
+      {addDivisionModal}
     </div>
   );
 });
