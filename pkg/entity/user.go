@@ -55,7 +55,7 @@ type Profile struct {
 }
 
 // If the RD is <= this number, the rating is "known"
-const RatingDeviationConfidence = 150
+const RatingDeviationConfidence = glicko.MinimumRatingDeviation + 30
 
 // RelevantRating returns the rating from a Ratings object given a rating key.
 func RelevantRating(ratings Ratings, ratingKey VariantKey) string {
