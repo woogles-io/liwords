@@ -132,15 +132,27 @@ export const challRuleToStr = (n: number): string => {
   return 'Unsupported';
 };
 
-export const sortBlanksLast = (rack: string) => {
-  let letters = '';
-  let blanks = '';
-  for (const tile of rack) {
-    if (tile === Blank) {
-      blanks += tile;
-    } else {
-      letters += tile;
-    }
-  }
-  return letters + blanks;
+// To expose this and make it more ergonomic to reorder without refreshing.
+const preferredSortOrder = localStorage.getItem('tileOrder');
+
+export const sortTiles = (rack: string) => {
+  let effectiveSortOrder = preferredSortOrder ?? '';
+  return Array.from(rack, (tile) => {
+    let index = effectiveSortOrder.indexOf(tile);
+    if (index < 0) index = effectiveSortOrder.length + (tile === Blank ? 1 : 0);
+    return [index, tile];
+  })
+    .sort(([aIndex, aTile], [bIndex, bTile]) =>
+      aIndex < bIndex
+        ? -1
+        : aIndex > bIndex
+        ? 1
+        : aTile < bTile
+        ? -1
+        : aTile > bTile
+        ? 1
+        : 0
+    )
+    .map(([index, tile]) => tile)
+    .join('');
 };

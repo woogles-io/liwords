@@ -11,7 +11,7 @@ import {
   useGameContextStoreContext,
   useTentativeTileContext,
 } from '../store/store';
-import { sortBlanksLast } from '../store/constants';
+import { sortTiles } from '../store/constants';
 import {
   contiguousTilesFromTileSet,
   simpletile,
@@ -70,7 +70,7 @@ export const Notepad = React.memo((props: NotepadProps) => {
     const contiguousTiles = contiguousTilesFromTileSet(placedTiles, board);
     let play = '';
     let position = '';
-    const leave = sortBlanksLast(displayedRack.split('').sort().join(''));
+    const leave = sortTiles(displayedRack.split('').sort().join(''));
     if (contiguousTiles?.length === 2) {
       position = humanReadablePosition(
         contiguousTiles[1],
