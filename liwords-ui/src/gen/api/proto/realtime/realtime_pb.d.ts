@@ -656,6 +656,44 @@ export namespace TournamentGameEndedEvent {
   }
 }
 
+export class TournamentRoundStarted extends jspb.Message {
+  getTournamentId(): string;
+  setTournamentId(value: string): void;
+
+  getDivision(): string;
+  setDivision(value: string): void;
+
+  getRound(): number;
+  setRound(value: number): void;
+
+  getGameIndex(): number;
+  setGameIndex(value: number): void;
+
+  hasDeadline(): boolean;
+  clearDeadline(): void;
+  getDeadline(): google_protobuf_timestamp_pb.Timestamp | undefined;
+  setDeadline(value?: google_protobuf_timestamp_pb.Timestamp): void;
+
+  serializeBinary(): Uint8Array;
+  toObject(includeInstance?: boolean): TournamentRoundStarted.AsObject;
+  static toObject(includeInstance: boolean, msg: TournamentRoundStarted): TournamentRoundStarted.AsObject;
+  static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+  static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+  static serializeBinaryToWriter(message: TournamentRoundStarted, writer: jspb.BinaryWriter): void;
+  static deserializeBinary(bytes: Uint8Array): TournamentRoundStarted;
+  static deserializeBinaryFromReader(message: TournamentRoundStarted, reader: jspb.BinaryReader): TournamentRoundStarted;
+}
+
+export namespace TournamentRoundStarted {
+  export type AsObject = {
+    tournamentId: string,
+    division: string,
+    round: number,
+    gameIndex: number,
+    deadline?: google_protobuf_timestamp_pb.Timestamp.AsObject,
+  }
+}
+
 export class RematchStartedEvent extends jspb.Message {
   getRematchGameId(): string;
   setRematchGameId(value: string): void;
@@ -1284,6 +1322,7 @@ export interface MessageTypeMap {
   TIMED_OUT: 13;
   ONGOING_GAMES: 14;
   READY_FOR_TOURNAMENT_GAME: 15;
+  TOURNAMENT_ROUND_STARTED: 16;
   GAME_DELETION: 17;
   MATCH_REQUESTS: 18;
   DECLINE_MATCH_REQUEST: 19;

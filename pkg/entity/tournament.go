@@ -22,6 +22,7 @@ type DivisionManager interface {
 	IsRoundComplete(int) (bool, error)
 	IsFinished() (bool, error)
 	ToResponse() (*realtime.TournamentDivisionDataResponse, error)
+	SetLastStarted(*realtime.TournamentRoundStarted) error
 	Serialize() (datatypes.JSON, error)
 }
 
@@ -118,11 +119,11 @@ type TournamentControls struct {
 }
 
 type TournamentDivision struct {
-	Players         *TournamentPersons  `json:"players"`
-	Controls        *TournamentControls `json:"controls"`
-	ManagerType     TournamentType      `json:"mgrType"`
-	DivisionRawMessage json.RawMessage  `json:"json"`
-	DivisionManager DivisionManager     `json:"manager"`
+	Players            *TournamentPersons  `json:"players"`
+	Controls           *TournamentControls `json:"controls"`
+	ManagerType        TournamentType      `json:"mgrType"`
+	DivisionRawMessage json.RawMessage     `json:"json"`
+	DivisionManager    DivisionManager
 }
 
 type Tournament struct {

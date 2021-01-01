@@ -49,6 +49,8 @@ import {
   TournamentDivisionDataResponse,
   TournamentDivisionDeletedResponse,
   FullTournamentDivisions,
+  ReadyForTournamentGame,
+  TournamentRoundStarted,
 } from '../gen/api/proto/realtime/realtime_pb';
 import { ActionType } from '../actions/actions';
 import { endGameMessage } from './end_of_game';
@@ -90,7 +92,6 @@ export const parseMsgs = (msg: Uint8Array) => {
       [MessageType.SERVER_CHALLENGE_RESULT_EVENT]: ServerChallengeResultEvent,
       [MessageType.SEEK_REQUESTS]: SeekRequests,
       [MessageType.TIMED_OUT]: TimedOut,
-      // ...
       [MessageType.ONGOING_GAME_EVENT]: GameInfoResponse,
       [MessageType.ONGOING_GAMES]: GameInfoResponses,
       [MessageType.GAME_DELETION]: GameDeletion,
@@ -100,6 +101,8 @@ export const parseMsgs = (msg: Uint8Array) => {
       [MessageType.USER_PRESENCE]: UserPresence,
       [MessageType.USER_PRESENCES]: UserPresences,
       [MessageType.READY_FOR_GAME]: ReadyForGame,
+      [MessageType.READY_FOR_TOURNAMENT_GAME]: ReadyForTournamentGame,
+      [MessageType.TOURNAMENT_ROUND_STARTED]: TournamentRoundStarted,
       [MessageType.LAG_MEASUREMENT]: LagMeasurement,
       [MessageType.MATCH_REQUEST_CANCELLATION]: MatchRequestCancellation,
       [MessageType.TOURNAMENT_GAME_ENDED_EVENT]: TournamentGameEndedEvent,

@@ -15,11 +15,12 @@ import (
 )
 
 type ClassicDivision struct {
-	Matrix         [][]*entity.PlayerRoundInfo `json:"matrix"`
-	Players        []string                    `json:"players"`
-	PlayerIndexMap map[string]int              `json:"pidxMap"`
-	RoundControls  []*entity.RoundControls     `json:"roundCtrls"`
-	CurrentRound   int                         `json:"currentRound"`
+	Matrix         [][]*entity.PlayerRoundInfo      `json:"matrix"`
+	Players        []string                         `json:"players"`
+	PlayerIndexMap map[string]int                   `json:"pidxMap"`
+	RoundControls  []*entity.RoundControls          `json:"roundCtrls"`
+	CurrentRound   int                              `json:"currentRound"`
+	LastStarted    *realtime.TournamentRoundStarted `json:"lastStarted"`
 }
 
 func NewClassicDivision(players []string, roundControls []*entity.RoundControls) (*ClassicDivision, error) {
@@ -617,6 +618,11 @@ func (t *ClassicDivision) ResultsArePresent(round int) (bool, error) {
 		}
 	}
 	return false, nil
+}
+
+func (t *ClassicDivision) SetLastStarted(ls *realtime.TournamentRoundStarted) error {
+	t.LastStarted = ls
+	return nil
 }
 
 func isSubstantialResult(result realtime.TournamentGameResult) bool {

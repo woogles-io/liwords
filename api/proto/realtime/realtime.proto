@@ -76,7 +76,7 @@ enum MessageType {
   TIMED_OUT = 13;
   ONGOING_GAMES = 14;
   READY_FOR_TOURNAMENT_GAME = 15;
-
+  TOURNAMENT_ROUND_STARTED = 16;
   GAME_DELETION = 17;
   MATCH_REQUESTS = 18;
   DECLINE_MATCH_REQUEST = 19;
@@ -233,6 +233,16 @@ message TournamentGameEndedEvent {
   GameEndReason end_reason = 3;
   // Time that the game ended
   int64 time = 4;
+}
+
+// This message makes the "Status Bar" show up and also tells the players
+// that the backend is now accepting "ready" messages for this round.
+message TournamentRoundStarted {
+  string tournament_id = 1;
+  string division = 2;
+  int32 round = 3;
+  int32 game_index = 4; // for matchplay type rounds etc.
+  google.protobuf.Timestamp deadline = 5;
 }
 
 // RematchStartedEvent gets sent to a game for which there is a rematch.

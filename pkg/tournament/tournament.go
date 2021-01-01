@@ -17,7 +17,7 @@ import (
 )
 
 type RatedPlayer struct {
-	Name string
+	Name   string
 	Rating int
 }
 
@@ -481,7 +481,7 @@ func StartTournament(ctx context.Context, ts TournamentStore, id string, manual 
 	// Do not lock, StartRound will do that
 
 	for division, _ := range t.Divisions {
-		err := StartRoundCountdown(ctx, ts, id, division, 0, manual)
+		err := StartRoundCountdown(ctx, ts, id, division, 0, manual, false)
 		if err != nil {
 			return err
 		}
@@ -493,7 +493,8 @@ func StartTournament(ctx context.Context, ts TournamentStore, id string, manual 
 	return ts.Set(ctx, t)
 }
 
-func StartRoundCountdown(ctx context.Context, ts TournamentStore, id string, division string, round int, manual bool) error {
+func StartRoundCountdown(ctx context.Context, ts TournamentStore, id string,
+	division string, round int, manual, save bool) error {
 	t, err := ts.Get(ctx, id)
 	if err != nil {
 		return err
@@ -522,10 +523,32 @@ func StartRoundCountdown(ctx context.Context, ts TournamentStore, id string, div
 	}
 
 	if ready {
-		// Send code that sends signal to all tourmament players that backend
+		// Send code that sends signal to all tournament players that backend
 		// is now accepting "ready" messages for this round.
+		eventChannel := ts.TournamentEventChan()
+		evt := &realtime.TournamentRoundStarted{
+			TournamentId: id,
+			Division:     division,
+			Round:        int32(round),
+			// GameIndex: int32(0) -- fix this when we have other types of tournaments
+			// add timestamp deadline here as well at some point
+		}
+		wrapped := entity.WrapEvent(evt, realtime.MessageType_TOURNAMENT_ROUND_STARTED)
+		// Note: This does not send it to every user in the tournament. It sends it
+		// to every one that is currently inside this tournament realm.
+		// So people who are in the lobby or some other tab won't get this message.
+		// We will have to fix this to send to a list of users, instead.
+		wrapped.AddAudience(entity.AudTournament, id)
+		if eventChannel != nil {
+			eventChannel <- wrapped
+		}
+		divisionObject.DivisionManager.SetLastStarted(evt)
+		log.Debug().Interface("evt", evt).Msg("sent-tournament-round-started")
 	} else {
 		return fmt.Errorf("division %s is not ready to be started", division)
+	}
+	if save {
+		return ts.Set(ctx, t)
 	}
 	return nil
 }

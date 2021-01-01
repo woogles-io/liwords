@@ -343,7 +343,7 @@ func (ts *TournamentService) StartRoundCountdown(ctx context.Context, req *pb.To
 	if err != nil {
 		return nil, err
 	}
-	err = StartRoundCountdown(ctx, ts.tournamentStore, req.Id, req.Division, int(req.Round), true)
+	err = StartRoundCountdown(ctx, ts.tournamentStore, req.Id, req.Division, int(req.Round), true, true)
 	if err != nil {
 		return nil, twirp.NewError(twirp.InvalidArgument, err.Error())
 	}
