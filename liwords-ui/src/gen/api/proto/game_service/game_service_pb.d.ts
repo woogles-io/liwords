@@ -2,6 +2,7 @@
 // file: api/proto/game_service/game_service.proto
 
 import * as jspb from "google-protobuf";
+import * as macondo_api_proto_macondo_macondo_pb from "../../../macondo/api/proto/macondo/macondo_pb";
 import * as api_proto_realtime_realtime_pb from "../../../api/proto/realtime/realtime_pb";
 import * as google_protobuf_timestamp_pb from "google-protobuf/google/protobuf/timestamp_pb";
 
@@ -163,6 +164,26 @@ export namespace GCGRequest {
   }
 }
 
+export class GameHistoryRequest extends jspb.Message {
+  getGameId(): string;
+  setGameId(value: string): void;
+
+  serializeBinary(): Uint8Array;
+  toObject(includeInstance?: boolean): GameHistoryRequest.AsObject;
+  static toObject(includeInstance: boolean, msg: GameHistoryRequest): GameHistoryRequest.AsObject;
+  static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+  static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+  static serializeBinaryToWriter(message: GameHistoryRequest, writer: jspb.BinaryWriter): void;
+  static deserializeBinary(bytes: Uint8Array): GameHistoryRequest;
+  static deserializeBinaryFromReader(message: GameHistoryRequest, reader: jspb.BinaryReader): GameHistoryRequest;
+}
+
+export namespace GameHistoryRequest {
+  export type AsObject = {
+    gameId: string,
+  }
+}
+
 export class GCGResponse extends jspb.Message {
   getGcg(): string;
   setGcg(value: string): void;
@@ -180,6 +201,28 @@ export class GCGResponse extends jspb.Message {
 export namespace GCGResponse {
   export type AsObject = {
     gcg: string,
+  }
+}
+
+export class GameHistoryResponse extends jspb.Message {
+  hasHistory(): boolean;
+  clearHistory(): void;
+  getHistory(): macondo_api_proto_macondo_macondo_pb.GameHistory | undefined;
+  setHistory(value?: macondo_api_proto_macondo_macondo_pb.GameHistory): void;
+
+  serializeBinary(): Uint8Array;
+  toObject(includeInstance?: boolean): GameHistoryResponse.AsObject;
+  static toObject(includeInstance: boolean, msg: GameHistoryResponse): GameHistoryResponse.AsObject;
+  static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+  static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+  static serializeBinaryToWriter(message: GameHistoryResponse, writer: jspb.BinaryWriter): void;
+  static deserializeBinary(bytes: Uint8Array): GameHistoryResponse;
+  static deserializeBinaryFromReader(message: GameHistoryResponse, reader: jspb.BinaryReader): GameHistoryResponse;
+}
+
+export namespace GameHistoryResponse {
+  export type AsObject = {
+    history?: macondo_api_proto_macondo_macondo_pb.GameHistory.AsObject,
   }
 }
 
