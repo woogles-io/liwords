@@ -517,6 +517,8 @@ export const Table = React.memo((props: Props) => {
           {playerNames.length > 1 ? (
             <Chat
               sendChat={props.sendChat}
+              highlight={tournamentContext.metadata.directors}
+              highlightText="Director"
               defaultChannel={`chat.${
                 isObserver ? 'gametv' : 'game'
               }.${gameID}`}
