@@ -5,12 +5,12 @@
  expand board */
 p {
   margin: 0;
-
-  font-family: $font-default;
 }
 .chat-area {
   order: 3;
-
+  p {
+    font-family: $font-default;
+  }
   font-family: $font-default;
   .ant-card.chat {
     height: $main-container-width-tablet + 60px;
