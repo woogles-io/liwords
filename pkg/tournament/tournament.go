@@ -16,6 +16,17 @@ import (
 	pb "github.com/domino14/liwords/rpc/api/proto/tournament_service"
 )
 
+type RatedPlayer struct {
+	Name string
+	Rating int
+}
+
+type PlayerSorter []RatedPlayer
+
+func (a PlayerSorter) Len() int           { return len(a) }
+func (a PlayerSorter) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
+func (a PlayerSorter) Less(i, j int) bool { return a[i].Rating > a[j].Rating }
+
 type TournamentStore interface {
 	Get(context.Context, string) (*entity.Tournament, error)
 	GetBySlug(context.Context, string) (*entity.Tournament, error)
@@ -782,15 +793,14 @@ func createDivisionManager(t *entity.Tournament, division string) error {
 
 func rankPlayers(players *entity.TournamentPersons) []string {
 	// Sort players by descending int (which is probably rating)
-	var values []int
-	for _, v := range players.Persons {
-		values = append(values, v)
+	ratedPlayers := []RatedPlayer{}
+	for key, value := range players.Persons {
+		ratedPlayers = append(ratedPlayers, RatedPlayer{Name: key, Rating: value})
 	}
-	sort.Ints(values)
-	reversedPlayersMap := reverseMap(players.Persons)
+	sort.Sort(PlayerSorter(ratedPlayers))
 	rankedPlayers := []string{}
-	for i := len(values) - 1; i >= 0; i-- {
-		rankedPlayers = append(rankedPlayers, reversedPlayersMap[values[i]])
+	for i := 0; i < len(ratedPlayers); i++ {
+		rankedPlayers = append(rankedPlayers, ratedPlayers[i].Name)
 	}
 	return rankedPlayers
 }
