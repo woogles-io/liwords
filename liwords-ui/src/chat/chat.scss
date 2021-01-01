@@ -5,13 +5,18 @@
  expand board */
 p {
   margin: 0;
+
+  font-family: $font-default;
 }
 .chat-area {
   order: 3;
+
+  font-family: $font-default;
   .ant-card.chat {
     height: $main-container-width-tablet + 60px;
     margin-bottom: 24px;
     .entities {
+
       overflow-y: auto;
       max-height: $main-container-width-tablet - 122px;
     }
@@ -231,10 +236,20 @@ p {
       }
       .special-sender {
         @include colorModed() {
-          color: m($timer-out-dark);
+          color: m($primary-dark);
         }
         font-weight: 800;
-        margin: 0 9px 0 0;
+        .ant-tag {
+          position: relative;
+          top: -1px;
+          font-size: 11px;
+          margin: 0 9px 0 9px;
+          text-transform: uppercase;
+          letter-spacing: 0.16em;
+          padding: 0 2px 0 4px;
+          line-height: 14px;
+          color: #52186d;
+        }
       }
       .message-body {
         margin-bottom: 4px;
@@ -248,7 +263,7 @@ p {
           color: m($secondary);
         }
         font-size: 75%;
-        margin: 0;
+        margin: 3px 0;
         position: relative;
         top: 2px;
       }

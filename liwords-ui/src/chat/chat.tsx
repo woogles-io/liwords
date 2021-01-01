@@ -30,6 +30,7 @@ type Props = {
   defaultDescription: string;
   DISCONNECT?: () => void;
   highlight?: Array<string>;
+  highlightText?: string;
   tournamentID?: string;
 };
 
@@ -360,6 +361,7 @@ export const Chat = React.memo((props: Props) => {
               channel={ent.channel}
               timestamp={ent.timestamp}
               highlight={specialSender}
+              highlightText={props.highlightText}
               sendMessage={
                 loggedIn
                   ? (userID: string, username: string) => {

@@ -138,6 +138,7 @@ export const TournamentRoom = (props: Props) => {
             defaultDescription={tournamentContext.metadata.name}
             peopleOnlineContext={peopleOnlineContext}
             highlight={tournamentContext.metadata.directors}
+            highlightText="Director"
             tournamentID={tournamentID}
           />
         </div>
