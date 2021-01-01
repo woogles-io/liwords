@@ -88,7 +88,7 @@ export const TournamentRoom = (props: Props) => {
   // Should be more like "amdirector"
   const isDirector = useMemo(() => {
     return tournamentContext.metadata.directors.includes(username);
-  }, [tournamentContext.metadata]);
+  }, [tournamentContext.metadata, username]);
 
   const handleNewGame = useCallback(
     (seekID: string) => {

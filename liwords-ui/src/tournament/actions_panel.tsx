@@ -10,7 +10,6 @@ import {
   useTournamentStoreContext,
 } from '../store/store';
 import { useMountedState } from '../utils/mounted';
-import { DirectorTools } from './director_tools';
 import { RecentTourneyGames } from './recent_games';
 import { pageSize, RecentGame } from './recent_game';
 import { ActionType } from '../actions/actions';
@@ -49,7 +48,8 @@ export const ActionsPanel = React.memo((props: Props) => {
     username,
   } = props;
   const renderDirectorTools = () => {
-    return <DirectorTools tournamentID={props.tournamentID} />;
+    // return <DirectorTools tournamentID={props.tournamentID} />;
+    return <div>Coming soon!</div>;
   };
   const { tournamentContext } = useTournamentStoreContext();
   const tournamentID = tournamentContext.metadata.id;
@@ -272,7 +272,6 @@ export const ActionsPanel = React.memo((props: Props) => {
           )}
         </div>
         {isDirector &&
-        false && // hide for now
           selectedGameTab === 'DIRECTOR TOOLS' &&
           renderDirectorTools()}
         {matchModal}

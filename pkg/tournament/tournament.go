@@ -4,7 +4,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
 	"sort"
+	"strings"
 	"time"
 
 	"github.com/domino14/liwords/pkg/entity"
@@ -403,10 +405,15 @@ func SetResult(ctx context.Context,
 
 	t.Lock()
 	defer t.Unlock()
-	// XXX: Change this to `if true` if we are merging this into master, until
-	// tournaments are fully ready.
-	if true {
-		// if t.Type == entity.TypeClub {
+	// XXX: this is VERY temporary code; and the club type will be checked
+	// properly soon.
+	testMode := false
+	if strings.HasSuffix(os.Args[0], ".test") {
+		testMode = true
+	}
+	log.Debug().Bool("testMode", testMode).Msg("test-mode")
+	// if t.Type == entity.TypeClub {
+	if !testMode {
 		// This game was played in a legacy "Clubhouse".
 		// This is a tournament of "club" type (note, not a club *session*). This
 		// is a casual type of tournament game with no defined divisions, pairings,
@@ -427,8 +434,12 @@ func SetResult(ctx context.Context,
 			{Username: p2user.Username, Score: int32(playerTwoScore), Result: playerTwoResult},
 		}
 
+		gameID := ""
+		if g != nil {
+			gameID = g.GameID()
+		}
 		tevt := &realtime.TournamentGameEndedEvent{
-			GameId:    g.GameID(),
+			GameId:    gameID,
 			Players:   players,
 			EndReason: reason,
 			Time:      time.Now().Unix(),
