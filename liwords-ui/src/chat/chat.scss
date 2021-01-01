@@ -182,6 +182,10 @@ p {
       }
     }
   }
+  .description .unread-marker {
+    font-size: inherit;
+    padding: 0 6px;
+  }
   .channel-list .breadcrumb {
     text-transform: uppercase;
     padding-bottom: 12px;
@@ -220,6 +224,7 @@ p {
       color: m($primary-dark);
     }
   }
+
   .entities {
     padding: 12px 24px 0px;
     .chat-entity {

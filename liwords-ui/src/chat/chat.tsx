@@ -83,6 +83,7 @@ export const Chat = React.memo((props: Props) => {
   const [description, setDescription] = useState(defaultDescription);
   const [defaultLastMessage, setDefaultLastMessage] = useState('');
   const [channelSelectedTime, setChannelSelectedTime] = useState(Date.now());
+  const [channelReadTime, setChannelReadTime] = useState(Date.now());
   // Messages that come in for other channels
   const [unseenMessages, setUnseenMessages] = useState(
     new Array<ChatEntityObj>()
@@ -279,7 +280,7 @@ export const Chat = React.memo((props: Props) => {
           return (
             ch.channel === channel &&
             ch.timestamp &&
-            ch.timestamp > channelSelectedTime
+            ch.timestamp > channelReadTime
           );
         })
         .sort((chA, chB) => {
@@ -289,8 +290,11 @@ export const Chat = React.memo((props: Props) => {
           return 0;
         });
       if (currentUnread.length && chatTab) {
-        setHasUnreadChat(
-          chatTab.scrollTop < chatTab.scrollHeight - chatTab.clientHeight
+        const hasUnread =
+          chatTab.scrollTop + 6 < chatTab.scrollHeight - chatTab.clientHeight;
+        setHasUnreadChat(hasUnread);
+        setChannelReadTime(
+          (u) => currentUnread[currentUnread.length - 1].timestamp || u
         );
       }
       // If they're for other channels or we're on the channel screen
@@ -325,6 +329,7 @@ export const Chat = React.memo((props: Props) => {
     channel,
     defaultChannel,
     fetchChannels,
+    channelReadTime,
     channelSelectedTime,
     showChannels,
     userID,
@@ -366,17 +371,19 @@ export const Chat = React.memo((props: Props) => {
   // When user is scrolling, auto-scroll may be enabled or disabled.
   // This handler is set through onScroll.
   const handleChatScrolled = useCallback(() => {
-    const tab = document.getElementById('chat');
-    if (tab) {
+    if (chatTab) {
       // Allow for 12 pixels of wiggle room for enabling auto scroll
-      if (tab.scrollTop + 12 >= tab.scrollHeight - tab.clientHeight) {
-        setChatAutoScroll(true);
+      if (
+        chatTab.scrollTop + 12 >=
+        chatTab.scrollHeight - chatTab.clientHeight
+      ) {
         setHasUnreadChat(false);
+        setChatAutoScroll(true);
       } else {
         setChatAutoScroll(false);
       }
     }
-  }, []);
+  }, [chatTab]);
 
   const calculatePMChannel = useCallback(
     (receiverID: string) => {
@@ -525,7 +532,7 @@ export const Chat = React.memo((props: Props) => {
                       )}
                     </p>
                   ) : null}
-                  <p data-testid="description">
+                  <p data-testid="description" className="description">
                     {decoratedDescription}
                     {hasUnreadChat && (
                       <span className="unread-marker" data-testid="description">
