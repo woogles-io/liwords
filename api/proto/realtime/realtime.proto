@@ -87,10 +87,12 @@ enum MessageType {
   READY_FOR_GAME = 25;
   LAG_MEASUREMENT = 26;
   TOURNAMENT_GAME_ENDED_EVENT = 27;
-  TOURNAMENT_MESSAGE = 28;
+  TOURNAMENT_MESSAGE = 28; // used for TournamentDataResponse
   REMATCH_STARTED = 29;
   TOURNAMENT_DIVISION_MESSAGE = 30;
   TOURNAMENT_DIVISION_DELETED_MESSAGE = 31;
+
+  TOURNAMENT_FULL_DIVISIONS_MESSAGE = 32;
 
   // Add more events here. The total number of events should fit in a byte.
   // We should definitely not be using anywhere close to 255 events, and
@@ -408,6 +410,10 @@ message TournamentDivisionDataResponse {
   int32 current_round = 6;
   bool round_is_over = 7;
   bool division_is_over = 8;
+}
+
+message FullTournamentDivisions {
+  map<string, TournamentDivisionDataResponse> divisions = 1;
 }
 
 message TournamentDataResponse {

@@ -742,8 +742,27 @@ func (b *Bus) sendTournamentContext(ctx context.Context, realm, userID, connID s
 	if err != nil {
 		return err
 	}
+	// Send a TournamentDivisionDataResponse for every division in the tournament.
 
-	return nil
+	t, err := b.tournamentStore.Get(ctx, tourneyID)
+	if err != nil {
+		return err
+	}
+	msg := &pb.FullTournamentDivisions{
+		Divisions: make(map[string]*pb.TournamentDivisionDataResponse),
+	}
+
+	for name := range t.Divisions {
+		r, err := tournament.TournamentDivisionDataResponse(ctx, b.tournamentStore, tourneyID, name)
+		if err != nil {
+			return err
+		}
+		msg.Divisions[name] = r
+	}
+	evt := entity.WrapEvent(msg, pb.MessageType_TOURNAMENT_FULL_DIVISIONS_MESSAGE)
+	err = b.pubToConnectionID(connID, userID, evt)
+
+	return err
 }
 
 func (b *Bus) sendPresenceContext(ctx context.Context, userID, username string, anon bool,

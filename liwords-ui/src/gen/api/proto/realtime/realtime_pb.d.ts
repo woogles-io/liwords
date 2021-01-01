@@ -1210,6 +1210,25 @@ export namespace TournamentDivisionDataResponse {
   }
 }
 
+export class FullTournamentDivisions extends jspb.Message {
+  getDivisionsMap(): jspb.Map<string, TournamentDivisionDataResponse>;
+  clearDivisionsMap(): void;
+  serializeBinary(): Uint8Array;
+  toObject(includeInstance?: boolean): FullTournamentDivisions.AsObject;
+  static toObject(includeInstance: boolean, msg: FullTournamentDivisions): FullTournamentDivisions.AsObject;
+  static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+  static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+  static serializeBinaryToWriter(message: FullTournamentDivisions, writer: jspb.BinaryWriter): void;
+  static deserializeBinary(bytes: Uint8Array): FullTournamentDivisions;
+  static deserializeBinaryFromReader(message: FullTournamentDivisions, reader: jspb.BinaryReader): FullTournamentDivisions;
+}
+
+export namespace FullTournamentDivisions {
+  export type AsObject = {
+    divisionsMap: Array<[string, TournamentDivisionDataResponse.AsObject]>,
+  }
+}
+
 export class TournamentDataResponse extends jspb.Message {
   getId(): string;
   setId(value: string): void;
@@ -1363,6 +1382,7 @@ export interface MessageTypeMap {
   REMATCH_STARTED: 29;
   TOURNAMENT_DIVISION_MESSAGE: 30;
   TOURNAMENT_DIVISION_DELETED_MESSAGE: 31;
+  TOURNAMENT_FULL_DIVISIONS_MESSAGE: 32;
 }
 
 export const MessageType: MessageTypeMap;

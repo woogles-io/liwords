@@ -122,6 +122,16 @@ type TournamentDivision struct {
 	DivisionManager DivisionManager     `json:"manager"`
 }
 
+// func (td *TournamentDivision) UnmarshalJSON(data []byte) error {
+
+// 	var manager json.RawMessage
+// 	err := json.Unmarshal(data, &manager)
+// 	if err != nil {
+// 		return err
+// 	}
+
+// }
+
 type Tournament struct {
 	sync.RWMutex
 	UUID        string `json:"uuid"`

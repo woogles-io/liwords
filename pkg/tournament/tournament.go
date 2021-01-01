@@ -303,19 +303,35 @@ func RemoveDivision(ctx context.Context, ts TournamentStore, id string, division
 }
 
 func AddDirectors(ctx context.Context, ts TournamentStore, id string, directors *entity.TournamentPersons) error {
-	return addTournamentPersons(ctx, ts, id, "", directors, false)
+	err := addTournamentPersons(ctx, ts, id, "", directors, false)
+	if err != nil {
+		return err
+	}
+	return SendTournamentMessage(ctx, ts, id)
 }
 
 func RemoveDirectors(ctx context.Context, ts TournamentStore, id string, directors *entity.TournamentPersons) error {
-	return removeTournamentPersons(ctx, ts, id, "", directors, false)
+	err := removeTournamentPersons(ctx, ts, id, "", directors, false)
+	if err != nil {
+		return err
+	}
+	return SendTournamentMessage(ctx, ts, id)
 }
 
 func AddPlayers(ctx context.Context, ts TournamentStore, id string, division string, players *entity.TournamentPersons) error {
-	return addTournamentPersons(ctx, ts, id, division, players, true)
+	err := addTournamentPersons(ctx, ts, id, division, players, true)
+	if err != nil {
+		return err
+	}
+	return SendTournamentDivisionMessage(ctx, ts, id, division)
 }
 
 func RemovePlayers(ctx context.Context, ts TournamentStore, id string, division string, players *entity.TournamentPersons) error {
-	return removeTournamentPersons(ctx, ts, id, division, players, true)
+	err := removeTournamentPersons(ctx, ts, id, division, players, true)
+	if err != nil {
+		return err
+	}
+	return SendTournamentDivisionMessage(ctx, ts, id, division)
 }
 
 func SetPairing(ctx context.Context, ts TournamentStore, id string, division string, playerOneId string, playerTwoId string, round int) error {
@@ -495,7 +511,8 @@ func StartRoundCountdown(ctx context.Context, ts TournamentStore, id string, div
 	}
 
 	if ready {
-		// Send some stuff to the channels
+		// Send code that sends signal to all tourmament players that backend
+		// is now accepting "ready" messages for this round.
 	} else {
 		return fmt.Errorf("division %s is not ready to be started", division)
 	}
@@ -619,6 +636,10 @@ func TournamentDivisionDataResponse(ctx context.Context, ts TournamentStore,
 			return nil, err
 		}
 	}
+	log.Debug().Interface("divmanager", divisionObject.DivisionManager).
+		Interface("divobject", divisionObject).
+		Str("division", division).
+		Str("id", id).Msg("tournament-division-data-response")
 	return response, nil
 }
 
@@ -743,6 +764,7 @@ func removeTournamentPersons(ctx context.Context,
 
 func createDivisionManager(t *entity.Tournament, division string) error {
 
+	log.Debug().Str("division", division).Str("tourney", t.UUID).Msg("creating-division-manager")
 	divisionObject, ok := t.Divisions[division]
 
 	if !ok {
@@ -750,7 +772,7 @@ func createDivisionManager(t *entity.Tournament, division string) error {
 	}
 
 	rankedPlayers := rankPlayers(divisionObject.Players)
-	d, err := NewClassicDivision(rankedPlayers,	divisionObject.Controls.RoundControls)
+	d, err := NewClassicDivision(rankedPlayers, divisionObject.Controls.RoundControls)
 	if err != nil {
 		return err
 	}
