@@ -35,8 +35,7 @@ $screen-min-height-desktop-max: 910px;
 
 $font-deco: 'Fjalla One', sans-serif;
 $font-default: 'Muli', sans-serif;
-$font-monospaced: 'Courier Prime', monospace;
-$font-tile: 'Roboto Mono', monospace;
+$font-monospaced: 'Roboto Mono', monospace;
 
 $tile-size-mobile: 34px;
 $tile-size-tablet: 34px;
@@ -62,10 +61,10 @@ $tile-font-size-tablet: $tile-size-tablet * 0.68;
 $tile-font-size-laptop: $tile-size-laptop * 0.68;
 $tile-font-size-desktop: $tile-size-desktop * 0.68;
 
-$point-size-mobile: $tile-font-size-mobile / 3.1;
-$point-size-tablet: $tile-font-size-tablet / 2.6;
-$point-size-laptop: $tile-font-size-laptop / 2.8;
-$point-size-desktop: $tile-font-size-desktop / 2.8;
+$point-size-mobile: $tile-font-size-mobile / 3;
+$point-size-tablet: $tile-font-size-tablet / 3;
+$point-size-laptop: $tile-font-size-laptop / 3;
+$point-size-desktop: $tile-font-size-desktop / 3;
 
 @mixin container {
   width: 100%;
