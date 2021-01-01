@@ -7,11 +7,15 @@ function renderGameControls(props: Partial<Props> = {}) {
     return;
   };
   const defaultProps: Props = {
+    challengeRule: 'FIVE_POINT',
     exchangeAllowed: false,
+    isExamining: false,
     finalPassOrChallenge: false,
     myTurn: false,
     observer: false,
+    lexicon: 'dummy',
     showExchangeModal: dummyFunction,
+    onExportGCG: dummyFunction,
     onPass: dummyFunction,
     onResign: dummyFunction,
     onRecall: dummyFunction,

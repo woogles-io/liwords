@@ -47,6 +47,7 @@ import { singularCount } from '../utils/plural';
 import { Notepad, NotepadContextProvider } from './notepad';
 import { Analyzer, AnalyzerContextProvider } from './analyzer';
 import { TournamentMetadata } from '../tournament/state';
+import { sortTiles } from '../store/constants';
 
 type Props = {
   sendSocketMsg: (msg: Uint8Array) => void;
@@ -407,19 +408,21 @@ export const Table = React.memo((props: Props) => {
   // If we are one of the players, display our rack.
   // If we are NOT one of the players (so an observer), display the rack of
   // the player on turn.
-  let rack;
+  let rack: string;
   const gameDone = gameContext.playState === PlayState.GAME_OVER;
   const us = useMemo(() => gameInfo.players.find((p) => p.user_id === userID), [
     gameInfo.players,
     userID,
   ]);
   if (us && !(gameDone && isExamining)) {
-    rack = examinableGameContext.players.find((p) => p.userID === us.user_id)
-      ?.currentRack;
+    rack =
+      examinableGameContext.players.find((p) => p.userID === us.user_id)
+        ?.currentRack ?? '';
   } else {
     rack =
-      examinableGameContext.players.find((p) => p.onturn)?.currentRack || '';
+      examinableGameContext.players.find((p) => p.onturn)?.currentRack ?? '';
   }
+  const sortedRack = useMemo(() => sortTiles(rack), [rack]);
 
   // The game "starts" when the GameHistoryRefresher object comes in via the socket.
   // At that point gameID will be filled in.
@@ -550,7 +553,7 @@ export const Table = React.memo((props: Props) => {
           <BoardPanel
             username={username}
             board={examinableGameContext.board}
-            currentRack={rack || ''}
+            currentRack={sortedRack}
             events={examinableGameContext.turns}
             gameID={gameID}
             sendSocketMsg={props.sendSocketMsg}
@@ -577,7 +580,7 @@ export const Table = React.memo((props: Props) => {
           />
           <Pool
             pool={examinableGameContext?.pool}
-            currentRack={rack || ''}
+            currentRack={sortedRack}
             poolFormat={poolFormat}
             setPoolFormat={setPoolFormat}
           />

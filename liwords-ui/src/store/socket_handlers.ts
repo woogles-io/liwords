@@ -167,7 +167,7 @@ export const useOnSocketMsg = () => {
             '%crcvd',
             'background: pink',
             ReverseMessageType[msgType] ?? msgType,
-            parsedMsg.toObject(),
+            parsedMsg?.toObject(),
             performance.now()
           );
         }

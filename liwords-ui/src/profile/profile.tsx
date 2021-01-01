@@ -90,7 +90,6 @@ const RatingsCard = React.memo((props: RatingsProps) => {
     name: variantToName(v),
     rating: props.ratings[v].r.toFixed(2),
     deviation: props.ratings[v].rd.toFixed(2),
-    volatility: props.ratings[v].v.toFixed(2),
   }));
 
   const columns = [
@@ -108,11 +107,6 @@ const RatingsCard = React.memo((props: RatingsProps) => {
       title: 'Deviation',
       dataIndex: 'deviation',
       key: 'deviation',
-    },
-    {
-      title: 'Volatility',
-      dataIndex: 'volatility',
-      key: 'volatility',
     },
   ];
 

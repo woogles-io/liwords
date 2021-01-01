@@ -16,6 +16,7 @@ import { useMountedState } from '../utils/mounted';
 import { RedoOutlined } from '@ant-design/icons/lib';
 import { EmptySpace, EphemeralTile } from '../utils/cwgame/common';
 import { Unrace } from '../utils/unrace';
+import { sortTiles } from '../store/constants';
 
 type AnalyzerProps = {
   includeCard?: boolean;
@@ -54,6 +55,7 @@ export const analyzerMoveFromJsonMove = (
   dim: number,
   letters: string
 ): AnalyzerMove => {
+  let tilesBeingMoved = move.Tiles;
   let displayMove = '';
   let isExchange = false;
   switch (move.Action) {
@@ -82,7 +84,8 @@ export const analyzerMoveFromJsonMove = (
       break;
     }
     case 'Exchange': {
-      displayMove = `Exch. ${move.Tiles}`;
+      tilesBeingMoved = sortTiles(tilesBeingMoved);
+      displayMove = `Exch. ${tilesBeingMoved}`;
       isExchange = true;
       break;
     }
@@ -97,13 +100,13 @@ export const analyzerMoveFromJsonMove = (
   return {
     displayMove,
     coordinates: move.DisplayCoordinates,
-    leave: move.Leave,
+    leave: sortTiles(move.Leave),
     vertical: move.Vertical,
     col: move.Column,
     row: move.Row,
     score: move.Score,
     equity: move.Equity.toFixed(2),
-    tiles: move.Tiles,
+    tiles: tilesBeingMoved,
     isExchange,
   };
 };

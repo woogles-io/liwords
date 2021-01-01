@@ -1,4 +1,4 @@
-import React, { ReactNode, useCallback } from 'react';
+import React, { ReactNode, useCallback, useEffect } from 'react';
 import { AutoComplete } from 'antd';
 import axios from 'axios';
 import {
@@ -17,9 +17,10 @@ type Props = {
   defaultLastMessage: string;
   onChannelSelect: (name: string, displayName: string) => void;
   unseenMessages: Array<ChatEntityObj>;
-  updatedChannels: Set<string>;
+  updatedChannels?: Set<string>;
   sendMessage?: (uuid: string, username: string) => void;
   tournamentID?: string;
+  maxHeight?: number;
 };
 
 export type ChatChannelLabel = {
@@ -89,6 +90,7 @@ export const ChatChannels = React.memo((props: Props) => {
   const { loginState } = useLoginStateStoreContext();
   const { username, userID } = loginState;
   const [showSearch, setShowSearch] = useState(false);
+  const [maxHeight, setMaxHeight] = useState<number | undefined>(0);
   const [usernameOptions, setUsernameOptions] = useState<Array<user>>([]);
   const onUsernameSearch = useCallback((searchText: string) => {
     axios
@@ -115,6 +117,22 @@ export const ChatChannels = React.memo((props: Props) => {
     },
     [sendMessage]
   );
+
+  const setHeight = useCallback(() => {
+    const tabPaneHeight = document.getElementById('chat')?.clientHeight;
+    setMaxHeight(tabPaneHeight ? tabPaneHeight - 48 : undefined);
+  }, []);
+
+  useEffect(() => {
+    setHeight();
+  }, [setHeight]);
+
+  useEffect(() => {
+    window.addEventListener('resize', setHeight);
+    return () => {
+      window.removeEventListener('resize', setHeight);
+    };
+  }, [setHeight]);
 
   const channelList = chatChannels?.channelsList
     .sort((chA, chB) => {
@@ -162,7 +180,7 @@ export const ChatChannels = React.memo((props: Props) => {
             : acc,
         undefined
       );
-      const isUnread = props.updatedChannels.has(ch.name) || lastUnread;
+      const isUnread = props.updatedChannels?.has(ch.name) || lastUnread;
       return (
         <div
           className={`channel-listing${isUnread ? ' unread' : ''}`}
@@ -182,11 +200,21 @@ export const ChatChannels = React.memo((props: Props) => {
       );
     });
   const defaultUnread =
-    props.updatedChannels.has(props.defaultChannel) ||
+    (props.updatedChannels &&
+      props.updatedChannels!.has(props.defaultChannel)) ||
     props.unseenMessages.some((uc) => uc.channel === props.defaultChannel);
   const locationLabel = getLocationLabel(props.defaultChannel);
   return (
-    <div className="channel-list">
+    <div
+      className="channel-list"
+      style={
+        maxHeight
+          ? {
+              maxHeight: maxHeight,
+            }
+          : undefined
+      }
+    >
       {locationLabel && <p className="breadcrumb">{locationLabel}</p>}
       <div
         className={`channel-listing default${defaultUnread ? ' unread' : ''}`}
