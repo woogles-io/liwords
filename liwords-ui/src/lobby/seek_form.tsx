@@ -115,14 +115,23 @@ export const SeekForm = (props: Props) => {
     vsBot: false,
   };
   let disableControls = false;
+  let disableLexiconControls = false;
   let initialValues;
 
   if (props.tournamentID && props.tournamentID in fixedSettings) {
     disableControls = true;
+    disableLexiconControls = 'lexicon' in fixedSettings[props.tournamentID];
     initialValues = {
       ...fixedSettings[props.tournamentID],
       friend: '',
     };
+    // This is a bit of a hack; sorry.
+    if (!disableLexiconControls) {
+      initialValues = {
+        ...initialValues,
+        lexicon: storedValues.lexicon,
+      };
+    }
   } else {
     initialValues = {
       ...defaultValues,
@@ -240,7 +249,7 @@ export const SeekForm = (props: Props) => {
   };
 
   const validateMessages = {
-    required: 'Opponent name is required.',
+    required: 'This field is required.',
   };
 
   return (
@@ -283,8 +292,16 @@ export const SeekForm = (props: Props) => {
           </AutoComplete>
         </Form.Item>
       )}
-      <Form.Item label="Dictionary" name="lexicon">
-        <Select disabled={disableControls}>
+      <Form.Item
+        label="Dictionary"
+        name="lexicon"
+        rules={[
+          {
+            required: true,
+          },
+        ]}
+      >
+        <Select disabled={disableLexiconControls}>
           <Select.Option value="CSW19">CSW 19 (English)</Select.Option>
           <Select.Option value="NWL18">NWL 18 (North America)</Select.Option>
           {enableECWL && (

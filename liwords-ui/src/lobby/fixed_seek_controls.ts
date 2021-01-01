@@ -29,10 +29,21 @@ const cococlub = {
   vsBot: false,
 };
 
+const merry = {
+  challengerule: ChallengeRule.FIVE_POINT,
+  initialtime: 22, // 20 minutes
+  rated: true,
+  extratime: 1,
+  friend: '',
+  incOrOT: 'overtime',
+  vsBot: false,
+};
+
 export const fixedSettings: { [key: string]: settings } = {
   phillyvirtual,
   hcnj,
   cococlub,
+  merry,
 };
 
 // A temporary map of club redirects. Map internal tournament ID to slug:
