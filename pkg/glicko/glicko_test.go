@@ -108,21 +108,24 @@ func TestRatingLoss(t *testing.T) {
 
 func TestAverageRatingChange(t *testing.T) {
 
-	spread := 80
+	spreads := []int{SpreadScaling, SpreadScaling/2, SpreadScaling/4, 10, 1}
 
-	rating, _, _ :=
-		Rate(
-			float64(InitialRating),
-			float64(MinimumRatingDeviation),
-			InitialVolatility,
-			float64(InitialRating),
-			float64(MinimumRatingDeviation),
-			spread,
-			RatingPeriodinSeconds/12)
+	for i := 0; i < len(spreads); i++ {
+		spread := spreads[i]
+		rating, _, _ :=
+			Rate(
+				float64(InitialRating),
+				float64(MinimumRatingDeviation),
+				InitialVolatility,
+				float64(InitialRating),
+				float64(MinimumRatingDeviation),
+				spread,
+				RatingPeriodinSeconds/12)
 
-	fmt.Printf("A typical rating change for two players with equal ratings\n"+
-		"and minimum rating deviations in a game where the final\n"+
-		"spread is %d points is %.4f points\n\n", spread, rating-float64(InitialRating))
+		fmt.Printf("A typical rating change for two players with equal ratings\n"+
+			"and minimum rating deviations in a game where the final\n"+
+			"spread is %d points is %.4f points\n\n", spread, rating-float64(InitialRating))
+	}
 }
 
 func TestVolatility(t *testing.T) {
@@ -369,7 +372,7 @@ func TestGamesToMinimumDeviation(t *testing.T) {
 				spread,
 				RatingPeriodinSeconds/12)
 		// fmt.Printf("%.2f %.2f %.2f\n", rating, deviation, volatility)
-		if deviation == float64(MinimumRatingDeviation) {
+		if deviation < 1 + float64(MinimumRatingDeviation) {
 			break
 		}
 	}
@@ -463,7 +466,7 @@ func TestRatingWeirdness(t *testing.T) {
 	deviation2 := float64(MaximumRatingDeviation)
 	volatility2 := float64(InitialVolatility)
 
-	spread := 190
+	spread := SpreadScaling - 15
 
 	newrating1, newdeviation1, newvolatility1 :=
 		Rate(
@@ -532,14 +535,14 @@ func TestGamesToMinimumDeviationNewPlayers(t *testing.T) {
 		deviation1 = new_deviation1
 		volatility1 = new_volatility1
 		// fmt.Printf("%.2f %.2f %.2f\n", rating, deviation, volatility)
-		if deviation1 == float64(MinimumRatingDeviation) && deviation2 == float64(MinimumRatingDeviation) {
+		if deviation1 < 1 + float64(MinimumRatingDeviation) && deviation2 < 1 + float64(MinimumRatingDeviation) {
 			break
 		}
 	}
 
 	fmt.Printf("Starting at a rating of %d and a deviation of %d,\n"+
 		"it took %d games winning by %d points each against\n"+
-		"a %.2f rated oppoent with the minimum rating deviation\n"+
+		"a %.2f rated oppoent with the maximum rating deviation\n"+
 		"to get to a deviation of %.2f\n\n", InitialRating, InitialRatingDeviation, games_to_min, spread, rating2, deviation1)
 }
 
@@ -639,11 +642,15 @@ func TestRealData(t *testing.T) {
 	data := readCsvFile(datafile)
 	predictions := 0
 	correctPredictions := 0
+	maxPlayerId := 2000000
 	var spreads []float64
 
-	for _, game := range data {
+	outer: for _, game := range data {
 		for i := 0; i < 2; i++ {
 			playerid, _ := strconv.Atoi(game[2+i])
+			if playerid > maxPlayerId {
+				continue outer
+			}
 			playername := game[6+i]
 			if _, ok := players[playerid]; !ok {
 				players[playerid] = &Player{id: playerid,
