@@ -405,7 +405,8 @@ func SetResult(ctx context.Context,
 	defer t.Unlock()
 	// XXX: Change this to `if true` if we are merging this into master, until
 	// tournaments are fully ready.
-	if t.Type == entity.TypeClub {
+	if true {
+		// if t.Type == entity.TypeClub {
 		// This game was played in a legacy "Clubhouse".
 		// This is a tournament of "club" type (note, not a club *session*). This
 		// is a casual type of tournament game with no defined divisions, pairings,

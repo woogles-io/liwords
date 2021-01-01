@@ -212,20 +212,20 @@ export const ActionsPanel = React.memo((props: Props) => {
   );
 
   const actions = [];
-  if (tournamentContext.metadata.type === 'CLUB') {
-    // We are allowing free-form match requests in CLUBHOUSE mode, if desired.
-    actions.push([
-      <div
-        className="match"
-        onClick={() => {
-          setMatchModalVisible(true);
-        }}
-        key="match-action"
-      >
-        {matchButtonText}
-      </div>,
-    ]);
-  }
+  // if (tournamentContext.metadata.type === 'CLUB') {
+  // We are allowing free-form match requests in CLUBHOUSE mode, if desired.
+  actions.push([
+    <div
+      className="match"
+      onClick={() => {
+        setMatchModalVisible(true);
+      }}
+      key="match-action"
+    >
+      {matchButtonText}
+    </div>,
+  ]);
+  // }
   return (
     <div className="game-lists">
       <Card actions={actions}>
@@ -238,7 +238,8 @@ export const ActionsPanel = React.memo((props: Props) => {
           >
             Games
           </div>
-          {tournamentContext.metadata.type === 'CLUB' ? (
+          {/* {tournamentContext.metadata.type === 'CLUB' ? ( */}
+          {true ? (
             <div
               onClick={() => {
                 setSelectedGameTab('RECENT');
