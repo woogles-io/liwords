@@ -647,6 +647,8 @@ func TournamentDivisionDataResponse(ctx context.Context, ts TournamentStore,
 			return nil, err
 		}
 	}
+	response.Id = id
+	response.DivisionId = division
 	log.Debug().Interface("divmanager", divisionObject.DivisionManager).
 		Interface("divobject", divisionObject).
 		Str("division", division).
