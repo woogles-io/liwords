@@ -483,10 +483,9 @@ p.streak-loss {
 .coord-label {
   text-align: right;
   margin: 0;
-  font-size: 14px;
-  font-weight: 400;
-  font-family: $font-monospaced;
-  letter-spacing: -0.05em;
+  font-size: 100%;
+  font-weight: 600;
+  font-family: 'Source Code Pro', monospace;
   overflow: hidden;
   @include colorModed() {
     color: m($gray-extreme);
@@ -560,16 +559,9 @@ p.streak-loss {
   &[data-rune="Q"] {
     p.rune {
       position: relative;
-      left: -2px;
+      left: -3px;
     }
   }
-  &[data-rune="Z"] {
-    p.rune {
-      position: relative;
-      left: -1px;
-    }
-  }
-
 }
 .tile {
   @include colorModed() {
@@ -636,7 +628,6 @@ p.streak-loss {
 
 p.rune {
   @include type-monospace;
-  font-family: $font-tile;
   margin: 0;
   line-height: 0;
   font-size: $tile-font-size-mobile;
@@ -652,12 +643,11 @@ p.rune {
 }
 .tile .point-value {
   position: absolute;
-  bottom: 5px;
+  bottom: 4px;
   right: 0;
-  padding: 3px 2px;
+  padding: 0.6vw 0.3vw;
   line-height: 0;
   margin: 0;
-  letter-spacing: -0.1em;
   font-size: $point-size-mobile;
   font-weight: bold;
   @include colorModed() {
@@ -704,7 +694,6 @@ p.rune {
   }
   .point-value {
     font-size: $point-size-laptop;
-    padding: 0 2px 5px;
   }
 }
 
@@ -1087,7 +1076,7 @@ p.rune {
   .tile .point-value {
     font-size: $point-size-tablet;
     padding: 5px 2px;
-    bottom: 2px;
+    bottom: 1px;
   }
   .notepad-card, .analyzer-card {
     display: none;
@@ -1229,16 +1218,6 @@ p.rune {
   .empty-space {
     height: $tile-size-laptop;
     width: $tile-size-laptop;
-    &[data-rune="Q"] {
-      p.rune {
-        left: -2px;
-      }
-    }
-    &[data-rune="Z"] {
-      p.rune {
-        left: -1px;
-      }
-    }
   }
   .tile.droppable {
     pointer-events: all;
@@ -1265,7 +1244,6 @@ p.rune {
     }
     .point-value {
       font-size: $point-size-laptop;
-      bottom: 1px;
     }
   }
   .game-info {
@@ -1317,11 +1295,9 @@ p.rune {
     width: $tile-size-desktop;
     p.rune {
       font-size: $tile-font-size-desktop;
-      top: 0px;
     }
     .point-value {
       font-size: $point-size-desktop;
-      bottom: 2px;
     }
   }
 
