@@ -180,7 +180,6 @@ func (s *DBStore) toDBObj(t *entity.Tournament) (*tournament, error) {
 		if err != nil {
 			return nil, err
 		}
-		division.DivisionManager = nil
 		division.DivisionRawMessage = dmJSON
 	}
 
