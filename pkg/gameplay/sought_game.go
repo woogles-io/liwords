@@ -20,7 +20,6 @@ type SoughtGameStore interface {
 	Delete(ctx context.Context, id string) error
 	ListOpenSeeks(ctx context.Context) ([]*entity.SoughtGame, error)
 	ListOpenMatches(ctx context.Context, receiverID, tourneyID string) ([]*entity.SoughtGame, error)
-	ListTournamentMatches(ctx context.Context, receiverID, tourneyID string) ([]*entity.SoughtGame, error)
 	ExistsForUser(ctx context.Context, userID string) (bool, error)
 	DeleteForUser(ctx context.Context, userID string) (*entity.SoughtGame, error)
 	DeleteForConnID(ctx context.Context, connID string) (*entity.SoughtGame, error)

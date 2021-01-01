@@ -15,11 +15,11 @@ import (
 )
 
 type ClassicDivision struct {
-	Matrix         [][]*entity.PlayerRoundInfo `json:"t"`
-	Players        []string                    `json:"p"`
-	PlayerIndexMap map[string]int              `json:"i"`
-	RoundControls  []*entity.RoundControls     `json:"r"`
-	CurrentRound   int                         `json:"c"`
+	Matrix         [][]*entity.PlayerRoundInfo `json:"matrix"`
+	Players        []string                    `json:"players"`
+	PlayerIndexMap map[string]int              `json:"pidxMap"`
+	RoundControls  []*entity.RoundControls     `json:"roundCtrls"`
+	CurrentRound   int                         `json:"currentRound"`
 }
 
 func NewClassicDivision(players []string, roundControls []*entity.RoundControls) (*ClassicDivision, error) {
@@ -45,7 +45,7 @@ func NewClassicDivision(players []string, roundControls []*entity.RoundControls)
 		if control.PairingMethod == entity.Elimination {
 			isElimination = true
 			break
-		} 	
+		}
 	}
 
 	initialFontes := 0

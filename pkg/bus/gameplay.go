@@ -203,14 +203,16 @@ func (b *Bus) readyForGame(ctx context.Context, evt *pb.ReadyForGame, userID str
 		return errors.New("ready for game but not in game")
 	}
 
+	log.Debug().Str("gameID", evt.GameId).Int("readyID", readyID).Msg("setReady")
 	rf, err := b.gameStore.SetReady(ctx, evt.GameId, readyID)
 	if err != nil {
+		log.Err(err).Msg("in-set-ready")
 		return err
 	}
-
+	log.Debug().Interface("rf", rf).Msg("ready-flag")
 	// Start the game if both players are ready (or if it's a bot game).
 	// readyflag will be (01 | 10) = 3 for two players.
-	if rf == 3 || g.GameReq.PlayerVsBot {
+	if rf == (1<<len(g.History().Players))-1 || g.GameReq.PlayerVsBot {
 		err = gameplay.StartGame(ctx, b.gameStore, b.gameEventChan, g.GameID())
 		if err != nil {
 			log.Err(err).Msg("starting-game")

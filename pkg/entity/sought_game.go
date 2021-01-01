@@ -10,16 +10,14 @@ type SoughtGameType int
 const (
 	TypeSeek SoughtGameType = iota
 	TypeMatch
-	TypeTournamentMatch
 	TypeNone
 )
 
 type SoughtGame struct {
 	// A sought game has either of these fields set
-	SeekRequest            *pb.SeekRequest
-	MatchRequest           *pb.MatchRequest
-	TournamentMatchRequest *pb.TournamentMatchRequest
-	Type                   SoughtGameType
+	SeekRequest  *pb.SeekRequest
+	MatchRequest *pb.MatchRequest
+	Type         SoughtGameType
 }
 
 func NewSoughtGame(seekRequest *pb.SeekRequest) *SoughtGame {
@@ -53,23 +51,12 @@ func NewMatchRequest(matchRequest *pb.MatchRequest) *SoughtGame {
 	return sg
 }
 
-func NewTournamentMatchRequest(tmr *pb.TournamentMatchRequest) *SoughtGame {
-	sg := &SoughtGame{
-		TournamentMatchRequest: tmr,
-		Type:                   TypeTournamentMatch,
-	}
-	sg.TournamentMatchRequest.GameRequest.RequestId = shortuuid.New()
-	return sg
-}
-
 func (sg *SoughtGame) ID() string {
 	switch sg.Type {
 	case TypeMatch:
 		return sg.MatchRequest.GameRequest.RequestId
 	case TypeSeek:
 		return sg.SeekRequest.GameRequest.RequestId
-	case TypeTournamentMatch:
-		return sg.TournamentMatchRequest.GameRequest.RequestId
 	}
 	return ""
 }
@@ -80,8 +67,6 @@ func (sg *SoughtGame) ConnID() string {
 		return sg.SeekRequest.ConnectionId
 	case TypeMatch:
 		return sg.MatchRequest.ConnectionId
-		// Tournament matches don't have connection IDs as they are sent
-		// from the server to all the user's connections.
 	}
 	return ""
 }

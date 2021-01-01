@@ -473,8 +473,10 @@ func (s *DBStore) SetReady(ctx context.Context, gid string, pidx int) (int, erro
 	}
 	ctxDB := s.db.WithContext(ctx)
 
-	result := ctxDB.Raw(`update games set ready_flag = ready_flag | ? where uuid = ?
-		returning ready_flag`, 1<<pidx, gid).Scan(&rf)
+	// If the game is already ready and this gets called again, this function
+	// returns 0 rows, which means rf.ReadyFlag == 0 and the game won't start again.
+	result := ctxDB.Raw(`update games set ready_flag = ready_flag | (1 << ?) where uuid = ?
+		and ready_flag & (1 << ?) = 0 returning ready_flag`, pidx, gid, pidx).Scan(&rf)
 
 	return rf.ReadyFlag, result.Error
 }

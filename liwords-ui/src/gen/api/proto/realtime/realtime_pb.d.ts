@@ -127,62 +127,6 @@ export namespace MatchUser {
   }
 }
 
-export class GameMeta extends jspb.Message {
-  clearUsersList(): void;
-  getUsersList(): Array<GameMeta.UserMeta>;
-  setUsersList(value: Array<GameMeta.UserMeta>): void;
-  addUsers(value?: GameMeta.UserMeta, index?: number): GameMeta.UserMeta;
-
-  hasGameRequest(): boolean;
-  clearGameRequest(): void;
-  getGameRequest(): GameRequest | undefined;
-  setGameRequest(value?: GameRequest): void;
-
-  getId(): string;
-  setId(value: string): void;
-
-  serializeBinary(): Uint8Array;
-  toObject(includeInstance?: boolean): GameMeta.AsObject;
-  static toObject(includeInstance: boolean, msg: GameMeta): GameMeta.AsObject;
-  static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
-  static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
-  static serializeBinaryToWriter(message: GameMeta, writer: jspb.BinaryWriter): void;
-  static deserializeBinary(bytes: Uint8Array): GameMeta;
-  static deserializeBinaryFromReader(message: GameMeta, reader: jspb.BinaryReader): GameMeta;
-}
-
-export namespace GameMeta {
-  export type AsObject = {
-    usersList: Array<GameMeta.UserMeta.AsObject>,
-    gameRequest?: GameRequest.AsObject,
-    id: string,
-  }
-
-  export class UserMeta extends jspb.Message {
-    getRelevantRating(): string;
-    setRelevantRating(value: string): void;
-
-    getDisplayName(): string;
-    setDisplayName(value: string): void;
-
-    serializeBinary(): Uint8Array;
-    toObject(includeInstance?: boolean): UserMeta.AsObject;
-    static toObject(includeInstance: boolean, msg: UserMeta): UserMeta.AsObject;
-    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
-    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
-    static serializeBinaryToWriter(message: UserMeta, writer: jspb.BinaryWriter): void;
-    static deserializeBinary(bytes: Uint8Array): UserMeta;
-    static deserializeBinaryFromReader(message: UserMeta, reader: jspb.BinaryReader): UserMeta;
-  }
-
-  export namespace UserMeta {
-    export type AsObject = {
-      relevantRating: string,
-      displayName: string,
-    }
-  }
-}
-
 export class GameDeletion extends jspb.Message {
   getId(): string;
   setId(value: string): void;
@@ -425,48 +369,6 @@ export namespace MatchRequest {
   }
 }
 
-export class TournamentMatchRequest extends jspb.Message {
-  hasGameRequest(): boolean;
-  clearGameRequest(): void;
-  getGameRequest(): GameRequest | undefined;
-  setGameRequest(value?: GameRequest): void;
-
-  hasPlayer1(): boolean;
-  clearPlayer1(): void;
-  getPlayer1(): MatchUser | undefined;
-  setPlayer1(value?: MatchUser): void;
-
-  hasPlayer2(): boolean;
-  clearPlayer2(): void;
-  getPlayer2(): MatchUser | undefined;
-  setPlayer2(value?: MatchUser): void;
-
-  getForceFirst(): boolean;
-  setForceFirst(value: boolean): void;
-
-  getTournamentId(): string;
-  setTournamentId(value: string): void;
-
-  serializeBinary(): Uint8Array;
-  toObject(includeInstance?: boolean): TournamentMatchRequest.AsObject;
-  static toObject(includeInstance: boolean, msg: TournamentMatchRequest): TournamentMatchRequest.AsObject;
-  static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
-  static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
-  static serializeBinaryToWriter(message: TournamentMatchRequest, writer: jspb.BinaryWriter): void;
-  static deserializeBinary(bytes: Uint8Array): TournamentMatchRequest;
-  static deserializeBinaryFromReader(message: TournamentMatchRequest, reader: jspb.BinaryReader): TournamentMatchRequest;
-}
-
-export namespace TournamentMatchRequest {
-  export type AsObject = {
-    gameRequest?: GameRequest.AsObject,
-    player1?: MatchUser.AsObject,
-    player2?: MatchUser.AsObject,
-    forceFirst: boolean,
-    tournamentId: string,
-  }
-}
-
 export class ReadyForGame extends jspb.Message {
   getGameId(): string;
   setGameId(value: string): void;
@@ -568,28 +470,6 @@ export class MatchRequests extends jspb.Message {
 export namespace MatchRequests {
   export type AsObject = {
     requestsList: Array<MatchRequest.AsObject>,
-  }
-}
-
-export class TournamentMatchRequests extends jspb.Message {
-  clearRequestsList(): void;
-  getRequestsList(): Array<TournamentMatchRequest>;
-  setRequestsList(value: Array<TournamentMatchRequest>): void;
-  addRequests(value?: TournamentMatchRequest, index?: number): TournamentMatchRequest;
-
-  serializeBinary(): Uint8Array;
-  toObject(includeInstance?: boolean): TournamentMatchRequests.AsObject;
-  static toObject(includeInstance: boolean, msg: TournamentMatchRequests): TournamentMatchRequests.AsObject;
-  static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
-  static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
-  static serializeBinaryToWriter(message: TournamentMatchRequests, writer: jspb.BinaryWriter): void;
-  static deserializeBinary(bytes: Uint8Array): TournamentMatchRequests;
-  static deserializeBinaryFromReader(message: TournamentMatchRequests, reader: jspb.BinaryReader): TournamentMatchRequests;
-}
-
-export namespace TournamentMatchRequests {
-  export type AsObject = {
-    requestsList: Array<TournamentMatchRequest.AsObject>,
   }
 }
 
@@ -938,6 +818,42 @@ export namespace ClientGameplayEvent {
   }
 
   export const EventType: EventTypeMap;
+}
+
+export class ReadyForTournamentGame extends jspb.Message {
+  getTournamentId(): string;
+  setTournamentId(value: string): void;
+
+  getDivision(): string;
+  setDivision(value: string): void;
+
+  getRound(): number;
+  setRound(value: number): void;
+
+  getGameIndex(): number;
+  setGameIndex(value: number): void;
+
+  getUnready(): boolean;
+  setUnready(value: boolean): void;
+
+  serializeBinary(): Uint8Array;
+  toObject(includeInstance?: boolean): ReadyForTournamentGame.AsObject;
+  static toObject(includeInstance: boolean, msg: ReadyForTournamentGame): ReadyForTournamentGame.AsObject;
+  static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+  static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+  static serializeBinaryToWriter(message: ReadyForTournamentGame, writer: jspb.BinaryWriter): void;
+  static deserializeBinary(bytes: Uint8Array): ReadyForTournamentGame;
+  static deserializeBinaryFromReader(message: ReadyForTournamentGame, reader: jspb.BinaryReader): ReadyForTournamentGame;
+}
+
+export namespace ReadyForTournamentGame {
+  export type AsObject = {
+    tournamentId: string,
+    division: string,
+    round: number,
+    gameIndex: number,
+    unready: boolean,
+  }
 }
 
 export class TimedOut extends jspb.Message {
@@ -1367,11 +1283,11 @@ export interface MessageTypeMap {
   ONGOING_GAME_EVENT: 12;
   TIMED_OUT: 13;
   ONGOING_GAMES: 14;
+  READY_FOR_TOURNAMENT_GAME: 15;
   GAME_DELETION: 17;
   MATCH_REQUESTS: 18;
   DECLINE_MATCH_REQUEST: 19;
   CHAT_MESSAGE: 20;
-  TOURNAMENT_MATCH_REQUESTS: 21;
   USER_PRESENCE: 22;
   USER_PRESENCES: 23;
   SERVER_MESSAGE: 24;

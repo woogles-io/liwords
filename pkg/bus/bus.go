@@ -697,16 +697,6 @@ func (b *Bus) sendLobbyContext(ctx context.Context, userID, connID string) error
 		return err
 	}
 
-	// open tournamentmatch reqs
-	tms, err := b.openTournamentMatches(ctx, userID, "")
-	if err != nil {
-		return err
-	}
-	err = b.pubToConnectionID(connID, userID, tms)
-	if err != nil {
-		return err
-	}
-
 	// TODO: send followed online
 	return nil
 }
@@ -732,16 +722,7 @@ func (b *Bus) sendTournamentContext(ctx context.Context, realm, userID, connID s
 	if err != nil {
 		return err
 	}
-	// this sucks, maybe i should reuse the match request instead.
-	// open tournament match reqs
-	tms, err := b.openTournamentMatches(ctx, userID, tourneyID)
-	if err != nil {
-		return err
-	}
-	err = b.pubToConnectionID(connID, userID, tms)
-	if err != nil {
-		return err
-	}
+
 	// Send a TournamentDivisionDataResponse for every division in the tournament.
 
 	t, err := b.tournamentStore.Get(ctx, tourneyID)
