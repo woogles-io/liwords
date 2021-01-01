@@ -15,7 +15,8 @@ import (
 )
 
 type ClassicDivision struct {
-	Matrix         [][]*entity.PlayerRoundInfo      `json:"matrix"`
+	Matrix [][]*entity.PlayerRoundInfo `json:"matrix"`
+	// By convention, players should look like userUUID:username
 	Players        []string                         `json:"players"`
 	PlayerIndexMap map[string]int                   `json:"pidxMap"`
 	RoundControls  []*entity.RoundControls          `json:"roundCtrls"`
@@ -625,6 +626,34 @@ func (t *ClassicDivision) SetLastStarted(ls *realtime.TournamentRoundStarted) er
 	return nil
 }
 
+func (t *ClassicDivision) SetReadyForGame(playerID string, round, gameIndex int, unready bool) (bool, error) {
+	if round >= len(t.Matrix) || round < 0 {
+		return false, fmt.Errorf("round number out of range: %d", round)
+	}
+	// gameIndex is ignored for ClassicDivision?
+	foundPri := -1
+	for priIndex, pri := range t.Matrix[round] {
+		if pri.Pairing == nil {
+			continue
+		}
+		for idx := range pri.Pairing.Players {
+			if playerID == pri.Pairing.Players[idx] {
+				pri.Pairing.ReadyStates[idx] = !unready
+				foundPri = priIndex
+			}
+		}
+	}
+	if foundPri != -1 {
+		// Check to see if both players are ready.
+		pri := t.Matrix[round][foundPri]
+
+		if pri.Pairing.ReadyStates[0] && pri.Pairing.ReadyStates[1] {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
 func isSubstantialResult(result realtime.TournamentGameResult) bool {
 	return result != realtime.TournamentGameResult_NO_RESULT &&
 		result != realtime.TournamentGameResult_BYE &&
@@ -689,6 +718,7 @@ func convertPRIToResponse(pri *entity.PlayerRoundInfo) *realtime.PlayerRoundInfo
 	if pri.Pairing != nil {
 		priResponse.Players = pri.Pairing.Players
 		priResponse.Outcomes = pri.Pairing.Outcomes
+		priResponse.ReadyStates = pri.Pairing.ReadyStates
 		for i := 0; i < len(pri.Pairing.Games); i++ {
 			game := pri.Pairing.Games[i]
 			priResponse.Games = append(priResponse.Games, &realtime.TournamentGame{Scores: []int32{int32(game.Scores[0]), int32(game.Scores[1])},
@@ -761,7 +791,9 @@ func newClassicPairing(t *ClassicDivision,
 	return &entity.Pairing{Players: []string{playerGoingFirst, playerGoingSecond},
 		Games: games,
 		Outcomes: []realtime.TournamentGameResult{realtime.TournamentGameResult_NO_RESULT,
-			realtime.TournamentGameResult_NO_RESULT}}
+			realtime.TournamentGameResult_NO_RESULT},
+		ReadyStates: []bool{false, false},
+	}
 }
 
 func getPlayerFS(t *ClassicDivision, player string, round int) []int {

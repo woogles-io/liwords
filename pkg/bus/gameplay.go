@@ -10,6 +10,7 @@ import (
 
 	"github.com/domino14/liwords/pkg/entity"
 	"github.com/domino14/liwords/pkg/gameplay"
+	"github.com/domino14/liwords/pkg/tournament"
 	pb "github.com/domino14/liwords/rpc/api/proto/realtime"
 	"github.com/domino14/macondo/game"
 	macondopb "github.com/domino14/macondo/gen/api/proto/macondo"
@@ -223,6 +224,26 @@ func (b *Bus) readyForGame(ctx context.Context, evt *pb.ReadyForGame, userID str
 			go b.handleBotMove(ctx, g)
 		}
 	}
+	return nil
+}
+
+func (b *Bus) readyForTournamentGame(ctx context.Context, evt *pb.ReadyForTournamentGame, userID string) error {
+
+	reqUser, err := b.userStore.GetByUUID(ctx, userID)
+	if err != nil {
+		return err
+	}
+
+	fullUserID := userID + ":" + reqUser.Username
+
+	_, err = tournament.SetReadyForGame(ctx, b.tournamentStore, evt.TournamentId, fullUserID, evt.Division,
+		int(evt.Round), int(evt.GameIndex), evt.Unready)
+
+	if err != nil {
+		return err
+	}
+	// TODO: If both players are ready, redirect both to new game.
+
 	return nil
 }
 

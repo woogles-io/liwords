@@ -403,6 +403,8 @@ func SetResult(ctx context.Context,
 
 	t.Lock()
 	defer t.Unlock()
+	// XXX: Change this to `if true` if we are merging this into master, until
+	// tournaments are fully ready.
 	if t.Type == entity.TypeClub {
 		// This game was played in a legacy "Clubhouse".
 		// This is a tournament of "club" type (note, not a club *session*). This
@@ -629,6 +631,28 @@ func IsFinished(ctx context.Context, ts TournamentStore, id string, division str
 	}
 
 	return t.Divisions[division].DivisionManager.IsFinished()
+}
+
+func SetReadyForGame(ctx context.Context, ts TournamentStore, tID, playerID, division string,
+	round, gameIndex int, unready bool) (bool, error) {
+
+	t, err := ts.Get(ctx, tID)
+	if err != nil {
+		return false, err
+	}
+	t.Lock()
+	defer t.Unlock()
+
+	_, ok := t.Divisions[division]
+	if !ok {
+		return false, fmt.Errorf("division %s does not exist", division)
+	}
+
+	bothReady, err := t.Divisions[division].DivisionManager.SetReadyForGame(playerID, round, gameIndex, unready)
+	if err != nil {
+		return false, err
+	}
+	return bothReady, ts.Set(ctx, t)
 }
 
 func TournamentDataResponse(ctx context.Context, ts TournamentStore, id string) (*realtime.TournamentDataResponse, error) {

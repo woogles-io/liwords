@@ -429,6 +429,14 @@ func (b *Bus) handleNatsPublish(ctx context.Context, subtopics []string, data []
 			return err
 		}
 		return b.readyForGame(ctx, evt, userID)
+	case "readyForTournamentGame":
+		evt := &pb.ReadyForTournamentGame{}
+		err := proto.Unmarshal(data, evt)
+		if err != nil {
+			return err
+		}
+		return b.readyForTournamentGame(ctx, evt, userID)
+
 	case "leaveSite":
 		// There is no event here. We have the user ID in the subject.
 		return b.leaveSite(ctx, userID)

@@ -388,6 +388,7 @@ message PlayerRoundInfo {
   repeated string players = 1;
   repeated TournamentGame games = 2;
   repeated liwords.TournamentGameResult outcomes = 3;
+  repeated bool ready_states = 4;
 }
 
 message ClassicDivision { repeated PlayerRoundInfo matrix = 1; }

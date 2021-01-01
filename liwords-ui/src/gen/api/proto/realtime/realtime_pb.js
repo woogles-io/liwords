@@ -8279,7 +8279,7 @@ proto.liwords.TournamentGame.prototype.setGameEndReason = function(value) {
  * @private {!Array<number>}
  * @const
  */
-proto.liwords.PlayerRoundInfo.repeatedFields_ = [1,2,3];
+proto.liwords.PlayerRoundInfo.repeatedFields_ = [1,2,3,4];
 
 
 
@@ -8315,7 +8315,8 @@ proto.liwords.PlayerRoundInfo.toObject = function(includeInstance, msg) {
     playersList: (f = jspb.Message.getRepeatedField(msg, 1)) == null ? undefined : f,
     gamesList: jspb.Message.toObjectList(msg.getGamesList(),
     proto.liwords.TournamentGame.toObject, includeInstance),
-    outcomesList: (f = jspb.Message.getRepeatedField(msg, 3)) == null ? undefined : f
+    outcomesList: (f = jspb.Message.getRepeatedField(msg, 3)) == null ? undefined : f,
+    readyStatesList: (f = jspb.Message.getRepeatedBooleanField(msg, 4)) == null ? undefined : f
   };
 
   if (includeInstance) {
@@ -8365,6 +8366,10 @@ proto.liwords.PlayerRoundInfo.deserializeBinaryFromReader = function(msg, reader
       var value = /** @type {!Array<!proto.liwords.TournamentGameResult>} */ (reader.readPackedEnum());
       msg.setOutcomesList(value);
       break;
+    case 4:
+      var value = /** @type {!Array<boolean>} */ (reader.readPackedBool());
+      msg.setReadyStatesList(value);
+      break;
     default:
       reader.skipField();
       break;
@@ -8413,6 +8418,13 @@ proto.liwords.PlayerRoundInfo.serializeBinaryToWriter = function(message, writer
   if (f.length > 0) {
     writer.writePackedEnum(
       3,
+      f
+    );
+  }
+  f = message.getReadyStatesList();
+  if (f.length > 0) {
+    writer.writePackedBool(
+      4,
       f
     );
   }
@@ -8528,6 +8540,43 @@ proto.liwords.PlayerRoundInfo.prototype.addOutcomes = function(value, opt_index)
  */
 proto.liwords.PlayerRoundInfo.prototype.clearOutcomesList = function() {
   return this.setOutcomesList([]);
+};
+
+
+/**
+ * repeated bool ready_states = 4;
+ * @return {!Array<boolean>}
+ */
+proto.liwords.PlayerRoundInfo.prototype.getReadyStatesList = function() {
+  return /** @type {!Array<boolean>} */ (jspb.Message.getRepeatedBooleanField(this, 4));
+};
+
+
+/**
+ * @param {!Array<boolean>} value
+ * @return {!proto.liwords.PlayerRoundInfo} returns this
+ */
+proto.liwords.PlayerRoundInfo.prototype.setReadyStatesList = function(value) {
+  return jspb.Message.setField(this, 4, value || []);
+};
+
+
+/**
+ * @param {boolean} value
+ * @param {number=} opt_index
+ * @return {!proto.liwords.PlayerRoundInfo} returns this
+ */
+proto.liwords.PlayerRoundInfo.prototype.addReadyStates = function(value, opt_index) {
+  return jspb.Message.addToRepeatedField(this, 4, value, opt_index);
+};
+
+
+/**
+ * Clears the list making it empty but non-null.
+ * @return {!proto.liwords.PlayerRoundInfo} returns this
+ */
+proto.liwords.PlayerRoundInfo.prototype.clearReadyStatesList = function() {
+  return this.setReadyStatesList([]);
 };
 
 
