@@ -120,52 +120,9 @@ type TournamentControls struct {
 type TournamentDivision struct {
 	Players         *TournamentPersons  `json:"players"`
 	Controls        *TournamentControls `json:"controls"`
-	ManagerType     string              `json:"mgrType"`
+	ManagerType     TournamentType      `json:"mgrType"`
+	DivisionRawMessage json.RawMessage  `json:"json"`
 	DivisionManager DivisionManager     `json:"manager"`
-}
-
-func (td *TournamentDivision) UnmarshalJSON(data []byte) error {
-
-	var err error
-	var fields map[string]json.RawMessage
-	if err := json.Unmarshal(data, &fields); err != nil {
-		return err
-	}
-	for k, v := range fields {
-		if k == "players" {
-			err = json.Unmarshal(v, td.Players)
-			if err != nil {
-				return err
-			}
-		}
-		if k == "controls" {
-			err = json.Unmarshal(v, td.Controls)
-			if err != nil {
-				return err
-			}
-		}
-		if k == "manager" {
-			var mgrType string
-			err = json.Unmarshal(v, &mgrType)
-			if err != nil {
-				return err
-			}
-
-			// switch mgrType {
-			// case "ClassicDivision":
-			// 	cd := &ClassicDivision{}
-			// 	err = json.Unmarshal(v, cd)
-			// 	if err != nil {
-			// 		return err
-			// 	}
-			// 	td.DivisionManager = cd
-			// default:
-			// 	return errors.New("unhandled mgrType: " + mgrType)
-
-			// }
-		}
-	}
-	return nil
 }
 
 type Tournament struct {
