@@ -3,6 +3,7 @@ package tournament
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 
 	"github.com/rs/zerolog/log"
 	"gorm.io/datatypes"
@@ -12,6 +13,7 @@ import (
 
 	"github.com/domino14/liwords/pkg/config"
 	"github.com/domino14/liwords/pkg/entity"
+	tl "github.com/domino14/liwords/pkg/tournament"
 	"github.com/domino14/liwords/pkg/gameplay"
 	"github.com/domino14/liwords/rpc/api/proto/realtime"
 	pb "github.com/domino14/liwords/rpc/api/proto/tournament_service"
@@ -63,6 +65,20 @@ func (s *DBStore) dbObjToEntity(tm *tournament) (*entity.Tournament, error) {
 	err := json.Unmarshal(tm.Divisions, &divisions)
 	if err != nil {
 		return nil, err
+	}
+
+	for _, division := range divisions {
+		if division.ManagerType == entity.ClassicTournamentType {
+			var classicDivision tl.ClassicDivision
+			err = json.Unmarshal(division.DivisionRawMessage, &classicDivision)
+			if err != nil {
+				return nil, err
+			}
+			division.DivisionManager = &classicDivision
+			division.DivisionRawMessage = nil
+		} else {
+			return nil, fmt.Errorf("Unknown division manager type: %d", division.ManagerType)
+		}
 	}
 
 	var directors entity.TournamentPersons
@@ -157,6 +173,15 @@ func (s *DBStore) toDBObj(t *entity.Tournament) (*tournament, error) {
 	directors, err := json.Marshal(t.Directors)
 	if err != nil {
 		return nil, err
+	}
+
+	for _, division := range t.Divisions {
+		dmJSON, err := json.Marshal(division.DivisionManager)
+		if err != nil {
+			return nil, err
+		}
+		division.DivisionManager = nil
+		division.DivisionRawMessage = dmJSON
 	}
 
 	divisions, err := json.Marshal(t.Divisions)
