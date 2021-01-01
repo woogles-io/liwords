@@ -113,7 +113,8 @@
       display: flex;
       button {
         @include type-monospace;
-        font-size: 20px;
+        font-size: 22px;
+        line-height: 1.4em;
         @include colorModed() {
           color: m($background);
         }
@@ -221,7 +222,8 @@
 
       .score-timer {
         button {
-          font-size: 16px;
+          font-size: 22px;
+          line-height: 32px;
         }
       }
     }
@@ -244,11 +246,6 @@
           height: 48px;
           font-size: 36px;
         }
-      }
-    }
-    .score-timer {
-      button {
-        font-size: 16px;
       }
     }
   }
