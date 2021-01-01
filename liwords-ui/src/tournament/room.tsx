@@ -36,7 +36,7 @@ export const TournamentRoom = (props: Props) => {
     tournamentContext,
     setTournamentContext,
   } = useTournamentStoreContext();
-  const { loggedIn, username, userID } = loginState;
+  const { loggedIn, username } = loginState;
   const { sendSocketMsg } = props;
   const { path } = loginState;
   const [badTournament, setBadTournament] = useState(false);
@@ -150,6 +150,7 @@ export const TournamentRoom = (props: Props) => {
           onSeekSubmit={onSeekSubmit}
           loggedIn={loggedIn}
           newGame={handleNewGame}
+          username={username}
         />
         <TournamentInfo />
       </div>
