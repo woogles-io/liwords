@@ -153,6 +153,5 @@ export const sortTiles = (rack: string) => {
         ? 1
         : 0
     )
-    .map(([index, tile]) => tile)
-    .join('');
+    .reduce((s, [index, tile]) => s + tile, '');
 };
