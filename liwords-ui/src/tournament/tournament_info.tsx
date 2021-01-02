@@ -1,10 +1,12 @@
 import React from 'react';
-import { Card } from 'antd';
+import { Button, Card, Divider } from 'antd';
 import ReactMarkdown from 'react-markdown';
 import { useTournamentStoreContext } from '../store/store';
 import { UsernameWithContext } from '../shared/usernameWithContext';
 
-type TournamentInfoProps = {};
+type TournamentInfoProps = {
+  setSelectedGameTab: (tab: string) => void;
+};
 
 export const TournamentInfo = (props: TournamentInfoProps) => {
   const { tournamentContext } = useTournamentStoreContext();
@@ -24,6 +26,12 @@ export const TournamentInfo = (props: TournamentInfoProps) => {
         <ReactMarkdown linkTarget="_blank">
           {tournamentContext.metadata.description}
         </ReactMarkdown>
+        <Divider />
+        Recent games can now be found in the{' '}
+        <a onClick={() => props.setSelectedGameTab('RECENT')}>
+          RECENT GAMES
+        </a>{' '}
+        tab in the center panel.
       </Card>
     </div>
   );

@@ -152,7 +152,7 @@ export const TournamentRoom = (props: Props) => {
           newGame={handleNewGame}
           username={username}
         />
-        <TournamentInfo />
+        <TournamentInfo setSelectedGameTab={setSelectedGameTab} />
       </div>
     </>
   );

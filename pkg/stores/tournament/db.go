@@ -63,12 +63,10 @@ func NewDBStore(config *config.Config, gs gameplay.GameStore) (*DBStore, error) 
 func (s *DBStore) dbObjToEntity(tm *tournament) (*entity.Tournament, error) {
 	var divisions map[string]*entity.TournamentDivision
 	err := json.Unmarshal(tm.Divisions, &divisions)
-	log.Err(err).Msg("unmarshal-step-0")
 	if err != nil {
 		return nil, err
 	}
 
-	log.Debug().Msg("unmarshal-step-1")
 	for _, division := range divisions {
 		if division.ManagerType == entity.ClassicTournamentType {
 			log.Debug().Interface("division", division).Msg("unmarshalling")
@@ -77,7 +75,6 @@ func (s *DBStore) dbObjToEntity(tm *tournament) (*entity.Tournament, error) {
 			if err != nil {
 				return nil, err
 			}
-			log.Debug().Interface("division", division).Msg("unmarshal-step-2")
 			division.DivisionManager = &classicDivision
 			division.DivisionRawMessage = nil
 		} else {
@@ -90,7 +87,6 @@ func (s *DBStore) dbObjToEntity(tm *tournament) (*entity.Tournament, error) {
 	if err != nil {
 		return nil, err
 	}
-	log.Debug().Msg("unmarshal-step-3")
 
 	var defaultSettings *realtime.GameRequest
 	err = json.Unmarshal(tm.DefaultSettings, defaultSettings)
