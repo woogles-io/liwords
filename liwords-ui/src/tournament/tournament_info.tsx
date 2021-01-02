@@ -1,5 +1,6 @@
+/* eslint-disable jsx-a11y/anchor-is-valid */
 import React from 'react';
-import { Button, Card, Divider } from 'antd';
+import { Card, Divider } from 'antd';
 import ReactMarkdown from 'react-markdown';
 import { useTournamentStoreContext } from '../store/store';
 import { UsernameWithContext } from '../shared/usernameWithContext';
