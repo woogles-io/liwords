@@ -35,6 +35,25 @@ export const Announcements = React.memo((props: AnnouncementsProps) => {
       ),
     },
     {
+      title: 'Upcoming Tournament - 11th Annual Duke PBMT Charity Tournament',
+      body: (
+        <a
+          href="https://sites.google.com/site/trianglescrabble/pbmt-2021"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          <p>
+            8 games Saturday, January 16, NWL20 or CSW19, starting at 10 AM. All
+            proceeds from this online tourney will go to support families in the
+            Pediatric Blood and Marrow Transplantation Program at the Duke
+            Comprehensive Cancer Center. Last year's event raised over $10,000
+            for this worthy cause!
+          </p>
+        </a>
+      ),
+    },
+
+    {
       title: 'Upcoming Tournament - Crescent City Cup',
       body: (
         <a
@@ -51,23 +70,6 @@ export const Announcements = React.memo((props: AnnouncementsProps) => {
       ),
     },
 
-    {
-      title: 'WETO complete!',
-      body: (
-        <a
-          href="https://woogles.io/tournament/weto"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <p>
-            The WETO tournament was held over November and December, and was a
-            matchplay-style single elimination bracket tournament.
-            Congratulations to Waseem Khatri (WK) for winning the whole
-            tournament! You can check out the games here.
-          </p>
-        </a>
-      ),
-    },
     {
       title: 'Want to help?',
       body: (

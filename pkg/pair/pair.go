@@ -210,7 +210,7 @@ func minWeightMatching(members *entity.UnpairedPoolMembers) ([]int, error) {
 	}
 
 	if weight >= entity.ProhibitiveWeight {
-		return nil, errors.New("prohibitive weight reached, pairings are not possible with these settings.")
+		return nil, errors.New("prohibitive weight reached, pairings are not possible with these settings")
 	}
 
 	if members.RoundControls.PairingMethod == entity.Quickpair {

@@ -429,6 +429,14 @@ func (b *Bus) handleNatsPublish(ctx context.Context, subtopics []string, data []
 			return err
 		}
 		return b.readyForGame(ctx, evt, userID)
+	case "readyForTournamentGame":
+		evt := &pb.ReadyForTournamentGame{}
+		err := proto.Unmarshal(data, evt)
+		if err != nil {
+			return err
+		}
+		return b.readyForTournamentGame(ctx, evt, userID)
+
 	case "leaveSite":
 		// There is no event here. We have the user ID in the subject.
 		return b.leaveSite(ctx, userID)
@@ -696,6 +704,7 @@ func (b *Bus) sendLobbyContext(ctx context.Context, userID, connID string) error
 	if err != nil {
 		return err
 	}
+
 	// TODO: send followed online
 	return nil
 }
@@ -721,7 +730,28 @@ func (b *Bus) sendTournamentContext(ctx context.Context, realm, userID, connID s
 	if err != nil {
 		return err
 	}
-	return nil
+
+	// Send a TournamentDivisionDataResponse for every division in the tournament.
+
+	t, err := b.tournamentStore.Get(ctx, tourneyID)
+	if err != nil {
+		return err
+	}
+	msg := &pb.FullTournamentDivisions{
+		Divisions: make(map[string]*pb.TournamentDivisionDataResponse),
+	}
+
+	for name := range t.Divisions {
+		r, err := tournament.TournamentDivisionDataResponse(ctx, b.tournamentStore, tourneyID, name)
+		if err != nil {
+			return err
+		}
+		msg.Divisions[name] = r
+	}
+	evt := entity.WrapEvent(msg, pb.MessageType_TOURNAMENT_FULL_DIVISIONS_MESSAGE)
+	err = b.pubToConnectionID(connID, userID, evt)
+
+	return err
 }
 
 func (b *Bus) sendPresenceContext(ctx context.Context, userID, username string, anon bool,

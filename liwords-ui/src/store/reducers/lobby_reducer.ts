@@ -265,7 +265,7 @@ export function LobbyReducer(state: LobbyState, action: Action): LobbyState {
       };
     }
 
-    case ActionType.AddTourneyGame: {
+    case ActionType.AddTourneyGameResult: {
       const { tourneyGames, gamesOffset, gamesPageSize } = state;
       const evt = action.payload as TournamentGameEndedEvent;
       const game = TourneyGameEndedEvtToRecentGame(evt);
@@ -287,7 +287,7 @@ export function LobbyReducer(state: LobbyState, action: Action): LobbyState {
       };
     }
 
-    case ActionType.AddTourneyGames: {
+    case ActionType.AddTourneyGameResults: {
       const tourneyGames = action.payload as Array<RecentGame>;
       return {
         ...state,

@@ -17,10 +17,10 @@ import { toAPIUrl } from '../api/api';
 import { TopBar } from '../topbar/topbar';
 import { singularCount } from '../utils/plural';
 import { Chat } from '../chat/chat';
-import { GameLists } from '../lobby/gameLists';
 import { TournamentInfo } from './tournament_info';
 import { sendAccept, sendSeek } from '../lobby/sought_game_interactions';
 import { SoughtGame } from '../store/reducers/lobby_reducer';
+import { ActionsPanel } from './actions_panel';
 
 type Props = {
   sendSocketMsg: (msg: Uint8Array) => void;
@@ -36,17 +36,11 @@ export const TournamentRoom = (props: Props) => {
     tournamentContext,
     setTournamentContext,
   } = useTournamentStoreContext();
-  const { loggedIn, username, userID } = loginState;
+  const { loggedIn, username } = loginState;
   const { sendSocketMsg } = props;
   const { path } = loginState;
   const [badTournament, setBadTournament] = useState(false);
-  const [selectedGameTab, setSelectedGameTab] = useState(
-    loggedIn ? 'PLAY' : 'WATCH'
-  );
-
-  useEffect(() => {
-    setSelectedGameTab(loggedIn ? 'PLAY' : 'WATCH');
-  }, [loggedIn]);
+  const [selectedGameTab, setSelectedGameTab] = useState('GAMES');
 
   useEffect(() => {
     if (!partialSlug || !path) {
@@ -90,6 +84,11 @@ export const TournamentRoom = (props: Props) => {
   const tournamentID = useMemo(() => {
     return tournamentContext.metadata.id;
   }, [tournamentContext.metadata]);
+
+  // Should be more like "amdirector"
+  const isDirector = useMemo(() => {
+    return tournamentContext.metadata.directors.includes(username);
+  }, [tournamentContext.metadata, username]);
 
   const handleNewGame = useCallback(
     (seekID: string) => {
@@ -139,18 +138,19 @@ export const TournamentRoom = (props: Props) => {
             defaultDescription={tournamentContext.metadata.name}
             peopleOnlineContext={peopleOnlineContext}
             highlight={tournamentContext.metadata.directors}
+            highlightText="Director"
             tournamentID={tournamentID}
           />
         </div>
-        <GameLists
-          loggedIn={loggedIn}
-          userID={userID}
-          username={username}
-          newGame={handleNewGame}
+        <ActionsPanel
           selectedGameTab={selectedGameTab}
           setSelectedGameTab={setSelectedGameTab}
-          onSeekSubmit={onSeekSubmit}
+          isDirector={isDirector}
           tournamentID={tournamentID}
+          onSeekSubmit={onSeekSubmit}
+          loggedIn={loggedIn}
+          newGame={handleNewGame}
+          username={username}
         />
         <TournamentInfo />
       </div>

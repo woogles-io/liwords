@@ -44,7 +44,6 @@ type Props = {
   userID?: string;
   username?: string;
   requests: Array<SoughtGame>;
-  tournamentID?: string;
 };
 
 export const SoughtGames = (props: Props) => {

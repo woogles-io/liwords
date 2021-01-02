@@ -32,6 +32,8 @@ type User struct {
 	// CurrentChannel tracks presence; where is the user currently?
 	CurrentChannel string
 	IsBot          bool
+	IsDirector     bool
+	IsMod          bool
 	IsAdmin        bool
 }
 

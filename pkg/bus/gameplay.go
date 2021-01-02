@@ -10,6 +10,7 @@ import (
 
 	"github.com/domino14/liwords/pkg/entity"
 	"github.com/domino14/liwords/pkg/gameplay"
+	"github.com/domino14/liwords/pkg/tournament"
 	pb "github.com/domino14/liwords/rpc/api/proto/realtime"
 	"github.com/domino14/macondo/game"
 	macondopb "github.com/domino14/macondo/gen/api/proto/macondo"
@@ -45,7 +46,7 @@ func (b *Bus) instantiateAndStartGame(ctx context.Context, accUser *entity.User,
 		Str("accepting-conn", acceptingConnID).Msg("game-request-accepted")
 	assignedFirst := -1
 	var tournamentID string
-	if sg.Type() == entity.TypeMatch {
+	if sg.Type == entity.TypeMatch {
 		if sg.MatchRequest.RematchFor != "" {
 			// Assign firsts to be the the other player.
 			gameID := sg.MatchRequest.RematchFor
@@ -203,14 +204,16 @@ func (b *Bus) readyForGame(ctx context.Context, evt *pb.ReadyForGame, userID str
 		return errors.New("ready for game but not in game")
 	}
 
+	log.Debug().Str("gameID", evt.GameId).Int("readyID", readyID).Msg("setReady")
 	rf, err := b.gameStore.SetReady(ctx, evt.GameId, readyID)
 	if err != nil {
+		log.Err(err).Msg("in-set-ready")
 		return err
 	}
-
+	log.Debug().Interface("rf", rf).Msg("ready-flag")
 	// Start the game if both players are ready (or if it's a bot game).
 	// readyflag will be (01 | 10) = 3 for two players.
-	if rf == 3 || g.GameReq.PlayerVsBot {
+	if rf == (1<<len(g.History().Players))-1 || g.GameReq.PlayerVsBot {
 		err = gameplay.StartGame(ctx, b.gameStore, b.gameEventChan, g.GameID())
 		if err != nil {
 			log.Err(err).Msg("starting-game")
@@ -221,6 +224,26 @@ func (b *Bus) readyForGame(ctx context.Context, evt *pb.ReadyForGame, userID str
 			go b.handleBotMove(ctx, g)
 		}
 	}
+	return nil
+}
+
+func (b *Bus) readyForTournamentGame(ctx context.Context, evt *pb.ReadyForTournamentGame, userID string) error {
+
+	reqUser, err := b.userStore.GetByUUID(ctx, userID)
+	if err != nil {
+		return err
+	}
+
+	fullUserID := userID + ":" + reqUser.Username
+
+	_, err = tournament.SetReadyForGame(ctx, b.tournamentStore, evt.TournamentId, fullUserID, evt.Division,
+		int(evt.Round), int(evt.GameIndex), evt.Unready)
+
+	if err != nil {
+		return err
+	}
+	// TODO: If both players are ready, redirect both to new game.
+
 	return nil
 }
 

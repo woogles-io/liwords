@@ -30,6 +30,7 @@ export type Props = {
   defaultDescription: string;
   DISCONNECT?: () => void;
   highlight?: Array<string>;
+  highlightText?: string;
   tournamentID?: string;
 };
 
@@ -98,7 +99,7 @@ export const Chat = React.memo((props: Props) => {
   }, []);
 
   const doChatAutoScroll = useCallback(
-    (force: boolean = false) => {
+    (force = false) => {
       if ((chatAutoScroll || force) && chatTab) {
         // Slight delay on this to let entities load, now that they're xhr
         setTimeout(() => {
@@ -420,6 +421,7 @@ export const Chat = React.memo((props: Props) => {
               channel={ent.channel}
               timestamp={ent.timestamp}
               highlight={specialSender}
+              highlightText={props.highlightText}
               sendMessage={
                 loggedIn
                   ? (userID: string, username: string) => {
@@ -432,7 +434,14 @@ export const Chat = React.memo((props: Props) => {
             />
           );
         }),
-    [chatEntities, props.highlight, channel, loggedIn, calculatePMChannel]
+    [
+      chatEntities,
+      props.highlight,
+      props.highlightText,
+      channel,
+      loggedIn,
+      calculatePMChannel,
+    ]
   );
 
   const handleTabClick = useCallback((key) => {

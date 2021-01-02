@@ -64,3 +64,14 @@ func (gs *GameService) GetGCG(ctx context.Context, req *pb.GCGRequest) (*pb.GCGR
 	}
 	return &pb.GCGResponse{Gcg: gcg}, nil
 }
+
+func (gs *GameService) GetGameHistory(ctx context.Context, req *pb.GameHistoryRequest) (*pb.GameHistoryResponse, error) {
+	entGame, err := gs.gameStore.Get(ctx, req.GameId)
+	if err != nil {
+		return nil, twirp.NewError(twirp.InvalidArgument, err.Error())
+	}
+	if entGame.Playing() != macondopb.PlayState_GAME_OVER {
+		return nil, twirp.NewError(twirp.InvalidArgument, "please wait until the game is over to download game history")
+	}
+	return &pb.GameHistoryResponse{History: entGame.History()}, nil
+}

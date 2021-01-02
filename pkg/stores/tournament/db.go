@@ -3,6 +3,7 @@ package tournament
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 
 	"github.com/rs/zerolog/log"
 	"gorm.io/datatypes"
@@ -13,6 +14,7 @@ import (
 	"github.com/domino14/liwords/pkg/config"
 	"github.com/domino14/liwords/pkg/entity"
 	"github.com/domino14/liwords/pkg/gameplay"
+	tl "github.com/domino14/liwords/pkg/tournament"
 	"github.com/domino14/liwords/rpc/api/proto/realtime"
 	pb "github.com/domino14/liwords/rpc/api/proto/tournament_service"
 )
@@ -30,6 +32,7 @@ type tournament struct {
 	UUID              string `gorm:"uniqueIndex"`
 	Name              string
 	Description       string
+	AliasOf           string
 	Directors         datatypes.JSON
 	ExecutiveDirector string
 	IsStarted         bool
@@ -60,8 +63,26 @@ func NewDBStore(config *config.Config, gs gameplay.GameStore) (*DBStore, error) 
 func (s *DBStore) dbObjToEntity(tm *tournament) (*entity.Tournament, error) {
 	var divisions map[string]*entity.TournamentDivision
 	err := json.Unmarshal(tm.Divisions, &divisions)
+	log.Err(err).Msg("unmarshal-step-0")
 	if err != nil {
 		return nil, err
+	}
+
+	log.Debug().Msg("unmarshal-step-1")
+	for _, division := range divisions {
+		if division.ManagerType == entity.ClassicTournamentType {
+			log.Debug().Interface("division", division).Msg("unmarshalling")
+			var classicDivision tl.ClassicDivision
+			err = json.Unmarshal(division.DivisionRawMessage, &classicDivision)
+			if err != nil {
+				return nil, err
+			}
+			log.Debug().Interface("division", division).Msg("unmarshal-step-2")
+			division.DivisionManager = &classicDivision
+			division.DivisionRawMessage = nil
+		} else {
+			return nil, fmt.Errorf("Unknown division manager type: %d", division.ManagerType)
+		}
 	}
 
 	var directors entity.TournamentPersons
@@ -69,6 +90,7 @@ func (s *DBStore) dbObjToEntity(tm *tournament) (*entity.Tournament, error) {
 	if err != nil {
 		return nil, err
 	}
+	log.Debug().Msg("unmarshal-step-3")
 
 	var defaultSettings *realtime.GameRequest
 	err = json.Unmarshal(tm.DefaultSettings, defaultSettings)
@@ -79,6 +101,7 @@ func (s *DBStore) dbObjToEntity(tm *tournament) (*entity.Tournament, error) {
 	tme := &entity.Tournament{UUID: tm.UUID,
 		Name:              tm.Name,
 		Description:       tm.Description,
+		AliasOf:           tm.AliasOf,
 		Directors:         &directors,
 		ExecutiveDirector: tm.ExecutiveDirector,
 		IsStarted:         tm.IsStarted,
@@ -88,6 +111,7 @@ func (s *DBStore) dbObjToEntity(tm *tournament) (*entity.Tournament, error) {
 		ParentID:          tm.Parent,
 		Slug:              tm.Slug,
 	}
+	log.Debug().Msg("return-full")
 
 	return tme, nil
 }
@@ -157,6 +181,15 @@ func (s *DBStore) toDBObj(t *entity.Tournament) (*tournament, error) {
 		return nil, err
 	}
 
+	for _, division := range t.Divisions {
+		dmJSON, err := json.Marshal(division.DivisionManager)
+		if err != nil {
+			return nil, err
+		}
+
+		division.DivisionRawMessage = dmJSON
+	}
+
 	divisions, err := json.Marshal(t.Divisions)
 	if err != nil {
 		return nil, err
@@ -172,6 +205,7 @@ func (s *DBStore) toDBObj(t *entity.Tournament) (*tournament, error) {
 		UUID:              t.UUID,
 		Name:              t.Name,
 		Description:       t.Description,
+		AliasOf:           t.AliasOf,
 		Directors:         directors,
 		ExecutiveDirector: t.ExecutiveDirector,
 		IsStarted:         t.IsStarted,

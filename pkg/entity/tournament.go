@@ -1,6 +1,7 @@
 package entity
 
 import (
+	"encoding/json"
 	"sync"
 	"time"
 
@@ -15,10 +16,14 @@ type DivisionManager interface {
 		realtime.TournamentGameResult, realtime.GameEndReason, bool, int) error
 	PairRound(int) error
 	GetStandings(int) ([]*Standing, error)
-	SetPairing(string, string, int) error
+	SetPairing(string, string, int, bool) error
+	AddPlayers(*TournamentPersons) error
 	IsRoundReady(int) (bool, error)
 	IsRoundComplete(int) (bool, error)
 	IsFinished() (bool, error)
+	ToResponse() (*realtime.TournamentDivisionDataResponse, error)
+	SetReadyForGame(userID string, round, gameIndex int, unready bool) (bool, error)
+	SetLastStarted(*realtime.TournamentRoundStarted) error
 	Serialize() (datatypes.JSON, error)
 }
 
@@ -31,7 +36,7 @@ const (
 	ManualFirst FirstMethod = iota
 
 	// Random pairings do not use any previous first/second
-	// data from the tournament and random assigns first and second
+	// data from the tournament and randomly assigns first and second
 	// for the round
 	RandomFirst
 
@@ -51,7 +56,10 @@ const (
 	TypeClubSession = "clubsession"
 )
 
-const Unpaired = -1
+const (
+	ByeScore     int = 50
+	ForfeitScore int = -50
+)
 
 type TournamentGame struct {
 	Scores        []int                           `json:"scores"`
@@ -60,9 +68,10 @@ type TournamentGame struct {
 }
 
 type Pairing struct {
-	Players  []string                        `json:"players"`
-	Games    []*TournamentGame               `json:"games"`
-	Outcomes []realtime.TournamentGameResult `json:"outcomes"`
+	Players     []string                        `json:"players"`
+	Games       []*TournamentGame               `json:"games"`
+	Outcomes    []realtime.TournamentGameResult `json:"outcomes"`
+	ReadyStates []bool                          `json:"ready"`
 }
 
 type PlayerRoundInfo struct {
@@ -108,19 +117,26 @@ type TournamentControls struct {
 	NumberOfRounds int                   `json:"rounds"`
 	Type           TournamentType        `json:"type"`
 	StartTime      time.Time             `json:"startTime"`
+	AutoStart      bool                  `json:"autoStart"`
 }
 
 type TournamentDivision struct {
-	Players         *TournamentPersons  `json:"players"`
-	Controls        *TournamentControls `json:"controls"`
-	DivisionManager DivisionManager     `json:"manager"`
+	Players            *TournamentPersons  `json:"players"`
+	Controls           *TournamentControls `json:"controls"`
+	ManagerType        TournamentType      `json:"mgrType"`
+	DivisionRawMessage json.RawMessage     `json:"json"`
+	DivisionManager    DivisionManager     `json:"-"`
 }
 
 type Tournament struct {
 	sync.RWMutex
-	UUID              string                         `json:"uuid"`
-	Name              string                         `json:"name"`
-	Description       string                         `json:"desc"`
+	UUID        string `json:"uuid"`
+	Name        string `json:"name"`
+	Description string `json:"desc"`
+	// XXX: We will likely remove the following two fields
+	AliasOf string `json:"aliasOf"`
+	URL     string `json:"url"`
+	// XXX: Investigate above.
 	ExecutiveDirector string                         `json:"execDirector"`
 	Directors         *TournamentPersons             `json:"directors"`
 	IsStarted         bool                           `json:"started"`

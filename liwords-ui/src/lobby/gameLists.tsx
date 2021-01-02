@@ -5,10 +5,7 @@ import { useMountedState } from '../utils/mounted';
 import { SoughtGames } from './sought_games';
 import { ActiveGames } from './active_games';
 import { SeekForm } from './seek_form';
-import {
-  useLobbyStoreContext,
-  useTournamentStoreContext,
-} from '../store/store';
+import { useLobbyStoreContext } from '../store/store';
 import { ActiveGame, SoughtGame } from '../store/reducers/lobby_reducer';
 import './seek_form.scss';
 
@@ -20,7 +17,6 @@ type Props = {
   selectedGameTab: string;
   setSelectedGameTab: (tab: string) => void;
   onSeekSubmit: (g: SoughtGame) => void;
-  tournamentID?: string;
 };
 
 export const GameLists = React.memo((props: Props) => {
@@ -35,10 +31,8 @@ export const GameLists = React.memo((props: Props) => {
     selectedGameTab,
     setSelectedGameTab,
     onSeekSubmit,
-    tournamentID,
   } = props;
   const { lobbyContext } = useLobbyStoreContext();
-  const { tournamentContext } = useTournamentStoreContext();
   const [formDisabled, setFormDisabled] = useState(false);
   const [seekModalVisible, setSeekModalVisible] = useState(false);
   const [matchModalVisible, setMatchModalVisible] = useState(false);
@@ -50,14 +44,8 @@ export const GameLists = React.memo((props: Props) => {
   const opponent = currentGame?.players.find((p) => p.displayName !== username)
     ?.displayName;
 
-  let matchButtonText = 'Match a friend';
-  if (tournamentID) {
-    if (['CLUB', 'CLUBSESSION'].includes(tournamentContext.metadata.type)) {
-      matchButtonText = 'Start Club Game';
-    } else if (tournamentContext.metadata.type === 'STANDARD') {
-      matchButtonText = 'Start Tournament Game';
-    }
-  }
+  const matchButtonText = 'Match a friend';
+
   const renderGames = () => {
     if (loggedIn && userID && username && selectedGameTab === 'PLAY') {
       return (
@@ -68,19 +56,17 @@ export const GameLists = React.memo((props: Props) => {
               userID={userID}
               username={username}
               newGame={newGame}
-              tournamentID={tournamentID}
               requests={lobbyContext?.matchRequests}
             />
           ) : null}
-          {!tournamentID ? (
-            <SoughtGames
-              isMatch={false}
-              userID={userID}
-              username={username}
-              newGame={newGame}
-              requests={lobbyContext?.soughtGames}
-            />
-          ) : null}
+
+          <SoughtGames
+            isMatch={false}
+            userID={userID}
+            username={username}
+            newGame={newGame}
+            requests={lobbyContext?.soughtGames}
+          />
         </>
       );
     }
@@ -155,7 +141,7 @@ export const GameLists = React.memo((props: Props) => {
   const matchModal = (
     <Modal
       className="seek-modal"
-      title={!tournamentID ? 'Match a Friend' : 'Send Match Request'}
+      title="Match a Friend"
       visible={matchModalVisible}
       destroyOnClose
       onCancel={() => {
@@ -187,7 +173,6 @@ export const GameLists = React.memo((props: Props) => {
         loggedIn={props.loggedIn}
         showFriendInput={true}
         id="match-seek"
-        tournamentID={tournamentID}
       />
     </Modal>
   );
@@ -246,18 +231,16 @@ export const GameLists = React.memo((props: Props) => {
         </div>
       );
     } else {
-      // If this is a tournament, only show match modal.
-      !tournamentID &&
-        actions.push(
-          <div
-            className="bot"
-            onClick={() => {
-              setBotModalVisible(true);
-            }}
-          >
-            Play a computer
-          </div>
-        );
+      actions.push(
+        <div
+          className="bot"
+          onClick={() => {
+            setBotModalVisible(true);
+          }}
+        >
+          Play a computer
+        </div>
+      );
       actions.push(
         <div
           className="match"
@@ -268,17 +251,17 @@ export const GameLists = React.memo((props: Props) => {
           {matchButtonText}
         </div>
       );
-      !tournamentID &&
-        actions.push(
-          <div
-            className="seek"
-            onClick={() => {
-              setSeekModalVisible(true);
-            }}
-          >
-            Create a game
-          </div>
-        );
+
+      actions.push(
+        <div
+          className="seek"
+          onClick={() => {
+            setSeekModalVisible(true);
+          }}
+        >
+          Create a game
+        </div>
+      );
     }
   }
   return (

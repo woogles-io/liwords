@@ -37,6 +37,8 @@ type User struct {
 	Password    string `gorm:"type:varchar(128)"`
 	InternalBot bool   `gorm:"default:false;index"`
 	IsAdmin     bool   `gorm:"default:false"`
+	IsDirector  bool   `gorm:"default:false"`
+	IsMod       bool   `gorm:"default:false"`
 	ApiKey      string
 }
 
@@ -127,15 +129,17 @@ func (s *DBStore) Get(ctx context.Context, username string) (*entity.User, error
 		return nil, err
 	}
 	entu := &entity.User{
-		ID:        u.ID,
-		Username:  u.Username,
-		UUID:      u.UUID,
-		Email:     u.Email,
-		Password:  u.Password,
-		IsBot:     u.InternalBot,
-		Anonymous: false,
-		Profile:   profile,
-		IsAdmin:   u.IsAdmin,
+		ID:         u.ID,
+		Username:   u.Username,
+		UUID:       u.UUID,
+		Email:      u.Email,
+		Password:   u.Password,
+		IsBot:      u.InternalBot,
+		Anonymous:  false,
+		Profile:    profile,
+		IsAdmin:    u.IsAdmin,
+		IsDirector: u.IsDirector,
+		IsMod:      u.IsMod,
 	}
 
 	return entu, nil
@@ -151,14 +155,16 @@ func (s *DBStore) GetByEmail(ctx context.Context, email string) (*entity.User, e
 	}
 
 	entu := &entity.User{
-		ID:        u.ID,
-		Username:  u.Username,
-		UUID:      u.UUID,
-		Email:     u.Email,
-		Password:  u.Password,
-		Anonymous: false,
-		IsBot:     u.InternalBot,
-		IsAdmin:   u.IsAdmin,
+		ID:         u.ID,
+		Username:   u.Username,
+		UUID:       u.UUID,
+		Email:      u.Email,
+		Password:   u.Password,
+		Anonymous:  false,
+		IsBot:      u.InternalBot,
+		IsAdmin:    u.IsAdmin,
+		IsDirector: u.IsDirector,
+		IsMod:      u.IsMod,
 	}
 
 	return entu, nil
@@ -217,14 +223,16 @@ func (s *DBStore) GetByUUID(ctx context.Context, uuid string) (*entity.User, err
 		}
 
 		entu = &entity.User{
-			ID:       u.ID,
-			Username: u.Username,
-			UUID:     u.UUID,
-			Email:    u.Email,
-			Password: u.Password,
-			IsBot:    u.InternalBot,
-			Profile:  profile,
-			IsAdmin:  u.IsAdmin,
+			ID:         u.ID,
+			Username:   u.Username,
+			UUID:       u.UUID,
+			Email:      u.Email,
+			Password:   u.Password,
+			IsBot:      u.InternalBot,
+			Profile:    profile,
+			IsAdmin:    u.IsAdmin,
+			IsDirector: u.IsDirector,
+			IsMod:      u.IsMod,
 		}
 	}
 
@@ -268,6 +276,8 @@ func (s *DBStore) New(ctx context.Context, u *entity.User) error {
 		Password:    u.Password,
 		InternalBot: u.IsBot,
 		IsAdmin:     u.IsAdmin,
+		IsDirector:  u.IsDirector,
+		IsMod:       u.IsMod,
 	}
 	result := s.db.Create(dbu)
 	if result.Error != nil {

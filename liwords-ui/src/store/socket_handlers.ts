@@ -45,6 +45,12 @@ import {
   MatchRequestCancellation,
   TournamentGameEndedEvent,
   RematchStartedEvent,
+  TournamentDataResponse,
+  TournamentDivisionDataResponse,
+  TournamentDivisionDeletedResponse,
+  FullTournamentDivisions,
+  ReadyForTournamentGame,
+  TournamentRoundStarted,
 } from '../gen/api/proto/realtime/realtime_pb';
 import { ActionType } from '../actions/actions';
 import { endGameMessage } from './end_of_game';
@@ -86,7 +92,6 @@ export const parseMsgs = (msg: Uint8Array) => {
       [MessageType.SERVER_CHALLENGE_RESULT_EVENT]: ServerChallengeResultEvent,
       [MessageType.SEEK_REQUESTS]: SeekRequests,
       [MessageType.TIMED_OUT]: TimedOut,
-      // ...
       [MessageType.ONGOING_GAME_EVENT]: GameInfoResponse,
       [MessageType.ONGOING_GAMES]: GameInfoResponses,
       [MessageType.GAME_DELETION]: GameDeletion,
@@ -96,10 +101,16 @@ export const parseMsgs = (msg: Uint8Array) => {
       [MessageType.USER_PRESENCE]: UserPresence,
       [MessageType.USER_PRESENCES]: UserPresences,
       [MessageType.READY_FOR_GAME]: ReadyForGame,
+      [MessageType.READY_FOR_TOURNAMENT_GAME]: ReadyForTournamentGame,
+      [MessageType.TOURNAMENT_ROUND_STARTED]: TournamentRoundStarted,
       [MessageType.LAG_MEASUREMENT]: LagMeasurement,
       [MessageType.MATCH_REQUEST_CANCELLATION]: MatchRequestCancellation,
       [MessageType.TOURNAMENT_GAME_ENDED_EVENT]: TournamentGameEndedEvent,
       [MessageType.REMATCH_STARTED]: RematchStartedEvent,
+      [MessageType.TOURNAMENT_MESSAGE]: TournamentDataResponse,
+      [MessageType.TOURNAMENT_DIVISION_MESSAGE]: TournamentDivisionDataResponse,
+      [MessageType.TOURNAMENT_DIVISION_DELETED_MESSAGE]: TournamentDivisionDeletedResponse,
+      [MessageType.TOURNAMENT_FULL_DIVISIONS_MESSAGE]: FullTournamentDivisions,
     };
 
     const parsedMsg = msgTypes[msgType];
@@ -237,8 +248,11 @@ export const useOnSocketMsg = () => {
               if (soughtGame.tournamentID) {
                 // This is a match game attached to a tourney.
                 console.log('match attached to tourney');
-                if (tournamentContext.metadata.id === soughtGame.tournamentID) {
-                  console.log('matches this tourney');
+                if (
+                  tournamentContext.metadata.id === soughtGame.tournamentID &&
+                  !gameContext.gameID
+                ) {
+                  console.log('matches this tourney, and we are not in a game');
 
                   dispatchLobbyContext({
                     actionType: ActionType.AddMatchRequest,
@@ -436,7 +450,7 @@ export const useOnSocketMsg = () => {
           case MessageType.TOURNAMENT_GAME_ENDED_EVENT: {
             const gee = parsedMsg as TournamentGameEndedEvent;
             dispatchLobbyContext({
-              actionType: ActionType.AddTourneyGame,
+              actionType: ActionType.AddTourneyGameResult,
               payload: gee,
             });
 

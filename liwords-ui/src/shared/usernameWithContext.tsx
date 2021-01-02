@@ -31,14 +31,6 @@ export const UsernameWithContext = (props: UsernameWithContextProps) => {
           </Link>
         </li>
       )}
-      {props.userID ? (
-        <TheBlocker
-          blockCallback={props.blockCallback}
-          className="link plain"
-          target={props.userID}
-          tagName="li"
-        />
-      ) : null}
       {!props.omitSendMessage && props.userID && props.userID !== userID ? (
         <li
           className="link plain"
@@ -50,6 +42,14 @@ export const UsernameWithContext = (props: UsernameWithContextProps) => {
         >
           Message
         </li>
+      ) : null}
+      {props.userID ? (
+        <TheBlocker
+          blockCallback={props.blockCallback}
+          className="link plain"
+          target={props.userID}
+          tagName="li"
+        />
       ) : null}
       {props.additionalMenuItems}
     </ul>

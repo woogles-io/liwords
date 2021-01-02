@@ -8,6 +8,7 @@ option go_package = "github.com/domino14/liwords/rpc/api/proto/realtime";
 // purposes.
 
 import "macondo/api/proto/macondo/macondo.proto";
+import "google/protobuf/timestamp.proto";
 
 // A GameRules is just the name of a board layout + the name of a letter
 // distribution. These must exist in a database or file somewhere.
@@ -74,35 +75,29 @@ enum MessageType {
   ONGOING_GAME_EVENT = 12;
   TIMED_OUT = 13;
   ONGOING_GAMES = 14;
+  READY_FOR_TOURNAMENT_GAME = 15;
+  TOURNAMENT_ROUND_STARTED = 16;
   GAME_DELETION = 17;
   MATCH_REQUESTS = 18;
   DECLINE_MATCH_REQUEST = 19;
   CHAT_MESSAGE = 20;
-
   USER_PRESENCE = 22;
   USER_PRESENCES = 23;
   SERVER_MESSAGE = 24;
   READY_FOR_GAME = 25;
   LAG_MEASUREMENT = 26;
   TOURNAMENT_GAME_ENDED_EVENT = 27;
-  REMATCH_STARTED = 28;
+  TOURNAMENT_MESSAGE = 28; // used for TournamentDataResponse
+  REMATCH_STARTED = 29;
+  TOURNAMENT_DIVISION_MESSAGE = 30;
+  TOURNAMENT_DIVISION_DELETED_MESSAGE = 31;
+
+  TOURNAMENT_FULL_DIVISIONS_MESSAGE = 32;
 
   // Add more events here. The total number of events should fit in a byte.
   // We should definitely not be using anywhere close to 255 events, and
   // in order to enforce that I'll be forcing the event type header to just be
   // a byte long.
-}
-
-// XXX THIS MESSAGE IS OBSOLETE; replaced by GameInfoResponse in
-// game_service.proto
-message GameMeta {
-  message UserMeta {
-    string relevant_rating = 1;
-    string display_name = 2;
-  }
-  repeated UserMeta users = 1;
-  GameRequest game_request = 2;
-  string id = 3; // the game ID
 }
 
 message GameDeletion { string id = 1; }
@@ -151,7 +146,9 @@ message MatchRequest {
   // connection_id is the websocket ID via which this game was requested.
   string connection_id = 5;
   // If this match request is part of a tournament, it is treated in a special
-  // way.
+  // way. We are moving towards server-only matching during tournaments,
+  // so the following will only be used in "clubhouse mode" / more free-form
+  // clubs.
   string tournament_id = 6;
 }
 
@@ -169,9 +166,6 @@ message MatchRequestCancellation { string request_id = 1; }
 // SeekRequests sends all open seek requests.
 message SeekRequests { repeated SeekRequest requests = 1; }
 message MatchRequests { repeated MatchRequest requests = 1; }
-
-// OBSOLETE: delete me:
-message ActiveGames { repeated GameMeta games = 1; }
 
 // The server will send back a ServerGameplayEvent to a ClientGameplayEvent.
 // The server will also send these asynchronously for opponent gameplay
@@ -223,8 +217,9 @@ message GameEndedEvent {
 }
 
 // TournamentGameEndedEvent gets sent to a tournament channel when a game is
-// over. This shows tournament results right in the tournament lobby in real
-// time.
+// over. This is a legacy way of showing tournament results right in the
+// tournament lobby in realtime. New tournaments will use full tournament
+// messages (specifically, TournamentDivisionDataResponse et al).
 message TournamentGameEndedEvent {
 
   message Player {
@@ -238,6 +233,16 @@ message TournamentGameEndedEvent {
   GameEndReason end_reason = 3;
   // Time that the game ended
   int64 time = 4;
+}
+
+// This message makes the "Status Bar" show up and also tells the players
+// that the backend is now accepting "ready" messages for this round.
+message TournamentRoundStarted {
+  string tournament_id = 1;
+  string division = 2;
+  int32 round = 3;
+  int32 game_index = 4; // for matchplay type rounds etc.
+  google.protobuf.Timestamp deadline = 5;
 }
 
 // RematchStartedEvent gets sent to a game for which there is a rematch.
@@ -328,6 +333,15 @@ message ClientGameplayEvent {
   string tiles = 4;
 }
 
+message ReadyForTournamentGame {
+  string tournament_id = 1;
+  string division = 2;
+  int32 round = 3;
+  int32 game_index = 4; // within a matchplay type tournament where several
+                        // games share a round.
+  bool unready = 5;     // if true, this is a NOT-ready message.
+}
+
 message TimedOut {
   string game_id = 1;
   string user_id = 2;
@@ -344,6 +358,72 @@ enum TournamentGameResult {
   FORFEIT_LOSS = 6;
   // ELIMINATED: player is eliminated in a bracket tournament
   ELIMINATED = 7;
+}
+
+message RoundControl {
+  int32 pairing_method = 1;
+  int32 first_method = 2;
+  int32 games_per_round = 3;
+  int32 round = 4;
+  int32 factor = 5;
+  int32 max_repeats = 6;
+  bool allow_over_max_repeats = 7;
+  int32 repeat_relative_weight = 8;
+  int32 win_difference_relative_weight = 9;
+}
+
+message TournamentControls {
+  liwords.GameRequest game_request = 1;
+  repeated RoundControl round_controls = 2;
+  int32 type = 3;
+}
+
+message TournamentGame {
+  repeated int32 scores = 1;
+  repeated liwords.TournamentGameResult results = 2;
+  liwords.GameEndReason game_end_reason = 3;
+}
+
+message PlayerRoundInfo {
+  repeated string players = 1;
+  repeated TournamentGame games = 2;
+  repeated liwords.TournamentGameResult outcomes = 3;
+  repeated bool ready_states = 4;
+}
+
+message ClassicDivision { repeated PlayerRoundInfo matrix = 1; }
+
+message TournamentDivisionDataResponse {
+  string id = 1;
+  string division_id = 2;
+  repeated string players = 3;
+  TournamentControls controls = 4;
+  // In the future we will add different
+  // types of tournament divisions and only
+  // one will be non nil
+  ClassicDivision division = 5;
+  int32 current_round = 6;
+  bool round_is_over = 7;
+  bool division_is_over = 8;
+}
+
+message FullTournamentDivisions {
+  map<string, TournamentDivisionDataResponse> divisions = 1;
+}
+
+message TournamentDataResponse {
+  string id = 1;
+  string name = 2;
+  string description = 3;
+  string executive_director = 4;
+  repeated string directors = 5;
+  bool is_started = 6;
+  google.protobuf.Timestamp start_time = 7;
+}
+
+message TournamentDivisionDeletedResponse {
+  string id = 1;
+  string division = 2;
 }
 
 // Communication

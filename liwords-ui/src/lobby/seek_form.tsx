@@ -68,12 +68,14 @@ type SearchResponse = {
 };
 
 type Props = {
-  onFormSubmit: (g: SoughtGame) => void;
+  onFormSubmit: (g: SoughtGame, v?: Store) => void;
   loggedIn: boolean;
   showFriendInput: boolean;
   vsBot?: boolean;
   id: string;
   tournamentID?: string;
+  storageKey?: string;
+  prefixItems?: React.ReactNode;
 };
 
 const enableECWL = localStorage.getItem('enableECWL') === 'true';
@@ -99,6 +101,9 @@ export const SeekForm = (props: Props) => {
   }
   if (props.showFriendInput) {
     storageKey = 'lastMatchForm';
+  }
+  if (props.storageKey) {
+    storageKey = props.storageKey;
   }
 
   const storedValues = window.localStorage
@@ -245,7 +250,7 @@ export const SeekForm = (props: Props) => {
       playerVsBot: props.vsBot || false,
       tournamentID: props.tournamentID || '',
     };
-    props.onFormSubmit(obj);
+    props.onFormSubmit(obj, val);
   };
 
   const validateMessages = {
@@ -263,6 +268,8 @@ export const SeekForm = (props: Props) => {
       layout="horizontal"
       validateMessages={validateMessages}
     >
+      {props.prefixItems || null}
+
       {props.showFriendInput && (
         <Form.Item
           label={props.tournamentID ? 'Opponent' : 'Friend'}
