@@ -18,23 +18,6 @@ export const Announcements = React.memo((props: AnnouncementsProps) => {
       ),
     },
     {
-      title: 'Upcoming Tournament - M.E.R.R.Y.',
-      body: (
-        <a
-          href="https://woogles.io/tournament/merry"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <p>
-            The second annual MERRY tournament will be held on Woogles on
-            January 2, with an early bird on January 1. The main event is 8
-            games, with CSW19 and NWL18 divisions. See more info by clicking
-            here!
-          </p>
-        </a>
-      ),
-    },
-    {
       title: 'Upcoming Tournament - 11th Annual Duke PBMT Charity Tournament',
       body: (
         <a
@@ -69,7 +52,24 @@ export const Announcements = React.memo((props: AnnouncementsProps) => {
         </a>
       ),
     },
-
+    {
+      title: 'Tournament Complete - MERRY',
+      body: (
+        <a
+          href="https://woogles.io/tournament/merry"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          <p>
+            The 2nd annual MERRY tournament (Jan 1-2) congratulates Early Bird
+            winners Tina Bennett (div D), Letitia Sears (div C), Chloe Fatsis
+            (div B), Richard Spence (div A), and Brian Bowman (CSW), and Main
+            Event winners Josh Jetto (div D), Susan Bertoni (div C), Billy
+            Nakamura (div B), Kevin Fraley (div A), and Tim Weiss (CSW).
+          </p>
+        </a>
+      ),
+    },
     {
       title: 'Want to help?',
       body: (
