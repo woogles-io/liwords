@@ -109,7 +109,7 @@ func (ts *TournamentService) SetTournamentControls(ctx context.Context, req *pb.
 }
 
 func (ts *TournamentService) NewTournament(ctx context.Context, req *pb.NewTournamentRequest) (*pb.NewTournamentResponse, error) {
-	_, err := isDirector(ctx, ts)
+	_, err := directorOrAdmin(ctx, ts)
 	if err != nil {
 		return nil, err
 	}
@@ -350,28 +350,41 @@ func (ts *TournamentService) StartRoundCountdown(ctx context.Context, req *pb.To
 	return &pb.TournamentResponse{}, nil
 }
 
-func isDirector(ctx context.Context, ts *TournamentService) (string, error) {
+func sessionUser(ctx context.Context, ts *TournamentService) (*entity.User, error) {
 	sess, err := apiserver.GetSession(ctx)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
 	user, err := ts.userStore.Get(ctx, sess.Username)
 	if err != nil {
 		log.Err(err).Msg("getting-user")
-		return "", twirp.InternalErrorWith(err)
+		return nil, twirp.InternalErrorWith(err)
+	}
+	return user, nil
+}
+
+func directorOrAdmin(ctx context.Context, ts *TournamentService) (*entity.User, error) {
+
+	user, err := sessionUser(ctx, ts)
+	if err != nil {
+		return nil, err
 	}
 
-	if !user.IsDirector {
-		return "", twirp.NewError(twirp.Unauthenticated, "this user is not an authorized director")
+	if !user.IsDirector && !user.IsAdmin {
+		return nil, twirp.NewError(twirp.Unauthenticated, "this user is not an authorized director")
 	}
-	return user.UUID, nil
+	return user, nil
 }
 
 func authenticateDirector(ctx context.Context, ts *TournamentService, id string, authenticateExecutive bool) error {
-	user, err := isDirector(ctx, ts)
+	user, err := directorOrAdmin(ctx, ts)
 	if err != nil {
 		return err
+	}
+	// Site admins are always allowed to modify any tournaments. (There should only be a small number of these)
+	if user.IsAdmin {
+		return nil
 	}
 
 	t, err := ts.tournamentStore.Get(ctx, id)
@@ -379,13 +392,12 @@ func authenticateDirector(ctx context.Context, ts *TournamentService, id string,
 		return twirp.InternalErrorWith(err)
 	}
 
-	if authenticateExecutive && user != t.ExecutiveDirector {
+	if authenticateExecutive && user.UUID != t.ExecutiveDirector {
 		return twirp.NewError(twirp.Unauthenticated, "this user is not the authorized executive director for this event")
-	} else {
-		_, authorized := t.Directors.Persons[user]
-		if !authorized {
-			return twirp.NewError(twirp.Unauthenticated, "this user is not an authorized director for this event")
-		}
+	}
+	_, authorized := t.Directors.Persons[user.UUID]
+	if !authorized {
+		return twirp.NewError(twirp.Unauthenticated, "this user is not an authorized director for this event")
 	}
 
 	return nil
