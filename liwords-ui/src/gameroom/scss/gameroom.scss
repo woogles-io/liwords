@@ -531,7 +531,7 @@ p.streak-loss {
     padding: 1px 0 0;
     line-height: 0;
     span {
-      font-family: $font-monospaced;
+      font-family: $font-tile;
       font-weight: 500;
       font-size: 28px;
     }
@@ -798,10 +798,10 @@ p.rune {
   }
   .tiles-remaining {
     @include type-monospace;
-    font-size: 13px;
-    padding: 12px 24px;
-    line-height: 1.6em;
-    letter-spacing: 0.21em;
+    font-size: 15px;
+    padding: 6px 24px 12px;
+    line-height: 1.5em;
+    letter-spacing: 0.26em;
     max-height: 150px;
     overflow-y: auto;
     .pool-section {
@@ -951,8 +951,8 @@ p.rune {
     }
     .coords-time {
       flex: 2;
-      min-width: 60px;
-      max-width: 60px;
+      min-width: 66px;
+      max-width: 66px;
     }
     .play {
       flex: 3;
@@ -1275,9 +1275,6 @@ p.rune {
     }
   }
     .score-card {
-      .turn {
-        font-size: 13px;
-      }
       .ant-card-body {
         padding: 0;
 
@@ -1344,7 +1341,7 @@ p.rune {
   }
   .score-card {
     .turn {
-      font-size: 14px;
+      font-size: 15px;
     }
     .ant-card-body {
       & > div {

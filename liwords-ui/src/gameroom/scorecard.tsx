@@ -168,10 +168,10 @@ const ScorecardTurn = (props: turnProps) => {
       for (let i = 1; i < evts.length; i++) {
         switch (evts[i].getType()) {
           case GameEvent.Type.CHALLENGE_BONUS:
-            turn.score = `${turn.score} + ${evts[i].getBonus()}`;
+            turn.score = `${turn.score} +${evts[i].getBonus()}`;
             break;
           case GameEvent.Type.END_RACK_PTS:
-            turn.score = `${turn.score}+${evts[i].getEndRackPoints()}`;
+            turn.score = `${turn.score} +${evts[i].getEndRackPoints()}`;
             break;
         }
         turn.cumulative = evts[i].getCumulative();
@@ -182,11 +182,11 @@ const ScorecardTurn = (props: turnProps) => {
 
   let scoreChange;
   if (memoizedTurn.lostScore > 0) {
-    scoreChange = `${memoizedTurn.oldScore} - ${memoizedTurn.lostScore}`;
+    scoreChange = `${memoizedTurn.oldScore} -${memoizedTurn.lostScore}`;
   } else if (memoizedTurn.endRackPts > 0) {
-    scoreChange = `${memoizedTurn.oldScore} + ${memoizedTurn.endRackPts}`;
+    scoreChange = `${memoizedTurn.oldScore} +${memoizedTurn.endRackPts}`;
   } else {
-    scoreChange = `${memoizedTurn.oldScore} + ${memoizedTurn.score}`;
+    scoreChange = `${memoizedTurn.oldScore} +${memoizedTurn.score}`;
   }
 
   return (
