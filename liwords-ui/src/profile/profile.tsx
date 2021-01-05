@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect } from 'react';
+import ReactMarkdown from 'react-markdown';
 import { Link, useParams, useLocation } from 'react-router-dom';
 import { notification, Card, Table, Row, Col, Switch } from 'antd';
 import axios, { AxiosError } from 'axios';
@@ -48,6 +49,10 @@ type Rating = {
 type user = {
   username: string;
   uuid: string;
+};
+
+type BioProps = {
+  bio: string;
 };
 
 type ProfileRatings = { [variant: string]: Rating };
@@ -119,6 +124,14 @@ const RatingsCard = React.memo((props: RatingsProps) => {
         dataSource={dataSource}
         columns={columns}
       />
+    </Card>
+  );
+});
+
+const BioCard = React.memo((props: BioProps) => {
+  return (
+    <Card title="Bio">
+      <ReactMarkdown>{props.bio}</ReactMarkdown>
     </Card>
   );
 });
@@ -209,6 +222,7 @@ export const UserProfile = React.memo((props: Props) => {
   const [ratings, setRatings] = useState({});
   const [stats, setStats] = useState({});
   const [userID, setUserID] = useState('');
+  const [bio, setBio] = useState('');
   const [darkMode, setDarkMode] = useState(
     localStorage?.getItem('darkMode') === 'true'
   );
@@ -229,6 +243,7 @@ export const UserProfile = React.memo((props: Props) => {
         setRatings(JSON.parse(resp.data.ratings_json).Data);
         setStats(JSON.parse(resp.data.stats_json).Data);
         setUserID(resp.data.user_id);
+        setBio(resp.data.about);
       })
       .catch(errorCatcher);
   }, [username, location.pathname]);
@@ -312,6 +327,7 @@ export const UserProfile = React.memo((props: Props) => {
             </div>
           ) : null}
         </header>
+        <BioCard bio={bio} />
         <RatingsCard ratings={ratings} />
         <GamesHistoryCard
           games={recentGames}
