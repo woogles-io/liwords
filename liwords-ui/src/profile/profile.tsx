@@ -8,6 +8,7 @@ import { TopBar } from '../topbar/topbar';
 
 import './profile.scss';
 import { toAPIUrl } from '../api/api';
+import { BioCard } from './bio';
 import { useLoginStateStoreContext } from '../store/store';
 import { GameMetadata, RecentGamesResponse } from '../gameroom/game_info';
 import { GamesHistoryCard } from './games_history';
@@ -49,10 +50,6 @@ type Rating = {
 type user = {
   username: string;
   uuid: string;
-};
-
-type BioProps = {
-  bio: string;
 };
 
 type ProfileRatings = { [variant: string]: Rating };
@@ -124,14 +121,6 @@ const RatingsCard = React.memo((props: RatingsProps) => {
         dataSource={dataSource}
         columns={columns}
       />
-    </Card>
-  );
-});
-
-const BioCard = React.memo((props: BioProps) => {
-  return (
-    <Card title="Bio">
-      <ReactMarkdown>{props.bio}</ReactMarkdown>
     </Card>
   );
 });
