@@ -573,12 +573,6 @@ ul
     &:not(.ant-btn-circle) {
       padding: 3px 18px;
     }
-    &:disabled {
-      @include colorModed() {
-        border-color: m($gray-subtle);
-        color: m($gray-subtle);
-      }
-    }
 
     span.key-command {
       position: absolute;
@@ -598,6 +592,12 @@ ul
         background-color: m($background);
         border-color: m($primary-dark);
         color:  m($primary-dark);
+      }
+    }
+    &:disabled {
+      @include colorModed() {
+        border-color: m($gray-subtle);
+        color: m($gray-subtle);
       }
     }
     &:not([disabled]):hover {
