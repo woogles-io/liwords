@@ -133,7 +133,17 @@ export const challRuleToStr = (n: number): string => {
 };
 
 // To expose this and make it more ergonomic to reorder without refreshing.
-const preferredSortOrder = localStorage.getItem('tileOrder');
+export let preferredSortOrder = localStorage.getItem('tileOrder');
+
+export const setPreferredSortOrder = (value: string) => {
+  if (value) {
+    localStorage.setItem('tileOrder', value);
+    preferredSortOrder = value;
+  } else {
+    localStorage.removeItem('tileOrder');
+    preferredSortOrder = null;
+  }
+};
 
 export const sortTiles = (rack: string) => {
   let effectiveSortOrder = preferredSortOrder ?? '';
