@@ -4,7 +4,7 @@ export const Wooglinkify = (props: { message: string }) => {
   const { message } = props;
 
   const rendered = React.useMemo(() => {
-    const re = /\bhttps?:\/\/\S+/g;
+    const re = /\bhttps?:\/\/\S+|\bwoogles\.io\b(?:\/\S+)?/g;
     let pos = 0;
     const arr = [];
     for (let match; (match = re.exec(message)); ) {
@@ -16,12 +16,13 @@ export const Wooglinkify = (props: { message: string }) => {
           </React.Fragment>
         );
       }
+      const chunkLink = chunk.startsWith('http') ? chunk : `https://${chunk}`;
       arr.push(
         <a
           key={arr.length}
           target="_blank"
           rel="noopener noreferrer"
-          href={chunk}
+          href={chunkLink}
         >
           {chunk}
         </a>
