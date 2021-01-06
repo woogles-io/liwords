@@ -21,6 +21,10 @@
 
     .ant-card-body {
       padding: 12px 0 0 0;
+
+      .enable-simultaneous-games {
+        cursor: pointer;
+      }
     }
   }
 }
