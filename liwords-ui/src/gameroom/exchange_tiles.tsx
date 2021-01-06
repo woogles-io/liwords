@@ -6,7 +6,6 @@ import {
   usePoolFormatStoreContext,
 } from '../store/store';
 import Pool from './pool';
-import { PoolFormatType } from '../constants/pool_formats';
 import { singularCount } from '../utils/plural';
 import { Button, Modal } from 'antd';
 // Render an exchange widget.
@@ -131,7 +130,7 @@ export const ExchangeTiles = React.memo((props: Props) => {
     setExchangedRack(e.join(''));
   }, [exchangedRackIndices, props.rack]);
   const { gameContext } = useGameContextStoreContext();
-  const { setPoolFormat } = usePoolFormatStoreContext();
+  const { poolFormat, setPoolFormat } = usePoolFormatStoreContext();
   const selectTileForExchange = useCallback(
     (idx: number) => {
       const newExchangedRackIndices = new Set(exchangedRackIndices);
@@ -189,7 +188,7 @@ export const ExchangeTiles = React.memo((props: Props) => {
         omitCard={true}
         pool={gameContext?.pool}
         currentRack={props.rack}
-        poolFormat={PoolFormatType.Alphabet}
+        poolFormat={poolFormat}
         setPoolFormat={setPoolFormat}
       />
     </Modal>
