@@ -87,6 +87,14 @@ func TestClassicDivisionRandom(t *testing.T) {
 	// The result and record should remain unchanged
 	is.NoErr(equalPRI(expectedpri1, pri1))
 
+	// Submit a result for game index that is out of range
+	err = tc.SubmitResult(0, player1, player2, 10000, -40, realtime.TournamentGameResult_WIN,
+		realtime.TournamentGameResult_LOSS, realtime.GameEndReason_STANDARD, false, 4)
+	is.True(err != nil)
+
+	// The result and record should remain unchanged
+	is.NoErr(equalPRI(expectedpri1, pri1))
+
 	// Submit a result for a paired round
 	err = tc.SubmitResult(0, player1, player2, 10000, -40, realtime.TournamentGameResult_WIN,
 		realtime.TournamentGameResult_LOSS, realtime.GameEndReason_STANDARD, false, 0)
@@ -1494,6 +1502,204 @@ func TestClassicDivisionAddLatecomers(t *testing.T) {
 		&entity.Standing{Player: "Guyer", Wins: 0, Losses: 5, Draws: 0, Spread: -250},
 		&entity.Standing{Player: "Guy", Wins: 0, Losses: 5, Draws: 0, Spread: -250},
 		&entity.Standing{Player: "Bummest", Wins: 0, Losses: 5, Draws: 0, Spread: -400},
+	}
+	is.NoErr(equalStandings(expectedstandings, standings))
+}
+
+func TestClassicDivisionRemovePlayers(t *testing.T) {
+
+	// Test Plan:
+
+	// Player is in first
+	// Player is removed - no present results, current round is repaired
+	// Player is now in last
+	// Ensure past rounds are not repaired
+	// Prepaired future rounds become byes for the opponents
+	// standings dependent pairings show player in last
+	// Remove another player - present results for round, current round is not repaired
+	// removed players always have forfeits, there are no byes
+	// Remove more than one player at a time
+
+	is := is.New(t)
+
+	numberOfRounds := 12
+	roundControls := defaultRoundControls(numberOfRounds)
+
+	for i := 0; i < numberOfRounds; i++ {
+		if i >= 2 && i <= 4 {
+			roundControls[i].PairingMethod = entity.RoundRobin
+		} else {
+			roundControls[i].PairingMethod = entity.KingOfTheHill
+		}
+	}
+
+	tc, err := NewClassicDivision(playerStrings, roundControls)
+	is.NoErr(err)
+	is.True(tc != nil)
+
+	player1 := playerStrings[0]
+	player2 := playerStrings[1]
+	player3 := playerStrings[3]
+	player4 := playerStrings[2]
+
+	err = tc.SubmitResult(0, player1, player2, 500, 300,
+		realtime.TournamentGameResult_WIN,
+		realtime.TournamentGameResult_LOSS,
+		realtime.GameEndReason_STANDARD, false, 0)
+	is.NoErr(err)
+
+	err = tc.SubmitResult(0, player3, player4, 500, 400,
+		realtime.TournamentGameResult_WIN,
+		realtime.TournamentGameResult_LOSS,
+		realtime.GameEndReason_STANDARD, false, 0)
+	is.NoErr(err)
+
+	standings, err := tc.GetStandings(0)
+	is.NoErr(err)
+
+	expectedstandings := []*entity.Standing{&entity.Standing{Player: player1, Wins: 1, Losses: 0, Draws: 0, Spread: 200},
+		&entity.Standing{Player: player3, Wins: 1, Losses: 0, Draws: 0, Spread: 100},
+		&entity.Standing{Player: player4, Wins: 0, Losses: 1, Draws: 0, Spread: -100},
+		&entity.Standing{Player: player2, Wins: 0, Losses: 1, Draws: 0, Spread: -200},
+	}
+
+	is.NoErr(equalStandings(expectedstandings, standings))
+
+	err = tc.SubmitResult(1, player1, player3, 500, 300,
+		realtime.TournamentGameResult_WIN,
+		realtime.TournamentGameResult_LOSS,
+		realtime.GameEndReason_STANDARD, false, 0)
+	is.NoErr(err)
+
+	err = tc.SubmitResult(1, player2, player4, 600, 400,
+		realtime.TournamentGameResult_WIN,
+		realtime.TournamentGameResult_LOSS,
+		realtime.GameEndReason_STANDARD, false, 0)
+	is.NoErr(err)
+
+	err = tc.RemovePlayers(&entity.TournamentPersons{Persons: map[string]int{player1: 50}})
+	is.NoErr(err)
+	standings, err = tc.GetStandings(1)
+	is.NoErr(err)
+
+	expectedstandings = []*entity.Standing{&entity.Standing{Player: player2, Wins: 1, Losses: 1, Draws: 0, Spread: 0},
+		&entity.Standing{Player: player3, Wins: 1, Losses: 1, Draws: 0, Spread: -100},
+		&entity.Standing{Player: player4, Wins: 0, Losses: 2, Draws: 0, Spread: -300},
+		&entity.Standing{Player: player1, Wins: 2, Losses: 0, Draws: 0, Spread: 400},
+	}
+
+	is.NoErr(equalStandings(expectedstandings, standings))
+
+	err = tc.SubmitResult(2, player3, player4, 500, 400,
+		realtime.TournamentGameResult_WIN,
+		realtime.TournamentGameResult_LOSS,
+		realtime.GameEndReason_STANDARD, false, 0)
+	is.NoErr(err)
+
+	err = tc.SubmitResult(3, player2, player4, 500, 300,
+		realtime.TournamentGameResult_WIN,
+		realtime.TournamentGameResult_LOSS,
+		realtime.GameEndReason_STANDARD, false, 0)
+	is.NoErr(err)
+
+	err = tc.SubmitResult(4, player2, player3, 600, 400,
+		realtime.TournamentGameResult_WIN,
+		realtime.TournamentGameResult_LOSS,
+		realtime.GameEndReason_STANDARD, false, 0)
+	is.NoErr(err)
+
+	standings, err = tc.GetStandings(4)
+	is.NoErr(err)
+
+	expectedstandings = []*entity.Standing{&entity.Standing{Player: player2, Wins: 4, Losses: 1, Draws: 0, Spread: 450},
+		&entity.Standing{Player: player3, Wins: 3, Losses: 2, Draws: 0, Spread: -150},
+		&entity.Standing{Player: player4, Wins: 1, Losses: 4, Draws: 0, Spread: -550},
+		&entity.Standing{Player: player1, Wins: 2, Losses: 3, Draws: 0, Spread: 250},
+	}
+
+	is.NoErr(equalStandings(expectedstandings, standings))
+
+	err = tc.SubmitResult(5, player2, player3, 600, 400,
+		realtime.TournamentGameResult_WIN,
+		realtime.TournamentGameResult_LOSS,
+		realtime.GameEndReason_STANDARD, false, 0)
+	is.NoErr(err)
+
+	err = tc.RemovePlayers(&entity.TournamentPersons{Persons: map[string]int{player4: 40}})
+	is.NoErr(err)
+
+	is.True(tc.PlayersProperties[tc.PlayerIndexMap[player1]].Removed)
+	is.True(tc.PlayersProperties[tc.PlayerIndexMap[player4]].Removed)
+
+	// Since this round had results, player4's bye against player1 remain unchanged
+	is.True(tc.Matrix[5][tc.PlayerIndexMap[player4]].Pairing.Games[0].Results[0] == realtime.TournamentGameResult_BYE)
+	is.True(tc.Matrix[5][tc.PlayerIndexMap[player4]].Pairing.Games[0].Results[1] == realtime.TournamentGameResult_BYE)
+
+	is.True(tc.Matrix[5][tc.PlayerIndexMap[player1]].Pairing.Games[0].Results[0] == realtime.TournamentGameResult_FORFEIT_LOSS)
+	is.True(tc.Matrix[5][tc.PlayerIndexMap[player1]].Pairing.Games[0].Results[1] == realtime.TournamentGameResult_FORFEIT_LOSS)
+
+	standings, err = tc.GetStandings(5)
+	is.NoErr(err)
+
+	expectedstandings = []*entity.Standing{&entity.Standing{Player: player2, Wins: 5, Losses: 1, Draws: 0, Spread: 650},
+		&entity.Standing{Player: player3, Wins: 3, Losses: 3, Draws: 0, Spread: -350},
+		&entity.Standing{Player: player1, Wins: 2, Losses: 4, Draws: 0, Spread: 200},
+		&entity.Standing{Player: player4, Wins: 2, Losses: 4, Draws: 0, Spread: -500},
+	}
+
+	is.NoErr(equalStandings(expectedstandings, standings))
+
+	is.True(tc.Matrix[6][tc.PlayerIndexMap[player4]].Pairing.Games[0].Results[0] == realtime.TournamentGameResult_FORFEIT_LOSS)
+	is.True(tc.Matrix[6][tc.PlayerIndexMap[player4]].Pairing.Games[0].Results[1] == realtime.TournamentGameResult_FORFEIT_LOSS)
+
+	err = tc.SubmitResult(6, player2, player3, 600, 400,
+		realtime.TournamentGameResult_WIN,
+		realtime.TournamentGameResult_LOSS,
+		realtime.GameEndReason_STANDARD, false, 0)
+	is.NoErr(err)
+
+	err = tc.SubmitResult(7, player2, player3, 600, 400,
+		realtime.TournamentGameResult_WIN,
+		realtime.TournamentGameResult_LOSS,
+		realtime.GameEndReason_STANDARD, false, 0)
+	is.NoErr(err)
+
+	err = tc.SubmitResult(8, player2, player3, 600, 400,
+		realtime.TournamentGameResult_WIN,
+		realtime.TournamentGameResult_LOSS,
+		realtime.GameEndReason_STANDARD, false, 0)
+	is.NoErr(err)
+
+	standings, err = tc.GetStandings(8)
+	is.NoErr(err)
+
+	expectedstandings = []*entity.Standing{&entity.Standing{Player: player2, Wins: 8, Losses: 1, Draws: 0, Spread: 1250},
+		&entity.Standing{Player: player3, Wins: 3, Losses: 6, Draws: 0, Spread: -950},
+		&entity.Standing{Player: player1, Wins: 2, Losses: 7, Draws: 0, Spread: 50},
+		&entity.Standing{Player: player4, Wins: 2, Losses: 7, Draws: 0, Spread: -650},
+	}
+
+	is.NoErr(equalStandings(expectedstandings, standings))
+
+	err = tc.RemovePlayers(&entity.TournamentPersons{Persons: map[string]int{player2: 10, player3: 60}})
+	is.True(fmt.Sprintf("%s", err) == "cannot remove players as tournament would be empty")
+
+	// Idiot director removed all but one player from the tournament
+	// Tournament then ends immediately since all results for every
+	// round get automatically submitted.
+	err = tc.RemovePlayers(&entity.TournamentPersons{Persons: map[string]int{player2: 10}})
+
+	tournamentIsFinished, err := tc.IsFinished()
+	is.NoErr(err)
+	is.True(tournamentIsFinished)
+
+	standings, err = tc.GetStandings(11)
+	is.NoErr(err)
+
+	expectedstandings = []*entity.Standing{&entity.Standing{Player: player3, Wins: 6, Losses: 6, Draws: 0, Spread: -800},
+		&entity.Standing{Player: player2, Wins: 8, Losses: 4, Draws: 0, Spread: 1100},
+		&entity.Standing{Player: player1, Wins: 2, Losses: 10, Draws: 0, Spread: -100},
+		&entity.Standing{Player: player4, Wins: 2, Losses: 10, Draws: 0, Spread: -800},
 	}
 	is.NoErr(equalStandings(expectedstandings, standings))
 }

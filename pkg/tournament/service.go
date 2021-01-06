@@ -95,10 +95,9 @@ func (ts *TournamentService) SetTournamentControls(ctx context.Context, req *pb.
 	}
 
 	newControls := &entity.TournamentControls{GameRequest: req.GameRequest,
-		RoundControls:  convertRoundControls(req.RoundControls),
-		NumberOfRounds: int(req.NumberOfRounds),
-		AutoStart:      req.AutoStart,
-		StartTime:      time}
+		RoundControls: convertRoundControls(req.RoundControls),
+		AutoStart:     req.AutoStart,
+		StartTime:     time}
 
 	err = SetTournamentControls(ctx, ts.tournamentStore, req.Id, req.Division, newControls)
 
