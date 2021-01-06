@@ -782,7 +782,7 @@ func (t *ClassicDivision) ToResponse() (*realtime.TournamentDivisionDataResponse
 	classicDivision := &realtime.ClassicDivision{Matrix: oneDimMatrix}
 
 	playersProperties := []*realtime.PlayerProperties{}
-	for i := 0; i < len(t.Players); i++ {
+	for i := 0; i < len(t.PlayersProperties); i++ {
 		playersProperties = append(playersProperties, &realtime.PlayerProperties{Removed: t.PlayersProperties[i].Removed})
 	}
 
