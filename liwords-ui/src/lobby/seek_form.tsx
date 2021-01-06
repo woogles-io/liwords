@@ -309,8 +309,10 @@ export const SeekForm = (props: Props) => {
         ]}
       >
         <Select disabled={disableLexiconControls}>
-          <Select.Option value="CSW19">CSW 19 (English)</Select.Option>
-          <Select.Option value="NWL18">NWL 18 (North America)</Select.Option>
+          <Select.Option value="CSW19">CSW 19 (World English)</Select.Option>
+          <Select.Option value="NWL18">
+            NWL 18 (North American English)
+          </Select.Option>
           {enableECWL && (
             <Select.Option value="ECWL">English Common Word List</Select.Option>
           )}
