@@ -38,6 +38,7 @@ type TournamentStore interface {
 	Unload(context.Context, string)
 	SetTournamentEventChan(c chan<- *entity.EventWrapper)
 	TournamentEventChan() chan<- *entity.EventWrapper
+	ListAllIDs(context.Context) ([]string, error)
 
 	GetRecentClubSessions(ctx context.Context, clubID string, numSessions int, offset int) (*pb.ClubSessionsResponse, error)
 }
@@ -645,26 +646,23 @@ func IsFinished(ctx context.Context, ts TournamentStore, id string, division str
 	return t.Divisions[division].DivisionManager.IsFinished()
 }
 
-func SetReadyForGame(ctx context.Context, ts TournamentStore, tID, playerID, division string,
-	round, gameIndex int, unready bool) (bool, error) {
+func SetReadyForGame(ctx context.Context, ts TournamentStore, t *entity.Tournament,
+	playerID, connID, division string,
+	round, gameIndex int, unready bool) ([]string, error) {
 
-	t, err := ts.Get(ctx, tID)
-	if err != nil {
-		return false, err
-	}
 	t.Lock()
 	defer t.Unlock()
 
 	_, ok := t.Divisions[division]
 	if !ok {
-		return false, fmt.Errorf("division %s does not exist", division)
+		return nil, fmt.Errorf("division %s does not exist", division)
 	}
 
-	bothReady, err := t.Divisions[division].DivisionManager.SetReadyForGame(playerID, round, gameIndex, unready)
+	connIDs, err := t.Divisions[division].DivisionManager.SetReadyForGame(playerID, connID, round, gameIndex, unready)
 	if err != nil {
-		return false, err
+		return nil, err
 	}
-	return bothReady, ts.Set(ctx, t)
+	return connIDs, ts.Set(ctx, t)
 }
 
 func TournamentDataResponse(ctx context.Context, ts TournamentStore, id string) (*realtime.TournamentDataResponse, error) {

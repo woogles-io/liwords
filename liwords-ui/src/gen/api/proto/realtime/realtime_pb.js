@@ -8316,7 +8316,7 @@ proto.liwords.PlayerRoundInfo.toObject = function(includeInstance, msg) {
     gamesList: jspb.Message.toObjectList(msg.getGamesList(),
     proto.liwords.TournamentGame.toObject, includeInstance),
     outcomesList: (f = jspb.Message.getRepeatedField(msg, 3)) == null ? undefined : f,
-    readyStatesList: (f = jspb.Message.getRepeatedBooleanField(msg, 4)) == null ? undefined : f
+    readyStatesList: (f = jspb.Message.getRepeatedField(msg, 4)) == null ? undefined : f
   };
 
   if (includeInstance) {
@@ -8367,8 +8367,8 @@ proto.liwords.PlayerRoundInfo.deserializeBinaryFromReader = function(msg, reader
       msg.setOutcomesList(value);
       break;
     case 4:
-      var value = /** @type {!Array<boolean>} */ (reader.readPackedBool());
-      msg.setReadyStatesList(value);
+      var value = /** @type {string} */ (reader.readString());
+      msg.addReadyStates(value);
       break;
     default:
       reader.skipField();
@@ -8423,7 +8423,7 @@ proto.liwords.PlayerRoundInfo.serializeBinaryToWriter = function(message, writer
   }
   f = message.getReadyStatesList();
   if (f.length > 0) {
-    writer.writePackedBool(
+    writer.writeRepeatedString(
       4,
       f
     );
@@ -8544,16 +8544,16 @@ proto.liwords.PlayerRoundInfo.prototype.clearOutcomesList = function() {
 
 
 /**
- * repeated bool ready_states = 4;
- * @return {!Array<boolean>}
+ * repeated string ready_states = 4;
+ * @return {!Array<string>}
  */
 proto.liwords.PlayerRoundInfo.prototype.getReadyStatesList = function() {
-  return /** @type {!Array<boolean>} */ (jspb.Message.getRepeatedBooleanField(this, 4));
+  return /** @type {!Array<string>} */ (jspb.Message.getRepeatedField(this, 4));
 };
 
 
 /**
- * @param {!Array<boolean>} value
+ * @param {!Array<string>} value
  * @return {!proto.liwords.PlayerRoundInfo} returns this
  */
 proto.liwords.PlayerRoundInfo.prototype.setReadyStatesList = function(value) {
@@ -8562,7 +8562,7 @@ proto.liwords.PlayerRoundInfo.prototype.setReadyStatesList = function(value) {
 
 
 /**
- * @param {boolean} value
+ * @param {string} value
  * @param {number=} opt_index
  * @return {!proto.liwords.PlayerRoundInfo} returns this
  */
