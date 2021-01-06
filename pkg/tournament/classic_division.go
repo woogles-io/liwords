@@ -570,11 +570,7 @@ func (t *ClassicDivision) RemovePlayers(persons *entity.TournamentPersons) error
 		}
 		if i > t.CurrentRound || (i == t.CurrentRound && !resultsArePresent) {
 			pm := t.RoundControls[i].PairingMethod
-<<<<<<< HEAD
 			if (i == t.CurrentRound || pair.IsStandingsIndependent(pm)) && pm != entity.Manual {
-=======
-			if i == t.CurrentRound || (pair.IsStandingsIndependent(pm) && pm != entity.Manual) {
->>>>>>> 856967ad50ca603d09ad1225aec425bfe9563e88
 				err := t.PairRound(i)
 				if err != nil {
 					return err
