@@ -286,3 +286,15 @@ func (s *DBStore) GetRecentClubSessions(ctx context.Context, id string, count in
 	}
 	return &pb.ClubSessionsResponse{Sessions: csrs}, nil
 }
+
+func (s *DBStore) ListAllIDs(ctx context.Context) ([]string, error) {
+	var tids []struct{ UUID string }
+	ctxDB := s.db.WithContext(ctx)
+
+	result := ctxDB.Table("tournaments").Select("uuid").Order("created_at").Scan(&tids)
+	ids := make([]string, len(tids))
+	for idx, tid := range tids {
+		ids[idx] = tid.UUID
+	}
+	return ids, result.Error
+}

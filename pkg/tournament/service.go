@@ -109,21 +109,30 @@ func (ts *TournamentService) SetTournamentControls(ctx context.Context, req *pb.
 }
 
 func (ts *TournamentService) NewTournament(ctx context.Context, req *pb.NewTournamentRequest) (*pb.NewTournamentResponse, error) {
-	_, err := isDirector(ctx, ts)
+	_, err := directorOrAdmin(ctx, ts)
 	if err != nil {
 		return nil, err
 	}
 
-	if len(req.DirectorIds) < 1 {
+	if len(req.DirectorUsernames) < 1 {
 		return nil, twirp.NewError(twirp.InvalidArgument, "need at least one director id")
+	}
+	persons := map[string]int{}
+	for idx := range req.DirectorUsernames {
+		username := req.DirectorUsernames[idx]
+		u, err := ts.userStore.Get(ctx, username)
+		if err != nil {
+			return nil, err
+		}
+		personID := u.UUID + ":" + username
+		// 1st director is the executive director.
+		persons[personID] = idx
 	}
 
 	directors := &entity.TournamentPersons{
-		Persons: map[string]int{req.DirectorIds[0]: 0},
+		Persons: persons,
 	}
-	for idx, id := range req.DirectorIds[1:] {
-		directors.Persons[id] = idx + 1
-	}
+
 	log.Debug().Interface("directors", directors).Msg("directors")
 
 	var tt entity.CompetitionType
@@ -181,14 +190,30 @@ func (ts *TournamentService) GetTournamentMetadata(ctx context.Context, req *pb.
 	directors := []string{}
 
 	for uid, n := range t.Directors.Persons {
-		u, err := ts.userStore.GetByUUID(ctx, uid)
-		if err != nil {
-			return nil, twirp.NewError(twirp.InvalidArgument, err.Error())
+		// Legacy "persons" are stored as just their UUIDs.
+		// We later on store them as uuid:username to speed up lookups.
+		splitid := strings.Split(uid, ":")
+		var uuid, username string
+		if len(splitid) == 2 {
+			username = splitid[1]
+			uuid = splitid[0]
+		} else if len(splitid) == 1 {
+			uuid = splitid[0]
+		} else {
+			return nil, twirp.NewError(twirp.InvalidArgument, "bad userID: "+uid)
+		}
+
+		if username == "" {
+			u, err := ts.userStore.GetByUUID(ctx, uuid)
+			if err != nil {
+				return nil, twirp.NewError(twirp.InvalidArgument, err.Error())
+			}
+			username = u.Username
 		}
 		if n == 0 {
-			directors = append([]string{u.Username}, directors...)
+			directors = append([]string{username}, directors...)
 		} else {
-			directors = append(directors, u.Username)
+			directors = append(directors, username)
 		}
 	}
 
@@ -227,7 +252,12 @@ func (ts *TournamentService) AddDirectors(ctx context.Context, req *pb.Tournamen
 	if err != nil {
 		return nil, err
 	}
-	err = AddDirectors(ctx, ts.tournamentStore, req.Id, convertPersonsToStringMap(req))
+	m, err := convertPersonsToStringMap(ctx, req, ts.userStore)
+	if err != nil {
+		return nil, err
+	}
+
+	err = AddDirectors(ctx, ts.tournamentStore, req.Id, m)
 	if err != nil {
 		return nil, twirp.NewError(twirp.InvalidArgument, err.Error())
 	}
@@ -238,7 +268,12 @@ func (ts *TournamentService) RemoveDirectors(ctx context.Context, req *pb.Tourna
 	if err != nil {
 		return nil, err
 	}
-	err = RemoveDirectors(ctx, ts.tournamentStore, req.Id, convertPersonsToStringMap(req))
+	m, err := convertPersonsToStringMap(ctx, req, ts.userStore)
+	if err != nil {
+		return nil, err
+	}
+
+	err = RemoveDirectors(ctx, ts.tournamentStore, req.Id, m)
 	if err != nil {
 		return nil, twirp.NewError(twirp.InvalidArgument, err.Error())
 	}
@@ -249,7 +284,12 @@ func (ts *TournamentService) AddPlayers(ctx context.Context, req *pb.TournamentP
 	if err != nil {
 		return nil, err
 	}
-	err = AddPlayers(ctx, ts.tournamentStore, req.Id, req.Division, convertPersonsToStringMap(req))
+	m, err := convertPersonsToStringMap(ctx, req, ts.userStore)
+	if err != nil {
+		return nil, err
+	}
+
+	err = AddPlayers(ctx, ts.tournamentStore, req.Id, req.Division, m)
 	if err != nil {
 		return nil, twirp.NewError(twirp.InvalidArgument, err.Error())
 	}
@@ -260,7 +300,12 @@ func (ts *TournamentService) RemovePlayers(ctx context.Context, req *pb.Tourname
 	if err != nil {
 		return nil, err
 	}
-	err = RemovePlayers(ctx, ts.tournamentStore, req.Id, req.Division, convertPersonsToStringMap(req))
+	m, err := convertPersonsToStringMap(ctx, req, ts.userStore)
+	if err != nil {
+		return nil, err
+	}
+
+	err = RemovePlayers(ctx, ts.tournamentStore, req.Id, req.Division, m)
 	if err != nil {
 		return nil, twirp.NewError(twirp.InvalidArgument, err.Error())
 	}
@@ -350,53 +395,72 @@ func (ts *TournamentService) StartRoundCountdown(ctx context.Context, req *pb.To
 	return &pb.TournamentResponse{}, nil
 }
 
-func isDirector(ctx context.Context, ts *TournamentService) (string, error) {
+func sessionUser(ctx context.Context, ts *TournamentService) (*entity.User, error) {
 	sess, err := apiserver.GetSession(ctx)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
 	user, err := ts.userStore.Get(ctx, sess.Username)
 	if err != nil {
 		log.Err(err).Msg("getting-user")
-		return "", twirp.InternalErrorWith(err)
+		return nil, twirp.InternalErrorWith(err)
+	}
+	return user, nil
+}
+
+func directorOrAdmin(ctx context.Context, ts *TournamentService) (*entity.User, error) {
+
+	user, err := sessionUser(ctx, ts)
+	if err != nil {
+		return nil, err
 	}
 
-	if !user.IsDirector {
-		return "", twirp.NewError(twirp.Unauthenticated, "this user is not an authorized director")
+	if !user.IsDirector && !user.IsAdmin {
+		return nil, twirp.NewError(twirp.Unauthenticated, "this user is not an authorized director")
 	}
-	return user.UUID, nil
+	return user, nil
 }
 
 func authenticateDirector(ctx context.Context, ts *TournamentService, id string, authenticateExecutive bool) error {
-	user, err := isDirector(ctx, ts)
+	user, err := directorOrAdmin(ctx, ts)
 	if err != nil {
 		return err
+	}
+	// Site admins are always allowed to modify any tournaments. (There should only be a small number of these)
+	if user.IsAdmin {
+		return nil
 	}
 
 	t, err := ts.tournamentStore.Get(ctx, id)
 	if err != nil {
 		return twirp.InternalErrorWith(err)
 	}
+	fullID := user.UUID + ":" + user.Username
 
-	if authenticateExecutive && user != t.ExecutiveDirector {
+	if authenticateExecutive && fullID != t.ExecutiveDirector {
 		return twirp.NewError(twirp.Unauthenticated, "this user is not the authorized executive director for this event")
-	} else {
-		_, authorized := t.Directors.Persons[user]
-		if !authorized {
-			return twirp.NewError(twirp.Unauthenticated, "this user is not an authorized director for this event")
-		}
+	}
+	_, authorized := t.Directors.Persons[fullID]
+	if !authorized {
+		return twirp.NewError(twirp.Unauthenticated, "this user is not an authorized director for this event")
 	}
 
 	return nil
 }
 
-func convertPersonsToStringMap(req *pb.TournamentPersons) *entity.TournamentPersons {
+func convertPersonsToStringMap(ctx context.Context, req *pb.TournamentPersons, us user.Store) (*entity.TournamentPersons, error) {
 	personsMap := map[string]int{}
 	for _, person := range req.Persons {
-		personsMap[person.PersonId] = int(person.PersonInt)
+
+		u, err := us.Get(ctx, person.PersonId)
+		if err != nil {
+			return nil, err
+		}
+
+		personsMap[u.UUID+":"+person.PersonId] = int(person.PersonInt)
 	}
-	return &entity.TournamentPersons{Persons: personsMap}
+	return &entity.TournamentPersons{Persons: personsMap}, nil
 }
 
 func convertSingleRoundControls(reqRC *pb.SingleRoundControls) *entity.RoundControls {
