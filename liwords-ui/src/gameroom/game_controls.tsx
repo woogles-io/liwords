@@ -242,6 +242,12 @@ const GameControls = React.memo((props: Props) => {
               props.onResign();
               setCurrentPopUp('NONE');
             }}
+            onClick={() => {
+              if (currentPopUp === 'RESIGN') {
+                props.onResign();
+                setCurrentPopUp('NONE');
+              }
+            }}
           >
             Resign
           </Button>
@@ -268,6 +274,12 @@ const GameControls = React.memo((props: Props) => {
             onDoubleClick={() => {
               props.onPass();
               setCurrentPopUp('NONE');
+            }}
+            onClick={() => {
+              if (currentPopUp === 'PASS') {
+                props.onPass();
+                setCurrentPopUp('NONE');
+              }
             }}
             danger
             disabled={!props.myTurn}
@@ -302,6 +314,12 @@ const GameControls = React.memo((props: Props) => {
             onDoubleClick={() => {
               props.onChallenge();
               setCurrentPopUp('NONE');
+            }}
+            onClick={() => {
+              if (currentPopUp === 'CHALLENGE') {
+                props.onChallenge();
+                setCurrentPopUp('NONE');
+              }
             }}
             disabled={!props.myTurn}
             hidden={props.challengeRule === 'VOID'}
