@@ -10,6 +10,8 @@ import { calculateTotalTime } from '../store/constants';
 type Props = {
   activeGames: ActiveGame[];
   username?: string;
+  type?: 'RESUME';
+  onSimultaneous?: () => void;
 };
 
 export const ActiveGames = (props: Props) => {
@@ -121,9 +123,19 @@ export const ActiveGames = (props: Props) => {
       key: 'details',
     },
   ];
+
+  const simultaneousFooter = React.useCallback(
+    () => (
+      <span onClick={props.onSimultaneous}>
+        Play more games simultaneously (timers will run concurrently)
+      </span>
+    ),
+    [props.onSimultaneous]
+  );
+
   return (
     <>
-      <h4>Games Live Now</h4>
+      <h4>{props.type === 'RESUME' ? 'Resume' : 'Games Live Now'}</h4>
       <Table
         className="games observe"
         dataSource={formatGameData(props.activeGames)}
@@ -149,6 +161,7 @@ export const ActiveGames = (props: Props) => {
           }
           return 'game-listing';
         }}
+        footer={props.onSimultaneous ? simultaneousFooter : undefined}
       />
     </>
   );

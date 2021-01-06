@@ -37,10 +37,20 @@ export const GameLists = React.memo((props: Props) => {
   const [seekModalVisible, setSeekModalVisible] = useState(false);
   const [matchModalVisible, setMatchModalVisible] = useState(false);
   const [botModalVisible, setBotModalVisible] = useState(false);
-  const currentGame: ActiveGame | null =
-    lobbyContext.activeGames.find((ag) =>
-      ag.players.some((p) => p.displayName === username)
-    ) || null;
+  const [simultaneousModeEnabled, setSimultaneousModeEnabled] = useState(false);
+  const enableSimultaneousMode = React.useCallback(() => {
+    setSimultaneousModeEnabled(true);
+  }, []);
+  const myCurrentGames = React.useMemo(
+    () =>
+      lobbyContext.activeGames.filter((ag) =>
+        ag.players.some((p) => p.displayName === username)
+      ),
+    [lobbyContext.activeGames, username]
+  );
+  const simultaneousModeEffectivelyEnabled =
+    simultaneousModeEnabled || myCurrentGames.length >= 2;
+  const currentGame: ActiveGame | null = myCurrentGames[0] ?? null;
   const opponent = currentGame?.players.find((p) => p.displayName !== username)
     ?.displayName;
 
@@ -67,6 +77,18 @@ export const GameLists = React.memo((props: Props) => {
             newGame={newGame}
             requests={lobbyContext?.soughtGames}
           />
+          {myCurrentGames.length > 0 && (
+            <ActiveGames
+              type="RESUME"
+              onSimultaneous={
+                !simultaneousModeEffectivelyEnabled
+                  ? enableSimultaneousMode
+                  : undefined
+              }
+              username={username}
+              activeGames={myCurrentGames}
+            />
+          )}
         </>
       );
     }
@@ -218,7 +240,7 @@ export const GameLists = React.memo((props: Props) => {
   const actions = [];
   // if no existing game
   if (loggedIn) {
-    if (currentGame) {
+    if (currentGame && !simultaneousModeEffectivelyEnabled) {
       actions.push(
         <div
           className="resume"
