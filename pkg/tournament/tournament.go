@@ -775,7 +775,6 @@ func addTournamentPersons(ctx context.Context,
 		}
 	}
 
-
 	return ts.Set(ctx, t)
 }
 
@@ -797,10 +796,6 @@ func removeTournamentPersons(ctx context.Context,
 
 	if isPlayers && !ok {
 		return fmt.Errorf("division %s does not exist", division)
-	}
-
-	if t.IsStarted && isPlayers {
-		return errors.New("cannot cannot remove players after the tournament has started.")
 	}
 
 	var personsMap map[string]int
