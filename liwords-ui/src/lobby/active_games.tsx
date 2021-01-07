@@ -134,8 +134,18 @@ export const ActiveGames = (props: Props) => {
         onRow={(record) => {
           return {
             onClick: (event) => {
-              history.replace(`/game/${encodeURIComponent(record.gameID)}`);
-              console.log('redirecting to', record.gameID);
+              if (event.ctrlKey || event.altKey || event.metaKey) {
+                window.open(`/game/${encodeURIComponent(record.gameID)}`);
+              } else {
+                history.replace(`/game/${encodeURIComponent(record.gameID)}`);
+                console.log('redirecting to', record.gameID);
+              }
+            },
+            onAuxClick: (event) => {
+              if (event.button === 1) {
+                // middle-click
+                window.open(`/game/${encodeURIComponent(record.gameID)}`);
+              }
             },
           };
         }}

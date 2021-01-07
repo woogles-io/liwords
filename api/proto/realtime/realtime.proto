@@ -401,6 +401,10 @@ message TournamentGame {
   liwords.GameEndReason game_end_reason = 3;
 }
 
+message PlayerProperties {
+  bool removed = 1;
+}
+
 message PlayerRoundInfo {
   repeated string players = 1;
   repeated TournamentGame games = 2;
@@ -429,6 +433,7 @@ message TournamentDivisionDataResponse {
   ClassicDivision division = 5;
   int32 current_round = 6;
   repeated PlayerStanding standings = 7;
+  repeated PlayerProperties players_properties = 8;
 }
 
 message FullTournamentDivisions {

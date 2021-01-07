@@ -62,9 +62,8 @@ message TournamentControlsRequest {
   string division = 2;
   liwords.GameRequest game_request = 3;
   repeated SingleRoundControls round_controls = 4;
-  int32 number_of_rounds = 5;
-  google.protobuf.Timestamp start_time = 6;
-  bool auto_start = 7;
+  google.protobuf.Timestamp start_time = 5;
+  bool auto_start = 6;
 }
 
 message PairRoundRequest {

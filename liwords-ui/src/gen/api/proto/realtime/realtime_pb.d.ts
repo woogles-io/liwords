@@ -1054,6 +1054,26 @@ export namespace TournamentGame {
   }
 }
 
+export class PlayerProperties extends jspb.Message {
+  getRemoved(): boolean;
+  setRemoved(value: boolean): void;
+
+  serializeBinary(): Uint8Array;
+  toObject(includeInstance?: boolean): PlayerProperties.AsObject;
+  static toObject(includeInstance: boolean, msg: PlayerProperties): PlayerProperties.AsObject;
+  static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+  static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+  static serializeBinaryToWriter(message: PlayerProperties, writer: jspb.BinaryWriter): void;
+  static deserializeBinary(bytes: Uint8Array): PlayerProperties;
+  static deserializeBinaryFromReader(message: PlayerProperties, reader: jspb.BinaryReader): PlayerProperties;
+}
+
+export namespace PlayerProperties {
+  export type AsObject = {
+    removed: boolean,
+  }
+}
+
 export class PlayerRoundInfo extends jspb.Message {
   clearPlayersList(): void;
   getPlayersList(): Array<string>;
@@ -1182,6 +1202,11 @@ export class TournamentDivisionDataResponse extends jspb.Message {
   setStandingsList(value: Array<PlayerStanding>): void;
   addStandings(value?: PlayerStanding, index?: number): PlayerStanding;
 
+  clearPlayersPropertiesList(): void;
+  getPlayersPropertiesList(): Array<PlayerProperties>;
+  setPlayersPropertiesList(value: Array<PlayerProperties>): void;
+  addPlayersProperties(value?: PlayerProperties, index?: number): PlayerProperties;
+
   serializeBinary(): Uint8Array;
   toObject(includeInstance?: boolean): TournamentDivisionDataResponse.AsObject;
   static toObject(includeInstance: boolean, msg: TournamentDivisionDataResponse): TournamentDivisionDataResponse.AsObject;
@@ -1201,6 +1226,7 @@ export namespace TournamentDivisionDataResponse {
     division?: ClassicDivision.AsObject,
     currentRound: number,
     standingsList: Array<PlayerStanding.AsObject>,
+    playersPropertiesList: Array<PlayerProperties.AsObject>,
   }
 }
 
