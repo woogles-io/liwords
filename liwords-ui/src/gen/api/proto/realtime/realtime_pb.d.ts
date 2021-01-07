@@ -1114,6 +1114,42 @@ export namespace PlayerRoundInfo {
   }
 }
 
+export class PlayerStanding extends jspb.Message {
+  getPlayer(): string;
+  setPlayer(value: string): void;
+
+  getWins(): number;
+  setWins(value: number): void;
+
+  getLosses(): number;
+  setLosses(value: number): void;
+
+  getDraws(): number;
+  setDraws(value: number): void;
+
+  getSpread(): number;
+  setSpread(value: number): void;
+
+  serializeBinary(): Uint8Array;
+  toObject(includeInstance?: boolean): PlayerStanding.AsObject;
+  static toObject(includeInstance: boolean, msg: PlayerStanding): PlayerStanding.AsObject;
+  static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+  static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+  static serializeBinaryToWriter(message: PlayerStanding, writer: jspb.BinaryWriter): void;
+  static deserializeBinary(bytes: Uint8Array): PlayerStanding;
+  static deserializeBinaryFromReader(message: PlayerStanding, reader: jspb.BinaryReader): PlayerStanding;
+}
+
+export namespace PlayerStanding {
+  export type AsObject = {
+    player: string,
+    wins: number,
+    losses: number,
+    draws: number,
+    spread: number,
+  }
+}
+
 export class ClassicDivision extends jspb.Message {
   clearMatrixList(): void;
   getMatrixList(): Array<PlayerRoundInfo>;
@@ -1158,19 +1194,18 @@ export class TournamentDivisionDataResponse extends jspb.Message {
   getDivision(): ClassicDivision | undefined;
   setDivision(value?: ClassicDivision): void;
 
+  getCurrentRound(): number;
+  setCurrentRound(value: number): void;
+
+  clearStandingsList(): void;
+  getStandingsList(): Array<PlayerStanding>;
+  setStandingsList(value: Array<PlayerStanding>): void;
+  addStandings(value?: PlayerStanding, index?: number): PlayerStanding;
+
   clearPlayersPropertiesList(): void;
   getPlayersPropertiesList(): Array<PlayerProperties>;
   setPlayersPropertiesList(value: Array<PlayerProperties>): void;
   addPlayersProperties(value?: PlayerProperties, index?: number): PlayerProperties;
-
-  getCurrentRound(): number;
-  setCurrentRound(value: number): void;
-
-  getRoundIsOver(): boolean;
-  setRoundIsOver(value: boolean): void;
-
-  getDivisionIsOver(): boolean;
-  setDivisionIsOver(value: boolean): void;
 
   serializeBinary(): Uint8Array;
   toObject(includeInstance?: boolean): TournamentDivisionDataResponse.AsObject;
@@ -1189,10 +1224,9 @@ export namespace TournamentDivisionDataResponse {
     playersList: Array<string>,
     controls?: TournamentControls.AsObject,
     division?: ClassicDivision.AsObject,
-    playersPropertiesList: Array<PlayerProperties.AsObject>,
     currentRound: number,
-    roundIsOver: boolean,
-    divisionIsOver: boolean,
+    standingsList: Array<PlayerStanding.AsObject>,
+    playersPropertiesList: Array<PlayerProperties.AsObject>,
   }
 }
 

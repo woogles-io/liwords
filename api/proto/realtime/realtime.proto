@@ -412,6 +412,14 @@ message PlayerRoundInfo {
   repeated string ready_states = 4;
 }
 
+message PlayerStanding {
+  string player = 1;
+  int32 wins = 2;
+  int32 losses = 3;
+  int32 draws = 4;
+  int32 spread = 5;
+}
+
 message ClassicDivision { repeated PlayerRoundInfo matrix = 1; }
 
 message TournamentDivisionDataResponse {
@@ -423,10 +431,9 @@ message TournamentDivisionDataResponse {
   // types of tournament divisions and only
   // one will be non nil
   ClassicDivision division = 5;
-  repeated PlayerProperties players_properties = 6;
-  int32 current_round = 7;
-  bool round_is_over = 8;
-  bool division_is_over = 9;
+  int32 current_round = 6;
+  repeated PlayerStanding standings = 7;
+  repeated PlayerProperties players_properties = 8;
 }
 
 message FullTournamentDivisions {
