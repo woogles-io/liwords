@@ -822,7 +822,12 @@ func removeTournamentPersons(ctx context.Context,
 		delete(personsMap, k)
 	}
 
-	if isPlayers {
+	if t.IsStarted {
+		err := divisionObject.DivisionManager.RemovePlayers(persons)
+		if err != nil {
+			return err
+		}
+	} else if isPlayers {
 		err = createDivisionManager(t, division)
 		if err != nil {
 			return err

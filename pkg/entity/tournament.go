@@ -18,6 +18,7 @@ type DivisionManager interface {
 	GetStandings(int) ([]*Standing, error)
 	SetPairing(string, string, int, bool) error
 	AddPlayers(*TournamentPersons) error
+	RemovePlayers(*TournamentPersons) error
 	IsRoundReady(int) (bool, error)
 	IsRoundComplete(int) (bool, error)
 	IsFinished() (bool, error)
@@ -81,11 +82,12 @@ type PlayerRoundInfo struct {
 }
 
 type Standing struct {
-	Player string
-	Wins   int
-	Losses int
-	Draws  int
-	Spread int
+	Player  string
+	Wins    int
+	Losses  int
+	Draws   int
+	Spread  int
+	Removed bool
 }
 
 type TournamentType int
@@ -95,6 +97,12 @@ const (
 	// It's gonna be lit:
 	ArenaTournamentType
 )
+
+// This type is a struct in anticipation of
+// future additional properties
+type PlayerProperties struct {
+	Removed bool
+}
 
 type TournamentPersons struct {
 	// Persons is the map of user ID to a user integer (a rating or similar)
