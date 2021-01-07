@@ -1091,9 +1091,9 @@ export class PlayerRoundInfo extends jspb.Message {
   addOutcomes(value: TournamentGameResultMap[keyof TournamentGameResultMap], index?: number): TournamentGameResultMap[keyof TournamentGameResultMap];
 
   clearReadyStatesList(): void;
-  getReadyStatesList(): Array<boolean>;
-  setReadyStatesList(value: Array<boolean>): void;
-  addReadyStates(value: boolean, index?: number): boolean;
+  getReadyStatesList(): Array<string>;
+  setReadyStatesList(value: Array<string>): void;
+  addReadyStates(value: string, index?: number): string;
 
   serializeBinary(): Uint8Array;
   toObject(includeInstance?: boolean): PlayerRoundInfo.AsObject;
@@ -1110,7 +1110,7 @@ export namespace PlayerRoundInfo {
     playersList: Array<string>,
     gamesList: Array<TournamentGame.AsObject>,
     outcomesList: Array<TournamentGameResultMap[keyof TournamentGameResultMap]>,
-    readyStatesList: Array<boolean>,
+    readyStatesList: Array<string>,
   }
 }
 

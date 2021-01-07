@@ -20,6 +20,7 @@ type backingStore interface {
 	SetTournamentEventChan(c chan<- *entity.EventWrapper)
 	TournamentEventChan() chan<- *entity.EventWrapper
 	GetRecentClubSessions(ctx context.Context, clubID string, numSessions int, offset int) (*pb.ClubSessionsResponse, error)
+	ListAllIDs(context.Context) ([]string, error)
 }
 
 const (
@@ -115,4 +116,8 @@ func (c *Cache) GetRecentGames(ctx context.Context, tourneyID string, numGames i
 
 func (c *Cache) GetRecentClubSessions(ctx context.Context, clubID string, numSessions int, offset int) (*pb.ClubSessionsResponse, error) {
 	return c.backing.GetRecentClubSessions(ctx, clubID, numSessions, offset)
+}
+
+func (c *Cache) ListAllIDs(ctx context.Context) ([]string, error) {
+	return c.backing.ListAllIDs(ctx)
 }

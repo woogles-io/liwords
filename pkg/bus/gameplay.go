@@ -3,6 +3,7 @@ package bus
 import (
 	"context"
 	"errors"
+	"strings"
 	"time"
 
 	"github.com/rs/zerolog/log"
@@ -14,6 +15,10 @@ import (
 	pb "github.com/domino14/liwords/rpc/api/proto/realtime"
 	"github.com/domino14/macondo/game"
 	macondopb "github.com/domino14/macondo/gen/api/proto/macondo"
+)
+
+var (
+	errGamesDisabled = errors.New("new games are temporarily disabled; please try again in a few minutes")
 )
 
 func (b *Bus) instantiateAndStartGame(ctx context.Context, accUser *entity.User, requester string,
@@ -29,7 +34,7 @@ func (b *Bus) instantiateAndStartGame(ctx context.Context, accUser *entity.User,
 		return err
 	}
 	if !enabled {
-		return errors.New("new games are temporarily disabled; please try again in a few minutes")
+		return errGamesDisabled
 	}
 
 	// disallow anon game acceptance for now.
@@ -227,7 +232,14 @@ func (b *Bus) readyForGame(ctx context.Context, evt *pb.ReadyForGame, userID str
 	return nil
 }
 
-func (b *Bus) readyForTournamentGame(ctx context.Context, evt *pb.ReadyForTournamentGame, userID string) error {
+func (b *Bus) readyForTournamentGame(ctx context.Context, evt *pb.ReadyForTournamentGame, userID, connID string) error {
+	enabled, err := b.configStore.GamesEnabled(ctx)
+	if err != nil {
+		return err
+	}
+	if !enabled {
+		return errGamesDisabled
+	}
 
 	reqUser, err := b.userStore.GetByUUID(ctx, userID)
 	if err != nil {
@@ -236,13 +248,90 @@ func (b *Bus) readyForTournamentGame(ctx context.Context, evt *pb.ReadyForTourna
 
 	fullUserID := userID + ":" + reqUser.Username
 
-	_, err = tournament.SetReadyForGame(ctx, b.tournamentStore, evt.TournamentId, fullUserID, evt.Division,
-		int(evt.Round), int(evt.GameIndex), evt.Unready)
+	t, err := b.tournamentStore.Get(ctx, evt.TournamentId)
+	if err != nil {
+		return err
+	}
+
+	playerIDs, err := tournament.SetReadyForGame(ctx, b.tournamentStore, t, fullUserID, connID,
+		evt.Division, int(evt.Round), int(evt.GameIndex), evt.Unready)
 
 	if err != nil {
 		return err
 	}
-	// TODO: If both players are ready, redirect both to new game.
+	if len(playerIDs) != 2 {
+		return nil
+	}
+	// Both players are ready!
+
+	foundUs := false
+	otherID := ""
+	users := [2]*entity.User{nil, nil}
+	connIDs := [2]string{"", ""}
+	otherUserIdx := -1
+	// playerIDs are in order of first/second
+	for idx, pid := range playerIDs {
+		// userid:username:conn_id
+		splitid := strings.Split(pid, ":")
+		if len(splitid) != 3 {
+			return errors.New("unexpected playerID: " + pid)
+		}
+		if userID == splitid[0] {
+			foundUs = true
+			users[idx] = reqUser
+		} else {
+			otherID = splitid[0]
+			otherUserIdx = idx
+		}
+		connIDs[idx] = splitid[2]
+	}
+	if !foundUs {
+		return errors.New("unexpected behavior; did not find us")
+	}
+	if otherID == userID {
+		return errors.New("both users have same ID?")
+	}
+	users[otherUserIdx], err = b.userStore.GetByUUID(ctx, otherID)
+	if err != nil {
+		return err
+	}
+	gameReq := t.Divisions[evt.Division].Controls.GameRequest
+
+	g, err := gameplay.InstantiateNewGame(ctx, b.gameStore, b.config,
+		users, 0, gameReq, evt.TournamentId)
+	if err != nil {
+		return err
+	}
+
+	err = b.broadcastGameCreation(g, reqUser, users[otherUserIdx])
+	if err != nil {
+		log.Err(err).Msg("broadcasting-game-creation")
+	}
+
+	// redirect users to the right game
+	ngevt := entity.WrapEvent(&pb.NewGameEvent{
+		GameId: g.GameID(),
+		// doesn't matter who's the accepter or requester here.
+		AccepterCid:  connIDs[0],
+		RequesterCid: connIDs[1],
+	}, pb.MessageType_NEW_GAME_EVENT)
+
+	b.pubToConnectionID(connIDs[0], users[0].UUID, ngevt)
+	b.pubToConnectionID(connIDs[1], users[1].UUID, ngevt)
+
+	tcname, variant, err := entity.VariantFromGameReq(gameReq)
+	if err != nil {
+		return err
+	}
+
+	log.Info().Str("newgameid", g.History().Uid).
+		Str("p0", userID).
+		Str("p1", otherID).
+		Str("lexicon", gameReq.Lexicon).
+		Str("timectrl", string(tcname)).
+		Str("variant", string(variant)).
+		Str("tournamentID", string(evt.TournamentId)).
+		Str("onturn", g.NickOnTurn()).Msg("tournament-game-started")
 
 	return nil
 }

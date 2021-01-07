@@ -712,9 +712,13 @@ func (t *ClassicDivision) SetLastStarted(ls *realtime.TournamentRoundStarted) er
 	return nil
 }
 
-func (t *ClassicDivision) SetReadyForGame(playerID string, round, gameIndex int, unready bool) (bool, error) {
+func (t *ClassicDivision) SetReadyForGame(playerID, connID string, round, gameIndex int, unready bool) ([]string, error) {
 	if round >= len(t.Matrix) || round < 0 {
-		return false, fmt.Errorf("round number out of range: %d", round)
+		return nil, fmt.Errorf("round number out of range: %d", round)
+	}
+	toSet := connID
+	if unready {
+		toSet = ""
 	}
 	// gameIndex is ignored for ClassicDivision?
 	foundPri := -1
@@ -724,7 +728,7 @@ func (t *ClassicDivision) SetReadyForGame(playerID string, round, gameIndex int,
 		}
 		for idx := range pri.Pairing.Players {
 			if playerID == pri.Pairing.Players[idx] {
-				pri.Pairing.ReadyStates[idx] = !unready
+				pri.Pairing.ReadyStates[idx] = toSet
 				foundPri = priIndex
 			}
 		}
@@ -733,11 +737,14 @@ func (t *ClassicDivision) SetReadyForGame(playerID string, round, gameIndex int,
 		// Check to see if both players are ready.
 		pri := t.Matrix[round][foundPri]
 
-		if pri.Pairing.ReadyStates[0] && pri.Pairing.ReadyStates[1] {
-			return true, nil
+		if pri.Pairing.ReadyStates[0] != "" && pri.Pairing.ReadyStates[1] != "" {
+			return []string{
+				pri.Pairing.Players[0] + ":" + pri.Pairing.ReadyStates[0],
+				pri.Pairing.Players[1] + ":" + pri.Pairing.ReadyStates[1],
+			}, nil
 		}
 	}
-	return false, nil
+	return nil, nil
 }
 
 func isSubstantialResult(result realtime.TournamentGameResult) bool {
@@ -884,7 +891,7 @@ func newClassicPairing(t *ClassicDivision,
 		Games: games,
 		Outcomes: []realtime.TournamentGameResult{realtime.TournamentGameResult_NO_RESULT,
 			realtime.TournamentGameResult_NO_RESULT},
-		ReadyStates: []bool{false, false},
+		ReadyStates: []string{"", ""},
 	}
 }
 

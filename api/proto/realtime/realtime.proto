@@ -20,9 +20,15 @@ message GameRules {
   string variant_name = 3;
 }
 
-enum GameMode { REAL_TIME = 0; CORRESPONDENCE = 1; }
+enum GameMode {
+  REAL_TIME = 0;
+  CORRESPONDENCE = 1;
+}
 
-enum RatingMode { RATED = 0; CASUAL = 1; }
+enum RatingMode {
+  RATED = 0;
+  CASUAL = 1;
+}
 
 // Game initialization
 // Both SeekRequest and MatchRequest encapsulate a more general GameRequest
@@ -62,7 +68,9 @@ message MatchUser {
 // Whenever we add a new client <-> server socket message type,
 // add it to this list.
 enum MessageType {
-  SEEK_REQUEST = 0; MATCH_REQUEST = 1; SOUGHT_GAME_PROCESS_EVENT = 2;
+  SEEK_REQUEST = 0;
+  MATCH_REQUEST = 1;
+  SOUGHT_GAME_PROCESS_EVENT = 2;
   CLIENT_GAMEPLAY_EVENT = 3;
   SERVER_GAMEPLAY_EVENT = 4;
   GAME_ENDED_EVENT = 5;
@@ -321,7 +329,11 @@ enum GameEndReason {
 // server will validate that the event is permissible.
 message ClientGameplayEvent {
   enum EventType {
-    TILE_PLACEMENT = 0; PASS = 1; EXCHANGE = 2; CHALLENGE_PLAY = 3; RESIGN = 4;
+    TILE_PLACEMENT = 0;
+    PASS = 1;
+    EXCHANGE = 2;
+    CHALLENGE_PLAY = 3;
+    RESIGN = 4;
   }
 
   EventType type = 1;
@@ -354,7 +366,12 @@ message DeclineMatchRequest { string request_id = 1; }
 
 enum TournamentGameResult {
   // NO_RESULT: the game is not over
-  NO_RESULT = 0; WIN = 1; LOSS = 2; DRAW = 3; BYE = 4; FORFEIT_WIN = 5;
+  NO_RESULT = 0;
+  WIN = 1;
+  LOSS = 2;
+  DRAW = 3;
+  BYE = 4;
+  FORFEIT_WIN = 5;
   FORFEIT_LOSS = 6;
   // ELIMINATED: player is eliminated in a bracket tournament
   ELIMINATED = 7;
@@ -392,7 +409,7 @@ message PlayerRoundInfo {
   repeated string players = 1;
   repeated TournamentGame games = 2;
   repeated liwords.TournamentGameResult outcomes = 3;
-  repeated bool ready_states = 4;
+  repeated string ready_states = 4;
 }
 
 message ClassicDivision { repeated PlayerRoundInfo matrix = 1; }

@@ -23,7 +23,7 @@ type DivisionManager interface {
 	IsRoundComplete(int) (bool, error)
 	IsFinished() (bool, error)
 	ToResponse() (*realtime.TournamentDivisionDataResponse, error)
-	SetReadyForGame(userID string, round, gameIndex int, unready bool) (bool, error)
+	SetReadyForGame(userID, connID string, round, gameIndex int, unready bool) ([]string, error)
 	SetLastStarted(*realtime.TournamentRoundStarted) error
 	Serialize() (datatypes.JSON, error)
 }
@@ -69,10 +69,12 @@ type TournamentGame struct {
 }
 
 type Pairing struct {
-	Players     []string                        `json:"players"`
-	Games       []*TournamentGame               `json:"games"`
-	Outcomes    []realtime.TournamentGameResult `json:"outcomes"`
-	ReadyStates []bool                          `json:"ready"`
+	Players  []string                        `json:"players"`
+	Games    []*TournamentGame               `json:"games"`
+	Outcomes []realtime.TournamentGameResult `json:"outcomes"`
+	// ReadyStates corresponds to the player IDs (in `players`).
+	// Each element has a connection ID, if ready; otherwise it is a blank string.
+	ReadyStates []string `json:"ready"`
 }
 
 type PlayerRoundInfo struct {
@@ -103,6 +105,8 @@ type PlayerProperties struct {
 }
 
 type TournamentPersons struct {
+	// Persons is the map of user ID to a user integer (a rating or similar)
+	// The user ID in this case should be of the form {UUID}:{username}
 	Persons map[string]int `json:"p"`
 }
 
