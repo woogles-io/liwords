@@ -761,17 +761,20 @@ func addTournamentPersons(ctx context.Context,
 		personsMap[k] = v
 	}
 
-	if t.IsStarted {
-		err := divisionObject.DivisionManager.AddPlayers(persons)
-		if err != nil {
-			return err
-		}
-	} else if isPlayers {
-		err = createDivisionManager(t, division)
-		if err != nil {
-			return err
+	if isPlayers {
+		if t.IsStarted {
+			err := divisionObject.DivisionManager.AddPlayers(persons)
+			if err != nil {
+				return err
+			}
+		} else {
+			err = createDivisionManager(t, division)
+			if err != nil {
+				return err
+			}
 		}
 	}
+
 
 	return ts.Set(ctx, t)
 }
@@ -822,17 +825,20 @@ func removeTournamentPersons(ctx context.Context,
 		delete(personsMap, k)
 	}
 
-	if t.IsStarted {
-		err := divisionObject.DivisionManager.RemovePlayers(persons)
-		if err != nil {
-			return err
-		}
-	} else if isPlayers {
-		err = createDivisionManager(t, division)
-		if err != nil {
-			return err
+	if isPlayers {
+		if t.IsStarted {
+			err := divisionObject.DivisionManager.RemovePlayers(persons)
+			if err != nil {
+				return err
+			}
+		} else {
+			err = createDivisionManager(t, division)
+			if err != nil {
+				return err
+			}
 		}
 	}
+
 
 	return ts.Set(ctx, t)
 }
