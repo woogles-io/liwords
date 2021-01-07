@@ -502,7 +502,7 @@ func (t *ClassicDivision) AddPlayers(persons *entity.TournamentPersons) error {
 
 func (t *ClassicDivision) GetStandings(round int) ([]*entity.Standing, error) {
 	if round < 0 || round >= len(t.Matrix) {
-		return nil, errors.New("round number out of range")
+		return nil, fmt.Errorf("round number out of range: %d", round)
 	}
 
 	wins := 0
@@ -702,20 +702,22 @@ func (t *ClassicDivision) ToResponse() (*realtime.TournamentDivisionDataResponse
 
 	classicDivision := &realtime.ClassicDivision{Matrix: oneDimMatrix}
 
-	standings, err := t.GetStandings(t.CurrentRound)
-	if err != nil {
-		return nil, err
-	}
-
 	standingsResponse := []*realtime.PlayerStanding{}
-	for i := 0; i < len(standings); i++ {
 
-		standingResponse := &realtime.PlayerStanding{Player: standings[i].Player,
-			Wins:   int32(standings[i].Wins),
-			Losses: int32(standings[i].Losses),
-			Draws:  int32(standings[i].Draws),
-			Spread: int32(standings[i].Spread)}
-		standingsResponse = append(standingsResponse, standingResponse)
+	if len(t.Matrix) > 0 && len(t.Players) > 0 {
+		standings, err := t.GetStandings(t.CurrentRound)
+		if err != nil {
+			return nil, err
+		}
+
+		for i := 0; i < len(standings); i++ {
+			standingResponse := &realtime.PlayerStanding{Player: standings[i].Player,
+				Wins:   int32(standings[i].Wins),
+				Losses: int32(standings[i].Losses),
+				Draws:  int32(standings[i].Draws),
+				Spread: int32(standings[i].Spread)}
+			standingsResponse = append(standingsResponse, standingResponse)
+		}
 	}
 
 	return &realtime.TournamentDivisionDataResponse{Players: t.Players,
