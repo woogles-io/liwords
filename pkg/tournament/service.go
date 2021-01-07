@@ -123,7 +123,7 @@ func (ts *TournamentService) NewTournament(ctx context.Context, req *pb.NewTourn
 		if err != nil {
 			return nil, err
 		}
-		personID := u.UUID + ":" + username
+		personID := u.UUID + ":" + u.Username
 		// 1st director is the executive director.
 		persons[personID] = idx
 	}

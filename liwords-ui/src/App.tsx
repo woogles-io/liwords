@@ -25,6 +25,7 @@ import { ChatMessage, MessageType } from './gen/api/proto/realtime/realtime_pb';
 import { encodeToSocketFmt } from './utils/protobuf';
 import { Clubs } from './clubs';
 import { TournamentRoom } from './tournament/room';
+import { Admin } from './admin/admin';
 
 type Blocks = {
   user_ids: Array<string>;
@@ -161,6 +162,9 @@ const App = React.memo(() => {
         </Route>
         <Route path="/tile_images">
           <TileImages />
+        </Route>
+        <Route path="/admin">
+          <Admin />
         </Route>
       </Switch>
     </div>
