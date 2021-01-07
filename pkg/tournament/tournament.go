@@ -744,7 +744,7 @@ func addTournamentPersons(ctx context.Context,
 		personsMap = divisionObject.Players.Persons
 	} else {
 		personsMap = t.Directors.Persons
-		if executiveDirectorExists(persons.Persons) {
+		if executiveDirectorExists(persons.Persons, t.ExecutiveDirector) {
 			return errors.New("cannot add another executive director")
 		}
 	}
@@ -803,7 +803,7 @@ func removeTournamentPersons(ctx context.Context,
 		personsMap = divisionObject.Players.Persons
 	} else {
 		personsMap = t.Directors.Persons
-		if executiveDirectorExists(persons.Persons) {
+		if executiveDirectorExists(persons.Persons, t.ExecutiveDirector) {
 			return errors.New("cannot remove the executive director")
 		}
 	}
@@ -888,9 +888,9 @@ func getExecutiveDirector(directors *entity.TournamentPersons) (string, error) {
 	return ed, nil
 }
 
-func executiveDirectorExists(directors map[string]int) bool {
-	for _, v := range directors {
-		if v == 0 {
+func executiveDirectorExists(directors map[string]int, ed string) bool {
+	for key, value := range directors {
+		if key == ed || value == 0 {
 			return true
 		}
 	}
