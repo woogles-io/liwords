@@ -889,8 +889,8 @@ func getExecutiveDirector(directors *entity.TournamentPersons) (string, error) {
 }
 
 func executiveDirectorExists(directors map[string]int, ed string) bool {
-	for key, _ := range directors {
-		if key == ed {
+	for key, value := range directors {
+		if key == ed || value == 0 {
 			return true
 		}
 	}
