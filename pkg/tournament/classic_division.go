@@ -702,9 +702,26 @@ func (t *ClassicDivision) ToResponse() (*realtime.TournamentDivisionDataResponse
 
 	classicDivision := &realtime.ClassicDivision{Matrix: oneDimMatrix}
 
+	standings, err := t.GetStandings(t.CurrentRound)
+	if err != nil {
+		return nil, err
+	}
+
+	standingsResponse := []*realtime.PlayerStanding{}
+	for i := 0; i < len(standings); i++ {
+
+		standingResponse := &realtime.PlayerStanding{Player: standings[i].Player,
+			Wins:   int32(standings[i].Wins),
+			Losses: int32(standings[i].Losses),
+			Draws:  int32(standings[i].Draws),
+			Spread: int32(standings[i].Spread)}
+		standingsResponse = append(standingsResponse, standingResponse)
+	}
+
 	return &realtime.TournamentDivisionDataResponse{Players: t.Players,
 		Controls:     realtimeTournamentControls,
 		Division:     classicDivision,
+		Standings:    standingsResponse,
 		CurrentRound: int32(t.CurrentRound)}, nil
 }
 
