@@ -319,11 +319,9 @@ func (ts *TournamentService) SetPairing(ctx context.Context, req *pb.TournamentP
 		return nil, err
 	}
 
-	for _, pairing := range req.Pairings {
-		err = SetPairing(ctx, ts.tournamentStore, req.Id, pairing.Division, pairing.PlayerOneId, pairing.PlayerTwoId, int(pairing.Round))
-		if err != nil {
-			return nil, twirp.NewError(twirp.InvalidArgument, err.Error())
-		}
+	err = SetPairings(ctx, ts.tournamentStore, req.Id, req.Division, req.Pairings)
+	if err != nil {
+		return nil, twirp.NewError(twirp.InvalidArgument, err.Error())
 	}
 
 	return &pb.TournamentResponse{}, nil

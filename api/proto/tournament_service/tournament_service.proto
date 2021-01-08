@@ -78,15 +78,16 @@ message TournamentDivisionRequest {
 }
 
 message TournamentPairingRequest {
-  string division = 1;
-  string player_one_id = 2;
-  string player_two_id = 3;
-  int32 round = 4;
+  string player_one_id = 1;
+  string player_two_id = 2;
+  int32 round = 3;
+  bool is_forfeit = 4;
 }
 
 message TournamentPairingsRequest {
   string id = 1;
-  repeated TournamentPairingRequest pairings = 2;
+  string division = 2;
+  repeated TournamentPairingRequest pairings = 3;
 }
 
 // TournamentResultOverrideRequest is sent when a score needs to be edited

@@ -343,7 +343,7 @@ func RemovePlayers(ctx context.Context, ts TournamentStore, id string, division 
 	return SendTournamentDivisionMessage(ctx, ts, id, division)
 }
 
-func SetPairing(ctx context.Context, ts TournamentStore, id string, division string, playerOneId string, playerTwoId string, round int) error {
+func SetPairings(ctx context.Context, ts TournamentStore, id string, division string, pairings []*pb.TournamentPairingRequest) error {
 
 	t, err := ts.Get(ctx, id)
 	if err != nil {
@@ -353,19 +353,21 @@ func SetPairing(ctx context.Context, ts TournamentStore, id string, division str
 	t.Lock()
 	defer t.Unlock()
 
-	divisionObject, ok := t.Divisions[division]
+	for _, pairing := range pairings {
+		divisionObject, ok := t.Divisions[division]
 
-	if !ok {
-		return fmt.Errorf("division %s does not exist", division)
-	}
+		if !ok {
+			return fmt.Errorf("division %s does not exist", division)
+		}
 
-	if divisionObject.DivisionManager == nil {
-		return fmt.Errorf("division %s does not have enough players or controls to set pairings", division)
-	}
+		if divisionObject.DivisionManager == nil {
+			return fmt.Errorf("division %s does not have enough players or controls to set pairings", division)
+		}
 
-	err = divisionObject.DivisionManager.SetPairing(playerOneId, playerTwoId, round, false)
-	if err != nil {
-		return err
+		err = divisionObject.DivisionManager.SetPairing(pairing.PlayerOneId, pairing.PlayerTwoId, int(pairing.Round), pairing.IsForfeit)
+		if err != nil {
+			return err
+		}
 	}
 
 	err = ts.Set(ctx, t)
