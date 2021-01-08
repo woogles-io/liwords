@@ -6,15 +6,17 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/domino14/liwords/pkg/apiserver"
-	"github.com/domino14/liwords/pkg/entity"
-	"github.com/domino14/liwords/pkg/user"
-	pb "github.com/domino14/liwords/rpc/api/proto/tournament_service"
+	"github.com/golang/protobuf/ptypes"
 	"github.com/lithammer/shortuuid"
 	"github.com/rs/zerolog/log"
 	"github.com/twitchtv/twirp"
 
-	"github.com/golang/protobuf/ptypes"
+	"github.com/domino14/liwords/pkg/apiserver"
+	"github.com/domino14/liwords/pkg/entity"
+	"github.com/domino14/liwords/pkg/user"
+
+	realtime "github.com/domino14/liwords/rpc/api/proto/realtime"
+	pb "github.com/domino14/liwords/rpc/api/proto/tournament_service"
 )
 
 // TournamentService is a Twirp service that contains functions that
@@ -311,15 +313,19 @@ func (ts *TournamentService) RemovePlayers(ctx context.Context, req *pb.Tourname
 	return &pb.TournamentResponse{}, nil
 }
 
-func (ts *TournamentService) SetPairing(ctx context.Context, req *pb.TournamentPairingRequest) (*pb.TournamentResponse, error) {
+func (ts *TournamentService) SetPairing(ctx context.Context, req *pb.TournamentPairingsRequest) (*pb.TournamentResponse, error) {
 	err := authenticateDirector(ctx, ts, req.Id, false)
 	if err != nil {
 		return nil, err
 	}
-	err = SetPairing(ctx, ts.tournamentStore, req.Id, req.Division, req.PlayerOneId, req.PlayerTwoId, int(req.Round))
-	if err != nil {
-		return nil, twirp.NewError(twirp.InvalidArgument, err.Error())
+
+	for _, pairing := range req.Pairings {
+		err = SetPairing(ctx, ts.tournamentStore, req.Id, pairing.Division, pairing.PlayerOneId, pairing.PlayerTwoId, int(pairing.Round))
+		if err != nil {
+			return nil, twirp.NewError(twirp.InvalidArgument, err.Error())
+		}
 	}
+
 	return &pb.TournamentResponse{}, nil
 }
 
@@ -462,9 +468,9 @@ func convertPersonsToStringMap(ctx context.Context, req *pb.TournamentPersons, u
 	return &entity.TournamentPersons{Persons: personsMap}, nil
 }
 
-func convertSingleRoundControls(reqRC *pb.SingleRoundControls) *entity.RoundControls {
-	return &entity.RoundControls{FirstMethod: entity.FirstMethod(reqRC.FirstMethod),
-		PairingMethod:               entity.PairingMethod(reqRC.PairingMethod),
+func convertSingleRoundControls(reqRC *realtime.RoundControl) *entity.RoundControls {
+	return &entity.RoundControls{FirstMethod: reqRC.FirstMethod,
+		PairingMethod:               reqRC.PairingMethod,
 		GamesPerRound:               int(reqRC.GamesPerRound),
 		Round:                       int(reqRC.Round),
 		Factor:                      int(reqRC.Factor),
@@ -475,7 +481,7 @@ func convertSingleRoundControls(reqRC *pb.SingleRoundControls) *entity.RoundCont
 		WinDifferenceRelativeWeight: int(reqRC.WinDifferenceRelativeWeight)}
 }
 
-func convertRoundControls(reqRoundControls []*pb.SingleRoundControls) []*entity.RoundControls {
+func convertRoundControls(reqRoundControls []*realtime.RoundControl) []*entity.RoundControls {
 	rcs := []*entity.RoundControls{}
 	for i := 0; i < len(reqRoundControls); i++ {
 		rcs = append(rcs, convertSingleRoundControls(reqRoundControls[i]))

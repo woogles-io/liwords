@@ -22,29 +22,12 @@ type DivisionManager interface {
 	IsRoundReady(int) (bool, error)
 	IsRoundComplete(int) (bool, error)
 	IsFinished() (bool, error)
+	StartRound() error
 	ToResponse() (*realtime.TournamentDivisionDataResponse, error)
 	SetReadyForGame(userID, connID string, round, gameIndex int, unready bool) ([]string, error)
 	SetLastStarted(*realtime.TournamentRoundStarted) error
 	Serialize() (datatypes.JSON, error)
 }
-
-type FirstMethod int
-
-const (
-	// Firsts and seconds are set by the director
-	// when submitting pairings. The player listed
-	// first goes first.
-	ManualFirst FirstMethod = iota
-
-	// Random pairings do not use any previous first/second
-	// data from the tournament and randomly assigns first and second
-	// for the round
-	RandomFirst
-
-	// Automatic uses previous first/second records to decide
-	// which player goes first.
-	AutomaticFirst
-)
 
 type CompetitionType string
 
@@ -111,8 +94,8 @@ type TournamentPersons struct {
 }
 
 type RoundControls struct {
-	PairingMethod               PairingMethod
-	FirstMethod                 FirstMethod
+	PairingMethod               realtime.PairingMethod
+	FirstMethod                 realtime.FirstMethod
 	GamesPerRound               int
 	Round                       int
 	Factor                      int

@@ -22,6 +22,7 @@ type ClassicDivision struct {
 	PlayerIndexMap    map[string]int                   `json:"pidxMap"`
 	RoundControls     []*entity.RoundControls          `json:"roundCtrls"`
 	CurrentRound      int                              `json:"currentRound"`
+	RoundStarted      bool                             `json:"roundStarted"`
 	LastStarted       *realtime.TournamentRoundStarted `json:"lastStarted"`
 }
 
@@ -37,6 +38,7 @@ func NewClassicDivision(players []string, roundControls []*entity.RoundControls)
 			Players:        players,
 			PlayerIndexMap: playerIndexMap,
 			RoundControls:  roundControls,
+			RoundStarted:   false,
 			CurrentRound:   0}
 		return t, nil
 	}
@@ -45,7 +47,7 @@ func NewClassicDivision(players []string, roundControls []*entity.RoundControls)
 
 	for i := 0; i < numberOfRounds; i++ {
 		control := roundControls[i]
-		if control.PairingMethod == entity.Elimination {
+		if control.PairingMethod == realtime.PairingMethod_ELIMINATION {
 			isElimination = true
 			break
 		}
@@ -54,14 +56,14 @@ func NewClassicDivision(players []string, roundControls []*entity.RoundControls)
 	initialFontes := 0
 	for i := 0; i < numberOfRounds; i++ {
 		control := roundControls[i]
-		if isElimination && control.PairingMethod != entity.Elimination {
+		if isElimination && control.PairingMethod != realtime.PairingMethod_ELIMINATION {
 			return nil, errors.New("cannot mix Elimination pairings with any other pairing method")
 		} else if i != 0 {
-			if control.PairingMethod == entity.InitialFontes &&
-				roundControls[i-1].PairingMethod != entity.InitialFontes {
+			if control.PairingMethod == realtime.PairingMethod_INITIAL_FONTES &&
+				roundControls[i-1].PairingMethod != realtime.PairingMethod_INITIAL_FONTES {
 				return nil, errors.New("cannot use Initial Fontes pairing when an earlier round used a different pairing method")
-			} else if control.PairingMethod != entity.InitialFontes &&
-				roundControls[i-1].PairingMethod == entity.InitialFontes {
+			} else if control.PairingMethod != realtime.PairingMethod_INITIAL_FONTES &&
+				roundControls[i-1].PairingMethod == realtime.PairingMethod_INITIAL_FONTES {
 				initialFontes = i
 			}
 		}
@@ -73,7 +75,7 @@ func NewClassicDivision(players []string, roundControls []*entity.RoundControls)
 
 	// For now, assume we require exactly n rounds and 2 ^ n players for an elimination tournament
 
-	if roundControls[0].PairingMethod == entity.Elimination {
+	if roundControls[0].PairingMethod == realtime.PairingMethod_ELIMINATION {
 		expectedNumberOfPlayers := 1 << numberOfRounds
 		if expectedNumberOfPlayers != numberOfPlayers {
 			return nil, fmt.Errorf("invalid number of players based on the number of rounds: "+
@@ -99,8 +101,9 @@ func NewClassicDivision(players []string, roundControls []*entity.RoundControls)
 		PlayersProperties: playersProperties,
 		PlayerIndexMap:    playerIndexMap,
 		RoundControls:     roundControls,
+		RoundStarted:      false,
 		CurrentRound:      0}
-	if roundControls[0].PairingMethod != entity.Manual {
+	if roundControls[0].PairingMethod != realtime.PairingMethod_MANUAL {
 		err := t.PairRound(0)
 		if err != nil {
 			return nil, err
@@ -110,7 +113,7 @@ func NewClassicDivision(players []string, roundControls []*entity.RoundControls)
 	// We can make all standings independent pairings right now
 	for i := 1; i < numberOfRounds; i++ {
 		pm := roundControls[i].PairingMethod
-		if pair.IsStandingsIndependent(pm) && pm != entity.Manual {
+		if pair.IsStandingsIndependent(pm) && pm != realtime.PairingMethod_MANUAL {
 			err := t.PairRound(i)
 			if err != nil {
 				return nil, err
@@ -135,7 +138,6 @@ func (t *ClassicDivision) GetPlayerRoundInfo(player string, round int) (*entity.
 }
 
 func (t *ClassicDivision) SetPairing(playerOne string, playerTwo string, round int, isForfeit bool) error {
-
 	if playerOne != playerTwo && isForfeit {
 		return fmt.Errorf("forfeit results require that player one and two are identical, instead have: %s, %s", playerOne, playerTwo)
 	}
@@ -280,7 +282,7 @@ func (t *ClassicDivision) SubmitResult(round int,
 	// For Elimination tournaments only.
 	// Could be a tiebreaking result or could be an out of range
 	// game index
-	if pairingMethod == entity.Elimination && gameIndex >= t.RoundControls[round].GamesPerRound {
+	if pairingMethod == realtime.PairingMethod_ELIMINATION && gameIndex >= t.RoundControls[round].GamesPerRound {
 		if gameIndex != len(pairing.Games) {
 			return fmt.Errorf("submitted tiebreaking result with invalid game index."+
 				" Player 1: %s, Player 2: %s, Round: %d, GameIndex: %d", p1, p2, round, gameIndex)
@@ -320,7 +322,7 @@ func (t *ClassicDivision) SubmitResult(round int,
 		p1Index = 1
 	}
 
-	if pairingMethod == entity.Elimination {
+	if pairingMethod == realtime.PairingMethod_ELIMINATION {
 		pairing.Games[gameIndex].Scores[p1Index] = p1Score
 		pairing.Games[gameIndex].Scores[1-p1Index] = p2Score
 		pairing.Games[gameIndex].Results[p1Index] = p1Result
@@ -361,19 +363,15 @@ func (t *ClassicDivision) SubmitResult(round int,
 	if roundComplete {
 		if !amend {
 			t.CurrentRound = round + 1
+			t.RoundStarted = false
 		}
 		if t.CurrentRound == round+1 &&
+			!t.RoundStarted &&
 			!finished &&
 			!pair.IsStandingsIndependent(t.RoundControls[t.CurrentRound].PairingMethod) {
-			resultsArePresent, err := t.ResultsArePresent(t.CurrentRound)
+			err = t.PairRound(t.CurrentRound)
 			if err != nil {
 				return err
-			}
-			if !resultsArePresent {
-				err = t.PairRound(t.CurrentRound)
-				if err != nil {
-					return err
-				}
 			}
 		}
 	}
@@ -408,7 +406,7 @@ func (t *ClassicDivision) PairRound(round int) error {
 
 	// Round Robin must have the same ordering for each round
 	var playerOrder []string
-	if pairingMethod == entity.RoundRobin {
+	if pairingMethod == realtime.PairingMethod_ROUND_ROBIN {
 		playerOrder = t.Players
 	} else {
 		playerOrder = make([]string, len(standings))
@@ -420,7 +418,7 @@ func (t *ClassicDivision) PairRound(round int) error {
 	for i := 0; i < len(playerOrder); i++ {
 		pm := &entity.PoolMember{Id: playerOrder[i]}
 		// Wins do not matter for RoundRobin pairings
-		if pairingMethod != entity.RoundRobin {
+		if pairingMethod != realtime.PairingMethod_ROUND_ROBIN {
 			pm.Wins = standings[i].Wins
 			pm.Draws = standings[i].Draws
 			pm.Spread = standings[i].Spread
@@ -472,7 +470,7 @@ func (t *ClassicDivision) PairRound(round int) error {
 			playerName := t.Players[playerIndex]
 			opponentName := t.Players[opponentIndex]
 
-			if pairingMethod == entity.Elimination && round > 0 && i >= l>>round {
+			if pairingMethod == realtime.PairingMethod_ELIMINATION && round > 0 && i >= l>>round {
 				roundPairings[playerIndex].Pairing = newEliminatedPairing(playerName, opponentName)
 			} else {
 				err = t.SetPairing(playerName, opponentName, round, false)
@@ -501,15 +499,7 @@ func (t *ClassicDivision) AddPlayers(persons *entity.TournamentPersons) error {
 	}
 
 	for i := 0; i < len(t.Matrix); i++ {
-		resultsArePresent := true
-		if i == t.CurrentRound {
-			presentResults, err := t.ResultsArePresent(i)
-			if err != nil {
-				return err
-			}
-			resultsArePresent = presentResults
-		}
-		if i < t.CurrentRound || i == t.CurrentRound && resultsArePresent {
+		if i < t.CurrentRound || (i == t.CurrentRound && t.RoundStarted) {
 			for person, _ := range persons.Persons {
 				// Set the pairing
 				// This also automatically submits a forfeit result
@@ -520,7 +510,7 @@ func (t *ClassicDivision) AddPlayers(persons *entity.TournamentPersons) error {
 			}
 		} else {
 			pm := t.RoundControls[i].PairingMethod
-			if pair.IsStandingsIndependent(pm) && pm != entity.Manual {
+			if (i == t.CurrentRound || pair.IsStandingsIndependent(pm)) && pm != realtime.PairingMethod_MANUAL {
 				err := t.PairRound(i)
 				if err != nil {
 					return err
@@ -559,18 +549,10 @@ func (t *ClassicDivision) RemovePlayers(persons *entity.TournamentPersons) error
 		t.PlayersProperties[t.PlayerIndexMap[person]].Removed = true
 	}
 
-	for i := 0; i < len(t.Matrix); i++ {
-		resultsArePresent := true
-		if i == t.CurrentRound {
-			presentResults, err := t.ResultsArePresent(i)
-			if err != nil {
-				return err
-			}
-			resultsArePresent = presentResults
-		}
-		if i > t.CurrentRound || (i == t.CurrentRound && !resultsArePresent) {
+	for i := t.CurrentRound; i < len(t.Matrix); i++ {
+		if i > t.CurrentRound || (i == t.CurrentRound && !t.RoundStarted) {
 			pm := t.RoundControls[i].PairingMethod
-			if (i == t.CurrentRound || pair.IsStandingsIndependent(pm)) && pm != entity.Manual {
+			if (i == t.CurrentRound || pair.IsStandingsIndependent(pm)) && pm != realtime.PairingMethod_MANUAL {
 				err := t.PairRound(i)
 				if err != nil {
 					return err
@@ -640,7 +622,7 @@ func (t *ClassicDivision) GetStandings(round int) ([]*entity.Standing, error) {
 	// index in the tournament matrix is used as a tie breaker
 	// for wins. In this way, The groupings are preserved across
 	// rounds.
-	if pairingMethod == entity.Elimination {
+	if pairingMethod == realtime.PairingMethod_ELIMINATION {
 		sort.Slice(records,
 			func(i, j int) bool {
 				if records[i].Wins == records[j].Wins {
@@ -691,20 +673,19 @@ func (t *ClassicDivision) IsRoundReady(round int) (bool, error) {
 	return true, nil
 }
 
-func (t *ClassicDivision) ResultsArePresent(round int) (bool, error) {
-	if round >= len(t.Matrix) || round < 0 {
-		return false, fmt.Errorf("round number out of range: %d", round)
+func (t *ClassicDivision) StartRound() error {
+	if t.RoundStarted {
+		return fmt.Errorf("round %d has already started", t.CurrentRound)
 	}
-	// Byes are not counted as "results", they are submitted automatically
-	// when pairings are made
-	for _, pri := range t.Matrix[round] {
-		if pri.Pairing != nil && pri.Pairing.Outcomes != nil &&
-			(isSubstantialResult(pri.Pairing.Outcomes[0]) ||
-				isSubstantialResult(pri.Pairing.Outcomes[1])) {
-			return true, nil
-		}
+	ready, err := t.IsRoundReady(t.CurrentRound)
+	if err != nil {
+		return err
 	}
-	return false, nil
+	if !ready {
+		return fmt.Errorf("round %d is not ready", t.CurrentRound)
+	}
+	t.RoundStarted = true
+	return nil
 }
 
 func (t *ClassicDivision) SetLastStarted(ls *realtime.TournamentRoundStarted) error {
@@ -745,12 +726,6 @@ func (t *ClassicDivision) SetReadyForGame(playerID, connID string, round, gameIn
 		}
 	}
 	return nil, nil
-}
-
-func isSubstantialResult(result realtime.TournamentGameResult) bool {
-	return result != realtime.TournamentGameResult_NO_RESULT &&
-		result != realtime.TournamentGameResult_BYE &&
-		result != realtime.TournamentGameResult_FORFEIT_LOSS
 }
 
 func (t *ClassicDivision) IsRoundComplete(round int) (bool, error) {
@@ -820,8 +795,8 @@ func (t *ClassicDivision) ToResponse() (*realtime.TournamentDivisionDataResponse
 }
 
 func convertRoundControlsToResponse(rc *entity.RoundControls) *realtime.RoundControl {
-	return &realtime.RoundControl{PairingMethod: int32(rc.PairingMethod),
-		FirstMethod:                 int32(rc.FirstMethod),
+	return &realtime.RoundControl{PairingMethod: rc.PairingMethod,
+		FirstMethod:                 rc.FirstMethod,
 		GamesPerRound:               int32(rc.GamesPerRound),
 		Round:                       int32(rc.Round),
 		Factor:                      int32(rc.Factor),
@@ -885,10 +860,10 @@ func newClassicPairing(t *ClassicDivision,
 	switchFirst := false
 	firstMethod := t.RoundControls[round].FirstMethod
 
-	if firstMethod != entity.ManualFirst {
+	if firstMethod != realtime.FirstMethod_MANUAL_FIRST {
 		playerOneFS := getPlayerFS(t, playerGoingFirst, round-1)
 		playerTwoFS := getPlayerFS(t, playerGoingSecond, round-1)
-		if firstMethod == entity.RandomFirst {
+		if firstMethod == realtime.FirstMethod_RANDOM_FIRST {
 			switchFirst = rand.Intn(2) == 0
 		} else { // AutomaticFirst
 			if playerOneFS[0] != playerTwoFS[0] {
