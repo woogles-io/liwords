@@ -24,6 +24,7 @@ goog.exportSymbol('proto.liwords.ClientGameplayEvent', null, global);
 goog.exportSymbol('proto.liwords.ClientGameplayEvent.EventType', null, global);
 goog.exportSymbol('proto.liwords.DeclineMatchRequest', null, global);
 goog.exportSymbol('proto.liwords.ErrorMessage', null, global);
+goog.exportSymbol('proto.liwords.FirstMethod', null, global);
 goog.exportSymbol('proto.liwords.FullTournamentDivisions', null, global);
 goog.exportSymbol('proto.liwords.GameDeletion', null, global);
 goog.exportSymbol('proto.liwords.GameEndReason', null, global);
@@ -40,6 +41,7 @@ goog.exportSymbol('proto.liwords.MatchRequests', null, global);
 goog.exportSymbol('proto.liwords.MatchUser', null, global);
 goog.exportSymbol('proto.liwords.MessageType', null, global);
 goog.exportSymbol('proto.liwords.NewGameEvent', null, global);
+goog.exportSymbol('proto.liwords.PairingMethod', null, global);
 goog.exportSymbol('proto.liwords.PlayerProperties', null, global);
 goog.exportSymbol('proto.liwords.PlayerRoundInfo', null, global);
 goog.exportSymbol('proto.liwords.PlayerStanding', null, global);
@@ -7508,10 +7510,11 @@ proto.liwords.RoundControl.toObject = function(includeInstance, msg) {
     gamesPerRound: jspb.Message.getFieldWithDefault(msg, 3, 0),
     round: jspb.Message.getFieldWithDefault(msg, 4, 0),
     factor: jspb.Message.getFieldWithDefault(msg, 5, 0),
-    maxRepeats: jspb.Message.getFieldWithDefault(msg, 6, 0),
-    allowOverMaxRepeats: jspb.Message.getBooleanFieldWithDefault(msg, 7, false),
-    repeatRelativeWeight: jspb.Message.getFieldWithDefault(msg, 8, 0),
-    winDifferenceRelativeWeight: jspb.Message.getFieldWithDefault(msg, 9, 0)
+    initialFontes: jspb.Message.getFieldWithDefault(msg, 6, 0),
+    maxRepeats: jspb.Message.getFieldWithDefault(msg, 7, 0),
+    allowOverMaxRepeats: jspb.Message.getBooleanFieldWithDefault(msg, 8, false),
+    repeatRelativeWeight: jspb.Message.getFieldWithDefault(msg, 9, 0),
+    winDifferenceRelativeWeight: jspb.Message.getFieldWithDefault(msg, 10, 0)
   };
 
   if (includeInstance) {
@@ -7549,11 +7552,11 @@ proto.liwords.RoundControl.deserializeBinaryFromReader = function(msg, reader) {
     var field = reader.getFieldNumber();
     switch (field) {
     case 1:
-      var value = /** @type {number} */ (reader.readInt32());
+      var value = /** @type {!proto.liwords.PairingMethod} */ (reader.readEnum());
       msg.setPairingMethod(value);
       break;
     case 2:
-      var value = /** @type {number} */ (reader.readInt32());
+      var value = /** @type {!proto.liwords.FirstMethod} */ (reader.readEnum());
       msg.setFirstMethod(value);
       break;
     case 3:
@@ -7570,17 +7573,21 @@ proto.liwords.RoundControl.deserializeBinaryFromReader = function(msg, reader) {
       break;
     case 6:
       var value = /** @type {number} */ (reader.readInt32());
-      msg.setMaxRepeats(value);
+      msg.setInitialFontes(value);
       break;
     case 7:
+      var value = /** @type {number} */ (reader.readInt32());
+      msg.setMaxRepeats(value);
+      break;
+    case 8:
       var value = /** @type {boolean} */ (reader.readBool());
       msg.setAllowOverMaxRepeats(value);
       break;
-    case 8:
+    case 9:
       var value = /** @type {number} */ (reader.readInt32());
       msg.setRepeatRelativeWeight(value);
       break;
-    case 9:
+    case 10:
       var value = /** @type {number} */ (reader.readInt32());
       msg.setWinDifferenceRelativeWeight(value);
       break;
@@ -7614,15 +7621,15 @@ proto.liwords.RoundControl.prototype.serializeBinary = function() {
 proto.liwords.RoundControl.serializeBinaryToWriter = function(message, writer) {
   var f = undefined;
   f = message.getPairingMethod();
-  if (f !== 0) {
-    writer.writeInt32(
+  if (f !== 0.0) {
+    writer.writeEnum(
       1,
       f
     );
   }
   f = message.getFirstMethod();
-  if (f !== 0) {
-    writer.writeInt32(
+  if (f !== 0.0) {
+    writer.writeEnum(
       2,
       f
     );
@@ -7648,31 +7655,38 @@ proto.liwords.RoundControl.serializeBinaryToWriter = function(message, writer) {
       f
     );
   }
-  f = message.getMaxRepeats();
+  f = message.getInitialFontes();
   if (f !== 0) {
     writer.writeInt32(
       6,
       f
     );
   }
+  f = message.getMaxRepeats();
+  if (f !== 0) {
+    writer.writeInt32(
+      7,
+      f
+    );
+  }
   f = message.getAllowOverMaxRepeats();
   if (f) {
     writer.writeBool(
-      7,
+      8,
       f
     );
   }
   f = message.getRepeatRelativeWeight();
   if (f !== 0) {
     writer.writeInt32(
-      8,
+      9,
       f
     );
   }
   f = message.getWinDifferenceRelativeWeight();
   if (f !== 0) {
     writer.writeInt32(
-      9,
+      10,
       f
     );
   }
@@ -7680,38 +7694,38 @@ proto.liwords.RoundControl.serializeBinaryToWriter = function(message, writer) {
 
 
 /**
- * optional int32 pairing_method = 1;
- * @return {number}
+ * optional PairingMethod pairing_method = 1;
+ * @return {!proto.liwords.PairingMethod}
  */
 proto.liwords.RoundControl.prototype.getPairingMethod = function() {
-  return /** @type {number} */ (jspb.Message.getFieldWithDefault(this, 1, 0));
+  return /** @type {!proto.liwords.PairingMethod} */ (jspb.Message.getFieldWithDefault(this, 1, 0));
 };
 
 
 /**
- * @param {number} value
+ * @param {!proto.liwords.PairingMethod} value
  * @return {!proto.liwords.RoundControl} returns this
  */
 proto.liwords.RoundControl.prototype.setPairingMethod = function(value) {
-  return jspb.Message.setProto3IntField(this, 1, value);
+  return jspb.Message.setProto3EnumField(this, 1, value);
 };
 
 
 /**
- * optional int32 first_method = 2;
- * @return {number}
+ * optional FirstMethod first_method = 2;
+ * @return {!proto.liwords.FirstMethod}
  */
 proto.liwords.RoundControl.prototype.getFirstMethod = function() {
-  return /** @type {number} */ (jspb.Message.getFieldWithDefault(this, 2, 0));
+  return /** @type {!proto.liwords.FirstMethod} */ (jspb.Message.getFieldWithDefault(this, 2, 0));
 };
 
 
 /**
- * @param {number} value
+ * @param {!proto.liwords.FirstMethod} value
  * @return {!proto.liwords.RoundControl} returns this
  */
 proto.liwords.RoundControl.prototype.setFirstMethod = function(value) {
-  return jspb.Message.setProto3IntField(this, 2, value);
+  return jspb.Message.setProto3EnumField(this, 2, value);
 };
 
 
@@ -7770,10 +7784,10 @@ proto.liwords.RoundControl.prototype.setFactor = function(value) {
 
 
 /**
- * optional int32 max_repeats = 6;
+ * optional int32 initial_fontes = 6;
  * @return {number}
  */
-proto.liwords.RoundControl.prototype.getMaxRepeats = function() {
+proto.liwords.RoundControl.prototype.getInitialFontes = function() {
   return /** @type {number} */ (jspb.Message.getFieldWithDefault(this, 6, 0));
 };
 
@@ -7782,17 +7796,35 @@ proto.liwords.RoundControl.prototype.getMaxRepeats = function() {
  * @param {number} value
  * @return {!proto.liwords.RoundControl} returns this
  */
-proto.liwords.RoundControl.prototype.setMaxRepeats = function(value) {
+proto.liwords.RoundControl.prototype.setInitialFontes = function(value) {
   return jspb.Message.setProto3IntField(this, 6, value);
 };
 
 
 /**
- * optional bool allow_over_max_repeats = 7;
+ * optional int32 max_repeats = 7;
+ * @return {number}
+ */
+proto.liwords.RoundControl.prototype.getMaxRepeats = function() {
+  return /** @type {number} */ (jspb.Message.getFieldWithDefault(this, 7, 0));
+};
+
+
+/**
+ * @param {number} value
+ * @return {!proto.liwords.RoundControl} returns this
+ */
+proto.liwords.RoundControl.prototype.setMaxRepeats = function(value) {
+  return jspb.Message.setProto3IntField(this, 7, value);
+};
+
+
+/**
+ * optional bool allow_over_max_repeats = 8;
  * @return {boolean}
  */
 proto.liwords.RoundControl.prototype.getAllowOverMaxRepeats = function() {
-  return /** @type {boolean} */ (jspb.Message.getBooleanFieldWithDefault(this, 7, false));
+  return /** @type {boolean} */ (jspb.Message.getBooleanFieldWithDefault(this, 8, false));
 };
 
 
@@ -7801,33 +7833,15 @@ proto.liwords.RoundControl.prototype.getAllowOverMaxRepeats = function() {
  * @return {!proto.liwords.RoundControl} returns this
  */
 proto.liwords.RoundControl.prototype.setAllowOverMaxRepeats = function(value) {
-  return jspb.Message.setProto3BooleanField(this, 7, value);
+  return jspb.Message.setProto3BooleanField(this, 8, value);
 };
 
 
 /**
- * optional int32 repeat_relative_weight = 8;
+ * optional int32 repeat_relative_weight = 9;
  * @return {number}
  */
 proto.liwords.RoundControl.prototype.getRepeatRelativeWeight = function() {
-  return /** @type {number} */ (jspb.Message.getFieldWithDefault(this, 8, 0));
-};
-
-
-/**
- * @param {number} value
- * @return {!proto.liwords.RoundControl} returns this
- */
-proto.liwords.RoundControl.prototype.setRepeatRelativeWeight = function(value) {
-  return jspb.Message.setProto3IntField(this, 8, value);
-};
-
-
-/**
- * optional int32 win_difference_relative_weight = 9;
- * @return {number}
- */
-proto.liwords.RoundControl.prototype.getWinDifferenceRelativeWeight = function() {
   return /** @type {number} */ (jspb.Message.getFieldWithDefault(this, 9, 0));
 };
 
@@ -7836,8 +7850,26 @@ proto.liwords.RoundControl.prototype.getWinDifferenceRelativeWeight = function()
  * @param {number} value
  * @return {!proto.liwords.RoundControl} returns this
  */
-proto.liwords.RoundControl.prototype.setWinDifferenceRelativeWeight = function(value) {
+proto.liwords.RoundControl.prototype.setRepeatRelativeWeight = function(value) {
   return jspb.Message.setProto3IntField(this, 9, value);
+};
+
+
+/**
+ * optional int32 win_difference_relative_weight = 10;
+ * @return {number}
+ */
+proto.liwords.RoundControl.prototype.getWinDifferenceRelativeWeight = function() {
+  return /** @type {number} */ (jspb.Message.getFieldWithDefault(this, 10, 0));
+};
+
+
+/**
+ * @param {number} value
+ * @return {!proto.liwords.RoundControl} returns this
+ */
+proto.liwords.RoundControl.prototype.setWinDifferenceRelativeWeight = function(value) {
+  return jspb.Message.setProto3IntField(this, 10, value);
 };
 
 
@@ -10580,6 +10612,30 @@ proto.liwords.TournamentGameResult = {
   FORFEIT_WIN: 5,
   FORFEIT_LOSS: 6,
   ELIMINATED: 7
+};
+
+/**
+ * @enum {number}
+ */
+proto.liwords.PairingMethod = {
+  RANDOM: 0,
+  ROUND_ROBIN: 1,
+  KING_OF_THE_HILL: 2,
+  ELIMINATION: 3,
+  FACTOR: 4,
+  INITIAL_FONTES: 5,
+  SWISS: 6,
+  QUICKPAIR: 7,
+  MANUAL: 8
+};
+
+/**
+ * @enum {number}
+ */
+proto.liwords.FirstMethod = {
+  MANUAL_FIRST: 0,
+  RANDOM_FIRST: 1,
+  AUTOMATIC_FIRST: 2
 };
 
 goog.object.extend(exports, proto.liwords);

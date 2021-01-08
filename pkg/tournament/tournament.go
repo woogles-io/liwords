@@ -209,16 +209,11 @@ func SetSingleRoundControls(ctx context.Context, ts TournamentStore, id string, 
 		return fmt.Errorf("division %s does not exist", division)
 	}
 
-	if t.IsStarted {
-		return errors.New("cannot change tournament controls after it has started")
+	if round < 0 || round >= len(divisionObject.Controls.RoundControls) {
+		return fmt.Errorf("round number %d out or range for division %s", round, division)
 	}
 
 	divisionObject.Controls.RoundControls[round] = controls
-
-	err = createDivisionManager(t, division)
-	if err != nil {
-		return err
-	}
 
 	err = ts.Set(ctx, t)
 	if err != nil {
@@ -348,7 +343,7 @@ func RemovePlayers(ctx context.Context, ts TournamentStore, id string, division 
 	return SendTournamentDivisionMessage(ctx, ts, id, division)
 }
 
-func SetPairing(ctx context.Context, ts TournamentStore, id string, division string, playerOneId string, playerTwoId string, round int) error {
+func SetPairings(ctx context.Context, ts TournamentStore, id string, division string, pairings []*pb.TournamentPairingRequest) error {
 
 	t, err := ts.Get(ctx, id)
 	if err != nil {
@@ -358,19 +353,21 @@ func SetPairing(ctx context.Context, ts TournamentStore, id string, division str
 	t.Lock()
 	defer t.Unlock()
 
-	divisionObject, ok := t.Divisions[division]
+	for _, pairing := range pairings {
+		divisionObject, ok := t.Divisions[division]
 
-	if !ok {
-		return fmt.Errorf("division %s does not exist", division)
-	}
+		if !ok {
+			return fmt.Errorf("division %s does not exist", division)
+		}
 
-	if divisionObject.DivisionManager == nil {
-		return fmt.Errorf("division %s does not have enough players or controls to set pairings", division)
-	}
+		if divisionObject.DivisionManager == nil {
+			return fmt.Errorf("division %s does not have enough players or controls to set pairings", division)
+		}
 
-	err = divisionObject.DivisionManager.SetPairing(playerOneId, playerTwoId, round, false)
-	if err != nil {
-		return err
+		err = divisionObject.DivisionManager.SetPairing(pairing.PlayerOneId, pairing.PlayerTwoId, int(pairing.Round), pairing.IsForfeit)
+		if err != nil {
+			return err
+		}
 	}
 
 	err = ts.Set(ctx, t)
@@ -538,6 +535,10 @@ func StartRoundCountdown(ctx context.Context, ts TournamentStore, id string,
 	}
 
 	if ready {
+		err = divisionObject.DivisionManager.StartRound()
+		if err != nil {
+			return err
+		}
 		// Send code that sends signal to all tournament players that backend
 		// is now accepting "ready" messages for this round.
 		eventChannel := ts.TournamentEventChan()
@@ -833,7 +834,6 @@ func removeTournamentPersons(ctx context.Context,
 			}
 		}
 	}
-
 
 	return ts.Set(ctx, t)
 }

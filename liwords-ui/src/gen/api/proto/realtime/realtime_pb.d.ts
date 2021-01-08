@@ -939,11 +939,11 @@ export namespace DeclineMatchRequest {
 }
 
 export class RoundControl extends jspb.Message {
-  getPairingMethod(): number;
-  setPairingMethod(value: number): void;
+  getPairingMethod(): PairingMethodMap[keyof PairingMethodMap];
+  setPairingMethod(value: PairingMethodMap[keyof PairingMethodMap]): void;
 
-  getFirstMethod(): number;
-  setFirstMethod(value: number): void;
+  getFirstMethod(): FirstMethodMap[keyof FirstMethodMap];
+  setFirstMethod(value: FirstMethodMap[keyof FirstMethodMap]): void;
 
   getGamesPerRound(): number;
   setGamesPerRound(value: number): void;
@@ -953,6 +953,9 @@ export class RoundControl extends jspb.Message {
 
   getFactor(): number;
   setFactor(value: number): void;
+
+  getInitialFontes(): number;
+  setInitialFontes(value: number): void;
 
   getMaxRepeats(): number;
   setMaxRepeats(value: number): void;
@@ -978,11 +981,12 @@ export class RoundControl extends jspb.Message {
 
 export namespace RoundControl {
   export type AsObject = {
-    pairingMethod: number,
-    firstMethod: number,
+    pairingMethod: PairingMethodMap[keyof PairingMethodMap],
+    firstMethod: FirstMethodMap[keyof FirstMethodMap],
     gamesPerRound: number,
     round: number,
     factor: number,
+    initialFontes: number,
     maxRepeats: number,
     allowOverMaxRepeats: boolean,
     repeatRelativeWeight: number,
@@ -1434,4 +1438,26 @@ export interface TournamentGameResultMap {
 }
 
 export const TournamentGameResult: TournamentGameResultMap;
+
+export interface PairingMethodMap {
+  RANDOM: 0;
+  ROUND_ROBIN: 1;
+  KING_OF_THE_HILL: 2;
+  ELIMINATION: 3;
+  FACTOR: 4;
+  INITIAL_FONTES: 5;
+  SWISS: 6;
+  QUICKPAIR: 7;
+  MANUAL: 8;
+}
+
+export const PairingMethod: PairingMethodMap;
+
+export interface FirstMethodMap {
+  MANUAL_FIRST: 0;
+  RANDOM_FIRST: 1;
+  AUTOMATIC_FIRST: 2;
+}
+
+export const FirstMethod: FirstMethodMap;
 

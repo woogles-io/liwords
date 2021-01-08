@@ -377,17 +377,37 @@ enum TournamentGameResult {
   ELIMINATED = 7;
 }
 
+enum PairingMethod {
+  RANDOM = 0;
+  ROUND_ROBIN = 1;
+  KING_OF_THE_HILL = 2;
+  ELIMINATION = 3;
+  FACTOR = 4;
+  INITIAL_FONTES = 5;
+  SWISS = 6;
+  QUICKPAIR = 7;
+  MANUAL = 8;
+}
+
+enum FirstMethod {
+  MANUAL_FIRST = 0;
+  RANDOM_FIRST = 1;
+  AUTOMATIC_FIRST = 2;
+}
+
 message RoundControl {
-  int32 pairing_method = 1;
-  int32 first_method = 2;
+  PairingMethod pairing_method = 1;
+  FirstMethod first_method = 2;
   int32 games_per_round = 3;
   int32 round = 4;
   int32 factor = 5;
-  int32 max_repeats = 6;
-  bool allow_over_max_repeats = 7;
-  int32 repeat_relative_weight = 8;
-  int32 win_difference_relative_weight = 9;
+  int32 initial_fontes = 6;
+  int32 max_repeats = 7;
+  bool allow_over_max_repeats = 8;
+  int32 repeat_relative_weight = 9;
+  int32 win_difference_relative_weight = 10;
 }
+
 
 message TournamentControls {
   liwords.GameRequest game_request = 1;

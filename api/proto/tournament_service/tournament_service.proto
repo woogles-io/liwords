@@ -37,31 +37,18 @@ message SetTournamentMetadataRequest {
   TType type = 5;
 }
 
-message SingleRoundControls {
-  int32 pairing_method = 1;
-  int32 first_method = 2;
-  int32 games_per_round = 3;
-  int32 round = 4;
-  int32 factor = 5;
-  int32 initial_fontes = 6;
-  int32 max_repeats = 7;
-  bool allow_over_max_repeats = 8;
-  int32 repeat_relative_weight = 9;
-  int32 win_difference_relative_weight = 10;
-}
-
 message SingleRoundControlsRequest {
   string id = 1;
   string division = 2;
   int32 round = 3;
-  SingleRoundControls round_controls = 4;
+  liwords.RoundControl round_controls = 4;
 }
 
 message TournamentControlsRequest {
   string id = 1;
   string division = 2;
   liwords.GameRequest game_request = 3;
-  repeated SingleRoundControls round_controls = 4;
+  repeated liwords.RoundControl round_controls = 4;
   google.protobuf.Timestamp start_time = 5;
   bool auto_start = 6;
 }
@@ -91,11 +78,16 @@ message TournamentDivisionRequest {
 }
 
 message TournamentPairingRequest {
+  string player_one_id = 1;
+  string player_two_id = 2;
+  int32 round = 3;
+  bool is_forfeit = 4;
+}
+
+message TournamentPairingsRequest {
   string id = 1;
   string division = 2;
-  string player_one_id = 3;
-  string player_two_id = 4;
-  int32 round = 5;
+  repeated TournamentPairingRequest pairings = 3;
 }
 
 // TournamentResultOverrideRequest is sent when a score needs to be edited
@@ -176,7 +168,7 @@ service TournamentService {
   rpc RemoveDivision(TournamentDivisionRequest) returns (TournamentResponse);
   rpc AddPlayers(TournamentPersons) returns (TournamentResponse);
   rpc RemovePlayers(TournamentPersons) returns (TournamentResponse);
-  rpc SetPairing(TournamentPairingRequest) returns (TournamentResponse);
+  rpc SetPairing(TournamentPairingsRequest) returns (TournamentResponse);
   rpc SetResult(TournamentResultOverrideRequest) returns (TournamentResponse);
   rpc StartRoundCountdown(TournamentStartRoundCountdownRequest)
       returns (TournamentResponse);
