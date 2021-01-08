@@ -238,10 +238,6 @@ const GameControls = React.memo((props: Props) => {
         >
           <Button
             danger
-            onDoubleClick={() => {
-              props.onResign();
-              setCurrentPopUp('NONE');
-            }}
             onClick={() => {
               if (currentPopUp === 'RESIGN') {
                 props.onResign();
@@ -271,10 +267,6 @@ const GameControls = React.memo((props: Props) => {
         >
           <Button
             ref={passButton}
-            onDoubleClick={() => {
-              props.onPass();
-              setCurrentPopUp('NONE');
-            }}
             onClick={() => {
               if (currentPopUp === 'PASS') {
                 props.onPass();
@@ -311,10 +303,6 @@ const GameControls = React.memo((props: Props) => {
         >
           <Button
             ref={challengeButton}
-            onDoubleClick={() => {
-              props.onChallenge();
-              setCurrentPopUp('NONE');
-            }}
             onClick={() => {
               if (currentPopUp === 'CHALLENGE') {
                 props.onChallenge();
