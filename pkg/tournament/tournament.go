@@ -79,7 +79,7 @@ func NewTournament(ctx context.Context,
 	tournamentStore TournamentStore,
 	name string,
 	description string,
-	directors *entity.TournamentPersons,
+	directors *realtime.TournamentPersons,
 	ttype entity.CompetitionType,
 	parent string,
 	slug string,
@@ -193,7 +193,7 @@ func SetTournamentMetadata(ctx context.Context, ts TournamentStore, id string, n
 	return SendTournamentMessage(ctx, ts, id)
 }
 
-func SetSingleRoundControls(ctx context.Context, ts TournamentStore, id string, division string, round int, controls *entity.RoundControls) error {
+func SetSingleRoundControls(ctx context.Context, ts TournamentStore, id string, division string, round int, controls *realtime.RoundControl) error {
 
 	t, err := ts.Get(ctx, id)
 	if err != nil {
@@ -222,7 +222,7 @@ func SetSingleRoundControls(ctx context.Context, ts TournamentStore, id string, 
 	return SendTournamentDivisionMessage(ctx, ts, id, division)
 }
 
-func SetTournamentControls(ctx context.Context, ts TournamentStore, id string, division string, controls *entity.TournamentControls) error {
+func SetTournamentControls(ctx context.Context, ts TournamentStore, id string, division string, controls *realtime.TournamentControls) error {
 
 	t, err := ts.Get(ctx, id)
 	if err != nil {
@@ -311,7 +311,7 @@ func RemoveDivision(ctx context.Context, ts TournamentStore, id string, division
 	return SendTournamentDivisionMessage(ctx, ts, id, division)
 }
 
-func AddDirectors(ctx context.Context, ts TournamentStore, id string, directors *entity.TournamentPersons) error {
+func AddDirectors(ctx context.Context, ts TournamentStore, id string, directors *realtime.TournamentPersons) error {
 	err := addTournamentPersons(ctx, ts, id, "", directors, false)
 	if err != nil {
 		return err
@@ -319,7 +319,7 @@ func AddDirectors(ctx context.Context, ts TournamentStore, id string, directors 
 	return SendTournamentMessage(ctx, ts, id)
 }
 
-func RemoveDirectors(ctx context.Context, ts TournamentStore, id string, directors *entity.TournamentPersons) error {
+func RemoveDirectors(ctx context.Context, ts TournamentStore, id string, directors *realtime.TournamentPersons) error {
 	err := removeTournamentPersons(ctx, ts, id, "", directors, false)
 	if err != nil {
 		return err
@@ -327,7 +327,7 @@ func RemoveDirectors(ctx context.Context, ts TournamentStore, id string, directo
 	return SendTournamentMessage(ctx, ts, id)
 }
 
-func AddPlayers(ctx context.Context, ts TournamentStore, id string, division string, players *entity.TournamentPersons) error {
+func AddPlayers(ctx context.Context, ts TournamentStore, id string, division string, players *realtime.TournamentPersons) error {
 	err := addTournamentPersons(ctx, ts, id, division, players, true)
 	if err != nil {
 		return err
@@ -335,7 +335,7 @@ func AddPlayers(ctx context.Context, ts TournamentStore, id string, division str
 	return SendTournamentDivisionMessage(ctx, ts, id, division)
 }
 
-func RemovePlayers(ctx context.Context, ts TournamentStore, id string, division string, players *entity.TournamentPersons) error {
+func RemovePlayers(ctx context.Context, ts TournamentStore, id string, division string, players *realtime.TournamentPersons) error {
 	err := removeTournamentPersons(ctx, ts, id, division, players, true)
 	if err != nil {
 		return err
@@ -672,16 +672,11 @@ func TournamentDataResponse(ctx context.Context, ts TournamentStore, id string) 
 		return nil, err
 	}
 
-	directors := []string{}
-	for key, _ := range t.Directors.Persons {
-		directors = append(directors, key)
-	}
-
 	return &realtime.TournamentDataResponse{Id: t.UUID,
 		Name:              t.Name,
 		Description:       t.Description,
 		ExecutiveDirector: t.ExecutiveDirector,
-		Directors:         directors,
+		Directors:         t.Directors,
 		IsStarted:         t.IsStarted}, nil
 }
 
@@ -715,15 +710,15 @@ func TournamentDivisionDataResponse(ctx context.Context, ts TournamentStore,
 }
 
 func emptyDivision() *entity.TournamentDivision {
-	return &entity.TournamentDivision{Players: &entity.TournamentPersons{Persons: map[string]int{}},
-		Controls: &entity.TournamentControls{}, DivisionManager: nil}
+	return &entity.TournamentDivision{Players: &realtime.TournamentPersons{Persons: make(map[string]int32)},
+		Controls: &realtime.TournamentControls{}, DivisionManager: nil}
 }
 
 func addTournamentPersons(ctx context.Context,
 	ts TournamentStore,
 	id string,
 	division string,
-	persons *entity.TournamentPersons,
+	persons *realtime.TournamentPersons,
 	isPlayers bool) error {
 
 	t, err := ts.Get(ctx, id)
@@ -740,7 +735,7 @@ func addTournamentPersons(ctx context.Context,
 		return fmt.Errorf("division %s does not exist", division)
 	}
 
-	var personsMap map[string]int
+	var personsMap map[string]int32
 	if isPlayers {
 		personsMap = divisionObject.Players.Persons
 	} else {
@@ -783,7 +778,7 @@ func removeTournamentPersons(ctx context.Context,
 	ts TournamentStore,
 	id string,
 	division string,
-	persons *entity.TournamentPersons,
+	persons *realtime.TournamentPersons,
 	isPlayers bool) error {
 	t, err := ts.Get(ctx, id)
 	if err != nil {
@@ -799,7 +794,7 @@ func removeTournamentPersons(ctx context.Context,
 		return fmt.Errorf("division %s does not exist", division)
 	}
 
-	var personsMap map[string]int
+	var personsMap map[string]int32
 	if isPlayers {
 		personsMap = divisionObject.Players.Persons
 	} else {
@@ -856,11 +851,11 @@ func createDivisionManager(t *entity.Tournament, division string) error {
 	return nil
 }
 
-func rankPlayers(players *entity.TournamentPersons) []string {
+func rankPlayers(players *realtime.TournamentPersons) []string {
 	// Sort players by descending int (which is probably rating)
 	ratedPlayers := []RatedPlayer{}
 	for key, value := range players.Persons {
-		ratedPlayers = append(ratedPlayers, RatedPlayer{Name: key, Rating: value})
+		ratedPlayers = append(ratedPlayers, RatedPlayer{Name: key, Rating: int(value)})
 	}
 	sort.Sort(PlayerSorter(ratedPlayers))
 	rankedPlayers := []string{}
@@ -870,7 +865,7 @@ func rankPlayers(players *entity.TournamentPersons) []string {
 	return rankedPlayers
 }
 
-func getExecutiveDirector(directors *entity.TournamentPersons) (string, error) {
+func getExecutiveDirector(directors *realtime.TournamentPersons) (string, error) {
 	err := errors.New("tournament must have exactly one executive director")
 	ed := ""
 	for k, v := range directors.Persons {
@@ -888,9 +883,9 @@ func getExecutiveDirector(directors *entity.TournamentPersons) (string, error) {
 	return ed, nil
 }
 
-func executiveDirectorExists(directors map[string]int, ed string) bool {
-	for key, value := range directors {
-		if key == ed || value == 0 {
+func executiveDirectorExists(directors map[string]int32, ed string) bool {
+	for uid, n := range directors {
+		if uid == ed || n == 0 {
 			return true
 		}
 	}

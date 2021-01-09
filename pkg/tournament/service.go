@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/golang/protobuf/ptypes"
 	"github.com/lithammer/shortuuid"
 	"github.com/rs/zerolog/log"
 	"github.com/twitchtv/twirp"
@@ -77,31 +76,20 @@ func (ts *TournamentService) SetSingleRoundControls(ctx context.Context, req *pb
 	if err != nil {
 		return nil, err
 	}
-	newControls := convertSingleRoundControls(req.RoundControls)
-
-	err = SetSingleRoundControls(ctx, ts.tournamentStore, req.Id, req.Division, int(req.Round), newControls)
+	err = SetSingleRoundControls(ctx, ts.tournamentStore, req.Id, req.Division, int(req.Round), req.RoundControls)
 	if err != nil {
 		return nil, twirp.NewError(twirp.InvalidArgument, err.Error())
 	}
 	return &pb.TournamentResponse{}, nil
 }
 
-func (ts *TournamentService) SetTournamentControls(ctx context.Context, req *pb.TournamentControlsRequest) (*pb.TournamentResponse, error) {
+func (ts *TournamentService) SetTournamentControls(ctx context.Context, req *realtime.TournamentControls) (*pb.TournamentResponse, error) {
 	err := authenticateDirector(ctx, ts, req.Id, false)
 	if err != nil {
 		return nil, err
 	}
-	time, err := ptypes.Timestamp(req.StartTime)
-	if err != nil {
-		return nil, twirp.InternalErrorWith(err)
-	}
 
-	newControls := &entity.TournamentControls{GameRequest: req.GameRequest,
-		RoundControls: convertRoundControls(req.RoundControls),
-		AutoStart:     req.AutoStart,
-		StartTime:     time}
-
-	err = SetTournamentControls(ctx, ts.tournamentStore, req.Id, req.Division, newControls)
+	err = SetTournamentControls(ctx, ts.tournamentStore, req.Id, req.Division, req)
 
 	if err != nil {
 		return nil, twirp.NewError(twirp.InvalidArgument, err.Error())
@@ -118,20 +106,16 @@ func (ts *TournamentService) NewTournament(ctx context.Context, req *pb.NewTourn
 	if len(req.DirectorUsernames) < 1 {
 		return nil, twirp.NewError(twirp.InvalidArgument, "need at least one director id")
 	}
-	persons := map[string]int{}
+	directors := &realtime.TournamentPersons{
+		Persons: make(map[string]int32),
+	}
 	for idx := range req.DirectorUsernames {
 		username := req.DirectorUsernames[idx]
 		u, err := ts.userStore.Get(ctx, username)
 		if err != nil {
 			return nil, err
 		}
-		personID := u.UUID + ":" + u.Username
-		// 1st director is the executive director.
-		persons[personID] = idx
-	}
-
-	directors := &entity.TournamentPersons{
-		Persons: persons,
+		directors.Persons[u.UUID+":"+u.Username] = int32(idx)
 	}
 
 	log.Debug().Interface("directors", directors).Msg("directors")
@@ -248,65 +232,49 @@ func (ts *TournamentService) GetTournamentMetadata(ctx context.Context, req *pb.
 
 }
 
-func (ts *TournamentService) AddDirectors(ctx context.Context, req *pb.TournamentPersons) (*pb.TournamentResponse, error) {
+func (ts *TournamentService) AddDirectors(ctx context.Context, req *realtime.TournamentPersons) (*pb.TournamentResponse, error) {
 	err := authenticateDirector(ctx, ts, req.Id, true)
 	if err != nil {
 		return nil, err
 	}
-	m, err := convertPersonsToStringMap(ctx, req, ts.userStore)
-	if err != nil {
-		return nil, err
-	}
 
-	err = AddDirectors(ctx, ts.tournamentStore, req.Id, m)
+	err = AddDirectors(ctx, ts.tournamentStore, req.Id, req)
 	if err != nil {
 		return nil, twirp.NewError(twirp.InvalidArgument, err.Error())
 	}
 	return &pb.TournamentResponse{}, nil
 }
-func (ts *TournamentService) RemoveDirectors(ctx context.Context, req *pb.TournamentPersons) (*pb.TournamentResponse, error) {
+func (ts *TournamentService) RemoveDirectors(ctx context.Context, req *realtime.TournamentPersons) (*pb.TournamentResponse, error) {
 	err := authenticateDirector(ctx, ts, req.Id, true)
 	if err != nil {
 		return nil, err
 	}
-	m, err := convertPersonsToStringMap(ctx, req, ts.userStore)
-	if err != nil {
-		return nil, err
-	}
 
-	err = RemoveDirectors(ctx, ts.tournamentStore, req.Id, m)
+	err = RemoveDirectors(ctx, ts.tournamentStore, req.Id, req)
 	if err != nil {
 		return nil, twirp.NewError(twirp.InvalidArgument, err.Error())
 	}
 	return &pb.TournamentResponse{}, nil
 }
-func (ts *TournamentService) AddPlayers(ctx context.Context, req *pb.TournamentPersons) (*pb.TournamentResponse, error) {
+func (ts *TournamentService) AddPlayers(ctx context.Context, req *realtime.TournamentPersons) (*pb.TournamentResponse, error) {
 	err := authenticateDirector(ctx, ts, req.Id, false)
 	if err != nil {
 		return nil, err
 	}
-	m, err := convertPersonsToStringMap(ctx, req, ts.userStore)
-	if err != nil {
-		return nil, err
-	}
 
-	err = AddPlayers(ctx, ts.tournamentStore, req.Id, req.Division, m)
+	err = AddPlayers(ctx, ts.tournamentStore, req.Id, req.Division, req)
 	if err != nil {
 		return nil, twirp.NewError(twirp.InvalidArgument, err.Error())
 	}
 	return &pb.TournamentResponse{}, nil
 }
-func (ts *TournamentService) RemovePlayers(ctx context.Context, req *pb.TournamentPersons) (*pb.TournamentResponse, error) {
+func (ts *TournamentService) RemovePlayers(ctx context.Context, req *realtime.TournamentPersons) (*pb.TournamentResponse, error) {
 	err := authenticateDirector(ctx, ts, req.Id, false)
 	if err != nil {
 		return nil, err
 	}
-	m, err := convertPersonsToStringMap(ctx, req, ts.userStore)
-	if err != nil {
-		return nil, err
-	}
 
-	err = RemovePlayers(ctx, ts.tournamentStore, req.Id, req.Division, m)
+	err = RemovePlayers(ctx, ts.tournamentStore, req.Id, req.Division, req)
 	if err != nil {
 		return nil, twirp.NewError(twirp.InvalidArgument, err.Error())
 	}
@@ -450,41 +418,6 @@ func authenticateDirector(ctx context.Context, ts *TournamentService, id string,
 	}
 
 	return nil
-}
-
-func convertPersonsToStringMap(ctx context.Context, req *pb.TournamentPersons, us user.Store) (*entity.TournamentPersons, error) {
-	personsMap := map[string]int{}
-	for _, person := range req.Persons {
-
-		u, err := us.Get(ctx, person.PersonId)
-		if err != nil {
-			return nil, err
-		}
-
-		personsMap[u.UUID+":"+person.PersonId] = int(person.PersonInt)
-	}
-	return &entity.TournamentPersons{Persons: personsMap}, nil
-}
-
-func convertSingleRoundControls(reqRC *realtime.RoundControl) *entity.RoundControls {
-	return &entity.RoundControls{FirstMethod: reqRC.FirstMethod,
-		PairingMethod:               reqRC.PairingMethod,
-		GamesPerRound:               int(reqRC.GamesPerRound),
-		Round:                       int(reqRC.Round),
-		Factor:                      int(reqRC.Factor),
-		InitialFontes:               int(reqRC.InitialFontes),
-		MaxRepeats:                  int(reqRC.MaxRepeats),
-		AllowOverMaxRepeats:         reqRC.AllowOverMaxRepeats,
-		RepeatRelativeWeight:        int(reqRC.RepeatRelativeWeight),
-		WinDifferenceRelativeWeight: int(reqRC.WinDifferenceRelativeWeight)}
-}
-
-func convertRoundControls(reqRoundControls []*realtime.RoundControl) []*entity.RoundControls {
-	rcs := []*entity.RoundControls{}
-	for i := 0; i < len(reqRoundControls); i++ {
-		rcs = append(rcs, convertSingleRoundControls(reqRoundControls[i]))
-	}
-	return rcs
 }
 
 func (ts *TournamentService) CreateClubSession(ctx context.Context, req *pb.NewClubSessionRequest) (*pb.ClubSessionResponse, error) {

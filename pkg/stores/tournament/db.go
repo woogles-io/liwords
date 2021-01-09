@@ -82,7 +82,7 @@ func (s *DBStore) dbObjToEntity(tm *tournament) (*entity.Tournament, error) {
 		}
 	}
 
-	var directors entity.TournamentPersons
+	var directors realtime.TournamentPersons
 	err = json.Unmarshal(tm.Directors, &directors)
 	if err != nil {
 		return nil, err

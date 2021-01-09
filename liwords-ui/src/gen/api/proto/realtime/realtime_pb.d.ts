@@ -938,6 +938,33 @@ export namespace DeclineMatchRequest {
   }
 }
 
+export class TournamentPersons extends jspb.Message {
+  getId(): string;
+  setId(value: string): void;
+
+  getDivision(): string;
+  setDivision(value: string): void;
+
+  getPersonsMap(): jspb.Map<string, number>;
+  clearPersonsMap(): void;
+  serializeBinary(): Uint8Array;
+  toObject(includeInstance?: boolean): TournamentPersons.AsObject;
+  static toObject(includeInstance: boolean, msg: TournamentPersons): TournamentPersons.AsObject;
+  static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+  static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+  static serializeBinaryToWriter(message: TournamentPersons, writer: jspb.BinaryWriter): void;
+  static deserializeBinary(bytes: Uint8Array): TournamentPersons;
+  static deserializeBinaryFromReader(message: TournamentPersons, reader: jspb.BinaryReader): TournamentPersons;
+}
+
+export namespace TournamentPersons {
+  export type AsObject = {
+    id: string,
+    division: string,
+    personsMap: Array<[string, number]>,
+  }
+}
+
 export class RoundControl extends jspb.Message {
   getPairingMethod(): PairingMethodMap[keyof PairingMethodMap];
   setPairingMethod(value: PairingMethodMap[keyof PairingMethodMap]): void;
@@ -995,6 +1022,12 @@ export namespace RoundControl {
 }
 
 export class TournamentControls extends jspb.Message {
+  getId(): string;
+  setId(value: string): void;
+
+  getDivision(): string;
+  setDivision(value: string): void;
+
   hasGameRequest(): boolean;
   clearGameRequest(): void;
   getGameRequest(): GameRequest | undefined;
@@ -1008,6 +1041,14 @@ export class TournamentControls extends jspb.Message {
   getType(): number;
   setType(value: number): void;
 
+  hasStartTime(): boolean;
+  clearStartTime(): void;
+  getStartTime(): google_protobuf_timestamp_pb.Timestamp | undefined;
+  setStartTime(value?: google_protobuf_timestamp_pb.Timestamp): void;
+
+  getAutoStart(): boolean;
+  setAutoStart(value: boolean): void;
+
   serializeBinary(): Uint8Array;
   toObject(includeInstance?: boolean): TournamentControls.AsObject;
   static toObject(includeInstance: boolean, msg: TournamentControls): TournamentControls.AsObject;
@@ -1020,9 +1061,13 @@ export class TournamentControls extends jspb.Message {
 
 export namespace TournamentControls {
   export type AsObject = {
+    id: string,
+    division: string,
     gameRequest?: GameRequest.AsObject,
     roundControlsList: Array<RoundControl.AsObject>,
     type: number,
+    startTime?: google_protobuf_timestamp_pb.Timestamp.AsObject,
+    autoStart: boolean,
   }
 }
 
@@ -1134,6 +1179,9 @@ export class PlayerStanding extends jspb.Message {
   getSpread(): number;
   setSpread(value: number): void;
 
+  getRemoved(): boolean;
+  setRemoved(value: boolean): void;
+
   serializeBinary(): Uint8Array;
   toObject(includeInstance?: boolean): PlayerStanding.AsObject;
   static toObject(includeInstance: boolean, msg: PlayerStanding): PlayerStanding.AsObject;
@@ -1151,6 +1199,7 @@ export namespace PlayerStanding {
     losses: number,
     draws: number,
     spread: number,
+    removed: boolean,
   }
 }
 
@@ -1193,11 +1242,8 @@ export class TournamentDivisionDataResponse extends jspb.Message {
   getControls(): TournamentControls | undefined;
   setControls(value?: TournamentControls): void;
 
-  hasDivision(): boolean;
-  clearDivision(): void;
-  getDivision(): ClassicDivision | undefined;
-  setDivision(value?: ClassicDivision): void;
-
+  getDivisionMap(): jspb.Map<string, PlayerRoundInfo>;
+  clearDivisionMap(): void;
   getCurrentRound(): number;
   setCurrentRound(value: number): void;
 
@@ -1227,7 +1273,7 @@ export namespace TournamentDivisionDataResponse {
     divisionId: string,
     playersList: Array<string>,
     controls?: TournamentControls.AsObject,
-    division?: ClassicDivision.AsObject,
+    divisionMap: Array<[string, PlayerRoundInfo.AsObject]>,
     currentRound: number,
     standingsList: Array<PlayerStanding.AsObject>,
     playersPropertiesList: Array<PlayerProperties.AsObject>,
@@ -1266,10 +1312,10 @@ export class TournamentDataResponse extends jspb.Message {
   getExecutiveDirector(): string;
   setExecutiveDirector(value: string): void;
 
-  clearDirectorsList(): void;
-  getDirectorsList(): Array<string>;
-  setDirectorsList(value: Array<string>): void;
-  addDirectors(value: string, index?: number): string;
+  hasDirectors(): boolean;
+  clearDirectors(): void;
+  getDirectors(): TournamentPersons | undefined;
+  setDirectors(value?: TournamentPersons): void;
 
   getIsStarted(): boolean;
   setIsStarted(value: boolean): void;
@@ -1295,7 +1341,7 @@ export namespace TournamentDataResponse {
     name: string,
     description: string,
     executiveDirector: string,
-    directorsList: Array<string>,
+    directors?: TournamentPersons.AsObject,
     isStarted: boolean,
     startTime?: google_protobuf_timestamp_pb.Timestamp.AsObject,
   }
