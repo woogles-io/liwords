@@ -641,7 +641,7 @@ func TestTradeoffs(t *testing.T) {
 	fmt.Print("      ")
 	for i := 0; i < loseSpreadCap; i++ {
 		loseSpread = float64(10 * (i + 1))
-		fmt.Printf("%4d      |", int(loseSpread))
+		fmt.Printf("%4d    |", int(loseSpread))
 	}
 	fmt.Println()
 	for i := 0; i < winSpreadCap; i++ {
@@ -653,7 +653,7 @@ func TestTradeoffs(t *testing.T) {
 			winResult  = 0.5 + WinBoost + ((0.5 - WinBoost) * math.Min(1.0, winSpread  / float64(SpreadScaling)))
 			loseResult = 0.5 - WinBoost - ((0.5 - WinBoost) * math.Min(1.0, loseSpread / float64(SpreadScaling)))
 			zeroEV := loseResult / (winResult - loseResult)
-			fmt.Printf(" %7.4f%% |", zeroEV * 100)
+			fmt.Printf("%7.4f%%|", zeroEV * 100)
 		}
 		fmt.Println()
 	}
