@@ -19,52 +19,55 @@ import {
   useTournamentStoreContext,
 } from './store';
 import {
-  MessageType,
-  SeekRequest,
-  ErrorMessage,
-  ServerMessage,
-  NewGameEvent,
-  GameHistoryRefresher,
-  MessageTypeMap,
-  MatchRequest,
-  SoughtGameProcessEvent,
-  ClientGameplayEvent,
-  ServerGameplayEvent,
-  GameEndedEvent,
-  ServerChallengeResultEvent,
-  SeekRequests,
-  TimedOut,
-  GameDeletion,
-  MatchRequests,
-  DeclineMatchRequest,
   ChatMessage,
-  UserPresence,
-  UserPresences,
-  ReadyForGame,
+  ClientGameplayEvent,
+  DeclineMatchRequest,
+  ErrorMessage,
+  FullTournamentDivisions,
+  GameDeletion,
+  GameEndedEvent,
+  GameHistoryRefresher,
   LagMeasurement,
+  MatchRequest,
   MatchRequestCancellation,
-  TournamentGameEndedEvent,
+  MatchRequests,
+  MessageType,
+  MessageTypeMap,
+  NewGameEvent,
+  ReadyForGame,
+  ReadyForTournamentGame,
   RematchStartedEvent,
+  SeekRequest,
+  SeekRequests,
+  ServerChallengeResultEvent,
+  ServerGameplayEvent,
+  ServerMessage,
+  SoughtGameProcessEvent,
+  TimedOut,
   TournamentDataResponse,
   TournamentDivisionDataResponse,
   TournamentDivisionDeletedResponse,
-  FullTournamentDivisions,
-  ReadyForTournamentGame,
+  TournamentGameEndedEvent,
   TournamentRoundStarted,
+  UserPresence,
+  UserPresences,
 } from '../gen/api/proto/realtime/realtime_pb';
 import { ActionType } from '../actions/actions';
 import { endGameMessage } from './end_of_game';
 import {
+  GameInfoResponseToActiveGame,
   SeekRequestToSoughtGame,
   SoughtGame,
-  GameInfoResponseToActiveGame,
 } from './reducers/lobby_reducer';
 import { BoopSounds } from '../sound/boop';
 import {
   GameInfoResponse,
   GameInfoResponses,
 } from '../gen/api/proto/game_service/game_service_pb';
-import { defaultCompetitorState } from './reducers/tournament_reducer';
+import {
+  defaultCompetitorState,
+  TourneyStatus,
+} from './reducers/tournament_reducer';
 
 // Feature flag.
 export const enableShowSocket =
@@ -621,6 +624,8 @@ export const useOnSocketMsg = () => {
                 division: registeredDivision[1].divisionId,
                 // currentRound should be the user-readable 1 based version
                 currentRound: registeredDivision[1].currentRound + 1,
+                // TODO: set this correctly
+                // status: TourneyStatus.PRETOURNEY,
               });
             } else {
               setCompetitorContext(defaultCompetitorState);
