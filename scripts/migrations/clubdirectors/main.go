@@ -12,6 +12,8 @@ import (
 	"github.com/domino14/liwords/pkg/stores/game"
 	"github.com/domino14/liwords/pkg/stores/tournament"
 	"github.com/domino14/liwords/pkg/stores/user"
+	
+	realtime "github.com/domino14/liwords/rpc/api/proto/realtime"
 )
 
 func main() {
@@ -53,8 +55,8 @@ func main() {
 		}
 		log.Info().Str("tid", tid).Msg("migrating")
 		directors := t.Directors
-		newDirectors := &entity.TournamentPersons{
-			Persons: make(map[string]int),
+		newDirectors := &realtime.TournamentPersons{
+			Persons: make(map[string]int32),
 		}
 		for uuid, v := range directors.Persons {
 
