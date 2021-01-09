@@ -619,7 +619,8 @@ export const useOnSocketMsg = () => {
               setCompetitorContext({
                 isRegistered: true,
                 division: registeredDivision[1].divisionId,
-                currentRound: registeredDivision[1].currentRound,
+                // currentRound should be the user-readable 1 based version
+                currentRound: registeredDivision[1].currentRound + 1,
               });
             } else {
               setCompetitorContext(defaultCompetitorState);

@@ -1,6 +1,18 @@
 @import '../base';
+
 .ant-card.competitor-status {
   height: 64px;
+  .ant-card-body {
+    padding: 12px 18px;
+    display: flex;
+    font-weight: 700;
+    line-height: 1.4em;
+    align-items: center;
+    .anticon {
+      font-size: 21px;
+      margin-right: 12px;
+    }
+  }
 }
 
 .chat-area .ant-card.competitor-status {
