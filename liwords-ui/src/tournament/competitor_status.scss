@@ -1,0 +1,11 @@
+@import '../base';
+.ant-card.competitor-status {
+  height: 64px;
+}
+
+.chat-area .ant-card.competitor-status {
+  display: none;
+  @media (min-width: $screen-laptop-min) {
+    display: block;
+  }
+}

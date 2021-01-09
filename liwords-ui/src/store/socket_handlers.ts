@@ -64,6 +64,7 @@ import {
   GameInfoResponse,
   GameInfoResponses,
 } from '../gen/api/proto/game_service/game_service_pb';
+import { defaultCompetitorState } from '../tournament/state';
 
 // Feature flag.
 export const enableShowSocket =
@@ -141,7 +142,10 @@ export const useOnSocketMsg = () => {
   const { setGameEndMessage } = useGameEndMessageStoreContext();
   const { setCurrentLagMs } = useLagStoreContext();
   const { dispatchLobbyContext } = useLobbyStoreContext();
-  const { tournamentContext } = useTournamentStoreContext();
+  const {
+    tournamentContext,
+    setCompetitorContext,
+  } = useTournamentStoreContext();
   const { loginState } = useLoginStateStoreContext();
   const { setPresence, addPresences } = usePresenceStoreContext();
   const { setRematchRequest } = useRematchRequestStoreContext();
@@ -602,6 +606,26 @@ export const useOnSocketMsg = () => {
             });
             break;
           }
+
+          case MessageType.TOURNAMENT_FULL_DIVISIONS_MESSAGE: {
+            const divisionsMap = (parsedMsg as FullTournamentDivisions).toObject()
+              .divisionsMap;
+            const registeredDivision = divisionsMap.find(
+              (d: [string, TournamentDivisionDataResponse.AsObject]) => {
+                return d[1].playersList.includes(loginState.userID);
+              }
+            );
+            if (registeredDivision) {
+              setCompetitorContext({
+                isRegistered: true,
+                division: registeredDivision[1].divisionId,
+                currentRound: registeredDivision[1].currentRound,
+              });
+            } else {
+              setCompetitorContext(defaultCompetitorState);
+            }
+            break;
+          }
         }
       });
     },
@@ -615,6 +639,7 @@ export const useOnSocketMsg = () => {
       gameContext,
       loginState,
       setCurrentLagMs,
+      setCompetitorContext,
       setGameEndMessage,
       setPresence,
       setRematchRequest,

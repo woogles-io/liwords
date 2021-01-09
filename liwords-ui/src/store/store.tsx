@@ -28,7 +28,12 @@ import { LoginState, LoginStateReducer } from './login_state';
 import { EphemeralTile } from '../utils/cwgame/common';
 import { pageSize } from '../tournament/recent_game';
 import { ActiveChatChannels } from '../gen/api/proto/user_service/user_service_pb';
-import { defaultTournamentState, TournamentState } from '../tournament/state';
+import {
+  CompetitorState,
+  defaultCompetitorState,
+  defaultTournamentState,
+  TournamentState,
+} from '../tournament/state';
 
 export enum ChatEntityType {
   UserChat,
@@ -116,6 +121,8 @@ type PresenceStoreData = {
 type TournamentStoreData = {
   tournamentContext: TournamentState;
   setTournamentContext: React.Dispatch<React.SetStateAction<TournamentState>>;
+  competitorContext: CompetitorState;
+  setCompetitorContext: React.Dispatch<React.SetStateAction<CompetitorState>>;
 };
 
 type GameEndMessageStoreData = {
@@ -258,6 +265,8 @@ const PresenceContext = createContext<PresenceStoreData>({
 const TournamentContext = createContext<TournamentStoreData>({
   tournamentContext: defaultTournamentState,
   setTournamentContext: defaultFunction,
+  competitorContext: defaultCompetitorState,
+  setCompetitorContext: defaultFunction,
 });
 
 const [GameEndMessageContext, ExaminableGameEndMessageContext] = Array.from(
@@ -590,6 +599,9 @@ const RealStore = ({ children, ...props }: Props) => {
   const [tournamentContext, setTournamentContext] = useState(
     defaultTournamentState
   );
+  const [competitorContext, setCompetitorContext] = useState(
+    defaultCompetitorState
+  );
 
   const [currentLagMs, setCurrentLagMs] = useState(NaN);
 
@@ -716,8 +728,15 @@ const RealStore = ({ children, ...props }: Props) => {
     () => ({
       tournamentContext,
       setTournamentContext,
+      competitorContext,
+      setCompetitorContext,
     }),
-    [tournamentContext, setTournamentContext]
+    [
+      tournamentContext,
+      setTournamentContext,
+      competitorContext,
+      setCompetitorContext,
+    ]
   );
   const lagStore = useMemo(
     () => ({
