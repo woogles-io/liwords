@@ -46,8 +46,9 @@ import { endGameMessageFromGameInfo } from '../store/end_of_game';
 import { singularCount } from '../utils/plural';
 import { Notepad, NotepadContextProvider } from './notepad';
 import { Analyzer, AnalyzerContextProvider } from './analyzer';
-import { TournamentMetadata } from '../tournament/state';
 import { sortTiles } from '../store/constants';
+import { ActionType } from '../actions/actions';
+import { TournamentMetadata } from '../store/reducers/tournament_reducer';
 
 type Props = {
   sendSocketMsg: (msg: Uint8Array) => void;
@@ -168,7 +169,7 @@ export const Table = React.memo((props: Props) => {
   const { username, userID } = loginState;
   const {
     tournamentContext,
-    setTournamentContext,
+    dispatchTournamentContext,
   } = useTournamentStoreContext();
   const [playerNames, setPlayerNames] = useState(new Array<string>());
   const { sendSocketMsg } = props;
@@ -278,11 +279,12 @@ export const Table = React.memo((props: Props) => {
         }
       )
       .then((resp) => {
-        setTournamentContext({
-          metadata: resp.data,
+        dispatchTournamentContext({
+          actionType: ActionType.SetTourneyMetadata,
+          payload: resp.data,
         });
       });
-  }, [gameInfo.tournament_id, setTournamentContext]);
+  }, [gameInfo.tournament_id, dispatchTournamentContext]);
 
   useEffect(() => {
     // Request streak info only if a few conditions are true.

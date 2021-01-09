@@ -10050,7 +10050,8 @@ proto.liwords.FullTournamentDivisions.prototype.toObject = function(opt_includeI
  */
 proto.liwords.FullTournamentDivisions.toObject = function(includeInstance, msg) {
   var f, obj = {
-    divisionsMap: (f = msg.getDivisionsMap()) ? f.toObject(includeInstance, proto.liwords.TournamentDivisionDataResponse.toObject) : []
+    divisionsMap: (f = msg.getDivisionsMap()) ? f.toObject(includeInstance, proto.liwords.TournamentDivisionDataResponse.toObject) : [],
+    started: jspb.Message.getBooleanFieldWithDefault(msg, 2, false)
   };
 
   if (includeInstance) {
@@ -10093,6 +10094,10 @@ proto.liwords.FullTournamentDivisions.deserializeBinaryFromReader = function(msg
         jspb.Map.deserializeBinary(message, reader, jspb.BinaryReader.prototype.readString, jspb.BinaryReader.prototype.readMessage, proto.liwords.TournamentDivisionDataResponse.deserializeBinaryFromReader, "", new proto.liwords.TournamentDivisionDataResponse());
          });
       break;
+    case 2:
+      var value = /** @type {boolean} */ (reader.readBool());
+      msg.setStarted(value);
+      break;
     default:
       reader.skipField();
       break;
@@ -10126,6 +10131,13 @@ proto.liwords.FullTournamentDivisions.serializeBinaryToWriter = function(message
   if (f && f.getLength() > 0) {
     f.serializeBinary(1, writer, jspb.BinaryWriter.prototype.writeString, jspb.BinaryWriter.prototype.writeMessage, proto.liwords.TournamentDivisionDataResponse.serializeBinaryToWriter);
   }
+  f = message.getStarted();
+  if (f) {
+    writer.writeBool(
+      2,
+      f
+    );
+  }
 };
 
 
@@ -10149,6 +10161,24 @@ proto.liwords.FullTournamentDivisions.prototype.getDivisionsMap = function(opt_n
 proto.liwords.FullTournamentDivisions.prototype.clearDivisionsMap = function() {
   this.getDivisionsMap().clear();
   return this;};
+
+
+/**
+ * optional bool started = 2;
+ * @return {boolean}
+ */
+proto.liwords.FullTournamentDivisions.prototype.getStarted = function() {
+  return /** @type {boolean} */ (jspb.Message.getBooleanFieldWithDefault(this, 2, false));
+};
+
+
+/**
+ * @param {boolean} value
+ * @return {!proto.liwords.FullTournamentDivisions} returns this
+ */
+proto.liwords.FullTournamentDivisions.prototype.setStarted = function(value) {
+  return jspb.Message.setProto3BooleanField(this, 2, value);
+};
 
 
 

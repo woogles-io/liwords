@@ -12,7 +12,6 @@ import {
   useTournamentStoreContext,
 } from '../store/store';
 import { useMountedState } from '../utils/mounted';
-import { TournamentMetadata } from './state';
 import { toAPIUrl } from '../api/api';
 import { TopBar } from '../topbar/topbar';
 import { singularCount } from '../utils/plural';
@@ -21,6 +20,8 @@ import { TournamentInfo } from './tournament_info';
 import { sendAccept, sendSeek } from '../lobby/sought_game_interactions';
 import { SoughtGame } from '../store/reducers/lobby_reducer';
 import { ActionsPanel } from './actions_panel';
+import { ActionType } from '../actions/actions';
+import { TournamentMetadata } from '../store/reducers/tournament_reducer';
 
 type Props = {
   sendSocketMsg: (msg: Uint8Array) => void;
@@ -34,7 +35,7 @@ export const TournamentRoom = (props: Props) => {
   const { loginState } = useLoginStateStoreContext();
   const {
     tournamentContext,
-    setTournamentContext,
+    dispatchTournamentContext,
   } = useTournamentStoreContext();
   const { loggedIn, username } = loginState;
   const { sendSocketMsg } = props;
@@ -68,8 +69,9 @@ export const TournamentRoom = (props: Props) => {
         }
       )
       .then((resp) => {
-        setTournamentContext({
-          metadata: resp.data,
+        dispatchTournamentContext({
+          actionType: ActionType.SetTourneyMetadata,
+          payload: resp.data,
         });
       })
       .catch((err) => {
@@ -79,7 +81,7 @@ export const TournamentRoom = (props: Props) => {
         });
         setBadTournament(true);
       });
-  }, [path, partialSlug, setTournamentContext]);
+  }, [path, partialSlug, dispatchTournamentContext]);
 
   const tournamentID = useMemo(() => {
     return tournamentContext.metadata.id;

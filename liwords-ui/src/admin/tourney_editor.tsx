@@ -19,8 +19,8 @@ import '../lobby/lobby.scss';
 import 'antd/dist/antd.css';
 import ReactMarkdown from 'react-markdown';
 import { useMountedState } from '../utils/mounted';
-import { TournamentMetadata } from '../tournament/state';
 import { toAPIUrl } from '../api/api';
+import { TournamentMetadata } from '../store/reducers/tournament_reducer';
 
 type DProps = {
   markdown: string;

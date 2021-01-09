@@ -739,6 +739,7 @@ func (b *Bus) sendTournamentContext(ctx context.Context, realm, userID, connID s
 	}
 	msg := &pb.FullTournamentDivisions{
 		Divisions: make(map[string]*pb.TournamentDivisionDataResponse),
+		Started:   t.IsStarted,
 	}
 
 	for name := range t.Divisions {

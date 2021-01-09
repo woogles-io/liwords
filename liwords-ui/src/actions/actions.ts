@@ -21,6 +21,8 @@ export enum ActionType {
   AddTourneyGameResults,
   SetTourneyGamesOffset,
 
+  SetTourneyMetadata,
+
   /* game actions */
   AddGameEvent,
   RefreshTurns,

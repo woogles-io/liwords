@@ -238,7 +238,7 @@ func (ts *TournamentService) AddDirectors(ctx context.Context, req *realtime.Tou
 		return nil, err
 	}
 
-	err = AddDirectors(ctx, ts.tournamentStore, req.Id, req)
+	err = AddDirectors(ctx, ts.tournamentStore, ts.userStore, req.Id, req)
 	if err != nil {
 		return nil, twirp.NewError(twirp.InvalidArgument, err.Error())
 	}
@@ -250,7 +250,7 @@ func (ts *TournamentService) RemoveDirectors(ctx context.Context, req *realtime.
 		return nil, err
 	}
 
-	err = RemoveDirectors(ctx, ts.tournamentStore, req.Id, req)
+	err = RemoveDirectors(ctx, ts.tournamentStore, ts.userStore, req.Id, req)
 	if err != nil {
 		return nil, twirp.NewError(twirp.InvalidArgument, err.Error())
 	}
@@ -262,7 +262,7 @@ func (ts *TournamentService) AddPlayers(ctx context.Context, req *realtime.Tourn
 		return nil, err
 	}
 
-	err = AddPlayers(ctx, ts.tournamentStore, req.Id, req.Division, req)
+	err = AddPlayers(ctx, ts.tournamentStore, ts.userStore, req.Id, req.Division, req)
 	if err != nil {
 		return nil, twirp.NewError(twirp.InvalidArgument, err.Error())
 	}
@@ -274,7 +274,7 @@ func (ts *TournamentService) RemovePlayers(ctx context.Context, req *realtime.To
 		return nil, err
 	}
 
-	err = RemovePlayers(ctx, ts.tournamentStore, req.Id, req.Division, req)
+	err = RemovePlayers(ctx, ts.tournamentStore, ts.userStore, req.Id, req.Division, req)
 	if err != nil {
 		return nil, twirp.NewError(twirp.InvalidArgument, err.Error())
 	}
@@ -408,6 +408,7 @@ func authenticateDirector(ctx context.Context, ts *TournamentService, id string,
 		return twirp.InternalErrorWith(err)
 	}
 	fullID := user.UUID + ":" + user.Username
+	log.Debug().Str("fullID", fullID).Interface("persons", t.Directors.Persons).Msg("authenticating-director")
 
 	if authenticateExecutive && fullID != t.ExecutiveDirector {
 		return twirp.NewError(twirp.Unauthenticated, "this user is not the authorized executive director for this event")
