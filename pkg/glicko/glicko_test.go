@@ -652,7 +652,7 @@ func TestTradeoffs(t *testing.T) {
 			loseSpread = float64(10 * (j + 1))
 			winResult  = 0.5 + WinBoost + ((0.5 - WinBoost) * math.Min(1.0, winSpread  / float64(SpreadScaling)))
 			loseResult = 0.5 - WinBoost - ((0.5 - WinBoost) * math.Min(1.0, loseSpread / float64(SpreadScaling)))
-			zeroEV := loseResult / (winResult - loseResult)
+			zeroEV := loseResult / (winResult + loseResult)
 			fmt.Printf("%7.4f%%|", zeroEV * 100)
 		}
 		fmt.Println()
