@@ -44,32 +44,10 @@ message SingleRoundControlsRequest {
   liwords.RoundControl round_controls = 4;
 }
 
-message TournamentControlsRequest {
-  string id = 1;
-  string division = 2;
-  liwords.GameRequest game_request = 3;
-  repeated liwords.RoundControl round_controls = 4;
-  google.protobuf.Timestamp start_time = 5;
-  bool auto_start = 6;
-}
-
 message PairRoundRequest {
   string id = 1;
   string division = 2;
   int32 round = 3;
-}
-
-message TournamentPerson {
-  // since person_id comes via a front end API request, this should be
-  // the username of the player.
-  string person_id = 1;
-  int32 person_int = 2;
-}
-
-message TournamentPersons {
-  string id = 1;
-  string division = 2;
-  repeated TournamentPerson persons = 3;
 }
 
 message TournamentDivisionRequest {
@@ -160,14 +138,14 @@ service TournamentService {
   rpc PairRound(PairRoundRequest) returns (TournamentResponse);
   rpc SetSingleRoundControls(SingleRoundControlsRequest)
       returns (TournamentResponse);
-  rpc SetTournamentControls(TournamentControlsRequest)
+  rpc SetTournamentControls(liwords.TournamentControls)
       returns (TournamentResponse);
-  rpc AddDirectors(TournamentPersons) returns (TournamentResponse);
-  rpc RemoveDirectors(TournamentPersons) returns (TournamentResponse);
+  rpc AddDirectors(liwords.TournamentPersons) returns (TournamentResponse);
+  rpc RemoveDirectors(liwords.TournamentPersons) returns (TournamentResponse);
   rpc AddDivision(TournamentDivisionRequest) returns (TournamentResponse);
   rpc RemoveDivision(TournamentDivisionRequest) returns (TournamentResponse);
-  rpc AddPlayers(TournamentPersons) returns (TournamentResponse);
-  rpc RemovePlayers(TournamentPersons) returns (TournamentResponse);
+  rpc AddPlayers(liwords.TournamentPersons) returns (TournamentResponse);
+  rpc RemovePlayers(liwords.TournamentPersons) returns (TournamentResponse);
   rpc SetPairing(TournamentPairingsRequest) returns (TournamentResponse);
   rpc SetResult(TournamentResultOverrideRequest) returns (TournamentResponse);
   rpc StartRoundCountdown(TournamentStartRoundCountdownRequest)

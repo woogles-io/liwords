@@ -395,6 +395,12 @@ enum FirstMethod {
   AUTOMATIC_FIRST = 2;
 }
 
+message TournamentPersons {
+  string id = 1;
+  string division = 2;
+  map<string, int32> persons = 3;
+}
+
 message RoundControl {
   PairingMethod pairing_method = 1;
   FirstMethod first_method = 2;
@@ -408,11 +414,14 @@ message RoundControl {
   int32 win_difference_relative_weight = 10;
 }
 
-
 message TournamentControls {
-  liwords.GameRequest game_request = 1;
-  repeated RoundControl round_controls = 2;
-  int32 type = 3;
+  string id = 1;
+  string division = 2;
+  liwords.GameRequest game_request = 3;
+  repeated RoundControl round_controls = 4;
+  int32 type = 5;
+  google.protobuf.Timestamp start_time = 6;
+  bool auto_start = 7;
 }
 
 message TournamentGame {
@@ -438,6 +447,7 @@ message PlayerStanding {
   int32 losses = 3;
   int32 draws = 4;
   int32 spread = 5;
+  bool removed = 6;
 }
 
 message ClassicDivision { repeated PlayerRoundInfo matrix = 1; }
@@ -450,7 +460,7 @@ message TournamentDivisionDataResponse {
   // In the future we will add different
   // types of tournament divisions and only
   // one will be non nil
-  ClassicDivision division = 5;
+  map<string, PlayerRoundInfo> division = 5;
   int32 current_round = 6;
   repeated PlayerStanding standings = 7;
   repeated PlayerProperties players_properties = 8;
@@ -465,7 +475,7 @@ message TournamentDataResponse {
   string name = 2;
   string description = 3;
   string executive_director = 4;
-  repeated string directors = 5;
+  TournamentPersons directors = 5;
   bool is_started = 6;
   google.protobuf.Timestamp start_time = 7;
 }

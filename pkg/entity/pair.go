@@ -1,5 +1,9 @@
 package entity
 
+import (
+	realtime "github.com/domino14/liwords/rpc/api/proto/realtime"
+)
+
 // These weights were made very large
 // out of an abundance of caution so that
 // any single win weight outweighs the sum
@@ -22,6 +26,6 @@ type PoolMember struct {
 
 type UnpairedPoolMembers struct {
 	PoolMembers   []*PoolMember
-	RoundControls *RoundControls
+	RoundControls *realtime.RoundControl
 	Repeats       map[string]int
 }

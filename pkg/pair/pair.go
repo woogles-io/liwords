@@ -75,7 +75,7 @@ func pairRandom(members *entity.UnpairedPoolMembers) ([]int, error) {
 }
 
 func pairRoundRobin(members *entity.UnpairedPoolMembers) ([]int, error) {
-	return getRoundRobinPairings(len(members.PoolMembers), members.RoundControls.Round)
+	return getRoundRobinPairings(len(members.PoolMembers), int(members.RoundControls.Round))
 }
 
 func pairKingOfTheHill(members *entity.UnpairedPoolMembers) ([]int, error) {
@@ -96,7 +96,7 @@ func pairFactor(members *entity.UnpairedPoolMembers) ([]int, error) {
 
 	// Remaining players are paired using the swiss-like min weight matching
 
-	factorMembers, swissMembers, err := splitMembers(members, members.RoundControls.Factor*2)
+	factorMembers, swissMembers, err := splitMembers(members, int(members.RoundControls.Factor)*2)
 	if err != nil {
 		return nil, err
 	}
@@ -105,7 +105,7 @@ func pairFactor(members *entity.UnpairedPoolMembers) ([]int, error) {
 	swissPairings := []int{}
 
 	if len(factorMembers.PoolMembers) > 0 {
-		factorPairings, err = getFactorPairings(len(factorMembers.PoolMembers), members.RoundControls.Factor)
+		factorPairings, err = getFactorPairings(len(factorMembers.PoolMembers), int(members.RoundControls.Factor))
 		if err != nil {
 			return nil, err
 		}
@@ -128,8 +128,8 @@ func pairInitialFontes(members *entity.UnpairedPoolMembers) ([]int, error) {
 	}
 
 	numberOfPlayers := len(members.PoolMembers)
-	numberOfNtiles := members.RoundControls.InitialFontes + 1
-	round := members.RoundControls.Round
+	numberOfNtiles := int(members.RoundControls.InitialFontes) + 1
+	round := int(members.RoundControls.Round)
 	// This function was created to make testing easier
 	return getInitialFontesPairings(numberOfPlayers, numberOfNtiles, round)
 }
@@ -179,12 +179,12 @@ func minWeightMatching(members *entity.UnpairedPoolMembers) ([]int, error) {
 	numberOfMembers := len(members.PoolMembers)
 	edges := []*matching.Edge{}
 
-	if members.RoundControls.RepeatRelativeWeight > entity.MaxRelativeWeight {
-		members.RoundControls.RepeatRelativeWeight = entity.MaxRelativeWeight
+	if int(members.RoundControls.RepeatRelativeWeight) > entity.MaxRelativeWeight {
+		members.RoundControls.RepeatRelativeWeight = int32(entity.MaxRelativeWeight)
 	}
 
-	if members.RoundControls.WinDifferenceRelativeWeight > entity.MaxRelativeWeight {
-		members.RoundControls.WinDifferenceRelativeWeight = entity.MaxRelativeWeight
+	if int(members.RoundControls.WinDifferenceRelativeWeight) > entity.MaxRelativeWeight {
+		members.RoundControls.WinDifferenceRelativeWeight = int32(entity.MaxRelativeWeight)
 	}
 
 	for i := 0; i < numberOfMembers; i++ {
@@ -278,7 +278,7 @@ func weighSwiss(members *entity.UnpairedPoolMembers, i int, j int) int64 {
 	spreadDiffWeight := -int64(utilities.Abs(p1.Spread - p2.Spread))
 
 	// Add one to account for the pairing of p1 and p2 for this round
-	repeatsOverMax := utilities.Max(0, members.Repeats[GetRepeatKey(p1.Id, p2.Id)]+1-members.RoundControls.MaxRepeats)
+	repeatsOverMax := utilities.Max(0, members.Repeats[GetRepeatKey(p1.Id, p2.Id)]+1-int(members.RoundControls.MaxRepeats))
 	var repeatWeight int64 = 0
 	if members.RoundControls.AllowOverMaxRepeats {
 		// Since wins were scaled, repeats have to be scaled up
