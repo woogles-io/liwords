@@ -8,7 +8,6 @@ import (
 	"github.com/rs/zerolog/log"
 
 	"github.com/domino14/liwords/pkg/config"
-	"github.com/domino14/liwords/pkg/entity"
 	"github.com/domino14/liwords/pkg/stores/game"
 	"github.com/domino14/liwords/pkg/stores/tournament"
 	"github.com/domino14/liwords/pkg/stores/user"
