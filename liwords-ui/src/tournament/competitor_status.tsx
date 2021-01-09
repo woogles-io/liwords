@@ -3,7 +3,7 @@ import { Card } from 'antd';
 import { useTournamentStoreContext } from '../store/store';
 import { ClockCircleOutlined } from '@ant-design/icons';
 import './competitor_status.scss';
-import { TourneyStatus } from './state';
+import { TourneyStatus } from '../store/reducers/tournament_reducer';
 
 export const CompetitorStatus = () => {
   const { tournamentContext, competitorContext } = useTournamentStoreContext();

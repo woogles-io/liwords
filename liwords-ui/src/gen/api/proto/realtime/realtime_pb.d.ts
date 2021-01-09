@@ -1283,6 +1283,9 @@ export namespace TournamentDivisionDataResponse {
 export class FullTournamentDivisions extends jspb.Message {
   getDivisionsMap(): jspb.Map<string, TournamentDivisionDataResponse>;
   clearDivisionsMap(): void;
+  getStarted(): boolean;
+  setStarted(value: boolean): void;
+
   serializeBinary(): Uint8Array;
   toObject(includeInstance?: boolean): FullTournamentDivisions.AsObject;
   static toObject(includeInstance: boolean, msg: FullTournamentDivisions): FullTournamentDivisions.AsObject;
@@ -1296,6 +1299,7 @@ export class FullTournamentDivisions extends jspb.Message {
 export namespace FullTournamentDivisions {
   export type AsObject = {
     divisionsMap: Array<[string, TournamentDivisionDataResponse.AsObject]>,
+    started: boolean,
   }
 }
 

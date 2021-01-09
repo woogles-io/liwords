@@ -32,8 +32,9 @@ import {
   CompetitorState,
   defaultCompetitorState,
   defaultTournamentState,
+  TournamentReducer,
   TournamentState,
-} from '../tournament/state';
+} from './reducers/tournament_reducer';
 
 export enum ChatEntityType {
   UserChat,
@@ -120,7 +121,7 @@ type PresenceStoreData = {
 
 type TournamentStoreData = {
   tournamentContext: TournamentState;
-  setTournamentContext: React.Dispatch<React.SetStateAction<TournamentState>>;
+  dispatchTournamentContext: (action: Action) => void;
   competitorContext: CompetitorState;
   setCompetitorContext: React.Dispatch<React.SetStateAction<CompetitorState>>;
 };
@@ -264,7 +265,7 @@ const PresenceContext = createContext<PresenceStoreData>({
 
 const TournamentContext = createContext<TournamentStoreData>({
   tournamentContext: defaultTournamentState,
-  setTournamentContext: defaultFunction,
+  dispatchTournamentContext: defaultFunction,
   competitorContext: defaultCompetitorState,
   setCompetitorContext: defaultFunction,
 });
@@ -602,6 +603,11 @@ const RealStore = ({ children, ...props }: Props) => {
   const [competitorContext, setCompetitorContext] = useState(
     defaultCompetitorState
   );
+  const dispatchTournamentContext = useCallback(
+    (action) =>
+      setTournamentContext((state) => TournamentReducer(state, action)),
+    []
+  );
 
   const [currentLagMs, setCurrentLagMs] = useState(NaN);
 
@@ -727,16 +733,12 @@ const RealStore = ({ children, ...props }: Props) => {
   const tournamentStateStore = useMemo(
     () => ({
       tournamentContext,
-      setTournamentContext,
+      dispatchTournamentContext,
       competitorContext,
       setCompetitorContext,
     }),
-    [
-      tournamentContext,
-      setTournamentContext,
-      competitorContext,
-      setCompetitorContext,
-    ]
+    [tournamentContext, dispatchTournamentContext, competitorContext,
+      setCompetitorContext,]
   );
   const lagStore = useMemo(
     () => ({

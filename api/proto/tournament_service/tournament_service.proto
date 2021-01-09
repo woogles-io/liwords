@@ -140,11 +140,15 @@ service TournamentService {
       returns (TournamentResponse);
   rpc SetTournamentControls(liwords.TournamentControls)
       returns (TournamentResponse);
+  // Input to AddDirectors should be director usernames.
   rpc AddDirectors(liwords.TournamentPersons) returns (TournamentResponse);
+  // Input to RemoveDirectors should be director usernames.
   rpc RemoveDirectors(liwords.TournamentPersons) returns (TournamentResponse);
   rpc AddDivision(TournamentDivisionRequest) returns (TournamentResponse);
   rpc RemoveDivision(TournamentDivisionRequest) returns (TournamentResponse);
+  // Input to AddPlayers should be player usernames
   rpc AddPlayers(liwords.TournamentPersons) returns (TournamentResponse);
+  // Input to RemovePlayers should be player usernames
   rpc RemovePlayers(liwords.TournamentPersons) returns (TournamentResponse);
   rpc SetPairing(TournamentPairingsRequest) returns (TournamentResponse);
   rpc SetResult(TournamentResultOverrideRequest) returns (TournamentResponse);

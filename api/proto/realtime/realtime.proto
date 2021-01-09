@@ -430,13 +430,11 @@ message TournamentGame {
   liwords.GameEndReason game_end_reason = 3;
 }
 
-message PlayerProperties {
-  bool removed = 1;
-}
+message PlayerProperties { bool removed = 1; }
 
 message PlayerRoundInfo {
   repeated string players = 1;
-  repeated TournamentGame games = 2;
+  repeated TournamentGame games = 2; // can be a list, for elimination tourneys
   repeated liwords.TournamentGameResult outcomes = 3;
   repeated string ready_states = 4;
 }
@@ -468,6 +466,7 @@ message TournamentDivisionDataResponse {
 
 message FullTournamentDivisions {
   map<string, TournamentDivisionDataResponse> divisions = 1;
+  bool started = 2;
 }
 
 message TournamentDataResponse {

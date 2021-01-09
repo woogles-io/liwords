@@ -64,7 +64,7 @@ import {
   GameInfoResponse,
   GameInfoResponses,
 } from '../gen/api/proto/game_service/game_service_pb';
-import { defaultCompetitorState } from '../tournament/state';
+import { defaultCompetitorState } from './reducers/tournament_reducer';
 
 // Feature flag.
 export const enableShowSocket =

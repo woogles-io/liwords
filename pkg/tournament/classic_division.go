@@ -701,6 +701,9 @@ func (t *ClassicDivision) SetReadyForGame(playerID, connID string, round, gameIn
 	if unready {
 		toSet = ""
 	}
+	if t.CurrentRound != round {
+		return nil, errors.New("wrong round number")
+	}
 	// gameIndex is ignored for ClassicDivision?
 	foundPairing := -1
 	for pairingIndex, pairing := range t.Matrix[round] {

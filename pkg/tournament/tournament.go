@@ -311,32 +311,32 @@ func RemoveDivision(ctx context.Context, ts TournamentStore, id string, division
 	return SendTournamentDivisionMessage(ctx, ts, id, division)
 }
 
-func AddDirectors(ctx context.Context, ts TournamentStore, id string, directors *realtime.TournamentPersons) error {
-	err := addTournamentPersons(ctx, ts, id, "", directors, false)
+func AddDirectors(ctx context.Context, ts TournamentStore, us user.Store, id string, directors *realtime.TournamentPersons) error {
+	err := addTournamentPersons(ctx, ts, us, id, "", directors, false)
 	if err != nil {
 		return err
 	}
 	return SendTournamentMessage(ctx, ts, id)
 }
 
-func RemoveDirectors(ctx context.Context, ts TournamentStore, id string, directors *realtime.TournamentPersons) error {
-	err := removeTournamentPersons(ctx, ts, id, "", directors, false)
+func RemoveDirectors(ctx context.Context, ts TournamentStore, us user.Store, id string, directors *realtime.TournamentPersons) error {
+	err := removeTournamentPersons(ctx, ts, us, id, "", directors, false)
 	if err != nil {
 		return err
 	}
 	return SendTournamentMessage(ctx, ts, id)
 }
 
-func AddPlayers(ctx context.Context, ts TournamentStore, id string, division string, players *realtime.TournamentPersons) error {
-	err := addTournamentPersons(ctx, ts, id, division, players, true)
+func AddPlayers(ctx context.Context, ts TournamentStore, us user.Store, id string, division string, players *realtime.TournamentPersons) error {
+	err := addTournamentPersons(ctx, ts, us, id, division, players, true)
 	if err != nil {
 		return err
 	}
 	return SendTournamentDivisionMessage(ctx, ts, id, division)
 }
 
-func RemovePlayers(ctx context.Context, ts TournamentStore, id string, division string, players *realtime.TournamentPersons) error {
-	err := removeTournamentPersons(ctx, ts, id, division, players, true)
+func RemovePlayers(ctx context.Context, ts TournamentStore, us user.Store, id string, division string, players *realtime.TournamentPersons) error {
+	err := removeTournamentPersons(ctx, ts, us, id, division, players, true)
 	if err != nil {
 		return err
 	}
@@ -411,7 +411,7 @@ func SetResult(ctx context.Context,
 	}
 	log.Debug().Bool("testMode", testMode).Msg("test-mode")
 	// if t.Type == entity.TypeClub {
-	if !testMode {
+	if !testMode && t.Type == entity.TypeClub {
 		// This game was played in a legacy "Clubhouse".
 		// This is a tournament of "club" type (note, not a club *session*). This
 		// is a casual type of tournament game with no defined divisions, pairings,
@@ -716,6 +716,7 @@ func emptyDivision() *entity.TournamentDivision {
 
 func addTournamentPersons(ctx context.Context,
 	ts TournamentStore,
+	us user.Store,
 	id string,
 	division string,
 	persons *realtime.TournamentPersons,
@@ -746,16 +747,21 @@ func addTournamentPersons(ctx context.Context,
 	}
 
 	// Only perform the add operation if all persons can be added.
-	for k, _ := range persons.Persons {
-		_, ok := personsMap[k]
+	personsCopy := map[string]int32{}
+	for k := range persons.Persons {
+		u, err := us.Get(ctx, k)
+		if err != nil {
+			return err
+		}
+		fullID := u.UUID + ":" + u.Username
+
+		_, ok := personsMap[fullID]
 		if ok {
 			return fmt.Errorf("person (%s, %d) already exists", k, personsMap[k])
 		}
+		personsCopy[fullID] = persons.Persons[k]
 	}
-
-	for k, v := range persons.Persons {
-		personsMap[k] = v
-	}
+	persons.Persons = personsCopy
 
 	if isPlayers {
 		if t.IsStarted {
@@ -764,6 +770,9 @@ func addTournamentPersons(ctx context.Context,
 				return err
 			}
 		} else {
+			for k, v := range personsCopy {
+				personsMap[k] = v
+			}
 			err = createDivisionManager(t, division)
 			if err != nil {
 				return err
@@ -776,6 +785,7 @@ func addTournamentPersons(ctx context.Context,
 
 func removeTournamentPersons(ctx context.Context,
 	ts TournamentStore,
+	us user.Store,
 	id string,
 	division string,
 	persons *realtime.TournamentPersons,
@@ -805,15 +815,19 @@ func removeTournamentPersons(ctx context.Context,
 	}
 
 	// Only perform the remove operation if all persons can be removed.
-	for k, _ := range persons.Persons {
-		_, ok := personsMap[k]
+	personsCopy := map[string]int32{}
+	for k := range persons.Persons {
+		u, err := us.Get(ctx, k)
+		if err != nil {
+			return err
+		}
+		fullID := u.UUID + ":" + u.Username
+
+		_, ok := personsMap[fullID]
 		if !ok {
 			return fmt.Errorf("person (%s, %d) does not exist", k, personsMap[k])
 		}
-	}
-
-	for k, _ := range persons.Persons {
-		delete(personsMap, k)
+		personsCopy[fullID] = persons.Persons[k]
 	}
 
 	if isPlayers {
@@ -823,6 +837,9 @@ func removeTournamentPersons(ctx context.Context,
 				return err
 			}
 		} else {
+			for k := range personsCopy {
+				delete(personsMap, k)
+			}
 			err = createDivisionManager(t, division)
 			if err != nil {
 				return err
