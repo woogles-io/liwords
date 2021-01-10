@@ -1,10 +1,10 @@
-import React, { useCallback, useEffect } from 'react';
+import React, { useCallback } from 'react';
 import ReactMarkdown from 'react-markdown';
 import { useMountedState } from '../utils/mounted';
 import { useParams } from 'react-router-dom';
 import { useLoginStateStoreContext } from '../store/store';
-import { Card, Modal, Table, Row, Col, Form, Input, Alert, Button } from 'antd';
-import { TopBar } from '../topbar/topbar';
+import { Card, Modal, Form, Input } from 'antd';
+import { MarkdownTips } from './markdown_tips';
 import './bio.scss';
 
 type BioProps = {
@@ -13,10 +13,12 @@ type BioProps = {
 
 export const BioCard = React.memo((props: BioProps) => {
   const { useState } = useMountedState();
-  const [bioEditVisible, setBioEditVisible] = useState(true);
   const { loginState } = useLoginStateStoreContext();
   const { username: viewer } = loginState;
   const { username } = useParams();
+  const { TextArea } = Input;
+
+  const [bioEditVisible, setBioEditVisible] = useState(true);
 
   const actions = (viewer === username) 
     ? [(
@@ -24,6 +26,7 @@ export const BioCard = React.memo((props: BioProps) => {
           className="edit-bio"
           onClick={() => {
             setBioEditVisible(true);
+            //candidateBio = props.bio;
           }}
         >
           Edit
@@ -31,31 +34,9 @@ export const BioCard = React.memo((props: BioProps) => {
       )] 
     : []
   
-  const dataSource = [
-    {
-      key: '1',
-      type: 'Italics',
-      use: 'single asterisks',
-      example: '*hello*',
-      result: <ReactMarkdown>*hello*</ReactMarkdown>
-    },
-    {
-      key: '2',
-      type: 'Bold',
-      use: 'double asterisks',
-      example: '**hello**',
-      result: <ReactMarkdown>**hello**</ReactMarkdown>
-    },
-  ];
-
-  const columns = [
-    { title: 'To get', dataIndex: 'type' },
-    { title: 'Use', dataIndex: 'use' },
-    { title: 'Example', dataIndex: 'example' },
-    { title: 'Result', dataIndex: 'result' }
-  ];
-
-  const foobar="hello!";
+  const onChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    console.log(e.target.value);
+  }, []);
 
   return (
     <Card title="Bio" actions={actions}>
@@ -68,16 +49,12 @@ export const BioCard = React.memo((props: BioProps) => {
         }}
         className="bio-edit-modal"
       >
-        <Form>
-          <Form.Item
-            label="Bio"
-            name="bioMarkup"
-          >
-            <Input
-              value='Blah'
-              placeholder="Enter bio in Markdown form"
-            />
-          </Form.Item>
+        <Form initialValues={{bio: props.bio}}>
+          <TextArea 
+            rows={4} 
+            value={props.bio}
+            onChange={onChange}
+          />
         </Form>
 
       <div className="preview">
@@ -86,12 +63,7 @@ export const BioCard = React.memo((props: BioProps) => {
         <ReactMarkdown>{props.bio}</ReactMarkdown>
         </Card>
       </div>
-      <Table 
-        title={() => 'Markdown Tips'}
-        dataSource={dataSource} 
-        columns={columns} 
-        pagination={{hideOnSinglePage: true}}
-      />
+      <MarkdownTips/> 
       </Modal>
     </Card>
   );
