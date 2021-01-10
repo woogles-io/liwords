@@ -18,7 +18,7 @@ export const BioCard = React.memo((props: BioProps) => {
   const { username } = useParams();
   const { TextArea } = Input;
 
-  const [bioEditModalVisible, setBioEditModalVisible] = useState(false);
+  const [editModalVisible, setEditModalVisible] = useState(false);
   const [candidateBio, setCandidateBio] = useState("");
 
   const actions = (viewer === username) 
@@ -27,7 +27,7 @@ export const BioCard = React.memo((props: BioProps) => {
           className="edit-bio"
           onClick={() => {
             setCandidateBio(props.bio);
-            setBioEditModalVisible(true);
+            setEditModalVisible(true);
           }}
         >
           Edit
@@ -43,12 +43,16 @@ export const BioCard = React.memo((props: BioProps) => {
     <Card title="Bio" actions={actions}>
       <ReactMarkdown>{props.bio}</ReactMarkdown>
       <Modal
-        title="Edit bio"
-        visible={bioEditModalVisible}
-        onCancel={() => {
-          setBioEditModalVisible(false);
-        }}
         className="bio-edit-modal"
+        title="Edit bio"
+        visible={editModalVisible}
+        onCancel={() => {
+          setEditModalVisible(false);
+        }}
+        onOk={() => {
+          console.log("Submit");
+          setEditModalVisible(false);
+        }}
       >
         <Form>
           <TextArea 
@@ -61,7 +65,7 @@ export const BioCard = React.memo((props: BioProps) => {
       <div className="preview">
         <div>How your bio will look to others:</div>
         <Card className="preview-card">
-          <ReactMarkdown>{candidateBio}</ReactMarkdown>
+        <ReactMarkdown>{candidateBio}</ReactMarkdown>
         </Card>
       </div>
       <MarkdownTips/> 
