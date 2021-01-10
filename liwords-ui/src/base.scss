@@ -504,6 +504,7 @@ ul
       padding: 12px 24px;
       margin: 0;
       width: 100%;
+      text-transform: uppercase;
       @include colorModed() {
         color: m($gray-extreme);
       }
