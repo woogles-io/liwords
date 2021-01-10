@@ -1,0 +1,17 @@
+@import '../base';
+@include button;
+@include tabs;
+
+.bio-edit-modal {
+  @include container;
+  .preview {
+    margin-top: 40px;
+  }
+  .preview-card {
+    margin-top: 20px;
+    margin-bottom: 20px;
+  }
+  .ant-table-title {
+    font-weight: bold;
+  }
+}
