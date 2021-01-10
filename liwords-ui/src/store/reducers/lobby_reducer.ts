@@ -41,6 +41,10 @@ export type ActiveGame = {
   maxOvertimeMinutes: number;
   gameID: string;
   players: Array<playerMeta>;
+  tournamentID: string;
+  tournamentDivision: string;
+  tournamentRound: number;
+  tournamentGameIndex: number;
 };
 
 export type LobbyState = {
@@ -165,6 +169,10 @@ export const GameInfoResponseToActiveGame = (
     maxOvertimeMinutes: gameReq.getMaxOvertimeMinutes(),
     gameID: gi.getGameId(),
     incrementSecs: gameReq.getIncrementSeconds(),
+    tournamentID: gi.getTournamentId(),
+    tournamentDivision: gi.getTournamentDivision(),
+    tournamentRound: gi.getTournamentRound(),
+    tournamentGameIndex: gi.getTournamentGameIndex(),
   };
 };
 

@@ -82,9 +82,14 @@ func (b *Bus) instantiateAndStartGame(ctx context.Context, accUser *entity.User,
 			tournamentID = t.UUID
 		}
 	}
+	// If tournamentID is defined, this is a clubhouse game, so there's no
+	// round/division/etc, just a simple "tournament ID"
+	trdata := &entity.TournamentData{
+		Id: tournamentID,
+	}
 
 	g, err := gameplay.InstantiateNewGame(ctx, b.gameStore, b.config,
-		[2]*entity.User{accUser, reqUser}, assignedFirst, gameReq, tournamentID)
+		[2]*entity.User{accUser, reqUser}, assignedFirst, gameReq, trdata)
 	if err != nil {
 		return err
 	}
@@ -278,8 +283,7 @@ func (b *Bus) readyForTournamentGame(ctx context.Context, evt *pb.ReadyForTourna
 	if !bothReady {
 		return nil
 	}
-	// Both players are ready!
-
+	// Both players are ready! Instantiate and start a new game.
 	foundUs := false
 	otherID := ""
 	users := [2]*entity.User{nil, nil}
@@ -312,9 +316,15 @@ func (b *Bus) readyForTournamentGame(ctx context.Context, evt *pb.ReadyForTourna
 		return err
 	}
 	gameReq := t.Divisions[evt.Division].Controls.GameRequest
+	tdata := &entity.TournamentData{
+		Id:        evt.TournamentId,
+		Division:  evt.Division,
+		Round:     int(evt.Round),
+		GameIndex: int(evt.GameIndex),
+	}
 
 	g, err := gameplay.InstantiateNewGame(ctx, b.gameStore, b.config,
-		users, 0, gameReq, evt.TournamentId)
+		users, 0, gameReq, tdata)
 	if err != nil {
 		return err
 	}

@@ -343,6 +343,7 @@ func RemovePlayers(ctx context.Context, ts TournamentStore, us user.Store, id st
 	return SendTournamentDivisionMessage(ctx, ts, id, division)
 }
 
+// SetPairings is only called by the API
 func SetPairings(ctx context.Context, ts TournamentStore, id string, division string, pairings []*pb.TournamentPairingRequest) error {
 
 	t, err := ts.Get(ctx, id)
@@ -384,8 +385,8 @@ func SetResult(ctx context.Context,
 	us user.Store,
 	id string,
 	division string,
-	playerOneId string,
-	playerTwoId string,
+	playerOneId string, // user UUID
+	playerTwoId string, // user UUID
 	playerOneScore int,
 	playerTwoScore int,
 	playerOneResult realtime.TournamentGameResult,
@@ -403,13 +404,15 @@ func SetResult(ctx context.Context,
 
 	t.Lock()
 	defer t.Unlock()
-	// XXX: this is VERY temporary code; and the club type will be checked
-	// properly soon.
+
 	testMode := false
 	if strings.HasSuffix(os.Args[0], ".test") {
 		testMode = true
 	}
 	log.Debug().Bool("testMode", testMode).Msg("test-mode")
+
+	// XXX: this is VERY temporary code; and the club type will be checked
+	// properly soon.
 	// if t.Type == entity.TypeClub {
 	if !testMode && t.Type == entity.TypeClub {
 		// This game was played in a legacy "Clubhouse".
@@ -463,9 +466,19 @@ func SetResult(ctx context.Context,
 		return errors.New("cannot set tournament results before the tournament has started")
 	}
 
+	// We need to send the division manager the "full" user ID, so look that up here.
+	p1, err := us.GetByUUID(ctx, playerOneId)
+	if err != nil {
+		return err
+	}
+	p2, err := us.GetByUUID(ctx, playerTwoId)
+	if err != nil {
+		return err
+	}
+
 	err = divisionObject.DivisionManager.SubmitResult(round,
-		playerOneId,
-		playerTwoId,
+		p1.UUID+":"+p1.Username,
+		p2.UUID+":"+p2.Username,
 		playerOneScore,
 		playerTwoScore,
 		playerOneResult,
