@@ -1,7 +1,11 @@
 import { Action, ActionType } from '../../actions/actions';
 import {
+  FullTournamentDivisions,
   GameEndReasonMap,
+  PlayerRoundInfo,
+  TournamentDivisionDataResponse,
   TournamentGameResultMap,
+  TournamentRoundStarted,
 } from '../../gen/api/proto/realtime/realtime_pb';
 
 type tourneytypes = 'STANDARD' | 'CLUB' | 'CLUB_SESSION';
@@ -23,7 +27,7 @@ export type TournamentMetadata = {
 type TournamentGame = {
   scores: Array<number>;
   results: Array<tournamentGameResult>;
-  game_end_reason: gameEndReason;
+  gameEndReason: gameEndReason;
 };
 
 type SinglePairing = {
@@ -39,6 +43,7 @@ type Division = {
   players: Array<string>;
   // Add TournamentControls here.
   roundInfo: { [roundUserKey: string]: SinglePairing };
+  // Note: currentRound is zero-indexed
   currentRound: number;
   // Add Standings here
 };
@@ -47,7 +52,6 @@ export type TournamentState = {
   metadata: TournamentMetadata;
   // standings, pairings, etc. more stuff here to come.
   started: boolean;
-  // Note: currentRound is zero-indexed
   divisions: { [name: string]: Division };
 };
 
@@ -64,6 +68,7 @@ export const defaultTournamentState = {
   started: false,
   divisions: {},
 };
+
 
 export enum TourneyStatus {
   PRETOURNEY = 'PRETOURNEY',
@@ -90,6 +95,35 @@ export const defaultCompetitorState = {
   currentRound: 0,
 };
 
+const divisionDataResponseToObj = (
+  dd: TournamentDivisionDataResponse
+): Division => {
+  const ret = {
+    tournamentID: dd.getId(),
+    divisionID: dd.getDivisionId(),
+    players: dd.getPlayersList(),
+    currentRound: dd.getCurrentRound(),
+    roundInfo: {},
+  };
+
+  const roundInfo: { [key: string]: SinglePairing } = {};
+  const divmap = dd.getDivisionMap();
+  divmap.forEach((value: PlayerRoundInfo, key: string) => {
+    roundInfo[key] = {
+      players: value.getPlayersList(),
+      outcomes: value.getOutcomesList(),
+      readyStates: value.getReadyStatesList(),
+      games: value.getGamesList().map((g) => ({
+        scores: g.getScoresList(),
+        gameEndReason: g.getGameEndReason(),
+        results: g.getResultsList(),
+      })),
+    };
+  });
+  ret.roundInfo = roundInfo;
+  return ret;
+};
+
 export function TournamentReducer(
   state: TournamentState,
   action: Action
@@ -101,6 +135,61 @@ export function TournamentReducer(
         ...state,
         metadata,
       };
+
+    case ActionType.SetDivisionData: {
+      // Convert the protobuf object to a nicer JS representation:
+      const dd = action.payload as TournamentDivisionDataResponse;
+      const divData = divisionDataResponseToObj(dd);
+      return {
+        ...state,
+        divisions: {
+          ...state.divisions,
+          [dd.getDivisionId()]: divData,
+        },
+      };
+    }
+
+    case ActionType.SetDivisionsData: {
+      const dd = action.payload as FullTournamentDivisions;
+      const divisions: { [name: string]: Division } = {};
+
+      dd.getDivisionsMap().forEach(
+        (value: TournamentDivisionDataResponse, key: string) => {
+          divisions[key] = divisionDataResponseToObj(value);
+        }
+      );
+
+      return {
+        ...state,
+        divisions,
+      };
+    }
+
+    case ActionType.StartTourneyRound: {
+      const m = action.payload as TournamentRoundStarted;
+      // Make sure the tournament ID matches. (Why wouldn't it, though?)
+      if (state.metadata.id !== m.getTournamentId()) {
+        return state;
+      }
+      const division = m.getDivision();
+      // Mark the round for the passed-in division to be the passed-in round.
+      // The "Ready" button and pairings should be displayed based on:
+      //    - the tournament having started
+      //    - player not having yet started the current round's game
+      //      (how do we determine that? a combination of the live games
+      //       currently ongoing and a game result already being in for this game?)
+      return {
+        ...state,
+        started: true,
+        divisions: {
+          ...state.divisions,
+          division: {
+            ...state.divisions[division],
+            currentRound: m.getRound(),
+          },
+        },
+      };
+    }
   }
   throw new Error(`unhandled action type ${action.actionType}`);
 }

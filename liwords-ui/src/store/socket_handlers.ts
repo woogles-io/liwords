@@ -148,6 +148,7 @@ export const useOnSocketMsg = () => {
   const {
     tournamentContext,
     setCompetitorContext,
+    dispatchTournamentContext,
   } = useTournamentStoreContext();
   const { loginState } = useLoginStateStoreContext();
   const { setPresence, addPresences } = usePresenceStoreContext();
@@ -454,6 +455,16 @@ export const useOnSocketMsg = () => {
             break;
           }
 
+          case MessageType.TOURNAMENT_ROUND_STARTED: {
+            const trs = parsedMsg as TournamentRoundStarted;
+            dispatchTournamentContext({
+              actionType: ActionType.StartTourneyRound,
+              payload: trs,
+            });
+
+            break;
+          }
+
           case MessageType.TOURNAMENT_GAME_ENDED_EVENT: {
             const gee = parsedMsg as TournamentGameEndedEvent;
             dispatchLobbyContext({
@@ -464,6 +475,16 @@ export const useOnSocketMsg = () => {
             dispatchLobbyContext({
               actionType: ActionType.RemoveActiveGame,
               payload: gee.getGameId(),
+            });
+
+            break;
+          }
+
+          case MessageType.TOURNAMENT_DIVISION_MESSAGE: {
+            const tdm = parsedMsg as TournamentDivisionDataResponse;
+            dispatchTournamentContext({
+              actionType: ActionType.SetDivisionData,
+              payload: tdm,
             });
 
             break;
@@ -611,8 +632,14 @@ export const useOnSocketMsg = () => {
           }
 
           case MessageType.TOURNAMENT_FULL_DIVISIONS_MESSAGE: {
-            const divisionsMap = (parsedMsg as FullTournamentDivisions).toObject()
-              .divisionsMap;
+            const tfdm = parsedMsg as FullTournamentDivisions;
+            dispatchTournamentContext({
+              actionType: ActionType.SetDivisionsData,
+              payload: tfdm,
+            });
+            
+            const divisionsMap = tfdm.toObject().divisionsMap;
+            
             const registeredDivision = divisionsMap.find(
               (d: [string, TournamentDivisionDataResponse.AsObject]) => {
                 return d[1].playersList.includes(loginState.userID);
@@ -641,6 +668,7 @@ export const useOnSocketMsg = () => {
       challengeResultEvent,
       dispatchGameContext,
       dispatchLobbyContext,
+      dispatchTournamentContext,
       excludedPlayers,
       gameContext,
       loginState,
