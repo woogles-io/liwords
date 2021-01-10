@@ -10,7 +10,8 @@ type Props = {
 };
 
 export const CompetitorStatus = (props: Props) => {
-  const { tournamentContext, competitorContext } = useTournamentStoreContext();
+  const { tournamentContext } = useTournamentStoreContext();
+  const { competitorState: competitorContext } = tournamentContext;
   const renderStatus = useCallback(() => {
     //TODO: If they're playing the right game, this should be true.
     // If they've wandered off, we'll render the backToGamePrompt instead
@@ -176,7 +177,7 @@ export const CompetitorStatus = (props: Props) => {
         );
     }
     // Missing status or
-  }, [tournamentContext, competitorContext]);
+  }, [tournamentContext, competitorContext, props.sendReady]);
   return (
     <Card className={`competitor-status ${competitorContext.status}`}>
       {renderStatus()}

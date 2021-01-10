@@ -26,6 +26,9 @@ export enum ActionType {
   SetDivisionsData,
   StartTourneyRound,
 
+  // competitor context
+  SetTourneyStatus,
+
   /* game actions */
   AddGameEvent,
   RefreshTurns,

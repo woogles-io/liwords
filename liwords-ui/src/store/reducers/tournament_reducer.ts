@@ -10,6 +10,7 @@ import {
   TournamentRoundStarted,
 } from '../../gen/api/proto/realtime/realtime_pb';
 import { encodeToSocketFmt } from '../../utils/protobuf';
+import { LoginState } from '../login_state';
 
 type tourneytypes = 'STANDARD' | 'CLUB' | 'CLUB_SESSION';
 type valueof<T> = T[keyof T];
@@ -56,6 +57,7 @@ export type TournamentState = {
   // standings, pairings, etc. more stuff here to come.
   started: boolean;
   divisions: { [name: string]: Division };
+  competitorState: CompetitorState;
 };
 
 export const defaultTournamentState = {
@@ -70,6 +72,10 @@ export const defaultTournamentState = {
   },
   started: false,
   divisions: {},
+  competitorState: {
+    isRegistered: false,
+    currentRound: 0, // Should be the 1 based user facing round
+  },
 };
 
 export enum TourneyStatus {
@@ -89,7 +95,7 @@ export type CompetitorState = {
   isRegistered: boolean;
   division?: string;
   status?: TourneyStatus;
-  currentRound: number; // Should be the 1 based user facing round
+  currentRound: number;
 };
 
 export const defaultCompetitorState = {
@@ -176,18 +182,43 @@ export function TournamentReducer(
     }
 
     case ActionType.SetDivisionsData: {
-      const dd = action.payload as FullTournamentDivisions;
+      const dd = action.payload as {
+        fullDivisions: FullTournamentDivisions;
+        loginState: LoginState;
+      };
       const divisions: { [name: string]: Division } = {};
-
-      dd.getDivisionsMap().forEach(
+      const divisionsMap = dd.fullDivisions.getDivisionsMap();
+      const fullLoggedInID = `${dd.loginState.userID}:${dd.loginState.username}`;
+      let registeredDivision: Division | undefined;
+      divisionsMap.forEach(
         (value: TournamentDivisionDataResponse, key: string) => {
           divisions[key] = divisionDataResponseToObj(value);
+          if (divisions[key].players.includes(fullLoggedInID)) {
+            registeredDivision = divisions[key];
+          }
         }
       );
+
+      let initialStatus = TourneyStatus.PRETOURNEY;
+      if (dd.fullDivisions.getStarted()) {
+        initialStatus = TourneyStatus.ROUND_OPEN;
+      }
+      let competitorState: CompetitorState = defaultCompetitorState;
+      if (registeredDivision) {
+        competitorState = {
+          isRegistered: true,
+          division: registeredDivision.divisionID,
+          // currentRound should be the user-readable 1 based version
+          currentRound: registeredDivision.currentRound + 1,
+          // TODO: set this correctly
+          status: initialStatus,
+        };
+      }
 
       return {
         ...state,
         divisions,
+        competitorState,
       };
     }
 
@@ -213,6 +244,17 @@ export function TournamentReducer(
             ...state.divisions[division],
             currentRound: m.getRound(),
           },
+        },
+      };
+    }
+
+    case ActionType.SetTourneyStatus: {
+      const m = action.payload as TourneyStatus;
+      return {
+        ...state,
+        competitorState: {
+          ...state.competitorState,
+          status: m,
         },
       };
     }

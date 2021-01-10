@@ -64,10 +64,7 @@ import {
   GameInfoResponse,
   GameInfoResponses,
 } from '../gen/api/proto/game_service/game_service_pb';
-import {
-  defaultCompetitorState,
-  TourneyStatus,
-} from './reducers/tournament_reducer';
+import { TourneyStatus } from './reducers/tournament_reducer';
 
 // Feature flag.
 export const enableShowSocket =
@@ -146,9 +143,7 @@ export const useOnSocketMsg = () => {
   const { setCurrentLagMs } = useLagStoreContext();
   const { dispatchLobbyContext } = useLobbyStoreContext();
   const {
-    competitorContext,
     tournamentContext,
-    setCompetitorContext,
     dispatchTournamentContext,
   } = useTournamentStoreContext();
   const { loginState } = useLoginStateStoreContext();
@@ -643,15 +638,15 @@ export const useOnSocketMsg = () => {
               ready.getPlayerId() ===
               `${loginState.userID}:${loginState.username}`
             ) {
-              setCompetitorContext({
-                ...competitorContext,
-                status: TourneyStatus.ROUND_READY,
+              dispatchTournamentContext({
+                actionType: ActionType.SetTourneyStatus,
+                payload: TourneyStatus.ROUND_READY,
               });
             } else {
               // The opponent sent this message.
-              setCompetitorContext({
-                ...competitorContext,
-                status: TourneyStatus.ROUND_OPPONENT_WAITING,
+              dispatchTournamentContext({
+                actionType: ActionType.SetTourneyStatus,
+                payload: TourneyStatus.ROUND_OPPONENT_WAITING,
               });
             }
             break;
@@ -661,33 +656,12 @@ export const useOnSocketMsg = () => {
             const tfdm = parsedMsg as FullTournamentDivisions;
             dispatchTournamentContext({
               actionType: ActionType.SetDivisionsData,
-              payload: tfdm,
+              payload: {
+                fullDivisions: tfdm,
+                loginState,
+              },
             });
 
-            const divisionsMap = tfdm.toObject().divisionsMap;
-            const registeredDivision = divisionsMap.find(
-              (d: [string, TournamentDivisionDataResponse.AsObject]) => {
-                return d[1].playersList.includes(
-                  `${loginState.userID}:${loginState.username}`
-                );
-              }
-            );
-            let initialStatus = TourneyStatus.PRETOURNEY;
-            if (tfdm.getStarted()) {
-              initialStatus = TourneyStatus.ROUND_OPEN;
-            }
-            if (registeredDivision) {
-              setCompetitorContext({
-                isRegistered: true,
-                division: registeredDivision[1].divisionId,
-                // currentRound should be the user-readable 1 based version
-                currentRound: registeredDivision[1].currentRound + 1,
-                // TODO: set this correctly
-                status: initialStatus,
-              });
-            } else {
-              setCompetitorContext(defaultCompetitorState);
-            }
             break;
           }
         }
@@ -697,7 +671,6 @@ export const useOnSocketMsg = () => {
       addChat,
       addPresences,
       challengeResultEvent,
-      competitorContext,
       dispatchGameContext,
       dispatchLobbyContext,
       dispatchTournamentContext,
@@ -705,7 +678,6 @@ export const useOnSocketMsg = () => {
       gameContext,
       loginState,
       setCurrentLagMs,
-      setCompetitorContext,
       setGameEndMessage,
       setPresence,
       setRematchRequest,

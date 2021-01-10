@@ -13,8 +13,8 @@ type TournamentInfoProps = {
 };
 
 export const TournamentInfo = (props: TournamentInfoProps) => {
-  const { tournamentContext, competitorContext } = useTournamentStoreContext();
-
+  const { tournamentContext } = useTournamentStoreContext();
+  const { competitorState: competitorContext } = tournamentContext;
   const directors = tournamentContext.metadata.directors.map((username, i) => (
     <span key={username}>
       {i > 0 && ', '}

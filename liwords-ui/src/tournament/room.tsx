@@ -40,9 +40,9 @@ export const TournamentRoom = (props: Props) => {
   const {
     tournamentContext,
     dispatchTournamentContext,
-    competitorContext,
   } = useTournamentStoreContext();
   const { loggedIn, username } = loginState;
+  const { competitorState: competitorContext } = tournamentContext;
   const { isRegistered } = competitorContext;
   const { sendSocketMsg } = props;
   const { path } = loginState;
