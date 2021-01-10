@@ -76,6 +76,9 @@ span.user-context-menu.ant-dropdown-trigger {
   .lobby.competitor {
     .tournament-info .ant-card.tournament {
       height: 520px;
+      .ant-card-body {
+        max-height: 460px;
+      }
     }
   }
 }
@@ -104,16 +107,14 @@ span.user-context-menu.ant-dropdown-trigger {
     .ant-card, .ant-card.chat, .announcements .ant-card, .tournament-info .ant-card.tournament {
       height: calc(100vh - #{$header-height-desktop + 48px});
     }
-    .tournament-info .ant-card.tournament {
-      height: calc(100vh - #{$header-height-desktop + 125px});
+    &.competitor .tournament-info .ant-card.tournament {
+      height: calc(100vh - #{$header-height-desktop + 48px});
+      .ant-card-body {
+        max-height: calc(100vh - #{$header-height-desktop + 124px});
+      }
     }
     &.room.competitor .ant-card.chat {
       height: calc(100vh - #{$header-height-desktop + 125px});
-    }
-  }
-  .lobby.competitor {
-    .tournament-info .ant-card.tournament {
-      height: calc(100vh - #{$header-height-desktop + 48px});
     }
   }
 }
