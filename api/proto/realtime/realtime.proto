@@ -345,13 +345,15 @@ message ClientGameplayEvent {
   string tiles = 4;
 }
 
+// This can be sent from the user to the tournament or vice-versa.
 message ReadyForTournamentGame {
   string tournament_id = 1;
   string division = 2;
   int32 round = 3;
-  int32 game_index = 4; // within a matchplay type tournament where several
+  string player_id = 4;
+  int32 game_index = 5; // within a matchplay type tournament where several
                         // games share a round.
-  bool unready = 5;     // if true, this is a NOT-ready message.
+  bool unready = 6;     // if true, this is a NOT-ready message.
 }
 
 message TimedOut {

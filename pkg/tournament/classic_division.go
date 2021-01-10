@@ -693,16 +693,21 @@ func (t *ClassicDivision) SetLastStarted(ls *realtime.TournamentRoundStarted) er
 	return nil
 }
 
-func (t *ClassicDivision) SetReadyForGame(playerID, connID string, round, gameIndex int, unready bool) ([]string, error) {
+// SetReadyForGame sets the playerID with the given connID to be ready for the game
+// with the given 0-based round (and gameIndex, optionally). If `unready` is
+// passed in, we make the player unready.
+// It returns a list of playerId:username:connIDs involved in the game, a boolean saying if they're ready,
+// and an optional error.
+func (t *ClassicDivision) SetReadyForGame(playerID, connID string, round, gameIndex int, unready bool) ([]string, bool, error) {
 	if round >= len(t.Matrix) || round < 0 {
-		return nil, fmt.Errorf("round number out of range: %d", round)
+		return nil, false, fmt.Errorf("round number out of range: %d", round)
 	}
 	toSet := connID
 	if unready {
 		toSet = ""
 	}
 	if t.CurrentRound != round {
-		return nil, errors.New("wrong round number")
+		return nil, false, errors.New("wrong round number")
 	}
 	// gameIndex is ignored for ClassicDivision?
 	foundPairing := -1
@@ -720,15 +725,14 @@ func (t *ClassicDivision) SetReadyForGame(playerID, connID string, round, gameIn
 	if foundPairing != -1 {
 		// Check to see if both players are ready.
 		pairing := t.Matrix[round][foundPairing]
-
-		if pairing.PlayerRoundInfo.ReadyStates[0] != "" && pairing.PlayerRoundInfo.ReadyStates[1] != "" {
-			return []string{
-				pairing.PlayerRoundInfo.Players[0] + ":" + pairing.PlayerRoundInfo.ReadyStates[0],
-				pairing.PlayerRoundInfo.Players[1] + ":" + pairing.PlayerRoundInfo.ReadyStates[1],
-			}, nil
+		involvedPlayers := []string{
+			pairing.PlayerRoundInfo.Players[0] + ":" + pairing.PlayerRoundInfo.ReadyStates[0],
+			pairing.PlayerRoundInfo.Players[1] + ":" + pairing.PlayerRoundInfo.ReadyStates[1],
 		}
+		bothReady := pairing.PlayerRoundInfo.ReadyStates[0] != "" && pairing.PlayerRoundInfo.ReadyStates[1] != ""
+		return involvedPlayers, bothReady, nil
 	}
-	return nil, nil
+	return nil, false, nil
 }
 
 func (t *ClassicDivision) IsRoundComplete(round int) (bool, error) {

@@ -649,21 +649,21 @@ func IsFinished(ctx context.Context, ts TournamentStore, id string, division str
 
 func SetReadyForGame(ctx context.Context, ts TournamentStore, t *entity.Tournament,
 	playerID, connID, division string,
-	round, gameIndex int, unready bool) ([]string, error) {
+	round, gameIndex int, unready bool) ([]string, bool, error) {
 
 	t.Lock()
 	defer t.Unlock()
 
 	_, ok := t.Divisions[division]
 	if !ok {
-		return nil, fmt.Errorf("division %s does not exist", division)
+		return nil, false, fmt.Errorf("division %s does not exist", division)
 	}
 
-	connIDs, err := t.Divisions[division].DivisionManager.SetReadyForGame(playerID, connID, round, gameIndex, unready)
+	connIDs, bothReady, err := t.Divisions[division].DivisionManager.SetReadyForGame(playerID, connID, round, gameIndex, unready)
 	if err != nil {
-		return nil, err
+		return nil, false, err
 	}
-	return connIDs, ts.Set(ctx, t)
+	return connIDs, bothReady, ts.Set(ctx, t)
 }
 
 func TournamentDataResponse(ctx context.Context, ts TournamentStore, id string) (*realtime.TournamentDataResponse, error) {

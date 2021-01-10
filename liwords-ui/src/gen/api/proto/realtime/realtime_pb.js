@@ -6990,8 +6990,9 @@ proto.liwords.ReadyForTournamentGame.toObject = function(includeInstance, msg) {
     tournamentId: jspb.Message.getFieldWithDefault(msg, 1, ""),
     division: jspb.Message.getFieldWithDefault(msg, 2, ""),
     round: jspb.Message.getFieldWithDefault(msg, 3, 0),
-    gameIndex: jspb.Message.getFieldWithDefault(msg, 4, 0),
-    unready: jspb.Message.getBooleanFieldWithDefault(msg, 5, false)
+    playerId: jspb.Message.getFieldWithDefault(msg, 4, ""),
+    gameIndex: jspb.Message.getFieldWithDefault(msg, 5, 0),
+    unready: jspb.Message.getBooleanFieldWithDefault(msg, 6, false)
   };
 
   if (includeInstance) {
@@ -7041,10 +7042,14 @@ proto.liwords.ReadyForTournamentGame.deserializeBinaryFromReader = function(msg,
       msg.setRound(value);
       break;
     case 4:
+      var value = /** @type {string} */ (reader.readString());
+      msg.setPlayerId(value);
+      break;
+    case 5:
       var value = /** @type {number} */ (reader.readInt32());
       msg.setGameIndex(value);
       break;
-    case 5:
+    case 6:
       var value = /** @type {boolean} */ (reader.readBool());
       msg.setUnready(value);
       break;
@@ -7098,17 +7103,24 @@ proto.liwords.ReadyForTournamentGame.serializeBinaryToWriter = function(message,
       f
     );
   }
+  f = message.getPlayerId();
+  if (f.length > 0) {
+    writer.writeString(
+      4,
+      f
+    );
+  }
   f = message.getGameIndex();
   if (f !== 0) {
     writer.writeInt32(
-      4,
+      5,
       f
     );
   }
   f = message.getUnready();
   if (f) {
     writer.writeBool(
-      5,
+      6,
       f
     );
   }
@@ -7170,11 +7182,29 @@ proto.liwords.ReadyForTournamentGame.prototype.setRound = function(value) {
 
 
 /**
- * optional int32 game_index = 4;
+ * optional string player_id = 4;
+ * @return {string}
+ */
+proto.liwords.ReadyForTournamentGame.prototype.getPlayerId = function() {
+  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 4, ""));
+};
+
+
+/**
+ * @param {string} value
+ * @return {!proto.liwords.ReadyForTournamentGame} returns this
+ */
+proto.liwords.ReadyForTournamentGame.prototype.setPlayerId = function(value) {
+  return jspb.Message.setProto3StringField(this, 4, value);
+};
+
+
+/**
+ * optional int32 game_index = 5;
  * @return {number}
  */
 proto.liwords.ReadyForTournamentGame.prototype.getGameIndex = function() {
-  return /** @type {number} */ (jspb.Message.getFieldWithDefault(this, 4, 0));
+  return /** @type {number} */ (jspb.Message.getFieldWithDefault(this, 5, 0));
 };
 
 
@@ -7183,16 +7213,16 @@ proto.liwords.ReadyForTournamentGame.prototype.getGameIndex = function() {
  * @return {!proto.liwords.ReadyForTournamentGame} returns this
  */
 proto.liwords.ReadyForTournamentGame.prototype.setGameIndex = function(value) {
-  return jspb.Message.setProto3IntField(this, 4, value);
+  return jspb.Message.setProto3IntField(this, 5, value);
 };
 
 
 /**
- * optional bool unready = 5;
+ * optional bool unready = 6;
  * @return {boolean}
  */
 proto.liwords.ReadyForTournamentGame.prototype.getUnready = function() {
-  return /** @type {boolean} */ (jspb.Message.getBooleanFieldWithDefault(this, 5, false));
+  return /** @type {boolean} */ (jspb.Message.getBooleanFieldWithDefault(this, 6, false));
 };
 
 
@@ -7201,7 +7231,7 @@ proto.liwords.ReadyForTournamentGame.prototype.getUnready = function() {
  * @return {!proto.liwords.ReadyForTournamentGame} returns this
  */
 proto.liwords.ReadyForTournamentGame.prototype.setUnready = function(value) {
-  return jspb.Message.setProto3BooleanField(this, 5, value);
+  return jspb.Message.setProto3BooleanField(this, 6, value);
 };
 
 

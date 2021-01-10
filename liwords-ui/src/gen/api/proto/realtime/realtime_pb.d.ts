@@ -868,6 +868,9 @@ export class ReadyForTournamentGame extends jspb.Message {
   getRound(): number;
   setRound(value: number): void;
 
+  getPlayerId(): string;
+  setPlayerId(value: string): void;
+
   getGameIndex(): number;
   setGameIndex(value: number): void;
 
@@ -889,6 +892,7 @@ export namespace ReadyForTournamentGame {
     tournamentId: string,
     division: string,
     round: number,
+    playerId: string,
     gameIndex: number,
     unready: boolean,
   }

@@ -146,6 +146,7 @@ export const useOnSocketMsg = () => {
   const { setCurrentLagMs } = useLagStoreContext();
   const { dispatchLobbyContext } = useLobbyStoreContext();
   const {
+    competitorContext,
     tournamentContext,
     setCompetitorContext,
     dispatchTournamentContext,
@@ -631,6 +632,31 @@ export const useOnSocketMsg = () => {
             break;
           }
 
+          case MessageType.READY_FOR_TOURNAMENT_GAME: {
+            const ready = parsedMsg as ReadyForTournamentGame;
+            if (tournamentContext.metadata.id !== ready.getTournamentId()) {
+              // Ignore this message (for now -- we may actually want to display
+              // this in other contexts, like the lobby, an unrelated game, etc).
+              break;
+            }
+            if (
+              ready.getPlayerId() ===
+              `${loginState.userID}:${loginState.username}`
+            ) {
+              setCompetitorContext({
+                ...competitorContext,
+                status: TourneyStatus.ROUND_READY,
+              });
+            } else {
+              // The opponent sent this message.
+              setCompetitorContext({
+                ...competitorContext,
+                status: TourneyStatus.ROUND_OPPONENT_WAITING,
+              });
+            }
+            break;
+          }
+
           case MessageType.TOURNAMENT_FULL_DIVISIONS_MESSAGE: {
             const tfdm = parsedMsg as FullTournamentDivisions;
             dispatchTournamentContext({
@@ -639,7 +665,6 @@ export const useOnSocketMsg = () => {
             });
 
             const divisionsMap = tfdm.toObject().divisionsMap;
-            console.log('divisionsMap', divisionsMap);
             const registeredDivision = divisionsMap.find(
               (d: [string, TournamentDivisionDataResponse.AsObject]) => {
                 return d[1].playersList.includes(
@@ -672,6 +697,7 @@ export const useOnSocketMsg = () => {
       addChat,
       addPresences,
       challengeResultEvent,
+      competitorContext,
       dispatchGameContext,
       dispatchLobbyContext,
       dispatchTournamentContext,

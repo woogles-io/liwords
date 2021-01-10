@@ -23,7 +23,7 @@ type DivisionManager interface {
 	IsFinished() (bool, error)
 	StartRound() error
 	ToResponse() (*realtime.TournamentDivisionDataResponse, error)
-	SetReadyForGame(userID, connID string, round, gameIndex int, unready bool) ([]string, error)
+	SetReadyForGame(userID, connID string, round, gameIndex int, unready bool) ([]string, bool, error)
 	SetLastStarted(*realtime.TournamentRoundStarted) error
 	Serialize() (datatypes.JSON, error)
 }

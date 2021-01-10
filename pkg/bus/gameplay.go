@@ -3,6 +3,7 @@ package bus
 import (
 	"context"
 	"errors"
+	"fmt"
 	"strings"
 	"time"
 
@@ -253,13 +254,28 @@ func (b *Bus) readyForTournamentGame(ctx context.Context, evt *pb.ReadyForTourna
 		return err
 	}
 
-	playerIDs, err := tournament.SetReadyForGame(ctx, b.tournamentStore, t, fullUserID, connID,
+	playerIDs, bothReady, err := tournament.SetReadyForGame(ctx, b.tournamentStore, t, fullUserID, connID,
 		evt.Division, int(evt.Round), int(evt.GameIndex), evt.Unready)
 
 	if err != nil {
 		return err
 	}
-	if len(playerIDs) != 2 {
+
+	// Let's send the ready message to both players.
+	evt.PlayerId = fullUserID
+
+	ngevt := entity.WrapEvent(evt, pb.MessageType_READY_FOR_TOURNAMENT_GAME)
+	// We'll publish it to both users (across any connections they might be on)
+	// so that the widget updates properly in every context.
+	for _, p := range playerIDs {
+		s := strings.Split(p, ":")
+		if len(s) != 3 {
+			return fmt.Errorf("unexpected player readystate: %v", p)
+		}
+		b.pubToUser(s[0], ngevt, "")
+	}
+
+	if !bothReady {
 		return nil
 	}
 	// Both players are ready!
@@ -309,7 +325,7 @@ func (b *Bus) readyForTournamentGame(ctx context.Context, evt *pb.ReadyForTourna
 	}
 
 	// redirect users to the right game
-	ngevt := entity.WrapEvent(&pb.NewGameEvent{
+	ngevt = entity.WrapEvent(&pb.NewGameEvent{
 		GameId: g.GameID(),
 		// doesn't matter who's the accepter or requester here.
 		AccepterCid:  connIDs[0],
