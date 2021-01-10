@@ -1,0 +1,76 @@
+@import '../base';
+
+.ant-card.competitor-status {
+  height: 64px;
+  margin-bottom: 12px;
+  .ant-card-body {
+    padding: 0px 18px;
+    height: 64px;
+    display: flex;
+    font-size: 16px;
+    font-weight: 700;
+    line-height: 1.4em;
+    align-items: center;
+    .anticon {
+      font-size: 21px;
+      margin-right: 12px;
+    }
+    .ant-btn {
+      white-space: nowrap;
+      padding: 3px 12px;
+    }
+    p {
+      flex-grow: 2;
+      .secondary-message {
+        display: block;
+        font-size: 14px;
+        font-weight: 400;
+        font-style: italic;
+        line-height: 18px;
+      }
+    }
+  }
+  &.ROUND_READY {
+    @include colorModed() {
+      background: m($timer-light);
+      color: m($gray-extreme);
+    }
+  }
+  &.ROUND_LATE {
+    @include colorModed() {
+      background: m($timer-out-light);
+      color: m($gray-extreme);
+      border: 1px solid m($timer-out-dark);
+    }
+  }
+  &.ROUND_OPPONENT_WAITING {
+    p {
+      color: #414141; // theming outlier
+    }
+    @include colorModed() {
+      background: m($timer-low-light);
+      border: 1px solid m($timer-low-dark);
+    }
+  }
+}
+
+.chat-area .ant-card.competitor-status {
+  display: none;
+  @media (min-width: $screen-laptop-min) {
+    display: block;
+  }
+}
+
+.tournament-info .ant-card.competitor-status {
+  @media (min-width: $screen-laptop-min) {
+    display: none;
+  }
+  @media (max-width: $screen-tablet-min) {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    margin: 0;
+    width: 100vw;
+    border-radius: 0;
+  }
+}

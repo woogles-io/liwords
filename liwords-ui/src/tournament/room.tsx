@@ -20,6 +20,7 @@ import { TournamentInfo } from './tournament_info';
 import { sendAccept, sendSeek } from '../lobby/sought_game_interactions';
 import { SoughtGame } from '../store/reducers/lobby_reducer';
 import { ActionsPanel } from './actions_panel';
+import { CompetitorStatus } from './competitor_status';
 import { ActionType } from '../actions/actions';
 import { TournamentMetadata } from '../store/reducers/tournament_reducer';
 
@@ -36,8 +37,10 @@ export const TournamentRoom = (props: Props) => {
   const {
     tournamentContext,
     dispatchTournamentContext,
+    competitorContext,
   } = useTournamentStoreContext();
   const { loggedIn, username } = loginState;
+  const { isRegistered } = competitorContext;
   const { sendSocketMsg } = props;
   const { path } = loginState;
   const [badTournament, setBadTournament] = useState(false);
@@ -132,7 +135,7 @@ export const TournamentRoom = (props: Props) => {
   return (
     <>
       <TopBar />
-      <div className="lobby">
+      <div className={`lobby room ${isRegistered ? ' competitor' : ''}`}>
         <div className="chat-area">
           <Chat
             sendChat={props.sendChat}
@@ -143,6 +146,7 @@ export const TournamentRoom = (props: Props) => {
             highlightText="Director"
             tournamentID={tournamentID}
           />
+          {isRegistered && <CompetitorStatus />}
         </div>
         <ActionsPanel
           selectedGameTab={selectedGameTab}

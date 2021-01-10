@@ -4,13 +4,14 @@ import { Card, Divider } from 'antd';
 import ReactMarkdown from 'react-markdown';
 import { useTournamentStoreContext } from '../store/store';
 import { UsernameWithContext } from '../shared/usernameWithContext';
+import { CompetitorStatus } from './competitor_status';
 
 type TournamentInfoProps = {
   setSelectedGameTab: (tab: string) => void;
 };
 
 export const TournamentInfo = (props: TournamentInfoProps) => {
-  const { tournamentContext } = useTournamentStoreContext();
+  const { tournamentContext, competitorContext } = useTournamentStoreContext();
 
   const directors = tournamentContext.metadata.directors.map((username, i) => (
     <span key={username}>
@@ -21,7 +22,9 @@ export const TournamentInfo = (props: TournamentInfoProps) => {
 
   return (
     <div className="tournament-info">
-      <Card title="Tournament Information">
+      {/* Mobile version of the status widget, hidden by css elsewhere */}
+      {competitorContext.isRegistered && <CompetitorStatus />}
+      <Card title="Tournament Information" className="tournament">
         <h3 className="tournament-name">{tournamentContext.metadata.name}</h3>
         <h4>Directors: {directors}</h4>
         <ReactMarkdown linkTarget="_blank">

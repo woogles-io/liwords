@@ -69,6 +69,32 @@ export const defaultTournamentState = {
   divisions: {},
 };
 
+
+export enum TourneyStatus {
+  PRETOURNEY = 'PRETOURNEY',
+  ROUND_BYE = 'ROUND_BYE',
+  ROUND_OPEN = 'ROUND_OPEN',
+  ROUND_GAME_FINISHED = 'ROUND_GAME_FINISHED',
+  ROUND_READY = 'ROUND_READY', // waiting for your opponent
+  ROUND_OPPONENT_WAITING = 'ROUND_OPPONENT_WAITING',
+  ROUND_LATE = 'ROUND_LATE', // expect this to override opponent waiting
+  ROUND_GAME_ACTIVE = 'ROUND_GAME_ACTIVE',
+  ROUND_FORFEIT = 'ROUND_FORFEIT',
+  POSTTOURNEY = 'POSTTOURNEY',
+}
+
+export type CompetitorState = {
+  isRegistered: boolean;
+  division?: string;
+  status?: TourneyStatus;
+  currentRound: number; // Should be the 1 based user facing round
+};
+
+export const defaultCompetitorState = {
+  isRegistered: false,
+  currentRound: 0,
+};
+
 const divisionDataResponseToObj = (
   dd: TournamentDivisionDataResponse
 ): Division => {

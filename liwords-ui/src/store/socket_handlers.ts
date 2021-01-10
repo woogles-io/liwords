@@ -19,51 +19,55 @@ import {
   useTournamentStoreContext,
 } from './store';
 import {
-  MessageType,
-  SeekRequest,
-  ErrorMessage,
-  ServerMessage,
-  NewGameEvent,
-  GameHistoryRefresher,
-  MessageTypeMap,
-  MatchRequest,
-  SoughtGameProcessEvent,
-  ClientGameplayEvent,
-  ServerGameplayEvent,
-  GameEndedEvent,
-  ServerChallengeResultEvent,
-  SeekRequests,
-  TimedOut,
-  GameDeletion,
-  MatchRequests,
-  DeclineMatchRequest,
   ChatMessage,
-  UserPresence,
-  UserPresences,
-  ReadyForGame,
+  ClientGameplayEvent,
+  DeclineMatchRequest,
+  ErrorMessage,
+  FullTournamentDivisions,
+  GameDeletion,
+  GameEndedEvent,
+  GameHistoryRefresher,
   LagMeasurement,
+  MatchRequest,
   MatchRequestCancellation,
-  TournamentGameEndedEvent,
+  MatchRequests,
+  MessageType,
+  MessageTypeMap,
+  NewGameEvent,
+  ReadyForGame,
+  ReadyForTournamentGame,
   RematchStartedEvent,
+  SeekRequest,
+  SeekRequests,
+  ServerChallengeResultEvent,
+  ServerGameplayEvent,
+  ServerMessage,
+  SoughtGameProcessEvent,
+  TimedOut,
   TournamentDataResponse,
   TournamentDivisionDataResponse,
   TournamentDivisionDeletedResponse,
-  FullTournamentDivisions,
-  ReadyForTournamentGame,
+  TournamentGameEndedEvent,
   TournamentRoundStarted,
+  UserPresence,
+  UserPresences,
 } from '../gen/api/proto/realtime/realtime_pb';
 import { ActionType } from '../actions/actions';
 import { endGameMessage } from './end_of_game';
 import {
+  GameInfoResponseToActiveGame,
   SeekRequestToSoughtGame,
   SoughtGame,
-  GameInfoResponseToActiveGame,
 } from './reducers/lobby_reducer';
 import { BoopSounds } from '../sound/boop';
 import {
   GameInfoResponse,
   GameInfoResponses,
 } from '../gen/api/proto/game_service/game_service_pb';
+import {
+  defaultCompetitorState,
+  TourneyStatus,
+} from './reducers/tournament_reducer';
 
 // Feature flag.
 export const enableShowSocket =
@@ -143,6 +147,7 @@ export const useOnSocketMsg = () => {
   const { dispatchLobbyContext } = useLobbyStoreContext();
   const {
     tournamentContext,
+    setCompetitorContext,
     dispatchTournamentContext,
   } = useTournamentStoreContext();
   const { loginState } = useLoginStateStoreContext();
@@ -485,16 +490,6 @@ export const useOnSocketMsg = () => {
             break;
           }
 
-          case MessageType.TOURNAMENT_FULL_DIVISIONS_MESSAGE: {
-            const tfdm = parsedMsg as FullTournamentDivisions;
-            dispatchTournamentContext({
-              actionType: ActionType.SetDivisionsData,
-              payload: tfdm,
-            });
-
-            break;
-          }
-
           case MessageType.NEW_GAME_EVENT: {
             const nge = parsedMsg as NewGameEvent;
             console.log('got new game event', nge);
@@ -635,6 +630,35 @@ export const useOnSocketMsg = () => {
             });
             break;
           }
+
+          case MessageType.TOURNAMENT_FULL_DIVISIONS_MESSAGE: {
+            const tfdm = parsedMsg as FullTournamentDivisions;
+            dispatchTournamentContext({
+              actionType: ActionType.SetDivisionsData,
+              payload: tfdm,
+            });
+            
+            const divisionsMap = tfdm.toObject().divisionsMap;
+            
+            const registeredDivision = divisionsMap.find(
+              (d: [string, TournamentDivisionDataResponse.AsObject]) => {
+                return d[1].playersList.includes(loginState.userID);
+              }
+            );
+            if (registeredDivision) {
+              setCompetitorContext({
+                isRegistered: true,
+                division: registeredDivision[1].divisionId,
+                // currentRound should be the user-readable 1 based version
+                currentRound: registeredDivision[1].currentRound + 1,
+                // TODO: set this correctly
+                // status: TourneyStatus.PRETOURNEY,
+              });
+            } else {
+              setCompetitorContext(defaultCompetitorState);
+            }
+            break;
+          }
         }
       });
     },
@@ -649,6 +673,7 @@ export const useOnSocketMsg = () => {
       gameContext,
       loginState,
       setCurrentLagMs,
+      setCompetitorContext,
       setGameEndMessage,
       setPresence,
       setRematchRequest,

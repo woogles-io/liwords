@@ -57,9 +57,9 @@ export const ActionsPanel = React.memo((props: Props) => {
 
   let matchButtonText;
   if (['CLUB', 'CLUBSESSION'].includes(tournamentContext.metadata.type)) {
-    matchButtonText = 'Start Club Game';
+    matchButtonText = 'Start club game';
   } else if (tournamentContext.metadata.type === 'STANDARD') {
-    matchButtonText = 'Start Tournament Game';
+    matchButtonText = 'Start tournament game';
   }
   const fetchPrev = useCallback(() => {
     dispatchLobbyContext({
