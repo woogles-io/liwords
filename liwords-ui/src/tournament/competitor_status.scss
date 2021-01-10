@@ -62,7 +62,7 @@
 }
 
 .tournament-info .ant-card.competitor-status {
-  @media (min-width: calc($screen-laptop-min - 1)) {
+  @media (min-width: $screen-laptop-min) {
     display: none;
   }
   @media (max-width: $screen-tablet-min) {
