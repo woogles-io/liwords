@@ -492,7 +492,7 @@ func StartTournament(ctx context.Context, ts TournamentStore, id string, manual 
 
 	// Do not lock, StartRound will do that
 
-	for division, _ := range t.Divisions {
+	for division := range t.Divisions {
 		err := StartRoundCountdown(ctx, ts, id, division, 0, manual, false)
 		if err != nil {
 			return err

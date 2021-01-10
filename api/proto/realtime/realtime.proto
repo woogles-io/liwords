@@ -417,7 +417,7 @@ message RoundControl {
 message TournamentControls {
   string id = 1;
   string division = 2;
-  liwords.GameRequest game_request = 3;
+  GameRequest game_request = 3;
   repeated RoundControl round_controls = 4;
   int32 type = 5;
   google.protobuf.Timestamp start_time = 6;
@@ -426,8 +426,8 @@ message TournamentControls {
 
 message TournamentGame {
   repeated int32 scores = 1;
-  repeated liwords.TournamentGameResult results = 2;
-  liwords.GameEndReason game_end_reason = 3;
+  repeated TournamentGameResult results = 2;
+  GameEndReason game_end_reason = 3;
 }
 
 message PlayerProperties { bool removed = 1; }
@@ -435,7 +435,7 @@ message PlayerProperties { bool removed = 1; }
 message PlayerRoundInfo {
   repeated string players = 1;
   repeated TournamentGame games = 2; // can be a list, for elimination tourneys
-  repeated liwords.TournamentGameResult outcomes = 3;
+  repeated TournamentGameResult outcomes = 3;
   repeated string ready_states = 4;
 }
 

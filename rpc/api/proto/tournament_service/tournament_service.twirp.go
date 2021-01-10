@@ -56,16 +56,20 @@ type TournamentService interface {
 
 	SetTournamentControls(context.Context, *liwords.TournamentControls) (*TournamentResponse, error)
 
+	// Input to AddDirectors should be director usernames.
 	AddDirectors(context.Context, *liwords.TournamentPersons) (*TournamentResponse, error)
 
+	// Input to RemoveDirectors should be director usernames.
 	RemoveDirectors(context.Context, *liwords.TournamentPersons) (*TournamentResponse, error)
 
 	AddDivision(context.Context, *TournamentDivisionRequest) (*TournamentResponse, error)
 
 	RemoveDivision(context.Context, *TournamentDivisionRequest) (*TournamentResponse, error)
 
+	// Input to AddPlayers should be player usernames
 	AddPlayers(context.Context, *liwords.TournamentPersons) (*TournamentResponse, error)
 
+	// Input to RemovePlayers should be player usernames
 	RemovePlayers(context.Context, *liwords.TournamentPersons) (*TournamentResponse, error)
 
 	SetPairing(context.Context, *TournamentPairingsRequest) (*TournamentResponse, error)

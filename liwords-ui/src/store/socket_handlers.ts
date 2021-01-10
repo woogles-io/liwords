@@ -141,7 +141,10 @@ export const useOnSocketMsg = () => {
   const { setGameEndMessage } = useGameEndMessageStoreContext();
   const { setCurrentLagMs } = useLagStoreContext();
   const { dispatchLobbyContext } = useLobbyStoreContext();
-  const { tournamentContext } = useTournamentStoreContext();
+  const {
+    tournamentContext,
+    dispatchTournamentContext,
+  } = useTournamentStoreContext();
   const { loginState } = useLoginStateStoreContext();
   const { setPresence, addPresences } = usePresenceStoreContext();
   const { setRematchRequest } = useRematchRequestStoreContext();
@@ -447,6 +450,16 @@ export const useOnSocketMsg = () => {
             break;
           }
 
+          case MessageType.TOURNAMENT_ROUND_STARTED: {
+            const trs = parsedMsg as TournamentRoundStarted;
+            dispatchTournamentContext({
+              actionType: ActionType.StartTourneyRound,
+              payload: trs,
+            });
+
+            break;
+          }
+
           case MessageType.TOURNAMENT_GAME_ENDED_EVENT: {
             const gee = parsedMsg as TournamentGameEndedEvent;
             dispatchLobbyContext({
@@ -457,6 +470,26 @@ export const useOnSocketMsg = () => {
             dispatchLobbyContext({
               actionType: ActionType.RemoveActiveGame,
               payload: gee.getGameId(),
+            });
+
+            break;
+          }
+
+          case MessageType.TOURNAMENT_DIVISION_MESSAGE: {
+            const tdm = parsedMsg as TournamentDivisionDataResponse;
+            dispatchTournamentContext({
+              actionType: ActionType.SetDivisionData,
+              payload: tdm,
+            });
+
+            break;
+          }
+
+          case MessageType.TOURNAMENT_FULL_DIVISIONS_MESSAGE: {
+            const tfdm = parsedMsg as FullTournamentDivisions;
+            dispatchTournamentContext({
+              actionType: ActionType.SetDivisionsData,
+              payload: tfdm,
             });
 
             break;
@@ -611,6 +644,7 @@ export const useOnSocketMsg = () => {
       challengeResultEvent,
       dispatchGameContext,
       dispatchLobbyContext,
+      dispatchTournamentContext,
       excludedPlayers,
       gameContext,
       loginState,

@@ -22,6 +22,9 @@ export enum ActionType {
   SetTourneyGamesOffset,
 
   SetTourneyMetadata,
+  SetDivisionData,
+  SetDivisionsData,
+  StartTourneyRound,
 
   /* game actions */
   AddGameEvent,
