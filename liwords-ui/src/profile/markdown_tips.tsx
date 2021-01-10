@@ -1,6 +1,7 @@
 import React from 'react';
 import ReactMarkdown from 'react-markdown';
 import { Table } from 'antd';
+import './markdown_tips.scss';
 
 export const MarkdownTips = React.memo(() => {
   const italicsExample = '*hello*';
@@ -31,7 +32,8 @@ export const MarkdownTips = React.memo(() => {
   ];
 
   return (
-    <Table 
+    <Table
+      className = "markdown-tips"
       title={() => 'Markdown Tips'}
       dataSource={dataSource} 
       columns={columns} 

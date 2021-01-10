@@ -1,0 +1,10 @@
+@import '../base';
+@include button;
+@include tabs;
+
+.markdown-tips {
+  @include container;
+  .ant-table-title {
+    font-weight: bold;
+  }
+}
