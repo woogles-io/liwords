@@ -107,6 +107,11 @@ span.user-context-menu.ant-dropdown-trigger {
     .ant-card, .ant-card.chat, .announcements .ant-card, .tournament-info .ant-card.tournament {
       height: calc(100vh - #{$header-height-desktop + 48px});
     }
+    .announcements .ant-card {
+      .ant-card-body {
+        max-height: calc(100vh - #{$header-height-desktop + 124px});
+      }
+    }
     &.competitor .tournament-info .ant-card.tournament {
       height: calc(100vh - #{$header-height-desktop + 48px});
       .ant-card-body {
