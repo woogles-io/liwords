@@ -2,11 +2,14 @@ import { Action, ActionType } from '../../actions/actions';
 import {
   FullTournamentDivisions,
   GameEndReasonMap,
+  MessageType,
   PlayerRoundInfo,
+  ReadyForTournamentGame,
   TournamentDivisionDataResponse,
   TournamentGameResultMap,
   TournamentRoundStarted,
 } from '../../gen/api/proto/realtime/realtime_pb';
+import { encodeToSocketFmt } from '../../utils/protobuf';
 
 type tourneytypes = 'STANDARD' | 'CLUB' | 'CLUB_SESSION';
 type valueof<T> = T[keyof T];
@@ -69,7 +72,6 @@ export const defaultTournamentState = {
   divisions: {},
 };
 
-
 export enum TourneyStatus {
   PRETOURNEY = 'PRETOURNEY',
   ROUND_BYE = 'ROUND_BYE',
@@ -93,6 +95,30 @@ export type CompetitorState = {
 export const defaultCompetitorState = {
   isRegistered: false,
   currentRound: 0,
+};
+
+export const readyForTournamentGame = (
+  sendSocketMsg: (msg: Uint8Array) => void,
+  tournamentID: string,
+  competitorState: CompetitorState
+) => {
+  const evt = new ReadyForTournamentGame();
+  const division = competitorState.division;
+  if (!division) {
+    return;
+  }
+  // Note: the competitorState round is 1-indexed (for display purposes),
+  // so we subtract 1 here for the socket msg.
+  const round = competitorState.currentRound - 1;
+  evt.setDivision(division);
+  evt.setTournamentId(tournamentID);
+  evt.setRound(round);
+  sendSocketMsg(
+    encodeToSocketFmt(
+      MessageType.READY_FOR_TOURNAMENT_GAME,
+      evt.serializeBinary()
+    )
+  );
 };
 
 const divisionDataResponseToObj = (

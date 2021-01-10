@@ -5,7 +5,11 @@ import { ClockCircleOutlined } from '@ant-design/icons';
 import './competitor_status.scss';
 import { TourneyStatus } from '../store/reducers/tournament_reducer';
 
-export const CompetitorStatus = () => {
+type Props = {
+  sendReady: () => void;
+};
+
+export const CompetitorStatus = (props: Props) => {
   const { tournamentContext, competitorContext } = useTournamentStoreContext();
   const renderStatus = useCallback(() => {
     //TODO: If they're playing the right game, this should be true.
@@ -72,7 +76,9 @@ export const CompetitorStatus = () => {
         return (
           <>
             <p>Time to start round {competitorContext.currentRound}!</p>
-            <Button className="primary">I'm ready</Button>
+            <Button className="primary" onClick={props.sendReady}>
+              I'm ready
+            </Button>
           </>
         );
       }
@@ -97,7 +103,9 @@ export const CompetitorStatus = () => {
         return (
           <>
             <p>Your opponent is waiting!</p>
-            <Button className="primary">I'm ready</Button>
+            <Button className="primary" onClick={props.sendReady}>
+              I'm ready
+            </Button>
           </>
         );
       }

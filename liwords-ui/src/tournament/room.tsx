@@ -22,7 +22,10 @@ import { SoughtGame } from '../store/reducers/lobby_reducer';
 import { ActionsPanel } from './actions_panel';
 import { CompetitorStatus } from './competitor_status';
 import { ActionType } from '../actions/actions';
-import { TournamentMetadata } from '../store/reducers/tournament_reducer';
+import {
+  readyForTournamentGame,
+  TournamentMetadata,
+} from '../store/reducers/tournament_reducer';
 
 type Props = {
   sendSocketMsg: (msg: Uint8Array) => void;
@@ -146,7 +149,17 @@ export const TournamentRoom = (props: Props) => {
             highlightText="Director"
             tournamentID={tournamentID}
           />
-          {isRegistered && <CompetitorStatus />}
+          {isRegistered && (
+            <CompetitorStatus
+              sendReady={() =>
+                readyForTournamentGame(
+                  sendSocketMsg,
+                  tournamentContext.metadata.id,
+                  competitorContext
+                )
+              }
+            />
+          )}
         </div>
         <ActionsPanel
           selectedGameTab={selectedGameTab}
@@ -158,7 +171,10 @@ export const TournamentRoom = (props: Props) => {
           newGame={handleNewGame}
           username={username}
         />
-        <TournamentInfo setSelectedGameTab={setSelectedGameTab} />
+        <TournamentInfo
+          setSelectedGameTab={setSelectedGameTab}
+          sendSocketMsg={sendSocketMsg}
+        />
       </div>
     </>
   );

@@ -637,14 +637,20 @@ export const useOnSocketMsg = () => {
               actionType: ActionType.SetDivisionsData,
               payload: tfdm,
             });
-            
+
             const divisionsMap = tfdm.toObject().divisionsMap;
-            
+            console.log('divisionsMap', divisionsMap);
             const registeredDivision = divisionsMap.find(
               (d: [string, TournamentDivisionDataResponse.AsObject]) => {
-                return d[1].playersList.includes(loginState.userID);
+                return d[1].playersList.includes(
+                  `${loginState.userID}:${loginState.username}`
+                );
               }
             );
+            let initialStatus = TourneyStatus.PRETOURNEY;
+            if (tfdm.getStarted()) {
+              initialStatus = TourneyStatus.ROUND_OPEN;
+            }
             if (registeredDivision) {
               setCompetitorContext({
                 isRegistered: true,
@@ -652,7 +658,7 @@ export const useOnSocketMsg = () => {
                 // currentRound should be the user-readable 1 based version
                 currentRound: registeredDivision[1].currentRound + 1,
                 // TODO: set this correctly
-                // status: TourneyStatus.PRETOURNEY,
+                status: initialStatus,
               });
             } else {
               setCompetitorContext(defaultCompetitorState);
