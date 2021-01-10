@@ -6,11 +6,14 @@ import {
   PlayerRoundInfo,
   ReadyForTournamentGame,
   TournamentDivisionDataResponse,
+  TournamentGameEndedEvent,
   TournamentGameResultMap,
   TournamentRoundStarted,
 } from '../../gen/api/proto/realtime/realtime_pb';
+import { RecentGame } from '../../tournament/recent_game';
 import { encodeToSocketFmt } from '../../utils/protobuf';
 import { LoginState } from '../login_state';
+import { ActiveGame } from './lobby_reducer';
 
 type tourneytypes = 'STANDARD' | 'CLUB' | 'CLUB_SESSION';
 type valueof<T> = T[keyof T];
@@ -58,6 +61,13 @@ export type TournamentState = {
   started: boolean;
   divisions: { [name: string]: Division };
   competitorState: CompetitorState;
+
+  // activeGames in this tournament.
+  activeGames: Array<ActiveGame>;
+
+  finishedTourneyGames: Array<RecentGame>;
+  gamesPageSize: number;
+  gamesOffset: number;
 };
 
 export const defaultTournamentState = {
@@ -76,6 +86,10 @@ export const defaultTournamentState = {
     isRegistered: false,
     currentRound: 0, // Should be the 1 based user facing round
   },
+  activeGames: new Array<ActiveGame>(),
+  finishedTourneyGames: new Array<RecentGame>(),
+  gamesPageSize: 0,
+  gamesOffset: 0,
 };
 
 export enum TourneyStatus {
@@ -156,6 +170,122 @@ const divisionDataResponseToObj = (
   return ret;
 };
 
+const toResultStr = (r: 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7) => {
+  return {
+    0: 'NO_RESULT',
+    1: 'WIN',
+    2: 'LOSS',
+    3: 'DRAW',
+    4: 'BYE',
+    5: 'FORFEIT_WIN',
+    6: 'FORFEIT_LOSS',
+    7: 'ELIMINATED',
+  }[r];
+};
+
+const toEndReason = (r: 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8) => {
+  return {
+    0: 'NONE',
+    1: 'TIME',
+    2: 'STANDARD',
+    3: 'CONSECUTIVE_ZEROES',
+    4: 'RESIGNED',
+    5: 'ABORTED',
+    6: 'TRIPLE_CHALLENGE',
+    7: 'CANCELLED',
+    8: 'FORCE_FORFEIT',
+  }[r];
+};
+
+export const TourneyGameEndedEvtToRecentGame = (
+  evt: TournamentGameEndedEvent
+): RecentGame => {
+  const evtPlayers = evt.getPlayersList();
+
+  const players = evtPlayers.map((ep) => ({
+    username: ep.getUsername(),
+    score: ep.getScore(),
+    result: toResultStr(ep.getResult()),
+  }));
+
+  return {
+    players,
+    end_reason: toEndReason(evt.getEndReason()),
+    game_id: evt.getGameId(),
+    time: evt.getTime(),
+  };
+};
+
+// The "Ready" button and pairings should be displayed based on:
+//    - the tournament having started
+//    - player not having yet started the current round's game
+//      (how do we determine that? a combination of the live games
+//       currently ongoing and a game result already being in for this game?)
+const tourneyStatus = (
+  started: boolean,
+  division: Division,
+  activeGames: Array<ActiveGame>,
+  currentRound: number,
+  loginContext: LoginState
+): TourneyStatus => {
+  if (!started) {
+    return TourneyStatus.PRETOURNEY;
+  }
+  if (!division) {
+    return TourneyStatus.PRETOURNEY; // XXX: maybe a state for not being part of tourney
+  }
+
+  if (
+    activeGames.find((ag) => {
+      return (
+        ag.players[0].displayName === loginContext.username ||
+        ag.players[1].displayName === loginContext.username
+      );
+    })
+  ) {
+    return TourneyStatus.ROUND_GAME_ACTIVE;
+  }
+  const fullPlayerID = `${loginContext.userID}:${loginContext.username}`;
+  // competitor state round is 1-indexed
+  if (!division) {
+    // This really shouldn't happen, but it's a check to make sure we don't crash.
+    return TourneyStatus.PRETOURNEY;
+  }
+  const roundInfo = division.roundInfo[`${currentRound}:${fullPlayerID}`];
+  if (!roundInfo) {
+    return TourneyStatus.PRETOURNEY;
+  }
+  const playerIdx = roundInfo.players.indexOf(fullPlayerID);
+  if (playerIdx === undefined) {
+    return TourneyStatus.PRETOURNEY;
+  }
+  if (
+    roundInfo.readyStates[playerIdx] === '' &&
+    roundInfo.readyStates[1 - playerIdx] !== ''
+  ) {
+    // Our opponent is ready
+    return TourneyStatus.ROUND_OPPONENT_WAITING;
+  } else if (
+    roundInfo.readyStates[1 - playerIdx] === '' &&
+    roundInfo.readyStates[playerIdx] !== ''
+  ) {
+    // We're ready
+    return TourneyStatus.ROUND_READY;
+  }
+  if (roundInfo.games[0] && roundInfo.games[0].gameEndReason) {
+    // Game already finished
+    return TourneyStatus.ROUND_GAME_FINISHED;
+  }
+  if (
+    roundInfo.readyStates[playerIdx] === '' &&
+    roundInfo.readyStates[1 - playerIdx] === ''
+  ) {
+    return TourneyStatus.ROUND_OPEN;
+  }
+  // Otherwise just return generic pre-tourney
+  return TourneyStatus.PRETOURNEY;
+};
+
 export function TournamentReducer(
   state: TournamentState,
   action: Action
@@ -168,15 +298,42 @@ export function TournamentReducer(
         metadata,
       };
 
+    // This message gets set often, every time anything happens (a game ends,
+    // users get edited, new pairings get set, etc.)
     case ActionType.SetDivisionData: {
       // Convert the protobuf object to a nicer JS representation:
-      const dd = action.payload as TournamentDivisionDataResponse;
-      const divData = divisionDataResponseToObj(dd);
+      const dd = action.payload as {
+        divisionMessage: TournamentDivisionDataResponse;
+        loginState: LoginState;
+      };
+      const divData = divisionDataResponseToObj(dd.divisionMessage);
+      const fullLoggedInID = `${dd.loginState.userID}:${dd.loginState.username}`;
+      let registeredDivision: Division | undefined;
+      if (divData.players.includes(fullLoggedInID)) {
+        registeredDivision = divData;
+      }
+      let competitorState: CompetitorState = defaultCompetitorState;
+      if (registeredDivision) {
+        competitorState = {
+          isRegistered: true,
+          division: registeredDivision.divisionID,
+          // currentRound should be the user-readable 1 based version
+          currentRound: registeredDivision.currentRound + 1,
+          status: tourneyStatus(
+            state.started,
+            registeredDivision,
+            state.activeGames,
+            registeredDivision.currentRound,
+            dd.loginState
+          ),
+        };
+      }
       return {
         ...state,
+        competitorState,
         divisions: {
           ...state.divisions,
-          [dd.getDivisionId()]: divData,
+          [dd.divisionMessage.getDivisionId()]: divData,
         },
       };
     }
@@ -198,11 +355,9 @@ export function TournamentReducer(
           }
         }
       );
+      // However we should check to see if we've already played the game,
+      // or are playing the game.
 
-      let initialStatus = TourneyStatus.PRETOURNEY;
-      if (dd.fullDivisions.getStarted()) {
-        initialStatus = TourneyStatus.ROUND_OPEN;
-      }
       let competitorState: CompetitorState = defaultCompetitorState;
       if (registeredDivision) {
         competitorState = {
@@ -210,8 +365,13 @@ export function TournamentReducer(
           division: registeredDivision.divisionID,
           // currentRound should be the user-readable 1 based version
           currentRound: registeredDivision.currentRound + 1,
-          // TODO: set this correctly
-          status: initialStatus,
+          status: tourneyStatus(
+            dd.fullDivisions.getStarted(),
+            registeredDivision,
+            state.activeGames,
+            registeredDivision.currentRound,
+            dd.loginState
+          ),
         };
       }
 
@@ -230,11 +390,7 @@ export function TournamentReducer(
       }
       const division = m.getDivision();
       // Mark the round for the passed-in division to be the passed-in round.
-      // The "Ready" button and pairings should be displayed based on:
-      //    - the tournament having started
-      //    - player not having yet started the current round's game
-      //      (how do we determine that? a combination of the live games
-      //       currently ongoing and a game result already being in for this game?)
+
       return {
         ...state,
         started: true,
@@ -244,6 +400,21 @@ export function TournamentReducer(
             ...state.divisions[division],
             currentRound: m.getRound(),
           },
+        },
+        competitorState: {
+          ...state.competitorState,
+          currentRound:
+            // the competitorState round is 1-based.
+            state.competitorState.division === division ? m.getRound() + 1 : 0,
+          status:
+            // only change to ROUND_OPEN if we are in this tournament.
+            // There might be a potential race condition here where our
+            // opponent clicks Ready immediately when they receive this
+            // message. However, that's ok, because the backend will
+            // still take us to the game once we click "I'm ready".
+            state.competitorState.division === division
+              ? TourneyStatus.ROUND_OPEN
+              : state.competitorState.status,
         },
       };
     }
@@ -256,6 +427,75 @@ export function TournamentReducer(
           ...state.competitorState,
           status: m,
         },
+      };
+    }
+
+    case ActionType.AddActiveGames: {
+      const activeGames = action.payload as Array<ActiveGame>;
+      return {
+        ...state,
+        activeGames,
+      };
+    }
+
+    case ActionType.AddActiveGame: {
+      const { activeGames } = state;
+      const activeGame = action.payload as ActiveGame;
+      return {
+        ...state,
+        activeGames: [...activeGames, activeGame],
+      };
+    }
+
+    case ActionType.RemoveActiveGame: {
+      const { activeGames } = state;
+      const id = action.payload as string;
+
+      const newArr = activeGames.filter((ag) => {
+        return ag.gameID !== id;
+      });
+
+      return {
+        ...state,
+        activeGames: newArr,
+      };
+    }
+
+    case ActionType.AddTourneyGameResult: {
+      const { finishedTourneyGames, gamesOffset, gamesPageSize } = state;
+      const evt = action.payload as TournamentGameEndedEvent;
+      const game = TourneyGameEndedEvtToRecentGame(evt);
+      // If a tourney game comes in while we're looking at another page,
+      // do nothing.
+      if (gamesOffset > 0) {
+        return state;
+      }
+
+      // Bring newest game to the top.
+      const newGames = [game, ...finishedTourneyGames];
+      if (newGames.length > gamesPageSize) {
+        newGames.length = gamesPageSize;
+      }
+
+      return {
+        ...state,
+        finishedTourneyGames: newGames,
+      };
+    }
+
+    case ActionType.AddTourneyGameResults: {
+      const finishedTourneyGames = action.payload as Array<RecentGame>;
+      return {
+        ...state,
+        finishedTourneyGames,
+      };
+    }
+
+    case ActionType.SetTourneyGamesOffset: {
+      const offset = action.payload as number;
+      return {
+        ...state,
+        gamesOffset: offset,
       };
     }
   }

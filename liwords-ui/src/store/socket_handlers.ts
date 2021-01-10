@@ -463,12 +463,12 @@ export const useOnSocketMsg = () => {
 
           case MessageType.TOURNAMENT_GAME_ENDED_EVENT: {
             const gee = parsedMsg as TournamentGameEndedEvent;
-            dispatchLobbyContext({
+            dispatchTournamentContext({
               actionType: ActionType.AddTourneyGameResult,
               payload: gee,
             });
 
-            dispatchLobbyContext({
+            dispatchTournamentContext({
               actionType: ActionType.RemoveActiveGame,
               payload: gee.getGameId(),
             });
@@ -478,9 +478,13 @@ export const useOnSocketMsg = () => {
 
           case MessageType.TOURNAMENT_DIVISION_MESSAGE: {
             const tdm = parsedMsg as TournamentDivisionDataResponse;
+
             dispatchTournamentContext({
               actionType: ActionType.SetDivisionData,
-              payload: tdm,
+              payload: {
+                divisionMessage: tdm,
+                loginState,
+              },
             });
 
             break;
@@ -608,7 +612,10 @@ export const useOnSocketMsg = () => {
             if (!activeGame) {
               return;
             }
-            dispatchLobbyContext({
+            const dispatchFn = tournamentContext.metadata.id
+              ? dispatchTournamentContext
+              : dispatchLobbyContext;
+            dispatchFn({
               actionType: ActionType.AddActiveGame,
               payload: activeGame,
             });
@@ -618,7 +625,11 @@ export const useOnSocketMsg = () => {
           case MessageType.ONGOING_GAMES: {
             const age = parsedMsg as GameInfoResponses;
             console.log('got active games', age);
-            dispatchLobbyContext({
+            const dispatchFn = tournamentContext.metadata.id
+              ? dispatchTournamentContext
+              : dispatchLobbyContext;
+
+            dispatchFn({
               actionType: ActionType.AddActiveGames,
               payload: age
                 .getGameInfoList()

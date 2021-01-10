@@ -51,9 +51,12 @@ export const ActionsPanel = React.memo((props: Props) => {
     // return <DirectorTools tournamentID={props.tournamentID} />;
     return <div>Coming soon!</div>;
   };
-  const { tournamentContext } = useTournamentStoreContext();
+  const {
+    dispatchTournamentContext,
+    tournamentContext,
+  } = useTournamentStoreContext();
+  const { lobbyContext } = useLobbyStoreContext();
   const tournamentID = tournamentContext.metadata.id;
-  const { lobbyContext, dispatchLobbyContext } = useLobbyStoreContext();
 
   let matchButtonText;
   if (['CLUB', 'CLUBSESSION'].includes(tournamentContext.metadata.type)) {
@@ -62,27 +65,27 @@ export const ActionsPanel = React.memo((props: Props) => {
     matchButtonText = 'Start tournament game';
   }
   const fetchPrev = useCallback(() => {
-    dispatchLobbyContext({
+    dispatchTournamentContext({
       actionType: ActionType.SetTourneyGamesOffset,
       payload: Math.max(
-        lobbyContext.gamesOffset - lobbyContext.gamesPageSize,
+        tournamentContext.gamesOffset - tournamentContext.gamesPageSize,
         0
       ),
     });
   }, [
-    dispatchLobbyContext,
-    lobbyContext.gamesOffset,
-    lobbyContext.gamesPageSize,
+    dispatchTournamentContext,
+    tournamentContext.gamesOffset,
+    tournamentContext.gamesPageSize,
   ]);
   const fetchNext = useCallback(() => {
-    dispatchLobbyContext({
+    dispatchTournamentContext({
       actionType: ActionType.SetTourneyGamesOffset,
-      payload: lobbyContext.gamesOffset + lobbyContext.gamesPageSize,
+      payload: tournamentContext.gamesOffset + tournamentContext.gamesPageSize,
     });
   }, [
-    dispatchLobbyContext,
-    lobbyContext.gamesOffset,
-    lobbyContext.gamesPageSize,
+    dispatchTournamentContext,
+    tournamentContext.gamesOffset,
+    tournamentContext.gamesPageSize,
   ]);
   const onFormSubmit = (sg: SoughtGame) => {
     setMatchModalVisible(false);
@@ -105,16 +108,16 @@ export const ActionsPanel = React.memo((props: Props) => {
         {
           id: tournamentID,
           num_games: pageSize,
-          offset: lobbyContext.gamesOffset,
+          offset: tournamentContext.gamesOffset,
         }
       )
       .then((resp) => {
-        dispatchLobbyContext({
+        dispatchTournamentContext({
           actionType: ActionType.AddTourneyGameResults,
           payload: resp.data.games,
         });
       });
-  }, [tournamentID, dispatchLobbyContext, lobbyContext.gamesOffset]);
+  }, [tournamentID, dispatchTournamentContext, tournamentContext.gamesOffset]);
 
   const renderGamesTab = () => {
     if (selectedGameTab === 'GAMES') {
@@ -131,7 +134,7 @@ export const ActionsPanel = React.memo((props: Props) => {
           ) : null}
           <ActiveGames
             username={username}
-            activeGames={lobbyContext?.activeGames}
+            activeGames={tournamentContext?.activeGames}
           />
         </>
       );
@@ -141,10 +144,12 @@ export const ActionsPanel = React.memo((props: Props) => {
         <>
           <h4>Recent Games</h4>
           <RecentTourneyGames
-            games={lobbyContext.tourneyGames}
-            fetchPrev={lobbyContext.gamesOffset > 0 ? fetchPrev : undefined}
+            games={tournamentContext.finishedTourneyGames}
+            fetchPrev={
+              tournamentContext.gamesOffset > 0 ? fetchPrev : undefined
+            }
             fetchNext={
-              lobbyContext.tourneyGames.length < pageSize
+              tournamentContext.finishedTourneyGames.length < pageSize
                 ? undefined
                 : fetchNext
             }
@@ -157,10 +162,12 @@ export const ActionsPanel = React.memo((props: Props) => {
         <>
           <h4>Recent Games</h4>
           <RecentTourneyGames
-            games={lobbyContext.tourneyGames}
-            fetchPrev={lobbyContext.gamesOffset > 0 ? fetchPrev : undefined}
+            games={tournamentContext.finishedTourneyGames}
+            fetchPrev={
+              tournamentContext.gamesOffset > 0 ? fetchPrev : undefined
+            }
             fetchNext={
-              lobbyContext.tourneyGames.length < pageSize
+              tournamentContext.finishedTourneyGames.length < pageSize
                 ? undefined
                 : fetchNext
             }

@@ -26,7 +26,6 @@ import { PlayerOrder } from './constants';
 import { PoolFormatType } from '../constants/pool_formats';
 import { LoginState, LoginStateReducer } from './login_state';
 import { EphemeralTile } from '../utils/cwgame/common';
-import { pageSize } from '../tournament/recent_game';
 import { ActiveChatChannels } from '../gen/api/proto/user_service/user_service_pb';
 import {
   defaultTournamentState,
@@ -186,9 +185,6 @@ const LobbyContext = createContext<LobbyStoreData>({
     soughtGames: [],
     activeGames: [],
     matchRequests: [],
-    tourneyGames: [],
-    gamesPageSize: pageSize,
-    gamesOffset: 0,
   },
   dispatchLobbyContext: defaultFunction,
 });
@@ -570,9 +566,6 @@ const RealStore = ({ children, ...props }: Props) => {
     soughtGames: [],
     activeGames: [],
     matchRequests: [],
-    tourneyGames: [],
-    gamesPageSize: pageSize,
-    gamesOffset: 0,
   });
   const dispatchLobbyContext = useCallback(
     (action) => setLobbyContext((state) => LobbyReducer(state, action)),
