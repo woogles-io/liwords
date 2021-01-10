@@ -2,6 +2,7 @@
 
 .ant-card.competitor-status {
   height: 64px;
+  margin-bottom: 12px;
   .ant-card-body {
     padding: 0px 18px;
     height: 64px;
@@ -58,5 +59,18 @@
   @media (min-width: $screen-laptop-min) {
     display: block;
   }
+}
 
+.tournament-info .ant-card.competitor-status {
+  @media (min-width: calc($screen-laptop-min - 1)) {
+    display: none;
+  }
+  @media (max-width: $screen-tablet-min) {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    margin: 0;
+    width: 100vw;
+    border-radius: 0;
+  }
 }
