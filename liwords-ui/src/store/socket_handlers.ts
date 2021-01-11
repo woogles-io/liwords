@@ -651,13 +651,17 @@ export const useOnSocketMsg = () => {
             ) {
               dispatchTournamentContext({
                 actionType: ActionType.SetTourneyStatus,
-                payload: TourneyStatus.ROUND_READY,
+                payload: ready.getUnready()
+                  ? TourneyStatus.ROUND_OPEN
+                  : TourneyStatus.ROUND_READY,
               });
             } else {
               // The opponent sent this message.
               dispatchTournamentContext({
                 actionType: ActionType.SetTourneyStatus,
-                payload: TourneyStatus.ROUND_OPPONENT_WAITING,
+                payload: ready.getUnready()
+                  ? TourneyStatus.ROUND_OPEN
+                  : TourneyStatus.ROUND_OPPONENT_WAITING,
               });
             }
             break;

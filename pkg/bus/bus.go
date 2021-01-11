@@ -5,6 +5,7 @@ package bus
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"strings"
 	"time"
@@ -621,7 +622,35 @@ func (b *Bus) leaveTab(ctx context.Context, userID, connID string) error {
 		return err
 	}
 
-	return b.deleteSoughtForConnID(ctx, connID)
+	err = b.deleteSoughtForConnID(ctx, connID)
+	if err != nil {
+		return err
+	}
+	return b.deleteTournamentReadyMsgs(ctx, userID, connID)
+	// Delete any tournament ready messages
+}
+
+func (b *Bus) deleteTournamentReadyMsgs(ctx context.Context, userID, connID string) error {
+	conn := b.redisPool.Get()
+	defer conn.Close()
+	bts, err := redis.Bytes(conn.Do("GET", "tready:"+connID))
+	if err != nil {
+		// There are probably no such messages for this connection.
+		return nil
+	}
+	readyEvt := pb.ReadyForTournamentGame{}
+	err = json.Unmarshal(bts, &readyEvt)
+	if err != nil {
+		return err
+	}
+	readyEvt.Unready = true
+	err = b.readyForTournamentGame(ctx, &readyEvt, userID, connID)
+	if err != nil {
+		return err
+	}
+	// and delete the ready event from redis
+	_, err = conn.Do("DEL", "tready:"+connID)
+	return err
 }
 
 func (b *Bus) leaveSite(ctx context.Context, userID string) error {

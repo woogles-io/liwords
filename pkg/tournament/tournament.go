@@ -574,7 +574,7 @@ func StartRoundCountdown(ctx context.Context, ts TournamentStore, id string,
 		divisionObject.DivisionManager.SetLastStarted(evt)
 		log.Debug().Interface("evt", evt).Msg("sent-tournament-round-started")
 	} else {
-		return fmt.Errorf("division %s is not ready to be started", division)
+		return fmt.Errorf("division %s round %d is not ready to be started", division, round)
 	}
 	if save {
 		return ts.Set(ctx, t)

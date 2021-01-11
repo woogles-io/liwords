@@ -12,6 +12,7 @@ import (
 	"github.com/domino14/liwords/pkg/entity"
 	"github.com/domino14/liwords/pkg/pair"
 	realtime "github.com/domino14/liwords/rpc/api/proto/realtime"
+	"github.com/rs/zerolog/log"
 )
 
 type ClassicDivision struct {
@@ -269,7 +270,8 @@ func (t *ClassicDivision) SubmitResult(round int,
 
 	// Ensure the submitted results were for players that were paired
 	if pri1.PlayerRoundInfo != pri2.PlayerRoundInfo {
-		return fmt.Errorf("submitted result for players that didn't player each other: %s (%p), %s (%p) round (%d)", p1, pri1.PlayerRoundInfo, p2, pri2.PlayerRoundInfo, round)
+		log.Debug().Interface("pr1", pri1).Interface("pri2", pri2).Msg("not-play")
+		return fmt.Errorf("submitted result for players that didn't play each other: %s (%p), %s (%p) round (%d)", p1, pri1.PlayerRoundInfo, p2, pri2.PlayerRoundInfo, round)
 	}
 
 	pairing := pri1.PlayerRoundInfo

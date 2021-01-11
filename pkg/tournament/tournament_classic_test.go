@@ -79,7 +79,7 @@ func TestClassicDivisionRandom(t *testing.T) {
 	// The result and record should remain unchanged
 	is.NoErr(equalPairing(expectedpairing1, pairing1))
 
-	// Submit result for players that didn't player each other
+	// Submit result for players that didn't play each other
 	err = tc.SubmitResult(0, player1, player3, 10000, -40, realtime.TournamentGameResult_WIN,
 		realtime.TournamentGameResult_LOSS, realtime.GameEndReason_STANDARD, false, 0)
 	is.True(err != nil)
