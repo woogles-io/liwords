@@ -95,7 +95,9 @@ export const CompetitorStatus = (props: Props) => {
                 Director may assign a forfeit.
               </span>
             </p>
-            <Button className="primary">I'm ready</Button>
+            <Button className="primary" onClick={props.sendReady}>
+              I'm ready
+            </Button>
           </>
         );
       }

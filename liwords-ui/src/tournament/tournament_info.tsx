@@ -6,6 +6,7 @@ import { useTournamentStoreContext } from '../store/store';
 import { UsernameWithContext } from '../shared/usernameWithContext';
 import { CompetitorStatus } from './competitor_status';
 import { readyForTournamentGame } from '../store/reducers/tournament_reducer';
+import { isPairedMode } from '../store/constants';
 
 type TournamentInfoProps = {
   setSelectedGameTab: (tab: string) => void;
@@ -14,7 +15,7 @@ type TournamentInfoProps = {
 
 export const TournamentInfo = (props: TournamentInfoProps) => {
   const { tournamentContext } = useTournamentStoreContext();
-  const { competitorState: competitorContext } = tournamentContext;
+  const { competitorState: competitorContext, metadata } = tournamentContext;
   const directors = tournamentContext.metadata.directors.map((username, i) => (
     <span key={username}>
       {i > 0 && ', '}
@@ -42,12 +43,16 @@ export const TournamentInfo = (props: TournamentInfoProps) => {
         <ReactMarkdown linkTarget="_blank">
           {tournamentContext.metadata.description}
         </ReactMarkdown>
-        <Divider />
-        Recent games can now be found in the{' '}
-        <a onClick={() => props.setSelectedGameTab('RECENT')}>
-          RECENT GAMES
-        </a>{' '}
-        tab in the center panel.
+        {!isPairedMode(metadata.type) && (
+          <>
+            <Divider />
+            Recent games can now be found in the{' '}
+            <a onClick={() => props.setSelectedGameTab('RECENT')}>
+              RECENT GAMES
+            </a>{' '}
+            tab in the center panel.
+          </>
+        )}
       </Card>
     </div>
   );
