@@ -15,6 +15,10 @@ export const calculateTotalTime = (
   return secs + maxOvertime * 60 + incrementSecs * turnsPerGame;
 };
 
+export const isPairedMode = (type: string) => {
+  return type === 'CLUB_SESSION' || type === 'STANDARD';
+};
+
 // See cutoffs in variants.go. XXX: Try to tie these together better.
 export const timeCtrlToDisplayName = (
   secs: number,
