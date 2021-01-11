@@ -460,10 +460,11 @@ message TournamentDivisionDataResponse {
   // In the future we will add different
   // types of tournament divisions and only
   // one will be non nil
-  map<string, PlayerRoundInfo> division = 5;
-  int32 current_round = 6;
-  repeated PlayerStanding standings = 7;
-  repeated PlayerProperties players_properties = 8;
+  repeated string division = 5;
+  map<string, PlayerRoundInfo> pairing_map = 6;
+  int32 current_round = 7;
+  repeated PlayerStanding standings = 8;
+  repeated PlayerProperties players_properties = 9;
 }
 
 message FullTournamentDivisions {

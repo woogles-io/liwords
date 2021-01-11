@@ -10,7 +10,6 @@ import (
 )
 
 type DivisionManager interface {
-	GetPairing(string, int) (*Pairing, error)
 	SubmitResult(int, string, string, int, int, realtime.TournamentGameResult,
 		realtime.TournamentGameResult, realtime.GameEndReason, bool, int) error
 	PairRound(int) error
@@ -56,10 +55,6 @@ const (
 // future additional properties
 type PlayerProperties struct {
 	Removed bool
-}
-
-type Pairing struct {
-	PlayerRoundInfo *realtime.PlayerRoundInfo `json:"pri"`
 }
 
 type TournamentDivision struct {

@@ -15,7 +15,7 @@ const (
 	GlickoToGlicko225Conversion float64 = 173.7178
 	ConvergenceTolerance        float64 = 0.000001
 	SpreadScaling               int     = 125
-	WinBoost                    float64 = float64(1.0/3.0)
+	WinBoost                    float64 = 0.4 //float64(1.0/3.0)
 	K                           float64 = (float64(4*SpreadScaling) * WinBoost) / (1 - (2 * WinBoost))
 	RatingPeriodinSeconds       int     = 60 * 60 * 24 * 4
 	iterationMaximum            int     = 1000

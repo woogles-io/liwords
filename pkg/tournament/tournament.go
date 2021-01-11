@@ -774,7 +774,10 @@ func addTournamentPersons(ctx context.Context,
 		}
 		personsCopy[fullID] = persons.Persons[k]
 	}
-	persons.Persons = personsCopy
+
+	for k, v := range personsCopy {
+		personsMap[k] = v
+	}
 
 	if isPlayers {
 		if t.IsStarted {
@@ -843,6 +846,10 @@ func removeTournamentPersons(ctx context.Context,
 		personsCopy[fullID] = persons.Persons[k]
 	}
 
+	for k, _ := range personsCopy {
+		delete(personsMap, k)
+	}
+
 	if isPlayers {
 		if t.IsStarted {
 			err := divisionObject.DivisionManager.RemovePlayers(persons)
@@ -850,9 +857,6 @@ func removeTournamentPersons(ctx context.Context,
 				return err
 			}
 		} else {
-			for k := range personsCopy {
-				delete(personsMap, k)
-			}
 			err = createDivisionManager(t, division)
 			if err != nil {
 				return err
