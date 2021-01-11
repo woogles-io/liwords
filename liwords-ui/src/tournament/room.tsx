@@ -1,8 +1,7 @@
 import React from 'react';
-import '../App.scss';
-import 'antd/dist/antd.css';
 
 import { useCallback, useEffect, useMemo } from 'react';
+
 import { useParams } from 'react-router-dom';
 import axios from 'axios';
 import { message } from 'antd';
@@ -26,6 +25,7 @@ import {
   readyForTournamentGame,
   TournamentMetadata,
 } from '../store/reducers/tournament_reducer';
+import './room.scss';
 
 type Props = {
   sendSocketMsg: (msg: Uint8Array) => void;
@@ -41,7 +41,7 @@ export const TournamentRoom = (props: Props) => {
     tournamentContext,
     dispatchTournamentContext,
   } = useTournamentStoreContext();
-  const { loggedIn, username } = loginState;
+  const { loggedIn, username, userID } = loginState;
   const { competitorState: competitorContext } = tournamentContext;
   const { isRegistered } = competitorContext;
   const { sendSocketMsg } = props;
@@ -170,6 +170,7 @@ export const TournamentRoom = (props: Props) => {
           loggedIn={loggedIn}
           newGame={handleNewGame}
           username={username}
+          userID={userID}
         />
         <TournamentInfo
           setSelectedGameTab={setSelectedGameTab}

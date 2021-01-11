@@ -37,19 +37,20 @@ type TournamentGame = {
   gameEndReason: gameEndReason;
 };
 
-type SinglePairing = {
+export type SinglePairing = {
   players: Array<string>;
   outcomes: Array<tournamentGameResult>;
   readyStates: Array<string>;
   games: Array<TournamentGame>;
 };
 
-type Division = {
+export type Division = {
   tournamentID: string;
   divisionID: string;
   players: Array<string>;
   // Add TournamentControls here.
   roundInfo: { [roundUserKey: string]: SinglePairing };
+  numRounds: number;
   // Note: currentRound is zero-indexed
   currentRound: number;
   // Add Standings here
@@ -149,6 +150,7 @@ const divisionDataResponseToObj = (
     divisionID: dd.getDivisionId(),
     players: dd.getPlayersList(),
     currentRound: dd.getCurrentRound(),
+    numRounds: dd.getControls()?.toObject().roundControlsList.length || 0,
     roundInfo: {},
   };
 

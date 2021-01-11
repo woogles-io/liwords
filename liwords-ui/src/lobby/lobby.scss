@@ -15,7 +15,7 @@
     flex-grow: 2;
     @include type-default;
 
-    .ant-card {
+    .ant-card:not(.paired-mode) {
       @include action-blocks;
     }
 
