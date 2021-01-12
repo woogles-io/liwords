@@ -1,7 +1,7 @@
 import os
 from invoke import task
 
-code_dir = os.getenv("CODE_DIR", "/Users/cesar/code")
+code_dir = os.getenv("CODE_DIR", "/Users/slipkin/Projects/woogles/")
 
 
 @task
@@ -9,7 +9,7 @@ def build_protobuf(c):
     # Build the JS for the macondo proto.
     c.run(
         "protoc "
-        '--plugin="protoc-gen-ts=liwords-ui/node_modules/.bin/protoc-gen-ts" '
+        '--plugin="protoc-gen-ts=liwords-ui/node_modules/ts-protoc-gen/bin/protoc-gen-ts" '
         "--ts_out=liwords-ui/src/gen "
         "--js_out=import_style=commonjs,binary:liwords-ui/src/gen "
         f"--proto_path={code_dir} macondo/api/proto/macondo/macondo.proto"
@@ -35,7 +35,7 @@ def build_protobuf(c):
     for tapi in ts_apis:
         c.run(
             "protoc "
-            '--plugin="protoc-gen-ts=liwords-ui/node_modules/.bin/protoc-gen-ts" '
+            '--plugin="protoc-gen-ts=liwords-ui/node_modules/ts-protoc-gen/bin/protoc-gen-ts" '
             "--js_out=import_style=commonjs,binary:liwords-ui/src/gen "
             f"--ts_out=liwords-ui/src/gen --proto_path={code_dir}/ "
             f"--proto_path={code_dir}/liwords "
@@ -51,7 +51,7 @@ def build_protobuf(c):
     )
     c.run(
         "protoc "
-        '--plugin="protoc-gen-ts=liwords-ui/node_modules/.bin/protoc-gen-ts" '
+        '--plugin="protoc-gen-ts=liwords-ui/node_modules/ts-protoc-gen/bin/protoc-gen-ts" '
         f"--go_out=rpc "
         "--js_out=import_style=commonjs,binary:liwords-ui/src/gen "
         f"--ts_out=liwords-ui/src/gen --proto_path={code_dir}/ "
