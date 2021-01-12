@@ -21,19 +21,26 @@ export const BioCard = React.memo((props: BioProps) => {
   const { TextArea } = Input;
   const [err, setErr] = useState('');
 
+  const [latestBio, setLatestBio] = useState("");
+
   const [editModalVisible, setEditModalVisible] = useState(false);
   const [candidateBio, setCandidateBio] = useState("");
+
+  React.useEffect(() => {
+    setLatestBio(props.bio);
+    console.log("useEffect");
+  }, [props.bio]);
 
   const actions = (viewer === username) 
     ? [(
         <div
           className="edit-bio"
           onClick={() => {
-            setCandidateBio(props.bio);
+            setCandidateBio(latestBio);
             setEditModalVisible(true);
           }}
         >
-          Edit
+          {latestBio ? "Edit" : "Add a bio"}
         </div>
       )] 
     : []
@@ -42,9 +49,9 @@ export const BioCard = React.memo((props: BioProps) => {
     setCandidateBio(e.target.value);
   }, []);
 
-  return (
+  return (viewer === username || latestBio != "") ? (
     <Card title="Bio" actions={actions}>
-      <ReactMarkdown>{props.bio}</ReactMarkdown>
+      <ReactMarkdown>{latestBio ? latestBio : 'You haven\'t yet provided your bio.'}</ReactMarkdown>
       <Modal
         className="bio-edit-modal"
         title="Edit bio"
@@ -68,6 +75,7 @@ export const BioCard = React.memo((props: BioProps) => {
                 message: 'Success',
                 description: 'Your bio was updated.',
               });
+              setLatestBio(candidateBio)
               setEditModalVisible(false);              
             })
             .catch((e) => {
@@ -100,6 +108,6 @@ export const BioCard = React.memo((props: BioProps) => {
       <MarkdownTips/> 
       </Modal>
     </Card>
-  );
+  ) : <React.Fragment />;
 });
 
