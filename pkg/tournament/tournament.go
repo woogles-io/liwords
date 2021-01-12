@@ -409,15 +409,12 @@ func SetResult(ctx context.Context,
 	if strings.HasSuffix(os.Args[0], ".test") {
 		testMode = true
 	}
-	log.Debug().Bool("testMode", testMode).Msg("test-mode")
 
-	// XXX: this is VERY temporary code; and the club type will be checked
-	// properly soon.
-	// if t.Type == entity.TypeClub {
-	if !testMode && t.Type == entity.TypeClub {
+	if !testMode && (t.Type == entity.TypeClub || t.Type == entity.TypeLegacy) {
 		// This game was played in a legacy "Clubhouse".
-		// This is a tournament of "club" type (note, not a club *session*). This
-		// is a casual type of tournament game with no defined divisions, pairings,
+		// This is a tournament of "club" type (note, not a club *session*) or
+		// a tournament of "legacy" type.
+		// This is a casual type of tournament game with no defined divisions, pairings,
 		// game settings, etc, so we bypass all of this code and just send a
 		// tournament game ended message.
 

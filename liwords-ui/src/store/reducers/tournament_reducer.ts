@@ -16,7 +16,7 @@ import { encodeToSocketFmt } from '../../utils/protobuf';
 import { LoginState } from '../login_state';
 import { ActiveGame } from './lobby_reducer';
 
-type tourneytypes = 'STANDARD' | 'CLUB' | 'CLUB_SESSION';
+type tourneytypes = 'STANDARD' | 'CLUB' | 'CHILD' | 'LEGACY';
 type valueof<T> = T[keyof T];
 
 type tournamentGameResult = valueof<TournamentGameResultMap>;

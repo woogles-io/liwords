@@ -15,8 +15,10 @@ enum TType {
   STANDARD = 0;
   // A new "clubhouse"
   CLUB = 1;
-  // A club session
-  CLUB_SESSION = 2;
+  // A club session or child tournament.
+  CHILD = 2;
+  // A legacy tournament
+  LEGACY = 3;
 }
 
 message NewTournamentRequest {

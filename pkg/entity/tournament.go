@@ -34,8 +34,11 @@ const (
 	TypeStandard CompetitionType = "tournament"
 	// TypeClub is a club/clubhouse
 	TypeClub = "club"
-	// TypeClubSession is spawned from a club
-	TypeClubSession = "clubsession"
+	// TypeChild is spawned from a club or tournament
+	TypeChild = "child"
+	// TypeLegacy is a tournament, but in club/clubhouse mode. The only different
+	// from a clubhouse is that it can have a /tournament URL.
+	TypeLegacy = "legacy"
 )
 
 const (

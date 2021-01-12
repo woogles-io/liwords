@@ -16,7 +16,7 @@ export const calculateTotalTime = (
 };
 
 export const isPairedMode = (type: string) => {
-  return type === 'CLUB_SESSION' || type === 'STANDARD';
+  return type === 'CHILD' || type === 'STANDARD';
 };
 
 // See cutoffs in variants.go. XXX: Try to tie these together better.
@@ -150,7 +150,7 @@ export const setPreferredSortOrder = (value: string) => {
 };
 
 export const sortTiles = (rack: string) => {
-  let effectiveSortOrder = preferredSortOrder ?? '';
+  const effectiveSortOrder = preferredSortOrder ?? '';
   return Array.from(rack, (tile) => {
     let index = effectiveSortOrder.indexOf(tile);
     if (index < 0) index = effectiveSortOrder.length + (tile === Blank ? 1 : 0);

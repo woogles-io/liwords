@@ -264,7 +264,7 @@ export const ActionsPanel = React.memo((props: Props) => {
 
   const actions = useMemo(() => {
     let matchButtonText = 'Start tournament game';
-    if (['CLUB', 'CLUBSESSION'].includes(tournamentContext.metadata.type)) {
+    if (['CLUB', 'CHILD'].includes(tournamentContext.metadata.type)) {
       matchButtonText = 'Start club game';
     }
     const availableActions = new Array<ReactNode>();
