@@ -250,9 +250,14 @@ export const TourneyEditor = (props: Props) => {
             <Form.Item name="type" label="Type">
               <Select>
                 <Select.Option value="CLUB">Club</Select.Option>
-                <Select.Option value="CLUB SESSION">Club Session</Select.Option>
+                <Select.Option value="CHILD">
+                  Club Session (or Child Tournament)
+                </Select.Option>
                 <Select.Option value="STANDARD">
                   Standard Tournament
+                </Select.Option>
+                <Select.Option value="LEGACY">
+                  Legacy Tournament (Clubhouse mode)
                 </Select.Option>
               </Select>
             </Form.Item>

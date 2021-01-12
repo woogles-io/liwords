@@ -132,10 +132,16 @@ func (ts *TournamentService) NewTournament(ctx context.Context, req *pb.NewTourn
 		if !strings.HasPrefix(req.Slug, "/tournament/") {
 			return nil, twirp.NewError(twirp.InvalidArgument, "tournament slug must start with /tournament/")
 		}
-	case pb.TType_CLUB_SESSION:
-		tt = entity.TypeClubSession
-		if !strings.HasPrefix(req.Slug, "/club/") {
-			return nil, twirp.NewError(twirp.InvalidArgument, "club-session slug must start with /club/")
+	case pb.TType_LEGACY:
+		tt = entity.TypeLegacy
+		if !strings.HasPrefix(req.Slug, "/tournament/") {
+			return nil, twirp.NewError(twirp.InvalidArgument, "tournament slug must start with /tournament/")
+		}
+	case pb.TType_CHILD:
+		tt = entity.TypeChild
+		// A Club session type can also be a child tournament (it's essentially just a tournament with a parent ID)
+		if !strings.HasPrefix(req.Slug, "/club/") && !strings.HasPrefix(req.Slug, "/tournament/") {
+			return nil, twirp.NewError(twirp.InvalidArgument, "club-session slug must start with /club/ or /tournament/")
 		}
 	default:
 		return nil, twirp.NewError(twirp.InvalidArgument, "invalid tournament type")
@@ -206,10 +212,12 @@ func (ts *TournamentService) GetTournamentMetadata(ctx context.Context, req *pb.
 	switch t.Type {
 	case entity.TypeStandard:
 		tt = pb.TType_STANDARD
-	case entity.TypeClubSession:
-		tt = pb.TType_CLUB_SESSION
+	case entity.TypeChild:
+		tt = pb.TType_CHILD
 	case entity.TypeClub:
 		tt = pb.TType_CLUB
+	case entity.TypeLegacy:
+		tt = pb.TType_LEGACY
 	default:
 		return nil, fmt.Errorf("unrecognized tournament type: %v", t.Type)
 	}
@@ -443,7 +451,7 @@ func (ts *TournamentService) CreateClubSession(ctx context.Context, req *pb.NewC
 	name := club.Name + " - " + sessionDate
 	// Create a tournament / club session.
 	t, err := NewTournament(ctx, ts.tournamentStore, name, club.Description, club.Directors,
-		entity.TypeClubSession, club.UUID, slug)
+		entity.TypeChild, club.UUID, slug)
 	if err != nil {
 		return nil, twirp.NewError(twirp.InvalidArgument, err.Error())
 	}

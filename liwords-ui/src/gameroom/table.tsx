@@ -506,9 +506,7 @@ export const Table = React.memo((props: Props) => {
               <Link to={tournamentContext.metadata.slug}>
                 <HomeOutlined />
                 Back to
-                {['CLUB', 'CLUBSESSION'].includes(
-                  tournamentContext.metadata.type
-                )
+                {['CLUB', 'CHILD'].includes(tournamentContext.metadata.type)
                   ? ' Club'
                   : ' Tournament'}
               </Link>
