@@ -2,13 +2,28 @@ import React, { ReactNode } from 'react';
 import { useTournamentStoreContext } from '../store/store';
 import { Table, Tag } from 'antd';
 import { Division, SinglePairing } from '../store/reducers/tournament_reducer';
+import { TournamentGameResult } from '../gen/api/proto/realtime/realtime_pb';
 
 const usernameFromPlayerEntry = (p: string) =>
   p.split(':').length > 0 ? p.split(':')[1] : 'Unknown player';
 
-// Parses the 0 based Round number from the key
-const roundNumberFromPairingKey = (pairing: string) =>
-  parseInt(pairing.split(':')[0]);
+const pairingsForRound = (
+  round: number,
+  division: Division
+): Array<SinglePairing> => {
+  const m = new Set<string>();
+  const n = new Array<string>();
+  const numPlayers = division.players.length;
+  // round in this case is 1-indexed (it is the displayed round).
+  for (let idx = (round - 1) * numPlayers; idx < round * numPlayers; idx++) {
+    const key = division.roundInfo[idx];
+    if (key && !m.has(key)) {
+      n.push(key);
+      m.add(key);
+    }
+  }
+  return n.map((key) => division.pairingMap[key]);
+};
 
 type Props = {
   selectedDivision?: string;
@@ -32,29 +47,11 @@ export const Pairings = (props: Props) => {
     if (!division) {
       return new Array<PairingTableData>();
     }
-    const currentPairingKeys = Object.keys(division.roundInfo).filter(
-      (p) => roundNumberFromPairingKey(p) === round - 1
-    );
-    const divisionPairings = currentPairingKeys.map(
-      (key) => division.roundInfo[key]
-    );
-    console.log(props.selectedRound);
-    // This deduping assumes every player plays only one game per round,
-    // will need backend to dedup or give each actual game an id if we change that
-    const pairings = divisionPairings.reduce(
-      (acc: SinglePairing[], p: SinglePairing) => {
-        //if acc contains an entry that contains the first player in this pairing, don't add it
-        if (acc.some((acPairing) => acPairing.players.includes(p.players[0]))) {
-          return acc;
-        }
-        return acc.concat(p);
-      },
-      new Array<SinglePairing>()
-    );
+    const pairings = pairingsForRound(props.selectedRound, division);
     const pairingsData = pairings.map(
       (pairing: SinglePairing): PairingTableData => {
         const playerNames = pairing.players.map(usernameFromPlayerEntry);
-        const isBye = Array.from(new Set(playerNames)).length === 1;
+        const isBye = pairing.outcomes[0] === TournamentGameResult.BYE;
         const players = isBye ? (
           <div>
             <p>
@@ -65,7 +62,7 @@ export const Pairings = (props: Props) => {
         ) : (
           <div>
             {playerNames.map((playerName) => (
-              <p>{playerName}</p>
+              <p key={playerName}>{playerName}</p>
             ))}
           </div>
         );

@@ -1251,6 +1251,8 @@ export class TournamentDivisionDataResponse extends jspb.Message {
   setDivisionList(value: Array<string>): void;
   addDivision(value: string, index?: number): string;
 
+  getPlayerIndexMapMap(): jspb.Map<string, number>;
+  clearPlayerIndexMapMap(): void;
   getPairingMapMap(): jspb.Map<string, PlayerRoundInfo>;
   clearPairingMapMap(): void;
   getCurrentRound(): number;
@@ -1283,6 +1285,7 @@ export namespace TournamentDivisionDataResponse {
     playersList: Array<string>,
     controls?: TournamentControls.AsObject,
     divisionList: Array<string>,
+    playerIndexMapMap: Array<[string, number]>,
     pairingMapMap: Array<[string, PlayerRoundInfo.AsObject]>,
     currentRound: number,
     standingsList: Array<PlayerStanding.AsObject>,

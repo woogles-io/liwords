@@ -7,6 +7,7 @@ import {
   ReadyForTournamentGame,
   TournamentDivisionDataResponse,
   TournamentGameEndedEvent,
+  TournamentGameResult,
   TournamentGameResultMap,
   TournamentRoundStarted,
 } from '../../gen/api/proto/realtime/realtime_pb';
@@ -49,7 +50,9 @@ export type Division = {
   divisionID: string;
   players: Array<string>;
   // Add TournamentControls here.
-  roundInfo: { [roundUserKey: string]: SinglePairing };
+  roundInfo: Array<string>; // a 1-d array, implementing the backend 2-d array of pairings
+  playerIndexMap: { [playerID: string]: number };
+  pairingMap: { [roundUserKey: string]: SinglePairing };
   numRounds: number;
   // Note: currentRound is zero-indexed
   currentRound: number;
@@ -102,7 +105,8 @@ export enum TourneyStatus {
   ROUND_OPPONENT_WAITING = 'ROUND_OPPONENT_WAITING',
   ROUND_LATE = 'ROUND_LATE', // expect this to override opponent waiting
   ROUND_GAME_ACTIVE = 'ROUND_GAME_ACTIVE',
-  ROUND_FORFEIT = 'ROUND_FORFEIT',
+  ROUND_FORFEIT_LOSS = 'ROUND_FORFEIT_LOSS',
+  ROUND_FORFEIT_WIN = 'ROUND_FORFEIT_WIN',
   POSTTOURNEY = 'POSTTOURNEY',
 }
 
@@ -151,13 +155,16 @@ const divisionDataResponseToObj = (
     players: dd.getPlayersList(),
     currentRound: dd.getCurrentRound(),
     numRounds: dd.getControls()?.toObject().roundControlsList.length || 0,
-    roundInfo: {},
+    roundInfo: dd.getDivisionList(),
+    pairingMap: {},
+    playerIndexMap: {},
   };
 
-  const roundInfo: { [key: string]: SinglePairing } = {};
-  const divmap = dd.getDivisionMap();
-  divmap.forEach((value: PlayerRoundInfo, key: string) => {
-    roundInfo[key] = {
+  const pairingMap: { [key: string]: SinglePairing } = {};
+  const playerIndexMap: { [playerID: string]: number } = {};
+
+  dd.getPairingMapMap().forEach((value: PlayerRoundInfo, key: string) => {
+    pairingMap[key] = {
       players: value.getPlayersList(),
       outcomes: value.getOutcomesList(),
       readyStates: value.getReadyStatesList(),
@@ -168,7 +175,12 @@ const divisionDataResponseToObj = (
       })),
     };
   });
-  ret.roundInfo = roundInfo;
+  dd.getPlayerIndexMapMap().forEach((value: number, key: string) => {
+    playerIndexMap[key] = value;
+  });
+
+  ret.pairingMap = pairingMap;
+  ret.playerIndexMap = playerIndexMap;
   return ret;
 };
 
@@ -218,6 +230,16 @@ export const TourneyGameEndedEvtToRecentGame = (
   };
 };
 
+const getRoundInfo = (
+  round: number,
+  fullPlayerID: string,
+  division: Division
+): SinglePairing => {
+  const idx = division.playerIndexMap[fullPlayerID];
+  const key = division.roundInfo[idx + round * division.players.length];
+  return division.pairingMap[key];
+};
+
 // The "Ready" button and pairings should be displayed based on:
 //    - the tournament having started
 //    - player not having yet started the current round's game
@@ -253,7 +275,8 @@ const tourneyStatus = (
     // This really shouldn't happen, but it's a check to make sure we don't crash.
     return TourneyStatus.PRETOURNEY;
   }
-  const roundInfo = division.roundInfo[`${currentRound}:${fullPlayerID}`];
+  const roundInfo = getRoundInfo(currentRound, fullPlayerID, division);
+
   if (!roundInfo) {
     return TourneyStatus.PRETOURNEY;
   }
@@ -261,6 +284,19 @@ const tourneyStatus = (
   if (playerIdx === undefined) {
     return TourneyStatus.PRETOURNEY;
   }
+
+  if (roundInfo.players[0] === roundInfo.players[1]) {
+    switch (roundInfo.outcomes[0]) {
+      case TournamentGameResult.BYE:
+        return TourneyStatus.ROUND_BYE;
+      case TournamentGameResult.FORFEIT_LOSS:
+        return TourneyStatus.ROUND_FORFEIT_LOSS;
+      case TournamentGameResult.FORFEIT_WIN:
+        return TourneyStatus.ROUND_FORFEIT_WIN;
+    }
+    return TourneyStatus.PRETOURNEY;
+  }
+
   if (
     roundInfo.readyStates[playerIdx] === '' &&
     roundInfo.readyStates[1 - playerIdx] !== ''
@@ -274,6 +310,7 @@ const tourneyStatus = (
     // We're ready
     return TourneyStatus.ROUND_READY;
   }
+
   if (roundInfo.games[0] && roundInfo.games[0].gameEndReason) {
     // Game already finished
     return TourneyStatus.ROUND_GAME_FINISHED;
@@ -284,6 +321,7 @@ const tourneyStatus = (
   ) {
     return TourneyStatus.ROUND_OPEN;
   }
+
   // Otherwise just return generic pre-tourney
   return TourneyStatus.PRETOURNEY;
 };

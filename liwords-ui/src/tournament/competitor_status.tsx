@@ -44,13 +44,24 @@ export const CompetitorStatus = (props: Props) => {
             </p>
           </>
         );
-      case TourneyStatus.ROUND_FORFEIT:
+      case TourneyStatus.ROUND_FORFEIT_LOSS:
         return (
           <>
             <ClockCircleOutlined />
             <p>
               You forfeited your Round {competitorContext.currentRound} game.
               Please check in with the director.
+            </p>
+          </>
+        );
+      case TourneyStatus.ROUND_FORFEIT_WIN:
+        return (
+          <>
+            <ClockCircleOutlined />
+            <p>
+              Your opponent forfeited their Round{' '}
+              {competitorContext.currentRound} game. Please check in with the
+              director.
             </p>
           </>
         );

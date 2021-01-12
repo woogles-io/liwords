@@ -9618,7 +9618,7 @@ proto.liwords.ClassicDivision.prototype.clearMatrixList = function() {
  * @private {!Array<number>}
  * @const
  */
-proto.liwords.TournamentDivisionDataResponse.repeatedFields_ = [3,5,8,9];
+proto.liwords.TournamentDivisionDataResponse.repeatedFields_ = [3,5,9,10];
 
 
 
@@ -9656,8 +9656,9 @@ proto.liwords.TournamentDivisionDataResponse.toObject = function(includeInstance
     playersList: (f = jspb.Message.getRepeatedField(msg, 3)) == null ? undefined : f,
     controls: (f = msg.getControls()) && proto.liwords.TournamentControls.toObject(includeInstance, f),
     divisionList: (f = jspb.Message.getRepeatedField(msg, 5)) == null ? undefined : f,
+    playerIndexMapMap: (f = msg.getPlayerIndexMapMap()) ? f.toObject(includeInstance, undefined) : [],
     pairingMapMap: (f = msg.getPairingMapMap()) ? f.toObject(includeInstance, proto.liwords.PlayerRoundInfo.toObject) : [],
-    currentRound: jspb.Message.getFieldWithDefault(msg, 7, 0),
+    currentRound: jspb.Message.getFieldWithDefault(msg, 8, 0),
     standingsList: jspb.Message.toObjectList(msg.getStandingsList(),
     proto.liwords.PlayerStanding.toObject, includeInstance),
     playersPropertiesList: jspb.Message.toObjectList(msg.getPlayersPropertiesList(),
@@ -9720,21 +9721,27 @@ proto.liwords.TournamentDivisionDataResponse.deserializeBinaryFromReader = funct
       msg.addDivision(value);
       break;
     case 6:
+      var value = msg.getPlayerIndexMapMap();
+      reader.readMessage(value, function(message, reader) {
+        jspb.Map.deserializeBinary(message, reader, jspb.BinaryReader.prototype.readString, jspb.BinaryReader.prototype.readInt32, null, "", 0);
+         });
+      break;
+    case 7:
       var value = msg.getPairingMapMap();
       reader.readMessage(value, function(message, reader) {
         jspb.Map.deserializeBinary(message, reader, jspb.BinaryReader.prototype.readString, jspb.BinaryReader.prototype.readMessage, proto.liwords.PlayerRoundInfo.deserializeBinaryFromReader, "", new proto.liwords.PlayerRoundInfo());
          });
       break;
-    case 7:
+    case 8:
       var value = /** @type {number} */ (reader.readInt32());
       msg.setCurrentRound(value);
       break;
-    case 8:
+    case 9:
       var value = new proto.liwords.PlayerStanding;
       reader.readMessage(value,proto.liwords.PlayerStanding.deserializeBinaryFromReader);
       msg.addStandings(value);
       break;
-    case 9:
+    case 10:
       var value = new proto.liwords.PlayerProperties;
       reader.readMessage(value,proto.liwords.PlayerProperties.deserializeBinaryFromReader);
       msg.addPlayersProperties(value);
@@ -9804,21 +9811,25 @@ proto.liwords.TournamentDivisionDataResponse.serializeBinaryToWriter = function(
       f
     );
   }
+  f = message.getPlayerIndexMapMap(true);
+  if (f && f.getLength() > 0) {
+    f.serializeBinary(6, writer, jspb.BinaryWriter.prototype.writeString, jspb.BinaryWriter.prototype.writeInt32);
+  }
   f = message.getPairingMapMap(true);
   if (f && f.getLength() > 0) {
-    f.serializeBinary(6, writer, jspb.BinaryWriter.prototype.writeString, jspb.BinaryWriter.prototype.writeMessage, proto.liwords.PlayerRoundInfo.serializeBinaryToWriter);
+    f.serializeBinary(7, writer, jspb.BinaryWriter.prototype.writeString, jspb.BinaryWriter.prototype.writeMessage, proto.liwords.PlayerRoundInfo.serializeBinaryToWriter);
   }
   f = message.getCurrentRound();
   if (f !== 0) {
     writer.writeInt32(
-      7,
+      8,
       f
     );
   }
   f = message.getStandingsList();
   if (f.length > 0) {
     writer.writeRepeatedMessage(
-      8,
+      9,
       f,
       proto.liwords.PlayerStanding.serializeBinaryToWriter
     );
@@ -9826,7 +9837,7 @@ proto.liwords.TournamentDivisionDataResponse.serializeBinaryToWriter = function(
   f = message.getPlayersPropertiesList();
   if (f.length > 0) {
     writer.writeRepeatedMessage(
-      9,
+      10,
       f,
       proto.liwords.PlayerProperties.serializeBinaryToWriter
     );
@@ -9982,14 +9993,36 @@ proto.liwords.TournamentDivisionDataResponse.prototype.clearDivisionList = funct
 
 
 /**
- * map<string, PlayerRoundInfo> pairing_map = 6;
+ * map<string, int32> player_index_map = 6;
+ * @param {boolean=} opt_noLazyCreate Do not create the map if
+ * empty, instead returning `undefined`
+ * @return {!jspb.Map<string,number>}
+ */
+proto.liwords.TournamentDivisionDataResponse.prototype.getPlayerIndexMapMap = function(opt_noLazyCreate) {
+  return /** @type {!jspb.Map<string,number>} */ (
+      jspb.Message.getMapField(this, 6, opt_noLazyCreate,
+      null));
+};
+
+
+/**
+ * Clears values from the map. The map will be non-null.
+ * @return {!proto.liwords.TournamentDivisionDataResponse} returns this
+ */
+proto.liwords.TournamentDivisionDataResponse.prototype.clearPlayerIndexMapMap = function() {
+  this.getPlayerIndexMapMap().clear();
+  return this;};
+
+
+/**
+ * map<string, PlayerRoundInfo> pairing_map = 7;
  * @param {boolean=} opt_noLazyCreate Do not create the map if
  * empty, instead returning `undefined`
  * @return {!jspb.Map<string,!proto.liwords.PlayerRoundInfo>}
  */
 proto.liwords.TournamentDivisionDataResponse.prototype.getPairingMapMap = function(opt_noLazyCreate) {
   return /** @type {!jspb.Map<string,!proto.liwords.PlayerRoundInfo>} */ (
-      jspb.Message.getMapField(this, 6, opt_noLazyCreate,
+      jspb.Message.getMapField(this, 7, opt_noLazyCreate,
       proto.liwords.PlayerRoundInfo));
 };
 
@@ -10004,11 +10037,11 @@ proto.liwords.TournamentDivisionDataResponse.prototype.clearPairingMapMap = func
 
 
 /**
- * optional int32 current_round = 7;
+ * optional int32 current_round = 8;
  * @return {number}
  */
 proto.liwords.TournamentDivisionDataResponse.prototype.getCurrentRound = function() {
-  return /** @type {number} */ (jspb.Message.getFieldWithDefault(this, 7, 0));
+  return /** @type {number} */ (jspb.Message.getFieldWithDefault(this, 8, 0));
 };
 
 
@@ -10017,17 +10050,17 @@ proto.liwords.TournamentDivisionDataResponse.prototype.getCurrentRound = functio
  * @return {!proto.liwords.TournamentDivisionDataResponse} returns this
  */
 proto.liwords.TournamentDivisionDataResponse.prototype.setCurrentRound = function(value) {
-  return jspb.Message.setProto3IntField(this, 7, value);
+  return jspb.Message.setProto3IntField(this, 8, value);
 };
 
 
 /**
- * repeated PlayerStanding standings = 8;
+ * repeated PlayerStanding standings = 9;
  * @return {!Array<!proto.liwords.PlayerStanding>}
  */
 proto.liwords.TournamentDivisionDataResponse.prototype.getStandingsList = function() {
   return /** @type{!Array<!proto.liwords.PlayerStanding>} */ (
-    jspb.Message.getRepeatedWrapperField(this, proto.liwords.PlayerStanding, 8));
+    jspb.Message.getRepeatedWrapperField(this, proto.liwords.PlayerStanding, 9));
 };
 
 
@@ -10036,7 +10069,7 @@ proto.liwords.TournamentDivisionDataResponse.prototype.getStandingsList = functi
  * @return {!proto.liwords.TournamentDivisionDataResponse} returns this
 */
 proto.liwords.TournamentDivisionDataResponse.prototype.setStandingsList = function(value) {
-  return jspb.Message.setRepeatedWrapperField(this, 8, value);
+  return jspb.Message.setRepeatedWrapperField(this, 9, value);
 };
 
 
@@ -10046,7 +10079,7 @@ proto.liwords.TournamentDivisionDataResponse.prototype.setStandingsList = functi
  * @return {!proto.liwords.PlayerStanding}
  */
 proto.liwords.TournamentDivisionDataResponse.prototype.addStandings = function(opt_value, opt_index) {
-  return jspb.Message.addToRepeatedWrapperField(this, 8, opt_value, proto.liwords.PlayerStanding, opt_index);
+  return jspb.Message.addToRepeatedWrapperField(this, 9, opt_value, proto.liwords.PlayerStanding, opt_index);
 };
 
 
@@ -10060,12 +10093,12 @@ proto.liwords.TournamentDivisionDataResponse.prototype.clearStandingsList = func
 
 
 /**
- * repeated PlayerProperties players_properties = 9;
+ * repeated PlayerProperties players_properties = 10;
  * @return {!Array<!proto.liwords.PlayerProperties>}
  */
 proto.liwords.TournamentDivisionDataResponse.prototype.getPlayersPropertiesList = function() {
   return /** @type{!Array<!proto.liwords.PlayerProperties>} */ (
-    jspb.Message.getRepeatedWrapperField(this, proto.liwords.PlayerProperties, 9));
+    jspb.Message.getRepeatedWrapperField(this, proto.liwords.PlayerProperties, 10));
 };
 
 
@@ -10074,7 +10107,7 @@ proto.liwords.TournamentDivisionDataResponse.prototype.getPlayersPropertiesList 
  * @return {!proto.liwords.TournamentDivisionDataResponse} returns this
 */
 proto.liwords.TournamentDivisionDataResponse.prototype.setPlayersPropertiesList = function(value) {
-  return jspb.Message.setRepeatedWrapperField(this, 9, value);
+  return jspb.Message.setRepeatedWrapperField(this, 10, value);
 };
 
 
@@ -10084,7 +10117,7 @@ proto.liwords.TournamentDivisionDataResponse.prototype.setPlayersPropertiesList 
  * @return {!proto.liwords.PlayerProperties}
  */
 proto.liwords.TournamentDivisionDataResponse.prototype.addPlayersProperties = function(opt_value, opt_index) {
-  return jspb.Message.addToRepeatedWrapperField(this, 9, opt_value, proto.liwords.PlayerProperties, opt_index);
+  return jspb.Message.addToRepeatedWrapperField(this, 10, opt_value, proto.liwords.PlayerProperties, opt_index);
 };
 
 
