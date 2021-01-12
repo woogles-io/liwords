@@ -1207,6 +1207,28 @@ export namespace PlayerStanding {
   }
 }
 
+export class RoundStandings extends jspb.Message {
+  clearStandingsList(): void;
+  getStandingsList(): Array<PlayerStanding>;
+  setStandingsList(value: Array<PlayerStanding>): void;
+  addStandings(value?: PlayerStanding, index?: number): PlayerStanding;
+
+  serializeBinary(): Uint8Array;
+  toObject(includeInstance?: boolean): RoundStandings.AsObject;
+  static toObject(includeInstance: boolean, msg: RoundStandings): RoundStandings.AsObject;
+  static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+  static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+  static serializeBinaryToWriter(message: RoundStandings, writer: jspb.BinaryWriter): void;
+  static deserializeBinary(bytes: Uint8Array): RoundStandings;
+  static deserializeBinaryFromReader(message: RoundStandings, reader: jspb.BinaryReader): RoundStandings;
+}
+
+export namespace RoundStandings {
+  export type AsObject = {
+    standingsList: Array<PlayerStanding.AsObject>,
+  }
+}
+
 export class ClassicDivision extends jspb.Message {
   clearMatrixList(): void;
   getMatrixList(): Array<PlayerRoundInfo>;
@@ -1258,11 +1280,8 @@ export class TournamentDivisionDataResponse extends jspb.Message {
   getCurrentRound(): number;
   setCurrentRound(value: number): void;
 
-  clearStandingsList(): void;
-  getStandingsList(): Array<PlayerStanding>;
-  setStandingsList(value: Array<PlayerStanding>): void;
-  addStandings(value?: PlayerStanding, index?: number): PlayerStanding;
-
+  getStandingsMap(): jspb.Map<number, RoundStandings>;
+  clearStandingsMap(): void;
   clearPlayersPropertiesList(): void;
   getPlayersPropertiesList(): Array<PlayerProperties>;
   setPlayersPropertiesList(value: Array<PlayerProperties>): void;
@@ -1288,7 +1307,7 @@ export namespace TournamentDivisionDataResponse {
     playerIndexMapMap: Array<[string, number]>,
     pairingMapMap: Array<[string, PlayerRoundInfo.AsObject]>,
     currentRound: number,
-    standingsList: Array<PlayerStanding.AsObject>,
+    standingsMap: Array<[number, RoundStandings.AsObject]>,
     playersPropertiesList: Array<PlayerProperties.AsObject>,
   }
 }

@@ -450,6 +450,10 @@ message PlayerStanding {
   bool removed = 6;
 }
 
+message RoundStandings {
+  repeated PlayerStanding standings = 1;
+}
+
 message ClassicDivision { repeated PlayerRoundInfo matrix = 1; }
 
 message TournamentDivisionDataResponse {
@@ -464,7 +468,7 @@ message TournamentDivisionDataResponse {
   map<string, int32> player_index_map = 6;
   map<string, PlayerRoundInfo> pairing_map = 7;
   int32 current_round = 8;
-  repeated PlayerStanding standings = 9;
+  map<int32, RoundStandings> standings = 9;
   repeated PlayerProperties players_properties = 10;
 }
 
