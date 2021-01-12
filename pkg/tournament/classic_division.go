@@ -21,7 +21,7 @@ type ClassicDivision struct {
 	// By convention, players should look like userUUID:username
 	Players           []string                         `json:"players"`
 	PlayersProperties []*entity.PlayerProperties       `json:"playerProperties"`
-	PlayerIndexMap    map[string]int                   `json:"pidxMap"`
+	PlayerIndexMap    map[string]int32                   `json:"pidxMap"`
 	RoundControls     []*realtime.RoundControl         `json:"roundCtrls"`
 	CurrentRound      int                              `json:"currentRound"`
 	RoundStarted      bool                             `json:"roundStarted"`
@@ -460,7 +460,7 @@ func (t *ClassicDivision) PairRound(round int) error {
 
 		if roundPairings[playerIndex] == "" {
 
-			var opponentIndex int
+			var opponentIndex int32
 			if pairings[i] < 0 {
 				opponentIndex = playerIndex
 			} else if pairings[i] >= l {
@@ -494,7 +494,7 @@ func (t *ClassicDivision) AddPlayers(persons *realtime.TournamentPersons) error 
 	for personId, _ := range persons.Persons {
 		t.Players = append(t.Players, personId)
 		t.PlayersProperties = append(t.PlayersProperties, newPlayerProperties())
-		t.PlayerIndexMap[personId] = len(t.Players) - 1
+		t.PlayerIndexMap[personId] = int32(len(t.Players) - 1)
 	}
 
 	for i := 0; i < len(t.Matrix); i++ {
@@ -537,7 +537,7 @@ func (t *ClassicDivision) RemovePlayers(persons *realtime.TournamentPersons) err
 			return fmt.Errorf("player %s does not exist in"+
 				" classic division RemovePlayers", personId)
 		}
-		if playerIndex < 0 || playerIndex >= len(t.Players) {
+		if playerIndex < 0 || int(playerIndex) >= len(t.Players) {
 			return fmt.Errorf("player index %d for player %s is"+
 				" out of range in classic division RemovePlayers", playerIndex, personId)
 		}
@@ -950,10 +950,10 @@ func newEliminatedPairing(playerOne string, playerTwo string) *realtime.PlayerRo
 		realtime.TournamentGameResult_ELIMINATED}}
 }
 
-func newPlayerIndexMap(players []string) map[string]int {
-	m := make(map[string]int)
+func newPlayerIndexMap(players []string) map[string]int32 {
+	m := make(map[string]int32)
 	for i, player := range players {
-		m[player] = i
+		m[player] = int32(i)
 	}
 	return m
 }
