@@ -1910,6 +1910,7 @@ func checkFirsts(tc *ClassicDivision, players []string, fs []int, round int) err
 }
 
 func TestClassicDivisionRandomData(t *testing.T) {
+	t.Skip()
 	is := is.New(t)
 
 	is.NoErr(runRandomTournaments(realtime.PairingMethod_RANDOM, false))
