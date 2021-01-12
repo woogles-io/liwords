@@ -786,9 +786,6 @@ func addTournamentPersons(ctx context.Context,
 				return err
 			}
 		} else {
-			for k, v := range personsCopy {
-				personsMap[k] = v
-			}
 			err = createDivisionManager(t, division)
 			if err != nil {
 				return err
