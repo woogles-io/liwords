@@ -844,6 +844,7 @@ func (t *ClassicDivision) writeResponse(round int) (error) {
 	t.Response.Controls = realtimeTournamentControls
 	t.Response.Division = division
 	t.Response.PairingMap = t.PairingMap
+	t.Response.PlayerIndexMap = t.PlayerIndexMap
 	t.Response.PlayersProperties = playersProperties
 	t.Response.CurrentRound = int32(t.CurrentRound)
 	t.Response.Standings[int32(round)] = &realtime.RoundStandings{Standings: standingsResponse}
