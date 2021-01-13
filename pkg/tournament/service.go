@@ -71,6 +71,18 @@ func (ts *TournamentService) SetTournamentMetadata(ctx context.Context, req *pb.
 	return &pb.TournamentResponse{}, nil
 }
 
+func (ts *TournamentService) SetTournamentFinished(ctx context.Context, req *pb.SetTournamentMetadataRequest) (*pb.TournamentResponse, error) {
+	err := authenticateDirector(ctx, ts, req.Id, false)
+	if err != nil {
+		return nil, err
+	}
+	err = SetTournamentMetadata(ctx, ts.tournamentStore, req.Id, req.Name, req.Description)
+	if err != nil {
+		return nil, twirp.NewError(twirp.InvalidArgument, err.Error())
+	}
+	return &pb.TournamentResponse{}, nil
+}
+
 func (ts *TournamentService) SetSingleRoundControls(ctx context.Context, req *pb.SingleRoundControlsRequest) (*pb.TournamentResponse, error) {
 	err := authenticateDirector(ctx, ts, req.Id, false)
 	if err != nil {
@@ -362,6 +374,18 @@ func (ts *TournamentService) StartTournament(ctx context.Context, req *pb.StartT
 	return &pb.TournamentResponse{}, nil
 }
 
+func (ts *TournamentService) FinishTournament(ctx context.Context, req *pb.FinishTournamentRequest) (*pb.TournamentResponse, error) {
+	err := authenticateDirector(ctx, ts, req.Id, true)
+	if err != nil {
+		return nil, err
+	}
+	err = SetFinished(ctx, ts.tournamentStore, req.Id)
+	if err != nil {
+		return nil, twirp.NewError(twirp.InvalidArgument, err.Error())
+	}
+	return &pb.TournamentResponse{}, nil
+}
+
 func (ts *TournamentService) StartRoundCountdown(ctx context.Context, req *pb.TournamentStartRoundCountdownRequest) (*pb.TournamentResponse, error) {
 	err := authenticateDirector(ctx, ts, req.Id, false)
 	if err != nil {
@@ -424,6 +448,9 @@ func authenticateDirector(ctx context.Context, ts *TournamentService, id string,
 	_, authorized := t.Directors.Persons[fullID]
 	if !authorized {
 		return twirp.NewError(twirp.Unauthenticated, "this user is not an authorized director for this event")
+	}
+	if t.IsFinished {
+		return twirp.NewError(twirp.InvalidArgument, "this tournament is finished and cannot be modified")
 	}
 
 	return nil

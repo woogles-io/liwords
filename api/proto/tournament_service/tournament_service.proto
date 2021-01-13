@@ -108,6 +108,7 @@ message GetTournamentMetadataRequest {
 }
 
 message StartTournamentRequest { string id = 1; }
+message FinishTournamentRequest { string id = 1; }
 
 message TournamentMetadataResponse {
   string name = 1;
@@ -135,6 +136,7 @@ service TournamentService {
   rpc GetTournamentMetadata(GetTournamentMetadataRequest)
       returns (TournamentMetadataResponse);
   rpc StartTournament(StartTournamentRequest) returns (TournamentResponse);
+  rpc FinishTournament(FinishTournamentRequest) returns (TournamentResponse);
   rpc SetTournamentMetadata(SetTournamentMetadataRequest)
       returns (TournamentResponse);
   rpc PairRound(PairRoundRequest) returns (TournamentResponse);

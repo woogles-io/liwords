@@ -36,6 +36,7 @@ type tournament struct {
 	Directors         datatypes.JSON
 	ExecutiveDirector string
 	IsStarted         bool
+	IsFinished        bool
 	Divisions         datatypes.JSON
 	// Slug looks like /tournament/abcdef, /club/madison, /club/madison/2020-04-20
 	Slug string `gorm:"uniqueIndex:,expression:lower(slug)"`
@@ -101,6 +102,7 @@ func (s *DBStore) dbObjToEntity(tm *tournament) (*entity.Tournament, error) {
 		Directors:         &directors,
 		ExecutiveDirector: tm.ExecutiveDirector,
 		IsStarted:         tm.IsStarted,
+		IsFinished:        tm.IsFinished,
 		Divisions:         divisions,
 		DefaultSettings:   defaultSettings,
 		Type:              entity.CompetitionType(tm.Type),
@@ -205,6 +207,7 @@ func (s *DBStore) toDBObj(t *entity.Tournament) (*tournament, error) {
 		Directors:         directors,
 		ExecutiveDirector: t.ExecutiveDirector,
 		IsStarted:         t.IsStarted,
+		IsFinished:        t.IsFinished,
 		Divisions:         divisions,
 		DefaultSettings:   defaultSettings,
 		Type:              string(t.Type),

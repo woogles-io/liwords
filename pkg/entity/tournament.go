@@ -80,6 +80,7 @@ type Tournament struct {
 	ExecutiveDirector string                         `json:"execDirector"`
 	Directors         *realtime.TournamentPersons    `json:"directors"`
 	IsStarted         bool                           `json:"started"`
+	IsFinished        bool                           `json:"finished"`
 	Divisions         map[string]*TournamentDivision `json:"divs"`
 	DefaultSettings   *realtime.GameRequest          `json:"settings"`
 	Type              CompetitionType                `json:"type"`

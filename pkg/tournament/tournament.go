@@ -645,6 +645,35 @@ func IsRoundComplete(ctx context.Context, ts TournamentStore, id string, divisio
 	return t.Divisions[division].DivisionManager.IsRoundComplete(round)
 }
 
+func SetFinished(ctx context.Context, ts TournamentStore, id string) error {
+	t, err := ts.Get(ctx, id)
+	if err != nil {
+		return err
+	}
+
+	if !t.IsStarted {
+		return errors.New("cannot finish the tournament before the tournament has started")
+	}
+
+	for divisionKey, division := range t.Divisions {
+		finished, err := division.DivisionManager.IsFinished()
+		if err != nil {
+			return nil
+		}
+		if finished {
+			return fmt.Errorf("cannot finish tournament, division %s is not done", divisionKey)
+		}
+	}
+
+	t.IsFinished = true
+
+	err = ts.Set(ctx, t)
+	if err != nil {
+		return err
+	}
+	return SendTournamentMessage(ctx, ts, id)
+}
+
 func IsFinished(ctx context.Context, ts TournamentStore, id string, division string) (bool, error) {
 	t, err := ts.Get(ctx, id)
 	if err != nil {
