@@ -57,10 +57,9 @@ export const Pairings = (props: Props) => {
     if (!division) {
       return new Array<PairingTableData>();
     }
-    const { status, currentRound } = tournamentContext.competitorState;
+    const { status } = tournamentContext.competitorState;
     const pairings = pairingsForRound(props.selectedRound, division);
 
-    console.log('tc', tournamentContext);
     const findGameId = (playerName: string) => {
       //This assumes one game per round per user
       const game = tournamentContext.activeGames.find((game) => {
@@ -72,6 +71,11 @@ export const Pairings = (props: Props) => {
       (pairing: SinglePairing): PairingTableData => {
         const playerNames = pairing.players.map(usernameFromPlayerEntry);
         const isBye = pairing.outcomes[0] === TournamentGameResult.BYE;
+        const currentRound = props.selectedDivision
+          ? tournamentContext.divisions[props.selectedDivision].currentRound + 1 //zero based here
+          : tournamentContext.competitorState.currentRound; // 1 based here
+
+        console.log('tc', tournamentContext, props.selectedRound);
         const isMyGame = props.username && playerNames.includes(props.username);
         // sortPriorty -- The higher the number, the higher up the list,
         // we start by giving your own games a + 2 boost, and other people's byes a -2 deficit.
@@ -124,7 +128,7 @@ export const Pairings = (props: Props) => {
                 ) {
                   actions = (
                     <Button
-                      className="resume"
+                      className="primary"
                       onClick={() => {
                         history.replace(
                           `/game/${encodeURIComponent(
@@ -137,7 +141,7 @@ export const Pairings = (props: Props) => {
                         );
                       }}
                     >
-                      Resume your game
+                      Resume
                     </Button>
                   );
                 }
@@ -232,13 +236,14 @@ export const Pairings = (props: Props) => {
         props.selectedRound
       )}
       rowClassName={(record) => {
+        const currentRound = props.selectedDivision
+          ? tournamentContext.divisions[props.selectedDivision].currentRound + 1 //zero based here
+          : tournamentContext.competitorState.currentRound; // 1 based here
         let computedClass = `single-pairing ${tournamentContext.competitorState.status}`;
         if (record.isMine) {
           computedClass += ' mine';
         }
-        if (
-          props.selectedRound === tournamentContext.competitorState.currentRound
-        ) {
+        if (props.selectedRound === currentRound) {
           computedClass += ' current';
         }
         return computedClass;
