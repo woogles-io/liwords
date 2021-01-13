@@ -9904,7 +9904,8 @@ proto.liwords.TournamentDivisionDataResponse.toObject = function(includeInstance
     standingsMap: (f = msg.getStandingsMap()) ? f.toObject(includeInstance, proto.liwords.RoundStandings.toObject) : [],
     playersPropertiesList: jspb.Message.toObjectList(msg.getPlayersPropertiesList(),
     proto.liwords.PlayerProperties.toObject, includeInstance),
-    finished: jspb.Message.getBooleanFieldWithDefault(msg, 11, false)
+    finished: jspb.Message.getBooleanFieldWithDefault(msg, 11, false),
+    roundStarted: jspb.Message.getBooleanFieldWithDefault(msg, 12, false)
   };
 
   if (includeInstance) {
@@ -9992,6 +9993,10 @@ proto.liwords.TournamentDivisionDataResponse.deserializeBinaryFromReader = funct
     case 11:
       var value = /** @type {boolean} */ (reader.readBool());
       msg.setFinished(value);
+      break;
+    case 12:
+      var value = /** @type {boolean} */ (reader.readBool());
+      msg.setRoundStarted(value);
       break;
     default:
       reader.skipField();
@@ -10089,6 +10094,13 @@ proto.liwords.TournamentDivisionDataResponse.serializeBinaryToWriter = function(
   if (f) {
     writer.writeBool(
       11,
+      f
+    );
+  }
+  f = message.getRoundStarted();
+  if (f) {
+    writer.writeBool(
+      12,
       f
     );
   }
@@ -10379,6 +10391,24 @@ proto.liwords.TournamentDivisionDataResponse.prototype.getFinished = function() 
  */
 proto.liwords.TournamentDivisionDataResponse.prototype.setFinished = function(value) {
   return jspb.Message.setProto3BooleanField(this, 11, value);
+};
+
+
+/**
+ * optional bool round_started = 12;
+ * @return {boolean}
+ */
+proto.liwords.TournamentDivisionDataResponse.prototype.getRoundStarted = function() {
+  return /** @type {boolean} */ (jspb.Message.getBooleanFieldWithDefault(this, 12, false));
+};
+
+
+/**
+ * @param {boolean} value
+ * @return {!proto.liwords.TournamentDivisionDataResponse} returns this
+ */
+proto.liwords.TournamentDivisionDataResponse.prototype.setRoundStarted = function(value) {
+  return jspb.Message.setProto3BooleanField(this, 12, value);
 };
 
 

@@ -858,6 +858,7 @@ func (t *ClassicDivision) writeResponse(round int) (error) {
 	t.Response.PairingMap = t.PairingMap
 	t.Response.PlayerIndexMap = t.PlayerIndexMap
 	t.Response.PlayersProperties = playersProperties
+	t.Response.RoundStarted         = t.RoundStarted
 	t.Response.CurrentRound = int32(t.CurrentRound)
 	t.Response.Finished = isFinished
 	t.Response.Standings[int32(round)] = &realtime.RoundStandings{Standings: standingsResponse}
