@@ -207,7 +207,8 @@ func (t *ClassicDivision) SetPairing(playerOne string, playerTwo string, round i
 			tgr,
 			realtime.GameEndReason_NONE,
 			round < t.CurrentRound,
-			0)
+			0,
+			"")
 		if err != nil {
 			return err
 		}
@@ -237,7 +238,8 @@ func (t *ClassicDivision) SubmitResult(round int,
 	p2Result realtime.TournamentGameResult,
 	reason realtime.GameEndReason,
 	amend bool,
-	gameIndex int) error {
+	gameIndex int,
+	id string) error {
 
 	// Fetch the player round records
 	pk1, err := t.getPairingKey(p1, round)
@@ -328,6 +330,7 @@ func (t *ClassicDivision) SubmitResult(round int,
 		pairing.Games[gameIndex].Results[p1Index] = p1Result
 		pairing.Games[gameIndex].Results[1-p1Index] = p2Result
 		pairing.Games[gameIndex].GameEndReason = reason
+		pairing.Games[gameIndex].Id = id
 
 		// Get elimination outcomes will take care of the indexing
 		// for us because the newOutcomes are aligned with the data
@@ -344,6 +347,7 @@ func (t *ClassicDivision) SubmitResult(round int,
 		pairing.Games[0].Results[p1Index] = p1Result
 		pairing.Games[0].Results[1-p1Index] = p2Result
 		pairing.Games[0].GameEndReason = reason
+		pairing.Games[0].Id = id
 		pairing.Outcomes[p1Index] = p1Result
 		pairing.Outcomes[1-p1Index] = p2Result
 	}
@@ -881,7 +885,8 @@ func newClassicPairing(t *ClassicDivision,
 	for i := 0; i < int(t.RoundControls[round].GamesPerRound); i++ {
 		games = append(games, &realtime.TournamentGame{Scores: []int32{0, 0},
 			Results: []realtime.TournamentGameResult{realtime.TournamentGameResult_NO_RESULT,
-				realtime.TournamentGameResult_NO_RESULT}})
+				realtime.TournamentGameResult_NO_RESULT},
+				Id: ""})
 	}
 
 	playerGoingFirst := playerOne

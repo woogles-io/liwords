@@ -483,7 +483,8 @@ func SetResult(ctx context.Context,
 		playerTwoResult,
 		reason,
 		amendment,
-		gameIndex)
+		gameIndex,
+		g.GameID())
 	if err != nil {
 		return err
 	}

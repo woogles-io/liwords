@@ -11,7 +11,7 @@ import (
 
 type DivisionManager interface {
 	SubmitResult(int, string, string, int, int, realtime.TournamentGameResult,
-		realtime.TournamentGameResult, realtime.GameEndReason, bool, int) error
+		realtime.TournamentGameResult, realtime.GameEndReason, bool, int, string) error
 	PairRound(int) error
 	GetStandings(int) ([]*realtime.PlayerStanding, error)
 	SetPairing(string, string, int, bool) error

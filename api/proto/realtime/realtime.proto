@@ -431,6 +431,7 @@ message TournamentGame {
   repeated int32 scores = 1;
   repeated TournamentGameResult results = 2;
   GameEndReason game_end_reason = 3;
+  string id = 4;
 }
 
 message PlayerProperties { bool removed = 1; }
