@@ -440,6 +440,7 @@ func SetResult(ctx context.Context,
 			GameId:    gameID,
 			Players:   players,
 			EndReason: reason,
+			Round:     int32(round),
 			Time:      time.Now().Unix(),
 		}
 		log.Debug().Interface("tevt", tevt).Msg("sending legacy tournament game ended evt")
