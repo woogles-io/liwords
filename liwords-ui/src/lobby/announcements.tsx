@@ -56,12 +56,11 @@ export const Announcements = React.memo((props: AnnouncementsProps) => {
     {
       title: 'Upcoming Tournament - WYSC',
       body: (
-        <a href="" target="_blank" rel="noopener noreferrer">
+        <a href="http://youthscrabble.org/WYC2020/" target="_blank" rel="noopener noreferrer">
           <p>
             The World Youth Championship runs for three consecutive weekends,
             starting January 23, 2021! Watch as teams of talented youth around
-            the world play our favorite game. Who will emerge victorious? Link
-            available soon.
+            the world play our favorite game. Who will emerge victorious?
           </p>
         </a>
       ),
