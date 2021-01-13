@@ -53,17 +53,17 @@ const loadablesByLexicon: { [key: string]: Array<Loadable> } = {};
 
 for (const { lexicons, cacheKey, path } of [
   {
-    lexicons: ['CSW19', 'NWL18', 'ECWL'],
+    lexicons: ['CSW19', 'NWL20', 'NWL18', 'ECWL'],
     cacheKey: 'data/letterdistributions/english.csv',
     path: '/wasm/english.csv',
   },
   {
-    lexicons: ['CSW19', 'NWL18', 'ECWL'],
+    lexicons: ['CSW19', 'NWL20', 'NWL18', 'ECWL'],
     cacheKey: 'data/strategy/default_english/leaves.olv',
     path: '/wasm/leaves.olv',
   },
   {
-    lexicons: ['CSW19', 'NWL18', 'ECWL'],
+    lexicons: ['CSW19', 'NWL20', 'NWL18', 'ECWL'],
     cacheKey: 'data/strategy/default_english/preendgame.json',
     path: '/wasm/preendgame.json',
   },
@@ -71,6 +71,11 @@ for (const { lexicons, cacheKey, path } of [
     lexicons: ['CSW19'],
     cacheKey: 'data/lexica/gaddag/CSW19.gaddag',
     path: '/wasm/CSW19.gaddag',
+  },
+  {
+    lexicons: ['NWL20'],
+    cacheKey: 'data/lexica/gaddag/NWL20.gaddag',
+    path: '/wasm/NWL20.gaddag',
   },
   {
     lexicons: ['NWL18'],

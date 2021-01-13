@@ -236,6 +236,9 @@ export const UserProfile = React.memo((props: Props) => {
   const [darkMode, setDarkMode] = useState(
     localStorage?.getItem('darkMode') === 'true'
   );
+  const [enableAllLexicons, setEnableAllLexicons] = useState(
+    localStorage?.getItem('enableAllLexicons') === 'true'
+  );
   const [tileOrder, setTileOrder] = useState(preferredSortOrder ?? '');
   const handleTileOrderChange = useCallback((value) => {
     setTileOrder(value);
@@ -300,6 +303,15 @@ export const UserProfile = React.memo((props: Props) => {
     }
     setDarkMode((x) => !x);
   }, []);
+  const toggleEnableAllLexicons = useCallback(() => {
+    const wantEnableAllLexicons =
+      localStorage?.getItem('enableAllLexicons') !== 'true';
+    localStorage.setItem(
+      'enableAllLexicons',
+      wantEnableAllLexicons ? 'true' : 'false'
+    );
+    setEnableAllLexicons((x) => !x);
+  }, []);
   const fetchPrev = useCallback(() => {
     setRecentGamesOffset((r) => Math.max(r - gamesPageSize, 0));
   }, []);
@@ -347,6 +359,12 @@ export const UserProfile = React.memo((props: Props) => {
                   ) || <Select.Option value={tileOrder}>Custom</Select.Option>}
                 </Select>
               </label>{' '}
+              <label>Enable all lexicons</label>
+              <Switch
+                defaultChecked={enableAllLexicons}
+                onChange={toggleEnableAllLexicons}
+                className="dark-toggle"
+              />
               <label>Enable dark mode</label>
               <Switch
                 defaultChecked={darkMode}
