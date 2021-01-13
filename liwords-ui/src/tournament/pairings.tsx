@@ -42,6 +42,7 @@ type PairingTableData = {
   // ratings: ReactNode;
   //wl: ReactNode;
   //scores: ReactNode;
+  key: string;
   sort: number;
   isMine: boolean;
   actions: ReactNode;
@@ -60,7 +61,7 @@ export const Pairings = (props: Props) => {
     const { status } = tournamentContext.competitorState;
     const pairings = pairingsForRound(props.selectedRound, division);
 
-    const findGameId = (playerName: string) => {
+    const findGameIdFromActive = (playerName: string) => {
       //This assumes one game per round per user
       const game = tournamentContext.activeGames.find((game) => {
         return game.players.map((pm) => pm.displayName).includes(playerName);
@@ -75,7 +76,7 @@ export const Pairings = (props: Props) => {
           ? tournamentContext.divisions[props.selectedDivision].currentRound + 1 //zero based here
           : tournamentContext.competitorState.currentRound; // 1 based here
 
-        console.log('tc', tournamentContext, props.selectedRound);
+        console.log('tc', tournamentContext, round);
         const isMyGame = props.username && playerNames.includes(props.username);
         // sortPriorty -- The higher the number, the higher up the list,
         // we start by giving your own games a + 2 boost, and other people's byes a -2 deficit.
@@ -104,7 +105,7 @@ export const Pairings = (props: Props) => {
         );
         let actions;
         //Current round gets special buttons
-        if (props.selectedRound === currentRound) {
+        if (round === currentRound) {
           if (isMyGame && status) {
             if (
               [
@@ -124,7 +125,7 @@ export const Pairings = (props: Props) => {
               } else {
                 if (
                   status === TourneyStatus.ROUND_GAME_ACTIVE &&
-                  findGameId(props.username!)
+                  findGameIdFromActive(props.username!)
                 ) {
                   actions = (
                     <Button
@@ -132,12 +133,12 @@ export const Pairings = (props: Props) => {
                       onClick={() => {
                         history.replace(
                           `/game/${encodeURIComponent(
-                            findGameId(props.username!) || ''
+                            findGameIdFromActive(props.username!) || ''
                           )}`
                         );
                         console.log(
                           'redirecting to',
-                          findGameId(props.username!)
+                          findGameIdFromActive(props.username!)
                         );
                       }}
                     >
@@ -149,7 +150,7 @@ export const Pairings = (props: Props) => {
             }
           } else {
             //it's not my game
-            const otherGameId = findGameId(playerNames[0]);
+            const otherGameId = findGameIdFromActive(playerNames[0]);
             if (otherGameId) {
               actions = (
                 <Button
@@ -177,8 +178,39 @@ export const Pairings = (props: Props) => {
             }
           }
         }
+        if (!actions) {
+          const finishedGame = pairing.games.map((game) => game.id).length
+            ? pairing.games.map((game) => game.id)[0]
+            : null;
+          if (finishedGame) {
+            actions = (
+              <Button
+                className="examine"
+                onClick={(event) => {
+                  if (event.ctrlKey || event.altKey || event.metaKey) {
+                    window.open(`/game/${encodeURIComponent(finishedGame)}`);
+                  } else {
+                    history.replace(
+                      `/game/${encodeURIComponent(finishedGame)}`
+                    );
+                    console.log('redirecting to', finishedGame);
+                  }
+                }}
+                onAuxClick={(event) => {
+                  if (event.button === 1) {
+                    // middle-click
+                    window.open(`/game/${encodeURIComponent(finishedGame)}`);
+                  }
+                }}
+              >
+                Examine
+              </Button>
+            );
+          }
+        }
         return {
           players,
+          key: playerNames.join(':'),
           sort: sortPriority || 0,
           isMine: isMyGame || false,
           actions: actions || null,
@@ -222,12 +254,15 @@ export const Pairings = (props: Props) => {
   if (!props.selectedDivision) {
     return null;
   }
+
   return (
     <Table
       className="pairings"
       columns={columns}
       pagination={false}
-      rowKey="pairing"
+      rowKey={(record) => {
+        return `${record.key}`;
+      }}
       locale={{
         emptyText: 'The pairings are not yet available for this round.',
       }}
