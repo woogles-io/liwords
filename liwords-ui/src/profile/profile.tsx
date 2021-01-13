@@ -1,6 +1,17 @@
 import React, { useCallback, useEffect } from 'react';
 import { Link, useParams, useLocation } from 'react-router-dom';
-import { notification, Card, Table, Row, Col, Select, Switch } from 'antd';
+import {
+  Button,
+  Card,
+  Col,
+  Form,
+  Modal,
+  Row,
+  Select,
+  Switch,
+  Table,
+  notification,
+} from 'antd';
 import axios, { AxiosError } from 'axios';
 import { useMountedState } from '../utils/mounted';
 import { TopBar } from '../topbar/topbar';
@@ -233,17 +244,22 @@ export const UserProfile = React.memo((props: Props) => {
   const [ratings, setRatings] = useState({});
   const [stats, setStats] = useState({});
   const [userID, setUserID] = useState('');
-  const [darkMode, setDarkMode] = useState(
-    localStorage?.getItem('darkMode') === 'true'
+  const getInitialProfileFormValues = React.useCallback(
+    () => ({
+      darkMode: localStorage?.getItem('darkMode') === 'true',
+      enableAllLexicons: localStorage?.getItem('enableAllLexicons') === 'true',
+      tileOrder: preferredSortOrder ?? '',
+    }),
+    []
   );
-  const [enableAllLexicons, setEnableAllLexicons] = useState(
-    localStorage?.getItem('enableAllLexicons') === 'true'
-  );
-  const [tileOrder, setTileOrder] = useState(preferredSortOrder ?? '');
-  const handleTileOrderChange = useCallback((value) => {
-    setTileOrder(value);
-    setPreferredSortOrder(value);
-  }, []);
+  const [profileModalInitialValues, setProfileModalInitialValues] = useState<
+    | {
+        darkMode: boolean;
+        enableAllLexicons: boolean;
+        tileOrder: string;
+      }
+    | undefined
+  >(undefined);
   const [recentGames, setRecentGames] = useState<Array<GameMetadata>>([]);
   const { loginState } = useLoginStateStoreContext();
   const { username: viewer } = loginState;
@@ -291,27 +307,6 @@ export const UserProfile = React.memo((props: Props) => {
       })
       .catch(errorCatcher);
   }, [username, recentGamesOffset]);
-  const toggleDarkMode = useCallback(() => {
-    const useDarkMode = localStorage?.getItem('darkMode') !== 'true';
-    localStorage.setItem('darkMode', useDarkMode ? 'true' : 'false');
-    if (useDarkMode) {
-      document?.body?.classList?.add('mode--dark');
-      document?.body?.classList?.remove('mode--default');
-    } else {
-      document?.body?.classList?.add('mode--default');
-      document?.body?.classList?.remove('mode--dark');
-    }
-    setDarkMode((x) => !x);
-  }, []);
-  const toggleEnableAllLexicons = useCallback(() => {
-    const wantEnableAllLexicons =
-      localStorage?.getItem('enableAllLexicons') !== 'true';
-    localStorage.setItem(
-      'enableAllLexicons',
-      wantEnableAllLexicons ? 'true' : 'false'
-    );
-    setEnableAllLexicons((x) => !x);
-  }, []);
   const fetchPrev = useCallback(() => {
     setRecentGamesOffset((r) => Math.max(r - gamesPageSize, 0));
   }, []);
@@ -326,6 +321,90 @@ export const UserProfile = React.memo((props: Props) => {
           <TopBar />
         </Col>
       </Row>
+
+      {profileModalInitialValues && (
+        <Modal
+          title="Settings"
+          visible
+          destroyOnClose
+          onCancel={() => {
+            setProfileModalInitialValues(undefined);
+          }}
+          footer={[
+            <Button
+              key="back"
+              onClick={() => {
+                setProfileModalInitialValues(undefined);
+              }}
+            >
+              Cancel
+            </Button>,
+            <button
+              className="primary"
+              key="submit"
+              form="profile-form"
+              type="submit"
+            >
+              OK
+            </button>,
+          ]}
+        >
+          <Form
+            id="profile-form"
+            initialValues={profileModalInitialValues}
+            onFinish={(values) => {
+              setPreferredSortOrder(values.tileOrder);
+              localStorage.setItem(
+                'enableAllLexicons',
+                values.enableAllLexicons ? 'true' : 'false'
+              );
+              localStorage.setItem(
+                'darkMode',
+                values.darkMode ? 'true' : 'false'
+              );
+              if (values.darkMode) {
+                document?.body?.classList?.add('mode--dark');
+                document?.body?.classList?.remove('mode--default');
+              } else {
+                document?.body?.classList?.add('mode--default');
+                document?.body?.classList?.remove('mode--dark');
+              }
+              setProfileModalInitialValues(undefined);
+            }}
+          >
+            <Form.Item label="Tile order" name="tileOrder">
+              <Select>
+                {KNOWN_TILE_ORDERS.map(({ name, value }) => (
+                  <Select.Option value={value} key={value}>
+                    {name}
+                  </Select.Option>
+                ))}
+                {KNOWN_TILE_ORDERS.some(
+                  ({ value }) => value === (preferredSortOrder || '')
+                ) || (
+                  <Select.Option value={preferredSortOrder || ''}>
+                    Custom
+                  </Select.Option>
+                )}
+              </Select>
+            </Form.Item>
+            <Form.Item
+              label="Enable all lexicons"
+              name="enableAllLexicons"
+              valuePropName="checked"
+            >
+              <Switch />
+            </Form.Item>
+            <Form.Item
+              label="Enable dark mode"
+              name="darkMode"
+              valuePropName="checked"
+            >
+              <Switch />
+            </Form.Item>
+          </Form>
+        </Modal>
+      )}
 
       <div className="profile">
         <header>
@@ -343,34 +422,13 @@ export const UserProfile = React.memo((props: Props) => {
           </h3>
           {viewer === username ? (
             <div>
-              <label>
-                Tile order &nbsp;{' '}
-                <Select
-                  defaultValue={tileOrder}
-                  onChange={handleTileOrderChange}
-                >
-                  {KNOWN_TILE_ORDERS.map(({ name, value }) => (
-                    <Select.Option value={value} key={value}>
-                      {name}
-                    </Select.Option>
-                  ))}
-                  {KNOWN_TILE_ORDERS.some(
-                    ({ value }) => value === tileOrder
-                  ) || <Select.Option value={tileOrder}>Custom</Select.Option>}
-                </Select>
-              </label>{' '}
-              &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <label>Enable all lexicons</label>
-              <Switch
-                defaultChecked={enableAllLexicons}
-                onChange={toggleEnableAllLexicons}
-                className="dark-toggle"
-              />
-              <label>Enable dark mode</label>
-              <Switch
-                defaultChecked={darkMode}
-                onChange={toggleDarkMode}
-                className="dark-toggle"
-              />
+              <Button
+                onClick={() => {
+                  setProfileModalInitialValues(getInitialProfileFormValues());
+                }}
+              >
+                Settings...
+              </Button>
               <Link to="/password/change">Change your password</Link>
             </div>
           ) : null}
