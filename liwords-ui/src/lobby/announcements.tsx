@@ -52,24 +52,38 @@ export const Announcements = React.memo((props: AnnouncementsProps) => {
         </a>
       ),
     },
+
     {
-      title: 'Tournament Complete - MERRY',
+      title: 'Upcoming Tournament - WYSC',
       body: (
-        <a
-          href="https://woogles.io/tournament/merry"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
+        <a href="" target="_blank" rel="noopener noreferrer">
           <p>
-            The 2nd annual MERRY tournament (Jan 1-2) congratulates Early Bird
-            winners Tina Bennett (div D), Letitia Sears (div C), Chloe Fatsis
-            (div B), Richard Spence (div A), and Brian Bowman (CSW), and Main
-            Event winners Josh Jetto (div D), Susan Bertoni (div C), Billy
-            Nakamura (div B), Kevin Fraley (div A), and Tim Weiss (CSW).
+            The World Youth Championship runs for three consecutive weekends,
+            starting January 23, 2021! Watch as teams of talented youth around
+            the world play our favorite game. Who will emerge victorious? Link
+            available soon.
           </p>
         </a>
       ),
     },
+
+    {
+      title: 'Upcoming Tournament - MISCO',
+      body: (
+        <a
+          href="https://mindgamesincorporated.com/events/mgi-international-scrabble-classics-online-misco/"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          <p>
+            The biggest online money event of the century! Please join the
+            MISCO; $1000 top prize with a $20 entry fee. See the flyer for more
+            information. Four consecutive weekends, starting on March 6, 2021.
+          </p>
+        </a>
+      ),
+    },
+
     {
       title: 'Want to help?',
       body: (
