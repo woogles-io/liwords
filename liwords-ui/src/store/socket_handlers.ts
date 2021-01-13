@@ -357,7 +357,7 @@ export const useOnSocketMsg = () => {
           case MessageType.ERROR_MESSAGE: {
             console.log('got error msg');
             const err = parsedMsg as ErrorMessage;
-            notification.error({
+            notification.open({
               message: 'Error',
               description: err.getMessage(),
             });
