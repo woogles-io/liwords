@@ -1295,6 +1295,9 @@ export class TournamentDivisionDataResponse extends jspb.Message {
   setPlayersPropertiesList(value: Array<PlayerProperties>): void;
   addPlayersProperties(value?: PlayerProperties, index?: number): PlayerProperties;
 
+  getFinished(): boolean;
+  setFinished(value: boolean): void;
+
   serializeBinary(): Uint8Array;
   toObject(includeInstance?: boolean): TournamentDivisionDataResponse.AsObject;
   static toObject(includeInstance: boolean, msg: TournamentDivisionDataResponse): TournamentDivisionDataResponse.AsObject;
@@ -1317,6 +1320,7 @@ export namespace TournamentDivisionDataResponse {
     currentRound: number,
     standingsMap: Array<[number, RoundStandings.AsObject]>,
     playersPropertiesList: Array<PlayerProperties.AsObject>,
+    finished: boolean,
   }
 }
 

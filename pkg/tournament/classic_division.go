@@ -793,6 +793,9 @@ func (t *ClassicDivision) IsRoundComplete(round int) (bool, error) {
 }
 
 func (t *ClassicDivision) IsFinished() (bool, error) {
+	if len(t.Matrix) < 1 {
+		return false, nil
+	}
 	return t.IsRoundComplete(len(t.Matrix) - 1)
 }
 
@@ -844,6 +847,11 @@ func (t *ClassicDivision) writeResponse(round int) (error) {
 		playersProperties = append(playersProperties, &realtime.PlayerProperties{Removed: t.PlayersProperties[i].Removed})
 	}
 
+	isFinished, err := t.IsFinished()
+	if err != nil {
+		return err
+	}
+
 	t.Response.Players = t.Players
 	t.Response.Controls = realtimeTournamentControls
 	t.Response.Division = division
@@ -851,6 +859,7 @@ func (t *ClassicDivision) writeResponse(round int) (error) {
 	t.Response.PlayerIndexMap = t.PlayerIndexMap
 	t.Response.PlayersProperties = playersProperties
 	t.Response.CurrentRound = int32(t.CurrentRound)
+	t.Response.Finished = isFinished
 	t.Response.Standings[int32(round)] = &realtime.RoundStandings{Standings: standingsResponse}
 
 	return nil

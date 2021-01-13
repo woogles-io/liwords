@@ -9903,7 +9903,8 @@ proto.liwords.TournamentDivisionDataResponse.toObject = function(includeInstance
     currentRound: jspb.Message.getFieldWithDefault(msg, 8, 0),
     standingsMap: (f = msg.getStandingsMap()) ? f.toObject(includeInstance, proto.liwords.RoundStandings.toObject) : [],
     playersPropertiesList: jspb.Message.toObjectList(msg.getPlayersPropertiesList(),
-    proto.liwords.PlayerProperties.toObject, includeInstance)
+    proto.liwords.PlayerProperties.toObject, includeInstance),
+    finished: jspb.Message.getBooleanFieldWithDefault(msg, 11, false)
   };
 
   if (includeInstance) {
@@ -9987,6 +9988,10 @@ proto.liwords.TournamentDivisionDataResponse.deserializeBinaryFromReader = funct
       var value = new proto.liwords.PlayerProperties;
       reader.readMessage(value,proto.liwords.PlayerProperties.deserializeBinaryFromReader);
       msg.addPlayersProperties(value);
+      break;
+    case 11:
+      var value = /** @type {boolean} */ (reader.readBool());
+      msg.setFinished(value);
       break;
     default:
       reader.skipField();
@@ -10078,6 +10083,13 @@ proto.liwords.TournamentDivisionDataResponse.serializeBinaryToWriter = function(
       10,
       f,
       proto.liwords.PlayerProperties.serializeBinaryToWriter
+    );
+  }
+  f = message.getFinished();
+  if (f) {
+    writer.writeBool(
+      11,
+      f
     );
   }
 };
@@ -10349,6 +10361,24 @@ proto.liwords.TournamentDivisionDataResponse.prototype.addPlayersProperties = fu
  */
 proto.liwords.TournamentDivisionDataResponse.prototype.clearPlayersPropertiesList = function() {
   return this.setPlayersPropertiesList([]);
+};
+
+
+/**
+ * optional bool finished = 11;
+ * @return {boolean}
+ */
+proto.liwords.TournamentDivisionDataResponse.prototype.getFinished = function() {
+  return /** @type {boolean} */ (jspb.Message.getBooleanFieldWithDefault(this, 11, false));
+};
+
+
+/**
+ * @param {boolean} value
+ * @return {!proto.liwords.TournamentDivisionDataResponse} returns this
+ */
+proto.liwords.TournamentDivisionDataResponse.prototype.setFinished = function(value) {
+  return jspb.Message.setProto3BooleanField(this, 11, value);
 };
 
 
