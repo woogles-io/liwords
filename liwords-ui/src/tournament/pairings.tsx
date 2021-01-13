@@ -76,7 +76,6 @@ export const Pairings = (props: Props) => {
           ? tournamentContext.divisions[props.selectedDivision].currentRound + 1 //zero based here
           : tournamentContext.competitorState.currentRound; // 1 based here
 
-        console.log('tc', tournamentContext, round);
         const isMyGame = props.username && playerNames.includes(props.username);
         // sortPriorty -- The higher the number, the higher up the list,
         // we start by giving your own games a + 2 boost, and other people's byes a -2 deficit.
