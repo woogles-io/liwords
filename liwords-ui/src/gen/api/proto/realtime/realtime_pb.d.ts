@@ -1093,6 +1093,9 @@ export class TournamentGame extends jspb.Message {
   getGameEndReason(): GameEndReasonMap[keyof GameEndReasonMap];
   setGameEndReason(value: GameEndReasonMap[keyof GameEndReasonMap]): void;
 
+  getId(): string;
+  setId(value: string): void;
+
   serializeBinary(): Uint8Array;
   toObject(includeInstance?: boolean): TournamentGame.AsObject;
   static toObject(includeInstance: boolean, msg: TournamentGame): TournamentGame.AsObject;
@@ -1108,6 +1111,7 @@ export namespace TournamentGame {
     scoresList: Array<number>,
     resultsList: Array<TournamentGameResultMap[keyof TournamentGameResultMap]>,
     gameEndReason: GameEndReasonMap[keyof GameEndReasonMap],
+    id: string,
   }
 }
 
