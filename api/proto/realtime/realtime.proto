@@ -241,6 +241,7 @@ message TournamentGameEndedEvent {
   GameEndReason end_reason = 3;
   // Time that the game ended
   int64 time = 4;
+  int32 round = 5;
 }
 
 // This message makes the "Status Bar" show up and also tells the players

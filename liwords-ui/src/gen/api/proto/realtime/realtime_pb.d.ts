@@ -609,6 +609,9 @@ export class TournamentGameEndedEvent extends jspb.Message {
   getTime(): number;
   setTime(value: number): void;
 
+  getRound(): number;
+  setRound(value: number): void;
+
   serializeBinary(): Uint8Array;
   toObject(includeInstance?: boolean): TournamentGameEndedEvent.AsObject;
   static toObject(includeInstance: boolean, msg: TournamentGameEndedEvent): TournamentGameEndedEvent.AsObject;
@@ -625,6 +628,7 @@ export namespace TournamentGameEndedEvent {
     playersList: Array<TournamentGameEndedEvent.Player.AsObject>,
     endReason: GameEndReasonMap[keyof GameEndReasonMap],
     time: number,
+    round: number,
   }
 
   export class Player extends jspb.Message {

@@ -227,6 +227,7 @@ export const TourneyGameEndedEvtToRecentGame = (
     end_reason: toEndReason(evt.getEndReason()),
     game_id: evt.getGameId(),
     time: evt.getTime(),
+    round: evt.getRound(),
   };
 };
 

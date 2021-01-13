@@ -5257,7 +5257,8 @@ proto.liwords.TournamentGameEndedEvent.toObject = function(includeInstance, msg)
     playersList: jspb.Message.toObjectList(msg.getPlayersList(),
     proto.liwords.TournamentGameEndedEvent.Player.toObject, includeInstance),
     endReason: jspb.Message.getFieldWithDefault(msg, 3, 0),
-    time: jspb.Message.getFieldWithDefault(msg, 4, 0)
+    time: jspb.Message.getFieldWithDefault(msg, 4, 0),
+    round: jspb.Message.getFieldWithDefault(msg, 5, 0)
   };
 
   if (includeInstance) {
@@ -5310,6 +5311,10 @@ proto.liwords.TournamentGameEndedEvent.deserializeBinaryFromReader = function(ms
     case 4:
       var value = /** @type {number} */ (reader.readInt64());
       msg.setTime(value);
+      break;
+    case 5:
+      var value = /** @type {number} */ (reader.readInt32());
+      msg.setRound(value);
       break;
     default:
       reader.skipField();
@@ -5366,6 +5371,13 @@ proto.liwords.TournamentGameEndedEvent.serializeBinaryToWriter = function(messag
   if (f !== 0) {
     writer.writeInt64(
       4,
+      f
+    );
+  }
+  f = message.getRound();
+  if (f !== 0) {
+    writer.writeInt32(
+      5,
       f
     );
   }
@@ -5651,6 +5663,24 @@ proto.liwords.TournamentGameEndedEvent.prototype.getTime = function() {
  */
 proto.liwords.TournamentGameEndedEvent.prototype.setTime = function(value) {
   return jspb.Message.setProto3IntField(this, 4, value);
+};
+
+
+/**
+ * optional int32 round = 5;
+ * @return {number}
+ */
+proto.liwords.TournamentGameEndedEvent.prototype.getRound = function() {
+  return /** @type {number} */ (jspb.Message.getFieldWithDefault(this, 5, 0));
+};
+
+
+/**
+ * @param {number} value
+ * @return {!proto.liwords.TournamentGameEndedEvent} returns this
+ */
+proto.liwords.TournamentGameEndedEvent.prototype.setRound = function(value) {
+  return jspb.Message.setProto3IntField(this, 5, value);
 };
 
 
