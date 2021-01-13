@@ -171,6 +171,13 @@ export const TournamentRoom = (props: Props) => {
           newGame={handleNewGame}
           username={username}
           userID={userID}
+          sendReady={() =>
+            readyForTournamentGame(
+              sendSocketMsg,
+              tournamentContext.metadata.id,
+              competitorContext
+            )
+          }
         />
         <TournamentInfo
           setSelectedGameTab={setSelectedGameTab}
