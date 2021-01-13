@@ -3,7 +3,6 @@ module github.com/domino14/liwords
 go 1.14
 
 require (
-	github.com/Masterminds/semver v1.5.0 // indirect
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible
 	github.com/domino14/macondo v0.4.5-0.20201220182339-824fc6974fc7
 	github.com/golang/protobuf v1.4.2
@@ -19,7 +18,6 @@ require (
 	github.com/nats-io/nats.go v1.10.0
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/rs/zerolog v1.19.0
-	github.com/twitchtv/retool v1.3.7 // indirect
 	github.com/twitchtv/twirp v7.1.0+incompatible
 	golang.org/x/crypto v0.0.0-20200820211705-5c72a883971a
 	google.golang.org/protobuf v1.25.0
