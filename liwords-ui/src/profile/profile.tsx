@@ -344,7 +344,7 @@ export const UserProfile = React.memo((props: Props) => {
           {viewer === username ? (
             <div>
               <label>
-                Tile order{' '}
+                Tile order &nbsp;{' '}
                 <Select
                   defaultValue={tileOrder}
                   onChange={handleTileOrderChange}
@@ -359,7 +359,7 @@ export const UserProfile = React.memo((props: Props) => {
                   ) || <Select.Option value={tileOrder}>Custom</Select.Option>}
                 </Select>
               </label>{' '}
-              <label>Enable all lexicons</label>
+              &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <label>Enable all lexicons</label>
               <Switch
                 defaultChecked={enableAllLexicons}
                 onChange={toggleEnableAllLexicons}
