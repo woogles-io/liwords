@@ -474,6 +474,11 @@ func SetResult(ctx context.Context,
 		return err
 	}
 
+	gid := ""
+	if g != nil {
+		gid = g.GameID()
+	}
+
 	err = divisionObject.DivisionManager.SubmitResult(round,
 		p1.UUID+":"+p1.Username,
 		p2.UUID+":"+p2.Username,
@@ -484,7 +489,7 @@ func SetResult(ctx context.Context,
 		reason,
 		amendment,
 		gameIndex,
-		g.GameID())
+		gid)
 	if err != nil {
 		return err
 	}
