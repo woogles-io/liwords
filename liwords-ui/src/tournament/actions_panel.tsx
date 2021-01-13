@@ -33,6 +33,7 @@ type Props = {
   tournamentID: string;
   isDirector: boolean;
   onSeekSubmit: (g: SoughtGame) => void;
+  sendReady?: () => void;
 };
 
 export const ActionsPanel = React.memo((props: Props) => {
@@ -119,17 +120,18 @@ export const ActionsPanel = React.memo((props: Props) => {
         });
       });
   }, [tournamentID, dispatchTournamentContext, tournamentContext.gamesOffset]);
-  const renderDivisionSelector = (
-    <Select value={selectedDivision} onChange={setSelectedDivision}>
-      {Object.values(divisions).map((d) => {
-        return (
-          <Select.Option value={d.divisionID} key={d.divisionID}>
-            {d.divisionID}
-          </Select.Option>
-        );
-      })}
-    </Select>
-  );
+  const renderDivisionSelector =
+    Object.values(divisions).length > 1 ? (
+      <Select value={selectedDivision} onChange={setSelectedDivision}>
+        {Object.values(divisions).map((d) => {
+          return (
+            <Select.Option value={d.divisionID} key={d.divisionID}>
+              {d.divisionID}
+            </Select.Option>
+          );
+        })}
+      </Select>
+    ) : null;
 
   const renderGamesTab = () => {
     if (selectedGameTab === 'GAMES') {
@@ -140,6 +142,8 @@ export const ActionsPanel = React.memo((props: Props) => {
             <Pairings
               selectedRound={selectedRound}
               selectedDivision={selectedDivision}
+              username={username}
+              sendReady={props.sendReady}
             />
           </div>
         );
@@ -286,7 +290,6 @@ export const ActionsPanel = React.memo((props: Props) => {
       const lastRound =
         tournamentContext.divisions[selectedDivision]?.numRounds ||
         selectedRound;
-      console.log('last round is', lastRound);
       if (selectedRound === 1) {
         availableActions.push(<div className="empty"></div>);
       } else {

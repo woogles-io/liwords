@@ -12,13 +12,65 @@
         padding: 18px 0;
       }
     }
+    td.ant-table-cell.actions {
+      text-align: right;
+    }
   }
   .ant-tag-bye {
     margin: 0 6px;
     top: -1px;
     position: relative;
   }
+
+  .single-pairing {
+    &.mine {
+      &.ROUND_OPEN.current, &.ROUND_OPPONENT_WAITING.current  {
+        @include colorModed() {
+          background: m($primary-light);
+        }
+      }
+      &.ROUND_LATE.current  {
+        @include colorModed() {
+          background: m($timer-out-light);
+        }
+      }
+      &.ROUND_READY.current {
+        @include colorModed() {
+          background: m($timer-light);
+        }
+      }
+    }
+  }
+
+  .ant-select {
+    width: 200px;
+    @include colorModed() {
+      background: m($background);
+      color: m($gray-extreme);
+    }
+    .ant-select-arrow {
+      @include colorModed() {
+        color: m($gray-medium);
+      }
+    }
+    .ant-select-selection-placeholder {
+      z-index: 1;
+      font-weight: 400;
+      opacity: 0.8;
+      @include colorModed() {
+        color: m($gray-medium);
+      }
+    }
+    input, .ant-select-selector {
+      @include colorModed() {
+        background: m($card-background);
+        color: m($gray-extreme);
+      }
+    }
+  }
 }
+
+
 
 .ant-card.paired-mode {
   padding-bottom: 64px;

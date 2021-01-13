@@ -36,6 +36,7 @@ type TournamentGame = {
   scores: Array<number>;
   results: Array<tournamentGameResult>;
   gameEndReason: gameEndReason;
+  id?: string;
 };
 
 export type SinglePairing = {
@@ -171,6 +172,7 @@ const divisionDataResponseToObj = (
       games: value.getGamesList().map((g) => ({
         scores: g.getScoresList(),
         gameEndReason: g.getGameEndReason(),
+        id: g.getId(),
         results: g.getResultsList(),
       })),
     };

@@ -84,7 +84,6 @@ export const CompetitorStatus = (props: Props) => {
         );
       }
       case TourneyStatus.ROUND_OPEN: {
-        //Todo: Button should send ready message
         return (
           <>
             <p>Time to start round {competitorContext.currentRound}!</p>
@@ -95,7 +94,6 @@ export const CompetitorStatus = (props: Props) => {
         );
       }
       case TourneyStatus.ROUND_LATE: {
-        //Todo: Button should send ready message
         //Todo: When we have automatic forfeit, make countdown to forfeit
         //the secondary message
         return (
