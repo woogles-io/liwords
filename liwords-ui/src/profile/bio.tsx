@@ -49,7 +49,7 @@ export const BioCard = React.memo((props: BioProps) => {
     setCandidateBio(e.target.value);
   }, []);
 
-  return (viewer === username || latestBio != "") ? (
+  return (viewer === username || latestBio !== "") ? (
     <Card title="Bio" actions={actions}>
       <ReactMarkdown>{latestBio ? latestBio : 'You haven\'t yet provided your bio.'}</ReactMarkdown>
       <Modal
