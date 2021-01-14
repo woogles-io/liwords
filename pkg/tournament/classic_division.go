@@ -19,13 +19,13 @@ type ClassicDivision struct {
 	Matrix     [][]string                           `json:"matrix"`
 	PairingMap map[string]*realtime.PlayerRoundInfo `json:"pairingMap"`
 	// By convention, players should look like userUUID:username
-	Players           []string                         `json:"players"`
-	PlayersProperties []*entity.PlayerProperties       `json:"playerProperties"`
-	PlayerIndexMap    map[string]int32                   `json:"pidxMap"`
-	RoundControls     []*realtime.RoundControl         `json:"roundCtrls"`
-	CurrentRound      int                              `json:"currentRound"`
-	RoundStarted      bool                             `json:"roundStarted"`
-	LastStarted       *realtime.TournamentRoundStarted `json:"lastStarted"`
+	Players           []string                                 `json:"players"`
+	PlayersProperties []*entity.PlayerProperties               `json:"playerProperties"`
+	PlayerIndexMap    map[string]int32                         `json:"pidxMap"`
+	RoundControls     []*realtime.RoundControl                 `json:"roundCtrls"`
+	CurrentRound      int                                      `json:"currentRound"`
+	RoundStarted      bool                                     `json:"roundStarted"`
+	LastStarted       *realtime.TournamentRoundStarted         `json:"lastStarted"`
 	Response          *realtime.TournamentDivisionDataResponse `json:"response"`
 }
 
@@ -43,13 +43,13 @@ func NewClassicDivision(players []string, roundControls []*realtime.RoundControl
 		pairings := newPairingMatrix(numberOfRounds, numberOfPlayers)
 		playerIndexMap := newPlayerIndexMap(players)
 		t := &ClassicDivision{Matrix: pairings,
-			PairingMap:     pairingMap,
-			Players:        players,
+			PairingMap:        pairingMap,
+			Players:           players,
 			PlayersProperties: playersProperties,
-			PlayerIndexMap: playerIndexMap,
-			RoundControls:  roundControls,
-			RoundStarted:   false,
-			CurrentRound:   0}
+			PlayerIndexMap:    playerIndexMap,
+			RoundControls:     roundControls,
+			RoundStarted:      false,
+			CurrentRound:      0}
 		err := t.writeResponse(t.CurrentRound)
 		if err != nil {
 			return nil, err
@@ -803,12 +803,12 @@ func (t *ClassicDivision) ToResponse() (*realtime.TournamentDivisionDataResponse
 	return t.Response, nil
 }
 
-func (t *ClassicDivision) writeResponse(round int) (error) {
+func (t *ClassicDivision) writeResponse(round int) error {
 	if len(t.Matrix) > 0 && (round >= len(t.Matrix) || round < 0) {
 		return fmt.Errorf("round number out of range: %d", round)
 	}
 	if t.Response == nil {
-		t.Response = &realtime.TournamentDivisionDataResponse{ Standings: make(map[int32]*realtime.RoundStandings) }
+		t.Response = &realtime.TournamentDivisionDataResponse{Standings: make(map[int32]*realtime.RoundStandings)}
 	}
 
 	realtimeTournamentControls := &realtime.TournamentControls{RoundControls: []*realtime.RoundControl{}}
@@ -858,7 +858,7 @@ func (t *ClassicDivision) writeResponse(round int) (error) {
 	t.Response.PairingMap = t.PairingMap
 	t.Response.PlayerIndexMap = t.PlayerIndexMap
 	t.Response.PlayersProperties = playersProperties
-	t.Response.RoundStarted         = t.RoundStarted
+	t.Response.RoundStarted = t.RoundStarted
 	t.Response.CurrentRound = int32(t.CurrentRound)
 	t.Response.Finished = isFinished
 	t.Response.Standings[int32(round)] = &realtime.RoundStandings{Standings: standingsResponse}
@@ -896,7 +896,7 @@ func newClassicPairing(t *ClassicDivision,
 		games = append(games, &realtime.TournamentGame{Scores: []int32{0, 0},
 			Results: []realtime.TournamentGameResult{realtime.TournamentGameResult_NO_RESULT,
 				realtime.TournamentGameResult_NO_RESULT},
-				Id: ""})
+			Id: ""})
 	}
 
 	playerGoingFirst := playerOne
@@ -1090,7 +1090,7 @@ func (t *ClassicDivision) getPairingKey(player string, round int) (string, error
 
 	playerIndex, ok := t.PlayerIndexMap[player]
 	if !ok {
-		return "", fmt.Errorf("player does not exist in the tournament: %s", player)
+		return "", fmt.Errorf("player does not exist in the division: %s", player)
 	}
 	return t.Matrix[round][playerIndex], nil
 }
@@ -1102,7 +1102,7 @@ func (t *ClassicDivision) setPairingKey(player string, round int, pairingKey str
 
 	playerIndex, ok := t.PlayerIndexMap[player]
 	if !ok {
-		return fmt.Errorf("player does not exist in the tournament: %s", player)
+		return fmt.Errorf("player does not exist in the division: %s", player)
 	}
 	t.Matrix[round][playerIndex] = pairingKey
 	return nil

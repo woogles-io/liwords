@@ -2,6 +2,7 @@ package tournament
 
 import (
 	"context"
+	"encoding/base64"
 	"errors"
 	"fmt"
 	"os"
@@ -41,6 +42,9 @@ type TournamentStore interface {
 	ListAllIDs(context.Context) ([]string, error)
 
 	GetRecentClubSessions(ctx context.Context, clubID string, numSessions int, offset int) (*pb.ClubSessionsResponse, error)
+	AddRegistrants(ctx context.Context, tid string, userIDs []string, division string) error
+	RemoveRegistrants(ctx context.Context, tid string, userIDs []string, division string) error
+	ActiveTournamentsFor(ctx context.Context, userID string) ([][2]string, error)
 }
 
 func HandleTournamentGameEnded(ctx context.Context, ts TournamentStore, us user.Store,
@@ -522,6 +526,13 @@ func StartTournament(ctx context.Context, ts TournamentStore, id string, manual 
 	return ts.Set(ctx, t)
 }
 
+// DivisionChannelName returns a channel name that can be used
+// for sending communications regarding a tournament and division.
+func DivisionChannelName(tid, division string) string {
+	// We encode to b64 because division can contain spaces.
+	return string(base64.URLEncoding.EncodeToString([]byte(tid + ":" + division)))
+}
+
 func StartRoundCountdown(ctx context.Context, ts TournamentStore, id string,
 	division string, round int, manual, save bool) error {
 	t, err := ts.Get(ctx, id)
@@ -567,10 +578,10 @@ func StartRoundCountdown(ctx context.Context, ts TournamentStore, id string,
 			// add timestamp deadline here as well at some point
 		}
 		wrapped := entity.WrapEvent(evt, realtime.MessageType_TOURNAMENT_ROUND_STARTED)
-		// Note: This does not send it to every user in the tournament. It sends it
-		// to every one that is currently inside this tournament realm.
-		// So people who are in the lobby or some other tab won't get this message.
-		// We will have to fix this to send to a list of users, instead.
+
+		// Send it to everyone in this division across the app.
+		wrapped.AddAudience(entity.AudChannel, DivisionChannelName(id, division))
+		// Also send it to the tournament realm.
 		wrapped.AddAudience(entity.AudTournament, id)
 		if eventChannel != nil {
 			eventChannel <- wrapped
@@ -794,13 +805,14 @@ func addTournamentPersons(ctx context.Context,
 
 	// Only perform the add operation if all persons can be added.
 	personsCopy := map[string]int32{}
+	userUUIDs := []string{}
 	for k := range persons.Persons {
 		u, err := us.Get(ctx, k)
 		if err != nil {
 			return err
 		}
 		fullID := u.UUID + ":" + u.Username
-
+		userUUIDs = append(userUUIDs, u.UUID)
 		_, ok := personsMap[fullID]
 		if ok {
 			return fmt.Errorf("person (%s, %d) already exists", k, personsMap[k])
@@ -823,6 +835,10 @@ func addTournamentPersons(ctx context.Context,
 			if err != nil {
 				return err
 			}
+		}
+		err = ts.AddRegistrants(ctx, t.UUID, userUUIDs, division)
+		if err != nil {
+			return err
 		}
 	}
 
@@ -862,13 +878,15 @@ func removeTournamentPersons(ctx context.Context,
 
 	// Only perform the remove operation if all persons can be removed.
 	personsCopy := map[string]int32{}
+	userUUIDs := []string{}
+
 	for k := range persons.Persons {
 		u, err := us.Get(ctx, k)
 		if err != nil {
 			return err
 		}
 		fullID := u.UUID + ":" + u.Username
-
+		userUUIDs = append(userUUIDs, u.UUID)
 		_, ok := personsMap[fullID]
 		if !ok {
 			return fmt.Errorf("person (%s, %d) does not exist", k, personsMap[k])
@@ -891,6 +909,10 @@ func removeTournamentPersons(ctx context.Context,
 			if err != nil {
 				return err
 			}
+		}
+		err = ts.RemoveRegistrants(ctx, t.UUID, userUUIDs, division)
+		if err != nil {
+			return err
 		}
 	}
 
