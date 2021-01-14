@@ -306,7 +306,9 @@ func (b *Bus) handleNatsRequest(ctx context.Context, topic string,
 			resp.Realms = append(resp.Realms, realm, "chat-"+realm)
 
 			if game.TournamentData != nil && game.TournamentData.Id != "" {
-				resp.Realms = append(resp.Realms, "chat-tournament-"+game.TournamentData.Id)
+				currentTournamentID = game.TournamentData.Id
+				tournamentRealm := "tournament-" + currentTournamentID
+				resp.Realms = append(resp.Realms, tournamentRealm, "chat-"+tournamentRealm)
 			}
 
 		} else if strings.HasPrefix(path, "/tournament/") || strings.HasPrefix(path, "/club/") {
@@ -321,11 +323,11 @@ func (b *Bus) handleNatsRequest(ctx context.Context, topic string,
 			log.Info().Str("path", path).Msg("realm-req-not-handled")
 		}
 
-		tourneys, err := b.tournamentStore.ActiveTournamentsFor(ctx, userID)
+		activeTourneys, err := b.tournamentStore.ActiveTournamentsFor(ctx, userID)
 		if err != nil {
 			return err
 		}
-		for _, tourney := range tourneys {
+		for _, tourney := range activeTourneys {
 			// If we are already physically IN the current tournament realm, do not
 			// subscribe to this extra channel. This channel is used for messages sitewide.
 			if tourney[0] != currentTournamentID {
