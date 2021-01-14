@@ -448,7 +448,11 @@ export function TournamentReducer(
         competitorState: {
           ...state.competitorState,
           currentRound:
-            state.competitorState.division === division ? m.getRound() : 0,
+            // Don't touch the current round if the division doesn't match
+            state.competitorState.division === division
+              ? m.getRound()
+              : state.competitorState.currentRound,
+
           status:
             // only change to ROUND_OPEN if we are in this tournament.
             // There might be a potential race condition here where our

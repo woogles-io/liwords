@@ -27,6 +27,8 @@ const (
 	AudUser                         = "user"
 	AudLobby                        = "lobby"
 	AudTournament                   = "tournament"
+	// AudChannel is used for a general channel.
+	AudChannel = "channel"
 )
 
 // An EventWrapper is a real-time update, whether it is a played move,

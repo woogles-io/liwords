@@ -281,7 +281,7 @@ func (b *Bus) handleNatsRequest(ctx context.Context, topic string,
 		userID := msg.UserId
 
 		resp := &pb.RegisterRealmResponse{}
-
+		currentTournamentID := ""
 		if strings.HasPrefix(path, "/game/") {
 			gameID := strings.TrimPrefix(path, "/game/")
 			game, err := b.gameStore.Get(ctx, gameID)
@@ -314,9 +314,24 @@ func (b *Bus) handleNatsRequest(ctx context.Context, topic string,
 			if err != nil {
 				return err
 			}
-			resp.Realms = append(resp.Realms, "tournament-"+t.UUID, "chat-tournament-"+t.UUID)
+			currentTournamentID = t.UUID
+			tournamentRealm := "tournament-" + currentTournamentID
+			resp.Realms = append(resp.Realms, tournamentRealm, "chat-"+tournamentRealm)
 		} else {
-			log.Info().Str("path", path).Msg("realm-req-not-handled-sending-blank-realm")
+			log.Info().Str("path", path).Msg("realm-req-not-handled")
+		}
+
+		tourneys, err := b.tournamentStore.ActiveTournamentsFor(ctx, userID)
+		if err != nil {
+			return err
+		}
+		for _, tourney := range tourneys {
+			// If we are already physically IN the current tournament realm, do not
+			// subscribe to this extra channel. This channel is used for messages sitewide.
+			if tourney[0] != currentTournamentID {
+				channel := tournament.DivisionChannelName(tourney[0], tourney[1])
+				resp.Realms = append(resp.Realms, "channel-"+channel)
+			}
 		}
 
 		retdata, err := proto.Marshal(resp)
@@ -324,7 +339,7 @@ func (b *Bus) handleNatsRequest(ctx context.Context, topic string,
 			return err
 		}
 		b.natsconn.Publish(replyTopic, retdata)
-		log.Debug().Str("topic", topic).Str("replyTopic", replyTopic).
+		log.Debug().Str("topic", topic).Str("replyTopic", replyTopic).Interface("realms", resp.Realms).
 			Msg("published response")
 	default:
 		return fmt.Errorf("unhandled-req-topic: %v", topic)
@@ -569,7 +584,7 @@ func (b *Bus) initRealmInfo(ctx context.Context, evt *pb.InitRealmInfo, connID s
 		} else {
 			log.Debug().Interface("evt", evt).Msg("no init realm info")
 		}
-
+		// XXX: Need initRealmInfo for `channel-` realm.
 		// Get presence
 		if presenceChan != "" {
 			err := b.sendPresenceContext(ctx, evt.UserId, username, anon,
