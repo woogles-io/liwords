@@ -1,4 +1,4 @@
-import React, { ReactNode } from 'react';
+import React, { ReactNode, useMemo } from 'react';
 import { useTournamentStoreContext } from '../store/store';
 import { Button, Table, Tag } from 'antd';
 import {
@@ -29,6 +29,40 @@ const pairingsForRound = (
   return n.map((key) => division.pairingMap[key]);
 };
 
+const getPerformance = (
+  playerName: string,
+  viewedRound: number,
+  division: Division
+) => {
+  const currentTournamentRound = division.currentRound;
+  const roundOfRecord =
+    viewedRound > currentTournamentRound ? currentTournamentRound : viewedRound;
+  const results = division.standingsMap[roundOfRecord].standingsList.find((s) =>
+    s.player.endsWith(`:${playerName}`)
+  );
+  return results
+    ? `(${results.wins + results.draws / 2}-${results.losses})`
+    : '(0-0)';
+};
+
+const getScores = (
+  playerName: string,
+  viewedRound: number,
+  pairing: SinglePairing
+) => {
+  const playerIndex = pairing.players[0].endsWith(`:${playerName}`) ? 0 : 1;
+  const results = pairing.outcomes;
+  if (
+    pairing.games.length &&
+    pairing.games[0].scores.length &&
+    results[playerIndex] !== TournamentGameResult.NO_RESULT &&
+    results[playerIndex] !== TournamentGameResult.ELIMINATED
+  ) {
+    return pairing.games[0].scores[playerIndex];
+  }
+  return '';
+};
+
 type Props = {
   selectedDivision?: string;
   selectedRound: number;
@@ -39,8 +73,8 @@ type Props = {
 type PairingTableData = {
   players: ReactNode;
   // ratings: ReactNode;
-  //wl: ReactNode;
-  //scores: ReactNode;
+  wl: ReactNode;
+  scores: ReactNode;
   key: string;
   sort: number;
   isMine: boolean;
@@ -50,6 +84,13 @@ export const Pairings = (props: Props) => {
   const { tournamentContext } = useTournamentStoreContext();
   const { divisions } = tournamentContext;
   const history = useHistory();
+  const currentRound = useMemo(
+    () =>
+      props.selectedDivision
+        ? divisions[props.selectedDivision].currentRound
+        : tournamentContext.competitorState.currentRound,
+    [props.selectedDivision, divisions, tournamentContext.competitorState]
+  );
   const formatPairingsData = (
     division: Division,
     round: number
@@ -57,9 +98,9 @@ export const Pairings = (props: Props) => {
     if (!division) {
       return new Array<PairingTableData>();
     }
+
     const { status } = tournamentContext.competitorState;
     const pairings = pairingsForRound(props.selectedRound, division);
-
     const findGameIdFromActive = (playerName: string) => {
       //This assumes one game per round per user
       const game = tournamentContext.activeGames.find((game) => {
@@ -71,10 +112,6 @@ export const Pairings = (props: Props) => {
       (pairing: SinglePairing): PairingTableData => {
         const playerNames = pairing.players.map(usernameFromPlayerEntry);
         const isBye = pairing.outcomes[0] === TournamentGameResult.BYE;
-        const currentRound = props.selectedDivision
-          ? tournamentContext.divisions[props.selectedDivision].currentRound + 1 //zero based here
-          : tournamentContext.competitorState.currentRound; // 1 based here
-
         const isMyGame = props.username && playerNames.includes(props.username);
         // sortPriorty -- The higher the number, the higher up the list,
         // we start by giving your own games a + 2 boost, and other people's byes a -2 deficit.
@@ -206,11 +243,39 @@ export const Pairings = (props: Props) => {
             );
           }
         }
+        const wl = isBye ? (
+          <p key={`${playerNames[0]}wl`}>
+            {getPerformance(
+              playerNames[0],
+              round,
+              divisions[props.selectedDivision!]
+            )}
+          </p>
+        ) : (
+          playerNames.map((playerName) => (
+            <p key={`${playerName}wl`}>
+              {getPerformance(
+                playerName,
+                round,
+                divisions[props.selectedDivision!]
+              )}
+            </p>
+          ))
+        );
+        const scores = isBye
+          ? null
+          : playerNames.map((playerName) => (
+              <p key={`${playerName}wl`}>
+                {getScores(playerName, round, pairing)}
+              </p>
+            ));
         return {
           players,
           key: playerNames.join(':'),
           sort: sortPriority || 0,
           isMine: isMyGame || false,
+          wl,
+          scores,
           actions: actions || null,
         };
       }
@@ -225,37 +290,43 @@ export const Pairings = (props: Props) => {
       key: 'players',
       className: 'players',
     },
-    /*    {
-      title: 'Ratings',
-      dataIndex: 'ratings',
-      key: 'ratings',
-    },
     {
       title: 'W/L',
       dataIndex: 'wl',
       key: 'wl',
-    },
-    {
-      title: 'Scores',
-      dataIndex: 'scores',
-      key: 'scores',
-    },
 
-    */
-    {
-      title: '',
-      dataIndex: 'actions',
-      key: 'actions',
-      className: 'actions',
+      className: 'wl',
     },
   ];
+
+  if (!(props.selectedRound > currentRound)) {
+    columns.push({
+      title: 'Score',
+      dataIndex: 'scores',
+      key: 'scores',
+      className: 'scores',
+    });
+  }
+  columns.push({
+    title: '',
+    dataIndex: 'actions',
+    key: 'actions',
+    className: 'actions',
+  });
+
   if (!props.selectedDivision) {
     return null;
   }
 
   return (
     <Table
-      className="pairings"
+      className={`pairings ${
+        currentRound < props.selectedRound
+          ? 'future'
+          : currentRound > props.selectedRound
+          ? 'completed'
+          : 'current'
+      }`}
       columns={columns}
       pagination={false}
       rowKey={(record) => {
@@ -269,9 +340,6 @@ export const Pairings = (props: Props) => {
         props.selectedRound
       )}
       rowClassName={(record) => {
-        const currentRound = props.selectedDivision
-          ? tournamentContext.divisions[props.selectedDivision].currentRound
-          : tournamentContext.competitorState.currentRound;
         let computedClass = `single-pairing ${tournamentContext.competitorState.status}`;
         if (record.isMine) {
           computedClass += ' mine';

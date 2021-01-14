@@ -10,14 +10,33 @@
     .ant-table-placeholder {
       td {
         padding: 18px 0;
+        @include colorModed() {
+          border-color: m($gray-subtle);
+        }
+        border: 1px solid;
+        border-left: 0;
+        border-right: 0;
       }
     }
-    td.ant-table-cell.actions {
-      text-align: right;
+    td.ant-table-cell {
+      &.players {
+        width: 180px;
+      }
+      &.wl {
+        width: 60px;
+      }
+      &.actions {
+        text-align: right;
+      }
     }
   }
-  .ant-tag-bye {
-    margin: 0 6px;
+  .ant-table-empty {
+    thead {
+      display: none;
+    }
+  }
+  .ant-tag-bye, ,ant-tag-removed {
+    margin: 0 12px;
     top: -1px;
     position: relative;
   }
@@ -70,7 +89,15 @@
   }
 }
 
-
+.ant-table-wrapper.standings {
+  margin: 15px;
+  .rank, .player {
+    font-weight: 700;
+  }
+  .spread {
+    text-align: right;
+  }
+}
 
 .ant-card.paired-mode {
   padding-bottom: 64px;
@@ -78,7 +105,11 @@
     max-height: 100%;
     overflow-y: auto;
   }
-
+  th.ant-table-cell {
+    @include colorModed() {
+      color: m($gray-medium);
+    }
+  }
   .ant-card-actions {
     position: absolute;
     bottom: 0;
