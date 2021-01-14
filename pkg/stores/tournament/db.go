@@ -340,7 +340,7 @@ func (s *DBStore) RemoveRegistrants(ctx context.Context, tid string, userIDs []s
 }
 
 // ActiveTournamentsFor returns a list of 2-tuples of tournament ID, division ID
-// that this user is registered in - only for active tournaments.
+// that this user is registered in - only for active tournaments (ones that have not finished).
 func (s *DBStore) ActiveTournamentsFor(ctx context.Context, userID string) ([][2]string, error) {
 	var registrants []*registrant
 
@@ -349,7 +349,6 @@ func (s *DBStore) ActiveTournamentsFor(ctx context.Context, userID string) ([][2
 		select tournament_id, division_id from registrants
 		inner join tournaments on tournament_id = tournaments.uuid
 		where (tournaments.is_finished = FALSE or tournaments.is_finished is NULL)
-			and tournaments.is_started = TRUE
 			and registrants.user_id = ?
 		`, userID).Scan(&registrants)
 	if result.Error != nil {
