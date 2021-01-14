@@ -5,6 +5,7 @@ import {
   MessageType,
   PlayerRoundInfo,
   ReadyForTournamentGame,
+  RoundStandings,
   TournamentDivisionDataResponse,
   TournamentGameEndedEvent,
   TournamentGameResult,
@@ -58,6 +59,7 @@ export type Division = {
   // Note: currentRound is zero-indexed
   currentRound: number;
   // Add Standings here
+  standingsMap: { [round: number]: RoundStandings.AsObject };
 };
 
 export type TournamentState = {
@@ -157,11 +159,12 @@ const divisionDataResponseToObj = (
     roundInfo: dd.getDivisionList(),
     pairingMap: {},
     playerIndexMap: {},
+    standingsMap: {},
   };
 
   const pairingMap: { [key: string]: SinglePairing } = {};
   const playerIndexMap: { [playerID: string]: number } = {};
-
+  const standingsMap: { [roundId: number]: RoundStandings.AsObject } = {};
   dd.getPairingMapMap().forEach((value: PlayerRoundInfo, key: string) => {
     pairingMap[key] = {
       players: value.getPlayersList(),
@@ -178,9 +181,12 @@ const divisionDataResponseToObj = (
   dd.getPlayerIndexMapMap().forEach((value: number, key: string) => {
     playerIndexMap[key] = value;
   });
-
+  dd.getStandingsMap().forEach((value: RoundStandings, key: number) => {
+    standingsMap[key] = value.toObject();
+  });
   ret.pairingMap = pairingMap;
   ret.playerIndexMap = playerIndexMap;
+  ret.standingsMap = standingsMap;
   return ret;
 };
 

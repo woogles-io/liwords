@@ -59,10 +59,7 @@ export const ActionsPanel = React.memo((props: Props) => {
     tournamentContext,
   } = useTournamentStoreContext();
   const { divisions } = tournamentContext;
-  //TODO: Make this smarter so it defaults to the round for the division
-  const [selectedRound, setSelectedRound] = useState(
-    tournamentContext.competitorState?.currentRound || 0
-  );
+  const [selectedRound, setSelectedRound] = useState(0);
   const [selectedDivision, setSelectedDivision] = useState('');
   const { lobbyContext } = useLobbyStoreContext();
   const tournamentID = tournamentContext.metadata.id;
@@ -256,6 +253,7 @@ export const ActionsPanel = React.memo((props: Props) => {
     if (foundDivision) {
       if (!selectedDivision) {
         setSelectedDivision(foundDivision.divisionID);
+        setSelectedRound(foundDivision.currentRound);
       }
     } else {
       console.log();
