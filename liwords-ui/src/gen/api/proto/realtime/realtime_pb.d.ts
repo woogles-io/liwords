@@ -1119,6 +1119,9 @@ export class PlayerProperties extends jspb.Message {
   getRemoved(): boolean;
   setRemoved(value: boolean): void;
 
+  getRating(): number;
+  setRating(value: number): void;
+
   serializeBinary(): Uint8Array;
   toObject(includeInstance?: boolean): PlayerProperties.AsObject;
   static toObject(includeInstance: boolean, msg: PlayerProperties): PlayerProperties.AsObject;
@@ -1132,6 +1135,7 @@ export class PlayerProperties extends jspb.Message {
 export namespace PlayerProperties {
   export type AsObject = {
     removed: boolean,
+    rating: number,
   }
 }
 

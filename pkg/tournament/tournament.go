@@ -929,7 +929,7 @@ func createDivisionManager(t *entity.Tournament, division string) error {
 	}
 
 	rankedPlayers := rankPlayers(divisionObject.Players)
-	d, err := NewClassicDivision(rankedPlayers, divisionObject.Controls.RoundControls)
+	d, err := NewClassicDivision(rankedPlayers, divisionObject.Players, divisionObject.Controls.RoundControls)
 	if err != nil {
 		return err
 	}

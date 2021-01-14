@@ -8849,7 +8849,8 @@ proto.liwords.PlayerProperties.prototype.toObject = function(opt_includeInstance
  */
 proto.liwords.PlayerProperties.toObject = function(includeInstance, msg) {
   var f, obj = {
-    removed: jspb.Message.getBooleanFieldWithDefault(msg, 1, false)
+    removed: jspb.Message.getBooleanFieldWithDefault(msg, 1, false),
+    rating: jspb.Message.getFieldWithDefault(msg, 2, 0)
   };
 
   if (includeInstance) {
@@ -8890,6 +8891,10 @@ proto.liwords.PlayerProperties.deserializeBinaryFromReader = function(msg, reade
       var value = /** @type {boolean} */ (reader.readBool());
       msg.setRemoved(value);
       break;
+    case 2:
+      var value = /** @type {number} */ (reader.readInt32());
+      msg.setRating(value);
+      break;
     default:
       reader.skipField();
       break;
@@ -8926,6 +8931,13 @@ proto.liwords.PlayerProperties.serializeBinaryToWriter = function(message, write
       f
     );
   }
+  f = message.getRating();
+  if (f !== 0) {
+    writer.writeInt32(
+      2,
+      f
+    );
+  }
 };
 
 
@@ -8944,6 +8956,24 @@ proto.liwords.PlayerProperties.prototype.getRemoved = function() {
  */
 proto.liwords.PlayerProperties.prototype.setRemoved = function(value) {
   return jspb.Message.setProto3BooleanField(this, 1, value);
+};
+
+
+/**
+ * optional int32 rating = 2;
+ * @return {number}
+ */
+proto.liwords.PlayerProperties.prototype.getRating = function() {
+  return /** @type {number} */ (jspb.Message.getFieldWithDefault(this, 2, 0));
+};
+
+
+/**
+ * @param {number} value
+ * @return {!proto.liwords.PlayerProperties} returns this
+ */
+proto.liwords.PlayerProperties.prototype.setRating = function(value) {
+  return jspb.Message.setProto3IntField(this, 2, value);
 };
 
 

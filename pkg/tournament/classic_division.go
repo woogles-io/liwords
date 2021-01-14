@@ -20,7 +20,7 @@ type ClassicDivision struct {
 	PairingMap map[string]*realtime.PlayerRoundInfo `json:"pairingMap"`
 	// By convention, players should look like userUUID:username
 	Players           []string                                 `json:"players"`
-	PlayersProperties []*entity.PlayerProperties               `json:"playerProperties"`
+	PlayersProperties []*realtime.PlayerProperties               `json:"playerProperties"`
 	PlayerIndexMap    map[string]int32                         `json:"pidxMap"`
 	RoundControls     []*realtime.RoundControl                 `json:"roundCtrls"`
 	CurrentRound      int                                      `json:"currentRound"`
@@ -29,14 +29,22 @@ type ClassicDivision struct {
 	Response          *realtime.TournamentDivisionDataResponse `json:"response"`
 }
 
-func NewClassicDivision(players []string, roundControls []*realtime.RoundControl) (*ClassicDivision, error) {
+func NewClassicDivision(players []string,
+	playerRatings *realtime.TournamentPersons,
+	roundControls []*realtime.RoundControl) (*ClassicDivision, error) {
 	numberOfPlayers := len(players)
 	numberOfRounds := len(roundControls)
 	pairingMap := make(map[string]*realtime.PlayerRoundInfo)
 
-	playersProperties := []*entity.PlayerProperties{}
+	playersProperties := []*realtime.PlayerProperties{}
 	for i := 0; i < numberOfPlayers; i++ {
-		playersProperties = append(playersProperties, newPlayerProperties())
+		prop := newPlayerProperties()
+		rating, ok := playerRatings.Persons[players[i]]
+		if !ok {
+			return nil, fmt.Errorf("player in player list does not exist in division players: %s", players[i])
+		}
+		prop.Rating = rating
+		playersProperties = append(playersProperties, prop)
 	}
 
 	if numberOfPlayers < 2 || numberOfRounds < 1 {
@@ -973,8 +981,8 @@ func newPlayerIndexMap(players []string) map[string]int32 {
 	return m
 }
 
-func newPlayerProperties() *entity.PlayerProperties {
-	return &entity.PlayerProperties{Removed: false}
+func newPlayerProperties() *realtime.PlayerProperties {
+	return &realtime.PlayerProperties{Removed: false}
 }
 
 func getRepeats(t *ClassicDivision, round int) (map[string]int, error) {

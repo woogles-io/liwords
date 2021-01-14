@@ -54,12 +54,6 @@ const (
 	ArenaTournamentType
 )
 
-// This type is a struct in anticipation of
-// future additional properties
-type PlayerProperties struct {
-	Removed bool
-}
-
 type TournamentDivision struct {
 	Players            *realtime.TournamentPersons  `json:"players"`
 	Controls           *realtime.TournamentControls `json:"controls"`
