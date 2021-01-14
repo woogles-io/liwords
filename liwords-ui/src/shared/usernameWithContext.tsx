@@ -8,6 +8,7 @@ type UsernameWithContextProps = {
   additionalMenuItems?: React.ReactNode;
   omitProfileLink?: boolean;
   omitSendMessage?: boolean;
+  omitBlock?: boolean;
   username: string;
   userID?: string;
   sendMessage?: (uuid: string, username: string) => void;
@@ -43,7 +44,7 @@ export const UsernameWithContext = (props: UsernameWithContextProps) => {
           Message
         </li>
       ) : null}
-      {props.userID ? (
+      {props.userID && !props.omitBlock ? (
         <TheBlocker
           blockCallback={props.blockCallback}
           className="link plain"

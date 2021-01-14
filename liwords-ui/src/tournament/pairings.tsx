@@ -87,13 +87,9 @@ export const Pairings = (props: Props) => {
   const currentRound = useMemo(
     () =>
       props.selectedDivision
-        ? tournamentContext.divisions[props.selectedDivision].currentRound
+        ? divisions[props.selectedDivision].currentRound
         : tournamentContext.competitorState.currentRound,
-    [
-      props.selectedDivision,
-      tournamentContext.divisions,
-      tournamentContext.competitorState,
-    ]
+    [props.selectedDivision, divisions, tournamentContext.competitorState]
   );
   const formatPairingsData = (
     division: Division,

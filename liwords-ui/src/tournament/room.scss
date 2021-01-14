@@ -89,7 +89,15 @@
   }
 }
 
-
+.ant-table-wrapper.standings {
+  margin: 15px;
+  .rank, .player {
+    font-weight: 700;
+  }
+  .spread {
+    text-align: right;
+  }
+}
 
 .ant-card.paired-mode {
   padding-bottom: 64px;
@@ -97,7 +105,11 @@
     max-height: 100%;
     overflow-y: auto;
   }
-
+  th.ant-table-cell {
+    @include colorModed() {
+      color: m($gray-medium);
+    }
+  }
   .ant-card-actions {
     position: absolute;
     bottom: 0;

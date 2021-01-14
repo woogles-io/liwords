@@ -18,6 +18,7 @@ import axios from 'axios';
 import { toAPIUrl } from '../api/api';
 import { Pairings } from './pairings';
 import { isPairedMode } from '../store/constants';
+import { Standings } from './standings';
 
 export type RecentTournamentGames = {
   games: Array<RecentGame>;
@@ -185,18 +186,7 @@ export const ActionsPanel = React.memo((props: Props) => {
     if (selectedGameTab === 'STANDINGS') {
       return (
         <>
-          <h4>Recent Games</h4>
-          <RecentTourneyGames
-            games={tournamentContext.finishedTourneyGames}
-            fetchPrev={
-              tournamentContext.gamesOffset > 0 ? fetchPrev : undefined
-            }
-            fetchNext={
-              tournamentContext.finishedTourneyGames.length < pageSize
-                ? undefined
-                : fetchNext
-            }
-          />
+          <Standings selectedDivision={selectedDivision} />
         </>
       );
     }
@@ -266,6 +256,9 @@ export const ActionsPanel = React.memo((props: Props) => {
   }, [divisions, selectedDivision, userID]);
 
   const actions = useMemo(() => {
+    if (selectedGameTab === 'STANDINGS') {
+      return [];
+    }
     let matchButtonText = 'Start tournament game';
     if (['CLUB', 'CHILD'].includes(tournamentContext.metadata.type)) {
       matchButtonText = 'Start club game';
@@ -329,7 +322,13 @@ export const ActionsPanel = React.memo((props: Props) => {
       }
     }
     return availableActions;
-  }, [props.loggedIn, tournamentContext, selectedDivision, selectedRound]);
+  }, [
+    props.loggedIn,
+    tournamentContext,
+    selectedDivision,
+    selectedRound,
+    selectedGameTab,
+  ]);
 
   return (
     <div className="game-lists">
