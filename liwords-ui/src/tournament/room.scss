@@ -99,6 +99,20 @@
         width: 100%;
         height: 100%;
       }
+      .anticon {
+        width: 36px;
+        height:36px;
+        border-radius: 50%;
+        margin: 0 15px;
+        display: flex;
+        font-size: 16px;
+        align-items: center;
+        justify-content: space-around;
+        @include colorModed() {
+          background: m($card-background);
+          border: 1px solid m($primary-dark);
+        }
+      }
       div {
         display: flex;
         cursor: pointer;
@@ -121,6 +135,16 @@
           @include colorModed() {
             color: m($gray-extreme);
           }
+        }
+      }
+      &:nth-child(1) {
+        div {
+          padding-right: 12%;
+        }
+      }
+      &:nth-child(3) {
+        div {
+          padding-left: 12%;
         }
       }
     }

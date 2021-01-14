@@ -1,6 +1,7 @@
 import { Button, Card, Select } from 'antd';
 import Modal from 'antd/lib/modal/Modal';
 import React, { ReactNode, useCallback, useEffect, useMemo } from 'react';
+import { LeftOutlined, RightOutlined } from '@ant-design/icons';
 import { ActiveGames } from '../lobby/active_games';
 import { SeekForm } from '../lobby/seek_form';
 import { SoughtGames } from '../lobby/sought_games';
@@ -58,9 +59,9 @@ export const ActionsPanel = React.memo((props: Props) => {
     tournamentContext,
   } = useTournamentStoreContext();
   const { divisions } = tournamentContext;
-  //TODO: Make this smarter so it defaults to the round with active games
+  //TODO: Make this smarter so it defaults to the round for the division
   const [selectedRound, setSelectedRound] = useState(
-    tournamentContext.competitorState?.currentRound || 1
+    tournamentContext.competitorState?.currentRound || 0
   );
   const [selectedDivision, setSelectedDivision] = useState('');
   const { lobbyContext } = useLobbyStoreContext();
@@ -288,9 +289,9 @@ export const ActionsPanel = React.memo((props: Props) => {
     }
     if (isPairedMode(tournamentContext.metadata.type)) {
       const lastRound =
-        tournamentContext.divisions[selectedDivision]?.numRounds ||
+        tournamentContext.divisions[selectedDivision]?.numRounds - 1 ||
         selectedRound;
-      if (selectedRound === 1) {
+      if (selectedRound === 0) {
         availableActions.push(<div className="empty"></div>);
       } else {
         availableActions.push(
@@ -300,12 +301,17 @@ export const ActionsPanel = React.memo((props: Props) => {
               setSelectedRound(selectedRound - 1);
             }}
           >
-            Round {selectedRound - 1}
+            <LeftOutlined />
+            {/* The previous, zero-indexed round converted to 1-indexed */}
+            Round {selectedRound}{' '}
           </div>
         );
       }
       availableActions.push(
-        <div className="round-label">Round {selectedRound}</div>
+        <div className="round-label">
+          {/* The current zero-indexed round converted to 1-indexed */}
+          Round {selectedRound + 1}
+        </div>
       );
       if (lastRound === selectedRound) {
         availableActions.push(<div className="empty"></div>);
@@ -317,7 +323,9 @@ export const ActionsPanel = React.memo((props: Props) => {
               setSelectedRound(selectedRound + 1);
             }}
           >
-            Round {selectedRound + 1}
+            {/* The next zero-indexed round converted to 1-indexed*/}
+            Round {selectedRound + 2}
+            <RightOutlined />
           </div>
         );
       }

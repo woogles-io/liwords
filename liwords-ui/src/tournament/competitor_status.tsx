@@ -25,7 +25,9 @@ export const CompetitorStatus = (props: Props) => {
     const backToGamePrompt = (
       <>
         <ClockCircleOutlined />
-        <p>Your round {competitorContext.currentRound} game is in progress.</p>
+        <p>
+          Your round {competitorContext.currentRound + 1} game is in progress.
+        </p>
         <Button className="primary">Return</Button>
       </>
     );
@@ -49,8 +51,8 @@ export const CompetitorStatus = (props: Props) => {
           <>
             <ClockCircleOutlined />
             <p>
-              You forfeited your Round {competitorContext.currentRound} game.
-              Please check in with the director.
+              You forfeited your Round {competitorContext.currentRound + 1}{' '}
+              game. Please check in with the director.
             </p>
           </>
         );
@@ -60,8 +62,8 @@ export const CompetitorStatus = (props: Props) => {
             <ClockCircleOutlined />
             <p>
               Your opponent forfeited their Round{' '}
-              {competitorContext.currentRound} game. Please check in with the
-              director.
+              {competitorContext.currentRound + 1} game. Please check in with
+              the director.
             </p>
           </>
         );
@@ -72,7 +74,7 @@ export const CompetitorStatus = (props: Props) => {
           <>
             <ClockCircleOutlined />
             <p>
-              You have a bye for round {competitorContext.currentRound}.
+              You have a bye for round {competitorContext.currentRound + 1}.
               {!isLastRound && (
                 <span className="secondary-message">
                   Please return in time for round{' '}
@@ -86,7 +88,7 @@ export const CompetitorStatus = (props: Props) => {
       case TourneyStatus.ROUND_OPEN: {
         return (
           <>
-            <p>Time to start round {competitorContext.currentRound}!</p>
+            <p>Time to start round {competitorContext.currentRound + 1}!</p>
             <Button className="primary" onClick={props.sendReady}>
               I'm ready
             </Button>
@@ -149,7 +151,7 @@ export const CompetitorStatus = (props: Props) => {
           <>
             <ClockCircleOutlined />
             <p>
-              Good luck in your round {competitorContext.currentRound} game!
+              Good luck in your round {competitorContext.currentRound + 1} game!
             </p>
           </>
         );
@@ -159,7 +161,7 @@ export const CompetitorStatus = (props: Props) => {
           <>
             <ClockCircleOutlined />
             <p>
-              Your round {competitorContext.currentRound} score has been
+              Your round {competitorContext.currentRound + 1} score has been
               recorded.{!isLastRound ? ' Good luck in your next game!' : ''}
             </p>
           </>

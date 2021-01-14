@@ -89,7 +89,7 @@ export const defaultTournamentState = {
   divisions: {},
   competitorState: {
     isRegistered: false,
-    currentRound: 0, // Should be the 1 based user facing round
+    currentRound: 0,
   },
   activeGames: new Array<ActiveGame>(),
   finishedTourneyGames: new Array<RecentGame>(),
@@ -133,9 +133,7 @@ export const readyForTournamentGame = (
   if (!division) {
     return;
   }
-  // Note: the competitorState round is 1-indexed (for display purposes),
-  // so we subtract 1 here for the socket msg.
-  const round = competitorState.currentRound - 1;
+  const round = competitorState.currentRound;
   evt.setDivision(division);
   evt.setTournamentId(tournamentID);
   evt.setRound(round);
@@ -273,7 +271,6 @@ const tourneyStatus = (
     return TourneyStatus.ROUND_GAME_ACTIVE;
   }
   const fullPlayerID = `${loginContext.userID}:${loginContext.username}`;
-  // competitor state round is 1-indexed
   if (!division) {
     // This really shouldn't happen, but it's a check to make sure we don't crash.
     return TourneyStatus.PRETOURNEY;
@@ -360,8 +357,7 @@ export function TournamentReducer(
         competitorState = {
           isRegistered: true,
           division: registeredDivision.divisionID,
-          // currentRound should be the user-readable 1 based version
-          currentRound: registeredDivision.currentRound + 1,
+          currentRound: registeredDivision.currentRound,
           status: tourneyStatus(
             state.started,
             registeredDivision,
@@ -406,8 +402,7 @@ export function TournamentReducer(
         competitorState = {
           isRegistered: true,
           division: registeredDivision.divisionID,
-          // currentRound should be the user-readable 1 based version
-          currentRound: registeredDivision.currentRound + 1,
+          currentRound: registeredDivision.currentRound,
           status: tourneyStatus(
             dd.fullDivisions.getStarted(),
             registeredDivision,
@@ -447,8 +442,7 @@ export function TournamentReducer(
         competitorState: {
           ...state.competitorState,
           currentRound:
-            // the competitorState round is 1-based.
-            state.competitorState.division === division ? m.getRound() + 1 : 0,
+            state.competitorState.division === division ? m.getRound() : 0,
           status:
             // only change to ROUND_OPEN if we are in this tournament.
             // There might be a potential race condition here where our

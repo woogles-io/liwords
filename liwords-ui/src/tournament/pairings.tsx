@@ -19,8 +19,7 @@ const pairingsForRound = (
   const m = new Set<string>();
   const n = new Array<string>();
   const numPlayers = division.players.length;
-  // round in this case is 1-indexed (it is the displayed round).
-  for (let idx = (round - 1) * numPlayers; idx < round * numPlayers; idx++) {
+  for (let idx = round * numPlayers; idx < (round + 1) * numPlayers; idx++) {
     const key = division.roundInfo[idx];
     if (key && !m.has(key)) {
       n.push(key);
@@ -271,8 +270,8 @@ export const Pairings = (props: Props) => {
       )}
       rowClassName={(record) => {
         const currentRound = props.selectedDivision
-          ? tournamentContext.divisions[props.selectedDivision].currentRound + 1 //zero based here
-          : tournamentContext.competitorState.currentRound; // 1 based here
+          ? tournamentContext.divisions[props.selectedDivision].currentRound
+          : tournamentContext.competitorState.currentRound;
         let computedClass = `single-pairing ${tournamentContext.competitorState.status}`;
         if (record.isMine) {
           computedClass += ' mine';
