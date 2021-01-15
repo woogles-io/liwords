@@ -440,7 +440,7 @@ export function TournamentReducer(
         started: true,
         divisions: {
           ...state.divisions,
-          division: {
+          [division]: {
             ...state.divisions[division],
             currentRound: m.getRound(),
           },

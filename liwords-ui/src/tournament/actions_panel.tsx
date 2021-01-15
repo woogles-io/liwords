@@ -380,7 +380,6 @@ export const ActionsPanel = React.memo((props: Props) => {
     selectedRound,
     selectedGameTab,
   ]);
-  console.log(tournamentContext);
   return (
     <div className="game-lists">
       <Card
