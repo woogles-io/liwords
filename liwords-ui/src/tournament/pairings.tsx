@@ -35,15 +35,18 @@ const getPerformance = (
   division: Division
 ) => {
   const currentTournamentRound = division.currentRound;
-  const roundOfRecord =
+  let roundOfRecord =
     viewedRound > currentTournamentRound ? currentTournamentRound : viewedRound;
+  if (roundOfRecord < 0) {
+    roundOfRecord = 0;
+  }
   const results = division.standingsMap[roundOfRecord].standingsList.find((s) =>
     s.player.endsWith(`:${playerName}`)
   );
   return results
     ? `(${results.wins + results.draws / 2}-${
         results.losses + results.draws / 2
-      }})`
+      })`
     : '(0-0)';
 };
 
@@ -100,7 +103,6 @@ export const Pairings = (props: Props) => {
     if (!division) {
       return new Array<PairingTableData>();
     }
-
     const { status } = tournamentContext.competitorState;
     const pairings = pairingsForRound(props.selectedRound, division);
     const findGameIdFromActive = (playerName: string) => {

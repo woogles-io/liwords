@@ -1,4 +1,4 @@
-import { Button, Card, Select } from 'antd';
+import { Button, Card, message, Select } from 'antd';
 import Modal from 'antd/lib/modal/Modal';
 import React, { ReactNode, useCallback, useEffect, useMemo } from 'react';
 import { LeftOutlined, RightOutlined } from '@ant-design/icons';
@@ -131,13 +131,64 @@ export const ActionsPanel = React.memo((props: Props) => {
         })}
       </Select>
     ) : null;
-
+  const renderStartRoundButton = () => {
+    const division = tournamentContext.divisions[selectedDivision];
+    if (!division) {
+      return null;
+    }
+    const { currentRound, roundStarted } = division;
+    let roundToStart: null | number = null;
+    if (currentRound === -1 && !roundStarted) {
+      roundToStart = 0;
+    } else {
+      if (division) {
+        roundToStart = currentRound + 1;
+      }
+    }
+    if (!(typeof roundToStart === 'number')) {
+      return null;
+    }
+    if (!isDirector && !(roundToStart === selectedRound)) {
+      return null;
+    }
+    const startRound = () => {
+      axios
+        .post(
+          toAPIUrl(
+            'tournament_service.TournamentService',
+            'StartRoundCountdown'
+          ),
+          {
+            id: tournamentID,
+            division: division.divisionID,
+            round: roundToStart,
+          },
+          { withCredentials: true }
+        )
+        .catch((err) => {
+          message.error({
+            content:
+              'Round cannot be started yet. Please check with the Woogles team.',
+            duration: 8,
+          });
+          console.log('Error starting round: ' + err.response?.data?.msg);
+        });
+    };
+    return (
+      <Button className="primary open-round" onClick={startRound}>
+        Open Round {roundToStart! + 1}
+      </Button>
+    );
+  };
   const renderGamesTab = () => {
     if (selectedGameTab === 'GAMES') {
       if (isPairedMode(tournamentContext.metadata.type)) {
         return (
           <div className="pairings-container">
-            {renderDivisionSelector}
+            <div className="round-options">
+              {renderDivisionSelector}
+              {renderStartRoundButton()}
+            </div>
             <Pairings
               selectedRound={selectedRound}
               selectedDivision={selectedDivision}
@@ -246,7 +297,6 @@ export const ActionsPanel = React.memo((props: Props) => {
         setSelectedRound(foundDivision.currentRound);
       }
     } else {
-      console.log();
       if (divisionArray.length) {
         if (!selectedDivision) {
           setSelectedDivision(divisionArray[0].divisionID);
@@ -278,11 +328,15 @@ export const ActionsPanel = React.memo((props: Props) => {
         </div>
       );
     }
-    if (isPairedMode(tournamentContext.metadata.type)) {
+    if (
+      isPairedMode(tournamentContext.metadata.type) &&
+      selectedRound > -1 &&
+      tournamentContext.divisions[selectedDivision]
+    ) {
       const lastRound =
         tournamentContext.divisions[selectedDivision]?.numRounds - 1 ||
         selectedRound;
-      if (selectedRound === 0) {
+      if (selectedRound < 1) {
         availableActions.push(<div className="empty"></div>);
       } else {
         availableActions.push(
