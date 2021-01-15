@@ -241,9 +241,17 @@ export const ScoreCard = React.memo((props: Props) => {
       const playerCardTop =
         document.getElementById('player-cards-vertical')?.clientHeight || 0;
       const navHeight = document.getElementById('main-nav')?.clientHeight || 0;
+      let offset = 0;
+      if (getVW() > parseInt(screenSizes.screenSizeLaptop)) {
+        offset = 45;
+      }
+      if (getVW() > parseInt(screenSizes.screenSizeDesktop)) {
+        offset = 25;
+      }
       if (boardHeight && getVW() > parseInt(screenSizes.screenSizeTablet, 10)) {
         setCardHeight(
-          boardHeight -
+          boardHeight +
+            offset -
             currentEl?.getBoundingClientRect().top -
             window.pageYOffset -
             poolTop -

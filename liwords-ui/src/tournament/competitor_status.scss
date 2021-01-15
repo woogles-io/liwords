@@ -60,17 +60,49 @@
     display: block;
   }
 }
-
-.tournament-info .ant-card.competitor-status {
+.game-table
+  .chat-area .ant-card.competitor-status
+{
+  margin-top: 12px;
+}
+.tournament-info .ant-card.competitor-status, .data-area .ant-card.competitor-status {
   @media (min-width: $screen-laptop-min) {
     display: none;
   }
-  @media (max-width: $screen-tablet-min) {
+  @media (max-width: $screen-tablet-min - 1) {
     position: fixed;
     bottom: 0;
     left: 0;
     margin: 0;
     width: 100vw;
     border-radius: 0;
+    z-index: 3;
+  }
+}
+
+.data-area .ant-card.competitor-status {
+  // The whole things is smaller on tablet
+  @media (min-width: $screen-tablet-min) {
+    height: 32px;
+    .ant-card-body {
+      height: 32px;
+      font-size: 14px;
+      padding: 0 0 0 12px;
+      .anticon {
+        font-size: 16px;
+      }
+      .optional {
+        display: none;
+      }
+      button.ant-btn {
+        height: 32px;
+        padding: 1px 18px;
+        border-radius: 0 8px 8px 0;
+        position: relative;
+        right: -4px;
+        top: -1px;
+        font-size: 14px;
+      }
+    }
   }
 }

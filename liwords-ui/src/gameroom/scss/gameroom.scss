@@ -800,7 +800,7 @@ p.rune {
     @include type-monospace;
     font-size: 15px;
     padding: 6px 24px 12px;
-    line-height: 1.5em;
+    line-height: 1.3em;
     letter-spacing: 0.26em;
     max-height: 150px;
     overflow-y: auto;
@@ -1154,8 +1154,44 @@ p.rune {
       }
     }
   }
-}
 
+}
+@media (min-width: $screen-tablet-min) and (max-width: $screen-laptop-min - 1)  {
+  .game-container.competitor {
+    // Steal some space for the tournament view
+    .data-area .ant-card {
+      margin-bottom: 6px;
+    }
+    .ant-card.competitor-status .ant-card-body p .secondary-message {
+      font-size: 12px;
+      display: inline;
+      padding-left: 6px;
+    }
+    .tiles-remaining {
+      padding: 3px 24px 6px;
+    }
+    .game-info {
+      font-size: 12px;
+      display: block;
+      p {
+        font-size: 12px;
+        .secondary-message {
+          display: none;
+        }
+      }
+      .ant-row {
+        display: inline-block;
+        &.tournament-name {
+          display: block;
+        }
+      }
+      .variant {
+        font-size: 14px;
+        margin-right: 6px;
+      }
+    }
+  }
+}
 @media (min-width: $screen-laptop-min) {
   .game-container {
     .ant-card {
@@ -1371,3 +1407,4 @@ p.rune {
     }
   }
 }
+
