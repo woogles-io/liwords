@@ -127,7 +127,6 @@ export const Pairings = (props: Props) => {
         if (isMyGame) {
           sortPriority = 2;
         }
-
         const players = isBye ? (
           <div>
             <p>
@@ -190,7 +189,9 @@ export const Pairings = (props: Props) => {
           } else {
             //it's not my game
             const otherGameId = findGameIdFromActive(playerNames[0]);
-            if (otherGameId) {
+
+            if (otherGameId && !pairing.games[0].gameEndReason) {
+
               actions = (
                 <Button
                   className="watch"
