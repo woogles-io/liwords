@@ -48,7 +48,11 @@ import { Notepad, NotepadContextProvider } from './notepad';
 import { Analyzer, AnalyzerContextProvider } from './analyzer';
 import { sortTiles } from '../store/constants';
 import { ActionType } from '../actions/actions';
-import { TournamentMetadata } from '../store/reducers/tournament_reducer';
+import {
+  readyForTournamentGame,
+  TournamentMetadata,
+} from '../store/reducers/tournament_reducer';
+import { CompetitorStatus } from '../tournament/competitor_status';
 
 type Props = {
   sendSocketMsg: (msg: Uint8Array) => void;
@@ -171,6 +175,8 @@ export const Table = React.memo((props: Props) => {
     tournamentContext,
     dispatchTournamentContext,
   } = useTournamentStoreContext();
+  const competitorState = tournamentContext.competitorState;
+  const isRegistered = competitorState.isRegistered;
   const [playerNames, setPlayerNames] = useState(new Array<string>());
   const { sendSocketMsg } = props;
   // const location = useLocation();
@@ -496,7 +502,7 @@ export const Table = React.memo((props: Props) => {
   );
 
   let ret = (
-    <div className="game-container">
+    <div className={`game-container${isRegistered ? ' competitor' : ''}`}>
       <ManageWindowTitle />
       <TopBar tournamentID={gameInfo.tournament_id} />
       <div className="game-table">
@@ -540,6 +546,17 @@ export const Table = React.memo((props: Props) => {
           ) : (
             <Notepad includeCard />
           )}
+          {isRegistered && (
+            <CompetitorStatus
+              sendReady={() =>
+                readyForTournamentGame(
+                  sendSocketMsg,
+                  tournamentContext.metadata.id,
+                  competitorState
+                )
+              }
+            />
+          )}
         </div>
         {/* There are two player cards, css hides one of them. */}
         <div className="sticky-player-card-container">
@@ -572,6 +589,18 @@ export const Table = React.memo((props: Props) => {
           <StreakWidget streakInfo={streakGameInfo} />
         </div>
         <div className="data-area" id="right-sidebar">
+          {/* There are two competitor cards, css hides one of them. */}
+          {isRegistered && (
+            <CompetitorStatus
+              sendReady={() =>
+                readyForTournamentGame(
+                  sendSocketMsg,
+                  tournamentContext.metadata.id,
+                  competitorState
+                )
+              }
+            />
+          )}
           {/* There are two player cards, css hides one of them. */}
           <PlayerCards gameMeta={gameInfo} playerMeta={gameInfo.players} />
           <GameInfo

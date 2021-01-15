@@ -41,7 +41,9 @@ const getPerformance = (
     s.player.endsWith(`:${playerName}`)
   );
   return results
-    ? `(${results.wins + results.draws / 2}-${results.losses})`
+    ? `(${results.wins + results.draws / 2}-${
+        results.losses + results.draws / 2
+      }})`
     : '(0-0)';
 };
 

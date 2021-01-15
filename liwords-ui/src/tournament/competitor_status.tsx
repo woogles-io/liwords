@@ -52,7 +52,10 @@ export const CompetitorStatus = (props: Props) => {
             <ClockCircleOutlined />
             <p>
               You forfeited your Round {competitorContext.currentRound + 1}{' '}
-              game. Please check in with the director.
+              game.
+              <span className="optional">
+                Please check in with the director.
+              </span>
             </p>
           </>
         );
@@ -62,8 +65,10 @@ export const CompetitorStatus = (props: Props) => {
             <ClockCircleOutlined />
             <p>
               Your opponent forfeited their Round{' '}
-              {competitorContext.currentRound + 1} game. Please check in with
-              the director.
+              {competitorContext.currentRound + 1} game.{' '}
+              <span className="optional">
+                Please check in with the director.
+              </span>
             </p>
           </>
         );
@@ -162,7 +167,10 @@ export const CompetitorStatus = (props: Props) => {
             <ClockCircleOutlined />
             <p>
               Your round {competitorContext.currentRound + 1} score has been
-              recorded.{!isLastRound ? ' Good luck in your next game!' : ''}
+              recorded.
+              <span className="optional">
+                {!isLastRound ? ' Good luck in your next game!' : ''}
+              </span>
             </p>
           </>
         );

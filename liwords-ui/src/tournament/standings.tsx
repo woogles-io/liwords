@@ -44,7 +44,7 @@ export const Standings = (props: Props) => {
           />
         ),
         wins: standing.wins + standing.draws / 2,
-        losses: standing.losses,
+        losses: standing.losses + standing.draws / 2,
         spread: standing.spread,
         //actions: null, //scorecard button goes here
       };
