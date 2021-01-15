@@ -837,7 +837,11 @@ func (t *ClassicDivision) IsFinished() (bool, error) {
 	if len(t.Matrix) < 1 {
 		return false, nil
 	}
-	return t.IsRoundComplete(len(t.Matrix) - 1)
+	complete, err := t.IsRoundComplete(len(t.Matrix) - 1)
+	if err != nil {
+		return false, err
+	}
+	return complete, nil
 }
 
 func (t *ClassicDivision) IsStarted() bool {
