@@ -60,16 +60,15 @@ If you change any of the `.proto` files (in this repo or in the Macondo repo) yo
 
 To do so, run in this directory:
 
-`inv build-protobuf`
+`CODE_DIR=/your/code/dir ./build-protobuf`
 
-- You must have the Python `invoke` program installed (`pip install invoke`)
-  (See the `tasks.py` file to see how this function works.)
 - You must have installed the protoc extensions:
+
   - `go get -u github.com/golang/protobuf/protoc-gen-go`
   - `go get -u github.com/twitchtv/twirp/protoc-gen-twirp`
   - Then, in the `liwords-ui` directory: `npm install ts-protoc-gen`
 
-(note, you'll have to change the proto_path to match your folder layout. Make sure that `liwords` and `macondo` are both inside the supplied `proto_path`)
+- Make sure that `liwords` and `macondo` are both inside the CODE_DIR environment variable.
 
 ### Attributions
 

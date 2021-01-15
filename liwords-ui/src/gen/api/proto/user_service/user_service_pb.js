@@ -1,4 +1,3 @@
-/* eslint-disable */
 // source: api/proto/user_service/user_service.proto
 /**
  * @fileoverview

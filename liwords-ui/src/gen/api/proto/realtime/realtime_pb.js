@@ -1,4 +1,3 @@
-/* eslint-disable */
 // source: api/proto/realtime/realtime.proto
 /**
  * @fileoverview

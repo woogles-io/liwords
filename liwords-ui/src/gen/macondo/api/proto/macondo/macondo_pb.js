@@ -1,4 +1,3 @@
-/* eslint-disable */
 // source: macondo/api/proto/macondo/macondo.proto
 /**
  * @fileoverview
