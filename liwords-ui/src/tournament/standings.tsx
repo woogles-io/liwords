@@ -30,26 +30,29 @@ export const Standings = (props: Props) => {
   if (!division) {
     return null;
   }
-  const formatStandings = division.standingsMap[currentRound].standingsList.map(
-    (standing, index): StandingsTableData => {
-      const [playerId, playerName] = standing.player.split(':');
-      return {
-        rank: index + 1,
-        player: (
-          <UsernameWithContext
-            username={playerName}
-            userID={playerId}
-            omitSendMessage
-            omitBlock
-          />
-        ),
-        wins: standing.wins + standing.draws / 2,
-        losses: standing.losses + standing.draws / 2,
-        spread: standing.spread,
-        //actions: null, //scorecard button goes here
-      };
-    }
-  );
+  let formatStandings = new Array<StandingsTableData>();
+  if (currentRound > -1) {
+    formatStandings = division.standingsMap[currentRound].standingsList.map(
+      (standing, index): StandingsTableData => {
+        const [playerId, playerName] = standing.player.split(':');
+        return {
+          rank: index + 1,
+          player: (
+            <UsernameWithContext
+              username={playerName}
+              userID={playerId}
+              omitSendMessage
+              omitBlock
+            />
+          ),
+          wins: standing.wins + standing.draws / 2,
+          losses: standing.losses + standing.draws / 2,
+          spread: standing.spread,
+          //actions: null, //scorecard button goes here
+        };
+      }
+    );
+  }
   const columns = [
     {
       title: '',

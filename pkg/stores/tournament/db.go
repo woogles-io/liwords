@@ -328,15 +328,10 @@ func (s *DBStore) AddRegistrants(ctx context.Context, tid string, userIDs []stri
 
 func (s *DBStore) RemoveRegistrants(ctx context.Context, tid string, userIDs []string, division string) error {
 	ctxDB := s.db.WithContext(ctx)
-	// TODO: Add a transaction around this
-	for _, uid := range userIDs {
-		result := ctxDB.Delete(registrant{}, "user_id = ? AND tournament_id = ? AND division_id = ?",
-			uid, tid, division)
-		if result.Error != nil {
-			return result.Error
-		}
-	}
-	return nil
+
+	result := ctxDB.Delete(registrant{}, "user_id IN ? AND tournament_id = ? AND division_id = ?",
+		userIDs, tid, division)
+	return result.Error
 }
 
 // ActiveTournamentsFor returns a list of 2-tuples of tournament ID, division ID
@@ -348,7 +343,7 @@ func (s *DBStore) ActiveTournamentsFor(ctx context.Context, userID string) ([][2
 	result := ctxDB.Raw(`
 		select tournament_id, division_id from registrants
 		inner join tournaments on tournament_id = tournaments.uuid
-		where (tournaments.is_finished = FALSE or tournaments.is_finished is NULL)
+		where tournaments.is_finished is not TRUE
 			and registrants.user_id = ?
 		`, userID).Scan(&registrants)
 	if result.Error != nil {
