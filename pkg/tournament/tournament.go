@@ -671,7 +671,7 @@ func SetFinished(ctx context.Context, ts TournamentStore, id string) error {
 		if err != nil {
 			return nil
 		}
-		if finished {
+		if !finished {
 			return fmt.Errorf("cannot finish tournament, division %s is not done", divisionKey)
 		}
 	}
