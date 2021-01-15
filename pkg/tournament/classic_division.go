@@ -20,18 +20,19 @@ type ClassicDivision struct {
 	PairingMap map[string]*realtime.PlayerRoundInfo `json:"pairingMap"`
 	// By convention, players should look like userUUID:username
 	Players           []string                                 `json:"players"`
-	PlayersProperties []*realtime.PlayerProperties               `json:"playerProperties"`
+	PlayersProperties []*realtime.PlayerProperties             `json:"playerProperties"`
 	PlayerIndexMap    map[string]int32                         `json:"pidxMap"`
 	RoundControls     []*realtime.RoundControl                 `json:"roundCtrls"`
 	CurrentRound      int                                      `json:"currentRound"`
-	RoundStarted      bool                                     `json:"roundStarted"`
+	AutoStart         bool                                     `json:"autoStart"`
 	LastStarted       *realtime.TournamentRoundStarted         `json:"lastStarted"`
 	Response          *realtime.TournamentDivisionDataResponse `json:"response"`
 }
 
 func NewClassicDivision(players []string,
 	playerRatings *realtime.TournamentPersons,
-	roundControls []*realtime.RoundControl) (*ClassicDivision, error) {
+	roundControls []*realtime.RoundControl,
+	autoStart bool) (*ClassicDivision, error) {
 	numberOfPlayers := len(players)
 	numberOfRounds := len(roundControls)
 	pairingMap := make(map[string]*realtime.PlayerRoundInfo)
@@ -56,9 +57,9 @@ func NewClassicDivision(players []string,
 			PlayersProperties: playersProperties,
 			PlayerIndexMap:    playerIndexMap,
 			RoundControls:     roundControls,
-			RoundStarted:      false,
-			CurrentRound:      0}
-		err := t.writeResponse(t.CurrentRound)
+			AutoStart:         autoStart,
+			CurrentRound:      -1}
+		err := t.writeResponse(0)
 		if err != nil {
 			return nil, err
 		}
@@ -119,8 +120,8 @@ func NewClassicDivision(players []string,
 		PlayersProperties: playersProperties,
 		PlayerIndexMap:    playerIndexMap,
 		RoundControls:     roundControls,
-		RoundStarted:      false,
-		CurrentRound:      0}
+		AutoStart:         autoStart,
+		CurrentRound:      -1}
 	if roundControls[0].PairingMethod != realtime.PairingMethod_MANUAL {
 		err := t.PairRound(0)
 		if err != nil {
@@ -138,7 +139,7 @@ func NewClassicDivision(players []string,
 			}
 		}
 	}
-	err := t.writeResponse(t.CurrentRound)
+	err := t.writeResponse(0)
 	if err != nil {
 		return nil, err
 	}
@@ -264,6 +265,10 @@ func (t *ClassicDivision) SubmitResult(round int,
 		return fmt.Errorf("submitted result for a past round (%d) that is not marked as an amendment", round)
 	}
 
+	if round > t.CurrentRound && p1 != p2 {
+		return fmt.Errorf("submitted result for a future round (%d) that is not a bye or forfeit", round)
+	}
+
 	// Ensure that the pairing exists
 	if pk1 == "" {
 		return fmt.Errorf("submitted result for a player with a null pairing: %s round (%d)", p1, round)
@@ -372,17 +377,26 @@ func (t *ClassicDivision) SubmitResult(round int,
 	// Only pair if this round is complete and the tournament
 	// is not over. Don't pair for standings independent pairings since those pairings
 	// were made when the tournament was created.
-	if roundComplete {
-		if !amend {
-			t.CurrentRound = round + 1
-			t.RoundStarted = false
-		}
-		if t.CurrentRound == round+1 &&
-			!t.RoundStarted &&
-			!finished &&
-			!pair.IsStandingsIndependent(t.RoundControls[t.CurrentRound].PairingMethod) {
-			err = t.PairRound(t.CurrentRound)
+	if roundComplete && !finished && !amend {
+		if !pair.IsStandingsIndependent(t.RoundControls[round+1].PairingMethod) {
+			err = t.PairRound(round + 1)
 			if err != nil {
+				// Should probably use defer
+				errWrite := t.writeResponse(round)
+				if errWrite != nil {
+					return errWrite
+				}
+				return err
+			}
+		}
+		if t.AutoStart {
+			err = t.StartRound()
+			if err != nil {
+				// Should probably use defer
+				errWrite := t.writeResponse(round)
+				if errWrite != nil {
+					return errWrite
+				}
 				return err
 			}
 		}
@@ -503,9 +517,11 @@ func (t *ClassicDivision) PairRound(round int) error {
 func (t *ClassicDivision) AddPlayers(persons *realtime.TournamentPersons) error {
 
 	// Redundant players have already been checked for
-	for personId, _ := range persons.Persons {
+	for personId, personRating := range persons.Persons {
 		t.Players = append(t.Players, personId)
-		t.PlayersProperties = append(t.PlayersProperties, newPlayerProperties())
+		prop := newPlayerProperties()
+		prop.Rating = personRating
+		t.PlayersProperties = append(t.PlayersProperties, prop)
 		t.PlayerIndexMap[personId] = int32(len(t.Players) - 1)
 	}
 
@@ -516,7 +532,7 @@ func (t *ClassicDivision) AddPlayers(persons *realtime.TournamentPersons) error 
 	}
 
 	for i := 0; i < len(t.Matrix); i++ {
-		if i < t.CurrentRound || (i == t.CurrentRound && t.RoundStarted) {
+		if i <= t.CurrentRound {
 			for personId, _ := range persons.Persons {
 				// Set the pairing
 				// This also automatically submits a forfeit result
@@ -571,7 +587,7 @@ func (t *ClassicDivision) RemovePlayers(persons *realtime.TournamentPersons) err
 	}
 
 	for i := t.CurrentRound; i < len(t.Matrix); i++ {
-		if i > t.CurrentRound || (i == t.CurrentRound && !t.RoundStarted) {
+		if i > t.CurrentRound {
 			pm := t.RoundControls[i].PairingMethod
 			if (i == t.CurrentRound || pair.IsStandingsIndependent(pm)) && pm != realtime.PairingMethod_MANUAL {
 				err := t.PairRound(i)
@@ -703,17 +719,34 @@ func (t *ClassicDivision) IsRoundReady(round int) (bool, error) {
 }
 
 func (t *ClassicDivision) StartRound() error {
-	if t.RoundStarted {
-		return fmt.Errorf("round %d has already started", t.CurrentRound)
+	if t.CurrentRound >= 0 {
+		roundComplete, err := t.IsRoundComplete(t.CurrentRound)
+		if err != nil {
+			return err
+		}
+		if !roundComplete {
+			return fmt.Errorf("cannot start the next round as round %d is not complete", t.CurrentRound)
+		}
+		isFinished, err := t.IsFinished()
+		if err != nil {
+			return err
+		}
+		if isFinished {
+			// Simply do nothing
+			return nil
+		}
 	}
-	ready, err := t.IsRoundReady(t.CurrentRound)
+
+	ready, err := t.IsRoundReady(t.CurrentRound + 1)
 	if err != nil {
 		return err
 	}
 	if !ready {
-		return fmt.Errorf("round %d is not ready", t.CurrentRound)
+		return fmt.Errorf("cannot start round %d because it is not ready", t.CurrentRound+1)
 	}
-	t.RoundStarted = true
+
+	t.CurrentRound = t.CurrentRound + 1
+
 	err = t.writeResponse(t.CurrentRound)
 	if err != nil {
 		return err
@@ -807,13 +840,17 @@ func (t *ClassicDivision) IsFinished() (bool, error) {
 	return t.IsRoundComplete(len(t.Matrix) - 1)
 }
 
+func (t *ClassicDivision) IsStarted() bool {
+	return t.CurrentRound >= 0
+}
+
 func (t *ClassicDivision) ToResponse() (*realtime.TournamentDivisionDataResponse, error) {
 	return t.Response, nil
 }
 
 func (t *ClassicDivision) writeResponse(round int) error {
 	if len(t.Matrix) > 0 && (round >= len(t.Matrix) || round < 0) {
-		return fmt.Errorf("round number out of range: %d", round)
+		return fmt.Errorf("round number out of range (writeResponse): %d", round)
 	}
 	if t.Response == nil {
 		t.Response = &realtime.TournamentDivisionDataResponse{Standings: make(map[int32]*realtime.RoundStandings)}
@@ -866,7 +903,6 @@ func (t *ClassicDivision) writeResponse(round int) error {
 	t.Response.PairingMap = t.PairingMap
 	t.Response.PlayerIndexMap = t.PlayerIndexMap
 	t.Response.PlayersProperties = playersProperties
-	t.Response.RoundStarted = t.RoundStarted
 	t.Response.CurrentRound = int32(t.CurrentRound)
 	t.Response.Finished = isFinished
 	t.Response.Standings[int32(round)] = &realtime.RoundStandings{Standings: standingsResponse}

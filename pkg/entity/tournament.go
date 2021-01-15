@@ -19,6 +19,7 @@ type DivisionManager interface {
 	RemovePlayers(*realtime.TournamentPersons) error
 	IsRoundReady(int) (bool, error)
 	IsRoundComplete(int) (bool, error)
+	IsStarted() bool
 	IsFinished() (bool, error)
 	StartRound() error
 	ToResponse() (*realtime.TournamentDivisionDataResponse, error)

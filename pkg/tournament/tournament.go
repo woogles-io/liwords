@@ -553,7 +553,7 @@ func StartRoundCountdown(ctx context.Context, ts TournamentStore, id string,
 		return fmt.Errorf("division %s does not have enough players or controls to set pairings", division)
 	}
 
-	if manual && divisionObject.Controls.AutoStart {
+	if manual && divisionObject.Controls.AutoStart && divisionObject.DivisionManager.IsStarted() {
 		return fmt.Errorf("division %s has autostart enabled and cannot be manually started", division)
 	}
 
@@ -929,7 +929,10 @@ func createDivisionManager(t *entity.Tournament, division string) error {
 	}
 
 	rankedPlayers := rankPlayers(divisionObject.Players)
-	d, err := NewClassicDivision(rankedPlayers, divisionObject.Players, divisionObject.Controls.RoundControls)
+	d, err := NewClassicDivision(rankedPlayers,
+		divisionObject.Players,
+		divisionObject.Controls.RoundControls,
+		divisionObject.Controls.AutoStart)
 	if err != nil {
 		return err
 	}

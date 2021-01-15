@@ -476,7 +476,6 @@ message TournamentDivisionDataResponse {
   map<int32, RoundStandings> standings = 9;
   repeated PlayerProperties players_properties = 10;
   bool finished = 11;
-  bool round_started = 12;
 }
 
 message FullTournamentDivisions {
