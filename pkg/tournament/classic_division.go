@@ -735,6 +735,10 @@ func (t *ClassicDivision) StartRound() error {
 			// Simply do nothing
 			return nil
 		}
+	} else {
+		if len(t.Players) < 2 || len(t.Matrix) < 1 {
+			return errors.New("cannot start the the tournament with less than 2 players or less than 1 round")
+		}
 	}
 
 	ready, err := t.IsRoundReady(t.CurrentRound + 1)
