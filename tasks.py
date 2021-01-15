@@ -1,7 +1,7 @@
 import os
 from invoke import task
 
-code_dir = os.getenv("CODE_DIR", "/Users/slipkin/Projects/woogles/")
+code_dir = os.getenv("CODE_DIR", "/Users/cesar/code")
 
 
 @task

@@ -10,9 +10,9 @@ import (
 	realtime "github.com/domino14/liwords/rpc/api/proto/realtime"
 	macondo "github.com/domino14/macondo/gen/api/proto/macondo"
 	proto "github.com/golang/protobuf/proto"
+	timestamp "github.com/golang/protobuf/ptypes/timestamp"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
-	timestamppb "google.golang.org/protobuf/types/known/timestamppb"
 	reflect "reflect"
 	sync "sync"
 )
@@ -206,9 +206,9 @@ type GameInfoResponse struct {
 	GameEndReason realtime.GameEndReason `protobuf:"varint,11,opt,name=game_end_reason,json=gameEndReason,proto3,enum=liwords.GameEndReason" json:"game_end_reason,omitempty"`
 	Scores        []int32                `protobuf:"varint,13,rep,packed,name=scores,proto3" json:"scores,omitempty"`
 	Winner        int32                  `protobuf:"varint,14,opt,name=winner,proto3" json:"winner,omitempty"`
-	CreatedAt     *timestamppb.Timestamp `protobuf:"bytes,15,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
+	CreatedAt     *timestamp.Timestamp   `protobuf:"bytes,15,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
 	GameId        string                 `protobuf:"bytes,16,opt,name=game_id,json=gameId,proto3" json:"game_id,omitempty"`
-	LastUpdate    *timestamppb.Timestamp `protobuf:"bytes,18,opt,name=last_update,json=lastUpdate,proto3" json:"last_update,omitempty"`
+	LastUpdate    *timestamp.Timestamp   `protobuf:"bytes,18,opt,name=last_update,json=lastUpdate,proto3" json:"last_update,omitempty"`
 	GameRequest   *realtime.GameRequest  `protobuf:"bytes,19,opt,name=game_request,json=gameRequest,proto3" json:"game_request,omitempty"`
 }
 
@@ -286,7 +286,7 @@ func (x *GameInfoResponse) GetWinner() int32 {
 	return 0
 }
 
-func (x *GameInfoResponse) GetCreatedAt() *timestamppb.Timestamp {
+func (x *GameInfoResponse) GetCreatedAt() *timestamp.Timestamp {
 	if x != nil {
 		return x.CreatedAt
 	}
@@ -300,7 +300,7 @@ func (x *GameInfoResponse) GetGameId() string {
 	return ""
 }
 
-func (x *GameInfoResponse) GetLastUpdate() *timestamppb.Timestamp {
+func (x *GameInfoResponse) GetLastUpdate() *timestamp.Timestamp {
 	if x != nil {
 		return x.LastUpdate
 	}
@@ -930,7 +930,7 @@ var file_api_proto_game_service_game_service_proto_goTypes = []interface{}{
 	(*RematchStreakRequest)(nil),              // 10: game_service.RematchStreakRequest
 	(*StreakInfoResponse_SingleGameInfo)(nil), // 11: game_service.StreakInfoResponse.SingleGameInfo
 	(realtime.GameEndReason)(0),               // 12: liwords.GameEndReason
-	(*timestamppb.Timestamp)(nil),             // 13: google.protobuf.Timestamp
+	(*timestamp.Timestamp)(nil),               // 13: google.protobuf.Timestamp
 	(*realtime.GameRequest)(nil),              // 14: liwords.GameRequest
 	(*macondo.GameHistory)(nil),               // 15: macondo.GameHistory
 }

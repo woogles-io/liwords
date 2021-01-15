@@ -9,9 +9,9 @@ package tournament_service
 import (
 	realtime "github.com/domino14/liwords/rpc/api/proto/realtime"
 	proto "github.com/golang/protobuf/proto"
+	timestamp "github.com/golang/protobuf/ptypes/timestamp"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
-	timestamppb "google.golang.org/protobuf/types/known/timestamppb"
 	reflect "reflect"
 	sync "sync"
 )
@@ -493,7 +493,7 @@ type TournamentControlsRequest struct {
 	GameRequest    *realtime.GameRequest  `protobuf:"bytes,3,opt,name=game_request,json=gameRequest,proto3" json:"game_request,omitempty"`
 	RoundControls  []*SingleRoundControls `protobuf:"bytes,4,rep,name=round_controls,json=roundControls,proto3" json:"round_controls,omitempty"`
 	NumberOfRounds int32                  `protobuf:"varint,5,opt,name=number_of_rounds,json=numberOfRounds,proto3" json:"number_of_rounds,omitempty"`
-	StartTime      *timestamppb.Timestamp `protobuf:"bytes,6,opt,name=start_time,json=startTime,proto3" json:"start_time,omitempty"`
+	StartTime      *timestamp.Timestamp   `protobuf:"bytes,6,opt,name=start_time,json=startTime,proto3" json:"start_time,omitempty"`
 	AutoStart      bool                   `protobuf:"varint,7,opt,name=auto_start,json=autoStart,proto3" json:"auto_start,omitempty"`
 }
 
@@ -564,7 +564,7 @@ func (x *TournamentControlsRequest) GetNumberOfRounds() int32 {
 	return 0
 }
 
-func (x *TournamentControlsRequest) GetStartTime() *timestamppb.Timestamp {
+func (x *TournamentControlsRequest) GetStartTime() *timestamp.Timestamp {
 	if x != nil {
 		return x.StartTime
 	}
@@ -1503,8 +1503,8 @@ type NewClubSessionRequest struct {
 	unknownFields protoimpl.UnknownFields
 
 	// date is the date of the session
-	Date   *timestamppb.Timestamp `protobuf:"bytes,1,opt,name=date,proto3" json:"date,omitempty"`
-	ClubId string                 `protobuf:"bytes,2,opt,name=club_id,json=clubId,proto3" json:"club_id,omitempty"`
+	Date   *timestamp.Timestamp `protobuf:"bytes,1,opt,name=date,proto3" json:"date,omitempty"`
+	ClubId string               `protobuf:"bytes,2,opt,name=club_id,json=clubId,proto3" json:"club_id,omitempty"`
 }
 
 func (x *NewClubSessionRequest) Reset() {
@@ -1539,7 +1539,7 @@ func (*NewClubSessionRequest) Descriptor() ([]byte, []int) {
 	return file_api_proto_tournament_service_tournament_service_proto_rawDescGZIP(), []int{20}
 }
 
-func (x *NewClubSessionRequest) GetDate() *timestamppb.Timestamp {
+func (x *NewClubSessionRequest) GetDate() *timestamp.Timestamp {
 	if x != nil {
 		return x.Date
 	}
@@ -2131,7 +2131,7 @@ var file_api_proto_tournament_service_tournament_service_proto_goTypes = []inter
 	(*RecentClubSessionsRequest)(nil),            // 23: tournament_service.RecentClubSessionsRequest
 	(*ClubSessionsResponse)(nil),                 // 24: tournament_service.ClubSessionsResponse
 	(*realtime.GameRequest)(nil),                 // 25: liwords.GameRequest
-	(*timestamppb.Timestamp)(nil),                // 26: google.protobuf.Timestamp
+	(*timestamp.Timestamp)(nil),                  // 26: google.protobuf.Timestamp
 	(realtime.TournamentGameResult)(0),           // 27: liwords.TournamentGameResult
 	(realtime.GameEndReason)(0),                  // 28: liwords.GameEndReason
 	(*realtime.TournamentGameEndedEvent)(nil),    // 29: liwords.TournamentGameEndedEvent

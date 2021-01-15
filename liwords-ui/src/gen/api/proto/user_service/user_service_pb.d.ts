@@ -10,7 +10,6 @@ export class UserLoginRequest extends jspb.Message {
 
   getPassword(): string;
   setPassword(value: string): void;
-  setAbout(value: string): void;
 
   serializeBinary(): Uint8Array;
   toObject(includeInstance?: boolean): UserLoginRequest.AsObject;
