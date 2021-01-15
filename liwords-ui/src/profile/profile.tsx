@@ -74,6 +74,12 @@ type StatsProps = {
 
 const variantToName = (variant: string) => {
   const arr = variant.split('.');
+  let lex = arr[0];
+  if (lex.startsWith('NWL')) {
+    lex = 'NWL';
+  } else if (lex.startsWith('CSW')) {
+    lex = 'CSW';
+  }
   // get rid of the middle element (classic) for now
   const timectrl = {
     ultrablitz: 'Ultra-Blitz!',
@@ -82,7 +88,7 @@ const variantToName = (variant: string) => {
     regular: 'Regular',
   }[arr[2] as 'ultrablitz' | 'blitz' | 'rapid' | 'regular']; // cmon typescript
 
-  return `${arr[0]} (${timectrl})`;
+  return `${lex} (${timectrl})`;
 };
 
 const RatingsCard = React.memo((props: RatingsProps) => {
