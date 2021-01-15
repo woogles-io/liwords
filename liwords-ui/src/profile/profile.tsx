@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect } from 'react';
 import { Link, useParams, useLocation } from 'react-router-dom';
-import { notification, Card, Table, Row, Col, Switch } from 'antd';
+import { notification, Card, Table, Row, Col, Select, Switch } from 'antd';
 import axios, { AxiosError } from 'axios';
 import { useMountedState } from '../utils/mounted';
 import { TopBar } from '../topbar/topbar';
@@ -12,6 +12,7 @@ import { useLoginStateStoreContext } from '../store/store';
 import { GameMetadata, RecentGamesResponse } from '../gameroom/game_info';
 import { GamesHistoryCard } from './games_history';
 import { UsernameWithContext } from '../shared/usernameWithContext';
+import { preferredSortOrder, setPreferredSortOrder } from '../store/constants';
 
 type ProfileResponse = {
   first_name: string;
@@ -201,6 +202,29 @@ type Props = {};
 
 const gamesPageSize = 10;
 
+const KNOWN_TILE_ORDERS = [
+  {
+    name: 'Alphabetical',
+    value: '',
+  },
+  {
+    name: 'Vowels first',
+    value: 'AEIOU',
+  },
+  {
+    name: 'Consonants first',
+    value: 'BCDFGHJKLMNPQRSTVWXYZ',
+  },
+  {
+    name: 'Descending points',
+    value: 'QZJXKFHVWYBCMPDG',
+  },
+  {
+    name: 'Blanks first',
+    value: '?',
+  },
+];
+
 export const UserProfile = React.memo((props: Props) => {
   const { useState } = useMountedState();
 
@@ -214,6 +238,14 @@ export const UserProfile = React.memo((props: Props) => {
   const [darkMode, setDarkMode] = useState(
     localStorage?.getItem('darkMode') === 'true'
   );
+  const [enableAllLexicons, setEnableAllLexicons] = useState(
+    localStorage?.getItem('enableAllLexicons') === 'true'
+  );
+  const [tileOrder, setTileOrder] = useState(preferredSortOrder ?? '');
+  const handleTileOrderChange = useCallback((value) => {
+    setTileOrder(value);
+    setPreferredSortOrder(value);
+  }, []);
   const [recentGames, setRecentGames] = useState<Array<GameMetadata>>([]);
   const { loginState } = useLoginStateStoreContext();
   const { username: viewer } = loginState;
@@ -274,6 +306,15 @@ export const UserProfile = React.memo((props: Props) => {
     }
     setDarkMode((x) => !x);
   }, []);
+  const toggleEnableAllLexicons = useCallback(() => {
+    const wantEnableAllLexicons =
+      localStorage?.getItem('enableAllLexicons') !== 'true';
+    localStorage.setItem(
+      'enableAllLexicons',
+      wantEnableAllLexicons ? 'true' : 'false'
+    );
+    setEnableAllLexicons((x) => !x);
+  }, []);
   const fetchPrev = useCallback(() => {
     setRecentGamesOffset((r) => Math.max(r - gamesPageSize, 0));
   }, []);
@@ -305,6 +346,28 @@ export const UserProfile = React.memo((props: Props) => {
           </h3>
           {viewer === username ? (
             <div>
+              <label>
+                Tile order &nbsp;{' '}
+                <Select
+                  defaultValue={tileOrder}
+                  onChange={handleTileOrderChange}
+                >
+                  {KNOWN_TILE_ORDERS.map(({ name, value }) => (
+                    <Select.Option value={value} key={value}>
+                      {name}
+                    </Select.Option>
+                  ))}
+                  {KNOWN_TILE_ORDERS.some(
+                    ({ value }) => value === tileOrder
+                  ) || <Select.Option value={tileOrder}>Custom</Select.Option>}
+                </Select>
+              </label>{' '}
+              &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <label>Enable all lexicons</label>
+              <Switch
+                defaultChecked={enableAllLexicons}
+                onChange={toggleEnableAllLexicons}
+                className="dark-toggle"
+              />
               <label>Enable dark mode</label>
               <Switch
                 defaultChecked={darkMode}

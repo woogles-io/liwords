@@ -18,23 +18,6 @@ export const Announcements = React.memo((props: AnnouncementsProps) => {
       ),
     },
     {
-      title: 'Upcoming Tournament - M.E.R.R.Y.',
-      body: (
-        <a
-          href="https://woogles.io/tournament/merry"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <p>
-            The second annual MERRY tournament will be held on Woogles on
-            January 2, with an early bird on January 1. The main event is 8
-            games, with CSW19 and NWL18 divisions. See more info by clicking
-            here!
-          </p>
-        </a>
-      ),
-    },
-    {
       title: 'Upcoming Tournament - 11th Annual Duke PBMT Charity Tournament',
       body: (
         <a
@@ -65,6 +48,36 @@ export const Announcements = React.memo((props: AnnouncementsProps) => {
             The 10th Annual Crescent City Cup will be held on Woogles on January
             17th and 18th. Twenty games with Open and Lite divisions for both
             CSW19 and NWL2020. Register now.
+          </p>
+        </a>
+      ),
+    },
+
+    {
+      title: 'Upcoming Tournament - WYSC',
+      body: (
+        <a href="http://youthscrabble.org/WYC2020/" target="_blank" rel="noopener noreferrer">
+          <p>
+            The World Youth Championship runs for three consecutive weekends,
+            starting January 23, 2021! Watch as teams of talented youth around
+            the world play our favorite game. Who will emerge victorious?
+          </p>
+        </a>
+      ),
+    },
+
+    {
+      title: 'Upcoming Tournament - MISCO',
+      body: (
+        <a
+          href="https://mindgamesincorporated.com/events/mgi-international-scrabble-classics-online-misco/"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          <p>
+            The biggest online money event of the century! Please join the
+            MISCO; $1000 top prize with a $20 entry fee. See the flyer for more
+            information. Four consecutive weekends, starting on March 6, 2021.
           </p>
         </a>
       ),

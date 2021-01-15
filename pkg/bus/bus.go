@@ -435,7 +435,7 @@ func (b *Bus) handleNatsPublish(ctx context.Context, subtopics []string, data []
 		if err != nil {
 			return err
 		}
-		return b.readyForTournamentGame(ctx, evt, userID)
+		return b.readyForTournamentGame(ctx, evt, userID, wsConnID)
 
 	case "leaveSite":
 		// There is no event here. We have the user ID in the subject.

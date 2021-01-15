@@ -1,7 +1,6 @@
 syntax = "proto3";
 package tournament_service;
-option go_package =
-    "github.com/domino14/liwords/rpc/api/proto/tournament_service";
+option go_package = "github.com/domino14/liwords/rpc/api/proto/tournament_service";
 
 import "api/proto/realtime/realtime.proto";
 import "google/protobuf/timestamp.proto";
@@ -25,7 +24,7 @@ message NewTournamentRequest {
   string slug = 1;
   string name = 2;
   string description = 3;
-  repeated string director_ids = 4;
+  repeated string director_usernames = 4;
 
   TType type = 5;
 }
@@ -38,34 +37,11 @@ message SetTournamentMetadataRequest {
   TType type = 5;
 }
 
-message SingleRoundControls {
-  int32 pairing_method = 1;
-  int32 first_method = 2;
-  int32 games_per_round = 3;
-  int32 round = 4;
-  int32 factor = 5;
-  int32 initial_fontes = 6;
-  int32 max_repeats = 7;
-  bool allow_over_max_repeats = 8;
-  int32 repeat_relative_weight = 9;
-  int32 win_difference_relative_weight = 10;
-}
-
 message SingleRoundControlsRequest {
   string id = 1;
   string division = 2;
   int32 round = 3;
-  SingleRoundControls round_controls = 4;
-}
-
-message TournamentControlsRequest {
-  string id = 1;
-  string division = 2;
-  liwords.GameRequest game_request = 3;
-  repeated SingleRoundControls round_controls = 4;
-  int32 number_of_rounds = 5;
-  google.protobuf.Timestamp start_time = 6;
-  bool auto_start = 7;
+  liwords.RoundControl round_controls = 4;
 }
 
 message PairRoundRequest {
@@ -74,28 +50,22 @@ message PairRoundRequest {
   int32 round = 3;
 }
 
-message TournamentPerson {
-  string person_id = 1;
-  int32 person_int = 2;
-}
-
-message TournamentPersons {
-  string id = 1;
-  string division = 2;
-  repeated TournamentPerson persons = 3;
-}
-
 message TournamentDivisionRequest {
   string id = 1;
   string division = 2;
 }
 
 message TournamentPairingRequest {
+  string player_one_id = 1;
+  string player_two_id = 2;
+  int32 round = 3;
+  bool is_forfeit = 4;
+}
+
+message TournamentPairingsRequest {
   string id = 1;
   string division = 2;
-  string player_one_id = 3;
-  string player_two_id = 4;
-  int32 round = 5;
+  repeated TournamentPairingRequest pairings = 3;
 }
 
 // TournamentResultOverrideRequest is sent when a score needs to be edited
@@ -159,33 +129,33 @@ message RecentGamesResponse {
 }
 
 service TournamentService {
-  rpc NewTournament(NewTournamentRequest) returns(NewTournamentResponse);
+  rpc NewTournament(NewTournamentRequest) returns (NewTournamentResponse);
   rpc GetTournamentMetadata(GetTournamentMetadataRequest)
-      returns(TournamentMetadataResponse);
-  rpc StartTournament(StartTournamentRequest) returns(TournamentResponse);
+      returns (TournamentMetadataResponse);
+  rpc StartTournament(StartTournamentRequest) returns (TournamentResponse);
   rpc SetTournamentMetadata(SetTournamentMetadataRequest)
-      returns(TournamentResponse);
-  rpc PairRound(PairRoundRequest) returns(TournamentResponse);
+      returns (TournamentResponse);
+  rpc PairRound(PairRoundRequest) returns (TournamentResponse);
   rpc SetSingleRoundControls(SingleRoundControlsRequest)
-      returns(TournamentResponse);
-  rpc SetTournamentControls(TournamentControlsRequest)
-      returns(TournamentResponse);
-  rpc AddDirectors(TournamentPersons) returns(TournamentResponse);
-  rpc RemoveDirectors(TournamentPersons) returns(TournamentResponse);
-  rpc AddDivision(TournamentDivisionRequest) returns(TournamentResponse);
-  rpc RemoveDivision(TournamentDivisionRequest) returns(TournamentResponse);
-  rpc AddPlayers(TournamentPersons) returns(TournamentResponse);
-  rpc RemovePlayers(TournamentPersons) returns(TournamentResponse);
-  rpc SetPairing(TournamentPairingRequest) returns(TournamentResponse);
-  rpc SetResult(TournamentResultOverrideRequest) returns(TournamentResponse);
+      returns (TournamentResponse);
+  rpc SetTournamentControls(liwords.TournamentControls)
+      returns (TournamentResponse);
+  rpc AddDirectors(liwords.TournamentPersons) returns (TournamentResponse);
+  rpc RemoveDirectors(liwords.TournamentPersons) returns (TournamentResponse);
+  rpc AddDivision(TournamentDivisionRequest) returns (TournamentResponse);
+  rpc RemoveDivision(TournamentDivisionRequest) returns (TournamentResponse);
+  rpc AddPlayers(liwords.TournamentPersons) returns (TournamentResponse);
+  rpc RemovePlayers(liwords.TournamentPersons) returns (TournamentResponse);
+  rpc SetPairing(TournamentPairingsRequest) returns (TournamentResponse);
+  rpc SetResult(TournamentResultOverrideRequest) returns (TournamentResponse);
   rpc StartRoundCountdown(TournamentStartRoundCountdownRequest)
-      returns(TournamentResponse);
+      returns (TournamentResponse);
 
-  rpc RecentGames(RecentGamesRequest) returns(RecentGamesResponse);
+  rpc RecentGames(RecentGamesRequest) returns (RecentGamesResponse);
 
-  rpc CreateClubSession(NewClubSessionRequest) returns(ClubSessionResponse);
+  rpc CreateClubSession(NewClubSessionRequest) returns (ClubSessionResponse);
   rpc GetRecentClubSessions(RecentClubSessionsRequest)
-      returns(ClubSessionsResponse);
+      returns (ClubSessionsResponse);
 }
 
 message NewClubSessionRequest {

@@ -212,7 +212,7 @@ export const ActionsPanel = React.memo((props: Props) => {
   );
 
   const actions = [];
-  if (true || tournamentContext.metadata.type === 'CLUB') {
+  if (props.loggedIn && (true || tournamentContext.metadata.type === 'CLUB')) {
     // We are allowing free-form match requests in CLUBHOUSE mode, if desired.
     actions.push([
       <div

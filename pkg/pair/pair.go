@@ -9,27 +9,29 @@ import (
 	"github.com/domino14/liwords/pkg/entity"
 	"github.com/domino14/liwords/pkg/matching"
 	"github.com/domino14/liwords/pkg/utilities"
+
+	realtime "github.com/domino14/liwords/rpc/api/proto/realtime"
 )
 
 func Pair(members *entity.UnpairedPoolMembers) ([]int, error) {
 
 	pm := members.RoundControls.PairingMethod
-	if pm == entity.Manual {
+	if pm == realtime.PairingMethod_MANUAL {
 		return nil, errors.New("cannot pair with the given pairing method")
 	}
 	// This way of dispatching is slightly clunky and will
 	// remain until we can think of a better way to do it.
 	var pairings []int
 	var err error
-	if pm == entity.Random {
+	if pm == realtime.PairingMethod_RANDOM {
 		pairings, err = pairRandom(members)
-	} else if pm == entity.RoundRobin {
+	} else if pm == realtime.PairingMethod_ROUND_ROBIN {
 		pairings, err = pairRoundRobin(members)
-	} else if pm == entity.KingOfTheHill || pm == entity.Elimination {
+	} else if pm == realtime.PairingMethod_KING_OF_THE_HILL || pm == realtime.PairingMethod_ELIMINATION {
 		pairings, err = pairKingOfTheHill(members)
-	} else if pm == entity.Factor {
+	} else if pm == realtime.PairingMethod_FACTOR {
 		pairings, err = pairFactor(members)
-	} else if pm == entity.InitialFontes {
+	} else if pm == realtime.PairingMethod_INITIAL_FONTES {
 		pairings, err = pairInitialFontes(members)
 	} else {
 		// The remaining pairing methods are solved by
@@ -73,7 +75,7 @@ func pairRandom(members *entity.UnpairedPoolMembers) ([]int, error) {
 }
 
 func pairRoundRobin(members *entity.UnpairedPoolMembers) ([]int, error) {
-	return getRoundRobinPairings(len(members.PoolMembers), members.RoundControls.Round)
+	return getRoundRobinPairings(len(members.PoolMembers), int(members.RoundControls.Round))
 }
 
 func pairKingOfTheHill(members *entity.UnpairedPoolMembers) ([]int, error) {
@@ -94,7 +96,7 @@ func pairFactor(members *entity.UnpairedPoolMembers) ([]int, error) {
 
 	// Remaining players are paired using the swiss-like min weight matching
 
-	factorMembers, swissMembers, err := splitMembers(members, members.RoundControls.Factor*2)
+	factorMembers, swissMembers, err := splitMembers(members, int(members.RoundControls.Factor)*2)
 	if err != nil {
 		return nil, err
 	}
@@ -103,7 +105,7 @@ func pairFactor(members *entity.UnpairedPoolMembers) ([]int, error) {
 	swissPairings := []int{}
 
 	if len(factorMembers.PoolMembers) > 0 {
-		factorPairings, err = getFactorPairings(len(factorMembers.PoolMembers), members.RoundControls.Factor)
+		factorPairings, err = getFactorPairings(len(factorMembers.PoolMembers), int(members.RoundControls.Factor))
 		if err != nil {
 			return nil, err
 		}
@@ -126,8 +128,8 @@ func pairInitialFontes(members *entity.UnpairedPoolMembers) ([]int, error) {
 	}
 
 	numberOfPlayers := len(members.PoolMembers)
-	numberOfNtiles := members.RoundControls.InitialFontes + 1
-	round := members.RoundControls.Round
+	numberOfNtiles := int(members.RoundControls.InitialFontes) + 1
+	round := int(members.RoundControls.Round)
 	// This function was created to make testing easier
 	return getInitialFontesPairings(numberOfPlayers, numberOfNtiles, round)
 }
@@ -177,12 +179,12 @@ func minWeightMatching(members *entity.UnpairedPoolMembers) ([]int, error) {
 	numberOfMembers := len(members.PoolMembers)
 	edges := []*matching.Edge{}
 
-	if members.RoundControls.RepeatRelativeWeight > entity.MaxRelativeWeight {
-		members.RoundControls.RepeatRelativeWeight = entity.MaxRelativeWeight
+	if int(members.RoundControls.RepeatRelativeWeight) > entity.MaxRelativeWeight {
+		members.RoundControls.RepeatRelativeWeight = int32(entity.MaxRelativeWeight)
 	}
 
-	if members.RoundControls.WinDifferenceRelativeWeight > entity.MaxRelativeWeight {
-		members.RoundControls.WinDifferenceRelativeWeight = entity.MaxRelativeWeight
+	if int(members.RoundControls.WinDifferenceRelativeWeight) > entity.MaxRelativeWeight {
+		members.RoundControls.WinDifferenceRelativeWeight = int32(entity.MaxRelativeWeight)
 	}
 
 	for i := 0; i < numberOfMembers; i++ {
@@ -213,7 +215,7 @@ func minWeightMatching(members *entity.UnpairedPoolMembers) ([]int, error) {
 		return nil, errors.New("prohibitive weight reached, pairings are not possible with these settings")
 	}
 
-	if members.RoundControls.PairingMethod == entity.Quickpair {
+	if members.RoundControls.PairingMethod == realtime.PairingMethod_QUICKPAIR {
 		for index, pairing := range pairings {
 			if pairing == -1 {
 				members.PoolMembers[index].Misses++
@@ -246,9 +248,9 @@ func weigh(members *entity.UnpairedPoolMembers, i int, j int) (int64, error) {
 	// remain until we can think of a better way to do it.
 	var weight int64
 	pm := members.RoundControls.PairingMethod
-	if pm == entity.Swiss || pm == entity.Factor {
+	if pm == realtime.PairingMethod_SWISS || pm == realtime.PairingMethod_FACTOR {
 		weight = weighSwiss(members, i, j)
-	} else if pm == entity.Quickpair {
+	} else if pm == realtime.PairingMethod_QUICKPAIR {
 		weight = weighQuickpair(members, i, j)
 	} else {
 		return 0, errors.New("pairing method is either unimplemented or is not a reduction to minimum weight matching")
@@ -276,7 +278,7 @@ func weighSwiss(members *entity.UnpairedPoolMembers, i int, j int) int64 {
 	spreadDiffWeight := -int64(utilities.Abs(p1.Spread - p2.Spread))
 
 	// Add one to account for the pairing of p1 and p2 for this round
-	repeatsOverMax := utilities.Max(0, members.Repeats[GetRepeatKey(p1.Id, p2.Id)]+1-members.RoundControls.MaxRepeats)
+	repeatsOverMax := utilities.Max(0, members.Repeats[GetRepeatKey(p1.Id, p2.Id)]+1-int(members.RoundControls.MaxRepeats))
 	var repeatWeight int64 = 0
 	if members.RoundControls.AllowOverMaxRepeats {
 		// Since wins were scaled, repeats have to be scaled up
@@ -520,9 +522,9 @@ func getRoundRobinRotation(numberOfPlayers int, round int) int {
 	return (round * (numberOfPlayers - 3)) % (numberOfPlayers - 1)
 }
 
-func IsStandingsIndependent(pm entity.PairingMethod) bool {
-	return pm == entity.RoundRobin ||
-		pm == entity.Random ||
-		pm == entity.InitialFontes ||
-		pm == entity.Manual
+func IsStandingsIndependent(pm realtime.PairingMethod) bool {
+	return pm == realtime.PairingMethod_ROUND_ROBIN ||
+		pm == realtime.PairingMethod_RANDOM ||
+		pm == realtime.PairingMethod_INITIAL_FONTES ||
+		pm == realtime.PairingMethod_MANUAL
 }

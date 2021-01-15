@@ -20,9 +20,15 @@ message GameRules {
   string variant_name = 3;
 }
 
-enum GameMode { REAL_TIME = 0; CORRESPONDENCE = 1; }
+enum GameMode {
+  REAL_TIME = 0;
+  CORRESPONDENCE = 1;
+}
 
-enum RatingMode { RATED = 0; CASUAL = 1; }
+enum RatingMode {
+  RATED = 0;
+  CASUAL = 1;
+}
 
 // Game initialization
 // Both SeekRequest and MatchRequest encapsulate a more general GameRequest
@@ -62,7 +68,9 @@ message MatchUser {
 // Whenever we add a new client <-> server socket message type,
 // add it to this list.
 enum MessageType {
-  SEEK_REQUEST = 0; MATCH_REQUEST = 1; SOUGHT_GAME_PROCESS_EVENT = 2;
+  SEEK_REQUEST = 0;
+  MATCH_REQUEST = 1;
+  SOUGHT_GAME_PROCESS_EVENT = 2;
   CLIENT_GAMEPLAY_EVENT = 3;
   SERVER_GAMEPLAY_EVENT = 4;
   GAME_ENDED_EVENT = 5;
@@ -321,7 +329,11 @@ enum GameEndReason {
 // server will validate that the event is permissible.
 message ClientGameplayEvent {
   enum EventType {
-    TILE_PLACEMENT = 0; PASS = 1; EXCHANGE = 2; CHALLENGE_PLAY = 3; RESIGN = 4;
+    TILE_PLACEMENT = 0;
+    PASS = 1;
+    EXCHANGE = 2;
+    CHALLENGE_PLAY = 3;
+    RESIGN = 4;
   }
 
   EventType type = 1;
@@ -354,28 +366,62 @@ message DeclineMatchRequest { string request_id = 1; }
 
 enum TournamentGameResult {
   // NO_RESULT: the game is not over
-  NO_RESULT = 0; WIN = 1; LOSS = 2; DRAW = 3; BYE = 4; FORFEIT_WIN = 5;
+  NO_RESULT = 0;
+  WIN = 1;
+  LOSS = 2;
+  DRAW = 3;
+  BYE = 4;
+  FORFEIT_WIN = 5;
   FORFEIT_LOSS = 6;
   // ELIMINATED: player is eliminated in a bracket tournament
   ELIMINATED = 7;
 }
 
+enum PairingMethod {
+  RANDOM = 0;
+  ROUND_ROBIN = 1;
+  KING_OF_THE_HILL = 2;
+  ELIMINATION = 3;
+  FACTOR = 4;
+  INITIAL_FONTES = 5;
+  SWISS = 6;
+  QUICKPAIR = 7;
+  MANUAL = 8;
+}
+
+enum FirstMethod {
+  MANUAL_FIRST = 0;
+  RANDOM_FIRST = 1;
+  AUTOMATIC_FIRST = 2;
+}
+
+message TournamentPersons {
+  string id = 1;
+  string division = 2;
+  map<string, int32> persons = 3;
+}
+
 message RoundControl {
-  int32 pairing_method = 1;
-  int32 first_method = 2;
+  PairingMethod pairing_method = 1;
+  FirstMethod first_method = 2;
   int32 games_per_round = 3;
   int32 round = 4;
   int32 factor = 5;
-  int32 max_repeats = 6;
-  bool allow_over_max_repeats = 7;
-  int32 repeat_relative_weight = 8;
-  int32 win_difference_relative_weight = 9;
+  int32 initial_fontes = 6;
+  int32 max_repeats = 7;
+  bool allow_over_max_repeats = 8;
+  int32 repeat_relative_weight = 9;
+  int32 win_difference_relative_weight = 10;
 }
 
 message TournamentControls {
-  liwords.GameRequest game_request = 1;
-  repeated RoundControl round_controls = 2;
-  int32 type = 3;
+  string id = 1;
+  string division = 2;
+  liwords.GameRequest game_request = 3;
+  repeated RoundControl round_controls = 4;
+  int32 type = 5;
+  google.protobuf.Timestamp start_time = 6;
+  bool auto_start = 7;
 }
 
 message TournamentGame {
@@ -384,11 +430,24 @@ message TournamentGame {
   liwords.GameEndReason game_end_reason = 3;
 }
 
+message PlayerProperties {
+  bool removed = 1;
+}
+
 message PlayerRoundInfo {
   repeated string players = 1;
   repeated TournamentGame games = 2;
   repeated liwords.TournamentGameResult outcomes = 3;
-  repeated bool ready_states = 4;
+  repeated string ready_states = 4;
+}
+
+message PlayerStanding {
+  string player = 1;
+  int32 wins = 2;
+  int32 losses = 3;
+  int32 draws = 4;
+  int32 spread = 5;
+  bool removed = 6;
 }
 
 message ClassicDivision { repeated PlayerRoundInfo matrix = 1; }
@@ -401,10 +460,10 @@ message TournamentDivisionDataResponse {
   // In the future we will add different
   // types of tournament divisions and only
   // one will be non nil
-  ClassicDivision division = 5;
+  map<string, PlayerRoundInfo> division = 5;
   int32 current_round = 6;
-  bool round_is_over = 7;
-  bool division_is_over = 8;
+  repeated PlayerStanding standings = 7;
+  repeated PlayerProperties players_properties = 8;
 }
 
 message FullTournamentDivisions {
@@ -416,7 +475,7 @@ message TournamentDataResponse {
   string name = 2;
   string description = 3;
   string executive_director = 4;
-  repeated string directors = 5;
+  TournamentPersons directors = 5;
   bool is_started = 6;
   google.protobuf.Timestamp start_time = 7;
 }
