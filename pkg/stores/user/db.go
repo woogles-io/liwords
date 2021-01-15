@@ -314,6 +314,21 @@ func (s *DBStore) SetPassword(ctx context.Context, uuid string, hashpass string)
 	return s.db.Model(u).Update("password", hashpass).Error
 }
 
+// SetAbout sets the about (profile field] for the user.
+func (s *DBStore) SetAbout(ctx context.Context, uuid string, about string) error {
+	u := &User{}
+	p := &profile{}
+
+	if result := s.db.Where("uuid = ?", uuid).First(u); result.Error != nil {
+		return result.Error
+	}
+	if result := s.db.Model(u).Related(p); result.Error != nil {
+		return result.Error
+	}
+
+	return s.db.Model(p).Update("about", about).Error
+}
+
 // SetRatings set the specific ratings for the given variant in a transaction.
 func (s *DBStore) SetRatings(ctx context.Context, p0uuid string, p1uuid string, variant entity.VariantKey,
 	p0Rating entity.SingleRating, p1Rating entity.SingleRating) error {

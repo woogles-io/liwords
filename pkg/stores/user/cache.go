@@ -21,6 +21,7 @@ type backingStore interface {
 	Username(ctx context.Context, uuid string) (string, bool, error)
 	New(ctx context.Context, user *entity.User) error
 	SetPassword(ctx context.Context, uuid string, hashpass string) error
+	SetAbout(ctx context.Context, uuid string, about string) error
 	SetRatings(ctx context.Context, p0uuid string, p1uuid string, variant entity.VariantKey,
 		p1Rating entity.SingleRating, p2Rating entity.SingleRating) error
 	SetStats(ctx context.Context, p0uuid string, p1uuid string, variant entity.VariantKey,
@@ -108,6 +109,15 @@ func (c *Cache) SetPassword(ctx context.Context, uuid string, hashpass string) e
 	}
 	u.Password = hashpass
 	return c.backing.SetPassword(ctx, uuid, hashpass)
+}
+
+func (c *Cache) SetAbout(ctx context.Context, uuid string, about string) error {
+	u, err := c.GetByUUID(ctx, uuid)
+	if err != nil {
+		return err
+	}
+	u.Profile.About = about
+	return c.backing.SetAbout(ctx, uuid, about)
 }
 
 func (c *Cache) SetRatings(ctx context.Context, p0uuid string, p1uuid string, variant entity.VariantKey, p0Rating entity.SingleRating, p1Rating entity.SingleRating) error {

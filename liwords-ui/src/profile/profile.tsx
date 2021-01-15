@@ -7,6 +7,7 @@ import { TopBar } from '../topbar/topbar';
 
 import './profile.scss';
 import { toAPIUrl } from '../api/api';
+import { BioCard } from './bio';
 import { useLoginStateStoreContext } from '../store/store';
 import { GameMetadata, RecentGamesResponse } from '../gameroom/game_info';
 import { GamesHistoryCard } from './games_history';
@@ -233,6 +234,7 @@ export const UserProfile = React.memo((props: Props) => {
   const [ratings, setRatings] = useState({});
   const [stats, setStats] = useState({});
   const [userID, setUserID] = useState('');
+  const [bio, setBio] = useState('');
   const [darkMode, setDarkMode] = useState(
     localStorage?.getItem('darkMode') === 'true'
   );
@@ -261,6 +263,7 @@ export const UserProfile = React.memo((props: Props) => {
         setRatings(JSON.parse(resp.data.ratings_json).Data);
         setStats(JSON.parse(resp.data.stats_json).Data);
         setUserID(resp.data.user_id);
+        setBio(resp.data.about);
       })
       .catch(errorCatcher);
   }, [username, location.pathname]);
@@ -375,6 +378,7 @@ export const UserProfile = React.memo((props: Props) => {
             </div>
           ) : null}
         </header>
+        <BioCard bio={bio} />
         <RatingsCard ratings={ratings} />
         <GamesHistoryCard
           games={recentGames}
