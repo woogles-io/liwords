@@ -78,7 +78,6 @@ type Props = {
   prefixItems?: React.ReactNode;
 };
 
-const enableECWL = localStorage.getItem('enableECWL') === 'true';
 const otLabel = 'Overtime';
 const incLabel = 'Increment';
 const otUnitLabel = (
@@ -94,6 +93,14 @@ const incUnitLabel = (
 
 export const SeekForm = (props: Props) => {
   const { useState } = useMountedState();
+  const enableAllLexicons = React.useMemo(
+    () => localStorage.getItem('enableAllLexicons') === 'true',
+    []
+  );
+  const enableECWL = React.useMemo(
+    () => localStorage.getItem('enableECWL') === 'true',
+    []
+  );
 
   let storageKey = 'lastSeekForm';
   if (props.vsBot) {
@@ -310,11 +317,18 @@ export const SeekForm = (props: Props) => {
       >
         <Select disabled={disableLexiconControls}>
           <Select.Option value="CSW19">CSW 19 (World English)</Select.Option>
-          <Select.Option value="NWL18">
-            NWL 18 (North American English)
+          <Select.Option value="NWL20">
+            NWL 20 (North American English)
           </Select.Option>
-          {enableECWL && (
-            <Select.Option value="ECWL">English Common Word List</Select.Option>
+          {enableAllLexicons && (
+            <React.Fragment>
+              <Select.Option value="NWL18">NWL 18 (Obsolete)</Select.Option>
+              {enableECWL && (
+                <Select.Option value="ECWL">
+                  English Common Word List
+                </Select.Option>
+              )}
+            </React.Fragment>
           )}
         </Select>
       </Form.Item>
