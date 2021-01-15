@@ -58,7 +58,6 @@ export type Division = {
   numRounds: number;
   // Note: currentRound is zero-indexed
   currentRound: number;
-  roundStarted: boolean;
   // Add Standings here
   standingsMap: { [round: number]: RoundStandings.AsObject };
 };
@@ -155,15 +154,11 @@ const divisionDataResponseToObj = (
     tournamentID: dd.getId(),
     divisionID: dd.getDivisionId(),
     players: dd.getPlayersList(),
-    currentRound:
-      dd.getCurrentRound() && dd.getRoundStarted()
-        ? dd.getCurrentRound()
-        : dd.getCurrentRound() - 1,
+    currentRound: dd.getCurrentRound(),
     numRounds: dd.getControls()?.toObject().roundControlsList.length || 0,
     roundInfo: dd.getDivisionList(),
     pairingMap: {},
     playerIndexMap: {},
-    roundStarted: dd.getRoundStarted(),
     standingsMap: {},
   };
 

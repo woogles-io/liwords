@@ -136,19 +136,16 @@ export const ActionsPanel = React.memo((props: Props) => {
     if (!division) {
       return null;
     }
-    const { currentRound, roundStarted } = division;
+    const { currentRound } = division;
     let roundToStart: null | number = null;
-    if (currentRound === -1 && !roundStarted) {
-      roundToStart = 0;
-    } else {
-      if (division) {
-        roundToStart = currentRound + 1;
-      }
+    if (division) {
+      roundToStart = currentRound + 1;
     }
-    if (!(typeof roundToStart === 'number')) {
-      return null;
-    }
-    if (!isDirector && !(roundToStart === selectedRound)) {
+    if (
+      !isDirector ||
+      !(typeof roundToStart === 'number') ||
+      !(roundToStart === selectedRound)
+    ) {
       return null;
     }
     const startRound = () => {
@@ -383,7 +380,7 @@ export const ActionsPanel = React.memo((props: Props) => {
     selectedRound,
     selectedGameTab,
   ]);
-
+  console.log(tournamentContext);
   return (
     <div className="game-lists">
       <Card
