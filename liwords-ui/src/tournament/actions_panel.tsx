@@ -292,6 +292,8 @@ export const ActionsPanel = React.memo((props: Props) => {
       if (!selectedDivision) {
         setSelectedDivision(foundDivision.divisionID);
         setSelectedRound(foundDivision.currentRound);
+      } else if (selectedRound == -1) {
+        setSelectedRound(foundDivision.currentRound);
       }
     } else {
       if (divisionArray.length) {
