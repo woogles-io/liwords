@@ -140,7 +140,7 @@ export const Announcements = React.memo((props: AnnouncementsProps) => {
       title: 'Woogles is live! Come join our Discord',
       body: (
         <a
-          href="https://discord.gg/5yCJjmW"
+          href="https://discord.gg/GqkUqA7ENm"
           target="_blank"
           rel="noopener noreferrer"
         >
