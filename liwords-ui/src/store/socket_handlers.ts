@@ -457,6 +457,7 @@ export const useOnSocketMsg = () => {
               actionType: ActionType.StartTourneyRound,
               payload: trs,
             });
+            BoopSounds.playSound('startTourneyRoundSound');
 
             break;
           }

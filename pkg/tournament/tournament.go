@@ -708,6 +708,7 @@ func SetFinished(ctx context.Context, ts TournamentStore, id string) error {
 	}
 
 	for divisionKey, division := range t.Divisions {
+		// XXX PANIC for division without a division manager
 		finished, err := division.DivisionManager.IsFinished()
 		if err != nil {
 			return nil
