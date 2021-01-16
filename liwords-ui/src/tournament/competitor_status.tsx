@@ -31,8 +31,10 @@ export const CompetitorStatus = (props: Props) => {
         <Button className="primary">Return</Button>
       </>
     );
-    // TODO: This needs to calculate if current round is last once division info is in the store
-    const isLastRound = false;
+    const isLastRound = competitorContext.division
+      ? competitorContext.currentRound ===
+        tournamentContext.divisions[competitorContext.division]?.numRounds - 1
+      : false;
 
     switch (competitorContext.status) {
       case TourneyStatus.PRETOURNEY:
