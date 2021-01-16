@@ -633,9 +633,12 @@ func StartRoundCountdown(ctx context.Context, ts TournamentStore, id string,
 		return fmt.Errorf("division %s round %d is not ready to be started", division, round)
 	}
 	if save {
-		return ts.Set(ctx, t)
+		err = ts.Set(ctx, t)
+		if err != nil {
+			return err
+		}
 	}
-	return nil
+	return SendTournamentDivisionMessage(ctx, ts, id, division)
 }
 
 func PairRound(ctx context.Context, ts TournamentStore, id string, division string, round int) error {
