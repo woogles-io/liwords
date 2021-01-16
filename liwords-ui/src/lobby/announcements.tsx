@@ -21,7 +21,7 @@ export const Announcements = React.memo((props: AnnouncementsProps) => {
       title: 'Upcoming Tournament - 11th Annual Duke PBMT Charity Tournament',
       body: (
         <a
-          href="https://sites.google.com/site/trianglescrabble/pbmt-2021"
+          href="https://woogles.io/tournament/pbmt-2021"
           target="_blank"
           rel="noopener noreferrer"
         >
