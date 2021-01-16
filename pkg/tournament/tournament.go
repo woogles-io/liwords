@@ -14,6 +14,7 @@ import (
 	"github.com/domino14/liwords/pkg/user"
 	"github.com/lithammer/shortuuid"
 	"github.com/rs/zerolog/log"
+	"github.com/twitchtv/twirp"
 
 	realtime "github.com/domino14/liwords/rpc/api/proto/realtime"
 	pb "github.com/domino14/liwords/rpc/api/proto/tournament_service"
@@ -177,7 +178,38 @@ func TournamentSetPairingsEvent(ctx context.Context, ts TournamentStore, id stri
 	return SendTournamentDivisionMessage(ctx, ts, id, division)
 }
 
-func SetTournamentMetadata(ctx context.Context, ts TournamentStore, id string, name string, description string) error {
+func validateTournamentMeta(ttype pb.TType, slug string) (entity.CompetitionType, error) {
+	var tt entity.CompetitionType
+	switch ttype {
+	case pb.TType_CLUB:
+		tt = entity.TypeClub
+		if !strings.HasPrefix(slug, "/club/") {
+			return "", twirp.NewError(twirp.InvalidArgument, "club slug must start with /club/")
+		}
+	case pb.TType_STANDARD:
+		tt = entity.TypeStandard
+		if !strings.HasPrefix(slug, "/tournament/") {
+			return "", twirp.NewError(twirp.InvalidArgument, "tournament slug must start with /tournament/")
+		}
+	case pb.TType_LEGACY:
+		tt = entity.TypeLegacy
+		if !strings.HasPrefix(slug, "/tournament/") {
+			return "", twirp.NewError(twirp.InvalidArgument, "tournament slug must start with /tournament/")
+		}
+	case pb.TType_CHILD:
+		tt = entity.TypeChild
+		// A Club session type can also be a child tournament (it's essentially just a tournament with a parent ID)
+		if !strings.HasPrefix(slug, "/club/") && !strings.HasPrefix(slug, "/tournament/") {
+			return "", twirp.NewError(twirp.InvalidArgument, "club-session slug must start with /club/ or /tournament/")
+		}
+	default:
+		return "", twirp.NewError(twirp.InvalidArgument, "invalid tournament type")
+	}
+	return tt, nil
+}
+
+func SetTournamentMetadata(ctx context.Context, ts TournamentStore, id string, name string, description string,
+	slug string, ttype entity.CompetitionType) error {
 
 	t, err := ts.Get(ctx, id)
 	if err != nil {
@@ -186,9 +218,14 @@ func SetTournamentMetadata(ctx context.Context, ts TournamentStore, id string, n
 
 	t.Lock()
 	defer t.Unlock()
-
+	name = strings.TrimSpace(name)
+	if name == "" {
+		return errors.New("name cannot be blank")
+	}
 	t.Name = name
 	t.Description = description
+	t.Slug = slug
+	t.Type = ttype
 
 	err = ts.Set(ctx, t)
 	if err != nil {

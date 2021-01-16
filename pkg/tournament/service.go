@@ -64,19 +64,13 @@ func (ts *TournamentService) SetTournamentMetadata(ctx context.Context, req *pb.
 	if err != nil {
 		return nil, err
 	}
-	err = SetTournamentMetadata(ctx, ts.tournamentStore, req.Id, req.Name, req.Description)
-	if err != nil {
-		return nil, twirp.NewError(twirp.InvalidArgument, err.Error())
-	}
-	return &pb.TournamentResponse{}, nil
-}
 
-func (ts *TournamentService) SetTournamentFinished(ctx context.Context, req *pb.SetTournamentMetadataRequest) (*pb.TournamentResponse, error) {
-	err := authenticateDirector(ctx, ts, req.Id, false)
+	ttype, err := validateTournamentMeta(req.Type, req.Slug)
 	if err != nil {
 		return nil, err
 	}
-	err = SetTournamentMetadata(ctx, ts.tournamentStore, req.Id, req.Name, req.Description)
+
+	err = SetTournamentMetadata(ctx, ts.tournamentStore, req.Id, req.Name, req.Description, req.Slug, ttype)
 	if err != nil {
 		return nil, twirp.NewError(twirp.InvalidArgument, err.Error())
 	}
@@ -132,31 +126,9 @@ func (ts *TournamentService) NewTournament(ctx context.Context, req *pb.NewTourn
 
 	log.Debug().Interface("directors", directors).Msg("directors")
 
-	var tt entity.CompetitionType
-	switch req.Type {
-	case pb.TType_CLUB:
-		tt = entity.TypeClub
-		if !strings.HasPrefix(req.Slug, "/club/") {
-			return nil, twirp.NewError(twirp.InvalidArgument, "club slug must start with /club/")
-		}
-	case pb.TType_STANDARD:
-		tt = entity.TypeStandard
-		if !strings.HasPrefix(req.Slug, "/tournament/") {
-			return nil, twirp.NewError(twirp.InvalidArgument, "tournament slug must start with /tournament/")
-		}
-	case pb.TType_LEGACY:
-		tt = entity.TypeLegacy
-		if !strings.HasPrefix(req.Slug, "/tournament/") {
-			return nil, twirp.NewError(twirp.InvalidArgument, "tournament slug must start with /tournament/")
-		}
-	case pb.TType_CHILD:
-		tt = entity.TypeChild
-		// A Club session type can also be a child tournament (it's essentially just a tournament with a parent ID)
-		if !strings.HasPrefix(req.Slug, "/club/") && !strings.HasPrefix(req.Slug, "/tournament/") {
-			return nil, twirp.NewError(twirp.InvalidArgument, "club-session slug must start with /club/ or /tournament/")
-		}
-	default:
-		return nil, twirp.NewError(twirp.InvalidArgument, "invalid tournament type")
+	tt, err := validateTournamentMeta(req.Type, req.Slug)
+	if err != nil {
+		return nil, err
 	}
 	t, err := NewTournament(ctx, ts.tournamentStore, req.Name, req.Description, directors,
 		tt, "", req.Slug)
