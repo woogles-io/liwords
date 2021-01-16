@@ -292,7 +292,7 @@ export const ActionsPanel = React.memo((props: Props) => {
       if (!selectedDivision) {
         setSelectedDivision(foundDivision.divisionID);
         setSelectedRound(foundDivision.currentRound);
-      } else if (selectedRound == -1) {
+      } else if (selectedRound === -1) {
         setSelectedRound(foundDivision.currentRound);
       }
     } else {
@@ -302,7 +302,7 @@ export const ActionsPanel = React.memo((props: Props) => {
         }
       }
     }
-  }, [divisions, selectedDivision, userID]);
+  }, [divisions, selectedDivision, selectedRound, userID]);
 
   const actions = useMemo(() => {
     if (selectedGameTab === 'STANDINGS') {
