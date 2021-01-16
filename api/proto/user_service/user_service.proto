@@ -99,10 +99,17 @@ message ProfileResponse {
   string user_id = 8;
 }
 
+message UpdateProfileRequest {
+  string about = 1;  
+}
+
+message UpdateProfileResponse {}
+
 service ProfileService {
   rpc GetRatings(RatingsRequest) returns(RatingsResponse);
   rpc GetStats(StatsRequest) returns(StatsResponse);
   rpc GetProfile(ProfileRequest) returns(ProfileResponse);
+  rpc UpdateProfile(UpdateProfileRequest) returns(UpdateProfileResponse);
 }
 
 // Autocomplete

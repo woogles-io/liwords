@@ -37,7 +37,7 @@ export const Announcements = React.memo((props: AnnouncementsProps) => {
     },
 
     {
-      title: 'Upcoming Tournament - Crescent City Cup',
+      title: 'Upcoming Tournament - Virtual Crescent City Cup',
       body: (
         <a
           href="https://sites.google.com/site/nolascrabble"
@@ -45,31 +45,66 @@ export const Announcements = React.memo((props: AnnouncementsProps) => {
           rel="noopener noreferrer"
         >
           <p>
-            The 10th Annual Crescent City Cup will be held on Woogles on January
+            The Virtual Crescent City Cup will be held on Woogles on January
             17th and 18th. Twenty games with Open and Lite divisions for both
             CSW19 and NWL2020. Register now.
           </p>
         </a>
       ),
     },
+
     {
-      title: 'Tournament Complete - MERRY',
+      title: 'Upcoming Tournament - WYSC',
       body: (
         <a
-          href="https://woogles.io/tournament/merry"
+          href="http://youthscrabble.org/WYC2020/"
           target="_blank"
           rel="noopener noreferrer"
         >
           <p>
-            The 2nd annual MERRY tournament (Jan 1-2) congratulates Early Bird
-            winners Tina Bennett (div D), Letitia Sears (div C), Chloe Fatsis
-            (div B), Richard Spence (div A), and Brian Bowman (CSW), and Main
-            Event winners Josh Jetto (div D), Susan Bertoni (div C), Billy
-            Nakamura (div B), Kevin Fraley (div A), and Tim Weiss (CSW).
+            The World Youth Championship runs for three consecutive weekends,
+            starting January 23, 2021! Watch as teams of talented youth around
+            the world play our favorite game. Who will emerge victorious?
           </p>
         </a>
       ),
     },
+
+    {
+      title: 'Upcoming Tournament - CoCo Blitz Championships',
+      body: (
+        <a
+          href="https://www.cocoscrabble.org/blitz-champs"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          <p>
+            The World Blitz Championship starts on the week of January 25, 2021!
+            Play 3-minute games against some of the fastest word gamers in the
+            world; starting with round play and proceeding to elimination
+            brackets. Three-minute clocks will be used throughout!
+          </p>
+        </a>
+      ),
+    },
+
+    {
+      title: 'Upcoming Tournament - MISCO',
+      body: (
+        <a
+          href="https://mindgamesincorporated.com/events/mgi-international-scrabble-classics-online-misco/"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          <p>
+            The biggest online money event of the century! Please join the
+            MISCO; $1000 top prize with a $20 entry fee. See the flyer for more
+            information. Four consecutive weekends, starting on March 6, 2021.
+          </p>
+        </a>
+      ),
+    },
+
     {
       title: 'Want to help?',
       body: (
