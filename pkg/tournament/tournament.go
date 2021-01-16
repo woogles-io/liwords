@@ -557,6 +557,10 @@ func StartRoundCountdown(ctx context.Context, ts TournamentStore, id string,
 		return fmt.Errorf("division %s has autostart enabled and cannot be manually started", division)
 	}
 
+	if !t.IsStarted {
+		return fmt.Errorf("cannot start division %s before starting the tournament", t.Name)
+	}
+
 	ready, err := divisionObject.DivisionManager.IsRoundReady(round)
 	if err != nil {
 		return err
