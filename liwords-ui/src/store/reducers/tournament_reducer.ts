@@ -95,7 +95,7 @@ export const defaultTournamentState = {
   },
   activeGames: new Array<ActiveGame>(),
   finishedTourneyGames: new Array<RecentGame>(),
-  gamesPageSize: 0,
+  gamesPageSize: 20,
   gamesOffset: 0,
 };
 
