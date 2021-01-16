@@ -514,11 +514,11 @@ func StartTournament(ctx context.Context, ts TournamentStore, id string, manual 
 	// Do not lock, StartRound will do that
 
 	for division := range t.Divisions {
+		t.IsStarted = true
 		err := StartRoundCountdown(ctx, ts, id, division, 0, manual, false)
 		if err != nil {
 			return err
 		}
-		t.IsStarted = true
 	}
 	if !t.IsStarted {
 		return fmt.Errorf("cannot start tournament %s with no divisions", t.Name)
@@ -555,6 +555,10 @@ func StartRoundCountdown(ctx context.Context, ts TournamentStore, id string,
 
 	if manual && divisionObject.Controls.AutoStart && divisionObject.DivisionManager.IsStarted() {
 		return fmt.Errorf("division %s has autostart enabled and cannot be manually started", division)
+	}
+
+	if !t.IsStarted {
+		return fmt.Errorf("cannot start division %s before starting the tournament", t.Name)
 	}
 
 	ready, err := divisionObject.DivisionManager.IsRoundReady(round)
