@@ -12,34 +12,57 @@ import (
 	"github.com/domino14/liwords/pkg/entity"
 	"github.com/domino14/liwords/pkg/pair"
 	realtime "github.com/domino14/liwords/rpc/api/proto/realtime"
+	"github.com/rs/zerolog/log"
 )
 
 type ClassicDivision struct {
-	Matrix [][]*entity.Pairing `json:"matrix"`
+	Matrix     [][]string                           `json:"matrix"`
+	PairingMap map[string]*realtime.PlayerRoundInfo `json:"pairingMap"`
 	// By convention, players should look like userUUID:username
-	Players           []string                         `json:"players"`
-	PlayersProperties []*entity.PlayerProperties       `json:"playerProperties"`
-	PlayerIndexMap    map[string]int                   `json:"pidxMap"`
-	RoundControls     []*realtime.RoundControl         `json:"roundCtrls"`
-	CurrentRound      int                              `json:"currentRound"`
-	RoundStarted      bool                             `json:"roundStarted"`
-	LastStarted       *realtime.TournamentRoundStarted `json:"lastStarted"`
+	Players           []string                                 `json:"players"`
+	PlayersProperties []*realtime.PlayerProperties             `json:"playerProperties"`
+	PlayerIndexMap    map[string]int32                         `json:"pidxMap"`
+	RoundControls     []*realtime.RoundControl                 `json:"roundCtrls"`
+	CurrentRound      int                                      `json:"currentRound"`
+	AutoStart         bool                                     `json:"autoStart"`
+	LastStarted       *realtime.TournamentRoundStarted         `json:"lastStarted"`
+	Response          *realtime.TournamentDivisionDataResponse `json:"response"`
 }
 
-func NewClassicDivision(players []string, roundControls []*realtime.RoundControl) (*ClassicDivision, error) {
+func NewClassicDivision(players []string,
+	playerRatings *realtime.TournamentPersons,
+	roundControls []*realtime.RoundControl,
+	autoStart bool) (*ClassicDivision, error) {
 	numberOfPlayers := len(players)
-
 	numberOfRounds := len(roundControls)
+	pairingMap := make(map[string]*realtime.PlayerRoundInfo)
+
+	playersProperties := []*realtime.PlayerProperties{}
+	for i := 0; i < numberOfPlayers; i++ {
+		prop := newPlayerProperties()
+		rating, ok := playerRatings.Persons[players[i]]
+		if !ok {
+			return nil, fmt.Errorf("player in player list does not exist in division players: %s", players[i])
+		}
+		prop.Rating = rating
+		playersProperties = append(playersProperties, prop)
+	}
 
 	if numberOfPlayers < 2 || numberOfRounds < 1 {
 		pairings := newPairingMatrix(numberOfRounds, numberOfPlayers)
 		playerIndexMap := newPlayerIndexMap(players)
 		t := &ClassicDivision{Matrix: pairings,
-			Players:        players,
-			PlayerIndexMap: playerIndexMap,
-			RoundControls:  roundControls,
-			RoundStarted:   false,
-			CurrentRound:   0}
+			PairingMap:        pairingMap,
+			Players:           players,
+			PlayersProperties: playersProperties,
+			PlayerIndexMap:    playerIndexMap,
+			RoundControls:     roundControls,
+			AutoStart:         autoStart,
+			CurrentRound:      -1}
+		err := t.writeResponse(0)
+		if err != nil {
+			return nil, err
+		}
 		return t, nil
 	}
 
@@ -89,20 +112,16 @@ func NewClassicDivision(players []string, roundControls []*realtime.RoundControl
 		roundControls[i].Round = int32(i)
 	}
 
-	playersProperties := []*entity.PlayerProperties{}
-	for i := 0; i < numberOfPlayers; i++ {
-		playersProperties = append(playersProperties, newPlayerProperties())
-	}
-
 	pairings := newPairingMatrix(numberOfRounds, numberOfPlayers)
 	playerIndexMap := newPlayerIndexMap(players)
 	t := &ClassicDivision{Matrix: pairings,
+		PairingMap:        pairingMap,
 		Players:           players,
 		PlayersProperties: playersProperties,
 		PlayerIndexMap:    playerIndexMap,
 		RoundControls:     roundControls,
-		RoundStarted:      false,
-		CurrentRound:      0}
+		AutoStart:         autoStart,
+		CurrentRound:      -1}
 	if roundControls[0].PairingMethod != realtime.PairingMethod_MANUAL {
 		err := t.PairRound(0)
 		if err != nil {
@@ -120,21 +139,11 @@ func NewClassicDivision(players []string, roundControls []*realtime.RoundControl
 			}
 		}
 	}
-
+	err := t.writeResponse(0)
+	if err != nil {
+		return nil, err
+	}
 	return t, nil
-}
-
-func (t *ClassicDivision) GetPairing(player string, round int) (*entity.Pairing, error) {
-	if round >= len(t.Matrix) || round < 0 {
-		return nil, fmt.Errorf("round number out of range: %d", round)
-	}
-	roundPairings := t.Matrix[round]
-
-	playerIndex, ok := t.PlayerIndexMap[player]
-	if !ok {
-		return nil, fmt.Errorf("player does not exist in the tournament: %s", player)
-	}
-	return roundPairings[playerIndex], nil
 }
 
 func (t *ClassicDivision) SetPairing(playerOne string, playerTwo string, round int, isForfeit bool) error {
@@ -142,55 +151,48 @@ func (t *ClassicDivision) SetPairing(playerOne string, playerTwo string, round i
 		return fmt.Errorf("forfeit results require that player one and two are identical, instead have: %s, %s", playerOne, playerTwo)
 	}
 
-	playerOneInfo, err := t.GetPairing(playerOne, round)
+	playerOneOpponent, err := t.opponentOf(playerOne, round)
 	if err != nil {
 		return err
 	}
 
-	playerTwoInfo, err := t.GetPairing(playerTwo, round)
+	playerTwoOpponent, err := t.opponentOf(playerTwo, round)
 	if err != nil {
 		return err
 	}
 
-	playerOneOpponent, err := opponentOf(playerOneInfo.PlayerRoundInfo, playerOne)
-	if err != nil {
-		return err
+	if playerOneOpponent != "" {
+		err = t.clearPairingKey(playerOneOpponent, round)
+		if err != nil {
+			return err
+		}
 	}
 
-	playerTwoOpponent, err := opponentOf(playerTwoInfo.PlayerRoundInfo, playerTwo)
-	if err != nil {
-		return err
+	if playerTwoOpponent != "" {
+		err = t.clearPairingKey(playerTwoOpponent, round)
+		if err != nil {
+			return err
+		}
 	}
 
-	playerOneInfo.PlayerRoundInfo = nil
-	playerTwoInfo.PlayerRoundInfo = nil
-
-	// The GetPairing calls protect against
+	// The opponentOf calls protect against
 	// out-of-range indexes
 	playerOneProperties := t.PlayersProperties[t.PlayerIndexMap[playerOne]]
 	playerTwoProperties := t.PlayersProperties[t.PlayerIndexMap[playerTwo]]
 
-	// If playerOne was already paired, unpair their opponent
-	if playerOneOpponent != "" {
-		playerOneOpponentInfo, err := t.GetPairing(playerOneOpponent, round)
-		if err != nil {
-			return err
-		}
-		playerOneOpponentInfo.PlayerRoundInfo = nil
-	}
-
-	// If playerTwo was already paired, unpair their opponent
-	if playerTwoOpponent != "" {
-		playerTwoOpponentInfo, err := t.GetPairing(playerTwoOpponent, round)
-		if err != nil {
-			return err
-		}
-		playerTwoOpponentInfo.PlayerRoundInfo = nil
-	}
-
 	newPairing := newClassicPairing(t, playerOne, playerTwo, round)
-	playerOneInfo.PlayerRoundInfo = newPairing
-	playerTwoInfo.PlayerRoundInfo = newPairing
+	pairingKey := makePairingKey(playerOne, playerTwo, round)
+	t.PairingMap[pairingKey] = newPairing
+
+	err = t.setPairingKey(playerOne, round, pairingKey)
+	if err != nil {
+		return err
+	}
+
+	err = t.setPairingKey(playerTwo, round, pairingKey)
+	if err != nil {
+		return err
+	}
 
 	// This pairing is a bye or forfeit, the result
 	// can be submitted immediately
@@ -214,7 +216,8 @@ func (t *ClassicDivision) SetPairing(playerOne string, playerTwo string, round i
 			tgr,
 			realtime.GameEndReason_NONE,
 			round < t.CurrentRound,
-			0)
+			0,
+			"")
 		if err != nil {
 			return err
 		}
@@ -228,7 +231,10 @@ func (t *ClassicDivision) SetPairing(playerOne string, playerTwo string, round i
 			return err
 		}
 	}
-
+	err = t.writeResponse(round)
+	if err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -241,14 +247,15 @@ func (t *ClassicDivision) SubmitResult(round int,
 	p2Result realtime.TournamentGameResult,
 	reason realtime.GameEndReason,
 	amend bool,
-	gameIndex int) error {
+	gameIndex int,
+	id string) error {
 
 	// Fetch the player round records
-	pri1, err := t.GetPairing(p1, round)
+	pk1, err := t.getPairingKey(p1, round)
 	if err != nil {
 		return err
 	}
-	pri2, err := t.GetPairing(p2, round)
+	pk2, err := t.getPairingKey(p2, round)
 	if err != nil {
 		return err
 	}
@@ -258,25 +265,33 @@ func (t *ClassicDivision) SubmitResult(round int,
 		return fmt.Errorf("submitted result for a past round (%d) that is not marked as an amendment", round)
 	}
 
+	if round > t.CurrentRound && p1 != p2 {
+		return fmt.Errorf("submitted result for a future round (%d) that is not a bye or forfeit", round)
+	}
+
 	// Ensure that the pairing exists
-	if pri1.PlayerRoundInfo == nil {
+	if pk1 == "" {
 		return fmt.Errorf("submitted result for a player with a null pairing: %s round (%d)", p1, round)
 	}
 
-	if pri2.PlayerRoundInfo == nil {
+	if pk2 == "" {
 		return fmt.Errorf("submitted result for a player with a null pairing: %s round (%d)", p2, round)
 	}
 
 	// Ensure the submitted results were for players that were paired
-	if pri1.PlayerRoundInfo != pri2.PlayerRoundInfo {
-		return fmt.Errorf("submitted result for players that didn't player each other: %s (%p), %s (%p) round (%d)", p1, pri1.PlayerRoundInfo, p2, pri2.PlayerRoundInfo, round)
+	if pk1 != pk2 {
+		log.Debug().Interface("pr1", pk1).Interface("pri2", pk2).Msg("not-play")
+		return fmt.Errorf("submitted result for players that didn't play each other: %s (%s), %s (%s) round (%d)", p1, pk1, p2, pk2, round)
 	}
 
-	pairing := pri1.PlayerRoundInfo
+	pairing, ok := t.PairingMap[pk1]
+	if !ok {
+		return fmt.Errorf("pairing does not exist in the pairing map: %s", pk1)
+	}
 	pairingMethod := t.RoundControls[round].PairingMethod
 
 	if pairing.Games == nil {
-		return fmt.Errorf("submitted result for a pairing with no initialized games: %s (%p), %s (%p) round (%d)", p1, pri1.PlayerRoundInfo, p2, pri2.PlayerRoundInfo, round)
+		return fmt.Errorf("submitted result for a pairing with no initialized games: %s (%s), %s (%s) round (%d)", p1, pk1, p2, pk2, round)
 	}
 
 	// For Elimination tournaments only.
@@ -328,6 +343,7 @@ func (t *ClassicDivision) SubmitResult(round int,
 		pairing.Games[gameIndex].Results[p1Index] = p1Result
 		pairing.Games[gameIndex].Results[1-p1Index] = p2Result
 		pairing.Games[gameIndex].GameEndReason = reason
+		pairing.Games[gameIndex].Id = id
 
 		// Get elimination outcomes will take care of the indexing
 		// for us because the newOutcomes are aligned with the data
@@ -344,6 +360,7 @@ func (t *ClassicDivision) SubmitResult(round int,
 		pairing.Games[0].Results[p1Index] = p1Result
 		pairing.Games[0].Results[1-p1Index] = p2Result
 		pairing.Games[0].GameEndReason = reason
+		pairing.Games[0].Id = id
 		pairing.Outcomes[p1Index] = p1Result
 		pairing.Outcomes[1-p1Index] = p2Result
 	}
@@ -360,22 +377,34 @@ func (t *ClassicDivision) SubmitResult(round int,
 	// Only pair if this round is complete and the tournament
 	// is not over. Don't pair for standings independent pairings since those pairings
 	// were made when the tournament was created.
-	if roundComplete {
-		if !amend {
-			t.CurrentRound = round + 1
-			t.RoundStarted = false
-		}
-		if t.CurrentRound == round+1 &&
-			!t.RoundStarted &&
-			!finished &&
-			!pair.IsStandingsIndependent(t.RoundControls[t.CurrentRound].PairingMethod) {
-			err = t.PairRound(t.CurrentRound)
+	if roundComplete && !finished && !amend {
+		if !pair.IsStandingsIndependent(t.RoundControls[round+1].PairingMethod) {
+			err = t.PairRound(round + 1)
 			if err != nil {
+				// Should probably use defer
+				errWrite := t.writeResponse(round)
+				if errWrite != nil {
+					return errWrite
+				}
+				return err
+			}
+		}
+		if t.AutoStart {
+			err = t.StartRound()
+			if err != nil {
+				// Should probably use defer
+				errWrite := t.writeResponse(round)
+				if errWrite != nil {
+					return errWrite
+				}
 				return err
 			}
 		}
 	}
-
+	err = t.writeResponse(round)
+	if err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -389,7 +418,7 @@ func (t *ClassicDivision) PairRound(round int) error {
 	// amendment. Undo all the pairings so byes can be
 	// properly assigned (bye assignment checks for nil pairing).
 	for i := 0; i < len(roundPairings); i++ {
-		roundPairings[i].PlayerRoundInfo = nil
+		t.clearPairingKey(t.Players[i], round)
 	}
 
 	standingsRound := round
@@ -455,9 +484,9 @@ func (t *ClassicDivision) PairRound(round int) error {
 		// Player order might be a different order than the players in roundPairings
 		playerIndex := t.PlayerIndexMap[playerOrder[i]]
 
-		if roundPairings[playerIndex].PlayerRoundInfo == nil {
+		if roundPairings[playerIndex] == "" {
 
-			var opponentIndex int
+			var opponentIndex int32
 			if pairings[i] < 0 {
 				opponentIndex = playerIndex
 			} else if pairings[i] >= l {
@@ -471,7 +500,9 @@ func (t *ClassicDivision) PairRound(round int) error {
 			opponentName := t.Players[opponentIndex]
 
 			if pairingMethod == realtime.PairingMethod_ELIMINATION && round > 0 && i >= l>>round {
-				roundPairings[playerIndex].PlayerRoundInfo = newEliminatedPairing(playerName, opponentName)
+				pairingKey := makePairingKey(playerName, opponentName, round)
+				t.PairingMap[pairingKey] = newEliminatedPairing(playerName, opponentName)
+				roundPairings[playerIndex] = pairingKey
 			} else {
 				err = t.SetPairing(playerName, opponentName, round, false)
 				if err != nil {
@@ -486,20 +517,22 @@ func (t *ClassicDivision) PairRound(round int) error {
 func (t *ClassicDivision) AddPlayers(persons *realtime.TournamentPersons) error {
 
 	// Redundant players have already been checked for
-	for personId, _ := range persons.Persons {
+	for personId, personRating := range persons.Persons {
 		t.Players = append(t.Players, personId)
-		t.PlayersProperties = append(t.PlayersProperties, newPlayerProperties())
-		t.PlayerIndexMap[personId] = len(t.Players) - 1
+		prop := newPlayerProperties()
+		prop.Rating = personRating
+		t.PlayersProperties = append(t.PlayersProperties, prop)
+		t.PlayerIndexMap[personId] = int32(len(t.Players) - 1)
 	}
 
 	for i := 0; i < len(t.Matrix); i++ {
 		for _, _ = range persons.Persons {
-			t.Matrix[i] = append(t.Matrix[i], &entity.Pairing{})
+			t.Matrix[i] = append(t.Matrix[i], "")
 		}
 	}
 
 	for i := 0; i < len(t.Matrix); i++ {
-		if i < t.CurrentRound || (i == t.CurrentRound && t.RoundStarted) {
+		if i <= t.CurrentRound {
 			for personId, _ := range persons.Persons {
 				// Set the pairing
 				// This also automatically submits a forfeit result
@@ -518,6 +551,10 @@ func (t *ClassicDivision) AddPlayers(persons *realtime.TournamentPersons) error 
 			}
 		}
 	}
+	err := t.writeResponse(t.CurrentRound)
+	if err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -528,7 +565,7 @@ func (t *ClassicDivision) RemovePlayers(persons *realtime.TournamentPersons) err
 			return fmt.Errorf("player %s does not exist in"+
 				" classic division RemovePlayers", personId)
 		}
-		if playerIndex < 0 || playerIndex >= len(t.Players) {
+		if playerIndex < 0 || int(playerIndex) >= len(t.Players) {
 			return fmt.Errorf("player index %d for player %s is"+
 				" out of range in classic division RemovePlayers", playerIndex, personId)
 		}
@@ -550,7 +587,7 @@ func (t *ClassicDivision) RemovePlayers(persons *realtime.TournamentPersons) err
 	}
 
 	for i := t.CurrentRound; i < len(t.Matrix); i++ {
-		if i > t.CurrentRound || (i == t.CurrentRound && !t.RoundStarted) {
+		if i > t.CurrentRound {
 			pm := t.RoundControls[i].PairingMethod
 			if (i == t.CurrentRound || pair.IsStandingsIndependent(pm)) && pm != realtime.PairingMethod_MANUAL {
 				err := t.PairRound(i)
@@ -560,7 +597,10 @@ func (t *ClassicDivision) RemovePlayers(persons *realtime.TournamentPersons) err
 			}
 		}
 	}
-
+	err := t.writeResponse(t.CurrentRound)
+	if err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -583,8 +623,9 @@ func (t *ClassicDivision) GetStandings(round int) ([]*realtime.PlayerStanding, e
 		spread = 0
 		player = t.Players[i]
 		for j := 0; j <= round; j++ {
-			pairing := t.Matrix[j][i].PlayerRoundInfo
-			if pairing != nil && pairing.Players != nil {
+			pairingKey := t.Matrix[j][i]
+			pairing, ok := t.PairingMap[pairingKey]
+			if ok && pairing != nil && pairing.Players != nil {
 				playerIndex := 0
 				if pairing.Players[1] == player {
 					playerIndex = 1
@@ -658,12 +699,16 @@ func (t *ClassicDivision) IsRoundReady(round int) (bool, error) {
 		return false, fmt.Errorf("round number out of range: %d", round)
 	}
 	// Check that everyone is paired
-	for _, pairing := range t.Matrix[round] {
-		if pairing.PlayerRoundInfo == nil {
+	for _, pairingKey := range t.Matrix[round] {
+		if pairingKey == "" {
 			return false, nil
 		}
+		_, ok := t.PairingMap[pairingKey]
+		if !ok {
+			return false, fmt.Errorf("pairing does not exist in the pairing map (IsRoundReady): %s", pairingKey)
+		}
 	}
-	// Check that all previous round are complete
+	// Check that all previous rounds are complete
 	for i := 0; i <= round-1; i++ {
 		complete, err := t.IsRoundComplete(i)
 		if err != nil || !complete {
@@ -674,68 +719,118 @@ func (t *ClassicDivision) IsRoundReady(round int) (bool, error) {
 }
 
 func (t *ClassicDivision) StartRound() error {
-	if t.RoundStarted {
-		return fmt.Errorf("round %d has already started", t.CurrentRound)
+	if t.CurrentRound >= 0 {
+		roundComplete, err := t.IsRoundComplete(t.CurrentRound)
+		if err != nil {
+			return err
+		}
+		if !roundComplete {
+			return fmt.Errorf("cannot start the next round as round %d is not complete", t.CurrentRound)
+		}
+		isFinished, err := t.IsFinished()
+		if err != nil {
+			return err
+		}
+		if isFinished {
+			// Simply do nothing
+			return nil
+		}
+	} else {
+		if len(t.Players) < 2 || len(t.Matrix) < 1 {
+			return errors.New("cannot start the the tournament with less than 2 players or less than 1 round")
+		}
 	}
-	ready, err := t.IsRoundReady(t.CurrentRound)
+
+	ready, err := t.IsRoundReady(t.CurrentRound + 1)
 	if err != nil {
 		return err
 	}
 	if !ready {
-		return fmt.Errorf("round %d is not ready", t.CurrentRound)
+		return fmt.Errorf("cannot start round %d because it is not ready", t.CurrentRound+1)
 	}
-	t.RoundStarted = true
+
+	t.CurrentRound = t.CurrentRound + 1
+
+	err = t.writeResponse(t.CurrentRound)
+	if err != nil {
+		return err
+	}
 	return nil
 }
 
 func (t *ClassicDivision) SetLastStarted(ls *realtime.TournamentRoundStarted) error {
 	t.LastStarted = ls
+	err := t.writeResponse(t.CurrentRound)
+	if err != nil {
+		return err
+	}
 	return nil
 }
 
-func (t *ClassicDivision) SetReadyForGame(playerID, connID string, round, gameIndex int, unready bool) ([]string, error) {
+// SetReadyForGame sets the playerID with the given connID to be ready for the game
+// with the given 0-based round (and gameIndex, optionally). If `unready` is
+// passed in, we make the player unready.
+// It returns a list of playerId:username:connIDs involved in the game, a boolean saying if they're ready,
+// and an optional error.
+func (t *ClassicDivision) SetReadyForGame(playerID, connID string, round, gameIndex int, unready bool) ([]string, bool, error) {
 	if round >= len(t.Matrix) || round < 0 {
-		return nil, fmt.Errorf("round number out of range: %d", round)
+		return nil, false, fmt.Errorf("round number out of range: %d", round)
 	}
 	toSet := connID
 	if unready {
 		toSet = ""
 	}
+	if t.CurrentRound != round {
+		return nil, false, errors.New("wrong round number")
+	}
 	// gameIndex is ignored for ClassicDivision?
-	foundPairing := -1
-	for pairingIndex, pairing := range t.Matrix[round] {
-		if pairing.PlayerRoundInfo == nil {
-			continue
+	pairingKey, err := t.getPairingKey(playerID, round)
+	if err != nil {
+		return nil, false, err
+	}
+
+	if pairingKey != "" {
+		pairing, ok := t.PairingMap[pairingKey]
+		if !ok {
+			return nil, false, fmt.Errorf("pairing does not exist in the pairing map (SetReadyForGame): %s", pairingKey)
 		}
-		for idx := range pairing.PlayerRoundInfo.Players {
-			if playerID == pairing.PlayerRoundInfo.Players[idx] {
-				pairing.PlayerRoundInfo.ReadyStates[idx] = toSet
-				foundPairing = pairingIndex
+
+		for idx := range pairing.Players {
+			if playerID == pairing.Players[idx] {
+				pairing.ReadyStates[idx] = toSet
 			}
 		}
-	}
-	if foundPairing != -1 {
-		// Check to see if both players are ready.
-		pairing := t.Matrix[round][foundPairing]
 
-		if pairing.PlayerRoundInfo.ReadyStates[0] != "" && pairing.PlayerRoundInfo.ReadyStates[1] != "" {
-			return []string{
-				pairing.PlayerRoundInfo.Players[0] + ":" + pairing.PlayerRoundInfo.ReadyStates[0],
-				pairing.PlayerRoundInfo.Players[1] + ":" + pairing.PlayerRoundInfo.ReadyStates[1],
-			}, nil
+		// Check to see if both players are ready.
+		involvedPlayers := []string{
+			pairing.Players[0] + ":" + pairing.ReadyStates[0],
+			pairing.Players[1] + ":" + pairing.ReadyStates[1],
 		}
+		bothReady := pairing.ReadyStates[0] != "" && pairing.ReadyStates[1] != ""
+		err = t.writeResponse(t.CurrentRound)
+		if err != nil {
+			return nil, false, err
+		}
+		return involvedPlayers, bothReady, nil
 	}
-	return nil, nil
+	err = t.writeResponse(t.CurrentRound)
+	if err != nil {
+		return nil, false, err
+	}
+	return nil, false, nil
 }
 
 func (t *ClassicDivision) IsRoundComplete(round int) (bool, error) {
 	if round >= len(t.Matrix) || round < 0 {
 		return false, fmt.Errorf("round number out of range: %d", round)
 	}
-	for _, pairing := range t.Matrix[round] {
-		if pairing.PlayerRoundInfo == nil ||
-			pairing.PlayerRoundInfo.Outcomes[0] == realtime.TournamentGameResult_NO_RESULT ||
-			pairing.PlayerRoundInfo.Outcomes[1] == realtime.TournamentGameResult_NO_RESULT {
+	for _, pairingKey := range t.Matrix[round] {
+		pairing, ok := t.PairingMap[pairingKey]
+		if !ok {
+			return false, nil
+		}
+		if pairing.Outcomes[0] == realtime.TournamentGameResult_NO_RESULT ||
+			pairing.Outcomes[1] == realtime.TournamentGameResult_NO_RESULT {
 			return false, nil
 		}
 	}
@@ -743,34 +838,51 @@ func (t *ClassicDivision) IsRoundComplete(round int) (bool, error) {
 }
 
 func (t *ClassicDivision) IsFinished() (bool, error) {
-	return t.IsRoundComplete(len(t.Matrix) - 1)
+	if len(t.Matrix) < 1 {
+		return false, nil
+	}
+	complete, err := t.IsRoundComplete(len(t.Matrix) - 1)
+	if err != nil {
+		return false, err
+	}
+	return complete, nil
+}
+
+func (t *ClassicDivision) IsStarted() bool {
+	return t.CurrentRound >= 0
 }
 
 func (t *ClassicDivision) ToResponse() (*realtime.TournamentDivisionDataResponse, error) {
+	return t.Response, nil
+}
+
+func (t *ClassicDivision) writeResponse(round int) error {
+	if len(t.Matrix) > 0 && (round >= len(t.Matrix) || round < 0) {
+		return fmt.Errorf("round number out of range (writeResponse): %d", round)
+	}
+	if t.Response == nil {
+		t.Response = &realtime.TournamentDivisionDataResponse{Standings: make(map[int32]*realtime.RoundStandings)}
+	}
 
 	realtimeTournamentControls := &realtime.TournamentControls{RoundControls: []*realtime.RoundControl{}}
 	for i := 0; i < len(t.RoundControls); i++ {
 		realtimeTournamentControls.RoundControls = append(realtimeTournamentControls.RoundControls, t.RoundControls[i])
 	}
 
-	division := make(map[string]*realtime.PlayerRoundInfo)
+	division := []string{}
 
 	for i := 0; i < len(t.Matrix); i++ {
 		for j := 0; j < len(t.Matrix[i]); j++ {
-			pairing := t.Matrix[i][j]
-			if pairing.PlayerRoundInfo != nil {
-				division[fmt.Sprintf("%d:%s", i, pairing.PlayerRoundInfo.Players[0])] = pairing.PlayerRoundInfo
-				division[fmt.Sprintf("%d:%s", i, pairing.PlayerRoundInfo.Players[1])] = pairing.PlayerRoundInfo
-			}
+			division = append(division, t.Matrix[i][j])
 		}
 	}
 
 	standingsResponse := []*realtime.PlayerStanding{}
 
 	if len(t.Matrix) > 0 && len(t.Players) > 0 {
-		standings, err := t.GetStandings(t.CurrentRound)
+		standings, err := t.GetStandings(round)
 		if err != nil {
-			return nil, err
+			return err
 		}
 
 		for i := 0; i < len(standings); i++ {
@@ -788,12 +900,22 @@ func (t *ClassicDivision) ToResponse() (*realtime.TournamentDivisionDataResponse
 		playersProperties = append(playersProperties, &realtime.PlayerProperties{Removed: t.PlayersProperties[i].Removed})
 	}
 
-	return &realtime.TournamentDivisionDataResponse{Players: t.Players,
-		Controls:          realtimeTournamentControls,
-		Division:          division,
-		Standings:         standingsResponse,
-		PlayersProperties: playersProperties,
-		CurrentRound:      int32(t.CurrentRound)}, nil
+	isFinished, err := t.IsFinished()
+	if err != nil {
+		return err
+	}
+
+	t.Response.Players = t.Players
+	t.Response.Controls = realtimeTournamentControls
+	t.Response.Division = division
+	t.Response.PairingMap = t.PairingMap
+	t.Response.PlayerIndexMap = t.PlayerIndexMap
+	t.Response.PlayersProperties = playersProperties
+	t.Response.CurrentRound = int32(t.CurrentRound)
+	t.Response.Finished = isFinished
+	t.Response.Standings[int32(round)] = &realtime.RoundStandings{Standings: standingsResponse}
+
+	return nil
 }
 
 func (t *ClassicDivision) Serialize() (datatypes.JSON, error) {
@@ -804,12 +926,12 @@ func (t *ClassicDivision) Serialize() (datatypes.JSON, error) {
 	return json, err
 }
 
-func newPairingMatrix(numberOfRounds int, numberOfPlayers int) [][]*entity.Pairing {
-	pairings := [][]*entity.Pairing{}
+func newPairingMatrix(numberOfRounds int, numberOfPlayers int) [][]string {
+	pairings := [][]string{}
 	for i := 0; i < numberOfRounds; i++ {
-		roundPairings := []*entity.Pairing{}
+		roundPairings := []string{}
 		for j := 0; j < numberOfPlayers; j++ {
-			roundPairings = append(roundPairings, &entity.Pairing{})
+			roundPairings = append(roundPairings, "")
 		}
 		pairings = append(pairings, roundPairings)
 	}
@@ -825,7 +947,8 @@ func newClassicPairing(t *ClassicDivision,
 	for i := 0; i < int(t.RoundControls[round].GamesPerRound); i++ {
 		games = append(games, &realtime.TournamentGame{Scores: []int32{0, 0},
 			Results: []realtime.TournamentGameResult{realtime.TournamentGameResult_NO_RESULT,
-				realtime.TournamentGameResult_NO_RESULT}})
+				realtime.TournamentGameResult_NO_RESULT},
+			Id: ""})
 	}
 
 	playerGoingFirst := playerOne
@@ -864,20 +987,25 @@ func newClassicPairing(t *ClassicDivision,
 
 func getPlayerFS(t *ClassicDivision, player string, round int) []int {
 
+	playerMatrixIndex := t.PlayerIndexMap[player]
+
 	fs := []int{0, 0}
 	for i := 0; i <= round; i++ {
-		pri := t.Matrix[i][t.PlayerIndexMap[player]].PlayerRoundInfo
-		if pri != nil {
-			playerIndex := 0
-			if pri.Players[1] == player {
-				playerIndex = 1
-			}
-			outcome := pri.Outcomes[playerIndex]
-			if outcome == realtime.TournamentGameResult_NO_RESULT ||
-				outcome == realtime.TournamentGameResult_WIN ||
-				outcome == realtime.TournamentGameResult_LOSS ||
-				outcome == realtime.TournamentGameResult_DRAW {
-				fs[playerIndex]++
+		pairingKey := t.Matrix[i][playerMatrixIndex]
+		if pairingKey != "" {
+			pairing, ok := t.PairingMap[pairingKey]
+			if ok {
+				playerIndex := 0
+				if pairing.Players[1] == player {
+					playerIndex = 1
+				}
+				outcome := pairing.Outcomes[playerIndex]
+				if outcome == realtime.TournamentGameResult_NO_RESULT ||
+					outcome == realtime.TournamentGameResult_WIN ||
+					outcome == realtime.TournamentGameResult_LOSS ||
+					outcome == realtime.TournamentGameResult_DRAW {
+					fs[playerIndex]++
+				}
 			}
 		}
 	}
@@ -889,16 +1017,16 @@ func newEliminatedPairing(playerOne string, playerTwo string) *realtime.PlayerRo
 		realtime.TournamentGameResult_ELIMINATED}}
 }
 
-func newPlayerIndexMap(players []string) map[string]int {
-	m := make(map[string]int)
+func newPlayerIndexMap(players []string) map[string]int32 {
+	m := make(map[string]int32)
 	for i, player := range players {
-		m[player] = i
+		m[player] = int32(i)
 	}
 	return m
 }
 
-func newPlayerProperties() *entity.PlayerProperties {
-	return &entity.PlayerProperties{Removed: false}
+func newPlayerProperties() *realtime.PlayerProperties {
+	return &realtime.PlayerProperties{Removed: false}
 }
 
 func getRepeats(t *ClassicDivision, round int) (map[string]int, error) {
@@ -908,10 +1036,11 @@ func getRepeats(t *ClassicDivision, round int) (map[string]int, error) {
 	repeats := make(map[string]int)
 	for i := 0; i <= round; i++ {
 		roundPairings := t.Matrix[i]
-		for _, pairing := range roundPairings {
-			if pairing.PlayerRoundInfo != nil && pairing.PlayerRoundInfo.Players != nil {
-				playerOne := pairing.PlayerRoundInfo.Players[0]
-				playerTwo := pairing.PlayerRoundInfo.Players[1]
+		for _, pairingKey := range roundPairings {
+			pairing, ok := t.PairingMap[pairingKey]
+			if ok && pairing.Players != nil {
+				playerOne := pairing.Players[0]
+				playerTwo := pairing.Players[1]
 				if playerOne != playerTwo {
 					key := pair.GetRepeatKey(playerOne, playerTwo)
 					repeats[key]++
@@ -994,10 +1123,77 @@ func emptyRecord() []int {
 	return record
 }
 
-func opponentOf(pairing *realtime.PlayerRoundInfo, player string) (string, error) {
-	if pairing == nil {
+func (t *ClassicDivision) getPairing(player string, round int) (*realtime.PlayerRoundInfo, error) {
+	pk, err := t.getPairingKey(player, round)
+	if err != nil {
+		return nil, err
+	}
+	pairing, ok := t.PairingMap[pk]
+	if !ok {
+		return nil, fmt.Errorf("pairing does not exist in the pairing map: %s", pk)
+	}
+	return pairing, nil
+}
+
+func (t *ClassicDivision) getPairingKey(player string, round int) (string, error) {
+	if round >= len(t.Matrix) || round < 0 {
+		return "", fmt.Errorf("round number out of range: %d", round)
+	}
+
+	playerIndex, ok := t.PlayerIndexMap[player]
+	if !ok {
+		return "", fmt.Errorf("player does not exist in the division: %s", player)
+	}
+	return t.Matrix[round][playerIndex], nil
+}
+
+func (t *ClassicDivision) setPairingKey(player string, round int, pairingKey string) error {
+	if round >= len(t.Matrix) || round < 0 {
+		return fmt.Errorf("round number out of range: %d", round)
+	}
+
+	playerIndex, ok := t.PlayerIndexMap[player]
+	if !ok {
+		return fmt.Errorf("player does not exist in the division: %s", player)
+	}
+	t.Matrix[round][playerIndex] = pairingKey
+	return nil
+}
+
+func makePairingKey(playerOne string, playerTwo string, round int) string {
+	if playerTwo < playerOne {
+		playerOne, playerTwo = playerTwo, playerOne
+	}
+	return playerOne + "::" + playerTwo + "::" + fmt.Sprintf("%d", round)
+}
+
+func (t *ClassicDivision) clearPairingKey(player string, round int) error {
+	if round >= len(t.Matrix) || round < 0 {
+		return fmt.Errorf("round number out of range: %d", round)
+	}
+
+	playerIndex, ok := t.PlayerIndexMap[player]
+	if !ok {
+		return fmt.Errorf("player does not exist in the tournament: %s", player)
+	}
+	pairingKey := t.Matrix[round][playerIndex]
+	delete(t.PairingMap, pairingKey)
+	t.Matrix[round][playerIndex] = ""
+	return nil
+}
+
+func (t *ClassicDivision) opponentOf(player string, round int) (string, error) {
+	pairingKey, err := t.getPairingKey(player, round)
+
+	if err != nil {
+		return "", err
+	}
+
+	pairing, ok := t.PairingMap[pairingKey]
+	if !ok {
 		return "", nil
 	}
+
 	if player != pairing.Players[0] && player != pairing.Players[1] {
 		return "", fmt.Errorf("player %s does not exist in the pairing (%s, %s)",
 			player,

@@ -10,9 +10,8 @@ import (
 )
 
 type DivisionManager interface {
-	GetPairing(string, int) (*Pairing, error)
 	SubmitResult(int, string, string, int, int, realtime.TournamentGameResult,
-		realtime.TournamentGameResult, realtime.GameEndReason, bool, int) error
+		realtime.TournamentGameResult, realtime.GameEndReason, bool, int, string) error
 	PairRound(int) error
 	GetStandings(int) ([]*realtime.PlayerStanding, error)
 	SetPairing(string, string, int, bool) error
@@ -20,10 +19,11 @@ type DivisionManager interface {
 	RemovePlayers(*realtime.TournamentPersons) error
 	IsRoundReady(int) (bool, error)
 	IsRoundComplete(int) (bool, error)
+	IsStarted() bool
 	IsFinished() (bool, error)
 	StartRound() error
 	ToResponse() (*realtime.TournamentDivisionDataResponse, error)
-	SetReadyForGame(userID, connID string, round, gameIndex int, unready bool) ([]string, error)
+	SetReadyForGame(userID, connID string, round, gameIndex int, unready bool) ([]string, bool, error)
 	SetLastStarted(*realtime.TournamentRoundStarted) error
 	Serialize() (datatypes.JSON, error)
 }
@@ -35,8 +35,11 @@ const (
 	TypeStandard CompetitionType = "tournament"
 	// TypeClub is a club/clubhouse
 	TypeClub = "club"
-	// TypeClubSession is spawned from a club
-	TypeClubSession = "clubsession"
+	// TypeChild is spawned from a club or tournament
+	TypeChild = "child"
+	// TypeLegacy is a tournament, but in club/clubhouse mode. The only different
+	// from a clubhouse is that it can have a /tournament URL.
+	TypeLegacy = "legacy"
 )
 
 const (
@@ -51,16 +54,6 @@ const (
 	// It's gonna be lit:
 	ArenaTournamentType
 )
-
-// This type is a struct in anticipation of
-// future additional properties
-type PlayerProperties struct {
-	Removed bool
-}
-
-type Pairing struct {
-	PlayerRoundInfo *realtime.PlayerRoundInfo `json:"pri"`
-}
 
 type TournamentDivision struct {
 	Players            *realtime.TournamentPersons  `json:"players"`
@@ -82,6 +75,7 @@ type Tournament struct {
 	ExecutiveDirector string                         `json:"execDirector"`
 	Directors         *realtime.TournamentPersons    `json:"directors"`
 	IsStarted         bool                           `json:"started"`
+	IsFinished        bool                           `json:"finished"`
 	Divisions         map[string]*TournamentDivision `json:"divs"`
 	DefaultSettings   *realtime.GameRequest          `json:"settings"`
 	Type              CompetitionType                `json:"type"`

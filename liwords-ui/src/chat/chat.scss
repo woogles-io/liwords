@@ -14,7 +14,7 @@ p {
   font-family: $font-default;
   .ant-card.chat {
     height: $main-container-width-tablet + 60px;
-    margin-bottom: 24px;
+    margin-bottom: 12px;
     .entities {
 
       overflow-y: auto;
@@ -313,6 +313,11 @@ p {
       margin-bottom: 12px;
     }
   }
+  .competitor .game-table {
+    .chat-area .ant-card.chat {
+      height: 290px;
+    }
+  }
   .chat-area {
     order: initial;
     display: block;
@@ -329,12 +334,22 @@ p {
       height: 495px;
     }
   }
+  .competitor .game-table {
+    .chat-area .ant-card.chat {
+      height: 430px;
+    }
+  }
 }
 
 @media (min-height: $screen-min-height-desktop-max) and (min-width: $screen-desktop-min) {
   .game-table {
     .chat-area .ant-card.chat {
       height: 564px;
+    }
+  }
+  .competitor .game-table {
+    .chat-area .ant-card.chat {
+      height: 499px;
     }
   }
 }

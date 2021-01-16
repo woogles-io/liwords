@@ -26,9 +26,12 @@ import { PlayerOrder } from './constants';
 import { PoolFormatType } from '../constants/pool_formats';
 import { LoginState, LoginStateReducer } from './login_state';
 import { EphemeralTile } from '../utils/cwgame/common';
-import { pageSize } from '../tournament/recent_game';
 import { ActiveChatChannels } from '../gen/api/proto/user_service/user_service_pb';
-import { defaultTournamentState, TournamentState } from '../tournament/state';
+import {
+  defaultTournamentState,
+  TournamentReducer,
+  TournamentState,
+} from './reducers/tournament_reducer';
 
 export enum ChatEntityType {
   UserChat,
@@ -115,7 +118,7 @@ type PresenceStoreData = {
 
 type TournamentStoreData = {
   tournamentContext: TournamentState;
-  setTournamentContext: React.Dispatch<React.SetStateAction<TournamentState>>;
+  dispatchTournamentContext: (action: Action) => void;
 };
 
 type GameEndMessageStoreData = {
@@ -182,9 +185,6 @@ const LobbyContext = createContext<LobbyStoreData>({
     soughtGames: [],
     activeGames: [],
     matchRequests: [],
-    tourneyGames: [],
-    gamesPageSize: pageSize,
-    gamesOffset: 0,
   },
   dispatchLobbyContext: defaultFunction,
 });
@@ -257,7 +257,7 @@ const PresenceContext = createContext<PresenceStoreData>({
 
 const TournamentContext = createContext<TournamentStoreData>({
   tournamentContext: defaultTournamentState,
-  setTournamentContext: defaultFunction,
+  dispatchTournamentContext: defaultFunction,
 });
 
 const [GameEndMessageContext, ExaminableGameEndMessageContext] = Array.from(
@@ -566,9 +566,6 @@ const RealStore = ({ children, ...props }: Props) => {
     soughtGames: [],
     activeGames: [],
     matchRequests: [],
-    tourneyGames: [],
-    gamesPageSize: pageSize,
-    gamesOffset: 0,
   });
   const dispatchLobbyContext = useCallback(
     (action) => setLobbyContext((state) => LobbyReducer(state, action)),
@@ -589,6 +586,11 @@ const RealStore = ({ children, ...props }: Props) => {
 
   const [tournamentContext, setTournamentContext] = useState(
     defaultTournamentState
+  );
+  const dispatchTournamentContext = useCallback(
+    (action) =>
+      setTournamentContext((state) => TournamentReducer(state, action)),
+    []
   );
 
   const [currentLagMs, setCurrentLagMs] = useState(NaN);
@@ -715,9 +717,9 @@ const RealStore = ({ children, ...props }: Props) => {
   const tournamentStateStore = useMemo(
     () => ({
       tournamentContext,
-      setTournamentContext,
+      dispatchTournamentContext,
     }),
-    [tournamentContext, setTournamentContext]
+    [tournamentContext, dispatchTournamentContext]
   );
   const lagStore = useMemo(
     () => ({

@@ -1,0 +1,194 @@
+@import '../base';
+
+.pairings-container {
+  padding: 16px;
+  .ant-table {
+    margin-top: 6px;
+    td {
+      padding: 12px 6px;
+    }
+    td.ant-table-cell {
+      &.players {
+        width: 180px;
+      }
+      &.wl {
+        width: 60px;
+      }
+      &.actions {
+        text-align: right;
+      }
+    }
+  }
+  .round-options {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    button.ant-btn {
+      margin: 0;
+    }
+  }
+  .ant-tag-bye, ,ant-tag-removed {
+    margin: 0 12px;
+    top: -1px;
+    position: relative;
+  }
+
+  .single-pairing {
+    &.mine {
+      &.ROUND_OPEN.current, &.ROUND_OPPONENT_WAITING.current  {
+        @include colorModed() {
+          background: m($primary-light);
+        }
+      }
+      &.ROUND_LATE.current  {
+        @include colorModed() {
+          background: m($timer-out-light);
+        }
+      }
+      &.ROUND_READY.current {
+        @include colorModed() {
+          background: m($timer-light);
+        }
+      }
+    }
+  }
+
+  .ant-select {
+    width: 200px;
+    @include colorModed() {
+      background: m($background);
+      color: m($gray-extreme);
+    }
+    .ant-select-arrow {
+      @include colorModed() {
+        color: m($gray-medium);
+      }
+    }
+    .ant-select-selection-placeholder {
+      z-index: 1;
+      font-weight: 400;
+      opacity: 0.8;
+      @include colorModed() {
+        color: m($gray-medium);
+      }
+    }
+    input, .ant-select-selector {
+      @include colorModed() {
+        background: m($card-background);
+        color: m($gray-extreme);
+      }
+    }
+  }
+}
+
+.ant-table-wrapper.standings {
+  margin: 15px;
+  .rank, .player {
+    font-weight: 700;
+  }
+  .spread {
+    text-align: right;
+  }
+}
+
+.ant-table-wrapper.standings, .ant-table-wrapper.pairings {
+  .ant-table-placeholder {
+    td {
+      padding: 18px 0;
+      @include colorModed() {
+        border-color: m($gray-subtle);
+      }
+      border: 1px solid;
+      border-left: 0;
+      border-right: 0;
+    }
+  }
+  .ant-table-empty {
+    thead {
+      display: none;
+    }
+  }
+}
+.ant-card.paired-mode {
+  padding-bottom: 64px;
+  .ant-card-body {
+    max-height: 100%;
+    overflow-y: auto;
+  }
+  th.ant-table-cell {
+    @include colorModed() {
+      color: m($gray-medium);
+    }
+  }
+  .ant-card-actions {
+    position: absolute;
+    bottom: 0;
+    width: 100%;
+    height: 64px;
+    background: transparent;
+    @include colorModed() {
+      border-top: 1px solid m($off-background);
+    }
+    li {
+      margin: 0;
+      height: 100%;
+      border: 0;
+      font-size: 14px;
+      span {
+        transition: none !important;
+        font-size: inherit;
+        width: 100%;
+        height: 100%;
+      }
+      .anticon {
+        width: 36px;
+        height:36px;
+        border-radius: 50%;
+        margin: 0 15px;
+        display: flex;
+        font-size: 16px;
+        align-items: center;
+        justify-content: space-around;
+        @include colorModed() {
+          background: m($card-background);
+          border: 1px solid m($primary-dark);
+        }
+      }
+      div {
+        display: flex;
+        cursor: pointer;
+        align-items: center;
+        justify-content: center;
+        font-weight: 700;
+        @include colorModed() {
+          color: m($primary-dark);
+        }
+        width: 100%;
+        height: 100%;
+      }
+      &:nth-child(2) {
+        font-size: 20px;
+        @include colorModed() {
+          background: m($primary-light);
+        }
+        div {
+          cursor: normal;
+          @include colorModed() {
+            color: m($gray-extreme);
+          }
+        }
+      }
+      &:nth-child(1) {
+        div {
+          padding-right: 12%;
+        }
+      }
+      &:nth-child(3) {
+        div {
+          padding-left: 12%;
+        }
+      }
+    }
+  }
+
+}

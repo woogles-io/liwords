@@ -19,51 +19,52 @@ import {
   useTournamentStoreContext,
 } from './store';
 import {
-  MessageType,
-  SeekRequest,
-  ErrorMessage,
-  ServerMessage,
-  NewGameEvent,
-  GameHistoryRefresher,
-  MessageTypeMap,
-  MatchRequest,
-  SoughtGameProcessEvent,
-  ClientGameplayEvent,
-  ServerGameplayEvent,
-  GameEndedEvent,
-  ServerChallengeResultEvent,
-  SeekRequests,
-  TimedOut,
-  GameDeletion,
-  MatchRequests,
-  DeclineMatchRequest,
   ChatMessage,
-  UserPresence,
-  UserPresences,
-  ReadyForGame,
+  ClientGameplayEvent,
+  DeclineMatchRequest,
+  ErrorMessage,
+  FullTournamentDivisions,
+  GameDeletion,
+  GameEndedEvent,
+  GameHistoryRefresher,
   LagMeasurement,
+  MatchRequest,
   MatchRequestCancellation,
-  TournamentGameEndedEvent,
+  MatchRequests,
+  MessageType,
+  MessageTypeMap,
+  NewGameEvent,
+  ReadyForGame,
+  ReadyForTournamentGame,
   RematchStartedEvent,
+  SeekRequest,
+  SeekRequests,
+  ServerChallengeResultEvent,
+  ServerGameplayEvent,
+  ServerMessage,
+  SoughtGameProcessEvent,
+  TimedOut,
   TournamentDataResponse,
   TournamentDivisionDataResponse,
   TournamentDivisionDeletedResponse,
-  FullTournamentDivisions,
-  ReadyForTournamentGame,
+  TournamentGameEndedEvent,
   TournamentRoundStarted,
+  UserPresence,
+  UserPresences,
 } from '../gen/api/proto/realtime/realtime_pb';
 import { ActionType } from '../actions/actions';
 import { endGameMessage } from './end_of_game';
 import {
+  GameInfoResponseToActiveGame,
   SeekRequestToSoughtGame,
   SoughtGame,
-  GameInfoResponseToActiveGame,
 } from './reducers/lobby_reducer';
 import { BoopSounds } from '../sound/boop';
 import {
   GameInfoResponse,
   GameInfoResponses,
 } from '../gen/api/proto/game_service/game_service_pb';
+import { TourneyStatus } from './reducers/tournament_reducer';
 
 // Feature flag.
 export const enableShowSocket =
@@ -141,7 +142,10 @@ export const useOnSocketMsg = () => {
   const { setGameEndMessage } = useGameEndMessageStoreContext();
   const { setCurrentLagMs } = useLagStoreContext();
   const { dispatchLobbyContext } = useLobbyStoreContext();
-  const { tournamentContext } = useTournamentStoreContext();
+  const {
+    tournamentContext,
+    dispatchTournamentContext,
+  } = useTournamentStoreContext();
   const { loginState } = useLoginStateStoreContext();
   const { setPresence, addPresences } = usePresenceStoreContext();
   const { setRematchRequest } = useRematchRequestStoreContext();
@@ -447,16 +451,40 @@ export const useOnSocketMsg = () => {
             break;
           }
 
+          case MessageType.TOURNAMENT_ROUND_STARTED: {
+            const trs = parsedMsg as TournamentRoundStarted;
+            dispatchTournamentContext({
+              actionType: ActionType.StartTourneyRound,
+              payload: trs,
+            });
+
+            break;
+          }
+
           case MessageType.TOURNAMENT_GAME_ENDED_EVENT: {
             const gee = parsedMsg as TournamentGameEndedEvent;
-            dispatchLobbyContext({
+            dispatchTournamentContext({
               actionType: ActionType.AddTourneyGameResult,
               payload: gee,
             });
 
-            dispatchLobbyContext({
+            dispatchTournamentContext({
               actionType: ActionType.RemoveActiveGame,
               payload: gee.getGameId(),
+            });
+
+            break;
+          }
+
+          case MessageType.TOURNAMENT_DIVISION_MESSAGE: {
+            const tdm = parsedMsg as TournamentDivisionDataResponse;
+
+            dispatchTournamentContext({
+              actionType: ActionType.SetDivisionData,
+              payload: {
+                divisionMessage: tdm,
+                loginState,
+              },
             });
 
             break;
@@ -584,7 +612,10 @@ export const useOnSocketMsg = () => {
             if (!activeGame) {
               return;
             }
-            dispatchLobbyContext({
+            const dispatchFn = tournamentContext.metadata.id
+              ? dispatchTournamentContext
+              : dispatchLobbyContext;
+            dispatchFn({
               actionType: ActionType.AddActiveGame,
               payload: activeGame,
             });
@@ -594,12 +625,58 @@ export const useOnSocketMsg = () => {
           case MessageType.ONGOING_GAMES: {
             const age = parsedMsg as GameInfoResponses;
             console.log('got active games', age);
-            dispatchLobbyContext({
+            const dispatchFn = tournamentContext.metadata.id
+              ? dispatchTournamentContext
+              : dispatchLobbyContext;
+
+            dispatchFn({
               actionType: ActionType.AddActiveGames,
               payload: age
                 .getGameInfoList()
                 .map((g) => GameInfoResponseToActiveGame(g)),
             });
+            break;
+          }
+
+          case MessageType.READY_FOR_TOURNAMENT_GAME: {
+            const ready = parsedMsg as ReadyForTournamentGame;
+            if (tournamentContext.metadata.id !== ready.getTournamentId()) {
+              // Ignore this message (for now -- we may actually want to display
+              // this in other contexts, like the lobby, an unrelated game, etc).
+              break;
+            }
+            if (
+              ready.getPlayerId() ===
+              `${loginState.userID}:${loginState.username}`
+            ) {
+              dispatchTournamentContext({
+                actionType: ActionType.SetTourneyStatus,
+                payload: ready.getUnready()
+                  ? TourneyStatus.ROUND_OPEN
+                  : TourneyStatus.ROUND_READY,
+              });
+            } else {
+              // The opponent sent this message.
+              dispatchTournamentContext({
+                actionType: ActionType.SetTourneyStatus,
+                payload: ready.getUnready()
+                  ? TourneyStatus.ROUND_OPEN
+                  : TourneyStatus.ROUND_OPPONENT_WAITING,
+              });
+            }
+            break;
+          }
+
+          case MessageType.TOURNAMENT_FULL_DIVISIONS_MESSAGE: {
+            const tfdm = parsedMsg as FullTournamentDivisions;
+            dispatchTournamentContext({
+              actionType: ActionType.SetDivisionsData,
+              payload: {
+                fullDivisions: tfdm,
+                loginState,
+              },
+            });
+
             break;
           }
         }
@@ -611,6 +688,7 @@ export const useOnSocketMsg = () => {
       challengeResultEvent,
       dispatchGameContext,
       dispatchLobbyContext,
+      dispatchTournamentContext,
       excludedPlayers,
       gameContext,
       loginState,

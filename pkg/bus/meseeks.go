@@ -389,9 +389,17 @@ func (b *Bus) broadcastGameCreation(g *entity.Game, acceptor, requester *entity.
 			Nickname: requester.Username},
 	}
 
-	toSend := entity.WrapEvent(&gs.GameInfoResponse{Players: players,
-		GameRequest: g.GameReq, GameId: g.GameID()},
-		pb.MessageType_ONGOING_GAME_EVENT)
+	gameInfo := &gs.GameInfoResponse{Players: players,
+		GameRequest: g.GameReq, GameId: g.GameID()}
+
+	if g.TournamentData != nil {
+		gameInfo.TournamentDivision = g.TournamentData.Division
+		gameInfo.TournamentId = g.TournamentData.Id
+		gameInfo.TournamentRound = int32(g.TournamentData.Round)
+		gameInfo.TournamentGameIndex = int32(g.TournamentData.GameIndex)
+	}
+
+	toSend := entity.WrapEvent(gameInfo, pb.MessageType_ONGOING_GAME_EVENT)
 	data, err := toSend.Serialize()
 	if err != nil {
 		return err

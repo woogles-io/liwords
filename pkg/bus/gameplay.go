@@ -2,7 +2,9 @@ package bus
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
+	"fmt"
 	"strings"
 	"time"
 
@@ -19,6 +21,10 @@ import (
 
 var (
 	errGamesDisabled = errors.New("new games are temporarily disabled; please try again in a few minutes")
+)
+
+const (
+	TournamentReadyExpire = 3600
 )
 
 func (b *Bus) instantiateAndStartGame(ctx context.Context, accUser *entity.User, requester string,
@@ -81,9 +87,14 @@ func (b *Bus) instantiateAndStartGame(ctx context.Context, accUser *entity.User,
 			tournamentID = t.UUID
 		}
 	}
+	// If tournamentID is defined, this is a clubhouse game, so there's no
+	// round/division/etc, just a simple "tournament ID"
+	trdata := &entity.TournamentData{
+		Id: tournamentID,
+	}
 
 	g, err := gameplay.InstantiateNewGame(ctx, b.gameStore, b.config,
-		[2]*entity.User{accUser, reqUser}, assignedFirst, gameReq, tournamentID)
+		[2]*entity.User{accUser, reqUser}, assignedFirst, gameReq, trdata)
 	if err != nil {
 		return err
 	}
@@ -233,12 +244,14 @@ func (b *Bus) readyForGame(ctx context.Context, evt *pb.ReadyForGame, userID str
 }
 
 func (b *Bus) readyForTournamentGame(ctx context.Context, evt *pb.ReadyForTournamentGame, userID, connID string) error {
-	enabled, err := b.configStore.GamesEnabled(ctx)
-	if err != nil {
-		return err
-	}
-	if !enabled {
-		return errGamesDisabled
+	if !evt.Unready {
+		enabled, err := b.configStore.GamesEnabled(ctx)
+		if err != nil {
+			return err
+		}
+		if !enabled {
+			return errGamesDisabled
+		}
 	}
 
 	reqUser, err := b.userStore.GetByUUID(ctx, userID)
@@ -253,17 +266,47 @@ func (b *Bus) readyForTournamentGame(ctx context.Context, evt *pb.ReadyForTourna
 		return err
 	}
 
-	playerIDs, err := tournament.SetReadyForGame(ctx, b.tournamentStore, t, fullUserID, connID,
+	playerIDs, bothReady, err := tournament.SetReadyForGame(ctx, b.tournamentStore, t, fullUserID, connID,
 		evt.Division, int(evt.Round), int(evt.GameIndex), evt.Unready)
 
 	if err != nil {
 		return err
 	}
-	if len(playerIDs) != 2 {
+
+	// Let's send the ready message to both players.
+	evt.PlayerId = fullUserID
+
+	ngevt := entity.WrapEvent(evt, pb.MessageType_READY_FOR_TOURNAMENT_GAME)
+	// We'll publish it to both users (across any connections they might be on)
+	// so that the widget updates properly in every context.
+	for _, p := range playerIDs {
+		s := strings.Split(p, ":")
+		if len(s) != 3 {
+			return fmt.Errorf("unexpected player readystate: %v", p)
+		}
+		b.pubToUser(s[0], ngevt, "")
+	}
+
+	if !bothReady {
+		if !evt.Unready {
+			// Store temporary ready state in Redis.
+			conn := b.redisPool.Get()
+			defer conn.Close()
+			bts, err := json.Marshal(evt)
+			if err != nil {
+				return errGamesDisabled
+			}
+			_, err = conn.Do("SET", "tready:"+connID, bts, "EX", TournamentReadyExpire)
+			if err != nil {
+				return err
+			}
+		}
 		return nil
 	}
-	// Both players are ready!
+	redisConn := b.redisPool.Get()
+	defer redisConn.Close()
 
+	// Both players are ready! Instantiate and start a new game.
 	foundUs := false
 	otherID := ""
 	users := [2]*entity.User{nil, nil}
@@ -284,6 +327,11 @@ func (b *Bus) readyForTournamentGame(ctx context.Context, evt *pb.ReadyForTourna
 			otherUserIdx = idx
 		}
 		connIDs[idx] = splitid[2]
+		// Delete the ready state if it existed in Redis.
+		_, err = redisConn.Do("DEL", "tready:"+connIDs[idx])
+		if err != nil {
+			return err
+		}
 	}
 	if !foundUs {
 		return errors.New("unexpected behavior; did not find us")
@@ -296,9 +344,15 @@ func (b *Bus) readyForTournamentGame(ctx context.Context, evt *pb.ReadyForTourna
 		return err
 	}
 	gameReq := t.Divisions[evt.Division].Controls.GameRequest
+	tdata := &entity.TournamentData{
+		Id:        evt.TournamentId,
+		Division:  evt.Division,
+		Round:     int(evt.Round),
+		GameIndex: int(evt.GameIndex),
+	}
 
 	g, err := gameplay.InstantiateNewGame(ctx, b.gameStore, b.config,
-		users, 0, gameReq, evt.TournamentId)
+		users, 0, gameReq, tdata)
 	if err != nil {
 		return err
 	}
@@ -309,7 +363,7 @@ func (b *Bus) readyForTournamentGame(ctx context.Context, evt *pb.ReadyForTourna
 	}
 
 	// redirect users to the right game
-	ngevt := entity.WrapEvent(&pb.NewGameEvent{
+	ngevt = entity.WrapEvent(&pb.NewGameEvent{
 		GameId: g.GameID(),
 		// doesn't matter who's the accepter or requester here.
 		AccepterCid:  connIDs[0],

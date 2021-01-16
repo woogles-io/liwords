@@ -15,6 +15,10 @@ export const calculateTotalTime = (
   return secs + maxOvertime * 60 + incrementSecs * turnsPerGame;
 };
 
+export const isPairedMode = (type: string) => {
+  return type === 'CHILD' || type === 'STANDARD';
+};
+
 // See cutoffs in variants.go. XXX: Try to tie these together better.
 export const timeCtrlToDisplayName = (
   secs: number,
@@ -146,7 +150,7 @@ export const setPreferredSortOrder = (value: string) => {
 };
 
 export const sortTiles = (rack: string) => {
-  let effectiveSortOrder = preferredSortOrder ?? '';
+  const effectiveSortOrder = preferredSortOrder ?? '';
   return Array.from(rack, (tile) => {
     let index = effectiveSortOrder.indexOf(tile);
     if (index < 0) index = effectiveSortOrder.length + (tile === Blank ? 1 : 0);

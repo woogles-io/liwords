@@ -119,6 +119,15 @@ export class GameInfoResponse extends jspb.Message {
   getGameRequest(): api_proto_realtime_realtime_pb.GameRequest | undefined;
   setGameRequest(value?: api_proto_realtime_realtime_pb.GameRequest): void;
 
+  getTournamentDivision(): string;
+  setTournamentDivision(value: string): void;
+
+  getTournamentRound(): number;
+  setTournamentRound(value: number): void;
+
+  getTournamentGameIndex(): number;
+  setTournamentGameIndex(value: number): void;
+
   serializeBinary(): Uint8Array;
   toObject(includeInstance?: boolean): GameInfoResponse.AsObject;
   static toObject(includeInstance: boolean, msg: GameInfoResponse): GameInfoResponse.AsObject;
@@ -141,6 +150,9 @@ export namespace GameInfoResponse {
     gameId: string,
     lastUpdate?: google_protobuf_timestamp_pb.Timestamp.AsObject,
     gameRequest?: api_proto_realtime_realtime_pb.GameRequest.AsObject,
+    tournamentDivision: string,
+    tournamentRound: number,
+    tournamentGameIndex: number,
   }
 }
 

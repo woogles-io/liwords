@@ -36,6 +36,7 @@ type tournament struct {
 	Directors         datatypes.JSON
 	ExecutiveDirector string
 	IsStarted         bool
+	IsFinished        bool
 	Divisions         datatypes.JSON
 	// Slug looks like /tournament/abcdef, /club/madison, /club/madison/2020-04-20
 	Slug string `gorm:"uniqueIndex:,expression:lower(slug)"`
@@ -50,6 +51,12 @@ type tournament struct {
 	Parent string `gorm:"index"`
 }
 
+type registrant struct {
+	UserID       string `gorm:"uniqueIndex:idx_registrant;index:idx_user"`
+	TournamentID string `gorm:"uniqueIndex:idx_registrant"`
+	DivisionID   string `gorm:"uniqueIndex:idx_registrant"`
+}
+
 // NewDBStore creates a new DB store for tournament managers.
 func NewDBStore(config *config.Config, gs gameplay.GameStore) (*DBStore, error) {
 	db, err := gorm.Open(postgres.Open(config.DBConnString), &gorm.Config{})
@@ -57,6 +64,7 @@ func NewDBStore(config *config.Config, gs gameplay.GameStore) (*DBStore, error) 
 		return nil, err
 	}
 	db.AutoMigrate(&tournament{})
+	db.AutoMigrate(&registrant{})
 	return &DBStore{db: db, gameStore: gs, cfg: config}, nil
 }
 
@@ -101,6 +109,7 @@ func (s *DBStore) dbObjToEntity(tm *tournament) (*entity.Tournament, error) {
 		Directors:         &directors,
 		ExecutiveDirector: tm.ExecutiveDirector,
 		IsStarted:         tm.IsStarted,
+		IsFinished:        tm.IsFinished,
 		Divisions:         divisions,
 		DefaultSettings:   defaultSettings,
 		Type:              entity.CompetitionType(tm.Type),
@@ -205,6 +214,7 @@ func (s *DBStore) toDBObj(t *entity.Tournament) (*tournament, error) {
 		Directors:         directors,
 		ExecutiveDirector: t.ExecutiveDirector,
 		IsStarted:         t.IsStarted,
+		IsFinished:        t.IsFinished,
 		Divisions:         divisions,
 		DefaultSettings:   defaultSettings,
 		Type:              string(t.Type),
@@ -297,4 +307,55 @@ func (s *DBStore) ListAllIDs(ctx context.Context) ([]string, error) {
 		ids[idx] = tid.UUID
 	}
 	return ids, result.Error
+}
+
+func (s *DBStore) AddRegistrants(ctx context.Context, tid string, userIDs []string, division string) error {
+
+	ctxDB := s.db.WithContext(ctx)
+	users := make([]*registrant, len(userIDs))
+	idx := 0
+	for _, uid := range userIDs {
+		users[idx] = &registrant{
+			UserID:       uid,
+			TournamentID: tid,
+			DivisionID:   division,
+		}
+		idx++
+	}
+
+	return ctxDB.Create(&users).Error
+}
+
+func (s *DBStore) RemoveRegistrants(ctx context.Context, tid string, userIDs []string, division string) error {
+	ctxDB := s.db.WithContext(ctx)
+
+	result := ctxDB.Delete(registrant{}, "user_id IN ? AND tournament_id = ? AND division_id = ?",
+		userIDs, tid, division)
+	return result.Error
+}
+
+// ActiveTournamentsFor returns a list of 2-tuples of tournament ID, division ID
+// that this user is registered in - only for active tournaments (ones that have not finished).
+func (s *DBStore) ActiveTournamentsFor(ctx context.Context, userID string) ([][2]string, error) {
+	var registrants []*registrant
+
+	ctxDB := s.db.WithContext(ctx)
+	result := ctxDB.Raw(`
+		select tournament_id, division_id from registrants
+		inner join tournaments on tournament_id = tournaments.uuid
+		where tournaments.is_finished is not TRUE
+			and registrants.user_id = ?
+		`, userID).Scan(&registrants)
+	if result.Error != nil {
+		return nil, result.Error
+	}
+	if result.RowsAffected <= 0 {
+		return nil, nil
+	}
+	log.Debug().Int64("num-active-tournaments", result.RowsAffected).Str("userID", userID).Msg("active-tournaments-for")
+	ret := make([][2]string, result.RowsAffected)
+	for idx, val := range registrants {
+		ret[idx] = [2]string{val.TournamentID, val.DivisionID}
+	}
+	return ret, nil
 }

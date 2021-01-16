@@ -140,7 +140,7 @@ func (s *DBStore) Get(ctx context.Context, id string) (*entity.Game, error) {
 	var trdata entity.TournamentData
 	err = json.Unmarshal(g.TournamentData, &trdata)
 	if err == nil {
-		// it's ok for a game to not have tournament data
+		// however, it's ok for a game to not have tournament data
 		entGame.TournamentData = &trdata
 		entGame.TournamentData.Id = g.TournamentID
 	}
@@ -264,17 +264,32 @@ func convertGameToInfoResponse(g *game) (*gs.GameInfoResponse, error) {
 		return nil, err
 	}
 
+	var trdata entity.TournamentData
+	tDiv := ""
+	tRound := 0
+	tGameIndex := 0
+
+	err = json.Unmarshal(g.TournamentData, &trdata)
+	if err != nil {
+		tDiv = trdata.Division
+		tRound = trdata.Round
+		tGameIndex = trdata.GameIndex
+	}
+
 	info := &gs.GameInfoResponse{
-		Players:         mdata.PlayerInfo,
-		GameEndReason:   pb.GameEndReason(g.GameEndReason),
-		Scores:          mdata.FinalScores,
-		Winner:          int32(g.WinnerIdx),
-		TimeControlName: string(timefmt),
-		CreatedAt:       timestamppb.New(g.CreatedAt),
-		LastUpdate:      timestamppb.New(g.UpdatedAt),
-		GameId:          g.UUID,
-		TournamentId:    g.TournamentID,
-		GameRequest:     gamereq,
+		Players:             mdata.PlayerInfo,
+		GameEndReason:       pb.GameEndReason(g.GameEndReason),
+		Scores:              mdata.FinalScores,
+		Winner:              int32(g.WinnerIdx),
+		TimeControlName:     string(timefmt),
+		CreatedAt:           timestamppb.New(g.CreatedAt),
+		LastUpdate:          timestamppb.New(g.UpdatedAt),
+		GameId:              g.UUID,
+		TournamentId:        g.TournamentID,
+		GameRequest:         gamereq,
+		TournamentDivision:  tDiv,
+		TournamentRound:     int32(tRound),
+		TournamentGameIndex: int32(tGameIndex),
 	}
 	return info, nil
 }
@@ -428,7 +443,7 @@ func (s *DBStore) ListActive(ctx context.Context, tourneyID string) (*gs.GameInf
 	var games []*game
 
 	ctxDB := s.db.WithContext(ctx)
-	query := ctxDB.Table("games").Select("quickdata, request, uuid, started").
+	query := ctxDB.Table("games").Select("quickdata, request, uuid, started, tournament_data").
 		Where("games.game_end_reason = ?", 0 /* ongoing games only*/)
 
 	if tourneyID != "" {

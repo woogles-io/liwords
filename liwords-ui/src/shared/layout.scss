@@ -8,7 +8,6 @@
   margin: 0;
 }
 
-
 span.user-context-menu.ant-dropdown-trigger {
   display: inline-block;
 }
@@ -74,6 +73,14 @@ span.user-context-menu.ant-dropdown-trigger {
     max-width: none;
     margin: 12px;
   }
+  .lobby.competitor {
+    .tournament-info .ant-card.tournament {
+      height: 520px;
+      .ant-card-body {
+        max-height: 460px;
+      }
+    }
+  }
 }
 
 // Laptop
@@ -97,11 +104,24 @@ span.user-context-menu.ant-dropdown-trigger {
     .play-area, .game-lists, .chat-area, .data-area, .tournament-info, .announcements {
       height: calc(100vh - #{$header-height-desktop + 48px});
     }
-    .ant-card, .ant-card.chat, .announcements .ant-card, .tournament-info .ant-card {
+    .ant-card, .ant-card.chat, .announcements .ant-card, .tournament-info .ant-card.tournament {
       height: calc(100vh - #{$header-height-desktop + 48px});
     }
+    .announcements .ant-card {
+      .ant-card-body {
+        max-height: calc(100vh - #{$header-height-desktop + 124px});
+      }
+    }
+    &.competitor .tournament-info .ant-card.tournament {
+      height: calc(100vh - #{$header-height-desktop + 48px});
+      .ant-card-body {
+        max-height: calc(100vh - #{$header-height-desktop + 124px});
+      }
+    }
+    &.room.competitor .ant-card.chat {
+      height: calc(100vh - #{$header-height-desktop + 125px});
+    }
   }
-
 }
 
 // Desktop

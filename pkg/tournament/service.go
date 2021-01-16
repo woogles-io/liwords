@@ -64,7 +64,13 @@ func (ts *TournamentService) SetTournamentMetadata(ctx context.Context, req *pb.
 	if err != nil {
 		return nil, err
 	}
-	err = SetTournamentMetadata(ctx, ts.tournamentStore, req.Id, req.Name, req.Description)
+
+	ttype, err := validateTournamentMeta(req.Type, req.Slug)
+	if err != nil {
+		return nil, err
+	}
+
+	err = SetTournamentMetadata(ctx, ts.tournamentStore, req.Id, req.Name, req.Description, req.Slug, ttype)
 	if err != nil {
 		return nil, twirp.NewError(twirp.InvalidArgument, err.Error())
 	}
@@ -120,25 +126,9 @@ func (ts *TournamentService) NewTournament(ctx context.Context, req *pb.NewTourn
 
 	log.Debug().Interface("directors", directors).Msg("directors")
 
-	var tt entity.CompetitionType
-	switch req.Type {
-	case pb.TType_CLUB:
-		tt = entity.TypeClub
-		if !strings.HasPrefix(req.Slug, "/club/") {
-			return nil, twirp.NewError(twirp.InvalidArgument, "club slug must start with /club/")
-		}
-	case pb.TType_STANDARD:
-		tt = entity.TypeStandard
-		if !strings.HasPrefix(req.Slug, "/tournament/") {
-			return nil, twirp.NewError(twirp.InvalidArgument, "tournament slug must start with /tournament/")
-		}
-	case pb.TType_CLUB_SESSION:
-		tt = entity.TypeClubSession
-		if !strings.HasPrefix(req.Slug, "/club/") {
-			return nil, twirp.NewError(twirp.InvalidArgument, "club-session slug must start with /club/")
-		}
-	default:
-		return nil, twirp.NewError(twirp.InvalidArgument, "invalid tournament type")
+	tt, err := validateTournamentMeta(req.Type, req.Slug)
+	if err != nil {
+		return nil, err
 	}
 	t, err := NewTournament(ctx, ts.tournamentStore, req.Name, req.Description, directors,
 		tt, "", req.Slug)
@@ -206,10 +196,12 @@ func (ts *TournamentService) GetTournamentMetadata(ctx context.Context, req *pb.
 	switch t.Type {
 	case entity.TypeStandard:
 		tt = pb.TType_STANDARD
-	case entity.TypeClubSession:
-		tt = pb.TType_CLUB_SESSION
+	case entity.TypeChild:
+		tt = pb.TType_CHILD
 	case entity.TypeClub:
 		tt = pb.TType_CLUB
+	case entity.TypeLegacy:
+		tt = pb.TType_LEGACY
 	default:
 		return nil, fmt.Errorf("unrecognized tournament type: %v", t.Type)
 	}
@@ -238,7 +230,7 @@ func (ts *TournamentService) AddDirectors(ctx context.Context, req *realtime.Tou
 		return nil, err
 	}
 
-	err = AddDirectors(ctx, ts.tournamentStore, req.Id, req)
+	err = AddDirectors(ctx, ts.tournamentStore, ts.userStore, req.Id, req)
 	if err != nil {
 		return nil, twirp.NewError(twirp.InvalidArgument, err.Error())
 	}
@@ -250,7 +242,7 @@ func (ts *TournamentService) RemoveDirectors(ctx context.Context, req *realtime.
 		return nil, err
 	}
 
-	err = RemoveDirectors(ctx, ts.tournamentStore, req.Id, req)
+	err = RemoveDirectors(ctx, ts.tournamentStore, ts.userStore, req.Id, req)
 	if err != nil {
 		return nil, twirp.NewError(twirp.InvalidArgument, err.Error())
 	}
@@ -262,7 +254,7 @@ func (ts *TournamentService) AddPlayers(ctx context.Context, req *realtime.Tourn
 		return nil, err
 	}
 
-	err = AddPlayers(ctx, ts.tournamentStore, req.Id, req.Division, req)
+	err = AddPlayers(ctx, ts.tournamentStore, ts.userStore, req.Id, req.Division, req)
 	if err != nil {
 		return nil, twirp.NewError(twirp.InvalidArgument, err.Error())
 	}
@@ -274,7 +266,7 @@ func (ts *TournamentService) RemovePlayers(ctx context.Context, req *realtime.To
 		return nil, err
 	}
 
-	err = RemovePlayers(ctx, ts.tournamentStore, req.Id, req.Division, req)
+	err = RemovePlayers(ctx, ts.tournamentStore, ts.userStore, req.Id, req.Division, req)
 	if err != nil {
 		return nil, twirp.NewError(twirp.InvalidArgument, err.Error())
 	}
@@ -354,6 +346,18 @@ func (ts *TournamentService) StartTournament(ctx context.Context, req *pb.StartT
 	return &pb.TournamentResponse{}, nil
 }
 
+func (ts *TournamentService) FinishTournament(ctx context.Context, req *pb.FinishTournamentRequest) (*pb.TournamentResponse, error) {
+	err := authenticateDirector(ctx, ts, req.Id, true)
+	if err != nil {
+		return nil, err
+	}
+	err = SetFinished(ctx, ts.tournamentStore, req.Id)
+	if err != nil {
+		return nil, twirp.NewError(twirp.InvalidArgument, err.Error())
+	}
+	return &pb.TournamentResponse{}, nil
+}
+
 func (ts *TournamentService) StartRoundCountdown(ctx context.Context, req *pb.TournamentStartRoundCountdownRequest) (*pb.TournamentResponse, error) {
 	err := authenticateDirector(ctx, ts, req.Id, false)
 	if err != nil {
@@ -408,6 +412,7 @@ func authenticateDirector(ctx context.Context, ts *TournamentService, id string,
 		return twirp.InternalErrorWith(err)
 	}
 	fullID := user.UUID + ":" + user.Username
+	log.Debug().Str("fullID", fullID).Interface("persons", t.Directors.Persons).Msg("authenticating-director")
 
 	if authenticateExecutive && fullID != t.ExecutiveDirector {
 		return twirp.NewError(twirp.Unauthenticated, "this user is not the authorized executive director for this event")
@@ -415,6 +420,9 @@ func authenticateDirector(ctx context.Context, ts *TournamentService, id string,
 	_, authorized := t.Directors.Persons[fullID]
 	if !authorized {
 		return twirp.NewError(twirp.Unauthenticated, "this user is not an authorized director for this event")
+	}
+	if t.IsFinished {
+		return twirp.NewError(twirp.InvalidArgument, "this tournament is finished and cannot be modified")
 	}
 
 	return nil
@@ -442,7 +450,7 @@ func (ts *TournamentService) CreateClubSession(ctx context.Context, req *pb.NewC
 	name := club.Name + " - " + sessionDate
 	// Create a tournament / club session.
 	t, err := NewTournament(ctx, ts.tournamentStore, name, club.Description, club.Directors,
-		entity.TypeClubSession, club.UUID, slug)
+		entity.TypeChild, club.UUID, slug)
 	if err != nil {
 		return nil, twirp.NewError(twirp.InvalidArgument, err.Error())
 	}

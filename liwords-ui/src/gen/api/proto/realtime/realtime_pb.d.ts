@@ -609,6 +609,9 @@ export class TournamentGameEndedEvent extends jspb.Message {
   getTime(): number;
   setTime(value: number): void;
 
+  getRound(): number;
+  setRound(value: number): void;
+
   serializeBinary(): Uint8Array;
   toObject(includeInstance?: boolean): TournamentGameEndedEvent.AsObject;
   static toObject(includeInstance: boolean, msg: TournamentGameEndedEvent): TournamentGameEndedEvent.AsObject;
@@ -625,6 +628,7 @@ export namespace TournamentGameEndedEvent {
     playersList: Array<TournamentGameEndedEvent.Player.AsObject>,
     endReason: GameEndReasonMap[keyof GameEndReasonMap],
     time: number,
+    round: number,
   }
 
   export class Player extends jspb.Message {
@@ -868,6 +872,9 @@ export class ReadyForTournamentGame extends jspb.Message {
   getRound(): number;
   setRound(value: number): void;
 
+  getPlayerId(): string;
+  setPlayerId(value: string): void;
+
   getGameIndex(): number;
   setGameIndex(value: number): void;
 
@@ -889,6 +896,7 @@ export namespace ReadyForTournamentGame {
     tournamentId: string,
     division: string,
     round: number,
+    playerId: string,
     gameIndex: number,
     unready: boolean,
   }
@@ -1085,6 +1093,9 @@ export class TournamentGame extends jspb.Message {
   getGameEndReason(): GameEndReasonMap[keyof GameEndReasonMap];
   setGameEndReason(value: GameEndReasonMap[keyof GameEndReasonMap]): void;
 
+  getId(): string;
+  setId(value: string): void;
+
   serializeBinary(): Uint8Array;
   toObject(includeInstance?: boolean): TournamentGame.AsObject;
   static toObject(includeInstance: boolean, msg: TournamentGame): TournamentGame.AsObject;
@@ -1100,12 +1111,16 @@ export namespace TournamentGame {
     scoresList: Array<number>,
     resultsList: Array<TournamentGameResultMap[keyof TournamentGameResultMap]>,
     gameEndReason: GameEndReasonMap[keyof GameEndReasonMap],
+    id: string,
   }
 }
 
 export class PlayerProperties extends jspb.Message {
   getRemoved(): boolean;
   setRemoved(value: boolean): void;
+
+  getRating(): number;
+  setRating(value: number): void;
 
   serializeBinary(): Uint8Array;
   toObject(includeInstance?: boolean): PlayerProperties.AsObject;
@@ -1120,6 +1135,7 @@ export class PlayerProperties extends jspb.Message {
 export namespace PlayerProperties {
   export type AsObject = {
     removed: boolean,
+    rating: number,
   }
 }
 
@@ -1203,6 +1219,28 @@ export namespace PlayerStanding {
   }
 }
 
+export class RoundStandings extends jspb.Message {
+  clearStandingsList(): void;
+  getStandingsList(): Array<PlayerStanding>;
+  setStandingsList(value: Array<PlayerStanding>): void;
+  addStandings(value?: PlayerStanding, index?: number): PlayerStanding;
+
+  serializeBinary(): Uint8Array;
+  toObject(includeInstance?: boolean): RoundStandings.AsObject;
+  static toObject(includeInstance: boolean, msg: RoundStandings): RoundStandings.AsObject;
+  static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+  static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+  static serializeBinaryToWriter(message: RoundStandings, writer: jspb.BinaryWriter): void;
+  static deserializeBinary(bytes: Uint8Array): RoundStandings;
+  static deserializeBinaryFromReader(message: RoundStandings, reader: jspb.BinaryReader): RoundStandings;
+}
+
+export namespace RoundStandings {
+  export type AsObject = {
+    standingsList: Array<PlayerStanding.AsObject>,
+  }
+}
+
 export class ClassicDivision extends jspb.Message {
   clearMatrixList(): void;
   getMatrixList(): Array<PlayerRoundInfo>;
@@ -1242,20 +1280,27 @@ export class TournamentDivisionDataResponse extends jspb.Message {
   getControls(): TournamentControls | undefined;
   setControls(value?: TournamentControls): void;
 
-  getDivisionMap(): jspb.Map<string, PlayerRoundInfo>;
-  clearDivisionMap(): void;
+  clearDivisionList(): void;
+  getDivisionList(): Array<string>;
+  setDivisionList(value: Array<string>): void;
+  addDivision(value: string, index?: number): string;
+
+  getPlayerIndexMapMap(): jspb.Map<string, number>;
+  clearPlayerIndexMapMap(): void;
+  getPairingMapMap(): jspb.Map<string, PlayerRoundInfo>;
+  clearPairingMapMap(): void;
   getCurrentRound(): number;
   setCurrentRound(value: number): void;
 
-  clearStandingsList(): void;
-  getStandingsList(): Array<PlayerStanding>;
-  setStandingsList(value: Array<PlayerStanding>): void;
-  addStandings(value?: PlayerStanding, index?: number): PlayerStanding;
-
+  getStandingsMap(): jspb.Map<number, RoundStandings>;
+  clearStandingsMap(): void;
   clearPlayersPropertiesList(): void;
   getPlayersPropertiesList(): Array<PlayerProperties>;
   setPlayersPropertiesList(value: Array<PlayerProperties>): void;
   addPlayersProperties(value?: PlayerProperties, index?: number): PlayerProperties;
+
+  getFinished(): boolean;
+  setFinished(value: boolean): void;
 
   serializeBinary(): Uint8Array;
   toObject(includeInstance?: boolean): TournamentDivisionDataResponse.AsObject;
@@ -1273,16 +1318,22 @@ export namespace TournamentDivisionDataResponse {
     divisionId: string,
     playersList: Array<string>,
     controls?: TournamentControls.AsObject,
-    divisionMap: Array<[string, PlayerRoundInfo.AsObject]>,
+    divisionList: Array<string>,
+    playerIndexMapMap: Array<[string, number]>,
+    pairingMapMap: Array<[string, PlayerRoundInfo.AsObject]>,
     currentRound: number,
-    standingsList: Array<PlayerStanding.AsObject>,
+    standingsMap: Array<[number, RoundStandings.AsObject]>,
     playersPropertiesList: Array<PlayerProperties.AsObject>,
+    finished: boolean,
   }
 }
 
 export class FullTournamentDivisions extends jspb.Message {
   getDivisionsMap(): jspb.Map<string, TournamentDivisionDataResponse>;
   clearDivisionsMap(): void;
+  getStarted(): boolean;
+  setStarted(value: boolean): void;
+
   serializeBinary(): Uint8Array;
   toObject(includeInstance?: boolean): FullTournamentDivisions.AsObject;
   static toObject(includeInstance: boolean, msg: FullTournamentDivisions): FullTournamentDivisions.AsObject;
@@ -1296,6 +1347,7 @@ export class FullTournamentDivisions extends jspb.Message {
 export namespace FullTournamentDivisions {
   export type AsObject = {
     divisionsMap: Array<[string, TournamentDivisionDataResponse.AsObject]>,
+    started: boolean,
   }
 }
 
