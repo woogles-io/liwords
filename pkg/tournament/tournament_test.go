@@ -208,7 +208,7 @@ func TestTournamentSingleDivision(t *testing.T) {
 	ty, err = makeTournament(ctx, tstore, cfg, directors)
 	is.NoErr(err)
 
-	err = tournament.SetTournamentMetadata(ctx, tstore, ty.UUID, "New Name", "New Description")
+	err = tournament.SetTournamentMetadata(ctx, tstore, ty.UUID, "New Name", "New Description", "/tournament/foo", entity.TypeStandard)
 	is.NoErr(err)
 
 	// Check that directors are set correctly
