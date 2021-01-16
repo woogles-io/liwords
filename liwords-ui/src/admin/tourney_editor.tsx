@@ -141,17 +141,17 @@ export const TourneyEditor = (props: Props) => {
   };
   const addDirector = () => {
     const director = prompt('Enter a new director username to add:');
+    if (!director) {
+      return;
+    }
     axios
       .post<{}>(
         toAPIUrl('tournament_service.TournamentService', 'AddDirectors'),
         {
           id: form.getFieldValue('id'),
-          persons: [
-            {
-              person_id: director,
-              person_int: 10, // whatever?
-            },
-          ],
+          persons: {
+            [director]: 10, // or whatever number?
+          },
         }
       )
       .then((resp) => {
@@ -171,17 +171,17 @@ export const TourneyEditor = (props: Props) => {
   // XXX: this function shouldn't require an "int"
   const removeDirector = () => {
     const director = prompt('Enter a director username to remove:');
+    if (!director) {
+      return;
+    }
     axios
       .post<{}>(
         toAPIUrl('tournament_service.TournamentService', 'RemoveDirectors'),
         {
           id: form.getFieldValue('id'),
-          persons: [
-            {
-              person_id: director,
-              person_int: 10, // whatever?
-            },
-          ],
+          persons: {
+            [director]: 10,
+          },
         }
       )
       .then((resp) => {

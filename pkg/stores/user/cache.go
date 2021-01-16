@@ -41,6 +41,7 @@ type backingStore interface {
 
 	UsersByPrefix(ctx context.Context, prefix string) ([]*pb.BasicUser, error)
 	Count(ctx context.Context) (int64, error)
+	Set(ctx context.Context, u *entity.User) error
 }
 
 const (
@@ -214,4 +215,15 @@ func (c *Cache) Count(ctx context.Context) (int64, error) {
 
 func (c *Cache) CachedCount(ctx context.Context) int {
 	return c.cache.Len()
+}
+
+func (c *Cache) Set(ctx context.Context, u *entity.User) error {
+
+	err := c.backing.Set(ctx, u)
+	if err != nil {
+		return err
+	}
+	// readd to cache
+	c.cache.Add(u.UUID, u)
+	return nil
 }

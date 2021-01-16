@@ -26,7 +26,7 @@ export const Announcements = React.memo((props: AnnouncementsProps) => {
           rel="noopener noreferrer"
         >
           <p>
-            8 games Saturday, January 16, NWL20 or CSW19, starting at 10 AM. All
+            8 games Saturday, January 16, NWL18 or CSW19, starting at 10 AM. All
             proceeds from this online tourney will go to support families in the
             Pediatric Blood and Marrow Transplantation Program at the Duke
             Comprehensive Cancer Center. Last year's event raised over $10,000
