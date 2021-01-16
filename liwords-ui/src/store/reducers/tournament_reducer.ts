@@ -266,16 +266,6 @@ const tourneyStatus = (
     return TourneyStatus.PRETOURNEY; // XXX: maybe a state for not being part of tourney
   }
 
-  if (
-    activeGames.find((ag) => {
-      return (
-        ag.players[0].displayName === loginContext.username ||
-        ag.players[1].displayName === loginContext.username
-      );
-    })
-  ) {
-    return TourneyStatus.ROUND_GAME_ACTIVE;
-  }
   const fullPlayerID = `${loginContext.userID}:${loginContext.username}`;
   if (!division) {
     // This really shouldn't happen, but it's a check to make sure we don't crash.
@@ -290,7 +280,6 @@ const tourneyStatus = (
   if (playerIdx === undefined) {
     return TourneyStatus.PRETOURNEY;
   }
-
   if (roundInfo.players[0] === roundInfo.players[1]) {
     switch (roundInfo.outcomes[0]) {
       case TournamentGameResult.BYE:
@@ -302,7 +291,20 @@ const tourneyStatus = (
     }
     return TourneyStatus.PRETOURNEY;
   }
-
+  if (roundInfo.games[0] && roundInfo.games[0].gameEndReason) {
+    // Game already finished
+    return TourneyStatus.ROUND_GAME_FINISHED;
+  }
+  if (
+    activeGames.find((ag) => {
+      return (
+        ag.players[0].displayName === loginContext.username ||
+        ag.players[1].displayName === loginContext.username
+      );
+    })
+  ) {
+    return TourneyStatus.ROUND_GAME_ACTIVE;
+  }
   if (
     roundInfo.readyStates[playerIdx] === '' &&
     roundInfo.readyStates[1 - playerIdx] !== ''
@@ -317,10 +319,6 @@ const tourneyStatus = (
     return TourneyStatus.ROUND_READY;
   }
 
-  if (roundInfo.games[0] && roundInfo.games[0].gameEndReason) {
-    // Game already finished
-    return TourneyStatus.ROUND_GAME_FINISHED;
-  }
   if (
     roundInfo.readyStates[playerIdx] === '' &&
     roundInfo.readyStates[1 - playerIdx] === ''
@@ -388,6 +386,7 @@ export function TournamentReducer(
         fullDivisions: FullTournamentDivisions;
         loginState: LoginState;
       };
+
       const divisions: { [name: string]: Division } = {};
       const divisionsMap = dd.fullDivisions.getDivisionsMap();
       const fullLoggedInID = `${dd.loginState.userID}:${dd.loginState.username}`;
@@ -421,6 +420,7 @@ export function TournamentReducer(
 
       return {
         ...state,
+        started: dd.fullDivisions.getStarted(),
         divisions,
         competitorState,
       };
