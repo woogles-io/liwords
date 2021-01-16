@@ -587,11 +587,16 @@ const RealStore = ({ children, ...props }: Props) => {
   const [tournamentContext, setTournamentContext] = useState(
     defaultTournamentState
   );
-  const dispatchTournamentContext = useCallback(
-    (action) =>
-      setTournamentContext((state) => TournamentReducer(state, action)),
-    []
-  );
+  const dispatchTournamentContext = useCallback((action) => {
+    console.log('tournamentreducer action', action);
+    setTournamentContext((state) => {
+      console.log('old state before call', state);
+      const newState = TournamentReducer(state, action);
+      console.log('old state after call', state);
+      console.log('new state', newState);
+      return newState;
+    });
+  }, []);
 
   const [currentLagMs, setCurrentLagMs] = useState(NaN);
 

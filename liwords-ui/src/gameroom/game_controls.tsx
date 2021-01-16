@@ -92,6 +92,7 @@ export type Props = {
   setHandlePassShortcut: ((handler: (() => void) | null) => void) | null;
   setHandleChallengeShortcut: ((handler: (() => void) | null) => void) | null;
   setHandleNeitherShortcut: ((handler: (() => void) | null) => void) | null;
+  tournamentPairedMode?: boolean;
 };
 
 const GameControls = React.memo((props: Props) => {
@@ -203,6 +204,7 @@ const GameControls = React.memo((props: Props) => {
         onExamine={props.onExamine}
         onExportGCG={props.onExportGCG}
         showRematch={props.showRematch && !props.observer}
+        tournamentPairedMode={props.tournamentPairedMode}
         onExit={handleExitToLobby}
       />
     );
@@ -342,12 +344,15 @@ type EGCProps = {
   onExamine: () => void;
   onExportGCG: () => void;
   onExit: () => void;
+  tournamentPairedMode?: boolean;
 };
 
 const EndGameControls = (props: EGCProps) => {
   const { useState } = useMountedState();
 
-  const [rematchDisabled, setRematchDisabled] = useState(false);
+  const [rematchDisabled, setRematchDisabled] = useState(
+    props.tournamentPairedMode
+  );
 
   return (
     <div className="game-controls">
