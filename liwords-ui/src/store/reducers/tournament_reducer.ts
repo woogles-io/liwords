@@ -62,6 +62,18 @@ export type Division = {
   standingsMap: { [round: number]: RoundStandings.AsObject };
 };
 
+export type CompetitorState = {
+  isRegistered: boolean;
+  division?: string;
+  status?: TourneyStatus;
+  currentRound: number;
+};
+
+export const defaultCompetitorState = {
+  isRegistered: false,
+  currentRound: -1,
+};
+
 export type TournamentState = {
   metadata: TournamentMetadata;
   // standings, pairings, etc. more stuff here to come.
@@ -89,10 +101,7 @@ export const defaultTournamentState = {
   },
   started: false,
   divisions: {},
-  competitorState: {
-    isRegistered: false,
-    currentRound: -1,
-  },
+  competitorState: defaultCompetitorState,
   activeGames: new Array<ActiveGame>(),
   finishedTourneyGames: new Array<RecentGame>(),
   gamesPageSize: 20,
@@ -112,18 +121,6 @@ export enum TourneyStatus {
   ROUND_FORFEIT_WIN = 'ROUND_FORFEIT_WIN',
   POSTTOURNEY = 'POSTTOURNEY',
 }
-
-export type CompetitorState = {
-  isRegistered: boolean;
-  division?: string;
-  status?: TourneyStatus;
-  currentRound: number;
-};
-
-export const defaultCompetitorState = {
-  isRegistered: false,
-  currentRound: 0,
-};
 
 export const readyForTournamentGame = (
   sendSocketMsg: (msg: Uint8Array) => void,
@@ -356,7 +353,7 @@ export function TournamentReducer(
       if (divData.players.includes(fullLoggedInID)) {
         registeredDivision = divData;
       }
-      let competitorState: CompetitorState = defaultCompetitorState;
+      let competitorState: CompetitorState = state.competitorState;
       if (registeredDivision) {
         competitorState = {
           isRegistered: true,
@@ -371,14 +368,12 @@ export function TournamentReducer(
           ),
         };
       }
-      return {
-        ...state,
+      return Object.assign({}, state, {
         competitorState,
-        divisions: {
-          ...state.divisions,
+        divisions: Object.assign({}, state.divisions, {
           [dd.divisionMessage.getDivisionId()]: divData,
-        },
-      };
+        }),
+      });
     }
 
     case ActionType.SetDivisionsData: {
@@ -402,7 +397,7 @@ export function TournamentReducer(
       // However we should check to see if we've already played the game,
       // or are playing the game.
 
-      let competitorState: CompetitorState = defaultCompetitorState;
+      let competitorState: CompetitorState = state.competitorState;
       if (registeredDivision) {
         competitorState = {
           isRegistered: true,
@@ -434,36 +429,24 @@ export function TournamentReducer(
       }
       const division = m.getDivision();
       // Mark the round for the passed-in division to be the passed-in round.
-
-      return {
-        ...state,
+      return Object.assign(state, {
         started: true,
-        divisions: {
-          ...state.divisions,
-          [division]: {
-            ...state.divisions[division],
+        divisions: Object.assign({}, state.divisions, {
+          [division]: Object.assign({}, state.divisions[division], {
             currentRound: m.getRound(),
-          },
-        },
-        competitorState: {
-          ...state.competitorState,
+          }),
+        }),
+        competitorState: Object.assign({}, state.competitorState, {
           currentRound:
-            // Don't touch the current round if the division doesn't match
             state.competitorState.division === division
               ? m.getRound()
               : state.competitorState.currentRound,
-
           status:
-            // only change to ROUND_OPEN if we are in this tournament.
-            // There might be a potential race condition here where our
-            // opponent clicks Ready immediately when they receive this
-            // message. However, that's ok, because the backend will
-            // still take us to the game once we click "I'm ready".
             state.competitorState.division === division
               ? TourneyStatus.ROUND_OPEN
               : state.competitorState.status,
-        },
-      };
+        }),
+      });
     }
 
     case ActionType.SetTourneyStatus: {
