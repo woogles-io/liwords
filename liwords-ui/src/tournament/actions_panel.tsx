@@ -19,6 +19,7 @@ import { toAPIUrl } from '../api/api';
 import { Pairings } from './pairings';
 import { isPairedMode } from '../store/constants';
 import { Standings } from './standings';
+import { DirectorTools } from './director_tools';
 
 export type RecentTournamentGames = {
   games: Array<RecentGame>;
@@ -52,8 +53,7 @@ export const ActionsPanel = React.memo((props: Props) => {
     username,
   } = props;
   const renderDirectorTools = () => {
-    // return <DirectorTools tournamentID={props.tournamentID} />;
-    return <div>Coming soon!</div>;
+    return <DirectorTools tournamentID={props.tournamentID} />;
   };
   const {
     dispatchTournamentContext,

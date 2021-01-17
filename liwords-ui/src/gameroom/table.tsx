@@ -46,7 +46,7 @@ import { endGameMessageFromGameInfo } from '../store/end_of_game';
 import { singularCount } from '../utils/plural';
 import { Notepad, NotepadContextProvider } from './notepad';
 import { Analyzer, AnalyzerContextProvider } from './analyzer';
-import { sortTiles } from '../store/constants';
+import { isPairedMode, sortTiles } from '../store/constants';
 import { ActionType } from '../actions/actions';
 import {
   readyForTournamentGame,
@@ -578,6 +578,9 @@ export const Table = React.memo((props: Props) => {
             playerMeta={gameInfo.players}
             tournamentID={gameInfo.tournament_id}
             tournamentSlug={tournamentContext.metadata.slug}
+            tournamentPairedMode={isPairedMode(
+              tournamentContext?.metadata?.type
+            )}
             lexicon={gameInfo.game_request.lexicon}
             challengeRule={gameInfo.game_request.challenge_rule}
             handleAcceptRematch={

@@ -60,6 +60,10 @@ for (const booper of [
   new Booper('endgameSound', require('../assets/endgame.mp3')),
   new Booper('woofSound', require('../assets/woof.mp3')),
   new Booper('receiveMsgSound', require('../assets/receivechat.mp3')),
+  new Booper(
+    'startTourneyRoundSound',
+    require('../assets/newtourneyround.mp3')
+  ),
 ]) {
   playableSounds[booper.soundName] = booper;
 }

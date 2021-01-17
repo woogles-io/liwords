@@ -75,6 +75,7 @@ type Props = {
   playerMeta: Array<PlayerMetadata>;
   tournamentSlug?: string;
   tournamentID?: string;
+  tournamentPairedMode?: boolean;
   lexicon: string;
   handleAcceptRematch: (() => void) | null;
 };
@@ -1066,6 +1067,7 @@ export const BoardPanel = React.memo((props: Props) => {
         gameEndControls={examinableGameEndMessage !== '' || props.gameDone}
         currentRack={props.currentRack}
         tournamentSlug={props.tournamentSlug}
+        tournamentPairedMode={props.tournamentPairedMode}
         lexicon={props.lexicon}
         challengeRule={props.challengeRule}
         setHandlePassShortcut={setHandlePassShortcut}
