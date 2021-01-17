@@ -85,7 +85,7 @@ export const CompetitorStatus = (props: Props) => {
               {!isLastRound && (
                 <span className="secondary-message">
                   Please return in time for round{' '}
-                  {competitorContext.currentRound + 1}.
+                  {competitorContext.currentRound + 2}.
                 </span>
               )}
             </p>
