@@ -17,37 +17,19 @@ export const Announcements = React.memo((props: AnnouncementsProps) => {
         </a>
       ),
     },
-    {
-      title: 'Upcoming Tournament - 11th Annual Duke PBMT Charity Tournament',
-      body: (
-        <a
-          href="https://woogles.io/tournament/pbmt-2021"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <p>
-            8 games Saturday, January 16, NWL18 or CSW19, starting at 10 AM. All
-            proceeds from this online tourney will go to support families in the
-            Pediatric Blood and Marrow Transplantation Program at the Duke
-            Comprehensive Cancer Center. Last year's event raised over $10,000
-            for this worthy cause!
-          </p>
-        </a>
-      ),
-    },
 
     {
       title: 'Upcoming Tournament - Virtual Crescent City Cup',
       body: (
         <a
-          href="https://sites.google.com/site/nolascrabble"
+          href="https://woogles.io/tournament/vccc"
           target="_blank"
           rel="noopener noreferrer"
         >
           <p>
             The Virtual Crescent City Cup will be held on Woogles on January
             17th and 18th. Twenty games with Open and Lite divisions for both
-            CSW19 and NWL2020. Register now.
+            CSW19 and NWL2020. Click here if you are registered!
           </p>
         </a>
       ),
@@ -100,6 +82,22 @@ export const Announcements = React.memo((props: AnnouncementsProps) => {
             The biggest online money event of the century! Please join the
             MISCO; $1000 top prize with a $20 entry fee. See the flyer for more
             information. Four consecutive weekends, starting on March 6, 2021.
+          </p>
+        </a>
+      ),
+    },
+
+    {
+      title: 'Tournament Complete - 11th Annual Duke PBMT Charity Tournament',
+      body: (
+        <a
+          href="https://woogles.io/tournament/pbmt-2021"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          <p>
+            Congratulations to Andy Hoang (NWL) and Ryan Fischer (CSW) for their
+            fabulous wins in this yearly charity tournament!
           </p>
         </a>
       ),
