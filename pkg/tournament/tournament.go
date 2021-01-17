@@ -827,8 +827,8 @@ func TournamentDivisionDataResponse(ctx context.Context, ts TournamentStore,
 	}
 	response.Id = id
 	response.DivisionId = division
-	log.Debug().Interface("divmanager", divisionObject.DivisionManager).
-		Interface("divobject", divisionObject).
+	response.Controls = divisionObject.Controls
+	log.Debug().
 		Str("division", division).
 		Str("id", id).Msg("tournament-division-data-response")
 	return response, nil
