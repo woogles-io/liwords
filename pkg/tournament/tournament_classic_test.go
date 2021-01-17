@@ -1528,7 +1528,8 @@ func TestClassicDivisionAddLatecomers(t *testing.T) {
 	is.NoErr(err)
 	is.True(roundIsComplete)
 
-	err = tc.AddPlayers(&realtime.TournamentPersons{Persons: map[string]int32{"Guy": 50, "Guyer": 400}})
+	err = tc.AddPlayers(&realtime.TournamentPersons{Persons: map[string]int32{"Guy": 50}})
+	err = tc.AddPlayers(&realtime.TournamentPersons{Persons: map[string]int32{"Guyer": 400}})
 
 	standings, err = tc.GetStandings(4)
 	is.NoErr(err)
