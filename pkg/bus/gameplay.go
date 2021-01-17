@@ -434,6 +434,7 @@ func (b *Bus) adjudicateGames(ctx context.Context) error {
 			log.Err(err).Msg("adjudicating-after-gameplay-timed-out")
 		} else if !started && now.Sub(entGame.CreatedAt) > CancelAfter {
 			log.Debug().Str("gid", g.GameId).
+				Str("tid", g.TournamentId).
 				Interface("now", now).
 				Interface("created", entGame.CreatedAt).
 				Msg("canceling-never-started")
@@ -447,7 +448,34 @@ func (b *Bus) adjudicateGames(ctx context.Context) error {
 			// XXX: Fix for tourneys ?
 			wrapped.AddAudience(entity.AudLobby, "gameEnded")
 			b.gameEventChan <- wrapped
+
+			// If this game is part of a tournament that is not in clubhouse
+			// mode, we must allow the players to try to play again.
+			if g.TournamentId != "" {
+				err = b.redoCancelledGamePairings(
+					ctx, g.Players[0].UserId+":"+g.Players[0].Nickname,
+					g.TournamentId, g.TournamentDivision,
+					int(g.TournamentRound), int(g.TournamentGameIndex))
+				log.Err(err).Msg("redo-cancelled-game-pairings")
+			}
+
 		}
 	}
 	return nil
+}
+
+func (b *Bus) redoCancelledGamePairings(ctx context.Context, userID, tid, div string, round, gidx int) error {
+
+	t, err := b.tournamentStore.Get(ctx, tid)
+	if err != nil {
+		return err
+	}
+
+	if t.Type == entity.TypeClub || t.Type == entity.TypeLegacy {
+		log.Info().Str("tid", tid).Msg("no pairings to redo for club or legacy type")
+		return nil
+	}
+
+	return tournament.ClearReadyStates(ctx, b.tournamentStore, t, div, userID, round, gidx)
+
 }

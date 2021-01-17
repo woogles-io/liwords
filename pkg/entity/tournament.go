@@ -15,6 +15,7 @@ type DivisionManager interface {
 	PairRound(int) error
 	GetStandings(int) ([]*realtime.PlayerStanding, error)
 	SetPairing(string, string, int, bool) error
+	SetSingleRoundControls(int, *realtime.RoundControl) error
 	AddPlayers(*realtime.TournamentPersons) error
 	RemovePlayers(*realtime.TournamentPersons) error
 	IsRoundReady(int) (bool, error)
@@ -24,6 +25,7 @@ type DivisionManager interface {
 	StartRound() error
 	ToResponse() (*realtime.TournamentDivisionDataResponse, error)
 	SetReadyForGame(userID, connID string, round, gameIndex int, unready bool) ([]string, bool, error)
+	ClearReadyStates(userID string, round, gameIndex int) error
 	SetLastStarted(*realtime.TournamentRoundStarted) error
 	Serialize() (datatypes.JSON, error)
 }

@@ -268,12 +268,14 @@ func convertGameToInfoResponse(g *game) (*gs.GameInfoResponse, error) {
 	tDiv := ""
 	tRound := 0
 	tGameIndex := 0
+	tid := ""
 
 	err = json.Unmarshal(g.TournamentData, &trdata)
-	if err != nil {
+	if err == nil {
 		tDiv = trdata.Division
 		tRound = trdata.Round
 		tGameIndex = trdata.GameIndex
+		tid = trdata.Id
 	}
 
 	info := &gs.GameInfoResponse{
@@ -285,7 +287,7 @@ func convertGameToInfoResponse(g *game) (*gs.GameInfoResponse, error) {
 		CreatedAt:           timestamppb.New(g.CreatedAt),
 		LastUpdate:          timestamppb.New(g.UpdatedAt),
 		GameId:              g.UUID,
-		TournamentId:        g.TournamentID,
+		TournamentId:        tid,
 		GameRequest:         gamereq,
 		TournamentDivision:  tDiv,
 		TournamentRound:     int32(tRound),
