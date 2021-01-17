@@ -21,7 +21,7 @@ export const Standings = (props: Props) => {
   const { divisions } = tournamentContext;
   const currentRound = useMemo(
     () =>
-      props.selectedDivision
+      divisions.hasOwnProperty(props.selectedDivision)
         ? divisions[props.selectedDivision].currentRound
         : 0,
     [props.selectedDivision, divisions]
