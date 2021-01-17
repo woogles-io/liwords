@@ -656,8 +656,8 @@ func TestClassicDivisionSwiss(t *testing.T) {
 	playerSwissRatings := &realtime.TournamentPersons{Persons: make(map[string]int32)}
 	swissPlayers := []string{}
 	for i := 1; i <= numberOfPlayers; i++ {
-		swissPlayers = append(swissPlayers, string(rune(i)))
-		playerSwissRatings.Persons[string(rune(i))] = int32(i)
+		swissPlayers = append(swissPlayers, fmt.Sprintf("%d", i))
+		playerSwissRatings.Persons[fmt.Sprintf("%d", i)] = int32(1000 - i)
 	}
 
 	roundControls[2].PairingMethod = realtime.PairingMethod_SWISS
@@ -1477,7 +1477,7 @@ func TestClassicDivisionAddLatecomers(t *testing.T) {
 		realtime.GameEndReason_STANDARD, false, 0, "")
 	is.NoErr(err)
 
-	err = tc.AddPlayers(&realtime.TournamentPersons{Persons: map[string]int32{"Bummer": 50}})
+	err = tc.AddPlayers(&realtime.TournamentPersons{Persons: map[string]int32{"Bummest": 50}})
 	is.NoErr(err)
 
 	err = tc.SubmitResult(3, player2, player4, 700, 300,
@@ -1486,7 +1486,7 @@ func TestClassicDivisionAddLatecomers(t *testing.T) {
 		realtime.GameEndReason_STANDARD, false, 0, "")
 	is.NoErr(err)
 
-	err = tc.AddPlayers(&realtime.TournamentPersons{Persons: map[string]int32{"Bummest": 50}})
+	err = tc.AddPlayers(&realtime.TournamentPersons{Persons: map[string]int32{"Bummer": 50}})
 	is.NoErr(err)
 
 	standings, err = tc.GetStandings(3)
@@ -1539,8 +1539,8 @@ func TestClassicDivisionAddLatecomers(t *testing.T) {
 		&realtime.PlayerStanding{Player: "Bum", Wins: 2, Losses: 3, Draws: 0, Spread: -250},
 		&realtime.PlayerStanding{Player: player3, Wins: 2, Losses: 3, Draws: 0, Spread: -400},
 		&realtime.PlayerStanding{Player: "Bummer", Wins: 1, Losses: 4, Draws: 0, Spread: -150},
-		&realtime.PlayerStanding{Player: "Guyer", Wins: 0, Losses: 5, Draws: 0, Spread: -250},
 		&realtime.PlayerStanding{Player: "Guy", Wins: 0, Losses: 5, Draws: 0, Spread: -250},
+		&realtime.PlayerStanding{Player: "Guyer", Wins: 0, Losses: 5, Draws: 0, Spread: -250},
 		&realtime.PlayerStanding{Player: "Bummest", Wins: 0, Losses: 5, Draws: 0, Spread: -400},
 	}
 	is.NoErr(equalStandings(expectedstandings, standings))

@@ -339,8 +339,7 @@ func getInitialFontesPairings(numberOfPlayers int, numberOfNtiles int, round int
 	}
 
 	sizeOfNtiles := numberOfPlayers / numberOfNtiles
-	numberOfRemainingPlayers := numberOfPlayers % sizeOfNtiles
-
+	numberOfRemainingPlayers := numberOfPlayers - (sizeOfNtiles * numberOfNtiles)
 	remainderOffset := 0
 	remainderSpacing := 0
 
