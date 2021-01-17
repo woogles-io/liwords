@@ -1,7 +1,6 @@
 @import '../base';
 
 .pairings-container {
-  padding: 16px;
   .ant-table {
     margin-top: 6px;
     td {
@@ -19,14 +18,7 @@
       }
     }
   }
-  .round-options {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    button.ant-btn {
-      margin: 0;
-    }
-  }
+
   .ant-tag-bye, ,ant-tag-removed {
     margin: 0 12px;
     top: -1px;
@@ -53,6 +45,18 @@
     }
   }
 
+
+}
+.standings-container, .pairings-container {
+  padding: 16px;
+  .round-options {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    button.ant-btn {
+      margin: 0;
+    }
+  }
   .ant-select {
     width: 200px;
     @include colorModed() {
@@ -81,8 +85,8 @@
   }
 }
 
+
 .ant-table-wrapper.standings {
-  margin: 15px;
   .rank, .player {
     font-weight: 700;
   }

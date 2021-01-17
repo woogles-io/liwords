@@ -233,9 +233,10 @@ export const ActionsPanel = React.memo((props: Props) => {
     }
     if (selectedGameTab === 'STANDINGS') {
       return (
-        <>
+        <div className="standings-container">
+          <div className="round-options">{renderDivisionSelector}</div>
           <Standings selectedDivision={selectedDivision} />
-        </>
+        </div>
       );
     }
     return null;
