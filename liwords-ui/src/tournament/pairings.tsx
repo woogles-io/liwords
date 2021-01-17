@@ -100,7 +100,7 @@ export const Pairings = (props: Props) => {
     division: Division,
     round: number
   ): PairingTableData[] => {
-    if (!division) {
+    if (!division || currentRound === -1) {
       return new Array<PairingTableData>();
     }
     const { status } = tournamentContext.competitorState;
