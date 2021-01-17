@@ -127,17 +127,30 @@ export const Pairings = (props: Props) => {
         if (isMyGame) {
           sortPriority = 2;
         }
+        console.log(2, pairing, division);
+
+        const isRemoved = (playerName: string) =>
+          division.removedPlayers.includes(playerName);
+
         const players = isBye ? (
           <div>
             <p>
               {playerNames[0]}
               <Tag className="ant-tag-bye">Bye</Tag>
+              {isRemoved(playerNames[0]) && (
+                <Tag className="ant-tag-removed">Removed</Tag>
+              )}
             </p>
           </div>
         ) : (
           <div>
             {playerNames.map((playerName) => (
-              <p key={playerName}>{playerName}</p>
+              <p key={playerName}>
+                {playerName}
+                {isRemoved(playerName) && (
+                  <Tag className="ant-tag-removed">Removed</Tag>
+                )}
+              </p>
             ))}
           </div>
         );
@@ -191,7 +204,6 @@ export const Pairings = (props: Props) => {
             const otherGameId = findGameIdFromActive(playerNames[0]);
 
             if (otherGameId && !pairing.games[0].gameEndReason) {
-
               actions = (
                 <Button
                   className="watch"

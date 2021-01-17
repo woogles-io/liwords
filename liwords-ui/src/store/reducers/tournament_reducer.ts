@@ -3,6 +3,7 @@ import {
   FullTournamentDivisions,
   GameEndReasonMap,
   MessageType,
+  PlayerProperties,
   PlayerRoundInfo,
   ReadyForTournamentGame,
   RoundStandings,
@@ -55,6 +56,7 @@ export type Division = {
   roundInfo: Array<string>; // a 1-d array, implementing the backend 2-d array of pairings
   playerIndexMap: { [playerID: string]: number };
   pairingMap: { [roundUserKey: string]: SinglePairing };
+  removedPlayers: Array<string>;
   numRounds: number;
   // Note: currentRound is zero-indexed
   currentRound: number;
@@ -157,11 +159,18 @@ const divisionDataResponseToObj = (
     pairingMap: {},
     playerIndexMap: {},
     standingsMap: {},
+    removedPlayers: new Array<string>(),
   };
 
   const pairingMap: { [key: string]: SinglePairing } = {};
   const playerIndexMap: { [playerID: string]: number } = {};
   const standingsMap: { [roundId: number]: RoundStandings.AsObject } = {};
+  const removedPlayers = new Array<string>();
+  dd.getPlayersPropertiesList().forEach((value: PlayerProperties, index) => {
+    if (value.getRemoved()) {
+      removedPlayers.push(dd.getPlayersList()[index]);
+    }
+  });
   dd.getPairingMapMap().forEach((value: PlayerRoundInfo, key: string) => {
     pairingMap[key] = {
       players: value.getPlayersList(),
@@ -182,6 +191,7 @@ const divisionDataResponseToObj = (
     standingsMap[key] = value.toObject();
   });
   ret.pairingMap = pairingMap;
+  ret.removedPlayers = removedPlayers;
   ret.playerIndexMap = playerIndexMap;
   ret.standingsMap = standingsMap;
   return ret;
