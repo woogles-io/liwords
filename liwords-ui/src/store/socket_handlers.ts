@@ -460,8 +460,11 @@ export const useOnSocketMsg = () => {
               actionType: ActionType.StartTourneyRound,
               payload: trs,
             });
-            BoopSounds.playSound('startTourneyRoundSound');
-
+            if (
+              tournamentContext?.competitorState?.division === trs.getDivision()
+            ) {
+              BoopSounds.playSound('startTourneyRoundSound');
+            }
             break;
           }
 
