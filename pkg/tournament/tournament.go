@@ -254,6 +254,15 @@ func SetSingleRoundControls(ctx context.Context, ts TournamentStore, id string, 
 		return fmt.Errorf("round number %d out or range for division %s", round, division)
 	}
 
+	if divisionObject.DivisionManager == nil {
+		return fmt.Errorf("division manager null for division %s", division)
+	}
+
+	err = divisionObject.DivisionManager.SetSingleRoundControls(round, controls)
+	if err != nil {
+		return err
+	}
+
 	divisionObject.Controls.RoundControls[round] = controls
 
 	err = ts.Set(ctx, t)
@@ -872,7 +881,7 @@ func addTournamentPersons(ctx context.Context,
 	}
 
 	// Only perform the add operation if all persons can be added.
-	personsCopy := map[string]int32{}
+	personsCopy := &realtime.TournamentPersons{Persons: map[string]int32{}}
 	userUUIDs := []string{}
 	for k := range persons.Persons {
 		u, err := us.Get(ctx, k)
@@ -885,16 +894,16 @@ func addTournamentPersons(ctx context.Context,
 		if ok {
 			return fmt.Errorf("person (%s, %d) already exists", k, personsMap[k])
 		}
-		personsCopy[fullID] = persons.Persons[k]
+		personsCopy.Persons[fullID] = persons.Persons[k]
 	}
 
-	for k, v := range personsCopy {
+	for k, v := range personsCopy.Persons {
 		personsMap[k] = v
 	}
 
 	if isPlayers {
 		if t.IsStarted {
-			err := divisionObject.DivisionManager.AddPlayers(persons)
+			err := divisionObject.DivisionManager.AddPlayers(personsCopy)
 			if err != nil {
 				return err
 			}
@@ -945,7 +954,7 @@ func removeTournamentPersons(ctx context.Context,
 	}
 
 	// Only perform the remove operation if all persons can be removed.
-	personsCopy := map[string]int32{}
+	personsCopy := &realtime.TournamentPersons{Persons: map[string]int32{}}
 	userUUIDs := []string{}
 
 	for k := range persons.Persons {
@@ -959,16 +968,16 @@ func removeTournamentPersons(ctx context.Context,
 		if !ok {
 			return fmt.Errorf("person (%s, %d) does not exist", k, personsMap[k])
 		}
-		personsCopy[fullID] = persons.Persons[k]
+		personsCopy.Persons[fullID] = persons.Persons[k]
 	}
 
-	for k, _ := range personsCopy {
+	for k, _ := range personsCopy.Persons {
 		delete(personsMap, k)
 	}
 
 	if isPlayers {
 		if t.IsStarted {
-			err := divisionObject.DivisionManager.RemovePlayers(persons)
+			err := divisionObject.DivisionManager.RemovePlayers(personsCopy)
 			if err != nil {
 				return err
 			}
@@ -983,6 +992,8 @@ func removeTournamentPersons(ctx context.Context,
 			return err
 		}
 	}
+
+
 
 	return ts.Set(ctx, t)
 }
