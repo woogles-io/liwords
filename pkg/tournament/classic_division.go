@@ -680,7 +680,7 @@ func (t *ClassicDivision) GetStandings(round int) ([]*realtime.PlayerStanding, e
 					return records[j].Removed
 				} else if records[i].Wins == records[j].Wins && records[i].Draws == records[j].Draws && records[i].Spread == records[j].Spread {
 					// Tiebreak alphabetically to ensure determinism
-					return records[i].Player > records[j].Player
+					return t.PlayerIndexMap[records[j].Player] > t.PlayerIndexMap[records[i].Player]
 				} else if records[i].Wins == records[j].Wins && records[i].Draws == records[j].Draws {
 					return records[i].Spread > records[j].Spread
 				} else if records[i].Wins == records[j].Wins {
