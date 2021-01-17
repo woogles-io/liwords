@@ -350,9 +350,7 @@ type EGCProps = {
 const EndGameControls = (props: EGCProps) => {
   const { useState } = useMountedState();
 
-  const [rematchDisabled, setRematchDisabled] = useState(
-    props.tournamentPairedMode
-  );
+  const [rematchDisabled, setRematchDisabled] = useState(false);
 
   return (
     <div className="game-controls">
