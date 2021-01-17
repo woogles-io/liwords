@@ -15,6 +15,7 @@ type DivisionManager interface {
 	PairRound(int) error
 	GetStandings(int) ([]*realtime.PlayerStanding, error)
 	SetPairing(string, string, int, bool) error
+	SetSingleRoundControls(int, *realtime.RoundControl) error
 	AddPlayers(*realtime.TournamentPersons) error
 	RemovePlayers(*realtime.TournamentPersons) error
 	IsRoundReady(int) (bool, error)

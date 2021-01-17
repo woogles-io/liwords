@@ -146,6 +146,18 @@ func NewClassicDivision(players []string,
 	return t, nil
 }
 
+func (t *ClassicDivision) SetSingleRoundControls(round int, controls *realtime.RoundControl) error {
+	if round >= len(t.Matrix) || round < 0 {
+		return fmt.Errorf("round number out of range: %d", round)
+	}
+	err := t.writeResponse(round)
+	if err != nil {
+		return err
+	}
+	t.RoundControls[round] = controls
+	return nil
+}
+
 func (t *ClassicDivision) SetPairing(playerOne string, playerTwo string, round int, isForfeit bool) error {
 	if playerOne != playerTwo && isForfeit {
 		return fmt.Errorf("forfeit results require that player one and two are identical, instead have: %s, %s", playerOne, playerTwo)

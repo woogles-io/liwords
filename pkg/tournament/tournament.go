@@ -254,6 +254,15 @@ func SetSingleRoundControls(ctx context.Context, ts TournamentStore, id string, 
 		return fmt.Errorf("round number %d out or range for division %s", round, division)
 	}
 
+	if divisionObject.DivisionManager == nil {
+		return fmt.Errorf("division manager null for division %s", division)
+	}
+
+	err = divisionObject.DivisionManager.SetSingleRoundControls(round, controls)
+	if err != nil {
+		return err
+	}
+
 	divisionObject.Controls.RoundControls[round] = controls
 
 	err = ts.Set(ctx, t)
