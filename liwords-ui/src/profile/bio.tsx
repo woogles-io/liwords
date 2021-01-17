@@ -1,7 +1,7 @@
 import React, { useCallback } from 'react';
 import ReactMarkdown from 'react-markdown';
 import { useMountedState } from '../utils/mounted';
-import { useParams } from 'react-router-dom';
+import { useParams, Link } from 'react-router-dom';
 import { useLoginStateStoreContext } from '../store/store';
 import axios from 'axios';
 import { toAPIUrl } from '../api/api';
@@ -11,6 +11,7 @@ import './bio.scss';
 
 type BioProps = {
   bio: string;
+  bioLoaded: boolean;
 };
 
 export const BioCard = React.memo((props: BioProps) => {
@@ -31,30 +32,28 @@ export const BioCard = React.memo((props: BioProps) => {
     console.log("useEffect");
   }, [props.bio]);
 
-  const actions = (viewer === username) 
-    ? [(
-        <div
-          className="edit-bio"
-          onClick={() => {
-            setCandidateBio(latestBio);
-            setEditModalVisible(true);
-          }}
-        >
-          {latestBio ? "Edit" : "Add a bio"}
-        </div>
-      )] 
-    : []
-  
   const onChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setCandidateBio(e.target.value);
   }, []);
 
+  const editButton = 
+    <Link to="/" 
+      onClick={(e) => {
+        e.preventDefault()
+        setCandidateBio(latestBio);
+        setEditModalVisible(true);
+      }}
+      >
+      {props.bioLoaded ? (latestBio ? "Edit" : "Add a bio") : ""}
+    </Link>
+
   return (viewer === username || latestBio !== "") ? (
-    <Card title="Bio" actions={actions}>
+    <Card title="Bio" extra={editButton}>
       <ReactMarkdown>{latestBio ? latestBio : 'You haven\'t yet provided your bio.'}</ReactMarkdown>
       <Modal
         className="bio-edit-modal"
         title="Edit bio"
+        width="60%"
         visible={editModalVisible}
         onCancel={() => {
           setEditModalVisible(false);
@@ -91,7 +90,7 @@ export const BioCard = React.memo((props: BioProps) => {
         }}
       >
         <Form>
-          <TextArea 
+          <TextArea className="bio-editor"
             rows={4} 
             value={candidateBio}
             onChange={onChange}
