@@ -266,9 +266,6 @@ const tourneyStatus = (
   currentRound: number,
   loginContext: LoginState
 ): TourneyStatus => {
-  if (!started) {
-    return TourneyStatus.PRETOURNEY;
-  }
   if (!division) {
     return TourneyStatus.PRETOURNEY; // XXX: maybe a state for not being part of tourney
   }
