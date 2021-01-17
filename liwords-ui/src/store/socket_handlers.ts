@@ -118,6 +118,7 @@ export const parseMsgs = (msg: Uint8Array) => {
     const topush = {
       msgType,
       parsedMsg: parsedMsg?.deserializeBinary(msgBytes),
+      msgLength,
     };
     msgs.push(topush);
     // eslint-disable-next-line no-param-reassign
@@ -164,7 +165,7 @@ export const useOnSocketMsg = () => {
       const msgs = parseMsgs(new Uint8Array(reader.result as ArrayBuffer));
 
       msgs.forEach((msg) => {
-        const { msgType, parsedMsg } = msg;
+        const { msgType, parsedMsg, msgLength } = msg;
 
         if (enableShowSocket) {
           console.log(
@@ -172,7 +173,9 @@ export const useOnSocketMsg = () => {
             'background: pink',
             ReverseMessageType[msgType] ?? msgType,
             parsedMsg?.toObject(),
-            performance.now()
+            performance.now(),
+            'bytelength:',
+            msgLength
           );
         }
 
