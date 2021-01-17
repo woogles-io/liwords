@@ -820,6 +820,23 @@ func (t *ClassicDivision) SetReadyForGame(playerID, connID string, round, gameIn
 	return nil, false, nil
 }
 
+func (t *ClassicDivision) ClearReadyStates(playerID string, round, gameIndex int) error {
+	if round >= len(t.Matrix) || round < 0 {
+		return fmt.Errorf("round number out of range: %d", round)
+	}
+	// ignore gameIndex for classicdivision
+	p, err := t.getPairing(playerID, round)
+	if err != nil {
+		return err
+	}
+	p.ReadyStates = []string{"", ""}
+	err = t.writeResponse(round)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 func (t *ClassicDivision) IsRoundComplete(round int) (bool, error) {
 	if round >= len(t.Matrix) || round < 0 {
 		return false, fmt.Errorf("round number out of range: %d", round)

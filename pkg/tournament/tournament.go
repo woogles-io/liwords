@@ -768,6 +768,29 @@ func SetReadyForGame(ctx context.Context, ts TournamentStore, t *entity.Tourname
 	return connIDs, bothReady, ts.Set(ctx, t)
 }
 
+func ClearReadyStates(ctx context.Context, ts TournamentStore, t *entity.Tournament,
+	division, userID string, round, gameIndex int) error {
+
+	t.Lock()
+	defer t.Unlock()
+
+	_, ok := t.Divisions[division]
+	if !ok {
+		return fmt.Errorf("division %s does not exist", division)
+	}
+
+	err := t.Divisions[division].DivisionManager.ClearReadyStates(userID, round, gameIndex)
+	if err != nil {
+		return err
+	}
+	err = ts.Set(ctx, t)
+	if err != nil {
+		return err
+	}
+
+	return SendTournamentDivisionMessage(ctx, ts, t.UUID, division)
+}
+
 func TournamentDataResponse(ctx context.Context, ts TournamentStore, id string) (*realtime.TournamentDataResponse, error) {
 	t, err := ts.Get(ctx, id)
 	if err != nil {
