@@ -96,6 +96,10 @@ export const Pairings = (props: Props) => {
         : tournamentContext.competitorState.currentRound,
     [props.selectedDivision, divisions, tournamentContext.competitorState]
   );
+  if (currentRound < 0) {
+    // This is temporary until Full Divisions message includes divisions before tournament start
+    return null;
+  }
   const formatPairingsData = (
     division: Division,
     round: number
@@ -191,7 +195,6 @@ export const Pairings = (props: Props) => {
             const otherGameId = findGameIdFromActive(playerNames[0]);
 
             if (otherGameId && !pairing.games[0].gameEndReason) {
-
               actions = (
                 <Button
                   className="watch"

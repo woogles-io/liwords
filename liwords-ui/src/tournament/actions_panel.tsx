@@ -141,6 +141,9 @@ export const ActionsPanel = React.memo((props: Props) => {
     if (division) {
       roundToStart = currentRound + 1;
     }
+    if (currentRound === -1) {
+      return null;
+    }
     if (
       !isDirector ||
       !(typeof roundToStart === 'number') ||
