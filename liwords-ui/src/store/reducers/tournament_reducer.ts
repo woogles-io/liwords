@@ -84,7 +84,7 @@ export const defaultTournamentState = {
     directors: new Array<string>(),
     slug: '',
     id: '',
-    type: 'STANDARD' as tourneytypes,
+    type: 'LEGACY' as tourneytypes,
     divisions: new Array<string>(),
   },
   started: false,

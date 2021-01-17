@@ -349,7 +349,7 @@ type EGCProps = {
 
 const EndGameControls = (props: EGCProps) => {
   const { useState } = useMountedState();
-
+  console.log(1, props.tournamentPairedMode);
   const [rematchDisabled, setRematchDisabled] = useState(false);
 
   return (
@@ -362,7 +362,7 @@ const EndGameControls = (props: EGCProps) => {
         <Button onClick={props.onExportGCG}>Export GCG</Button>
         <Button onClick={props.onExit}>Exit</Button>
       </div>
-      {props.showRematch && !rematchDisabled && (
+      {props.showRematch && !props.tournamentPairedMode && !rematchDisabled && (
         <Button
           type="primary"
           data-testid="rematch-button"
