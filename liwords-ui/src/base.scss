@@ -367,6 +367,7 @@ ul
 }
 
 .ant-popover-inner {
+  max-width: 300px;
   @include colorModed() {
     background-color: m($card-background);
     color: m($gray-extreme);

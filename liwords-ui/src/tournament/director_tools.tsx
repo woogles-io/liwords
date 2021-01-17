@@ -4,9 +4,10 @@ import React from 'react';
 import { useTournamentStoreContext } from '../store/store';
 import './director_tools.scss';
 import { UsernameWithContext } from '../shared/usernameWithContext';
-import { Button, message } from 'antd';
+import { Button, message, Popconfirm } from 'antd';
 import axios from 'axios';
 import { toAPIUrl } from '../api/api';
+import { Division } from '../store/reducers/tournament_reducer';
 /*
 import { AddPlayerForm, playersToAdd } from './add_player_form';
 import axios from 'axios';
@@ -93,30 +94,58 @@ export const DirectorTools = React.memo((props: DTProps) => {
     );*/
 
   const renderRoster = () => {
-    return Object.values(divisions).map((d) => {
-      return (
-        <div key={d.divisionID}>
-          <h4 className="division-name">{d.divisionID} entrants</h4>
-          <ul>
-            {d.players.map((p) => {
-              const [userID, playerName] = p.split(':');
-              return (
-                <li key={p} className="player-name">
-                  <UsernameWithContext
-                    username={playerName}
-                    userID={userID}
-                    omitSendMessage
-                    omitBlock
-                  />
-                </li>
-              );
-            })}
-          </ul>
-        </div>
-      );
-    });
+    const removePlayer = (playerName: string, divisionId: string) => {
+      axios
+        .post(
+          toAPIUrl('tournament_service.TournamentService', 'StartTournament'),
+          {
+            id: props.tournamentID,
+            division: divisionId,
+            persons: [{ [playerName]: 0 }],
+          },
+          { withCredentials: true }
+        )
+        .catch((err) => {
+          message.error({
+            content:
+              'Player cannot be removed. Please check with the Woogles team.',
+            duration: 8,
+          });
+          console.log('Error removing player: ' + err.response?.data?.msg);
+        });
+    };
+    return Object.values(divisions).map((d: Division) => (
+      <div key={d.divisionID}>
+        <h4 className="division-name">{d.divisionID} entrants</h4>
+        <ul>
+          {d.players.map((p: string) => {
+            const [userID, playerName] = p.split(':');
+            const additional = (
+              <Popconfirm
+                title="Are you sure you wish to remove this person? This is not reversible once the tournament has been started."
+                onConfirm={() => {
+                  removePlayer(playerName, d.divisionID);
+                }}
+              >
+                <li className="link plain">Remove from tournament</li>
+              </Popconfirm>
+            );
+            return (
+              <li key={p} className="player-name">
+                <UsernameWithContext
+                  username={playerName}
+                  userID={userID}
+                  omitSendMessage
+                  omitBlock
+                  additionalMenuItems={additional}
+                />
+              </li>
+            );
+          })}
+        </ul>
+      </div>
+    ));
   };
-
   const renderStartButton = () => {
     const startTournament = () => {
       axios
