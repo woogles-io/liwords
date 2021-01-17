@@ -900,9 +900,17 @@ func (t *ClassicDivision) writeResponse(round int) error {
 
 	division := []string{}
 
+	skinnyPairingsMap := make(map[string]*realtime.PlayerRoundInfo)
+
 	for i := 0; i < len(t.Matrix); i++ {
 		for j := 0; j < len(t.Matrix[i]); j++ {
-			division = append(division, t.Matrix[i][j])
+			key := t.Matrix[i][j]
+			if i != t.CurrentRound {
+				key = ""
+			} else {
+				skinnyPairingsMap[key] = t.PairingMap[key]
+			}
+			division = append(division, key)
 		}
 	}
 
@@ -937,7 +945,7 @@ func (t *ClassicDivision) writeResponse(round int) error {
 	t.Response.Players = t.Players
 	t.Response.Controls = realtimeTournamentControls
 	t.Response.Division = division
-	t.Response.PairingMap = t.PairingMap
+	t.Response.PairingMap = skinnyPairingsMap
 	t.Response.PlayerIndexMap = t.PlayerIndexMap
 	t.Response.PlayersProperties = playersProperties
 	t.Response.CurrentRound = int32(t.CurrentRound)
