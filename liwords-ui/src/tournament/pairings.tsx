@@ -116,6 +116,8 @@ export const Pairings = (props: Props) => {
       (pairing: SinglePairing): PairingTableData => {
         const playerNames = pairing.players.map(usernameFromPlayerEntry);
         const isBye = pairing.outcomes[0] === TournamentGameResult.BYE;
+        const isForfeit =
+          pairing.outcomes[0] === TournamentGameResult.FORFEIT_LOSS;
         const isMyGame = props.username && playerNames.includes(props.username);
         // sortPriorty -- The higher the number, the higher up the list,
         // we start by giving your own games a + 2 boost, and other people's byes a -2 deficit.
@@ -123,35 +125,37 @@ export const Pairings = (props: Props) => {
         // This results in a list sorted with your game at the top,
         // followed by games in order of combined wl percentage, followed by
         // byes (ranked in order of their participants w/l percentage.
-        let sortPriority = isBye ? -2 : 0;
+        let sortPriority = isBye || isForfeit ? -2 : 0;
         if (isMyGame) {
           sortPriority = 2;
         }
         const isRemoved = (playerName: string) =>
           division.removedPlayers.includes(playerName);
 
-        const players = isBye ? (
-          <div>
-            <p>
-              {playerNames[0]}
-              <Tag className="ant-tag-bye">Bye</Tag>
-              {isRemoved(playerNames[0]) && (
-                <Tag className="ant-tag-removed">Removed</Tag>
-              )}
-            </p>
-          </div>
-        ) : (
-          <div>
-            {playerNames.map((playerName) => (
-              <p key={playerName}>
-                {playerName}
-                {isRemoved(playerName) && (
+        const players =
+          playerNames[0] === playerNames[1] ? (
+            <div>
+              <p>
+                {playerNames[0]}
+                {isBye && <Tag className="ant-tag-bye">Bye</Tag>}
+                {isForfeit && <Tag className="ant-tag-forfeit">Forfeit</Tag>}
+                {isRemoved(playerNames[0]) && (
                   <Tag className="ant-tag-removed">Removed</Tag>
                 )}
               </p>
-            ))}
-          </div>
-        );
+            </div>
+          ) : (
+            <div>
+              {playerNames.map((playerName) => (
+                <p key={playerName}>
+                  {playerName}
+                  {isRemoved(playerName) && (
+                    <Tag className="ant-tag-removed">Removed</Tag>
+                  )}
+                </p>
+              ))}
+            </div>
+          );
         let actions;
         //Current round gets special buttons
         if (round === currentRound) {
@@ -258,32 +262,34 @@ export const Pairings = (props: Props) => {
             );
           }
         }
-        const wl = isBye ? (
-          <p key={`${playerNames[0]}wl`}>
-            {getPerformance(
-              playerNames[0],
-              round,
-              divisions[props.selectedDivision!]
-            )}
-          </p>
-        ) : (
-          playerNames.map((playerName) => (
-            <p key={`${playerName}wl`}>
+        const wl =
+          playerNames[0] === playerNames[1] ? (
+            <p key={`${playerNames[0]}wl`}>
               {getPerformance(
-                playerName,
+                playerNames[0],
                 round,
                 divisions[props.selectedDivision!]
               )}
             </p>
-          ))
-        );
-        const scores = isBye
-          ? null
-          : playerNames.map((playerName) => (
+          ) : (
+            playerNames.map((playerName) => (
               <p key={`${playerName}wl`}>
-                {getScores(playerName, round, pairing)}
+                {getPerformance(
+                  playerName,
+                  round,
+                  divisions[props.selectedDivision!]
+                )}
               </p>
-            ));
+            ))
+          );
+        const scores =
+          playerNames[0] === playerNames[1]
+            ? null
+            : playerNames.map((playerName) => (
+                <p key={`${playerName}wl`}>
+                  {getScores(playerName, round, pairing)}
+                </p>
+              ));
         return {
           players,
           key: playerNames.join(':'),
