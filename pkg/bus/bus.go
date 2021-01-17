@@ -783,20 +783,30 @@ func (b *Bus) sendTournamentContext(ctx context.Context, realm, userID, connID s
 	if err != nil {
 		return err
 	}
-	msg := &pb.FullTournamentDivisions{
-		Divisions: make(map[string]*pb.TournamentDivisionDataResponse),
-		Started:   t.IsStarted,
-	}
+	// msg := &pb.FullTournamentDivisions{
+	// 	Divisions: make(map[string]*pb.TournamentDivisionDataResponse),
+	// 	Started:   t.IsStarted,
+	// }
+	// Send empty divisions
+	// evt := entity.WrapEvent(msg, pb.MessageType_TOURNAMENT_FULL_DIVISIONS_MESSAGE)
+	// err = b.pubToConnectionID(connID, userID, evt)
 
 	for name := range t.Divisions {
-		r, err := tournament.TournamentDivisionDataResponse(ctx, b.tournamentStore, tourneyID, name)
+		// r, err := tournament.TournamentDivisionDataResponse(ctx, b.tournamentStore, tourneyID, name)
+		// if err != nil {
+		// 	return err
+		// }
+		// msg.Divisions[name] = r
+
+		// evt := entity.WrapEvent(r)
+
+		err := tournament.SendTournamentDivisionMessage(ctx, b.tournamentStore, tourneyID, name)
 		if err != nil {
 			return err
 		}
-		msg.Divisions[name] = r
+
 	}
-	evt := entity.WrapEvent(msg, pb.MessageType_TOURNAMENT_FULL_DIVISIONS_MESSAGE)
-	err = b.pubToConnectionID(connID, userID, evt)
+	// SEND
 
 	return err
 }
