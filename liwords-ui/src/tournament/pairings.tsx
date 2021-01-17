@@ -127,8 +127,6 @@ export const Pairings = (props: Props) => {
         if (isMyGame) {
           sortPriority = 2;
         }
-        console.log(2, pairing, division);
-
         const isRemoved = (playerName: string) =>
           division.removedPlayers.includes(playerName);
 
