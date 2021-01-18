@@ -521,7 +521,7 @@ func (t *ClassicDivision) PairRound(round int) error {
 				t.PairingMap[pairingKey] = newEliminatedPairing(playerName, opponentName)
 				roundPairings[playerIndex] = pairingKey
 			} else {
-				err = t.SetPairing(playerName, opponentName, round, t.PlayersProperties[playerIndex].Removed)
+				err = t.SetPairing(playerName, opponentName, round, (playerName == opponentName) && t.PlayersProperties[playerIndex].Removed)
 				if err != nil {
 					return err
 				}
