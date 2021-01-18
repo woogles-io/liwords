@@ -468,6 +468,11 @@ func (t *ClassicDivision) PairRound(round int) error {
 			pm.Draws = 0
 			pm.Spread = 0
 		}
+		playerIndex, ok := t.PlayerIndexMap[playerOrder[i]]
+		if !ok {
+			return fmt.Errorf("player %s does not exist in the player index map (PairRound)", playerOrder[i])
+		}
+		pm.Removed = t.PlayersProperties[playerIndex].Removed
 		poolMembers = append(poolMembers, pm)
 	}
 
@@ -516,7 +521,7 @@ func (t *ClassicDivision) PairRound(round int) error {
 				t.PairingMap[pairingKey] = newEliminatedPairing(playerName, opponentName)
 				roundPairings[playerIndex] = pairingKey
 			} else {
-				err = t.SetPairing(playerName, opponentName, round, false)
+				err = t.SetPairing(playerName, opponentName, round, t.PlayersProperties[playerIndex].Removed)
 				if err != nil {
 					return err
 				}

@@ -720,6 +720,88 @@ func TestClassicDivisionSwiss(t *testing.T) {
 	}
 }
 
+func TestClassicDivisionSwissRemoved(t *testing.T) {
+	is := is.New(t)
+
+
+	roundControls := []*realtime.RoundControl{}
+	numberOfRounds := 100
+	// This test onlyworks for values of the form 2 ^ n
+	numberOfPlayers := 33
+
+	for i := 0; i < numberOfRounds; i++ {
+		roundControls = append(roundControls, &realtime.RoundControl{FirstMethod: realtime.FirstMethod_MANUAL_FIRST,
+			PairingMethod:               realtime.PairingMethod_SWISS,
+			GamesPerRound:               defaultGamesPerRound,
+			Round:                       int32(i),
+			Factor:                      1,
+			MaxRepeats:                  0,
+			AllowOverMaxRepeats:         true,
+			RepeatRelativeWeight:        1,
+			WinDifferenceRelativeWeight: 1})
+	}
+
+	playerSwissRatings := &realtime.TournamentPersons{Persons: make(map[string]int32)}
+	swissPlayers := []string{}
+	for i := 1; i <= numberOfPlayers; i++ {
+		swissPlayers = append(swissPlayers, fmt.Sprintf("%d", i))
+		playerSwissRatings.Persons[fmt.Sprintf("%d", i)] = int32(1000 - i)
+	}
+
+	tc, err := NewClassicDivision(swissPlayers, playerSwissRatings, roundControls, true)
+	is.NoErr(err)
+	is.True(tc != nil)
+
+	err = tc.StartRound()
+	is.NoErr(err)
+
+	winLoss := []realtime.TournamentGameResult{realtime.TournamentGameResult_WIN, realtime.TournamentGameResult_LOSS}
+
+	for i := 0; i < numberOfRounds; i++ {
+		if i == 16 {
+			err = tc.RemovePlayers(&realtime.TournamentPersons{Persons: map[string]int32{"1": 50}})
+			is.NoErr(err)
+		}
+		for j := 1; j <= numberOfPlayers; j++ {
+			player := fmt.Sprintf("%d", j)
+			playerPairing, err := tc.getPairing(player, i)
+			opponent, err := tc.opponentOf(player, i)
+			is.NoErr(err)
+			if player == "1" {
+				if i >= 17 {
+					passed := playerPairing.Outcomes[0] == realtime.TournamentGameResult_FORFEIT_LOSS &&
+						playerPairing.Outcomes[1] == realtime.TournamentGameResult_FORFEIT_LOSS
+					is.True(passed)
+				} else {
+					is.True(playerPairing.Outcomes[0] != realtime.TournamentGameResult_FORFEIT_LOSS &&
+						playerPairing.Outcomes[1] != realtime.TournamentGameResult_FORFEIT_LOSS)		
+				}
+			}
+			if i >= 17 {
+				if player == "1" {
+					is.True(opponent == "1")
+				} else {
+					is.True(opponent != player)
+				}
+			}
+			if playerPairing.Outcomes[0] == realtime.TournamentGameResult_NO_RESULT {
+				is.NoErr(err)
+				randWin := rand.Intn(2)
+				if player == "1" && i < 16 {
+					randWin = 0
+				}
+				err = tc.SubmitResult(i, player, opponent, rand.Intn(1000), rand.Intn(1000),
+					winLoss[randWin],
+					winLoss[1 - randWin],
+					realtime.GameEndReason_STANDARD, false, 0, "")
+				is.NoErr(err)
+			}
+		}
+	}
+
+
+}
+
 func TestClassicDivisionRoundRobin(t *testing.T) {
 	// This test is used to ensure that round robin
 	// pairings work correctly
