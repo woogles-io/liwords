@@ -1275,11 +1275,6 @@ export class TournamentDivisionDataResponse extends jspb.Message {
   setPlayersList(value: Array<string>): void;
   addPlayers(value: string, index?: number): string;
 
-  hasControls(): boolean;
-  clearControls(): void;
-  getControls(): TournamentControls | undefined;
-  setControls(value?: TournamentControls): void;
-
   clearDivisionList(): void;
   getDivisionList(): Array<string>;
   setDivisionList(value: Array<string>): void;
@@ -1317,7 +1312,6 @@ export namespace TournamentDivisionDataResponse {
     id: string,
     divisionId: string,
     playersList: Array<string>,
-    controls?: TournamentControls.AsObject,
     divisionList: Array<string>,
     playerIndexMapMap: Array<[string, number]>,
     pairingMapMap: Array<[string, PlayerRoundInfo.AsObject]>,

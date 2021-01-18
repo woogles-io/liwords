@@ -9933,7 +9933,6 @@ proto.liwords.TournamentDivisionDataResponse.toObject = function(includeInstance
     id: jspb.Message.getFieldWithDefault(msg, 1, ""),
     divisionId: jspb.Message.getFieldWithDefault(msg, 2, ""),
     playersList: (f = jspb.Message.getRepeatedField(msg, 3)) == null ? undefined : f,
-    controls: (f = msg.getControls()) && proto.liwords.TournamentControls.toObject(includeInstance, f),
     divisionList: (f = jspb.Message.getRepeatedField(msg, 5)) == null ? undefined : f,
     playerIndexMapMap: (f = msg.getPlayerIndexMapMap()) ? f.toObject(includeInstance, undefined) : [],
     pairingMapMap: (f = msg.getPairingMapMap()) ? f.toObject(includeInstance, proto.liwords.PlayerRoundInfo.toObject) : [],
@@ -9989,11 +9988,6 @@ proto.liwords.TournamentDivisionDataResponse.deserializeBinaryFromReader = funct
     case 3:
       var value = /** @type {string} */ (reader.readString());
       msg.addPlayers(value);
-      break;
-    case 4:
-      var value = new proto.liwords.TournamentControls;
-      reader.readMessage(value,proto.liwords.TournamentControls.deserializeBinaryFromReader);
-      msg.setControls(value);
       break;
     case 5:
       var value = /** @type {string} */ (reader.readString());
@@ -10078,14 +10072,6 @@ proto.liwords.TournamentDivisionDataResponse.serializeBinaryToWriter = function(
     writer.writeRepeatedString(
       3,
       f
-    );
-  }
-  f = message.getControls();
-  if (f != null) {
-    writer.writeMessage(
-      4,
-      f,
-      proto.liwords.TournamentControls.serializeBinaryToWriter
     );
   }
   f = message.getDivisionList();
@@ -10202,43 +10188,6 @@ proto.liwords.TournamentDivisionDataResponse.prototype.addPlayers = function(val
  */
 proto.liwords.TournamentDivisionDataResponse.prototype.clearPlayersList = function() {
   return this.setPlayersList([]);
-};
-
-
-/**
- * optional TournamentControls controls = 4;
- * @return {?proto.liwords.TournamentControls}
- */
-proto.liwords.TournamentDivisionDataResponse.prototype.getControls = function() {
-  return /** @type{?proto.liwords.TournamentControls} */ (
-    jspb.Message.getWrapperField(this, proto.liwords.TournamentControls, 4));
-};
-
-
-/**
- * @param {?proto.liwords.TournamentControls|undefined} value
- * @return {!proto.liwords.TournamentDivisionDataResponse} returns this
-*/
-proto.liwords.TournamentDivisionDataResponse.prototype.setControls = function(value) {
-  return jspb.Message.setWrapperField(this, 4, value);
-};
-
-
-/**
- * Clears the message field making it undefined.
- * @return {!proto.liwords.TournamentDivisionDataResponse} returns this
- */
-proto.liwords.TournamentDivisionDataResponse.prototype.clearControls = function() {
-  return this.setControls(undefined);
-};
-
-
-/**
- * Returns whether this field is set.
- * @return {boolean}
- */
-proto.liwords.TournamentDivisionDataResponse.prototype.hasControls = function() {
-  return jspb.Message.getField(this, 4) != null;
 };
 
 

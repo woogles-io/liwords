@@ -154,7 +154,10 @@ const divisionDataResponseToObj = (
     divisionID: dd.getDivisionId(),
     players: dd.getPlayersList(),
     currentRound: dd.getCurrentRound(),
-    numRounds: dd.getControls()?.toObject().roundControlsList.length || 0,
+    numRounds:
+      dd.getPlayersList().length > 0
+        ? dd.getDivisionList().length / dd.getPlayersList().length
+        : 0,
     roundInfo: dd.getDivisionList(),
     pairingMap: {},
     playerIndexMap: {},
@@ -171,9 +174,18 @@ const divisionDataResponseToObj = (
       removedPlayers.push(dd.getPlayersList()[index]);
     }
   });
+  dd.getPlayersList().forEach((value: string, index: number) => {
+    playerIndexMap[value] = index;
+  });
+  const playerNameByIndexMap: { [idx: number]: string } = {};
+  dd.getPlayersList().forEach((value: string, index: number) => {
+    playerNameByIndexMap[index] = value;
+  });
   dd.getPairingMapMap().forEach((value: PlayerRoundInfo, key: string) => {
     pairingMap[key] = {
-      players: value.getPlayersList(),
+      players: value
+        .getPlayersList()
+        .map((v) => playerNameByIndexMap[parseInt(v, 10)]),
       outcomes: value.getOutcomesList(),
       readyStates: value.getReadyStatesList(),
       games: value.getGamesList().map((g) => ({
@@ -184,9 +196,7 @@ const divisionDataResponseToObj = (
       })),
     };
   });
-  dd.getPlayerIndexMapMap().forEach((value: number, key: string) => {
-    playerIndexMap[key] = value;
-  });
+
   dd.getStandingsMap().forEach((value: RoundStandings, key: number) => {
     standingsMap[key] = value.toObject();
   });

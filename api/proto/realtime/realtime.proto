@@ -465,11 +465,13 @@ message TournamentDivisionDataResponse {
   string id = 1;
   string division_id = 2;
   repeated string players = 3;
-  TournamentControls controls = 4;
+  // DEPRECIATED
+  // TournamentControls controls = 4;
   // In the future we will add different
   // types of tournament divisions and only
   // one will be non nil
   repeated string division = 5;
+  // DEPRECIATED
   map<string, int32> player_index_map = 6;
   map<string, PlayerRoundInfo> pairing_map = 7;
   int32 current_round = 8;
