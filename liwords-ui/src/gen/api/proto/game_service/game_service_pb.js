@@ -7,6 +7,8 @@
  * @public
  */
 // GENERATED CODE -- DO NOT EDIT!
+/* eslint-disable */
+// @ts-nocheck
 
 var jspb = require('google-protobuf');
 var goog = jspb;
@@ -889,8 +891,10 @@ proto.game_service.GameInfoResponse.deserializeBinaryFromReader = function(msg, 
       msg.setGameEndReason(value);
       break;
     case 13:
-      var value = /** @type {!Array<number>} */ (reader.readPackedInt32());
-      msg.setScoresList(value);
+      var values = /** @type {!Array<number>} */ (reader.isDelimited() ? reader.readPackedInt32() : [reader.readInt32()]);
+      for (var i = 0; i < values.length; i++) {
+        msg.addScores(values[i]);
+      }
       break;
     case 14:
       var value = /** @type {number} */ (reader.readInt32());
