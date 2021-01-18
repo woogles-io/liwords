@@ -285,7 +285,7 @@ func TestTournamentSingleDivision(t *testing.T) {
 	is.NoErr(equalTournamentPersons(&realtime.TournamentPersons{Persons: map[string]int32{"Will:Will": 1000, "Josh:Josh": 3000, "Conrad:Conrad": 2200, "Jesse:Jesse": 2100, "Noah:Noah": 4, "Bob:Bob": 2}}, div1.Players))
 
 	// Remove players that don't exist
-	err = tournament.RemovePlayers(ctx, tstore, us, ty.UUID, divOneName, &realtime.TournamentPersons{Persons: map[string]int32{"Evans": -1, "Zoof": 2}})
+	err = tournament.RemovePlayers(ctx, tstore, us, ty.UUID, divOneName, &realtime.TournamentPersons{Persons: map[string]int32{"Evans": -1}})
 	is.True(err.Error() == "person (Evans, 0) does not exist")
 	is.NoErr(equalTournamentPersons(&realtime.TournamentPersons{Persons: map[string]int32{"Will:Will": 1000, "Josh:Josh": 3000, "Conrad:Conrad": 2200, "Jesse:Jesse": 2100, "Noah:Noah": 4, "Bob:Bob": 2}}, div1.Players))
 
