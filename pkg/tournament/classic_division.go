@@ -901,7 +901,7 @@ func (t *ClassicDivision) writeResponse(round int) error {
 	division := []string{}
 
 	newKeyInt := 0
-	skinnyPairingsMap := make(map[string]*realtime.PlayerRoundInfoInt)
+	skinnyPairingsMap := make(map[string]*realtime.PlayerRoundInfo)
 	skinniedMappings := make(map[string]string)
 
 	for i := 0; i < len(t.Matrix); i++ {
@@ -915,7 +915,7 @@ func (t *ClassicDivision) writeResponse(round int) error {
 					oldPRI := t.PairingMap[oldKey]
 					if oldPRI != nil {
 						newKey = fmt.Sprintf("%d", newKeyInt)
-						var newPlayers []int32
+						var newPlayers []string
 						if oldPRI.Players != nil {
 							playerOneIndex, ok := t.PlayerIndexMap[oldPRI.Players[0]]
 							if !ok {
@@ -925,10 +925,9 @@ func (t *ClassicDivision) writeResponse(round int) error {
 							if !ok {
 								return fmt.Errorf("player %s does not exist in pairing map (writeResponse)", oldPRI.Players[1])
 							}
-							newPlayers = []int32{playerOneIndex, playerTwoIndex}
+							newPlayers = []string{fmt.Sprintf("%d", playerOneIndex), fmt.Sprintf("%d", playerTwoIndex)}
 						}
-
-						newPRI := &realtime.PlayerRoundInfoInt{
+						newPRI := &realtime.PlayerRoundInfo{
 							Games: oldPRI.Games,
 							Outcomes: oldPRI.Outcomes,
 							ReadyStates: oldPRI.ReadyStates,
@@ -937,7 +936,6 @@ func (t *ClassicDivision) writeResponse(round int) error {
 						skinniedMappings[oldKey] = newKey
 						newKeyInt++		
 					}
-
 				}
 			}
 			division = append(division, newKey)

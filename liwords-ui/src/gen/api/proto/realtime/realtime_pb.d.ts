@@ -1179,46 +1179,6 @@ export namespace PlayerRoundInfo {
   }
 }
 
-export class PlayerRoundInfoInt extends jspb.Message {
-  clearPlayersList(): void;
-  getPlayersList(): Array<number>;
-  setPlayersList(value: Array<number>): void;
-  addPlayers(value: number, index?: number): number;
-
-  clearGamesList(): void;
-  getGamesList(): Array<TournamentGame>;
-  setGamesList(value: Array<TournamentGame>): void;
-  addGames(value?: TournamentGame, index?: number): TournamentGame;
-
-  clearOutcomesList(): void;
-  getOutcomesList(): Array<TournamentGameResultMap[keyof TournamentGameResultMap]>;
-  setOutcomesList(value: Array<TournamentGameResultMap[keyof TournamentGameResultMap]>): void;
-  addOutcomes(value: TournamentGameResultMap[keyof TournamentGameResultMap], index?: number): TournamentGameResultMap[keyof TournamentGameResultMap];
-
-  clearReadyStatesList(): void;
-  getReadyStatesList(): Array<string>;
-  setReadyStatesList(value: Array<string>): void;
-  addReadyStates(value: string, index?: number): string;
-
-  serializeBinary(): Uint8Array;
-  toObject(includeInstance?: boolean): PlayerRoundInfoInt.AsObject;
-  static toObject(includeInstance: boolean, msg: PlayerRoundInfoInt): PlayerRoundInfoInt.AsObject;
-  static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
-  static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
-  static serializeBinaryToWriter(message: PlayerRoundInfoInt, writer: jspb.BinaryWriter): void;
-  static deserializeBinary(bytes: Uint8Array): PlayerRoundInfoInt;
-  static deserializeBinaryFromReader(message: PlayerRoundInfoInt, reader: jspb.BinaryReader): PlayerRoundInfoInt;
-}
-
-export namespace PlayerRoundInfoInt {
-  export type AsObject = {
-    playersList: Array<number>,
-    gamesList: Array<TournamentGame.AsObject>,
-    outcomesList: Array<TournamentGameResultMap[keyof TournamentGameResultMap]>,
-    readyStatesList: Array<string>,
-  }
-}
-
 export class PlayerStanding extends jspb.Message {
   getPlayer(): string;
   setPlayer(value: string): void;
@@ -1322,7 +1282,7 @@ export class TournamentDivisionDataResponse extends jspb.Message {
 
   getPlayerIndexMapMap(): jspb.Map<string, number>;
   clearPlayerIndexMapMap(): void;
-  getPairingMapMap(): jspb.Map<string, PlayerRoundInfoInt>;
+  getPairingMapMap(): jspb.Map<string, PlayerRoundInfo>;
   clearPairingMapMap(): void;
   getCurrentRound(): number;
   setCurrentRound(value: number): void;
@@ -1354,7 +1314,7 @@ export namespace TournamentDivisionDataResponse {
     playersList: Array<string>,
     divisionList: Array<string>,
     playerIndexMapMap: Array<[string, number]>,
-    pairingMapMap: Array<[string, PlayerRoundInfoInt.AsObject]>,
+    pairingMapMap: Array<[string, PlayerRoundInfo.AsObject]>,
     currentRound: number,
     standingsMap: Array<[number, RoundStandings.AsObject]>,
     playersPropertiesList: Array<PlayerProperties.AsObject>,
