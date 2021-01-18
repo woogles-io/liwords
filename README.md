@@ -60,7 +60,7 @@ If you change any of the `.proto` files (in this repo or in the Macondo repo) yo
 
 To do so, run in this directory:
 
-`CODE_DIR=/your/code/dir ./build-protobuf`
+`CODE_DIR=/your/code/dir ./build-protobuf.sh`
 
 - You must have installed the protoc extensions:
 

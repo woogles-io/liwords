@@ -446,6 +446,13 @@ message PlayerRoundInfo {
   repeated string ready_states = 4;
 }
 
+message PlayerRoundInfoInt {
+  repeated int32 players = 1;
+  repeated TournamentGame games = 2; // can be a list, for elimination tourneys
+  repeated TournamentGameResult outcomes = 3;
+  repeated string ready_states = 4;
+}
+
 message PlayerStanding {
   string player = 1;
   int32 wins = 2;
@@ -465,13 +472,15 @@ message TournamentDivisionDataResponse {
   string id = 1;
   string division_id = 2;
   repeated string players = 3;
-  TournamentControls controls = 4;
+  // DEPRECIATED
+  // TournamentControls controls = 4;
   // In the future we will add different
   // types of tournament divisions and only
   // one will be non nil
   repeated string division = 5;
+  // DEPRECIATED
   map<string, int32> player_index_map = 6;
-  map<string, PlayerRoundInfo> pairing_map = 7;
+  map<string, PlayerRoundInfoInt> pairing_map = 7;
   int32 current_round = 8;
   map<int32, RoundStandings> standings = 9;
   repeated PlayerProperties players_properties = 10;

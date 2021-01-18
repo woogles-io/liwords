@@ -901,7 +901,7 @@ func (t *ClassicDivision) writeResponse(round int) error {
 	division := []string{}
 
 	newKeyInt := 0
-	skinnyPairingsMap := make(map[string]*realtime.PlayerRoundInfo)
+	skinnyPairingsMap := make(map[string]*realtime.PlayerRoundInfoInt)
 	skinniedMappings := make(map[string]string)
 
 	for i := 0; i < len(t.Matrix); i++ {
@@ -912,10 +912,32 @@ func (t *ClassicDivision) writeResponse(round int) error {
 				var ok bool
 				newKey, ok = skinniedMappings[oldKey]
 				if !ok {
-					newKey = fmt.Sprintf("%d", newKeyInt)
-					skinnyPairingsMap[newKey] = t.PairingMap[oldKey]
-					skinniedMappings[oldKey] = newKey
-					newKeyInt++	
+					oldPRI := t.PairingMap[oldKey]
+					if oldPRI != nil {
+						newKey = fmt.Sprintf("%d", newKeyInt)
+						var newPlayers []int32
+						if oldPRI.Players != nil {
+							playerOneIndex, ok := t.PlayerIndexMap[oldPRI.Players[0]]
+							if !ok {
+								return fmt.Errorf("player %s does not exist in pairing map (writeResponse)", oldPRI.Players[0])
+							}
+							playerTwoIndex, ok := t.PlayerIndexMap[oldPRI.Players[1]]
+							if !ok {
+								return fmt.Errorf("player %s does not exist in pairing map (writeResponse)", oldPRI.Players[1])
+							}
+							newPlayers = []int32{playerOneIndex, playerTwoIndex}
+						}
+
+						newPRI := &realtime.PlayerRoundInfoInt{
+							Games: oldPRI.Games,
+							Outcomes: oldPRI.Outcomes,
+							ReadyStates: oldPRI.ReadyStates,
+							Players: newPlayers}
+						skinnyPairingsMap[newKey] = newPRI
+						skinniedMappings[oldKey] = newKey
+						newKeyInt++		
+					}
+
 				}
 			}
 			division = append(division, newKey)
@@ -951,10 +973,10 @@ func (t *ClassicDivision) writeResponse(round int) error {
 	}
 
 	t.Response.Players = t.Players
-	t.Response.Controls = realtimeTournamentControls
+	// t.Response.Controls = realtimeTournamentControls
 	t.Response.Division = division
 	t.Response.PairingMap = skinnyPairingsMap
-	t.Response.PlayerIndexMap = t.PlayerIndexMap
+	// t.Response.PlayerIndexMap = t.PlayerIndexMap
 	t.Response.PlayersProperties = playersProperties
 	t.Response.CurrentRound = int32(t.CurrentRound)
 	t.Response.Finished = isFinished
