@@ -7,6 +7,8 @@
  * @public
  */
 // GENERATED CODE -- DO NOT EDIT!
+/* eslint-disable */
+// @ts-nocheck
 
 var jspb = require('google-protobuf');
 var goog = jspb;
@@ -8653,12 +8655,16 @@ proto.liwords.TournamentGame.deserializeBinaryFromReader = function(msg, reader)
     var field = reader.getFieldNumber();
     switch (field) {
     case 1:
-      var value = /** @type {!Array<number>} */ (reader.readPackedInt32());
-      msg.setScoresList(value);
+      var values = /** @type {!Array<number>} */ (reader.isDelimited() ? reader.readPackedInt32() : [reader.readInt32()]);
+      for (var i = 0; i < values.length; i++) {
+        msg.addScores(values[i]);
+      }
       break;
     case 2:
-      var value = /** @type {!Array<!proto.liwords.TournamentGameResult>} */ (reader.readPackedEnum());
-      msg.setResultsList(value);
+      var values = /** @type {!Array<!proto.liwords.TournamentGameResult>} */ (reader.isDelimited() ? reader.readPackedEnum() : [reader.readEnum()]);
+      for (var i = 0; i < values.length; i++) {
+        msg.addResults(values[i]);
+      }
       break;
     case 3:
       var value = /** @type {!proto.liwords.GameEndReason} */ (reader.readEnum());
@@ -9088,8 +9094,10 @@ proto.liwords.PlayerRoundInfo.deserializeBinaryFromReader = function(msg, reader
       msg.addGames(value);
       break;
     case 3:
-      var value = /** @type {!Array<!proto.liwords.TournamentGameResult>} */ (reader.readPackedEnum());
-      msg.setOutcomesList(value);
+      var values = /** @type {!Array<!proto.liwords.TournamentGameResult>} */ (reader.isDelimited() ? reader.readPackedEnum() : [reader.readEnum()]);
+      for (var i = 0; i < values.length; i++) {
+        msg.addOutcomes(values[i]);
+      }
       break;
     case 4:
       var value = /** @type {string} */ (reader.readString());
@@ -9386,8 +9394,10 @@ proto.liwords.PlayerRoundInfoInt.deserializeBinaryFromReader = function(msg, rea
     var field = reader.getFieldNumber();
     switch (field) {
     case 1:
-      var value = /** @type {!Array<number>} */ (reader.readPackedInt32());
-      msg.setPlayersList(value);
+      var values = /** @type {!Array<number>} */ (reader.isDelimited() ? reader.readPackedInt32() : [reader.readInt32()]);
+      for (var i = 0; i < values.length; i++) {
+        msg.addPlayers(values[i]);
+      }
       break;
     case 2:
       var value = new proto.liwords.TournamentGame;
@@ -9395,8 +9405,10 @@ proto.liwords.PlayerRoundInfoInt.deserializeBinaryFromReader = function(msg, rea
       msg.addGames(value);
       break;
     case 3:
-      var value = /** @type {!Array<!proto.liwords.TournamentGameResult>} */ (reader.readPackedEnum());
-      msg.setOutcomesList(value);
+      var values = /** @type {!Array<!proto.liwords.TournamentGameResult>} */ (reader.isDelimited() ? reader.readPackedEnum() : [reader.readEnum()]);
+      for (var i = 0; i < values.length; i++) {
+        msg.addOutcomes(values[i]);
+      }
       break;
     case 4:
       var value = /** @type {string} */ (reader.readString());
