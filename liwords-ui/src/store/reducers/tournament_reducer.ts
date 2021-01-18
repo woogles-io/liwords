@@ -154,7 +154,10 @@ const divisionDataResponseToObj = (
     divisionID: dd.getDivisionId(),
     players: dd.getPlayersList(),
     currentRound: dd.getCurrentRound(),
-    numRounds: dd.getControls()?.toObject().roundControlsList.length || 0,
+    numRounds:
+      dd.getPlayersList().length > 0
+        ? dd.getDivisionList().length / dd.getPlayersList().length
+        : 0,
     roundInfo: dd.getDivisionList(),
     pairingMap: {},
     playerIndexMap: {},
