@@ -907,15 +907,18 @@ func (t *ClassicDivision) writeResponse(round int) error {
 	for i := 0; i < len(t.Matrix); i++ {
 		for j := 0; j < len(t.Matrix[i]); j++ {
 			oldKey := t.Matrix[i][j]
-			newKey, ok := skinniedMappings[oldKey]
-			if !ok {
-				newKey = fmt.Sprintf("%d", newKeyInt)
-				skinnyPairingsMap[newKey] = t.PairingMap[oldKey]
-				skinniedMappings[oldKey] = newKey
-				newKeyInt++	
+			newKey := ""
+			if oldKey != "" {
+				var ok bool
+				newKey, ok = skinniedMappings[oldKey]
+				if !ok {
+					newKey = fmt.Sprintf("%d", newKeyInt)
+					skinnyPairingsMap[newKey] = t.PairingMap[oldKey]
+					skinniedMappings[oldKey] = newKey
+					newKeyInt++	
+				}
 			}
 			division = append(division, newKey)
-
 		}
 	}
 
