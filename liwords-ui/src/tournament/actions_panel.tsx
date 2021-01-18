@@ -60,8 +60,17 @@ export const ActionsPanel = React.memo((props: Props) => {
     tournamentContext,
   } = useTournamentStoreContext();
   const { divisions } = tournamentContext;
-  const [selectedRound, setSelectedRound] = useState(0);
-  const [selectedDivision, setSelectedDivision] = useState('');
+  const [competitorStatusLoaded, setCompetitorStatusLoaded] = useState(
+    tournamentContext.competitorState.isRegistered
+  );
+  let initialRound = 0;
+  let initialDivision = '';
+  if (tournamentContext.competitorState.division) {
+    initialDivision = tournamentContext.competitorState.division;
+    initialRound = tournamentContext.competitorState.currentRound;
+  }
+  const [selectedRound, setSelectedRound] = useState(initialRound);
+  const [selectedDivision, setSelectedDivision] = useState(initialDivision);
   const { lobbyContext } = useLobbyStoreContext();
   const tournamentID = tournamentContext.metadata.id;
 
@@ -290,7 +299,11 @@ export const ActionsPanel = React.memo((props: Props) => {
         })
       : undefined;
     if (foundDivision) {
-      if (!selectedDivision) {
+      if (!competitorStatusLoaded) {
+        setCompetitorStatusLoaded(true);
+        setSelectedDivision(foundDivision.divisionID);
+        setSelectedRound(foundDivision.currentRound);
+      } else if (!selectedDivision) {
         setSelectedDivision(foundDivision.divisionID);
         setSelectedRound(foundDivision.currentRound);
       } else if (selectedRound === -1) {
@@ -300,10 +313,21 @@ export const ActionsPanel = React.memo((props: Props) => {
       if (divisionArray.length) {
         if (!selectedDivision) {
           setSelectedDivision(divisionArray[0].divisionID);
+          setSelectedRound(
+            divisionArray[0].currentRound > -1
+              ? divisionArray[0].currentRound
+              : 0
+          );
         }
       }
     }
-  }, [divisions, selectedDivision, selectedRound, userID]);
+  }, [
+    divisions,
+    selectedDivision,
+    competitorStatusLoaded,
+    selectedRound,
+    userID,
+  ]);
 
   const actions = useMemo(() => {
     if (selectedGameTab === 'STANDINGS') {
