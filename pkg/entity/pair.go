@@ -22,6 +22,7 @@ type PoolMember struct {
 	Wins        int
 	Draws       int
 	Spread      int
+	Removed     bool
 }
 
 type UnpairedPoolMembers struct {

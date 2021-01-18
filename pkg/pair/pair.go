@@ -261,6 +261,13 @@ func weigh(members *entity.UnpairedPoolMembers, i int, j int) (int64, error) {
 func weighSwiss(members *entity.UnpairedPoolMembers, i int, j int) int64 {
 	p1 := members.PoolMembers[i]
 	p2 := members.PoolMembers[j]
+
+	// Egregious, temporary hack
+	var removedWeight int64 = 0
+	if p1.Removed || p2.Removed {
+		removedWeight = entity.WinWeightScaling * 100
+	}
+
 	// Scale up wins to ensure any single edge win difference weight
 	// outweighs the sum of all of the edge's possible spread weight
 
@@ -287,7 +294,7 @@ func weighSwiss(members *entity.UnpairedPoolMembers, i int, j int) int64 {
 	} else if repeatsOverMax > 0 {
 		repeatWeight = entity.ProhibitiveWeight
 	}
-	return winDiffWeight + spreadDiffWeight + repeatWeight
+	return winDiffWeight + spreadDiffWeight + repeatWeight + removedWeight
 }
 
 func weighQuickpair(members *entity.UnpairedPoolMembers, i int, j int) int64 {
