@@ -902,15 +902,20 @@ func (t *ClassicDivision) writeResponse(round int) error {
 
 	newKeyInt := 0
 	skinnyPairingsMap := make(map[string]*realtime.PlayerRoundInfo)
-
+	skinniedMappings := make(map[string]string)
 
 	for i := 0; i < len(t.Matrix); i++ {
 		for j := 0; j < len(t.Matrix[i]); j++ {
 			oldKey := t.Matrix[i][j]
-			newKey := fmt.Sprintf("%d", newKeyInt)
+			newKey, ok := skinniedMappings[oldKey]
+			if !ok {
+				newKey = fmt.Sprintf("%d", newKeyInt)
+				skinnyPairingsMap[newKey] = t.PairingMap[oldKey]
+				skinniedMappings[oldKey] = newKey
+				newKeyInt++	
+			}
 			division = append(division, newKey)
-			skinnyPairingsMap[newKey] = t.PairingMap[oldKey]
-			newKeyInt++
+
 		}
 	}
 
