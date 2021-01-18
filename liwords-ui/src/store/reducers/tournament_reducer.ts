@@ -187,8 +187,9 @@ const divisionDataResponseToObj = (
       })),
     };
   });
-  dd.getPlayerIndexMapMap().forEach((value: number, key: string) => {
-    playerIndexMap[key] = value;
+
+  dd.getPlayersList().forEach((value: string, index: number) => {
+    playerIndexMap[value] = index;
   });
   dd.getStandingsMap().forEach((value: RoundStandings, key: number) => {
     standingsMap[key] = value.toObject();
