@@ -134,6 +134,14 @@ services:
       - "traefik.http.services.liwords-fe.loadbalancer.server.port=3000"
       - traefik.enable=true
 
+  pb_compiler:
+    build:
+      context: .
+      dockerfile: Dockerfile-pb
+    volumes:
+      - .:/opt/code/liwords:rw
+      - ../macondo:/opt/code/macondo
+
 networks:
   aeronet:
     driver: bridge
