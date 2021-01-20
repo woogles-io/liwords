@@ -491,6 +491,8 @@ func SetResult(ctx context.Context,
 			Players:   players,
 			EndReason: reason,
 			Round:     int32(round),
+			Division:  division,
+			GameIndex: int32(gameIndex),
 			Time:      time.Now().Unix(),
 		}
 		log.Debug().Interface("tevt", tevt).Msg("sending legacy tournament game ended evt")
@@ -992,8 +994,6 @@ func removeTournamentPersons(ctx context.Context,
 			return err
 		}
 	}
-
-
 
 	return ts.Set(ctx, t)
 }

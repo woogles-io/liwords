@@ -54,6 +54,7 @@ type GameStore interface {
 	SetGameEventChan(c chan<- *entity.EventWrapper)
 	Unload(context.Context, string)
 	SetReady(ctx context.Context, gid string, pidx int) (int, error)
+	GetHistory(ctx context.Context, id string) (*macondopb.GameHistory, error)
 }
 
 type ConfigCtxKey string

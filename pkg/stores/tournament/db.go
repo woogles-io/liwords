@@ -268,6 +268,9 @@ func (s *DBStore) GetRecentGames(ctx context.Context, tourneyID string, numGames
 			GameId:    info.GameId,
 			EndReason: info.GameEndReason,
 			Time:      info.LastUpdate.Seconds,
+			Round:     int32(info.TournamentRound),
+			Division:  info.TournamentDivision,
+			GameIndex: info.TournamentGameIndex,
 		}
 		evts = append(evts, evt)
 	}

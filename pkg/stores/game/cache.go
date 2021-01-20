@@ -7,6 +7,7 @@ import (
 
 	"github.com/domino14/liwords/pkg/entity"
 	gs "github.com/domino14/liwords/rpc/api/proto/game_service"
+	macondopb "github.com/domino14/macondo/gen/api/proto/macondo"
 	lru "github.com/hashicorp/golang-lru"
 	"github.com/rs/zerolog/log"
 )
@@ -27,6 +28,7 @@ type backingStore interface {
 	SetGameEventChan(ch chan<- *entity.EventWrapper)
 	Disconnect()
 	SetReady(ctx context.Context, gid string, pidx int) (int, error)
+	GetHistory(ctx context.Context, id string) (*macondopb.GameHistory, error)
 }
 
 const (
@@ -217,4 +219,8 @@ func (c *Cache) Disconnect() {
 
 func (c *Cache) SetReady(ctx context.Context, gid string, pidx int) (int, error) {
 	return c.backing.SetReady(ctx, gid, pidx)
+}
+
+func (c *Cache) GetHistory(ctx context.Context, id string) (*macondopb.GameHistory, error) {
+	return c.backing.GetHistory(ctx, id)
 }
