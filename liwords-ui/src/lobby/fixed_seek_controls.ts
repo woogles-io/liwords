@@ -6,7 +6,7 @@ import { ChallengeRule } from '../gen/macondo/api/proto/macondo/macondo_pb';
 type settings = { [key: string]: string | number | boolean };
 
 const phillyvirtual = {
-  lexicon: 'NWL18',
+  lexicon: 'NWL20',
   challengerule: ChallengeRule.VOID,
   initialtime: 22, // Slider position is equivalent to 20 minutes.
   rated: true,
@@ -16,32 +16,10 @@ const phillyvirtual = {
   vsBot: false,
 };
 
-const hcnj = phillyvirtual;
-
 const cococlub = {
   lexicon: 'CSW19',
   challengerule: ChallengeRule.FIVE_POINT,
   initialtime: 17, // 15 minutes
-  rated: true,
-  extratime: 1,
-  friend: '',
-  incOrOT: 'overtime',
-  vsBot: false,
-};
-
-const merry = {
-  challengerule: ChallengeRule.FIVE_POINT,
-  initialtime: 22, // 20 minutes
-  rated: true,
-  extratime: 1,
-  friend: '',
-  incOrOT: 'overtime',
-  vsBot: false,
-};
-
-const pbmt2021 = {
-  challengerule: ChallengeRule.VOID,
-  initialtime: 22, // 20 minutes
   rated: true,
   extratime: 1,
   friend: '',
@@ -60,12 +38,20 @@ const laclub = {
   vsBot: false,
 };
 
+const madisonclub = {
+  challengerule: ChallengeRule.FIVE_POINT,
+  initialtime: 22, // 20 minutes
+  rated: true,
+  extratime: 1,
+  friend: '',
+  incOrOT: 'overtime',
+  vsBot: false,
+};
+
 export const fixedSettings: { [key: string]: settings } = {
   phillyvirtual,
-  hcnj,
   cococlub,
-  merry,
-  pbmt2021,
+  madisonclub,
   '26VtG4JCfeD6qvSGJEwRLm': laclub,
 };
 

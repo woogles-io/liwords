@@ -28,7 +28,7 @@ export const Announcements = React.memo((props: AnnouncementsProps) => {
         >
           <p>
             The World Youth Championship runs for three consecutive weekends,
-            starting January 23, 2021! Watch as teams of talented youth around
+            starting January 22, 2021! Watch as teams of talented youth around
             the world play our favorite game. Who will emerge victorious?
           </p>
         </a>
@@ -39,13 +39,14 @@ export const Announcements = React.memo((props: AnnouncementsProps) => {
       title: 'Upcoming Tournament - Amazing Race 2',
       body: (
         <a
-          href="http://youthscrabble.org/WYC2020/"
+          href="https://woogles.io/tournament/tarst2"
           target="_blank"
           rel="noopener noreferrer"
         >
           <p>
             Michael Fagen's Amazing Race 2 tournament will be partially played
-            on Woogles. You can play your games in this room.
+            on Woogles. You can play your games in this room. It starts on
+            January 23, 2021.
           </p>
         </a>
       ),
