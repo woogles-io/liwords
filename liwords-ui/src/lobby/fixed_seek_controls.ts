@@ -49,12 +49,24 @@ const pbmt2021 = {
   vsBot: false,
 };
 
+const laclub = {
+  lexicon: 'NWL20',
+  challengerule: ChallengeRule.DOUBLE,
+  initialtime: 22, // 20 minutes
+  rated: true,
+  extratime: 3,
+  friend: '',
+  incOrOT: 'overtime',
+  vsBot: false,
+};
+
 export const fixedSettings: { [key: string]: settings } = {
   phillyvirtual,
   hcnj,
   cococlub,
   merry,
   pbmt2021,
+  '26VtG4JCfeD6qvSGJEwRLm': laclub,
 };
 
 // A temporary map of club redirects. Map internal tournament ID to slug:
