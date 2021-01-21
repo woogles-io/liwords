@@ -48,11 +48,27 @@ const madisonclub = {
   vsBot: false,
 };
 
+const wysc = {
+  lexicon: 'CSW19',
+  challengerule: ChallengeRule.SINGLE,
+  initialtime: 17, // 15 minutes
+  rated: true,
+  extratime: 3,
+  friend: '',
+  incOrOT: 'overtime',
+  vsBot: false,
+};
+
 export const fixedSettings: { [key: string]: settings } = {
   phillyvirtual,
   cococlub,
   madisonclub,
   '26VtG4JCfeD6qvSGJEwRLm': laclub,
+  zgvv6NiShyGrMW6u77iu5n: wysc, // group a
+  dFeYGcG7vXENujB5v8tQv5: wysc, // group b
+  AMQ7jnA3NWzaTQuNwiEU9U: wysc, // group c
+  '9Jujm6qBnUwkcePaXX5TsB': wysc, // group d
+  T6TVX9rPfiUFB7x8vYkWgk: wysc, // brackets
 };
 
 // A temporary map of club redirects. Map internal tournament ID to slug:
