@@ -4,7 +4,21 @@
 
 .markdown-tips {
   @include container;
-  .ant-table-title {
+  .ant-table {
+    @include colorModed() {
+      background-color: m($background);
+      color: m($gray-extreme);
+    }
+  }
+  .ant-table-titlex {
     font-weight: bold;
+    @include colorModed() {
+      background-color: m($gray-extreme)
+    }
+  }
+  .ant-table tr:hover> td {
+    @include colorModed() {
+      background-color: m($background);
+    }
   }
 }

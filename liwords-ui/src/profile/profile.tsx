@@ -241,6 +241,7 @@ export const UserProfile = React.memo((props: Props) => {
   const [stats, setStats] = useState({});
   const [userID, setUserID] = useState('');
   const [bio, setBio] = useState('');
+  const [bioLoaded, setBioLoaded] = useState(false);
   const [darkMode, setDarkMode] = useState(
     localStorage?.getItem('darkMode') === 'true'
   );
@@ -270,6 +271,7 @@ export const UserProfile = React.memo((props: Props) => {
         setStats(JSON.parse(resp.data.stats_json).Data);
         setUserID(resp.data.user_id);
         setBio(resp.data.about);
+        setBioLoaded(true);
       })
       .catch(errorCatcher);
   }, [username, location.pathname]);
@@ -384,7 +386,7 @@ export const UserProfile = React.memo((props: Props) => {
             </div>
           ) : null}
         </header>
-        <BioCard bio={bio} />
+        <BioCard bio={bio} bioLoaded={bioLoaded} />
         <RatingsCard ratings={ratings} />
         <GamesHistoryCard
           games={recentGames}
