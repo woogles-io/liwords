@@ -60,15 +60,7 @@ If you change any of the `.proto` files (in this repo or in the Macondo repo) yo
 
 To do so, run in this directory:
 
-`CODE_DIR=/your/code/dir ./build-protobuf.sh`
-
-- You must have installed the protoc extensions:
-
-  - `go get -u github.com/golang/protobuf/protoc-gen-go`
-  - `go get -u github.com/twitchtv/twirp/protoc-gen-twirp`
-  - Then, in the `liwords-ui` directory: `npm install ts-protoc-gen`
-
-- Make sure that `liwords` and `macondo` are both inside the CODE_DIR environment variable.
+`docker-compose run --rm pb_compiler ./build-protobuf.sh`
 
 ### Attributions
 

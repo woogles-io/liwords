@@ -561,3 +561,20 @@ func (s *DBStore) Disconnect() {
 func (s *DBStore) CachedCount(ctx context.Context) int {
 	return 0
 }
+
+func (s *DBStore) GetHistory(ctx context.Context, id string) (*macondopb.GameHistory, error) {
+	g := &game{}
+
+	ctxDB := s.db.WithContext(ctx)
+	if result := ctxDB.Select("history").Where("uuid = ?", id).First(g); result.Error != nil {
+		return nil, result.Error
+	}
+
+	hist := &macondopb.GameHistory{}
+	err := proto.Unmarshal(g.History, hist)
+	if err != nil {
+		return nil, err
+	}
+
+	return hist, nil
+}

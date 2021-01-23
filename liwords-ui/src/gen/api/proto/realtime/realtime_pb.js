@@ -5259,7 +5259,9 @@ proto.liwords.TournamentGameEndedEvent.toObject = function(includeInstance, msg)
     proto.liwords.TournamentGameEndedEvent.Player.toObject, includeInstance),
     endReason: jspb.Message.getFieldWithDefault(msg, 3, 0),
     time: jspb.Message.getFieldWithDefault(msg, 4, 0),
-    round: jspb.Message.getFieldWithDefault(msg, 5, 0)
+    round: jspb.Message.getFieldWithDefault(msg, 5, 0),
+    division: jspb.Message.getFieldWithDefault(msg, 6, ""),
+    gameIndex: jspb.Message.getFieldWithDefault(msg, 7, 0)
   };
 
   if (includeInstance) {
@@ -5316,6 +5318,14 @@ proto.liwords.TournamentGameEndedEvent.deserializeBinaryFromReader = function(ms
     case 5:
       var value = /** @type {number} */ (reader.readInt32());
       msg.setRound(value);
+      break;
+    case 6:
+      var value = /** @type {string} */ (reader.readString());
+      msg.setDivision(value);
+      break;
+    case 7:
+      var value = /** @type {number} */ (reader.readInt32());
+      msg.setGameIndex(value);
       break;
     default:
       reader.skipField();
@@ -5379,6 +5389,20 @@ proto.liwords.TournamentGameEndedEvent.serializeBinaryToWriter = function(messag
   if (f !== 0) {
     writer.writeInt32(
       5,
+      f
+    );
+  }
+  f = message.getDivision();
+  if (f.length > 0) {
+    writer.writeString(
+      6,
+      f
+    );
+  }
+  f = message.getGameIndex();
+  if (f !== 0) {
+    writer.writeInt32(
+      7,
       f
     );
   }
@@ -5682,6 +5706,42 @@ proto.liwords.TournamentGameEndedEvent.prototype.getRound = function() {
  */
 proto.liwords.TournamentGameEndedEvent.prototype.setRound = function(value) {
   return jspb.Message.setProto3IntField(this, 5, value);
+};
+
+
+/**
+ * optional string division = 6;
+ * @return {string}
+ */
+proto.liwords.TournamentGameEndedEvent.prototype.getDivision = function() {
+  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 6, ""));
+};
+
+
+/**
+ * @param {string} value
+ * @return {!proto.liwords.TournamentGameEndedEvent} returns this
+ */
+proto.liwords.TournamentGameEndedEvent.prototype.setDivision = function(value) {
+  return jspb.Message.setProto3StringField(this, 6, value);
+};
+
+
+/**
+ * optional int32 game_index = 7;
+ * @return {number}
+ */
+proto.liwords.TournamentGameEndedEvent.prototype.getGameIndex = function() {
+  return /** @type {number} */ (jspb.Message.getFieldWithDefault(this, 7, 0));
+};
+
+
+/**
+ * @param {number} value
+ * @return {!proto.liwords.TournamentGameEndedEvent} returns this
+ */
+proto.liwords.TournamentGameEndedEvent.prototype.setGameIndex = function(value) {
+  return jspb.Message.setProto3IntField(this, 7, value);
 };
 
 

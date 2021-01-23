@@ -228,6 +228,9 @@ message GameEndedEvent {
 // over. This is a legacy way of showing tournament results right in the
 // tournament lobby in realtime. New tournaments will use full tournament
 // messages (specifically, TournamentDivisionDataResponse et al).
+// This event is also used in the tournament_service's RecentGamesResponse,
+// which can be used to fetch information for the last games played in
+// a tournament.
 message TournamentGameEndedEvent {
 
   message Player {
@@ -242,6 +245,8 @@ message TournamentGameEndedEvent {
   // Time that the game ended
   int64 time = 4;
   int32 round = 5;
+  string division = 6;
+  int32 game_index = 7;
 }
 
 // This message makes the "Status Bar" show up and also tells the players
@@ -453,9 +458,7 @@ message PlayerStanding {
   int32 spread = 5;
 }
 
-message RoundStandings {
-  repeated PlayerStanding standings = 1;
-}
+message RoundStandings { repeated PlayerStanding standings = 1; }
 
 message ClassicDivision { repeated PlayerRoundInfo matrix = 1; }
 

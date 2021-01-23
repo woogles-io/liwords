@@ -684,6 +684,8 @@ func SetResult(ctx context.Context,
 			Players:   players,
 			EndReason: reason,
 			Round:     int32(round),
+			Division:  division,
+			GameIndex: int32(gameIndex),
 			Time:      time.Now().Unix(),
 		}
 		log.Debug().Interface("tevt", tevt).Msg("sending legacy tournament game ended evt")
@@ -1070,6 +1072,196 @@ func TournamentDivisionDataResponse(ctx context.Context, ts TournamentStore,
 		Str("division", division).
 		Str("id", id).Msg("tournament-division-data-response")
 	return response, nil
+}
+
+<<<<<<< HEAD
+=======
+func emptyDivision() *entity.TournamentDivision {
+	return &entity.TournamentDivision{Players: &realtime.TournamentPersons{Persons: make(map[string]int32)},
+		Controls: &realtime.TournamentControls{}, DivisionManager: nil}
+}
+
+func addTournamentPersons(ctx context.Context,
+	ts TournamentStore,
+	us user.Store,
+	id string,
+	division string,
+	persons *realtime.TournamentPersons,
+	isPlayers bool) error {
+
+	t, err := ts.Get(ctx, id)
+	if err != nil {
+		return err
+	}
+
+	t.Lock()
+	defer t.Unlock()
+
+	divisionObject, ok := t.Divisions[division]
+
+	if isPlayers && !ok {
+		return fmt.Errorf("division %s does not exist", division)
+	}
+
+	var personsMap map[string]int32
+	if isPlayers {
+		personsMap = divisionObject.Players.Persons
+	} else {
+		personsMap = t.Directors.Persons
+		if executiveDirectorExists(persons.Persons, t.ExecutiveDirector) {
+			return errors.New("cannot add another executive director")
+		}
+	}
+
+	// Only perform the add operation if all persons can be added.
+	personsCopy := &realtime.TournamentPersons{Persons: map[string]int32{}}
+	userUUIDs := []string{}
+	for k := range persons.Persons {
+		u, err := us.Get(ctx, k)
+		if err != nil {
+			return err
+		}
+		fullID := u.UUID + ":" + u.Username
+		userUUIDs = append(userUUIDs, u.UUID)
+		_, ok := personsMap[fullID]
+		if ok {
+			return fmt.Errorf("person (%s, %d) already exists", k, personsMap[k])
+		}
+		personsCopy.Persons[fullID] = persons.Persons[k]
+	}
+
+	for k, v := range personsCopy.Persons {
+		personsMap[k] = v
+	}
+
+	if isPlayers {
+		if t.IsStarted {
+			err := divisionObject.DivisionManager.AddPlayers(personsCopy)
+			if err != nil {
+				return err
+			}
+		} else {
+			err = createDivisionManager(t, division)
+			if err != nil {
+				return err
+			}
+		}
+		err = ts.AddRegistrants(ctx, t.UUID, userUUIDs, division)
+		if err != nil {
+			return err
+		}
+	}
+
+	return ts.Set(ctx, t)
+}
+
+func removeTournamentPersons(ctx context.Context,
+	ts TournamentStore,
+	us user.Store,
+	id string,
+	division string,
+	persons *realtime.TournamentPersons,
+	isPlayers bool) error {
+	t, err := ts.Get(ctx, id)
+	if err != nil {
+		return err
+	}
+
+	t.Lock()
+	defer t.Unlock()
+
+	divisionObject, ok := t.Divisions[division]
+
+	if isPlayers && !ok {
+		return fmt.Errorf("division %s does not exist", division)
+	}
+
+	var personsMap map[string]int32
+	if isPlayers {
+		personsMap = divisionObject.Players.Persons
+	} else {
+		personsMap = t.Directors.Persons
+		if executiveDirectorExists(persons.Persons, t.ExecutiveDirector) {
+			return errors.New("cannot remove the executive director")
+		}
+	}
+
+	// Only perform the remove operation if all persons can be removed.
+	personsCopy := &realtime.TournamentPersons{Persons: map[string]int32{}}
+	userUUIDs := []string{}
+
+	for k := range persons.Persons {
+		u, err := us.Get(ctx, k)
+		if err != nil {
+			return err
+		}
+		fullID := u.UUID + ":" + u.Username
+		userUUIDs = append(userUUIDs, u.UUID)
+		_, ok := personsMap[fullID]
+		if !ok {
+			return fmt.Errorf("person (%s, %d) does not exist", k, personsMap[k])
+		}
+		personsCopy.Persons[fullID] = persons.Persons[k]
+	}
+
+	for k, _ := range personsCopy.Persons {
+		delete(personsMap, k)
+	}
+
+	if isPlayers {
+		if t.IsStarted {
+			err := divisionObject.DivisionManager.RemovePlayers(personsCopy)
+			if err != nil {
+				return err
+			}
+		} else {
+			err = createDivisionManager(t, division)
+			if err != nil {
+				return err
+			}
+		}
+		err = ts.RemoveRegistrants(ctx, t.UUID, userUUIDs, division)
+		if err != nil {
+			return err
+		}
+	}
+
+	return ts.Set(ctx, t)
+}
+
+func createDivisionManager(t *entity.Tournament, division string) error {
+
+	log.Debug().Str("division", division).Str("tourney", t.UUID).Msg("creating-division-manager")
+	divisionObject, ok := t.Divisions[division]
+
+	if !ok {
+		return fmt.Errorf("division %s does not exist", division)
+	}
+
+	rankedPlayers := rankPlayers(divisionObject.Players)
+	d, err := NewClassicDivision(rankedPlayers,
+		divisionObject.Players,
+		divisionObject.Controls.RoundControls,
+		divisionObject.Controls.AutoStart)
+	if err != nil {
+		return err
+	}
+	divisionObject.DivisionManager = d
+	return nil
+}
+
+func rankPlayers(players *realtime.TournamentPersons) []string {
+	// Sort players by descending int (which is probably rating)
+	ratedPlayers := []RatedPlayer{}
+	for key, value := range players.Persons {
+		ratedPlayers = append(ratedPlayers, RatedPlayer{Name: key, Rating: int(value)})
+	}
+	sort.Sort(PlayerSorter(ratedPlayers))
+	rankedPlayers := []string{}
+	for i := 0; i < len(ratedPlayers); i++ {
+		rankedPlayers = append(rankedPlayers, ratedPlayers[i].Name)
+	}
+	return rankedPlayers
 }
 
 func getExecutiveDirector(directors *realtime.TournamentPersons) (string, error) {

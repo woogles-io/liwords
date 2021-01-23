@@ -19,23 +19,6 @@ export const Announcements = React.memo((props: AnnouncementsProps) => {
     },
 
     {
-      title: 'Upcoming Tournament - Virtual Crescent City Cup',
-      body: (
-        <a
-          href="https://woogles.io/tournament/vccc"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <p>
-            The Virtual Crescent City Cup will be held on Woogles on January
-            17th and 18th. Twenty games with Open and Lite divisions for both
-            CSW19 and NWL2020. Click here if you are registered!
-          </p>
-        </a>
-      ),
-    },
-
-    {
       title: 'Upcoming Tournament - WYSC',
       body: (
         <a
@@ -45,8 +28,25 @@ export const Announcements = React.memo((props: AnnouncementsProps) => {
         >
           <p>
             The World Youth Championship runs for three consecutive weekends,
-            starting January 23, 2021! Watch as teams of talented youth around
+            starting January 22, 2021! Watch as teams of talented youth around
             the world play our favorite game. Who will emerge victorious?
+          </p>
+        </a>
+      ),
+    },
+
+    {
+      title: 'Upcoming Tournament - Amazing Race 2',
+      body: (
+        <a
+          href="https://woogles.io/tournament/tarst2"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          <p>
+            Michael Fagen's Amazing Race 2 tournament will be partially played
+            on Woogles. You can play your games in this room. It starts on
+            January 23, 2021.
           </p>
         </a>
       ),
@@ -88,16 +88,20 @@ export const Announcements = React.memo((props: AnnouncementsProps) => {
     },
 
     {
-      title: 'Tournament Complete - 11th Annual Duke PBMT Charity Tournament',
+      title: 'Tournament Complete - Virtual Crescent City Cup',
       body: (
         <a
-          href="https://woogles.io/tournament/pbmt-2021"
+          href="https://woogles.io/tournament/vccc"
           target="_blank"
           rel="noopener noreferrer"
         >
           <p>
-            Congratulations to Andy Hoang (NWL) and Ryan Fischer (CSW) for their
-            fabulous wins in this yearly charity tournament!
+            The Virtual Crescent City Cup, the first one to use our brand new
+            tournament interface, was a resounding success! Congratulations to
+            Billy Nakamura (NWL Open), Lukeman Owolabi (CSW Open), Gideon
+            Brosowsky (NWL Lite), and Terry Kang Rau (CSW Lite) for winning
+            their respective divisions! All 850+ games were recorded and can be
+            found by clicking on this text.
           </p>
         </a>
       ),
