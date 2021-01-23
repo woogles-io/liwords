@@ -2,8 +2,17 @@ FROM golang
 
 RUN apt-get update && apt-get install -y unzip
 
+ENV PROTOC_VERSION 3.14.0
+
+ENV ARCH linux-x86_64
+
+# If you are on an ARM system (like the M1 Macs) the executables in this docker image
+# will not work. You should comment out the above ENV ARCH line and uncomment
+# the below one before building this image:
+# ENV ARCH linux-aarch_64
+
 # add protoc
-ENV PROTOBUF_URL https://github.com/protocolbuffers/protobuf/releases/download/v3.14.0/protoc-3.14.0-linux-x86_64.zip
+ENV PROTOBUF_URL https://github.com/protocolbuffers/protobuf/releases/download/v${PROTOC_VERSION}/protoc-${PROTOC_VERSION}-${ARCH}.zip
 RUN curl -L -o /tmp/protobuf.zip $PROTOBUF_URL
 WORKDIR /tmp/
 RUN unzip protobuf.zip && cp /tmp/bin/protoc /opt && mv /tmp/include /opt
