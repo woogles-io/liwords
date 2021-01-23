@@ -15,7 +15,7 @@
     flex-grow: 2;
     @include type-default;
 
-    .ant-card {
+    .ant-card:not(.paired-mode) {
       @include action-blocks;
     }
 
@@ -32,17 +32,17 @@
 .tournament-info {
   order: 0;
   .ant-card {
-    height: auto;
+    .ant-card-head {
+      font-size: 22px;
+      border: 0;
+    }
+    .ant-card-body {
+      max-height: 520px;
+      overflow-y: auto;
+      padding-top: 0px;
+    }
   }
-  .ant-card-head {
-    font-size: 22px;
-    border: 0;
-  }
-  .ant-card-body {
-    max-height: 300px;
-    overflow-y: auto;
-    padding-top: 0px;
-  }
+
 }
 
 .announcements {
@@ -67,7 +67,7 @@
   }
 }
 
-.tournament-info {
+.tournament-info .tournament {
   h3 {
     font-size: 18px;
     &.recent-header {
@@ -109,17 +109,23 @@
 
 @media (min-width: $screen-tablet-min) {
   .announcements,
-  .tournament-info {
+  .tournament-info .tournament{
     order: initial;
     flex-grow: 1;
     .ant-card {
       height: $main-container-width-tablet + 60px;
     }
-    .ant-card-body {
-      max-height: calc(100% - 70px);
-    }
   }
   .lobby .game-lists {
     order: initial;
+  }
+}
+
+@media (min-width: $screen-laptop-min) {
+  .announcements,
+  .tournament-info .tournament {
+    .ant-card-body {
+      max-height: calc(100vh - #{$header-height-desktop + 125px});
+    }
   }
 }

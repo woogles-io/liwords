@@ -46,8 +46,13 @@ import { endGameMessageFromGameInfo } from '../store/end_of_game';
 import { singularCount } from '../utils/plural';
 import { Notepad, NotepadContextProvider } from './notepad';
 import { Analyzer, AnalyzerContextProvider } from './analyzer';
-import { TournamentMetadata } from '../tournament/state';
-import { sortTiles } from '../store/constants';
+import { isPairedMode, sortTiles } from '../store/constants';
+import { ActionType } from '../actions/actions';
+import {
+  readyForTournamentGame,
+  TournamentMetadata,
+} from '../store/reducers/tournament_reducer';
+import { CompetitorStatus } from '../tournament/competitor_status';
 
 type Props = {
   sendSocketMsg: (msg: Uint8Array) => void;
@@ -168,8 +173,10 @@ export const Table = React.memo((props: Props) => {
   const { username, userID } = loginState;
   const {
     tournamentContext,
-    setTournamentContext,
+    dispatchTournamentContext,
   } = useTournamentStoreContext();
+  const competitorState = tournamentContext.competitorState;
+  const isRegistered = competitorState.isRegistered;
   const [playerNames, setPlayerNames] = useState(new Array<string>());
   const { sendSocketMsg } = props;
   // const location = useLocation();
@@ -278,11 +285,12 @@ export const Table = React.memo((props: Props) => {
         }
       )
       .then((resp) => {
-        setTournamentContext({
-          metadata: resp.data,
+        dispatchTournamentContext({
+          actionType: ActionType.SetTourneyMetadata,
+          payload: resp.data,
         });
       });
-  }, [gameInfo.tournament_id, setTournamentContext]);
+  }, [gameInfo.tournament_id, dispatchTournamentContext]);
 
   useEffect(() => {
     // Request streak info only if a few conditions are true.
@@ -494,7 +502,7 @@ export const Table = React.memo((props: Props) => {
   );
 
   let ret = (
-    <div className="game-container">
+    <div className={`game-container${isRegistered ? ' competitor' : ''}`}>
       <ManageWindowTitle />
       <TopBar tournamentID={gameInfo.tournament_id} />
       <div className="game-table">
@@ -504,9 +512,7 @@ export const Table = React.memo((props: Props) => {
               <Link to={tournamentContext.metadata.slug}>
                 <HomeOutlined />
                 Back to
-                {['CLUB', 'CLUBSESSION'].includes(
-                  tournamentContext.metadata.type
-                )
+                {['CLUB', 'CHILD'].includes(tournamentContext.metadata.type)
                   ? ' Club'
                   : ' Tournament'}
               </Link>
@@ -540,6 +546,17 @@ export const Table = React.memo((props: Props) => {
           ) : (
             <Notepad includeCard />
           )}
+          {isRegistered && (
+            <CompetitorStatus
+              sendReady={() =>
+                readyForTournamentGame(
+                  sendSocketMsg,
+                  tournamentContext.metadata.id,
+                  competitorState
+                )
+              }
+            />
+          )}
         </div>
         {/* There are two player cards, css hides one of them. */}
         <div className="sticky-player-card-container">
@@ -561,6 +578,9 @@ export const Table = React.memo((props: Props) => {
             playerMeta={gameInfo.players}
             tournamentID={gameInfo.tournament_id}
             tournamentSlug={tournamentContext.metadata.slug}
+            tournamentPairedMode={isPairedMode(
+              tournamentContext?.metadata?.type
+            )}
             lexicon={gameInfo.game_request.lexicon}
             challengeRule={gameInfo.game_request.challenge_rule}
             handleAcceptRematch={
@@ -572,6 +592,18 @@ export const Table = React.memo((props: Props) => {
           <StreakWidget streakInfo={streakGameInfo} />
         </div>
         <div className="data-area" id="right-sidebar">
+          {/* There are two competitor cards, css hides one of them. */}
+          {isRegistered && (
+            <CompetitorStatus
+              sendReady={() =>
+                readyForTournamentGame(
+                  sendSocketMsg,
+                  tournamentContext.metadata.id,
+                  competitorState
+                )
+              }
+            />
+          )}
           {/* There are two player cards, css hides one of them. */}
           <PlayerCards gameMeta={gameInfo} playerMeta={gameInfo.players} />
           <GameInfo

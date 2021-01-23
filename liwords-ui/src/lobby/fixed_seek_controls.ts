@@ -6,7 +6,7 @@ import { ChallengeRule } from '../gen/macondo/api/proto/macondo/macondo_pb';
 type settings = { [key: string]: string | number | boolean };
 
 const phillyvirtual = {
-  lexicon: 'NWL18',
+  lexicon: 'NWL20',
   challengerule: ChallengeRule.VOID,
   initialtime: 22, // Slider position is equivalent to 20 minutes.
   rated: true,
@@ -15,8 +15,6 @@ const phillyvirtual = {
   incOrOT: 'overtime',
   vsBot: false,
 };
-
-const hcnj = phillyvirtual;
 
 const cococlub = {
   lexicon: 'CSW19',
@@ -29,7 +27,18 @@ const cococlub = {
   vsBot: false,
 };
 
-const merry = {
+const laclub = {
+  lexicon: 'NWL20',
+  challengerule: ChallengeRule.DOUBLE,
+  initialtime: 22, // 20 minutes
+  rated: true,
+  extratime: 3,
+  friend: '',
+  incOrOT: 'overtime',
+  vsBot: false,
+};
+
+const madisonclub = {
   challengerule: ChallengeRule.FIVE_POINT,
   initialtime: 22, // 20 minutes
   rated: true,
@@ -39,11 +48,27 @@ const merry = {
   vsBot: false,
 };
 
+const wysc = {
+  lexicon: 'CSW19',
+  challengerule: ChallengeRule.SINGLE,
+  initialtime: 17, // 15 minutes
+  rated: true,
+  extratime: 3,
+  friend: '',
+  incOrOT: 'overtime',
+  vsBot: false,
+};
+
 export const fixedSettings: { [key: string]: settings } = {
   phillyvirtual,
-  hcnj,
   cococlub,
-  merry,
+  madisonclub,
+  '26VtG4JCfeD6qvSGJEwRLm': laclub,
+  zgvv6NiShyGrMW6u77iu5n: wysc, // group a
+  dFeYGcG7vXENujB5v8tQv5: wysc, // group b
+  AMQ7jnA3NWzaTQuNwiEU9U: wysc, // group c
+  '9Jujm6qBnUwkcePaXX5TsB': wysc, // group d
+  T6TVX9rPfiUFB7x8vYkWgk: wysc, // brackets
 };
 
 // A temporary map of club redirects. Map internal tournament ID to slug:

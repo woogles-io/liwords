@@ -2,7 +2,10 @@ package bus
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
+	"fmt"
+	"strings"
 	"time"
 
 	"github.com/rs/zerolog/log"
@@ -14,6 +17,14 @@ import (
 	pb "github.com/domino14/liwords/rpc/api/proto/realtime"
 	"github.com/domino14/macondo/game"
 	macondopb "github.com/domino14/macondo/gen/api/proto/macondo"
+)
+
+var (
+	errGamesDisabled = errors.New("new games are temporarily disabled; please try again in a few minutes")
+)
+
+const (
+	TournamentReadyExpire = 3600
 )
 
 func (b *Bus) instantiateAndStartGame(ctx context.Context, accUser *entity.User, requester string,
@@ -29,7 +40,7 @@ func (b *Bus) instantiateAndStartGame(ctx context.Context, accUser *entity.User,
 		return err
 	}
 	if !enabled {
-		return errors.New("new games are temporarily disabled; please try again in a few minutes")
+		return errGamesDisabled
 	}
 
 	// disallow anon game acceptance for now.
@@ -76,9 +87,14 @@ func (b *Bus) instantiateAndStartGame(ctx context.Context, accUser *entity.User,
 			tournamentID = t.UUID
 		}
 	}
+	// If tournamentID is defined, this is a clubhouse game, so there's no
+	// round/division/etc, just a simple "tournament ID"
+	trdata := &entity.TournamentData{
+		Id: tournamentID,
+	}
 
 	g, err := gameplay.InstantiateNewGame(ctx, b.gameStore, b.config,
-		[2]*entity.User{accUser, reqUser}, assignedFirst, gameReq, tournamentID)
+		[2]*entity.User{accUser, reqUser}, assignedFirst, gameReq, trdata)
 	if err != nil {
 		return err
 	}
@@ -227,7 +243,16 @@ func (b *Bus) readyForGame(ctx context.Context, evt *pb.ReadyForGame, userID str
 	return nil
 }
 
-func (b *Bus) readyForTournamentGame(ctx context.Context, evt *pb.ReadyForTournamentGame, userID string) error {
+func (b *Bus) readyForTournamentGame(ctx context.Context, evt *pb.ReadyForTournamentGame, userID, connID string) error {
+	if !evt.Unready {
+		enabled, err := b.configStore.GamesEnabled(ctx)
+		if err != nil {
+			return err
+		}
+		if !enabled {
+			return errGamesDisabled
+		}
+	}
 
 	reqUser, err := b.userStore.GetByUUID(ctx, userID)
 	if err != nil {
@@ -236,13 +261,131 @@ func (b *Bus) readyForTournamentGame(ctx context.Context, evt *pb.ReadyForTourna
 
 	fullUserID := userID + ":" + reqUser.Username
 
-	_, err = tournament.SetReadyForGame(ctx, b.tournamentStore, evt.TournamentId, fullUserID, evt.Division,
-		int(evt.Round), int(evt.GameIndex), evt.Unready)
+	t, err := b.tournamentStore.Get(ctx, evt.TournamentId)
+	if err != nil {
+		return err
+	}
+
+	playerIDs, bothReady, err := tournament.SetReadyForGame(ctx, b.tournamentStore, t, fullUserID, connID,
+		evt.Division, int(evt.Round), int(evt.GameIndex), evt.Unready)
 
 	if err != nil {
 		return err
 	}
-	// TODO: If both players are ready, redirect both to new game.
+
+	// Let's send the ready message to both players.
+	evt.PlayerId = fullUserID
+
+	ngevt := entity.WrapEvent(evt, pb.MessageType_READY_FOR_TOURNAMENT_GAME)
+	// We'll publish it to both users (across any connections they might be on)
+	// so that the widget updates properly in every context.
+	for _, p := range playerIDs {
+		s := strings.Split(p, ":")
+		if len(s) != 3 {
+			return fmt.Errorf("unexpected player readystate: %v", p)
+		}
+		b.pubToUser(s[0], ngevt, "")
+	}
+
+	if !bothReady {
+		if !evt.Unready {
+			// Store temporary ready state in Redis.
+			conn := b.redisPool.Get()
+			defer conn.Close()
+			bts, err := json.Marshal(evt)
+			if err != nil {
+				return errGamesDisabled
+			}
+			_, err = conn.Do("SET", "tready:"+connID, bts, "EX", TournamentReadyExpire)
+			if err != nil {
+				return err
+			}
+		}
+		return nil
+	}
+	redisConn := b.redisPool.Get()
+	defer redisConn.Close()
+
+	// Both players are ready! Instantiate and start a new game.
+	foundUs := false
+	otherID := ""
+	users := [2]*entity.User{nil, nil}
+	connIDs := [2]string{"", ""}
+	otherUserIdx := -1
+	// playerIDs are in order of first/second
+	for idx, pid := range playerIDs {
+		// userid:username:conn_id
+		splitid := strings.Split(pid, ":")
+		if len(splitid) != 3 {
+			return errors.New("unexpected playerID: " + pid)
+		}
+		if userID == splitid[0] {
+			foundUs = true
+			users[idx] = reqUser
+		} else {
+			otherID = splitid[0]
+			otherUserIdx = idx
+		}
+		connIDs[idx] = splitid[2]
+		// Delete the ready state if it existed in Redis.
+		_, err = redisConn.Do("DEL", "tready:"+connIDs[idx])
+		if err != nil {
+			return err
+		}
+	}
+	if !foundUs {
+		return errors.New("unexpected behavior; did not find us")
+	}
+	if otherID == userID {
+		return errors.New("both users have same ID?")
+	}
+	users[otherUserIdx], err = b.userStore.GetByUUID(ctx, otherID)
+	if err != nil {
+		return err
+	}
+	gameReq := t.Divisions[evt.Division].Controls.GameRequest
+	tdata := &entity.TournamentData{
+		Id:        evt.TournamentId,
+		Division:  evt.Division,
+		Round:     int(evt.Round),
+		GameIndex: int(evt.GameIndex),
+	}
+
+	g, err := gameplay.InstantiateNewGame(ctx, b.gameStore, b.config,
+		users, 0, gameReq, tdata)
+	if err != nil {
+		return err
+	}
+
+	err = b.broadcastGameCreation(g, reqUser, users[otherUserIdx])
+	if err != nil {
+		log.Err(err).Msg("broadcasting-game-creation")
+	}
+
+	// redirect users to the right game
+	ngevt = entity.WrapEvent(&pb.NewGameEvent{
+		GameId: g.GameID(),
+		// doesn't matter who's the accepter or requester here.
+		AccepterCid:  connIDs[0],
+		RequesterCid: connIDs[1],
+	}, pb.MessageType_NEW_GAME_EVENT)
+
+	b.pubToConnectionID(connIDs[0], users[0].UUID, ngevt)
+	b.pubToConnectionID(connIDs[1], users[1].UUID, ngevt)
+
+	tcname, variant, err := entity.VariantFromGameReq(gameReq)
+	if err != nil {
+		return err
+	}
+
+	log.Info().Str("newgameid", g.History().Uid).
+		Str("p0", userID).
+		Str("p1", otherID).
+		Str("lexicon", gameReq.Lexicon).
+		Str("timectrl", string(tcname)).
+		Str("variant", string(variant)).
+		Str("tournamentID", string(evt.TournamentId)).
+		Str("onturn", g.NickOnTurn()).Msg("tournament-game-started")
 
 	return nil
 }
@@ -291,6 +434,7 @@ func (b *Bus) adjudicateGames(ctx context.Context) error {
 			log.Err(err).Msg("adjudicating-after-gameplay-timed-out")
 		} else if !started && now.Sub(entGame.CreatedAt) > CancelAfter {
 			log.Debug().Str("gid", g.GameId).
+				Str("tid", g.TournamentId).
 				Interface("now", now).
 				Interface("created", entGame.CreatedAt).
 				Msg("canceling-never-started")
@@ -304,7 +448,34 @@ func (b *Bus) adjudicateGames(ctx context.Context) error {
 			// XXX: Fix for tourneys ?
 			wrapped.AddAudience(entity.AudLobby, "gameEnded")
 			b.gameEventChan <- wrapped
+
+			// If this game is part of a tournament that is not in clubhouse
+			// mode, we must allow the players to try to play again.
+			if g.TournamentId != "" {
+				err = b.redoCancelledGamePairings(
+					ctx, g.Players[0].UserId+":"+g.Players[0].Nickname,
+					g.TournamentId, g.TournamentDivision,
+					int(g.TournamentRound), int(g.TournamentGameIndex))
+				log.Err(err).Msg("redo-cancelled-game-pairings")
+			}
+
 		}
 	}
 	return nil
+}
+
+func (b *Bus) redoCancelledGamePairings(ctx context.Context, userID, tid, div string, round, gidx int) error {
+
+	t, err := b.tournamentStore.Get(ctx, tid)
+	if err != nil {
+		return err
+	}
+
+	if t.Type == entity.TypeClub || t.Type == entity.TypeLegacy {
+		log.Info().Str("tid", tid).Msg("no pairings to redo for club or legacy type")
+		return nil
+	}
+
+	return tournament.ClearReadyStates(ctx, b.tournamentStore, t, div, userID, round, gidx)
+
 }

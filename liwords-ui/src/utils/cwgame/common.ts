@@ -25,6 +25,16 @@ export const isTouchDevice = () => {
   return !!('ontouchstart' in window);
 };
 
+export const isMac = () => {
+  var userAgent = navigator.userAgent || navigator.vendor;
+  return (/Mac/i.test(userAgent));
+};
+
+export const isWindows = () => {
+  var userAgent = navigator.userAgent || navigator.vendor;
+  return (/Win/i.test(userAgent));
+};
+
 export const uniqueTileIdx = (row: number, col: number): number => {
   // Just a unique number to identify a row,col coordinate.
   return row * 100 + col;

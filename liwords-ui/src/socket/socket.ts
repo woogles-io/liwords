@@ -229,15 +229,17 @@ export const LiwordsSocket = (props: {
     return (msg: Uint8Array) => {
       const msgs = parseMsgs(msg);
 
-      msgs.forEach((msg) => {
-        const { msgType, parsedMsg } = msg;
+      msgs.forEach((m) => {
+        const { msgType, parsedMsg } = m;
 
         console.log(
           '%csent',
           'background: cyan',
           ReverseMessageType[msgType] ?? msgType,
           parsedMsg.toObject(),
-          performance.now()
+          performance.now(),
+          'bytelength:',
+          msg.byteLength
         );
       });
 

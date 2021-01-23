@@ -41,6 +41,10 @@ message GameInfoResponse {
   google.protobuf.Timestamp last_update = 18;
 
   liwords.GameRequest game_request = 19;
+  string tournament_division = 20;
+  int32 tournament_round = 21;
+  // a game index within a round.
+  int32 tournament_game_index = 22;
 }
 
 message GCGRequest { string game_id = 1; }

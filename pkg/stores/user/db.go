@@ -145,6 +145,14 @@ func (s *DBStore) Get(ctx context.Context, username string) (*entity.User, error
 	return entu, nil
 }
 
+func (s *DBStore) Set(ctx context.Context, u *entity.User) error {
+	dbu := s.toDBObj(u)
+
+	result := s.db.Model(&User{}).Set("gorm:query_option", "FOR UPDATE").
+		Where("uuid = ?", u.UUID).Update(dbu)
+	return result.Error
+}
+
 // GetByEmail gets the user by email. It does not try to get the profile.
 // We don't get the profile here because GetByEmail is only used for things
 // like password resets and there is no need.
@@ -264,12 +272,8 @@ func (s *DBStore) GetByAPIKey(ctx context.Context, apikey string) (*entity.User,
 	return entu, nil
 }
 
-// New creates a new user in the DB.
-func (s *DBStore) New(ctx context.Context, u *entity.User) error {
-	if u.UUID == "" {
-		u.UUID = shortuuid.New()
-	}
-	dbu := &User{
+func (s *DBStore) toDBObj(u *entity.User) *User {
+	return &User{
 		UUID:        u.UUID,
 		Username:    u.Username,
 		Email:       u.Email,
@@ -279,6 +283,14 @@ func (s *DBStore) New(ctx context.Context, u *entity.User) error {
 		IsDirector:  u.IsDirector,
 		IsMod:       u.IsMod,
 	}
+}
+
+// New creates a new user in the DB.
+func (s *DBStore) New(ctx context.Context, u *entity.User) error {
+	if u.UUID == "" {
+		u.UUID = shortuuid.New()
+	}
+	dbu := s.toDBObj(u)
 	result := s.db.Create(dbu)
 	if result.Error != nil {
 		return result.Error
@@ -312,6 +324,21 @@ func (s *DBStore) SetPassword(ctx context.Context, uuid string, hashpass string)
 		return result.Error
 	}
 	return s.db.Model(u).Update("password", hashpass).Error
+}
+
+// SetAbout sets the about (profile field] for the user.
+func (s *DBStore) SetAbout(ctx context.Context, uuid string, about string) error {
+	u := &User{}
+	p := &profile{}
+
+	if result := s.db.Where("uuid = ?", uuid).First(u); result.Error != nil {
+		return result.Error
+	}
+	if result := s.db.Model(u).Related(p); result.Error != nil {
+		return result.Error
+	}
+
+	return s.db.Model(p).Update("about", about).Error
 }
 
 // SetRatings set the specific ratings for the given variant in a transaction.

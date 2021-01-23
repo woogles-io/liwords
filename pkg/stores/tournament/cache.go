@@ -20,6 +20,11 @@ type backingStore interface {
 	SetTournamentEventChan(c chan<- *entity.EventWrapper)
 	TournamentEventChan() chan<- *entity.EventWrapper
 	GetRecentClubSessions(ctx context.Context, clubID string, numSessions int, offset int) (*pb.ClubSessionsResponse, error)
+	ListAllIDs(context.Context) ([]string, error)
+
+	AddRegistrants(ctx context.Context, tid string, userIDs []string, division string) error
+	RemoveRegistrants(ctx context.Context, tid string, userIDs []string, division string) error
+	ActiveTournamentsFor(ctx context.Context, userID string) ([][2]string, error)
 }
 
 const (
@@ -115,4 +120,20 @@ func (c *Cache) GetRecentGames(ctx context.Context, tourneyID string, numGames i
 
 func (c *Cache) GetRecentClubSessions(ctx context.Context, clubID string, numSessions int, offset int) (*pb.ClubSessionsResponse, error) {
 	return c.backing.GetRecentClubSessions(ctx, clubID, numSessions, offset)
+}
+
+func (c *Cache) ListAllIDs(ctx context.Context) ([]string, error) {
+	return c.backing.ListAllIDs(ctx)
+}
+
+func (c *Cache) AddRegistrants(ctx context.Context, tid string, userIDs []string, division string) error {
+	return c.backing.AddRegistrants(ctx, tid, userIDs, division)
+}
+
+func (c *Cache) RemoveRegistrants(ctx context.Context, tid string, userIDs []string, division string) error {
+	return c.backing.RemoveRegistrants(ctx, tid, userIDs, division)
+}
+
+func (c *Cache) ActiveTournamentsFor(ctx context.Context, userID string) ([][2]string, error) {
+	return c.backing.ActiveTournamentsFor(ctx, userID)
 }

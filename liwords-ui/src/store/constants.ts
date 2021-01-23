@@ -15,6 +15,10 @@ export const calculateTotalTime = (
   return secs + maxOvertime * 60 + incrementSecs * turnsPerGame;
 };
 
+export const isPairedMode = (type: string) => {
+  return type === 'CHILD' || type === 'STANDARD';
+};
+
 // See cutoffs in variants.go. XXX: Try to tie these together better.
 export const timeCtrlToDisplayName = (
   secs: number,
@@ -133,10 +137,20 @@ export const challRuleToStr = (n: number): string => {
 };
 
 // To expose this and make it more ergonomic to reorder without refreshing.
-const preferredSortOrder = localStorage.getItem('tileOrder');
+export let preferredSortOrder = localStorage.getItem('tileOrder');
+
+export const setPreferredSortOrder = (value: string) => {
+  if (value) {
+    localStorage.setItem('tileOrder', value);
+    preferredSortOrder = value;
+  } else {
+    localStorage.removeItem('tileOrder');
+    preferredSortOrder = null;
+  }
+};
 
 export const sortTiles = (rack: string) => {
-  let effectiveSortOrder = preferredSortOrder ?? '';
+  const effectiveSortOrder = preferredSortOrder ?? '';
   return Array.from(rack, (tile) => {
     let index = effectiveSortOrder.indexOf(tile);
     if (index < 0) index = effectiveSortOrder.length + (tile === Blank ? 1 : 0);

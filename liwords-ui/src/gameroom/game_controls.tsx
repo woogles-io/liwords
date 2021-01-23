@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useCallback, useEffect, useRef } from 'react';
 import { useHistory } from 'react-router-dom';
 import { Button, Popconfirm } from 'antd';
 import {
@@ -89,38 +89,128 @@ export type Props = {
   tournamentSlug?: string;
   lexicon: string;
   challengeRule: ChallengeRule;
+  setHandlePassShortcut: ((handler: (() => void) | null) => void) | null;
+  setHandleChallengeShortcut: ((handler: (() => void) | null) => void) | null;
+  setHandleNeitherShortcut: ((handler: (() => void) | null) => void) | null;
+  tournamentPairedMode?: boolean;
 };
 
 const GameControls = React.memo((props: Props) => {
   const { useState } = useMountedState();
-  const [passVisible, setPassVisible] = useState(false);
-  const [challengeVisible, setChallengeVisible] = useState(false);
-  const [resignVisible, setResignVisible] = useState(false);
+
+  // Poka-yoke against accidentally having multiple pop-ups active.
+  const [actualCurrentPopUp, setCurrentPopUp] = useState<
+    'NONE' | 'CHALLENGE' | 'PASS' | 'RESIGN'
+  >('NONE');
+  // This should match disabled= and/or hidden= props.
+  const currentPopUp =
+    (actualCurrentPopUp === 'CHALLENGE' &&
+      (!props.myTurn || props.challengeRule === 'VOID')) ||
+    (actualCurrentPopUp === 'PASS' && !props.myTurn)
+      ? 'NONE'
+      : actualCurrentPopUp;
+  useEffect(() => {
+    if (currentPopUp !== actualCurrentPopUp) {
+      // Although this will still take another render, make this render correct
+      // to avoid temporarily showing confirmation dialog.
+      setCurrentPopUp(currentPopUp);
+    }
+  }, [currentPopUp, actualCurrentPopUp]);
+
+  const passButton = useRef<HTMLElement>(null);
+  const challengeButton = useRef<HTMLElement>(null);
 
   const history = useHistory();
-  const handleExitToLobby = React.useCallback(() => {
+  const handleExitToLobby = useCallback(() => {
     props.tournamentSlug
       ? history.replace(props.tournamentSlug)
       : history.replace('/');
   }, [history, props.tournamentSlug]);
 
-  if (props.isExamining) {
+  const {
+    isExamining,
+    gameEndControls,
+    observer,
+    onChallenge,
+    onPass,
+    setHandlePassShortcut,
+    setHandleChallengeShortcut,
+    setHandleNeitherShortcut,
+  } = props;
+  const hasRegularButtons = !(isExamining || gameEndControls || observer);
+  const handlePassShortcut = useCallback(() => {
+    if (!hasRegularButtons) return;
+    if (!passButton.current) return;
+    passButton.current.focus();
+    setCurrentPopUp((v) => {
+      if (v !== 'PASS') return 'PASS';
+      if (onPass) onPass();
+      return 'NONE';
+    });
+  }, [hasRegularButtons, onPass]);
+  const handleChallengeShortcut = useCallback(() => {
+    if (!hasRegularButtons) return;
+    if (!challengeButton.current) return;
+    challengeButton.current.focus();
+    setCurrentPopUp((v) => {
+      if (v !== 'CHALLENGE') return 'CHALLENGE';
+      if (onChallenge) onChallenge();
+      return 'NONE';
+    });
+  }, [hasRegularButtons, onChallenge]);
+  const handleNeitherShortcut = useCallback(() => {
+    if (!hasRegularButtons) return;
+    setCurrentPopUp('NONE');
+  }, [hasRegularButtons]);
+  useEffect(() => {
+    if (!setHandlePassShortcut) return;
+    return () => {
+      setHandlePassShortcut(null);
+    };
+  }, [setHandlePassShortcut]);
+  useEffect(() => {
+    if (!setHandleChallengeShortcut) return;
+    return () => {
+      setHandleChallengeShortcut(null);
+    };
+  }, [setHandleChallengeShortcut]);
+  useEffect(() => {
+    if (!setHandleNeitherShortcut) return;
+    return () => {
+      setHandleNeitherShortcut(null);
+    };
+  }, [setHandleNeitherShortcut]);
+  useEffect(() => {
+    if (!setHandlePassShortcut) return;
+    setHandlePassShortcut(() => handlePassShortcut);
+  }, [handlePassShortcut, setHandlePassShortcut]);
+  useEffect(() => {
+    if (!setHandleChallengeShortcut) return;
+    setHandleChallengeShortcut(() => handleChallengeShortcut);
+  }, [handleChallengeShortcut, setHandleChallengeShortcut]);
+  useEffect(() => {
+    if (!setHandleNeitherShortcut) return;
+    setHandleNeitherShortcut(() => handleNeitherShortcut);
+  }, [handleNeitherShortcut, setHandleNeitherShortcut]);
+
+  if (isExamining) {
     return <ExamineGameControls lexicon={props.lexicon} />;
   }
 
-  if (props.gameEndControls) {
+  if (gameEndControls) {
     return (
       <EndGameControls
         onRematch={props.onRematch}
         onExamine={props.onExamine}
         onExportGCG={props.onExportGCG}
         showRematch={props.showRematch && !props.observer}
+        tournamentPairedMode={props.tournamentPairedMode}
         onExit={handleExitToLobby}
       />
     );
   }
 
-  if (props.observer) {
+  if (observer) {
     return (
       <div className="game-controls">
         <Button onClick={props.onExamine}>Examine</Button>
@@ -129,35 +219,32 @@ const GameControls = React.memo((props: Props) => {
     );
   }
 
-  // Temporary dead code.
-  if (props.observer) {
-    return null;
-  }
-
   return (
     <div className="game-controls">
       <div className="secondary-controls">
         <Popconfirm
           title="Are you sure you wish to resign?"
           onCancel={() => {
-            setResignVisible(false);
+            setCurrentPopUp('NONE');
           }}
           onConfirm={() => {
             props.onResign();
-            setResignVisible(false);
+            setCurrentPopUp('NONE');
           }}
           onVisibleChange={(visible) => {
-            setResignVisible(visible);
+            setCurrentPopUp(visible ? 'RESIGN' : 'NONE');
           }}
           okText="Yes"
           cancelText="No"
-          visible={resignVisible}
+          visible={currentPopUp === 'RESIGN'}
         >
           <Button
             danger
-            onDoubleClick={() => {
-              props.onResign();
-              setResignVisible(false);
+            onClick={() => {
+              if (currentPopUp === 'RESIGN') {
+                props.onResign();
+                setCurrentPopUp('NONE');
+              }
             }}
           >
             Resign
@@ -167,23 +254,26 @@ const GameControls = React.memo((props: Props) => {
         <Popconfirm
           title="Are you sure you wish to pass?"
           onCancel={() => {
-            setPassVisible(false);
+            setCurrentPopUp('NONE');
           }}
           onConfirm={() => {
             props.onPass();
-            setPassVisible(false);
+            setCurrentPopUp('NONE');
           }}
           onVisibleChange={(visible) => {
-            setPassVisible(visible);
+            setCurrentPopUp(visible ? 'PASS' : 'NONE');
           }}
           okText="Yes"
           cancelText="No"
-          visible={passVisible}
+          visible={currentPopUp === 'PASS'}
         >
           <Button
-            onDoubleClick={() => {
-              props.onPass();
-              setPassVisible(false);
+            ref={passButton}
+            onClick={() => {
+              if (currentPopUp === 'PASS') {
+                props.onPass();
+                setCurrentPopUp('NONE');
+              }
             }}
             danger
             disabled={!props.myTurn}
@@ -200,23 +290,26 @@ const GameControls = React.memo((props: Props) => {
         <Popconfirm
           title="Are you sure you wish to challenge?"
           onCancel={() => {
-            setChallengeVisible(false);
+            setCurrentPopUp('NONE');
           }}
           onConfirm={() => {
             props.onChallenge();
-            setChallengeVisible(false);
+            setCurrentPopUp('NONE');
           }}
           onVisibleChange={(visible) => {
-            setChallengeVisible(visible);
+            setCurrentPopUp(visible ? 'CHALLENGE' : 'NONE');
           }}
           okText="Yes"
           cancelText="No"
-          visible={challengeVisible}
+          visible={currentPopUp === 'CHALLENGE'}
         >
           <Button
-            onDoubleClick={() => {
-              props.onChallenge();
-              setChallengeVisible(false);
+            ref={challengeButton}
+            onClick={() => {
+              if (currentPopUp === 'CHALLENGE') {
+                props.onChallenge();
+                setCurrentPopUp('NONE');
+              }
             }}
             disabled={!props.myTurn}
             hidden={props.challengeRule === 'VOID'}
@@ -251,11 +344,11 @@ type EGCProps = {
   onExamine: () => void;
   onExportGCG: () => void;
   onExit: () => void;
+  tournamentPairedMode?: boolean;
 };
 
 const EndGameControls = (props: EGCProps) => {
   const { useState } = useMountedState();
-
   const [rematchDisabled, setRematchDisabled] = useState(false);
 
   return (
@@ -268,7 +361,7 @@ const EndGameControls = (props: EGCProps) => {
         <Button onClick={props.onExportGCG}>Export GCG</Button>
         <Button onClick={props.onExit}>Exit</Button>
       </div>
-      {props.showRematch && !rematchDisabled && (
+      {props.showRematch && !props.tournamentPairedMode && !rematchDisabled && (
         <Button
           type="primary"
           data-testid="rematch-button"

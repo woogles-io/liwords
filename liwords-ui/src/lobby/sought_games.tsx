@@ -75,6 +75,10 @@ export const SoughtGames = (props: Props) => {
           value: 'CSW19',
         },
         {
+          text: 'NWL20',
+          value: 'NWL20',
+        },
+        {
           text: 'NWL18',
           value: 'NWL18',
         },

@@ -1,0 +1,108 @@
+@import '../base';
+
+.ant-card.competitor-status {
+  height: 64px;
+  margin-bottom: 12px;
+  .ant-card-body {
+    padding: 0px 18px;
+    height: 64px;
+    display: flex;
+    font-size: 16px;
+    font-weight: 700;
+    line-height: 1.4em;
+    align-items: center;
+    .anticon {
+      font-size: 21px;
+      margin-right: 12px;
+    }
+    .ant-btn {
+      white-space: nowrap;
+      padding: 3px 12px;
+    }
+    p {
+      flex-grow: 2;
+      .secondary-message {
+        display: block;
+        font-size: 14px;
+        font-weight: 400;
+        font-style: italic;
+        line-height: 18px;
+      }
+    }
+  }
+  &.ROUND_READY {
+    @include colorModed() {
+      background: m($timer-light);
+      color: m($gray-extreme);
+    }
+  }
+  &.ROUND_LATE {
+    @include colorModed() {
+      background: m($timer-out-light);
+      color: m($gray-extreme);
+      border: 1px solid m($timer-out-dark);
+    }
+  }
+  &.ROUND_OPPONENT_WAITING {
+    p {
+      color: #414141; // theming outlier
+    }
+    @include colorModed() {
+      background: m($timer-low-light);
+      border: 1px solid m($timer-low-dark);
+    }
+  }
+}
+
+.chat-area .ant-card.competitor-status {
+  display: none;
+  @media (min-width: $screen-laptop-min) {
+    display: block;
+  }
+}
+.game-table
+  .chat-area .ant-card.competitor-status
+{
+  margin-top: 12px;
+}
+.tournament-info .ant-card.competitor-status, .data-area .ant-card.competitor-status {
+  @media (min-width: $screen-laptop-min) {
+    display: none;
+  }
+  @media (max-width: $screen-tablet-min - 1) {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    margin: 0;
+    width: 100vw;
+    border-radius: 0;
+    z-index: 3;
+  }
+}
+
+.data-area .ant-card.competitor-status {
+  // The whole things is smaller on tablet
+  @media (min-width: $screen-tablet-min) {
+    height: 32px;
+    .ant-card-body {
+      height: 32px;
+      font-size: 14px;
+      padding: 0 0 0 12px;
+      .anticon {
+        font-size: 16px;
+      }
+      .optional {
+        display: none;
+      }
+      button.ant-btn {
+        height: 32px;
+        padding: 1px 18px;
+        border-radius: 0 8px 8px 0;
+        position: relative;
+        right: -4px;
+        top: -1px;
+        font-size: 14px;
+      }
+    }
+  }
+}

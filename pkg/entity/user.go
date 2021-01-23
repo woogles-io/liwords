@@ -37,6 +37,15 @@ type User struct {
 	IsAdmin        bool
 }
 
+type UserPermission int
+
+const (
+	PermDirector UserPermission = iota
+	PermMod
+	PermAdmin
+	PermBot
+)
+
 // Session - The db specific-details are in the store package.
 type Session struct {
 	ID       string

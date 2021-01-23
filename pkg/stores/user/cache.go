@@ -21,6 +21,7 @@ type backingStore interface {
 	Username(ctx context.Context, uuid string) (string, bool, error)
 	New(ctx context.Context, user *entity.User) error
 	SetPassword(ctx context.Context, uuid string, hashpass string) error
+	SetAbout(ctx context.Context, uuid string, about string) error
 	SetRatings(ctx context.Context, p0uuid string, p1uuid string, variant entity.VariantKey,
 		p1Rating entity.SingleRating, p2Rating entity.SingleRating) error
 	SetStats(ctx context.Context, p0uuid string, p1uuid string, variant entity.VariantKey,
@@ -41,6 +42,7 @@ type backingStore interface {
 
 	UsersByPrefix(ctx context.Context, prefix string) ([]*pb.BasicUser, error)
 	Count(ctx context.Context) (int64, error)
+	Set(ctx context.Context, u *entity.User) error
 }
 
 const (
@@ -108,6 +110,15 @@ func (c *Cache) SetPassword(ctx context.Context, uuid string, hashpass string) e
 	}
 	u.Password = hashpass
 	return c.backing.SetPassword(ctx, uuid, hashpass)
+}
+
+func (c *Cache) SetAbout(ctx context.Context, uuid string, about string) error {
+	u, err := c.GetByUUID(ctx, uuid)
+	if err != nil {
+		return err
+	}
+	u.Profile.About = about
+	return c.backing.SetAbout(ctx, uuid, about)
 }
 
 func (c *Cache) SetRatings(ctx context.Context, p0uuid string, p1uuid string, variant entity.VariantKey, p0Rating entity.SingleRating, p1Rating entity.SingleRating) error {
@@ -214,4 +225,15 @@ func (c *Cache) Count(ctx context.Context) (int64, error) {
 
 func (c *Cache) CachedCount(ctx context.Context) int {
 	return c.cache.Len()
+}
+
+func (c *Cache) Set(ctx context.Context, u *entity.User) error {
+
+	err := c.backing.Set(ctx, u)
+	if err != nil {
+		return err
+	}
+	// readd to cache
+	c.cache.Add(u.UUID, u)
+	return nil
 }

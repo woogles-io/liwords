@@ -55,39 +55,6 @@ export const About = (props: Props) => {
               </a>
             </p>
             <p>
-              <form
-                action="https://www.paypal.com/donate"
-                method="post"
-                target="_top"
-              >
-                <input
-                  type="hidden"
-                  name="hosted_button_id"
-                  value="AW5H2F4WFEFVJ"
-                />
-                <input
-                  type="image"
-                  src="https://www.paypalobjects.com/en_US/i/btn/btn_donateCC_LG.gif"
-                  name="submit"
-                  title="PayPal - The safer, easier way to pay online!"
-                  alt="Donate with PayPal button"
-                  style={{
-                    border: '0',
-                    margin: '24px 0',
-                  }}
-                />
-                <img
-                  alt=""
-                  src="https://www.paypal.com/en_US/i/scr/pixel.gif"
-                  style={{
-                    border: '0',
-                    width: '1px',
-                    height: '1px',
-                  }}
-                />
-              </form>
-            </p>
-            <p>
               If you have skills you think we can use, please let us know. We
               have big dreams and this community can't grow without all of us.
             </p>

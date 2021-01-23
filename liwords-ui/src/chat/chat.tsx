@@ -9,6 +9,7 @@ import {
   useChatStoreContext,
   useLoginStateStoreContext,
   usePresenceStoreContext,
+  useTournamentStoreContext,
 } from '../store/store';
 import './chat.scss';
 import { Presences } from './presences';
@@ -49,6 +50,8 @@ type JSONActiveChatChannels = {
 export const Chat = React.memo((props: Props) => {
   const { useState } = useMountedState();
   const { loginState } = useLoginStateStoreContext();
+  const { tournamentContext } = useTournamentStoreContext();
+  const { competitorState } = tournamentContext;
   const { loggedIn, userID } = loginState;
   const [curMsg, setCurMsg] = useState('');
   const [hasScroll, setHasScroll] = useState(false);
@@ -137,7 +140,13 @@ export const Chat = React.memo((props: Props) => {
 
   useEffect(() => {
     setHeight();
-  }, [updatedChannels, unseenMessages, presenceCount, setHeight]);
+  }, [
+    updatedChannels,
+    unseenMessages,
+    presenceCount,
+    competitorState,
+    setHeight,
+  ]);
 
   // When window is shrunk, auto-scroll may be enabled. This is one-way.
   // Hiding bookmarks bar or downloaded files bar should keep it enabled.

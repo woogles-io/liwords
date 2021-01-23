@@ -75,7 +75,7 @@ func makeGame(cfg *config.Config, ustore pkguser.Store, gstore gameplay.GameStor
 	gr.IncrementSeconds = 5
 	gr.MaxOvertimeMinutes = 0
 	g, _ := gameplay.InstantiateNewGame(ctx, gstore, cfg, [2]*entity.User{cesar, jesse},
-		1, gr, "")
+		1, gr, nil)
 
 	ch := make(chan *entity.EventWrapper)
 	donechan := make(chan bool)

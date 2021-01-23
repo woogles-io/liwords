@@ -75,6 +75,7 @@ type Props = {
   playerMeta: Array<PlayerMetadata>;
   tournamentSlug?: string;
   tournamentID?: string;
+  tournamentPairedMode?: boolean;
   lexicon: string;
   handleAcceptRematch: (() => void) | null;
 };
@@ -189,6 +190,22 @@ export const BoardPanel = React.memo((props: Props) => {
   const { gameContext } = useGameContextStoreContext();
   const { stopClock } = useTimerStoreContext();
   const [exchangeAllowed, setexchangeAllowed] = useState(true);
+  const handlePassShortcut = useRef<(() => void) | null>(null);
+  const setHandlePassShortcut = useCallback((x) => {
+    handlePassShortcut.current =
+      typeof x === 'function' ? x(handlePassShortcut.current) : x;
+  }, []);
+  const handleChallengeShortcut = useRef<(() => void) | null>(null);
+  const setHandleChallengeShortcut = useCallback((x) => {
+    handleChallengeShortcut.current =
+      typeof x === 'function' ? x(handleChallengeShortcut.current) : x;
+  }, []);
+  const handleNeitherShortcut = useRef<(() => void) | null>(null);
+  const setHandleNeitherShortcut = useCallback((x) => {
+    handleNeitherShortcut.current =
+      typeof x === 'function' ? x(handleNeitherShortcut.current) : x;
+  }, []);
+  const boardContainer = useRef<HTMLDivElement>(null);
 
   const {
     displayedRack,
@@ -270,6 +287,10 @@ export const BoardPanel = React.memo((props: Props) => {
       // Don't stop the clock; the next user event to come in will change the
       // clock over.
       // stopClock();
+      if (boardContainer.current) {
+        // Reenable keyboard shortcut after passing with 22.
+        boardContainer.current.focus();
+      }
     },
     [
       gameContext.nickToPlayerOrder,
@@ -581,16 +602,18 @@ export const BoardPanel = React.memo((props: Props) => {
         if (isMyTurn() && !props.gameDone) {
           if (key === '2') {
             evt.preventDefault();
-            makeMove('pass');
+            if (handlePassShortcut.current) handlePassShortcut.current();
             return;
           }
           if (key === '3') {
             evt.preventDefault();
-            makeMove('challenge');
+            if (handleChallengeShortcut.current)
+              handleChallengeShortcut.current();
             return;
           }
           if (key === '4' && exchangeAllowed) {
             evt.preventDefault();
+            if (handleNeitherShortcut.current) handleNeitherShortcut.current();
             setCurrentMode('EXCHANGE_MODAL');
             return;
           }
@@ -960,6 +983,7 @@ export const BoardPanel = React.memo((props: Props) => {
   const gameBoard = (
     <div
       id="board-container"
+      ref={boardContainer}
       className="board-container"
       onKeyDown={handleKeyDown}
       onKeyPress={preventFirefoxTypeToSearch}
@@ -1043,8 +1067,12 @@ export const BoardPanel = React.memo((props: Props) => {
         gameEndControls={examinableGameEndMessage !== '' || props.gameDone}
         currentRack={props.currentRack}
         tournamentSlug={props.tournamentSlug}
+        tournamentPairedMode={props.tournamentPairedMode}
         lexicon={props.lexicon}
         challengeRule={props.challengeRule}
+        setHandlePassShortcut={setHandlePassShortcut}
+        setHandleChallengeShortcut={setHandleChallengeShortcut}
+        setHandleNeitherShortcut={setHandleNeitherShortcut}
       />
       <ExchangeTiles
         rack={props.currentRack}
