@@ -141,8 +141,8 @@ func main() {
 	stores.ChatStore = user.NewRedisChatStore(redisPool, stores.PresenceStore, stores.TournamentStore)
 
 	authenticationService := auth.NewAuthenticationService(stores.UserStore, stores.SessionStore, stores.ConfigStore,
-		cfg.SecretKey, cfg.MailgunKey)
-	registrationService := registration.NewRegistrationService(stores.UserStore)
+		cfg.SecretKey, cfg.MailgunKey, cfg.ArgonConfig)
+	registrationService := registration.NewRegistrationService(stores.UserStore, cfg.ArgonConfig)
 	gameService := gameplay.NewGameService(stores.UserStore, stores.GameStore)
 	profileService := pkguser.NewProfileService(stores.UserStore)
 	autocompleteService := pkguser.NewAutocompleteService(stores.UserStore)

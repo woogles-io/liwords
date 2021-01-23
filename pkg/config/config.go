@@ -5,8 +5,16 @@ import (
 	"github.com/namsral/flag"
 )
 
+type ArgonConfig struct {
+	Time    int
+	Memory  int
+	Threads int
+	Keylen  int
+}
+
 type Config struct {
 	MacondoConfig config.Config
+	ArgonConfig   ArgonConfig
 
 	DBConnString string
 	ListenAddr   string
@@ -33,6 +41,12 @@ func (c *Config) Load(args []string) error {
 	fs.StringVar(&c.NatsURL, "nats-url", "nats://localhost:4222", "the NATS server URL")
 	fs.StringVar(&c.MailgunKey, "mailgun-key", "", "the Mailgun secret key")
 	fs.StringVar(&c.RedisURL, "redis-url", "", "the Redis URL")
+
+	// For password hashing:
+	fs.IntVar(&c.ArgonConfig.Keylen, "argon-key-len", 32, "the Argon key length")
+	fs.IntVar(&c.ArgonConfig.Time, "argon-time", 1, "the Argon time")
+	fs.IntVar(&c.ArgonConfig.Memory, "argon-memory", 64*1024, "the Argon memory (KB)")
+	fs.IntVar(&c.ArgonConfig.Threads, "argon-threads", 4, "the Argon threads")
 	err := fs.Parse(args)
 	return err
 }

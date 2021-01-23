@@ -55,16 +55,18 @@ type AuthenticationService struct {
 	configStore  config.ConfigStore
 	secretKey    string
 	mailgunKey   string
+	argonConfig  config.ArgonConfig
 }
 
 func NewAuthenticationService(u user.Store, ss sessions.SessionStore, cs config.ConfigStore,
-	secretKey, mailgunKey string) *AuthenticationService {
+	secretKey, mailgunKey string, cfg config.ArgonConfig) *AuthenticationService {
 	return &AuthenticationService{
 		userStore:    u,
 		sessionStore: ss,
 		configStore:  cs,
 		secretKey:    secretKey,
-		mailgunKey:   mailgunKey}
+		mailgunKey:   mailgunKey,
+		argonConfig:  cfg}
 }
 
 // Login sets a cookie.
@@ -217,7 +219,7 @@ func (as *AuthenticationService) ResetPasswordStep2(ctx context.Context, r *pb.R
 			return nil, twirp.NewError(twirp.Malformed, "wrongly formatted uuid in token")
 		}
 
-		config := NewPasswordConfig(1, 64*1024, 4, 32)
+		config := NewPasswordConfig(as.argonConfig.Time, as.argonConfig.Memory, as.argonConfig.Threads, as.argonConfig.Keylen)
 		if len(r.Password) < 8 {
 			return nil, twirp.NewError(twirp.InvalidArgument, errPasswordTooShort.Error())
 		}
@@ -259,9 +261,7 @@ func (as *AuthenticationService) ChangePassword(ctx context.Context, r *pb.Chang
 		return nil, twirp.NewError(twirp.InvalidArgument, errPasswordTooShort.Error())
 	}
 
-	// time, memory, threads, keyLen for argon2:
-	config := NewPasswordConfig(1, 64*1024, 4, 32)
-	// XXX: do not hardcode, put in a config file
+	config := NewPasswordConfig(as.argonConfig.Time, as.argonConfig.Memory, as.argonConfig.Threads, as.argonConfig.Keylen)
 	hashPass, err := GeneratePassword(config, r.NewPassword)
 	if err != nil {
 		return nil, twirp.InternalErrorWith(err)
