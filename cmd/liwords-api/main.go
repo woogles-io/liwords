@@ -220,6 +220,14 @@ func main() {
 
 	go pubsubBus.ProcessMessages(ctx)
 
+	s3Uploader := pkguser.NewS3Uploader("woogles-uploads")
+
+	path, err := s3Uploader.Upload(context.Background(), "abcdefg", []byte("hello world"))
+	if err != nil {
+		panic(err)
+	}
+	log.Debug().Str("path", path).Msg("path")
+
 	go func() {
 		signal.Notify(sig, syscall.SIGINT, syscall.SIGTERM)
 		<-sig

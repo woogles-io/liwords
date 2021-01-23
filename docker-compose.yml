@@ -17,9 +17,11 @@ services:
       REDIS_URL: "redis://redis:6379"
       GORACE: history_size=7
       ARGON_MEMORY: 1024
+      AWS_PROFILE: ${AWS_PROFILE:-default}
     volumes:
       - .:/opt/program:rw
       - ./data/lexica/dawg:/opt/program/data/lexica/dawg
+      - ${AWS_CREDENTIALS_PATH:-~/.aws}:/root/.aws:ro
     command: sh -c "go run -race cmd/liwords-api/*.go"
     depends_on: ["db", "proxy", "nats", "socket", "redis"]
     networks:

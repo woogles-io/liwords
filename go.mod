@@ -1,8 +1,12 @@
 module github.com/domino14/liwords
 
-go 1.14
+go 1.15
 
 require (
+	github.com/aws/aws-sdk-go-v2 v1.0.0
+	github.com/aws/aws-sdk-go-v2/config v1.0.0
+	github.com/aws/aws-sdk-go-v2/feature/s3/manager v1.0.0
+	github.com/aws/aws-sdk-go-v2/service/s3 v1.0.0
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible
 	github.com/domino14/macondo v0.4.5-0.20201220182339-824fc6974fc7
 	github.com/golang/protobuf v1.4.2
