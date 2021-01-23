@@ -14,6 +14,7 @@ type DivisionManager interface {
 		realtime.TournamentGameResult, realtime.GameEndReason, bool, int, string) error
 	PairRound(int) error
 	GetStandings(int) ([]*realtime.PlayerStanding, error)
+	GetCurrentRound() (int)
 	SetPairing(string, string, int, bool) error
 	SetSingleRoundControls(int, *realtime.RoundControl) error
 	AddPlayers(*realtime.TournamentPersons) error
@@ -49,17 +50,7 @@ const (
 	ForfeitScore int = -50
 )
 
-type TournamentType int
-
-const (
-	ClassicTournamentType TournamentType = iota
-	// It's gonna be lit:
-	ArenaTournamentType
-)
-
 type TournamentDivision struct {
-	Players            *realtime.TournamentPersons  `json:"players"`
-	Controls           *realtime.TournamentControls `json:"controls"`
 	ManagerType        TournamentType               `json:"mgrType"`
 	DivisionRawMessage json.RawMessage              `json:"json"`
 	DivisionManager    DivisionManager              `json:"-"`
