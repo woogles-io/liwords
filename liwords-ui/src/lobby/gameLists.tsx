@@ -49,7 +49,7 @@ export const GameLists = React.memo((props: Props) => {
     [lobbyContext.activeGames, username]
   );
   const simultaneousModeEffectivelyEnabled =
-    simultaneousModeEnabled || myCurrentGames.length >= 2;
+    simultaneousModeEnabled || myCurrentGames.length !== 1;
   const currentGame: ActiveGame | null = myCurrentGames[0] ?? null;
   const opponent = currentGame?.players.find((p) => p.displayName !== username)
     ?.displayName;
@@ -60,23 +60,6 @@ export const GameLists = React.memo((props: Props) => {
     if (loggedIn && userID && username && selectedGameTab === 'PLAY') {
       return (
         <>
-          {lobbyContext?.matchRequests.length ? (
-            <SoughtGames
-              isMatch={true}
-              userID={userID}
-              username={username}
-              newGame={newGame}
-              requests={lobbyContext?.matchRequests}
-            />
-          ) : null}
-
-          <SoughtGames
-            isMatch={false}
-            userID={userID}
-            username={username}
-            newGame={newGame}
-            requests={lobbyContext?.soughtGames}
-          />
           {myCurrentGames.length > 0 && (
             <ActiveGames
               type="RESUME"
@@ -88,6 +71,28 @@ export const GameLists = React.memo((props: Props) => {
               username={username}
               activeGames={myCurrentGames}
             />
+          )}
+
+          {simultaneousModeEffectivelyEnabled && (
+            <React.Fragment>
+              {lobbyContext?.matchRequests.length ? (
+                <SoughtGames
+                  isMatch={true}
+                  userID={userID}
+                  username={username}
+                  newGame={newGame}
+                  requests={lobbyContext?.matchRequests}
+                />
+              ) : null}
+
+              <SoughtGames
+                isMatch={false}
+                userID={userID}
+                username={username}
+                newGame={newGame}
+                requests={lobbyContext?.soughtGames}
+              />
+            </React.Fragment>
           )}
         </>
       );
