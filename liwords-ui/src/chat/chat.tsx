@@ -368,7 +368,9 @@ export const Chat = React.memo((props: Props) => {
         .then((res) => {
           clearChat();
           const messages: Array<ChatMessageFromJSON> = res.data?.messages;
-          addChats(messages.map(chatMessageToChatEntity));
+          if (messages) {
+            addChats(messages.map(chatMessageToChatEntity));
+          }
           setHasUnreadChat(false);
           setChatAutoScroll(true);
           setHeight();
