@@ -20,10 +20,19 @@
     }
 
     .ant-card-body {
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+      justify-content: space-around;
       padding: 12px 0 0 0;
 
-      .enable-simultaneous-games {
-        cursor: pointer;
+      .main-content {
+        flex: 1;
+      }
+
+      .enable-simultaneous-ignore-link {
+        padding: 8px;
+        align-self: flex-end;
       }
     }
   }
@@ -42,7 +51,6 @@
       padding-top: 0px;
     }
   }
-
 }
 
 .announcements {
@@ -109,7 +117,7 @@
 
 @media (min-width: $screen-tablet-min) {
   .announcements,
-  .tournament-info .tournament{
+  .tournament-info .tournament {
     order: initial;
     flex-grow: 1;
     .ant-card {

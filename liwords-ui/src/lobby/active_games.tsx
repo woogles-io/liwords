@@ -6,61 +6,11 @@ import { RatingBadge } from './rating_badge';
 import { challengeFormat, timeFormat } from './sought_games';
 import { ActiveGame } from '../store/reducers/lobby_reducer';
 import { calculateTotalTime } from '../store/constants';
-import { useMountedState } from '../utils/mounted';
-
-const SimultaneousGamesFooter = (props: { onSimultaneous?: () => void }) => {
-  const { onSimultaneous } = props;
-  const { useState } = useMountedState();
-
-  // Used as a ref callback. React will call setter with null on unmount.
-  const [thisElement, setThisElement] = useState<HTMLElement | null>(null);
-
-  // This is the containing div.ant-table-footer.
-  const parentElement = React.useMemo(() => thisElement?.parentElement, [
-    thisElement,
-  ]);
-
-  // The class adds a pointer cursor.
-  React.useEffect(() => {
-    if (parentElement) {
-      parentElement.classList.add('enable-simultaneous-games');
-      return () => {
-        parentElement.classList.remove('enable-simultaneous-games');
-      };
-    }
-  }, [parentElement]);
-
-  // Mouse-only just like the rest of the app.
-  const handleClick = React.useCallback(() => {
-    if (onSimultaneous) onSimultaneous();
-  }, [onSimultaneous]);
-
-  // Allow clicking outside the text too.
-  React.useEffect(() => {
-    if (parentElement) {
-      parentElement.addEventListener('click', handleClick);
-      return () => {
-        parentElement.removeEventListener('click', handleClick);
-      };
-    }
-  }, [handleClick, parentElement]);
-
-  return (
-    <span
-      className="enable-simultaneous-games"
-      onClick={handleClick}
-      ref={setThisElement}
-    >
-      Play more games simultaneously (timers will run concurrently)
-    </span>
-  );
-};
 
 type Props = {
   activeGames: ActiveGame[];
   username?: string;
   type?: 'RESUME';
-  onSimultaneous?: () => void;
 };
 
 export const ActiveGames = (props: Props) => {
@@ -177,11 +127,6 @@ export const ActiveGames = (props: Props) => {
     },
   ];
 
-  const simultaneousFooter = React.useCallback(
-    () => <SimultaneousGamesFooter onSimultaneous={props.onSimultaneous} />,
-    [props.onSimultaneous]
-  );
-
   return (
     <>
       <h4>{props.type === 'RESUME' ? 'Resume' : 'Games Live Now'}</h4>
@@ -220,7 +165,6 @@ export const ActiveGames = (props: Props) => {
           }
           return 'game-listing';
         }}
-        footer={props.onSimultaneous ? simultaneousFooter : undefined}
       />
     </>
   );
