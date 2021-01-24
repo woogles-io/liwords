@@ -28,6 +28,7 @@
 
       .main-content {
         flex: 1;
+        overflow-y: auto;
       }
 
       .enable-simultaneous-ignore-link {
