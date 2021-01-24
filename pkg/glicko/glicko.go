@@ -9,7 +9,7 @@ const (
 	InitialVolatility           float64 = 0.06
 	MaximumVolatility           float64 = 0.1
 	InitialRatingDeviation      int     = 350
-	MinimumRatingDeviation      int     = 90
+	MinimumRatingDeviation      int     = 60
 	MaximumRatingDeviation      int     = 350
 	VolatilityDeltaConstraint   float64 = 0.5
 	GlickoToGlicko225Conversion float64 = 173.7178
@@ -31,21 +31,21 @@ func Rate(
 	secondsSinceLastGame int) (float64, float64, float64) {
 
 	// Step 1 of the Glicko-225 algorithm was performed upon account creation
-	// Step 2 of the Glicko-225 algorithm is performed in MakeRatedPlayer
-	playerRating := ConvertRatingToGlicko225(playerUnscaledRating)
-	playerRatingDeviation := ConvertRatingDeviationToGlicko225(playerUnscaledRatingDeviation)
-	opponentRating := ConvertRatingToGlicko225(opponentUnscaledRating)
-	opponentRatingDeviation := ConvertRatingDeviationToGlicko225(opponentUnscaledRatingDeviation)
+	// Step 2 of the Glicko-225 algorithm
+	playerRating := convertRatingToGlicko225(playerUnscaledRating)
+	playerRatingDeviation := convertRatingDeviationToGlicko225(playerUnscaledRatingDeviation)
+	opponentRating := convertRatingToGlicko225(opponentUnscaledRating)
+	opponentRatingDeviation := convertRatingDeviationToGlicko225(opponentUnscaledRatingDeviation)
 
 	// Precompute these values for efficiency
 	opponentAdjustedRatingDeviation := adjustedRatingDeviation(opponentRatingDeviation)
 	expectedValue := expectedValue(playerRating, opponentRating, opponentAdjustedRatingDeviation)
 
 	// Step 3 of the Glicko-225 algorithm
-	variance := 1 / Variance(opponentAdjustedRatingDeviation, expectedValue)
+	variance := 1 / variance(opponentAdjustedRatingDeviation, expectedValue)
 
 	// Step 4 of the Glicko-225 algorithm
-	improvement := Improvement(opponentAdjustedRatingDeviation, expectedValue, spread)
+	improvement := improvement(opponentAdjustedRatingDeviation, expectedValue, spread)
 	improvementDelta := variance * improvement
 
 	// Step 5 of the Glicko-225 algorithm
@@ -93,34 +93,34 @@ func Rate(
 	newPlayerRating := playerRating + (math.Pow(newPlayerRatingDeviation, 2) * improvement)
 
 	// Step 8 of the Glicko-225 algorithm
-	newPlayerRating = ConvertRatingFromGlicko225(newPlayerRating)
-	newPlayerRatingDeviation = ConvertRatingDeviationFromGlicko225(newPlayerRatingDeviation)
+	newPlayerRating = convertRatingFromGlicko225(newPlayerRating)
+	newPlayerRatingDeviation = convertRatingDeviationFromGlicko225(newPlayerRatingDeviation)
 	newPlayerRatingDeviation = math.Max(math.Min(newPlayerRatingDeviation, float64(MaximumRatingDeviation)), float64(MinimumRatingDeviation))
 
 	return newPlayerRating, newPlayerRatingDeviation, newPlayerVolatility
 }
 
-func ConvertRatingToGlicko225(unscaledRating float64) float64 {
+func convertRatingToGlicko225(unscaledRating float64) float64 {
 	return (unscaledRating - float64(InitialRating)) / GlickoToGlicko225Conversion
 }
 
-func ConvertRatingFromGlicko225(rating float64) float64 {
+func convertRatingFromGlicko225(rating float64) float64 {
 	return GlickoToGlicko225Conversion*rating + float64(InitialRating)
 }
 
-func ConvertRatingDeviationToGlicko225(unscaledRatingDeviation float64) float64 {
+func convertRatingDeviationToGlicko225(unscaledRatingDeviation float64) float64 {
 	return unscaledRatingDeviation / GlickoToGlicko225Conversion
 }
 
-func ConvertRatingDeviationFromGlicko225(ratingDeviation float64) float64 {
+func convertRatingDeviationFromGlicko225(ratingDeviation float64) float64 {
 	return ratingDeviation * GlickoToGlicko225Conversion
 }
 
-func Variance(opponentAdjustedRatingDeviation float64, expectedValue float64) float64 {
+func variance(opponentAdjustedRatingDeviation float64, expectedValue float64) float64 {
 	return math.Pow(opponentAdjustedRatingDeviation, 2) * expectedValue * (1 - expectedValue)
 }
 
-func Improvement(opponentAdjustedRatingDeviation float64, expectedValue float64, spread int) float64 {
+func improvement(opponentAdjustedRatingDeviation float64, expectedValue float64, spread int) float64 {
 	return opponentAdjustedRatingDeviation * ((boundedResult(float64(spread)/((2*float64(SpreadScaling))+K)+(float64(sign(spread))*WinBoost)) + 0.5) - expectedValue)
 }
 

@@ -8,10 +8,15 @@ p {
 }
 .chat-area {
   order: 3;
+  p {
+    font-family: $font-default;
+  }
+  font-family: $font-default;
   .ant-card.chat {
     height: $main-container-width-tablet + 60px;
-    margin-bottom: 24px;
+    margin-bottom: 12px;
     .entities {
+
       overflow-y: auto;
       max-height: $main-container-width-tablet - 122px;
     }
@@ -182,6 +187,10 @@ p {
       }
     }
   }
+  .description .unread-marker {
+    font-size: inherit;
+    padding: 0 6px;
+  }
   .channel-list .breadcrumb {
     text-transform: uppercase;
     padding-bottom: 12px;
@@ -196,6 +205,7 @@ p {
     justify-content: flex-start;
     align-items: center;
     cursor: pointer;
+    max-height: 24px;
     width: calc(100% - 18px);
     margin-bottom: 12px;
     &.unread {
@@ -219,6 +229,7 @@ p {
       color: m($primary-dark);
     }
   }
+
   .entities {
     padding: 12px 24px 0px;
     .chat-entity {
@@ -231,10 +242,20 @@ p {
       }
       .special-sender {
         @include colorModed() {
-          color: m($timer-out-dark);
+          color: m($primary-dark);
         }
         font-weight: 800;
-        margin: 0 9px 0 0;
+        .ant-tag {
+          position: relative;
+          top: -1px;
+          font-size: 11px;
+          margin: 0 9px 0 9px;
+          text-transform: uppercase;
+          letter-spacing: 0.16em;
+          padding: 0 2px 0 4px;
+          line-height: 14px;
+          color: #52186d;
+        }
       }
       .message-body {
         margin-bottom: 4px;
@@ -248,7 +269,7 @@ p {
           color: m($secondary);
         }
         font-size: 75%;
-        margin: 0;
+        margin: 3px 0;
         position: relative;
         top: 2px;
       }
@@ -268,13 +289,7 @@ p {
 
 .game-table {
   .chat-area .ant-card.chat {
-    height: 300px;
-    .channel-list {
-      max-height: 240px;
-    }
-    .entities {
-      max-height: 90px;
-    }
+    height: 400px;
   }
 }
 
@@ -292,23 +307,15 @@ p {
 }
 
 @media (min-width: $screen-laptop-min) {
-  .lobby .chat-area .ant-card.chat .entities {
-    max-height: calc(100vh - 324px);
-  }
-  .chat-area .channel-list {
-    max-height: calc(100vh - 164px);
-  }
   .game-table {
     .chat-area .ant-card.chat {
       height: 355px;
       margin-bottom: 12px;
-      .entities {
-        max-height: 140px;
-      }
-
     }
-    .chat-area .ant-card.chat .channel-list {
-      max-height: 295px;
+  }
+  .competitor .game-table {
+    .chat-area .ant-card.chat {
+      height: 290px;
     }
   }
   .chat-area {
@@ -325,12 +332,11 @@ p {
   .game-table {
     .chat-area .ant-card.chat {
       height: 495px;
-      .entities {
-        max-height: 274px;
-      }
     }
-    .chat-area .ant-card.chat .channel-list {
-      max-height: 435px;
+  }
+  .competitor .game-table {
+    .chat-area .ant-card.chat {
+      height: 430px;
     }
   }
 }
@@ -339,12 +345,11 @@ p {
   .game-table {
     .chat-area .ant-card.chat {
       height: 564px;
-      .entities {
-        max-height: 357px;
-      }
     }
-    .chat-area .ant-card.chat .channel-list {
-      max-height: 504px;
+  }
+  .competitor .game-table {
+    .chat-area .ant-card.chat {
+      height: 499px;
     }
   }
 }

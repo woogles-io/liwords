@@ -1,89 +1,58 @@
-import React, { useCallback, useEffect } from 'react';
+/* eslint-disable jsx-a11y/anchor-is-valid */
+import React from 'react';
 import { Card, Divider } from 'antd';
-import axios from 'axios';
 import ReactMarkdown from 'react-markdown';
-import { RecentTourneyGames } from './recent_games';
-import { pageSize, RecentGame } from './recent_game';
-import { toAPIUrl } from '../api/api';
-import {
-  useLobbyStoreContext,
-  useTournamentStoreContext,
-} from '../store/store';
-import { ActionType } from '../actions/actions';
+import { useTournamentStoreContext } from '../store/store';
+import { UsernameWithContext } from '../shared/usernameWithContext';
+import { CompetitorStatus } from './competitor_status';
+import { readyForTournamentGame } from '../store/reducers/tournament_reducer';
+import { isPairedMode } from '../store/constants';
 
-type TournamentInfoProps = {};
-
-export type RecentTournamentGames = {
-  games: Array<RecentGame>;
+type TournamentInfoProps = {
+  setSelectedGameTab: (tab: string) => void;
+  sendSocketMsg: (msg: Uint8Array) => void;
 };
 
 export const TournamentInfo = (props: TournamentInfoProps) => {
-  const { lobbyContext, dispatchLobbyContext } = useLobbyStoreContext();
   const { tournamentContext } = useTournamentStoreContext();
-  const tournamentID = tournamentContext.metadata.id;
-
-  useEffect(() => {
-    if (!tournamentID) {
-      return;
-    }
-    axios
-      .post<RecentTournamentGames>(
-        toAPIUrl('tournament_service.TournamentService', 'RecentGames'),
-        {
-          id: tournamentID,
-          num_games: pageSize,
-          offset: lobbyContext.gamesOffset,
-        }
-      )
-      .then((resp) => {
-        dispatchLobbyContext({
-          actionType: ActionType.AddTourneyGames,
-          payload: resp.data.games,
-        });
-      });
-  }, [tournamentID, dispatchLobbyContext, lobbyContext.gamesOffset]);
-
-  const fetchPrev = useCallback(() => {
-    dispatchLobbyContext({
-      actionType: ActionType.SetTourneyGamesOffset,
-      payload: Math.max(
-        lobbyContext.gamesOffset - lobbyContext.gamesPageSize,
-        0
-      ),
-    });
-  }, [
-    dispatchLobbyContext,
-    lobbyContext.gamesOffset,
-    lobbyContext.gamesPageSize,
-  ]);
-  const fetchNext = useCallback(() => {
-    dispatchLobbyContext({
-      actionType: ActionType.SetTourneyGamesOffset,
-      payload: lobbyContext.gamesOffset + lobbyContext.gamesPageSize,
-    });
-  }, [
-    dispatchLobbyContext,
-    lobbyContext.gamesOffset,
-    lobbyContext.gamesPageSize,
-  ]);
+  const { competitorState: competitorContext, metadata } = tournamentContext;
+  const directors = tournamentContext.metadata.directors.map((username, i) => (
+    <span key={username}>
+      {i > 0 && ', '}
+      <UsernameWithContext username={username} omitSendMessage />
+    </span>
+  ));
 
   return (
     <div className="tournament-info">
-      <Card title="Tournament Information">
+      {/* Mobile version of the status widget, hidden by css elsewhere */}
+      {competitorContext.isRegistered && (
+        <CompetitorStatus
+          sendReady={() =>
+            readyForTournamentGame(
+              props.sendSocketMsg,
+              tournamentContext.metadata.id,
+              competitorContext
+            )
+          }
+        />
+      )}
+      <Card title="Tournament Information" className="tournament">
         <h3 className="tournament-name">{tournamentContext.metadata.name}</h3>
-        <h4>Directors: {tournamentContext.metadata.directors.join(', ')}</h4>
+        <h4>Directors: {directors}</h4>
         <ReactMarkdown linkTarget="_blank">
           {tournamentContext.metadata.description}
         </ReactMarkdown>
-        <Divider />
-        <h3 className="recent-header">Recent Games</h3>
-        <RecentTourneyGames
-          games={lobbyContext.tourneyGames}
-          fetchPrev={lobbyContext.gamesOffset > 0 ? fetchPrev : undefined}
-          fetchNext={
-            lobbyContext.tourneyGames.length < pageSize ? undefined : fetchNext
-          }
-        />
+        {!isPairedMode(metadata.type) && (
+          <>
+            <Divider />
+            Recent games can now be found in the{' '}
+            <a onClick={() => props.setSelectedGameTab('RECENT')}>
+              RECENT GAMES
+            </a>{' '}
+            tab in the center panel.
+          </>
+        )}
       </Card>
     </div>
   );

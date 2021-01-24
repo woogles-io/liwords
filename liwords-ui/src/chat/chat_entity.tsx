@@ -3,6 +3,7 @@ import moment from 'moment';
 import { ChatEntityType, useExcludedPlayersStoreContext } from '../store/store';
 import { UsernameWithContext } from '../shared/usernameWithContext';
 import { Wooglinkify } from '../shared/wooglinkify';
+import { Tag } from 'antd';
 
 type EntityProps = {
   entityType: ChatEntityType;
@@ -13,6 +14,7 @@ type EntityProps = {
   timestamp?: number;
   anonymous?: boolean;
   highlight: boolean;
+  highlightText?: string;
   sendMessage?: (uuid: string, username: string) => void;
 };
 
@@ -71,6 +73,9 @@ export const ChatEntity = (props: EntityProps) => {
                 omitSendMessage={!props.sendMessage}
                 sendMessage={props.sendMessage}
               />
+              {props.highlightText && props.highlight && (
+                <Tag color={'#d5cad6'}>{props.highlightText}</Tag>
+              )}
             </span>
             <span className="message">
               <Wooglinkify message={props.message} />

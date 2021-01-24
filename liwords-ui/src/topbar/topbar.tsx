@@ -114,7 +114,12 @@ export const TopBar = React.memo((props: Props) => {
 
             <div className="top-header-left-frame-site-name">Woogles.io</div>
             {props.tournamentID ? (
-              <div className="tournament">Back to tournament</div>
+              <div className="tournament">
+                Back to
+                {['CLUB', 'CHILD'].includes(tournamentContext.metadata.type)
+                  ? ' Club'
+                  : ' Tournament'}
+              </div>
             ) : null}
           </Link>
         </Tooltip>

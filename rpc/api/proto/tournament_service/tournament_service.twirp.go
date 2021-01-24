@@ -23,6 +23,8 @@ import proto "github.com/golang/protobuf/proto"
 import twirp "github.com/twitchtv/twirp"
 import ctxsetters "github.com/twitchtv/twirp/ctxsetters"
 
+import liwords "github.com/domino14/liwords/rpc/api/proto/realtime"
+
 // Imports only used by utility functions:
 import io "io"
 import json "encoding/json"
@@ -44,31 +46,39 @@ type TournamentService interface {
 
 	GetTournamentMetadata(context.Context, *GetTournamentMetadataRequest) (*TournamentMetadataResponse, error)
 
-	SetTournamentMetadata(context.Context, *TournamentMetadataRequest) (*TournamentResponse, error)
+	StartTournament(context.Context, *StartTournamentRequest) (*TournamentResponse, error)
+
+	FinishTournament(context.Context, *FinishTournamentRequest) (*TournamentResponse, error)
+
+	SetTournamentMetadata(context.Context, *SetTournamentMetadataRequest) (*TournamentResponse, error)
 
 	PairRound(context.Context, *PairRoundRequest) (*TournamentResponse, error)
 
 	SetSingleRoundControls(context.Context, *SingleRoundControlsRequest) (*TournamentResponse, error)
 
-	SetTournamentControls(context.Context, *TournamentControlsRequest) (*TournamentResponse, error)
+	SetTournamentControls(context.Context, *liwords.TournamentControls) (*TournamentResponse, error)
 
-	AddDirectors(context.Context, *TournamentPersons) (*TournamentResponse, error)
+	// Input to AddDirectors should be director usernames.
+	AddDirectors(context.Context, *liwords.TournamentPersons) (*TournamentResponse, error)
 
-	RemoveDirectors(context.Context, *TournamentPersons) (*TournamentResponse, error)
+	// Input to RemoveDirectors should be director usernames.
+	RemoveDirectors(context.Context, *liwords.TournamentPersons) (*TournamentResponse, error)
 
 	AddDivision(context.Context, *TournamentDivisionRequest) (*TournamentResponse, error)
 
 	RemoveDivision(context.Context, *TournamentDivisionRequest) (*TournamentResponse, error)
 
-	AddPlayers(context.Context, *TournamentPersons) (*TournamentResponse, error)
+	// Input to AddPlayers should be player usernames
+	AddPlayers(context.Context, *liwords.TournamentPersons) (*TournamentResponse, error)
 
-	RemovePlayers(context.Context, *TournamentPersons) (*TournamentResponse, error)
+	// Input to RemovePlayers should be player usernames
+	RemovePlayers(context.Context, *liwords.TournamentPersons) (*TournamentResponse, error)
 
-	SetPairing(context.Context, *TournamentPairingRequest) (*TournamentResponse, error)
+	SetPairing(context.Context, *TournamentPairingsRequest) (*TournamentResponse, error)
 
 	SetResult(context.Context, *TournamentResultOverrideRequest) (*TournamentResponse, error)
 
-	StartRound(context.Context, *TournamentStartRoundRequest) (*TournamentResponse, error)
+	StartRoundCountdown(context.Context, *TournamentStartRoundCountdownRequest) (*TournamentResponse, error)
 
 	RecentGames(context.Context, *RecentGamesRequest) (*RecentGamesResponse, error)
 
@@ -83,7 +93,7 @@ type TournamentService interface {
 
 type tournamentServiceProtobufClient struct {
 	client      HTTPClient
-	urls        [18]string
+	urls        [20]string
 	interceptor twirp.Interceptor
 	opts        twirp.ClientOptions
 }
@@ -103,9 +113,11 @@ func NewTournamentServiceProtobufClient(baseURL string, client HTTPClient, opts 
 	// Build method URLs: <baseURL>[<prefix>]/<package>.<Service>/<Method>
 	serviceURL := sanitizeBaseURL(baseURL)
 	serviceURL += baseServicePath(clientOpts.PathPrefix(), "tournament_service", "TournamentService")
-	urls := [18]string{
+	urls := [20]string{
 		serviceURL + "NewTournament",
 		serviceURL + "GetTournamentMetadata",
+		serviceURL + "StartTournament",
+		serviceURL + "FinishTournament",
 		serviceURL + "SetTournamentMetadata",
 		serviceURL + "PairRound",
 		serviceURL + "SetSingleRoundControls",
@@ -118,7 +130,7 @@ func NewTournamentServiceProtobufClient(baseURL string, client HTTPClient, opts 
 		serviceURL + "RemovePlayers",
 		serviceURL + "SetPairing",
 		serviceURL + "SetResult",
-		serviceURL + "StartRound",
+		serviceURL + "StartRoundCountdown",
 		serviceURL + "RecentGames",
 		serviceURL + "CreateClubSession",
 		serviceURL + "GetRecentClubSessions",
@@ -224,18 +236,110 @@ func (c *tournamentServiceProtobufClient) callGetTournamentMetadata(ctx context.
 	return out, nil
 }
 
-func (c *tournamentServiceProtobufClient) SetTournamentMetadata(ctx context.Context, in *TournamentMetadataRequest) (*TournamentResponse, error) {
+func (c *tournamentServiceProtobufClient) StartTournament(ctx context.Context, in *StartTournamentRequest) (*TournamentResponse, error) {
+	ctx = ctxsetters.WithPackageName(ctx, "tournament_service")
+	ctx = ctxsetters.WithServiceName(ctx, "TournamentService")
+	ctx = ctxsetters.WithMethodName(ctx, "StartTournament")
+	caller := c.callStartTournament
+	if c.interceptor != nil {
+		caller = func(ctx context.Context, req *StartTournamentRequest) (*TournamentResponse, error) {
+			resp, err := c.interceptor(
+				func(ctx context.Context, req interface{}) (interface{}, error) {
+					typedReq, ok := req.(*StartTournamentRequest)
+					if !ok {
+						return nil, twirp.InternalError("failed type assertion req.(*StartTournamentRequest) when calling interceptor")
+					}
+					return c.callStartTournament(ctx, typedReq)
+				},
+			)(ctx, req)
+			if resp != nil {
+				typedResp, ok := resp.(*TournamentResponse)
+				if !ok {
+					return nil, twirp.InternalError("failed type assertion resp.(*TournamentResponse) when calling interceptor")
+				}
+				return typedResp, err
+			}
+			return nil, err
+		}
+	}
+	return caller(ctx, in)
+}
+
+func (c *tournamentServiceProtobufClient) callStartTournament(ctx context.Context, in *StartTournamentRequest) (*TournamentResponse, error) {
+	out := new(TournamentResponse)
+	ctx, err := doProtobufRequest(ctx, c.client, c.opts.Hooks, c.urls[2], in, out)
+	if err != nil {
+		twerr, ok := err.(twirp.Error)
+		if !ok {
+			twerr = twirp.InternalErrorWith(err)
+		}
+		callClientError(ctx, c.opts.Hooks, twerr)
+		return nil, err
+	}
+
+	callClientResponseReceived(ctx, c.opts.Hooks)
+
+	return out, nil
+}
+
+func (c *tournamentServiceProtobufClient) FinishTournament(ctx context.Context, in *FinishTournamentRequest) (*TournamentResponse, error) {
+	ctx = ctxsetters.WithPackageName(ctx, "tournament_service")
+	ctx = ctxsetters.WithServiceName(ctx, "TournamentService")
+	ctx = ctxsetters.WithMethodName(ctx, "FinishTournament")
+	caller := c.callFinishTournament
+	if c.interceptor != nil {
+		caller = func(ctx context.Context, req *FinishTournamentRequest) (*TournamentResponse, error) {
+			resp, err := c.interceptor(
+				func(ctx context.Context, req interface{}) (interface{}, error) {
+					typedReq, ok := req.(*FinishTournamentRequest)
+					if !ok {
+						return nil, twirp.InternalError("failed type assertion req.(*FinishTournamentRequest) when calling interceptor")
+					}
+					return c.callFinishTournament(ctx, typedReq)
+				},
+			)(ctx, req)
+			if resp != nil {
+				typedResp, ok := resp.(*TournamentResponse)
+				if !ok {
+					return nil, twirp.InternalError("failed type assertion resp.(*TournamentResponse) when calling interceptor")
+				}
+				return typedResp, err
+			}
+			return nil, err
+		}
+	}
+	return caller(ctx, in)
+}
+
+func (c *tournamentServiceProtobufClient) callFinishTournament(ctx context.Context, in *FinishTournamentRequest) (*TournamentResponse, error) {
+	out := new(TournamentResponse)
+	ctx, err := doProtobufRequest(ctx, c.client, c.opts.Hooks, c.urls[3], in, out)
+	if err != nil {
+		twerr, ok := err.(twirp.Error)
+		if !ok {
+			twerr = twirp.InternalErrorWith(err)
+		}
+		callClientError(ctx, c.opts.Hooks, twerr)
+		return nil, err
+	}
+
+	callClientResponseReceived(ctx, c.opts.Hooks)
+
+	return out, nil
+}
+
+func (c *tournamentServiceProtobufClient) SetTournamentMetadata(ctx context.Context, in *SetTournamentMetadataRequest) (*TournamentResponse, error) {
 	ctx = ctxsetters.WithPackageName(ctx, "tournament_service")
 	ctx = ctxsetters.WithServiceName(ctx, "TournamentService")
 	ctx = ctxsetters.WithMethodName(ctx, "SetTournamentMetadata")
 	caller := c.callSetTournamentMetadata
 	if c.interceptor != nil {
-		caller = func(ctx context.Context, req *TournamentMetadataRequest) (*TournamentResponse, error) {
+		caller = func(ctx context.Context, req *SetTournamentMetadataRequest) (*TournamentResponse, error) {
 			resp, err := c.interceptor(
 				func(ctx context.Context, req interface{}) (interface{}, error) {
-					typedReq, ok := req.(*TournamentMetadataRequest)
+					typedReq, ok := req.(*SetTournamentMetadataRequest)
 					if !ok {
-						return nil, twirp.InternalError("failed type assertion req.(*TournamentMetadataRequest) when calling interceptor")
+						return nil, twirp.InternalError("failed type assertion req.(*SetTournamentMetadataRequest) when calling interceptor")
 					}
 					return c.callSetTournamentMetadata(ctx, typedReq)
 				},
@@ -253,9 +357,9 @@ func (c *tournamentServiceProtobufClient) SetTournamentMetadata(ctx context.Cont
 	return caller(ctx, in)
 }
 
-func (c *tournamentServiceProtobufClient) callSetTournamentMetadata(ctx context.Context, in *TournamentMetadataRequest) (*TournamentResponse, error) {
+func (c *tournamentServiceProtobufClient) callSetTournamentMetadata(ctx context.Context, in *SetTournamentMetadataRequest) (*TournamentResponse, error) {
 	out := new(TournamentResponse)
-	ctx, err := doProtobufRequest(ctx, c.client, c.opts.Hooks, c.urls[2], in, out)
+	ctx, err := doProtobufRequest(ctx, c.client, c.opts.Hooks, c.urls[4], in, out)
 	if err != nil {
 		twerr, ok := err.(twirp.Error)
 		if !ok {
@@ -301,7 +405,7 @@ func (c *tournamentServiceProtobufClient) PairRound(ctx context.Context, in *Pai
 
 func (c *tournamentServiceProtobufClient) callPairRound(ctx context.Context, in *PairRoundRequest) (*TournamentResponse, error) {
 	out := new(TournamentResponse)
-	ctx, err := doProtobufRequest(ctx, c.client, c.opts.Hooks, c.urls[3], in, out)
+	ctx, err := doProtobufRequest(ctx, c.client, c.opts.Hooks, c.urls[5], in, out)
 	if err != nil {
 		twerr, ok := err.(twirp.Error)
 		if !ok {
@@ -347,7 +451,7 @@ func (c *tournamentServiceProtobufClient) SetSingleRoundControls(ctx context.Con
 
 func (c *tournamentServiceProtobufClient) callSetSingleRoundControls(ctx context.Context, in *SingleRoundControlsRequest) (*TournamentResponse, error) {
 	out := new(TournamentResponse)
-	ctx, err := doProtobufRequest(ctx, c.client, c.opts.Hooks, c.urls[4], in, out)
+	ctx, err := doProtobufRequest(ctx, c.client, c.opts.Hooks, c.urls[6], in, out)
 	if err != nil {
 		twerr, ok := err.(twirp.Error)
 		if !ok {
@@ -362,18 +466,18 @@ func (c *tournamentServiceProtobufClient) callSetSingleRoundControls(ctx context
 	return out, nil
 }
 
-func (c *tournamentServiceProtobufClient) SetTournamentControls(ctx context.Context, in *TournamentControlsRequest) (*TournamentResponse, error) {
+func (c *tournamentServiceProtobufClient) SetTournamentControls(ctx context.Context, in *liwords.TournamentControls) (*TournamentResponse, error) {
 	ctx = ctxsetters.WithPackageName(ctx, "tournament_service")
 	ctx = ctxsetters.WithServiceName(ctx, "TournamentService")
 	ctx = ctxsetters.WithMethodName(ctx, "SetTournamentControls")
 	caller := c.callSetTournamentControls
 	if c.interceptor != nil {
-		caller = func(ctx context.Context, req *TournamentControlsRequest) (*TournamentResponse, error) {
+		caller = func(ctx context.Context, req *liwords.TournamentControls) (*TournamentResponse, error) {
 			resp, err := c.interceptor(
 				func(ctx context.Context, req interface{}) (interface{}, error) {
-					typedReq, ok := req.(*TournamentControlsRequest)
+					typedReq, ok := req.(*liwords.TournamentControls)
 					if !ok {
-						return nil, twirp.InternalError("failed type assertion req.(*TournamentControlsRequest) when calling interceptor")
+						return nil, twirp.InternalError("failed type assertion req.(*liwords.TournamentControls) when calling interceptor")
 					}
 					return c.callSetTournamentControls(ctx, typedReq)
 				},
@@ -391,9 +495,9 @@ func (c *tournamentServiceProtobufClient) SetTournamentControls(ctx context.Cont
 	return caller(ctx, in)
 }
 
-func (c *tournamentServiceProtobufClient) callSetTournamentControls(ctx context.Context, in *TournamentControlsRequest) (*TournamentResponse, error) {
+func (c *tournamentServiceProtobufClient) callSetTournamentControls(ctx context.Context, in *liwords.TournamentControls) (*TournamentResponse, error) {
 	out := new(TournamentResponse)
-	ctx, err := doProtobufRequest(ctx, c.client, c.opts.Hooks, c.urls[5], in, out)
+	ctx, err := doProtobufRequest(ctx, c.client, c.opts.Hooks, c.urls[7], in, out)
 	if err != nil {
 		twerr, ok := err.(twirp.Error)
 		if !ok {
@@ -408,18 +512,18 @@ func (c *tournamentServiceProtobufClient) callSetTournamentControls(ctx context.
 	return out, nil
 }
 
-func (c *tournamentServiceProtobufClient) AddDirectors(ctx context.Context, in *TournamentPersons) (*TournamentResponse, error) {
+func (c *tournamentServiceProtobufClient) AddDirectors(ctx context.Context, in *liwords.TournamentPersons) (*TournamentResponse, error) {
 	ctx = ctxsetters.WithPackageName(ctx, "tournament_service")
 	ctx = ctxsetters.WithServiceName(ctx, "TournamentService")
 	ctx = ctxsetters.WithMethodName(ctx, "AddDirectors")
 	caller := c.callAddDirectors
 	if c.interceptor != nil {
-		caller = func(ctx context.Context, req *TournamentPersons) (*TournamentResponse, error) {
+		caller = func(ctx context.Context, req *liwords.TournamentPersons) (*TournamentResponse, error) {
 			resp, err := c.interceptor(
 				func(ctx context.Context, req interface{}) (interface{}, error) {
-					typedReq, ok := req.(*TournamentPersons)
+					typedReq, ok := req.(*liwords.TournamentPersons)
 					if !ok {
-						return nil, twirp.InternalError("failed type assertion req.(*TournamentPersons) when calling interceptor")
+						return nil, twirp.InternalError("failed type assertion req.(*liwords.TournamentPersons) when calling interceptor")
 					}
 					return c.callAddDirectors(ctx, typedReq)
 				},
@@ -437,9 +541,9 @@ func (c *tournamentServiceProtobufClient) AddDirectors(ctx context.Context, in *
 	return caller(ctx, in)
 }
 
-func (c *tournamentServiceProtobufClient) callAddDirectors(ctx context.Context, in *TournamentPersons) (*TournamentResponse, error) {
+func (c *tournamentServiceProtobufClient) callAddDirectors(ctx context.Context, in *liwords.TournamentPersons) (*TournamentResponse, error) {
 	out := new(TournamentResponse)
-	ctx, err := doProtobufRequest(ctx, c.client, c.opts.Hooks, c.urls[6], in, out)
+	ctx, err := doProtobufRequest(ctx, c.client, c.opts.Hooks, c.urls[8], in, out)
 	if err != nil {
 		twerr, ok := err.(twirp.Error)
 		if !ok {
@@ -454,18 +558,18 @@ func (c *tournamentServiceProtobufClient) callAddDirectors(ctx context.Context, 
 	return out, nil
 }
 
-func (c *tournamentServiceProtobufClient) RemoveDirectors(ctx context.Context, in *TournamentPersons) (*TournamentResponse, error) {
+func (c *tournamentServiceProtobufClient) RemoveDirectors(ctx context.Context, in *liwords.TournamentPersons) (*TournamentResponse, error) {
 	ctx = ctxsetters.WithPackageName(ctx, "tournament_service")
 	ctx = ctxsetters.WithServiceName(ctx, "TournamentService")
 	ctx = ctxsetters.WithMethodName(ctx, "RemoveDirectors")
 	caller := c.callRemoveDirectors
 	if c.interceptor != nil {
-		caller = func(ctx context.Context, req *TournamentPersons) (*TournamentResponse, error) {
+		caller = func(ctx context.Context, req *liwords.TournamentPersons) (*TournamentResponse, error) {
 			resp, err := c.interceptor(
 				func(ctx context.Context, req interface{}) (interface{}, error) {
-					typedReq, ok := req.(*TournamentPersons)
+					typedReq, ok := req.(*liwords.TournamentPersons)
 					if !ok {
-						return nil, twirp.InternalError("failed type assertion req.(*TournamentPersons) when calling interceptor")
+						return nil, twirp.InternalError("failed type assertion req.(*liwords.TournamentPersons) when calling interceptor")
 					}
 					return c.callRemoveDirectors(ctx, typedReq)
 				},
@@ -483,9 +587,9 @@ func (c *tournamentServiceProtobufClient) RemoveDirectors(ctx context.Context, i
 	return caller(ctx, in)
 }
 
-func (c *tournamentServiceProtobufClient) callRemoveDirectors(ctx context.Context, in *TournamentPersons) (*TournamentResponse, error) {
+func (c *tournamentServiceProtobufClient) callRemoveDirectors(ctx context.Context, in *liwords.TournamentPersons) (*TournamentResponse, error) {
 	out := new(TournamentResponse)
-	ctx, err := doProtobufRequest(ctx, c.client, c.opts.Hooks, c.urls[7], in, out)
+	ctx, err := doProtobufRequest(ctx, c.client, c.opts.Hooks, c.urls[9], in, out)
 	if err != nil {
 		twerr, ok := err.(twirp.Error)
 		if !ok {
@@ -531,7 +635,7 @@ func (c *tournamentServiceProtobufClient) AddDivision(ctx context.Context, in *T
 
 func (c *tournamentServiceProtobufClient) callAddDivision(ctx context.Context, in *TournamentDivisionRequest) (*TournamentResponse, error) {
 	out := new(TournamentResponse)
-	ctx, err := doProtobufRequest(ctx, c.client, c.opts.Hooks, c.urls[8], in, out)
+	ctx, err := doProtobufRequest(ctx, c.client, c.opts.Hooks, c.urls[10], in, out)
 	if err != nil {
 		twerr, ok := err.(twirp.Error)
 		if !ok {
@@ -577,7 +681,7 @@ func (c *tournamentServiceProtobufClient) RemoveDivision(ctx context.Context, in
 
 func (c *tournamentServiceProtobufClient) callRemoveDivision(ctx context.Context, in *TournamentDivisionRequest) (*TournamentResponse, error) {
 	out := new(TournamentResponse)
-	ctx, err := doProtobufRequest(ctx, c.client, c.opts.Hooks, c.urls[9], in, out)
+	ctx, err := doProtobufRequest(ctx, c.client, c.opts.Hooks, c.urls[11], in, out)
 	if err != nil {
 		twerr, ok := err.(twirp.Error)
 		if !ok {
@@ -592,18 +696,18 @@ func (c *tournamentServiceProtobufClient) callRemoveDivision(ctx context.Context
 	return out, nil
 }
 
-func (c *tournamentServiceProtobufClient) AddPlayers(ctx context.Context, in *TournamentPersons) (*TournamentResponse, error) {
+func (c *tournamentServiceProtobufClient) AddPlayers(ctx context.Context, in *liwords.TournamentPersons) (*TournamentResponse, error) {
 	ctx = ctxsetters.WithPackageName(ctx, "tournament_service")
 	ctx = ctxsetters.WithServiceName(ctx, "TournamentService")
 	ctx = ctxsetters.WithMethodName(ctx, "AddPlayers")
 	caller := c.callAddPlayers
 	if c.interceptor != nil {
-		caller = func(ctx context.Context, req *TournamentPersons) (*TournamentResponse, error) {
+		caller = func(ctx context.Context, req *liwords.TournamentPersons) (*TournamentResponse, error) {
 			resp, err := c.interceptor(
 				func(ctx context.Context, req interface{}) (interface{}, error) {
-					typedReq, ok := req.(*TournamentPersons)
+					typedReq, ok := req.(*liwords.TournamentPersons)
 					if !ok {
-						return nil, twirp.InternalError("failed type assertion req.(*TournamentPersons) when calling interceptor")
+						return nil, twirp.InternalError("failed type assertion req.(*liwords.TournamentPersons) when calling interceptor")
 					}
 					return c.callAddPlayers(ctx, typedReq)
 				},
@@ -621,9 +725,9 @@ func (c *tournamentServiceProtobufClient) AddPlayers(ctx context.Context, in *To
 	return caller(ctx, in)
 }
 
-func (c *tournamentServiceProtobufClient) callAddPlayers(ctx context.Context, in *TournamentPersons) (*TournamentResponse, error) {
+func (c *tournamentServiceProtobufClient) callAddPlayers(ctx context.Context, in *liwords.TournamentPersons) (*TournamentResponse, error) {
 	out := new(TournamentResponse)
-	ctx, err := doProtobufRequest(ctx, c.client, c.opts.Hooks, c.urls[10], in, out)
+	ctx, err := doProtobufRequest(ctx, c.client, c.opts.Hooks, c.urls[12], in, out)
 	if err != nil {
 		twerr, ok := err.(twirp.Error)
 		if !ok {
@@ -638,18 +742,18 @@ func (c *tournamentServiceProtobufClient) callAddPlayers(ctx context.Context, in
 	return out, nil
 }
 
-func (c *tournamentServiceProtobufClient) RemovePlayers(ctx context.Context, in *TournamentPersons) (*TournamentResponse, error) {
+func (c *tournamentServiceProtobufClient) RemovePlayers(ctx context.Context, in *liwords.TournamentPersons) (*TournamentResponse, error) {
 	ctx = ctxsetters.WithPackageName(ctx, "tournament_service")
 	ctx = ctxsetters.WithServiceName(ctx, "TournamentService")
 	ctx = ctxsetters.WithMethodName(ctx, "RemovePlayers")
 	caller := c.callRemovePlayers
 	if c.interceptor != nil {
-		caller = func(ctx context.Context, req *TournamentPersons) (*TournamentResponse, error) {
+		caller = func(ctx context.Context, req *liwords.TournamentPersons) (*TournamentResponse, error) {
 			resp, err := c.interceptor(
 				func(ctx context.Context, req interface{}) (interface{}, error) {
-					typedReq, ok := req.(*TournamentPersons)
+					typedReq, ok := req.(*liwords.TournamentPersons)
 					if !ok {
-						return nil, twirp.InternalError("failed type assertion req.(*TournamentPersons) when calling interceptor")
+						return nil, twirp.InternalError("failed type assertion req.(*liwords.TournamentPersons) when calling interceptor")
 					}
 					return c.callRemovePlayers(ctx, typedReq)
 				},
@@ -667,9 +771,9 @@ func (c *tournamentServiceProtobufClient) RemovePlayers(ctx context.Context, in 
 	return caller(ctx, in)
 }
 
-func (c *tournamentServiceProtobufClient) callRemovePlayers(ctx context.Context, in *TournamentPersons) (*TournamentResponse, error) {
+func (c *tournamentServiceProtobufClient) callRemovePlayers(ctx context.Context, in *liwords.TournamentPersons) (*TournamentResponse, error) {
 	out := new(TournamentResponse)
-	ctx, err := doProtobufRequest(ctx, c.client, c.opts.Hooks, c.urls[11], in, out)
+	ctx, err := doProtobufRequest(ctx, c.client, c.opts.Hooks, c.urls[13], in, out)
 	if err != nil {
 		twerr, ok := err.(twirp.Error)
 		if !ok {
@@ -684,18 +788,18 @@ func (c *tournamentServiceProtobufClient) callRemovePlayers(ctx context.Context,
 	return out, nil
 }
 
-func (c *tournamentServiceProtobufClient) SetPairing(ctx context.Context, in *TournamentPairingRequest) (*TournamentResponse, error) {
+func (c *tournamentServiceProtobufClient) SetPairing(ctx context.Context, in *TournamentPairingsRequest) (*TournamentResponse, error) {
 	ctx = ctxsetters.WithPackageName(ctx, "tournament_service")
 	ctx = ctxsetters.WithServiceName(ctx, "TournamentService")
 	ctx = ctxsetters.WithMethodName(ctx, "SetPairing")
 	caller := c.callSetPairing
 	if c.interceptor != nil {
-		caller = func(ctx context.Context, req *TournamentPairingRequest) (*TournamentResponse, error) {
+		caller = func(ctx context.Context, req *TournamentPairingsRequest) (*TournamentResponse, error) {
 			resp, err := c.interceptor(
 				func(ctx context.Context, req interface{}) (interface{}, error) {
-					typedReq, ok := req.(*TournamentPairingRequest)
+					typedReq, ok := req.(*TournamentPairingsRequest)
 					if !ok {
-						return nil, twirp.InternalError("failed type assertion req.(*TournamentPairingRequest) when calling interceptor")
+						return nil, twirp.InternalError("failed type assertion req.(*TournamentPairingsRequest) when calling interceptor")
 					}
 					return c.callSetPairing(ctx, typedReq)
 				},
@@ -713,9 +817,9 @@ func (c *tournamentServiceProtobufClient) SetPairing(ctx context.Context, in *To
 	return caller(ctx, in)
 }
 
-func (c *tournamentServiceProtobufClient) callSetPairing(ctx context.Context, in *TournamentPairingRequest) (*TournamentResponse, error) {
+func (c *tournamentServiceProtobufClient) callSetPairing(ctx context.Context, in *TournamentPairingsRequest) (*TournamentResponse, error) {
 	out := new(TournamentResponse)
-	ctx, err := doProtobufRequest(ctx, c.client, c.opts.Hooks, c.urls[12], in, out)
+	ctx, err := doProtobufRequest(ctx, c.client, c.opts.Hooks, c.urls[14], in, out)
 	if err != nil {
 		twerr, ok := err.(twirp.Error)
 		if !ok {
@@ -761,7 +865,7 @@ func (c *tournamentServiceProtobufClient) SetResult(ctx context.Context, in *Tou
 
 func (c *tournamentServiceProtobufClient) callSetResult(ctx context.Context, in *TournamentResultOverrideRequest) (*TournamentResponse, error) {
 	out := new(TournamentResponse)
-	ctx, err := doProtobufRequest(ctx, c.client, c.opts.Hooks, c.urls[13], in, out)
+	ctx, err := doProtobufRequest(ctx, c.client, c.opts.Hooks, c.urls[15], in, out)
 	if err != nil {
 		twerr, ok := err.(twirp.Error)
 		if !ok {
@@ -776,20 +880,20 @@ func (c *tournamentServiceProtobufClient) callSetResult(ctx context.Context, in 
 	return out, nil
 }
 
-func (c *tournamentServiceProtobufClient) StartRound(ctx context.Context, in *TournamentStartRoundRequest) (*TournamentResponse, error) {
+func (c *tournamentServiceProtobufClient) StartRoundCountdown(ctx context.Context, in *TournamentStartRoundCountdownRequest) (*TournamentResponse, error) {
 	ctx = ctxsetters.WithPackageName(ctx, "tournament_service")
 	ctx = ctxsetters.WithServiceName(ctx, "TournamentService")
-	ctx = ctxsetters.WithMethodName(ctx, "StartRound")
-	caller := c.callStartRound
+	ctx = ctxsetters.WithMethodName(ctx, "StartRoundCountdown")
+	caller := c.callStartRoundCountdown
 	if c.interceptor != nil {
-		caller = func(ctx context.Context, req *TournamentStartRoundRequest) (*TournamentResponse, error) {
+		caller = func(ctx context.Context, req *TournamentStartRoundCountdownRequest) (*TournamentResponse, error) {
 			resp, err := c.interceptor(
 				func(ctx context.Context, req interface{}) (interface{}, error) {
-					typedReq, ok := req.(*TournamentStartRoundRequest)
+					typedReq, ok := req.(*TournamentStartRoundCountdownRequest)
 					if !ok {
-						return nil, twirp.InternalError("failed type assertion req.(*TournamentStartRoundRequest) when calling interceptor")
+						return nil, twirp.InternalError("failed type assertion req.(*TournamentStartRoundCountdownRequest) when calling interceptor")
 					}
-					return c.callStartRound(ctx, typedReq)
+					return c.callStartRoundCountdown(ctx, typedReq)
 				},
 			)(ctx, req)
 			if resp != nil {
@@ -805,9 +909,9 @@ func (c *tournamentServiceProtobufClient) StartRound(ctx context.Context, in *To
 	return caller(ctx, in)
 }
 
-func (c *tournamentServiceProtobufClient) callStartRound(ctx context.Context, in *TournamentStartRoundRequest) (*TournamentResponse, error) {
+func (c *tournamentServiceProtobufClient) callStartRoundCountdown(ctx context.Context, in *TournamentStartRoundCountdownRequest) (*TournamentResponse, error) {
 	out := new(TournamentResponse)
-	ctx, err := doProtobufRequest(ctx, c.client, c.opts.Hooks, c.urls[14], in, out)
+	ctx, err := doProtobufRequest(ctx, c.client, c.opts.Hooks, c.urls[16], in, out)
 	if err != nil {
 		twerr, ok := err.(twirp.Error)
 		if !ok {
@@ -853,7 +957,7 @@ func (c *tournamentServiceProtobufClient) RecentGames(ctx context.Context, in *R
 
 func (c *tournamentServiceProtobufClient) callRecentGames(ctx context.Context, in *RecentGamesRequest) (*RecentGamesResponse, error) {
 	out := new(RecentGamesResponse)
-	ctx, err := doProtobufRequest(ctx, c.client, c.opts.Hooks, c.urls[15], in, out)
+	ctx, err := doProtobufRequest(ctx, c.client, c.opts.Hooks, c.urls[17], in, out)
 	if err != nil {
 		twerr, ok := err.(twirp.Error)
 		if !ok {
@@ -899,7 +1003,7 @@ func (c *tournamentServiceProtobufClient) CreateClubSession(ctx context.Context,
 
 func (c *tournamentServiceProtobufClient) callCreateClubSession(ctx context.Context, in *NewClubSessionRequest) (*ClubSessionResponse, error) {
 	out := new(ClubSessionResponse)
-	ctx, err := doProtobufRequest(ctx, c.client, c.opts.Hooks, c.urls[16], in, out)
+	ctx, err := doProtobufRequest(ctx, c.client, c.opts.Hooks, c.urls[18], in, out)
 	if err != nil {
 		twerr, ok := err.(twirp.Error)
 		if !ok {
@@ -945,7 +1049,7 @@ func (c *tournamentServiceProtobufClient) GetRecentClubSessions(ctx context.Cont
 
 func (c *tournamentServiceProtobufClient) callGetRecentClubSessions(ctx context.Context, in *RecentClubSessionsRequest) (*ClubSessionsResponse, error) {
 	out := new(ClubSessionsResponse)
-	ctx, err := doProtobufRequest(ctx, c.client, c.opts.Hooks, c.urls[17], in, out)
+	ctx, err := doProtobufRequest(ctx, c.client, c.opts.Hooks, c.urls[19], in, out)
 	if err != nil {
 		twerr, ok := err.(twirp.Error)
 		if !ok {
@@ -966,7 +1070,7 @@ func (c *tournamentServiceProtobufClient) callGetRecentClubSessions(ctx context.
 
 type tournamentServiceJSONClient struct {
 	client      HTTPClient
-	urls        [18]string
+	urls        [20]string
 	interceptor twirp.Interceptor
 	opts        twirp.ClientOptions
 }
@@ -986,9 +1090,11 @@ func NewTournamentServiceJSONClient(baseURL string, client HTTPClient, opts ...t
 	// Build method URLs: <baseURL>[<prefix>]/<package>.<Service>/<Method>
 	serviceURL := sanitizeBaseURL(baseURL)
 	serviceURL += baseServicePath(clientOpts.PathPrefix(), "tournament_service", "TournamentService")
-	urls := [18]string{
+	urls := [20]string{
 		serviceURL + "NewTournament",
 		serviceURL + "GetTournamentMetadata",
+		serviceURL + "StartTournament",
+		serviceURL + "FinishTournament",
 		serviceURL + "SetTournamentMetadata",
 		serviceURL + "PairRound",
 		serviceURL + "SetSingleRoundControls",
@@ -1001,7 +1107,7 @@ func NewTournamentServiceJSONClient(baseURL string, client HTTPClient, opts ...t
 		serviceURL + "RemovePlayers",
 		serviceURL + "SetPairing",
 		serviceURL + "SetResult",
-		serviceURL + "StartRound",
+		serviceURL + "StartRoundCountdown",
 		serviceURL + "RecentGames",
 		serviceURL + "CreateClubSession",
 		serviceURL + "GetRecentClubSessions",
@@ -1107,18 +1213,110 @@ func (c *tournamentServiceJSONClient) callGetTournamentMetadata(ctx context.Cont
 	return out, nil
 }
 
-func (c *tournamentServiceJSONClient) SetTournamentMetadata(ctx context.Context, in *TournamentMetadataRequest) (*TournamentResponse, error) {
+func (c *tournamentServiceJSONClient) StartTournament(ctx context.Context, in *StartTournamentRequest) (*TournamentResponse, error) {
+	ctx = ctxsetters.WithPackageName(ctx, "tournament_service")
+	ctx = ctxsetters.WithServiceName(ctx, "TournamentService")
+	ctx = ctxsetters.WithMethodName(ctx, "StartTournament")
+	caller := c.callStartTournament
+	if c.interceptor != nil {
+		caller = func(ctx context.Context, req *StartTournamentRequest) (*TournamentResponse, error) {
+			resp, err := c.interceptor(
+				func(ctx context.Context, req interface{}) (interface{}, error) {
+					typedReq, ok := req.(*StartTournamentRequest)
+					if !ok {
+						return nil, twirp.InternalError("failed type assertion req.(*StartTournamentRequest) when calling interceptor")
+					}
+					return c.callStartTournament(ctx, typedReq)
+				},
+			)(ctx, req)
+			if resp != nil {
+				typedResp, ok := resp.(*TournamentResponse)
+				if !ok {
+					return nil, twirp.InternalError("failed type assertion resp.(*TournamentResponse) when calling interceptor")
+				}
+				return typedResp, err
+			}
+			return nil, err
+		}
+	}
+	return caller(ctx, in)
+}
+
+func (c *tournamentServiceJSONClient) callStartTournament(ctx context.Context, in *StartTournamentRequest) (*TournamentResponse, error) {
+	out := new(TournamentResponse)
+	ctx, err := doJSONRequest(ctx, c.client, c.opts.Hooks, c.urls[2], in, out)
+	if err != nil {
+		twerr, ok := err.(twirp.Error)
+		if !ok {
+			twerr = twirp.InternalErrorWith(err)
+		}
+		callClientError(ctx, c.opts.Hooks, twerr)
+		return nil, err
+	}
+
+	callClientResponseReceived(ctx, c.opts.Hooks)
+
+	return out, nil
+}
+
+func (c *tournamentServiceJSONClient) FinishTournament(ctx context.Context, in *FinishTournamentRequest) (*TournamentResponse, error) {
+	ctx = ctxsetters.WithPackageName(ctx, "tournament_service")
+	ctx = ctxsetters.WithServiceName(ctx, "TournamentService")
+	ctx = ctxsetters.WithMethodName(ctx, "FinishTournament")
+	caller := c.callFinishTournament
+	if c.interceptor != nil {
+		caller = func(ctx context.Context, req *FinishTournamentRequest) (*TournamentResponse, error) {
+			resp, err := c.interceptor(
+				func(ctx context.Context, req interface{}) (interface{}, error) {
+					typedReq, ok := req.(*FinishTournamentRequest)
+					if !ok {
+						return nil, twirp.InternalError("failed type assertion req.(*FinishTournamentRequest) when calling interceptor")
+					}
+					return c.callFinishTournament(ctx, typedReq)
+				},
+			)(ctx, req)
+			if resp != nil {
+				typedResp, ok := resp.(*TournamentResponse)
+				if !ok {
+					return nil, twirp.InternalError("failed type assertion resp.(*TournamentResponse) when calling interceptor")
+				}
+				return typedResp, err
+			}
+			return nil, err
+		}
+	}
+	return caller(ctx, in)
+}
+
+func (c *tournamentServiceJSONClient) callFinishTournament(ctx context.Context, in *FinishTournamentRequest) (*TournamentResponse, error) {
+	out := new(TournamentResponse)
+	ctx, err := doJSONRequest(ctx, c.client, c.opts.Hooks, c.urls[3], in, out)
+	if err != nil {
+		twerr, ok := err.(twirp.Error)
+		if !ok {
+			twerr = twirp.InternalErrorWith(err)
+		}
+		callClientError(ctx, c.opts.Hooks, twerr)
+		return nil, err
+	}
+
+	callClientResponseReceived(ctx, c.opts.Hooks)
+
+	return out, nil
+}
+
+func (c *tournamentServiceJSONClient) SetTournamentMetadata(ctx context.Context, in *SetTournamentMetadataRequest) (*TournamentResponse, error) {
 	ctx = ctxsetters.WithPackageName(ctx, "tournament_service")
 	ctx = ctxsetters.WithServiceName(ctx, "TournamentService")
 	ctx = ctxsetters.WithMethodName(ctx, "SetTournamentMetadata")
 	caller := c.callSetTournamentMetadata
 	if c.interceptor != nil {
-		caller = func(ctx context.Context, req *TournamentMetadataRequest) (*TournamentResponse, error) {
+		caller = func(ctx context.Context, req *SetTournamentMetadataRequest) (*TournamentResponse, error) {
 			resp, err := c.interceptor(
 				func(ctx context.Context, req interface{}) (interface{}, error) {
-					typedReq, ok := req.(*TournamentMetadataRequest)
+					typedReq, ok := req.(*SetTournamentMetadataRequest)
 					if !ok {
-						return nil, twirp.InternalError("failed type assertion req.(*TournamentMetadataRequest) when calling interceptor")
+						return nil, twirp.InternalError("failed type assertion req.(*SetTournamentMetadataRequest) when calling interceptor")
 					}
 					return c.callSetTournamentMetadata(ctx, typedReq)
 				},
@@ -1136,9 +1334,9 @@ func (c *tournamentServiceJSONClient) SetTournamentMetadata(ctx context.Context,
 	return caller(ctx, in)
 }
 
-func (c *tournamentServiceJSONClient) callSetTournamentMetadata(ctx context.Context, in *TournamentMetadataRequest) (*TournamentResponse, error) {
+func (c *tournamentServiceJSONClient) callSetTournamentMetadata(ctx context.Context, in *SetTournamentMetadataRequest) (*TournamentResponse, error) {
 	out := new(TournamentResponse)
-	ctx, err := doJSONRequest(ctx, c.client, c.opts.Hooks, c.urls[2], in, out)
+	ctx, err := doJSONRequest(ctx, c.client, c.opts.Hooks, c.urls[4], in, out)
 	if err != nil {
 		twerr, ok := err.(twirp.Error)
 		if !ok {
@@ -1184,7 +1382,7 @@ func (c *tournamentServiceJSONClient) PairRound(ctx context.Context, in *PairRou
 
 func (c *tournamentServiceJSONClient) callPairRound(ctx context.Context, in *PairRoundRequest) (*TournamentResponse, error) {
 	out := new(TournamentResponse)
-	ctx, err := doJSONRequest(ctx, c.client, c.opts.Hooks, c.urls[3], in, out)
+	ctx, err := doJSONRequest(ctx, c.client, c.opts.Hooks, c.urls[5], in, out)
 	if err != nil {
 		twerr, ok := err.(twirp.Error)
 		if !ok {
@@ -1230,7 +1428,7 @@ func (c *tournamentServiceJSONClient) SetSingleRoundControls(ctx context.Context
 
 func (c *tournamentServiceJSONClient) callSetSingleRoundControls(ctx context.Context, in *SingleRoundControlsRequest) (*TournamentResponse, error) {
 	out := new(TournamentResponse)
-	ctx, err := doJSONRequest(ctx, c.client, c.opts.Hooks, c.urls[4], in, out)
+	ctx, err := doJSONRequest(ctx, c.client, c.opts.Hooks, c.urls[6], in, out)
 	if err != nil {
 		twerr, ok := err.(twirp.Error)
 		if !ok {
@@ -1245,18 +1443,18 @@ func (c *tournamentServiceJSONClient) callSetSingleRoundControls(ctx context.Con
 	return out, nil
 }
 
-func (c *tournamentServiceJSONClient) SetTournamentControls(ctx context.Context, in *TournamentControlsRequest) (*TournamentResponse, error) {
+func (c *tournamentServiceJSONClient) SetTournamentControls(ctx context.Context, in *liwords.TournamentControls) (*TournamentResponse, error) {
 	ctx = ctxsetters.WithPackageName(ctx, "tournament_service")
 	ctx = ctxsetters.WithServiceName(ctx, "TournamentService")
 	ctx = ctxsetters.WithMethodName(ctx, "SetTournamentControls")
 	caller := c.callSetTournamentControls
 	if c.interceptor != nil {
-		caller = func(ctx context.Context, req *TournamentControlsRequest) (*TournamentResponse, error) {
+		caller = func(ctx context.Context, req *liwords.TournamentControls) (*TournamentResponse, error) {
 			resp, err := c.interceptor(
 				func(ctx context.Context, req interface{}) (interface{}, error) {
-					typedReq, ok := req.(*TournamentControlsRequest)
+					typedReq, ok := req.(*liwords.TournamentControls)
 					if !ok {
-						return nil, twirp.InternalError("failed type assertion req.(*TournamentControlsRequest) when calling interceptor")
+						return nil, twirp.InternalError("failed type assertion req.(*liwords.TournamentControls) when calling interceptor")
 					}
 					return c.callSetTournamentControls(ctx, typedReq)
 				},
@@ -1274,9 +1472,9 @@ func (c *tournamentServiceJSONClient) SetTournamentControls(ctx context.Context,
 	return caller(ctx, in)
 }
 
-func (c *tournamentServiceJSONClient) callSetTournamentControls(ctx context.Context, in *TournamentControlsRequest) (*TournamentResponse, error) {
+func (c *tournamentServiceJSONClient) callSetTournamentControls(ctx context.Context, in *liwords.TournamentControls) (*TournamentResponse, error) {
 	out := new(TournamentResponse)
-	ctx, err := doJSONRequest(ctx, c.client, c.opts.Hooks, c.urls[5], in, out)
+	ctx, err := doJSONRequest(ctx, c.client, c.opts.Hooks, c.urls[7], in, out)
 	if err != nil {
 		twerr, ok := err.(twirp.Error)
 		if !ok {
@@ -1291,18 +1489,18 @@ func (c *tournamentServiceJSONClient) callSetTournamentControls(ctx context.Cont
 	return out, nil
 }
 
-func (c *tournamentServiceJSONClient) AddDirectors(ctx context.Context, in *TournamentPersons) (*TournamentResponse, error) {
+func (c *tournamentServiceJSONClient) AddDirectors(ctx context.Context, in *liwords.TournamentPersons) (*TournamentResponse, error) {
 	ctx = ctxsetters.WithPackageName(ctx, "tournament_service")
 	ctx = ctxsetters.WithServiceName(ctx, "TournamentService")
 	ctx = ctxsetters.WithMethodName(ctx, "AddDirectors")
 	caller := c.callAddDirectors
 	if c.interceptor != nil {
-		caller = func(ctx context.Context, req *TournamentPersons) (*TournamentResponse, error) {
+		caller = func(ctx context.Context, req *liwords.TournamentPersons) (*TournamentResponse, error) {
 			resp, err := c.interceptor(
 				func(ctx context.Context, req interface{}) (interface{}, error) {
-					typedReq, ok := req.(*TournamentPersons)
+					typedReq, ok := req.(*liwords.TournamentPersons)
 					if !ok {
-						return nil, twirp.InternalError("failed type assertion req.(*TournamentPersons) when calling interceptor")
+						return nil, twirp.InternalError("failed type assertion req.(*liwords.TournamentPersons) when calling interceptor")
 					}
 					return c.callAddDirectors(ctx, typedReq)
 				},
@@ -1320,9 +1518,9 @@ func (c *tournamentServiceJSONClient) AddDirectors(ctx context.Context, in *Tour
 	return caller(ctx, in)
 }
 
-func (c *tournamentServiceJSONClient) callAddDirectors(ctx context.Context, in *TournamentPersons) (*TournamentResponse, error) {
+func (c *tournamentServiceJSONClient) callAddDirectors(ctx context.Context, in *liwords.TournamentPersons) (*TournamentResponse, error) {
 	out := new(TournamentResponse)
-	ctx, err := doJSONRequest(ctx, c.client, c.opts.Hooks, c.urls[6], in, out)
+	ctx, err := doJSONRequest(ctx, c.client, c.opts.Hooks, c.urls[8], in, out)
 	if err != nil {
 		twerr, ok := err.(twirp.Error)
 		if !ok {
@@ -1337,18 +1535,18 @@ func (c *tournamentServiceJSONClient) callAddDirectors(ctx context.Context, in *
 	return out, nil
 }
 
-func (c *tournamentServiceJSONClient) RemoveDirectors(ctx context.Context, in *TournamentPersons) (*TournamentResponse, error) {
+func (c *tournamentServiceJSONClient) RemoveDirectors(ctx context.Context, in *liwords.TournamentPersons) (*TournamentResponse, error) {
 	ctx = ctxsetters.WithPackageName(ctx, "tournament_service")
 	ctx = ctxsetters.WithServiceName(ctx, "TournamentService")
 	ctx = ctxsetters.WithMethodName(ctx, "RemoveDirectors")
 	caller := c.callRemoveDirectors
 	if c.interceptor != nil {
-		caller = func(ctx context.Context, req *TournamentPersons) (*TournamentResponse, error) {
+		caller = func(ctx context.Context, req *liwords.TournamentPersons) (*TournamentResponse, error) {
 			resp, err := c.interceptor(
 				func(ctx context.Context, req interface{}) (interface{}, error) {
-					typedReq, ok := req.(*TournamentPersons)
+					typedReq, ok := req.(*liwords.TournamentPersons)
 					if !ok {
-						return nil, twirp.InternalError("failed type assertion req.(*TournamentPersons) when calling interceptor")
+						return nil, twirp.InternalError("failed type assertion req.(*liwords.TournamentPersons) when calling interceptor")
 					}
 					return c.callRemoveDirectors(ctx, typedReq)
 				},
@@ -1366,9 +1564,9 @@ func (c *tournamentServiceJSONClient) RemoveDirectors(ctx context.Context, in *T
 	return caller(ctx, in)
 }
 
-func (c *tournamentServiceJSONClient) callRemoveDirectors(ctx context.Context, in *TournamentPersons) (*TournamentResponse, error) {
+func (c *tournamentServiceJSONClient) callRemoveDirectors(ctx context.Context, in *liwords.TournamentPersons) (*TournamentResponse, error) {
 	out := new(TournamentResponse)
-	ctx, err := doJSONRequest(ctx, c.client, c.opts.Hooks, c.urls[7], in, out)
+	ctx, err := doJSONRequest(ctx, c.client, c.opts.Hooks, c.urls[9], in, out)
 	if err != nil {
 		twerr, ok := err.(twirp.Error)
 		if !ok {
@@ -1414,7 +1612,7 @@ func (c *tournamentServiceJSONClient) AddDivision(ctx context.Context, in *Tourn
 
 func (c *tournamentServiceJSONClient) callAddDivision(ctx context.Context, in *TournamentDivisionRequest) (*TournamentResponse, error) {
 	out := new(TournamentResponse)
-	ctx, err := doJSONRequest(ctx, c.client, c.opts.Hooks, c.urls[8], in, out)
+	ctx, err := doJSONRequest(ctx, c.client, c.opts.Hooks, c.urls[10], in, out)
 	if err != nil {
 		twerr, ok := err.(twirp.Error)
 		if !ok {
@@ -1460,7 +1658,7 @@ func (c *tournamentServiceJSONClient) RemoveDivision(ctx context.Context, in *To
 
 func (c *tournamentServiceJSONClient) callRemoveDivision(ctx context.Context, in *TournamentDivisionRequest) (*TournamentResponse, error) {
 	out := new(TournamentResponse)
-	ctx, err := doJSONRequest(ctx, c.client, c.opts.Hooks, c.urls[9], in, out)
+	ctx, err := doJSONRequest(ctx, c.client, c.opts.Hooks, c.urls[11], in, out)
 	if err != nil {
 		twerr, ok := err.(twirp.Error)
 		if !ok {
@@ -1475,18 +1673,18 @@ func (c *tournamentServiceJSONClient) callRemoveDivision(ctx context.Context, in
 	return out, nil
 }
 
-func (c *tournamentServiceJSONClient) AddPlayers(ctx context.Context, in *TournamentPersons) (*TournamentResponse, error) {
+func (c *tournamentServiceJSONClient) AddPlayers(ctx context.Context, in *liwords.TournamentPersons) (*TournamentResponse, error) {
 	ctx = ctxsetters.WithPackageName(ctx, "tournament_service")
 	ctx = ctxsetters.WithServiceName(ctx, "TournamentService")
 	ctx = ctxsetters.WithMethodName(ctx, "AddPlayers")
 	caller := c.callAddPlayers
 	if c.interceptor != nil {
-		caller = func(ctx context.Context, req *TournamentPersons) (*TournamentResponse, error) {
+		caller = func(ctx context.Context, req *liwords.TournamentPersons) (*TournamentResponse, error) {
 			resp, err := c.interceptor(
 				func(ctx context.Context, req interface{}) (interface{}, error) {
-					typedReq, ok := req.(*TournamentPersons)
+					typedReq, ok := req.(*liwords.TournamentPersons)
 					if !ok {
-						return nil, twirp.InternalError("failed type assertion req.(*TournamentPersons) when calling interceptor")
+						return nil, twirp.InternalError("failed type assertion req.(*liwords.TournamentPersons) when calling interceptor")
 					}
 					return c.callAddPlayers(ctx, typedReq)
 				},
@@ -1504,9 +1702,9 @@ func (c *tournamentServiceJSONClient) AddPlayers(ctx context.Context, in *Tourna
 	return caller(ctx, in)
 }
 
-func (c *tournamentServiceJSONClient) callAddPlayers(ctx context.Context, in *TournamentPersons) (*TournamentResponse, error) {
+func (c *tournamentServiceJSONClient) callAddPlayers(ctx context.Context, in *liwords.TournamentPersons) (*TournamentResponse, error) {
 	out := new(TournamentResponse)
-	ctx, err := doJSONRequest(ctx, c.client, c.opts.Hooks, c.urls[10], in, out)
+	ctx, err := doJSONRequest(ctx, c.client, c.opts.Hooks, c.urls[12], in, out)
 	if err != nil {
 		twerr, ok := err.(twirp.Error)
 		if !ok {
@@ -1521,18 +1719,18 @@ func (c *tournamentServiceJSONClient) callAddPlayers(ctx context.Context, in *To
 	return out, nil
 }
 
-func (c *tournamentServiceJSONClient) RemovePlayers(ctx context.Context, in *TournamentPersons) (*TournamentResponse, error) {
+func (c *tournamentServiceJSONClient) RemovePlayers(ctx context.Context, in *liwords.TournamentPersons) (*TournamentResponse, error) {
 	ctx = ctxsetters.WithPackageName(ctx, "tournament_service")
 	ctx = ctxsetters.WithServiceName(ctx, "TournamentService")
 	ctx = ctxsetters.WithMethodName(ctx, "RemovePlayers")
 	caller := c.callRemovePlayers
 	if c.interceptor != nil {
-		caller = func(ctx context.Context, req *TournamentPersons) (*TournamentResponse, error) {
+		caller = func(ctx context.Context, req *liwords.TournamentPersons) (*TournamentResponse, error) {
 			resp, err := c.interceptor(
 				func(ctx context.Context, req interface{}) (interface{}, error) {
-					typedReq, ok := req.(*TournamentPersons)
+					typedReq, ok := req.(*liwords.TournamentPersons)
 					if !ok {
-						return nil, twirp.InternalError("failed type assertion req.(*TournamentPersons) when calling interceptor")
+						return nil, twirp.InternalError("failed type assertion req.(*liwords.TournamentPersons) when calling interceptor")
 					}
 					return c.callRemovePlayers(ctx, typedReq)
 				},
@@ -1550,9 +1748,9 @@ func (c *tournamentServiceJSONClient) RemovePlayers(ctx context.Context, in *Tou
 	return caller(ctx, in)
 }
 
-func (c *tournamentServiceJSONClient) callRemovePlayers(ctx context.Context, in *TournamentPersons) (*TournamentResponse, error) {
+func (c *tournamentServiceJSONClient) callRemovePlayers(ctx context.Context, in *liwords.TournamentPersons) (*TournamentResponse, error) {
 	out := new(TournamentResponse)
-	ctx, err := doJSONRequest(ctx, c.client, c.opts.Hooks, c.urls[11], in, out)
+	ctx, err := doJSONRequest(ctx, c.client, c.opts.Hooks, c.urls[13], in, out)
 	if err != nil {
 		twerr, ok := err.(twirp.Error)
 		if !ok {
@@ -1567,18 +1765,18 @@ func (c *tournamentServiceJSONClient) callRemovePlayers(ctx context.Context, in 
 	return out, nil
 }
 
-func (c *tournamentServiceJSONClient) SetPairing(ctx context.Context, in *TournamentPairingRequest) (*TournamentResponse, error) {
+func (c *tournamentServiceJSONClient) SetPairing(ctx context.Context, in *TournamentPairingsRequest) (*TournamentResponse, error) {
 	ctx = ctxsetters.WithPackageName(ctx, "tournament_service")
 	ctx = ctxsetters.WithServiceName(ctx, "TournamentService")
 	ctx = ctxsetters.WithMethodName(ctx, "SetPairing")
 	caller := c.callSetPairing
 	if c.interceptor != nil {
-		caller = func(ctx context.Context, req *TournamentPairingRequest) (*TournamentResponse, error) {
+		caller = func(ctx context.Context, req *TournamentPairingsRequest) (*TournamentResponse, error) {
 			resp, err := c.interceptor(
 				func(ctx context.Context, req interface{}) (interface{}, error) {
-					typedReq, ok := req.(*TournamentPairingRequest)
+					typedReq, ok := req.(*TournamentPairingsRequest)
 					if !ok {
-						return nil, twirp.InternalError("failed type assertion req.(*TournamentPairingRequest) when calling interceptor")
+						return nil, twirp.InternalError("failed type assertion req.(*TournamentPairingsRequest) when calling interceptor")
 					}
 					return c.callSetPairing(ctx, typedReq)
 				},
@@ -1596,9 +1794,9 @@ func (c *tournamentServiceJSONClient) SetPairing(ctx context.Context, in *Tourna
 	return caller(ctx, in)
 }
 
-func (c *tournamentServiceJSONClient) callSetPairing(ctx context.Context, in *TournamentPairingRequest) (*TournamentResponse, error) {
+func (c *tournamentServiceJSONClient) callSetPairing(ctx context.Context, in *TournamentPairingsRequest) (*TournamentResponse, error) {
 	out := new(TournamentResponse)
-	ctx, err := doJSONRequest(ctx, c.client, c.opts.Hooks, c.urls[12], in, out)
+	ctx, err := doJSONRequest(ctx, c.client, c.opts.Hooks, c.urls[14], in, out)
 	if err != nil {
 		twerr, ok := err.(twirp.Error)
 		if !ok {
@@ -1644,7 +1842,7 @@ func (c *tournamentServiceJSONClient) SetResult(ctx context.Context, in *Tournam
 
 func (c *tournamentServiceJSONClient) callSetResult(ctx context.Context, in *TournamentResultOverrideRequest) (*TournamentResponse, error) {
 	out := new(TournamentResponse)
-	ctx, err := doJSONRequest(ctx, c.client, c.opts.Hooks, c.urls[13], in, out)
+	ctx, err := doJSONRequest(ctx, c.client, c.opts.Hooks, c.urls[15], in, out)
 	if err != nil {
 		twerr, ok := err.(twirp.Error)
 		if !ok {
@@ -1659,20 +1857,20 @@ func (c *tournamentServiceJSONClient) callSetResult(ctx context.Context, in *Tou
 	return out, nil
 }
 
-func (c *tournamentServiceJSONClient) StartRound(ctx context.Context, in *TournamentStartRoundRequest) (*TournamentResponse, error) {
+func (c *tournamentServiceJSONClient) StartRoundCountdown(ctx context.Context, in *TournamentStartRoundCountdownRequest) (*TournamentResponse, error) {
 	ctx = ctxsetters.WithPackageName(ctx, "tournament_service")
 	ctx = ctxsetters.WithServiceName(ctx, "TournamentService")
-	ctx = ctxsetters.WithMethodName(ctx, "StartRound")
-	caller := c.callStartRound
+	ctx = ctxsetters.WithMethodName(ctx, "StartRoundCountdown")
+	caller := c.callStartRoundCountdown
 	if c.interceptor != nil {
-		caller = func(ctx context.Context, req *TournamentStartRoundRequest) (*TournamentResponse, error) {
+		caller = func(ctx context.Context, req *TournamentStartRoundCountdownRequest) (*TournamentResponse, error) {
 			resp, err := c.interceptor(
 				func(ctx context.Context, req interface{}) (interface{}, error) {
-					typedReq, ok := req.(*TournamentStartRoundRequest)
+					typedReq, ok := req.(*TournamentStartRoundCountdownRequest)
 					if !ok {
-						return nil, twirp.InternalError("failed type assertion req.(*TournamentStartRoundRequest) when calling interceptor")
+						return nil, twirp.InternalError("failed type assertion req.(*TournamentStartRoundCountdownRequest) when calling interceptor")
 					}
-					return c.callStartRound(ctx, typedReq)
+					return c.callStartRoundCountdown(ctx, typedReq)
 				},
 			)(ctx, req)
 			if resp != nil {
@@ -1688,9 +1886,9 @@ func (c *tournamentServiceJSONClient) StartRound(ctx context.Context, in *Tourna
 	return caller(ctx, in)
 }
 
-func (c *tournamentServiceJSONClient) callStartRound(ctx context.Context, in *TournamentStartRoundRequest) (*TournamentResponse, error) {
+func (c *tournamentServiceJSONClient) callStartRoundCountdown(ctx context.Context, in *TournamentStartRoundCountdownRequest) (*TournamentResponse, error) {
 	out := new(TournamentResponse)
-	ctx, err := doJSONRequest(ctx, c.client, c.opts.Hooks, c.urls[14], in, out)
+	ctx, err := doJSONRequest(ctx, c.client, c.opts.Hooks, c.urls[16], in, out)
 	if err != nil {
 		twerr, ok := err.(twirp.Error)
 		if !ok {
@@ -1736,7 +1934,7 @@ func (c *tournamentServiceJSONClient) RecentGames(ctx context.Context, in *Recen
 
 func (c *tournamentServiceJSONClient) callRecentGames(ctx context.Context, in *RecentGamesRequest) (*RecentGamesResponse, error) {
 	out := new(RecentGamesResponse)
-	ctx, err := doJSONRequest(ctx, c.client, c.opts.Hooks, c.urls[15], in, out)
+	ctx, err := doJSONRequest(ctx, c.client, c.opts.Hooks, c.urls[17], in, out)
 	if err != nil {
 		twerr, ok := err.(twirp.Error)
 		if !ok {
@@ -1782,7 +1980,7 @@ func (c *tournamentServiceJSONClient) CreateClubSession(ctx context.Context, in 
 
 func (c *tournamentServiceJSONClient) callCreateClubSession(ctx context.Context, in *NewClubSessionRequest) (*ClubSessionResponse, error) {
 	out := new(ClubSessionResponse)
-	ctx, err := doJSONRequest(ctx, c.client, c.opts.Hooks, c.urls[16], in, out)
+	ctx, err := doJSONRequest(ctx, c.client, c.opts.Hooks, c.urls[18], in, out)
 	if err != nil {
 		twerr, ok := err.(twirp.Error)
 		if !ok {
@@ -1828,7 +2026,7 @@ func (c *tournamentServiceJSONClient) GetRecentClubSessions(ctx context.Context,
 
 func (c *tournamentServiceJSONClient) callGetRecentClubSessions(ctx context.Context, in *RecentClubSessionsRequest) (*ClubSessionsResponse, error) {
 	out := new(ClubSessionsResponse)
-	ctx, err := doJSONRequest(ctx, c.client, c.opts.Hooks, c.urls[17], in, out)
+	ctx, err := doJSONRequest(ctx, c.client, c.opts.Hooks, c.urls[19], in, out)
 	if err != nil {
 		twerr, ok := err.(twirp.Error)
 		if !ok {
@@ -1933,6 +2131,12 @@ func (s *tournamentServiceServer) ServeHTTP(resp http.ResponseWriter, req *http.
 	case "GetTournamentMetadata":
 		s.serveGetTournamentMetadata(ctx, resp, req)
 		return
+	case "StartTournament":
+		s.serveStartTournament(ctx, resp, req)
+		return
+	case "FinishTournament":
+		s.serveFinishTournament(ctx, resp, req)
+		return
 	case "SetTournamentMetadata":
 		s.serveSetTournamentMetadata(ctx, resp, req)
 		return
@@ -1969,8 +2173,8 @@ func (s *tournamentServiceServer) ServeHTTP(resp http.ResponseWriter, req *http.
 	case "SetResult":
 		s.serveSetResult(ctx, resp, req)
 		return
-	case "StartRound":
-		s.serveStartRound(ctx, resp, req)
+	case "StartRoundCountdown":
+		s.serveStartRoundCountdown(ctx, resp, req)
 		return
 	case "RecentGames":
 		s.serveRecentGames(ctx, resp, req)
@@ -2338,6 +2542,356 @@ func (s *tournamentServiceServer) serveGetTournamentMetadataProtobuf(ctx context
 	callResponseSent(ctx, s.hooks)
 }
 
+func (s *tournamentServiceServer) serveStartTournament(ctx context.Context, resp http.ResponseWriter, req *http.Request) {
+	header := req.Header.Get("Content-Type")
+	i := strings.Index(header, ";")
+	if i == -1 {
+		i = len(header)
+	}
+	switch strings.TrimSpace(strings.ToLower(header[:i])) {
+	case "application/json":
+		s.serveStartTournamentJSON(ctx, resp, req)
+	case "application/protobuf":
+		s.serveStartTournamentProtobuf(ctx, resp, req)
+	default:
+		msg := fmt.Sprintf("unexpected Content-Type: %q", req.Header.Get("Content-Type"))
+		twerr := badRouteError(msg, req.Method, req.URL.Path)
+		s.writeError(ctx, resp, twerr)
+	}
+}
+
+func (s *tournamentServiceServer) serveStartTournamentJSON(ctx context.Context, resp http.ResponseWriter, req *http.Request) {
+	var err error
+	ctx = ctxsetters.WithMethodName(ctx, "StartTournament")
+	ctx, err = callRequestRouted(ctx, s.hooks)
+	if err != nil {
+		s.writeError(ctx, resp, err)
+		return
+	}
+
+	reqContent := new(StartTournamentRequest)
+	unmarshaler := jsonpb.Unmarshaler{AllowUnknownFields: true}
+	if err = unmarshaler.Unmarshal(req.Body, reqContent); err != nil {
+		s.writeError(ctx, resp, malformedRequestError("the json request could not be decoded"))
+		return
+	}
+
+	handler := s.TournamentService.StartTournament
+	if s.interceptor != nil {
+		handler = func(ctx context.Context, req *StartTournamentRequest) (*TournamentResponse, error) {
+			resp, err := s.interceptor(
+				func(ctx context.Context, req interface{}) (interface{}, error) {
+					typedReq, ok := req.(*StartTournamentRequest)
+					if !ok {
+						return nil, twirp.InternalError("failed type assertion req.(*StartTournamentRequest) when calling interceptor")
+					}
+					return s.TournamentService.StartTournament(ctx, typedReq)
+				},
+			)(ctx, req)
+			if resp != nil {
+				typedResp, ok := resp.(*TournamentResponse)
+				if !ok {
+					return nil, twirp.InternalError("failed type assertion resp.(*TournamentResponse) when calling interceptor")
+				}
+				return typedResp, err
+			}
+			return nil, err
+		}
+	}
+
+	// Call service method
+	var respContent *TournamentResponse
+	func() {
+		defer ensurePanicResponses(ctx, resp, s.hooks)
+		respContent, err = handler(ctx, reqContent)
+	}()
+
+	if err != nil {
+		s.writeError(ctx, resp, err)
+		return
+	}
+	if respContent == nil {
+		s.writeError(ctx, resp, twirp.InternalError("received a nil *TournamentResponse and nil error while calling StartTournament. nil responses are not supported"))
+		return
+	}
+
+	ctx = callResponsePrepared(ctx, s.hooks)
+
+	var buf bytes.Buffer
+	marshaler := &jsonpb.Marshaler{OrigName: true, EmitDefaults: !s.jsonSkipDefaults}
+	if err = marshaler.Marshal(&buf, respContent); err != nil {
+		s.writeError(ctx, resp, wrapInternal(err, "failed to marshal json response"))
+		return
+	}
+
+	ctx = ctxsetters.WithStatusCode(ctx, http.StatusOK)
+	respBytes := buf.Bytes()
+	resp.Header().Set("Content-Type", "application/json")
+	resp.Header().Set("Content-Length", strconv.Itoa(len(respBytes)))
+	resp.WriteHeader(http.StatusOK)
+
+	if n, err := resp.Write(respBytes); err != nil {
+		msg := fmt.Sprintf("failed to write response, %d of %d bytes written: %s", n, len(respBytes), err.Error())
+		twerr := twirp.NewError(twirp.Unknown, msg)
+		ctx = callError(ctx, s.hooks, twerr)
+	}
+	callResponseSent(ctx, s.hooks)
+}
+
+func (s *tournamentServiceServer) serveStartTournamentProtobuf(ctx context.Context, resp http.ResponseWriter, req *http.Request) {
+	var err error
+	ctx = ctxsetters.WithMethodName(ctx, "StartTournament")
+	ctx, err = callRequestRouted(ctx, s.hooks)
+	if err != nil {
+		s.writeError(ctx, resp, err)
+		return
+	}
+
+	buf, err := ioutil.ReadAll(req.Body)
+	if err != nil {
+		s.writeError(ctx, resp, wrapInternal(err, "failed to read request body"))
+		return
+	}
+	reqContent := new(StartTournamentRequest)
+	if err = proto.Unmarshal(buf, reqContent); err != nil {
+		s.writeError(ctx, resp, malformedRequestError("the protobuf request could not be decoded"))
+		return
+	}
+
+	handler := s.TournamentService.StartTournament
+	if s.interceptor != nil {
+		handler = func(ctx context.Context, req *StartTournamentRequest) (*TournamentResponse, error) {
+			resp, err := s.interceptor(
+				func(ctx context.Context, req interface{}) (interface{}, error) {
+					typedReq, ok := req.(*StartTournamentRequest)
+					if !ok {
+						return nil, twirp.InternalError("failed type assertion req.(*StartTournamentRequest) when calling interceptor")
+					}
+					return s.TournamentService.StartTournament(ctx, typedReq)
+				},
+			)(ctx, req)
+			if resp != nil {
+				typedResp, ok := resp.(*TournamentResponse)
+				if !ok {
+					return nil, twirp.InternalError("failed type assertion resp.(*TournamentResponse) when calling interceptor")
+				}
+				return typedResp, err
+			}
+			return nil, err
+		}
+	}
+
+	// Call service method
+	var respContent *TournamentResponse
+	func() {
+		defer ensurePanicResponses(ctx, resp, s.hooks)
+		respContent, err = handler(ctx, reqContent)
+	}()
+
+	if err != nil {
+		s.writeError(ctx, resp, err)
+		return
+	}
+	if respContent == nil {
+		s.writeError(ctx, resp, twirp.InternalError("received a nil *TournamentResponse and nil error while calling StartTournament. nil responses are not supported"))
+		return
+	}
+
+	ctx = callResponsePrepared(ctx, s.hooks)
+
+	respBytes, err := proto.Marshal(respContent)
+	if err != nil {
+		s.writeError(ctx, resp, wrapInternal(err, "failed to marshal proto response"))
+		return
+	}
+
+	ctx = ctxsetters.WithStatusCode(ctx, http.StatusOK)
+	resp.Header().Set("Content-Type", "application/protobuf")
+	resp.Header().Set("Content-Length", strconv.Itoa(len(respBytes)))
+	resp.WriteHeader(http.StatusOK)
+	if n, err := resp.Write(respBytes); err != nil {
+		msg := fmt.Sprintf("failed to write response, %d of %d bytes written: %s", n, len(respBytes), err.Error())
+		twerr := twirp.NewError(twirp.Unknown, msg)
+		ctx = callError(ctx, s.hooks, twerr)
+	}
+	callResponseSent(ctx, s.hooks)
+}
+
+func (s *tournamentServiceServer) serveFinishTournament(ctx context.Context, resp http.ResponseWriter, req *http.Request) {
+	header := req.Header.Get("Content-Type")
+	i := strings.Index(header, ";")
+	if i == -1 {
+		i = len(header)
+	}
+	switch strings.TrimSpace(strings.ToLower(header[:i])) {
+	case "application/json":
+		s.serveFinishTournamentJSON(ctx, resp, req)
+	case "application/protobuf":
+		s.serveFinishTournamentProtobuf(ctx, resp, req)
+	default:
+		msg := fmt.Sprintf("unexpected Content-Type: %q", req.Header.Get("Content-Type"))
+		twerr := badRouteError(msg, req.Method, req.URL.Path)
+		s.writeError(ctx, resp, twerr)
+	}
+}
+
+func (s *tournamentServiceServer) serveFinishTournamentJSON(ctx context.Context, resp http.ResponseWriter, req *http.Request) {
+	var err error
+	ctx = ctxsetters.WithMethodName(ctx, "FinishTournament")
+	ctx, err = callRequestRouted(ctx, s.hooks)
+	if err != nil {
+		s.writeError(ctx, resp, err)
+		return
+	}
+
+	reqContent := new(FinishTournamentRequest)
+	unmarshaler := jsonpb.Unmarshaler{AllowUnknownFields: true}
+	if err = unmarshaler.Unmarshal(req.Body, reqContent); err != nil {
+		s.writeError(ctx, resp, malformedRequestError("the json request could not be decoded"))
+		return
+	}
+
+	handler := s.TournamentService.FinishTournament
+	if s.interceptor != nil {
+		handler = func(ctx context.Context, req *FinishTournamentRequest) (*TournamentResponse, error) {
+			resp, err := s.interceptor(
+				func(ctx context.Context, req interface{}) (interface{}, error) {
+					typedReq, ok := req.(*FinishTournamentRequest)
+					if !ok {
+						return nil, twirp.InternalError("failed type assertion req.(*FinishTournamentRequest) when calling interceptor")
+					}
+					return s.TournamentService.FinishTournament(ctx, typedReq)
+				},
+			)(ctx, req)
+			if resp != nil {
+				typedResp, ok := resp.(*TournamentResponse)
+				if !ok {
+					return nil, twirp.InternalError("failed type assertion resp.(*TournamentResponse) when calling interceptor")
+				}
+				return typedResp, err
+			}
+			return nil, err
+		}
+	}
+
+	// Call service method
+	var respContent *TournamentResponse
+	func() {
+		defer ensurePanicResponses(ctx, resp, s.hooks)
+		respContent, err = handler(ctx, reqContent)
+	}()
+
+	if err != nil {
+		s.writeError(ctx, resp, err)
+		return
+	}
+	if respContent == nil {
+		s.writeError(ctx, resp, twirp.InternalError("received a nil *TournamentResponse and nil error while calling FinishTournament. nil responses are not supported"))
+		return
+	}
+
+	ctx = callResponsePrepared(ctx, s.hooks)
+
+	var buf bytes.Buffer
+	marshaler := &jsonpb.Marshaler{OrigName: true, EmitDefaults: !s.jsonSkipDefaults}
+	if err = marshaler.Marshal(&buf, respContent); err != nil {
+		s.writeError(ctx, resp, wrapInternal(err, "failed to marshal json response"))
+		return
+	}
+
+	ctx = ctxsetters.WithStatusCode(ctx, http.StatusOK)
+	respBytes := buf.Bytes()
+	resp.Header().Set("Content-Type", "application/json")
+	resp.Header().Set("Content-Length", strconv.Itoa(len(respBytes)))
+	resp.WriteHeader(http.StatusOK)
+
+	if n, err := resp.Write(respBytes); err != nil {
+		msg := fmt.Sprintf("failed to write response, %d of %d bytes written: %s", n, len(respBytes), err.Error())
+		twerr := twirp.NewError(twirp.Unknown, msg)
+		ctx = callError(ctx, s.hooks, twerr)
+	}
+	callResponseSent(ctx, s.hooks)
+}
+
+func (s *tournamentServiceServer) serveFinishTournamentProtobuf(ctx context.Context, resp http.ResponseWriter, req *http.Request) {
+	var err error
+	ctx = ctxsetters.WithMethodName(ctx, "FinishTournament")
+	ctx, err = callRequestRouted(ctx, s.hooks)
+	if err != nil {
+		s.writeError(ctx, resp, err)
+		return
+	}
+
+	buf, err := ioutil.ReadAll(req.Body)
+	if err != nil {
+		s.writeError(ctx, resp, wrapInternal(err, "failed to read request body"))
+		return
+	}
+	reqContent := new(FinishTournamentRequest)
+	if err = proto.Unmarshal(buf, reqContent); err != nil {
+		s.writeError(ctx, resp, malformedRequestError("the protobuf request could not be decoded"))
+		return
+	}
+
+	handler := s.TournamentService.FinishTournament
+	if s.interceptor != nil {
+		handler = func(ctx context.Context, req *FinishTournamentRequest) (*TournamentResponse, error) {
+			resp, err := s.interceptor(
+				func(ctx context.Context, req interface{}) (interface{}, error) {
+					typedReq, ok := req.(*FinishTournamentRequest)
+					if !ok {
+						return nil, twirp.InternalError("failed type assertion req.(*FinishTournamentRequest) when calling interceptor")
+					}
+					return s.TournamentService.FinishTournament(ctx, typedReq)
+				},
+			)(ctx, req)
+			if resp != nil {
+				typedResp, ok := resp.(*TournamentResponse)
+				if !ok {
+					return nil, twirp.InternalError("failed type assertion resp.(*TournamentResponse) when calling interceptor")
+				}
+				return typedResp, err
+			}
+			return nil, err
+		}
+	}
+
+	// Call service method
+	var respContent *TournamentResponse
+	func() {
+		defer ensurePanicResponses(ctx, resp, s.hooks)
+		respContent, err = handler(ctx, reqContent)
+	}()
+
+	if err != nil {
+		s.writeError(ctx, resp, err)
+		return
+	}
+	if respContent == nil {
+		s.writeError(ctx, resp, twirp.InternalError("received a nil *TournamentResponse and nil error while calling FinishTournament. nil responses are not supported"))
+		return
+	}
+
+	ctx = callResponsePrepared(ctx, s.hooks)
+
+	respBytes, err := proto.Marshal(respContent)
+	if err != nil {
+		s.writeError(ctx, resp, wrapInternal(err, "failed to marshal proto response"))
+		return
+	}
+
+	ctx = ctxsetters.WithStatusCode(ctx, http.StatusOK)
+	resp.Header().Set("Content-Type", "application/protobuf")
+	resp.Header().Set("Content-Length", strconv.Itoa(len(respBytes)))
+	resp.WriteHeader(http.StatusOK)
+	if n, err := resp.Write(respBytes); err != nil {
+		msg := fmt.Sprintf("failed to write response, %d of %d bytes written: %s", n, len(respBytes), err.Error())
+		twerr := twirp.NewError(twirp.Unknown, msg)
+		ctx = callError(ctx, s.hooks, twerr)
+	}
+	callResponseSent(ctx, s.hooks)
+}
+
 func (s *tournamentServiceServer) serveSetTournamentMetadata(ctx context.Context, resp http.ResponseWriter, req *http.Request) {
 	header := req.Header.Get("Content-Type")
 	i := strings.Index(header, ";")
@@ -2365,7 +2919,7 @@ func (s *tournamentServiceServer) serveSetTournamentMetadataJSON(ctx context.Con
 		return
 	}
 
-	reqContent := new(TournamentMetadataRequest)
+	reqContent := new(SetTournamentMetadataRequest)
 	unmarshaler := jsonpb.Unmarshaler{AllowUnknownFields: true}
 	if err = unmarshaler.Unmarshal(req.Body, reqContent); err != nil {
 		s.writeError(ctx, resp, malformedRequestError("the json request could not be decoded"))
@@ -2374,12 +2928,12 @@ func (s *tournamentServiceServer) serveSetTournamentMetadataJSON(ctx context.Con
 
 	handler := s.TournamentService.SetTournamentMetadata
 	if s.interceptor != nil {
-		handler = func(ctx context.Context, req *TournamentMetadataRequest) (*TournamentResponse, error) {
+		handler = func(ctx context.Context, req *SetTournamentMetadataRequest) (*TournamentResponse, error) {
 			resp, err := s.interceptor(
 				func(ctx context.Context, req interface{}) (interface{}, error) {
-					typedReq, ok := req.(*TournamentMetadataRequest)
+					typedReq, ok := req.(*SetTournamentMetadataRequest)
 					if !ok {
-						return nil, twirp.InternalError("failed type assertion req.(*TournamentMetadataRequest) when calling interceptor")
+						return nil, twirp.InternalError("failed type assertion req.(*SetTournamentMetadataRequest) when calling interceptor")
 					}
 					return s.TournamentService.SetTournamentMetadata(ctx, typedReq)
 				},
@@ -2448,7 +3002,7 @@ func (s *tournamentServiceServer) serveSetTournamentMetadataProtobuf(ctx context
 		s.writeError(ctx, resp, wrapInternal(err, "failed to read request body"))
 		return
 	}
-	reqContent := new(TournamentMetadataRequest)
+	reqContent := new(SetTournamentMetadataRequest)
 	if err = proto.Unmarshal(buf, reqContent); err != nil {
 		s.writeError(ctx, resp, malformedRequestError("the protobuf request could not be decoded"))
 		return
@@ -2456,12 +3010,12 @@ func (s *tournamentServiceServer) serveSetTournamentMetadataProtobuf(ctx context
 
 	handler := s.TournamentService.SetTournamentMetadata
 	if s.interceptor != nil {
-		handler = func(ctx context.Context, req *TournamentMetadataRequest) (*TournamentResponse, error) {
+		handler = func(ctx context.Context, req *SetTournamentMetadataRequest) (*TournamentResponse, error) {
 			resp, err := s.interceptor(
 				func(ctx context.Context, req interface{}) (interface{}, error) {
-					typedReq, ok := req.(*TournamentMetadataRequest)
+					typedReq, ok := req.(*SetTournamentMetadataRequest)
 					if !ok {
-						return nil, twirp.InternalError("failed type assertion req.(*TournamentMetadataRequest) when calling interceptor")
+						return nil, twirp.InternalError("failed type assertion req.(*SetTournamentMetadataRequest) when calling interceptor")
 					}
 					return s.TournamentService.SetTournamentMetadata(ctx, typedReq)
 				},
@@ -2890,7 +3444,7 @@ func (s *tournamentServiceServer) serveSetTournamentControlsJSON(ctx context.Con
 		return
 	}
 
-	reqContent := new(TournamentControlsRequest)
+	reqContent := new(liwords.TournamentControls)
 	unmarshaler := jsonpb.Unmarshaler{AllowUnknownFields: true}
 	if err = unmarshaler.Unmarshal(req.Body, reqContent); err != nil {
 		s.writeError(ctx, resp, malformedRequestError("the json request could not be decoded"))
@@ -2899,12 +3453,12 @@ func (s *tournamentServiceServer) serveSetTournamentControlsJSON(ctx context.Con
 
 	handler := s.TournamentService.SetTournamentControls
 	if s.interceptor != nil {
-		handler = func(ctx context.Context, req *TournamentControlsRequest) (*TournamentResponse, error) {
+		handler = func(ctx context.Context, req *liwords.TournamentControls) (*TournamentResponse, error) {
 			resp, err := s.interceptor(
 				func(ctx context.Context, req interface{}) (interface{}, error) {
-					typedReq, ok := req.(*TournamentControlsRequest)
+					typedReq, ok := req.(*liwords.TournamentControls)
 					if !ok {
-						return nil, twirp.InternalError("failed type assertion req.(*TournamentControlsRequest) when calling interceptor")
+						return nil, twirp.InternalError("failed type assertion req.(*liwords.TournamentControls) when calling interceptor")
 					}
 					return s.TournamentService.SetTournamentControls(ctx, typedReq)
 				},
@@ -2973,7 +3527,7 @@ func (s *tournamentServiceServer) serveSetTournamentControlsProtobuf(ctx context
 		s.writeError(ctx, resp, wrapInternal(err, "failed to read request body"))
 		return
 	}
-	reqContent := new(TournamentControlsRequest)
+	reqContent := new(liwords.TournamentControls)
 	if err = proto.Unmarshal(buf, reqContent); err != nil {
 		s.writeError(ctx, resp, malformedRequestError("the protobuf request could not be decoded"))
 		return
@@ -2981,12 +3535,12 @@ func (s *tournamentServiceServer) serveSetTournamentControlsProtobuf(ctx context
 
 	handler := s.TournamentService.SetTournamentControls
 	if s.interceptor != nil {
-		handler = func(ctx context.Context, req *TournamentControlsRequest) (*TournamentResponse, error) {
+		handler = func(ctx context.Context, req *liwords.TournamentControls) (*TournamentResponse, error) {
 			resp, err := s.interceptor(
 				func(ctx context.Context, req interface{}) (interface{}, error) {
-					typedReq, ok := req.(*TournamentControlsRequest)
+					typedReq, ok := req.(*liwords.TournamentControls)
 					if !ok {
-						return nil, twirp.InternalError("failed type assertion req.(*TournamentControlsRequest) when calling interceptor")
+						return nil, twirp.InternalError("failed type assertion req.(*liwords.TournamentControls) when calling interceptor")
 					}
 					return s.TournamentService.SetTournamentControls(ctx, typedReq)
 				},
@@ -3065,7 +3619,7 @@ func (s *tournamentServiceServer) serveAddDirectorsJSON(ctx context.Context, res
 		return
 	}
 
-	reqContent := new(TournamentPersons)
+	reqContent := new(liwords.TournamentPersons)
 	unmarshaler := jsonpb.Unmarshaler{AllowUnknownFields: true}
 	if err = unmarshaler.Unmarshal(req.Body, reqContent); err != nil {
 		s.writeError(ctx, resp, malformedRequestError("the json request could not be decoded"))
@@ -3074,12 +3628,12 @@ func (s *tournamentServiceServer) serveAddDirectorsJSON(ctx context.Context, res
 
 	handler := s.TournamentService.AddDirectors
 	if s.interceptor != nil {
-		handler = func(ctx context.Context, req *TournamentPersons) (*TournamentResponse, error) {
+		handler = func(ctx context.Context, req *liwords.TournamentPersons) (*TournamentResponse, error) {
 			resp, err := s.interceptor(
 				func(ctx context.Context, req interface{}) (interface{}, error) {
-					typedReq, ok := req.(*TournamentPersons)
+					typedReq, ok := req.(*liwords.TournamentPersons)
 					if !ok {
-						return nil, twirp.InternalError("failed type assertion req.(*TournamentPersons) when calling interceptor")
+						return nil, twirp.InternalError("failed type assertion req.(*liwords.TournamentPersons) when calling interceptor")
 					}
 					return s.TournamentService.AddDirectors(ctx, typedReq)
 				},
@@ -3148,7 +3702,7 @@ func (s *tournamentServiceServer) serveAddDirectorsProtobuf(ctx context.Context,
 		s.writeError(ctx, resp, wrapInternal(err, "failed to read request body"))
 		return
 	}
-	reqContent := new(TournamentPersons)
+	reqContent := new(liwords.TournamentPersons)
 	if err = proto.Unmarshal(buf, reqContent); err != nil {
 		s.writeError(ctx, resp, malformedRequestError("the protobuf request could not be decoded"))
 		return
@@ -3156,12 +3710,12 @@ func (s *tournamentServiceServer) serveAddDirectorsProtobuf(ctx context.Context,
 
 	handler := s.TournamentService.AddDirectors
 	if s.interceptor != nil {
-		handler = func(ctx context.Context, req *TournamentPersons) (*TournamentResponse, error) {
+		handler = func(ctx context.Context, req *liwords.TournamentPersons) (*TournamentResponse, error) {
 			resp, err := s.interceptor(
 				func(ctx context.Context, req interface{}) (interface{}, error) {
-					typedReq, ok := req.(*TournamentPersons)
+					typedReq, ok := req.(*liwords.TournamentPersons)
 					if !ok {
-						return nil, twirp.InternalError("failed type assertion req.(*TournamentPersons) when calling interceptor")
+						return nil, twirp.InternalError("failed type assertion req.(*liwords.TournamentPersons) when calling interceptor")
 					}
 					return s.TournamentService.AddDirectors(ctx, typedReq)
 				},
@@ -3240,7 +3794,7 @@ func (s *tournamentServiceServer) serveRemoveDirectorsJSON(ctx context.Context, 
 		return
 	}
 
-	reqContent := new(TournamentPersons)
+	reqContent := new(liwords.TournamentPersons)
 	unmarshaler := jsonpb.Unmarshaler{AllowUnknownFields: true}
 	if err = unmarshaler.Unmarshal(req.Body, reqContent); err != nil {
 		s.writeError(ctx, resp, malformedRequestError("the json request could not be decoded"))
@@ -3249,12 +3803,12 @@ func (s *tournamentServiceServer) serveRemoveDirectorsJSON(ctx context.Context, 
 
 	handler := s.TournamentService.RemoveDirectors
 	if s.interceptor != nil {
-		handler = func(ctx context.Context, req *TournamentPersons) (*TournamentResponse, error) {
+		handler = func(ctx context.Context, req *liwords.TournamentPersons) (*TournamentResponse, error) {
 			resp, err := s.interceptor(
 				func(ctx context.Context, req interface{}) (interface{}, error) {
-					typedReq, ok := req.(*TournamentPersons)
+					typedReq, ok := req.(*liwords.TournamentPersons)
 					if !ok {
-						return nil, twirp.InternalError("failed type assertion req.(*TournamentPersons) when calling interceptor")
+						return nil, twirp.InternalError("failed type assertion req.(*liwords.TournamentPersons) when calling interceptor")
 					}
 					return s.TournamentService.RemoveDirectors(ctx, typedReq)
 				},
@@ -3323,7 +3877,7 @@ func (s *tournamentServiceServer) serveRemoveDirectorsProtobuf(ctx context.Conte
 		s.writeError(ctx, resp, wrapInternal(err, "failed to read request body"))
 		return
 	}
-	reqContent := new(TournamentPersons)
+	reqContent := new(liwords.TournamentPersons)
 	if err = proto.Unmarshal(buf, reqContent); err != nil {
 		s.writeError(ctx, resp, malformedRequestError("the protobuf request could not be decoded"))
 		return
@@ -3331,12 +3885,12 @@ func (s *tournamentServiceServer) serveRemoveDirectorsProtobuf(ctx context.Conte
 
 	handler := s.TournamentService.RemoveDirectors
 	if s.interceptor != nil {
-		handler = func(ctx context.Context, req *TournamentPersons) (*TournamentResponse, error) {
+		handler = func(ctx context.Context, req *liwords.TournamentPersons) (*TournamentResponse, error) {
 			resp, err := s.interceptor(
 				func(ctx context.Context, req interface{}) (interface{}, error) {
-					typedReq, ok := req.(*TournamentPersons)
+					typedReq, ok := req.(*liwords.TournamentPersons)
 					if !ok {
-						return nil, twirp.InternalError("failed type assertion req.(*TournamentPersons) when calling interceptor")
+						return nil, twirp.InternalError("failed type assertion req.(*liwords.TournamentPersons) when calling interceptor")
 					}
 					return s.TournamentService.RemoveDirectors(ctx, typedReq)
 				},
@@ -3765,7 +4319,7 @@ func (s *tournamentServiceServer) serveAddPlayersJSON(ctx context.Context, resp 
 		return
 	}
 
-	reqContent := new(TournamentPersons)
+	reqContent := new(liwords.TournamentPersons)
 	unmarshaler := jsonpb.Unmarshaler{AllowUnknownFields: true}
 	if err = unmarshaler.Unmarshal(req.Body, reqContent); err != nil {
 		s.writeError(ctx, resp, malformedRequestError("the json request could not be decoded"))
@@ -3774,12 +4328,12 @@ func (s *tournamentServiceServer) serveAddPlayersJSON(ctx context.Context, resp 
 
 	handler := s.TournamentService.AddPlayers
 	if s.interceptor != nil {
-		handler = func(ctx context.Context, req *TournamentPersons) (*TournamentResponse, error) {
+		handler = func(ctx context.Context, req *liwords.TournamentPersons) (*TournamentResponse, error) {
 			resp, err := s.interceptor(
 				func(ctx context.Context, req interface{}) (interface{}, error) {
-					typedReq, ok := req.(*TournamentPersons)
+					typedReq, ok := req.(*liwords.TournamentPersons)
 					if !ok {
-						return nil, twirp.InternalError("failed type assertion req.(*TournamentPersons) when calling interceptor")
+						return nil, twirp.InternalError("failed type assertion req.(*liwords.TournamentPersons) when calling interceptor")
 					}
 					return s.TournamentService.AddPlayers(ctx, typedReq)
 				},
@@ -3848,7 +4402,7 @@ func (s *tournamentServiceServer) serveAddPlayersProtobuf(ctx context.Context, r
 		s.writeError(ctx, resp, wrapInternal(err, "failed to read request body"))
 		return
 	}
-	reqContent := new(TournamentPersons)
+	reqContent := new(liwords.TournamentPersons)
 	if err = proto.Unmarshal(buf, reqContent); err != nil {
 		s.writeError(ctx, resp, malformedRequestError("the protobuf request could not be decoded"))
 		return
@@ -3856,12 +4410,12 @@ func (s *tournamentServiceServer) serveAddPlayersProtobuf(ctx context.Context, r
 
 	handler := s.TournamentService.AddPlayers
 	if s.interceptor != nil {
-		handler = func(ctx context.Context, req *TournamentPersons) (*TournamentResponse, error) {
+		handler = func(ctx context.Context, req *liwords.TournamentPersons) (*TournamentResponse, error) {
 			resp, err := s.interceptor(
 				func(ctx context.Context, req interface{}) (interface{}, error) {
-					typedReq, ok := req.(*TournamentPersons)
+					typedReq, ok := req.(*liwords.TournamentPersons)
 					if !ok {
-						return nil, twirp.InternalError("failed type assertion req.(*TournamentPersons) when calling interceptor")
+						return nil, twirp.InternalError("failed type assertion req.(*liwords.TournamentPersons) when calling interceptor")
 					}
 					return s.TournamentService.AddPlayers(ctx, typedReq)
 				},
@@ -3940,7 +4494,7 @@ func (s *tournamentServiceServer) serveRemovePlayersJSON(ctx context.Context, re
 		return
 	}
 
-	reqContent := new(TournamentPersons)
+	reqContent := new(liwords.TournamentPersons)
 	unmarshaler := jsonpb.Unmarshaler{AllowUnknownFields: true}
 	if err = unmarshaler.Unmarshal(req.Body, reqContent); err != nil {
 		s.writeError(ctx, resp, malformedRequestError("the json request could not be decoded"))
@@ -3949,12 +4503,12 @@ func (s *tournamentServiceServer) serveRemovePlayersJSON(ctx context.Context, re
 
 	handler := s.TournamentService.RemovePlayers
 	if s.interceptor != nil {
-		handler = func(ctx context.Context, req *TournamentPersons) (*TournamentResponse, error) {
+		handler = func(ctx context.Context, req *liwords.TournamentPersons) (*TournamentResponse, error) {
 			resp, err := s.interceptor(
 				func(ctx context.Context, req interface{}) (interface{}, error) {
-					typedReq, ok := req.(*TournamentPersons)
+					typedReq, ok := req.(*liwords.TournamentPersons)
 					if !ok {
-						return nil, twirp.InternalError("failed type assertion req.(*TournamentPersons) when calling interceptor")
+						return nil, twirp.InternalError("failed type assertion req.(*liwords.TournamentPersons) when calling interceptor")
 					}
 					return s.TournamentService.RemovePlayers(ctx, typedReq)
 				},
@@ -4023,7 +4577,7 @@ func (s *tournamentServiceServer) serveRemovePlayersProtobuf(ctx context.Context
 		s.writeError(ctx, resp, wrapInternal(err, "failed to read request body"))
 		return
 	}
-	reqContent := new(TournamentPersons)
+	reqContent := new(liwords.TournamentPersons)
 	if err = proto.Unmarshal(buf, reqContent); err != nil {
 		s.writeError(ctx, resp, malformedRequestError("the protobuf request could not be decoded"))
 		return
@@ -4031,12 +4585,12 @@ func (s *tournamentServiceServer) serveRemovePlayersProtobuf(ctx context.Context
 
 	handler := s.TournamentService.RemovePlayers
 	if s.interceptor != nil {
-		handler = func(ctx context.Context, req *TournamentPersons) (*TournamentResponse, error) {
+		handler = func(ctx context.Context, req *liwords.TournamentPersons) (*TournamentResponse, error) {
 			resp, err := s.interceptor(
 				func(ctx context.Context, req interface{}) (interface{}, error) {
-					typedReq, ok := req.(*TournamentPersons)
+					typedReq, ok := req.(*liwords.TournamentPersons)
 					if !ok {
-						return nil, twirp.InternalError("failed type assertion req.(*TournamentPersons) when calling interceptor")
+						return nil, twirp.InternalError("failed type assertion req.(*liwords.TournamentPersons) when calling interceptor")
 					}
 					return s.TournamentService.RemovePlayers(ctx, typedReq)
 				},
@@ -4115,7 +4669,7 @@ func (s *tournamentServiceServer) serveSetPairingJSON(ctx context.Context, resp 
 		return
 	}
 
-	reqContent := new(TournamentPairingRequest)
+	reqContent := new(TournamentPairingsRequest)
 	unmarshaler := jsonpb.Unmarshaler{AllowUnknownFields: true}
 	if err = unmarshaler.Unmarshal(req.Body, reqContent); err != nil {
 		s.writeError(ctx, resp, malformedRequestError("the json request could not be decoded"))
@@ -4124,12 +4678,12 @@ func (s *tournamentServiceServer) serveSetPairingJSON(ctx context.Context, resp 
 
 	handler := s.TournamentService.SetPairing
 	if s.interceptor != nil {
-		handler = func(ctx context.Context, req *TournamentPairingRequest) (*TournamentResponse, error) {
+		handler = func(ctx context.Context, req *TournamentPairingsRequest) (*TournamentResponse, error) {
 			resp, err := s.interceptor(
 				func(ctx context.Context, req interface{}) (interface{}, error) {
-					typedReq, ok := req.(*TournamentPairingRequest)
+					typedReq, ok := req.(*TournamentPairingsRequest)
 					if !ok {
-						return nil, twirp.InternalError("failed type assertion req.(*TournamentPairingRequest) when calling interceptor")
+						return nil, twirp.InternalError("failed type assertion req.(*TournamentPairingsRequest) when calling interceptor")
 					}
 					return s.TournamentService.SetPairing(ctx, typedReq)
 				},
@@ -4198,7 +4752,7 @@ func (s *tournamentServiceServer) serveSetPairingProtobuf(ctx context.Context, r
 		s.writeError(ctx, resp, wrapInternal(err, "failed to read request body"))
 		return
 	}
-	reqContent := new(TournamentPairingRequest)
+	reqContent := new(TournamentPairingsRequest)
 	if err = proto.Unmarshal(buf, reqContent); err != nil {
 		s.writeError(ctx, resp, malformedRequestError("the protobuf request could not be decoded"))
 		return
@@ -4206,12 +4760,12 @@ func (s *tournamentServiceServer) serveSetPairingProtobuf(ctx context.Context, r
 
 	handler := s.TournamentService.SetPairing
 	if s.interceptor != nil {
-		handler = func(ctx context.Context, req *TournamentPairingRequest) (*TournamentResponse, error) {
+		handler = func(ctx context.Context, req *TournamentPairingsRequest) (*TournamentResponse, error) {
 			resp, err := s.interceptor(
 				func(ctx context.Context, req interface{}) (interface{}, error) {
-					typedReq, ok := req.(*TournamentPairingRequest)
+					typedReq, ok := req.(*TournamentPairingsRequest)
 					if !ok {
-						return nil, twirp.InternalError("failed type assertion req.(*TournamentPairingRequest) when calling interceptor")
+						return nil, twirp.InternalError("failed type assertion req.(*TournamentPairingsRequest) when calling interceptor")
 					}
 					return s.TournamentService.SetPairing(ctx, typedReq)
 				},
@@ -4438,7 +4992,7 @@ func (s *tournamentServiceServer) serveSetResultProtobuf(ctx context.Context, re
 	callResponseSent(ctx, s.hooks)
 }
 
-func (s *tournamentServiceServer) serveStartRound(ctx context.Context, resp http.ResponseWriter, req *http.Request) {
+func (s *tournamentServiceServer) serveStartRoundCountdown(ctx context.Context, resp http.ResponseWriter, req *http.Request) {
 	header := req.Header.Get("Content-Type")
 	i := strings.Index(header, ";")
 	if i == -1 {
@@ -4446,9 +5000,9 @@ func (s *tournamentServiceServer) serveStartRound(ctx context.Context, resp http
 	}
 	switch strings.TrimSpace(strings.ToLower(header[:i])) {
 	case "application/json":
-		s.serveStartRoundJSON(ctx, resp, req)
+		s.serveStartRoundCountdownJSON(ctx, resp, req)
 	case "application/protobuf":
-		s.serveStartRoundProtobuf(ctx, resp, req)
+		s.serveStartRoundCountdownProtobuf(ctx, resp, req)
 	default:
 		msg := fmt.Sprintf("unexpected Content-Type: %q", req.Header.Get("Content-Type"))
 		twerr := badRouteError(msg, req.Method, req.URL.Path)
@@ -4456,32 +5010,32 @@ func (s *tournamentServiceServer) serveStartRound(ctx context.Context, resp http
 	}
 }
 
-func (s *tournamentServiceServer) serveStartRoundJSON(ctx context.Context, resp http.ResponseWriter, req *http.Request) {
+func (s *tournamentServiceServer) serveStartRoundCountdownJSON(ctx context.Context, resp http.ResponseWriter, req *http.Request) {
 	var err error
-	ctx = ctxsetters.WithMethodName(ctx, "StartRound")
+	ctx = ctxsetters.WithMethodName(ctx, "StartRoundCountdown")
 	ctx, err = callRequestRouted(ctx, s.hooks)
 	if err != nil {
 		s.writeError(ctx, resp, err)
 		return
 	}
 
-	reqContent := new(TournamentStartRoundRequest)
+	reqContent := new(TournamentStartRoundCountdownRequest)
 	unmarshaler := jsonpb.Unmarshaler{AllowUnknownFields: true}
 	if err = unmarshaler.Unmarshal(req.Body, reqContent); err != nil {
 		s.writeError(ctx, resp, malformedRequestError("the json request could not be decoded"))
 		return
 	}
 
-	handler := s.TournamentService.StartRound
+	handler := s.TournamentService.StartRoundCountdown
 	if s.interceptor != nil {
-		handler = func(ctx context.Context, req *TournamentStartRoundRequest) (*TournamentResponse, error) {
+		handler = func(ctx context.Context, req *TournamentStartRoundCountdownRequest) (*TournamentResponse, error) {
 			resp, err := s.interceptor(
 				func(ctx context.Context, req interface{}) (interface{}, error) {
-					typedReq, ok := req.(*TournamentStartRoundRequest)
+					typedReq, ok := req.(*TournamentStartRoundCountdownRequest)
 					if !ok {
-						return nil, twirp.InternalError("failed type assertion req.(*TournamentStartRoundRequest) when calling interceptor")
+						return nil, twirp.InternalError("failed type assertion req.(*TournamentStartRoundCountdownRequest) when calling interceptor")
 					}
-					return s.TournamentService.StartRound(ctx, typedReq)
+					return s.TournamentService.StartRoundCountdown(ctx, typedReq)
 				},
 			)(ctx, req)
 			if resp != nil {
@@ -4507,7 +5061,7 @@ func (s *tournamentServiceServer) serveStartRoundJSON(ctx context.Context, resp 
 		return
 	}
 	if respContent == nil {
-		s.writeError(ctx, resp, twirp.InternalError("received a nil *TournamentResponse and nil error while calling StartRound. nil responses are not supported"))
+		s.writeError(ctx, resp, twirp.InternalError("received a nil *TournamentResponse and nil error while calling StartRoundCountdown. nil responses are not supported"))
 		return
 	}
 
@@ -4534,9 +5088,9 @@ func (s *tournamentServiceServer) serveStartRoundJSON(ctx context.Context, resp 
 	callResponseSent(ctx, s.hooks)
 }
 
-func (s *tournamentServiceServer) serveStartRoundProtobuf(ctx context.Context, resp http.ResponseWriter, req *http.Request) {
+func (s *tournamentServiceServer) serveStartRoundCountdownProtobuf(ctx context.Context, resp http.ResponseWriter, req *http.Request) {
 	var err error
-	ctx = ctxsetters.WithMethodName(ctx, "StartRound")
+	ctx = ctxsetters.WithMethodName(ctx, "StartRoundCountdown")
 	ctx, err = callRequestRouted(ctx, s.hooks)
 	if err != nil {
 		s.writeError(ctx, resp, err)
@@ -4548,22 +5102,22 @@ func (s *tournamentServiceServer) serveStartRoundProtobuf(ctx context.Context, r
 		s.writeError(ctx, resp, wrapInternal(err, "failed to read request body"))
 		return
 	}
-	reqContent := new(TournamentStartRoundRequest)
+	reqContent := new(TournamentStartRoundCountdownRequest)
 	if err = proto.Unmarshal(buf, reqContent); err != nil {
 		s.writeError(ctx, resp, malformedRequestError("the protobuf request could not be decoded"))
 		return
 	}
 
-	handler := s.TournamentService.StartRound
+	handler := s.TournamentService.StartRoundCountdown
 	if s.interceptor != nil {
-		handler = func(ctx context.Context, req *TournamentStartRoundRequest) (*TournamentResponse, error) {
+		handler = func(ctx context.Context, req *TournamentStartRoundCountdownRequest) (*TournamentResponse, error) {
 			resp, err := s.interceptor(
 				func(ctx context.Context, req interface{}) (interface{}, error) {
-					typedReq, ok := req.(*TournamentStartRoundRequest)
+					typedReq, ok := req.(*TournamentStartRoundCountdownRequest)
 					if !ok {
-						return nil, twirp.InternalError("failed type assertion req.(*TournamentStartRoundRequest) when calling interceptor")
+						return nil, twirp.InternalError("failed type assertion req.(*TournamentStartRoundCountdownRequest) when calling interceptor")
 					}
-					return s.TournamentService.StartRound(ctx, typedReq)
+					return s.TournamentService.StartRoundCountdown(ctx, typedReq)
 				},
 			)(ctx, req)
 			if resp != nil {
@@ -4589,7 +5143,7 @@ func (s *tournamentServiceServer) serveStartRoundProtobuf(ctx context.Context, r
 		return
 	}
 	if respContent == nil {
-		s.writeError(ctx, resp, twirp.InternalError("received a nil *TournamentResponse and nil error while calling StartRound. nil responses are not supported"))
+		s.writeError(ctx, resp, twirp.InternalError("received a nil *TournamentResponse and nil error while calling StartRoundCountdown. nil responses are not supported"))
 		return
 	}
 
@@ -5700,101 +6254,89 @@ func callClientError(ctx context.Context, h *twirp.ClientHooks, err twirp.Error)
 }
 
 var twirpFileDescriptor0 = []byte{
-	// 1523 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xcc, 0x58, 0xdd, 0x6e, 0x1b, 0xb7,
-	0x12, 0x3e, 0xb2, 0x25, 0x5b, 0x1a, 0xd9, 0x8a, 0x4d, 0x3b, 0x3e, 0x8a, 0x9c, 0x9c, 0x38, 0x7b,
-	0x4e, 0x12, 0x9f, 0xa2, 0x91, 0x1a, 0x27, 0x45, 0x50, 0xb4, 0x08, 0xe0, 0xd8, 0x6e, 0x20, 0xa0,
-	0xb1, 0x8d, 0x95, 0x8a, 0x22, 0x0d, 0xda, 0xcd, 0x5a, 0xa4, 0x64, 0x02, 0xd2, 0x72, 0x4b, 0x52,
-	0x52, 0x7c, 0xd5, 0x77, 0x28, 0xfa, 0x08, 0xbd, 0x6d, 0x2f, 0x0a, 0xf4, 0x75, 0xfa, 0x2c, 0x05,
-	0x7f, 0xb4, 0xbb, 0xb2, 0x56, 0xb6, 0xec, 0x34, 0x40, 0xef, 0x96, 0xc3, 0xe1, 0x37, 0xc3, 0x99,
-	0xe1, 0xcc, 0x27, 0xc1, 0xa7, 0x7e, 0x48, 0x6b, 0x21, 0x67, 0x92, 0xd5, 0x24, 0xeb, 0xf3, 0xc0,
-	0xef, 0x91, 0x40, 0x7a, 0x82, 0xf0, 0x01, 0x6d, 0x91, 0x14, 0x51, 0x55, 0xeb, 0x22, 0x34, 0xb9,
-	0x53, 0xb9, 0x17, 0x43, 0x71, 0xe2, 0x77, 0x25, 0xed, 0x91, 0xe8, 0xc3, 0x1c, 0xab, 0xdc, 0xed,
-	0x30, 0xd6, 0xe9, 0x12, 0xa3, 0x75, 0xd2, 0x6f, 0xd7, 0xd4, 0x9e, 0x90, 0x7e, 0x2f, 0x34, 0x0a,
-	0xce, 0x21, 0xac, 0x36, 0xa4, 0xcf, 0xa5, 0xcb, 0xfa, 0x01, 0x76, 0xc9, 0x0f, 0x7d, 0x22, 0x24,
-	0xfa, 0x2f, 0x2c, 0x27, 0xcc, 0x51, 0x5c, 0xce, 0x6c, 0x65, 0xb6, 0x0b, 0xee, 0x52, 0x2c, 0xac,
-	0x63, 0xb4, 0x0e, 0x39, 0xae, 0x0e, 0x95, 0xe7, 0xb6, 0x32, 0xdb, 0x39, 0xd7, 0x2c, 0x9c, 0xdf,
-	0x33, 0xb0, 0x7e, 0x48, 0x86, 0xcd, 0x48, 0x73, 0x84, 0x89, 0x20, 0x2b, 0xba, 0xfd, 0x8e, 0x85,
-	0xd2, 0xdf, 0x4a, 0xa6, 0x94, 0x34, 0x42, 0xc1, 0xd5, 0xdf, 0x68, 0x0b, 0x8a, 0x98, 0x88, 0x16,
-	0xa7, 0xa1, 0xa4, 0x2c, 0x28, 0xcf, 0xeb, 0xad, 0xa4, 0x08, 0xdd, 0x83, 0x25, 0x4c, 0x39, 0x69,
-	0x49, 0xc6, 0x3d, 0x8a, 0x45, 0x39, 0xbb, 0x35, 0xaf, 0x55, 0xac, 0xac, 0x8e, 0x05, 0x7a, 0x04,
-	0x59, 0x79, 0x16, 0x92, 0x72, 0x6e, 0x2b, 0xb3, 0x5d, 0xda, 0xb9, 0x55, 0x4d, 0x09, 0x6b, 0xb3,
-	0x79, 0x16, 0x12, 0x57, 0xab, 0x39, 0xbf, 0x64, 0xe0, 0x56, 0xec, 0xf1, 0x2b, 0x22, 0x7d, 0xec,
-	0x4b, 0x7f, 0xe4, 0x79, 0x09, 0xe6, 0xa2, 0x10, 0xcc, 0x51, 0x7c, 0x4d, 0xaf, 0x47, 0xf7, 0xcf,
-	0x26, 0xee, 0x7f, 0x45, 0x37, 0x7f, 0x9d, 0x87, 0xb5, 0x06, 0x0d, 0x3a, 0x5d, 0xa2, 0xb3, 0xb5,
-	0xc7, 0x02, 0xc9, 0x59, 0x57, 0xa0, 0xfb, 0x50, 0x0a, 0x7d, 0xca, 0x69, 0xd0, 0xf1, 0x7a, 0x44,
-	0x9e, 0x32, 0xe3, 0x6c, 0xce, 0x5d, 0xb6, 0xd2, 0x57, 0x5a, 0xa8, 0xe2, 0xd6, 0xa6, 0x5c, 0xc8,
-	0x91, 0x92, 0xc9, 0x5b, 0x51, 0xcb, 0xac, 0xca, 0x03, 0xb8, 0xd1, 0xf1, 0x7b, 0x44, 0x78, 0x21,
-	0xe1, 0x9e, 0xc9, 0xee, 0xbc, 0x81, 0xd2, 0xe2, 0x63, 0xc2, 0xb5, 0xe5, 0x38, 0xf7, 0xd9, 0x44,
-	0xee, 0xd1, 0x06, 0x2c, 0xb4, 0x7d, 0x95, 0x02, 0x7d, 0xa1, 0x9c, 0x6b, 0x57, 0xca, 0x3f, 0x1a,
-	0x50, 0x49, 0xfd, 0xae, 0xd7, 0x66, 0x81, 0x24, 0xa2, 0xbc, 0x60, 0x40, 0xad, 0xf4, 0x4b, 0x2d,
-	0x44, 0x77, 0xa1, 0xd8, 0xf3, 0xdf, 0x79, 0x9c, 0x84, 0xc4, 0x97, 0xa2, 0xbc, 0xa8, 0x75, 0xa0,
-	0xe7, 0xbf, 0x73, 0x8d, 0x04, 0x3d, 0x81, 0x0d, 0xbf, 0xdb, 0x65, 0x43, 0x8f, 0x0d, 0x08, 0xf7,
-	0x92, 0xba, 0xf9, 0xad, 0xcc, 0x76, 0xde, 0x5d, 0xd3, 0xbb, 0x47, 0x03, 0xc2, 0x5f, 0xc5, 0x87,
-	0x9e, 0xc2, 0x86, 0xd1, 0xf2, 0x38, 0xe9, 0xfa, 0x92, 0x0e, 0x88, 0x37, 0x24, 0xb4, 0x73, 0x2a,
-	0xcb, 0x05, 0x6d, 0x60, 0xdd, 0xec, 0xba, 0x76, 0xf3, 0x1b, 0xbd, 0x87, 0xf6, 0xe0, 0x3f, 0x43,
-	0x1a, 0x78, 0x98, 0xb6, 0xdb, 0x84, 0x93, 0xa0, 0x45, 0x26, 0x4e, 0x83, 0x3e, 0xbd, 0x39, 0xa4,
-	0xc1, 0x7e, 0xa4, 0x34, 0x0e, 0xe2, 0xfc, 0x96, 0x81, 0x4a, 0x4a, 0xbe, 0xa6, 0xd5, 0x55, 0x05,
-	0xf2, 0x98, 0x0e, 0xa8, 0x50, 0x05, 0x64, 0x6a, 0x2b, 0x5a, 0xc7, 0x01, 0x9f, 0x4f, 0x06, 0xfc,
-	0x10, 0x4a, 0xfa, 0xc3, 0x6b, 0x59, 0x68, 0x9d, 0x8f, 0xe2, 0xce, 0xc3, 0xb4, 0x4a, 0x4a, 0xf3,
-	0x64, 0x99, 0x27, 0x97, 0xce, 0x1f, 0x73, 0xc9, 0x77, 0xf0, 0x3e, 0xfe, 0x3e, 0x83, 0x25, 0x55,
-	0x31, 0x1e, 0x37, 0x67, 0xb5, 0xdb, 0xc5, 0x9d, 0xf5, 0x6a, 0x97, 0x0e, 0x19, 0xc7, 0xa2, 0xfa,
-	0xd2, 0xef, 0x11, 0x8b, 0xeb, 0x16, 0x3b, 0xf1, 0x22, 0xf5, 0x4a, 0xf3, 0xd7, 0xbf, 0x12, 0xda,
-	0x86, 0x95, 0xa0, 0xdf, 0x3b, 0x21, 0xdc, 0x63, 0x6d, 0x53, 0xd1, 0xc2, 0x56, 0x67, 0xc9, 0xc8,
-	0x8f, 0xda, 0xfa, 0xbc, 0x40, 0x9f, 0x01, 0x08, 0xd5, 0x09, 0x3d, 0xd5, 0x22, 0x75, 0x85, 0x16,
-	0x77, 0x2a, 0x55, 0xd3, 0x3f, 0xab, 0xa3, 0xfe, 0x59, 0x6d, 0x8e, 0xfa, 0xa7, 0x5b, 0xd0, 0xda,
-	0x6a, 0xed, 0x34, 0x61, 0xe5, 0xd8, 0xa7, 0x7c, 0xac, 0x87, 0xbe, 0x77, 0x76, 0x9d, 0x43, 0x58,
-	0x89, 0x93, 0x71, 0x4c, 0xb8, 0x60, 0x01, 0xda, 0x84, 0x42, 0xa8, 0xbf, 0xe2, 0xae, 0x9c, 0x37,
-	0x82, 0x3a, 0x46, 0x77, 0x00, 0x46, 0x9b, 0x81, 0xb4, 0xcf, 0xdb, 0xaa, 0xd7, 0x03, 0xe9, 0xfc,
-	0x08, 0xab, 0xe7, 0xf1, 0xc4, 0x95, 0xdc, 0x7c, 0x0e, 0x8b, 0x06, 0x4d, 0x94, 0xe7, 0x75, 0x52,
-	0xfe, 0x97, 0xda, 0xb1, 0xce, 0xd9, 0x70, 0x47, 0x87, 0x9c, 0x97, 0xc9, 0xea, 0xda, 0xb7, 0xa8,
-	0xd7, 0x88, 0x97, 0xea, 0xd7, 0xe5, 0x84, 0x19, 0xd3, 0xe5, 0xae, 0x13, 0x78, 0x07, 0x96, 0xc3,
-	0xae, 0x7f, 0xa6, 0xaa, 0x23, 0x20, 0x2a, 0xa4, 0xb6, 0x71, 0x1b, 0xe1, 0x51, 0x40, 0xea, 0x38,
-	0xa1, 0x23, 0x87, 0x4c, 0xe9, 0x64, 0x93, 0x3a, 0xcd, 0x21, 0x4b, 0xce, 0xc2, 0x5c, 0x32, 0x81,
-	0x3f, 0x65, 0xe1, 0x6e, 0x72, 0x10, 0x8a, 0x7e, 0x57, 0xaa, 0xee, 0xc4, 0x29, 0x26, 0xff, 0x38,
-	0x6f, 0xd5, 0x4b, 0x49, 0xa0, 0x8b, 0x16, 0xe3, 0xc4, 0xf6, 0xe9, 0x52, 0x64, 0xa0, 0xa1, 0xa4,
-	0x09, 0x4d, 0x65, 0xc3, 0x68, 0x2e, 0x26, 0x35, 0x9b, 0x43, 0x66, 0x34, 0xeb, 0xb0, 0x9a, 0xc0,
-	0xe4, 0x3a, 0x02, 0xba, 0x59, 0x97, 0x76, 0xee, 0x44, 0xbd, 0x20, 0x0e, 0x91, 0xe9, 0x0a, 0x4a,
-	0xc9, 0xbd, 0x11, 0xd9, 0x34, 0x82, 0x04, 0x94, 0x32, 0x6a, 0xa1, 0x0a, 0x57, 0x80, 0x6a, 0x0e,
-	0x99, 0x85, 0x7a, 0x6e, 0xa6, 0x9c, 0x47, 0x02, 0xec, 0x71, 0xe2, 0x0b, 0x16, 0xe8, 0x6e, 0x5e,
-	0xda, 0xd9, 0x18, 0xeb, 0x4f, 0x07, 0xea, 0x31, 0xab, 0x5d, 0x33, 0xfd, 0xa2, 0x25, 0xba, 0x0d,
-	0x05, 0x65, 0x03, 0x2b, 0x3b, 0xe5, 0xa2, 0x1e, 0x3d, 0xb1, 0x40, 0xbd, 0x42, 0x8d, 0x4e, 0x03,
-	0x4c, 0xde, 0x95, 0x97, 0xcc, 0x2b, 0x54, 0x92, 0xba, 0x12, 0x38, 0x1e, 0x6c, 0xc6, 0x5e, 0x4e,
-	0x52, 0xaf, 0xf7, 0x6f, 0x1b, 0xeb, 0x80, 0xc6, 0x8a, 0x2e, 0x64, 0x81, 0x20, 0xce, 0xe7, 0x70,
-	0xf3, 0x1c, 0x2d, 0x33, 0x1b, 0x69, 0xec, 0x46, 0xf3, 0x94, 0xb9, 0x98, 0xa7, 0x38, 0x2f, 0xe0,
-	0xf6, 0x4b, 0x22, 0xaf, 0xc4, 0x90, 0x26, 0x30, 0x7e, 0xce, 0x40, 0x25, 0x0d, 0xc1, 0xba, 0x31,
-	0x22, 0x55, 0x99, 0xe9, 0xa4, 0x6a, 0x6e, 0x92, 0x54, 0xdd, 0x86, 0xc2, 0x88, 0xf6, 0x99, 0x9e,
-	0x54, 0x70, 0x63, 0x41, 0x2a, 0xe5, 0x32, 0xae, 0xe6, 0x46, 0xae, 0x3a, 0xaf, 0x01, 0xb9, 0xa4,
-	0x65, 0x0b, 0x66, 0xea, 0xa8, 0xdb, 0x84, 0x42, 0xd0, 0xef, 0x79, 0x9a, 0x04, 0xd9, 0xc6, 0x9a,
-	0x0f, 0xfa, 0x3d, 0x7d, 0x46, 0xd1, 0x1e, 0xd6, 0x6e, 0x0b, 0x22, 0x6d, 0x1e, 0xec, 0xca, 0x39,
-	0x84, 0xb5, 0x31, 0x68, 0x7b, 0xd3, 0x67, 0x90, 0x33, 0x38, 0x19, 0xdd, 0x43, 0xef, 0x4d, 0x29,
-	0xde, 0x83, 0x00, 0x13, 0x7c, 0x30, 0x50, 0xa9, 0x32, 0xfa, 0xce, 0x5b, 0x9d, 0xc2, 0xbd, 0x6e,
-	0xff, 0xa4, 0x41, 0x44, 0xb2, 0x75, 0x56, 0x21, 0x8b, 0x7d, 0x69, 0x62, 0x77, 0xf1, 0xcc, 0xd2,
-	0x7a, 0xe8, 0xdf, 0xb0, 0xd8, 0xea, 0xf6, 0x4f, 0x54, 0x77, 0x30, 0x31, 0x5d, 0x50, 0xcb, 0xba,
-	0x9a, 0x38, 0x6b, 0x63, 0xf0, 0xd6, 0xe3, 0x99, 0x7e, 0x0e, 0xa4, 0xe5, 0xfc, 0x35, 0xdc, 0x32,
-	0x11, 0x48, 0xa0, 0x4e, 0x8d, 0xf1, 0x3a, 0xe4, 0x5a, 0xac, 0x1f, 0x0d, 0x2e, 0xb3, 0x98, 0x1a,
-	0xdc, 0x37, 0xb0, 0x3e, 0x0e, 0x6a, 0x7d, 0xdd, 0x83, 0xbc, 0xb0, 0x32, 0x1b, 0xe0, 0x54, 0xe6,
-	0x90, 0x72, 0x4d, 0x37, 0x3a, 0xf8, 0xd1, 0x63, 0xc8, 0x69, 0xde, 0x8d, 0x96, 0x20, 0xdf, 0x68,
-	0xee, 0x1e, 0xee, 0xef, 0xba, 0xfb, 0x2b, 0xff, 0x42, 0x79, 0xc8, 0xee, 0x7d, 0xf5, 0xf5, 0x8b,
-	0x95, 0x0c, 0x5a, 0x81, 0x25, 0xf5, 0xe5, 0x35, 0x0e, 0x1a, 0x8d, 0xfa, 0xd1, 0xe1, 0xca, 0xdc,
-	0xce, 0x9f, 0xa5, 0xe4, 0x74, 0x6d, 0x18, 0x33, 0x08, 0xc3, 0xf2, 0xd8, 0xab, 0x43, 0xdb, 0x69,
-	0xce, 0xa4, 0xfd, 0x5e, 0xaa, 0xfc, 0x7f, 0x06, 0x4d, 0x7b, 0xe7, 0x33, 0xb8, 0x99, 0xfa, 0x3c,
-	0xd1, 0x27, 0x69, 0x18, 0x17, 0xbd, 0xe4, 0x4a, 0xf5, 0xe2, 0x89, 0x3e, 0xf1, 0x6c, 0x03, 0xb8,
-	0xd9, 0x48, 0x35, 0xfd, 0x68, 0x56, 0x20, 0x63, 0xf7, 0xc1, 0xc5, 0xea, 0x91, 0xbd, 0xd7, 0x50,
-	0x88, 0x98, 0x16, 0x4a, 0xa5, 0x1f, 0xe7, 0x89, 0xd8, 0xcc, 0xd0, 0x21, 0x6c, 0x34, 0x88, 0x4c,
-	0xfb, 0x7d, 0x55, 0x9d, 0x95, 0x7b, 0x5e, 0xd1, 0xe2, 0xf9, 0xe0, 0x45, 0x06, 0x2f, 0x09, 0xde,
-	0x75, 0xed, 0x7d, 0x07, 0x4b, 0xbb, 0x18, 0xef, 0x47, 0xfd, 0xf1, 0xfe, 0x2c, 0xf4, 0x4d, 0xcc,
-	0x0c, 0xff, 0x16, 0x6e, 0xb8, 0xa4, 0xc7, 0x06, 0xe4, 0x83, 0x59, 0xc0, 0x50, 0xd4, 0x17, 0xb0,
-	0xf3, 0xef, 0x92, 0x30, 0x9d, 0x63, 0x98, 0x33, 0x5b, 0xe9, 0x40, 0x69, 0x74, 0x8f, 0x0f, 0x6b,
-	0xe8, 0x0d, 0xc0, 0x2e, 0xc6, 0xc7, 0x9a, 0x9d, 0xfc, 0xed, 0xb1, 0xfa, 0x1e, 0x96, 0xcd, 0x2d,
-	0x3e, 0x10, 0xfe, 0x09, 0x40, 0x83, 0x8c, 0xb8, 0x37, 0xfa, 0xf8, 0x12, 0xf0, 0x31, 0x8a, 0x3e,
-	0xb3, 0x8d, 0x53, 0x28, 0x34, 0x88, 0x25, 0xce, 0xe8, 0xc9, 0xa5, 0x87, 0x26, 0xe9, 0xf5, 0xcc,
-	0x96, 0x08, 0x40, 0xcc, 0xc5, 0x50, 0xed, 0xe2, 0x53, 0x13, 0xac, 0xed, 0x0a, 0x49, 0x29, 0x26,
-	0x28, 0x01, 0x4a, 0x3d, 0x36, 0x49, 0x47, 0x2a, 0x0f, 0x2f, 0xd5, 0x8b, 0x4a, 0x77, 0x75, 0x8f,
-	0x13, 0x5f, 0x92, 0xc4, 0x7c, 0x43, 0xd3, 0x26, 0xc9, 0x24, 0x93, 0xa8, 0xcc, 0x3a, 0x2b, 0x51,
-	0xa8, 0x47, 0xce, 0xe4, 0x70, 0x4f, 0x7f, 0x2a, 0x53, 0x49, 0x40, 0x65, 0xfb, 0x12, 0x83, 0xd1,
-	0xd5, 0x5e, 0x3c, 0xff, 0xf6, 0x8b, 0x0e, 0x95, 0xa7, 0xfd, 0x93, 0x6a, 0x8b, 0xf5, 0x6a, 0x98,
-	0xf5, 0x68, 0xc0, 0x1e, 0x3f, 0xad, 0x59, 0xf2, 0x54, 0xe3, 0x61, 0xab, 0x76, 0xd1, 0x3f, 0xab,
-	0x27, 0x0b, 0x7a, 0xe7, 0xc9, 0x5f, 0x01, 0x00, 0x00, 0xff, 0xff, 0x22, 0x57, 0x49, 0xc7, 0x80,
-	0x15, 0x00, 0x00,
+	// 1341 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xb4, 0x58, 0xdb, 0x6e, 0xdb, 0x46,
+	0x13, 0xfe, 0xa9, 0x83, 0x23, 0x8e, 0x7c, 0x90, 0x37, 0xb6, 0xc3, 0x30, 0x0e, 0xe2, 0xf0, 0x0f,
+	0x1a, 0x25, 0x6d, 0xa4, 0xd6, 0xe9, 0x09, 0x68, 0x10, 0xc0, 0x91, 0x1d, 0xc7, 0x40, 0xea, 0x18,
+	0x94, 0x72, 0xe1, 0xb6, 0xa8, 0x4a, 0x6b, 0xd7, 0x32, 0x01, 0x89, 0xab, 0x90, 0x4b, 0xab, 0x7e,
+	0x81, 0xde, 0xb7, 0x37, 0xbd, 0xe9, 0x7d, 0xdf, 0xa2, 0xef, 0xd2, 0x37, 0x29, 0xb8, 0xcb, 0x93,
+	0xa4, 0xa5, 0x4c, 0xbb, 0xee, 0x9d, 0x76, 0x76, 0xe6, 0x9b, 0xd9, 0x6f, 0x67, 0x67, 0x86, 0x82,
+	0x2f, 0xac, 0x91, 0xdd, 0x1c, 0xb9, 0x94, 0xd1, 0x26, 0xa3, 0xbe, 0xeb, 0x58, 0x43, 0xe2, 0xb0,
+	0xae, 0x47, 0xdc, 0x73, 0xbb, 0x47, 0x24, 0xa2, 0x06, 0xd7, 0x45, 0x68, 0x76, 0x47, 0x7f, 0x98,
+	0x40, 0xb9, 0xc4, 0x1a, 0x30, 0x7b, 0x48, 0xe2, 0x1f, 0xc2, 0x4c, 0x7f, 0xd0, 0xa7, 0xb4, 0x3f,
+	0x20, 0x42, 0xeb, 0xc4, 0x3f, 0x6d, 0x06, 0x7b, 0x1e, 0xb3, 0x86, 0x23, 0xa1, 0x60, 0x1c, 0xc2,
+	0x6a, 0x9b, 0x59, 0x2e, 0x33, 0xa9, 0xef, 0x60, 0x93, 0x7c, 0xf0, 0x89, 0xc7, 0xd0, 0xff, 0x61,
+	0x29, 0xe5, 0xce, 0xc6, 0x9a, 0xb2, 0xa5, 0xd4, 0x55, 0x73, 0x31, 0x11, 0x1e, 0x60, 0xb4, 0x06,
+	0x65, 0x37, 0x30, 0xd2, 0x0a, 0x5b, 0x4a, 0xbd, 0x6c, 0x8a, 0x85, 0xf1, 0x97, 0x02, 0x6b, 0x87,
+	0x64, 0xdc, 0x89, 0x35, 0x23, 0x4c, 0x04, 0x25, 0x6f, 0xe0, 0xf7, 0x43, 0x28, 0xfe, 0x3b, 0x90,
+	0x05, 0x4a, 0x1c, 0x41, 0x35, 0xf9, 0x6f, 0xb4, 0x05, 0x55, 0x4c, 0xbc, 0x9e, 0x6b, 0x8f, 0x98,
+	0x4d, 0x1d, 0xad, 0xc8, 0xb7, 0xd2, 0x22, 0xf4, 0x0c, 0x10, 0xb6, 0x5d, 0xd2, 0x63, 0xd4, 0xed,
+	0xfa, 0x1e, 0xe1, 0x7e, 0x3c, 0xad, 0xb4, 0x55, 0xac, 0xab, 0xe6, 0x6a, 0xb4, 0xf3, 0x3e, 0xda,
+	0x40, 0xcf, 0xa0, 0xc4, 0x2e, 0x46, 0x44, 0x2b, 0x6f, 0x29, 0xf5, 0xe5, 0xed, 0xbb, 0x0d, 0x09,
+	0xc5, 0x9d, 0xce, 0xc5, 0x88, 0x98, 0x5c, 0xcd, 0xf8, 0x53, 0x81, 0xcd, 0x36, 0x61, 0xc9, 0x01,
+	0xbe, 0x25, 0xcc, 0xc2, 0x16, 0xb3, 0xa2, 0x83, 0x2c, 0x43, 0x21, 0x66, 0xa4, 0x60, 0xe3, 0x6b,
+	0x1e, 0x22, 0xa2, 0xa3, 0x94, 0xa2, 0xe3, 0x8a, 0x91, 0xfe, 0xa1, 0x80, 0xde, 0xb6, 0x9d, 0xfe,
+	0x80, 0xf0, 0xcb, 0x6b, 0x51, 0x87, 0xb9, 0x74, 0xe0, 0x65, 0xc5, 0xa9, 0x43, 0x05, 0xdb, 0xe7,
+	0xb6, 0x17, 0x04, 0x24, 0x62, 0x8d, 0xd7, 0xc9, 0x5d, 0x16, 0x53, 0x77, 0x89, 0x5e, 0xc0, 0x32,
+	0xff, 0xd1, 0xed, 0x85, 0xd0, 0x3c, 0xda, 0xea, 0xf6, 0x7a, 0x63, 0x60, 0x8f, 0xa9, 0x8b, 0xbd,
+	0x46, 0xda, 0xb1, 0xb9, 0xe4, 0xa6, 0xc3, 0x30, 0x3a, 0x50, 0x3b, 0xb2, 0x6c, 0x77, 0x22, 0xb1,
+	0xfe, 0x75, 0x4c, 0xc6, 0x3e, 0xdc, 0x4d, 0xae, 0x66, 0x37, 0xd4, 0xbd, 0x06, 0xbc, 0xf1, 0xbb,
+	0x02, 0x5a, 0x82, 0x14, 0x44, 0x6a, 0x3b, 0xfd, 0x08, 0xc8, 0x80, 0xa5, 0xd1, 0xc0, 0xba, 0x20,
+	0x6e, 0x97, 0x3a, 0x24, 0x79, 0x00, 0x55, 0x21, 0x7c, 0xe7, 0x90, 0x03, 0x9c, 0xd2, 0x61, 0x63,
+	0x1a, 0xe8, 0x14, 0xd2, 0x3a, 0x9d, 0x31, 0x4d, 0xbf, 0x91, 0x09, 0x5e, 0xef, 0x03, 0xd8, 0x5e,
+	0xf7, 0x94, 0xba, 0xa7, 0xc4, 0x66, 0x9c, 0xd3, 0x8a, 0xa9, 0xda, 0xde, 0x6b, 0x21, 0x30, 0x7e,
+	0x55, 0xd2, 0x67, 0x0c, 0x23, 0xbb, 0xd6, 0xb5, 0xbe, 0x81, 0xca, 0x28, 0x34, 0xd7, 0x8a, 0x5b,
+	0xc5, 0x7a, 0x75, 0xfb, 0x13, 0x69, 0x52, 0x65, 0xd0, 0x60, 0xc6, 0xd6, 0xc6, 0x6f, 0x25, 0x78,
+	0x90, 0x7e, 0xd3, 0x9e, 0x3f, 0x60, 0xef, 0xce, 0x89, 0xeb, 0xda, 0x98, 0x5c, 0x27, 0xb2, 0x19,
+	0x82, 0x8b, 0x39, 0x08, 0x2e, 0xcd, 0x21, 0xb8, 0x9c, 0x26, 0xb8, 0x0e, 0xb5, 0x14, 0xba, 0xd7,
+	0xa3, 0x2e, 0xd1, 0x16, 0xb8, 0xc2, 0x72, 0xec, 0xa0, 0x1d, 0x48, 0x53, 0x9a, 0x81, 0x0f, 0xa1,
+	0x79, 0x2b, 0xad, 0xd9, 0x19, 0x53, 0xa1, 0x79, 0x00, 0xab, 0x29, 0x4c, 0x97, 0x33, 0xa0, 0x55,
+	0xf8, 0x4b, 0xbd, 0x1f, 0xbf, 0x87, 0x84, 0xa2, 0x7d, 0x6b, 0x48, 0x04, 0x4d, 0xe6, 0x4a, 0xec,
+	0x53, 0x08, 0x52, 0x50, 0x81, 0xd3, 0x10, 0x4a, 0xbd, 0x02, 0x54, 0x67, 0x4c, 0x43, 0xa8, 0x97,
+	0xb0, 0xd2, 0xb7, 0x86, 0xa4, 0x4b, 0x1c, 0xdc, 0x75, 0x89, 0xe5, 0x51, 0x47, 0x03, 0x0e, 0xb4,
+	0x11, 0x03, 0x05, 0xe6, 0x7b, 0xc1, 0x13, 0x0c, 0x76, 0xcd, 0xa5, 0x7e, 0x7a, 0x89, 0x36, 0x41,
+	0x0d, 0x7c, 0xe0, 0xc0, 0x8f, 0x56, 0x15, 0x99, 0x18, 0x0b, 0x82, 0x44, 0xe5, 0xe8, 0xb6, 0x83,
+	0xc9, 0xcf, 0xda, 0x22, 0xe7, 0x45, 0x0d, 0x24, 0x07, 0x81, 0xc0, 0x38, 0x83, 0x47, 0x49, 0x94,
+	0x49, 0x17, 0x69, 0x51, 0xdf, 0x61, 0x98, 0x8e, 0x9d, 0x9b, 0x7b, 0xf5, 0x6b, 0x80, 0x26, 0xb2,
+	0x6f, 0x44, 0x1d, 0x8f, 0x18, 0xdf, 0xc0, 0xfa, 0x54, 0xab, 0x11, 0x1b, 0xb2, 0x12, 0xcd, 0x8b,
+	0x6d, 0x21, 0x29, 0xb6, 0xc6, 0x2b, 0xd8, 0xdc, 0xbf, 0x62, 0x99, 0x9f, 0xc1, 0xa8, 0xc3, 0x06,
+	0x3f, 0xf6, 0x6c, 0xb7, 0x9b, 0xb2, 0x36, 0x9e, 0xc0, 0x9d, 0xd7, 0xb6, 0x63, 0x7b, 0x67, 0x97,
+	0xab, 0xfe, 0xad, 0x80, 0x2e, 0x0b, 0x2b, 0x3c, 0x5b, 0xd4, 0x6e, 0x94, 0xec, 0x76, 0x53, 0x98,
+	0x6d, 0x37, 0x9b, 0xa0, 0x46, 0x9d, 0x51, 0x94, 0x02, 0xd5, 0x4c, 0x04, 0xd2, 0x66, 0x24, 0xc2,
+	0x2a, 0xc7, 0xe7, 0x8f, 0x9a, 0xd3, 0x42, 0xae, 0xe6, 0x24, 0x1c, 0x8a, 0x3b, 0xf5, 0xb4, 0x5b,
+	0x91, 0xc3, 0x50, 0x60, 0x1c, 0x03, 0x32, 0x49, 0x2f, 0xcc, 0xed, 0xcc, 0xd2, 0x76, 0x0f, 0x54,
+	0xc7, 0x1f, 0x76, 0xfb, 0xbc, 0xbf, 0x8b, 0x29, 0xa3, 0xe2, 0xf8, 0x43, 0x6e, 0x83, 0x36, 0x60,
+	0x81, 0x9e, 0x9e, 0x7a, 0x84, 0x85, 0x99, 0x12, 0xae, 0x8c, 0x43, 0xb8, 0x3d, 0x01, 0x1d, 0xd2,
+	0xf6, 0x15, 0x94, 0x05, 0x8e, 0xc2, 0xeb, 0xe0, 0xc3, 0x8c, 0x77, 0xb6, 0xe7, 0x60, 0x82, 0xf7,
+	0xce, 0x83, 0xeb, 0x11, 0xfa, 0xc6, 0x4f, 0x3c, 0xc9, 0x5a, 0x03, 0xff, 0xa4, 0x4d, 0xbc, 0x74,
+	0xb3, 0x69, 0x40, 0x09, 0x5b, 0x4c, 0x5c, 0x44, 0x75, 0x5b, 0x6f, 0x88, 0x49, 0xab, 0x11, 0x4d,
+	0x5a, 0x8d, 0x4e, 0x34, 0x69, 0x99, 0x5c, 0x0f, 0xdd, 0x81, 0x5b, 0xbd, 0x81, 0x7f, 0x92, 0x74,
+	0x8a, 0x85, 0x60, 0x79, 0x80, 0x83, 0x88, 0x27, 0xe0, 0xc3, 0x88, 0x73, 0x0d, 0x61, 0xb2, 0xac,
+	0x3c, 0x86, 0xbb, 0x82, 0x81, 0x14, 0x6a, 0x26, 0xc7, 0x6b, 0x50, 0xee, 0x05, 0xef, 0x35, 0x9a,
+	0xe2, 0xf8, 0x22, 0x93, 0xdc, 0xef, 0x61, 0x6d, 0x12, 0x34, 0x8c, 0xb5, 0x05, 0x15, 0x2f, 0x94,
+	0x85, 0x04, 0x3f, 0x96, 0x25, 0x88, 0xe4, 0x98, 0x66, 0x6c, 0xf8, 0xf4, 0x4b, 0x28, 0xf3, 0x0c,
+	0x42, 0x8b, 0x50, 0x69, 0x77, 0x76, 0x0e, 0x77, 0x77, 0xcc, 0xdd, 0xda, 0xff, 0x50, 0x05, 0x4a,
+	0xad, 0xb7, 0xef, 0x5f, 0xd5, 0x14, 0xa4, 0x42, 0xb9, 0xf5, 0xe6, 0xe0, 0xed, 0x6e, 0xad, 0x80,
+	0x00, 0x16, 0xde, 0xee, 0xed, 0xef, 0xb4, 0x8e, 0x6b, 0xc5, 0xed, 0x5f, 0x6a, 0xb0, 0x9a, 0xaa,
+	0x43, 0xc2, 0x17, 0xc2, 0xb0, 0x34, 0x51, 0x1c, 0x50, 0x5d, 0x16, 0x91, 0x6c, 0x54, 0xd5, 0x9f,
+	0xe4, 0xd0, 0x0c, 0x0f, 0x7e, 0x01, 0xeb, 0xd2, 0x2a, 0x82, 0x3e, 0x95, 0x61, 0xcc, 0x2b, 0x38,
+	0x7a, 0x63, 0x7e, 0x6b, 0x9e, 0x29, 0x04, 0x04, 0x56, 0xa6, 0x8a, 0x0f, 0x7a, 0x2a, 0x83, 0x90,
+	0x57, 0x28, 0xfd, 0xa3, 0xf9, 0xee, 0x62, 0x37, 0x7d, 0xa8, 0x4d, 0x57, 0x2e, 0xf4, 0xb1, 0xcc,
+	0x36, 0xa3, 0xbe, 0xe5, 0x76, 0xf4, 0x01, 0xd6, 0xdb, 0xf9, 0xa9, 0x9c, 0x37, 0xa2, 0xe7, 0x76,
+	0x79, 0x0c, 0x6a, 0x3c, 0xa2, 0xa2, 0x47, 0x32, 0xa3, 0xe9, 0x09, 0x36, 0x37, 0xf4, 0x08, 0x36,
+	0xda, 0x84, 0x49, 0xc6, 0x73, 0x24, 0xbd, 0xe7, 0xec, 0x39, 0x3e, 0xb7, 0xc7, 0x1f, 0xa6, 0xf8,
+	0x8b, 0x1d, 0xde, 0x93, 0xd4, 0xba, 0x68, 0x33, 0x37, 0xba, 0x09, 0x8b, 0x3b, 0x18, 0xef, 0xc6,
+	0x2d, 0x43, 0x97, 0x80, 0x1e, 0x11, 0xd7, 0xa3, 0x4e, 0x7e, 0xcc, 0xf7, 0xb0, 0x62, 0x92, 0x21,
+	0x3d, 0x27, 0x37, 0x0b, 0x8b, 0xa1, 0xca, 0x43, 0x0d, 0x27, 0x8a, 0x67, 0xf3, 0xcd, 0xa6, 0xbe,
+	0x21, 0xae, 0xf0, 0x2e, 0x96, 0xa3, 0xe0, 0xff, 0x5b, 0x47, 0x47, 0x00, 0x3b, 0x18, 0x1f, 0xf1,
+	0xc1, 0xef, 0x66, 0x08, 0x6a, 0xc3, 0x92, 0x08, 0xfd, 0x26, 0x41, 0x7b, 0x00, 0x6d, 0x12, 0x7d,
+	0x40, 0x5c, 0xc6, 0xc5, 0xd4, 0x47, 0x4d, 0x6e, 0x27, 0x67, 0xa0, 0xb6, 0x49, 0xf8, 0xf9, 0x81,
+	0x9e, 0x5f, 0x6a, 0x34, 0xfb, 0x91, 0x92, 0xdb, 0xd3, 0x18, 0x6e, 0x4b, 0x26, 0x5a, 0xf4, 0xf5,
+	0x7c, 0xf3, 0xec, 0x21, 0x38, 0xb7, 0xe3, 0x1f, 0xa1, 0x9a, 0x9a, 0x5f, 0x90, 0xd4, 0x6c, 0x76,
+	0x76, 0xd2, 0x1f, 0x5f, 0xaa, 0x17, 0xe7, 0xed, 0x6a, 0xcb, 0x25, 0x16, 0x23, 0xa9, 0x66, 0x8c,
+	0xb2, 0x3a, 0xde, 0xec, 0xd8, 0xa3, 0xe7, 0x6d, 0xec, 0x68, 0xc4, 0x5b, 0xe3, 0xec, 0x24, 0x22,
+	0xcf, 0x8d, 0xcc, 0x89, 0x45, 0xaf, 0x5f, 0xe2, 0x30, 0x3e, 0xda, 0xab, 0x97, 0xdf, 0xbd, 0xe8,
+	0xdb, 0xec, 0xcc, 0x3f, 0x69, 0xf4, 0xe8, 0xb0, 0x89, 0xe9, 0xd0, 0x76, 0xe8, 0x67, 0x9f, 0x37,
+	0xc3, 0xdc, 0x6e, 0xba, 0xa3, 0x5e, 0x73, 0xde, 0x9f, 0x6f, 0x27, 0x0b, 0x7c, 0xe7, 0xf9, 0x3f,
+	0x01, 0x00, 0x00, 0xff, 0xff, 0xf1, 0xf0, 0x6c, 0x2e, 0xa3, 0x13, 0x00, 0x00,
 }

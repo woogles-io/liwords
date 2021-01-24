@@ -18,6 +18,7 @@ type Store interface {
 	Username(ctx context.Context, uuid string) (string, bool, error)
 	New(ctx context.Context, user *entity.User) error
 	SetPassword(ctx context.Context, uuid string, hashpass string) error
+	SetAbout(ctx context.Context, uuid string, about string) error
 	SetRatings(ctx context.Context, p0uuid string, p1uuid string, variant entity.VariantKey,
 		p1Rating entity.SingleRating, p2Rating entity.SingleRating) error
 	SetStats(ctx context.Context, p0uuid string, p1uuid string, variant entity.VariantKey,
@@ -38,6 +39,7 @@ type Store interface {
 
 	UsersByPrefix(ctx context.Context, prefix string) ([]*upb.BasicUser, error)
 	CachedCount(ctx context.Context) int
+	Set(ctx context.Context, u *entity.User) error
 }
 
 // PresenceStore stores user presence. Since it is meant to be easily user-visible,

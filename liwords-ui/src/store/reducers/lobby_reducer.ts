@@ -5,9 +5,7 @@ import {
   RatingMode,
   MatchRequest,
   MatchUser,
-  TournamentGameEndedEvent,
 } from '../../gen/api/proto/realtime/realtime_pb';
-import { RecentGame } from '../../tournament/recent_game';
 
 export type SoughtGame = {
   seeker: string;
@@ -41,6 +39,10 @@ export type ActiveGame = {
   maxOvertimeMinutes: number;
   gameID: string;
   players: Array<playerMeta>;
+  tournamentID: string;
+  tournamentDivision: string;
+  tournamentRound: number;
+  tournamentGameIndex: number;
 };
 
 export type LobbyState = {
@@ -48,56 +50,6 @@ export type LobbyState = {
   matchRequests: Array<SoughtGame>;
   // + Other things in the lobby here that have state.
   activeGames: Array<ActiveGame>;
-
-  tourneyGames: Array<RecentGame>;
-  gamesPageSize: number;
-  gamesOffset: number;
-};
-
-const toResultStr = (r: 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7) => {
-  return {
-    0: 'NO_RESULT',
-    1: 'WIN',
-    2: 'LOSS',
-    3: 'DRAW',
-    4: 'BYE',
-    5: 'FORFEIT_WIN',
-    6: 'FORFEIT_LOSS',
-    7: 'ELIMINATED',
-  }[r];
-};
-
-const toEndReason = (r: 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8) => {
-  return {
-    0: 'NONE',
-    1: 'TIME',
-    2: 'STANDARD',
-    3: 'CONSECUTIVE_ZEROES',
-    4: 'RESIGNED',
-    5: 'ABORTED',
-    6: 'TRIPLE_CHALLENGE',
-    7: 'CANCELLED',
-    8: 'FORCE_FORFEIT',
-  }[r];
-};
-
-export const TourneyGameEndedEvtToRecentGame = (
-  evt: TournamentGameEndedEvent
-): RecentGame => {
-  const evtPlayers = evt.getPlayersList();
-
-  const players = evtPlayers.map((ep) => ({
-    username: ep.getUsername(),
-    score: ep.getScore(),
-    result: toResultStr(ep.getResult()),
-  }));
-
-  return {
-    players,
-    end_reason: toEndReason(evt.getEndReason()),
-    game_id: evt.getGameId(),
-    time: evt.getTime(),
-  };
 };
 
 export const SeekRequestToSoughtGame = (
@@ -165,6 +117,10 @@ export const GameInfoResponseToActiveGame = (
     maxOvertimeMinutes: gameReq.getMaxOvertimeMinutes(),
     gameID: gi.getGameId(),
     incrementSecs: gameReq.getIncrementSeconds(),
+    tournamentID: gi.getTournamentId(),
+    tournamentDivision: gi.getTournamentDivision(),
+    tournamentRound: gi.getTournamentRound(),
+    tournamentGameIndex: gi.getTournamentGameIndex(),
   };
 };
 
@@ -262,44 +218,6 @@ export function LobbyReducer(state: LobbyState, action: Action): LobbyState {
       return {
         ...state,
         activeGames: newArr,
-      };
-    }
-
-    case ActionType.AddTourneyGame: {
-      const { tourneyGames, gamesOffset, gamesPageSize } = state;
-      const evt = action.payload as TournamentGameEndedEvent;
-      const game = TourneyGameEndedEvtToRecentGame(evt);
-      // If a tourney game comes in while we're looking at another page,
-      // do nothing.
-      if (gamesOffset > 0) {
-        return state;
-      }
-
-      // Bring newest game to the top.
-      const newGames = [game, ...tourneyGames];
-      if (newGames.length > gamesPageSize) {
-        newGames.length = gamesPageSize;
-      }
-
-      return {
-        ...state,
-        tourneyGames: newGames,
-      };
-    }
-
-    case ActionType.AddTourneyGames: {
-      const tourneyGames = action.payload as Array<RecentGame>;
-      return {
-        ...state,
-        tourneyGames,
-      };
-    }
-
-    case ActionType.SetTourneyGamesOffset: {
-      const offset = action.payload as number;
-      return {
-        ...state,
-        gamesOffset: offset,
       };
     }
   }

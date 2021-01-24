@@ -2,6 +2,7 @@ syntax = "proto3";
 package game_service;
 option go_package = "github.com/domino14/liwords/rpc/api/proto/game_service";
 
+import "macondo/api/proto/macondo/macondo.proto";
 import "api/proto/realtime/realtime.proto";
 import "google/protobuf/timestamp.proto";
 
@@ -40,11 +41,17 @@ message GameInfoResponse {
   google.protobuf.Timestamp last_update = 18;
 
   liwords.GameRequest game_request = 19;
+  string tournament_division = 20;
+  int32 tournament_round = 21;
+  // a game index within a round.
+  int32 tournament_game_index = 22;
 }
 
 message GCGRequest { string game_id = 1; }
+message GameHistoryRequest { string game_id = 1; }
 
 message GCGResponse { string gcg = 1; }
+message GameHistoryResponse { macondo.GameHistory history = 1; }
 
 message GameInfoResponses { repeated GameInfoResponse game_info = 1; }
 
@@ -69,6 +76,7 @@ message RematchStreakRequest { string original_request_id = 1; }
 service GameMetadataService {
   rpc GetMetadata(GameInfoRequest) returns(GameInfoResponse);
   rpc GetGCG(GCGRequest) returns(GCGResponse);
+  rpc GetGameHistory(GameHistoryRequest) returns(GameHistoryResponse);
   rpc GetRecentGames(RecentGamesRequest) returns(GameInfoResponses);
   rpc GetRematchStreak(RematchStreakRequest) returns(StreakInfoResponse);
 }

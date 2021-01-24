@@ -37,6 +37,8 @@ type User struct {
 	Password    string `gorm:"type:varchar(128)"`
 	InternalBot bool   `gorm:"default:false;index"`
 	IsAdmin     bool   `gorm:"default:false"`
+	IsDirector  bool   `gorm:"default:false"`
+	IsMod       bool   `gorm:"default:false"`
 	ApiKey      string
 }
 
@@ -127,18 +129,28 @@ func (s *DBStore) Get(ctx context.Context, username string) (*entity.User, error
 		return nil, err
 	}
 	entu := &entity.User{
-		ID:        u.ID,
-		Username:  u.Username,
-		UUID:      u.UUID,
-		Email:     u.Email,
-		Password:  u.Password,
-		IsBot:     u.InternalBot,
-		Anonymous: false,
-		Profile:   profile,
-		IsAdmin:   u.IsAdmin,
+		ID:         u.ID,
+		Username:   u.Username,
+		UUID:       u.UUID,
+		Email:      u.Email,
+		Password:   u.Password,
+		IsBot:      u.InternalBot,
+		Anonymous:  false,
+		Profile:    profile,
+		IsAdmin:    u.IsAdmin,
+		IsDirector: u.IsDirector,
+		IsMod:      u.IsMod,
 	}
 
 	return entu, nil
+}
+
+func (s *DBStore) Set(ctx context.Context, u *entity.User) error {
+	dbu := s.toDBObj(u)
+
+	result := s.db.Model(&User{}).Set("gorm:query_option", "FOR UPDATE").
+		Where("uuid = ?", u.UUID).Update(dbu)
+	return result.Error
 }
 
 // GetByEmail gets the user by email. It does not try to get the profile.
@@ -151,14 +163,16 @@ func (s *DBStore) GetByEmail(ctx context.Context, email string) (*entity.User, e
 	}
 
 	entu := &entity.User{
-		ID:        u.ID,
-		Username:  u.Username,
-		UUID:      u.UUID,
-		Email:     u.Email,
-		Password:  u.Password,
-		Anonymous: false,
-		IsBot:     u.InternalBot,
-		IsAdmin:   u.IsAdmin,
+		ID:         u.ID,
+		Username:   u.Username,
+		UUID:       u.UUID,
+		Email:      u.Email,
+		Password:   u.Password,
+		Anonymous:  false,
+		IsBot:      u.InternalBot,
+		IsAdmin:    u.IsAdmin,
+		IsDirector: u.IsDirector,
+		IsMod:      u.IsMod,
 	}
 
 	return entu, nil
@@ -217,14 +231,16 @@ func (s *DBStore) GetByUUID(ctx context.Context, uuid string) (*entity.User, err
 		}
 
 		entu = &entity.User{
-			ID:       u.ID,
-			Username: u.Username,
-			UUID:     u.UUID,
-			Email:    u.Email,
-			Password: u.Password,
-			IsBot:    u.InternalBot,
-			Profile:  profile,
-			IsAdmin:  u.IsAdmin,
+			ID:         u.ID,
+			Username:   u.Username,
+			UUID:       u.UUID,
+			Email:      u.Email,
+			Password:   u.Password,
+			IsBot:      u.InternalBot,
+			Profile:    profile,
+			IsAdmin:    u.IsAdmin,
+			IsDirector: u.IsDirector,
+			IsMod:      u.IsMod,
 		}
 	}
 
@@ -256,19 +272,25 @@ func (s *DBStore) GetByAPIKey(ctx context.Context, apikey string) (*entity.User,
 	return entu, nil
 }
 
-// New creates a new user in the DB.
-func (s *DBStore) New(ctx context.Context, u *entity.User) error {
-	if u.UUID == "" {
-		u.UUID = shortuuid.New()
-	}
-	dbu := &User{
+func (s *DBStore) toDBObj(u *entity.User) *User {
+	return &User{
 		UUID:        u.UUID,
 		Username:    u.Username,
 		Email:       u.Email,
 		Password:    u.Password,
 		InternalBot: u.IsBot,
 		IsAdmin:     u.IsAdmin,
+		IsDirector:  u.IsDirector,
+		IsMod:       u.IsMod,
 	}
+}
+
+// New creates a new user in the DB.
+func (s *DBStore) New(ctx context.Context, u *entity.User) error {
+	if u.UUID == "" {
+		u.UUID = shortuuid.New()
+	}
+	dbu := s.toDBObj(u)
 	result := s.db.Create(dbu)
 	if result.Error != nil {
 		return result.Error
@@ -302,6 +324,21 @@ func (s *DBStore) SetPassword(ctx context.Context, uuid string, hashpass string)
 		return result.Error
 	}
 	return s.db.Model(u).Update("password", hashpass).Error
+}
+
+// SetAbout sets the about (profile field] for the user.
+func (s *DBStore) SetAbout(ctx context.Context, uuid string, about string) error {
+	u := &User{}
+	p := &profile{}
+
+	if result := s.db.Where("uuid = ?", uuid).First(u); result.Error != nil {
+		return result.Error
+	}
+	if result := s.db.Model(u).Related(p); result.Error != nil {
+		return result.Error
+	}
+
+	return s.db.Model(p).Update("about", about).Error
 }
 
 // SetRatings set the specific ratings for the given variant in a transaction.

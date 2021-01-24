@@ -32,7 +32,7 @@ type soughtgame struct {
 	UUID      string `gorm:"index"`
 	Seeker    string `gorm:"index"`
 
-	Type   string // seek or match
+	Type   string // seek, match
 	ConnID string `gorm:"index"`
 	// Only for match requests
 	Receiver string `gorm:"index"`
@@ -59,14 +59,14 @@ func (s *DBStore) sgFromDBObj(g *soughtgame) (*entity.SoughtGame, error) {
 		if err != nil {
 			return nil, err
 		}
-		return &entity.SoughtGame{SeekRequest: sr}, nil
+		return &entity.SoughtGame{SeekRequest: sr, Type: entity.TypeSeek}, nil
 	case typeMatch:
 		mr := &pb.MatchRequest{}
 		err = json.Unmarshal(g.Request, mr)
 		if err != nil {
 			return nil, err
 		}
-		return &entity.SoughtGame{MatchRequest: mr}, nil
+		return &entity.SoughtGame{MatchRequest: mr, Type: entity.TypeMatch}, nil
 	}
 	log.Error().Str("seekType", g.Type).Str("id", g.UUID).Msg("unexpected-seek-type")
 	return nil, errors.New("unknown error getting seek or match")
@@ -106,10 +106,10 @@ func (s *DBStore) Set(ctx context.Context, game *entity.SoughtGame) error {
 	var bts []byte
 	var sgtype string
 	var err error
-	if game.Type() == entity.TypeSeek {
+	if game.Type == entity.TypeSeek {
 		bts, err = json.Marshal(game.SeekRequest)
 		sgtype = typeSeek
-	} else if game.Type() == entity.TypeMatch {
+	} else if game.Type == entity.TypeMatch {
 		bts, err = json.Marshal(game.MatchRequest)
 		sgtype = typeMatch
 	}
@@ -123,7 +123,7 @@ func (s *DBStore) Set(ctx context.Context, game *entity.SoughtGame) error {
 		Type:    sgtype,
 		Request: bts,
 	}
-	if game.Type() == entity.TypeMatch {
+	if game.Type == entity.TypeMatch {
 		dbg.Receiver = game.MatchRequest.ReceivingUser.UserId
 	}
 	ctxDB := s.db.WithContext(ctx)
@@ -146,7 +146,8 @@ func (s *DBStore) Delete(ctx context.Context, id string) error {
 func (s *DBStore) ExpireOld(ctx context.Context) error {
 	ctxDB := s.db.WithContext(ctx)
 
-	result := ctxDB.Where("created_at < now() - interval '1 hour'").Delete(&soughtgame{})
+	// Don't expire tournament match requests; handle this elsewhere.
+	result := ctxDB.Where("created_at < now() - interval '1 hour' and type in ('match', 'seek')").Delete(&soughtgame{})
 	if result.Error == nil && result.RowsAffected > 0 {
 		log.Info().Int("rows-affected", int(result.RowsAffected)).Msg("expire-old-seeks")
 	}

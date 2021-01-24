@@ -14,14 +14,16 @@ const (
 )
 
 type SoughtGame struct {
-	// A sought game has either of these two fields set
+	// A sought game has either of these fields set
 	SeekRequest  *pb.SeekRequest
 	MatchRequest *pb.MatchRequest
+	Type         SoughtGameType
 }
 
 func NewSoughtGame(seekRequest *pb.SeekRequest) *SoughtGame {
 	sg := &SoughtGame{
 		SeekRequest: seekRequest,
+		Type:        TypeSeek,
 	}
 
 	sg.SeekRequest.GameRequest.RequestId = shortuuid.New()
@@ -31,7 +33,7 @@ func NewSoughtGame(seekRequest *pb.SeekRequest) *SoughtGame {
 	// is needed.
 	if sg.SeekRequest.GameRequest.OriginalRequestId == "" {
 		sg.SeekRequest.GameRequest.OriginalRequestId =
-		  sg.SeekRequest.GameRequest.RequestId
+			sg.SeekRequest.GameRequest.RequestId
 	}
 	return sg
 }
@@ -39,46 +41,41 @@ func NewSoughtGame(seekRequest *pb.SeekRequest) *SoughtGame {
 func NewMatchRequest(matchRequest *pb.MatchRequest) *SoughtGame {
 	sg := &SoughtGame{
 		MatchRequest: matchRequest,
+		Type:         TypeMatch,
 	}
 	sg.MatchRequest.GameRequest.RequestId = shortuuid.New()
 	if sg.MatchRequest.GameRequest.OriginalRequestId == "" {
 		sg.MatchRequest.GameRequest.OriginalRequestId =
-		  sg.MatchRequest.GameRequest.RequestId
+			sg.MatchRequest.GameRequest.RequestId
 	}
 	return sg
 }
 
 func (sg *SoughtGame) ID() string {
-	if sg.SeekRequest != nil {
-		return sg.SeekRequest.GameRequest.RequestId
-	} else if sg.MatchRequest != nil {
+	switch sg.Type {
+	case TypeMatch:
 		return sg.MatchRequest.GameRequest.RequestId
+	case TypeSeek:
+		return sg.SeekRequest.GameRequest.RequestId
 	}
 	return ""
 }
 
 func (sg *SoughtGame) ConnID() string {
-	if sg.SeekRequest != nil {
+	switch sg.Type {
+	case TypeSeek:
 		return sg.SeekRequest.ConnectionId
-	} else if sg.MatchRequest != nil {
+	case TypeMatch:
 		return sg.MatchRequest.ConnectionId
 	}
 	return ""
 }
 
-func (sg *SoughtGame) Type() SoughtGameType {
-	if sg.SeekRequest != nil {
-		return TypeSeek
-	} else if sg.MatchRequest != nil {
-		return TypeMatch
-	}
-	return TypeNone
-}
-
 func (sg *SoughtGame) Seeker() string {
-	if sg.SeekRequest != nil {
+	switch sg.Type {
+	case TypeSeek:
 		return sg.SeekRequest.User.UserId
-	} else if sg.MatchRequest != nil {
+	case TypeMatch:
 		return sg.MatchRequest.User.UserId
 	}
 	return ""

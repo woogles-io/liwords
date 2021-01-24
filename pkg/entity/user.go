@@ -32,8 +32,19 @@ type User struct {
 	// CurrentChannel tracks presence; where is the user currently?
 	CurrentChannel string
 	IsBot          bool
+	IsDirector     bool
+	IsMod          bool
 	IsAdmin        bool
 }
+
+type UserPermission int
+
+const (
+	PermDirector UserPermission = iota
+	PermMod
+	PermAdmin
+	PermBot
+)
 
 // Session - The db specific-details are in the store package.
 type Session struct {
@@ -55,7 +66,7 @@ type Profile struct {
 }
 
 // If the RD is <= this number, the rating is "known"
-const RatingDeviationConfidence = 150
+const RatingDeviationConfidence = float64(glicko.MinimumRatingDeviation + 30)
 
 // RelevantRating returns the rating from a Ratings object given a rating key.
 func RelevantRating(ratings Ratings, ratingKey VariantKey) string {

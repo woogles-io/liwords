@@ -68,15 +68,16 @@ type SearchResponse = {
 };
 
 type Props = {
-  onFormSubmit: (g: SoughtGame) => void;
+  onFormSubmit: (g: SoughtGame, v?: Store) => void;
   loggedIn: boolean;
   showFriendInput: boolean;
   vsBot?: boolean;
   id: string;
   tournamentID?: string;
+  storageKey?: string;
+  prefixItems?: React.ReactNode;
 };
 
-const enableECWL = localStorage.getItem('enableECWL') === 'true';
 const otLabel = 'Overtime';
 const incLabel = 'Increment';
 const otUnitLabel = (
@@ -92,6 +93,14 @@ const incUnitLabel = (
 
 export const SeekForm = (props: Props) => {
   const { useState } = useMountedState();
+  const enableAllLexicons = React.useMemo(
+    () => localStorage.getItem('enableAllLexicons') === 'true',
+    []
+  );
+  const enableECWL = React.useMemo(
+    () => localStorage.getItem('enableECWL') === 'true',
+    []
+  );
 
   let storageKey = 'lastSeekForm';
   if (props.vsBot) {
@@ -99,6 +108,9 @@ export const SeekForm = (props: Props) => {
   }
   if (props.showFriendInput) {
     storageKey = 'lastMatchForm';
+  }
+  if (props.storageKey) {
+    storageKey = props.storageKey;
   }
 
   const storedValues = window.localStorage
@@ -115,14 +127,23 @@ export const SeekForm = (props: Props) => {
     vsBot: false,
   };
   let disableControls = false;
+  let disableLexiconControls = false;
   let initialValues;
 
   if (props.tournamentID && props.tournamentID in fixedSettings) {
     disableControls = true;
+    disableLexiconControls = 'lexicon' in fixedSettings[props.tournamentID];
     initialValues = {
       ...fixedSettings[props.tournamentID],
       friend: '',
     };
+    // This is a bit of a hack; sorry.
+    if (!disableLexiconControls) {
+      initialValues = {
+        ...initialValues,
+        lexicon: storedValues.lexicon,
+      };
+    }
   } else {
     initialValues = {
       ...defaultValues,
@@ -236,11 +257,11 @@ export const SeekForm = (props: Props) => {
       playerVsBot: props.vsBot || false,
       tournamentID: props.tournamentID || '',
     };
-    props.onFormSubmit(obj);
+    props.onFormSubmit(obj, val);
   };
 
   const validateMessages = {
-    required: 'Opponent name is required.',
+    required: 'This field is required.',
   };
 
   return (
@@ -254,6 +275,8 @@ export const SeekForm = (props: Props) => {
       layout="horizontal"
       validateMessages={validateMessages}
     >
+      {props.prefixItems || null}
+
       {props.showFriendInput && (
         <Form.Item
           label={props.tournamentID ? 'Opponent' : 'Friend'}
@@ -283,12 +306,29 @@ export const SeekForm = (props: Props) => {
           </AutoComplete>
         </Form.Item>
       )}
-      <Form.Item label="Dictionary" name="lexicon">
-        <Select disabled={disableControls}>
-          <Select.Option value="CSW19">CSW 19 (English)</Select.Option>
-          <Select.Option value="NWL18">NWL 18 (North America)</Select.Option>
-          {enableECWL && (
-            <Select.Option value="ECWL">English Common Word List</Select.Option>
+      <Form.Item
+        label="Dictionary"
+        name="lexicon"
+        rules={[
+          {
+            required: true,
+          },
+        ]}
+      >
+        <Select disabled={disableLexiconControls}>
+          <Select.Option value="CSW19">CSW 19 (World English)</Select.Option>
+          <Select.Option value="NWL20">
+            NWL 20 (North American English)
+          </Select.Option>
+          {enableAllLexicons && (
+            <React.Fragment>
+              <Select.Option value="NWL18">NWL 18 (Obsolete)</Select.Option>
+              {enableECWL && (
+                <Select.Option value="ECWL">
+                  English Common Word List
+                </Select.Option>
+              )}
+            </React.Fragment>
           )}
         </Select>
       </Form.Item>

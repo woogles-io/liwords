@@ -17,57 +17,96 @@ export const Announcements = React.memo((props: AnnouncementsProps) => {
         </a>
       ),
     },
+
     {
-      title: 'Upcoming Tournament - M.E.R.R.Y.',
+      title: 'Upcoming Tournament - WYSC',
       body: (
         <a
-          href="https://woogles.io/tournament/merry"
+          href="http://youthscrabble.org/WYC2020/"
           target="_blank"
           rel="noopener noreferrer"
         >
           <p>
-            The second annual MERRY tournament will be held on Woogles on
-            January 2, with an early bird on January 1. The main event is 8
-            games, with CSW19 and NWL18 divisions. See more info by clicking
-            here!
-          </p>
-        </a>
-      ),
-    },
-    {
-      title: 'Upcoming Tournament - Crescent City Cup',
-      body: (
-        <a
-          href="https://sites.google.com/site/nolascrabble"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <p>
-            The 10th Annual Crescent City Cup will be held on Woogles on January
-            17th and 18th. Twenty games with Open and Lite divisions for both
-            CSW19 and NWL2020. Register now.
+            The World Youth Championship runs for three consecutive weekends,
+            starting January 22, 2021! Watch as teams of talented youth around
+            the world play our favorite game. Who will emerge victorious?
           </p>
         </a>
       ),
     },
 
     {
-      title: 'WETO complete!',
+      title: 'Upcoming Tournament - Amazing Race 2',
       body: (
         <a
-          href="https://woogles.io/tournament/weto"
+          href="https://woogles.io/tournament/tarst2"
           target="_blank"
           rel="noopener noreferrer"
         >
           <p>
-            The WETO tournament was held over November and December, and was a
-            matchplay-style single elimination bracket tournament.
-            Congratulations to Waseem Khatri (WK) for winning the whole
-            tournament! You can check out the games here.
+            Michael Fagen's Amazing Race 2 tournament will be partially played
+            on Woogles. You can play your games in this room. It starts on
+            January 23, 2021.
           </p>
         </a>
       ),
     },
+
+    {
+      title: 'Upcoming Tournament - CoCo Blitz Championships',
+      body: (
+        <a
+          href="https://www.cocoscrabble.org/blitz-champs"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          <p>
+            The World Blitz Championship starts on the week of January 25, 2021!
+            Play 3-minute games against some of the fastest word gamers in the
+            world; starting with round play and proceeding to elimination
+            brackets. Three-minute clocks will be used throughout!
+          </p>
+        </a>
+      ),
+    },
+
+    {
+      title: 'Upcoming Tournament - MISCO',
+      body: (
+        <a
+          href="https://mindgamesincorporated.com/events/mgi-international-scrabble-classics-online-misco/"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          <p>
+            The biggest online money event of the century! Please join the
+            MISCO; $1000 top prize with a $20 entry fee. See the flyer for more
+            information. Four consecutive weekends, starting on March 6, 2021.
+          </p>
+        </a>
+      ),
+    },
+
+    {
+      title: 'Tournament Complete - Virtual Crescent City Cup',
+      body: (
+        <a
+          href="https://woogles.io/tournament/vccc"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          <p>
+            The Virtual Crescent City Cup, the first one to use our brand new
+            tournament interface, was a resounding success! Congratulations to
+            Billy Nakamura (NWL Open), Lukeman Owolabi (CSW Open), Gideon
+            Brosowsky (NWL Lite), and Terry Kang Rau (CSW Lite) for winning
+            their respective divisions! All 850+ games were recorded and can be
+            found by clicking on this text.
+          </p>
+        </a>
+      ),
+    },
+
     {
       title: 'Want to help?',
       body: (
@@ -103,7 +142,7 @@ export const Announcements = React.memo((props: AnnouncementsProps) => {
       title: 'Woogles is live! Come join our Discord',
       body: (
         <a
-          href="https://discord.gg/5yCJjmW"
+          href="https://discord.gg/GqkUqA7ENm"
           target="_blank"
           rel="noopener noreferrer"
         >

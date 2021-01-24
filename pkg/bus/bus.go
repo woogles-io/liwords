@@ -5,6 +5,7 @@ package bus
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"strings"
 	"time"
@@ -280,7 +281,7 @@ func (b *Bus) handleNatsRequest(ctx context.Context, topic string,
 		userID := msg.UserId
 
 		resp := &pb.RegisterRealmResponse{}
-
+		currentTournamentID := ""
 		if strings.HasPrefix(path, "/game/") {
 			gameID := strings.TrimPrefix(path, "/game/")
 			game, err := b.gameStore.Get(ctx, gameID)
@@ -305,7 +306,9 @@ func (b *Bus) handleNatsRequest(ctx context.Context, topic string,
 			resp.Realms = append(resp.Realms, realm, "chat-"+realm)
 
 			if game.TournamentData != nil && game.TournamentData.Id != "" {
-				resp.Realms = append(resp.Realms, "chat-tournament-"+game.TournamentData.Id)
+				currentTournamentID = game.TournamentData.Id
+				tournamentRealm := "tournament-" + currentTournamentID
+				resp.Realms = append(resp.Realms, tournamentRealm, "chat-"+tournamentRealm)
 			}
 
 		} else if strings.HasPrefix(path, "/tournament/") || strings.HasPrefix(path, "/club/") {
@@ -313,9 +316,24 @@ func (b *Bus) handleNatsRequest(ctx context.Context, topic string,
 			if err != nil {
 				return err
 			}
-			resp.Realms = append(resp.Realms, "tournament-"+t.UUID, "chat-tournament-"+t.UUID)
+			currentTournamentID = t.UUID
+			tournamentRealm := "tournament-" + currentTournamentID
+			resp.Realms = append(resp.Realms, tournamentRealm, "chat-"+tournamentRealm)
 		} else {
-			log.Info().Str("path", path).Msg("realm-req-not-handled-sending-blank-realm")
+			log.Info().Str("path", path).Msg("realm-req-not-handled")
+		}
+
+		activeTourneys, err := b.tournamentStore.ActiveTournamentsFor(ctx, userID)
+		if err != nil {
+			return err
+		}
+		for _, tourney := range activeTourneys {
+			// If we are already physically IN the current tournament realm, do not
+			// subscribe to this extra channel. This channel is used for messages sitewide.
+			if tourney[0] != currentTournamentID {
+				channel := tournament.DivisionChannelName(tourney[0], tourney[1])
+				resp.Realms = append(resp.Realms, "channel-"+channel)
+			}
 		}
 
 		retdata, err := proto.Marshal(resp)
@@ -323,7 +341,7 @@ func (b *Bus) handleNatsRequest(ctx context.Context, topic string,
 			return err
 		}
 		b.natsconn.Publish(replyTopic, retdata)
-		log.Debug().Str("topic", topic).Str("replyTopic", replyTopic).
+		log.Debug().Str("topic", topic).Str("replyTopic", replyTopic).Interface("realms", resp.Realms).
 			Msg("published response")
 	default:
 		return fmt.Errorf("unhandled-req-topic: %v", topic)
@@ -425,6 +443,14 @@ func (b *Bus) handleNatsPublish(ctx context.Context, subtopics []string, data []
 			return err
 		}
 		return b.readyForGame(ctx, evt, userID)
+	case "readyForTournamentGame":
+		evt := &pb.ReadyForTournamentGame{}
+		err := proto.Unmarshal(data, evt)
+		if err != nil {
+			return err
+		}
+		return b.readyForTournamentGame(ctx, evt, userID, wsConnID)
+
 	case "leaveSite":
 		// There is no event here. We have the user ID in the subject.
 		return b.leaveSite(ctx, userID)
@@ -556,7 +582,7 @@ func (b *Bus) initRealmInfo(ctx context.Context, evt *pb.InitRealmInfo, connID s
 		} else {
 			log.Debug().Interface("evt", evt).Msg("no init realm info")
 		}
-
+		// XXX: Need initRealmInfo for `channel-` realm.
 		// Get presence
 		if presenceChan != "" {
 			err := b.sendPresenceContext(ctx, evt.UserId, username, anon,
@@ -609,7 +635,35 @@ func (b *Bus) leaveTab(ctx context.Context, userID, connID string) error {
 		return err
 	}
 
-	return b.deleteSoughtForConnID(ctx, connID)
+	err = b.deleteSoughtForConnID(ctx, connID)
+	if err != nil {
+		return err
+	}
+	return b.deleteTournamentReadyMsgs(ctx, userID, connID)
+	// Delete any tournament ready messages
+}
+
+func (b *Bus) deleteTournamentReadyMsgs(ctx context.Context, userID, connID string) error {
+	conn := b.redisPool.Get()
+	defer conn.Close()
+	bts, err := redis.Bytes(conn.Do("GET", "tready:"+connID))
+	if err != nil {
+		// There are probably no such messages for this connection.
+		return nil
+	}
+	readyEvt := pb.ReadyForTournamentGame{}
+	err = json.Unmarshal(bts, &readyEvt)
+	if err != nil {
+		return err
+	}
+	readyEvt.Unready = true
+	err = b.readyForTournamentGame(ctx, &readyEvt, userID, connID)
+	if err != nil {
+		return err
+	}
+	// and delete the ready event from redis
+	_, err = conn.Do("DEL", "tready:"+connID)
+	return err
 }
 
 func (b *Bus) leaveSite(ctx context.Context, userID string) error {
@@ -692,6 +746,7 @@ func (b *Bus) sendLobbyContext(ctx context.Context, userID, connID string) error
 	if err != nil {
 		return err
 	}
+
 	// TODO: send followed online
 	return nil
 }
@@ -717,7 +772,39 @@ func (b *Bus) sendTournamentContext(ctx context.Context, realm, userID, connID s
 	if err != nil {
 		return err
 	}
-	return nil
+
+	// Send a TournamentDivisionDataResponse for every division in the tournament.
+
+	t, err := b.tournamentStore.Get(ctx, tourneyID)
+	if err != nil {
+		return err
+	}
+	// msg := &pb.FullTournamentDivisions{
+	// 	Divisions: make(map[string]*pb.TournamentDivisionDataResponse),
+	// 	Started:   t.IsStarted,
+	// }
+	// Send empty divisions
+	// evt := entity.WrapEvent(msg, pb.MessageType_TOURNAMENT_FULL_DIVISIONS_MESSAGE)
+	// err = b.pubToConnectionID(connID, userID, evt)
+
+	for name := range t.Divisions {
+		// r, err := tournament.TournamentDivisionDataResponse(ctx, b.tournamentStore, tourneyID, name)
+		// if err != nil {
+		// 	return err
+		// }
+		// msg.Divisions[name] = r
+
+		// evt := entity.WrapEvent(r)
+
+		err := tournament.SendTournamentDivisionMessage(ctx, b.tournamentStore, tourneyID, name)
+		if err != nil {
+			return err
+		}
+
+	}
+	// SEND
+
+	return err
 }
 
 func (b *Bus) sendPresenceContext(ctx context.Context, userID, username string, anon bool,

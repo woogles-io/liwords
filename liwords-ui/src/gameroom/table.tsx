@@ -33,9 +33,9 @@ import { encodeToSocketFmt } from '../utils/protobuf';
 import './scss/gameroom.scss';
 import { ScoreCard } from './scorecard';
 import {
+  defaultGameInfo,
   GameInfo,
   GameMetadata,
-  PlayerMetadata,
   StreakInfoResponse,
 } from './game_info';
 import { BoopSounds } from '../sound/boop';
@@ -46,7 +46,13 @@ import { endGameMessageFromGameInfo } from '../store/end_of_game';
 import { singularCount } from '../utils/plural';
 import { Notepad, NotepadContextProvider } from './notepad';
 import { Analyzer, AnalyzerContextProvider } from './analyzer';
-import { TournamentMetadata } from '../tournament/state';
+import { isPairedMode, sortTiles } from '../store/constants';
+import { ActionType } from '../actions/actions';
+import {
+  readyForTournamentGame,
+  TournamentMetadata,
+} from '../store/reducers/tournament_reducer';
+import { CompetitorStatus } from '../tournament/competitor_status';
 
 type Props = {
   sendSocketMsg: (msg: Uint8Array) => void;
@@ -54,33 +60,6 @@ type Props = {
 };
 
 const StreakFetchDelay = 2000;
-
-const defaultGameInfo = {
-  players: new Array<PlayerMetadata>(),
-  game_request: {
-    lexicon: '',
-    rules: {
-      variant_name: '',
-      board_layout_name: 'CrosswordGame',
-      letter_distribution_name: 'english',
-    },
-    initial_time_seconds: 0,
-    increment_seconds: 0,
-    challenge_rule: 'VOID' as  // wtf typescript? is there a better way?
-      | 'FIVE_POINT'
-      | 'TEN_POINT'
-      | 'SINGLE'
-      | 'DOUBLE'
-      | 'TRIPLE'
-      | 'VOID',
-    rating_mode: 'RATED',
-    max_overtime_minutes: 0,
-    original_request_id: '',
-  },
-  tournament_id: '',
-  game_end_reason: 'NONE',
-  time_control_name: '',
-};
 
 const DEFAULT_TITLE = 'Woogles.io';
 
@@ -194,8 +173,10 @@ export const Table = React.memo((props: Props) => {
   const { username, userID } = loginState;
   const {
     tournamentContext,
-    setTournamentContext,
+    dispatchTournamentContext,
   } = useTournamentStoreContext();
+  const competitorState = tournamentContext.competitorState;
+  const isRegistered = competitorState.isRegistered;
   const [playerNames, setPlayerNames] = useState(new Array<string>());
   const { sendSocketMsg } = props;
   // const location = useLocation();
@@ -304,11 +285,12 @@ export const Table = React.memo((props: Props) => {
         }
       )
       .then((resp) => {
-        setTournamentContext({
-          metadata: resp.data,
+        dispatchTournamentContext({
+          actionType: ActionType.SetTourneyMetadata,
+          payload: resp.data,
         });
       });
-  }, [gameInfo.tournament_id, setTournamentContext]);
+  }, [gameInfo.tournament_id, dispatchTournamentContext]);
 
   useEffect(() => {
     // Request streak info only if a few conditions are true.
@@ -434,19 +416,21 @@ export const Table = React.memo((props: Props) => {
   // If we are one of the players, display our rack.
   // If we are NOT one of the players (so an observer), display the rack of
   // the player on turn.
-  let rack;
+  let rack: string;
   const gameDone = gameContext.playState === PlayState.GAME_OVER;
   const us = useMemo(() => gameInfo.players.find((p) => p.user_id === userID), [
     gameInfo.players,
     userID,
   ]);
   if (us && !(gameDone && isExamining)) {
-    rack = examinableGameContext.players.find((p) => p.userID === us.user_id)
-      ?.currentRack;
+    rack =
+      examinableGameContext.players.find((p) => p.userID === us.user_id)
+        ?.currentRack ?? '';
   } else {
     rack =
-      examinableGameContext.players.find((p) => p.onturn)?.currentRack || '';
+      examinableGameContext.players.find((p) => p.onturn)?.currentRack ?? '';
   }
+  const sortedRack = useMemo(() => sortTiles(rack), [rack]);
 
   // The game "starts" when the GameHistoryRefresher object comes in via the socket.
   // At that point gameID will be filled in.
@@ -518,7 +502,7 @@ export const Table = React.memo((props: Props) => {
   );
 
   let ret = (
-    <div className="game-container">
+    <div className={`game-container${isRegistered ? ' competitor' : ''}`}>
       <ManageWindowTitle />
       <TopBar tournamentID={gameInfo.tournament_id} />
       <div className="game-table">
@@ -527,7 +511,10 @@ export const Table = React.memo((props: Props) => {
             {gameInfo.tournament_id ? (
               <Link to={tournamentContext.metadata.slug}>
                 <HomeOutlined />
-                Back to Tournament
+                Back to
+                {['CLUB', 'CHILD'].includes(tournamentContext.metadata.type)
+                  ? ' Club'
+                  : ' Tournament'}
               </Link>
             ) : (
               <Link to="/">
@@ -539,6 +526,8 @@ export const Table = React.memo((props: Props) => {
           {playerNames.length > 1 ? (
             <Chat
               sendChat={props.sendChat}
+              highlight={tournamentContext.metadata.directors}
+              highlightText="Director"
               defaultChannel={`chat.${
                 isObserver ? 'gametv' : 'game'
               }.${gameID}`}
@@ -557,6 +546,17 @@ export const Table = React.memo((props: Props) => {
           ) : (
             <Notepad includeCard />
           )}
+          {isRegistered && (
+            <CompetitorStatus
+              sendReady={() =>
+                readyForTournamentGame(
+                  sendSocketMsg,
+                  tournamentContext.metadata.id,
+                  competitorState
+                )
+              }
+            />
+          )}
         </div>
         {/* There are two player cards, css hides one of them. */}
         <div className="sticky-player-card-container">
@@ -570,7 +570,7 @@ export const Table = React.memo((props: Props) => {
           <BoardPanel
             username={username}
             board={examinableGameContext.board}
-            currentRack={rack || ''}
+            currentRack={sortedRack}
             events={examinableGameContext.turns}
             gameID={gameID}
             sendSocketMsg={props.sendSocketMsg}
@@ -578,6 +578,9 @@ export const Table = React.memo((props: Props) => {
             playerMeta={gameInfo.players}
             tournamentID={gameInfo.tournament_id}
             tournamentSlug={tournamentContext.metadata.slug}
+            tournamentPairedMode={isPairedMode(
+              tournamentContext?.metadata?.type
+            )}
             lexicon={gameInfo.game_request.lexicon}
             challengeRule={gameInfo.game_request.challenge_rule}
             handleAcceptRematch={
@@ -589,6 +592,18 @@ export const Table = React.memo((props: Props) => {
           <StreakWidget streakInfo={streakGameInfo} />
         </div>
         <div className="data-area" id="right-sidebar">
+          {/* There are two competitor cards, css hides one of them. */}
+          {isRegistered && (
+            <CompetitorStatus
+              sendReady={() =>
+                readyForTournamentGame(
+                  sendSocketMsg,
+                  tournamentContext.metadata.id,
+                  competitorState
+                )
+              }
+            />
+          )}
           {/* There are two player cards, css hides one of them. */}
           <PlayerCards gameMeta={gameInfo} playerMeta={gameInfo.players} />
           <GameInfo
@@ -597,7 +612,7 @@ export const Table = React.memo((props: Props) => {
           />
           <Pool
             pool={examinableGameContext?.pool}
-            currentRack={rack || ''}
+            currentRack={sortedRack}
             poolFormat={poolFormat}
             setPoolFormat={setPoolFormat}
           />

@@ -35,7 +35,8 @@ $screen-min-height-desktop-max: 910px;
 
 $font-deco: 'Fjalla One', sans-serif;
 $font-default: 'Muli', sans-serif;
-$font-monospaced: 'Roboto Mono', monospace;
+$font-monospaced: 'Courier Prime', monospace;
+$font-tile: 'Roboto Mono', monospace;
 
 $tile-size-mobile: 34px;
 $tile-size-tablet: 34px;
@@ -61,10 +62,10 @@ $tile-font-size-tablet: $tile-size-tablet * 0.68;
 $tile-font-size-laptop: $tile-size-laptop * 0.68;
 $tile-font-size-desktop: $tile-size-desktop * 0.68;
 
-$point-size-mobile: $tile-font-size-mobile / 3;
-$point-size-tablet: $tile-font-size-tablet / 3;
-$point-size-laptop: $tile-font-size-laptop / 3;
-$point-size-desktop: $tile-font-size-desktop / 3;
+$point-size-mobile: $tile-font-size-mobile / 3.1;
+$point-size-tablet: $tile-font-size-tablet / 2.6;
+$point-size-laptop: $tile-font-size-laptop / 2.8;
+$point-size-desktop: $tile-font-size-desktop / 2.8;
 
 @mixin container {
   width: 100%;
@@ -122,7 +123,6 @@ $point-size-desktop: $tile-font-size-desktop / 3;
   line-height: 2em;
   letter-spacing: 0.16em;
   text-align: center;
-  text-transform: uppercase;
 }
 
 h1,
@@ -210,7 +210,7 @@ ul
   border-color: #abec63;
 }
 
-.ant-tag-orange {
+.ant-tag-orange, .ant-tag-bye {
   background: #fcac69;
   color: #414141;
   border-color: #fcac69;
@@ -239,7 +239,7 @@ ul
   color: #414141;
   border-color: #b2dcf0;
 }
-.ant-tag-red {
+.ant-tag-red, .ant-tag-removed, .ant-tag-forfeit {
   background: #8a0f23;
   color: #ffffff;
   border-color: #8a0f23;
@@ -406,6 +406,7 @@ ul
     width: 100%;
     height: 64px;
     background: transparent;
+    text-transform: uppercase;
     @include colorModed() {
       border-top: 1px solid m($off-background);
     }
@@ -503,6 +504,7 @@ ul
       padding: 12px 24px;
       margin: 0;
       width: 100%;
+      text-transform: uppercase;
       @include colorModed() {
         color: m($gray-extreme);
       }
@@ -561,7 +563,6 @@ ul
     font-size: 12px;
     height: 36px;
     font-weight: 800;
-    text-transform: uppercase;
     transition: none;
     margin: 0 6px;
     @include colorModed() {
@@ -571,12 +572,6 @@ ul
     }
     &:not(.ant-btn-circle) {
       padding: 3px 18px;
-    }
-    &:disabled {
-      @include colorModed() {
-        border-color: m($gray-subtle);
-        color: m($gray-subtle);
-      }
     }
 
     span.key-command {
@@ -597,6 +592,12 @@ ul
         background-color: m($background);
         border-color: m($primary-dark);
         color:  m($primary-dark);
+      }
+    }
+    &:disabled {
+      @include colorModed() {
+        border-color: m($gray-subtle);
+        color: m($gray-subtle);
       }
     }
     &:not([disabled]):hover {
@@ -620,13 +621,12 @@ ul
       background-color: m($button);
       color: m($button-text);
     }
-    text-transform: uppercase;
+    text-transform: capitalize;
     border: 0;
     outline: 0;
     transition: none;
     cursor: pointer;
     &:not(.ant-btn-circle) {
-      height: 36px;
       border-radius: 3px;
     }
     &.ant-btn-dangerous {

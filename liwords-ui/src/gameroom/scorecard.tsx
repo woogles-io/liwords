@@ -16,7 +16,7 @@ import { PlayerMetadata } from './game_info';
 import { Turn, gameEventsToTurns } from '../store/reducers/turns';
 import { PoolFormatType } from '../constants/pool_formats';
 import { Notepad } from './notepad';
-import { sortBlanksLast } from '../store/constants';
+import { sortTiles } from '../store/constants';
 import { getVW, isTablet } from '../utils/cwgame/common';
 import { Analyzer } from './analyzer';
 const screenSizes = require('../base.scss');
@@ -61,7 +61,7 @@ const displaySummary = (evt: GameEvent, board: Board) => {
   switch (evt.getType()) {
     case GameEvent.Type.EXCHANGE:
       return (
-        <span className="exchanged">-{sortBlanksLast(evt.getExchanged())}</span>
+        <span className="exchanged">-{sortTiles(evt.getExchanged())}</span>
       );
 
     case GameEvent.Type.PASS:
@@ -135,7 +135,7 @@ const ScorecardTurn = (props: turnProps) => {
       oldScore: oldScore,
     };
     if (evts.length === 1) {
-      turn.rack = sortBlanksLast(turn.rack);
+      turn.rack = sortTiles(turn.rack);
       return turn;
     }
     // Otherwise, we have to make some modifications.
@@ -162,16 +162,16 @@ const ScorecardTurn = (props: turnProps) => {
             </span>
           </>
         );
-        turn.rack = `Play is valid ${sortBlanksLast(evts[0].getRack())}`;
+        turn.rack = `Play is valid ${sortTiles(evts[0].getRack())}`;
       }
       // Otherwise, just add/subtract as needed.
       for (let i = 1; i < evts.length; i++) {
         switch (evts[i].getType()) {
           case GameEvent.Type.CHALLENGE_BONUS:
-            turn.score = `${turn.score} + ${evts[i].getBonus()}`;
+            turn.score = `${turn.score} +${evts[i].getBonus()}`;
             break;
           case GameEvent.Type.END_RACK_PTS:
-            turn.score = `${turn.score}+${evts[i].getEndRackPoints()}`;
+            turn.score = `${turn.score} +${evts[i].getEndRackPoints()}`;
             break;
         }
         turn.cumulative = evts[i].getCumulative();
@@ -182,11 +182,11 @@ const ScorecardTurn = (props: turnProps) => {
 
   let scoreChange;
   if (memoizedTurn.lostScore > 0) {
-    scoreChange = `${memoizedTurn.oldScore} - ${memoizedTurn.lostScore}`;
+    scoreChange = `${memoizedTurn.oldScore} -${memoizedTurn.lostScore}`;
   } else if (memoizedTurn.endRackPts > 0) {
-    scoreChange = `${memoizedTurn.oldScore} + ${memoizedTurn.endRackPts}`;
+    scoreChange = `${memoizedTurn.oldScore} +${memoizedTurn.endRackPts}`;
   } else {
-    scoreChange = `${memoizedTurn.oldScore} + ${memoizedTurn.score}`;
+    scoreChange = `${memoizedTurn.oldScore} +${memoizedTurn.score}`;
   }
 
   return (
@@ -241,9 +241,17 @@ export const ScoreCard = React.memo((props: Props) => {
       const playerCardTop =
         document.getElementById('player-cards-vertical')?.clientHeight || 0;
       const navHeight = document.getElementById('main-nav')?.clientHeight || 0;
+      let offset = 0;
+      if (getVW() > parseInt(screenSizes.screenSizeLaptop)) {
+        offset = 45;
+      }
+      if (getVW() > parseInt(screenSizes.screenSizeDesktop)) {
+        offset = 25;
+      }
       if (boardHeight && getVW() > parseInt(screenSizes.screenSizeTablet, 10)) {
         setCardHeight(
-          boardHeight -
+          boardHeight +
+            offset -
             currentEl?.getBoundingClientRect().top -
             window.pageYOffset -
             poolTop -

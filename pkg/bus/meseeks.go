@@ -247,9 +247,9 @@ func (b *Bus) newBotGame(ctx context.Context, req *pb.MatchRequest, botUserID st
 }
 
 func (b *Bus) sendSoughtGameDeletion(ctx context.Context, sg *entity.SoughtGame) error {
-	if sg.Type() == entity.TypeSeek {
+	if sg.Type == entity.TypeSeek {
 		return b.broadcastSeekDeletion(sg.ID())
-	} else if sg.Type() == entity.TypeMatch {
+	} else if sg.Type == entity.TypeMatch {
 		return b.sendMatchCancellation(sg.MatchRequest.ReceivingUser.UserId, sg.Seeker(), sg.ID())
 	}
 	return errors.New("no-sg-type-match")
@@ -263,10 +263,10 @@ func (b *Bus) gameAccepted(ctx context.Context, evt *pb.SoughtGameProcessEvent,
 	}
 	var requester string
 	var gameReq *pb.GameRequest
-	if sg.Type() == entity.TypeSeek {
+	if sg.Type == entity.TypeSeek {
 		requester = sg.SeekRequest.User.UserId
 		gameReq = sg.SeekRequest.GameRequest
-	} else if sg.Type() == entity.TypeMatch {
+	} else if sg.Type == entity.TypeMatch {
 		requester = sg.MatchRequest.User.UserId
 		gameReq = sg.MatchRequest.GameRequest
 	}
@@ -328,7 +328,7 @@ func (b *Bus) matchDeclined(ctx context.Context, evt *pb.DeclineMatchRequest, us
 	if err != nil {
 		return err
 	}
-	if sg.Type() != entity.TypeMatch {
+	if sg.Type != entity.TypeMatch {
 		return errors.New("wrong-entity-type")
 	}
 
@@ -389,9 +389,17 @@ func (b *Bus) broadcastGameCreation(g *entity.Game, acceptor, requester *entity.
 			Nickname: requester.Username},
 	}
 
-	toSend := entity.WrapEvent(&gs.GameInfoResponse{Players: players,
-		GameRequest: g.GameReq, GameId: g.GameID()},
-		pb.MessageType_ONGOING_GAME_EVENT)
+	gameInfo := &gs.GameInfoResponse{Players: players,
+		GameRequest: g.GameReq, GameId: g.GameID()}
+
+	if g.TournamentData != nil {
+		gameInfo.TournamentDivision = g.TournamentData.Division
+		gameInfo.TournamentId = g.TournamentData.Id
+		gameInfo.TournamentRound = int32(g.TournamentData.Round)
+		gameInfo.TournamentGameIndex = int32(g.TournamentData.GameIndex)
+	}
+
+	toSend := entity.WrapEvent(gameInfo, pb.MessageType_ONGOING_GAME_EVENT)
 	data, err := toSend.Serialize()
 	if err != nil {
 		return err

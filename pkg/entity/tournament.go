@@ -1,8 +1,8 @@
 package entity
 
 import (
+	"encoding/json"
 	"sync"
-	"time"
 
 	"gorm.io/datatypes"
 
@@ -10,35 +10,25 @@ import (
 )
 
 type DivisionManager interface {
-	GetPlayerRoundInfo(string, int) (*PlayerRoundInfo, error)
 	SubmitResult(int, string, string, int, int, realtime.TournamentGameResult,
-		realtime.TournamentGameResult, realtime.GameEndReason, bool, int) error
+		realtime.TournamentGameResult, realtime.GameEndReason, bool, int, string) error
 	PairRound(int) error
-	GetStandings(int) ([]*Standing, error)
-	SetPairing(string, string, int) error
+	GetStandings(int) ([]*realtime.PlayerStanding, error)
+	SetPairing(string, string, int, bool) error
+	SetSingleRoundControls(int, *realtime.RoundControl) error
+	AddPlayers(*realtime.TournamentPersons) error
+	RemovePlayers(*realtime.TournamentPersons) error
 	IsRoundReady(int) (bool, error)
 	IsRoundComplete(int) (bool, error)
+	IsStarted() bool
 	IsFinished() (bool, error)
+	StartRound() error
+	ToResponse() (*realtime.TournamentDivisionDataResponse, error)
+	SetReadyForGame(userID, connID string, round, gameIndex int, unready bool) ([]string, bool, error)
+	ClearReadyStates(userID string, round, gameIndex int) error
+	SetLastStarted(*realtime.TournamentRoundStarted) error
 	Serialize() (datatypes.JSON, error)
 }
-
-type FirstMethod int
-
-const (
-	// Firsts and seconds are set by the director
-	// when submitting pairings. The player listed
-	// first goes first.
-	ManualFirst FirstMethod = iota
-
-	// Random pairings do not use any previous first/second
-	// data from the tournament and random assigns first and second
-	// for the round
-	RandomFirst
-
-	// Automatic uses previous first/second records to decide
-	// which player goes first.
-	AutomaticFirst
-)
 
 type CompetitionType string
 
@@ -47,35 +37,17 @@ const (
 	TypeStandard CompetitionType = "tournament"
 	// TypeClub is a club/clubhouse
 	TypeClub = "club"
-	// TypeClubSession is spawned from a club
-	TypeClubSession = "clubsession"
+	// TypeChild is spawned from a club or tournament
+	TypeChild = "child"
+	// TypeLegacy is a tournament, but in club/clubhouse mode. The only different
+	// from a clubhouse is that it can have a /tournament URL.
+	TypeLegacy = "legacy"
 )
 
-const Unpaired = -1
-
-type TournamentGame struct {
-	Scores        []int                           `json:"scores"`
-	Results       []realtime.TournamentGameResult `json:"results"`
-	GameEndReason realtime.GameEndReason          `json:"endReason"`
-}
-
-type Pairing struct {
-	Players  []string                        `json:"players"`
-	Games    []*TournamentGame               `json:"games"`
-	Outcomes []realtime.TournamentGameResult `json:"outcomes"`
-}
-
-type PlayerRoundInfo struct {
-	Pairing *Pairing `json:"pairing"`
-}
-
-type Standing struct {
-	Player string
-	Wins   int
-	Losses int
-	Draws  int
-	Spread int
-}
+const (
+	ByeScore     int = 50
+	ForfeitScore int = -50
+)
 
 type TournamentType int
 
@@ -85,45 +57,27 @@ const (
 	ArenaTournamentType
 )
 
-type TournamentPersons struct {
-	Persons map[string]int `json:"p"`
-}
-
-type RoundControls struct {
-	PairingMethod               PairingMethod
-	FirstMethod                 FirstMethod
-	GamesPerRound               int
-	Round                       int
-	Factor                      int
-	InitialFontes               int
-	MaxRepeats                  int
-	AllowOverMaxRepeats         bool
-	RepeatRelativeWeight        int
-	WinDifferenceRelativeWeight int
-}
-
-type TournamentControls struct {
-	GameRequest    *realtime.GameRequest `json:"req"`
-	RoundControls  []*RoundControls      `json:"roundControls"`
-	NumberOfRounds int                   `json:"rounds"`
-	Type           TournamentType        `json:"type"`
-	StartTime      time.Time             `json:"startTime"`
-}
-
 type TournamentDivision struct {
-	Players         *TournamentPersons  `json:"players"`
-	Controls        *TournamentControls `json:"controls"`
-	DivisionManager DivisionManager     `json:"manager"`
+	Players            *realtime.TournamentPersons  `json:"players"`
+	Controls           *realtime.TournamentControls `json:"controls"`
+	ManagerType        TournamentType               `json:"mgrType"`
+	DivisionRawMessage json.RawMessage              `json:"json"`
+	DivisionManager    DivisionManager              `json:"-"`
 }
 
 type Tournament struct {
 	sync.RWMutex
-	UUID              string                         `json:"uuid"`
-	Name              string                         `json:"name"`
-	Description       string                         `json:"desc"`
+	UUID        string `json:"uuid"`
+	Name        string `json:"name"`
+	Description string `json:"desc"`
+	// XXX: We will likely remove the following two fields
+	AliasOf string `json:"aliasOf"`
+	URL     string `json:"url"`
+	// XXX: Investigate above.
 	ExecutiveDirector string                         `json:"execDirector"`
-	Directors         *TournamentPersons             `json:"directors"`
+	Directors         *realtime.TournamentPersons    `json:"directors"`
 	IsStarted         bool                           `json:"started"`
+	IsFinished        bool                           `json:"finished"`
 	Divisions         map[string]*TournamentDivision `json:"divs"`
 	DefaultSettings   *realtime.GameRequest          `json:"settings"`
 	Type              CompetitionType                `json:"type"`

@@ -58,13 +58,14 @@ type GameStore interface {
 	Unload(context.Context, string)
 	SetReady(ctx context.Context, gid string, pidx int) (int, error)
 	SetGameEndReason(ctx context.Context, g *entity.Game) error
+	GetHistory(ctx context.Context, id string) (*macondopb.GameHistory, error)
 }
 
 type ConfigCtxKey string
 
 // InstantiateNewGame instantiates a game and returns it.
 func InstantiateNewGame(ctx context.Context, gameStore GameStore, cfg *config.Config,
-	users [2]*entity.User, assignedFirst int, req *pb.GameRequest, tid string) (*entity.Game, error) {
+	users [2]*entity.User, assignedFirst int, req *pb.GameRequest, tdata *entity.TournamentData) (*entity.Game, error) {
 
 	var players []*macondopb.PlayerInfo
 	var dbids [2]uint
@@ -140,8 +141,7 @@ func InstantiateNewGame(ctx context.Context, gameStore GameStore, cfg *config.Co
 
 	entGame := entity.NewGame(&gameRunner.Game, req)
 	entGame.PlayerDBIDs = dbids
-	// XXX: This func should take in a tournament data.
-	entGame.TournamentData = &entity.TournamentData{Id: tid}
+	entGame.TournamentData = tdata
 
 	ratingKey, err := entGame.RatingKey()
 	if err != nil {
