@@ -96,9 +96,9 @@ jobs:
           --content-type 'application/wasm' . s3://woogles.io
       -  run: >
           curl -X POST -H "Content-Type: application/json"
-            -H "X-Api-Key: ${ADMIN_WOOGLES_API_KEY}"
-            https://woogles.io/twirp/config_service.ConfigService/SetFEHash
-            -d "{\"hash\": \"${UI_HASH}\"}"
+          -H "X-Api-Key: ${ADMIN_WOOGLES_API_KEY}"
+          https://woogles.io/twirp/config_service.ConfigService/SetFEHash
+          -d "{\"hash\": \"${UI_HASH}\"}"
 
       - slack/status: *slack-webhook-setting
 
