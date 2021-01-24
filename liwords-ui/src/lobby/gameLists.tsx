@@ -61,7 +61,7 @@ export const GameLists = React.memo((props: Props) => {
     if (loggedIn && userID && username && selectedGameTab === 'PLAY') {
       return (
         <>
-          {myCurrentGames.length > 0 && (
+          {simultaneousModeEffectivelyEnabled && myCurrentGames.length > 0 && (
             <ActiveGames
               type="RESUME"
               username={username}
