@@ -16,6 +16,7 @@ services:
       MAILGUN_KEY: ${MAILGUN_KEY:-default}
       REDIS_URL: "redis://redis:6379"
       GORACE: history_size=7
+      ARGON_MEMORY: 1024
     volumes:
       - .:/opt/program:rw
       - ./data/lexica/dawg:/opt/program/data/lexica/dawg
@@ -122,6 +123,7 @@ services:
       dockerfile: Dockerfile-fe
     volumes:
       - ./liwords-ui:/opt/liwords-ui
+      # Install node_modules inside the docker container
       - "/opt/liwords-ui/node_modules"
     working_dir: /opt/liwords-ui
     command: npm start

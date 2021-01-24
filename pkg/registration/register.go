@@ -6,13 +6,14 @@ import (
 	"strings"
 
 	"github.com/domino14/liwords/pkg/auth"
+	"github.com/domino14/liwords/pkg/config"
 	"github.com/domino14/liwords/pkg/entity"
 	"github.com/domino14/liwords/pkg/user"
 )
 
 // RegisterUser registers a user.
 func RegisterUser(ctx context.Context, username string, password string, email string,
-	userStore user.Store, bot bool) error {
+	userStore user.Store, bot bool, argonConfig config.ArgonConfig) error {
 	// username = strings.Rep
 	if len(username) < 1 || len(username) > 20 {
 		return errors.New("username must be between 1 and 20 letters in length")
@@ -38,8 +39,7 @@ func RegisterUser(ctx context.Context, username string, password string, email s
 	}
 	email = strings.TrimSpace(email)
 
-	// time, memory, threads, keyLen for argon2:
-	config := auth.NewPasswordConfig(1, 64*1024, 4, 32)
+	config := auth.NewPasswordConfig(argonConfig.Time, argonConfig.Memory, argonConfig.Threads, argonConfig.Keylen)
 	hashPass, err := auth.GeneratePassword(config, password)
 	if err != nil {
 		return err

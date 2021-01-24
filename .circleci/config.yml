@@ -65,7 +65,6 @@ jobs:
     docker:
       - image: amazon/aws-cli
     steps:
-      # vim-common for xxd ugh
       - run: yum install -y tar gzip md5sum
       - attach_workspace:
           at: /tmp/liwords-ui
@@ -73,7 +72,7 @@ jobs:
           UI_HASH=$(find /tmp/liwords-ui/build -type f -exec md5sum {} \; | sort -k 2 | md5sum | head -c 32) &&
           echo $UI_HASH &&
           sed -i "s:unknown:${UI_HASH}:" /tmp/liwords-ui/build/config.js &&
-          curl -X POST -H "Content-Type: application/json" -H "X-Api-Key: ${ADMIN_WOOGLES_API_KEY}" https://woogles.io/twirp/config_service.ConfigService/SetFEHash -d "{\"hash\": \"${UI_HASH}\"}"
+          echo "export UI_HASH=$UI_HASH" >> $BASH_ENV
       - run: >
           md5=`md5sum /tmp/liwords-ui/build/wasm/macondo.wasm | awk '{ print $1 }'` &&
           sed -i "s:macondo.wasm:macondo.${md5}.wasm:" /tmp/liwords-ui/build/config.js &&
@@ -95,6 +94,12 @@ jobs:
           cd /tmp/liwords-ui/build &&
           aws s3 sync --cache-control 'max-age=3024000' --exclude '*' --include 'wasm/*.wasm'
           --content-type 'application/wasm' . s3://woogles.io
+      -  run: >
+          curl -X POST -H "Content-Type: application/json"
+            -H "X-Api-Key: ${ADMIN_WOOGLES_API_KEY}"
+            https://woogles.io/twirp/config_service.ConfigService/SetFEHash
+            -d "{\"hash\": \"${UI_HASH}\"}"
+
       - slack/status: *slack-webhook-setting
 
 workflows:
