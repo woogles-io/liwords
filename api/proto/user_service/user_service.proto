@@ -39,6 +39,36 @@ message ResetPasswordRequestStep2 {
 }
 message ResetPasswordResponse {}
 
+message CountryFlag {
+  string url = 1;
+  string name = 2;
+}
+
+message KickstarterBadge {
+  string url = 1;
+  string title = 2;
+}
+
+// Information require to display a user in a game.
+message UserGameInfo {
+  string uuid = 1;
+  string avatar_url = 2;
+  string title = 3;
+  string full_name = 4;
+  CountryFlag flag = 5;
+  repeated KickstarterBadge kickstarter_badges = 6;
+}
+
+// Request information for multiple users in a game.
+message UsersGameInfoRequest {
+  repeated string uuids = 1;
+}
+
+// Return information for multiple users in a game.
+message UsersGameInfoResponse {
+  repeated UserGameInfo infos = 1;
+}
+
 // SocketTokenRequest requests a token in order to authenticate with the
 // socket server
 message SocketTokenRequest {}
@@ -110,6 +140,7 @@ service ProfileService {
   rpc GetStats(StatsRequest) returns(StatsResponse);
   rpc GetProfile(ProfileRequest) returns(ProfileResponse);
   rpc UpdateProfile(UpdateProfileRequest) returns(UpdateProfileResponse);
+  rpc GetUsersGameInfo(UsersGameInfoRequest) returns(UsersGameInfoResponse);
 }
 
 // Autocomplete

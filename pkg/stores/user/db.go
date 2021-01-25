@@ -57,8 +57,9 @@ type profile struct {
 	CountryCode string `gorm:"type:varchar(3)"`
 	// Title is some sort of acronym/shorthand for a title. Like GM, EX, SM, UK-GM (UK Grandmaster?)
 	Title string `gorm:"type:varchar(8)"`
-	// There will be no avatar URL; a user's avatar will be located at a fixed
-	// URL based on the user ID.
+
+	// AvatarUrl refers to a file in JPEG format.
+	AvatarUrl string `gorm:"type:varchar(128)"`
 
 	// About is profile notes.
 	About string `gorm:"type:varchar(2048)"`
@@ -199,6 +200,7 @@ func dbProfileToProfile(p *profile) (*entity.Profile, error) {
 		About:       p.About,
 		Ratings:     rdata,
 		Stats:       sdata,
+		AvatarUrl:	 p.AvatarUrl,
 	}, nil
 }
 

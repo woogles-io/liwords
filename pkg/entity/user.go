@@ -63,6 +63,7 @@ type Profile struct {
 	About       string
 	Ratings     Ratings
 	Stats       ProfileStats
+	AvatarUrl	string
 }
 
 // If the RD is <= this number, the rating is "known"

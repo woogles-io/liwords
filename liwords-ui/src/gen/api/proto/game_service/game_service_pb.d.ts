@@ -45,9 +45,6 @@ export class PlayerInfo extends jspb.Message {
   getTitle(): string;
   setTitle(value: string): void;
 
-  getAvatarUrl(): string;
-  setAvatarUrl(value: string): void;
-
   getIsBot(): boolean;
   setIsBot(value: boolean): void;
 
@@ -72,7 +69,6 @@ export namespace PlayerInfo {
     countryCode: string,
     rating: string,
     title: string,
-    avatarUrl: string,
     isBot: boolean,
     first: boolean,
   }

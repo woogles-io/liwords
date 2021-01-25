@@ -81,6 +81,29 @@ func (ps *ProfileService) GetProfile(ctx context.Context, r *pb.ProfileRequest) 
 	}, nil
 }
 
+func (ps *ProfileService) GetUsersGameInfo(ctx context.Context, r *pb.UsersGameInfoRequest) (*pb.UsersGameInfoResponse, error) {
+	var infos []*pb.UserGameInfo
+
+ 	for _, uuid := range r.Uuids {
+		user, err := ps.userStore.GetByUUID(ctx, uuid)
+		if err == nil {
+			avatarUrl := user.Profile.AvatarUrl
+			if user.IsBot {
+				avatarUrl = "https://woogles-prod-assets.s3.amazonaws.com/macondog.png"
+			}
+			infos = append(infos, &pb.UserGameInfo {
+				Uuid: uuid,
+				AvatarUrl: avatarUrl,
+			 	Title: user.Profile.Title,
+			})
+		}
+ 	}
+
+	return &pb.UsersGameInfoResponse{
+		Infos: infos,
+	}, nil
+}
+
 func (ps *ProfileService) UpdateProfile(ctx context.Context, r *pb.UpdateProfileRequest) (*pb.UpdateProfileResponse, error) {
 	// This view requires authentication.
 	sess, err := apiserver.GetSession(ctx)
