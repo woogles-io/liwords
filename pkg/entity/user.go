@@ -131,3 +131,11 @@ func (u *User) RealName() string {
 	}
 	return ""
 }
+
+func (u *User) AvatarUrl() string {
+	if u.IsBot {
+		return "https://woogles-prod-assets.s3.amazonaws.com/macondog.png"
+	} else {
+		return u.Profile.AvatarUrl
+	}
+}

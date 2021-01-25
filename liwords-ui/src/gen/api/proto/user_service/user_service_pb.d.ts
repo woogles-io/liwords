@@ -541,6 +541,12 @@ export class ProfileResponse extends jspb.Message {
   getUserId(): string;
   setUserId(value: string): void;
 
+  getAvatarUrl(): string;
+  setAvatarUrl(value: string): void;
+
+  getFullName(): string;
+  setFullName(value: string): void;
+
   serializeBinary(): Uint8Array;
   toObject(includeInstance?: boolean): ProfileResponse.AsObject;
   static toObject(includeInstance: boolean, msg: ProfileResponse): ProfileResponse.AsObject;
@@ -561,6 +567,8 @@ export namespace ProfileResponse {
     ratingsJson: string,
     statsJson: string,
     userId: string,
+    avatarUrl: string,
+    fullName: string,
   }
 }
 

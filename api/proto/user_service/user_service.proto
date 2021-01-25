@@ -127,6 +127,8 @@ message ProfileResponse {
   string ratings_json = 6;
   string stats_json = 7;
   string user_id = 8;
+  string avatar_url = 9;
+  string full_name = 10;
 }
 
 message UpdateProfileRequest {

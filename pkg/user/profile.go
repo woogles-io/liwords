@@ -78,6 +78,7 @@ func (ps *ProfileService) GetProfile(ctx context.Context, r *pb.ProfileRequest) 
 		RatingsJson: string(ratjson),
 		StatsJson:   string(statjson),
 		UserId:      user.UUID,
+		AvatarUrl:	 user.AvatarUrl(),
 	}, nil
 }
 
@@ -87,13 +88,9 @@ func (ps *ProfileService) GetUsersGameInfo(ctx context.Context, r *pb.UsersGameI
  	for _, uuid := range r.Uuids {
 		user, err := ps.userStore.GetByUUID(ctx, uuid)
 		if err == nil {
-			avatarUrl := user.Profile.AvatarUrl
-			if user.IsBot {
-				avatarUrl = "https://woogles-prod-assets.s3.amazonaws.com/macondog.png"
-			}
 			infos = append(infos, &pb.UserGameInfo {
 				Uuid: uuid,
-				AvatarUrl: avatarUrl,
+				AvatarUrl: user.AvatarUrl(),
 			 	Title: user.Profile.Title,
 			})
 		}
