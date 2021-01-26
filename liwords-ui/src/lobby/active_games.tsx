@@ -10,6 +10,7 @@ import { calculateTotalTime } from '../store/constants';
 type Props = {
   activeGames: ActiveGame[];
   username?: string;
+  type?: 'RESUME';
 };
 
 export const ActiveGames = (props: Props) => {
@@ -125,9 +126,10 @@ export const ActiveGames = (props: Props) => {
       key: 'details',
     },
   ];
+
   return (
     <>
-      <h4>Games Live Now</h4>
+      <h4>{props.type === 'RESUME' ? 'Resume' : 'Games Live Now'}</h4>
       <Table
         className="games observe"
         dataSource={formatGameData(props.activeGames)}
