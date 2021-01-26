@@ -48,7 +48,7 @@ export const BioCard = React.memo((props: BioProps) => {
     </Link>
 
   return (viewer === username || latestBio !== "") ? (
-    <Card title="Bio" extra={editButton}>
+    <Card title="Bio" extra={viewer === username && editButton}>
       <ReactMarkdown>{latestBio ? latestBio : 'You haven\'t yet provided your bio.'}</ReactMarkdown>
       <Modal
         className="bio-edit-modal"
