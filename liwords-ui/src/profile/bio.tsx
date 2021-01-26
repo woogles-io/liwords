@@ -36,7 +36,7 @@ export const BioCard = React.memo((props: BioProps) => {
     setCandidateBio(e.target.value);
   }, []);
 
-  const editButton = 
+  const editButton = (viewer === username) ? (
     <Link to="/" 
       onClick={(e) => {
         e.preventDefault()
@@ -46,6 +46,7 @@ export const BioCard = React.memo((props: BioProps) => {
       >
       {props.bioLoaded ? (latestBio ? "Edit" : "Add a bio") : ""}
     </Link>
+  ) : null
 
   return (viewer === username || latestBio !== "") ? (
     <Card title="Bio" extra={editButton}>
