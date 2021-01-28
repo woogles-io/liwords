@@ -40,7 +40,6 @@ export const Announcements = React.memo((props: AnnouncementsProps) => {
       body: (
         <a
           href="https://woogles.io/tournament/tarst2"
-          target="_blank"
           rel="noopener noreferrer"
         >
           <p>
@@ -56,8 +55,7 @@ export const Announcements = React.memo((props: AnnouncementsProps) => {
       title: 'Upcoming Tournament - CoCo Blitz Championships',
       body: (
         <a
-          href="https://www.cocoscrabble.org/blitz-champs"
-          target="_blank"
+          href="https://woogles.io/tournament/coco-blitz"
           rel="noopener noreferrer"
         >
           <p>
@@ -92,7 +90,6 @@ export const Announcements = React.memo((props: AnnouncementsProps) => {
       body: (
         <a
           href="https://woogles.io/tournament/vccc"
-          target="_blank"
           rel="noopener noreferrer"
         >
           <p>
@@ -112,7 +109,6 @@ export const Announcements = React.memo((props: AnnouncementsProps) => {
       body: (
         <a
           href="https://woogles.io/about"
-          target="_blank"
           rel="noopener noreferrer"
         >
           <p>
