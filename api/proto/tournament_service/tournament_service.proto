@@ -61,7 +61,6 @@ message TournamentPairingRequest {
   string player_one_id = 1;
   string player_two_id = 2;
   int32 round = 3;
-  bool is_forfeit = 4;
 }
 
 message TournamentPairingsRequest {
@@ -93,6 +92,7 @@ message TournamentStartRoundCountdownRequest {
   string id = 1;
   string division = 2;
   int32 round = 3;
+  bool start_all_rounds = 4;
 }
 
 message TournamentResponse {}
@@ -107,7 +107,6 @@ message GetTournamentMetadataRequest {
   string slug = 2;
 }
 
-message StartTournamentRequest { string id = 1; }
 message FinishTournamentRequest { string id = 1; }
 
 message TournamentMetadataResponse {
@@ -135,14 +134,14 @@ service TournamentService {
   rpc NewTournament(NewTournamentRequest) returns (NewTournamentResponse);
   rpc GetTournamentMetadata(GetTournamentMetadataRequest)
       returns (TournamentMetadataResponse);
-  rpc StartTournament(StartTournamentRequest) returns (TournamentResponse);
+  rpc StartAllRoundCountdowns(TournamentStartRoundCountdownRequest) returns (TournamentResponse);
   rpc FinishTournament(FinishTournamentRequest) returns (TournamentResponse);
   rpc SetTournamentMetadata(SetTournamentMetadataRequest)
       returns (TournamentResponse);
   rpc PairRound(PairRoundRequest) returns (TournamentResponse);
   rpc SetSingleRoundControls(SingleRoundControlsRequest)
       returns (TournamentResponse);
-  rpc SetTournamentControls(liwords.TournamentControls)
+  rpc SetTournamentControls(liwords.DivisionControls)
       returns (TournamentResponse);
   // Input to AddDirectors should be director usernames.
   rpc AddDirectors(liwords.TournamentPersons) returns (TournamentResponse);

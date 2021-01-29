@@ -99,9 +99,12 @@ enum MessageType {
   REMATCH_STARTED = 29;
   TOURNAMENT_DIVISION_MESSAGE = 30;
   TOURNAMENT_DIVISION_DELETED_MESSAGE = 31;
-
   TOURNAMENT_FULL_DIVISIONS_MESSAGE = 32;
-
+  TOURNAMENT_DIVISION_ROUND_CONTROLS_MESSAGE = 34;
+  TOURNAMENT_DIVISION_PAIRINGS_MESSAGE = 35;
+  TOURNAMENT_DIVISION_CONTROLS_MESSAGE = 36;
+  TOURNAMENT_DIVISION_PLAYER_CHANGE_MESSAGE = 37;
+  TOURNAMENT_FINISHED_MESSAGE = 38;
   // Add more events here. The total number of events should fit in a byte.
   // We should definitely not be using anywhere close to 255 events, and
   // in order to enforce that I'll be forcing the event type header to just be
@@ -434,6 +437,7 @@ message DivisionControls {
   GameRequest game_request = 3;
   TournamentGameResult suspended_result = 4;
   int32 suspended_spread = 5;
+  bool auto_start = 6;
 }
 
 message TournamentGame {
@@ -443,15 +447,15 @@ message TournamentGame {
   string id = 4;
 }
 
-message PlayerRoundInfo {
-  repeated string players = 1;
+message Pairing {
+  repeated int32 players = 1;
   repeated TournamentGame games = 2; // can be a list, for elimination tourneys
   repeated TournamentGameResult outcomes = 3;
   repeated string ready_states = 4;
 }
 
 message PlayerStanding {
-  string player = 1;
+  string player_id = 1;
   int32 wins = 2;
   int32 losses = 3;
   int32 draws = 4;
@@ -460,24 +464,55 @@ message PlayerStanding {
 
 message RoundStandings { repeated PlayerStanding standings = 1; }
 
-message ClassicDivision { repeated PlayerRoundInfo matrix = 1; }
+message RoundPairings {
+  int32 round = 1;
+  repeated Pairing pairings = 2;
+}
+
+message DivisionPairingsResponse {
+  string id = 1;
+  string division = 2;
+  repeated RoundPairings division_pairings = 3;
+}
+
+message PlayerAddedOrRemovedResponse {
+  string id = 1;
+  string division = 2;
+  bool added = 3;
+  TournamentPersons players = 4;
+  repeated RoundPairings division_pairings = 5;
+}
+
+message StartRoundResponse {
+  string id = 1;
+  repeated string division_ids = 2;
+  repeated int32 rounds = 3;
+}
+
+message DivisionRoundControlsResponse {
+  string id = 1;
+  string division = 2;
+  repeated RoundControl round_controls = 3;
+}
+
+message DivisionControlsResponse {
+  string id = 1;
+  string division = 2;
+  DivisionControls division_controls = 3;
+}
 
 message TournamentDivisionDataResponse {
   string id = 1;
-  string division_id = 2;
-  repeated string players = 3;
-  // DEPRECIATED
-  // TournamentControls controls = 4;
-  // In the future we will add different
-  // types of tournament divisions and only
-  // one will be non nil
-  repeated string division = 5;
-  // DEPRECIATED
-  map<string, int32> player_index_map = 6;
-  map<string, PlayerRoundInfo> pairing_map = 7;
-  int32 current_round = 8;
-  map<int32, RoundStandings> standings = 9;
-  bool finished = 11;
+  string division = 2;
+  TournamentPersons players = 3;
+  map<string, Pairing> pairing_map = 4;
+  DivisionControls controls = 5;
+  repeated RoundControl round_controls = 6;
+  int32 current_round = 7;
+}
+
+message TournamentFinishedResponse {
+  string id = 1;
 }
 
 message TournamentDataResponse {

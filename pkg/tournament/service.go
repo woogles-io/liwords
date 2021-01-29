@@ -89,13 +89,13 @@ func (ts *TournamentService) SetSingleRoundControls(ctx context.Context, req *pb
 	return &pb.TournamentResponse{}, nil
 }
 
-func (ts *TournamentService) SetTournamentControls(ctx context.Context, req *realtime.TournamentControls) (*pb.TournamentResponse, error) {
+func (ts *TournamentService) SetDivisionControls(ctx context.Context, req *realtime.DivisionControls) (*pb.TournamentResponse, error) {
 	err := authenticateDirector(ctx, ts, req.Id, false)
 	if err != nil {
 		return nil, err
 	}
 
-	err = SetTournamentControls(ctx, ts.tournamentStore, req.Id, req.Division, req)
+	err = SetDivisionControls(ctx, ts.tournamentStore, req.Id, req.Division, req)
 
 	if err != nil {
 		return nil, twirp.NewError(twirp.InvalidArgument, err.Error())
@@ -113,7 +113,7 @@ func (ts *TournamentService) NewTournament(ctx context.Context, req *pb.NewTourn
 		return nil, twirp.NewError(twirp.InvalidArgument, "need at least one director id")
 	}
 	directors := &realtime.TournamentPersons{
-		Persons: make(map[string]int32),
+		Persons: []*realtime.TournamentPerson{},
 	}
 	for idx := range req.DirectorUsernames {
 		username := req.DirectorUsernames[idx]
@@ -121,7 +121,7 @@ func (ts *TournamentService) NewTournament(ctx context.Context, req *pb.NewTourn
 		if err != nil {
 			return nil, err
 		}
-		directors.Persons[u.UUID+":"+u.Username] = int32(idx)
+		directors.Persons = append(directors.Persons, &realtime.TournamentPerson{Id: u.UUID + ":" + u.Username, Rating: int32(idx)})
 	}
 
 	log.Debug().Interface("directors", directors).Msg("directors")
@@ -164,10 +164,10 @@ func (ts *TournamentService) GetTournamentMetadata(ctx context.Context, req *pb.
 
 	directors := []string{}
 
-	for uid, n := range t.Directors.Persons {
+	for n, director := range t.Directors.Persons {
 		// Legacy "persons" are stored as just their UUIDs.
 		// We later on store them as uuid:username to speed up lookups.
-		splitid := strings.Split(uid, ":")
+		splitid := strings.Split(director.Id, ":")
 		var uuid, username string
 		if len(splitid) == 2 {
 			username = splitid[1]
@@ -175,7 +175,7 @@ func (ts *TournamentService) GetTournamentMetadata(ctx context.Context, req *pb.
 		} else if len(splitid) == 1 {
 			uuid = splitid[0]
 		} else {
-			return nil, twirp.NewError(twirp.InvalidArgument, "bad userID: "+uid)
+			return nil, twirp.NewError(twirp.InvalidArgument, "bad userID: "+director.Id)
 		}
 
 		if username == "" {
@@ -334,18 +334,6 @@ func (ts *TournamentService) RecentGames(ctx context.Context, req *pb.RecentGame
 	return response, nil
 }
 
-func (ts *TournamentService) StartTournament(ctx context.Context, req *pb.StartTournamentRequest) (*pb.TournamentResponse, error) {
-	err := authenticateDirector(ctx, ts, req.Id, true)
-	if err != nil {
-		return nil, err
-	}
-	err = StartTournament(ctx, ts.tournamentStore, req.Id, true)
-	if err != nil {
-		return nil, twirp.NewError(twirp.InvalidArgument, err.Error())
-	}
-	return &pb.TournamentResponse{}, nil
-}
-
 func (ts *TournamentService) FinishTournament(ctx context.Context, req *pb.FinishTournamentRequest) (*pb.TournamentResponse, error) {
 	err := authenticateDirector(ctx, ts, req.Id, true)
 	if err != nil {
@@ -363,7 +351,13 @@ func (ts *TournamentService) StartRoundCountdown(ctx context.Context, req *pb.To
 	if err != nil {
 		return nil, err
 	}
-	err = StartRoundCountdown(ctx, ts.tournamentStore, req.Id, req.Division, int(req.Round), true, true)
+
+	if req.StartAllRounds {
+		err = StartAllRoundCountdowns(ctx, ts.tournamentStore, req.Id, int(req.Round))
+	} else {
+		err = StartRoundCountdown(ctx, ts.tournamentStore, req.Id, req.Division, int(req.Round), true, true)
+	}
+
 	if err != nil {
 		return nil, twirp.NewError(twirp.InvalidArgument, err.Error())
 	}
@@ -417,7 +411,13 @@ func authenticateDirector(ctx context.Context, ts *TournamentService, id string,
 	if authenticateExecutive && fullID != t.ExecutiveDirector {
 		return twirp.NewError(twirp.Unauthenticated, "this user is not the authorized executive director for this event")
 	}
-	_, authorized := t.Directors.Persons[fullID]
+	authorized := false
+	for _, director := range t.Directors.Persons {
+		if director.Id == fullID {
+			authorized = true
+			break
+		}
+	}
 	if !authorized {
 		return twirp.NewError(twirp.Unauthenticated, "this user is not an authorized director for this event")
 	}

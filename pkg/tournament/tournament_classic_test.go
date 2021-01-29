@@ -10,7 +10,7 @@ import (
 	realtime "github.com/domino14/liwords/rpc/api/proto/realtime"
 )
 
-var playerRatings = &realtime.TournamentPersons{Persons: map[string]int32{"Will": 1000, "Josh": 3000, "Conrad": 2200, "Jesse": 2100, "Matt": 100}}
+var playerRatings = makeTournamentPersons(map[string]int32{"Will": 1000, "Josh": 3000, "Conrad": 2200, "Jesse": 2100, "Matt": 100})
 var playerStrings = []string{"Will", "Josh", "Conrad", "Jesse"}
 var playersOddStrings = []string{"Will", "Josh", "Conrad", "Jesse", "Matt"}
 var rounds = 2
@@ -21,15 +21,15 @@ func TestClassicDivisionZeroOrOnePlayers(t *testing.T) {
 	// Division creation with zero or one players is a special
 	// case that should not fail
 	is := is.New(t)
-	playerOZRatings := &realtime.TournamentPersons{Persons: map[string]int32{"One": 1000, "Two": 3000, "Three": 2200, "Jesse": 2100, "Matt": 100}}
+	playerOZRatings := makeTournamentPersons(map[string]int32{"One": 1000, "Two": 3000, "Three": 2200, "Jesse": 2100, "Matt": 100})
 
-	_, err := NewClassicDivision([]string{"One", "Two", "Three"}, playerOZRatings, defaultRoundControls(0), true)
+	_, err := compactNewClassicDivision(playerOZRatings, defaultRoundControls(0), true)
 	is.NoErr(err)
 
-	_, err = NewClassicDivision([]string{}, playerOZRatings, defaultRoundControls(2), true)
+	_, err = compactNewClassicDivision(playerOZRatings, defaultRoundControls(2), true)
 	is.NoErr(err)
 
-	_, err = NewClassicDivision([]string{"One"}, playerOZRatings, defaultRoundControls(2), true)
+	_, err = compactNewClassicDivision(playerOZRatings, defaultRoundControls(2), true)
 	is.NoErr(err)
 }
 
@@ -43,7 +43,7 @@ func TestClassicDivisionRandom(t *testing.T) {
 
 	roundControls = defaultRoundControls(rounds)
 
-	tc, err := NewClassicDivision(playerStrings, playerRatings, roundControls, true)
+	tc, err := compactNewClassicDivision(playerRatings, roundControls, true)
 	is.NoErr(err)
 	is.True(tc != nil)
 
@@ -57,22 +57,21 @@ func TestClassicDivisionRandom(t *testing.T) {
 	_, err = tc.getPairing("No one", 1)
 	is.True(err != nil)
 
-	playerPairings := tc.getPlayerPairings(0)
-	player1 := playerPairings[0]
-	player2 := playerPairings[1]
-	player3 := playerPairings[2]
-	player4 := playerPairings[3]
+	player1 := playerStrings[0]
+	player2 := playerStrings[1]
+	player3 := playerStrings[2]
+	player4 := playerStrings[3]
 
 	pairing1, err := tc.getPairing(player1, 0)
 	is.NoErr(err)
 	pairing2, err := tc.getPairing(player3, 0)
 	is.NoErr(err)
 
-	expectedpairing1 := newClassicPairing(tc, player1, player2, 0)
-	expectedpairing2 := newClassicPairing(tc, player3, player4, 0)
+	expectedpairing1 := newClassicPairing(tc, 0, 1, 0)
+	expectedpairing2 := newClassicPairing(tc, 2, 3, 0)
 
 	// Submit result for an unpaired round
-	err = tc.SubmitResult(1, player1, player2, 10000, -40, realtime.TournamentGameResult_WIN,
+	_, err = tc.SubmitResult(1, player1, player2, 10000, -40, realtime.TournamentGameResult_WIN,
 		realtime.TournamentGameResult_LOSS, realtime.GameEndReason_STANDARD, false, 0, "")
 	is.True(err != nil)
 
@@ -80,7 +79,7 @@ func TestClassicDivisionRandom(t *testing.T) {
 	is.NoErr(equalPlayerRoundInfo(expectedpairing1, pairing1))
 
 	// Submit result for players that didn't play each other
-	err = tc.SubmitResult(0, player1, player3, 10000, -40, realtime.TournamentGameResult_WIN,
+	_, err = tc.SubmitResult(0, player1, player3, 10000, -40, realtime.TournamentGameResult_WIN,
 		realtime.TournamentGameResult_LOSS, realtime.GameEndReason_STANDARD, false, 0, "")
 	is.True(err != nil)
 
@@ -88,7 +87,7 @@ func TestClassicDivisionRandom(t *testing.T) {
 	is.NoErr(equalPlayerRoundInfo(expectedpairing1, pairing1))
 
 	// Submit a result for game index that is out of range
-	err = tc.SubmitResult(0, player1, player2, 10000, -40, realtime.TournamentGameResult_WIN,
+	_, err = tc.SubmitResult(0, player1, player2, 10000, -40, realtime.TournamentGameResult_WIN,
 		realtime.TournamentGameResult_LOSS, realtime.GameEndReason_STANDARD, false, 4, "")
 	is.True(err != nil)
 
@@ -96,7 +95,7 @@ func TestClassicDivisionRandom(t *testing.T) {
 	is.NoErr(equalPlayerRoundInfo(expectedpairing1, pairing1))
 
 	// Submit a result before the tournament has started
-	err = tc.SubmitResult(0, player1, player2, 10000, -40, realtime.TournamentGameResult_WIN,
+	_, err = tc.SubmitResult(0, player1, player2, 10000, -40, realtime.TournamentGameResult_WIN,
 		realtime.TournamentGameResult_LOSS, realtime.GameEndReason_STANDARD, false, 0, "")
 	is.True(err != nil)
 
@@ -104,7 +103,7 @@ func TestClassicDivisionRandom(t *testing.T) {
 	is.NoErr(err)
 
 	// Submit a result for a paired round
-	err = tc.SubmitResult(0, player1, player2, 10000, -40, realtime.TournamentGameResult_WIN,
+	_, err = tc.SubmitResult(0, player1, player2, 10000, -40, realtime.TournamentGameResult_WIN,
 		realtime.TournamentGameResult_LOSS, realtime.GameEndReason_STANDARD, false, 0, "")
 	is.NoErr(err)
 
@@ -119,7 +118,7 @@ func TestClassicDivisionRandom(t *testing.T) {
 	is.NoErr(equalPlayerRoundInfo(expectedpairing1, pairing1))
 
 	// Attempt to submit the same result
-	err = tc.SubmitResult(0, player1, player2, 10000, -40, realtime.TournamentGameResult_WIN,
+	_, err = tc.SubmitResult(0, player1, player2, 10000, -40, realtime.TournamentGameResult_WIN,
 		realtime.TournamentGameResult_LOSS, realtime.GameEndReason_STANDARD, false, 0, "")
 	is.True(err != nil)
 
@@ -129,7 +128,7 @@ func TestClassicDivisionRandom(t *testing.T) {
 	// Round 2 should not have been paired,
 	// so attempting to submit a result for
 	// it will throw an error.
-	err = tc.SubmitResult(1, player1, player2, 10000, -40,
+	_, err = tc.SubmitResult(1, player1, player2, 10000, -40,
 		realtime.TournamentGameResult_WIN,
 		realtime.TournamentGameResult_LOSS,
 		realtime.GameEndReason_STANDARD, false, 0, "")
@@ -139,7 +138,7 @@ func TestClassicDivisionRandom(t *testing.T) {
 	is.NoErr(equalPlayerRoundInfo(expectedpairing1, pairing1))
 
 	// Amend the result
-	err = tc.SubmitResult(0, player1, player2, 30, 900,
+	_, err = tc.SubmitResult(0, player1, player2, 30, 900,
 		realtime.TournamentGameResult_LOSS,
 		realtime.TournamentGameResult_WIN,
 		realtime.GameEndReason_STANDARD, true, 0, "")
@@ -156,7 +155,7 @@ func TestClassicDivisionRandom(t *testing.T) {
 	is.NoErr(equalPlayerRoundInfo(expectedpairing1, pairing1))
 
 	// Submit the final result for round 1
-	err = tc.SubmitResult(0, player3, player4, 1, 1,
+	_, err = tc.SubmitResult(0, player3, player4, 1, 1,
 		realtime.TournamentGameResult_DRAW,
 		realtime.TournamentGameResult_DRAW,
 		realtime.GameEndReason_CANCELLED, false, 0, "")
@@ -177,9 +176,9 @@ func TestClassicDivisionRandom(t *testing.T) {
 	is.True(roundIsComplete)
 
 	// Set pairings to test more easily
-	err = tc.SetPairing(player1, player2, 1, false)
+	_, err = tc.SetPairing(player1, player2, 1)
 	is.NoErr(err)
-	err = tc.SetPairing(player3, player4, 1, false)
+	_, err = tc.SetPairing(player3, player4, 1)
 	is.NoErr(err)
 
 	pairing1, err = tc.getPairing(player1, 1)
@@ -187,13 +186,13 @@ func TestClassicDivisionRandom(t *testing.T) {
 	pairing2, err = tc.getPairing(player3, 1)
 	is.NoErr(err)
 
-	expectedpairing1 = newClassicPairing(tc, player1, player2, 1)
-	expectedpairing2 = newClassicPairing(tc, player3, player4, 1)
+	expectedpairing1 = newClassicPairing(tc, 0, 1, 1)
+	expectedpairing2 = newClassicPairing(tc, 2, 3, 1)
 
 	// Round 2 should have been paired,
 	// submit a result
 
-	err = tc.SubmitResult(1, player1, player2, 0, 0,
+	_, err = tc.SubmitResult(1, player1, player2, 0, 0,
 		realtime.TournamentGameResult_FORFEIT_LOSS,
 		realtime.TournamentGameResult_FORFEIT_LOSS,
 		realtime.GameEndReason_FORCE_FORFEIT, false, 0, "")
@@ -210,7 +209,7 @@ func TestClassicDivisionRandom(t *testing.T) {
 	is.NoErr(equalPlayerRoundInfo(expectedpairing1, pairing1))
 
 	// Submit the final tournament results
-	err = tc.SubmitResult(1, player3, player4, 50, 50,
+	_, err = tc.SubmitResult(1, player3, player4, 50, 50,
 		realtime.TournamentGameResult_BYE,
 		realtime.TournamentGameResult_BYE,
 		realtime.GameEndReason_CANCELLED, false, 0, "")
@@ -249,8 +248,9 @@ func TestClassicDivisionRandom(t *testing.T) {
 	_, err = tc.GetStandings(1)
 	is.NoErr(err)
 
+	oddPlayers := makeTournamentPersons(map[string]int32{"One": 1000, "Two": 3000, "Three": 2200, "Jesse": 2100, "Matt": 100})
 	// Check that pairings are correct with an odd number of players
-	tc, err = NewClassicDivision(playersOddStrings, playerRatings, roundControls, true)
+	tc, err = compactNewClassicDivision(oddPlayers, roundControls, true)
 	is.NoErr(err)
 	is.True(tc != nil)
 
@@ -270,7 +270,7 @@ func TestClassicDivisionKingOfTheHill(t *testing.T) {
 		roundControls[i].PairingMethod = realtime.PairingMethod_KING_OF_THE_HILL
 	}
 
-	tc, err := NewClassicDivision(playerStrings, playerRatings, roundControls, true)
+	tc, err := compactNewClassicDivision(playerRatings, roundControls, true)
 	is.NoErr(err)
 	is.True(tc != nil)
 
@@ -290,13 +290,13 @@ func TestClassicDivisionKingOfTheHill(t *testing.T) {
 	is.NoErr(err)
 
 	// Submit results for the round
-	err = tc.SubmitResult(0, player1, player2, 550, 400,
+	_, err = tc.SubmitResult(0, player1, player2, 550, 400,
 		realtime.TournamentGameResult_WIN,
 		realtime.TournamentGameResult_LOSS,
 		realtime.GameEndReason_STANDARD, false, 0, "")
 	is.NoErr(err)
 
-	err = tc.SubmitResult(0, player3, player4, 300, 700,
+	_, err = tc.SubmitResult(0, player3, player4, 300, 700,
 		realtime.TournamentGameResult_LOSS,
 		realtime.TournamentGameResult_WIN,
 		realtime.GameEndReason_STANDARD, false, 0, "")
@@ -306,10 +306,10 @@ func TestClassicDivisionKingOfTheHill(t *testing.T) {
 	standings, err := tc.GetStandings(0)
 	is.NoErr(err)
 
-	expectedstandings := []*realtime.PlayerStanding{&realtime.PlayerStanding{Player: player4, Wins: 1, Losses: 0, Draws: 0, Spread: 400},
-		&realtime.PlayerStanding{Player: player1, Wins: 1, Losses: 0, Draws: 0, Spread: 150},
-		&realtime.PlayerStanding{Player: player2, Wins: 0, Losses: 1, Draws: 0, Spread: -150},
-		&realtime.PlayerStanding{Player: player3, Wins: 0, Losses: 1, Draws: 0, Spread: -400},
+	expectedstandings := []*realtime.PlayerStanding{&realtime.PlayerStanding{PlayerId: player4, Wins: 1, Losses: 0, Draws: 0, Spread: 400},
+		&realtime.PlayerStanding{PlayerId: player1, Wins: 1, Losses: 0, Draws: 0, Spread: 150},
+		&realtime.PlayerStanding{PlayerId: player2, Wins: 0, Losses: 1, Draws: 0, Spread: -150},
+		&realtime.PlayerStanding{PlayerId: player3, Wins: 0, Losses: 1, Draws: 0, Spread: -400},
 	}
 
 	is.NoErr(equalStandings(expectedstandings, standings))
@@ -322,13 +322,13 @@ func TestClassicDivisionKingOfTheHill(t *testing.T) {
 	is.True(!tournamentIsFinished)
 
 	// Submit results for the round
-	err = tc.SubmitResult(1, player1, player4, 670, 400,
+	_, err = tc.SubmitResult(1, player1, player4, 670, 400,
 		realtime.TournamentGameResult_WIN,
 		realtime.TournamentGameResult_LOSS,
 		realtime.GameEndReason_STANDARD, false, 0, "")
 	is.NoErr(err)
 
-	err = tc.SubmitResult(1, player3, player2, 700, 700,
+	_, err = tc.SubmitResult(1, player3, player2, 700, 700,
 		realtime.TournamentGameResult_DRAW,
 		realtime.TournamentGameResult_DRAW,
 		realtime.GameEndReason_STANDARD, false, 0, "")
@@ -338,10 +338,10 @@ func TestClassicDivisionKingOfTheHill(t *testing.T) {
 	standings, err = tc.GetStandings(1)
 	is.NoErr(err)
 
-	expectedstandings = []*realtime.PlayerStanding{&realtime.PlayerStanding{Player: player1, Wins: 2, Losses: 0, Draws: 0, Spread: 420},
-		&realtime.PlayerStanding{Player: player4, Wins: 1, Losses: 1, Draws: 0, Spread: 130},
-		&realtime.PlayerStanding{Player: player2, Wins: 0, Losses: 1, Draws: 1, Spread: -150},
-		&realtime.PlayerStanding{Player: player3, Wins: 0, Losses: 1, Draws: 1, Spread: -400},
+	expectedstandings = []*realtime.PlayerStanding{&realtime.PlayerStanding{PlayerId: player1, Wins: 2, Losses: 0, Draws: 0, Spread: 420},
+		&realtime.PlayerStanding{PlayerId: player4, Wins: 1, Losses: 1, Draws: 0, Spread: 130},
+		&realtime.PlayerStanding{PlayerId: player2, Wins: 0, Losses: 1, Draws: 1, Spread: -150},
+		&realtime.PlayerStanding{PlayerId: player3, Wins: 0, Losses: 1, Draws: 1, Spread: -400},
 	}
 
 	is.NoErr(equalStandings(expectedstandings, standings))
@@ -372,8 +372,8 @@ func TestClassicDivisionFactor(t *testing.T) {
 			RepeatRelativeWeight:        1,
 			WinDifferenceRelativeWeight: 1})
 	}
-	playerLetterRatings := &realtime.TournamentPersons{Persons: map[string]int32{"h": 1000, "g": 3000, "f": 2200, "e": 2100, "d": 12, "c": 43, "b": 40, "a": 2}}
-	tc, err := NewClassicDivision([]string{"h", "g", "f", "e", "d", "c", "b", "a"}, playerLetterRatings, roundControls, true)
+	playerLetterRatings := makeTournamentPersons(map[string]int32{"h": 1000, "g": 3000, "f": 2200, "e": 2100, "d": 12, "c": 43, "b": 40, "a": 2})
+	tc, err := compactNewClassicDivision(playerLetterRatings, roundControls, true)
 	is.NoErr(err)
 	is.True(tc != nil)
 
@@ -384,25 +384,25 @@ func TestClassicDivisionFactor(t *testing.T) {
 
 	// This should throw an error since it attempts
 	// to amend a result that never existed
-	err = tc.SubmitResult(0, "h", "f", 900, 500,
+	_, err = tc.SubmitResult(0, "h", "f", 900, 500,
 		realtime.TournamentGameResult_WIN,
 		realtime.TournamentGameResult_LOSS,
 		realtime.GameEndReason_STANDARD, true, 0, "")
 	is.True(err != nil)
 
-	err = tc.SubmitResult(0, "h", "f", 900, 500,
+	_, err = tc.SubmitResult(0, "h", "f", 900, 500,
 		realtime.TournamentGameResult_WIN,
 		realtime.TournamentGameResult_LOSS,
 		realtime.GameEndReason_STANDARD, false, 0, "")
 	is.NoErr(err)
 
-	err = tc.SubmitResult(0, "g", "e", 800, 500,
+	_, err = tc.SubmitResult(0, "g", "e", 800, 500,
 		realtime.TournamentGameResult_WIN,
 		realtime.TournamentGameResult_LOSS,
 		realtime.GameEndReason_STANDARD, false, 0, "")
 	is.NoErr(err)
 
-	err = tc.SubmitResult(0, "d", "a", 700, 500,
+	_, err = tc.SubmitResult(0, "d", "a", 700, 500,
 		realtime.TournamentGameResult_WIN,
 		realtime.TournamentGameResult_LOSS,
 		realtime.GameEndReason_STANDARD, false, 0, "")
@@ -412,7 +412,7 @@ func TestClassicDivisionFactor(t *testing.T) {
 	// players and an error should be returned
 	tc.RoundControls[1].Factor = 5
 
-	err = tc.SubmitResult(0, "c", "b", 600, 500,
+	_, err = tc.SubmitResult(0, "c", "b", 600, 500,
 		realtime.TournamentGameResult_WIN,
 		realtime.TournamentGameResult_LOSS,
 		realtime.GameEndReason_STANDARD, false, 0, "")
@@ -426,21 +426,21 @@ func TestClassicDivisionFactor(t *testing.T) {
 	standings, err := tc.GetStandings(0)
 	is.NoErr(err)
 
-	expectedstandings := []*realtime.PlayerStanding{&realtime.PlayerStanding{Player: "h", Wins: 1, Losses: 0, Draws: 0, Spread: 400},
-		&realtime.PlayerStanding{Player: "g", Wins: 1, Losses: 0, Draws: 0, Spread: 300},
-		&realtime.PlayerStanding{Player: "d", Wins: 1, Losses: 0, Draws: 0, Spread: 200},
-		&realtime.PlayerStanding{Player: "c", Wins: 1, Losses: 0, Draws: 0, Spread: 100},
-		&realtime.PlayerStanding{Player: "b", Wins: 0, Losses: 1, Draws: 0, Spread: -100},
-		&realtime.PlayerStanding{Player: "a", Wins: 0, Losses: 1, Draws: 0, Spread: -200},
-		&realtime.PlayerStanding{Player: "e", Wins: 0, Losses: 1, Draws: 0, Spread: -300},
-		&realtime.PlayerStanding{Player: "f", Wins: 0, Losses: 1, Draws: 0, Spread: -400},
+	expectedstandings := []*realtime.PlayerStanding{&realtime.PlayerStanding{PlayerId: "h", Wins: 1, Losses: 0, Draws: 0, Spread: 400},
+		&realtime.PlayerStanding{PlayerId: "g", Wins: 1, Losses: 0, Draws: 0, Spread: 300},
+		&realtime.PlayerStanding{PlayerId: "d", Wins: 1, Losses: 0, Draws: 0, Spread: 200},
+		&realtime.PlayerStanding{PlayerId: "c", Wins: 1, Losses: 0, Draws: 0, Spread: 100},
+		&realtime.PlayerStanding{PlayerId: "b", Wins: 0, Losses: 1, Draws: 0, Spread: -100},
+		&realtime.PlayerStanding{PlayerId: "a", Wins: 0, Losses: 1, Draws: 0, Spread: -200},
+		&realtime.PlayerStanding{PlayerId: "e", Wins: 0, Losses: 1, Draws: 0, Spread: -300},
+		&realtime.PlayerStanding{PlayerId: "f", Wins: 0, Losses: 1, Draws: 0, Spread: -400},
 	}
 
 	is.NoErr(equalStandings(expectedstandings, standings))
 
 	tc.RoundControls[1].Factor = 3
 
-	err = tc.PairRound(1)
+	_, err = tc.PairRound(1)
 	is.NoErr(err)
 
 	err = tc.StartRound()
@@ -448,25 +448,25 @@ func TestClassicDivisionFactor(t *testing.T) {
 
 	// Standings should be: 1, 2, 5, 8, 7, 6, 4, 3
 
-	err = tc.SubmitResult(1, "h", "c", 400, 500,
+	_, err = tc.SubmitResult(1, "h", "c", 400, 500,
 		realtime.TournamentGameResult_LOSS,
 		realtime.TournamentGameResult_WIN,
 		realtime.GameEndReason_STANDARD, false, 0, "")
 	is.NoErr(err)
 
-	err = tc.SubmitResult(1, "g", "b", 400, 500,
+	_, err = tc.SubmitResult(1, "g", "b", 400, 500,
 		realtime.TournamentGameResult_LOSS,
 		realtime.TournamentGameResult_WIN,
 		realtime.GameEndReason_STANDARD, false, 0, "")
 	is.NoErr(err)
 
-	err = tc.SubmitResult(1, "d", "a", 400, 500,
+	_, err = tc.SubmitResult(1, "d", "a", 400, 500,
 		realtime.TournamentGameResult_LOSS,
 		realtime.TournamentGameResult_WIN,
 		realtime.GameEndReason_STANDARD, false, 0, "")
 	is.NoErr(err)
 
-	err = tc.SubmitResult(1, "e", "f", 400, 500,
+	_, err = tc.SubmitResult(1, "e", "f", 400, 500,
 		realtime.TournamentGameResult_LOSS,
 		realtime.TournamentGameResult_WIN,
 		realtime.GameEndReason_STANDARD, false, 0, "")
@@ -496,7 +496,7 @@ func TestClassicDivisionSwiss(t *testing.T) {
 
 	roundControls[0].PairingMethod = realtime.PairingMethod_KING_OF_THE_HILL
 
-	tc, err := NewClassicDivision(playerStrings, playerRatings, roundControls, true)
+	tc, err := compactNewClassicDivision(playerRatings, roundControls, true)
 	is.NoErr(err)
 	is.True(tc != nil)
 
@@ -510,25 +510,25 @@ func TestClassicDivisionSwiss(t *testing.T) {
 	err = tc.StartRound()
 	is.NoErr(err)
 
-	err = tc.SubmitResult(0, player1, player2, 900, 500,
+	_, err = tc.SubmitResult(0, player1, player2, 900, 500,
 		realtime.TournamentGameResult_WIN,
 		realtime.TournamentGameResult_LOSS,
 		realtime.GameEndReason_STANDARD, false, 0, "")
 	is.NoErr(err)
 
-	err = tc.SubmitResult(0, player3, player4, 800, 500,
+	_, err = tc.SubmitResult(0, player3, player4, 800, 500,
 		realtime.TournamentGameResult_WIN,
 		realtime.TournamentGameResult_LOSS,
 		realtime.GameEndReason_STANDARD, false, 0, "")
 	is.NoErr(err)
 
-	err = tc.SubmitResult(1, player1, player3, 900, 500,
+	_, err = tc.SubmitResult(1, player1, player3, 900, 500,
 		realtime.TournamentGameResult_WIN,
 		realtime.TournamentGameResult_LOSS,
 		realtime.GameEndReason_STANDARD, false, 0, "")
 	is.NoErr(err)
 
-	err = tc.SubmitResult(1, player2, player4, 800, 500,
+	_, err = tc.SubmitResult(1, player2, player4, 800, 500,
 		realtime.TournamentGameResult_WIN,
 		realtime.TournamentGameResult_LOSS,
 		realtime.GameEndReason_STANDARD, false, 0, "")
@@ -537,13 +537,13 @@ func TestClassicDivisionSwiss(t *testing.T) {
 	// Since repeats only have a weight of 1,
 	// player1 and player4 should be playing each other
 
-	err = tc.SubmitResult(2, player1, player4, 900, 500,
+	_, err = tc.SubmitResult(2, player1, player4, 900, 500,
 		realtime.TournamentGameResult_WIN,
 		realtime.TournamentGameResult_LOSS,
 		realtime.GameEndReason_STANDARD, false, 0, "")
 	is.NoErr(err)
 
-	err = tc.SubmitResult(2, player2, player3, 800, 500,
+	_, err = tc.SubmitResult(2, player2, player3, 800, 500,
 		realtime.TournamentGameResult_WIN,
 		realtime.TournamentGameResult_LOSS,
 		realtime.GameEndReason_STANDARD, false, 0, "")
@@ -556,7 +556,7 @@ func TestClassicDivisionSwiss(t *testing.T) {
 		is.True(v == 1)
 	}
 
-	err = tc.SubmitResult(3, player2, player1, 900, 500,
+	_, err = tc.SubmitResult(3, player2, player1, 900, 500,
 		realtime.TournamentGameResult_WIN,
 		realtime.TournamentGameResult_LOSS,
 		realtime.GameEndReason_STANDARD, false, 0, "")
@@ -566,7 +566,7 @@ func TestClassicDivisionSwiss(t *testing.T) {
 	tc.RoundControls[4].PairingMethod = realtime.PairingMethod_FACTOR
 	tc.RoundControls[4].Factor = 2
 
-	err = tc.SubmitResult(3, player3, player4, 800, 700,
+	_, err = tc.SubmitResult(3, player3, player4, 800, 700,
 		realtime.TournamentGameResult_WIN,
 		realtime.TournamentGameResult_LOSS,
 		realtime.GameEndReason_STANDARD, false, 0, "")
@@ -576,15 +576,15 @@ func TestClassicDivisionSwiss(t *testing.T) {
 	standings, err := tc.GetStandings(3)
 	is.NoErr(err)
 
-	expectedstandings := []*realtime.PlayerStanding{&realtime.PlayerStanding{Player: player1, Wins: 3, Losses: 1, Draws: 0, Spread: 800},
-		&realtime.PlayerStanding{Player: player2, Wins: 3, Losses: 1, Draws: 0, Spread: 600},
-		&realtime.PlayerStanding{Player: player3, Wins: 2, Losses: 2, Draws: 0, Spread: -300},
-		&realtime.PlayerStanding{Player: player4, Wins: 0, Losses: 4, Draws: 0, Spread: -1100},
+	expectedstandings := []*realtime.PlayerStanding{&realtime.PlayerStanding{PlayerId: player1, Wins: 3, Losses: 1, Draws: 0, Spread: 800},
+		&realtime.PlayerStanding{PlayerId: player2, Wins: 3, Losses: 1, Draws: 0, Spread: 600},
+		&realtime.PlayerStanding{PlayerId: player3, Wins: 2, Losses: 2, Draws: 0, Spread: -300},
+		&realtime.PlayerStanding{PlayerId: player4, Wins: 0, Losses: 4, Draws: 0, Spread: -1100},
 	}
 
 	is.NoErr(equalStandings(expectedstandings, standings))
 
-	err = tc.SubmitResult(4, player1, player3, 900, 800,
+	_, err = tc.SubmitResult(4, player1, player3, 900, 800,
 		realtime.TournamentGameResult_WIN,
 		realtime.TournamentGameResult_LOSS,
 		realtime.GameEndReason_STANDARD, false, 0, "")
@@ -595,7 +595,7 @@ func TestClassicDivisionSwiss(t *testing.T) {
 	tc.RoundControls[6].AllowOverMaxRepeats = false
 	tc.RoundControls[6].MaxRepeats = 2
 
-	err = tc.SubmitResult(4, player4, player2, 800, 500,
+	_, err = tc.SubmitResult(4, player4, player2, 800, 500,
 		realtime.TournamentGameResult_WIN,
 		realtime.TournamentGameResult_LOSS,
 		realtime.GameEndReason_STANDARD, false, 0, "")
@@ -605,15 +605,15 @@ func TestClassicDivisionSwiss(t *testing.T) {
 	standings, err = tc.GetStandings(4)
 	is.NoErr(err)
 
-	expectedstandings = []*realtime.PlayerStanding{&realtime.PlayerStanding{Player: player1, Wins: 4, Losses: 1, Draws: 0, Spread: 900},
-		&realtime.PlayerStanding{Player: player2, Wins: 3, Losses: 2, Draws: 0, Spread: 300},
-		&realtime.PlayerStanding{Player: player3, Wins: 2, Losses: 3, Draws: 0, Spread: -400},
-		&realtime.PlayerStanding{Player: player4, Wins: 1, Losses: 4, Draws: 0, Spread: -800},
+	expectedstandings = []*realtime.PlayerStanding{&realtime.PlayerStanding{PlayerId: player1, Wins: 4, Losses: 1, Draws: 0, Spread: 900},
+		&realtime.PlayerStanding{PlayerId: player2, Wins: 3, Losses: 2, Draws: 0, Spread: 300},
+		&realtime.PlayerStanding{PlayerId: player3, Wins: 2, Losses: 3, Draws: 0, Spread: -400},
+		&realtime.PlayerStanding{PlayerId: player4, Wins: 1, Losses: 4, Draws: 0, Spread: -800},
 	}
 
 	is.NoErr(equalStandings(expectedstandings, standings))
 
-	err = tc.SubmitResult(5, player1, player4, 900, 500,
+	_, err = tc.SubmitResult(5, player1, player4, 900, 500,
 		realtime.TournamentGameResult_WIN,
 		realtime.TournamentGameResult_LOSS,
 		realtime.GameEndReason_STANDARD, false, 0, "")
@@ -625,7 +625,7 @@ func TestClassicDivisionSwiss(t *testing.T) {
 	tc.RoundControls[6].AllowOverMaxRepeats = false
 	tc.RoundControls[6].MaxRepeats = 2
 
-	err = tc.SubmitResult(5, player2, player3, 800, 500,
+	_, err = tc.SubmitResult(5, player2, player3, 800, 500,
 		realtime.TournamentGameResult_WIN,
 		realtime.TournamentGameResult_LOSS,
 		realtime.GameEndReason_STANDARD, false, 0, "")
@@ -633,7 +633,7 @@ func TestClassicDivisionSwiss(t *testing.T) {
 
 	tc.RoundControls[6].AllowOverMaxRepeats = true
 
-	err = tc.PairRound(6)
+	_, err = tc.PairRound(6)
 	is.NoErr(err)
 
 	roundControls = []*realtime.RoundControl{}
@@ -653,16 +653,14 @@ func TestClassicDivisionSwiss(t *testing.T) {
 			WinDifferenceRelativeWeight: 1})
 	}
 
-	playerSwissRatings := &realtime.TournamentPersons{Persons: make(map[string]int32)}
-	swissPlayers := []string{}
+	swissPlayers := makeTournamentPersons(make(map[string]int32))
 	for i := 1; i <= numberOfPlayers; i++ {
-		swissPlayers = append(swissPlayers, fmt.Sprintf("%d", i))
-		playerSwissRatings.Persons[fmt.Sprintf("%d", i)] = int32(1000 - i)
+		swissPlayers.Persons = append(swissPlayers.Persons, &realtime.TournamentPerson{Id: fmt.Sprintf("%d", i), Rating: int32(1000 - i)})
 	}
 
 	roundControls[2].PairingMethod = realtime.PairingMethod_SWISS
 
-	tc, err = NewClassicDivision(swissPlayers, playerSwissRatings, roundControls, true)
+	tc, err = compactNewClassicDivision(swissPlayers, roundControls, true)
 	is.NoErr(err)
 	is.True(tc != nil)
 
@@ -670,7 +668,7 @@ func TestClassicDivisionSwiss(t *testing.T) {
 	is.NoErr(err)
 
 	for i := 0; i < numberOfPlayers; i += 2 {
-		err = tc.SubmitResult(0, swissPlayers[i], swissPlayers[i+1], (numberOfPlayers*100)-i*100, 0,
+		_, err = tc.SubmitResult(0, swissPlayers.Persons[i].Id, swissPlayers.Persons[i+1].Id, (numberOfPlayers*100)-i*100, 0,
 			realtime.TournamentGameResult_WIN,
 			realtime.TournamentGameResult_LOSS,
 			realtime.GameEndReason_STANDARD, false, 0, "")
@@ -678,14 +676,14 @@ func TestClassicDivisionSwiss(t *testing.T) {
 	}
 
 	for i := 0; i < numberOfPlayers; i += 4 {
-		err = tc.SubmitResult(1, swissPlayers[i], swissPlayers[i+2], (numberOfPlayers*10)-i*10, 0,
+		_, err = tc.SubmitResult(1, swissPlayers.Persons[i].Id, swissPlayers.Persons[i+2].Id, (numberOfPlayers*10)-i*10, 0,
 			realtime.TournamentGameResult_WIN,
 			realtime.TournamentGameResult_LOSS,
 			realtime.GameEndReason_STANDARD, false, 0, "")
 		is.NoErr(err)
 	}
 	for i := 1; i < numberOfPlayers; i += 4 {
-		err = tc.SubmitResult(1, swissPlayers[i], swissPlayers[i+2], 0, (numberOfPlayers*10)-i*10,
+		_, err = tc.SubmitResult(1, swissPlayers.Persons[i].Id, swissPlayers.Persons[i+2].Id, 0, (numberOfPlayers*10)-i*10,
 			realtime.TournamentGameResult_LOSS,
 			realtime.TournamentGameResult_WIN,
 			realtime.GameEndReason_STANDARD, false, 0, "")
@@ -699,12 +697,12 @@ func TestClassicDivisionSwiss(t *testing.T) {
 	for i := 0; i < len(tc.Matrix[2]); i++ {
 		pairingKey := tc.Matrix[2][i]
 		pairing := tc.PairingMap[pairingKey]
-		playerOne := pairing.Players[0]
-		playerTwo := pairing.Players[1]
+		playerOne := tc.Players.Persons[pairing.Players[0]].Id
+		playerTwo := tc.Players.Persons[pairing.Players[1]].Id
 		var playerOneIndex int
 		var playerTwoIndex int
 		for i := 0; i < len(standings); i++ {
-			standingsPlayer := standings[i].Player
+			standingsPlayer := standings[i].PlayerId
 			if playerOne == standingsPlayer {
 				playerOneIndex = i
 			} else if playerTwo == standingsPlayer {
@@ -723,7 +721,6 @@ func TestClassicDivisionSwiss(t *testing.T) {
 func TestClassicDivisionSwissRemoved(t *testing.T) {
 	is := is.New(t)
 
-
 	roundControls := []*realtime.RoundControl{}
 	numberOfRounds := 100
 	// This test onlyworks for values of the form 2 ^ n
@@ -741,14 +738,12 @@ func TestClassicDivisionSwissRemoved(t *testing.T) {
 			WinDifferenceRelativeWeight: 1})
 	}
 
-	playerSwissRatings := &realtime.TournamentPersons{Persons: make(map[string]int32)}
-	swissPlayers := []string{}
+	swissPlayers := makeTournamentPersons(make(map[string]int32))
 	for i := 1; i <= numberOfPlayers; i++ {
-		swissPlayers = append(swissPlayers, fmt.Sprintf("%d", i))
-		playerSwissRatings.Persons[fmt.Sprintf("%d", i)] = int32(1000 - i)
+		swissPlayers.Persons = append(swissPlayers.Persons, &realtime.TournamentPerson{Id: fmt.Sprintf("%d", i), Rating: int32(1000 - i)})
 	}
 
-	tc, err := NewClassicDivision(swissPlayers, playerSwissRatings, roundControls, true)
+	tc, err := compactNewClassicDivision(swissPlayers, roundControls, true)
 	is.NoErr(err)
 	is.True(tc != nil)
 
@@ -759,7 +754,7 @@ func TestClassicDivisionSwissRemoved(t *testing.T) {
 
 	for i := 0; i < numberOfRounds; i++ {
 		if i == 16 {
-			err = tc.RemovePlayers(&realtime.TournamentPersons{Persons: map[string]int32{"1": 50}})
+			_, err = tc.RemovePlayers(makeTournamentPersons(map[string]int32{"1": 50}))
 			is.NoErr(err)
 		}
 		for j := 1; j <= numberOfPlayers; j++ {
@@ -774,7 +769,7 @@ func TestClassicDivisionSwissRemoved(t *testing.T) {
 					is.True(passed)
 				} else {
 					is.True(playerPairing.Outcomes[0] != realtime.TournamentGameResult_FORFEIT_LOSS &&
-						playerPairing.Outcomes[1] != realtime.TournamentGameResult_FORFEIT_LOSS)		
+						playerPairing.Outcomes[1] != realtime.TournamentGameResult_FORFEIT_LOSS)
 				}
 			}
 			if i >= 17 {
@@ -790,15 +785,14 @@ func TestClassicDivisionSwissRemoved(t *testing.T) {
 				if player == "1" && i < 16 {
 					randWin = 0
 				}
-				err = tc.SubmitResult(i, player, opponent, rand.Intn(1000), rand.Intn(1000),
+				_, err = tc.SubmitResult(i, player, opponent, rand.Intn(1000), rand.Intn(1000),
 					winLoss[randWin],
-					winLoss[1 - randWin],
+					winLoss[1-randWin],
 					realtime.GameEndReason_STANDARD, false, 0, "")
 				is.NoErr(err)
 			}
 		}
 	}
-
 
 }
 
@@ -823,7 +817,7 @@ func TestClassicDivisionRoundRobin(t *testing.T) {
 			WinDifferenceRelativeWeight: 1})
 	}
 
-	tc, err := NewClassicDivision(playerStrings, playerRatings, roundControls, true)
+	tc, err := compactNewClassicDivision(playerRatings, roundControls, true)
 
 	is.NoErr(err)
 	is.True(tc != nil)
@@ -869,7 +863,7 @@ func TestClassicDivisionRoundRobin(t *testing.T) {
 			WinDifferenceRelativeWeight: 1})
 	}
 
-	tc, err = NewClassicDivision(playersOddStrings, playerRatings, roundControls, true)
+	tc, err = compactNewClassicDivision(playerRatings, roundControls, true)
 	is.NoErr(err)
 	is.True(tc != nil)
 
@@ -922,13 +916,13 @@ func TestClassicDivisionInitialFontes(t *testing.T) {
 
 	// InitialFontes can only be used in contiguous rounds
 	// starting with round 1
-	tc, err := NewClassicDivision(playerStrings, playerRatings, roundControls, true)
+	tc, err := compactNewClassicDivision(playerRatings, roundControls, true)
 	is.True(err != nil)
 
 	roundControls[0].PairingMethod = realtime.PairingMethod_INITIAL_FONTES
 
 	// The number of InitialFontes pairings must be odd
-	tc, err = NewClassicDivision(playerStrings, playerRatings, roundControls, true)
+	tc, err = compactNewClassicDivision(playerRatings, roundControls, true)
 	is.True(err != nil)
 
 	numberOfRoundsForInitialFontesTest := 4
@@ -938,7 +932,7 @@ func TestClassicDivisionInitialFontes(t *testing.T) {
 		roundControls[i].PairingMethod = realtime.PairingMethod_INITIAL_FONTES
 	}
 
-	tc, err = NewClassicDivision(playerStrings, playerRatings, roundControls, true)
+	tc, err = compactNewClassicDivision(playerRatings, roundControls, true)
 	is.NoErr(err)
 
 	is.NoErr(validatePairings(tc, 0))
@@ -954,7 +948,7 @@ func TestClassicDivisionManual(t *testing.T) {
 	roundControls[0].PairingMethod = realtime.PairingMethod_MANUAL
 	roundControls[1].PairingMethod = realtime.PairingMethod_KING_OF_THE_HILL
 
-	tc, err := NewClassicDivision(playerStrings, playerRatings, roundControls, true)
+	tc, err := compactNewClassicDivision(playerRatings, roundControls, true)
 	is.NoErr(err)
 	is.True(tc != nil)
 
@@ -969,15 +963,15 @@ func TestClassicDivisionManual(t *testing.T) {
 	}
 
 	// Pair round 1
-	err = tc.SetPairing(player1, player2, 0, false)
+	_, err = tc.SetPairing(player1, player2, 0)
 	is.NoErr(err)
-	err = tc.SetPairing(player3, player4, 0, false)
+	_, err = tc.SetPairing(player3, player4, 0)
 	is.NoErr(err)
 
 	is.NoErr(validatePairings(tc, 0))
 
 	// Amend a pairing
-	err = tc.SetPairing(player2, player3, 0, false)
+	_, err = tc.SetPairing(player2, player3, 0)
 	is.NoErr(err)
 
 	// Confirm that players 1 and 4 are now unpaired
@@ -985,22 +979,22 @@ func TestClassicDivisionManual(t *testing.T) {
 	is.True(tc.Matrix[0][tc.PlayerIndexMap[player4]] == "")
 
 	// Complete the round 1 pairings
-	err = tc.SetPairing(player1, player4, 0, false)
+	_, err = tc.SetPairing(player1, player4, 0)
 	is.NoErr(err)
 
-	is.NoErr(validatePairings(tc, 0))
+	is.NoErr(validatePairings(tc, 1))
 
 	// Submit results for round 1
 
 	err = tc.StartRound()
 	is.NoErr(err)
 
-	err = tc.SubmitResult(0, player2, player3, 400, 500,
+	_, err = tc.SubmitResult(0, player2, player3, 400, 500,
 		realtime.TournamentGameResult_LOSS,
 		realtime.TournamentGameResult_WIN,
 		realtime.GameEndReason_STANDARD, false, 0, "")
 	is.NoErr(err)
-	err = tc.SubmitResult(0, player1, player4, 200, 450,
+	_, err = tc.SubmitResult(0, player1, player4, 200, 450,
 		realtime.TournamentGameResult_LOSS,
 		realtime.TournamentGameResult_WIN,
 		realtime.GameEndReason_STANDARD, false, 0, "")
@@ -1014,16 +1008,16 @@ func TestClassicDivisionManual(t *testing.T) {
 	standings, err := tc.GetStandings(0)
 	is.NoErr(err)
 
-	expectedstandings := []*realtime.PlayerStanding{&realtime.PlayerStanding{Player: player4, Wins: 1, Losses: 0, Draws: 0, Spread: 250},
-		&realtime.PlayerStanding{Player: player3, Wins: 1, Losses: 0, Draws: 0, Spread: 100},
-		&realtime.PlayerStanding{Player: player2, Wins: 0, Losses: 1, Draws: 0, Spread: -100},
-		&realtime.PlayerStanding{Player: player1, Wins: 0, Losses: 1, Draws: 0, Spread: -250},
+	expectedstandings := []*realtime.PlayerStanding{&realtime.PlayerStanding{PlayerId: player4, Wins: 1, Losses: 0, Draws: 0, Spread: 250},
+		&realtime.PlayerStanding{PlayerId: player3, Wins: 1, Losses: 0, Draws: 0, Spread: 100},
+		&realtime.PlayerStanding{PlayerId: player2, Wins: 0, Losses: 1, Draws: 0, Spread: -100},
+		&realtime.PlayerStanding{PlayerId: player1, Wins: 0, Losses: 1, Draws: 0, Spread: -250},
 	}
 
 	is.NoErr(equalStandings(expectedstandings, standings))
 
 	// Amend a result
-	err = tc.SubmitResult(0, player1, player4, 500, 450,
+	_, err = tc.SubmitResult(0, player1, player4, 500, 450,
 		realtime.TournamentGameResult_WIN,
 		realtime.TournamentGameResult_LOSS,
 		realtime.GameEndReason_STANDARD, true, 0, "")
@@ -1037,10 +1031,10 @@ func TestClassicDivisionManual(t *testing.T) {
 	standings, err = tc.GetStandings(0)
 	is.NoErr(err)
 
-	expectedstandings = []*realtime.PlayerStanding{&realtime.PlayerStanding{Player: player3, Wins: 1, Losses: 0, Draws: 0, Spread: 100},
-		&realtime.PlayerStanding{Player: player1, Wins: 1, Losses: 0, Draws: 0, Spread: 50},
-		&realtime.PlayerStanding{Player: player4, Wins: 0, Losses: 1, Draws: 0, Spread: -50},
-		&realtime.PlayerStanding{Player: player2, Wins: 0, Losses: 1, Draws: 0, Spread: -100},
+	expectedstandings = []*realtime.PlayerStanding{&realtime.PlayerStanding{PlayerId: player3, Wins: 1, Losses: 0, Draws: 0, Spread: 100},
+		&realtime.PlayerStanding{PlayerId: player1, Wins: 1, Losses: 0, Draws: 0, Spread: 50},
+		&realtime.PlayerStanding{PlayerId: player4, Wins: 0, Losses: 1, Draws: 0, Spread: -50},
+		&realtime.PlayerStanding{PlayerId: player2, Wins: 0, Losses: 1, Draws: 0, Spread: -100},
 	}
 
 	is.NoErr(equalStandings(expectedstandings, standings))
@@ -1057,13 +1051,13 @@ func TestClassicDivisionElimination(t *testing.T) {
 	}
 
 	// Try and make an elimination tournament with the wrong number of rounds
-	tc, err := NewClassicDivision(playerStrings, playerRatings, roundControls[:1], true)
+	tc, err := compactNewClassicDivision(playerRatings, roundControls[:1], true)
 	is.True(err != nil)
 
 	roundControls[0].PairingMethod = realtime.PairingMethod_RANDOM
 	// Try and make an elimination tournament with other types
 	// of pairings
-	tc, err = NewClassicDivision(playerStrings, playerRatings, roundControls, true)
+	tc, err = compactNewClassicDivision(playerRatings, roundControls, true)
 	is.True(err != nil)
 
 	roundControls = defaultRoundControls(rounds)
@@ -1073,7 +1067,7 @@ func TestClassicDivisionElimination(t *testing.T) {
 		roundControls[i].GamesPerRound = 3
 	}
 
-	tc, err = NewClassicDivision(playerStrings, playerRatings, roundControls, true)
+	tc, err = compactNewClassicDivision(playerRatings, roundControls, true)
 	is.NoErr(err)
 	is.True(tc != nil)
 
@@ -1092,24 +1086,24 @@ func TestClassicDivisionElimination(t *testing.T) {
 	pairing2, err := tc.getPairing(player3, 0)
 	is.NoErr(err)
 
-	expectedpairing1 := newClassicPairing(tc, player1, player2, 0)
-	expectedpairing2 := newClassicPairing(tc, player3, player4, 0)
+	expectedpairing1 := newClassicPairing(tc, 0, 1, 0)
+	expectedpairing2 := newClassicPairing(tc, 2, 3, 0)
 
 	// Get the initial standings
 	standings, err := tc.GetStandings(0)
 	is.NoErr(err)
 
 	// Ensure standings for Elimination are correct
-	expectedstandings := []*realtime.PlayerStanding{&realtime.PlayerStanding{Player: player1, Wins: 0, Losses: 0, Draws: 0, Spread: 0},
-		&realtime.PlayerStanding{Player: player2, Wins: 0, Losses: 0, Draws: 0, Spread: 0},
-		&realtime.PlayerStanding{Player: player3, Wins: 0, Losses: 0, Draws: 0, Spread: 0},
-		&realtime.PlayerStanding{Player: player4, Wins: 0, Losses: 0, Draws: 0, Spread: 0},
+	expectedstandings := []*realtime.PlayerStanding{&realtime.PlayerStanding{PlayerId: player1, Wins: 0, Losses: 0, Draws: 0, Spread: 0},
+		&realtime.PlayerStanding{PlayerId: player2, Wins: 0, Losses: 0, Draws: 0, Spread: 0},
+		&realtime.PlayerStanding{PlayerId: player3, Wins: 0, Losses: 0, Draws: 0, Spread: 0},
+		&realtime.PlayerStanding{PlayerId: player4, Wins: 0, Losses: 0, Draws: 0, Spread: 0},
 	}
 
 	is.NoErr(equalStandings(expectedstandings, standings))
 
 	// The match is decided in two games
-	err = tc.SubmitResult(0, player1, player2, 500, 490,
+	_, err = tc.SubmitResult(0, player1, player2, 500, 490,
 		realtime.TournamentGameResult_WIN,
 		realtime.TournamentGameResult_LOSS,
 		realtime.GameEndReason_STANDARD, false, 0, "")
@@ -1124,7 +1118,7 @@ func TestClassicDivisionElimination(t *testing.T) {
 	expectedpairing1.Games[0].GameEndReason = realtime.GameEndReason_STANDARD
 	is.NoErr(equalPlayerRoundInfo(expectedpairing1, pairing1))
 
-	err = tc.SubmitResult(0, player1, player2, 50, 0,
+	_, err = tc.SubmitResult(0, player1, player2, 50, 0,
 		realtime.TournamentGameResult_FORFEIT_WIN,
 		realtime.TournamentGameResult_FORFEIT_LOSS,
 		realtime.GameEndReason_FORCE_FORFEIT, false, 1, "")
@@ -1145,7 +1139,7 @@ func TestClassicDivisionElimination(t *testing.T) {
 	is.True(!roundIsComplete)
 
 	// The match is decided in three games
-	err = tc.SubmitResult(0, player3, player4, 500, 400,
+	_, err = tc.SubmitResult(0, player3, player4, 500, 400,
 		realtime.TournamentGameResult_WIN,
 		realtime.TournamentGameResult_LOSS,
 		realtime.GameEndReason_STANDARD, false, 0, "")
@@ -1159,7 +1153,7 @@ func TestClassicDivisionElimination(t *testing.T) {
 	expectedpairing2.Games[0].GameEndReason = realtime.GameEndReason_STANDARD
 	is.NoErr(equalPlayerRoundInfo(expectedpairing2, pairing2))
 
-	err = tc.SubmitResult(0, player3, player4, 400, 400,
+	_, err = tc.SubmitResult(0, player3, player4, 400, 400,
 		realtime.TournamentGameResult_DRAW,
 		realtime.TournamentGameResult_DRAW,
 		realtime.GameEndReason_STANDARD, false, 1, "")
@@ -1174,7 +1168,7 @@ func TestClassicDivisionElimination(t *testing.T) {
 	expectedpairing2.Games[1].GameEndReason = realtime.GameEndReason_STANDARD
 	is.NoErr(equalPlayerRoundInfo(expectedpairing2, pairing2))
 
-	err = tc.SubmitResult(0, player3, player4, 450, 400,
+	_, err = tc.SubmitResult(0, player3, player4, 450, 400,
 		realtime.TournamentGameResult_WIN,
 		realtime.TournamentGameResult_LOSS,
 		realtime.GameEndReason_STANDARD, false, 2, "")
@@ -1201,10 +1195,10 @@ func TestClassicDivisionElimination(t *testing.T) {
 
 	// Elimination standings are based on wins and player order only
 	// Losses are not recorded in Elimination standings
-	expectedstandings = []*realtime.PlayerStanding{&realtime.PlayerStanding{Player: player1, Wins: 1, Losses: 0, Draws: 0, Spread: 60},
-		&realtime.PlayerStanding{Player: player3, Wins: 1, Losses: 0, Draws: 0, Spread: 150},
-		&realtime.PlayerStanding{Player: player2, Wins: 0, Losses: 1, Draws: 0, Spread: -60},
-		&realtime.PlayerStanding{Player: player4, Wins: 0, Losses: 1, Draws: 0, Spread: -150},
+	expectedstandings = []*realtime.PlayerStanding{&realtime.PlayerStanding{PlayerId: player1, Wins: 1, Losses: 0, Draws: 0, Spread: 60},
+		&realtime.PlayerStanding{PlayerId: player3, Wins: 1, Losses: 0, Draws: 0, Spread: 150},
+		&realtime.PlayerStanding{PlayerId: player2, Wins: 0, Losses: 1, Draws: 0, Spread: -60},
+		&realtime.PlayerStanding{PlayerId: player4, Wins: 0, Losses: 1, Draws: 0, Spread: -150},
 	}
 
 	is.NoErr(equalStandings(expectedstandings, standings))
@@ -1214,7 +1208,7 @@ func TestClassicDivisionElimination(t *testing.T) {
 	pairing2, err = tc.getPairing(player4, 1)
 	is.NoErr(err)
 
-	expectedpairing1 = newClassicPairing(tc, player1, player3, 1)
+	expectedpairing1 = newClassicPairing(tc, 0, 2, 1)
 
 	// Half of the field should be eliminated
 
@@ -1229,7 +1223,7 @@ func TestClassicDivisionElimination(t *testing.T) {
 	is.True(pairing2.Outcomes[1] == realtime.TournamentGameResult_ELIMINATED)
 	is.True(pairing2.Games == nil)
 	is.True(pairing2.Players == nil)
-	err = tc.SubmitResult(1, player1, player3, 500, 400,
+	_, err = tc.SubmitResult(1, player1, player3, 500, 400,
 		realtime.TournamentGameResult_WIN,
 		realtime.TournamentGameResult_LOSS,
 		realtime.GameEndReason_STANDARD, false, 0, "")
@@ -1242,7 +1236,7 @@ func TestClassicDivisionElimination(t *testing.T) {
 	expectedpairing1.Games[0].GameEndReason = realtime.GameEndReason_STANDARD
 	is.NoErr(equalPlayerRoundInfo(expectedpairing1, pairing1))
 
-	err = tc.SubmitResult(1, player1, player3, 400, 600,
+	_, err = tc.SubmitResult(1, player1, player3, 400, 600,
 		realtime.TournamentGameResult_LOSS,
 		realtime.TournamentGameResult_WIN,
 		realtime.GameEndReason_STANDARD, false, 1, "")
@@ -1256,7 +1250,7 @@ func TestClassicDivisionElimination(t *testing.T) {
 	expectedpairing1.Games[1].GameEndReason = realtime.GameEndReason_STANDARD
 	is.NoErr(equalPlayerRoundInfo(expectedpairing1, pairing1))
 
-	err = tc.SubmitResult(1, player1, player3, 450, 450,
+	_, err = tc.SubmitResult(1, player1, player3, 450, 450,
 		realtime.TournamentGameResult_DRAW,
 		realtime.TournamentGameResult_DRAW,
 		realtime.GameEndReason_STANDARD, false, 2, "")
@@ -1276,7 +1270,7 @@ func TestClassicDivisionElimination(t *testing.T) {
 	is.True(roundIsComplete)
 
 	// Amend a result
-	err = tc.SubmitResult(1, player1, player3, 451, 450,
+	_, err = tc.SubmitResult(1, player1, player3, 451, 450,
 		realtime.TournamentGameResult_WIN,
 		realtime.TournamentGameResult_LOSS,
 		realtime.GameEndReason_STANDARD, true, 2, "")
@@ -1304,7 +1298,7 @@ func TestClassicDivisionElimination(t *testing.T) {
 	// Since this test is copied from above, the usual
 	// validations are skipped, since they would be redundant.
 
-	tc, err = NewClassicDivision(playerStrings, playerRatings, roundControls, true)
+	tc, err = compactNewClassicDivision(playerRatings, roundControls, true)
 	is.NoErr(err)
 	is.True(tc != nil)
 
@@ -1319,17 +1313,17 @@ func TestClassicDivisionElimination(t *testing.T) {
 	pairing2, err = tc.getPairing(player3, 0)
 	is.NoErr(err)
 
-	expectedpairing1 = newClassicPairing(tc, player1, player2, 0)
-	expectedpairing2 = newClassicPairing(tc, player3, player4, 0)
+	expectedpairing1 = newClassicPairing(tc, 0, 1, 0)
+	expectedpairing2 = newClassicPairing(tc, 2, 3, 0)
 
 	// The match is decided in two games
-	err = tc.SubmitResult(0, player1, player2, 500, 490,
+	_, err = tc.SubmitResult(0, player1, player2, 500, 490,
 		realtime.TournamentGameResult_WIN,
 		realtime.TournamentGameResult_LOSS,
 		realtime.GameEndReason_STANDARD, false, 0, "")
 	is.NoErr(err)
 
-	err = tc.SubmitResult(0, player1, player2, 50, 0,
+	_, err = tc.SubmitResult(0, player1, player2, 50, 0,
 		realtime.TournamentGameResult_FORFEIT_WIN,
 		realtime.TournamentGameResult_FORFEIT_LOSS,
 		realtime.GameEndReason_FORCE_FORFEIT, false, 1, "")
@@ -1337,19 +1331,19 @@ func TestClassicDivisionElimination(t *testing.T) {
 
 	// The next match ends up tied at 1.5 - 1.5
 	// with both players having the same spread.
-	err = tc.SubmitResult(0, player3, player4, 500, 400,
+	_, err = tc.SubmitResult(0, player3, player4, 500, 400,
 		realtime.TournamentGameResult_WIN,
 		realtime.TournamentGameResult_LOSS,
 		realtime.GameEndReason_STANDARD, false, 0, "")
 	is.NoErr(err)
 
-	err = tc.SubmitResult(0, player3, player4, 400, 500,
+	_, err = tc.SubmitResult(0, player3, player4, 400, 500,
 		realtime.TournamentGameResult_LOSS,
 		realtime.TournamentGameResult_WIN,
 		realtime.GameEndReason_STANDARD, false, 1, "")
 	is.NoErr(err)
 
-	err = tc.SubmitResult(0, player3, player4, 500, 500,
+	_, err = tc.SubmitResult(0, player3, player4, 500, 500,
 		realtime.TournamentGameResult_DRAW,
 		realtime.TournamentGameResult_DRAW,
 		realtime.GameEndReason_STANDARD, false, 2, "")
@@ -1383,7 +1377,7 @@ func TestClassicDivisionElimination(t *testing.T) {
 	is.True(!roundIsComplete)
 
 	// Submit a tiebreaking result, unfortunately, it's another draw
-	err = tc.SubmitResult(0, player3, player4, 500, 500,
+	_, err = tc.SubmitResult(0, player3, player4, 500, 500,
 		realtime.TournamentGameResult_DRAW,
 		realtime.TournamentGameResult_DRAW,
 		realtime.GameEndReason_STANDARD, false, 3, "")
@@ -1403,14 +1397,14 @@ func TestClassicDivisionElimination(t *testing.T) {
 	is.True(!roundIsComplete)
 
 	// Attempt to submit a tiebreaking result, unfortunately, the game index is wrong
-	err = tc.SubmitResult(0, player3, player4, 500, 500,
+	_, err = tc.SubmitResult(0, player3, player4, 500, 500,
 		realtime.TournamentGameResult_DRAW,
 		realtime.TournamentGameResult_DRAW,
 		realtime.GameEndReason_STANDARD, false, 5, "")
 	is.True(err != nil)
 
 	// Still wrong! Silly director (and definitely not code another layer up)
-	err = tc.SubmitResult(0, player3, player4, 500, 500,
+	_, err = tc.SubmitResult(0, player3, player4, 500, 500,
 		realtime.TournamentGameResult_DRAW,
 		realtime.TournamentGameResult_DRAW,
 		realtime.GameEndReason_STANDARD, false, 2, "")
@@ -1422,7 +1416,7 @@ func TestClassicDivisionElimination(t *testing.T) {
 	is.True(!roundIsComplete)
 
 	// The players finally reach a decisive result
-	err = tc.SubmitResult(0, player3, player4, 600, 300,
+	_, err = tc.SubmitResult(0, player3, player4, 600, 300,
 		realtime.TournamentGameResult_WIN,
 		realtime.TournamentGameResult_LOSS,
 		realtime.GameEndReason_STANDARD, false, 4, "")
@@ -1437,10 +1431,10 @@ func TestClassicDivisionElimination(t *testing.T) {
 	standings, err = tc.GetStandings(0)
 	is.NoErr(err)
 
-	expectedstandings = []*realtime.PlayerStanding{&realtime.PlayerStanding{Player: player1, Wins: 1, Losses: 0, Draws: 0, Spread: 60},
-		&realtime.PlayerStanding{Player: player3, Wins: 1, Losses: 0, Draws: 0, Spread: 300},
-		&realtime.PlayerStanding{Player: player2, Wins: 0, Losses: 1, Draws: 0, Spread: -60},
-		&realtime.PlayerStanding{Player: player4, Wins: 0, Losses: 1, Draws: 0, Spread: -300},
+	expectedstandings = []*realtime.PlayerStanding{&realtime.PlayerStanding{PlayerId: player1, Wins: 1, Losses: 0, Draws: 0, Spread: 60},
+		&realtime.PlayerStanding{PlayerId: player3, Wins: 1, Losses: 0, Draws: 0, Spread: 300},
+		&realtime.PlayerStanding{PlayerId: player2, Wins: 0, Losses: 1, Draws: 0, Spread: -60},
+		&realtime.PlayerStanding{PlayerId: player4, Wins: 0, Losses: 1, Draws: 0, Spread: -300},
 	}
 
 	is.NoErr(equalStandings(expectedstandings, standings))
@@ -1457,7 +1451,7 @@ func TestClassicDivisionAddLatecomers(t *testing.T) {
 		roundControls[i].PairingMethod = realtime.PairingMethod_KING_OF_THE_HILL
 	}
 
-	tc, err := NewClassicDivision(playerStrings, playerRatings, roundControls, false)
+	tc, err := compactNewClassicDivision(playerRatings, roundControls, false)
 	is.NoErr(err)
 	is.True(tc != nil)
 
@@ -1478,13 +1472,13 @@ func TestClassicDivisionAddLatecomers(t *testing.T) {
 	is.NoErr(err)
 
 	// Submit results for the round
-	err = tc.SubmitResult(0, player1, player2, 550, 400,
+	_, err = tc.SubmitResult(0, player1, player2, 550, 400,
 		realtime.TournamentGameResult_WIN,
 		realtime.TournamentGameResult_LOSS,
 		realtime.GameEndReason_STANDARD, false, 0, "")
 	is.NoErr(err)
 
-	err = tc.SubmitResult(0, player3, player4, 300, 700,
+	_, err = tc.SubmitResult(0, player3, player4, 300, 700,
 		realtime.TournamentGameResult_LOSS,
 		realtime.TournamentGameResult_WIN,
 		realtime.GameEndReason_STANDARD, false, 0, "")
@@ -1493,17 +1487,17 @@ func TestClassicDivisionAddLatecomers(t *testing.T) {
 	is.NoErr(err)
 
 	// Submit results for the round
-	err = tc.SubmitResult(1, player1, player4, 670, 400,
+	_, err = tc.SubmitResult(1, player1, player4, 670, 400,
 		realtime.TournamentGameResult_WIN,
 		realtime.TournamentGameResult_LOSS,
 		realtime.GameEndReason_STANDARD, false, 0, "")
 	is.NoErr(err)
 
 	// Add another player before the start of the next round
-	err = tc.AddPlayers(&realtime.TournamentPersons{Persons: map[string]int32{"Bum": 50}})
+	_, err = tc.AddPlayers(makeTournamentPersons(map[string]int32{"Bum": 50}))
 	is.NoErr(err)
 
-	err = tc.SubmitResult(1, player3, player2, 800, 700,
+	_, err = tc.SubmitResult(1, player3, player2, 800, 700,
 		realtime.TournamentGameResult_WIN,
 		realtime.TournamentGameResult_LOSS,
 		realtime.GameEndReason_STANDARD, false, 0, "")
@@ -1513,11 +1507,11 @@ func TestClassicDivisionAddLatecomers(t *testing.T) {
 	standings, err := tc.GetStandings(1)
 	is.NoErr(err)
 
-	expectedstandings := []*realtime.PlayerStanding{&realtime.PlayerStanding{Player: player1, Wins: 2, Losses: 0, Draws: 0, Spread: 420},
-		&realtime.PlayerStanding{Player: player4, Wins: 1, Losses: 1, Draws: 0, Spread: 130},
-		&realtime.PlayerStanding{Player: player3, Wins: 1, Losses: 1, Draws: 0, Spread: -300},
-		&realtime.PlayerStanding{Player: "Bum", Wins: 0, Losses: 2, Draws: 0, Spread: -100},
-		&realtime.PlayerStanding{Player: player2, Wins: 0, Losses: 2, Draws: 0, Spread: -250},
+	expectedstandings := []*realtime.PlayerStanding{&realtime.PlayerStanding{PlayerId: player1, Wins: 2, Losses: 0, Draws: 0, Spread: 420},
+		&realtime.PlayerStanding{PlayerId: player4, Wins: 1, Losses: 1, Draws: 0, Spread: 130},
+		&realtime.PlayerStanding{PlayerId: player3, Wins: 1, Losses: 1, Draws: 0, Spread: -300},
+		&realtime.PlayerStanding{PlayerId: "Bum", Wins: 0, Losses: 2, Draws: 0, Spread: -100},
+		&realtime.PlayerStanding{PlayerId: player2, Wins: 0, Losses: 2, Draws: 0, Spread: -250},
 	}
 	is.NoErr(equalStandings(expectedstandings, standings))
 
@@ -1525,13 +1519,13 @@ func TestClassicDivisionAddLatecomers(t *testing.T) {
 	is.NoErr(err)
 
 	// Submit results for the round
-	err = tc.SubmitResult(2, player1, player4, 400, 300,
+	_, err = tc.SubmitResult(2, player1, player4, 400, 300,
 		realtime.TournamentGameResult_WIN,
 		realtime.TournamentGameResult_LOSS,
 		realtime.GameEndReason_STANDARD, false, 0, "")
 	is.NoErr(err)
 
-	err = tc.SubmitResult(2, player3, "Bum", 700, 300,
+	_, err = tc.SubmitResult(2, player3, "Bum", 700, 300,
 		realtime.TournamentGameResult_WIN,
 		realtime.TournamentGameResult_LOSS,
 		realtime.GameEndReason_STANDARD, false, 0, "")
@@ -1541,11 +1535,11 @@ func TestClassicDivisionAddLatecomers(t *testing.T) {
 	standings, err = tc.GetStandings(2)
 	is.NoErr(err)
 
-	expectedstandings = []*realtime.PlayerStanding{&realtime.PlayerStanding{Player: player1, Wins: 3, Losses: 0, Draws: 0, Spread: 520},
-		&realtime.PlayerStanding{Player: player3, Wins: 2, Losses: 1, Draws: 0, Spread: 100},
-		&realtime.PlayerStanding{Player: player4, Wins: 1, Losses: 2, Draws: 0, Spread: 30},
-		&realtime.PlayerStanding{Player: player2, Wins: 1, Losses: 2, Draws: 0, Spread: -200},
-		&realtime.PlayerStanding{Player: "Bum", Wins: 0, Losses: 3, Draws: 0, Spread: -500},
+	expectedstandings = []*realtime.PlayerStanding{&realtime.PlayerStanding{PlayerId: player1, Wins: 3, Losses: 0, Draws: 0, Spread: 520},
+		&realtime.PlayerStanding{PlayerId: player3, Wins: 2, Losses: 1, Draws: 0, Spread: 100},
+		&realtime.PlayerStanding{PlayerId: player4, Wins: 1, Losses: 2, Draws: 0, Spread: 30},
+		&realtime.PlayerStanding{PlayerId: player2, Wins: 1, Losses: 2, Draws: 0, Spread: -200},
+		&realtime.PlayerStanding{PlayerId: "Bum", Wins: 0, Losses: 3, Draws: 0, Spread: -500},
 	}
 	is.NoErr(equalStandings(expectedstandings, standings))
 
@@ -1553,34 +1547,34 @@ func TestClassicDivisionAddLatecomers(t *testing.T) {
 	is.NoErr(err)
 
 	// Submit results for the round
-	err = tc.SubmitResult(3, player1, player3, 400, 300,
+	_, err = tc.SubmitResult(3, player1, player3, 400, 300,
 		realtime.TournamentGameResult_WIN,
 		realtime.TournamentGameResult_LOSS,
 		realtime.GameEndReason_STANDARD, false, 0, "")
 	is.NoErr(err)
 
-	err = tc.AddPlayers(&realtime.TournamentPersons{Persons: map[string]int32{"Bummest": 50}})
+	_, err = tc.AddPlayers(makeTournamentPersons(map[string]int32{"Bummest": 50}))
 	is.NoErr(err)
 
-	err = tc.SubmitResult(3, player2, player4, 700, 300,
+	_, err = tc.SubmitResult(3, player2, player4, 700, 300,
 		realtime.TournamentGameResult_WIN,
 		realtime.TournamentGameResult_LOSS,
 		realtime.GameEndReason_STANDARD, false, 0, "")
 	is.NoErr(err)
 
-	err = tc.AddPlayers(&realtime.TournamentPersons{Persons: map[string]int32{"Bummer": 50}})
+	_, err = tc.AddPlayers(makeTournamentPersons(map[string]int32{"Bummer": 50}))
 	is.NoErr(err)
 
 	standings, err = tc.GetStandings(3)
 	is.NoErr(err)
 
-	expectedstandings = []*realtime.PlayerStanding{&realtime.PlayerStanding{Player: player1, Wins: 4, Losses: 0, Draws: 0, Spread: 620},
-		&realtime.PlayerStanding{Player: player2, Wins: 2, Losses: 2, Draws: 0, Spread: 200},
-		&realtime.PlayerStanding{Player: player3, Wins: 2, Losses: 2, Draws: 0, Spread: 0},
-		&realtime.PlayerStanding{Player: player4, Wins: 1, Losses: 3, Draws: 0, Spread: -370},
-		&realtime.PlayerStanding{Player: "Bum", Wins: 1, Losses: 3, Draws: 0, Spread: -450},
-		&realtime.PlayerStanding{Player: "Bummest", Wins: 0, Losses: 4, Draws: 0, Spread: -200},
-		&realtime.PlayerStanding{Player: "Bummer", Wins: 0, Losses: 4, Draws: 0, Spread: -200},
+	expectedstandings = []*realtime.PlayerStanding{&realtime.PlayerStanding{PlayerId: player1, Wins: 4, Losses: 0, Draws: 0, Spread: 620},
+		&realtime.PlayerStanding{PlayerId: player2, Wins: 2, Losses: 2, Draws: 0, Spread: 200},
+		&realtime.PlayerStanding{PlayerId: player3, Wins: 2, Losses: 2, Draws: 0, Spread: 0},
+		&realtime.PlayerStanding{PlayerId: player4, Wins: 1, Losses: 3, Draws: 0, Spread: -370},
+		&realtime.PlayerStanding{PlayerId: "Bum", Wins: 1, Losses: 3, Draws: 0, Spread: -450},
+		&realtime.PlayerStanding{PlayerId: "Bummest", Wins: 0, Losses: 4, Draws: 0, Spread: -200},
+		&realtime.PlayerStanding{PlayerId: "Bummer", Wins: 0, Losses: 4, Draws: 0, Spread: -200},
 	}
 	is.NoErr(equalStandings(expectedstandings, standings))
 
@@ -1588,19 +1582,19 @@ func TestClassicDivisionAddLatecomers(t *testing.T) {
 	is.NoErr(err)
 
 	// Submit results for the round
-	err = tc.SubmitResult(4, player1, player2, 500, 400,
+	_, err = tc.SubmitResult(4, player1, player2, 500, 400,
 		realtime.TournamentGameResult_WIN,
 		realtime.TournamentGameResult_LOSS,
 		realtime.GameEndReason_STANDARD, false, 0, "")
 	is.NoErr(err)
 
-	err = tc.SubmitResult(4, player3, player4, 300, 700,
+	_, err = tc.SubmitResult(4, player3, player4, 300, 700,
 		realtime.TournamentGameResult_LOSS,
 		realtime.TournamentGameResult_WIN,
 		realtime.GameEndReason_STANDARD, false, 0, "")
 
 	// Submit results for the round
-	err = tc.SubmitResult(4, "Bum", "Bummest", 600, 400,
+	_, err = tc.SubmitResult(4, "Bum", "Bummest", 600, 400,
 		realtime.TournamentGameResult_WIN,
 		realtime.TournamentGameResult_LOSS,
 		realtime.GameEndReason_STANDARD, false, 0, "")
@@ -1610,21 +1604,24 @@ func TestClassicDivisionAddLatecomers(t *testing.T) {
 	is.NoErr(err)
 	is.True(roundIsComplete)
 
-	err = tc.AddPlayers(&realtime.TournamentPersons{Persons: map[string]int32{"Guy": 50}})
-	err = tc.AddPlayers(&realtime.TournamentPersons{Persons: map[string]int32{"Guyer": 400}})
+	// These must be added sequentially so the order or addition is deterministic
+	_, err = tc.AddPlayers(makeTournamentPersons(map[string]int32{"Guy": 50}))
+	is.NoErr(err)
+	_, err = tc.AddPlayers(makeTournamentPersons(map[string]int32{"Guyer": 400}))
+	is.NoErr(err)
 
 	standings, err = tc.GetStandings(4)
 	is.NoErr(err)
 
-	expectedstandings = []*realtime.PlayerStanding{&realtime.PlayerStanding{Player: player1, Wins: 5, Losses: 0, Draws: 0, Spread: 720},
-		&realtime.PlayerStanding{Player: player2, Wins: 2, Losses: 3, Draws: 0, Spread: 100},
-		&realtime.PlayerStanding{Player: player4, Wins: 2, Losses: 3, Draws: 0, Spread: 30},
-		&realtime.PlayerStanding{Player: "Bum", Wins: 2, Losses: 3, Draws: 0, Spread: -250},
-		&realtime.PlayerStanding{Player: player3, Wins: 2, Losses: 3, Draws: 0, Spread: -400},
-		&realtime.PlayerStanding{Player: "Bummer", Wins: 1, Losses: 4, Draws: 0, Spread: -150},
-		&realtime.PlayerStanding{Player: "Guy", Wins: 0, Losses: 5, Draws: 0, Spread: -250},
-		&realtime.PlayerStanding{Player: "Guyer", Wins: 0, Losses: 5, Draws: 0, Spread: -250},
-		&realtime.PlayerStanding{Player: "Bummest", Wins: 0, Losses: 5, Draws: 0, Spread: -400},
+	expectedstandings = []*realtime.PlayerStanding{&realtime.PlayerStanding{PlayerId: player1, Wins: 5, Losses: 0, Draws: 0, Spread: 720},
+		&realtime.PlayerStanding{PlayerId: player2, Wins: 2, Losses: 3, Draws: 0, Spread: 100},
+		&realtime.PlayerStanding{PlayerId: player4, Wins: 2, Losses: 3, Draws: 0, Spread: 30},
+		&realtime.PlayerStanding{PlayerId: "Bum", Wins: 2, Losses: 3, Draws: 0, Spread: -250},
+		&realtime.PlayerStanding{PlayerId: player3, Wins: 2, Losses: 3, Draws: 0, Spread: -400},
+		&realtime.PlayerStanding{PlayerId: "Bummer", Wins: 1, Losses: 4, Draws: 0, Spread: -150},
+		&realtime.PlayerStanding{PlayerId: "Guy", Wins: 0, Losses: 5, Draws: 0, Spread: -250},
+		&realtime.PlayerStanding{PlayerId: "Guyer", Wins: 0, Losses: 5, Draws: 0, Spread: -250},
+		&realtime.PlayerStanding{PlayerId: "Bummest", Wins: 0, Losses: 5, Draws: 0, Spread: -400},
 	}
 	is.NoErr(equalStandings(expectedstandings, standings))
 }
@@ -1656,7 +1653,7 @@ func TestClassicDivisionRemovePlayers(t *testing.T) {
 		}
 	}
 
-	tc, err := NewClassicDivision(playerStrings, playerRatings, roundControls, true)
+	tc, err := compactNewClassicDivision(playerRatings, roundControls, true)
 	is.NoErr(err)
 	is.True(tc != nil)
 
@@ -1668,13 +1665,13 @@ func TestClassicDivisionRemovePlayers(t *testing.T) {
 	player3 := playerStrings[3]
 	player4 := playerStrings[2]
 
-	err = tc.SubmitResult(0, player1, player2, 500, 300,
+	_, err = tc.SubmitResult(0, player1, player2, 500, 300,
 		realtime.TournamentGameResult_WIN,
 		realtime.TournamentGameResult_LOSS,
 		realtime.GameEndReason_STANDARD, false, 0, "")
 	is.NoErr(err)
 
-	err = tc.SubmitResult(0, player3, player4, 500, 400,
+	_, err = tc.SubmitResult(0, player3, player4, 500, 400,
 		realtime.TournamentGameResult_WIN,
 		realtime.TournamentGameResult_LOSS,
 		realtime.GameEndReason_STANDARD, false, 0, "")
@@ -1683,58 +1680,58 @@ func TestClassicDivisionRemovePlayers(t *testing.T) {
 	standings, err := tc.GetStandings(0)
 	is.NoErr(err)
 
-	expectedstandings := []*realtime.PlayerStanding{&realtime.PlayerStanding{Player: player1, Wins: 1, Losses: 0, Draws: 0, Spread: 200},
-		&realtime.PlayerStanding{Player: player3, Wins: 1, Losses: 0, Draws: 0, Spread: 100},
-		&realtime.PlayerStanding{Player: player4, Wins: 0, Losses: 1, Draws: 0, Spread: -100},
-		&realtime.PlayerStanding{Player: player2, Wins: 0, Losses: 1, Draws: 0, Spread: -200},
+	expectedstandings := []*realtime.PlayerStanding{&realtime.PlayerStanding{PlayerId: player1, Wins: 1, Losses: 0, Draws: 0, Spread: 200},
+		&realtime.PlayerStanding{PlayerId: player3, Wins: 1, Losses: 0, Draws: 0, Spread: 100},
+		&realtime.PlayerStanding{PlayerId: player4, Wins: 0, Losses: 1, Draws: 0, Spread: -100},
+		&realtime.PlayerStanding{PlayerId: player2, Wins: 0, Losses: 1, Draws: 0, Spread: -200},
 	}
 
 	is.NoErr(equalStandings(expectedstandings, standings))
 
-	err = tc.SubmitResult(1, player1, player3, 500, 300,
+	_, err = tc.SubmitResult(1, player1, player3, 500, 300,
 		realtime.TournamentGameResult_WIN,
 		realtime.TournamentGameResult_LOSS,
 		realtime.GameEndReason_STANDARD, false, 0, "")
 	is.NoErr(err)
 
-	err = tc.SubmitResult(1, player2, player4, 600, 400,
+	_, err = tc.SubmitResult(1, player2, player4, 600, 400,
 		realtime.TournamentGameResult_WIN,
 		realtime.TournamentGameResult_LOSS,
 		realtime.GameEndReason_STANDARD, false, 0, "")
 	is.NoErr(err)
 
-	err = tc.RemovePlayers(&realtime.TournamentPersons{Persons: map[string]int32{player1: 50}})
+	_, err = tc.RemovePlayers(makeTournamentPersons(map[string]int32{player1: 50}))
 	is.NoErr(err)
 	standings, err = tc.GetStandings(1)
 	is.NoErr(err)
 
-	expectedstandings = []*realtime.PlayerStanding{&realtime.PlayerStanding{Player: player2, Wins: 1, Losses: 1, Draws: 0, Spread: 0},
-		&realtime.PlayerStanding{Player: player3, Wins: 1, Losses: 1, Draws: 0, Spread: -100},
-		&realtime.PlayerStanding{Player: player4, Wins: 0, Losses: 2, Draws: 0, Spread: -300},
-		&realtime.PlayerStanding{Player: player1, Wins: 2, Losses: 0, Draws: 0, Spread: 400},
+	expectedstandings = []*realtime.PlayerStanding{&realtime.PlayerStanding{PlayerId: player2, Wins: 1, Losses: 1, Draws: 0, Spread: 0},
+		&realtime.PlayerStanding{PlayerId: player3, Wins: 1, Losses: 1, Draws: 0, Spread: -100},
+		&realtime.PlayerStanding{PlayerId: player4, Wins: 0, Losses: 2, Draws: 0, Spread: -300},
+		&realtime.PlayerStanding{PlayerId: player1, Wins: 2, Losses: 0, Draws: 0, Spread: 400},
 	}
 
 	is.NoErr(equalStandings(expectedstandings, standings))
 
-	err = tc.SubmitResult(2, player3, player4, 500, 400,
+	_, err = tc.SubmitResult(2, player3, player4, 500, 400,
 		realtime.TournamentGameResult_WIN,
 		realtime.TournamentGameResult_LOSS,
 		realtime.GameEndReason_STANDARD, false, 0, "")
 
-	err = tc.SubmitResult(2, player1, player2, 400, 400,
+	_, err = tc.SubmitResult(2, player1, player2, 400, 400,
 		realtime.TournamentGameResult_DRAW,
 		realtime.TournamentGameResult_DRAW,
 		realtime.GameEndReason_STANDARD, false, 0, "")
 
 	// At this point the removed player is assigned forfeits
 
-	err = tc.SubmitResult(3, player2, player4, 500, 300,
+	_, err = tc.SubmitResult(3, player2, player4, 500, 300,
 		realtime.TournamentGameResult_WIN,
 		realtime.TournamentGameResult_LOSS,
 		realtime.GameEndReason_STANDARD, false, 0, "")
 	is.NoErr(err)
 
-	err = tc.SubmitResult(4, player2, player3, 600, 400,
+	_, err = tc.SubmitResult(4, player2, player3, 600, 400,
 		realtime.TournamentGameResult_WIN,
 		realtime.TournamentGameResult_LOSS,
 		realtime.GameEndReason_STANDARD, false, 0, "")
@@ -1743,25 +1740,25 @@ func TestClassicDivisionRemovePlayers(t *testing.T) {
 	standings, err = tc.GetStandings(4)
 	is.NoErr(err)
 
-	expectedstandings = []*realtime.PlayerStanding{&realtime.PlayerStanding{Player: player2, Wins: 3, Losses: 1, Draws: 1, Spread: 400},
-		&realtime.PlayerStanding{Player: player3, Wins: 3, Losses: 2, Draws: 0, Spread: -150},
-		&realtime.PlayerStanding{Player: player4, Wins: 1, Losses: 4, Draws: 0, Spread: -550},
-		&realtime.PlayerStanding{Player: player1, Wins: 2, Losses: 2, Draws: 1, Spread: 300},
+	expectedstandings = []*realtime.PlayerStanding{&realtime.PlayerStanding{PlayerId: player2, Wins: 3, Losses: 1, Draws: 1, Spread: 400},
+		&realtime.PlayerStanding{PlayerId: player3, Wins: 3, Losses: 2, Draws: 0, Spread: -150},
+		&realtime.PlayerStanding{PlayerId: player4, Wins: 1, Losses: 4, Draws: 0, Spread: -550},
+		&realtime.PlayerStanding{PlayerId: player1, Wins: 2, Losses: 2, Draws: 1, Spread: 300},
 	}
 
 	is.NoErr(equalStandings(expectedstandings, standings))
 
-	err = tc.SubmitResult(5, player2, player3, 600, 400,
+	_, err = tc.SubmitResult(5, player2, player3, 600, 400,
 		realtime.TournamentGameResult_WIN,
 		realtime.TournamentGameResult_LOSS,
 		realtime.GameEndReason_STANDARD, false, 0, "")
 	is.NoErr(err)
 
-	err = tc.RemovePlayers(&realtime.TournamentPersons{Persons: map[string]int32{player4: 40}})
+	_, err = tc.RemovePlayers(makeTournamentPersons(map[string]int32{player4: 40}))
 	is.NoErr(err)
 
-	is.True(tc.PlayersProperties[tc.PlayerIndexMap[player1]].Removed)
-	is.True(tc.PlayersProperties[tc.PlayerIndexMap[player4]].Removed)
+	is.True(tc.Players.Persons[tc.PlayerIndexMap[player1]].Suspended)
+	is.True(tc.Players.Persons[tc.PlayerIndexMap[player4]].Suspended)
 
 	// Since this round had results, player4's bye against player1 remain unchanged
 	pairing, err := tc.getPairing(player4, 5)
@@ -1777,10 +1774,10 @@ func TestClassicDivisionRemovePlayers(t *testing.T) {
 	standings, err = tc.GetStandings(5)
 	is.NoErr(err)
 
-	expectedstandings = []*realtime.PlayerStanding{&realtime.PlayerStanding{Player: player2, Wins: 4, Losses: 1, Draws: 1, Spread: 600},
-		&realtime.PlayerStanding{Player: player3, Wins: 3, Losses: 3, Draws: 0, Spread: -350},
-		&realtime.PlayerStanding{Player: player1, Wins: 2, Losses: 3, Draws: 1, Spread: 250},
-		&realtime.PlayerStanding{Player: player4, Wins: 2, Losses: 4, Draws: 0, Spread: -500},
+	expectedstandings = []*realtime.PlayerStanding{&realtime.PlayerStanding{PlayerId: player2, Wins: 4, Losses: 1, Draws: 1, Spread: 600},
+		&realtime.PlayerStanding{PlayerId: player3, Wins: 3, Losses: 3, Draws: 0, Spread: -350},
+		&realtime.PlayerStanding{PlayerId: player1, Wins: 2, Losses: 3, Draws: 1, Spread: 250},
+		&realtime.PlayerStanding{PlayerId: player4, Wins: 2, Losses: 4, Draws: 0, Spread: -500},
 	}
 
 	is.NoErr(equalStandings(expectedstandings, standings))
@@ -1790,7 +1787,7 @@ func TestClassicDivisionRemovePlayers(t *testing.T) {
 	is.True(pairing.Games[0].Results[0] == realtime.TournamentGameResult_FORFEIT_LOSS)
 	is.True(pairing.Games[0].Results[1] == realtime.TournamentGameResult_FORFEIT_LOSS)
 
-	err = tc.SubmitResult(6, player2, player3, 600, 400,
+	_, err = tc.SubmitResult(6, player2, player3, 600, 400,
 		realtime.TournamentGameResult_WIN,
 		realtime.TournamentGameResult_LOSS,
 		realtime.GameEndReason_STANDARD, false, 0, "")
@@ -1798,13 +1795,13 @@ func TestClassicDivisionRemovePlayers(t *testing.T) {
 
 	// Starting Round 7 player4 gets forfeit losses
 
-	err = tc.SubmitResult(7, player2, player3, 600, 400,
+	_, err = tc.SubmitResult(7, player2, player3, 600, 400,
 		realtime.TournamentGameResult_WIN,
 		realtime.TournamentGameResult_LOSS,
 		realtime.GameEndReason_STANDARD, false, 0, "")
 	is.NoErr(err)
 
-	err = tc.SubmitResult(8, player2, player3, 600, 400,
+	_, err = tc.SubmitResult(8, player2, player3, 600, 400,
 		realtime.TournamentGameResult_WIN,
 		realtime.TournamentGameResult_LOSS,
 		realtime.GameEndReason_STANDARD, false, 0, "")
@@ -1813,21 +1810,21 @@ func TestClassicDivisionRemovePlayers(t *testing.T) {
 	standings, err = tc.GetStandings(8)
 	is.NoErr(err)
 
-	expectedstandings = []*realtime.PlayerStanding{&realtime.PlayerStanding{Player: player2, Wins: 7, Losses: 1, Draws: 1, Spread: 1200},
-		&realtime.PlayerStanding{Player: player3, Wins: 3, Losses: 6, Draws: 0, Spread: -950},
-		&realtime.PlayerStanding{Player: player4, Wins: 3, Losses: 6, Draws: 0, Spread: -550},
-		&realtime.PlayerStanding{Player: player1, Wins: 2, Losses: 6, Draws: 1, Spread: 100},
+	expectedstandings = []*realtime.PlayerStanding{&realtime.PlayerStanding{PlayerId: player2, Wins: 7, Losses: 1, Draws: 1, Spread: 1200},
+		&realtime.PlayerStanding{PlayerId: player3, Wins: 3, Losses: 6, Draws: 0, Spread: -950},
+		&realtime.PlayerStanding{PlayerId: player4, Wins: 3, Losses: 6, Draws: 0, Spread: -550},
+		&realtime.PlayerStanding{PlayerId: player1, Wins: 2, Losses: 6, Draws: 1, Spread: 100},
 	}
 
 	is.NoErr(equalStandings(expectedstandings, standings))
 
-	err = tc.RemovePlayers(&realtime.TournamentPersons{Persons: map[string]int32{player2: 10, player3: 60}})
+	_, err = tc.RemovePlayers(makeTournamentPersons(map[string]int32{player2: 10, player3: 60}))
 	is.True(fmt.Sprintf("%s", err) == "cannot remove players as tournament would be empty")
 
 	// Idiot director removed all but one player from the tournament
-	err = tc.RemovePlayers(&realtime.TournamentPersons{Persons: map[string]int32{player2: 10}})
+	_, err = tc.RemovePlayers(makeTournamentPersons(map[string]int32{player2: 10}))
 
-	err = tc.SubmitResult(9, player2, player3, 600, 400,
+	_, err = tc.SubmitResult(9, player2, player3, 600, 400,
 		realtime.TournamentGameResult_WIN,
 		realtime.TournamentGameResult_LOSS,
 		realtime.GameEndReason_STANDARD, false, 0, "")
@@ -1842,10 +1839,10 @@ func TestClassicDivisionRemovePlayers(t *testing.T) {
 	standings, err = tc.GetStandings(11)
 	is.NoErr(err)
 
-	expectedstandings = []*realtime.PlayerStanding{&realtime.PlayerStanding{Player: player3, Wins: 5, Losses: 7, Draws: 0, Spread: -1050},
-		&realtime.PlayerStanding{Player: player2, Wins: 8, Losses: 3, Draws: 1, Spread: 1300},
-		&realtime.PlayerStanding{Player: player4, Wins: 3, Losses: 9, Draws: 0, Spread: -700},
-		&realtime.PlayerStanding{Player: player1, Wins: 2, Losses: 9, Draws: 1, Spread: -50},
+	expectedstandings = []*realtime.PlayerStanding{&realtime.PlayerStanding{PlayerId: player3, Wins: 5, Losses: 7, Draws: 0, Spread: -1050},
+		&realtime.PlayerStanding{PlayerId: player2, Wins: 8, Losses: 3, Draws: 1, Spread: 1300},
+		&realtime.PlayerStanding{PlayerId: player4, Wins: 3, Losses: 9, Draws: 0, Spread: -700},
+		&realtime.PlayerStanding{PlayerId: player1, Wins: 2, Losses: 9, Draws: 1, Spread: -50},
 	}
 	is.NoErr(equalStandings(expectedstandings, standings))
 }
@@ -1887,7 +1884,7 @@ func TestClassicDivisionFirsts(t *testing.T) {
 			WinDifferenceRelativeWeight: 1})
 	}
 
-	tc, err := NewClassicDivision(playerStrings, playerRatings, roundControls, false)
+	tc, err := compactNewClassicDivision(playerRatings, roundControls, false)
 	is.NoErr(err)
 	is.True(tc != nil)
 
@@ -1959,25 +1956,25 @@ func TestClassicDivisionFirsts(t *testing.T) {
 }
 
 func runFirstMethodRound(tc *ClassicDivision, playerOrder []string, fs []int, round int, useByes bool) error {
-	err := tc.SetPairing(playerOrder[0], playerOrder[1], round, false)
+	_, err := tc.SetPairing(playerOrder[0], playerOrder[1], round)
 
 	if err != nil {
 		return err
 	}
 
 	if useByes {
-		err = tc.SetPairing(playerOrder[2], playerOrder[2], round, false)
+		_, err = tc.SetPairing(playerOrder[2], playerOrder[2], round)
 
 		if err != nil {
 			return err
 		}
-		err = tc.SetPairing(playerOrder[3], playerOrder[3], round, false)
+		_, err = tc.SetPairing(playerOrder[3], playerOrder[3], round)
 
 		if err != nil {
 			return err
 		}
 	} else {
-		err = tc.SetPairing(playerOrder[2], playerOrder[3], round, false)
+		_, err = tc.SetPairing(playerOrder[2], playerOrder[3], round)
 
 		if err != nil {
 			return err
@@ -2000,7 +1997,7 @@ func runFirstMethodRound(tc *ClassicDivision, playerOrder []string, fs []int, ro
 
 func completeManualRound(tc *ClassicDivision, round int, player1 string, player2 string, player3 string, player4 string, useByes bool) error {
 
-	err := tc.SubmitResult(round, player1, player2, 400, 500,
+	_, err := tc.SubmitResult(round, player1, player2, 400, 500,
 		realtime.TournamentGameResult_LOSS,
 		realtime.TournamentGameResult_WIN,
 		realtime.GameEndReason_STANDARD, false, 0, "")
@@ -2011,7 +2008,7 @@ func completeManualRound(tc *ClassicDivision, round int, player1 string, player2
 
 	// Results for byes are automatically submitted
 	if !useByes {
-		err = tc.SubmitResult(round, player3, player4, 200, 450,
+		_, err = tc.SubmitResult(round, player3, player4, 200, 450,
 			realtime.TournamentGameResult_LOSS,
 			realtime.TournamentGameResult_WIN,
 			realtime.GameEndReason_STANDARD, false, 0, "")
@@ -2038,7 +2035,7 @@ func checkFirsts(tc *ClassicDivision, players []string, fs []int, round int) err
 	actualfs := []int{}
 
 	for i := 0; i < len(players); i++ {
-		playerfs := getPlayerFS(tc, players[i], round)
+		playerfs := getPlayerFS(tc, int32(i), round)
 		actualfs = append(actualfs, playerfs...)
 	}
 
@@ -2092,11 +2089,9 @@ func runRandomTournaments(method realtime.PairingMethod, randomizePairings bool)
 				WinDifferenceRelativeWeight: 1})
 		}
 
-		playersRatingsRandom := &realtime.TournamentPersons{Persons: make(map[string]int32)}
-		playersRandom := []string{}
+		playersRandom := makeTournamentPersons(map[string]int32{})
 		for i := 0; i < numberOfPlayers; i++ {
-			playersRandom = append(playersRandom, fmt.Sprintf("%d", i))
-			playersRatingsRandom.Persons[fmt.Sprintf("%d", i)] = int32(i)
+			playersRandom.Persons = append(playersRandom.Persons, &realtime.TournamentPerson{Id: fmt.Sprintf("%d", i), Rating: int32(i)})
 		}
 
 		if method != realtime.PairingMethod_ELIMINATION {
@@ -2119,7 +2114,7 @@ func runRandomTournaments(method realtime.PairingMethod, randomizePairings bool)
 			}
 		}
 
-		tc, err := NewClassicDivision(playersRandom, playersRatingsRandom, roundControls, true)
+		tc, err := compactNewClassicDivision(playersRandom, roundControls, true)
 		if err != nil {
 			return err
 		}
@@ -2170,7 +2165,7 @@ func runRandomTournaments(method realtime.PairingMethod, randomizePairings bool)
 						res2 = realtime.TournamentGameResult(rand.Intn(6) + 1)
 					}
 
-					err = tc.SubmitResult(round,
+					_, err = tc.SubmitResult(round,
 						pairings[l],
 						pairings[l+1],
 						rand.Intn(300)+300,
@@ -2201,7 +2196,7 @@ func runRandomTournaments(method realtime.PairingMethod, randomizePairings bool)
 				numberOfAmendments := rand.Intn(5)
 				for l := 0; l < numberOfAmendments; l++ {
 					randPairing := rand.Intn(len(pairings)/2) * 2
-					err = tc.SubmitResult(round,
+					_, err = tc.SubmitResult(round,
 						pairings[randPairing],
 						pairings[randPairing+1],
 						rand.Intn(300)+300,
@@ -2293,7 +2288,7 @@ func validatePairings(tc *ClassicDivision, round int) error {
 			}
 		}
 		// Check that the pairing refs are correct
-		opponent, err := tc.opponentOf(tc.Players[i], round)
+		opponent, err := tc.opponentOf(tc.Players.Persons[i].Id, round)
 		if err != nil {
 			return err
 		}
@@ -2301,9 +2296,9 @@ func validatePairings(tc *ClassicDivision, round int) error {
 		if err != nil {
 			return err
 		}
-		if tc.Players[i] != opponentOpponent {
+		if tc.Players.Persons[i].Id != opponentOpponent {
 			return fmt.Errorf("player %s's opponent's (%s) opponent (%s) is not themself.",
-				tc.Players[i],
+				tc.Players.Persons[i].Id,
 				opponent,
 				opponentOpponent)
 		}
@@ -2329,46 +2324,48 @@ func equalStandings(sa1 []*realtime.PlayerStanding, sa2 []*realtime.PlayerStandi
 }
 
 func equalStandingsRecord(s1 *realtime.PlayerStanding, s2 *realtime.PlayerStanding) error {
-	if s1.Player != s2.Player ||
+	if s1.PlayerId != s2.PlayerId ||
 		s1.Wins != s2.Wins ||
 		s1.Losses != s2.Losses ||
 		s1.Draws != s2.Draws ||
 		s1.Spread != s2.Spread {
 		return fmt.Errorf("standings do not match: (%s, %d, %d, %d, %d) != (%s, %d, %d, %d, %d)",
-			s1.Player, s1.Wins, s1.Losses, s1.Draws, s1.Spread,
-			s2.Player, s2.Wins, s2.Losses, s2.Draws, s2.Spread)
+			s1.PlayerId, s1.Wins, s1.Losses, s1.Draws, s1.Spread,
+			s2.PlayerId, s2.Wins, s2.Losses, s2.Draws, s2.Spread)
 	}
 	return nil
 }
 
 func (tc *ClassicDivision) getPlayerPairings(round int) []string {
-	players := tc.Players
+	players := tc.Players.Persons
 	pairingKeys := tc.Matrix[round]
 	m := make(map[string]int)
 	for _, player := range players {
-		m[player] = 0
+		m[player.Id] = 0
 	}
 
 	playerPairings := []string{}
 	for _, pk := range pairingKeys {
 		// An eliminated player could have nil for Players, skip them
 		pairing := tc.PairingMap[pk]
-		if pairing.Players != nil && m[pairing.Players[0]] == 0 {
-			playerPairings = append(playerPairings, pairing.Players[0])
-			playerPairings = append(playerPairings, pairing.Players[1])
-			m[pairing.Players[0]] = 1
-			m[pairing.Players[1]] = 1
+		p0 := tc.Players.Persons[pairing.Players[0]].Id
+		p1 := tc.Players.Persons[pairing.Players[1]].Id
+		if pairing.Players != nil && m[tc.Players.Persons[pairing.Players[0]].Id] == 0 {
+			playerPairings = append(playerPairings, p0)
+			playerPairings = append(playerPairings, p1)
+			m[p0] = 1
+			m[p1] = 1
 		}
 	}
 	return playerPairings
 }
 
-func equalPlayerRoundInfo(p1 *realtime.PlayerRoundInfo, p2 *realtime.PlayerRoundInfo) error {
+func equalPlayerRoundInfo(p1 *realtime.Pairing, p2 *realtime.Pairing) error {
 	// We are not concerned with ordering
 	// Firsts and seconds are tested independently
 	if (p1.Players[0] != p2.Players[0] && p1.Players[0] != p2.Players[1]) ||
 		(p1.Players[1] != p2.Players[0] && p1.Players[1] != p2.Players[1]) {
-		return fmt.Errorf("players are not the same: (%s, %s) != (%s, %s)",
+		return fmt.Errorf("players are not the same: (%d, %d) != (%d, %d)",
 			p1.Players[0],
 			p1.Players[1],
 			p2.Players[0],
@@ -2416,6 +2413,23 @@ func equalTournamentGame(t1 *realtime.TournamentGame, t2 *realtime.TournamentGam
 	return nil
 }
 
+func compactNewClassicDivision(players *realtime.TournamentPersons, roundControls []*realtime.RoundControl, autostart bool) (*ClassicDivision, error) {
+	t := NewClassicDivision()
+
+	_, err := t.AddPlayers(players)
+	if err != nil {
+		return nil, err
+	}
+
+	err = t.SetRoundControls(roundControls)
+	if err != nil {
+		return nil, err
+	}
+
+	t.DivisionControls.AutoStart = autostart
+	return t, nil
+}
+
 func defaultRoundControls(numberOfRounds int) []*realtime.RoundControl {
 	roundControls := []*realtime.RoundControl{}
 	for i := 0; i < numberOfRounds; i++ {
@@ -2455,4 +2469,12 @@ func logTwo(n int) int {
 		n = n / 2
 	}
 	return res
+}
+
+func makeTournamentPersons(persons map[string]int32) *realtime.TournamentPersons {
+	tp := &realtime.TournamentPersons{Persons: []*realtime.TournamentPerson{}}
+	for key, value := range persons {
+		tp.Persons = append(tp.Persons, &realtime.TournamentPerson{Id: key, Rating: value})
+	}
+	return tp
 }

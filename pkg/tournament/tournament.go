@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"sort"
 	"strings"
 	"time"
 
@@ -19,12 +18,6 @@ import (
 	realtime "github.com/domino14/liwords/rpc/api/proto/realtime"
 	pb "github.com/domino14/liwords/rpc/api/proto/tournament_service"
 )
-
-type PlayerSorter []RatedPlayer
-
-func (a PlayerSorter) Len() int           { return len(a) }
-func (a PlayerSorter) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
-func (a PlayerSorter) Less(i, j int) bool { return a[i].Rating > a[j].Rating }
 
 type TournamentStore interface {
 	Get(context.Context, string) (*entity.Tournament, error)
@@ -112,7 +105,7 @@ func NewTournament(ctx context.Context,
 }
 
 // SendTournamentMessage sends updated tournament information on the channel.
-func SendTournamentMessage(ctx context.Context, ts TournamentStore, id string) error {
+func SendTournamentMessage(ctx context.Context, ts TournamentStore, id string, wrapped *entity.EventWrapper) error {
 
 	_, err := ts.Get(ctx, id)
 	if err != nil {
@@ -121,86 +114,12 @@ func SendTournamentMessage(ctx context.Context, ts TournamentStore, id string) e
 
 	eventChannel := ts.TournamentEventChan()
 
-	tdevt, err := TournamentDataResponse(ctx, ts, id)
-	if err != nil {
-		return err
-	}
-	log.Debug().Interface("tdevt", tdevt).Msg("sending tournament message")
-	wrapped := entity.WrapEvent(tdevt, realtime.MessageType_TOURNAMENT_MESSAGE)
 	wrapped.AddAudience(entity.AudTournament, id)
 	if eventChannel != nil {
 		eventChannel <- wrapped
 	}
-	log.Debug().Str("tid", id).Msg("sent tournament message")
+	log.Debug().Str("tid", id).Msg("sent tournament message type: " + string(wrapped.Type))
 	return nil
-}
-
-// SendTournamentDivisionMessage sends an updated division on the channel.
-func SendTournamentDivisionMessage(ctx context.Context, ts TournamentStore, id string,
-	division string) error {
-
-	t, err := ts.Get(ctx, id)
-	if err != nil {
-		return err
-	}
-
-	eventChannel := ts.TournamentEventChan()
-
-	_, ok := t.Divisions[division]
-
-	var wrapped *entity.EventWrapper
-	if ok {
-		tdevt, err := TournamentDivisionDataResponse(ctx, ts, id, division)
-		if err != nil {
-			return err
-		}
-		log.Debug().Interface("tdevt", tdevt).Msg("sending tournament division message")
-		wrapped = entity.WrapEvent(tdevt, realtime.MessageType_TOURNAMENT_DIVISION_MESSAGE)
-	} else {
-		tddevt := &realtime.TournamentDivisionDeletedResponse{Id: id, Division: division}
-		log.Debug().Interface("tdevt", tddevt).Msg("sending tournament division deleted message")
-		wrapped = entity.WrapEvent(tddevt, realtime.MessageType_TOURNAMENT_DIVISION_DELETED_MESSAGE)
-	}
-	wrapped.AddAudience(entity.AudTournament, id)
-	if eventChannel != nil {
-		eventChannel <- wrapped
-	}
-	log.Debug().Str("tid:did", id+":"+division).Msg("sent tournament division changed or deleted message")
-	return nil
-}
-
-func TournamentSetPairingsEvent(ctx context.Context, ts TournamentStore, id string, division string) error {
-	return SendTournamentDivisionMessage(ctx, ts, id, division)
-}
-
-func validateTournamentMeta(ttype pb.TType, slug string) (entity.CompetitionType, error) {
-	var tt entity.CompetitionType
-	switch ttype {
-	case pb.TType_CLUB:
-		tt = entity.TypeClub
-		if !strings.HasPrefix(slug, "/club/") {
-			return "", twirp.NewError(twirp.InvalidArgument, "club slug must start with /club/")
-		}
-	case pb.TType_STANDARD:
-		tt = entity.TypeStandard
-		if !strings.HasPrefix(slug, "/tournament/") {
-			return "", twirp.NewError(twirp.InvalidArgument, "tournament slug must start with /tournament/")
-		}
-	case pb.TType_LEGACY:
-		tt = entity.TypeLegacy
-		if !strings.HasPrefix(slug, "/tournament/") {
-			return "", twirp.NewError(twirp.InvalidArgument, "tournament slug must start with /tournament/")
-		}
-	case pb.TType_CHILD:
-		tt = entity.TypeChild
-		// A Club session type can also be a child tournament (it's essentially just a tournament with a parent ID)
-		if !strings.HasPrefix(slug, "/club/") && !strings.HasPrefix(slug, "/tournament/") {
-			return "", twirp.NewError(twirp.InvalidArgument, "club-session slug must start with /club/ or /tournament/")
-		}
-	default:
-		return "", twirp.NewError(twirp.InvalidArgument, "invalid tournament type")
-	}
-	return tt, nil
 }
 
 func SetTournamentMetadata(ctx context.Context, ts TournamentStore, id string, name string, description string,
@@ -230,7 +149,12 @@ func SetTournamentMetadata(ctx context.Context, ts TournamentStore, id string, n
 	if err != nil {
 		return err
 	}
-	return SendTournamentMessage(ctx, ts, id)
+	tdevt, err := TournamentDataResponse(ctx, ts, id)
+	if err != nil {
+		return err
+	}
+	wrapped := entity.WrapEvent(tdevt, realtime.MessageType_TOURNAMENT_MESSAGE)
+	return SendTournamentMessage(ctx, ts, id, wrapped)
 }
 
 func SetSingleRoundControls(ctx context.Context, ts TournamentStore, id string, division string, round int, controls *realtime.RoundControl) error {
@@ -253,15 +177,11 @@ func SetSingleRoundControls(ctx context.Context, ts TournamentStore, id string, 
 		return fmt.Errorf("division %s does not exist", division)
 	}
 
-	if round < 0 || round >= len(divisionObject.Controls.RoundControls) {
-		return fmt.Errorf("round number %d out or range for division %s", round, division)
-	}
-
 	if divisionObject.DivisionManager == nil {
 		return fmt.Errorf("division manager null for division %s", division)
 	}
 
-	err = divisionObject.DivisionManager.SetSingleRoundControls(round, controls)
+	newControls, err := divisionObject.DivisionManager.SetSingleRoundControls(round, controls)
 	if err != nil {
 		return err
 	}
@@ -270,10 +190,11 @@ func SetSingleRoundControls(ctx context.Context, ts TournamentStore, id string, 
 	if err != nil {
 		return err
 	}
-	return SendTournamentDivisionMessage(ctx, ts, id, division)
+	wrapped := entity.WrapEvent(newControls, realtime.MessageType_TOURNAMENT_DIVISION_ROUND_CONTROLS_MESSAGE)
+	return SendTournamentMessage(ctx, ts, id, wrapped)
 }
 
-func SetTournamentControls(ctx context.Context, ts TournamentStore, id string, division string, controls *realtime.TournamentControls) error {
+func SetDivisionControls(ctx context.Context, ts TournamentStore, id string, division string, controls *realtime.DivisionControls) error {
 
 	t, err := ts.Get(ctx, id)
 	if err != nil {
@@ -294,21 +215,17 @@ func SetTournamentControls(ctx context.Context, ts TournamentStore, id string, d
 	}
 
 	if t.IsStarted {
-		return errors.New("cannot change tournament controls after it has started")
+		return errors.New("cannot set tournament controls after it has started")
 	}
 
-	divisionObject.Controls = controls
-
-	err = createDivisionManager(t, division)
-	if err != nil {
-		return err
-	}
+	newDivisionControls, err := divisionObject.DivisionManager.SetDivisionControls(controls)
 
 	err = ts.Set(ctx, t)
 	if err != nil {
 		return err
 	}
-	return SendTournamentDivisionMessage(ctx, ts, id, division)
+	wrapped := entity.WrapEvent(newDivisionControls, realtime.MessageType_TOURNAMENT_DIVISION_CONTROLS_MESSAGE)
+	return SendTournamentMessage(ctx, ts, id, wrapped)
 }
 
 func AddDivision(ctx context.Context, ts TournamentStore, id string, division string) error {
@@ -340,7 +257,12 @@ func AddDivision(ctx context.Context, ts TournamentStore, id string, division st
 	if err != nil {
 		return err
 	}
-	return SendTournamentDivisionMessage(ctx, ts, id, division)
+	tdevt, err := t.Divisions[division].DivisionManager.GetXHRResponse()
+	if err != nil {
+		return err
+	}
+	wrapped := entity.WrapEvent(tdevt, realtime.MessageType_TOURNAMENT_DIVISION_MESSAGE)
+	return SendTournamentMessage(ctx, ts, id, wrapped)
 }
 
 func RemoveDivision(ctx context.Context, ts TournamentStore, id string, division string) error {
@@ -371,16 +293,18 @@ func RemoveDivision(ctx context.Context, ts TournamentStore, id string, division
 	if err != nil {
 		return err
 	}
-	return SendTournamentDivisionMessage(ctx, ts, id, division)
+
+	tddevt := &realtime.TournamentDivisionDeletedResponse{Id: id, Division: division}
+	wrapped := entity.WrapEvent(tddevt, realtime.MessageType_TOURNAMENT_DIVISION_DELETED_MESSAGE)
+	return SendTournamentMessage(ctx, ts, id, wrapped)
 }
 
-func constructFullID(ctx context.Context, us user.Store, user string) (string, error) {
-	name := player.Name
-	u, err := us.Get(ctx, player)
+func constructFullID(ctx context.Context, us user.Store, user string) (string, string, error) {
+	u, err := us.Get(ctx, user)
 	if err != nil {
-		return fmt.Errorf("full ID for player %s could not be constructed: %s", player, err.Error())
+		return "", "", fmt.Errorf("full ID for player %s could not be constructed: %s", user, err.Error())
 	}
-	return u.UUID + ":" + u.Username
+	return u.UUID + ":" + u.Username, u.UUID, nil
 }
 
 func AddDirectors(ctx context.Context, ts TournamentStore, us user.Store, id string, directors *realtime.TournamentPersons) error {
@@ -398,24 +322,24 @@ func AddDirectors(ctx context.Context, ts TournamentStore, us user.Store, id str
 
 	// Only perform the add operation if all persons can be added.
 
-	for director := range directors.Persons {
-		fullID := constructFullID(ctx, us, player.Name)
+	for _, director := range directors.Persons {
+		fullID, _, err := constructFullID(ctx, us, director.Id)
 		if err != nil {
 			return err
 		}
-		director.Name = fullID
+		director.Id = fullID
 	}
 
 	// Not very efficient but there's only gonna be like
 	// a maximum of maybe 10 existing directors
 
-	for idx, newDirector := range directors.Persons {
-		if newDirector.Name == t.ExecutiveDirector || newDirector.Rating == 0 {
-			return errors.New("cannot add another executive director %s, %d", newDirector.Name, newDirector.Rating)
+	for _, newDirector := range directors.Persons {
+		if newDirector.Id == t.ExecutiveDirector || newDirector.Rating == 0 {
+			return fmt.Errorf("cannot add another executive director %s, %d", newDirector.Id, newDirector.Rating)
 		}
-		for _, existingDirector := range t.Directors {
-			if newDirector.Name == existingDirector.Name {
-				return errors.New("director %s already exists", newDirector.Name)
+		for _, existingDirector := range t.Directors.Persons {
+			if newDirector.Id == existingDirector.Id {
+				return fmt.Errorf("director %s already exists", newDirector.Id)
 			}
 		}
 	}
@@ -426,7 +350,12 @@ func AddDirectors(ctx context.Context, ts TournamentStore, us user.Store, id str
 	if err != nil {
 		return err
 	}
-	return SendTournamentDivisionMessage(ctx, ts, id, division)
+	tdevt, err := TournamentDataResponse(ctx, ts, id)
+	if err != nil {
+		return err
+	}
+	wrapped := entity.WrapEvent(tdevt, realtime.MessageType_TOURNAMENT_MESSAGE)
+	return SendTournamentMessage(ctx, ts, id, wrapped)
 }
 
 func RemoveDirectors(ctx context.Context, ts TournamentStore, us user.Store, id string, directors *realtime.TournamentPersons) error {
@@ -446,30 +375,28 @@ func RemoveDirectors(ctx context.Context, ts TournamentStore, us user.Store, id 
 	// a maximum of maybe 10 existing directors
 
 	indexesToRemove := []int{}
-	for idx, newDirector := range directors.Persons {
+	for _, newDirector := range directors.Persons {
 		index := -1
-		for idx, existingDirector := range t.Directors {
-			if newDirector.Name == existingDirector.Name {
+		for idx, existingDirector := range t.Directors.Persons {
+			if newDirector.Id == existingDirector.Id {
 				if existingDirector.Rating == 0 {
-					return errors.New("cannot remove the executive director: %s", existingDirector.Name)
+					return fmt.Errorf("cannot remove the executive director: %s", existingDirector.Id)
 				}
 				index = idx
 				break
 			}
 		}
 		if index == -1 {
-			return fmt.Errorf("director %s does not exist", newDirector.Name)
+			return fmt.Errorf("director %s does not exist", newDirector.Id)
 		} else {
 			indexesToRemove = append(indexesToRemove, index)
-			da := t.Directors.Persons
-			da[len(da)-1], da[i] = da[i], da[len(da)-1]
-    		t.Directors.Persons = da[:len(da)-1]
 		}
 	}
 
-	for i := len(t.Directors.Persons) - 1; i >= 0; i-- {
+	for i := len(indexesToRemove) - 1; i >= 0; i-- {
+		idx := indexesToRemove[i]
 		da := t.Directors.Persons
-		da[len(da)-1], da[i] = da[i], da[len(da)-1]
+		da[len(da)-1], da[idx] = da[idx], da[len(da)-1]
 		t.Directors.Persons = da[:len(da)-1]
 	}
 
@@ -477,7 +404,12 @@ func RemoveDirectors(ctx context.Context, ts TournamentStore, us user.Store, id 
 	if err != nil {
 		return err
 	}
-	return SendTournamentDivisionMessage(ctx, ts, id, division)
+	tdevt, err := TournamentDataResponse(ctx, ts, id)
+	if err != nil {
+		return err
+	}
+	wrapped := entity.WrapEvent(tdevt, realtime.MessageType_TOURNAMENT_MESSAGE)
+	return SendTournamentMessage(ctx, ts, id, wrapped)
 }
 
 func AddPlayers(ctx context.Context, ts TournamentStore, us user.Store, id string, division string, players *realtime.TournamentPersons) error {
@@ -506,16 +438,16 @@ func AddPlayers(ctx context.Context, ts TournamentStore, us user.Store, id strin
 	// Only perform the add operation if all persons can be added.
 
 	userUUIDs := []string{}
-	for player := range players.Persons {
-		fullID := constructFullID(ctx, us, player.Name)
+	for _, player := range players.Persons {
+		fullID, UUID, err := constructFullID(ctx, us, player.Id)
 		if err != nil {
 			return err
 		}
-		player.Name = fullID
-		userUUIDs = append(userUUIDs, u.UUID)
+		player.Id = fullID
+		userUUIDs = append(userUUIDs, UUID)
 	}
 
-	err = divisionObject.DivisionManager.AddPlayers(players)
+	addPlayersPairings, err := divisionObject.DivisionManager.AddPlayers(players)
 	if err != nil {
 		return err
 	}
@@ -529,7 +461,16 @@ func AddPlayers(ctx context.Context, ts TournamentStore, us user.Store, id strin
 	if err != nil {
 		return err
 	}
-	return SendTournamentDivisionMessage(ctx, ts, id, division)
+
+	pairingsResponse := PairingsToResponse(id, division, addPlayersPairings)
+
+	addPlayersMessage := &realtime.PlayerAddedOrRemovedResponse{Id: id,
+		Division:         division,
+		Added:            true,
+		Players:          players,
+		DivisionPairings: pairingsResponse.DivisionPairings}
+	wrapped := entity.WrapEvent(addPlayersMessage, realtime.MessageType_TOURNAMENT_DIVISION_PLAYER_CHANGE_MESSAGE)
+	return SendTournamentMessage(ctx, ts, id, wrapped)
 }
 
 func RemovePlayers(ctx context.Context, ts TournamentStore, us user.Store, id string, division string, players *realtime.TournamentPersons) error {
@@ -557,15 +498,15 @@ func RemovePlayers(ctx context.Context, ts TournamentStore, us user.Store, id st
 
 	// Only perform the add operation if all persons can be added.
 
-	for player := range players.Persons {
-		fullID, err := constructFullID(ctx, us, player.Name)
+	for _, player := range players.Persons {
+		fullID, _, err := constructFullID(ctx, us, player.Id)
 		if err != nil {
 			return err
 		}
-		player.Name = fullID
+		player.Id = fullID
 	}
 
-	err = divisionObject.DivisionManager.RemovePlayers(players)
+	removePlayersPairings, err := divisionObject.DivisionManager.RemovePlayers(players)
 	if err != nil {
 		return err
 	}
@@ -574,8 +515,16 @@ func RemovePlayers(ctx context.Context, ts TournamentStore, us user.Store, id st
 	if err != nil {
 		return err
 	}
-	return SendTournamentDivisionMessage(ctx, ts, id, division)
-}
+
+	pairingsResponse := PairingsToResponse(id, division, removePlayersPairings)
+
+	removePlayersMessage := &realtime.PlayerAddedOrRemovedResponse{Id: id,
+		Division:         division,
+		Added:            false,
+		Players:          players,
+		DivisionPairings: pairingsResponse.DivisionPairings}
+	wrapped := entity.WrapEvent(removePlayersMessage, realtime.MessageType_TOURNAMENT_DIVISION_PLAYER_CHANGE_MESSAGE)
+	return SendTournamentMessage(ctx, ts, id, wrapped)
 }
 
 // SetPairings is only called by the API
@@ -593,6 +542,8 @@ func SetPairings(ctx context.Context, ts TournamentStore, id string, division st
 		return fmt.Errorf("tournament %s has finished", id)
 	}
 
+	pairingsMap := map[int][]*realtime.Pairing{}
+
 	for _, pairing := range pairings {
 		divisionObject, ok := t.Divisions[division]
 
@@ -604,17 +555,20 @@ func SetPairings(ctx context.Context, ts TournamentStore, id string, division st
 			return fmt.Errorf("division %s does not have enough players or controls to set pairings", division)
 		}
 
-		err = divisionObject.DivisionManager.SetPairing(pairing.PlayerOneId, pairing.PlayerTwoId, int(pairing.Round), pairing.IsForfeit)
+		newPairings, err := divisionObject.DivisionManager.SetPairing(pairing.PlayerOneId, pairing.PlayerTwoId, int(pairing.Round))
 		if err != nil {
 			return err
 		}
+		pairingsMap = combinePairingsResponses(pairingsMap, newPairings)
 	}
 
 	err = ts.Set(ctx, t)
 	if err != nil {
 		return err
 	}
-	return TournamentSetPairingsEvent(ctx, ts, id, division)
+	pairingsMessage := PairingsToResponse(id, division, pairingsMap)
+	wrapped := entity.WrapEvent(pairingsMessage, realtime.MessageType_TOURNAMENT_DIVISION_PAIRINGS_MESSAGE)
+	return SendTournamentMessage(ctx, ts, id, wrapped)
 }
 
 // SetResult sets the result for the game. Note: playerOne and playerTwo
@@ -724,7 +678,7 @@ func SetResult(ctx context.Context,
 		gid = g.GameID()
 	}
 
-	err = divisionObject.DivisionManager.SubmitResult(round,
+	pairing, err := divisionObject.DivisionManager.SubmitResult(round,
 		p1.UUID+":"+p1.Username,
 		p2.UUID+":"+p2.Username,
 		playerOneScore,
@@ -743,10 +697,12 @@ func SetResult(ctx context.Context,
 	if err != nil {
 		return err
 	}
-	return SendTournamentDivisionMessage(ctx, ts, id, division)
+	pairingsMessage := PairingsToResponse(id, division, pairing)
+	wrapped := entity.WrapEvent(pairingsMessage, realtime.MessageType_TOURNAMENT_DIVISION_PAIRINGS_MESSAGE)
+	return SendTournamentMessage(ctx, ts, id, wrapped)
 }
 
-func StartAllRoundCountdowns(ctx context.Context, ts TournamentStore, id string) error {
+func StartAllRoundCountdowns(ctx context.Context, ts TournamentStore, id string, round int) error {
 	t, err := ts.Get(ctx, id)
 	if err != nil {
 		return err
@@ -757,18 +713,27 @@ func StartAllRoundCountdowns(ctx context.Context, ts TournamentStore, id string)
 	if t.IsFinished {
 		return fmt.Errorf("tournament %s has finished", id)
 	}
-
+	divisions := []string{}
+	rounds := []int32{}
 	for division := range t.Divisions {
 		t.IsStarted = true
-		err := StartRoundCountdown(ctx, ts, id, division, round,false)
+		err := StartRoundCountdown(ctx, ts, id, division, round, false, false)
 		if err != nil {
 			return err
 		}
+		divisions = append(divisions, division)
+		rounds = append(rounds, int32(round))
 	}
 	if !t.IsStarted {
 		return fmt.Errorf("cannot start tournament %s with no divisions", t.Name)
 	}
-	return ts.Set(ctx, t)
+	err = ts.Set(ctx, t)
+	if err != nil {
+		return err
+	}
+	wrapped := entity.WrapEvent(&realtime.StartRoundResponse{Id: id, DivisionIds: divisions, Rounds: rounds},
+		realtime.MessageType_TOURNAMENT_ROUND_STARTED)
+	return SendTournamentMessage(ctx, ts, id, wrapped)
 }
 
 // DivisionChannelName returns a channel name that can be used
@@ -779,7 +744,7 @@ func DivisionChannelName(tid, division string) string {
 }
 
 func StartRoundCountdown(ctx context.Context, ts TournamentStore, id string,
-	division string, round int, save bool) error {
+	division string, round int, save, send bool) error {
 	t, err := ts.Get(ctx, id)
 	if err != nil {
 		return err
@@ -802,10 +767,10 @@ func StartRoundCountdown(ctx context.Context, ts TournamentStore, id string,
 		return fmt.Errorf("division %s does not have enough players or controls to set pairings", division)
 	}
 
-/*	We will deal with auto start at a later date
-	if manual && divisionObject.Controls.AutoStart && divisionObject.DivisionManager.IsStarted() {
-		return fmt.Errorf("division %s has autostart enabled and cannot be manually started", division)
-	}*/
+	/*	We will deal with auto start at a later date
+		if manual && divisionObject.Controls.AutoStart && divisionObject.DivisionManager.IsStarted() {
+			return fmt.Errorf("division %s has autostart enabled and cannot be manually started", division)
+		}*/
 
 	if !t.IsStarted {
 		return fmt.Errorf("cannot start division %s before starting the tournament", t.Name)
@@ -821,27 +786,28 @@ func StartRoundCountdown(ctx context.Context, ts TournamentStore, id string,
 		if err != nil {
 			return err
 		}
-		// Send code that sends signal to all tournament players that backend
-		// is now accepting "ready" messages for this round.
-		eventChannel := ts.TournamentEventChan()
-		evt := &realtime.TournamentRoundStarted{
-			TournamentId: id,
-			Division:     division,
-			Round:        int32(round),
-			// GameIndex: int32(0) -- fix this when we have other types of tournaments
-			// add timestamp deadline here as well at some point
-		}
-		wrapped := entity.WrapEvent(evt, realtime.MessageType_TOURNAMENT_ROUND_STARTED)
+		if send {
+			// Send code that sends signal to all tournament players that backend
+			// is now accepting "ready" messages for this round.
+			eventChannel := ts.TournamentEventChan()
+			evt := &realtime.TournamentRoundStarted{
+				TournamentId: id,
+				Division:     division,
+				Round:        int32(round),
+				// GameIndex: int32(0) -- fix this when we have other types of tournaments
+				// add timestamp deadline here as well at some point
+			}
+			wrapped := entity.WrapEvent(evt, realtime.MessageType_TOURNAMENT_ROUND_STARTED)
 
-		// Send it to everyone in this division across the app.
-		wrapped.AddAudience(entity.AudChannel, DivisionChannelName(id, division))
-		// Also send it to the tournament realm.
-		wrapped.AddAudience(entity.AudTournament, id)
-		if eventChannel != nil {
-			eventChannel <- wrapped
+			// Send it to everyone in this division across the app.
+			wrapped.AddAudience(entity.AudChannel, DivisionChannelName(id, division))
+			// Also send it to the tournament realm.
+			wrapped.AddAudience(entity.AudTournament, id)
+			if eventChannel != nil {
+				eventChannel <- wrapped
+			}
+			log.Debug().Interface("evt", evt).Msg("sent-tournament-round-started")
 		}
-		divisionObject.DivisionManager.SetLastStarted(evt)
-		log.Debug().Interface("evt", evt).Msg("sent-tournament-round-started")
 	} else {
 		return fmt.Errorf("division %s round %d is not ready to be started", division, round)
 	}
@@ -851,7 +817,7 @@ func StartRoundCountdown(ctx context.Context, ts TournamentStore, id string,
 			return err
 		}
 	}
-	return SendTournamentDivisionMessage(ctx, ts, id, division)
+	return nil
 }
 
 func PairRound(ctx context.Context, ts TournamentStore, id string, division string, round int) error {
@@ -878,11 +844,11 @@ func PairRound(ctx context.Context, ts TournamentStore, id string, division stri
 	}
 
 	currentRound := divisionObject.DivisionManager.GetCurrentRound()
-	if round < currentRound + 1 {
-		return errors.New("cannot repair non-future round %d because current round is %d", round, currentRound)
+	if round < currentRound+1 {
+		return fmt.Errorf("cannot repair non-future round %d since current round is %d", round, currentRound)
 	}
 
-	err = divisionObject.DivisionManager.PairRound(round)
+	pairings, err := divisionObject.DivisionManager.PairRound(round)
 
 	if err != nil {
 		return err
@@ -892,7 +858,10 @@ func PairRound(ctx context.Context, ts TournamentStore, id string, division stri
 	if err != nil {
 		return err
 	}
-	return SendTournamentDivisionMessage(ctx, ts, id, division)
+
+	pairingsMessage := PairingsToResponse(id, division, pairings)
+	wrapped := entity.WrapEvent(pairingsMessage, realtime.MessageType_TOURNAMENT_DIVISION_PAIRINGS_MESSAGE)
+	return SendTournamentMessage(ctx, ts, id, wrapped)
 }
 
 func IsStarted(ctx context.Context, ts TournamentStore, id string) (bool, error) {
@@ -900,6 +869,11 @@ func IsStarted(ctx context.Context, ts TournamentStore, id string) (bool, error)
 	if err != nil {
 		return false, err
 	}
+
+	if t.IsFinished {
+		return false, fmt.Errorf("tournament %s has finished", id)
+	}
+
 	return t.IsStarted, nil
 }
 
@@ -910,7 +884,7 @@ func IsRoundComplete(ctx context.Context, ts TournamentStore, id string, divisio
 	}
 
 	if t.IsFinished {
-		return fmt.Errorf("tournament %s has finished", id)
+		return false, fmt.Errorf("tournament %s has finished", id)
 	}
 
 	if !t.IsStarted {
@@ -959,7 +933,8 @@ func SetFinished(ctx context.Context, ts TournamentStore, id string) error {
 	if err != nil {
 		return err
 	}
-	return SendTournamentMessage(ctx, ts, id)
+	wrapped := entity.WrapEvent(&realtime.TournamentFinishedResponse{Id: id}, realtime.MessageType_TOURNAMENT_FINISHED_MESSAGE)
+	return SendTournamentMessage(ctx, ts, id, wrapped)
 }
 
 func IsFinished(ctx context.Context, ts TournamentStore, id string, division string) (bool, error) {
@@ -989,7 +964,7 @@ func SetReadyForGame(ctx context.Context, ts TournamentStore, t *entity.Tourname
 	defer t.Unlock()
 
 	if t.IsFinished {
-		return fmt.Errorf("tournament %s has finished", id)
+		return nil, false, fmt.Errorf("tournament %s has finished", t.Name)
 	}
 
 	_, ok := t.Divisions[division]
@@ -1011,7 +986,7 @@ func ClearReadyStates(ctx context.Context, ts TournamentStore, t *entity.Tournam
 	defer t.Unlock()
 
 	if t.IsFinished {
-		return fmt.Errorf("tournament %s has finished", id)
+		return fmt.Errorf("tournament %s has finished", t.Name)
 	}
 
 	_, ok := t.Divisions[division]
@@ -1019,7 +994,7 @@ func ClearReadyStates(ctx context.Context, ts TournamentStore, t *entity.Tournam
 		return fmt.Errorf("division %s does not exist", division)
 	}
 
-	err := t.Divisions[division].DivisionManager.ClearReadyStates(userID, round, gameIndex)
+	pairing, err := t.Divisions[division].DivisionManager.ClearReadyStates(userID, round, gameIndex)
 	if err != nil {
 		return err
 	}
@@ -1027,8 +1002,9 @@ func ClearReadyStates(ctx context.Context, ts TournamentStore, t *entity.Tournam
 	if err != nil {
 		return err
 	}
-
-	return SendTournamentDivisionMessage(ctx, ts, t.UUID, division)
+	pairingsMessage := PairingsToResponse(t.UUID, division, pairing)
+	wrapped := entity.WrapEvent(pairingsMessage, realtime.MessageType_TOURNAMENT_DIVISION_PAIRINGS_MESSAGE)
+	return SendTournamentMessage(ctx, ts, t.UUID, wrapped)
 }
 
 func TournamentDataResponse(ctx context.Context, ts TournamentStore, id string) (*realtime.TournamentDataResponse, error) {
@@ -1060,13 +1036,13 @@ func TournamentDivisionDataResponse(ctx context.Context, ts TournamentStore,
 
 	response := &realtime.TournamentDivisionDataResponse{}
 	if divisionObject.DivisionManager != nil {
-		response, err = divisionObject.DivisionManager.ToResponse()
+		response, err = divisionObject.DivisionManager.GetXHRResponse()
 		if err != nil {
 			return nil, err
 		}
 	}
 	response.Id = id
-	response.DivisionId = division
+	response.Division = division
 	// response.Controls = divisionObject.Controls
 	log.Debug().
 		Str("division", division).
@@ -1074,210 +1050,59 @@ func TournamentDivisionDataResponse(ctx context.Context, ts TournamentStore,
 	return response, nil
 }
 
-<<<<<<< HEAD
-=======
-func emptyDivision() *entity.TournamentDivision {
-	return &entity.TournamentDivision{Players: &realtime.TournamentPersons{Persons: make(map[string]int32)},
-		Controls: &realtime.TournamentControls{}, DivisionManager: nil}
-}
-
-func addTournamentPersons(ctx context.Context,
-	ts TournamentStore,
-	us user.Store,
-	id string,
-	division string,
-	persons *realtime.TournamentPersons,
-	isPlayers bool) error {
-
-	t, err := ts.Get(ctx, id)
-	if err != nil {
-		return err
+func PairingsToResponse(id string, division string, pairings map[int][]*realtime.Pairing) *realtime.DivisionPairingsResponse {
+	divisionPairings := &realtime.DivisionPairingsResponse{Id: id, Division: division, DivisionPairings: []*realtime.RoundPairings{}}
+	for round, roundPairings := range pairings {
+		divisionPairings.DivisionPairings = append(divisionPairings.DivisionPairings,
+			&realtime.RoundPairings{Round: int32(round), Pairings: roundPairings})
 	}
-
-	t.Lock()
-	defer t.Unlock()
-
-	divisionObject, ok := t.Divisions[division]
-
-	if isPlayers && !ok {
-		return fmt.Errorf("division %s does not exist", division)
-	}
-
-	var personsMap map[string]int32
-	if isPlayers {
-		personsMap = divisionObject.Players.Persons
-	} else {
-		personsMap = t.Directors.Persons
-		if executiveDirectorExists(persons.Persons, t.ExecutiveDirector) {
-			return errors.New("cannot add another executive director")
-		}
-	}
-
-	// Only perform the add operation if all persons can be added.
-	personsCopy := &realtime.TournamentPersons{Persons: map[string]int32{}}
-	userUUIDs := []string{}
-	for k := range persons.Persons {
-		u, err := us.Get(ctx, k)
-		if err != nil {
-			return err
-		}
-		fullID := u.UUID + ":" + u.Username
-		userUUIDs = append(userUUIDs, u.UUID)
-		_, ok := personsMap[fullID]
-		if ok {
-			return fmt.Errorf("person (%s, %d) already exists", k, personsMap[k])
-		}
-		personsCopy.Persons[fullID] = persons.Persons[k]
-	}
-
-	for k, v := range personsCopy.Persons {
-		personsMap[k] = v
-	}
-
-	if isPlayers {
-		if t.IsStarted {
-			err := divisionObject.DivisionManager.AddPlayers(personsCopy)
-			if err != nil {
-				return err
-			}
-		} else {
-			err = createDivisionManager(t, division)
-			if err != nil {
-				return err
-			}
-		}
-		err = ts.AddRegistrants(ctx, t.UUID, userUUIDs, division)
-		if err != nil {
-			return err
-		}
-	}
-
-	return ts.Set(ctx, t)
-}
-
-func removeTournamentPersons(ctx context.Context,
-	ts TournamentStore,
-	us user.Store,
-	id string,
-	division string,
-	persons *realtime.TournamentPersons,
-	isPlayers bool) error {
-	t, err := ts.Get(ctx, id)
-	if err != nil {
-		return err
-	}
-
-	t.Lock()
-	defer t.Unlock()
-
-	divisionObject, ok := t.Divisions[division]
-
-	if isPlayers && !ok {
-		return fmt.Errorf("division %s does not exist", division)
-	}
-
-	var personsMap map[string]int32
-	if isPlayers {
-		personsMap = divisionObject.Players.Persons
-	} else {
-		personsMap = t.Directors.Persons
-		if executiveDirectorExists(persons.Persons, t.ExecutiveDirector) {
-			return errors.New("cannot remove the executive director")
-		}
-	}
-
-	// Only perform the remove operation if all persons can be removed.
-	personsCopy := &realtime.TournamentPersons{Persons: map[string]int32{}}
-	userUUIDs := []string{}
-
-	for k := range persons.Persons {
-		u, err := us.Get(ctx, k)
-		if err != nil {
-			return err
-		}
-		fullID := u.UUID + ":" + u.Username
-		userUUIDs = append(userUUIDs, u.UUID)
-		_, ok := personsMap[fullID]
-		if !ok {
-			return fmt.Errorf("person (%s, %d) does not exist", k, personsMap[k])
-		}
-		personsCopy.Persons[fullID] = persons.Persons[k]
-	}
-
-	for k, _ := range personsCopy.Persons {
-		delete(personsMap, k)
-	}
-
-	if isPlayers {
-		if t.IsStarted {
-			err := divisionObject.DivisionManager.RemovePlayers(personsCopy)
-			if err != nil {
-				return err
-			}
-		} else {
-			err = createDivisionManager(t, division)
-			if err != nil {
-				return err
-			}
-		}
-		err = ts.RemoveRegistrants(ctx, t.UUID, userUUIDs, division)
-		if err != nil {
-			return err
-		}
-	}
-
-	return ts.Set(ctx, t)
-}
-
-func createDivisionManager(t *entity.Tournament, division string) error {
-
-	log.Debug().Str("division", division).Str("tourney", t.UUID).Msg("creating-division-manager")
-	divisionObject, ok := t.Divisions[division]
-
-	if !ok {
-		return fmt.Errorf("division %s does not exist", division)
-	}
-
-	rankedPlayers := rankPlayers(divisionObject.Players)
-	d, err := NewClassicDivision(rankedPlayers,
-		divisionObject.Players,
-		divisionObject.Controls.RoundControls,
-		divisionObject.Controls.AutoStart)
-	if err != nil {
-		return err
-	}
-	divisionObject.DivisionManager = d
-	return nil
-}
-
-func rankPlayers(players *realtime.TournamentPersons) []string {
-	// Sort players by descending int (which is probably rating)
-	ratedPlayers := []RatedPlayer{}
-	for key, value := range players.Persons {
-		ratedPlayers = append(ratedPlayers, RatedPlayer{Name: key, Rating: int(value)})
-	}
-	sort.Sort(PlayerSorter(ratedPlayers))
-	rankedPlayers := []string{}
-	for i := 0; i < len(ratedPlayers); i++ {
-		rankedPlayers = append(rankedPlayers, ratedPlayers[i].Name)
-	}
-	return rankedPlayers
+	return divisionPairings
 }
 
 func getExecutiveDirector(directors *realtime.TournamentPersons) (string, error) {
 	err := errors.New("tournament must have exactly one executive director")
-	ed := ""
-	for k, v := range directors.Persons {
-		if v == 0 {
-			if ed != "" {
+	executiveDirector := ""
+	for _, director := range directors.Persons {
+		if director.Rating == 0 {
+			if executiveDirector != "" {
 				return "", err
 			} else {
-				ed = k
+				executiveDirector = director.Id
 			}
 		}
 	}
-	if ed == "" {
+	if executiveDirector == "" {
 		return "", err
 	}
-	return ed, nil
+	return executiveDirector, nil
+}
+
+func validateTournamentMeta(ttype pb.TType, slug string) (entity.CompetitionType, error) {
+	var tt entity.CompetitionType
+	switch ttype {
+	case pb.TType_CLUB:
+		tt = entity.TypeClub
+		if !strings.HasPrefix(slug, "/club/") {
+			return "", twirp.NewError(twirp.InvalidArgument, "club slug must start with /club/")
+		}
+	case pb.TType_STANDARD:
+		tt = entity.TypeStandard
+		if !strings.HasPrefix(slug, "/tournament/") {
+			return "", twirp.NewError(twirp.InvalidArgument, "tournament slug must start with /tournament/")
+		}
+	case pb.TType_LEGACY:
+		tt = entity.TypeLegacy
+		if !strings.HasPrefix(slug, "/tournament/") {
+			return "", twirp.NewError(twirp.InvalidArgument, "tournament slug must start with /tournament/")
+		}
+	case pb.TType_CHILD:
+		tt = entity.TypeChild
+		// A Club session type can also be a child tournament (it's essentially just a tournament with a parent ID)
+		if !strings.HasPrefix(slug, "/club/") && !strings.HasPrefix(slug, "/tournament/") {
+			return "", twirp.NewError(twirp.InvalidArgument, "club-session slug must start with /club/ or /tournament/")
+		}
+	default:
+		return "", twirp.NewError(twirp.InvalidArgument, "invalid tournament type")
+	}
+	return tt, nil
 }

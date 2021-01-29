@@ -4,31 +4,28 @@ import (
 	"encoding/json"
 	"sync"
 
-	"gorm.io/datatypes"
-
 	realtime "github.com/domino14/liwords/rpc/api/proto/realtime"
 )
 
 type DivisionManager interface {
 	SubmitResult(int, string, string, int, int, realtime.TournamentGameResult,
-		realtime.TournamentGameResult, realtime.GameEndReason, bool, int, string) error
-	PairRound(int) error
+		realtime.TournamentGameResult, realtime.GameEndReason, bool, int, string) (map[int][]*realtime.Pairing, error)
+	PairRound(int) (map[int][]*realtime.Pairing, error)
 	GetStandings(int) ([]*realtime.PlayerStanding, error)
-	GetCurrentRound() (int)
-	SetPairing(string, string, int, bool) error
-	SetSingleRoundControls(int, *realtime.RoundControl) error
-	AddPlayers(*realtime.TournamentPersons) error
-	RemovePlayers(*realtime.TournamentPersons) error
+	GetCurrentRound() int
+	SetPairing(string, string, int) (map[int][]*realtime.Pairing, error)
+	SetSingleRoundControls(int, *realtime.RoundControl) (*realtime.RoundControl, error)
+	SetDivisionControls(*realtime.DivisionControls) (*realtime.DivisionControls, error)
+	AddPlayers(*realtime.TournamentPersons) (map[int][]*realtime.Pairing, error)
+	RemovePlayers(*realtime.TournamentPersons) (map[int][]*realtime.Pairing, error)
 	IsRoundReady(int) (bool, error)
 	IsRoundComplete(int) (bool, error)
 	IsStarted() bool
 	IsFinished() (bool, error)
 	StartRound() error
-	ToResponse() (*realtime.TournamentDivisionDataResponse, error)
+	GetXHRResponse() (*realtime.TournamentDivisionDataResponse, error)
 	SetReadyForGame(userID, connID string, round, gameIndex int, unready bool) ([]string, bool, error)
-	ClearReadyStates(userID string, round, gameIndex int) error
-	SetLastStarted(*realtime.TournamentRoundStarted) error
-	Serialize() (datatypes.JSON, error)
+	ClearReadyStates(userID string, round, gameIndex int) (map[int][]*realtime.Pairing, error)
 }
 
 type CompetitionType string
@@ -50,10 +47,18 @@ const (
 	ForfeitScore int = -50
 )
 
+type TournamentType int
+
+const (
+	ClassicTournamentType TournamentType = iota
+	// It's gonna be lit:
+	ArenaTournamentType
+)
+
 type TournamentDivision struct {
-	ManagerType        TournamentType               `json:"mgrType"`
-	DivisionRawMessage json.RawMessage              `json:"json"`
-	DivisionManager    DivisionManager              `json:"-"`
+	ManagerType        TournamentType  `json:"mgrType"`
+	DivisionRawMessage json.RawMessage `json:"json"`
+	DivisionManager    DivisionManager `json:"-"`
 }
 
 type Tournament struct {
