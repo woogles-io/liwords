@@ -1,5 +1,7 @@
 // Phone & defaults
-
+body {
+  padding-bottom: 54px;
+}
 // Center area
 .play-area, .game-lists, .chat-area, .data-area, .announcements, .tournament-info {
   min-width: $main-container-width-mobile;
@@ -50,6 +52,9 @@ span.user-context-menu.ant-dropdown-trigger {
 }
 // Landscape tablet
 @media (min-width: $screen-tablet-min) {
+  body {
+    padding-bottom: 0px;
+  }
   .lobby, .game-table {
     padding-top: 12px;
   }
