@@ -5,7 +5,7 @@ import './avatar.scss';
 import axios from 'axios';
 import { toAPIUrl } from '../api/api';
 import { useMountedState } from '../utils/mounted';
-import { notification, Tooltip, Modal, Alert, Button } from 'antd';
+import { notification, Tooltip, Modal, Alert } from 'antd';
 import { PlayerMetadata } from '../gameroom/game_info';
 const colors = require('../base.scss');
 
