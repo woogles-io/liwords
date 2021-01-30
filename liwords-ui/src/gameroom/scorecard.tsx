@@ -163,6 +163,9 @@ const ScorecardTurn = (props: turnProps) => {
           </>
         );
         turn.rack = `Play is valid ${sortTiles(evts[0].getRack())}`;
+      } else {
+        // Void challenge combines the end rack points.
+        turn.rack = sortTiles(turn.rack);
       }
       // Otherwise, just add/subtract as needed.
       for (let i = 1; i < evts.length; i++) {
