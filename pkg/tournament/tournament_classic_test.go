@@ -2,19 +2,19 @@ package tournament
 
 import (
 	"fmt"
-	"github.com/matryer/is"
 	"math/rand"
+	"sort"
 	"strings"
 	"testing"
+
+	"github.com/matryer/is"
 
 	realtime "github.com/domino14/liwords/rpc/api/proto/realtime"
 )
 
-var playerRatings = makeTournamentPersons(map[string]int32{"Will": 1000, "Josh": 3000, "Conrad": 2200, "Jesse": 2100, "Matt": 100})
-var playerStrings = []string{"Will", "Josh", "Conrad", "Jesse"}
-var playersOddStrings = []string{"Will", "Josh", "Conrad", "Jesse", "Matt"}
-var rounds = 2
-var defaultFirsts = []realtime.FirstMethod{realtime.FirstMethod_MANUAL_FIRST, realtime.FirstMethod_MANUAL_FIRST}
+var defaultPlayers = makeTournamentPersons(map[string]int32{"Will": 10000, "Josh": 3000, "Conrad": 2200, "Jesse": 2100})
+var defaultPlayersOdd = makeTournamentPersons(map[string]int32{"Will": 10000, "Josh": 3000, "Conrad": 2200, "Jesse": 2100, "Matt": 2000})
+var defaultRounds = 2
 var defaultGamesPerRound int32 = 1
 
 func TestClassicDivisionZeroOrOnePlayers(t *testing.T) {
@@ -24,6 +24,9 @@ func TestClassicDivisionZeroOrOnePlayers(t *testing.T) {
 	playerOZRatings := makeTournamentPersons(map[string]int32{"One": 1000, "Two": 3000, "Three": 2200, "Jesse": 2100, "Matt": 100})
 
 	_, err := compactNewClassicDivision(playerOZRatings, defaultRoundControls(0), true)
+	is.True(err != nil)
+
+	_, err = compactNewClassicDivision(playerOZRatings, defaultRoundControls(1), true)
 	is.NoErr(err)
 
 	_, err = compactNewClassicDivision(playerOZRatings, defaultRoundControls(2), true)
@@ -36,14 +39,11 @@ func TestClassicDivisionZeroOrOnePlayers(t *testing.T) {
 func TestClassicDivisionRandom(t *testing.T) {
 	// This test attempts to cover the basic
 	// functions of a Classic Tournament
-
-	roundControls := defaultRoundControls(rounds)
-
 	is := is.New(t)
 
-	roundControls = defaultRoundControls(rounds)
+	roundControls := defaultRoundControls(defaultRounds)
 
-	tc, err := compactNewClassicDivision(playerRatings, roundControls, true)
+	tc, err := compactNewClassicDivision(defaultPlayers, roundControls, true)
 	is.NoErr(err)
 	is.True(tc != nil)
 
@@ -57,10 +57,16 @@ func TestClassicDivisionRandom(t *testing.T) {
 	_, err = tc.getPairing("No one", 1)
 	is.True(err != nil)
 
-	player1 := playerStrings[0]
-	player2 := playerStrings[1]
-	player3 := playerStrings[2]
-	player4 := playerStrings[3]
+	player1 := defaultPlayers.Persons[0].Id
+	player2 := defaultPlayers.Persons[1].Id
+	player3 := defaultPlayers.Persons[2].Id
+	player4 := defaultPlayers.Persons[3].Id
+
+	// Set pairings to test more easily
+	_, err = tc.SetPairing(player1, player2, 0)
+	is.NoErr(err)
+	_, err = tc.SetPairing(player3, player4, 0)
+	is.NoErr(err)
 
 	pairing1, err := tc.getPairing(player1, 0)
 	is.NoErr(err)
@@ -264,13 +270,13 @@ func TestClassicDivisionKingOfTheHill(t *testing.T) {
 
 	is := is.New(t)
 
-	roundControls := defaultRoundControls(rounds)
+	roundControls := defaultRoundControls(defaultRounds)
 
-	for i := 0; i < rounds; i++ {
+	for i := 0; i < defaultRounds; i++ {
 		roundControls[i].PairingMethod = realtime.PairingMethod_KING_OF_THE_HILL
 	}
 
-	tc, err := compactNewClassicDivision(playerRatings, roundControls, true)
+	tc, err := compactNewClassicDivision(defaultPlayers, roundControls, true)
 	is.NoErr(err)
 	is.True(tc != nil)
 
@@ -278,10 +284,10 @@ func TestClassicDivisionKingOfTheHill(t *testing.T) {
 
 	// Tournament should not be over
 
-	player1 := playerStrings[0]
-	player2 := playerStrings[1]
-	player3 := playerStrings[3]
-	player4 := playerStrings[2]
+	player1 := defaultPlayers.Persons[0].Id
+	player2 := defaultPlayers.Persons[1].Id
+	player3 := defaultPlayers.Persons[3].Id
+	player4 := defaultPlayers.Persons[2].Id
 
 	tournamentIsFinished, err := tc.IsFinished()
 	is.NoErr(err)
@@ -376,6 +382,12 @@ func TestClassicDivisionFactor(t *testing.T) {
 	tc, err := compactNewClassicDivision(playerLetterRatings, roundControls, true)
 	is.NoErr(err)
 	is.True(tc != nil)
+
+	// Set pairings to test more easily
+	_, err = tc.SetPairing("d", "a", 0)
+	is.NoErr(err)
+	_, err = tc.SetPairing("c", "b", 0)
+	is.NoErr(err)
 
 	is.NoErr(validatePairings(tc, 0))
 
@@ -496,16 +508,16 @@ func TestClassicDivisionSwiss(t *testing.T) {
 
 	roundControls[0].PairingMethod = realtime.PairingMethod_KING_OF_THE_HILL
 
-	tc, err := compactNewClassicDivision(playerRatings, roundControls, true)
+	tc, err := compactNewClassicDivision(defaultPlayers, roundControls, true)
 	is.NoErr(err)
 	is.True(tc != nil)
 
 	is.NoErr(validatePairings(tc, 0))
 
-	player1 := playerStrings[0]
-	player2 := playerStrings[1]
-	player3 := playerStrings[2]
-	player4 := playerStrings[3]
+	player1 := defaultPlayers.Persons[0].Id
+	player2 := defaultPlayers.Persons[1].Id
+	player3 := defaultPlayers.Persons[2].Id
+	player4 := defaultPlayers.Persons[3].Id
 
 	err = tc.StartRound()
 	is.NoErr(err)
@@ -817,7 +829,7 @@ func TestClassicDivisionRoundRobin(t *testing.T) {
 			WinDifferenceRelativeWeight: 1})
 	}
 
-	tc, err := compactNewClassicDivision(playerRatings, roundControls, true)
+	tc, err := compactNewClassicDivision(defaultPlayers, roundControls, true)
 
 	is.NoErr(err)
 	is.True(tc != nil)
@@ -831,19 +843,19 @@ func TestClassicDivisionRoundRobin(t *testing.T) {
 
 	// In a double round robin with 4 players,
 	// everyone should have played everyone else twice.
-	for _, player := range playerStrings {
+	for _, player := range defaultPlayers.Persons {
 		m := make(map[string]int)
-		m[player] = 2
+		m[player.Id] = 2
 
 		for k := 0; k < len(tc.Matrix); k++ {
-			opponent, err := tc.opponentOf(player, k)
+			opponent, err := tc.opponentOf(player.Id, k)
 			is.NoErr(err)
 			m[opponent]++
 		}
-		for _, opponent := range playerStrings {
+		for _, opponent := range defaultPlayers.Persons {
 			var err error = nil
-			if m[opponent] != 2 {
-				err = fmt.Errorf("player %s didn't play %s exactly twice: %d", player, opponent, m[opponent])
+			if m[opponent.Id] != 2 {
+				err = fmt.Errorf("player %s didn't play %s exactly twice: %d", player.Id, opponent.Id, m[opponent.Id])
 			}
 			is.NoErr(err)
 		}
@@ -863,7 +875,7 @@ func TestClassicDivisionRoundRobin(t *testing.T) {
 			WinDifferenceRelativeWeight: 1})
 	}
 
-	tc, err = compactNewClassicDivision(playerRatings, roundControls, true)
+	tc, err = compactNewClassicDivision(defaultPlayersOdd, roundControls, true)
 	is.NoErr(err)
 	is.True(tc != nil)
 
@@ -881,20 +893,20 @@ func TestClassicDivisionRoundRobin(t *testing.T) {
 	// In a double round robin with 5 players,
 	// everyone should have played everyone else twice
 	// and everyone should have two byes
-	for _, player := range playersOddStrings {
+	for _, player := range defaultPlayersOdd.Persons {
 		m := make(map[string]int)
 		// We don't assign the player as having played themselves
 		// twice in this case because the bye will do that.
 
 		for k := 0; k < len(tc.Matrix); k++ {
-			opponent, err := tc.opponentOf(player, k)
+			opponent, err := tc.opponentOf(player.Id, k)
 			is.NoErr(err)
 			m[opponent]++
 		}
-		for _, opponent := range playersOddStrings {
+		for _, opponent := range defaultPlayersOdd.Persons {
 			var err error = nil
-			if m[opponent] != 2 {
-				err = fmt.Errorf("player %s didn't play %s exactly twice!", player, opponent)
+			if m[opponent.Id] != 2 {
+				err = fmt.Errorf("player %s didn't play %s exactly twice!", player.Id, opponent.Id)
 			}
 			is.NoErr(err)
 		}
@@ -908,21 +920,21 @@ func TestClassicDivisionInitialFontes(t *testing.T) {
 
 	is := is.New(t)
 
-	roundControls := defaultRoundControls(rounds)
+	roundControls := defaultRoundControls(defaultRounds)
 
-	for i := 1; i < rounds; i++ {
+	for i := 1; i < defaultRounds; i++ {
 		roundControls[i].PairingMethod = realtime.PairingMethod_INITIAL_FONTES
 	}
 
-	// InitialFontes can only be used in contiguous rounds
+	// InitialFontes can only be used in contiguous defaultRounds
 	// starting with round 1
-	tc, err := compactNewClassicDivision(playerRatings, roundControls, true)
+	tc, err := compactNewClassicDivision(defaultPlayers, roundControls, true)
 	is.True(err != nil)
 
 	roundControls[0].PairingMethod = realtime.PairingMethod_INITIAL_FONTES
 
 	// The number of InitialFontes pairings must be odd
-	tc, err = compactNewClassicDivision(playerRatings, roundControls, true)
+	tc, err = compactNewClassicDivision(defaultPlayers, roundControls, true)
 	is.True(err != nil)
 
 	numberOfRoundsForInitialFontesTest := 4
@@ -932,7 +944,7 @@ func TestClassicDivisionInitialFontes(t *testing.T) {
 		roundControls[i].PairingMethod = realtime.PairingMethod_INITIAL_FONTES
 	}
 
-	tc, err = compactNewClassicDivision(playerRatings, roundControls, true)
+	tc, err = compactNewClassicDivision(defaultPlayers, roundControls, true)
 	is.NoErr(err)
 
 	is.NoErr(validatePairings(tc, 0))
@@ -943,19 +955,19 @@ func TestClassicDivisionInitialFontes(t *testing.T) {
 func TestClassicDivisionManual(t *testing.T) {
 	is := is.New(t)
 
-	roundControls := defaultRoundControls(rounds)
+	roundControls := defaultRoundControls(defaultRounds)
 
 	roundControls[0].PairingMethod = realtime.PairingMethod_MANUAL
 	roundControls[1].PairingMethod = realtime.PairingMethod_KING_OF_THE_HILL
 
-	tc, err := compactNewClassicDivision(playerRatings, roundControls, true)
+	tc, err := compactNewClassicDivision(defaultPlayers, roundControls, true)
 	is.NoErr(err)
 	is.True(tc != nil)
 
-	player1 := playerStrings[0]
-	player2 := playerStrings[1]
-	player3 := playerStrings[2]
-	player4 := playerStrings[3]
+	player1 := defaultPlayers.Persons[0].Id
+	player2 := defaultPlayers.Persons[1].Id
+	player3 := defaultPlayers.Persons[2].Id
+	player4 := defaultPlayers.Persons[3].Id
 
 	// Check that round 1 is not paired
 	for _, pairingKey := range tc.Matrix[0] {
@@ -974,15 +986,17 @@ func TestClassicDivisionManual(t *testing.T) {
 	_, err = tc.SetPairing(player2, player3, 0)
 	is.NoErr(err)
 
-	// Confirm that players 1 and 4 are now unpaired
+	// Confirm that players 1 and 4 are now unpaired but 2 and 3 are
 	is.True(tc.Matrix[0][tc.PlayerIndexMap[player1]] == "")
 	is.True(tc.Matrix[0][tc.PlayerIndexMap[player4]] == "")
+	is.True(tc.Matrix[0][tc.PlayerIndexMap[player2]] != "")
+	is.True(tc.Matrix[0][tc.PlayerIndexMap[player3]] != "")
 
 	// Complete the round 1 pairings
 	_, err = tc.SetPairing(player1, player4, 0)
 	is.NoErr(err)
 
-	is.NoErr(validatePairings(tc, 1))
+	is.NoErr(validatePairings(tc, 0))
 
 	// Submit results for round 1
 
@@ -1043,31 +1057,31 @@ func TestClassicDivisionManual(t *testing.T) {
 func TestClassicDivisionElimination(t *testing.T) {
 	is := is.New(t)
 
-	roundControls := defaultRoundControls(rounds)
+	roundControls := defaultRoundControls(defaultRounds)
 
-	for i := 0; i < rounds; i++ {
+	for i := 0; i < defaultRounds; i++ {
 		roundControls[i].PairingMethod = realtime.PairingMethod_ELIMINATION
 		roundControls[i].GamesPerRound = 3
 	}
 
-	// Try and make an elimination tournament with the wrong number of rounds
-	tc, err := compactNewClassicDivision(playerRatings, roundControls[:1], true)
+	// Try and make an elimination tournament with the wrong number of defaultRounds
+	tc, err := compactNewClassicDivision(defaultPlayers, roundControls[:1], true)
 	is.True(err != nil)
 
 	roundControls[0].PairingMethod = realtime.PairingMethod_RANDOM
 	// Try and make an elimination tournament with other types
 	// of pairings
-	tc, err = compactNewClassicDivision(playerRatings, roundControls, true)
+	tc, err = compactNewClassicDivision(defaultPlayers, roundControls, true)
 	is.True(err != nil)
 
-	roundControls = defaultRoundControls(rounds)
+	roundControls = defaultRoundControls(defaultRounds)
 
-	for i := 0; i < rounds; i++ {
+	for i := 0; i < defaultRounds; i++ {
 		roundControls[i].PairingMethod = realtime.PairingMethod_ELIMINATION
 		roundControls[i].GamesPerRound = 3
 	}
 
-	tc, err = compactNewClassicDivision(playerRatings, roundControls, true)
+	tc, err = compactNewClassicDivision(defaultPlayers, roundControls, true)
 	is.NoErr(err)
 	is.True(tc != nil)
 
@@ -1076,10 +1090,10 @@ func TestClassicDivisionElimination(t *testing.T) {
 
 	is.NoErr(validatePairings(tc, 0))
 
-	player1 := playerStrings[0]
-	player2 := playerStrings[1]
-	player3 := playerStrings[2]
-	player4 := playerStrings[3]
+	player1 := defaultPlayers.Persons[0].Id
+	player2 := defaultPlayers.Persons[1].Id
+	player3 := defaultPlayers.Persons[2].Id
+	player4 := defaultPlayers.Persons[3].Id
 
 	pairing1, err := tc.getPairing(player1, 0)
 	is.NoErr(err)
@@ -1298,17 +1312,17 @@ func TestClassicDivisionElimination(t *testing.T) {
 	// Since this test is copied from above, the usual
 	// validations are skipped, since they would be redundant.
 
-	tc, err = compactNewClassicDivision(playerRatings, roundControls, true)
+	tc, err = compactNewClassicDivision(defaultPlayers, roundControls, true)
 	is.NoErr(err)
 	is.True(tc != nil)
 
 	err = tc.StartRound()
 	is.NoErr(err)
 
-	player1 = playerStrings[0]
-	player2 = playerStrings[1]
-	player3 = playerStrings[2]
-	player4 = playerStrings[3]
+	player1 = defaultPlayers.Persons[0].Id
+	player2 = defaultPlayers.Persons[1].Id
+	player3 = defaultPlayers.Persons[2].Id
+	player4 = defaultPlayers.Persons[3].Id
 
 	pairing2, err = tc.getPairing(player3, 0)
 	is.NoErr(err)
@@ -1451,7 +1465,7 @@ func TestClassicDivisionAddLatecomers(t *testing.T) {
 		roundControls[i].PairingMethod = realtime.PairingMethod_KING_OF_THE_HILL
 	}
 
-	tc, err := compactNewClassicDivision(playerRatings, roundControls, false)
+	tc, err := compactNewClassicDivision(defaultPlayers, roundControls, false)
 	is.NoErr(err)
 	is.True(tc != nil)
 
@@ -1459,10 +1473,10 @@ func TestClassicDivisionAddLatecomers(t *testing.T) {
 
 	// Tournament should not be over
 
-	player1 := playerStrings[0]
-	player2 := playerStrings[1]
-	player3 := playerStrings[3]
-	player4 := playerStrings[2]
+	player1 := defaultPlayers.Persons[0].Id
+	player2 := defaultPlayers.Persons[1].Id
+	player3 := defaultPlayers.Persons[3].Id
+	player4 := defaultPlayers.Persons[2].Id
 
 	tournamentIsFinished, err := tc.IsFinished()
 	is.NoErr(err)
@@ -1604,11 +1618,9 @@ func TestClassicDivisionAddLatecomers(t *testing.T) {
 	is.NoErr(err)
 	is.True(roundIsComplete)
 
-	// These must be added sequentially so the order or addition is deterministic
+	// Check that players cannot be added after the last round has started
 	_, err = tc.AddPlayers(makeTournamentPersons(map[string]int32{"Guy": 50}))
-	is.NoErr(err)
-	_, err = tc.AddPlayers(makeTournamentPersons(map[string]int32{"Guyer": 400}))
-	is.NoErr(err)
+	is.True(err != nil)
 
 	standings, err = tc.GetStandings(4)
 	is.NoErr(err)
@@ -1619,8 +1631,6 @@ func TestClassicDivisionAddLatecomers(t *testing.T) {
 		&realtime.PlayerStanding{PlayerId: "Bum", Wins: 2, Losses: 3, Draws: 0, Spread: -250},
 		&realtime.PlayerStanding{PlayerId: player3, Wins: 2, Losses: 3, Draws: 0, Spread: -400},
 		&realtime.PlayerStanding{PlayerId: "Bummer", Wins: 1, Losses: 4, Draws: 0, Spread: -150},
-		&realtime.PlayerStanding{PlayerId: "Guy", Wins: 0, Losses: 5, Draws: 0, Spread: -250},
-		&realtime.PlayerStanding{PlayerId: "Guyer", Wins: 0, Losses: 5, Draws: 0, Spread: -250},
 		&realtime.PlayerStanding{PlayerId: "Bummest", Wins: 0, Losses: 5, Draws: 0, Spread: -400},
 	}
 	is.NoErr(equalStandings(expectedstandings, standings))
@@ -1633,8 +1643,8 @@ func TestClassicDivisionRemovePlayers(t *testing.T) {
 	// Player is in first
 	// Player is removed - no present results, current round is repaired
 	// Player is now in last
-	// Ensure past rounds are not repaired
-	// Prepaired future rounds become byes for the opponents
+	// Ensure past defaultRounds are not repaired
+	// Prepaired future defaultRounds become byes for the opponents
 	// standings dependent pairings show player in last
 	// Remove another player - present results for round, current round is not repaired
 	// removed players always have forfeits, there are no byes
@@ -1653,17 +1663,17 @@ func TestClassicDivisionRemovePlayers(t *testing.T) {
 		}
 	}
 
-	tc, err := compactNewClassicDivision(playerRatings, roundControls, true)
+	tc, err := compactNewClassicDivision(defaultPlayers, roundControls, true)
 	is.NoErr(err)
 	is.True(tc != nil)
 
 	err = tc.StartRound()
 	is.NoErr(err)
 
-	player1 := playerStrings[0]
-	player2 := playerStrings[1]
-	player3 := playerStrings[3]
-	player4 := playerStrings[2]
+	player1 := defaultPlayers.Persons[0].Id
+	player2 := defaultPlayers.Persons[1].Id
+	player3 := defaultPlayers.Persons[3].Id
+	player4 := defaultPlayers.Persons[2].Id
 
 	_, err = tc.SubmitResult(0, player1, player2, 500, 300,
 		realtime.TournamentGameResult_WIN,
@@ -1708,7 +1718,7 @@ func TestClassicDivisionRemovePlayers(t *testing.T) {
 	expectedstandings = []*realtime.PlayerStanding{&realtime.PlayerStanding{PlayerId: player2, Wins: 1, Losses: 1, Draws: 0, Spread: 0},
 		&realtime.PlayerStanding{PlayerId: player3, Wins: 1, Losses: 1, Draws: 0, Spread: -100},
 		&realtime.PlayerStanding{PlayerId: player4, Wins: 0, Losses: 2, Draws: 0, Spread: -300},
-		&realtime.PlayerStanding{PlayerId: player1, Wins: 2, Losses: 0, Draws: 0, Spread: 400},
+		// &realtime.PlayerStanding{PlayerId: player1, Wins: 2, Losses: 0, Draws: 0, Spread: 400},
 	}
 
 	is.NoErr(equalStandings(expectedstandings, standings))
@@ -1743,7 +1753,7 @@ func TestClassicDivisionRemovePlayers(t *testing.T) {
 	expectedstandings = []*realtime.PlayerStanding{&realtime.PlayerStanding{PlayerId: player2, Wins: 3, Losses: 1, Draws: 1, Spread: 400},
 		&realtime.PlayerStanding{PlayerId: player3, Wins: 3, Losses: 2, Draws: 0, Spread: -150},
 		&realtime.PlayerStanding{PlayerId: player4, Wins: 1, Losses: 4, Draws: 0, Spread: -550},
-		&realtime.PlayerStanding{PlayerId: player1, Wins: 2, Losses: 2, Draws: 1, Spread: 300},
+		// &realtime.PlayerStanding{PlayerId: player1, Wins: 2, Losses: 2, Draws: 1, Spread: 300},
 	}
 
 	is.NoErr(equalStandings(expectedstandings, standings))
@@ -1776,8 +1786,8 @@ func TestClassicDivisionRemovePlayers(t *testing.T) {
 
 	expectedstandings = []*realtime.PlayerStanding{&realtime.PlayerStanding{PlayerId: player2, Wins: 4, Losses: 1, Draws: 1, Spread: 600},
 		&realtime.PlayerStanding{PlayerId: player3, Wins: 3, Losses: 3, Draws: 0, Spread: -350},
-		&realtime.PlayerStanding{PlayerId: player1, Wins: 2, Losses: 3, Draws: 1, Spread: 250},
-		&realtime.PlayerStanding{PlayerId: player4, Wins: 2, Losses: 4, Draws: 0, Spread: -500},
+		// &realtime.PlayerStanding{PlayerId: player1, Wins: 2, Losses: 3, Draws: 1, Spread: 250},
+		// &realtime.PlayerStanding{PlayerId: player4, Wins: 2, Losses: 4, Draws: 0, Spread: -500},
 	}
 
 	is.NoErr(equalStandings(expectedstandings, standings))
@@ -1812,8 +1822,8 @@ func TestClassicDivisionRemovePlayers(t *testing.T) {
 
 	expectedstandings = []*realtime.PlayerStanding{&realtime.PlayerStanding{PlayerId: player2, Wins: 7, Losses: 1, Draws: 1, Spread: 1200},
 		&realtime.PlayerStanding{PlayerId: player3, Wins: 3, Losses: 6, Draws: 0, Spread: -950},
-		&realtime.PlayerStanding{PlayerId: player4, Wins: 3, Losses: 6, Draws: 0, Spread: -550},
-		&realtime.PlayerStanding{PlayerId: player1, Wins: 2, Losses: 6, Draws: 1, Spread: 100},
+		// &realtime.PlayerStanding{PlayerId: player4, Wins: 3, Losses: 6, Draws: 0, Spread: -550},
+		// &realtime.PlayerStanding{PlayerId: player1, Wins: 2, Losses: 6, Draws: 1, Spread: 100},
 	}
 
 	is.NoErr(equalStandings(expectedstandings, standings))
@@ -1839,11 +1849,10 @@ func TestClassicDivisionRemovePlayers(t *testing.T) {
 	standings, err = tc.GetStandings(11)
 	is.NoErr(err)
 
-	expectedstandings = []*realtime.PlayerStanding{&realtime.PlayerStanding{PlayerId: player3, Wins: 5, Losses: 7, Draws: 0, Spread: -1050},
-		&realtime.PlayerStanding{PlayerId: player2, Wins: 8, Losses: 3, Draws: 1, Spread: 1300},
-		&realtime.PlayerStanding{PlayerId: player4, Wins: 3, Losses: 9, Draws: 0, Spread: -700},
-		&realtime.PlayerStanding{PlayerId: player1, Wins: 2, Losses: 9, Draws: 1, Spread: -50},
-	}
+	expectedstandings = []*realtime.PlayerStanding{&realtime.PlayerStanding{PlayerId: player3, Wins: 5, Losses: 7, Draws: 0, Spread: -1050}}// &realtime.PlayerStanding{PlayerId: player2, Wins: 8, Losses: 3, Draws: 1, Spread: 1300},
+	// &realtime.PlayerStanding{PlayerId: player4, Wins: 3, Losses: 9, Draws: 0, Spread: -700},
+	// &realtime.PlayerStanding{PlayerId: player1, Wins: 2, Losses: 9, Draws: 1, Spread: -50},
+
 	is.NoErr(equalStandings(expectedstandings, standings))
 }
 
@@ -1884,14 +1893,14 @@ func TestClassicDivisionFirsts(t *testing.T) {
 			WinDifferenceRelativeWeight: 1})
 	}
 
-	tc, err := compactNewClassicDivision(playerRatings, roundControls, false)
+	tc, err := compactNewClassicDivision(defaultPlayers, roundControls, false)
 	is.NoErr(err)
 	is.True(tc != nil)
 
-	player1 := playerStrings[0]
-	player2 := playerStrings[1]
-	player3 := playerStrings[2]
-	player4 := playerStrings[3]
+	player1 := defaultPlayers.Persons[0].Id
+	player2 := defaultPlayers.Persons[1].Id
+	player3 := defaultPlayers.Persons[2].Id
+	player4 := defaultPlayers.Persons[3].Id
 
 	// Pair round 0
 
@@ -1899,7 +1908,6 @@ func TestClassicDivisionFirsts(t *testing.T) {
 	fs := []int{1, 0, 0, 1, 1, 0, 0, 1}
 	round := 0
 	is.NoErr(runFirstMethodRound(tc, playerOrder, fs, round, false))
-
 	// Pair round 1
 
 	playerOrder = []string{player1, player2, player3, player4}
@@ -1907,7 +1915,7 @@ func TestClassicDivisionFirsts(t *testing.T) {
 	round = 1
 	is.NoErr(runFirstMethodRound(tc, playerOrder, fs, round, false))
 
-	// Next two rounds should even out firsts and seconds
+	// Next two defaultRounds should even out firsts and seconds
 	// since they are automatic
 	// Pair round 2
 
@@ -2035,7 +2043,7 @@ func checkFirsts(tc *ClassicDivision, players []string, fs []int, round int) err
 	actualfs := []int{}
 
 	for i := 0; i < len(players); i++ {
-		playerfs := getPlayerFS(tc, int32(i), round)
+		playerfs := getPlayerFirstsAndSeconds(tc, tc.PlayerIndexMap[players[i]], round)
 		actualfs = append(actualfs, playerfs...)
 	}
 
@@ -2043,7 +2051,7 @@ func checkFirsts(tc *ClassicDivision, players []string, fs []int, round int) err
 		if actualfs[i] != fs[i] {
 			actualfsString := strings.Trim(strings.Join(strings.Fields(fmt.Sprint(actualfs)), ", "), "[]")
 			fsString := strings.Trim(strings.Join(strings.Fields(fmt.Sprint(fs)), ", "), "[]")
-			return fmt.Errorf("firsts and Seconds are not equal in round %d: %s, %s", round, fsString, actualfsString)
+			return fmt.Errorf("firsts and seconds are not equal in round %d:\n%s\n%s", round, fsString, actualfsString)
 		}
 	}
 	return nil
@@ -2107,7 +2115,7 @@ func runRandomTournaments(method realtime.PairingMethod, randomizePairings bool)
 		}
 
 		if method == realtime.PairingMethod_ELIMINATION {
-			// Even-numbered games per rounds was leading to ties
+			// Even-numbered games per defaultRounds was leading to ties
 			// which give inconclusive results, therefor not ending the round
 			for i := 0; i < numberOfRounds; i++ {
 				roundControls[i].GamesPerRound = int32((rand.Intn(5) * 2) + 1)
@@ -2262,50 +2270,6 @@ func runRandomTournaments(method realtime.PairingMethod, randomizePairings bool)
 	return nil
 }
 
-func validatePairings(tc *ClassicDivision, round int) error {
-	// For each pairing, check that
-	//   - Player's opponent is nonnull
-	//   - Player's opponent's opponent is the player
-
-	if round < 0 || round >= len(tc.Matrix) {
-		return fmt.Errorf("round number out of range: %d", round)
-	}
-
-	for i, pairingKey := range tc.Matrix[round] {
-		if pairingKey == "" {
-			return fmt.Errorf("round %d player %d pairing nil", round, i)
-		}
-		pairing, ok := tc.PairingMap[pairingKey]
-		if !ok {
-			return fmt.Errorf("pairing key does not exist in pairing map: %s", pairingKey)
-		}
-		if pairing.Players == nil {
-			// Some pairings can be nil for Elimination tournaments
-			if tc.RoundControls[0].PairingMethod != realtime.PairingMethod_ELIMINATION {
-				return fmt.Errorf("player %d is unpaired", i)
-			} else {
-				continue
-			}
-		}
-		// Check that the pairing refs are correct
-		opponent, err := tc.opponentOf(tc.Players.Persons[i].Id, round)
-		if err != nil {
-			return err
-		}
-		opponentOpponent, err := tc.opponentOf(opponent, round)
-		if err != nil {
-			return err
-		}
-		if tc.Players.Persons[i].Id != opponentOpponent {
-			return fmt.Errorf("player %s's opponent's (%s) opponent (%s) is not themself.",
-				tc.Players.Persons[i].Id,
-				opponent,
-				opponentOpponent)
-		}
-	}
-	return nil
-}
-
 func equalStandings(sa1 []*realtime.PlayerStanding, sa2 []*realtime.PlayerStanding) error {
 
 	if len(sa1) != len(sa2) {
@@ -2416,17 +2380,23 @@ func equalTournamentGame(t1 *realtime.TournamentGame, t2 *realtime.TournamentGam
 func compactNewClassicDivision(players *realtime.TournamentPersons, roundControls []*realtime.RoundControl, autostart bool) (*ClassicDivision, error) {
 	t := NewClassicDivision()
 
+	for _, player := range players.Persons {
+		player.Suspended = false
+	}
+
 	_, err := t.AddPlayers(players)
 	if err != nil {
 		return nil, err
 	}
 
-	err = t.SetRoundControls(roundControls)
+	_, err = t.SetRoundControls(roundControls)
 	if err != nil {
 		return nil, err
 	}
 
 	t.DivisionControls.AutoStart = autostart
+	t.DivisionControls.SuspendedSpread = -50
+	t.DivisionControls.SuspendedResult = realtime.TournamentGameResult_FORFEIT_LOSS
 	return t, nil
 }
 
@@ -2453,6 +2423,14 @@ func (tc *ClassicDivision) printPriPairings(round int) {
 	}
 }
 
+func printPairingMap(tc *ClassicDivision) {
+	for key, value := range tc.PairingMap {
+		fmt.Printf("key: %s", key)
+		fmt.Print(", ")
+		fmt.Println(value)
+	}
+}
+
 func printStandings(standings []*realtime.PlayerStanding) {
 	for _, standing := range standings {
 		fmt.Println(standing)
@@ -2476,5 +2454,6 @@ func makeTournamentPersons(persons map[string]int32) *realtime.TournamentPersons
 	for key, value := range persons {
 		tp.Persons = append(tp.Persons, &realtime.TournamentPerson{Id: key, Rating: value})
 	}
+	sort.Sort(PlayerSorter(tp.Persons))
 	return tp
 }
