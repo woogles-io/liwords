@@ -1,5 +1,9 @@
 package entity
 
+import (
+	realtime "github.com/domino14/liwords/rpc/api/proto/realtime"
+)
+
 // These weights were made very large
 // out of an abundance of caution so that
 // any single win weight outweighs the sum
@@ -8,25 +12,6 @@ package entity
 const ProhibitiveWeight int64 = 1 << 52
 const WinWeightScaling int64 = 1 << 22
 const MaxRelativeWeight int = 100
-
-type PairingMethod int
-
-const (
-	Random PairingMethod = iota
-	RoundRobin
-	KingOfTheHill
-	Elimination
-	Factor
-	Swiss
-	Quickpair
-	// Need to implement eventually
-	// Performance
-
-	// Manual simply does not make any
-	// pairings at all. The director
-	// has to make all the pairings themselves.
-	Manual
-)
 
 type PoolMember struct {
 	Id          string
@@ -37,10 +22,11 @@ type PoolMember struct {
 	Wins        int
 	Draws       int
 	Spread      int
+	Removed     bool
 }
 
 type UnpairedPoolMembers struct {
 	PoolMembers   []*PoolMember
-	RoundControls *RoundControls
+	RoundControls *realtime.RoundControl
 	Repeats       map[string]int
 }

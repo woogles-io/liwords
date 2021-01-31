@@ -1,14 +1,14 @@
 import { Card, Col, Row } from 'antd';
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { GameMetadata } from './game_info';
+import { SingleGameStreakInfo, StreakInfoResponse } from './game_info';
 
 type Props = {
-  recentGames: Array<GameMetadata>;
+  streakInfo: StreakInfoResponse;
 };
 
 type SGProps = {
-  game: GameMetadata;
+  game: SingleGameStreakInfo;
   p0win: number;
   p1win: number;
 };
@@ -59,12 +59,16 @@ const SingleGame = (props: SGProps) => {
 };
 
 export const StreakWidget = React.memo((props: Props) => {
-  if (props.recentGames.length === 0) {
+  if (
+    !props.streakInfo ||
+    !props.streakInfo.streak ||
+    props.streakInfo.streak.length === 0
+  ) {
     return null;
   }
   // Determine which player is listed on top and which on bottom.
-  let first = props.recentGames[0].players[0].nickname;
-  let second = props.recentGames[0].players[1].nickname;
+  let first = props.streakInfo.streak[0].players[0];
+  let second = props.streakInfo.streak[0].players[1];
   if (second > first) {
     [first, second] = [second, first];
   }
@@ -72,7 +76,7 @@ export const StreakWidget = React.memo((props: Props) => {
   let p0wins = 0;
   let p1wins = 0;
 
-  const pergame = props.recentGames
+  const pergame = props.streakInfo.streak
     .slice(0) // reverse a shallow copy of the array.
     .reverse()
     .map((g) => {
@@ -80,7 +84,7 @@ export const StreakWidget = React.memo((props: Props) => {
       let p1idx;
       let p0win = 0;
       let p1win = 0;
-      if (first === g.players[0].nickname) {
+      if (first === g.players[0]) {
         p0idx = 0;
         p1idx = 1;
       } else {

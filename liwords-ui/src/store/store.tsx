@@ -26,7 +26,12 @@ import { PlayerOrder } from './constants';
 import { PoolFormatType } from '../constants/pool_formats';
 import { LoginState, LoginStateReducer } from './login_state';
 import { EphemeralTile } from '../utils/cwgame/common';
-import { pageSize } from '../tournament/recent_game';
+import { ActiveChatChannels } from '../gen/api/proto/user_service/user_service_pb';
+import {
+  defaultTournamentState,
+  TournamentReducer,
+  TournamentState,
+} from './reducers/tournament_reducer';
 
 export enum ChatEntityType {
   UserChat,
@@ -41,6 +46,7 @@ export type ChatEntityObj = {
   id?: string;
   timestamp?: number;
   senderId?: string;
+  channel: string;
 };
 
 export type PresenceEntity = {
@@ -48,6 +54,7 @@ export type PresenceEntity = {
   username: string;
   channel: string;
   anon: boolean;
+  deleting: boolean;
 };
 
 const MaxChatLength = 150;
@@ -79,6 +86,10 @@ type LagStoreData = {
 type ExcludedPlayersStoreData = {
   excludedPlayers: Set<string>;
   setExcludedPlayers: React.Dispatch<React.SetStateAction<Set<string>>>;
+  excludedPlayersFetched: boolean;
+  setExcludedPlayersFetched: React.Dispatch<React.SetStateAction<boolean>>;
+  pendingBlockRefresh: boolean;
+  setPendingBlockRefresh: React.Dispatch<React.SetStateAction<boolean>>;
 };
 
 type ChallengeResultEventStoreData = {
@@ -95,12 +106,19 @@ type ChatStoreData = {
   addChats: (chats: Array<ChatEntityObj>) => void;
   clearChat: () => void;
   chat: Array<ChatEntityObj>;
+  chatChannels: ActiveChatChannels.AsObject | undefined;
+  setChatChannels: (chatChannels: ActiveChatChannels.AsObject) => void;
 };
 
 type PresenceStoreData = {
   setPresence: (presence: PresenceEntity) => void;
   addPresences: (presences: Array<PresenceEntity>) => void;
-  presences: { [uuid: string]: PresenceEntity };
+  presences: Array<PresenceEntity>;
+};
+
+type TournamentStoreData = {
+  tournamentContext: TournamentState;
+  dispatchTournamentContext: (action: Action) => void;
 };
 
 type GameEndMessageStoreData = {
@@ -150,6 +168,8 @@ type ExamineStoreData = {
   handleExamineNext: () => void;
   handleExamineLast: () => void;
   handleExamineGoTo: (x: number) => void;
+  addHandleExaminer: (x: () => void) => void;
+  removeHandleExaminer: (x: () => void) => void;
 };
 
 const defaultGameState = startingGameState(
@@ -167,9 +187,6 @@ const LobbyContext = createContext<LobbyStoreData>({
     soughtGames: [],
     activeGames: [],
     matchRequests: [],
-    tourneyGames: [],
-    gamesPageSize: pageSize,
-    gamesOffset: 0,
   },
   dispatchLobbyContext: defaultFunction,
 });
@@ -204,6 +221,10 @@ const ExcludedPlayersContext = createContext<ExcludedPlayersStoreData>({
   // we do not see any messages from excludedPlayers
   excludedPlayers: new Set<string>(),
   setExcludedPlayers: defaultFunction,
+  excludedPlayersFetched: false,
+  setExcludedPlayersFetched: defaultFunction,
+  pendingBlockRefresh: false,
+  setPendingBlockRefresh: defaultFunction,
 });
 
 const ChallengeResultEventContext = createContext<
@@ -226,12 +247,19 @@ const ChatContext = createContext<ChatStoreData>({
   addChats: defaultFunction,
   clearChat: defaultFunction,
   chat: [],
+  chatChannels: undefined,
+  setChatChannels: defaultFunction,
 });
 
 const PresenceContext = createContext<PresenceStoreData>({
   setPresence: defaultFunction,
   addPresences: defaultFunction,
-  presences: {},
+  presences: new Array<PresenceEntity>(),
+});
+
+const TournamentContext = createContext<TournamentStoreData>({
+  tournamentContext: defaultTournamentState,
+  dispatchTournamentContext: defaultFunction,
 });
 
 const [GameEndMessageContext, ExaminableGameEndMessageContext] = Array.from(
@@ -274,6 +302,8 @@ const ExamineContext = createContext<ExamineStoreData>({
   handleExamineNext: defaultFunction,
   handleExamineLast: defaultFunction,
   handleExamineGoTo: defaultFunction,
+  addHandleExaminer: defaultFunction,
+  removeHandleExaminer: defaultFunction,
 });
 
 type Props = {
@@ -301,6 +331,13 @@ const gameStateInitializer = (
 // Support for examining. Must be nested deeper than the Real Stuffs.
 
 const doNothing = () => {}; // defaultFunction currently is the same as this.
+
+// CSS selectors that should support Examine shortcuts.
+const WHERE_TO_ENABLE_EXAMINE_SHORTCUTS = [
+  '.analyzer-card',
+  '.analyzer-container',
+  '.play-area',
+];
 
 const ExaminableStore = ({ children }: { children: React.ReactNode }) => {
   const { useState } = useMountedState();
@@ -467,6 +504,94 @@ const ExaminableStore = ({ children }: { children: React.ReactNode }) => {
     };
   }, [shownTimes]);
 
+  // There are two handlers (the Tablet view has its own Analyzer button).
+  // Fortunately the second one will do nothing, so we just trigger both.
+  const [handleExaminers, setHandleExaminers] = useState(
+    new Array<() => void>()
+  );
+  const addHandleExaminer = useCallback((x) => {
+    setHandleExaminers((a: Array<() => void>) => {
+      if (!a.includes(x)) {
+        a = [...a, x];
+      }
+      return a;
+    });
+  }, []);
+  const removeHandleExaminer = useCallback((x) => {
+    setHandleExaminers((a) => {
+      const b = a.filter((y) => y !== x);
+      return a.length === b.length ? a : b;
+    });
+  }, []);
+
+  const shouldTrigger = useCallback((where) => {
+    try {
+      return (
+        where &&
+        WHERE_TO_ENABLE_EXAMINE_SHORTCUTS.some((selector) =>
+          where.closest(selector)
+        )
+      );
+    } catch (e) {
+      return false;
+    }
+  }, []);
+
+  const handleExamineShortcuts = useCallback(
+    (evt) => {
+      if (
+        isExamining &&
+        (shouldTrigger(document.activeElement) ||
+          shouldTrigger(window.getSelection()?.focusNode?.parentElement))
+      ) {
+        if (evt.ctrlKey || evt.altKey || evt.metaKey) {
+          // If a modifier key is held, never mind.
+        } else {
+          if (evt.key === 'Home') {
+            evt.preventDefault();
+            handleExamineFirst();
+          }
+          if (evt.key === 'PageUp') {
+            evt.preventDefault();
+            handleExaminePrev();
+          }
+          if (evt.key === 'PageDown') {
+            evt.preventDefault();
+            handleExamineNext();
+          }
+          if (evt.key === 'End') {
+            evt.preventDefault();
+            handleExamineLast();
+          }
+          if (evt.key === '?') {
+            evt.preventDefault();
+            for (const handleExaminer of handleExaminers) {
+              handleExaminer();
+            }
+          }
+        }
+      }
+    },
+    [
+      isExamining,
+      shouldTrigger,
+      handleExamineFirst,
+      handleExaminePrev,
+      handleExamineNext,
+      handleExamineLast,
+      handleExaminers,
+    ]
+  );
+
+  React.useEffect(() => {
+    if (isExamining) {
+      document.addEventListener('keydown', handleExamineShortcuts);
+      return () => {
+        document.removeEventListener('keydown', handleExamineShortcuts);
+      };
+    }
+  }, [isExamining, handleExamineShortcuts]);
+
   const examineStore = useMemo(
     () => ({
       isExamining,
@@ -478,6 +603,8 @@ const ExaminableStore = ({ children }: { children: React.ReactNode }) => {
       handleExamineNext,
       handleExamineLast,
       handleExamineGoTo,
+      addHandleExaminer,
+      removeHandleExaminer,
     }),
     [
       isExamining,
@@ -489,6 +616,8 @@ const ExaminableStore = ({ children }: { children: React.ReactNode }) => {
       handleExamineNext,
       handleExamineLast,
       handleExamineGoTo,
+      addHandleExaminer,
+      removeHandleExaminer,
     ]
   );
 
@@ -540,9 +669,6 @@ const RealStore = ({ children, ...props }: Props) => {
     soughtGames: [],
     activeGames: [],
     matchRequests: [],
-    tourneyGames: [],
-    gamesPageSize: pageSize,
-    gamesOffset: 0,
   });
   const dispatchLobbyContext = useCallback(
     (action) => setLobbyContext((state) => LobbyReducer(state, action)),
@@ -560,6 +686,17 @@ const RealStore = ({ children, ...props }: Props) => {
     (action) => setLoginState((state) => LoginStateReducer(state, action)),
     []
   );
+
+  const [tournamentContext, setTournamentContext] = useState(
+    defaultTournamentState
+  );
+  const dispatchTournamentContext = useCallback((action) => {
+    setTournamentContext((state) => {
+      const newState = TournamentReducer(state, action);
+      return newState;
+    });
+  }, []);
+
   const [currentLagMs, setCurrentLagMs] = useState(NaN);
 
   const [placedTilesTempScore, setPlacedTilesTempScore] = useState<
@@ -588,10 +725,13 @@ const RealStore = ({ children, ...props }: Props) => {
   const [gameEndMessage, setGameEndMessage] = useState('');
   const [rematchRequest, setRematchRequest] = useState(new MatchRequest());
   const [chat, setChat] = useState(new Array<ChatEntityObj>());
+  const [chatChannels, setChatChannels] = useState<
+    ActiveChatChannels.AsObject | undefined
+  >(undefined);
   const [excludedPlayers, setExcludedPlayers] = useState(new Set<string>());
-  const [presences, setPresences] = useState(
-    {} as { [uuid: string]: PresenceEntity }
-  );
+  const [excludedPlayersFetched, setExcludedPlayersFetched] = useState(false);
+  const [pendingBlockRefresh, setPendingBlockRefresh] = useState(false);
+  const [presences, setPresences] = useState(new Array<PresenceEntity>());
 
   const addChat = useCallback((entity: ChatEntityObj) => {
     setChat((oldChat) => {
@@ -619,6 +759,7 @@ const RealStore = ({ children, ...props }: Props) => {
           ? 'Challenged play was valid'
           : 'Play was challenged off the board!',
         id: randomID(),
+        channel: 'server',
       });
     },
     [addChat]
@@ -633,28 +774,27 @@ const RealStore = ({ children, ...props }: Props) => {
   }, []);
 
   const setPresence = useCallback((entity: PresenceEntity) => {
-    // XXX: This looks slow.
     setPresences((prevPresences) => {
-      const presencesCopy = { ...prevPresences };
-      if (entity.channel === '') {
-        // This user signed off; remove
-        delete presencesCopy[entity.uuid];
-      } else {
-        presencesCopy[entity.uuid] = entity;
+      // filter out the current entity then add it if we're not deleting
+      // (prevents duplicates)
+      const presencesCopy = prevPresences.filter(
+        (p) => !(p.channel === entity.channel && p.uuid === entity.uuid)
+      );
+      if (!entity.deleting) {
+        return presencesCopy.concat(entity);
       }
       return presencesCopy;
     });
   }, []);
 
-  const addPresences = useCallback((entities: Array<PresenceEntity>) => {
-    const presencesCopy = {} as { [uuid: string]: PresenceEntity };
-    entities.forEach((p) => {
-      presencesCopy[p.uuid] = p;
-    });
-    console.log('in addPresences', presencesCopy);
-
-    setPresences(presencesCopy);
-  }, []);
+  const addPresences = useCallback(
+    (entities: Array<PresenceEntity>) => {
+      entities.forEach((p) => {
+        setPresence(p);
+      });
+    },
+    [setPresence]
+  );
 
   const stopClock = useCallback(() => {
     if (!clockController.current) {
@@ -677,6 +817,13 @@ const RealStore = ({ children, ...props }: Props) => {
       dispatchLoginState,
     }),
     [loginState, dispatchLoginState]
+  );
+  const tournamentStateStore = useMemo(
+    () => ({
+      tournamentContext,
+      dispatchTournamentContext,
+    }),
+    [tournamentContext, dispatchTournamentContext]
   );
   const lagStore = useMemo(
     () => ({
@@ -707,8 +854,19 @@ const RealStore = ({ children, ...props }: Props) => {
     () => ({
       excludedPlayers,
       setExcludedPlayers,
+      excludedPlayersFetched,
+      setExcludedPlayersFetched,
+      pendingBlockRefresh,
+      setPendingBlockRefresh,
     }),
-    [excludedPlayers, setExcludedPlayers]
+    [
+      excludedPlayers,
+      setExcludedPlayers,
+      excludedPlayersFetched,
+      setExcludedPlayersFetched,
+      pendingBlockRefresh,
+      setPendingBlockRefresh,
+    ]
   );
   const challengeResultEventStore = useMemo(
     () => ({
@@ -729,8 +887,10 @@ const RealStore = ({ children, ...props }: Props) => {
       addChats,
       clearChat,
       chat,
+      chatChannels,
+      setChatChannels,
     }),
-    [addChat, addChats, clearChat, chat]
+    [addChat, addChats, clearChat, chat, chatChannels, setChatChannels]
   );
   const presenceStore = useMemo(
     () => ({
@@ -782,6 +942,9 @@ const RealStore = ({ children, ...props }: Props) => {
   ret = <LobbyContext.Provider value={lobbyStore} children={ret} />;
   ret = <LoginStateContext.Provider value={loginStateStore} children={ret} />;
   ret = <LagContext.Provider value={lagStore} children={ret} />;
+  ret = (
+    <TournamentContext.Provider value={tournamentStateStore} children={ret} />
+  );
   ret = (
     <TentativePlayContext.Provider value={tentativePlayStore} children={ret} />
   );
@@ -850,6 +1013,7 @@ export const Store = ({ children }: { children: React.ReactNode }) => {
 export const useLobbyStoreContext = () => useContext(LobbyContext);
 export const useLoginStateStoreContext = () => useContext(LoginStateContext);
 export const useLagStoreContext = () => useContext(LagContext);
+export const useTournamentStoreContext = () => useContext(TournamentContext);
 export const useTentativeTileContext = () => useContext(TentativePlayContext);
 export const useExcludedPlayersStoreContext = () =>
   useContext(ExcludedPlayersContext);

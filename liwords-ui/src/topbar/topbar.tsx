@@ -9,6 +9,7 @@ import {
   useLagStoreContext,
   useLoginStateStoreContext,
   useResetStoreContext,
+  useTournamentStoreContext,
 } from '../store/store';
 import { toAPIUrl } from '../api/api';
 import { Login } from '../lobby/login';
@@ -57,6 +58,7 @@ export const TopBar = React.memo((props: Props) => {
   const { currentLagMs } = useLagStoreContext();
   const { loginState } = useLoginStateStoreContext();
   const { resetStore } = useResetStoreContext();
+  const { tournamentContext } = useTournamentStoreContext();
   const { username, loggedIn, connectedToSocket } = loginState;
   const [loginModalVisible, setLoginModalVisible] = useState(false);
 
@@ -90,9 +92,7 @@ export const TopBar = React.memo((props: Props) => {
     </ul>
   );
 
-  const homeLink = props.tournamentID
-    ? `/tournament/${encodeURIComponent(props.tournamentID)}`
-    : '/';
+  const homeLink = props.tournamentID ? tournamentContext.metadata.slug : '/';
 
   return (
     <nav className="top-header" id="main-nav">
@@ -114,7 +114,12 @@ export const TopBar = React.memo((props: Props) => {
 
             <div className="top-header-left-frame-site-name">Woogles.io</div>
             {props.tournamentID ? (
-              <div className="tournament">Back to tournament</div>
+              <div className="tournament">
+                Back to
+                {['CLUB', 'CHILD'].includes(tournamentContext.metadata.type)
+                  ? ' Club'
+                  : ' Tournament'}
+              </div>
             ) : null}
           </Link>
         </Tooltip>

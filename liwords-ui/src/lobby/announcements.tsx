@@ -7,62 +7,124 @@ export const Announcements = React.memo((props: AnnouncementsProps) => {
   // Todo: admin to add these and a backend to store and retrieve them
   const announcements = [
     {
-      title: 'Upcoming Tournament - Crescent City Cup',
+      title: 'Where is my club or tournament?',
       body: (
-        <a
-          href="https://sites.google.com/site/nolascrabble"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
+        <a href="/clubs" target="_blank" rel="noopener noreferrer">
           <p>
-            The 10th Annual Crescent City Cup will be held on Woogles on January
-            17th and 18th. Twenty games with Open and Lite divisions for both
-            CSW19 and NWL2020. Register now.
+            Wondering where you can find a good club or tournament to play in?
+            See more info here!
           </p>
         </a>
       ),
     },
+
     {
-      title: 'Live Tournament - The WETO',
+      title: 'Ongoing Tournament - WYSC',
       body: (
         <a
-          href="https://woogles.io/tournament/weto"
+          href="http://youthscrabble.org/WYC2020/"
           target="_blank"
           rel="noopener noreferrer"
         >
           <p>
-            A single elimination best 3 out of 5 CSW tournament on Woogles.io
-            with an automatic side tournament, November 16 - December 20, 2020.
-            If you are registered, click here to attend the tournament.
+            The World Youth Championship runs for three consecutive weekends,
+            starting January 22, 2021! Watch Pakistan vs. Sri Lanka and India
+            vs. Thailand in the semifinals! Who are you rooting for?
           </p>
         </a>
       ),
     },
+
     {
-      title: 'First tournament complete!',
+      title: 'Ongoing Tournament - CoCo Blitz Championship',
       body: (
         <a
-          href="https://woogles.io/tournament/dells2020"
-          target="_blank"
+          href="https://woogles.io/tournament/coco-blitz"
           rel="noopener noreferrer"
         >
           <p>
-            The 37th Annual Wisconsin Dells Tourney was held on Woogles November
-            14th and 15th. If you missed it, take a look at the games here.
-            Congratulations to the winners, Lisa Odom (NWL) and Geoff Thevenot
-            (CSW)!
+            The World Blitz Championship kicks off in late January and runs
+            through late April. The fastest word gamers in the world will play
+            3-minute games, starting with round robin pool play and culminating
+            with a playoff bracket to determine the World Blitz Champion!
           </p>
         </a>
       ),
     },
+
+    {
+      title: 'Ongoing Tournament - Amazing Race 2',
+      body: (
+        <a
+          href="https://woogles.io/tournament/tarst2"
+          rel="noopener noreferrer"
+        >
+          <p>
+            Michael Fagen's Amazing Race 2 tournament will be partially played
+            on Woogles. You can play your games in this room. It starts on
+            January 23, 2021.
+          </p>
+        </a>
+      ),
+    },
+
+    {
+      title: "Upcoming Tournament - Brosowsky Brothers' Bonanza 2021",
+      body: (
+        <a
+          href="https://docs.google.com/document/d/1TRpW0Xx7HWwy-MG-Hrs0cwiwg-HP6ce06gRpZgYlCjw/view"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          <p>
+            The Brosowsky Brothers' Bonanza is a one-day, 8-game event, with
+            Open and Lite divisions for both NWL20 and CSW19! Please join us on
+            February 28, 2021. See the flyer for registration info.
+          </p>
+        </a>
+      ),
+    },
+
+    {
+      title: 'Upcoming Tournament - MISCO',
+      body: (
+        <a
+          href="https://mindgamesincorporated.com/events/mgi-international-scrabble-classics-online-misco/"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          <p>
+            The biggest online money event of the century! Please join the
+            MISCO; $1000 top prize with a $20 entry fee. See the flyer for more
+            information. Four consecutive weekends, starting on March 6, 2021.
+          </p>
+        </a>
+      ),
+    },
+
+    {
+      title: 'Upcoming Tournament - HOPPY',
+      body: (
+        <a
+          href="https://drive.google.com/file/d/1vi6eUYaYeL2az7-6eZthwevsMG0fr3fK/view"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          <p>
+            The HOPPY is a two-day tournament, brought to you by the organizers
+            of the successful MERRY tournament! A two-day, 13-game event,
+            starting on the first day of spring (Saturday, March 20, 2021).
+            Premier and Classic divisions for both NWL20 and CSW19. All pairings
+            and standings will be automatically handled by the Woogles platform!
+          </p>
+        </a>
+      ),
+    },
+
     {
       title: 'Want to help?',
       body: (
-        <a
-          href="https://woogles.io/about"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
+        <a href="https://woogles.io/about" rel="noopener noreferrer">
           <p>
             Woogles is a nonprofit, funded completely by donations, and
             committed to being ad-free and free for everyone. Want to make a
@@ -90,7 +152,7 @@ export const Announcements = React.memo((props: AnnouncementsProps) => {
       title: 'Woogles is live! Come join our Discord',
       body: (
         <a
-          href="https://discord.gg/5yCJjmW"
+          href="https://discord.gg/GqkUqA7ENm"
           target="_blank"
           rel="noopener noreferrer"
         >

@@ -1,0 +1,25 @@
+FROM golang
+
+RUN apt-get update && apt-get install -y unzip
+
+ENV PROTOC_VERSION 3.14.0
+
+# add protoc
+RUN curl -L -o /tmp/protobuf.zip https://github.com/protocolbuffers/protobuf/releases/download/v${PROTOC_VERSION}/protoc-${PROTOC_VERSION}-linux-$(uname -m).zip
+WORKDIR /tmp/
+RUN unzip protobuf.zip && cp /tmp/bin/protoc /opt && mv /tmp/include /opt
+
+# Install protoc-gen-go
+RUN go get github.com/golang/protobuf/protoc-gen-go \
+    && cp /go/bin/protoc-gen-go /opt \
+    && go get github.com/twitchtv/twirp/protoc-gen-twirp \
+    && cp /go/bin/protoc-gen-twirp /opt
+
+# Install node
+
+WORKDIR /opt
+RUN apt-get install -y nodejs npm && npm install ts-protoc-gen
+
+ENV PATH /opt:$PATH
+ENV CODE_DIR /opt/code
+WORKDIR /opt/code/liwords

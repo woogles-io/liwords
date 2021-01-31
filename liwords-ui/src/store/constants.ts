@@ -1,5 +1,6 @@
 import { ChallengeRule } from '../gen/macondo/api/proto/macondo/macondo_pb';
 import { Blank } from '../utils/cwgame/common';
+import { ChatEntityObj, ChatEntityType, randomID } from './store';
 
 export type PlayerOrder = 'p0' | 'p1';
 
@@ -12,6 +13,10 @@ export const calculateTotalTime = (
   maxOvertime: number
 ): number => {
   return secs + maxOvertime * 60 + incrementSecs * turnsPerGame;
+};
+
+export const isPairedMode = (type: string) => {
+  return type === 'CHILD' || type === 'STANDARD';
 };
 
 // See cutoffs in variants.go. XXX: Try to tie these together better.
@@ -62,6 +67,28 @@ export const timeToString = (
   }${incrementSecs ? '+' + incrementSecs : ''}`;
 };
 
+export type ChatMessageFromJSON = {
+  username: string;
+  channel: string;
+  message: string;
+  timestamp: string;
+  user_id: string;
+};
+
+export const chatMessageToChatEntity = (
+  cm: ChatMessageFromJSON
+): ChatEntityObj => {
+  return {
+    entityType: ChatEntityType.UserChat,
+    id: randomID(),
+    sender: cm.username,
+    message: cm.message,
+    timestamp: parseInt(cm.timestamp, 10),
+    senderId: cm.user_id,
+    channel: cm.channel,
+  };
+};
+
 export const ratingToColor = (rating: string): [number, string] => {
   let ratNum;
   if (rating.endsWith('?')) {
@@ -109,15 +136,36 @@ export const challRuleToStr = (n: number): string => {
   return 'Unsupported';
 };
 
-export const sortBlanksLast = (rack: string) => {
-  let letters = '';
-  let blanks = '';
-  for (const tile of rack) {
-    if (tile === Blank) {
-      blanks += tile;
-    } else {
-      letters += tile;
-    }
+// To expose this and make it more ergonomic to reorder without refreshing.
+export let preferredSortOrder = localStorage.getItem('tileOrder');
+
+export const setPreferredSortOrder = (value: string) => {
+  if (value) {
+    localStorage.setItem('tileOrder', value);
+    preferredSortOrder = value;
+  } else {
+    localStorage.removeItem('tileOrder');
+    preferredSortOrder = null;
   }
-  return letters + blanks;
+};
+
+export const sortTiles = (rack: string) => {
+  const effectiveSortOrder = preferredSortOrder ?? '';
+  return Array.from(rack, (tile) => {
+    let index = effectiveSortOrder.indexOf(tile);
+    if (index < 0) index = effectiveSortOrder.length + (tile === Blank ? 1 : 0);
+    return [index, tile];
+  })
+    .sort(([aIndex, aTile], [bIndex, bTile]) =>
+      aIndex < bIndex
+        ? -1
+        : aIndex > bIndex
+        ? 1
+        : aTile < bTile
+        ? -1
+        : aTile > bTile
+        ? 1
+        : 0
+    )
+    .reduce((s, [index, tile]) => s + tile, '');
 };

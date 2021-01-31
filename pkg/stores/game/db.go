@@ -57,6 +57,8 @@ type game struct {
 	Player1ID uint `gorm:"foreignKey"`
 	Player1   user.User
 
+	ReadyFlag uint // When both players are ready, this game starts.
+
 	Timers datatypes.JSON // A JSON blob containing the game timers.
 
 	Started       bool
@@ -86,6 +88,11 @@ func NewDBStore(config *config.Config, userStore pkguser.Store) (*DBStore, error
 		return nil, err
 	}
 	db.AutoMigrate(&game{})
+	// Note: We need to manually add the following index on production:
+	// create index rematch_req_idx ON games using hash ((quickdata->>'o'));
+	// I don't know how to do this with GORM. This makes the GetRematchStreak function
+	// much faster.
+
 	return &DBStore{db: db, cfg: config, userStore: userStore}, nil
 }
 
@@ -133,7 +140,7 @@ func (s *DBStore) Get(ctx context.Context, id string) (*entity.Game, error) {
 	var trdata entity.TournamentData
 	err = json.Unmarshal(g.TournamentData, &trdata)
 	if err == nil {
-		// it's ok for a game to not have tournament data
+		// however, it's ok for a game to not have tournament data
 		entGame.TournamentData = &trdata
 		entGame.TournamentData.Id = g.TournamentID
 	}
@@ -153,7 +160,7 @@ func (s *DBStore) GetMetadata(ctx context.Context, id string) (*gs.GameInfoRespo
 
 }
 
-func (s *DBStore) GetRematchStreak(ctx context.Context, originalRequestId string) (*gs.GameInfoResponses, error) {
+func (s *DBStore) GetRematchStreak(ctx context.Context, originalRequestId string) (*gs.StreakInfoResponse, error) {
 	games := []*game{}
 	if results := s.db.
 		Where("quickdata->>'o' = ? AND game_end_reason != 0", originalRequestId).
@@ -161,15 +168,40 @@ func (s *DBStore) GetRematchStreak(ctx context.Context, originalRequestId string
 		Find(&games); results.Error != nil {
 		return nil, results.Error
 	}
-	return convertGamesToInfoResponses(games)
+
+	resp := &gs.StreakInfoResponse{
+		Streak: make([]*gs.StreakInfoResponse_SingleGameInfo, len(games)),
+	}
+
+	for idx, g := range games {
+		var mdata entity.Quickdata
+		err := json.Unmarshal(g.Quickdata, &mdata)
+		if err != nil {
+			log.Debug().Err(err).Msg("convert-game-quickdata")
+			// If it's empty or unconvertible don't quit. We need this
+			// for backwards compatibility.
+		}
+		players := make([]string, len(mdata.PlayerInfo))
+		for i, p := range mdata.PlayerInfo {
+			players[i] = p.Nickname
+		}
+		resp.Streak[idx] = &gs.StreakInfoResponse_SingleGameInfo{
+			GameId:  g.UUID,
+			Winner:  int32(g.WinnerIdx),
+			Players: players,
+		}
+	}
+
+	return resp, nil
 }
 
 func (s *DBStore) GetRecentGames(ctx context.Context, username string, numGames int, offset int) (*gs.GameInfoResponses, error) {
 	if numGames > MaxRecentGames {
 		return nil, errors.New("too many games")
 	}
+	ctxDB := s.db.WithContext(ctx)
 	var games []*game
-	if results := s.db.Limit(numGames).
+	if results := ctxDB.Limit(numGames).
 		Offset(offset).
 		Joins("JOIN users as u0  ON u0.id = games.player0_id").
 		Joins("JOIN users as u1  ON u1.id = games.player1_id").
@@ -186,8 +218,9 @@ func (s *DBStore) GetRecentTourneyGames(ctx context.Context, tourneyID string, n
 	if numGames > MaxRecentGames {
 		return nil, errors.New("too many games")
 	}
+	ctxDB := s.db.WithContext(ctx)
 	var games []*game
-	if results := s.db.Limit(numGames).
+	if results := ctxDB.Limit(numGames).
 		Offset(offset).
 		// Basically, everything except for 0 (ongoing), 5 (aborted) or 7 (cancelled)
 		Where("tournament_id = ? AND game_end_reason NOT IN (?, ?, ?)", tourneyID,
@@ -226,64 +259,41 @@ func convertGameToInfoResponse(g *game) (*gs.GameInfoResponse, error) {
 	if err != nil {
 		return nil, err
 	}
-	timefmt, variant, err := entity.VariantFromGameReq(gamereq)
+	timefmt, _, err := entity.VariantFromGameReq(gamereq)
 	if err != nil {
 		return nil, err
 	}
 
+	var trdata entity.TournamentData
+	tDiv := ""
+	tRound := 0
+	tGameIndex := 0
+	tid := ""
+
+	err = json.Unmarshal(g.TournamentData, &trdata)
+	if err == nil {
+		tDiv = trdata.Division
+		tRound = trdata.Round
+		tGameIndex = trdata.GameIndex
+		tid = trdata.Id
+	}
+
 	info := &gs.GameInfoResponse{
-		Players:            mdata.PlayerInfo,
-		GameEndReason:      pb.GameEndReason(g.GameEndReason),
-		Scores:             mdata.FinalScores,
-		Winner:             int32(g.WinnerIdx),
-		Lexicon:            gamereq.Lexicon,
-		Variant:            string(variant),
-		TimeControlName:    string(timefmt),
-		InitialTimeSeconds: gamereq.InitialTimeSeconds,
-		MaxOvertimeMinutes: gamereq.MaxOvertimeMinutes,
-		IncrementSeconds:   gamereq.IncrementSeconds,
-		ChallengeRule:      gamereq.ChallengeRule,
-		RatingMode:         gamereq.RatingMode,
-		CreatedAt:          timestamppb.New(g.CreatedAt),
-		LastUpdate:         timestamppb.New(g.UpdatedAt),
-		GameId:             g.UUID,
-		OriginalRequestId:  mdata.OriginalRequestId,
-		TournamentId:       g.TournamentID,
+		Players:             mdata.PlayerInfo,
+		GameEndReason:       pb.GameEndReason(g.GameEndReason),
+		Scores:              mdata.FinalScores,
+		Winner:              int32(g.WinnerIdx),
+		TimeControlName:     string(timefmt),
+		CreatedAt:           timestamppb.New(g.CreatedAt),
+		LastUpdate:          timestamppb.New(g.UpdatedAt),
+		GameId:              g.UUID,
+		TournamentId:        tid,
+		GameRequest:         gamereq,
+		TournamentDivision:  tDiv,
+		TournamentRound:     int32(tRound),
+		TournamentGameIndex: int32(tGameIndex),
 	}
 	return info, nil
-}
-
-func convertGamesToGameMetas(games []*game) ([]*pb.GameMeta, error) {
-	responses := []*pb.GameMeta{}
-
-	for _, g := range games {
-
-		var mdata entity.Quickdata
-
-		err := json.Unmarshal(g.Quickdata, &mdata)
-		if err != nil {
-			log.Debug().Err(err).Msg("convert-game-quickdata")
-			return nil, err
-		}
-
-		gamereq := &pb.GameRequest{}
-		err = proto.Unmarshal(g.Request, gamereq)
-		if err != nil {
-			return nil, err
-		}
-
-		players := []*pb.GameMeta_UserMeta{
-			{RelevantRating: mdata.PlayerInfo[0].Rating, DisplayName: mdata.PlayerInfo[0].Nickname},
-			{RelevantRating: mdata.PlayerInfo[1].Rating, DisplayName: mdata.PlayerInfo[1].Nickname}}
-
-		gameMeta := &pb.GameMeta{
-			Users:       players,
-			GameRequest: gamereq, // can i get away with passing this straight thru?
-			Id:          g.UUID,
-		}
-		responses = append(responses, gameMeta)
-	}
-	return responses, nil
 }
 
 // fromState returns an entity.Game from a DB State.
@@ -341,14 +351,14 @@ func fromState(timers entity.Timers, qdata *entity.Quickdata, Started bool,
 		lexicon = req.Lexicon
 	}
 
-	gd, err := gaddag.Get(&cfg.MacondoConfig, lexicon)
+	dawg, err := gaddag.GetDawg(&cfg.MacondoConfig, lexicon)
 	if err != nil {
 		return nil, err
 	}
 
 	rules := macondogame.NewGameRules(
 		&cfg.MacondoConfig, dist, board.MakeBoard(bd),
-		&gaddag.Lexicon{GenericDawg: gd},
+		&gaddag.Lexicon{GenericDawg: dawg},
 		cross_set.CrossScoreOnlyGenerator{Dist: dist})
 
 	if err != nil {
@@ -431,11 +441,11 @@ func (s *DBStore) Create(ctx context.Context, g *entity.Game) error {
 	return result.Error
 }
 
-func (s *DBStore) ListActive(ctx context.Context, tourneyID string) ([]*pb.GameMeta, error) {
+func (s *DBStore) ListActive(ctx context.Context, tourneyID string) (*gs.GameInfoResponses, error) {
 	var games []*game
 
 	ctxDB := s.db.WithContext(ctx)
-	query := ctxDB.Table("games").Select("quickdata, request, uuid, started").
+	query := ctxDB.Table("games").Select("quickdata, request, uuid, started, tournament_data").
 		Where("games.game_end_reason = ?", 0 /* ongoing games only*/)
 
 	if tourneyID != "" {
@@ -448,7 +458,7 @@ func (s *DBStore) ListActive(ctx context.Context, tourneyID string) ([]*pb.GameM
 		return nil, result.Error
 	}
 
-	return convertGamesToGameMetas(games)
+	return convertGamesToInfoResponses(games)
 }
 
 func (s *DBStore) Count(ctx context.Context) (int64, error) {
@@ -472,6 +482,20 @@ func (s *DBStore) ListAllIDs(ctx context.Context) ([]string, error) {
 	}
 
 	return ids, result.Error
+}
+
+func (s *DBStore) SetReady(ctx context.Context, gid string, pidx int) (int, error) {
+	var rf struct {
+		ReadyFlag int
+	}
+	ctxDB := s.db.WithContext(ctx)
+
+	// If the game is already ready and this gets called again, this function
+	// returns 0 rows, which means rf.ReadyFlag == 0 and the game won't start again.
+	result := ctxDB.Raw(`update games set ready_flag = ready_flag | (1 << ?) where uuid = ?
+		and ready_flag & (1 << ?) = 0 returning ready_flag`, pidx, gid, pidx).Scan(&rf)
+
+	return rf.ReadyFlag, result.Error
 }
 
 func (s *DBStore) toDBObj(g *entity.Game) (*game, error) {
@@ -532,4 +556,25 @@ func (s *DBStore) Disconnect() {
 		return
 	}
 	log.Err(err).Msg("unable to disconnect")
+}
+
+func (s *DBStore) CachedCount(ctx context.Context) int {
+	return 0
+}
+
+func (s *DBStore) GetHistory(ctx context.Context, id string) (*macondopb.GameHistory, error) {
+	g := &game{}
+
+	ctxDB := s.db.WithContext(ctx)
+	if result := ctxDB.Select("history").Where("uuid = ?", id).First(g); result.Error != nil {
+		return nil, result.Error
+	}
+
+	hist := &macondopb.GameHistory{}
+	err := proto.Unmarshal(g.History, hist)
+	if err != nil {
+		return nil, err
+	}
+
+	return hist, nil
 }

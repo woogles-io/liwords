@@ -50,7 +50,7 @@ import {
 } from '../store/store';
 import { BlankSelector } from './blank_selector';
 import { GameEndMessage } from './game_end_message';
-import { PlayerMetadata, GCGResponse } from './game_info';
+import { PlayerMetadata, GCGResponse, ChallengeRule } from './game_info';
 import {
   GameEvent,
   PlayState,
@@ -68,11 +68,14 @@ type Props = {
   currentRack: string;
   events: Array<GameEvent>;
   gameID: string;
+  challengeRule: ChallengeRule;
   board: Board;
   sendSocketMsg: (msg: Uint8Array) => void;
   gameDone: boolean;
   playerMeta: Array<PlayerMetadata>;
+  tournamentSlug?: string;
   tournamentID?: string;
+  tournamentPairedMode?: boolean;
   lexicon: string;
   handleAcceptRematch: (() => void) | null;
   handleAcceptAbort: (() => void) | null;
@@ -188,6 +191,22 @@ export const BoardPanel = React.memo((props: Props) => {
   const { gameContext } = useGameContextStoreContext();
   const { stopClock } = useTimerStoreContext();
   const [exchangeAllowed, setexchangeAllowed] = useState(true);
+  const handlePassShortcut = useRef<(() => void) | null>(null);
+  const setHandlePassShortcut = useCallback((x) => {
+    handlePassShortcut.current =
+      typeof x === 'function' ? x(handlePassShortcut.current) : x;
+  }, []);
+  const handleChallengeShortcut = useRef<(() => void) | null>(null);
+  const setHandleChallengeShortcut = useCallback((x) => {
+    handleChallengeShortcut.current =
+      typeof x === 'function' ? x(handleChallengeShortcut.current) : x;
+  }, []);
+  const handleNeitherShortcut = useRef<(() => void) | null>(null);
+  const setHandleNeitherShortcut = useCallback((x) => {
+    handleNeitherShortcut.current =
+      typeof x === 'function' ? x(handleNeitherShortcut.current) : x;
+  }, []);
+  const boardContainer = useRef<HTMLDivElement>(null);
 
   const {
     displayedRack,
@@ -269,6 +288,10 @@ export const BoardPanel = React.memo((props: Props) => {
       // Don't stop the clock; the next user event to come in will change the
       // clock over.
       // stopClock();
+      if (boardContainer.current) {
+        // Reenable keyboard shortcut after passing with 22.
+        boardContainer.current.focus();
+      }
     },
     [
       gameContext.nickToPlayerOrder,
@@ -366,12 +389,19 @@ export const BoardPanel = React.memo((props: Props) => {
     isMyTurn: () => boolean;
     placedTiles: Set<EphemeralTile>;
     dim: number;
+    arrowProperties: {
+      row: number;
+      col: number;
+      horizontal: boolean;
+      show: boolean;
+    };
   }>();
   readOnlyEffectDependenciesRef.current = {
     displayedRack,
     isMyTurn,
     placedTiles,
     dim: props.board.dim,
+    arrowProperties,
   };
 
   // Need to sync state to props here whenever the board changes.
@@ -427,10 +457,14 @@ export const BoardPanel = React.memo((props: Props) => {
         hookChanged(row, col, +1, 0) ||
         hookChanged(row, col, 0, -1) ||
         hookChanged(row, col, 0, +1);
+      // If no tiles have been placed, but placement arrow is shown,
+      // reset based on if that position is affected.
+      // This avoids having the placement arrow behind a tile.
       if (
-        Array.from(dep.placedTiles).some(({ row, col }) =>
-          placedTileAffected(row, col)
-        )
+        (dep.placedTiles.size === 0 && dep.arrowProperties.show
+          ? [dep.arrowProperties as { row: number; col: number }]
+          : Array.from(dep.placedTiles)
+        ).some(({ row, col }) => placedTileAffected(row, col))
       ) {
         fullReset = true;
       }
@@ -569,16 +603,18 @@ export const BoardPanel = React.memo((props: Props) => {
         if (isMyTurn() && !props.gameDone) {
           if (key === '2') {
             evt.preventDefault();
-            makeMove('pass');
+            if (handlePassShortcut.current) handlePassShortcut.current();
             return;
           }
           if (key === '3') {
             evt.preventDefault();
-            makeMove('challenge');
+            if (handleChallengeShortcut.current)
+              handleChallengeShortcut.current();
             return;
           }
           if (key === '4' && exchangeAllowed) {
             evt.preventDefault();
+            if (handleNeitherShortcut.current) handleNeitherShortcut.current();
             setCurrentMode('EXCHANGE_MODAL');
             return;
           }
@@ -983,6 +1019,7 @@ export const BoardPanel = React.memo((props: Props) => {
   const gameBoard = (
     <div
       id="board-container"
+      ref={boardContainer}
       className="board-container"
       onKeyDown={handleKeyDown}
       onKeyPress={preventFirefoxTypeToSearch}
@@ -1066,8 +1103,13 @@ export const BoardPanel = React.memo((props: Props) => {
         showRematch={examinableGameEndMessage !== ''}
         gameEndControls={examinableGameEndMessage !== '' || props.gameDone}
         currentRack={props.currentRack}
-        tournamentID={props.tournamentID}
+        tournamentSlug={props.tournamentSlug}
+        tournamentPairedMode={props.tournamentPairedMode}
         lexicon={props.lexicon}
+        challengeRule={props.challengeRule}
+        setHandlePassShortcut={setHandlePassShortcut}
+        setHandleChallengeShortcut={setHandleChallengeShortcut}
+        setHandleNeitherShortcut={setHandleNeitherShortcut}
       />
       <ExchangeTiles
         rack={props.currentRack}

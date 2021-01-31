@@ -15,6 +15,7 @@ import (
 	"github.com/rs/zerolog/log"
 
 	"github.com/domino14/liwords/pkg/entity"
+	pb "github.com/domino14/liwords/rpc/api/proto/user_service"
 )
 
 // DBStore is a postgres-backed store for users.
@@ -36,6 +37,9 @@ type User struct {
 	Password    string `gorm:"type:varchar(128)"`
 	InternalBot bool   `gorm:"default:false;index"`
 	IsAdmin     bool   `gorm:"default:false"`
+	IsDirector  bool   `gorm:"default:false"`
+	IsMod       bool   `gorm:"default:false"`
+	ApiKey      string
 }
 
 // A user profile is in a one-to-one relationship with a user. It is the
@@ -92,7 +96,8 @@ func NewDBStore(dbURL string) (*DBStore, error) {
 	db.AutoMigrate(&User{}, &profile{}, &following{}, &blocking{})
 	db.Model(&User{}).
 		AddUniqueIndex("username_idx", "lower(username)").
-		AddUniqueIndex("email_idx", "lower(email)")
+		AddUniqueIndex("email_idx", "lower(email)").
+		AddIndex("api_key_idx", "api_key")
 
 	// Can't get GORM to auto create these foreign keys, so do it myself /shrug
 	db.Model(&profile{}).AddForeignKey("user_id", "users(id)", "RESTRICT", "RESTRICT")
@@ -124,18 +129,28 @@ func (s *DBStore) Get(ctx context.Context, username string) (*entity.User, error
 		return nil, err
 	}
 	entu := &entity.User{
-		ID:        u.ID,
-		Username:  u.Username,
-		UUID:      u.UUID,
-		Email:     u.Email,
-		Password:  u.Password,
-		IsBot:     u.InternalBot,
-		Anonymous: false,
-		Profile:   profile,
-		IsAdmin:   u.IsAdmin,
+		ID:         u.ID,
+		Username:   u.Username,
+		UUID:       u.UUID,
+		Email:      u.Email,
+		Password:   u.Password,
+		IsBot:      u.InternalBot,
+		Anonymous:  false,
+		Profile:    profile,
+		IsAdmin:    u.IsAdmin,
+		IsDirector: u.IsDirector,
+		IsMod:      u.IsMod,
 	}
 
 	return entu, nil
+}
+
+func (s *DBStore) Set(ctx context.Context, u *entity.User) error {
+	dbu := s.toDBObj(u)
+
+	result := s.db.Model(&User{}).Set("gorm:query_option", "FOR UPDATE").
+		Where("uuid = ?", u.UUID).Update(dbu)
+	return result.Error
 }
 
 // GetByEmail gets the user by email. It does not try to get the profile.
@@ -148,14 +163,16 @@ func (s *DBStore) GetByEmail(ctx context.Context, email string) (*entity.User, e
 	}
 
 	entu := &entity.User{
-		ID:        u.ID,
-		Username:  u.Username,
-		UUID:      u.UUID,
-		Email:     u.Email,
-		Password:  u.Password,
-		Anonymous: false,
-		IsBot:     u.InternalBot,
-		IsAdmin:   u.IsAdmin,
+		ID:         u.ID,
+		Username:   u.Username,
+		UUID:       u.UUID,
+		Email:      u.Email,
+		Password:   u.Password,
+		Anonymous:  false,
+		IsBot:      u.InternalBot,
+		IsAdmin:    u.IsAdmin,
+		IsDirector: u.IsDirector,
+		IsMod:      u.IsMod,
 	}
 
 	return entu, nil
@@ -214,18 +231,58 @@ func (s *DBStore) GetByUUID(ctx context.Context, uuid string) (*entity.User, err
 		}
 
 		entu = &entity.User{
-			ID:       u.ID,
-			Username: u.Username,
-			UUID:     u.UUID,
-			Email:    u.Email,
-			Password: u.Password,
-			IsBot:    u.InternalBot,
-			Profile:  profile,
-			IsAdmin:  u.IsAdmin,
+			ID:         u.ID,
+			Username:   u.Username,
+			UUID:       u.UUID,
+			Email:      u.Email,
+			Password:   u.Password,
+			IsBot:      u.InternalBot,
+			Profile:    profile,
+			IsAdmin:    u.IsAdmin,
+			IsDirector: u.IsDirector,
+			IsMod:      u.IsMod,
 		}
 	}
 
 	return entu, nil
+}
+
+// GetByAPIKey gets a user by api key. It does not try to fetch the profile. We only
+// call this for API functions where we care about access levels, etc.
+func (s *DBStore) GetByAPIKey(ctx context.Context, apikey string) (*entity.User, error) {
+	if apikey == "" {
+		return nil, errors.New("api-key is blank")
+	}
+	u := &User{}
+	if result := s.db.Where("api_key = ?", apikey).First(u); result.Error != nil {
+		return nil, result.Error
+	}
+
+	entu := &entity.User{
+		ID:        u.ID,
+		Username:  u.Username,
+		UUID:      u.UUID,
+		Email:     u.Email,
+		Password:  u.Password,
+		Anonymous: false,
+		IsBot:     u.InternalBot,
+		IsAdmin:   u.IsAdmin,
+	}
+
+	return entu, nil
+}
+
+func (s *DBStore) toDBObj(u *entity.User) *User {
+	return &User{
+		UUID:        u.UUID,
+		Username:    u.Username,
+		Email:       u.Email,
+		Password:    u.Password,
+		InternalBot: u.IsBot,
+		IsAdmin:     u.IsAdmin,
+		IsDirector:  u.IsDirector,
+		IsMod:       u.IsMod,
+	}
 }
 
 // New creates a new user in the DB.
@@ -233,14 +290,7 @@ func (s *DBStore) New(ctx context.Context, u *entity.User) error {
 	if u.UUID == "" {
 		u.UUID = shortuuid.New()
 	}
-	dbu := &User{
-		UUID:        u.UUID,
-		Username:    u.Username,
-		Email:       u.Email,
-		Password:    u.Password,
-		InternalBot: u.IsBot,
-		IsAdmin:     u.IsAdmin,
-	}
+	dbu := s.toDBObj(u)
 	result := s.db.Create(dbu)
 	if result.Error != nil {
 		return result.Error
@@ -274,6 +324,21 @@ func (s *DBStore) SetPassword(ctx context.Context, uuid string, hashpass string)
 		return result.Error
 	}
 	return s.db.Model(u).Update("password", hashpass).Error
+}
+
+// SetAbout sets the about (profile field] for the user.
+func (s *DBStore) SetAbout(ctx context.Context, uuid string, about string) error {
+	u := &User{}
+	p := &profile{}
+
+	if result := s.db.Where("uuid = ?", uuid).First(u); result.Error != nil {
+		return result.Error
+	}
+	if result := s.db.Model(u).Related(p); result.Error != nil {
+		return result.Error
+	}
+
+	return s.db.Model(p).Update("about", about).Error
 }
 
 // SetRatings set the specific ratings for the given variant in a transaction.
@@ -582,14 +647,15 @@ func (s *DBStore) Username(ctx context.Context, uuid string) (string, bool, erro
 	return user.Username, false, nil
 }
 
-func (s *DBStore) UsernamesByPrefix(ctx context.Context, prefix string) ([]string, error) {
+func (s *DBStore) UsersByPrefix(ctx context.Context, prefix string) ([]*pb.BasicUser, error) {
 
 	type u struct {
 		Username string
+		UUID     string
 	}
 
 	var us []u
-	if result := s.db.Table("users").Select("username").
+	if result := s.db.Table("users").Select("username, uuid").
 		Where("lower(username) like ? AND internal_bot = ?",
 			strings.ToLower(prefix)+"%", false).
 		Limit(20).
@@ -598,13 +664,15 @@ func (s *DBStore) UsernamesByPrefix(ctx context.Context, prefix string) ([]strin
 	}
 	log.Debug().Str("prefix", prefix).Int("byprefix", len(us)).Msg("found-matches")
 
-	usernames := make([]string, len(us))
+	users := make([]*pb.BasicUser, len(us))
 	for idx, u := range us {
-		usernames[idx] = u.Username
+		users[idx] = &pb.BasicUser{Username: u.Username, Uuid: u.UUID}
 	}
-	sort.Strings(usernames)
+	sort.Slice(users, func(i int, j int) bool {
+		return users[i].Username < users[j].Username
+	})
 
-	return usernames, nil
+	return users, nil
 }
 
 // List all user IDs.
@@ -664,4 +732,8 @@ func (s *DBStore) Count(ctx context.Context) (int64, error) {
 		return 0, result.Error
 	}
 	return count, nil
+}
+
+func (s *DBStore) CachedCount(ctx context.Context) int {
+	return 0
 }

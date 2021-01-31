@@ -13,3 +13,4 @@ liwords.iml
 *.ipynb_checkpoints/
 scripts/batchregister/*.csv
 __pycache__
+scripts/**/*-linux-amd64

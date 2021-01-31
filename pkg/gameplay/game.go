@@ -42,23 +42,26 @@ var (
 type GameStore interface {
 	Get(ctx context.Context, id string) (*entity.Game, error)
 	GetMetadata(ctx context.Context, id string) (*gs.GameInfoResponse, error)
-	GetRematchStreak(ctx context.Context, originalRequestId string) (*gs.GameInfoResponses, error)
+	GetRematchStreak(ctx context.Context, originalRequestId string) (*gs.StreakInfoResponse, error)
 	GetRecentGames(ctx context.Context, username string, numGames int, offset int) (*gs.GameInfoResponses, error)
 	GetRecentTourneyGames(ctx context.Context, tourneyID string, numGames int, offset int) (*gs.GameInfoResponses, error)
 	Set(context.Context, *entity.Game) error
 	Create(context.Context, *entity.Game) error
 	Exists(ctx context.Context, id string) (bool, error)
-	ListActive(context.Context, string) ([]*pb.GameMeta, error)
+	ListActive(context.Context, string, bool) (*gs.GameInfoResponses, error)
 	Count(ctx context.Context) (int64, error)
+	CachedCount(ctx context.Context) int
 	SetGameEventChan(c chan<- *entity.EventWrapper)
 	Unload(context.Context, string)
+	SetReady(ctx context.Context, gid string, pidx int) (int, error)
+	GetHistory(ctx context.Context, id string) (*macondopb.GameHistory, error)
 }
 
 type ConfigCtxKey string
 
 // InstantiateNewGame instantiates a game and returns it.
 func InstantiateNewGame(ctx context.Context, gameStore GameStore, cfg *config.Config,
-	users [2]*entity.User, assignedFirst int, req *pb.GameRequest, tid string) (*entity.Game, error) {
+	users [2]*entity.User, assignedFirst int, req *pb.GameRequest, tdata *entity.TournamentData) (*entity.Game, error) {
 
 	var players []*macondopb.PlayerInfo
 	var dbids [2]uint
@@ -94,14 +97,14 @@ func InstantiateNewGame(ctx context.Context, gameStore GameStore, cfg *config.Co
 		return nil, err
 	}
 
-	gd, err := gaddag.Get(&cfg.MacondoConfig, req.Lexicon)
+	dawg, err := gaddag.GetDawg(&cfg.MacondoConfig, req.Lexicon)
 	if err != nil {
 		return nil, err
 	}
 
 	rules := game.NewGameRules(
 		&cfg.MacondoConfig, dist, board.MakeBoard(bd),
-		&gaddag.Lexicon{GenericDawg: gd},
+		&gaddag.Lexicon{GenericDawg: dawg},
 		cross_set.CrossScoreOnlyGenerator{Dist: dist})
 
 	var gameRunner *runner.GameRunner
@@ -134,8 +137,7 @@ func InstantiateNewGame(ctx context.Context, gameStore GameStore, cfg *config.Co
 
 	entGame := entity.NewGame(&gameRunner.Game, req)
 	entGame.PlayerDBIDs = dbids
-	// XXX: This func should take in a tournament data.
-	entGame.TournamentData = &entity.TournamentData{Id: tid}
+	entGame.TournamentData = tdata
 
 	ratingKey, err := entGame.RatingKey()
 	if err != nil {
@@ -259,8 +261,8 @@ func StartGame(ctx context.Context, gameStore GameStore, eventChan chan<- *entit
 	if err != nil {
 		return err
 	}
-	if len(rematchStreak.GameInfo) > 0 {
-		previousGameID := rematchStreak.GameInfo[0].GameId
+	if len(rematchStreak.Streak) > 0 {
+		previousGameID := rematchStreak.Streak[0].GameId
 		evt := &pb.RematchStartedEvent{RematchGameId: entGame.GameID()}
 		wrappedRematch := entity.WrapEvent(evt, pb.MessageType_REMATCH_STARTED)
 		wrappedRematch.AddAudience(entity.AudGameTV, previousGameID)

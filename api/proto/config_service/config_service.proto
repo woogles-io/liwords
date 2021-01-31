@@ -4,8 +4,36 @@ option go_package = "github.com/domino14/liwords/rpc/api/proto/config_service";
 
 message EnableGamesRequest { bool enabled = 1; }
 
+message SetFEHashRequest { string hash = 1; }
+
+message PermissionsRequest {
+  string username = 1;
+  bool director = 2;
+  bool admin = 3;
+  bool mod = 4;
+  bool bot = 5;
+}
+
+message UserRequest {
+  string username = 1;
+}
+
+message UserResponse {
+  string username = 1;
+  string uuid = 2;
+  string email = 3;
+  bool is_bot = 4;
+  bool is_director = 5;
+  bool is_mod = 6;
+  bool is_admin = 7;
+}
+
 message ConfigResponse {}
 
 service ConfigService {
   rpc SetGamesEnabled(EnableGamesRequest) returns(ConfigResponse);
+
+  rpc SetFEHash(SetFEHashRequest) returns(ConfigResponse);
+  rpc SetUserPermissions(PermissionsRequest) returns (ConfigResponse);
+  rpc GetUserDetails(UserRequest) returns (UserResponse);
 }

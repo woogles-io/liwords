@@ -483,9 +483,10 @@ p.streak-loss {
 .coord-label {
   text-align: right;
   margin: 0;
-  font-size: 100%;
-  font-weight: 600;
-  font-family: 'Source Code Pro', monospace;
+  font-size: 14px;
+  font-weight: 400;
+  font-family: $font-monospaced;
+  letter-spacing: -0.05em;
   overflow: hidden;
   @include colorModed() {
     color: m($gray-extreme);
@@ -530,7 +531,7 @@ p.streak-loss {
     padding: 1px 0 0;
     line-height: 0;
     span {
-      font-family: $font-monospaced;
+      font-family: $font-tile;
       font-weight: 500;
       font-size: 28px;
     }
@@ -559,9 +560,16 @@ p.streak-loss {
   &[data-rune="Q"] {
     p.rune {
       position: relative;
-      left: -3px;
+      left: -2px;
     }
   }
+  &[data-rune="Z"] {
+    p.rune {
+      position: relative;
+      left: -1px;
+    }
+  }
+
 }
 .tile {
   @include colorModed() {
@@ -628,6 +636,7 @@ p.streak-loss {
 
 p.rune {
   @include type-monospace;
+  font-family: $font-tile;
   margin: 0;
   line-height: 0;
   font-size: $tile-font-size-mobile;
@@ -643,11 +652,12 @@ p.rune {
 }
 .tile .point-value {
   position: absolute;
-  bottom: 4px;
+  bottom: 5px;
   right: 0;
-  padding: 0.6vw 0.3vw;
+  padding: 3px 2px;
   line-height: 0;
   margin: 0;
+  letter-spacing: -0.1em;
   font-size: $point-size-mobile;
   font-weight: bold;
   @include colorModed() {
@@ -694,6 +704,7 @@ p.rune {
   }
   .point-value {
     font-size: $point-size-laptop;
+    padding: 0 2px 5px;
   }
 }
 
@@ -787,10 +798,10 @@ p.rune {
   }
   .tiles-remaining {
     @include type-monospace;
-    font-size: 13px;
-    padding: 12px 24px;
-    line-height: 1.6em;
-    letter-spacing: 0.21em;
+    font-size: 15px;
+    padding: 6px 24px 12px;
+    line-height: 1.3em;
+    letter-spacing: 0.26em;
     max-height: 150px;
     overflow-y: auto;
     .pool-section {
@@ -940,8 +951,8 @@ p.rune {
     }
     .coords-time {
       flex: 2;
-      min-width: 60px;
-      max-width: 60px;
+      min-width: 66px;
+      max-width: 66px;
     }
     .play {
       flex: 3;
@@ -1076,7 +1087,7 @@ p.rune {
   .tile .point-value {
     font-size: $point-size-tablet;
     padding: 5px 2px;
-    bottom: 1px;
+    bottom: 2px;
   }
   .notepad-card, .analyzer-card {
     display: none;
@@ -1143,8 +1154,44 @@ p.rune {
       }
     }
   }
-}
 
+}
+@media (min-width: $screen-tablet-min) and (max-width: $screen-laptop-min - 1)  {
+  .game-container.competitor {
+    // Steal some space for the tournament view
+    .data-area .ant-card {
+      margin-bottom: 6px;
+    }
+    .ant-card.competitor-status .ant-card-body p .secondary-message {
+      font-size: 12px;
+      display: inline;
+      padding-left: 6px;
+    }
+    .tiles-remaining {
+      padding: 3px 24px 6px;
+    }
+    .game-info {
+      font-size: 12px;
+      display: block;
+      p {
+        font-size: 12px;
+        .secondary-message {
+          display: none;
+        }
+      }
+      .ant-row {
+        display: inline-block;
+        &.tournament-name {
+          display: block;
+        }
+      }
+      .variant {
+        font-size: 14px;
+        margin-right: 6px;
+      }
+    }
+  }
+}
 @media (min-width: $screen-laptop-min) {
   .game-container {
     .ant-card {
@@ -1218,6 +1265,16 @@ p.rune {
   .empty-space {
     height: $tile-size-laptop;
     width: $tile-size-laptop;
+    &[data-rune="Q"] {
+      p.rune {
+        left: -2px;
+      }
+    }
+    &[data-rune="Z"] {
+      p.rune {
+        left: -1px;
+      }
+    }
   }
   .tile.droppable {
     pointer-events: all;
@@ -1244,6 +1301,7 @@ p.rune {
     }
     .point-value {
       font-size: $point-size-laptop;
+      bottom: 1px;
     }
   }
   .game-info {
@@ -1253,9 +1311,6 @@ p.rune {
     }
   }
     .score-card {
-      .turn {
-        font-size: 13px;
-      }
       .ant-card-body {
         padding: 0;
 
@@ -1295,9 +1350,11 @@ p.rune {
     width: $tile-size-desktop;
     p.rune {
       font-size: $tile-font-size-desktop;
+      top: 0px;
     }
     .point-value {
       font-size: $point-size-desktop;
+      bottom: 2px;
     }
   }
 
@@ -1320,7 +1377,7 @@ p.rune {
   }
   .score-card {
     .turn {
-      font-size: 14px;
+      font-size: 15px;
     }
     .ant-card-body {
       & > div {
@@ -1350,3 +1407,4 @@ p.rune {
     }
   }
 }
+

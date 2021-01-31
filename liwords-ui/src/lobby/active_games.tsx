@@ -6,9 +6,11 @@ import { RatingBadge } from './rating_badge';
 import { challengeFormat, timeFormat } from './sought_games';
 import { ActiveGame } from '../store/reducers/lobby_reducer';
 import { calculateTotalTime } from '../store/constants';
+
 type Props = {
   activeGames: ActiveGame[];
   username?: string;
+  type?: 'RESUME';
 };
 
 export const ActiveGames = (props: Props) => {
@@ -91,8 +93,16 @@ export const ActiveGames = (props: Props) => {
           value: 'CSW19',
         },
         {
+          text: 'NWL20',
+          value: 'NWL20',
+        },
+        {
           text: 'NWL18',
           value: 'NWL18',
+        },
+        {
+          text: 'ECWL',
+          value: 'ECWL',
         },
       ],
       filterMultiple: false,
@@ -116,9 +126,10 @@ export const ActiveGames = (props: Props) => {
       key: 'details',
     },
   ];
+
   return (
     <>
-      <h4>Games Live Now</h4>
+      <h4>{props.type === 'RESUME' ? 'Resume' : 'Games Live Now'}</h4>
       <Table
         className="games observe"
         dataSource={formatGameData(props.activeGames)}
@@ -129,8 +140,18 @@ export const ActiveGames = (props: Props) => {
         onRow={(record) => {
           return {
             onClick: (event) => {
-              history.replace(`/game/${encodeURIComponent(record.gameID)}`);
-              console.log('redirecting to', record.gameID);
+              if (event.ctrlKey || event.altKey || event.metaKey) {
+                window.open(`/game/${encodeURIComponent(record.gameID)}`);
+              } else {
+                history.replace(`/game/${encodeURIComponent(record.gameID)}`);
+                console.log('redirecting to', record.gameID);
+              }
+            },
+            onAuxClick: (event) => {
+              if (event.button === 1) {
+                // middle-click
+                window.open(`/game/${encodeURIComponent(record.gameID)}`);
+              }
             },
           };
         }}

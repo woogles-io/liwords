@@ -9,26 +9,30 @@ import (
 	"github.com/domino14/liwords/pkg/entity"
 	"github.com/domino14/liwords/pkg/matching"
 	"github.com/domino14/liwords/pkg/utilities"
+
+	realtime "github.com/domino14/liwords/rpc/api/proto/realtime"
 )
 
 func Pair(members *entity.UnpairedPoolMembers) ([]int, error) {
 
 	pm := members.RoundControls.PairingMethod
-	if pm == entity.Manual {
+	if pm == realtime.PairingMethod_MANUAL {
 		return nil, errors.New("cannot pair with the given pairing method")
 	}
 	// This way of dispatching is slightly clunky and will
 	// remain until we can think of a better way to do it.
 	var pairings []int
 	var err error
-	if pm == entity.Random {
+	if pm == realtime.PairingMethod_RANDOM {
 		pairings, err = pairRandom(members)
-	} else if pm == entity.RoundRobin {
+	} else if pm == realtime.PairingMethod_ROUND_ROBIN {
 		pairings, err = pairRoundRobin(members)
-	} else if pm == entity.KingOfTheHill || pm == entity.Elimination {
+	} else if pm == realtime.PairingMethod_KING_OF_THE_HILL || pm == realtime.PairingMethod_ELIMINATION {
 		pairings, err = pairKingOfTheHill(members)
-	} else if pm == entity.Factor {
+	} else if pm == realtime.PairingMethod_FACTOR {
 		pairings, err = pairFactor(members)
+	} else if pm == realtime.PairingMethod_INITIAL_FONTES {
+		pairings, err = pairInitialFontes(members)
 	} else {
 		// The remaining pairing methods are solved by
 		// reduction to minimum weight matching
@@ -71,32 +75,7 @@ func pairRandom(members *entity.UnpairedPoolMembers) ([]int, error) {
 }
 
 func pairRoundRobin(members *entity.UnpairedPoolMembers) ([]int, error) {
-	players := []int{}
-	l := len(members.PoolMembers)
-	for i := 0; i < l; i++ {
-		players = append(players, i)
-	}
-
-	bye := l%2 == 1
-	// If there are an odd number of players add a bye
-	if bye {
-		players = append(players, l)
-	}
-
-	pairings := getRoundRobinPairings(players, members.RoundControls.Round)
-
-	// Convert byes from l to -1 because it's easier
-	// on the Round Robin pairing algorithm
-	if bye {
-		for i := 0; i < len(pairings); i++ {
-			if pairings[i] == l {
-				pairings[i] = -1
-			}
-		}
-		pairings = pairings[0 : len(pairings)-1]
-	}
-
-	return pairings, nil
+	return getRoundRobinPairings(len(members.PoolMembers), int(members.RoundControls.Round))
 }
 
 func pairKingOfTheHill(members *entity.UnpairedPoolMembers) ([]int, error) {
@@ -115,34 +94,97 @@ func pairKingOfTheHill(members *entity.UnpairedPoolMembers) ([]int, error) {
 
 func pairFactor(members *entity.UnpairedPoolMembers) ([]int, error) {
 
-	// First pair everyone with KOH then overwrite with Factor
-	pairings, err := pairKingOfTheHill(members)
+	// Remaining players are paired using the swiss-like min weight matching
+
+	factorMembers, swissMembers, err := splitMembers(members, int(members.RoundControls.Factor)*2)
 	if err != nil {
 		return nil, err
 	}
-	numberOfPlayers := len(pairings)
-	for i := 0; i < members.RoundControls.Factor; i += 1 {
-		factor := i + members.RoundControls.Factor
-		if factor >= numberOfPlayers {
-			return nil, fmt.Errorf("cannot pair with factor %d on %d players", factor, numberOfPlayers)
+
+	factorPairings := []int{}
+	swissPairings := []int{}
+
+	if len(factorMembers.PoolMembers) > 0 {
+		factorPairings, err = getFactorPairings(len(factorMembers.PoolMembers), int(members.RoundControls.Factor))
+		if err != nil {
+			return nil, err
 		}
-		pairings[i] = factor
-		pairings[factor] = i
 	}
 
-	return pairings, nil
+	if len(swissMembers.PoolMembers) > 0 {
+		swissPairings, err = minWeightMatching(swissMembers)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return combinePairings(factorPairings, swissPairings), nil
+}
+
+func pairInitialFontes(members *entity.UnpairedPoolMembers) ([]int, error) {
+	if members.RoundControls.InitialFontes%2 == 0 {
+		return nil, fmt.Errorf("number of rounds paired with Initial Fontes must be odd,"+
+			" have %d instead (preconditiion violation)", members.RoundControls.InitialFontes)
+	}
+
+	numberOfPlayers := len(members.PoolMembers)
+	numberOfNtiles := int(members.RoundControls.InitialFontes) + 1
+	round := int(members.RoundControls.Round)
+	// This function was created to make testing easier
+	return getInitialFontesPairings(numberOfPlayers, numberOfNtiles, round)
+}
+
+func splitMembers(members *entity.UnpairedPoolMembers, i int) (*entity.UnpairedPoolMembers, *entity.UnpairedPoolMembers, error) {
+	// Let i be the index of the first player in the standings
+	// to be in the second group of pool members
+	if i <= 0 {
+		emptyMembers := &entity.UnpairedPoolMembers{PoolMembers: []*entity.PoolMember{},
+			RoundControls: members.RoundControls,
+			Repeats:       members.Repeats}
+		return emptyMembers, members, nil
+	}
+	if i >= len(members.PoolMembers) {
+		emptyMembers := &entity.UnpairedPoolMembers{PoolMembers: []*entity.PoolMember{},
+			RoundControls: members.RoundControls,
+			Repeats:       members.Repeats}
+		return members, emptyMembers, nil
+	}
+
+	splitMembers := []*entity.PoolMember{}
+
+	for j := i; j < len(members.PoolMembers); j++ {
+		splitMembers = append(splitMembers, members.PoolMembers[j])
+	}
+
+	upm1 := &entity.UnpairedPoolMembers{PoolMembers: members.PoolMembers[:i],
+		RoundControls: members.RoundControls,
+		Repeats:       members.Repeats}
+
+	upm2 := &entity.UnpairedPoolMembers{PoolMembers: splitMembers,
+		RoundControls: members.RoundControls,
+		Repeats:       members.Repeats}
+
+	return upm1, upm2, nil
+}
+
+func combinePairings(upperPairings []int, lowerPairings []int) []int {
+	numberOfUpperPlayers := len(upperPairings)
+	for i := 0; i < len(lowerPairings); i++ {
+		upperPairings = append(upperPairings, lowerPairings[i]+numberOfUpperPlayers)
+	}
+	return upperPairings
 }
 
 func minWeightMatching(members *entity.UnpairedPoolMembers) ([]int, error) {
 	numberOfMembers := len(members.PoolMembers)
 	edges := []*matching.Edge{}
 
-	if members.RoundControls.RepeatRelativeWeight > entity.MaxRelativeWeight {
-		members.RoundControls.RepeatRelativeWeight = entity.MaxRelativeWeight
+	if int(members.RoundControls.RepeatRelativeWeight) > entity.MaxRelativeWeight {
+		members.RoundControls.RepeatRelativeWeight = int32(entity.MaxRelativeWeight)
 	}
 
-	if members.RoundControls.WinDifferenceRelativeWeight > entity.MaxRelativeWeight {
-		members.RoundControls.WinDifferenceRelativeWeight = entity.MaxRelativeWeight
+	if int(members.RoundControls.WinDifferenceRelativeWeight) > entity.MaxRelativeWeight {
+		members.RoundControls.WinDifferenceRelativeWeight = int32(entity.MaxRelativeWeight)
 	}
 
 	for i := 0; i < numberOfMembers; i++ {
@@ -170,10 +212,10 @@ func minWeightMatching(members *entity.UnpairedPoolMembers) ([]int, error) {
 	}
 
 	if weight >= entity.ProhibitiveWeight {
-		return nil, errors.New("prohibitive weight reached, pairings are not possible with these settings.")
+		return nil, errors.New("prohibitive weight reached, pairings are not possible with these settings")
 	}
 
-	if members.RoundControls.PairingMethod == entity.Quickpair {
+	if members.RoundControls.PairingMethod == realtime.PairingMethod_QUICKPAIR {
 		for index, pairing := range pairings {
 			if pairing == -1 {
 				members.PoolMembers[index].Misses++
@@ -206,9 +248,9 @@ func weigh(members *entity.UnpairedPoolMembers, i int, j int) (int64, error) {
 	// remain until we can think of a better way to do it.
 	var weight int64
 	pm := members.RoundControls.PairingMethod
-	if pm == entity.Swiss {
+	if pm == realtime.PairingMethod_SWISS || pm == realtime.PairingMethod_FACTOR {
 		weight = weighSwiss(members, i, j)
-	} else if pm == entity.Quickpair {
+	} else if pm == realtime.PairingMethod_QUICKPAIR {
 		weight = weighQuickpair(members, i, j)
 	} else {
 		return 0, errors.New("pairing method is either unimplemented or is not a reduction to minimum weight matching")
@@ -219,6 +261,13 @@ func weigh(members *entity.UnpairedPoolMembers, i int, j int) (int64, error) {
 func weighSwiss(members *entity.UnpairedPoolMembers, i int, j int) int64 {
 	p1 := members.PoolMembers[i]
 	p2 := members.PoolMembers[j]
+
+	// Egregious, temporary hack
+	var removedWeight int64 = 0
+	if p1.Removed || p2.Removed {
+		removedWeight = entity.WinWeightScaling * 100
+	}
+
 	// Scale up wins to ensure any single edge win difference weight
 	// outweighs the sum of all of the edge's possible spread weight
 
@@ -233,10 +282,10 @@ func weighSwiss(members *entity.UnpairedPoolMembers, i int, j int) int64 {
 
 	// Subtract the spread difference for swiss, since we would like to pair players
 	// that have similar records but large differences in spread.
-	spreadDiffWeight := -int64(utilities.Abs(p1.Spread-p2.Spread))
+	spreadDiffWeight := -int64(utilities.Abs(p1.Spread - p2.Spread))
 
 	// Add one to account for the pairing of p1 and p2 for this round
-	repeatsOverMax := utilities.Max(0, members.Repeats[GetRepeatKey(p1.Id, p2.Id)]+1-members.RoundControls.MaxRepeats)
+	repeatsOverMax := utilities.Max(0, members.Repeats[GetRepeatKey(p1.Id, p2.Id)]+1-int(members.RoundControls.MaxRepeats))
 	var repeatWeight int64 = 0
 	if members.RoundControls.AllowOverMaxRepeats {
 		// Since wins were scaled, repeats have to be scaled up
@@ -245,7 +294,7 @@ func weighSwiss(members *entity.UnpairedPoolMembers, i int, j int) int64 {
 	} else if repeatsOverMax > 0 {
 		repeatWeight = entity.ProhibitiveWeight
 	}
-	return winDiffWeight + spreadDiffWeight + repeatWeight
+	return winDiffWeight + spreadDiffWeight + repeatWeight + removedWeight
 }
 
 func weighQuickpair(members *entity.UnpairedPoolMembers, i int, j int) int64 {
@@ -272,7 +321,93 @@ func rangeBonus(PoolMemberA *entity.PoolMember, PoolMemberB *entity.PoolMember) 
 	return rangeBonus
 }
 
-func getRoundRobinPairings(players []int, round int) []int {
+func getFactorPairings(numberOfPlayers int, factor int) ([]int, error) {
+	factorPairings := []int{}
+	for i := 0; i < numberOfPlayers; i++ {
+		factorPairings = append(factorPairings, -1)
+	}
+
+	for i := 0; i < factor; i += 1 {
+		factor := i + factor
+		if factor >= numberOfPlayers {
+			return nil, fmt.Errorf("cannot pair with factor %d on %d players", factor, numberOfPlayers)
+		}
+		factorPairings[i] = factor
+		factorPairings[factor] = i
+	}
+	return factorPairings, nil
+}
+
+func getInitialFontesPairings(numberOfPlayers int, numberOfNtiles int, round int) ([]int, error) {
+	addBye := numberOfPlayers%2 == 1
+
+	if addBye {
+		numberOfPlayers++
+	}
+
+	sizeOfNtiles := numberOfPlayers / numberOfNtiles
+	numberOfRemainingPlayers := numberOfPlayers - (sizeOfNtiles * numberOfNtiles)
+	remainderOffset := 0
+	remainderSpacing := 0
+
+	if numberOfRemainingPlayers != 0 {
+		remainderOffset = numberOfPlayers / (numberOfRemainingPlayers + 1)
+		remainderSpacing = numberOfPlayers / numberOfRemainingPlayers
+	}
+
+	pairings := []int{}
+	groupings := [][]int{}
+
+	for i := 0; i < sizeOfNtiles; i++ {
+		groupings = append(groupings, []int{})
+	}
+
+	currentGroup := 0
+	for i := 0; i < numberOfPlayers; i++ {
+		if numberOfRemainingPlayers != 0 &&
+			i >= remainderOffset &&
+			(i-remainderOffset)%remainderSpacing == 0 {
+			groupings[sizeOfNtiles-1] = append(groupings[sizeOfNtiles-1], i)
+		} else {
+			groupings[currentGroup] = append(groupings[currentGroup], i)
+			currentGroup = (currentGroup + 1) % sizeOfNtiles
+		}
+		pairings = append(pairings, -2)
+	}
+
+	for i := 0; i < len(groupings); i++ {
+		groupSize := len(groupings[i])
+		if groupSize%2 == 1 {
+			return nil, fmt.Errorf("initial fontes pairing failure for %d players, "+
+				"have odd group size of %d", numberOfPlayers, groupSize)
+		}
+		groupPairings, err := getRoundRobinPairings(groupSize, round)
+		if err != nil {
+			return nil, err
+		}
+		for j := 0; j < groupSize; j++ {
+			pairings[groupings[i][j]] = groupings[i][groupPairings[j]]
+		}
+	}
+
+	// Convert the "bye player" to the bye representation
+	// which is an opponent index value of -1
+
+	if addBye {
+		pairings[pairings[numberOfPlayers-1]] = -1
+		pairings = pairings[:numberOfPlayers-1]
+	}
+
+	for i := 0; i < len(pairings); i++ {
+		if pairings[i] < -1 {
+
+			return nil, fmt.Errorf("initial fontes pairing failure for %d players", numberOfPlayers)
+		}
+	}
+	return pairings, nil
+}
+
+func getRoundRobinPairings(numberOfPlayers int, round int) ([]int, error) {
 
 	/* Round Robin pairing algorithm (from stackoverflow, where else?):
 
@@ -306,10 +441,22 @@ func getRoundRobinPairings(players []int, round int) []int {
 
 	*/
 
+	players := []int{}
+	for i := 0; i < numberOfPlayers; i++ {
+		players = append(players, i)
+	}
+
+	bye := numberOfPlayers%2 == 1
+	// If there are an odd number of players add a bye
+	if bye {
+		players = append(players, numberOfPlayers)
+	}
+
 	rotatedPlayers := players[1:len(players)]
 
 	l := len(rotatedPlayers)
-	rotationIndex := l - (round % l)
+
+	rotationIndex := l - getRoundRobinRotation(len(players), round)
 
 	rotatedPlayers = append(rotatedPlayers[rotationIndex:l], rotatedPlayers[0:rotationIndex]...)
 	rotatedPlayers = append([]int{players[0]}, rotatedPlayers...)
@@ -331,5 +478,59 @@ func getRoundRobinPairings(players []int, round int) []int {
 		pairings[topHalf[i]] = bottomHalf[i]
 		pairings[bottomHalf[i]] = topHalf[i]
 	}
-	return pairings
+
+	// Convert the bye from l to -1 because it's easier
+	// on the Round Robin pairing algorithm
+	if bye {
+		for i := 0; i < len(pairings); i++ {
+			if pairings[i] == numberOfPlayers {
+				pairings[i] = -1
+			}
+		}
+		pairings = pairings[0 : len(pairings)-1]
+	}
+
+	for i := 0; i < len(pairings); i++ {
+		if pairings[i] < -1 {
+			return nil, fmt.Errorf("round robin pairing failure for %d players", l)
+		}
+	}
+	return pairings, nil
+}
+
+func getRoundRobinRotation(numberOfPlayers int, round int) int {
+	// This has been made a separate function
+	// for ease of testing and future improvements
+
+	// We rotate by different value instead of just the round here
+	// so that incomplete round robins will have slightly more
+	// equitable pairings. If we rotated by round only, the
+	// rotationIndex would only change by 1 each round, which means
+	// player 1 in the round robin would play significantly weaker
+	// players than the rest of the field. This solution is
+	// relatively weak as there are probably stronger algorithmic
+	// methods that could be used to address the problem. However,
+	// this way is by far the most simple.
+
+	// This solution of the form round * x requires that x and (numberOfPlayers - 1)
+	// be coprime, or, in other words, that:
+	//
+	// GCD(x, numberOfPlayers - 1) = 1
+	//
+	// If this does not hold, the round robin will not be complete.
+	//
+	// In this case, it is guaranteed to hold since
+	//
+	// GCD(x, numberOfPlayers - 1) = GCD(2n - 3, 2n - 1) = 1
+	//
+	// We can use 2n for the above equation since the number of players is
+	// always even
+	return (round * (numberOfPlayers - 3)) % (numberOfPlayers - 1)
+}
+
+func IsStandingsIndependent(pm realtime.PairingMethod) bool {
+	return pm == realtime.PairingMethod_ROUND_ROBIN ||
+		pm == realtime.PairingMethod_RANDOM ||
+		pm == realtime.PairingMethod_INITIAL_FONTES ||
+		pm == realtime.PairingMethod_MANUAL
 }

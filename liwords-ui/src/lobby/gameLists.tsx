@@ -1,5 +1,5 @@
 import React from 'react';
-import { useHistory } from 'react-router-dom';
+import { Link, useHistory } from 'react-router-dom';
 import { Card, Modal, Button } from 'antd';
 import { useMountedState } from '../utils/mounted';
 import { SoughtGames } from './sought_games';
@@ -17,7 +17,6 @@ type Props = {
   selectedGameTab: string;
   setSelectedGameTab: (tab: string) => void;
   onSeekSubmit: (g: SoughtGame) => void;
-  tournamentID?: string;
 };
 
 export const GameLists = React.memo((props: Props) => {
@@ -32,42 +31,61 @@ export const GameLists = React.memo((props: Props) => {
     selectedGameTab,
     setSelectedGameTab,
     onSeekSubmit,
-    tournamentID,
   } = props;
   const { lobbyContext } = useLobbyStoreContext();
   const [formDisabled, setFormDisabled] = useState(false);
   const [seekModalVisible, setSeekModalVisible] = useState(false);
   const [matchModalVisible, setMatchModalVisible] = useState(false);
   const [botModalVisible, setBotModalVisible] = useState(false);
-  const currentGame: ActiveGame | null =
-    lobbyContext.activeGames.find((ag) =>
-      ag.players.some((p) => p.displayName === username)
-    ) || null;
+  const [simultaneousModeEnabled, setSimultaneousModeEnabled] = useState(false);
+  const handleEnableSimultaneousMode = React.useCallback((evt) => {
+    evt.preventDefault();
+    setSimultaneousModeEnabled(true);
+  }, []);
+  const myCurrentGames = React.useMemo(
+    () =>
+      lobbyContext.activeGames.filter((ag) =>
+        ag.players.some((p) => p.displayName === username)
+      ),
+    [lobbyContext.activeGames, username]
+  );
+  const simultaneousModeEffectivelyEnabled =
+    simultaneousModeEnabled || myCurrentGames.length !== 1;
+  const currentGame: ActiveGame | null = myCurrentGames[0] ?? null;
   const opponent = currentGame?.players.find((p) => p.displayName !== username)
     ?.displayName;
+
+  const matchButtonText = 'Match a friend';
+
   const renderGames = () => {
     if (loggedIn && userID && username && selectedGameTab === 'PLAY') {
       return (
         <>
+          {simultaneousModeEffectivelyEnabled && myCurrentGames.length > 0 && (
+            <ActiveGames
+              type="RESUME"
+              username={username}
+              activeGames={myCurrentGames}
+            />
+          )}
+
           {lobbyContext?.matchRequests.length ? (
             <SoughtGames
               isMatch={true}
               userID={userID}
               username={username}
               newGame={newGame}
-              tournamentID={tournamentID}
               requests={lobbyContext?.matchRequests}
             />
           ) : null}
-          {!tournamentID ? (
-            <SoughtGames
-              isMatch={false}
-              userID={userID}
-              username={username}
-              newGame={newGame}
-              requests={lobbyContext?.soughtGames}
-            />
-          ) : null}
+
+          <SoughtGames
+            isMatch={false}
+            userID={userID}
+            username={username}
+            newGame={newGame}
+            requests={lobbyContext?.soughtGames}
+          />
         </>
       );
     }
@@ -142,7 +160,7 @@ export const GameLists = React.memo((props: Props) => {
   const matchModal = (
     <Modal
       className="seek-modal"
-      title={!tournamentID ? 'Match a Friend' : 'Send Match Request'}
+      title="Match a Friend"
       visible={matchModalVisible}
       destroyOnClose
       onCancel={() => {
@@ -174,7 +192,6 @@ export const GameLists = React.memo((props: Props) => {
         loggedIn={props.loggedIn}
         showFriendInput={true}
         id="match-seek"
-        tournamentID={tournamentID}
       />
     </Modal>
   );
@@ -217,10 +234,12 @@ export const GameLists = React.memo((props: Props) => {
       />
     </Modal>
   );
+  let showingResumeButton = false;
   const actions = [];
   // if no existing game
   if (loggedIn) {
-    if (currentGame) {
+    if (currentGame && !simultaneousModeEffectivelyEnabled) {
+      showingResumeButton = true;
       actions.push(
         <div
           className="resume"
@@ -233,18 +252,16 @@ export const GameLists = React.memo((props: Props) => {
         </div>
       );
     } else {
-      // If this is a tournament, only show match modal.
-      !tournamentID &&
-        actions.push(
-          <div
-            className="bot"
-            onClick={() => {
-              setBotModalVisible(true);
-            }}
-          >
-            Play a computer
-          </div>
-        );
+      actions.push(
+        <div
+          className="bot"
+          onClick={() => {
+            setBotModalVisible(true);
+          }}
+        >
+          Play a computer
+        </div>
+      );
       actions.push(
         <div
           className="match"
@@ -252,51 +269,60 @@ export const GameLists = React.memo((props: Props) => {
             setMatchModalVisible(true);
           }}
         >
-          {!tournamentID ? 'Match a friend' : 'Start Tournament Game'}
+          {matchButtonText}
         </div>
       );
-      !tournamentID &&
-        actions.push(
-          <div
-            className="seek"
-            onClick={() => {
-              setSeekModalVisible(true);
-            }}
-          >
-            Create a game
-          </div>
-        );
+
+      actions.push(
+        <div
+          className="seek"
+          onClick={() => {
+            setSeekModalVisible(true);
+          }}
+        >
+          Create a game
+        </div>
+      );
     }
   }
   return (
     <div className="game-lists">
       <Card actions={actions}>
-        <div className="tabs">
-          {loggedIn ? (
+        <div className="main-content">
+          <div className="tabs">
+            {loggedIn ? (
+              <div
+                onClick={() => {
+                  setSelectedGameTab('PLAY');
+                }}
+                className={selectedGameTab === 'PLAY' ? 'tab active' : 'tab'}
+              >
+                Play
+              </div>
+            ) : null}
             <div
               onClick={() => {
-                setSelectedGameTab('PLAY');
+                setSelectedGameTab('WATCH');
               }}
-              className={selectedGameTab === 'PLAY' ? 'tab active' : 'tab'}
+              className={
+                selectedGameTab === 'WATCH' || !loggedIn ? 'tab active' : 'tab'
+              }
             >
-              Play
+              Watch
             </div>
-          ) : null}
-          <div
-            onClick={() => {
-              setSelectedGameTab('WATCH');
-            }}
-            className={
-              selectedGameTab === 'WATCH' || !loggedIn ? 'tab active' : 'tab'
-            }
-          >
-            Watch
           </div>
+          {renderGames()}
+          {seekModal}
+          {matchModal}
+          {botModal}
         </div>
-        {renderGames()}
-        {seekModal}
-        {matchModal}
-        {botModal}
+        {showingResumeButton && (
+          <div className="enable-simultaneous-ignore-link">
+            <Link to="/" onClick={handleEnableSimultaneousMode}>
+              Ignore
+            </Link>
+          </div>
+        )}
       </Card>
     </div>
   );

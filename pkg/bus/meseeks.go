@@ -10,6 +10,7 @@ import (
 
 	"github.com/domino14/liwords/pkg/entity"
 	"github.com/domino14/liwords/pkg/gameplay"
+	gs "github.com/domino14/liwords/rpc/api/proto/game_service"
 	pb "github.com/domino14/liwords/rpc/api/proto/realtime"
 )
 
@@ -181,23 +182,34 @@ func (b *Bus) matchRequest(ctx context.Context, auth, userID, connID string,
 		// No such user, most likely.
 		return err
 	}
-	// Set the actual UUID of the receiving user.
-	req.ReceivingUser.UserId = receiver.UUID
-
-	// Check if receiving user is blocking the reqUser.
-	blockedUsers, err := b.userStore.GetBlocks(ctx, receiver.ID)
+	requester, err := b.userStore.GetByUUID(ctx, reqUser.UserId)
 	if err != nil {
 		return err
 	}
-	for _, bu := range blockedUsers {
-		if bu.UUID == reqUser.UserId {
-			evt := entity.WrapEvent(&pb.ErrorMessage{
-				Message: receiver.Username + " is not available for match requests",
-			}, pb.MessageType_ERROR_MESSAGE)
-			b.pubToUser(reqUser.UserId, evt, "")
-			return nil
-		}
+
+	block, err := b.blockExists(ctx, receiver, requester)
+	if err != nil {
+		return err
 	}
+	if block == 0 {
+		// receiver is blocking requester. Should error message be this cryptic?
+		evt := entity.WrapEvent(&pb.ErrorMessage{
+			Message: receiver.Username + " is not available for match requests.",
+		}, pb.MessageType_ERROR_MESSAGE)
+		b.pubToConnectionID(connID, reqUser.UserId, evt)
+		return nil
+
+	} else if block == 1 {
+		// requester is blocking receiver.
+		evt := entity.WrapEvent(&pb.ErrorMessage{
+			Message: receiver.Username + " is on your block list. Please unblock them on your profile.",
+		}, pb.MessageType_ERROR_MESSAGE)
+		b.pubToConnectionID(connID, reqUser.UserId, evt)
+		return nil
+	}
+
+	// Set the actual UUID of the receiving user.
+	req.ReceivingUser.UserId = receiver.UUID
 
 	mg, err := gameplay.NewMatchRequest(ctx, b.soughtGameStore, req)
 	if err != nil {
@@ -209,7 +221,7 @@ func (b *Bus) matchRequest(ctx context.Context, auth, userID, connID string,
 	b.pubToUser(receiver.UUID, evt, "")
 	// Publish it to the requester as well. This is so they can see it on
 	// their own screen and cancel it if they wish.
-	b.pubToUser(reqUser.UserId, evt, "")
+	b.pubToConnectionID(connID, reqUser.UserId, evt)
 
 	return nil
 }
@@ -227,26 +239,26 @@ func (b *Bus) gameRequestForMatch(ctx context.Context, req *pb.MatchRequest,
 	if gameID == "" {
 		gameRequest = req.GameRequest
 	} else { // It's a rematch.
-		// XXX: rewrite to call the less expensive GetMetadata.
-		g, err := b.gameStore.Get(ctx, gameID)
+		gm, err := b.gameStore.GetMetadata(ctx, gameID)
 		if err != nil {
 			return nil, "", err
 		}
 		// Figure out who we played against.
-		for _, u := range g.History().Players {
+		for _, u := range gm.Players {
 			if u.UserId == userID {
 				continue
 			}
 			lastOpp = u.UserId
 		}
-		gameRequest = proto.Clone(g.GameReq).(*pb.GameRequest)
 		// If this game is a rematch, set the OriginalRequestId
 		// to the previous game's OriginalRequestId. In this way,
 		// we maintain a constant OriginalRequestId value across
 		// rematch streaks. The OriginalRequestId is set in
 		// NewSoughtGame and NewMatchRequest in sought_game.go
-		// if it is not set here.
-		gameRequest.OriginalRequestId = g.GameReq.OriginalRequestId
+		// if it is not set here. We copy the whole game request which includes
+		// the OriginalRequestId
+		gameRequest = proto.Clone(gm.GameRequest).(*pb.GameRequest)
+
 		// This will get overwritten later:
 		gameRequest.RequestId = ""
 	}
@@ -271,9 +283,9 @@ func (b *Bus) newBotGame(ctx context.Context, req *pb.MatchRequest, botUserID st
 }
 
 func (b *Bus) sendSoughtGameDeletion(ctx context.Context, sg *entity.SoughtGame) error {
-	if sg.Type() == entity.TypeSeek {
+	if sg.Type == entity.TypeSeek {
 		return b.broadcastSeekDeletion(sg.ID())
-	} else if sg.Type() == entity.TypeMatch {
+	} else if sg.Type == entity.TypeMatch {
 		return b.sendMatchCancellation(sg.MatchRequest.ReceivingUser.UserId, sg.Seeker(), sg.ID())
 	}
 	return errors.New("no-sg-type-match")
@@ -287,10 +299,10 @@ func (b *Bus) gameAccepted(ctx context.Context, evt *pb.SoughtGameProcessEvent,
 	}
 	var requester string
 	var gameReq *pb.GameRequest
-	if sg.Type() == entity.TypeSeek {
+	if sg.Type == entity.TypeSeek {
 		requester = sg.SeekRequest.User.UserId
 		gameReq = sg.SeekRequest.GameRequest
-	} else if sg.Type() == entity.TypeMatch {
+	} else if sg.Type == entity.TypeMatch {
 		requester = sg.MatchRequest.User.UserId
 		gameReq = sg.MatchRequest.GameRequest
 	}
@@ -315,19 +327,24 @@ func (b *Bus) gameAccepted(ctx context.Context, evt *pb.SoughtGameProcessEvent,
 		return err
 	}
 
-	// Check if requesting user is blocking the accepting user.
-	blockedUsers, err := b.userStore.GetBlocks(ctx, reqUser.ID)
+	block, err := b.blockExists(ctx, reqUser, accUser)
 	if err != nil {
 		return err
 	}
-	for _, bu := range blockedUsers {
-		if bu.UUID == accUser.UUID {
-			evt := entity.WrapEvent(&pb.ErrorMessage{
-				Message: reqUser.Username + " is not available for seek requests",
-			}, pb.MessageType_ERROR_MESSAGE)
-			b.pubToUser(accUser.UUID, evt, "")
-			return nil
-		}
+	if block == 0 {
+		// requesting user is blocking the accepting user.
+		evt := entity.WrapEvent(&pb.ErrorMessage{
+			Message: "You are not able to accept " + reqUser.Username + "'s requests.",
+		}, pb.MessageType_ERROR_MESSAGE)
+		b.pubToConnectionID(connID, accUser.UUID, evt)
+		return nil
+	} else if block == 1 {
+		// accepting user is blocking requesting user. They should not be able to
+		// see their requests but maybe they didn't refresh after blocking.
+		evt := entity.WrapEvent(&pb.ErrorMessage{
+			Message: reqUser.Username + " is on your block list, thus you cannot play against them.",
+		}, pb.MessageType_ERROR_MESSAGE)
+		b.pubToConnectionID(connID, accUser.UUID, evt)
 	}
 
 	// Otherwise create a game
@@ -347,7 +364,7 @@ func (b *Bus) matchDeclined(ctx context.Context, evt *pb.DeclineMatchRequest, us
 	if err != nil {
 		return err
 	}
-	if sg.Type() != entity.TypeMatch {
+	if sg.Type != entity.TypeMatch {
 		return errors.New("wrong-entity-type")
 	}
 
@@ -426,16 +443,24 @@ func (b *Bus) broadcastGameCreation(g *entity.Game, acceptor, requester *entity.
 		return err
 	}
 	ratingKey := entity.ToVariantKey(g.GameReq.Lexicon, variant, timefmt)
-	users := []*pb.GameMeta_UserMeta{
-		{RelevantRating: acceptor.GetRelevantRating(ratingKey),
-			DisplayName: acceptor.Username},
-		{RelevantRating: requester.GetRelevantRating(ratingKey),
-			DisplayName: requester.Username},
+	players := []*gs.PlayerInfo{
+		{Rating: acceptor.GetRelevantRating(ratingKey),
+			Nickname: acceptor.Username},
+		{Rating: requester.GetRelevantRating(ratingKey),
+			Nickname: requester.Username},
 	}
 
-	toSend := entity.WrapEvent(&pb.GameMeta{Users: users,
-		GameRequest: g.GameReq, Id: g.GameID()},
-		pb.MessageType_GAME_META_EVENT)
+	gameInfo := &gs.GameInfoResponse{Players: players,
+		GameRequest: g.GameReq, GameId: g.GameID()}
+
+	if g.TournamentData != nil {
+		gameInfo.TournamentDivision = g.TournamentData.Division
+		gameInfo.TournamentId = g.TournamentData.Id
+		gameInfo.TournamentRound = int32(g.TournamentData.Round)
+		gameInfo.TournamentGameIndex = int32(g.TournamentData.GameIndex)
+	}
+
+	toSend := entity.WrapEvent(gameInfo, pb.MessageType_ONGOING_GAME_EVENT)
 	data, err := toSend.Serialize()
 	if err != nil {
 		return err

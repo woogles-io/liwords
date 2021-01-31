@@ -15,13 +15,12 @@ const TentativeScore = (props: Props) => {
             : 'tentative-score-vertical'
         }`}
       >
-          {props.score}
+        {props.score}
       </p>
     );
   } else {
-      return null;
+    return null;
   }
-
 };
 
 export default TentativeScore;

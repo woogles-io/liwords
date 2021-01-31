@@ -7,7 +7,7 @@ import (
 
 	"github.com/domino14/liwords/pkg/entity"
 	gs "github.com/domino14/liwords/rpc/api/proto/game_service"
-	pb "github.com/domino14/liwords/rpc/api/proto/realtime"
+	macondopb "github.com/domino14/macondo/gen/api/proto/macondo"
 	lru "github.com/hashicorp/golang-lru"
 	"github.com/rs/zerolog/log"
 )
@@ -17,16 +17,18 @@ import (
 type backingStore interface {
 	Get(ctx context.Context, id string) (*entity.Game, error)
 	GetMetadata(ctx context.Context, id string) (*gs.GameInfoResponse, error)
-	GetRematchStreak(ctx context.Context, originalRequestId string) (*gs.GameInfoResponses, error)
+	GetRematchStreak(ctx context.Context, originalRequestId string) (*gs.StreakInfoResponse, error)
 	GetRecentGames(ctx context.Context, username string, numGames int, offset int) (*gs.GameInfoResponses, error)
 	GetRecentTourneyGames(ctx context.Context, tourneyID string, numGames int, offset int) (*gs.GameInfoResponses, error)
 	Set(context.Context, *entity.Game) error
 	Create(context.Context, *entity.Game) error
 	Exists(context.Context, string) (bool, error)
-	ListActive(ctx context.Context, tourneyID string) ([]*pb.GameMeta, error)
+	ListActive(ctx context.Context, tourneyID string) (*gs.GameInfoResponses, error)
 	Count(ctx context.Context) (int64, error)
 	SetGameEventChan(ch chan<- *entity.EventWrapper)
 	Disconnect()
+	SetReady(ctx context.Context, gid string, pidx int) (int, error)
+	GetHistory(ctx context.Context, id string) (*macondopb.GameHistory, error)
 }
 
 const (
@@ -46,7 +48,7 @@ const (
 type Cache struct {
 	sync.RWMutex // used for the activeGames cache.
 	cache        *lru.Cache
-	activeGames  []*pb.GameMeta
+	activeGames  *gs.GameInfoResponses
 
 	activeGamesTTL         time.Duration
 	activeGamesLastUpdated time.Time
@@ -121,7 +123,7 @@ func (c *Cache) Get(ctx context.Context, id string) (*entity.Game, error) {
 }
 
 // Just call the DB implementation for now
-func (c *Cache) GetRematchStreak(ctx context.Context, originalRequestId string) (*gs.GameInfoResponses, error) {
+func (c *Cache) GetRematchStreak(ctx context.Context, originalRequestId string) (*gs.StreakInfoResponse, error) {
 	return c.backing.GetRematchStreak(ctx, originalRequestId)
 }
 
@@ -172,15 +174,18 @@ func (c *Cache) setOrCreate(ctx context.Context, game *entity.Game, isNew bool) 
 	return nil
 }
 
-func (c *Cache) ListActive(ctx context.Context, tourneyID string) ([]*pb.GameMeta, error) {
-	if tourneyID == "" {
+// ListActive lists all active games in the given tournament ID (optional) or
+// site-wide if not provided. If `bust` is true, we will always query the backing
+// store.
+func (c *Cache) ListActive(ctx context.Context, tourneyID string, bust bool) (*gs.GameInfoResponses, error) {
+	if tourneyID == "" && !bust {
 		return c.listAllActive(ctx)
 	}
 	// Otherwise don't worry about caching; this list should be comparatively smaller.
 	return c.backing.ListActive(ctx, tourneyID)
 }
 
-func (c *Cache) listAllActive(ctx context.Context) ([]*pb.GameMeta, error) {
+func (c *Cache) listAllActive(ctx context.Context) (*gs.GameInfoResponses, error) {
 	c.RLock()
 	if time.Now().Sub(c.activeGamesLastUpdated) < c.activeGamesTTL {
 		log.Debug().Msg("returning active games from cache")
@@ -204,6 +209,18 @@ func (c *Cache) Count(ctx context.Context) (int64, error) {
 	return c.backing.Count(ctx)
 }
 
+func (c *Cache) CachedCount(ctx context.Context) int {
+	return c.cache.Len()
+}
+
 func (c *Cache) Disconnect() {
 	c.backing.Disconnect()
+}
+
+func (c *Cache) SetReady(ctx context.Context, gid string, pidx int) (int, error) {
+	return c.backing.SetReady(ctx, gid, pidx)
+}
+
+func (c *Cache) GetHistory(ctx context.Context, id string) (*macondopb.GameHistory, error) {
+	return c.backing.GetHistory(ctx, id)
 }

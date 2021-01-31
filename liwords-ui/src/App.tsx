@@ -21,6 +21,11 @@ import { PasswordChange } from './lobby/password_change';
 import { PasswordReset } from './lobby/password_reset';
 import { NewPassword } from './lobby/new_password';
 import { toAPIUrl } from './api/api';
+import { ChatMessage, MessageType } from './gen/api/proto/realtime/realtime_pb';
+import { encodeToSocketFmt } from './utils/protobuf';
+import { Clubs } from './clubs';
+import { TournamentRoom } from './tournament/room';
+import { Admin } from './admin/admin';
 
 type Blocks = {
   user_ids: Array<string>;
@@ -33,7 +38,12 @@ document?.body?.classList?.add(`mode--${useDarkMode ? 'dark' : 'default'}`);
 const App = React.memo(() => {
   const { useState } = useMountedState();
 
-  const { setExcludedPlayers } = useExcludedPlayersStoreContext();
+  const {
+    setExcludedPlayers,
+    setExcludedPlayersFetched,
+    pendingBlockRefresh,
+    setPendingBlockRefresh,
+  } = useExcludedPlayersStoreContext();
   const { resetStore } = useResetStoreContext();
 
   // See store.tsx for how this works.
@@ -55,7 +65,7 @@ const App = React.memo(() => {
     }
   }, [isCurrentLocation, resetStore]);
 
-  useEffect(() => {
+  const getFullBlocks = useCallback(() => {
     axios
       .post<Blocks>(
         toAPIUrl('user_service.SocializeService', 'GetFullBlocks'),
@@ -67,9 +77,37 @@ const App = React.memo(() => {
       })
       .catch((e) => {
         console.log(e);
+      })
+      .finally(() => {
+        setExcludedPlayersFetched(true);
+        setPendingBlockRefresh(false);
       });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [setExcludedPlayers, setExcludedPlayersFetched, setPendingBlockRefresh]);
+
+  useEffect(() => {
+    getFullBlocks();
+  }, [getFullBlocks]);
+
+  useEffect(() => {
+    if (pendingBlockRefresh) {
+      getFullBlocks();
+    }
+  }, [getFullBlocks, pendingBlockRefresh]);
+
+  const sendChat = useCallback(
+    (msg: string, chan: string) => {
+      const evt = new ChatMessage();
+      evt.setMessage(msg);
+
+      // const chan = isObserver ? 'gametv' : 'game';
+      // evt.setChannel(`chat.${chan}.${gameID}`);
+      evt.setChannel(chan);
+      sendMessage(
+        encodeToSocketFmt(MessageType.CHAT_MESSAGE, evt.serializeBinary())
+      );
+    },
+    [sendMessage]
+  );
 
   // Avoid useEffect in the new path triggering xhr twice.
   if (!isCurrentLocation) return null;
@@ -83,14 +121,24 @@ const App = React.memo(() => {
       />
       <Switch>
         <Route path="/" exact>
-          <Lobby sendSocketMsg={sendMessage} DISCONNECT={resetSocket} />
+          <Lobby
+            sendSocketMsg={sendMessage}
+            sendChat={sendChat}
+            DISCONNECT={resetSocket}
+          />
         </Route>
-        <Route path="/tournament/:tournamentID">
-          <Lobby sendSocketMsg={sendMessage} DISCONNECT={resetSocket} />
+        <Route path="/tournament/:partialSlug">
+          <TournamentRoom sendSocketMsg={sendMessage} sendChat={sendChat} />
+        </Route>
+        <Route path="/club/:partialSlug">
+          <TournamentRoom sendSocketMsg={sendMessage} sendChat={sendChat} />
+        </Route>
+        <Route path="/clubs">
+          <Clubs />
         </Route>
         <Route path="/game/:gameID">
           {/* Table meaning a game table */}
-          <GameTable sendSocketMsg={sendMessage} />
+          <GameTable sendSocketMsg={sendMessage} sendChat={sendChat} />
         </Route>
         <Route path="/about">
           <About />
@@ -114,6 +162,9 @@ const App = React.memo(() => {
         </Route>
         <Route path="/tile_images">
           <TileImages />
+        </Route>
+        <Route path="/admin">
+          <Admin />
         </Route>
       </Switch>
     </div>

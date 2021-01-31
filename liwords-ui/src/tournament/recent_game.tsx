@@ -9,6 +9,7 @@ export type RecentGame = {
   end_reason: string;
   game_id: string;
   time: number;
+  round: number;
 };
 
 export const pageSize = 20;

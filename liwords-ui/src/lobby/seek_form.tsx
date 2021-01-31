@@ -20,6 +20,7 @@ import { MatchUser } from '../gen/api/proto/realtime/realtime_pb';
 import { SoughtGame } from '../store/reducers/lobby_reducer';
 import { toAPIUrl } from '../api/api';
 import { debounce } from '../utils/debounce';
+import { fixedSettings } from './fixed_seek_controls';
 
 export type seekPropVals = { [val: string]: string | number | boolean };
 
@@ -57,18 +58,24 @@ const timeScaleToNum = (val: string) => {
       return parseInt(val, 10);
   }
 };
+type user = {
+  username: string;
+  uuid: string;
+};
 
 type SearchResponse = {
-  usernames: Array<string>;
+  users: Array<user>;
 };
 
 type Props = {
-  onFormSubmit: (g: SoughtGame) => void;
+  onFormSubmit: (g: SoughtGame, v?: Store) => void;
   loggedIn: boolean;
   showFriendInput: boolean;
   vsBot?: boolean;
   id: string;
   tournamentID?: string;
+  storageKey?: string;
+  prefixItems?: React.ReactNode;
 };
 
 const otLabel = 'Overtime';
@@ -86,6 +93,14 @@ const incUnitLabel = (
 
 export const SeekForm = (props: Props) => {
   const { useState } = useMountedState();
+  const enableAllLexicons = React.useMemo(
+    () => localStorage.getItem('enableAllLexicons') === 'true',
+    []
+  );
+  const enableECWL = React.useMemo(
+    () => localStorage.getItem('enableECWL') === 'true',
+    []
+  );
 
   let storageKey = 'lastSeekForm';
   if (props.vsBot) {
@@ -93,6 +108,9 @@ export const SeekForm = (props: Props) => {
   }
   if (props.showFriendInput) {
     storageKey = 'lastMatchForm';
+  }
+  if (props.storageKey) {
+    storageKey = props.storageKey;
   }
 
   const storedValues = window.localStorage
@@ -108,11 +126,31 @@ export const SeekForm = (props: Props) => {
     incOrOT: 'overtime',
     vsBot: false,
   };
-  const initialValues = {
-    ...defaultValues,
-    ...storedValues,
-    friend: '',
-  };
+  let disableControls = false;
+  let disableLexiconControls = false;
+  let initialValues;
+
+  if (props.tournamentID && props.tournamentID in fixedSettings) {
+    disableControls = true;
+    disableLexiconControls = 'lexicon' in fixedSettings[props.tournamentID];
+    initialValues = {
+      ...fixedSettings[props.tournamentID],
+      friend: '',
+    };
+    // This is a bit of a hack; sorry.
+    if (!disableLexiconControls) {
+      initialValues = {
+        ...initialValues,
+        lexicon: storedValues.lexicon,
+      };
+    }
+  } else {
+    initialValues = {
+      ...defaultValues,
+      ...storedValues,
+      friend: '',
+    };
+  }
   const [itc, itt] = timeCtrlToDisplayName(
     timeScaleToNum(initTimeDiscreteScale[initialValues.initialtime]) * 60,
     initialValues.incOrOT === 'increment'
@@ -132,6 +170,9 @@ export const SeekForm = (props: Props) => {
   );
   const [maxTimeSetting, setMaxTimeSetting] = useState(
     initialValues.incOrOT === 'overtime' ? 10 : 60
+  );
+  const [showChallengeRule, setShowChallengeRule] = useState(
+    initialValues.lexicon !== 'ECWL'
   );
   const [sliderTooltipVisible, setSliderTooltipVisible] = useState(true);
   const handleDropdownVisibleChange = useCallback((open) => {
@@ -163,6 +204,11 @@ export const SeekForm = (props: Props) => {
         ? 0
         : Math.round(allvals.extratime as number)
     );
+    if (allvals.lexicon === 'ECWL') {
+      setShowChallengeRule(false);
+    } else {
+      setShowChallengeRule(true);
+    }
     setTimectrl(tc);
     setTtag(tt);
   };
@@ -177,7 +223,9 @@ export const SeekForm = (props: Props) => {
       )
       .then((resp) => {
         console.log('resp', resp.data);
-        setUsernameOptions(!searchText ? [] : resp.data.usernames);
+        setUsernameOptions(
+          !searchText ? [] : resp.data.users.map((u) => u.username)
+        );
       });
   };
 
@@ -193,7 +241,10 @@ export const SeekForm = (props: Props) => {
       seekID: '',
 
       lexicon: val.lexicon as string,
-      challengeRule: val.challengerule as number,
+      challengeRule:
+        (val.lexicon as string) === 'ECWL'
+          ? ChallengeRule.VOID
+          : (val.challengerule as number),
       initialTimeSecs:
         timeScaleToNum(initTimeDiscreteScale[val.initialtime]) * 60,
       incrementSecs:
@@ -206,11 +257,11 @@ export const SeekForm = (props: Props) => {
       playerVsBot: props.vsBot || false,
       tournamentID: props.tournamentID || '',
     };
-    props.onFormSubmit(obj);
+    props.onFormSubmit(obj, val);
   };
 
   const validateMessages = {
-    required: 'Opponent name is required.',
+    required: 'This field is required.',
   };
 
   return (
@@ -224,6 +275,8 @@ export const SeekForm = (props: Props) => {
       layout="horizontal"
       validateMessages={validateMessages}
     >
+      {props.prefixItems || null}
+
       {props.showFriendInput && (
         <Form.Item
           label={props.tournamentID ? 'Opponent' : 'Friend'}
@@ -253,48 +306,74 @@ export const SeekForm = (props: Props) => {
           </AutoComplete>
         </Form.Item>
       )}
-      <Form.Item label="Dictionary" name="lexicon">
-        <Select>
-          <Select.Option value="CSW19">CSW 19 (English)</Select.Option>
-          <Select.Option value="NWL18">NWL 18 (North America)</Select.Option>
+      <Form.Item
+        label="Dictionary"
+        name="lexicon"
+        rules={[
+          {
+            required: true,
+          },
+        ]}
+      >
+        <Select disabled={disableLexiconControls}>
+          <Select.Option value="CSW19">CSW 19 (World English)</Select.Option>
+          <Select.Option value="NWL20">
+            NWL 20 (North American English)
+          </Select.Option>
+          {enableAllLexicons && (
+            <React.Fragment>
+              <Select.Option value="NWL18">NWL 18 (Obsolete)</Select.Option>
+              {enableECWL && (
+                <Select.Option value="ECWL">
+                  English Common Word List
+                </Select.Option>
+              )}
+            </React.Fragment>
+          )}
         </Select>
       </Form.Item>
-      <Form.Item label="Challenge rule" name="challengerule">
-        <Select>
-          <Select.Option value={ChallengeRule.FIVE_POINT}>
-            5 points{' '}
-            <span className="hover-help">(Reward for winning a challenge)</span>
-          </Select.Option>
-          <Select.Option value={ChallengeRule.TEN_POINT}>
-            10 points{' '}
-            <span className="hover-help">(Reward for winning a challenge)</span>
-          </Select.Option>
-          <Select.Option value={ChallengeRule.DOUBLE}>
-            Double{' '}
-            <span className="hover-help">
-              (Turn loss for challenging a valid word)
-            </span>
-          </Select.Option>
-          <Select.Option value={ChallengeRule.SINGLE}>
-            Single{' '}
-            <span className="hover-help">
-              (No penalty for challenging a valid word)
-            </span>
-          </Select.Option>
-          <Select.Option value={ChallengeRule.VOID}>
-            Void{' '}
-            <span className="hover-help">
-              (All words are checked before play)
-            </span>
-          </Select.Option>
-          <Select.Option value={ChallengeRule.TRIPLE}>
-            Triple{' '}
-            <span className="hover-help">
-              (Losing a challenge loses the game)
-            </span>
-          </Select.Option>
-        </Select>
-      </Form.Item>
+      {showChallengeRule && (
+        <Form.Item label="Challenge rule" name="challengerule">
+          <Select disabled={disableControls}>
+            <Select.Option value={ChallengeRule.FIVE_POINT}>
+              5 points{' '}
+              <span className="hover-help">
+                (Reward for winning a challenge)
+              </span>
+            </Select.Option>
+            <Select.Option value={ChallengeRule.TEN_POINT}>
+              10 points{' '}
+              <span className="hover-help">
+                (Reward for winning a challenge)
+              </span>
+            </Select.Option>
+            <Select.Option value={ChallengeRule.DOUBLE}>
+              Double{' '}
+              <span className="hover-help">
+                (Turn loss for challenging a valid word)
+              </span>
+            </Select.Option>
+            <Select.Option value={ChallengeRule.SINGLE}>
+              Single{' '}
+              <span className="hover-help">
+                (No penalty for challenging a valid word)
+              </span>
+            </Select.Option>
+            <Select.Option value={ChallengeRule.VOID}>
+              Void{' '}
+              <span className="hover-help">
+                (All words are checked before play)
+              </span>
+            </Select.Option>
+            <Select.Option value={ChallengeRule.TRIPLE}>
+              Triple{' '}
+              <span className="hover-help">
+                (Losing a challenge loses the game)
+              </span>
+            </Select.Option>
+          </Select>
+        </Form.Item>
+      )}
       <Form.Item
         className="initial"
         label="Initial Minutes"
@@ -302,6 +381,7 @@ export const SeekForm = (props: Props) => {
         extra={<Tag color={ttag}>{timectrl}</Tag>}
       >
         <Slider
+          disabled={disableControls}
           tipFormatter={initTimeFormatter}
           min={0}
           max={initTimeDiscreteScale.length - 1}
@@ -309,7 +389,7 @@ export const SeekForm = (props: Props) => {
         />
       </Form.Item>
       <Form.Item label="Time Setting" name="incOrOT">
-        <Radio.Group>
+        <Radio.Group disabled={disableControls}>
           <Radio.Button value="overtime">Use Max Overtime</Radio.Button>
           <Radio.Button value="increment">Use Increment</Radio.Button>
         </Radio.Group>
@@ -320,10 +400,10 @@ export const SeekForm = (props: Props) => {
         name="extratime"
         extra={extraTimeLabel}
       >
-        <InputNumber min={0} max={maxTimeSetting} />
+        <InputNumber min={0} max={maxTimeSetting} disabled={disableControls} />
       </Form.Item>
       <Form.Item label="Rated" name="rated" valuePropName="checked">
-        <Switch />
+        <Switch disabled={disableControls} />
       </Form.Item>
     </Form>
   );

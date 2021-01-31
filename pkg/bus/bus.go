@@ -5,6 +5,7 @@ package bus
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"strings"
 	"time"
@@ -18,6 +19,7 @@ import (
 	"github.com/domino14/liwords/pkg/config"
 	"github.com/domino14/liwords/pkg/entity"
 	"github.com/domino14/liwords/pkg/gameplay"
+	"github.com/domino14/liwords/pkg/sessions"
 	"github.com/domino14/liwords/pkg/stats"
 	"github.com/domino14/liwords/pkg/tournament"
 	"github.com/domino14/liwords/pkg/user"
@@ -31,6 +33,7 @@ const (
 
 	AdjudicateInterval   = 10 * time.Second
 	GamesCounterInterval = 60 * time.Minute
+	SeeksExpireInterval  = 10 * time.Minute
 	// Cancel a game if it hasn't started after this much time.
 	CancelAfter = 60 * time.Second
 )
@@ -38,6 +41,18 @@ const (
 const (
 	BotRequestID = "bot-request"
 )
+
+type Stores struct {
+	UserStore       user.Store
+	GameStore       gameplay.GameStore
+	SoughtGameStore gameplay.SoughtGameStore
+	PresenceStore   user.PresenceStore
+	ChatStore       user.ChatStore
+	ListStatStore   stats.ListStatStore
+	TournamentStore tournament.TournamentStore
+	ConfigStore     config.ConfigStore
+	SessionStore    sessions.SessionStore
+}
 
 // Bus is the struct; it should contain all the stores to verify messages, etc.
 type Bus struct {
@@ -50,6 +65,7 @@ type Bus struct {
 	listStatStore   stats.ListStatStore
 	tournamentStore tournament.TournamentStore
 	configStore     config.ConfigStore
+	chatStore       user.ChatStore
 
 	redisPool *redis.Pool
 
@@ -60,10 +76,7 @@ type Bus struct {
 	tournamentEventChan chan *entity.EventWrapper
 }
 
-func NewBus(cfg *config.Config, userStore user.Store, gameStore gameplay.GameStore,
-	soughtGameStore gameplay.SoughtGameStore, presenceStore user.PresenceStore,
-	listStatStore stats.ListStatStore, tournamentStore tournament.TournamentStore,
-	configStore config.ConfigStore, redisPool *redis.Pool) (*Bus, error) {
+func NewBus(cfg *config.Config, stores Stores, redisPool *redis.Pool) (*Bus, error) {
 
 	natsconn, err := nats.Connect(cfg.NatsURL)
 
@@ -72,13 +85,14 @@ func NewBus(cfg *config.Config, userStore user.Store, gameStore gameplay.GameSto
 	}
 	bus := &Bus{
 		natsconn:            natsconn,
-		userStore:           userStore,
-		gameStore:           gameStore,
-		soughtGameStore:     soughtGameStore,
-		presenceStore:       presenceStore,
-		listStatStore:       listStatStore,
-		tournamentStore:     tournamentStore,
-		configStore:         configStore,
+		userStore:           stores.UserStore,
+		gameStore:           stores.GameStore,
+		soughtGameStore:     stores.SoughtGameStore,
+		presenceStore:       stores.PresenceStore,
+		listStatStore:       stores.ListStatStore,
+		tournamentStore:     stores.TournamentStore,
+		configStore:         stores.ConfigStore,
+		chatStore:           stores.ChatStore,
 		subscriptions:       []*nats.Subscription{},
 		subchans:            map[string]chan *nats.Msg{},
 		config:              cfg,
@@ -86,8 +100,8 @@ func NewBus(cfg *config.Config, userStore user.Store, gameStore gameplay.GameSto
 		tournamentEventChan: make(chan *entity.EventWrapper, 64),
 		redisPool:           redisPool,
 	}
-	gameStore.SetGameEventChan(bus.gameEventChan)
-	tournamentStore.SetTournamentEventChan(bus.tournamentEventChan)
+	bus.gameStore.SetGameEventChan(bus.gameEventChan)
+	bus.tournamentStore.SetTournamentEventChan(bus.tournamentEventChan)
 
 	topics := []string{
 		// ipc.pb are generic publishes
@@ -130,6 +144,9 @@ func (b *Bus) ProcessMessages(ctx context.Context) {
 	gameCounter := time.NewTicker(GamesCounterInterval)
 	defer gameCounter.Stop()
 
+	seekExpirer := time.NewTicker(SeeksExpireInterval)
+	defer seekExpirer.Stop()
+
 outerfor:
 	for {
 		select {
@@ -144,11 +161,11 @@ outerfor:
 					log.Err(err).Msg("process-message-publish-error")
 					// The user ID should have hopefully come in the topic name.
 					// It would be in subtopics[4]
-					if len(subtopics) > 4 {
+					if len(subtopics) > 5 {
 						userID := subtopics[4]
-						// XXX might have to make realm specific
-						b.pubToUser(userID, entity.WrapEvent(&pb.ErrorMessage{Message: err.Error()},
-							pb.MessageType_ERROR_MESSAGE), "")
+						connID := subtopics[5]
+						b.pubToConnectionID(connID, userID, entity.WrapEvent(&pb.ErrorMessage{Message: err.Error()},
+							pb.MessageType_ERROR_MESSAGE))
 					}
 				}
 			}()
@@ -166,7 +183,7 @@ outerfor:
 					// the other side.
 					// XXX: this is a very specific response to a handleNatsRequest func
 					rrResp := &pb.RegisterRealmResponse{
-						Realm: "",
+						Realms: []string{""},
 					}
 					data, err := proto.Marshal(rrResp)
 					if err != nil {
@@ -232,8 +249,14 @@ outerfor:
 				break
 			}
 			log.Info().Int64("game-count", n).Msg("game-stats")
-		}
 
+		case <-seekExpirer.C:
+			err := b.soughtGameStore.ExpireOld(ctx)
+			if err != nil {
+				log.Err(err).Msg("expiration-error")
+				break
+			}
+		}
 	}
 
 	log.Info().Msg("exiting processMessages loop")
@@ -250,11 +273,15 @@ func (b *Bus) handleNatsRequest(ctx context.Context, topic string,
 			return err
 		}
 		// The socket server needs to know what realm to subscribe the user to,
-		// given they went to the given path. Don't handle the lobby, the socket
-		// already handles that.
-		path := msg.Realm
+		// given they went to the given path. Don't handle the lobby or tournaments,
+		// the socket already handles that. Other pages like /about, etc
+		// will get a blank realm back. (Eventually we'll create a "global" realm
+		// so we can track presence / deliver notifications even on non-game pages)
+		path := msg.Path
 		userID := msg.UserId
-		var realm string
+
+		resp := &pb.RegisterRealmResponse{}
+		currentTournamentID := ""
 		if strings.HasPrefix(path, "/game/") {
 			gameID := strings.TrimPrefix(path, "/game/")
 			game, err := b.gameStore.Get(ctx, gameID)
@@ -269,23 +296,52 @@ func (b *Bus) handleNatsRequest(ctx context.Context, topic string,
 					foundPlayer = true
 				}
 			}
+			var realm string
 			if !foundPlayer {
 				realm = "gametv-" + gameID
 			} else {
 				realm = "game-" + gameID
 			}
 			log.Debug().Str("computed-realm", realm)
+			resp.Realms = append(resp.Realms, realm, "chat-"+realm)
+
+			if game.TournamentData != nil && game.TournamentData.Id != "" {
+				currentTournamentID = game.TournamentData.Id
+				tournamentRealm := "tournament-" + currentTournamentID
+				resp.Realms = append(resp.Realms, tournamentRealm, "chat-"+tournamentRealm)
+			}
+
+		} else if strings.HasPrefix(path, "/tournament/") || strings.HasPrefix(path, "/club/") {
+			t, err := b.tournamentStore.GetBySlug(ctx, path)
+			if err != nil {
+				return err
+			}
+			currentTournamentID = t.UUID
+			tournamentRealm := "tournament-" + currentTournamentID
+			resp.Realms = append(resp.Realms, tournamentRealm, "chat-"+tournamentRealm)
 		} else {
-			log.Info().Str("path", path).Msg("realm-req-not-handled-sending-blank-realm")
+			log.Info().Str("path", path).Msg("realm-req-not-handled")
 		}
-		resp := &pb.RegisterRealmResponse{}
-		resp.Realm = realm
+
+		activeTourneys, err := b.tournamentStore.ActiveTournamentsFor(ctx, userID)
+		if err != nil {
+			return err
+		}
+		for _, tourney := range activeTourneys {
+			// If we are already physically IN the current tournament realm, do not
+			// subscribe to this extra channel. This channel is used for messages sitewide.
+			if tourney[0] != currentTournamentID {
+				channel := tournament.DivisionChannelName(tourney[0], tourney[1])
+				resp.Realms = append(resp.Realms, "channel-"+channel)
+			}
+		}
+
 		retdata, err := proto.Marshal(resp)
 		if err != nil {
 			return err
 		}
 		b.natsconn.Publish(replyTopic, retdata)
-		log.Debug().Str("topic", topic).Str("replyTopic", replyTopic).
+		log.Debug().Str("topic", topic).Str("replyTopic", replyTopic).Interface("realms", resp.Realms).
 			Msg("published response")
 	default:
 		return fmt.Errorf("unhandled-req-topic: %v", topic)
@@ -391,7 +447,7 @@ func (b *Bus) handleNatsPublish(ctx context.Context, subtopics []string, data []
 		if err != nil {
 			return err
 		}
-		return b.initRealmInfo(ctx, evt)
+		return b.initRealmInfo(ctx, evt, wsConnID)
 	case "readyForGame":
 		evt := &pb.ReadyForGame{}
 		err := proto.Unmarshal(data, evt)
@@ -399,11 +455,21 @@ func (b *Bus) handleNatsPublish(ctx context.Context, subtopics []string, data []
 			return err
 		}
 		return b.readyForGame(ctx, evt, userID)
+	case "readyForTournamentGame":
+		evt := &pb.ReadyForTournamentGame{}
+		err := proto.Unmarshal(data, evt)
+		if err != nil {
+			return err
+		}
+		return b.readyForTournamentGame(ctx, evt, userID, wsConnID)
+
 	case "leaveSite":
 		// There is no event here. We have the user ID in the subject.
 		return b.leaveSite(ctx, userID)
 	case "leaveTab":
 		return b.leaveTab(ctx, userID, wsConnID)
+	case "pongReceived":
+		return b.pongReceived(ctx, userID, wsConnID)
 	default:
 		return fmt.Errorf("unhandled-publish-topic: %v", subtopics)
 	}
@@ -413,42 +479,36 @@ func (b *Bus) TournamentEventChannel() chan *entity.EventWrapper {
 	return b.tournamentEventChan
 }
 
-func (b *Bus) broadcastPresence(username, userID string, anon bool, presenceChan string, deleting bool) error {
-	// broadcast username's presence to the channel.
+func (b *Bus) broadcastPresence(username, userID string, anon bool,
+	presenceChannels []string, deleting bool) error {
+
+	// broadcast username's presence to the channels.
 	log.Debug().Str("username", username).Str("userID", userID).
 		Bool("anon", anon).
-		Str("presenceChan", presenceChan).
+		Interface("presenceChannels", presenceChannels).
 		Bool("deleting", deleting).
 		Msg("broadcast-presence")
 
-	evtChannel := presenceChan
-
-	if deleting {
-		evtChannel = ""
+	for _, c := range presenceChannels {
+		toSend := entity.WrapEvent(&pb.UserPresence{
+			Username:    username,
+			UserId:      userID,
+			Channel:     c,
+			IsAnonymous: anon,
+			Deleting:    deleting,
+		}, pb.MessageType_USER_PRESENCE)
+		data, err := toSend.Serialize()
+		if err != nil {
+			return err
+		}
+		err = b.natsconn.Publish(c, data)
+		if err != nil {
+			return err
+		}
 	}
-
-	toSend := entity.WrapEvent(&pb.UserPresence{
-		Username:    username,
-		UserId:      userID,
-		Channel:     evtChannel,
-		IsAnonymous: anon,
-	},
-		pb.MessageType_USER_PRESENCE)
-	data, err := toSend.Serialize()
-	if err != nil {
-		return err
-	}
-	if presenceChan != "" {
-		return b.natsconn.Publish(presenceChan, data)
-	}
-	// If the presence channel is empty we are in some other page, like the
-	// about page or something. We need to clean this up a bit, but we don't
-	// want to log errors here.
 	return nil
 }
 
-// XXX: this function needs to be rewritten to be something like pubToConnectionID
-// for the most part.
 func (b *Bus) pubToUser(userID string, evt *entity.EventWrapper,
 	channel string) error {
 	// Publish to a user, but pass in a specific channel. Only publish to those
@@ -468,7 +528,17 @@ func (b *Bus) pubToUser(userID string, evt *entity.EventWrapper,
 	return b.natsconn.Publish(fullChannel, bts)
 }
 
-func (b *Bus) initRealmInfo(ctx context.Context, evt *pb.InitRealmInfo) error {
+func (b *Bus) pubToConnectionID(connID, userID string, evt *entity.EventWrapper) error {
+	// Publish to a specific connection ID.
+	sanitized, err := sanitize(evt, userID)
+	bts, err := sanitized.Serialize()
+	if err != nil {
+		return err
+	}
+	return b.natsconn.Publish("connid."+connID, bts)
+}
+
+func (b *Bus) initRealmInfo(ctx context.Context, evt *pb.InitRealmInfo, connID string) error {
 	// For consistency sake, use the `dotted` channels for presence
 	// i.e. game.<gameID>, gametv.<gameID>
 	// The reasoning is that realms should only be cared about by the socket
@@ -478,101 +548,65 @@ func (b *Bus) initRealmInfo(ctx context.Context, evt *pb.InitRealmInfo) error {
 	if err != nil {
 		return err
 	}
-	presenceChan := strings.ReplaceAll(evt.Realm, "-", ".")
-	chatChan := presenceChan
-	if presenceChan == "lobby" {
-		presenceChan = "lobby.presence"
-		chatChan = "lobby.chat"
-	}
-	b.presenceStore.SetPresence(ctx, evt.UserId, username, anon, presenceChan)
 
-	if evt.Realm == "lobby" {
-		// open seeks
-		seeks, err := b.openSeeks(ctx)
-		if err != nil {
-			return err
-		}
-		err = b.pubToUser(evt.UserId, seeks, "lobby")
-		if err != nil {
-			return err
-		}
-		// live games
-		activeGames, err := b.activeGames(ctx, "")
-		if err != nil {
-			return err
-		}
-		err = b.pubToUser(evt.UserId, activeGames, "lobby")
-		if err != nil {
-			return err
-		}
-		// open match reqs
-		matches, err := b.openMatches(ctx, evt.UserId, "")
-		if err != nil {
-			return err
-		}
-		err = b.pubToUser(evt.UserId, matches, "lobby")
-		if err != nil {
-			return err
-		}
-		// TODO: send followed online
+	// The channels with presence should be:
+	// chat.lobby
+	// chat.tournament.foo
+	// chat.game.bar
+	// chat.gametv.baz
+	// global.presence (when it comes, we edit this later)
 
-	} else if strings.HasPrefix(evt.Realm, "game-") || strings.HasPrefix(evt.Realm, "gametv-") {
-		components := strings.Split(evt.Realm, "-")
-		prefix := components[0]
-		// Get a sanitized history
-		gameID := components[1]
-		refresher, err := b.gameRefresher(ctx, gameID)
-		if err != nil {
-			return err
-		}
-		err = b.pubToUser(evt.UserId, refresher, prefix+"."+gameID)
-		if err != nil {
-			return err
-		}
-	} else if strings.HasPrefix(evt.Realm, "tournament-") {
-		components := strings.Split(evt.Realm, "-")
-		prefix := components[0]
-		// Get a sanitized history
-		tourneyID := components[1]
-		// live games
-		activeGames, err := b.activeGames(ctx, tourneyID)
-		if err != nil {
-			return err
-		}
-		err = b.pubToUser(evt.UserId, activeGames, prefix+"."+tourneyID)
-		if err != nil {
-			return err
-		}
-		// open match reqs
-		matches, err := b.openMatches(ctx, evt.UserId, tourneyID)
-		if err != nil {
-			return err
-		}
-		err = b.pubToUser(evt.UserId, matches, prefix+"."+tourneyID)
-		if err != nil {
-			return err
+	for _, realm := range evt.Realms {
+
+		presenceChan := strings.ReplaceAll(realm, "-", ".")
+		if !strings.HasPrefix(presenceChan, "chat.") {
+			// presenceChan / presenceStore is only used for chat purposes for now.
+			presenceChan = ""
 		}
 
-	} else {
-		log.Debug().Interface("evt", evt).Msg("no init realm info")
-	}
+		if presenceChan != "" {
+			log.Debug().Str("presence-chan", presenceChan).Str("username", username).Msg("SetPresence")
+			b.presenceStore.SetPresence(ctx, evt.UserId, username, anon, presenceChan, connID)
+		}
 
-	// Get presence
-	pres, err := b.getPresence(ctx, presenceChan)
-	if err != nil {
-		return err
+		if realm == "lobby" {
+			err := b.sendLobbyContext(ctx, evt.UserId, connID)
+			if err != nil {
+				return err
+			}
+		} else if strings.HasPrefix(realm, "game-") || strings.HasPrefix(realm, "gametv-") {
+			components := strings.Split(realm, "-")
+			// Get a sanitized history
+			gameID := components[1]
+			refresher, err := b.gameRefresher(ctx, gameID)
+			if err != nil {
+				return err
+			}
+			err = b.pubToConnectionID(connID, evt.UserId, refresher)
+			if err != nil {
+				return err
+			}
+		} else if strings.HasPrefix(realm, "tournament-") {
+			err := b.sendTournamentContext(ctx, realm, evt.UserId, connID)
+			if err != nil {
+				return err
+			}
+		} else {
+			log.Debug().Interface("evt", evt).Msg("no init realm info")
+		}
+		// XXX: Need initRealmInfo for `channel-` realm.
+		// Get presence
+		if presenceChan != "" {
+			err := b.sendPresenceContext(ctx, evt.UserId, username, anon,
+				presenceChan, connID)
+			if err != nil {
+				return err
+			}
+		}
 	}
-	err = b.pubToUser(evt.UserId, pres, presenceChan)
-	if err != nil {
-		return err
-	}
-	// Also send OUR presence to users in this channel.
-	err = b.broadcastPresence(username, evt.UserId, anon, presenceChan, false)
-	if err != nil {
-		return err
-	}
+	return nil
 	// send chat info
-	return b.sendOldChats(evt.UserId, chatChan)
+
 }
 
 func (b *Bus) getPresence(ctx context.Context, presenceChan string) (*entity.EventWrapper, error) {
@@ -597,40 +631,205 @@ func (b *Bus) getPresence(ctx context.Context, presenceChan string) (*entity.Eve
 }
 
 func (b *Bus) leaveTab(ctx context.Context, userID, connID string) error {
-	return b.deleteSoughtForConnID(ctx, connID)
-}
-
-func (b *Bus) leaveSite(ctx context.Context, userID string) error {
 	username, anon, err := b.userStore.Username(ctx, userID)
 	if err != nil {
 		return err
 	}
-	oldchannel, err := b.presenceStore.ClearPresence(ctx, userID, username, anon)
+	channels, err := b.presenceStore.ClearPresence(ctx, userID, username, anon, connID)
 	if err != nil {
 		return err
 	}
-	log.Debug().Str("oldchannel", oldchannel).Str("userid", userID).Msg("left-site")
+	log.Debug().Interface("channels", channels).Str("connID", connID).Str("username", username).
+		Msg("clear presence")
 
-	err = b.broadcastPresence(username, userID, anon, oldchannel, true)
+	err = b.broadcastPresence(username, userID, anon, channels, true)
 	if err != nil {
 		return err
 	}
 
+	err = b.deleteSoughtForConnID(ctx, connID)
+	if err != nil {
+		return err
+	}
+	return b.deleteTournamentReadyMsgs(ctx, userID, connID)
+	// Delete any tournament ready messages
+}
+
+func (b *Bus) deleteTournamentReadyMsgs(ctx context.Context, userID, connID string) error {
+	conn := b.redisPool.Get()
+	defer conn.Close()
+	bts, err := redis.Bytes(conn.Do("GET", "tready:"+connID))
+	if err != nil {
+		// There are probably no such messages for this connection.
+		return nil
+	}
+	readyEvt := pb.ReadyForTournamentGame{}
+	err = json.Unmarshal(bts, &readyEvt)
+	if err != nil {
+		return err
+	}
+	readyEvt.Unready = true
+	err = b.readyForTournamentGame(ctx, &readyEvt, userID, connID)
+	if err != nil {
+		return err
+	}
+	// and delete the ready event from redis
+	_, err = conn.Do("DEL", "tready:"+connID)
+	return err
+}
+
+func (b *Bus) leaveSite(ctx context.Context, userID string) error {
+	log.Debug().Str("userid", userID).Msg("left-site")
 	return nil
 }
 
+func (b *Bus) pongReceived(ctx context.Context, userID, connID string) error {
+	username, anon, err := b.userStore.Username(ctx, userID)
+	if err != nil {
+		return err
+	}
+	return b.presenceStore.RenewPresence(ctx, userID, username, anon, connID)
+}
+
 func (b *Bus) activeGames(ctx context.Context, tourneyID string) (*entity.EventWrapper, error) {
-	gs, err := b.gameStore.ListActive(ctx, tourneyID)
+	games, err := b.gameStore.ListActive(ctx, tourneyID, false)
 
 	if err != nil {
 		return nil, err
 	}
-	log.Debug().Interface("active-games", gs).Msg("active-games")
+	log.Debug().Interface("active-games", games).Msg("active-games")
 
-	pbobj := &pb.ActiveGames{Games: []*pb.GameMeta{}}
-	for _, g := range gs {
-		pbobj.Games = append(pbobj.Games, g)
-	}
-	evt := entity.WrapEvent(pbobj, pb.MessageType_ACTIVE_GAMES)
+	evt := entity.WrapEvent(games, pb.MessageType_ONGOING_GAMES)
 	return evt, nil
+}
+
+// Return 0 if uid1 blocks uid2, 1 if uid2 blocks uid1, and -1 if neither blocks
+// the other. Note, if they both block each other it will return 0.
+func (b *Bus) blockExists(ctx context.Context, u1, u2 *entity.User) (int, error) {
+	blockedUsers, err := b.userStore.GetBlocks(ctx, u1.ID)
+	if err != nil {
+		return 0, err
+	}
+	for _, bu := range blockedUsers {
+		if bu.UUID == u2.UUID {
+			// u1 is blocking u2
+			return 0, nil
+		}
+	}
+	// Check in the other direction
+	blockedUsers, err = b.userStore.GetBlockedBy(ctx, u1.ID)
+	if err != nil {
+		return 0, err
+	}
+	for _, bu := range blockedUsers {
+		if bu.UUID == u2.UUID {
+			// u2 is blocking u1
+			return 1, nil
+		}
+	}
+	return -1, nil
+}
+
+func (b *Bus) sendLobbyContext(ctx context.Context, userID, connID string) error {
+	// open seeks
+	seeks, err := b.openSeeks(ctx)
+	if err != nil {
+		return err
+	}
+	err = b.pubToConnectionID(connID, userID, seeks)
+	if err != nil {
+		return err
+	}
+	// live games
+	activeGames, err := b.activeGames(ctx, "")
+	if err != nil {
+		return err
+	}
+	err = b.pubToConnectionID(connID, userID, activeGames)
+	if err != nil {
+		return err
+	}
+	// open match reqs
+	matches, err := b.openMatches(ctx, userID, "")
+	if err != nil {
+		return err
+	}
+	err = b.pubToConnectionID(connID, userID, matches)
+	if err != nil {
+		return err
+	}
+
+	// TODO: send followed online
+	return nil
+}
+
+func (b *Bus) sendTournamentContext(ctx context.Context, realm, userID, connID string) error {
+	components := strings.Split(realm, "-")
+	tourneyID := components[1]
+	// live games
+	activeGames, err := b.activeGames(ctx, tourneyID)
+	if err != nil {
+		return err
+	}
+	err = b.pubToConnectionID(connID, userID, activeGames)
+	if err != nil {
+		return err
+	}
+	// open match reqs
+	matches, err := b.openMatches(ctx, userID, tourneyID)
+	if err != nil {
+		return err
+	}
+	err = b.pubToConnectionID(connID, userID, matches)
+	if err != nil {
+		return err
+	}
+
+	// Send a TournamentDivisionDataResponse for every division in the tournament.
+
+	t, err := b.tournamentStore.Get(ctx, tourneyID)
+	if err != nil {
+		return err
+	}
+	// msg := &pb.FullTournamentDivisions{
+	// 	Divisions: make(map[string]*pb.TournamentDivisionDataResponse),
+	// 	Started:   t.IsStarted,
+	// }
+	// Send empty divisions
+	// evt := entity.WrapEvent(msg, pb.MessageType_TOURNAMENT_FULL_DIVISIONS_MESSAGE)
+	// err = b.pubToConnectionID(connID, userID, evt)
+
+	for name := range t.Divisions {
+		// r, err := tournament.TournamentDivisionDataResponse(ctx, b.tournamentStore, tourneyID, name)
+		// if err != nil {
+		// 	return err
+		// }
+		// msg.Divisions[name] = r
+
+		// evt := entity.WrapEvent(r)
+
+		err := tournament.SendTournamentDivisionMessage(ctx, b.tournamentStore, tourneyID, name)
+		if err != nil {
+			return err
+		}
+
+	}
+	// SEND
+
+	return err
+}
+
+func (b *Bus) sendPresenceContext(ctx context.Context, userID, username string, anon bool,
+	presenceChan, connID string) error {
+
+	pres, err := b.getPresence(ctx, presenceChan)
+	if err != nil {
+		return err
+	}
+	err = b.pubToConnectionID(connID, userID, pres)
+	if err != nil {
+		return err
+	}
+	// Also send OUR presence to users in this channel.
+	return b.broadcastPresence(username, userID, anon, []string{presenceChan}, false)
 }

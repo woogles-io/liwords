@@ -25,7 +25,7 @@ jobs:
           command: apk update && apk upgrade && apk add bash build-base curl
 
       - run: mv /opt/liwords/data/lexica $LEXICON_PATH
-      - run: cd cmd/liwords-api && go build # persist executable to workspace for deploy step
+      - run: cd cmd/liwords-api && go build
       # Tests must not be run in parallel; postgres issues happen otherwise.
       - run: go test -p 1 ./...
       - slack/status: &slack-webhook-setting
@@ -68,7 +68,11 @@ jobs:
       - run: yum install -y tar gzip md5sum
       - attach_workspace:
           at: /tmp/liwords-ui
-      - run: sed -i "s:unknown:${CIRCLE_WORKFLOW_ID}:" /tmp/liwords-ui/build/config.js
+      - run: >
+          UI_HASH=$(find /tmp/liwords-ui/build -type f -exec md5sum {} \; | sort -k 2 | md5sum | head -c 32) &&
+          echo $UI_HASH &&
+          sed -i "s:unknown:${UI_HASH}:" /tmp/liwords-ui/build/config.js &&
+          echo "export UI_HASH=$UI_HASH" >> $BASH_ENV
       - run: >
           md5=`md5sum /tmp/liwords-ui/build/wasm/macondo.wasm | awk '{ print $1 }'` &&
           sed -i "s:macondo.wasm:macondo.${md5}.wasm:" /tmp/liwords-ui/build/config.js &&
@@ -90,6 +94,12 @@ jobs:
           cd /tmp/liwords-ui/build &&
           aws s3 sync --cache-control 'max-age=3024000' --exclude '*' --include 'wasm/*.wasm'
           --content-type 'application/wasm' . s3://woogles.io
+      -  run: >
+          curl -X POST -H "Content-Type: application/json"
+          -H "X-Api-Key: ${ADMIN_WOOGLES_API_KEY}"
+          https://woogles.io/twirp/config_service.ConfigService/SetFEHash
+          -d "{\"hash\": \"${UI_HASH}\"}"
+
       - slack/status: *slack-webhook-setting
 
 workflows:

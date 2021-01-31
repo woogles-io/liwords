@@ -44,7 +44,6 @@ type Props = {
   userID?: string;
   username?: string;
   requests: Array<SoughtGame>;
-  tournamentID?: string;
 };
 
 export const SoughtGames = (props: Props) => {
@@ -76,8 +75,16 @@ export const SoughtGames = (props: Props) => {
           value: 'CSW19',
         },
         {
+          text: 'NWL20',
+          value: 'NWL20',
+        },
+        {
           text: 'NWL18',
           value: 'NWL18',
+        },
+        {
+          text: 'ECWL',
+          value: 'ECWL',
         },
       ],
       filterMultiple: false,
@@ -132,7 +139,7 @@ export const SoughtGames = (props: Props) => {
         return {
           seeker: outgoing ? (
             <Popconfirm
-              title={`Do you want to cancel this game?`}
+              title="Do you want to cancel this game?"
               onConfirm={() => {
                 props.newGame(sg.seekID);
                 setCancelVisible(false);

@@ -31,7 +31,7 @@ func (gs *GameService) GetMetadata(ctx context.Context, req *pb.GameInfoRequest)
 }
 
 //  GetRematchStreak gets quickdata for the given rematch streak.
-func (gs *GameService) GetRematchStreak(ctx context.Context, req *pb.RematchStreakRequest) (*pb.GameInfoResponses, error) {
+func (gs *GameService) GetRematchStreak(ctx context.Context, req *pb.RematchStreakRequest) (*pb.StreakInfoResponse, error) {
 	resp, err := gs.gameStore.GetRematchStreak(ctx, req.OriginalRequestId)
 	if err != nil {
 		return nil, twirp.InternalErrorWith(err)
@@ -51,16 +51,27 @@ func (gs *GameService) GetRecentGames(ctx context.Context, req *pb.RecentGamesRe
 
 // GetGCG downloads a GCG for a finished game.
 func (gs *GameService) GetGCG(ctx context.Context, req *pb.GCGRequest) (*pb.GCGResponse, error) {
-	entGame, err := gs.gameStore.Get(ctx, req.GameId)
+	hist, err := gs.gameStore.GetHistory(ctx, req.GameId)
 	if err != nil {
 		return nil, twirp.NewError(twirp.InvalidArgument, err.Error())
 	}
-	if entGame.Playing() != macondopb.PlayState_GAME_OVER {
+	if hist.PlayState != macondopb.PlayState_GAME_OVER {
 		return nil, twirp.NewError(twirp.InvalidArgument, "please wait until the game is over to download GCG")
 	}
-	gcg, err := gcgio.GameHistoryToGCG(entGame.History(), true)
+	gcg, err := gcgio.GameHistoryToGCG(hist, true)
 	if err != nil {
 		return nil, twirp.NewError(twirp.InvalidArgument, err.Error())
 	}
 	return &pb.GCGResponse{Gcg: gcg}, nil
+}
+
+func (gs *GameService) GetGameHistory(ctx context.Context, req *pb.GameHistoryRequest) (*pb.GameHistoryResponse, error) {
+	hist, err := gs.gameStore.GetHistory(ctx, req.GameId)
+	if err != nil {
+		return nil, twirp.NewError(twirp.InvalidArgument, err.Error())
+	}
+	if hist.PlayState != macondopb.PlayState_GAME_OVER {
+		return nil, twirp.NewError(twirp.InvalidArgument, "please wait until the game is over to download GCG")
+	}
+	return &pb.GameHistoryResponse{History: hist}, nil
 }

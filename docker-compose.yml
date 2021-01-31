@@ -16,8 +16,10 @@ services:
       MAILGUN_KEY: ${MAILGUN_KEY:-default}
       REDIS_URL: "redis://redis:6379"
       GORACE: history_size=7
+      ARGON_MEMORY: 1024
     volumes:
       - .:/opt/program:rw
+      - ./data/lexica/dawg:/opt/program/data/lexica/dawg
     command: sh -c "go run -race cmd/liwords-api/*.go"
     depends_on: ["db", "proxy", "nats", "socket", "redis"]
     networks:
@@ -42,13 +44,14 @@ services:
       DEBUG: 1
     volumes:
       - ../macondo:/opt/program:rw
-      - ./data/lexica:/opt/program/data/lexica
+      # Use the same gaddag files we use for the WASM integration.
+      - ./liwords-ui/public/wasm:/opt/program/data/lexica/gaddag
     command: sh -c "go run -race cmd/bot/*.go"
     depends_on: ["nats"]
     networks:
       - aeronet
 
-  socket:
+  socket: &socketsetup
     build:
       context: ../liwords-socket
       dockerfile: Dockerfile-dev
@@ -61,13 +64,13 @@ services:
     command: ["go", "run", "-race", "cmd/socketsrv/main.go"]
     networks:
       - aeronet
-    ports:
-      - "8087:8087"
     labels:
       - "traefik.http.routers.liwords-socket.rule=Host(`liwords.localhost`) && PathPrefix(`/ws`)"
       - "traefik.http.routers.liwords-socket.entrypoints=web"
       - "traefik.http.services.liwords-socket.loadbalancer.server.port=8087"
       - traefik.enable=true
+
+  socket2: *socketsetup
 
   proxy:
     image: "traefik:v2.2"
@@ -120,6 +123,7 @@ services:
       dockerfile: Dockerfile-fe
     volumes:
       - ./liwords-ui:/opt/liwords-ui
+      # Install node_modules inside the docker container
       - "/opt/liwords-ui/node_modules"
     working_dir: /opt/liwords-ui
     command: npm start
@@ -131,6 +135,14 @@ services:
       - "traefik.http.routers.liwords-fe.rule=Host(`liwords.localhost`)"
       - "traefik.http.services.liwords-fe.loadbalancer.server.port=3000"
       - traefik.enable=true
+
+  pb_compiler:
+    build:
+      context: .
+      dockerfile: Dockerfile-pb
+    volumes:
+      - .:/opt/code/liwords:rw
+      - ../macondo:/opt/code/macondo
 
 networks:
   aeronet:

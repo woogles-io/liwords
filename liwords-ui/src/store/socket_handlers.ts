@@ -3,8 +3,6 @@ import { useHistory } from 'react-router-dom';
 import { message, notification } from 'antd';
 import {
   ChatEntityType,
-  randomID,
-  ChatEntityObj,
   PresenceEntity,
   useChallengeResultEventStoreContext,
   useChatStoreContext,
@@ -18,48 +16,57 @@ import {
   usePresenceStoreContext,
   useRematchRequestStoreContext,
   useTimerStoreContext,
+  useTournamentStoreContext,
 } from './store';
 import {
-  MessageType,
-  SeekRequest,
-  ErrorMessage,
-  ServerMessage,
-  NewGameEvent,
-  GameHistoryRefresher,
-  MessageTypeMap,
-  MatchRequest,
-  SoughtGameProcessEvent,
-  ClientGameplayEvent,
-  ServerGameplayEvent,
-  GameEndedEvent,
-  ServerChallengeResultEvent,
-  SeekRequests,
-  TimedOut,
-  GameMeta,
-  ActiveGames,
-  GameDeletion,
-  MatchRequests,
-  DeclineMatchRequest,
-  DeclineAbortRequest,
+  AbortRequest,
   ChatMessage,
-  ChatMessages,
+  ClientGameplayEvent,
+  DeclineAbortRequest,
+  DeclineMatchRequest,
+  ErrorMessage,
+  FullTournamentDivisions,
+  GameDeletion,
+  GameEndedEvent,
+  GameHistoryRefresher,
+  LagMeasurement,
+  MatchRequest,
+  MatchRequestCancellation,
+  MatchRequests,
+  MessageType,
+  MessageTypeMap,
+  NewGameEvent,
+  ReadyForGame,
+  ReadyForTournamentGame,
+  RematchStartedEvent,
+  SeekRequest,
+  SeekRequests,
+  ServerChallengeResultEvent,
+  ServerGameplayEvent,
+  ServerMessage,
+  SoughtGameProcessEvent,
+  TimedOut,
+  TournamentDataResponse,
+  TournamentDivisionDataResponse,
+  TournamentDivisionDeletedResponse,
+  TournamentGameEndedEvent,
+  TournamentRoundStarted,
   UserPresence,
   UserPresences,
-  ReadyForGame,
-  LagMeasurement,
-  MatchRequestCancellation,
-  TournamentGameEndedEvent,
-  RematchStartedEvent,
-  AbortRequest,
 } from '../gen/api/proto/realtime/realtime_pb';
 import { ActionType } from '../actions/actions';
 import { endGameMessage } from './end_of_game';
 import {
+  GameInfoResponseToActiveGame,
   SeekRequestToSoughtGame,
-  GameMetaToActiveGame,
   SoughtGame,
 } from './reducers/lobby_reducer';
 import { BoopSounds } from '../sound/boop';
+import {
+  GameInfoResponse,
+  GameInfoResponses,
+} from '../gen/api/proto/game_service/game_service_pb';
+import { TourneyStatus } from './reducers/tournament_reducer';
 
 // Feature flag.
 export const enableShowSocket =
@@ -88,28 +95,34 @@ export const parseMsgs = (msg: Uint8Array) => {
       [MessageType.SERVER_CHALLENGE_RESULT_EVENT]: ServerChallengeResultEvent,
       [MessageType.SEEK_REQUESTS]: SeekRequests,
       [MessageType.TIMED_OUT]: TimedOut,
-      [MessageType.GAME_META_EVENT]: GameMeta,
-      [MessageType.ACTIVE_GAMES]: ActiveGames,
+      [MessageType.ONGOING_GAME_EVENT]: GameInfoResponse,
+      [MessageType.ONGOING_GAMES]: GameInfoResponses,
       [MessageType.GAME_DELETION]: GameDeletion,
       [MessageType.MATCH_REQUESTS]: MatchRequests,
       [MessageType.DECLINE_MATCH_REQUEST]: DeclineMatchRequest,
       [MessageType.CHAT_MESSAGE]: ChatMessage,
-      [MessageType.CHAT_MESSAGES]: ChatMessages,
       [MessageType.USER_PRESENCE]: UserPresence,
       [MessageType.USER_PRESENCES]: UserPresences,
       [MessageType.READY_FOR_GAME]: ReadyForGame,
+      [MessageType.READY_FOR_TOURNAMENT_GAME]: ReadyForTournamentGame,
+      [MessageType.TOURNAMENT_ROUND_STARTED]: TournamentRoundStarted,
       [MessageType.LAG_MEASUREMENT]: LagMeasurement,
       [MessageType.MATCH_REQUEST_CANCELLATION]: MatchRequestCancellation,
       [MessageType.TOURNAMENT_GAME_ENDED_EVENT]: TournamentGameEndedEvent,
       [MessageType.REMATCH_STARTED]: RematchStartedEvent,
       [MessageType.ABORT_REQUEST]: AbortRequest,
       [MessageType.DECLINE_ABORT_REQUEST]: DeclineAbortRequest,
+      [MessageType.TOURNAMENT_MESSAGE]: TournamentDataResponse,
+      [MessageType.TOURNAMENT_DIVISION_MESSAGE]: TournamentDivisionDataResponse,
+      [MessageType.TOURNAMENT_DIVISION_DELETED_MESSAGE]: TournamentDivisionDeletedResponse,
+      [MessageType.TOURNAMENT_FULL_DIVISIONS_MESSAGE]: FullTournamentDivisions,
     };
 
     const parsedMsg = msgTypes[msgType];
     const topush = {
       msgType,
       parsedMsg: parsedMsg?.deserializeBinary(msgBytes),
+      msgLength,
     };
     msgs.push(topush);
     // eslint-disable-next-line no-param-reassign
@@ -128,12 +141,16 @@ export const ReverseMessageType = (() => {
 
 export const useOnSocketMsg = () => {
   const { challengeResultEvent } = useChallengeResultEventStoreContext();
-  const { addChat, addChats } = useChatStoreContext();
+  const { addChat } = useChatStoreContext();
   const { excludedPlayers } = useExcludedPlayersStoreContext();
   const { dispatchGameContext, gameContext } = useGameContextStoreContext();
   const { setGameEndMessage } = useGameEndMessageStoreContext();
   const { setCurrentLagMs } = useLagStoreContext();
   const { dispatchLobbyContext } = useLobbyStoreContext();
+  const {
+    tournamentContext,
+    dispatchTournamentContext,
+  } = useTournamentStoreContext();
   const { loginState } = useLoginStateStoreContext();
   const { setPresence, addPresences } = usePresenceStoreContext();
   const { setRematchRequest } = useRematchRequestStoreContext();
@@ -152,15 +169,17 @@ export const useOnSocketMsg = () => {
       const msgs = parseMsgs(new Uint8Array(reader.result as ArrayBuffer));
 
       msgs.forEach((msg) => {
-        const { msgType, parsedMsg } = msg;
+        const { msgType, parsedMsg, msgLength } = msg;
 
         if (enableShowSocket) {
           console.log(
             '%crcvd',
             'background: pink',
             ReverseMessageType[msgType] ?? msgType,
-            parsedMsg.toObject(),
-            performance.now()
+            parsedMsg?.toObject(),
+            performance.now(),
+            'bytelength:',
+            msgLength
           );
         }
 
@@ -229,29 +248,33 @@ export const useOnSocketMsg = () => {
             if (receiver === loginState.username) {
               BoopSounds.playSound('matchReqSound');
               const rematchFor = mr.getRematchFor();
-              const { path } = loginState;
               console.log(
                 'sg',
                 soughtGame.tournamentID,
                 'gc',
-                gameContext.gameID
+                gameContext.gameID,
+                'tc',
+                tournamentContext
               );
               if (soughtGame.tournamentID) {
                 // This is a match game attached to a tourney.
-                // XXX: When we have a tourney reducer we should refer to said reducer's
-                //  state instead of looking at the path
+                console.log('match attached to tourney');
                 if (
-                  path ===
-                  `/tournament/${encodeURIComponent(soughtGame.tournamentID)}`
+                  tournamentContext.metadata.id === soughtGame.tournamentID &&
+                  !gameContext.gameID
                 ) {
+                  console.log('matches this tourney, and we are not in a game');
+
                   dispatchLobbyContext({
                     actionType: ActionType.AddMatchRequest,
                     payload: soughtGame,
                   });
                   inReceiverGameList = true;
-                } else if (rematchFor === gameContext.gameID) {
+                } else if (rematchFor && rematchFor === gameContext.gameID) {
+                  console.log('it is a rematch');
                   setRematchRequest(mr);
                 } else {
+                  console.log('tourney match request elsewhere');
                   notification.info({
                     message: 'Tournament Match Request',
                     description: `You have a tournament match request from ${soughtGame.seeker}. Please return to your tournament at your convenience.`,
@@ -345,7 +368,7 @@ export const useOnSocketMsg = () => {
           case MessageType.ERROR_MESSAGE: {
             console.log('got error msg');
             const err = parsedMsg as ErrorMessage;
-            notification.error({
+            notification.open({
               message: 'Error',
               description: err.getMessage(),
             });
@@ -353,6 +376,7 @@ export const useOnSocketMsg = () => {
               entityType: ChatEntityType.ErrorMsg,
               sender: 'Woogles',
               message: err.getMessage(),
+              channel: 'server',
             });
             break;
           }
@@ -362,45 +386,20 @@ export const useOnSocketMsg = () => {
             if (excludedPlayers.has(cm.getUserId())) {
               break;
             }
-
-            // XXX: We should ignore this chat message if it's not for the right
-            // channel.
-
             addChat({
               entityType: ChatEntityType.UserChat,
               sender: cm.getUsername(),
               message: cm.getMessage(),
               timestamp: cm.getTimestamp(),
               senderId: cm.getUserId(),
+              channel: cm.getChannel(),
             });
             if (cm.getUsername() !== loginState.username) {
-              // BoopSounds.playSound('receiveMsgSound');
-              // Not yet, until we figure out how to just play it for private
-              // msgs.
-            }
-            break;
-          }
-
-          case MessageType.CHAT_MESSAGES: {
-            // These replace all existing messages.
-            const cms = parsedMsg as ChatMessages;
-
-            const entities = new Array<ChatEntityObj>();
-
-            cms.getMessagesList().forEach((cm) => {
-              if (!excludedPlayers.has(cm.getUserId())) {
-                entities.push({
-                  entityType: ChatEntityType.UserChat,
-                  sender: cm.getUsername(),
-                  message: cm.getMessage(),
-                  timestamp: cm.getTimestamp(),
-                  senderId: cm.getUserId(),
-                  id: randomID(),
-                });
+              const tokenizedName = cm.getChannel().split('.');
+              if (tokenizedName.length > 1 && tokenizedName[1] === 'pm') {
+                BoopSounds.playSound('receiveMsgSound');
               }
-            });
-
-            addChats(entities);
+            }
             break;
           }
 
@@ -411,11 +410,13 @@ export const useOnSocketMsg = () => {
             if (excludedPlayers.has(up.getUserId())) {
               break;
             }
+
             setPresence({
               uuid: up.getUserId(),
               username: up.getUsername(),
               channel: up.getChannel(),
               anon: up.getIsAnonymous(),
+              deleting: up.getDeleting(),
             });
             break;
           }
@@ -432,6 +433,7 @@ export const useOnSocketMsg = () => {
                   username: p.getUsername(),
                   channel: p.getChannel(),
                   anon: p.getIsAnonymous(),
+                  deleting: p.getDeleting(),
                 });
               }
             });
@@ -456,16 +458,44 @@ export const useOnSocketMsg = () => {
             break;
           }
 
+          case MessageType.TOURNAMENT_ROUND_STARTED: {
+            const trs = parsedMsg as TournamentRoundStarted;
+            dispatchTournamentContext({
+              actionType: ActionType.StartTourneyRound,
+              payload: trs,
+            });
+            if (
+              tournamentContext?.competitorState?.division === trs.getDivision()
+            ) {
+              BoopSounds.playSound('startTourneyRoundSound');
+            }
+            break;
+          }
+
           case MessageType.TOURNAMENT_GAME_ENDED_EVENT: {
             const gee = parsedMsg as TournamentGameEndedEvent;
-            dispatchLobbyContext({
-              actionType: ActionType.AddTourneyGame,
+            dispatchTournamentContext({
+              actionType: ActionType.AddTourneyGameResult,
               payload: gee,
             });
 
-            dispatchLobbyContext({
+            dispatchTournamentContext({
               actionType: ActionType.RemoveActiveGame,
               payload: gee.getGameId(),
+            });
+
+            break;
+          }
+
+          case MessageType.TOURNAMENT_DIVISION_MESSAGE: {
+            const tdm = parsedMsg as TournamentDivisionDataResponse;
+
+            dispatchTournamentContext({
+              actionType: ActionType.SetDivisionData,
+              payload: {
+                divisionMessage: tdm,
+                loginState,
+              },
             });
 
             break;
@@ -510,7 +540,6 @@ export const useOnSocketMsg = () => {
             });
 
             // If there is an Antd message about "waiting for game", destroy it.
-            // XXX: This is a bit unideal.
             message.destroy('server-message');
             break;
           }
@@ -585,17 +614,6 @@ export const useOnSocketMsg = () => {
             break;
           }
 
-          case MessageType.ACTIVE_GAMES: {
-            // lobby context, set list of active games
-            const age = parsedMsg as ActiveGames;
-            console.log('got active games', age);
-            dispatchLobbyContext({
-              actionType: ActionType.AddActiveGames,
-              payload: age.getGamesList().map((g) => GameMetaToActiveGame(g)),
-            });
-            break;
-          }
-
           case MessageType.GAME_DELETION: {
             // lobby context, remove active game
             const gde = parsedMsg as GameDeletion;
@@ -607,18 +625,79 @@ export const useOnSocketMsg = () => {
             break;
           }
 
-          case MessageType.GAME_META_EVENT: {
+          case MessageType.ONGOING_GAME_EVENT: {
             // lobby context, add active game
-            const gme = parsedMsg as GameMeta;
+            const gme = parsedMsg as GameInfoResponse;
             console.log('add active game', gme);
-            const activeGame = GameMetaToActiveGame(gme);
+            const activeGame = GameInfoResponseToActiveGame(gme);
             if (!activeGame) {
               return;
             }
-            dispatchLobbyContext({
+            const dispatchFn = tournamentContext.metadata.id
+              ? dispatchTournamentContext
+              : dispatchLobbyContext;
+            dispatchFn({
               actionType: ActionType.AddActiveGame,
               payload: activeGame,
             });
+            break;
+          }
+
+          case MessageType.ONGOING_GAMES: {
+            const age = parsedMsg as GameInfoResponses;
+            console.log('got active games', age);
+            const dispatchFn = tournamentContext.metadata.id
+              ? dispatchTournamentContext
+              : dispatchLobbyContext;
+
+            dispatchFn({
+              actionType: ActionType.AddActiveGames,
+              payload: age
+                .getGameInfoList()
+                .map((g) => GameInfoResponseToActiveGame(g)),
+            });
+            break;
+          }
+
+          case MessageType.READY_FOR_TOURNAMENT_GAME: {
+            const ready = parsedMsg as ReadyForTournamentGame;
+            if (tournamentContext.metadata.id !== ready.getTournamentId()) {
+              // Ignore this message (for now -- we may actually want to display
+              // this in other contexts, like the lobby, an unrelated game, etc).
+              break;
+            }
+            if (
+              ready.getPlayerId() ===
+              `${loginState.userID}:${loginState.username}`
+            ) {
+              dispatchTournamentContext({
+                actionType: ActionType.SetTourneyStatus,
+                payload: ready.getUnready()
+                  ? TourneyStatus.ROUND_OPEN
+                  : TourneyStatus.ROUND_READY,
+              });
+            } else {
+              // The opponent sent this message.
+              dispatchTournamentContext({
+                actionType: ActionType.SetTourneyStatus,
+                payload: ready.getUnready()
+                  ? TourneyStatus.ROUND_OPEN
+                  : TourneyStatus.ROUND_OPPONENT_WAITING,
+              });
+            }
+            break;
+          }
+
+          case MessageType.TOURNAMENT_FULL_DIVISIONS_MESSAGE: {
+            const tfdm = parsedMsg as FullTournamentDivisions;
+            dispatchTournamentContext({
+              actionType: ActionType.SetDivisionsData,
+              payload: {
+                fullDivisions: tfdm,
+                loginState,
+              },
+            });
+
             break;
           }
         }
@@ -626,11 +705,11 @@ export const useOnSocketMsg = () => {
     },
     [
       addChat,
-      addChats,
       addPresences,
       challengeResultEvent,
       dispatchGameContext,
       dispatchLobbyContext,
+      dispatchTournamentContext,
       excludedPlayers,
       gameContext,
       loginState,
@@ -639,6 +718,7 @@ export const useOnSocketMsg = () => {
       setPresence,
       setRematchRequest,
       stopClock,
+      tournamentContext,
       isExamining,
     ]
   );

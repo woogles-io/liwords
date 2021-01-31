@@ -17,11 +17,11 @@ func NewAutocompleteService(u Store) *AutocompleteService {
 }
 
 func (as *AutocompleteService) GetCompletion(ctx context.Context, req *pb.UsernameSearchRequest) (*pb.UsernameSearchResponse, error) {
-	usernames, err := as.userStore.UsernamesByPrefix(ctx, req.Prefix)
+	users, err := as.userStore.UsersByPrefix(ctx, req.Prefix)
 	if err != nil {
 		return nil, twirp.InternalErrorWith(err)
 	}
 	return &pb.UsernameSearchResponse{
-		Usernames: usernames,
+		Users: users,
 	}, nil
 }

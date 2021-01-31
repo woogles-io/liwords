@@ -1,16 +1,18 @@
 import React, { useCallback, useEffect } from 'react';
 import { Link, useParams, useLocation } from 'react-router-dom';
-import { notification, Card, Table, Row, Col } from 'antd';
+import { notification, Card, Table, Row, Col, Select, Switch } from 'antd';
 import axios, { AxiosError } from 'axios';
 import { useMountedState } from '../utils/mounted';
 import { TopBar } from '../topbar/topbar';
-import { Switch } from 'antd';
+
 import './profile.scss';
 import { toAPIUrl } from '../api/api';
+import { BioCard } from './bio';
 import { useLoginStateStoreContext } from '../store/store';
 import { GameMetadata, RecentGamesResponse } from '../gameroom/game_info';
 import { GamesHistoryCard } from './games_history';
 import { UsernameWithContext } from '../shared/usernameWithContext';
+import { preferredSortOrder, setPreferredSortOrder } from '../store/constants';
 
 type ProfileResponse = {
   first_name: string;
@@ -45,6 +47,11 @@ type Rating = {
   v: number;
 };
 
+type user = {
+  username: string;
+  uuid: string;
+};
+
 type ProfileRatings = { [variant: string]: Rating };
 
 type RatingsProps = {
@@ -67,6 +74,12 @@ type StatsProps = {
 
 const variantToName = (variant: string) => {
   const arr = variant.split('.');
+  let lex = arr[0];
+  if (lex.startsWith('NWL')) {
+    lex = 'NWL';
+  } else if (lex.startsWith('CSW')) {
+    lex = 'CSW';
+  }
   // get rid of the middle element (classic) for now
   const timectrl = {
     ultrablitz: 'Ultra-Blitz!',
@@ -75,7 +88,7 @@ const variantToName = (variant: string) => {
     regular: 'Regular',
   }[arr[2] as 'ultrablitz' | 'blitz' | 'rapid' | 'regular']; // cmon typescript
 
-  return `${arr[0]} (${timectrl})`;
+  return `${lex} (${timectrl})`;
 };
 
 const RatingsCard = React.memo((props: RatingsProps) => {
@@ -85,7 +98,6 @@ const RatingsCard = React.memo((props: RatingsProps) => {
     name: variantToName(v),
     rating: props.ratings[v].r.toFixed(2),
     deviation: props.ratings[v].rd.toFixed(2),
-    volatility: props.ratings[v].v.toFixed(2),
   }));
 
   const columns = [
@@ -103,11 +115,6 @@ const RatingsCard = React.memo((props: RatingsProps) => {
       title: 'Deviation',
       dataIndex: 'deviation',
       key: 'deviation',
-    },
-    {
-      title: 'Volatility',
-      dataIndex: 'volatility',
-      key: 'volatility',
     },
   ];
 
@@ -201,6 +208,29 @@ type Props = {};
 
 const gamesPageSize = 10;
 
+const KNOWN_TILE_ORDERS = [
+  {
+    name: 'Alphabetical',
+    value: '',
+  },
+  {
+    name: 'Vowels first',
+    value: 'AEIOU',
+  },
+  {
+    name: 'Consonants first',
+    value: 'BCDFGHJKLMNPQRSTVWXYZ',
+  },
+  {
+    name: 'Descending points',
+    value: 'QZJXKFHVWYBCMPDG',
+  },
+  {
+    name: 'Blanks first',
+    value: '?',
+  },
+];
+
 export const UserProfile = React.memo((props: Props) => {
   const { useState } = useMountedState();
 
@@ -210,13 +240,24 @@ export const UserProfile = React.memo((props: Props) => {
   const [ratings, setRatings] = useState({});
   const [stats, setStats] = useState({});
   const [userID, setUserID] = useState('');
+  const [bio, setBio] = useState('');
+  const [bioLoaded, setBioLoaded] = useState(false);
   const [darkMode, setDarkMode] = useState(
     localStorage?.getItem('darkMode') === 'true'
   );
+  const [enableAllLexicons, setEnableAllLexicons] = useState(
+    localStorage?.getItem('enableAllLexicons') === 'true'
+  );
+  const [tileOrder, setTileOrder] = useState(preferredSortOrder ?? '');
+  const handleTileOrderChange = useCallback((value) => {
+    setTileOrder(value);
+    setPreferredSortOrder(value);
+  }, []);
   const [recentGames, setRecentGames] = useState<Array<GameMetadata>>([]);
   const { loginState } = useLoginStateStoreContext();
   const { username: viewer } = loginState;
   const [recentGamesOffset, setRecentGamesOffset] = useState(0);
+  const [blockedUsers, setBlockedUsers] = useState<Array<user>>([]);
   useEffect(() => {
     axios
       .post<ProfileResponse>(
@@ -229,10 +270,23 @@ export const UserProfile = React.memo((props: Props) => {
         setRatings(JSON.parse(resp.data.ratings_json).Data);
         setStats(JSON.parse(resp.data.stats_json).Data);
         setUserID(resp.data.user_id);
+        setBio(resp.data.about);
+        setBioLoaded(true);
       })
       .catch(errorCatcher);
   }, [username, location.pathname]);
-
+  const refreshBlocks = useCallback(() => {
+    axios
+      .post(
+        toAPIUrl('user_service.SocializeService', 'GetBlocks'),
+        {},
+        { withCredentials: true }
+      )
+      .then((res) => {
+        setBlockedUsers(res.data.users);
+      });
+  }, []);
+  useEffect(refreshBlocks, [refreshBlocks]);
   useEffect(() => {
     axios
       .post<RecentGamesResponse>(
@@ -260,6 +314,15 @@ export const UserProfile = React.memo((props: Props) => {
     }
     setDarkMode((x) => !x);
   }, []);
+  const toggleEnableAllLexicons = useCallback(() => {
+    const wantEnableAllLexicons =
+      localStorage?.getItem('enableAllLexicons') !== 'true';
+    localStorage.setItem(
+      'enableAllLexicons',
+      wantEnableAllLexicons ? 'true' : 'false'
+    );
+    setEnableAllLexicons((x) => !x);
+  }, []);
   const fetchPrev = useCallback(() => {
     setRecentGamesOffset((r) => Math.max(r - gamesPageSize, 0));
   }, []);
@@ -281,6 +344,7 @@ export const UserProfile = React.memo((props: Props) => {
             {viewer !== username ? (
               <UsernameWithContext
                 omitProfileLink
+                omitSendMessage
                 username={username}
                 userID={userID}
               />
@@ -290,6 +354,28 @@ export const UserProfile = React.memo((props: Props) => {
           </h3>
           {viewer === username ? (
             <div>
+              <label>
+                Tile order &nbsp;{' '}
+                <Select
+                  defaultValue={tileOrder}
+                  onChange={handleTileOrderChange}
+                >
+                  {KNOWN_TILE_ORDERS.map(({ name, value }) => (
+                    <Select.Option value={value} key={value}>
+                      {name}
+                    </Select.Option>
+                  ))}
+                  {KNOWN_TILE_ORDERS.some(
+                    ({ value }) => value === tileOrder
+                  ) || <Select.Option value={tileOrder}>Custom</Select.Option>}
+                </Select>
+              </label>{' '}
+              &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <label>Enable all lexicons</label>
+              <Switch
+                defaultChecked={enableAllLexicons}
+                onChange={toggleEnableAllLexicons}
+                className="dark-toggle"
+              />
               <label>Enable dark mode</label>
               <Switch
                 defaultChecked={darkMode}
@@ -300,6 +386,7 @@ export const UserProfile = React.memo((props: Props) => {
             </div>
           ) : null}
         </header>
+        <BioCard bio={bio} bioLoaded={bioLoaded} />
         <RatingsCard ratings={ratings} />
         <GamesHistoryCard
           games={recentGames}
@@ -309,6 +396,21 @@ export const UserProfile = React.memo((props: Props) => {
           fetchNext={recentGames.length < gamesPageSize ? undefined : fetchNext}
         />
         <StatsCard stats={stats} />
+
+        {viewer === username && blockedUsers.length > 0 && (
+          <Card title="Blocked Users" className="blocked-users">
+            {blockedUsers.map((u) => (
+              <UsernameWithContext
+                key={u.uuid}
+                blockCallback={refreshBlocks}
+                omitProfileLink
+                omitSendMessage
+                username={u.username}
+                userID={u.uuid}
+              />
+            ))}
+          </Card>
+        )}
       </div>
     </>
   );
