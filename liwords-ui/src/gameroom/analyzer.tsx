@@ -9,6 +9,7 @@ import { Button, Card } from 'antd';
 import { BulbOutlined } from '@ant-design/icons';
 import {
   useExaminableGameContextStoreContext,
+  useExamineStoreContext,
   useTentativeTileContext,
 } from '../store/store';
 import { getMacondo } from '../wasm/loader';
@@ -233,6 +234,7 @@ export const Analyzer = React.memo((props: AnalyzerProps) => {
   const {
     gameContext: examinableGameContext,
   } = useExaminableGameContextStoreContext();
+  const { addHandleExaminer, removeHandleExaminer } = useExamineStoreContext();
   const {
     setDisplayedRack,
     setPlacedTiles,
@@ -300,6 +302,14 @@ export const Analyzer = React.memo((props: AnalyzerProps) => {
     requestAnalysis,
     setShowMovesForTurn,
   ]);
+
+  // Let ExaminableStore activate this.
+  useEffect(() => {
+    addHandleExaminer(handleExaminer);
+    return () => {
+      removeHandleExaminer(handleExaminer);
+    };
+  }, [addHandleExaminer, removeHandleExaminer, handleExaminer]);
 
   // When at the last move, examineStoreContext.examinedTurn === Infinity.
   // To also detect new moves, we use examinableGameContext.turns.length.
