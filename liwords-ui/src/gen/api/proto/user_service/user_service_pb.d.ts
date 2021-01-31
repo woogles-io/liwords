@@ -608,6 +608,48 @@ export namespace UpdateProfileResponse {
   }
 }
 
+export class UpdateAvatarRequest extends jspb.Message {
+  getJpgData(): Uint8Array | string;
+  getJpgData_asU8(): Uint8Array;
+  getJpgData_asB64(): string;
+  setJpgData(value: Uint8Array | string): void;
+
+  serializeBinary(): Uint8Array;
+  toObject(includeInstance?: boolean): UpdateAvatarRequest.AsObject;
+  static toObject(includeInstance: boolean, msg: UpdateAvatarRequest): UpdateAvatarRequest.AsObject;
+  static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+  static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+  static serializeBinaryToWriter(message: UpdateAvatarRequest, writer: jspb.BinaryWriter): void;
+  static deserializeBinary(bytes: Uint8Array): UpdateAvatarRequest;
+  static deserializeBinaryFromReader(message: UpdateAvatarRequest, reader: jspb.BinaryReader): UpdateAvatarRequest;
+}
+
+export namespace UpdateAvatarRequest {
+  export type AsObject = {
+    jpgData: Uint8Array | string,
+  }
+}
+
+export class UpdateAvatarResponse extends jspb.Message {
+  getAvatarUrl(): string;
+  setAvatarUrl(value: string): void;
+
+  serializeBinary(): Uint8Array;
+  toObject(includeInstance?: boolean): UpdateAvatarResponse.AsObject;
+  static toObject(includeInstance: boolean, msg: UpdateAvatarResponse): UpdateAvatarResponse.AsObject;
+  static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+  static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+  static serializeBinaryToWriter(message: UpdateAvatarResponse, writer: jspb.BinaryWriter): void;
+  static deserializeBinary(bytes: Uint8Array): UpdateAvatarResponse;
+  static deserializeBinaryFromReader(message: UpdateAvatarResponse, reader: jspb.BinaryReader): UpdateAvatarResponse;
+}
+
+export namespace UpdateAvatarResponse {
+  export type AsObject = {
+    avatarUrl: string,
+  }
+}
+
 export class UsernameSearchRequest extends jspb.Message {
   getPrefix(): string;
   setPrefix(value: string): void;

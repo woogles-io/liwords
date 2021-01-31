@@ -3,6 +3,7 @@ package user
 import (
 	"context"
 	"encoding/json"
+	"os"
 
 	"github.com/domino14/liwords/pkg/apiserver"
 	"github.com/rs/zerolog/log"
@@ -122,5 +123,35 @@ func (ps *ProfileService) UpdateProfile(ctx context.Context, r *pb.UpdateProfile
 	}
 
 	return &pb.UpdateProfileResponse{
+	}, nil
+}
+
+func (ps *ProfileService) UpdateAvatar(ctx context.Context, r *pb.UpdateAvatarRequest) (*pb.UpdateAvatarResponse, error) {
+	// This view requires authentication.
+	// sess, err := apiserver.GetSession(ctx)
+	// if err != nil {
+	// 	return nil, err
+	// }
+
+	// user, err := ps.userStore.Get(ctx, sess.Username)
+	// if err != nil {
+	// 	log.Err(err).Msg("getting-user")
+	// 	// The username should maybe not be in the session? We can't change
+	// 	// usernames easily.
+	// 	return nil, twirp.InternalErrorWith(err)
+	// }
+
+	filename := "myfile.jpg"
+	f, err := os.Create(filename)
+	if err != nil {
+		return nil, twirp.InternalErrorWith(err)
+	}
+	_, err2 := f.WriteString(string(r.JpgData))
+	if err2 != nil {
+		return nil, twirp.InternalErrorWith(err2)
+	}
+
+	return &pb.UpdateAvatarResponse{
+		AvatarUrl: "file:///Users/slipkin/Projects/woogles/liwords/" + filename,
 	}, nil
 }

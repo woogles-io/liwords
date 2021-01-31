@@ -27,22 +27,6 @@ export const PlayerAvatar = (props: AvatarProps) => {
     setAvatarFile(file);
   };     
   
-  const onAvatarUpdate = () => { 
-    const formData = new FormData(); 
-    formData.append( 
-      "avatarFile", 
-      avatarFile,
-      avatarFile.name 
-    ); 
-   
-    // Details of the updated file 
-    console.log(avatarFile); 
-   
-    // Request made to the backend api 
-    // Send formData object 
-    //axios.post("api/uploadfile", formData); 
-  }; 
-  
   var okButtonDisabled = (avatarFile == null || avatarFile.name.length === 0);
   const updateModal = 
       <Modal
@@ -55,33 +39,38 @@ export const PlayerAvatar = (props: AvatarProps) => {
           setUpdateModalVisible(false);
         }}
         onOk={() => {
-          axios
-            .post(
-              toAPIUrl('user_service.ProfileService', 'UpdateProfile'),
-              {
-                about: 'testing'
-              },
-              {
-                withCredentials: true,
-              }
-            )
-            .then(() => {
-              notification.info({
-                message: 'Success',
-                description: 'Your avatar was updated.',
+          var reader = new FileReader();
+          reader.onload = function () {
+            axios
+              .post(
+                toAPIUrl('user_service.ProfileService', 'UpdateAvatar'),
+                {
+                  jpg_data: btoa(String(reader.result)),
+                },
+                {
+                  withCredentials: true,
+                }
+              )
+              .then((resp) => {
+                notification.info({
+                  message: 'Success',
+                  description: 'Your avatar was updated.',
+                });
+                setUpdateModalVisible(false);              
+                console.log(resp.data.avatar_url);
+              })
+              .catch((e) => {
+                if (e.response) {
+                  // From Twirp
+                  console.log(e);
+                  setErr(e.response.data.msg);
+                } else {
+                  setErr('unknown error, see console');
+                  console.log(e);
+                }
               });
-              setUpdateModalVisible(false);              
-            })
-            .catch((e) => {
-              if (e.response) {
-                // From Twirp
-                console.log(e);
-                setErr(e.response.data.msg);
-              } else {
-                setErr('unknown error, see console');
-                console.log(e);
-              }
-            });
+          }
+          reader.readAsBinaryString(avatarFile);
         }}
       >
         <div> 

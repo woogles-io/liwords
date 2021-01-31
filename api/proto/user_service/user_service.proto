@@ -137,12 +137,21 @@ message UpdateProfileRequest {
 
 message UpdateProfileResponse {}
 
+message UpdateAvatarRequest {
+  bytes jpg_data = 1;
+}
+
+message UpdateAvatarResponse {
+  string avatar_url = 1;
+}
+
 service ProfileService {
   rpc GetRatings(RatingsRequest) returns(RatingsResponse);
   rpc GetStats(StatsRequest) returns(StatsResponse);
   rpc GetProfile(ProfileRequest) returns(ProfileResponse);
   rpc UpdateProfile(UpdateProfileRequest) returns(UpdateProfileResponse);
   rpc GetUsersGameInfo(UsersGameInfoRequest) returns(UsersGameInfoResponse);
+  rpc UpdateAvatar(UpdateAvatarRequest) returns(UpdateAvatarResponse);
 }
 
 // Autocomplete
