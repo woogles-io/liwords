@@ -19,6 +19,7 @@ type Store interface {
 	New(ctx context.Context, user *entity.User) error
 	SetPassword(ctx context.Context, uuid string, hashpass string) error
 	SetAbout(ctx context.Context, uuid string, about string) error
+	SetAvatarUrl(ctx context.Context, uuid string, avatarUrl string) error
 	SetRatings(ctx context.Context, p0uuid string, p1uuid string, variant entity.VariantKey,
 		p1Rating entity.SingleRating, p2Rating entity.SingleRating) error
 	SetStats(ctx context.Context, p0uuid string, p1uuid string, variant entity.VariantKey,

@@ -128,30 +128,40 @@ func (ps *ProfileService) UpdateProfile(ctx context.Context, r *pb.UpdateProfile
 
 func (ps *ProfileService) UpdateAvatar(ctx context.Context, r *pb.UpdateAvatarRequest) (*pb.UpdateAvatarResponse, error) {
 	// This view requires authentication.
-	// sess, err := apiserver.GetSession(ctx)
-	// if err != nil {
-	// 	return nil, err
-	// }
-
-	// user, err := ps.userStore.Get(ctx, sess.Username)
-	// if err != nil {
-	// 	log.Err(err).Msg("getting-user")
-	// 	// The username should maybe not be in the session? We can't change
-	// 	// usernames easily.
-	// 	return nil, twirp.InternalErrorWith(err)
-	// }
-
-	filename := "myfile.jpg"
-	f, err := os.Create(filename)
+	sess, err := apiserver.GetSession(ctx)
 	if err != nil {
+		return nil, err
+	}
+
+	user, err := ps.userStore.Get(ctx, sess.Username)
+	if err != nil {
+		log.Err(err).Msg("getting-user")
+		// The username should maybe not be in the session? We can't change
+		// usernames easily.
 		return nil, twirp.InternalErrorWith(err)
 	}
-	_, err2 := f.WriteString(string(r.JpgData))
-	if err2 != nil {
-		return nil, twirp.InternalErrorWith(err2)
+
+	// Store the file with a name reflective of the user's UUID
+	filename := user.UUID + ".jpg"
+	avatarUrl := "file:///Users/slipkin/Projects/woogles/liwords/" + filename
+
+	f, createErr := os.Create(filename)
+	if createErr != nil {
+		return nil, twirp.InternalErrorWith(createErr)
+	}
+
+	_, writeErr := f.WriteString(string(r.JpgData))
+	if writeErr != nil {
+		return nil, twirp.InternalErrorWith(writeErr)
+	}
+
+	// Remember the filename in the database
+	updateErr := ps.userStore.SetAvatarUrl(ctx, user.UUID, avatarUrl)
+	if updateErr != nil {
+		return nil, twirp.InternalErrorWith(updateErr)
 	}
 
 	return &pb.UpdateAvatarResponse{
-		AvatarUrl: "file:///Users/slipkin/Projects/woogles/liwords/" + filename,
+		AvatarUrl: avatarUrl,
 	}, nil
 }
