@@ -2,10 +2,11 @@ package user
 
 import (
 	"context"
+	"errors"
 	"encoding/json"
-	"os"
 
 	"github.com/domino14/liwords/pkg/apiserver"
+	"github.com/domino14/liwords/pkg/uploader"
 	"github.com/rs/zerolog/log"
 	"github.com/twitchtv/twirp"
 
@@ -14,10 +15,11 @@ import (
 
 type ProfileService struct {
 	userStore Store
+	avatarService uploader.UploadService
 }
 
-func NewProfileService(u Store) *ProfileService {
-	return &ProfileService{userStore: u}
+func NewProfileService(u Store, us uploader.UploadService) *ProfileService {
+	return &ProfileService{userStore: u, avatarService: us}
 }
 
 func (ps *ProfileService) GetRatings(ctx context.Context, r *pb.RatingsRequest) (*pb.RatingsResponse, error) {
@@ -141,21 +143,17 @@ func (ps *ProfileService) UpdateAvatar(ctx context.Context, r *pb.UpdateAvatarRe
 		return nil, twirp.InternalErrorWith(err)
 	}
 
-	// Store the file with a name reflective of the user's UUID
-	filename := user.UUID + ".jpg"
-	avatarUrl := "file:///Users/slipkin/Projects/woogles/liwords/" + filename
-
-	f, createErr := os.Create(filename)
-	if createErr != nil {
-		return nil, twirp.InternalErrorWith(createErr)
+	avatarService := ps.avatarService
+	if avatarService == nil {
+	   	return nil, twirp.InternalErrorWith(errors.New("No avatar service available"))
 	}
 
-	_, writeErr := f.WriteString(string(r.JpgData))
-	if writeErr != nil {
-		return nil, twirp.InternalErrorWith(writeErr)
+	avatarUrl, err := avatarService.Upload(ctx, user.UUID, r.JpgData)
+	if err != nil {
+		return nil, twirp.InternalErrorWith(err)
 	}
 
-	// Remember the filename in the database
+	// Remember the URL in the database
 	updateErr := ps.userStore.SetAvatarUrl(ctx, user.UUID, avatarUrl)
 	if updateErr != nil {
 		return nil, twirp.InternalErrorWith(updateErr)

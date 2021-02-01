@@ -38,6 +38,8 @@ import (
 	tournamentstore "github.com/domino14/liwords/pkg/stores/tournament"
 	"github.com/domino14/liwords/pkg/stores/user"
 	pkguser "github.com/domino14/liwords/pkg/user"
+	"github.com/domino14/liwords/pkg/stores/uploader"
+	pkguploader "github.com/domino14/liwords/pkg/uploader"
 	configservice "github.com/domino14/liwords/rpc/api/proto/config_service"
 	gameservice "github.com/domino14/liwords/rpc/api/proto/game_service"
 	tournamentservice "github.com/domino14/liwords/rpc/api/proto/tournament_service"
@@ -144,7 +146,7 @@ func main() {
 		cfg.SecretKey, cfg.MailgunKey)
 	registrationService := registration.NewRegistrationService(stores.UserStore)
 	gameService := gameplay.NewGameService(stores.UserStore, stores.GameStore)
-	profileService := pkguser.NewProfileService(stores.UserStore)
+	profileService := pkguser.NewProfileService(stores.UserStore, pkguploader.NewXTUploadService())
 	autocompleteService := pkguser.NewAutocompleteService(stores.UserStore)
 	socializeService := pkguser.NewSocializeService(stores.UserStore, stores.ChatStore)
 	configService := config.NewConfigService(stores.ConfigStore, stores.UserStore)

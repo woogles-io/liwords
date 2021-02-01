@@ -74,3 +74,4 @@ type ChatStore interface {
 	OldChats(ctx context.Context, channel string, n int) ([]*pb.ChatMessage, error)
 	LatestChannels(ctx context.Context, count, offset int, uid, tid string) (*upb.ActiveChatChannels, error)
 }
+
