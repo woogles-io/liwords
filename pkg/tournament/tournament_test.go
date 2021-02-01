@@ -246,29 +246,36 @@ func TestTournamentSingleDivision(t *testing.T) {
 	is.True(err != nil)
 	is.NoErr(equalTournamentPersons(directors, ty.Directors))
 
-	// Add directors
-	err = tournament.AddDirectors(ctx, tstore, us, ty.UUID, makeTournamentPersons(map[string]int32{"Evans": 4, "Oof": 2}))
+	// Remove Vince and Jennifer
+	err = tournament.RemoveDirectors(ctx, tstore, us, ty.UUID, makeTournamentPersons(map[string]int32{"Vince": -1, "Jennifer": -1}))
 	is.NoErr(err)
-	is.NoErr(equalTournamentPersons(makeTournamentPersons(map[string]int32{"Kieran:Kieran": 0, "Vince:Vince": 2, "Jennifer:Jennifer": 2, "Evans:Evans": 4, "Oof:Oof": 2}), ty.Directors))
+	is.NoErr(equalTournamentPersons(makeTournamentPersons(map[string]int32{"Kieran:Kieran": 0}), ty.Directors))
+
+	// Add directors
+	err = tournament.AddDirectors(ctx, tstore, us, ty.UUID, makeTournamentPersons(map[string]int32{"Evans": 4, "Oof": 2, "Vince": 2, "Guy": 10, "Harry": 11, "Jennifer": 2}))
+	is.NoErr(err)
+	is.NoErr(equalTournamentPersons(makeTournamentPersons(map[string]int32{"Kieran:Kieran": 0, "Vince:Vince": 2, "Jennifer:Jennifer": 2, "Evans:Evans": 4, "Oof:Oof": 2, "Guy:Guy": 10, "Harry:Harry": 11}), ty.Directors))
 
 	// Attempt to remove directors that don't exist
 	err = tournament.RemoveDirectors(ctx, tstore, us, ty.UUID, makeTournamentPersons(map[string]int32{"Evans": -1, "Zoof": 2}))
-	is.True(err.Error() == "person (Zoof, 0) does not exist")
-	is.NoErr(equalTournamentPersons(makeTournamentPersons(map[string]int32{"Kieran:Kieran": 0, "Vince:Vince": 2, "Jennifer:Jennifer": 2, "Evans:Evans": 4, "Oof:Oof": 2}), ty.Directors))
+	is.True(err.Error() == "person Zoof:Zoof does not exist")
+	fmt.Println(ty.Directors.Persons)
+	is.NoErr(equalTournamentPersons(makeTournamentPersons(map[string]int32{"Kieran:Kieran": 0, "Vince:Vince": 2, "Jennifer:Jennifer": 2, "Evans:Evans": 4, "Oof:Oof": 2, "Guy:Guy": 10, "Harry:Harry": 11}), ty.Directors))
 
 	// Attempt to remove the executive director
 	err = tournament.RemoveDirectors(ctx, tstore, us, ty.UUID, makeTournamentPersons(map[string]int32{"Evans": -1, "Kieran": 0}))
-	is.True(err.Error() == "cannot remove the executive director")
-	is.NoErr(equalTournamentPersons(makeTournamentPersons(map[string]int32{"Kieran:Kieran": 0, "Vince:Vince": 2, "Jennifer:Jennifer": 2, "Evans:Evans": 4, "Oof:Oof": 2}), ty.Directors))
+	fmt.Println(err.Error())
+	is.True(err.Error() == "cannot remove the executive director: Kieran:Kieran")
+	is.NoErr(equalTournamentPersons(makeTournamentPersons(map[string]int32{"Kieran:Kieran": 0, "Vince:Vince": 2, "Jennifer:Jennifer": 2, "Evans:Evans": 4, "Oof:Oof": 2, "Guy:Guy": 10, "Harry:Harry": 11}), ty.Directors))
 
 	// Remove directors
-	err = tournament.RemoveDirectors(ctx, tstore, us, ty.UUID, makeTournamentPersons(map[string]int32{"Evans": -1, "Oof": 2}))
+	err = tournament.RemoveDirectors(ctx, tstore, us, ty.UUID, makeTournamentPersons(map[string]int32{"Evans": -1, "Oof": 2, "Guy": -5, "Harry": 300}))
 	is.NoErr(err)
 	is.NoErr(equalTournamentPersons(makeTournamentPersons(map[string]int32{"Kieran:Kieran": 0, "Vince:Vince": 2, "Jennifer:Jennifer": 2}), ty.Directors))
 
 	// Attempt to remove the executive director
 	err = tournament.RemoveDirectors(ctx, tstore, us, ty.UUID, makeTournamentPersons(map[string]int32{"Vince": -1, "Kieran": 0}))
-	is.True(err.Error() == "cannot remove the executive director")
+	is.True(err.Error() == "cannot remove the executive director: Kieran:Kieran")
 	is.NoErr(equalTournamentPersons(makeTournamentPersons(map[string]int32{"Kieran:Kieran": 0, "Vince:Vince": 2, "Jennifer:Jennifer": 2}), ty.Directors))
 
 	// Same thing for players.
@@ -297,7 +304,7 @@ func TestTournamentSingleDivision(t *testing.T) {
 
 	// Remove players that don't exist
 	err = tournament.RemovePlayers(ctx, tstore, us, ty.UUID, divOneName, makeTournamentPersons(map[string]int32{"Evans": -1}))
-	is.True(err.Error() == "person (Evans, 0) does not exist")
+	is.True(err.Error() == "player Evans:Evans does not exist in classic division")
 	XHRResponse, err = div1.DivisionManager.GetXHRResponse()
 	is.NoErr(err)
 	is.NoErr(equalTournamentPersons(makeTournamentPersons(map[string]int32{"Will:Will": 1000, "Josh:Josh": 3000, "Conrad:Conrad": 2200, "Jesse:Jesse": 2100, "Noah:Noah": 4, "Bob:Bob": 2}), XHRResponse.Players))
@@ -332,11 +339,17 @@ func TestTournamentSingleDivision(t *testing.T) {
 		makeControls())
 	is.True(err.Error() == "division Division 1 another one does not exist")
 
+	// Set division round controls
+	err = tournament.SetRoundControls(ctx, tstore, ty.UUID, divOneName, makeRoundControls())
+	is.NoErr(err)
 	// Tournament should not be started
+
 	isStarted, err := tournament.IsStarted(ctx, tstore, ty.UUID)
 	is.NoErr(err)
 	is.True(!isStarted)
 
+	XHRResponse, err = div1.DivisionManager.GetXHRResponse()
+	fmt.Println(XHRResponse.PairingMap)
 	// Set pairing should work before the tournament starts
 	pairings := []*pb.TournamentPairingRequest{&pb.TournamentPairingRequest{PlayerOneId: "Will:Will", PlayerTwoId: "Jesse:Jesse", Round: 0}}
 	err = tournament.SetPairings(ctx, tstore, ty.UUID, divOneName, pairings)
@@ -350,7 +363,8 @@ func TestTournamentSingleDivision(t *testing.T) {
 	is.NoErr(equalTournamentPersons(makeTournamentPersons(map[string]int32{}), XHRResponse.Players))
 
 	err = tournament.SetPairings(ctx, tstore, ty.UUID, divOneName, pairings)
-	is.True(err.Error() == "player does not exist in the division: Will:Will")
+	fmt.Println(err.Error())
+	is.True(err.Error() == "playerOne does not exist in the division: >Will:Will<")
 
 	err = tournament.SetResult(ctx,
 		tstore,
@@ -378,6 +392,7 @@ func TestTournamentSingleDivision(t *testing.T) {
 	is.True(err.Error() == "cannot check if tournament is finished before the tournament has started")
 
 	// Add players back in
+	players = makeTournamentPersons(map[string]int32{"Will": 1000, "Josh": 3000, "Conrad": 2200, "Jesse": 2100})
 	err = tournament.AddPlayers(ctx, tstore, us, ty.UUID, divOneName, players)
 	is.NoErr(err)
 	XHRResponse, err = div1.DivisionManager.GetXHRResponse()
@@ -395,7 +410,7 @@ func TestTournamentSingleDivision(t *testing.T) {
 
 	// Attempt to remove a division after the tournament has started
 	err = tournament.RemoveDivision(ctx, tstore, ty.UUID, divOneName)
-	is.True(err.Error() == "cannot remove division after the tournament has started")
+	is.True(err.Error() == "cannot remove division "+divOneName+" after the tournament has started")
 
 	// Trying setting the controls after the tournament has started, this should fail
 	err = tournament.SetDivisionControls(ctx,
@@ -403,7 +418,7 @@ func TestTournamentSingleDivision(t *testing.T) {
 		ty.UUID,
 		divOneName,
 		makeControls())
-	is.True(err.Error() == "cannot change tournament controls after it has started")
+	is.True(err.Error() == "cannot set tournament controls after it has started")
 
 	// Tournament pairings and results are tested in the
 	// entity package
@@ -516,6 +531,12 @@ func TestTournamentMultipleDivisions(t *testing.T) {
 		ty.UUID,
 		divTwoName,
 		makeControls())
+	is.NoErr(err)
+
+	err = tournament.SetRoundControls(ctx, tstore, ty.UUID, divOneName, makeRoundControls())
+	is.NoErr(err)
+
+	err = tournament.SetRoundControls(ctx, tstore, ty.UUID, divTwoName, makeRoundControls())
 	is.NoErr(err)
 
 	div1 := ty.Divisions[divOneName]
@@ -645,12 +666,19 @@ func equalTournamentPersons(tp1 *realtime.TournamentPersons, tp2 *realtime.Tourn
 	tp2String := tournamentPersonsToString(tp2)
 
 	if len(tp1.Persons) != len(tp2.Persons) {
-		return fmt.Errorf("tournamentPersons structs are not equal: %s, %s", tp1String, tp2String)
+		return fmt.Errorf("tournamentPersons structs are not equal:\n%s\n%s", tp1String, tp2String)
 	}
 
-	for k, v1 := range tp1.Persons {
-		if v1 != tp2.Persons[k] {
-			return fmt.Errorf("tournamentPersons structs are not equal: %s, %s", tp1String, tp2String)
+	for _, v1 := range tp1.Persons {
+		personPresent := false
+		for _, v2 := range tp2.Persons {
+			if v1.Id == v2.Id && v1.Rating == v2.Rating {
+				personPresent = true
+				break
+			}
+		}
+		if !personPresent {
+			return fmt.Errorf("tournamentPersons structs are not equal:\n%s\n%s", tp1String, tp2String)
 		}
 	}
 	return nil

@@ -286,8 +286,8 @@ func TestClassicDivisionKingOfTheHill(t *testing.T) {
 
 	player1 := defaultPlayers.Persons[0].Id
 	player2 := defaultPlayers.Persons[1].Id
-	player3 := defaultPlayers.Persons[3].Id
-	player4 := defaultPlayers.Persons[2].Id
+	player3 := defaultPlayers.Persons[2].Id
+	player4 := defaultPlayers.Persons[3].Id
 
 	tournamentIsFinished, err := tc.IsFinished()
 	is.NoErr(err)
@@ -1849,7 +1849,7 @@ func TestClassicDivisionRemovePlayers(t *testing.T) {
 	standings, err = tc.GetStandings(11)
 	is.NoErr(err)
 
-	expectedstandings = []*realtime.PlayerStanding{&realtime.PlayerStanding{PlayerId: player3, Wins: 5, Losses: 7, Draws: 0, Spread: -1050}}// &realtime.PlayerStanding{PlayerId: player2, Wins: 8, Losses: 3, Draws: 1, Spread: 1300},
+	expectedstandings = []*realtime.PlayerStanding{&realtime.PlayerStanding{PlayerId: player3, Wins: 5, Losses: 7, Draws: 0, Spread: -1050}} // &realtime.PlayerStanding{PlayerId: player2, Wins: 8, Losses: 3, Draws: 1, Spread: 1300},
 	// &realtime.PlayerStanding{PlayerId: player4, Wins: 3, Losses: 9, Draws: 0, Spread: -700},
 	// &realtime.PlayerStanding{PlayerId: player1, Wins: 2, Losses: 9, Draws: 1, Spread: -50},
 
@@ -2389,7 +2389,7 @@ func compactNewClassicDivision(players *realtime.TournamentPersons, roundControl
 		return nil, err
 	}
 
-	_, err = t.SetRoundControls(roundControls)
+	_, _, err = t.SetRoundControls(roundControls)
 	if err != nil {
 		return nil, err
 	}

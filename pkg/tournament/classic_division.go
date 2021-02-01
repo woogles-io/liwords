@@ -45,17 +45,17 @@ func (t *ClassicDivision) SetDivisionControls(divisionControls *realtime.Divisio
 	return t.DivisionControls, nil
 }
 
-func (t *ClassicDivision) SetRoundControls(roundControls []*realtime.RoundControl) (map[int][]*realtime.Pairing, error) {
+func (t *ClassicDivision) SetRoundControls(roundControls []*realtime.RoundControl) (map[int][]*realtime.Pairing, []*realtime.RoundControl, error) {
 
 	numberOfRounds := len(roundControls)
 	numberOfPlayers := len(t.Players.Persons)
 
 	if numberOfRounds <= 0 {
-		return nil, fmt.Errorf("cannot set round controls with empty array")
+		return nil, nil, fmt.Errorf("cannot set round controls with empty array")
 	}
 
 	if t.CurrentRound >= 0 {
-		return nil, fmt.Errorf("cannot set all round controls after the tournament has started")
+		return nil, nil, fmt.Errorf("cannot set all round controls after the tournament has started")
 	}
 
 	isElimination := false
@@ -72,11 +72,11 @@ func (t *ClassicDivision) SetRoundControls(roundControls []*realtime.RoundContro
 	for i := 0; i < numberOfRounds; i++ {
 		control := roundControls[i]
 		if isElimination && control.PairingMethod != realtime.PairingMethod_ELIMINATION {
-			return nil, errors.New("cannot mix Elimination pairings with any other pairing method")
+			return nil, nil, errors.New("cannot mix Elimination pairings with any other pairing method")
 		} else if i != 0 {
 			if control.PairingMethod == realtime.PairingMethod_INITIAL_FONTES &&
 				roundControls[i-1].PairingMethod != realtime.PairingMethod_INITIAL_FONTES {
-				return nil, errors.New("cannot use Initial Fontes pairing when an earlier round used a different pairing method")
+				return nil, nil, errors.New("cannot use Initial Fontes pairing when an earlier round used a different pairing method")
 			} else if control.PairingMethod != realtime.PairingMethod_INITIAL_FONTES &&
 				roundControls[i-1].PairingMethod == realtime.PairingMethod_INITIAL_FONTES {
 				initialFontes = int32(i)
@@ -85,7 +85,7 @@ func (t *ClassicDivision) SetRoundControls(roundControls []*realtime.RoundContro
 	}
 
 	if initialFontes > 0 && initialFontes%2 == 0 {
-		return nil, fmt.Errorf("number of rounds paired with Initial Fontes must be odd, have %d instead", initialFontes)
+		return nil, nil, fmt.Errorf("number of rounds paired with Initial Fontes must be odd, have %d instead", initialFontes)
 	}
 
 	// For now, assume we require exactly n rounds and 2 ^ n players for an elimination tournament
@@ -93,7 +93,7 @@ func (t *ClassicDivision) SetRoundControls(roundControls []*realtime.RoundContro
 	if roundControls[0].PairingMethod == realtime.PairingMethod_ELIMINATION {
 		expectedNumberOfPlayers := 1 << numberOfRounds
 		if expectedNumberOfPlayers != numberOfPlayers {
-			return nil, fmt.Errorf("invalid number of players based on the number of rounds: "+
+			return nil, nil, fmt.Errorf("invalid number of players based on the number of rounds: "+
 				" have %d players, expected %d players based on the number of rounds which is %d",
 				numberOfPlayers, expectedNumberOfPlayers, numberOfRounds)
 		}
@@ -105,7 +105,8 @@ func (t *ClassicDivision) SetRoundControls(roundControls []*realtime.RoundContro
 	}
 	t.RoundControls = roundControls
 	t.Matrix = newPairingMatrix(len(t.RoundControls), len(t.Players.Persons))
-	return t.prepair()
+	pairingsMap, err := t.prepair()
+	return pairingsMap, t.RoundControls, err
 }
 
 func (t *ClassicDivision) prepair() (map[int][]*realtime.Pairing, error) {
@@ -136,7 +137,7 @@ func (t *ClassicDivision) prepair() (map[int][]*realtime.Pairing, error) {
 
 func (t *ClassicDivision) SetSingleRoundControls(round int, controls *realtime.RoundControl) (*realtime.RoundControl, error) {
 	if round >= len(t.Matrix) || round < 0 {
-		return nil, fmt.Errorf("round number out of range: %d", round)
+		return nil, fmt.Errorf("round number out of range (SetSingleRoundControls): %d", round)
 	}
 	controls.Round = t.RoundControls[round].Round
 	controls.InitialFontes = t.RoundControls[round].InitialFontes
@@ -433,7 +434,7 @@ func (t *ClassicDivision) SubmitResult(round int,
 
 func (t *ClassicDivision) PairRound(round int) (map[int][]*realtime.Pairing, error) {
 	if round < 0 || round >= len(t.Matrix) {
-		return nil, fmt.Errorf("round number out of range: %d", round)
+		return nil, fmt.Errorf("round number out of range (PairRound): %d", round)
 	}
 	roundPairings := t.Matrix[round]
 	pairingMethod := t.RoundControls[round].PairingMethod
@@ -677,37 +678,54 @@ func (t *ClassicDivision) RemovePlayers(persons *realtime.TournamentPersons) (ma
 		}
 	}
 
-	playersRemoved := 0
-	for i := 0; i < len(t.Players.Persons); i++ {
-		if t.Players.Persons[i].Suspended {
-			playersRemoved++
-		}
-	}
-
-	if playersRemoved+len(persons.Persons) >= len(t.Players.Persons) {
-		return nil, fmt.Errorf("cannot remove players as tournament would be empty")
-	}
-
-	for _, player := range t.Players.Persons {
-		for _, removedPlayer := range persons.Persons {
-			if player.Id == removedPlayer.Id {
-				player.Suspended = true
-			}
-		}
-	}
-
 	response := make(map[int][]*realtime.Pairing)
 
-	for i := int(t.CurrentRound + 1); i < len(t.Matrix); i++ {
-		pm := t.RoundControls[i].PairingMethod
-		if (i == int(t.CurrentRound)+1 || pair.IsStandingsIndependent(pm)) && pm != realtime.PairingMethod_MANUAL {
-			newPairings, err := t.PairRound(i)
-			if err != nil {
-				return nil, err
+	if t.CurrentRound < 0 {
+		var err error
+		t.Players, err = removeTournamentPersons(t.Players, persons, false)
+		if err != nil {
+			return nil, err
+		}
+		sort.Sort(PlayerSorter(t.Players.Persons))
+		t.PlayerIndexMap = newPlayerIndexMap(t.Players.Persons)
+		t.Matrix = newPairingMatrix(len(t.RoundControls), len(t.Players.Persons))
+		newPairings, err := t.prepair()
+		if err != nil {
+			return nil, err
+		}
+		response = combinePairingsResponses(response, newPairings)
+	} else {
+		playersRemoved := 0
+		for i := 0; i < len(t.Players.Persons); i++ {
+			if t.Players.Persons[i].Suspended {
+				playersRemoved++
 			}
-			response = combinePairingsResponses(response, newPairings)
+		}
+
+		if playersRemoved+len(persons.Persons) >= len(t.Players.Persons) {
+			return nil, fmt.Errorf("cannot remove players as tournament would be empty")
+		}
+
+		for _, player := range t.Players.Persons {
+			for _, removedPlayer := range persons.Persons {
+				if player.Id == removedPlayer.Id {
+					player.Suspended = true
+				}
+			}
+		}
+
+		for i := int(t.CurrentRound + 1); i < len(t.Matrix); i++ {
+			pm := t.RoundControls[i].PairingMethod
+			if (i == int(t.CurrentRound)+1 || pair.IsStandingsIndependent(pm)) && pm != realtime.PairingMethod_MANUAL {
+				newPairings, err := t.PairRound(i)
+				if err != nil {
+					return nil, err
+				}
+				response = combinePairingsResponses(response, newPairings)
+			}
 		}
 	}
+
 	return response, nil
 }
 
@@ -717,7 +735,7 @@ func (t *ClassicDivision) GetCurrentRound() int {
 
 func (t *ClassicDivision) GetStandings(round int) ([]*realtime.PlayerStanding, error) {
 	if round < 0 || round >= len(t.Matrix) {
-		return nil, fmt.Errorf("round number out of range: %d", round)
+		return nil, fmt.Errorf("round number out of range (GetStandings): %d", round)
 	}
 
 	var wins int32 = 0
@@ -806,7 +824,7 @@ func (t *ClassicDivision) GetStandings(round int) ([]*realtime.PlayerStanding, e
 
 func (t *ClassicDivision) IsRoundReady(round int) (bool, error) {
 	if round >= len(t.Matrix) || round < 0 {
-		return false, fmt.Errorf("round number out of range: %d", round)
+		return false, fmt.Errorf("round number out of rang (IsRoundReady): %d", round)
 	}
 	// Check that everyone is paired
 	for _, pairingKey := range t.Matrix[round] {
@@ -868,7 +886,7 @@ func (t *ClassicDivision) StartRound() error {
 // and an optional error.
 func (t *ClassicDivision) SetReadyForGame(playerID, connID string, round, gameIndex int, unready bool) ([]string, bool, error) {
 	if round >= len(t.Matrix) || round < 0 {
-		return nil, false, fmt.Errorf("round number out of range: %d", round)
+		return nil, false, fmt.Errorf("round number out of range (SetReadyForGame): %d", round)
 	}
 	toSet := connID
 	if unready {
@@ -913,7 +931,7 @@ func (t *ClassicDivision) SetReadyForGame(playerID, connID string, round, gameIn
 
 func (t *ClassicDivision) ClearReadyStates(playerID string, round, gameIndex int) (map[int][]*realtime.Pairing, error) {
 	if round >= len(t.Matrix) || round < 0 {
-		return nil, fmt.Errorf("round number out of range: %d", round)
+		return nil, fmt.Errorf("round number out of range (ClearReadyStates): %d", round)
 	}
 	// ignore gameIndex for classicdivision
 	p, err := t.getPairing(playerID, round)
@@ -926,7 +944,7 @@ func (t *ClassicDivision) ClearReadyStates(playerID string, round, gameIndex int
 
 func (t *ClassicDivision) IsRoundComplete(round int) (bool, error) {
 	if round >= len(t.Matrix) || round < 0 {
-		return false, fmt.Errorf("round number out of range: %d", round)
+		return false, fmt.Errorf("round number out of range (IsRoundComplete): %d", round)
 	}
 	for _, pairingKey := range t.Matrix[round] {
 		pairing, ok := t.PairingMap[pairingKey]
@@ -1079,7 +1097,7 @@ func newPlayerIndexMap(players []*realtime.TournamentPerson) map[string]int32 {
 
 func getRepeats(t *ClassicDivision, round int) (map[string]int, error) {
 	if round >= len(t.Matrix) {
-		return nil, fmt.Errorf("round number out of range: %d", round)
+		return nil, fmt.Errorf("round number out of range (getRepeats): %d", round)
 	}
 	repeats := make(map[string]int)
 	for i := 0; i <= round; i++ {
@@ -1185,7 +1203,7 @@ func (t *ClassicDivision) getPairing(player string, round int) (*realtime.Pairin
 
 func (t *ClassicDivision) getPairingKey(player string, round int) (string, error) {
 	if round >= len(t.Matrix) || round < 0 {
-		return "", fmt.Errorf("round number out of range: %d", round)
+		return "", fmt.Errorf("round number out of range (getPairingKey): %d", round)
 	}
 
 	playerIndex, ok := t.PlayerIndexMap[player]
@@ -1201,7 +1219,7 @@ func (t *ClassicDivision) getPairingKey(player string, round int) (string, error
 
 func (t *ClassicDivision) setPairingKey(player string, round int, pairingKey string) error {
 	if round >= len(t.Matrix) || round < 0 {
-		return fmt.Errorf("round number out of range: %d", round)
+		return fmt.Errorf("round number out of range (setPairingKey): %d", round)
 	}
 
 	playerIndex, ok := t.PlayerIndexMap[player]
@@ -1220,7 +1238,7 @@ func (t *ClassicDivision) makePairingKey() string {
 
 func (t *ClassicDivision) clearPairingKey(playerIndex int32, round int) error {
 	if round >= len(t.Matrix) || round < 0 {
-		return fmt.Errorf("round number out of range: %d", round)
+		return fmt.Errorf("round number out of range (clearPairingKey): %d", round)
 	}
 
 	if int(playerIndex) >= len(t.Matrix[round]) || playerIndex < 0 {
@@ -1304,7 +1322,7 @@ func validatePairings(tc *ClassicDivision, round int) error {
 	//   - Player's opponent's opponent is the player
 
 	if round < 0 || round >= len(tc.Matrix) {
-		return fmt.Errorf("round number out of range: %d", round)
+		return fmt.Errorf("round number out of range (validatePairings): %d", round)
 	}
 
 	for i, pairingKey := range tc.Matrix[round] {

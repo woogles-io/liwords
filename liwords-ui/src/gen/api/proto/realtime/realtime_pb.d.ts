@@ -1372,7 +1372,7 @@ export namespace StartRoundResponse {
   }
 }
 
-export class DivisionRoundControlsResponse extends jspb.Message {
+export class DivisionRoundControls extends jspb.Message {
   getId(): string;
   setId(value: string): void;
 
@@ -1385,16 +1385,16 @@ export class DivisionRoundControlsResponse extends jspb.Message {
   addRoundControls(value?: RoundControl, index?: number): RoundControl;
 
   serializeBinary(): Uint8Array;
-  toObject(includeInstance?: boolean): DivisionRoundControlsResponse.AsObject;
-  static toObject(includeInstance: boolean, msg: DivisionRoundControlsResponse): DivisionRoundControlsResponse.AsObject;
+  toObject(includeInstance?: boolean): DivisionRoundControls.AsObject;
+  static toObject(includeInstance: boolean, msg: DivisionRoundControls): DivisionRoundControls.AsObject;
   static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
   static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
-  static serializeBinaryToWriter(message: DivisionRoundControlsResponse, writer: jspb.BinaryWriter): void;
-  static deserializeBinary(bytes: Uint8Array): DivisionRoundControlsResponse;
-  static deserializeBinaryFromReader(message: DivisionRoundControlsResponse, reader: jspb.BinaryReader): DivisionRoundControlsResponse;
+  static serializeBinaryToWriter(message: DivisionRoundControls, writer: jspb.BinaryWriter): void;
+  static deserializeBinary(bytes: Uint8Array): DivisionRoundControls;
+  static deserializeBinaryFromReader(message: DivisionRoundControls, reader: jspb.BinaryReader): DivisionRoundControls;
 }
 
-export namespace DivisionRoundControlsResponse {
+export namespace DivisionRoundControls {
   export type AsObject = {
     id: string,
     division: string,

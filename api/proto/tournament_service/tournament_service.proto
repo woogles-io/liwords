@@ -141,6 +141,8 @@ service TournamentService {
   rpc PairRound(PairRoundRequest) returns (TournamentResponse);
   rpc SetSingleRoundControls(SingleRoundControlsRequest)
       returns (TournamentResponse);
+  rpc SetRoundControls(liwords.DivisionRoundControls)
+      returns (TournamentResponse);
   rpc SetTournamentControls(liwords.DivisionControls)
       returns (TournamentResponse);
   // Input to AddDirectors should be director usernames.

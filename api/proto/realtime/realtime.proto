@@ -489,7 +489,7 @@ message StartRoundResponse {
   repeated int32 rounds = 3;
 }
 
-message DivisionRoundControlsResponse {
+message DivisionRoundControls {
   string id = 1;
   string division = 2;
   repeated RoundControl round_controls = 3;

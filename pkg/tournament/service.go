@@ -89,6 +89,18 @@ func (ts *TournamentService) SetSingleRoundControls(ctx context.Context, req *pb
 	return &pb.TournamentResponse{}, nil
 }
 
+func (ts *TournamentService) SetRoundControls(ctx context.Context, req *realtime.DivisionRoundControls) (*pb.TournamentResponse, error) {
+	err := authenticateDirector(ctx, ts, req.Id, false)
+	if err != nil {
+		return nil, err
+	}
+	err = SetRoundControls(ctx, ts.tournamentStore, req.Id, req.Division, req.RoundControls)
+	if err != nil {
+		return nil, twirp.NewError(twirp.InvalidArgument, err.Error())
+	}
+	return &pb.TournamentResponse{}, nil
+}
+
 func (ts *TournamentService) SetDivisionControls(ctx context.Context, req *realtime.DivisionControls) (*pb.TournamentResponse, error) {
 	err := authenticateDirector(ctx, ts, req.Id, false)
 	if err != nil {

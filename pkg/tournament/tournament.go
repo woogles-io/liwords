@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"sort"
 	"strings"
 	"time"
 
@@ -194,6 +195,49 @@ func SetSingleRoundControls(ctx context.Context, ts TournamentStore, id string, 
 	return SendTournamentMessage(ctx, ts, id, wrapped)
 }
 
+func SetRoundControls(ctx context.Context, ts TournamentStore, id string, division string, roundControls []*realtime.RoundControl) error {
+
+	t, err := ts.Get(ctx, id)
+	if err != nil {
+		return err
+	}
+
+	t.Lock()
+	defer t.Unlock()
+
+	if t.IsFinished {
+		return fmt.Errorf("tournament %s has finished", id)
+	}
+
+	divisionObject, ok := t.Divisions[division]
+
+	if !ok {
+		return fmt.Errorf("division %s does not exist", division)
+	}
+
+	if t.IsStarted {
+		return errors.New("cannot set division round controls after it has started")
+	}
+
+	pairings, newDivisionRoundControls, err := divisionObject.DivisionManager.SetRoundControls(roundControls)
+
+	err = ts.Set(ctx, t)
+	if err != nil {
+		return err
+	}
+
+	pairingsMessage := PairingsToResponse(id, division, pairings)
+	wrapped := entity.WrapEvent(pairingsMessage, realtime.MessageType_TOURNAMENT_DIVISION_PAIRINGS_MESSAGE)
+	err = SendTournamentMessage(ctx, ts, id, wrapped)
+	if err != nil {
+		return err
+	}
+
+	wrapped = entity.WrapEvent(&realtime.DivisionRoundControls{Id: id, Division: division, RoundControls: newDivisionRoundControls},
+		realtime.MessageType_TOURNAMENT_DIVISION_ROUND_CONTROLS_MESSAGE)
+	return SendTournamentMessage(ctx, ts, id, wrapped)
+}
+
 func SetDivisionControls(ctx context.Context, ts TournamentStore, id string, division string, controls *realtime.DivisionControls) error {
 
 	t, err := ts.Get(ctx, id)
@@ -374,31 +418,20 @@ func RemoveDirectors(ctx context.Context, ts TournamentStore, us user.Store, id 
 	// Not very efficient but there's only gonna be like
 	// a maximum of maybe 10 existing directors
 
-	indexesToRemove := []int{}
 	for _, newDirector := range directors.Persons {
-		index := -1
-		for idx, existingDirector := range t.Directors.Persons {
-			if newDirector.Id == existingDirector.Id {
-				if existingDirector.Rating == 0 {
-					return fmt.Errorf("cannot remove the executive director: %s", existingDirector.Id)
-				}
-				index = idx
-				break
-			}
+		newDirectorfullID, _, err := constructFullID(ctx, us, newDirector.Id)
+		if err != nil {
+			return err
 		}
-		if index == -1 {
-			return fmt.Errorf("director %s does not exist", newDirector.Id)
-		} else {
-			indexesToRemove = append(indexesToRemove, index)
-		}
+		newDirector.Id = newDirectorfullID
 	}
 
-	for i := len(indexesToRemove) - 1; i >= 0; i-- {
-		idx := indexesToRemove[i]
-		da := t.Directors.Persons
-		da[len(da)-1], da[idx] = da[idx], da[len(da)-1]
-		t.Directors.Persons = da[:len(da)-1]
+	newDirectors, err := removeTournamentPersons(t.Directors, directors, true)
+	if err != nil {
+		return err
 	}
+
+	t.Directors = newDirectors
 
 	err = ts.Set(ctx, t)
 	if err != nil {
@@ -497,16 +530,22 @@ func RemovePlayers(ctx context.Context, ts TournamentStore, us user.Store, id st
 	}
 
 	// Only perform the add operation if all persons can be added.
-
+	userUUIDs := []string{}
 	for _, player := range players.Persons {
-		fullID, _, err := constructFullID(ctx, us, player.Id)
+		fullID, UUID, err := constructFullID(ctx, us, player.Id)
 		if err != nil {
 			return err
 		}
 		player.Id = fullID
+		userUUIDs = append(userUUIDs, UUID)
 	}
 
 	removePlayersPairings, err := divisionObject.DivisionManager.RemovePlayers(players)
+	if err != nil {
+		return err
+	}
+
+	err = ts.RemoveRegistrants(ctx, t.UUID, userUUIDs, division)
 	if err != nil {
 		return err
 	}
@@ -1075,6 +1114,35 @@ func getExecutiveDirector(directors *realtime.TournamentPersons) (string, error)
 		return "", err
 	}
 	return executiveDirector, nil
+}
+
+func removeTournamentPersons(persons *realtime.TournamentPersons, personsToRemove *realtime.TournamentPersons, areDirectors bool) (*realtime.TournamentPersons, error) {
+	indexesToRemove := []int{}
+	for _, personToRemove := range personsToRemove.Persons {
+		present := false
+		for index, person := range persons.Persons {
+			if personToRemove.Id == person.Id {
+				if person.Rating == 0 && areDirectors {
+					return nil, fmt.Errorf("cannot remove the executive director: %s", person.Id)
+				}
+				present = true
+				indexesToRemove = append(indexesToRemove, index)
+				break
+			}
+		}
+		if !present {
+			return nil, fmt.Errorf("person %s does not exist", personToRemove.Id)
+		}
+	}
+
+	sort.Ints(indexesToRemove)
+
+	for i := len(indexesToRemove) - 1; i >= 0; i-- {
+		idx := indexesToRemove[i]
+		persons.Persons[len(persons.Persons)-1], persons.Persons[idx] = persons.Persons[idx], persons.Persons[len(persons.Persons)-1]
+		persons.Persons = persons.Persons[:len(persons.Persons)-1]
+	}
+	return persons, nil
 }
 
 func validateTournamentMeta(ttype pb.TType, slug string) (entity.CompetitionType, error) {
