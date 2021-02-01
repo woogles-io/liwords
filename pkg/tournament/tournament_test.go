@@ -259,12 +259,10 @@ func TestTournamentSingleDivision(t *testing.T) {
 	// Attempt to remove directors that don't exist
 	err = tournament.RemoveDirectors(ctx, tstore, us, ty.UUID, makeTournamentPersons(map[string]int32{"Evans": -1, "Zoof": 2}))
 	is.True(err.Error() == "person Zoof:Zoof does not exist")
-	fmt.Println(ty.Directors.Persons)
 	is.NoErr(equalTournamentPersons(makeTournamentPersons(map[string]int32{"Kieran:Kieran": 0, "Vince:Vince": 2, "Jennifer:Jennifer": 2, "Evans:Evans": 4, "Oof:Oof": 2, "Guy:Guy": 10, "Harry:Harry": 11}), ty.Directors))
 
 	// Attempt to remove the executive director
 	err = tournament.RemoveDirectors(ctx, tstore, us, ty.UUID, makeTournamentPersons(map[string]int32{"Evans": -1, "Kieran": 0}))
-	fmt.Println(err.Error())
 	is.True(err.Error() == "cannot remove the executive director: Kieran:Kieran")
 	is.NoErr(equalTournamentPersons(makeTournamentPersons(map[string]int32{"Kieran:Kieran": 0, "Vince:Vince": 2, "Jennifer:Jennifer": 2, "Evans:Evans": 4, "Oof:Oof": 2, "Guy:Guy": 10, "Harry:Harry": 11}), ty.Directors))
 
@@ -349,7 +347,6 @@ func TestTournamentSingleDivision(t *testing.T) {
 	is.True(!isStarted)
 
 	XHRResponse, err = div1.DivisionManager.GetXHRResponse()
-	fmt.Println(XHRResponse.PairingMap)
 	// Set pairing should work before the tournament starts
 	pairings := []*pb.TournamentPairingRequest{&pb.TournamentPairingRequest{PlayerOneId: "Will:Will", PlayerTwoId: "Jesse:Jesse", Round: 0}}
 	err = tournament.SetPairings(ctx, tstore, ty.UUID, divOneName, pairings)
@@ -363,7 +360,6 @@ func TestTournamentSingleDivision(t *testing.T) {
 	is.NoErr(equalTournamentPersons(makeTournamentPersons(map[string]int32{}), XHRResponse.Players))
 
 	err = tournament.SetPairings(ctx, tstore, ty.UUID, divOneName, pairings)
-	fmt.Println(err.Error())
 	is.True(err.Error() == "playerOne does not exist in the division: >Will:Will<")
 
 	err = tournament.SetResult(ctx,

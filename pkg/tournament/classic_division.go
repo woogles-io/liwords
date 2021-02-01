@@ -521,7 +521,6 @@ func (t *ClassicDivision) PairRound(round int) (map[int][]*realtime.Pairing, err
 			if pairings[i] < 0 {
 				opponentIndex = playerIndex
 			} else if pairings[i] >= l {
-				fmt.Println(pairings)
 				return nil, fmt.Errorf("invalid pairing for round %d: %d", round, pairings[i])
 			} else {
 				opponentIndex = t.PlayerIndexMap[playerOrder[pairings[i]]]
@@ -553,9 +552,6 @@ func (t *ClassicDivision) PairRound(round int) (map[int][]*realtime.Pairing, err
 		}
 
 		if !player.Suspended && roundPairings[i] == "" {
-			fmt.Println("pri pairings:")
-			fmt.Println(pairings)
-			t.printPriPairings(round)
 			return nil, fmt.Errorf("active player %s was not paired", player.Id)
 		}
 		if pairingMethod != realtime.PairingMethod_ROUND_ROBIN && player.Suspended {
