@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 
 	"github.com/domino14/liwords/pkg/apiserver"
-	"github.com/domino14/liwords/pkg/uploader"
 	"github.com/rs/zerolog/log"
 	"github.com/twitchtv/twirp"
 
@@ -15,10 +14,10 @@ import (
 
 type ProfileService struct {
 	userStore Store
-	avatarService uploader.UploadService
+	avatarService UploadService
 }
 
-func NewProfileService(u Store, us uploader.UploadService) *ProfileService {
+func NewProfileService(u Store, us UploadService) *ProfileService {
 	return &ProfileService{userStore: u, avatarService: us}
 }
 
