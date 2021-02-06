@@ -449,9 +449,10 @@ message TournamentGame {
 
 message Pairing {
   repeated int32 players = 1;
-  repeated TournamentGame games = 2; // can be a list, for elimination tourneys
-  repeated TournamentGameResult outcomes = 3;
-  repeated string ready_states = 4;
+  int32 round = 2;
+  repeated TournamentGame games = 3; // can be a list, for elimination tourneys
+  repeated TournamentGameResult outcomes = 4;
+  repeated string ready_states = 5;
 }
 
 message PlayerStanding {
@@ -464,23 +465,17 @@ message PlayerStanding {
 
 message RoundStandings { repeated PlayerStanding standings = 1; }
 
-message RoundPairings {
-  int32 round = 1;
-  repeated Pairing pairings = 2;
-}
-
 message DivisionPairingsResponse {
   string id = 1;
   string division = 2;
-  repeated RoundPairings division_pairings = 3;
+  repeated Pairing division_pairings = 3;
 }
 
 message PlayerAddedOrRemovedResponse {
   string id = 1;
   string division = 2;
-  bool added = 3;
-  TournamentPersons players = 4;
-  repeated RoundPairings division_pairings = 5;
+  TournamentPersons players = 3;
+  repeated Pairing division_pairings = 4;
 }
 
 message StartRoundResponse {
@@ -509,6 +504,11 @@ message TournamentDivisionDataResponse {
   DivisionControls controls = 5;
   repeated RoundControl round_controls = 6;
   int32 current_round = 7;
+}
+
+message FullTournamentDivisions { 
+  map<string, TournamentDivisionDataResponse> divisions = 1;  
+  bool started = 2; 
 }
 
 message TournamentFinishedResponse {

@@ -77,3 +77,7 @@ func Reverse(array []int) {
 func IntArrayToString(array []int) string {
 	return strings.Trim(strings.Join(strings.Fields(fmt.Sprint(array)), ", "), "[]")
 }
+
+func StringArrayToString(array []string) string {
+	return strings.Trim(strings.Join(strings.Fields(fmt.Sprint(array)), ", "), "[]")
+}

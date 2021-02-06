@@ -107,6 +107,12 @@ message GetTournamentMetadataRequest {
   string slug = 2;
 }
 
+message GetTournamentRequest {
+  // User must provide the ID, or the slug (but not both)
+  string id = 1;
+  string slug = 2;
+}
+
 message FinishTournamentRequest { string id = 1; }
 
 message TournamentMetadataResponse {
@@ -134,6 +140,8 @@ service TournamentService {
   rpc NewTournament(NewTournamentRequest) returns (NewTournamentResponse);
   rpc GetTournamentMetadata(GetTournamentMetadataRequest)
       returns (TournamentMetadataResponse);
+  rpc GetTournament(GetTournamentRequest)
+      returns (liwords.FullTournamentDivisions);
   rpc StartAllRoundCountdowns(TournamentStartRoundCountdownRequest) returns (TournamentResponse);
   rpc FinishTournament(FinishTournamentRequest) returns (TournamentResponse);
   rpc SetTournamentMetadata(SetTournamentMetadataRequest)

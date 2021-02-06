@@ -384,7 +384,7 @@ func TestTournamentSingleDivision(t *testing.T) {
 	isRoundComplete, err := tournament.IsRoundComplete(ctx, tstore, ty.UUID, divOneName, 0)
 	is.True(err.Error() == "cannot check if round is complete before the tournament has started")
 
-	isFinished, err := tournament.IsFinished(ctx, tstore, ty.UUID, divOneName)
+	isFinished, err := tournament.IsFinished(ctx, tstore, ty.UUID)
 	is.True(err.Error() == "cannot check if tournament is finished before the tournament has started")
 
 	// Add players back in
@@ -418,6 +418,8 @@ func TestTournamentSingleDivision(t *testing.T) {
 
 	// Tournament pairings and results are tested in the
 	// entity package
+	pairings = []*pb.TournamentPairingRequest{&pb.TournamentPairingRequest{PlayerOneId: "Will:Will", PlayerTwoId: "Jesse:Jesse", Round: 0},
+		&pb.TournamentPairingRequest{PlayerOneId: "Josh:Josh", PlayerTwoId: "Conrad:Conrad", Round: 0}}
 	err = tournament.SetPairings(ctx, tstore, ty.UUID, divOneName, pairings)
 	is.NoErr(err)
 
@@ -470,17 +472,98 @@ func TestTournamentSingleDivision(t *testing.T) {
 	is.NoErr(err)
 	is.True(!isRoundComplete)
 
+	// Complete the round
+	err = tournament.SetResult(ctx,
+		tstore,
+		us,
+		ty.UUID,
+		divOneName,
+		"Josh",
+		"Conrad",
+		500,
+		400,
+		realtime.TournamentGameResult_WIN,
+		realtime.TournamentGameResult_LOSS,
+		realtime.GameEndReason_STANDARD,
+		0,
+		0,
+		false,
+		nil)
+	is.NoErr(err)
+
+	isRoundComplete, err = tournament.IsRoundComplete(ctx, tstore, ty.UUID, divOneName, 0)
+	is.NoErr(err)
+	is.True(isRoundComplete)
+
+	// Complete another round to test PairRound
+
+	// Complete the round
+	err = tournament.SetResult(ctx,
+		tstore,
+		us,
+		ty.UUID,
+		divOneName,
+		"Josh",
+		"Jesse",
+		500,
+		400,
+		realtime.TournamentGameResult_WIN,
+		realtime.TournamentGameResult_LOSS,
+		realtime.GameEndReason_STANDARD,
+		0,
+		0,
+		false,
+		nil)
+	is.NoErr(err)
+
+	err = tournament.SetResult(ctx,
+		tstore,
+		us,
+		ty.UUID,
+		divOneName,
+		"Will",
+		"Conrad",
+		500,
+		400,
+		realtime.TournamentGameResult_WIN,
+		realtime.TournamentGameResult_LOSS,
+		realtime.GameEndReason_STANDARD,
+		0,
+		0,
+		false,
+		nil)
+	is.NoErr(err)
+
+	isRoundComplete, err = tournament.IsRoundComplete(ctx, tstore, ty.UUID, divOneName, 1)
+	is.NoErr(err)
+	is.True(isRoundComplete)
+
+	// Pair and out of round round
+	err = tournament.PairRound(ctx, tstore, ty.UUID, divOneName, -1)
+	is.True(err.Error() == "round number out of range (PairRound): -1")
+
+	err = tournament.PairRound(ctx, tstore, ty.UUID, divOneName, 5)
+	is.True(err.Error() == "round number out of range (PairRound): 5")
+
+	err = tournament.PairRound(ctx, tstore, ty.UUID, divOneName, 0)
+	is.True(err.Error() == "cannot repair non-future round 0 since current round is 2")
+
+	err = tournament.PairRound(ctx, tstore, ty.UUID, divOneName, 1)
+	is.True(err.Error() == "cannot repair non-future round 1 since current round is 2")
+
+	err = tournament.PairRound(ctx, tstore, ty.UUID, divOneName, 2)
+	is.True(err.Error() == "cannot repair non-future round 2 since current round is 2")
+
+	err = tournament.PairRound(ctx, tstore, ty.UUID, divOneName, 3)
+	is.NoErr(err)
+
 	// See if round is complete for division that does not exist
 	isRoundComplete, err = tournament.IsRoundComplete(ctx, tstore, ty.UUID, divOneName+"yah", 0)
 	is.True(err.Error() == "division Division 1yah does not exist")
 
-	isFinished, err = tournament.IsFinished(ctx, tstore, ty.UUID, divOneName)
+	isFinished, err = tournament.IsFinished(ctx, tstore, ty.UUID)
 	is.NoErr(err)
 	is.True(!isFinished)
-
-	// See if division is finished (except it doesn't exist)
-	isFinished, err = tournament.IsFinished(ctx, tstore, ty.UUID, divOneName+"but wait there's more")
-	is.True(err.Error() == "division Division 1but wait there's more does not exist")
 
 	us.(*user.DBStore).Disconnect()
 	tstore.(*ts.Cache).Disconnect()

@@ -153,6 +153,14 @@ func (ts *TournamentService) NewTournament(ctx context.Context, req *pb.NewTourn
 	}, nil
 }
 
+func (ts *TournamentService) GetTournament(ctx context.Context, req *pb.GetTournamentRequest) (*realtime.FullTournamentDivisions, error) {
+	response, err := GetXHRResponse(ctx, ts.tournamentStore, req.Id)
+	if err != nil {
+		return nil, err
+	}
+	return response, nil
+}
+
 func (ts *TournamentService) GetTournamentMetadata(ctx context.Context, req *pb.GetTournamentMetadataRequest) (*pb.TournamentMetadataResponse, error) {
 	if req.Id != "" && req.Slug != "" {
 		return nil, twirp.NewError(twirp.InvalidArgument, "you must provide tournament ID or slug, but not both")

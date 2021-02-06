@@ -485,6 +485,8 @@ func AddPlayers(ctx context.Context, ts TournamentStore, us user.Store, id strin
 		return err
 	}
 
+	allCurrentPlayers := divisionObject.DivisionManager.GetPlayers()
+
 	err = ts.AddRegistrants(ctx, t.UUID, userUUIDs, division)
 	if err != nil {
 		return err
@@ -499,8 +501,7 @@ func AddPlayers(ctx context.Context, ts TournamentStore, us user.Store, id strin
 
 	addPlayersMessage := &realtime.PlayerAddedOrRemovedResponse{Id: id,
 		Division:         division,
-		Added:            true,
-		Players:          players,
+		Players:          allCurrentPlayers,
 		DivisionPairings: pairingsResponse.DivisionPairings}
 	wrapped := entity.WrapEvent(addPlayersMessage, realtime.MessageType_TOURNAMENT_DIVISION_PLAYER_CHANGE_MESSAGE)
 	return SendTournamentMessage(ctx, ts, id, wrapped)
@@ -545,6 +546,8 @@ func RemovePlayers(ctx context.Context, ts TournamentStore, us user.Store, id st
 		return err
 	}
 
+	allCurrentPlayers := divisionObject.DivisionManager.GetPlayers()
+
 	err = ts.RemoveRegistrants(ctx, t.UUID, userUUIDs, division)
 	if err != nil {
 		return err
@@ -559,8 +562,7 @@ func RemovePlayers(ctx context.Context, ts TournamentStore, us user.Store, id st
 
 	removePlayersMessage := &realtime.PlayerAddedOrRemovedResponse{Id: id,
 		Division:         division,
-		Added:            false,
-		Players:          players,
+		Players:          allCurrentPlayers,
 		DivisionPairings: pairingsResponse.DivisionPairings}
 	wrapped := entity.WrapEvent(removePlayersMessage, realtime.MessageType_TOURNAMENT_DIVISION_PLAYER_CHANGE_MESSAGE)
 	return SendTournamentMessage(ctx, ts, id, wrapped)
@@ -581,7 +583,7 @@ func SetPairings(ctx context.Context, ts TournamentStore, id string, division st
 		return fmt.Errorf("tournament %s has finished", id)
 	}
 
-	pairingsMap := map[int][]*realtime.Pairing{}
+	pairingsMap := []*realtime.Pairing{}
 
 	for _, pairing := range pairings {
 		divisionObject, ok := t.Divisions[division]
@@ -976,7 +978,7 @@ func SetFinished(ctx context.Context, ts TournamentStore, id string) error {
 	return SendTournamentMessage(ctx, ts, id, wrapped)
 }
 
-func IsFinished(ctx context.Context, ts TournamentStore, id string, division string) (bool, error) {
+func IsFinished(ctx context.Context, ts TournamentStore, id string) (bool, error) {
 	t, err := ts.Get(ctx, id)
 	if err != nil {
 		return false, err
@@ -985,14 +987,28 @@ func IsFinished(ctx context.Context, ts TournamentStore, id string, division str
 	if !t.IsStarted {
 		return false, errors.New("cannot check if tournament is finished before the tournament has started")
 	}
+	return t.IsFinished, nil
+}
 
-	_, ok := t.Divisions[division]
-
-	if !ok {
-		return false, fmt.Errorf("division %s does not exist", division)
+func GetXHRResponse(ctx context.Context, ts TournamentStore, id string) (*realtime.FullTournamentDivisions, error) {
+	t, err := ts.Get(ctx, id)
+	if err != nil {
+		return nil, err
 	}
 
-	return t.Divisions[division].DivisionManager.IsFinished()
+	response := &realtime.FullTournamentDivisions{Divisions: make(map[string]*realtime.TournamentDivisionDataResponse),
+		Started: t.IsStarted}
+	for divisionKey, division := range t.Divisions {
+		if division.DivisionManager == nil {
+			return nil, fmt.Errorf("division %s has nil division manager, cannot get division message", divisionKey)
+		}
+		xhr, err := division.DivisionManager.GetXHRResponse()
+		if err != nil {
+			return nil, err
+		}
+		response.Divisions[divisionKey] = xhr
+	}
+	return response, nil
 }
 
 func SetReadyForGame(ctx context.Context, ts TournamentStore, t *entity.Tournament,
@@ -1089,13 +1105,11 @@ func TournamentDivisionDataResponse(ctx context.Context, ts TournamentStore,
 	return response, nil
 }
 
-func PairingsToResponse(id string, division string, pairings map[int][]*realtime.Pairing) *realtime.DivisionPairingsResponse {
-	divisionPairings := &realtime.DivisionPairingsResponse{Id: id, Division: division, DivisionPairings: []*realtime.RoundPairings{}}
-	for round, roundPairings := range pairings {
-		divisionPairings.DivisionPairings = append(divisionPairings.DivisionPairings,
-			&realtime.RoundPairings{Round: int32(round), Pairings: roundPairings})
-	}
-	return divisionPairings
+func PairingsToResponse(id string, division string, pairings []*realtime.Pairing) *realtime.DivisionPairingsResponse {
+	// This is quite simple for now
+	// This function is here in case this structure
+	// gets more complicated later
+	return &realtime.DivisionPairingsResponse{Id: id, Division: division, DivisionPairings: pairings}
 }
 
 func getExecutiveDirector(directors *realtime.TournamentPersons) (string, error) {

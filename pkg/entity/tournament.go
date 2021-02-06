@@ -9,16 +9,17 @@ import (
 
 type DivisionManager interface {
 	SubmitResult(int, string, string, int, int, realtime.TournamentGameResult,
-		realtime.TournamentGameResult, realtime.GameEndReason, bool, int, string) (map[int][]*realtime.Pairing, error)
-	PairRound(int) (map[int][]*realtime.Pairing, error)
+		realtime.TournamentGameResult, realtime.GameEndReason, bool, int, string) ([]*realtime.Pairing, error)
+	PairRound(int) ([]*realtime.Pairing, error)
 	GetStandings(int) ([]*realtime.PlayerStanding, error)
 	GetCurrentRound() int
-	SetPairing(string, string, int) (map[int][]*realtime.Pairing, error)
+	GetPlayers() *realtime.TournamentPersons
+	SetPairing(string, string, int) ([]*realtime.Pairing, error)
 	SetSingleRoundControls(int, *realtime.RoundControl) (*realtime.RoundControl, error)
-	SetRoundControls([]*realtime.RoundControl) (map[int][]*realtime.Pairing, []*realtime.RoundControl, error)
+	SetRoundControls([]*realtime.RoundControl) ([]*realtime.Pairing, []*realtime.RoundControl, error)
 	SetDivisionControls(*realtime.DivisionControls) (*realtime.DivisionControls, error)
-	AddPlayers(*realtime.TournamentPersons) (map[int][]*realtime.Pairing, error)
-	RemovePlayers(*realtime.TournamentPersons) (map[int][]*realtime.Pairing, error)
+	AddPlayers(*realtime.TournamentPersons) ([]*realtime.Pairing, error)
+	RemovePlayers(*realtime.TournamentPersons) ([]*realtime.Pairing, error)
 	IsRoundReady(int) (bool, error)
 	IsRoundComplete(int) (bool, error)
 	IsStarted() bool
@@ -26,7 +27,7 @@ type DivisionManager interface {
 	StartRound() error
 	GetXHRResponse() (*realtime.TournamentDivisionDataResponse, error)
 	SetReadyForGame(userID, connID string, round, gameIndex int, unready bool) ([]string, bool, error)
-	ClearReadyStates(userID string, round, gameIndex int) (map[int][]*realtime.Pairing, error)
+	ClearReadyStates(userID string, round, gameIndex int) ([]*realtime.Pairing, error)
 }
 
 type CompetitionType string
