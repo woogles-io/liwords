@@ -4,8 +4,8 @@ import './avatar.scss';
 import axios from 'axios';
 import { toAPIUrl } from '../api/api';
 import { useMountedState } from '../utils/mounted';
-import { notification, Tooltip, Modal, Alert } from 'antd';
-import { EditOutlined } from '@ant-design/icons';
+import { notification, Tooltip, Modal, Alert, Button, Upload } from 'antd';
+import { EditOutlined, UploadOutlined } from '@ant-design/icons';
 import { PlayerMetadata } from '../gameroom/game_info';
 const colors = require('../base.scss');
 
@@ -23,11 +23,6 @@ export const PlayerAvatar = (props: AvatarProps) => {
   const [avatarUrl, setAvatarUrl] = useState<string | undefined>("");
   const [avatarFile, setAvatarFile] = useState(new File([""], ""));
 
-  const handleChange = (files: FileList | null) => {
-    const file: File = (files as FileList)[0];
-    setAvatarFile(file);
-  };     
-  
   useEffect(() => {
     setAvatarUrl(props.player?.avatar_url);
   }, [props.player]);
@@ -41,17 +36,32 @@ export const PlayerAvatar = (props: AvatarProps) => {
   }, [updateModalVisible]);
 
   var okButtonDisabled = (avatarFile == null || avatarFile.name.length === 0);
+  const fileProps = {
+    beforeUpload: (file: File) => { return false },
+    maxCount: 1,
+    onChange: (info: any) => {
+      if (info.fileList.length > 0) {
+        setAvatarFile(info.fileList.slice(-1)[0].originFileObj);
+      } else {
+        setAvatarFile(new File([""], ""));
+      }
+    },
+    accept: "image/jpeg",
+    showUploadList: false,
+  }
+
   const updateModal = 
       <Modal
         className="avatar-update-modal"
-        title="Choose a JPG photo for your avatar"
+        title="Update avatar"
         visible={updateModalVisible}
-        okText="Upload Avatar"
+        okText="Upload"
         okButtonProps={{ disabled: okButtonDisabled }}
         onCancel={() => {
           setUpdateModalVisible(false);
         }}
         onOk={() => {
+          console.log(avatarFile);
           var reader = new FileReader();
           reader.onload = function () {
             axios
@@ -87,9 +97,10 @@ export const PlayerAvatar = (props: AvatarProps) => {
           reader.readAsBinaryString(avatarFile);
         }}
       >
-        <div> 
-            <input type="file" id="avatar-file-input" accept=".jpg,.jpeg" onChange={(e) => handleChange(e.target.files) } /> 
-        </div> 
+        <Upload {...fileProps}>
+          <Button icon={<UploadOutlined />}>Select avatar</Button>
+        </Upload>
+        <>{avatarFile.name}</>
         {avatarErr !== '' ? <Alert message={avatarErr} type="error" /> : null}
       </Modal>
  
