@@ -14,7 +14,11 @@
   h3 {
     margin: 24px 12px;
     width: auto;
-    display: inline-block;
+    display: flex;
+    justify-content: space-between;
+  }
+  .player-avatar {
+    margin-left: 12px;
   }
   label {
     @include colorModed() {
