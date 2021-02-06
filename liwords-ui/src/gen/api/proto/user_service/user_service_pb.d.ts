@@ -547,6 +547,9 @@ export class ProfileResponse extends jspb.Message {
   getFullName(): string;
   setFullName(value: string): void;
 
+  getAvatarsEditable(): boolean;
+  setAvatarsEditable(value: boolean): void;
+
   serializeBinary(): Uint8Array;
   toObject(includeInstance?: boolean): ProfileResponse.AsObject;
   static toObject(includeInstance: boolean, msg: ProfileResponse): ProfileResponse.AsObject;
@@ -569,6 +572,7 @@ export namespace ProfileResponse {
     userId: string,
     avatarUrl: string,
     fullName: string,
+    avatarsEditable: boolean,
   }
 }
 

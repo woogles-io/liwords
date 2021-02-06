@@ -4501,7 +4501,8 @@ proto.user_service.ProfileResponse.toObject = function(includeInstance, msg) {
     statsJson: jspb.Message.getFieldWithDefault(msg, 7, ""),
     userId: jspb.Message.getFieldWithDefault(msg, 8, ""),
     avatarUrl: jspb.Message.getFieldWithDefault(msg, 9, ""),
-    fullName: jspb.Message.getFieldWithDefault(msg, 10, "")
+    fullName: jspb.Message.getFieldWithDefault(msg, 10, ""),
+    avatarsEditable: jspb.Message.getBooleanFieldWithDefault(msg, 11, false)
   };
 
   if (includeInstance) {
@@ -4577,6 +4578,10 @@ proto.user_service.ProfileResponse.deserializeBinaryFromReader = function(msg, r
     case 10:
       var value = /** @type {string} */ (reader.readString());
       msg.setFullName(value);
+      break;
+    case 11:
+      var value = /** @type {boolean} */ (reader.readBool());
+      msg.setAvatarsEditable(value);
       break;
     default:
       reader.skipField();
@@ -4674,6 +4679,13 @@ proto.user_service.ProfileResponse.serializeBinaryToWriter = function(message, w
   if (f.length > 0) {
     writer.writeString(
       10,
+      f
+    );
+  }
+  f = message.getAvatarsEditable();
+  if (f) {
+    writer.writeBool(
+      11,
       f
     );
   }
@@ -4857,6 +4869,24 @@ proto.user_service.ProfileResponse.prototype.getFullName = function() {
  */
 proto.user_service.ProfileResponse.prototype.setFullName = function(value) {
   return jspb.Message.setProto3StringField(this, 10, value);
+};
+
+
+/**
+ * optional bool avatars_editable = 11;
+ * @return {boolean}
+ */
+proto.user_service.ProfileResponse.prototype.getAvatarsEditable = function() {
+  return /** @type {boolean} */ (jspb.Message.getBooleanFieldWithDefault(this, 11, false));
+};
+
+
+/**
+ * @param {boolean} value
+ * @return {!proto.user_service.ProfileResponse} returns this
+ */
+proto.user_service.ProfileResponse.prototype.setAvatarsEditable = function(value) {
+  return jspb.Message.setProto3BooleanField(this, 11, value);
 };
 
 

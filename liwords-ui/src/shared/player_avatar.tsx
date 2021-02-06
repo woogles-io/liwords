@@ -1,11 +1,11 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { fixedCharAt } from '../utils/cwgame/common';
-import { Link } from 'react-router-dom';
 import './avatar.scss';
 import axios from 'axios';
 import { toAPIUrl } from '../api/api';
 import { useMountedState } from '../utils/mounted';
 import { notification, Tooltip, Modal, Alert } from 'antd';
+import { EditOutlined } from '@ant-design/icons';
 import { PlayerMetadata } from '../gameroom/game_info';
 const colors = require('../base.scss');
 
@@ -19,7 +19,8 @@ export const PlayerAvatar = (props: AvatarProps) => {
   const { useState } = useMountedState();
 
   const [updateModalVisible, setUpdateModalVisible] = useState(false);
-  const [err, setErr] = useState('');
+  const [avatarErr, setAvatarErr] = useState('');
+  const [avatarUrl, setAvatarUrl] = useState<string | undefined>("");
   const [avatarFile, setAvatarFile] = useState(new File([""], ""));
 
   const handleChange = (files: FileList | null) => {
@@ -27,11 +28,23 @@ export const PlayerAvatar = (props: AvatarProps) => {
     setAvatarFile(file);
   };     
   
+  useEffect(() => {
+    setAvatarUrl(props.player?.avatar_url);
+  }, [props.player]);
+
+  useEffect(() => {
+    setAvatarErr('');
+    var fileInput = (document.getElementById('avatar-file-input') as HTMLInputElement);
+    if (fileInput !== null) {
+      fileInput.value = '';
+    }
+  }, [updateModalVisible]);
+
   var okButtonDisabled = (avatarFile == null || avatarFile.name.length === 0);
   const updateModal = 
       <Modal
         className="avatar-update-modal"
-        title="Update avatar"
+        title="Choose a JPG photo for your avatar"
         visible={updateModalVisible}
         okText="Upload Avatar"
         okButtonProps={{ disabled: okButtonDisabled }}
@@ -57,15 +70,16 @@ export const PlayerAvatar = (props: AvatarProps) => {
                   description: 'Your avatar was updated.',
                 });
                 setUpdateModalVisible(false);              
+                setAvatarUrl(resp.data.avatar_url);
                 console.log(resp.data.avatar_url);
               })
               .catch((e) => {
                 if (e.response) {
                   // From Twirp
                   console.log(e);
-                  setErr(e.response.data.msg);
+                  setAvatarErr(e.response.data.msg);
                 } else {
-                  setErr('unknown error, see console');
+                  setAvatarErr('unknown error, see console');
                   console.log(e);
                 }
               });
@@ -74,9 +88,9 @@ export const PlayerAvatar = (props: AvatarProps) => {
         }}
       >
         <div> 
-            <input type="file" onChange={(e) => handleChange(e.target.files) } /> 
+            <input type="file" id="avatar-file-input" accept=".jpg,.jpeg" onChange={(e) => handleChange(e.target.files) } /> 
         </div> 
-        {err !== '' ? <Alert message={err} type="error" /> : null}
+        {avatarErr !== '' ? <Alert message={avatarErr} type="error" /> : null}
       </Modal>
  
    let avatarStyle = {};
@@ -87,35 +101,33 @@ export const PlayerAvatar = (props: AvatarProps) => {
     };
   }
 
-  if (props.player?.avatar_url) {
+  if (avatarUrl) {
     avatarStyle = {
-      backgroundImage: `url(${props.player?.avatar_url})`,
+      backgroundImage: `url(${avatarUrl})`,
     };
   }
 
   const editControl = props.editable ? (
-    <Link to="/" 
+    <EditOutlined
       onClick={(e) => {
         e.preventDefault()
         setUpdateModalVisible(true)
       }}
-      >
-      Edit
-    </Link>
+    />
   ) : null;
 
   const renderAvatar = (
     <div>
       <div className="player-avatar" style={avatarStyle}>
-        {!props.player?.avatar_url
+        {!avatarUrl
           ? fixedCharAt(
               props.player?.full_name || props.player?.nickname || '?',
               0,
               1
             )
           : ''}
+        {editControl}
       </div>
-      {editControl}
       {updateModal}
     </div>
   );

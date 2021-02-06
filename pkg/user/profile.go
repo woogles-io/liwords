@@ -72,15 +72,16 @@ func (ps *ProfileService) GetProfile(ctx context.Context, r *pb.ProfileRequest) 
 	}
 
 	return &pb.ProfileResponse{
-		FirstName:   user.Profile.FirstName,
-		LastName:    user.Profile.LastName,
-		CountryCode: user.Profile.CountryCode,
-		Title:       user.Profile.Title,
-		About:       user.Profile.About,
-		RatingsJson: string(ratjson),
-		StatsJson:   string(statjson),
-		UserId:      user.UUID,
-		AvatarUrl:	 user.AvatarUrl(),
+		FirstName:   		user.Profile.FirstName,
+		LastName:    		user.Profile.LastName,
+		CountryCode: 		user.Profile.CountryCode,
+		Title:       		user.Profile.Title,
+		About:       		user.Profile.About,
+		RatingsJson: 		string(ratjson),
+		StatsJson:   		string(statjson),
+		UserId:      		user.UUID,
+		AvatarUrl:	 		user.AvatarUrl(),
+		AvatarsEditable: 	ps.avatarService != nil,
 	}, nil
 }
 

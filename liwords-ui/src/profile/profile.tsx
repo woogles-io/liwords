@@ -26,6 +26,7 @@ type ProfileResponse = {
   user_id: string;
   full_name: string;
   avatar_url: string;
+  avatars_editable: boolean;
 };
 
 const errorCatcher = (e: AxiosError) => {
@@ -245,6 +246,7 @@ export const UserProfile = React.memo((props: Props) => {
   const [userID, setUserID] = useState('');
   const [fullName, setFullName] = useState('');
   const [avatarUrl, setAvatarUrl] = useState('');
+  const [avatarsEditable, setAvatarsEditable] = useState(false);
   const [bio, setBio] = useState('');
   const [bioLoaded, setBioLoaded] = useState(false);
   const [darkMode, setDarkMode] = useState(
@@ -277,6 +279,7 @@ export const UserProfile = React.memo((props: Props) => {
         setUserID(resp.data.user_id);
         setFullName(resp.data.full_name);
         setAvatarUrl(resp.data.avatar_url);
+        setAvatarsEditable(resp.data.avatars_editable);
         setBio(resp.data.about);
         setBioLoaded(true);
       })
@@ -342,7 +345,7 @@ export const UserProfile = React.memo((props: Props) => {
     full_name: fullName,
   }
 
-  const avatarEditable = viewer === username
+  const avatarEditable = avatarsEditable && viewer === username;
 
   return (
     <>

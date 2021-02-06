@@ -129,6 +129,7 @@ message ProfileResponse {
   string user_id = 8;
   string avatar_url = 9;
   string full_name = 10;
+  bool avatars_editable = 11;
 }
 
 message UpdateProfileRequest {
