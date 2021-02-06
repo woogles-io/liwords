@@ -572,11 +572,10 @@ func (t *ClassicDivision) PairRound(round int) ([]*realtime.Pairing, error) {
 
 func (t *ClassicDivision) AddPlayers(players *realtime.TournamentPersons) ([]*realtime.Pairing, error) {
 
-	playerExists := false
 	numNewPlayers := 0
+	newPlayers := make(map[string]bool)
 	for _, player := range players.Persons {
 		idx, ok := t.PlayerIndexMap[player.Id]
-		playerExists = ok
 		// If the player exists and is not suspended or the tournament hasn't started
 		// throw an error
 		if ok && (!t.Players.Persons[idx].Suspended || t.CurrentRound < 0) {
@@ -584,6 +583,7 @@ func (t *ClassicDivision) AddPlayers(players *realtime.TournamentPersons) ([]*re
 		}
 		if !ok {
 			numNewPlayers++
+			newPlayers[player.Id] = true
 		}
 	}
 
@@ -604,15 +604,12 @@ func (t *ClassicDivision) AddPlayers(players *realtime.TournamentPersons) ([]*re
 			return nil, fmt.Errorf("cannot add players because the last round (%d) has already started", t.CurrentRound)
 		}
 		for _, player := range players.Persons {
+			_, playerExists := t.PlayerIndexMap[player.Id]
 			if !playerExists {
 				t.Players.Persons = append(t.Players.Persons, player)
 				t.PlayerIndexMap[player.Id] = int32(len(t.Players.Persons) - 1)
-			} else {
-				_, ok := t.PlayerIndexMap[player.Id]
-				if !ok {
-					return nil, fmt.Errorf("player %s marked as existing but not in the index map", player.Id)
-				}
 			}
+
 			// When first adding players, first temporarily mark
 			// them as suspended so that for all past rounds
 			// they receive the proper suspended result for joining late
@@ -628,19 +625,26 @@ func (t *ClassicDivision) AddPlayers(players *realtime.TournamentPersons) ([]*re
 		for i := 0; i < len(t.Matrix); i++ {
 			if i <= int(t.CurrentRound) {
 				for _, player := range players.Persons {
-					// Set the pairing
-					// This also automatically submits a forfeit result
-					newPairings, err := t.SetPairing(player.Id, player.Id, i)
+					// Only add past suspended results for brand new players
+					// Existing players that were removed already have
+					// suspended result submitted
+					if newPlayers[player.Id] {
+						// Set the pairing
+						// This also automatically submits a forfeit result
+						newPairings, err := t.SetPairing(player.Id, player.Id, i)
+
+						if err != nil {
+							return nil, err
+						}
+						response = combinePairingsResponses(response, newPairings)
+					}
+
 					if i == int(t.CurrentRound) {
 						// At this point all past rounds have been paired.
 						// Now mark all new players as not suspended so that
 						// for future pairings they don't get suspended results
 						t.Players.Persons[t.PlayerIndexMap[player.Id]].Suspended = false
 					}
-					if err != nil {
-						return nil, err
-					}
-					response = combinePairingsResponses(response, newPairings)
 				}
 			} else {
 				pm := t.RoundControls[i].PairingMethod
@@ -771,8 +775,15 @@ func (t *ClassicDivision) GetStandings(round int) ([]*realtime.PlayerStanding, e
 						draws++
 					}
 					for k := 0; k < len(pairing.Games); k++ {
-						spread += pairing.Games[k].Scores[playerIndex] -
+						incSpread := pairing.Games[k].Scores[playerIndex] -
 							pairing.Games[k].Scores[1-playerIndex]
+						// If this is a double forfeit, we can't use the spreads to give
+						// a subtraction for both players, so we do it here manually
+						if pairing.Outcomes[0] == realtime.TournamentGameResult_FORFEIT_LOSS &&
+						   pairing.Outcomes[1] == realtime.TournamentGameResult_FORFEIT_LOSS {
+						   	incSpread = t.DivisionControls.SuspendedSpread
+						   }
+						spread += incSpread
 					}
 				}
 			}

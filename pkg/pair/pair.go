@@ -170,7 +170,11 @@ func splitMembers(members *entity.UnpairedPoolMembers, i int) (*entity.UnpairedP
 func combinePairings(upperPairings []int, lowerPairings []int) []int {
 	numberOfUpperPlayers := len(upperPairings)
 	for i := 0; i < len(lowerPairings); i++ {
-		upperPairings = append(upperPairings, lowerPairings[i]+numberOfUpperPlayers)
+		newPairing := -1
+		if lowerPairings[i] != -1 {
+			newPairing = lowerPairings[i]+numberOfUpperPlayers
+		}
+		upperPairings = append(upperPairings, newPairing)
 	}
 	return upperPairings
 }
@@ -207,7 +211,7 @@ func minWeightMatching(members *entity.UnpairedPoolMembers) ([]int, error) {
 	}
 
 	if len(pairings) != numberOfMembers {
-		log.Debug().Msgf("matching incomplete: %v", edges)
+		log.Debug().Msgf("matching incomplete: %v, %v", pairings, edges)
 		return nil, errors.New("pairings and members are not the same length")
 	}
 
