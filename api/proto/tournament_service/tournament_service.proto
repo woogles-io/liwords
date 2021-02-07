@@ -142,7 +142,6 @@ service TournamentService {
       returns (TournamentMetadataResponse);
   rpc GetTournament(GetTournamentRequest)
       returns (liwords.FullTournamentDivisions);
-  rpc StartAllRoundCountdowns(TournamentStartRoundCountdownRequest) returns (TournamentResponse);
   rpc FinishTournament(FinishTournamentRequest) returns (TournamentResponse);
   rpc SetTournamentMetadata(SetTournamentMetadataRequest)
       returns (TournamentResponse);
@@ -151,7 +150,7 @@ service TournamentService {
       returns (TournamentResponse);
   rpc SetRoundControls(liwords.DivisionRoundControls)
       returns (TournamentResponse);
-  rpc SetTournamentControls(liwords.DivisionControls)
+  rpc SetDivisionControls(liwords.DivisionControls)
       returns (TournamentResponse);
   // Input to AddDirectors should be director usernames.
   rpc AddDirectors(liwords.TournamentPersons) returns (TournamentResponse);
