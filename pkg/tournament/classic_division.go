@@ -40,6 +40,10 @@ func NewClassicDivision() *ClassicDivision {
 		CurrentRound:     -1}
 }
 
+func (t *ClassicDivision) GetDivisionControls() (*realtime.DivisionControls) {
+	return t.DivisionControls
+}
+
 func (t *ClassicDivision) SetDivisionControls(divisionControls *realtime.DivisionControls) (*realtime.DivisionControls, error) {
 	t.DivisionControls = divisionControls
 	return t.DivisionControls, nil

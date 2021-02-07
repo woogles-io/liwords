@@ -343,7 +343,10 @@ func (b *Bus) readyForTournamentGame(ctx context.Context, evt *pb.ReadyForTourna
 	if err != nil {
 		return err
 	}
-	gameReq := t.Divisions[evt.Division].Controls.GameRequest
+	if t.Divisions[evt.Division].DivisionManager == nil {
+		return fmt.Errorf("division manager for division %s is nil", evt.Division)
+	}
+	gameReq := t.Divisions[evt.Division].DivisionManager.GetDivisionControls().GameRequest
 	tdata := &entity.TournamentData{
 		Id:        evt.TournamentId,
 		Division:  evt.Division,
