@@ -57,7 +57,7 @@ func main() {
 		newDirectors := &realtime.TournamentPersons{
 			Persons: []*realtime.TournamentPerson{},
 		}
-		for uuid, person := range directors.Persons {
+		for _, person := range directors.Persons {
 			uuid := person.Id
 			player, err := userStore.GetByUUID(ctx, uuid)
 			if err != nil {
