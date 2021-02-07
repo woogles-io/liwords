@@ -9,18 +9,18 @@ import (
 
 type DivisionManager interface {
 	SubmitResult(int, string, string, int, int, realtime.TournamentGameResult,
-		realtime.TournamentGameResult, realtime.GameEndReason, bool, int, string) ([]*realtime.Pairing, map[int32][]*realtime.PlayerStanding, error)
-	PairRound(int) ([]*realtime.Pairing, map[int32][]*realtime.PlayerStanding, error)
-	GetStandings(int, bool) ([]*realtime.PlayerStanding, error)
+		realtime.TournamentGameResult, realtime.GameEndReason, bool, int, string) ([]*realtime.Pairing, map[int32]*realtime.RoundStandings, error)
+	PairRound(int) ([]*realtime.Pairing, map[int32]*realtime.RoundStandings, error)
+	GetStandings(int, bool) (*realtime.RoundStandings, error)
 	GetCurrentRound() int
 	GetPlayers() *realtime.TournamentPersons
-	SetPairing(string, string, int) ([]*realtime.Pairing, map[int32][]*realtime.PlayerStanding, error)
+	SetPairing(string, string, int) ([]*realtime.Pairing, map[int32]*realtime.RoundStandings, error)
 	SetSingleRoundControls(int, *realtime.RoundControl) (*realtime.RoundControl, error)
 	SetRoundControls([]*realtime.RoundControl) ([]*realtime.Pairing, []*realtime.RoundControl, error)
 	SetDivisionControls(*realtime.DivisionControls) (*realtime.DivisionControls, error)
-	GetDivisionControls() (*realtime.DivisionControls)
-	AddPlayers(*realtime.TournamentPersons) ([]*realtime.Pairing, map[int32][]*realtime.PlayerStanding, error)
-	RemovePlayers(*realtime.TournamentPersons) ([]*realtime.Pairing, map[int32][]*realtime.PlayerStanding, error)
+	GetDivisionControls() *realtime.DivisionControls
+	AddPlayers(*realtime.TournamentPersons) ([]*realtime.Pairing, map[int32]*realtime.RoundStandings, error)
+	RemovePlayers(*realtime.TournamentPersons) ([]*realtime.Pairing, map[int32]*realtime.RoundStandings, error)
 	IsRoundReady(int) (bool, error)
 	IsRoundComplete(int) (bool, error)
 	IsStarted() bool

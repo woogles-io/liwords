@@ -1281,7 +1281,7 @@ export namespace DivisionPairingsResponse {
   }
 }
 
-export class PlayerAddedOrRemovedResponse extends jspb.Message {
+export class PlayersAddedOrRemovedResponse extends jspb.Message {
   getId(): string;
   setId(value: string): void;
 
@@ -1301,16 +1301,16 @@ export class PlayerAddedOrRemovedResponse extends jspb.Message {
   getDivisionStandingsMap(): jspb.Map<number, RoundStandings>;
   clearDivisionStandingsMap(): void;
   serializeBinary(): Uint8Array;
-  toObject(includeInstance?: boolean): PlayerAddedOrRemovedResponse.AsObject;
-  static toObject(includeInstance: boolean, msg: PlayerAddedOrRemovedResponse): PlayerAddedOrRemovedResponse.AsObject;
+  toObject(includeInstance?: boolean): PlayersAddedOrRemovedResponse.AsObject;
+  static toObject(includeInstance: boolean, msg: PlayersAddedOrRemovedResponse): PlayersAddedOrRemovedResponse.AsObject;
   static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
   static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
-  static serializeBinaryToWriter(message: PlayerAddedOrRemovedResponse, writer: jspb.BinaryWriter): void;
-  static deserializeBinary(bytes: Uint8Array): PlayerAddedOrRemovedResponse;
-  static deserializeBinaryFromReader(message: PlayerAddedOrRemovedResponse, reader: jspb.BinaryReader): PlayerAddedOrRemovedResponse;
+  static serializeBinaryToWriter(message: PlayersAddedOrRemovedResponse, writer: jspb.BinaryWriter): void;
+  static deserializeBinary(bytes: Uint8Array): PlayersAddedOrRemovedResponse;
+  static deserializeBinaryFromReader(message: PlayersAddedOrRemovedResponse, reader: jspb.BinaryReader): PlayersAddedOrRemovedResponse;
 }
 
-export namespace PlayerAddedOrRemovedResponse {
+export namespace PlayersAddedOrRemovedResponse {
   export type AsObject = {
     id: string,
     division: string,
@@ -1424,6 +1424,8 @@ export class TournamentDivisionDataResponse extends jspb.Message {
   getPlayers(): TournamentPersons | undefined;
   setPlayers(value?: TournamentPersons): void;
 
+  getStandingsMap(): jspb.Map<number, RoundStandings>;
+  clearStandingsMap(): void;
   getPairingMapMap(): jspb.Map<string, Pairing>;
   clearPairingMapMap(): void;
   hasControls(): boolean;
@@ -1454,6 +1456,7 @@ export namespace TournamentDivisionDataResponse {
     id: string,
     division: string,
     players?: TournamentPersons.AsObject,
+    standingsMap: Array<[number, RoundStandings.AsObject]>,
     pairingMapMap: Array<[string, Pairing.AsObject]>,
     controls?: DivisionControls.AsObject,
     roundControlsList: Array<RoundControl.AsObject>,

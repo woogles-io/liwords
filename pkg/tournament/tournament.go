@@ -226,7 +226,7 @@ func SetRoundControls(ctx context.Context, ts TournamentStore, id string, divisi
 		return err
 	}
 
-	pairingsMessage := PairingsToResponse(id, division, pairings, make(map[int32][]*realtime.PlayerStanding))
+	pairingsMessage := PairingsToResponse(id, division, pairings, make(map[int32]*realtime.RoundStandings))
 	wrapped := entity.WrapEvent(pairingsMessage, realtime.MessageType_TOURNAMENT_DIVISION_PAIRINGS_MESSAGE)
 	err = SendTournamentMessage(ctx, ts, id, wrapped)
 	if err != nil {
@@ -499,7 +499,7 @@ func AddPlayers(ctx context.Context, ts TournamentStore, us user.Store, id strin
 
 	pairingsResponse := PairingsToResponse(id, division, addPlayersPairings, addPlayersStandings)
 
-	addPlayersMessage := &realtime.PlayerAddedOrRemovedResponse{Id: id,
+	addPlayersMessage := &realtime.PlayersAddedOrRemovedResponse{Id: id,
 		Division:          division,
 		Players:           allCurrentPlayers,
 		DivisionPairings:  pairingsResponse.DivisionPairings,
@@ -561,7 +561,7 @@ func RemovePlayers(ctx context.Context, ts TournamentStore, us user.Store, id st
 
 	pairingsResponse := PairingsToResponse(id, division, removePlayersPairings, removePlayersStandings)
 
-	removePlayersMessage := &realtime.PlayerAddedOrRemovedResponse{Id: id,
+	removePlayersMessage := &realtime.PlayersAddedOrRemovedResponse{Id: id,
 		Division:          division,
 		Players:           allCurrentPlayers,
 		DivisionPairings:  pairingsResponse.DivisionPairings,
@@ -586,7 +586,7 @@ func SetPairings(ctx context.Context, ts TournamentStore, id string, division st
 	}
 
 	pairingsResponse := []*realtime.Pairing{}
-	standingsResponse := make(map[int32][]*realtime.PlayerStanding)
+	standingsResponse := make(map[int32]*realtime.RoundStandings)
 
 	for _, pairing := range pairings {
 		divisionObject, ok := t.Divisions[division]
@@ -758,6 +758,21 @@ func StartAllRoundCountdowns(ctx context.Context, ts TournamentStore, id string,
 	if t.IsFinished {
 		return fmt.Errorf("tournament %s has finished", id)
 	}
+
+	for division := range t.Divisions {
+		dm := t.Divisions[division].DivisionManager
+		if dm == nil {
+			return fmt.Errorf("cannot start round %d for division %s because it has a nil division manager", round, division)
+		}
+		isReady, err := dm.IsRoundReady(round)
+		if err != nil {
+			return err
+		}
+		if !isReady {
+			return fmt.Errorf("cannot start round %d for division %s because the round is not ready", round, division)
+		}
+	}
+
 	divisions := []string{}
 	rounds := []int32{}
 	for division := range t.Divisions {
@@ -1061,7 +1076,7 @@ func ClearReadyStates(ctx context.Context, ts TournamentStore, t *entity.Tournam
 	if err != nil {
 		return err
 	}
-	pairingsMessage := PairingsToResponse(t.UUID, division, pairing, make(map[int32][]*realtime.PlayerStanding))
+	pairingsMessage := PairingsToResponse(t.UUID, division, pairing, make(map[int32]*realtime.RoundStandings))
 	wrapped := entity.WrapEvent(pairingsMessage, realtime.MessageType_TOURNAMENT_DIVISION_PAIRINGS_MESSAGE)
 	return SendTournamentMessage(ctx, ts, t.UUID, wrapped)
 }
@@ -1109,18 +1124,14 @@ func TournamentDivisionDataResponse(ctx context.Context, ts TournamentStore,
 	return response, nil
 }
 
-func PairingsToResponse(id string, division string, pairings []*realtime.Pairing, standings map[int32][]*realtime.PlayerStanding) *realtime.DivisionPairingsResponse {
+func PairingsToResponse(id string, division string, pairings []*realtime.Pairing, standings map[int32]*realtime.RoundStandings) *realtime.DivisionPairingsResponse {
 	// This is quite simple for now
 	// This function is here in case this structure
 	// gets more complicated later
-	divisionStandings := make(map[int32]*realtime.RoundStandings)
-	for key, value := range standings {
-		divisionStandings[key] = &realtime.RoundStandings{Standings: value}
-	}
 	return &realtime.DivisionPairingsResponse{Id: id,
 		Division:          division,
 		DivisionPairings:  pairings,
-		DivisionStandings: divisionStandings}
+		DivisionStandings: standings}
 }
 
 func getExecutiveDirector(directors *realtime.TournamentPersons) (string, error) {

@@ -472,7 +472,7 @@ message DivisionPairingsResponse {
   map<int32, RoundStandings> division_standings = 4;
 }
 
-message PlayerAddedOrRemovedResponse {
+message PlayersAddedOrRemovedResponse {
   string id = 1;
   string division = 2;
   TournamentPersons players = 3;
@@ -502,10 +502,11 @@ message TournamentDivisionDataResponse {
   string id = 1;
   string division = 2;
   TournamentPersons players = 3;
-  map<string, Pairing> pairing_map = 4;
-  DivisionControls controls = 5;
-  repeated RoundControl round_controls = 6;
-  int32 current_round = 7;
+  map<int32, RoundStandings> standings = 4;
+  map<string, Pairing> pairing_map = 5;
+  DivisionControls controls = 6;
+  repeated RoundControl round_controls = 7;
+  int32 current_round = 8;
 }
 
 message FullTournamentDivisions { 

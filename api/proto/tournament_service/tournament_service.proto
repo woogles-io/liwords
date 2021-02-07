@@ -108,9 +108,7 @@ message GetTournamentMetadataRequest {
 }
 
 message GetTournamentRequest {
-  // User must provide the ID, or the slug (but not both)
   string id = 1;
-  string slug = 2;
 }
 
 message FinishTournamentRequest { string id = 1; }
