@@ -55,16 +55,16 @@ func main() {
 		log.Info().Str("tid", tid).Msg("migrating")
 		directors := t.Directors
 		newDirectors := &realtime.TournamentPersons{
-			Persons: make(map[string]int32),
+			Persons: []*realtime.TournamentPerson{},
 		}
-		for uuid, v := range directors.Persons {
-
+		for uuid, person := range directors.Persons {
+			uuid := person.Id
 			player, err := userStore.GetByUUID(ctx, uuid)
 			if err != nil {
 				log.Err(err).Str("uuid", uuid).Msg("err-userstore-get")
 				panic(err)
 			}
-			newDirectors.Persons[uuid+":"+player.Username] = v
+			person.Id = uuid+":"+player.Username
 		}
 		t.Directors = newDirectors
 		err = tournamentStore.Set(ctx, t)
