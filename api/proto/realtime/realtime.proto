@@ -469,6 +469,7 @@ message DivisionPairingsResponse {
   string id = 1;
   string division = 2;
   repeated Pairing division_pairings = 3;
+  map<int32, RoundStandings> division_standings = 4;
 }
 
 message PlayerAddedOrRemovedResponse {
@@ -476,6 +477,7 @@ message PlayerAddedOrRemovedResponse {
   string division = 2;
   TournamentPersons players = 3;
   repeated Pairing division_pairings = 4;
+  map<int32, RoundStandings> division_standings = 5;
 }
 
 message StartRoundResponse {

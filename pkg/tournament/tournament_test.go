@@ -510,7 +510,7 @@ func TestTournamentSingleDivision(t *testing.T) {
 		realtime.TournamentGameResult_WIN,
 		realtime.TournamentGameResult_LOSS,
 		realtime.GameEndReason_STANDARD,
-		0,
+		1,
 		0,
 		false,
 		nil)
@@ -528,7 +528,7 @@ func TestTournamentSingleDivision(t *testing.T) {
 		realtime.TournamentGameResult_WIN,
 		realtime.TournamentGameResult_LOSS,
 		realtime.GameEndReason_STANDARD,
-		0,
+		1,
 		0,
 		false,
 		nil)
@@ -540,7 +540,7 @@ func TestTournamentSingleDivision(t *testing.T) {
 
 	// Pair and out of round round
 	err = tournament.PairRound(ctx, tstore, ty.UUID, divOneName, -1)
-	is.True(err.Error() == "round number out of range (PairRound): -1")
+	is.True(err.Error() == "cannot repair non-future round -1 since current round is 2")
 
 	err = tournament.PairRound(ctx, tstore, ty.UUID, divOneName, 5)
 	is.True(err.Error() == "round number out of range (PairRound): 5")

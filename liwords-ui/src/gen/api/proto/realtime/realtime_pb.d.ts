@@ -1260,6 +1260,8 @@ export class DivisionPairingsResponse extends jspb.Message {
   setDivisionPairingsList(value: Array<Pairing>): void;
   addDivisionPairings(value?: Pairing, index?: number): Pairing;
 
+  getDivisionStandingsMap(): jspb.Map<number, RoundStandings>;
+  clearDivisionStandingsMap(): void;
   serializeBinary(): Uint8Array;
   toObject(includeInstance?: boolean): DivisionPairingsResponse.AsObject;
   static toObject(includeInstance: boolean, msg: DivisionPairingsResponse): DivisionPairingsResponse.AsObject;
@@ -1275,6 +1277,7 @@ export namespace DivisionPairingsResponse {
     id: string,
     division: string,
     divisionPairingsList: Array<Pairing.AsObject>,
+    divisionStandingsMap: Array<[number, RoundStandings.AsObject]>,
   }
 }
 
@@ -1295,6 +1298,8 @@ export class PlayerAddedOrRemovedResponse extends jspb.Message {
   setDivisionPairingsList(value: Array<Pairing>): void;
   addDivisionPairings(value?: Pairing, index?: number): Pairing;
 
+  getDivisionStandingsMap(): jspb.Map<number, RoundStandings>;
+  clearDivisionStandingsMap(): void;
   serializeBinary(): Uint8Array;
   toObject(includeInstance?: boolean): PlayerAddedOrRemovedResponse.AsObject;
   static toObject(includeInstance: boolean, msg: PlayerAddedOrRemovedResponse): PlayerAddedOrRemovedResponse.AsObject;
@@ -1311,6 +1316,7 @@ export namespace PlayerAddedOrRemovedResponse {
     division: string,
     players?: TournamentPersons.AsObject,
     divisionPairingsList: Array<Pairing.AsObject>,
+    divisionStandingsMap: Array<[number, RoundStandings.AsObject]>,
   }
 }
 

@@ -9921,7 +9921,8 @@ proto.liwords.DivisionPairingsResponse.toObject = function(includeInstance, msg)
     id: jspb.Message.getFieldWithDefault(msg, 1, ""),
     division: jspb.Message.getFieldWithDefault(msg, 2, ""),
     divisionPairingsList: jspb.Message.toObjectList(msg.getDivisionPairingsList(),
-    proto.liwords.Pairing.toObject, includeInstance)
+    proto.liwords.Pairing.toObject, includeInstance),
+    divisionStandingsMap: (f = msg.getDivisionStandingsMap()) ? f.toObject(includeInstance, proto.liwords.RoundStandings.toObject) : []
   };
 
   if (includeInstance) {
@@ -9970,6 +9971,12 @@ proto.liwords.DivisionPairingsResponse.deserializeBinaryFromReader = function(ms
       var value = new proto.liwords.Pairing;
       reader.readMessage(value,proto.liwords.Pairing.deserializeBinaryFromReader);
       msg.addDivisionPairings(value);
+      break;
+    case 4:
+      var value = msg.getDivisionStandingsMap();
+      reader.readMessage(value, function(message, reader) {
+        jspb.Map.deserializeBinary(message, reader, jspb.BinaryReader.prototype.readInt32, jspb.BinaryReader.prototype.readMessage, proto.liwords.RoundStandings.deserializeBinaryFromReader, 0, new proto.liwords.RoundStandings());
+         });
       break;
     default:
       reader.skipField();
@@ -10021,6 +10028,10 @@ proto.liwords.DivisionPairingsResponse.serializeBinaryToWriter = function(messag
       f,
       proto.liwords.Pairing.serializeBinaryToWriter
     );
+  }
+  f = message.getDivisionStandingsMap(true);
+  if (f && f.getLength() > 0) {
+    f.serializeBinary(4, writer, jspb.BinaryWriter.prototype.writeInt32, jspb.BinaryWriter.prototype.writeMessage, proto.liwords.RoundStandings.serializeBinaryToWriter);
   }
 };
 
@@ -10099,6 +10110,28 @@ proto.liwords.DivisionPairingsResponse.prototype.clearDivisionPairingsList = fun
 };
 
 
+/**
+ * map<int32, RoundStandings> division_standings = 4;
+ * @param {boolean=} opt_noLazyCreate Do not create the map if
+ * empty, instead returning `undefined`
+ * @return {!jspb.Map<number,!proto.liwords.RoundStandings>}
+ */
+proto.liwords.DivisionPairingsResponse.prototype.getDivisionStandingsMap = function(opt_noLazyCreate) {
+  return /** @type {!jspb.Map<number,!proto.liwords.RoundStandings>} */ (
+      jspb.Message.getMapField(this, 4, opt_noLazyCreate,
+      proto.liwords.RoundStandings));
+};
+
+
+/**
+ * Clears values from the map. The map will be non-null.
+ * @return {!proto.liwords.DivisionPairingsResponse} returns this
+ */
+proto.liwords.DivisionPairingsResponse.prototype.clearDivisionStandingsMap = function() {
+  this.getDivisionStandingsMap().clear();
+  return this;};
+
+
 
 /**
  * List of repeated fields within this message type.
@@ -10142,7 +10175,8 @@ proto.liwords.PlayerAddedOrRemovedResponse.toObject = function(includeInstance, 
     division: jspb.Message.getFieldWithDefault(msg, 2, ""),
     players: (f = msg.getPlayers()) && proto.liwords.TournamentPersons.toObject(includeInstance, f),
     divisionPairingsList: jspb.Message.toObjectList(msg.getDivisionPairingsList(),
-    proto.liwords.Pairing.toObject, includeInstance)
+    proto.liwords.Pairing.toObject, includeInstance),
+    divisionStandingsMap: (f = msg.getDivisionStandingsMap()) ? f.toObject(includeInstance, proto.liwords.RoundStandings.toObject) : []
   };
 
   if (includeInstance) {
@@ -10196,6 +10230,12 @@ proto.liwords.PlayerAddedOrRemovedResponse.deserializeBinaryFromReader = functio
       var value = new proto.liwords.Pairing;
       reader.readMessage(value,proto.liwords.Pairing.deserializeBinaryFromReader);
       msg.addDivisionPairings(value);
+      break;
+    case 5:
+      var value = msg.getDivisionStandingsMap();
+      reader.readMessage(value, function(message, reader) {
+        jspb.Map.deserializeBinary(message, reader, jspb.BinaryReader.prototype.readInt32, jspb.BinaryReader.prototype.readMessage, proto.liwords.RoundStandings.deserializeBinaryFromReader, 0, new proto.liwords.RoundStandings());
+         });
       break;
     default:
       reader.skipField();
@@ -10255,6 +10295,10 @@ proto.liwords.PlayerAddedOrRemovedResponse.serializeBinaryToWriter = function(me
       f,
       proto.liwords.Pairing.serializeBinaryToWriter
     );
+  }
+  f = message.getDivisionStandingsMap(true);
+  if (f && f.getLength() > 0) {
+    f.serializeBinary(5, writer, jspb.BinaryWriter.prototype.writeInt32, jspb.BinaryWriter.prototype.writeMessage, proto.liwords.RoundStandings.serializeBinaryToWriter);
   }
 };
 
@@ -10368,6 +10412,28 @@ proto.liwords.PlayerAddedOrRemovedResponse.prototype.addDivisionPairings = funct
 proto.liwords.PlayerAddedOrRemovedResponse.prototype.clearDivisionPairingsList = function() {
   return this.setDivisionPairingsList([]);
 };
+
+
+/**
+ * map<int32, RoundStandings> division_standings = 5;
+ * @param {boolean=} opt_noLazyCreate Do not create the map if
+ * empty, instead returning `undefined`
+ * @return {!jspb.Map<number,!proto.liwords.RoundStandings>}
+ */
+proto.liwords.PlayerAddedOrRemovedResponse.prototype.getDivisionStandingsMap = function(opt_noLazyCreate) {
+  return /** @type {!jspb.Map<number,!proto.liwords.RoundStandings>} */ (
+      jspb.Message.getMapField(this, 5, opt_noLazyCreate,
+      proto.liwords.RoundStandings));
+};
+
+
+/**
+ * Clears values from the map. The map will be non-null.
+ * @return {!proto.liwords.PlayerAddedOrRemovedResponse} returns this
+ */
+proto.liwords.PlayerAddedOrRemovedResponse.prototype.clearDivisionStandingsMap = function() {
+  this.getDivisionStandingsMap().clear();
+  return this;};
 
 
 
