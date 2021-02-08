@@ -93,14 +93,16 @@ export const useDrawing = () => {
 
   const [penColor, setPenColor] = useState('red');
   const [drawMode, setDrawMode] = useState('freehand');
+  const [snapEnabled, setSnapEnabled] = useState(true);
   const boardResizedSinceLastPaintRef = React.useRef(true);
-  const penRef = React.useRef<{ pen: string; mode: string }>();
+  const penRef = React.useRef<{ pen: string; mode: string; snap: boolean }>();
   const strokesRef = React.useRef<
     Array<{
       points: Array<{ x: number; y: number }>; // scaled to [0,1)
       path: string; // Mx,yLx,yLx,y... based on current boardSize
       pen: string; // "red"
       mode: string; // "freehand"
+      snap: boolean;
       elt: React.ReactElement | undefined;
     }>
   >([]);
@@ -135,18 +137,53 @@ export const useDrawing = () => {
       const stroke = strokesRef.current[i];
       if (!stroke.elt) {
         let path = stroke.path;
-        const { x: x1, y: y1 } = stroke.points[0];
-        const { x: x2, y: y2 } = stroke.points[stroke.points.length - 1];
+        let { x: x1, y: y1 } = stroke.points[0];
+        let { x: x2, y: y2 } = stroke.points[stroke.points.length - 1];
+        if (stroke.snap) {
+          const dimX = 15; // FIXME: should get the actual board dimensions
+          const dimY = dimX; // allow for non-square boards eventually
+          const dimXReciprocal = 1 / dimX;
+          const dimYReciprocal = 1 / dimY;
+          const [x1Orig, y1Orig, x2Orig, y2Orig] = [x1, y1, x2, y2];
+          if (stroke.mode === 'line' || stroke.mode === 'arrow') {
+            // snap to center of grid
+            x1 = (Math.floor(x1 / dimXReciprocal) + 0.5) * dimXReciprocal;
+            y1 = (Math.floor(y1 / dimYReciprocal) + 0.5) * dimYReciprocal;
+            x2 = (Math.floor(x2 / dimXReciprocal) + 0.5) * dimXReciprocal;
+            y2 = (Math.floor(y2 / dimYReciprocal) + 0.5) * dimYReciprocal;
+          } else if (
+            stroke.mode === 'quadrilateral' ||
+            stroke.mode === 'circle'
+          ) {
+            // snap to grid lines
+            if (x1 > x2) {
+              [x1, x2] = [x2, x1];
+            }
+            if (y1 > y2) {
+              [y1, y2] = [y2, y1];
+            }
+            x1 = Math.floor(x1 / dimXReciprocal) * dimXReciprocal;
+            y1 = Math.floor(y1 / dimYReciprocal) * dimYReciprocal;
+            x2 = Math.ceil(x2 / dimXReciprocal) * dimXReciprocal;
+            y2 = Math.ceil(y2 / dimYReciprocal) * dimYReciprocal;
+          }
+          if (x1 === x2 && y1 === y2) {
+            // undo the snap
+            [x1, y1, x2, y2] = [x1Orig, y1Orig, x2Orig, y2Orig];
+          }
+        }
         if (
-          stroke.points.length === 1 ||
-          (stroke.mode !== 'freehand' && x1 === x2 && y1 === y2)
+          stroke.mode === 'freehand'
+            ? stroke.points.length === 1
+            : x1 === x2 && y1 === y2
         ) {
           // Draw a diamond to represent a single point.
           path += 'm-1,0l1,1l1,-1l-1,-1l-1,1l1,1';
         } else if (stroke.mode === 'line') {
-          path = `M${scaledXYStr(stroke.points[0])}L${scaledXYStr(
-            stroke.points[stroke.points.length - 1]
-          )}`;
+          path = `M${scaledXYStr({ x: x1, y: y1 })}L${scaledXYStr({
+            x: x2,
+            y: y2,
+          })}`;
         } else if (stroke.mode === 'arrow') {
           // h12 = line length
           const h12 = Math.hypot(x2 - x1, y2 - y1);
@@ -170,25 +207,21 @@ export const useDrawing = () => {
           const sin2 = Math.sin(angle2);
           const x4 = x2 + x23 * cos2 - y23 * sin2;
           const y4 = y2 + x23 * sin2 + y23 * cos2;
-          if (isFinite(x3) && isFinite(y3) && isFinite(x4) && isFinite(y4)) {
-            path = `M${scaledXYStr(stroke.points[0])}L${scaledXYStr(
-              stroke.points[stroke.points.length - 1]
-            )}M${scaledXYStr({ x: x3, y: y3 })}L${scaledXYStr(
-              stroke.points[stroke.points.length - 1]
-            )}L${scaledXYStr({ x: x4, y: y4 })}`;
-          } else {
-            // sometimes there's NaN somewhere
-            path = `M${scaledXYStr(stroke.points[0])}L${scaledXYStr(
-              stroke.points[stroke.points.length - 1]
-            )}`;
-          }
+          path = `M${scaledXYStr({ x: x1, y: y1 })}L${scaledXYStr({
+            x: x2,
+            y: y2,
+          })}M${scaledXYStr({ x: x3, y: y3 })}L${scaledXYStr({
+            x: x2,
+            y: y2,
+          })}L${scaledXYStr({ x: x4, y: y4 })}`;
         } else if (stroke.mode === 'quadrilateral') {
-          path = `M${scaledXYStr(stroke.points[0])}L${scaledXYStr({
+          path = `M${scaledXYStr({ x: x1, y: y1 })}L${scaledXYStr({
             x: x1,
             y: y2,
-          })}L${scaledXYStr(
-            stroke.points[stroke.points.length - 1]
-          )}L${scaledXYStr({ x: x2, y: y1 })}Z`;
+          })}L${scaledXYStr({ x: x2, y: y2 })}L${scaledXYStr({
+            x: x2,
+            y: y1,
+          })}Z`;
         } else if (stroke.mode === 'circle') {
           const cx = (x1 + x2) / 2;
           const cy = (y1 + y2) / 2;
@@ -299,18 +332,19 @@ export const useDrawing = () => {
     (evt: React.MouseEvent) => {
       if (evt.button === 2 && !evt.shiftKey) {
         const newXY = getXY(evt);
-        penRef.current = { pen: penColor, mode: drawMode };
+        penRef.current = { pen: penColor, mode: drawMode, snap: snapEnabled };
         strokesRef.current.push({
           points: [newXY],
           path: `M${scaledXYStr(newXY)}`,
           pen: penRef.current.pen,
           mode: penRef.current.mode,
+          snap: penRef.current.snap,
           elt: undefined,
         });
         scheduleRepaint();
       }
     },
-    [penColor, drawMode, getXY, scaledXYStr, scheduleRepaint]
+    [penColor, drawMode, snapEnabled, getXY, scaledXYStr, scheduleRepaint]
   );
 
   const handleMouseUp = React.useCallback(
@@ -410,6 +444,12 @@ export const useDrawing = () => {
         if (key === 'C') {
           setDrawMode('circle');
         }
+        if (key === 'S') {
+          setSnapEnabled(true);
+        }
+        if (key === 'D') {
+          setSnapEnabled(false);
+        }
         if (key === 'R') {
           setPenColor('red');
         }
@@ -468,11 +508,11 @@ export const useDrawing = () => {
     if (canBeEnabled) {
       if (isEnabled) {
         console.log(
-          `Pen color: ${penColor}. Mode: ${drawMode}. To draw on the board, use the right mouse button. For menu, press 0.`
+          `Pen color: ${penColor}. Mode: ${drawMode}. Snap: ${snapEnabled}. To draw on the board, use the right mouse button. For menu, press 0.`
         );
       }
     }
-  }, [canBeEnabled, isEnabled, penColor, drawMode]);
+  }, [canBeEnabled, isEnabled, penColor, drawMode, snapEnabled]);
 
   const outerDivProps = React.useMemo(
     () =>

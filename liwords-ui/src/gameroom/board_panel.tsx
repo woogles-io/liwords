@@ -945,6 +945,8 @@ export const BoardPanel = React.memo((props: Props) => {
                   '\nA = Arrow mode' +
                   '\nQ = Quadrilateral mode' +
                   '\nC = Circle mode' +
+                  '\nS = Snap (does not affect freehand)' +
+                  '\nD = Do not snap' +
                   '\nR = Red pen' +
                   '\nG = Green pen' +
                   '\nB = Blue pen' +
