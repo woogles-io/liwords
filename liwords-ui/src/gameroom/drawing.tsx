@@ -92,13 +92,15 @@ export const useDrawing = () => {
   );
 
   const [penColor, setPenColor] = useState('red');
+  const [drawMode, setDrawMode] = useState('freehand');
   const boardResizedSinceLastPaintRef = React.useRef(true);
-  const penRef = React.useRef<string>();
+  const penRef = React.useRef<{ pen: string; mode: string }>();
   const strokesRef = React.useRef<
     Array<{
       points: Array<{ x: number; y: number }>; // scaled to [0,1)
       path: string; // Mx,yLx,yLx,y... based on current boardSize
       pen: string; // "red"
+      mode: string; // "freehand"
       elt: React.ReactElement | undefined;
     }>
   >([]);
@@ -133,9 +135,72 @@ export const useDrawing = () => {
       const stroke = strokesRef.current[i];
       if (!stroke.elt) {
         let path = stroke.path;
-        if (stroke.points.length === 1) {
+        const { x: x1, y: y1 } = stroke.points[0];
+        const { x: x2, y: y2 } = stroke.points[stroke.points.length - 1];
+        if (
+          stroke.points.length === 1 ||
+          (stroke.mode !== 'freehand' && x1 === x2 && y1 === y2)
+        ) {
           // Draw a diamond to represent a single point.
           path += 'm-1,0l1,1l1,-1l-1,-1l-1,1l1,1';
+        } else if (stroke.mode === 'line') {
+          path = `M${scaledXYStr(stroke.points[0])}L${scaledXYStr(
+            stroke.points[stroke.points.length - 1]
+          )}`;
+        } else if (stroke.mode === 'arrow') {
+          // h12 = line length
+          const h12 = Math.hypot(x2 - x1, y2 - y1);
+          // h23 = arrow length before rotation
+          const h23 = Math.min(0.5 * h12, 1 / 30);
+          const h23oh12 = h23 / h12;
+          // (x23,y23) = arrow endpoint relative to (x2,y2) before rotation
+          const x23 = h23oh12 * (x2 - x1);
+          const y23 = h23oh12 * (y2 - y1);
+          // using rotation matrix
+          //   [ cos(theta) -sin(theta) ][x] = [ x*cos(theta)-y*sin(theta) ]
+          //   [ sin(theta) cos(theta)  ][y] = [ x*sin(theta)+y*cos(theta) ]
+          const radPerDeg = Math.PI / 180;
+          const angle1 = 135 * radPerDeg;
+          const cos1 = Math.cos(angle1);
+          const sin1 = Math.sin(angle1);
+          const x3 = x2 + x23 * cos1 - y23 * sin1;
+          const y3 = y2 + x23 * sin1 + y23 * cos1;
+          const angle2 = -angle1;
+          const cos2 = Math.cos(angle2);
+          const sin2 = Math.sin(angle2);
+          const x4 = x2 + x23 * cos2 - y23 * sin2;
+          const y4 = y2 + x23 * sin2 + y23 * cos2;
+          if (isFinite(x3) && isFinite(y3) && isFinite(x4) && isFinite(y4)) {
+            path = `M${scaledXYStr(stroke.points[0])}L${scaledXYStr(
+              stroke.points[stroke.points.length - 1]
+            )}M${scaledXYStr({ x: x3, y: y3 })}L${scaledXYStr(
+              stroke.points[stroke.points.length - 1]
+            )}L${scaledXYStr({ x: x4, y: y4 })}`;
+          } else {
+            // sometimes there's NaN somewhere
+            path = `M${scaledXYStr(stroke.points[0])}L${scaledXYStr(
+              stroke.points[stroke.points.length - 1]
+            )}`;
+          }
+        } else if (stroke.mode === 'quadrilateral') {
+          path = `M${scaledXYStr(stroke.points[0])}L${scaledXYStr({
+            x: x1,
+            y: y2,
+          })}L${scaledXYStr(
+            stroke.points[stroke.points.length - 1]
+          )}L${scaledXYStr({ x: x2, y: y1 })}Z`;
+        } else if (stroke.mode === 'circle') {
+          const cx = (x1 + x2) / 2;
+          const cy = (y1 + y2) / 2;
+          const rx = Math.abs(x2 - x1) / 2;
+          const ry = Math.abs(y2 - y1) / 2;
+          path = `M${scaledXYStr({ x: cx - rx, y: cy })}a${scaledXYStr({
+            x: rx,
+            y: ry,
+          })},0,1,0,${scaledXYStr({ x: 2 * rx, y: 0 })}a${scaledXYStr({
+            x: rx,
+            y: ry,
+          })},0,1,0,${scaledXYStr({ x: -2 * rx, y: 0 })}`;
         }
         stroke.elt =
           stroke.pen === 'erase' ? (
@@ -234,17 +299,18 @@ export const useDrawing = () => {
     (evt: React.MouseEvent) => {
       if (evt.button === 2 && !evt.shiftKey) {
         const newXY = getXY(evt);
-        penRef.current = penColor;
+        penRef.current = { pen: penColor, mode: drawMode };
         strokesRef.current.push({
           points: [newXY],
           path: `M${scaledXYStr(newXY)}`,
-          pen: penRef.current,
+          pen: penRef.current.pen,
+          mode: penRef.current.mode,
           elt: undefined,
         });
         scheduleRepaint();
       }
     },
-    [penColor, getXY, scaledXYStr, scheduleRepaint]
+    [penColor, drawMode, getXY, scaledXYStr, scheduleRepaint]
   );
 
   const handleMouseUp = React.useCallback(
@@ -329,6 +395,21 @@ export const useDrawing = () => {
         // Toggle drawing.
         setIsEnabled((x) => !x);
       } else if (isEnabled) {
+        if (key === 'F') {
+          setDrawMode('freehand');
+        }
+        if (key === 'L') {
+          setDrawMode('line');
+        }
+        if (key === 'A') {
+          setDrawMode('arrow');
+        }
+        if (key === 'Q') {
+          setDrawMode('quadrilateral');
+        }
+        if (key === 'C') {
+          setDrawMode('circle');
+        }
         if (key === 'R') {
           setPenColor('red');
         }
@@ -387,11 +468,11 @@ export const useDrawing = () => {
     if (canBeEnabled) {
       if (isEnabled) {
         console.log(
-          `Pen color: ${penColor}. To draw on the board, use the right mouse button. For menu, press 0.`
+          `Pen color: ${penColor}. Mode: ${drawMode}. To draw on the board, use the right mouse button. For menu, press 0.`
         );
       }
     }
-  }, [canBeEnabled, isEnabled, penColor]);
+  }, [canBeEnabled, isEnabled, penColor, drawMode]);
 
   const outerDivProps = React.useMemo(
     () =>

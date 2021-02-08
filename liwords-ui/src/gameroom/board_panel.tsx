@@ -940,6 +940,11 @@ export const BoardPanel = React.memo((props: Props) => {
                   '\n0 = Toggle drawing' +
                   '\nU = Undo' +
                   '\nW = Wipe' +
+                  '\nF = Freehand mode' +
+                  '\nL = Line mode' +
+                  '\nA = Arrow mode' +
+                  '\nQ = Quadrilateral mode' +
+                  '\nC = Circle mode' +
                   '\nR = Red pen' +
                   '\nG = Green pen' +
                   '\nB = Blue pen' +
