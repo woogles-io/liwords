@@ -151,10 +151,7 @@ export const useDrawing = () => {
             y1 = (Math.floor(y1 / dimYReciprocal) + 0.5) * dimYReciprocal;
             x2 = (Math.floor(x2 / dimXReciprocal) + 0.5) * dimXReciprocal;
             y2 = (Math.floor(y2 / dimYReciprocal) + 0.5) * dimYReciprocal;
-          } else if (
-            stroke.mode === 'quadrilateral' ||
-            stroke.mode === 'circle'
-          ) {
+          } else if (stroke.mode === 'quadrangle' || stroke.mode === 'circle') {
             // snap to grid lines
             if (x1 > x2) {
               [x1, x2] = [x2, x1];
@@ -214,7 +211,7 @@ export const useDrawing = () => {
             x: x2,
             y: y2,
           })}L${scaledXYStr({ x: x4, y: y4 })}`;
-        } else if (stroke.mode === 'quadrilateral') {
+        } else if (stroke.mode === 'quadrangle') {
           path = `M${scaledXYStr({ x: x1, y: y1 })}L${scaledXYStr({
             x: x1,
             y: y2,
@@ -439,7 +436,7 @@ export const useDrawing = () => {
           setDrawMode('arrow');
         }
         if (key === 'Q') {
-          setDrawMode('quadrilateral');
+          setDrawMode('quadrangle');
         }
         if (key === 'C') {
           setDrawMode('circle');
