@@ -33,7 +33,8 @@ func (s *XTUploadService) Upload(ctx context.Context, prefix string, data []byte
 	// Base-64 encode the image data and then URLEncode that.
 	sEnc := url.QueryEscape(b64.StdEncoding.EncodeToString([]byte(data)))
 
-	// Send the photo data as a parameter in the URL itself. This is terrible.
+	// Send the photo data as a parameter in the URL itself. 
+	// This is terrible. Don't ever do this. It works only for SMALL images (~3K bytes).
 	url := "http://cross-tables.com/rest/uploadavatar.php?prefix=" + prefix + "&photobytes=" + sEnc
 
 	resp, err := http.Get(url)

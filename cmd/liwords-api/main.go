@@ -144,7 +144,7 @@ func main() {
 		cfg.SecretKey, cfg.MailgunKey)
 	registrationService := registration.NewRegistrationService(stores.UserStore)
 	gameService := gameplay.NewGameService(stores.UserStore, stores.GameStore)
-	profileService := pkguser.NewProfileService(stores.UserStore, pkguser.NewXTUploadService())
+	profileService := pkguser.NewProfileService(stores.UserStore, nil)
 	autocompleteService := pkguser.NewAutocompleteService(stores.UserStore)
 	socializeService := pkguser.NewSocializeService(stores.UserStore, stores.ChatStore)
 	configService := config.NewConfigService(stores.ConfigStore, stores.UserStore)
