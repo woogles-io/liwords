@@ -5,13 +5,20 @@ import {
   runeToValues,
 } from '../constants/tile_values';
 import Tile from './tile';
-import { EmptySpace, EphemeralTile, PlayedTiles } from '../utils/cwgame/common';
+import {
+  EmptySpace,
+  EphemeralTile,
+  PlayedTiles,
+  PlayerOfTiles,
+} from '../utils/cwgame/common';
 import { PlacementArrow } from '../utils/cwgame/tile_placement';
+import { useExaminableGameContextStoreContext } from '../store/store';
 
 type Props = {
   gridDim: number;
   tilesLayout: string;
   lastPlayedTiles: PlayedTiles;
+  playerOfTileAt: PlayerOfTiles;
   onClick: (rune: string) => void;
   placementArrow: PlacementArrow;
   scaleTiles: boolean;
@@ -24,6 +31,10 @@ type Props = {
 };
 
 const Tiles = React.memo((props: Props) => {
+  const {
+    gameContext: examinableGameContext,
+  } = useExaminableGameContextStoreContext();
+
   const tiles = [];
   if (!props.tilesLayout || props.tilesLayout.length === 0) {
     return null;
@@ -107,11 +118,13 @@ const Tiles = React.memo((props: Props) => {
         : undefined;
       if (rune !== ' ') {
         const lastPlayed = props.lastPlayedTiles[`R${y}C${x}`] === true;
+        const playerOfTile = props.playerOfTileAt[`R${y}C${x}`];
         tiles.push(
           <Tile
             rune={rune}
             value={runeToValues(rune, CrosswordGameTileValues)}
             lastPlayed={lastPlayed}
+            playerOfTile={playerOfTile}
             key={`tile_${x}_${y}`}
             scale={props.scaleTiles}
             tentativeScore={tentativeScoreHere}
@@ -135,6 +148,7 @@ const Tiles = React.memo((props: Props) => {
                 CrosswordGameTileValues
               )}
               lastPlayed={false}
+              playerOfTile={examinableGameContext.onturn}
               key={`tileT_${tentativeTile.col}_${tentativeTile.row}`}
               scale={false}
               tentative={true}

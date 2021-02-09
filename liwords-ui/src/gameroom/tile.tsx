@@ -105,6 +105,7 @@ export const TilePreview = React.memo((props: TilePreviewProps) => {
 
 type TileProps = {
   lastPlayed: boolean;
+  playerOfTile: number;
   rune: string;
   value: number;
   scale?: boolean;
@@ -208,7 +209,7 @@ const Tile = React.memo((props: TileProps) => {
     props.tentative ? ' tentative' : ''
   }${props.lastPlayed ? ' last-played' : ''}${
     isDesignatedBlank(props.rune) ? ' blank' : ''
-  }`;
+  }${props.playerOfTile ? ' tile-p1' : ' tile-p0'}`;
   return (
     <div onDragOver={handleDropOver} onDrop={handleDrop} ref={tileRef}>
       <div
