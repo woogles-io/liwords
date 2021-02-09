@@ -280,40 +280,39 @@ export const Table = React.memo((props: Props) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [gameID]);
 
-  useEffect(
-      () => {
-        if (!gameInfo.game_id) {
-          return;
-        }
+  useEffect(() => {
+    if (!gameInfo.game_id) {
+      return;
+    }
 
-      axios
-        .post<UsersGameInfoResponse>(
-          toAPIUrl('user_service.ProfileService', 'GetUsersGameInfo'),
-          {
-            uuids: gameInfo.players.map((p) => p.user_id)
-          }
-        )
-        .then((resp) => {
-          var updatedGameInfo = gameInfo
-          resp.data.infos.forEach((info) => {
-            if (info.avatar_url.length) {
-              const index = gameInfo.players.findIndex((p) => p.user_id === info.uuid);
-              if (index >= 0) {
-                updatedGameInfo.players[index].avatar_url = info.avatar_url;
-              }
+    axios
+      .post<UsersGameInfoResponse>(
+        toAPIUrl('user_service.ProfileService', 'GetUsersGameInfo'),
+        {
+          uuids: gameInfo.players.map((p) => p.user_id),
+        }
+      )
+      .then((resp) => {
+        var updatedGameInfo = gameInfo;
+        resp.data.infos.forEach((info) => {
+          if (info.avatar_url.length) {
+            const index = gameInfo.players.findIndex(
+              (p) => p.user_id === info.uuid
+            );
+            if (index >= 0) {
+              updatedGameInfo.players[index].avatar_url = info.avatar_url;
             }
-          });
-          setGameInfo(updatedGameInfo)
-        })
-        .catch((err) => {
-          message.error({
-            content: `Failed to fetch player information; please refresh. (Error: ${err.message})`,
-            duration: 10,
-          });
+          }
         });
-      },
-      [gameInfo]
-    );
+        setGameInfo(updatedGameInfo);
+      })
+      .catch((err) => {
+        message.error({
+          content: `Failed to fetch player information; please refresh. (Error: ${err.message})`,
+          duration: 10,
+        });
+      });
+  }, [gameInfo]);
 
   useEffect(() => {
     if (!gameInfo.tournament_id) {
