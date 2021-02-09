@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/domino14/liwords/pkg/glicko"
+	ms "github.com/domino14/liwords/rpc/api/proto/mod_service"
 )
 
 const (
@@ -35,6 +36,9 @@ type User struct {
 	IsDirector     bool
 	IsMod          bool
 	IsAdmin        bool
+
+	CurrentActions map[ms.ModActionType]*ms.ModAction
+	ActionHistory []*ms.ModAction
 }
 
 type UserPermission int

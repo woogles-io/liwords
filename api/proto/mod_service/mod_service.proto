@@ -1,0 +1,41 @@
+syntax = "proto3";
+package mod_service;
+option go_package = "github.com/domino14/liwords/rpc/api/proto/mod_service";
+
+import "google/protobuf/timestamp.proto";
+
+// Moderation
+
+enum ModActionType {
+  MUTE = 0;
+  SUSPEND_ACCOUNT = 1;
+  SUSPEND_RATED_GAMES = 2;
+  SUSPEND_GAMES = 3;
+  RESET_RATINGS = 4;
+  RESET_STATS = 5;
+  RESET_STATS_AND_RATINGS = 6;
+}
+
+message ModAction {
+  string user_id = 1;
+  ModActionType type = 2;
+  int32 duration = 3;
+  google.protobuf.Timestamp start_time = 4;
+  google.protobuf.Timestamp end_time = 5;  
+}
+
+message ModActions {
+	map<ModActionType, ModAction> actions = 1;
+}
+
+message GetActionsRequest {
+	string user_id = 1;
+}
+
+message ModActionResponse {}
+
+service TournamentService {
+  rpc ApplyActions(ModActions) returns (ModActionResponse);
+  rpc RemoveActions(ModActions) returns (ModActionResponse);
+  rpc GetActions(GetActionsRequest) returns (ModActions);
+}

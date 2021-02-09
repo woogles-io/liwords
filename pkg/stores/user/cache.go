@@ -26,6 +26,8 @@ type backingStore interface {
 		p1Rating entity.SingleRating, p2Rating entity.SingleRating) error
 	SetStats(ctx context.Context, p0uuid string, p1uuid string, variant entity.VariantKey,
 		p0stats *entity.Stats, p1stats *entity.Stats) error
+	ResetRatings(ctx context, uuid string) error
+	ResetStats(ctx context, uuid string) error
 	GetRandomBot(ctx context.Context) (*entity.User, error)
 
 	AddFollower(ctx context.Context, targetUser, follower uint) error
@@ -149,6 +151,19 @@ func (c *Cache) SetRatings(ctx context.Context, p0uuid string, p1uuid string, va
 	return nil
 }
 
+func (s *DBStore) ResetRatings(ctx context.Context, uuid string) error {
+	u, err := c.GetByUUID(ctx, uuid)
+	if err != nil {
+		return err
+	}
+	u.Profile.Ratings.Data = nil
+	err = c.backing.ResetRatings(ctx, uuid)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 func (c *Cache) SetStats(ctx context.Context, p0uuid string, p1uuid string, variant entity.VariantKey,
 	p0Stats *entity.Stats, p1Stats *entity.Stats) error {
 	u0, err := c.GetByUUID(ctx, p0uuid)
@@ -178,6 +193,20 @@ func (c *Cache) SetStats(ctx context.Context, p0uuid string, p1uuid string, vari
 
 	return nil
 }
+
+func (s *DBStore) ResetStats(ctx context.Context, uuid string) error {
+	u, err := c.GetByUUID(ctx, uuid)
+	if err != nil {
+		return err
+	}
+	u.Profile.Stats.Data = nil
+	err = c.backing.ResetStats(ctx, uuid)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 
 func (c *Cache) GetRandomBot(ctx context.Context) (*entity.User, error) {
 	return c.backing.GetRandomBot(ctx)

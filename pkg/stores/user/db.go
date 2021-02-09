@@ -40,6 +40,9 @@ type User struct {
 	IsDirector  bool   `gorm:"default:false"`
 	IsMod       bool   `gorm:"default:false"`
 	ApiKey      string
+
+	CurrentActions map[ms.ModActionType]*ms.ModAction
+	ActionHistory []*ms.ModAction
 }
 
 // A user profile is in a one-to-one relationship with a user. It is the
@@ -140,6 +143,8 @@ func (s *DBStore) Get(ctx context.Context, username string) (*entity.User, error
 		IsAdmin:    u.IsAdmin,
 		IsDirector: u.IsDirector,
 		IsMod:      u.IsMod,
+		CurrentActions: u.CurrentActions,
+		ActionHistory: u.ActionHistory,
 	}
 
 	return entu, nil
@@ -173,6 +178,8 @@ func (s *DBStore) GetByEmail(ctx context.Context, email string) (*entity.User, e
 		IsAdmin:    u.IsAdmin,
 		IsDirector: u.IsDirector,
 		IsMod:      u.IsMod,
+		CurrentActions: u.CurrentActions,
+		ActionHistory: u.ActionHistory,
 	}
 
 	return entu, nil
@@ -241,6 +248,8 @@ func (s *DBStore) GetByUUID(ctx context.Context, uuid string) (*entity.User, err
 			IsAdmin:    u.IsAdmin,
 			IsDirector: u.IsDirector,
 			IsMod:      u.IsMod,
+			CurrentActions: u.CurrentActions,
+			ActionHistory: u.ActionHistory,
 		}
 	}
 
@@ -282,6 +291,8 @@ func (s *DBStore) toDBObj(u *entity.User) *User {
 		IsAdmin:     u.IsAdmin,
 		IsDirector:  u.IsDirector,
 		IsMod:       u.IsMod,
+		CurrentActions: u.CurrentActions,
+		ActionHistory: u.ActionHistory,
 	}
 }
 
@@ -372,6 +383,14 @@ func (s *DBStore) SetRatings(ctx context.Context, p0uuid string, p1uuid string, 
 	})
 }
 
+func (s *DBStore) ResetRatings(ctx context.Context, uuid string) error {
+	err := s.db.Model(p0Profile).Update("ratings", postgres.Jsonb{RawMessage: nil}).Error
+
+	if err != nil {
+		return err
+	}
+}
+
 func getRatingBytes(s *DBStore, ctx context.Context, uuid string, variant entity.VariantKey,
 	rating entity.SingleRating) (*profile, []byte, error) {
 	u := &User{}
@@ -436,6 +455,14 @@ func (s *DBStore) SetStats(ctx context.Context, p0uuid string, p1uuid string, va
 		// return nil will commit the whole transaction
 		return nil
 	})
+}
+
+func (s *DBStore) ResetStats(ctx context.Context, uuid string) error {
+	err := s.db.Model(p0Profile).Update("stats", postgres.Jsonb{RawMessage: nil}).Error
+
+	if err != nil {
+		return err
+	}
 }
 
 func getStatsBytes(s *DBStore, ctx context.Context, uuid string, variant entity.VariantKey,
@@ -686,6 +713,52 @@ func (s *DBStore) ListAllIDs(ctx context.Context) ([]string, error) {
 	}
 
 	return ids, result.Error
+}
+
+func (s *DBStore) ResetStats(ctx context.Context, uid string) error {
+	u, err := s.GetByUUID(ctx, uid)
+	if err != nil {
+		return err
+	}
+	p := &profile{}
+	if result := s.db.Model(u).Related(p); result.Error != nil {
+		return fmt.Errorf("Error getting profile for %s", uid)
+	}
+
+	emptyStats := &entity.Stats{}
+	bytes, err = json.Marshal(emptyStats)
+	if err != nil {
+		return err
+	}
+	err = s.db.Model(p).Update("stats", bytes).Error
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (s *DBStore) ResetRatings(ctx context.Context, uid string) error {
+	u, err := s.GetByUUID(ctx, uid)
+	if err != nil {
+		return err
+	}
+	p := &profile{}
+	if result := s.db.Model(u).Related(p); result.Error != nil {
+		return fmt.Errorf("Error getting profile for %s", uid)
+	}
+
+	emptyRatings := &entity.Ratings{}
+	bytes, err := json.Marshal(emptyRatings)
+	if err != nil {
+		return err
+	}
+	err = s.db.Model(p).Update("ratings", bytes).Error
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (s *DBStore) ResetStatsAndRatings(ctx context.Context, uid string) error {
