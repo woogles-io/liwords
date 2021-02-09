@@ -15,7 +15,6 @@
   }
 }
 .bios {
-
   p {
     @include type-default;
     font-weight: 500;
@@ -89,11 +88,6 @@
     }
   }
 }
-
-
-
-
-
 
 @media (min-width: $screen-tablet-min) {
   .bios {

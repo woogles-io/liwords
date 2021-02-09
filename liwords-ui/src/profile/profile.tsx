@@ -343,7 +343,7 @@ export const UserProfile = React.memo((props: Props) => {
   const player = {
     avatar_url: avatarUrl,
     full_name: fullName,
-  }
+  };
 
   const avatarEditable = avatarsEditable && viewer === username;
 
@@ -368,7 +368,10 @@ export const UserProfile = React.memo((props: Props) => {
             ) : (
               username
             )}
-            <PlayerAvatar player={player} editable={avatarEditable}></PlayerAvatar>
+            <PlayerAvatar
+              player={player}
+              editable={avatarEditable}
+            ></PlayerAvatar>
           </h3>
           {viewer === username ? (
             <div>

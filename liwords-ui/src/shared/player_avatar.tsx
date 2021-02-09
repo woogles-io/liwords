@@ -20,8 +20,8 @@ export const PlayerAvatar = (props: AvatarProps) => {
 
   const [updateModalVisible, setUpdateModalVisible] = useState(false);
   const [avatarErr, setAvatarErr] = useState('');
-  const [avatarUrl, setAvatarUrl] = useState<string | undefined>("");
-  const [avatarFile, setAvatarFile] = useState(new File([""], ""));
+  const [avatarUrl, setAvatarUrl] = useState<string | undefined>('');
+  const [avatarFile, setAvatarFile] = useState(new File([''], ''));
 
   useEffect(() => {
     setAvatarUrl(props.player?.avatar_url);
@@ -29,82 +29,87 @@ export const PlayerAvatar = (props: AvatarProps) => {
 
   useEffect(() => {
     setAvatarErr('');
-    var fileInput = (document.getElementById('avatar-file-input') as HTMLInputElement);
+    var fileInput = document.getElementById(
+      'avatar-file-input'
+    ) as HTMLInputElement;
     if (fileInput !== null) {
       fileInput.value = '';
     }
   }, [updateModalVisible]);
 
-  var okButtonDisabled = (avatarFile == null || avatarFile.name.length === 0);
+  var okButtonDisabled = avatarFile == null || avatarFile.name.length === 0;
   const fileProps = {
-    beforeUpload: (file: File) => { return false },
+    beforeUpload: (file: File) => {
+      return false;
+    },
     maxCount: 1,
     onChange: (info: any) => {
       if (info.fileList.length > 0) {
         setAvatarFile(info.fileList.slice(-1)[0].originFileObj);
       } else {
-        setAvatarFile(new File([""], ""));
+        setAvatarFile(new File([''], ''));
       }
     },
-    accept: "image/jpeg",
+    accept: 'image/jpeg',
     showUploadList: false,
-  }
+  };
 
-  const updateModal = 
-      <Modal
-        className="avatar-update-modal"
-        title="Update avatar"
-        visible={updateModalVisible}
-        okText="Upload"
-        okButtonProps={{ disabled: okButtonDisabled }}
-        onCancel={() => {
-          setUpdateModalVisible(false);
-        }}
-        onOk={() => {
-          console.log(avatarFile);
-          var reader = new FileReader();
-          reader.onload = function () {
-            axios
-              .post(
-                toAPIUrl('user_service.ProfileService', 'UpdateAvatar'),
-                {
-                  jpg_data: btoa(String(reader.result)),
-                },
-                {
-                  withCredentials: true,
-                }
-              )
-              .then((resp) => {
-                notification.info({
-                  message: 'Success',
-                  description: 'Your avatar was updated.',
-                });
-                setUpdateModalVisible(false);              
-                setAvatarUrl(resp.data.avatar_url);
-                console.log(resp.data.avatar_url);
-              })
-              .catch((e) => {
-                if (e.response) {
-                  // From Twirp
-                  console.log(e);
-                  setAvatarErr(e.response.data.msg);
-                } else {
-                  setAvatarErr('unknown error, see console');
-                  console.log(e);
-                }
+  const updateModal = (
+    <Modal
+      className="avatar-update-modal"
+      title="Update avatar"
+      visible={updateModalVisible}
+      okText="Upload"
+      okButtonProps={{ disabled: okButtonDisabled }}
+      onCancel={() => {
+        setUpdateModalVisible(false);
+      }}
+      onOk={() => {
+        console.log(avatarFile);
+        var reader = new FileReader();
+        reader.onload = function () {
+          axios
+            .post(
+              toAPIUrl('user_service.ProfileService', 'UpdateAvatar'),
+              {
+                jpg_data: btoa(String(reader.result)),
+              },
+              {
+                withCredentials: true,
+              }
+            )
+            .then((resp) => {
+              notification.info({
+                message: 'Success',
+                description: 'Your avatar was updated.',
               });
-          }
-          reader.readAsBinaryString(avatarFile);
-        }}
-      >
-        <Upload {...fileProps}>
-          <Button icon={<UploadOutlined />}>Select avatar</Button>
-        </Upload>
-        <>{avatarFile.name}</>
-        {avatarErr !== '' ? <Alert message={avatarErr} type="error" /> : null}
-      </Modal>
- 
-   let avatarStyle = {};
+              setUpdateModalVisible(false);
+              setAvatarUrl(resp.data.avatar_url);
+              console.log(resp.data.avatar_url);
+            })
+            .catch((e) => {
+              if (e.response) {
+                // From Twirp
+                console.log(e);
+                setAvatarErr(e.response.data.msg);
+              } else {
+                setAvatarErr('unknown error, see console');
+                console.log(e);
+              }
+            });
+        };
+        reader.readAsBinaryString(avatarFile);
+      }}
+    >
+      <Upload {...fileProps}>
+        <Button icon={<UploadOutlined />}>Select avatar</Button>
+      </Upload>
+      <>{avatarFile.name}</>
+      {avatarErr !== '' ? <Alert message={avatarErr} type="error" /> : null}
+    </Modal>
+  );
+
+  let avatarStyle = {};
 
   if (props.player?.first) {
     avatarStyle = {
@@ -121,8 +126,8 @@ export const PlayerAvatar = (props: AvatarProps) => {
   const editControl = props.editable ? (
     <EditOutlined
       onClick={(e) => {
-        e.preventDefault()
-        setUpdateModalVisible(true)
+        e.preventDefault();
+        setUpdateModalVisible(true);
       }}
     />
   ) : null;
