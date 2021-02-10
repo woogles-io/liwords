@@ -133,7 +133,7 @@ func (u *User) RealName() string {
 }
 
 func (u *User) AvatarUrl() string {
-	if u.IsBot {
+	if u.IsBot && u.Profile.AvatarUrl == "" {
 		return "https://woogles-prod-assets.s3.amazonaws.com/macondog.png"
 	} else {
 		return u.Profile.AvatarUrl
