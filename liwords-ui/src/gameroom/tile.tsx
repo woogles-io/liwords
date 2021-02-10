@@ -122,7 +122,9 @@ type TileProps = {
     rackIndex: number | undefined,
     tileIndex: number | undefined
   ) => void;
-  onClick?: () => void;
+  onClick?: (evt: React.MouseEvent<HTMLElement>) => void;
+  onMouseEnter?: (evt: React.MouseEvent<HTMLElement>) => void;
+  onMouseLeave?: (evt: React.MouseEvent<HTMLElement>) => void;
   x?: number | undefined;
   y?: number | undefined;
 };
@@ -216,6 +218,8 @@ const Tile = React.memo((props: TileProps) => {
         data-rune={props.rune}
         style={{ cursor: props.grabbable ? 'grab' : 'default' }}
         onClick={props.onClick}
+        onMouseEnter={props.onMouseEnter}
+        onMouseLeave={props.onMouseLeave}
         onDragStart={handleStartDrag}
         onDragEnd={handleEndDrag}
         draggable={props.grabbable}

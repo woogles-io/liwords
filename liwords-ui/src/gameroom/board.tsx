@@ -24,6 +24,11 @@ type Props = {
   tentativeTiles: Set<EphemeralTile>;
   tentativeTileScore: number | undefined;
   placementArrowProperties: PlacementArrow;
+  handleSetHover?: (
+    x: number,
+    y: number,
+    words: Array<string> | undefined
+  ) => void;
 };
 
 const Board = React.memo((props: Props) => {
@@ -52,6 +57,7 @@ const Board = React.memo((props: Props) => {
           scaleTiles={true}
           placementArrow={props.placementArrowProperties}
           tentativeTileScore={props.tentativeTileScore}
+          handleSetHover={props.handleSetHover}
         />
         {svgDrawing}
       </div>

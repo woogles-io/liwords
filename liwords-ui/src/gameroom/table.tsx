@@ -384,18 +384,76 @@ export const Table = React.memo((props: Props) => {
   const [wordInfo, setWordInfo] = useState<{
     [key: string]: undefined | null | { w: string };
   }>({});
+  const wordInfoRef = useRef(wordInfo);
+  wordInfoRef.current = wordInfo;
   const [unrace, setUnrace] = useState(new Unrace());
-  const [phonies, setPhonies] = useState<Array<string> | null>(null);
+  // undefined = not ready to report
+  // null = game may have ended, check if ready to report
+  const [phonies, setPhonies] = useState<undefined | null | Array<string>>(
+    undefined
+  );
+
+  const [showDefinitionHover, setShowDefinitionHover] = useState<
+    { x: number; y: number; words: Array<string> } | undefined
+  >(undefined);
+  const [willHideDefinitionHover, setWillHideDefinitionHover] = useState(false);
+
+  // TODO: remove this when actually showing something
+  useEffect(() => {
+    console.log(showDefinitionHover);
+  }, [showDefinitionHover]);
+
+  useEffect(() => {
+    if (willHideDefinitionHover) {
+      // if the pointer is moved out of a tile, the definition is not hidden
+      // immediately. this is an intentional design decision to improve
+      // usability and responsiveness, and it enables smoother transition if
+      // the pointer is moved to a nearby tile.
+      const t = setTimeout(() => {
+        setShowDefinitionHover(undefined);
+      }, 1000);
+      return () => clearTimeout(t);
+    }
+  }, [willHideDefinitionHover]);
+
+  // TODO: remove "false" when backend returns more useful data
+  const enableHoverDefine =
+    false && (gameContext.playState === PlayState.GAME_OVER || isObserver);
+
+  const handleSetHover = useCallback(
+    (x: number, y: number, words: Array<string> | undefined) => {
+      if (enableHoverDefine && words) {
+        setWillHideDefinitionHover(false);
+        setShowDefinitionHover((oldValue) => {
+          const newValue = { x, y, words };
+          // if the pointer is moved out of a tile and back in, and the words
+          // formed have not changed, reuse the object to avoid rerendering.
+          if (JSON.stringify(oldValue) === JSON.stringify(newValue)) {
+            return oldValue;
+          }
+          return newValue;
+        });
+      } else {
+        setWillHideDefinitionHover(true);
+      }
+    },
+    [enableHoverDefine]
+  );
 
   useEffect(() => {
     // forget everything if it goes to a new game
     setWordInfo({});
     setUnrace(new Unrace());
+    setPhonies(undefined);
+    setShowDefinitionHover(undefined);
   }, [gameID, gameInfo.game_request.lexicon]);
 
+  const hasDefinitionHover = !!showDefinitionHover;
   useEffect(() => {
-    // for now, only do this at end of game
-    if (gameContext.playState === PlayState.GAME_OVER) {
+    if (gameContext.playState === PlayState.GAME_OVER || hasDefinitionHover) {
+      // when definition is requested, get definitions for all words (up to
+      // that point) that have not yet been defined. this is an intentional
+      // design decision to improve usability and responsiveness.
       setWordInfo((oldWordInfo) => {
         let wordInfo = oldWordInfo;
         for (const turn of gameContext.turns) {
@@ -406,14 +464,16 @@ export const Table = React.memo((props: Props) => {
             }
           }
         }
+        setPhonies((oldValue) => oldValue ?? null);
         return wordInfo;
       });
     }
-  }, [gameContext]);
+  }, [gameContext, hasDefinitionHover]);
 
   useEffect(() => {
     const cancelTokenSource = axios.CancelToken.source();
     unrace.run(async () => {
+      const wordInfo = wordInfoRef.current; // take the latest version after unrace
       const wordsToDefine: Array<string> = [];
       for (const word in wordInfo) {
         if (wordInfo[word] === undefined) {
@@ -434,15 +494,10 @@ export const Table = React.memo((props: Props) => {
         );
         setWordInfo((oldWordInfo) => {
           const wordInfo = { ...oldWordInfo };
-          const phonies = [];
           for (const word of wordsToDefine) {
             const definition = defineResp.data.results[word] ?? null;
             wordInfo[word] = definition;
-            if (!definition) {
-              phonies.push(word);
-            }
           }
-          setPhonies(phonies);
           return wordInfo;
         });
       } catch (e) {
@@ -458,6 +513,31 @@ export const Table = React.memo((props: Props) => {
       cancelTokenSource.cancel();
     };
   }, [gameInfo.game_request.lexicon, wordInfo, unrace]);
+
+  useEffect(() => {
+    if (phonies === null) {
+      if (gameContext.playState === PlayState.GAME_OVER) {
+        const phonies = [];
+        let hasWords = false; // avoid running this before the first GameHistoryRefresher event
+        for (const word in wordInfo) {
+          hasWords = true;
+          const definition = wordInfo[word];
+          if (definition === undefined) {
+            // not ready (this should not happen though)
+            return;
+          } else if (definition === null) {
+            phonies.push(word);
+          }
+        }
+        if (hasWords) {
+          phonies.sort();
+          setPhonies(phonies);
+          return;
+        }
+      }
+      setPhonies(undefined); // not ready to display
+    }
+  }, [gameContext.playState, phonies, wordInfo]);
 
   useEffect(() => {
     if (!phonies) return;
@@ -694,6 +774,7 @@ export const Table = React.memo((props: Props) => {
                 ? handleAcceptRematch
                 : null
             }
+            handleSetHover={handleSetHover}
           />
           <StreakWidget streakInfo={streakGameInfo} />
         </div>

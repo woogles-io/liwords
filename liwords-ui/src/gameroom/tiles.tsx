@@ -21,6 +21,11 @@ type Props = {
     rackIndex: number | undefined,
     tileIndex: number | undefined
   ) => void;
+  handleSetHover?: (
+    x: number,
+    y: number,
+    words: Array<string> | undefined
+  ) => void;
 };
 
 const Tiles = React.memo((props: Props) => {
@@ -94,7 +99,7 @@ const Tiles = React.memo((props: Props) => {
 
   for (let y = 0; y < props.gridDim; y += 1) {
     for (let x = 0; x < props.gridDim; x += 1) {
-      const rune = props.tilesLayout[y * 15 + x];
+      const rune = props.tilesLayout[y * props.gridDim + x];
       const tentativeScoreIsHere =
         tentativeScoreStyle &&
         tentativeScoreStyle.row === y &&
@@ -117,6 +122,59 @@ const Tiles = React.memo((props: Props) => {
             tentativeScore={tentativeScoreHere}
             tentativeScoreIsHorizontal={tentativeScoreHereIsHorizontal}
             grabbable={false}
+            {...(props.handleSetHover && {
+              onMouseEnter: (evt: React.MouseEvent<HTMLElement>) => {
+                // if the pointer stays on a tile when a word is played through
+                // it, the words being defined are not updated until the
+                // pointer is moved out of the tile and back in. this is an
+                // intentional design decision to improve usability and
+                // responsiveness.
+                let sh = '';
+                {
+                  let i = x;
+                  while (
+                    i > 0 &&
+                    props.tilesLayout[y * props.gridDim + i - 1] !== EmptySpace
+                  )
+                    --i;
+                  for (
+                    ;
+                    i < props.gridDim &&
+                    props.tilesLayout[y * props.gridDim + i] !== EmptySpace;
+                    ++i
+                  ) {
+                    sh += props.tilesLayout[y * props.gridDim + i];
+                  }
+                }
+                let sv = '';
+                {
+                  let i = y;
+                  while (
+                    i > 0 &&
+                    props.tilesLayout[(i - 1) * props.gridDim + x] !==
+                      EmptySpace
+                  )
+                    --i;
+                  for (
+                    ;
+                    i < props.gridDim &&
+                    props.tilesLayout[i * props.gridDim + x] !== EmptySpace;
+                    ++i
+                  ) {
+                    sv += props.tilesLayout[i * props.gridDim + x];
+                  }
+                }
+                const formedWords = [sh, sv].filter((word) => word.length >= 2);
+                props.handleSetHover!(
+                  x,
+                  y,
+                  formedWords.length ? formedWords : undefined
+                );
+              },
+              onMouseLeave: (evt: React.MouseEvent<HTMLElement>) => {
+                props.handleSetHover!(x, y, undefined);
+              },
+            })}
           />
         );
       } else {
