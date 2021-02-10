@@ -369,42 +369,6 @@ export namespace MatchRequest {
   }
 }
 
-export class AbortRequest extends jspb.Message {
-  getRequestId(): string;
-  setRequestId(value: string): void;
-
-  getGameId(): string;
-  setGameId(value: string): void;
-
-  getUserId(): string;
-  setUserId(value: string): void;
-
-  getReceivingUserId(): string;
-  setReceivingUserId(value: string): void;
-
-  getConnectionId(): string;
-  setConnectionId(value: string): void;
-
-  serializeBinary(): Uint8Array;
-  toObject(includeInstance?: boolean): AbortRequest.AsObject;
-  static toObject(includeInstance: boolean, msg: AbortRequest): AbortRequest.AsObject;
-  static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
-  static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
-  static serializeBinaryToWriter(message: AbortRequest, writer: jspb.BinaryWriter): void;
-  static deserializeBinary(bytes: Uint8Array): AbortRequest;
-  static deserializeBinaryFromReader(message: AbortRequest, reader: jspb.BinaryReader): AbortRequest;
-}
-
-export namespace AbortRequest {
-  export type AsObject = {
-    requestId: string,
-    gameId: string,
-    userId: string,
-    receivingUserId: string,
-    connectionId: string,
-  }
-}
-
 export class ReadyForGame extends jspb.Message {
   getGameId(): string;
   setGameId(value: string): void;
@@ -628,6 +592,64 @@ export namespace GameEndedEvent {
     ratingDeltasMap: Array<[string, number]>,
     history?: macondo_api_proto_macondo_macondo_pb.GameHistory.AsObject,
   }
+}
+
+export class GameMetaEvent extends jspb.Message {
+  getOrigEventId(): string;
+  setOrigEventId(value: string): void;
+
+  hasTimestamp(): boolean;
+  clearTimestamp(): void;
+  getTimestamp(): google_protobuf_timestamp_pb.Timestamp | undefined;
+  setTimestamp(value?: google_protobuf_timestamp_pb.Timestamp): void;
+
+  getType(): GameMetaEvent.EventTypeMap[keyof GameMetaEvent.EventTypeMap];
+  setType(value: GameMetaEvent.EventTypeMap[keyof GameMetaEvent.EventTypeMap]): void;
+
+  getPlayerId(): string;
+  setPlayerId(value: string): void;
+
+  getGameId(): string;
+  setGameId(value: string): void;
+
+  getExpiry(): number;
+  setExpiry(value: number): void;
+
+  serializeBinary(): Uint8Array;
+  toObject(includeInstance?: boolean): GameMetaEvent.AsObject;
+  static toObject(includeInstance: boolean, msg: GameMetaEvent): GameMetaEvent.AsObject;
+  static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+  static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+  static serializeBinaryToWriter(message: GameMetaEvent, writer: jspb.BinaryWriter): void;
+  static deserializeBinary(bytes: Uint8Array): GameMetaEvent;
+  static deserializeBinaryFromReader(message: GameMetaEvent, reader: jspb.BinaryReader): GameMetaEvent;
+}
+
+export namespace GameMetaEvent {
+  export type AsObject = {
+    origEventId: string,
+    timestamp?: google_protobuf_timestamp_pb.Timestamp.AsObject,
+    type: GameMetaEvent.EventTypeMap[keyof GameMetaEvent.EventTypeMap],
+    playerId: string,
+    gameId: string,
+    expiry: number,
+  }
+
+  export interface EventTypeMap {
+    REQUEST_ABORT: 0;
+    REQUEST_ADJUDICATION: 1;
+    REQUEST_UNDO: 2;
+    REQUEST_ADJOURN: 3;
+    ABORT_ACCEPTED: 4;
+    ABORT_DENIED: 5;
+    ADJUDICATION_ACCEPTED: 6;
+    ADJUDICATION_DENIED: 7;
+    UNDO_ACCEPTED: 8;
+    UNDO_DENIED: 9;
+    ADD_TIME: 10;
+  }
+
+  export const EventType: EventTypeMap;
 }
 
 export class TournamentGameEndedEvent extends jspb.Message {
@@ -985,26 +1007,6 @@ export class DeclineMatchRequest extends jspb.Message {
 }
 
 export namespace DeclineMatchRequest {
-  export type AsObject = {
-    requestId: string,
-  }
-}
-
-export class DeclineAbortRequest extends jspb.Message {
-  getRequestId(): string;
-  setRequestId(value: string): void;
-
-  serializeBinary(): Uint8Array;
-  toObject(includeInstance?: boolean): DeclineAbortRequest.AsObject;
-  static toObject(includeInstance: boolean, msg: DeclineAbortRequest): DeclineAbortRequest.AsObject;
-  static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
-  static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
-  static serializeBinaryToWriter(message: DeclineAbortRequest, writer: jspb.BinaryWriter): void;
-  static deserializeBinary(bytes: Uint8Array): DeclineAbortRequest;
-  static deserializeBinaryFromReader(message: DeclineAbortRequest, reader: jspb.BinaryReader): DeclineAbortRequest;
-}
-
-export namespace DeclineAbortRequest {
   export type AsObject = {
     requestId: string,
   }
@@ -1564,8 +1566,8 @@ export interface MessageTypeMap {
   TOURNAMENT_DIVISION_MESSAGE: 30;
   TOURNAMENT_DIVISION_DELETED_MESSAGE: 31;
   TOURNAMENT_FULL_DIVISIONS_MESSAGE: 32;
-  ABORT_REQUEST: 40;
-  DECLINE_ABORT_REQUEST: 41;
+  GAME_META_EVENT: 40;
+  GAME_META_TIMER_EXPIRED: 41;
 }
 
 export const MessageType: MessageTypeMap;

@@ -99,10 +99,11 @@ enum MessageType {
   REMATCH_STARTED = 29;
   TOURNAMENT_DIVISION_MESSAGE = 30;
   TOURNAMENT_DIVISION_DELETED_MESSAGE = 31;
-
   TOURNAMENT_FULL_DIVISIONS_MESSAGE = 32;
-  ABORT_REQUEST = 40;
-  DECLINE_ABORT_REQUEST = 41;
+
+  GAME_META_EVENT = 40;
+  GAME_META_TIMER_EXPIRED = 41;
+
   // Add more events here. The total number of events should fit in a byte.
   // We should definitely not be using anywhere close to 255 events, and
   // in order to enforce that I'll be forcing the event type header to just be
@@ -159,14 +160,6 @@ message MatchRequest {
   // so the following will only be used in "clubhouse mode" / more free-form
   // clubs.
   string tournament_id = 6;
-}
-
-message AbortRequest {
-  string request_id = 1;
-  string game_id = 2;
-  string user_id = 3;
-  string receiving_user_id = 4;
-  string connection_id = 5;
 }
 
 message ReadyForGame { string game_id = 1; }
@@ -231,6 +224,38 @@ message GameEndedEvent {
   map<string, int32> rating_deltas = 8;
   // Send the full game history again. This will have rack information in it.
   macondo.GameHistory history = 9;
+}
+
+// GameMetaEvent defines how we serialize meta events to the database.
+message GameMetaEvent {
+  enum EventType {
+    // These are "original events"
+    REQUEST_ABORT = 0;
+    // Adjudication is just seen as a "nudge" on the front end.
+    REQUEST_ADJUDICATION = 1;
+    REQUEST_UNDO = 2;
+    REQUEST_ADJOURN = 3; // Are we going to implement this someday?
+
+    // And these are responses:
+    // A user can accept an abort, or the client will auto-accept when time expires:
+    ABORT_ACCEPTED = 4;
+    ABORT_DENIED = 5;
+    // A user would not accept an adjudication. The client auto-accepts this when time expires
+    ADJUDICATION_ACCEPTED = 6;
+    // An adjudication is denied when the receiver responds positively to a nudge.
+    ADJUDICATION_DENIED = 7;
+    UNDO_ACCEPTED = 8;
+    UNDO_DENIED = 9;
+
+    // More:
+    ADD_TIME = 10; // add X seconds at a time (30?) to opponent's clock
+  }
+  string orig_event_id = 1;
+  google.protobuf.Timestamp timestamp = 2;
+  EventType type = 3;
+  string player_id = 4; // the player that performed the event.
+  string game_id = 5;
+  int32 expiry = 6; // how long should this event remain active, in seconds?
 }
 
 // TournamentGameEndedEvent gets sent to a tournament channel when a game is
@@ -378,9 +403,6 @@ message TimedOut {
 
 // When a Receiver declines a Seeker:
 message DeclineMatchRequest { string request_id = 1; }
-
-// When the opponent declines the abort request
-message DeclineAbortRequest { string request_id = 1; }
 
 // Tournaments
 

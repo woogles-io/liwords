@@ -63,13 +63,18 @@ type Quickdata struct {
 	NewRatings        []float64
 }
 
-// Holds the tournament data for a game.
+// TournamentData holds the tournament data for a game.
 // This is nil if the game is not a tournament game.
 type TournamentData struct {
 	Id        string
 	Division  string `json:"d"`
 	Round     int    `json:"r"`
 	GameIndex int    `json:"i"`
+}
+
+// MetaEventData holds a list of meta events, such as requesting aborts, adjourns, etc.
+type MetaEventData struct {
+	Events []*pb.GameMetaEvent `json:"events"`
 }
 
 // A Game should be saved to the database or store. It wraps a macondo.Game,
@@ -102,6 +107,7 @@ type Game struct {
 
 	Quickdata      *Quickdata
 	TournamentData *TournamentData
+	MetaEvents     *MetaEventData
 	CreatedAt      time.Time
 }
 

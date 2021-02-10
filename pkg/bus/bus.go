@@ -370,8 +370,6 @@ func (b *Bus) handleNatsPublish(ctx context.Context, subtopics []string, data []
 		return b.seekRequest(ctx, auth, userID, wsConnID, data)
 	case "matchRequest":
 		return b.matchRequest(ctx, auth, userID, wsConnID, data)
-	case "abortRequest":
-		return b.abortRequest(ctx, auth, userID, wsConnID, data)
 	case "chat":
 		// The user is subtopics[2]
 		evt := &pb.ChatMessage{}
@@ -389,14 +387,14 @@ func (b *Bus) handleNatsPublish(ctx context.Context, subtopics []string, data []
 		}
 		log.Debug().Str("user", userID).Str("reqid", evt.RequestId).Msg("decline-rematch")
 		return b.matchDeclined(ctx, evt, userID)
-	case "declineAbortRequest":
-		evt := &pb.DeclineAbortRequest{}
+	case "gameMetaEvent":
+		evt := &pb.GameMetaEvent{}
 		err := proto.Unmarshal(data, evt)
 		if err != nil {
 			return err
 		}
-		log.Debug().Str("user", userID).Str("reqid", evt.RequestId).Msg("decline-abort")
-		return b.abortDeclined(ctx, evt, userID)
+		log.Debug().Str("user", userID).Interface("evt", evt).Msg("game-meta-event")
+		return b.gameMetaEvent(ctx, evt, userID)
 	case "soughtGameProcess":
 		evt := &pb.SoughtGameProcessEvent{}
 		err := proto.Unmarshal(data, evt)

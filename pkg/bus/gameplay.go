@@ -10,6 +10,7 @@ import (
 
 	"github.com/rs/zerolog/log"
 	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/types/known/timestamppb"
 
 	"github.com/domino14/liwords/pkg/entity"
 	"github.com/domino14/liwords/pkg/gameplay"
@@ -478,4 +479,23 @@ func (b *Bus) redoCancelledGamePairings(ctx context.Context, userID, tid, div st
 
 	return tournament.ClearReadyStates(ctx, b.tournamentStore, t, div, userID, round, gidx)
 
+}
+
+func (b *Bus) gameMetaEvent(ctx context.Context, evt *pb.GameMetaEvent, userID string) error {
+	// Make sure we are not sending more abort/etc requests than allowed.
+
+	// Overwrite whatever was passed in with the userID we know made this request.
+	evt.PlayerId = userID
+	evt.Timestamp = timestamppb.New(time.Now())
+
+	err := gameplay.HandleMetaEvent(ctx, evt, b.gameStore, b.userStore, b.listStatStore, b.tournamentStore)
+	if err != nil {
+		return err
+	}
+	wrapped := entity.WrapEvent(evt, pb.MessageType_GAME_META_EVENT)
+	wrapped.AddAudience(entity.AudGame, evt.GameId)
+	wrapped.AddAudience(entity.AudGameTV, evt.GameId)
+	b.gameEventChan <- wrapped
+
+	return nil
 }

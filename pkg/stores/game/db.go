@@ -71,6 +71,8 @@ type game struct {
 	// Protobuf representations of the game request and history.
 	Request []byte
 	History []byte
+	// Meta Events (abort, adjourn, adjudicate, etc requests)
+	MetaEvents datatypes.JSON
 
 	Stats datatypes.JSON
 
@@ -131,8 +133,14 @@ func (s *DBStore) Get(ctx context.Context, id string) (*entity.Game, error) {
 		return nil, err
 	}
 
+	var mdata entity.MetaEventData
+	err = json.Unmarshal(g.MetaEvents, &mdata)
+	if err != nil {
+		// Ignore this error; meta events could be nil.
+	}
+
 	entGame, err := fromState(tdata, &qdata, g.Started, g.GameEndReason, g.Player0ID, g.Player1ID,
-		g.WinnerIdx, g.LoserIdx, g.Request, g.History, &sdata, s.gameEventChan, s.cfg, g.CreatedAt)
+		g.WinnerIdx, g.LoserIdx, g.Request, g.History, &sdata, &mdata, s.gameEventChan, s.cfg, g.CreatedAt)
 	if err != nil {
 		return nil, err
 	}
@@ -299,7 +307,7 @@ func convertGameToInfoResponse(g *game) (*gs.GameInfoResponse, error) {
 // fromState returns an entity.Game from a DB State.
 func fromState(timers entity.Timers, qdata *entity.Quickdata, Started bool,
 	GameEndReason int, p0id, p1id uint, WinnerIdx, LoserIdx int, reqBytes, histBytes []byte,
-	stats *entity.Stats,
+	stats *entity.Stats, mdata *entity.MetaEventData,
 	gameEventChan chan<- *entity.EventWrapper, cfg *config.Config, createdAt time.Time) (*entity.Game, error) {
 
 	g := &entity.Game{
@@ -311,6 +319,7 @@ func fromState(timers entity.Timers, qdata *entity.Quickdata, Started bool,
 		ChangeHook:    gameEventChan,
 		PlayerDBIDs:   [2]uint{p0id, p1id},
 		Stats:         stats,
+		MetaEvents:    mdata,
 		Quickdata:     qdata,
 		CreatedAt:     createdAt,
 	}
@@ -511,7 +520,10 @@ func (s *DBStore) toDBObj(g *entity.Game) (*game, error) {
 	if err != nil {
 		return nil, err
 	}
-	log.Debug().Str("quickdata", string(quickdata)).Msg("quickdata")
+	mdata, err := json.Marshal(g.MetaEvents)
+	if err != nil {
+		return nil, err
+	}
 	req, err := proto.Marshal(g.GameReq)
 	if err != nil {
 		return nil, err
@@ -540,6 +552,7 @@ func (s *DBStore) toDBObj(g *entity.Game) (*game, error) {
 		Request:        req,
 		History:        hist,
 		TournamentData: tourneydata,
+		MetaEvents:     mdata,
 	}
 	if g.TournamentData != nil {
 		dbg.TournamentID = g.TournamentData.Id
