@@ -16,6 +16,11 @@ const (
 	SessionExpiration = time.Hour * 24 * 30
 )
 
+type Actions struct {
+	Current map[string]*ms.ModAction
+	History []*ms.ModAction
+}
+
 // User - the db-specific details are in the store package.
 type User struct {
 	sync.RWMutex
@@ -37,8 +42,7 @@ type User struct {
 	IsMod          bool
 	IsAdmin        bool
 
-	CurrentActions map[ms.ModActionType]*ms.ModAction
-	ActionHistory []*ms.ModAction
+	Actions *Actions
 }
 
 type UserPermission int

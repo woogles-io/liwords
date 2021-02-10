@@ -35,32 +35,34 @@ import url "net/url"
 // twirp package needs to be updated.
 const _ = twirp.TwirpPackageIsVersion7
 
-// ===========================
-// TournamentService Interface
-// ===========================
+// ====================
+// ModService Interface
+// ====================
 
-type TournamentService interface {
-	AddActions(context.Context, *ModActions) (*ModActionResponse, error)
+type ModService interface {
+	ApplyActions(context.Context, *ModActionsList) (*ModActionResponse, error)
 
-	RemoveActions(context.Context, *ModActions) (*ModActionResponse, error)
+	RemoveActions(context.Context, *ModActionsList) (*ModActionResponse, error)
 
-	GetActions(context.Context, *GetActionsRequest) (*ModActions, error)
+	GetActions(context.Context, *GetActionsRequest) (*ModActionsMap, error)
+
+	GetActionHistory(context.Context, *GetActionsRequest) (*ModActionsList, error)
 }
 
-// =================================
-// TournamentService Protobuf Client
-// =================================
+// ==========================
+// ModService Protobuf Client
+// ==========================
 
-type tournamentServiceProtobufClient struct {
+type modServiceProtobufClient struct {
 	client      HTTPClient
-	urls        [3]string
+	urls        [4]string
 	interceptor twirp.Interceptor
 	opts        twirp.ClientOptions
 }
 
-// NewTournamentServiceProtobufClient creates a Protobuf client that implements the TournamentService interface.
+// NewModServiceProtobufClient creates a Protobuf client that implements the ModService interface.
 // It communicates using Protobuf and can be configured with a custom HTTPClient.
-func NewTournamentServiceProtobufClient(baseURL string, client HTTPClient, opts ...twirp.ClientOption) TournamentService {
+func NewModServiceProtobufClient(baseURL string, client HTTPClient, opts ...twirp.ClientOption) ModService {
 	if c, ok := client.(*http.Client); ok {
 		client = withoutRedirects(c)
 	}
@@ -72,14 +74,15 @@ func NewTournamentServiceProtobufClient(baseURL string, client HTTPClient, opts 
 
 	// Build method URLs: <baseURL>[<prefix>]/<package>.<Service>/<Method>
 	serviceURL := sanitizeBaseURL(baseURL)
-	serviceURL += baseServicePath(clientOpts.PathPrefix(), "mod_service", "TournamentService")
-	urls := [3]string{
-		serviceURL + "AddActions",
+	serviceURL += baseServicePath(clientOpts.PathPrefix(), "mod_service", "ModService")
+	urls := [4]string{
+		serviceURL + "ApplyActions",
 		serviceURL + "RemoveActions",
 		serviceURL + "GetActions",
+		serviceURL + "GetActionHistory",
 	}
 
-	return &tournamentServiceProtobufClient{
+	return &modServiceProtobufClient{
 		client:      client,
 		urls:        urls,
 		interceptor: twirp.ChainInterceptors(clientOpts.Interceptors...),
@@ -87,20 +90,20 @@ func NewTournamentServiceProtobufClient(baseURL string, client HTTPClient, opts 
 	}
 }
 
-func (c *tournamentServiceProtobufClient) AddActions(ctx context.Context, in *ModActions) (*ModActionResponse, error) {
+func (c *modServiceProtobufClient) ApplyActions(ctx context.Context, in *ModActionsList) (*ModActionResponse, error) {
 	ctx = ctxsetters.WithPackageName(ctx, "mod_service")
-	ctx = ctxsetters.WithServiceName(ctx, "TournamentService")
-	ctx = ctxsetters.WithMethodName(ctx, "AddActions")
-	caller := c.callAddActions
+	ctx = ctxsetters.WithServiceName(ctx, "ModService")
+	ctx = ctxsetters.WithMethodName(ctx, "ApplyActions")
+	caller := c.callApplyActions
 	if c.interceptor != nil {
-		caller = func(ctx context.Context, req *ModActions) (*ModActionResponse, error) {
+		caller = func(ctx context.Context, req *ModActionsList) (*ModActionResponse, error) {
 			resp, err := c.interceptor(
 				func(ctx context.Context, req interface{}) (interface{}, error) {
-					typedReq, ok := req.(*ModActions)
+					typedReq, ok := req.(*ModActionsList)
 					if !ok {
-						return nil, twirp.InternalError("failed type assertion req.(*ModActions) when calling interceptor")
+						return nil, twirp.InternalError("failed type assertion req.(*ModActionsList) when calling interceptor")
 					}
-					return c.callAddActions(ctx, typedReq)
+					return c.callApplyActions(ctx, typedReq)
 				},
 			)(ctx, req)
 			if resp != nil {
@@ -116,7 +119,7 @@ func (c *tournamentServiceProtobufClient) AddActions(ctx context.Context, in *Mo
 	return caller(ctx, in)
 }
 
-func (c *tournamentServiceProtobufClient) callAddActions(ctx context.Context, in *ModActions) (*ModActionResponse, error) {
+func (c *modServiceProtobufClient) callApplyActions(ctx context.Context, in *ModActionsList) (*ModActionResponse, error) {
 	out := new(ModActionResponse)
 	ctx, err := doProtobufRequest(ctx, c.client, c.opts.Hooks, c.urls[0], in, out)
 	if err != nil {
@@ -133,18 +136,18 @@ func (c *tournamentServiceProtobufClient) callAddActions(ctx context.Context, in
 	return out, nil
 }
 
-func (c *tournamentServiceProtobufClient) RemoveActions(ctx context.Context, in *ModActions) (*ModActionResponse, error) {
+func (c *modServiceProtobufClient) RemoveActions(ctx context.Context, in *ModActionsList) (*ModActionResponse, error) {
 	ctx = ctxsetters.WithPackageName(ctx, "mod_service")
-	ctx = ctxsetters.WithServiceName(ctx, "TournamentService")
+	ctx = ctxsetters.WithServiceName(ctx, "ModService")
 	ctx = ctxsetters.WithMethodName(ctx, "RemoveActions")
 	caller := c.callRemoveActions
 	if c.interceptor != nil {
-		caller = func(ctx context.Context, req *ModActions) (*ModActionResponse, error) {
+		caller = func(ctx context.Context, req *ModActionsList) (*ModActionResponse, error) {
 			resp, err := c.interceptor(
 				func(ctx context.Context, req interface{}) (interface{}, error) {
-					typedReq, ok := req.(*ModActions)
+					typedReq, ok := req.(*ModActionsList)
 					if !ok {
-						return nil, twirp.InternalError("failed type assertion req.(*ModActions) when calling interceptor")
+						return nil, twirp.InternalError("failed type assertion req.(*ModActionsList) when calling interceptor")
 					}
 					return c.callRemoveActions(ctx, typedReq)
 				},
@@ -162,7 +165,7 @@ func (c *tournamentServiceProtobufClient) RemoveActions(ctx context.Context, in 
 	return caller(ctx, in)
 }
 
-func (c *tournamentServiceProtobufClient) callRemoveActions(ctx context.Context, in *ModActions) (*ModActionResponse, error) {
+func (c *modServiceProtobufClient) callRemoveActions(ctx context.Context, in *ModActionsList) (*ModActionResponse, error) {
 	out := new(ModActionResponse)
 	ctx, err := doProtobufRequest(ctx, c.client, c.opts.Hooks, c.urls[1], in, out)
 	if err != nil {
@@ -179,13 +182,13 @@ func (c *tournamentServiceProtobufClient) callRemoveActions(ctx context.Context,
 	return out, nil
 }
 
-func (c *tournamentServiceProtobufClient) GetActions(ctx context.Context, in *GetActionsRequest) (*ModActions, error) {
+func (c *modServiceProtobufClient) GetActions(ctx context.Context, in *GetActionsRequest) (*ModActionsMap, error) {
 	ctx = ctxsetters.WithPackageName(ctx, "mod_service")
-	ctx = ctxsetters.WithServiceName(ctx, "TournamentService")
+	ctx = ctxsetters.WithServiceName(ctx, "ModService")
 	ctx = ctxsetters.WithMethodName(ctx, "GetActions")
 	caller := c.callGetActions
 	if c.interceptor != nil {
-		caller = func(ctx context.Context, req *GetActionsRequest) (*ModActions, error) {
+		caller = func(ctx context.Context, req *GetActionsRequest) (*ModActionsMap, error) {
 			resp, err := c.interceptor(
 				func(ctx context.Context, req interface{}) (interface{}, error) {
 					typedReq, ok := req.(*GetActionsRequest)
@@ -196,9 +199,9 @@ func (c *tournamentServiceProtobufClient) GetActions(ctx context.Context, in *Ge
 				},
 			)(ctx, req)
 			if resp != nil {
-				typedResp, ok := resp.(*ModActions)
+				typedResp, ok := resp.(*ModActionsMap)
 				if !ok {
-					return nil, twirp.InternalError("failed type assertion resp.(*ModActions) when calling interceptor")
+					return nil, twirp.InternalError("failed type assertion resp.(*ModActionsMap) when calling interceptor")
 				}
 				return typedResp, err
 			}
@@ -208,8 +211,8 @@ func (c *tournamentServiceProtobufClient) GetActions(ctx context.Context, in *Ge
 	return caller(ctx, in)
 }
 
-func (c *tournamentServiceProtobufClient) callGetActions(ctx context.Context, in *GetActionsRequest) (*ModActions, error) {
-	out := new(ModActions)
+func (c *modServiceProtobufClient) callGetActions(ctx context.Context, in *GetActionsRequest) (*ModActionsMap, error) {
+	out := new(ModActionsMap)
 	ctx, err := doProtobufRequest(ctx, c.client, c.opts.Hooks, c.urls[2], in, out)
 	if err != nil {
 		twerr, ok := err.(twirp.Error)
@@ -225,20 +228,66 @@ func (c *tournamentServiceProtobufClient) callGetActions(ctx context.Context, in
 	return out, nil
 }
 
-// =============================
-// TournamentService JSON Client
-// =============================
+func (c *modServiceProtobufClient) GetActionHistory(ctx context.Context, in *GetActionsRequest) (*ModActionsList, error) {
+	ctx = ctxsetters.WithPackageName(ctx, "mod_service")
+	ctx = ctxsetters.WithServiceName(ctx, "ModService")
+	ctx = ctxsetters.WithMethodName(ctx, "GetActionHistory")
+	caller := c.callGetActionHistory
+	if c.interceptor != nil {
+		caller = func(ctx context.Context, req *GetActionsRequest) (*ModActionsList, error) {
+			resp, err := c.interceptor(
+				func(ctx context.Context, req interface{}) (interface{}, error) {
+					typedReq, ok := req.(*GetActionsRequest)
+					if !ok {
+						return nil, twirp.InternalError("failed type assertion req.(*GetActionsRequest) when calling interceptor")
+					}
+					return c.callGetActionHistory(ctx, typedReq)
+				},
+			)(ctx, req)
+			if resp != nil {
+				typedResp, ok := resp.(*ModActionsList)
+				if !ok {
+					return nil, twirp.InternalError("failed type assertion resp.(*ModActionsList) when calling interceptor")
+				}
+				return typedResp, err
+			}
+			return nil, err
+		}
+	}
+	return caller(ctx, in)
+}
 
-type tournamentServiceJSONClient struct {
+func (c *modServiceProtobufClient) callGetActionHistory(ctx context.Context, in *GetActionsRequest) (*ModActionsList, error) {
+	out := new(ModActionsList)
+	ctx, err := doProtobufRequest(ctx, c.client, c.opts.Hooks, c.urls[3], in, out)
+	if err != nil {
+		twerr, ok := err.(twirp.Error)
+		if !ok {
+			twerr = twirp.InternalErrorWith(err)
+		}
+		callClientError(ctx, c.opts.Hooks, twerr)
+		return nil, err
+	}
+
+	callClientResponseReceived(ctx, c.opts.Hooks)
+
+	return out, nil
+}
+
+// ======================
+// ModService JSON Client
+// ======================
+
+type modServiceJSONClient struct {
 	client      HTTPClient
-	urls        [3]string
+	urls        [4]string
 	interceptor twirp.Interceptor
 	opts        twirp.ClientOptions
 }
 
-// NewTournamentServiceJSONClient creates a JSON client that implements the TournamentService interface.
+// NewModServiceJSONClient creates a JSON client that implements the ModService interface.
 // It communicates using JSON and can be configured with a custom HTTPClient.
-func NewTournamentServiceJSONClient(baseURL string, client HTTPClient, opts ...twirp.ClientOption) TournamentService {
+func NewModServiceJSONClient(baseURL string, client HTTPClient, opts ...twirp.ClientOption) ModService {
 	if c, ok := client.(*http.Client); ok {
 		client = withoutRedirects(c)
 	}
@@ -250,14 +299,15 @@ func NewTournamentServiceJSONClient(baseURL string, client HTTPClient, opts ...t
 
 	// Build method URLs: <baseURL>[<prefix>]/<package>.<Service>/<Method>
 	serviceURL := sanitizeBaseURL(baseURL)
-	serviceURL += baseServicePath(clientOpts.PathPrefix(), "mod_service", "TournamentService")
-	urls := [3]string{
-		serviceURL + "AddActions",
+	serviceURL += baseServicePath(clientOpts.PathPrefix(), "mod_service", "ModService")
+	urls := [4]string{
+		serviceURL + "ApplyActions",
 		serviceURL + "RemoveActions",
 		serviceURL + "GetActions",
+		serviceURL + "GetActionHistory",
 	}
 
-	return &tournamentServiceJSONClient{
+	return &modServiceJSONClient{
 		client:      client,
 		urls:        urls,
 		interceptor: twirp.ChainInterceptors(clientOpts.Interceptors...),
@@ -265,20 +315,20 @@ func NewTournamentServiceJSONClient(baseURL string, client HTTPClient, opts ...t
 	}
 }
 
-func (c *tournamentServiceJSONClient) AddActions(ctx context.Context, in *ModActions) (*ModActionResponse, error) {
+func (c *modServiceJSONClient) ApplyActions(ctx context.Context, in *ModActionsList) (*ModActionResponse, error) {
 	ctx = ctxsetters.WithPackageName(ctx, "mod_service")
-	ctx = ctxsetters.WithServiceName(ctx, "TournamentService")
-	ctx = ctxsetters.WithMethodName(ctx, "AddActions")
-	caller := c.callAddActions
+	ctx = ctxsetters.WithServiceName(ctx, "ModService")
+	ctx = ctxsetters.WithMethodName(ctx, "ApplyActions")
+	caller := c.callApplyActions
 	if c.interceptor != nil {
-		caller = func(ctx context.Context, req *ModActions) (*ModActionResponse, error) {
+		caller = func(ctx context.Context, req *ModActionsList) (*ModActionResponse, error) {
 			resp, err := c.interceptor(
 				func(ctx context.Context, req interface{}) (interface{}, error) {
-					typedReq, ok := req.(*ModActions)
+					typedReq, ok := req.(*ModActionsList)
 					if !ok {
-						return nil, twirp.InternalError("failed type assertion req.(*ModActions) when calling interceptor")
+						return nil, twirp.InternalError("failed type assertion req.(*ModActionsList) when calling interceptor")
 					}
-					return c.callAddActions(ctx, typedReq)
+					return c.callApplyActions(ctx, typedReq)
 				},
 			)(ctx, req)
 			if resp != nil {
@@ -294,7 +344,7 @@ func (c *tournamentServiceJSONClient) AddActions(ctx context.Context, in *ModAct
 	return caller(ctx, in)
 }
 
-func (c *tournamentServiceJSONClient) callAddActions(ctx context.Context, in *ModActions) (*ModActionResponse, error) {
+func (c *modServiceJSONClient) callApplyActions(ctx context.Context, in *ModActionsList) (*ModActionResponse, error) {
 	out := new(ModActionResponse)
 	ctx, err := doJSONRequest(ctx, c.client, c.opts.Hooks, c.urls[0], in, out)
 	if err != nil {
@@ -311,18 +361,18 @@ func (c *tournamentServiceJSONClient) callAddActions(ctx context.Context, in *Mo
 	return out, nil
 }
 
-func (c *tournamentServiceJSONClient) RemoveActions(ctx context.Context, in *ModActions) (*ModActionResponse, error) {
+func (c *modServiceJSONClient) RemoveActions(ctx context.Context, in *ModActionsList) (*ModActionResponse, error) {
 	ctx = ctxsetters.WithPackageName(ctx, "mod_service")
-	ctx = ctxsetters.WithServiceName(ctx, "TournamentService")
+	ctx = ctxsetters.WithServiceName(ctx, "ModService")
 	ctx = ctxsetters.WithMethodName(ctx, "RemoveActions")
 	caller := c.callRemoveActions
 	if c.interceptor != nil {
-		caller = func(ctx context.Context, req *ModActions) (*ModActionResponse, error) {
+		caller = func(ctx context.Context, req *ModActionsList) (*ModActionResponse, error) {
 			resp, err := c.interceptor(
 				func(ctx context.Context, req interface{}) (interface{}, error) {
-					typedReq, ok := req.(*ModActions)
+					typedReq, ok := req.(*ModActionsList)
 					if !ok {
-						return nil, twirp.InternalError("failed type assertion req.(*ModActions) when calling interceptor")
+						return nil, twirp.InternalError("failed type assertion req.(*ModActionsList) when calling interceptor")
 					}
 					return c.callRemoveActions(ctx, typedReq)
 				},
@@ -340,7 +390,7 @@ func (c *tournamentServiceJSONClient) RemoveActions(ctx context.Context, in *Mod
 	return caller(ctx, in)
 }
 
-func (c *tournamentServiceJSONClient) callRemoveActions(ctx context.Context, in *ModActions) (*ModActionResponse, error) {
+func (c *modServiceJSONClient) callRemoveActions(ctx context.Context, in *ModActionsList) (*ModActionResponse, error) {
 	out := new(ModActionResponse)
 	ctx, err := doJSONRequest(ctx, c.client, c.opts.Hooks, c.urls[1], in, out)
 	if err != nil {
@@ -357,13 +407,13 @@ func (c *tournamentServiceJSONClient) callRemoveActions(ctx context.Context, in 
 	return out, nil
 }
 
-func (c *tournamentServiceJSONClient) GetActions(ctx context.Context, in *GetActionsRequest) (*ModActions, error) {
+func (c *modServiceJSONClient) GetActions(ctx context.Context, in *GetActionsRequest) (*ModActionsMap, error) {
 	ctx = ctxsetters.WithPackageName(ctx, "mod_service")
-	ctx = ctxsetters.WithServiceName(ctx, "TournamentService")
+	ctx = ctxsetters.WithServiceName(ctx, "ModService")
 	ctx = ctxsetters.WithMethodName(ctx, "GetActions")
 	caller := c.callGetActions
 	if c.interceptor != nil {
-		caller = func(ctx context.Context, req *GetActionsRequest) (*ModActions, error) {
+		caller = func(ctx context.Context, req *GetActionsRequest) (*ModActionsMap, error) {
 			resp, err := c.interceptor(
 				func(ctx context.Context, req interface{}) (interface{}, error) {
 					typedReq, ok := req.(*GetActionsRequest)
@@ -374,9 +424,9 @@ func (c *tournamentServiceJSONClient) GetActions(ctx context.Context, in *GetAct
 				},
 			)(ctx, req)
 			if resp != nil {
-				typedResp, ok := resp.(*ModActions)
+				typedResp, ok := resp.(*ModActionsMap)
 				if !ok {
-					return nil, twirp.InternalError("failed type assertion resp.(*ModActions) when calling interceptor")
+					return nil, twirp.InternalError("failed type assertion resp.(*ModActionsMap) when calling interceptor")
 				}
 				return typedResp, err
 			}
@@ -386,8 +436,8 @@ func (c *tournamentServiceJSONClient) GetActions(ctx context.Context, in *GetAct
 	return caller(ctx, in)
 }
 
-func (c *tournamentServiceJSONClient) callGetActions(ctx context.Context, in *GetActionsRequest) (*ModActions, error) {
-	out := new(ModActions)
+func (c *modServiceJSONClient) callGetActions(ctx context.Context, in *GetActionsRequest) (*ModActionsMap, error) {
+	out := new(ModActionsMap)
 	ctx, err := doJSONRequest(ctx, c.client, c.opts.Hooks, c.urls[2], in, out)
 	if err != nil {
 		twerr, ok := err.(twirp.Error)
@@ -403,22 +453,68 @@ func (c *tournamentServiceJSONClient) callGetActions(ctx context.Context, in *Ge
 	return out, nil
 }
 
-// ================================
-// TournamentService Server Handler
-// ================================
+func (c *modServiceJSONClient) GetActionHistory(ctx context.Context, in *GetActionsRequest) (*ModActionsList, error) {
+	ctx = ctxsetters.WithPackageName(ctx, "mod_service")
+	ctx = ctxsetters.WithServiceName(ctx, "ModService")
+	ctx = ctxsetters.WithMethodName(ctx, "GetActionHistory")
+	caller := c.callGetActionHistory
+	if c.interceptor != nil {
+		caller = func(ctx context.Context, req *GetActionsRequest) (*ModActionsList, error) {
+			resp, err := c.interceptor(
+				func(ctx context.Context, req interface{}) (interface{}, error) {
+					typedReq, ok := req.(*GetActionsRequest)
+					if !ok {
+						return nil, twirp.InternalError("failed type assertion req.(*GetActionsRequest) when calling interceptor")
+					}
+					return c.callGetActionHistory(ctx, typedReq)
+				},
+			)(ctx, req)
+			if resp != nil {
+				typedResp, ok := resp.(*ModActionsList)
+				if !ok {
+					return nil, twirp.InternalError("failed type assertion resp.(*ModActionsList) when calling interceptor")
+				}
+				return typedResp, err
+			}
+			return nil, err
+		}
+	}
+	return caller(ctx, in)
+}
 
-type tournamentServiceServer struct {
-	TournamentService
+func (c *modServiceJSONClient) callGetActionHistory(ctx context.Context, in *GetActionsRequest) (*ModActionsList, error) {
+	out := new(ModActionsList)
+	ctx, err := doJSONRequest(ctx, c.client, c.opts.Hooks, c.urls[3], in, out)
+	if err != nil {
+		twerr, ok := err.(twirp.Error)
+		if !ok {
+			twerr = twirp.InternalErrorWith(err)
+		}
+		callClientError(ctx, c.opts.Hooks, twerr)
+		return nil, err
+	}
+
+	callClientResponseReceived(ctx, c.opts.Hooks)
+
+	return out, nil
+}
+
+// =========================
+// ModService Server Handler
+// =========================
+
+type modServiceServer struct {
+	ModService
 	interceptor      twirp.Interceptor
 	hooks            *twirp.ServerHooks
 	pathPrefix       string // prefix for routing
 	jsonSkipDefaults bool   // do not include unpopulated fields (default values) in the response
 }
 
-// NewTournamentServiceServer builds a TwirpServer that can be used as an http.Handler to handle
+// NewModServiceServer builds a TwirpServer that can be used as an http.Handler to handle
 // HTTP requests that are routed to the right method in the provided svc implementation.
 // The opts are twirp.ServerOption modifiers, for example twirp.WithServerHooks(hooks).
-func NewTournamentServiceServer(svc TournamentService, opts ...interface{}) TwirpServer {
+func NewModServiceServer(svc ModService, opts ...interface{}) TwirpServer {
 	serverOpts := twirp.ServerOptions{}
 	for _, opt := range opts {
 		switch o := opt.(type) {
@@ -429,35 +525,35 @@ func NewTournamentServiceServer(svc TournamentService, opts ...interface{}) Twir
 		case nil: // backwards compatibility, allow nil value for the argument
 			continue
 		default:
-			panic(fmt.Sprintf("Invalid option type %T on NewTournamentServiceServer", o))
+			panic(fmt.Sprintf("Invalid option type %T on NewModServiceServer", o))
 		}
 	}
 
-	return &tournamentServiceServer{
-		TournamentService: svc,
-		pathPrefix:        serverOpts.PathPrefix(),
-		interceptor:       twirp.ChainInterceptors(serverOpts.Interceptors...),
-		hooks:             serverOpts.Hooks,
-		jsonSkipDefaults:  serverOpts.JSONSkipDefaults,
+	return &modServiceServer{
+		ModService:       svc,
+		pathPrefix:       serverOpts.PathPrefix(),
+		interceptor:      twirp.ChainInterceptors(serverOpts.Interceptors...),
+		hooks:            serverOpts.Hooks,
+		jsonSkipDefaults: serverOpts.JSONSkipDefaults,
 	}
 }
 
 // writeError writes an HTTP response with a valid Twirp error format, and triggers hooks.
 // If err is not a twirp.Error, it will get wrapped with twirp.InternalErrorWith(err)
-func (s *tournamentServiceServer) writeError(ctx context.Context, resp http.ResponseWriter, err error) {
+func (s *modServiceServer) writeError(ctx context.Context, resp http.ResponseWriter, err error) {
 	writeError(ctx, resp, err, s.hooks)
 }
 
-// TournamentServicePathPrefix is a convenience constant that could used to identify URL paths.
+// ModServicePathPrefix is a convenience constant that could used to identify URL paths.
 // Should be used with caution, it only matches routes generated by Twirp Go clients,
 // that add a "/twirp" prefix by default, and use CamelCase service and method names.
 // More info: https://twitchtv.github.io/twirp/docs/routing.html
-const TournamentServicePathPrefix = "/twirp/mod_service.TournamentService/"
+const ModServicePathPrefix = "/twirp/mod_service.ModService/"
 
-func (s *tournamentServiceServer) ServeHTTP(resp http.ResponseWriter, req *http.Request) {
+func (s *modServiceServer) ServeHTTP(resp http.ResponseWriter, req *http.Request) {
 	ctx := req.Context()
 	ctx = ctxsetters.WithPackageName(ctx, "mod_service")
-	ctx = ctxsetters.WithServiceName(ctx, "TournamentService")
+	ctx = ctxsetters.WithServiceName(ctx, "ModService")
 	ctx = ctxsetters.WithResponseWriter(ctx, resp)
 
 	var err error
@@ -475,7 +571,7 @@ func (s *tournamentServiceServer) ServeHTTP(resp http.ResponseWriter, req *http.
 
 	// Verify path format: [<prefix>]/<package>.<Service>/<Method>
 	prefix, pkgService, method := parseTwirpPath(req.URL.Path)
-	if pkgService != "mod_service.TournamentService" {
+	if pkgService != "mod_service.ModService" {
 		msg := fmt.Sprintf("no handler for path %q", req.URL.Path)
 		s.writeError(ctx, resp, badRouteError(msg, req.Method, req.URL.Path))
 		return
@@ -487,14 +583,17 @@ func (s *tournamentServiceServer) ServeHTTP(resp http.ResponseWriter, req *http.
 	}
 
 	switch method {
-	case "AddActions":
-		s.serveAddActions(ctx, resp, req)
+	case "ApplyActions":
+		s.serveApplyActions(ctx, resp, req)
 		return
 	case "RemoveActions":
 		s.serveRemoveActions(ctx, resp, req)
 		return
 	case "GetActions":
 		s.serveGetActions(ctx, resp, req)
+		return
+	case "GetActionHistory":
+		s.serveGetActionHistory(ctx, resp, req)
 		return
 	default:
 		msg := fmt.Sprintf("no handler for path %q", req.URL.Path)
@@ -503,7 +602,7 @@ func (s *tournamentServiceServer) ServeHTTP(resp http.ResponseWriter, req *http.
 	}
 }
 
-func (s *tournamentServiceServer) serveAddActions(ctx context.Context, resp http.ResponseWriter, req *http.Request) {
+func (s *modServiceServer) serveApplyActions(ctx context.Context, resp http.ResponseWriter, req *http.Request) {
 	header := req.Header.Get("Content-Type")
 	i := strings.Index(header, ";")
 	if i == -1 {
@@ -511,9 +610,9 @@ func (s *tournamentServiceServer) serveAddActions(ctx context.Context, resp http
 	}
 	switch strings.TrimSpace(strings.ToLower(header[:i])) {
 	case "application/json":
-		s.serveAddActionsJSON(ctx, resp, req)
+		s.serveApplyActionsJSON(ctx, resp, req)
 	case "application/protobuf":
-		s.serveAddActionsProtobuf(ctx, resp, req)
+		s.serveApplyActionsProtobuf(ctx, resp, req)
 	default:
 		msg := fmt.Sprintf("unexpected Content-Type: %q", req.Header.Get("Content-Type"))
 		twerr := badRouteError(msg, req.Method, req.URL.Path)
@@ -521,32 +620,32 @@ func (s *tournamentServiceServer) serveAddActions(ctx context.Context, resp http
 	}
 }
 
-func (s *tournamentServiceServer) serveAddActionsJSON(ctx context.Context, resp http.ResponseWriter, req *http.Request) {
+func (s *modServiceServer) serveApplyActionsJSON(ctx context.Context, resp http.ResponseWriter, req *http.Request) {
 	var err error
-	ctx = ctxsetters.WithMethodName(ctx, "AddActions")
+	ctx = ctxsetters.WithMethodName(ctx, "ApplyActions")
 	ctx, err = callRequestRouted(ctx, s.hooks)
 	if err != nil {
 		s.writeError(ctx, resp, err)
 		return
 	}
 
-	reqContent := new(ModActions)
+	reqContent := new(ModActionsList)
 	unmarshaler := jsonpb.Unmarshaler{AllowUnknownFields: true}
 	if err = unmarshaler.Unmarshal(req.Body, reqContent); err != nil {
 		s.writeError(ctx, resp, malformedRequestError("the json request could not be decoded"))
 		return
 	}
 
-	handler := s.TournamentService.AddActions
+	handler := s.ModService.ApplyActions
 	if s.interceptor != nil {
-		handler = func(ctx context.Context, req *ModActions) (*ModActionResponse, error) {
+		handler = func(ctx context.Context, req *ModActionsList) (*ModActionResponse, error) {
 			resp, err := s.interceptor(
 				func(ctx context.Context, req interface{}) (interface{}, error) {
-					typedReq, ok := req.(*ModActions)
+					typedReq, ok := req.(*ModActionsList)
 					if !ok {
-						return nil, twirp.InternalError("failed type assertion req.(*ModActions) when calling interceptor")
+						return nil, twirp.InternalError("failed type assertion req.(*ModActionsList) when calling interceptor")
 					}
-					return s.TournamentService.AddActions(ctx, typedReq)
+					return s.ModService.ApplyActions(ctx, typedReq)
 				},
 			)(ctx, req)
 			if resp != nil {
@@ -572,7 +671,7 @@ func (s *tournamentServiceServer) serveAddActionsJSON(ctx context.Context, resp 
 		return
 	}
 	if respContent == nil {
-		s.writeError(ctx, resp, twirp.InternalError("received a nil *ModActionResponse and nil error while calling AddActions. nil responses are not supported"))
+		s.writeError(ctx, resp, twirp.InternalError("received a nil *ModActionResponse and nil error while calling ApplyActions. nil responses are not supported"))
 		return
 	}
 
@@ -599,9 +698,9 @@ func (s *tournamentServiceServer) serveAddActionsJSON(ctx context.Context, resp 
 	callResponseSent(ctx, s.hooks)
 }
 
-func (s *tournamentServiceServer) serveAddActionsProtobuf(ctx context.Context, resp http.ResponseWriter, req *http.Request) {
+func (s *modServiceServer) serveApplyActionsProtobuf(ctx context.Context, resp http.ResponseWriter, req *http.Request) {
 	var err error
-	ctx = ctxsetters.WithMethodName(ctx, "AddActions")
+	ctx = ctxsetters.WithMethodName(ctx, "ApplyActions")
 	ctx, err = callRequestRouted(ctx, s.hooks)
 	if err != nil {
 		s.writeError(ctx, resp, err)
@@ -613,22 +712,22 @@ func (s *tournamentServiceServer) serveAddActionsProtobuf(ctx context.Context, r
 		s.writeError(ctx, resp, wrapInternal(err, "failed to read request body"))
 		return
 	}
-	reqContent := new(ModActions)
+	reqContent := new(ModActionsList)
 	if err = proto.Unmarshal(buf, reqContent); err != nil {
 		s.writeError(ctx, resp, malformedRequestError("the protobuf request could not be decoded"))
 		return
 	}
 
-	handler := s.TournamentService.AddActions
+	handler := s.ModService.ApplyActions
 	if s.interceptor != nil {
-		handler = func(ctx context.Context, req *ModActions) (*ModActionResponse, error) {
+		handler = func(ctx context.Context, req *ModActionsList) (*ModActionResponse, error) {
 			resp, err := s.interceptor(
 				func(ctx context.Context, req interface{}) (interface{}, error) {
-					typedReq, ok := req.(*ModActions)
+					typedReq, ok := req.(*ModActionsList)
 					if !ok {
-						return nil, twirp.InternalError("failed type assertion req.(*ModActions) when calling interceptor")
+						return nil, twirp.InternalError("failed type assertion req.(*ModActionsList) when calling interceptor")
 					}
-					return s.TournamentService.AddActions(ctx, typedReq)
+					return s.ModService.ApplyActions(ctx, typedReq)
 				},
 			)(ctx, req)
 			if resp != nil {
@@ -654,7 +753,7 @@ func (s *tournamentServiceServer) serveAddActionsProtobuf(ctx context.Context, r
 		return
 	}
 	if respContent == nil {
-		s.writeError(ctx, resp, twirp.InternalError("received a nil *ModActionResponse and nil error while calling AddActions. nil responses are not supported"))
+		s.writeError(ctx, resp, twirp.InternalError("received a nil *ModActionResponse and nil error while calling ApplyActions. nil responses are not supported"))
 		return
 	}
 
@@ -678,7 +777,7 @@ func (s *tournamentServiceServer) serveAddActionsProtobuf(ctx context.Context, r
 	callResponseSent(ctx, s.hooks)
 }
 
-func (s *tournamentServiceServer) serveRemoveActions(ctx context.Context, resp http.ResponseWriter, req *http.Request) {
+func (s *modServiceServer) serveRemoveActions(ctx context.Context, resp http.ResponseWriter, req *http.Request) {
 	header := req.Header.Get("Content-Type")
 	i := strings.Index(header, ";")
 	if i == -1 {
@@ -696,7 +795,7 @@ func (s *tournamentServiceServer) serveRemoveActions(ctx context.Context, resp h
 	}
 }
 
-func (s *tournamentServiceServer) serveRemoveActionsJSON(ctx context.Context, resp http.ResponseWriter, req *http.Request) {
+func (s *modServiceServer) serveRemoveActionsJSON(ctx context.Context, resp http.ResponseWriter, req *http.Request) {
 	var err error
 	ctx = ctxsetters.WithMethodName(ctx, "RemoveActions")
 	ctx, err = callRequestRouted(ctx, s.hooks)
@@ -705,23 +804,23 @@ func (s *tournamentServiceServer) serveRemoveActionsJSON(ctx context.Context, re
 		return
 	}
 
-	reqContent := new(ModActions)
+	reqContent := new(ModActionsList)
 	unmarshaler := jsonpb.Unmarshaler{AllowUnknownFields: true}
 	if err = unmarshaler.Unmarshal(req.Body, reqContent); err != nil {
 		s.writeError(ctx, resp, malformedRequestError("the json request could not be decoded"))
 		return
 	}
 
-	handler := s.TournamentService.RemoveActions
+	handler := s.ModService.RemoveActions
 	if s.interceptor != nil {
-		handler = func(ctx context.Context, req *ModActions) (*ModActionResponse, error) {
+		handler = func(ctx context.Context, req *ModActionsList) (*ModActionResponse, error) {
 			resp, err := s.interceptor(
 				func(ctx context.Context, req interface{}) (interface{}, error) {
-					typedReq, ok := req.(*ModActions)
+					typedReq, ok := req.(*ModActionsList)
 					if !ok {
-						return nil, twirp.InternalError("failed type assertion req.(*ModActions) when calling interceptor")
+						return nil, twirp.InternalError("failed type assertion req.(*ModActionsList) when calling interceptor")
 					}
-					return s.TournamentService.RemoveActions(ctx, typedReq)
+					return s.ModService.RemoveActions(ctx, typedReq)
 				},
 			)(ctx, req)
 			if resp != nil {
@@ -774,7 +873,7 @@ func (s *tournamentServiceServer) serveRemoveActionsJSON(ctx context.Context, re
 	callResponseSent(ctx, s.hooks)
 }
 
-func (s *tournamentServiceServer) serveRemoveActionsProtobuf(ctx context.Context, resp http.ResponseWriter, req *http.Request) {
+func (s *modServiceServer) serveRemoveActionsProtobuf(ctx context.Context, resp http.ResponseWriter, req *http.Request) {
 	var err error
 	ctx = ctxsetters.WithMethodName(ctx, "RemoveActions")
 	ctx, err = callRequestRouted(ctx, s.hooks)
@@ -788,22 +887,22 @@ func (s *tournamentServiceServer) serveRemoveActionsProtobuf(ctx context.Context
 		s.writeError(ctx, resp, wrapInternal(err, "failed to read request body"))
 		return
 	}
-	reqContent := new(ModActions)
+	reqContent := new(ModActionsList)
 	if err = proto.Unmarshal(buf, reqContent); err != nil {
 		s.writeError(ctx, resp, malformedRequestError("the protobuf request could not be decoded"))
 		return
 	}
 
-	handler := s.TournamentService.RemoveActions
+	handler := s.ModService.RemoveActions
 	if s.interceptor != nil {
-		handler = func(ctx context.Context, req *ModActions) (*ModActionResponse, error) {
+		handler = func(ctx context.Context, req *ModActionsList) (*ModActionResponse, error) {
 			resp, err := s.interceptor(
 				func(ctx context.Context, req interface{}) (interface{}, error) {
-					typedReq, ok := req.(*ModActions)
+					typedReq, ok := req.(*ModActionsList)
 					if !ok {
-						return nil, twirp.InternalError("failed type assertion req.(*ModActions) when calling interceptor")
+						return nil, twirp.InternalError("failed type assertion req.(*ModActionsList) when calling interceptor")
 					}
-					return s.TournamentService.RemoveActions(ctx, typedReq)
+					return s.ModService.RemoveActions(ctx, typedReq)
 				},
 			)(ctx, req)
 			if resp != nil {
@@ -853,7 +952,7 @@ func (s *tournamentServiceServer) serveRemoveActionsProtobuf(ctx context.Context
 	callResponseSent(ctx, s.hooks)
 }
 
-func (s *tournamentServiceServer) serveGetActions(ctx context.Context, resp http.ResponseWriter, req *http.Request) {
+func (s *modServiceServer) serveGetActions(ctx context.Context, resp http.ResponseWriter, req *http.Request) {
 	header := req.Header.Get("Content-Type")
 	i := strings.Index(header, ";")
 	if i == -1 {
@@ -871,7 +970,7 @@ func (s *tournamentServiceServer) serveGetActions(ctx context.Context, resp http
 	}
 }
 
-func (s *tournamentServiceServer) serveGetActionsJSON(ctx context.Context, resp http.ResponseWriter, req *http.Request) {
+func (s *modServiceServer) serveGetActionsJSON(ctx context.Context, resp http.ResponseWriter, req *http.Request) {
 	var err error
 	ctx = ctxsetters.WithMethodName(ctx, "GetActions")
 	ctx, err = callRequestRouted(ctx, s.hooks)
@@ -887,22 +986,22 @@ func (s *tournamentServiceServer) serveGetActionsJSON(ctx context.Context, resp 
 		return
 	}
 
-	handler := s.TournamentService.GetActions
+	handler := s.ModService.GetActions
 	if s.interceptor != nil {
-		handler = func(ctx context.Context, req *GetActionsRequest) (*ModActions, error) {
+		handler = func(ctx context.Context, req *GetActionsRequest) (*ModActionsMap, error) {
 			resp, err := s.interceptor(
 				func(ctx context.Context, req interface{}) (interface{}, error) {
 					typedReq, ok := req.(*GetActionsRequest)
 					if !ok {
 						return nil, twirp.InternalError("failed type assertion req.(*GetActionsRequest) when calling interceptor")
 					}
-					return s.TournamentService.GetActions(ctx, typedReq)
+					return s.ModService.GetActions(ctx, typedReq)
 				},
 			)(ctx, req)
 			if resp != nil {
-				typedResp, ok := resp.(*ModActions)
+				typedResp, ok := resp.(*ModActionsMap)
 				if !ok {
-					return nil, twirp.InternalError("failed type assertion resp.(*ModActions) when calling interceptor")
+					return nil, twirp.InternalError("failed type assertion resp.(*ModActionsMap) when calling interceptor")
 				}
 				return typedResp, err
 			}
@@ -911,7 +1010,7 @@ func (s *tournamentServiceServer) serveGetActionsJSON(ctx context.Context, resp 
 	}
 
 	// Call service method
-	var respContent *ModActions
+	var respContent *ModActionsMap
 	func() {
 		defer ensurePanicResponses(ctx, resp, s.hooks)
 		respContent, err = handler(ctx, reqContent)
@@ -922,7 +1021,7 @@ func (s *tournamentServiceServer) serveGetActionsJSON(ctx context.Context, resp 
 		return
 	}
 	if respContent == nil {
-		s.writeError(ctx, resp, twirp.InternalError("received a nil *ModActions and nil error while calling GetActions. nil responses are not supported"))
+		s.writeError(ctx, resp, twirp.InternalError("received a nil *ModActionsMap and nil error while calling GetActions. nil responses are not supported"))
 		return
 	}
 
@@ -949,7 +1048,7 @@ func (s *tournamentServiceServer) serveGetActionsJSON(ctx context.Context, resp 
 	callResponseSent(ctx, s.hooks)
 }
 
-func (s *tournamentServiceServer) serveGetActionsProtobuf(ctx context.Context, resp http.ResponseWriter, req *http.Request) {
+func (s *modServiceServer) serveGetActionsProtobuf(ctx context.Context, resp http.ResponseWriter, req *http.Request) {
 	var err error
 	ctx = ctxsetters.WithMethodName(ctx, "GetActions")
 	ctx, err = callRequestRouted(ctx, s.hooks)
@@ -969,22 +1068,22 @@ func (s *tournamentServiceServer) serveGetActionsProtobuf(ctx context.Context, r
 		return
 	}
 
-	handler := s.TournamentService.GetActions
+	handler := s.ModService.GetActions
 	if s.interceptor != nil {
-		handler = func(ctx context.Context, req *GetActionsRequest) (*ModActions, error) {
+		handler = func(ctx context.Context, req *GetActionsRequest) (*ModActionsMap, error) {
 			resp, err := s.interceptor(
 				func(ctx context.Context, req interface{}) (interface{}, error) {
 					typedReq, ok := req.(*GetActionsRequest)
 					if !ok {
 						return nil, twirp.InternalError("failed type assertion req.(*GetActionsRequest) when calling interceptor")
 					}
-					return s.TournamentService.GetActions(ctx, typedReq)
+					return s.ModService.GetActions(ctx, typedReq)
 				},
 			)(ctx, req)
 			if resp != nil {
-				typedResp, ok := resp.(*ModActions)
+				typedResp, ok := resp.(*ModActionsMap)
 				if !ok {
-					return nil, twirp.InternalError("failed type assertion resp.(*ModActions) when calling interceptor")
+					return nil, twirp.InternalError("failed type assertion resp.(*ModActionsMap) when calling interceptor")
 				}
 				return typedResp, err
 			}
@@ -993,7 +1092,7 @@ func (s *tournamentServiceServer) serveGetActionsProtobuf(ctx context.Context, r
 	}
 
 	// Call service method
-	var respContent *ModActions
+	var respContent *ModActionsMap
 	func() {
 		defer ensurePanicResponses(ctx, resp, s.hooks)
 		respContent, err = handler(ctx, reqContent)
@@ -1004,7 +1103,7 @@ func (s *tournamentServiceServer) serveGetActionsProtobuf(ctx context.Context, r
 		return
 	}
 	if respContent == nil {
-		s.writeError(ctx, resp, twirp.InternalError("received a nil *ModActions and nil error while calling GetActions. nil responses are not supported"))
+		s.writeError(ctx, resp, twirp.InternalError("received a nil *ModActionsMap and nil error while calling GetActions. nil responses are not supported"))
 		return
 	}
 
@@ -1028,19 +1127,194 @@ func (s *tournamentServiceServer) serveGetActionsProtobuf(ctx context.Context, r
 	callResponseSent(ctx, s.hooks)
 }
 
-func (s *tournamentServiceServer) ServiceDescriptor() ([]byte, int) {
+func (s *modServiceServer) serveGetActionHistory(ctx context.Context, resp http.ResponseWriter, req *http.Request) {
+	header := req.Header.Get("Content-Type")
+	i := strings.Index(header, ";")
+	if i == -1 {
+		i = len(header)
+	}
+	switch strings.TrimSpace(strings.ToLower(header[:i])) {
+	case "application/json":
+		s.serveGetActionHistoryJSON(ctx, resp, req)
+	case "application/protobuf":
+		s.serveGetActionHistoryProtobuf(ctx, resp, req)
+	default:
+		msg := fmt.Sprintf("unexpected Content-Type: %q", req.Header.Get("Content-Type"))
+		twerr := badRouteError(msg, req.Method, req.URL.Path)
+		s.writeError(ctx, resp, twerr)
+	}
+}
+
+func (s *modServiceServer) serveGetActionHistoryJSON(ctx context.Context, resp http.ResponseWriter, req *http.Request) {
+	var err error
+	ctx = ctxsetters.WithMethodName(ctx, "GetActionHistory")
+	ctx, err = callRequestRouted(ctx, s.hooks)
+	if err != nil {
+		s.writeError(ctx, resp, err)
+		return
+	}
+
+	reqContent := new(GetActionsRequest)
+	unmarshaler := jsonpb.Unmarshaler{AllowUnknownFields: true}
+	if err = unmarshaler.Unmarshal(req.Body, reqContent); err != nil {
+		s.writeError(ctx, resp, malformedRequestError("the json request could not be decoded"))
+		return
+	}
+
+	handler := s.ModService.GetActionHistory
+	if s.interceptor != nil {
+		handler = func(ctx context.Context, req *GetActionsRequest) (*ModActionsList, error) {
+			resp, err := s.interceptor(
+				func(ctx context.Context, req interface{}) (interface{}, error) {
+					typedReq, ok := req.(*GetActionsRequest)
+					if !ok {
+						return nil, twirp.InternalError("failed type assertion req.(*GetActionsRequest) when calling interceptor")
+					}
+					return s.ModService.GetActionHistory(ctx, typedReq)
+				},
+			)(ctx, req)
+			if resp != nil {
+				typedResp, ok := resp.(*ModActionsList)
+				if !ok {
+					return nil, twirp.InternalError("failed type assertion resp.(*ModActionsList) when calling interceptor")
+				}
+				return typedResp, err
+			}
+			return nil, err
+		}
+	}
+
+	// Call service method
+	var respContent *ModActionsList
+	func() {
+		defer ensurePanicResponses(ctx, resp, s.hooks)
+		respContent, err = handler(ctx, reqContent)
+	}()
+
+	if err != nil {
+		s.writeError(ctx, resp, err)
+		return
+	}
+	if respContent == nil {
+		s.writeError(ctx, resp, twirp.InternalError("received a nil *ModActionsList and nil error while calling GetActionHistory. nil responses are not supported"))
+		return
+	}
+
+	ctx = callResponsePrepared(ctx, s.hooks)
+
+	var buf bytes.Buffer
+	marshaler := &jsonpb.Marshaler{OrigName: true, EmitDefaults: !s.jsonSkipDefaults}
+	if err = marshaler.Marshal(&buf, respContent); err != nil {
+		s.writeError(ctx, resp, wrapInternal(err, "failed to marshal json response"))
+		return
+	}
+
+	ctx = ctxsetters.WithStatusCode(ctx, http.StatusOK)
+	respBytes := buf.Bytes()
+	resp.Header().Set("Content-Type", "application/json")
+	resp.Header().Set("Content-Length", strconv.Itoa(len(respBytes)))
+	resp.WriteHeader(http.StatusOK)
+
+	if n, err := resp.Write(respBytes); err != nil {
+		msg := fmt.Sprintf("failed to write response, %d of %d bytes written: %s", n, len(respBytes), err.Error())
+		twerr := twirp.NewError(twirp.Unknown, msg)
+		ctx = callError(ctx, s.hooks, twerr)
+	}
+	callResponseSent(ctx, s.hooks)
+}
+
+func (s *modServiceServer) serveGetActionHistoryProtobuf(ctx context.Context, resp http.ResponseWriter, req *http.Request) {
+	var err error
+	ctx = ctxsetters.WithMethodName(ctx, "GetActionHistory")
+	ctx, err = callRequestRouted(ctx, s.hooks)
+	if err != nil {
+		s.writeError(ctx, resp, err)
+		return
+	}
+
+	buf, err := ioutil.ReadAll(req.Body)
+	if err != nil {
+		s.writeError(ctx, resp, wrapInternal(err, "failed to read request body"))
+		return
+	}
+	reqContent := new(GetActionsRequest)
+	if err = proto.Unmarshal(buf, reqContent); err != nil {
+		s.writeError(ctx, resp, malformedRequestError("the protobuf request could not be decoded"))
+		return
+	}
+
+	handler := s.ModService.GetActionHistory
+	if s.interceptor != nil {
+		handler = func(ctx context.Context, req *GetActionsRequest) (*ModActionsList, error) {
+			resp, err := s.interceptor(
+				func(ctx context.Context, req interface{}) (interface{}, error) {
+					typedReq, ok := req.(*GetActionsRequest)
+					if !ok {
+						return nil, twirp.InternalError("failed type assertion req.(*GetActionsRequest) when calling interceptor")
+					}
+					return s.ModService.GetActionHistory(ctx, typedReq)
+				},
+			)(ctx, req)
+			if resp != nil {
+				typedResp, ok := resp.(*ModActionsList)
+				if !ok {
+					return nil, twirp.InternalError("failed type assertion resp.(*ModActionsList) when calling interceptor")
+				}
+				return typedResp, err
+			}
+			return nil, err
+		}
+	}
+
+	// Call service method
+	var respContent *ModActionsList
+	func() {
+		defer ensurePanicResponses(ctx, resp, s.hooks)
+		respContent, err = handler(ctx, reqContent)
+	}()
+
+	if err != nil {
+		s.writeError(ctx, resp, err)
+		return
+	}
+	if respContent == nil {
+		s.writeError(ctx, resp, twirp.InternalError("received a nil *ModActionsList and nil error while calling GetActionHistory. nil responses are not supported"))
+		return
+	}
+
+	ctx = callResponsePrepared(ctx, s.hooks)
+
+	respBytes, err := proto.Marshal(respContent)
+	if err != nil {
+		s.writeError(ctx, resp, wrapInternal(err, "failed to marshal proto response"))
+		return
+	}
+
+	ctx = ctxsetters.WithStatusCode(ctx, http.StatusOK)
+	resp.Header().Set("Content-Type", "application/protobuf")
+	resp.Header().Set("Content-Length", strconv.Itoa(len(respBytes)))
+	resp.WriteHeader(http.StatusOK)
+	if n, err := resp.Write(respBytes); err != nil {
+		msg := fmt.Sprintf("failed to write response, %d of %d bytes written: %s", n, len(respBytes), err.Error())
+		twerr := twirp.NewError(twirp.Unknown, msg)
+		ctx = callError(ctx, s.hooks, twerr)
+	}
+	callResponseSent(ctx, s.hooks)
+}
+
+func (s *modServiceServer) ServiceDescriptor() ([]byte, int) {
 	return twirpFileDescriptor0, 0
 }
 
-func (s *tournamentServiceServer) ProtocGenTwirpVersion() string {
+func (s *modServiceServer) ProtocGenTwirpVersion() string {
 	return "v7.1.0"
 }
 
 // PathPrefix returns the base service path, in the form: "/<prefix>/<package>.<Service>/"
 // that is everything in a Twirp route except for the <Method>. This can be used for routing,
 // for example to identify the requests that are targeted to this service in a mux.
-func (s *tournamentServiceServer) PathPrefix() string {
-	return baseServicePath(s.pathPrefix, "mod_service", "TournamentService")
+func (s *modServiceServer) PathPrefix() string {
+	return baseServicePath(s.pathPrefix, "mod_service", "ModService")
 }
 
 // =====
@@ -1590,34 +1864,40 @@ func callClientError(ctx context.Context, h *twirp.ClientHooks, err twirp.Error)
 }
 
 var twirpFileDescriptor0 = []byte{
-	// 451 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xa4, 0x53, 0xc1, 0x6e, 0xd3, 0x40,
-	0x10, 0x65, 0x9b, 0x90, 0x34, 0x13, 0x85, 0x3a, 0x1b, 0x89, 0x44, 0x46, 0x82, 0x28, 0x17, 0x22,
-	0x84, 0x6c, 0x08, 0x54, 0x88, 0x0b, 0x92, 0x69, 0xad, 0xd0, 0x43, 0x02, 0xb2, 0x37, 0x17, 0x2e,
-	0x96, 0x93, 0x1d, 0x82, 0xa5, 0xda, 0x6b, 0xbc, 0xeb, 0xa2, 0x7e, 0x0b, 0xff, 0xc3, 0xcf, 0xf0,
-	0x13, 0xc8, 0xde, 0x3a, 0x75, 0x45, 0x22, 0x0e, 0xbd, 0xed, 0xbc, 0x79, 0x6f, 0xe6, 0xf9, 0x8d,
-	0x0c, 0xcf, 0xc3, 0x34, 0xb2, 0xd3, 0x4c, 0x28, 0x61, 0xc7, 0x82, 0x07, 0x12, 0xb3, 0xab, 0x68,
-	0x83, 0xf5, 0xb7, 0x55, 0x76, 0x69, 0xb7, 0x06, 0x99, 0xcf, 0xb6, 0x42, 0x6c, 0x2f, 0x51, 0x0b,
-	0xd7, 0xf9, 0x37, 0x5b, 0x45, 0x31, 0x4a, 0x15, 0xc6, 0xa9, 0x66, 0x4f, 0x7e, 0x13, 0xe8, 0x2c,
-	0x04, 0x77, 0x36, 0x2a, 0x12, 0x09, 0x1d, 0x42, 0x3b, 0x97, 0x98, 0x05, 0x11, 0x1f, 0x91, 0x31,
-	0x99, 0x76, 0xbc, 0x56, 0x51, 0x5e, 0x70, 0x6a, 0x41, 0x53, 0x5d, 0xa7, 0x38, 0x3a, 0x1a, 0x93,
-	0xe9, 0xa3, 0x99, 0x69, 0xd5, 0xd7, 0xee, 0xe4, 0xec, 0x3a, 0x45, 0xaf, 0xe4, 0xd1, 0xf7, 0x00,
-	0x52, 0x85, 0x99, 0x0a, 0x8a, 0x7d, 0xa3, 0xc6, 0x98, 0x4c, 0xbb, 0x33, 0xd3, 0xd2, 0x66, 0xac,
-	0xca, 0x8c, 0xc5, 0x2a, 0x33, 0x5e, 0xa7, 0x64, 0x17, 0x35, 0x3d, 0x85, 0x63, 0x4c, 0xb8, 0x16,
-	0x36, 0xff, 0x2b, 0x6c, 0x63, 0xc2, 0x8b, 0x6a, 0xf2, 0x01, 0x60, 0x67, 0x44, 0xd2, 0x57, 0xd0,
-	0x0e, 0xf5, 0x73, 0x44, 0xc6, 0x8d, 0x69, 0x77, 0xf6, 0x78, 0xbf, 0x65, 0xaf, 0xa2, 0x4d, 0x5e,
-	0x42, 0x7f, 0x8e, 0xea, 0x46, 0xef, 0xe1, 0x8f, 0x1c, 0xa5, 0x3a, 0x98, 0xc7, 0x64, 0x00, 0xfd,
-	0xdb, 0x19, 0x28, 0x53, 0x91, 0x48, 0x7c, 0xf1, 0x8b, 0x40, 0xef, 0x4e, 0x18, 0xf4, 0x18, 0x9a,
-	0x8b, 0x15, 0x73, 0x8d, 0x07, 0x74, 0x00, 0x27, 0xfe, 0xca, 0xff, 0xe2, 0x2e, 0xcf, 0x03, 0xe7,
-	0xec, 0xec, 0xf3, 0x6a, 0xc9, 0x0c, 0x42, 0x87, 0x30, 0xa8, 0x40, 0xcf, 0x61, 0xee, 0x79, 0x30,
-	0x77, 0x16, 0xae, 0x6f, 0x1c, 0xd1, 0x3e, 0xf4, 0xaa, 0x86, 0x86, 0x1a, 0x05, 0xe4, 0xb9, 0xbe,
-	0xcb, 0x0a, 0xe6, 0xc5, 0x72, 0xee, 0x1b, 0x4d, 0x7a, 0x02, 0x5d, 0x0d, 0xf9, 0xcc, 0x61, 0xbe,
-	0xf1, 0x90, 0x3e, 0x81, 0x61, 0x0d, 0x08, 0x1c, 0x3d, 0xb7, 0x64, 0xb7, 0x66, 0x7f, 0x08, 0xf4,
-	0x99, 0xc8, 0xb3, 0x24, 0x8c, 0x31, 0x51, 0xbe, 0x4e, 0x82, 0xba, 0x00, 0x0e, 0xdf, 0xc5, 0x36,
-	0xdc, 0x9f, 0x92, 0x34, 0x9f, 0x1e, 0x88, 0xef, 0xe6, 0xd3, 0xe9, 0x27, 0xe8, 0x79, 0x18, 0x8b,
-	0x2b, 0xbc, 0xf7, 0x24, 0x17, 0xe0, 0xf6, 0x0e, 0xf4, 0x2e, 0xfb, 0x9f, 0x03, 0x99, 0x87, 0xd6,
-	0x7c, 0x7c, 0xf7, 0xf5, 0x74, 0x1b, 0xa9, 0xef, 0xf9, 0xda, 0xda, 0x88, 0xd8, 0xe6, 0x22, 0x8e,
-	0x12, 0xf1, 0xfa, 0xad, 0x7d, 0x19, 0xfd, 0x14, 0x19, 0x97, 0x76, 0x96, 0x6e, 0xec, 0xbd, 0x3f,
-	0xd4, 0xba, 0x55, 0x42, 0x6f, 0xfe, 0x06, 0x00, 0x00, 0xff, 0xff, 0x42, 0x48, 0x5b, 0xa5, 0x70,
-	0x03, 0x00, 0x00,
+	// 547 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xac, 0x54, 0xcd, 0x6e, 0xda, 0x4c,
+	0x14, 0xfd, 0xcc, 0x3f, 0x97, 0x90, 0x98, 0x41, 0xfa, 0x40, 0x8e, 0xd4, 0x22, 0x36, 0x41, 0x55,
+	0x64, 0xb7, 0xb4, 0x51, 0x7f, 0x76, 0x4e, 0x62, 0x91, 0xa8, 0x81, 0x54, 0xb6, 0xd9, 0x74, 0x63,
+	0x19, 0x3c, 0xa5, 0x56, 0xb1, 0xc7, 0xf5, 0x8c, 0xa9, 0xfc, 0x2c, 0xdd, 0xf7, 0x41, 0xfa, 0x28,
+	0x7d, 0x92, 0x6a, 0x18, 0x0c, 0x6e, 0x0b, 0xcd, 0xa6, 0xbb, 0xb9, 0x67, 0xce, 0x3d, 0x73, 0xee,
+	0xb9, 0x96, 0xe1, 0xcc, 0x8d, 0x7c, 0x2d, 0x8a, 0x09, 0x23, 0x5a, 0x40, 0x3c, 0x87, 0xe2, 0x78,
+	0xe5, 0xcf, 0x71, 0xfe, 0xac, 0xae, 0x6f, 0x51, 0x23, 0x07, 0x29, 0x8f, 0x17, 0x84, 0x2c, 0x96,
+	0x58, 0x34, 0xce, 0x92, 0x0f, 0x1a, 0xf3, 0x03, 0x4c, 0x99, 0x1b, 0x44, 0x82, 0xdd, 0xff, 0x21,
+	0x41, 0x7d, 0x4c, 0x3c, 0x7d, 0xce, 0x7c, 0x12, 0xa2, 0x0e, 0x54, 0x13, 0x8a, 0x63, 0xc7, 0xf7,
+	0xba, 0x52, 0x4f, 0x1a, 0xd4, 0xcd, 0x0a, 0x2f, 0x6f, 0x3d, 0xa4, 0x42, 0x89, 0xa5, 0x11, 0xee,
+	0x16, 0x7a, 0xd2, 0xe0, 0x78, 0xa8, 0xa8, 0xf9, 0x67, 0xb7, 0xed, 0x76, 0x1a, 0x61, 0x73, 0xcd,
+	0x43, 0x0a, 0xd4, 0xbc, 0x24, 0x76, 0x39, 0xda, 0x2d, 0xf6, 0xa4, 0x41, 0xd9, 0xdc, 0xd6, 0xe8,
+	0x35, 0x00, 0x65, 0x6e, 0xcc, 0x1c, 0xee, 0xa5, 0x5b, 0xea, 0x49, 0x83, 0xc6, 0x50, 0x51, 0x85,
+	0x51, 0x35, 0x33, 0xaa, 0xda, 0x99, 0x51, 0xb3, 0xbe, 0x66, 0xf3, 0x1a, 0x5d, 0x40, 0x0d, 0x87,
+	0x9e, 0x68, 0x2c, 0x3f, 0xd8, 0x58, 0xc5, 0xa1, 0xc7, 0xab, 0xfe, 0x37, 0x09, 0x9a, 0x5b, 0x97,
+	0x74, 0xec, 0x46, 0x48, 0x87, 0xaa, 0x2b, 0xaa, 0xae, 0xd4, 0x2b, 0x0e, 0x1a, 0xc3, 0xb3, 0xfd,
+	0x23, 0x71, 0xb2, 0xba, 0x39, 0x1a, 0x21, 0x8b, 0x53, 0x33, 0xeb, 0x53, 0x4c, 0x38, 0xca, 0x5f,
+	0x20, 0x19, 0x8a, 0x9f, 0x70, 0xba, 0xc9, 0x8d, 0x1f, 0xd1, 0x39, 0x94, 0x57, 0xee, 0x32, 0x11,
+	0xa9, 0x35, 0x86, 0xff, 0xef, 0x7f, 0xc2, 0x14, 0xa4, 0x37, 0x85, 0x57, 0x52, 0xff, 0x12, 0x8e,
+	0x77, 0x4f, 0xdf, 0xf9, 0x94, 0xa1, 0xa7, 0xbf, 0x1b, 0x3d, 0xa4, 0x92, 0xd1, 0xfa, 0xe7, 0xd0,
+	0x1a, 0x61, 0xb6, 0xd1, 0x30, 0xf1, 0xe7, 0x04, 0x53, 0x76, 0x70, 0xb1, 0xfd, 0x36, 0xb4, 0x76,
+	0x1a, 0x98, 0x46, 0x24, 0xa4, 0xf8, 0xc9, 0xd7, 0x7c, 0x5e, 0x7c, 0xab, 0xa8, 0x06, 0xa5, 0xf1,
+	0xd4, 0x36, 0xe4, 0xff, 0x50, 0x1b, 0x4e, 0xac, 0xa9, 0xf5, 0xce, 0x98, 0x5c, 0x3b, 0xfa, 0xd5,
+	0xd5, 0xfd, 0x74, 0x62, 0xcb, 0x12, 0xea, 0x40, 0x3b, 0x03, 0x4d, 0xdd, 0x36, 0xae, 0x9d, 0x91,
+	0x3e, 0x36, 0x2c, 0xb9, 0x80, 0x5a, 0xd0, 0xcc, 0x2e, 0x04, 0x54, 0xe4, 0x90, 0x69, 0x58, 0x86,
+	0xcd, 0x99, 0xb7, 0x93, 0x91, 0x25, 0x97, 0xd0, 0x09, 0x34, 0x04, 0x64, 0xd9, 0xba, 0x6d, 0xc9,
+	0x65, 0x74, 0x0a, 0x9d, 0x1c, 0xe0, 0xe8, 0x42, 0x77, 0xcd, 0xae, 0x0c, 0xbf, 0x17, 0x00, 0xc6,
+	0xc4, 0xb3, 0x44, 0x04, 0xe8, 0x2d, 0x1c, 0xe9, 0x51, 0xb4, 0x4c, 0x37, 0x13, 0xa3, 0xd3, 0x03,
+	0x9b, 0xe4, 0x71, 0x2a, 0x8f, 0x0e, 0xa4, 0xb7, 0x99, 0x1c, 0xdd, 0x41, 0xd3, 0xc4, 0x01, 0x59,
+	0xe1, 0x7f, 0xa2, 0x76, 0x03, 0xb0, 0x5b, 0x05, 0xfa, 0x95, 0xfd, 0xc7, 0x8e, 0x14, 0xe5, 0xf0,
+	0x27, 0x88, 0xee, 0x41, 0xde, 0x36, 0xdc, 0xf8, 0x94, 0x91, 0x38, 0x7d, 0x50, 0xef, 0x6f, 0xd6,
+	0x2f, 0x5f, 0xbe, 0xbf, 0x58, 0xf8, 0xec, 0x63, 0x32, 0x53, 0xe7, 0x24, 0xd0, 0x3c, 0x12, 0xf8,
+	0x21, 0x79, 0xf6, 0x42, 0x5b, 0xfa, 0x5f, 0x48, 0xec, 0x51, 0x2d, 0x8e, 0xe6, 0xda, 0xde, 0x1f,
+	0xce, 0xac, 0xb2, 0x86, 0x9e, 0xff, 0x0c, 0x00, 0x00, 0xff, 0xff, 0x62, 0xa4, 0xdc, 0x88, 0x90,
+	0x04, 0x00, 0x00,
 }

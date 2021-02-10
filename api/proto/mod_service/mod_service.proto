@@ -24,8 +24,12 @@ message ModAction {
   google.protobuf.Timestamp end_time = 5;  
 }
 
-message ModActions {
-	map<ModActionType, ModAction> actions = 1;
+message ModActionsMap {
+	map<string, ModAction> actions = 1;
+}
+
+message ModActionsList {
+	repeated ModAction actions = 1;
 }
 
 message GetActionsRequest {
@@ -34,8 +38,9 @@ message GetActionsRequest {
 
 message ModActionResponse {}
 
-service TournamentService {
-  rpc ApplyActions(ModActions) returns (ModActionResponse);
-  rpc RemoveActions(ModActions) returns (ModActionResponse);
-  rpc GetActions(GetActionsRequest) returns (ModActions);
+service ModService {
+  rpc ApplyActions(ModActionsList) returns (ModActionResponse);
+  rpc RemoveActions(ModActionsList) returns (ModActionResponse);
+  rpc GetActions(GetActionsRequest) returns (ModActionsMap);
+  rpc GetActionHistory(GetActionsRequest) returns (ModActionsList);
 }

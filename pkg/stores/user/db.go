@@ -41,8 +41,7 @@ type User struct {
 	IsMod       bool   `gorm:"default:false"`
 	ApiKey      string
 
-	CurrentActions map[ms.ModActionType]*ms.ModAction
-	ActionHistory []*ms.ModAction
+	Actions datatypes.JSON
 }
 
 // A user profile is in a one-to-one relationship with a user. It is the
@@ -131,6 +130,13 @@ func (s *DBStore) Get(ctx context.Context, username string) (*entity.User, error
 	if err != nil {
 		return nil, err
 	}
+
+	var actions entity.Actions
+	err := json.Unmarshal(u.Actions, &actions)
+	if err != nil {
+		return nil, err
+	}
+
 	entu := &entity.User{
 		ID:         u.ID,
 		Username:   u.Username,
@@ -143,8 +149,7 @@ func (s *DBStore) Get(ctx context.Context, username string) (*entity.User, error
 		IsAdmin:    u.IsAdmin,
 		IsDirector: u.IsDirector,
 		IsMod:      u.IsMod,
-		CurrentActions: u.CurrentActions,
-		ActionHistory: u.ActionHistory,
+		Actions:    actions,
 	}
 
 	return entu, nil
@@ -178,8 +183,6 @@ func (s *DBStore) GetByEmail(ctx context.Context, email string) (*entity.User, e
 		IsAdmin:    u.IsAdmin,
 		IsDirector: u.IsDirector,
 		IsMod:      u.IsMod,
-		CurrentActions: u.CurrentActions,
-		ActionHistory: u.ActionHistory,
 	}
 
 	return entu, nil
@@ -237,6 +240,12 @@ func (s *DBStore) GetByUUID(ctx context.Context, uuid string) (*entity.User, err
 			return nil, err
 		}
 
+		var actions entity.Actions
+		err := json.Unmarshal(u.Actions, &actions)
+		if err != nil {
+			return nil, err
+		}
+
 		entu = &entity.User{
 			ID:         u.ID,
 			Username:   u.Username,
@@ -248,8 +257,7 @@ func (s *DBStore) GetByUUID(ctx context.Context, uuid string) (*entity.User, err
 			IsAdmin:    u.IsAdmin,
 			IsDirector: u.IsDirector,
 			IsMod:      u.IsMod,
-			CurrentActions: u.CurrentActions,
-			ActionHistory: u.ActionHistory,
+			Actions:    actions,
 		}
 	}
 
@@ -267,6 +275,12 @@ func (s *DBStore) GetByAPIKey(ctx context.Context, apikey string) (*entity.User,
 		return nil, result.Error
 	}
 
+	var actions entity.Actions
+	err := json.Unmarshal(u.Actions, &actions)
+	if err != nil {
+		return nil, err
+	}
+
 	entu := &entity.User{
 		ID:        u.ID,
 		Username:  u.Username,
@@ -276,12 +290,18 @@ func (s *DBStore) GetByAPIKey(ctx context.Context, apikey string) (*entity.User,
 		Anonymous: false,
 		IsBot:     u.InternalBot,
 		IsAdmin:   u.IsAdmin,
+		IsMod:     u.IsMod,
+		Actions:   actions,
 	}
 
 	return entu, nil
 }
 
-func (s *DBStore) toDBObj(u *entity.User) *User {
+func (s *DBStore) toDBObj(u *entity.User) (*User, error) {
+	actions, err := json.Marshal(u.Actions)
+	if err != nil {
+		return nil, err
+	}
 	return &User{
 		UUID:        u.UUID,
 		Username:    u.Username,
@@ -291,9 +311,8 @@ func (s *DBStore) toDBObj(u *entity.User) *User {
 		IsAdmin:     u.IsAdmin,
 		IsDirector:  u.IsDirector,
 		IsMod:       u.IsMod,
-		CurrentActions: u.CurrentActions,
-		ActionHistory: u.ActionHistory,
-	}
+		Actions:     actions,
+	}, nil
 }
 
 // New creates a new user in the DB.
