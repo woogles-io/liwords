@@ -9,6 +9,8 @@ import { BoardPanel } from './board_panel';
 import { TopBar } from '../topbar/topbar';
 import { Chat } from '../chat/chat';
 import {
+  ChatEntityType,
+  useChatStoreContext,
   useExaminableGameContextStoreContext,
   useExamineStoreContext,
   useGameContextStoreContext,
@@ -34,6 +36,7 @@ import './scss/gameroom.scss';
 import { ScoreCard } from './scorecard';
 import {
   defaultGameInfo,
+  DefineWordsResponse,
   GameInfo,
   GameMetadata,
   StreakInfoResponse,
@@ -53,6 +56,7 @@ import {
   TournamentMetadata,
 } from '../store/reducers/tournament_reducer';
 import { CompetitorStatus } from '../tournament/competitor_status';
+import { Unrace } from '../utils/unrace';
 
 type Props = {
   sendSocketMsg: (msg: Uint8Array) => void;
@@ -156,6 +160,7 @@ export const Table = React.memo((props: Props) => {
   const { useState } = useMountedState();
 
   const { gameID } = useParams();
+  const { addChat } = useChatStoreContext();
   const {
     gameContext: examinableGameContext,
   } = useExaminableGameContextStoreContext();
@@ -373,6 +378,107 @@ export const Table = React.memo((props: Props) => {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userID, gameInfo]);
+
+  // undefined = not known
+  // null = known not to exist
+  const [wordInfo, setWordInfo] = useState<{
+    [key: string]: undefined | null | { w: string };
+  }>({});
+  const [unrace, setUnrace] = useState(new Unrace());
+  const [phonies, setPhonies] = useState<Array<string> | null>(null);
+
+  useEffect(() => {
+    // forget everything if it goes to a new game
+    setWordInfo({});
+    setUnrace(new Unrace());
+  }, [gameID, gameInfo.game_request.lexicon]);
+
+  useEffect(() => {
+    // for now, only do this at end of game
+    if (gameContext.playState === PlayState.GAME_OVER) {
+      setWordInfo((oldWordInfo) => {
+        let wordInfo = oldWordInfo;
+        for (const turn of gameContext.turns) {
+          for (const word of turn.getWordsFormedList()) {
+            if (!(word in wordInfo)) {
+              if (wordInfo === oldWordInfo) wordInfo = { ...oldWordInfo };
+              wordInfo[word] = undefined;
+            }
+          }
+        }
+        return wordInfo;
+      });
+    }
+  }, [gameContext]);
+
+  useEffect(() => {
+    const cancelTokenSource = axios.CancelToken.source();
+    unrace.run(async () => {
+      const wordsToDefine: Array<string> = [];
+      for (const word in wordInfo) {
+        if (wordInfo[word] === undefined) {
+          wordsToDefine.push(word);
+        }
+      }
+      if (!wordsToDefine.length) return;
+      wordsToDefine.sort(); // mitigate OCD
+      const lexicon = gameInfo.game_request.lexicon;
+      try {
+        const defineResp = await axios.post<DefineWordsResponse>(
+          toAPIUrl('word_service.WordService', 'DefineWords'),
+          {
+            lexicon,
+            words: wordsToDefine,
+          },
+          { cancelToken: cancelTokenSource.token }
+        );
+        setWordInfo((oldWordInfo) => {
+          const wordInfo = { ...oldWordInfo };
+          const phonies = [];
+          for (const word of wordsToDefine) {
+            const definition = defineResp.data.results[word] ?? null;
+            wordInfo[word] = definition;
+            if (!definition) {
+              phonies.push(word);
+            }
+          }
+          setPhonies(phonies);
+          return wordInfo;
+        });
+      } catch (e) {
+        if (axios.isCancel(e)) {
+          // request canceled because it is no longer relevant.
+        } else {
+          // no definitions then... sadpepe.
+          console.log('cannot check words', e);
+        }
+      }
+    });
+    return () => {
+      cancelTokenSource.cancel();
+    };
+  }, [gameInfo.game_request.lexicon, wordInfo, unrace]);
+
+  useEffect(() => {
+    if (!phonies) return;
+    if (phonies.length) {
+      addChat({
+        entityType: ChatEntityType.ErrorMsg,
+        sender: '',
+        message: `Invalid words played: ${phonies
+          .map((x) => `${x}*`)
+          .join(', ')}`,
+        channel: 'server',
+      });
+    } else {
+      addChat({
+        entityType: ChatEntityType.ServerMsg,
+        sender: '',
+        message: 'All words played are valid',
+        channel: 'server',
+      });
+    }
+  }, [phonies, addChat]);
 
   const acceptRematch = useCallback(
     (reqID: string) => {
