@@ -75,7 +75,7 @@ export type StreakInfoResponse = {
 
 export type DefineWordsResponse = {
   results: {
-    [key: string]: { w: string };
+    [key: string]: { v: boolean; d: string };
   };
 };
 

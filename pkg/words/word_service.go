@@ -35,7 +35,14 @@ func (ws *WordService) DefineWords(ctx context.Context, req *pb.DefineWordsReque
 		}
 
 		if gaddag.FindMachineWord(gd, machineWord) {
-			results[word] = &pb.DefineWordsResult{W: word}
+			definition := ""
+			if req.Definitions {
+				// IMPORTANT: "" will make frontend do infinite loop
+				definition = word // lame
+			}
+			results[word] = &pb.DefineWordsResult{D: definition, V: true}
+		} else {
+			results[word] = &pb.DefineWordsResult{D: "", V: false}
 		}
 	}
 

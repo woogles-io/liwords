@@ -218,13 +218,15 @@ export const Table = React.memo((props: Props) => {
     };
   }, []);
 
+  const gameDone = gameContext.playState === PlayState.GAME_OVER;
+
   useEffect(() => {
-    if (gameContext.playState === PlayState.GAME_OVER || isObserver) {
+    if (gameDone || isObserver) {
       return () => {};
     }
 
     const evtHandler = (evt: BeforeUnloadEvent) => {
-      if (gameContext.playState !== PlayState.GAME_OVER && !isObserver) {
+      if (!gameDone && !isObserver) {
         const msg = 'You are currently in a game!';
         // eslint-disable-next-line no-param-reassign
         evt.returnValue = msg;
@@ -236,7 +238,7 @@ export const Table = React.memo((props: Props) => {
     return () => {
       window.removeEventListener('beforeunload', evtHandler);
     };
-  }, [gameContext.playState, isObserver]);
+  }, [gameDone, isObserver]);
 
   useEffect(() => {
     // Request game API to get info about the game at the beginning.
@@ -272,6 +274,7 @@ export const Table = React.memo((props: Props) => {
       setGameInfo(defaultGameInfo);
       message.destroy('board-messages');
     };
+    // React Hook useEffect has missing dependencies: 'setGameEndMessage' and 'setPoolFormat'.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [gameID]);
 
@@ -307,7 +310,7 @@ export const Table = React.memo((props: Props) => {
     if (!gameInfo.game_request.original_request_id) {
       return;
     }
-    if (gameContext.playState === PlayState.GAME_OVER && !gameEndMessage) {
+    if (gameDone && !gameEndMessage) {
       // if the game has long been over don't request this. Only request it
       // when we are going to play a game (or observe), or when the game just ended.
       return;
@@ -329,11 +332,7 @@ export const Table = React.memo((props: Props) => {
 
     // Call this when a gameEndMessage comes in, so the streak updates
     // at the end of the game.
-  }, [
-    gameInfo.game_request.original_request_id,
-    gameEndMessage,
-    gameContext.playState,
-  ]);
+  }, [gameInfo.game_request.original_request_id, gameEndMessage, gameDone]);
 
   useEffect(() => {
     if (pTimedOut === undefined) return;
@@ -356,6 +355,7 @@ export const Table = React.memo((props: Props) => {
       encodeToSocketFmt(MessageType.TIMED_OUT, to.serializeBinary())
     );
     setPTimedOut(undefined);
+    // React Hook useEffect has missing dependencies: 'gameContext.uidToPlayerOrder', 'gameInfo.players', 'isObserver', 'sendSocketMsg', and 'setPTimedOut'.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pTimedOut, gameContext.nickToPlayerOrder, gameID]);
 
@@ -376,13 +376,13 @@ export const Table = React.memo((props: Props) => {
         encodeToSocketFmt(MessageType.READY_FOR_GAME, evt.serializeBinary())
       );
     }
+    // React Hook useEffect has missing dependencies: 'gameID' and 'sendSocketMsg'.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userID, gameInfo]);
 
   // undefined = not known
-  // null = known not to exist
   const [wordInfo, setWordInfo] = useState<{
-    [key: string]: undefined | null | { w: string };
+    [key: string]: undefined | { v: boolean; d: string };
   }>({});
   const wordInfoRef = useRef(wordInfo);
   wordInfoRef.current = wordInfo;
@@ -417,8 +417,7 @@ export const Table = React.memo((props: Props) => {
   }, [willHideDefinitionHover]);
 
   // TODO: remove "false" when backend returns more useful data
-  const enableHoverDefine =
-    false && (gameContext.playState === PlayState.GAME_OVER || isObserver);
+  const enableHoverDefine = false && (gameDone || isObserver);
 
   const handleSetHover = useCallback(
     (x: number, y: number, words: Array<string> | undefined) => {
@@ -450,7 +449,7 @@ export const Table = React.memo((props: Props) => {
 
   const hasDefinitionHover = !!showDefinitionHover;
   useEffect(() => {
-    if (gameContext.playState === PlayState.GAME_OVER || hasDefinitionHover) {
+    if (gameDone || hasDefinitionHover) {
       // when definition is requested, get definitions for all words (up to
       // that point) that have not yet been defined. this is an intentional
       // design decision to improve usability and responsiveness.
@@ -468,7 +467,7 @@ export const Table = React.memo((props: Props) => {
         return wordInfo;
       });
     }
-  }, [gameContext, hasDefinitionHover]);
+  }, [gameContext, gameDone, hasDefinitionHover]);
 
   useEffect(() => {
     const cancelTokenSource = axios.CancelToken.source();
@@ -476,7 +475,11 @@ export const Table = React.memo((props: Props) => {
       const wordInfo = wordInfoRef.current; // take the latest version after unrace
       const wordsToDefine: Array<string> = [];
       for (const word in wordInfo) {
-        if (wordInfo[word] === undefined) {
+        const definition = wordInfo[word];
+        if (
+          definition === undefined ||
+          (hasDefinitionHover && definition.v && !definition.d)
+        ) {
           wordsToDefine.push(word);
         }
       }
@@ -489,14 +492,14 @@ export const Table = React.memo((props: Props) => {
           {
             lexicon,
             words: wordsToDefine,
+            definitions: hasDefinitionHover,
           },
           { cancelToken: cancelTokenSource.token }
         );
         setWordInfo((oldWordInfo) => {
           const wordInfo = { ...oldWordInfo };
           for (const word of wordsToDefine) {
-            const definition = defineResp.data.results[word] ?? null;
-            wordInfo[word] = definition;
+            wordInfo[word] = defineResp.data.results[word];
           }
           return wordInfo;
         });
@@ -512,11 +515,11 @@ export const Table = React.memo((props: Props) => {
     return () => {
       cancelTokenSource.cancel();
     };
-  }, [gameInfo.game_request.lexicon, wordInfo, unrace]);
+  }, [hasDefinitionHover, gameInfo.game_request.lexicon, wordInfo, unrace]);
 
   useEffect(() => {
     if (phonies === null) {
-      if (gameContext.playState === PlayState.GAME_OVER) {
+      if (gameDone) {
         const phonies = [];
         let hasWords = false; // avoid running this before the first GameHistoryRefresher event
         for (const word in wordInfo) {
@@ -525,7 +528,7 @@ export const Table = React.memo((props: Props) => {
           if (definition === undefined) {
             // not ready (this should not happen though)
             return;
-          } else if (definition === null) {
+          } else if (!definition.v) {
             phonies.push(word);
           }
         }
@@ -537,7 +540,7 @@ export const Table = React.memo((props: Props) => {
       }
       setPhonies(undefined); // not ready to display
     }
-  }, [gameContext.playState, phonies, wordInfo]);
+  }, [gameDone, phonies, wordInfo]);
 
   useEffect(() => {
     if (!phonies) return;
@@ -603,7 +606,6 @@ export const Table = React.memo((props: Props) => {
   // If we are NOT one of the players (so an observer), display the rack of
   // the player on turn.
   let rack: string;
-  const gameDone = gameContext.playState === PlayState.GAME_OVER;
   const us = useMemo(() => gameInfo.players.find((p) => p.user_id === userID), [
     gameInfo.players,
     userID,
