@@ -160,11 +160,7 @@ func setEndTime(action *ms.ModAction) error {
 	if err != nil {
 		return err
 	}
-	durationInSeconds, err := time.ParseDuration(fmt.Sprintf("%ds", action.Duration))
-	if err != nil {
-		return err
-	}
-	golangEndTime := golangStartTime.Add(durationInSeconds)
+	golangEndTime := golangStartTime.Add(time.Second * time.Duration(action.Duration))
 	protoEndTime, err := ptypes.TimestampProto(golangEndTime)
 	if err != nil {
 		return err
