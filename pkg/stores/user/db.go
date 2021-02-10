@@ -8,6 +8,7 @@ import (
 	"math/rand"
 	"sort"
 	"strings"
+	"gorm.io/datatypes"
 
 	"github.com/jinzhu/gorm"
 	"github.com/jinzhu/gorm/dialects/postgres"
@@ -132,7 +133,7 @@ func (s *DBStore) Get(ctx context.Context, username string) (*entity.User, error
 	}
 
 	var actions entity.Actions
-	err := json.Unmarshal(u.Actions, &actions)
+	err = json.Unmarshal(u.Actions, &actions)
 	if err != nil {
 		return nil, err
 	}
@@ -149,14 +150,17 @@ func (s *DBStore) Get(ctx context.Context, username string) (*entity.User, error
 		IsAdmin:    u.IsAdmin,
 		IsDirector: u.IsDirector,
 		IsMod:      u.IsMod,
-		Actions:    actions,
+		Actions:    &actions,
 	}
 
 	return entu, nil
 }
 
 func (s *DBStore) Set(ctx context.Context, u *entity.User) error {
-	dbu := s.toDBObj(u)
+	dbu, err := s.toDBObj(u)
+	if err != nil {
+		return err
+	}
 
 	result := s.db.Model(&User{}).Set("gorm:query_option", "FOR UPDATE").
 		Where("uuid = ?", u.UUID).Update(dbu)
@@ -241,7 +245,7 @@ func (s *DBStore) GetByUUID(ctx context.Context, uuid string) (*entity.User, err
 		}
 
 		var actions entity.Actions
-		err := json.Unmarshal(u.Actions, &actions)
+		err = json.Unmarshal(u.Actions, &actions)
 		if err != nil {
 			return nil, err
 		}
@@ -257,7 +261,7 @@ func (s *DBStore) GetByUUID(ctx context.Context, uuid string) (*entity.User, err
 			IsAdmin:    u.IsAdmin,
 			IsDirector: u.IsDirector,
 			IsMod:      u.IsMod,
-			Actions:    actions,
+			Actions:    &actions,
 		}
 	}
 
@@ -291,7 +295,7 @@ func (s *DBStore) GetByAPIKey(ctx context.Context, apikey string) (*entity.User,
 		IsBot:     u.InternalBot,
 		IsAdmin:   u.IsAdmin,
 		IsMod:     u.IsMod,
-		Actions:   actions,
+		Actions:   &actions,
 	}
 
 	return entu, nil
@@ -320,7 +324,10 @@ func (s *DBStore) New(ctx context.Context, u *entity.User) error {
 	if u.UUID == "" {
 		u.UUID = shortuuid.New()
 	}
-	dbu := s.toDBObj(u)
+	dbu, err := s.toDBObj(u)
+	if err != nil {
+		return err
+	}
 	result := s.db.Create(dbu)
 	if result.Error != nil {
 		return result.Error
@@ -402,14 +409,6 @@ func (s *DBStore) SetRatings(ctx context.Context, p0uuid string, p1uuid string, 
 	})
 }
 
-func (s *DBStore) ResetRatings(ctx context.Context, uuid string) error {
-	err := s.db.Model(p0Profile).Update("ratings", postgres.Jsonb{RawMessage: nil}).Error
-
-	if err != nil {
-		return err
-	}
-}
-
 func getRatingBytes(s *DBStore, ctx context.Context, uuid string, variant entity.VariantKey,
 	rating entity.SingleRating) (*profile, []byte, error) {
 	u := &User{}
@@ -474,14 +473,6 @@ func (s *DBStore) SetStats(ctx context.Context, p0uuid string, p1uuid string, va
 		// return nil will commit the whole transaction
 		return nil
 	})
-}
-
-func (s *DBStore) ResetStats(ctx context.Context, uuid string) error {
-	err := s.db.Model(p0Profile).Update("stats", postgres.Jsonb{RawMessage: nil}).Error
-
-	if err != nil {
-		return err
-	}
 }
 
 func getStatsBytes(s *DBStore, ctx context.Context, uuid string, variant entity.VariantKey,
@@ -745,7 +736,7 @@ func (s *DBStore) ResetStats(ctx context.Context, uid string) error {
 	}
 
 	emptyStats := &entity.Stats{}
-	bytes, err = json.Marshal(emptyStats)
+	bytes, err := json.Marshal(emptyStats)
 	if err != nil {
 		return err
 	}
