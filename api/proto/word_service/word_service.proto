@@ -1,0 +1,22 @@
+syntax = "proto3";
+package word_service;
+option go_package = "github.com/domino14/liwords/rpc/api/proto/word_service";
+
+message DefineWordsRequest {
+  string lexicon = 1;
+  repeated string words = 2;
+  bool definitions = 3; // pass true to retrieve definitions
+}
+
+message DefineWordsResult {
+  string d = 1; // definitions, not "" iff (valid and requesting definitions)
+  bool v = 2; // true iff valid
+}
+
+message DefineWordsResponse {
+  map<string, DefineWordsResult> results = 1;
+}
+
+service WordService {
+  rpc DefineWords(DefineWordsRequest) returns(DefineWordsResponse);
+}

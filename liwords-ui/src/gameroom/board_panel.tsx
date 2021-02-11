@@ -78,6 +78,11 @@ type Props = {
   tournamentPairedMode?: boolean;
   lexicon: string;
   handleAcceptRematch: (() => void) | null;
+  handleSetHover?: (
+    x: number,
+    y: number,
+    words: Array<string> | undefined
+  ) => void;
 };
 
 const shuffleString = (a: string): string => {
@@ -1010,6 +1015,7 @@ export const BoardPanel = React.memo((props: Props) => {
         currentRack={props.currentRack}
         squareClicked={squareClicked}
         placementArrowProperties={arrowProperties}
+        handleSetHover={props.handleSetHover}
       />
       {!examinableGameEndMessage ? (
         <div className="rack-container">
