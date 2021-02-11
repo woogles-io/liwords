@@ -88,6 +88,10 @@ func TestMod(t *testing.T) {
 	err := ApplyActions(ctx, us, []*ms.ModAction{muteAction, resetAction, suspendAction})
 	is.NoErr(err)
 
+	is.True(ActionExists(ctx, us, "Spammer", muteAction.Type).Error() == "this user is not permitted to perform this action")
+	is.NoErr(ActionExists(ctx, us, "Sandbagger", resetAction.Type))
+	is.True(ActionExists(ctx, us, "Cheater", suspendAction.Type).Error() == "this user is not permitted to perform this action")
+
 	// Check Actions
 	expectedSpammerActions, err := GetActions(ctx, us, "Spammer")
 	is.NoErr(err)
@@ -109,6 +113,9 @@ func TestMod(t *testing.T) {
 	is.True(expectedSandbaggerHistory[0] != nil)
 	is.True(expectedSandbaggerHistory[0].EndTime != nil)
 	is.True(expectedSandbaggerHistory[0].StartTime != nil)
+	is.True(expectedSandbaggerHistory[0].Expired)
+	is.NoErr(equalTimes(expectedSandbaggerHistory[0].EndTime, expectedSandbaggerHistory[0].StartTime))
+	is.NoErr(equalTimes(expectedSandbaggerHistory[0].EndTime, expectedSandbaggerHistory[0].RemovedTime))
 	is.NoErr(equalTimes(expectedSandbaggerHistory[0].StartTime, expectedSandbaggerHistory[0].EndTime))
 
 	expectedCheaterActions, err := GetActions(ctx, us, "Cheater")
@@ -116,6 +123,7 @@ func TestMod(t *testing.T) {
 	is.NoErr(equalActionMaps(expectedCheaterActions, makeActionMap([]*ms.ModAction{suspendAction})))
 	is.True(expectedCheaterActions[suspendAction.Type.String()].EndTime != nil)
 	is.True(expectedCheaterActions[suspendAction.Type.String()].StartTime != nil)
+
 	expectedCheaterHistory, err := GetActionHistory(ctx, us, "Cheater")
 	is.NoErr(err)
 	is.NoErr(equalActionHistories(expectedCheaterHistory, []*ms.ModAction{}))
@@ -131,11 +139,18 @@ func TestMod(t *testing.T) {
 	is.NoErr(equalActionMaps(expectedCheaterActions, makeActionMap([]*ms.ModAction{longerSuspendAction})))
 	is.True(expectedCheaterActions[suspendAction.Type.String()].EndTime != nil)
 	is.True(expectedCheaterActions[suspendAction.Type.String()].StartTime != nil)
+	is.True(expectedCheaterActions[suspendAction.Type.String()].Duration == 200)
+
 	expectedCheaterHistory, err = GetActionHistory(ctx, us, "Cheater")
 	is.NoErr(err)
 	is.NoErr(equalActionHistories(expectedCheaterHistory, []*ms.ModAction{suspendAction}))
+	is.True(!expectedCheaterHistory[0].Expired)
+	is.NoErr(equalTimes(expectedCheaterHistory[0].EndTime, expectedCheaterHistory[0].StartTime))
+	is.NoErr(equalTimes(expectedCheaterHistory[0].EndTime, expectedCheaterHistory[0].RemovedTime))
 
 	// Recheck Spammer actions
+	is.True(ActionExists(ctx, us, "Spammer", muteAction.Type).Error() == "this user is not permitted to perform this action")
+
 	expectedSpammerActions, err = GetActions(ctx, us, "Spammer")
 	is.NoErr(err)
 	is.NoErr(equalActionMaps(expectedSpammerActions, makeActionMap([]*ms.ModAction{muteAction})))
@@ -150,6 +165,7 @@ func TestMod(t *testing.T) {
 	time.Sleep(time.Duration(muteDuration+1) * time.Second)
 
 	// Recheck Spammer actions
+	is.NoErr(ActionExists(ctx, us, "Spammer", muteAction.Type))
 	expectedSpammerActions, err = GetActions(ctx, us, "Spammer")
 	is.NoErr(err)
 	is.NoErr(equalActionMaps(expectedSpammerActions, makeActionMap([]*ms.ModAction{})))
@@ -159,7 +175,9 @@ func TestMod(t *testing.T) {
 	is.NoErr(equalActionHistories(expectedSpammerHistory, []*ms.ModAction{muteAction}))
 	is.True(expectedSpammerHistory[0].EndTime != nil)
 	is.True(expectedSpammerHistory[0].StartTime != nil)
-
+	is.True(expectedSpammerHistory[0].Expired)
+	is.NoErr(equalTimes(expectedSpammerHistory[0].EndTime, expectedSpammerHistory[0].StartTime))
+	is.NoErr(equalTimes(expectedSpammerHistory[0].EndTime, expectedSpammerHistory[0].RemovedTime))
 	// Test negative durations
 	invalidSuspendAction := &ms.ModAction{UserId: "Cheater", Type: ms.ModActionType_SUSPEND_ACCOUNT, Duration: -100}
 
@@ -172,6 +190,8 @@ func TestMod(t *testing.T) {
 
 	err = ApplyActions(ctx, us, []*ms.ModAction{permanentSuspendAction})
 	is.NoErr(err)
+
+	is.True(ActionExists(ctx, us, "Sandbagger", permanentSuspendAction.Type).Error() == "this user is not permitted to perform this action")
 
 	expectedSandbaggerActions, err = GetActions(ctx, us, "Sandbagger")
 	is.NoErr(err)
@@ -187,6 +207,8 @@ func TestMod(t *testing.T) {
 	err = RemoveActions(ctx, us, []*ms.ModAction{permanentSuspendAction})
 	is.NoErr(err)
 
+	is.NoErr(ActionExists(ctx, us, "Sandbagger", permanentSuspendAction.Type))
+
 	expectedSandbaggerActions, err = GetActions(ctx, us, "Sandbagger")
 	is.NoErr(err)
 	is.NoErr(equalActionMaps(expectedSandbaggerActions, makeActionMap([]*ms.ModAction{})))
@@ -194,6 +216,9 @@ func TestMod(t *testing.T) {
 	expectedSandbaggerHistory, err = GetActionHistory(ctx, us, "Sandbagger")
 	is.NoErr(err)
 	is.NoErr(equalActionHistories(expectedSandbaggerHistory, []*ms.ModAction{resetAction, permanentSuspendAction}))
+	is.True(expectedSandbaggerHistory[0].Expired)
+	is.NoErr(equalTimes(expectedSandbaggerHistory[0].EndTime, expectedSandbaggerHistory[0].RemovedTime))
+	is.NoErr(equalTimes(expectedSandbaggerHistory[0].StartTime, expectedSandbaggerHistory[0].EndTime))
 }
 
 func equalActionHistories(ah1 []*ms.ModAction, ah2 []*ms.ModAction) error {

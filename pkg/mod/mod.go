@@ -7,6 +7,7 @@ import (
 	"github.com/golang/protobuf/ptypes"
 	"time"
 
+	"github.com/domino14/liwords/pkg/apiserver"
 	"github.com/domino14/liwords/pkg/entity"
 	"github.com/domino14/liwords/pkg/user"
 	ms "github.com/domino14/liwords/rpc/api/proto/mod_service"
@@ -85,7 +86,12 @@ func GetActionHistory(ctx context.Context, us user.Store, uuid string) ([]*ms.Mo
 }
 
 func ApplyActions(ctx context.Context, us user.Store, actions []*ms.ModAction) error {
+	modUserId, err := sessionUserId(ctx, us)
+	if err != nil {
+		return err
+	}
 	for _, action := range actions {
+		action.ModUserId = modUserId
 		err := applyAction(ctx, us, action)
 		if err != nil {
 			return err
@@ -95,8 +101,16 @@ func ApplyActions(ctx context.Context, us user.Store, actions []*ms.ModAction) e
 }
 
 func RemoveActions(ctx context.Context, us user.Store, actions []*ms.ModAction) error {
+	modUserId, err := sessionUserId(ctx, us)
+	if err != nil {
+		return err
+	}
 	for _, action := range actions {
-		err := removeAction(ctx, us, action)
+		// This call will update the user actions
+		// so that actions that have already expired
+		// are not removed by a mod or admin
+		_, err := GetActions(ctx, us, action.UserId)
+		err = removeAction(ctx, us, action, modUserId)
 		if err != nil {
 			return err
 		}
@@ -116,7 +130,7 @@ func updateActions(user *entity.User) (bool, error) {
 		// and should never be removed by this function.
 		convertedEndTime, err := ptypes.Timestamp(action.EndTime)
 		if err == nil && now.After(convertedEndTime) {
-			removeCurrentAction(user, action.Type)
+			removeCurrentAction(user, action.Type, true, "")
 			updated = true
 		}
 	}
@@ -124,13 +138,13 @@ func updateActions(user *entity.User) (bool, error) {
 	return updated, nil
 }
 
-func removeAction(ctx context.Context, us user.Store, action *ms.ModAction) error {
+func removeAction(ctx context.Context, us user.Store, action *ms.ModAction, modUserId string) error {
 	user, err := us.GetByUUID(ctx, action.UserId)
 	if err != nil {
 		return err
 	}
 
-	err = removeCurrentAction(user, action.Type)
+	err = removeCurrentAction(user, action.Type, false, modUserId)
 	if err != nil {
 		return err
 	}
@@ -152,6 +166,8 @@ func applyAction(ctx context.Context, us user.Store, action *ms.ModAction) error
 		}
 		action.Duration = 0
 		action.EndTime = action.StartTime
+		action.RemovedTime = action.StartTime
+		action.Expired = true
 		err = addActionToHistory(user, action)
 		if err != nil {
 			return err
@@ -205,7 +221,7 @@ func setCurrentAction(user *entity.User, action *ms.ModAction) error {
 	// Remove existing actions for this type
 	_, actionExists := user.Actions.Current[action.Type.String()]
 	if actionExists {
-		err := removeCurrentAction(user, action.Type)
+		err := removeCurrentAction(user, action.Type, false, action.ModUserId)
 		if err != nil {
 			return err
 		}
@@ -214,12 +230,23 @@ func setCurrentAction(user *entity.User, action *ms.ModAction) error {
 	return nil
 }
 
-func removeCurrentAction(user *entity.User, actionType ms.ModActionType) error {
+func removeCurrentAction(user *entity.User, actionType ms.ModActionType, expired bool, modUserId string) error {
 	instantiateActions(user)
 	existingCurrentAction, actionExists := user.Actions.Current[actionType.String()]
 	if !actionExists {
 		return fmt.Errorf("user does not have current action %s", actionType.String())
 	}
+	existingCurrentAction.Expired = expired
+	if expired {
+		existingCurrentAction.RemovedTime = existingCurrentAction.EndTime
+	} else {
+		currentTime, err := ptypes.TimestampProto(time.Now())
+		if err != nil {
+			return err
+		}
+		existingCurrentAction.RemovedTime = currentTime
+	}
+	existingCurrentAction.ModUserId = modUserId
 	addActionToHistory(user, existingCurrentAction)
 	delete(user.Actions.Current, actionType.String())
 	return nil
@@ -259,4 +286,17 @@ func instantiateActionsHistory(u *entity.User) {
 	if u.Actions.History == nil {
 		u.Actions.History = []*ms.ModAction{}
 	}
+}
+
+func sessionUserId(ctx context.Context, us user.Store) (string, error) {
+	sess, err := apiserver.GetSession(ctx)
+	if err != nil {
+		return "", err
+	}
+
+	user, err := us.Get(ctx, sess.Username)
+	if err != nil {
+		return "", err
+	}
+	return user.UUID, nil
 }
