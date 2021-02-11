@@ -5,10 +5,10 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"gorm.io/datatypes"
 	"math/rand"
 	"sort"
 	"strings"
-	"gorm.io/datatypes"
 
 	"github.com/jinzhu/gorm"
 	"github.com/jinzhu/gorm/dialects/postgres"
@@ -286,16 +286,17 @@ func (s *DBStore) GetByAPIKey(ctx context.Context, apikey string) (*entity.User,
 	}
 
 	entu := &entity.User{
-		ID:        u.ID,
-		Username:  u.Username,
-		UUID:      u.UUID,
-		Email:     u.Email,
-		Password:  u.Password,
-		Anonymous: false,
-		IsBot:     u.InternalBot,
-		IsAdmin:   u.IsAdmin,
-		IsMod:     u.IsMod,
-		Actions:   &actions,
+		ID:         u.ID,
+		Username:   u.Username,
+		UUID:       u.UUID,
+		Email:      u.Email,
+		Password:   u.Password,
+		Anonymous:  false,
+		IsBot:      u.InternalBot,
+		IsAdmin:    u.IsAdmin,
+		IsDirector: u.IsDirector,
+		IsMod:      u.IsMod,
+		Actions:    &actions,
 	}
 
 	return entu, nil

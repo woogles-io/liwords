@@ -2,6 +2,7 @@ package mod
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"github.com/golang/protobuf/ptypes"
 	"time"
@@ -14,15 +15,27 @@ import (
 var ModActionDispatching = map[string]func(context.Context, user.Store, *ms.ModAction) error{
 
 	/*	All types are listed here for clearness
-	    Types that are commented are not transient
-	    actions but are applied over a duration of time
-	    ms.ModActionType_MUTE,
-		ms.ModActionType_SUSPEND_ACCOUNT,
-		ms.ModActionType_SUSPEND_RATED_GAMES,
-		ms.ModActionType_SUSPEND_GAMES,*/
+		    Types that are commented are not transient
+		    actions but are applied over a duration of time
+		    ms.ModActionType_MUTE,
+			ms.ModActionType_SUSPEND_ACCOUNT,
+			ms.ModActionType_SUSPEND_RATED_GAMES,
+			ms.ModActionType_SUSPEND_GAMES,*/
 	ms.ModActionType_RESET_RATINGS.String():           resetRatings,
 	ms.ModActionType_RESET_STATS.String():             resetStats,
 	ms.ModActionType_RESET_STATS_AND_RATINGS.String(): resetStatsAndRatings,
+}
+
+func ActionExists(ctx context.Context, us user.Store, uuid string, actionType ms.ModActionType) error {
+	currentActions, err := GetActions(ctx, us, uuid)
+	if err != nil {
+		return err
+	}
+	_, actionExists := currentActions[actionType.String()]
+	if actionExists {
+		return errors.New("this user is not permitted to perform this action")
+	}
+	return nil
 }
 
 func GetActions(ctx context.Context, us user.Store, uuid string) (map[string]*ms.ModAction, error) {
@@ -33,9 +46,16 @@ func GetActions(ctx context.Context, us user.Store, uuid string) (map[string]*ms
 
 	// updateActions will initialize user.Actions.Current
 	// so the return will not result in a nil pointer error
-	err = updateActions(ctx, us, uuid)
+	updated, err := updateActions(user)
 	if err != nil {
 		return nil, err
+	}
+
+	if updated {
+		err = us.Set(ctx, user)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	return user.Actions.Current, nil
@@ -49,9 +69,16 @@ func GetActionHistory(ctx context.Context, us user.Store, uuid string) ([]*ms.Mo
 
 	// updateActions will initialize user.Actions.History
 	// so the return will not result in a nil pointer error
-	err = updateActions(ctx, us, uuid)
+	updated, err := updateActions(user)
 	if err != nil {
 		return nil, err
+	}
+
+	if updated {
+		err = us.Set(ctx, user)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	return user.Actions.History, nil
@@ -77,15 +104,12 @@ func RemoveActions(ctx context.Context, us user.Store, actions []*ms.ModAction) 
 	return nil
 }
 
-func updateActions(ctx context.Context, us user.Store, uuid string) error {
-	user, err := us.GetByUUID(ctx, uuid)
-	if err != nil {
-		return err
-	}
+func updateActions(user *entity.User) (bool, error) {
 
 	instantiateActions(user)
 
 	now := time.Now()
+	updated := false
 	for _, action := range user.Actions.Current {
 		// This conversion will throw an error if action.EndTime
 		// is nil. This means that the action is permanent
@@ -93,10 +117,11 @@ func updateActions(ctx context.Context, us user.Store, uuid string) error {
 		convertedEndTime, err := ptypes.Timestamp(action.EndTime)
 		if err == nil && now.After(convertedEndTime) {
 			removeCurrentAction(user, action.Type)
+			updated = true
 		}
 	}
 
-	return us.Set(ctx, user)
+	return updated, nil
 }
 
 func removeAction(ctx context.Context, us user.Store, action *ms.ModAction) error {
@@ -119,8 +144,8 @@ func applyAction(ctx context.Context, us user.Store, action *ms.ModAction) error
 		return err
 	}
 	action.StartTime = ptypes.TimestampNow()
-	modActionFunc, ok := ModActionDispatching[action.Type.String()]
-	if ok { // This ModAction is transient
+	modActionFunc, actionExists := ModActionDispatching[action.Type.String()]
+	if actionExists { // This ModAction is transient
 		err := modActionFunc(ctx, us, action)
 		if err != nil {
 			return err
@@ -177,18 +202,26 @@ func addActionToHistory(user *entity.User, action *ms.ModAction) error {
 
 func setCurrentAction(user *entity.User, action *ms.ModAction) error {
 	instantiateActions(user)
+	// Remove existing actions for this type
+	_, actionExists := user.Actions.Current[action.Type.String()]
+	if actionExists {
+		err := removeCurrentAction(user, action.Type)
+		if err != nil {
+			return err
+		}
+	}
 	user.Actions.Current[action.Type.String()] = action
 	return nil
 }
 
 func removeCurrentAction(user *entity.User, actionType ms.ModActionType) error {
 	instantiateActions(user)
-	existingCurrentAction, ok := user.Actions.Current[actionType.String()]
-	if !ok {
+	existingCurrentAction, actionExists := user.Actions.Current[actionType.String()]
+	if !actionExists {
 		return fmt.Errorf("user does not have current action %s", actionType.String())
 	}
 	addActionToHistory(user, existingCurrentAction)
-	user.Actions.Current[actionType.String()] = nil
+	delete(user.Actions.Current, actionType.String())
 	return nil
 }
 
