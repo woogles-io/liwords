@@ -19,23 +19,6 @@ export const Announcements = React.memo((props: AnnouncementsProps) => {
     },
 
     {
-      title: 'Ongoing Tournament - WYSC',
-      body: (
-        <a
-          href="http://youthscrabble.org/WYC2020/"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <p>
-            The World Youth Championship runs for three consecutive weekends,
-            starting January 22, 2021! Watch Pakistan vs. Sri Lanka and India
-            vs. Thailand in the semifinals! Who are you rooting for?
-          </p>
-        </a>
-      ),
-    },
-
-    {
       title: 'Ongoing Tournament - CoCo Blitz Championship',
       body: (
         <a
@@ -116,6 +99,24 @@ export const Announcements = React.memo((props: AnnouncementsProps) => {
             starting on the first day of spring (Saturday, March 20, 2021).
             Premier and Classic divisions for both NWL20 and CSW19. All pairings
             and standings will be automatically handled by the Woogles platform!
+          </p>
+        </a>
+      ),
+    },
+
+    {
+      title: 'Completed - WYC',
+      body: (
+        <a
+          href="https://woogles.io/club/wyc2020matches"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          <p>
+            The World Youth Championship ran on Woogles.io for 3 weekends and was won
+            by Thailand! Congratulations to them and to Pakistan, who finished in 2nd!
+            Thank you to the organizers and all the teams that competed. You are the future
+            of word games!
           </p>
         </a>
       ),
