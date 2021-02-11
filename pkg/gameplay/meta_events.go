@@ -71,7 +71,8 @@ func findLastEvtOfMatchingType(evts []*pb.GameMetaEvent, evt *pb.GameMetaEvent) 
 
 // HandleMetaEvent processes a passed-in Meta Event, returning an error if
 // it is not applicable.
-func HandleMetaEvent(ctx context.Context, evt *pb.GameMetaEvent, gameStore GameStore, userStore user.Store,
+func HandleMetaEvent(ctx context.Context, evt *pb.GameMetaEvent, eventChan chan<- *entity.EventWrapper,
+	gameStore GameStore, userStore user.Store,
 	listStatStore stats.ListStatStore, tournamentStore tournament.TournamentStore) error {
 	g, err := gameStore.Get(ctx, evt.GameId)
 	if err != nil {
@@ -97,7 +98,16 @@ func HandleMetaEvent(ctx context.Context, evt *pb.GameMetaEvent, gameStore GameS
 		// For this type of event, we just append it to the list and return.
 		// The event will be sent via the appropriate game channel
 		g.MetaEvents.Events = append(g.MetaEvents.Events, evt)
-		return gameStore.Set(ctx, g)
+		err := gameStore.Set(ctx, g)
+		if err != nil {
+			return err
+		}
+
+		wrapped := entity.WrapEvent(evt, pb.MessageType_GAME_META_EVENT)
+		wrapped.AddAudience(entity.AudGame, evt.GameId)
+		wrapped.AddAudience(entity.AudGameTV, evt.GameId)
+		eventChan <- wrapped
+
 	default:
 		matchingEvt := findLastEvtOfMatchingType(g.MetaEvents.Events, evt)
 		if matchingEvt == nil {
@@ -111,6 +121,13 @@ func HandleMetaEvent(ctx context.Context, evt *pb.GameMetaEvent, gameStore GameS
 			return err
 		}
 
+		// Send the event here as well. XXX can move outside of switch?
+		// XXX only send it for denies. If game is aborted / adjudicated we don't
+		// need to send the event for that.
+		wrapped := entity.WrapEvent(evt, pb.MessageType_GAME_META_EVENT)
+		wrapped.AddAudience(entity.AudGame, evt.GameId)
+		wrapped.AddAudience(entity.AudGameTV, evt.GameId)
+		eventChan <- wrapped
 	}
 
 	return nil
@@ -161,7 +178,6 @@ func processMetaEvent(ctx context.Context, g *entity.Game, evt *pb.GameMetaEvent
 
 		g.SetWinnerIdx(winner)
 		g.SetLoserIdx(1 - winner)
-		// XXX: verify that rating changes the maximum penalty.
 		// performEndgameDuties Sets the game back to the store, so no need to do it again here,
 		// unlike in the other cases.
 		return performEndgameDuties(ctx, g, gameStore, userStore, listStatStore, tournamentStore)

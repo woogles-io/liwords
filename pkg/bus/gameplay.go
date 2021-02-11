@@ -488,14 +488,5 @@ func (b *Bus) gameMetaEvent(ctx context.Context, evt *pb.GameMetaEvent, userID s
 	evt.PlayerId = userID
 	evt.Timestamp = timestamppb.New(time.Now())
 
-	err := gameplay.HandleMetaEvent(ctx, evt, b.gameStore, b.userStore, b.listStatStore, b.tournamentStore)
-	if err != nil {
-		return err
-	}
-	wrapped := entity.WrapEvent(evt, pb.MessageType_GAME_META_EVENT)
-	wrapped.AddAudience(entity.AudGame, evt.GameId)
-	wrapped.AddAudience(entity.AudGameTV, evt.GameId)
-	b.gameEventChan <- wrapped
-
-	return nil
+	return gameplay.HandleMetaEvent(ctx, evt, b.gameEventChan, b.gameStore, b.userStore, b.listStatStore, b.tournamentStore)
 }
