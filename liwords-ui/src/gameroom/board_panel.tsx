@@ -1004,6 +1004,7 @@ export const BoardPanel = React.memo((props: Props) => {
         handleTileDrop={handleTileDrop}
         tilesLayout={props.board.letters}
         lastPlayedTiles={examinableGameContext.lastPlayedTiles}
+        playerOfTileAt={examinableGameContext.playerOfTileAt}
         tentativeTiles={placedTiles}
         tentativeTileScore={placedTilesTempScore}
         currentRack={props.currentRack}
