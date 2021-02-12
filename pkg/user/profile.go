@@ -147,6 +147,8 @@ func (ps *ProfileService) UpdateAvatar(ctx context.Context, r *pb.UpdateAvatarRe
 		return nil, twirp.InternalErrorWith(errors.New("No avatar service available"))
 	}
 
+	oldUrl := user.AvatarUrl()
+
 	avatarUrl, err := avatarService.Upload(ctx, user.UUID, r.JpgData)
 	if err != nil {
 		return nil, twirp.InternalErrorWith(err)
@@ -156,6 +158,13 @@ func (ps *ProfileService) UpdateAvatar(ctx context.Context, r *pb.UpdateAvatarRe
 	updateErr := ps.userStore.SetAvatarUrl(ctx, user.UUID, avatarUrl)
 	if updateErr != nil {
 		return nil, twirp.InternalErrorWith(updateErr)
+	}
+
+	// Delete old URL
+	err = avatarService.Delete(ctx, oldUrl)
+	if err != nil {
+		// Don't crash.
+		log.Err(err).Msg("error-deleting-old-avatar")
 	}
 
 	return &pb.UpdateAvatarResponse{
