@@ -2,6 +2,7 @@ package mod
 
 import (
 	"context"
+	"errors"
 
 	"github.com/rs/zerolog/log"
 	"github.com/twitchtv/twirp"
@@ -11,6 +12,10 @@ import (
 	"github.com/domino14/liwords/pkg/user"
 
 	pb "github.com/domino14/liwords/rpc/api/proto/mod_service"
+)
+
+var (
+	errNotAuthorized = errors.New("this user is not authorized to perform this action")
 )
 
 type ModService struct {
@@ -33,7 +38,7 @@ func (ms *ModService) GetActions(ctx context.Context, req *pb.GetActionsRequest)
 		return nil, err
 	}
 	if !user.IsAdmin {
-		return nil, twirp.NewError(twirp.Unauthenticated, "this user is not an authorized to perform this action")
+		return nil, twirp.NewError(twirp.Unauthenticated, errNotAuthorized.Error())
 	}
 	actions, err := GetActions(ctx, ms.userStore, req.UserId)
 	if err != nil {
@@ -48,7 +53,7 @@ func (ms *ModService) GetActionHistory(ctx context.Context, req *pb.GetActionsRe
 		return nil, err
 	}
 	if !user.IsAdmin {
-		return nil, twirp.NewError(twirp.Unauthenticated, "this user is not an authorized to perform this action")
+		return nil, twirp.NewError(twirp.Unauthenticated, errNotAuthorized.Error())
 	}
 	history, err := GetActionHistory(ctx, ms.userStore, req.UserId)
 	if err != nil {
@@ -110,7 +115,7 @@ func authenticateMod(ctx context.Context, ms *ModService, req *pb.ModActionsList
 	}
 
 	if !user.IsAdmin && (isAdminRequired || !user.IsMod) {
-		return twirp.NewError(twirp.Unauthenticated, "this user is not an authorized to perform this action")
+		return twirp.NewError(twirp.Unauthenticated, errNotAuthorized.Error())
 	}
 	return nil
 }

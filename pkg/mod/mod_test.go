@@ -53,6 +53,7 @@ func recreateDB() {
 		{Username: "Spammer", Email: "spammer@woogles.io", UUID: "Spammer"},
 		{Username: "Sandbagger", Email: "sandbagger@gmail.com", UUID: "Sandbagger"},
 		{Username: "Cheater", Email: "cheater@woogles.io", UUID: "Cheater"},
+		{Username: "Moderator", Email: "admin@woogles.io", UUID: "Moderator", IsMod: true},
 	} {
 		err = ustore.New(context.Background(), u)
 		if err != nil {
