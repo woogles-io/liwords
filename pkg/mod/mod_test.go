@@ -14,6 +14,7 @@ import (
 	"github.com/rs/zerolog/log"
 	timestamppb "google.golang.org/protobuf/types/known/timestamppb"
 
+	"github.com/domino14/liwords/pkg/apiserver"
 	"github.com/domino14/liwords/pkg/entity"
 	"github.com/domino14/liwords/pkg/stores/user"
 	pkguser "github.com/domino14/liwords/pkg/user"
@@ -73,7 +74,13 @@ func userStore(dbURL string) pkguser.Store {
 
 func TestMod(t *testing.T) {
 	is := is.New(t)
+	session := &entity.Session{
+		ID:       "abcdef",
+		Username: "Moderator",
+		UserUUID: "Moderator",
+		Expiry:   time.Now().Add(time.Second * 100)}
 	ctx := context.Background()
+	ctx = apiserver.PlaceInContext(ctx, session)
 	cstr := TestingDBConnStr + " dbname=liwords_test"
 	recreateDB()
 	us := userStore(cstr)
@@ -225,6 +232,8 @@ func TestMod(t *testing.T) {
 	is.True(expectedSandbaggerHistory[0].Expired)
 	is.NoErr(equalTimes(expectedSandbaggerHistory[0].EndTime, expectedSandbaggerHistory[0].RemovedTime))
 	is.NoErr(equalTimes(expectedSandbaggerHistory[0].StartTime, expectedSandbaggerHistory[0].EndTime))
+
+	us.(*user.DBStore).Disconnect()
 }
 
 func equalActionHistories(ah1 []*ms.ModAction, ah2 []*ms.ModAction) error {

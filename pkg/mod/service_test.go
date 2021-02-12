@@ -7,6 +7,7 @@ import (
 
 	"github.com/domino14/liwords/pkg/apiserver"
 	"github.com/domino14/liwords/pkg/entity"
+	"github.com/domino14/liwords/pkg/stores/user"
 	pb "github.com/domino14/liwords/rpc/api/proto/mod_service"
 	"github.com/matryer/is"
 	"github.com/twitchtv/twirp"
@@ -32,6 +33,7 @@ func TestAuthenticateMod(t *testing.T) {
 		Actions: []*pb.ModAction{},
 	})
 	is.NoErr(err)
+	us.(*user.DBStore).Disconnect()
 }
 
 func TestAuthenticateModNoAuth(t *testing.T) {
@@ -54,4 +56,5 @@ func TestAuthenticateModNoAuth(t *testing.T) {
 		Actions: []*pb.ModAction{},
 	})
 	is.Equal(err, twirp.NewError(twirp.Unauthenticated, errNotAuthorized.Error()))
+	us.(*user.DBStore).Disconnect()
 }
