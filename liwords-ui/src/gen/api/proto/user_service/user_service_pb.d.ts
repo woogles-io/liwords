@@ -152,6 +152,142 @@ export namespace ResetPasswordResponse {
   }
 }
 
+export class CountryFlag extends jspb.Message {
+  getUrl(): string;
+  setUrl(value: string): void;
+
+  getName(): string;
+  setName(value: string): void;
+
+  serializeBinary(): Uint8Array;
+  toObject(includeInstance?: boolean): CountryFlag.AsObject;
+  static toObject(includeInstance: boolean, msg: CountryFlag): CountryFlag.AsObject;
+  static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+  static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+  static serializeBinaryToWriter(message: CountryFlag, writer: jspb.BinaryWriter): void;
+  static deserializeBinary(bytes: Uint8Array): CountryFlag;
+  static deserializeBinaryFromReader(message: CountryFlag, reader: jspb.BinaryReader): CountryFlag;
+}
+
+export namespace CountryFlag {
+  export type AsObject = {
+    url: string,
+    name: string,
+  }
+}
+
+export class KickstarterBadge extends jspb.Message {
+  getUrl(): string;
+  setUrl(value: string): void;
+
+  getTitle(): string;
+  setTitle(value: string): void;
+
+  serializeBinary(): Uint8Array;
+  toObject(includeInstance?: boolean): KickstarterBadge.AsObject;
+  static toObject(includeInstance: boolean, msg: KickstarterBadge): KickstarterBadge.AsObject;
+  static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+  static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+  static serializeBinaryToWriter(message: KickstarterBadge, writer: jspb.BinaryWriter): void;
+  static deserializeBinary(bytes: Uint8Array): KickstarterBadge;
+  static deserializeBinaryFromReader(message: KickstarterBadge, reader: jspb.BinaryReader): KickstarterBadge;
+}
+
+export namespace KickstarterBadge {
+  export type AsObject = {
+    url: string,
+    title: string,
+  }
+}
+
+export class UserGameInfo extends jspb.Message {
+  getUuid(): string;
+  setUuid(value: string): void;
+
+  getAvatarUrl(): string;
+  setAvatarUrl(value: string): void;
+
+  getTitle(): string;
+  setTitle(value: string): void;
+
+  getFullName(): string;
+  setFullName(value: string): void;
+
+  hasFlag(): boolean;
+  clearFlag(): void;
+  getFlag(): CountryFlag | undefined;
+  setFlag(value?: CountryFlag): void;
+
+  clearKickstarterBadgesList(): void;
+  getKickstarterBadgesList(): Array<KickstarterBadge>;
+  setKickstarterBadgesList(value: Array<KickstarterBadge>): void;
+  addKickstarterBadges(value?: KickstarterBadge, index?: number): KickstarterBadge;
+
+  serializeBinary(): Uint8Array;
+  toObject(includeInstance?: boolean): UserGameInfo.AsObject;
+  static toObject(includeInstance: boolean, msg: UserGameInfo): UserGameInfo.AsObject;
+  static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+  static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+  static serializeBinaryToWriter(message: UserGameInfo, writer: jspb.BinaryWriter): void;
+  static deserializeBinary(bytes: Uint8Array): UserGameInfo;
+  static deserializeBinaryFromReader(message: UserGameInfo, reader: jspb.BinaryReader): UserGameInfo;
+}
+
+export namespace UserGameInfo {
+  export type AsObject = {
+    uuid: string,
+    avatarUrl: string,
+    title: string,
+    fullName: string,
+    flag?: CountryFlag.AsObject,
+    kickstarterBadgesList: Array<KickstarterBadge.AsObject>,
+  }
+}
+
+export class UsersGameInfoRequest extends jspb.Message {
+  clearUuidsList(): void;
+  getUuidsList(): Array<string>;
+  setUuidsList(value: Array<string>): void;
+  addUuids(value: string, index?: number): string;
+
+  serializeBinary(): Uint8Array;
+  toObject(includeInstance?: boolean): UsersGameInfoRequest.AsObject;
+  static toObject(includeInstance: boolean, msg: UsersGameInfoRequest): UsersGameInfoRequest.AsObject;
+  static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+  static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+  static serializeBinaryToWriter(message: UsersGameInfoRequest, writer: jspb.BinaryWriter): void;
+  static deserializeBinary(bytes: Uint8Array): UsersGameInfoRequest;
+  static deserializeBinaryFromReader(message: UsersGameInfoRequest, reader: jspb.BinaryReader): UsersGameInfoRequest;
+}
+
+export namespace UsersGameInfoRequest {
+  export type AsObject = {
+    uuidsList: Array<string>,
+  }
+}
+
+export class UsersGameInfoResponse extends jspb.Message {
+  clearInfosList(): void;
+  getInfosList(): Array<UserGameInfo>;
+  setInfosList(value: Array<UserGameInfo>): void;
+  addInfos(value?: UserGameInfo, index?: number): UserGameInfo;
+
+  serializeBinary(): Uint8Array;
+  toObject(includeInstance?: boolean): UsersGameInfoResponse.AsObject;
+  static toObject(includeInstance: boolean, msg: UsersGameInfoResponse): UsersGameInfoResponse.AsObject;
+  static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+  static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+  static serializeBinaryToWriter(message: UsersGameInfoResponse, writer: jspb.BinaryWriter): void;
+  static deserializeBinary(bytes: Uint8Array): UsersGameInfoResponse;
+  static deserializeBinaryFromReader(message: UsersGameInfoResponse, reader: jspb.BinaryReader): UsersGameInfoResponse;
+}
+
+export namespace UsersGameInfoResponse {
+  export type AsObject = {
+    infosList: Array<UserGameInfo.AsObject>,
+  }
+}
+
 export class SocketTokenRequest extends jspb.Message {
   serializeBinary(): Uint8Array;
   toObject(includeInstance?: boolean): SocketTokenRequest.AsObject;
@@ -405,6 +541,15 @@ export class ProfileResponse extends jspb.Message {
   getUserId(): string;
   setUserId(value: string): void;
 
+  getAvatarUrl(): string;
+  setAvatarUrl(value: string): void;
+
+  getFullName(): string;
+  setFullName(value: string): void;
+
+  getAvatarsEditable(): boolean;
+  setAvatarsEditable(value: boolean): void;
+
   serializeBinary(): Uint8Array;
   toObject(includeInstance?: boolean): ProfileResponse.AsObject;
   static toObject(includeInstance: boolean, msg: ProfileResponse): ProfileResponse.AsObject;
@@ -425,6 +570,9 @@ export namespace ProfileResponse {
     ratingsJson: string,
     statsJson: string,
     userId: string,
+    avatarUrl: string,
+    fullName: string,
+    avatarsEditable: boolean,
   }
 }
 
@@ -461,6 +609,48 @@ export class UpdateProfileResponse extends jspb.Message {
 
 export namespace UpdateProfileResponse {
   export type AsObject = {
+  }
+}
+
+export class UpdateAvatarRequest extends jspb.Message {
+  getJpgData(): Uint8Array | string;
+  getJpgData_asU8(): Uint8Array;
+  getJpgData_asB64(): string;
+  setJpgData(value: Uint8Array | string): void;
+
+  serializeBinary(): Uint8Array;
+  toObject(includeInstance?: boolean): UpdateAvatarRequest.AsObject;
+  static toObject(includeInstance: boolean, msg: UpdateAvatarRequest): UpdateAvatarRequest.AsObject;
+  static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+  static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+  static serializeBinaryToWriter(message: UpdateAvatarRequest, writer: jspb.BinaryWriter): void;
+  static deserializeBinary(bytes: Uint8Array): UpdateAvatarRequest;
+  static deserializeBinaryFromReader(message: UpdateAvatarRequest, reader: jspb.BinaryReader): UpdateAvatarRequest;
+}
+
+export namespace UpdateAvatarRequest {
+  export type AsObject = {
+    jpgData: Uint8Array | string,
+  }
+}
+
+export class UpdateAvatarResponse extends jspb.Message {
+  getAvatarUrl(): string;
+  setAvatarUrl(value: string): void;
+
+  serializeBinary(): Uint8Array;
+  toObject(includeInstance?: boolean): UpdateAvatarResponse.AsObject;
+  static toObject(includeInstance: boolean, msg: UpdateAvatarResponse): UpdateAvatarResponse.AsObject;
+  static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+  static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+  static serializeBinaryToWriter(message: UpdateAvatarResponse, writer: jspb.BinaryWriter): void;
+  static deserializeBinary(bytes: Uint8Array): UpdateAvatarResponse;
+  static deserializeBinaryFromReader(message: UpdateAvatarResponse, reader: jspb.BinaryReader): UpdateAvatarResponse;
+}
+
+export namespace UpdateAvatarResponse {
+  export type AsObject = {
+    avatarUrl: string,
   }
 }
 

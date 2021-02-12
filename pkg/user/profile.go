@@ -3,6 +3,7 @@ package user
 import (
 	"context"
 	"encoding/json"
+	"errors"
 
 	"github.com/domino14/liwords/pkg/apiserver"
 	"github.com/rs/zerolog/log"
@@ -12,11 +13,12 @@ import (
 )
 
 type ProfileService struct {
-	userStore Store
+	userStore     Store
+	avatarService UploadService
 }
 
-func NewProfileService(u Store) *ProfileService {
-	return &ProfileService{userStore: u}
+func NewProfileService(u Store, us UploadService) *ProfileService {
+	return &ProfileService{userStore: u, avatarService: us}
 }
 
 func (ps *ProfileService) GetRatings(ctx context.Context, r *pb.RatingsRequest) (*pb.RatingsResponse, error) {
@@ -70,14 +72,35 @@ func (ps *ProfileService) GetProfile(ctx context.Context, r *pb.ProfileRequest) 
 	}
 
 	return &pb.ProfileResponse{
-		FirstName:   user.Profile.FirstName,
-		LastName:    user.Profile.LastName,
-		CountryCode: user.Profile.CountryCode,
-		Title:       user.Profile.Title,
-		About:       user.Profile.About,
-		RatingsJson: string(ratjson),
-		StatsJson:   string(statjson),
-		UserId:      user.UUID,
+		FirstName:       user.Profile.FirstName,
+		LastName:        user.Profile.LastName,
+		CountryCode:     user.Profile.CountryCode,
+		Title:           user.Profile.Title,
+		About:           user.Profile.About,
+		RatingsJson:     string(ratjson),
+		StatsJson:       string(statjson),
+		UserId:          user.UUID,
+		AvatarUrl:       user.AvatarUrl(),
+		AvatarsEditable: ps.avatarService != nil,
+	}, nil
+}
+
+func (ps *ProfileService) GetUsersGameInfo(ctx context.Context, r *pb.UsersGameInfoRequest) (*pb.UsersGameInfoResponse, error) {
+	var infos []*pb.UserGameInfo
+
+	for _, uuid := range r.Uuids {
+		user, err := ps.userStore.GetByUUID(ctx, uuid)
+		if err == nil {
+			infos = append(infos, &pb.UserGameInfo{
+				Uuid:      uuid,
+				AvatarUrl: user.AvatarUrl(),
+				Title:     user.Profile.Title,
+			})
+		}
+	}
+
+	return &pb.UsersGameInfoResponse{
+		Infos: infos,
 	}, nil
 }
 
@@ -101,6 +124,50 @@ func (ps *ProfileService) UpdateProfile(ctx context.Context, r *pb.UpdateProfile
 		return nil, twirp.InternalErrorWith(err)
 	}
 
-	return &pb.UpdateProfileResponse{
+	return &pb.UpdateProfileResponse{}, nil
+}
+
+func (ps *ProfileService) UpdateAvatar(ctx context.Context, r *pb.UpdateAvatarRequest) (*pb.UpdateAvatarResponse, error) {
+	// This view requires authentication.
+	sess, err := apiserver.GetSession(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	user, err := ps.userStore.Get(ctx, sess.Username)
+	if err != nil {
+		log.Err(err).Msg("getting-user")
+		// The username should maybe not be in the session? We can't change
+		// usernames easily.
+		return nil, twirp.InternalErrorWith(err)
+	}
+
+	avatarService := ps.avatarService
+	if avatarService == nil {
+		return nil, twirp.InternalErrorWith(errors.New("No avatar service available"))
+	}
+
+	oldUrl := user.AvatarUrl()
+
+	avatarUrl, err := avatarService.Upload(ctx, user.UUID, r.JpgData)
+	if err != nil {
+		return nil, twirp.InternalErrorWith(err)
+	}
+
+	// Remember the URL in the database
+	updateErr := ps.userStore.SetAvatarUrl(ctx, user.UUID, avatarUrl)
+	if updateErr != nil {
+		return nil, twirp.InternalErrorWith(updateErr)
+	}
+
+	// Delete old URL
+	err = avatarService.Delete(ctx, oldUrl)
+	if err != nil {
+		// Don't crash.
+		log.Err(err).Msg("error-deleting-old-avatar")
+	}
+
+	return &pb.UpdateAvatarResponse{
+		AvatarUrl: avatarUrl,
 	}, nil
 }

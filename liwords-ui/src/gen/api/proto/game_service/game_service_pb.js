@@ -452,7 +452,6 @@ proto.game_service.PlayerInfo.toObject = function(includeInstance, msg) {
     countryCode: jspb.Message.getFieldWithDefault(msg, 4, ""),
     rating: jspb.Message.getFieldWithDefault(msg, 5, ""),
     title: jspb.Message.getFieldWithDefault(msg, 6, ""),
-    avatarUrl: jspb.Message.getFieldWithDefault(msg, 7, ""),
     isBot: jspb.Message.getBooleanFieldWithDefault(msg, 8, false),
     first: jspb.Message.getBooleanFieldWithDefault(msg, 9, false)
   };
@@ -514,10 +513,6 @@ proto.game_service.PlayerInfo.deserializeBinaryFromReader = function(msg, reader
     case 6:
       var value = /** @type {string} */ (reader.readString());
       msg.setTitle(value);
-      break;
-    case 7:
-      var value = /** @type {string} */ (reader.readString());
-      msg.setAvatarUrl(value);
       break;
     case 8:
       var value = /** @type {boolean} */ (reader.readBool());
@@ -595,13 +590,6 @@ proto.game_service.PlayerInfo.serializeBinaryToWriter = function(message, writer
   if (f.length > 0) {
     writer.writeString(
       6,
-      f
-    );
-  }
-  f = message.getAvatarUrl();
-  if (f.length > 0) {
-    writer.writeString(
-      7,
       f
     );
   }
@@ -727,24 +715,6 @@ proto.game_service.PlayerInfo.prototype.getTitle = function() {
  */
 proto.game_service.PlayerInfo.prototype.setTitle = function(value) {
   return jspb.Message.setProto3StringField(this, 6, value);
-};
-
-
-/**
- * optional string avatar_url = 7;
- * @return {string}
- */
-proto.game_service.PlayerInfo.prototype.getAvatarUrl = function() {
-  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 7, ""));
-};
-
-
-/**
- * @param {string} value
- * @return {!proto.game_service.PlayerInfo} returns this
- */
-proto.game_service.PlayerInfo.prototype.setAvatarUrl = function(value) {
-  return jspb.Message.setProto3StringField(this, 7, value);
 };
 
 

@@ -16,9 +16,9 @@
   }
   .ant-table-thead th {
     @include colorModed() {
-   	  background-color: m($off-background);
-   	  color: m($gray-extreme);
-   	}
+      background-color: m($off-background);
+      color: m($gray-extreme);
+    }
   }
 }
 
