@@ -15,13 +15,16 @@ import (
 
 var ModActionDispatching = map[string]func(context.Context, user.Store, *ms.ModAction) error{
 
-	/*	All types are listed here for clearness
-		    Types that are commented are not transient
-		    actions but are applied over a duration of time
-		    ms.ModActionType_MUTE,
-			ms.ModActionType_SUSPEND_ACCOUNT,
-			ms.ModActionType_SUSPEND_RATED_GAMES,
-			ms.ModActionType_SUSPEND_GAMES,*/
+	/*
+		All types are listed here for clearness
+		Types that are commented are not transient
+		actions but are applied over a duration of time
+
+		ms.ModActionType_MUTE,
+		ms.ModActionType_SUSPEND_ACCOUNT,
+		ms.ModActionType_SUSPEND_RATED_GAMES,
+		ms.ModActionType_SUSPEND_GAMES,
+	*/
 	ms.ModActionType_RESET_RATINGS.String():           resetRatings,
 	ms.ModActionType_RESET_STATS.String():             resetStats,
 	ms.ModActionType_RESET_STATS_AND_RATINGS.String(): resetStatsAndRatings,

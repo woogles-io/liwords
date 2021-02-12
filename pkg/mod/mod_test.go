@@ -84,8 +84,13 @@ func TestMod(t *testing.T) {
 	resetAction := &ms.ModAction{UserId: "Sandbagger", Type: ms.ModActionType_RESET_STATS_AND_RATINGS, Duration: -10}
 	suspendAction := &ms.ModAction{UserId: "Cheater", Type: ms.ModActionType_SUSPEND_ACCOUNT, Duration: 100}
 
+	// Remove an action that does not exist
+	err := RemoveActions(ctx, us, []*ms.ModAction{muteAction})
+	errString := fmt.Sprintf("user does not have current action %s", muteAction.Type.String())
+	is.True(err.Error() == errString)
+
 	// Apply Actions
-	err := ApplyActions(ctx, us, []*ms.ModAction{muteAction, resetAction, suspendAction})
+	err = ApplyActions(ctx, us, []*ms.ModAction{muteAction, resetAction, suspendAction})
 	is.NoErr(err)
 
 	is.True(ActionExists(ctx, us, "Spammer", muteAction.Type).Error() == "this user is not permitted to perform this action")

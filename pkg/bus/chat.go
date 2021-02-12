@@ -5,9 +5,11 @@ import (
 	"errors"
 	"strings"
 
+	"github.com/domino14/liwords/pkg/mod"
 	"github.com/domino14/liwords/pkg/user"
 
 	"github.com/domino14/liwords/pkg/entity"
+	ms "github.com/domino14/liwords/rpc/api/proto/mod_service"
 	pb "github.com/domino14/liwords/rpc/api/proto/realtime"
 	"github.com/rs/zerolog/log"
 )
@@ -34,6 +36,11 @@ func (b *Bus) chat(ctx context.Context, userID string, evt *pb.ChatMessage) erro
 	}
 
 	sendingUser, err := b.userStore.GetByUUID(ctx, userID)
+	if err != nil {
+		return err
+	}
+
+	err = mod.ActionExists(ctx, b.userStore, userID, ms.ModActionType_MUTE)
 	if err != nil {
 		return err
 	}

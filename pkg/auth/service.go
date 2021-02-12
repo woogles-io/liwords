@@ -22,8 +22,10 @@ import (
 	"github.com/dgrijalva/jwt-go"
 	"github.com/domino14/liwords/pkg/apiserver"
 
+	"github.com/domino14/liwords/pkg/mod"
 	"github.com/domino14/liwords/pkg/user"
 
+	ms "github.com/domino14/liwords/rpc/api/proto/mod_service"
 	pb "github.com/domino14/liwords/rpc/api/proto/user_service"
 )
 
@@ -86,6 +88,11 @@ func (as *AuthenticationService) Login(ctx context.Context, r *pb.UserLoginReque
 		return nil, twirp.NewError(twirp.Unauthenticated, "password incorrect")
 	}
 	sess, err := as.sessionStore.New(ctx, user)
+	if err != nil {
+		return nil, err
+	}
+
+	err = mod.ActionExists(ctx, as.userStore, user.UUID, ms.ModActionType_SUSPEND_ACCOUNT)
 	if err != nil {
 		return nil, err
 	}
