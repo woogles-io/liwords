@@ -200,7 +200,7 @@ func dbProfileToProfile(p *profile) (*entity.Profile, error) {
 		About:       p.About,
 		Ratings:     rdata,
 		Stats:       sdata,
-		AvatarUrl:	 p.AvatarUrl,
+		AvatarUrl:   p.AvatarUrl,
 	}, nil
 }
 

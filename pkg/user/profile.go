@@ -2,8 +2,8 @@ package user
 
 import (
 	"context"
-	"errors"
 	"encoding/json"
+	"errors"
 
 	"github.com/domino14/liwords/pkg/apiserver"
 	"github.com/rs/zerolog/log"
@@ -13,7 +13,7 @@ import (
 )
 
 type ProfileService struct {
-	userStore Store
+	userStore     Store
 	avatarService UploadService
 }
 
@@ -72,32 +72,32 @@ func (ps *ProfileService) GetProfile(ctx context.Context, r *pb.ProfileRequest) 
 	}
 
 	return &pb.ProfileResponse{
-		FirstName:   		user.Profile.FirstName,
-		LastName:    		user.Profile.LastName,
-		CountryCode: 		user.Profile.CountryCode,
-		Title:       		user.Profile.Title,
-		About:       		user.Profile.About,
-		RatingsJson: 		string(ratjson),
-		StatsJson:   		string(statjson),
-		UserId:      		user.UUID,
-		AvatarUrl:	 		user.AvatarUrl(),
-		AvatarsEditable: 	ps.avatarService != nil,
+		FirstName:       user.Profile.FirstName,
+		LastName:        user.Profile.LastName,
+		CountryCode:     user.Profile.CountryCode,
+		Title:           user.Profile.Title,
+		About:           user.Profile.About,
+		RatingsJson:     string(ratjson),
+		StatsJson:       string(statjson),
+		UserId:          user.UUID,
+		AvatarUrl:       user.AvatarUrl(),
+		AvatarsEditable: ps.avatarService != nil,
 	}, nil
 }
 
 func (ps *ProfileService) GetUsersGameInfo(ctx context.Context, r *pb.UsersGameInfoRequest) (*pb.UsersGameInfoResponse, error) {
 	var infos []*pb.UserGameInfo
 
- 	for _, uuid := range r.Uuids {
+	for _, uuid := range r.Uuids {
 		user, err := ps.userStore.GetByUUID(ctx, uuid)
 		if err == nil {
-			infos = append(infos, &pb.UserGameInfo {
-				Uuid: uuid,
+			infos = append(infos, &pb.UserGameInfo{
+				Uuid:      uuid,
 				AvatarUrl: user.AvatarUrl(),
-			 	Title: user.Profile.Title,
+				Title:     user.Profile.Title,
 			})
 		}
- 	}
+	}
 
 	return &pb.UsersGameInfoResponse{
 		Infos: infos,
@@ -124,8 +124,7 @@ func (ps *ProfileService) UpdateProfile(ctx context.Context, r *pb.UpdateProfile
 		return nil, twirp.InternalErrorWith(err)
 	}
 
-	return &pb.UpdateProfileResponse{
-	}, nil
+	return &pb.UpdateProfileResponse{}, nil
 }
 
 func (ps *ProfileService) UpdateAvatar(ctx context.Context, r *pb.UpdateAvatarRequest) (*pb.UpdateAvatarResponse, error) {
@@ -145,7 +144,7 @@ func (ps *ProfileService) UpdateAvatar(ctx context.Context, r *pb.UpdateAvatarRe
 
 	avatarService := ps.avatarService
 	if avatarService == nil {
-	   	return nil, twirp.InternalErrorWith(errors.New("No avatar service available"))
+		return nil, twirp.InternalErrorWith(errors.New("No avatar service available"))
 	}
 
 	avatarUrl, err := avatarService.Upload(ctx, user.UUID, r.JpgData)
