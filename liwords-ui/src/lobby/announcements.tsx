@@ -19,28 +19,27 @@ export const Announcements = React.memo((props: AnnouncementsProps) => {
     },
 
     {
-      title: 'Upcoming Tournament - WYSC',
+      title: 'Ongoing Tournament - CoCo Blitz Championship',
       body: (
         <a
-          href="http://youthscrabble.org/WYC2020/"
-          target="_blank"
+          href="https://woogles.io/tournament/coco-blitz"
           rel="noopener noreferrer"
         >
           <p>
-            The World Youth Championship runs for three consecutive weekends,
-            starting January 22, 2021! Watch as teams of talented youth around
-            the world play our favorite game. Who will emerge victorious?
+            The World Blitz Championship kicks off in late January and runs
+            through late April. The fastest word gamers in the world will play
+            3-minute games, starting with round robin pool play and culminating
+            with a playoff bracket to determine the World Blitz Champion!
           </p>
         </a>
       ),
     },
 
     {
-      title: 'Upcoming Tournament - Amazing Race 2',
+      title: 'Ongoing Tournament - Amazing Race 2',
       body: (
         <a
           href="https://woogles.io/tournament/tarst2"
-          target="_blank"
           rel="noopener noreferrer"
         >
           <p>
@@ -53,18 +52,17 @@ export const Announcements = React.memo((props: AnnouncementsProps) => {
     },
 
     {
-      title: 'Upcoming Tournament - CoCo Blitz Championships',
+      title: "Upcoming Tournament - Brosowsky Brothers' Bonanza 2021",
       body: (
         <a
-          href="https://www.cocoscrabble.org/blitz-champs"
+          href="https://docs.google.com/document/d/1TRpW0Xx7HWwy-MG-Hrs0cwiwg-HP6ce06gRpZgYlCjw/view"
           target="_blank"
           rel="noopener noreferrer"
         >
           <p>
-            The World Blitz Championship starts on the week of January 25, 2021!
-            Play 3-minute games against some of the fastest word gamers in the
-            world; starting with round play and proceeding to elimination
-            brackets. Three-minute clocks will be used throughout!
+            The Brosowsky Brothers' Bonanza is a one-day, 8-game event, with
+            Open and Lite divisions for both NWL20 and CSW19! Please join us on
+            February 28, 2021. See the flyer for registration info.
           </p>
         </a>
       ),
@@ -88,20 +86,37 @@ export const Announcements = React.memo((props: AnnouncementsProps) => {
     },
 
     {
-      title: 'Tournament Complete - Virtual Crescent City Cup',
+      title: 'Upcoming Tournament - HOPPY',
       body: (
         <a
-          href="https://woogles.io/tournament/vccc"
+          href="https://drive.google.com/file/d/1vi6eUYaYeL2az7-6eZthwevsMG0fr3fK/view"
           target="_blank"
           rel="noopener noreferrer"
         >
           <p>
-            The Virtual Crescent City Cup, the first one to use our brand new
-            tournament interface, was a resounding success! Congratulations to
-            Billy Nakamura (NWL Open), Lukeman Owolabi (CSW Open), Gideon
-            Brosowsky (NWL Lite), and Terry Kang Rau (CSW Lite) for winning
-            their respective divisions! All 850+ games were recorded and can be
-            found by clicking on this text.
+            The HOPPY is a two-day tournament, brought to you by the organizers
+            of the successful MERRY tournament! A two-day, 13-game event,
+            starting on the first day of spring (Saturday, March 20, 2021).
+            Premier and Classic divisions for both NWL20 and CSW19. All pairings
+            and standings will be automatically handled by the Woogles platform!
+          </p>
+        </a>
+      ),
+    },
+
+    {
+      title: 'Completed - WYC',
+      body: (
+        <a
+          href="https://woogles.io/club/wyc2020matches"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          <p>
+            The World Youth Championship ran on Woogles.io for 3 weekends and was won
+            by Thailand! Congratulations to them and to Pakistan, who finished in 2nd!
+            Thank you to the organizers and all the teams that competed. You are the future
+            of word games!
           </p>
         </a>
       ),
@@ -110,11 +125,7 @@ export const Announcements = React.memo((props: AnnouncementsProps) => {
     {
       title: 'Want to help?',
       body: (
-        <a
-          href="https://woogles.io/about"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
+        <a href="https://woogles.io/about" rel="noopener noreferrer">
           <p>
             Woogles is a nonprofit, funded completely by donations, and
             committed to being ad-free and free for everyone. Want to make a

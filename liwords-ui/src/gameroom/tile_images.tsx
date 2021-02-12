@@ -44,6 +44,7 @@ const TileImages = React.memo((props: {}) => {
                   rune={ch}
                   value={runeToValues(ch, CrosswordGameTileValues)}
                   lastPlayed={false}
+                  playerOfTile={0}
                   key={ch}
                   grabbable={false}
                 />

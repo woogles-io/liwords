@@ -24,6 +24,7 @@ import (
 	"github.com/domino14/liwords/pkg/stores/soughtgame"
 	"github.com/domino14/liwords/pkg/stores/stats"
 	"github.com/domino14/liwords/pkg/tournament"
+	"github.com/domino14/liwords/pkg/words"
 
 	"github.com/domino14/liwords/pkg/registration"
 
@@ -42,6 +43,7 @@ import (
 	gameservice "github.com/domino14/liwords/rpc/api/proto/game_service"
 	tournamentservice "github.com/domino14/liwords/rpc/api/proto/tournament_service"
 	userservice "github.com/domino14/liwords/rpc/api/proto/user_service"
+	wordservice "github.com/domino14/liwords/rpc/api/proto/word_service"
 
 	"net/http/pprof"
 )
@@ -141,10 +143,11 @@ func main() {
 	stores.ChatStore = user.NewRedisChatStore(redisPool, stores.PresenceStore, stores.TournamentStore)
 
 	authenticationService := auth.NewAuthenticationService(stores.UserStore, stores.SessionStore, stores.ConfigStore,
-		cfg.SecretKey, cfg.MailgunKey)
-	registrationService := registration.NewRegistrationService(stores.UserStore)
+		cfg.SecretKey, cfg.MailgunKey, cfg.ArgonConfig)
+	registrationService := registration.NewRegistrationService(stores.UserStore, cfg.ArgonConfig)
 	gameService := gameplay.NewGameService(stores.UserStore, stores.GameStore)
 	profileService := pkguser.NewProfileService(stores.UserStore, pkguser.NewS3Uploader(os.Getenv("AVATAR_UPLOAD_BUCKET")))
+	wordService := words.NewWordService(&cfg.MacondoConfig)
 	autocompleteService := pkguser.NewAutocompleteService(stores.UserStore)
 	socializeService := pkguser.NewSocializeService(stores.UserStore, stores.ChatStore)
 	configService := config.NewConfigService(stores.ConfigStore, stores.UserStore)
@@ -160,6 +163,9 @@ func main() {
 
 	router.Handle(gameservice.GameMetadataServicePathPrefix,
 		middlewares.Then(gameservice.NewGameMetadataServiceServer(gameService, nil)))
+
+	router.Handle(wordservice.WordServicePathPrefix,
+		middlewares.Then(wordservice.NewWordServiceServer(wordService, nil)))
 
 	router.Handle(userservice.ProfileServicePathPrefix,
 		middlewares.Then(userservice.NewProfileServiceServer(profileService, nil)))

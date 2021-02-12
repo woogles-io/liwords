@@ -59,6 +59,17 @@ const wysc = {
   vsBot: false,
 };
 
+const cocoblitz = {
+  lexicon: 'CSW19',
+  challengerule: ChallengeRule.FIVE_POINT,
+  initialtime: 5, // 3 minutes
+  rated: true,
+  extratime: 1,
+  friend: '',
+  incOrOT: 'overtime',
+  vsBot: false,
+}
+
 export const fixedSettings: { [key: string]: settings } = {
   phillyvirtual,
   cococlub,
@@ -69,6 +80,7 @@ export const fixedSettings: { [key: string]: settings } = {
   AMQ7jnA3NWzaTQuNwiEU9U: wysc, // group c
   '9Jujm6qBnUwkcePaXX5TsB': wysc, // group d
   T6TVX9rPfiUFB7x8vYkWgk: wysc, // brackets
+  cocoblitz,
 };
 
 // A temporary map of club redirects. Map internal tournament ID to slug:

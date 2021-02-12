@@ -37,7 +37,7 @@ func SetCookie(ctx context.Context, cookie *http.Cookie) error {
 }
 
 func SetDefaultCookie(ctx context.Context, sessID string) error {
-	return SetCookie(ctx, &http.Cookie{
+	cookie := &http.Cookie{
 		Name:  "session",
 		Value: sessID,
 		// Tell the browser the cookie expires after a year, but the actual
@@ -47,7 +47,9 @@ func SetDefaultCookie(ctx context.Context, sessID string) error {
 		Expires:  time.Now().Add(365 * 24 * time.Hour),
 		HttpOnly: true,
 		Path:     "/",
-	})
+	}
+
+	return SetCookie(ctx, cookie)
 }
 
 type ctxkey string
@@ -82,24 +84,6 @@ func AuthenticationMiddlewareGenerator(sessionStore sessions.SessionStore) (mw f
 				authed = true
 				// Make new cookie
 				SetDefaultCookie(r.Context(), oldSessionID.Value)
-				// Delete old cookies
-				SetCookie(r.Context(), &http.Cookie{
-					Name:     "sessionid",
-					Value:    oldSessionID.Value,
-					Expires:  time.Now().Add(-100 * time.Hour),
-					MaxAge:   -1,
-					HttpOnly: true,
-					Path:     "/",
-				})
-				SetCookie(r.Context(), &http.Cookie{
-					Name:     "sessionid",
-					Value:    oldSessionID.Value,
-					Expires:  time.Now().Add(-100 * time.Hour),
-					MaxAge:   -1,
-					HttpOnly: true,
-					Path:     "/twirp/user_service.AuthenticationService",
-				})
-				log.Debug().Msg("deleted-old-cookies")
 			}
 
 			if !authed {

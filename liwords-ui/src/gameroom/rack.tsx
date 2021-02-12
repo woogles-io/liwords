@@ -6,6 +6,7 @@ import {
 } from '../constants/tile_values';
 import Tile, { TILE_TYPE } from './tile';
 import { isTouchDevice } from '../utils/cwgame/common';
+import { useExaminableGameContextStoreContext } from '../store/store';
 
 // const TileSpacing = 6;
 
@@ -41,6 +42,9 @@ type Props = {
 };
 
 export const Rack = React.memo((props: Props) => {
+  const {
+    gameContext: examinableGameContext,
+  } = useExaminableGameContextStoreContext();
   const handleDropOver = (e: any) => {
     e.preventDefault();
     e.stopPropagation();
@@ -102,6 +106,7 @@ export const Rack = React.memo((props: Props) => {
           rune={rune}
           value={runeToValues(rune, CrosswordGameTileValues)}
           lastPlayed={false}
+          playerOfTile={examinableGameContext.onturn}
           key={`tile_${n}`}
           scale={false}
           selected={props.selected && props.selected.has(n)}
