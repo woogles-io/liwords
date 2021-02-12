@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
@@ -48,10 +49,14 @@ func (s *S3Uploader) Upload(ctx context.Context, prefix string, data []byte) (st
 	suffix := shortuuid.New()[1:10] + ".jpg"
 	id := prefix + "-" + suffix
 
+	// cache for a long time as this is a unique id.
 	_, err = uploader.Upload(ctx, &s3.PutObjectInput{
-		Bucket: aws.String(s.bucket),
-		Key:    aws.String(id),
-		Body:   bytes.NewReader(data),
+		Bucket:       aws.String(s.bucket),
+		Key:          aws.String(id),
+		Body:         bytes.NewReader(data),
+		ContentType:  aws.String("image/jpeg"),
+		Expires:      aws.Time(time.Now().Add(time.Hour * 24 * 365)),
+		CacheControl: aws.String("max-age=31536000"),
 	})
 	if err != nil {
 		return "", err
