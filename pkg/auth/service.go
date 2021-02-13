@@ -87,12 +87,14 @@ func (as *AuthenticationService) Login(ctx context.Context, r *pb.UserLoginReque
 	if !matches {
 		return nil, twirp.NewError(twirp.Unauthenticated, "password incorrect")
 	}
-	sess, err := as.sessionStore.New(ctx, user)
+
+	err = mod.ActionExists(ctx, as.userStore, user.UUID, ms.ModActionType_SUSPEND_ACCOUNT)
 	if err != nil {
+		log.Err(err).Msg("action-exists")
 		return nil, err
 	}
 
-	err = mod.ActionExists(ctx, as.userStore, user.UUID, ms.ModActionType_SUSPEND_ACCOUNT)
+	sess, err := as.sessionStore.New(ctx, user)
 	if err != nil {
 		return nil, err
 	}

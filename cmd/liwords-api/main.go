@@ -18,6 +18,7 @@ import (
 	"github.com/domino14/liwords/pkg/apiserver"
 	"github.com/domino14/liwords/pkg/bus"
 	"github.com/domino14/liwords/pkg/gameplay"
+	"github.com/domino14/liwords/pkg/mod"
 	cfgstore "github.com/domino14/liwords/pkg/stores/config"
 	"github.com/domino14/liwords/pkg/stores/game"
 	"github.com/domino14/liwords/pkg/stores/session"
@@ -40,6 +41,7 @@ import (
 	pkguser "github.com/domino14/liwords/pkg/user"
 	configservice "github.com/domino14/liwords/rpc/api/proto/config_service"
 	gameservice "github.com/domino14/liwords/rpc/api/proto/game_service"
+	modservice "github.com/domino14/liwords/rpc/api/proto/mod_service"
 	tournamentservice "github.com/domino14/liwords/rpc/api/proto/tournament_service"
 	userservice "github.com/domino14/liwords/rpc/api/proto/user_service"
 
@@ -149,6 +151,7 @@ func main() {
 	socializeService := pkguser.NewSocializeService(stores.UserStore, stores.ChatStore)
 	configService := config.NewConfigService(stores.ConfigStore, stores.UserStore)
 	tournamentService := tournament.NewTournamentService(stores.TournamentStore, stores.UserStore)
+	modService := mod.NewModService(stores.UserStore)
 
 	router.Handle("/ping", http.HandlerFunc(pingEndpoint))
 
@@ -175,6 +178,9 @@ func main() {
 
 	router.Handle(tournamentservice.TournamentServicePathPrefix,
 		middlewares.Then(tournamentservice.NewTournamentServiceServer(tournamentService, nil)))
+
+	router.Handle(modservice.ModServicePathPrefix,
+		middlewares.Then(modservice.NewModServiceServer(modService, nil)))
 
 	router.Handle(
 		"/debug/pprof/goroutine", pprof.Handler("goroutine"),

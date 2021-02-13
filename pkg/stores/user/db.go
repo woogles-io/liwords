@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"gorm.io/datatypes"
 	"math/rand"
 	"sort"
 	"strings"
@@ -42,7 +41,7 @@ type User struct {
 	IsMod       bool   `gorm:"default:false"`
 	ApiKey      string
 
-	Actions datatypes.JSON
+	Actions postgres.Jsonb
 }
 
 // A user profile is in a one-to-one relationship with a user. It is the
@@ -133,9 +132,9 @@ func (s *DBStore) Get(ctx context.Context, username string) (*entity.User, error
 	}
 
 	var actions entity.Actions
-	err = json.Unmarshal(u.Actions, &actions)
+	err = json.Unmarshal(u.Actions.RawMessage, &actions)
 	if err != nil {
-		return nil, err
+		log.Err(err).Msg("convert-user-actions")
 	}
 
 	entu := &entity.User{
@@ -245,9 +244,9 @@ func (s *DBStore) GetByUUID(ctx context.Context, uuid string) (*entity.User, err
 		}
 
 		var actions entity.Actions
-		err = json.Unmarshal(u.Actions, &actions)
+		err = json.Unmarshal(u.Actions.RawMessage, &actions)
 		if err != nil {
-			return nil, err
+			log.Err(err).Msg("convert-user-actions")
 		}
 
 		entu = &entity.User{
@@ -280,9 +279,9 @@ func (s *DBStore) GetByAPIKey(ctx context.Context, apikey string) (*entity.User,
 	}
 
 	var actions entity.Actions
-	err := json.Unmarshal(u.Actions, &actions)
+	err := json.Unmarshal(u.Actions.RawMessage, &actions)
 	if err != nil {
-		return nil, err
+		log.Err(err).Msg("convert-user-actions")
 	}
 
 	entu := &entity.User{
@@ -316,7 +315,7 @@ func (s *DBStore) toDBObj(u *entity.User) (*User, error) {
 		IsAdmin:     u.IsAdmin,
 		IsDirector:  u.IsDirector,
 		IsMod:       u.IsMod,
-		Actions:     actions,
+		Actions:     postgres.Jsonb{RawMessage: actions},
 	}, nil
 }
 

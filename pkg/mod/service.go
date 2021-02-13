@@ -22,6 +22,10 @@ type ModService struct {
 	userStore user.Store
 }
 
+func NewModService(us user.Store) *ModService {
+	return &ModService{userStore: us}
+}
+
 var AdminRequiredMap = map[pb.ModActionType]bool{
 	pb.ModActionType_MUTE:                    false,
 	pb.ModActionType_SUSPEND_ACCOUNT:         true,
