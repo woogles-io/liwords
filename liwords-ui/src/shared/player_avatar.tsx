@@ -23,14 +23,13 @@ export const PlayerAvatar = (props: AvatarProps) => {
   const [avatarUrl, setAvatarUrl] = useState<string | undefined>('');
   const [avatarFile, setAvatarFile] = useState(new File([''], ''));
 
-  const avatarUrlFromProps = props.player?.avatar_url;
   useEffect(() => {
-    setAvatarUrl(avatarUrlFromProps);
-  }, [avatarUrlFromProps]);
+    setAvatarUrl(props.player?.avatar_url);
+  }, [props.player]);
 
   useEffect(() => {
     setAvatarErr('');
-    var fileInput = document.getElementById(
+    let fileInput = document.getElementById(
       'avatar-file-input'
     ) as HTMLInputElement;
     if (fileInput !== null) {
@@ -38,7 +37,7 @@ export const PlayerAvatar = (props: AvatarProps) => {
     }
   }, [updateModalVisible]);
 
-  var okButtonDisabled = avatarFile == null || avatarFile.name.length === 0;
+  let okButtonDisabled = avatarFile == null || avatarFile.name.length === 0;
   const fileProps = {
     beforeUpload: (file: File) => {
       return false;
@@ -67,8 +66,8 @@ export const PlayerAvatar = (props: AvatarProps) => {
       }}
       onOk={() => {
         console.log(avatarFile);
-        var reader = new FileReader();
-        reader.onload = function () {
+        let reader = new FileReader();
+        reader.onload = () => {
           axios
             .post(
               toAPIUrl('user_service.ProfileService', 'UpdateAvatar'),
@@ -86,7 +85,6 @@ export const PlayerAvatar = (props: AvatarProps) => {
               });
               setUpdateModalVisible(false);
               setAvatarUrl(resp.data.avatar_url);
-              console.log(resp.data.avatar_url);
             })
             .catch((e) => {
               if (e.response) {

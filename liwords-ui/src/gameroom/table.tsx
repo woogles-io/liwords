@@ -196,6 +196,7 @@ export const Table = React.memo((props: Props) => {
   const competitorState = tournamentContext.competitorState;
   const isRegistered = competitorState.isRegistered;
   const [playerNames, setPlayerNames] = useState(new Array<string>());
+  const [needAvatars, setNeedAvatars] = useState(false);
   const { sendSocketMsg } = props;
   // const location = useLocation();
   const [gameInfo, setGameInfo] = useState<GameMetadata>(defaultGameInfo);
@@ -265,6 +266,7 @@ export const Table = React.memo((props: Props) => {
       )
       .then((resp) => {
         setGameInfo(resp.data);
+        setNeedAvatars(true);
         if (localStorage?.getItem('poolFormat')) {
           setPoolFormat(
             parseInt(localStorage.getItem('poolFormat') || '0', 10)
@@ -292,7 +294,7 @@ export const Table = React.memo((props: Props) => {
   }, [gameID]);
 
   useEffect(() => {
-    if (!gameInfo.game_id) {
+    if (!gameInfo.game_id || !needAvatars) {
       return;
     }
 
@@ -304,18 +306,19 @@ export const Table = React.memo((props: Props) => {
         }
       )
       .then((resp) => {
-        var updatedGameInfo = gameInfo;
+        setNeedAvatars(false);
+        let players = JSON.parse(JSON.stringify(gameInfo.players));
         resp.data.infos.forEach((info) => {
           if (info.avatar_url.length) {
             const index = gameInfo.players.findIndex(
               (p) => p.user_id === info.uuid
             );
             if (index >= 0) {
-              updatedGameInfo.players[index].avatar_url = info.avatar_url;
+              players[index].avatar_url = info.avatar_url;
             }
           }
         });
-        setGameInfo(updatedGameInfo);
+        setGameInfo({ ...gameInfo, players: players });
       })
       .catch((err) => {
         message.error({
@@ -323,7 +326,7 @@ export const Table = React.memo((props: Props) => {
           duration: 10,
         });
       });
-  }, [gameInfo]);
+  }, [gameInfo, needAvatars]);
 
   useEffect(() => {
     if (!gameInfo.tournament_id) {
