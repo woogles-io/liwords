@@ -547,27 +547,31 @@ const ExaminableStore = ({ children }: { children: React.ReactNode }) => {
         if (evt.ctrlKey || evt.altKey || evt.metaKey) {
           // If a modifier key is held, never mind.
         } else {
-          if (evt.key === 'Home') {
+          if (evt.key === '<' || evt.key === 'Home') {
             evt.preventDefault();
             handleExamineFirst();
           }
-          if (evt.key === 'PageUp') {
+          if (evt.key === ',' || evt.key === 'PageUp') {
             evt.preventDefault();
             handleExaminePrev();
           }
-          if (evt.key === 'PageDown') {
+          if (evt.key === '.' || evt.key === 'PageDown') {
             evt.preventDefault();
             handleExamineNext();
           }
-          if (evt.key === 'End') {
+          if (evt.key === '>' || evt.key === 'End') {
             evt.preventDefault();
             handleExamineLast();
           }
-          if (evt.key === '?') {
+          if (evt.key === '/' || evt.key === '?') {
             evt.preventDefault();
             for (const handleExaminer of handleExaminers) {
               handleExaminer();
             }
+          }
+          if (evt.key === 'Escape') {
+            evt.preventDefault();
+            handleExamineEnd();
           }
         }
       }
@@ -579,6 +583,7 @@ const ExaminableStore = ({ children }: { children: React.ReactNode }) => {
       handleExaminePrev,
       handleExamineNext,
       handleExamineLast,
+      handleExamineEnd,
       handleExaminers,
     ]
   );
