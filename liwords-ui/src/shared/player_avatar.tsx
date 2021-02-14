@@ -23,9 +23,10 @@ export const PlayerAvatar = (props: AvatarProps) => {
   const [avatarUrl, setAvatarUrl] = useState<string | undefined>('');
   const [avatarFile, setAvatarFile] = useState(new File([''], ''));
 
+  const avatarUrlFromProps = props.player?.avatar_url;
   useEffect(() => {
-    setAvatarUrl(props.player?.avatar_url);
-  }, [props.player]);
+    setAvatarUrl(avatarUrlFromProps);
+  }, [avatarUrlFromProps]);
 
   useEffect(() => {
     setAvatarErr('');
