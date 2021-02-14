@@ -30,16 +30,44 @@ var ModActionDispatching = map[string]func(context.Context, user.Store, *ms.ModA
 	ms.ModActionType_RESET_STATS_AND_RATINGS.String(): resetStatsAndRatings,
 }
 
-func ActionExists(ctx context.Context, us user.Store, uuid string, actionType ms.ModActionType) error {
+func ActionExists(ctx context.Context, us user.Store, uuid string, actionTypes []ms.ModActionType) error {
 	currentActions, err := GetActions(ctx, us, uuid)
 	if err != nil {
 		return err
 	}
-	_, actionExists := currentActions[actionType.String()]
-	if actionExists {
-		return errors.New("this user is not permitted to perform this action")
+
+	// We want to show the user longest ban out of all the actions,
+	// so we want the time furthest in the future. Initialize the latestTime
+	// to be the unix epoch. Any valid times that come from
+	// actions will be later than this time.
+	now := time.Now()
+	latestTime := time.Unix(0, 0)
+	permaban := false
+
+	for _, actionType := range actionTypes {
+		action, actionExists := currentActions[actionType.String()]
+		if actionExists {
+			if action.EndTime == nil {
+				permaban = true
+				break
+			}
+			golangEndTime, err := ptypes.Timestamp(action.EndTime)
+			if err != nil {
+				return err
+			}
+			latestTime = getLaterTime(latestTime, golangEndTime)
+		}
 	}
-	return nil
+
+	var disabledError error = nil
+
+	if permaban {
+		disabledError = errors.New("this action is permanently disabled for this user")
+	} else if latestTime.After(now) {
+		disabledError = fmt.Errorf("this action is disabled for this user until %v", latestTime.Round(time.Second).String())
+	}
+
+	return disabledError
 }
 
 func GetActions(ctx context.Context, us user.Store, uuid string) (map[string]*ms.ModAction, error) {
@@ -89,12 +117,12 @@ func GetActionHistory(ctx context.Context, us user.Store, uuid string) ([]*ms.Mo
 }
 
 func ApplyActions(ctx context.Context, us user.Store, actions []*ms.ModAction) error {
-	modUserId, err := sessionUserId(ctx, us)
+	applierUserId, err := sessionUserId(ctx, us)
 	if err != nil {
 		return err
 	}
 	for _, action := range actions {
-		action.ModUserId = modUserId
+		action.ApplierUserId = applierUserId
 		err := applyAction(ctx, us, action)
 		if err != nil {
 			return err
@@ -104,7 +132,7 @@ func ApplyActions(ctx context.Context, us user.Store, actions []*ms.ModAction) e
 }
 
 func RemoveActions(ctx context.Context, us user.Store, actions []*ms.ModAction) error {
-	modUserId, err := sessionUserId(ctx, us)
+	removerUserId, err := sessionUserId(ctx, us)
 	if err != nil {
 		return err
 	}
@@ -113,7 +141,7 @@ func RemoveActions(ctx context.Context, us user.Store, actions []*ms.ModAction) 
 		// so that actions that have already expired
 		// are not removed by a mod or admin
 		_, err := GetActions(ctx, us, action.UserId)
-		err = removeAction(ctx, us, action, modUserId)
+		err = removeAction(ctx, us, action, removerUserId)
 		if err != nil {
 			return err
 		}
@@ -133,7 +161,7 @@ func updateActions(user *entity.User) (bool, error) {
 		// and should never be removed by this function.
 		convertedEndTime, err := ptypes.Timestamp(action.EndTime)
 		if err == nil && now.After(convertedEndTime) {
-			removeCurrentAction(user, action.Type, true, "")
+			removeCurrentAction(user, action.Type, "")
 			updated = true
 		}
 	}
@@ -141,13 +169,13 @@ func updateActions(user *entity.User) (bool, error) {
 	return updated, nil
 }
 
-func removeAction(ctx context.Context, us user.Store, action *ms.ModAction, modUserId string) error {
+func removeAction(ctx context.Context, us user.Store, action *ms.ModAction, removerUserId string) error {
 	user, err := us.GetByUUID(ctx, action.UserId)
 	if err != nil {
 		return err
 	}
 
-	err = removeCurrentAction(user, action.Type, false, modUserId)
+	err = removeCurrentAction(user, action.Type, removerUserId)
 	if err != nil {
 		return err
 	}
@@ -170,7 +198,7 @@ func applyAction(ctx context.Context, us user.Store, action *ms.ModAction) error
 		action.Duration = 0
 		action.EndTime = action.StartTime
 		action.RemovedTime = action.StartTime
-		action.Expired = true
+		action.RemoverUserId = ""
 		err = addActionToHistory(user, action)
 		if err != nil {
 			return err
@@ -224,7 +252,7 @@ func setCurrentAction(user *entity.User, action *ms.ModAction) error {
 	// Remove existing actions for this type
 	_, actionExists := user.Actions.Current[action.Type.String()]
 	if actionExists {
-		err := removeCurrentAction(user, action.Type, false, action.ModUserId)
+		err := removeCurrentAction(user, action.Type, action.ApplierUserId)
 		if err != nil {
 			return err
 		}
@@ -233,14 +261,20 @@ func setCurrentAction(user *entity.User, action *ms.ModAction) error {
 	return nil
 }
 
-func removeCurrentAction(user *entity.User, actionType ms.ModActionType, expired bool, modUserId string) error {
+func removeCurrentAction(user *entity.User, actionType ms.ModActionType, removerUserId string) error {
 	instantiateActions(user)
+
 	existingCurrentAction, actionExists := user.Actions.Current[actionType.String()]
 	if !actionExists {
 		return fmt.Errorf("user does not have current action %s", actionType.String())
 	}
-	existingCurrentAction.Expired = expired
-	if expired {
+
+	existingCurrentAction.RemoverUserId = removerUserId
+
+	// If this action has expired, the removed time is the same
+	// as the end time. An expired action in this function is
+	// indicated by an empty string for removerUserId
+	if removerUserId == "" {
 		existingCurrentAction.RemovedTime = existingCurrentAction.EndTime
 	} else {
 		currentTime, err := ptypes.TimestampProto(time.Now())
@@ -249,10 +283,18 @@ func removeCurrentAction(user *entity.User, actionType ms.ModActionType, expired
 		}
 		existingCurrentAction.RemovedTime = currentTime
 	}
-	existingCurrentAction.ModUserId = modUserId
+
 	addActionToHistory(user, existingCurrentAction)
 	delete(user.Actions.Current, actionType.String())
 	return nil
+}
+
+func getLaterTime(t1 time.Time, t2 time.Time) time.Time {
+	laterTime := t1
+	if t2.After(t1) {
+		laterTime = t2
+	}
+	return laterTime
 }
 
 func resetRatings(ctx context.Context, us user.Store, action *ms.ModAction) error {

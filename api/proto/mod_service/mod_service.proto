@@ -23,8 +23,8 @@ message ModAction {
   google.protobuf.Timestamp start_time = 4;
   google.protobuf.Timestamp end_time = 5;
   google.protobuf.Timestamp removed_time = 6;
-  bool expired = 7;
-  string mod_user_id = 8;
+  string applier_user_id = 7;
+  string remover_user_id = 8;
 }
 
 message ModActionsMap {

@@ -101,9 +101,9 @@ func TestMod(t *testing.T) {
 	err = ApplyActions(ctx, us, []*ms.ModAction{muteAction, resetAction, suspendAction})
 	is.NoErr(err)
 
-	is.True(ActionExists(ctx, us, "Spammer", muteAction.Type).Error() == "this user is not permitted to perform this action")
-	is.NoErr(ActionExists(ctx, us, "Sandbagger", resetAction.Type))
-	is.True(ActionExists(ctx, us, "Cheater", suspendAction.Type).Error() == "this user is not permitted to perform this action")
+	is.True(ActionExists(ctx, us, "Spammer", []ms.ModActionType{muteAction.Type}) != nil)
+	is.NoErr(ActionExists(ctx, us, "Sandbagger", []ms.ModActionType{resetAction.Type}))
+	is.True(ActionExists(ctx, us, "Cheater", []ms.ModActionType{suspendAction.Type}) != nil)
 
 	// Check Actions
 	expectedSpammerActions, err := GetActions(ctx, us, "Spammer")
@@ -126,7 +126,7 @@ func TestMod(t *testing.T) {
 	is.True(expectedSandbaggerHistory[0] != nil)
 	is.True(expectedSandbaggerHistory[0].EndTime != nil)
 	is.True(expectedSandbaggerHistory[0].StartTime != nil)
-	is.True(expectedSandbaggerHistory[0].Expired)
+	is.True(expectedSandbaggerHistory[0].RemoverUserId == "")
 	is.NoErr(equalTimes(expectedSandbaggerHistory[0].EndTime, expectedSandbaggerHistory[0].StartTime))
 	is.NoErr(equalTimes(expectedSandbaggerHistory[0].EndTime, expectedSandbaggerHistory[0].RemovedTime))
 	is.NoErr(equalTimes(expectedSandbaggerHistory[0].StartTime, expectedSandbaggerHistory[0].EndTime))
@@ -157,12 +157,12 @@ func TestMod(t *testing.T) {
 	expectedCheaterHistory, err = GetActionHistory(ctx, us, "Cheater")
 	is.NoErr(err)
 	is.NoErr(equalActionHistories(expectedCheaterHistory, []*ms.ModAction{suspendAction}))
-	is.True(!expectedCheaterHistory[0].Expired)
+	is.True(expectedCheaterHistory[0].RemoverUserId == "Moderator")
 	is.NoErr(equalTimes(expectedCheaterHistory[0].EndTime, expectedCheaterHistory[0].StartTime))
 	is.NoErr(equalTimes(expectedCheaterHistory[0].EndTime, expectedCheaterHistory[0].RemovedTime))
 
 	// Recheck Spammer actions
-	is.True(ActionExists(ctx, us, "Spammer", muteAction.Type).Error() == "this user is not permitted to perform this action")
+	is.True(ActionExists(ctx, us, "Spammer", []ms.ModActionType{muteAction.Type}) != nil)
 
 	expectedSpammerActions, err = GetActions(ctx, us, "Spammer")
 	is.NoErr(err)
@@ -178,7 +178,7 @@ func TestMod(t *testing.T) {
 	time.Sleep(time.Duration(muteDuration+1) * time.Second)
 
 	// Recheck Spammer actions
-	is.NoErr(ActionExists(ctx, us, "Spammer", muteAction.Type))
+	is.NoErr(ActionExists(ctx, us, "Spammer", []ms.ModActionType{muteAction.Type}))
 	expectedSpammerActions, err = GetActions(ctx, us, "Spammer")
 	is.NoErr(err)
 	is.NoErr(equalActionMaps(expectedSpammerActions, makeActionMap([]*ms.ModAction{})))
@@ -188,7 +188,7 @@ func TestMod(t *testing.T) {
 	is.NoErr(equalActionHistories(expectedSpammerHistory, []*ms.ModAction{muteAction}))
 	is.True(expectedSpammerHistory[0].EndTime != nil)
 	is.True(expectedSpammerHistory[0].StartTime != nil)
-	is.True(expectedSpammerHistory[0].Expired)
+	is.True(expectedSpammerHistory[0].RemoverUserId == "")
 	is.NoErr(equalTimes(expectedSpammerHistory[0].EndTime, expectedSpammerHistory[0].StartTime))
 	is.NoErr(equalTimes(expectedSpammerHistory[0].EndTime, expectedSpammerHistory[0].RemovedTime))
 	// Test negative durations
@@ -204,7 +204,7 @@ func TestMod(t *testing.T) {
 	err = ApplyActions(ctx, us, []*ms.ModAction{permanentSuspendAction})
 	is.NoErr(err)
 
-	is.True(ActionExists(ctx, us, "Sandbagger", permanentSuspendAction.Type).Error() == "this user is not permitted to perform this action")
+	is.True(ActionExists(ctx, us, "Sandbagger", []ms.ModActionType{permanentSuspendAction.Type}).Error() == "this action is permanently disabled for this user")
 
 	expectedSandbaggerActions, err = GetActions(ctx, us, "Sandbagger")
 	is.NoErr(err)
@@ -220,7 +220,7 @@ func TestMod(t *testing.T) {
 	err = RemoveActions(ctx, us, []*ms.ModAction{permanentSuspendAction})
 	is.NoErr(err)
 
-	is.NoErr(ActionExists(ctx, us, "Sandbagger", permanentSuspendAction.Type))
+	is.NoErr(ActionExists(ctx, us, "Sandbagger", []ms.ModActionType{permanentSuspendAction.Type}))
 
 	expectedSandbaggerActions, err = GetActions(ctx, us, "Sandbagger")
 	is.NoErr(err)
@@ -229,9 +229,10 @@ func TestMod(t *testing.T) {
 	expectedSandbaggerHistory, err = GetActionHistory(ctx, us, "Sandbagger")
 	is.NoErr(err)
 	is.NoErr(equalActionHistories(expectedSandbaggerHistory, []*ms.ModAction{resetAction, permanentSuspendAction}))
-	is.True(expectedSandbaggerHistory[0].Expired)
-	is.NoErr(equalTimes(expectedSandbaggerHistory[0].EndTime, expectedSandbaggerHistory[0].RemovedTime))
-	is.NoErr(equalTimes(expectedSandbaggerHistory[0].StartTime, expectedSandbaggerHistory[0].EndTime))
+	is.True(expectedSandbaggerHistory[1].RemoverUserId == "Moderator")
+	is.True(expectedSandbaggerHistory[1].RemovedTime != nil)
+	is.True(expectedSandbaggerHistory[1].StartTime != nil)
+	is.True(expectedSandbaggerHistory[1].EndTime == nil)
 
 	us.(*user.DBStore).Disconnect()
 }
