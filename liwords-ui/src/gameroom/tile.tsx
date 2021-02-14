@@ -105,6 +105,7 @@ export const TilePreview = React.memo((props: TilePreviewProps) => {
 
 type TileProps = {
   lastPlayed: boolean;
+  playerOfTile: number;
   rune: string;
   value: number;
   scale?: boolean;
@@ -122,7 +123,9 @@ type TileProps = {
     rackIndex: number | undefined,
     tileIndex: number | undefined
   ) => void;
-  onClick?: () => void;
+  onClick?: (evt: React.MouseEvent<HTMLElement>) => void;
+  onMouseEnter?: (evt: React.MouseEvent<HTMLElement>) => void;
+  onMouseLeave?: (evt: React.MouseEvent<HTMLElement>) => void;
   x?: number | undefined;
   y?: number | undefined;
 };
@@ -208,7 +211,7 @@ const Tile = React.memo((props: TileProps) => {
     props.tentative ? ' tentative' : ''
   }${props.lastPlayed ? ' last-played' : ''}${
     isDesignatedBlank(props.rune) ? ' blank' : ''
-  }`;
+  }${props.playerOfTile ? ' tile-p1' : ' tile-p0'}`;
   return (
     <div onDragOver={handleDropOver} onDrop={handleDrop} ref={tileRef}>
       <div
@@ -216,6 +219,8 @@ const Tile = React.memo((props: TileProps) => {
         data-rune={props.rune}
         style={{ cursor: props.grabbable ? 'grab' : 'default' }}
         onClick={props.onClick}
+        onMouseEnter={props.onMouseEnter}
+        onMouseLeave={props.onMouseLeave}
         onDragStart={handleStartDrag}
         onDragEnd={handleEndDrag}
         draggable={props.grabbable}

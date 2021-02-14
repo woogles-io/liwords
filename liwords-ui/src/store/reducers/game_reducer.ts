@@ -16,6 +16,7 @@ import {
   isBlank,
   Blank,
   PlayedTiles,
+  PlayerOfTiles,
 } from '../../utils/cwgame/common';
 import { EnglishCrosswordGameDistribution } from '../../constants/tile_distributions';
 import { PlayerOrder } from '../constants';
@@ -59,6 +60,7 @@ export type GameState = {
   turns: Array<GameEvent>;
   gameID: string;
   lastPlayedTiles: PlayedTiles;
+  playerOfTileAt: PlayerOfTiles; // not cleaned up after challenges
   nickToPlayerOrder: { [nick: string]: PlayerOrder };
   uidToPlayerOrder: { [uid: string]: PlayerOrder };
   playState: number;
@@ -81,6 +83,7 @@ export const startingGameState = (
     onturn: 0,
     gameID,
     lastPlayedTiles: {},
+    playerOfTileAt: {},
     nickToPlayerOrder: {},
     uidToPlayerOrder: {},
     playState: PlayState.GAME_OVER,
@@ -121,7 +124,7 @@ const newGameState = (
   sge: ServerGameplayEvent
 ): GameState => {
   // Variables to pass down anew:
-  let { board, lastPlayedTiles, pool } = state;
+  let { board, lastPlayedTiles, playerOfTileAt, pool } = state;
   const turns = [...state.turns];
   // let currentTurn;
   const evt = sge.getEvent()!;
@@ -136,6 +139,10 @@ const newGameState = (
     case GameEvent.Type.TILE_PLACEMENT_MOVE: {
       board = state.board.deepCopy();
       [lastPlayedTiles, pool] = placeOnBoard(board, pool, evt);
+      playerOfTileAt = { ...playerOfTileAt };
+      for (const k in lastPlayedTiles) {
+        playerOfTileAt[k] = onturn;
+      }
       break;
     }
     case GameEvent.Type.PHONY_TILES_RETURNED: {
@@ -177,6 +184,7 @@ const newGameState = (
     players,
     onturn,
     lastPlayedTiles,
+    playerOfTileAt,
   };
 };
 
@@ -246,11 +254,16 @@ const unplaceOnBoard = (
 // pushTurns mutates the gs (GameState).
 export const pushTurns = (gs: GameState, events: Array<GameEvent>) => {
   events.forEach((evt, idx) => {
+    // determine turn from event.
+    const onturn = onturnFromEvt(gs, evt);
     // We only care about placement and unplacement events here:
     switch (evt.getType()) {
       case GameEvent.Type.TILE_PLACEMENT_MOVE:
         // eslint-disable-next-line no-param-reassign
         [gs.lastPlayedTiles, gs.pool] = placeOnBoard(gs.board, gs.pool, evt);
+        for (const k in gs.lastPlayedTiles) {
+          gs.playerOfTileAt[k] = onturn;
+        }
         break;
       case GameEvent.Type.PHONY_TILES_RETURNED: {
         // Unplace the move BEFORE this one.
@@ -264,8 +277,6 @@ export const pushTurns = (gs: GameState, events: Array<GameEvent>) => {
 
     // Push a deep clone of the turn.
     gs.turns.push(GameEvent.deserializeBinary(evt.serializeBinary()));
-    // determine turn from event.
-    const onturn = onturnFromEvt(gs, evt);
     // eslint-disable-next-line no-param-reassign
     gs.players[onturn].score = events[idx].getCumulative();
     // eslint-disable-next-line no-param-reassign

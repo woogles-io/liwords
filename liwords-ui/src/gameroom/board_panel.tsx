@@ -79,6 +79,11 @@ type Props = {
   lexicon: string;
   handleAcceptRematch: (() => void) | null;
   handleAcceptAbort: (() => void) | null;
+  handleSetHover?: (
+    x: number,
+    y: number,
+    words: Array<string> | undefined
+  ) => void;
 };
 
 const shuffleString = (a: string): string => {
@@ -691,12 +696,7 @@ export const BoardPanel = React.memo((props: Props) => {
   );
 
   const handleTileDrop = useCallback(
-    (
-      row: number,
-      col: number,
-      rackIndex: number = -1,
-      tileIndex: number = -1
-    ) => {
+    (row: number, col: number, rackIndex = -1, tileIndex = -1) => {
       const handlerReturn = handleDroppedTile(
         row,
         col,
@@ -907,13 +907,7 @@ export const BoardPanel = React.memo((props: Props) => {
       description: `Sent abort request to ${opp}`,
     });
     console.log('aborting');
-  }, [
-    observer,
-    gameID,
-    playerMeta,
-    sendSocketMsg,
-    username,
-  ]);
+  }, [observer, gameID, playerMeta, sendSocketMsg, username]);
 
   const rematch = useCallback(() => {
     const evt = new MatchRequest();
@@ -976,6 +970,13 @@ export const BoardPanel = React.memo((props: Props) => {
                   '\n0 = Toggle drawing' +
                   '\nU = Undo' +
                   '\nW = Wipe' +
+                  '\nF = Freehand mode' +
+                  '\nL = Line mode' +
+                  '\nA = Arrow mode' +
+                  '\nQ = Quadrangle mode' +
+                  '\nC = Circle mode' +
+                  '\nS = Snap (does not affect freehand)' +
+                  '\nD = Do not snap' +
                   '\nR = Red pen' +
                   '\nG = Green pen' +
                   '\nB = Blue pen' +
@@ -1033,11 +1034,13 @@ export const BoardPanel = React.memo((props: Props) => {
         handleTileDrop={handleTileDrop}
         tilesLayout={props.board.letters}
         lastPlayedTiles={examinableGameContext.lastPlayedTiles}
+        playerOfTileAt={examinableGameContext.playerOfTileAt}
         tentativeTiles={placedTiles}
         tentativeTileScore={placedTilesTempScore}
         currentRack={props.currentRack}
         squareClicked={squareClicked}
         placementArrowProperties={arrowProperties}
+        handleSetHover={props.handleSetHover}
       />
       {!examinableGameEndMessage ? (
         <div className="rack-container">
