@@ -161,10 +161,12 @@ func (ps *ProfileService) UpdateAvatar(ctx context.Context, r *pb.UpdateAvatarRe
 	}
 
 	// Delete old URL
-	err = avatarService.Delete(ctx, oldUrl)
-	if err != nil {
-		// Don't crash.
-		log.Err(err).Msg("error-deleting-old-avatar")
+	if oldUrl != "" {
+		err = avatarService.Delete(ctx, oldUrl)
+		if err != nil {
+			// Don't crash.
+			log.Err(err).Msg("error-deleting-old-avatar")
+		}
 	}
 
 	return &pb.UpdateAvatarResponse{

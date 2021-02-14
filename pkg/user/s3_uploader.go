@@ -3,7 +3,6 @@ package user
 import (
 	"bytes"
 	"context"
-	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -69,7 +68,7 @@ func (s *S3Uploader) Upload(ctx context.Context, prefix string, data []byte) (st
 func (s *S3Uploader) Delete(ctx context.Context, url string) error {
 
 	if !strings.HasPrefix(url, s.urlprefix()) {
-		return errors.New("this is not an S3 URL")
+		return fmt.Errorf("this is not an S3 URL: %v", url)
 	}
 	key := strings.TrimPrefix(url, s.urlprefix())
 
