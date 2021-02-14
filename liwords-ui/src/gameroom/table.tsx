@@ -44,7 +44,10 @@ import {
 import { BoopSounds } from '../sound/boop';
 import { toAPIUrl } from '../api/api';
 import { StreakWidget } from './streak_widget';
-import { PlayState } from '../gen/macondo/api/proto/macondo/macondo_pb';
+import {
+  GameEvent,
+  PlayState,
+} from '../gen/macondo/api/proto/macondo/macondo_pb';
 import { endGameMessageFromGameInfo } from '../store/end_of_game';
 import { singularCount } from '../utils/plural';
 import { Notepad, NotepadContextProvider } from './notepad';
@@ -586,17 +589,52 @@ export const Table = React.memo((props: Props) => {
     }
   }, [gameDone, phonies, wordInfo]);
 
+  const gameContextRef = useRef(gameContext);
+  gameContextRef.current = gameContext;
   useEffect(() => {
     if (!phonies) return;
     if (phonies.length) {
-      addChat({
-        entityType: ChatEntityType.ErrorMsg,
-        sender: '',
-        message: `Invalid words played: ${phonies
-          .map((x) => `${x}*`)
-          .join(', ')}`,
-        channel: 'server',
-      });
+      // since +false === 0 and +true === 1, this is [unchallenged, challenged]
+      const groupedWords = [new Set(), new Set()];
+      let returningTiles = false;
+      for (let i = gameContextRef.current.turns.length; --i >= 0; ) {
+        const turn = gameContextRef.current.turns[i];
+        if (turn.getType() === GameEvent.Type.PHONY_TILES_RETURNED) {
+          returningTiles = true;
+        } else {
+          for (const word of turn.getWordsFormedList()) {
+            groupedWords[+returningTiles].add(word);
+          }
+          returningTiles = false;
+        }
+      }
+      // note that a phony can appear in both lists
+      const unchallengedPhonies = phonies.filter((word) =>
+        groupedWords[0].has(word)
+      );
+      const challengedPhonies = phonies.filter((word) =>
+        groupedWords[1].has(word)
+      );
+      if (challengedPhonies.length) {
+        addChat({
+          entityType: ChatEntityType.ErrorMsg,
+          sender: '',
+          message: `Invalid words challenged off: ${challengedPhonies
+            .map((x) => `${x}*`)
+            .join(', ')}`,
+          channel: 'server',
+        });
+      }
+      if (unchallengedPhonies.length) {
+        addChat({
+          entityType: ChatEntityType.ErrorMsg,
+          sender: '',
+          message: `Invalid words played and not challenged: ${unchallengedPhonies
+            .map((x) => `${x}*`)
+            .join(', ')}`,
+          channel: 'server',
+        });
+      }
     } else {
       addChat({
         entityType: ChatEntityType.ServerMsg,
@@ -605,7 +643,7 @@ export const Table = React.memo((props: Props) => {
         channel: 'server',
       });
     }
-  }, [phonies, addChat]);
+  }, [gameContext, phonies, addChat]);
 
   const acceptRematch = useCallback(
     (reqID: string) => {
