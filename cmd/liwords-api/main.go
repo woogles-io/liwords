@@ -37,6 +37,7 @@ import (
 	"github.com/rs/zerolog/log"
 
 	"github.com/domino14/liwords/pkg/config"
+	pkgprofile "github.com/domino14/liwords/pkg/profile"
 	tournamentstore "github.com/domino14/liwords/pkg/stores/tournament"
 	"github.com/domino14/liwords/pkg/stores/user"
 	pkguser "github.com/domino14/liwords/pkg/user"
@@ -148,7 +149,7 @@ func main() {
 		cfg.SecretKey, cfg.MailgunKey, cfg.ArgonConfig)
 	registrationService := registration.NewRegistrationService(stores.UserStore, cfg.ArgonConfig)
 	gameService := gameplay.NewGameService(stores.UserStore, stores.GameStore)
-	profileService := pkguser.NewProfileService(stores.UserStore, pkguser.NewS3Uploader(os.Getenv("AVATAR_UPLOAD_BUCKET")))
+	profileService := pkgprofile.NewProfileService(stores.UserStore, pkguser.NewS3Uploader(os.Getenv("AVATAR_UPLOAD_BUCKET")))
 	wordService := words.NewWordService(&cfg.MacondoConfig)
 	autocompleteService := pkguser.NewAutocompleteService(stores.UserStore)
 	socializeService := pkguser.NewSocializeService(stores.UserStore, stores.ChatStore)

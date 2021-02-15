@@ -64,7 +64,7 @@ func ActionExists(ctx context.Context, us user.Store, uuid string, actionTypes [
 	if permaban {
 		disabledError = errors.New("this action is permanently disabled for this user")
 	} else if latestTime.After(now) {
-		disabledError = fmt.Errorf("this action is disabled for this user until %v", latestTime.Round(time.Second).String())
+		disabledError = fmt.Errorf("this action is disabled for this user until %s", latestTime.Round(time.Second).String())
 	}
 
 	return disabledError

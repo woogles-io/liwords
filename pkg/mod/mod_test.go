@@ -54,6 +54,7 @@ func recreateDB() {
 		{Username: "Spammer", Email: "spammer@woogles.io", UUID: "Spammer"},
 		{Username: "Sandbagger", Email: "sandbagger@gmail.com", UUID: "Sandbagger"},
 		{Username: "Cheater", Email: "cheater@woogles.io", UUID: "Cheater"},
+		{Username: "Hacker", Email: "hacker@woogles.io", UUID: "Hacker"},
 		{Username: "Moderator", Email: "admin@woogles.io", UUID: "Moderator", IsMod: true},
 	} {
 		err = ustore.New(context.Background(), u)
@@ -233,6 +234,33 @@ func TestMod(t *testing.T) {
 	is.True(expectedSandbaggerHistory[1].RemovedTime != nil)
 	is.True(expectedSandbaggerHistory[1].StartTime != nil)
 	is.True(expectedSandbaggerHistory[1].EndTime == nil)
+
+	// Apply one than one action and confirm that the longer action is being applied
+
+	now := time.Now()
+	futureDate := now.Add(time.Duration(60 * 60 * time.Second))
+	longerDuration := int32(time.Until(futureDate).Seconds()) + 1
+	shorterDuration := longerDuration - (60 * 5)
+
+	longerHackerAction := &ms.ModAction{UserId: "Hacker", Type: ms.ModActionType_SUSPEND_RATED_GAMES, Duration: longerDuration}
+	hackerAction := &ms.ModAction{UserId: "Hacker", Type: ms.ModActionType_SUSPEND_GAMES, Duration: shorterDuration}
+
+	err = ApplyActions(ctx, us, []*ms.ModAction{hackerAction, longerHackerAction})
+	is.NoErr(err)
+
+	err = ActionExists(ctx, us, "Hacker", []ms.ModActionType{hackerAction.Type, longerHackerAction.Type})
+	errString = fmt.Sprintf("this action is disabled for this user until %s", futureDate.Round(time.Second).UTC().String())
+	is.True(err.Error() == errString)
+
+	// Apply a permanent action and confirm that the permanent action is being applied
+
+	permanentHackerAction := &ms.ModAction{UserId: "Hacker", Type: ms.ModActionType_SUSPEND_ACCOUNT, Duration: 0}
+
+	err = ApplyActions(ctx, us, []*ms.ModAction{permanentHackerAction})
+	is.NoErr(err)
+
+	err = ActionExists(ctx, us, "Hacker", []ms.ModActionType{hackerAction.Type, longerHackerAction.Type, permanentHackerAction.Type})
+	is.True(err.Error() == "this action is permanently disabled for this user")
 
 	us.(*user.DBStore).Disconnect()
 }
