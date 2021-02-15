@@ -9,6 +9,8 @@ import { BoardPanel } from './board_panel';
 import { TopBar } from '../topbar/topbar';
 import { Chat } from '../chat/chat';
 import {
+  ChatEntityType,
+  useChatStoreContext,
   useExaminableGameContextStoreContext,
   useExamineStoreContext,
   useGameContextStoreContext,
@@ -34,6 +36,7 @@ import './scss/gameroom.scss';
 import { ScoreCard } from './scorecard';
 import {
   defaultGameInfo,
+  DefineWordsResponse,
   GameInfo,
   GameMetadata,
   StreakInfoResponse,
@@ -41,7 +44,10 @@ import {
 import { BoopSounds } from '../sound/boop';
 import { toAPIUrl } from '../api/api';
 import { StreakWidget } from './streak_widget';
-import { PlayState } from '../gen/macondo/api/proto/macondo/macondo_pb';
+import {
+  GameEvent,
+  PlayState,
+} from '../gen/macondo/api/proto/macondo/macondo_pb';
 import { endGameMessageFromGameInfo } from '../store/end_of_game';
 import { singularCount } from '../utils/plural';
 import { Notepad, NotepadContextProvider } from './notepad';
@@ -53,10 +59,21 @@ import {
   TournamentMetadata,
 } from '../store/reducers/tournament_reducer';
 import { CompetitorStatus } from '../tournament/competitor_status';
+import { Unrace } from '../utils/unrace';
 
 type Props = {
   sendSocketMsg: (msg: Uint8Array) => void;
   sendChat: (msg: string, chan: string) => void;
+};
+
+type UserGameInfo = {
+  uuid: string;
+  avatar_url: string;
+  title: string;
+};
+
+type UsersGameInfoResponse = {
+  infos: UserGameInfo[];
 };
 
 const StreakFetchDelay = 2000;
@@ -156,6 +173,7 @@ export const Table = React.memo((props: Props) => {
   const { useState } = useMountedState();
 
   const { gameID } = useParams();
+  const { addChat } = useChatStoreContext();
   const {
     gameContext: examinableGameContext,
   } = useExaminableGameContextStoreContext();
@@ -213,13 +231,15 @@ export const Table = React.memo((props: Props) => {
     };
   }, []);
 
+  const gameDone = gameContext.playState === PlayState.GAME_OVER;
+
   useEffect(() => {
-    if (gameContext.playState === PlayState.GAME_OVER || isObserver) {
+    if (gameDone || isObserver) {
       return () => {};
     }
 
     const evtHandler = (evt: BeforeUnloadEvent) => {
-      if (gameContext.playState !== PlayState.GAME_OVER && !isObserver) {
+      if (!gameDone && !isObserver) {
         const msg = 'You are currently in a game!';
         // eslint-disable-next-line no-param-reassign
         evt.returnValue = msg;
@@ -231,7 +251,7 @@ export const Table = React.memo((props: Props) => {
     return () => {
       window.removeEventListener('beforeunload', evtHandler);
     };
-  }, [gameContext.playState, isObserver]);
+  }, [gameDone, isObserver]);
 
   useEffect(() => {
     // Request game API to get info about the game at the beginning.
@@ -267,8 +287,43 @@ export const Table = React.memo((props: Props) => {
       setGameInfo(defaultGameInfo);
       message.destroy('board-messages');
     };
+    // React Hook useEffect has missing dependencies: 'setGameEndMessage' and 'setPoolFormat'.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [gameID]);
+
+  useEffect(() => {
+    if (!gameInfo.game_id) {
+      return;
+    }
+
+    axios
+      .post<UsersGameInfoResponse>(
+        toAPIUrl('user_service.ProfileService', 'GetUsersGameInfo'),
+        {
+          uuids: gameInfo.players.map((p) => p.user_id),
+        }
+      )
+      .then((resp) => {
+        var updatedGameInfo = gameInfo;
+        resp.data.infos.forEach((info) => {
+          if (info.avatar_url.length) {
+            const index = gameInfo.players.findIndex(
+              (p) => p.user_id === info.uuid
+            );
+            if (index >= 0) {
+              updatedGameInfo.players[index].avatar_url = info.avatar_url;
+            }
+          }
+        });
+        setGameInfo(updatedGameInfo);
+      })
+      .catch((err) => {
+        message.error({
+          content: `Failed to fetch player information; please refresh. (Error: ${err.message})`,
+          duration: 10,
+        });
+      });
+  }, [gameInfo]);
 
   useEffect(() => {
     if (!gameInfo.tournament_id) {
@@ -302,7 +357,7 @@ export const Table = React.memo((props: Props) => {
     if (!gameInfo.game_request.original_request_id) {
       return;
     }
-    if (gameContext.playState === PlayState.GAME_OVER && !gameEndMessage) {
+    if (gameDone && !gameEndMessage) {
       // if the game has long been over don't request this. Only request it
       // when we are going to play a game (or observe), or when the game just ended.
       return;
@@ -324,11 +379,7 @@ export const Table = React.memo((props: Props) => {
 
     // Call this when a gameEndMessage comes in, so the streak updates
     // at the end of the game.
-  }, [
-    gameInfo.game_request.original_request_id,
-    gameEndMessage,
-    gameContext.playState,
-  ]);
+  }, [gameInfo.game_request.original_request_id, gameEndMessage, gameDone]);
 
   useEffect(() => {
     if (pTimedOut === undefined) return;
@@ -351,6 +402,7 @@ export const Table = React.memo((props: Props) => {
       encodeToSocketFmt(MessageType.TIMED_OUT, to.serializeBinary())
     );
     setPTimedOut(undefined);
+    // React Hook useEffect has missing dependencies: 'gameContext.uidToPlayerOrder', 'gameInfo.players', 'isObserver', 'sendSocketMsg', and 'setPTimedOut'.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pTimedOut, gameContext.nickToPlayerOrder, gameID]);
 
@@ -371,8 +423,227 @@ export const Table = React.memo((props: Props) => {
         encodeToSocketFmt(MessageType.READY_FOR_GAME, evt.serializeBinary())
       );
     }
+    // React Hook useEffect has missing dependencies: 'gameID' and 'sendSocketMsg'.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userID, gameInfo]);
+
+  // undefined = not known
+  const [wordInfo, setWordInfo] = useState<{
+    [key: string]: undefined | { v: boolean; d: string };
+  }>({});
+  const wordInfoRef = useRef(wordInfo);
+  wordInfoRef.current = wordInfo;
+  const [unrace, setUnrace] = useState(new Unrace());
+  // undefined = not ready to report
+  // null = game may have ended, check if ready to report
+  const [phonies, setPhonies] = useState<undefined | null | Array<string>>(
+    undefined
+  );
+
+  const [showDefinitionHover, setShowDefinitionHover] = useState<
+    { x: number; y: number; words: Array<string> } | undefined
+  >(undefined);
+  const [willHideDefinitionHover, setWillHideDefinitionHover] = useState(false);
+
+  // TODO: remove this when actually showing something
+  useEffect(() => {
+    console.log(showDefinitionHover);
+  }, [showDefinitionHover]);
+
+  useEffect(() => {
+    if (willHideDefinitionHover) {
+      // if the pointer is moved out of a tile, the definition is not hidden
+      // immediately. this is an intentional design decision to improve
+      // usability and responsiveness, and it enables smoother transition if
+      // the pointer is moved to a nearby tile.
+      const t = setTimeout(() => {
+        setShowDefinitionHover(undefined);
+      }, 1000);
+      return () => clearTimeout(t);
+    }
+  }, [willHideDefinitionHover]);
+
+  // TODO: remove "false" when backend returns more useful data
+  const enableHoverDefine = false && (gameDone || isObserver);
+
+  const handleSetHover = useCallback(
+    (x: number, y: number, words: Array<string> | undefined) => {
+      if (enableHoverDefine && words) {
+        setWillHideDefinitionHover(false);
+        setShowDefinitionHover((oldValue) => {
+          const newValue = { x, y, words };
+          // if the pointer is moved out of a tile and back in, and the words
+          // formed have not changed, reuse the object to avoid rerendering.
+          if (JSON.stringify(oldValue) === JSON.stringify(newValue)) {
+            return oldValue;
+          }
+          return newValue;
+        });
+      } else {
+        setWillHideDefinitionHover(true);
+      }
+    },
+    [enableHoverDefine]
+  );
+
+  useEffect(() => {
+    // forget everything if it goes to a new game
+    setWordInfo({});
+    setUnrace(new Unrace());
+    setPhonies(undefined);
+    setShowDefinitionHover(undefined);
+  }, [gameID, gameInfo.game_request.lexicon]);
+
+  const hasDefinitionHover = !!showDefinitionHover;
+  useEffect(() => {
+    if (gameDone || hasDefinitionHover) {
+      // when definition is requested, get definitions for all words (up to
+      // that point) that have not yet been defined. this is an intentional
+      // design decision to improve usability and responsiveness.
+      setWordInfo((oldWordInfo) => {
+        let wordInfo = oldWordInfo;
+        for (const turn of gameContext.turns) {
+          for (const word of turn.getWordsFormedList()) {
+            if (!(word in wordInfo)) {
+              if (wordInfo === oldWordInfo) wordInfo = { ...oldWordInfo };
+              wordInfo[word] = undefined;
+            }
+          }
+        }
+        setPhonies((oldValue) => oldValue ?? null);
+        return wordInfo;
+      });
+    }
+  }, [gameContext, gameDone, hasDefinitionHover]);
+
+  useEffect(() => {
+    const cancelTokenSource = axios.CancelToken.source();
+    unrace.run(async () => {
+      const wordInfo = wordInfoRef.current; // take the latest version after unrace
+      const wordsToDefine: Array<string> = [];
+      for (const word in wordInfo) {
+        const definition = wordInfo[word];
+        if (
+          definition === undefined ||
+          (hasDefinitionHover && definition.v && !definition.d)
+        ) {
+          wordsToDefine.push(word);
+        }
+      }
+      if (!wordsToDefine.length) return;
+      wordsToDefine.sort(); // mitigate OCD
+      const lexicon = gameInfo.game_request.lexicon;
+      try {
+        const defineResp = await axios.post<DefineWordsResponse>(
+          toAPIUrl('word_service.WordService', 'DefineWords'),
+          {
+            lexicon,
+            words: wordsToDefine,
+            definitions: hasDefinitionHover,
+          },
+          { cancelToken: cancelTokenSource.token }
+        );
+        setWordInfo((oldWordInfo) => {
+          const wordInfo = { ...oldWordInfo };
+          for (const word of wordsToDefine) {
+            wordInfo[word] = defineResp.data.results[word];
+          }
+          return wordInfo;
+        });
+      } catch (e) {
+        if (axios.isCancel(e)) {
+          // request canceled because it is no longer relevant.
+        } else {
+          // no definitions then... sadpepe.
+          console.log('cannot check words', e);
+        }
+      }
+    });
+    return () => {
+      cancelTokenSource.cancel();
+    };
+  }, [hasDefinitionHover, gameInfo.game_request.lexicon, wordInfo, unrace]);
+
+  useEffect(() => {
+    if (phonies === null) {
+      if (gameDone) {
+        const phonies = [];
+        let hasWords = false; // avoid running this before the first GameHistoryRefresher event
+        for (const word in wordInfo) {
+          hasWords = true;
+          const definition = wordInfo[word];
+          if (definition === undefined) {
+            // not ready (this should not happen though)
+            return;
+          } else if (!definition.v) {
+            phonies.push(word);
+          }
+        }
+        if (hasWords) {
+          phonies.sort();
+          setPhonies(phonies);
+          return;
+        }
+      }
+      setPhonies(undefined); // not ready to display
+    }
+  }, [gameDone, phonies, wordInfo]);
+
+  const gameContextRef = useRef(gameContext);
+  gameContextRef.current = gameContext;
+  useEffect(() => {
+    if (!phonies) return;
+    if (phonies.length) {
+      // since +false === 0 and +true === 1, this is [unchallenged, challenged]
+      const groupedWords = [new Set(), new Set()];
+      let returningTiles = false;
+      for (let i = gameContextRef.current.turns.length; --i >= 0; ) {
+        const turn = gameContextRef.current.turns[i];
+        if (turn.getType() === GameEvent.Type.PHONY_TILES_RETURNED) {
+          returningTiles = true;
+        } else {
+          for (const word of turn.getWordsFormedList()) {
+            groupedWords[+returningTiles].add(word);
+          }
+          returningTiles = false;
+        }
+      }
+      // note that a phony can appear in both lists
+      const unchallengedPhonies = phonies.filter((word) =>
+        groupedWords[0].has(word)
+      );
+      const challengedPhonies = phonies.filter((word) =>
+        groupedWords[1].has(word)
+      );
+      if (challengedPhonies.length) {
+        addChat({
+          entityType: ChatEntityType.ErrorMsg,
+          sender: '',
+          message: `Invalid words challenged off: ${challengedPhonies
+            .map((x) => `${x}*`)
+            .join(', ')}`,
+          channel: 'server',
+        });
+      }
+      if (unchallengedPhonies.length) {
+        addChat({
+          entityType: ChatEntityType.ErrorMsg,
+          sender: '',
+          message: `Invalid words played and not challenged: ${unchallengedPhonies
+            .map((x) => `${x}*`)
+            .join(', ')}`,
+          channel: 'server',
+        });
+      }
+    } else {
+      addChat({
+        entityType: ChatEntityType.ServerMsg,
+        sender: '',
+        message: 'All words played are valid',
+        channel: 'server',
+      });
+    }
+  }, [gameContext, phonies, addChat]);
 
   const acceptRematch = useCallback(
     (reqID: string) => {
@@ -417,7 +688,6 @@ export const Table = React.memo((props: Props) => {
   // If we are NOT one of the players (so an observer), display the rack of
   // the player on turn.
   let rack: string;
-  const gameDone = gameContext.playState === PlayState.GAME_OVER;
   const us = useMemo(() => gameInfo.players.find((p) => p.user_id === userID), [
     gameInfo.players,
     userID,
@@ -588,6 +858,7 @@ export const Table = React.memo((props: Props) => {
                 ? handleAcceptRematch
                 : null
             }
+            handleSetHover={handleSetHover}
           />
           <StreakWidget streakInfo={streakGameInfo} />
         </div>

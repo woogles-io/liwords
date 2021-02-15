@@ -71,6 +71,7 @@ type Profile struct {
 	About       string
 	Ratings     Ratings
 	Stats       ProfileStats
+	AvatarUrl	string
 }
 
 // If the RD is <= this number, the rating is "known"
@@ -137,4 +138,12 @@ func (u *User) RealName() string {
 		}
 	}
 	return ""
+}
+
+func (u *User) AvatarUrl() string {
+	if u.IsBot && u.Profile.AvatarUrl == "" {
+		return "https://woogles-prod-assets.s3.amazonaws.com/macondog.png"
+	} else {
+		return u.Profile.AvatarUrl
+	}
 }

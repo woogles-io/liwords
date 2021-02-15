@@ -186,7 +186,7 @@ func (ss *SocializeService) GetChatsForChannel(ctx context.Context, req *pb.GetC
 			return nil, err
 		}
 	}
-	chats, err := ss.chatStore.OldChats(ctx, req.Channel, 50)
+	chats, err := ss.chatStore.OldChats(ctx, req.Channel, 100)
 	if err != nil {
 		return nil, err
 	}
