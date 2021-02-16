@@ -307,14 +307,17 @@ export const Table = React.memo((props: Props) => {
       )
       .then((resp) => {
         setNeedAvatars(false);
-        let players = JSON.parse(JSON.stringify(gameInfo.players));
+        let players = [...gameInfo.players];
         resp.data.infos.forEach((info) => {
           if (info.avatar_url.length) {
             const index = gameInfo.players.findIndex(
               (p) => p.user_id === info.uuid
             );
             if (index >= 0) {
-              players[index].avatar_url = info.avatar_url;
+              players[index] = {
+                ...players[index],
+                avatar_url: info.avatar_url,
+              };
             }
           }
         });
