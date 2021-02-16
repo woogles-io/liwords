@@ -11,6 +11,7 @@ const colors = require('../base.scss');
 
 type AvatarProps = {
   player: Partial<PlayerMetadata> | undefined;
+  username?: string;
   withTooltip?: boolean;
   editable?: boolean;
 };
@@ -65,7 +66,6 @@ export const PlayerAvatar = (props: AvatarProps) => {
         setUpdateModalVisible(false);
       }}
       onOk={() => {
-        console.log(avatarFile);
         let reader = new FileReader();
         reader.onload = () => {
           axios
@@ -136,7 +136,10 @@ export const PlayerAvatar = (props: AvatarProps) => {
       <div className="player-avatar" style={avatarStyle}>
         {!avatarUrl
           ? fixedCharAt(
-              props.player?.full_name || props.player?.nickname || '?',
+              props.player?.full_name ||
+                props.player?.nickname ||
+                props.username ||
+                '?',
               0,
               1
             )
