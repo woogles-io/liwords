@@ -30,7 +30,14 @@ var ModActionDispatching = map[string]func(context.Context, user.Store, *ms.ModA
 	ms.ModActionType_RESET_STATS_AND_RATINGS.String(): resetStatsAndRatings,
 }
 
-func ActionExists(ctx context.Context, us user.Store, uuid string, actionTypes []ms.ModActionType) error {
+var ModActionTextMap = map[ms.ModActionType]string{
+	ms.ModActionType_MUTE: "chatting",
+	ms.ModActionType_SUSPEND_ACCOUNT: "logging in",
+	ms.ModActionType_SUSPEND_RATED_GAMES: "playing rated games",
+	ms.ModActionType_SUSPEND_GAMES: "playing games",
+}
+
+func ActionExists(ctx context.Context, us user.Store, uuid string, forceInsistLogout bool, actionTypes []ms.ModActionType) error {
 	currentActions, err := GetActions(ctx, us, uuid)
 	if err != nil {
 		return err
@@ -43,11 +50,18 @@ func ActionExists(ctx context.Context, us user.Store, uuid string, actionTypes [
 	now := time.Now()
 	latestTime := time.Unix(0, 0)
 	permaban := false
+	actionExists := false
+	secondTimeIsLater := false
+	var relevantActionType ms.ModActionType
 
 	for _, actionType := range actionTypes {
-		action, actionExists := currentActions[actionType.String()]
-		if actionExists {
+		action, thisActionExists := currentActions[actionType.String()]
+		if thisActionExists {
+			if !actionExists {
+				actionExists = true
+			}
 			if action.EndTime == nil {
+				relevantActionType = actionType
 				permaban = true
 				break
 			}
@@ -55,18 +69,32 @@ func ActionExists(ctx context.Context, us user.Store, uuid string, actionTypes [
 			if err != nil {
 				return err
 			}
-			latestTime = getLaterTime(latestTime, golangEndTime)
+			latestTime, secondTimeIsLater = getLaterTime(latestTime, golangEndTime)
+			if secondTimeIsLater {
+				relevantActionType = actionType
+			}
 		}
 	}
 
 	var disabledError error = nil
 
-	if permaban {
-		disabledError = errors.New("this action is permanently disabled for this user")
-	} else if latestTime.After(now) {
-		disabledError = fmt.Errorf("this action is disabled for this user until %s", latestTime.Round(time.Second).String())
+	if actionExists {
+		numberOfActionsChecked := len(actionTypes)
+		actionText, ok := ModActionTextMap[relevantActionType]
+		if !ok {
+			return fmt.Errorf("Action %s is unmapped. Please report this to the Woogles team immediately.", relevantActionType.String())
+		}
+		if forceInsistLogout || (numberOfActionsChecked > 1 && relevantActionType == ms.ModActionType_SUSPEND_ACCOUNT) {
+			disabledError = errors.New("Whoops, something went wrong! Please log out and try logging in again.")
+		} else if permaban {
+			disabledError = fmt.Errorf("You are permanently banned from %s.", actionText)
+		} else if latestTime.After(now) {
+			year, month, day := latestTime.Date()
+			disabledError = fmt.Errorf("You are suspended from %s until %v %v, %v.", actionText, month, day, year)
+		} else {
+			return errors.New("Encountered an error while checking available user actions. Please report this to the Woogles team immediately.")
+		}
 	}
-
 	return disabledError
 }
 
@@ -289,12 +317,14 @@ func removeCurrentAction(user *entity.User, actionType ms.ModActionType, remover
 	return nil
 }
 
-func getLaterTime(t1 time.Time, t2 time.Time) time.Time {
+func getLaterTime(t1 time.Time, t2 time.Time) (time.Time, bool) {
 	laterTime := t1
+	secondTimeIsLater := false
 	if t2.After(t1) {
 		laterTime = t2
+		secondTimeIsLater = true
 	}
-	return laterTime
+	return laterTime, secondTimeIsLater
 }
 
 func resetRatings(ctx context.Context, us user.Store, action *ms.ModAction) error {

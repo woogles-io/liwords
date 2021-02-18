@@ -88,7 +88,7 @@ func (as *AuthenticationService) Login(ctx context.Context, r *pb.UserLoginReque
 		return nil, twirp.NewError(twirp.Unauthenticated, "password incorrect")
 	}
 
-	err = mod.ActionExists(ctx, as.userStore, user.UUID, []ms.ModActionType{ms.ModActionType_SUSPEND_ACCOUNT})
+	err = mod.ActionExists(ctx, as.userStore, user.UUID, false, []ms.ModActionType{ms.ModActionType_SUSPEND_ACCOUNT})
 	if err != nil {
 		log.Err(err).Msg("action-exists")
 		return nil, err

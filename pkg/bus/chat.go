@@ -40,7 +40,7 @@ func (b *Bus) chat(ctx context.Context, userID string, evt *pb.ChatMessage) erro
 		return err
 	}
 
-	err = mod.ActionExists(ctx, b.userStore, userID, []ms.ModActionType{ms.ModActionType_MUTE, ms.ModActionType_SUSPEND_ACCOUNT})
+	err = mod.ActionExists(ctx, b.userStore, userID, false, []ms.ModActionType{ms.ModActionType_SUSPEND_ACCOUNT, ms.ModActionType_MUTE})
 	if err != nil {
 		return err
 	}

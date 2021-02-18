@@ -102,9 +102,9 @@ func TestMod(t *testing.T) {
 	err = ApplyActions(ctx, us, []*ms.ModAction{muteAction, resetAction, suspendAction})
 	is.NoErr(err)
 
-	is.True(ActionExists(ctx, us, "Spammer", []ms.ModActionType{muteAction.Type}) != nil)
-	is.NoErr(ActionExists(ctx, us, "Sandbagger", []ms.ModActionType{resetAction.Type}))
-	is.True(ActionExists(ctx, us, "Cheater", []ms.ModActionType{suspendAction.Type}) != nil)
+	is.True(ActionExists(ctx, us, "Spammer", false, []ms.ModActionType{muteAction.Type}) != nil)
+	is.NoErr(ActionExists(ctx, us, "Sandbagger", false, []ms.ModActionType{resetAction.Type}))
+	is.True(ActionExists(ctx, us, "Cheater", false, []ms.ModActionType{suspendAction.Type}) != nil)
 
 	// Check Actions
 	expectedSpammerActions, err := GetActions(ctx, us, "Spammer")
@@ -163,7 +163,7 @@ func TestMod(t *testing.T) {
 	is.NoErr(equalTimes(expectedCheaterHistory[0].EndTime, expectedCheaterHistory[0].RemovedTime))
 
 	// Recheck Spammer actions
-	is.True(ActionExists(ctx, us, "Spammer", []ms.ModActionType{muteAction.Type}) != nil)
+	is.True(ActionExists(ctx, us, "Spammer", false, []ms.ModActionType{muteAction.Type}) != nil)
 
 	expectedSpammerActions, err = GetActions(ctx, us, "Spammer")
 	is.NoErr(err)
@@ -179,7 +179,7 @@ func TestMod(t *testing.T) {
 	time.Sleep(time.Duration(muteDuration+1) * time.Second)
 
 	// Recheck Spammer actions
-	is.NoErr(ActionExists(ctx, us, "Spammer", []ms.ModActionType{muteAction.Type}))
+	is.NoErr(ActionExists(ctx, us, "Spammer", false, []ms.ModActionType{muteAction.Type}))
 	expectedSpammerActions, err = GetActions(ctx, us, "Spammer")
 	is.NoErr(err)
 	is.NoErr(equalActionMaps(expectedSpammerActions, makeActionMap([]*ms.ModAction{})))
@@ -205,7 +205,8 @@ func TestMod(t *testing.T) {
 	err = ApplyActions(ctx, us, []*ms.ModAction{permanentSuspendAction})
 	is.NoErr(err)
 
-	is.True(ActionExists(ctx, us, "Sandbagger", []ms.ModActionType{permanentSuspendAction.Type}).Error() == "this action is permanently disabled for this user")
+	is.True(ActionExists(ctx, us, "Sandbagger", false, []ms.ModActionType{permanentSuspendAction.Type}).Error() == "You are permanently banned from logging in.")
+	is.True(ActionExists(ctx, us, "Sandbagger", true, []ms.ModActionType{permanentSuspendAction.Type}).Error() == "Whoops, something went wrong! Please log out and try logging in again.")
 
 	expectedSandbaggerActions, err = GetActions(ctx, us, "Sandbagger")
 	is.NoErr(err)
@@ -221,7 +222,7 @@ func TestMod(t *testing.T) {
 	err = RemoveActions(ctx, us, []*ms.ModAction{permanentSuspendAction})
 	is.NoErr(err)
 
-	is.NoErr(ActionExists(ctx, us, "Sandbagger", []ms.ModActionType{permanentSuspendAction.Type}))
+	is.NoErr(ActionExists(ctx, us, "Sandbagger", false, []ms.ModActionType{permanentSuspendAction.Type}))
 
 	expectedSandbaggerActions, err = GetActions(ctx, us, "Sandbagger")
 	is.NoErr(err)
@@ -248,8 +249,9 @@ func TestMod(t *testing.T) {
 	err = ApplyActions(ctx, us, []*ms.ModAction{hackerAction, longerHackerAction})
 	is.NoErr(err)
 
-	err = ActionExists(ctx, us, "Hacker", []ms.ModActionType{hackerAction.Type, longerHackerAction.Type})
-	errString = fmt.Sprintf("this action is disabled for this user until %s", futureDate.Round(time.Second).UTC().String())
+	err = ActionExists(ctx, us, "Hacker", false, []ms.ModActionType{hackerAction.Type, longerHackerAction.Type})
+	year, month, day := futureDate.UTC().Date()
+	errString = fmt.Sprintf("You are suspended from playing rated games until %v %v, %v.", month, day, year)
 	is.True(err.Error() == errString)
 
 	// Apply a permanent action and confirm that the permanent action is being applied
@@ -259,8 +261,8 @@ func TestMod(t *testing.T) {
 	err = ApplyActions(ctx, us, []*ms.ModAction{permanentHackerAction})
 	is.NoErr(err)
 
-	err = ActionExists(ctx, us, "Hacker", []ms.ModActionType{hackerAction.Type, longerHackerAction.Type, permanentHackerAction.Type})
-	is.True(err.Error() == "this action is permanently disabled for this user")
+	err = ActionExists(ctx, us, "Hacker", false, []ms.ModActionType{hackerAction.Type, longerHackerAction.Type, permanentHackerAction.Type})
+	is.True(err.Error() == "Whoops, something went wrong! Please log out and try logging in again.")
 
 	us.(*user.DBStore).Disconnect()
 }

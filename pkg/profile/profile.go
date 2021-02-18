@@ -122,7 +122,7 @@ func (ps *ProfileService) UpdateProfile(ctx context.Context, r *pb.UpdateProfile
 		return nil, twirp.InternalErrorWith(err)
 	}
 
-	err = mod.ActionExists(ctx, ps.userStore, user.UUID, []ms.ModActionType{ms.ModActionType_SUSPEND_ACCOUNT})
+	err = mod.ActionExists(ctx, ps.userStore, user.UUID, true, []ms.ModActionType{ms.ModActionType_SUSPEND_ACCOUNT})
 	if err != nil {
 		return nil, err
 	}
@@ -155,7 +155,7 @@ func (ps *ProfileService) UpdateAvatar(ctx context.Context, r *pb.UpdateAvatarRe
 		return nil, twirp.InternalErrorWith(errors.New("No avatar service available"))
 	}
 
-	err = mod.ActionExists(ctx, ps.userStore, user.UUID, []ms.ModActionType{ms.ModActionType_SUSPEND_ACCOUNT})
+	err = mod.ActionExists(ctx, ps.userStore, user.UUID, true, []ms.ModActionType{ms.ModActionType_SUSPEND_ACCOUNT})
 	if err != nil {
 		return nil, err
 	}
