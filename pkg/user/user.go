@@ -75,5 +75,6 @@ type ChatStore interface {
 	AddChat(ctx context.Context, senderUsername, senderUID, msg, channel, channelFriendly string) (int64, error)
 	OldChats(ctx context.Context, channel string, n int) ([]*pb.ChatMessage, error)
 	LatestChannels(ctx context.Context, count, offset int, uid, tid string) (*upb.ActiveChatChannels, error)
-}
 
+	DeleteChat(ctx context.Context, channel string, msgID string) error
+}

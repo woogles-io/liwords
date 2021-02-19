@@ -183,6 +183,9 @@ export class ChatMessage extends jspb.Message {
   getUserId(): string;
   setUserId(value: string): void;
 
+  getMessageId(): string;
+  setMessageId(value: string): void;
+
   serializeBinary(): Uint8Array;
   toObject(includeInstance?: boolean): ChatMessage.AsObject;
   static toObject(includeInstance: boolean, msg: ChatMessage): ChatMessage.AsObject;
@@ -200,6 +203,7 @@ export namespace ChatMessage {
     message: string,
     timestamp: number,
     userId: string,
+    messageId: string,
   }
 }
 

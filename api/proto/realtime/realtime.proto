@@ -121,6 +121,7 @@ message ChatMessage {
   // timestamp is in milliseconds!
   int64 timestamp = 4;
   string user_id = 5;
+  string message_id = 6;
 }
 
 message ChatMessages { repeated ChatMessage messages = 1; }

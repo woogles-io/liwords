@@ -20,10 +20,11 @@ var (
 
 type ModService struct {
 	userStore user.Store
+	chatStore user.ChatStore
 }
 
-func NewModService(us user.Store) *ModService {
-	return &ModService{userStore: us}
+func NewModService(us user.Store, cs user.ChatStore) *ModService {
+	return &ModService{userStore: us, chatStore: cs}
 }
 
 var AdminRequiredMap = map[pb.ModActionType]bool{
@@ -34,6 +35,7 @@ var AdminRequiredMap = map[pb.ModActionType]bool{
 	pb.ModActionType_RESET_RATINGS:           true,
 	pb.ModActionType_RESET_STATS:             true,
 	pb.ModActionType_RESET_STATS_AND_RATINGS: true,
+	pb.ModActionType_REMOVE_CHAT:             false,
 }
 
 func (ms *ModService) GetActions(ctx context.Context, req *pb.GetActionsRequest) (*pb.ModActionsMap, error) {
@@ -88,6 +90,23 @@ func (ms *ModService) ApplyActions(ctx context.Context, req *pb.ModActionsList) 
 		return nil, twirp.NewError(twirp.InvalidArgument, err.Error())
 	}
 	return &pb.ModActionResponse{}, nil
+}
+
+func (ms *ModService) DeleteChatMessage(ctx context.Context, req *pb.DeleteChatRequest) (*pb.DeleteChatResponse, error) {
+	// create a pseudo mod action here.
+	err := authenticateMod(ctx, ms, &pb.ModActionsList{
+		Actions: []*pb.ModAction{
+			{Type: pb.ModActionType_REMOVE_CHAT},
+		},
+	})
+	if err != nil {
+		return nil, err
+	}
+	err = ms.chatStore.DeleteChat(ctx, req.Channel, req.MessageId)
+	if err != nil {
+		return nil, err
+	}
+	return &pb.DeleteChatResponse{}, nil
 }
 
 func sessionUser(ctx context.Context, ms *ModService) (*entity.User, error) {

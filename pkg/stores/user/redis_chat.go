@@ -205,6 +205,7 @@ func (r *RedisChatStore) OldChats(ctx context.Context, channel string, n int) ([
 			return nil, err
 		}
 		msg.Timestamp = ts
+		msg.MessageId = tskey
 
 		// val[1] is an array of arrays. ["username", username, "message", message, "userID", userID]
 		msgvals := val[1].([]interface{})
@@ -220,6 +221,25 @@ func (r *RedisChatStore) OldChats(ctx context.Context, channel string, n int) ([
 	}
 
 	return messages, nil
+}
+
+// DeleteChat deletes a chat.
+func (r *RedisChatStore) DeleteChat(ctx context.Context, channel, msgID string) error {
+	redisKey := "chat:" + strings.TrimPrefix(channel, "chat.")
+	log.Debug().Str("redisKey", redisKey).Str("msgID", msgID).Msg("delete-chat")
+	conn := r.redisPool.Get()
+	defer conn.Close()
+
+	val, err := redis.Int(conn.Do("XDEL", redisKey, msgID))
+	if err != nil {
+		return err
+	}
+	if val == 0 {
+		return errors.New("zero chats deleted")
+	}
+	// XXX: Something else needs to send a message with the fact that this chat got
+	// deleted.
+	return nil
 }
 
 func maybeTrim(msg string) string {
