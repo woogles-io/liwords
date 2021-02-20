@@ -13,7 +13,7 @@ import (
 	ms "github.com/domino14/liwords/rpc/api/proto/mod_service"
 )
 
-var ModActionDispatching = map[string]func(context.Context, user.Store, *ms.ModAction) error{
+var ModActionDispatching = map[string]func(context.Context, user.Store, user.ChatStore, *ms.ModAction) error{
 
 	/*
 		All types are listed here for clearness
@@ -28,6 +28,7 @@ var ModActionDispatching = map[string]func(context.Context, user.Store, *ms.ModA
 	ms.ModActionType_RESET_RATINGS.String():           resetRatings,
 	ms.ModActionType_RESET_STATS.String():             resetStats,
 	ms.ModActionType_RESET_STATS_AND_RATINGS.String(): resetStatsAndRatings,
+	ms.ModActionType_REMOVE_CHAT.String():             removeChat,
 }
 
 var ModActionTextMap = map[ms.ModActionType]string{
@@ -144,14 +145,14 @@ func GetActionHistory(ctx context.Context, us user.Store, uuid string) ([]*ms.Mo
 	return user.Actions.History, nil
 }
 
-func ApplyActions(ctx context.Context, us user.Store, actions []*ms.ModAction) error {
+func ApplyActions(ctx context.Context, us user.Store, cs user.ChatStore, actions []*ms.ModAction) error {
 	applierUserId, err := sessionUserId(ctx, us)
 	if err != nil {
 		return err
 	}
 	for _, action := range actions {
 		action.ApplierUserId = applierUserId
-		err := applyAction(ctx, us, action)
+		err := applyAction(ctx, us, cs, action)
 		if err != nil {
 			return err
 		}
@@ -211,7 +212,7 @@ func removeAction(ctx context.Context, us user.Store, action *ms.ModAction, remo
 	return us.Set(ctx, user)
 }
 
-func applyAction(ctx context.Context, us user.Store, action *ms.ModAction) error {
+func applyAction(ctx context.Context, us user.Store, cs user.ChatStore, action *ms.ModAction) error {
 	user, err := us.GetByUUID(ctx, action.UserId)
 	if err != nil {
 		return err
@@ -219,7 +220,7 @@ func applyAction(ctx context.Context, us user.Store, action *ms.ModAction) error
 	action.StartTime = ptypes.TimestampNow()
 	modActionFunc, actionExists := ModActionDispatching[action.Type.String()]
 	if actionExists { // This ModAction is transient
-		err := modActionFunc(ctx, us, action)
+		err := modActionFunc(ctx, us, cs, action)
 		if err != nil {
 			return err
 		}
@@ -327,20 +328,24 @@ func getLaterTime(t1 time.Time, t2 time.Time) (time.Time, bool) {
 	return laterTime, secondTimeIsLater
 }
 
-func resetRatings(ctx context.Context, us user.Store, action *ms.ModAction) error {
+func resetRatings(ctx context.Context, us user.Store, cs user.ChatStore, action *ms.ModAction) error {
 	return us.ResetRatings(ctx, action.UserId)
 }
 
-func resetStats(ctx context.Context, us user.Store, action *ms.ModAction) error {
+func resetStats(ctx context.Context, us user.Store, cs user.ChatStore, action *ms.ModAction) error {
 	return us.ResetStats(ctx, action.UserId)
 }
 
-func resetStatsAndRatings(ctx context.Context, us user.Store, action *ms.ModAction) error {
+func resetStatsAndRatings(ctx context.Context, us user.Store, cs user.ChatStore, action *ms.ModAction) error {
 	err := us.ResetStats(ctx, action.UserId)
 	if err != nil {
 		return nil
 	}
 	return us.ResetRatings(ctx, action.UserId)
+}
+
+func removeChat(ctx context.Context, us user.Store, cs user.ChatStore, action *ms.ModAction) error {
+	return cs.DeleteChat(ctx, action.Channel, action.MessageId)
 }
 
 func instantiateActions(u *entity.User) {

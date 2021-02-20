@@ -85,28 +85,11 @@ func (ms *ModService) ApplyActions(ctx context.Context, req *pb.ModActionsList) 
 	if err != nil {
 		return nil, err
 	}
-	err = ApplyActions(ctx, ms.userStore, req.Actions)
+	err = ApplyActions(ctx, ms.userStore, ms.chatStore, req.Actions)
 	if err != nil {
 		return nil, twirp.NewError(twirp.InvalidArgument, err.Error())
 	}
 	return &pb.ModActionResponse{}, nil
-}
-
-func (ms *ModService) DeleteChatMessage(ctx context.Context, req *pb.DeleteChatRequest) (*pb.DeleteChatResponse, error) {
-	// create a pseudo mod action here.
-	err := authenticateMod(ctx, ms, &pb.ModActionsList{
-		Actions: []*pb.ModAction{
-			{Type: pb.ModActionType_REMOVE_CHAT},
-		},
-	})
-	if err != nil {
-		return nil, err
-	}
-	err = ms.chatStore.DeleteChat(ctx, req.Channel, req.MessageId)
-	if err != nil {
-		return nil, err
-	}
-	return &pb.DeleteChatResponse{}, nil
 }
 
 func sessionUser(ctx context.Context, ms *ModService) (*entity.User, error) {
