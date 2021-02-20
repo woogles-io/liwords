@@ -487,7 +487,6 @@ p.streak-loss {
   font-weight: 400;
   font-family: $font-monospaced;
   letter-spacing: -0.05em;
-  overflow: hidden;
   @include colorModed() {
     color: m($gray-extreme);
   }
