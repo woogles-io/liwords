@@ -1,38 +1,31 @@
 import React, { useCallback, useEffect } from 'react';
 import { useMountedState } from '../utils/mounted';
-
 import { TopBar } from '../topbar/topbar';
-
 import { SoughtGame } from '../store/reducers/lobby_reducer';
 import { GameLists } from './gameLists';
-import { Chat } from '../chat/chat';
+// import { Chat } from '../chat/chat';
 import { useLoginStateStoreContext } from '../store/store';
-import { singularCount } from '../utils/plural';
+// import { singularCount } from '../utils/plural';
 import './lobby.scss';
 import { Announcements } from './announcements';
 import { sendAccept, sendSeek } from './sought_game_interactions';
-
+import { Card } from 'antd';
 type Props = {
   sendSocketMsg: (msg: Uint8Array) => void;
   sendChat: (msg: string, chan: string) => void;
   DISCONNECT: () => void;
 };
-
 export const Lobby = (props: Props) => {
   const { useState } = useMountedState();
   const { sendSocketMsg } = props;
   const { loginState } = useLoginStateStoreContext();
-
   const { loggedIn, username, userID } = loginState;
-
   const [selectedGameTab, setSelectedGameTab] = useState(
     loggedIn ? 'PLAY' : 'WATCH'
   );
-
   useEffect(() => {
     setSelectedGameTab(loggedIn ? 'PLAY' : 'WATCH');
   }, [loggedIn]);
-
   const handleNewGame = useCallback(
     (seekID: string) => {
       sendAccept(seekID, sendSocketMsg);
@@ -45,24 +38,23 @@ export const Lobby = (props: Props) => {
     },
     [sendSocketMsg]
   );
-
-  const peopleOnlineContext = useCallback(
+  /*const peopleOnlineContext = useCallback(
     (n: number) => singularCount(n, 'Player', 'Players'),
     []
-  );
-
+  );*/
   return (
     <>
       <TopBar />
       <div className="lobby">
         <div className="chat-area">
-          <Chat
+          {/*<Chat
             sendChat={props.sendChat}
             defaultChannel="chat.lobby"
             defaultDescription="Lobby"
             peopleOnlineContext={peopleOnlineContext}
             DISCONNECT={props.DISCONNECT}
-          />
+          />*/}
+          <Card>Chat is temporarily disabled. Hold please.</Card>
         </div>
         <GameLists
           loggedIn={loggedIn}
