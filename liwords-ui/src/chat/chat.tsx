@@ -602,7 +602,9 @@ export const Chat = React.memo((props: Props) => {
                 </div>
                 {defaultChannel === 'chat.lobby' && channel === 'chat.lobby' ? (
                   <React.Fragment key="chat-disabled">
-                    Chat is temporarily disabled. Hold please.
+                    <p className="disabled-message">
+                      Chat is temporarily disabled. Hold please.
+                    </p>
                   </React.Fragment>
                 ) : (
                   <React.Fragment key="chat-enabled">
