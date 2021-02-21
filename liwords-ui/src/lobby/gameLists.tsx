@@ -1,5 +1,5 @@
 import React from 'react';
-import { useHistory } from 'react-router-dom';
+import { Link, useHistory } from 'react-router-dom';
 import { Card, Modal, Button } from 'antd';
 import { useMountedState } from '../utils/mounted';
 import { SoughtGames } from './sought_games';
@@ -37,10 +37,21 @@ export const GameLists = React.memo((props: Props) => {
   const [seekModalVisible, setSeekModalVisible] = useState(false);
   const [matchModalVisible, setMatchModalVisible] = useState(false);
   const [botModalVisible, setBotModalVisible] = useState(false);
-  const currentGame: ActiveGame | null =
-    lobbyContext.activeGames.find((ag) =>
-      ag.players.some((p) => p.displayName === username)
-    ) || null;
+  const [simultaneousModeEnabled, setSimultaneousModeEnabled] = useState(false);
+  const handleEnableSimultaneousMode = React.useCallback((evt) => {
+    evt.preventDefault();
+    setSimultaneousModeEnabled(true);
+  }, []);
+  const myCurrentGames = React.useMemo(
+    () =>
+      lobbyContext.activeGames.filter((ag) =>
+        ag.players.some((p) => p.displayName === username)
+      ),
+    [lobbyContext.activeGames, username]
+  );
+  const simultaneousModeEffectivelyEnabled =
+    simultaneousModeEnabled || myCurrentGames.length !== 1;
+  const currentGame: ActiveGame | null = myCurrentGames[0] ?? null;
   const opponent = currentGame?.players.find((p) => p.displayName !== username)
     ?.displayName;
 
@@ -50,6 +61,14 @@ export const GameLists = React.memo((props: Props) => {
     if (loggedIn && userID && username && selectedGameTab === 'PLAY') {
       return (
         <>
+          {simultaneousModeEffectivelyEnabled && myCurrentGames.length > 0 && (
+            <ActiveGames
+              type="RESUME"
+              username={username}
+              activeGames={myCurrentGames}
+            />
+          )}
+
           {lobbyContext?.matchRequests.length ? (
             <SoughtGames
               isMatch={true}
@@ -215,10 +234,12 @@ export const GameLists = React.memo((props: Props) => {
       />
     </Modal>
   );
+  let showingResumeButton = false;
   const actions = [];
   // if no existing game
   if (loggedIn) {
-    if (currentGame) {
+    if (currentGame && !simultaneousModeEffectivelyEnabled) {
+      showingResumeButton = true;
       actions.push(
         <div
           className="resume"
@@ -267,32 +288,41 @@ export const GameLists = React.memo((props: Props) => {
   return (
     <div className="game-lists">
       <Card actions={actions}>
-        <div className="tabs">
-          {loggedIn ? (
+        <div className="main-content">
+          <div className="tabs">
+            {loggedIn ? (
+              <div
+                onClick={() => {
+                  setSelectedGameTab('PLAY');
+                }}
+                className={selectedGameTab === 'PLAY' ? 'tab active' : 'tab'}
+              >
+                Play
+              </div>
+            ) : null}
             <div
               onClick={() => {
-                setSelectedGameTab('PLAY');
+                setSelectedGameTab('WATCH');
               }}
-              className={selectedGameTab === 'PLAY' ? 'tab active' : 'tab'}
+              className={
+                selectedGameTab === 'WATCH' || !loggedIn ? 'tab active' : 'tab'
+              }
             >
-              Play
+              Watch
             </div>
-          ) : null}
-          <div
-            onClick={() => {
-              setSelectedGameTab('WATCH');
-            }}
-            className={
-              selectedGameTab === 'WATCH' || !loggedIn ? 'tab active' : 'tab'
-            }
-          >
-            Watch
           </div>
+          {renderGames()}
+          {seekModal}
+          {matchModal}
+          {botModal}
         </div>
-        {renderGames()}
-        {seekModal}
-        {matchModal}
-        {botModal}
+        {showingResumeButton && (
+          <div className="enable-simultaneous-ignore-link">
+            <Link to="/" onClick={handleEnableSimultaneousMode}>
+              Ignore
+            </Link>
+          </div>
+        )}
       </Card>
     </div>
   );

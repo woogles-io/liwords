@@ -74,6 +74,15 @@ export const ActionsPanel = React.memo((props: Props) => {
   const { lobbyContext } = useLobbyStoreContext();
   const tournamentID = tournamentContext.metadata.id;
 
+  const lobbyContextMatchRequests = lobbyContext?.matchRequests;
+  const thisTournamentMatchRequests = useMemo(
+    () =>
+      lobbyContextMatchRequests?.filter(
+        (matchRequest) => matchRequest.tournamentID === tournamentID
+      ),
+    [lobbyContextMatchRequests, tournamentID]
+  );
+
   const fetchPrev = useCallback(() => {
     dispatchTournamentContext({
       actionType: ActionType.SetTourneyGamesOffset,
@@ -206,13 +215,13 @@ export const ActionsPanel = React.memo((props: Props) => {
       }
       return (
         <>
-          {lobbyContext?.matchRequests.length ? (
+          {thisTournamentMatchRequests?.length ? (
             <SoughtGames
               isMatch={true}
               userID={userID}
               username={username}
               newGame={newGame}
-              requests={lobbyContext?.matchRequests}
+              requests={thisTournamentMatchRequests}
             />
           ) : null}
           <ActiveGames
@@ -417,52 +426,56 @@ export const ActionsPanel = React.memo((props: Props) => {
             : 'free-form'
         }
       >
-        <div className="tabs">
-          <div
-            onClick={() => {
-              setSelectedGameTab('GAMES');
-            }}
-            className={selectedGameTab === 'GAMES' ? 'tab active' : 'tab'}
-          >
-            Games
+        <div className="main-content">
+          <div className="tabs">
+            <div
+              onClick={() => {
+                setSelectedGameTab('GAMES');
+              }}
+              className={selectedGameTab === 'GAMES' ? 'tab active' : 'tab'}
+            >
+              Games
+            </div>
+            {!isPairedMode(tournamentContext.metadata.type) ? (
+              <div
+                onClick={() => {
+                  setSelectedGameTab('RECENT');
+                }}
+                className={selectedGameTab === 'RECENT' ? 'tab active' : 'tab'}
+              >
+                Recent Games
+              </div>
+            ) : (
+              <div
+                onClick={() => {
+                  setSelectedGameTab('STANDINGS');
+                }}
+                className={
+                  selectedGameTab === 'STANDINGS' ? 'tab active' : 'tab'
+                }
+              >
+                Standings
+              </div>
+            )}
+            {isDirector && (
+              <div
+                onClick={() => {
+                  setSelectedGameTab('DIRECTOR TOOLS');
+                }}
+                className={
+                  selectedGameTab === 'DIRECTOR TOOLS' ? 'tab active' : 'tab'
+                }
+              >
+                Director Tools
+              </div>
+            )}
           </div>
-          {!isPairedMode(tournamentContext.metadata.type) ? (
-            <div
-              onClick={() => {
-                setSelectedGameTab('RECENT');
-              }}
-              className={selectedGameTab === 'RECENT' ? 'tab active' : 'tab'}
-            >
-              Recent Games
-            </div>
-          ) : (
-            <div
-              onClick={() => {
-                setSelectedGameTab('STANDINGS');
-              }}
-              className={selectedGameTab === 'STANDINGS' ? 'tab active' : 'tab'}
-            >
-              Standings
-            </div>
-          )}
-          {isDirector && (
-            <div
-              onClick={() => {
-                setSelectedGameTab('DIRECTOR TOOLS');
-              }}
-              className={
-                selectedGameTab === 'DIRECTOR TOOLS' ? 'tab active' : 'tab'
-              }
-            >
-              Director Tools
-            </div>
-          )}
+          {isDirector &&
+            selectedGameTab === 'DIRECTOR TOOLS' &&
+            renderDirectorTools()}
+          {matchModal}
+          {renderGamesTab()}
         </div>
-        {isDirector &&
-          selectedGameTab === 'DIRECTOR TOOLS' &&
-          renderDirectorTools()}
-        {matchModal}
-        {renderGamesTab()}
       </Card>
     </div>
   );

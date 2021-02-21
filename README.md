@@ -14,10 +14,11 @@ This source code is AGPL-licensed. You can modify the source for this app, or fo
 
 ### How to develop locally
 
-1. Download Docker for your operating system
+1. Download Docker for your operating system (download the Docker preview for M1 Macs, if the full stable version isn't out yet).
 2. Download the latest stable version of Node.js for your operating system
 3. Clone the `liwords-socket` repository from `https://github.com/domino14/liwords-socket`, and place it at the same level as this repo. For example, if your code resides at `/home/developer/code`, you should have two repos, at `/home/developer/code/liwords` (this repo) and `/home/developer/code/liwords-socket`.
 4. `cd` to this directory
+
 5. Run the following command in one of your terminal tabs, to run the backend, frontend, and databases.
 
 `docker-compose up`

@@ -487,7 +487,6 @@ p.streak-loss {
   font-weight: 400;
   font-family: $font-monospaced;
   letter-spacing: -0.05em;
-  overflow: hidden;
   @include colorModed() {
     color: m($gray-extreme);
   }
@@ -574,11 +573,33 @@ p.streak-loss {
 .tile {
   @include colorModed() {
     background: m($tile-background);
+    /* TODO
+    &.tile-p0.tile-p0 {
+      background-color: #0000ff;
+    }
+    &.tile-p1.tile-p1 {
+      background-color: #ff0000;
+    }
+    */
   }
 }
 .tile.blank {
   display: flex;
   justify-content: center;
+  /* TODO
+  &.blank.tile-p0 p.rune {
+    @include colorModed() {
+      background-color: #c0c0ff;
+      color: #4040ff;
+    }
+  }
+  &.blank.tile-p1 p.rune {
+    @include colorModed() {
+      background-color: #ffc0c0;
+      color: #ff4040;
+    }
+  }
+  */
 }
 .tile.blank p.rune {
   display: flex;
@@ -601,11 +622,29 @@ p.streak-loss {
     border: 1px solid m($tile-background);
     background-color: m($tile-background);
     box-shadow:  inset 0px 0px 0px 2px m($tile-background-secondary);
+    /* TODO
+    &.tile-p0 {
+      border: 1px solid #0000ff;
+      box-shadow: inset 0px 0px 0px 2px #8080ff;
+    }
+    &.tile-p1 {
+      border: 1px solid #ff0000;
+      box-shadow: inset 0px 0px 0px 2px #ff8080;
+    }
+    */
   }
 }
 .tile.tentative {
   @include colorModed() {
     background-color: m($tile-background-tertiary);
+    /* TODO
+    &.tile-p0 {
+      background-color: #8080ff;
+    }
+    &.tile-p1 {
+      background-color: #ff8080;
+    }
+    */
   }
   &.blank p.rune {
     @include colorModed() {

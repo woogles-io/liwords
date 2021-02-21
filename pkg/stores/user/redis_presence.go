@@ -66,16 +66,17 @@ local userkey = ARGV[1].."#"..ARGV[2].."#"..ARGV[3].."#"..ARGV[4]  -- uuid#usern
 local curchannels = redis.call("ZRANGE", userpresencekey, 0, -1)
 
 local deletedfrom = {}
-local deletedcount = 0
-local totalcount = 0
+local stillconnectedto = {}
 local ts = tonumber(ARGV[5])
 
 -- only delete the users where the conn_id actually matches
 for i, v in ipairs(curchannels) do
 	-- v looks like conn_id#channel
-	local chan = string.match(v, ARGV[4].."#([%a%.%d]+)")
-	if chan then
-		table.insert(deletedfrom, v)
+	local conn_id, chan = string.match(v, "^([%a%d]+)#([%a%.%d]+)$")
+	if not (conn_id and chan) then
+		-- should not happen
+	elseif conn_id == ARGV[4] then
+		table.insert(deletedfrom, chan)
 		-- delete from the relevant channel key
 		redis.call("ZREM", "channelpresence:"..chan, userkey)
 		redis.call("ZREM", userpresencekey, v)
@@ -84,11 +85,21 @@ for i, v in ipairs(curchannels) do
 		if ARGV[3] == "auth" then
 			redis.call("ZADD", "lastpresences", ts, ARGV[1])
 		end
+	else
+		-- user is still in chan through another conn, do not delete yet
+		stillconnectedto[chan] = true
 	end
 end
 
--- return the channel(s) where this user connection used to be.
-return deletedfrom
+local totallydisconnectedfrom = {}
+for _, chan in ipairs(deletedfrom) do
+	if not stillconnectedto[chan] then
+		table.insert(totallydisconnectedfrom, chan)
+	end
+end
+
+-- return the channel(s) this user totally disconnected from.
+return totallydisconnectedfrom
 `
 
 const RenewPresenceScript = `
@@ -207,13 +218,9 @@ func (s *RedisPresenceStore) ClearPresence(ctx context.Context, uuid, username s
 			if !ok {
 				return nil, fmt.Errorf("unexpected interface type: %T", el)
 			}
-			// The channels look like conn_id#channel for each user.
+			// This is just the channel now. No more conn_id#channel.
 			// We only need an array of channels.
-			sp := strings.Split(string(barr), "#")
-			if len(sp) != 2 {
-				return nil, fmt.Errorf("unexpected presence format: %v", string(barr))
-			}
-			cvt[i] = sp[1]
+			cvt[i] = string(barr)
 		}
 		return cvt, nil
 	}

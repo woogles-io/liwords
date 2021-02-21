@@ -12,6 +12,9 @@ export type EphemeralTile = {
 // PlayedTiles is made for quick indexing of a recently placed tile.
 export type PlayedTiles = { [tilecoords: string]: boolean };
 
+// PlayerOfTiles maps to onturn. May continue to map challenged-off squares.
+export type PlayerOfTiles = { [tilecoords: string]: number };
+
 export enum Direction {
   Horizontal,
   Vertical,

@@ -16,9 +16,15 @@ services:
       MAILGUN_KEY: ${MAILGUN_KEY:-default}
       REDIS_URL: "redis://redis:6379"
       GORACE: history_size=7
+      ARGON_MEMORY: 1024
+      AWS_PROFILE: ${AWS_PROFILE:-default}
+      AVATAR_UPLOAD_BUCKET: woogles-uploads
+      # XXX: In order to get avatar upload to work locally we need to set up localstack.
+      # For now: AWS_PROFILE=prod docker-compose up app
     volumes:
       - .:/opt/program:rw
       - ./data/lexica/dawg:/opt/program/data/lexica/dawg
+      - ${AWS_CREDENTIALS_PATH:-~/.aws}:/root/.aws:ro
     command: sh -c "go run -race cmd/liwords-api/*.go"
     depends_on: ["db", "proxy", "nats", "socket", "redis"]
     networks:
@@ -122,6 +128,7 @@ services:
       dockerfile: Dockerfile-fe
     volumes:
       - ./liwords-ui:/opt/liwords-ui
+      # Install node_modules inside the docker container
       - "/opt/liwords-ui/node_modules"
     working_dir: /opt/liwords-ui
     command: npm start

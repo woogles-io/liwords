@@ -104,6 +104,10 @@ export const Register = () => {
                   message: 'Please input your username',
                 },
                 {
+                  min: 3,
+                  message: 'Min username length is 3',
+                },
+                {
                   max: 20,
                   message: 'Max username length is 20',
                 },

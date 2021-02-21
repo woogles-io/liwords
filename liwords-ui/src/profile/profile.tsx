@@ -8,6 +8,7 @@ import { TopBar } from '../topbar/topbar';
 import './profile.scss';
 import { toAPIUrl } from '../api/api';
 import { BioCard } from './bio';
+import { PlayerAvatar } from '../shared/player_avatar';
 import { useLoginStateStoreContext } from '../store/store';
 import { GameMetadata, RecentGamesResponse } from '../gameroom/game_info';
 import { GamesHistoryCard } from './games_history';
@@ -23,6 +24,9 @@ type ProfileResponse = {
   ratings_json: string;
   stats_json: string;
   user_id: string;
+  full_name: string;
+  avatar_url: string;
+  avatars_editable: boolean;
 };
 
 const errorCatcher = (e: AxiosError) => {
@@ -240,6 +244,9 @@ export const UserProfile = React.memo((props: Props) => {
   const [ratings, setRatings] = useState({});
   const [stats, setStats] = useState({});
   const [userID, setUserID] = useState('');
+  const [fullName, setFullName] = useState('');
+  const [avatarUrl, setAvatarUrl] = useState('');
+  const [avatarsEditable, setAvatarsEditable] = useState(false);
   const [bio, setBio] = useState('');
   const [bioLoaded, setBioLoaded] = useState(false);
   const [darkMode, setDarkMode] = useState(
@@ -270,6 +277,9 @@ export const UserProfile = React.memo((props: Props) => {
         setRatings(JSON.parse(resp.data.ratings_json).Data);
         setStats(JSON.parse(resp.data.stats_json).Data);
         setUserID(resp.data.user_id);
+        setFullName(resp.data.full_name);
+        setAvatarUrl(resp.data.avatar_url);
+        setAvatarsEditable(resp.data.avatars_editable);
         setBio(resp.data.about);
         setBioLoaded(true);
       })
@@ -330,6 +340,13 @@ export const UserProfile = React.memo((props: Props) => {
     setRecentGamesOffset((r) => r + gamesPageSize);
   }, []);
 
+  const player = {
+    avatar_url: avatarUrl,
+    full_name: fullName,
+  };
+
+  const avatarEditable = avatarsEditable && viewer === username;
+
   return (
     <>
       <Row>
@@ -351,6 +368,11 @@ export const UserProfile = React.memo((props: Props) => {
             ) : (
               username
             )}
+            <PlayerAvatar
+              player={player}
+              editable={avatarEditable}
+              username={username}
+            ></PlayerAvatar>
           </h3>
           {viewer === username ? (
             <div>

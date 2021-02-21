@@ -19,9 +19,7 @@ message PlayerInfo {
   // provisional or some other strings.
   string rating = 5;
   string title = 6;
-  // The avatar URL should be set if the player has an avatar, and blank
-  // otherwise. It'll probably be a fixed pattern for the url.
-  string avatar_url = 7;
+  // string avatar_url = 7; // the UserService now offers Avatar info
   bool is_bot = 8;
   // first is true if the player went first
   bool first = 9;

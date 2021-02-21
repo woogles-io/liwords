@@ -168,6 +168,8 @@ type ExamineStoreData = {
   handleExamineNext: () => void;
   handleExamineLast: () => void;
   handleExamineGoTo: (x: number) => void;
+  addHandleExaminer: (x: () => void) => void;
+  removeHandleExaminer: (x: () => void) => void;
 };
 
 const defaultGameState = startingGameState(
@@ -300,6 +302,8 @@ const ExamineContext = createContext<ExamineStoreData>({
   handleExamineNext: defaultFunction,
   handleExamineLast: defaultFunction,
   handleExamineGoTo: defaultFunction,
+  addHandleExaminer: defaultFunction,
+  removeHandleExaminer: defaultFunction,
 });
 
 type Props = {
@@ -327,6 +331,13 @@ const gameStateInitializer = (
 // Support for examining. Must be nested deeper than the Real Stuffs.
 
 const doNothing = () => {}; // defaultFunction currently is the same as this.
+
+// CSS selectors that should support Examine shortcuts.
+const WHERE_TO_ENABLE_EXAMINE_SHORTCUTS = [
+  '.analyzer-card',
+  '.analyzer-container',
+  '.play-area',
+];
 
 const ExaminableStore = ({ children }: { children: React.ReactNode }) => {
   const { useState } = useMountedState();
@@ -493,6 +504,99 @@ const ExaminableStore = ({ children }: { children: React.ReactNode }) => {
     };
   }, [shownTimes]);
 
+  // There are two handlers (the Tablet view has its own Analyzer button).
+  // Fortunately the second one will do nothing, so we just trigger both.
+  const [handleExaminers, setHandleExaminers] = useState(
+    new Array<() => void>()
+  );
+  const addHandleExaminer = useCallback((x) => {
+    setHandleExaminers((a: Array<() => void>) => {
+      if (!a.includes(x)) {
+        a = [...a, x];
+      }
+      return a;
+    });
+  }, []);
+  const removeHandleExaminer = useCallback((x) => {
+    setHandleExaminers((a) => {
+      const b = a.filter((y) => y !== x);
+      return a.length === b.length ? a : b;
+    });
+  }, []);
+
+  const shouldTrigger = useCallback((where) => {
+    try {
+      return (
+        where &&
+        WHERE_TO_ENABLE_EXAMINE_SHORTCUTS.some((selector) =>
+          where.closest(selector)
+        )
+      );
+    } catch (e) {
+      return false;
+    }
+  }, []);
+
+  const handleExamineShortcuts = useCallback(
+    (evt) => {
+      if (
+        isExamining &&
+        (shouldTrigger(document.activeElement) ||
+          shouldTrigger(window.getSelection()?.focusNode?.parentElement))
+      ) {
+        if (evt.ctrlKey || evt.altKey || evt.metaKey) {
+          // If a modifier key is held, never mind.
+        } else {
+          if (evt.key === '<' || evt.key === 'Home') {
+            evt.preventDefault();
+            handleExamineFirst();
+          }
+          if (evt.key === ',' || evt.key === 'PageUp') {
+            evt.preventDefault();
+            handleExaminePrev();
+          }
+          if (evt.key === '.' || evt.key === 'PageDown') {
+            evt.preventDefault();
+            handleExamineNext();
+          }
+          if (evt.key === '>' || evt.key === 'End') {
+            evt.preventDefault();
+            handleExamineLast();
+          }
+          if (evt.key === '/' || evt.key === '?') {
+            evt.preventDefault();
+            for (const handleExaminer of handleExaminers) {
+              handleExaminer();
+            }
+          }
+          if (evt.key === 'Escape') {
+            evt.preventDefault();
+            handleExamineEnd();
+          }
+        }
+      }
+    },
+    [
+      isExamining,
+      shouldTrigger,
+      handleExamineFirst,
+      handleExaminePrev,
+      handleExamineNext,
+      handleExamineLast,
+      handleExamineEnd,
+      handleExaminers,
+    ]
+  );
+
+  React.useEffect(() => {
+    if (isExamining) {
+      document.addEventListener('keydown', handleExamineShortcuts);
+      return () => {
+        document.removeEventListener('keydown', handleExamineShortcuts);
+      };
+    }
+  }, [isExamining, handleExamineShortcuts]);
+
   const examineStore = useMemo(
     () => ({
       isExamining,
@@ -504,6 +608,8 @@ const ExaminableStore = ({ children }: { children: React.ReactNode }) => {
       handleExamineNext,
       handleExamineLast,
       handleExamineGoTo,
+      addHandleExaminer,
+      removeHandleExaminer,
     }),
     [
       isExamining,
@@ -515,6 +621,8 @@ const ExaminableStore = ({ children }: { children: React.ReactNode }) => {
       handleExamineNext,
       handleExamineLast,
       handleExamineGoTo,
+      addHandleExaminer,
+      removeHandleExaminer,
     ]
   );
 

@@ -73,6 +73,12 @@ export type StreakInfoResponse = {
   streak: Array<SingleGameStreakInfo>;
 };
 
+export type DefineWordsResponse = {
+  results: {
+    [key: string]: { v: boolean; d: string };
+  };
+};
+
 export type RecentGamesResponse = {
   game_info: Array<GameMetadata>;
 };

@@ -21,6 +21,12 @@ p {
       max-height: $main-container-width-tablet - 122px;
     }
   }
+  p.disabled-message {
+    padding: 24px;
+    @include colorModed() {
+      color: m($gray-extreme);
+    }
+  }
   .ant-card.chat .ant-card-body {
     padding: 0 0 40px 0;
   }
