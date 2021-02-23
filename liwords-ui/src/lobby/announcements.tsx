@@ -69,23 +69,6 @@ export const Announcements = React.memo((props: AnnouncementsProps) => {
     },
 
     {
-      title: 'Upcoming Tournament - MISCO',
-      body: (
-        <a
-          href="https://mindgamesincorporated.com/events/mgi-international-scrabble-classics-online-misco/"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <p>
-            The biggest online money event of the century! Please join the
-            MISCO; $1000 top prize with a $20 entry fee. See the flyer for more
-            information. Four consecutive weekends, starting on March 6, 2021.
-          </p>
-        </a>
-      ),
-    },
-
-    {
       title: 'Upcoming Tournament - HOPPY',
       body: (
         <a
