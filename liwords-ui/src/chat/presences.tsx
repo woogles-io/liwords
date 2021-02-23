@@ -1,6 +1,7 @@
 import React from 'react';
 import { PresenceEntity } from '../store/store';
 import { UsernameWithContext } from '../shared/usernameWithContext';
+import { moderateUser } from '../mod/moderate';
 
 type Props = {
   players: Array<PresenceEntity>;
@@ -17,6 +18,7 @@ export const Presences = React.memo((props: Props) => {
       sendMessage={props.sendMessage}
       omitSendMessage={!props.sendMessage}
       showModTools
+      moderate={moderateUser}
     />
   );
   const currentChannelPresences = props.players.filter(

@@ -14,10 +14,10 @@ import { ExclamationCircleOutlined } from '@ant-design/icons';
 import axios from 'axios';
 import { toAPIUrl } from '../api/api';
 import { useMountedState } from '../utils/mounted';
-import { Action } from '../actions/actions';
 
 type ModProps = {
   userID: string;
+  destroy: () => void;
 };
 
 type ModAction = {
@@ -62,6 +62,13 @@ const Moderation = (props: ModProps) => {
 
     axios
       .post<{}>(toAPIUrl('mod_service.ModService', 'ApplyActions'), obj)
+      .then((e) => {
+        message.info({
+          content: 'Applied mod action',
+          duration: 2,
+        });
+        props.destroy();
+      })
       .catch((e) => {
         if (e.response) {
           notification.error({
@@ -102,7 +109,7 @@ const Moderation = (props: ModProps) => {
     <div>
       <h3>Apply mod action</h3>
       <Form name="modder" onFinish={onFinish} initialValues={{ duration: 1 }}>
-        <Form.Item name="action" label="Action">
+        <Form.Item name="action" label="Action" rules={[{ required: true }]}>
           <Select>
             <Select.Option value="MUTE">Mute</Select.Option>
             <Select.Option value="SUSPEND_ACCOUNT">
@@ -149,10 +156,10 @@ const Moderation = (props: ModProps) => {
 };
 
 export const moderateUser = (uuid: string, username: string) => {
-  Modal.info({
+  const modal = Modal.info({
     title: `Moderation for user ${username}`,
     icon: <ExclamationCircleOutlined />,
-    content: <Moderation userID={uuid} />,
+    content: <Moderation userID={uuid} destroy={() => modal.destroy()} />,
     onOk() {
       console.log('ok');
     },

@@ -14,6 +14,7 @@ import { GameMetadata, RecentGamesResponse } from '../gameroom/game_info';
 import { GamesHistoryCard } from './games_history';
 import { UsernameWithContext } from '../shared/usernameWithContext';
 import { preferredSortOrder, setPreferredSortOrder } from '../store/constants';
+import { moderateUser } from '../mod/moderate';
 
 type ProfileResponse = {
   first_name: string;
@@ -365,6 +366,7 @@ export const UserProfile = React.memo((props: Props) => {
                 username={username}
                 userID={userID}
                 showModTools
+                moderate={moderateUser}
               />
             ) : (
               username
@@ -430,6 +432,7 @@ export const UserProfile = React.memo((props: Props) => {
                 username={u.username}
                 userID={u.uuid}
                 showModTools
+                moderate={moderateUser}
               />
             ))}
           </Card>
