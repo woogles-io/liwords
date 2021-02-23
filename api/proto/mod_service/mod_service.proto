@@ -28,6 +28,9 @@ message ModAction {
   string message_id = 8;
   string applier_user_id = 9;
   string remover_user_id = 10;
+  string chat_text = 11;
+  // Note: an optional note from the moderator.
+  string note = 12;
 }
 
 message ModActionsMap { map<string, ModAction> actions = 1; }

@@ -18,6 +18,10 @@ var (
 	errNotAuthorized = errors.New("this user is not authorized to perform this action")
 )
 
+type ctxkey string
+
+const rtchankey ctxkey = "realtimechan"
+
 type ModService struct {
 	userStore user.Store
 	chatStore user.ChatStore

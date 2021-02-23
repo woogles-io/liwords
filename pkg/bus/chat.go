@@ -22,18 +22,9 @@ func (b *Bus) chat(ctx context.Context, userID string, evt *pb.ChatMessage) erro
 		return errors.New("message-too-long")
 	}
 
-	// XXX: temporary migration code. Remove once frontends stop sending
-	// on the wrong channel.
 	// All channels should be of the form:
 	// chat.a[.b]
 	// e.g. chat.gametv.abcdef, chat.pm.user1_user2, chat.lobby, chat.tournament.weto
-	if !strings.HasPrefix(evt.Channel, "chat.") {
-		evt.Channel = "chat." + evt.Channel
-		// Remove the .chat from the end -- legacy channel name.
-		if strings.HasSuffix(evt.Channel, ".chat") {
-			evt.Channel = strings.TrimSuffix(evt.Channel, ".chat")
-		}
-	}
 
 	sendingUser, err := b.userStore.GetByUUID(ctx, userID)
 	if err != nil {
@@ -82,16 +73,10 @@ func (b *Bus) chat(ctx context.Context, userID string, evt *pb.ChatMessage) erro
 		userFriendlyChannelName = "tournament:" + t.Name
 	}
 
-	ts, err := b.chatStore.AddChat(ctx, sendingUser.Username, userID, evt.Message, evt.Channel, userFriendlyChannelName)
-
-	chatMessage := &pb.ChatMessage{
-		Username:  sendingUser.Username,
-		UserId:    userID,
-		Channel:   evt.Channel, // this info might be redundant
-		Message:   evt.Message,
-		Timestamp: ts,
+	chatMessage, err := b.chatStore.AddChat(ctx, sendingUser.Username, userID, evt.Message, evt.Channel, userFriendlyChannelName)
+	if err != nil {
+		return err
 	}
-
 	toSend := entity.WrapEvent(chatMessage, pb.MessageType_CHAT_MESSAGE)
 	data, err := toSend.Serialize()
 

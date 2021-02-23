@@ -89,6 +89,7 @@ enum MessageType {
   MATCH_REQUESTS = 18;
   DECLINE_MATCH_REQUEST = 19;
   CHAT_MESSAGE = 20;
+  CHAT_MESSAGE_DELETED = 21;
   USER_PRESENCE = 22;
   USER_PRESENCES = 23;
   SERVER_MESSAGE = 24;
@@ -121,7 +122,7 @@ message ChatMessage {
   // timestamp is in milliseconds!
   int64 timestamp = 4;
   string user_id = 5;
-  string message_id = 6;
+  string id = 6;
 }
 
 message ChatMessages { repeated ChatMessage messages = 1; }
@@ -306,6 +307,11 @@ message ErrorMessage {
 }
 
 message ServerMessage { string message = 1; }
+
+message ChatMessageDeleted {
+  string channel = 1;
+  string id = 2;
+}
 
 // Client-to-server messages
 

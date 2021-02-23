@@ -16,6 +16,7 @@ export const Presences = React.memo((props: Props) => {
       userID={player.uuid}
       sendMessage={props.sendMessage}
       omitSendMessage={!props.sendMessage}
+      showModTools
     />
   );
   const currentChannelPresences = props.players.filter(

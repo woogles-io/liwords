@@ -4,13 +4,16 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/golang/protobuf/ptypes"
 	"time"
+
+	"github.com/golang/protobuf/ptypes"
 
 	"github.com/domino14/liwords/pkg/apiserver"
 	"github.com/domino14/liwords/pkg/entity"
 	"github.com/domino14/liwords/pkg/user"
 	ms "github.com/domino14/liwords/rpc/api/proto/mod_service"
+
+	pb "github.com/domino14/liwords/rpc/api/proto/realtime"
 )
 
 var ModActionDispatching = map[string]func(context.Context, user.Store, user.ChatStore, *ms.ModAction) error{
@@ -32,10 +35,10 @@ var ModActionDispatching = map[string]func(context.Context, user.Store, user.Cha
 }
 
 var ModActionTextMap = map[ms.ModActionType]string{
-	ms.ModActionType_MUTE: "chatting",
-	ms.ModActionType_SUSPEND_ACCOUNT: "logging in",
+	ms.ModActionType_MUTE:                "chatting",
+	ms.ModActionType_SUSPEND_ACCOUNT:     "logging in",
 	ms.ModActionType_SUSPEND_RATED_GAMES: "playing rated games",
-	ms.ModActionType_SUSPEND_GAMES: "playing games",
+	ms.ModActionType_SUSPEND_GAMES:       "playing games",
 }
 
 func ActionExists(ctx context.Context, us user.Store, uuid string, forceInsistLogout bool, actionTypes []ms.ModActionType) error {
@@ -345,7 +348,30 @@ func resetStatsAndRatings(ctx context.Context, us user.Store, cs user.ChatStore,
 }
 
 func removeChat(ctx context.Context, us user.Store, cs user.ChatStore, action *ms.ModAction) error {
-	return cs.DeleteChat(ctx, action.Channel, action.MessageId)
+	chat, err := cs.GetChat(ctx, action.Channel, action.MessageId)
+	if err != nil {
+		return err
+	}
+
+	err = cs.DeleteChat(ctx, action.Channel, action.MessageId)
+	if err != nil {
+		return err
+	}
+	action.ChatText = chat.Message
+
+	// Send a message via pubsub
+	evtChan := cs.EventChan()
+	if evtChan != nil {
+		evt := &pb.ChatMessageDeleted{
+			Channel: action.Channel,
+			Id:      action.MessageId,
+		}
+		wrapped := entity.WrapEvent(evt, pb.MessageType_CHAT_MESSAGE_DELETED)
+		wrapped.SetAudience(action.Channel)
+		evtChan <- wrapped
+	}
+
+	return nil
 }
 
 func instantiateActions(u *entity.User) {

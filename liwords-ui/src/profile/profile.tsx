@@ -364,6 +364,7 @@ export const UserProfile = React.memo((props: Props) => {
                 omitSendMessage
                 username={username}
                 userID={userID}
+                showModTools
               />
             ) : (
               username
@@ -428,6 +429,7 @@ export const UserProfile = React.memo((props: Props) => {
                 omitSendMessage
                 username={u.username}
                 userID={u.uuid}
+                showModTools
               />
             ))}
           </Card>

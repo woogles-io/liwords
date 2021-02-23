@@ -90,7 +90,7 @@ func (as *AuthenticationService) Login(ctx context.Context, r *pb.UserLoginReque
 
 	err = mod.ActionExists(ctx, as.userStore, user.UUID, false, []ms.ModActionType{ms.ModActionType_SUSPEND_ACCOUNT})
 	if err != nil {
-		log.Err(err).Msg("action-exists")
+		log.Err(err).Str("username", r.Username).Str("userID", user.UUID).Msg("action-exists")
 		return nil, err
 	}
 
@@ -150,13 +150,27 @@ func (as *AuthenticationService) GetSocketToken(ctx context.Context, r *pb.Socke
 		uuid = sess.UserUUID
 		unn = sess.Username
 	}
-
+	u, err := as.userStore.GetByUUID(ctx, uuid)
+	if err != nil {
+		return nil, err
+	}
+	perms := []string{}
+	if u.IsAdmin {
+		perms = append(perms, "adm")
+	}
+	if u.IsDirector {
+		perms = append(perms, "dir")
+	}
+	if u.IsMod {
+		perms = append(perms, "mod")
+	}
 	// Create an unauth token.
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-		"exp": time.Now().Add(TokenExpiration).Unix(),
-		"uid": uuid,
-		"unn": unn,
-		"a":   authed,
+		"exp":   time.Now().Add(TokenExpiration).Unix(),
+		"uid":   uuid,
+		"unn":   unn,
+		"a":     authed,
+		"perms": strings.Join(perms, ","),
 	})
 	tokenString, err := token.SignedString([]byte(as.secretKey))
 	if err != nil {
