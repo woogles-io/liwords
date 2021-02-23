@@ -17,6 +17,7 @@ import { LiwordsSocket } from './socket/socket';
 import { About } from './about/about';
 import { Register } from './lobby/register';
 import { UserProfile } from './profile/profile';
+import { Settings } from './settings/settings';
 import { PasswordChange } from './lobby/password_change';
 import { PasswordReset } from './lobby/password_reset';
 import { NewPassword } from './lobby/new_password';
@@ -159,6 +160,9 @@ const App = React.memo(() => {
 
         <Route path="/profile/:username">
           <UserProfile />
+        </Route>
+        <Route path="/settings">
+          <Settings />
         </Route>
         <Route path="/tile_images">
           <TileImages />

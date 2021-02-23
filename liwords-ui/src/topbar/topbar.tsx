@@ -86,6 +86,11 @@ export const TopBar = React.memo((props: Props) => {
           View Profile
         </Link>
       </li>
+      <li>
+        <Link className="plain" to={`/settings`}>
+          Settings
+        </Link>
+      </li>
       <li onClick={handleLogout} className="link plain">
         Log out
       </li>

@@ -1,0 +1,13 @@
+@import '../base';
+@import '../shared/gameLists';
+@include button;
+@include tabs;
+
+.avatar-section {
+  @include container;
+  padding: 0 24px 48px;
+  display: flex;
+  flex-direction: row;
+  justify-content: center;
+  align-items: flex-start;
+}

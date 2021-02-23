@@ -1,0 +1,79 @@
+@import '../base';
+@import '../shared/gameLists';
+@include button;
+@include tabs;
+
+.settings {
+  @include container;
+  @include type-default;
+  padding: 51px 24px 48px;
+  display: flex;
+  flex-direction: row;
+  justify-content: center;
+  align-items: flex-start;
+
+  .categories {
+    flex-direction: column;
+    padding: 4px 30px 0 0;
+    min-width: $sidebar-width-desktop;
+    max-width: $sidebar-width-desktop;
+    .choice {
+      text-align: right;
+      height: 32px;
+      font-weight: bold;
+      @include colorModed() {
+        color: m($gray-medium);
+      }
+      cursor: pointer;
+      padding-right: 14px;
+      padding-top: 8px;
+      border-right: 2px solid transparent;
+      &:hover,
+      &.active {
+        @include colorModed() {
+          color: m($primary-dark);
+        }
+      }
+      &.active {
+        @include colorModed() {
+          border-color: m($primary-dark);
+        }
+      }
+    }
+  }
+
+  .category {
+    flex-direction: column;
+    min-width: $sidebar-width-desktop;
+    max-width: $sidebar-width-desktop;
+  }
+
+  label {
+    @include colorModed() {
+      color: m($gray-extreme);
+    }
+  }
+  .ant-card {
+    margin-bottom: 12px;
+  }
+  .ant-card-body {
+    padding: 24px;
+  }
+  .ant-card-head {
+    @include colorModed() {
+      background-color: m($primary-light);
+    }
+  }
+  a {
+    font-size: 14px;
+    text-align: right;
+  }
+  .blocked-users {
+    .ant-card-body {
+      padding: 12px;
+      .user-context-menu {
+        margin-right: 12px;
+      }
+    }
+  }
+}
