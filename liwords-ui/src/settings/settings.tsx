@@ -55,7 +55,7 @@ export const Settings = React.memo((props: Props) => {
   const CategoryChoice = React.memo((props: CategoryProps) => {
     return (
       <div
-        className={'choice ' + (category == props.category ? 'active' : '')}
+        className={category == props.category ? 'choice active' : 'choice'}
         onClick={() => {
           setCategory(props.category);
         }}
