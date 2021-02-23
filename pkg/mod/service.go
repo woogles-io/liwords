@@ -47,7 +47,7 @@ func (ms *ModService) GetActions(ctx context.Context, req *pb.GetActionsRequest)
 	if err != nil {
 		return nil, err
 	}
-	if !user.IsAdmin {
+	if !(user.IsAdmin || user.IsMod) {
 		return nil, twirp.NewError(twirp.Unauthenticated, errNotAuthorized.Error())
 	}
 	actions, err := GetActions(ctx, ms.userStore, req.UserId)
@@ -62,7 +62,7 @@ func (ms *ModService) GetActionHistory(ctx context.Context, req *pb.GetActionsRe
 	if err != nil {
 		return nil, err
 	}
-	if !user.IsAdmin {
+	if !(user.IsAdmin || user.IsMod) {
 		return nil, twirp.NewError(twirp.Unauthenticated, errNotAuthorized.Error())
 	}
 	history, err := GetActionHistory(ctx, ms.userStore, req.UserId)
