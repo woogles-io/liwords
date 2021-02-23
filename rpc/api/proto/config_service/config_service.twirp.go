@@ -42,6 +42,8 @@ const _ = twirp.TwirpPackageIsVersion7
 type ConfigService interface {
 	SetGamesEnabled(context.Context, *EnableGamesRequest) (*ConfigResponse, error)
 
+	BroadcastServerMessage(context.Context, *BroadcastRequest) (*ConfigResponse, error)
+
 	SetFEHash(context.Context, *SetFEHashRequest) (*ConfigResponse, error)
 
 	SetUserPermissions(context.Context, *PermissionsRequest) (*ConfigResponse, error)
@@ -55,7 +57,7 @@ type ConfigService interface {
 
 type configServiceProtobufClient struct {
 	client      HTTPClient
-	urls        [4]string
+	urls        [5]string
 	interceptor twirp.Interceptor
 	opts        twirp.ClientOptions
 }
@@ -75,8 +77,9 @@ func NewConfigServiceProtobufClient(baseURL string, client HTTPClient, opts ...t
 	// Build method URLs: <baseURL>[<prefix>]/<package>.<Service>/<Method>
 	serviceURL := sanitizeBaseURL(baseURL)
 	serviceURL += baseServicePath(clientOpts.PathPrefix(), "config_service", "ConfigService")
-	urls := [4]string{
+	urls := [5]string{
 		serviceURL + "SetGamesEnabled",
+		serviceURL + "BroadcastServerMessage",
 		serviceURL + "SetFEHash",
 		serviceURL + "SetUserPermissions",
 		serviceURL + "GetUserDetails",
@@ -136,6 +139,52 @@ func (c *configServiceProtobufClient) callSetGamesEnabled(ctx context.Context, i
 	return out, nil
 }
 
+func (c *configServiceProtobufClient) BroadcastServerMessage(ctx context.Context, in *BroadcastRequest) (*ConfigResponse, error) {
+	ctx = ctxsetters.WithPackageName(ctx, "config_service")
+	ctx = ctxsetters.WithServiceName(ctx, "ConfigService")
+	ctx = ctxsetters.WithMethodName(ctx, "BroadcastServerMessage")
+	caller := c.callBroadcastServerMessage
+	if c.interceptor != nil {
+		caller = func(ctx context.Context, req *BroadcastRequest) (*ConfigResponse, error) {
+			resp, err := c.interceptor(
+				func(ctx context.Context, req interface{}) (interface{}, error) {
+					typedReq, ok := req.(*BroadcastRequest)
+					if !ok {
+						return nil, twirp.InternalError("failed type assertion req.(*BroadcastRequest) when calling interceptor")
+					}
+					return c.callBroadcastServerMessage(ctx, typedReq)
+				},
+			)(ctx, req)
+			if resp != nil {
+				typedResp, ok := resp.(*ConfigResponse)
+				if !ok {
+					return nil, twirp.InternalError("failed type assertion resp.(*ConfigResponse) when calling interceptor")
+				}
+				return typedResp, err
+			}
+			return nil, err
+		}
+	}
+	return caller(ctx, in)
+}
+
+func (c *configServiceProtobufClient) callBroadcastServerMessage(ctx context.Context, in *BroadcastRequest) (*ConfigResponse, error) {
+	out := new(ConfigResponse)
+	ctx, err := doProtobufRequest(ctx, c.client, c.opts.Hooks, c.urls[1], in, out)
+	if err != nil {
+		twerr, ok := err.(twirp.Error)
+		if !ok {
+			twerr = twirp.InternalErrorWith(err)
+		}
+		callClientError(ctx, c.opts.Hooks, twerr)
+		return nil, err
+	}
+
+	callClientResponseReceived(ctx, c.opts.Hooks)
+
+	return out, nil
+}
+
 func (c *configServiceProtobufClient) SetFEHash(ctx context.Context, in *SetFEHashRequest) (*ConfigResponse, error) {
 	ctx = ctxsetters.WithPackageName(ctx, "config_service")
 	ctx = ctxsetters.WithServiceName(ctx, "ConfigService")
@@ -167,7 +216,7 @@ func (c *configServiceProtobufClient) SetFEHash(ctx context.Context, in *SetFEHa
 
 func (c *configServiceProtobufClient) callSetFEHash(ctx context.Context, in *SetFEHashRequest) (*ConfigResponse, error) {
 	out := new(ConfigResponse)
-	ctx, err := doProtobufRequest(ctx, c.client, c.opts.Hooks, c.urls[1], in, out)
+	ctx, err := doProtobufRequest(ctx, c.client, c.opts.Hooks, c.urls[2], in, out)
 	if err != nil {
 		twerr, ok := err.(twirp.Error)
 		if !ok {
@@ -213,7 +262,7 @@ func (c *configServiceProtobufClient) SetUserPermissions(ctx context.Context, in
 
 func (c *configServiceProtobufClient) callSetUserPermissions(ctx context.Context, in *PermissionsRequest) (*ConfigResponse, error) {
 	out := new(ConfigResponse)
-	ctx, err := doProtobufRequest(ctx, c.client, c.opts.Hooks, c.urls[2], in, out)
+	ctx, err := doProtobufRequest(ctx, c.client, c.opts.Hooks, c.urls[3], in, out)
 	if err != nil {
 		twerr, ok := err.(twirp.Error)
 		if !ok {
@@ -259,7 +308,7 @@ func (c *configServiceProtobufClient) GetUserDetails(ctx context.Context, in *Us
 
 func (c *configServiceProtobufClient) callGetUserDetails(ctx context.Context, in *UserRequest) (*UserResponse, error) {
 	out := new(UserResponse)
-	ctx, err := doProtobufRequest(ctx, c.client, c.opts.Hooks, c.urls[3], in, out)
+	ctx, err := doProtobufRequest(ctx, c.client, c.opts.Hooks, c.urls[4], in, out)
 	if err != nil {
 		twerr, ok := err.(twirp.Error)
 		if !ok {
@@ -280,7 +329,7 @@ func (c *configServiceProtobufClient) callGetUserDetails(ctx context.Context, in
 
 type configServiceJSONClient struct {
 	client      HTTPClient
-	urls        [4]string
+	urls        [5]string
 	interceptor twirp.Interceptor
 	opts        twirp.ClientOptions
 }
@@ -300,8 +349,9 @@ func NewConfigServiceJSONClient(baseURL string, client HTTPClient, opts ...twirp
 	// Build method URLs: <baseURL>[<prefix>]/<package>.<Service>/<Method>
 	serviceURL := sanitizeBaseURL(baseURL)
 	serviceURL += baseServicePath(clientOpts.PathPrefix(), "config_service", "ConfigService")
-	urls := [4]string{
+	urls := [5]string{
 		serviceURL + "SetGamesEnabled",
+		serviceURL + "BroadcastServerMessage",
 		serviceURL + "SetFEHash",
 		serviceURL + "SetUserPermissions",
 		serviceURL + "GetUserDetails",
@@ -361,6 +411,52 @@ func (c *configServiceJSONClient) callSetGamesEnabled(ctx context.Context, in *E
 	return out, nil
 }
 
+func (c *configServiceJSONClient) BroadcastServerMessage(ctx context.Context, in *BroadcastRequest) (*ConfigResponse, error) {
+	ctx = ctxsetters.WithPackageName(ctx, "config_service")
+	ctx = ctxsetters.WithServiceName(ctx, "ConfigService")
+	ctx = ctxsetters.WithMethodName(ctx, "BroadcastServerMessage")
+	caller := c.callBroadcastServerMessage
+	if c.interceptor != nil {
+		caller = func(ctx context.Context, req *BroadcastRequest) (*ConfigResponse, error) {
+			resp, err := c.interceptor(
+				func(ctx context.Context, req interface{}) (interface{}, error) {
+					typedReq, ok := req.(*BroadcastRequest)
+					if !ok {
+						return nil, twirp.InternalError("failed type assertion req.(*BroadcastRequest) when calling interceptor")
+					}
+					return c.callBroadcastServerMessage(ctx, typedReq)
+				},
+			)(ctx, req)
+			if resp != nil {
+				typedResp, ok := resp.(*ConfigResponse)
+				if !ok {
+					return nil, twirp.InternalError("failed type assertion resp.(*ConfigResponse) when calling interceptor")
+				}
+				return typedResp, err
+			}
+			return nil, err
+		}
+	}
+	return caller(ctx, in)
+}
+
+func (c *configServiceJSONClient) callBroadcastServerMessage(ctx context.Context, in *BroadcastRequest) (*ConfigResponse, error) {
+	out := new(ConfigResponse)
+	ctx, err := doJSONRequest(ctx, c.client, c.opts.Hooks, c.urls[1], in, out)
+	if err != nil {
+		twerr, ok := err.(twirp.Error)
+		if !ok {
+			twerr = twirp.InternalErrorWith(err)
+		}
+		callClientError(ctx, c.opts.Hooks, twerr)
+		return nil, err
+	}
+
+	callClientResponseReceived(ctx, c.opts.Hooks)
+
+	return out, nil
+}
+
 func (c *configServiceJSONClient) SetFEHash(ctx context.Context, in *SetFEHashRequest) (*ConfigResponse, error) {
 	ctx = ctxsetters.WithPackageName(ctx, "config_service")
 	ctx = ctxsetters.WithServiceName(ctx, "ConfigService")
@@ -392,7 +488,7 @@ func (c *configServiceJSONClient) SetFEHash(ctx context.Context, in *SetFEHashRe
 
 func (c *configServiceJSONClient) callSetFEHash(ctx context.Context, in *SetFEHashRequest) (*ConfigResponse, error) {
 	out := new(ConfigResponse)
-	ctx, err := doJSONRequest(ctx, c.client, c.opts.Hooks, c.urls[1], in, out)
+	ctx, err := doJSONRequest(ctx, c.client, c.opts.Hooks, c.urls[2], in, out)
 	if err != nil {
 		twerr, ok := err.(twirp.Error)
 		if !ok {
@@ -438,7 +534,7 @@ func (c *configServiceJSONClient) SetUserPermissions(ctx context.Context, in *Pe
 
 func (c *configServiceJSONClient) callSetUserPermissions(ctx context.Context, in *PermissionsRequest) (*ConfigResponse, error) {
 	out := new(ConfigResponse)
-	ctx, err := doJSONRequest(ctx, c.client, c.opts.Hooks, c.urls[2], in, out)
+	ctx, err := doJSONRequest(ctx, c.client, c.opts.Hooks, c.urls[3], in, out)
 	if err != nil {
 		twerr, ok := err.(twirp.Error)
 		if !ok {
@@ -484,7 +580,7 @@ func (c *configServiceJSONClient) GetUserDetails(ctx context.Context, in *UserRe
 
 func (c *configServiceJSONClient) callGetUserDetails(ctx context.Context, in *UserRequest) (*UserResponse, error) {
 	out := new(UserResponse)
-	ctx, err := doJSONRequest(ctx, c.client, c.opts.Hooks, c.urls[3], in, out)
+	ctx, err := doJSONRequest(ctx, c.client, c.opts.Hooks, c.urls[4], in, out)
 	if err != nil {
 		twerr, ok := err.(twirp.Error)
 		if !ok {
@@ -585,6 +681,9 @@ func (s *configServiceServer) ServeHTTP(resp http.ResponseWriter, req *http.Requ
 	switch method {
 	case "SetGamesEnabled":
 		s.serveSetGamesEnabled(ctx, resp, req)
+		return
+	case "BroadcastServerMessage":
+		s.serveBroadcastServerMessage(ctx, resp, req)
 		return
 	case "SetFEHash":
 		s.serveSetFEHash(ctx, resp, req)
@@ -754,6 +853,181 @@ func (s *configServiceServer) serveSetGamesEnabledProtobuf(ctx context.Context, 
 	}
 	if respContent == nil {
 		s.writeError(ctx, resp, twirp.InternalError("received a nil *ConfigResponse and nil error while calling SetGamesEnabled. nil responses are not supported"))
+		return
+	}
+
+	ctx = callResponsePrepared(ctx, s.hooks)
+
+	respBytes, err := proto.Marshal(respContent)
+	if err != nil {
+		s.writeError(ctx, resp, wrapInternal(err, "failed to marshal proto response"))
+		return
+	}
+
+	ctx = ctxsetters.WithStatusCode(ctx, http.StatusOK)
+	resp.Header().Set("Content-Type", "application/protobuf")
+	resp.Header().Set("Content-Length", strconv.Itoa(len(respBytes)))
+	resp.WriteHeader(http.StatusOK)
+	if n, err := resp.Write(respBytes); err != nil {
+		msg := fmt.Sprintf("failed to write response, %d of %d bytes written: %s", n, len(respBytes), err.Error())
+		twerr := twirp.NewError(twirp.Unknown, msg)
+		ctx = callError(ctx, s.hooks, twerr)
+	}
+	callResponseSent(ctx, s.hooks)
+}
+
+func (s *configServiceServer) serveBroadcastServerMessage(ctx context.Context, resp http.ResponseWriter, req *http.Request) {
+	header := req.Header.Get("Content-Type")
+	i := strings.Index(header, ";")
+	if i == -1 {
+		i = len(header)
+	}
+	switch strings.TrimSpace(strings.ToLower(header[:i])) {
+	case "application/json":
+		s.serveBroadcastServerMessageJSON(ctx, resp, req)
+	case "application/protobuf":
+		s.serveBroadcastServerMessageProtobuf(ctx, resp, req)
+	default:
+		msg := fmt.Sprintf("unexpected Content-Type: %q", req.Header.Get("Content-Type"))
+		twerr := badRouteError(msg, req.Method, req.URL.Path)
+		s.writeError(ctx, resp, twerr)
+	}
+}
+
+func (s *configServiceServer) serveBroadcastServerMessageJSON(ctx context.Context, resp http.ResponseWriter, req *http.Request) {
+	var err error
+	ctx = ctxsetters.WithMethodName(ctx, "BroadcastServerMessage")
+	ctx, err = callRequestRouted(ctx, s.hooks)
+	if err != nil {
+		s.writeError(ctx, resp, err)
+		return
+	}
+
+	reqContent := new(BroadcastRequest)
+	unmarshaler := jsonpb.Unmarshaler{AllowUnknownFields: true}
+	if err = unmarshaler.Unmarshal(req.Body, reqContent); err != nil {
+		s.writeError(ctx, resp, malformedRequestError("the json request could not be decoded"))
+		return
+	}
+
+	handler := s.ConfigService.BroadcastServerMessage
+	if s.interceptor != nil {
+		handler = func(ctx context.Context, req *BroadcastRequest) (*ConfigResponse, error) {
+			resp, err := s.interceptor(
+				func(ctx context.Context, req interface{}) (interface{}, error) {
+					typedReq, ok := req.(*BroadcastRequest)
+					if !ok {
+						return nil, twirp.InternalError("failed type assertion req.(*BroadcastRequest) when calling interceptor")
+					}
+					return s.ConfigService.BroadcastServerMessage(ctx, typedReq)
+				},
+			)(ctx, req)
+			if resp != nil {
+				typedResp, ok := resp.(*ConfigResponse)
+				if !ok {
+					return nil, twirp.InternalError("failed type assertion resp.(*ConfigResponse) when calling interceptor")
+				}
+				return typedResp, err
+			}
+			return nil, err
+		}
+	}
+
+	// Call service method
+	var respContent *ConfigResponse
+	func() {
+		defer ensurePanicResponses(ctx, resp, s.hooks)
+		respContent, err = handler(ctx, reqContent)
+	}()
+
+	if err != nil {
+		s.writeError(ctx, resp, err)
+		return
+	}
+	if respContent == nil {
+		s.writeError(ctx, resp, twirp.InternalError("received a nil *ConfigResponse and nil error while calling BroadcastServerMessage. nil responses are not supported"))
+		return
+	}
+
+	ctx = callResponsePrepared(ctx, s.hooks)
+
+	var buf bytes.Buffer
+	marshaler := &jsonpb.Marshaler{OrigName: true, EmitDefaults: !s.jsonSkipDefaults}
+	if err = marshaler.Marshal(&buf, respContent); err != nil {
+		s.writeError(ctx, resp, wrapInternal(err, "failed to marshal json response"))
+		return
+	}
+
+	ctx = ctxsetters.WithStatusCode(ctx, http.StatusOK)
+	respBytes := buf.Bytes()
+	resp.Header().Set("Content-Type", "application/json")
+	resp.Header().Set("Content-Length", strconv.Itoa(len(respBytes)))
+	resp.WriteHeader(http.StatusOK)
+
+	if n, err := resp.Write(respBytes); err != nil {
+		msg := fmt.Sprintf("failed to write response, %d of %d bytes written: %s", n, len(respBytes), err.Error())
+		twerr := twirp.NewError(twirp.Unknown, msg)
+		ctx = callError(ctx, s.hooks, twerr)
+	}
+	callResponseSent(ctx, s.hooks)
+}
+
+func (s *configServiceServer) serveBroadcastServerMessageProtobuf(ctx context.Context, resp http.ResponseWriter, req *http.Request) {
+	var err error
+	ctx = ctxsetters.WithMethodName(ctx, "BroadcastServerMessage")
+	ctx, err = callRequestRouted(ctx, s.hooks)
+	if err != nil {
+		s.writeError(ctx, resp, err)
+		return
+	}
+
+	buf, err := ioutil.ReadAll(req.Body)
+	if err != nil {
+		s.writeError(ctx, resp, wrapInternal(err, "failed to read request body"))
+		return
+	}
+	reqContent := new(BroadcastRequest)
+	if err = proto.Unmarshal(buf, reqContent); err != nil {
+		s.writeError(ctx, resp, malformedRequestError("the protobuf request could not be decoded"))
+		return
+	}
+
+	handler := s.ConfigService.BroadcastServerMessage
+	if s.interceptor != nil {
+		handler = func(ctx context.Context, req *BroadcastRequest) (*ConfigResponse, error) {
+			resp, err := s.interceptor(
+				func(ctx context.Context, req interface{}) (interface{}, error) {
+					typedReq, ok := req.(*BroadcastRequest)
+					if !ok {
+						return nil, twirp.InternalError("failed type assertion req.(*BroadcastRequest) when calling interceptor")
+					}
+					return s.ConfigService.BroadcastServerMessage(ctx, typedReq)
+				},
+			)(ctx, req)
+			if resp != nil {
+				typedResp, ok := resp.(*ConfigResponse)
+				if !ok {
+					return nil, twirp.InternalError("failed type assertion resp.(*ConfigResponse) when calling interceptor")
+				}
+				return typedResp, err
+			}
+			return nil, err
+		}
+	}
+
+	// Call service method
+	var respContent *ConfigResponse
+	func() {
+		defer ensurePanicResponses(ctx, resp, s.hooks)
+		respContent, err = handler(ctx, reqContent)
+	}()
+
+	if err != nil {
+		s.writeError(ctx, resp, err)
+		return
+	}
+	if respContent == nil {
+		s.writeError(ctx, resp, twirp.InternalError("received a nil *ConfigResponse and nil error while calling BroadcastServerMessage. nil responses are not supported"))
 		return
 	}
 
@@ -1864,33 +2138,35 @@ func callClientError(ctx context.Context, h *twirp.ClientHooks, err twirp.Error)
 }
 
 var twirpFileDescriptor0 = []byte{
-	// 445 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x8c, 0x53, 0x4d, 0x6f, 0xd3, 0x40,
-	0x10, 0x55, 0xda, 0x24, 0x4d, 0xa6, 0x10, 0xa2, 0x11, 0x48, 0x26, 0x20, 0xa8, 0x7c, 0x40, 0x70,
-	0x20, 0x16, 0x1f, 0x07, 0xc4, 0x8d, 0xd2, 0x52, 0x24, 0x54, 0x09, 0x39, 0xaa, 0x84, 0xb8, 0x44,
-	0x6b, 0xef, 0xd0, 0x8c, 0x14, 0x7b, 0xc3, 0xce, 0x1a, 0xfe, 0x01, 0x3f, 0x8b, 0x5f, 0xc2, 0x8f,
-	0x41, 0xde, 0xc5, 0x56, 0xeb, 0x00, 0xed, 0x6d, 0xdf, 0xdb, 0x37, 0xb3, 0x6f, 0x3c, 0xcf, 0xf0,
-	0x54, 0x6d, 0x38, 0xd9, 0x58, 0xe3, 0x4c, 0x92, 0x9b, 0xf2, 0x0b, 0x9f, 0x2f, 0x85, 0xec, 0x37,
-	0xce, 0xa9, 0x03, 0xe7, 0x5e, 0x83, 0x93, 0xcb, 0x6c, 0x3c, 0x07, 0x3c, 0x2e, 0x55, 0xb6, 0xa6,
-	0x13, 0x55, 0x90, 0xa4, 0xf4, 0xb5, 0x22, 0x71, 0x18, 0xc1, 0x1e, 0x79, 0x56, 0x47, 0xbd, 0x83,
-	0xde, 0xe3, 0x51, 0xda, 0xc0, 0xf8, 0x11, 0x4c, 0x17, 0xe4, 0xde, 0x1d, 0xbf, 0x57, 0xb2, 0x6a,
-	0xd4, 0x08, 0xfd, 0x95, 0x92, 0x95, 0x97, 0x8e, 0x53, 0x7f, 0x8e, 0x7f, 0xf4, 0x00, 0x3f, 0x92,
-	0x2d, 0x58, 0x84, 0x4d, 0xd9, 0x36, 0x9e, 0xc1, 0xa8, 0x12, 0xb2, 0xa5, 0x2a, 0xe8, 0x8f, 0xbc,
-	0xc5, 0xf5, 0x9d, 0x66, 0x4b, 0xb9, 0x33, 0x36, 0xda, 0xf1, 0xaf, 0xb6, 0x18, 0x6f, 0xc3, 0x40,
-	0xe9, 0x82, 0xcb, 0x68, 0xd7, 0x5f, 0x04, 0x80, 0x53, 0xd8, 0x2d, 0x8c, 0x8e, 0xfa, 0x9e, 0xab,
-	0x8f, 0x35, 0x93, 0x19, 0x17, 0x0d, 0x02, 0x93, 0x19, 0x17, 0x3f, 0x81, 0xfd, 0x33, 0x21, 0x7b,
-	0x0d, 0x03, 0xf1, 0xcf, 0x1e, 0xdc, 0x08, 0x5a, 0xd9, 0x98, 0x52, 0xe8, 0xbf, 0x6e, 0x11, 0xfa,
-	0x55, 0xc5, 0xda, 0x3b, 0x1d, 0xa7, 0xfe, 0x5c, 0xbb, 0xa4, 0x42, 0xf1, 0xda, 0xbb, 0x1c, 0xa7,
-	0x01, 0xe0, 0x1d, 0x18, 0xb2, 0x2c, 0x6b, 0x5b, 0xc1, 0xe8, 0x80, 0xe5, 0xd0, 0x38, 0x7c, 0x08,
-	0xfb, 0x2c, 0xcb, 0x76, 0xe2, 0x60, 0x19, 0x58, 0x8e, 0x9a, 0x99, 0x43, 0x5d, 0x3d, 0xe0, 0xb0,
-	0xa9, 0x3b, 0x35, 0x1a, 0xef, 0xc2, 0x88, 0x65, 0x19, 0xbe, 0xc6, 0x5e, 0x58, 0x0e, 0xcb, 0x9b,
-	0x1a, 0xc6, 0x53, 0x98, 0xbc, 0xf5, 0xeb, 0x6d, 0x26, 0x78, 0xfe, 0x6b, 0x07, 0x6e, 0x06, 0x6a,
-	0x11, 0x16, 0x8e, 0x67, 0x70, 0x6b, 0x41, 0xce, 0x6f, 0x3b, 0x2c, 0x5e, 0x63, 0x3c, 0xef, 0x44,
-	0x65, 0x3b, 0x11, 0xb3, 0x07, 0x5d, 0xcd, 0xe5, 0x87, 0xf0, 0x14, 0xc6, 0x6d, 0x2e, 0xf0, 0xa0,
-	0x2b, 0xee, 0x46, 0xe6, 0xca, 0x76, 0x9f, 0x00, 0x17, 0xe4, 0xea, 0x65, 0x5c, 0x08, 0xd1, 0xb6,
-	0xd1, 0xed, 0x84, 0x5d, 0xd9, 0xf9, 0x03, 0x4c, 0x4e, 0x42, 0xe7, 0x23, 0x72, 0x8a, 0xd7, 0x82,
-	0xf7, 0xba, 0x15, 0x17, 0xf2, 0x32, 0xbb, 0xff, 0xf7, 0xcb, 0xd0, 0xec, 0xf0, 0xf5, 0xe7, 0x57,
-	0xe7, 0xec, 0x56, 0x55, 0x36, 0xcf, 0x4d, 0x91, 0x68, 0x53, 0x70, 0x69, 0x9e, 0xbd, 0x4c, 0xd6,
-	0xfc, 0xdd, 0x58, 0x2d, 0x89, 0xdd, 0xe4, 0xc9, 0xbf, 0x7e, 0xcf, 0x6c, 0xe8, 0xd9, 0x17, 0xbf,
-	0x03, 0x00, 0x00, 0xff, 0xff, 0x2a, 0xa1, 0x6a, 0x03, 0xc1, 0x03, 0x00, 0x00,
+	// 480 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x8c, 0x54, 0x5d, 0x8b, 0xd3, 0x40,
+	0x14, 0xa5, 0xf6, 0x63, 0xdb, 0xbb, 0x5a, 0xcb, 0xa0, 0x12, 0xab, 0xe8, 0x92, 0x07, 0x51, 0xd0,
+	0x06, 0x3f, 0x1e, 0xc4, 0x37, 0xeb, 0xae, 0x2b, 0x48, 0x41, 0x52, 0x16, 0x64, 0x5f, 0xca, 0x24,
+	0x73, 0x6d, 0x2f, 0x34, 0x99, 0x3a, 0x77, 0xa2, 0xff, 0xc0, 0xdf, 0xe4, 0x93, 0xbf, 0x4d, 0x32,
+	0x63, 0x42, 0x9b, 0xaa, 0xdd, 0xb7, 0x39, 0x67, 0xee, 0x3d, 0xf7, 0xdc, 0xcc, 0x21, 0xf0, 0x4c,
+	0x6e, 0x28, 0xda, 0x18, 0x6d, 0x75, 0x94, 0xea, 0xfc, 0x0b, 0x2d, 0x17, 0x8c, 0xe6, 0x1b, 0xa5,
+	0xd8, 0x80, 0x13, 0x57, 0x23, 0x86, 0xbb, 0x6c, 0x38, 0x01, 0x71, 0x96, 0xcb, 0x64, 0x8d, 0xe7,
+	0x32, 0x43, 0x8e, 0xf1, 0x6b, 0x81, 0x6c, 0x45, 0x00, 0x47, 0xe8, 0x58, 0x15, 0xb4, 0x4e, 0x5a,
+	0x8f, 0xfb, 0x71, 0x05, 0xc3, 0x47, 0x30, 0x9a, 0xa3, 0x7d, 0x7f, 0xf6, 0x41, 0xf2, 0xaa, 0xaa,
+	0x16, 0xd0, 0x59, 0x49, 0x5e, 0xb9, 0xd2, 0x41, 0xec, 0xce, 0xe1, 0x8f, 0x16, 0x88, 0x4f, 0x68,
+	0x32, 0x62, 0x26, 0x9d, 0xd7, 0xc2, 0x63, 0xe8, 0x17, 0x8c, 0x26, 0x97, 0x19, 0xfe, 0x29, 0xaf,
+	0x71, 0x79, 0xa7, 0xc8, 0x60, 0x6a, 0xb5, 0x09, 0xae, 0xb9, 0xa9, 0x35, 0x16, 0xb7, 0xa0, 0x2b,
+	0x55, 0x46, 0x79, 0xd0, 0x76, 0x17, 0x1e, 0x88, 0x11, 0xb4, 0x33, 0xad, 0x82, 0x8e, 0xe3, 0xca,
+	0x63, 0xc9, 0x24, 0xda, 0x06, 0x5d, 0xcf, 0x24, 0xda, 0x86, 0x4f, 0xe0, 0xf8, 0x82, 0xd1, 0x5c,
+	0xc1, 0x40, 0xf8, 0xab, 0x05, 0xd7, 0x7d, 0x2d, 0x6f, 0x74, 0xce, 0xf8, 0x5f, 0xb7, 0x02, 0x3a,
+	0x45, 0x41, 0xca, 0x39, 0x1d, 0xc4, 0xee, 0x5c, 0xba, 0xc4, 0x4c, 0xd2, 0xda, 0xb9, 0x1c, 0xc4,
+	0x1e, 0x88, 0xdb, 0xd0, 0x23, 0x5e, 0x94, 0xb6, 0xbc, 0xd1, 0x2e, 0xf1, 0x54, 0x5b, 0xf1, 0x10,
+	0x8e, 0x89, 0x17, 0xf5, 0xc6, 0xde, 0x32, 0x10, 0x9f, 0x56, 0x3b, 0xfb, 0xbe, 0x72, 0xc1, 0x5e,
+	0xd5, 0x37, 0xd3, 0x4a, 0xdc, 0x85, 0x3e, 0xf1, 0xc2, 0x7f, 0x8d, 0x23, 0xff, 0x38, 0xc4, 0x6f,
+	0x4b, 0x18, 0x3e, 0x85, 0xd1, 0xd4, 0x68, 0xa9, 0x52, 0xc9, 0x76, 0xeb, 0x29, 0x33, 0x64, 0x96,
+	0xcb, 0x6a, 0x85, 0x0a, 0x86, 0x23, 0x18, 0xbe, 0x73, 0x61, 0xa8, 0xf6, 0x7d, 0xf1, 0xb3, 0x0d,
+	0x37, 0x3c, 0x35, 0xf7, 0xf1, 0x10, 0x17, 0x70, 0x73, 0x8e, 0xd6, 0x65, 0xc3, 0xc7, 0x44, 0x89,
+	0x70, 0xd2, 0x08, 0xd6, 0x7e, 0x7e, 0xc6, 0x0f, 0x9a, 0x35, 0xbb, 0x83, 0xc4, 0x25, 0xdc, 0xa9,
+	0x8d, 0x96, 0xa3, 0xd0, 0xcc, 0xbc, 0x29, 0x71, 0xd2, 0xec, 0x6c, 0x2e, 0x74, 0x50, 0x7b, 0x06,
+	0x83, 0x3a, 0xa1, 0xfb, 0x72, 0xcd, 0xf0, 0x1e, 0x94, 0xfb, 0x0c, 0x62, 0x8e, 0xb6, 0x8c, 0xc5,
+	0x56, 0x9c, 0xf7, 0x3f, 0xc2, 0x7e, 0xd6, 0x0f, 0x2a, 0x7f, 0x84, 0xe1, 0xb9, 0x57, 0x3e, 0x45,
+	0x2b, 0x69, 0xcd, 0xe2, 0x5e, 0xb3, 0x63, 0x2b, 0xb9, 0xe3, 0xfb, 0x7f, 0xbf, 0xf4, 0x62, 0xd3,
+	0x37, 0x97, 0xaf, 0x97, 0x64, 0x57, 0x45, 0x32, 0x49, 0x75, 0x16, 0x29, 0x9d, 0x51, 0xae, 0x9f,
+	0xbf, 0x8a, 0xd6, 0xf4, 0x5d, 0x1b, 0xc5, 0x91, 0xd9, 0xa4, 0xd1, 0xbf, 0x7e, 0x14, 0x49, 0xcf,
+	0xb1, 0x2f, 0x7f, 0x07, 0x00, 0x00, 0xff, 0xff, 0x24, 0xd8, 0x0f, 0xc0, 0x4b, 0x04, 0x00, 0x00,
 }

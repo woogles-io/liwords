@@ -153,3 +153,7 @@ func (cs *ConfigService) GetUserDetails(ctx context.Context, req *pb.UserRequest
 		IsAdmin:    u.IsAdmin,
 	}, nil
 }
+
+func (cs *ConfigService) BroadcastServerMessage(ctx context.Context, req *pb.BroadcastRequest) (*pb.ConfigResponse, error) {
+
+}

@@ -14,9 +14,7 @@ message PermissionsRequest {
   bool bot = 5;
 }
 
-message UserRequest {
-  string username = 1;
-}
+message UserRequest { string username = 1; }
 
 message UserResponse {
   string username = 1;
@@ -28,12 +26,15 @@ message UserResponse {
   bool is_admin = 7;
 }
 
+message BroadcastRequest { string message = 1; }
+
 message ConfigResponse {}
 
 service ConfigService {
-  rpc SetGamesEnabled(EnableGamesRequest) returns(ConfigResponse);
+  rpc SetGamesEnabled(EnableGamesRequest) returns (ConfigResponse);
+  rpc BroadcastServerMessage(BroadcastRequest) returns (ConfigResponse);
 
-  rpc SetFEHash(SetFEHashRequest) returns(ConfigResponse);
+  rpc SetFEHash(SetFEHashRequest) returns (ConfigResponse);
   rpc SetUserPermissions(PermissionsRequest) returns (ConfigResponse);
   rpc GetUserDetails(UserRequest) returns (UserResponse);
 }
