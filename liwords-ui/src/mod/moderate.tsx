@@ -103,7 +103,7 @@ const Moderation = (props: ModProps) => {
         a.data.actions.reverse();
         setActionsHistory(a.data);
       });
-  }, []);
+  }, [props.userID]);
 
   return (
     <div>

@@ -703,6 +703,7 @@ export const useOnSocketMsg = () => {
       addChat,
       addPresences,
       challengeResultEvent,
+      deleteChat,
       dispatchGameContext,
       dispatchLobbyContext,
       dispatchTournamentContext,
