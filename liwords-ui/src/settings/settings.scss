@@ -11,7 +11,16 @@
   flex-direction: row;
   justify-content: center;
   align-items: flex-start;
+  line-height: 20px;
 
+  h3 {
+    font-family: $font-default;
+    font-weight: bold;
+    letter-spacing: 0;
+  }
+  .div {
+    line-height: 20px;
+  }
   .categories {
     flex-direction: column;
     padding: 4px 30px 0 0;
@@ -46,6 +55,35 @@
     flex-direction: column;
     min-width: $sidebar-width-desktop;
     max-width: $sidebar-width-desktop;
+
+    .log-out {
+      .container {
+        display: flex;
+        align-items: center;
+        padding-bottom: 24px;
+      }
+      .player-avatar {
+        width: 64px;
+        height: 64px;
+      }
+      .full-name {
+        padding-left: 24px;
+        font-size: 16px;
+        font-weight: bold;
+      }
+      .ant-btn {
+        width: 184px;
+        height: 40px;
+        margin-left: 0;
+        margin-top: 24px;
+        font-size: 14px;
+        font-weight: bold;
+        color: white;
+        @include colorModed() {
+          background: m($primary-dark);
+        }
+      }
+    }
   }
 
   label {

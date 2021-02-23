@@ -74,6 +74,7 @@ func (ps *ProfileService) GetProfile(ctx context.Context, r *pb.ProfileRequest) 
 	return &pb.ProfileResponse{
 		FirstName:       user.Profile.FirstName,
 		LastName:        user.Profile.LastName,
+		FullName:		 user.RealName(),
 		CountryCode:     user.Profile.CountryCode,
 		Title:           user.Profile.Title,
 		About:           user.Profile.About,

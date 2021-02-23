@@ -1,6 +1,5 @@
-import React, { useCallback } from 'react';
-import { Row, Col } from 'antd';
-// import axios, { AxiosError } from 'axios';
+import React, { useEffect } from 'react';
+import { notification, Row, Col } from 'antd';
 import { useMountedState } from '../utils/mounted';
 import { TopBar } from '../topbar/topbar';
 import { ChangePassword } from './change_password';
@@ -9,6 +8,9 @@ import { Preferences } from './preferences';
 import { BlockedPlayers } from './blocked_players';
 import { LogOut } from './log_out_woogles';
 import { Support } from './support_woogles';
+import axios, { AxiosError } from 'axios';
+import { toAPIUrl } from '../api/api';
+import { useLoginStateStoreContext } from '../store/store';
 import { PlayerMetadata } from '../gameroom/game_info';
 
 import './settings.scss';
@@ -24,38 +26,57 @@ enum Category {
   Support,
 }
 
+type ProfileResponse = {
+  avatar_url: string;
+  full_name: string;
+};
+
+const errorCatcher = (e: AxiosError) => {
+  if (e.response) {
+    notification.warning({
+      message: 'Fetch Error',
+      description: e.response.data.msg,
+      duration: 4,
+    });
+  }
+};
+
 export const Settings = React.memo((props: Props) => {
+  const { loginState } = useLoginStateStoreContext();
+  const { username: viewer } = loginState;
   const { useState } = useMountedState();
   const [category, setCategory] = useState(Category.PersonalInfo);
-
-  const handleShowPersonalInfo = useCallback(() => {
-    setCategory(Category.PersonalInfo);
-  }, []);
-  const handleShowChangePassword = useCallback(() => {
-    setCategory(Category.ChangePassword);
-  }, []);
-  const handleShowPreferences = useCallback(() => {
-    setCategory(Category.Preferences);
-  }, []);
-  const handleShowBlockedPlayers = useCallback(() => {
-    setCategory(Category.BlockedPlayers);
-  }, []);
-  const handleShowLogOut = useCallback(() => {
-    setCategory(Category.LogOut);
-  }, []);
-  const handleShowSupport = useCallback(() => {
-    setCategory(Category.Support);
-  }, []);
+  const [player, setPlayer] = useState<Partial<PlayerMetadata> | undefined>(
+    undefined
+  );
 
   type CategoryProps = {
     title: string;
     category: Category;
   };
 
+  useEffect(() => {
+    if (viewer === '') return;
+    axios
+      .post<ProfileResponse>(
+        toAPIUrl('user_service.ProfileService', 'GetProfile'),
+        {
+          username: viewer,
+        }
+      )
+      .then((resp) => {
+        setPlayer({
+          avatar_url: resp.data.avatar_url,
+          full_name: resp.data.full_name,
+        });
+      })
+      .catch(errorCatcher);
+  }, [viewer]);
+
   const CategoryChoice = React.memo((props: CategoryProps) => {
     return (
       <div
-        className={category == props.category ? 'choice active' : 'choice'}
+        className={category === props.category ? 'choice active' : 'choice'}
         onClick={() => {
           setCategory(props.category);
         }}
@@ -64,12 +85,6 @@ export const Settings = React.memo((props: Props) => {
       </div>
     );
   });
-
-  const player = {
-    avatar_url:
-      'https://woogles-uploads.s3.amazonaws.com/7rugV2GrytwcweCwQAf4Rk-87Dmj6qwj.jpg',
-    full_name: 'Bob Smith',
-  };
 
   return (
     <>
@@ -109,7 +124,7 @@ export const Settings = React.memo((props: Props) => {
           {category === Category.ChangePassword ? <ChangePassword /> : null}
           {category === Category.Preferences ? <Preferences /> : null}
           {category === Category.BlockedPlayers ? <BlockedPlayers /> : null}
-          {category === Category.LogOut ? <LogOut /> : null}
+          {category === Category.LogOut ? <LogOut player={player} /> : null}
           {category === Category.Support ? <Support /> : null}
         </div>
       </div>
