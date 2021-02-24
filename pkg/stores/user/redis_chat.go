@@ -11,6 +11,7 @@ import (
 	"github.com/gomodule/redigo/redis"
 	"github.com/rs/zerolog/log"
 
+	"github.com/domino14/liwords/pkg/entity"
 	"github.com/domino14/liwords/pkg/tournament"
 	"github.com/domino14/liwords/pkg/user"
 	pb "github.com/domino14/liwords/rpc/api/proto/realtime"
@@ -81,6 +82,7 @@ type RedisChatStore struct {
 	presenceStore        user.PresenceStore
 	tournamentStore      tournament.TournamentStore
 	latestChannelsScript *redis.Script
+	eventChan            chan *entity.EventWrapper
 }
 
 // NewRedisChatStore instantiates a new store for chats, based on Redis.
@@ -90,6 +92,7 @@ func NewRedisChatStore(r *redis.Pool, p user.PresenceStore, t tournament.Tournam
 		presenceStore:        p,
 		tournamentStore:      t,
 		latestChannelsScript: redis.NewScript(0, LatestChannelsScript),
+		eventChan:            nil,
 	}
 }
 
@@ -109,7 +112,7 @@ func redisStreamTS(key string) (int64, error) {
 // AddChat takes in sender information, the message, and the name of the channel.
 // Additionally, a user-readable name for the channel should be provided.
 func (r *RedisChatStore) AddChat(ctx context.Context, senderUsername, senderUID, msg,
-	channel, channelFriendly string) (int64, error) {
+	channel, channelFriendly string) (*pb.ChatMessage, error) {
 	conn := r.redisPool.Get()
 	defer conn.Close()
 	redisKey := "chat:" + strings.TrimPrefix(channel, "chat.")
@@ -117,13 +120,13 @@ func (r *RedisChatStore) AddChat(ctx context.Context, senderUsername, senderUID,
 	ret, err := redis.String(conn.Do("XADD", redisKey, "MAXLEN", "~", "500", "*",
 		"username", senderUsername, "message", msg, "userID", senderUID))
 	if err != nil {
-		return 0, err
+		return nil, err
 	}
 
 	// ts is in milliseconds
 	ts, err := redisStreamTS(ret)
 	if err != nil {
-		return 0, err
+		return nil, err
 	}
 	tsSeconds := ts / 1000
 
@@ -136,7 +139,7 @@ func (r *RedisChatStore) AddChat(ctx context.Context, senderUsername, senderUID,
 		}
 		_, err = conn.Do("EXPIRE", redisKey, exp)
 		if err != nil {
-			return 0, err
+			return nil, err
 		}
 	}
 
@@ -148,17 +151,24 @@ func (r *RedisChatStore) AddChat(ctx context.Context, senderUsername, senderUID,
 			// private-message channel.
 			err := r.storeLatestChat(conn, msg, user, channel, channelFriendly, tsSeconds)
 			if err != nil {
-				return 0, err
+				return nil, err
 			}
 		}
 	} else if strings.HasPrefix(channel, "chat.tournament.") {
 		err = r.storeLatestChat(conn, msg, senderUID, channel, channelFriendly, tsSeconds)
 		if err != nil {
-			return 0, err
+			return nil, err
 		}
 	}
 
-	return ts, nil
+	return &pb.ChatMessage{
+		Username:  senderUsername,
+		UserId:    senderUID,
+		Channel:   channel,
+		Message:   msg,
+		Timestamp: ts,
+		Id:        ret,
+	}, nil
 }
 
 func (r *RedisChatStore) storeLatestChat(conn redis.Conn,
@@ -192,34 +202,82 @@ func (r *RedisChatStore) OldChats(ctx context.Context, channel string, n int) ([
 		return nil, err
 	}
 
-	// This is kind of gross and fragile, but redigo doesn't have stream support yet 😥
 	messages := make([]*pb.ChatMessage, len(vals))
 	for idx, val := range vals {
-		msg := &pb.ChatMessage{}
-
-		val := val.([]interface{})
-		// val[0] is the timestamp key
-		tskey := string(val[0].([]byte))
-		ts, err := redisStreamTS(tskey)
+		msg, err := rstreamMsgToChatMsg(val)
 		if err != nil {
 			return nil, err
-		}
-		msg.Timestamp = ts
-
-		// val[1] is an array of arrays. ["username", username, "message", message, "userID", userID]
-		msgvals := val[1].([]interface{})
-		msg.Username = string(msgvals[1].([]byte))
-		msg.Message = string(msgvals[3].([]byte))
-		if len(msgvals) > 5 {
-			// We need this check because we didn't always store userID -- although
-			// we can likely remove this once old chats have expired.
-			msg.UserId = string(msgvals[5].([]byte))
 		}
 		msg.Channel = channel
 		messages[len(vals)-1-idx] = msg
 	}
 
 	return messages, nil
+}
+
+func rstreamMsgToChatMsg(v interface{}) (*pb.ChatMessage, error) {
+	// This is kind of gross and fragile, but redigo doesn't have stream support yet 😥
+	msg := &pb.ChatMessage{}
+
+	val := v.([]interface{})
+	// val[0] is the timestamp key
+	tskey := string(val[0].([]byte))
+	ts, err := redisStreamTS(tskey)
+	if err != nil {
+		return nil, err
+	}
+	msg.Timestamp = ts
+	msg.Id = tskey
+
+	// val[1] is an array of arrays. ["username", username, "message", message, "userID", userID]
+	msgvals := val[1].([]interface{})
+	msg.Username = string(msgvals[1].([]byte))
+	msg.Message = string(msgvals[3].([]byte))
+	if len(msgvals) > 5 {
+		// We need this check because we didn't always store userID -- although
+		// we can likely remove this once old chats have expired.
+		msg.UserId = string(msgvals[5].([]byte))
+	}
+	return msg, nil
+}
+
+// DeleteChat deletes a chat.
+func (r *RedisChatStore) DeleteChat(ctx context.Context, channel, msgID string) error {
+	redisKey := "chat:" + strings.TrimPrefix(channel, "chat.")
+	log.Debug().Str("redisKey", redisKey).Str("msgID", msgID).Msg("delete-chat")
+	conn := r.redisPool.Get()
+	defer conn.Close()
+
+	val, err := redis.Int(conn.Do("XDEL", redisKey, msgID))
+	if err != nil {
+		return err
+	}
+	if val == 0 {
+		return errors.New("zero chats deleted")
+	}
+
+	return nil
+}
+
+func (r *RedisChatStore) GetChat(ctx context.Context, channel, msgID string) (*pb.ChatMessage, error) {
+	redisKey := "chat:" + strings.TrimPrefix(channel, "chat.")
+	log.Debug().Str("redisKey", redisKey).Str("msgID", msgID).Msg("get-chat")
+	conn := r.redisPool.Get()
+	defer conn.Close()
+
+	vals, err := redis.Values(conn.Do("XRANGE", redisKey, msgID, msgID))
+	if err != nil {
+		return nil, err
+	}
+	if len(vals) != 1 {
+		return nil, errors.New("no such message id")
+	}
+	msg, err := rstreamMsgToChatMsg(vals[0])
+	if err != nil {
+		return nil, err
+	}
+	msg.Channel = channel
+	return msg, nil
 }
 
 func maybeTrim(msg string) string {
@@ -320,4 +378,12 @@ func (r *RedisChatStore) LatestChannels(ctx context.Context, count, offset int,
 	}
 
 	return &upb.ActiveChatChannels{Channels: chans}, nil
+}
+
+func (r *RedisChatStore) SetEventChan(c chan *entity.EventWrapper) {
+	r.eventChan = c
+}
+
+func (r *RedisChatStore) EventChan() chan *entity.EventWrapper {
+	return r.eventChan
 }

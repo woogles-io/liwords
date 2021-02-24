@@ -24,6 +24,8 @@ type Store interface {
 		p1Rating entity.SingleRating, p2Rating entity.SingleRating) error
 	SetStats(ctx context.Context, p0uuid string, p1uuid string, variant entity.VariantKey,
 		p0stats *entity.Stats, p1stats *entity.Stats) error
+	ResetRatings(ctx context.Context, uuid string) error
+	ResetStats(ctx context.Context, uuid string) error
 	GetRandomBot(ctx context.Context) (*entity.User, error)
 
 	AddFollower(ctx context.Context, targetUser, follower uint) error
@@ -70,8 +72,12 @@ type PresenceStore interface {
 
 // ChatStore stores user and channel chats and messages
 type ChatStore interface {
-	AddChat(ctx context.Context, senderUsername, senderUID, msg, channel, channelFriendly string) (int64, error)
+	AddChat(ctx context.Context, senderUsername, senderUID, msg, channel, channelFriendly string) (*pb.ChatMessage, error)
 	OldChats(ctx context.Context, channel string, n int) ([]*pb.ChatMessage, error)
 	LatestChannels(ctx context.Context, count, offset int, uid, tid string) (*upb.ActiveChatChannels, error)
-}
 
+	GetChat(ctx context.Context, channel string, msgID string) (*pb.ChatMessage, error)
+	DeleteChat(ctx context.Context, channel string, msgID string) error
+	SetEventChan(chan *entity.EventWrapper)
+	EventChan() chan *entity.EventWrapper
+}

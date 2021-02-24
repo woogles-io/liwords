@@ -10,7 +10,10 @@ import (
 
 	"github.com/domino14/liwords/pkg/entity"
 	"github.com/domino14/liwords/pkg/gameplay"
+	"github.com/domino14/liwords/pkg/mod"
+	"github.com/domino14/liwords/pkg/user"
 	gs "github.com/domino14/liwords/rpc/api/proto/game_service"
+	ms "github.com/domino14/liwords/rpc/api/proto/mod_service"
 	pb "github.com/domino14/liwords/rpc/api/proto/realtime"
 )
 
@@ -34,6 +37,12 @@ func (b *Bus) seekRequest(ctx context.Context, auth, userID, connID string,
 	if gameRequest == nil {
 		return errors.New("no game request was found")
 	}
+
+	err = actionExists(ctx, b.userStore, userID, gameRequest)
+	if err != nil {
+		return err
+	}
+
 	// Note that the seek request should not come with a requesting user;
 	// instead this is in the topic/subject. It is HERE in the API server that
 	// we set the requesting user's display name, rating, etc.
@@ -99,6 +108,11 @@ func (b *Bus) matchRequest(ctx context.Context, auth, userID, connID string,
 	}
 	if req.GameRequest == nil {
 		req.GameRequest = gameRequest
+	}
+
+	err = actionExists(ctx, b.userStore, userID, gameRequest)
+	if err != nil {
+		return err
 	}
 
 	err = gameplay.ValidateSoughtGame(ctx, gameRequest)
@@ -269,6 +283,11 @@ func (b *Bus) gameAccepted(ctx context.Context, evt *pb.SoughtGameProcessEvent,
 	} else if sg.Type == entity.TypeMatch {
 		requester = sg.MatchRequest.User.UserId
 		gameReq = sg.MatchRequest.GameRequest
+	}
+
+	err = actionExists(ctx, b.userStore, userID, gameReq)
+	if err != nil {
+		return err
 	}
 
 	if requester == userID {
@@ -473,4 +492,21 @@ func (b *Bus) openMatches(ctx context.Context, receiverID string, tourneyID stri
 	}
 	evt := entity.WrapEvent(pbobj, pb.MessageType_MATCH_REQUESTS)
 	return evt, nil
+}
+
+func actionExists(ctx context.Context, us user.Store, userID string, req *pb.GameRequest) error {
+
+	err := mod.ActionExists(ctx, us, userID, false, []ms.ModActionType{ms.ModActionType_SUSPEND_ACCOUNT, ms.ModActionType_SUSPEND_GAMES})
+	if err != nil {
+		return err
+	}
+
+	if req.RatingMode == pb.RatingMode_RATED {
+		err = mod.ActionExists(ctx, us, userID, false, []ms.ModActionType{ms.ModActionType_SUSPEND_RATED_GAMES})
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
 }

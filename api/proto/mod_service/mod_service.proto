@@ -1,0 +1,49 @@
+syntax = "proto3";
+package mod_service;
+option go_package = "github.com/domino14/liwords/rpc/api/proto/mod_service";
+
+import "google/protobuf/timestamp.proto";
+
+// Moderation
+
+enum ModActionType {
+  MUTE = 0;
+  SUSPEND_ACCOUNT = 1;
+  SUSPEND_RATED_GAMES = 2;
+  SUSPEND_GAMES = 3;
+  RESET_RATINGS = 4;
+  RESET_STATS = 5;
+  RESET_STATS_AND_RATINGS = 6;
+  REMOVE_CHAT = 7;
+}
+
+message ModAction {
+  string user_id = 1;
+  ModActionType type = 2;
+  int32 duration = 3;
+  google.protobuf.Timestamp start_time = 4;
+  google.protobuf.Timestamp end_time = 5;
+  google.protobuf.Timestamp removed_time = 6;
+  string channel = 7;
+  string message_id = 8;
+  string applier_user_id = 9;
+  string remover_user_id = 10;
+  string chat_text = 11;
+  // Note: an optional note from the moderator.
+  string note = 12;
+}
+
+message ModActionsMap { map<string, ModAction> actions = 1; }
+
+message ModActionsList { repeated ModAction actions = 1; }
+
+message GetActionsRequest { string user_id = 1; }
+
+message ModActionResponse {}
+
+service ModService {
+  rpc ApplyActions(ModActionsList) returns (ModActionResponse);
+  rpc RemoveActions(ModActionsList) returns (ModActionResponse);
+  rpc GetActions(GetActionsRequest) returns (ModActionsMap);
+  rpc GetActionHistory(GetActionsRequest) returns (ModActionsList);
+}

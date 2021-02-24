@@ -3,19 +3,41 @@ import moment from 'moment';
 import { ChatEntityType, useExcludedPlayersStoreContext } from '../store/store';
 import { UsernameWithContext } from '../shared/usernameWithContext';
 import { Wooglinkify } from '../shared/wooglinkify';
-import { Tag } from 'antd';
+import { Modal, Tag } from 'antd';
+import { ExclamationCircleOutlined } from '@ant-design/icons';
+import { moderateUser, deleteChatMessage } from '../mod/moderate';
 
 type EntityProps = {
   entityType: ChatEntityType;
   sender: string;
   senderId?: string;
   channel: string;
+  msgID: string;
   message: string;
   timestamp?: number;
   anonymous?: boolean;
   highlight: boolean;
   highlightText?: string;
   sendMessage?: (uuid: string, username: string) => void;
+};
+
+const deleteMessage = (
+  sender: string,
+  msgid: string,
+  message: string,
+  channel: string
+) => {
+  Modal.confirm({
+    title: 'Do you want to delete this message?',
+    icon: <ExclamationCircleOutlined />,
+    content: message,
+    onOk() {
+      deleteChatMessage(sender, msgid, channel);
+    },
+    onCancel() {
+      console.log('no');
+    },
+  });
 };
 
 export const ChatEntity = (props: EntityProps) => {
@@ -30,7 +52,7 @@ export const ChatEntity = (props: EntityProps) => {
   }
   let el;
   let senderClass = 'sender';
-  let channel = '';
+  const channel = '';
 
   // Don't render until we know who's been blocked
   if (!excludedPlayersFetched) {
@@ -72,6 +94,19 @@ export const ChatEntity = (props: EntityProps) => {
                 userID={props.senderId}
                 omitSendMessage={!props.sendMessage}
                 sendMessage={props.sendMessage}
+                showDeleteMessage
+                showModTools
+                deleteMessage={() => {
+                  if (props.senderId) {
+                    deleteMessage(
+                      props.senderId,
+                      props.msgID,
+                      props.message,
+                      props.channel
+                    );
+                  }
+                }}
+                moderate={moderateUser}
               />
               {props.highlightText && props.highlight && (
                 <Tag color={'#d5cad6'}>{props.highlightText}</Tag>

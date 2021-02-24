@@ -22,8 +22,10 @@ import (
 	"github.com/dgrijalva/jwt-go"
 	"github.com/domino14/liwords/pkg/apiserver"
 
+	"github.com/domino14/liwords/pkg/mod"
 	"github.com/domino14/liwords/pkg/user"
 
+	ms "github.com/domino14/liwords/rpc/api/proto/mod_service"
 	pb "github.com/domino14/liwords/rpc/api/proto/user_service"
 )
 
@@ -85,6 +87,13 @@ func (as *AuthenticationService) Login(ctx context.Context, r *pb.UserLoginReque
 	if !matches {
 		return nil, twirp.NewError(twirp.Unauthenticated, "password incorrect")
 	}
+
+	err = mod.ActionExists(ctx, as.userStore, user.UUID, false, []ms.ModActionType{ms.ModActionType_SUSPEND_ACCOUNT})
+	if err != nil {
+		log.Err(err).Str("username", r.Username).Str("userID", user.UUID).Msg("action-exists")
+		return nil, err
+	}
+
 	sess, err := as.sessionStore.New(ctx, user)
 	if err != nil {
 		return nil, err
@@ -141,13 +150,27 @@ func (as *AuthenticationService) GetSocketToken(ctx context.Context, r *pb.Socke
 		uuid = sess.UserUUID
 		unn = sess.Username
 	}
-
+	u, err := as.userStore.GetByUUID(ctx, uuid)
+	if err != nil {
+		return nil, err
+	}
+	perms := []string{}
+	if u.IsAdmin {
+		perms = append(perms, "adm")
+	}
+	if u.IsDirector {
+		perms = append(perms, "dir")
+	}
+	if u.IsMod {
+		perms = append(perms, "mod")
+	}
 	// Create an unauth token.
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-		"exp": time.Now().Add(TokenExpiration).Unix(),
-		"uid": uuid,
-		"unn": unn,
-		"a":   authed,
+		"exp":   time.Now().Add(TokenExpiration).Unix(),
+		"uid":   uuid,
+		"unn":   unn,
+		"a":     authed,
+		"perms": strings.Join(perms, ","),
 	})
 	tokenString, err := token.SignedString([]byte(as.secretKey))
 	if err != nil {
