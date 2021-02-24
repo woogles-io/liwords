@@ -62,6 +62,26 @@ func (ps *ProfileService) GetProfile(ctx context.Context, r *pb.ProfileRequest) 
 		return nil, twirp.NewError(twirp.InvalidArgument, err.Error())
 	}
 
+	err = mod.ActionExists(ctx, ps.userStore, user.UUID, true, []ms.ModActionType{ms.ModActionType_SUSPEND_ACCOUNT})
+
+	if err != nil {
+		// This view might require authentication.
+		sess, err := apiserver.GetSession(ctx)
+		if err != nil {
+			return nil, err
+		}
+
+		viewer, err := ps.userStore.Get(ctx, sess.Username)
+		if err != nil {
+			log.Err(err).Msg("getting-user")
+			return nil, twirp.InternalErrorWith(err)
+		}
+
+		if !viewer.IsMod && !viewer.IsAdmin {
+			return nil, errors.New("record not found")
+		}
+	}
+
 	ratings := user.Profile.Ratings
 	ratjson, err := json.Marshal(ratings)
 	if err != nil {
