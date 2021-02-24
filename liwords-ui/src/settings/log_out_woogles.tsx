@@ -5,6 +5,7 @@ import { PlayerMetadata } from '../gameroom/game_info';
 
 type Props = {
 	player: Partial<PlayerMetadata> | undefined;
+	handleLogout?: () => void;
 };
 
 export const LogOut = React.memo((props: Props) => {
@@ -19,7 +20,7 @@ export const LogOut = React.memo((props: Props) => {
 				You’ll have to log back in to your account to play games or see tiles
 				while watching tournament games on Woogles.io.
 			</div>
-			<Button>Log out</Button>
+			<Button onClick={props.handleLogout}>Log out</Button>
 		</div>
 	);
 });
