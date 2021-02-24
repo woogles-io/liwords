@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useCallback } from 'react';
 import { notification, Row, Col } from 'antd';
 import { useMountedState } from '../utils/mounted';
 import { TopBar } from '../topbar/topbar';
@@ -12,6 +12,8 @@ import axios, { AxiosError } from 'axios';
 import { toAPIUrl } from '../api/api';
 import { useLoginStateStoreContext } from '../store/store';
 import { PlayerMetadata } from '../gameroom/game_info';
+import { useHistory } from 'react-router-dom';
+import { useResetStoreContext } from '../store/store';
 
 import './settings.scss';
 
@@ -45,10 +47,12 @@ export const Settings = React.memo((props: Props) => {
   const { loginState } = useLoginStateStoreContext();
   const { username: viewer } = loginState;
   const { useState } = useMountedState();
+  const { resetStore } = useResetStoreContext();
   const [category, setCategory] = useState(Category.PersonalInfo);
   const [player, setPlayer] = useState<Partial<PlayerMetadata> | undefined>(
     undefined
   );
+  const history = useHistory();
 
   type CategoryProps = {
     title: string;
@@ -85,6 +89,24 @@ export const Settings = React.memo((props: Props) => {
       </div>
     );
   });
+
+  const handleLogout = useCallback(() => {
+    axios
+      .post(toAPIUrl('user_service.AuthenticationService', 'Logout'), {
+        withCredentials: true,
+      })
+      .then(() => {
+        notification.info({
+          message: 'Success',
+          description: 'You have been logged out.',
+        });
+        resetStore();
+        history.push('/');
+      })
+      .catch((e) => {
+        console.log(e);
+      });
+  }, [history, resetStore]);
 
   return (
     <>
@@ -124,7 +146,9 @@ export const Settings = React.memo((props: Props) => {
           {category === Category.ChangePassword ? <ChangePassword /> : null}
           {category === Category.Preferences ? <Preferences /> : null}
           {category === Category.BlockedPlayers ? <BlockedPlayers /> : null}
-          {category === Category.LogOut ? <LogOut player={player} /> : null}
+          {category === Category.LogOut ? (
+            <LogOut player={player} handleLogout={handleLogout} />
+          ) : null}
           {category === Category.Support ? <Support /> : null}
         </div>
       </div>
