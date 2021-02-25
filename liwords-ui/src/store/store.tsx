@@ -22,7 +22,7 @@ import {
   GameReducer,
 } from './reducers/game_reducer';
 import { ClockController, Times, Millis } from './timer_controller';
-import { PlayerOrder } from './constants';
+import { PlayerOrder, sortTiles } from './constants';
 import { PoolFormatType } from '../constants/pool_formats';
 import { LoginState, LoginStateReducer } from './login_state';
 import { EphemeralTile } from '../utils/cwgame/common';
@@ -766,7 +766,7 @@ const RealStore = ({ children, ...props }: Props) => {
         sender: '',
         message: sge.getValid()
           ? 'Challenged play was valid'
-          : 'Play was challenged off the board!',
+          : `Play was challenged off the board! Returned tiles: ${sortTiles(sge.getReturnedTiles())}`,
         id: randomID(),
         channel: 'server',
       });
