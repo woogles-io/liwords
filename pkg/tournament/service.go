@@ -331,7 +331,7 @@ func (ts *TournamentService) RecentGames(ctx context.Context, req *pb.RecentGame
 	if err != nil {
 		return nil, twirp.InternalErrorWith(err)
 	}
-	return response, nil
+	return censorRecentGamesResponse(response), nil
 }
 
 func (ts *TournamentService) StartTournament(ctx context.Context, req *pb.StartTournamentRequest) (*pb.TournamentResponse, error) {
@@ -368,6 +368,43 @@ func (ts *TournamentService) StartRoundCountdown(ctx context.Context, req *pb.To
 		return nil, twirp.NewError(twirp.InvalidArgument, err.Error())
 	}
 	return &pb.TournamentResponse{}, nil
+}
+
+func (ts *TournamentService) CreateClubSession(ctx context.Context, req *pb.NewClubSessionRequest) (*pb.ClubSessionResponse, error) {
+	err := authenticateDirector(ctx, ts, req.ClubId, false)
+	if err != nil {
+		return nil, err
+	}
+	// Fetch the club
+	club, err := ts.tournamentStore.Get(ctx, req.ClubId)
+	if err != nil {
+		return nil, err
+	}
+	if club.Type != entity.TypeClub {
+		return nil, errors.New("club sessions can only be created for clubs")
+	}
+	// /club/madison/
+	slugPrefix := club.Slug + "/"
+	slug := slugPrefix + req.Date.AsTime().Format("2006-01-02-") + shortuuid.New()[2:5]
+
+	sessionDate := req.Date.AsTime().Format("Mon Jan 2, 2006")
+
+	name := club.Name + " - " + sessionDate
+	// Create a tournament / club session.
+	t, err := NewTournament(ctx, ts.tournamentStore, name, club.Description, club.Directors,
+		entity.TypeChild, club.UUID, slug)
+	if err != nil {
+		return nil, twirp.NewError(twirp.InvalidArgument, err.Error())
+	}
+	return &pb.ClubSessionResponse{
+		TournamentId: t.UUID,
+		Slug:         t.Slug,
+	}, nil
+
+}
+
+func (ts *TournamentService) GetRecentClubSessions(ctx context.Context, req *pb.RecentClubSessionsRequest) (*pb.ClubSessionsResponse, error) {
+	return ts.tournamentStore.GetRecentClubSessions(ctx, req.Id, int(req.Count), int(req.Offset))
 }
 
 func sessionUser(ctx context.Context, ts *TournamentService) (*entity.User, error) {
@@ -428,39 +465,29 @@ func authenticateDirector(ctx context.Context, ts *TournamentService, id string,
 	return nil
 }
 
-func (ts *TournamentService) CreateClubSession(ctx context.Context, req *pb.NewClubSessionRequest) (*pb.ClubSessionResponse, error) {
-	err := authenticateDirector(ctx, ts, req.ClubId, false)
-	if err != nil {
-		return nil, err
-	}
-	// Fetch the club
-	club, err := ts.tournamentStore.Get(ctx, req.ClubId)
-	if err != nil {
-		return nil, err
-	}
-	if club.Type != entity.TypeClub {
-		return nil, errors.New("club sessions can only be created for clubs")
-	}
-	// /club/madison/
-	slugPrefix := club.Slug + "/"
-	slug := slugPrefix + req.Date.AsTime().Format("2006-01-02-") + shortuuid.New()[2:5]
+func censorRecentGamesResponse(ctx context.Context, us user.Store, rgr *pb.RecentGamesResponse) error {
+	knownUsers := make(map[string]bool)
 
-	sessionDate := req.Date.AsTime().Format("Mon Jan 2, 2006")
+	for _, game := range rgr.Games {
+		playerOneUserEntity := us.Get(ctx, game.Players[0].Username)
+		playerTwoUserEntity := us.Get(ctx, game.Players[1].Username)
+		playerOne := playerOneUserEntity.UUID
+		playerTwo := playerTwoUserEntity.UUID
 
-	name := club.Name + " - " + sessionDate
-	// Create a tournament / club session.
-	t, err := NewTournament(ctx, ts.tournamentStore, name, club.Description, club.Directors,
-		entity.TypeChild, club.UUID, slug)
-	if err != nil {
-		return nil, twirp.NewError(twirp.InvalidArgument, err.Error())
+		_, known := knownUsers[playerOne]
+		if !known {
+			knownUsers[playerOne] = mod.IsCensorable(ctx, us, playerOne)
+		}
+		if knownUsers[playerOne] {
+			tgee.Players[0].Username = mod.CensoredUsername
+		}
+
+		_, known = knownUsers[playerTwo]
+		if !known {
+			knownUsers[playerTwo] = mod.IsCensorable(ctx, us, playerTwo)
+		}
+		if knownUsers[playerTwo] {
+			tgee.Players[0].Username = mod.CensoredUsername
+		}
 	}
-	return &pb.ClubSessionResponse{
-		TournamentId: t.UUID,
-		Slug:         t.Slug,
-	}, nil
-
-}
-
-func (ts *TournamentService) GetRecentClubSessions(ctx context.Context, req *pb.RecentClubSessionsRequest) (*pb.ClubSessionsResponse, error) {
-	return ts.tournamentStore.GetRecentClubSessions(ctx, req.Id, int(req.Count), int(req.Offset))
 }

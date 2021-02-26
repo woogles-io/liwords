@@ -16,6 +16,10 @@ import (
 	pb "github.com/domino14/liwords/rpc/api/proto/realtime"
 )
 
+// Square brackets are never allowed in usernames,
+// so this string will never be a valid username.
+var CensoredUsername = "[deactivated]"
+
 var ModActionDispatching = map[string]func(context.Context, user.Store, user.ChatStore, *ms.ModAction) error{
 
 	/*
@@ -100,6 +104,10 @@ func ActionExists(ctx context.Context, us user.Store, uuid string, forceInsistLo
 		}
 	}
 	return disabledError
+}
+
+func IsCensorable(ctx context.Context, us user.Store, uuid string) (bool, error) {
+	return mod.ActionExists(ctx, us, false, uuid, []ms.ModActionType{ms.ModActionType_SUSPEND_ACCOUNT}) != nil
 }
 
 func GetActions(ctx context.Context, us user.Store, uuid string) (map[string]*ms.ModAction, error) {
