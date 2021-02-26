@@ -74,6 +74,15 @@ export const ActionsPanel = React.memo((props: Props) => {
   const { lobbyContext } = useLobbyStoreContext();
   const tournamentID = tournamentContext.metadata.id;
 
+  const lobbyContextMatchRequests = lobbyContext?.matchRequests;
+  const thisTournamentMatchRequests = useMemo(
+    () =>
+      lobbyContextMatchRequests?.filter(
+        (matchRequest) => matchRequest.tournamentID === tournamentID
+      ),
+    [lobbyContextMatchRequests, tournamentID]
+  );
+
   const fetchPrev = useCallback(() => {
     dispatchTournamentContext({
       actionType: ActionType.SetTourneyGamesOffset,
@@ -206,13 +215,13 @@ export const ActionsPanel = React.memo((props: Props) => {
       }
       return (
         <>
-          {lobbyContext?.matchRequests.length ? (
+          {thisTournamentMatchRequests?.length ? (
             <SoughtGames
               isMatch={true}
               userID={userID}
               username={username}
               newGame={newGame}
-              requests={lobbyContext?.matchRequests}
+              requests={thisTournamentMatchRequests}
             />
           ) : null}
           <ActiveGames

@@ -142,6 +142,7 @@ const (
 	MessageType_MATCH_REQUESTS                      MessageType = 18
 	MessageType_DECLINE_MATCH_REQUEST               MessageType = 19
 	MessageType_CHAT_MESSAGE                        MessageType = 20
+	MessageType_CHAT_MESSAGE_DELETED                MessageType = 21
 	MessageType_USER_PRESENCE                       MessageType = 22
 	MessageType_USER_PRESENCES                      MessageType = 23
 	MessageType_SERVER_MESSAGE                      MessageType = 24
@@ -181,6 +182,7 @@ var (
 		18: "MATCH_REQUESTS",
 		19: "DECLINE_MATCH_REQUEST",
 		20: "CHAT_MESSAGE",
+		21: "CHAT_MESSAGE_DELETED",
 		22: "USER_PRESENCE",
 		23: "USER_PRESENCES",
 		24: "SERVER_MESSAGE",
@@ -217,6 +219,7 @@ var (
 		"MATCH_REQUESTS":                      18,
 		"DECLINE_MATCH_REQUEST":               19,
 		"CHAT_MESSAGE":                        20,
+		"CHAT_MESSAGE_DELETED":                21,
 		"USER_PRESENCE":                       22,
 		"USER_PRESENCES":                      23,
 		"SERVER_MESSAGE":                      24,
@@ -650,7 +653,7 @@ func (x ClientGameplayEvent_EventType) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use ClientGameplayEvent_EventType.Descriptor instead.
 func (ClientGameplayEvent_EventType) EnumDescriptor() ([]byte, []int) {
-	return file_api_proto_realtime_realtime_proto_rawDescGZIP(), []int{27, 0}
+	return file_api_proto_realtime_realtime_proto_rawDescGZIP(), []int{28, 0}
 }
 
 // A GameRules is just the name of a board layout + the name of a letter
@@ -1028,6 +1031,7 @@ type ChatMessage struct {
 	// timestamp is in milliseconds!
 	Timestamp int64  `protobuf:"varint,4,opt,name=timestamp,proto3" json:"timestamp,omitempty"`
 	UserId    string `protobuf:"bytes,5,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	Id        string `protobuf:"bytes,6,opt,name=id,proto3" json:"id,omitempty"`
 }
 
 func (x *ChatMessage) Reset() {
@@ -1093,6 +1097,13 @@ func (x *ChatMessage) GetTimestamp() int64 {
 func (x *ChatMessage) GetUserId() string {
 	if x != nil {
 		return x.UserId
+	}
+	return ""
+}
+
+func (x *ChatMessage) GetId() string {
+	if x != nil {
+		return x.Id
 	}
 	return ""
 }
@@ -2533,6 +2544,61 @@ func (x *ServerMessage) GetMessage() string {
 	return ""
 }
 
+type ChatMessageDeleted struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	Channel string `protobuf:"bytes,1,opt,name=channel,proto3" json:"channel,omitempty"`
+	Id      string `protobuf:"bytes,2,opt,name=id,proto3" json:"id,omitempty"`
+}
+
+func (x *ChatMessageDeleted) Reset() {
+	*x = ChatMessageDeleted{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_api_proto_realtime_realtime_proto_msgTypes[27]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *ChatMessageDeleted) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ChatMessageDeleted) ProtoMessage() {}
+
+func (x *ChatMessageDeleted) ProtoReflect() protoreflect.Message {
+	mi := &file_api_proto_realtime_realtime_proto_msgTypes[27]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ChatMessageDeleted.ProtoReflect.Descriptor instead.
+func (*ChatMessageDeleted) Descriptor() ([]byte, []int) {
+	return file_api_proto_realtime_realtime_proto_rawDescGZIP(), []int{27}
+}
+
+func (x *ChatMessageDeleted) GetChannel() string {
+	if x != nil {
+		return x.Channel
+	}
+	return ""
+}
+
+func (x *ChatMessageDeleted) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
 // We encapsulate the game event here from the client's point of view. The
 // server will validate that the event is permissible.
 type ClientGameplayEvent struct {
@@ -2552,7 +2618,7 @@ type ClientGameplayEvent struct {
 func (x *ClientGameplayEvent) Reset() {
 	*x = ClientGameplayEvent{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_api_proto_realtime_realtime_proto_msgTypes[27]
+		mi := &file_api_proto_realtime_realtime_proto_msgTypes[28]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -2565,7 +2631,7 @@ func (x *ClientGameplayEvent) String() string {
 func (*ClientGameplayEvent) ProtoMessage() {}
 
 func (x *ClientGameplayEvent) ProtoReflect() protoreflect.Message {
-	mi := &file_api_proto_realtime_realtime_proto_msgTypes[27]
+	mi := &file_api_proto_realtime_realtime_proto_msgTypes[28]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2578,7 +2644,7 @@ func (x *ClientGameplayEvent) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ClientGameplayEvent.ProtoReflect.Descriptor instead.
 func (*ClientGameplayEvent) Descriptor() ([]byte, []int) {
-	return file_api_proto_realtime_realtime_proto_rawDescGZIP(), []int{27}
+	return file_api_proto_realtime_realtime_proto_rawDescGZIP(), []int{28}
 }
 
 func (x *ClientGameplayEvent) GetType() ClientGameplayEvent_EventType {
@@ -2627,7 +2693,7 @@ type ReadyForTournamentGame struct {
 func (x *ReadyForTournamentGame) Reset() {
 	*x = ReadyForTournamentGame{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_api_proto_realtime_realtime_proto_msgTypes[28]
+		mi := &file_api_proto_realtime_realtime_proto_msgTypes[29]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -2640,7 +2706,7 @@ func (x *ReadyForTournamentGame) String() string {
 func (*ReadyForTournamentGame) ProtoMessage() {}
 
 func (x *ReadyForTournamentGame) ProtoReflect() protoreflect.Message {
-	mi := &file_api_proto_realtime_realtime_proto_msgTypes[28]
+	mi := &file_api_proto_realtime_realtime_proto_msgTypes[29]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2653,7 +2719,7 @@ func (x *ReadyForTournamentGame) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ReadyForTournamentGame.ProtoReflect.Descriptor instead.
 func (*ReadyForTournamentGame) Descriptor() ([]byte, []int) {
-	return file_api_proto_realtime_realtime_proto_rawDescGZIP(), []int{28}
+	return file_api_proto_realtime_realtime_proto_rawDescGZIP(), []int{29}
 }
 
 func (x *ReadyForTournamentGame) GetTournamentId() string {
@@ -2710,7 +2776,7 @@ type TimedOut struct {
 func (x *TimedOut) Reset() {
 	*x = TimedOut{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_api_proto_realtime_realtime_proto_msgTypes[29]
+		mi := &file_api_proto_realtime_realtime_proto_msgTypes[30]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -2723,7 +2789,7 @@ func (x *TimedOut) String() string {
 func (*TimedOut) ProtoMessage() {}
 
 func (x *TimedOut) ProtoReflect() protoreflect.Message {
-	mi := &file_api_proto_realtime_realtime_proto_msgTypes[29]
+	mi := &file_api_proto_realtime_realtime_proto_msgTypes[30]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2736,7 +2802,7 @@ func (x *TimedOut) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TimedOut.ProtoReflect.Descriptor instead.
 func (*TimedOut) Descriptor() ([]byte, []int) {
-	return file_api_proto_realtime_realtime_proto_rawDescGZIP(), []int{29}
+	return file_api_proto_realtime_realtime_proto_rawDescGZIP(), []int{30}
 }
 
 func (x *TimedOut) GetGameId() string {
@@ -2765,7 +2831,7 @@ type DeclineMatchRequest struct {
 func (x *DeclineMatchRequest) Reset() {
 	*x = DeclineMatchRequest{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_api_proto_realtime_realtime_proto_msgTypes[30]
+		mi := &file_api_proto_realtime_realtime_proto_msgTypes[31]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -2778,7 +2844,7 @@ func (x *DeclineMatchRequest) String() string {
 func (*DeclineMatchRequest) ProtoMessage() {}
 
 func (x *DeclineMatchRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_proto_realtime_realtime_proto_msgTypes[30]
+	mi := &file_api_proto_realtime_realtime_proto_msgTypes[31]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2791,7 +2857,7 @@ func (x *DeclineMatchRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeclineMatchRequest.ProtoReflect.Descriptor instead.
 func (*DeclineMatchRequest) Descriptor() ([]byte, []int) {
-	return file_api_proto_realtime_realtime_proto_rawDescGZIP(), []int{30}
+	return file_api_proto_realtime_realtime_proto_rawDescGZIP(), []int{31}
 }
 
 func (x *DeclineMatchRequest) GetRequestId() string {
@@ -2814,7 +2880,7 @@ type TournamentPersons struct {
 func (x *TournamentPersons) Reset() {
 	*x = TournamentPersons{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_api_proto_realtime_realtime_proto_msgTypes[31]
+		mi := &file_api_proto_realtime_realtime_proto_msgTypes[32]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -2827,7 +2893,7 @@ func (x *TournamentPersons) String() string {
 func (*TournamentPersons) ProtoMessage() {}
 
 func (x *TournamentPersons) ProtoReflect() protoreflect.Message {
-	mi := &file_api_proto_realtime_realtime_proto_msgTypes[31]
+	mi := &file_api_proto_realtime_realtime_proto_msgTypes[32]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2840,7 +2906,7 @@ func (x *TournamentPersons) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TournamentPersons.ProtoReflect.Descriptor instead.
 func (*TournamentPersons) Descriptor() ([]byte, []int) {
-	return file_api_proto_realtime_realtime_proto_rawDescGZIP(), []int{31}
+	return file_api_proto_realtime_realtime_proto_rawDescGZIP(), []int{32}
 }
 
 func (x *TournamentPersons) GetId() string {
@@ -2884,7 +2950,7 @@ type RoundControl struct {
 func (x *RoundControl) Reset() {
 	*x = RoundControl{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_api_proto_realtime_realtime_proto_msgTypes[32]
+		mi := &file_api_proto_realtime_realtime_proto_msgTypes[33]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -2897,7 +2963,7 @@ func (x *RoundControl) String() string {
 func (*RoundControl) ProtoMessage() {}
 
 func (x *RoundControl) ProtoReflect() protoreflect.Message {
-	mi := &file_api_proto_realtime_realtime_proto_msgTypes[32]
+	mi := &file_api_proto_realtime_realtime_proto_msgTypes[33]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2910,7 +2976,7 @@ func (x *RoundControl) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RoundControl.ProtoReflect.Descriptor instead.
 func (*RoundControl) Descriptor() ([]byte, []int) {
-	return file_api_proto_realtime_realtime_proto_rawDescGZIP(), []int{32}
+	return file_api_proto_realtime_realtime_proto_rawDescGZIP(), []int{33}
 }
 
 func (x *RoundControl) GetPairingMethod() PairingMethod {
@@ -3000,7 +3066,7 @@ type TournamentControls struct {
 func (x *TournamentControls) Reset() {
 	*x = TournamentControls{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_api_proto_realtime_realtime_proto_msgTypes[33]
+		mi := &file_api_proto_realtime_realtime_proto_msgTypes[34]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -3013,7 +3079,7 @@ func (x *TournamentControls) String() string {
 func (*TournamentControls) ProtoMessage() {}
 
 func (x *TournamentControls) ProtoReflect() protoreflect.Message {
-	mi := &file_api_proto_realtime_realtime_proto_msgTypes[33]
+	mi := &file_api_proto_realtime_realtime_proto_msgTypes[34]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3026,7 +3092,7 @@ func (x *TournamentControls) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TournamentControls.ProtoReflect.Descriptor instead.
 func (*TournamentControls) Descriptor() ([]byte, []int) {
-	return file_api_proto_realtime_realtime_proto_rawDescGZIP(), []int{33}
+	return file_api_proto_realtime_realtime_proto_rawDescGZIP(), []int{34}
 }
 
 func (x *TournamentControls) GetId() string {
@@ -3092,7 +3158,7 @@ type TournamentGame struct {
 func (x *TournamentGame) Reset() {
 	*x = TournamentGame{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_api_proto_realtime_realtime_proto_msgTypes[34]
+		mi := &file_api_proto_realtime_realtime_proto_msgTypes[35]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -3105,7 +3171,7 @@ func (x *TournamentGame) String() string {
 func (*TournamentGame) ProtoMessage() {}
 
 func (x *TournamentGame) ProtoReflect() protoreflect.Message {
-	mi := &file_api_proto_realtime_realtime_proto_msgTypes[34]
+	mi := &file_api_proto_realtime_realtime_proto_msgTypes[35]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3118,7 +3184,7 @@ func (x *TournamentGame) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TournamentGame.ProtoReflect.Descriptor instead.
 func (*TournamentGame) Descriptor() ([]byte, []int) {
-	return file_api_proto_realtime_realtime_proto_rawDescGZIP(), []int{34}
+	return file_api_proto_realtime_realtime_proto_rawDescGZIP(), []int{35}
 }
 
 func (x *TournamentGame) GetScores() []int32 {
@@ -3161,7 +3227,7 @@ type PlayerProperties struct {
 func (x *PlayerProperties) Reset() {
 	*x = PlayerProperties{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_api_proto_realtime_realtime_proto_msgTypes[35]
+		mi := &file_api_proto_realtime_realtime_proto_msgTypes[36]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -3174,7 +3240,7 @@ func (x *PlayerProperties) String() string {
 func (*PlayerProperties) ProtoMessage() {}
 
 func (x *PlayerProperties) ProtoReflect() protoreflect.Message {
-	mi := &file_api_proto_realtime_realtime_proto_msgTypes[35]
+	mi := &file_api_proto_realtime_realtime_proto_msgTypes[36]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3187,7 +3253,7 @@ func (x *PlayerProperties) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PlayerProperties.ProtoReflect.Descriptor instead.
 func (*PlayerProperties) Descriptor() ([]byte, []int) {
-	return file_api_proto_realtime_realtime_proto_rawDescGZIP(), []int{35}
+	return file_api_proto_realtime_realtime_proto_rawDescGZIP(), []int{36}
 }
 
 func (x *PlayerProperties) GetRemoved() bool {
@@ -3218,7 +3284,7 @@ type PlayerRoundInfo struct {
 func (x *PlayerRoundInfo) Reset() {
 	*x = PlayerRoundInfo{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_api_proto_realtime_realtime_proto_msgTypes[36]
+		mi := &file_api_proto_realtime_realtime_proto_msgTypes[37]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -3231,7 +3297,7 @@ func (x *PlayerRoundInfo) String() string {
 func (*PlayerRoundInfo) ProtoMessage() {}
 
 func (x *PlayerRoundInfo) ProtoReflect() protoreflect.Message {
-	mi := &file_api_proto_realtime_realtime_proto_msgTypes[36]
+	mi := &file_api_proto_realtime_realtime_proto_msgTypes[37]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3244,7 +3310,7 @@ func (x *PlayerRoundInfo) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PlayerRoundInfo.ProtoReflect.Descriptor instead.
 func (*PlayerRoundInfo) Descriptor() ([]byte, []int) {
-	return file_api_proto_realtime_realtime_proto_rawDescGZIP(), []int{36}
+	return file_api_proto_realtime_realtime_proto_rawDescGZIP(), []int{37}
 }
 
 func (x *PlayerRoundInfo) GetPlayers() []string {
@@ -3291,7 +3357,7 @@ type PlayerStanding struct {
 func (x *PlayerStanding) Reset() {
 	*x = PlayerStanding{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_api_proto_realtime_realtime_proto_msgTypes[37]
+		mi := &file_api_proto_realtime_realtime_proto_msgTypes[38]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -3304,7 +3370,7 @@ func (x *PlayerStanding) String() string {
 func (*PlayerStanding) ProtoMessage() {}
 
 func (x *PlayerStanding) ProtoReflect() protoreflect.Message {
-	mi := &file_api_proto_realtime_realtime_proto_msgTypes[37]
+	mi := &file_api_proto_realtime_realtime_proto_msgTypes[38]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3317,7 +3383,7 @@ func (x *PlayerStanding) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PlayerStanding.ProtoReflect.Descriptor instead.
 func (*PlayerStanding) Descriptor() ([]byte, []int) {
-	return file_api_proto_realtime_realtime_proto_rawDescGZIP(), []int{37}
+	return file_api_proto_realtime_realtime_proto_rawDescGZIP(), []int{38}
 }
 
 func (x *PlayerStanding) GetPlayer() string {
@@ -3373,7 +3439,7 @@ type RoundStandings struct {
 func (x *RoundStandings) Reset() {
 	*x = RoundStandings{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_api_proto_realtime_realtime_proto_msgTypes[38]
+		mi := &file_api_proto_realtime_realtime_proto_msgTypes[39]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -3386,7 +3452,7 @@ func (x *RoundStandings) String() string {
 func (*RoundStandings) ProtoMessage() {}
 
 func (x *RoundStandings) ProtoReflect() protoreflect.Message {
-	mi := &file_api_proto_realtime_realtime_proto_msgTypes[38]
+	mi := &file_api_proto_realtime_realtime_proto_msgTypes[39]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3399,7 +3465,7 @@ func (x *RoundStandings) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RoundStandings.ProtoReflect.Descriptor instead.
 func (*RoundStandings) Descriptor() ([]byte, []int) {
-	return file_api_proto_realtime_realtime_proto_rawDescGZIP(), []int{38}
+	return file_api_proto_realtime_realtime_proto_rawDescGZIP(), []int{39}
 }
 
 func (x *RoundStandings) GetStandings() []*PlayerStanding {
@@ -3420,7 +3486,7 @@ type ClassicDivision struct {
 func (x *ClassicDivision) Reset() {
 	*x = ClassicDivision{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_api_proto_realtime_realtime_proto_msgTypes[39]
+		mi := &file_api_proto_realtime_realtime_proto_msgTypes[40]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -3433,7 +3499,7 @@ func (x *ClassicDivision) String() string {
 func (*ClassicDivision) ProtoMessage() {}
 
 func (x *ClassicDivision) ProtoReflect() protoreflect.Message {
-	mi := &file_api_proto_realtime_realtime_proto_msgTypes[39]
+	mi := &file_api_proto_realtime_realtime_proto_msgTypes[40]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3446,7 +3512,7 @@ func (x *ClassicDivision) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ClassicDivision.ProtoReflect.Descriptor instead.
 func (*ClassicDivision) Descriptor() ([]byte, []int) {
-	return file_api_proto_realtime_realtime_proto_rawDescGZIP(), []int{39}
+	return file_api_proto_realtime_realtime_proto_rawDescGZIP(), []int{40}
 }
 
 func (x *ClassicDivision) GetMatrix() []*PlayerRoundInfo {
@@ -3482,7 +3548,7 @@ type TournamentDivisionDataResponse struct {
 func (x *TournamentDivisionDataResponse) Reset() {
 	*x = TournamentDivisionDataResponse{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_api_proto_realtime_realtime_proto_msgTypes[40]
+		mi := &file_api_proto_realtime_realtime_proto_msgTypes[41]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -3495,7 +3561,7 @@ func (x *TournamentDivisionDataResponse) String() string {
 func (*TournamentDivisionDataResponse) ProtoMessage() {}
 
 func (x *TournamentDivisionDataResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_proto_realtime_realtime_proto_msgTypes[40]
+	mi := &file_api_proto_realtime_realtime_proto_msgTypes[41]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3508,7 +3574,7 @@ func (x *TournamentDivisionDataResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TournamentDivisionDataResponse.ProtoReflect.Descriptor instead.
 func (*TournamentDivisionDataResponse) Descriptor() ([]byte, []int) {
-	return file_api_proto_realtime_realtime_proto_rawDescGZIP(), []int{40}
+	return file_api_proto_realtime_realtime_proto_rawDescGZIP(), []int{41}
 }
 
 func (x *TournamentDivisionDataResponse) GetId() string {
@@ -3593,7 +3659,7 @@ type FullTournamentDivisions struct {
 func (x *FullTournamentDivisions) Reset() {
 	*x = FullTournamentDivisions{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_api_proto_realtime_realtime_proto_msgTypes[41]
+		mi := &file_api_proto_realtime_realtime_proto_msgTypes[42]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -3606,7 +3672,7 @@ func (x *FullTournamentDivisions) String() string {
 func (*FullTournamentDivisions) ProtoMessage() {}
 
 func (x *FullTournamentDivisions) ProtoReflect() protoreflect.Message {
-	mi := &file_api_proto_realtime_realtime_proto_msgTypes[41]
+	mi := &file_api_proto_realtime_realtime_proto_msgTypes[42]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3619,7 +3685,7 @@ func (x *FullTournamentDivisions) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use FullTournamentDivisions.ProtoReflect.Descriptor instead.
 func (*FullTournamentDivisions) Descriptor() ([]byte, []int) {
-	return file_api_proto_realtime_realtime_proto_rawDescGZIP(), []int{41}
+	return file_api_proto_realtime_realtime_proto_rawDescGZIP(), []int{42}
 }
 
 func (x *FullTournamentDivisions) GetDivisions() map[string]*TournamentDivisionDataResponse {
@@ -3653,7 +3719,7 @@ type TournamentDataResponse struct {
 func (x *TournamentDataResponse) Reset() {
 	*x = TournamentDataResponse{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_api_proto_realtime_realtime_proto_msgTypes[42]
+		mi := &file_api_proto_realtime_realtime_proto_msgTypes[43]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -3666,7 +3732,7 @@ func (x *TournamentDataResponse) String() string {
 func (*TournamentDataResponse) ProtoMessage() {}
 
 func (x *TournamentDataResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_proto_realtime_realtime_proto_msgTypes[42]
+	mi := &file_api_proto_realtime_realtime_proto_msgTypes[43]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3679,7 +3745,7 @@ func (x *TournamentDataResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TournamentDataResponse.ProtoReflect.Descriptor instead.
 func (*TournamentDataResponse) Descriptor() ([]byte, []int) {
-	return file_api_proto_realtime_realtime_proto_rawDescGZIP(), []int{42}
+	return file_api_proto_realtime_realtime_proto_rawDescGZIP(), []int{43}
 }
 
 func (x *TournamentDataResponse) GetId() string {
@@ -3743,7 +3809,7 @@ type TournamentDivisionDeletedResponse struct {
 func (x *TournamentDivisionDeletedResponse) Reset() {
 	*x = TournamentDivisionDeletedResponse{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_api_proto_realtime_realtime_proto_msgTypes[43]
+		mi := &file_api_proto_realtime_realtime_proto_msgTypes[44]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -3756,7 +3822,7 @@ func (x *TournamentDivisionDeletedResponse) String() string {
 func (*TournamentDivisionDeletedResponse) ProtoMessage() {}
 
 func (x *TournamentDivisionDeletedResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_proto_realtime_realtime_proto_msgTypes[43]
+	mi := &file_api_proto_realtime_realtime_proto_msgTypes[44]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3769,7 +3835,7 @@ func (x *TournamentDivisionDeletedResponse) ProtoReflect() protoreflect.Message 
 
 // Deprecated: Use TournamentDivisionDeletedResponse.ProtoReflect.Descriptor instead.
 func (*TournamentDivisionDeletedResponse) Descriptor() ([]byte, []int) {
-	return file_api_proto_realtime_realtime_proto_rawDescGZIP(), []int{43}
+	return file_api_proto_realtime_realtime_proto_rawDescGZIP(), []int{44}
 }
 
 func (x *TournamentDivisionDeletedResponse) GetId() string {
@@ -3799,7 +3865,7 @@ type JoinPath struct {
 func (x *JoinPath) Reset() {
 	*x = JoinPath{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_api_proto_realtime_realtime_proto_msgTypes[44]
+		mi := &file_api_proto_realtime_realtime_proto_msgTypes[45]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -3812,7 +3878,7 @@ func (x *JoinPath) String() string {
 func (*JoinPath) ProtoMessage() {}
 
 func (x *JoinPath) ProtoReflect() protoreflect.Message {
-	mi := &file_api_proto_realtime_realtime_proto_msgTypes[44]
+	mi := &file_api_proto_realtime_realtime_proto_msgTypes[45]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3825,7 +3891,7 @@ func (x *JoinPath) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use JoinPath.ProtoReflect.Descriptor instead.
 func (*JoinPath) Descriptor() ([]byte, []int) {
-	return file_api_proto_realtime_realtime_proto_rawDescGZIP(), []int{44}
+	return file_api_proto_realtime_realtime_proto_rawDescGZIP(), []int{45}
 }
 
 func (x *JoinPath) GetPath() string {
@@ -3844,7 +3910,7 @@ type UnjoinRealm struct {
 func (x *UnjoinRealm) Reset() {
 	*x = UnjoinRealm{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_api_proto_realtime_realtime_proto_msgTypes[45]
+		mi := &file_api_proto_realtime_realtime_proto_msgTypes[46]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -3857,7 +3923,7 @@ func (x *UnjoinRealm) String() string {
 func (*UnjoinRealm) ProtoMessage() {}
 
 func (x *UnjoinRealm) ProtoReflect() protoreflect.Message {
-	mi := &file_api_proto_realtime_realtime_proto_msgTypes[45]
+	mi := &file_api_proto_realtime_realtime_proto_msgTypes[46]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3870,7 +3936,7 @@ func (x *UnjoinRealm) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UnjoinRealm.ProtoReflect.Descriptor instead.
 func (*UnjoinRealm) Descriptor() ([]byte, []int) {
-	return file_api_proto_realtime_realtime_proto_rawDescGZIP(), []int{45}
+	return file_api_proto_realtime_realtime_proto_rawDescGZIP(), []int{46}
 }
 
 type TournamentGameEndedEvent_Player struct {
@@ -3886,7 +3952,7 @@ type TournamentGameEndedEvent_Player struct {
 func (x *TournamentGameEndedEvent_Player) Reset() {
 	*x = TournamentGameEndedEvent_Player{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_api_proto_realtime_realtime_proto_msgTypes[49]
+		mi := &file_api_proto_realtime_realtime_proto_msgTypes[50]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -3899,7 +3965,7 @@ func (x *TournamentGameEndedEvent_Player) String() string {
 func (*TournamentGameEndedEvent_Player) ProtoMessage() {}
 
 func (x *TournamentGameEndedEvent_Player) ProtoReflect() protoreflect.Message {
-	mi := &file_api_proto_realtime_realtime_proto_msgTypes[49]
+	mi := &file_api_proto_realtime_realtime_proto_msgTypes[50]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4001,7 +4067,7 @@ var file_api_proto_realtime_realtime_proto_rawDesc = []byte{
 	0x12, 0x0e, 0x0a, 0x02, 0x69, 0x64, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x02, 0x69, 0x64,
 	0x22, 0x27, 0x0a, 0x0e, 0x4c, 0x61, 0x67, 0x4d, 0x65, 0x61, 0x73, 0x75, 0x72, 0x65, 0x6d, 0x65,
 	0x6e, 0x74, 0x12, 0x15, 0x0a, 0x06, 0x6c, 0x61, 0x67, 0x5f, 0x6d, 0x73, 0x18, 0x01, 0x20, 0x01,
-	0x28, 0x05, 0x52, 0x05, 0x6c, 0x61, 0x67, 0x4d, 0x73, 0x22, 0x94, 0x01, 0x0a, 0x0b, 0x43, 0x68,
+	0x28, 0x05, 0x52, 0x05, 0x6c, 0x61, 0x67, 0x4d, 0x73, 0x22, 0xa4, 0x01, 0x0a, 0x0b, 0x43, 0x68,
 	0x61, 0x74, 0x4d, 0x65, 0x73, 0x73, 0x61, 0x67, 0x65, 0x12, 0x1a, 0x0a, 0x08, 0x75, 0x73, 0x65,
 	0x72, 0x6e, 0x61, 0x6d, 0x65, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x08, 0x75, 0x73, 0x65,
 	0x72, 0x6e, 0x61, 0x6d, 0x65, 0x12, 0x18, 0x0a, 0x07, 0x63, 0x68, 0x61, 0x6e, 0x6e, 0x65, 0x6c,
@@ -4011,6 +4077,7 @@ var file_api_proto_realtime_realtime_proto_rawDesc = []byte{
 	0x65, 0x73, 0x74, 0x61, 0x6d, 0x70, 0x18, 0x04, 0x20, 0x01, 0x28, 0x03, 0x52, 0x09, 0x74, 0x69,
 	0x6d, 0x65, 0x73, 0x74, 0x61, 0x6d, 0x70, 0x12, 0x17, 0x0a, 0x07, 0x75, 0x73, 0x65, 0x72, 0x5f,
 	0x69, 0x64, 0x18, 0x05, 0x20, 0x01, 0x28, 0x09, 0x52, 0x06, 0x75, 0x73, 0x65, 0x72, 0x49, 0x64,
+	0x12, 0x0e, 0x0a, 0x02, 0x69, 0x64, 0x18, 0x06, 0x20, 0x01, 0x28, 0x09, 0x52, 0x02, 0x69, 0x64,
 	0x22, 0x40, 0x0a, 0x0c, 0x43, 0x68, 0x61, 0x74, 0x4d, 0x65, 0x73, 0x73, 0x61, 0x67, 0x65, 0x73,
 	0x12, 0x30, 0x0a, 0x08, 0x6d, 0x65, 0x73, 0x73, 0x61, 0x67, 0x65, 0x73, 0x18, 0x01, 0x20, 0x03,
 	0x28, 0x0b, 0x32, 0x14, 0x2e, 0x6c, 0x69, 0x77, 0x6f, 0x72, 0x64, 0x73, 0x2e, 0x43, 0x68, 0x61,
@@ -4236,7 +4303,11 @@ var file_api_proto_realtime_realtime_proto_rawDesc = []byte{
 	0x20, 0x01, 0x28, 0x09, 0x52, 0x07, 0x6d, 0x65, 0x73, 0x73, 0x61, 0x67, 0x65, 0x22, 0x29, 0x0a,
 	0x0d, 0x53, 0x65, 0x72, 0x76, 0x65, 0x72, 0x4d, 0x65, 0x73, 0x73, 0x61, 0x67, 0x65, 0x12, 0x18,
 	0x0a, 0x07, 0x6d, 0x65, 0x73, 0x73, 0x61, 0x67, 0x65, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52,
-	0x07, 0x6d, 0x65, 0x73, 0x73, 0x61, 0x67, 0x65, 0x22, 0x82, 0x02, 0x0a, 0x13, 0x43, 0x6c, 0x69,
+	0x07, 0x6d, 0x65, 0x73, 0x73, 0x61, 0x67, 0x65, 0x22, 0x3e, 0x0a, 0x12, 0x43, 0x68, 0x61, 0x74,
+	0x4d, 0x65, 0x73, 0x73, 0x61, 0x67, 0x65, 0x44, 0x65, 0x6c, 0x65, 0x74, 0x65, 0x64, 0x12, 0x18,
+	0x0a, 0x07, 0x63, 0x68, 0x61, 0x6e, 0x6e, 0x65, 0x6c, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52,
+	0x07, 0x63, 0x68, 0x61, 0x6e, 0x6e, 0x65, 0x6c, 0x12, 0x0e, 0x0a, 0x02, 0x69, 0x64, 0x18, 0x02,
+	0x20, 0x01, 0x28, 0x09, 0x52, 0x02, 0x69, 0x64, 0x22, 0x82, 0x02, 0x0a, 0x13, 0x43, 0x6c, 0x69,
 	0x65, 0x6e, 0x74, 0x47, 0x61, 0x6d, 0x65, 0x70, 0x6c, 0x61, 0x79, 0x45, 0x76, 0x65, 0x6e, 0x74,
 	0x12, 0x3a, 0x0a, 0x04, 0x74, 0x79, 0x70, 0x65, 0x18, 0x01, 0x20, 0x01, 0x28, 0x0e, 0x32, 0x26,
 	0x2e, 0x6c, 0x69, 0x77, 0x6f, 0x72, 0x64, 0x73, 0x2e, 0x43, 0x6c, 0x69, 0x65, 0x6e, 0x74, 0x47,
@@ -4474,7 +4545,7 @@ var file_api_proto_realtime_realtime_proto_rawDesc = []byte{
 	0x49, 0x4d, 0x45, 0x10, 0x00, 0x12, 0x12, 0x0a, 0x0e, 0x43, 0x4f, 0x52, 0x52, 0x45, 0x53, 0x50,
 	0x4f, 0x4e, 0x44, 0x45, 0x4e, 0x43, 0x45, 0x10, 0x01, 0x2a, 0x23, 0x0a, 0x0a, 0x52, 0x61, 0x74,
 	0x69, 0x6e, 0x67, 0x4d, 0x6f, 0x64, 0x65, 0x12, 0x09, 0x0a, 0x05, 0x52, 0x41, 0x54, 0x45, 0x44,
-	0x10, 0x00, 0x12, 0x0a, 0x0a, 0x06, 0x43, 0x41, 0x53, 0x55, 0x41, 0x4c, 0x10, 0x01, 0x2a, 0xd6,
+	0x10, 0x00, 0x12, 0x0a, 0x0a, 0x06, 0x43, 0x41, 0x53, 0x55, 0x41, 0x4c, 0x10, 0x01, 0x2a, 0xf0,
 	0x06, 0x0a, 0x0b, 0x4d, 0x65, 0x73, 0x73, 0x61, 0x67, 0x65, 0x54, 0x79, 0x70, 0x65, 0x12, 0x10,
 	0x0a, 0x0c, 0x53, 0x45, 0x45, 0x4b, 0x5f, 0x52, 0x45, 0x51, 0x55, 0x45, 0x53, 0x54, 0x10, 0x00,
 	0x12, 0x11, 0x0a, 0x0d, 0x4d, 0x41, 0x54, 0x43, 0x48, 0x5f, 0x52, 0x45, 0x51, 0x55, 0x45, 0x53,
@@ -4507,64 +4578,66 @@ var file_api_proto_realtime_realtime_proto_rawDesc = []byte{
 	0x53, 0x54, 0x53, 0x10, 0x12, 0x12, 0x19, 0x0a, 0x15, 0x44, 0x45, 0x43, 0x4c, 0x49, 0x4e, 0x45,
 	0x5f, 0x4d, 0x41, 0x54, 0x43, 0x48, 0x5f, 0x52, 0x45, 0x51, 0x55, 0x45, 0x53, 0x54, 0x10, 0x13,
 	0x12, 0x10, 0x0a, 0x0c, 0x43, 0x48, 0x41, 0x54, 0x5f, 0x4d, 0x45, 0x53, 0x53, 0x41, 0x47, 0x45,
-	0x10, 0x14, 0x12, 0x11, 0x0a, 0x0d, 0x55, 0x53, 0x45, 0x52, 0x5f, 0x50, 0x52, 0x45, 0x53, 0x45,
-	0x4e, 0x43, 0x45, 0x10, 0x16, 0x12, 0x12, 0x0a, 0x0e, 0x55, 0x53, 0x45, 0x52, 0x5f, 0x50, 0x52,
-	0x45, 0x53, 0x45, 0x4e, 0x43, 0x45, 0x53, 0x10, 0x17, 0x12, 0x12, 0x0a, 0x0e, 0x53, 0x45, 0x52,
-	0x56, 0x45, 0x52, 0x5f, 0x4d, 0x45, 0x53, 0x53, 0x41, 0x47, 0x45, 0x10, 0x18, 0x12, 0x12, 0x0a,
-	0x0e, 0x52, 0x45, 0x41, 0x44, 0x59, 0x5f, 0x46, 0x4f, 0x52, 0x5f, 0x47, 0x41, 0x4d, 0x45, 0x10,
-	0x19, 0x12, 0x13, 0x0a, 0x0f, 0x4c, 0x41, 0x47, 0x5f, 0x4d, 0x45, 0x41, 0x53, 0x55, 0x52, 0x45,
-	0x4d, 0x45, 0x4e, 0x54, 0x10, 0x1a, 0x12, 0x1f, 0x0a, 0x1b, 0x54, 0x4f, 0x55, 0x52, 0x4e, 0x41,
-	0x4d, 0x45, 0x4e, 0x54, 0x5f, 0x47, 0x41, 0x4d, 0x45, 0x5f, 0x45, 0x4e, 0x44, 0x45, 0x44, 0x5f,
-	0x45, 0x56, 0x45, 0x4e, 0x54, 0x10, 0x1b, 0x12, 0x16, 0x0a, 0x12, 0x54, 0x4f, 0x55, 0x52, 0x4e,
-	0x41, 0x4d, 0x45, 0x4e, 0x54, 0x5f, 0x4d, 0x45, 0x53, 0x53, 0x41, 0x47, 0x45, 0x10, 0x1c, 0x12,
-	0x13, 0x0a, 0x0f, 0x52, 0x45, 0x4d, 0x41, 0x54, 0x43, 0x48, 0x5f, 0x53, 0x54, 0x41, 0x52, 0x54,
-	0x45, 0x44, 0x10, 0x1d, 0x12, 0x1f, 0x0a, 0x1b, 0x54, 0x4f, 0x55, 0x52, 0x4e, 0x41, 0x4d, 0x45,
-	0x4e, 0x54, 0x5f, 0x44, 0x49, 0x56, 0x49, 0x53, 0x49, 0x4f, 0x4e, 0x5f, 0x4d, 0x45, 0x53, 0x53,
-	0x41, 0x47, 0x45, 0x10, 0x1e, 0x12, 0x27, 0x0a, 0x23, 0x54, 0x4f, 0x55, 0x52, 0x4e, 0x41, 0x4d,
-	0x45, 0x4e, 0x54, 0x5f, 0x44, 0x49, 0x56, 0x49, 0x53, 0x49, 0x4f, 0x4e, 0x5f, 0x44, 0x45, 0x4c,
-	0x45, 0x54, 0x45, 0x44, 0x5f, 0x4d, 0x45, 0x53, 0x53, 0x41, 0x47, 0x45, 0x10, 0x1f, 0x12, 0x25,
-	0x0a, 0x21, 0x54, 0x4f, 0x55, 0x52, 0x4e, 0x41, 0x4d, 0x45, 0x4e, 0x54, 0x5f, 0x46, 0x55, 0x4c,
-	0x4c, 0x5f, 0x44, 0x49, 0x56, 0x49, 0x53, 0x49, 0x4f, 0x4e, 0x53, 0x5f, 0x4d, 0x45, 0x53, 0x53,
-	0x41, 0x47, 0x45, 0x10, 0x20, 0x12, 0x13, 0x0a, 0x0f, 0x47, 0x41, 0x4d, 0x45, 0x5f, 0x4d, 0x45,
-	0x54, 0x41, 0x5f, 0x45, 0x56, 0x45, 0x4e, 0x54, 0x10, 0x28, 0x12, 0x1b, 0x0a, 0x17, 0x47, 0x41,
-	0x4d, 0x45, 0x5f, 0x4d, 0x45, 0x54, 0x41, 0x5f, 0x54, 0x49, 0x4d, 0x45, 0x52, 0x5f, 0x45, 0x58,
-	0x50, 0x49, 0x52, 0x45, 0x44, 0x10, 0x29, 0x2a, 0x9c, 0x01, 0x0a, 0x0d, 0x47, 0x61, 0x6d, 0x65,
-	0x45, 0x6e, 0x64, 0x52, 0x65, 0x61, 0x73, 0x6f, 0x6e, 0x12, 0x08, 0x0a, 0x04, 0x4e, 0x4f, 0x4e,
-	0x45, 0x10, 0x00, 0x12, 0x08, 0x0a, 0x04, 0x54, 0x49, 0x4d, 0x45, 0x10, 0x01, 0x12, 0x0c, 0x0a,
-	0x08, 0x53, 0x54, 0x41, 0x4e, 0x44, 0x41, 0x52, 0x44, 0x10, 0x02, 0x12, 0x16, 0x0a, 0x12, 0x43,
-	0x4f, 0x4e, 0x53, 0x45, 0x43, 0x55, 0x54, 0x49, 0x56, 0x45, 0x5f, 0x5a, 0x45, 0x52, 0x4f, 0x45,
-	0x53, 0x10, 0x03, 0x12, 0x0c, 0x0a, 0x08, 0x52, 0x45, 0x53, 0x49, 0x47, 0x4e, 0x45, 0x44, 0x10,
-	0x04, 0x12, 0x0b, 0x0a, 0x07, 0x41, 0x42, 0x4f, 0x52, 0x54, 0x45, 0x44, 0x10, 0x05, 0x12, 0x14,
-	0x0a, 0x10, 0x54, 0x52, 0x49, 0x50, 0x4c, 0x45, 0x5f, 0x43, 0x48, 0x41, 0x4c, 0x4c, 0x45, 0x4e,
-	0x47, 0x45, 0x10, 0x06, 0x12, 0x0d, 0x0a, 0x09, 0x43, 0x41, 0x4e, 0x43, 0x45, 0x4c, 0x4c, 0x45,
-	0x44, 0x10, 0x07, 0x12, 0x11, 0x0a, 0x0d, 0x46, 0x4f, 0x52, 0x43, 0x45, 0x5f, 0x46, 0x4f, 0x52,
-	0x46, 0x45, 0x49, 0x54, 0x10, 0x08, 0x2a, 0x7e, 0x0a, 0x14, 0x54, 0x6f, 0x75, 0x72, 0x6e, 0x61,
-	0x6d, 0x65, 0x6e, 0x74, 0x47, 0x61, 0x6d, 0x65, 0x52, 0x65, 0x73, 0x75, 0x6c, 0x74, 0x12, 0x0d,
-	0x0a, 0x09, 0x4e, 0x4f, 0x5f, 0x52, 0x45, 0x53, 0x55, 0x4c, 0x54, 0x10, 0x00, 0x12, 0x07, 0x0a,
-	0x03, 0x57, 0x49, 0x4e, 0x10, 0x01, 0x12, 0x08, 0x0a, 0x04, 0x4c, 0x4f, 0x53, 0x53, 0x10, 0x02,
-	0x12, 0x08, 0x0a, 0x04, 0x44, 0x52, 0x41, 0x57, 0x10, 0x03, 0x12, 0x07, 0x0a, 0x03, 0x42, 0x59,
-	0x45, 0x10, 0x04, 0x12, 0x0f, 0x0a, 0x0b, 0x46, 0x4f, 0x52, 0x46, 0x45, 0x49, 0x54, 0x5f, 0x57,
-	0x49, 0x4e, 0x10, 0x05, 0x12, 0x10, 0x0a, 0x0c, 0x46, 0x4f, 0x52, 0x46, 0x45, 0x49, 0x54, 0x5f,
-	0x4c, 0x4f, 0x53, 0x53, 0x10, 0x06, 0x12, 0x0e, 0x0a, 0x0a, 0x45, 0x4c, 0x49, 0x4d, 0x49, 0x4e,
-	0x41, 0x54, 0x45, 0x44, 0x10, 0x07, 0x2a, 0x99, 0x01, 0x0a, 0x0d, 0x50, 0x61, 0x69, 0x72, 0x69,
-	0x6e, 0x67, 0x4d, 0x65, 0x74, 0x68, 0x6f, 0x64, 0x12, 0x0a, 0x0a, 0x06, 0x52, 0x41, 0x4e, 0x44,
-	0x4f, 0x4d, 0x10, 0x00, 0x12, 0x0f, 0x0a, 0x0b, 0x52, 0x4f, 0x55, 0x4e, 0x44, 0x5f, 0x52, 0x4f,
-	0x42, 0x49, 0x4e, 0x10, 0x01, 0x12, 0x14, 0x0a, 0x10, 0x4b, 0x49, 0x4e, 0x47, 0x5f, 0x4f, 0x46,
-	0x5f, 0x54, 0x48, 0x45, 0x5f, 0x48, 0x49, 0x4c, 0x4c, 0x10, 0x02, 0x12, 0x0f, 0x0a, 0x0b, 0x45,
-	0x4c, 0x49, 0x4d, 0x49, 0x4e, 0x41, 0x54, 0x49, 0x4f, 0x4e, 0x10, 0x03, 0x12, 0x0a, 0x0a, 0x06,
-	0x46, 0x41, 0x43, 0x54, 0x4f, 0x52, 0x10, 0x04, 0x12, 0x12, 0x0a, 0x0e, 0x49, 0x4e, 0x49, 0x54,
-	0x49, 0x41, 0x4c, 0x5f, 0x46, 0x4f, 0x4e, 0x54, 0x45, 0x53, 0x10, 0x05, 0x12, 0x09, 0x0a, 0x05,
-	0x53, 0x57, 0x49, 0x53, 0x53, 0x10, 0x06, 0x12, 0x0d, 0x0a, 0x09, 0x51, 0x55, 0x49, 0x43, 0x4b,
-	0x50, 0x41, 0x49, 0x52, 0x10, 0x07, 0x12, 0x0a, 0x0a, 0x06, 0x4d, 0x41, 0x4e, 0x55, 0x41, 0x4c,
-	0x10, 0x08, 0x2a, 0x46, 0x0a, 0x0b, 0x46, 0x69, 0x72, 0x73, 0x74, 0x4d, 0x65, 0x74, 0x68, 0x6f,
-	0x64, 0x12, 0x10, 0x0a, 0x0c, 0x4d, 0x41, 0x4e, 0x55, 0x41, 0x4c, 0x5f, 0x46, 0x49, 0x52, 0x53,
-	0x54, 0x10, 0x00, 0x12, 0x10, 0x0a, 0x0c, 0x52, 0x41, 0x4e, 0x44, 0x4f, 0x4d, 0x5f, 0x46, 0x49,
-	0x52, 0x53, 0x54, 0x10, 0x01, 0x12, 0x13, 0x0a, 0x0f, 0x41, 0x55, 0x54, 0x4f, 0x4d, 0x41, 0x54,
-	0x49, 0x43, 0x5f, 0x46, 0x49, 0x52, 0x53, 0x54, 0x10, 0x02, 0x42, 0x34, 0x5a, 0x32, 0x67, 0x69,
-	0x74, 0x68, 0x75, 0x62, 0x2e, 0x63, 0x6f, 0x6d, 0x2f, 0x64, 0x6f, 0x6d, 0x69, 0x6e, 0x6f, 0x31,
-	0x34, 0x2f, 0x6c, 0x69, 0x77, 0x6f, 0x72, 0x64, 0x73, 0x2f, 0x72, 0x70, 0x63, 0x2f, 0x61, 0x70,
-	0x69, 0x2f, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x2f, 0x72, 0x65, 0x61, 0x6c, 0x74, 0x69, 0x6d, 0x65,
-	0x62, 0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
+	0x10, 0x14, 0x12, 0x18, 0x0a, 0x14, 0x43, 0x48, 0x41, 0x54, 0x5f, 0x4d, 0x45, 0x53, 0x53, 0x41,
+	0x47, 0x45, 0x5f, 0x44, 0x45, 0x4c, 0x45, 0x54, 0x45, 0x44, 0x10, 0x15, 0x12, 0x11, 0x0a, 0x0d,
+	0x55, 0x53, 0x45, 0x52, 0x5f, 0x50, 0x52, 0x45, 0x53, 0x45, 0x4e, 0x43, 0x45, 0x10, 0x16, 0x12,
+	0x12, 0x0a, 0x0e, 0x55, 0x53, 0x45, 0x52, 0x5f, 0x50, 0x52, 0x45, 0x53, 0x45, 0x4e, 0x43, 0x45,
+	0x53, 0x10, 0x17, 0x12, 0x12, 0x0a, 0x0e, 0x53, 0x45, 0x52, 0x56, 0x45, 0x52, 0x5f, 0x4d, 0x45,
+	0x53, 0x53, 0x41, 0x47, 0x45, 0x10, 0x18, 0x12, 0x12, 0x0a, 0x0e, 0x52, 0x45, 0x41, 0x44, 0x59,
+	0x5f, 0x46, 0x4f, 0x52, 0x5f, 0x47, 0x41, 0x4d, 0x45, 0x10, 0x19, 0x12, 0x13, 0x0a, 0x0f, 0x4c,
+	0x41, 0x47, 0x5f, 0x4d, 0x45, 0x41, 0x53, 0x55, 0x52, 0x45, 0x4d, 0x45, 0x4e, 0x54, 0x10, 0x1a,
+	0x12, 0x1f, 0x0a, 0x1b, 0x54, 0x4f, 0x55, 0x52, 0x4e, 0x41, 0x4d, 0x45, 0x4e, 0x54, 0x5f, 0x47,
+	0x41, 0x4d, 0x45, 0x5f, 0x45, 0x4e, 0x44, 0x45, 0x44, 0x5f, 0x45, 0x56, 0x45, 0x4e, 0x54, 0x10,
+	0x1b, 0x12, 0x16, 0x0a, 0x12, 0x54, 0x4f, 0x55, 0x52, 0x4e, 0x41, 0x4d, 0x45, 0x4e, 0x54, 0x5f,
+	0x4d, 0x45, 0x53, 0x53, 0x41, 0x47, 0x45, 0x10, 0x1c, 0x12, 0x13, 0x0a, 0x0f, 0x52, 0x45, 0x4d,
+	0x41, 0x54, 0x43, 0x48, 0x5f, 0x53, 0x54, 0x41, 0x52, 0x54, 0x45, 0x44, 0x10, 0x1d, 0x12, 0x1f,
+	0x0a, 0x1b, 0x54, 0x4f, 0x55, 0x52, 0x4e, 0x41, 0x4d, 0x45, 0x4e, 0x54, 0x5f, 0x44, 0x49, 0x56,
+	0x49, 0x53, 0x49, 0x4f, 0x4e, 0x5f, 0x4d, 0x45, 0x53, 0x53, 0x41, 0x47, 0x45, 0x10, 0x1e, 0x12,
+	0x27, 0x0a, 0x23, 0x54, 0x4f, 0x55, 0x52, 0x4e, 0x41, 0x4d, 0x45, 0x4e, 0x54, 0x5f, 0x44, 0x49,
+	0x56, 0x49, 0x53, 0x49, 0x4f, 0x4e, 0x5f, 0x44, 0x45, 0x4c, 0x45, 0x54, 0x45, 0x44, 0x5f, 0x4d,
+	0x45, 0x53, 0x53, 0x41, 0x47, 0x45, 0x10, 0x1f, 0x12, 0x25, 0x0a, 0x21, 0x54, 0x4f, 0x55, 0x52,
+	0x4e, 0x41, 0x4d, 0x45, 0x4e, 0x54, 0x5f, 0x46, 0x55, 0x4c, 0x4c, 0x5f, 0x44, 0x49, 0x56, 0x49,
+	0x53, 0x49, 0x4f, 0x4e, 0x53, 0x5f, 0x4d, 0x45, 0x53, 0x53, 0x41, 0x47, 0x45, 0x10, 0x20, 0x12,
+	0x13, 0x0a, 0x0f, 0x47, 0x41, 0x4d, 0x45, 0x5f, 0x4d, 0x45, 0x54, 0x41, 0x5f, 0x45, 0x56, 0x45,
+	0x4e, 0x54, 0x10, 0x28, 0x12, 0x1b, 0x0a, 0x17, 0x47, 0x41, 0x4d, 0x45, 0x5f, 0x4d, 0x45, 0x54,
+	0x41, 0x5f, 0x54, 0x49, 0x4d, 0x45, 0x52, 0x5f, 0x45, 0x58, 0x50, 0x49, 0x52, 0x45, 0x44, 0x10,
+	0x29, 0x2a, 0x9c, 0x01, 0x0a, 0x0d, 0x47, 0x61, 0x6d, 0x65, 0x45, 0x6e, 0x64, 0x52, 0x65, 0x61,
+	0x73, 0x6f, 0x6e, 0x12, 0x08, 0x0a, 0x04, 0x4e, 0x4f, 0x4e, 0x45, 0x10, 0x00, 0x12, 0x08, 0x0a,
+	0x04, 0x54, 0x49, 0x4d, 0x45, 0x10, 0x01, 0x12, 0x0c, 0x0a, 0x08, 0x53, 0x54, 0x41, 0x4e, 0x44,
+	0x41, 0x52, 0x44, 0x10, 0x02, 0x12, 0x16, 0x0a, 0x12, 0x43, 0x4f, 0x4e, 0x53, 0x45, 0x43, 0x55,
+	0x54, 0x49, 0x56, 0x45, 0x5f, 0x5a, 0x45, 0x52, 0x4f, 0x45, 0x53, 0x10, 0x03, 0x12, 0x0c, 0x0a,
+	0x08, 0x52, 0x45, 0x53, 0x49, 0x47, 0x4e, 0x45, 0x44, 0x10, 0x04, 0x12, 0x0b, 0x0a, 0x07, 0x41,
+	0x42, 0x4f, 0x52, 0x54, 0x45, 0x44, 0x10, 0x05, 0x12, 0x14, 0x0a, 0x10, 0x54, 0x52, 0x49, 0x50,
+	0x4c, 0x45, 0x5f, 0x43, 0x48, 0x41, 0x4c, 0x4c, 0x45, 0x4e, 0x47, 0x45, 0x10, 0x06, 0x12, 0x0d,
+	0x0a, 0x09, 0x43, 0x41, 0x4e, 0x43, 0x45, 0x4c, 0x4c, 0x45, 0x44, 0x10, 0x07, 0x12, 0x11, 0x0a,
+	0x0d, 0x46, 0x4f, 0x52, 0x43, 0x45, 0x5f, 0x46, 0x4f, 0x52, 0x46, 0x45, 0x49, 0x54, 0x10, 0x08,
+	0x2a, 0x7e, 0x0a, 0x14, 0x54, 0x6f, 0x75, 0x72, 0x6e, 0x61, 0x6d, 0x65, 0x6e, 0x74, 0x47, 0x61,
+	0x6d, 0x65, 0x52, 0x65, 0x73, 0x75, 0x6c, 0x74, 0x12, 0x0d, 0x0a, 0x09, 0x4e, 0x4f, 0x5f, 0x52,
+	0x45, 0x53, 0x55, 0x4c, 0x54, 0x10, 0x00, 0x12, 0x07, 0x0a, 0x03, 0x57, 0x49, 0x4e, 0x10, 0x01,
+	0x12, 0x08, 0x0a, 0x04, 0x4c, 0x4f, 0x53, 0x53, 0x10, 0x02, 0x12, 0x08, 0x0a, 0x04, 0x44, 0x52,
+	0x41, 0x57, 0x10, 0x03, 0x12, 0x07, 0x0a, 0x03, 0x42, 0x59, 0x45, 0x10, 0x04, 0x12, 0x0f, 0x0a,
+	0x0b, 0x46, 0x4f, 0x52, 0x46, 0x45, 0x49, 0x54, 0x5f, 0x57, 0x49, 0x4e, 0x10, 0x05, 0x12, 0x10,
+	0x0a, 0x0c, 0x46, 0x4f, 0x52, 0x46, 0x45, 0x49, 0x54, 0x5f, 0x4c, 0x4f, 0x53, 0x53, 0x10, 0x06,
+	0x12, 0x0e, 0x0a, 0x0a, 0x45, 0x4c, 0x49, 0x4d, 0x49, 0x4e, 0x41, 0x54, 0x45, 0x44, 0x10, 0x07,
+	0x2a, 0x99, 0x01, 0x0a, 0x0d, 0x50, 0x61, 0x69, 0x72, 0x69, 0x6e, 0x67, 0x4d, 0x65, 0x74, 0x68,
+	0x6f, 0x64, 0x12, 0x0a, 0x0a, 0x06, 0x52, 0x41, 0x4e, 0x44, 0x4f, 0x4d, 0x10, 0x00, 0x12, 0x0f,
+	0x0a, 0x0b, 0x52, 0x4f, 0x55, 0x4e, 0x44, 0x5f, 0x52, 0x4f, 0x42, 0x49, 0x4e, 0x10, 0x01, 0x12,
+	0x14, 0x0a, 0x10, 0x4b, 0x49, 0x4e, 0x47, 0x5f, 0x4f, 0x46, 0x5f, 0x54, 0x48, 0x45, 0x5f, 0x48,
+	0x49, 0x4c, 0x4c, 0x10, 0x02, 0x12, 0x0f, 0x0a, 0x0b, 0x45, 0x4c, 0x49, 0x4d, 0x49, 0x4e, 0x41,
+	0x54, 0x49, 0x4f, 0x4e, 0x10, 0x03, 0x12, 0x0a, 0x0a, 0x06, 0x46, 0x41, 0x43, 0x54, 0x4f, 0x52,
+	0x10, 0x04, 0x12, 0x12, 0x0a, 0x0e, 0x49, 0x4e, 0x49, 0x54, 0x49, 0x41, 0x4c, 0x5f, 0x46, 0x4f,
+	0x4e, 0x54, 0x45, 0x53, 0x10, 0x05, 0x12, 0x09, 0x0a, 0x05, 0x53, 0x57, 0x49, 0x53, 0x53, 0x10,
+	0x06, 0x12, 0x0d, 0x0a, 0x09, 0x51, 0x55, 0x49, 0x43, 0x4b, 0x50, 0x41, 0x49, 0x52, 0x10, 0x07,
+	0x12, 0x0a, 0x0a, 0x06, 0x4d, 0x41, 0x4e, 0x55, 0x41, 0x4c, 0x10, 0x08, 0x2a, 0x46, 0x0a, 0x0b,
+	0x46, 0x69, 0x72, 0x73, 0x74, 0x4d, 0x65, 0x74, 0x68, 0x6f, 0x64, 0x12, 0x10, 0x0a, 0x0c, 0x4d,
+	0x41, 0x4e, 0x55, 0x41, 0x4c, 0x5f, 0x46, 0x49, 0x52, 0x53, 0x54, 0x10, 0x00, 0x12, 0x10, 0x0a,
+	0x0c, 0x52, 0x41, 0x4e, 0x44, 0x4f, 0x4d, 0x5f, 0x46, 0x49, 0x52, 0x53, 0x54, 0x10, 0x01, 0x12,
+	0x13, 0x0a, 0x0f, 0x41, 0x55, 0x54, 0x4f, 0x4d, 0x41, 0x54, 0x49, 0x43, 0x5f, 0x46, 0x49, 0x52,
+	0x53, 0x54, 0x10, 0x02, 0x42, 0x34, 0x5a, 0x32, 0x67, 0x69, 0x74, 0x68, 0x75, 0x62, 0x2e, 0x63,
+	0x6f, 0x6d, 0x2f, 0x64, 0x6f, 0x6d, 0x69, 0x6e, 0x6f, 0x31, 0x34, 0x2f, 0x6c, 0x69, 0x77, 0x6f,
+	0x72, 0x64, 0x73, 0x2f, 0x72, 0x70, 0x63, 0x2f, 0x61, 0x70, 0x69, 0x2f, 0x70, 0x72, 0x6f, 0x74,
+	0x6f, 0x2f, 0x72, 0x65, 0x61, 0x6c, 0x74, 0x69, 0x6d, 0x65, 0x62, 0x06, 0x70, 0x72, 0x6f, 0x74,
+	0x6f, 0x33,
 }
 
 var (
@@ -4580,7 +4653,7 @@ func file_api_proto_realtime_realtime_proto_rawDescGZIP() []byte {
 }
 
 var file_api_proto_realtime_realtime_proto_enumTypes = make([]protoimpl.EnumInfo, 9)
-var file_api_proto_realtime_realtime_proto_msgTypes = make([]protoimpl.MessageInfo, 55)
+var file_api_proto_realtime_realtime_proto_msgTypes = make([]protoimpl.MessageInfo, 56)
 var file_api_proto_realtime_realtime_proto_goTypes = []interface{}{
 	(GameMode)(0),                             // 0: liwords.GameMode
 	(RatingMode)(0),                           // 1: liwords.RatingMode
@@ -4618,43 +4691,44 @@ var file_api_proto_realtime_realtime_proto_goTypes = []interface{}{
 	(*NewGameEvent)(nil),                      // 33: liwords.NewGameEvent
 	(*ErrorMessage)(nil),                      // 34: liwords.ErrorMessage
 	(*ServerMessage)(nil),                     // 35: liwords.ServerMessage
-	(*ClientGameplayEvent)(nil),               // 36: liwords.ClientGameplayEvent
-	(*ReadyForTournamentGame)(nil),            // 37: liwords.ReadyForTournamentGame
-	(*TimedOut)(nil),                          // 38: liwords.TimedOut
-	(*DeclineMatchRequest)(nil),               // 39: liwords.DeclineMatchRequest
-	(*TournamentPersons)(nil),                 // 40: liwords.TournamentPersons
-	(*RoundControl)(nil),                      // 41: liwords.RoundControl
-	(*TournamentControls)(nil),                // 42: liwords.TournamentControls
-	(*TournamentGame)(nil),                    // 43: liwords.TournamentGame
-	(*PlayerProperties)(nil),                  // 44: liwords.PlayerProperties
-	(*PlayerRoundInfo)(nil),                   // 45: liwords.PlayerRoundInfo
-	(*PlayerStanding)(nil),                    // 46: liwords.PlayerStanding
-	(*RoundStandings)(nil),                    // 47: liwords.RoundStandings
-	(*ClassicDivision)(nil),                   // 48: liwords.ClassicDivision
-	(*TournamentDivisionDataResponse)(nil),    // 49: liwords.TournamentDivisionDataResponse
-	(*FullTournamentDivisions)(nil),           // 50: liwords.FullTournamentDivisions
-	(*TournamentDataResponse)(nil),            // 51: liwords.TournamentDataResponse
-	(*TournamentDivisionDeletedResponse)(nil), // 52: liwords.TournamentDivisionDeletedResponse
-	(*JoinPath)(nil),                          // 53: liwords.JoinPath
-	(*UnjoinRealm)(nil),                       // 54: liwords.UnjoinRealm
-	nil,                                       // 55: liwords.GameEndedEvent.ScoresEntry
-	nil,                                       // 56: liwords.GameEndedEvent.NewRatingsEntry
-	nil,                                       // 57: liwords.GameEndedEvent.RatingDeltasEntry
-	(*TournamentGameEndedEvent_Player)(nil),   // 58: liwords.TournamentGameEndedEvent.Player
-	nil,                                       // 59: liwords.TournamentPersons.PersonsEntry
-	nil,                                       // 60: liwords.TournamentDivisionDataResponse.PlayerIndexMapEntry
-	nil,                                       // 61: liwords.TournamentDivisionDataResponse.PairingMapEntry
-	nil,                                       // 62: liwords.TournamentDivisionDataResponse.StandingsEntry
-	nil,                                       // 63: liwords.FullTournamentDivisions.DivisionsEntry
-	(macondo.ChallengeRule)(0),                // 64: macondo.ChallengeRule
-	(*macondo.GameEvent)(nil),                 // 65: macondo.GameEvent
-	(macondo.PlayState)(0),                    // 66: macondo.PlayState
-	(*macondo.GameHistory)(nil),               // 67: macondo.GameHistory
-	(*timestamppb.Timestamp)(nil),             // 68: google.protobuf.Timestamp
+	(*ChatMessageDeleted)(nil),                // 36: liwords.ChatMessageDeleted
+	(*ClientGameplayEvent)(nil),               // 37: liwords.ClientGameplayEvent
+	(*ReadyForTournamentGame)(nil),            // 38: liwords.ReadyForTournamentGame
+	(*TimedOut)(nil),                          // 39: liwords.TimedOut
+	(*DeclineMatchRequest)(nil),               // 40: liwords.DeclineMatchRequest
+	(*TournamentPersons)(nil),                 // 41: liwords.TournamentPersons
+	(*RoundControl)(nil),                      // 42: liwords.RoundControl
+	(*TournamentControls)(nil),                // 43: liwords.TournamentControls
+	(*TournamentGame)(nil),                    // 44: liwords.TournamentGame
+	(*PlayerProperties)(nil),                  // 45: liwords.PlayerProperties
+	(*PlayerRoundInfo)(nil),                   // 46: liwords.PlayerRoundInfo
+	(*PlayerStanding)(nil),                    // 47: liwords.PlayerStanding
+	(*RoundStandings)(nil),                    // 48: liwords.RoundStandings
+	(*ClassicDivision)(nil),                   // 49: liwords.ClassicDivision
+	(*TournamentDivisionDataResponse)(nil),    // 50: liwords.TournamentDivisionDataResponse
+	(*FullTournamentDivisions)(nil),           // 51: liwords.FullTournamentDivisions
+	(*TournamentDataResponse)(nil),            // 52: liwords.TournamentDataResponse
+	(*TournamentDivisionDeletedResponse)(nil), // 53: liwords.TournamentDivisionDeletedResponse
+	(*JoinPath)(nil),                          // 54: liwords.JoinPath
+	(*UnjoinRealm)(nil),                       // 55: liwords.UnjoinRealm
+	nil,                                       // 56: liwords.GameEndedEvent.ScoresEntry
+	nil,                                       // 57: liwords.GameEndedEvent.NewRatingsEntry
+	nil,                                       // 58: liwords.GameEndedEvent.RatingDeltasEntry
+	(*TournamentGameEndedEvent_Player)(nil),   // 59: liwords.TournamentGameEndedEvent.Player
+	nil,                                       // 60: liwords.TournamentPersons.PersonsEntry
+	nil,                                       // 61: liwords.TournamentDivisionDataResponse.PlayerIndexMapEntry
+	nil,                                       // 62: liwords.TournamentDivisionDataResponse.PairingMapEntry
+	nil,                                       // 63: liwords.TournamentDivisionDataResponse.StandingsEntry
+	nil,                                       // 64: liwords.FullTournamentDivisions.DivisionsEntry
+	(macondo.ChallengeRule)(0),                // 65: macondo.ChallengeRule
+	(*macondo.GameEvent)(nil),                 // 66: macondo.GameEvent
+	(macondo.PlayState)(0),                    // 67: macondo.PlayState
+	(*macondo.GameHistory)(nil),               // 68: macondo.GameHistory
+	(*timestamppb.Timestamp)(nil),             // 69: google.protobuf.Timestamp
 }
 var file_api_proto_realtime_realtime_proto_depIdxs = []int32{
 	9,  // 0: liwords.GameRequest.rules:type_name -> liwords.GameRules
-	64, // 1: liwords.GameRequest.challenge_rule:type_name -> macondo.ChallengeRule
+	65, // 1: liwords.GameRequest.challenge_rule:type_name -> macondo.ChallengeRule
 	0,  // 2: liwords.GameRequest.game_mode:type_name -> liwords.GameMode
 	1,  // 3: liwords.GameRequest.rating_mode:type_name -> liwords.RatingMode
 	14, // 4: liwords.ChatMessages.messages:type_name -> liwords.ChatMessage
@@ -4666,44 +4740,44 @@ var file_api_proto_realtime_realtime_proto_depIdxs = []int32{
 	11, // 10: liwords.MatchRequest.receiving_user:type_name -> liwords.MatchUser
 	18, // 11: liwords.SeekRequests.requests:type_name -> liwords.SeekRequest
 	19, // 12: liwords.MatchRequests.requests:type_name -> liwords.MatchRequest
-	65, // 13: liwords.ServerGameplayEvent.event:type_name -> macondo.GameEvent
-	66, // 14: liwords.ServerGameplayEvent.playing:type_name -> macondo.PlayState
-	64, // 15: liwords.ServerChallengeResultEvent.challenge_rule:type_name -> macondo.ChallengeRule
-	55, // 16: liwords.GameEndedEvent.scores:type_name -> liwords.GameEndedEvent.ScoresEntry
-	56, // 17: liwords.GameEndedEvent.new_ratings:type_name -> liwords.GameEndedEvent.NewRatingsEntry
+	66, // 13: liwords.ServerGameplayEvent.event:type_name -> macondo.GameEvent
+	67, // 14: liwords.ServerGameplayEvent.playing:type_name -> macondo.PlayState
+	65, // 15: liwords.ServerChallengeResultEvent.challenge_rule:type_name -> macondo.ChallengeRule
+	56, // 16: liwords.GameEndedEvent.scores:type_name -> liwords.GameEndedEvent.ScoresEntry
+	57, // 17: liwords.GameEndedEvent.new_ratings:type_name -> liwords.GameEndedEvent.NewRatingsEntry
 	3,  // 18: liwords.GameEndedEvent.end_reason:type_name -> liwords.GameEndReason
-	57, // 19: liwords.GameEndedEvent.rating_deltas:type_name -> liwords.GameEndedEvent.RatingDeltasEntry
-	67, // 20: liwords.GameEndedEvent.history:type_name -> macondo.GameHistory
-	68, // 21: liwords.GameMetaEvent.timestamp:type_name -> google.protobuf.Timestamp
+	58, // 19: liwords.GameEndedEvent.rating_deltas:type_name -> liwords.GameEndedEvent.RatingDeltasEntry
+	68, // 20: liwords.GameEndedEvent.history:type_name -> macondo.GameHistory
+	69, // 21: liwords.GameMetaEvent.timestamp:type_name -> google.protobuf.Timestamp
 	7,  // 22: liwords.GameMetaEvent.type:type_name -> liwords.GameMetaEvent.EventType
-	58, // 23: liwords.TournamentGameEndedEvent.players:type_name -> liwords.TournamentGameEndedEvent.Player
+	59, // 23: liwords.TournamentGameEndedEvent.players:type_name -> liwords.TournamentGameEndedEvent.Player
 	3,  // 24: liwords.TournamentGameEndedEvent.end_reason:type_name -> liwords.GameEndReason
-	68, // 25: liwords.TournamentRoundStarted.deadline:type_name -> google.protobuf.Timestamp
-	67, // 26: liwords.GameHistoryRefresher.history:type_name -> macondo.GameHistory
+	69, // 25: liwords.TournamentRoundStarted.deadline:type_name -> google.protobuf.Timestamp
+	68, // 26: liwords.GameHistoryRefresher.history:type_name -> macondo.GameHistory
 	8,  // 27: liwords.ClientGameplayEvent.type:type_name -> liwords.ClientGameplayEvent.EventType
-	59, // 28: liwords.TournamentPersons.persons:type_name -> liwords.TournamentPersons.PersonsEntry
+	60, // 28: liwords.TournamentPersons.persons:type_name -> liwords.TournamentPersons.PersonsEntry
 	5,  // 29: liwords.RoundControl.pairing_method:type_name -> liwords.PairingMethod
 	6,  // 30: liwords.RoundControl.first_method:type_name -> liwords.FirstMethod
 	10, // 31: liwords.TournamentControls.game_request:type_name -> liwords.GameRequest
-	41, // 32: liwords.TournamentControls.round_controls:type_name -> liwords.RoundControl
-	68, // 33: liwords.TournamentControls.start_time:type_name -> google.protobuf.Timestamp
+	42, // 32: liwords.TournamentControls.round_controls:type_name -> liwords.RoundControl
+	69, // 33: liwords.TournamentControls.start_time:type_name -> google.protobuf.Timestamp
 	4,  // 34: liwords.TournamentGame.results:type_name -> liwords.TournamentGameResult
 	3,  // 35: liwords.TournamentGame.game_end_reason:type_name -> liwords.GameEndReason
-	43, // 36: liwords.PlayerRoundInfo.games:type_name -> liwords.TournamentGame
+	44, // 36: liwords.PlayerRoundInfo.games:type_name -> liwords.TournamentGame
 	4,  // 37: liwords.PlayerRoundInfo.outcomes:type_name -> liwords.TournamentGameResult
-	46, // 38: liwords.RoundStandings.standings:type_name -> liwords.PlayerStanding
-	45, // 39: liwords.ClassicDivision.matrix:type_name -> liwords.PlayerRoundInfo
-	60, // 40: liwords.TournamentDivisionDataResponse.player_index_map:type_name -> liwords.TournamentDivisionDataResponse.PlayerIndexMapEntry
-	61, // 41: liwords.TournamentDivisionDataResponse.pairing_map:type_name -> liwords.TournamentDivisionDataResponse.PairingMapEntry
-	62, // 42: liwords.TournamentDivisionDataResponse.standings:type_name -> liwords.TournamentDivisionDataResponse.StandingsEntry
-	44, // 43: liwords.TournamentDivisionDataResponse.players_properties:type_name -> liwords.PlayerProperties
-	63, // 44: liwords.FullTournamentDivisions.divisions:type_name -> liwords.FullTournamentDivisions.DivisionsEntry
-	40, // 45: liwords.TournamentDataResponse.directors:type_name -> liwords.TournamentPersons
-	68, // 46: liwords.TournamentDataResponse.start_time:type_name -> google.protobuf.Timestamp
+	47, // 38: liwords.RoundStandings.standings:type_name -> liwords.PlayerStanding
+	46, // 39: liwords.ClassicDivision.matrix:type_name -> liwords.PlayerRoundInfo
+	61, // 40: liwords.TournamentDivisionDataResponse.player_index_map:type_name -> liwords.TournamentDivisionDataResponse.PlayerIndexMapEntry
+	62, // 41: liwords.TournamentDivisionDataResponse.pairing_map:type_name -> liwords.TournamentDivisionDataResponse.PairingMapEntry
+	63, // 42: liwords.TournamentDivisionDataResponse.standings:type_name -> liwords.TournamentDivisionDataResponse.StandingsEntry
+	45, // 43: liwords.TournamentDivisionDataResponse.players_properties:type_name -> liwords.PlayerProperties
+	64, // 44: liwords.FullTournamentDivisions.divisions:type_name -> liwords.FullTournamentDivisions.DivisionsEntry
+	41, // 45: liwords.TournamentDataResponse.directors:type_name -> liwords.TournamentPersons
+	69, // 46: liwords.TournamentDataResponse.start_time:type_name -> google.protobuf.Timestamp
 	4,  // 47: liwords.TournamentGameEndedEvent.Player.result:type_name -> liwords.TournamentGameResult
-	45, // 48: liwords.TournamentDivisionDataResponse.PairingMapEntry.value:type_name -> liwords.PlayerRoundInfo
-	47, // 49: liwords.TournamentDivisionDataResponse.StandingsEntry.value:type_name -> liwords.RoundStandings
-	49, // 50: liwords.FullTournamentDivisions.DivisionsEntry.value:type_name -> liwords.TournamentDivisionDataResponse
+	46, // 48: liwords.TournamentDivisionDataResponse.PairingMapEntry.value:type_name -> liwords.PlayerRoundInfo
+	48, // 49: liwords.TournamentDivisionDataResponse.StandingsEntry.value:type_name -> liwords.RoundStandings
+	50, // 50: liwords.FullTournamentDivisions.DivisionsEntry.value:type_name -> liwords.TournamentDivisionDataResponse
 	51, // [51:51] is the sub-list for method output_type
 	51, // [51:51] is the sub-list for method input_type
 	51, // [51:51] is the sub-list for extension type_name
@@ -5042,7 +5116,7 @@ func file_api_proto_realtime_realtime_proto_init() {
 			}
 		}
 		file_api_proto_realtime_realtime_proto_msgTypes[27].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*ClientGameplayEvent); i {
+			switch v := v.(*ChatMessageDeleted); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -5054,7 +5128,7 @@ func file_api_proto_realtime_realtime_proto_init() {
 			}
 		}
 		file_api_proto_realtime_realtime_proto_msgTypes[28].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*ReadyForTournamentGame); i {
+			switch v := v.(*ClientGameplayEvent); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -5066,7 +5140,7 @@ func file_api_proto_realtime_realtime_proto_init() {
 			}
 		}
 		file_api_proto_realtime_realtime_proto_msgTypes[29].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*TimedOut); i {
+			switch v := v.(*ReadyForTournamentGame); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -5078,7 +5152,7 @@ func file_api_proto_realtime_realtime_proto_init() {
 			}
 		}
 		file_api_proto_realtime_realtime_proto_msgTypes[30].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*DeclineMatchRequest); i {
+			switch v := v.(*TimedOut); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -5090,7 +5164,7 @@ func file_api_proto_realtime_realtime_proto_init() {
 			}
 		}
 		file_api_proto_realtime_realtime_proto_msgTypes[31].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*TournamentPersons); i {
+			switch v := v.(*DeclineMatchRequest); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -5102,7 +5176,7 @@ func file_api_proto_realtime_realtime_proto_init() {
 			}
 		}
 		file_api_proto_realtime_realtime_proto_msgTypes[32].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*RoundControl); i {
+			switch v := v.(*TournamentPersons); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -5114,7 +5188,7 @@ func file_api_proto_realtime_realtime_proto_init() {
 			}
 		}
 		file_api_proto_realtime_realtime_proto_msgTypes[33].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*TournamentControls); i {
+			switch v := v.(*RoundControl); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -5126,7 +5200,7 @@ func file_api_proto_realtime_realtime_proto_init() {
 			}
 		}
 		file_api_proto_realtime_realtime_proto_msgTypes[34].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*TournamentGame); i {
+			switch v := v.(*TournamentControls); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -5138,7 +5212,7 @@ func file_api_proto_realtime_realtime_proto_init() {
 			}
 		}
 		file_api_proto_realtime_realtime_proto_msgTypes[35].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*PlayerProperties); i {
+			switch v := v.(*TournamentGame); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -5150,7 +5224,7 @@ func file_api_proto_realtime_realtime_proto_init() {
 			}
 		}
 		file_api_proto_realtime_realtime_proto_msgTypes[36].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*PlayerRoundInfo); i {
+			switch v := v.(*PlayerProperties); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -5162,7 +5236,7 @@ func file_api_proto_realtime_realtime_proto_init() {
 			}
 		}
 		file_api_proto_realtime_realtime_proto_msgTypes[37].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*PlayerStanding); i {
+			switch v := v.(*PlayerRoundInfo); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -5174,7 +5248,7 @@ func file_api_proto_realtime_realtime_proto_init() {
 			}
 		}
 		file_api_proto_realtime_realtime_proto_msgTypes[38].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*RoundStandings); i {
+			switch v := v.(*PlayerStanding); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -5186,7 +5260,7 @@ func file_api_proto_realtime_realtime_proto_init() {
 			}
 		}
 		file_api_proto_realtime_realtime_proto_msgTypes[39].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*ClassicDivision); i {
+			switch v := v.(*RoundStandings); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -5198,7 +5272,7 @@ func file_api_proto_realtime_realtime_proto_init() {
 			}
 		}
 		file_api_proto_realtime_realtime_proto_msgTypes[40].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*TournamentDivisionDataResponse); i {
+			switch v := v.(*ClassicDivision); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -5210,7 +5284,7 @@ func file_api_proto_realtime_realtime_proto_init() {
 			}
 		}
 		file_api_proto_realtime_realtime_proto_msgTypes[41].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*FullTournamentDivisions); i {
+			switch v := v.(*TournamentDivisionDataResponse); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -5222,7 +5296,7 @@ func file_api_proto_realtime_realtime_proto_init() {
 			}
 		}
 		file_api_proto_realtime_realtime_proto_msgTypes[42].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*TournamentDataResponse); i {
+			switch v := v.(*FullTournamentDivisions); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -5234,7 +5308,7 @@ func file_api_proto_realtime_realtime_proto_init() {
 			}
 		}
 		file_api_proto_realtime_realtime_proto_msgTypes[43].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*TournamentDivisionDeletedResponse); i {
+			switch v := v.(*TournamentDataResponse); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -5246,7 +5320,7 @@ func file_api_proto_realtime_realtime_proto_init() {
 			}
 		}
 		file_api_proto_realtime_realtime_proto_msgTypes[44].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*JoinPath); i {
+			switch v := v.(*TournamentDivisionDeletedResponse); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -5258,6 +5332,18 @@ func file_api_proto_realtime_realtime_proto_init() {
 			}
 		}
 		file_api_proto_realtime_realtime_proto_msgTypes[45].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*JoinPath); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_api_proto_realtime_realtime_proto_msgTypes[46].Exporter = func(v interface{}, i int) interface{} {
 			switch v := v.(*UnjoinRealm); i {
 			case 0:
 				return &v.state
@@ -5269,7 +5355,7 @@ func file_api_proto_realtime_realtime_proto_init() {
 				return nil
 			}
 		}
-		file_api_proto_realtime_realtime_proto_msgTypes[49].Exporter = func(v interface{}, i int) interface{} {
+		file_api_proto_realtime_realtime_proto_msgTypes[50].Exporter = func(v interface{}, i int) interface{} {
 			switch v := v.(*TournamentGameEndedEvent_Player); i {
 			case 0:
 				return &v.state
@@ -5288,7 +5374,7 @@ func file_api_proto_realtime_realtime_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: file_api_proto_realtime_realtime_proto_rawDesc,
 			NumEnums:      9,
-			NumMessages:   55,
+			NumMessages:   56,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

@@ -74,6 +74,8 @@ type Bus struct {
 
 	gameEventChan       chan *entity.EventWrapper
 	tournamentEventChan chan *entity.EventWrapper
+
+	genericEventChan chan *entity.EventWrapper
 }
 
 func NewBus(cfg *config.Config, stores Stores, redisPool *redis.Pool) (*Bus, error) {
@@ -98,10 +100,12 @@ func NewBus(cfg *config.Config, stores Stores, redisPool *redis.Pool) (*Bus, err
 		config:              cfg,
 		gameEventChan:       make(chan *entity.EventWrapper, 64),
 		tournamentEventChan: make(chan *entity.EventWrapper, 64),
+		genericEventChan:    make(chan *entity.EventWrapper, 64),
 		redisPool:           redisPool,
 	}
 	bus.gameStore.SetGameEventChan(bus.gameEventChan)
 	bus.tournamentStore.SetTournamentEventChan(bus.tournamentEventChan)
+	bus.chatStore.SetEventChan(bus.genericEventChan)
 
 	topics := []string{
 		// ipc.pb are generic publishes
@@ -221,6 +225,21 @@ outerfor:
 		case msg := <-b.tournamentEventChan:
 			// A tournament event. Publish to the right realm.
 			log.Debug().Interface("msg", msg).Msg("tournament event chan")
+			topics := msg.Audience()
+			data, err := msg.Serialize()
+			if err != nil {
+				log.Err(err).Msg("serialize-error")
+				break
+			}
+			for _, topic := range topics {
+				b.natsconn.Publish(topic, data)
+			}
+
+		case msg := <-b.genericEventChan:
+			// a Generic event to be published via NATS.
+			// Publish to the right realm.
+			// XXX: This is identical to tournamentEventChan. Should possibly merge.
+			log.Debug().Interface("msg", msg).Msg("generic event chan")
 			topics := msg.Audience()
 			data, err := msg.Serialize()
 			if err != nil {

@@ -426,6 +426,7 @@ export const Chat = React.memo((props: Props) => {
             <ChatEntity
               entityType={ent.entityType}
               key={ent.id}
+              msgID={ent.id!}
               sender={ent.sender}
               senderId={ent.senderId}
               message={ent.message}
@@ -600,29 +601,39 @@ export const Chat = React.memo((props: Props) => {
                     </>
                   ) : null}
                 </div>
-                <div
-                  className="entities"
-                  style={
-                    maxEntitiesHeight
-                      ? {
-                          maxHeight: maxEntitiesHeight,
-                        }
-                      : undefined
-                  }
-                  ref={setTabContainerElement}
-                  onScroll={handleChatScrolled}
-                >
-                  {entities}
-                </div>
-                <Input
-                  autoFocus={!defaultChannel.startsWith('chat.game')}
-                  placeholder="chat..."
-                  disabled={!loggedIn}
-                  onKeyDown={onKeyDown}
-                  onChange={onChange}
-                  value={curMsg}
-                  spellCheck={false}
-                />
+                {defaultChannel === 'chat.lobby' && channel === 'chat.lobby' ? (
+                  <React.Fragment key="chat-disabled">
+                    <p className="disabled-message">
+                      Chat is temporarily disabled. Hold please.
+                    </p>
+                  </React.Fragment>
+                ) : (
+                  <React.Fragment key="chat-enabled">
+                    <div
+                      className="entities"
+                      style={
+                        maxEntitiesHeight
+                          ? {
+                              maxHeight: maxEntitiesHeight,
+                            }
+                          : undefined
+                      }
+                      ref={setTabContainerElement}
+                      onScroll={handleChatScrolled}
+                    >
+                      {entities}
+                    </div>
+                    <Input
+                      autoFocus={!defaultChannel.startsWith('chat.game')}
+                      placeholder="chat..."
+                      disabled={!loggedIn}
+                      onKeyDown={onKeyDown}
+                      onChange={onChange}
+                      value={curMsg}
+                      spellCheck={false}
+                    />
+                  </React.Fragment>
+                )}
               </>
             )
           )}

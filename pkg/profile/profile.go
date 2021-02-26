@@ -1,4 +1,4 @@
-package user
+package profile
 
 import (
 	"context"
@@ -6,18 +6,21 @@ import (
 	"errors"
 
 	"github.com/domino14/liwords/pkg/apiserver"
+	"github.com/domino14/liwords/pkg/mod"
+	"github.com/domino14/liwords/pkg/user"
 	"github.com/rs/zerolog/log"
 	"github.com/twitchtv/twirp"
 
+	ms "github.com/domino14/liwords/rpc/api/proto/mod_service"
 	pb "github.com/domino14/liwords/rpc/api/proto/user_service"
 )
 
 type ProfileService struct {
-	userStore     Store
-	avatarService UploadService
+	userStore     user.Store
+	avatarService user.UploadService
 }
 
-func NewProfileService(u Store, us UploadService) *ProfileService {
+func NewProfileService(u user.Store, us user.UploadService) *ProfileService {
 	return &ProfileService{userStore: u, avatarService: us}
 }
 
@@ -119,6 +122,11 @@ func (ps *ProfileService) UpdateProfile(ctx context.Context, r *pb.UpdateProfile
 		return nil, twirp.InternalErrorWith(err)
 	}
 
+	err = mod.ActionExists(ctx, ps.userStore, user.UUID, true, []ms.ModActionType{ms.ModActionType_SUSPEND_ACCOUNT})
+	if err != nil {
+		return nil, err
+	}
+
 	err = ps.userStore.SetAbout(ctx, user.UUID, r.About)
 	if err != nil {
 		return nil, twirp.InternalErrorWith(err)
@@ -145,6 +153,11 @@ func (ps *ProfileService) UpdateAvatar(ctx context.Context, r *pb.UpdateAvatarRe
 	avatarService := ps.avatarService
 	if avatarService == nil {
 		return nil, twirp.InternalErrorWith(errors.New("No avatar service available"))
+	}
+
+	err = mod.ActionExists(ctx, ps.userStore, user.UUID, true, []ms.ModActionType{ms.ModActionType_SUSPEND_ACCOUNT})
+	if err != nil {
+		return nil, err
 	}
 
 	oldUrl := user.AvatarUrl()

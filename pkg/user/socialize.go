@@ -53,6 +53,10 @@ func (ss *SocializeService) AddBlock(ctx context.Context, req *pb.AddBlockReques
 		log.Err(err).Msg("getting-blocked")
 		return nil, twirp.NewError(twirp.InvalidArgument, err.Error())
 	}
+	if blocked.IsAdmin || blocked.IsMod {
+		log.Err(err).Msg("blocking-admin")
+		return nil, twirp.NewError(twirp.InvalidArgument, "you cannot block that user")
+	}
 
 	err = ss.userStore.AddBlock(ctx, blocked.ID, user.ID)
 	if err != nil {

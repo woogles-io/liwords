@@ -110,7 +110,7 @@ func AuthenticationMiddlewareGenerator(sessionStore sessions.SessionStore) (mw f
 				err := sessionStore.ExtendExpiry(ctx, session)
 				log.Err(err).Msg("extending-session")
 			}
-			ctx = context.WithValue(ctx, sesskey, session)
+			ctx = PlaceInContext(ctx, session)
 			r = r.WithContext(ctx)
 			// printContextInternals(r.Context(), true)
 			h.ServeHTTP(w, r)
@@ -118,6 +118,12 @@ func AuthenticationMiddlewareGenerator(sessionStore sessions.SessionStore) (mw f
 	}
 	return
 }
+
+func PlaceInContext(ctx context.Context, session *entity.Session) context.Context {
+	ctx = context.WithValue(ctx, sesskey, session)
+	return ctx
+}
+
 func GetSession(ctx context.Context) (*entity.Session, error) {
 	sessval := ctx.Value(sesskey)
 	if sessval == nil {

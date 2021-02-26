@@ -5,6 +5,7 @@ import {
 import axios from 'axios';
 import { toAPIUrl } from '../api/api';
 import React from 'react';
+import { notification } from 'antd';
 
 type BlockerProps = {
   className?: string;
@@ -51,6 +52,17 @@ export const TheBlocker = (props: BlockerProps) => {
         setPendingBlockRefresh(true);
         if (props.blockCallback) {
           props.blockCallback();
+        }
+      })
+      .catch((e) => {
+        if (e.response) {
+          notification.error({
+            message: 'Error',
+            description: e.response.data.msg,
+            duration: 4,
+          });
+        } else {
+          console.log(e);
         }
       });
   };

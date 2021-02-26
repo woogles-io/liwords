@@ -40,6 +40,8 @@ type User struct {
 	IsDirector  bool   `gorm:"default:false"`
 	IsMod       bool   `gorm:"default:false"`
 	ApiKey      string
+
+	Actions postgres.Jsonb
 }
 
 // A user profile is in a one-to-one relationship with a user. It is the
@@ -129,6 +131,13 @@ func (s *DBStore) Get(ctx context.Context, username string) (*entity.User, error
 	if err != nil {
 		return nil, err
 	}
+
+	var actions entity.Actions
+	err = json.Unmarshal(u.Actions.RawMessage, &actions)
+	if err != nil {
+		log.Err(err).Msg("convert-user-actions")
+	}
+
 	entu := &entity.User{
 		ID:         u.ID,
 		Username:   u.Username,
@@ -141,13 +150,17 @@ func (s *DBStore) Get(ctx context.Context, username string) (*entity.User, error
 		IsAdmin:    u.IsAdmin,
 		IsDirector: u.IsDirector,
 		IsMod:      u.IsMod,
+		Actions:    &actions,
 	}
 
 	return entu, nil
 }
 
 func (s *DBStore) Set(ctx context.Context, u *entity.User) error {
-	dbu := s.toDBObj(u)
+	dbu, err := s.toDBObj(u)
+	if err != nil {
+		return err
+	}
 
 	result := s.db.Model(&User{}).Set("gorm:query_option", "FOR UPDATE").
 		Where("uuid = ?", u.UUID).Update(dbu)
@@ -232,6 +245,12 @@ func (s *DBStore) GetByUUID(ctx context.Context, uuid string) (*entity.User, err
 			return nil, err
 		}
 
+		var actions entity.Actions
+		err = json.Unmarshal(u.Actions.RawMessage, &actions)
+		if err != nil {
+			log.Err(err).Msg("convert-user-actions")
+		}
+
 		entu = &entity.User{
 			ID:         u.ID,
 			Username:   u.Username,
@@ -243,6 +262,7 @@ func (s *DBStore) GetByUUID(ctx context.Context, uuid string) (*entity.User, err
 			IsAdmin:    u.IsAdmin,
 			IsDirector: u.IsDirector,
 			IsMod:      u.IsMod,
+			Actions:    &actions,
 		}
 	}
 
@@ -260,21 +280,34 @@ func (s *DBStore) GetByAPIKey(ctx context.Context, apikey string) (*entity.User,
 		return nil, result.Error
 	}
 
+	var actions entity.Actions
+	err := json.Unmarshal(u.Actions.RawMessage, &actions)
+	if err != nil {
+		log.Err(err).Msg("convert-user-actions")
+	}
+
 	entu := &entity.User{
-		ID:        u.ID,
-		Username:  u.Username,
-		UUID:      u.UUID,
-		Email:     u.Email,
-		Password:  u.Password,
-		Anonymous: false,
-		IsBot:     u.InternalBot,
-		IsAdmin:   u.IsAdmin,
+		ID:         u.ID,
+		Username:   u.Username,
+		UUID:       u.UUID,
+		Email:      u.Email,
+		Password:   u.Password,
+		Anonymous:  false,
+		IsBot:      u.InternalBot,
+		IsAdmin:    u.IsAdmin,
+		IsDirector: u.IsDirector,
+		IsMod:      u.IsMod,
+		Actions:    &actions,
 	}
 
 	return entu, nil
 }
 
-func (s *DBStore) toDBObj(u *entity.User) *User {
+func (s *DBStore) toDBObj(u *entity.User) (*User, error) {
+	actions, err := json.Marshal(u.Actions)
+	if err != nil {
+		return nil, err
+	}
 	return &User{
 		UUID:        u.UUID,
 		Username:    u.Username,
@@ -284,7 +317,8 @@ func (s *DBStore) toDBObj(u *entity.User) *User {
 		IsAdmin:     u.IsAdmin,
 		IsDirector:  u.IsDirector,
 		IsMod:       u.IsMod,
-	}
+		Actions:     postgres.Jsonb{RawMessage: actions},
+	}, nil
 }
 
 // New creates a new user in the DB.
@@ -292,7 +326,10 @@ func (s *DBStore) New(ctx context.Context, u *entity.User) error {
 	if u.UUID == "" {
 		u.UUID = shortuuid.New()
 	}
-	dbu := s.toDBObj(u)
+	dbu, err := s.toDBObj(u)
+	if err != nil {
+		return err
+	}
 	result := s.db.Create(dbu)
 	if result.Error != nil {
 		return result.Error
@@ -703,6 +740,52 @@ func (s *DBStore) ListAllIDs(ctx context.Context) ([]string, error) {
 	}
 
 	return ids, result.Error
+}
+
+func (s *DBStore) ResetStats(ctx context.Context, uid string) error {
+	u, err := s.GetByUUID(ctx, uid)
+	if err != nil {
+		return err
+	}
+	p := &profile{}
+	if result := s.db.Model(u).Related(p); result.Error != nil {
+		return fmt.Errorf("Error getting profile for %s", uid)
+	}
+
+	emptyStats := &entity.Stats{}
+	bytes, err := json.Marshal(emptyStats)
+	if err != nil {
+		return err
+	}
+	err = s.db.Model(p).Update("stats", bytes).Error
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (s *DBStore) ResetRatings(ctx context.Context, uid string) error {
+	u, err := s.GetByUUID(ctx, uid)
+	if err != nil {
+		return err
+	}
+	p := &profile{}
+	if result := s.db.Model(u).Related(p); result.Error != nil {
+		return fmt.Errorf("Error getting profile for %s", uid)
+	}
+
+	emptyRatings := &entity.Ratings{}
+	bytes, err := json.Marshal(emptyRatings)
+	if err != nil {
+		return err
+	}
+	err = s.db.Model(p).Update("ratings", bytes).Error
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (s *DBStore) ResetStatsAndRatings(ctx context.Context, uid string) error {

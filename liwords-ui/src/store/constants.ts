@@ -73,6 +73,7 @@ export type ChatMessageFromJSON = {
   message: string;
   timestamp: string;
   user_id: string;
+  id: string;
 };
 
 export const chatMessageToChatEntity = (
@@ -80,7 +81,7 @@ export const chatMessageToChatEntity = (
 ): ChatEntityObj => {
   return {
     entityType: ChatEntityType.UserChat,
-    id: randomID(),
+    id: cm.id || randomID(),
     sender: cm.username,
     message: cm.message,
     timestamp: parseInt(cm.timestamp, 10),
