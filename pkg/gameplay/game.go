@@ -220,7 +220,7 @@ func clientEventToMove(cge *pb.ClientGameplayEvent, g *game.Game) (*move.Move, e
 	return nil, errors.New("client gameplay event not handled")
 }
 
-func StartGame(ctx context.Context, gameStore GameStore, userStore UserStore, eventChan chan<- *entity.EventWrapper, id string) error {
+func StartGame(ctx context.Context, gameStore GameStore, userStore user.Store, eventChan chan<- *entity.EventWrapper, id string) error {
 	// Note that StartGame does _not_ start the Macondo game, which
 	// has already started, but we don't "know" that. It is _this_
 	// function that will actually start the game in the user's eyes.

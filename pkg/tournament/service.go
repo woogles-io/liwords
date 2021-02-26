@@ -12,6 +12,7 @@ import (
 
 	"github.com/domino14/liwords/pkg/apiserver"
 	"github.com/domino14/liwords/pkg/entity"
+	"github.com/domino14/liwords/pkg/mod"
 	"github.com/domino14/liwords/pkg/user"
 
 	realtime "github.com/domino14/liwords/rpc/api/proto/realtime"
@@ -331,7 +332,12 @@ func (ts *TournamentService) RecentGames(ctx context.Context, req *pb.RecentGame
 	if err != nil {
 		return nil, twirp.InternalErrorWith(err)
 	}
-	return censorRecentGamesResponse(response), nil
+	// Censors the response in-place
+	err = censorRecentGamesResponse(ctx, ts.userStore, response)
+	if err != nil {
+		return nil, twirp.InternalErrorWith(err)
+	}
+	return response, nil
 }
 
 func (ts *TournamentService) StartTournament(ctx context.Context, req *pb.StartTournamentRequest) (*pb.TournamentResponse, error) {
@@ -469,8 +475,14 @@ func censorRecentGamesResponse(ctx context.Context, us user.Store, rgr *pb.Recen
 	knownUsers := make(map[string]bool)
 
 	for _, game := range rgr.Games {
-		playerOneUserEntity := us.Get(ctx, game.Players[0].Username)
-		playerTwoUserEntity := us.Get(ctx, game.Players[1].Username)
+		playerOneUserEntity, err := us.Get(ctx, game.Players[0].Username)
+		if err != nil {
+			return err
+		}
+		playerTwoUserEntity, err := us.Get(ctx, game.Players[1].Username)
+		if err != nil {
+			return err
+		}
 		playerOne := playerOneUserEntity.UUID
 		playerTwo := playerTwoUserEntity.UUID
 
@@ -479,7 +491,7 @@ func censorRecentGamesResponse(ctx context.Context, us user.Store, rgr *pb.Recen
 			knownUsers[playerOne] = mod.IsCensorable(ctx, us, playerOne)
 		}
 		if knownUsers[playerOne] {
-			tgee.Players[0].Username = mod.CensoredUsername
+			game.Players[0].Username = mod.CensoredUsername
 		}
 
 		_, known = knownUsers[playerTwo]
@@ -487,7 +499,8 @@ func censorRecentGamesResponse(ctx context.Context, us user.Store, rgr *pb.Recen
 			knownUsers[playerTwo] = mod.IsCensorable(ctx, us, playerTwo)
 		}
 		if knownUsers[playerTwo] {
-			tgee.Players[0].Username = mod.CensoredUsername
+			game.Players[0].Username = mod.CensoredUsername
 		}
 	}
+	return nil
 }

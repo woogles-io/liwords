@@ -106,8 +106,8 @@ func ActionExists(ctx context.Context, us user.Store, uuid string, forceInsistLo
 	return disabledError
 }
 
-func IsCensorable(ctx context.Context, us user.Store, uuid string) (bool, error) {
-	return mod.ActionExists(ctx, us, false, uuid, []ms.ModActionType{ms.ModActionType_SUSPEND_ACCOUNT}) != nil
+func IsCensorable(ctx context.Context, us user.Store, uuid string) bool {
+	return ActionExists(ctx, us, uuid, false, []ms.ModActionType{ms.ModActionType_SUSPEND_ACCOUNT}) != nil
 }
 
 func GetActions(ctx context.Context, us user.Store, uuid string) (map[string]*ms.ModAction, error) {
