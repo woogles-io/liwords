@@ -24,8 +24,8 @@
   .categories {
     flex-direction: column;
     padding: 4px 30px 0 0;
-    min-width: $sidebar-width-desktop;
-    max-width: $sidebar-width-desktop;
+    min-width: $settings-width;
+    max-width: $settings-width;
     .choice {
       text-align: right;
       height: 32px;
@@ -53,8 +53,8 @@
 
   .category {
     flex-direction: column;
-    min-width: $sidebar-width-desktop;
-    max-width: $sidebar-width-desktop;
+    min-width: $settings-width;
+    max-width: $settings-width;
 
     .log-out {
       .container {
@@ -74,14 +74,9 @@
       .ant-btn {
         width: 184px;
         height: 40px;
-        margin-left: 0;
         margin-top: 24px;
         font-size: 14px;
         font-weight: bold;
-        color: white;
-        @include colorModed() {
-          background: m($primary-dark);
-        }
       }
     }
   }
@@ -112,6 +107,48 @@
       .user-context-menu {
         margin-right: 12px;
       }
+    }
+  }
+  .woogles {
+    width: 144px;
+    height: 236px;
+  }
+  .support-woogles {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+
+    .right-column {
+      margin-left: 20px;
+    }
+    .title {
+      @include type-title;
+      margin-bottom: 8px;
+    }
+
+    button {
+      margin-top: 24px;
+      margin-left: 0;
+      border-width: 2px;
+      width: 144px;
+      height: 40px;
+      font-size: 14px;
+      font-weight: bold;
+    }
+  }
+  .change-password {
+    .ant-form-item-label {
+      font-weight: bold;
+    }
+    .container {
+      display: flex;
+      flex-direction: row;
+      .one-password {
+        margin-right: 12px;
+      }
+    }
+    .ant-btn {
+      font-size: 14px;
     }
   }
 }

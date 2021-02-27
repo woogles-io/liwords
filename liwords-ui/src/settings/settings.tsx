@@ -90,6 +90,10 @@ export const Settings = React.memo((props: Props) => {
     );
   });
 
+  const handleContribute = useCallback(() => {
+    history.push('/'); // Need a Contribute page
+  }, [history]);
+
   const handleLogout = useCallback(() => {
     axios
       .post(toAPIUrl('user_service.AuthenticationService', 'Logout'), {
@@ -149,7 +153,9 @@ export const Settings = React.memo((props: Props) => {
           {category === Category.LogOut ? (
             <LogOut player={player} handleLogout={handleLogout} />
           ) : null}
-          {category === Category.Support ? <Support /> : null}
+          {category === Category.Support ? (
+            <Support handleContribute={handleContribute} />
+          ) : null}
         </div>
       </div>
     </>
