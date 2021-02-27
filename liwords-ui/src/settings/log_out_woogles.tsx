@@ -20,7 +20,9 @@ export const LogOut = React.memo((props: Props) => {
 				You’ll have to log back in to your account to play games or see tiles
 				while watching tournament games on Woogles.io.
 			</div>
-			<Button onClick={props.handleLogout}>Log out</Button>
+			<Button type="primary" onClick={props.handleLogout}>
+				Log out
+			</Button>
 		</div>
 	);
 });
