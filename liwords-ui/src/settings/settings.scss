@@ -151,4 +151,26 @@
       font-size: 14px;
     }
   }
+  .blocked-players {
+    .header {
+      line-height: 20px;
+    }
+    .player-list {
+    }
+
+    .blocked-player {
+      position: relative;
+      font-weight: bold;
+      padding-top: 24px;
+      .iconx {
+        position: absolute;
+        right: 0px;
+      }
+    }
+  }
+}
+.confirm-unblock-modal {
+  .blocked-player {
+    font-weight: bold;
+  }
 }
