@@ -24,14 +24,10 @@ type Props = {};
 
 export const ChangePassword = React.memo((props: Props) => {
 	const { useState } = useMountedState();
-
 	const [err, setErr] = useState('');
-	const onFinish = (values: { [key: string]: string }) => {
-		if (values.newPassword !== values.confirmnewPassword) {
-			setErr('New passwords must match');
-			return;
-		}
+	const [form] = Form.useForm();
 
+	const onFinish = (values: { [key: string]: string }) => {
 		axios
 			.post(
 				toAPIUrl('user_service.AuthenticationService', 'ChangePassword'),
@@ -48,6 +44,7 @@ export const ChangePassword = React.memo((props: Props) => {
 					message: 'Success',
 					description: 'Your password was changed.',
 				});
+				form.resetFields();
 				setErr('');
 			})
 			.catch((e) => {
@@ -65,6 +62,7 @@ export const ChangePassword = React.memo((props: Props) => {
 		<div className="change-password">
 			<h3>Change password</h3>
 			<Form
+				form={form}
 				{...layout}
 				name="changepassword"
 				onFinish={onFinish}
@@ -90,19 +88,6 @@ export const ChangePassword = React.memo((props: Props) => {
 						{
 							required: true,
 							message: 'Please input your new password!',
-						},
-					]}
-				>
-					<Input.Password />
-				</Form.Item>
-
-				<Form.Item
-					label="Confirm New Password"
-					name="confirmnewPassword"
-					rules={[
-						{
-							required: true,
-							message: 'Please confirm your new password!',
 						},
 					]}
 				>
