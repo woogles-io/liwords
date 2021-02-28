@@ -181,6 +181,9 @@ func RemoveActions(ctx context.Context, us user.Store, actions []*ms.ModAction) 
 		// so that actions that have already expired
 		// are not removed by a mod or admin
 		_, err := GetActions(ctx, us, action.UserId)
+		if err != nil {
+			return err
+		}
 		err = removeAction(ctx, us, action, removerUserId)
 		if err != nil {
 			return err
