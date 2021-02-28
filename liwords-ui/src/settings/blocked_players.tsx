@@ -93,19 +93,24 @@ export const BlockedPlayers = React.memo((props: Props) => {
 			</Modal>
 		) : null;
 
-	const playerList = blockedUsers.map((user) => {
-		return (
-			<div className="blocked-player" key={user.uuid}>
-				{user.username}
-				<img
-					src={iconx}
-					className="iconx"
-					alt="Unblock"
-					onClick={() => setConfirmModalUser(user)}
-				/>
-			</div>
+	const playerList =
+		blockedUsers.length > 0 ? (
+			blockedUsers.map((user) => {
+				return (
+					<div className="blocked-player" key={user.uuid}>
+						{user.username}
+						<img
+							src={iconx}
+							className="iconx"
+							alt="Unblock"
+							onClick={() => setConfirmModalUser(user)}
+						/>
+					</div>
+				);
+			})
+		) : (
+			<div className="none-blocked">You have no blocked players</div>
 		);
-	});
 
 	return (
 		<>

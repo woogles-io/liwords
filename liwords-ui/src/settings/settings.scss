@@ -154,14 +154,14 @@
   .blocked-players {
     .header {
       line-height: 20px;
+      padding-bottom: 24px;
     }
-    .player-list {
+    .none-blocked {
+      font-weight: bold;
     }
-
     .blocked-player {
       position: relative;
       font-weight: bold;
-      padding-top: 24px;
       .iconx {
         position: absolute;
         right: 0px;
