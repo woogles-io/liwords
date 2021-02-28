@@ -128,11 +128,14 @@ export const SeekForm = (props: Props) => {
   };
   let disableControls = false;
   let disableLexiconControls = false;
+  let disableChallengeControls = false;
   let initialValues;
 
   if (props.tournamentID && props.tournamentID in fixedSettings) {
     disableControls = true;
     disableLexiconControls = 'lexicon' in fixedSettings[props.tournamentID];
+    disableChallengeControls =
+      'challengerule' in fixedSettings[props.tournamentID];
     initialValues = {
       ...fixedSettings[props.tournamentID],
       friend: '',
@@ -141,7 +144,14 @@ export const SeekForm = (props: Props) => {
     if (!disableLexiconControls) {
       initialValues = {
         ...initialValues,
-        lexicon: storedValues.lexicon,
+        lexicon: storedValues.lexicon || defaultValues.lexicon,
+      };
+    }
+    if (!disableChallengeControls) {
+      initialValues = {
+        ...initialValues,
+        challengerule:
+          storedValues.challengerule || defaultValues.challengerule,
       };
     }
   } else {
@@ -334,7 +344,7 @@ export const SeekForm = (props: Props) => {
       </Form.Item>
       {showChallengeRule && (
         <Form.Item label="Challenge rule" name="challengerule">
-          <Select disabled={disableControls}>
+          <Select disabled={disableChallengeControls}>
             <Select.Option value={ChallengeRule.FIVE_POINT}>
               5 points{' '}
               <span className="hover-help">
