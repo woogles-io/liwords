@@ -36,6 +36,23 @@ export const Announcements = React.memo((props: AnnouncementsProps) => {
     },
 
     {
+      title: "Ongoing Tournament - Brosowsky Brothers' Bonanza 2021",
+      body: (
+        <a
+          href="https://woogles.io/tournament/BBB"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          <p>
+            The Brosowsky Brothers' Bonanza is a one-day, 8-game event, with
+            Open and Lite divisions for both NWL20 and CSW19! We start at 12 PM
+            EST on February 28, 2021.
+          </p>
+        </a>
+      ),
+    },
+
+    {
       title: 'Ongoing Tournament - Amazing Race 2',
       body: (
         <a
@@ -46,23 +63,6 @@ export const Announcements = React.memo((props: AnnouncementsProps) => {
             Michael Fagen's Amazing Race 2 tournament will be partially played
             on Woogles. You can play your games in this room. It starts on
             January 23, 2021.
-          </p>
-        </a>
-      ),
-    },
-
-    {
-      title: "Upcoming Tournament - Brosowsky Brothers' Bonanza 2021",
-      body: (
-        <a
-          href="https://docs.google.com/document/d/1TRpW0Xx7HWwy-MG-Hrs0cwiwg-HP6ce06gRpZgYlCjw/view"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <p>
-            The Brosowsky Brothers' Bonanza is a one-day, 8-game event, with
-            Open and Lite divisions for both NWL20 and CSW19! Please join us on
-            February 28, 2021. See the flyer for registration info.
           </p>
         </a>
       ),
@@ -96,10 +96,10 @@ export const Announcements = React.memo((props: AnnouncementsProps) => {
           rel="noopener noreferrer"
         >
           <p>
-            The World Youth Championship ran on Woogles.io for 3 weekends and was won
-            by Thailand! Congratulations to them and to Pakistan, who finished in 2nd!
-            Thank you to the organizers and all the teams that competed. You are the future
-            of word games!
+            The World Youth Championship ran on Woogles.io for 3 weekends and
+            was won by Thailand! Congratulations to them and to Pakistan, who
+            finished in 2nd! Thank you to the organizers and all the teams that
+            competed. You are the future of word games!
           </p>
         </a>
       ),

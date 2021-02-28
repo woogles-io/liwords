@@ -617,7 +617,11 @@ export const Chat = React.memo((props: Props) => {
                 </div>
                 <Input
                   autoFocus={!defaultChannel.startsWith('chat.game')}
-                  placeholder="chat..."
+                  placeholder={
+                    channel === 'chat.lobby'
+                      ? 'Ask or answer question...'
+                      : 'chat...'
+                  }
                   disabled={!loggedIn}
                   onKeyDown={onKeyDown}
                   onChange={onChange}
