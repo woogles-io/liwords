@@ -686,6 +686,38 @@ export namespace UpdateAvatarResponse {
   }
 }
 
+export class RemoveAvatarRequest extends jspb.Message {
+  serializeBinary(): Uint8Array;
+  toObject(includeInstance?: boolean): RemoveAvatarRequest.AsObject;
+  static toObject(includeInstance: boolean, msg: RemoveAvatarRequest): RemoveAvatarRequest.AsObject;
+  static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+  static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+  static serializeBinaryToWriter(message: RemoveAvatarRequest, writer: jspb.BinaryWriter): void;
+  static deserializeBinary(bytes: Uint8Array): RemoveAvatarRequest;
+  static deserializeBinaryFromReader(message: RemoveAvatarRequest, reader: jspb.BinaryReader): RemoveAvatarRequest;
+}
+
+export namespace RemoveAvatarRequest {
+  export type AsObject = {
+  }
+}
+
+export class RemoveAvatarResponse extends jspb.Message {
+  serializeBinary(): Uint8Array;
+  toObject(includeInstance?: boolean): RemoveAvatarResponse.AsObject;
+  static toObject(includeInstance: boolean, msg: RemoveAvatarResponse): RemoveAvatarResponse.AsObject;
+  static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+  static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+  static serializeBinaryToWriter(message: RemoveAvatarResponse, writer: jspb.BinaryWriter): void;
+  static deserializeBinary(bytes: Uint8Array): RemoveAvatarResponse;
+  static deserializeBinaryFromReader(message: RemoveAvatarResponse, reader: jspb.BinaryReader): RemoveAvatarResponse;
+}
+
+export namespace RemoveAvatarResponse {
+  export type AsObject = {
+  }
+}
+
 export class UsernameSearchRequest extends jspb.Message {
   getPrefix(): string;
   setPrefix(value: string): void;

@@ -112,6 +112,13 @@ export const Settings = React.memo((props: Props) => {
       });
   }, [history, resetStore]);
 
+  const updatedAvatar = useCallback(
+    (avatarUrl: string) => {
+      setPlayer({ ...player, avatar_url: avatarUrl });
+    },
+    [player]
+  );
+
   return (
     <>
       <Row>
@@ -145,7 +152,7 @@ export const Settings = React.memo((props: Props) => {
         </div>
         <div className="category">
           {category === Category.PersonalInfo ? (
-            <PersonalInfo player={player} />
+            <PersonalInfo player={player} updatedAvatar={updatedAvatar} />
           ) : null}
           {category === Category.ChangePassword ? <ChangePassword /> : null}
           {category === Category.Preferences ? <Preferences /> : null}

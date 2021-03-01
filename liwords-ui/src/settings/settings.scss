@@ -174,3 +174,48 @@
     font-weight: bold;
   }
 }
+
+.section-header {
+  margin-bottom: 12px;
+  font-size: 12px;
+  font-weight: bold;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  @include colorModed() {
+    color: m($gray-medium);
+  }
+}
+
+.personal-info {
+  .avatar-section,
+  .no-avatar-section {
+    @include container;
+    padding: 0 24px 48px;
+    display: flex;
+    flex-direction: row;
+    justify-content: left;
+    align-items: center;
+
+    .ant-btn {
+      font-size: 14px;
+    }
+    .player-avatar {
+      height: 96px;
+      width: 96px;
+    }
+    .change-avatar {
+      margin-left: 24px;
+      border-width: 2px;
+    }
+    .remove-avatar {
+      border-width: 0;
+    }
+  }
+
+  .no-avatar-section {
+    padding-left: 0;
+    .change-avatar {
+      margin-left: 0;
+    }
+  }
+}

@@ -149,6 +149,12 @@ message UpdateAvatarResponse {
   string avatar_url = 1;
 }
 
+message RemoveAvatarRequest {
+}
+
+message RemoveAvatarResponse {
+}
+
 service ProfileService {
   rpc GetRatings(RatingsRequest) returns(RatingsResponse);
   rpc GetStats(StatsRequest) returns(StatsResponse);
@@ -156,6 +162,7 @@ service ProfileService {
   rpc UpdateProfile(UpdateProfileRequest) returns(UpdateProfileResponse);
   rpc GetUsersGameInfo(UsersGameInfoRequest) returns(UsersGameInfoResponse);
   rpc UpdateAvatar(UpdateAvatarRequest) returns(UpdateAvatarResponse);
+  rpc RemoveAvatar(RemoveAvatarRequest) returns(RemoveAvatarResponse);
 }
 
 // Autocomplete
