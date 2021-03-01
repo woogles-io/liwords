@@ -529,6 +529,9 @@ export class ServerChallengeResultEvent extends jspb.Message {
   getChallengeRule(): macondo_api_proto_macondo_macondo_pb.ChallengeRuleMap[keyof macondo_api_proto_macondo_macondo_pb.ChallengeRuleMap];
   setChallengeRule(value: macondo_api_proto_macondo_macondo_pb.ChallengeRuleMap[keyof macondo_api_proto_macondo_macondo_pb.ChallengeRuleMap]): void;
 
+  getReturnedTiles(): string;
+  setReturnedTiles(value: string): void;
+
   serializeBinary(): Uint8Array;
   toObject(includeInstance?: boolean): ServerChallengeResultEvent.AsObject;
   static toObject(includeInstance: boolean, msg: ServerChallengeResultEvent): ServerChallengeResultEvent.AsObject;
@@ -544,6 +547,7 @@ export namespace ServerChallengeResultEvent {
     valid: boolean,
     challenger: string,
     challengeRule: macondo_api_proto_macondo_macondo_pb.ChallengeRuleMap[keyof macondo_api_proto_macondo_macondo_pb.ChallengeRuleMap],
+    returnedTiles: string,
   }
 }
 
