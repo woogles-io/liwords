@@ -55,23 +55,32 @@
 }
 
 .announcements {
-  li {
-    padding-bottom: 18px;
-    @include colorModed() {
-      color: m($gray-extreme);
-    }
-    a,
-    a:focus,
-    a:active,
-    a:hover {
-      color: inherit;
-      letter-spacing: 0;
-      font-weight: inherit;
-    }
-    a p:hover {
+  a {
+    li {
+      padding-bottom: 18px;
       @include colorModed() {
-        background-color: mix(m($primary-middle), m($background), $weight: 50%);
+        color: m($gray-extreme);
       }
+
+      &,
+      &:focus,
+      &:active,
+      &:hover {
+        color: inherit;
+        letter-spacing: 0;
+        font-weight: inherit;
+      }
+
+      p {
+        font-weight: 300;
+      }
+
+      &:hover h4, &:hover p{
+        @include colorModed() {
+          background-color: mix(m($primary-middle), m($background), $weight: 50%);
+        }
+      }
+
     }
   }
 }
