@@ -103,7 +103,7 @@ export const PersonalInfo = React.memo((props: Props) => {
     <div className="personal-info">
       <h3>Personal info</h3>
       <div className="section-header">Profile picture</div>
-      {props.player?.avatar_url != '' ? (
+      {props.player?.avatar_url !== '' ? (
         <div className="avatar-section">
           <PlayerAvatar player={props.player} />
           <Button
