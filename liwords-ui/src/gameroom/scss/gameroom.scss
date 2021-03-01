@@ -632,6 +632,15 @@ p.streak-loss {
     }
     */
   }
+  &.blank {
+    p.rune {
+      @include colorModed() {
+        background-color: m($tile-last-blank);
+        color: m($tile-last-background);
+
+      }
+    }
+  }
   p.rune, p.point-value {
     @include colorModed() {
       color: m($tile-last-text);
