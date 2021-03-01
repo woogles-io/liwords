@@ -174,3 +174,44 @@ func (ps *ProfileService) UpdateAvatar(ctx context.Context, r *pb.UpdateAvatarRe
 		AvatarUrl: avatarUrl,
 	}, nil
 }
+
+func (ps *ProfileService) RemoveAvatar(ctx context.Context, r *pb.RemoveAvatarRequest) (*pb.RemoveAvatarResponse, error) {
+	// This view requires authentication.
+	sess, err := apiserver.GetSession(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	user, err := ps.userStore.Get(ctx, sess.Username)
+	if err != nil {
+		log.Err(err).Msg("getting-user")
+		// The username should maybe not be in the session? We can't change
+		// usernames easily.
+		return nil, twirp.InternalErrorWith(err)
+	}
+
+	avatarService := ps.avatarService
+	if avatarService == nil {
+		return nil, twirp.InternalErrorWith(errors.New("No avatar service available"))
+	}
+
+	// Clear the URL in the database
+	updateErr := ps.userStore.SetAvatarUrl(ctx, user.UUID, "")
+	if updateErr != nil {
+		return nil, twirp.InternalErrorWith(updateErr)
+	}
+
+	// Delete old URL
+	oldUrl := user.AvatarUrl()
+	if oldUrl != "" {
+		err = avatarService.Delete(ctx, oldUrl)
+		if err != nil {
+			// Don't crash.
+			log.Err(err).Msg("error-deleting-old-avatar")
+		}
+	}
+
+	return &pb.RemoveAvatarResponse{
+	}, nil
+}
+
