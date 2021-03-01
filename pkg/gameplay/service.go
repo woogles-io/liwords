@@ -2,10 +2,11 @@ package gameplay
 
 import (
 	"context"
-	"google.golang.org/protobuf/proto"
 
+	"github.com/domino14/liwords/pkg/apiserver"
 	"github.com/domino14/liwords/pkg/mod"
 	"github.com/domino14/macondo/gcgio"
+	"github.com/rs/zerolog/log"
 	"github.com/twitchtv/twirp"
 
 	"github.com/domino14/liwords/pkg/user"
@@ -43,6 +44,8 @@ func (gs *GameService) GetRematchStreak(ctx context.Context, req *pb.RematchStre
 	if err != nil {
 		return nil, twirp.InternalErrorWith(err)
 	}
+	// Censors the response in-place
+	censorStreakInfoResponse(ctx, gs.userStore, resp)
 	return resp, nil
 }
 
@@ -52,6 +55,26 @@ func (gs *GameService) GetRecentGames(ctx context.Context, req *pb.RecentGamesRe
 	resp, err := gs.gameStore.GetRecentGames(ctx, req.Username, int(req.NumGames), int(req.Offset))
 	if err != nil {
 		return nil, twirp.NewError(twirp.InvalidArgument, err.Error())
+	}
+	user, err := gs.userStore.Get(ctx, req.Username)
+	if err != nil {
+		return nil, twirp.NewError(twirp.InvalidArgument, err.Error())
+	}
+	if mod.IsCensorable(ctx, gs.userStore, user.UUID) {
+		// This view requires authentication.
+		sess, err := apiserver.GetSession(ctx)
+		if err != nil {
+			return nil, err
+		}
+
+		viewer, err := gs.userStore.Get(ctx, sess.Username)
+		if err != nil {
+			log.Err(err).Msg("getting-user")
+			return nil, twirp.InternalErrorWith(err)
+		}
+		if !viewer.IsMod && !viewer.IsAdmin {
+			return &pb.GameInfoResponses{}, nil
+		}
 	}
 	// Censors the responses in-place
 	censorGameInfoResponses(ctx, gs.userStore, resp)
@@ -64,7 +87,7 @@ func (gs *GameService) GetGCG(ctx context.Context, req *pb.GCGRequest) (*pb.GCGR
 	if err != nil {
 		return nil, twirp.NewError(twirp.InvalidArgument, err.Error())
 	}
-	hist = censorHistory(ctx, gs.userStore, hist)
+	hist = mod.CensorHistory(ctx, gs.userStore, hist)
 	if hist.PlayState != macondopb.PlayState_GAME_OVER {
 		return nil, twirp.NewError(twirp.InvalidArgument, "please wait until the game is over to download GCG")
 	}
@@ -80,7 +103,7 @@ func (gs *GameService) GetGameHistory(ctx context.Context, req *pb.GameHistoryRe
 	if err != nil {
 		return nil, twirp.NewError(twirp.InvalidArgument, err.Error())
 	}
-	hist = censorHistory(ctx, gs.userStore, hist)
+	hist = mod.CensorHistory(ctx, gs.userStore, hist)
 	if hist.PlayState != macondopb.PlayState_GAME_OVER {
 		return nil, twirp.NewError(twirp.InvalidArgument, "please wait until the game is over to download GCG")
 	}
@@ -101,6 +124,37 @@ func censorGameInfoResponse(ctx context.Context, us user.Store, gir *pb.GameInfo
 	}
 	if mod.IsCensorable(ctx, us, gir.Players[1].UserId) {
 		censorPlayer(gir, 1)
+	}
+}
+
+func censorStreakInfoResponse(ctx context.Context, us user.Store, sir *pb.StreakInfoResponse) {
+	knownUsers := make(map[string]bool)
+
+	for _, game := range sir.Streak {
+		playerOne := game.PlayerIds[0]
+		playerTwo := game.PlayerIds[1]
+
+		_, known := knownUsers[playerOne]
+		if !known {
+			knownUsers[playerOne] = mod.IsCensorable(ctx, us, playerOne)
+		}
+		if knownUsers[playerOne] {
+			game.Players[0] = mod.CensoredUsername
+			// Perhaps not necessary since average users cannot
+			// deduct a user from a UUID, but best to hide it anyway
+			game.PlayerIds[0] = mod.CensoredUsername
+		}
+
+		_, known = knownUsers[playerTwo]
+		if !known {
+			knownUsers[playerTwo] = mod.IsCensorable(ctx, us, playerTwo)
+		}
+		if knownUsers[playerTwo] {
+			game.Players[1] = mod.CensoredUsername
+			// Perhaps not necessary since average users cannot
+			// deduct a user from a UUID, but best to hide it anyway
+			game.PlayerIds[1] = mod.CensoredUsername
+		}
 	}
 }
 
@@ -127,38 +181,4 @@ func censorGameInfoResponses(ctx context.Context, us user.Store, girs *pb.GameIn
 			censorPlayer(gir, 1)
 		}
 	}
-}
-
-func censorPlayerInHistory(hist *macondopb.GameHistory, playerIndex int) {
-	uncensoredNickname := hist.Players[playerIndex].Nickname
-	hist.Players[playerIndex].RealName = mod.CensoredUsername
-	hist.Players[playerIndex].Nickname = mod.CensoredUsername
-	for _, event := range hist.Events {
-		if event.Nickname == uncensoredNickname {
-			event.Nickname = mod.CensoredUsername
-		}
-	}
-}
-
-func censorHistory(ctx context.Context, us user.Store, hist *macondopb.GameHistory) *macondopb.GameHistory {
-	playerOne := hist.Players[0].UserId
-	playerTwo := hist.Players[1].UserId
-
-	playerOneCensorable := mod.IsCensorable(ctx, us, playerOne)
-	playerTwoCensorable := mod.IsCensorable(ctx, us, playerTwo)
-
-	if !playerOneCensorable && !playerTwoCensorable {
-		return hist
-	}
-
-	censoredHistory := proto.Clone(hist).(*macondopb.GameHistory)
-
-	if playerOneCensorable {
-		censorPlayerInHistory(censoredHistory, 0)
-	}
-
-	if playerTwoCensorable {
-		censorPlayerInHistory(censoredHistory, 1)
-	}
-	return censoredHistory
 }

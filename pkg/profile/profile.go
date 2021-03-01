@@ -78,7 +78,7 @@ func (ps *ProfileService) GetProfile(ctx context.Context, r *pb.ProfileRequest) 
 		}
 
 		if !viewer.IsMod && !viewer.IsAdmin {
-			return nil, errors.New("record not found")
+			return nil, twirp.NewError(twirp.InvalidArgument, "record not found")
 		}
 	}
 
@@ -112,12 +112,20 @@ func (ps *ProfileService) GetUsersGameInfo(ctx context.Context, r *pb.UsersGameI
 	var infos []*pb.UserGameInfo
 
 	for _, uuid := range r.Uuids {
-		user, err := ps.userStore.GetByUUID(ctx, uuid)
-		if err == nil {
+		user, userStoreErr := ps.userStore.GetByUUID(ctx, uuid)
+		avatarUrl := user.AvatarUrl()
+		title := user.Profile.Title
+		modErr := mod.ActionExists(ctx, ps.userStore, uuid, true, []ms.ModActionType{ms.ModActionType_SUSPEND_ACCOUNT})
+		if modErr != nil {
+			avatarUrl = mod.CensoredAvatarUrl
+			title = mod.CensoredUsername
+		}
+
+		if userStoreErr == nil {
 			infos = append(infos, &pb.UserGameInfo{
 				Uuid:      uuid,
-				AvatarUrl: user.AvatarUrl(),
-				Title:     user.Profile.Title,
+				AvatarUrl: avatarUrl,
+				Title:     title,
 			})
 		}
 	}

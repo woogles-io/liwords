@@ -13,6 +13,7 @@ import (
 
 	"github.com/domino14/liwords/pkg/entity"
 	"github.com/domino14/liwords/pkg/gameplay"
+	"github.com/domino14/liwords/pkg/mod"
 	"github.com/domino14/liwords/pkg/tournament"
 	pb "github.com/domino14/liwords/rpc/api/proto/realtime"
 	"github.com/domino14/macondo/game"
@@ -402,7 +403,9 @@ func (b *Bus) gameRefresher(ctx context.Context, gameID string) (*entity.EventWr
 		return entity.WrapEvent(&pb.ServerMessage{Message: "Game is starting soon!"},
 			pb.MessageType_SERVER_MESSAGE), nil
 	}
-	evt := entity.WrapEvent(entGame.HistoryRefresherEvent(),
+	hre := entGame.HistoryRefresherEvent()
+	hre.History = mod.CensorHistory(ctx, b.userStore, hre.History)
+	evt := entity.WrapEvent(hre,
 		pb.MessageType_GAME_HISTORY_REFRESHER)
 	return evt, nil
 }

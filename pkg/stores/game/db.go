@@ -182,13 +182,16 @@ func (s *DBStore) GetRematchStreak(ctx context.Context, originalRequestId string
 			// for backwards compatibility.
 		}
 		players := make([]string, len(mdata.PlayerInfo))
+		playerIds := make([]string, len(mdata.PlayerInfo))
 		for i, p := range mdata.PlayerInfo {
 			players[i] = p.Nickname
+			playerIds[i] = p.UserId
 		}
 		resp.Streak[idx] = &gs.StreakInfoResponse_SingleGameInfo{
-			GameId:  g.UUID,
-			Winner:  int32(g.WinnerIdx),
-			Players: players,
+			GameId:    g.UUID,
+			Winner:    int32(g.WinnerIdx),
+			Players:   players,
+			PlayerIds: playerIds,
 		}
 	}
 

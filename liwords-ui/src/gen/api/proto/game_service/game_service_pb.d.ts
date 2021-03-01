@@ -317,6 +317,11 @@ export namespace StreakInfoResponse {
     getWinner(): number;
     setWinner(value: number): void;
 
+    clearPlayerIdsList(): void;
+    getPlayerIdsList(): Array<string>;
+    setPlayerIdsList(value: Array<string>): void;
+    addPlayerIds(value: string, index?: number): string;
+
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): SingleGameInfo.AsObject;
     static toObject(includeInstance: boolean, msg: SingleGameInfo): SingleGameInfo.AsObject;
@@ -332,6 +337,7 @@ export namespace StreakInfoResponse {
       gameId: string,
       playersList: Array<string>,
       winner: number,
+      playerIdsList: Array<string>,
     }
   }
 }

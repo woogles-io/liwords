@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/golang/protobuf/ptypes"
+	"google.golang.org/protobuf/proto"
 
 	"github.com/domino14/liwords/pkg/apiserver"
 	"github.com/domino14/liwords/pkg/entity"
@@ -14,11 +15,14 @@ import (
 	ms "github.com/domino14/liwords/rpc/api/proto/mod_service"
 
 	pb "github.com/domino14/liwords/rpc/api/proto/realtime"
+	macondopb "github.com/domino14/macondo/gen/api/proto/macondo"
 )
 
 // Square brackets are never allowed in usernames,
 // so this string will never be a valid username.
 var CensoredUsername = "[deactivated]"
+var CensoredAvatarUrl = "https://static-cdn.jtvnw.net/emoticons/v1/301428702/3.0"
+var CensoredAboutText = "This account has been deactivated."
 
 var ModActionDispatching = map[string]func(context.Context, user.Store, user.ChatStore, *ms.ModAction) error{
 
@@ -106,10 +110,6 @@ func ActionExists(ctx context.Context, us user.Store, uuid string, forceInsistLo
 	return disabledError
 }
 
-func IsCensorable(ctx context.Context, us user.Store, uuid string) bool {
-	return ActionExists(ctx, us, uuid, false, []ms.ModActionType{ms.ModActionType_SUSPEND_ACCOUNT}) != nil
-}
-
 func GetActions(ctx context.Context, us user.Store, uuid string) (map[string]*ms.ModAction, error) {
 	user, err := us.GetByUUID(ctx, uuid)
 	if err != nil {
@@ -190,6 +190,44 @@ func RemoveActions(ctx context.Context, us user.Store, actions []*ms.ModAction) 
 		}
 	}
 	return nil
+}
+
+func IsCensorable(ctx context.Context, us user.Store, uuid string) bool {
+	return ActionExists(ctx, us, uuid, false, []ms.ModActionType{ms.ModActionType_SUSPEND_ACCOUNT}) != nil
+}
+
+func censorPlayerInHistory(hist *macondopb.GameHistory, playerIndex int) {
+	uncensoredNickname := hist.Players[playerIndex].Nickname
+	hist.Players[playerIndex].RealName = CensoredUsername
+	hist.Players[playerIndex].Nickname = CensoredUsername
+	for idx, _ := range hist.Events {
+		if hist.Events[idx].Nickname == uncensoredNickname {
+			hist.Events[idx].Nickname = CensoredUsername
+		}
+	}
+}
+
+func CensorHistory(ctx context.Context, us user.Store, hist *macondopb.GameHistory) *macondopb.GameHistory {
+	playerOne := hist.Players[0].UserId
+	playerTwo := hist.Players[1].UserId
+
+	playerOneCensorable := IsCensorable(ctx, us, playerOne)
+	playerTwoCensorable := IsCensorable(ctx, us, playerTwo)
+
+	if !playerOneCensorable && !playerTwoCensorable {
+		return hist
+	}
+
+	censoredHistory := proto.Clone(hist).(*macondopb.GameHistory)
+
+	if playerOneCensorable {
+		censorPlayerInHistory(censoredHistory, 0)
+	}
+
+	if playerTwoCensorable {
+		censorPlayerInHistory(censoredHistory, 1)
+	}
+	return censoredHistory
 }
 
 func updateActions(user *entity.User) (bool, error) {

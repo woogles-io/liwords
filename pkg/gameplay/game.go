@@ -25,6 +25,7 @@ import (
 
 	"github.com/domino14/liwords/pkg/config"
 	"github.com/domino14/liwords/pkg/entity"
+	"github.com/domino14/liwords/pkg/mod"
 	"github.com/domino14/liwords/pkg/stats"
 	"github.com/domino14/liwords/pkg/tournament"
 	"github.com/domino14/liwords/pkg/user"
@@ -248,7 +249,7 @@ func StartGame(ctx context.Context, gameStore GameStore, userStore user.Store, e
 	log.Debug().Interface("history", entGame.Game.History()).Msg("game history")
 
 	evt := entGame.HistoryRefresherEvent()
-	evt.History = censorHistory(ctx, userStore, evt.History)
+	evt.History = mod.CensorHistory(ctx, userStore, evt.History)
 	wrapped := entity.WrapEvent(evt, pb.MessageType_GAME_HISTORY_REFRESHER)
 	wrapped.AddAudience(entity.AudGameTV, entGame.GameID())
 	for _, p := range players(entGame) {

@@ -2377,7 +2377,7 @@ proto.game_service.StreakInfoResponse.serializeBinaryToWriter = function(message
  * @private {!Array<number>}
  * @const
  */
-proto.game_service.StreakInfoResponse.SingleGameInfo.repeatedFields_ = [2];
+proto.game_service.StreakInfoResponse.SingleGameInfo.repeatedFields_ = [2,4];
 
 
 
@@ -2412,7 +2412,8 @@ proto.game_service.StreakInfoResponse.SingleGameInfo.toObject = function(include
   var f, obj = {
     gameId: jspb.Message.getFieldWithDefault(msg, 1, ""),
     playersList: (f = jspb.Message.getRepeatedField(msg, 2)) == null ? undefined : f,
-    winner: jspb.Message.getFieldWithDefault(msg, 3, 0)
+    winner: jspb.Message.getFieldWithDefault(msg, 3, 0),
+    playerIdsList: (f = jspb.Message.getRepeatedField(msg, 4)) == null ? undefined : f
   };
 
   if (includeInstance) {
@@ -2461,6 +2462,10 @@ proto.game_service.StreakInfoResponse.SingleGameInfo.deserializeBinaryFromReader
       var value = /** @type {number} */ (reader.readInt32());
       msg.setWinner(value);
       break;
+    case 4:
+      var value = /** @type {string} */ (reader.readString());
+      msg.addPlayerIds(value);
+      break;
     default:
       reader.skipField();
       break;
@@ -2508,6 +2513,13 @@ proto.game_service.StreakInfoResponse.SingleGameInfo.serializeBinaryToWriter = f
   if (f !== 0) {
     writer.writeInt32(
       3,
+      f
+    );
+  }
+  f = message.getPlayerIdsList();
+  if (f.length > 0) {
+    writer.writeRepeatedString(
+      4,
       f
     );
   }
@@ -2584,6 +2596,43 @@ proto.game_service.StreakInfoResponse.SingleGameInfo.prototype.getWinner = funct
  */
 proto.game_service.StreakInfoResponse.SingleGameInfo.prototype.setWinner = function(value) {
   return jspb.Message.setProto3IntField(this, 3, value);
+};
+
+
+/**
+ * repeated string player_ids = 4;
+ * @return {!Array<string>}
+ */
+proto.game_service.StreakInfoResponse.SingleGameInfo.prototype.getPlayerIdsList = function() {
+  return /** @type {!Array<string>} */ (jspb.Message.getRepeatedField(this, 4));
+};
+
+
+/**
+ * @param {!Array<string>} value
+ * @return {!proto.game_service.StreakInfoResponse.SingleGameInfo} returns this
+ */
+proto.game_service.StreakInfoResponse.SingleGameInfo.prototype.setPlayerIdsList = function(value) {
+  return jspb.Message.setField(this, 4, value || []);
+};
+
+
+/**
+ * @param {string} value
+ * @param {number=} opt_index
+ * @return {!proto.game_service.StreakInfoResponse.SingleGameInfo} returns this
+ */
+proto.game_service.StreakInfoResponse.SingleGameInfo.prototype.addPlayerIds = function(value, opt_index) {
+  return jspb.Message.addToRepeatedField(this, 4, value, opt_index);
+};
+
+
+/**
+ * Clears the list making it empty but non-null.
+ * @return {!proto.game_service.StreakInfoResponse.SingleGameInfo} returns this
+ */
+proto.game_service.StreakInfoResponse.SingleGameInfo.prototype.clearPlayerIdsList = function() {
+  return this.setPlayerIdsList([]);
 };
 
 
