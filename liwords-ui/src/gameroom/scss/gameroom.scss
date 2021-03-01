@@ -619,30 +619,39 @@ p.streak-loss {
 }
 .tile.last-played {
   @include colorModed() {
-    border: 1px solid m($tile-background);
-    background-color: m($tile-background);
-    box-shadow:  inset 0px 0px 0px 2px m($tile-background-secondary);
+    border: 1px solid m($tile-last-background);
+    background-color: m($tile-last-background);
     /* TODO
     &.tile-p0 {
-      border: 1px solid #0000ff;
-      box-shadow: inset 0px 0px 0px 2px #8080ff;
+      border: 1px solid m($someColor);
+      box-shadow: inset 0px 0px 0px 2px m($someColor);
     }
     &.tile-p1 {
-      border: 1px solid #ff0000;
-      box-shadow: inset 0px 0px 0px 2px #ff8080;
+      border: 1px solid m($someColor);
+      box-shadow: inset 0px 0px 0px 2px m($someColor);;
     }
     */
+  }
+  p.rune, p.point-value {
+    @include colorModed() {
+      color: m($tile-last-text);
+    }
   }
 }
 .tile.tentative {
   @include colorModed() {
     background-color: m($tile-background-tertiary);
     /* TODO
+
     &.tile-p0 {
-      background-color: #8080ff;
+     @include colorModed() {
+        background-color: m($someColor);
+      }
     }
     &.tile-p1 {
-      background-color: #ff8080;
+           @include colorModed() {
+        background-color: m($someColor);
+      }
     }
     */
   }
