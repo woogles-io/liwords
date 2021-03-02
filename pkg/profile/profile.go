@@ -112,16 +112,15 @@ func (ps *ProfileService) GetUsersGameInfo(ctx context.Context, r *pb.UsersGameI
 	var infos []*pb.UserGameInfo
 
 	for _, uuid := range r.Uuids {
-		user, userStoreErr := ps.userStore.GetByUUID(ctx, uuid)
-		avatarUrl := user.AvatarUrl()
-		title := user.Profile.Title
-		modErr := mod.ActionExists(ctx, ps.userStore, uuid, true, []ms.ModActionType{ms.ModActionType_SUSPEND_ACCOUNT})
-		if modErr != nil {
-			avatarUrl = mod.CensoredAvatarUrl
-			title = mod.CensoredUsername
-		}
-
-		if userStoreErr == nil {
+		user, err := ps.userStore.GetByUUID(ctx, uuid)
+		if err == nil {
+			avatarUrl := user.AvatarUrl()
+			title := user.Profile.Title
+			err := mod.ActionExists(ctx, ps.userStore, uuid, true, []ms.ModActionType{ms.ModActionType_SUSPEND_ACCOUNT})
+			if err != nil {
+				avatarUrl = mod.CensoredAvatarUrl
+				title = mod.CensoredUsername
+			}
 			infos = append(infos, &pb.UserGameInfo{
 				Uuid:      uuid,
 				AvatarUrl: avatarUrl,
