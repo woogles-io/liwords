@@ -25,6 +25,8 @@ const (
 	// Per player, per game.
 	MaxAllowedAbortRequests = 1
 	MaxAllowedNudges        = 2
+	// Disallow abort after this many turns.
+	AbortDisallowTurns = 2
 
 	AbortTimeout = time.Second * 60
 	NudgeTimeout = time.Second * 120
@@ -145,15 +147,11 @@ func processMetaEvent(ctx context.Context, g *entity.Game, evt *pb.GameMetaEvent
 	case pb.GameMetaEvent_ABORT_ACCEPTED:
 		// Abort the game.
 		log.Info().Str("gameID", g.GameID()).Msg("abort-accepted")
-		g.SetGameEndReason(pb.GameEndReason_ABORTED)
-		g.History().PlayState = macondopb.PlayState_GAME_OVER
-		err := gameStore.Set(ctx, g)
+		err := AbortGame(ctx, gameStore, tournamentStore, g, pb.GameEndReason_ABORTED)
 		if err != nil {
 			return err
 		}
-		gameStore.Unload(ctx, g.GameID())
 
-		// XXX: Send a game ended event here like the performEndgameDuties does
 	case pb.GameMetaEvent_ABORT_DENIED:
 		log.Info().Str("gameID", g.GameID()).Msg("abort-denied")
 		err := gameStore.Set(ctx, g)

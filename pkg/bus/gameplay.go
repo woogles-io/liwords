@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/lithammer/shortuuid"
 	"github.com/rs/zerolog/log"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
@@ -439,46 +440,16 @@ func (b *Bus) adjudicateGames(ctx context.Context) error {
 				Interface("now", now).
 				Interface("created", entGame.CreatedAt).
 				Msg("canceling-never-started")
-			err = gameplay.AbortGame(ctx, b.gameStore, g.GameId, pb.GameEndReason_CANCELLED)
-			log.Err(err).Msg("adjudicating-after-abort-game")
-			// Delete the game from the lobby. We do this here instead
-			// of inside the gameplay package because the game event channel
-			// was never registered with an unstarted game.
-			wrapped := entity.WrapEvent(&pb.GameDeletion{Id: g.GameId},
-				pb.MessageType_GAME_DELETION)
-			// XXX: Fix for tourneys ?
-			wrapped.AddAudience(entity.AudLobby, "gameEnded")
-			b.gameEventChan <- wrapped
 
-			// If this game is part of a tournament that is not in clubhouse
-			// mode, we must allow the players to try to play again.
-			if g.TournamentId != "" {
-				err = b.redoCancelledGamePairings(
-					ctx, g.Players[0].UserId+":"+g.Players[0].Nickname,
-					g.TournamentId, g.TournamentDivision,
-					int(g.TournamentRound), int(g.TournamentGameIndex))
-				log.Err(err).Msg("redo-cancelled-game-pairings")
-			}
+			entGame.Lock()
+			err = gameplay.AbortGame(ctx, b.gameStore, b.tournamentStore,
+				entGame, pb.GameEndReason_CANCELLED)
+			log.Err(err).Msg("adjudicating-after-abort-game")
+			entGame.Unlock()
 
 		}
 	}
 	return nil
-}
-
-func (b *Bus) redoCancelledGamePairings(ctx context.Context, userID, tid, div string, round, gidx int) error {
-
-	t, err := b.tournamentStore.Get(ctx, tid)
-	if err != nil {
-		return err
-	}
-
-	if t.Type == entity.TypeClub || t.Type == entity.TypeLegacy {
-		log.Info().Str("tid", tid).Msg("no pairings to redo for club or legacy type")
-		return nil
-	}
-
-	return tournament.ClearReadyStates(ctx, b.tournamentStore, t, div, userID, round, gidx)
-
 }
 
 func (b *Bus) gameMetaEvent(ctx context.Context, evt *pb.GameMetaEvent, userID string) error {
@@ -487,6 +458,9 @@ func (b *Bus) gameMetaEvent(ctx context.Context, evt *pb.GameMetaEvent, userID s
 	// Overwrite whatever was passed in with the userID we know made this request.
 	evt.PlayerId = userID
 	evt.Timestamp = timestamppb.New(time.Now())
+	if evt.OrigEventId == "" {
+		evt.OrigEventId = shortuuid.New()
+	}
 
 	return gameplay.HandleMetaEvent(ctx, evt, b.gameEventChan, b.gameStore, b.userStore, b.listStatStore, b.tournamentStore)
 }

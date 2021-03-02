@@ -103,6 +103,11 @@ func (s *DBStore) SetGameEventChan(c chan<- *entity.EventWrapper) {
 	s.gameEventChan = c
 }
 
+// GameEventChan returns the game event channel for all games.
+func (s *DBStore) GameEventChan() chan<- *entity.EventWrapper {
+	return s.gameEventChan
+}
+
 // Get creates an instantiated entity.Game from the database.
 // This function should almost never be called during a live game.
 // The db store should be wrapped with a cache.

@@ -47,11 +47,15 @@ func tournamentStore(cfg *config.Config, gs gameplay.GameStore) tournament.Tourn
 
 type evtConsumer struct {
 	evts []*entity.EventWrapper
+	ch   chan *entity.EventWrapper
 }
 
 func (ec *evtConsumer) consumeEventChan(ctx context.Context,
 	ch chan *entity.EventWrapper,
 	done chan bool) {
+
+	ec.ch = ch
+
 	defer func() { done <- true }()
 	for {
 		select {
@@ -80,6 +84,7 @@ func makeGame(cfg *config.Config, ustore pkguser.Store, gstore gameplay.GameStor
 	ch := make(chan *entity.EventWrapper)
 	donechan := make(chan bool)
 	consumer := &evtConsumer{}
+	gstore.SetGameEventChan(ch)
 
 	cctx, cancel := context.WithCancel(ctx)
 	go consumer.consumeEventChan(cctx, ch, donechan)
