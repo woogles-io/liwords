@@ -4,6 +4,7 @@ import { useMountedState } from '../utils/mounted';
 import { TopBar } from '../topbar/topbar';
 import { ChangePassword } from './change_password';
 import { PersonalInfo } from './personal_info';
+import { CloseAccount } from './close_account';
 import { Preferences } from './preferences';
 import { BlockedPlayers } from './blocked_players';
 import { LogOut } from './log_out_woogles';
@@ -52,6 +53,7 @@ export const Settings = React.memo((props: Props) => {
   const [player, setPlayer] = useState<Partial<PlayerMetadata> | undefined>(
     undefined
   );
+  const [showCloseAccount, setShowCloseAccount] = useState(false);
   const history = useHistory();
 
   type CategoryProps = {
@@ -119,6 +121,14 @@ export const Settings = React.memo((props: Props) => {
     [player]
   );
 
+  const startClosingAccount = useCallback(() => {
+    setShowCloseAccount(true);
+  }, []);
+
+  const closeAccountNow = useCallback(() => {
+    console.log('CLOSE ACCOUNT');
+  }, []);
+
   return (
     <>
       <Row>
@@ -152,7 +162,21 @@ export const Settings = React.memo((props: Props) => {
         </div>
         <div className="category">
           {category === Category.PersonalInfo ? (
-            <PersonalInfo player={player} updatedAvatar={updatedAvatar} />
+            showCloseAccount ? (
+              <CloseAccount
+                closeAccountNow={closeAccountNow}
+                player={player}
+                cancel={() => {
+                  setShowCloseAccount(false);
+                }}
+              />
+            ) : (
+              <PersonalInfo
+                player={player}
+                updatedAvatar={updatedAvatar}
+                startClosingAccount={startClosingAccount}
+              />
+            )
           ) : null}
           {category === Category.ChangePassword ? <ChangePassword /> : null}
           {category === Category.Preferences ? <Preferences /> : null}

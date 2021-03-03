@@ -11,6 +11,7 @@ import { toAPIUrl } from '../api/api';
 type Props = {
   player: Partial<PlayerMetadata> | undefined;
   updatedAvatar: (avatarUrl: string) => void;
+  startClosingAccount: () => void;
 };
 
 export const PersonalInfo = React.memo((props: Props) => {
@@ -145,15 +146,41 @@ export const PersonalInfo = React.memo((props: Props) => {
       <div className="section-header">Player bio</div>
       <div>(the big bio box)</div>
       <div className="section-header">Account details</div>
-      <div>Email</div>
-      <Input />
-      <div>First name</div>
-      <Input />
-      <div>Last name</div>
-      <Input />
-      <div>Country</div>
-      <Input />
-      <Button>Close my account</Button>
+      <div className="rows">
+        <div className="row">
+          <div className="element">
+            <div>Email</div>
+            <Input size="large" />
+          </div>
+          <div className="element">
+            <div>First name</div>
+            <Input size="large" />
+          </div>
+        </div>
+        <div className="row">
+          <div className="element">
+            <div>Last name</div>
+            <Input size="large" />
+          </div>
+          <div className="element">
+            <div>Country</div>
+            <Input size="large" />
+          </div>
+        </div>
+        <div className="row">
+          <div
+            className="personal-info-close-account-button"
+            onClick={() => {
+              props.startClosingAccount();
+            }}
+          >
+            Close my account
+          </div>
+          <Button className="save-button" type="primary" htmlType="submit">
+            Save
+          </Button>
+        </div>
+      </div>
     </div>
   );
 });
