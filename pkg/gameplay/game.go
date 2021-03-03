@@ -320,7 +320,7 @@ func handleChallenge(ctx context.Context, entGame *entity.Game, gameStore GameSt
 	// curTurn := entGame.Game.Turn()
 
 	var returnedTiles string
-	{
+	if numEvts > 0 {
 		// this must be done before ChallengeEvent irreversibly modifies the history
 		lastEvent := entGame.Game.LastEvent()
 		numPlayers := entGame.Game.NumPlayers() // if this is always 2, we can just do PlayerOnTurn() ^ 1
