@@ -70,8 +70,10 @@ const channel275 = {
   vsBot: false,
 };
 
-const bbb = {
-  initialtime: 17, // 15 minutes
+const asci = {
+  lexicon: 'CSW19X',
+  challengerule: ChallengeRule.FIVE_POINT,
+  initialtime: 15, // 13 minutes
   rated: true,
   extratime: 1,
   friend: '',
@@ -86,7 +88,8 @@ export const fixedSettings: { [key: string]: settings } = {
   '26VtG4JCfeD6qvSGJEwRLm': laclub,
   cocoblitz,
   channel275,
-  HCLbdLBdBDNo2nNDRCb5VZ: bbb,
+  cbCrE5EAnfTpacaZkxc4SZ: asci, // /tournament
+  CSLUwqH4rHUTKzNcp7cPRP: asci, // /club
 };
 
 // A temporary map of club redirects. Map internal tournament ID to slug:

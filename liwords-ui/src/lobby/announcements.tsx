@@ -31,17 +31,6 @@ export const Announcements = React.memo((props: AnnouncementsProps) => {
     },
 
     {
-      title: 'Ongoing Tournament - Amazing Race 2',
-      link: 'https://woogles.io/tournament/tarst2',
-      body: (
-        <p>
-          Michael Fagen's Amazing Race 2 tournament will be partially played on
-          Woogles. You can play your games in this room. It starts on January
-          23, 2021.
-        </p>
-      ),
-    },
-    {
       title: 'Upcoming Tournament - HOPPY',
       link:
         'https://drive.google.com/file/d/1vi6eUYaYeL2az7-6eZthwevsMG0fr3fK/view',
@@ -55,6 +44,31 @@ export const Announcements = React.memo((props: AnnouncementsProps) => {
         </p>
       ),
     },
+
+    {
+      title: 'Upcoming Tournament - Virtual CanAm 2021',
+      link: 'https://woogles.io/',
+      body: (
+        <p>
+          The CanAm has been brought to Woogles virtually, with teams of
+          Canadians and Americans vying for the virtual trophy! Who will emerge
+          victorious? Find out on March 27th and 28th!
+        </p>
+      ),
+    },
+
+    {
+      title: 'Completed Tournament - Amazing Race 2',
+      link: 'https://woogles.io/tournament/tarst2',
+      body: (
+        <p>
+          Michael Fagen's Amazing Race 2 tournament is now concluded. Alec
+          Sjöholm defended his title with his new teammate, Michael Fagen!
+          Congrats!
+        </p>
+      ),
+    },
+
     {
       title: "Completed Tournament - Brosowsky Brothers' Bonanza 2021",
       link: 'https://woogles.io/tournament/BBB',
@@ -62,18 +76,6 @@ export const Announcements = React.memo((props: AnnouncementsProps) => {
         <p>
           The Brosowsky Brothers' Bonanza is a one-day, 8-game event, with Open
           and Lite divisions for both NWL20 and CSW19! Check out the results.
-        </p>
-      ),
-    },
-    {
-      title: 'Completed - WYC',
-      link: 'https://woogles.io/club/wyc2020matches',
-      body: (
-        <p>
-          The World Youth Championship ran on Woogles.io for 3 weekends and was
-          won by Thailand! Congratulations to them and to Pakistan, who finished
-          in 2nd! Thank you to the organizers and all the teams that competed.
-          You are the future of word games!
         </p>
       ),
     },
