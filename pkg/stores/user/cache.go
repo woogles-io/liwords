@@ -23,6 +23,7 @@ type backingStore interface {
 	SetPassword(ctx context.Context, uuid string, hashpass string) error
 	SetAbout(ctx context.Context, uuid string, about string) error
 	SetAvatarUrl(ctx context.Context, uuid string, avatarUrl string) error
+	SetPersonalInfo(ctx context.Context, uuid string, email string, firstName string, lastName string, countryCode string) error
 	SetRatings(ctx context.Context, p0uuid string, p1uuid string, variant entity.VariantKey,
 		p1Rating entity.SingleRating, p2Rating entity.SingleRating) error
 	SetStats(ctx context.Context, p0uuid string, p1uuid string, variant entity.VariantKey,
@@ -129,6 +130,18 @@ func (c *Cache) SetAvatarUrl(ctx context.Context, uuid string, avatarUrl string)
 	}
 	u.Profile.AvatarUrl = avatarUrl
 	return c.backing.SetAvatarUrl(ctx, uuid, avatarUrl)
+}
+
+func (c *Cache) SetPersonalInfo(ctx context.Context, uuid string, email string, firstName string, lastName string, countryCode string) error {
+	u, err := c.GetByUUID(ctx, uuid)
+	if err != nil {
+		return err
+	}
+	u.Email = email
+	u.Profile.FirstName = firstName
+	u.Profile.LastName = lastName
+	u.Profile.CountryCode = countryCode
+	return c.backing.SetPersonalInfo(ctx, uuid, email, firstName, lastName, countryCode)
 }
 
 func (c *Cache) SetRatings(ctx context.Context, p0uuid string, p1uuid string, variant entity.VariantKey, p0Rating entity.SingleRating, p1Rating entity.SingleRating) error {

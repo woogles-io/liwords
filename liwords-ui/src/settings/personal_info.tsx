@@ -1,17 +1,35 @@
-import React, { useCallback } from 'react';
-import { Button, Input, notification } from 'antd';
+import React, { useCallback, useEffect } from 'react';
+import { Button, Form, Input, notification } from 'antd';
 import { PlayerAvatar } from '../shared/player_avatar';
 import { PlayerMetadata } from '../gameroom/game_info';
 import { useMountedState } from '../utils/mounted';
 import { AvatarEditModal } from './avatar_edit_modal';
 import { AvatarRemoveModal } from './avatar_remove_modal';
-import axios from 'axios';
+import axios, { AxiosError } from 'axios';
 import { toAPIUrl } from '../api/api';
+
+type PersonalInfo = {
+  email: string;
+  firstName: string;
+  lastName: string;
+  countryCode: string;
+};
 
 type Props = {
   player: Partial<PlayerMetadata> | undefined;
+  personalInfo: PersonalInfo;
   updatedAvatar: (avatarUrl: string) => void;
   startClosingAccount: () => void;
+};
+
+const errorCatcher = (e: AxiosError) => {
+  if (e.response) {
+    notification.warning({
+      message: 'Fetch Error',
+      description: e.response.data.msg,
+      duration: 4,
+    });
+  }
 };
 
 export const PersonalInfo = React.memo((props: Props) => {
@@ -24,6 +42,17 @@ export const PersonalInfo = React.memo((props: Props) => {
     false
   );
   const [avatarErr, setAvatarErr] = useState('');
+
+  const avatarErrorCatcher = (e: AxiosError) => {
+    if (e.response) {
+      // From Twirp
+      console.log(e);
+      setAvatarErr(e.response.data.msg);
+    } else {
+      setAvatarErr('unknown error, see console');
+      console.log(e);
+    }
+  };
 
   const cancelUpdateAvatarModal = useCallback(() => {
     setUpdateAvatarModalVisible(false);
@@ -50,16 +79,7 @@ export const PersonalInfo = React.memo((props: Props) => {
         setRemoveAvatarModalVisible(false);
         props.updatedAvatar('');
       })
-      .catch((e) => {
-        if (e.response) {
-          // From Twirp
-          console.log(e);
-          setAvatarErr(e.response.data.msg);
-        } else {
-          setAvatarErr('unknown error, see console');
-          console.log(e);
-        }
-      });
+      .catch(avatarErrorCatcher);
   }, [props]);
 
   const updateAvatar = useCallback(
@@ -84,24 +104,42 @@ export const PersonalInfo = React.memo((props: Props) => {
             setUpdateAvatarModalVisible(false);
             props.updatedAvatar(resp.data.avatar_url);
           })
-          .catch((e) => {
-            if (e.response) {
-              // From Twirp
-              console.log(e);
-              setAvatarErr(e.response.data.msg);
-            } else {
-              setAvatarErr('unknown error, see console');
-              console.log(e);
-            }
-          });
+          .catch(avatarErrorCatcher);
       };
       reader.readAsBinaryString(avatarFile);
     },
     [props]
   );
 
+  const updateFields = (values: { [key: string]: string }) => {
+    axios
+      .post(
+        toAPIUrl('user_service.ProfileService', 'UpdatePersonalInfo'),
+        values,
+        {
+          withCredentials: true,
+        }
+      )
+      .then(() => {
+        notification.info({
+          message: 'Success',
+          description: 'Your personal info was changed.',
+        });
+      })
+      .catch(errorCatcher);
+  };
+
+  const [form] = Form.useForm();
+
+  useEffect(() => form.resetFields(), [props.personalInfo, form]);
+
   return (
-    <div className="personal-info">
+    <Form
+      form={form}
+      className="personal-info"
+      onFinish={updateFields}
+      initialValues={props.personalInfo}
+    >
       <h3>Personal info</h3>
       <div className="section-header">Profile picture</div>
       {props.player?.avatar_url !== '' ? (
@@ -150,21 +188,29 @@ export const PersonalInfo = React.memo((props: Props) => {
         <div className="row">
           <div className="element">
             <div>Email</div>
-            <Input size="large" />
+            <Form.Item name="email">
+              <Input size="large" />
+            </Form.Item>
           </div>
           <div className="element">
             <div>First name</div>
-            <Input size="large" />
+            <Form.Item name="firstName">
+              <Input size="large" />
+            </Form.Item>
           </div>
         </div>
         <div className="row">
           <div className="element">
             <div>Last name</div>
-            <Input size="large" />
+            <Form.Item name="lastName">
+              <Input size="large" />
+            </Form.Item>
           </div>
           <div className="element">
             <div>Country</div>
-            <Input size="large" />
+            <Form.Item name="countryCode">
+              <Input size="large" />
+            </Form.Item>
           </div>
         </div>
         <div className="row">
@@ -181,6 +227,6 @@ export const PersonalInfo = React.memo((props: Props) => {
           </Button>
         </div>
       </div>
-    </div>
+    </Form>
   );
 });
