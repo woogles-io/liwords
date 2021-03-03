@@ -141,6 +141,28 @@ message UpdateProfileRequest {
 
 message UpdateProfileResponse {}
 
+message PersonalInfoRequest { }
+
+message PersonalInfoResponse {
+  string email = 1;
+  string first_name = 2;
+  string last_name = 3;
+  string country_code = 4;
+  string avatar_url = 5;
+  string full_name = 6;
+}
+
+message UpdatePersonalInfoRequest {
+  string email = 1;
+  string first_name = 2;
+  string last_name = 3;
+  string country_code = 4;
+  string avatar_url = 5;
+  string full_name = 6;
+}
+
+message UpdatePersonalInfoResponse { }
+
 message UpdateAvatarRequest {
   bytes jpg_data = 1;
 }
@@ -160,6 +182,8 @@ service ProfileService {
   rpc GetStats(StatsRequest) returns(StatsResponse);
   rpc GetProfile(ProfileRequest) returns(ProfileResponse);
   rpc UpdateProfile(UpdateProfileRequest) returns(UpdateProfileResponse);
+  rpc GetPersonalInfo(PersonalInfoRequest) returns(PersonalInfoResponse);
+  rpc UpdatePersonalInfo(UpdatePersonalInfoRequest) returns(UpdatePersonalInfoResponse);
   rpc GetUsersGameInfo(UsersGameInfoRequest) returns(UsersGameInfoResponse);
   rpc UpdateAvatar(UpdateAvatarRequest) returns(UpdateAvatarResponse);
   rpc RemoveAvatar(RemoveAvatarRequest) returns(RemoveAvatarResponse);

@@ -89,6 +89,56 @@ func (ps *ProfileService) GetProfile(ctx context.Context, r *pb.ProfileRequest) 
 	}, nil
 }
 
+func (ps *ProfileService) GetPersonalInfo(ctx context.Context, r *pb.PersonalInfoRequest) (*pb.PersonalInfoResponse, error) {
+	// This view requires authentication.
+	sess, err := apiserver.GetSession(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	user, err := ps.userStore.Get(ctx, sess.Username)
+	if err != nil {
+		log.Err(err).Msg("getting-user")
+		// The username should maybe not be in the session? We can't change
+		// usernames easily.
+		return nil, twirp.InternalErrorWith(err)
+	}
+
+	return &pb.PersonalInfoResponse{
+		Email:			 user.Email,
+		FirstName:       user.Profile.FirstName,
+		LastName:        user.Profile.LastName,
+		CountryCode:     user.Profile.CountryCode,
+		AvatarUrl:       user.AvatarUrl(),
+		FullName:		 user.RealName(),
+	}, nil
+}
+
+func (ps *ProfileService) UpdatePersonalInfo(ctx context.Context, r *pb.UpdatePersonalInfoRequest) (*pb.UpdatePersonalInfoResponse, error) {
+	// This view requires authentication.
+	sess, err := apiserver.GetSession(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	user, err := ps.userStore.Get(ctx, sess.Username)
+	if err != nil {
+		log.Err(err).Msg("getting-user")
+		// The username should maybe not be in the session? We can't change
+		// usernames easily.
+		return nil, twirp.InternalErrorWith(err)
+	}
+
+	updateErr := ps.userStore.SetPersonalInfo(ctx, user.UUID, r.Email, r.FirstName, r.LastName, r.CountryCode)
+	if updateErr != nil {
+		return nil, twirp.InternalErrorWith(updateErr)
+	}
+
+
+	return &pb.UpdatePersonalInfoResponse{
+	}, nil
+}
+
 func (ps *ProfileService) GetUsersGameInfo(ctx context.Context, r *pb.UsersGameInfoRequest) (*pb.UsersGameInfoResponse, error) {
 	var infos []*pb.UserGameInfo
 
