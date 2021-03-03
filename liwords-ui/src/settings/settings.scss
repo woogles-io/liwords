@@ -21,6 +21,11 @@
   .div {
     line-height: 20px;
   }
+  .row {
+    position: relative;
+    display: flex;
+    flex-direction: row;
+  }
   .categories {
     flex-direction: column;
     padding: 4px 30px 0 0;
@@ -57,20 +62,6 @@
     max-width: $settings-width;
 
     .log-out {
-      .container {
-        display: flex;
-        align-items: center;
-        padding-bottom: 24px;
-      }
-      .player-avatar {
-        width: 64px;
-        height: 64px;
-      }
-      .full-name {
-        padding-left: 24px;
-        font-size: 16px;
-        font-weight: bold;
-      }
       .ant-btn {
         width: 184px;
         height: 40px;
@@ -217,5 +208,92 @@
     .change-avatar {
       margin-left: 0;
     }
+  }
+  .rows {
+    display: flex;
+    flex-direction: column;
+  }
+  .row {
+    margin-right: 24px;
+    width: 100%;
+    align-items: center;
+
+    div {
+      font-weight: bold;
+    }
+    input {
+      border-radius: 4px;
+      margin-top: 6px;
+      margin-bottom: 24px;
+      font-size: 14px;
+    }
+    .element {
+      width: 100%;
+      margin-right: 24px;
+    }
+  }
+  .personal-info-close-account-button {
+    font-weight: bold;
+    margin-left: 0;
+    cursor: pointer;
+    @include colorModed() {
+      color: m($primary-dark);
+    }
+    &:hover,
+    &.active {
+      @include colorModed() {
+        color: m($primary-dark);
+      }
+    }
+    &.active {
+      @include colorModed() {
+        border-color: m($primary-dark);
+      }
+    }
+  }
+  .save-button {
+    position: absolute;
+    right: 24px;
+    font-size: 14px;
+    height: 40px;
+  }
+}
+.close-account {
+  .deletion-rules {
+    line-height: 20px;
+    margin-bottom: 12px;
+  }
+  .stern-warning {
+    background: #eafffd;
+    border-radius: 4px;
+    padding-left: 16px;
+    padding-top: 16px;
+    margin-bottom: 48px;
+    height: 52px;
+  }
+  .ant-checkbox-wrapper {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    margin: 0;
+    padding-bottom: 24px;
+  }
+  .ant-btn {
+    margin-top: 0;
+  }
+}
+
+.avatar-container {
+  display: flex;
+  align-items: center;
+  padding-bottom: 24px;
+  .player-avatar {
+    width: 64px;
+    height: 64px;
+  }
+  .full-name {
+    padding-left: 24px;
+    font-size: 16px;
+    font-weight: bold;
   }
 }
