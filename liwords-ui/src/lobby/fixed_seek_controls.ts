@@ -81,6 +81,17 @@ const asci = {
   vsBot: false,
 };
 
+const phillyasap = {
+  lexicon: 'NWL20',
+  challengerule: ChallengeRule.VOID,
+  initialtime: 22, // 20 minutes
+  rated: true,
+  extratime: 2,
+  friend: '',
+  incOrOT: 'overtime',
+  vsBot: false,
+};
+
 export const fixedSettings: { [key: string]: settings } = {
   phillyvirtual,
   cococlub,
@@ -88,6 +99,7 @@ export const fixedSettings: { [key: string]: settings } = {
   '26VtG4JCfeD6qvSGJEwRLm': laclub,
   cocoblitz,
   channel275,
+  GqgfauAMzorWxGGrCqhV5J: phillyasap,
   cbCrE5EAnfTpacaZkxc4SZ: asci, // /tournament
   CSLUwqH4rHUTKzNcp7cPRP: asci, // /club
 };
