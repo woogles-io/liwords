@@ -15,10 +15,12 @@ import (
 )
 
 var (
-	errTooManyAborts = errors.New("you have made too many abort requests in this game")
-	errTooManyNudges = errors.New("you have made too many nudges in this game")
+	ErrTooManyAborts = errors.New("you have made too many abort requests in this game")
+	ErrTooManyNudges = errors.New("you have made too many nudges in this game")
 
-	errNoMatchingEvent = errors.New("no matching request to respond to")
+	ErrNoMatchingEvent = errors.New("no matching request to respond to")
+	ErrTooLateToAbort  = errors.New("it is too late to abort")
+	ErrPleaseWaitToEnd = errors.New("this game is almost over; request not sent")
 )
 
 const (
@@ -26,13 +28,18 @@ const (
 	MaxAllowedAbortRequests = 1
 	MaxAllowedNudges        = 2
 	// Disallow abort after this many turns.
-	AbortDisallowTurns = 2
+	// XXX: This is purposefully somewhat high to account for people playing
+	// in a club or legacy tournament oblivious to the fact that they should
+	// be cancelling. We can make it lower as our chat implementation becomes
+	// more obvious.
+	AbortDisallowTurns = 7
 
 	AbortTimeout = time.Second * 60
 	NudgeTimeout = time.Second * 120
 )
 
 func numEvtsOfSameType(evts []*pb.GameMetaEvent, evt *pb.GameMetaEvent) int {
+	log.Debug().Interface("evts", evts).Interface("evt", evt).Msg("counting-meta-evts")
 	ct := 0
 	for _, e := range evts {
 		if e.Type == evt.Type && e.PlayerId == evt.PlayerId {
@@ -80,8 +87,14 @@ func HandleMetaEvent(ctx context.Context, evt *pb.GameMetaEvent, eventChan chan<
 	if err != nil {
 		return err
 	}
+
 	g.Lock()
 	defer g.Unlock()
+
+	if g.GameEndReason != pb.GameEndReason_NONE {
+		// game is over
+		return errGameNotActive
+	}
 
 	switch evt.Type {
 	case pb.GameMetaEvent_REQUEST_ABORT,
@@ -91,12 +104,19 @@ func HandleMetaEvent(ctx context.Context, evt *pb.GameMetaEvent, eventChan chan<
 
 		// These are "original" events.
 		n := numEvtsOfSameType(g.MetaEvents.Events, evt)
-		if evt.Type == pb.GameMetaEvent_REQUEST_ABORT && n > MaxAllowedAbortRequests {
-			return errTooManyAborts
+		if evt.Type == pb.GameMetaEvent_REQUEST_ABORT && n >= MaxAllowedAbortRequests {
+			return ErrTooManyAborts
 		}
-		if evt.Type == pb.GameMetaEvent_REQUEST_ADJUDICATION && n > MaxAllowedNudges {
-			return errTooManyNudges
+		if evt.Type == pb.GameMetaEvent_REQUEST_ADJUDICATION && n >= MaxAllowedNudges {
+			return ErrTooManyNudges
 		}
+
+		log.Debug().Interface("h", g.History()).Msg("hstory")
+		if evt.Type == pb.GameMetaEvent_REQUEST_ABORT && g.History() != nil &&
+			len(g.History().Events) > AbortDisallowTurns {
+			return ErrTooLateToAbort
+		}
+
 		// For this type of event, we just append it to the list and return.
 		// The event will be sent via the appropriate game channel
 		g.MetaEvents.Events = append(g.MetaEvents.Events, evt)
@@ -113,7 +133,7 @@ func HandleMetaEvent(ctx context.Context, evt *pb.GameMetaEvent, eventChan chan<
 	default:
 		matchingEvt := findLastEvtOfMatchingType(g.MetaEvents.Events, evt)
 		if matchingEvt == nil {
-			return errNoMatchingEvent
+			return ErrNoMatchingEvent
 		}
 		g.MetaEvents.Events = append(g.MetaEvents.Events, evt)
 

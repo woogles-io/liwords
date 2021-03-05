@@ -315,6 +315,7 @@ func AbortGame(ctx context.Context, gameStore GameStore, tournamentStore tournam
 
 	g.SetGameEndReason(gameEndReason)
 	g.History().PlayState = macondopb.PlayState_GAME_OVER
+	g.Game.SetPlaying(macondopb.PlayState_GAME_OVER)
 
 	// save the game back into the store
 	err := gameStore.Set(ctx, g)

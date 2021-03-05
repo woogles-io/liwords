@@ -2,6 +2,8 @@ package gameplay_test
 
 import (
 	"context"
+	"encoding/json"
+	"io/ioutil"
 	"testing"
 	"time"
 
@@ -11,26 +13,14 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	pb "github.com/domino14/liwords/rpc/api/proto/realtime"
+	macondopb "github.com/domino14/macondo/gen/api/proto/macondo"
 
 	"github.com/domino14/liwords/pkg/gameplay"
-	"github.com/domino14/liwords/pkg/stores/game"
-	"github.com/domino14/liwords/pkg/stores/stats"
-	ts "github.com/domino14/liwords/pkg/stores/tournament"
-	"github.com/domino14/liwords/pkg/stores/user"
 )
 
 func TestHandleAbort(t *testing.T) {
 	is := is.New(t)
-	recreateDB()
-	cstr := TestingDBConnStr + " dbname=liwords_test"
-
-	ustore := userStore(cstr)
-	lstore := listStatStore(cstr)
-	cfg, gstore := gameStore(cstr, ustore)
-	tstore := tournamentStore(cfg, gstore)
-
-	g, _, cancel, donechan, consumer := makeGame(cfg, ustore, gstore)
-
+	gsetup := setupNewGame()
 	evtID := shortuuid.New()
 
 	// Jesse requests an abort.
@@ -38,12 +28,13 @@ func TestHandleAbort(t *testing.T) {
 		Timestamp:   timestamppb.New(time.Now()),
 		Type:        pb.GameMetaEvent_REQUEST_ABORT,
 		PlayerId:    "3xpEkpRAy3AizbVmDg3kdi", // "jesse"
-		GameId:      g.GameID(),
+		GameId:      gsetup.g.GameID(),
 		OrigEventId: evtID,
 	}
 
 	err := gameplay.HandleMetaEvent(context.Background(), metaEvt,
-		consumer.ch, gstore, ustore, lstore, tstore)
+		gsetup.consumer.ch, gsetup.gstore, gsetup.ustore, gsetup.lstore,
+		gsetup.tstore)
 
 	is.NoErr(err)
 
@@ -52,24 +43,220 @@ func TestHandleAbort(t *testing.T) {
 		Timestamp:   timestamppb.New(time.Now()),
 		Type:        pb.GameMetaEvent_ABORT_ACCEPTED,
 		PlayerId:    "xjCWug7EZtDxDHX5fRZTLo", // "cesar4"
-		GameId:      g.GameID(),
+		GameId:      gsetup.g.GameID(),
 		OrigEventId: evtID,
 	}
 
 	err = gameplay.HandleMetaEvent(context.Background(), metaEvt,
-		consumer.ch, gstore, ustore, lstore, tstore)
+		gsetup.consumer.ch, gsetup.gstore, gsetup.ustore, gsetup.lstore,
+		gsetup.tstore)
 	is.NoErr(err)
 
-	cancel()
-	<-donechan
+	gsetup.cancel()
+	<-gsetup.donechan
 
 	// expected events: game history, request abort, game deletion (from lobby),
 	// game ended event, abort accepted
-	log.Debug().Interface("evts", consumer.evts).Msg("evts")
-	is.Equal(len(consumer.evts), 5)
+	log.Debug().Interface("evts", gsetup.consumer.evts).Msg("evts")
+	is.Equal(len(gsetup.consumer.evts), 5)
+	is.Equal(gsetup.g.Playing(), macondopb.PlayState_GAME_OVER)
 
-	ustore.(*user.DBStore).Disconnect()
-	lstore.(*stats.ListStatStore).Disconnect()
-	gstore.(*game.Cache).Disconnect()
-	tstore.(*ts.Cache).Disconnect()
+	teardownGame(gsetup)
+}
+
+func TestHandleAbortWrongTime(t *testing.T) {
+	is := is.New(t)
+	gsetup := setupNewGame()
+	evtID := shortuuid.New()
+
+	histjson, err := ioutil.ReadFile("./testdata/game2/history.json")
+	is.NoErr(err)
+	hist := &macondopb.GameHistory{}
+	err = json.Unmarshal(histjson, hist)
+	is.NoErr(err)
+
+	// Overwrite this test history a bit.
+	for _, e := range hist.Events {
+		if e.Nickname == "Mina" {
+			e.Nickname = "jesse"
+		}
+	}
+	hist.Players[0].Nickname = "jesse"
+	hist.Players[0].UserId = "3xpEkpRAy3AizbVmDg3kdi"
+	hist.Uid = gsetup.g.GameID()
+
+	gsetup.g.SetHistory(hist)
+	// This test is a little broken in that the game is actually already over,
+	// but this wasn't changed in the gsetup.g -- it's ok, we're just measuring
+	// the length of the events for it, for now.
+
+	// Jesse requests an abort.
+	metaEvt := &pb.GameMetaEvent{
+		Timestamp:   timestamppb.New(time.Now()),
+		Type:        pb.GameMetaEvent_REQUEST_ABORT,
+		PlayerId:    "3xpEkpRAy3AizbVmDg3kdi", // "jesse"
+		GameId:      gsetup.g.GameID(),
+		OrigEventId: evtID,
+	}
+
+	err = gameplay.HandleMetaEvent(context.Background(), metaEvt,
+		gsetup.consumer.ch, gsetup.gstore, gsetup.ustore, gsetup.lstore,
+		gsetup.tstore)
+	is.Equal(err, gameplay.ErrTooLateToAbort)
+
+	gsetup.cancel()
+	<-gsetup.donechan
+
+	// expected events: game history
+	log.Debug().Interface("evts", gsetup.consumer.evts).Msg("evts")
+	is.Equal(len(gsetup.consumer.evts), 1)
+
+	teardownGame(gsetup)
+}
+
+func TestHandleAbortAcceptWrongId(t *testing.T) {
+	is := is.New(t)
+	gsetup := setupNewGame()
+	evtID := shortuuid.New()
+
+	// Jesse requests an abort.
+	metaEvt := &pb.GameMetaEvent{
+		Timestamp:   timestamppb.New(time.Now()),
+		Type:        pb.GameMetaEvent_REQUEST_ABORT,
+		PlayerId:    "3xpEkpRAy3AizbVmDg3kdi", // "jesse"
+		GameId:      gsetup.g.GameID(),
+		OrigEventId: evtID,
+	}
+
+	err := gameplay.HandleMetaEvent(context.Background(), metaEvt,
+		gsetup.consumer.ch, gsetup.gstore, gsetup.ustore, gsetup.lstore,
+		gsetup.tstore)
+
+	is.NoErr(err)
+
+	// Cesar accepts the abort but passes in a wrong event id.
+	metaEvt = &pb.GameMetaEvent{
+		Timestamp:   timestamppb.New(time.Now()),
+		Type:        pb.GameMetaEvent_ABORT_ACCEPTED,
+		PlayerId:    "xjCWug7EZtDxDHX5fRZTLo", // "cesar4"
+		GameId:      gsetup.g.GameID(),
+		OrigEventId: "FOOBAR",
+	}
+
+	err = gameplay.HandleMetaEvent(context.Background(), metaEvt,
+		gsetup.consumer.ch, gsetup.gstore, gsetup.ustore, gsetup.lstore,
+		gsetup.tstore)
+	is.Equal(err, gameplay.ErrNoMatchingEvent)
+
+	gsetup.cancel()
+	<-gsetup.donechan
+
+	// expected events: game history, request abort
+	log.Debug().Interface("evts", gsetup.consumer.evts).Msg("evts")
+	is.Equal(len(gsetup.consumer.evts), 2)
+
+	teardownGame(gsetup)
+}
+
+func TestHandleAbortDeny(t *testing.T) {
+	is := is.New(t)
+	gsetup := setupNewGame()
+	evtID := shortuuid.New()
+
+	// Jesse requests an abort.
+	metaEvt := &pb.GameMetaEvent{
+		Timestamp:   timestamppb.New(time.Now()),
+		Type:        pb.GameMetaEvent_REQUEST_ABORT,
+		PlayerId:    "3xpEkpRAy3AizbVmDg3kdi", // "jesse"
+		GameId:      gsetup.g.GameID(),
+		OrigEventId: evtID,
+	}
+
+	err := gameplay.HandleMetaEvent(context.Background(), metaEvt,
+		gsetup.consumer.ch, gsetup.gstore, gsetup.ustore, gsetup.lstore,
+		gsetup.tstore)
+
+	is.NoErr(err)
+
+	// Cesar denies the abort.
+	metaEvt = &pb.GameMetaEvent{
+		Timestamp:   timestamppb.New(time.Now()),
+		Type:        pb.GameMetaEvent_ABORT_DENIED,
+		PlayerId:    "xjCWug7EZtDxDHX5fRZTLo", // "cesar4"
+		GameId:      gsetup.g.GameID(),
+		OrigEventId: evtID,
+	}
+
+	err = gameplay.HandleMetaEvent(context.Background(), metaEvt,
+		gsetup.consumer.ch, gsetup.gstore, gsetup.ustore, gsetup.lstore,
+		gsetup.tstore)
+	is.NoErr(err)
+
+	gsetup.cancel()
+	<-gsetup.donechan
+
+	// expected events: game history, request abort, deny abort
+	log.Debug().Interface("evts", gsetup.consumer.evts).Msg("evts")
+	is.Equal(len(gsetup.consumer.evts), 3)
+
+	teardownGame(gsetup)
+}
+
+func TestHandleTooManyAborts(t *testing.T) {
+	is := is.New(t)
+	gsetup := setupNewGame()
+	evtID := shortuuid.New()
+
+	// Jesse requests an abort.
+	metaEvt := &pb.GameMetaEvent{
+		Timestamp:   timestamppb.New(time.Now()),
+		Type:        pb.GameMetaEvent_REQUEST_ABORT,
+		PlayerId:    "3xpEkpRAy3AizbVmDg3kdi", // "jesse"
+		GameId:      gsetup.g.GameID(),
+		OrigEventId: evtID,
+	}
+
+	err := gameplay.HandleMetaEvent(context.Background(), metaEvt,
+		gsetup.consumer.ch, gsetup.gstore, gsetup.ustore, gsetup.lstore,
+		gsetup.tstore)
+
+	is.NoErr(err)
+
+	// Cesar denies the abort.
+	metaEvt = &pb.GameMetaEvent{
+		Timestamp:   timestamppb.New(time.Now()),
+		Type:        pb.GameMetaEvent_ABORT_DENIED,
+		PlayerId:    "xjCWug7EZtDxDHX5fRZTLo", // "cesar4"
+		GameId:      gsetup.g.GameID(),
+		OrigEventId: evtID,
+	}
+
+	err = gameplay.HandleMetaEvent(context.Background(), metaEvt,
+		gsetup.consumer.ch, gsetup.gstore, gsetup.ustore, gsetup.lstore,
+		gsetup.tstore)
+	is.NoErr(err)
+
+	// Jesse requests an abort again.
+	metaEvt = &pb.GameMetaEvent{
+		Timestamp:   timestamppb.New(time.Now()),
+		Type:        pb.GameMetaEvent_REQUEST_ABORT,
+		PlayerId:    "3xpEkpRAy3AizbVmDg3kdi", // "jesse"
+		GameId:      gsetup.g.GameID(),
+		OrigEventId: evtID,
+	}
+
+	err = gameplay.HandleMetaEvent(context.Background(), metaEvt,
+		gsetup.consumer.ch, gsetup.gstore, gsetup.ustore, gsetup.lstore,
+		gsetup.tstore)
+	is.Equal(err, gameplay.ErrTooManyAborts)
+
+	gsetup.cancel()
+	<-gsetup.donechan
+
+	// expected events: game history, request abort, deny abort. The second
+	// request never gets sent.
+	log.Debug().Interface("evts", gsetup.consumer.evts).Msg("evts")
+	is.Equal(len(gsetup.consumer.evts), 3)
+
+	teardownGame(gsetup)
 }
