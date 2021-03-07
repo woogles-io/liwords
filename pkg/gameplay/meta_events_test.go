@@ -317,12 +317,72 @@ func TestHandleAbortAutoaccept(t *testing.T) {
 	// Sleep 61 seconds
 	gsetup.nower.Sleep(61 * 1000)
 
+	metaEvt = &pb.GameMetaEvent{
+		Timestamp:   timestamppb.New(time.Now()),
+		Type:        pb.GameMetaEvent_TIMER_EXPIRED,
+		PlayerId:    "xjCWug7EZtDxDHX5fRZTLo", // "cesar4"
+		GameId:      gsetup.g.GameID(),
+		OrigEventId: evtID,
+	}
+
+	err = gameplay.HandleMetaEvent(context.Background(), metaEvt,
+		gsetup.consumer.ch, gsetup.gstore, gsetup.ustore, gsetup.lstore,
+		gsetup.tstore)
+	is.NoErr(err)
+
 	gsetup.cancel()
 	<-gsetup.donechan
 
-	// expected events: game history
+	// expected events: game history, request abort, game deletion (from lobby),
+	// game ended event
 	log.Debug().Interface("evts", gsetup.consumer.evts).Msg("evts")
-	is.Equal(len(gsetup.consumer.evts), 1)
+	is.Equal(len(gsetup.consumer.evts), 4)
+
+	teardownGame(gsetup)
+}
+
+func TestHandleAbortAutoacceptTooEarly(t *testing.T) {
+	is := is.New(t)
+	gsetup := setupNewGame()
+	evtID := shortuuid.New()
+
+	metaEvt := &pb.GameMetaEvent{
+		Timestamp:   timestamppb.New(time.Now()),
+		Type:        pb.GameMetaEvent_REQUEST_ABORT,
+		PlayerId:    "xjCWug7EZtDxDHX5fRZTLo", // "cesar4"
+		GameId:      gsetup.g.GameID(),
+		OrigEventId: evtID,
+	}
+
+	err := gameplay.HandleMetaEvent(context.Background(), metaEvt,
+		gsetup.consumer.ch, gsetup.gstore, gsetup.ustore, gsetup.lstore,
+		gsetup.tstore)
+
+	is.NoErr(err)
+
+	// Sleep 59 seconds
+	gsetup.nower.Sleep(59 * 1000)
+
+	metaEvt = &pb.GameMetaEvent{
+		Timestamp:   timestamppb.New(time.Now()),
+		Type:        pb.GameMetaEvent_TIMER_EXPIRED,
+		PlayerId:    "xjCWug7EZtDxDHX5fRZTLo", // "cesar4"
+		GameId:      gsetup.g.GameID(),
+		OrigEventId: evtID,
+	}
+
+	err = gameplay.HandleMetaEvent(context.Background(), metaEvt,
+		gsetup.consumer.ch, gsetup.gstore, gsetup.ustore, gsetup.lstore,
+		gsetup.tstore)
+	is.Equal(err, gameplay.ErrMetaEventExpirationIncorrect)
+
+	gsetup.cancel()
+	<-gsetup.donechan
+
+	// expected events: game history, request abort
+	// this game wasn't aborted (this really shouldn't happen in the front end tho)
+	log.Debug().Interface("evts", gsetup.consumer.evts).Msg("evts")
+	is.Equal(len(gsetup.consumer.evts), 2)
 
 	teardownGame(gsetup)
 }
