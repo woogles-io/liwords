@@ -92,6 +92,17 @@ const phillyasap = {
   vsBot: false,
 };
 
+const nyc = {
+  lexicon: 'NWL20',
+  challengerule: ChallengeRule.DOUBLE,
+  initialtime: 19, // 17 minutes
+  rated: true,
+  extratime: 1,
+  friend: '',
+  incOrOT: 'overtime',
+  vsBot: false,
+};
+
 export const fixedSettings: { [key: string]: settings } = {
   phillyvirtual,
   cococlub,
@@ -102,6 +113,7 @@ export const fixedSettings: { [key: string]: settings } = {
   GqgfauAMzorWxGGrCqhV5J: phillyasap,
   cbCrE5EAnfTpacaZkxc4SZ: asci, // /tournament
   CSLUwqH4rHUTKzNcp7cPRP: asci, // /club
+  CL9GW5sDfNqeX2yiPRg9YF: nyc,
 };
 
 // A temporary map of club redirects. Map internal tournament ID to slug:
