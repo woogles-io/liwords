@@ -103,7 +103,6 @@ enum MessageType {
   TOURNAMENT_FULL_DIVISIONS_MESSAGE = 32;
 
   GAME_META_EVENT = 40;
-  GAME_META_TIMER_EXPIRED = 41;
 
   // Add more events here. The total number of events should fit in a byte.
   // We should definitely not be using anywhere close to 255 events, and
@@ -251,6 +250,10 @@ message GameMetaEvent {
 
     // More:
     ADD_TIME = 10; // add X seconds at a time (30?) to opponent's clock
+
+    // Some meta events have a timer associated with them. Send this with the
+    // original event id after time has expired.
+    TIMER_EXPIRED = 11;
   }
   string orig_event_id = 1;
   google.protobuf.Timestamp timestamp = 2;

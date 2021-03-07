@@ -143,6 +143,11 @@ func (g *Game) SetTimerModule(n Nower) {
 	g.nower = n
 }
 
+// TimerModule gets the Nower for this game.
+func (g *Game) TimerModule() Nower {
+	return g.nower
+}
+
 // Reset timers to _now_. The game is actually starting.
 func (g *Game) ResetTimersAndStart() {
 	log.Debug().Msg("reset-timers")

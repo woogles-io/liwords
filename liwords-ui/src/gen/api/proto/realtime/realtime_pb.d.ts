@@ -651,6 +651,7 @@ export namespace GameMetaEvent {
     UNDO_ACCEPTED: 8;
     UNDO_DENIED: 9;
     ADD_TIME: 10;
+    TIMER_EXPIRED: 11;
   }
 
   export const EventType: EventTypeMap;
@@ -1596,7 +1597,6 @@ export interface MessageTypeMap {
   TOURNAMENT_DIVISION_DELETED_MESSAGE: 31;
   TOURNAMENT_FULL_DIVISIONS_MESSAGE: 32;
   GAME_META_EVENT: 40;
-  GAME_META_TIMER_EXPIRED: 41;
 }
 
 export const MessageType: MessageTypeMap;

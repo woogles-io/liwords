@@ -414,6 +414,7 @@ func (b *Bus) handleNatsPublish(ctx context.Context, subtopics []string, data []
 		}
 		log.Debug().Str("user", userID).Interface("evt", evt).Msg("game-meta-event")
 		return b.gameMetaEvent(ctx, evt, userID)
+
 	case "soughtGameProcess":
 		evt := &pb.SoughtGameProcessEvent{}
 		err := proto.Unmarshal(data, evt)

@@ -12,15 +12,17 @@ import (
 	pb "github.com/domino14/liwords/rpc/api/proto/realtime"
 	macondopb "github.com/domino14/macondo/gen/api/proto/macondo"
 	"github.com/rs/zerolog/log"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 var (
 	ErrTooManyAborts = errors.New("you have made too many abort requests in this game")
 	ErrTooManyNudges = errors.New("you have made too many nudges in this game")
 
-	ErrNoMatchingEvent = errors.New("no matching request to respond to")
-	ErrTooLateToAbort  = errors.New("it is too late to abort")
-	ErrPleaseWaitToEnd = errors.New("this game is almost over; request not sent")
+	ErrNoMatchingEvent              = errors.New("no matching request to respond to")
+	ErrTooManyTurns                 = errors.New("it is too late to abort")
+	ErrPleaseWaitToEnd              = errors.New("this game is almost over; request not sent")
+	ErrMetaEventExpirationIncorrect = errors.New("meta event did not expire")
 )
 
 const (
@@ -33,6 +35,10 @@ const (
 	// be cancelling. We can make it lower as our chat implementation becomes
 	// more obvious.
 	AbortDisallowTurns = 7
+
+	// If receiver has this many milliseconds on their clock or fewer, we don't allow
+	// sending them requests.
+	DisallowMsecsRemaining = 30 * 1000
 
 	AbortTimeout = time.Second * 60
 	NudgeTimeout = time.Second * 120
@@ -75,6 +81,19 @@ func findLastEvtOfMatchingType(evts []*pb.GameMetaEvent, evt *pb.GameMetaEvent) 
 	return lastEvt
 }
 
+func lastEventWithId(evts []*pb.GameMetaEvent, origEvtId string) *pb.GameMetaEvent {
+	var lastEvt *pb.GameMetaEvent
+	for _, e := range evts {
+		if e.OrigEventId == origEvtId {
+			if lastEvt != nil {
+				return nil
+			}
+		}
+		lastEvt = e
+	}
+	return lastEvt
+}
+
 // Meta Events are events such as abort requests, adding time,
 // adjudication requests, etc. Not so much for the actual gameplay.
 
@@ -96,6 +115,11 @@ func HandleMetaEvent(ctx context.Context, evt *pb.GameMetaEvent, eventChan chan<
 		return errGameNotActive
 	}
 
+	now := g.TimerModule().Now()
+	tnow := time.Unix(0, now*int64(time.Millisecond)).UTC()
+
+	evt.Timestamp = timestamppb.New(tnow)
+
 	switch evt.Type {
 	case pb.GameMetaEvent_REQUEST_ABORT,
 		pb.GameMetaEvent_REQUEST_ADJUDICATION,
@@ -111,10 +135,23 @@ func HandleMetaEvent(ctx context.Context, evt *pb.GameMetaEvent, eventChan chan<
 			return ErrTooManyNudges
 		}
 
-		log.Debug().Interface("h", g.History()).Msg("hstory")
 		if evt.Type == pb.GameMetaEvent_REQUEST_ABORT && g.History() != nil &&
 			len(g.History().Events) > AbortDisallowTurns {
-			return ErrTooLateToAbort
+			return ErrTooManyTurns
+		}
+
+		onTurn := g.Game.PlayerOnTurn()
+		timeRemaining := g.TimeRemaining(onTurn)
+		log.Debug().Int("timeRemaining", timeRemaining).Int("onturn", onTurn).Msg("timeremaining")
+		if timeRemaining < DisallowMsecsRemaining {
+			return ErrPleaseWaitToEnd
+		}
+
+		// Add expiry time to event.
+		if evt.Type == pb.GameMetaEvent_REQUEST_ABORT {
+			evt.Expiry = int32(AbortTimeout.Seconds())
+		} else if evt.Type == pb.GameMetaEvent_REQUEST_ADJUDICATION {
+			evt.Expiry = int32(NudgeTimeout.Seconds())
 		}
 
 		// For this type of event, we just append it to the list and return.
@@ -129,6 +166,58 @@ func HandleMetaEvent(ctx context.Context, evt *pb.GameMetaEvent, eventChan chan<
 		wrapped.AddAudience(entity.AudGame, evt.GameId)
 		wrapped.AddAudience(entity.AudGameTV, evt.GameId)
 		eventChan <- wrapped
+
+	case pb.GameMetaEvent_TIMER_EXPIRED:
+		// This event gets sent by the front end of the requester after
+		// the time for an event has expired.
+		matchingEvt := lastEventWithId(g.MetaEvents.Events, evt.OrigEventId)
+		if matchingEvt == nil ||
+			!(matchingEvt.Type == pb.GameMetaEvent_REQUEST_ABORT ||
+				matchingEvt.Type == pb.GameMetaEvent_REQUEST_ADJUDICATION ||
+				matchingEvt.Type == pb.GameMetaEvent_REQUEST_ADJOURN) {
+			return ErrNoMatchingEvent
+		}
+		elapsed := tnow.Sub(matchingEvt.Timestamp.AsTime())
+		if matchingEvt.Type == pb.GameMetaEvent_REQUEST_ABORT && elapsed >= AbortTimeout {
+			// if time ran out, auto accept the abort
+			// create a pseudo event.
+
+			pseudoEvt := &pb.GameMetaEvent{
+				OrigEventId: evt.OrigEventId,
+				Timestamp:   evt.Timestamp,
+				Type:        pb.GameMetaEvent_ABORT_ACCEPTED,
+				GameId:      g.GameID(),
+				// Do not add a player ID since technically this event was not accepted by the player.
+			}
+			g.MetaEvents.Events = append(g.MetaEvents.Events, evt)
+
+			err = processMetaEvent(ctx, g, pseudoEvt, matchingEvt, gameStore, userStore,
+				listStatStore, tournamentStore)
+			if err != nil {
+				return err
+			}
+
+		} else if matchingEvt.Type == pb.GameMetaEvent_REQUEST_ADJUDICATION && elapsed >= NudgeTimeout {
+			// if time ran out, auto adjudicate.
+
+			pseudoEvt := &pb.GameMetaEvent{
+				OrigEventId: evt.OrigEventId,
+				Timestamp:   evt.Timestamp,
+				Type:        pb.GameMetaEvent_ADJUDICATION_ACCEPTED,
+				GameId:      g.GameID(),
+				// Do not add a player ID since technically this event was not accepted by the player.
+			}
+			g.MetaEvents.Events = append(g.MetaEvents.Events, evt)
+
+			err = processMetaEvent(ctx, g, pseudoEvt, matchingEvt, gameStore, userStore,
+				listStatStore, tournamentStore)
+			if err != nil {
+				return err
+			}
+
+		} else {
+			return ErrMetaEventExpirationIncorrect
+		}
 
 	default:
 		matchingEvt := findLastEvtOfMatchingType(g.MetaEvents.Events, evt)

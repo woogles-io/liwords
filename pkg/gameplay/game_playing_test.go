@@ -73,7 +73,7 @@ func makeGame(cfg *config.Config, ustore pkguser.Store, gstore gameplay.GameStor
 	ctx := context.Background()
 	cesar, _ := ustore.Get(ctx, "cesar4")
 	jesse, _ := ustore.Get(ctx, "jesse")
-	// see the gameReq in game_test.go in this package
+	// see the gameReq in game_stats_test.go in this package
 	gr := proto.Clone(gameReq).(*pb.GameRequest)
 
 	gr.IncrementSeconds = 5

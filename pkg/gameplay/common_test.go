@@ -16,7 +16,7 @@ import (
 
 type gamesetup struct {
 	g        *entity.Game
-	nower    entity.Nower
+	nower    *entity.FakeNower
 	cancel   context.CancelFunc
 	donechan chan bool
 	consumer *evtConsumer

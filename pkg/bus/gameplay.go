@@ -11,7 +11,6 @@ import (
 	"github.com/lithammer/shortuuid"
 	"github.com/rs/zerolog/log"
 	"google.golang.org/protobuf/proto"
-	"google.golang.org/protobuf/types/known/timestamppb"
 
 	"github.com/domino14/liwords/pkg/entity"
 	"github.com/domino14/liwords/pkg/gameplay"
@@ -457,7 +456,6 @@ func (b *Bus) gameMetaEvent(ctx context.Context, evt *pb.GameMetaEvent, userID s
 
 	// Overwrite whatever was passed in with the userID we know made this request.
 	evt.PlayerId = userID
-	evt.Timestamp = timestamppb.New(time.Now())
 	if evt.OrigEventId == "" {
 		evt.OrigEventId = shortuuid.New()
 	}

@@ -64,7 +64,7 @@ func TestHandleAbort(t *testing.T) {
 	teardownGame(gsetup)
 }
 
-func TestHandleAbortWrongTime(t *testing.T) {
+func TestHandleAbortTooManyTurns(t *testing.T) {
 	is := is.New(t)
 	gsetup := setupNewGame()
 	evtID := shortuuid.New()
@@ -102,7 +102,7 @@ func TestHandleAbortWrongTime(t *testing.T) {
 	err = gameplay.HandleMetaEvent(context.Background(), metaEvt,
 		gsetup.consumer.ch, gsetup.gstore, gsetup.ustore, gsetup.lstore,
 		gsetup.tstore)
-	is.Equal(err, gameplay.ErrTooLateToAbort)
+	is.Equal(err, gameplay.ErrTooManyTurns)
 
 	gsetup.cancel()
 	<-gsetup.donechan
@@ -257,6 +257,72 @@ func TestHandleTooManyAborts(t *testing.T) {
 	// request never gets sent.
 	log.Debug().Interface("evts", gsetup.consumer.evts).Msg("evts")
 	is.Equal(len(gsetup.consumer.evts), 3)
+
+	teardownGame(gsetup)
+}
+
+func TestHandleAbortTooLate(t *testing.T) {
+	is := is.New(t)
+	gsetup := setupNewGame()
+	evtID := shortuuid.New()
+
+	// cesar4 requests an abort after waiting too long.
+	// jesse's timer has been running this whole time.
+	// Sleep almost 25 minutes (the full time)
+	gsetup.nower.Sleep((25*60 - 10) * 1000)
+
+	metaEvt := &pb.GameMetaEvent{
+		Timestamp:   timestamppb.New(time.Now()),
+		Type:        pb.GameMetaEvent_REQUEST_ABORT,
+		PlayerId:    "xjCWug7EZtDxDHX5fRZTLo", // "cesar4"
+		GameId:      gsetup.g.GameID(),
+		OrigEventId: evtID,
+	}
+
+	err := gameplay.HandleMetaEvent(context.Background(), metaEvt,
+		gsetup.consumer.ch, gsetup.gstore, gsetup.ustore, gsetup.lstore,
+		gsetup.tstore)
+
+	is.Equal(err, gameplay.ErrPleaseWaitToEnd)
+
+	gsetup.cancel()
+	<-gsetup.donechan
+
+	// expected events: game history
+	log.Debug().Interface("evts", gsetup.consumer.evts).Msg("evts")
+	is.Equal(len(gsetup.consumer.evts), 1)
+
+	teardownGame(gsetup)
+}
+
+func TestHandleAbortAutoaccept(t *testing.T) {
+	is := is.New(t)
+	gsetup := setupNewGame()
+	evtID := shortuuid.New()
+
+	metaEvt := &pb.GameMetaEvent{
+		Timestamp:   timestamppb.New(time.Now()),
+		Type:        pb.GameMetaEvent_REQUEST_ABORT,
+		PlayerId:    "xjCWug7EZtDxDHX5fRZTLo", // "cesar4"
+		GameId:      gsetup.g.GameID(),
+		OrigEventId: evtID,
+	}
+
+	err := gameplay.HandleMetaEvent(context.Background(), metaEvt,
+		gsetup.consumer.ch, gsetup.gstore, gsetup.ustore, gsetup.lstore,
+		gsetup.tstore)
+
+	is.NoErr(err)
+
+	// Sleep 61 seconds
+	gsetup.nower.Sleep(61 * 1000)
+
+	gsetup.cancel()
+	<-gsetup.donechan
+
+	// expected events: game history
+	log.Debug().Interface("evts", gsetup.consumer.evts).Msg("evts")
+	is.Equal(len(gsetup.consumer.evts), 1)
 
 	teardownGame(gsetup)
 }
