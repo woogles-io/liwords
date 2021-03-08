@@ -23,6 +23,7 @@ var (
 	ErrTooManyTurns                 = errors.New("it is too late to abort")
 	ErrPleaseWaitToEnd              = errors.New("this game is almost over; request not sent")
 	ErrMetaEventExpirationIncorrect = errors.New("meta event did not expire")
+	ErrAlreadyOutstandingRequest    = errors.New("you already have an outstanding request")
 )
 
 const (
@@ -55,27 +56,46 @@ func numEvtsOfSameType(evts []*pb.GameMetaEvent, evt *pb.GameMetaEvent) int {
 	return ct
 }
 
-func findLastEvtOfMatchingType(evts []*pb.GameMetaEvent, evt *pb.GameMetaEvent) *pb.GameMetaEvent {
+func intypes(t pb.GameMetaEvent_EventType, types []pb.GameMetaEvent_EventType) bool {
+	for _, et := range types {
+		if t == et {
+			return true
+		}
+	}
+	return false
+}
+
+func findLastMatchingEvt(evts []*pb.GameMetaEvent, evt *pb.GameMetaEvent) *pb.GameMetaEvent {
 
 	var lookfor pb.GameMetaEvent_EventType
-
+	var handlertypes []pb.GameMetaEvent_EventType
 	switch evt.Type {
 	case pb.GameMetaEvent_ABORT_ACCEPTED, pb.GameMetaEvent_ABORT_DENIED:
 		lookfor = pb.GameMetaEvent_REQUEST_ABORT
+		handlertypes = append(handlertypes, pb.GameMetaEvent_ABORT_ACCEPTED, pb.GameMetaEvent_ABORT_DENIED)
 	case pb.GameMetaEvent_ADJUDICATION_ACCEPTED, pb.GameMetaEvent_ADJUDICATION_DENIED:
 		lookfor = pb.GameMetaEvent_REQUEST_ADJUDICATION
+		handlertypes = append(handlertypes, pb.GameMetaEvent_ADJUDICATION_ACCEPTED, pb.GameMetaEvent_ADJUDICATION_DENIED)
+
 	default:
 		return nil
 	}
 
+	log.Debug().Interface("evts", evts).Interface("evt", evt).Msg("looking for match")
+
 	var lastEvt *pb.GameMetaEvent
 	for _, e := range evts {
-		if e.Type == lookfor && e.OrigEventId == evt.OrigEventId && e.PlayerId != evt.PlayerId {
-			if lastEvt != nil {
-				// There is already a matching event. There should only be one matching event.
+		if e.OrigEventId == evt.OrigEventId {
+			if e.Type == lookfor {
+				if lastEvt != nil {
+					// There is already a matching event. There should only be one matching event.
+					return nil
+				}
+				lastEvt = e
+			} else if intypes(e.Type, handlertypes) {
+				// This event has already been handled.
 				return nil
 			}
-			lastEvt = e
 		}
 	}
 	return lastEvt
@@ -88,10 +108,43 @@ func lastEventWithId(evts []*pb.GameMetaEvent, origEvtId string) *pb.GameMetaEve
 			if lastEvt != nil {
 				return nil
 			}
+			lastEvt = e
 		}
-		lastEvt = e
 	}
 	return lastEvt
+}
+
+func lastOutstandingRequest(evts []*pb.GameMetaEvent, uid string) *pb.GameMetaEvent {
+	var lastReq *pb.GameMetaEvent
+	var lastReqID string
+	for _, e := range evts {
+		if e.PlayerId != uid {
+			continue
+		}
+		switch e.Type {
+		case pb.GameMetaEvent_REQUEST_ABORT,
+			pb.GameMetaEvent_REQUEST_ADJUDICATION,
+			pb.GameMetaEvent_REQUEST_UNDO,
+			pb.GameMetaEvent_REQUEST_ADJOURN:
+			lastReqID = e.OrigEventId
+			lastReq = e
+
+		case pb.GameMetaEvent_ABORT_ACCEPTED,
+			pb.GameMetaEvent_ABORT_DENIED,
+			pb.GameMetaEvent_ADJUDICATION_ACCEPTED,
+			pb.GameMetaEvent_ADJUDICATION_DENIED:
+
+			if e.OrigEventId == lastReqID {
+				// We found a match, so clear the last request
+				lastReq = nil
+				lastReqID = ""
+			}
+		}
+	}
+
+	log.Debug().Interface("lastReq", lastReq).Msg("returning last outstanding req")
+
+	return lastReq
 }
 
 // Meta Events are events such as abort requests, adding time,
@@ -119,6 +172,7 @@ func HandleMetaEvent(ctx context.Context, evt *pb.GameMetaEvent, eventChan chan<
 	tnow := time.Unix(0, now*int64(time.Millisecond)).UTC()
 
 	evt.Timestamp = timestamppb.New(tnow)
+	evt.NumGameEvents = int32(len(g.History().Events))
 
 	switch evt.Type {
 	case pb.GameMetaEvent_REQUEST_ABORT,
@@ -138,6 +192,10 @@ func HandleMetaEvent(ctx context.Context, evt *pb.GameMetaEvent, eventChan chan<
 		if evt.Type == pb.GameMetaEvent_REQUEST_ABORT && g.History() != nil &&
 			len(g.History().Events) > AbortDisallowTurns {
 			return ErrTooManyTurns
+		}
+		// Check if this player has another outstanding request open.
+		if lastOutstandingRequest(g.MetaEvents.Events, evt.PlayerId) != nil {
+			return ErrAlreadyOutstandingRequest
 		}
 
 		onTurn := g.Game.PlayerOnTurn()
@@ -220,7 +278,7 @@ func HandleMetaEvent(ctx context.Context, evt *pb.GameMetaEvent, eventChan chan<
 		}
 
 	default:
-		matchingEvt := findLastEvtOfMatchingType(g.MetaEvents.Events, evt)
+		matchingEvt := findLastMatchingEvt(g.MetaEvents.Events, evt)
 		if matchingEvt == nil {
 			return ErrNoMatchingEvent
 		}

@@ -5327,7 +5327,8 @@ proto.liwords.GameMetaEvent.toObject = function(includeInstance, msg) {
     type: jspb.Message.getFieldWithDefault(msg, 3, 0),
     playerId: jspb.Message.getFieldWithDefault(msg, 4, ""),
     gameId: jspb.Message.getFieldWithDefault(msg, 5, ""),
-    expiry: jspb.Message.getFieldWithDefault(msg, 6, 0)
+    expiry: jspb.Message.getFieldWithDefault(msg, 6, 0),
+    numGameEvents: jspb.Message.getFieldWithDefault(msg, 7, 0)
   };
 
   if (includeInstance) {
@@ -5388,6 +5389,10 @@ proto.liwords.GameMetaEvent.deserializeBinaryFromReader = function(msg, reader) 
     case 6:
       var value = /** @type {number} */ (reader.readInt32());
       msg.setExpiry(value);
+      break;
+    case 7:
+      var value = /** @type {number} */ (reader.readInt32());
+      msg.setNumGameEvents(value);
       break;
     default:
       reader.skipField();
@@ -5458,6 +5463,13 @@ proto.liwords.GameMetaEvent.serializeBinaryToWriter = function(message, writer) 
   if (f !== 0) {
     writer.writeInt32(
       6,
+      f
+    );
+  }
+  f = message.getNumGameEvents();
+  if (f !== 0) {
+    writer.writeInt32(
+      7,
       f
     );
   }
@@ -5606,6 +5618,24 @@ proto.liwords.GameMetaEvent.prototype.getExpiry = function() {
  */
 proto.liwords.GameMetaEvent.prototype.setExpiry = function(value) {
   return jspb.Message.setProto3IntField(this, 6, value);
+};
+
+
+/**
+ * optional int32 num_game_events = 7;
+ * @return {number}
+ */
+proto.liwords.GameMetaEvent.prototype.getNumGameEvents = function() {
+  return /** @type {number} */ (jspb.Message.getFieldWithDefault(this, 7, 0));
+};
+
+
+/**
+ * @param {number} value
+ * @return {!proto.liwords.GameMetaEvent} returns this
+ */
+proto.liwords.GameMetaEvent.prototype.setNumGameEvents = function(value) {
+  return jspb.Message.setProto3IntField(this, 7, value);
 };
 
 

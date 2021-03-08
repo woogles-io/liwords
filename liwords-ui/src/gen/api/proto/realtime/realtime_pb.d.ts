@@ -619,6 +619,9 @@ export class GameMetaEvent extends jspb.Message {
   getExpiry(): number;
   setExpiry(value: number): void;
 
+  getNumGameEvents(): number;
+  setNumGameEvents(value: number): void;
+
   serializeBinary(): Uint8Array;
   toObject(includeInstance?: boolean): GameMetaEvent.AsObject;
   static toObject(includeInstance: boolean, msg: GameMetaEvent): GameMetaEvent.AsObject;
@@ -637,6 +640,7 @@ export namespace GameMetaEvent {
     playerId: string,
     gameId: string,
     expiry: number,
+    numGameEvents: number,
   }
 
   export interface EventTypeMap {

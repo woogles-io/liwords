@@ -238,12 +238,15 @@ message GameMetaEvent {
     REQUEST_ADJOURN = 3; // Are we going to implement this someday?
 
     // And these are responses:
-    // A user can accept an abort, or the client will auto-accept when time expires:
+    // A user can accept an abort, or the client will auto-accept when time
+    // expires:
     ABORT_ACCEPTED = 4;
     ABORT_DENIED = 5;
-    // A user would not accept an adjudication. The client auto-accepts this when time expires
+    // A user would not accept an adjudication. The client auto-accepts this
+    // when time expires
     ADJUDICATION_ACCEPTED = 6;
-    // An adjudication is denied when the receiver responds positively to a nudge.
+    // An adjudication is denied when the receiver responds positively to a
+    // nudge.
     ADJUDICATION_DENIED = 7;
     UNDO_ACCEPTED = 8;
     UNDO_DENIED = 9;
@@ -261,6 +264,8 @@ message GameMetaEvent {
   string player_id = 4; // the player that performed the event.
   string game_id = 5;
   int32 expiry = 6; // how long should this event remain active, in seconds?
+  int32 num_game_events =
+      7; // how many game events existed when this request was made?
 }
 
 // TournamentGameEndedEvent gets sent to a tournament channel when a game is
