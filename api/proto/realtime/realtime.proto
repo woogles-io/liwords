@@ -335,7 +335,7 @@ enum GameEndReason {
   // CANCELLED means the game never started. Game start signal was not sent.
   CANCELLED = 7;
   // FORCE_FORFEIT is a way to force an opponent to take a loss if they left a
-  // game early without resigining.
+  // game early without resigning.
   FORCE_FORFEIT = 8;
 }
 

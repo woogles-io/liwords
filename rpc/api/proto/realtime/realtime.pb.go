@@ -276,7 +276,7 @@ const (
 	// CANCELLED means the game never started. Game start signal was not sent.
 	GameEndReason_CANCELLED GameEndReason = 7
 	// FORCE_FORFEIT is a way to force an opponent to take a loss if they left a
-	// game early without resigining.
+	// game early without resigning.
 	GameEndReason_FORCE_FORFEIT GameEndReason = 8
 )
 
