@@ -10,8 +10,6 @@ COPY ./liwords-ui/package-lock.json ./
 
 RUN npm ci
 
-COPY . /opt/liwords-ui/
-
 EXPOSE 3000
 
 CMD ["npm", "start"]
