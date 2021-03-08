@@ -223,8 +223,10 @@
     }
     input {
       border-radius: 4px;
-      margin-top: 6px;
+      margin-top: 8px;
       margin-bottom: 24px;
+      padding-top: 9.1px;
+      padding-bottom: 9.1px;
       font-size: 14px;
     }
     .element {
@@ -256,6 +258,18 @@
     right: 24px;
     font-size: 14px;
     height: 40px;
+  }
+  .row {
+    align-items: flex-start;
+  }
+  .ant-select {
+    margin-top: 8px;
+    border: 1px solid #cfcfcf;
+    border-radius: 4px;
+  }
+  .ant-select-selection-item {
+    font-weight: normal;
+    font-size: 14px;
   }
 }
 .close-account {
