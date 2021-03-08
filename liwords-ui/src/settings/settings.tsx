@@ -64,11 +64,6 @@ export const Settings = React.memo((props: Props) => {
   const [showCloseAccount, setShowCloseAccount] = useState(false);
   const history = useHistory();
 
-  type CategoryProps = {
-    title: string;
-    category: Category;
-  };
-
   useEffect(() => {
     if (viewer === '') return;
     axios
@@ -90,6 +85,11 @@ export const Settings = React.memo((props: Props) => {
       })
       .catch(errorCatcher);
   }, [viewer]);
+
+  type CategoryProps = {
+    title: string;
+    category: Category;
+  };
 
   const CategoryChoice = React.memo((props: CategoryProps) => {
     return (

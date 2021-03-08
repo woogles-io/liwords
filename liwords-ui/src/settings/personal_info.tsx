@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect } from 'react';
-import { Button, Form, Input, notification } from 'antd';
+import { Button, Form, Input, Select, notification } from 'antd';
 import { PlayerAvatar } from '../shared/player_avatar';
 import { PlayerMetadata } from '../gameroom/game_info';
 import { useMountedState } from '../utils/mounted';
@@ -7,6 +7,7 @@ import { AvatarEditModal } from './avatar_edit_modal';
 import { AvatarRemoveModal } from './avatar_remove_modal';
 import axios, { AxiosError } from 'axios';
 import { toAPIUrl } from '../api/api';
+import { countryArray } from './country_map';
 
 type PersonalInfo = {
   email: string;
@@ -129,6 +130,18 @@ export const PersonalInfo = React.memo((props: Props) => {
       .catch(errorCatcher);
   };
 
+  const countrySelector = (
+    <Select size="large" bordered={false}>
+      {countryArray.map((country) => {
+        return (
+          <Select.Option key={country.code} value={country.code.toLowerCase()}>
+            {country.emoji} {country.name}
+          </Select.Option>
+        );
+      })}
+    </Select>
+  );
+
   const [form] = Form.useForm();
 
   useEffect(() => form.resetFields(), [props.personalInfo, form]);
@@ -208,9 +221,7 @@ export const PersonalInfo = React.memo((props: Props) => {
           </div>
           <div className="element">
             <div>Country</div>
-            <Form.Item name="countryCode">
-              <Input size="large" />
-            </Form.Item>
+            <Form.Item name="countryCode">{countrySelector}</Form.Item>
           </div>
         </div>
         <div className="row">
