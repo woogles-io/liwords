@@ -242,6 +242,42 @@ func (g *Game) RecordTimeOfMove(idx int) {
 	g.calculateAndSetTimeRemaining(idx, now, true)
 }
 
+// LastOutstandingMetaRequest returns the last meta request that has not yet been responded to.
+// If a user ID is passed in, it only returns that user's last request, if it exists.
+// If no such event exists, it returns nil.
+func LastOutstandingMetaRequest(evts []*pb.GameMetaEvent, uid string) *pb.GameMetaEvent {
+	var lastReq *pb.GameMetaEvent
+	var lastReqID string
+	for _, e := range evts {
+		if uid != "" && e.PlayerId != uid {
+			continue
+		}
+		switch e.Type {
+		case pb.GameMetaEvent_REQUEST_ABORT,
+			pb.GameMetaEvent_REQUEST_ADJUDICATION,
+			pb.GameMetaEvent_REQUEST_UNDO,
+			pb.GameMetaEvent_REQUEST_ADJOURN:
+			lastReqID = e.OrigEventId
+			lastReq = e
+
+		case pb.GameMetaEvent_ABORT_ACCEPTED,
+			pb.GameMetaEvent_ABORT_DENIED,
+			pb.GameMetaEvent_ADJUDICATION_ACCEPTED,
+			pb.GameMetaEvent_ADJUDICATION_DENIED:
+
+			if e.OrigEventId == lastReqID {
+				// We found a match, so clear the last request
+				lastReq = nil
+				lastReqID = ""
+			}
+		}
+	}
+
+	log.Debug().Interface("lastReq", lastReq).Msg("returning last outstanding req")
+
+	return lastReq
+}
+
 func (g *Game) HistoryRefresherEvent() *pb.GameHistoryRefresher {
 	now := g.nower.Now()
 
@@ -253,6 +289,7 @@ func (g *Game) HistoryRefresherEvent() *pb.GameHistoryRefresher {
 		TimePlayer1:        int32(g.TimeRemaining(0)),
 		TimePlayer2:        int32(g.TimeRemaining(1)),
 		MaxOvertimeMinutes: g.GameReq.MaxOvertimeMinutes,
+		OutstandingEvent:   LastOutstandingMetaRequest(g.MetaEvents.Events, ""),
 	}
 }
 

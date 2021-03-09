@@ -880,34 +880,34 @@ export const BoardPanel = React.memo((props: Props) => {
     [makeMove]
   );
 
-  const abort = useCallback(() => {
-    const evt = new AbortRequest();
-    const receiver = new MatchUser();
+  // const abort = useCallback(() => {
+  //   const evt = new AbortRequest();
+  //   const receiver = new MatchUser();
 
-    let opp = '';
-    playerMeta.forEach((p) => {
-      if (!(p.nickname === username)) {
-        opp = p.nickname;
-      }
-    });
+  //   let opp = '';
+  //   playerMeta.forEach((p) => {
+  //     if (!(p.nickname === username)) {
+  //       opp = p.nickname;
+  //     }
+  //   });
 
-    if (observer) {
-      return;
-    }
+  //   if (observer) {
+  //     return;
+  //   }
 
-    receiver.setDisplayName(opp);
-    evt.setReceivingUser(receiver);
-    evt.setAbortRequestFor(gameID);
-    sendSocketMsg(
-      encodeToSocketFmt(MessageType.ABORT_REQUEST, evt.serializeBinary())
-    );
+  //   receiver.setDisplayName(opp);
+  //   evt.setReceivingUser(receiver);
+  //   evt.setAbortRequestFor(gameID);
+  //   sendSocketMsg(
+  //     encodeToSocketFmt(MessageType.ABORT_REQUEST, evt.serializeBinary())
+  //   );
 
-    notification.info({
-      message: 'Abort',
-      description: `Sent abort request to ${opp}`,
-    });
-    console.log('aborting');
-  }, [observer, gameID, playerMeta, sendSocketMsg, username]);
+  //   notification.info({
+  //     message: 'Abort',
+  //     description: `Sent abort request to ${opp}`,
+  //   });
+  //   console.log('aborting');
+  // }, [observer, gameID, playerMeta, sendSocketMsg, username]);
 
   const rematch = useCallback(() => {
     const evt = new MatchRequest();
@@ -1097,7 +1097,8 @@ export const BoardPanel = React.memo((props: Props) => {
         showExchangeModal={showExchangeModal}
         onPass={handlePass}
         onResign={handleResign}
-        onRequestAbort={handleRequestAbort ?? abort}
+        onRequestAbort={() => {}}
+        onNudge={() => {}}
         onChallenge={handleChallenge}
         onCommit={handleCommit}
         onRematch={props.handleAcceptRematch ?? rematch}

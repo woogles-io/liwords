@@ -29,7 +29,6 @@ import {
   MatchRequest,
   SoughtGameProcessEvent,
   DeclineMatchRequest,
-  DeclineAbortRequest,
   ReadyForGame,
 } from '../gen/api/proto/realtime/realtime_pb';
 import { encodeToSocketFmt } from '../utils/protobuf';
@@ -308,7 +307,7 @@ export const Table = React.memo((props: Props) => {
       )
       .then((resp) => {
         setNeedAvatars(false);
-        let players = [...gameInfo.players];
+        const players = [...gameInfo.players];
         resp.data.infos.forEach((info) => {
           if (info.avatar_url.length) {
             const index = gameInfo.players.findIndex(
@@ -685,19 +684,19 @@ export const Table = React.memo((props: Props) => {
     [sendSocketMsg]
   );
 
-  const declineAbort = useCallback(
-    (reqID: string) => {
-      const evt = new DeclineAbortRequest();
-      evt.setRequestId(reqID);
-      sendSocketMsg(
-        encodeToSocketFmt(
-          MessageType.DECLINE_ABORT_REQUEST,
-          evt.serializeBinary()
-        )
-      );
-    },
-    [sendSocketMsg]
-  );
+  // const declineAbort = useCallback(
+  //   (reqID: string) => {
+  //     const evt = new DeclineAbortRequest();
+  //     evt.setRequestId(reqID);
+  //     sendSocketMsg(
+  //       encodeToSocketFmt(
+  //         MessageType.DECLINE_ABORT_REQUEST,
+  //         evt.serializeBinary()
+  //       )
+  //     );
+  //   },
+  //   [sendSocketMsg]
+  // );
 
   const handleDeclineRematch = useCallback(() => {
     declineRematch(rematchRequest.getGameRequest()!.getRequestId());
@@ -879,6 +878,7 @@ export const Table = React.memo((props: Props) => {
                 ? handleAcceptRematch
                 : null
             }
+            handleAcceptAbort={() => {}}
             handleSetHover={handleSetHover}
           />
           <StreakWidget streakInfo={streakGameInfo} />

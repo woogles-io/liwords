@@ -114,39 +114,6 @@ func lastEventWithId(evts []*pb.GameMetaEvent, origEvtId string) *pb.GameMetaEve
 	return lastEvt
 }
 
-func lastOutstandingRequest(evts []*pb.GameMetaEvent, uid string) *pb.GameMetaEvent {
-	var lastReq *pb.GameMetaEvent
-	var lastReqID string
-	for _, e := range evts {
-		if e.PlayerId != uid {
-			continue
-		}
-		switch e.Type {
-		case pb.GameMetaEvent_REQUEST_ABORT,
-			pb.GameMetaEvent_REQUEST_ADJUDICATION,
-			pb.GameMetaEvent_REQUEST_UNDO,
-			pb.GameMetaEvent_REQUEST_ADJOURN:
-			lastReqID = e.OrigEventId
-			lastReq = e
-
-		case pb.GameMetaEvent_ABORT_ACCEPTED,
-			pb.GameMetaEvent_ABORT_DENIED,
-			pb.GameMetaEvent_ADJUDICATION_ACCEPTED,
-			pb.GameMetaEvent_ADJUDICATION_DENIED:
-
-			if e.OrigEventId == lastReqID {
-				// We found a match, so clear the last request
-				lastReq = nil
-				lastReqID = ""
-			}
-		}
-	}
-
-	log.Debug().Interface("lastReq", lastReq).Msg("returning last outstanding req")
-
-	return lastReq
-}
-
 // Meta Events are events such as abort requests, adding time,
 // adjudication requests, etc. Not so much for the actual gameplay.
 
@@ -172,7 +139,6 @@ func HandleMetaEvent(ctx context.Context, evt *pb.GameMetaEvent, eventChan chan<
 	tnow := time.Unix(0, now*int64(time.Millisecond)).UTC()
 
 	evt.Timestamp = timestamppb.New(tnow)
-	evt.NumGameEvents = int32(len(g.History().Events))
 
 	switch evt.Type {
 	case pb.GameMetaEvent_REQUEST_ABORT,
@@ -194,7 +160,7 @@ func HandleMetaEvent(ctx context.Context, evt *pb.GameMetaEvent, eventChan chan<
 			return ErrTooManyTurns
 		}
 		// Check if this player has another outstanding request open.
-		if lastOutstandingRequest(g.MetaEvents.Events, evt.PlayerId) != nil {
+		if entity.LastOutstandingMetaRequest(g.MetaEvents.Events, evt.PlayerId) != nil {
 			return ErrAlreadyOutstandingRequest
 		}
 

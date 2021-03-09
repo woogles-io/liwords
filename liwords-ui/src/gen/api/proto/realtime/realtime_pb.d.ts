@@ -619,9 +619,6 @@ export class GameMetaEvent extends jspb.Message {
   getExpiry(): number;
   setExpiry(value: number): void;
 
-  getNumGameEvents(): number;
-  setNumGameEvents(value: number): void;
-
   serializeBinary(): Uint8Array;
   toObject(includeInstance?: boolean): GameMetaEvent.AsObject;
   static toObject(includeInstance: boolean, msg: GameMetaEvent): GameMetaEvent.AsObject;
@@ -640,7 +637,6 @@ export namespace GameMetaEvent {
     playerId: string,
     gameId: string,
     expiry: number,
-    numGameEvents: number,
   }
 
   export interface EventTypeMap {
@@ -808,6 +804,11 @@ export class GameHistoryRefresher extends jspb.Message {
   getMaxOvertimeMinutes(): number;
   setMaxOvertimeMinutes(value: number): void;
 
+  hasOutstandingEvent(): boolean;
+  clearOutstandingEvent(): void;
+  getOutstandingEvent(): GameMetaEvent | undefined;
+  setOutstandingEvent(value?: GameMetaEvent): void;
+
   serializeBinary(): Uint8Array;
   toObject(includeInstance?: boolean): GameHistoryRefresher.AsObject;
   static toObject(includeInstance: boolean, msg: GameHistoryRefresher): GameHistoryRefresher.AsObject;
@@ -824,6 +825,7 @@ export namespace GameHistoryRefresher {
     timePlayer1: number,
     timePlayer2: number,
     maxOvertimeMinutes: number,
+    outstandingEvent?: GameMetaEvent.AsObject,
   }
 }
 

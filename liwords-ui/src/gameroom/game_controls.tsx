@@ -83,6 +83,7 @@ export type Props = {
   onPass: () => void;
   onResign: () => void;
   onRequestAbort: () => void;
+  onNudge: () => void;
   onRecall: () => void;
   onChallenge: () => void;
   onCommit: () => void;

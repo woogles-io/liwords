@@ -264,8 +264,6 @@ message GameMetaEvent {
   string player_id = 4; // the player that performed the event.
   string game_id = 5;
   int32 expiry = 6; // how long should this event remain active, in seconds?
-  int32 num_game_events =
-      7; // how many game events existed when this request was made?
 }
 
 // TournamentGameEndedEvent gets sent to a tournament channel when a game is
@@ -332,6 +330,9 @@ message GameHistoryRefresher {
   int32 time_player1 = 2;
   int32 time_player2 = 3;
   int32 max_overtime_minutes = 4;
+  // outstanding_event refers to any possible outstanding game meta event that
+  // has not yet been responded to or expired.
+  GameMetaEvent outstanding_event = 5;
 }
 
 // A NewGameEvent gets sent from the server to the involved clients when a new

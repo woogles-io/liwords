@@ -19,17 +19,16 @@ import {
   useTournamentStoreContext,
 } from './store';
 import {
-  AbortRequest,
   ChatMessage,
   ChatMessageDeleted,
   ClientGameplayEvent,
-  DeclineAbortRequest,
   DeclineMatchRequest,
   ErrorMessage,
   FullTournamentDivisions,
   GameDeletion,
   GameEndedEvent,
   GameHistoryRefresher,
+  GameMetaEvent,
   LagMeasurement,
   MatchRequest,
   MatchRequestCancellation,
@@ -111,8 +110,7 @@ export const parseMsgs = (msg: Uint8Array) => {
       [MessageType.MATCH_REQUEST_CANCELLATION]: MatchRequestCancellation,
       [MessageType.TOURNAMENT_GAME_ENDED_EVENT]: TournamentGameEndedEvent,
       [MessageType.REMATCH_STARTED]: RematchStartedEvent,
-      [MessageType.ABORT_REQUEST]: AbortRequest,
-      [MessageType.DECLINE_ABORT_REQUEST]: DeclineAbortRequest,
+      [MessageType.GAME_META_EVENT]: GameMetaEvent,
       [MessageType.TOURNAMENT_MESSAGE]: TournamentDataResponse,
       [MessageType.TOURNAMENT_DIVISION_MESSAGE]: TournamentDivisionDataResponse,
       [MessageType.TOURNAMENT_DIVISION_DELETED_MESSAGE]: TournamentDivisionDeletedResponse,
@@ -614,13 +612,9 @@ export const useOnSocketMsg = () => {
             break;
           }
 
-          case MessageType.DECLINE_ABORT_REQUEST: {
-            const dec = parsedMsg as DeclineAbortRequest;
-            console.log('got decline abort request', dec);
-            notification.info({
-              message: 'Declined',
-              description: 'Your abort request was declined.',
-            });
+          case MessageType.GAME_META_EVENT: {
+            const gme = parsedMsg as GameMetaEvent;
+
             break;
           }
 

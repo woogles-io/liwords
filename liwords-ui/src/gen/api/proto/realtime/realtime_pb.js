@@ -5327,8 +5327,7 @@ proto.liwords.GameMetaEvent.toObject = function(includeInstance, msg) {
     type: jspb.Message.getFieldWithDefault(msg, 3, 0),
     playerId: jspb.Message.getFieldWithDefault(msg, 4, ""),
     gameId: jspb.Message.getFieldWithDefault(msg, 5, ""),
-    expiry: jspb.Message.getFieldWithDefault(msg, 6, 0),
-    numGameEvents: jspb.Message.getFieldWithDefault(msg, 7, 0)
+    expiry: jspb.Message.getFieldWithDefault(msg, 6, 0)
   };
 
   if (includeInstance) {
@@ -5389,10 +5388,6 @@ proto.liwords.GameMetaEvent.deserializeBinaryFromReader = function(msg, reader) 
     case 6:
       var value = /** @type {number} */ (reader.readInt32());
       msg.setExpiry(value);
-      break;
-    case 7:
-      var value = /** @type {number} */ (reader.readInt32());
-      msg.setNumGameEvents(value);
       break;
     default:
       reader.skipField();
@@ -5463,13 +5458,6 @@ proto.liwords.GameMetaEvent.serializeBinaryToWriter = function(message, writer) 
   if (f !== 0) {
     writer.writeInt32(
       6,
-      f
-    );
-  }
-  f = message.getNumGameEvents();
-  if (f !== 0) {
-    writer.writeInt32(
-      7,
       f
     );
   }
@@ -5618,24 +5606,6 @@ proto.liwords.GameMetaEvent.prototype.getExpiry = function() {
  */
 proto.liwords.GameMetaEvent.prototype.setExpiry = function(value) {
   return jspb.Message.setProto3IntField(this, 6, value);
-};
-
-
-/**
- * optional int32 num_game_events = 7;
- * @return {number}
- */
-proto.liwords.GameMetaEvent.prototype.getNumGameEvents = function() {
-  return /** @type {number} */ (jspb.Message.getFieldWithDefault(this, 7, 0));
-};
-
-
-/**
- * @param {number} value
- * @return {!proto.liwords.GameMetaEvent} returns this
- */
-proto.liwords.GameMetaEvent.prototype.setNumGameEvents = function(value) {
-  return jspb.Message.setProto3IntField(this, 7, value);
 };
 
 
@@ -6605,7 +6575,8 @@ proto.liwords.GameHistoryRefresher.toObject = function(includeInstance, msg) {
     history: (f = msg.getHistory()) && macondo_api_proto_macondo_macondo_pb.GameHistory.toObject(includeInstance, f),
     timePlayer1: jspb.Message.getFieldWithDefault(msg, 2, 0),
     timePlayer2: jspb.Message.getFieldWithDefault(msg, 3, 0),
-    maxOvertimeMinutes: jspb.Message.getFieldWithDefault(msg, 4, 0)
+    maxOvertimeMinutes: jspb.Message.getFieldWithDefault(msg, 4, 0),
+    outstandingEvent: (f = msg.getOutstandingEvent()) && proto.liwords.GameMetaEvent.toObject(includeInstance, f)
   };
 
   if (includeInstance) {
@@ -6658,6 +6629,11 @@ proto.liwords.GameHistoryRefresher.deserializeBinaryFromReader = function(msg, r
     case 4:
       var value = /** @type {number} */ (reader.readInt32());
       msg.setMaxOvertimeMinutes(value);
+      break;
+    case 5:
+      var value = new proto.liwords.GameMetaEvent;
+      reader.readMessage(value,proto.liwords.GameMetaEvent.deserializeBinaryFromReader);
+      msg.setOutstandingEvent(value);
       break;
     default:
       reader.skipField();
@@ -6715,6 +6691,14 @@ proto.liwords.GameHistoryRefresher.serializeBinaryToWriter = function(message, w
     writer.writeInt32(
       4,
       f
+    );
+  }
+  f = message.getOutstandingEvent();
+  if (f != null) {
+    writer.writeMessage(
+      5,
+      f,
+      proto.liwords.GameMetaEvent.serializeBinaryToWriter
     );
   }
 };
@@ -6808,6 +6792,43 @@ proto.liwords.GameHistoryRefresher.prototype.getMaxOvertimeMinutes = function() 
  */
 proto.liwords.GameHistoryRefresher.prototype.setMaxOvertimeMinutes = function(value) {
   return jspb.Message.setProto3IntField(this, 4, value);
+};
+
+
+/**
+ * optional GameMetaEvent outstanding_event = 5;
+ * @return {?proto.liwords.GameMetaEvent}
+ */
+proto.liwords.GameHistoryRefresher.prototype.getOutstandingEvent = function() {
+  return /** @type{?proto.liwords.GameMetaEvent} */ (
+    jspb.Message.getWrapperField(this, proto.liwords.GameMetaEvent, 5));
+};
+
+
+/**
+ * @param {?proto.liwords.GameMetaEvent|undefined} value
+ * @return {!proto.liwords.GameHistoryRefresher} returns this
+*/
+proto.liwords.GameHistoryRefresher.prototype.setOutstandingEvent = function(value) {
+  return jspb.Message.setWrapperField(this, 5, value);
+};
+
+
+/**
+ * Clears the message field making it undefined.
+ * @return {!proto.liwords.GameHistoryRefresher} returns this
+ */
+proto.liwords.GameHistoryRefresher.prototype.clearOutstandingEvent = function() {
+  return this.setOutstandingEvent(undefined);
+};
+
+
+/**
+ * Returns whether this field is set.
+ * @return {boolean}
+ */
+proto.liwords.GameHistoryRefresher.prototype.hasOutstandingEvent = function() {
+  return jspb.Message.getField(this, 5) != null;
 };
 
 
