@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect } from 'react';
-import { Button, Form, Input, Select, notification } from 'antd';
+import { Button, Col, Form, Input, Row, Select, notification } from 'antd';
 import { PlayerAvatar } from '../shared/player_avatar';
 import { PlayerMetadata } from '../gameroom/game_info';
 import { useMountedState } from '../utils/mounted';
@@ -146,9 +146,19 @@ export const PersonalInfo = React.memo((props: Props) => {
 
   useEffect(() => form.resetFields(), [props.personalInfo, form]);
 
+  const layout = {
+    labelCol: {
+      span: 24,
+    },
+    wrapperCol: {
+      span: 24,
+    },
+  };
+
   return (
     <Form
       form={form}
+      {...layout}
       className="personal-info"
       onFinish={updateFields}
       initialValues={props.personalInfo}
@@ -197,47 +207,50 @@ export const PersonalInfo = React.memo((props: Props) => {
       <div className="section-header">Player bio</div>
       <div>(the big bio box)</div>
       <div className="section-header">Account details</div>
-      <div className="rows">
-        <div className="row">
-          <div className="element">
-            <div>Email</div>
-            <Form.Item name="email">
-              <Input size="large" />
-            </Form.Item>
-          </div>
-          <div className="element">
-            <div>First name</div>
-            <Form.Item name="firstName">
-              <Input size="large" />
-            </Form.Item>
-          </div>
-        </div>
-        <div className="row">
-          <div className="element">
-            <div>Last name</div>
-            <Form.Item name="lastName">
-              <Input size="large" />
-            </Form.Item>
-          </div>
-          <div className="element">
-            <div>Country</div>
-            <Form.Item name="countryCode">{countrySelector}</Form.Item>
-          </div>
-        </div>
-        <div className="row">
-          <div
-            className="personal-info-close-account-button"
-            onClick={() => {
-              props.startClosingAccount();
-            }}
-          >
-            Close my account
-          </div>
-          <Button className="save-button" type="primary" htmlType="submit">
-            Save
-          </Button>
-        </div>
-      </div>
+      <Row>
+        <Col span={11}>
+          <Form.Item name="email" label="Email">
+            <Input size="large" />
+          </Form.Item>
+        </Col>
+        <Col span={1} />
+        <Col span={11}>
+          <Form.Item name="firstName" label="First name">
+            <Input size="large" />
+          </Form.Item>
+        </Col>
+      </Row>
+      <Row>
+        <Col span={11}>
+          <Form.Item name="lastName" label="Last name">
+            <Input size="large" />
+          </Form.Item>
+        </Col>
+        <Col span={1} />
+        <Col span={11}>
+          <Form.Item name="countryCode" label="Country">
+            {countrySelector}
+          </Form.Item>
+        </Col>
+      </Row>
+      <Row align="middle">
+        <Col
+          span={8}
+          className="close-account-button"
+          onClick={() => {
+            props.startClosingAccount();
+          }}
+        >
+          Close my account
+        </Col>
+        <Col span={16}>
+          <Form.Item>
+            <Button className="save-button" type="primary" htmlType="submit">
+              Save
+            </Button>
+          </Form.Item>
+        </Col>
+      </Row>
     </Form>
   );
 });

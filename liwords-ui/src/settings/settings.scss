@@ -132,8 +132,10 @@
       font-weight: bold;
     }
     .ant-btn {
+      position: absolute;
+      right: 0px;
+      top: 0;
       font-size: 14px;
-      margin-left: 448px;
     }
   }
   .blocked-players {
@@ -203,34 +205,23 @@
       margin-left: 0;
     }
   }
-  .rows {
-    display: flex;
-    flex-direction: column;
+  .ant-form-item-label {
+    padding-bottom: 0;
   }
-  .row {
-    margin-right: 24px;
-    width: 100%;
-    align-items: center;
-
+  .ant-col {
     div {
       font-weight: bold;
     }
     input {
       border-radius: 4px;
-      margin-top: 8px;
-      margin-bottom: 24px;
       padding-top: 9.1px;
       padding-bottom: 9.1px;
+      margin-bottom: 20px;
       font-size: 14px;
     }
-    .element {
-      width: 100%;
-      margin-right: 24px;
-    }
   }
-  .personal-info-close-account-button {
+  .close-account-button {
     font-weight: bold;
-    margin-left: 0;
     cursor: pointer;
     @include colorModed() {
       color: m($primary-dark);
@@ -250,14 +241,11 @@
   .save-button {
     position: absolute;
     right: 24px;
+    top: 0;
     font-size: 14px;
     height: 40px;
   }
-  .row {
-    align-items: flex-start;
-  }
   .ant-select {
-    margin-top: 8px;
     border: 1px solid #cfcfcf;
     border-radius: 4px;
   }
