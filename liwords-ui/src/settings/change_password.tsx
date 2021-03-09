@@ -1,22 +1,15 @@
 import React from 'react';
 import { useMountedState } from '../utils/mounted';
-import { Button, Input, Form, Alert, notification } from 'antd';
+import { Button, Input, Form, Alert, Row, Col, notification } from 'antd';
 import axios from 'axios';
 import { toAPIUrl } from '../api/api';
 
 const layout = {
 	labelCol: {
-		span: 8,
+		span: 24,
 	},
 	wrapperCol: {
-		span: 12,
-	},
-};
-
-const tailLayout = {
-	wrapperCol: {
-		offset: 8,
-		span: 12,
+		span: 24,
 	},
 };
 
@@ -67,39 +60,50 @@ export const ChangePassword = React.memo((props: Props) => {
 				name="changepassword"
 				onFinish={onFinish}
 				style={{ marginTop: 20 }}
+				requiredMark={false}
 			>
-				<Form.Item
-					label="Old Password"
-					name="oldPassword"
-					rules={[
-						{
-							required: true,
-							message: 'Please input your old password!',
-						},
-					]}
-				>
-					<Input.Password />
-				</Form.Item>
-
-				<Form.Item
-					label="New Password"
-					name="newPassword"
-					rules={[
-						{
-							required: true,
-							message: 'Please input your new password!',
-						},
-					]}
-				>
-					<Input.Password />
-				</Form.Item>
-
-				<Form.Item {...tailLayout}>
-					<Button type="primary" htmlType="submit">
-						Save
-					</Button>
-				</Form.Item>
+				<Row>
+					<Col span={11}>
+						<Form.Item
+							label="Old Password"
+							name="oldPassword"
+							rules={[
+								{
+									required: true,
+									message: 'Please input your old password!',
+								},
+							]}
+						>
+							<Input.Password />
+						</Form.Item>
+					</Col>
+					<Col span={1} />
+					<Col span={11}>
+						<Form.Item
+							label="New Password"
+							name="newPassword"
+							rules={[
+								{
+									required: true,
+									message: 'Please input your new password!',
+								},
+							]}
+						>
+							<Input.Password />
+						</Form.Item>
+					</Col>
+				</Row>
+				<Row>
+					<Col span={23}>
+						<Form.Item>
+							<Button type="primary" htmlType="submit">
+								Save
+							</Button>
+						</Form.Item>
+					</Col>
+				</Row>
 			</Form>
+
 			{err !== '' ? <Alert message={err} type="error" /> : null}
 		</div>
 	);
