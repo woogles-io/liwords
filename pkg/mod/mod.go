@@ -91,7 +91,7 @@ func ActionExists(ctx context.Context, us user.Store, uuid string, forceInsistLo
 		if forceInsistLogout || (numberOfActionsChecked > 1 && relevantActionType == ms.ModActionType_SUSPEND_ACCOUNT) {
 			disabledError = errors.New("Whoops, something went wrong! Please log out and try logging in again.")
 		} else if permaban {
-			disabledError = fmt.Errorf("You are permanently banned from %s.", actionText)
+			disabledError = fmt.Errorf("You are banned from %s. If you think this is an error, contact conduct@woogles.io.", actionText)
 		} else if latestTime.After(now) {
 			year, month, day := latestTime.Date()
 			disabledError = fmt.Errorf("You are suspended from %s until %v %v, %v.", actionText, month, day, year)
@@ -173,6 +173,9 @@ func RemoveActions(ctx context.Context, us user.Store, actions []*ms.ModAction) 
 		// so that actions that have already expired
 		// are not removed by a mod or admin
 		_, err := GetActions(ctx, us, action.UserId)
+		if err != nil {
+			return err
+		}
 		err = removeAction(ctx, us, action, removerUserId)
 		if err != nil {
 			return err

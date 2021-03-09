@@ -213,7 +213,7 @@ func TestMod(t *testing.T) {
 	err = ApplyActions(ctx, us, cs, []*ms.ModAction{permanentSuspendAction})
 	is.NoErr(err)
 
-	is.True(ActionExists(ctx, us, "Sandbagger", false, []ms.ModActionType{permanentSuspendAction.Type}).Error() == "You are permanently banned from logging in.")
+	is.True(ActionExists(ctx, us, "Sandbagger", false, []ms.ModActionType{permanentSuspendAction.Type}).Error() == "You are banned from logging in. If you think this is an error, contact conduct@woogles.io.")
 	is.True(ActionExists(ctx, us, "Sandbagger", true, []ms.ModActionType{permanentSuspendAction.Type}).Error() == "Whoops, something went wrong! Please log out and try logging in again.")
 
 	expectedSandbaggerActions, err = GetActions(ctx, us, "Sandbagger")

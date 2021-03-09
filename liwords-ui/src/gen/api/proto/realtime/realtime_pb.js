@@ -4734,7 +4734,8 @@ proto.liwords.ServerChallengeResultEvent.toObject = function(includeInstance, ms
   var f, obj = {
     valid: jspb.Message.getBooleanFieldWithDefault(msg, 1, false),
     challenger: jspb.Message.getFieldWithDefault(msg, 2, ""),
-    challengeRule: jspb.Message.getFieldWithDefault(msg, 3, 0)
+    challengeRule: jspb.Message.getFieldWithDefault(msg, 3, 0),
+    returnedTiles: jspb.Message.getFieldWithDefault(msg, 4, "")
   };
 
   if (includeInstance) {
@@ -4783,6 +4784,10 @@ proto.liwords.ServerChallengeResultEvent.deserializeBinaryFromReader = function(
       var value = /** @type {!proto.macondo.ChallengeRule} */ (reader.readEnum());
       msg.setChallengeRule(value);
       break;
+    case 4:
+      var value = /** @type {string} */ (reader.readString());
+      msg.setReturnedTiles(value);
+      break;
     default:
       reader.skipField();
       break;
@@ -4830,6 +4835,13 @@ proto.liwords.ServerChallengeResultEvent.serializeBinaryToWriter = function(mess
   if (f !== 0.0) {
     writer.writeEnum(
       3,
+      f
+    );
+  }
+  f = message.getReturnedTiles();
+  if (f.length > 0) {
+    writer.writeString(
+      4,
       f
     );
   }
@@ -4887,6 +4899,24 @@ proto.liwords.ServerChallengeResultEvent.prototype.getChallengeRule = function()
  */
 proto.liwords.ServerChallengeResultEvent.prototype.setChallengeRule = function(value) {
   return jspb.Message.setProto3EnumField(this, 3, value);
+};
+
+
+/**
+ * optional string returned_tiles = 4;
+ * @return {string}
+ */
+proto.liwords.ServerChallengeResultEvent.prototype.getReturnedTiles = function() {
+  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 4, ""));
+};
+
+
+/**
+ * @param {string} value
+ * @return {!proto.liwords.ServerChallengeResultEvent} returns this
+ */
+proto.liwords.ServerChallengeResultEvent.prototype.setReturnedTiles = function(value) {
+  return jspb.Message.setProto3StringField(this, 4, value);
 };
 
 

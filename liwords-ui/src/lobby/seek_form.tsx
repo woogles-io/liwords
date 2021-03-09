@@ -102,6 +102,11 @@ export const SeekForm = (props: Props) => {
     []
   );
 
+  const enableCSW19X = React.useMemo(
+    () => localStorage.getItem('enableCSW19X') === 'true',
+    []
+  );
+
   let storageKey = 'lastSeekForm';
   if (props.vsBot) {
     storageKey = 'lastBotForm';
@@ -128,11 +133,14 @@ export const SeekForm = (props: Props) => {
   };
   let disableControls = false;
   let disableLexiconControls = false;
+  let disableChallengeControls = false;
   let initialValues;
 
   if (props.tournamentID && props.tournamentID in fixedSettings) {
     disableControls = true;
     disableLexiconControls = 'lexicon' in fixedSettings[props.tournamentID];
+    disableChallengeControls =
+      'challengerule' in fixedSettings[props.tournamentID];
     initialValues = {
       ...fixedSettings[props.tournamentID],
       friend: '',
@@ -141,7 +149,14 @@ export const SeekForm = (props: Props) => {
     if (!disableLexiconControls) {
       initialValues = {
         ...initialValues,
-        lexicon: storedValues.lexicon,
+        lexicon: storedValues.lexicon || defaultValues.lexicon,
+      };
+    }
+    if (!disableChallengeControls) {
+      initialValues = {
+        ...initialValues,
+        challengerule:
+          storedValues.challengerule || defaultValues.challengerule,
       };
     }
   } else {
@@ -328,13 +343,18 @@ export const SeekForm = (props: Props) => {
                   English Common Word List
                 </Select.Option>
               )}
+              {enableCSW19X && (
+                <Select.Option value="CSW19X">
+                  CSW19X (ASCI Expurgated)
+                </Select.Option>
+              )}
             </React.Fragment>
           )}
         </Select>
       </Form.Item>
       {showChallengeRule && (
         <Form.Item label="Challenge rule" name="challengerule">
-          <Select disabled={disableControls}>
+          <Select disabled={disableChallengeControls}>
             <Select.Option value={ChallengeRule.FIVE_POINT}>
               5 points{' '}
               <span className="hover-help">
