@@ -7,6 +7,7 @@ package gameplay
 import (
 	"context"
 	"errors"
+	"sort"
 	"strconv"
 	"time"
 
@@ -54,13 +55,14 @@ type GameStore interface {
 	SetGameEventChan(c chan<- *entity.EventWrapper)
 	Unload(context.Context, string)
 	SetReady(ctx context.Context, gid string, pidx int) (int, error)
+	GetHistory(ctx context.Context, id string) (*macondopb.GameHistory, error)
 }
 
 type ConfigCtxKey string
 
 // InstantiateNewGame instantiates a game and returns it.
 func InstantiateNewGame(ctx context.Context, gameStore GameStore, cfg *config.Config,
-	users [2]*entity.User, assignedFirst int, req *pb.GameRequest, tid string) (*entity.Game, error) {
+	users [2]*entity.User, assignedFirst int, req *pb.GameRequest, tdata *entity.TournamentData) (*entity.Game, error) {
 
 	var players []*macondopb.PlayerInfo
 	var dbids [2]uint
@@ -136,8 +138,7 @@ func InstantiateNewGame(ctx context.Context, gameStore GameStore, cfg *config.Co
 
 	entGame := entity.NewGame(&gameRunner.Game, req)
 	entGame.PlayerDBIDs = dbids
-	// XXX: This func should take in a tournament data.
-	entGame.TournamentData = &entity.TournamentData{Id: tid}
+	entGame.TournamentData = tdata
 
 	ratingKey, err := entGame.RatingKey()
 	if err != nil {
@@ -281,6 +282,33 @@ func players(entGame *entity.Game) []string {
 	return ps
 }
 
+// allocates sorted runes from strings
+func sortedRunes(s string) []rune {
+	a := []rune(s)
+	sort.Slice(a, func(i, j int) bool { return a[i] < a[j] })
+	return a
+}
+
+// given two sorted runes, overwrite a with a-b, return the shortened slice
+func minusRunes(a, b []rune) []rune {
+	la := len(a)
+	lb := len(b)
+	rb := 0
+	wa := 0
+	for ra := 0; ra < la; ra++ {
+		for rb < lb && b[rb] < a[ra] {
+			rb++
+		}
+		if rb < lb && b[rb] == a[ra] {
+			rb++
+		} else {
+			a[wa] = a[ra]
+			wa++
+		}
+	}
+	return a[:wa]
+}
+
 func handleChallenge(ctx context.Context, entGame *entity.Game, gameStore GameStore,
 	userStore user.Store, listStatStore stats.ListStatStore, tournamentStore tournament.TournamentStore,
 	timeRemaining int, challengerID string) error {
@@ -290,14 +318,28 @@ func handleChallenge(ctx context.Context, entGame *entity.Game, gameStore GameSt
 	}
 	numEvts := len(entGame.Game.History().Events)
 	// curTurn := entGame.Game.Turn()
+
+	var returnedTiles string
+	if numEvts > 0 {
+		// this must be done before ChallengeEvent irreversibly modifies the history
+		lastEvent := entGame.Game.LastEvent()
+		numPlayers := entGame.Game.NumPlayers() // if this is always 2, we can just do PlayerOnTurn() ^ 1
+		// there is no need to remove alphabet.ASCIIPlayedThrough from playedTiles because it should not appear on Rack
+		returnedTiles = string(minusRunes(sortedRunes(entGame.Game.History().LastKnownRacks[(entGame.Game.PlayerOnTurn()+numPlayers-1)%numPlayers]), minusRunes(sortedRunes(lastEvent.Rack), sortedRunes(lastEvent.PlayedTiles))))
+	}
+
 	valid, err := entGame.Game.ChallengeEvent(0, timeRemaining)
 	if err != nil {
 		return err
+	}
+	if valid {
+		returnedTiles = ""
 	}
 	resultEvent := &pb.ServerChallengeResultEvent{
 		Valid:         valid,
 		ChallengeRule: entGame.ChallengeRule(),
 		Challenger:    challengerID,
+		ReturnedTiles: returnedTiles,
 	}
 	evt := entity.WrapEvent(resultEvent, pb.MessageType_SERVER_CHALLENGE_RESULT_EVENT)
 	evt.AddAudience(entity.AudGame, entGame.GameID())

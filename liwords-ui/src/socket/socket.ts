@@ -43,6 +43,7 @@ type DecodedToken = {
   unn: string;
   uid: string;
   a: boolean; // authed
+  perms: string;
 };
 
 // Returning undefined from useEffect is fine, but some linters dislike it.
@@ -107,6 +108,7 @@ export const LiwordsSocket = (props: {
           loggedIn: decoded.a,
           connID: cid,
           path: pathname,
+          perms: decoded.perms?.split(','),
         },
       });
       if (!isMountedRef.current) return failUrl;
@@ -229,15 +231,17 @@ export const LiwordsSocket = (props: {
     return (msg: Uint8Array) => {
       const msgs = parseMsgs(msg);
 
-      msgs.forEach((msg) => {
-        const { msgType, parsedMsg } = msg;
+      msgs.forEach((m) => {
+        const { msgType, parsedMsg } = m;
 
         console.log(
           '%csent',
           'background: cyan',
           ReverseMessageType[msgType] ?? msgType,
           parsedMsg.toObject(),
-          performance.now()
+          performance.now(),
+          'bytelength:',
+          msg.byteLength
         );
       });
 

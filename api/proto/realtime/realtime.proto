@@ -89,6 +89,7 @@ enum MessageType {
   MATCH_REQUESTS = 18;
   DECLINE_MATCH_REQUEST = 19;
   CHAT_MESSAGE = 20;
+  CHAT_MESSAGE_DELETED = 21;
   USER_PRESENCE = 22;
   USER_PRESENCES = 23;
   SERVER_MESSAGE = 24;
@@ -121,6 +122,7 @@ message ChatMessage {
   // timestamp is in milliseconds!
   int64 timestamp = 4;
   string user_id = 5;
+  string id = 6;
 }
 
 message ChatMessages { repeated ChatMessage messages = 1; }
@@ -203,6 +205,7 @@ message ServerChallengeResultEvent {
   bool valid = 1;
   string challenger = 2;
   macondo.ChallengeRule challenge_rule = 3;
+  string returned_tiles = 4;
 }
 
 // GameEndedEvent is always sent from the server to both clients.
@@ -228,6 +231,9 @@ message GameEndedEvent {
 // over. This is a legacy way of showing tournament results right in the
 // tournament lobby in realtime. New tournaments will use full tournament
 // messages (specifically, TournamentDivisionDataResponse et al).
+// This event is also used in the tournament_service's RecentGamesResponse,
+// which can be used to fetch information for the last games played in
+// a tournament.
 message TournamentGameEndedEvent {
 
   message Player {
@@ -241,6 +247,9 @@ message TournamentGameEndedEvent {
   GameEndReason end_reason = 3;
   // Time that the game ended
   int64 time = 4;
+  int32 round = 5;
+  string division = 6;
+  int32 game_index = 7;
 }
 
 // This message makes the "Status Bar" show up and also tells the players
@@ -300,6 +309,11 @@ message ErrorMessage {
 
 message ServerMessage { string message = 1; }
 
+message ChatMessageDeleted {
+  string channel = 1;
+  string id = 2;
+}
+
 // Client-to-server messages
 
 // Gameplay
@@ -345,13 +359,15 @@ message ClientGameplayEvent {
   string tiles = 4;
 }
 
+// This can be sent from the user to the tournament or vice-versa.
 message ReadyForTournamentGame {
   string tournament_id = 1;
   string division = 2;
   int32 round = 3;
-  int32 game_index = 4; // within a matchplay type tournament where several
+  string player_id = 4;
+  int32 game_index = 5; // within a matchplay type tournament where several
                         // games share a round.
-  bool unready = 5;     // if true, this is a NOT-ready message.
+  bool unready = 6;     // if true, this is a NOT-ready message.
 }
 
 message TimedOut {
@@ -417,7 +433,7 @@ message RoundControl {
 message TournamentControls {
   string id = 1;
   string division = 2;
-  liwords.GameRequest game_request = 3;
+  GameRequest game_request = 3;
   repeated RoundControl round_controls = 4;
   int32 type = 5;
   google.protobuf.Timestamp start_time = 6;
@@ -426,18 +442,20 @@ message TournamentControls {
 
 message TournamentGame {
   repeated int32 scores = 1;
-  repeated liwords.TournamentGameResult results = 2;
-  liwords.GameEndReason game_end_reason = 3;
+  repeated TournamentGameResult results = 2;
+  GameEndReason game_end_reason = 3;
+  string id = 4;
 }
 
 message PlayerProperties {
   bool removed = 1;
+  int32 rating = 2;
 }
 
 message PlayerRoundInfo {
   repeated string players = 1;
-  repeated TournamentGame games = 2;
-  repeated liwords.TournamentGameResult outcomes = 3;
+  repeated TournamentGame games = 2; // can be a list, for elimination tourneys
+  repeated TournamentGameResult outcomes = 3;
   repeated string ready_states = 4;
 }
 
@@ -450,24 +468,32 @@ message PlayerStanding {
   bool removed = 6;
 }
 
+message RoundStandings { repeated PlayerStanding standings = 1; }
+
 message ClassicDivision { repeated PlayerRoundInfo matrix = 1; }
 
 message TournamentDivisionDataResponse {
   string id = 1;
   string division_id = 2;
   repeated string players = 3;
-  TournamentControls controls = 4;
+  // DEPRECIATED
+  // TournamentControls controls = 4;
   // In the future we will add different
   // types of tournament divisions and only
   // one will be non nil
-  map<string, PlayerRoundInfo> division = 5;
-  int32 current_round = 6;
-  repeated PlayerStanding standings = 7;
-  repeated PlayerProperties players_properties = 8;
+  repeated string division = 5;
+  // DEPRECIATED
+  map<string, int32> player_index_map = 6;
+  map<string, PlayerRoundInfo> pairing_map = 7;
+  int32 current_round = 8;
+  map<int32, RoundStandings> standings = 9;
+  repeated PlayerProperties players_properties = 10;
+  bool finished = 11;
 }
 
 message FullTournamentDivisions {
   map<string, TournamentDivisionDataResponse> divisions = 1;
+  bool started = 2;
 }
 
 message TournamentDataResponse {

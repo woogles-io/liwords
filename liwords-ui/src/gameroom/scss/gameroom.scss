@@ -487,7 +487,6 @@ p.streak-loss {
   font-weight: 400;
   font-family: $font-monospaced;
   letter-spacing: -0.05em;
-  overflow: hidden;
   @include colorModed() {
     color: m($gray-extreme);
   }
@@ -574,11 +573,33 @@ p.streak-loss {
 .tile {
   @include colorModed() {
     background: m($tile-background);
+    /* TODO
+    &.tile-p0.tile-p0 {
+      background-color: #0000ff;
+    }
+    &.tile-p1.tile-p1 {
+      background-color: #ff0000;
+    }
+    */
   }
 }
 .tile.blank {
   display: flex;
   justify-content: center;
+  /* TODO
+  &.blank.tile-p0 p.rune {
+    @include colorModed() {
+      background-color: #c0c0ff;
+      color: #4040ff;
+    }
+  }
+  &.blank.tile-p1 p.rune {
+    @include colorModed() {
+      background-color: #ffc0c0;
+      color: #ff4040;
+    }
+  }
+  */
 }
 .tile.blank p.rune {
   display: flex;
@@ -598,14 +619,50 @@ p.streak-loss {
 }
 .tile.last-played {
   @include colorModed() {
-    border: 1px solid m($tile-background);
-    background-color: m($tile-background);
-    box-shadow:  inset 0px 0px 0px 2px m($tile-background-secondary);
+    border: 1px solid m($tile-last-background);
+    background-color: m($tile-last-background);
+    /* TODO
+    &.tile-p0 {
+      border: 1px solid m($someColor);
+      box-shadow: inset 0px 0px 0px 2px m($someColor);
+    }
+    &.tile-p1 {
+      border: 1px solid m($someColor);
+      box-shadow: inset 0px 0px 0px 2px m($someColor);;
+    }
+    */
+  }
+  &.blank {
+    p.rune {
+      @include colorModed() {
+        background-color: m($tile-last-blank);
+        color: m($tile-last-background);
+
+      }
+    }
+  }
+  p.rune, p.point-value {
+    @include colorModed() {
+      color: m($tile-last-text);
+    }
   }
 }
 .tile.tentative {
   @include colorModed() {
     background-color: m($tile-background-tertiary);
+    /* TODO
+
+    &.tile-p0 {
+     @include colorModed() {
+        background-color: m($someColor);
+      }
+    }
+    &.tile-p1 {
+           @include colorModed() {
+        background-color: m($someColor);
+      }
+    }
+    */
   }
   &.blank p.rune {
     @include colorModed() {
@@ -800,7 +857,7 @@ p.rune {
     @include type-monospace;
     font-size: 15px;
     padding: 6px 24px 12px;
-    line-height: 1.5em;
+    line-height: 1.3em;
     letter-spacing: 0.26em;
     max-height: 150px;
     overflow-y: auto;
@@ -1154,8 +1211,44 @@ p.rune {
       }
     }
   }
-}
 
+}
+@media (min-width: $screen-tablet-min) and (max-width: $screen-laptop-min - 1)  {
+  .game-container.competitor {
+    // Steal some space for the tournament view
+    .data-area .ant-card {
+      margin-bottom: 6px;
+    }
+    .ant-card.competitor-status .ant-card-body p .secondary-message {
+      font-size: 12px;
+      display: inline;
+      padding-left: 6px;
+    }
+    .tiles-remaining {
+      padding: 3px 24px 6px;
+    }
+    .game-info {
+      font-size: 12px;
+      display: block;
+      p {
+        font-size: 12px;
+        .secondary-message {
+          display: none;
+        }
+      }
+      .ant-row {
+        display: inline-block;
+        &.tournament-name {
+          display: block;
+        }
+      }
+      .variant {
+        font-size: 14px;
+        margin-right: 6px;
+      }
+    }
+  }
+}
 @media (min-width: $screen-laptop-min) {
   .game-container {
     .ant-card {
@@ -1371,3 +1464,4 @@ p.rune {
     }
   }
 }
+

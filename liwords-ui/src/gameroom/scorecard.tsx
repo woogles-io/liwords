@@ -163,6 +163,9 @@ const ScorecardTurn = (props: turnProps) => {
           </>
         );
         turn.rack = `Play is valid ${sortTiles(evts[0].getRack())}`;
+      } else {
+        // Void challenge combines the end rack points.
+        turn.rack = sortTiles(turn.rack);
       }
       // Otherwise, just add/subtract as needed.
       for (let i = 1; i < evts.length; i++) {
@@ -241,9 +244,17 @@ export const ScoreCard = React.memo((props: Props) => {
       const playerCardTop =
         document.getElementById('player-cards-vertical')?.clientHeight || 0;
       const navHeight = document.getElementById('main-nav')?.clientHeight || 0;
+      let offset = 0;
+      if (getVW() > parseInt(screenSizes.screenSizeLaptop)) {
+        offset = 45;
+      }
+      if (getVW() > parseInt(screenSizes.screenSizeDesktop)) {
+        offset = 25;
+      }
       if (boardHeight && getVW() > parseInt(screenSizes.screenSizeTablet, 10)) {
         setCardHeight(
-          boardHeight -
+          boardHeight +
+            offset -
             currentEl?.getBoundingClientRect().top -
             window.pageYOffset -
             poolTop -

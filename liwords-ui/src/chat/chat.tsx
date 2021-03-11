@@ -9,6 +9,7 @@ import {
   useChatStoreContext,
   useLoginStateStoreContext,
   usePresenceStoreContext,
+  useTournamentStoreContext,
 } from '../store/store';
 import './chat.scss';
 import { Presences } from './presences';
@@ -49,6 +50,8 @@ type JSONActiveChatChannels = {
 export const Chat = React.memo((props: Props) => {
   const { useState } = useMountedState();
   const { loginState } = useLoginStateStoreContext();
+  const { tournamentContext } = useTournamentStoreContext();
+  const { competitorState } = tournamentContext;
   const { loggedIn, userID } = loginState;
   const [curMsg, setCurMsg] = useState('');
   const [hasScroll, setHasScroll] = useState(false);
@@ -137,7 +140,13 @@ export const Chat = React.memo((props: Props) => {
 
   useEffect(() => {
     setHeight();
-  }, [updatedChannels, unseenMessages, presenceCount, setHeight]);
+  }, [
+    updatedChannels,
+    unseenMessages,
+    presenceCount,
+    competitorState,
+    setHeight,
+  ]);
 
   // When window is shrunk, auto-scroll may be enabled. This is one-way.
   // Hiding bookmarks bar or downloaded files bar should keep it enabled.
@@ -359,7 +368,9 @@ export const Chat = React.memo((props: Props) => {
         .then((res) => {
           clearChat();
           const messages: Array<ChatMessageFromJSON> = res.data?.messages;
-          addChats(messages.map(chatMessageToChatEntity));
+          if (messages) {
+            addChats(messages.map(chatMessageToChatEntity));
+          }
           setHasUnreadChat(false);
           setChatAutoScroll(true);
           setHeight();
@@ -415,6 +426,7 @@ export const Chat = React.memo((props: Props) => {
             <ChatEntity
               entityType={ent.entityType}
               key={ent.id}
+              msgID={ent.id!}
               sender={ent.sender}
               senderId={ent.senderId}
               message={ent.message}
@@ -605,7 +617,11 @@ export const Chat = React.memo((props: Props) => {
                 </div>
                 <Input
                   autoFocus={!defaultChannel.startsWith('chat.game')}
-                  placeholder="chat..."
+                  placeholder={
+                    channel === 'chat.lobby'
+                      ? 'Ask or answer question...'
+                      : 'chat...'
+                  }
                   disabled={!loggedIn}
                   onKeyDown={onKeyDown}
                   onChange={onChange}

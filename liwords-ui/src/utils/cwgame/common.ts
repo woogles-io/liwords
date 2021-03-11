@@ -12,6 +12,9 @@ export type EphemeralTile = {
 // PlayedTiles is made for quick indexing of a recently placed tile.
 export type PlayedTiles = { [tilecoords: string]: boolean };
 
+// PlayerOfTiles maps to onturn. May continue to map challenged-off squares.
+export type PlayerOfTiles = { [tilecoords: string]: number };
+
 export enum Direction {
   Horizontal,
   Vertical,
@@ -23,6 +26,16 @@ export const isTouchDevice = () => {
     return true;
   }
   return !!('ontouchstart' in window);
+};
+
+export const isMac = () => {
+  var userAgent = navigator.userAgent || navigator.vendor;
+  return (/Mac/i.test(userAgent));
+};
+
+export const isWindows = () => {
+  var userAgent = navigator.userAgent || navigator.vendor;
+  return (/Win/i.test(userAgent));
 };
 
 export const uniqueTileIdx = (row: number, col: number): number => {

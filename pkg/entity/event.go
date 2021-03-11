@@ -27,6 +27,8 @@ const (
 	AudUser                         = "user"
 	AudLobby                        = "lobby"
 	AudTournament                   = "tournament"
+	// AudChannel is used for a general channel.
+	AudChannel = "channel"
 )
 
 // An EventWrapper is a real-time update, whether it is a played move,
@@ -69,6 +71,11 @@ func (e *EventWrapper) AddAudience(audType EventAudienceType, suffix string) {
 	} else {
 		e.audience = append(e.audience, string(audType))
 	}
+}
+
+// SetAudience sets a single audience in string format.
+func (e *EventWrapper) SetAudience(a string) {
+	e.audience = []string{a}
 }
 
 // Audience gets the audience(s) for this event, in the form of NATS channel names.

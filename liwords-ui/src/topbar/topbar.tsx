@@ -116,9 +116,7 @@ export const TopBar = React.memo((props: Props) => {
             {props.tournamentID ? (
               <div className="tournament">
                 Back to
-                {['CLUB', 'CLUBSESSION'].includes(
-                  tournamentContext.metadata.type
-                )
+                {['CLUB', 'CHILD'].includes(tournamentContext.metadata.type)
                   ? ' Club'
                   : ' Tournament'}
               </div>

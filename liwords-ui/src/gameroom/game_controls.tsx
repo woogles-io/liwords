@@ -31,6 +31,9 @@ const ExamineGameControls = React.memo((props: { lexicon: string }) => {
     setPlacedTilesTempScore(undefined);
     setPlacedTiles(new Set<EphemeralTile>());
   }, [examinedTurn, setPlacedTiles, setPlacedTilesTempScore]);
+  const initiallyFocusHere = useCallback((elt) => {
+    elt?.focus();
+  }, []);
   const numberOfTurns = gameContext.turns.length;
   return (
     <div className="game-controls">
@@ -63,7 +66,9 @@ const ExamineGameControls = React.memo((props: { lexicon: string }) => {
         onClick={handleExamineLast}
         disabled={examinedTurn >= numberOfTurns}
       />
-      <Button onClick={handleExamineEnd}>Done</Button>
+      <Button onClick={handleExamineEnd} ref={initiallyFocusHere}>
+        Done
+      </Button>
     </div>
   );
 });
@@ -92,6 +97,7 @@ export type Props = {
   setHandlePassShortcut: ((handler: (() => void) | null) => void) | null;
   setHandleChallengeShortcut: ((handler: (() => void) | null) => void) | null;
   setHandleNeitherShortcut: ((handler: (() => void) | null) => void) | null;
+  tournamentPairedMode?: boolean;
 };
 
 const GameControls = React.memo((props: Props) => {
@@ -203,6 +209,7 @@ const GameControls = React.memo((props: Props) => {
         onExamine={props.onExamine}
         onExportGCG={props.onExportGCG}
         showRematch={props.showRematch && !props.observer}
+        tournamentPairedMode={props.tournamentPairedMode}
         onExit={handleExitToLobby}
       />
     );
@@ -342,11 +349,11 @@ type EGCProps = {
   onExamine: () => void;
   onExportGCG: () => void;
   onExit: () => void;
+  tournamentPairedMode?: boolean;
 };
 
 const EndGameControls = (props: EGCProps) => {
   const { useState } = useMountedState();
-
   const [rematchDisabled, setRematchDisabled] = useState(false);
 
   return (
@@ -359,7 +366,7 @@ const EndGameControls = (props: EGCProps) => {
         <Button onClick={props.onExportGCG}>Export GCG</Button>
         <Button onClick={props.onExit}>Exit</Button>
       </div>
-      {props.showRematch && !rematchDisabled && (
+      {props.showRematch && !props.tournamentPairedMode && !rematchDisabled && (
         <Button
           type="primary"
           data-testid="rematch-button"

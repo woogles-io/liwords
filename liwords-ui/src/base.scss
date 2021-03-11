@@ -123,7 +123,6 @@ $point-size-desktop: $tile-font-size-desktop / 2.8;
   line-height: 2em;
   letter-spacing: 0.16em;
   text-align: center;
-  text-transform: uppercase;
 }
 
 h1,
@@ -211,7 +210,7 @@ ul
   border-color: #abec63;
 }
 
-.ant-tag-orange {
+.ant-tag-orange, .ant-tag-bye {
   background: #fcac69;
   color: #414141;
   border-color: #fcac69;
@@ -240,7 +239,7 @@ ul
   color: #414141;
   border-color: #b2dcf0;
 }
-.ant-tag-red {
+.ant-tag-red, .ant-tag-removed, .ant-tag-forfeit {
   background: #8a0f23;
   color: #ffffff;
   border-color: #8a0f23;
@@ -407,6 +406,7 @@ ul
     width: 100%;
     height: 64px;
     background: transparent;
+    text-transform: uppercase;
     @include colorModed() {
       border-top: 1px solid m($off-background);
     }
@@ -504,6 +504,7 @@ ul
       padding: 12px 24px;
       margin: 0;
       width: 100%;
+      text-transform: uppercase;
       @include colorModed() {
         color: m($gray-extreme);
       }
@@ -562,7 +563,6 @@ ul
     font-size: 12px;
     height: 36px;
     font-weight: 800;
-    text-transform: uppercase;
     transition: none;
     margin: 0 6px;
     @include colorModed() {
@@ -621,7 +621,7 @@ ul
       background-color: m($button);
       color: m($button-text);
     }
-    text-transform: uppercase;
+    text-transform: capitalize;
     border: 0;
     outline: 0;
     transition: none;

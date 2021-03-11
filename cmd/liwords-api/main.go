@@ -18,12 +18,14 @@ import (
 	"github.com/domino14/liwords/pkg/apiserver"
 	"github.com/domino14/liwords/pkg/bus"
 	"github.com/domino14/liwords/pkg/gameplay"
+	"github.com/domino14/liwords/pkg/mod"
 	cfgstore "github.com/domino14/liwords/pkg/stores/config"
 	"github.com/domino14/liwords/pkg/stores/game"
 	"github.com/domino14/liwords/pkg/stores/session"
 	"github.com/domino14/liwords/pkg/stores/soughtgame"
 	"github.com/domino14/liwords/pkg/stores/stats"
 	"github.com/domino14/liwords/pkg/tournament"
+	"github.com/domino14/liwords/pkg/words"
 
 	"github.com/domino14/liwords/pkg/registration"
 
@@ -35,13 +37,16 @@ import (
 	"github.com/rs/zerolog/log"
 
 	"github.com/domino14/liwords/pkg/config"
+	pkgprofile "github.com/domino14/liwords/pkg/profile"
 	tournamentstore "github.com/domino14/liwords/pkg/stores/tournament"
 	"github.com/domino14/liwords/pkg/stores/user"
 	pkguser "github.com/domino14/liwords/pkg/user"
 	configservice "github.com/domino14/liwords/rpc/api/proto/config_service"
 	gameservice "github.com/domino14/liwords/rpc/api/proto/game_service"
+	modservice "github.com/domino14/liwords/rpc/api/proto/mod_service"
 	tournamentservice "github.com/domino14/liwords/rpc/api/proto/tournament_service"
 	userservice "github.com/domino14/liwords/rpc/api/proto/user_service"
+	wordservice "github.com/domino14/liwords/rpc/api/proto/word_service"
 
 	"net/http/pprof"
 )
@@ -141,14 +146,16 @@ func main() {
 	stores.ChatStore = user.NewRedisChatStore(redisPool, stores.PresenceStore, stores.TournamentStore)
 
 	authenticationService := auth.NewAuthenticationService(stores.UserStore, stores.SessionStore, stores.ConfigStore,
-		cfg.SecretKey, cfg.MailgunKey)
-	registrationService := registration.NewRegistrationService(stores.UserStore)
+		cfg.SecretKey, cfg.MailgunKey, cfg.ArgonConfig)
+	registrationService := registration.NewRegistrationService(stores.UserStore, cfg.ArgonConfig)
 	gameService := gameplay.NewGameService(stores.UserStore, stores.GameStore)
-	profileService := pkguser.NewProfileService(stores.UserStore)
+	profileService := pkgprofile.NewProfileService(stores.UserStore, pkguser.NewS3Uploader(os.Getenv("AVATAR_UPLOAD_BUCKET")))
+	wordService := words.NewWordService(&cfg.MacondoConfig)
 	autocompleteService := pkguser.NewAutocompleteService(stores.UserStore)
 	socializeService := pkguser.NewSocializeService(stores.UserStore, stores.ChatStore)
 	configService := config.NewConfigService(stores.ConfigStore, stores.UserStore)
 	tournamentService := tournament.NewTournamentService(stores.TournamentStore, stores.UserStore)
+	modService := mod.NewModService(stores.UserStore, stores.ChatStore)
 
 	router.Handle("/ping", http.HandlerFunc(pingEndpoint))
 
@@ -160,6 +167,9 @@ func main() {
 
 	router.Handle(gameservice.GameMetadataServicePathPrefix,
 		middlewares.Then(gameservice.NewGameMetadataServiceServer(gameService, nil)))
+
+	router.Handle(wordservice.WordServicePathPrefix,
+		middlewares.Then(wordservice.NewWordServiceServer(wordService, nil)))
 
 	router.Handle(userservice.ProfileServicePathPrefix,
 		middlewares.Then(userservice.NewProfileServiceServer(profileService, nil)))
@@ -175,6 +185,9 @@ func main() {
 
 	router.Handle(tournamentservice.TournamentServicePathPrefix,
 		middlewares.Then(tournamentservice.NewTournamentServiceServer(tournamentService, nil)))
+
+	router.Handle(modservice.ModServicePathPrefix,
+		middlewares.Then(modservice.NewModServiceServer(modService, nil)))
 
 	router.Handle(
 		"/debug/pprof/goroutine", pprof.Handler("goroutine"),

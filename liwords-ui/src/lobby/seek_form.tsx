@@ -78,7 +78,6 @@ type Props = {
   prefixItems?: React.ReactNode;
 };
 
-const enableECWL = localStorage.getItem('enableECWL') === 'true';
 const otLabel = 'Overtime';
 const incLabel = 'Increment';
 const otUnitLabel = (
@@ -94,6 +93,19 @@ const incUnitLabel = (
 
 export const SeekForm = (props: Props) => {
   const { useState } = useMountedState();
+  const enableAllLexicons = React.useMemo(
+    () => localStorage.getItem('enableAllLexicons') === 'true',
+    []
+  );
+  const enableECWL = React.useMemo(
+    () => localStorage.getItem('enableECWL') === 'true',
+    []
+  );
+
+  const enableCSW19X = React.useMemo(
+    () => localStorage.getItem('enableCSW19X') === 'true',
+    []
+  );
 
   let storageKey = 'lastSeekForm';
   if (props.vsBot) {
@@ -121,11 +133,14 @@ export const SeekForm = (props: Props) => {
   };
   let disableControls = false;
   let disableLexiconControls = false;
+  let disableChallengeControls = false;
   let initialValues;
 
   if (props.tournamentID && props.tournamentID in fixedSettings) {
     disableControls = true;
     disableLexiconControls = 'lexicon' in fixedSettings[props.tournamentID];
+    disableChallengeControls =
+      'challengerule' in fixedSettings[props.tournamentID];
     initialValues = {
       ...fixedSettings[props.tournamentID],
       friend: '',
@@ -134,7 +149,14 @@ export const SeekForm = (props: Props) => {
     if (!disableLexiconControls) {
       initialValues = {
         ...initialValues,
-        lexicon: storedValues.lexicon,
+        lexicon: storedValues.lexicon || defaultValues.lexicon,
+      };
+    }
+    if (!disableChallengeControls) {
+      initialValues = {
+        ...initialValues,
+        challengerule:
+          storedValues.challengerule || defaultValues.challengerule,
       };
     }
   } else {
@@ -310,17 +332,29 @@ export const SeekForm = (props: Props) => {
       >
         <Select disabled={disableLexiconControls}>
           <Select.Option value="CSW19">CSW 19 (World English)</Select.Option>
-          <Select.Option value="NWL18">
-            NWL 18 (North American English)
+          <Select.Option value="NWL20">
+            NWL 20 (North American English)
           </Select.Option>
-          {enableECWL && (
-            <Select.Option value="ECWL">English Common Word List</Select.Option>
+          {enableAllLexicons && (
+            <React.Fragment>
+              <Select.Option value="NWL18">NWL 18 (Obsolete)</Select.Option>
+              {enableECWL && (
+                <Select.Option value="ECWL">
+                  English Common Word List
+                </Select.Option>
+              )}
+              {enableCSW19X && (
+                <Select.Option value="CSW19X">
+                  CSW19X (ASCI Expurgated)
+                </Select.Option>
+              )}
+            </React.Fragment>
           )}
         </Select>
       </Form.Item>
       {showChallengeRule && (
         <Form.Item label="Challenge rule" name="challengerule">
-          <Select disabled={disableControls}>
+          <Select disabled={disableChallengeControls}>
             <Select.Option value={ChallengeRule.FIVE_POINT}>
               5 points{' '}
               <span className="hover-help">

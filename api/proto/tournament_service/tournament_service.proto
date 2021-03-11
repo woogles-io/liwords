@@ -15,8 +15,10 @@ enum TType {
   STANDARD = 0;
   // A new "clubhouse"
   CLUB = 1;
-  // A club session
-  CLUB_SESSION = 2;
+  // A club session or child tournament.
+  CHILD = 2;
+  // A legacy tournament
+  LEGACY = 3;
 }
 
 message NewTournamentRequest {
@@ -106,6 +108,7 @@ message GetTournamentMetadataRequest {
 }
 
 message StartTournamentRequest { string id = 1; }
+message FinishTournamentRequest { string id = 1; }
 
 message TournamentMetadataResponse {
   string name = 1;
@@ -133,6 +136,7 @@ service TournamentService {
   rpc GetTournamentMetadata(GetTournamentMetadataRequest)
       returns (TournamentMetadataResponse);
   rpc StartTournament(StartTournamentRequest) returns (TournamentResponse);
+  rpc FinishTournament(FinishTournamentRequest) returns (TournamentResponse);
   rpc SetTournamentMetadata(SetTournamentMetadataRequest)
       returns (TournamentResponse);
   rpc PairRound(PairRoundRequest) returns (TournamentResponse);
@@ -140,11 +144,15 @@ service TournamentService {
       returns (TournamentResponse);
   rpc SetTournamentControls(liwords.TournamentControls)
       returns (TournamentResponse);
+  // Input to AddDirectors should be director usernames.
   rpc AddDirectors(liwords.TournamentPersons) returns (TournamentResponse);
+  // Input to RemoveDirectors should be director usernames.
   rpc RemoveDirectors(liwords.TournamentPersons) returns (TournamentResponse);
   rpc AddDivision(TournamentDivisionRequest) returns (TournamentResponse);
   rpc RemoveDivision(TournamentDivisionRequest) returns (TournamentResponse);
+  // Input to AddPlayers should be player usernames
   rpc AddPlayers(liwords.TournamentPersons) returns (TournamentResponse);
+  // Input to RemovePlayers should be player usernames
   rpc RemovePlayers(liwords.TournamentPersons) returns (TournamentResponse);
   rpc SetPairing(TournamentPairingsRequest) returns (TournamentResponse);
   rpc SetResult(TournamentResultOverrideRequest) returns (TournamentResponse);

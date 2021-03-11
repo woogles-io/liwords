@@ -6,7 +6,7 @@ import { ChallengeRule } from '../gen/macondo/api/proto/macondo/macondo_pb';
 type settings = { [key: string]: string | number | boolean };
 
 const phillyvirtual = {
-  lexicon: 'NWL18',
+  lexicon: 'NWL20',
   challengerule: ChallengeRule.VOID,
   initialtime: 22, // Slider position is equivalent to 20 minutes.
   rated: true,
@@ -15,8 +15,6 @@ const phillyvirtual = {
   incOrOT: 'overtime',
   vsBot: false,
 };
-
-const hcnj = phillyvirtual;
 
 const cococlub = {
   lexicon: 'CSW19',
@@ -29,7 +27,18 @@ const cococlub = {
   vsBot: false,
 };
 
-const merry = {
+const laclub = {
+  lexicon: 'NWL20',
+  challengerule: ChallengeRule.DOUBLE,
+  initialtime: 22, // 20 minutes
+  rated: true,
+  extratime: 3,
+  friend: '',
+  incOrOT: 'overtime',
+  vsBot: false,
+};
+
+const madisonclub = {
   challengerule: ChallengeRule.FIVE_POINT,
   initialtime: 22, // 20 minutes
   rated: true,
@@ -39,11 +48,72 @@ const merry = {
   vsBot: false,
 };
 
+const cocoblitz = {
+  lexicon: 'CSW19',
+  challengerule: ChallengeRule.FIVE_POINT,
+  initialtime: 5, // 3 minutes
+  rated: true,
+  extratime: 1,
+  friend: '',
+  incOrOT: 'overtime',
+  vsBot: false,
+};
+
+const channel275 = {
+  lexicon: 'CSW19',
+  challengerule: ChallengeRule.FIVE_POINT,
+  initialtime: 22, // 20 minutes
+  rated: true,
+  extratime: 1,
+  friend: '',
+  incOrOT: 'overtime',
+  vsBot: false,
+};
+
+const asci = {
+  lexicon: 'CSW19X',
+  challengerule: ChallengeRule.FIVE_POINT,
+  initialtime: 15, // 13 minutes
+  rated: true,
+  extratime: 1,
+  friend: '',
+  incOrOT: 'overtime',
+  vsBot: false,
+};
+
+const phillyasap = {
+  lexicon: 'NWL20',
+  challengerule: ChallengeRule.VOID,
+  initialtime: 22, // 20 minutes
+  rated: true,
+  extratime: 2,
+  friend: '',
+  incOrOT: 'overtime',
+  vsBot: false,
+};
+
+const nyc = {
+  lexicon: 'NWL20',
+  challengerule: ChallengeRule.DOUBLE,
+  initialtime: 19, // 17 minutes
+  rated: true,
+  extratime: 1,
+  friend: '',
+  incOrOT: 'overtime',
+  vsBot: false,
+};
+
 export const fixedSettings: { [key: string]: settings } = {
   phillyvirtual,
-  hcnj,
   cococlub,
-  merry,
+  madisonclub,
+  '26VtG4JCfeD6qvSGJEwRLm': laclub,
+  cocoblitz,
+  channel275,
+  GqgfauAMzorWxGGrCqhV5J: phillyasap,
+  cbCrE5EAnfTpacaZkxc4SZ: asci, // /tournament
+  CSLUwqH4rHUTKzNcp7cPRP: asci, // /club
+  CL9GW5sDfNqeX2yiPRg9YF: nyc,
 };
 
 // A temporary map of club redirects. Map internal tournament ID to slug:

@@ -8,121 +8,118 @@ export const Announcements = React.memo((props: AnnouncementsProps) => {
   const announcements = [
     {
       title: 'Where is my club or tournament?',
+      link: 'https://woogles.io/clubs',
       body: (
-        <a href="/clubs" target="_blank" rel="noopener noreferrer">
-          <p>
-            Wondering where you can find a good club or tournament to play in?
-            See more info here!
-          </p>
-        </a>
-      ),
-    },
-    {
-      title: 'Upcoming Tournament - 11th Annual Duke PBMT Charity Tournament',
-      body: (
-        <a
-          href="https://sites.google.com/site/trianglescrabble/pbmt-2021"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <p>
-            8 games Saturday, January 16, NWL20 or CSW19, starting at 10 AM. All
-            proceeds from this online tourney will go to support families in the
-            Pediatric Blood and Marrow Transplantation Program at the Duke
-            Comprehensive Cancer Center. Last year's event raised over $10,000
-            for this worthy cause!
-          </p>
-        </a>
+        <p>
+          Wondering where you can find a good club or tournament to play in? See
+          more info here!
+        </p>
       ),
     },
 
     {
-      title: 'Upcoming Tournament - Crescent City Cup',
+      title: 'Ongoing Tournament - CoCo Blitz Championship',
+      link: 'https://woogles.io/tournament/coco-blitz',
       body: (
-        <a
-          href="https://sites.google.com/site/nolascrabble"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <p>
-            The 10th Annual Crescent City Cup will be held on Woogles on January
-            17th and 18th. Twenty games with Open and Lite divisions for both
-            CSW19 and NWL2020. Register now.
-          </p>
-        </a>
+        <p>
+          The World Blitz Championship kicks off in late January and runs
+          through late April. The fastest word gamers in the world will play
+          3-minute games, starting with round robin pool play and culminating
+          with a playoff bracket to determine the World Blitz Champion!
+        </p>
       ),
     },
+
     {
-      title: 'Tournament Complete - MERRY',
+      title: 'Upcoming Tournament - HOPPY',
+      link:
+        'https://drive.google.com/file/d/1vi6eUYaYeL2az7-6eZthwevsMG0fr3fK/view',
       body: (
-        <a
-          href="https://woogles.io/tournament/merry"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <p>
-            The 2nd annual MERRY tournament (Jan 1-2) congratulates Early Bird
-            winners Tina Bennett (div D), Letitia Sears (div C), Chloe Fatsis
-            (div B), Richard Spence (div A), and Brian Bowman (CSW), and Main
-            Event winners Josh Jetto (div D), Susan Bertoni (div C), Billy
-            Nakamura (div B), Kevin Fraley (div A), and Tim Weiss (CSW).
-          </p>
-        </a>
+        <p>
+          The HOPPY is a two-day tournament, brought to you by the organizers of
+          the successful MERRY tournament! A two-day, 13-game event, starting on
+          the first day of spring (Saturday, March 20, 2021). Premier and
+          Classic divisions for both NWL20 and CSW19. All pairings and standings
+          will be automatically handled by the Woogles platform!
+        </p>
       ),
     },
+
+    {
+      title: 'Upcoming Tournament - Virtual CanAm 2021',
+      link: 'https://woogles.io/',
+      body: (
+        <p>
+          The CanAm has been brought to Woogles virtually, with teams of
+          Canadians and Americans vying for the virtual trophy! Who will emerge
+          victorious? Find out on March 27th and 28th!
+        </p>
+      ),
+    },
+
+    {
+      title: 'Completed Tournament - Amazing Race 2',
+      link: 'https://woogles.io/tournament/tarst2',
+      body: (
+        <p>
+          Michael Fagen's Amazing Race 2 tournament is now concluded. Alec
+          Sjöholm defended his title with his new teammate, Michael Fagen!
+          Congrats!
+        </p>
+      ),
+    },
+
+    {
+      title: "Completed Tournament - Brosowsky Brothers' Bonanza 2021",
+      link: 'https://woogles.io/tournament/BBB',
+      body: (
+        <p>
+          The Brosowsky Brothers' Bonanza is a one-day, 8-game event, with Open
+          and Lite divisions for both NWL20 and CSW19! Check out the results.
+        </p>
+      ),
+    },
+
     {
       title: 'Want to help?',
+      link: 'https://woogles.io/about',
       body: (
-        <a
-          href="https://woogles.io/about"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <p>
-            Woogles is a nonprofit, funded completely by donations, and
-            committed to being ad-free and free for everyone. Want to make a
-            donation and ensure its future?
-          </p>
-        </a>
+        <p>
+          Woogles is a nonprofit, funded completely by donations, and committed
+          to being ad-free and free for everyone. Want to make a donation and
+          ensure its future?
+        </p>
       ),
     },
     {
       title: 'Find a bug? Let us know',
+      link: 'https://tinyurl.com/y4dkb2g6',
       body: (
-        <a
-          href="https://tinyurl.com/y4dkb2g6"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <p>
-            We've made it easier to submit your bugs and feedback. Let us know
-            if you find a problem or have a suggestion.
-          </p>
-        </a>
+        <p>
+          We've made it easier to submit your bugs and feedback. Let us know if
+          you find a problem or have a suggestion.
+        </p>
       ),
     },
     {
       title: 'Woogles is live! Come join our Discord',
+      link: 'https://discord.gg/GqkUqA7ENm',
       body: (
-        <a
-          href="https://discord.gg/5yCJjmW"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <p>
-            Welcome to our open beta. We still have a lot of features and
-            designs to build. Please join our Discord server to discuss your
-            thoughts. Happy Woogling!
-          </p>
-        </a>
+        <p>
+          Welcome to our open beta. We still have a lot of features and designs
+          to build. Please join our Discord server to discuss your thoughts.
+          Happy Woogling!
+        </p>
       ),
     },
   ];
   const renderAnnouncements = announcements.map((a, idx) => (
-    <li key={idx}>
-      <h4>{a.title}</h4>
-      {a.body}
-    </li>
+    <a href={a.link} target="_blank" rel="noopener noreferrer">
+      <li key={idx}>
+        <h4>{a.title}</h4>
+        {a.body}
+      </li>
+    </a>
   ));
   return (
     <div className="announcements">

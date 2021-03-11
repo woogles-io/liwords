@@ -19,8 +19,8 @@ import '../lobby/lobby.scss';
 import 'antd/dist/antd.css';
 import ReactMarkdown from 'react-markdown';
 import { useMountedState } from '../utils/mounted';
-import { TournamentMetadata } from '../tournament/state';
 import { toAPIUrl } from '../api/api';
+import { TournamentMetadata } from '../store/reducers/tournament_reducer';
 
 type DProps = {
   markdown: string;
@@ -141,17 +141,17 @@ export const TourneyEditor = (props: Props) => {
   };
   const addDirector = () => {
     const director = prompt('Enter a new director username to add:');
+    if (!director) {
+      return;
+    }
     axios
       .post<{}>(
         toAPIUrl('tournament_service.TournamentService', 'AddDirectors'),
         {
           id: form.getFieldValue('id'),
-          persons: [
-            {
-              person_id: director,
-              person_int: 10, // whatever?
-            },
-          ],
+          persons: {
+            [director]: 10, // or whatever number?
+          },
         }
       )
       .then((resp) => {
@@ -171,17 +171,17 @@ export const TourneyEditor = (props: Props) => {
   // XXX: this function shouldn't require an "int"
   const removeDirector = () => {
     const director = prompt('Enter a director username to remove:');
+    if (!director) {
+      return;
+    }
     axios
       .post<{}>(
         toAPIUrl('tournament_service.TournamentService', 'RemoveDirectors'),
         {
           id: form.getFieldValue('id'),
-          persons: [
-            {
-              person_id: director,
-              person_int: 10, // whatever?
-            },
-          ],
+          persons: {
+            [director]: 10,
+          },
         }
       )
       .then((resp) => {
@@ -250,9 +250,14 @@ export const TourneyEditor = (props: Props) => {
             <Form.Item name="type" label="Type">
               <Select>
                 <Select.Option value="CLUB">Club</Select.Option>
-                <Select.Option value="CLUB SESSION">Club Session</Select.Option>
+                <Select.Option value="CHILD">
+                  Club Session (or Child Tournament)
+                </Select.Option>
                 <Select.Option value="STANDARD">
                   Standard Tournament
+                </Select.Option>
+                <Select.Option value="LEGACY">
+                  Legacy Tournament (Clubhouse mode)
                 </Select.Option>
               </Select>
             </Form.Item>

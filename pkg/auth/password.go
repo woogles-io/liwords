@@ -19,8 +19,8 @@ type PasswordConfig struct {
 	keyLen  uint32
 }
 
-func NewPasswordConfig(time uint32, memory uint32, threads uint8, keyLen uint32) *PasswordConfig {
-	return &PasswordConfig{time, memory, threads, keyLen}
+func NewPasswordConfig(time int, memory int, threads int, keyLen int) *PasswordConfig {
+	return &PasswordConfig{uint32(time), uint32(memory), uint8(threads), uint32(keyLen)}
 }
 
 var argonMutex sync.Mutex

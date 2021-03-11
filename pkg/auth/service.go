@@ -22,8 +22,10 @@ import (
 	"github.com/dgrijalva/jwt-go"
 	"github.com/domino14/liwords/pkg/apiserver"
 
+	"github.com/domino14/liwords/pkg/mod"
 	"github.com/domino14/liwords/pkg/user"
 
+	ms "github.com/domino14/liwords/rpc/api/proto/mod_service"
 	pb "github.com/domino14/liwords/rpc/api/proto/user_service"
 )
 
@@ -55,16 +57,18 @@ type AuthenticationService struct {
 	configStore  config.ConfigStore
 	secretKey    string
 	mailgunKey   string
+	argonConfig  config.ArgonConfig
 }
 
 func NewAuthenticationService(u user.Store, ss sessions.SessionStore, cs config.ConfigStore,
-	secretKey, mailgunKey string) *AuthenticationService {
+	secretKey, mailgunKey string, cfg config.ArgonConfig) *AuthenticationService {
 	return &AuthenticationService{
 		userStore:    u,
 		sessionStore: ss,
 		configStore:  cs,
 		secretKey:    secretKey,
-		mailgunKey:   mailgunKey}
+		mailgunKey:   mailgunKey,
+		argonConfig:  cfg}
 }
 
 // Login sets a cookie.
@@ -83,6 +87,13 @@ func (as *AuthenticationService) Login(ctx context.Context, r *pb.UserLoginReque
 	if !matches {
 		return nil, twirp.NewError(twirp.Unauthenticated, "password incorrect")
 	}
+
+	err = mod.ActionExists(ctx, as.userStore, user.UUID, false, []ms.ModActionType{ms.ModActionType_SUSPEND_ACCOUNT})
+	if err != nil {
+		log.Err(err).Str("username", r.Username).Str("userID", user.UUID).Msg("action-exists-login")
+		return nil, err
+	}
+
 	sess, err := as.sessionStore.New(ctx, user)
 	if err != nil {
 		return nil, err
@@ -139,13 +150,27 @@ func (as *AuthenticationService) GetSocketToken(ctx context.Context, r *pb.Socke
 		uuid = sess.UserUUID
 		unn = sess.Username
 	}
-
+	u, err := as.userStore.GetByUUID(ctx, uuid)
+	if err != nil {
+		return nil, err
+	}
+	perms := []string{}
+	if u.IsAdmin {
+		perms = append(perms, "adm")
+	}
+	if u.IsDirector {
+		perms = append(perms, "dir")
+	}
+	if u.IsMod {
+		perms = append(perms, "mod")
+	}
 	// Create an unauth token.
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-		"exp": time.Now().Add(TokenExpiration).Unix(),
-		"uid": uuid,
-		"unn": unn,
-		"a":   authed,
+		"exp":   time.Now().Add(TokenExpiration).Unix(),
+		"uid":   uuid,
+		"unn":   unn,
+		"a":     authed,
+		"perms": strings.Join(perms, ","),
 	})
 	tokenString, err := token.SignedString([]byte(as.secretKey))
 	if err != nil {
@@ -172,6 +197,12 @@ func (as *AuthenticationService) ResetPasswordStep1(ctx context.Context, r *pb.R
 	u, err := as.userStore.GetByEmail(ctx, email)
 	if err != nil {
 		return nil, twirp.NewError(twirp.Unauthenticated, err.Error())
+	}
+
+	err = mod.ActionExists(ctx, as.userStore, u.UUID, false, []ms.ModActionType{ms.ModActionType_SUSPEND_ACCOUNT})
+	if err != nil {
+		log.Err(err).Str("userID", u.UUID).Msg("action-exists-reset-password-step-one")
+		return nil, err
 	}
 
 	// Create a token for the reset
@@ -217,7 +248,13 @@ func (as *AuthenticationService) ResetPasswordStep2(ctx context.Context, r *pb.R
 			return nil, twirp.NewError(twirp.Malformed, "wrongly formatted uuid in token")
 		}
 
-		config := NewPasswordConfig(1, 64*1024, 4, 32)
+		err = mod.ActionExists(ctx, as.userStore, uuid, false, []ms.ModActionType{ms.ModActionType_SUSPEND_ACCOUNT})
+		if err != nil {
+			log.Err(err).Str("userID", uuid).Msg("action-exists-reset-password-step-two")
+			return nil, err
+		}
+
+		config := NewPasswordConfig(as.argonConfig.Time, as.argonConfig.Memory, as.argonConfig.Threads, as.argonConfig.Keylen)
 		if len(r.Password) < 8 {
 			return nil, twirp.NewError(twirp.InvalidArgument, errPasswordTooShort.Error())
 		}
@@ -250,6 +287,13 @@ func (as *AuthenticationService) ChangePassword(ctx context.Context, r *pb.Chang
 		// usernames easily.
 		return nil, twirp.InternalErrorWith(err)
 	}
+
+	err = mod.ActionExists(ctx, as.userStore, user.UUID, false, []ms.ModActionType{ms.ModActionType_SUSPEND_ACCOUNT})
+	if err != nil {
+		log.Err(err).Str("userID", user.UUID).Msg("action-exists-change-password")
+		return nil, err
+	}
+
 	matches, err := ComparePassword(r.OldPassword, user.Password)
 	if !matches {
 		return nil, twirp.NewError(twirp.InvalidArgument, "your password is incorrect")
@@ -259,9 +303,7 @@ func (as *AuthenticationService) ChangePassword(ctx context.Context, r *pb.Chang
 		return nil, twirp.NewError(twirp.InvalidArgument, errPasswordTooShort.Error())
 	}
 
-	// time, memory, threads, keyLen for argon2:
-	config := NewPasswordConfig(1, 64*1024, 4, 32)
-	// XXX: do not hardcode, put in a config file
+	config := NewPasswordConfig(as.argonConfig.Time, as.argonConfig.Memory, as.argonConfig.Threads, as.argonConfig.Keylen)
 	hashPass, err := GeneratePassword(config, r.NewPassword)
 	if err != nil {
 		return nil, twirp.InternalErrorWith(err)

@@ -26,9 +26,12 @@ import { PlayerOrder } from './constants';
 import { PoolFormatType } from '../constants/pool_formats';
 import { LoginState, LoginStateReducer } from './login_state';
 import { EphemeralTile } from '../utils/cwgame/common';
-import { pageSize } from '../tournament/recent_game';
 import { ActiveChatChannels } from '../gen/api/proto/user_service/user_service_pb';
-import { defaultTournamentState, TournamentState } from '../tournament/state';
+import {
+  defaultTournamentState,
+  TournamentReducer,
+  TournamentState,
+} from './reducers/tournament_reducer';
 
 export enum ChatEntityType {
   UserChat,
@@ -102,6 +105,7 @@ type ChatStoreData = {
   addChat: (chat: ChatEntityObj) => void;
   addChats: (chats: Array<ChatEntityObj>) => void;
   clearChat: () => void;
+  deleteChat: (id: string, channel: string) => void;
   chat: Array<ChatEntityObj>;
   chatChannels: ActiveChatChannels.AsObject | undefined;
   setChatChannels: (chatChannels: ActiveChatChannels.AsObject) => void;
@@ -115,7 +119,7 @@ type PresenceStoreData = {
 
 type TournamentStoreData = {
   tournamentContext: TournamentState;
-  setTournamentContext: React.Dispatch<React.SetStateAction<TournamentState>>;
+  dispatchTournamentContext: (action: Action) => void;
 };
 
 type GameEndMessageStoreData = {
@@ -165,6 +169,8 @@ type ExamineStoreData = {
   handleExamineNext: () => void;
   handleExamineLast: () => void;
   handleExamineGoTo: (x: number) => void;
+  addHandleExaminer: (x: () => void) => void;
+  removeHandleExaminer: (x: () => void) => void;
 };
 
 const defaultGameState = startingGameState(
@@ -182,9 +188,6 @@ const LobbyContext = createContext<LobbyStoreData>({
     soughtGames: [],
     activeGames: [],
     matchRequests: [],
-    tourneyGames: [],
-    gamesPageSize: pageSize,
-    gamesOffset: 0,
   },
   dispatchLobbyContext: defaultFunction,
 });
@@ -197,6 +200,7 @@ const LoginStateContext = createContext<LoginStateStoreData>({
     connectedToSocket: false,
     connID: '',
     path: '',
+    perms: [],
   },
   dispatchLoginState: defaultFunction,
 });
@@ -246,6 +250,7 @@ const ChatContext = createContext<ChatStoreData>({
   clearChat: defaultFunction,
   chat: [],
   chatChannels: undefined,
+  deleteChat: defaultFunction,
   setChatChannels: defaultFunction,
 });
 
@@ -257,7 +262,7 @@ const PresenceContext = createContext<PresenceStoreData>({
 
 const TournamentContext = createContext<TournamentStoreData>({
   tournamentContext: defaultTournamentState,
-  setTournamentContext: defaultFunction,
+  dispatchTournamentContext: defaultFunction,
 });
 
 const [GameEndMessageContext, ExaminableGameEndMessageContext] = Array.from(
@@ -300,6 +305,8 @@ const ExamineContext = createContext<ExamineStoreData>({
   handleExamineNext: defaultFunction,
   handleExamineLast: defaultFunction,
   handleExamineGoTo: defaultFunction,
+  addHandleExaminer: defaultFunction,
+  removeHandleExaminer: defaultFunction,
 });
 
 type Props = {
@@ -327,6 +334,13 @@ const gameStateInitializer = (
 // Support for examining. Must be nested deeper than the Real Stuffs.
 
 const doNothing = () => {}; // defaultFunction currently is the same as this.
+
+// CSS selectors that should support Examine shortcuts.
+const WHERE_TO_ENABLE_EXAMINE_SHORTCUTS = [
+  '.analyzer-card',
+  '.analyzer-container',
+  '.play-area',
+];
 
 const ExaminableStore = ({ children }: { children: React.ReactNode }) => {
   const { useState } = useMountedState();
@@ -493,6 +507,99 @@ const ExaminableStore = ({ children }: { children: React.ReactNode }) => {
     };
   }, [shownTimes]);
 
+  // There are two handlers (the Tablet view has its own Analyzer button).
+  // Fortunately the second one will do nothing, so we just trigger both.
+  const [handleExaminers, setHandleExaminers] = useState(
+    new Array<() => void>()
+  );
+  const addHandleExaminer = useCallback((x) => {
+    setHandleExaminers((a: Array<() => void>) => {
+      if (!a.includes(x)) {
+        a = [...a, x];
+      }
+      return a;
+    });
+  }, []);
+  const removeHandleExaminer = useCallback((x) => {
+    setHandleExaminers((a) => {
+      const b = a.filter((y) => y !== x);
+      return a.length === b.length ? a : b;
+    });
+  }, []);
+
+  const shouldTrigger = useCallback((where) => {
+    try {
+      return (
+        where &&
+        WHERE_TO_ENABLE_EXAMINE_SHORTCUTS.some((selector) =>
+          where.closest(selector)
+        )
+      );
+    } catch (e) {
+      return false;
+    }
+  }, []);
+
+  const handleExamineShortcuts = useCallback(
+    (evt) => {
+      if (
+        isExamining &&
+        (shouldTrigger(document.activeElement) ||
+          shouldTrigger(window.getSelection()?.focusNode?.parentElement))
+      ) {
+        if (evt.ctrlKey || evt.altKey || evt.metaKey) {
+          // If a modifier key is held, never mind.
+        } else {
+          if (evt.key === '<' || evt.key === 'Home') {
+            evt.preventDefault();
+            handleExamineFirst();
+          }
+          if (evt.key === ',' || evt.key === 'PageUp') {
+            evt.preventDefault();
+            handleExaminePrev();
+          }
+          if (evt.key === '.' || evt.key === 'PageDown') {
+            evt.preventDefault();
+            handleExamineNext();
+          }
+          if (evt.key === '>' || evt.key === 'End') {
+            evt.preventDefault();
+            handleExamineLast();
+          }
+          if (evt.key === '/' || evt.key === '?') {
+            evt.preventDefault();
+            for (const handleExaminer of handleExaminers) {
+              handleExaminer();
+            }
+          }
+          if (evt.key === 'Escape') {
+            evt.preventDefault();
+            handleExamineEnd();
+          }
+        }
+      }
+    },
+    [
+      isExamining,
+      shouldTrigger,
+      handleExamineFirst,
+      handleExaminePrev,
+      handleExamineNext,
+      handleExamineLast,
+      handleExamineEnd,
+      handleExaminers,
+    ]
+  );
+
+  React.useEffect(() => {
+    if (isExamining) {
+      document.addEventListener('keydown', handleExamineShortcuts);
+      return () => {
+        document.removeEventListener('keydown', handleExamineShortcuts);
+      };
+    }
+  }, [isExamining, handleExamineShortcuts]);
+
   const examineStore = useMemo(
     () => ({
       isExamining,
@@ -504,6 +611,8 @@ const ExaminableStore = ({ children }: { children: React.ReactNode }) => {
       handleExamineNext,
       handleExamineLast,
       handleExamineGoTo,
+      addHandleExaminer,
+      removeHandleExaminer,
     }),
     [
       isExamining,
@@ -515,6 +624,8 @@ const ExaminableStore = ({ children }: { children: React.ReactNode }) => {
       handleExamineNext,
       handleExamineLast,
       handleExamineGoTo,
+      addHandleExaminer,
+      removeHandleExaminer,
     ]
   );
 
@@ -566,9 +677,6 @@ const RealStore = ({ children, ...props }: Props) => {
     soughtGames: [],
     activeGames: [],
     matchRequests: [],
-    tourneyGames: [],
-    gamesPageSize: pageSize,
-    gamesOffset: 0,
   });
   const dispatchLobbyContext = useCallback(
     (action) => setLobbyContext((state) => LobbyReducer(state, action)),
@@ -581,6 +689,7 @@ const RealStore = ({ children, ...props }: Props) => {
     connectedToSocket: false,
     connID: '',
     path: '',
+    perms: new Array<string>(),
   });
   const dispatchLoginState = useCallback(
     (action) => setLoginState((state) => LoginStateReducer(state, action)),
@@ -590,6 +699,12 @@ const RealStore = ({ children, ...props }: Props) => {
   const [tournamentContext, setTournamentContext] = useState(
     defaultTournamentState
   );
+  const dispatchTournamentContext = useCallback((action) => {
+    setTournamentContext((state) => {
+      const newState = TournamentReducer(state, action);
+      return newState;
+    });
+  }, []);
 
   const [currentLagMs, setCurrentLagMs] = useState(NaN);
 
@@ -667,6 +782,15 @@ const RealStore = ({ children, ...props }: Props) => {
     setChat([]);
   }, []);
 
+  const deleteChat = useCallback((id: string, channel: string) => {
+    setChat((oldChat) => {
+      const chatCopy = oldChat.filter(
+        (c) => !(c.id === id && c.channel === channel)
+      );
+      return chatCopy;
+    });
+  }, []);
+
   const setPresence = useCallback((entity: PresenceEntity) => {
     setPresences((prevPresences) => {
       // filter out the current entity then add it if we're not deleting
@@ -715,9 +839,9 @@ const RealStore = ({ children, ...props }: Props) => {
   const tournamentStateStore = useMemo(
     () => ({
       tournamentContext,
-      setTournamentContext,
+      dispatchTournamentContext,
     }),
-    [tournamentContext, setTournamentContext]
+    [tournamentContext, dispatchTournamentContext]
   );
   const lagStore = useMemo(
     () => ({
@@ -780,11 +904,20 @@ const RealStore = ({ children, ...props }: Props) => {
       addChat,
       addChats,
       clearChat,
+      deleteChat,
       chat,
       chatChannels,
       setChatChannels,
     }),
-    [addChat, addChats, clearChat, chat, chatChannels, setChatChannels]
+    [
+      addChat,
+      addChats,
+      clearChat,
+      chat,
+      chatChannels,
+      deleteChat,
+      setChatChannels,
+    ]
   );
   const presenceStore = useMemo(
     () => ({

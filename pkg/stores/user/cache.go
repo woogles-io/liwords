@@ -21,10 +21,14 @@ type backingStore interface {
 	Username(ctx context.Context, uuid string) (string, bool, error)
 	New(ctx context.Context, user *entity.User) error
 	SetPassword(ctx context.Context, uuid string, hashpass string) error
+	SetAbout(ctx context.Context, uuid string, about string) error
+	SetAvatarUrl(ctx context.Context, uuid string, avatarUrl string) error
 	SetRatings(ctx context.Context, p0uuid string, p1uuid string, variant entity.VariantKey,
 		p1Rating entity.SingleRating, p2Rating entity.SingleRating) error
 	SetStats(ctx context.Context, p0uuid string, p1uuid string, variant entity.VariantKey,
 		p0stats *entity.Stats, p1stats *entity.Stats) error
+	ResetRatings(ctx context.Context, uuid string) error
+	ResetStats(ctx context.Context, uuid string) error
 	GetRandomBot(ctx context.Context) (*entity.User, error)
 
 	AddFollower(ctx context.Context, targetUser, follower uint) error
@@ -41,6 +45,7 @@ type backingStore interface {
 
 	UsersByPrefix(ctx context.Context, prefix string) ([]*pb.BasicUser, error)
 	Count(ctx context.Context) (int64, error)
+	Set(ctx context.Context, u *entity.User) error
 }
 
 const (
@@ -110,6 +115,24 @@ func (c *Cache) SetPassword(ctx context.Context, uuid string, hashpass string) e
 	return c.backing.SetPassword(ctx, uuid, hashpass)
 }
 
+func (c *Cache) SetAbout(ctx context.Context, uuid string, about string) error {
+	u, err := c.GetByUUID(ctx, uuid)
+	if err != nil {
+		return err
+	}
+	u.Profile.About = about
+	return c.backing.SetAbout(ctx, uuid, about)
+}
+
+func (c *Cache) SetAvatarUrl(ctx context.Context, uuid string, avatarUrl string) error {
+	u, err := c.GetByUUID(ctx, uuid)
+	if err != nil {
+		return err
+	}
+	u.Profile.AvatarUrl = avatarUrl
+	return c.backing.SetAvatarUrl(ctx, uuid, avatarUrl)
+}
+
 func (c *Cache) SetRatings(ctx context.Context, p0uuid string, p1uuid string, variant entity.VariantKey, p0Rating entity.SingleRating, p1Rating entity.SingleRating) error {
 	u0, err := c.GetByUUID(ctx, p0uuid)
 	if err != nil {
@@ -132,6 +155,19 @@ func (c *Cache) SetRatings(ctx context.Context, p0uuid string, p1uuid string, va
 	u1.Profile.Ratings.Data[variant] = p1Rating
 
 	err = c.backing.SetRatings(ctx, p0uuid, p1uuid, variant, p0Rating, p1Rating)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (c *Cache) ResetRatings(ctx context.Context, uuid string) error {
+	u, err := c.GetByUUID(ctx, uuid)
+	if err != nil {
+		return err
+	}
+	u.Profile.Ratings.Data = nil
+	err = c.backing.ResetRatings(ctx, uuid)
 	if err != nil {
 		return err
 	}
@@ -167,6 +203,20 @@ func (c *Cache) SetStats(ctx context.Context, p0uuid string, p1uuid string, vari
 
 	return nil
 }
+
+func (c *Cache) ResetStats(ctx context.Context, uuid string) error {
+	u, err := c.GetByUUID(ctx, uuid)
+	if err != nil {
+		return err
+	}
+	u.Profile.Stats.Data = nil
+	err = c.backing.ResetStats(ctx, uuid)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 
 func (c *Cache) GetRandomBot(ctx context.Context) (*entity.User, error) {
 	return c.backing.GetRandomBot(ctx)
@@ -214,4 +264,15 @@ func (c *Cache) Count(ctx context.Context) (int64, error) {
 
 func (c *Cache) CachedCount(ctx context.Context) int {
 	return c.cache.Len()
+}
+
+func (c *Cache) Set(ctx context.Context, u *entity.User) error {
+
+	err := c.backing.Set(ctx, u)
+	if err != nil {
+		return err
+	}
+	// readd to cache
+	c.cache.Add(u.UUID, u)
+	return nil
 }

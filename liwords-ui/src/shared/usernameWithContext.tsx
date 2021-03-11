@@ -3,20 +3,27 @@ import { Link } from 'react-router-dom';
 import { Dropdown } from 'antd';
 import { TheBlocker } from './blocker';
 import { useLoginStateStoreContext } from '../store/store';
+import { canMod } from '../mod/perms';
 
 type UsernameWithContextProps = {
   additionalMenuItems?: React.ReactNode;
   omitProfileLink?: boolean;
   omitSendMessage?: boolean;
+  omitBlock?: boolean;
   username: string;
   userID?: string;
   sendMessage?: (uuid: string, username: string) => void;
   blockCallback?: () => void;
+
+  showModTools?: boolean;
+  showDeleteMessage?: boolean;
+  moderate?: (uuid: string, username: string) => void;
+  deleteMessage?: () => void;
 };
 
 export const UsernameWithContext = (props: UsernameWithContextProps) => {
   const { loginState } = useLoginStateStoreContext();
-  const { userID } = loginState;
+  const { userID, perms } = loginState;
 
   const userMenu = (
     <ul>
@@ -43,13 +50,30 @@ export const UsernameWithContext = (props: UsernameWithContextProps) => {
           Message
         </li>
       ) : null}
-      {props.userID ? (
+      {props.userID && !props.omitBlock ? (
         <TheBlocker
           blockCallback={props.blockCallback}
           className="link plain"
           target={props.userID}
           tagName="li"
         />
+      ) : null}
+      {props.showModTools && canMod(perms) && props.userID !== userID ? (
+        <li
+          className="link plain"
+          onClick={() =>
+            props.moderate
+              ? props.moderate(props.userID!, props.username)
+              : void 0
+          }
+        >
+          Moderate
+        </li>
+      ) : null}
+      {props.showDeleteMessage && canMod(perms) && props.userID !== userID ? (
+        <li className="link plain" onClick={props.deleteMessage}>
+          Delete this Message
+        </li>
       ) : null}
       {props.additionalMenuItems}
     </ul>

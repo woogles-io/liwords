@@ -1,8 +1,7 @@
 import React from 'react';
-import '../App.scss';
-import 'antd/dist/antd.css';
 
 import { useCallback, useEffect, useMemo } from 'react';
+
 import { useParams } from 'react-router-dom';
 import axios from 'axios';
 import { message } from 'antd';
@@ -12,7 +11,6 @@ import {
   useTournamentStoreContext,
 } from '../store/store';
 import { useMountedState } from '../utils/mounted';
-import { TournamentMetadata } from './state';
 import { toAPIUrl } from '../api/api';
 import { TopBar } from '../topbar/topbar';
 import { singularCount } from '../utils/plural';
@@ -21,6 +19,13 @@ import { TournamentInfo } from './tournament_info';
 import { sendAccept, sendSeek } from '../lobby/sought_game_interactions';
 import { SoughtGame } from '../store/reducers/lobby_reducer';
 import { ActionsPanel } from './actions_panel';
+import { CompetitorStatus } from './competitor_status';
+import { ActionType } from '../actions/actions';
+import {
+  readyForTournamentGame,
+  TournamentMetadata,
+} from '../store/reducers/tournament_reducer';
+import './room.scss';
 
 type Props = {
   sendSocketMsg: (msg: Uint8Array) => void;
@@ -34,9 +39,11 @@ export const TournamentRoom = (props: Props) => {
   const { loginState } = useLoginStateStoreContext();
   const {
     tournamentContext,
-    setTournamentContext,
+    dispatchTournamentContext,
   } = useTournamentStoreContext();
-  const { loggedIn, username } = loginState;
+  const { loggedIn, username, userID } = loginState;
+  const { competitorState: competitorContext } = tournamentContext;
+  const { isRegistered } = competitorContext;
   const { sendSocketMsg } = props;
   const { path } = loginState;
   const [badTournament, setBadTournament] = useState(false);
@@ -68,8 +75,9 @@ export const TournamentRoom = (props: Props) => {
         }
       )
       .then((resp) => {
-        setTournamentContext({
-          metadata: resp.data,
+        dispatchTournamentContext({
+          actionType: ActionType.SetTourneyMetadata,
+          payload: resp.data,
         });
       })
       .catch((err) => {
@@ -79,7 +87,7 @@ export const TournamentRoom = (props: Props) => {
         });
         setBadTournament(true);
       });
-  }, [path, partialSlug, setTournamentContext]);
+  }, [path, partialSlug, dispatchTournamentContext]);
 
   const tournamentID = useMemo(() => {
     return tournamentContext.metadata.id;
@@ -130,7 +138,7 @@ export const TournamentRoom = (props: Props) => {
   return (
     <>
       <TopBar />
-      <div className="lobby">
+      <div className={`lobby room ${isRegistered ? ' competitor' : ''}`}>
         <div className="chat-area">
           <Chat
             sendChat={props.sendChat}
@@ -141,6 +149,17 @@ export const TournamentRoom = (props: Props) => {
             highlightText="Director"
             tournamentID={tournamentID}
           />
+          {isRegistered && (
+            <CompetitorStatus
+              sendReady={() =>
+                readyForTournamentGame(
+                  sendSocketMsg,
+                  tournamentContext.metadata.id,
+                  competitorContext
+                )
+              }
+            />
+          )}
         </div>
         <ActionsPanel
           selectedGameTab={selectedGameTab}
@@ -151,8 +170,19 @@ export const TournamentRoom = (props: Props) => {
           loggedIn={loggedIn}
           newGame={handleNewGame}
           username={username}
+          userID={userID}
+          sendReady={() =>
+            readyForTournamentGame(
+              sendSocketMsg,
+              tournamentContext.metadata.id,
+              competitorContext
+            )
+          }
         />
-        <TournamentInfo setSelectedGameTab={setSelectedGameTab} />
+        <TournamentInfo
+          setSelectedGameTab={setSelectedGameTab}
+          sendSocketMsg={sendSocketMsg}
+        />
       </div>
     </>
   );

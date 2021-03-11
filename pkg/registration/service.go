@@ -4,6 +4,7 @@ import (
 	"context"
 	"os"
 
+	"github.com/domino14/liwords/pkg/config"
 	"github.com/domino14/liwords/pkg/user"
 	"github.com/rs/zerolog"
 	"github.com/twitchtv/twirp"
@@ -12,11 +13,12 @@ import (
 )
 
 type RegistrationService struct {
-	userStore user.Store
+	userStore   user.Store
+	argonConfig config.ArgonConfig
 }
 
-func NewRegistrationService(u user.Store) *RegistrationService {
-	return &RegistrationService{userStore: u}
+func NewRegistrationService(u user.Store, cfg config.ArgonConfig) *RegistrationService {
+	return &RegistrationService{userStore: u, argonConfig: cfg}
 }
 
 // Register registers a new user.
@@ -31,7 +33,7 @@ func (rs *RegistrationService) Register(ctx context.Context, r *pb.UserRegistrat
 	// 	return nil, errors.New("unauthorized")
 	// }
 	err := RegisterUser(ctx, r.Username, r.Password, r.Email, rs.userStore,
-		r.RegistrationCode == codebot)
+		r.RegistrationCode == codebot, rs.argonConfig)
 	if err != nil {
 		return nil, twirp.NewError(twirp.InvalidArgument, err.Error())
 	}

@@ -1,0 +1,40 @@
+@import '../base';
+@include button;
+@include tabs;
+
+.bio-edit-modal {
+  @include container;
+  .preview {
+    margin-top: 20px;
+  }
+  .preview-card {
+    margin-top: 20px;
+    margin-bottom: 20px;
+  }
+  .ant-table {
+    margin-left: 0px;
+  }
+  .ant-table-thead th {
+    @include colorModed() {
+      background-color: m($off-background);
+      color: m($gray-extreme);
+    }
+  }
+}
+
+.bio-editor {
+  font-size: 15px;
+  letter-spacing: 0.05em;
+  @include colorModed() {
+    background: m($background);
+    color: m($gray-extreme);
+    border: 1px solid m($gray-extreme);
+    outline: 0;
+  }
+  &:focus {
+    @include colorModed() {
+      border: 1px solid m($primary-midDark);
+      outline: 1px solid m($primary-midDark);
+    }
+  }
+}

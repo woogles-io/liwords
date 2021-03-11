@@ -15,12 +15,26 @@
     flex-grow: 2;
     @include type-default;
 
-    .ant-card {
+    .ant-card:not(.paired-mode) {
       @include action-blocks;
     }
 
     .ant-card-body {
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+      justify-content: space-around;
       padding: 12px 0 0 0;
+
+      .main-content {
+        flex: 1;
+        overflow-y: auto;
+      }
+
+      .enable-simultaneous-ignore-link {
+        padding: 8px;
+        align-self: flex-end;
+      }
     }
   }
 }
@@ -28,42 +42,50 @@
 .tournament-info {
   order: 0;
   .ant-card {
-    height: auto;
-  }
-  .ant-card-head {
-    font-size: 22px;
-    border: 0;
-  }
-  .ant-card-body {
-    max-height: 300px;
-    overflow-y: auto;
-    padding-top: 0px;
+    .ant-card-head {
+      font-size: 22px;
+      border: 0;
+    }
+    .ant-card-body {
+      max-height: 520px;
+      overflow-y: auto;
+      padding-top: 0px;
+    }
   }
 }
 
 .announcements {
-  li {
-    padding-bottom: 18px;
-    @include colorModed() {
-      color: m($gray-extreme);
-    }
-    a,
-    a:focus,
-    a:active,
-    a:hover {
-      color: inherit;
-      letter-spacing: 0;
-      font-weight: inherit;
-    }
-    a p:hover {
+  a {
+    li {
+      padding-bottom: 18px;
       @include colorModed() {
-        background-color: mix(m($primary-middle), m($background), $weight: 50%);
+        color: m($gray-extreme);
       }
+
+      &,
+      &:focus,
+      &:active,
+      &:hover {
+        color: inherit;
+        letter-spacing: 0;
+        font-weight: inherit;
+      }
+
+      p {
+        font-weight: 300;
+      }
+
+      &:hover h4, &:hover p{
+        @include colorModed() {
+          background-color: mix(m($primary-middle), m($background), $weight: 50%);
+        }
+      }
+
     }
   }
 }
 
-.tournament-info {
+.tournament-info .tournament {
   h3 {
     font-size: 18px;
     &.recent-header {
@@ -105,17 +127,23 @@
 
 @media (min-width: $screen-tablet-min) {
   .announcements,
-  .tournament-info {
+  .tournament-info .tournament {
     order: initial;
     flex-grow: 1;
     .ant-card {
       height: $main-container-width-tablet + 60px;
     }
-    .ant-card-body {
-      max-height: calc(100% - 70px);
-    }
   }
   .lobby .game-lists {
     order: initial;
+  }
+}
+
+@media (min-width: $screen-laptop-min) {
+  .announcements,
+  .tournament-info .tournament {
+    .ant-card-body {
+      max-height: calc(100vh - #{$header-height-desktop + 125px});
+    }
   }
 }

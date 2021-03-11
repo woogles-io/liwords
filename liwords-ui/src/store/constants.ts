@@ -15,6 +15,10 @@ export const calculateTotalTime = (
   return secs + maxOvertime * 60 + incrementSecs * turnsPerGame;
 };
 
+export const isPairedMode = (type: string) => {
+  return type === 'CHILD' || type === 'STANDARD';
+};
+
 // See cutoffs in variants.go. XXX: Try to tie these together better.
 export const timeCtrlToDisplayName = (
   secs: number,
@@ -69,6 +73,7 @@ export type ChatMessageFromJSON = {
   message: string;
   timestamp: string;
   user_id: string;
+  id: string;
 };
 
 export const chatMessageToChatEntity = (
@@ -76,7 +81,7 @@ export const chatMessageToChatEntity = (
 ): ChatEntityObj => {
   return {
     entityType: ChatEntityType.UserChat,
-    id: randomID(),
+    id: cm.id || randomID(),
     sender: cm.username,
     message: cm.message,
     timestamp: parseInt(cm.timestamp, 10),
@@ -146,7 +151,7 @@ export const setPreferredSortOrder = (value: string) => {
 };
 
 export const sortTiles = (rack: string) => {
-  let effectiveSortOrder = preferredSortOrder ?? '';
+  const effectiveSortOrder = preferredSortOrder ?? '';
   return Array.from(rack, (tile) => {
     let index = effectiveSortOrder.indexOf(tile);
     if (index < 0) index = effectiveSortOrder.length + (tile === Blank ? 1 : 0);

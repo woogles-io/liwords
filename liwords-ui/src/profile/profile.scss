@@ -14,7 +14,11 @@
   h3 {
     margin: 24px 12px;
     width: auto;
-    display: inline-block;
+    display: flex;
+    justify-content: space-between;
+  }
+  .player-avatar {
+    margin-left: 12px;
   }
   label {
     @include colorModed() {
@@ -33,13 +37,12 @@
     margin-bottom: 12px;
   }
   .ant-card-body {
-    padding: 0;
+    padding: 24px;
   }
   .ant-card-head {
     @include colorModed() {
       background-color: m($primary-light);
     }
-
   }
   a {
     font-size: 14px;
