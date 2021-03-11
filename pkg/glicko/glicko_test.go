@@ -629,33 +629,47 @@ func TestRatingConvergenceTimeAfterSteadyState(t *testing.T) {
 		"a %.2f rated oppoent to get to a rating of %.2f\n\n\n", InitialRating, MinimumRatingDeviation, games_to_steady, spread, opponent_rating, rating)
 }
 
-func TestTradeoffs(t *testing.T) {
-	winSpread := 0.0
-	loseSpread := 0.0
-	winResult := 0.0
-	loseResult := 0.0
-
-	winSpreadCap := 13
-	loseSpreadCap := 13
-
-	fmt.Print("      ")
-	for i := 0; i < loseSpreadCap; i++ {
-		loseSpread = float64(10 * (i + 1))
-		fmt.Printf("%4d    |", int(loseSpread))
+func TestAdjustedWinBoost(t *testing.T) {
+	fmt.Println("\nAdjusted Win Boosts for each rating:")
+	for i := 1; i <= 20; i++ {
+		rating := 100 * i
+		fmt.Printf("Rating: %4d, Adjusted Win Boost: %f\n", rating, adjustWinBoost(float64(rating)))
 	}
-	fmt.Println()
-	for i := 0; i < winSpreadCap; i++ {
-		winSpread = float64(10 * (i + 1))
-		fmt.Printf("%4d |", int(winSpread))
-		for j := 0; j < loseSpreadCap; j++ {
-			winSpread = float64(10 * (i + 1))
-			loseSpread = float64(10 * (j + 1))
-			winResult  = 0.5 + WinBoost + ((0.5 - WinBoost) * math.Min(1.0, winSpread  / float64(SpreadScaling)))
-			loseResult = 0.5 - WinBoost - ((0.5 - WinBoost) * math.Min(1.0, loseSpread / float64(SpreadScaling)))
-			zeroEV := loseResult / (winResult + loseResult)
-			fmt.Printf("%7.4f%%|", zeroEV * 100)
+}
+
+func TestTradeoffs(t *testing.T) {
+	
+	for r := 1; r <= 10; r++ {
+		rating := r * 200
+		awb := adjustWinBoost(float64(rating))
+		winSpread := 0.0
+		loseSpread := 0.0
+		winResult := 0.0
+		loseResult := 0.0
+
+		winSpreadCap := 13
+		loseSpreadCap := 13
+
+		fmt.Printf("Tradeoffs for a rating of %d\n\n      ", rating)
+		for i := 0; i < loseSpreadCap; i++ {
+			loseSpread = float64(10 * (i + 1))
+			fmt.Printf("%4d    |", int(loseSpread))
 		}
 		fmt.Println()
+		for i := 0; i < winSpreadCap; i++ {
+			winSpread = float64(10 * (i + 1))
+			fmt.Printf("%4d |", int(winSpread))
+			for j := 0; j < loseSpreadCap; j++ {
+				winSpread = float64(10 * (i + 1))
+				loseSpread = float64(10 * (j + 1))
+				winResult  = 0.5 + awb + ((0.5 - awb) * math.Min(1.0, winSpread  / float64(SpreadScaling)))
+				loseResult = 0.5 - awb - ((0.5 - awb) * math.Min(1.0, loseSpread / float64(SpreadScaling)))
+				zeroEV := loseResult / (winResult + loseResult)
+				fmt.Printf("%7.4f%%|", zeroEV * 100)
+			}
+			fmt.Println()
+		}
+		fmt.Print("\n\n")
 	}
 }
 
@@ -744,7 +758,7 @@ func TestRealData(t *testing.T) {
 
 	sort.Sort(ByRating(playersArray))
 
-	fmt.Printf("These are the results of the rating system applied to\n" +
+	fmt.Printf("\n\nThese are the results of the rating system applied to\n" +
 		"every game on cross-tables.com starting on January 1, 2000\n")
 	fmt.Printf("The test pool contains %d players\n\n", len(playersArray))
 	mean, stdev := MeanStdDev(spreads)

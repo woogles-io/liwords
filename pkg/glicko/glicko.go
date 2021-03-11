@@ -16,6 +16,7 @@ const (
 	ConvergenceTolerance        float64 = 0.000001
 	SpreadScaling               int     = 125
 	WinBoost                    float64 = float64(1.0/3.0)
+	Steepness                   float64 = 0.005
 	K                           float64 = (float64(4*SpreadScaling) * WinBoost) / (1 - (2 * WinBoost))
 	RatingPeriodinSeconds       int     = 60 * 60 * 24 * 4
 	iterationMaximum            int     = 1000
@@ -45,7 +46,8 @@ func Rate(
 	variance := 1 / variance(opponentAdjustedRatingDeviation, expectedValue)
 
 	// Step 4 of the Glicko-225 algorithm
-	improvement := improvement(opponentAdjustedRatingDeviation, expectedValue, spread)
+	awb := adjustWinBoost((playerRating + opponentRating) / 2)
+	improvement := improvement(opponentAdjustedRatingDeviation, awb, expectedValue, spread)
 	improvementDelta := variance * improvement
 
 	// Step 5 of the Glicko-225 algorithm
@@ -116,12 +118,16 @@ func convertRatingDeviationFromGlicko225(ratingDeviation float64) float64 {
 	return ratingDeviation * GlickoToGlicko225Conversion
 }
 
+func adjustWinBoost(rating float64) float64 {
+	return ((0.5 - WinBoost) / (1 + math.Exp(-Steepness * (rating - float64(InitialRating))))) + WinBoost
+}
+
 func variance(opponentAdjustedRatingDeviation float64, expectedValue float64) float64 {
 	return math.Pow(opponentAdjustedRatingDeviation, 2) * expectedValue * (1 - expectedValue)
 }
 
-func improvement(opponentAdjustedRatingDeviation float64, expectedValue float64, spread int) float64 {
-	return opponentAdjustedRatingDeviation * ((boundedResult(float64(spread)/((2*float64(SpreadScaling))+K)+(float64(sign(spread))*WinBoost)) + 0.5) - expectedValue)
+func improvement(opponentAdjustedRatingDeviation float64, awb float64, expectedValue float64, spread int) float64 {
+	return opponentAdjustedRatingDeviation * ((boundedResult(float64(spread)/((2*float64(SpreadScaling))+K)+(float64(sign(spread))*awb)) + 0.5) - expectedValue)
 }
 
 func boundedResult(result float64) float64 {
