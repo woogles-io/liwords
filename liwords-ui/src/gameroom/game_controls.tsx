@@ -1,9 +1,12 @@
 import React, { useCallback, useEffect, useRef } from 'react';
 import { useHistory } from 'react-router-dom';
-import { Button, Popconfirm } from 'antd';
+import { Button, Dropdown, Menu, Modal, message, Popconfirm } from 'antd';
+
 import {
   DoubleLeftOutlined,
   DoubleRightOutlined,
+  DownOutlined,
+  ExclamationCircleOutlined,
   LeftOutlined,
   RightOutlined,
 } from '@ant-design/icons';
@@ -72,6 +75,18 @@ const ExamineGameControls = React.memo((props: { lexicon: string }) => {
     </div>
   );
 });
+
+type OptionsMenuProps = {
+  handleOptionsClick: (e: any /* GOD what is the actual type here */) => void;
+};
+
+const OptionsGameMenu = (props: OptionsMenuProps) => (
+  <Menu onClick={props.handleOptionsClick}>
+    <Menu.Item key="resign">Resign</Menu.Item>
+    <Menu.Item key="abort">Request Abort</Menu.Item>
+    <Menu.Item key="nudge">Nudge Opponent</Menu.Item>
+  </Menu>
+);
 
 export type Props = {
   isExamining: boolean;
@@ -226,64 +241,57 @@ const GameControls = React.memo((props: Props) => {
     );
   }
 
+  const optionsMenu = (
+    <OptionsGameMenu
+      handleOptionsClick={(e) => {
+        message.info('clicked an item');
+        console.log(e.key);
+        switch (e.key) {
+          case 'resign':
+            Modal.confirm({
+              title: 'Are you sure you wish to resign?',
+              icon: <ExclamationCircleOutlined />,
+              content: 'Your rating will be maximally affected.',
+              onOk() {
+                props.onResign();
+              },
+            });
+            break;
+          case 'abort':
+            Modal.confirm({
+              title: 'Request an abort',
+              icon: <ExclamationCircleOutlined />,
+              content: 'This will request an abort from your opponent.',
+              onOk() {
+                props.onRequestAbort();
+              },
+            });
+            break;
+          case 'nudge':
+            Modal.confirm({
+              title: 'Nudge your opponent',
+              icon: <ExclamationCircleOutlined />,
+              content:
+                'Clicking OK will send a nudge to your opponent. ' +
+                'If they do not respond, the game will be adjudicated in your favor.',
+              onOk() {
+                props.onNudge();
+              },
+            });
+            break;
+        }
+      }}
+    />
+  );
+
   return (
     <div className="game-controls">
       <div className="secondary-controls">
-        <Popconfirm
-          title="Are you sure you wish to resign?"
-          onCancel={() => {
-            setCurrentPopUp('NONE');
-          }}
-          onConfirm={() => {
-            props.onResign();
-            setCurrentPopUp('NONE');
-          }}
-          onVisibleChange={(visible) => {
-            setCurrentPopUp(visible ? 'RESIGN' : 'NONE');
-          }}
-          okText="Yes"
-          cancelText="No"
-          visible={currentPopUp === 'RESIGN'}
-        >
-          <Button
-            danger
-            onClick={() => {
-              if (currentPopUp === 'RESIGN') {
-                props.onResign();
-                setCurrentPopUp('NONE');
-              }
-            }}
-          >
-            Resign
+        <Dropdown overlay={optionsMenu} trigger={['click']}>
+          <Button>
+            Options <DownOutlined />
           </Button>
-        </Popconfirm>
-
-        {/* <Popconfirm
-          title="Are you sure you wish to request for the game to be aborted?"
-          onCancel={() => {
-            setRequestAbortVisible(false);
-          }}
-          onConfirm={() => {
-            props.onRequestAbort();
-            setRequestAbortVisible(false);
-          }}
-          onVisibleChange={(visible) => {
-            setRequestAbortVisible(visible);
-          }}
-          okText="Yes"
-          cancelText="No"
-          visible={requestAbortVisible}
-        >
-          <Button
-            danger
-            onDoubleClick={() => {
-              props.onRequestAbort();
-              setRequestAbortVisible(false);
-            }}
-          >
-            Abort
-          </Button>
-        </Popconfirm> */}
+        </Dropdown>
 
         <Popconfirm
           title="Are you sure you wish to pass?"

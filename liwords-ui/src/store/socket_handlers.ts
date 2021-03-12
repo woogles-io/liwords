@@ -366,7 +366,6 @@ export const useOnSocketMsg = () => {
           }
 
           case MessageType.ERROR_MESSAGE: {
-            console.log('got error msg');
             const err = parsedMsg as ErrorMessage;
             notification.open({
               message: 'Error',
@@ -412,8 +411,6 @@ export const useOnSocketMsg = () => {
           }
 
           case MessageType.USER_PRESENCE: {
-            console.log('userpresence', parsedMsg);
-
             const up = parsedMsg as UserPresence;
             if (excludedPlayers.has(up.getUserId())) {
               break;
@@ -451,8 +448,6 @@ export const useOnSocketMsg = () => {
           }
 
           case MessageType.GAME_ENDED_EVENT: {
-            console.log('got game end evt');
-
             const gee = parsedMsg as GameEndedEvent;
             setGameEndMessage(endGameMessage(gee));
             stopClock();
@@ -511,7 +506,6 @@ export const useOnSocketMsg = () => {
 
           case MessageType.NEW_GAME_EVENT: {
             const nge = parsedMsg as NewGameEvent;
-            console.log('got new game event', nge);
 
             // Determine if this is the tab that should accept the game.
             if (
@@ -541,7 +535,6 @@ export const useOnSocketMsg = () => {
 
           case MessageType.GAME_HISTORY_REFRESHER: {
             const ghr = parsedMsg as GameHistoryRefresher;
-            console.log('got refresher event', ghr);
             dispatchGameContext({
               actionType: ActionType.RefreshHistory,
               payload: ghr,
@@ -554,7 +547,6 @@ export const useOnSocketMsg = () => {
 
           case MessageType.SERVER_GAMEPLAY_EVENT: {
             const sge = parsedMsg as ServerGameplayEvent;
-            console.log('got server event', sge.toObject());
             dispatchGameContext({
               actionType: ActionType.AddGameEvent,
               payload: sge,
@@ -570,7 +562,6 @@ export const useOnSocketMsg = () => {
 
           case MessageType.SERVER_CHALLENGE_RESULT_EVENT: {
             const sge = parsedMsg as ServerChallengeResultEvent;
-            console.log('got server challenge result event', sge);
             challengeResultEvent(sge);
             if (!sge.getValid()) {
               BoopSounds.playSound('woofSound');
@@ -580,7 +571,6 @@ export const useOnSocketMsg = () => {
 
           case MessageType.SOUGHT_GAME_PROCESS_EVENT: {
             const gae = parsedMsg as SoughtGameProcessEvent;
-            console.log('got game accepted event', gae);
             dispatchLobbyContext({
               actionType: ActionType.RemoveSoughtGame,
               payload: gae.getRequestId(),
@@ -600,7 +590,6 @@ export const useOnSocketMsg = () => {
 
           case MessageType.DECLINE_MATCH_REQUEST: {
             const dec = parsedMsg as DeclineMatchRequest;
-            console.log('got decline match request', dec);
             dispatchLobbyContext({
               actionType: ActionType.RemoveSoughtGame,
               payload: dec.getRequestId(),
@@ -614,14 +603,16 @@ export const useOnSocketMsg = () => {
 
           case MessageType.GAME_META_EVENT: {
             const gme = parsedMsg as GameMetaEvent;
-
+            dispatchGameContext({
+              actionType: ActionType.ProcessGameMetaEvent,
+              payload: gme,
+            });
             break;
           }
 
           case MessageType.GAME_DELETION: {
             // lobby context, remove active game
             const gde = parsedMsg as GameDeletion;
-            console.log('delete active game', gde);
             dispatchLobbyContext({
               actionType: ActionType.RemoveActiveGame,
               payload: gde.getId(),
@@ -632,7 +623,6 @@ export const useOnSocketMsg = () => {
           case MessageType.ONGOING_GAME_EVENT: {
             // lobby context, add active game
             const gme = parsedMsg as GameInfoResponse;
-            console.log('add active game', gme);
             const activeGame = GameInfoResponseToActiveGame(gme);
             if (!activeGame) {
               return;
@@ -649,7 +639,6 @@ export const useOnSocketMsg = () => {
 
           case MessageType.ONGOING_GAMES: {
             const age = parsedMsg as GameInfoResponses;
-            console.log('got active games', age);
             const dispatchFn = tournamentContext.metadata.id
               ? dispatchTournamentContext
               : dispatchLobbyContext;

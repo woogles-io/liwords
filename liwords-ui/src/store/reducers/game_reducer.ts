@@ -47,6 +47,14 @@ const initialExpandToFull = (playerList: PlayerInfo[]): RawPlayerInfo[] => {
   });
 };
 
+enum MetaStates {
+  NO_ACTIVE_REQUEST,
+  REQUESTED_ABORT,
+  REQUESTED_ADJUDICATION,
+  RECEIVER_ABORT_COUNTDOWN,
+  RECEIVER_ADJUDICATION_COUNTDOWN,
+}
+
 export type GameState = {
   board: Board;
   // The initial tile distribution:
@@ -67,6 +75,7 @@ export type GameState = {
   clockController: React.MutableRefObject<ClockController | null> | null;
   onClockTick: (p: PlayerOrder, t: Millis) => void;
   onClockTimeout: (p: PlayerOrder) => void;
+  metaState: MetaStates;
 };
 
 export const startingGameState = (
@@ -90,6 +99,7 @@ export const startingGameState = (
     clockController: null,
     onClockTick: () => {},
     onClockTimeout: () => {},
+    metaState: MetaStates.NO_ACTIVE_REQUEST,
   };
   return gs;
 };
@@ -177,6 +187,7 @@ const newGameState = (
     clockController: state.clockController,
     onClockTick: state.onClockTick,
     onClockTimeout: state.onClockTimeout,
+    metaState: state.metaState,
     // Potential changes:
     board,
     pool,
@@ -519,6 +530,9 @@ export const GameReducer = (state: GameState, action: Action): GameState => {
         newState.clockController.current?.stopClock();
       }
       return newState;
+    }
+
+    case ActionType.ProcessGameMetaEvent: {
     }
   }
   // This should never be reached, but the compiler is complaining.

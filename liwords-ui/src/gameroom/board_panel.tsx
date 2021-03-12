@@ -39,6 +39,7 @@ import {
   MessageType,
   MatchRequest,
   MatchUser,
+  GameMetaEvent,
 } from '../gen/api/proto/realtime/realtime_pb';
 import {
   useExaminableGameContextStoreContext,
@@ -309,6 +310,22 @@ export const BoardPanel = React.memo((props: Props) => {
       sendSocketMsg,
       username,
     ]
+  );
+
+  const sendMetaEvent = useCallback(
+    (evtType: GameMetaEvent.EventTypeMap[keyof GameMetaEvent.EventTypeMap]) => {
+      const metaEvt = new GameMetaEvent();
+      metaEvt.setType(evtType);
+      metaEvt.setGameId(gameID);
+
+      sendSocketMsg(
+        encodeToSocketFmt(
+          MessageType.GAME_META_EVENT,
+          metaEvt.serializeBinary()
+        )
+      );
+    },
+    [sendSocketMsg, gameID]
   );
 
   const recallTiles = useCallback(() => {
@@ -1016,6 +1033,12 @@ export const BoardPanel = React.memo((props: Props) => {
   const handleExchangeTilesCancel = useCallback(() => {
     setCurrentMode('NORMAL');
   }, []);
+  const handleRequestAbort = useCallback(() => {
+    sendMetaEvent(GameMetaEvent.EventType.REQUEST_ABORT);
+  }, [sendMetaEvent]);
+  const handleNudge = useCallback(() => {
+    sendMetaEvent(GameMetaEvent.EventType.REQUEST_ADJUDICATION);
+  }, [sendMetaEvent]);
 
   const gameBoard = (
     <div
@@ -1097,8 +1120,8 @@ export const BoardPanel = React.memo((props: Props) => {
         showExchangeModal={showExchangeModal}
         onPass={handlePass}
         onResign={handleResign}
-        onRequestAbort={() => {}}
-        onNudge={() => {}}
+        onRequestAbort={handleRequestAbort}
+        onNudge={handleNudge}
         onChallenge={handleChallenge}
         onCommit={handleCommit}
         onRematch={props.handleAcceptRematch ?? rematch}
