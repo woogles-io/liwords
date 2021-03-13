@@ -189,6 +189,9 @@
 }
 
 .personal-info {
+  .ant-row {
+    margin-bottom: 0;
+  }
   .avatar-section,
   .no-avatar-section {
     @include container;
