@@ -21,6 +21,10 @@
   .div {
     line-height: 20px;
   }
+  .title {
+    @include type-title;
+    margin-bottom: 8px;
+  }
   .row {
     position: relative;
     display: flex;
@@ -112,10 +116,6 @@
     .right-column {
       margin-left: 20px;
     }
-    .title {
-      @include type-title;
-      margin-bottom: 8px;
-    }
 
     button {
       margin-top: 24px;
@@ -155,6 +155,26 @@
       }
     }
   }
+  .preferences {
+    .tile-order {
+      font-weight: bold;
+    }
+    .tile-order-select {
+      margin-top: 6px;
+      margin-bottom: 18px;
+      width: 100%;
+    }
+    .toggle-section {
+      position: relative;
+      margin-bottom: 24px;
+      .ant-switch {
+        position: absolute;
+        right: 0px;
+        top: 50%;
+        transform: translateY(-50%);
+      }
+    }
+  }
 }
 .confirm-unblock-modal {
   .blocked-player {
@@ -169,7 +189,7 @@
   letter-spacing: 0.16em;
   text-transform: uppercase;
   @include colorModed() {
-    color: m($gray-medium);
+    color: m($gray-extreme);
   }
 }
 

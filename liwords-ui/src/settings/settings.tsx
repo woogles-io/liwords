@@ -39,6 +39,11 @@ type PersonalInfoResponse = {
 };
 
 const errorCatcher = (e: AxiosError) => {
+  if (e.response?.status === 401) {
+    console.log('OK');
+  }
+  console.log('***');
+  console.log(e);
   if (e.response) {
     notification.warning({
       message: 'Fetch Error',
