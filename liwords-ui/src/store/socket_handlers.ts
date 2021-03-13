@@ -603,9 +603,13 @@ export const useOnSocketMsg = () => {
 
           case MessageType.GAME_META_EVENT: {
             const gme = parsedMsg as GameMetaEvent;
+
             dispatchGameContext({
               actionType: ActionType.ProcessGameMetaEvent,
-              payload: gme,
+              payload: {
+                gme,
+                us: loginState.userID,
+              },
             });
             break;
           }

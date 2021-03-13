@@ -60,6 +60,7 @@ import {
 } from '../store/reducers/tournament_reducer';
 import { CompetitorStatus } from '../tournament/competitor_status';
 import { Unrace } from '../utils/unrace';
+import { MetaEventDisplay } from './meta_event_display';
 
 type Props = {
   sendSocketMsg: (msg: Uint8Array) => void;
@@ -881,6 +882,7 @@ export const Table = React.memo((props: Props) => {
             handleAcceptAbort={() => {}}
             handleSetHover={handleSetHover}
           />
+          <MetaEventDisplay />
           <StreakWidget streakInfo={streakGameInfo} />
         </div>
         <div className="data-area" id="right-sidebar">

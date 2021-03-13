@@ -7,6 +7,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 
@@ -383,6 +384,12 @@ func (b *Bus) handleNatsPublish(ctx context.Context, subtopics []string, data []
 	if len(subtopics) > 3 {
 		wsConnID = subtopics[3]
 	}
+
+	pnum, err := strconv.Atoi(msgType)
+	if err == nil {
+		msgType = pb.MessageType(pnum).String()
+	}
+	// XXX: Otherwise, ignore error for now
 
 	switch msgType {
 	// XXX: remove the camelCased version of these soon, after deploying new socket server

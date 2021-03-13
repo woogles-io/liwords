@@ -10,6 +10,7 @@ import {
   ServerGameplayEvent,
   GameHistoryRefresher,
   GameEndedEvent,
+  GameMetaEvent,
 } from '../../gen/api/proto/realtime/realtime_pb';
 import {
   Direction,
@@ -22,6 +23,8 @@ import { EnglishCrosswordGameDistribution } from '../../constants/tile_distribut
 import { PlayerOrder } from '../constants';
 import { ClockController, Millis } from '../timer_controller';
 import { ThroughTileMarker } from '../../utils/cwgame/game_event';
+import Meta from 'antd/lib/card/Meta';
+import { message } from 'antd';
 
 type TileDistribution = { [rune: string]: number };
 
@@ -47,7 +50,7 @@ const initialExpandToFull = (playerList: PlayerInfo[]): RawPlayerInfo[] => {
   });
 };
 
-enum MetaStates {
+export enum MetaStates {
   NO_ACTIVE_REQUEST,
   REQUESTED_ABORT,
   REQUESTED_ADJUDICATION,
@@ -129,7 +132,7 @@ const clonePlayers = (players: Array<RawPlayerInfo>) => {
   return pclone;
 };
 
-const newGameState = (
+const newGameStateFromGameplayEvent = (
   state: GameState,
   sge: ServerGameplayEvent
 ): GameState => {
@@ -196,6 +199,45 @@ const newGameState = (
     onturn,
     lastPlayedTiles,
     playerOfTileAt,
+  };
+};
+
+const newGameStateFromMetaEvent = (
+  state: GameState,
+  metaEvent: GameMetaEvent,
+  us: string
+): GameState => {
+  let metaState = MetaStates.NO_ACTIVE_REQUEST;
+  switch (metaEvent.getType()) {
+    case GameMetaEvent.EventType.REQUEST_ABORT: {
+      if (us === metaEvent.getPlayerId()) {
+        metaState = MetaStates.REQUESTED_ABORT;
+      } else {
+        metaState = MetaStates.RECEIVER_ABORT_COUNTDOWN;
+      }
+      break;
+    }
+
+    case GameMetaEvent.EventType.REQUEST_ADJUDICATION: {
+      if (us === metaEvent.getPlayerId()) {
+        metaState = MetaStates.REQUESTED_ADJUDICATION;
+      } else {
+        metaState = MetaStates.RECEIVER_ADJUDICATION_COUNTDOWN;
+      }
+      break;
+    }
+
+    case GameMetaEvent.EventType.ABORT_DENIED: {
+      message.info({
+        content: 'The abort request was denied',
+      });
+      break;
+    }
+  }
+
+  return {
+    ...state,
+    metaState,
   };
 };
 
@@ -499,7 +541,7 @@ export const GameReducer = (state: GameState, action: Action): GameState => {
         return state; // no change
       }
       console.log('add game event', sge);
-      const ngs = newGameState(state, sge);
+      const ngs = newGameStateFromGameplayEvent(state, sge);
 
       // Always pass the clock ref along. Begin imperative section:
       ngs.clockController = state.clockController;
@@ -533,6 +575,12 @@ export const GameReducer = (state: GameState, action: Action): GameState => {
     }
 
     case ActionType.ProcessGameMetaEvent: {
+      const p = action.payload as {
+        gme: GameMetaEvent;
+        us: string;
+      };
+      const newState = newGameStateFromMetaEvent(state, p.gme, p.us);
+      return newState;
     }
   }
   // This should never be reached, but the compiler is complaining.

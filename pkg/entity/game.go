@@ -289,7 +289,8 @@ func (g *Game) HistoryRefresherEvent() *pb.GameHistoryRefresher {
 		TimePlayer1:        int32(g.TimeRemaining(0)),
 		TimePlayer2:        int32(g.TimeRemaining(1)),
 		MaxOvertimeMinutes: g.GameReq.MaxOvertimeMinutes,
-		OutstandingEvent:   LastOutstandingMetaRequest(g.MetaEvents.Events, ""),
+		// XXX: Calculate how much time is remaining in the outstanding meta request:
+		OutstandingEvent: LastOutstandingMetaRequest(g.MetaEvents.Events, ""),
 	}
 }
 

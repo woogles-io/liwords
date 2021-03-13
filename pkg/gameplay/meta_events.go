@@ -186,9 +186,10 @@ func HandleMetaEvent(ctx context.Context, evt *pb.GameMetaEvent, eventChan chan<
 			return err
 		}
 
+		// Only send the event to the game channel. Observers don't need to know
+		// that an abort was requested etc.
 		wrapped := entity.WrapEvent(evt, pb.MessageType_GAME_META_EVENT)
 		wrapped.AddAudience(entity.AudGame, evt.GameId)
-		wrapped.AddAudience(entity.AudGameTV, evt.GameId)
 		eventChan <- wrapped
 
 	case pb.GameMetaEvent_TIMER_EXPIRED:

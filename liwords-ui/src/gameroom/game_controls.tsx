@@ -83,8 +83,8 @@ type OptionsMenuProps = {
 const OptionsGameMenu = (props: OptionsMenuProps) => (
   <Menu onClick={props.handleOptionsClick}>
     <Menu.Item key="resign">Resign</Menu.Item>
-    <Menu.Item key="abort">Request Abort</Menu.Item>
-    <Menu.Item key="nudge">Nudge Opponent</Menu.Item>
+    <Menu.Item key="abort">Cancel game</Menu.Item>
+    <Menu.Item key="nudge">Nudge</Menu.Item>
   </Menu>
 );
 
