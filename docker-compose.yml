@@ -32,7 +32,7 @@ services:
     ports:
       - "8001:8001"
     labels:
-      - "traefik.http.routers.liwords.rule=Host(`liwords.localhost`) && PathPrefix(`/twirp/`)"
+      - "traefik.http.routers.liwords.rule=PathPrefix(`/twirp/`)"
       - "traefik.http.routers.liwords.entrypoints=web"
       - "traefik.http.services.liwords.loadbalancer.server.port=8001"
       - traefik.enable=true
@@ -70,7 +70,7 @@ services:
     networks:
       - aeronet
     labels:
-      - "traefik.http.routers.liwords-socket.rule=Host(`liwords.localhost`) && PathPrefix(`/ws`)"
+      - "traefik.http.routers.liwords-socket.rule=PathPrefix(`/ws`)"
       - "traefik.http.routers.liwords-socket.entrypoints=web"
       - "traefik.http.services.liwords-socket.loadbalancer.server.port=8087"
       - traefik.enable=true
@@ -137,7 +137,7 @@ services:
     networks:
       - aeronet
     labels:
-      - "traefik.http.routers.liwords-fe.rule=Host(`liwords.localhost`)"
+      - "traefik.http.routers.liwords-fe.rule=PathPrefix(`/`)"
       - "traefik.http.services.liwords-fe.loadbalancer.server.port=3000"
       - traefik.enable=true
 
