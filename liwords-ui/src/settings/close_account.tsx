@@ -1,5 +1,5 @@
 import React from 'react';
-import { Button, Checkbox, Form } from 'antd';
+import { Button, Checkbox, Col, Form, Row } from 'antd';
 import { PlayerAvatar } from '../shared/player_avatar';
 import { PlayerMetadata } from '../gameroom/game_info';
 
@@ -50,22 +50,26 @@ export const CloseAccount = React.memo((props: Props) => {
             </Checkbox>
           </Form.Item>
         </div>
-        <div className="row">
-          <Form.Item>
-            <Button
-              className="cancel-button"
-              type="primary"
-              onClick={() => props.cancel()}
-            >
-              Just kidding
-            </Button>
-          </Form.Item>
-          <Form.Item>
-            <Button className="close-account-button" htmlType="submit">
-              Yes, close my account
-            </Button>
-          </Form.Item>
-        </div>
+        <Row>
+          <Col span={12}>
+            <Form.Item>
+              <Button
+                className="cancel-button"
+                type="primary"
+                onClick={() => props.cancel()}
+              >
+                Just kidding
+              </Button>
+            </Form.Item>
+          </Col>
+          <Col span={12}>
+            <Form.Item>
+              <Button className="close-account-button" htmlType="submit">
+                Yes, close my account
+              </Button>
+            </Form.Item>
+          </Col>
+        </Row>
       </Form>
     </div>
   );
