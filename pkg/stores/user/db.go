@@ -402,10 +402,10 @@ func (s *DBStore) SetPersonalInfo(ctx context.Context, uuid string, email string
 	if result := s.db.Where("uuid = ?", uuid).First(u); result.Error != nil {
 		return result.Error
 	}
-	if result := s.db.Model(u).Related(p); result.Error != nil {
+	if result := s.db.Model(u).Update("email", email); result.Error != nil {
 		return result.Error
 	}
-	if result := s.db.Model(p).Update("email", email); result.Error != nil {
+	if result := s.db.Model(u).Related(p); result.Error != nil {
 		return result.Error
 	}
 	if result := s.db.Model(p).Update("first_name", firstName); result.Error != nil {

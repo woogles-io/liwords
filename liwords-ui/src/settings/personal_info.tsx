@@ -57,6 +57,9 @@ export const PersonalInfo = React.memo((props: Props) => {
     }
   };
 
+  useEffect(() => {
+    setAvatarErr('');
+  }, [updateAvatarModalVisible]);
   const cancelUpdateAvatarModal = useCallback(() => {
     setUpdateAvatarModalVisible(false);
   }, []);
@@ -220,7 +223,17 @@ export const PersonalInfo = React.memo((props: Props) => {
       <div className="section-header">Account details</div>
       <Row>
         <Col span={11}>
-          <Form.Item name="email" label="Email">
+          <Form.Item
+            name="email"
+            label="Email"
+            rules={[
+              {
+                required: true,
+                type: 'email',
+                message: 'Enter a valid email address',
+              },
+            ]}
+          >
             <Input size="large" />
           </Form.Item>
         </Col>
