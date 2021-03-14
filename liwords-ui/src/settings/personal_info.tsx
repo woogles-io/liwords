@@ -1,5 +1,16 @@
 import React, { useCallback, useEffect } from 'react';
-import { Button, Col, Form, Input, Row, Select, notification } from 'antd';
+import {
+  Alert,
+  Button,
+  Card,
+  Col,
+  Form,
+  Input,
+  Modal,
+  Row,
+  Select,
+  notification,
+} from 'antd';
 import { PlayerAvatar } from '../shared/player_avatar';
 import { PlayerMetadata } from '../gameroom/game_info';
 import { useMountedState } from '../utils/mounted';
@@ -8,6 +19,7 @@ import { AvatarRemoveModal } from './avatar_remove_modal';
 import axios, { AxiosError } from 'axios';
 import { toAPIUrl } from '../api/api';
 import { countryArray } from './country_map';
+import { MarkdownTips } from './markdown_tips';
 
 type PersonalInfo = {
   email: string;
@@ -44,6 +56,7 @@ export const PersonalInfo = React.memo((props: Props) => {
   const [removeAvatarModalVisible, setRemoveAvatarModalVisible] = useState(
     false
   );
+  const [bioTipsModalVisible, setBioTipsModalVisible] = useState(false);
   const [avatarErr, setAvatarErr] = useState('');
 
   const avatarErrorCatcher = (e: AxiosError) => {
@@ -161,6 +174,41 @@ export const PersonalInfo = React.memo((props: Props) => {
     },
   };
 
+  const bioTipsModal = (
+    <Modal
+      className="bio-tips-modal"
+      title="Tips for editing your bio"
+      width="60%"
+      visible={bioTipsModalVisible}
+      onCancel={() => {
+        setBioTipsModalVisible(false);
+      }}
+      footer={[
+        <Button
+          onClick={() => {
+            const newWindow = window.open(
+              'https://www.markdownguide.org/cheat-sheet/',
+              '_blank',
+              'noopener,noreferrer'
+            );
+            if (newWindow) newWindow.opener = null;
+          }}
+        >
+          See Full Guide
+        </Button>,
+        <Button
+          onClick={() => {
+            setBioTipsModalVisible(false);
+          }}
+        >
+          OK
+        </Button>,
+      ]}
+    >
+      <MarkdownTips />
+    </Modal>
+  );
+
   return (
     <Form
       form={form}
@@ -198,6 +246,7 @@ export const PersonalInfo = React.memo((props: Props) => {
           </Button>
         </div>
       )}
+      {bioTipsModal}
       <AvatarEditModal
         visible={updateAvatarModalVisible}
         error={avatarErr}
@@ -211,9 +260,19 @@ export const PersonalInfo = React.memo((props: Props) => {
         onCancel={cancelRemoveAvatarModal}
       />
 
-      <div className="section-header">Player bio</div>
       <Row>
         <Col span={23}>
+          <div className="section-header bio-section-header">
+            Player bio
+            <span
+              className="bio-tips"
+              onClick={() => {
+                setBioTipsModalVisible(true);
+              }}
+            >
+              Tips
+            </span>
+          </div>
           <Form.Item name="about">
             <TextArea className="bio-editor" rows={4} />
           </Form.Item>
