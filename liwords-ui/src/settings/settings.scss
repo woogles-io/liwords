@@ -178,6 +178,7 @@
 }
 
 .section-header {
+  margin-top: 24px;
   margin-bottom: 12px;
   font-size: 12px;
   font-weight: bold;
@@ -195,7 +196,7 @@
   .avatar-section,
   .no-avatar-section {
     @include container;
-    padding: 0 24px 48px;
+    padding: 0 24px;
     display: flex;
     flex-direction: row;
     justify-content: left;
@@ -270,6 +271,16 @@
   .ant-select-selection-item {
     font-weight: normal;
     font-size: 14px;
+  }
+  .bio-editor {
+    border-radius: 4px;
+    font-size: 15px;
+    letter-spacing: 0.05em;
+    @include colorModed() {
+      background: m($background);
+      color: m($gray-extreme);
+      outline: 0;
+    }
   }
 }
 .close-account {

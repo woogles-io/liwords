@@ -679,6 +679,9 @@ export class PersonalInfoResponse extends jspb.Message {
   getFullName(): string;
   setFullName(value: string): void;
 
+  getAbout(): string;
+  setAbout(value: string): void;
+
   serializeBinary(): Uint8Array;
   toObject(includeInstance?: boolean): PersonalInfoResponse.AsObject;
   static toObject(includeInstance: boolean, msg: PersonalInfoResponse): PersonalInfoResponse.AsObject;
@@ -697,6 +700,7 @@ export namespace PersonalInfoResponse {
     countryCode: string,
     avatarUrl: string,
     fullName: string,
+    about: string,
   }
 }
 
@@ -719,6 +723,9 @@ export class UpdatePersonalInfoRequest extends jspb.Message {
   getFullName(): string;
   setFullName(value: string): void;
 
+  getAbout(): string;
+  setAbout(value: string): void;
+
   serializeBinary(): Uint8Array;
   toObject(includeInstance?: boolean): UpdatePersonalInfoRequest.AsObject;
   static toObject(includeInstance: boolean, msg: UpdatePersonalInfoRequest): UpdatePersonalInfoRequest.AsObject;
@@ -737,6 +744,7 @@ export namespace UpdatePersonalInfoRequest {
     countryCode: string,
     avatarUrl: string,
     fullName: string,
+    about: string,
   }
 }
 

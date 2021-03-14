@@ -36,6 +36,7 @@ type PersonalInfoResponse = {
   last_name: string;
   country_code: string;
   email: string;
+  about: string;
 };
 
 const errorCatcher = (e: AxiosError) => {
@@ -66,6 +67,7 @@ export const Settings = React.memo((props: Props) => {
   const [lastName, setLastName] = useState('');
   const [countryCode, setCountryCode] = useState('');
   const [email, setEmail] = useState('');
+  const [about, setAbout] = useState('');
   const [showCloseAccount, setShowCloseAccount] = useState(false);
   const history = useHistory();
 
@@ -87,6 +89,7 @@ export const Settings = React.memo((props: Props) => {
         setLastName(resp.data.last_name);
         setCountryCode(resp.data.country_code);
         setEmail(resp.data.email);
+        setAbout(resp.data.about);
       })
       .catch(errorCatcher);
   }, [viewer]);
@@ -195,6 +198,7 @@ export const Settings = React.memo((props: Props) => {
                   firstName: firstName,
                   lastName: lastName,
                   countryCode: countryCode,
+                  about: about,
                 }}
                 updatedAvatar={updatedAvatar}
                 startClosingAccount={startClosingAccount}
