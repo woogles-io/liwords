@@ -132,12 +132,6 @@ message ProfileResponse {
   bool avatars_editable = 11;
 }
 
-message UpdateProfileRequest {
-  string about = 1;  
-}
-
-message UpdateProfileResponse {}
-
 message PersonalInfoRequest { }
 
 message PersonalInfoResponse {
@@ -180,7 +174,6 @@ service ProfileService {
   rpc GetRatings(RatingsRequest) returns(RatingsResponse);
   rpc GetStats(StatsRequest) returns(StatsResponse);
   rpc GetProfile(ProfileRequest) returns(ProfileResponse);
-  rpc UpdateProfile(UpdateProfileRequest) returns(UpdateProfileResponse);
   rpc GetPersonalInfo(PersonalInfoRequest) returns(PersonalInfoResponse);
   rpc UpdatePersonalInfo(UpdatePersonalInfoRequest) returns(UpdatePersonalInfoResponse);
   rpc GetUsersGameInfo(UsersGameInfoRequest) returns(UsersGameInfoResponse);
