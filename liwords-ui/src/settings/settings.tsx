@@ -7,6 +7,7 @@ import { PersonalInfo } from './personal_info';
 import { CloseAccount } from './close_account';
 import { Preferences } from './preferences';
 import { BlockedPlayers } from './blocked_players';
+import { Login } from '../lobby/login';
 import { LogOut } from './log_out_woogles';
 import { Support } from './support_woogles';
 import axios, { AxiosError } from 'axios';
@@ -19,7 +20,6 @@ import { useResetStoreContext } from '../store/store';
 import './settings.scss';
 
 type Props = {};
-
 enum Category {
   PersonalInfo = 1,
   ChangePassword,
@@ -27,6 +27,7 @@ enum Category {
   BlockedPlayers,
   LogOut,
   Support,
+  NoUser,
 }
 
 type PersonalInfoResponse = {
@@ -39,24 +40,9 @@ type PersonalInfoResponse = {
   about: string;
 };
 
-const errorCatcher = (e: AxiosError) => {
-  if (e.response?.status === 401) {
-    console.log('OK');
-  }
-  console.log('***');
-  console.log(e);
-  if (e.response) {
-    notification.warning({
-      message: 'Fetch Error',
-      description: e.response.data.msg,
-      duration: 4,
-    });
-  }
-};
-
 export const Settings = React.memo((props: Props) => {
   const { loginState } = useLoginStateStoreContext();
-  const { username: viewer } = loginState;
+  const { username: viewer, loggedIn } = loginState;
   const { useState } = useMountedState();
   const { resetStore } = useResetStoreContext();
   const [category, setCategory] = useState(Category.PersonalInfo);
@@ -71,8 +57,23 @@ export const Settings = React.memo((props: Props) => {
   const [showCloseAccount, setShowCloseAccount] = useState(false);
   const history = useHistory();
 
+  const errorCatcher = (e: AxiosError) => {
+    console.log(e);
+    if (e.response) {
+      notification.warning({
+        message: 'Fetch Error',
+        description: e.response.data.msg,
+        duration: 4,
+      });
+    }
+  };
+
   useEffect(() => {
     if (viewer === '') return;
+    if (!loggedIn) {
+      setCategory(Category.NoUser);
+      return;
+    }
     axios
       .post<PersonalInfoResponse>(
         toAPIUrl('user_service.ProfileService', 'GetPersonalInfo'),
@@ -149,6 +150,28 @@ export const Settings = React.memo((props: Props) => {
     console.log('CLOSE ACCOUNT');
   }, []);
 
+  const logIn = <div className="log-in">Log in to see your settings</div>;
+
+  const categoriesColumn = (
+    <Col span={8} className="categories">
+      <CategoryChoice title="Personal Info" category={Category.PersonalInfo} />
+      <CategoryChoice
+        title="Change Password"
+        category={Category.ChangePassword}
+      />
+      <CategoryChoice title="Preferences" category={Category.Preferences} />
+      <CategoryChoice
+        title="Blocked players list"
+        category={Category.BlockedPlayers}
+      />
+      <CategoryChoice
+        title="Log out of Woogles.io"
+        category={Category.LogOut}
+      />
+      <CategoryChoice title="Support Woogles.io" category={Category.Support} />
+    </Col>
+  );
+
   return (
     <>
       <Row>
@@ -156,31 +179,9 @@ export const Settings = React.memo((props: Props) => {
           <TopBar />
         </Col>
       </Row>
-      <div className="settings">
-        <div className="categories">
-          <CategoryChoice
-            title="Personal Info"
-            category={Category.PersonalInfo}
-          />
-          <CategoryChoice
-            title="Change Password"
-            category={Category.ChangePassword}
-          />
-          <CategoryChoice title="Preferences" category={Category.Preferences} />
-          <CategoryChoice
-            title="Blocked players list"
-            category={Category.BlockedPlayers}
-          />
-          <CategoryChoice
-            title="Log out of Woogles.io"
-            category={Category.LogOut}
-          />
-          <CategoryChoice
-            title="Support Woogles.io"
-            category={Category.Support}
-          />
-        </div>
-        <div className="category">
+      <Row className="settings">
+        {categoriesColumn}
+        <Col span={9} className="category">
           {category === Category.PersonalInfo ? (
             showCloseAccount ? (
               <CloseAccount
@@ -214,8 +215,9 @@ export const Settings = React.memo((props: Props) => {
           {category === Category.Support ? (
             <Support handleContribute={handleContribute} />
           ) : null}
-        </div>
-      </div>
+          {category === Category.NoUser ? logIn : null}
+        </Col>
+      </Row>
     </>
   );
 });
