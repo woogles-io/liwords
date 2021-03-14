@@ -6,7 +6,6 @@ import { useLoginStateStoreContext } from '../store/store';
 import axios from 'axios';
 import { toAPIUrl } from '../api/api';
 import { notification, Card, Modal, Form, Input, Alert } from 'antd';
-import { MarkdownTips } from './markdown_tips';
 
 type BioProps = {
   bio: string;

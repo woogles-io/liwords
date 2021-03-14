@@ -242,7 +242,8 @@
       font-size: 14px;
     }
   }
-  .close-account-button {
+  .close-account-button,
+  .bio-tips {
     font-weight: bold;
     cursor: pointer;
     @include colorModed() {
@@ -284,6 +285,14 @@
       color: m($gray-extreme);
       outline: 0;
     }
+  }
+  .bio-section-header {
+    width: 100%;
+    position: relative;
+  }
+  .bio-tips {
+    position: absolute;
+    right: 0;
   }
 }
 .close-account {
