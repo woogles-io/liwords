@@ -113,7 +113,7 @@ export const Settings = React.memo((props: Props) => {
   });
 
   const handleContribute = useCallback(() => {
-    history.push('/'); // Need a Contribute page
+    history.push('/about'); // Need a Contribute page
   }, [history]);
 
   const handleLogout = useCallback(() => {
