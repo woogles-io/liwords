@@ -202,6 +202,31 @@ p.streak-loss {
     }
   }
 }
+.definitions {
+  font-family: $font-monospaced;
+  @include colorModed() {
+    background-color: m($card-background);
+  }
+  .definition-entry {
+    max-width: 13em;
+    &:nth-child(n + 2) {
+      margin-top: 1em;
+    }
+    @include colorModed() {
+      color: m($gray-extreme);
+    }
+    .defined-word {
+      font-weight: bold;
+    }
+    .definition {
+    }
+    .invalid-word {
+      @include colorModed() {
+        color: m($timer-out-dark);
+      }
+    }
+  }
+}
 .ant-dropdown-menu {
   padding: 0;
 }

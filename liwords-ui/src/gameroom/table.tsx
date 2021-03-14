@@ -451,10 +451,35 @@ export const Table = React.memo((props: Props) => {
   >(undefined);
   const [willHideDefinitionHover, setWillHideDefinitionHover] = useState(false);
 
-  // TODO: remove this when actually showing something
-  useEffect(() => {
-    console.log(showDefinitionHover);
-  }, [showDefinitionHover]);
+  const definitionPopover = useMemo(() => {
+    if (!showDefinitionHover) return undefined;
+    const entries = [];
+    for (const word of showDefinitionHover.words) {
+      const definition = wordInfo[word];
+      if (definition) {
+        entries.push(
+          <li key={entries.length} className="definition-entry">
+            <span className="defined-word">
+              {word}
+              {definition.v ? '' : '*'}
+            </span>{' '}
+            -{' '}
+            {definition.v ? (
+              <span className="definition">{String(definition.d)}</span>
+            ) : (
+              <span className="invalid-word">not a word</span>
+            )}
+          </li>
+        );
+      }
+    }
+    if (!entries.length) return undefined;
+    return {
+      x: showDefinitionHover.x,
+      y: showDefinitionHover.y,
+      content: <ul className="definitions">{entries}</ul>,
+    };
+  }, [showDefinitionHover, wordInfo]);
 
   useEffect(() => {
     if (willHideDefinitionHover) {
@@ -865,6 +890,7 @@ export const Table = React.memo((props: Props) => {
                 : null
             }
             handleSetHover={handleSetHover}
+            definitionPopover={definitionPopover}
           />
           <StreakWidget streakInfo={streakGameInfo} />
         </div>
