@@ -70,11 +70,11 @@ export const ChangePassword = React.memo((props: Props) => {
 							rules={[
 								{
 									required: true,
-									message: 'Please input your old password!',
+									message: 'Please input your old password',
 								},
 							]}
 						>
-							<Input.Password />
+							<Input.Password size="large" />
 						</Form.Item>
 					</Col>
 					<Col span={1} />
@@ -85,11 +85,11 @@ export const ChangePassword = React.memo((props: Props) => {
 							rules={[
 								{
 									required: true,
-									message: 'Please input your new password!',
+									message: 'Please input your new password',
 								},
 							]}
 						>
-							<Input.Password />
+							<Input.Password size="large" />
 						</Form.Item>
 					</Col>
 				</Row>

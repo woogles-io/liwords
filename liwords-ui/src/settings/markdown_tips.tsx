@@ -1,7 +1,6 @@
 import React from 'react';
 import ReactMarkdown from 'react-markdown';
-import { Anchor, Button, Card, Table } from 'antd';
-import { Link } from 'react-router-dom';
+import { Table } from 'antd';
 import { isMac, isWindows } from '../utils/cwgame/common';
 import './markdown_tips.scss';
 

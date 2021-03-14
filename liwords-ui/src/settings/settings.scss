@@ -7,10 +7,6 @@
   @include container;
   @include type-default;
   padding: 51px 24px 48px;
-  display: flex;
-  flex-direction: row;
-  justify-content: center;
-  align-items: flex-start;
   line-height: 20px;
 
   h3 {
@@ -26,10 +22,7 @@
     margin-bottom: 8px;
   }
   .categories {
-    flex-direction: column;
     padding: 4px 30px 0 0;
-    min-width: $settings-width;
-    max-width: $settings-width;
     .choice {
       text-align: right;
       height: 32px;
@@ -56,10 +49,6 @@
   }
 
   .category {
-    flex-direction: column;
-    min-width: $settings-width;
-    max-width: $settings-width;
-
     .log-out {
       .ant-btn {
         width: 184px;
@@ -90,6 +79,10 @@
   a {
     font-size: 14px;
     text-align: right;
+  }
+  .log-in {
+    font-weight: bold;
+    margin-top: 12px;
   }
   .blocked-users {
     .ant-card-body {
