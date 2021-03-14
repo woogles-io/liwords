@@ -14,6 +14,7 @@ type PersonalInfo = {
   firstName: string;
   lastName: string;
   countryCode: string;
+  about: string;
 };
 
 type Props = {
@@ -35,6 +36,7 @@ const errorCatcher = (e: AxiosError) => {
 
 export const PersonalInfo = React.memo((props: Props) => {
   const { useState } = useMountedState();
+  const { TextArea } = Input;
 
   const [updateAvatarModalVisible, setUpdateAvatarModalVisible] = useState(
     false
@@ -113,6 +115,7 @@ export const PersonalInfo = React.memo((props: Props) => {
   );
 
   const updateFields = (values: { [key: string]: string }) => {
+    console.log(values);
     axios
       .post(
         toAPIUrl('user_service.ProfileService', 'UpdatePersonalInfo'),
@@ -204,8 +207,16 @@ export const PersonalInfo = React.memo((props: Props) => {
         onOk={removeAvatar}
         onCancel={cancelRemoveAvatarModal}
       />
+
       <div className="section-header">Player bio</div>
-      <div>(the big bio box)</div>
+      <Row>
+        <Col span={23}>
+          <Form.Item name="about">
+            <TextArea className="bio-editor" rows={4} />
+          </Form.Item>
+        </Col>
+      </Row>
+
       <div className="section-header">Account details</div>
       <Row>
         <Col span={11}>

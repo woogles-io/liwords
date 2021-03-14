@@ -5391,7 +5391,8 @@ proto.user_service.PersonalInfoResponse.toObject = function(includeInstance, msg
     lastName: jspb.Message.getFieldWithDefault(msg, 3, ""),
     countryCode: jspb.Message.getFieldWithDefault(msg, 4, ""),
     avatarUrl: jspb.Message.getFieldWithDefault(msg, 5, ""),
-    fullName: jspb.Message.getFieldWithDefault(msg, 6, "")
+    fullName: jspb.Message.getFieldWithDefault(msg, 6, ""),
+    about: jspb.Message.getFieldWithDefault(msg, 7, "")
   };
 
   if (includeInstance) {
@@ -5451,6 +5452,10 @@ proto.user_service.PersonalInfoResponse.deserializeBinaryFromReader = function(m
     case 6:
       var value = /** @type {string} */ (reader.readString());
       msg.setFullName(value);
+      break;
+    case 7:
+      var value = /** @type {string} */ (reader.readString());
+      msg.setAbout(value);
       break;
     default:
       reader.skipField();
@@ -5520,6 +5525,13 @@ proto.user_service.PersonalInfoResponse.serializeBinaryToWriter = function(messa
   if (f.length > 0) {
     writer.writeString(
       6,
+      f
+    );
+  }
+  f = message.getAbout();
+  if (f.length > 0) {
+    writer.writeString(
+      7,
       f
     );
   }
@@ -5634,6 +5646,24 @@ proto.user_service.PersonalInfoResponse.prototype.setFullName = function(value) 
 };
 
 
+/**
+ * optional string about = 7;
+ * @return {string}
+ */
+proto.user_service.PersonalInfoResponse.prototype.getAbout = function() {
+  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 7, ""));
+};
+
+
+/**
+ * @param {string} value
+ * @return {!proto.user_service.PersonalInfoResponse} returns this
+ */
+proto.user_service.PersonalInfoResponse.prototype.setAbout = function(value) {
+  return jspb.Message.setProto3StringField(this, 7, value);
+};
+
+
 
 
 
@@ -5671,7 +5701,8 @@ proto.user_service.UpdatePersonalInfoRequest.toObject = function(includeInstance
     lastName: jspb.Message.getFieldWithDefault(msg, 3, ""),
     countryCode: jspb.Message.getFieldWithDefault(msg, 4, ""),
     avatarUrl: jspb.Message.getFieldWithDefault(msg, 5, ""),
-    fullName: jspb.Message.getFieldWithDefault(msg, 6, "")
+    fullName: jspb.Message.getFieldWithDefault(msg, 6, ""),
+    about: jspb.Message.getFieldWithDefault(msg, 7, "")
   };
 
   if (includeInstance) {
@@ -5731,6 +5762,10 @@ proto.user_service.UpdatePersonalInfoRequest.deserializeBinaryFromReader = funct
     case 6:
       var value = /** @type {string} */ (reader.readString());
       msg.setFullName(value);
+      break;
+    case 7:
+      var value = /** @type {string} */ (reader.readString());
+      msg.setAbout(value);
       break;
     default:
       reader.skipField();
@@ -5800,6 +5835,13 @@ proto.user_service.UpdatePersonalInfoRequest.serializeBinaryToWriter = function(
   if (f.length > 0) {
     writer.writeString(
       6,
+      f
+    );
+  }
+  f = message.getAbout();
+  if (f.length > 0) {
+    writer.writeString(
+      7,
       f
     );
   }
@@ -5911,6 +5953,24 @@ proto.user_service.UpdatePersonalInfoRequest.prototype.getFullName = function() 
  */
 proto.user_service.UpdatePersonalInfoRequest.prototype.setFullName = function(value) {
   return jspb.Message.setProto3StringField(this, 6, value);
+};
+
+
+/**
+ * optional string about = 7;
+ * @return {string}
+ */
+proto.user_service.UpdatePersonalInfoRequest.prototype.getAbout = function() {
+  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 7, ""));
+};
+
+
+/**
+ * @param {string} value
+ * @return {!proto.user_service.UpdatePersonalInfoRequest} returns this
+ */
+proto.user_service.UpdatePersonalInfoRequest.prototype.setAbout = function(value) {
+  return jspb.Message.setProto3StringField(this, 7, value);
 };
 
 

@@ -358,7 +358,7 @@ func (s *DBStore) SetAvatarUrl(ctx context.Context, uuid string, avatarUrl strin
 	return s.db.Model(p).Update("avatar_url", avatarUrl).Error
 }
 
-func (s *DBStore) SetPersonalInfo(ctx context.Context, uuid string, email string, firstName string, lastName string, countryCode string) error {
+func (s *DBStore) SetPersonalInfo(ctx context.Context, uuid string, email string, firstName string, lastName string, countryCode string, about string) error {
 	u := &User{}
 	p := &profile{}
 
@@ -375,6 +375,9 @@ func (s *DBStore) SetPersonalInfo(ctx context.Context, uuid string, email string
 		return result.Error
 	}
 	if result := s.db.Model(p).Update("last_name", lastName); result.Error != nil {
+		return result.Error
+	}
+	if result := s.db.Model(p).Update("about", about); result.Error != nil {
 		return result.Error
 	}
 	
