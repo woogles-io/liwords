@@ -141,10 +141,10 @@ func (b *Bus) instantiateAndStartGame(ctx context.Context, accUser *entity.User,
 
 func (b *Bus) handleBotMove(ctx context.Context, g *entity.Game) {
 	// This function should only be called if it's the bot's turn.
-	g.Lock()
-	defer g.Unlock()
 	onTurn := g.Game.PlayerOnTurn()
 	userID := g.Game.PlayerIDOnTurn()
+	g.Lock()
+	defer g.Unlock()
 	// We check if that game is not over because a triple challenge
 	// could have ended it
 	for g.PlayerOnTurn() == onTurn && g.Game.Playing() != macondopb.PlayState_GAME_OVER {
