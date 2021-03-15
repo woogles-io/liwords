@@ -47,12 +47,15 @@ export const Announcements = React.memo((props: AnnouncementsProps) => {
 
     {
       title: 'Upcoming Tournament - Virtual CanAm 2021',
-      link: 'https://woogles.io/',
+      link:
+        'https://docs.google.com/spreadsheets/d/1s692UrJKbqymnuVECrtgLXxvhGVjwkuv2hJlsI4gVXQ/edit?fbclid=IwAR1SklJpVZwA6xYUPimpYKWK10cziNZ-TcEuKzXmutpOqKah0kcKOUpsacY#gid=0',
       body: (
         <p>
           The CanAm has been brought to Woogles virtually, with teams of
-          Canadians and Americans vying for the virtual trophy! Who will emerge
-          victorious? Find out on March 27th and 28th!
+          Canadians and Americans vying for the virtual trophy! This is a
+          two-day tournament on March 27 and 28, with CSW and NWL divisions. 2
+          teams of 5 players for each division will play a triple round-robin
+          against each other. Who will emerge victorious?
         </p>
       ),
     },
