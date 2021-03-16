@@ -183,6 +183,9 @@ export class ChatMessage extends jspb.Message {
   getUserId(): string;
   setUserId(value: string): void;
 
+  getId(): string;
+  setId(value: string): void;
+
   serializeBinary(): Uint8Array;
   toObject(includeInstance?: boolean): ChatMessage.AsObject;
   static toObject(includeInstance: boolean, msg: ChatMessage): ChatMessage.AsObject;
@@ -200,6 +203,7 @@ export namespace ChatMessage {
     message: string,
     timestamp: number,
     userId: string,
+    id: string,
   }
 }
 
@@ -525,6 +529,9 @@ export class ServerChallengeResultEvent extends jspb.Message {
   getChallengeRule(): macondo_api_proto_macondo_macondo_pb.ChallengeRuleMap[keyof macondo_api_proto_macondo_macondo_pb.ChallengeRuleMap];
   setChallengeRule(value: macondo_api_proto_macondo_macondo_pb.ChallengeRuleMap[keyof macondo_api_proto_macondo_macondo_pb.ChallengeRuleMap]): void;
 
+  getReturnedTiles(): string;
+  setReturnedTiles(value: string): void;
+
   serializeBinary(): Uint8Array;
   toObject(includeInstance?: boolean): ServerChallengeResultEvent.AsObject;
   static toObject(includeInstance: boolean, msg: ServerChallengeResultEvent): ServerChallengeResultEvent.AsObject;
@@ -540,6 +547,7 @@ export namespace ServerChallengeResultEvent {
     valid: boolean,
     challenger: string,
     challengeRule: macondo_api_proto_macondo_macondo_pb.ChallengeRuleMap[keyof macondo_api_proto_macondo_macondo_pb.ChallengeRuleMap],
+    returnedTiles: string,
   }
 }
 
@@ -825,6 +833,30 @@ export class ServerMessage extends jspb.Message {
 export namespace ServerMessage {
   export type AsObject = {
     message: string,
+  }
+}
+
+export class ChatMessageDeleted extends jspb.Message {
+  getChannel(): string;
+  setChannel(value: string): void;
+
+  getId(): string;
+  setId(value: string): void;
+
+  serializeBinary(): Uint8Array;
+  toObject(includeInstance?: boolean): ChatMessageDeleted.AsObject;
+  static toObject(includeInstance: boolean, msg: ChatMessageDeleted): ChatMessageDeleted.AsObject;
+  static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+  static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+  static serializeBinaryToWriter(message: ChatMessageDeleted, writer: jspb.BinaryWriter): void;
+  static deserializeBinary(bytes: Uint8Array): ChatMessageDeleted;
+  static deserializeBinaryFromReader(message: ChatMessageDeleted, reader: jspb.BinaryReader): ChatMessageDeleted;
+}
+
+export namespace ChatMessageDeleted {
+  export type AsObject = {
+    channel: string,
+    id: string,
   }
 }
 
@@ -1651,6 +1683,7 @@ export interface MessageTypeMap {
   MATCH_REQUESTS: 18;
   DECLINE_MATCH_REQUEST: 19;
   CHAT_MESSAGE: 20;
+  CHAT_MESSAGE_DELETED: 21;
   USER_PRESENCE: 22;
   USER_PRESENCES: 23;
   SERVER_MESSAGE: 24;

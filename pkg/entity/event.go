@@ -73,6 +73,11 @@ func (e *EventWrapper) AddAudience(audType EventAudienceType, suffix string) {
 	}
 }
 
+// SetAudience sets a single audience in string format.
+func (e *EventWrapper) SetAudience(a string) {
+	e.audience = []string{a}
+}
+
 // Audience gets the audience(s) for this event, in the form of NATS channel names.
 func (e *EventWrapper) Audience() []string {
 	return e.audience

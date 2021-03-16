@@ -8,12 +8,18 @@ import (
 	"time"
 
 	"github.com/domino14/liwords/pkg/glicko"
+	ms "github.com/domino14/liwords/rpc/api/proto/mod_service"
 )
 
 const (
 	// SessionExpiration - Expire a session after this much time.
 	SessionExpiration = time.Hour * 24 * 30
 )
+
+type Actions struct {
+	Current map[string]*ms.ModAction
+	History []*ms.ModAction
+}
 
 // User - the db-specific details are in the store package.
 type User struct {
@@ -35,6 +41,8 @@ type User struct {
 	IsDirector     bool
 	IsMod          bool
 	IsAdmin        bool
+
+	Actions *Actions
 }
 
 type UserPermission int

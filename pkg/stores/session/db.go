@@ -84,7 +84,6 @@ func (s *DBStore) New(ctx context.Context, user *entity.User) (*entity.Session, 
 		Data:      postgres.Jsonb{RawMessage: bytes},
 	}
 
-	user.UUID = shortuuid.New()
 	result := s.db.Create(sess)
 	if result.Error != nil {
 		return nil, result.Error

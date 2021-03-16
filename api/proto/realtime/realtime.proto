@@ -89,6 +89,7 @@ enum MessageType {
   MATCH_REQUESTS = 18;
   DECLINE_MATCH_REQUEST = 19;
   CHAT_MESSAGE = 20;
+  CHAT_MESSAGE_DELETED = 21;
   USER_PRESENCE = 22;
   USER_PRESENCES = 23;
   SERVER_MESSAGE = 24;
@@ -124,6 +125,7 @@ message ChatMessage {
   // timestamp is in milliseconds!
   int64 timestamp = 4;
   string user_id = 5;
+  string id = 6;
 }
 
 message ChatMessages { repeated ChatMessage messages = 1; }
@@ -206,6 +208,7 @@ message ServerChallengeResultEvent {
   bool valid = 1;
   string challenger = 2;
   macondo.ChallengeRule challenge_rule = 3;
+  string returned_tiles = 4;
 }
 
 // GameEndedEvent is always sent from the server to both clients.
@@ -309,6 +312,11 @@ message ErrorMessage {
 
 message ServerMessage { string message = 1; }
 
+message ChatMessageDeleted {
+  string channel = 1;
+  string id = 2;
+}
+
 // Client-to-server messages
 
 // Gameplay
@@ -330,7 +338,7 @@ enum GameEndReason {
   // CANCELLED means the game never started. Game start signal was not sent.
   CANCELLED = 7;
   // FORCE_FORFEIT is a way to force an opponent to take a loss if they left a
-  // game early without resigining.
+  // game early without resigning.
   FORCE_FORFEIT = 8;
 }
 

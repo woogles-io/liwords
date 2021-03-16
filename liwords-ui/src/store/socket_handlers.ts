@@ -20,6 +20,7 @@ import {
 } from './store';
 import {
   ChatMessage,
+  ChatMessageDeleted,
   ClientGameplayEvent,
   DeclineMatchRequest,
   ErrorMessage,
@@ -112,6 +113,7 @@ export const parseMsgs = (msg: Uint8Array) => {
       [MessageType.TOURNAMENT_DIVISION_MESSAGE]: TournamentDivisionDataResponse,
       [MessageType.TOURNAMENT_DIVISION_DELETED_MESSAGE]: TournamentDivisionDeletedResponse,
       [MessageType.TOURNAMENT_FULL_DIVISIONS_MESSAGE]: FullTournamentDivisions,
+      [MessageType.CHAT_MESSAGE_DELETED]: ChatMessageDeleted,
     };
 
     const parsedMsg = msgTypes[msgType];
@@ -137,7 +139,7 @@ export const ReverseMessageType = (() => {
 
 export const useOnSocketMsg = () => {
   const { challengeResultEvent } = useChallengeResultEventStoreContext();
-  const { addChat } = useChatStoreContext();
+  const { addChat, deleteChat } = useChatStoreContext();
   const { excludedPlayers } = useExcludedPlayersStoreContext();
   const { dispatchGameContext, gameContext } = useGameContextStoreContext();
   const { setGameEndMessage } = useGameEndMessageStoreContext();
@@ -389,6 +391,7 @@ export const useOnSocketMsg = () => {
               timestamp: cm.getTimestamp(),
               senderId: cm.getUserId(),
               channel: cm.getChannel(),
+              id: cm.getId(),
             });
             if (cm.getUsername() !== loginState.username) {
               const tokenizedName = cm.getChannel().split('.');
@@ -396,6 +399,13 @@ export const useOnSocketMsg = () => {
                 BoopSounds.playSound('receiveMsgSound');
               }
             }
+            break;
+          }
+
+          case MessageType.CHAT_MESSAGE_DELETED: {
+            const cm = parsedMsg as ChatMessageDeleted;
+            deleteChat(cm.getId(), cm.getChannel());
+
             break;
           }
 
@@ -693,6 +703,7 @@ export const useOnSocketMsg = () => {
       addChat,
       addPresences,
       challengeResultEvent,
+      deleteChat,
       dispatchGameContext,
       dispatchLobbyContext,
       dispatchTournamentContext,

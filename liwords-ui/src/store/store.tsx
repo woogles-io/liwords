@@ -105,6 +105,7 @@ type ChatStoreData = {
   addChat: (chat: ChatEntityObj) => void;
   addChats: (chats: Array<ChatEntityObj>) => void;
   clearChat: () => void;
+  deleteChat: (id: string, channel: string) => void;
   chat: Array<ChatEntityObj>;
   chatChannels: ActiveChatChannels.AsObject | undefined;
   setChatChannels: (chatChannels: ActiveChatChannels.AsObject) => void;
@@ -199,6 +200,7 @@ const LoginStateContext = createContext<LoginStateStoreData>({
     connectedToSocket: false,
     connID: '',
     path: '',
+    perms: [],
   },
   dispatchLoginState: defaultFunction,
 });
@@ -248,6 +250,7 @@ const ChatContext = createContext<ChatStoreData>({
   clearChat: defaultFunction,
   chat: [],
   chatChannels: undefined,
+  deleteChat: defaultFunction,
   setChatChannels: defaultFunction,
 });
 
@@ -686,6 +689,7 @@ const RealStore = ({ children, ...props }: Props) => {
     connectedToSocket: false,
     connID: '',
     path: '',
+    perms: new Array<string>(),
   });
   const dispatchLoginState = useCallback(
     (action) => setLoginState((state) => LoginStateReducer(state, action)),
@@ -776,6 +780,15 @@ const RealStore = ({ children, ...props }: Props) => {
 
   const clearChat = useCallback(() => {
     setChat([]);
+  }, []);
+
+  const deleteChat = useCallback((id: string, channel: string) => {
+    setChat((oldChat) => {
+      const chatCopy = oldChat.filter(
+        (c) => !(c.id === id && c.channel === channel)
+      );
+      return chatCopy;
+    });
   }, []);
 
   const setPresence = useCallback((entity: PresenceEntity) => {
@@ -891,11 +904,20 @@ const RealStore = ({ children, ...props }: Props) => {
       addChat,
       addChats,
       clearChat,
+      deleteChat,
       chat,
       chatChannels,
       setChatChannels,
     }),
-    [addChat, addChats, clearChat, chat, chatChannels, setChatChannels]
+    [
+      addChat,
+      addChats,
+      clearChat,
+      chat,
+      chatChannels,
+      deleteChat,
+      setChatChannels,
+    ]
   );
   const presenceStore = useMemo(
     () => ({

@@ -7,6 +7,7 @@ export type LoginState = {
   connID: string;
   connectedToSocket: boolean;
   path: string;
+  perms: Array<string>;
 };
 
 export type AuthInfo = {
@@ -14,6 +15,7 @@ export type AuthInfo = {
   userID: string;
   loggedIn: boolean;
   connID: string;
+  perms: Array<string>;
 };
 
 export function LoginStateReducer(
