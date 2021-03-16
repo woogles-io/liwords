@@ -1,20 +1,57 @@
 import { notification } from 'antd';
 import Modal from 'antd/lib/modal/Modal';
-import React, { useEffect, useState } from 'react';
-import { MetaStates } from '../store/reducers/game_reducer';
-import { useGameContextStoreContext } from '../store/store';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { PlayerOrder } from '../store/constants';
+import { MetaStates } from '../store/meta_game_events';
+import { useGameMetaEventContext } from '../store/store';
+import { ClockController, Millis, Times } from '../store/timer_controller';
+import { useTimer } from '../store/use_timer';
 
-// XXX: Using this component only for its effect. Should rewrite
-// as a hook only.
-export const MetaEventDisplay = () => {
-  const { gameContext } = useGameContextStoreContext();
+/**
+ *
+ */
+
+/*
+    case ActionType.ProcessGameMetaEvent: {
+      const p = action.payload as {
+        gme: GameMetaEvent;
+        us: string;
+      };
+      const newState = newGameStateFromMetaEvent(state, p.gme, p.us);
+      return newState;
+    }*/
+
+export type MetaDisplayState = {
+  clockController: React.MutableRefObject<ClockController | null> | null;
+  onClockTick: (p: PlayerOrder, t: Millis) => void;
+  onClockTimeout: (p: PlayerOrder) => void;
+  metaState: MetaStates;
+};
+
+const countdownTimer = () => {
+  const {
+    clockController,
+    stopClock,
+    timerContext,
+    pTimedOut,
+    setPTimedOut,
+    onClockTick,
+    onClockTimeout,
+  } = useTimer();
+};
+
+type Props = {};
+
+export const MetaEventDisplay = (props: Props) => {
+  const { gameMetaEventContext } = useGameMetaEventContext();
+
   // const [modalVisible, setModalVisible] = useState(false);
   useEffect(() => {
-    if (gameContext.metaState === MetaStates.NO_ACTIVE_REQUEST) {
+    if (gameMetaEventContext.curEvt === MetaStates.NO_ACTIVE_REQUEST) {
       return;
     }
     // setModalVisible(true);
-    switch (gameContext.metaState) {
+    switch (gameMetaEventContext.curEvt) {
       case MetaStates.REQUESTED_ABORT:
         notification.info({
           message: '',
@@ -58,7 +95,7 @@ export const MetaEventDisplay = () => {
         });
         break;
     }
-  }, [gameContext.metaState]);
+  }, [gameMetaEventContext.curEvt]);
 
   return null;
 };

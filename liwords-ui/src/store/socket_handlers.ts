@@ -10,6 +10,7 @@ import {
   useExcludedPlayersStoreContext,
   useGameContextStoreContext,
   useGameEndMessageStoreContext,
+  useGameMetaEventContext,
   useLagStoreContext,
   useLobbyStoreContext,
   useLoginStateStoreContext,
@@ -67,6 +68,7 @@ import {
   GameInfoResponses,
 } from '../gen/api/proto/game_service/game_service_pb';
 import { TourneyStatus } from './reducers/tournament_reducer';
+import { metaStateFromMetaEvent } from './meta_game_events';
 
 // Feature flag.
 export const enableShowSocket =
@@ -144,6 +146,7 @@ export const useOnSocketMsg = () => {
   const { addChat, deleteChat } = useChatStoreContext();
   const { excludedPlayers } = useExcludedPlayersStoreContext();
   const { dispatchGameContext, gameContext } = useGameContextStoreContext();
+  const { setGameMetaEventContext } = useGameMetaEventContext();
   const { setGameEndMessage } = useGameEndMessageStoreContext();
   const { setCurrentLagMs } = useLagStoreContext();
   const { dispatchLobbyContext } = useLobbyStoreContext();
@@ -603,14 +606,10 @@ export const useOnSocketMsg = () => {
 
           case MessageType.GAME_META_EVENT: {
             const gme = parsedMsg as GameMetaEvent;
+            setGameMetaEventContext(
+              metaStateFromMetaEvent(gme, loginState.userID)
+            );
 
-            dispatchGameContext({
-              actionType: ActionType.ProcessGameMetaEvent,
-              payload: {
-                gme,
-                us: loginState.userID,
-              },
-            });
             break;
           }
 
@@ -713,6 +712,7 @@ export const useOnSocketMsg = () => {
       loginState,
       setCurrentLagMs,
       setGameEndMessage,
+      setGameMetaEventContext,
       setPresence,
       setRematchRequest,
       stopClock,

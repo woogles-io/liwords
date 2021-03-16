@@ -10,7 +10,6 @@ import {
   ServerGameplayEvent,
   GameHistoryRefresher,
   GameEndedEvent,
-  GameMetaEvent,
 } from '../../gen/api/proto/realtime/realtime_pb';
 import {
   Direction,
@@ -23,8 +22,6 @@ import { EnglishCrosswordGameDistribution } from '../../constants/tile_distribut
 import { PlayerOrder } from '../constants';
 import { ClockController, Millis } from '../timer_controller';
 import { ThroughTileMarker } from '../../utils/cwgame/game_event';
-import Meta from 'antd/lib/card/Meta';
-import { message } from 'antd';
 
 type TileDistribution = { [rune: string]: number };
 
@@ -50,14 +47,6 @@ const initialExpandToFull = (playerList: PlayerInfo[]): RawPlayerInfo[] => {
   });
 };
 
-export enum MetaStates {
-  NO_ACTIVE_REQUEST,
-  REQUESTED_ABORT,
-  REQUESTED_ADJUDICATION,
-  RECEIVER_ABORT_COUNTDOWN,
-  RECEIVER_ADJUDICATION_COUNTDOWN,
-}
-
 export type GameState = {
   board: Board;
   // The initial tile distribution:
@@ -78,7 +67,6 @@ export type GameState = {
   clockController: React.MutableRefObject<ClockController | null> | null;
   onClockTick: (p: PlayerOrder, t: Millis) => void;
   onClockTimeout: (p: PlayerOrder) => void;
-  metaState: MetaStates;
 };
 
 export const startingGameState = (
@@ -102,7 +90,6 @@ export const startingGameState = (
     clockController: null,
     onClockTick: () => {},
     onClockTimeout: () => {},
-    metaState: MetaStates.NO_ACTIVE_REQUEST,
   };
   return gs;
 };
@@ -190,7 +177,6 @@ const newGameStateFromGameplayEvent = (
     clockController: state.clockController,
     onClockTick: state.onClockTick,
     onClockTimeout: state.onClockTimeout,
-    metaState: state.metaState,
     // Potential changes:
     board,
     pool,
@@ -199,45 +185,6 @@ const newGameStateFromGameplayEvent = (
     onturn,
     lastPlayedTiles,
     playerOfTileAt,
-  };
-};
-
-const newGameStateFromMetaEvent = (
-  state: GameState,
-  metaEvent: GameMetaEvent,
-  us: string
-): GameState => {
-  let metaState = MetaStates.NO_ACTIVE_REQUEST;
-  switch (metaEvent.getType()) {
-    case GameMetaEvent.EventType.REQUEST_ABORT: {
-      if (us === metaEvent.getPlayerId()) {
-        metaState = MetaStates.REQUESTED_ABORT;
-      } else {
-        metaState = MetaStates.RECEIVER_ABORT_COUNTDOWN;
-      }
-      break;
-    }
-
-    case GameMetaEvent.EventType.REQUEST_ADJUDICATION: {
-      if (us === metaEvent.getPlayerId()) {
-        metaState = MetaStates.REQUESTED_ADJUDICATION;
-      } else {
-        metaState = MetaStates.RECEIVER_ADJUDICATION_COUNTDOWN;
-      }
-      break;
-    }
-
-    case GameMetaEvent.EventType.ABORT_DENIED: {
-      message.info({
-        content: 'The abort request was denied',
-      });
-      break;
-    }
-  }
-
-  return {
-    ...state,
-    metaState,
   };
 };
 
@@ -571,15 +518,6 @@ export const GameReducer = (state: GameState, action: Action): GameState => {
       if (newState.clockController) {
         newState.clockController.current?.stopClock();
       }
-      return newState;
-    }
-
-    case ActionType.ProcessGameMetaEvent: {
-      const p = action.payload as {
-        gme: GameMetaEvent;
-        us: string;
-      };
-      const newState = newGameStateFromMetaEvent(state, p.gme, p.us);
       return newState;
     }
   }

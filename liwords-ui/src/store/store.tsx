@@ -1,10 +1,4 @@
-import React, {
-  createContext,
-  useCallback,
-  useContext,
-  useMemo,
-  useRef,
-} from 'react';
+import React, { createContext, useCallback, useContext, useMemo } from 'react';
 import { useMountedState } from '../utils/mounted';
 
 import { EnglishCrosswordGameDistribution } from '../constants/tile_distributions';
@@ -32,6 +26,8 @@ import {
   TournamentReducer,
   TournamentState,
 } from './reducers/tournament_reducer';
+import { defaultTimerContext, useTimer } from './use_timer';
+import { MetaEventState, MetaStates } from './meta_game_events';
 
 export enum ChatEntityType {
   UserChat,
@@ -59,12 +55,6 @@ export type PresenceEntity = {
 
 const MaxChatLength = 150;
 
-const defaultTimerContext = {
-  p0: 0,
-  p1: 0,
-  activePlayer: 'p0' as PlayerOrder,
-  lastUpdate: 0,
-};
 const defaultFunction = () => {};
 
 // Functions and data to deal with the global store.
@@ -94,6 +84,11 @@ type ExcludedPlayersStoreData = {
 
 type ChallengeResultEventStoreData = {
   challengeResultEvent: (sge: ServerChallengeResultEvent) => void;
+};
+
+type GameMetaEventStoreData = {
+  gameMetaEventContext: MetaEventState;
+  setGameMetaEventContext: React.Dispatch<React.SetStateAction<MetaEventState>>;
 };
 
 type GameContextStoreData = {
@@ -233,6 +228,14 @@ const ChallengeResultEventContext = createContext<
   ChallengeResultEventStoreData
 >({
   challengeResultEvent: defaultFunction,
+});
+
+const GameMetaEventContext = createContext<GameMetaEventStoreData>({
+  gameMetaEventContext: {
+    curEvt: MetaStates.NO_ACTIVE_REQUEST,
+    // timer: null,
+  },
+  setGameMetaEventContext: defaultFunction,
 });
 
 const [GameContextContext, ExaminableGameContextContext] = Array.from(
@@ -659,20 +662,6 @@ const ExaminableStore = ({ children }: { children: React.ReactNode }) => {
 const RealStore = ({ children, ...props }: Props) => {
   const { useState } = useMountedState();
 
-  const clockController = useRef<ClockController | null>(null);
-
-  const onClockTick = useCallback((p: PlayerOrder, t: Millis) => {
-    if (!clockController || !clockController.current) {
-      return;
-    }
-    const newCtx = { ...clockController.current!.times, [p]: t };
-    setTimerContext(newCtx);
-  }, []);
-
-  const onClockTimeout = useCallback((p: PlayerOrder) => {
-    setPTimedOut(p);
-  }, []);
-
   const [lobbyContext, setLobbyContext] = useState<LobbyState>({
     soughtGames: [],
     activeGames: [],
@@ -714,6 +703,16 @@ const RealStore = ({ children, ...props }: Props) => {
   const [placedTiles, setPlacedTiles] = useState(new Set<EphemeralTile>());
   const [displayedRack, setDisplayedRack] = useState('');
 
+  const {
+    clockController,
+    onClockTick,
+    onClockTimeout,
+    stopClock,
+    timerContext,
+    pTimedOut,
+    setPTimedOut,
+  } = useTimer();
+
   const [gameContext, setGameContext] = useState<GameState>(() =>
     gameStateInitializer(clockController, onClockTick, onClockTimeout)
   );
@@ -722,10 +721,12 @@ const RealStore = ({ children, ...props }: Props) => {
     []
   );
 
-  const [timerContext, setTimerContext] = useState<Times>(defaultTimerContext);
-  const [pTimedOut, setPTimedOut] = useState<PlayerOrder | undefined>(
-    undefined
-  );
+  const [gameMetaEventContext, setGameMetaEventContext] = useState<
+    MetaEventState
+  >({
+    curEvt: MetaStates.NO_ACTIVE_REQUEST,
+    // clockController: null,
+  });
 
   const [poolFormat, setPoolFormat] = useState<PoolFormatType>(
     PoolFormatType.Alphabet
@@ -814,14 +815,6 @@ const RealStore = ({ children, ...props }: Props) => {
     [setPresence]
   );
 
-  const stopClock = useCallback(() => {
-    if (!clockController.current) {
-      return;
-    }
-    clockController.current.stopClock();
-    setTimerContext({ ...clockController.current.times });
-  }, []);
-
   const lobbyStore = useMemo(
     () => ({
       lobbyContext,
@@ -899,6 +892,15 @@ const RealStore = ({ children, ...props }: Props) => {
     }),
     [gameContext, dispatchGameContext]
   );
+
+  const gameMetaEventContextStore = useMemo(
+    () => ({
+      gameMetaEventContext,
+      setGameMetaEventContext,
+    }),
+    [gameMetaEventContext, setGameMetaEventContext]
+  );
+
   const chatStore = useMemo(
     () => ({
       addChat,
@@ -988,6 +990,12 @@ const RealStore = ({ children, ...props }: Props) => {
     />
   );
   ret = <GameContextContext.Provider value={gameContextStore} children={ret} />;
+  ret = (
+    <GameMetaEventContext.Provider
+      value={gameMetaEventContextStore}
+      children={ret}
+    />
+  );
   ret = <ChatContext.Provider value={chatStore} children={ret} />;
   ret = <PresenceContext.Provider value={presenceStore} children={ret} />;
   ret = (
@@ -1047,6 +1055,7 @@ export const useExcludedPlayersStoreContext = () =>
 export const useChallengeResultEventStoreContext = () =>
   useContext(ChallengeResultEventContext);
 export const useGameContextStoreContext = () => useContext(GameContextContext);
+export const useGameMetaEventContext = () => useContext(GameMetaEventContext);
 export const useChatStoreContext = () => useContext(ChatContext);
 export const usePresenceStoreContext = () => useContext(PresenceContext);
 export const useGameEndMessageStoreContext = () =>
