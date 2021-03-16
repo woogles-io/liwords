@@ -330,36 +330,6 @@ const EasterEgg = (props: any) => {
           }
         }
       }
-
-      if (song === 'startgame') {
-        dur = 60 / 180;
-        playNote(50, 0.5);
-        playNote(54, 0.5);
-        playNote(57, 0.5);
-        playNote(64, 0.5);
-        playNote(62, 0.5);
-        playNote(66, 0.5);
-        playNote(69, 0.5);
-        playNote(76, 0.5);
-      }
-
-      if (song === 'makemove') {
-        dur = 60 / 240;
-        playNote(50, 0.5);
-        playNote(0, -0.375);
-        playNote(53, 0.5);
-        playNote(0, -0.375);
-        playNote(57, 0.5);
-      }
-
-      if (song === 'oppmove') {
-        dur = 60 / 240;
-        playNote(57, 0.5);
-        playNote(0, -0.375);
-        playNote(53, 0.5);
-        playNote(0, -0.375);
-        playNote(50, 0.5);
-      }
     },
     [stopIt, ctx]
   );
@@ -371,24 +341,6 @@ const EasterEgg = (props: any) => {
         icon={<React.Fragment>&#x1f63b;</React.Fragment>}
         type="primary"
         onClick={() => handler('catcam')}
-      />
-      <Button
-        shape="circle"
-        icon={<React.Fragment>&#x27f2;</React.Fragment>}
-        type="primary"
-        onClick={() => handler('startgame')}
-      />
-      <Button
-        shape="circle"
-        icon={<React.Fragment>&#x25b6;</React.Fragment>}
-        type="primary"
-        onClick={() => handler('makemove')}
-      />
-      <Button
-        shape="circle"
-        icon={<React.Fragment>&#x25c0;</React.Fragment>}
-        type="primary"
-        onClick={() => handler('oppmove')}
       />
     </React.Fragment>
   );
