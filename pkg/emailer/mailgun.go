@@ -10,6 +10,7 @@ import (
 // Send emails using mailgun.
 
 const domain = "mg.woogles.io"
+const WooglesAdministratorAddress = "woogles@woogles.io"
 
 func SendSimpleMessage(apiKey, recipient, subject, body string) (string, error) {
 	mg := mailgun.NewMailgun(domain, apiKey)
