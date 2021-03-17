@@ -482,6 +482,10 @@ export const Table = React.memo((props: Props) => {
     };
   }, [showDefinitionHover, wordInfo]);
 
+  const hideDefinitionHover = useCallback(() => {
+    setShowDefinitionHover(undefined);
+  }, []);
+
   useEffect(() => {
     if (willHideDefinitionHover) {
       // if the pointer is moved out of a tile, the definition is not hidden
@@ -489,11 +493,11 @@ export const Table = React.memo((props: Props) => {
       // usability and responsiveness, and it enables smoother transition if
       // the pointer is moved to a nearby tile.
       const t = setTimeout(() => {
-        setShowDefinitionHover(undefined);
+        hideDefinitionHover();
       }, 1000);
       return () => clearTimeout(t);
     }
-  }, [willHideDefinitionHover]);
+  }, [willHideDefinitionHover, hideDefinitionHover]);
 
   // TODO: remove "false" when backend returns more useful data
   const enableHoverDefine = gameDone || isObserver;
@@ -891,6 +895,7 @@ export const Table = React.memo((props: Props) => {
                 : null
             }
             handleSetHover={handleSetHover}
+            handleUnsetHover={hideDefinitionHover}
             definitionPopover={definitionPopover}
           />
           <StreakWidget streakInfo={streakGameInfo} />
