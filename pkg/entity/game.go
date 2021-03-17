@@ -120,6 +120,9 @@ func (g GameTimer) Now() int64 {
 // and ready.
 func NewGame(mcg *game.Game, req *pb.GameRequest) *Game {
 	ms1 := int(req.InitialTimeSeconds * 1000)
+	if req.OddsInitialTimeSeconds == 0 {
+		req.OddsInitialTimeSeconds = req.InitialTimeSeconds
+	}
 	ms2 := int(req.OddsInitialTimeSeconds * 1000)
 	if req.OddsUsername != "" &&
 	   mcg.History().Players[0].Nickname == req.OddsUsername {
