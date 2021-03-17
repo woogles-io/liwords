@@ -169,6 +169,10 @@ const getChatTitle = (
   return playerNames.filter((n) => n !== username).shift() || '';
 };
 
+// Feature flag.
+const localStorageSaysToEnableHoverDefine =
+  localStorage?.getItem('enableDefinitions') === 'true';
+
 export const Table = React.memo((props: Props) => {
   const { useState } = useMountedState();
 
@@ -499,8 +503,8 @@ export const Table = React.memo((props: Props) => {
     }
   }, [willHideDefinitionHover, hideDefinitionHover]);
 
-  // TODO: remove "false" when backend returns more useful data
-  const enableHoverDefine = false && (gameDone || isObserver);
+  const enableHoverDefine =
+    localStorageSaysToEnableHoverDefine && (gameDone || isObserver);
 
   const handleSetHover = useCallback(
     (x: number, y: number, words: Array<string> | undefined) => {
