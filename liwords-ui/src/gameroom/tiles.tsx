@@ -139,7 +139,7 @@ const Tiles = React.memo((props: Props) => {
             tentativeScoreIsHorizontal={tentativeScoreHereIsHorizontal}
             grabbable={false}
             {...(props.handleSetHover && {
-              onMouseEnter: (evt: React.MouseEvent<HTMLElement>) => {
+              onClick: (evt: React.MouseEvent<HTMLElement>) => {
                 // if the pointer stays on a tile when a word is played through
                 // it, the words being defined are not updated until the
                 // pointer is moved out of the tile and back in. this is an
