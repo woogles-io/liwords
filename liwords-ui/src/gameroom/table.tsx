@@ -169,6 +169,10 @@ const getChatTitle = (
   return playerNames.filter((n) => n !== username).shift() || '';
 };
 
+// Feature flag.
+const localStorageSaysToEnableHoverDefine =
+  localStorage?.getItem('enableDefinitions') === 'true';
+
 export const Table = React.memo((props: Props) => {
   const { useState } = useMountedState();
 
@@ -307,7 +311,7 @@ export const Table = React.memo((props: Props) => {
       )
       .then((resp) => {
         setNeedAvatars(false);
-        let players = [...gameInfo.players];
+        const players = [...gameInfo.players];
         resp.data.infos.forEach((info) => {
           if (info.avatar_url.length) {
             const index = gameInfo.players.findIndex(
@@ -451,10 +455,40 @@ export const Table = React.memo((props: Props) => {
   >(undefined);
   const [willHideDefinitionHover, setWillHideDefinitionHover] = useState(false);
 
-  // TODO: remove this when actually showing something
-  useEffect(() => {
-    console.log(showDefinitionHover);
-  }, [showDefinitionHover]);
+  const definitionPopover = useMemo(() => {
+    if (!showDefinitionHover) return undefined;
+    const entries = [];
+    for (const word of showDefinitionHover.words) {
+      const uppercasedWord = word.toUpperCase();
+      const definition = wordInfo[uppercasedWord];
+      if (definition) {
+        entries.push(
+          <li key={entries.length} className="definition-entry">
+            <span className="defined-word">
+              {uppercasedWord}
+              {definition.v ? '' : '*'}
+            </span>{' '}
+            -{' '}
+            {definition.v ? (
+              <span className="definition">{String(definition.d)}</span>
+            ) : (
+              <span className="invalid-word">not a word</span>
+            )}
+          </li>
+        );
+      }
+    }
+    if (!entries.length) return undefined;
+    return {
+      x: showDefinitionHover.x,
+      y: showDefinitionHover.y,
+      content: <ul className="definitions">{entries}</ul>,
+    };
+  }, [showDefinitionHover, wordInfo]);
+
+  const hideDefinitionHover = useCallback(() => {
+    setShowDefinitionHover(undefined);
+  }, []);
 
   useEffect(() => {
     if (willHideDefinitionHover) {
@@ -463,14 +497,14 @@ export const Table = React.memo((props: Props) => {
       // usability and responsiveness, and it enables smoother transition if
       // the pointer is moved to a nearby tile.
       const t = setTimeout(() => {
-        setShowDefinitionHover(undefined);
+        hideDefinitionHover();
       }, 1000);
       return () => clearTimeout(t);
     }
-  }, [willHideDefinitionHover]);
+  }, [willHideDefinitionHover, hideDefinitionHover]);
 
-  // TODO: remove "false" when backend returns more useful data
-  const enableHoverDefine = false && (gameDone || isObserver);
+  const enableHoverDefine =
+    localStorageSaysToEnableHoverDefine && (gameDone || isObserver);
 
   const handleSetHover = useCallback(
     (x: number, y: number, words: Array<string> | undefined) => {
@@ -865,6 +899,8 @@ export const Table = React.memo((props: Props) => {
                 : null
             }
             handleSetHover={handleSetHover}
+            handleUnsetHover={hideDefinitionHover}
+            definitionPopover={definitionPopover}
           />
           <StreakWidget streakInfo={streakGameInfo} />
         </div>

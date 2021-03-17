@@ -34,6 +34,10 @@ type Props = {
     y: number,
     words: Array<string> | undefined
   ) => void;
+  handleUnsetHover?: () => void;
+  definitionPopover?:
+    | { x: number; y: number; content: React.ReactNode }
+    | undefined;
 };
 
 const Board = React.memo((props: Props) => {
@@ -45,7 +49,12 @@ const Board = React.memo((props: Props) => {
   return (
     <div className="board">
       <BoardCoordLabels gridDim={props.gridSize} />
-      <div className="board-spaces-container" id="board" {...outerDivProps}>
+      <div
+        className="board-spaces-container"
+        id="board"
+        onMouseLeave={props.handleUnsetHover}
+        {...outerDivProps}
+      >
         <BoardSpaces
           gridDim={props.gridSize}
           gridLayout={props.gridLayout}
@@ -64,6 +73,7 @@ const Board = React.memo((props: Props) => {
           placementArrow={props.placementArrowProperties}
           tentativeTileScore={props.tentativeTileScore}
           handleSetHover={props.handleSetHover}
+          definitionPopover={props.definitionPopover}
         />
         {svgDrawing}
       </div>

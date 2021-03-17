@@ -83,6 +83,10 @@ type Props = {
     y: number,
     words: Array<string> | undefined
   ) => void;
+  handleUnsetHover?: () => void;
+  definitionPopover?:
+    | { x: number; y: number; content: React.ReactNode }
+    | undefined;
 };
 
 const shuffleString = (a: string): string => {
@@ -1016,6 +1020,8 @@ export const BoardPanel = React.memo((props: Props) => {
         squareClicked={squareClicked}
         placementArrowProperties={arrowProperties}
         handleSetHover={props.handleSetHover}
+        handleUnsetHover={props.handleUnsetHover}
+        definitionPopover={props.definitionPopover}
       />
       {!examinableGameEndMessage ? (
         <div className="rack-container">
