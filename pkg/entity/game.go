@@ -119,11 +119,16 @@ func (g GameTimer) Now() int64 {
 // The time of start must be logged later, when both players are in the table
 // and ready.
 func NewGame(mcg *game.Game, req *pb.GameRequest) *Game {
-	ms := int(req.InitialTimeSeconds * 1000)
+	ms1 := int(req.InitialTimeSeconds * 1000)
+	ms2 := int(req.OddsInitialTimeSeconds * 1000)
+	if req.OddsUsername != "" &&
+	   mcg.History().Players[0].Nickname == req.OddsUsername {
+		ms1, ms2 = ms2, ms1
+	}
 	return &Game{
 		Game: *mcg,
 		Timers: Timers{
-			TimeRemaining: []int{ms, ms},
+			TimeRemaining: []int{ms1, ms2},
 			MaxOvertime:   int(req.MaxOvertimeMinutes),
 		},
 		GameReq:   req,

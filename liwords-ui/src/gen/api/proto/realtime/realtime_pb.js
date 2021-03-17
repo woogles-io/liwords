@@ -1292,7 +1292,9 @@ proto.liwords.GameRequest.toObject = function(includeInstance, msg) {
     requestId: jspb.Message.getFieldWithDefault(msg, 8, ""),
     maxOvertimeMinutes: jspb.Message.getFieldWithDefault(msg, 9, 0),
     playerVsBot: jspb.Message.getBooleanFieldWithDefault(msg, 10, false),
-    originalRequestId: jspb.Message.getFieldWithDefault(msg, 11, "")
+    originalRequestId: jspb.Message.getFieldWithDefault(msg, 11, ""),
+    oddsInitialTimeSeconds: jspb.Message.getFieldWithDefault(msg, 12, 0),
+    oddsUsername: jspb.Message.getFieldWithDefault(msg, 13, "")
   };
 
   if (includeInstance) {
@@ -1373,6 +1375,14 @@ proto.liwords.GameRequest.deserializeBinaryFromReader = function(msg, reader) {
     case 11:
       var value = /** @type {string} */ (reader.readString());
       msg.setOriginalRequestId(value);
+      break;
+    case 12:
+      var value = /** @type {number} */ (reader.readInt32());
+      msg.setOddsInitialTimeSeconds(value);
+      break;
+    case 13:
+      var value = /** @type {string} */ (reader.readString());
+      msg.setOddsUsername(value);
       break;
     default:
       reader.skipField();
@@ -1478,6 +1488,20 @@ proto.liwords.GameRequest.serializeBinaryToWriter = function(message, writer) {
   if (f.length > 0) {
     writer.writeString(
       11,
+      f
+    );
+  }
+  f = message.getOddsInitialTimeSeconds();
+  if (f !== 0) {
+    writer.writeInt32(
+      12,
+      f
+    );
+  }
+  f = message.getOddsUsername();
+  if (f.length > 0) {
+    writer.writeString(
+      13,
       f
     );
   }
@@ -1698,6 +1722,42 @@ proto.liwords.GameRequest.prototype.getOriginalRequestId = function() {
  */
 proto.liwords.GameRequest.prototype.setOriginalRequestId = function(value) {
   return jspb.Message.setProto3StringField(this, 11, value);
+};
+
+
+/**
+ * optional int32 odds_initial_time_seconds = 12;
+ * @return {number}
+ */
+proto.liwords.GameRequest.prototype.getOddsInitialTimeSeconds = function() {
+  return /** @type {number} */ (jspb.Message.getFieldWithDefault(this, 12, 0));
+};
+
+
+/**
+ * @param {number} value
+ * @return {!proto.liwords.GameRequest} returns this
+ */
+proto.liwords.GameRequest.prototype.setOddsInitialTimeSeconds = function(value) {
+  return jspb.Message.setProto3IntField(this, 12, value);
+};
+
+
+/**
+ * optional string odds_username = 13;
+ * @return {string}
+ */
+proto.liwords.GameRequest.prototype.getOddsUsername = function() {
+  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 13, ""));
+};
+
+
+/**
+ * @param {string} value
+ * @return {!proto.liwords.GameRequest} returns this
+ */
+proto.liwords.GameRequest.prototype.setOddsUsername = function(value) {
+  return jspb.Message.setProto3StringField(this, 13, value);
 };
 
 

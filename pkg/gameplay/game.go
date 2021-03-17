@@ -7,6 +7,7 @@ package gameplay
 import (
 	"context"
 	"errors"
+	"fmt"
 	"sort"
 	"strconv"
 	"time"
@@ -86,6 +87,21 @@ func InstantiateNewGame(ctx context.Context, gameStore GameStore, cfg *config.Co
 		bd = board.CrosswordGameBoard
 	default:
 		return nil, errors.New("unsupported board layout")
+	}
+
+	// Time odds sanity checks
+	if req.OddsUsername != "" &&
+		req.OddsUsername != players[0].Nickname &&
+		req.OddsUsername != players[1].Nickname {
+		return nil, fmt.Errorf("odds username not in players: %s", req.OddsUsername)
+	}
+	if req.OddsInitialTimeSeconds != req.InitialTimeSeconds &&
+		req.OddsUsername == "" {
+		return nil, errors.New("time odds given but no odds username specified")
+	}
+
+	if req.OddsUsername != "" && req.RatingMode != pb.RatingMode_CASUAL {
+		return nil, errors.New("games with time odds must be unrated")
 	}
 
 	firstAssigned := false

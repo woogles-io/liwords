@@ -69,6 +69,12 @@ export class GameRequest extends jspb.Message {
   getOriginalRequestId(): string;
   setOriginalRequestId(value: string): void;
 
+  getOddsInitialTimeSeconds(): number;
+  setOddsInitialTimeSeconds(value: number): void;
+
+  getOddsUsername(): string;
+  setOddsUsername(value: string): void;
+
   serializeBinary(): Uint8Array;
   toObject(includeInstance?: boolean): GameRequest.AsObject;
   static toObject(includeInstance: boolean, msg: GameRequest): GameRequest.AsObject;
@@ -92,6 +98,8 @@ export namespace GameRequest {
     maxOvertimeMinutes: number,
     playerVsBot: boolean,
     originalRequestId: string,
+    oddsInitialTimeSeconds: number,
+    oddsUsername: string,
   }
 }
 

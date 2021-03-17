@@ -93,6 +93,8 @@ func (b *Bus) instantiateAndStartGame(ctx context.Context, accUser *entity.User,
 		Id: tournamentID,
 	}
 
+	gameReq.OddsUsername = reqUser.Username
+
 	g, err := gameplay.InstantiateNewGame(ctx, b.gameStore, b.config,
 		[2]*entity.User{accUser, reqUser}, assignedFirst, gameReq, trdata)
 	if err != nil {
