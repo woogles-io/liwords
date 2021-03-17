@@ -24,7 +24,6 @@ import (
 	"github.com/domino14/liwords/pkg/tournament"
 	"github.com/domino14/liwords/pkg/user"
 
-	"github.com/domino14/liwords/rpc/api/proto/realtime"
 	pb "github.com/domino14/liwords/rpc/api/proto/realtime"
 	macondopb "github.com/domino14/macondo/gen/api/proto/macondo"
 )
@@ -259,7 +258,6 @@ outerfor:
 			err := b.adjudicateGames(ctx)
 			if err != nil {
 				log.Err(err).Msg("adjudicate-error")
-				break
 			}
 
 		case <-gameCounter.C:
@@ -274,7 +272,6 @@ outerfor:
 			err := b.soughtGameStore.ExpireOld(ctx)
 			if err != nil {
 				log.Err(err).Msg("expiration-error")
-				break
 			}
 		}
 	}
@@ -523,6 +520,9 @@ func (b *Bus) pubToUser(userID string, evt *entity.EventWrapper,
 	// Publish to a user, but pass in a specific channel. Only publish to those
 	// user sockets that are in this channel/realm/what-have-you.
 	sanitized, err := sanitize(evt, userID)
+	if err != nil {
+		return err
+	}
 	bts, err := sanitized.Serialize()
 	if err != nil {
 		return err
@@ -540,6 +540,9 @@ func (b *Bus) pubToUser(userID string, evt *entity.EventWrapper,
 func (b *Bus) pubToConnectionID(connID, userID string, evt *entity.EventWrapper) error {
 	// Publish to a specific connection ID.
 	sanitized, err := sanitize(evt, userID)
+	if err != nil {
+		return err
+	}
 	bts, err := sanitized.Serialize()
 	if err != nil {
 		return err
@@ -807,7 +810,7 @@ func (b *Bus) sendTournamentContext(ctx context.Context, realm, userID, connID s
 			return err
 		}
 
-		evt := entity.WrapEvent(r, realtime.MessageType_TOURNAMENT_DIVISION_MESSAGE)
+		evt := entity.WrapEvent(r, pb.MessageType_TOURNAMENT_DIVISION_MESSAGE)
 		err = b.pubToConnectionID(connID, userID, evt)
 		if err != nil {
 			return err
