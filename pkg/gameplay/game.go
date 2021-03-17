@@ -96,6 +96,7 @@ func InstantiateNewGame(ctx context.Context, gameStore GameStore, cfg *config.Co
 		return nil, fmt.Errorf("odds username not in players: %s", req.OddsUsername)
 	}
 	if req.OddsInitialTimeSeconds != req.InitialTimeSeconds &&
+		req.OddsInitialTimeSeconds != 0 &&
 		req.OddsUsername == "" {
 		return nil, errors.New("time odds given but no odds username specified")
 	}
