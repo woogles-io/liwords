@@ -80,6 +80,8 @@ message SocketTokenResponse {
 
 message UserLogoutRequest {}
 message LogoutResponse {}
+message NotifyAccountClosureRequest {}
+message NotifyAccountClosureResponse {}
 
 service AuthenticationService {
   rpc Login(UserLoginRequest) returns(LoginResponse);
@@ -90,6 +92,7 @@ service AuthenticationService {
   rpc ResetPasswordStep2(ResetPasswordRequestStep2)
       returns(ResetPasswordResponse);
   rpc ChangePassword(ChangePasswordRequest) returns(ChangePasswordResponse);
+  rpc NotifyAccountClosure(NotifyAccountClosureRequest) returns(NotifyAccountClosureResponse);
 }
 
 message UserRegistrationRequest {

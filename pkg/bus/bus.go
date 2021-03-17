@@ -258,7 +258,6 @@ outerfor:
 			err := b.adjudicateGames(ctx)
 			if err != nil {
 				log.Err(err).Msg("adjudicate-error")
-				break
 			}
 
 		case <-gameCounter.C:
@@ -273,7 +272,6 @@ outerfor:
 			err := b.soughtGameStore.ExpireOld(ctx)
 			if err != nil {
 				log.Err(err).Msg("expiration-error")
-				break
 			}
 		}
 	}
@@ -429,6 +427,7 @@ func (b *Bus) handleNatsPublish(ctx context.Context, subtopics []string, data []
 			return err
 		}
 		entGame.RLock()
+		defer entGame.RUnlock()
 		// Determine if one of our players is a bot (no bot-vs-bot supported yet?)
 		// and if it is the bot's turn.
 		if entGame.GameReq != nil &&
@@ -436,11 +435,7 @@ func (b *Bus) handleNatsPublish(ctx context.Context, subtopics []string, data []
 			entGame.Game.Playing() != macondopb.PlayState_GAME_OVER &&
 			entGame.PlayerIDOnTurn() != userID {
 
-			entGame.RUnlock()
-			// Do this in a separate goroutine as it blocks while waiting for bot move.
-			go b.handleBotMove(ctx, entGame)
-		} else {
-			entGame.RUnlock()
+			b.goHandleBotMove(ctx, entGame)
 		}
 		return nil
 
@@ -525,6 +520,9 @@ func (b *Bus) pubToUser(userID string, evt *entity.EventWrapper,
 	// Publish to a user, but pass in a specific channel. Only publish to those
 	// user sockets that are in this channel/realm/what-have-you.
 	sanitized, err := sanitize(evt, userID)
+	if err != nil {
+		return err
+	}
 	bts, err := sanitized.Serialize()
 	if err != nil {
 		return err
@@ -542,6 +540,9 @@ func (b *Bus) pubToUser(userID string, evt *entity.EventWrapper,
 func (b *Bus) pubToConnectionID(connID, userID string, evt *entity.EventWrapper) error {
 	// Publish to a specific connection ID.
 	sanitized, err := sanitize(evt, userID)
+	if err != nil {
+		return err
+	}
 	bts, err := sanitized.Serialize()
 	if err != nil {
 		return err
@@ -802,30 +803,20 @@ func (b *Bus) sendTournamentContext(ctx context.Context, realm, userID, connID s
 	if err != nil {
 		return err
 	}
-	// msg := &pb.FullTournamentDivisions{
-	// 	Divisions: make(map[string]*pb.TournamentDivisionDataResponse),
-	// 	Started:   t.IsStarted,
-	// }
-	// Send empty divisions
-	// evt := entity.WrapEvent(msg, pb.MessageType_TOURNAMENT_FULL_DIVISIONS_MESSAGE)
-	// err = b.pubToConnectionID(connID, userID, evt)
 
 	for name := range t.Divisions {
-		// r, err := tournament.TournamentDivisionDataResponse(ctx, b.tournamentStore, tourneyID, name)
-		// if err != nil {
-		// 	return err
-		// }
-		// msg.Divisions[name] = r
+		r, err := tournament.TournamentDivisionDataResponse(ctx, b.tournamentStore, tourneyID, name)
+		if err != nil {
+			return err
+		}
 
-		// evt := entity.WrapEvent(r)
-
-		err := tournament.SendTournamentDivisionMessage(ctx, b.tournamentStore, tourneyID, name)
+		evt := entity.WrapEvent(r, pb.MessageType_TOURNAMENT_DIVISION_MESSAGE)
+		err = b.pubToConnectionID(connID, userID, evt)
 		if err != nil {
 			return err
 		}
 
 	}
-	// SEND
 
 	return err
 }
