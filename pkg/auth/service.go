@@ -49,6 +49,15 @@ Love,
 The Woogles.io team
 `
 
+const AccountClosureTemplate = `
+Dear Woogles Administrators,
+
+The following user has requested that their account be deleted:
+
+%s
+
+`
+
 var errPasswordTooShort = errors.New("your password is too short, use 8 or more characters")
 
 type AuthenticationService struct {
@@ -313,4 +322,26 @@ func (as *AuthenticationService) ChangePassword(ctx context.Context, r *pb.Chang
 		return nil, twirp.InternalErrorWith(err)
 	}
 	return &pb.ChangePasswordResponse{}, nil
+}
+
+func (as *AuthenticationService) NotifyAccountClosure(ctx context.Context, r *pb.NotifyAccountClosureRequest) (*pb.NotifyAccountClosureResponse, error) {
+	sess, err := apiserver.GetSession(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	err = mod.ActionExists(ctx, as.userStore, sess.UserUUID, false, []ms.ModActionType{ms.ModActionType_SUSPEND_ACCOUNT})
+	if err != nil {
+		log.Err(err).Str("userID", sess.UserUUID).Msg("action-exists-account-closure")
+		return nil, err
+	}
+
+	id, err := emailer.SendSimpleMessage(as.mailgunKey, emailer.WooglesAdministratorAddress, fmt.Sprintf("Account Closure Request for %s", sess.Username),
+		fmt.Sprintf(AccountClosureTemplate, sess.Username))
+	if err != nil {
+		return nil, twirp.InternalErrorWith(err)
+	}
+	log.Info().Str("id", id).Str("email", emailer.WooglesAdministratorAddress).Msg("sent-account-closure")
+
+	return &pb.NotifyAccountClosureResponse{}, nil
 }
