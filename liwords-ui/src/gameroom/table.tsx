@@ -500,7 +500,7 @@ export const Table = React.memo((props: Props) => {
   }, [willHideDefinitionHover, hideDefinitionHover]);
 
   // TODO: remove "false" when backend returns more useful data
-  const enableHoverDefine = gameDone || isObserver;
+  const enableHoverDefine = false && (gameDone || isObserver);
 
   const handleSetHover = useCallback(
     (x: number, y: number, words: Array<string> | undefined) => {
