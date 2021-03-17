@@ -307,7 +307,7 @@ export const Table = React.memo((props: Props) => {
       )
       .then((resp) => {
         setNeedAvatars(false);
-        let players = [...gameInfo.players];
+        const players = [...gameInfo.players];
         resp.data.infos.forEach((info) => {
           if (info.avatar_url.length) {
             const index = gameInfo.players.findIndex(
@@ -495,7 +495,7 @@ export const Table = React.memo((props: Props) => {
   }, [willHideDefinitionHover]);
 
   // TODO: remove "false" when backend returns more useful data
-  const enableHoverDefine = false && (gameDone || isObserver);
+  const enableHoverDefine = gameDone || isObserver;
 
   const handleSetHover = useCallback(
     (x: number, y: number, words: Array<string> | undefined) => {
