@@ -455,12 +455,13 @@ export const Table = React.memo((props: Props) => {
     if (!showDefinitionHover) return undefined;
     const entries = [];
     for (const word of showDefinitionHover.words) {
-      const definition = wordInfo[word];
+      const uppercasedWord = word.toUpperCase();
+      const definition = wordInfo[uppercasedWord];
       if (definition) {
         entries.push(
           <li key={entries.length} className="definition-entry">
             <span className="defined-word">
-              {word}
+              {uppercasedWord}
               {definition.v ? '' : '*'}
             </span>{' '}
             -{' '}
