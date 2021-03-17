@@ -24,6 +24,7 @@ import (
 	"github.com/domino14/liwords/pkg/tournament"
 	"github.com/domino14/liwords/pkg/user"
 
+	"github.com/domino14/liwords/rpc/api/proto/realtime"
 	pb "github.com/domino14/liwords/rpc/api/proto/realtime"
 	macondopb "github.com/domino14/macondo/gen/api/proto/macondo"
 )
@@ -799,30 +800,20 @@ func (b *Bus) sendTournamentContext(ctx context.Context, realm, userID, connID s
 	if err != nil {
 		return err
 	}
-	// msg := &pb.FullTournamentDivisions{
-	// 	Divisions: make(map[string]*pb.TournamentDivisionDataResponse),
-	// 	Started:   t.IsStarted,
-	// }
-	// Send empty divisions
-	// evt := entity.WrapEvent(msg, pb.MessageType_TOURNAMENT_FULL_DIVISIONS_MESSAGE)
-	// err = b.pubToConnectionID(connID, userID, evt)
 
 	for name := range t.Divisions {
-		// r, err := tournament.TournamentDivisionDataResponse(ctx, b.tournamentStore, tourneyID, name)
-		// if err != nil {
-		// 	return err
-		// }
-		// msg.Divisions[name] = r
+		r, err := tournament.TournamentDivisionDataResponse(ctx, b.tournamentStore, tourneyID, name)
+		if err != nil {
+			return err
+		}
 
-		// evt := entity.WrapEvent(r)
-
-		err := tournament.SendTournamentDivisionMessage(ctx, b.tournamentStore, tourneyID, name)
+		evt := entity.WrapEvent(r, realtime.MessageType_TOURNAMENT_DIVISION_MESSAGE)
+		err = b.pubToConnectionID(connID, userID, evt)
 		if err != nil {
 			return err
 		}
 
 	}
-	// SEND
 
 	return err
 }
