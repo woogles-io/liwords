@@ -605,8 +605,10 @@ export const Table = React.memo((props: Props) => {
               { cancelToken: cancelTokenSource.token }
             );
             for (const word of wordsToRedefine) {
-              defineResp.data.results[word].d =
-                otherDefineResp.data.results[word].d;
+              const newDefinition = otherDefineResp.data.results[word].d;
+              if (newDefinition && newDefinition !== word) {
+                defineResp.data.results[word].d = newDefinition;
+              }
             }
           }
         }
