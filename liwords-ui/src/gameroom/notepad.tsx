@@ -121,6 +121,9 @@ export const Notepad = React.memo((props: NotepadProps) => {
     },
     [setCurNotepad]
   );
+  const easterEggEnabled = useMemo(() => /catcam/i.test(curNotepad), [
+    curNotepad,
+  ]);
   const notepadContainer = (
     <div className="notepad-container" style={props.style}>
       <textarea
@@ -131,12 +134,15 @@ export const Notepad = React.memo((props: NotepadProps) => {
         style={props.style}
         onChange={handleNotepadChange}
       />
-      <Button
-        shape="circle"
-        icon={<PlusOutlined />}
-        type="primary"
-        onClick={addPlay}
-      />
+      <React.Fragment>
+        {easterEggEnabled && <EasterEgg />}
+        <Button
+          shape="circle"
+          icon={<PlusOutlined />}
+          type="primary"
+          onClick={addPlay}
+        />
+      </React.Fragment>
     </div>
   );
   if (props.includeCard) {
@@ -145,12 +151,15 @@ export const Notepad = React.memo((props: NotepadProps) => {
         title="Notepad"
         className="notepad-card"
         extra={
-          <Button
-            shape="circle"
-            icon={<PlusOutlined />}
-            type="primary"
-            onClick={addPlay}
-          />
+          <React.Fragment>
+            {easterEggEnabled && <EasterEgg />}
+            <Button
+              shape="circle"
+              icon={<PlusOutlined />}
+              type="primary"
+              onClick={addPlay}
+            />
+          </React.Fragment>
         }
       >
         {notepadContainer}
@@ -159,3 +168,190 @@ export const Notepad = React.memo((props: NotepadProps) => {
   }
   return notepadContainer;
 });
+
+// usage: type catcam on the notepad
+const EasterEgg = (props: any) => {
+  const ctx = useMemo(() => {
+    const AudioContext =
+      window.AudioContext ||
+      ((window as any).webkitAudioContext as AudioContext);
+    return new AudioContext();
+  }, []);
+
+  const muterRef = useRef(ctx.createGain());
+
+  const stopIt = useCallback(() => {
+    muterRef.current.gain.setValueAtTime(0, ctx.currentTime);
+    muterRef.current = ctx.createGain();
+    muterRef.current.gain.setValueAtTime(1, ctx.currentTime);
+    muterRef.current.connect(ctx.destination);
+  }, [ctx]);
+
+  useEffect(() => {
+    return () => {
+      stopIt();
+    };
+  }, [stopIt]);
+
+  const handler = useCallback(
+    (song: string) => {
+      stopIt();
+
+      // Hz, sec, sec
+      const playFreq = (
+        freq: number,
+        timeOn: number,
+        duration: number,
+        type: OscillatorType
+      ) => {
+        const env = ctx.createGain();
+        // TODO: find a believable ADSR envelope
+        env.gain.setValueAtTime(0, timeOn);
+        env.gain.linearRampToValueAtTime(1, timeOn + 0.125 * duration);
+        env.gain.linearRampToValueAtTime(0.5, timeOn + 0.875 * duration);
+        env.gain.linearRampToValueAtTime(0.25, timeOn + duration);
+        env.connect(muterRef.current);
+        const osc = ctx.createOscillator();
+        osc.frequency.value = freq;
+        osc.type = type;
+        osc.connect(env);
+        osc.start(timeOn);
+        osc.stop(timeOn + duration);
+        return osc;
+      };
+
+      let dur = 60 / 120;
+      const t0 = ctx.currentTime;
+      let t = 0;
+      const playNote = (note: number, beats: number, type: OscillatorType) => {
+        if (note) {
+          playFreq(
+            440 * 2 ** ((note - 69) / 12),
+            t0 + t * dur,
+            beats * dur,
+            type
+          );
+        }
+        t += beats;
+      };
+
+      if (song === 'catcam') {
+        // https://www.youtube.com/watch?v=J7UwSVsiwzI
+        dur = 60 / 128;
+        // 69 is middle A and 60 is middle C
+        const song0 = [[0, 4]]; // 4 beats
+        const song1a = [
+          [83, 3],
+          [81, 0.5],
+          [83, 1],
+          [84, 1],
+          [83, 1.5],
+          [81, 0.5],
+          [79, 2.5],
+        ]; // 10 beats
+        const song1 = [...song1a, [76, 5], [0, 1]]; // 16 beats
+        const song2a = [...song1a, [76, 4], [0, 1]]; // 15 beats
+        const song2b = [
+          [79, 0.5],
+          [76, 0.5],
+        ]; // 1 beat
+        const song3 = [
+          [74, 2.5],
+          [72, 0.5],
+          [74, 0.5],
+          [76, 1],
+          [80, 1],
+          [81, 1],
+          [83, 1.5],
+        ]; // 8 beats
+        const song4 = [
+          [74, 5.5],
+          [76, 2.5 / 3],
+          [74, 2.5 / 3],
+          [69, 2.5 / 3],
+        ]; // 8 beats
+        const song5a = [[71, 4]]; // 4 beats
+        const song5b = [
+          [71, 1],
+          [0, 3],
+        ]; // 4 beats
+        const song1_d = song1.map(([note, beats]) => [note - 12, beats]);
+        const song2a_d = song2a.map(([note, beats]) => [note - 12, beats]);
+        const fullSong = [
+          ...song0, // 4 beats
+          ...song0, // 4 beats
+          ...song1_d, // 16 beats
+          ...song2a_d, // 15 beats
+          ...song2b, // 1 beat
+          ...song3, // 8 beats
+          ...song3, // 8 beats
+          ...song4, // 8 beats
+          ...song5a, // 4 beats
+          ...song0, // 4 beats
+          ...song1, // 16 beats
+          ...song2a, // 15 beats
+          ...song2b, // 1 beat
+          ...song3, // 8 beats
+          ...song3, // 8 beats
+          ...song4, // 8 beats
+          ...song5b, // 4 beats
+        ];
+
+        for (const [note, beats] of fullSong) {
+          playNote(note, beats, 'sawtooth');
+        }
+
+        const accompaniment = [
+          40,
+          40,
+          45,
+          45,
+          40,
+          40,
+          45,
+          45,
+          40,
+          40,
+          38,
+          40,
+          38,
+          40,
+          38,
+          38,
+        ];
+
+        t = 0;
+        for (const note1 of [...accompaniment, ...accompaniment]) {
+          const note2 = note1 + 12;
+          for (let i = 0; i < 4; ++i) {
+            for (const note of [note1, note2]) {
+              playNote(note, 0.5, 'triangle');
+            }
+          }
+        }
+        playNote(40, 1, 'triangle');
+
+        for (const t1 of [82, 98]) {
+          t = t1;
+          for (let i = 0; i < 6; ++i) {
+            for (const note of [79, 78, 76, 74]) {
+              playNote(note, 1 / 4, 'square');
+            }
+          }
+        }
+      }
+    },
+    [stopIt, ctx]
+  );
+
+  return (
+    <React.Fragment>
+      <Button
+        shape="circle"
+        icon={<React.Fragment>&#x1f63b;</React.Fragment>}
+        type="primary"
+        onClick={() => handler('catcam')}
+      />
+    </React.Fragment>
+  );
+};
