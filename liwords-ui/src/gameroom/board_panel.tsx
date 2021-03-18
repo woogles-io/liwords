@@ -587,8 +587,9 @@ export const BoardPanel = React.memo((props: Props) => {
         return;
       }
       setArrowProperties(nextArrowPropertyState(arrowProperties, row, col));
+      props.handleUnsetHover?.();
     },
-    [arrowProperties, props.board]
+    [arrowProperties, props.board, props.handleUnsetHover]
   );
   const keydown = useCallback(
     (evt: React.KeyboardEvent) => {

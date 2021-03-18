@@ -578,6 +578,40 @@ export const Table = React.memo((props: Props) => {
           },
           { cancelToken: cancelTokenSource.token }
         );
+        if (hasDefinitionHover) {
+          // for certain lexicons, try getting definitions from other sources
+          for (const otherLexicon of lexicon === 'NWL18'
+            ? ['NWL20']
+            : lexicon === 'ECWL'
+            ? ['CSW19', 'NWL20']
+            : []) {
+            const wordsToRedefine = [];
+            for (const word of wordsToDefine) {
+              if (
+                defineResp.data.results[word]?.v &&
+                defineResp.data.results[word].d === word
+              ) {
+                wordsToRedefine.push(word);
+              }
+            }
+            if (!wordsToRedefine.length) break;
+            const otherDefineResp = await axios.post<DefineWordsResponse>(
+              toAPIUrl('word_service.WordService', 'DefineWords'),
+              {
+                lexicon: otherLexicon,
+                words: wordsToRedefine,
+                definitions: hasDefinitionHover,
+              },
+              { cancelToken: cancelTokenSource.token }
+            );
+            for (const word of wordsToRedefine) {
+              const newDefinition = otherDefineResp.data.results[word].d;
+              if (newDefinition && newDefinition !== word) {
+                defineResp.data.results[word].d = newDefinition;
+              }
+            }
+          }
+        }
         setWordInfo((oldWordInfo) => {
           const wordInfo = { ...oldWordInfo };
           for (const word of wordsToDefine) {
