@@ -2,6 +2,7 @@ package user
 
 import (
 	"context"
+	_ "embed"
 	"errors"
 	"fmt"
 	"strings"
@@ -28,124 +29,16 @@ type RedisPresenceStore struct {
 // SetPresenceScript is a Lua script that handles presence in an atomic way.
 // We may want to move this to a separate file if we start adding more Lua
 // scripts.
-const SetPresenceScript = `
--- Arguments to this Lua script:
--- uuid, username, authOrAnon, connID, channel string, timestamp  (ARGV[1] through [6])
-
-local userpresencekey = "userpresence:"..ARGV[1]
-local channelpresencekey = "channelpresence:"..ARGV[5]
-local userkey = ARGV[1].."#"..ARGV[2].."#"..ARGV[3].."#"..ARGV[4] -- uuid#username#auth#connID
--- 3 minutes. We will renew these keys constantly.
-local expiry = 180
-local ts = tonumber(ARGV[6])
-local simpleuserkey = ARGV[4].."#"..ARGV[5] -- just conn_id#channel
--- Set user presence:
-redis.call("ZADD", userpresencekey, ts + expiry, simpleuserkey)
-redis.call("ZADD", "userpresences", ts + expiry, userkey.."#"..ARGV[5])
--- Do not modify lastpresences here. We only modify that when people leave, or on
--- the renew presence here. We'd like there to be a little time (a few seconds)
--- when the user logs in to determine how long it's been since they last logged in.
--- Set channel presence:
-redis.call("ZADD", channelpresencekey, ts + expiry, userkey)
--- Expire ephemeral presence keys:
-
-redis.call("EXPIRE", userpresencekey, expiry)
-redis.call("EXPIRE", channelpresencekey, expiry)
-`
+//go:embed set_presence.lua
+var SetPresenceScript string
 
 // ClearPresenceScript clears the presence and returns the channel(s) it was in.
-const ClearPresenceScript = `
--- Arguments to this Lua script:
--- uuid, username, authOrAnon, connID, timestamp
+//go:embed clear_presence.lua
+var ClearPresenceScript string
 
-local userpresencekey = "userpresence:"..ARGV[1]
-local userkey = ARGV[1].."#"..ARGV[2].."#"..ARGV[3].."#"..ARGV[4]  -- uuid#username#anon#conn_id
-
--- get the current channels that this presence is in.
-
-local curchannels = redis.call("ZRANGE", userpresencekey, 0, -1)
-
-local deletedfrom = {}
-local stillconnectedto = {}
-local ts = tonumber(ARGV[5])
-
--- only delete the users where the conn_id actually matches
-for i, v in ipairs(curchannels) do
-	-- v looks like conn_id#channel
-	local conn_id, chan = string.match(v, "^([%a%d]+)#([%a%.%d]+)$")
-	if not (conn_id and chan) then
-		-- should not happen
-	elseif conn_id == ARGV[4] then
-		table.insert(deletedfrom, chan)
-		-- delete from the relevant channel key
-		redis.call("ZREM", "channelpresence:"..chan, userkey)
-		redis.call("ZREM", userpresencekey, v)
-		redis.call("ZREM", "userpresences", userkey.."#"..chan)
-		-- update the last known presence time.
-		if ARGV[3] == "auth" then
-			redis.call("ZADD", "lastpresences", ts, ARGV[1])
-		end
-	else
-		-- user is still in chan through another conn, do not delete yet
-		stillconnectedto[chan] = true
-	end
-end
-
-local totallydisconnectedfrom = {}
-for _, chan in ipairs(deletedfrom) do
-	if not stillconnectedto[chan] then
-		table.insert(totallydisconnectedfrom, chan)
-	end
-end
-
--- return the channel(s) this user totally disconnected from.
-return totallydisconnectedfrom
-`
-
-const RenewPresenceScript = `
--- Arguments to this Lua script:
--- uuid, username, auth, connID, ts (ARGV[1] through [5])
-local userpresencekey = "userpresence:"..ARGV[1]
-local userkey = ARGV[1].."#"..ARGV[2].."#"..ARGV[3].."#"..ARGV[4] -- uuid#username#auth#connID
-
-local expiry = 180
-local ts = tonumber(ARGV[5])
-
-local purgeold = {}
-
--- Get all members of userpresencekey
-local curchannels = redis.call("ZRANGE", userpresencekey, 0, -1)
-
--- For every channel that we are in, we renew that channel, only for this conn id.
-for i, v in ipairs(curchannels) do
-	-- v looks like conn_id#channel
-	local chan = string.match(v, ARGV[4].."#([%a%.%d]+)")
-	if chan then
-		-- extend expiries of the channelpresence...
-		redis.call("ZADD", "channelpresence:"..chan, ts + expiry, userkey)
-		redis.call("EXPIRE", "channelpresence:"..chan, expiry)
-		-- and of the userpresence
-		redis.call("ZADD", userpresencekey, ts + expiry, v)
-		redis.call("EXPIRE", userpresencekey, expiry)
-		-- and the overall set of user presences.
-		redis.call("ZADD", "userpresences", ts + expiry, userkey.."#"..chan)
-		-- set the last known presence time.
-		if ARGV[3] == "auth" then
-			redis.call("ZADD", "lastpresences", ts, ARGV[1])
-		end
-		table.insert(purgeold, "channelpresence:"..chan)
-		table.insert(purgeold, userpresencekey)
-		table.insert(purgeold, "userpresences")
-	end
-end
-
--- remove all subkeys inside the zsets that have expired.
-for i, v in ipairs(purgeold) do
-	redis.call("ZREMRANGEBYSCORE", v, 0, ts)
-end
-
-return purgeold
-`
+// RenewPresenceScript renews the presence
+//go:embed renew_presence.lua
+var RenewPresenceScript string
 
 func NewRedisPresenceStore(r *redis.Pool) *RedisPresenceStore {
 
