@@ -457,7 +457,8 @@ export const Table = React.memo((props: Props) => {
     for (const word of showDefinitionHover.words) {
       const uppercasedWord = word.toUpperCase();
       const definition = wordInfo[uppercasedWord];
-      if (definition) {
+      // if phony-checker returned {v:true,d:""}, wait for definition to load
+      if (definition && !(definition.v && !definition.d)) {
         entries.push(
           <li key={entries.length} className="definition-entry">
             <span className="defined-word">
