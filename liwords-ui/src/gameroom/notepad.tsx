@@ -125,12 +125,16 @@ export const Notepad = React.memo((props: NotepadProps) => {
   const easterEggEnabled = useMemo(() => /catcam/i.test(curNotepad), [
     curNotepad,
   ]);
-  const playWolges = useMemo(() => /wolges/i.test(curNotepad), [curNotepad]);
+  const numWolgesWas = useRef(0);
+  const numWolges = useMemo(() => curNotepad.match(/wolges/gi)?.length || 0, [
+    curNotepad,
+  ]);
   useEffect(() => {
-    if (playWolges) {
+    if (numWolges > numWolgesWas.current) {
       BoopSounds.playSound('wolgesSound');
     }
-  }, [playWolges]);
+    numWolgesWas.current = numWolges;
+  }, [numWolges]);
   const notepadContainer = (
     <div className="notepad-container" style={props.style}>
       <textarea
