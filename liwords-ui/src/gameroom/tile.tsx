@@ -245,7 +245,6 @@ const Tile = React.memo((props: TileProps) => {
         }
         visible
       >
-        {' '}
         {ret}
       </Popover>
     );
