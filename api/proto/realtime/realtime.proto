@@ -450,6 +450,7 @@ message TournamentGame {
 message PlayerProperties {
   bool removed = 1;
   int32 rating = 2;
+  bool checked_in = 3;
 }
 
 message PlayerRoundInfo {

@@ -1162,6 +1162,9 @@ export class PlayerProperties extends jspb.Message {
   getRating(): number;
   setRating(value: number): void;
 
+  getCheckedIn(): boolean;
+  setCheckedIn(value: boolean): void;
+
   serializeBinary(): Uint8Array;
   toObject(includeInstance?: boolean): PlayerProperties.AsObject;
   static toObject(includeInstance: boolean, msg: PlayerProperties): PlayerProperties.AsObject;
@@ -1176,6 +1179,7 @@ export namespace PlayerProperties {
   export type AsObject = {
     removed: boolean,
     rating: number,
+    checkedIn: boolean,
   }
 }
 

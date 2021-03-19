@@ -13,6 +13,7 @@ type DivisionManager interface {
 	SubmitResult(int, string, string, int, int, realtime.TournamentGameResult,
 		realtime.TournamentGameResult, realtime.GameEndReason, bool, int, string) error
 	PairRound(int) error
+	GetCurrentRound() int
 	GetStandings(int) ([]*realtime.PlayerStanding, error)
 	SetPairing(string, string, int, bool) error
 	SetSingleRoundControls(int, *realtime.RoundControl) error

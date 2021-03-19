@@ -671,6 +671,11 @@ func PairRound(ctx context.Context, ts TournamentStore, id string, division stri
 		return errors.New("cannot pair a round before the tournament has started")
 	}
 
+	currentRound := divisionObject.DivisionManager.GetCurrentRound()
+	if round < currentRound+1 {
+		return fmt.Errorf("cannot repair non-future round %d since current round is %d", round, currentRound)
+	}
+
 	err = divisionObject.DivisionManager.PairRound(round)
 
 	if err != nil {

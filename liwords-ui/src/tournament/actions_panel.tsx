@@ -20,6 +20,7 @@ import { Pairings } from './pairings';
 import { isPairedMode } from '../store/constants';
 import { Standings } from './standings';
 import { DirectorTools } from './director_tools';
+import { CheckIn } from './check_in';
 
 export type RecentTournamentGames = {
   games: Array<RecentGame>;
@@ -210,6 +211,7 @@ export const ActionsPanel = React.memo((props: Props) => {
               username={username}
               sendReady={props.sendReady}
             />
+            <CheckIn />
           </div>
         );
       }

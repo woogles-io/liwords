@@ -420,6 +420,10 @@ func (t *ClassicDivision) SubmitResult(round int,
 	return nil
 }
 
+func (t *ClassicDivision) GetCurrentRound() int {
+	return int(t.CurrentRound)
+}
+
 func (t *ClassicDivision) PairRound(round int) error {
 	if round < 0 || round >= len(t.Matrix) {
 		return fmt.Errorf("round number out of range: %d", round)
@@ -933,13 +937,13 @@ func (t *ClassicDivision) writeResponse(round int) error {
 							newPlayers = []string{fmt.Sprintf("%d", playerOneIndex), fmt.Sprintf("%d", playerTwoIndex)}
 						}
 						newPRI := &realtime.PlayerRoundInfo{
-							Games: oldPRI.Games,
-							Outcomes: oldPRI.Outcomes,
+							Games:       oldPRI.Games,
+							Outcomes:    oldPRI.Outcomes,
 							ReadyStates: oldPRI.ReadyStates,
-							Players: newPlayers}
+							Players:     newPlayers}
 						skinnyPairingsMap[newKey] = newPRI
 						skinniedMappings[oldKey] = newKey
-						newKeyInt++		
+						newKeyInt++
 					}
 				}
 			}

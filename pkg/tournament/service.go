@@ -464,3 +464,10 @@ func (ts *TournamentService) CreateClubSession(ctx context.Context, req *pb.NewC
 func (ts *TournamentService) GetRecentClubSessions(ctx context.Context, req *pb.RecentClubSessionsRequest) (*pb.ClubSessionsResponse, error) {
 	return ts.tournamentStore.GetRecentClubSessions(ctx, req.Id, int(req.Count), int(req.Offset))
 }
+
+func (ts *TournamentService) UncheckIn(ctx context.Context, req *pb.UncheckInRequest) (*pb.TournamentResponse, error) {
+	err := authenticateDirector(ctx, ts, req.ClubId, false)
+	if err != nil {
+		return nil, err
+	}
+}

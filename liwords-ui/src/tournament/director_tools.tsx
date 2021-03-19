@@ -7,6 +7,7 @@ import { UsernameWithContext } from '../shared/usernameWithContext';
 import { Button, message } from 'antd';
 import axios from 'axios';
 import { toAPIUrl } from '../api/api';
+import { GhettoTools } from './ghetto_tools';
 /*
 import { AddPlayerForm, playersToAdd } from './add_player_form';
 import axios from 'axios';
@@ -153,10 +154,16 @@ export const DirectorTools = React.memo((props: DTProps) => {
     return null;
   };
 
+  const renderGhettoTools = () => {
+    return <GhettoTools tournamentID={props.tournamentID} />;
+  };
+
   return (
     <div className="director-tools">
       {renderStartButton()}
       {renderRoster()}
+      <hr />
+      {renderGhettoTools()}
     </div>
   );
 });
