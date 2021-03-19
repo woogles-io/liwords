@@ -709,8 +709,13 @@ func (s *DBStore) UsersByPrefix(ctx context.Context, prefix string) ([]*pb.Basic
 	}
 
 	var us []u
+	// This is slightly egregious. Since importing the mod
+	// package would result in a circular dependency, we cannot
+	// get the string the correct way with ms.ModActionType_SUSPEND_ACCOUNT.String(),
+	// so we hard code it here.
 	if result := s.db.Table("users").Select("username, uuid").
-		Where("lower(username) like ? AND internal_bot = ?",
+		Where("lower(username) like ? AND internal_bot = ? AND (actions IS NULL OR actions->>'SUSPEND_ACCOUNT' IS NULL OR
+			actions->'SUSPEND_ACCOUNT'->end_time->seconds < extract(epoch from now()))",
 			strings.ToLower(prefix)+"%", false).
 		Limit(20).
 		Scan(&us); result.Error != nil {
@@ -723,7 +728,7 @@ func (s *DBStore) UsersByPrefix(ctx context.Context, prefix string) ([]*pb.Basic
 		users[idx] = &pb.BasicUser{Username: u.Username, Uuid: u.UUID}
 	}
 	sort.Slice(users, func(i int, j int) bool {
-		return users[i].Username < users[j].Username
+		return strings.ToLower(users[i].Username) < strings.ToLower(users[j].Username)
 	})
 
 	return users, nil
