@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect } from 'react';
-import { Link, useParams, useLocation } from 'react-router-dom';
-import { notification, Card, Table, Row, Col, Select, Switch } from 'antd';
+import { useParams, useLocation } from 'react-router-dom';
+import { notification, Card, Table, Row, Col } from 'antd';
 import axios, { AxiosError } from 'axios';
 import { useMountedState } from '../utils/mounted';
 import { TopBar } from '../topbar/topbar';
