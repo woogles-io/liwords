@@ -1,10 +1,12 @@
 import React, { useCallback, useEffect } from 'react';
 import {
+  Alert,
   Button,
   Col,
   Form,
   Input,
   Modal,
+  Upload,
   Row,
   Select,
   notification,
@@ -12,7 +14,6 @@ import {
 import { PlayerAvatar } from '../shared/player_avatar';
 import { PlayerMetadata } from '../gameroom/game_info';
 import { useMountedState } from '../utils/mounted';
-import { AvatarEditModal } from './avatar_edit_modal';
 import { AvatarRemoveModal } from './avatar_remove_modal';
 import axios, { AxiosError } from 'axios';
 import { toAPIUrl } from '../api/api';
@@ -48,14 +49,12 @@ export const PersonalInfo = React.memo((props: Props) => {
   const { useState } = useMountedState();
   const { TextArea } = Input;
 
-  const [updateAvatarModalVisible, setUpdateAvatarModalVisible] = useState(
-    false
-  );
   const [removeAvatarModalVisible, setRemoveAvatarModalVisible] = useState(
     false
   );
   const [bioTipsModalVisible, setBioTipsModalVisible] = useState(false);
   const [avatarErr, setAvatarErr] = useState('');
+  const [avatarFile, setAvatarFile] = useState(new File([''], ''));
 
   const avatarErrorCatcher = (e: AxiosError) => {
     if (e.response) {
@@ -68,12 +67,22 @@ export const PersonalInfo = React.memo((props: Props) => {
     }
   };
 
-  useEffect(() => {
-    setAvatarErr('');
-  }, [updateAvatarModalVisible]);
-  const cancelUpdateAvatarModal = useCallback(() => {
-    setUpdateAvatarModalVisible(false);
-  }, []);
+  const fileProps = {
+    beforeUpload: (file: File) => {
+      return false;
+    },
+    maxCount: 1,
+    onChange: (info: any) => {
+      if (info.fileList.length > 0) {
+        setAvatarFile(info.fileList[0].originFileObj);
+        updateAvatar();
+      } else {
+        setAvatarFile(new File([''], ''));
+      }
+    },
+    accept: 'image/jpeg',
+    showUploadList: false,
+  };
 
   const cancelRemoveAvatarModal = useCallback(() => {
     setRemoveAvatarModalVisible(false);
@@ -99,37 +108,32 @@ export const PersonalInfo = React.memo((props: Props) => {
       .catch(avatarErrorCatcher);
   }, [props]);
 
-  const updateAvatar = useCallback(
-    (avatarFile: File) => {
-      let reader = new FileReader();
-      reader.onload = () => {
-        axios
-          .post(
-            toAPIUrl('user_service.ProfileService', 'UpdateAvatar'),
-            {
-              jpg_data: btoa(String(reader.result)),
-            },
-            {
-              withCredentials: true,
-            }
-          )
-          .then((resp) => {
-            notification.info({
-              message: 'Success',
-              description: 'Your avatar was updated.',
-            });
-            setUpdateAvatarModalVisible(false);
-            props.updatedAvatar(resp.data.avatar_url);
-          })
-          .catch(avatarErrorCatcher);
-      };
-      reader.readAsBinaryString(avatarFile);
-    },
-    [props]
-  );
+  const updateAvatar = useCallback(() => {
+    let reader = new FileReader();
+    reader.onload = () => {
+      axios
+        .post(
+          toAPIUrl('user_service.ProfileService', 'UpdateAvatar'),
+          {
+            jpg_data: btoa(String(reader.result)),
+          },
+          {
+            withCredentials: true,
+          }
+        )
+        .then((resp) => {
+          notification.info({
+            message: 'Success',
+            description: 'Your avatar was updated.',
+          });
+          props.updatedAvatar(resp.data.avatar_url);
+        })
+        .catch(avatarErrorCatcher);
+    };
+    reader.readAsBinaryString(avatarFile);
+  }, [props, avatarFile]);
 
   const updateFields = (values: { [key: string]: string }) => {
-    console.log(values);
     axios
       .post(
         toAPIUrl('user_service.ProfileService', 'UpdatePersonalInfo'),
@@ -220,12 +224,9 @@ export const PersonalInfo = React.memo((props: Props) => {
       {props.player?.avatar_url !== '' ? (
         <div className="avatar-section">
           <PlayerAvatar player={props.player} />
-          <Button
-            className="change-avatar"
-            onClick={() => setUpdateAvatarModalVisible(true)}
-          >
-            Change
-          </Button>
+          <Upload {...fileProps}>
+            <Button className="change-avatar">Change</Button>
+          </Upload>
           <Button
             className="remove-avatar"
             onClick={() => setRemoveAvatarModalVisible(true)}
@@ -236,21 +237,13 @@ export const PersonalInfo = React.memo((props: Props) => {
       ) : (
         <div className="no-avatar-section">
           {' '}
-          <Button
-            className="change-avatar"
-            onClick={() => setUpdateAvatarModalVisible(true)}
-          >
-            Add a Profile photo
-          </Button>
+          <Upload {...fileProps}>
+            <Button className="change-avatar">Add a Profile photo</Button>
+          </Upload>
         </div>
       )}
+      {avatarErr !== '' ? <Alert message={avatarErr} type="error" /> : null}
       {bioTipsModal}
-      <AvatarEditModal
-        visible={updateAvatarModalVisible}
-        error={avatarErr}
-        onOk={updateAvatar}
-        onCancel={cancelUpdateAvatarModal}
-      />
       <AvatarRemoveModal
         visible={removeAvatarModalVisible}
         error={avatarErr}

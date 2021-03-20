@@ -1,6 +1,6 @@
 import React from 'react';
 import { useMountedState } from '../utils/mounted';
-import { Button, Input, Form, Alert, Row, Col, notification } from 'antd';
+import { Button, Input, Form, Row, Col, notification } from 'antd';
 import { Link } from 'react-router-dom';
 import axios from 'axios';
 import { toAPIUrl } from '../api/api';
@@ -75,7 +75,7 @@ export const ChangePassword = React.memo((props: Props) => {
 							rules={[
 								{
 									validator: async (_, oldPassword) => {
-										if (err != '') {
+										if (err !== '') {
 											return Promise.reject(new Error(err));
 										}
 									},

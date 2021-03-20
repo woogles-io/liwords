@@ -7,7 +7,6 @@ import { PersonalInfo } from './personal_info';
 import { CloseAccount } from './close_account';
 import { Preferences } from './preferences';
 import { BlockedPlayers } from './blocked_players';
-import { Login } from '../lobby/login';
 import { LogOut } from './log_out_woogles';
 import { Support } from './support_woogles';
 import axios, { AxiosError } from 'axios';
@@ -93,7 +92,7 @@ export const Settings = React.memo((props: Props) => {
         setAbout(resp.data.about);
       })
       .catch(errorCatcher);
-  }, [viewer]);
+  }, [viewer, loggedIn]);
 
   type CategoryProps = {
     title: string;
