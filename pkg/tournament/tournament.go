@@ -447,6 +447,8 @@ func SetResult(ctx context.Context,
 	amendment bool,
 	g *entity.Game) error {
 
+	log.Debug().Str("playerOneId", playerOneId).Str("playerTwoId", playerTwoId).Msg("tSetResult")
+
 	t, err := ts.Get(ctx, id)
 	if err != nil {
 		return err
@@ -525,6 +527,8 @@ func SetResult(ctx context.Context,
 	if err != nil {
 		return err
 	}
+
+	log.Debug().Str("p1", p1.Username).Str("p2", p2.Username).Msg("after-get-by-uuid")
 
 	gid := ""
 	if g != nil {

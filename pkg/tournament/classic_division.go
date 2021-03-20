@@ -262,6 +262,9 @@ func (t *ClassicDivision) SubmitResult(round int,
 	gameIndex int,
 	id string) error {
 
+	log.Debug().Str("p1", p1).Str("p2", p2).Int("p1Score", p1Score).Int("p2Score", p2Score).
+		Interface("p1Result", p1Result).Interface("p2Result", p2Result).Interface("gameendReason", reason).
+		Bool("amend", amend).Int("gameIndex", gameIndex).Str("tid", id).Msg("submit-result")
 	// Fetch the player round records
 	pk1, err := t.getPairingKey(p1, round)
 	if err != nil {
@@ -1219,7 +1222,7 @@ func (t *ClassicDivision) getPairingKey(player string, round int) (string, error
 
 	playerIndex, ok := t.PlayerIndexMap[player]
 	if !ok {
-		return "", fmt.Errorf("player does not exist in the division: %s", player)
+		return "", fmt.Errorf("player does not exist in the division: %s (getPairingKey)", player)
 	}
 	return t.Matrix[round][playerIndex], nil
 }

@@ -1,11 +1,23 @@
 // Ghetto tools are Cesar tools before making things pretty.
 
 import { MinusCircleOutlined, PlusOutlined } from '@ant-design/icons';
-import { Button, Form, Input, message, Modal, Space } from 'antd';
+import {
+  Button,
+  Form,
+  Input,
+  InputNumber,
+  message,
+  Modal,
+  Select,
+  Space,
+  Switch,
+} from 'antd';
 import axios from 'axios';
 import { Store } from 'rc-field-form/lib/interface';
 import React, { useState } from 'react';
 import { toAPIUrl } from '../api/api';
+import { Division } from '../store/reducers/tournament_reducer';
+import { useTournamentStoreContext } from '../store/store';
 
 type ModalProps = {
   title: string;
@@ -25,6 +37,8 @@ const FormModal = (props: ModalProps) => {
     'add-players': <AddPlayers tournamentID={props.tournamentID} />,
     'remove-player': <RemovePlayer tournamentID={props.tournamentID} />,
     'clear-checked-in': <ClearCheckedIn tournamentID={props.tournamentID} />,
+    'set-pairing': <SetPairing tournamentID={props.tournamentID} />,
+    'set-result': <SetResult tournamentID={props.tournamentID} />,
   };
 
   return (
@@ -384,6 +398,235 @@ const ClearCheckedIn = (props: { tournamentID: string }) => {
 
   return (
     <Form onFinish={onFinish}>
+      <Form.Item>
+        <Button type="primary" htmlType="submit">
+          Submit
+        </Button>
+      </Form.Item>
+    </Form>
+  );
+};
+
+const userUUID = (username: string, divobj: Division) => {
+  if (!divobj) {
+    return '';
+  }
+  const p = divobj.players.find((p) => {
+    const parts = p.split(':');
+    const pusername = parts[1].toLowerCase();
+
+    if (username.toLowerCase() === pusername) {
+      return true;
+    }
+    return false;
+  });
+  if (!p) {
+    return '';
+  }
+  return p.split(':')[0];
+};
+
+const SetPairing = (props: { tournamentID: string }) => {
+  const { tournamentContext } = useTournamentStoreContext();
+
+  const onFinish = (vals: Store) => {
+    const obj = {
+      id: props.tournamentID,
+      division: vals.division,
+      pairings: [
+        {
+          player_one_id:
+            userUUID(vals.p1, tournamentContext.divisions[vals.division]) +
+            ':' +
+            vals.p1,
+          player_two_id:
+            userUUID(vals.p2, tournamentContext.divisions[vals.division]) +
+            ':' +
+            vals.p2,
+          round: vals.round - 1, // 1-indexed input
+        },
+      ],
+    };
+    axios
+      .post<{}>(
+        toAPIUrl('tournament_service.TournamentService', 'SetPairing'),
+        obj
+      )
+      .then((resp) => {
+        message.info({
+          content: 'Pairing set',
+          duration: 3,
+        });
+      })
+      .catch((err) => {
+        message.error({
+          content: 'Error ' + err.response?.data?.msg,
+          duration: 5,
+        });
+      });
+  };
+
+  return (
+    <Form onFinish={onFinish}>
+      <Form.Item
+        name="division"
+        label="Division Name"
+        rules={[
+          {
+            required: true,
+            message: 'Please input division name',
+          },
+        ]}
+      >
+        {/* lazy right now but all of these need required */}
+        <Input />
+      </Form.Item>
+
+      <Form.Item name="p1" label="Player 1 username">
+        <Input />
+      </Form.Item>
+
+      <Form.Item name="p2" label="Player 2 username">
+        <Input />
+      </Form.Item>
+
+      <Form.Item name="round" label="Round (1-indexed)">
+        <InputNumber min={1} />
+      </Form.Item>
+
+      <Form.Item>
+        <Button type="primary" htmlType="submit">
+          Submit
+        </Button>
+      </Form.Item>
+    </Form>
+  );
+};
+
+const SetResult = (props: { tournamentID: string }) => {
+  const { tournamentContext } = useTournamentStoreContext();
+
+  const onFinish = (vals: Store) => {
+    const obj = {
+      id: props.tournamentID,
+      division: vals.division,
+      player_one_id: userUUID(
+        vals.p1,
+        tournamentContext.divisions[vals.division]
+      ),
+      player_two_id: userUUID(
+        vals.p2,
+        tournamentContext.divisions[vals.division]
+      ),
+      round: vals.round - 1, // 1-indexed input
+      player_one_score: vals.p1score,
+      player_two_score: vals.p2score,
+      player_one_result: vals.p1result,
+      player_two_result: vals.p2result,
+      game_end_reason: vals.gameEndReason,
+      amendment: vals.amendment,
+    };
+    axios
+      .post<{}>(
+        toAPIUrl('tournament_service.TournamentService', 'SetResult'),
+        obj
+      )
+      .then((resp) => {
+        message.info({
+          content: 'Result set',
+          duration: 3,
+        });
+      })
+      .catch((err) => {
+        message.error({
+          content: 'Error ' + err.response?.data?.msg,
+          duration: 5,
+        });
+      });
+  };
+
+  return (
+    <Form onFinish={onFinish}>
+      <Form.Item
+        name="division"
+        label="Division Name"
+        rules={[
+          {
+            required: true,
+            message: 'Please input division name',
+          },
+        ]}
+      >
+        {/* lazy right now but all of these need required */}
+        <Input />
+      </Form.Item>
+
+      <Form.Item name="p1" label="Player 1 username">
+        <Input />
+      </Form.Item>
+
+      <Form.Item name="p2" label="Player 2 username">
+        <Input />
+      </Form.Item>
+
+      <Form.Item name="round" label="Round (1-indexed)">
+        <InputNumber min={1} />
+      </Form.Item>
+
+      <Form.Item name="p1score" label="Player 1 score">
+        <InputNumber min={1} />
+      </Form.Item>
+
+      <Form.Item name="p2score" label="Player 2 score">
+        <InputNumber min={1} />
+      </Form.Item>
+
+      <Form.Item name="p1result" label="Player 1 result">
+        <Select>
+          <Select.Option value="NO_RESULT">NO_RESULT</Select.Option>
+          <Select.Option value="WIN">WIN</Select.Option>
+          <Select.Option value="LOSS">LOSS</Select.Option>
+          <Select.Option value="DRAW">DRAW</Select.Option>
+          <Select.Option value="BYE">BYE</Select.Option>
+          <Select.Option value="FORFEIT_WIN">FORFEIT_WIN</Select.Option>
+          <Select.Option value="FORFEIT_LOSS">FORFEIT_LOSS</Select.Option>
+        </Select>
+      </Form.Item>
+
+      <Form.Item name="p2result" label="Player 2 result">
+        <Select>
+          <Select.Option value="NO_RESULT">NO_RESULT</Select.Option>
+          <Select.Option value="WIN">WIN</Select.Option>
+          <Select.Option value="LOSS">LOSS</Select.Option>
+          <Select.Option value="DRAW">DRAW</Select.Option>
+          <Select.Option value="BYE">BYE</Select.Option>
+          <Select.Option value="FORFEIT_WIN">FORFEIT_WIN</Select.Option>
+          <Select.Option value="FORFEIT_LOSS">FORFEIT_LOSS</Select.Option>
+        </Select>
+      </Form.Item>
+
+      <Form.Item name="gameEndReason" label="Game End Reason">
+        <Select>
+          <Select.Option value="NONE">NONE</Select.Option>
+          <Select.Option value="TIME">TIME</Select.Option>
+          <Select.Option value="STANDARD">STANDARD</Select.Option>
+          <Select.Option value="CONSECUTIVE_ZEROES">
+            CONSECUTIVE_ZEROES
+          </Select.Option>
+          <Select.Option value="RESIGNED">RESIGNED</Select.Option>
+          <Select.Option value="ABORTED">ABORTED</Select.Option>
+          <Select.Option value="TRIPLE_CHALLENGE">
+            TRIPLE_CHALLENGE
+          </Select.Option>
+          <Select.Option value="CANCELLED">CANCELLED</Select.Option>
+          <Select.Option value="FORCE_FORFEIT">FORCE_FORFEIT</Select.Option>
+        </Select>
+      </Form.Item>
+
+      <Form.Item name="amendment" label="Amendment">
+        <Switch />
+      </Form.Item>
+
       <Form.Item>
         <Button type="primary" htmlType="submit">
           Submit
