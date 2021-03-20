@@ -58,7 +58,7 @@ export const CloseAccount = React.memo((props: Props) => {
                 type="primary"
                 onClick={() => props.cancel()}
               >
-                Just kidding
+                No, keep my account
               </Button>
             </Form.Item>
           </Col>

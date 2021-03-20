@@ -1,6 +1,7 @@
 import React from 'react';
 import { useMountedState } from '../utils/mounted';
 import { Button, Input, Form, Alert, Row, Col, notification } from 'antd';
+import { Link } from 'react-router-dom';
 import axios from 'axios';
 import { toAPIUrl } from '../api/api';
 
@@ -48,6 +49,7 @@ export const ChangePassword = React.memo((props: Props) => {
 					setErr('unknown error, see console');
 					console.log(e);
 				}
+				form.validateFields();
 			});
 	};
 
@@ -59,6 +61,9 @@ export const ChangePassword = React.memo((props: Props) => {
 				{...layout}
 				name="changepassword"
 				onFinish={onFinish}
+				onValuesChange={(changedValues, allValues) => {
+					setErr('');
+				}}
 				style={{ marginTop: 20 }}
 				requiredMark={false}
 			>
@@ -68,6 +73,13 @@ export const ChangePassword = React.memo((props: Props) => {
 							label="Old Password"
 							name="oldPassword"
 							rules={[
+								{
+									validator: async (_, oldPassword) => {
+										if (err != '') {
+											return Promise.reject(new Error(err));
+										}
+									},
+								},
 								{
 									required: true,
 									message: 'Please input your old password',
@@ -94,17 +106,20 @@ export const ChangePassword = React.memo((props: Props) => {
 					</Col>
 				</Row>
 				<Row>
-					<Col span={23}>
+					<Col span={12} className="button-row">
+						<Link to="/password/reset">
+							I’m drawing a blank on my password. Help!
+						</Link>
+					</Col>
+					<Col span={11} className="button-row">
 						<Form.Item>
-							<Button type="primary" htmlType="submit">
+							<Button className="save" type="primary" htmlType="submit">
 								Save
 							</Button>
 						</Form.Item>
 					</Col>
 				</Row>
 			</Form>
-
-			{err !== '' ? <Alert message={err} type="error" /> : null}
 		</div>
 	);
 });

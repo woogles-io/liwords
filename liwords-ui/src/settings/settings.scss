@@ -121,7 +121,7 @@
     }
     .ant-btn {
       position: absolute;
-      right: 0px;
+      right: 0;
       top: 0;
       font-size: 14px;
     }
@@ -139,7 +139,7 @@
       font-weight: bold;
       .iconx {
         position: absolute;
-        right: 0px;
+        right: 0;
       }
     }
   }
@@ -157,7 +157,7 @@
       margin-bottom: 24px;
       .ant-switch {
         position: absolute;
-        right: 0px;
+        right: 0;
         top: 50%;
         transform: translateY(-50%);
       }
@@ -315,7 +315,7 @@
   }
   .close-account-button {
     position: absolute;
-    right: 0px;
+    right: 0;
     top: 0px;
   }
 }
