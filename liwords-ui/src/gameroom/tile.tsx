@@ -130,6 +130,7 @@ type TileProps = {
   x?: number | undefined;
   y?: number | undefined;
   popoverContent?: React.ReactNode;
+  onPopoverClick?: (evt: React.MouseEvent<HTMLElement>) => void;
 };
 
 const Tile = React.memo((props: TileProps) => {
@@ -238,7 +239,12 @@ const Tile = React.memo((props: TileProps) => {
   );
   if (props.popoverContent != null) {
     ret = (
-      <Popover content={props.popoverContent} visible>
+      <Popover
+        content={
+          <div onClick={props.onPopoverClick}>{props.popoverContent}</div>
+        }
+        visible
+      >
         {ret}
       </Popover>
     );

@@ -33,6 +33,7 @@ type Props = {
     y: number,
     words: Array<string> | undefined
   ) => void;
+  handleUnsetHover?: () => void;
   definitionPopover?:
     | { x: number; y: number; content: React.ReactNode }
     | undefined;
@@ -194,6 +195,9 @@ const Tiles = React.memo((props: Props) => {
             {...(props.definitionPopover &&
               props.definitionPopover.x === x &&
               props.definitionPopover.y === y && {
+                onPopoverClick: (evt: React.MouseEvent<HTMLElement>) => {
+                  props.handleUnsetHover?.();
+                },
                 popoverContent: props.definitionPopover.content,
               })}
           />
