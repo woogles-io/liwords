@@ -197,12 +197,20 @@ const EasterEgg = (props: any) => {
     (song: string) => {
       stopIt();
 
+      const chans = [0.125, 0.5, 0.0625].map((mul) => {
+        const chan = ctx.createGain();
+        chan.gain.setValueAtTime(mul, ctx.currentTime);
+        chan.connect(muterRef.current);
+        return chan;
+      });
+
       // Hz, sec, sec
       const playFreq = (
         freq: number,
         timeOn: number,
         duration: number,
-        type: OscillatorType
+        type: OscillatorType,
+        chan: number
       ) => {
         const env = ctx.createGain();
         // TODO: find a believable ADSR envelope
@@ -210,7 +218,7 @@ const EasterEgg = (props: any) => {
         env.gain.linearRampToValueAtTime(1, timeOn + 0.125 * duration);
         env.gain.linearRampToValueAtTime(0.5, timeOn + 0.875 * duration);
         env.gain.linearRampToValueAtTime(0.25, timeOn + duration);
-        env.connect(muterRef.current);
+        env.connect(chans[chan]);
         const osc = ctx.createOscillator();
         osc.frequency.value = freq;
         osc.type = type;
@@ -223,13 +231,19 @@ const EasterEgg = (props: any) => {
       let dur = 60 / 120;
       const t0 = ctx.currentTime;
       let t = 0;
-      const playNote = (note: number, beats: number, type: OscillatorType) => {
+      const playNote = (
+        note: number,
+        beats: number,
+        type: OscillatorType,
+        chan: number
+      ) => {
         if (note) {
           playFreq(
             440 * 2 ** ((note - 69) / 12),
             t0 + t * dur,
             beats * dur,
-            type
+            type,
+            chan
           );
         }
         t += beats;
@@ -298,7 +312,7 @@ const EasterEgg = (props: any) => {
         ];
 
         for (const [note, beats] of fullSong) {
-          playNote(note, beats, 'sawtooth');
+          playNote(note, beats, 'sawtooth', 0);
         }
 
         const accompaniment = [
@@ -325,17 +339,17 @@ const EasterEgg = (props: any) => {
           const note2 = note1 + 12;
           for (let i = 0; i < 4; ++i) {
             for (const note of [note1, note2]) {
-              playNote(note, 0.5, 'triangle');
+              playNote(note, 0.5, 'triangle', 1);
             }
           }
         }
-        playNote(40, 1, 'triangle');
+        playNote(40, 1, 'triangle', 1);
 
         for (const t1 of [82, 98]) {
           t = t1;
           for (let i = 0; i < 6; ++i) {
             for (const note of [79, 78, 76, 74]) {
-              playNote(note, 1 / 4, 'square');
+              playNote(note, 1 / 4, 'square', 2);
             }
           }
         }
