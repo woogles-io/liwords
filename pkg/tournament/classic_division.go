@@ -1222,7 +1222,7 @@ func (t *ClassicDivision) getPairingKey(player string, round int) (string, error
 
 	playerIndex, ok := t.PlayerIndexMap[player]
 	if !ok {
-		return "", fmt.Errorf("player does not exist in the division: %s (getPairingKey)", player)
+		return "", fmt.Errorf("player does not exist in the division: %s", player)
 	}
 	return t.Matrix[round][playerIndex], nil
 }
