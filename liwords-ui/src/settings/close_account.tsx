@@ -1,5 +1,5 @@
 import React from 'react';
-import { Button, Checkbox, Col, Form, Row } from 'antd';
+import { Alert, Button, Checkbox, Col, Form, Row } from 'antd';
 import { PlayerAvatar } from '../shared/player_avatar';
 import { PlayerMetadata } from '../gameroom/game_info';
 
@@ -7,6 +7,7 @@ type Props = {
   cancel: () => void;
   player: Partial<PlayerMetadata> | undefined;
   closeAccountNow: () => void;
+  err: string;
 };
 
 export const CloseAccount = React.memo((props: Props) => {
@@ -71,6 +72,7 @@ export const CloseAccount = React.memo((props: Props) => {
           </Col>
         </Row>
       </Form>
+      {props.err !== '' ? <Alert message={props.err} type="error" /> : null}
     </div>
   );
 });

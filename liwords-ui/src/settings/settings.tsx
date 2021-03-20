@@ -54,6 +54,7 @@ export const Settings = React.memo((props: Props) => {
   const [email, setEmail] = useState('');
   const [about, setAbout] = useState('');
   const [showCloseAccount, setShowCloseAccount] = useState(false);
+  const [accountClosureError, setAccountClosureError] = useState('');
   const history = useHistory();
 
   const errorCatcher = (e: AxiosError) => {
@@ -142,11 +143,37 @@ export const Settings = React.memo((props: Props) => {
   );
 
   const startClosingAccount = useCallback(() => {
+    setAccountClosureError('');
     setShowCloseAccount(true);
   }, []);
 
   const closeAccountNow = useCallback(() => {
-    console.log('CLOSE ACCOUNT');
+    axios
+      .post(
+        toAPIUrl('user_service.AuthenticationService', 'NotifyAccountClosure'),
+        {},
+        {
+          withCredentials: true,
+        }
+      )
+      .then(() => {
+        notification.info({
+          message: 'Success',
+          description:
+            'The Woogles team has been notified of your request to close your account.',
+        });
+        setAccountClosureError('');
+        setShowCloseAccount(false);
+      })
+      .catch((e) => {
+        if (e.response) {
+          // From Twirp
+          setAccountClosureError(e.response.data.msg);
+        } else {
+          setAccountClosureError('unknown error, see console');
+          console.log(e);
+        }
+      });
   }, []);
 
   const logIn = <div className="log-in">Log in to see your settings</div>;
@@ -186,6 +213,7 @@ export const Settings = React.memo((props: Props) => {
               <CloseAccount
                 closeAccountNow={closeAccountNow}
                 player={player}
+                err={accountClosureError}
                 cancel={() => {
                   setShowCloseAccount(false);
                 }}
