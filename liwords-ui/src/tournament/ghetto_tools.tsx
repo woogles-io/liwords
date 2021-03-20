@@ -7,15 +7,6 @@ import { Store } from 'rc-field-form/lib/interface';
 import React, { useState } from 'react';
 import { toAPIUrl } from '../api/api';
 
-const layout = {
-  labelCol: {
-    span: 8,
-  },
-  wrapperCol: {
-    span: 16,
-  },
-};
-
 type ModalProps = {
   title: string;
   visible: boolean;
