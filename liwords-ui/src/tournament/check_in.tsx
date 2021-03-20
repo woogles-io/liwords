@@ -1,4 +1,4 @@
-import { Button, Col, message, Row } from 'antd';
+import { Button, Col, Divider, message, Row } from 'antd';
 import axios from 'axios';
 import React, { useMemo } from 'react';
 import { toAPIUrl } from '../api/api';
@@ -63,12 +63,14 @@ export const CheckIn = () => {
       <Col offset={10}>
         <Button
           onClick={checkin}
+          type="primary"
           size="large"
-          style={{ marginTop: 10, marginBottom: 18 }}
+          style={{ marginTop: 54, marginBottom: 58 }}
         >
-          Check in
+          CHECK IN
         </Button>
       </Col>
+      <Divider />
     </Row>
   );
 };
