@@ -9157,7 +9157,8 @@ proto.liwords.PlayerProperties.prototype.toObject = function(opt_includeInstance
 proto.liwords.PlayerProperties.toObject = function(includeInstance, msg) {
   var f, obj = {
     removed: jspb.Message.getBooleanFieldWithDefault(msg, 1, false),
-    rating: jspb.Message.getFieldWithDefault(msg, 2, 0)
+    rating: jspb.Message.getFieldWithDefault(msg, 2, 0),
+    checkedIn: jspb.Message.getBooleanFieldWithDefault(msg, 3, false)
   };
 
   if (includeInstance) {
@@ -9202,6 +9203,10 @@ proto.liwords.PlayerProperties.deserializeBinaryFromReader = function(msg, reade
       var value = /** @type {number} */ (reader.readInt32());
       msg.setRating(value);
       break;
+    case 3:
+      var value = /** @type {boolean} */ (reader.readBool());
+      msg.setCheckedIn(value);
+      break;
     default:
       reader.skipField();
       break;
@@ -9245,6 +9250,13 @@ proto.liwords.PlayerProperties.serializeBinaryToWriter = function(message, write
       f
     );
   }
+  f = message.getCheckedIn();
+  if (f) {
+    writer.writeBool(
+      3,
+      f
+    );
+  }
 };
 
 
@@ -9281,6 +9293,24 @@ proto.liwords.PlayerProperties.prototype.getRating = function() {
  */
 proto.liwords.PlayerProperties.prototype.setRating = function(value) {
   return jspb.Message.setProto3IntField(this, 2, value);
+};
+
+
+/**
+ * optional bool checked_in = 3;
+ * @return {boolean}
+ */
+proto.liwords.PlayerProperties.prototype.getCheckedIn = function() {
+  return /** @type {boolean} */ (jspb.Message.getBooleanFieldWithDefault(this, 3, false));
+};
+
+
+/**
+ * @param {boolean} value
+ * @return {!proto.liwords.PlayerProperties} returns this
+ */
+proto.liwords.PlayerProperties.prototype.setCheckedIn = function(value) {
+  return jspb.Message.setProto3BooleanField(this, 3, value);
 };
 
 

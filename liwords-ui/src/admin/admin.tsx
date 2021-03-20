@@ -1,9 +1,12 @@
-import { Menu } from 'antd';
+import { Layout, Menu } from 'antd';
 import React from 'react';
 import { TopBar } from '../topbar/topbar';
 import { TourneyEditor } from './tourney_editor';
 // import { UserEditor } from './user_editor';
 import { useMountedState } from '../utils/mounted';
+// import { TourneyManager } from './tourney_manager';
+// import '../App.scss';
+// import 'antd/dist/antd.css';
 
 type Props = {};
 
@@ -33,13 +36,21 @@ export const Admin = () => {
   const [visibleTab, setVisibleTab] = useState('');
   return (
     <>
-      <TopBar />
-      {/* <TourneyEditor /> */}
-      <Sider setVisibleTab={setVisibleTab} />
-      {visibleTab === 'edit-tournament' && <TourneyEditor mode="edit" />}
-      {visibleTab === 'new-tournament' && <TourneyEditor mode="new" />}
-      {/* {visibleTab === 'user-editor' && <UserEditor />} */}
-      {/* {visibleTab === 'manage-tournament' && <TourneyManager />} */}
+      <Layout>
+        <TopBar />
+        <Layout>
+          {/* <TourneyEditor /> */}
+          <Layout.Sider>
+            <Sider setVisibleTab={setVisibleTab} />
+          </Layout.Sider>
+          <Layout.Content>
+            {visibleTab === 'edit-tournament' && <TourneyEditor mode="edit" />}
+            {visibleTab === 'new-tournament' && <TourneyEditor mode="new" />}
+            {/* {visibleTab === 'user-editor' && <UserEditor />} */}
+            {/* {visibleTab === 'manage-tournament' && <TourneyManager />} */}
+          </Layout.Content>
+        </Layout>
+      </Layout>
     </>
   );
 };

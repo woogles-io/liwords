@@ -18,6 +18,21 @@ export const Announcements = React.memo((props: AnnouncementsProps) => {
     },
 
     {
+      title: 'Ongoing Tournament - HOPPY',
+      link: 'https://woogles.io/tournament/hoppy',
+      body: (
+        <p>
+          Click here if you are playing in the HOPPY! The HOPPY is a two-day
+          tournament, brought to you by the organizers of the successful MERRY
+          tournament! A two-day, 13-game event, starting on the first day of
+          spring (Saturday, March 20, 2021). Premier and Classic divisions for
+          both NWL20 and CSW19. All pairings and standings will be automatically
+          handled by the Woogles platform!
+        </p>
+      ),
+    },
+
+    {
       title: 'Ongoing Tournament - CoCo Blitz Championship',
       link: 'https://woogles.io/tournament/coco-blitz',
       body: (
@@ -26,21 +41,6 @@ export const Announcements = React.memo((props: AnnouncementsProps) => {
           through late April. The fastest word gamers in the world will play
           3-minute games, starting with round robin pool play and culminating
           with a playoff bracket to determine the World Blitz Champion!
-        </p>
-      ),
-    },
-
-    {
-      title: 'Upcoming Tournament - HOPPY',
-      link:
-        'https://drive.google.com/file/d/1vi6eUYaYeL2az7-6eZthwevsMG0fr3fK/view',
-      body: (
-        <p>
-          The HOPPY is a two-day tournament, brought to you by the organizers of
-          the successful MERRY tournament! A two-day, 13-game event, starting on
-          the first day of spring (Saturday, March 20, 2021). Premier and
-          Classic divisions for both NWL20 and CSW19. All pairings and standings
-          will be automatically handled by the Woogles platform!
         </p>
       ),
     },
@@ -56,29 +56,6 @@ export const Announcements = React.memo((props: AnnouncementsProps) => {
           two-day tournament on March 27 and 28, with CSW and NWL divisions. 2
           teams of 5 players for each division will play a triple round-robin
           against each other. Who will emerge victorious?
-        </p>
-      ),
-    },
-
-    {
-      title: 'Completed Tournament - Amazing Race 2',
-      link: 'https://woogles.io/tournament/tarst2',
-      body: (
-        <p>
-          Michael Fagen's Amazing Race 2 tournament is now concluded. Alec
-          Sjöholm defended his title with his new teammate, Michael Fagen!
-          Congrats!
-        </p>
-      ),
-    },
-
-    {
-      title: "Completed Tournament - Brosowsky Brothers' Bonanza 2021",
-      link: 'https://woogles.io/tournament/BBB',
-      body: (
-        <p>
-          The Brosowsky Brothers' Bonanza is a one-day, 8-game event, with Open
-          and Lite divisions for both NWL20 and CSW19! Check out the results.
         </p>
       ),
     },

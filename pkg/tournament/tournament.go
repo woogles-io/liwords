@@ -671,6 +671,11 @@ func PairRound(ctx context.Context, ts TournamentStore, id string, division stri
 		return errors.New("cannot pair a round before the tournament has started")
 	}
 
+	currentRound := divisionObject.DivisionManager.GetCurrentRound()
+	if round < currentRound+1 {
+		return fmt.Errorf("cannot repair non-future round %d since current round is %d", round, currentRound)
+	}
+
 	err = divisionObject.DivisionManager.PairRound(round)
 
 	if err != nil {
@@ -835,6 +840,9 @@ func TournamentDivisionDataResponse(ctx context.Context, ts TournamentStore,
 		if err != nil {
 			return nil, err
 		}
+	}
+	if response == nil {
+		return nil, nil // XXX: should return an error?
 	}
 	response.Id = id
 	response.DivisionId = division
@@ -1066,4 +1074,62 @@ func reverseMap(m map[string]int) map[int]string {
 		n[v] = k
 	}
 	return n
+}
+
+func CheckIn(ctx context.Context, ts TournamentStore, tid string, playerid string) error {
+	t, err := ts.Get(ctx, tid)
+	if err != nil {
+		return err
+	}
+	t.Lock()
+	defer t.Unlock()
+
+	found := false
+	// really a player should only be in one division but we allow this so let's
+	// make it correct for now
+	divisionsFound := []string{}
+	for dname, d := range t.Divisions {
+		if _, ok := d.Players.Persons[playerid]; ok {
+			err := d.DivisionManager.SetCheckedIn(playerid)
+			if err != nil {
+				return err
+			}
+			found = true
+			divisionsFound = append(divisionsFound, dname)
+		}
+	}
+	if !found {
+		return errors.New("user not in this tournament")
+	}
+	err = ts.Set(ctx, t)
+	if err != nil {
+		return err
+	}
+
+	for _, d := range divisionsFound {
+		err = SendTournamentDivisionMessage(ctx, ts, t.UUID, d)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func UncheckIn(ctx context.Context, ts TournamentStore, tid string) error {
+	t, err := ts.Get(ctx, tid)
+	if err != nil {
+		return err
+	}
+	t.Lock()
+	defer t.Unlock()
+
+	for dname, d := range t.Divisions {
+		d.DivisionManager.ClearCheckedIn()
+		err = SendTournamentDivisionMessage(ctx, ts, t.UUID, dname)
+		if err != nil {
+			return err
+		}
+	}
+	return ts.Set(ctx, t)
 }

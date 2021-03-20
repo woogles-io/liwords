@@ -6,7 +6,13 @@
     background-color: m($background);
   }
 
-  p, h1, h2, h3, h4, h5, h6 {
+  p,
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
     @include colorModed() {
       color: m($gray-extreme);
     }
@@ -37,7 +43,8 @@
   padding: 6px 24px 6px 12px;
   min-width: 200px;
 }
-a, button.link {
+a,
+button.link {
   cursor: pointer;
   @include colorModed() {
     color: m($primary-dark);
@@ -59,7 +66,8 @@ button.link {
   }
 }
 
-a.plain, .link.plain {
+a.plain,
+.link.plain {
   cursor: pointer;
   font-weight: 700;
   @include colorModed() {
@@ -84,3 +92,9 @@ a.plain, .link.plain {
   }
 }
 
+.ant-layout-content {
+  @include colorModed() {
+    color: m($primary-dark);
+    background-color: m($background);
+  }
+}

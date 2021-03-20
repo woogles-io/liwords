@@ -32,7 +32,7 @@ export const Standings = (props: Props) => {
   }
   let formatStandings = new Array<StandingsTableData>();
   if (currentRound > -1) {
-    formatStandings = division.standingsMap[currentRound].standingsList.map(
+    formatStandings = division.standingsMap[currentRound]?.standingsList.map(
       (standing, index): StandingsTableData => {
         const [playerId, playerName] = standing.player.split(':');
         return {
