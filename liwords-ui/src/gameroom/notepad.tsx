@@ -18,6 +18,7 @@ import {
 } from '../utils/cwgame/scoring';
 import { Direction, isMobile } from '../utils/cwgame/common';
 import { useMountedState } from '../utils/mounted';
+import { BoopSounds } from '../sound/boop';
 
 type NotepadProps = {
   style?: React.CSSProperties;
@@ -124,6 +125,16 @@ export const Notepad = React.memo((props: NotepadProps) => {
   const easterEggEnabled = useMemo(() => /catcam/i.test(curNotepad), [
     curNotepad,
   ]);
+  const numWolgesWas = useRef(0);
+  const numWolges = useMemo(() => curNotepad.match(/wolges/gi)?.length || 0, [
+    curNotepad,
+  ]);
+  useEffect(() => {
+    if (numWolges > numWolgesWas.current) {
+      BoopSounds.playSound('wolgesSound');
+    }
+    numWolgesWas.current = numWolges;
+  }, [numWolges]);
   const notepadContainer = (
     <div className="notepad-container" style={props.style}>
       <textarea

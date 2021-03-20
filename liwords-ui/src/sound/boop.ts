@@ -64,6 +64,7 @@ for (const booper of [
     'startTourneyRoundSound',
     require('../assets/newtourneyround.mp3')
   ),
+  new Booper('wolgesSound', require('../assets/wolges.mp3')),
 ]) {
   playableSounds[booper.soundName] = booper;
 }
