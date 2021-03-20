@@ -109,6 +109,7 @@ export const DirectorTools = React.memo((props: DTProps) => {
                     omitSendMessage
                     omitBlock
                   />
+                  &nbsp;{d.checkedInPlayers.has(p) ? '✓' : ''}
                 </li>
               );
             })}

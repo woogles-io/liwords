@@ -29,6 +29,8 @@ type DivisionManager interface {
 	ClearReadyStates(userID string, round, gameIndex int) error
 	SetLastStarted(*realtime.TournamentRoundStarted) error
 	Serialize() (datatypes.JSON, error)
+	SetCheckedIn(userID string) error
+	ClearCheckedIn()
 }
 
 type CompetitionType string

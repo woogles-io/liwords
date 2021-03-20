@@ -57,7 +57,7 @@ export type Division = {
   playerIndexMap: { [playerID: string]: number };
   pairingMap: { [roundUserKey: string]: SinglePairing };
   removedPlayers: Array<string>;
-  checkedInPlayers: Array<string>;
+  checkedInPlayers: Set<string>;
   numRounds: number;
   // Note: currentRound is zero-indexed
   currentRound: number;
@@ -164,20 +164,20 @@ const divisionDataResponseToObj = (
     playerIndexMap: {},
     standingsMap: {},
     removedPlayers: new Array<string>(),
-    checkedInPlayers: new Array<string>(),
+    checkedInPlayers: new Set<string>(),
   };
 
   const pairingMap: { [key: string]: SinglePairing } = {};
   const playerIndexMap: { [playerID: string]: number } = {};
   const standingsMap: { [roundId: number]: RoundStandings.AsObject } = {};
   const removedPlayers = new Array<string>();
-  const checkedInPlayers = new Array<string>();
+  const checkedInPlayers = new Set<string>();
   dd.getPlayersPropertiesList().forEach((value: PlayerProperties, index) => {
     if (value.getRemoved()) {
       removedPlayers.push(dd.getPlayersList()[index]);
     }
     if (value.getCheckedIn()) {
-      checkedInPlayers.push(dd.getPlayersList()[index]);
+      checkedInPlayers.add(dd.getPlayersList()[index]);
     }
   });
   dd.getPlayersList().forEach((value: string, index: number) => {
@@ -208,6 +208,7 @@ const divisionDataResponseToObj = (
   });
   ret.pairingMap = pairingMap;
   ret.removedPlayers = removedPlayers;
+  ret.checkedInPlayers = checkedInPlayers;
   ret.playerIndexMap = playerIndexMap;
   ret.standingsMap = standingsMap;
   return ret;

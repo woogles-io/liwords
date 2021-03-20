@@ -971,7 +971,10 @@ func (t *ClassicDivision) writeResponse(round int) error {
 
 	playersProperties := []*realtime.PlayerProperties{}
 	for i := 0; i < len(t.PlayersProperties); i++ {
-		playersProperties = append(playersProperties, &realtime.PlayerProperties{Removed: t.PlayersProperties[i].Removed})
+		playersProperties = append(playersProperties, &realtime.PlayerProperties{
+			Removed:   t.PlayersProperties[i].Removed,
+			CheckedIn: t.PlayersProperties[i].CheckedIn,
+		})
 	}
 
 	isFinished, err := t.IsFinished()
@@ -1284,4 +1287,21 @@ func reverse(array []string) {
 	for i, j := 0, len(array)-1; i < j; i, j = i+1, j-1 {
 		array[i], array[j] = array[j], array[i]
 	}
+}
+
+func (t *ClassicDivision) SetCheckedIn(playerID string) error {
+	for idx, v := range t.Players {
+		if v == playerID {
+			t.PlayersProperties[idx].CheckedIn = true
+			return t.writeResponse(0)
+		}
+	}
+	return fmt.Errorf("player %v not found", playerID)
+}
+
+func (t *ClassicDivision) ClearCheckedIn() {
+	for idx := range t.Players {
+		t.PlayersProperties[idx].CheckedIn = false
+	}
+	t.writeResponse(0)
 }

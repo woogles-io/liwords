@@ -1,7 +1,7 @@
 // Ghetto tools are Cesar tools before making things pretty.
 
 import { MinusCircleOutlined, PlusOutlined } from '@ant-design/icons';
-import { Button, Col, Form, Input, message, Modal, Row, Space } from 'antd';
+import { Button, Form, Input, message, Modal, Space } from 'antd';
 import axios from 'axios';
 import { Store } from 'rc-field-form/lib/interface';
 import React, { useState } from 'react';
@@ -33,6 +33,7 @@ const FormModal = (props: ModalProps) => {
     'remove-division': <RemoveDivision tournamentID={props.tournamentID} />,
     'add-players': <AddPlayers tournamentID={props.tournamentID} />,
     'remove-player': <RemovePlayer tournamentID={props.tournamentID} />,
+    'clear-checked-in': <ClearCheckedIn tournamentID={props.tournamentID} />,
   };
 
   return (
@@ -50,6 +51,7 @@ const FormModal = (props: ModalProps) => {
             | 'remove-division'
             | 'add-players'
             | 'remove-player'
+            | 'clear-checked-in'
         ]
       }
 
@@ -88,6 +90,7 @@ export const GhettoTools = (props: Props) => {
     'Set pairing', // Set a single pairing
     'Pair round', // Pair a whole round
     'Set result', // Set a single result
+    'Clear checked in',
   ];
 
   const listItems = types.map((v) => {
@@ -355,6 +358,41 @@ const RemovePlayer = (props: { tournamentID: string }) => {
       <Form.Item name="username" label="Username to remove">
         <Input />
       </Form.Item>
+      <Form.Item>
+        <Button type="primary" htmlType="submit">
+          Submit
+        </Button>
+      </Form.Item>
+    </Form>
+  );
+};
+
+const ClearCheckedIn = (props: { tournamentID: string }) => {
+  const onFinish = (vals: Store) => {
+    const obj = {
+      id: props.tournamentID,
+    };
+    axios
+      .post<{}>(
+        toAPIUrl('tournament_service.TournamentService', 'UncheckIn'),
+        obj
+      )
+      .then((resp) => {
+        message.info({
+          content: 'Checkins cleared',
+          duration: 3,
+        });
+      })
+      .catch((err) => {
+        message.error({
+          content: 'Error ' + err.response?.data?.msg,
+          duration: 5,
+        });
+      });
+  };
+
+  return (
+    <Form onFinish={onFinish}>
       <Form.Item>
         <Button type="primary" htmlType="submit">
           Submit

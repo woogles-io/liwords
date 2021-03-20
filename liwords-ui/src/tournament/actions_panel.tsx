@@ -201,6 +201,7 @@ export const ActionsPanel = React.memo((props: Props) => {
       if (isPairedMode(tournamentContext.metadata.type)) {
         return (
           <div className="pairings-container">
+            <CheckIn />
             <div className="round-options">
               {renderDivisionSelector}
               {renderStartRoundButton()}
@@ -211,7 +212,6 @@ export const ActionsPanel = React.memo((props: Props) => {
               username={username}
               sendReady={props.sendReady}
             />
-            <CheckIn />
           </div>
         );
       }

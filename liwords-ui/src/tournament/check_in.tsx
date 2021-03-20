@@ -1,5 +1,7 @@
-import { Button } from 'antd';
+import { Button, Col, message, Row } from 'antd';
+import axios from 'axios';
 import React, { useMemo } from 'react';
+import { toAPIUrl } from '../api/api';
 import {
   useLoginStateStoreContext,
   useTournamentStoreContext,
@@ -20,9 +22,12 @@ export const CheckIn = () => {
     }
     const division =
       tournamentContext.divisions[tournamentContext.competitorState.division];
-    return division.checkedInPlayers.includes(loginState.username); // xxx + userid?
+    return division.checkedInPlayers.has(
+      loginState.userID + ':' + loginState.username
+    );
   }, [
     loginState.username,
+    loginState.userID,
     tournamentContext.competitorState.division,
     tournamentContext.divisions,
   ]);
@@ -34,5 +39,36 @@ export const CheckIn = () => {
     return null;
   }
 
-  return <Button>Check in</Button>;
+  const checkin = () => {
+    axios
+      .post<{}>(toAPIUrl('tournament_service.TournamentService', 'CheckIn'), {
+        id: tournamentContext.metadata.id,
+      })
+      .then((resp) => {
+        message.info({
+          content: 'You are checked in.',
+          duration: 3,
+        });
+      })
+      .catch((err) => {
+        message.error({
+          content: 'Error checking in: ' + err.response?.data?.msg,
+          duration: 5,
+        });
+      });
+  };
+
+  return (
+    <Row>
+      <Col offset={10}>
+        <Button
+          onClick={checkin}
+          size="large"
+          style={{ marginTop: 10, marginBottom: 10 }}
+        >
+          Check in
+        </Button>
+      </Col>
+    </Row>
+  );
 };
