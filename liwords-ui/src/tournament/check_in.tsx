@@ -64,7 +64,7 @@ export const CheckIn = () => {
         <Button
           onClick={checkin}
           size="large"
-          style={{ marginTop: 10, marginBottom: 10 }}
+          style={{ marginTop: 10, marginBottom: 18 }}
         >
           Check in
         </Button>
