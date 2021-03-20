@@ -182,6 +182,16 @@
   }
 }
 
+.closed-account {
+  .ant-row {
+    padding-top: 24px;
+  }
+  .thanks {
+    padding: 50px 0 0 24px;
+    font-style: italic;
+    font-size: 14px;
+  }
+}
 .personal-info {
   .ant-row {
     margin-bottom: 0;

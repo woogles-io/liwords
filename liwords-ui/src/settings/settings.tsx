@@ -5,6 +5,7 @@ import { TopBar } from '../topbar/topbar';
 import { ChangePassword } from './change_password';
 import { PersonalInfo } from './personal_info';
 import { CloseAccount } from './close_account';
+import { ClosedAccount } from './closed_account';
 import { Preferences } from './preferences';
 import { BlockedPlayers } from './blocked_players';
 import { LogOut } from './log_out_woogles';
@@ -54,6 +55,7 @@ export const Settings = React.memo((props: Props) => {
   const [email, setEmail] = useState('');
   const [about, setAbout] = useState('');
   const [showCloseAccount, setShowCloseAccount] = useState(false);
+  const [showClosedAccount, setShowClosedAccount] = useState(false);
   const [accountClosureError, setAccountClosureError] = useState('');
   const history = useHistory();
 
@@ -157,13 +159,8 @@ export const Settings = React.memo((props: Props) => {
         }
       )
       .then(() => {
-        notification.info({
-          message: 'Success',
-          description:
-            'The Woogles team has been notified of your request to close your account.',
-        });
-        setAccountClosureError('');
         setShowCloseAccount(false);
+        setShowClosedAccount(true);
       })
       .catch((e) => {
         if (e.response) {
@@ -218,6 +215,8 @@ export const Settings = React.memo((props: Props) => {
                   setShowCloseAccount(false);
                 }}
               />
+            ) : showClosedAccount ? (
+              <ClosedAccount />
             ) : (
               <PersonalInfo
                 player={player}
