@@ -69,6 +69,7 @@ type PlacementHandlerReturn = {
 
 interface KeypressHandlerReturn extends PlacementHandlerReturn {
   newArrow: PlacementArrow;
+  newBlindfoldCommand: string;
 }
 
 const handleTileDeletion = (
@@ -112,6 +113,7 @@ const handleTileDeletion = (
  */
 export const handleKeyPress = (
   arrowProperty: PlacementArrow,
+  blindfoldCommand: string,
   board: Board,
   key: string,
   unplacedTiles: string, // tiles currently still on rack
@@ -120,6 +122,7 @@ export const handleKeyPress = (
   const normalizedKey = key.toUpperCase();
 
   const newPlacedTiles = new Set(currentlyPlacedTiles);
+  const newBlindfoldCommand = blindfoldCommand;
 
   // Create an ephemeral tile map with unique keys.
   const ephTileMap: { [tileIdx: number]: EphemeralTile } = {};
@@ -137,6 +140,37 @@ export const handleKeyPress = (
   ) {
     // Return with no changes.
     return null;
+  }
+
+  const blindfoldMode = false;
+
+  // Blindfold mode
+  if (blindfoldMode && !arrowProperty.show) {
+    if (normalizedKey == NormalizedSpace) {
+      // Could be the end of coordinate specification by the user
+      const blindfoldCoordinates = parseBlindfoldCoordinates(blindfoldCoordinatesCommand);
+      const blindfoldNewArrow = arrowProperty;
+      if (blindfoldCoordinates) {
+          window.speechSynthesis.speak(updatedBlindfoldCommand);
+          blinfoldNewArrow = newArrow: {
+            row: blindfoldCoordinates.row,
+            col: blindfoldCoordinates.col,
+            horizontal: blindfoldCoordinates.horizontal,
+            show: true}
+      } else {
+        // Not a valid coordinates command, reset the command
+        newBlindfoldCommand = "";
+      }
+    } else if (normalizedKey !== NormalizedBackspace) {
+        newBlindfoldCommand = blindfoldCommand + normalizedKey;
+    }
+    return {
+      newArrow: blindfoldNewArrow,
+      newBlindfoldCommand: newBlindfoldCommand,
+      newPlacedTiles: unplacedTiles,
+      newDisplayedRack: newUnplacedTiles,
+      playScore: calculateTemporaryScore(newPlacedTiles, board),
+    };
   }
 
   // Make sure we're not trying to type off the edge of the board.
