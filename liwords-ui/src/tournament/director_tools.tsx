@@ -4,7 +4,7 @@ import React from 'react';
 import { useTournamentStoreContext } from '../store/store';
 import './director_tools.scss';
 import { UsernameWithContext } from '../shared/usernameWithContext';
-import { Button, message } from 'antd';
+import { Button, Divider, message } from 'antd';
 import axios from 'axios';
 import { toAPIUrl } from '../api/api';
 import { GhettoTools } from './ghetto_tools';
@@ -156,14 +156,24 @@ export const DirectorTools = React.memo((props: DTProps) => {
   };
 
   const renderGhettoTools = () => {
-    return <GhettoTools tournamentID={props.tournamentID} />;
+    if (
+      tournamentContext.metadata.type === 'LEGACY' ||
+      tournamentContext.metadata.type === 'CLUB'
+    ) {
+      return null;
+    }
+    return (
+      <>
+        <Divider />
+        <GhettoTools tournamentID={props.tournamentID} />
+      </>
+    );
   };
 
   return (
     <div className="director-tools">
       {renderStartButton()}
       {renderRoster()}
-      <hr />
       {renderGhettoTools()}
     </div>
   );
