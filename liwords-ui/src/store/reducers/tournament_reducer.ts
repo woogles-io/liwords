@@ -62,7 +62,7 @@ type TournamentPerson = {
 };
 
 type RoundPairings = {
-  roundPairings: Array<SinglePairing>
+  roundPairings: Array<SinglePairing>;
 };
 
 export type Division = {
@@ -188,32 +188,25 @@ const divisionDataResponseToObj = (
 
   ret.standingsMap = standingsMap;
 
-
-
   // Reduce playerIndexMap
 
   const playerIndexMap: { [playerID: string]: number } = {};
-
-
   dd.getPlayersList().forEach((value: string, index: number) => {
     playerIndexMap[value] = index;
   });
 
   ret.playerIndexMap = playerIndexMap;
-
-
-
   // Reduce pairings
 
   const newPairings = new Array<RoundPairings>();
 
-  dd.getRoundControls().forEach( () => {
+  dd.getRoundControls().forEach(() => {
     const newRoundPairings = new Array<SinglePairing>();
-    dd.getPlayersList().forEach( () => {
+    dd.getPlayersList().forEach(() => {
       newRoundPairings.push({});
-    })
-    newPairings.push({roundPairings: newRoundPairings});
-  })
+    });
+    newPairings.push({ roundPairings: newRoundPairings });
+  });
 
   dd.getPairingMapMap().forEach((value: Pairing, key: string) => {
     const newPairing = {
@@ -229,8 +222,12 @@ const divisionDataResponseToObj = (
         results: g.getResultsList(),
       })),
     };
-    pairings[value.getRound()][playerIndexMap[newPairing.players[0]]] = newPairing;
-    pairings[value.getRound()][playerIndexMap[newPairing.players[1]]] = newPairing;
+    pairings[value.getRound()][
+      playerIndexMap[newPairing.players[0]]
+    ] = newPairing;
+    pairings[value.getRound()][
+      playerIndexMap[newPairing.players[1]]
+    ] = newPairing;
   });
 
   ret.pairings = newPairings;
@@ -278,8 +275,8 @@ export const TourneyGameEndedEvtToRecentGame = (
 
   return {
     players,
-    end_reason: toEndReason(evt.getEndReason()),
-    game_id: evt.getGameId(),
+    endReason: toEndReason(evt.getEndReason()),
+    gameId: evt.getGameId(),
     time: evt.getTime(),
     round: evt.getRound(),
   };
@@ -459,20 +456,20 @@ export function TournamentReducer(
       };
 
       const newPairings = state.divisions[dp.getDivisionId()].getPairings();
-      const newStandings = state.divisions[dp.getDivisionId()].getStandingsMap();
+      const newStandings = state.divisions[
+        dp.getDivisionId()
+      ].getStandingsMap();
 
-      dp.getDivisionPairings().forEach(
-        (value: Pairing.AsObject) => {
-          const newSinglePairing = {
-            players: value.players,
-            outcomes: value.outcomes,
-            readyStates: value.readyStates,
-            games: value.games,
-          };
-          newPairings[value.round][value.players[0]] = newSinglePairing;
-          newPairings[value.round][value.players[1]] = newSinglePairing;
-        });
-
+      dp.getDivisionPairings().forEach((value: Pairing.AsObject) => {
+        const newSinglePairing = {
+          players: value.players,
+          outcomes: value.outcomes,
+          readyStates: value.readyStates,
+          games: value.games,
+        };
+        newPairings[value.round][value.players[0]] = newSinglePairing;
+        newPairings[value.round][value.players[1]] = newSinglePairing;
+      });
       db.getDivisionStandings().forEach(
         (value: RoundStandings.AsObject, key: number) => {
           newStandings[key] = value;
@@ -484,14 +481,14 @@ export function TournamentReducer(
           [division]: Object.assign({}, state.divisions[dp.getDivisionId()], {
             [pairings]: newPairings,
             [standings]: newStandings,
-            }),
           }),
-        });
+        }),
+      });
     }
 
     case ActionType.SetDivisionPlayers: {
       // TODO
-      return state
+      return state;
     }
 
     case ActionType.SetTournamentFinished: {
