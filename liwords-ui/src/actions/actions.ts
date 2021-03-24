@@ -24,6 +24,11 @@ export enum ActionType {
   SetTourneyMetadata,
   SetDivisionData,
   SetDivisionsData,
+  SetDivisionRoundControls,
+  SetDivisionPairings,
+  SetDivisionControls,
+  SetDivisionPlayers,
+  SetTournamentFinished,
   StartTourneyRound,
 
   // competitor context

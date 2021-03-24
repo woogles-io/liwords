@@ -8,6 +8,13 @@ import {
   ReadyForTournamentGame,
   RoundStandings,
   TournamentDivisionDataResponse,
+  DivisionPairingsResponse,
+  PlayersAddedOrRemovedResponse,
+  DivisionControlsResponse,
+  DivisionRoundControls,
+  TournamentFinishedResponse,
+  DivisionControls,
+  Pairing,
   TournamentGameEndedEvent,
   TournamentGameResult,
   TournamentGameResultMap,
@@ -48,20 +55,28 @@ export type SinglePairing = {
   games: Array<TournamentGame>;
 };
 
+type TournamentPerson = {
+  id: string;
+  rating: number;
+  suspended: boolean;
+};
+
+type RoundPairings = {
+  roundPairings: Array<SinglePairing>
+};
+
 export type Division = {
   tournamentID: string;
   divisionID: string;
-  players: Array<string>;
-  // Add TournamentControls here.
-  roundInfo: Array<string>; // a 1-d array, implementing the backend 2-d array of pairings
-  playerIndexMap: { [playerID: string]: number };
-  pairingMap: { [roundUserKey: string]: SinglePairing };
-  removedPlayers: Array<string>;
-  numRounds: number;
-  // Note: currentRound is zero-indexed
-  currentRound: number;
-  // Add Standings here
+  players: Array<TournamentPerson>;
   standingsMap: { [round: number]: RoundStandings.AsObject };
+  pairings: Array<RoundPairings>;
+  divisionControls: DivisionControls.AsObject;
+  roundControls: Array<RoundControls.AsObject>;
+  // currentRound is zero-indexed
+  currentRound: number;
+  playerIndexMap: { [playerID: string]: number };
+  numRounds: number;
 };
 
 export type CompetitorState = {
@@ -89,6 +104,7 @@ export type TournamentState = {
   finishedTourneyGames: Array<RecentGame>;
   gamesPageSize: number;
   gamesOffset: number;
+  finished: boolean;
 };
 
 export const defaultTournamentState = {
@@ -153,39 +169,57 @@ const divisionDataResponseToObj = (
     tournamentID: dd.getId(),
     divisionID: dd.getDivisionId(),
     players: dd.getPlayersList(),
-    currentRound: dd.getCurrentRound(),
-    numRounds:
-      dd.getPlayersList().length > 0
-        ? dd.getDivisionList().length / dd.getPlayersList().length
-        : 0,
-    roundInfo: dd.getDivisionList(),
-    pairingMap: {},
-    playerIndexMap: {},
     standingsMap: {},
-    removedPlayers: new Array<string>(),
+    pairings: {},
+    divisionControls: dd.getDivisionControls(),
+    roundControls: dd.getRoundControls(),
+    currentRound: dd.getCurrentRound(),
+    playerIndexMap: {},
+    numRounds: dd.getRoundControls().length,
   };
 
-  const pairingMap: { [key: string]: SinglePairing } = {};
-  const playerIndexMap: { [playerID: string]: number } = {};
+  // Reduce Standings
+
   const standingsMap: { [roundId: number]: RoundStandings.AsObject } = {};
-  const removedPlayers = new Array<string>();
-  dd.getPlayersPropertiesList().forEach((value: PlayerProperties, index) => {
-    if (value.getRemoved()) {
-      removedPlayers.push(dd.getPlayersList()[index]);
-    }
+
+  dd.getStandingsMap().forEach((value: RoundStandings, key: number) => {
+    standingsMap[key] = value.toObject();
   });
+
+  ret.standingsMap = standingsMap;
+
+
+
+  // Reduce playerIndexMap
+
+  const playerIndexMap: { [playerID: string]: number } = {};
+
+
   dd.getPlayersList().forEach((value: string, index: number) => {
     playerIndexMap[value] = index;
   });
-  const playerNameByIndexMap: { [idx: number]: string } = {};
-  dd.getPlayersList().forEach((value: string, index: number) => {
-    playerNameByIndexMap[index] = value;
-  });
-  dd.getPairingMapMap().forEach((value: PlayerRoundInfo, key: string) => {
-    pairingMap[key] = {
+
+  ret.playerIndexMap = playerIndexMap;
+
+
+
+  // Reduce pairings
+
+  const newPairings = new Array<RoundPairings>();
+
+  dd.getRoundControls().forEach( () => {
+    const newRoundPairings = new Array<SinglePairing>();
+    dd.getPlayersList().forEach( () => {
+      newRoundPairings.push({});
+    })
+    newPairings.push({roundPairings: newRoundPairings});
+  })
+
+  dd.getPairingMapMap().forEach((value: Pairing, key: string) => {
+    const newPairing = {
       players: value
         .getPlayersList()
-        .map((v) => playerNameByIndexMap[parseInt(v, 10)]),
+        .map((v) => dd.getPlayersList()[parseInt(v, 10)]),
       outcomes: value.getOutcomesList(),
       readyStates: value.getReadyStatesList(),
       games: value.getGamesList().map((g) => ({
@@ -195,15 +229,12 @@ const divisionDataResponseToObj = (
         results: g.getResultsList(),
       })),
     };
+    pairings[value.getRound()][playerIndexMap[newPairing.players[0]]] = newPairing;
+    pairings[value.getRound()][playerIndexMap[newPairing.players[1]]] = newPairing;
   });
 
-  dd.getStandingsMap().forEach((value: RoundStandings, key: number) => {
-    standingsMap[key] = value.toObject();
-  });
-  ret.pairingMap = pairingMap;
-  ret.removedPlayers = removedPlayers;
-  ret.playerIndexMap = playerIndexMap;
-  ret.standingsMap = standingsMap;
+  ret.pairings = newPairings;
+
   return ret;
 };
 
@@ -254,14 +285,12 @@ export const TourneyGameEndedEvtToRecentGame = (
   };
 };
 
-const getRoundInfo = (
+const getPairing = (
   round: number,
   fullPlayerID: string,
   division: Division
 ): SinglePairing => {
-  const idx = division.playerIndexMap[fullPlayerID];
-  const key = division.roundInfo[idx + round * division.players.length];
-  return division.pairingMap[key];
+  return division.pairings[round][division.playerIndexMap[fullPlayerID]];
 };
 
 // The "Ready" button and pairings should be displayed based on:
@@ -285,17 +314,17 @@ const tourneyStatus = (
     // This really shouldn't happen, but it's a check to make sure we don't crash.
     return TourneyStatus.PRETOURNEY;
   }
-  const roundInfo = getRoundInfo(currentRound, fullPlayerID, division);
+  const pairing = getPairing(currentRound, fullPlayerID, division);
 
-  if (!roundInfo) {
+  if (!pairing) {
     return TourneyStatus.PRETOURNEY;
   }
-  const playerIdx = roundInfo.players.indexOf(fullPlayerID);
+  const playerIdx = pairing.players.indexOf(fullPlayerID);
   if (playerIdx === undefined) {
     return TourneyStatus.PRETOURNEY;
   }
-  if (roundInfo.players[0] === roundInfo.players[1]) {
-    switch (roundInfo.outcomes[0]) {
+  if (pairing.players[0] === pairing.players[1]) {
+    switch (pairing.outcomes[0]) {
       case TournamentGameResult.BYE:
         return TourneyStatus.ROUND_BYE;
       case TournamentGameResult.FORFEIT_LOSS:
@@ -305,7 +334,7 @@ const tourneyStatus = (
     }
     return TourneyStatus.PRETOURNEY;
   }
-  if (roundInfo.games[0] && roundInfo.games[0].gameEndReason) {
+  if (pairing.games[0] && pairing.games[0].gameEndReason) {
     // Game already finished
     return TourneyStatus.ROUND_GAME_FINISHED;
   }
@@ -320,22 +349,22 @@ const tourneyStatus = (
     return TourneyStatus.ROUND_GAME_ACTIVE;
   }
   if (
-    roundInfo.readyStates[playerIdx] === '' &&
-    roundInfo.readyStates[1 - playerIdx] !== ''
+    pairing.readyStates[playerIdx] === '' &&
+    pairing.readyStates[1 - playerIdx] !== ''
   ) {
     // Our opponent is ready
     return TourneyStatus.ROUND_OPPONENT_WAITING;
   } else if (
-    roundInfo.readyStates[1 - playerIdx] === '' &&
-    roundInfo.readyStates[playerIdx] !== ''
+    pairing.readyStates[1 - playerIdx] === '' &&
+    pairing.readyStates[playerIdx] !== ''
   ) {
     // We're ready
     return TourneyStatus.ROUND_READY;
   }
 
   if (
-    roundInfo.readyStates[playerIdx] === '' &&
-    roundInfo.readyStates[1 - playerIdx] === ''
+    pairing.readyStates[playerIdx] === '' &&
+    pairing.readyStates[1 - playerIdx] === ''
   ) {
     return TourneyStatus.ROUND_OPEN;
   }
@@ -391,6 +420,86 @@ export function TournamentReducer(
           [dd.divisionMessage.getDivisionId()]: divData,
         }),
       });
+    }
+
+    case ActionType.SetDivisionRoundControls: {
+      const drc = action.payload as {
+        roundControls: DivisionRoundControls;
+        loginState: LoginState;
+      };
+
+      return Object.assign(state, {
+        divisions: Object.assign({}, state.divisions, {
+          [division]: Object.assign({}, state.divisions[division], {
+            roundControls: drc.getRoundControls(),
+          }),
+        }),
+      });
+    }
+
+    case ActionType.SetDivisionControls: {
+      const dc = action.payload as {
+        divisionControls: DivisionControlsResponse;
+        loginState: LoginState;
+      };
+
+      return Object.assign(state, {
+        divisions: Object.assign({}, state.divisions, {
+          [division]: Object.assign({}, state.divisions[division], {
+            divisionControls: dc.getDivisionControls(),
+          }),
+        }),
+      });
+    }
+
+    case ActionType.SetDivisionPairings: {
+      const dp = action.payload as {
+        pairings: DivisionPairingsResponse;
+        loginState: LoginState;
+      };
+
+      const newPairings = state.divisions[dp.getDivisionId()].getPairings();
+      const newStandings = state.divisions[dp.getDivisionId()].getStandingsMap();
+
+      dp.getDivisionPairings().forEach(
+        (value: Pairing.AsObject) => {
+          const newSinglePairing = {
+            players: value.players,
+            outcomes: value.outcomes,
+            readyStates: value.readyStates,
+            games: value.games,
+          };
+          newPairings[value.round][value.players[0]] = newSinglePairing;
+          newPairings[value.round][value.players[1]] = newSinglePairing;
+        });
+
+      db.getDivisionStandings().forEach(
+        (value: RoundStandings.AsObject, key: number) => {
+          newStandings[key] = value;
+        }
+      );
+
+      return Object.assign(state, {
+        divisions: Object.assign({}, state.divisions, {
+          [division]: Object.assign({}, state.divisions[dp.getDivisionId()], {
+            [pairings]: newPairings,
+            [standings]: newStandings,
+            }),
+          }),
+        });
+    }
+
+    case ActionType.SetDivisionPlayers: {
+      // TODO
+      return state
+    }
+
+    case ActionType.SetTournamentFinished: {
+      const finished = true;
+      return {
+        ...state,
+        finished,
+      };
     }
 
     case ActionType.SetDivisionsData: {

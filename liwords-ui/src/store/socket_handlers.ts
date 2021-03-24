@@ -46,6 +46,11 @@ import {
   SoughtGameProcessEvent,
   TimedOut,
   TournamentDataResponse,
+  DivisionPairingsResponse,
+  PlayersAddedOrRemovedResponse,
+  DivisionControlsResponse,
+  DivisionRoundControls,
+  TournamentFinishedResponse,
   TournamentDivisionDataResponse,
   TournamentDivisionDeletedResponse,
   TournamentGameEndedEvent,
@@ -110,7 +115,11 @@ export const parseMsgs = (msg: Uint8Array) => {
       [MessageType.TOURNAMENT_GAME_ENDED_EVENT]: TournamentGameEndedEvent,
       [MessageType.REMATCH_STARTED]: RematchStartedEvent,
       [MessageType.TOURNAMENT_MESSAGE]: TournamentDataResponse,
-      [MessageType.TOURNAMENT_DIVISION_MESSAGE]: TournamentDivisionDataResponse,
+      [MessageType.TOURNAMENT_DIVISION_ROUND_CONTROLS_MESSAGE]: DivisionRoundControls,
+      [MessageType.TOURNAMENT_DIVISION_PAIRINGS_MESSAGE]: DivisionPairingsResponse,
+      [MessageType.TOURNAMENT_DIVISION_CONTROLS_MESSAGE]: DivisionControlsResponse,
+      [MessageType.TOURNAMENT_DIVISION_PLAYER_CHANGE_MESSAGE]: PlayersAddedOrRemovedResponse,
+      [MessageType.TOURNAMENT_FINISHED_MESSAGE]: TournamentFinishedResponse,
       [MessageType.TOURNAMENT_DIVISION_DELETED_MESSAGE]: TournamentDivisionDeletedResponse,
       [MessageType.TOURNAMENT_FULL_DIVISIONS_MESSAGE]: FullTournamentDivisions,
       [MessageType.CHAT_MESSAGE_DELETED]: ChatMessageDeleted,
@@ -493,13 +502,69 @@ export const useOnSocketMsg = () => {
             break;
           }
 
-          case MessageType.TOURNAMENT_DIVISION_MESSAGE: {
-            const tdm = parsedMsg as TournamentDivisionDataResponse;
+          case MessageType.TOURNAMENT_DIVISION_ROUND_CONTROLS_MESSAGE: {
+            const tdrcm = parsedMsg as DivisionRoundControls;
 
             dispatchTournamentContext({
-              actionType: ActionType.SetDivisionData,
+              actionType: ActionType.SetDivisionRoundControls,
               payload: {
-                divisionMessage: tdm,
+                divisionMessage: tdrcm,
+                loginState,
+              },
+            });
+
+            break;
+          }
+
+          case MessageType.TOURNAMENT_DIVISION_PAIRINGS_MESSAGE: {
+            const tdpm = parsedMsg as DivisionPairingResponse;
+
+            dispatchTournamentContext({
+              actionType: ActionType.SetDivisionPairings,
+              payload: {
+                divisionMessage: tdpm,
+                loginState,
+              },
+            });
+
+            break;
+          }
+
+          case MessageType.TOURNAMENT_DIVISION_CONTROLS_MESSAGE: {
+            const tdcm = parsedMsg as DivisionControlsResponse;
+
+            dispatchTournamentContext({
+              actionType: ActionType.SetDivisionControls,
+              payload: {
+                divisionMessage: tdcm,
+                loginState,
+              },
+            });
+
+            break;
+          }
+
+          case MessageType.TOURNAMENT_DIVISION_PLAYER_CHANGE_MESSAGE: {
+            const tdpcm = parsedMsg as PlayersAddedOrRemovedResponse;
+
+            dispatchTournamentContext({
+              actionType: ActionType.SetDivisionPlayers,
+              payload: {
+                divisionMessage: tdpcm,
+                loginState,
+              },
+            });
+
+            break;
+          }
+
+          case MessageType.TOURNAMENT_FINISHED_MESSAGE: {
+            const tfm = parsedMsg as TournamentFinishedResponse;
+
+            dispatchTournamentContext({
+              actionType: ActionType.SetTournamentFinished,
+              payload: {
+                divisionMessage: tfm,
                 loginState,
               },
             });

@@ -787,13 +787,7 @@ func StartAllRoundCountdowns(ctx context.Context, ts TournamentStore, id string,
 	if !t.IsStarted {
 		return fmt.Errorf("cannot start tournament %s with no divisions", t.Name)
 	}
-	err = ts.Set(ctx, t)
-	if err != nil {
-		return err
-	}
-	wrapped := entity.WrapEvent(&realtime.StartRoundResponse{Id: id, DivisionIds: divisions, Rounds: rounds},
-		realtime.MessageType_TOURNAMENT_ROUND_STARTED)
-	return SendTournamentMessage(ctx, ts, id, wrapped)
+	return ts.Set(ctx, t)
 }
 
 // DivisionChannelName returns a channel name that can be used

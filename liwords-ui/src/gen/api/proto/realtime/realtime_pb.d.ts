@@ -1352,38 +1352,6 @@ export namespace PlayersAddedOrRemovedResponse {
   }
 }
 
-export class StartRoundResponse extends jspb.Message {
-  getId(): string;
-  setId(value: string): void;
-
-  clearDivisionIdsList(): void;
-  getDivisionIdsList(): Array<string>;
-  setDivisionIdsList(value: Array<string>): void;
-  addDivisionIds(value: string, index?: number): string;
-
-  clearRoundsList(): void;
-  getRoundsList(): Array<number>;
-  setRoundsList(value: Array<number>): void;
-  addRounds(value: number, index?: number): number;
-
-  serializeBinary(): Uint8Array;
-  toObject(includeInstance?: boolean): StartRoundResponse.AsObject;
-  static toObject(includeInstance: boolean, msg: StartRoundResponse): StartRoundResponse.AsObject;
-  static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
-  static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
-  static serializeBinaryToWriter(message: StartRoundResponse, writer: jspb.BinaryWriter): void;
-  static deserializeBinary(bytes: Uint8Array): StartRoundResponse;
-  static deserializeBinaryFromReader(message: StartRoundResponse, reader: jspb.BinaryReader): StartRoundResponse;
-}
-
-export namespace StartRoundResponse {
-  export type AsObject = {
-    id: string,
-    divisionIdsList: Array<string>,
-    roundsList: Array<number>,
-  }
-}
-
 export class DivisionRoundControls extends jspb.Message {
   getId(): string;
   setId(value: string): void;
