@@ -2,8 +2,9 @@ package pair
 
 import (
 	"fmt"
-	"github.com/matryer/is"
 	"testing"
+
+	"github.com/matryer/is"
 
 	"github.com/domino14/liwords/pkg/utilities"
 )
@@ -33,13 +34,14 @@ func TestRoundRobin(t *testing.T) {
 
 	numberOfPlayers := 8
 
-	roundToPairingsMap := map[int][]int{getRoundRobinRotation(numberOfPlayers, 0): []int{7, 6, 5, 4, 3, 2, 1, 0},
-		getRoundRobinRotation(numberOfPlayers, 1): []int{2, 3, 0, 1, 7, 6, 5, 4},
-		getRoundRobinRotation(numberOfPlayers, 2): []int{4, 7, 6, 5, 0, 3, 2, 1},
-		getRoundRobinRotation(numberOfPlayers, 3): []int{6, 4, 3, 2, 1, 7, 0, 5},
-		getRoundRobinRotation(numberOfPlayers, 4): []int{1, 0, 7, 6, 5, 4, 3, 2},
-		getRoundRobinRotation(numberOfPlayers, 5): []int{3, 5, 4, 0, 2, 1, 7, 6},
-		getRoundRobinRotation(numberOfPlayers, 6): []int{5, 2, 1, 7, 6, 0, 4, 3}}
+	roundToPairingsMap := map[int][]int{
+		getRoundRobinRotation(numberOfPlayers, 0): {7, 6, 5, 4, 3, 2, 1, 0},
+		getRoundRobinRotation(numberOfPlayers, 1): {2, 3, 0, 1, 7, 6, 5, 4},
+		getRoundRobinRotation(numberOfPlayers, 2): {4, 7, 6, 5, 0, 3, 2, 1},
+		getRoundRobinRotation(numberOfPlayers, 3): {6, 4, 3, 2, 1, 7, 0, 5},
+		getRoundRobinRotation(numberOfPlayers, 4): {1, 0, 7, 6, 5, 4, 3, 2},
+		getRoundRobinRotation(numberOfPlayers, 5): {3, 5, 4, 0, 2, 1, 7, 6},
+		getRoundRobinRotation(numberOfPlayers, 6): {5, 2, 1, 7, 6, 0, 4, 3}}
 
 	// Modulus operation should repeat the pairings past the first round robin
 	// Test first pairing of third round robin just to be sure
@@ -51,9 +53,41 @@ func TestRoundRobin(t *testing.T) {
 	}
 }
 
-func TestInitialFontes(t *testing.T) {
+func TestTeamRoundRobin(t *testing.T) {
+	// This test is used to ensure that team round robin
+	// pairings work correctly.
+
 	is := is.New(t)
 
+	// Test two teams of 5, triple round robin (15 rounds), team A vs team B.
+	// Both teams are in the same division but they only play the other team.
+
+	numberOfPlayers := 10
+
+	roundToPairingsMap := map[int][]int{
+		getTeamRoundRobinRotation(numberOfPlayers, 0, 3): {9, 8, 7, 6, 5, 4, 3, 2, 1, 0},
+		getTeamRoundRobinRotation(numberOfPlayers, 1, 3): {9, 8, 7, 6, 5, 4, 3, 2, 1, 0},
+		getTeamRoundRobinRotation(numberOfPlayers, 2, 3): {9, 8, 7, 6, 5, 4, 3, 2, 1, 0},
+		getTeamRoundRobinRotation(numberOfPlayers, 3, 3): {7, 4, 3, 2, 1, 9, 8, 0, 6, 5},
+		getTeamRoundRobinRotation(numberOfPlayers, 4, 3): {7, 4, 3, 2, 1, 9, 8, 0, 6, 5},
+		getTeamRoundRobinRotation(numberOfPlayers, 5, 3): {7, 4, 3, 2, 1, 9, 8, 0, 6, 5},
+		getTeamRoundRobinRotation(numberOfPlayers, 6, 3): {5, 2, 1, 7, 6, 0, 4, 3, 2, 4},
+		getTeamRoundRobinRotation(numberOfPlayers, 7, 3): {5, 2, 1, 7, 6, 0, 4, 3, 2, 4},
+		getTeamRoundRobinRotation(numberOfPlayers, 8, 3): {5, 2, 1, 7, 6, 0, 4, 3, 2, 4},
+		getTeamRoundRobinRotation(numberOfPlayers, 9, 3): {5, 2, 1, 7, 6, 0, 4, 3, 2, 4},
+	}
+
+	for i := 0; i < 15; i++ {
+		pairings, err := getTeamRoundRobinPairings(numberOfPlayers, i, 3)
+		is.NoErr(err)
+		is.NoErr(equalPairings(
+			roundToPairingsMap[getTeamRoundRobinRotation(numberOfPlayers, i, 3)],
+			pairings))
+	}
+}
+
+func TestInitialFontes(t *testing.T) {
+	is := is.New(t)
 
 	_, err := getInitialFontesPairings(9, 4, 0)
 	is.NoErr(err)

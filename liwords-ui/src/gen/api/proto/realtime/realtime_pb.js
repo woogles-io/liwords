@@ -11702,7 +11702,8 @@ proto.liwords.PairingMethod = {
   INITIAL_FONTES: 5,
   SWISS: 6,
   QUICKPAIR: 7,
-  MANUAL: 8
+  MANUAL: 8,
+  TEAM_ROUND_ROBIN: 9
 };
 
 /**
