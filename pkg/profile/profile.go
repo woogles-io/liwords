@@ -77,7 +77,7 @@ func (ps *ProfileService) GetProfile(ctx context.Context, r *pb.ProfileRequest) 
 	return &pb.ProfileResponse{
 		FirstName:       user.Profile.FirstName,
 		LastName:        user.Profile.LastName,
-		FullName:		 user.RealName(),
+		FullName:        user.RealName(),
 		CountryCode:     user.Profile.CountryCode,
 		Title:           user.Profile.Title,
 		About:           user.Profile.About,
@@ -105,13 +105,13 @@ func (ps *ProfileService) GetPersonalInfo(ctx context.Context, r *pb.PersonalInf
 	}
 
 	return &pb.PersonalInfoResponse{
-		Email:			 user.Email,
-		FirstName:       user.Profile.FirstName,
-		LastName:        user.Profile.LastName,
-		CountryCode:     user.Profile.CountryCode,
-		AvatarUrl:       user.AvatarUrl(),
-		FullName:		 user.RealName(),
-		About:			 user.Profile.About,
+		Email:       user.Email,
+		FirstName:   user.Profile.FirstName,
+		LastName:    user.Profile.LastName,
+		CountryCode: user.Profile.CountryCode,
+		AvatarUrl:   user.AvatarUrl(),
+		FullName:    user.RealName(),
+		About:       user.Profile.About,
 	}, nil
 }
 
@@ -135,9 +135,7 @@ func (ps *ProfileService) UpdatePersonalInfo(ctx context.Context, r *pb.UpdatePe
 		return nil, twirp.InternalErrorWith(updateErr)
 	}
 
-
-	return &pb.UpdatePersonalInfoResponse{
-	}, nil
+	return &pb.UpdatePersonalInfoResponse{}, nil
 }
 
 func (ps *ProfileService) GetUsersGameInfo(ctx context.Context, r *pb.UsersGameInfoRequest) (*pb.UsersGameInfoResponse, error) {
@@ -247,6 +245,5 @@ func (ps *ProfileService) RemoveAvatar(ctx context.Context, r *pb.RemoveAvatarRe
 		}
 	}
 
-	return &pb.RemoveAvatarResponse{
-	}, nil
+	return &pb.RemoveAvatarResponse{}, nil
 }
