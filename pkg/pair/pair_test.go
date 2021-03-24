@@ -65,16 +65,21 @@ func TestTeamRoundRobin(t *testing.T) {
 	numberOfPlayers := 10
 
 	roundToPairingsMap := map[int][]int{
-		getTeamRoundRobinRotation(numberOfPlayers, 0, 3): {9, 8, 7, 6, 5, 4, 3, 2, 1, 0},
-		getTeamRoundRobinRotation(numberOfPlayers, 1, 3): {9, 8, 7, 6, 5, 4, 3, 2, 1, 0},
-		getTeamRoundRobinRotation(numberOfPlayers, 2, 3): {9, 8, 7, 6, 5, 4, 3, 2, 1, 0},
-		getTeamRoundRobinRotation(numberOfPlayers, 3, 3): {7, 4, 3, 2, 1, 9, 8, 0, 6, 5},
-		getTeamRoundRobinRotation(numberOfPlayers, 4, 3): {7, 4, 3, 2, 1, 9, 8, 0, 6, 5},
-		getTeamRoundRobinRotation(numberOfPlayers, 5, 3): {7, 4, 3, 2, 1, 9, 8, 0, 6, 5},
-		getTeamRoundRobinRotation(numberOfPlayers, 6, 3): {5, 2, 1, 7, 6, 0, 4, 3, 2, 4},
-		getTeamRoundRobinRotation(numberOfPlayers, 7, 3): {5, 2, 1, 7, 6, 0, 4, 3, 2, 4},
-		getTeamRoundRobinRotation(numberOfPlayers, 8, 3): {5, 2, 1, 7, 6, 0, 4, 3, 2, 4},
-		getTeamRoundRobinRotation(numberOfPlayers, 9, 3): {5, 2, 1, 7, 6, 0, 4, 3, 2, 4},
+		getTeamRoundRobinRotation(numberOfPlayers, 0, 3):  {9, 8, 7, 6, 5, 4, 3, 2, 1, 0},
+		getTeamRoundRobinRotation(numberOfPlayers, 1, 3):  {9, 8, 7, 6, 5, 4, 3, 2, 1, 0},
+		getTeamRoundRobinRotation(numberOfPlayers, 2, 3):  {9, 8, 7, 6, 5, 4, 3, 2, 1, 0},
+		getTeamRoundRobinRotation(numberOfPlayers, 3, 3):  {5, 4, 3, 2, 1, 0, 9, 8, 7, 6},
+		getTeamRoundRobinRotation(numberOfPlayers, 4, 3):  {5, 4, 3, 2, 1, 0, 9, 8, 7, 6},
+		getTeamRoundRobinRotation(numberOfPlayers, 5, 3):  {5, 4, 3, 2, 1, 0, 9, 8, 7, 6},
+		getTeamRoundRobinRotation(numberOfPlayers, 6, 3):  {1, 0, 9, 8, 7, 6, 5, 4, 3, 2},
+		getTeamRoundRobinRotation(numberOfPlayers, 7, 3):  {1, 0, 9, 8, 7, 6, 5, 4, 3, 2},
+		getTeamRoundRobinRotation(numberOfPlayers, 8, 3):  {1, 0, 9, 8, 7, 6, 5, 4, 3, 2},
+		getTeamRoundRobinRotation(numberOfPlayers, 9, 3):  {7, 6, 5, 4, 3, 2, 1, 0, 9, 8},
+		getTeamRoundRobinRotation(numberOfPlayers, 10, 3): {7, 6, 5, 4, 3, 2, 1, 0, 9, 8},
+		getTeamRoundRobinRotation(numberOfPlayers, 11, 3): {7, 6, 5, 4, 3, 2, 1, 0, 9, 8},
+		getTeamRoundRobinRotation(numberOfPlayers, 12, 3): {3, 2, 1, 0, 9, 8, 7, 6, 5, 4},
+		getTeamRoundRobinRotation(numberOfPlayers, 13, 3): {3, 2, 1, 0, 9, 8, 7, 6, 5, 4},
+		getTeamRoundRobinRotation(numberOfPlayers, 14, 3): {3, 2, 1, 0, 9, 8, 7, 6, 5, 4},
 	}
 
 	for i := 0; i < 15; i++ {

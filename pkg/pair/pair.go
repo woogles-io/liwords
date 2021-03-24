@@ -551,16 +551,11 @@ func getTeamRoundRobinPairings(numberOfPlayers, round, gamesPerMatchup int) ([]i
 		players = append(players, i)
 	}
 
-	rotatedPlayers := players[1:]
+	rotatedPlayers := players[:]
 
 	l := len(rotatedPlayers)
-
 	rotationIndex := l - getTeamRoundRobinRotation(len(players), round, gamesPerMatchup)
-
 	rotatedPlayers = append(rotatedPlayers[rotationIndex:l], rotatedPlayers[0:rotationIndex]...)
-	rotatedPlayers = append([]int{players[0]}, rotatedPlayers...)
-
-	l = len(rotatedPlayers)
 
 	topHalf := rotatedPlayers[0 : l/2]
 	bottomHalf := rotatedPlayers[l/2 : l]
@@ -596,6 +591,7 @@ func getTeamRoundRobinPairings(numberOfPlayers, round, gamesPerMatchup int) ([]i
 
 func IsStandingsIndependent(pm realtime.PairingMethod) bool {
 	return pm == realtime.PairingMethod_ROUND_ROBIN ||
+		pm == realtime.PairingMethod_TEAM_ROUND_ROBIN ||
 		pm == realtime.PairingMethod_RANDOM ||
 		pm == realtime.PairingMethod_INITIAL_FONTES ||
 		pm == realtime.PairingMethod_MANUAL
