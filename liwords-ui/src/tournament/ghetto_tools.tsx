@@ -631,8 +631,6 @@ const SetResult = (props: { tournamentID: string }) => {
 };
 
 const PairRound = (props: { tournamentID: string }) => {
-  const { tournamentContext } = useTournamentStoreContext();
-
   const onFinish = (vals: Store) => {
     const obj = {
       id: props.tournamentID,
