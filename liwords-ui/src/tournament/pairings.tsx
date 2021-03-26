@@ -74,6 +74,7 @@ type Props = {
   selectedRound: number;
   username?: string;
   sendReady?: () => void;
+  isDirector: boolean;
 };
 
 type PairingTableData = {
@@ -101,7 +102,11 @@ export const Pairings = (props: Props) => {
     division: Division,
     round: number
   ): PairingTableData[] => {
-    if (!division || currentRound === -1) {
+    if (!division) {
+      return new Array<PairingTableData>();
+    }
+    // Hide initial pairings from anyone except directors
+    if (currentRound === -1 && !props.isDirector) {
       return new Array<PairingTableData>();
     }
     const { status } = tournamentContext.competitorState;

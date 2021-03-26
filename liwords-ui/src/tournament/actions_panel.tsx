@@ -211,6 +211,7 @@ export const ActionsPanel = React.memo((props: Props) => {
               selectedDivision={selectedDivision}
               username={username}
               sendReady={props.sendReady}
+              isDirector={isDirector}
             />
           </div>
         );
