@@ -2,6 +2,7 @@ import React, { ReactNode, useMemo } from 'react';
 import { useTournamentStoreContext } from '../store/store';
 import { UsernameWithContext } from '../shared/usernameWithContext';
 import { Table } from 'antd';
+import { PlayerTag } from './player_tags';
 
 type Props = {
   selectedDivision: string;
@@ -38,12 +39,19 @@ export const Standings = (props: Props) => {
         return {
           rank: index + 1,
           player: (
-            <UsernameWithContext
-              username={playerName}
-              userID={playerId}
-              omitSendMessage
-              omitBlock
-            />
+            <>
+              <UsernameWithContext
+                username={playerName}
+                userID={playerId}
+                omitSendMessage
+                omitBlock
+              />{' '}
+              <PlayerTag
+                username={playerName}
+                players={division.players}
+                tournamentSlug={tournamentContext.metadata.slug}
+              />
+            </>
           ),
           wins: standing.wins + standing.draws / 2,
           losses: standing.losses + standing.draws / 2,
