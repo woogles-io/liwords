@@ -3,8 +3,9 @@ package pair
 import (
 	"errors"
 	"fmt"
-	"github.com/rs/zerolog/log"
 	"math/rand"
+
+	"github.com/rs/zerolog/log"
 
 	"github.com/domino14/liwords/pkg/entity"
 	"github.com/domino14/liwords/pkg/matching"
@@ -33,6 +34,8 @@ func Pair(members *entity.UnpairedPoolMembers) ([]int, error) {
 		pairings, err = pairFactor(members)
 	} else if pm == realtime.PairingMethod_INITIAL_FONTES {
 		pairings, err = pairInitialFontes(members)
+	} else if pm == realtime.PairingMethod_TEAM_ROUND_ROBIN {
+		pairings, err = pairTeamRoundRobin(members)
 	} else {
 		// The remaining pairing methods are solved by
 		// reduction to minimum weight matching
@@ -76,6 +79,10 @@ func pairRandom(members *entity.UnpairedPoolMembers) ([]int, error) {
 
 func pairRoundRobin(members *entity.UnpairedPoolMembers) ([]int, error) {
 	return getRoundRobinPairings(len(members.PoolMembers), int(members.RoundControls.Round))
+}
+
+func pairTeamRoundRobin(members *entity.UnpairedPoolMembers) ([]int, error) {
+	return getTeamRoundRobinPairings(len(members.PoolMembers), int(members.RoundControls.Round), int(members.RoundControls.GamesPerRound))
 }
 
 func pairKingOfTheHill(members *entity.UnpairedPoolMembers) ([]int, error) {
@@ -498,6 +505,10 @@ func getRoundRobinPairings(numberOfPlayers int, round int) ([]int, error) {
 	return pairings, nil
 }
 
+func getTeamRoundRobinRotation(numberOfPlayers int, round int, gamesPerMatchup int) int {
+	return ((round / gamesPerMatchup) * 2) % (numberOfPlayers - 1)
+}
+
 func getRoundRobinRotation(numberOfPlayers int, round int) int {
 	// This has been made a separate function
 	// for ease of testing and future improvements
@@ -528,8 +539,59 @@ func getRoundRobinRotation(numberOfPlayers int, round int) int {
 	return (round * (numberOfPlayers - 3)) % (numberOfPlayers - 1)
 }
 
+func getTeamRoundRobinPairings(numberOfPlayers, round, gamesPerMatchup int) ([]int, error) {
+	// A team round robin contains two teams: A and B
+	// Everyone in A plays everyone in B gamesPerMatchup times (in a row for speed).
+	if numberOfPlayers%2 == 1 {
+		return nil, errors.New("cannot have an odd number of players with team round robin pairings")
+	}
+
+	players := []int{}
+	for i := 0; i < numberOfPlayers; i++ {
+		players = append(players, i)
+	}
+
+	rotatedPlayers := players[:]
+
+	l := len(rotatedPlayers)
+	rotationIndex := l - getTeamRoundRobinRotation(len(players), round, gamesPerMatchup)
+	rotatedPlayers = append(rotatedPlayers[rotationIndex:l], rotatedPlayers[0:rotationIndex]...)
+
+	topHalf := rotatedPlayers[0 : l/2]
+	bottomHalf := rotatedPlayers[l/2 : l]
+	utilities.Reverse(bottomHalf)
+
+	pairings := []int{}
+
+	// Assign -2 as default so if it doesn't
+	// get overwritten we know something is wrong
+	for i := 0; i < len(players); i++ {
+		pairings = append(pairings, -2)
+	}
+
+	// log.Debug().Interface("pairings", pairings).Interface("rotatedPlayers", rotatedPlayers).
+	// 	Interface("players", players).Int("numPlayers", numberOfPlayers).Int("round", round).
+	// 	Int("gamesPerMatchup", gamesPerMatchup).Int("rotationIndex", rotationIndex).
+	// 	Interface("topHalf", topHalf).Interface("bottomHalf", bottomHalf).Msg("debug-pairings")
+
+	for i := 0; i < len(players)/2; i++ {
+		pairings[topHalf[i]] = bottomHalf[i]
+		pairings[bottomHalf[i]] = topHalf[i]
+	}
+
+	for i := 0; i < len(pairings); i++ {
+		if pairings[i] < -1 {
+			return nil, fmt.Errorf("team round robin pairing failure for %d players", l)
+		}
+	}
+	log.Debug().Interface("pairings", pairings).Int("numPlayers", numberOfPlayers).Int("round", round).
+		Int("gamesPerMatchup", gamesPerMatchup).Msg("final pairings")
+	return pairings, nil
+}
+
 func IsStandingsIndependent(pm realtime.PairingMethod) bool {
 	return pm == realtime.PairingMethod_ROUND_ROBIN ||
+		pm == realtime.PairingMethod_TEAM_ROUND_ROBIN ||
 		pm == realtime.PairingMethod_RANDOM ||
 		pm == realtime.PairingMethod_INITIAL_FONTES ||
 		pm == realtime.PairingMethod_MANUAL

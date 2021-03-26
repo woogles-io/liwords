@@ -39,7 +39,10 @@ const FormModal = (props: ModalProps) => {
     'clear-checked-in': <ClearCheckedIn tournamentID={props.tournamentID} />,
     'set-pairing': <SetPairing tournamentID={props.tournamentID} />,
     'set-result': <SetResult tournamentID={props.tournamentID} />,
+    'pair-round': <PairRound tournamentID={props.tournamentID} />,
   };
+
+  type FormKeys = keyof typeof forms;
 
   return (
     <Modal
@@ -49,16 +52,7 @@ const FormModal = (props: ModalProps) => {
       destroyOnClose={true}
       onCancel={props.handleCancel}
     >
-      {
-        forms[
-          props.type as
-            | 'add-division'
-            | 'remove-division'
-            | 'add-players'
-            | 'remove-player'
-            | 'clear-checked-in'
-        ]
-      }
+      {forms[props.type as FormKeys]}
 
       {/* <Form {...layout} form={form} layout="horizontal"></Form> */}
     </Modal>
@@ -574,11 +568,11 @@ const SetResult = (props: { tournamentID: string }) => {
       </Form.Item>
 
       <Form.Item name="p1score" label="Player 1 score">
-        <InputNumber min={1} />
+        <InputNumber />
       </Form.Item>
 
       <Form.Item name="p2score" label="Player 2 score">
-        <InputNumber min={1} />
+        <InputNumber />
       </Form.Item>
 
       <Form.Item name="p1result" label="Player 1 result">
@@ -625,6 +619,61 @@ const SetResult = (props: { tournamentID: string }) => {
 
       <Form.Item name="amendment" label="Amendment">
         <Switch />
+      </Form.Item>
+
+      <Form.Item>
+        <Button type="primary" htmlType="submit">
+          Submit
+        </Button>
+      </Form.Item>
+    </Form>
+  );
+};
+
+const PairRound = (props: { tournamentID: string }) => {
+  const onFinish = (vals: Store) => {
+    const obj = {
+      id: props.tournamentID,
+      division: vals.division,
+      round: vals.round - 1, // 1-indexed input
+    };
+    axios
+      .post<{}>(
+        toAPIUrl('tournament_service.TournamentService', 'PairRound'),
+        obj
+      )
+      .then((resp) => {
+        message.info({
+          content: 'Pairing set',
+          duration: 3,
+        });
+      })
+      .catch((err) => {
+        message.error({
+          content: 'Error ' + err.response?.data?.msg,
+          duration: 5,
+        });
+      });
+  };
+
+  return (
+    <Form onFinish={onFinish}>
+      <Form.Item
+        name="division"
+        label="Division Name"
+        rules={[
+          {
+            required: true,
+            message: 'Please input division name',
+          },
+        ]}
+      >
+        {/* lazy right now but all of these need required */}
+        <Input />
+      </Form.Item>
+
+      <Form.Item name="round" label="Round (1-indexed)">
+        <InputNumber min={1} />
       </Form.Item>
 
       <Form.Item>
