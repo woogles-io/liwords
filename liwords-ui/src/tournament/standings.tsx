@@ -34,7 +34,7 @@ export const Standings = (props: Props) => {
   if (currentRound > -1) {
     formatStandings = division.standingsMap[currentRound].standingsList.map(
       (standing, index): StandingsTableData => {
-        const [playerId, playerName] = standing.player.split(':');
+        const [playerId, playerName] = standing.playerId.split(':');
         return {
           rank: index + 1,
           player: (

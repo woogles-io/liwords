@@ -17,16 +17,16 @@ const pairingsForRound = (
   division: Division
 ): Array<SinglePairing> => {
   const m = new Set<string>();
-  const n = new Array<string>();
+  const n = new Array<SinglePairing>();
   const numPlayers = division.players.length;
-  for (let idx = round * numPlayers; idx < (round + 1) * numPlayers; idx++) {
-    const key = division.roundInfo[idx];
+  division.pairings[round].roundPairings.forEach((value: SinglePairing) => {
+    const key = value.players[0] + ':' + value.players[1];
     if (key && !m.has(key)) {
-      n.push(key);
+      n.push(value);
       m.add(key);
     }
-  }
-  return n.map((key) => division.pairingMap[key]);
+  });
+  return n;
 };
 
 const getPerformance = (
@@ -41,7 +41,7 @@ const getPerformance = (
     roundOfRecord = 0;
   }
   const results = division.standingsMap[roundOfRecord].standingsList.find((s) =>
-    s.player.endsWith(`:${playerName}`)
+    s.playerId.endsWith(`:${playerName}`)
   );
   return results
     ? `(${results.wins + results.draws / 2}-${
@@ -55,7 +55,7 @@ const getScores = (
   viewedRound: number,
   pairing: SinglePairing
 ) => {
-  const playerIndex = pairing.players[0].endsWith(`:${playerName}`) ? 0 : 1;
+  const playerIndex = pairing.players[0].getId().endsWith(`:${playerName}`) ? 0 : 1;
   const results = pairing.outcomes;
   if (
     pairing.games.length &&
@@ -114,7 +114,7 @@ export const Pairings = (props: Props) => {
     };
     const pairingsData = pairings.map(
       (pairing: SinglePairing): PairingTableData => {
-        const playerNames = pairing.players.map(usernameFromPlayerEntry);
+        const playerNames = pairing.players.map((v) => v.getId()).map(usernameFromPlayerEntry);
         const isBye = pairing.outcomes[0] === TournamentGameResult.BYE;
         const isForfeit =
           pairing.outcomes[0] === TournamentGameResult.FORFEIT_LOSS;
@@ -130,7 +130,7 @@ export const Pairings = (props: Props) => {
           sortPriority = 2;
         }
         const isRemoved = (playerName: string) =>
-          division.removedPlayers.includes(playerName);
+          division.players[division.playerIndexMap[playerName]].getSuspended();
 
         const players =
           playerNames[0] === playerNames[1] ? (

@@ -304,7 +304,7 @@ export const ActionsPanel = React.memo((props: Props) => {
     const divisionArray = Object.values(divisions);
     const foundDivision = userID
       ? divisionArray.find((d) => {
-          return d.players.map(idFromPlayerEntry).includes(userID);
+          return d.players.map((v) => v.getId()).map(idFromPlayerEntry).includes(userID);
         })
       : undefined;
     if (foundDivision) {

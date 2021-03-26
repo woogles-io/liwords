@@ -114,7 +114,6 @@ export const parseMsgs = (msg: Uint8Array) => {
       [MessageType.MATCH_REQUEST_CANCELLATION]: MatchRequestCancellation,
       [MessageType.TOURNAMENT_GAME_ENDED_EVENT]: TournamentGameEndedEvent,
       [MessageType.REMATCH_STARTED]: RematchStartedEvent,
-      [MessageType.TOURNAMENT_MESSAGE]: TournamentDataResponse,
       [MessageType.TOURNAMENT_DIVISION_ROUND_CONTROLS_MESSAGE]: DivisionRoundControls,
       [MessageType.TOURNAMENT_DIVISION_PAIRINGS_MESSAGE]: DivisionPairingsResponse,
       [MessageType.TOURNAMENT_DIVISION_CONTROLS_MESSAGE]: DivisionControlsResponse,
@@ -517,7 +516,7 @@ export const useOnSocketMsg = () => {
           }
 
           case MessageType.TOURNAMENT_DIVISION_PAIRINGS_MESSAGE: {
-            const tdpm = parsedMsg as DivisionPairingResponse;
+            const tdpm = parsedMsg as DivisionPairingsResponse;
 
             dispatchTournamentContext({
               actionType: ActionType.SetDivisionPairings,
