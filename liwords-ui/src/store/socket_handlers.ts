@@ -122,6 +122,8 @@ export const parseMsgs = (msg: Uint8Array) => {
       [MessageType.TOURNAMENT_DIVISION_DELETED_MESSAGE]: TournamentDivisionDeletedResponse,
       [MessageType.TOURNAMENT_FULL_DIVISIONS_MESSAGE]: FullTournamentDivisions,
       [MessageType.CHAT_MESSAGE_DELETED]: ChatMessageDeleted,
+      [MessageType.TOURNAMENT_MESSAGE]: TournamentDataResponse,
+      [MessageType.TOURNAMENT_DIVISION_MESSAGE]: TournamentDivisionDataResponse,
     };
 
     const parsedMsg = msgTypes[msgType];
