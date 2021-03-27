@@ -18,7 +18,6 @@ const pairingsForRound = (
 ): Array<SinglePairing> => {
   const m = new Set<string>();
   const n = new Array<SinglePairing>();
-  const numPlayers = division.players.length;
   division.pairings[round].roundPairings.forEach((value: SinglePairing) => {
     const key = value.players[0] + ':' + value.players[1];
     if (key && !m.has(key)) {
