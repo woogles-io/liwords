@@ -7,15 +7,14 @@ import {
   RoundStandings,
   TournamentDivisionDataResponse,
   DivisionPairingsResponse,
-  PlayersAddedOrRemovedResponse,
+  // PlayersAddedOrRemovedResponse,
   DivisionControlsResponse,
   DivisionRoundControls,
-  TournamentFinishedResponse,
+  // TournamentFinishedResponse,
   DivisionControls,
   RoundControl,
   Pairing,
   TournamentPerson,
-  TournamentPersons,
   TournamentGameEndedEvent,
   TournamentGameResult,
   TournamentGameResultMap,
@@ -186,9 +185,11 @@ const divisionDataResponseToObj = (
 
   const playerIndexMap: { [playerID: string]: number } = {};
   const newPlayers = Array<TournamentPerson>();
-  dd.getPlayers()?.getPersonsList().forEach((value: TournamentPerson, index: number) => {
+  dd.getPlayers()
+    ?.getPersonsList()
+    .forEach((value: TournamentPerson, index: number) => {
     playerIndexMap[value.getId()] = index;
-    newPlayers.push(value);
+      newPlayers.push(value);
   });
 
   ret.playerIndexMap = playerIndexMap;
@@ -200,17 +201,16 @@ const divisionDataResponseToObj = (
 
   dd.getRoundControlsList().forEach(() => {
     const newRoundPairings = new Array<SinglePairing>();
-    dd.getPlayers()?.getPersonsList().forEach(() => {
-      newRoundPairings.push(<SinglePairing>{});
+    dd.getPlayers()
+      ?.getPersonsList().forEach(() => {
+      newRoundPairings.push({} as SinglePairing);
     });
     newPairings.push({ roundPairings: newRoundPairings });
   });
 
   dd.getPairingMapMap().forEach((value: Pairing, key: string) => {
-    const newPairing = <SinglePairing>{
-      players: value
-        .getPlayersList()
-        .map((v) => newPlayers[v]),
+    const newPairing = {
+      players: value.getPlayersList().map((v) => newPlayers[v]),
       outcomes: value.getOutcomesList(),
       readyStates: value.getReadyStatesList(),
       games: value.getGamesList().map((g) => ({
@@ -219,7 +219,7 @@ const divisionDataResponseToObj = (
         id: g.getId(),
         results: g.getResultsList(),
       })),
-    };
+    } as SinglePairing;
     newPairings[value.getRound()].roundPairings[
       playerIndexMap[newPairing.players[0].getId()]
     ] = newPairing;
@@ -285,7 +285,9 @@ const getPairing = (
   fullPlayerID: string,
   division: Division
 ): SinglePairing => {
-  return division.pairings[round].roundPairings[division.playerIndexMap[fullPlayerID]];
+  return division.pairings[round].roundPairings[
+    division.playerIndexMap[fullPlayerID]
+  ];
 };
 
 // The "Ready" button and pairings should be displayed based on:
@@ -454,12 +456,12 @@ export function TournamentReducer(
         dpr: DivisionPairingsResponse;
         loginState: LoginState;
       };
-      const division = dp.dpr.getDivision()
+      const division = dp.dpr.getDivision();
       const newPairings = state.divisions[division].pairings;
       const newStandings = state.divisions[division].standingsMap;
 
       dp.dpr.getDivisionPairingsList().forEach((value: Pairing) => {
-        const newSinglePairing = <SinglePairing>{
+        const newSinglePairing = {
           players: value
             .getPlayersList()
             .map((v) => state.divisions[division].players[v]),
@@ -471,9 +473,13 @@ export function TournamentReducer(
             id: g.getId(),
             results: g.getResultsList(),
           })),
-        };
-        newPairings[value.getRound()].roundPairings[value.getPlayersList()[0]] = newSinglePairing;
-        newPairings[value.getRound()].roundPairings[value.getPlayersList()[1]] = newSinglePairing;
+        } as SinglePairing;
+        newPairings[value.getRound()].roundPairings[
+          value.getPlayersList()[0]
+        ] = newSinglePairing;
+        newPairings[value.getRound()].roundPairings[
+          value.getPlayersList()[1]
+        ] = newSinglePairing;
       });
       dp.dpr.getDivisionStandingsMap().forEach(
         (value: RoundStandings.AsObject, key: number) => {
