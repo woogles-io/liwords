@@ -91,6 +91,7 @@ func TestMod(t *testing.T) {
 	ctx = apiserver.PlaceInContext(ctx, session)
 	cstr := TestingDBConnStr + " dbname=liwords_test"
 	mailgunKey := ""
+	discordToken := ""
 	recreateDB()
 	us := userStore(cstr)
 	cs := chatStore(cstr)
@@ -108,7 +109,7 @@ func TestMod(t *testing.T) {
 	is.True(err.Error() == errString)
 
 	// Apply Actions
-	err = ApplyActions(ctx, us, cs, mailgunKey, []*ms.ModAction{muteAction, resetAction, suspendAction})
+	err = ApplyActions(ctx, us, cs, mailgunKey, discordToken, []*ms.ModAction{muteAction, resetAction, suspendAction})
 	is.NoErr(err)
 
 	is.True(ActionExists(ctx, us, "Spammer", false, []ms.ModActionType{muteAction.Type}) != nil)
@@ -154,7 +155,7 @@ func TestMod(t *testing.T) {
 	longerSuspendAction := &ms.ModAction{UserId: "Cheater", Type: ms.ModActionType_SUSPEND_ACCOUNT, Duration: 200}
 
 	// Overwrite some actions
-	err = ApplyActions(ctx, us, cs, mailgunKey, []*ms.ModAction{longerSuspendAction})
+	err = ApplyActions(ctx, us, cs, mailgunKey, discordToken, []*ms.ModAction{longerSuspendAction})
 	is.NoErr(err)
 
 	expectedCheaterActions, err = GetActions(ctx, us, "Cheater")
@@ -204,14 +205,14 @@ func TestMod(t *testing.T) {
 	// Test negative durations
 	invalidSuspendAction := &ms.ModAction{UserId: "Cheater", Type: ms.ModActionType_SUSPEND_ACCOUNT, Duration: -100}
 
-	err = ApplyActions(ctx, us, cs, mailgunKey, []*ms.ModAction{invalidSuspendAction})
+	err = ApplyActions(ctx, us, cs, mailgunKey, discordToken, []*ms.ModAction{invalidSuspendAction})
 	is.True(err.Error() == "nontransient moderator action has a negative duration: -100")
 
 	// Apply a permanent action
 
 	permanentSuspendAction := &ms.ModAction{UserId: "Sandbagger", Type: ms.ModActionType_SUSPEND_ACCOUNT, Duration: 0}
 
-	err = ApplyActions(ctx, us, cs, mailgunKey, []*ms.ModAction{permanentSuspendAction})
+	err = ApplyActions(ctx, us, cs, mailgunKey, discordToken, []*ms.ModAction{permanentSuspendAction})
 	is.NoErr(err)
 
 	is.True(ActionExists(ctx, us, "Sandbagger", false, []ms.ModActionType{permanentSuspendAction.Type}).Error() == "You are banned from logging in. If you think this is an error, contact conduct@woogles.io.")
@@ -255,7 +256,7 @@ func TestMod(t *testing.T) {
 	longerHackerAction := &ms.ModAction{UserId: "Hacker", Type: ms.ModActionType_SUSPEND_RATED_GAMES, Duration: longerDuration}
 	hackerAction := &ms.ModAction{UserId: "Hacker", Type: ms.ModActionType_SUSPEND_GAMES, Duration: shorterDuration}
 
-	err = ApplyActions(ctx, us, cs, mailgunKey, []*ms.ModAction{hackerAction, longerHackerAction})
+	err = ApplyActions(ctx, us, cs, mailgunKey, discordToken, []*ms.ModAction{hackerAction, longerHackerAction})
 	is.NoErr(err)
 
 	err = ActionExists(ctx, us, "Hacker", false, []ms.ModActionType{hackerAction.Type, longerHackerAction.Type})
@@ -267,7 +268,7 @@ func TestMod(t *testing.T) {
 
 	permanentHackerAction := &ms.ModAction{UserId: "Hacker", Type: ms.ModActionType_SUSPEND_ACCOUNT, Duration: 0}
 
-	err = ApplyActions(ctx, us, cs, mailgunKey, []*ms.ModAction{permanentHackerAction})
+	err = ApplyActions(ctx, us, cs, mailgunKey, discordToken, []*ms.ModAction{permanentHackerAction})
 	is.NoErr(err)
 
 	err = ActionExists(ctx, us, "Hacker", false, []ms.ModActionType{hackerAction.Type, longerHackerAction.Type, permanentHackerAction.Type})

@@ -23,13 +23,14 @@ type ctxkey string
 const rtchankey ctxkey = "realtimechan"
 
 type ModService struct {
-	userStore  user.Store
-	chatStore  user.ChatStore
-	mailgunKey string
+	userStore    user.Store
+	chatStore    user.ChatStore
+	mailgunKey   string
+	discordToken string
 }
 
-func NewModService(us user.Store, cs user.ChatStore, mailgunKey string) *ModService {
-	return &ModService{userStore: us, chatStore: cs, mailgunKey: mailgunKey}
+func NewModService(us user.Store, cs user.ChatStore, mailgunKey string, discordToken string) *ModService {
+	return &ModService{userStore: us, chatStore: cs, mailgunKey: mailgunKey, discordToken: discordToken}
 }
 
 var AdminRequiredMap = map[pb.ModActionType]bool{
@@ -90,7 +91,7 @@ func (ms *ModService) ApplyActions(ctx context.Context, req *pb.ModActionsList) 
 	if err != nil {
 		return nil, err
 	}
-	err = ApplyActions(ctx, ms.userStore, ms.chatStore, ms.mailgunKey, req.Actions)
+	err = ApplyActions(ctx, ms.userStore, ms.chatStore, ms.mailgunKey, ms.discordToken, req.Actions)
 	if err != nil {
 		return nil, twirp.NewError(twirp.InvalidArgument, err.Error())
 	}
