@@ -283,7 +283,7 @@ func applyAction(ctx context.Context, us user.Store, cs user.ChatStore, mailgunK
 	}
 
 	actionEmailText, ok := ModActionEmailMap[action.Type]
-	if ok {
+	if mailgunKey != "" && ok {
 		_, err := emailer.SendSimpleMessage(mailgunKey, user.Email, fmt.Sprintf("Account Taken Against %s", user.Username),
 			fmt.Sprintf(ModActionEmailTemplate, actionEmailText))
 		if err != nil {
