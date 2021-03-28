@@ -7,7 +7,7 @@ import {
   RoundStandings,
   TournamentDivisionDataResponse,
   DivisionPairingsResponse,
-  // PlayersAddedOrRemovedResponse,
+  PlayersAddedOrRemovedResponse,
   DivisionControlsResponse,
   DivisionRoundControls,
   // TournamentFinishedResponse,
@@ -98,6 +98,7 @@ export type TournamentState = {
   finishedTourneyGames: Array<RecentGame>;
   gamesPageSize: number;
   gamesOffset: number;
+  finished: boolean;
 };
 
 export const defaultTournamentState = {
@@ -117,6 +118,7 @@ export const defaultTournamentState = {
   finishedTourneyGames: new Array<RecentGame>(),
   gamesPageSize: 20,
   gamesOffset: 0,
+  finished: false,
 };
 
 export enum TourneyStatus {
@@ -154,6 +156,47 @@ export const readyForTournamentGame = (
     )
   );
 };
+
+const reducePairings = (players: Array<TournamentPerson>,
+  existingPairings: Array<RoundPairings>,
+  newPairings: Pairing[]): Array<RoundPairings> => {
+      const updatedPairings = existingPairings;
+
+      newPairings.forEach((value: Pairing) => {
+        const newSinglePairing = {
+          players: value
+            .getPlayersList()
+            .map((v) => players[v]),
+          outcomes: value.getOutcomesList(),
+          readyStates: value.getReadyStatesList(),
+          games: value.getGamesList().map((g) => ({
+            scores: g.getScoresList(),
+            gameEndReason: g.getGameEndReason(),
+            id: g.getId(),
+            results: g.getResultsList(),
+          })),
+        } as SinglePairing;
+        updatedPairings[value.getRound()].roundPairings[
+          value.getPlayersList()[0]
+        ] = newSinglePairing;
+        updatedPairings[value.getRound()].roundPairings[
+          value.getPlayersList()[1]
+        ] = newSinglePairing;
+      });
+      return updatedPairings;
+}
+
+const reduceStandings = (existingStandings: { [round: number]: RoundStandings.AsObject },
+  newStandings: any): { [round: number]: RoundStandings.AsObject } => {
+      const updatedStandings = existingStandings;
+
+      newStandings.forEach(
+        (value: RoundStandings.AsObject, key: number) => {
+          updatedStandings[key] = value;
+        }
+      );
+      return updatedStandings;
+}
 
 const divisionDataResponseToObj = (
   dd: TournamentDivisionDataResponse
@@ -382,43 +425,6 @@ export function TournamentReducer(
         metadata,
       };
 
-    // This message gets set often, every time anything happens (a game ends,
-    // users get edited, new pairings get set, etc.)
-    case ActionType.SetDivisionData: {
-      // Convert the protobuf object to a nicer JS representation:
-      const dd = action.payload as {
-        divisionMessage: TournamentDivisionDataResponse;
-        loginState: LoginState;
-      };
-      const divData = divisionDataResponseToObj(dd.divisionMessage);
-      const fullLoggedInID = `${dd.loginState.userID}:${dd.loginState.username}`;
-      let registeredDivision: Division | undefined;
-      if (divData.players.map((v) => v.getId()).includes(fullLoggedInID)) {
-        registeredDivision = divData;
-      }
-      let competitorState: CompetitorState = state.competitorState;
-      if (registeredDivision) {
-        competitorState = {
-          isRegistered: true,
-          division: registeredDivision.divisionID,
-          currentRound: registeredDivision.currentRound,
-          status: tourneyStatus(
-            state.started,
-            registeredDivision,
-            state.activeGames,
-            registeredDivision.currentRound,
-            dd.loginState
-          ),
-        };
-      }
-      return Object.assign({}, state, {
-        competitorState,
-        divisions: Object.assign({}, state.divisions, {
-          [dd.divisionMessage.getDivision()]: divData,
-        }),
-      });
-    }
-
     case ActionType.SetDivisionRoundControls: {
       const drc = action.payload as {
         roundControls: DivisionRoundControls;
@@ -457,35 +463,11 @@ export function TournamentReducer(
         loginState: LoginState;
       };
       const division = dp.dpr.getDivision();
-      const newPairings = state.divisions[division].pairings;
-      const newStandings = state.divisions[division].standingsMap;
-
-      dp.dpr.getDivisionPairingsList().forEach((value: Pairing) => {
-        const newSinglePairing = {
-          players: value
-            .getPlayersList()
-            .map((v) => state.divisions[division].players[v]),
-          outcomes: value.getOutcomesList(),
-          readyStates: value.getReadyStatesList(),
-          games: value.getGamesList().map((g) => ({
-            scores: g.getScoresList(),
-            gameEndReason: g.getGameEndReason(),
-            id: g.getId(),
-            results: g.getResultsList(),
-          })),
-        } as SinglePairing;
-        newPairings[value.getRound()].roundPairings[
-          value.getPlayersList()[0]
-        ] = newSinglePairing;
-        newPairings[value.getRound()].roundPairings[
-          value.getPlayersList()[1]
-        ] = newSinglePairing;
-      });
-      dp.dpr.getDivisionStandingsMap().forEach(
-        (value: RoundStandings.AsObject, key: number) => {
-          newStandings[key] = value;
-        }
-      );
+      const newPairings = reducePairings(state.divisions[division].players,
+        state.divisions[division].pairings,
+        dp.dpr.getDivisionPairingsList());
+      const newStandings = reduceStandings(state.divisions[division].standingsMap,
+        dp.dpr.getDivisionStandingsMap());
 
       return Object.assign(state, {
         divisions: Object.assign({}, state.divisions, {
@@ -498,13 +480,45 @@ export function TournamentReducer(
     }
 
     case ActionType.SetDivisionPlayers: {
-      // TODO
-      return state;
+      const dp = action.payload as {
+        parr: PlayersAddedOrRemovedResponse;
+        loginState: LoginState;
+      };
+
+      const division = dp.parr.getDivision();
+
+      const newPlayerIndexMap: { [playerID: string]: number } = {};
+      const newPlayers = Array<TournamentPerson>();
+      dp.parr.getPlayers()
+        ?.getPersonsList()
+        .forEach((value: TournamentPerson, index: number) => {
+        newPlayerIndexMap[value.getId()] = index;
+          newPlayers.push(value);
+      });
+
+      const newPairings = reducePairings(state.divisions[division].players,
+        state.divisions[division].pairings,
+        dp.parr.getDivisionPairingsList());
+      const newStandings = reduceStandings(state.divisions[division].standingsMap,
+        dp.parr.getDivisionStandingsMap());
+
+      return Object.assign(state, {
+        divisions: Object.assign({}, state.divisions, {
+          [division]: Object.assign({}, state.divisions[division], {
+            pairings: newPairings,
+            standings: newStandings,
+            playerIndexMap: newPlayerIndexMap,
+            players: newPlayers,
+          }),
+        }),
+      });
     }
 
     case ActionType.SetTournamentFinished: {
-      // TODO
-      return state
+      return {
+        ...state,
+        finished: true,
+      }
     }
 
     case ActionType.SetDivisionsData: {
