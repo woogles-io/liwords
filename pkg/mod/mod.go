@@ -32,7 +32,7 @@ If you think this was an error, please contact conduct@woogles.io.
 The Woogles.io team
 `
 
-var DiscordTarget = "https://discord.com/api/webhooks/815469236997849098/"
+var DiscordTarget = "https://discord.com/api/webhooks/"
 
 var ModActionEmailMap = map[ms.ModActionType]string{
 	ms.ModActionType_MUTE:                    "Disable Chat",
@@ -319,18 +319,22 @@ func applyAction(ctx context.Context, us user.Store, cs user.ChatStore,
 						}
 					}
 				}
-				requestBody, err := json.Marshal(map[string]string{"content": "nice"})
+				requestBody, err := json.Marshal(map[string]string{"content": message})
 
 				// Errors should not be fatal, just log them
 				if err != nil {
 					log.Err(err).Str("error", err.Error()).Msg("mod-action-discord-notification-marshal")
-				}
+				} else {
+					resp, err := http.Post(DiscordTarget+discordToken, "application/json", bytes.NewBuffer(requestBody))
+					// Errors should not be fatal, just log them
+					if err != nil {
+						log.Err(err).Str("error", err.Error()).Msg("mod-action-discord-notification-post-error")
+					}
 
-				_, err = http.Post(DiscordTarget+discordToken, "application/json", bytes.NewBuffer(requestBody))
-
-				// Errors should not be fatal, just log them
-				if err != nil {
-					log.Err(err).Str("error", err.Error()).Msg("mod-action-discord-notification-post")
+					if resp.StatusCode != 204 { // No Content
+						// We do not expect any other response
+						log.Err(err).Str("status", resp.Status).Msg("mod-action-discord-notification-post-bad-response")
+					}
 				}
 			}
 		}
