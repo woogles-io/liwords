@@ -155,7 +155,7 @@ func main() {
 	socializeService := pkguser.NewSocializeService(stores.UserStore, stores.ChatStore)
 	configService := config.NewConfigService(stores.ConfigStore, stores.UserStore)
 	tournamentService := tournament.NewTournamentService(stores.TournamentStore, stores.UserStore)
-	modService := mod.NewModService(stores.UserStore, stores.ChatStore)
+	modService := mod.NewModService(stores.UserStore, stores.ChatStore, cfg.MailgunKey)
 
 	router.Handle("/ping", http.HandlerFunc(pingEndpoint))
 

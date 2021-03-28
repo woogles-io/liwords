@@ -9,12 +9,35 @@ import (
 	"github.com/golang/protobuf/ptypes"
 
 	"github.com/domino14/liwords/pkg/apiserver"
+	"github.com/domino14/liwords/pkg/emailer"
 	"github.com/domino14/liwords/pkg/entity"
 	"github.com/domino14/liwords/pkg/user"
 	ms "github.com/domino14/liwords/rpc/api/proto/mod_service"
 
 	pb "github.com/domino14/liwords/rpc/api/proto/realtime"
 )
+
+const ModActionEmailTemplate = `
+Dear Woogles.io user,
+
+The following action was taken against your account:
+
+%s
+
+If you think this was an error, please contact conduct@woogles.io.
+
+The Woogles.io team
+`
+
+var ModActionEmailMap = map[ms.ModActionType]string{
+	ms.ModActionType_MUTE:                    "Disable Chat",
+	ms.ModActionType_SUSPEND_ACCOUNT:         "Account Suspension",
+	ms.ModActionType_SUSPEND_RATED_GAMES:     "Disable Rated Games",
+	ms.ModActionType_SUSPEND_GAMES:           "Disable Games",
+	ms.ModActionType_RESET_RATINGS:           "Reset Ratings",
+	ms.ModActionType_RESET_STATS:             "Reset Statistics",
+	ms.ModActionType_RESET_STATS_AND_RATINGS: "Reset Ratings and Statistics",
+}
 
 var ModActionDispatching = map[string]func(context.Context, user.Store, user.ChatStore, *ms.ModAction) error{
 
@@ -148,14 +171,14 @@ func GetActionHistory(ctx context.Context, us user.Store, uuid string) ([]*ms.Mo
 	return user.Actions.History, nil
 }
 
-func ApplyActions(ctx context.Context, us user.Store, cs user.ChatStore, actions []*ms.ModAction) error {
+func ApplyActions(ctx context.Context, us user.Store, cs user.ChatStore, mailgunKey string, actions []*ms.ModAction) error {
 	applierUserId, err := sessionUserId(ctx, us)
 	if err != nil {
 		return err
 	}
 	for _, action := range actions {
 		action.ApplierUserId = applierUserId
-		err := applyAction(ctx, us, cs, action)
+		err := applyAction(ctx, us, cs, mailgunKey, action)
 		if err != nil {
 			return err
 		}
@@ -218,7 +241,7 @@ func removeAction(ctx context.Context, us user.Store, action *ms.ModAction, remo
 	return us.Set(ctx, user)
 }
 
-func applyAction(ctx context.Context, us user.Store, cs user.ChatStore, action *ms.ModAction) error {
+func applyAction(ctx context.Context, us user.Store, cs user.ChatStore, mailgunKey string, action *ms.ModAction) error {
 	user, err := us.GetByUUID(ctx, action.UserId)
 	if err != nil {
 		return err
@@ -254,6 +277,15 @@ func applyAction(ctx context.Context, us user.Store, cs user.ChatStore, action *
 		}
 
 		err = setCurrentAction(user, action)
+		if err != nil {
+			return err
+		}
+	}
+
+	actionEmailText, ok := ModActionEmailMap[action.Type]
+	if ok {
+		_, err := emailer.SendSimpleMessage(mailgunKey, user.Email, fmt.Sprintf("Account Taken Against %s", user.Username),
+			fmt.Sprintf(ModActionEmailTemplate, actionEmailText))
 		if err != nil {
 			return err
 		}
