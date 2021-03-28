@@ -329,9 +329,7 @@ func applyAction(ctx context.Context, us user.Store, cs user.ChatStore,
 					// Errors should not be fatal, just log them
 					if err != nil {
 						log.Err(err).Str("error", err.Error()).Msg("mod-action-discord-notification-post-error")
-					}
-
-					if resp.StatusCode != 204 { // No Content
+					} else if resp.StatusCode != 204 { // No Content
 						// We do not expect any other response
 						log.Err(err).Str("status", resp.Status).Msg("mod-action-discord-notification-post-bad-response")
 					}
