@@ -160,7 +160,7 @@ export const readyForTournamentGame = (
 const reducePairings = (players: Array<TournamentPerson>,
   existingPairings: Array<RoundPairings>,
   newPairings: Pairing[]): Array<RoundPairings> => {
-      const updatedPairings = existingPairings;
+      let updatedPairings = existingPairings;
 
       newPairings.forEach((value: Pairing) => {
         const newSinglePairing = {
@@ -188,7 +188,7 @@ const reducePairings = (players: Array<TournamentPerson>,
 
 const reduceStandings = (existingStandings: { [round: number]: RoundStandings.AsObject },
   newStandings: any): { [round: number]: RoundStandings.AsObject } => {
-      const updatedStandings = existingStandings;
+      let updatedStandings = existingStandings;
 
       newStandings.forEach(
         (value: RoundStandings.AsObject, key: number) => {
@@ -486,15 +486,39 @@ export function TournamentReducer(
       };
 
       const division = dp.parr.getDivision();
+      const respPlayers = dp.parr.getPlayers()?.getPersonsList()
+      let newPlayerIndexMap: { [playerID: string]: number } = {};
+      let newPlayers = Array<TournamentPerson>();
 
-      const newPlayerIndexMap: { [playerID: string]: number } = {};
-      const newPlayers = Array<TournamentPerson>();
       dp.parr.getPlayers()
         ?.getPersonsList()
         .forEach((value: TournamentPerson, index: number) => {
         newPlayerIndexMap[value.getId()] = index;
           newPlayers.push(value);
       });
+
+
+      if (state.started && respPlayers && respPlayers?.length > newPlayers.length) {
+        // Players have been added and the tournament has already started
+        // This means we must expand the current pairings
+        const numberOfAddedPlayers = respPlayers?.length - newPlayers.length;
+
+        let expandedPairings = state.divisions[division].pairings;
+
+        expandedPairings.forEach((value: RoundPairings) => {
+          for (var i = numberOfAddedPlayers; i >= 0; i--) {
+            value.roundPairings.push({} as SinglePairing)
+          }
+        });
+
+        Object.assign(state, {
+          divisions: Object.assign({}, state.divisions, {
+            [division]: Object.assign({}, state.divisions[division], {
+              pairings: expandedPairings,
+            }),
+          }),
+        });
+      }
 
       const newPairings = reducePairings(state.divisions[division].players,
         state.divisions[division].pairings,
