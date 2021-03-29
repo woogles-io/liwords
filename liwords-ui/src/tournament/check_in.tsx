@@ -22,9 +22,11 @@ export const CheckIn = () => {
     }
     const division =
       tournamentContext.divisions[tournamentContext.competitorState.division];
-    return division.checkedInPlayers.has(
-      loginState.userID + ':' + loginState.username
-    );
+    // return division.checkedInPlayers.has(
+    //   loginState.userID + ':' + loginState.username
+    // );
+    // XXX: TEMP CODE so this thing compiles -- FIX ME!!
+    return division !== null;
   }, [
     loginState.username,
     loginState.userID,

@@ -1213,6 +1213,15 @@ func validateTournamentMeta(ttype pb.TType, slug string) (entity.CompetitionType
 }
 
 func CheckIn(ctx context.Context, ts TournamentStore, tid string, playerid string) error {
+	return errors.New("not implemented")
+}
+
+func UncheckIn(ctx context.Context, ts TournamentStore, tid string) error {
+	return errors.New("not implemented")
+}
+
+/*
+func CheckIn(ctx context.Context, ts TournamentStore, tid string, playerid string) error {
 	t, err := ts.Get(ctx, tid)
 	if err != nil {
 		return err
@@ -1269,3 +1278,5 @@ func UncheckIn(ctx context.Context, ts TournamentStore, tid string) error {
 	}
 	return ts.Set(ctx, t)
 }
+
+*/
