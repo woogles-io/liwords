@@ -49,7 +49,7 @@ const PlayerCard = React.memo((props: CardProps) => {
   const timeStr =
     isExamining || props.playing ? millisToTimeStr(props.time) : '--:--';
   // TODO: what we consider low time likely be set somewhere and not a magic number
-  const timeLowCutoff = props.initialTimeSeconds / 5;
+  const timeLowCutoff = Math.max(props.initialTimeSeconds / 5, 30000);
   const timeLow = props.time <= timeLowCutoff && props.time > 0;
   const timeOut = props.time <= 0;
   return (
