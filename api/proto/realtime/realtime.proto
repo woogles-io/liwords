@@ -406,6 +406,7 @@ enum PairingMethod {
   SWISS = 6;
   QUICKPAIR = 7;
   MANUAL = 8;
+  TEAM_ROUND_ROBIN = 9;
 }
 
 enum FirstMethod {
@@ -511,14 +512,12 @@ message TournamentDivisionDataResponse {
   int32 current_round = 8;
 }
 
-message FullTournamentDivisions { 
-  map<string, TournamentDivisionDataResponse> divisions = 1;  
-  bool started = 2; 
+message FullTournamentDivisions {
+  map<string, TournamentDivisionDataResponse> divisions = 1;
+  bool started = 2;
 }
 
-message TournamentFinishedResponse {
-  string id = 1;
-}
+message TournamentFinishedResponse { string id = 1; }
 
 message TournamentDataResponse {
   string id = 1;

@@ -364,6 +364,38 @@ export namespace LogoutResponse {
   }
 }
 
+export class NotifyAccountClosureRequest extends jspb.Message {
+  serializeBinary(): Uint8Array;
+  toObject(includeInstance?: boolean): NotifyAccountClosureRequest.AsObject;
+  static toObject(includeInstance: boolean, msg: NotifyAccountClosureRequest): NotifyAccountClosureRequest.AsObject;
+  static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+  static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+  static serializeBinaryToWriter(message: NotifyAccountClosureRequest, writer: jspb.BinaryWriter): void;
+  static deserializeBinary(bytes: Uint8Array): NotifyAccountClosureRequest;
+  static deserializeBinaryFromReader(message: NotifyAccountClosureRequest, reader: jspb.BinaryReader): NotifyAccountClosureRequest;
+}
+
+export namespace NotifyAccountClosureRequest {
+  export type AsObject = {
+  }
+}
+
+export class NotifyAccountClosureResponse extends jspb.Message {
+  serializeBinary(): Uint8Array;
+  toObject(includeInstance?: boolean): NotifyAccountClosureResponse.AsObject;
+  static toObject(includeInstance: boolean, msg: NotifyAccountClosureResponse): NotifyAccountClosureResponse.AsObject;
+  static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+  static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+  static serializeBinaryToWriter(message: NotifyAccountClosureResponse, writer: jspb.BinaryWriter): void;
+  static deserializeBinary(bytes: Uint8Array): NotifyAccountClosureResponse;
+  static deserializeBinaryFromReader(message: NotifyAccountClosureResponse, reader: jspb.BinaryReader): NotifyAccountClosureResponse;
+}
+
+export namespace NotifyAccountClosureResponse {
+  export type AsObject = {
+  }
+}
+
 export class UserRegistrationRequest extends jspb.Message {
   getUsername(): string;
   setUsername(value: string): void;

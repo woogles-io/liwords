@@ -90,7 +90,7 @@ export const Rack = React.memo((props: Props) => {
     }),
   });
   const rackRef = useRef(null);
-  if (props.moveRackTile && isTouchDevice()) {
+  if (isTouchDevice()) {
     drop(rackRef);
   }
   const renderTiles = () => {
@@ -126,14 +126,10 @@ export const Rack = React.memo((props: Props) => {
   };
 
   return (
-    <div
-      className="rack"
-      ref={rackRef}
-      id={props.moveRackTile ? 'rack' : 'exchangeRack'}
-    >
+    <div className="rack" ref={rackRef} id="rack">
       <div
         className="empty-rack droppable"
-        id={props.moveRackTile ? 'left-empty' : 'exch-left-empty'}
+        id="left-empty"
         onDragOver={handleDropOver}
         onDrop={(e) => {
           handleDrop(e, 0);

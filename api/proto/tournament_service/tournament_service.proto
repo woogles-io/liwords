@@ -134,6 +134,10 @@ message RecentGamesResponse {
   repeated liwords.TournamentGameEndedEvent games = 1;
 }
 
+message UncheckInRequest { string id = 1; }
+
+message CheckinRequest { string id = 1; }
+
 service TournamentService {
   rpc NewTournament(NewTournamentRequest) returns (NewTournamentResponse);
   rpc GetTournamentMetadata(GetTournamentMetadataRequest)
@@ -170,6 +174,11 @@ service TournamentService {
   rpc CreateClubSession(NewClubSessionRequest) returns (ClubSessionResponse);
   rpc GetRecentClubSessions(RecentClubSessionsRequest)
       returns (ClubSessionsResponse);
+
+  // Uncheck everyone in. Use this some time before the beginning of a session.
+  rpc UncheckIn(UncheckInRequest) returns (TournamentResponse);
+  // CheckIn allows players to check themselves in.
+  rpc CheckIn(CheckinRequest) returns (TournamentResponse);
 }
 
 message NewClubSessionRequest {

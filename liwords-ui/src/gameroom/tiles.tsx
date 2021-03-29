@@ -33,6 +33,10 @@ type Props = {
     y: number,
     words: Array<string> | undefined
   ) => void;
+  handleUnsetHover?: () => void;
+  definitionPopover?:
+    | { x: number; y: number; content: React.ReactNode }
+    | undefined;
 };
 
 const Tiles = React.memo((props: Props) => {
@@ -136,7 +140,7 @@ const Tiles = React.memo((props: Props) => {
             tentativeScoreIsHorizontal={tentativeScoreHereIsHorizontal}
             grabbable={false}
             {...(props.handleSetHover && {
-              onMouseEnter: (evt: React.MouseEvent<HTMLElement>) => {
+              onClick: (evt: React.MouseEvent<HTMLElement>) => {
                 // if the pointer stays on a tile when a word is played through
                 // it, the words being defined are not updated until the
                 // pointer is moved out of the tile and back in. this is an
@@ -188,6 +192,14 @@ const Tiles = React.memo((props: Props) => {
                 props.handleSetHover!(x, y, undefined);
               },
             })}
+            {...(props.definitionPopover &&
+              props.definitionPopover.x === x &&
+              props.definitionPopover.y === y && {
+                onPopoverClick: (evt: React.MouseEvent<HTMLElement>) => {
+                  props.handleUnsetHover?.();
+                },
+                popoverContent: props.definitionPopover.content,
+              })}
           />
         );
       } else {

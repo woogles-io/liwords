@@ -139,10 +139,18 @@ func (b *Bus) instantiateAndStartGame(ctx context.Context, accUser *entity.User,
 	return nil
 }
 
-func (b *Bus) handleBotMove(ctx context.Context, g *entity.Game) {
+func (b *Bus) goHandleBotMove(ctx context.Context, g *entity.Game) {
 	// This function should only be called if it's the bot's turn.
+	// Call it while holding at least a read lock!
 	onTurn := g.Game.PlayerOnTurn()
 	userID := g.Game.PlayerIDOnTurn()
+
+	go b.handleBotMoveInternally(ctx, g, onTurn, userID)
+}
+
+func (b *Bus) handleBotMoveInternally(ctx context.Context, g *entity.Game, onTurn int, userID string) {
+	// This function should only be called by goHandleBotMove.
+	// Caller should pass the bot's onTurn and userID.
 	g.Lock()
 	defer g.Unlock()
 	// We check if that game is not over because a triple challenge
@@ -237,7 +245,7 @@ func (b *Bus) readyForGame(ctx context.Context, evt *pb.ReadyForGame, userID str
 
 		if g.GameReq.PlayerVsBot && g.PlayerIDOnTurn() != userID {
 			// Make a bot move if it's the bot's turn at the beginning.
-			go b.handleBotMove(ctx, g)
+			b.goHandleBotMove(ctx, g)
 		}
 	}
 	return nil

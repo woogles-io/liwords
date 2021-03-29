@@ -635,6 +635,8 @@ func SetResult(ctx context.Context,
 	amendment bool,
 	g *entity.Game) error {
 
+	log.Debug().Str("playerOneId", playerOneId).Str("playerTwoId", playerTwoId).Msg("tSetResult")
+
 	t, err := ts.Get(ctx, id)
 	if err != nil {
 		return err
@@ -717,6 +719,8 @@ func SetResult(ctx context.Context,
 	if err != nil {
 		return err
 	}
+
+	log.Debug().Str("p1", p1.Username).Str("p2", p2.Username).Msg("after-get-by-uuid")
 
 	gid := ""
 	if g != nil {
@@ -1109,6 +1113,9 @@ func TournamentDivisionDataResponse(ctx context.Context, ts TournamentStore,
 			return nil, err
 		}
 	}
+	if response == nil {
+		return nil, nil // XXX: should return an error?
+	}
 	response.Id = id
 	response.Division = division
 	// response.Controls = divisionObject.Controls
@@ -1203,4 +1210,62 @@ func validateTournamentMeta(ttype pb.TType, slug string) (entity.CompetitionType
 		return "", twirp.NewError(twirp.InvalidArgument, "invalid tournament type")
 	}
 	return tt, nil
+}
+
+func CheckIn(ctx context.Context, ts TournamentStore, tid string, playerid string) error {
+	t, err := ts.Get(ctx, tid)
+	if err != nil {
+		return err
+	}
+	t.Lock()
+	defer t.Unlock()
+
+	found := false
+	// really a player should only be in one division but we allow this so let's
+	// make it correct for now
+	divisionsFound := []string{}
+	for dname, d := range t.Divisions {
+		if _, ok := d.Players.Persons[playerid]; ok {
+			err := d.DivisionManager.SetCheckedIn(playerid)
+			if err != nil {
+				return err
+			}
+			found = true
+			divisionsFound = append(divisionsFound, dname)
+		}
+	}
+	if !found {
+		return errors.New("user not in this tournament")
+	}
+	err = ts.Set(ctx, t)
+	if err != nil {
+		return err
+	}
+
+	for _, d := range divisionsFound {
+		err = SendTournamentDivisionMessage(ctx, ts, t.UUID, d)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func UncheckIn(ctx context.Context, ts TournamentStore, tid string) error {
+	t, err := ts.Get(ctx, tid)
+	if err != nil {
+		return err
+	}
+	t.Lock()
+	defer t.Unlock()
+
+	for dname, d := range t.Divisions {
+		d.DivisionManager.ClearCheckedIn()
+		err = SendTournamentDivisionMessage(ctx, ts, t.UUID, dname)
+		if err != nil {
+			return err
+		}
+	}
+	return ts.Set(ctx, t)
 }

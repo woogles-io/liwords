@@ -484,3 +484,29 @@ func (ts *TournamentService) CreateClubSession(ctx context.Context, req *pb.NewC
 func (ts *TournamentService) GetRecentClubSessions(ctx context.Context, req *pb.RecentClubSessionsRequest) (*pb.ClubSessionsResponse, error) {
 	return ts.tournamentStore.GetRecentClubSessions(ctx, req.Id, int(req.Count), int(req.Offset))
 }
+
+// CheckIn does not require director permission.
+func (ts *TournamentService) CheckIn(ctx context.Context, req *pb.CheckinRequest) (*pb.TournamentResponse, error) {
+	user, err := sessionUser(ctx, ts)
+	if err != nil {
+		return nil, err
+	}
+
+	err = CheckIn(ctx, ts.tournamentStore, req.Id, user.UUID+":"+user.Username)
+	if err != nil {
+		return nil, twirp.NewError(twirp.InvalidArgument, err.Error())
+	}
+	return &pb.TournamentResponse{}, nil
+}
+
+func (ts *TournamentService) UncheckIn(ctx context.Context, req *pb.UncheckInRequest) (*pb.TournamentResponse, error) {
+	err := authenticateDirector(ctx, ts, req.Id, false)
+	if err != nil {
+		return nil, err
+	}
+	err = UncheckIn(ctx, ts.tournamentStore, req.Id)
+	if err != nil {
+		return nil, twirp.NewError(twirp.InvalidArgument, err.Error())
+	}
+	return &pb.TournamentResponse{}, nil
+}

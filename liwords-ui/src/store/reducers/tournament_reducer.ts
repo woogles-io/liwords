@@ -71,6 +71,7 @@ export type Division = {
   currentRound: number;
   playerIndexMap: { [playerID: string]: number };
   numRounds: number;
+  // checkedInPlayers: Set<string>;
 };
 
 export type CompetitorState = {
@@ -157,46 +158,46 @@ export const readyForTournamentGame = (
   );
 };
 
-const reducePairings = (players: Array<TournamentPerson>,
+const reducePairings = (
+  players: Array<TournamentPerson>,
   existingPairings: Array<RoundPairings>,
-  newPairings: Pairing[]): Array<RoundPairings> => {
-      let updatedPairings = existingPairings;
+  newPairings: Pairing[]
+): Array<RoundPairings> => {
+  const updatedPairings = existingPairings;
 
-      newPairings.forEach((value: Pairing) => {
-        const newSinglePairing = {
-          players: value
-            .getPlayersList()
-            .map((v) => players[v]),
-          outcomes: value.getOutcomesList(),
-          readyStates: value.getReadyStatesList(),
-          games: value.getGamesList().map((g) => ({
-            scores: g.getScoresList(),
-            gameEndReason: g.getGameEndReason(),
-            id: g.getId(),
-            results: g.getResultsList(),
-          })),
-        } as SinglePairing;
-        updatedPairings[value.getRound()].roundPairings[
-          value.getPlayersList()[0]
-        ] = newSinglePairing;
-        updatedPairings[value.getRound()].roundPairings[
-          value.getPlayersList()[1]
-        ] = newSinglePairing;
-      });
-      return updatedPairings;
-}
+  newPairings.forEach((value: Pairing) => {
+    const newSinglePairing = {
+      players: value.getPlayersList().map((v) => players[v]),
+      outcomes: value.getOutcomesList(),
+      readyStates: value.getReadyStatesList(),
+      games: value.getGamesList().map((g) => ({
+        scores: g.getScoresList(),
+        gameEndReason: g.getGameEndReason(),
+        id: g.getId(),
+        results: g.getResultsList(),
+      })),
+    } as SinglePairing;
+    updatedPairings[value.getRound()].roundPairings[
+      value.getPlayersList()[0]
+    ] = newSinglePairing;
+    updatedPairings[value.getRound()].roundPairings[
+      value.getPlayersList()[1]
+    ] = newSinglePairing;
+  });
+  return updatedPairings;
+};
 
-const reduceStandings = (existingStandings: { [round: number]: RoundStandings.AsObject },
-  newStandings: any): { [round: number]: RoundStandings.AsObject } => {
-      let updatedStandings = existingStandings;
+const reduceStandings = (
+  existingStandings: { [round: number]: RoundStandings.AsObject },
+  newStandings: any // XXX: ask josh what this is
+): { [round: number]: RoundStandings.AsObject } => {
+  const updatedStandings = existingStandings;
 
-      newStandings.forEach(
-        (value: RoundStandings.AsObject, key: number) => {
-          updatedStandings[key] = value;
-        }
-      );
-      return updatedStandings;
-}
+  newStandings.forEach((value: RoundStandings.AsObject, key: number) => {
+    updatedStandings[key] = value;
+  });
+  return updatedStandings;
+};
 
 const divisionDataResponseToObj = (
   dd: TournamentDivisionDataResponse
@@ -212,6 +213,7 @@ const divisionDataResponseToObj = (
     currentRound: dd.getCurrentRound(),
     playerIndexMap: {},
     numRounds: 0,
+    //     checkedInPlayers: new Set<string>(),
   };
 
   // Reduce Standings
@@ -222,6 +224,11 @@ const divisionDataResponseToObj = (
     standingsMap[key] = value.toObject();
   });
 
+  /**
+   *     if (value.getCheckedIn()) {
+      checkedInPlayers.add(dd.getPlayersList()[index]);
+    }
+   */
   ret.standingsMap = standingsMap;
 
   // Reduce playerIndexMap and players
@@ -231,9 +238,9 @@ const divisionDataResponseToObj = (
   dd.getPlayers()
     ?.getPersonsList()
     .forEach((value: TournamentPerson, index: number) => {
-    playerIndexMap[value.getId()] = index;
+      playerIndexMap[value.getId()] = index;
       newPlayers.push(value);
-  });
+    });
 
   ret.playerIndexMap = playerIndexMap;
   ret.players = newPlayers;
@@ -245,9 +252,10 @@ const divisionDataResponseToObj = (
   dd.getRoundControlsList().forEach(() => {
     const newRoundPairings = new Array<SinglePairing>();
     dd.getPlayers()
-      ?.getPersonsList().forEach(() => {
-      newRoundPairings.push({} as SinglePairing);
-    });
+      ?.getPersonsList()
+      .forEach(() => {
+        newRoundPairings.push({} as SinglePairing);
+      });
     newPairings.push({ roundPairings: newRoundPairings });
   });
 
@@ -463,11 +471,15 @@ export function TournamentReducer(
         loginState: LoginState;
       };
       const division = dp.dpr.getDivision();
-      const newPairings = reducePairings(state.divisions[division].players,
+      const newPairings = reducePairings(
+        state.divisions[division].players,
         state.divisions[division].pairings,
-        dp.dpr.getDivisionPairingsList());
-      const newStandings = reduceStandings(state.divisions[division].standingsMap,
-        dp.dpr.getDivisionStandingsMap());
+        dp.dpr.getDivisionPairingsList()
+      );
+      const newStandings = reduceStandings(
+        state.divisions[division].standingsMap,
+        dp.dpr.getDivisionStandingsMap()
+      );
 
       return Object.assign(state, {
         divisions: Object.assign({}, state.divisions, {
@@ -486,28 +498,32 @@ export function TournamentReducer(
       };
 
       const division = dp.parr.getDivision();
-      const respPlayers = dp.parr.getPlayers()?.getPersonsList()
-      let newPlayerIndexMap: { [playerID: string]: number } = {};
-      let newPlayers = Array<TournamentPerson>();
+      const respPlayers = dp.parr.getPlayers()?.getPersonsList();
+      const newPlayerIndexMap: { [playerID: string]: number } = {};
+      const newPlayers = Array<TournamentPerson>();
 
-      dp.parr.getPlayers()
+      dp.parr
+        .getPlayers()
         ?.getPersonsList()
         .forEach((value: TournamentPerson, index: number) => {
-        newPlayerIndexMap[value.getId()] = index;
+          newPlayerIndexMap[value.getId()] = index;
           newPlayers.push(value);
-      });
+        });
 
-
-      if (state.started && respPlayers && respPlayers?.length > newPlayers.length) {
+      if (
+        state.started &&
+        respPlayers &&
+        respPlayers?.length > newPlayers.length
+      ) {
         // Players have been added and the tournament has already started
         // This means we must expand the current pairings
         const numberOfAddedPlayers = respPlayers?.length - newPlayers.length;
 
-        let expandedPairings = state.divisions[division].pairings;
+        const expandedPairings = state.divisions[division].pairings;
 
         expandedPairings.forEach((value: RoundPairings) => {
-          for (var i = numberOfAddedPlayers; i >= 0; i--) {
-            value.roundPairings.push({} as SinglePairing)
+          for (let i = numberOfAddedPlayers; i >= 0; i--) {
+            value.roundPairings.push({} as SinglePairing);
           }
         });
 
@@ -520,11 +536,15 @@ export function TournamentReducer(
         });
       }
 
-      const newPairings = reducePairings(state.divisions[division].players,
+      const newPairings = reducePairings(
+        state.divisions[division].players,
         state.divisions[division].pairings,
-        dp.parr.getDivisionPairingsList());
-      const newStandings = reduceStandings(state.divisions[division].standingsMap,
-        dp.parr.getDivisionStandingsMap());
+        dp.parr.getDivisionPairingsList()
+      );
+      const newStandings = reduceStandings(
+        state.divisions[division].standingsMap,
+        dp.parr.getDivisionStandingsMap()
+      );
 
       return Object.assign(state, {
         divisions: Object.assign({}, state.divisions, {
@@ -542,7 +562,7 @@ export function TournamentReducer(
       return {
         ...state,
         finished: true,
-      }
+      };
     }
 
     case ActionType.SetDivisionsData: {
@@ -558,7 +578,11 @@ export function TournamentReducer(
       divisionsMap.forEach(
         (value: TournamentDivisionDataResponse, key: string) => {
           divisions[key] = divisionDataResponseToObj(value);
-          if (divisions[key].players.map((v) => v.getId()).includes(fullLoggedInID)) {
+          if (
+            divisions[key].players
+              .map((v) => v.getId())
+              .includes(fullLoggedInID)
+          ) {
             registeredDivision = divisions[key];
           }
         }

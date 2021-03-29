@@ -295,6 +295,9 @@ func (t *ClassicDivision) SubmitResult(round int,
 	gameIndex int,
 	id string) ([]*realtime.Pairing, map[int32]*realtime.RoundStandings, error) {
 
+	log.Debug().Str("p1", p1).Str("p2", p2).Int("p1Score", p1Score).Int("p2Score", p2Score).
+		Interface("p1Result", p1Result).Interface("p2Result", p2Result).Interface("gameendReason", reason).
+		Bool("amend", amend).Int("gameIndex", gameIndex).Str("tid", id).Msg("submit-result")
 	// Fetch the player round records
 	pk1, err := t.getPairingKey(p1, round)
 	if err != nil {
@@ -453,6 +456,11 @@ func (t *ClassicDivision) SubmitResult(round int,
 	return pairingResponse, standingsResponse, nil
 }
 
+func isRoundRobin(pm realtime.PairingMethod) bool {
+	return pm == realtime.PairingMethod_ROUND_ROBIN ||
+		pm == realtime.PairingMethod_TEAM_ROUND_ROBIN
+}
+
 func (t *ClassicDivision) PairRound(round int) ([]*realtime.Pairing, map[int32]*realtime.RoundStandings, error) {
 	if round < 0 || round >= len(t.Matrix) {
 		return nil, nil, fmt.Errorf("round number out of range (PairRound): %d", round)
@@ -480,7 +488,7 @@ func (t *ClassicDivision) PairRound(round int) ([]*realtime.Pairing, map[int32]*
 
 	// Round Robin must have the same ordering for each round
 	var playerOrder []string
-	if pairingMethod == realtime.PairingMethod_ROUND_ROBIN {
+	if isRoundRobin(pairingMethod) {
 		for i := 0; i < len(t.Players.Persons); i++ {
 			playerOrder = append(playerOrder, t.Players.Persons[i].Id)
 		}
@@ -494,7 +502,7 @@ func (t *ClassicDivision) PairRound(round int) ([]*realtime.Pairing, map[int32]*
 	for i := 0; i < len(playerOrder); i++ {
 		pm := &entity.PoolMember{Id: playerOrder[i]}
 		// Wins do not matter for RoundRobin pairings
-		if pairingMethod != realtime.PairingMethod_ROUND_ROBIN {
+		if !isRoundRobin(pairingMethod) {
 			pm.Wins = int(standings.Standings[i].Wins)
 			pm.Draws = int(standings.Standings[i].Draws)
 			pm.Spread = int(standings.Standings[i].Spread)
@@ -1430,3 +1438,21 @@ func validatePairings(tc *ClassicDivision, round int) error {
 	}
 	return nil
 }
+
+/**
+func (t *ClassicDivision) SetCheckedIn(playerID string) error {
+	for idx, v := range t.Players {
+		if v == playerID {
+			t.PlayersProperties[idx].CheckedIn = true
+			return t.writeResponse(0)
+		}
+	}
+	return fmt.Errorf("player %v not found", playerID)
+}
+
+func (t *ClassicDivision) ClearCheckedIn() {
+	for idx := range t.Players {
+		t.PlayersProperties[idx].CheckedIn = false
+	}
+	t.writeResponse(0)
+*/

@@ -2,6 +2,7 @@ import React, { ReactNode, useMemo } from 'react';
 import { useTournamentStoreContext } from '../store/store';
 import { UsernameWithContext } from '../shared/usernameWithContext';
 import { Table } from 'antd';
+import { PlayerTag } from './player_tags';
 
 type Props = {
   selectedDivision: string;
@@ -32,18 +33,25 @@ export const Standings = (props: Props) => {
   }
   let formatStandings = new Array<StandingsTableData>();
   if (currentRound > -1) {
-    formatStandings = division.standingsMap[currentRound].standingsList.map(
+    formatStandings = division.standingsMap[currentRound]?.standingsList.map(
       (standing, index): StandingsTableData => {
         const [playerId, playerName] = standing.playerId.split(':');
         return {
           rank: index + 1,
           player: (
-            <UsernameWithContext
-              username={playerName}
-              userID={playerId}
-              omitSendMessage
-              omitBlock
-            />
+            <>
+              <UsernameWithContext
+                username={playerName}
+                userID={playerId}
+                omitSendMessage
+                omitBlock
+              />{' '}
+              <PlayerTag
+                username={playerName}
+                players={division.players}
+                tournamentSlug={tournamentContext.metadata.slug}
+              />
+            </>
           ),
           wins: standing.wins + standing.draws / 2,
           losses: standing.losses + standing.draws / 2,

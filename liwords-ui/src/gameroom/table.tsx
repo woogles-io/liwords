@@ -307,7 +307,7 @@ export const Table = React.memo((props: Props) => {
       )
       .then((resp) => {
         setNeedAvatars(false);
-        let players = [...gameInfo.players];
+        const players = [...gameInfo.players];
         resp.data.infos.forEach((info) => {
           if (info.avatar_url.length) {
             const index = gameInfo.players.findIndex(
@@ -451,10 +451,41 @@ export const Table = React.memo((props: Props) => {
   >(undefined);
   const [willHideDefinitionHover, setWillHideDefinitionHover] = useState(false);
 
-  // TODO: remove this when actually showing something
-  useEffect(() => {
-    console.log(showDefinitionHover);
-  }, [showDefinitionHover]);
+  const definitionPopover = useMemo(() => {
+    if (!showDefinitionHover) return undefined;
+    const entries = [];
+    for (const word of showDefinitionHover.words) {
+      const uppercasedWord = word.toUpperCase();
+      const definition = wordInfo[uppercasedWord];
+      // if phony-checker returned {v:true,d:""}, wait for definition to load
+      if (definition && !(definition.v && !definition.d)) {
+        entries.push(
+          <li key={entries.length} className="definition-entry">
+            <span className="defined-word">
+              {uppercasedWord}
+              {definition.v ? '' : '*'}
+            </span>{' '}
+            -{' '}
+            {definition.v ? (
+              <span className="definition">{String(definition.d)}</span>
+            ) : (
+              <span className="invalid-word">not a word</span>
+            )}
+          </li>
+        );
+      }
+    }
+    if (!entries.length) return undefined;
+    return {
+      x: showDefinitionHover.x,
+      y: showDefinitionHover.y,
+      content: <ul className="definitions">{entries}</ul>,
+    };
+  }, [showDefinitionHover, wordInfo]);
+
+  const hideDefinitionHover = useCallback(() => {
+    setShowDefinitionHover(undefined);
+  }, []);
 
   useEffect(() => {
     if (willHideDefinitionHover) {
@@ -463,14 +494,13 @@ export const Table = React.memo((props: Props) => {
       // usability and responsiveness, and it enables smoother transition if
       // the pointer is moved to a nearby tile.
       const t = setTimeout(() => {
-        setShowDefinitionHover(undefined);
+        hideDefinitionHover();
       }, 1000);
       return () => clearTimeout(t);
     }
-  }, [willHideDefinitionHover]);
+  }, [willHideDefinitionHover, hideDefinitionHover]);
 
-  // TODO: remove "false" when backend returns more useful data
-  const enableHoverDefine = false && (gameDone || isObserver);
+  const enableHoverDefine = gameDone || isObserver;
 
   const handleSetHover = useCallback(
     (x: number, y: number, words: Array<string> | undefined) => {
@@ -549,6 +579,40 @@ export const Table = React.memo((props: Props) => {
           },
           { cancelToken: cancelTokenSource.token }
         );
+        if (hasDefinitionHover) {
+          // for certain lexicons, try getting definitions from other sources
+          for (const otherLexicon of lexicon === 'NWL18'
+            ? ['NWL20']
+            : lexicon === 'ECWL'
+            ? ['CSW19', 'NWL20']
+            : []) {
+            const wordsToRedefine = [];
+            for (const word of wordsToDefine) {
+              if (
+                defineResp.data.results[word]?.v &&
+                defineResp.data.results[word].d === word
+              ) {
+                wordsToRedefine.push(word);
+              }
+            }
+            if (!wordsToRedefine.length) break;
+            const otherDefineResp = await axios.post<DefineWordsResponse>(
+              toAPIUrl('word_service.WordService', 'DefineWords'),
+              {
+                lexicon: otherLexicon,
+                words: wordsToRedefine,
+                definitions: hasDefinitionHover,
+              },
+              { cancelToken: cancelTokenSource.token }
+            );
+            for (const word of wordsToRedefine) {
+              const newDefinition = otherDefineResp.data.results[word].d;
+              if (newDefinition && newDefinition !== word) {
+                defineResp.data.results[word].d = newDefinition;
+              }
+            }
+          }
+        }
         setWordInfo((oldWordInfo) => {
           const wordInfo = { ...oldWordInfo };
           for (const word of wordsToDefine) {
@@ -865,6 +929,8 @@ export const Table = React.memo((props: Props) => {
                 : null
             }
             handleSetHover={handleSetHover}
+            handleUnsetHover={hideDefinitionHover}
+            definitionPopover={definitionPopover}
           />
           <StreakWidget streakInfo={streakGameInfo} />
         </div>

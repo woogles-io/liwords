@@ -31,6 +31,9 @@ type DivisionManager interface {
 	ClearReadyStates(userID string, round, gameIndex int) ([]*realtime.Pairing, error)
 }
 
+/**	SetCheckedIn(userID string) error
+ClearCheckedIn()*/
+
 type CompetitionType string
 
 const (

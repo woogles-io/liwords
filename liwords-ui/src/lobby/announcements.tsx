@@ -18,6 +18,20 @@ export const Announcements = React.memo((props: AnnouncementsProps) => {
     },
 
     {
+      title: 'Upcoming Tournament - Virtual CanAm 2021',
+      link: 'https://woogles.io/tournament/vcanam',
+      body: (
+        <p>
+          The CanAm has been brought to Woogles virtually, with teams of
+          Canadians and Americans vying for the virtual trophy! This is a
+          two-day tournament on March 27 and 28, with CSW and NWL divisions. 2
+          teams of 5 players for each division will play a triple round-robin
+          against each other. Who will emerge victorious?
+        </p>
+      ),
+    },
+
+    {
       title: 'Ongoing Tournament - CoCo Blitz Championship',
       link: 'https://woogles.io/tournament/coco-blitz',
       body: (
@@ -31,58 +45,18 @@ export const Announcements = React.memo((props: AnnouncementsProps) => {
     },
 
     {
-      title: 'Upcoming Tournament - HOPPY',
-      link:
-        'https://drive.google.com/file/d/1vi6eUYaYeL2az7-6eZthwevsMG0fr3fK/view',
+      title: 'Finished Tournament - HOPPY',
+      link: 'https://woogles.io/tournament/hoppy',
       body: (
         <p>
-          The HOPPY is a two-day tournament, brought to you by the organizers of
-          the successful MERRY tournament! A two-day, 13-game event, starting on
-          the first day of spring (Saturday, March 20, 2021). Premier and
-          Classic divisions for both NWL20 and CSW19. All pairings and standings
-          will be automatically handled by the Woogles platform!
+          The HOPPY, a 13-game tournament, took place on March 20 and 21st and
+          was the largest tourney yet on Woogles, with 94 unique players! Click
+          here to see the games and final results. Congratulations to the
+          winners: Rodney Weis (NWL Classic), Jared Cappel (NWL Premier), Jack
+          Moran (CSW Classic), and Ben Schoenbrun (CSW Premier)!
         </p>
       ),
     },
-
-    {
-      title: 'Upcoming Tournament - Virtual CanAm 2021',
-      link:
-        'https://docs.google.com/spreadsheets/d/1s692UrJKbqymnuVECrtgLXxvhGVjwkuv2hJlsI4gVXQ/edit?fbclid=IwAR1SklJpVZwA6xYUPimpYKWK10cziNZ-TcEuKzXmutpOqKah0kcKOUpsacY#gid=0',
-      body: (
-        <p>
-          The CanAm has been brought to Woogles virtually, with teams of
-          Canadians and Americans vying for the virtual trophy! This is a
-          two-day tournament on March 27 and 28, with CSW and NWL divisions. 2
-          teams of 5 players for each division will play a triple round-robin
-          against each other. Who will emerge victorious?
-        </p>
-      ),
-    },
-
-    {
-      title: 'Completed Tournament - Amazing Race 2',
-      link: 'https://woogles.io/tournament/tarst2',
-      body: (
-        <p>
-          Michael Fagen's Amazing Race 2 tournament is now concluded. Alec
-          Sjöholm defended his title with his new teammate, Michael Fagen!
-          Congrats!
-        </p>
-      ),
-    },
-
-    {
-      title: "Completed Tournament - Brosowsky Brothers' Bonanza 2021",
-      link: 'https://woogles.io/tournament/BBB',
-      body: (
-        <p>
-          The Brosowsky Brothers' Bonanza is a one-day, 8-game event, with Open
-          and Lite divisions for both NWL20 and CSW19! Check out the results.
-        </p>
-      ),
-    },
-
     {
       title: 'Want to help?',
       link: 'https://woogles.io/about',

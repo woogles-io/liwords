@@ -143,3 +143,18 @@ export const clubRedirects: { [key: string]: string } = {
   bridgewaterclub: '/club/bridgewater',
   cococlub: '/club/coco',
 };
+
+// Temporary teams for some tournaments. We should add support for this natively
+// in the backend.
+
+type teamSettings = {
+  odds: string;
+  evens: string;
+};
+
+export const teamTourneys: { [key: string]: teamSettings } = {
+  '/tournament/vcanam': {
+    odds: '🇨🇦',
+    evens: '🇺🇸',
+  },
+};

@@ -20,6 +20,7 @@ import { Pairings } from './pairings';
 import { isPairedMode } from '../store/constants';
 import { Standings } from './standings';
 import { DirectorTools } from './director_tools';
+// import { CheckIn } from './check_in';
 
 export type RecentTournamentGames = {
   games: Array<RecentGame>;
@@ -200,6 +201,7 @@ export const ActionsPanel = React.memo((props: Props) => {
       if (isPairedMode(tournamentContext.metadata.type)) {
         return (
           <div className="pairings-container">
+            {/* <CheckIn /> */}
             <div className="round-options">
               {renderDivisionSelector}
               {renderStartRoundButton()}
@@ -209,6 +211,7 @@ export const ActionsPanel = React.memo((props: Props) => {
               selectedDivision={selectedDivision}
               username={username}
               sendReady={props.sendReady}
+              isDirector={isDirector}
             />
           </div>
         );
