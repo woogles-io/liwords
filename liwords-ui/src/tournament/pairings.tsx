@@ -8,7 +8,7 @@ import {
 } from '../store/reducers/tournament_reducer';
 import { TournamentGameResult } from '../gen/api/proto/realtime/realtime_pb';
 import { useHistory } from 'react-router-dom';
-import { PlayerTag } from './player_tags';
+// import { PlayerTag } from './player_tags';
 
 const usernameFromPlayerEntry = (p: string) =>
   p.split(':').length > 0 ? p.split(':')[1] : 'Unknown player';
@@ -55,7 +55,9 @@ const getScores = (
   viewedRound: number,
   pairing: SinglePairing
 ) => {
-  const playerIndex = pairing.players[0].getId().endsWith(`:${playerName}`) ? 0 : 1;
+  const playerIndex = pairing.players[0].getId().endsWith(`:${playerName}`)
+    ? 0
+    : 1;
   const results = pairing.outcomes;
   if (
     pairing.games.length &&
@@ -119,7 +121,9 @@ export const Pairings = (props: Props) => {
     };
     const pairingsData = pairings.map(
       (pairing: SinglePairing): PairingTableData => {
-        const playerNames = pairing.players.map((v) => v.getId()).map(usernameFromPlayerEntry);
+        const playerNames = pairing.players
+          .map((v) => v.getId())
+          .map(usernameFromPlayerEntry);
         const isBye = pairing.outcomes[0] === TournamentGameResult.BYE;
         const isForfeit =
           pairing.outcomes[0] === TournamentGameResult.FORFEIT_LOSS;
@@ -143,11 +147,11 @@ export const Pairings = (props: Props) => {
               <p>
                 {playerNames[0]}{' '}
                 {
-                  <PlayerTag
-                    username={playerNames[0]}
-                    players={division.players}
-                    tournamentSlug={tournamentContext.metadata.slug}
-                  />
+                  // <PlayerTag
+                  //   username={playerNames[0]}
+                  //   players={division.players}
+                  //   tournamentSlug={tournamentContext.metadata.slug}
+                  // />
                 }
                 {isBye && <Tag className="ant-tag-bye">Bye</Tag>}
                 {isForfeit && <Tag className="ant-tag-forfeit">Forfeit</Tag>}
@@ -162,11 +166,11 @@ export const Pairings = (props: Props) => {
                 <p key={playerName}>
                   {playerName}{' '}
                   {
-                    <PlayerTag
-                      username={playerName}
-                      players={division.players}
-                      tournamentSlug={tournamentContext.metadata.slug}
-                    />
+                    // <PlayerTag
+                    //   username={playerName}
+                    //   players={division.players}
+                    //   tournamentSlug={tournamentContext.metadata.slug}
+                    // />
                   }
                   {isRemoved(playerName) && (
                     <Tag className="ant-tag-removed">Removed</Tag>

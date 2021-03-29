@@ -406,7 +406,7 @@ const userUUID = (username: string, divobj: Division) => {
     return '';
   }
   const p = divobj.players.find((p) => {
-    const parts = p.split(':');
+    const parts = p.getId().split(':');
     const pusername = parts[1].toLowerCase();
 
     if (username.toLowerCase() === pusername) {
@@ -417,7 +417,7 @@ const userUUID = (username: string, divobj: Division) => {
   if (!p) {
     return '';
   }
-  return p.split(':')[0];
+  return p.getId().split(':')[0];
 };
 
 const SetPairing = (props: { tournamentID: string }) => {
