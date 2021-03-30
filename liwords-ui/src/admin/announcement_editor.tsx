@@ -4,13 +4,12 @@ import {
   PlusOutlined,
   UpOutlined,
 } from '@ant-design/icons';
-import { Button, Divider, Form, Input, message, Space } from 'antd';
+import { Button, Divider, Form, Input, message } from 'antd';
 import axios from 'axios';
 import { Store } from 'rc-field-form/lib/interface';
 import React, { useEffect } from 'react';
 import { toAPIUrl } from '../api/api';
 import { Announcements } from '../lobby/announcements';
-import { useMountedState } from '../utils/mounted';
 
 const layout = {
   labelCol: {
@@ -35,7 +34,7 @@ export const AnnouncementEditor = () => {
           announcements: resp.data.announcements,
         });
       });
-  }, []);
+  }, [form]);
 
   const onFinish = (vals: Store) => {
     console.log('vals', vals);
