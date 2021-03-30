@@ -22,7 +22,6 @@ const layout = {
 };
 
 export const AnnouncementEditor = () => {
-  const { useState } = useMountedState();
   const [form] = Form.useForm();
 
   useEffect(() => {
@@ -95,7 +94,10 @@ export const AnnouncementEditor = () => {
                       label="Body"
                       rules={[{ required: true, message: 'Missing body' }]}
                     >
-                      <Input.TextArea rows={4} placeholder="Body" />
+                      <Input.TextArea
+                        rows={4}
+                        placeholder="Body - you can use Markdown, but avoid links in here."
+                      />
                     </Form.Item>
                     <Button
                       onClick={() => remove(name)}

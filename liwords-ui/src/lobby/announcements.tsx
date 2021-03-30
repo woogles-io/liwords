@@ -3,6 +3,7 @@ import { Card } from 'antd';
 import axios from 'axios';
 import { toAPIUrl } from '../api/api';
 import { useMountedState } from '../utils/mounted';
+import ReactMarkdown from 'react-markdown';
 
 type Announcement = {
   title: string;
@@ -33,7 +34,9 @@ export const Announcements = () => {
     <a href={a.link} target="_blank" rel="noopener noreferrer" key={idx}>
       <li>
         <h4>{a.title}</h4>
-        <p>{a.body}</p>
+        <p>
+          <ReactMarkdown>{a.body}</ReactMarkdown>
+        </p>
       </li>
     </a>
   ));
