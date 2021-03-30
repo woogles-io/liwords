@@ -2,14 +2,20 @@ package config
 
 import (
 	"context"
+	"encoding/json"
 
 	"github.com/gomodule/redigo/redis"
 	"github.com/rs/zerolog/log"
+
+	pb "github.com/domino14/liwords/rpc/api/proto/config_service"
 )
 
 const (
 	GamesDisabledKey = "config:games-disabled"
 	FEHashKey        = "config:fe-hash"
+	// Front-page announcements. Some of these could later be dynamically
+	// updated from a blog or something.
+	AnnouncementsKey = "config:static-announcements"
 )
 
 type RedisConfigStore struct {
@@ -64,4 +70,36 @@ func (s *RedisConfigStore) FEHash(ctx context.Context) (string, error) {
 	conn := s.redisPool.Get()
 	defer conn.Close()
 	return redis.String(conn.Do("GET", FEHashKey))
+}
+
+func (s *RedisConfigStore) SetAnnouncements(ctx context.Context, announcements []*pb.Announcement) error {
+	conn := s.redisPool.Get()
+	defer conn.Close()
+
+	bts, err := json.Marshal(announcements)
+	if err != nil {
+		return err
+	}
+
+	_, err = conn.Do("SET", AnnouncementsKey, string(bts))
+	return err
+}
+
+func (s *RedisConfigStore) GetAnnouncements(ctx context.Context) ([]*pb.Announcement, error) {
+	conn := s.redisPool.Get()
+	defer conn.Close()
+
+	a, err := redis.String(conn.Do("GET", AnnouncementsKey))
+	if err != nil {
+		a = "[]"
+	}
+
+	var announcements []*pb.Announcement
+
+	err = json.Unmarshal([]byte(a), &announcements)
+	if err != nil {
+		return nil, err
+	}
+
+	return announcements, nil
 }
