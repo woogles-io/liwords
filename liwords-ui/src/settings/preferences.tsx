@@ -65,31 +65,17 @@ export const Preferences = React.memo((props: Props) => {
     setShowRemaining(toggleLocalSetting(showRemainingKey));
   }, []);
 
-  const seeCSWKey = 'enableLexiconCSW';
-  const seeNWLKey = 'enableLexiconNWL';
-  const seePolishKey = 'enableLexiconPolish';
-  const seeNorwegianKey = 'enableLexiconNorwegian';
-
-  const [seeCSW, setSeeCSW] = useState(localSetting(seeCSWKey));
-  const toggleSeeCSW = useCallback(() => {
-    setSeeCSW(toggleLocalSetting(seeCSWKey));
-  }, []);
-
-  const [seeNWL, setSeeNWL] = useState(localSetting(seeNWLKey));
-  const toggleSeeNWL = useCallback(() => {
-    setSeeNWL(toggleLocalSetting(seeNWLKey));
-  }, []);
-
-  const [seePolish, setSeePolish] = useState(localSetting(seePolishKey));
-  const toggleSeePolish = useCallback(() => {
-    setSeePolish(toggleLocalSetting(seePolishKey));
-  }, []);
-
-  const [seeNorwegian, setSeeNorwegian] = useState(
-    localSetting(seeNorwegianKey)
+  const [enableAllLexicons, setEnableAllLexicons] = useState(
+    localStorage?.getItem('enableAllLexicons') === 'true'
   );
-  const toggleSeeNorwegian = useCallback(() => {
-    setSeeNorwegian(toggleLocalSetting(seeNorwegianKey));
+  const toggleEnableAllLexicons = useCallback(() => {
+    const wantEnableAllLexicons =
+      localStorage?.getItem('enableAllLexicons') !== 'true';
+    localStorage.setItem(
+      'enableAllLexicons',
+      wantEnableAllLexicons ? 'true' : 'false'
+    );
+    setEnableAllLexicons((x) => !x);
   }, []);
 
   const [tileOrder, setTileOrder] = useState(preferredSortOrder ?? '');
@@ -141,40 +127,12 @@ export const Preferences = React.memo((props: Props) => {
           className="dark-toggle"
         />
       </div>
-      <div className="section-header">Languages</div>
+      <div className="section-header">Lexicons</div>
       <div className="toggle-section">
-        <div className="title">English</div>
-        <div>See English game requests (CSW)</div>
+        <div>Enable all lexicons</div>
         <Switch
-          defaultChecked={seeCSW}
-          onChange={toggleSeeCSW}
-          className="dark-toggle"
-        />
-      </div>
-      <div className="toggle-section">
-        <div className="title">English</div>
-        <div>See American English game requests (NWL)</div>
-        <Switch
-          defaultChecked={seeNWL}
-          onChange={toggleSeeNWL}
-          className="dark-toggle"
-        />
-      </div>
-      <div className="toggle-section">
-        <div className="title">Polish</div>
-        <div>See American Polish game requests</div>
-        <Switch
-          defaultChecked={seePolish}
-          onChange={toggleSeePolish}
-          className="dark-toggle"
-        />
-      </div>
-      <div className="toggle-section">
-        <div className="title">Norwegian</div>
-        <div>See American Norwegian game requests</div>
-        <Switch
-          defaultChecked={seeNorwegian}
-          onChange={toggleSeeNorwegian}
+          defaultChecked={enableAllLexicons}
+          onChange={toggleEnableAllLexicons}
           className="dark-toggle"
         />
       </div>

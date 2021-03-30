@@ -162,6 +162,9 @@
         transform: translateY(-50%);
       }
     }
+    .toggle-section > div {
+      padding-right: 60px;
+    }
   }
 }
 .confirm-unblock-modal {
@@ -310,6 +313,10 @@
     padding-top: 16px;
     margin-bottom: 48px;
     height: 52px;
+
+    .i-understand {
+      color: #666666;
+    }
   }
   .ant-checkbox-wrapper {
     display: flex;

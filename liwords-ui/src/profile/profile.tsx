@@ -4,6 +4,7 @@ import { notification, Card, Table, Row, Col } from 'antd';
 import axios, { AxiosError } from 'axios';
 import { useMountedState } from '../utils/mounted';
 import { TopBar } from '../topbar/topbar';
+import { Link } from 'react-router-dom';
 
 import './profile.scss';
 import { toAPIUrl } from '../api/api';
@@ -321,6 +322,11 @@ export const UserProfile = React.memo((props: Props) => {
               username={username}
             ></PlayerAvatar>
           </h3>
+          {viewer === username ? (
+            <div>
+              <Link to="/settings">Edit settings</Link>
+            </div>
+          ) : null}{' '}
         </header>
         <BioCard bio={bio} bioLoaded={bioLoaded} />
         <RatingsCard ratings={ratings} />

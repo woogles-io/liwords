@@ -45,9 +45,9 @@ export const CloseAccount = React.memo((props: Props) => {
             name="i-understand-deletion"
           >
             <Checkbox>
-              <p className="i-understand">
+              <div className="i-understand">
                 I understand that closing my account is an irreversible action
-              </p>
+              </div>
             </Checkbox>
           </Form.Item>
         </div>
