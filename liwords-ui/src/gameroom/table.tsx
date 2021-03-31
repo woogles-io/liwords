@@ -60,6 +60,7 @@ import {
 } from '../store/reducers/tournament_reducer';
 import { CompetitorStatus } from '../tournament/competitor_status';
 import { Unrace } from '../utils/unrace';
+import { Blank } from '../utils/cwgame/common';
 
 type Props = {
   sendSocketMsg: (msg: Uint8Array) => void;
@@ -522,27 +523,52 @@ export const Table = React.memo((props: Props) => {
     [enableHoverDefine]
   );
 
+  const [playedWords, setPlayedWords] = useState(new Set());
+  useEffect(() => {
+    setPlayedWords((oldPlayedWords) => {
+      const playedWords = new Set(oldPlayedWords);
+      for (const turn of gameContext.turns) {
+        for (const word of turn.getWordsFormedList()) {
+          playedWords.add(word);
+        }
+      }
+      return playedWords.size === oldPlayedWords.size
+        ? oldPlayedWords
+        : playedWords;
+    });
+  }, [gameContext]);
+
   useEffect(() => {
     // forget everything if it goes to a new game
     setWordInfo({});
+    setPlayedWords(new Set());
     setUnrace(new Unrace());
     setPhonies(undefined);
     setShowDefinitionHover(undefined);
   }, [gameID, gameInfo.game_request.lexicon]);
 
-  const hasDefinitionHover = !!showDefinitionHover;
   useEffect(() => {
-    if (gameDone || hasDefinitionHover) {
+    if (gameDone || showDefinitionHover) {
       // when definition is requested, get definitions for all words (up to
       // that point) that have not yet been defined. this is an intentional
       // design decision to improve usability and responsiveness.
       setWordInfo((oldWordInfo) => {
         let wordInfo = oldWordInfo;
-        for (const turn of gameContext.turns) {
-          for (const word of turn.getWordsFormedList()) {
-            if (!(word in wordInfo)) {
-              if (wordInfo === oldWordInfo) wordInfo = { ...oldWordInfo };
-              wordInfo[word] = undefined;
+        for (const word of (playedWords as any) as [string]) {
+          if (!(word in wordInfo)) {
+            if (wordInfo === oldWordInfo) wordInfo = { ...oldWordInfo };
+            wordInfo[word] = undefined;
+          }
+        }
+        if (showDefinitionHover) {
+          // also define tentative words (mostly from examiner) if no undesignated blanks.
+          for (const word of showDefinitionHover.words) {
+            if (!word.includes(Blank)) {
+              const uppercasedWord = word.toUpperCase();
+              if (!(uppercasedWord in wordInfo)) {
+                if (wordInfo === oldWordInfo) wordInfo = { ...oldWordInfo };
+                wordInfo[uppercasedWord] = undefined;
+              }
             }
           }
         }
@@ -550,7 +576,7 @@ export const Table = React.memo((props: Props) => {
         return wordInfo;
       });
     }
-  }, [gameContext, gameDone, hasDefinitionHover]);
+  }, [playedWords, gameDone, showDefinitionHover]);
 
   useEffect(() => {
     const cancelTokenSource = axios.CancelToken.source();
@@ -561,7 +587,7 @@ export const Table = React.memo((props: Props) => {
         const definition = wordInfo[word];
         if (
           definition === undefined ||
-          (hasDefinitionHover && definition.v && !definition.d)
+          (showDefinitionHover && definition.v && !definition.d)
         ) {
           wordsToDefine.push(word);
         }
@@ -575,11 +601,11 @@ export const Table = React.memo((props: Props) => {
           {
             lexicon,
             words: wordsToDefine,
-            definitions: hasDefinitionHover,
+            definitions: !!showDefinitionHover,
           },
           { cancelToken: cancelTokenSource.token }
         );
-        if (hasDefinitionHover) {
+        if (showDefinitionHover) {
           // for certain lexicons, try getting definitions from other sources
           for (const otherLexicon of lexicon === 'NWL18'
             ? ['NWL20']
@@ -601,7 +627,7 @@ export const Table = React.memo((props: Props) => {
               {
                 lexicon: otherLexicon,
                 words: wordsToRedefine,
-                definitions: hasDefinitionHover,
+                definitions: showDefinitionHover,
               },
               { cancelToken: cancelTokenSource.token }
             );
@@ -632,14 +658,14 @@ export const Table = React.memo((props: Props) => {
     return () => {
       cancelTokenSource.cancel();
     };
-  }, [hasDefinitionHover, gameInfo.game_request.lexicon, wordInfo, unrace]);
+  }, [showDefinitionHover, gameInfo.game_request.lexicon, wordInfo, unrace]);
 
   useEffect(() => {
     if (phonies === null) {
       if (gameDone) {
         const phonies = [];
         let hasWords = false; // avoid running this before the first GameHistoryRefresher event
-        for (const word in wordInfo) {
+        for (const word of (playedWords as any) as [string]) {
           hasWords = true;
           const definition = wordInfo[word];
           if (definition === undefined) {
@@ -657,18 +683,16 @@ export const Table = React.memo((props: Props) => {
       }
       setPhonies(undefined); // not ready to display
     }
-  }, [gameDone, phonies, wordInfo]);
+  }, [gameDone, phonies, playedWords, wordInfo]);
 
-  const gameContextRef = useRef(gameContext);
-  gameContextRef.current = gameContext;
   useEffect(() => {
     if (!phonies) return;
     if (phonies.length) {
       // since +false === 0 and +true === 1, this is [unchallenged, challenged]
       const groupedWords = [new Set(), new Set()];
       let returningTiles = false;
-      for (let i = gameContextRef.current.turns.length; --i >= 0; ) {
-        const turn = gameContextRef.current.turns[i];
+      for (let i = gameContext.turns.length; --i >= 0; ) {
+        const turn = gameContext.turns[i];
         if (turn.getType() === GameEvent.Type.PHONY_TILES_RETURNED) {
           returningTiles = true;
         } else {
