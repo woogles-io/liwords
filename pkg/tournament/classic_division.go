@@ -427,6 +427,11 @@ func (t *ClassicDivision) GetCurrentRound() int {
 	return int(t.CurrentRound)
 }
 
+func isRoundRobin(pm realtime.PairingMethod) bool {
+	return pm == realtime.PairingMethod_ROUND_ROBIN ||
+		pm == realtime.PairingMethod_TEAM_ROUND_ROBIN
+}
+
 func (t *ClassicDivision) PairRound(round int) error {
 	if round < 0 || round >= len(t.Matrix) {
 		return fmt.Errorf("round number out of range: %d", round)
@@ -454,7 +459,7 @@ func (t *ClassicDivision) PairRound(round int) error {
 
 	// Round Robin must have the same ordering for each round
 	var playerOrder []string
-	if pairingMethod == realtime.PairingMethod_ROUND_ROBIN {
+	if isRoundRobin(pairingMethod) {
 		playerOrder = t.Players
 	} else {
 		playerOrder = make([]string, len(standings))
@@ -466,7 +471,7 @@ func (t *ClassicDivision) PairRound(round int) error {
 	for i := 0; i < len(playerOrder); i++ {
 		pm := &entity.PoolMember{Id: playerOrder[i]}
 		// Wins do not matter for RoundRobin pairings
-		if pairingMethod != realtime.PairingMethod_ROUND_ROBIN {
+		if !isRoundRobin(pairingMethod) {
 			pm.Wins = int(standings[i].Wins)
 			pm.Draws = int(standings[i].Draws)
 			pm.Spread = int(standings[i].Spread)

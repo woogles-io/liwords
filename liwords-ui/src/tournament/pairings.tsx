@@ -8,6 +8,7 @@ import {
 } from '../store/reducers/tournament_reducer';
 import { TournamentGameResult } from '../gen/api/proto/realtime/realtime_pb';
 import { useHistory } from 'react-router-dom';
+import { PlayerTag } from './player_tags';
 
 const usernameFromPlayerEntry = (p: string) =>
   p.split(':').length > 0 ? p.split(':')[1] : 'Unknown player';
@@ -73,6 +74,7 @@ type Props = {
   selectedRound: number;
   username?: string;
   sendReady?: () => void;
+  isDirector: boolean;
 };
 
 type PairingTableData = {
@@ -100,7 +102,11 @@ export const Pairings = (props: Props) => {
     division: Division,
     round: number
   ): PairingTableData[] => {
-    if (!division || currentRound === -1) {
+    if (!division) {
+      return new Array<PairingTableData>();
+    }
+    // Hide initial pairings from anyone except directors
+    if (currentRound === -1 && !props.isDirector) {
       return new Array<PairingTableData>();
     }
     const { status } = tournamentContext.competitorState;
@@ -136,7 +142,14 @@ export const Pairings = (props: Props) => {
           playerNames[0] === playerNames[1] ? (
             <div>
               <p>
-                {playerNames[0]}
+                {playerNames[0]}{' '}
+                {
+                  <PlayerTag
+                    username={playerNames[0]}
+                    players={division.players}
+                    tournamentSlug={tournamentContext.metadata.slug}
+                  />
+                }
                 {isBye && <Tag className="ant-tag-bye">Bye</Tag>}
                 {isForfeit && <Tag className="ant-tag-forfeit">Forfeit</Tag>}
                 {isRemoved(playerNames[0]) && (
@@ -148,7 +161,14 @@ export const Pairings = (props: Props) => {
             <div>
               {playerNames.map((playerName) => (
                 <p key={playerName}>
-                  {playerName}
+                  {playerName}{' '}
+                  {
+                    <PlayerTag
+                      username={playerName}
+                      players={division.players}
+                      tournamentSlug={tournamentContext.metadata.slug}
+                    />
+                  }
                   {isRemoved(playerName) && (
                     <Tag className="ant-tag-removed">Removed</Tag>
                   )}
