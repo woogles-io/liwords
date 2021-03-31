@@ -39,7 +39,8 @@ func NewClassicDivision() *ClassicDivision {
 		Standings:        make(map[int32]*realtime.RoundStandings),
 		RoundControls:    []*realtime.RoundControl{},
 		DivisionControls: &realtime.DivisionControls{},
-		CurrentRound:     -1}
+		CurrentRound:     -1,
+		PairingKeyInt:    0}
 }
 
 func (t *ClassicDivision) GetDivisionControls() *realtime.DivisionControls {
