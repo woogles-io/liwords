@@ -98,3 +98,26 @@ a.plain,
     background-color: m($background);
   }
 }
+
+.donations {
+  @include container;
+  padding: 48px 18px;
+  .donation-buttons {
+    margin: 24px 0;
+    display: flex;
+    flex-direction: column;
+    width: 200px;
+    button {
+      margin: 12px 0;
+    }
+  }
+  &.donation-success {
+    text-align: center;
+    h4 {
+      @include type-default;
+      font-weight: 600;
+      font-size: 18px;
+      letter-spacing: 0;
+    }
+  }
+}

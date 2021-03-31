@@ -10,10 +10,10 @@ export const DonateSuccess = () => {
           <TopBar />
         </Col>
       </Row>
-      <div className="donations">
-        <p>Thank you so much for your donation. &lt;3</p>
+      <div className="donations donation-success">
+        <h4>Thank you so much for your donation. &lt;3</h4>
         <p>
-          Click <a href="https://woogles.io">to go back to Woogles</a>
+          <a href="https://woogles.io">Return to Woogles</a>
         </p>
       </div>
     </>

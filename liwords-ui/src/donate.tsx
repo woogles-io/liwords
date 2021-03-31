@@ -61,19 +61,16 @@ export const Donate = () => {
       </Row>
       <div className="donations">
         <p>
-          We really appreciate your donations. You can select one-time
-          donations, or donate via our Patreon account
+          We’re an entirely volunteer-run 503(c) NFP. If you’re enjoying the
+          site, please feel free to contribute a few dollars to us!
         </p>
-        <p>
+        <div className="donation-buttons">
           <Button onClick={() => donateClick(5)}>Donate $5 one-time</Button>
           <Button onClick={() => donateClick(10)}>Donate $10 one-time</Button>
           <Button onClick={() => donateClick(20)}>Donate $20 one-time</Button>
           <Button onClick={() => donateClick(50)}>Donate $50 one-time</Button>
           <Button onClick={() => donateClick(100)}>Donate $100 one-time</Button>
-        </p>
-      </div>
-      <p></p>
-      <div>
+        </div>
         <p>
           You can also donate using our Patreon account, for recurring payments:{' '}
           <a href="https://www.patreon.com/woogles_io">
