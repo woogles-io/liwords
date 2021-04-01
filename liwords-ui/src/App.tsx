@@ -26,6 +26,8 @@ import { encodeToSocketFmt } from './utils/protobuf';
 import { Clubs } from './clubs';
 import { TournamentRoom } from './tournament/room';
 import { Admin } from './admin/admin';
+import { Donate } from './donate';
+import { DonateSuccess } from './donate_success';
 
 type Blocks = {
   user_ids: Array<string>;
@@ -165,6 +167,12 @@ const App = React.memo(() => {
         </Route>
         <Route path="/admin">
           <Admin />
+        </Route>
+        <Route path="/donate">
+          <Donate />
+        </Route>
+        <Route path="/donate_success">
+          <DonateSuccess />
         </Route>
       </Switch>
     </div>
