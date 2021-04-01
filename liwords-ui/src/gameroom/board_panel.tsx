@@ -27,7 +27,8 @@ import {
 } from '../utils/cwgame/tile_placement';
 
 import {
-  parseBlindfoldCoordinates
+  parseBlindfoldCoordinates,
+  natoPhoneticAlphabet
 } from '../utils/cwgame/blindfold';
 
 import {
@@ -183,7 +184,7 @@ export const BoardPanel = React.memo((props: Props) => {
     'BLANK_MODAL' | 'DRAWING_HOTKEY' | 'EXCHANGE_MODAL' | 'NORMAL' | 'BLIND'
   >('NORMAL');
 
-  const blindModeEnabled = false;
+  const blindModeEnabled = true;
 
   const {
     drawingCanBeEnabled,
@@ -625,7 +626,7 @@ export const BoardPanel = React.memo((props: Props) => {
       if (currentMode === 'BLIND') {
         const PlayerScoresAndTimes = ():[string, number, string, string, number, string] => {
           const timepenalty = (time: number) => {
-            // Calculate a timepenalty for display purposes only. The backend will
+            // Calculate a timepenalty for speech purposes only. The backend will
             // also properly calculate this.
 
             if (time >= 0) {
@@ -636,8 +637,6 @@ export const BoardPanel = React.memo((props: Props) => {
             return minsOvertime * 10;
           };
 
-          // If the gameContext is not yet available, we should try displaying player cards
-          // from the meta information, until the information comes in.
           let p0 = gameContext.players[0];
           let p1 = gameContext.players[1];
 
@@ -658,50 +657,83 @@ export const BoardPanel = React.memo((props: Props) => {
 
           // Always list the player scores and times first
           if (props.playerMeta[1].nickname === props.username) {
-            return [props.playerMeta[1].nickname, p1Score, playerTimeToText(p1Time), props.playerMeta[0].nickname, p0Score, playerTimeToText(p0Time)];
+            return ["you", p1Score, playerTimeToText(p1Time), "opponent", p0Score, playerTimeToText(p0Time)];
           }
-          return [props.playerMeta[0].nickname, p0Score, playerTimeToText(p0Time), props.playerMeta[1].nickname, p1Score, playerTimeToText(p1Time)];
+          return ["you", p0Score, playerTimeToText(p0Time), "opponent", p1Score, playerTimeToText(p1Time)];
         }
 
         const say = (text: string) => {
           var speech = new SpeechSynthesisUtterance(text);
           speech.lang = 'en-US';
-          speech.rate = 0.65;
+          speech.rate = 1;
           window.speechSynthesis.cancel();
           window.speechSynthesis.speak(speech);
         }
 
         const wordToSayString = (word: string): string => {
             let speech = "";
+            let currentNumber = "";
             for (var i = 0; i < word.length; i++) {
-              if (word[i].toUpperCase() === "A") {
-                // It cannot say the letter A correctly
-                speech += "EH ";
-              } else {
-                speech += word[i] + " ";
+              let natoWord = natoPhoneticAlphabet.get(word[i].toUpperCase());
+              if (natoWord !== undefined) {
+                // Single letters in their own sentences are actually
+                // fairly understandable when spoken by TTS. In the future
+                // we might give the option to have TTS also say the NATO
+                // Phonetic Alphabet to make it more clear, but for now,
+                // we will omit them.
+                if (word[i] >= 'a' && word[i] <= 'z') {
+                  speech += "blank. ";
+                }
+                speech += word[i] + ". ";
+              } else { // It's a number
+                let middleOfNumber = false;
+                currentNumber += word[i];
+                if (i+1 < word.length) {
+                  let natoNextWord = natoPhoneticAlphabet.get(word[i+1].toUpperCase());
+                  if (natoNextWord === undefined) {
+                    middleOfNumber = true;
+                  }
+                }
+                if (!middleOfNumber) {
+                  speech += currentNumber + ". ";
+                  currentNumber = "";               
+                }
               }
             }
-            console.log("wtss: " + speech);
             return speech;
         }
 
         const sayGameEvent = (ge: GameEvent) => {
           let type = ge.getType();
-          if (type === GameEvent.Type.TILE_PLACEMENT_MOVE) {
-            say(playerTilesPlayedToText(ge) + ge.getScore().toString());
-          } else if (type === GameEvent.Type.PHONY_TILES_RETURNED) {
-            say("lost challenge");
-          } else if (type === GameEvent.Type.EXCHANGE) {
-            say(ge.getNickname() + " exchange " + ge.getExchanged().length);
-          } else { // holp
-            say("i dunno my guy");
+          let nickname = "opponent.";
+          if (ge.getNickname() === props.username) {
+            nickname = "you.";
           }
-        }
-
-        const playerTilesPlayedToText = (ge: GameEvent):string => {
-            let speech = ge.getNickname() + " " + ge.getPosition() + " "
-            let mainWord = ge.getWordsFormedList()[0];
-            return speech + wordToSayString(mainWord);
+          let playedTiles = ge.getPlayedTiles();
+          let mainWord = ge.getWordsFormedList()[0];
+          let blankAwareWord = "";
+          for (var i = 0; i < playedTiles.length; i++) {
+            let tile = playedTiles[i];
+            if (tile >= 'a' && tile <= 'z') {
+              blankAwareWord += tile;
+            } else {
+              blankAwareWord += mainWord[i];
+            }
+          }
+          if (type === GameEvent.Type.TILE_PLACEMENT_MOVE) {
+            say(nickname + " " + wordToSayString(ge.getPosition()) +
+              wordToSayString(blankAwareWord) + " " +
+              ge.getScore().toString());
+          } else if (type === GameEvent.Type.PHONY_TILES_RETURNED) {
+            say(nickname + " lost challenge");
+          } else if (type === GameEvent.Type.EXCHANGE) {
+            say(nickname + " exchanged " + ge.getExchanged().length);
+          } else {
+            // This is technically not correct since there are a few
+            // events not accounted for that are not passes, like
+            // end rack points and +5 for challenges.
+            say(nickname + " passed");
+          }
         }
 
         const playerTimeToText = (time: number):string => {
@@ -711,8 +743,8 @@ export const BoardPanel = React.memo((props: Props) => {
             time = Math.abs(time);
           }
           let minutes = Math.floor(time / (1000 * 60)).toString();
-          let seconds = Math.floor((time % (1000 * 60)) / 1000).toString();
-          return negative + minutes + " minutes " + seconds + " seconds";
+          let seconds = Math.ceil((time % (1000 * 60)) / 1000).toString();
+          return negative + minutes + " minutes and " + seconds + " seconds";
         }
 
         let newBlindfoldCommand = blindfoldCommand;
@@ -735,13 +767,11 @@ export const BoardPanel = React.memo((props: Props) => {
             }
           } else if (blindfoldCommand.toUpperCase() === 'S') {
             let [p0id, p0Score, , p1id, p1Score, ] = PlayerScoresAndTimes();
-            let scoresay = `${p0id} ${p0Score} ${p1id} ${p1Score}`;
-            console.log("the score is said as: " + scoresay);
+            let scoresay = `${p0id} have ${p0Score} points. ${p1id} has ${p1Score} points.`;
             say(scoresay);
           } else if (blindfoldCommand.toUpperCase() === 'T') {
             let [p0id, , p0Time, p1id, , p1Time] = PlayerScoresAndTimes();
-            let timesay = `${p0id} ${p0Time} ${p1id} ${p1Time}`;
-            console.log("the time is said as: " + timesay);
+            let timesay = `${p0id} have ${p0Time}. ${p1id} has ${p1Time}.`;
             say(timesay);
           } else if (blindfoldCommand.toUpperCase() === 'R') {
             say(wordToSayString(props.currentRack));
@@ -749,7 +779,7 @@ export const BoardPanel = React.memo((props: Props) => {
             const blindfoldCoordinates = parseBlindfoldCoordinates(blindfoldCommand);
             if (blindfoldCoordinates !== undefined) {
                 // Valid coordinates, place the arrow
-                say(blindfoldCommand)
+                say(wordToSayString(blindfoldCommand));
                 setArrowProperties({
                   row: blindfoldCoordinates.row,
                   col: blindfoldCoordinates.col,
