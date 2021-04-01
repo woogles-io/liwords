@@ -237,18 +237,14 @@ const Tile = React.memo((props: TileProps) => {
       </div>
     </div>
   );
-  if (props.popoverContent != null) {
-    ret = (
-      <Popover
-        content={
-          <div onClick={props.onPopoverClick}>{props.popoverContent}</div>
-        }
-        visible
-      >
-        {ret}
-      </Popover>
-    );
-  }
+  ret = (
+    <Popover
+      content={<div onClick={props.onPopoverClick}>{props.popoverContent}</div>}
+      visible={props.popoverContent != null}
+    >
+      {ret}
+    </Popover>
+  );
   return ret;
 });
 
