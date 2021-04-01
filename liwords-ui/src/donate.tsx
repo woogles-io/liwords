@@ -5,10 +5,16 @@ import { TopBar } from './topbar/topbar';
 import { Button, Col, message, Row } from 'antd';
 import { useLoginStateStoreContext } from './store/store';
 
-const PUBLISHABLE_KEY = window.RUNTIME_CONFIGURATION.stripePublishableKey;
+const PUBLISHABLE_KEY =
+  'pk_live_51I7T0HH0ARGCjmpLmLvzN6JMTkUCaFr0xNhg7Mq2wcXTMhGI6R7ShMxnLmoaCynTO0cQ7BZtiSPfOjnA9LmO21dT00gBrlxiSa';
 
-// Use production products after testing
-const prices = window.RUNTIME_CONFIGURATION.stripePrices;
+const prices = {
+  5: 'price_1Iaq0DH0ARGCjmpLkqP0dtl0',
+  20: 'price_1Iaq18H0ARGCjmpL1SV8SQff',
+  50: 'price_1Iaq1YH0ARGCjmpLfUUwAOdu',
+  100: 'price_1Iaq1uH0ARGCjmpL9lsPC3jJ',
+  500: 'price_1Ib7UJH0ARGCjmpLWP4pDmTs',
+};
 
 const DOMAIN = window.location.href.replace(/[^/]*$/, '');
 const stripePromise = loadStripe(PUBLISHABLE_KEY);
@@ -26,7 +32,7 @@ export const Donate = () => {
   };
 
   const donateClick = async (money: number) => {
-    const price = prices[money];
+    const price = prices[money as keyof typeof prices];
     const mode = 'payment';
     const items = [
       {
@@ -46,7 +52,7 @@ export const Donate = () => {
         cancelUrl: DOMAIN + 'donate?session_id={CHECKOUT_SESSION_ID}',
         clientReferenceId: loginState.loggedIn
           ? loginState.userID + ':' + loginState.username
-          : 'anonymous' + '-' + loginState.userID,
+          : 'anonymous-' + loginState.userID,
         submitType: 'donate',
       })
       .then(handleResult);
@@ -66,10 +72,10 @@ export const Donate = () => {
         </p>
         <div className="donation-buttons">
           <Button onClick={() => donateClick(5)}>Donate $5 one-time</Button>
-          <Button onClick={() => donateClick(10)}>Donate $10 one-time</Button>
           <Button onClick={() => donateClick(20)}>Donate $20 one-time</Button>
           <Button onClick={() => donateClick(50)}>Donate $50 one-time</Button>
           <Button onClick={() => donateClick(100)}>Donate $100 one-time</Button>
+          <Button onClick={() => donateClick(500)}>Donate $500 one-time</Button>
         </div>
         <p>
           You can also donate using our Patreon account, for recurring payments:{' '}
