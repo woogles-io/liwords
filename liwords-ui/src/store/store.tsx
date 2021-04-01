@@ -149,9 +149,11 @@ type TentativePlayData = {
   placedTilesTempScore: number | undefined;
   placedTiles: Set<EphemeralTile>;
   displayedRack: string;
+  blindfoldCommand: string;
   setPlacedTilesTempScore: (s: number | undefined) => void;
   setPlacedTiles: (t: Set<EphemeralTile>) => void;
   setDisplayedRack: (l: string) => void;
+  setBlindfoldCommand: (l: string) => void;
 };
 
 type PoolFormatStoreData = {
@@ -214,9 +216,11 @@ const TentativePlayContext = createContext<TentativePlayData>({
   placedTilesTempScore: undefined,
   placedTiles: new Set<EphemeralTile>(),
   displayedRack: '',
+  blindfoldCommand: '',
   setPlacedTilesTempScore: defaultFunction,
   setPlacedTiles: defaultFunction,
   setDisplayedRack: defaultFunction,
+  setBlindfoldCommand: defaultFunction,
 });
 
 const ExcludedPlayersContext = createContext<ExcludedPlayersStoreData>({
@@ -713,6 +717,7 @@ const RealStore = ({ children, ...props }: Props) => {
   >(undefined);
   const [placedTiles, setPlacedTiles] = useState(new Set<EphemeralTile>());
   const [displayedRack, setDisplayedRack] = useState('');
+  const [blindfoldCommand, setBlindfoldCommand] = useState('');
 
   const [gameContext, setGameContext] = useState<GameState>(() =>
     gameStateInitializer(clockController, onClockTick, onClockTimeout)
@@ -855,17 +860,21 @@ const RealStore = ({ children, ...props }: Props) => {
       placedTilesTempScore,
       placedTiles,
       displayedRack,
+      blindfoldCommand,
       setPlacedTilesTempScore,
       setPlacedTiles,
       setDisplayedRack,
+      setBlindfoldCommand,
     }),
     [
       placedTilesTempScore,
       placedTiles,
       displayedRack,
+      blindfoldCommand,
       setPlacedTilesTempScore,
       setPlacedTiles,
       setDisplayedRack,
+      setBlindfoldCommand,
     ]
   );
   const excludedPlayersStore = useMemo(

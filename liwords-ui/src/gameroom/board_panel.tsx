@@ -27,6 +27,10 @@ import {
 } from '../utils/cwgame/tile_placement';
 
 import {
+  parseBlindfoldCoordinates
+} from '../utils/cwgame/blindfold';
+
+import {
   tilesetToMoveEvent,
   exchangeMoveEvent,
   passMoveEvent,
@@ -43,6 +47,7 @@ import {
 import {
   useExaminableGameContextStoreContext,
   useExaminableGameEndMessageStoreContext,
+  useExaminableTimerStoreContext,
   useExamineStoreContext,
   useGameContextStoreContext,
   useTentativeTileContext,
@@ -175,8 +180,10 @@ export const BoardPanel = React.memo((props: Props) => {
 
   // Poka-yoke against accidentally having multiple modes active.
   const [currentMode, setCurrentMode] = useState<
-    'BLANK_MODAL' | 'DRAWING_HOTKEY' | 'EXCHANGE_MODAL' | 'NORMAL'
+    'BLANK_MODAL' | 'DRAWING_HOTKEY' | 'EXCHANGE_MODAL' | 'NORMAL' | 'BLIND'
   >('NORMAL');
+
+  const blindModeEnabled = false;
 
   const {
     drawingCanBeEnabled,
@@ -195,6 +202,10 @@ export const BoardPanel = React.memo((props: Props) => {
   const {
     gameEndMessage: examinableGameEndMessage,
   } = useExaminableGameEndMessageStoreContext();
+  const {
+    timerContext: examinableTimerContext,
+  } = useExaminableTimerStoreContext();
+
   const { isExamining, handleExamineStart } = useExamineStoreContext();
   const { gameContext } = useGameContextStoreContext();
   const { stopClock } = useTimerStoreContext();
@@ -223,6 +234,8 @@ export const BoardPanel = React.memo((props: Props) => {
     setPlacedTiles,
     placedTilesTempScore,
     setPlacedTilesTempScore,
+    blindfoldCommand,
+    setBlindfoldCommand,
   } = useTentativeTileContext();
 
   const observer = !props.playerMeta.some((p) => p.nickname === props.username);
@@ -608,7 +621,152 @@ export const BoardPanel = React.memo((props: Props) => {
           key = key.toUpperCase();
         }
       }
-      if (currentMode === 'NORMAL') {
+
+      if (currentMode === 'BLIND') {
+        const PlayerScoresAndTimes = ():[string, number, string, string, number, string] => {
+          const timepenalty = (time: number) => {
+            // Calculate a timepenalty for display purposes only. The backend will
+            // also properly calculate this.
+
+            if (time >= 0) {
+              return 0;
+            }
+
+            const minsOvertime = Math.ceil(Math.abs(time) / 60000);
+            return minsOvertime * 10;
+          };
+
+          // If the gameContext is not yet available, we should try displaying player cards
+          // from the meta information, until the information comes in.
+          let p0 = gameContext.players[0];
+          let p1 = gameContext.players[1];
+
+          let p0Time = examinableTimerContext.p0;
+          let p1Time = examinableTimerContext.p1;
+
+          if (props.playerMeta[0].user_id === p1.userID) {
+            [p0, p1] = [p1, p0];
+            [p0Time, p1Time] = [p1Time, p0Time];
+          }
+
+          const playing = examinableGameContext.playState !== PlayState.GAME_OVER;
+          const applyTimePenalty = !isExamining && playing;
+          let p0Score = p0?.score ?? 0;
+          if (applyTimePenalty) p0Score -= timepenalty(p0Time);
+          let p1Score = p1?.score ?? 0;
+          if (applyTimePenalty) p1Score -= timepenalty(p1Time);
+
+          // Always list the player scores and times first
+          if (props.playerMeta[1].nickname === props.username) {
+            return [props.playerMeta[1].nickname, p1Score, playerTimeToText(p1Time), props.playerMeta[0].nickname, p0Score, playerTimeToText(p0Time)];
+          }
+          return [props.playerMeta[0].nickname, p0Score, playerTimeToText(p0Time), props.playerMeta[1].nickname, p1Score, playerTimeToText(p1Time)];
+        }
+
+        const say = (text: string) => {
+          var speech = new SpeechSynthesisUtterance(text);
+          speech.lang = 'en-US';
+          speech.rate = 0.65;
+          window.speechSynthesis.cancel();
+          window.speechSynthesis.speak(speech);
+        }
+
+        const wordToSayString = (word: string): string => {
+            let speech = "";
+            for (var i = 0; i < word.length; i++) {
+              if (word[i].toUpperCase() === "A") {
+                // It cannot say the letter A correctly
+                speech += "EH ";
+              } else {
+                speech += word[i] + " ";
+              }
+            }
+            console.log("wtss: " + speech);
+            return speech;
+        }
+
+        const sayGameEvent = (ge: GameEvent) => {
+          let type = ge.getType();
+          if (type === GameEvent.Type.TILE_PLACEMENT_MOVE) {
+            say(playerTilesPlayedToText(ge) + ge.getScore().toString());
+          } else if (type === GameEvent.Type.PHONY_TILES_RETURNED) {
+            say("lost challenge");
+          } else if (type === GameEvent.Type.EXCHANGE) {
+            say(ge.getNickname() + " exchange " + ge.getExchanged().length);
+          } else { // holp
+            say("i dunno my guy");
+          }
+        }
+
+        const playerTilesPlayedToText = (ge: GameEvent):string => {
+            let speech = ge.getNickname() + " " + ge.getPosition() + " "
+            let mainWord = ge.getWordsFormedList()[0];
+            return speech + wordToSayString(mainWord);
+        }
+
+        const playerTimeToText = (time: number):string => {
+          let negative = "";
+          if (time < 0) {
+            negative = "negative ";
+            time = Math.abs(time);
+          }
+          let minutes = Math.floor(time / (1000 * 60)).toString();
+          let seconds = Math.floor((time % (1000 * 60)) / 1000).toString();
+          return negative + minutes + " minutes " + seconds + " seconds";
+        }
+
+        let newBlindfoldCommand = blindfoldCommand;
+        if (key === EnterKey) {
+          // There is a better way to do this
+          // This should be done like the Scorecards
+          // are. It should access the Scorecard info somehow
+          // but I is of the not knowing.
+          if (blindfoldCommand.toUpperCase() === 'P') {
+            if (gameContext.turns.length < 2) {
+              say("no previous play");
+            } else {
+              sayGameEvent(gameContext.turns[gameContext.turns.length-2]);
+            }
+          } else if (blindfoldCommand.toUpperCase() === 'C') {
+            if (gameContext.turns.length < 1) {
+              say("no current play");
+            } else {
+              sayGameEvent(gameContext.turns[gameContext.turns.length-1]); 
+            }
+          } else if (blindfoldCommand.toUpperCase() === 'S') {
+            let [p0id, p0Score, , p1id, p1Score, ] = PlayerScoresAndTimes();
+            let scoresay = `${p0id} ${p0Score} ${p1id} ${p1Score}`;
+            console.log("the score is said as: " + scoresay);
+            say(scoresay);
+          } else if (blindfoldCommand.toUpperCase() === 'T') {
+            let [p0id, , p0Time, p1id, , p1Time] = PlayerScoresAndTimes();
+            let timesay = `${p0id} ${p0Time} ${p1id} ${p1Time}`;
+            console.log("the time is said as: " + timesay);
+            say(timesay);
+          } else if (blindfoldCommand.toUpperCase() === 'R') {
+            say(wordToSayString(props.currentRack));
+          } else {
+            const blindfoldCoordinates = parseBlindfoldCoordinates(blindfoldCommand);
+            if (blindfoldCoordinates !== undefined) {
+                // Valid coordinates, place the arrow
+                say(blindfoldCommand)
+                setArrowProperties({
+                  row: blindfoldCoordinates.row,
+                  col: blindfoldCoordinates.col,
+                  horizontal: blindfoldCoordinates.horizontal,
+                  show: true});
+            } else {
+              say("invalid command")
+            }
+          }
+
+          newBlindfoldCommand = "";
+          setCurrentMode('NORMAL');
+        } else {
+          newBlindfoldCommand = blindfoldCommand + key.toUpperCase();
+        }
+        setBlindfoldCommand(newBlindfoldCommand);
+      } else if (currentMode === 'NORMAL') {
         if (isMyTurn() && !props.gameDone) {
           if (key === '2') {
             evt.preventDefault();
@@ -625,6 +783,12 @@ export const BoardPanel = React.memo((props: Props) => {
             evt.preventDefault();
             if (handleNeitherShortcut.current) handleNeitherShortcut.current();
             setCurrentMode('EXCHANGE_MODAL');
+            return;
+          }
+          if (key.toUpperCase() === 'C' && blindModeEnabled) {
+            evt.preventDefault();
+            if (handleNeitherShortcut.current) handleNeitherShortcut.current();
+            setCurrentMode('BLIND');
             return;
           }
           if (key === '$' && exchangeAllowed) {
@@ -667,7 +831,7 @@ export const BoardPanel = React.memo((props: Props) => {
           props.board,
           key,
           displayedRack,
-          placedTiles
+          placedTiles,
         );
 
         if (handlerReturn === null) {
@@ -682,12 +846,23 @@ export const BoardPanel = React.memo((props: Props) => {
     },
     [
       arrowProperties,
+      blindfoldCommand,
+      blindModeEnabled,
+      examinableGameContext.playState,
+      examinableTimerContext.p0,
+      examinableTimerContext.p1,
+      gameContext.players,
+      gameContext.turns,
+      isExamining,
+      props.playerMeta,
+      props.username,
       currentMode,
       displayedRack,
       exchangeAllowed,
       setDisplayedRack,
       setPlacedTiles,
       setPlacedTilesTempScore,
+      setBlindfoldCommand,
       isMyTurn,
       makeMove,
       placedTiles,
