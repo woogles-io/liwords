@@ -665,7 +665,7 @@ export const BoardPanel = React.memo((props: Props) => {
         const say = (text: string) => {
           var speech = new SpeechSynthesisUtterance(text);
           speech.lang = 'en-US';
-          speech.rate = 1;
+          speech.rate = 0.8;
           window.speechSynthesis.cancel();
           window.speechSynthesis.speak(speech);
         }
@@ -685,6 +685,8 @@ export const BoardPanel = React.memo((props: Props) => {
                   speech += "blank. ";
                 }
                 speech += word[i] + ". ";
+              } else if (word[i] === '?') {
+                speech += "blank. ";
               } else { // It's a number
                 let middleOfNumber = false;
                 currentNumber += word[i];
@@ -721,9 +723,11 @@ export const BoardPanel = React.memo((props: Props) => {
             }
           }
           if (type === GameEvent.Type.TILE_PLACEMENT_MOVE) {
-            say(nickname + " " + wordToSayString(ge.getPosition()) +
-              wordToSayString(blankAwareWord) + " " +
-              ge.getScore().toString());
+            say(nickname + " " + wordToSayString(ge.getPosition()));
+            setTimeout(function()
+            {
+              say(wordToSayString(blankAwareWord) + " " + ge.getScore().toString());
+            }, 3000);
           } else if (type === GameEvent.Type.PHONY_TILES_RETURNED) {
             say(nickname + " lost challenge");
           } else if (type === GameEvent.Type.EXCHANGE) {
@@ -815,7 +819,7 @@ export const BoardPanel = React.memo((props: Props) => {
             setCurrentMode('EXCHANGE_MODAL');
             return;
           }
-          if (key.toUpperCase() === 'C' && blindModeEnabled) {
+          if (key.toUpperCase() === ';' && blindModeEnabled) {
             evt.preventDefault();
             if (handleNeitherShortcut.current) handleNeitherShortcut.current();
             setCurrentMode('BLIND');
