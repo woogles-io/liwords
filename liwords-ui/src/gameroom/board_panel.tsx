@@ -662,11 +662,22 @@ export const BoardPanel = React.memo((props: Props) => {
           return ["you", p0Score, playerTimeToText(p0Time), "opponent", p1Score, playerTimeToText(p1Time)];
         }
 
-        const say = (text: string) => {
+        const say = (text: string, moreText: string) => {
           var speech = new SpeechSynthesisUtterance(text);
-          speech.lang = 'en-US';
-          speech.rate = 0.8;
+          var lang = 'en-US';
+          var rate = 0.8
+          speech.lang = lang;
+          speech.rate = rate;
           window.speechSynthesis.cancel();
+          speech.onend = () => {
+            if (moreText !== "") {
+              var moreSpeech = new SpeechSynthesisUtterance(moreText);
+              moreSpeech.lang = lang;
+              moreSpeech.rate = rate;
+              window.speechSynthesis.cancel();
+              speechSynthesis.speak(moreSpeech);
+            }
+          }; 
           window.speechSynthesis.speak(speech);
         }
 
@@ -723,20 +734,17 @@ export const BoardPanel = React.memo((props: Props) => {
             }
           }
           if (type === GameEvent.Type.TILE_PLACEMENT_MOVE) {
-            say(nickname + " " + wordToSayString(ge.getPosition()));
-            setTimeout(function()
-            {
-              say(wordToSayString(blankAwareWord) + " " + ge.getScore().toString());
-            }, 3000);
+            say(nickname + " " + wordToSayString(ge.getPosition()),  wordToSayString(blankAwareWord) + " " + ge.getScore().toString() );
           } else if (type === GameEvent.Type.PHONY_TILES_RETURNED) {
-            say(nickname + " lost challenge");
+            say(nickname + " lost challenge", "");
           } else if (type === GameEvent.Type.EXCHANGE) {
-            say(nickname + " exchanged " + ge.getExchanged().length);
+            say(nickname + " exchanged " + ge.getExchanged().length, "");
+          } else if (type === GameEvent.Type.PASS) {
+            say(nickname + " passed", "");
           } else {
-            // This is technically not correct since there are a few
-            // events not accounted for that are not passes, like
-            // end rack points and +5 for challenges.
-            say(nickname + " passed");
+            // This is a bum way to deal with all other events
+            // but I am holding out for a better solution to saying events altogether
+            say(nickname + ge.getType().toString(), "");
           }
         }
 
@@ -759,38 +767,38 @@ export const BoardPanel = React.memo((props: Props) => {
           // but I is of the not knowing.
           if (blindfoldCommand.toUpperCase() === 'P') {
             if (gameContext.turns.length < 2) {
-              say("no previous play");
+              say("no previous play", "");
             } else {
               sayGameEvent(gameContext.turns[gameContext.turns.length-2]);
             }
           } else if (blindfoldCommand.toUpperCase() === 'C') {
             if (gameContext.turns.length < 1) {
-              say("no current play");
+              say("no current play", "");
             } else {
               sayGameEvent(gameContext.turns[gameContext.turns.length-1]); 
             }
           } else if (blindfoldCommand.toUpperCase() === 'S') {
             let [p0id, p0Score, , p1id, p1Score, ] = PlayerScoresAndTimes();
             let scoresay = `${p0id} have ${p0Score} points. ${p1id} has ${p1Score} points.`;
-            say(scoresay);
+            say(scoresay, "");
           } else if (blindfoldCommand.toUpperCase() === 'T') {
             let [p0id, , p0Time, p1id, , p1Time] = PlayerScoresAndTimes();
             let timesay = `${p0id} have ${p0Time}. ${p1id} has ${p1Time}.`;
-            say(timesay);
+            say(timesay, "");
           } else if (blindfoldCommand.toUpperCase() === 'R') {
-            say(wordToSayString(props.currentRack));
+            say(wordToSayString(props.currentRack), "");
           } else {
             const blindfoldCoordinates = parseBlindfoldCoordinates(blindfoldCommand);
             if (blindfoldCoordinates !== undefined) {
                 // Valid coordinates, place the arrow
-                say(wordToSayString(blindfoldCommand));
+                say(wordToSayString(blindfoldCommand), "");
                 setArrowProperties({
                   row: blindfoldCoordinates.row,
                   col: blindfoldCoordinates.col,
                   horizontal: blindfoldCoordinates.horizontal,
                   show: true});
             } else {
-              say("invalid command")
+              say("invalid command", "")
             }
           }
 
