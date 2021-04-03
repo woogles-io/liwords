@@ -237,6 +237,8 @@ export const BoardPanel = React.memo((props: Props) => {
     setPlacedTilesTempScore,
     blindfoldCommand,
     setBlindfoldCommand,
+    blindfoldUseNPA,
+    setBlindfoldUseNPA,
   } = useTentativeTileContext();
 
   const observer = !props.playerMeta.some((p) => p.nickname === props.username);
@@ -687,15 +689,18 @@ export const BoardPanel = React.memo((props: Props) => {
             for (var i = 0; i < word.length; i++) {
               let natoWord = natoPhoneticAlphabet.get(word[i].toUpperCase());
               if (natoWord !== undefined) {
-                // Single letters in their own sentences are actually
-                // fairly understandable when spoken by TTS. In the future
-                // we might give the option to have TTS also say the NATO
-                // Phonetic Alphabet to make it more clear, but for now,
-                // we will omit them.
+                // Single letters in their own sentences are usually
+                // fairly understandable when spoken by TTS. In some cases
+                // it is unclear and using the NATO Phonetic Alphabet
+                // will remove the ambiguity.
                 if (word[i] >= 'a' && word[i] <= 'z') {
                   speech += "blank. ";
                 }
-                speech += word[i] + ". ";
+                if (blindfoldUseNPA) {
+                  speech += word[i] + " for " + natoWord + ". ";
+                } else {
+                  speech += word[i] + ". ";
+                }
               } else if (word[i] === '?') {
                 speech += "blank. ";
               } else { // It's a number
@@ -748,15 +753,27 @@ export const BoardPanel = React.memo((props: Props) => {
           }
         }
 
-        const playerTimeToText = (time: number):string => {
-          let negative = "";
-          if (time < 0) {
-            negative = "negative ";
-            time = Math.abs(time);
+        const playerTimeToText = (ms: number):string => {
+          const neg = ms < 0;
+          // eslint-disable-next-line no-param-reassign
+          const absms = Math.abs(ms);
+          // const mins = Math.floor(ms / 60000);
+          let secs;
+          let mins;
+          let totalSecs;
+          if (!neg) {
+            totalSecs = Math.ceil(absms / 1000);
+          } else {
+            totalSecs = Math.floor(absms / 1000);
           }
-          let minutes = Math.floor(time / (1000 * 60)).toString();
-          let seconds = Math.ceil((time % (1000 * 60)) / 1000).toString();
-          return negative + minutes + " minutes and " + seconds + " seconds";
+          secs = totalSecs % 60;
+          mins = Math.floor(totalSecs / 60);
+
+          let negative = "";
+          if (neg) {
+            negative = "negative ";
+          }
+          return negative + mins.toString() + " minutes and " + secs.toString() + " seconds";
         }
 
         let newBlindfoldCommand = blindfoldCommand;
@@ -787,7 +804,11 @@ export const BoardPanel = React.memo((props: Props) => {
             say(timesay, "");
           } else if (blindfoldCommand.toUpperCase() === 'R') {
             say(wordToSayString(props.currentRack), "");
-          } else {
+          } else if (blindfoldCommand.toUpperCase() === 'N') {
+            setBlindfoldUseNPA(!blindfoldUseNPA);
+            say("NATO Phonetic Alphabet is " + (!blindfoldUseNPA ? " enabled." : " disabled."), "");
+          }
+          else {
             const blindfoldCoordinates = parseBlindfoldCoordinates(blindfoldCommand);
             if (blindfoldCoordinates !== undefined) {
                 // Valid coordinates, place the arrow
