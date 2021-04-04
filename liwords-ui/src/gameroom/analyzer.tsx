@@ -12,7 +12,7 @@ import {
   useExamineStoreContext,
   useTentativeTileContext,
 } from '../store/store';
-import { getMacondo } from '../wasm/loader';
+import { getWolges } from '../wasm/loader';
 import { useMountedState } from '../utils/mounted';
 import { RedoOutlined } from '@ant-design/icons/lib';
 import { EmptySpace, EphemeralTile } from '../utils/cwgame/common';
@@ -25,18 +25,25 @@ type AnalyzerProps = {
   lexicon: string;
 };
 
-// See analyzer/analyzer.go JsonMove.
-type JsonMove = {
-  Action: string;
-  Row: number; // int
-  Column: number; // int
-  Vertical: boolean;
-  DisplayCoordinates: string;
-  Tiles: string;
-  Leave: string;
-  Equity: number; // float64
-  Score: number; // int
-};
+type JsonMove =
+  | {
+      equity: number;
+      action: 'pass';
+    }
+  | {
+      equity: number;
+      action: 'exchange';
+      tiles: Array<number>;
+    }
+  | {
+      equity: number;
+      action: 'play';
+      down: boolean;
+      lane: number;
+      idx: number;
+      word: Array<number>;
+      score: number;
+    };
 
 type AnalyzerMove = {
   displayMove: string;
@@ -54,62 +61,118 @@ type AnalyzerMove = {
 export const analyzerMoveFromJsonMove = (
   move: JsonMove,
   dim: number,
-  letters: string
+  letters: string,
+  rackNum: Array<number>,
+  numToLabel: (n: number) => string
 ): AnalyzerMove => {
-  let tilesBeingMoved = move.Tiles;
-  let displayMove = '';
-  let isExchange = false;
-  switch (move.Action) {
-    case 'Play': {
-      let r = move.Row;
-      let c = move.Column;
+  const defaultRet = {
+    displayMove: '',
+    coordinates: '',
+    // always leave out leave
+    vertical: false,
+    col: 0,
+    row: 0,
+    score: 0,
+    equity: (0.0).toFixed(2),
+    tiles: '',
+    isExchange: false,
+  };
+  const makeLeaveStr = (leaveNum: Array<number>) => {
+    let leaveStr = '';
+    for (const t of leaveNum) {
+      if (!isNaN(t)) {
+        leaveStr += numToLabel(t);
+      }
+    }
+    return leaveStr;
+  };
+  switch (move.action) {
+    case 'play': {
+      const leaveNum = [...rackNum];
+      let displayMove = '';
+      let tilesBeingMoved = '';
+      const vertical = move.down;
+      const row = vertical ? move.idx : move.lane;
+      const col = vertical ? move.lane : move.idx;
+      const rowStr = String(row + 1);
+      const colStr = String.fromCharCode(col + 0x41);
+      const coordinates = vertical
+        ? `${colStr}${rowStr}`
+        : `${rowStr}${colStr}`;
+      let r = row;
+      let c = col;
       let inParen = false;
-      for (const t of move.Tiles) {
-        if (t === '.') {
+      for (const t of move.word) {
+        if (t === 0) {
           if (!inParen) {
             displayMove += '(';
             inParen = true;
           }
           displayMove += letters[r * dim + c];
+          tilesBeingMoved += '.';
         } else {
           if (inParen) {
             displayMove += ')';
             inParen = false;
           }
-          displayMove += t;
+          const tileLabel = numToLabel(t);
+          displayMove += tileLabel;
+          tilesBeingMoved += tileLabel;
+          // When t is negative, consume blank tile from rack.
+          const usedTileIndex = leaveNum.lastIndexOf(Math.max(t, 0));
+          if (usedTileIndex >= 0) leaveNum[usedTileIndex] = NaN;
         }
-        if (move.Vertical) ++r;
+        if (vertical) ++r;
         else ++c;
       }
       if (inParen) displayMove += ')';
-      break;
+      return {
+        displayMove,
+        coordinates,
+        leave: sortTiles(makeLeaveStr(leaveNum)),
+        vertical,
+        col,
+        row,
+        score: move.score,
+        equity: move.equity.toFixed(2),
+        tiles: tilesBeingMoved,
+        isExchange: false,
+      };
     }
-    case 'Exchange': {
+    case 'exchange': {
+      const leaveNum = [...rackNum];
+      let tilesBeingMoved = '';
+      for (const t of move.tiles) {
+        const tileLabel = numToLabel(t);
+        tilesBeingMoved += tileLabel;
+        const usedTileIndex = leaveNum.lastIndexOf(t);
+        if (usedTileIndex >= 0) leaveNum[usedTileIndex] = NaN;
+      }
       tilesBeingMoved = sortTiles(tilesBeingMoved);
-      displayMove = `Exch. ${tilesBeingMoved}`;
-      isExchange = true;
-      break;
+      return {
+        ...defaultRet,
+        displayMove: `Exch. ${tilesBeingMoved}`,
+        leave: sortTiles(makeLeaveStr(leaveNum)),
+        equity: move.equity.toFixed(2),
+        tiles: tilesBeingMoved,
+        isExchange: true,
+      };
     }
-    case 'Pass': {
-      displayMove = `Pass`;
-      break;
+    case 'pass': {
+      return {
+        ...defaultRet,
+        displayMove: 'Pass',
+        leave: makeLeaveStr(rackNum),
+        equity: move.equity.toFixed(2),
+      };
     }
     default: {
-      break;
+      return {
+        ...defaultRet,
+        leave: makeLeaveStr(rackNum),
+      };
     }
   }
-  return {
-    displayMove,
-    coordinates: move.DisplayCoordinates,
-    leave: sortTiles(move.Leave),
-    vertical: move.Vertical,
-    col: move.Column,
-    row: move.Row,
-    score: move.Score,
-    equity: move.Equity.toFixed(2),
-    tiles: tilesBeingMoved,
-    isExchange,
-  };
 };
 
 const AnalyzerContext = React.createContext<{
@@ -169,25 +232,46 @@ export const AnalyzerContextProvider = ({
           players,
         } = examinableGameContext;
 
+        // Return 0 for both board's ' ' and rack's '?'.
+        // English-only.
+        const labelToNum = (c: string) =>
+          c >= 'A' && c <= 'Z'
+            ? c.charCodeAt(0) - 0x40
+            : c >= 'a' && c <= 'z'
+            ? -(c.charCodeAt(0) - 0x60)
+            : 0;
+
+        const rackStr = players[onturn].currentRack;
+        const rackNum = Array.from(rackStr, labelToNum);
+
         const boardObj = {
-          size: dim,
-          rack: players[onturn].currentRack,
-          board: Array.from(new Array(dim), (_, row) =>
-            letters.substr(row * dim, dim)
-          ),
           lexicon,
+          rack: rackNum,
+          board: Array.from(new Array(dim), (_, row) =>
+            Array.from(letters.substr(row * dim, dim), labelToNum)
+          ),
+          count: 15,
         };
 
-        const macondo = await getMacondo(lexicon);
+        const wolges = await getWolges(lexicon);
         if (examinerIdAtStart !== examinerId.current) return;
 
         const boardStr = JSON.stringify(boardObj);
-        const movesStr = await macondo.analyze(boardStr);
+        const movesStr = await wolges.analyze(boardStr);
         if (examinerIdAtStart !== examinerId.current) return;
         const movesObj = JSON.parse(movesStr) as Array<JsonMove>;
 
+        // Return '?' for 0, because this is used for exchanges.
+        // English-only.
+        const numToLabel = (n: number) =>
+          n > 0
+            ? String.fromCharCode(0x40 + n)
+            : n < 0
+            ? String.fromCharCode(0x60 - n)
+            : '?';
+
         const formattedMoves = movesObj.map((move) =>
-          analyzerMoveFromJsonMove(move, dim, letters)
+          analyzerMoveFromJsonMove(move, dim, letters, rackNum, numToLabel)
         );
         setMovesCache((oldMovesCache) => {
           const ret = [...oldMovesCache];

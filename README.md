@@ -17,13 +17,14 @@ This source code is AGPL-licensed. You can modify the source for this app, or fo
 1. Download Docker for your operating system (download the Docker preview for M1 Macs, if the full stable version isn't out yet).
 2. Download the latest stable version of Node.js for your operating system
 3. Clone the `liwords-socket` repository from `https://github.com/domino14/liwords-socket`, and place it at the same level as this repo. For example, if your code resides at `/home/developer/code`, you should have two repos, at `/home/developer/code/liwords` (this repo) and `/home/developer/code/liwords-socket`.
-4. `cd` to this directory
+4. The frontend requires `wolges-wasm`. To get or update the code, run `git submodule update --init --recursive`, then `cd liwords-ui/wolges-wasm` and `./build.sh` to compile it. `wolges-wasm` is not GPL and has its own repository. (To remove the submodule, run `git submodule deinit --all`.)
+5. `cd` to this directory
 
-5. Run the following command in one of your terminal tabs, to run the backend, frontend, and databases.
+6. Run the following command in one of your terminal tabs, to run the backend, frontend, and databases.
 
 `docker-compose up`
 
-6. Edit your `hosts` file, typically `/etc/hosts`, by adding this line:
+7. Edit your `hosts` file, typically `/etc/hosts`, by adding this line:
 
 ```
 127.0.0.1	liwords.localhost
@@ -31,13 +32,13 @@ This source code is AGPL-licensed. You can modify the source for this app, or fo
 
 (If you are on Windows and you want to use Chrome, you cannot use `.localhost`. Use `liwords.local` in your `C:\Windows\System32\drivers\etc\hosts`.)
 
-7. Access the app at http://liwords.localhost
-8. If you wish to add a new front-end package, you can run `npm install` LOCALLY (in your host OS) in the `liwords-ui` directory. This adds the package to `package.json`. Then you can do `docker-compose build frontend` to rebuild the frontend and install the package in the internal node_modules directory.
-9. You can register a user by going to http://liwords.localhost/ and clicking on `SIGN UP` at the top right.
+8. Access the app at http://liwords.localhost
+9. If you wish to add a new front-end package, you can run `npm install` LOCALLY (in your host OS) in the `liwords-ui` directory. This adds the package to `package.json`. Then you can do `docker-compose build frontend` to rebuild the frontend and install the package in the internal node_modules directory.
+10. You can register a user by going to http://liwords.localhost/ and clicking on `SIGN UP` at the top right.
 
 To have two players play each other you must have one browser window in incognito mode, or use another browser.
 
-10. To register a bot, register a user the regular way. Then change their `internal_bot` flag in the database (`users` table) to true, and restart the server. You need to register at least one bot in order for bot games to work.
+11. To register a bot, register a user the regular way. Then change their `internal_bot` flag in the database (`users` table) to true, and restart the server. You need to register at least one bot in order for bot games to work.
 
 #### Tips
 
@@ -76,3 +77,5 @@ S: single dog bark 3 by crazymonke9 -- https://freesound.org/s/418105/
 #### Code
 
 Part of the front-end timer code borrows from https://github.com/ornicar/lila's code (AGPL licensed, like this app).
+
+Wolges-wasm is Copyright (C) 2020-2021 Andy Kurnia and released under the MIT license. It can be found at https://github.com/andy-k/wolges-wasm/.
