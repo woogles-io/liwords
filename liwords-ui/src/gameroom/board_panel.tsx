@@ -908,7 +908,6 @@ export const BoardPanel = React.memo((props: Props) => {
     [
       arrowProperties,
       blindfoldCommand,
-      blindModeEnabled,
       blindfoldUseNPA,
       examinableGameContext.playState,
       examinableTimerContext.p0,
