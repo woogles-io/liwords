@@ -802,6 +802,19 @@ export const BoardPanel = React.memo((props: Props) => {
             say(timesay, "");
           } else if (blindfoldCommand.toUpperCase() === 'R') {
             say(wordToSayString(props.currentRack), "");
+          } else if (blindfoldCommand.toUpperCase() === 'B') {
+            const bag = { ...gameContext.pool };
+            for (let i = 0; i < props.currentRack.length; i += 1) {
+              bag[props.currentRack[i]] -= 1;
+            }
+            let numTilesRemaining = 0;
+            let tilesRemaining = "";
+            for (const [key, value] of Object.entries(bag)) {
+              const letter = key + ". ";
+              numTilesRemaining += value;
+              tilesRemaining += letter.repeat(value);
+            }
+            say("There are " + numTilesRemaining + " tiles in the bag. " + wordToSayString(tilesRemaining), "");
           } else if (blindfoldCommand.toUpperCase() === 'N') {
             setBlindfoldUseNPA(!blindfoldUseNPA);
             say("NATO Phonetic Alphabet is " + (!blindfoldUseNPA ? " enabled." : " disabled."), "");
@@ -909,6 +922,7 @@ export const BoardPanel = React.memo((props: Props) => {
       arrowProperties,
       blindfoldCommand,
       blindfoldUseNPA,
+      gameContext.pool,
       examinableGameContext.playState,
       examinableTimerContext.p0,
       examinableTimerContext.p1,
