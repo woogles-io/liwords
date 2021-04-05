@@ -184,8 +184,6 @@ export const BoardPanel = React.memo((props: Props) => {
     'BLANK_MODAL' | 'DRAWING_HOTKEY' | 'EXCHANGE_MODAL' | 'NORMAL' | 'BLIND'
   >('NORMAL');
 
-  const blindModeEnabled = true;
-
   const {
     drawingCanBeEnabled,
     handleKeyDown: handleDrawingKeyDown,
@@ -848,7 +846,7 @@ export const BoardPanel = React.memo((props: Props) => {
             setCurrentMode('EXCHANGE_MODAL');
             return;
           }
-          if (key.toUpperCase() === ';' && blindModeEnabled) {
+          if (key.toUpperCase() === ';' && localStorage?.getItem('enableBlindfoldMode') === 'true') {
             evt.preventDefault();
             if (handleNeitherShortcut.current) handleNeitherShortcut.current();
             setCurrentMode('BLIND');
