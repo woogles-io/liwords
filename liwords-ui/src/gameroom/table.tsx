@@ -112,6 +112,23 @@ const ManageWindowTitle = (props: {}) => {
 
   const gameDone = gameContext.playState === PlayState.GAME_OVER;
 
+  // because Reasons, gameDone is true before the game is loaded.
+  // myId should be filled in at the same time.
+  const soundUnlocked = useRef(false);
+  useEffect(() => {
+    if (!soundUnlocked.current) {
+      // ignore first sound
+      if (!gameDone) soundUnlocked.current = true;
+      return;
+    }
+
+    if (myId === gameContext.onturn) {
+      BoopSounds.playSound('oppMoveSound');
+    } else {
+      BoopSounds.playSound('makeMoveSound');
+    }
+  }, [gameDone, myId, gameContext.onturn]);
+
   const desiredTitle = useMemo(() => {
     let title = '';
     if (!gameDone && myId === gameContext.onturn) {
