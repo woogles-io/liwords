@@ -28,10 +28,6 @@ type AnalyzerProps = {
 type JsonMove =
   | {
       equity: number;
-      action: 'pass';
-    }
-  | {
-      equity: number;
       action: 'exchange';
       tiles: Array<number>;
     }
@@ -151,19 +147,11 @@ export const analyzerMoveFromJsonMove = (
       tilesBeingMoved = sortTiles(tilesBeingMoved);
       return {
         ...defaultRet,
-        displayMove: `Exch. ${tilesBeingMoved}`,
+        displayMove: tilesBeingMoved ? `Exch. ${tilesBeingMoved}` : 'Pass',
         leave: sortTiles(makeLeaveStr(leaveNum)),
         equity: move.equity.toFixed(2),
         tiles: tilesBeingMoved,
         isExchange: true,
-      };
-    }
-    case 'pass': {
-      return {
-        ...defaultRet,
-        displayMove: 'Pass',
-        leave: makeLeaveStr(rackNum),
-        equity: move.equity.toFixed(2),
       };
     }
     default: {
@@ -245,12 +233,14 @@ export const AnalyzerContextProvider = ({
         const rackNum = Array.from(rackStr, labelToNum);
 
         const boardObj = {
-          lexicon,
           rack: rackNum,
           board: Array.from(new Array(dim), (_, row) =>
             Array.from(letters.substr(row * dim, dim), labelToNum)
           ),
           count: 15,
+          lexicon,
+          leave: 'english',
+          rules: 'CrosswordGame',
         };
 
         const wolges = await getWolges(lexicon);
