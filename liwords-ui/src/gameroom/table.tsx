@@ -81,7 +81,7 @@ const StreakFetchDelay = 2000;
 
 const DEFAULT_TITLE = 'Woogles.io';
 
-const ManageWindowTitle = (props: {}) => {
+const ManageWindowTitleAndTurnSound = (props: {}) => {
   const { gameContext } = useGameContextStoreContext();
   const { loginState } = useLoginStateStoreContext();
   const { userID } = loginState;
@@ -112,22 +112,26 @@ const ManageWindowTitle = (props: {}) => {
 
   const gameDone = gameContext.playState === PlayState.GAME_OVER;
 
-  // because Reasons, gameDone is true before the game is loaded.
-  // myId should be filled in at the same time.
+  // do not play sound when game ends (e.g. resign) or has not loaded
+  const canPlaySound = !gameDone && gameContext.gameID;
   const soundUnlocked = useRef(false);
   useEffect(() => {
-    if (!soundUnlocked.current) {
-      // ignore first sound
-      if (!gameDone) soundUnlocked.current = true;
-      return;
-    }
+    if (canPlaySound) {
+      if (!soundUnlocked.current) {
+        // ignore first sound
+        soundUnlocked.current = true;
+        return;
+      }
 
-    if (myId === gameContext.onturn) {
-      BoopSounds.playSound('oppMoveSound');
+      if (myId === gameContext.onturn) {
+        BoopSounds.playSound('oppMoveSound');
+      } else {
+        BoopSounds.playSound('makeMoveSound');
+      }
     } else {
-      BoopSounds.playSound('makeMoveSound');
+      soundUnlocked.current = false;
     }
-  }, [gameDone, myId, gameContext.onturn]);
+  }, [canPlaySound, myId, gameContext.onturn]);
 
   const desiredTitle = useMemo(() => {
     let title = '';
@@ -884,7 +888,7 @@ export const Table = React.memo((props: Props) => {
 
   let ret = (
     <div className={`game-container${isRegistered ? ' competitor' : ''}`}>
-      <ManageWindowTitle />
+      <ManageWindowTitleAndTurnSound />
       <TopBar tournamentID={gameInfo.tournament_id} />
       <div className="game-table">
         <div className="chat-area" id="left-sidebar">
