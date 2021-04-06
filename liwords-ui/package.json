@@ -32,7 +32,7 @@
     "react-use-websocket": "^2.2.0",
     "ts-protoc-gen": "^0.14.0",
     "typescript": "~3.7.2",
-    "wolges-wasm": "file:wolges-wasm/pkg"
+    "wolges-wasm": "file:wolges-wasm-pkg"
   },
   "scripts": {
     "start": "react-app-rewired start",
