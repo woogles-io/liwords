@@ -28,16 +28,6 @@ const KNOWN_TILE_ORDERS = [
   },
 ];
 
-function toggleLocalSetting(key: string) {
-  const value = localStorage?.getItem(key) !== 'true';
-  localStorage.setItem(key, value ? 'true' : 'false');
-  return value;
-}
-
-function localSetting(key: string) {
-  return localStorage?.getItem(key) === 'true';
-}
-
 export const Preferences = React.memo((props: Props) => {
   const { useState } = useMountedState();
 
@@ -55,14 +45,6 @@ export const Preferences = React.memo((props: Props) => {
       document?.body?.classList?.remove('mode--dark');
     }
     setDarkMode((x) => !x);
-  }, []);
-
-  const showRemainingKey = 'showRemainingTiles';
-  const [showRemaining, setShowRemaining] = useState(
-    localSetting(showRemainingKey)
-  );
-  const toggleShowRemaining = useCallback(() => {
-    setShowRemaining(toggleLocalSetting(showRemainingKey));
   }, []);
 
   const [enableAllLexicons, setEnableAllLexicons] = useState(
@@ -118,15 +100,6 @@ export const Preferences = React.memo((props: Props) => {
           </Select>
         </Col>
       </Row>
-      <div className="toggle-section">
-        <div className="title">Show letters remaining</div>
-        <div>See what letters are left in the tile bag during the game</div>
-        <Switch
-          defaultChecked={showRemaining}
-          onChange={toggleShowRemaining}
-          className="dark-toggle"
-        />
-      </div>
       <div className="section-header">Lexicons</div>
       <div className="toggle-section">
         <div>Enable all lexicons</div>
