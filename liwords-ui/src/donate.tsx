@@ -16,7 +16,7 @@ const prices = {
   500: 'price_1Ib7UJH0ARGCjmpLWP4pDmTs',
 };
 
-const DOMAIN = window.location.href.replace(/[^/]*$/, '');
+const DOMAIN = new URL('/', window.location.href).href;
 const stripePromise = loadStripe(PUBLISHABLE_KEY);
 
 export const Donate = () => {
