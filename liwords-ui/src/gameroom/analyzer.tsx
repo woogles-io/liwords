@@ -232,12 +232,14 @@ export const AnalyzerContextProvider = ({
         const rackStr = players[onturn].currentRack;
         const rackNum = Array.from(rackStr, labelToNum);
 
+        const howMany = 15;
+
         const boardObj = {
           rack: rackNum,
           board: Array.from(new Array(dim), (_, row) =>
             Array.from(letters.substr(row * dim, dim), labelToNum)
           ),
-          count: 15,
+          count: howMany + 1, // need to +1 in case Pass evaluated well.
           lexicon,
           leave: 'english',
           rules: 'CrosswordGame',
@@ -250,6 +252,19 @@ export const AnalyzerContextProvider = ({
         const movesStr = await wolges.analyze(boardStr);
         if (examinerIdAtStart !== examinerId.current) return;
         const movesObj = JSON.parse(movesStr) as Array<JsonMove>;
+
+        if (movesObj.length > 1) {
+          const passIndex = movesObj.findIndex(
+            (move) => move.action === 'exchange' && !move.tiles.length
+          );
+          if (passIndex >= 0) {
+            // Yeet the pass, since it isn't the only move.
+            movesObj.splice(passIndex, 1);
+          }
+        }
+        if (movesObj.length > howMany) {
+          movesObj.length = howMany;
+        }
 
         // Return '?' for 0, because this is used for exchanges.
         // English-only.
