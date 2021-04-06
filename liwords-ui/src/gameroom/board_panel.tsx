@@ -27,6 +27,11 @@ import {
 } from '../utils/cwgame/tile_placement';
 
 import {
+  parseBlindfoldCoordinates,
+  natoPhoneticAlphabet,
+} from '../utils/cwgame/blindfold';
+
+import {
   tilesetToMoveEvent,
   exchangeMoveEvent,
   passMoveEvent,
@@ -43,6 +48,7 @@ import {
 import {
   useExaminableGameContextStoreContext,
   useExaminableGameEndMessageStoreContext,
+  useExaminableTimerStoreContext,
   useExamineStoreContext,
   useGameContextStoreContext,
   useTentativeTileContext,
@@ -175,7 +181,7 @@ export const BoardPanel = React.memo((props: Props) => {
 
   // Poka-yoke against accidentally having multiple modes active.
   const [currentMode, setCurrentMode] = useState<
-    'BLANK_MODAL' | 'DRAWING_HOTKEY' | 'EXCHANGE_MODAL' | 'NORMAL'
+    'BLANK_MODAL' | 'DRAWING_HOTKEY' | 'EXCHANGE_MODAL' | 'NORMAL' | 'BLIND'
   >('NORMAL');
 
   const {
@@ -195,6 +201,10 @@ export const BoardPanel = React.memo((props: Props) => {
   const {
     gameEndMessage: examinableGameEndMessage,
   } = useExaminableGameEndMessageStoreContext();
+  const {
+    timerContext: examinableTimerContext,
+  } = useExaminableTimerStoreContext();
+
   const { isExamining, handleExamineStart } = useExamineStoreContext();
   const { gameContext } = useGameContextStoreContext();
   const { stopClock } = useTimerStoreContext();
@@ -223,6 +233,10 @@ export const BoardPanel = React.memo((props: Props) => {
     setPlacedTiles,
     placedTilesTempScore,
     setPlacedTilesTempScore,
+    blindfoldCommand,
+    setBlindfoldCommand,
+    blindfoldUseNPA,
+    setBlindfoldUseNPA,
   } = useTentativeTileContext();
 
   const observer = !props.playerMeta.some((p) => p.nickname === props.username);
@@ -608,7 +622,269 @@ export const BoardPanel = React.memo((props: Props) => {
           key = key.toUpperCase();
         }
       }
-      if (currentMode === 'NORMAL') {
+
+      if (currentMode === 'BLIND') {
+        const PlayerScoresAndTimes = (): [
+          string,
+          number,
+          string,
+          string,
+          number,
+          string
+        ] => {
+          const timepenalty = (time: number) => {
+            // Calculate a timepenalty for speech purposes only. The backend will
+            // also properly calculate this.
+
+            if (time >= 0) {
+              return 0;
+            }
+
+            const minsOvertime = Math.ceil(Math.abs(time) / 60000);
+            return minsOvertime * 10;
+          };
+
+          let p0 = gameContext.players[0];
+          let p1 = gameContext.players[1];
+
+          let p0Time = examinableTimerContext.p0;
+          let p1Time = examinableTimerContext.p1;
+
+          if (props.playerMeta[0].user_id === p1.userID) {
+            [p0, p1] = [p1, p0];
+            [p0Time, p1Time] = [p1Time, p0Time];
+          }
+
+          const playing =
+            examinableGameContext.playState !== PlayState.GAME_OVER;
+          const applyTimePenalty = !isExamining && playing;
+          let p0Score = p0?.score ?? 0;
+          if (applyTimePenalty) p0Score -= timepenalty(p0Time);
+          let p1Score = p1?.score ?? 0;
+          if (applyTimePenalty) p1Score -= timepenalty(p1Time);
+
+          // Always list the player scores and times first
+          if (props.playerMeta[1].nickname === props.username) {
+            return [
+              'you',
+              p1Score,
+              playerTimeToText(p1Time),
+              'opponent',
+              p0Score,
+              playerTimeToText(p0Time),
+            ];
+          }
+          return [
+            'you',
+            p0Score,
+            playerTimeToText(p0Time),
+            'opponent',
+            p1Score,
+            playerTimeToText(p1Time),
+          ];
+        };
+
+        const say = (text: string, moreText: string) => {
+          const speech = new SpeechSynthesisUtterance(text);
+          const lang = 'en-US';
+          const rate = 0.8;
+          speech.lang = lang;
+          speech.rate = rate;
+          window.speechSynthesis.cancel();
+          speech.onend = () => {
+            if (moreText !== '') {
+              const moreSpeech = new SpeechSynthesisUtterance(moreText);
+              moreSpeech.lang = lang;
+              moreSpeech.rate = rate;
+              window.speechSynthesis.cancel();
+              speechSynthesis.speak(moreSpeech);
+            }
+          };
+          window.speechSynthesis.speak(speech);
+        };
+
+        const wordToSayString = (word: string): string => {
+          let speech = '';
+          let currentNumber = '';
+          for (let i = 0; i < word.length; i++) {
+            const natoWord = natoPhoneticAlphabet.get(word[i].toUpperCase());
+            if (natoWord !== undefined) {
+              // Single letters in their own sentences are usually
+              // fairly understandable when spoken by TTS. In some cases
+              // it is unclear and using the NATO Phonetic Alphabet
+              // will remove the ambiguity.
+              if (word[i] >= 'a' && word[i] <= 'z') {
+                speech += 'blank. ';
+              }
+              if (blindfoldUseNPA) {
+                speech += word[i] + ' for ' + natoWord + '. ';
+              } else {
+                speech += word[i] + '. ';
+              }
+            } else if (word[i] === '?') {
+              speech += 'blank. ';
+            } else {
+              // It's a number
+              let middleOfNumber = false;
+              currentNumber += word[i];
+              if (i + 1 < word.length) {
+                const natoNextWord = natoPhoneticAlphabet.get(
+                  word[i + 1].toUpperCase()
+                );
+                if (natoNextWord === undefined) {
+                  middleOfNumber = true;
+                }
+              }
+              if (!middleOfNumber) {
+                speech += currentNumber + '. ';
+                currentNumber = '';
+              }
+            }
+          }
+          return speech;
+        };
+
+        const sayGameEvent = (ge: GameEvent) => {
+          const type = ge.getType();
+          let nickname = 'opponent.';
+          if (ge.getNickname() === props.username) {
+            nickname = 'you.';
+          }
+          const playedTiles = ge.getPlayedTiles();
+          const mainWord = ge.getWordsFormedList()[0];
+          let blankAwareWord = '';
+          for (let i = 0; i < playedTiles.length; i++) {
+            const tile = playedTiles[i];
+            if (tile >= 'a' && tile <= 'z') {
+              blankAwareWord += tile;
+            } else {
+              blankAwareWord += mainWord[i];
+            }
+          }
+          if (type === GameEvent.Type.TILE_PLACEMENT_MOVE) {
+            say(
+              nickname + ' ' + wordToSayString(ge.getPosition()) + '.',
+              wordToSayString(blankAwareWord) + ' ' + ge.getScore().toString()
+            );
+          } else if (type === GameEvent.Type.PHONY_TILES_RETURNED) {
+            say(nickname + ' lost challenge', '');
+          } else if (type === GameEvent.Type.EXCHANGE) {
+            say(nickname + ' exchanged ' + ge.getExchanged().length, '');
+          } else if (type === GameEvent.Type.PASS) {
+            say(nickname + ' passed', '');
+          } else {
+            // This is a bum way to deal with all other events
+            // but I am holding out for a better solution to saying events altogether
+            say(nickname + ge.getType().toString(), '');
+          }
+        };
+
+        const playerTimeToText = (ms: number): string => {
+          const neg = ms < 0;
+          // eslint-disable-next-line no-param-reassign
+          const absms = Math.abs(ms);
+          // const mins = Math.floor(ms / 60000);
+          let totalSecs;
+          if (!neg) {
+            totalSecs = Math.ceil(absms / 1000);
+          } else {
+            totalSecs = Math.floor(absms / 1000);
+          }
+          const secs = totalSecs % 60;
+          const mins = Math.floor(totalSecs / 60);
+
+          let negative = '';
+          if (neg) {
+            negative = 'negative ';
+          }
+          return (
+            negative +
+            mins.toString() +
+            ' minutes and ' +
+            secs.toString() +
+            ' seconds'
+          );
+        };
+
+        let newBlindfoldCommand = blindfoldCommand;
+        if (key === EnterKey) {
+          // There is a better way to do this
+          // This should be done like the Scorecards
+          // are. It should access the Scorecard info somehow
+          // but I is of the not knowing.
+          if (blindfoldCommand.toUpperCase() === 'P') {
+            if (gameContext.turns.length < 2) {
+              say('no previous play', '');
+            } else {
+              sayGameEvent(gameContext.turns[gameContext.turns.length - 2]);
+            }
+          } else if (blindfoldCommand.toUpperCase() === 'C') {
+            if (gameContext.turns.length < 1) {
+              say('no current play', '');
+            } else {
+              sayGameEvent(gameContext.turns[gameContext.turns.length - 1]);
+            }
+          } else if (blindfoldCommand.toUpperCase() === 'S') {
+            const [p0id, p0Score, , p1id, p1Score] = PlayerScoresAndTimes();
+            const scoresay = `${p0id} have ${p0Score} points. ${p1id} has ${p1Score} points.`;
+            say(scoresay, '');
+          } else if (blindfoldCommand.toUpperCase() === 'T') {
+            const [p0id, , p0Time, p1id, , p1Time] = PlayerScoresAndTimes();
+            const timesay = `${p0id} have ${p0Time}. ${p1id} has ${p1Time}.`;
+            say(timesay, '');
+          } else if (blindfoldCommand.toUpperCase() === 'R') {
+            say(wordToSayString(props.currentRack), '');
+          } else if (blindfoldCommand.toUpperCase() === 'B') {
+            const bag = { ...gameContext.pool };
+            for (let i = 0; i < props.currentRack.length; i += 1) {
+              bag[props.currentRack[i]] -= 1;
+            }
+            let numTilesRemaining = 0;
+            let tilesRemaining = '';
+            for (const [key, value] of Object.entries(bag)) {
+              const letter = key + '. ';
+              numTilesRemaining += value;
+              tilesRemaining += letter.repeat(value);
+            }
+            say(
+              'There are ' +
+                numTilesRemaining +
+                ' tiles in the bag. ' +
+                wordToSayString(tilesRemaining),
+              ''
+            );
+          } else if (blindfoldCommand.toUpperCase() === 'N') {
+            setBlindfoldUseNPA(!blindfoldUseNPA);
+            say(
+              'NATO Phonetic Alphabet is ' +
+                (!blindfoldUseNPA ? ' enabled.' : ' disabled.'),
+              ''
+            );
+          } else {
+            const blindfoldCoordinates = parseBlindfoldCoordinates(
+              blindfoldCommand
+            );
+            if (blindfoldCoordinates !== undefined) {
+              // Valid coordinates, place the arrow
+              say(wordToSayString(blindfoldCommand), '');
+              setArrowProperties({
+                row: blindfoldCoordinates.row,
+                col: blindfoldCoordinates.col,
+                horizontal: blindfoldCoordinates.horizontal,
+                show: true,
+              });
+            } else {
+              say('invalid command', '');
+            }
+          }
+
+          newBlindfoldCommand = '';
+          setCurrentMode('NORMAL');
+        } else {
+          newBlindfoldCommand = blindfoldCommand + key.toUpperCase();
+        }
+        setBlindfoldCommand(newBlindfoldCommand);
+      } else if (currentMode === 'NORMAL') {
         if (isMyTurn() && !props.gameDone) {
           if (key === '2') {
             evt.preventDefault();
@@ -625,6 +901,15 @@ export const BoardPanel = React.memo((props: Props) => {
             evt.preventDefault();
             if (handleNeitherShortcut.current) handleNeitherShortcut.current();
             setCurrentMode('EXCHANGE_MODAL');
+            return;
+          }
+          if (
+            key.toUpperCase() === ';' &&
+            localStorage?.getItem('enableBlindfoldMode') === 'true'
+          ) {
+            evt.preventDefault();
+            if (handleNeitherShortcut.current) handleNeitherShortcut.current();
+            setCurrentMode('BLIND');
             return;
           }
           if (key === '$' && exchangeAllowed) {
@@ -682,12 +967,25 @@ export const BoardPanel = React.memo((props: Props) => {
     },
     [
       arrowProperties,
+      blindfoldCommand,
+      blindfoldUseNPA,
+      gameContext.pool,
+      examinableGameContext.playState,
+      examinableTimerContext.p0,
+      examinableTimerContext.p1,
+      gameContext.players,
+      gameContext.turns,
+      isExamining,
+      props.playerMeta,
+      props.username,
       currentMode,
       displayedRack,
       exchangeAllowed,
       setDisplayedRack,
       setPlacedTiles,
       setPlacedTilesTempScore,
+      setBlindfoldCommand,
+      setBlindfoldUseNPA,
       isMyTurn,
       makeMove,
       placedTiles,
@@ -700,12 +998,7 @@ export const BoardPanel = React.memo((props: Props) => {
   );
 
   const handleTileDrop = useCallback(
-    (
-      row: number,
-      col: number,
-      rackIndex: number = -1,
-      tileIndex: number = -1
-    ) => {
+    (row: number, col: number, rackIndex = -1, tileIndex = -1) => {
       const handlerReturn = handleDroppedTile(
         row,
         col,
