@@ -1,6 +1,6 @@
 import React from 'react';
 import ReactMarkdown from 'react-markdown';
-import { Table, Button, Card } from 'antd';
+import { Table } from 'antd';
 import { isMac, isWindows } from '../utils/cwgame/common';
 import './markdown_tips.scss';
 
@@ -51,19 +51,12 @@ export const MarkdownTips = React.memo(() => {
   ];
 
   return (
-    <Card
-      title="Tips"
-      extra={
-        <a href="https://www.markdownguide.org/cheat-sheet/">Full guide here</a>
-      }
-    >
+    <div className="markdown-tips">
       <Table
-        className="markdown-tips"
         dataSource={dataSource}
         columns={columns}
         pagination={{ hideOnSinglePage: true }}
       />
-      <Button title="More tips"></Button>
-    </Card>
+    </div>
   );
 });

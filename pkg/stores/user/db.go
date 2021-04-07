@@ -395,6 +395,32 @@ func (s *DBStore) SetAvatarUrl(ctx context.Context, uuid string, avatarUrl strin
 	return s.db.Model(p).Update("avatar_url", avatarUrl).Error
 }
 
+func (s *DBStore) SetPersonalInfo(ctx context.Context, uuid string, email string, firstName string, lastName string, countryCode string, about string) error {
+	u := &User{}
+	p := &profile{}
+
+	if result := s.db.Where("uuid = ?", uuid).First(u); result.Error != nil {
+		return result.Error
+	}
+	if result := s.db.Model(u).Update("email", email); result.Error != nil {
+		return result.Error
+	}
+	if result := s.db.Model(u).Related(p); result.Error != nil {
+		return result.Error
+	}
+	if result := s.db.Model(p).Update("first_name", firstName); result.Error != nil {
+		return result.Error
+	}
+	if result := s.db.Model(p).Update("last_name", lastName); result.Error != nil {
+		return result.Error
+	}
+	if result := s.db.Model(p).Update("about", about); result.Error != nil {
+		return result.Error
+	}
+	
+	return s.db.Model(p).Update("country_code", countryCode).Error
+}
+
 // SetRatings set the specific ratings for the given variant in a transaction.
 func (s *DBStore) SetRatings(ctx context.Context, p0uuid string, p1uuid string, variant entity.VariantKey,
 	p0Rating entity.SingleRating, p1Rating entity.SingleRating) error {

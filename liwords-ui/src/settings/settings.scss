@@ -1,0 +1,353 @@
+@import '../base';
+@import '../shared/gameLists';
+@include button;
+@include tabs;
+
+.settings {
+  @include container;
+  @include type-default;
+  padding: 51px 24px 48px;
+  line-height: 20px;
+
+  h3 {
+    font-family: $font-default;
+    font-weight: bold;
+    letter-spacing: 0;
+  }
+  .div {
+    line-height: 20px;
+  }
+  .title {
+    @include type-title;
+    margin-bottom: 8px;
+  }
+  .categories {
+    padding: 4px 30px 0 0;
+    .choice {
+      text-align: right;
+      height: 32px;
+      font-weight: bold;
+      @include colorModed() {
+        color: m($gray-medium);
+      }
+      cursor: pointer;
+      padding-right: 14px;
+      padding-top: 8px;
+      border-right: 2px solid transparent;
+      &:hover,
+      &.active {
+        @include colorModed() {
+          color: m($primary-dark);
+        }
+      }
+      &.active {
+        @include colorModed() {
+          border-color: m($primary-dark);
+        }
+      }
+    }
+  }
+
+  .category {
+    .log-out {
+      .ant-btn {
+        width: 184px;
+        height: 40px;
+        margin-top: 24px;
+        font-size: 14px;
+        font-weight: bold;
+      }
+    }
+  }
+
+  label {
+    @include colorModed() {
+      color: m($gray-extreme);
+    }
+  }
+  .ant-card {
+    margin-bottom: 12px;
+  }
+  .ant-card-body {
+    padding: 24px;
+  }
+  .ant-card-head {
+    @include colorModed() {
+      background-color: m($primary-light);
+    }
+  }
+  a {
+    font-size: 14px;
+    text-align: right;
+  }
+  .log-in {
+    font-weight: bold;
+    margin-top: 12px;
+  }
+  .blocked-users {
+    .ant-card-body {
+      padding: 12px;
+      .user-context-menu {
+        margin-right: 12px;
+      }
+    }
+  }
+  .woogles {
+    width: 144px;
+    height: 236px;
+  }
+  .support-woogles {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+
+    .right-column {
+      margin-left: 20px;
+    }
+
+    button {
+      margin-top: 24px;
+      margin-left: 0;
+      border-width: 2px;
+      width: 144px;
+      height: 40px;
+      font-size: 14px;
+      font-weight: bold;
+    }
+  }
+  .change-password {
+    .ant-form-item-label {
+      font-weight: bold;
+    }
+    .ant-btn {
+      position: absolute;
+      right: 0;
+      top: 0;
+      font-size: 14px;
+    }
+  }
+  .blocked-players {
+    .header {
+      line-height: 20px;
+      padding-bottom: 24px;
+    }
+    .none-blocked {
+      font-weight: bold;
+    }
+    .blocked-player {
+      position: relative;
+      font-weight: bold;
+      .iconx {
+        position: absolute;
+        right: 0;
+      }
+    }
+  }
+  .preferences {
+    .tile-order {
+      font-weight: bold;
+    }
+    .tile-order-select {
+      margin-top: 6px;
+      margin-bottom: 18px;
+      width: 100%;
+    }
+    .toggle-section {
+      position: relative;
+      margin-bottom: 24px;
+      .ant-switch {
+        position: absolute;
+        right: 0;
+        top: 50%;
+        transform: translateY(-50%);
+      }
+    }
+    .toggle-section > div {
+      padding-right: 60px;
+    }
+  }
+}
+.confirm-unblock-modal {
+  .blocked-player {
+    font-weight: bold;
+  }
+}
+
+.section-header {
+  margin-top: 24px;
+  margin-bottom: 12px;
+  font-size: 12px;
+  font-weight: bold;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  @include colorModed() {
+    color: m($gray-extreme);
+  }
+}
+
+.closed-account {
+  .ant-row {
+    padding-top: 24px;
+  }
+  .thanks {
+    padding: 50px 0 0 24px;
+    font-style: italic;
+    font-size: 14px;
+  }
+}
+.personal-info {
+  .ant-row {
+    margin-bottom: 0;
+  }
+  .avatar-section,
+  .no-avatar-section {
+    @include container;
+    padding: 0 24px;
+    display: flex;
+    flex-direction: row;
+    justify-content: left;
+    align-items: center;
+
+    .ant-btn {
+      font-size: 14px;
+    }
+    .player-avatar {
+      height: 96px;
+      width: 96px;
+    }
+    .change-avatar {
+      margin-left: 24px;
+      border-width: 2px;
+    }
+    .remove-avatar {
+      border-width: 0;
+    }
+  }
+
+  .no-avatar-section {
+    padding-left: 0;
+    .change-avatar {
+      margin-left: 0;
+    }
+  }
+  .ant-form-item-explain {
+    margin-top: -14px;
+  }
+  .ant-form-item-label {
+    padding-bottom: 0;
+  }
+  .ant-col {
+    div {
+      font-weight: bold;
+    }
+    input {
+      border-radius: 4px;
+      padding-top: 9.1px;
+      padding-bottom: 9.1px;
+      margin-bottom: 20px;
+      font-size: 14px;
+    }
+  }
+  .close-account-button,
+  .bio-tips {
+    font-weight: bold;
+    cursor: pointer;
+    @include colorModed() {
+      color: m($primary-dark);
+    }
+    &:hover,
+    &.active {
+      @include colorModed() {
+        color: m($primary-dark);
+      }
+    }
+    &.active {
+      @include colorModed() {
+        border-color: m($primary-dark);
+      }
+    }
+  }
+  .save-button {
+    position: absolute;
+    right: 24px;
+    top: 0;
+    font-size: 14px;
+    height: 40px;
+  }
+  .ant-select {
+    border: 1px solid #cfcfcf;
+    border-radius: 4px;
+  }
+  .ant-select-selection-item {
+    font-weight: normal;
+    font-size: 14px;
+  }
+  .bio-editor {
+    border-radius: 4px;
+    font-size: 15px;
+    letter-spacing: 0.05em;
+    @include colorModed() {
+      background: m($background);
+      color: m($gray-extreme);
+      outline: 0;
+    }
+  }
+  .bio-section-header {
+    width: 100%;
+    position: relative;
+  }
+  .bio-tips {
+    position: absolute;
+    right: 0;
+  }
+}
+.close-account {
+  .deletion-rules {
+    line-height: 20px;
+    margin-bottom: 12px;
+  }
+  .stern-warning {
+    background: #eafffd;
+    border-radius: 4px;
+    padding-left: 16px;
+    padding-top: 16px;
+    margin-bottom: 48px;
+    height: 52px;
+
+    .i-understand {
+      color: #666666;
+    }
+  }
+  .ant-checkbox-wrapper {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    margin: 0;
+    padding-bottom: 24px;
+  }
+  .ant-btn {
+    margin-top: 0;
+    font-size: 14px;
+    width: 184px;
+  }
+  .close-account-button {
+    position: absolute;
+    right: 0;
+    top: 0px;
+  }
+}
+
+.avatar-container {
+  display: flex;
+  align-items: center;
+  padding-bottom: 24px;
+  .player-avatar {
+    width: 64px;
+    height: 64px;
+  }
+  .full-name {
+    padding-left: 24px;
+    font-size: 16px;
+    font-weight: bold;
+  }
+}

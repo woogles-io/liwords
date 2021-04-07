@@ -608,38 +608,122 @@ export namespace ProfileResponse {
   }
 }
 
-export class UpdateProfileRequest extends jspb.Message {
+export class PersonalInfoRequest extends jspb.Message {
+  serializeBinary(): Uint8Array;
+  toObject(includeInstance?: boolean): PersonalInfoRequest.AsObject;
+  static toObject(includeInstance: boolean, msg: PersonalInfoRequest): PersonalInfoRequest.AsObject;
+  static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+  static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+  static serializeBinaryToWriter(message: PersonalInfoRequest, writer: jspb.BinaryWriter): void;
+  static deserializeBinary(bytes: Uint8Array): PersonalInfoRequest;
+  static deserializeBinaryFromReader(message: PersonalInfoRequest, reader: jspb.BinaryReader): PersonalInfoRequest;
+}
+
+export namespace PersonalInfoRequest {
+  export type AsObject = {
+  }
+}
+
+export class PersonalInfoResponse extends jspb.Message {
+  getEmail(): string;
+  setEmail(value: string): void;
+
+  getFirstName(): string;
+  setFirstName(value: string): void;
+
+  getLastName(): string;
+  setLastName(value: string): void;
+
+  getCountryCode(): string;
+  setCountryCode(value: string): void;
+
+  getAvatarUrl(): string;
+  setAvatarUrl(value: string): void;
+
+  getFullName(): string;
+  setFullName(value: string): void;
+
   getAbout(): string;
   setAbout(value: string): void;
 
   serializeBinary(): Uint8Array;
-  toObject(includeInstance?: boolean): UpdateProfileRequest.AsObject;
-  static toObject(includeInstance: boolean, msg: UpdateProfileRequest): UpdateProfileRequest.AsObject;
+  toObject(includeInstance?: boolean): PersonalInfoResponse.AsObject;
+  static toObject(includeInstance: boolean, msg: PersonalInfoResponse): PersonalInfoResponse.AsObject;
   static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
   static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
-  static serializeBinaryToWriter(message: UpdateProfileRequest, writer: jspb.BinaryWriter): void;
-  static deserializeBinary(bytes: Uint8Array): UpdateProfileRequest;
-  static deserializeBinaryFromReader(message: UpdateProfileRequest, reader: jspb.BinaryReader): UpdateProfileRequest;
+  static serializeBinaryToWriter(message: PersonalInfoResponse, writer: jspb.BinaryWriter): void;
+  static deserializeBinary(bytes: Uint8Array): PersonalInfoResponse;
+  static deserializeBinaryFromReader(message: PersonalInfoResponse, reader: jspb.BinaryReader): PersonalInfoResponse;
 }
 
-export namespace UpdateProfileRequest {
+export namespace PersonalInfoResponse {
   export type AsObject = {
+    email: string,
+    firstName: string,
+    lastName: string,
+    countryCode: string,
+    avatarUrl: string,
+    fullName: string,
     about: string,
   }
 }
 
-export class UpdateProfileResponse extends jspb.Message {
+export class UpdatePersonalInfoRequest extends jspb.Message {
+  getEmail(): string;
+  setEmail(value: string): void;
+
+  getFirstName(): string;
+  setFirstName(value: string): void;
+
+  getLastName(): string;
+  setLastName(value: string): void;
+
+  getCountryCode(): string;
+  setCountryCode(value: string): void;
+
+  getAvatarUrl(): string;
+  setAvatarUrl(value: string): void;
+
+  getFullName(): string;
+  setFullName(value: string): void;
+
+  getAbout(): string;
+  setAbout(value: string): void;
+
   serializeBinary(): Uint8Array;
-  toObject(includeInstance?: boolean): UpdateProfileResponse.AsObject;
-  static toObject(includeInstance: boolean, msg: UpdateProfileResponse): UpdateProfileResponse.AsObject;
+  toObject(includeInstance?: boolean): UpdatePersonalInfoRequest.AsObject;
+  static toObject(includeInstance: boolean, msg: UpdatePersonalInfoRequest): UpdatePersonalInfoRequest.AsObject;
   static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
   static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
-  static serializeBinaryToWriter(message: UpdateProfileResponse, writer: jspb.BinaryWriter): void;
-  static deserializeBinary(bytes: Uint8Array): UpdateProfileResponse;
-  static deserializeBinaryFromReader(message: UpdateProfileResponse, reader: jspb.BinaryReader): UpdateProfileResponse;
+  static serializeBinaryToWriter(message: UpdatePersonalInfoRequest, writer: jspb.BinaryWriter): void;
+  static deserializeBinary(bytes: Uint8Array): UpdatePersonalInfoRequest;
+  static deserializeBinaryFromReader(message: UpdatePersonalInfoRequest, reader: jspb.BinaryReader): UpdatePersonalInfoRequest;
 }
 
-export namespace UpdateProfileResponse {
+export namespace UpdatePersonalInfoRequest {
+  export type AsObject = {
+    email: string,
+    firstName: string,
+    lastName: string,
+    countryCode: string,
+    avatarUrl: string,
+    fullName: string,
+    about: string,
+  }
+}
+
+export class UpdatePersonalInfoResponse extends jspb.Message {
+  serializeBinary(): Uint8Array;
+  toObject(includeInstance?: boolean): UpdatePersonalInfoResponse.AsObject;
+  static toObject(includeInstance: boolean, msg: UpdatePersonalInfoResponse): UpdatePersonalInfoResponse.AsObject;
+  static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+  static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+  static serializeBinaryToWriter(message: UpdatePersonalInfoResponse, writer: jspb.BinaryWriter): void;
+  static deserializeBinary(bytes: Uint8Array): UpdatePersonalInfoResponse;
+  static deserializeBinaryFromReader(message: UpdatePersonalInfoResponse, reader: jspb.BinaryReader): UpdatePersonalInfoResponse;
+}
+
+export namespace UpdatePersonalInfoResponse {
   export type AsObject = {
   }
 }
@@ -683,6 +767,38 @@ export class UpdateAvatarResponse extends jspb.Message {
 export namespace UpdateAvatarResponse {
   export type AsObject = {
     avatarUrl: string,
+  }
+}
+
+export class RemoveAvatarRequest extends jspb.Message {
+  serializeBinary(): Uint8Array;
+  toObject(includeInstance?: boolean): RemoveAvatarRequest.AsObject;
+  static toObject(includeInstance: boolean, msg: RemoveAvatarRequest): RemoveAvatarRequest.AsObject;
+  static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+  static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+  static serializeBinaryToWriter(message: RemoveAvatarRequest, writer: jspb.BinaryWriter): void;
+  static deserializeBinary(bytes: Uint8Array): RemoveAvatarRequest;
+  static deserializeBinaryFromReader(message: RemoveAvatarRequest, reader: jspb.BinaryReader): RemoveAvatarRequest;
+}
+
+export namespace RemoveAvatarRequest {
+  export type AsObject = {
+  }
+}
+
+export class RemoveAvatarResponse extends jspb.Message {
+  serializeBinary(): Uint8Array;
+  toObject(includeInstance?: boolean): RemoveAvatarResponse.AsObject;
+  static toObject(includeInstance: boolean, msg: RemoveAvatarResponse): RemoveAvatarResponse.AsObject;
+  static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+  static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+  static serializeBinaryToWriter(message: RemoveAvatarResponse, writer: jspb.BinaryWriter): void;
+  static deserializeBinary(bytes: Uint8Array): RemoveAvatarResponse;
+  static deserializeBinaryFromReader(message: RemoveAvatarResponse, reader: jspb.BinaryReader): RemoveAvatarResponse;
+}
+
+export namespace RemoveAvatarResponse {
+  export type AsObject = {
   }
 }
 
