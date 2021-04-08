@@ -26,6 +26,7 @@ import {
   TournamentMetadata,
 } from '../store/reducers/tournament_reducer';
 import './room.scss';
+import { GetTournamentMetadataRequest } from '../gen/api/proto/tournament_service/tournament_service_pb';
 
 type Props = {
   sendSocketMsg: (msg: Uint8Array) => void;
@@ -64,14 +65,21 @@ export const TournamentRoom = (props: Props) => {
       }
     }
 
+    const mdReq = new GetTournamentMetadataRequest();
+    mdReq.setSlug(path);
+
     axios
       .post<TournamentMetadata>(
         toAPIUrl(
           'tournament_service.TournamentService',
           'GetTournamentMetadata'
         ),
+        mdReq.serializeBinary(),
         {
-          slug: path,
+          headers: {
+            'Content-Type': 'application/protobuf',
+          },
+          responseType: 'blob',
         }
       )
       .then((resp) => {
