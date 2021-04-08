@@ -54,7 +54,8 @@ Dear Woogles Administrators,
 
 The following user has requested that their account be deleted:
 
-%s
+User:  %s
+Email: %s
 
 `
 
@@ -336,8 +337,14 @@ func (as *AuthenticationService) NotifyAccountClosure(ctx context.Context, r *pb
 		return nil, err
 	}
 
+	// Get the user so we can send the notification with their email address
+	user, err := as.userStore.Get(ctx, sess.Username)
+	if err != nil {
+		return nil, err
+	}
+
 	id, err := emailer.SendSimpleMessage(as.mailgunKey, emailer.WooglesAdministratorAddress, fmt.Sprintf("Account Closure Request for %s", sess.Username),
-		fmt.Sprintf(AccountClosureTemplate, sess.Username))
+		fmt.Sprintf(AccountClosureTemplate, sess.Username, user.Email))
 	if err != nil {
 		return nil, twirp.InternalErrorWith(err)
 	}
