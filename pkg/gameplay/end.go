@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/domino14/liwords/pkg/entity"
+	"github.com/domino14/liwords/pkg/mod"
 	"github.com/domino14/liwords/pkg/stats"
 	"github.com/domino14/liwords/pkg/tournament"
 	"github.com/domino14/liwords/pkg/user"
@@ -179,6 +180,12 @@ func performEndgameDuties(ctx context.Context, g *entity.Game, gameStore GameSto
 		if err != nil {
 			log.Err(err).Msg("error-tourney-game-ended")
 		}
+	}
+
+	// Applies penalties to players who have misbehaved during the game
+	err = mod.Automod(ctx, userStore, u0, u1, g)
+	if err != nil {
+		return err
 	}
 
 	// Save and unload the game from the cache.

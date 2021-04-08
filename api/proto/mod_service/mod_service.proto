@@ -41,6 +41,19 @@ message GetActionsRequest { string user_id = 1; }
 
 message ModActionResponse {}
 
+// Automod
+
+enum NotoriousGameType {
+  NO_PLAY = 0;
+  SITTING = 1;
+}
+
+message NotoriousGame {
+  string id = 1;
+  NotoriousGame type = 2;
+  google.protobuf.Timestamp created_at = 3;
+}
+
 service ModService {
   rpc ApplyActions(ModActionsList) returns (ModActionResponse);
   rpc RemoveActions(ModActionsList) returns (ModActionResponse);

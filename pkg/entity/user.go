@@ -16,6 +16,11 @@ const (
 	SessionExpiration = time.Hour * 24 * 30
 )
 
+type Notoriety struct {
+	Score int
+	Games []*ms.NotoriousGame
+}
+
 type Actions struct {
 	Current map[string]*ms.ModAction
 	History []*ms.ModAction
@@ -42,7 +47,8 @@ type User struct {
 	IsMod          bool
 	IsAdmin        bool
 
-	Actions *Actions
+	Actions   *Actions
+	Notoriety *Notoriety
 }
 
 type UserPermission int
@@ -71,7 +77,7 @@ type Profile struct {
 	About       string
 	Ratings     Ratings
 	Stats       ProfileStats
-	AvatarUrl	string
+	AvatarUrl   string
 }
 
 // If the RD is <= this number, the rating is "known"
