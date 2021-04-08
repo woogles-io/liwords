@@ -17,7 +17,7 @@ import { LiwordsSocket } from './socket/socket';
 import { About } from './about/about';
 import { Register } from './lobby/register';
 import { UserProfile } from './profile/profile';
-import { Settings } from './settings/settings';
+import { Category, Settings } from './settings/settings';
 import { PasswordChange } from './lobby/password_change';
 import { PasswordReset } from './lobby/password_reset';
 import { NewPassword } from './lobby/new_password';
@@ -27,7 +27,6 @@ import { encodeToSocketFmt } from './utils/protobuf';
 import { Clubs } from './clubs';
 import { TournamentRoom } from './tournament/room';
 import { Admin } from './admin/admin';
-import { Donate } from './donate';
 import { DonateSuccess } from './donate_success';
 
 type Blocks = {
@@ -172,8 +171,9 @@ const App = React.memo(() => {
         <Route path="/admin">
           <Admin />
         </Route>
+
         <Route path="/donate">
-          <Donate />
+          <Settings initialCategory={Category.Support} />
         </Route>
         <Route path="/donate_success">
           <DonateSuccess />

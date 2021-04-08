@@ -66,22 +66,6 @@
       display: none;
     }
   }
-
-  .ant-form-item input, .ant-select-single:not(.ant-select-customize-input) .ant-select-selector .ant-select-selection-search-input {
-    @include colorModed() {
-      background: m($background);
-      color: m($gray-extreme);
-    }
-  }
-  .ant-input-number-input {
-    @include colorModed() {
-      background: m($card-background);
-      color: m($gray-extreme);
-    }
-  }
-  .ant-form-item-control-input {
-    width: 100%;
-  }
   .extra-time-setter, .initial {
     display: flex;
     align-items: center;
