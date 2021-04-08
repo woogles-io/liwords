@@ -8,7 +8,8 @@
   @include type-default;
   padding: 51px 24px 48px;
   line-height: 20px;
-
+  display: flex;
+  justify-content: center;
   h3 {
     font-family: $font-default;
     font-weight: bold;
@@ -23,6 +24,7 @@
   }
   .categories {
     padding: 4px 30px 0 0;
+    min-width: 180px;
     .choice {
       text-align: right;
       height: 32px;
@@ -49,6 +51,8 @@
   }
 
   .category {
+    max-width: 600px;
+    flex-grow: 2;
     .log-out {
       .ant-btn {
         width: 184px;
@@ -99,17 +103,28 @@
   .support-woogles {
     display: flex;
     flex-direction: row;
-    align-items: center;
-
+    align-items: flex-start;
+    img.woogles {
+      display: none;
+      @media (min-width: $screen-tablet-min) {
+        display: block;
+        margin-top: 48px;
+      }
+    }
     .right-column {
       margin-left: 20px;
     }
 
+    .donation-buttons {
+      margin: 24px 0;
+      display: flex;
+      flex-direction: column;
+    }
     button {
       margin-top: 24px;
       margin-left: 0;
       border-width: 2px;
-      width: 144px;
+      width: 200px;
       height: 40px;
       font-size: 14px;
       font-weight: bold;
@@ -278,6 +293,17 @@
     border: 1px solid #cfcfcf;
     border-radius: 4px;
   }
+  .ant-select-selector, .ant-select-item , .ant-select-dropdown{
+    @include colorModed() {
+      background: m($background);
+      color: m($gray-extreme);
+    }
+    z-index: 1100;
+    .hover-help {
+      display: none;
+    }
+  }
+
   .ant-select-selection-item {
     font-weight: normal;
     font-size: 14px;
@@ -350,4 +376,16 @@
     font-size: 16px;
     font-weight: bold;
   }
+}
+
+.secret-warning {
+  padding: 16px;
+  @include colorModed() {
+    background: m($primary-light);
+    color: m($gray-extreme);
+  }
+}
+
+.secret .title {
+  margin-top: 24px;
 }

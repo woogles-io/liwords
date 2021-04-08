@@ -1,5 +1,6 @@
 import React, { useEffect, useCallback } from 'react';
-import { notification, Row, Col } from 'antd';
+import { useParams } from 'react-router-dom';
+import { notification } from 'antd';
 import { useMountedState } from '../utils/mounted';
 import { TopBar } from '../topbar/topbar';
 import { ChangePassword } from './change_password';
@@ -18,13 +19,16 @@ import { useHistory } from 'react-router-dom';
 import { useResetStoreContext } from '../store/store';
 
 import './settings.scss';
+import { Secret } from './secret';
 
 type Props = {};
+
 enum Category {
   PersonalInfo = 1,
   ChangePassword,
   Preferences,
   BlockedPlayers,
+  Secret,
   LogOut,
   Support,
   NoUser,
@@ -40,12 +44,36 @@ type PersonalInfoResponse = {
   about: string;
 };
 
+const getInitialCategory = (categoryShortcut: string) => {
+  // We don't want to keep /donate or any other shortcuts in the url after reading it on first load
+  // These are just shortcuts for backwards compatibility so we can send existing urls to the new
+  // settings pages
+  window.history.replaceState({}, 'settings', '/settings');
+  switch (categoryShortcut) {
+    case 'donate':
+    case 'support':
+      return Category.Support;
+    case 'password':
+      return Category.ChangePassword;
+    case 'preferences':
+      return Category.Preferences;
+    case 'secret':
+      return Category.Secret;
+    case 'blocked':
+      return Category.BlockedPlayers;
+    case 'logout':
+      return Category.LogOut;
+  }
+  return Category.PersonalInfo;
+};
+
 export const Settings = React.memo((props: Props) => {
   const { loginState } = useLoginStateStoreContext();
   const { username: viewer, loggedIn } = loginState;
   const { useState } = useMountedState();
   const { resetStore } = useResetStoreContext();
-  const [category, setCategory] = useState(Category.PersonalInfo);
+  const { section } = useParams();
+  const [category, setCategory] = useState(getInitialCategory(section));
   const [player, setPlayer] = useState<Partial<PlayerMetadata> | undefined>(
     undefined
   );
@@ -116,7 +144,7 @@ export const Settings = React.memo((props: Props) => {
   });
 
   const handleContribute = useCallback(() => {
-    history.push('/about'); // Need a Contribute page
+    history.push('/settings');
   }, [history]);
 
   const handleLogout = useCallback(() => {
@@ -176,7 +204,7 @@ export const Settings = React.memo((props: Props) => {
   const logIn = <div className="log-in">Log in to see your settings</div>;
 
   const categoriesColumn = (
-    <Col span={8} className="categories">
+    <div className="categories">
       <CategoryChoice title="Personal Info" category={Category.PersonalInfo} />
       <CategoryChoice
         title="Change Password"
@@ -187,63 +215,65 @@ export const Settings = React.memo((props: Props) => {
         title="Blocked players list"
         category={Category.BlockedPlayers}
       />
+      <CategoryChoice title="Secret features" category={Category.Secret} />
       <CategoryChoice
         title="Log out of Woogles.io"
         category={Category.LogOut}
       />
       <CategoryChoice title="Support Woogles.io" category={Category.Support} />
-    </Col>
+    </div>
   );
 
   return (
     <>
-      <Row>
-        <Col span={24}>
-          <TopBar />
-        </Col>
-      </Row>
-      <Row className="settings">
-        {categoriesColumn}
-        <Col span={9} className="category">
-          {category === Category.PersonalInfo ? (
-            showCloseAccount ? (
-              <CloseAccount
-                closeAccountNow={closeAccountNow}
-                player={player}
-                err={accountClosureError}
-                cancel={() => {
-                  setShowCloseAccount(false);
-                }}
-              />
-            ) : showClosedAccount ? (
-              <ClosedAccount />
-            ) : (
-              <PersonalInfo
-                player={player}
-                personalInfo={{
-                  email: email,
-                  firstName: firstName,
-                  lastName: lastName,
-                  countryCode: countryCode,
-                  about: about,
-                }}
-                updatedAvatar={updatedAvatar}
-                startClosingAccount={startClosingAccount}
-              />
-            )
-          ) : null}
-          {category === Category.ChangePassword ? <ChangePassword /> : null}
-          {category === Category.Preferences ? <Preferences /> : null}
-          {category === Category.BlockedPlayers ? <BlockedPlayers /> : null}
-          {category === Category.LogOut ? (
-            <LogOut player={player} handleLogout={handleLogout} />
-          ) : null}
-          {category === Category.Support ? (
-            <Support handleContribute={handleContribute} />
-          ) : null}
-          {category === Category.NoUser ? logIn : null}
-        </Col>
-      </Row>
+      <TopBar />
+      {loggedIn ? (
+        <div className="settings">
+          {categoriesColumn}
+          <div className="category">
+            {category === Category.PersonalInfo ? (
+              showCloseAccount ? (
+                <CloseAccount
+                  closeAccountNow={closeAccountNow}
+                  player={player}
+                  err={accountClosureError}
+                  cancel={() => {
+                    setShowCloseAccount(false);
+                  }}
+                />
+              ) : showClosedAccount ? (
+                <ClosedAccount />
+              ) : (
+                <PersonalInfo
+                  player={player}
+                  personalInfo={{
+                    email: email,
+                    firstName: firstName,
+                    lastName: lastName,
+                    countryCode: countryCode,
+                    about: about,
+                  }}
+                  updatedAvatar={updatedAvatar}
+                  startClosingAccount={startClosingAccount}
+                />
+              )
+            ) : null}
+            {category === Category.ChangePassword ? <ChangePassword /> : null}
+            {category === Category.Preferences ? <Preferences /> : null}
+            {category === Category.Secret ? <Secret /> : null}
+            {category === Category.BlockedPlayers ? <BlockedPlayers /> : null}
+            {category === Category.LogOut ? (
+              <LogOut player={player} handleLogout={handleLogout} />
+            ) : null}
+            {category === Category.Support ? (
+              <Support handleContribute={handleContribute} />
+            ) : null}
+            {category === Category.NoUser ? logIn : null}
+          </div>
+        </div>
+      ) : (
+        <div className="settings loggedOut">{logIn}</div>
+      )}
     </>
   );
 });

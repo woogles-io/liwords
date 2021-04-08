@@ -1,8 +1,7 @@
 import React from 'react';
 
 import { loadStripe } from '@stripe/stripe-js';
-import { TopBar } from './topbar/topbar';
-import { Button, Col, message, Row } from 'antd';
+import { Button, message } from 'antd';
 import { useLoginStateStoreContext } from './store/store';
 
 const PUBLISHABLE_KEY =
@@ -60,30 +59,24 @@ export const Donate = () => {
 
   return (
     <>
-      <Row>
-        <Col span={24}>
-          <TopBar />
-        </Col>
-      </Row>
-      <div className="donations">
-        <p>
-          We’re an entirely volunteer-run 503(c) NFP. If you’re enjoying the
-          site, please feel free to contribute a few dollars to us!
-        </p>
-        <div className="donation-buttons">
-          <Button onClick={() => donateClick(5)}>Donate $5 one-time</Button>
-          <Button onClick={() => donateClick(20)}>Donate $20 one-time</Button>
-          <Button onClick={() => donateClick(50)}>Donate $50 one-time</Button>
-          <Button onClick={() => donateClick(100)}>Donate $100 one-time</Button>
-          <Button onClick={() => donateClick(500)}>Donate $500 one-time</Button>
-        </div>
-        <p>
-          You can also donate using our Patreon account, for recurring payments:{' '}
-          <a href="https://www.patreon.com/woogles_io">
-            https://www.patreon.com/woogles_io
-          </a>
-        </p>
+      <div className="title">Help us keep Woogles.io going!</div>
+      <p>
+        We’re an entirely volunteer-run 503(c) NFP. If you’re enjoying the site,
+        please feel free to contribute a few dollars to us!
+      </p>
+      <div className="donation-buttons">
+        <Button onClick={() => donateClick(5)}>Donate $5 one-time</Button>
+        <Button onClick={() => donateClick(20)}>Donate $20 one-time</Button>
+        <Button onClick={() => donateClick(50)}>Donate $50 one-time</Button>
+        <Button onClick={() => donateClick(100)}>Donate $100 one-time</Button>
+        <Button onClick={() => donateClick(500)}>Donate $500 one-time</Button>
       </div>
+      <p>
+        You can also donate using our Patreon account, for recurring payments:{' '}
+        <a href="https://www.patreon.com/woogles_io">
+          https://www.patreon.com/woogles_io
+        </a>
+      </p>
     </>
   );
 };

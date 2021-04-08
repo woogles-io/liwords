@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef } from 'react';
-import { Route, Switch, useLocation } from 'react-router-dom';
+import { Route, Switch, useLocation, Redirect } from 'react-router-dom';
 import { useMountedState } from './utils/mounted';
 import './App.scss';
 import axios from 'axios';
@@ -27,7 +27,6 @@ import { encodeToSocketFmt } from './utils/protobuf';
 import { Clubs } from './clubs';
 import { TournamentRoom } from './tournament/room';
 import { Admin } from './admin/admin';
-import { Donate } from './donate';
 import { DonateSuccess } from './donate_success';
 
 type Blocks = {
@@ -163,6 +162,9 @@ const App = React.memo(() => {
         <Route path="/profile/:username">
           <UserProfile />
         </Route>
+        <Route path="/settings/:section">
+          <Settings />
+        </Route>
         <Route path="/settings">
           <Settings />
         </Route>
@@ -172,9 +174,7 @@ const App = React.memo(() => {
         <Route path="/admin">
           <Admin />
         </Route>
-        <Route path="/donate">
-          <Donate />
-        </Route>
+        <Redirect from="/donate" to="/settings/donate" />
         <Route path="/donate_success">
           <DonateSuccess />
         </Route>

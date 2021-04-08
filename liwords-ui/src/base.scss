@@ -299,6 +299,39 @@ ul {
   }
 }
 
+.ant-select-selector,
+.ant-select-item,
+.ant-select-dropdown,
+.ant-select:not(.ant-select-customize-input) .ant-select-selector,
+.ant-select-arrow {
+  @include colorModed() {
+    background: m($background);
+    color: m($gray-extreme);
+  }
+  z-index: 1100;
+  .hover-help {
+    display: none;
+  }
+}
+.ant-input-affix-wrapper, .ant-input-affix-wrapper .anticon {
+  @include colorModed() {
+    background: m($background);
+    color: m($gray-extreme);
+  }
+}
+.ant-form-item input, .ant-select-single:not(.ant-select-customize-input) .ant-select-selector .ant-select-selection-search-input {
+  @include colorModed() {
+    background: m($background);
+    color: m($gray-extreme);
+  }
+}
+.ant-input-number-input {
+  @include colorModed() {
+    background: m($card-background);
+    color: m($gray-extreme);
+  }
+}
+
 .ant-form .ant-form-item {
   label {
     @include colorModed() {
