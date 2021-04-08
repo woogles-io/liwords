@@ -1,4 +1,5 @@
 import React, { useEffect, useCallback } from 'react';
+import { useParams } from 'react-router-dom';
 import { notification } from 'antd';
 import { useMountedState } from '../utils/mounted';
 import { TopBar } from '../topbar/topbar';
@@ -20,7 +21,9 @@ import { useResetStoreContext } from '../store/store';
 import './settings.scss';
 import { Secret } from './secret';
 
-export enum Category {
+type Props = {};
+
+enum Category {
   PersonalInfo = 1,
   ChangePassword,
   Preferences,
@@ -30,10 +33,6 @@ export enum Category {
   Support,
   NoUser,
 }
-
-type Props = {
-  initialCategory?: Category;
-};
 
 type PersonalInfoResponse = {
   avatar_url: string;
@@ -45,14 +44,36 @@ type PersonalInfoResponse = {
   about: string;
 };
 
+const getInitialCategory = (categoryShortcut: string) => {
+  // We don't want to keep /donate or any other shortcuts in the url after reading it on first load
+  // These are just shortcuts for backwards compatibility so we can send existing urls to the new
+  // settings pages
+  window.history.replaceState({}, 'settings', '/settings');
+  switch (categoryShortcut) {
+    case 'donate':
+    case 'support':
+      return Category.Support;
+    case 'password':
+      return Category.ChangePassword;
+    case 'preferences':
+      return Category.Preferences;
+    case 'secret':
+      return Category.Secret;
+    case 'blocked':
+      return Category.BlockedPlayers;
+    case 'logout':
+      return Category.LogOut;
+  }
+  return Category.PersonalInfo;
+};
+
 export const Settings = React.memo((props: Props) => {
   const { loginState } = useLoginStateStoreContext();
   const { username: viewer, loggedIn } = loginState;
   const { useState } = useMountedState();
   const { resetStore } = useResetStoreContext();
-  const [category, setCategory] = useState(
-    props.initialCategory || Category.PersonalInfo
-  );
+  const { section } = useParams();
+  const [category, setCategory] = useState(getInitialCategory(section));
   const [player, setPlayer] = useState<Partial<PlayerMetadata> | undefined>(
     undefined
   );
@@ -123,7 +144,7 @@ export const Settings = React.memo((props: Props) => {
   });
 
   const handleContribute = useCallback(() => {
-    history.push('/donate'); // Need a Contribute page
+    history.push('/settings');
   }, [history]);
 
   const handleLogout = useCallback(() => {

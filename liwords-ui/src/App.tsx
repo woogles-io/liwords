@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef } from 'react';
-import { Route, Switch, useLocation } from 'react-router-dom';
+import { Route, Switch, useLocation, Redirect } from 'react-router-dom';
 import { useMountedState } from './utils/mounted';
 import './App.scss';
 import axios from 'axios';
@@ -17,7 +17,7 @@ import { LiwordsSocket } from './socket/socket';
 import { About } from './about/about';
 import { Register } from './lobby/register';
 import { UserProfile } from './profile/profile';
-import { Category, Settings } from './settings/settings';
+import { Settings } from './settings/settings';
 import { PasswordChange } from './lobby/password_change';
 import { PasswordReset } from './lobby/password_reset';
 import { NewPassword } from './lobby/new_password';
@@ -162,6 +162,9 @@ const App = React.memo(() => {
         <Route path="/profile/:username">
           <UserProfile />
         </Route>
+        <Route path="/settings/:section">
+          <Settings />
+        </Route>
         <Route path="/settings">
           <Settings />
         </Route>
@@ -171,10 +174,7 @@ const App = React.memo(() => {
         <Route path="/admin">
           <Admin />
         </Route>
-
-        <Route path="/donate">
-          <Settings initialCategory={Category.Support} />
-        </Route>
+        <Redirect from="/donate" to="/settings/donate" />
         <Route path="/donate_success">
           <DonateSuccess />
         </Route>
