@@ -1,0 +1,22 @@
+{
+  "name": "wolges-wasm",
+  "collaborators": [
+    "Andy Kurnia"
+  ],
+  "description": "wolges as wasm",
+  "version": "0.1.0",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/andy-k/wolges-wasm"
+  },
+  "files": [
+    "wolges_wasm_bg.wasm",
+    "wolges_wasm.js",
+    "wolges_wasm.d.ts",
+    "LICENSE.txt"
+  ],
+  "module": "wolges_wasm.js",
+  "types": "wolges_wasm.d.ts",
+  "sideEffects": false
+}
