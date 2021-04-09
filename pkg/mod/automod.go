@@ -22,74 +22,61 @@ var AutomodUserId string = "AUTOMOD"
 var NotorietyThreshold int = 10
 var NotorietyDecrement int = 1
 var DurationMultiplier int = 24 * 60 * 60
+var UnreasonableTime int = 5 * 60
 
 func Automod(ctx context.Context, us user.Store, u0 *entity.User, u1 *entity.User, g *entity.Game) error {
+
+	totalGameTime := g.GameReq.InitialTimeSeconds + (60 * g.GameReq.MaxOvertimeMinutes)
+	lngt := ms.NotoriousGameType_GOOD
+	wngt := ms.NotoriousGameType_GOOD
+	history := g.History()
+	loserNickname := history.Players[g.LoserIdx].Nickname
+	// This should not even be possible but might as well check
+	if u0.Username != loserNickname && u1.Username != loserNickname {
+		return fmt.Errorf("loser (%s) not found in players (%s, %s)", loserNickname, u0.Username, u1.Username)
+	}
 	// The behavior we currently check for is fairly primitive
 	// This will be expanded in the future
-	if g.GameEndReason == realtime.GameEndReason_TIME {
+	if g.GameEndReason == realtime.GameEndReason_TIME && totalGameTime > int32(UnreasonableTime) {
 		// Someone lost on time, determine if the loser made no plays at all
-		history := g.History()
-		loserNickname := history.Players[1-history.Winner].Nickname
-		// This should even be possible but might as well check
-		if u0.Username != loserNickname && u1.Username != loserNickname {
-			return fmt.Errorf("loser (%s) not found in players (%s, %s)", loserNickname, u0.Username, u1.Username)
-		}
+
 		var loserLastEvent *pb.GameEvent
 		for i := len(history.Events) - 1; i >= 0; i-- {
 			evt := history.Events[i]
-			if evt.Nickname == loserNickname {
+			if evt.Nickname == loserNickname && (evt.Type == pb.GameEvent_TILE_PLACEMENT_MOVE ||
+				evt.Type == pb.GameEvent_PASS ||
+				evt.Type == pb.GameEvent_EXCHANGE ||
+				evt.Type == pb.GameEvent_UNSUCCESSFUL_CHALLENGE_TURN_LOSS ||
+				evt.Type == pb.GameEvent_CHALLENGE) {
 				loserLastEvent = evt
 				break
 			}
 		}
 
-		ngt := ms.NotoriousGameType_GOOD
-		if loserLastEvent != nil {
+		if loserLastEvent == nil {
 			// The loser didn't make a play, this is rude
-			ngt = ms.NotoriousGameType_NO_PLAY
+			lngt = ms.NotoriousGameType_NO_PLAY
 		} else if unreasonableTime(loserLastEvent.MillisRemaining) {
 			// The loser let their clock run down, this is rude
-			ngt = ms.NotoriousGameType_SITTING
+			lngt = ms.NotoriousGameType_SITTING
 		}
+	}
 
-		loserUser := u0
-		if u1.Username == loserNickname {
-			loserUser = u1
-		}
+	luser := u0
+	wuser := u1
 
-		instantiateNotoriety(loserUser)
+	if u1.Username == loserNickname {
+		luser, wuser = wuser, luser
+	}
 
-		if ngt != ms.NotoriousGameType_GOOD {
-			// The user misbehaved, add this game to the list of
-			createdAtTime, err := ptypes.TimestampProto(time.Now())
-			if err != nil {
-				return err
-			}
-			addNotoriousGame(loserUser, &ms.NotoriousGame{Id: g.Uid(), Type: ngt, CreatedAt: createdAtTime})
+	err := updateNotoriety(ctx, us, wuser, g.Uid(), wngt)
+	if err != nil {
+		return err
+	}
 
-			gameScore, ok := BehaviorToScore[ngt]
-			if ok {
-				loserUser.Notoriety.Score += gameScore
-			}
-
-			if loserUser.Notoriety.Score > NotorietyThreshold {
-				err = setCurrentAction(loserUser, &ms.ModAction{UserId: AutomodUserId,
-					Type:     ms.ModActionType_SUSPEND_GAMES,
-					Duration: int32(DurationMultiplier * loserUser.Notoriety.Score)})
-				if err != nil {
-					return err
-				}
-			}
-		} else if loserUser.Notoriety.Score > 0 {
-			loserUser.Notoriety.Score -= NotorietyDecrement
-		}
-
-		if ngt != ms.NotoriousGameType_GOOD || loserUser.Notoriety.Score > 0 {
-			err := us.Set(ctx, loserUser)
-			if err != nil {
-				return err
-			}
-		}
+	err = updateNotoriety(ctx, us, luser, g.Uid(), lngt)
+	if err != nil {
+		return err
 	}
 	return nil
 }
@@ -113,12 +100,52 @@ func ResetNotoriety(ctx context.Context, us user.Store, uuid string) error {
 	return us.Set(ctx, user)
 }
 
+func updateNotoriety(ctx context.Context, us user.Store, user *entity.User, guid string, ngt ms.NotoriousGameType) error {
+
+	updated := false
+	if ngt != ms.NotoriousGameType_GOOD {
+		instantiateNotoriety(user)
+
+		// The user misbehaved, add this game to the list of notorious games
+		createdAtTime, err := ptypes.TimestampProto(time.Now())
+		if err != nil {
+			return err
+		}
+		addNotoriousGame(user, &ms.NotoriousGame{Id: guid, Type: ngt, CreatedAt: createdAtTime})
+
+		gameScore, ok := BehaviorToScore[ngt]
+		if ok {
+			user.Notoriety.Score += gameScore
+		}
+
+		if user.Notoriety.Score > NotorietyThreshold {
+			err = setCurrentAction(user, &ms.ModAction{UserId: user.UUID,
+				Type:          ms.ModActionType_SUSPEND_GAMES,
+				StartTime:     ptypes.TimestampNow(),
+				ApplierUserId: AutomodUserId,
+				Duration:      int32(DurationMultiplier * (user.Notoriety.Score - NotorietyThreshold))})
+			if err != nil {
+				return err
+			}
+		}
+		updated = true
+	} else if user.Notoriety.Score > 0 {
+		user.Notoriety.Score -= NotorietyDecrement
+		updated = true
+	}
+
+	if updated {
+		return us.Set(ctx, user)
+	}
+	return nil
+}
+
 func addNotoriousGame(u *entity.User, ng *ms.NotoriousGame) {
 	u.Notoriety.Games = append(u.Notoriety.Games, ng)
 }
 
 func unreasonableTime(millisRemaining int32) bool {
-	return millisRemaining < 1000*60*5
+	return millisRemaining > int32(1000*UnreasonableTime)
 }
 
 func instantiateNotoriety(u *entity.User) {
