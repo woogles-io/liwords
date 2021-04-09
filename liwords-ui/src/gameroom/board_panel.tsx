@@ -772,10 +772,14 @@ export const BoardPanel = React.memo((props: Props) => {
             say(nickname + ' exchanged ' + ge.getExchanged().length, '');
           } else if (type === GameEvent.Type.PASS) {
             say(nickname + ' passed', '');
+          } else if (type === GameEvent.Type.CHALLENGE) {
+            say(nickname + ' challenged', '');
+          } else if (type === GameEvent.Type.CHALLENGE_BONUS) {
+            say(nickname + ' challenge bonus', '');
           } else {
             // This is a bum way to deal with all other events
             // but I am holding out for a better solution to saying events altogether
-            say(nickname + ge.getType().toString(), '');
+            say(nickname + ' ' + type.toString(), '');
           }
         };
 
