@@ -2,29 +2,29 @@ package main
 
 import (
 	"context"
-	"os"
-	"fmt"
 	"encoding/json"
+	"fmt"
+	"os"
 	"sync"
 
 	"gorm.io/datatypes"
+	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
-	"gorm.io/driver/postgres"
 
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 
+	realtime "github.com/domino14/liwords/rpc/api/proto/realtime"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	timestamppb "google.golang.org/protobuf/types/known/timestamppb"
-	realtime "github.com/domino14/liwords/rpc/api/proto/realtime"
 
 	"github.com/domino14/liwords/pkg/config"
 	"github.com/domino14/liwords/pkg/entity"
 	"github.com/domino14/liwords/pkg/gameplay"
-	"github.com/domino14/liwords/pkg/tournament"
-	"github.com/domino14/liwords/pkg/stores/user"
 	"github.com/domino14/liwords/pkg/stores/game"
+	"github.com/domino14/liwords/pkg/stores/user"
+	"github.com/domino14/liwords/pkg/tournament"
 )
 
 // Legacy realtime types that have probably since changed are
@@ -58,10 +58,10 @@ type OldTournamentGame struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Scores        []int32                `protobuf:"varint,1,rep,packed,name=scores,proto3" json:"scores,omitempty"`
+	Scores        []int32                   `protobuf:"varint,1,rep,packed,name=scores,proto3" json:"scores,omitempty"`
 	Results       []OldTournamentGameResult `protobuf:"varint,2,rep,packed,name=results,proto3,enum=liwords.TournamentGameResult" json:"results,omitempty"`
 	GameEndReason OldGameEndReason          `protobuf:"varint,3,opt,name=game_end_reason,json=gameEndReason,proto3,enum=liwords.GameEndReason" json:"game_end_reason,omitempty"`
-	Id            string                 `protobuf:"bytes,4,opt,name=id,proto3" json:"id,omitempty"`
+	Id            string                    `protobuf:"bytes,4,opt,name=id,proto3" json:"id,omitempty"`
 }
 
 type OldTournamentPersons struct {
@@ -79,10 +79,10 @@ type OldPlayerRoundInfo struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Players     []string               `protobuf:"bytes,1,rep,name=players,proto3" json:"players,omitempty"`
+	Players     []string                  `protobuf:"bytes,1,rep,name=players,proto3" json:"players,omitempty"`
 	Games       []*OldTournamentGame      `protobuf:"bytes,2,rep,name=games,proto3" json:"games,omitempty"` // can be a list, for elimination tourneys
 	Outcomes    []OldTournamentGameResult `protobuf:"varint,3,rep,packed,name=outcomes,proto3,enum=liwords.TournamentGameResult" json:"outcomes,omitempty"`
-	ReadyStates []string               `protobuf:"bytes,4,rep,name=ready_states,json=readyStates,proto3" json:"ready_states,omitempty"`
+	ReadyStates []string                  `protobuf:"bytes,4,rep,name=ready_states,json=readyStates,proto3" json:"ready_states,omitempty"`
 }
 
 type OldPlayerProperties struct {
@@ -120,7 +120,6 @@ type OldPlayerStanding struct {
 	Removed bool   `protobuf:"varint,6,opt,name=removed,proto3" json:"removed,omitempty"`
 }
 
-
 type OldRoundStandings struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
@@ -144,12 +143,12 @@ type OldTournamentDivisionDataResponse struct {
 	// one will be non nil
 	Division []string `protobuf:"bytes,5,rep,name=division,proto3" json:"division,omitempty"`
 	// DEPRECIATED
-	PlayerIndexMap    map[string]int32            `protobuf:"bytes,6,rep,name=player_index_map,json=playerIndexMap,proto3" json:"player_index_map,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"varint,2,opt,name=value,proto3"`
+	PlayerIndexMap    map[string]int32               `protobuf:"bytes,6,rep,name=player_index_map,json=playerIndexMap,proto3" json:"player_index_map,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"varint,2,opt,name=value,proto3"`
 	PairingMap        map[string]*OldPlayerRoundInfo `protobuf:"bytes,7,rep,name=pairing_map,json=pairingMap,proto3" json:"pairing_map,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"`
-	CurrentRound      int32                       `protobuf:"varint,8,opt,name=current_round,json=currentRound,proto3" json:"current_round,omitempty"`
+	CurrentRound      int32                          `protobuf:"varint,8,opt,name=current_round,json=currentRound,proto3" json:"current_round,omitempty"`
 	Standings         map[int32]*OldRoundStandings   `protobuf:"bytes,9,rep,name=standings,proto3" json:"standings,omitempty" protobuf_key:"varint,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"`
 	PlayersProperties []*OldPlayerProperties         `protobuf:"bytes,10,rep,name=players_properties,json=playersProperties,proto3" json:"players_properties,omitempty"`
-	Finished          bool                        `protobuf:"varint,11,opt,name=finished,proto3" json:"finished,omitempty"`
+	Finished          bool                           `protobuf:"varint,11,opt,name=finished,proto3" json:"finished,omitempty"`
 }
 
 type OldTournamentControls struct {
@@ -157,29 +156,27 @@ type OldTournamentControls struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	Division      string                 `protobuf:"bytes,2,opt,name=division,proto3" json:"division,omitempty"`
-	GameRequest   *realtime.GameRequest           `protobuf:"bytes,3,opt,name=game_request,json=gameRequest,proto3" json:"game_request,omitempty"`
-	RoundControls []*realtime.RoundControl        `protobuf:"bytes,4,rep,name=round_controls,json=roundControls,proto3" json:"round_controls,omitempty"`
-	Type          int32                  `protobuf:"varint,5,opt,name=type,proto3" json:"type,omitempty"`
-	StartTime     *timestamppb.Timestamp `protobuf:"bytes,6,opt,name=start_time,json=startTime,proto3" json:"start_time,omitempty"`
-	AutoStart     bool                   `protobuf:"varint,7,opt,name=auto_start,json=autoStart,proto3" json:"auto_start,omitempty"`
+	Id            string                   `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Division      string                   `protobuf:"bytes,2,opt,name=division,proto3" json:"division,omitempty"`
+	GameRequest   *realtime.GameRequest    `protobuf:"bytes,3,opt,name=game_request,json=gameRequest,proto3" json:"game_request,omitempty"`
+	RoundControls []*realtime.RoundControl `protobuf:"bytes,4,rep,name=round_controls,json=roundControls,proto3" json:"round_controls,omitempty"`
+	Type          int32                    `protobuf:"varint,5,opt,name=type,proto3" json:"type,omitempty"`
+	StartTime     *timestamppb.Timestamp   `protobuf:"bytes,6,opt,name=start_time,json=startTime,proto3" json:"start_time,omitempty"`
+	AutoStart     bool                     `protobuf:"varint,7,opt,name=auto_start,json=autoStart,proto3" json:"auto_start,omitempty"`
 }
-
-
 
 // Legacy types that need to be migrated
 
 type OldClassicDivision struct {
-	Matrix     [][]string                           `json:"matrix"`
+	Matrix     [][]string                    `json:"matrix"`
 	PairingMap map[string]OldPlayerRoundInfo `json:"pairingMap"`
 	// By convention, players should look like userUUID:username
-	Players           []string                                 `json:"players"`
+	Players           []string                          `json:"players"`
 	PlayersProperties []OldPlayerProperties             `json:"playerProperties"`
-	PlayerIndexMap    map[string]int32                         `json:"pidxMap"`
-	RoundControls     []*realtime.RoundControl                 `json:"roundCtrls"`
-	CurrentRound      int                                      `json:"currentRound"`
-	AutoStart         bool                                     `json:"autoStart"`
+	PlayerIndexMap    map[string]int32                  `json:"pidxMap"`
+	RoundControls     []*realtime.RoundControl          `json:"roundCtrls"`
+	CurrentRound      int                               `json:"currentRound"`
+	AutoStart         bool                              `json:"autoStart"`
 	LastStarted       OldTournamentRoundStarted         `json:"lastStarted"`
 	Response          OldTournamentDivisionDataResponse `json:"response"`
 }
@@ -187,9 +184,9 @@ type OldClassicDivision struct {
 type OldTournamentDivision struct {
 	Players            OldTournamentPersons  `json:"players"`
 	Controls           OldTournamentControls `json:"controls"`
-	ManagerType        entity.TournamentType               `json:"mgrType"`
-	DivisionRawMessage json.RawMessage              `json:"json"`
-	DivisionManager    OldClassicDivision              `json:"-"`
+	ManagerType        entity.TournamentType `json:"mgrType"`
+	DivisionRawMessage json.RawMessage       `json:"json"`
+	DivisionManager    OldClassicDivision    `json:"-"`
 }
 
 type OldTournament struct {
@@ -197,18 +194,18 @@ type OldTournament struct {
 	UUID        string `json:"uuid"`
 	Name        string `json:"name"`
 	Description string `json:"desc"`
-	AliasOf string `json:"aliasOf"`
-	URL     string `json:"url"`
+	AliasOf     string `json:"aliasOf"`
+	URL         string `json:"url"`
 	// XXX: Investigate above.
-	ExecutiveDirector string                         `json:"execDirector"`
-	Directors         OldTournamentPersons    `json:"directors"`
-	IsStarted         bool                           `json:"started"`
-	IsFinished        bool                           `json:"finished"`
+	ExecutiveDirector string                            `json:"execDirector"`
+	Directors         OldTournamentPersons              `json:"directors"`
+	IsStarted         bool                              `json:"started"`
+	IsFinished        bool                              `json:"finished"`
 	Divisions         map[string]*OldTournamentDivision `json:"divs"`
-	DefaultSettings   *realtime.GameRequest          `json:"settings"`
-	Type              entity.CompetitionType                `json:"type"`
-	ParentID          string                         `json:"parent"`
-	Slug              string                         `json:"slug"`
+	DefaultSettings   *realtime.GameRequest             `json:"settings"`
+	Type              entity.CompetitionType            `json:"type"`
+	ParentID          string                            `json:"parent"`
+	Slug              string                            `json:"slug"`
 }
 
 type DBStore struct {
@@ -339,7 +336,6 @@ type newregistrant struct {
 	DivisionID   string `gorm:"uniqueIndex:idx_registrant"`
 }
 
-
 func NewDBStore(config *config.Config, gs gameplay.GameStore) (*DBStore, error) {
 	db, err := gorm.Open(postgres.Open(config.DBConnString), &gorm.Config{})
 	if err != nil {
@@ -429,7 +425,7 @@ func main() {
 	log.Info().Msgf("Loaded config: %v", cfg)
 
 	zerolog.SetGlobalLevel(zerolog.InfoLevel)
-	
+
 	userStore, err := user.NewDBStore(cfg.DBConnString)
 	if err != nil {
 		panic(err)
@@ -480,12 +476,12 @@ func main() {
 					for _, pairingKey := range pairings {
 						oldPairing, ok := newClassicDivision.PairingMap[pairingKey]
 						if !ok {
-							newClassicDivision.PairingMap[pairingKey] = &realtime.Pairing {
-								Players: oldPairing.Players,
-								Games: oldPairing.Games,
-								Outcomes: oldPairing.Outcomes,
+							newClassicDivision.PairingMap[pairingKey] = &realtime.Pairing{
+								Players:     oldPairing.Players,
+								Games:       oldPairing.Games,
+								Outcomes:    oldPairing.Outcomes,
 								ReadyStates: oldPairing.ReadyStates,
-								Round: int32(round)}
+								Round:       int32(round)}
 						}
 					}
 					newClassicDivision.Standings[int32(round)], err = newClassicDivision.GetStandings(round, true)
@@ -497,12 +493,12 @@ func main() {
 
 				for player, playerIndex := range oldDivision.Players.Persons {
 					newClassicDivision.Players.Persons =
-					  append(newClassicDivision.Players.Persons,
-					  	&realtime.TournamentPerson{
-					  		Id: player,
-					  		Rating: oldDivision.DivisionManager.PlayersProperties[playerIndex].Rating,
-					  		Suspended: oldDivision.DivisionManager.PlayersProperties[playerIndex].Removed,
-					  	})
+						append(newClassicDivision.Players.Persons,
+							&realtime.TournamentPerson{
+								Id:        player,
+								Rating:    oldDivision.DivisionManager.PlayersProperties[playerIndex].Rating,
+								Suspended: oldDivision.DivisionManager.PlayersProperties[playerIndex].Removed,
+							})
 				}
 
 				newClassicDivision.PlayerIndexMap = oldDivision.DivisionManager.PlayerIndexMap
@@ -518,25 +514,33 @@ func main() {
 			}
 
 			mt := &entity.Tournament{
-				UUID: oldTournament.UUID,
-				Name: oldTournament.Name,
-				Description: oldTournament.Description,
-				AliasOf: oldTournament.AliasOf,
-				URL: oldTournament.URL,
+				UUID:              oldTournament.UUID,
+				Name:              oldTournament.Name,
+				Description:       oldTournament.Description,
+				AliasOf:           oldTournament.AliasOf,
+				URL:               oldTournament.URL,
 				ExecutiveDirector: oldTournament.ExecutiveDirector,
-				Directors: newDirectors,
-				IsStarted: oldTournament.IsStarted,
-				IsFinished: oldTournament.IsFinished,
-				Divisions: newDivisions,
-				DefaultSettings: oldTournament.DefaultSettings,
-				Type: oldTournament.Type,
-				ParentID: oldTournament.ParentID,
-				Slug: oldTournament.Slug,
+				Directors:         newDirectors,
+				IsStarted:         oldTournament.IsStarted,
+				IsFinished:        oldTournament.IsFinished,
+				Divisions:         newDivisions,
+				DefaultSettings:   oldTournament.DefaultSettings,
+				Type:              oldTournament.Type,
+				ParentID:          oldTournament.ParentID,
+				Slug:              oldTournament.Slug,
 			}
 
-			err = tournamentStore.Set(ctx, mt)
+			dbt, err := tournamentStore.toDBObj(mt)
 			if err != nil {
 				return err
+			}
+
+			ctxDB := tx.WithContext(ctx)
+			result := ctxDB.Model(&newtournament{}).Clauses(clause.Locking{Strength: "UPDATE"}).
+				Where("uuid = ?", mt.UUID).Updates(dbt)
+
+			if result.Error != nil {
+				return result.Error
 			}
 		}
 		return nil
