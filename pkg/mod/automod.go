@@ -103,9 +103,9 @@ func ResetNotoriety(ctx context.Context, us user.Store, uuid string) error {
 
 func updateNotoriety(ctx context.Context, us user.Store, user *entity.User, guid string, ngt ms.NotoriousGameType) error {
 
-	updated := false
+	instantiateNotoriety(user)
+	previousNotorietyScore := user.Notoriety.Score
 	if ngt != ms.NotoriousGameType_GOOD {
-		instantiateNotoriety(user)
 
 		// The user misbehaved, add this game to the list of notorious games
 		createdAtTime, err := ptypes.TimestampProto(time.Now())
@@ -129,13 +129,14 @@ func updateNotoriety(ctx context.Context, us user.Store, user *entity.User, guid
 				return err
 			}
 		}
-		updated = true
 	} else if user.Notoriety.Score > 0 {
 		user.Notoriety.Score -= NotorietyDecrement
-		updated = true
+		if user.Notoriety.Score < 0 {
+			user.Notoriety.Score = 0
+		}
 	}
 
-	if updated {
+	if previousNotorietyScore != user.Notoriety.Score {
 		return us.Set(ctx, user)
 	}
 	return nil
