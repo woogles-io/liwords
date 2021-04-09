@@ -183,12 +183,9 @@ func performEndgameDuties(ctx context.Context, g *entity.Game, gameStore GameSto
 	}
 
 	// Applies penalties to players who have misbehaved during the game
-	// Games against the bot do not count
-	if !u0.IsBot && !u1.IsBot {
-		err = mod.Automod(ctx, userStore, u0, u1, g)
-		if err != nil {
-			return err
-		}
+	err = mod.Automod(ctx, userStore, u0, u1, g)
+	if err != nil {
+		return err
 	}
 
 	// Save and unload the game from the cache.

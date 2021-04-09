@@ -16,9 +16,11 @@ import (
 var BehaviorToScore map[ms.NotoriousGameType]int = map[ms.NotoriousGameType]int{
 	ms.NotoriousGameType_NO_PLAY: 6,
 	ms.NotoriousGameType_SITTING: 4,
+	ms.NotoriousGameType_SANDBAG: 4,
 }
 
 var AutomodUserId string = "AUTOMOD"
+var SandbaggingThreshold int = 3
 var NotorietyThreshold int = 10
 var NotorietyDecrement int = 1
 var DurationMultiplier int = 24 * 60 * 60
@@ -36,11 +38,11 @@ func Automod(ctx context.Context, us user.Store, u0 *entity.User, u1 *entity.Use
 	if u0.Username != loserNickname && u1.Username != loserNickname {
 		return fmt.Errorf("loser (%s) not found in players (%s, %s)", loserNickname, u0.Username, u1.Username)
 	}
-	// The behavior we currently check for is fairly primitive
-	// This will be expanded in the future
-	if g.GameEndReason == realtime.GameEndReason_TIME && totalGameTime > int32(UnreasonableTime) {
-		// Someone lost on time, determine if the loser made no plays at all
 
+	isBotGame := u0.IsBot || u1.IsBot
+
+	if g.GameEndReason == realtime.GameEndReason_TIME && totalGameTime > int32(UnreasonableTime) && !isBotGame {
+		// Someone lost on time, determine if the loser made no plays at all
 		var loserLastEvent *pb.GameEvent
 		for i := len(history.Events) - 1; i >= 0; i-- {
 			evt := history.Events[i]
@@ -61,6 +63,20 @@ func Automod(ctx context.Context, us user.Store, u0 *entity.User, u1 *entity.Use
 			// The loser let their clock run down, this is rude
 			lngt = ms.NotoriousGameType_SITTING
 		}
+	} else if g.GameEndReason == realtime.GameEndReason_RESIGNED && g.GameReq.RatingMode == realtime.RatingMode_RATED {
+		// This could be a case of sandbagging
+		totalMoves := 0
+		for i := 0; i < len(history.Events); i++ {
+			evt := history.Events[i]
+			if evt.Nickname == loserNickname && (evt.Type == pb.GameEvent_TILE_PLACEMENT_MOVE ||
+				evt.Type == pb.GameEvent_EXCHANGE) {
+				totalMoves++
+			}
+		}
+
+		if totalMoves < SandbaggingThreshold {
+			lngt = ms.NotoriousGameType_SANDBAG
+		}
 	}
 
 	luser := u0
@@ -70,15 +86,20 @@ func Automod(ctx context.Context, us user.Store, u0 *entity.User, u1 *entity.Use
 		luser, wuser = wuser, luser
 	}
 
-	err := updateNotoriety(ctx, us, wuser, g.Uid(), wngt)
-	if err != nil {
-		return err
+	if !wuser.IsBot {
+		err := updateNotoriety(ctx, us, wuser, g.Uid(), wngt)
+		if err != nil {
+			return err
+		}
 	}
 
-	err = updateNotoriety(ctx, us, luser, g.Uid(), lngt)
-	if err != nil {
-		return err
+	if !luser.IsBot {
+		err := updateNotoriety(ctx, us, luser, g.Uid(), lngt)
+		if err != nil {
+			return err
+		}
 	}
+
 	return nil
 }
 

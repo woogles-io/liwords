@@ -47,6 +47,7 @@ enum NotoriousGameType {
   GOOD = 0;
   NO_PLAY = 1;
   SITTING = 2;
+  SANDBAG = 3;
 }
 
 message NotoriousGame {
