@@ -30,7 +30,8 @@ func Automod(ctx context.Context, us user.Store, u0 *entity.User, u1 *entity.Use
 	lngt := ms.NotoriousGameType_GOOD
 	wngt := ms.NotoriousGameType_GOOD
 	history := g.History()
-	loserNickname := history.Players[g.LoserIdx].Nickname
+	// Perhaps too cute, but solves cases where g.LoserIdex is -1
+	loserNickname := history.Players[g.LoserIdx*g.LoserIdx].Nickname
 	// This should not even be possible but might as well check
 	if u0.Username != loserNickname && u1.Username != loserNickname {
 		return fmt.Errorf("loser (%s) not found in players (%s, %s)", loserNickname, u0.Username, u1.Username)
