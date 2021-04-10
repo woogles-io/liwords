@@ -763,7 +763,7 @@ export const BoardPanel = React.memo((props: Props) => {
           }
           if (type === GameEvent.Type.TILE_PLACEMENT_MOVE) {
             say(
-              nickname + ' ' + wordToSayString(ge.getPosition()) + '.',
+              nickname + ' ' + wordToSayString(ge.getPosition()),
               wordToSayString(blankAwareWord) + ' ' + ge.getScore().toString()
             );
           } else if (type === GameEvent.Type.PHONY_TILES_RETURNED) {
@@ -853,7 +853,7 @@ export const BoardPanel = React.memo((props: Props) => {
             say(
               'There are ' +
                 numTilesRemaining +
-                ' tiles in the bag. ' +
+                ' tiles unseen. ' +
                 wordToSayString(tilesRemaining),
               ''
             );
@@ -864,7 +864,13 @@ export const BoardPanel = React.memo((props: Props) => {
                 (!blindfoldUseNPA ? ' enabled.' : ' disabled.'),
               ''
             );
-          } else {
+          } else if (blindfoldCommand.toUpperCase() === 'W') {
+            if (isMyTurn()) {
+              say('It is your turn.', '');
+            } else {
+              say("It is your opponent's turn", '');
+            }
+          } else if (isMyTurn()) {
             const blindfoldCoordinates = parseBlindfoldCoordinates(
               blindfoldCommand
             );
@@ -889,6 +895,15 @@ export const BoardPanel = React.memo((props: Props) => {
         }
         setBlindfoldCommand(newBlindfoldCommand);
       } else if (currentMode === 'NORMAL') {
+        if (
+          key.toUpperCase() === ';' &&
+          localStorage?.getItem('enableBlindfoldMode') === 'true'
+        ) {
+          evt.preventDefault();
+          if (handleNeitherShortcut.current) handleNeitherShortcut.current();
+          setCurrentMode('BLIND');
+          return;
+        }
         if (isMyTurn() && !props.gameDone) {
           if (key === '2') {
             evt.preventDefault();
@@ -905,15 +920,6 @@ export const BoardPanel = React.memo((props: Props) => {
             evt.preventDefault();
             if (handleNeitherShortcut.current) handleNeitherShortcut.current();
             setCurrentMode('EXCHANGE_MODAL');
-            return;
-          }
-          if (
-            key.toUpperCase() === ';' &&
-            localStorage?.getItem('enableBlindfoldMode') === 'true'
-          ) {
-            evt.preventDefault();
-            if (handleNeitherShortcut.current) handleNeitherShortcut.current();
-            setCurrentMode('BLIND');
             return;
           }
           if (key === '$' && exchangeAllowed) {
