@@ -13,26 +13,20 @@ import {
   TournamentGameResultMap,
   TournamentRoundStarted,
 } from '../../gen/api/proto/realtime/realtime_pb';
+import {
+  TournamentMetadataResponse,
+  TType,
+  TTypeMap,
+} from '../../gen/api/proto/tournament_service/tournament_service_pb';
 import { RecentGame } from '../../tournament/recent_game';
 import { encodeToSocketFmt } from '../../utils/protobuf';
+import { valueof } from '../../utils/ts';
 import { LoginState } from '../login_state';
 import { ActiveGame } from './lobby_reducer';
 
-type tourneytypes = 'STANDARD' | 'CLUB' | 'CHILD' | 'LEGACY';
-type valueof<T> = T[keyof T];
-
 type tournamentGameResult = valueof<TournamentGameResultMap>;
 type gameEndReason = valueof<GameEndReasonMap>;
-
-export type TournamentMetadata = {
-  name: string;
-  description: string;
-  directors: Array<string>;
-  slug: string;
-  id: string;
-  type: tourneytypes;
-  divisions: Array<string>;
-};
+type tourneyTypes = valueof<TTypeMap>;
 
 type TournamentGame = {
   scores: Array<number>;
@@ -78,7 +72,7 @@ export const defaultCompetitorState = {
 };
 
 export type TournamentState = {
-  metadata: TournamentMetadata;
+  metadata: TournamentMetadataResponse.AsObject;
   // standings, pairings, etc. more stuff here to come.
   started: boolean;
   divisions: { [name: string]: Division };
@@ -96,11 +90,11 @@ export const defaultTournamentState = {
   metadata: {
     name: '',
     description: '',
-    directors: new Array<string>(),
+    directorsList: new Array<string>(),
     slug: '',
     id: '',
-    type: 'LEGACY' as tourneytypes,
-    divisions: new Array<string>(),
+    type: TType.LEGACY as tourneyTypes,
+    divisionsList: new Array<string>(),
   },
   started: false,
   divisions: {},
@@ -124,6 +118,10 @@ export enum TourneyStatus {
   ROUND_FORFEIT_WIN = 'ROUND_FORFEIT_WIN',
   POSTTOURNEY = 'POSTTOURNEY',
 }
+
+export const userVisibleTType = (t: valueof<TTypeMap>) => {
+  return t === TType.CLUB || t === TType.CHILD ? 'Club' : 'Tournament';
+};
 
 export const readyForTournamentGame = (
   sendSocketMsg: (msg: Uint8Array) => void,
@@ -357,7 +355,7 @@ export function TournamentReducer(
 ): TournamentState {
   switch (action.actionType) {
     case ActionType.SetTourneyMetadata:
-      const metadata = action.payload as TournamentMetadata;
+      const metadata = action.payload as TournamentMetadataResponse.AsObject;
       return {
         ...state,
         metadata,

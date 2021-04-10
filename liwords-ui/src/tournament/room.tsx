@@ -21,12 +21,9 @@ import { SoughtGame } from '../store/reducers/lobby_reducer';
 import { ActionsPanel } from './actions_panel';
 import { CompetitorStatus } from './competitor_status';
 import { ActionType } from '../actions/actions';
-import {
-  readyForTournamentGame,
-  TournamentMetadata,
-} from '../store/reducers/tournament_reducer';
+import { readyForTournamentGame } from '../store/reducers/tournament_reducer';
 import './room.scss';
-import { GetTournamentMetadataRequest } from '../gen/api/proto/tournament_service/tournament_service_pb';
+import { TournamentMetadataResponse } from '../gen/api/proto/tournament_service/tournament_service_pb';
 
 type Props = {
   sendSocketMsg: (msg: Uint8Array) => void;
@@ -64,25 +61,18 @@ export const TournamentRoom = (props: Props) => {
         );
       }
     }
-
-    const mdReq = new GetTournamentMetadataRequest();
-    mdReq.setSlug(path);
+    const mdReq = { slug: path };
 
     axios
-      .post<TournamentMetadata>(
+      .post<TournamentMetadataResponse.AsObject>(
         toAPIUrl(
           'tournament_service.TournamentService',
           'GetTournamentMetadata'
         ),
-        mdReq.serializeBinary(),
-        {
-          headers: {
-            'Content-Type': 'application/protobuf',
-          },
-          responseType: 'blob',
-        }
+        mdReq
       )
       .then((resp) => {
+        console.log('resp.data', resp.data);
         dispatchTournamentContext({
           actionType: ActionType.SetTourneyMetadata,
           payload: resp.data,
@@ -103,7 +93,8 @@ export const TournamentRoom = (props: Props) => {
 
   // Should be more like "amdirector"
   const isDirector = useMemo(() => {
-    return tournamentContext.metadata.directors.includes(username);
+    console.log('tournament metadata', tournamentContext.metadata);
+    return tournamentContext.metadata.directorsList.includes(username);
   }, [tournamentContext.metadata, username]);
 
   const handleNewGame = useCallback(
@@ -153,7 +144,7 @@ export const TournamentRoom = (props: Props) => {
             defaultChannel={`chat.tournament.${tournamentID}`}
             defaultDescription={tournamentContext.metadata.name}
             peopleOnlineContext={peopleOnlineContext}
-            highlight={tournamentContext.metadata.directors}
+            highlight={tournamentContext.metadata.directorsList}
             highlightText="Director"
             tournamentID={tournamentID}
           />

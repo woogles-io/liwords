@@ -20,7 +20,7 @@ import 'antd/dist/antd.css';
 import ReactMarkdown from 'react-markdown';
 import { useMountedState } from '../utils/mounted';
 import { toAPIUrl } from '../api/api';
-import { TournamentMetadata } from '../store/reducers/tournament_reducer';
+import { TournamentMetadataResponse } from '../gen/api/proto/tournament_service/tournament_service_pb';
 
 type DProps = {
   markdown: string;
@@ -65,7 +65,7 @@ export const TourneyEditor = (props: Props) => {
 
   const onSearch = (val: string) => {
     axios
-      .post<TournamentMetadata>(
+      .post<TournamentMetadataResponse.AsObject>(
         toAPIUrl(
           'tournament_service.TournamentService',
           'GetTournamentMetadata'
@@ -83,7 +83,7 @@ export const TourneyEditor = (props: Props) => {
           slug: resp.data.slug,
           id: resp.data.id,
           type: resp.data.type,
-          directors: resp.data.directors.join(', '),
+          directors: resp.data.directorsList.join(', '),
         });
       })
       .catch((err) => {
@@ -122,7 +122,7 @@ export const TourneyEditor = (props: Props) => {
 
     axios
       .post<{}>(toAPIUrl('tournament_service.TournamentService', apicall), obj)
-      .then((resp) => {
+      .then(() => {
         message.info({
           content:
             'Tournament ' + (props.mode === 'new' ? 'created' : 'updated'),
@@ -154,7 +154,7 @@ export const TourneyEditor = (props: Props) => {
           },
         }
       )
-      .then((resp) => {
+      .then(() => {
         message.info({
           content: 'Director successfully added',
           duration: 3,
@@ -184,7 +184,7 @@ export const TourneyEditor = (props: Props) => {
           },
         }
       )
-      .then((resp) => {
+      .then(() => {
         message.info({
           content: 'Director successfully removed',
           duration: 3,

@@ -17,7 +17,7 @@ import { ActionType } from '../actions/actions';
 import axios from 'axios';
 import { toAPIUrl } from '../api/api';
 import { Pairings } from './pairings';
-import { isPairedMode } from '../store/constants';
+import { isClubType, isPairedMode } from '../store/constants';
 import { Standings } from './standings';
 import { DirectorTools } from './director_tools';
 // import { CheckIn } from './check_in';
@@ -346,7 +346,7 @@ export const ActionsPanel = React.memo((props: Props) => {
       return [];
     }
     let matchButtonText = 'Start tournament game';
-    if (['CLUB', 'CHILD'].includes(tournamentContext.metadata.type)) {
+    if (isClubType(tournamentContext.metadata.type)) {
       matchButtonText = 'Start club game';
     }
     const availableActions = new Array<ReactNode>();

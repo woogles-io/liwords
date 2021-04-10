@@ -56,11 +56,15 @@ import { isPairedMode, sortTiles } from '../store/constants';
 import { ActionType } from '../actions/actions';
 import {
   readyForTournamentGame,
-  TournamentMetadata,
+  userVisibleTType,
 } from '../store/reducers/tournament_reducer';
 import { CompetitorStatus } from '../tournament/competitor_status';
 import { Unrace } from '../utils/unrace';
 import { Blank } from '../utils/cwgame/common';
+import {
+  TournamentMetadataResponse,
+  TType,
+} from '../gen/api/proto/tournament_service/tournament_service_pb';
 
 type Props = {
   sendSocketMsg: (msg: Uint8Array) => void;
@@ -358,7 +362,7 @@ export const Table = React.memo((props: Props) => {
       return;
     }
     axios
-      .post<TournamentMetadata>(
+      .post<TournamentMetadataResponse.AsObject>(
         toAPIUrl(
           'tournament_service.TournamentService',
           'GetTournamentMetadata'
@@ -896,10 +900,7 @@ export const Table = React.memo((props: Props) => {
             {gameInfo.tournament_id ? (
               <Link to={tournamentContext.metadata.slug}>
                 <HomeOutlined />
-                Back to
-                {['CLUB', 'CHILD'].includes(tournamentContext.metadata.type)
-                  ? ' Club'
-                  : ' Tournament'}
+                Back to {userVisibleTType(tournamentContext.metadata.type)}
               </Link>
             ) : (
               <Link to="/">
@@ -911,7 +912,7 @@ export const Table = React.memo((props: Props) => {
           {playerNames.length > 1 ? (
             <Chat
               sendChat={props.sendChat}
-              highlight={tournamentContext.metadata.directors}
+              highlight={tournamentContext.metadata.directorsList}
               highlightText="Director"
               defaultChannel={`chat.${
                 isObserver ? 'gametv' : 'game'

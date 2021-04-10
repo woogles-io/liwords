@@ -16,12 +16,14 @@ type TournamentInfoProps = {
 export const TournamentInfo = (props: TournamentInfoProps) => {
   const { tournamentContext } = useTournamentStoreContext();
   const { competitorState: competitorContext, metadata } = tournamentContext;
-  const directors = tournamentContext.metadata.directors.map((username, i) => (
-    <span key={username}>
-      {i > 0 && ', '}
-      <UsernameWithContext username={username} omitSendMessage />
-    </span>
-  ));
+  const directors = tournamentContext.metadata.directorsList.map(
+    (username, i) => (
+      <span key={username}>
+        {i > 0 && ', '}
+        <UsernameWithContext username={username} omitSendMessage />
+      </span>
+    )
+  );
 
   return (
     <div className="tournament-info">

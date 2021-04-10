@@ -14,6 +14,7 @@ import {
 import { toAPIUrl } from '../api/api';
 import { Login } from '../lobby/login';
 import { useMountedState } from '../utils/mounted';
+import { userVisibleTType } from '../store/reducers/tournament_reducer';
 
 const colors = require('../base.scss');
 
@@ -120,10 +121,7 @@ export const TopBar = React.memo((props: Props) => {
             <div className="top-header-left-frame-site-name">Woogles.io</div>
             {props.tournamentID ? (
               <div className="tournament">
-                Back to
-                {['CLUB', 'CHILD'].includes(tournamentContext.metadata.type)
-                  ? ' Club'
-                  : ' Tournament'}
+                Back to {userVisibleTType(tournamentContext.metadata.type)}
               </div>
             ) : null}
           </Link>

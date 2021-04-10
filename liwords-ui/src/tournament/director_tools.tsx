@@ -8,6 +8,7 @@ import { Button, Divider, message } from 'antd';
 import axios from 'axios';
 import { toAPIUrl } from '../api/api';
 import { GhettoTools } from './ghetto_tools';
+import { isPairedMode } from '../store/constants';
 /*
 import { AddPlayerForm, playersToAdd } from './add_player_form';
 import axios from 'axios';
@@ -156,10 +157,7 @@ export const DirectorTools = React.memo((props: DTProps) => {
   };
 
   const renderGhettoTools = () => {
-    if (
-      tournamentContext.metadata.type === 'LEGACY' ||
-      tournamentContext.metadata.type === 'CLUB'
-    ) {
+    if (!isPairedMode(tournamentContext.metadata.type)) {
       return null;
     }
     return (
