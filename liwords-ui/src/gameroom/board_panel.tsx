@@ -769,7 +769,7 @@ export const BoardPanel = React.memo((props: Props) => {
           } else if (type === GameEvent.Type.PHONY_TILES_RETURNED) {
             say(nickname + ' lost challenge', '');
           } else if (type === GameEvent.Type.EXCHANGE) {
-            say(nickname + ' exchanged ' + ge.getExchanged().length, '');
+            say(nickname + ' exchanged ' + ge.getExchanged(), '');
           } else if (type === GameEvent.Type.PASS) {
             say(nickname + ' passed', '');
           } else if (type === GameEvent.Type.CHALLENGE) {
@@ -870,7 +870,12 @@ export const BoardPanel = React.memo((props: Props) => {
             } else {
               say("It is your opponent's turn", '');
             }
-          } else if (isMyTurn()) {
+          } else if (blindfoldCommand.toUpperCase() === 'L') {
+            say(
+              'B for bag. C for current play. N for NATO pronunciations. P for the previous play. R for rack. S for score. T for time. W for turn.',
+              ''
+            );
+          } else {
             const blindfoldCoordinates = parseBlindfoldCoordinates(
               blindfoldCommand
             );
