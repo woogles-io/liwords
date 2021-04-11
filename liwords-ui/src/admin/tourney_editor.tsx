@@ -19,8 +19,11 @@ import '../lobby/lobby.scss';
 import 'antd/dist/antd.css';
 import ReactMarkdown from 'react-markdown';
 import { useMountedState } from '../utils/mounted';
-import { toAPIUrl } from '../api/api';
-import { TournamentMetadataResponse } from '../gen/api/proto/tournament_service/tournament_service_pb';
+import { postBinary, toAPIUrl } from '../api/api';
+import {
+  GetTournamentMetadataRequest,
+  TournamentMetadataResponse,
+} from '../gen/api/proto/tournament_service/tournament_service_pb';
 
 type DProps = {
   markdown: string;
@@ -64,16 +67,14 @@ export const TourneyEditor = (props: Props) => {
   const [form] = Form.useForm();
 
   const onSearch = (val: string) => {
-    axios
-      .post<TournamentMetadataResponse.AsObject>(
-        toAPIUrl(
-          'tournament_service.TournamentService',
-          'GetTournamentMetadata'
-        ),
-        {
-          slug: val,
-        }
-      )
+    const req = new GetTournamentMetadataRequest();
+    req.setSlug(val);
+
+    postBinary(
+      'tournament_service.TournamentService',
+      'GetTournamentMetadata',
+      req
+    )
       .then((resp) => {
         setDescription(resp.data.description);
 

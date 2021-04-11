@@ -13,7 +13,9 @@ RUN unzip protobuf.zip && cp /tmp/bin/protoc /opt && mv /tmp/include /opt
 RUN go get github.com/golang/protobuf/protoc-gen-go \
     && cp /go/bin/protoc-gen-go /opt \
     && go get github.com/twitchtv/twirp/protoc-gen-twirp \
-    && cp /go/bin/protoc-gen-twirp /opt
+    && cp /go/bin/protoc-gen-twirp /opt \
+    && go get go.larrymyers.com/protoc-gen-twirp_typescript \
+    && cp /go/bin/protoc-gen-twirp_typescript /opt
 
 # Install node
 
