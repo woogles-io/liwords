@@ -42,7 +42,7 @@ import {
   StreakInfoResponse,
 } from './game_info';
 import { BoopSounds } from '../sound/boop';
-import { toAPIUrl } from '../api/api';
+import { postBinary, toAPIUrl } from '../api/api';
 import { StreakWidget } from './streak_widget';
 import {
   GameEvent,
@@ -70,17 +70,6 @@ type Props = {
   sendSocketMsg: (msg: Uint8Array) => void;
   sendChat: (msg: string, chan: string) => void;
 };
-
-/*
-type UserGameInfo = {
-  uuid: string;
-  avatar_url: string;
-  title: string;
-};
-
-type UsersGameInfoResponse = {
-  infos: UserGameInfo[];
-};*/
 
 const StreakFetchDelay = 2000;
 
@@ -327,18 +316,7 @@ export const Table = React.memo((props: Props) => {
 
     const req = new UsersGameInfoRequest();
     req.setUuidsList(gameInfo.players.map((p) => p.user_id));
-    // postBinary('user_service.ProfileService', 'GetUsersGameInfo', req)
-    axios
-      .post(
-        toAPIUrl('user_service.ProfileService', 'GetUsersGameInfo'),
-        req.serializeBinary(),
-        {
-          headers: {
-            'Content-Type': 'application/protobuf',
-          },
-          responseType: 'arraybuffer',
-        }
-      )
+    postBinary('user_service.ProfileService', 'GetUsersGameInfo', req)
       .then((rbin) => {
         console.log('rbin', rbin, 'data', rbin.data);
         const resp = UsersGameInfoResponse.deserializeBinary(
