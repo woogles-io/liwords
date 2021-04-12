@@ -14,10 +14,10 @@ export const postBinary = (
   method: string,
   msg: jspb.Message
 ) => {
-  return axios.post<{}>(toAPIUrl(service, method), msg.serializeBinary(), {
+  return axios.post(toAPIUrl(service, method), msg.serializeBinary(), {
     headers: {
       'Content-Type': 'application/protobuf',
     },
-    responseType: 'blob',
+    responseType: 'arraybuffer',
   });
 };

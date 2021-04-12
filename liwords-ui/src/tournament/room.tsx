@@ -11,7 +11,7 @@ import {
   useTournamentStoreContext,
 } from '../store/store';
 import { useMountedState } from '../utils/mounted';
-import { toAPIUrl } from '../api/api';
+import { postBinary, toAPIUrl } from '../api/api';
 import { TopBar } from '../topbar/topbar';
 import { singularCount } from '../utils/plural';
 import { Chat } from '../chat/chat';
@@ -23,7 +23,10 @@ import { CompetitorStatus } from './competitor_status';
 import { ActionType } from '../actions/actions';
 import { readyForTournamentGame } from '../store/reducers/tournament_reducer';
 import './room.scss';
-import { TournamentMetadataResponse } from '../gen/api/proto/tournament_service/tournament_service_pb';
+import {
+  GetTournamentMetadataRequest,
+  TournamentMetadataResponse,
+} from '../gen/api/proto/tournament_service/tournament_service_pb';
 
 type Props = {
   sendSocketMsg: (msg: Uint8Array) => void;
@@ -61,21 +64,22 @@ export const TournamentRoom = (props: Props) => {
         );
       }
     }
-    const mdReq = { slug: path };
+    const req = new GetTournamentMetadataRequest();
+    req.setSlug(path);
 
-    axios
-      .post<TournamentMetadataResponse.AsObject>(
-        toAPIUrl(
-          'tournament_service.TournamentService',
-          'GetTournamentMetadata'
-        ),
-        mdReq
-      )
-      .then((resp) => {
-        console.log('resp.data', resp.data);
+    postBinary(
+      'tournament_service.TournamentService',
+      'GetTournamentMetadata',
+      req
+    )
+      .then((rbin) => {
+        const resp = TournamentMetadataResponse.deserializeBinary(
+          rbin.data
+        ).toObject();
+        console.log('resp', resp);
         dispatchTournamentContext({
           actionType: ActionType.SetTourneyMetadata,
-          payload: resp.data,
+          payload: resp,
         });
       })
       .catch((err) => {

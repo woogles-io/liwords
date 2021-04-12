@@ -75,16 +75,20 @@ export const TourneyEditor = (props: Props) => {
       'GetTournamentMetadata',
       req
     )
-      .then((resp) => {
-        setDescription(resp.data.description);
+      .then((rbin) => {
+        const resp = TournamentMetadataResponse.deserializeBinary(
+          rbin.data
+        ).toObject();
+
+        setDescription(resp.description);
 
         form.setFieldsValue({
-          name: resp.data.name,
-          description: resp.data.description,
-          slug: resp.data.slug,
-          id: resp.data.id,
-          type: resp.data.type,
-          directors: resp.data.directorsList.join(', '),
+          name: resp.name,
+          description: resp.description,
+          slug: resp.slug,
+          id: resp.id,
+          type: resp.type,
+          directors: resp.directorsList.join(', '),
         });
       })
       .catch((err) => {
