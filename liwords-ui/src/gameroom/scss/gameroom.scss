@@ -118,6 +118,16 @@ p.streak-loss {
         }
       }
     }
+    .ant-card-extra {
+      .analyzer-controls {
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+        .analyze-trigger {
+          order: 2;
+        }
+      }
+    }
     .ant-card-body {
       padding: 12px;
       height: 240px;
@@ -1304,9 +1314,6 @@ p.rune {
           line-height: 1.5em;
           font-size: 14px;
         }
-        .ant-card-extra {
-          font-size: 14px;
-        }
       }
     }
     .notepad-card, .analyzer-card {
@@ -1323,14 +1330,6 @@ p.rune {
       }
     }
     .analyzer-card {
-      .ant-card-extra {
-        display: flex;
-        flex-direction: row;
-        align-items: center;
-        .analyzer-controls {
-          flex-direction: row;
-        }
-      }
       .ant-card-body {
         padding: 0;
 

@@ -165,7 +165,7 @@ export const analyzerMoveFromJsonMove = (
 
 const AnalyzerContext = React.createContext<{
   autoMode: boolean;
-  setAutoMode: (a: boolean) => void;
+  setAutoMode: React.Dispatch<React.SetStateAction<boolean>>;
   cachedMoves: Array<AnalyzerMove> | null;
   examinerLoading: boolean;
   requestAnalysis: (lexicon: string) => void;
@@ -178,7 +178,7 @@ const AnalyzerContext = React.createContext<{
   requestAnalysis: (lexicon: string) => {},
   showMovesForTurn: -1,
   setShowMovesForTurn: (a: number) => {},
-  setAutoMode: (a: boolean) => {},
+  setAutoMode: () => {},
 });
 
 export const AnalyzerContextProvider = ({
@@ -404,8 +404,8 @@ export const Analyzer = React.memo((props: AnalyzerProps) => {
   ]);
 
   const toggleAutoMode = useCallback(() => {
-    setAutoMode(!autoMode);
-  }, [autoMode, setAutoMode]);
+    setAutoMode((autoMode) => !autoMode);
+  }, [setAutoMode]);
   // Let ExaminableStore activate this.
   useEffect(() => {
     addHandleExaminer(handleExaminer);
@@ -450,7 +450,27 @@ export const Analyzer = React.memo((props: AnalyzerProps) => {
       )) ?? null,
     [moves, placeMove]
   );
-
+  const analyzerControls = (
+    <div className="analyzer-controls">
+      <Button
+        className="analyze-trigger"
+        shape="circle"
+        icon={<BulbOutlined />}
+        type="primary"
+        onClick={handleExaminer}
+        disabled={autoMode || examinerLoading}
+      />
+      <div className="auto-controls">
+        <p className="auto-label">Auto</p>
+        <Switch
+          checked={autoMode}
+          onChange={toggleAutoMode}
+          className="auto-toggle"
+          size="small"
+        />
+      </div>
+    </div>
+  );
   const analyzerContainer = (
     <div className="analyzer-container">
       {!examinerLoading ? (
@@ -464,56 +484,12 @@ export const Analyzer = React.memo((props: AnalyzerProps) => {
           <RedoOutlined spin />
         </div>
       )}
-      {!props.includeCard ? (
-        <div className="analyzer-controls">
-          <Button
-            className="analyze-trigger"
-            shape="circle"
-            icon={<BulbOutlined />}
-            type="primary"
-            onClick={handleExaminer}
-            disabled={autoMode || examinerLoading}
-          />
-          <div>
-            <p className="auto-label">Auto</p>
-            <Switch
-              checked={autoMode}
-              onChange={toggleAutoMode}
-              className="auto-toggle"
-              size="small"
-            />
-          </div>
-        </div>
-      ) : null}
+      {!props.includeCard ? analyzerControls : null}
     </div>
   );
   if (props.includeCard) {
     return (
-      <Card
-        title="Analyzer"
-        className="analyzer-card"
-        extra={
-          <>
-            <div className="analyzer-controls">
-              <p className="auto-label">Auto</p>
-              <Switch
-                checked={autoMode}
-                onChange={toggleAutoMode}
-                className="auto-toggle"
-                size="small"
-              />
-            </div>
-            <Button
-              className="analyze-trigger"
-              shape="circle"
-              icon={<BulbOutlined />}
-              type="primary"
-              onClick={handleExaminer}
-              disabled={autoMode || examinerLoading}
-            />
-          </>
-        }
-      >
+      <Card title="Analyzer" className="analyzer-card" extra={analyzerControls}>
         {analyzerContainer}
       </Card>
     );
