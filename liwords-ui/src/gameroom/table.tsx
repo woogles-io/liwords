@@ -42,7 +42,7 @@ import {
   StreakInfoResponse,
 } from './game_info';
 import { BoopSounds } from '../sound/boop';
-import { postBinary, toAPIUrl } from '../api/api';
+import { toAPIUrl } from '../api/api';
 import { StreakWidget } from './streak_widget';
 import {
   GameEvent,
