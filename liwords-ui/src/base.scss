@@ -325,6 +325,11 @@ ul {
     color: m($gray-extreme);
   }
 }
+.ant-switch-checked {
+  @include colorModed() {
+    background: m($primary-midDark);
+  }
+}
 .ant-input-number-input {
   @include colorModed() {
     background: m($card-background);

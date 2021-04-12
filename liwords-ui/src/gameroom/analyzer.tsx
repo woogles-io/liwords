@@ -5,7 +5,7 @@ import React, {
   useMemo,
   useRef,
 } from 'react';
-import { Button, Card } from 'antd';
+import { Button, Card, Switch } from 'antd';
 import { BulbOutlined } from '@ant-design/icons';
 import {
   useExaminableGameContextStoreContext,
@@ -164,17 +164,21 @@ export const analyzerMoveFromJsonMove = (
 };
 
 const AnalyzerContext = React.createContext<{
+  autoMode: boolean;
+  setAutoMode: (a: boolean) => void;
   cachedMoves: Array<AnalyzerMove> | null;
   examinerLoading: boolean;
   requestAnalysis: (lexicon: string) => void;
   showMovesForTurn: number;
   setShowMovesForTurn: (a: number) => void;
 }>({
+  autoMode: false,
   cachedMoves: null,
   examinerLoading: false,
   requestAnalysis: (lexicon: string) => {},
   showMovesForTurn: -1,
   setShowMovesForTurn: (a: number) => {},
+  setAutoMode: (a: boolean) => {},
 });
 
 export const AnalyzerContextProvider = ({
@@ -188,6 +192,7 @@ export const AnalyzerContextProvider = ({
     Array<Array<AnalyzerMove> | null>
   >([]);
   const [showMovesForTurn, setShowMovesForTurn] = useState(-1);
+  const [autoMode, setAutoMode] = useState(false);
   const [unrace, setUnrace] = useState(new Unrace());
 
   const {
@@ -292,6 +297,8 @@ export const AnalyzerContextProvider = ({
   const examinerLoading = cachedMoves === null;
   const contextValue = useMemo(
     () => ({
+      autoMode,
+      setAutoMode,
       cachedMoves,
       examinerLoading,
       requestAnalysis,
@@ -299,6 +306,8 @@ export const AnalyzerContextProvider = ({
       setShowMovesForTurn,
     }),
     [
+      autoMode,
+      setAutoMode,
       cachedMoves,
       examinerLoading,
       requestAnalysis,
@@ -313,6 +322,8 @@ export const AnalyzerContextProvider = ({
 export const Analyzer = React.memo((props: AnalyzerProps) => {
   const { lexicon } = props;
   const {
+    autoMode,
+    setAutoMode,
     cachedMoves,
     examinerLoading,
     requestAnalysis,
@@ -392,6 +403,9 @@ export const Analyzer = React.memo((props: AnalyzerProps) => {
     setShowMovesForTurn,
   ]);
 
+  const toggleAutoMode = useCallback(() => {
+    setAutoMode(!autoMode);
+  }, [autoMode, setAutoMode]);
   // Let ExaminableStore activate this.
   useEffect(() => {
     addHandleExaminer(handleExaminer);
@@ -405,6 +419,12 @@ export const Analyzer = React.memo((props: AnalyzerProps) => {
   useEffect(() => {
     setShowMovesForTurn(-1);
   }, [examinableGameContext.turns.length, setShowMovesForTurn]);
+
+  useEffect(() => {
+    if (autoMode) {
+      handleExaminer();
+    }
+  }, [autoMode, handleExaminer, showMovesForTurn]);
 
   const showMoves = showMovesForTurn === examinableGameContext.turns.length;
   const moves = useMemo(() => (showMoves ? cachedMoves : null), [
@@ -445,13 +465,25 @@ export const Analyzer = React.memo((props: AnalyzerProps) => {
         </div>
       )}
       {!props.includeCard ? (
-        <Button
-          shape="circle"
-          icon={<BulbOutlined />}
-          type="primary"
-          onClick={handleExaminer}
-          disabled={examinerLoading}
-        />
+        <div className="analyzer-controls">
+          <Button
+            className="analyze-trigger"
+            shape="circle"
+            icon={<BulbOutlined />}
+            type="primary"
+            onClick={handleExaminer}
+            disabled={autoMode || examinerLoading}
+          />
+          <div>
+            <p className="auto-label">Auto</p>
+            <Switch
+              checked={autoMode}
+              onChange={toggleAutoMode}
+              className="auto-toggle"
+              size="small"
+            />
+          </div>
+        </div>
       ) : null}
     </div>
   );
@@ -461,13 +493,25 @@ export const Analyzer = React.memo((props: AnalyzerProps) => {
         title="Analyzer"
         className="analyzer-card"
         extra={
-          <Button
-            shape="circle"
-            icon={<BulbOutlined />}
-            type="primary"
-            onClick={handleExaminer}
-            disabled={examinerLoading}
-          />
+          <>
+            <div className="analyzer-controls">
+              <p className="auto-label">Auto</p>
+              <Switch
+                checked={autoMode}
+                onChange={toggleAutoMode}
+                className="auto-toggle"
+                size="small"
+              />
+            </div>
+            <Button
+              className="analyze-trigger"
+              shape="circle"
+              icon={<BulbOutlined />}
+              type="primary"
+              onClick={handleExaminer}
+              disabled={autoMode || examinerLoading}
+            />
+          </>
         }
       >
         {analyzerContainer}

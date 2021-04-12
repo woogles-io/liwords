@@ -143,12 +143,26 @@ p.streak-loss {
         height: 100%;
         align-items: center;
         justify-content: center;
+        .analyze-trigger {
+          margin-left: 0px;
+        }
         .suggestions {
           max-height: 244px;
           overflow-y: auto;
         }
       }
     }
+  }
+  .auto-label {
+    display: inline-block;
+    font-size: 14px;
+    margin-right: 6px;
+    @include colorModed() {
+      color: m($gray-medium);
+    }
+  }
+  .analyze-trigger {
+    margin-left: 12px;
   }
   .analyzer-container {
     .anticon.anticon-redo {
@@ -158,6 +172,7 @@ p.streak-loss {
         color: m($gray-medium);
       }
     }
+
     .suggestions {
       font-family: $font-monospaced;
       width: 100%;
@@ -1199,8 +1214,13 @@ p.rune {
         .anticon.anticon-redo {
           margin-bottom: 0;
         }
+        .analyzer-controls {
+          align-items: center;
+          display: flex;
+          flex-direction: column;
+        }
         .suggestions {
-          width: calc(100% - 60px);
+          width: calc(100% - 90px);
           overflow-y: auto;
           table {
             align-self: flex-start;
@@ -1303,8 +1323,17 @@ p.rune {
       }
     }
     .analyzer-card {
+      .ant-card-extra {
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+        .analyzer-controls {
+          flex-direction: row;
+        }
+      }
       .ant-card-body {
         padding: 0;
+
         .analyzer-container {
           .suggestions {
             font-size: 13px;
