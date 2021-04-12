@@ -336,12 +336,15 @@ export const Table = React.memo((props: Props) => {
           headers: {
             'Content-Type': 'application/protobuf',
           },
+          responseType: 'arraybuffer',
         }
       )
       .then((rbin) => {
+        console.log('rbin', rbin, 'data', rbin.data);
         const resp = UsersGameInfoResponse.deserializeBinary(
           rbin.data
         ).toObject();
+        console.log('resp opj', resp);
         setNeedAvatars(false);
         const players = [...gameInfo.players];
         resp.infosList.forEach((info) => {
