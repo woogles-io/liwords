@@ -42,7 +42,7 @@ import {
   StreakInfoResponse,
 } from './game_info';
 import { BoopSounds } from '../sound/boop';
-import { toAPIUrl } from '../api/api';
+import { postBinary, toAPIUrl } from '../api/api';
 import { StreakWidget } from './streak_widget';
 import {
   GameEvent,
@@ -61,20 +61,14 @@ import {
 import { CompetitorStatus } from '../tournament/competitor_status';
 import { Unrace } from '../utils/unrace';
 import { Blank } from '../utils/cwgame/common';
+import {
+  UsersGameInfoRequest,
+  UsersGameInfoResponse,
+} from '../gen/api/proto/user_service/user_service_pb';
 
 type Props = {
   sendSocketMsg: (msg: Uint8Array) => void;
   sendChat: (msg: string, chan: string) => void;
-};
-
-type UserGameInfo = {
-  uuid: string;
-  avatar_url: string;
-  title: string;
-};
-
-type UsersGameInfoResponse = {
-  infos: UserGameInfo[];
 };
 
 const StreakFetchDelay = 2000;
@@ -320,25 +314,26 @@ export const Table = React.memo((props: Props) => {
       return;
     }
 
-    axios
-      .post<UsersGameInfoResponse>(
-        toAPIUrl('user_service.ProfileService', 'GetUsersGameInfo'),
-        {
-          uuids: gameInfo.players.map((p) => p.user_id),
-        }
-      )
-      .then((resp) => {
+    const req = new UsersGameInfoRequest();
+    req.setUuidsList(gameInfo.players.map((p) => p.user_id));
+    postBinary('user_service.ProfileService', 'GetUsersGameInfo', req)
+      .then((rbin) => {
+        console.log('rbin', rbin, 'data', rbin.data);
+        const resp = UsersGameInfoResponse.deserializeBinary(
+          rbin.data
+        ).toObject();
+        console.log('resp opj', resp);
         setNeedAvatars(false);
         const players = [...gameInfo.players];
-        resp.data.infos.forEach((info) => {
-          if (info.avatar_url.length) {
+        resp.infosList.forEach((info) => {
+          if (info.avatarUrl.length) {
             const index = gameInfo.players.findIndex(
               (p) => p.user_id === info.uuid
             );
             if (index >= 0) {
               players[index] = {
                 ...players[index],
-                avatar_url: info.avatar_url,
+                avatar_url: info.avatarUrl,
               };
             }
           }
