@@ -327,7 +327,17 @@ export const Table = React.memo((props: Props) => {
 
     const req = new UsersGameInfoRequest();
     req.setUuidsList(gameInfo.players.map((p) => p.user_id));
-    postBinary('user_service.ProfileService', 'GetUsersGameInfo', req)
+    // postBinary('user_service.ProfileService', 'GetUsersGameInfo', req)
+    axios
+      .post(
+        toAPIUrl('user_service.ProfileService', 'GetUsersGameInfo'),
+        req.serializeBinary(),
+        {
+          headers: {
+            'Content-Type': 'application/protobuf',
+          },
+        }
+      )
       .then((rbin) => {
         const resp = UsersGameInfoResponse.deserializeBinary(
           rbin.data
