@@ -344,7 +344,11 @@ func (as *AuthenticationService) NotifyAccountClosure(ctx context.Context, r *pb
 	}
 
 	// This action will not need to use the chat store so we can pass the nil value
-	err = mod.ApplyActions(ctx, as.userStore, nil, []*ms.ModAction{{UserId: sess.UserUUID, Duration: 0, Type: ms.ModActionType_DELETE_ACCOUNT}})
+	err = mod.ApplyActions(ctx, as.userStore, nil, []*ms.ModAction{{
+		UserId:   sess.UserUUID,
+		Duration: 0,
+		Note:     "User initiated account deletion",
+		Type:     ms.ModActionType_DELETE_ACCOUNT}})
 	if err != nil {
 		return nil, err
 	}
