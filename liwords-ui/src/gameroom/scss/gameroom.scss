@@ -118,6 +118,16 @@ p.streak-loss {
         }
       }
     }
+    .ant-card-extra {
+      .analyzer-controls {
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+        .analyze-trigger {
+          order: 2;
+        }
+      }
+    }
     .ant-card-body {
       padding: 12px;
       height: 240px;
@@ -143,12 +153,26 @@ p.streak-loss {
         height: 100%;
         align-items: center;
         justify-content: center;
+        .analyze-trigger {
+          margin-left: 0px;
+        }
         .suggestions {
           max-height: 244px;
           overflow-y: auto;
         }
       }
     }
+  }
+  .auto-label {
+    display: inline-block;
+    font-size: 14px;
+    margin-right: 6px;
+    @include colorModed() {
+      color: m($gray-medium);
+    }
+  }
+  .analyze-trigger {
+    margin-left: 12px;
   }
   .analyzer-container {
     .anticon.anticon-redo {
@@ -158,6 +182,7 @@ p.streak-loss {
         color: m($gray-medium);
       }
     }
+
     .suggestions {
       font-family: $font-monospaced;
       width: 100%;
@@ -1199,8 +1224,13 @@ p.rune {
         .anticon.anticon-redo {
           margin-bottom: 0;
         }
+        .analyzer-controls {
+          align-items: center;
+          display: flex;
+          flex-direction: column;
+        }
         .suggestions {
-          width: calc(100% - 60px);
+          width: calc(100% - 90px);
           overflow-y: auto;
           table {
             align-self: flex-start;
@@ -1284,9 +1314,6 @@ p.rune {
           line-height: 1.5em;
           font-size: 14px;
         }
-        .ant-card-extra {
-          font-size: 14px;
-        }
       }
     }
     .notepad-card, .analyzer-card {
@@ -1305,6 +1332,7 @@ p.rune {
     .analyzer-card {
       .ant-card-body {
         padding: 0;
+
         .analyzer-container {
           .suggestions {
             font-size: 13px;
