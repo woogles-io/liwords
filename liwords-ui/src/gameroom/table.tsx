@@ -318,11 +318,9 @@ export const Table = React.memo((props: Props) => {
     req.setUuidsList(gameInfo.players.map((p) => p.user_id));
     postBinary('user_service.ProfileService', 'GetUsersGameInfo', req)
       .then((rbin) => {
-        console.log('rbin', rbin, 'data', rbin.data);
         const resp = UsersGameInfoResponse.deserializeBinary(
           rbin.data
         ).toObject();
-        console.log('resp opj', resp);
         setNeedAvatars(false);
         const players = [...gameInfo.players];
         resp.infosList.forEach((info) => {
