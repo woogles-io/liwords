@@ -624,11 +624,7 @@ export const useOnSocketMsg = () => {
               payload: sge,
             });
             // play sound
-            if (loginState.username === sge.getEvent()?.getNickname()) {
-              BoopSounds.playSound('makeMoveSound');
-            } else {
-              BoopSounds.playSound('oppMoveSound');
-            }
+            // (moved to ../gameroom/table.tsx to avoid challenge sounds)
             break;
           }
 
@@ -638,6 +634,8 @@ export const useOnSocketMsg = () => {
             challengeResultEvent(sge);
             if (!sge.getValid()) {
               BoopSounds.playSound('woofSound');
+            } else {
+              BoopSounds.playSound('meowSound');
             }
             break;
           }

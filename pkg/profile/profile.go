@@ -77,6 +77,7 @@ func (ps *ProfileService) GetProfile(ctx context.Context, r *pb.ProfileRequest) 
 	return &pb.ProfileResponse{
 		FirstName:       user.Profile.FirstName,
 		LastName:        user.Profile.LastName,
+		FullName:        user.RealName(),
 		CountryCode:     user.Profile.CountryCode,
 		Title:           user.Profile.Title,
 		About:           user.Profile.About,
@@ -86,6 +87,55 @@ func (ps *ProfileService) GetProfile(ctx context.Context, r *pb.ProfileRequest) 
 		AvatarUrl:       user.AvatarUrl(),
 		AvatarsEditable: ps.avatarService != nil,
 	}, nil
+}
+
+func (ps *ProfileService) GetPersonalInfo(ctx context.Context, r *pb.PersonalInfoRequest) (*pb.PersonalInfoResponse, error) {
+	// This view requires authentication.
+	sess, err := apiserver.GetSession(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	user, err := ps.userStore.Get(ctx, sess.Username)
+	if err != nil {
+		log.Err(err).Msg("getting-user")
+		// The username should maybe not be in the session? We can't change
+		// usernames easily.
+		return nil, twirp.InternalErrorWith(err)
+	}
+
+	return &pb.PersonalInfoResponse{
+		Email:       user.Email,
+		FirstName:   user.Profile.FirstName,
+		LastName:    user.Profile.LastName,
+		CountryCode: user.Profile.CountryCode,
+		AvatarUrl:   user.AvatarUrl(),
+		FullName:    user.RealName(),
+		About:       user.Profile.About,
+	}, nil
+}
+
+func (ps *ProfileService) UpdatePersonalInfo(ctx context.Context, r *pb.UpdatePersonalInfoRequest) (*pb.UpdatePersonalInfoResponse, error) {
+	// This view requires authentication.
+	sess, err := apiserver.GetSession(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	user, err := ps.userStore.Get(ctx, sess.Username)
+	if err != nil {
+		log.Err(err).Msg("getting-user")
+		// The username should maybe not be in the session? We can't change
+		// usernames easily.
+		return nil, twirp.InternalErrorWith(err)
+	}
+
+	updateErr := ps.userStore.SetPersonalInfo(ctx, user.UUID, r.Email, r.FirstName, r.LastName, r.CountryCode, r.About)
+	if updateErr != nil {
+		return nil, twirp.InternalErrorWith(updateErr)
+	}
+
+	return &pb.UpdatePersonalInfoResponse{}, nil
 }
 
 func (ps *ProfileService) GetUsersGameInfo(ctx context.Context, r *pb.UsersGameInfoRequest) (*pb.UsersGameInfoResponse, error) {
@@ -107,34 +157,6 @@ func (ps *ProfileService) GetUsersGameInfo(ctx context.Context, r *pb.UsersGameI
 	}, nil
 }
 
-func (ps *ProfileService) UpdateProfile(ctx context.Context, r *pb.UpdateProfileRequest) (*pb.UpdateProfileResponse, error) {
-	// This view requires authentication.
-	sess, err := apiserver.GetSession(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	user, err := ps.userStore.Get(ctx, sess.Username)
-	if err != nil {
-		log.Err(err).Msg("getting-user")
-		// The username should maybe not be in the session? We can't change
-		// usernames easily.
-		return nil, twirp.InternalErrorWith(err)
-	}
-
-	err = mod.ActionExists(ctx, ps.userStore, user.UUID, true, []ms.ModActionType{ms.ModActionType_SUSPEND_ACCOUNT})
-	if err != nil {
-		return nil, err
-	}
-
-	err = ps.userStore.SetAbout(ctx, user.UUID, r.About)
-	if err != nil {
-		return nil, twirp.InternalErrorWith(err)
-	}
-
-	return &pb.UpdateProfileResponse{}, nil
-}
-
 func (ps *ProfileService) UpdateAvatar(ctx context.Context, r *pb.UpdateAvatarRequest) (*pb.UpdateAvatarResponse, error) {
 	// This view requires authentication.
 	sess, err := apiserver.GetSession(ctx)
@@ -150,14 +172,14 @@ func (ps *ProfileService) UpdateAvatar(ctx context.Context, r *pb.UpdateAvatarRe
 		return nil, twirp.InternalErrorWith(err)
 	}
 
-	avatarService := ps.avatarService
-	if avatarService == nil {
-		return nil, twirp.InternalErrorWith(errors.New("No avatar service available"))
-	}
-
 	err = mod.ActionExists(ctx, ps.userStore, user.UUID, true, []ms.ModActionType{ms.ModActionType_SUSPEND_ACCOUNT})
 	if err != nil {
 		return nil, err
+	}
+
+	avatarService := ps.avatarService
+	if avatarService == nil {
+		return nil, twirp.InternalErrorWith(errors.New("No avatar service available"))
 	}
 
 	oldUrl := user.AvatarUrl()
@@ -185,4 +207,43 @@ func (ps *ProfileService) UpdateAvatar(ctx context.Context, r *pb.UpdateAvatarRe
 	return &pb.UpdateAvatarResponse{
 		AvatarUrl: avatarUrl,
 	}, nil
+}
+
+func (ps *ProfileService) RemoveAvatar(ctx context.Context, r *pb.RemoveAvatarRequest) (*pb.RemoveAvatarResponse, error) {
+	// This view requires authentication.
+	sess, err := apiserver.GetSession(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	user, err := ps.userStore.Get(ctx, sess.Username)
+	if err != nil {
+		log.Err(err).Msg("getting-user")
+		// The username should maybe not be in the session? We can't change
+		// usernames easily.
+		return nil, twirp.InternalErrorWith(err)
+	}
+
+	avatarService := ps.avatarService
+	if avatarService == nil {
+		return nil, twirp.InternalErrorWith(errors.New("No avatar service available"))
+	}
+
+	// Clear the URL in the database
+	updateErr := ps.userStore.SetAvatarUrl(ctx, user.UUID, "")
+	if updateErr != nil {
+		return nil, twirp.InternalErrorWith(updateErr)
+	}
+
+	// Delete old URL
+	oldUrl := user.AvatarUrl()
+	if oldUrl != "" {
+		err = avatarService.Delete(ctx, oldUrl)
+		if err != nil {
+			// Don't crash.
+			log.Err(err).Msg("error-deleting-old-avatar")
+		}
+	}
+
+	return &pb.RemoveAvatarResponse{}, nil
 }

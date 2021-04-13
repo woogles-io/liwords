@@ -42,7 +42,7 @@ import {
   StreakInfoResponse,
 } from './game_info';
 import { BoopSounds } from '../sound/boop';
-import { toAPIUrl } from '../api/api';
+import { postBinary, toAPIUrl } from '../api/api';
 import { StreakWidget } from './streak_widget';
 import {
   GameEvent,
@@ -60,27 +60,22 @@ import {
 } from '../store/reducers/tournament_reducer';
 import { CompetitorStatus } from '../tournament/competitor_status';
 import { Unrace } from '../utils/unrace';
+import { Blank } from '../utils/cwgame/common';
+import {
+  UsersGameInfoRequest,
+  UsersGameInfoResponse,
+} from '../gen/api/proto/user_service/user_service_pb';
 
 type Props = {
   sendSocketMsg: (msg: Uint8Array) => void;
   sendChat: (msg: string, chan: string) => void;
 };
 
-type UserGameInfo = {
-  uuid: string;
-  avatar_url: string;
-  title: string;
-};
-
-type UsersGameInfoResponse = {
-  infos: UserGameInfo[];
-};
-
 const StreakFetchDelay = 2000;
 
 const DEFAULT_TITLE = 'Woogles.io';
 
-const ManageWindowTitle = (props: {}) => {
+const ManageWindowTitleAndTurnSound = (props: {}) => {
   const { gameContext } = useGameContextStoreContext();
   const { loginState } = useLoginStateStoreContext();
   const { userID } = loginState;
@@ -110,6 +105,27 @@ const ManageWindowTitle = (props: {}) => {
   }, [gameContext.uidToPlayerOrder, userID]);
 
   const gameDone = gameContext.playState === PlayState.GAME_OVER;
+
+  // do not play sound when game ends (e.g. resign) or has not loaded
+  const canPlaySound = !gameDone && gameContext.gameID;
+  const soundUnlocked = useRef(false);
+  useEffect(() => {
+    if (canPlaySound) {
+      if (!soundUnlocked.current) {
+        // ignore first sound
+        soundUnlocked.current = true;
+        return;
+      }
+
+      if (myId === gameContext.onturn) {
+        BoopSounds.playSound('oppMoveSound');
+      } else {
+        BoopSounds.playSound('makeMoveSound');
+      }
+    } else {
+      soundUnlocked.current = false;
+    }
+  }, [canPlaySound, myId, gameContext.onturn]);
 
   const desiredTitle = useMemo(() => {
     let title = '';
@@ -298,25 +314,24 @@ export const Table = React.memo((props: Props) => {
       return;
     }
 
-    axios
-      .post<UsersGameInfoResponse>(
-        toAPIUrl('user_service.ProfileService', 'GetUsersGameInfo'),
-        {
-          uuids: gameInfo.players.map((p) => p.user_id),
-        }
-      )
-      .then((resp) => {
+    const req = new UsersGameInfoRequest();
+    req.setUuidsList(gameInfo.players.map((p) => p.user_id));
+    postBinary('user_service.ProfileService', 'GetUsersGameInfo', req)
+      .then((rbin) => {
+        const resp = UsersGameInfoResponse.deserializeBinary(
+          rbin.data
+        ).toObject();
         setNeedAvatars(false);
         const players = [...gameInfo.players];
-        resp.data.infos.forEach((info) => {
-          if (info.avatar_url.length) {
+        resp.infosList.forEach((info) => {
+          if (info.avatarUrl.length) {
             const index = gameInfo.players.findIndex(
               (p) => p.user_id === info.uuid
             );
             if (index >= 0) {
               players[index] = {
                 ...players[index],
-                avatar_url: info.avatar_url,
+                avatar_url: info.avatarUrl,
               };
             }
           }
@@ -522,27 +537,52 @@ export const Table = React.memo((props: Props) => {
     [enableHoverDefine]
   );
 
+  const [playedWords, setPlayedWords] = useState(new Set());
+  useEffect(() => {
+    setPlayedWords((oldPlayedWords) => {
+      const playedWords = new Set(oldPlayedWords);
+      for (const turn of gameContext.turns) {
+        for (const word of turn.getWordsFormedList()) {
+          playedWords.add(word);
+        }
+      }
+      return playedWords.size === oldPlayedWords.size
+        ? oldPlayedWords
+        : playedWords;
+    });
+  }, [gameContext]);
+
   useEffect(() => {
     // forget everything if it goes to a new game
     setWordInfo({});
+    setPlayedWords(new Set());
     setUnrace(new Unrace());
     setPhonies(undefined);
     setShowDefinitionHover(undefined);
   }, [gameID, gameInfo.game_request.lexicon]);
 
-  const hasDefinitionHover = !!showDefinitionHover;
   useEffect(() => {
-    if (gameDone || hasDefinitionHover) {
+    if (gameDone || showDefinitionHover) {
       // when definition is requested, get definitions for all words (up to
       // that point) that have not yet been defined. this is an intentional
       // design decision to improve usability and responsiveness.
       setWordInfo((oldWordInfo) => {
         let wordInfo = oldWordInfo;
-        for (const turn of gameContext.turns) {
-          for (const word of turn.getWordsFormedList()) {
-            if (!(word in wordInfo)) {
-              if (wordInfo === oldWordInfo) wordInfo = { ...oldWordInfo };
-              wordInfo[word] = undefined;
+        for (const word of (playedWords as any) as [string]) {
+          if (!(word in wordInfo)) {
+            if (wordInfo === oldWordInfo) wordInfo = { ...oldWordInfo };
+            wordInfo[word] = undefined;
+          }
+        }
+        if (showDefinitionHover) {
+          // also define tentative words (mostly from examiner) if no undesignated blanks.
+          for (const word of showDefinitionHover.words) {
+            if (!word.includes(Blank)) {
+              const uppercasedWord = word.toUpperCase();
+              if (!(uppercasedWord in wordInfo)) {
+                if (wordInfo === oldWordInfo) wordInfo = { ...oldWordInfo };
+                wordInfo[uppercasedWord] = undefined;
+              }
             }
           }
         }
@@ -550,7 +590,7 @@ export const Table = React.memo((props: Props) => {
         return wordInfo;
       });
     }
-  }, [gameContext, gameDone, hasDefinitionHover]);
+  }, [playedWords, gameDone, showDefinitionHover]);
 
   useEffect(() => {
     const cancelTokenSource = axios.CancelToken.source();
@@ -561,7 +601,7 @@ export const Table = React.memo((props: Props) => {
         const definition = wordInfo[word];
         if (
           definition === undefined ||
-          (hasDefinitionHover && definition.v && !definition.d)
+          (showDefinitionHover && definition.v && !definition.d)
         ) {
           wordsToDefine.push(word);
         }
@@ -575,11 +615,11 @@ export const Table = React.memo((props: Props) => {
           {
             lexicon,
             words: wordsToDefine,
-            definitions: hasDefinitionHover,
+            definitions: !!showDefinitionHover,
           },
           { cancelToken: cancelTokenSource.token }
         );
-        if (hasDefinitionHover) {
+        if (showDefinitionHover) {
           // for certain lexicons, try getting definitions from other sources
           for (const otherLexicon of lexicon === 'NWL18'
             ? ['NWL20']
@@ -601,7 +641,7 @@ export const Table = React.memo((props: Props) => {
               {
                 lexicon: otherLexicon,
                 words: wordsToRedefine,
-                definitions: hasDefinitionHover,
+                definitions: showDefinitionHover,
               },
               { cancelToken: cancelTokenSource.token }
             );
@@ -632,14 +672,14 @@ export const Table = React.memo((props: Props) => {
     return () => {
       cancelTokenSource.cancel();
     };
-  }, [hasDefinitionHover, gameInfo.game_request.lexicon, wordInfo, unrace]);
+  }, [showDefinitionHover, gameInfo.game_request.lexicon, wordInfo, unrace]);
 
   useEffect(() => {
     if (phonies === null) {
       if (gameDone) {
         const phonies = [];
         let hasWords = false; // avoid running this before the first GameHistoryRefresher event
-        for (const word in wordInfo) {
+        for (const word of (playedWords as any) as [string]) {
           hasWords = true;
           const definition = wordInfo[word];
           if (definition === undefined) {
@@ -657,18 +697,16 @@ export const Table = React.memo((props: Props) => {
       }
       setPhonies(undefined); // not ready to display
     }
-  }, [gameDone, phonies, wordInfo]);
+  }, [gameDone, phonies, playedWords, wordInfo]);
 
-  const gameContextRef = useRef(gameContext);
-  gameContextRef.current = gameContext;
   useEffect(() => {
     if (!phonies) return;
     if (phonies.length) {
       // since +false === 0 and +true === 1, this is [unchallenged, challenged]
       const groupedWords = [new Set(), new Set()];
       let returningTiles = false;
-      for (let i = gameContextRef.current.turns.length; --i >= 0; ) {
-        const turn = gameContextRef.current.turns[i];
+      for (let i = gameContext.turns.length; --i >= 0; ) {
+        const turn = gameContext.turns[i];
         if (turn.getType() === GameEvent.Type.PHONY_TILES_RETURNED) {
           returningTiles = true;
         } else {
@@ -843,7 +881,7 @@ export const Table = React.memo((props: Props) => {
 
   let ret = (
     <div className={`game-container${isRegistered ? ' competitor' : ''}`}>
-      <ManageWindowTitle />
+      <ManageWindowTitleAndTurnSound />
       <TopBar tournamentID={gameInfo.tournament_id} />
       <div className="game-table">
         <div className="chat-area" id="left-sidebar">

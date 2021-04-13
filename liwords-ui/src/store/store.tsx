@@ -149,9 +149,13 @@ type TentativePlayData = {
   placedTilesTempScore: number | undefined;
   placedTiles: Set<EphemeralTile>;
   displayedRack: string;
+  blindfoldCommand: string;
+  blindfoldUseNPA: boolean;
   setPlacedTilesTempScore: (s: number | undefined) => void;
   setPlacedTiles: (t: Set<EphemeralTile>) => void;
   setDisplayedRack: (l: string) => void;
+  setBlindfoldCommand: (l: string) => void;
+  setBlindfoldUseNPA: (l: boolean) => void;
 };
 
 type PoolFormatStoreData = {
@@ -214,9 +218,13 @@ const TentativePlayContext = createContext<TentativePlayData>({
   placedTilesTempScore: undefined,
   placedTiles: new Set<EphemeralTile>(),
   displayedRack: '',
+  blindfoldCommand: '',
+  blindfoldUseNPA: false,
   setPlacedTilesTempScore: defaultFunction,
   setPlacedTiles: defaultFunction,
   setDisplayedRack: defaultFunction,
+  setBlindfoldCommand: defaultFunction,
+  setBlindfoldUseNPA: defaultFunction,
 });
 
 const ExcludedPlayersContext = createContext<ExcludedPlayersStoreData>({
@@ -713,6 +721,8 @@ const RealStore = ({ children, ...props }: Props) => {
   >(undefined);
   const [placedTiles, setPlacedTiles] = useState(new Set<EphemeralTile>());
   const [displayedRack, setDisplayedRack] = useState('');
+  const [blindfoldCommand, setBlindfoldCommand] = useState('');
+  const [blindfoldUseNPA, setBlindfoldUseNPA] = useState(false);
 
   const [gameContext, setGameContext] = useState<GameState>(() =>
     gameStateInitializer(clockController, onClockTick, onClockTimeout)
@@ -855,17 +865,25 @@ const RealStore = ({ children, ...props }: Props) => {
       placedTilesTempScore,
       placedTiles,
       displayedRack,
+      blindfoldCommand,
+      blindfoldUseNPA,
       setPlacedTilesTempScore,
       setPlacedTiles,
       setDisplayedRack,
+      setBlindfoldCommand,
+      setBlindfoldUseNPA,
     }),
     [
       placedTilesTempScore,
       placedTiles,
       displayedRack,
+      blindfoldCommand,
+      blindfoldUseNPA,
       setPlacedTilesTempScore,
       setPlacedTiles,
       setDisplayedRack,
+      setBlindfoldCommand,
+      setBlindfoldUseNPA,
     ]
   );
   const excludedPlayersStore = useMemo(

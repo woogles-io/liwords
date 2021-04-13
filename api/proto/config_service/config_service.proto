@@ -14,9 +14,7 @@ message PermissionsRequest {
   bool bot = 5;
 }
 
-message UserRequest {
-  string username = 1;
-}
+message UserRequest { string username = 1; }
 
 message UserResponse {
   string username = 1;
@@ -30,10 +28,25 @@ message UserResponse {
 
 message ConfigResponse {}
 
-service ConfigService {
-  rpc SetGamesEnabled(EnableGamesRequest) returns(ConfigResponse);
+message Announcement {
+  string title = 1;
+  string link = 2;
+  string body = 3;
+}
 
-  rpc SetFEHash(SetFEHashRequest) returns(ConfigResponse);
+message SetAnnouncementsRequest { repeated Announcement announcements = 1; }
+
+message GetAnnouncementsRequest {}
+
+message AnnouncementsResponse { repeated Announcement announcements = 1; }
+
+service ConfigService {
+  rpc SetGamesEnabled(EnableGamesRequest) returns (ConfigResponse);
+
+  rpc SetFEHash(SetFEHashRequest) returns (ConfigResponse);
   rpc SetUserPermissions(PermissionsRequest) returns (ConfigResponse);
   rpc GetUserDetails(UserRequest) returns (UserResponse);
+
+  rpc SetAnnouncements(SetAnnouncementsRequest) returns (ConfigResponse);
+  rpc GetAnnouncements(GetAnnouncementsRequest) returns (AnnouncementsResponse);
 }

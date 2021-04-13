@@ -395,28 +395,55 @@ func (s *DBStore) SetAvatarUrl(ctx context.Context, uuid string, avatarUrl strin
 	return s.db.Model(p).Update("avatar_url", avatarUrl).Error
 }
 
+func (s *DBStore) SetPersonalInfo(ctx context.Context, uuid string, email string, firstName string, lastName string, countryCode string, about string) error {
+	u := &User{}
+	p := &profile{}
+
+	if result := s.db.Where("uuid = ?", uuid).First(u); result.Error != nil {
+		return result.Error
+	}
+	if result := s.db.Model(u).Update("email", email); result.Error != nil {
+		return result.Error
+	}
+	if result := s.db.Model(u).Related(p); result.Error != nil {
+		return result.Error
+	}
+	if result := s.db.Model(p).Update("first_name", firstName); result.Error != nil {
+		return result.Error
+	}
+	if result := s.db.Model(p).Update("last_name", lastName); result.Error != nil {
+		return result.Error
+	}
+	if result := s.db.Model(p).Update("about", about); result.Error != nil {
+		return result.Error
+	}
+
+	return s.db.Model(p).Update("country_code", countryCode).Error
+}
+
 // SetRatings set the specific ratings for the given variant in a transaction.
 func (s *DBStore) SetRatings(ctx context.Context, p0uuid string, p1uuid string, variant entity.VariantKey,
 	p0Rating entity.SingleRating, p1Rating entity.SingleRating) error {
 
-	p0Profile, p0RatingBytes, err := getRatingBytes(s, ctx, p0uuid, variant, p0Rating)
-	if err != nil {
-		return err
-	}
-
-	p1Profile, p1RatingBytes, err := getRatingBytes(s, ctx, p1uuid, variant, p1Rating)
-	if err != nil {
-		return err
-	}
-
 	return s.db.Transaction(func(tx *gorm.DB) error {
-		err := s.db.Model(p0Profile).Update("ratings", postgres.Jsonb{RawMessage: p0RatingBytes}).Error
+
+		p0Profile, p0RatingBytes, err := getRatingBytes(tx, ctx, p0uuid, variant, p0Rating)
+		if err != nil {
+			return err
+		}
+
+		err = tx.Model(p0Profile).Update("ratings", postgres.Jsonb{RawMessage: p0RatingBytes}).Error
 
 		if err != nil {
 			return err
 		}
 
-		err = s.db.Model(p1Profile).Update("ratings", postgres.Jsonb{RawMessage: p1RatingBytes}).Error
+		p1Profile, p1RatingBytes, err := getRatingBytes(tx, ctx, p1uuid, variant, p1Rating)
+		if err != nil {
+			return err
+		}
+
+		err = tx.Model(p1Profile).Update("ratings", postgres.Jsonb{RawMessage: p1RatingBytes}).Error
 
 		if err != nil {
 			return err
@@ -426,15 +453,15 @@ func (s *DBStore) SetRatings(ctx context.Context, p0uuid string, p1uuid string, 
 	})
 }
 
-func getRatingBytes(s *DBStore, ctx context.Context, uuid string, variant entity.VariantKey,
+func getRatingBytes(tx *gorm.DB, ctx context.Context, uuid string, variant entity.VariantKey,
 	rating entity.SingleRating) (*profile, []byte, error) {
 	u := &User{}
 	p := &profile{}
 
-	if result := s.db.Where("uuid = ?", uuid).First(u); result.Error != nil {
+	if result := tx.Where("uuid = ?", uuid).First(u); result.Error != nil {
 		return nil, nil, result.Error
 	}
-	if result := s.db.Model(u).Related(p); result.Error != nil {
+	if result := tx.Model(u).Related(p); result.Error != nil {
 		return nil, nil, result.Error
 	}
 
@@ -465,24 +492,25 @@ func getExistingRatings(p *profile) *entity.Ratings {
 func (s *DBStore) SetStats(ctx context.Context, p0uuid string, p1uuid string, variant entity.VariantKey,
 	p0Stats *entity.Stats, p1Stats *entity.Stats) error {
 
-	p0Profile, p0StatsBytes, err := getStatsBytes(s, ctx, p0uuid, variant, p0Stats)
-	if err != nil {
-		return err
-	}
-
-	p1Profile, p1StatsBytes, err := getStatsBytes(s, ctx, p1uuid, variant, p1Stats)
-	if err != nil {
-		return err
-	}
-
 	return s.db.Transaction(func(tx *gorm.DB) error {
-		err := s.db.Model(p0Profile).Update("stats", postgres.Jsonb{RawMessage: p0StatsBytes}).Error
+
+		p0Profile, p0StatsBytes, err := getStatsBytes(tx, ctx, p0uuid, variant, p0Stats)
+		if err != nil {
+			return err
+		}
+
+		err = tx.Model(p0Profile).Update("stats", postgres.Jsonb{RawMessage: p0StatsBytes}).Error
 
 		if err != nil {
 			return err
 		}
 
-		err = s.db.Model(p1Profile).Update("stats", postgres.Jsonb{RawMessage: p1StatsBytes}).Error
+		p1Profile, p1StatsBytes, err := getStatsBytes(tx, ctx, p1uuid, variant, p1Stats)
+		if err != nil {
+			return err
+		}
+
+		err = tx.Model(p1Profile).Update("stats", postgres.Jsonb{RawMessage: p1StatsBytes}).Error
 
 		if err != nil {
 			return err
@@ -492,15 +520,15 @@ func (s *DBStore) SetStats(ctx context.Context, p0uuid string, p1uuid string, va
 	})
 }
 
-func getStatsBytes(s *DBStore, ctx context.Context, uuid string, variant entity.VariantKey,
+func getStatsBytes(tx *gorm.DB, ctx context.Context, uuid string, variant entity.VariantKey,
 	stats *entity.Stats) (*profile, []byte, error) {
 	u := &User{}
 	p := &profile{}
 
-	if result := s.db.Where("uuid = ?", uuid).First(u); result.Error != nil {
+	if result := tx.Where("uuid = ?", uuid).First(u); result.Error != nil {
 		return nil, nil, result.Error
 	}
-	if result := s.db.Model(u).Related(p); result.Error != nil {
+	if result := tx.Model(u).Related(p); result.Error != nil {
 		return nil, nil, result.Error
 	}
 
