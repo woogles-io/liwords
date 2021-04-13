@@ -343,6 +343,14 @@ func (as *AuthenticationService) NotifyAccountClosure(ctx context.Context, r *pb
 		return nil, err
 	}
 
+	matches, err := ComparePassword(r.Password, user.Password)
+	if err != nil {
+		return nil, twirp.InternalErrorWith(err)
+	}
+	if !matches {
+		return nil, twirp.NewError(twirp.Unauthenticated, "password incorrect")
+	}
+
 	// This action will not need to use the chat store so we can pass the nil value
 	err = mod.ApplyActions(ctx, as.userStore, nil, []*ms.ModAction{{
 		UserId:   sess.UserUUID,

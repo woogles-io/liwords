@@ -365,6 +365,9 @@ export namespace LogoutResponse {
 }
 
 export class NotifyAccountClosureRequest extends jspb.Message {
+  getPassword(): string;
+  setPassword(value: string): void;
+
   serializeBinary(): Uint8Array;
   toObject(includeInstance?: boolean): NotifyAccountClosureRequest.AsObject;
   static toObject(includeInstance: boolean, msg: NotifyAccountClosureRequest): NotifyAccountClosureRequest.AsObject;
@@ -377,6 +380,7 @@ export class NotifyAccountClosureRequest extends jspb.Message {
 
 export namespace NotifyAccountClosureRequest {
   export type AsObject = {
+    password: string,
   }
 }
 

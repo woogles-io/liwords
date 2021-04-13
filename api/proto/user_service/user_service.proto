@@ -80,7 +80,7 @@ message SocketTokenResponse {
 
 message UserLogoutRequest {}
 message LogoutResponse {}
-message NotifyAccountClosureRequest {}
+message NotifyAccountClosureRequest {string password = 1;}
 message NotifyAccountClosureResponse {}
 
 service AuthenticationService {

@@ -3624,7 +3624,7 @@ proto.user_service.NotifyAccountClosureRequest.prototype.toObject = function(opt
  */
 proto.user_service.NotifyAccountClosureRequest.toObject = function(includeInstance, msg) {
   var f, obj = {
-
+    password: jspb.Message.getFieldWithDefault(msg, 1, "")
   };
 
   if (includeInstance) {
@@ -3661,6 +3661,10 @@ proto.user_service.NotifyAccountClosureRequest.deserializeBinaryFromReader = fun
     }
     var field = reader.getFieldNumber();
     switch (field) {
+    case 1:
+      var value = /** @type {string} */ (reader.readString());
+      msg.setPassword(value);
+      break;
     default:
       reader.skipField();
       break;
@@ -3690,6 +3694,31 @@ proto.user_service.NotifyAccountClosureRequest.prototype.serializeBinary = funct
  */
 proto.user_service.NotifyAccountClosureRequest.serializeBinaryToWriter = function(message, writer) {
   var f = undefined;
+  f = message.getPassword();
+  if (f.length > 0) {
+    writer.writeString(
+      1,
+      f
+    );
+  }
+};
+
+
+/**
+ * optional string password = 1;
+ * @return {string}
+ */
+proto.user_service.NotifyAccountClosureRequest.prototype.getPassword = function() {
+  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 1, ""));
+};
+
+
+/**
+ * @param {string} value
+ * @return {!proto.user_service.NotifyAccountClosureRequest} returns this
+ */
+proto.user_service.NotifyAccountClosureRequest.prototype.setPassword = function(value) {
+  return jspb.Message.setProto3StringField(this, 1, value);
 };
 
 
