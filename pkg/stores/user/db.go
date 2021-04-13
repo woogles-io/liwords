@@ -854,12 +854,12 @@ func (s *DBStore) ResetPersonalInfo(ctx context.Context, uuid string) error {
 		return result.Error
 	}
 
-	return s.db.Model(p).Update(&profile{FirstName: "",
-		LastName:    "",
-		About:       "",
-		Title:       "",
-		AvatarUrl:   "",
-		CountryCode: ""}).Error
+	return s.db.Model(p).Update(map[string]interface{}{"first_name": "",
+		"last_name":    "",
+		"about":        "",
+		"title":        "",
+		"avatar_url":   "",
+		"country_code": ""}).Error
 }
 
 func (s *DBStore) ResetProfile(ctx context.Context, uid string) error {
