@@ -12,7 +12,7 @@ do
     protoc --twirp_out=rpc --go_out=rpc --proto_path=$CODE_DIR/ --proto_path=$CODE_DIR/liwords --go_opt=paths=source_relative --twirp_opt=paths=source_relative api/proto/$api/$api.proto
 done
 
-for tsapi in "game_service" "user_service"
+for tsapi in "game_service" "user_service" "tournament_service"
 do
     protoc --plugin="protoc-gen-ts=/opt/node_modules/ts-protoc-gen/bin/protoc-gen-ts"  --js_out=import_style=commonjs,binary:liwords-ui/src/gen --ts_out=liwords-ui/src/gen --proto_path=$CODE_DIR/ --proto_path=$CODE_DIR/liwords api/proto/$tsapi/$tsapi.proto
 done

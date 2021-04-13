@@ -3759,7 +3759,7 @@ func (s *tournamentServiceServer) serveSetRoundControlsJSON(ctx context.Context,
 	reqContent := new(liwords.DivisionRoundControls)
 	unmarshaler := jsonpb.Unmarshaler{AllowUnknownFields: true}
 	if err = unmarshaler.Unmarshal(req.Body, reqContent); err != nil {
-		s.writeError(ctx, resp, malformedRequestError("the json request could not be decoded"))
+		s.handleRequestBodyError(ctx, resp, "the json request could not be decoded", err)
 		return
 	}
 
@@ -3836,7 +3836,7 @@ func (s *tournamentServiceServer) serveSetRoundControlsProtobuf(ctx context.Cont
 
 	buf, err := ioutil.ReadAll(req.Body)
 	if err != nil {
-		s.writeError(ctx, resp, wrapInternal(err, "failed to read request body"))
+		s.handleRequestBodyError(ctx, resp, "failed to read request body", err)
 		return
 	}
 	reqContent := new(liwords.DivisionRoundControls)
