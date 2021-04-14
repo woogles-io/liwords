@@ -1,5 +1,5 @@
 import React from 'react';
-import { Alert, Button, Checkbox, Col, Form, Row } from 'antd';
+import { Alert, Button, Checkbox, Col, Form, Input, Row } from 'antd';
 import { PlayerAvatar } from '../shared/player_avatar';
 import { PlayerMetadata } from '../gameroom/game_info';
 
@@ -30,6 +30,18 @@ export const CloseAccount = React.memo((props: Props) => {
           props.closeAccountNow();
         }}
       >
+        <Form.Item
+          label="Please confirm your password"
+          name="password"
+          rules={[
+            {
+              required: true,
+              message: 'Confirm your identity by entering your password',
+            },
+          ]}
+        >
+          <Input.Password />
+        </Form.Item>
         <div className="stern-warning">
           <Form.Item
             rules={[

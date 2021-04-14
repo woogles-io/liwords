@@ -189,6 +189,7 @@ export const Settings = React.memo((props: Props) => {
       .then(() => {
         setShowCloseAccount(false);
         setShowClosedAccount(true);
+        handleLogout();
       })
       .catch((e) => {
         if (e.response) {
@@ -199,7 +200,7 @@ export const Settings = React.memo((props: Props) => {
           console.log(e);
         }
       });
-  }, []);
+  }, [handleLogout]);
 
   const logIn = <div className="log-in">Log in to see your settings</div>;
 
