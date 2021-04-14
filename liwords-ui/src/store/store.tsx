@@ -431,23 +431,17 @@ const ExaminableStore = ({ children }: { children: React.ReactNode }) => {
       }
       ret.players[i].score = score;
 
-      // The last few turns may have zero time.
-      // Find out the last turn that has nonzero time.
-      // (This will also incorrectly eliminate unlikely legitimate events
-      // at zero millisecond time at the end.)
-      let timeCutoff = gameContext.turns.length;
-      while (
-        timeCutoff > 0 &&
-        gameContext.turns[timeCutoff - 1].getMillisRemaining() === 0
-      ) {
-        --timeCutoff;
-      }
-
       // Time comes from the most recent past.
       // But may belong to either player, depending on event type.
       let time = Infinity; // No gameInfo here, patch in PlayerCard.
-      for (let j = Math.min(timeCutoff, replayedTurns.length); --j >= 0; ) {
+      for (let j = replayedTurns.length; --j >= 0; ) {
         const turn = gameContext.turns[j];
+        if (
+          turn.getType() === GameEvent.Type.END_RACK_PTS ||
+          turn.getType() === GameEvent.Type.END_RACK_PENALTY
+        ) {
+          continue;
+        }
 
         // Logic from game_reducer setClock.
         let flipTimeRemaining = false;
@@ -474,6 +468,13 @@ const ExaminableStore = ({ children }: { children: React.ReactNode }) => {
       let rack = gameContext.players[i].currentRack;
       for (let j = replayedTurns.length; j < gameContext.turns.length; ++j) {
         const turn = gameContext.turns[j];
+        if (
+          turn.getType() === GameEvent.Type.END_RACK_PTS ||
+          turn.getType() === GameEvent.Type.END_RACK_PENALTY
+        ) {
+          continue;
+        }
+
         if (turn.getNickname() === nickname) {
           rack = turn.getRack();
           break;
