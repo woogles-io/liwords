@@ -6,7 +6,7 @@ import { PlayerMetadata } from '../gameroom/game_info';
 type Props = {
   cancel: () => void;
   player: Partial<PlayerMetadata> | undefined;
-  closeAccountNow: () => void;
+  closeAccountNow: (password: string) => void;
   err: string;
 };
 
@@ -26,8 +26,8 @@ export const CloseAccount = React.memo((props: Props) => {
         Terms of Service.
       </div>
       <Form
-        onFinish={() => {
-          props.closeAccountNow();
+        onFinish={(values: { [key: string]: string }) => {
+          props.closeAccountNow(values.password);
         }}
       >
         <Form.Item

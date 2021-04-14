@@ -177,30 +177,36 @@ export const Settings = React.memo((props: Props) => {
     setShowCloseAccount(true);
   }, []);
 
-  const closeAccountNow = useCallback(() => {
-    axios
-      .post(
-        toAPIUrl('user_service.AuthenticationService', 'NotifyAccountClosure'),
-        {},
-        {
-          withCredentials: true,
-        }
-      )
-      .then(() => {
-        setShowCloseAccount(false);
-        setShowClosedAccount(true);
-        handleLogout();
-      })
-      .catch((e) => {
-        if (e.response) {
-          // From Twirp
-          setAccountClosureError(e.response.data.msg);
-        } else {
-          setAccountClosureError('unknown error, see console');
-          console.log(e);
-        }
-      });
-  }, [handleLogout]);
+  const closeAccountNow = useCallback(
+    (pw: string) => {
+      axios
+        .post(
+          toAPIUrl(
+            'user_service.AuthenticationService',
+            'NotifyAccountClosure'
+          ),
+          { password: pw },
+          {
+            withCredentials: true,
+          }
+        )
+        .then(() => {
+          setShowCloseAccount(false);
+          setShowClosedAccount(true);
+          handleLogout();
+        })
+        .catch((e) => {
+          if (e.response) {
+            // From Twirp
+            setAccountClosureError(e.response.data.msg);
+          } else {
+            setAccountClosureError('unknown error, see console');
+            console.log(e);
+          }
+        });
+    },
+    [handleLogout]
+  );
 
   const logIn = <div className="log-in">Log in to see your settings</div>;
 
