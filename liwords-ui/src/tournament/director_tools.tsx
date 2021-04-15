@@ -28,6 +28,7 @@ export const DirectorTools = React.memo((props: DTProps) => {
 
   const divisions = tournamentContext.divisions;
 
+  console.log('divisions in directortools', divisions);
   /*   const addPlayers = (p: playersToAdd) => {
     Object.entries(p).forEach(([div, players]) => {
       axios

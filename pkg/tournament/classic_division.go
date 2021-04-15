@@ -1031,7 +1031,8 @@ func (t *ClassicDivision) IsStartable() bool {
 }
 
 func (t *ClassicDivision) GetXHRResponse() (*realtime.TournamentDivisionDataResponse, error) {
-	return &realtime.TournamentDivisionDataResponse{Players: t.Players,
+	return &realtime.TournamentDivisionDataResponse{
+		Players:       t.Players,
 		Controls:      t.DivisionControls,
 		RoundControls: t.RoundControls,
 		PairingMap:    t.PairingMap,

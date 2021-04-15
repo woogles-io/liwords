@@ -1023,6 +1023,8 @@ func GetXHRResponse(ctx context.Context, ts TournamentStore, id string) (*realti
 		if err != nil {
 			return nil, err
 		}
+		xhr.Id = id
+		xhr.Division = divisionKey
 		response.Divisions[divisionKey] = xhr
 	}
 	return response, nil

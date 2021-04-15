@@ -19,11 +19,16 @@ const pairingsForRound = (
 ): Array<SinglePairing> => {
   const m = new Set<string>();
   const n = new Array<SinglePairing>();
+  if (!division.pairings[round]) {
+    return n;
+  }
   division.pairings[round].roundPairings.forEach((value: SinglePairing) => {
-    const key = value.players[0] + ':' + value.players[1];
-    if (key && !m.has(key)) {
-      n.push(value);
-      m.add(key);
+    if (value.players) {
+      const key = value.players[0] + ':' + value.players[1];
+      if (key && !m.has(key)) {
+        n.push(value);
+        m.add(key);
+      }
     }
   });
   return n;

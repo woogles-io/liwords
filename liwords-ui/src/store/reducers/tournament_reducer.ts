@@ -364,9 +364,10 @@ const tourneyStatus = (
   }
   const pairing = getPairing(currentRound, fullPlayerID, division);
 
-  if (!pairing) {
+  if (!pairing || !pairing.players) {
     return TourneyStatus.PRETOURNEY;
   }
+
   const playerIdx = pairing.players.map((v) => v.getId()).indexOf(fullPlayerID);
   if (playerIdx === undefined) {
     return TourneyStatus.PRETOURNEY;
@@ -589,7 +590,7 @@ export function TournamentReducer(
       );
       // However we should check to see if we've already played the game,
       // or are playing the game.
-
+      console.log('divisions', divisions);
       let competitorState: CompetitorState = state.competitorState;
       if (registeredDivision) {
         competitorState = {

@@ -71,6 +71,11 @@ export const TournamentRoom = (props: Props) => {
           payload: resp.data,
         });
 
+        if (resp.data.type === 'LEGACY' || resp.data.type === 'CLUB') {
+          // This tournament does not have built-in pairings, so no need to fetch
+          // tournament divisions.
+          return;
+        }
         const treq = new GetTournamentRequest();
         treq.setId(resp.data.id);
 
@@ -80,9 +85,18 @@ export const TournamentRoom = (props: Props) => {
           treq
         );
 
+        console.log(
+          FullTournamentDivisions.deserializeBinary(tresp.data).toObject()
+        );
+
         dispatchTournamentContext({
           actionType: ActionType.SetDivisionsData,
-          payload: FullTournamentDivisions.deserializeBinary(tresp.data),
+          payload: {
+            fullDivisions: FullTournamentDivisions.deserializeBinary(
+              tresp.data
+            ),
+            loginState: loginState,
+          },
         });
       } catch (err) {
         message.error({
@@ -92,7 +106,7 @@ export const TournamentRoom = (props: Props) => {
         setBadTournament(true);
       }
     },
-    []
+    [loginState]
   );
 
   useEffect(() => {

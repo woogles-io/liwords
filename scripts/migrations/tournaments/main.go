@@ -24,7 +24,7 @@ import (
 	"github.com/domino14/liwords/pkg/gameplay"
 	"github.com/domino14/liwords/pkg/stores/game"
 	"github.com/domino14/liwords/pkg/stores/user"
-	"github.com/domino14/liwords/pkg/tournament"
+	pkgtournament "github.com/domino14/liwords/pkg/tournament"
 )
 
 // Legacy realtime types that have probably since changed are
@@ -239,10 +239,8 @@ type oldtournament struct {
 	Parent string `gorm:"index"`
 }
 
-type oldregistrant struct {
-	UserID       string `gorm:"uniqueIndex:idx_registrant;index:idx_user"`
-	TournamentID string `gorm:"uniqueIndex:idx_registrant"`
-	DivisionID   string `gorm:"uniqueIndex:idx_registrant"`
+func (oldtournament) TableName() string {
+	return "tournaments"
 }
 
 func oldDatabaseObjectToEntity(ctx context.Context, s *DBStore, id string) (*OldTournament, error) {
@@ -306,7 +304,7 @@ func oldDatabaseObjectToEntity(ctx context.Context, s *DBStore, id string) (*Old
 
 // Direct copy from tournament store
 
-type newtournament struct {
+type tournament struct {
 	gorm.Model
 	UUID              string `gorm:"uniqueIndex"`
 	Name              string
@@ -330,7 +328,7 @@ type newtournament struct {
 	Parent string `gorm:"index"`
 }
 
-type newregistrant struct {
+type registrant struct {
 	UserID       string `gorm:"uniqueIndex:idx_registrant;index:idx_user"`
 	TournamentID string `gorm:"uniqueIndex:idx_registrant"`
 	DivisionID   string `gorm:"uniqueIndex:idx_registrant"`
@@ -341,8 +339,8 @@ func NewDBStore(config *config.Config, gs gameplay.GameStore) (*DBStore, error) 
 	if err != nil {
 		return nil, err
 	}
-	db.AutoMigrate(&newtournament{})
-	db.AutoMigrate(&newregistrant{})
+	db.AutoMigrate(&tournament{})
+	db.AutoMigrate(&registrant{})
 	return &DBStore{db: db, gameStore: gs, cfg: config}, nil
 }
 
@@ -365,13 +363,13 @@ func (s *DBStore) Set(ctx context.Context, tm *entity.Tournament) error {
 	}
 
 	ctxDB := s.db.WithContext(ctx)
-	result := ctxDB.Model(&newtournament{}).Clauses(clause.Locking{Strength: "UPDATE"}).
+	result := ctxDB.Model(&tournament{}).Clauses(clause.Locking{Strength: "UPDATE"}).
 		Where("uuid = ?", tm.UUID).Updates(dbt)
 
 	return result.Error
 }
 
-func (s *DBStore) toDBObj(t *entity.Tournament) (*newtournament, error) {
+func (s *DBStore) toDBObj(t *entity.Tournament) (*tournament, error) {
 
 	directors, err := json.Marshal(t.Directors)
 	if err != nil {
@@ -398,7 +396,7 @@ func (s *DBStore) toDBObj(t *entity.Tournament) (*newtournament, error) {
 		defaultSettings = []byte("{}")
 	}
 
-	dbt := &newtournament{
+	dbt := &tournament{
 		UUID:              t.UUID,
 		Name:              t.Name,
 		Description:       t.Description,
@@ -447,7 +445,7 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	log.Info().Interface("ids", ids).Msg("listed-game-ids")
+	log.Info().Interface("ids", ids).Msg("listed-tournament-ids")
 
 	tournamentStore.db.Transaction(func(tx *gorm.DB) error {
 		for _, tid := range ids {
@@ -468,13 +466,19 @@ func main() {
 				newDivision := &entity.TournamentDivision{}
 				newDivision.ManagerType = entity.TournamentType(oldDivision.ManagerType)
 
-				newClassicDivision := tournament.NewClassicDivision()
+				newClassicDivision := pkgtournament.NewClassicDivision()
 				newClassicDivision.Matrix = oldDivision.DivisionManager.Matrix
+				newClassicDivision.PlayerIndexMap = oldDivision.DivisionManager.PlayerIndexMap
+				newClassicDivision.RoundControls = oldDivision.DivisionManager.RoundControls
+				newClassicDivision.DivisionControls.GameRequest = oldDivision.Controls.GameRequest
+				newClassicDivision.DivisionControls.SuspendedResult = realtime.TournamentGameResult_FORFEIT_LOSS
+				newClassicDivision.DivisionControls.SuspendedSpread = -50
+				newClassicDivision.DivisionControls.AutoStart = oldDivision.Controls.AutoStart
 
 				for round, pairings := range oldDivision.DivisionManager.Matrix {
 					for _, pairingKey := range pairings {
 						oldPairing, ok := newClassicDivision.PairingMap[pairingKey]
-						if !ok {
+						if ok {
 							newClassicDivision.PairingMap[pairingKey] = &realtime.Pairing{
 								Players:     oldPairing.Players,
 								Games:       oldPairing.Games,
@@ -487,10 +491,11 @@ func main() {
 					if err != nil {
 						return err
 					}
-					newClassicDivision.CurrentRound = int32(round)
 				}
+				newClassicDivision.CurrentRound = int32(oldDivision.DivisionManager.CurrentRound)
 
-				for player, playerIndex := range oldDivision.Players.Persons {
+				for player := range oldDivision.Players.Persons {
+					playerIndex := newClassicDivision.PlayerIndexMap[player]
 					newClassicDivision.Players.Persons =
 						append(newClassicDivision.Players.Persons,
 							&realtime.TournamentPerson{
@@ -499,14 +504,6 @@ func main() {
 								Suspended: oldDivision.DivisionManager.PlayersProperties[playerIndex].Removed,
 							})
 				}
-
-				newClassicDivision.PlayerIndexMap = oldDivision.DivisionManager.PlayerIndexMap
-				newClassicDivision.RoundControls = oldDivision.DivisionManager.RoundControls
-
-				newClassicDivision.DivisionControls.GameRequest = oldDivision.Controls.GameRequest
-				newClassicDivision.DivisionControls.SuspendedResult = realtime.TournamentGameResult_FORFEIT_LOSS
-				newClassicDivision.DivisionControls.SuspendedSpread = -50
-				newClassicDivision.DivisionControls.AutoStart = oldDivision.Controls.AutoStart
 
 				newDivision.DivisionManager = newClassicDivision
 				newDivisions[name] = newDivision
@@ -535,7 +532,7 @@ func main() {
 			}
 
 			ctxDB := tx.WithContext(ctx)
-			result := ctxDB.Model(&newtournament{}).Clauses(clause.Locking{Strength: "UPDATE"}).
+			result := ctxDB.Model(&tournament{}).Clauses(clause.Locking{Strength: "UPDATE"}).
 				Where("uuid = ?", mt.UUID).Updates(dbt)
 
 			if result.Error != nil {

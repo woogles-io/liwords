@@ -748,18 +748,18 @@ export const useOnSocketMsg = () => {
             break;
           }
 
-          case MessageType.TOURNAMENT_FULL_DIVISIONS_MESSAGE: {
-            const tfdm = parsedMsg as FullTournamentDivisions;
-            dispatchTournamentContext({
-              actionType: ActionType.SetDivisionsData,
-              payload: {
-                fullDivisions: tfdm,
-                loginState,
-              },
-            });
+          // case MessageType.TOURNAMENT_FULL_DIVISIONS_MESSAGE: {
+          //   const tfdm = parsedMsg as FullTournamentDivisions;
+          //   dispatchTournamentContext({
+          //     actionType: ActionType.SetDivisionsData,
+          //     payload: {
+          //       fullDivisions: tfdm,
+          //       loginState,
+          //     },
+          //   });
 
-            break;
-          }
+          //   break;
+          // }
         }
       });
     },
