@@ -27,7 +27,6 @@ var DurationMultiplier int = 24 * 60 * 60
 var UnreasonableTime int = 5 * 60
 
 func Automod(ctx context.Context, us user.Store, u0 *entity.User, u1 *entity.User, g *entity.Game) error {
-	fmt.Println("Automodding...")
 	totalGameTime := g.GameReq.InitialTimeSeconds + (60 * g.GameReq.MaxOvertimeMinutes)
 	lngt := ms.NotoriousGameType_GOOD
 	wngt := ms.NotoriousGameType_GOOD
@@ -85,8 +84,6 @@ func Automod(ctx context.Context, us user.Store, u0 *entity.User, u1 *entity.Use
 	if u1.Username == loserNickname {
 		luser, wuser = wuser, luser
 	}
-
-	fmt.Printf("ngt: %s, %s\n", wngt.String(), lngt.String())
 
 	if !wuser.IsBot {
 		err := updateNotoriety(ctx, us, wuser, g.Uid(), wngt)

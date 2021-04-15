@@ -181,12 +181,13 @@ func playGame(g *entity.Game,
 	gameEndReason pb.GameEndReason) error {
 
 	ctx := context.WithValue(context.Background(), gameplay.ConfigCtxKey("config"), &DefaultConfig)
-	nower := entity.NewFakeNower(int64(g.GameReq.InitialTimeSeconds))
+	nower := entity.NewFakeNower(1234)
 	g.SetTimerModule(nower)
+	g.ResetTimersAndStart()
 	gid := ""
 	for i := 0; i < len(turns); i++ {
 		// Let each turn take a minute
-		nower.Sleep(60)
+		nower.Sleep(60 * 1000)
 		turn := turns[i]
 		turn.GameId = g.GameID()
 		playerIdx := 1 - (i % 2)
@@ -195,6 +196,7 @@ func playGame(g *entity.Game,
 
 		_, err := gameplay.HandleEvent(ctx, gstore, ustore, lstore, tstore,
 			playerIds[playerIdx], turn)
+
 		gid = turn.GameId
 		if err != nil {
 			return err
@@ -209,7 +211,7 @@ func playGame(g *entity.Game,
 		}
 	} else if gameEndReason == pb.GameEndReason_TIME {
 		g.SetPlayerOnTurn(loserIndex)
-		nower.Sleep(int64(g.GameReq.InitialTimeSeconds * 2))
+		nower.Sleep(int64(g.GameReq.InitialTimeSeconds * 2 * 1000))
 		err := gameplay.TimedOut(ctx, gstore, ustore, lstore, tstore, playerIds[loserIndex], gid)
 		if err != nil {
 			return err
