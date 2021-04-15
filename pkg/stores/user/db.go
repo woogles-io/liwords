@@ -409,10 +409,10 @@ func (s *DBStore) SetPersonalInfo(ctx context.Context, uuid string, email string
 		return result.Error
 	}
 
-	return s.db.Model(p).Update(&profile{FirstName: firstName,
-		LastName:    lastName,
-		About:       about,
-		CountryCode: countryCode}).Error
+	return s.db.Model(p).Update(map[string]interface{}{"first_name": firstName,
+		"last_name":    lastName,
+		"about":        about,
+		"country_code": countryCode}).Error
 }
 
 // SetRatings set the specific ratings for the given variant in a transaction.
