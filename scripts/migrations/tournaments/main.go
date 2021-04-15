@@ -262,7 +262,7 @@ func oldDatabaseObjectToEntity(ctx context.Context, s *DBStore, id string) (*Old
 		if division.ManagerType == entity.ClassicTournamentType {
 			log.Debug().Interface("division", division).Msg("unmarshalling")
 			var classicDivision OldClassicDivision
-			err = json.Unmarshal(division.DivisionRawMessage, classicDivision)
+			err = json.Unmarshal(division.DivisionRawMessage, &classicDivision)
 			if err != nil {
 				return nil, err
 			}
@@ -274,13 +274,13 @@ func oldDatabaseObjectToEntity(ctx context.Context, s *DBStore, id string) (*Old
 	}
 
 	var directors OldTournamentPersons
-	err = json.Unmarshal(tm.Directors, directors)
+	err = json.Unmarshal(tm.Directors, &directors)
 	if err != nil {
 		return nil, err
 	}
 
 	var defaultSettings realtime.GameRequest
-	err = json.Unmarshal(tm.DefaultSettings, defaultSettings)
+	err = json.Unmarshal(tm.DefaultSettings, &defaultSettings)
 	if err != nil {
 		// it's ok, don't error out; this tournament has no default settings
 	}
@@ -419,7 +419,6 @@ func (s *DBStore) toDBObj(t *entity.Tournament) (*newtournament, error) {
 // Main
 
 func main() {
-	// Populate every game with its quickdata
 	cfg := &config.Config{}
 	cfg.Load(os.Args[1:])
 	log.Info().Msgf("Loaded config: %v", cfg)

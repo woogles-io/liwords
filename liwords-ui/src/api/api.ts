@@ -17,7 +17,11 @@ interface PBMsg {
 // unrelated build errors for me. I have no idea why. This can be revisited later
 // I hope.
 
-export const postBinary = (service: string, method: string, msg: PBMsg) => {
+export const postBinary = async (
+  service: string,
+  method: string,
+  msg: PBMsg
+) => {
   return axios.post(toAPIUrl(service, method), msg.serializeBinary(), {
     headers: {
       'Content-Type': 'application/protobuf',

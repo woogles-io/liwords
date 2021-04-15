@@ -221,6 +221,42 @@ export const Table = React.memo((props: Props) => {
   });
   const [isObserver, setIsObserver] = useState(false);
 
+  const getAvatarData = useCallback(async () => {
+    const req = new UsersGameInfoRequest();
+    req.setUuidsList(gameInfo.players.map((p) => p.user_id));
+    try {
+      const rbin = await postBinary(
+        'user_service.ProfileService',
+        'GetUsersGameInfo',
+        req
+      );
+      const resp = UsersGameInfoResponse.deserializeBinary(
+        rbin.data
+      ).toObject();
+      setNeedAvatars(false);
+      const players = [...gameInfo.players];
+      resp.infosList.forEach((info) => {
+        if (info.avatarUrl.length) {
+          const index = gameInfo.players.findIndex(
+            (p) => p.user_id === info.uuid
+          );
+          if (index >= 0) {
+            players[index] = {
+              ...players[index],
+              avatar_url: info.avatarUrl,
+            };
+          }
+        }
+      });
+      setGameInfo({ ...gameInfo, players: players });
+    } catch (err) {
+      message.error({
+        content: `Failed to fetch player information; please refresh. (Error: ${err.message})`,
+        duration: 10,
+      });
+    }
+  }, [gameInfo]);
+
   useEffect(() => {
     // Prevent backspace unless we're in an input element. We don't want to
     // leave if we're on Firefox.
@@ -313,38 +349,8 @@ export const Table = React.memo((props: Props) => {
     if (!gameInfo.game_id || !needAvatars) {
       return;
     }
-
-    const req = new UsersGameInfoRequest();
-    req.setUuidsList(gameInfo.players.map((p) => p.user_id));
-    postBinary('user_service.ProfileService', 'GetUsersGameInfo', req)
-      .then((rbin) => {
-        const resp = UsersGameInfoResponse.deserializeBinary(
-          rbin.data
-        ).toObject();
-        setNeedAvatars(false);
-        const players = [...gameInfo.players];
-        resp.infosList.forEach((info) => {
-          if (info.avatarUrl.length) {
-            const index = gameInfo.players.findIndex(
-              (p) => p.user_id === info.uuid
-            );
-            if (index >= 0) {
-              players[index] = {
-                ...players[index],
-                avatar_url: info.avatarUrl,
-              };
-            }
-          }
-        });
-        setGameInfo({ ...gameInfo, players: players });
-      })
-      .catch((err) => {
-        message.error({
-          content: `Failed to fetch player information; please refresh. (Error: ${err.message})`,
-          duration: 10,
-        });
-      });
-  }, [gameInfo, needAvatars]);
+    getAvatarData();
+  }, [gameInfo, getAvatarData, needAvatars]);
 
   useEffect(() => {
     if (!gameInfo.tournament_id) {
