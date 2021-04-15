@@ -52,7 +52,7 @@ The Woogles.io team
 const AccountClosureTemplate = `
 Dear Woogles Administrators,
 
-The following user has requested that their account be deleted:
+The following user has deleted their account:
 
 User:  %s
 Email: %s
@@ -343,7 +343,25 @@ func (as *AuthenticationService) NotifyAccountClosure(ctx context.Context, r *pb
 		return nil, err
 	}
 
-	id, err := emailer.SendSimpleMessage(as.mailgunKey, emailer.WooglesAdministratorAddress, fmt.Sprintf("Account Closure Request for %s", sess.Username),
+	matches, err := ComparePassword(r.Password, user.Password)
+	if err != nil {
+		return nil, twirp.InternalErrorWith(err)
+	}
+	if !matches {
+		return nil, twirp.NewError(twirp.Unauthenticated, "password incorrect")
+	}
+
+	// This action will not need to use the chat store so we can pass the nil value
+	err = mod.ApplyActions(ctx, as.userStore, nil, []*ms.ModAction{{
+		UserId:   sess.UserUUID,
+		Duration: 0,
+		Note:     "User initiated account deletion",
+		Type:     ms.ModActionType_DELETE_ACCOUNT}})
+	if err != nil {
+		return nil, err
+	}
+
+	id, err := emailer.SendSimpleMessage(as.mailgunKey, emailer.WooglesAdministratorAddress, fmt.Sprintf("%s Account Closure", sess.Username),
 		fmt.Sprintf(AccountClosureTemplate, sess.Username, user.Email))
 	if err != nil {
 		return nil, twirp.InternalErrorWith(err)

@@ -408,17 +408,11 @@ func (s *DBStore) SetPersonalInfo(ctx context.Context, uuid string, email string
 	if result := s.db.Model(u).Related(p); result.Error != nil {
 		return result.Error
 	}
-	if result := s.db.Model(p).Update("first_name", firstName); result.Error != nil {
-		return result.Error
-	}
-	if result := s.db.Model(p).Update("last_name", lastName); result.Error != nil {
-		return result.Error
-	}
-	if result := s.db.Model(p).Update("about", about); result.Error != nil {
-		return result.Error
-	}
 
-	return s.db.Model(p).Update("country_code", countryCode).Error
+	return s.db.Model(p).Update(map[string]interface{}{"first_name": firstName,
+		"last_name":    lastName,
+		"about":        about,
+		"country_code": countryCode}).Error
 }
 
 // SetRatings set the specific ratings for the given variant in a transaction.
@@ -847,6 +841,33 @@ func (s *DBStore) ResetStatsAndRatings(ctx context.Context, uid string) error {
 	}
 
 	return nil
+}
+
+func (s *DBStore) ResetPersonalInfo(ctx context.Context, uuid string) error {
+	u := &User{}
+	p := &profile{}
+
+	if result := s.db.Where("uuid = ?", uuid).First(u); result.Error != nil {
+		return result.Error
+	}
+	if result := s.db.Model(u).Related(p); result.Error != nil {
+		return result.Error
+	}
+
+	return s.db.Model(p).Update(map[string]interface{}{"first_name": "",
+		"last_name":    "",
+		"about":        "",
+		"title":        "",
+		"avatar_url":   "",
+		"country_code": ""}).Error
+}
+
+func (s *DBStore) ResetProfile(ctx context.Context, uid string) error {
+	err := s.ResetStatsAndRatings(ctx, uid)
+	if err != nil {
+		return err
+	}
+	return s.ResetPersonalInfo(ctx, uid)
 }
 
 func (s *DBStore) Disconnect() {

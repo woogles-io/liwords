@@ -55,6 +55,7 @@ func recreateDB() {
 		{Username: "Sandbagger", Email: "sandbagger@gmail.com", UUID: "Sandbagger"},
 		{Username: "Cheater", Email: "cheater@woogles.io", UUID: "Cheater"},
 		{Username: "Hacker", Email: "hacker@woogles.io", UUID: "Hacker"},
+		{Username: "Deleter", Email: "deleter@woogles.io", UUID: "Deleter"},
 		{Username: "Moderator", Email: "admin@woogles.io", UUID: "Moderator", IsMod: true},
 	} {
 		err = ustore.New(context.Background(), u)
@@ -213,7 +214,7 @@ func TestMod(t *testing.T) {
 	err = ApplyActions(ctx, us, cs, []*ms.ModAction{permanentSuspendAction})
 	is.NoErr(err)
 
-	is.True(ActionExists(ctx, us, "Sandbagger", false, []ms.ModActionType{permanentSuspendAction.Type}).Error() == "You are banned from logging in. If you think this is an error, contact conduct@woogles.io.")
+	is.True(ActionExists(ctx, us, "Sandbagger", false, []ms.ModActionType{permanentSuspendAction.Type}).Error() == "This account has been deactivated. If you think this is an error, contact conduct@woogles.io.")
 	is.True(ActionExists(ctx, us, "Sandbagger", true, []ms.ModActionType{permanentSuspendAction.Type}).Error() == "Whoops, something went wrong! Please log out and try logging in again.")
 
 	expectedSandbaggerActions, err = GetActions(ctx, us, "Sandbagger")
@@ -272,7 +273,26 @@ func TestMod(t *testing.T) {
 	err = ActionExists(ctx, us, "Hacker", false, []ms.ModActionType{hackerAction.Type, longerHackerAction.Type, permanentHackerAction.Type})
 	is.True(err.Error() == "Whoops, something went wrong! Please log out and try logging in again.")
 
+	// Apply a delete action and ensure that the profile is deleted and the account is suspended
+	deleteAbout := "plz delet this"
+	err = us.SetAbout(ctx, "Deleter", deleteAbout)
+	is.NoErr(err)
+
+	deleterUser, err := us.GetByUUID(ctx, "Deleter")
+	is.NoErr(err)
+	is.True(deleteAbout == deleterUser.Profile.About)
+
+	deleteAction := &ms.ModAction{UserId: "Deleter", Type: ms.ModActionType_DELETE_ACCOUNT, Duration: 9}
+	err = ApplyActions(ctx, us, cs, []*ms.ModAction{deleteAction})
+	is.NoErr(err)
+
+	err = ActionExists(ctx, us, "Deleter", false, []ms.ModActionType{ms.ModActionType_SUSPEND_ACCOUNT})
+	is.True(err.Error() == "This account has been deactivated. If you think this is an error, contact conduct@woogles.io.")
+	deleterUser, err = us.GetByUUID(ctx, "Deleter")
+	is.NoErr(err)
+	is.True(deleterUser.Profile.About == "")
 	us.(*user.DBStore).Disconnect()
+
 }
 
 func equalActionHistories(ah1 []*ms.ModAction, ah2 []*ms.ModAction) error {

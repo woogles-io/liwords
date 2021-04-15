@@ -124,6 +124,7 @@ const Moderation = (props: ModProps) => {
             <Select.Option value="RESET_STATS_AND_RATINGS">
               Reset Stats and Ratings
             </Select.Option>
+            <Select.Option value="DELETE_ACCOUNT">Delete Account</Select.Option>
           </Select>
         </Form.Item>
 

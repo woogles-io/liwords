@@ -27,6 +27,8 @@ type Store interface {
 		p0stats *entity.Stats, p1stats *entity.Stats) error
 	ResetRatings(ctx context.Context, uuid string) error
 	ResetStats(ctx context.Context, uuid string) error
+	ResetProfile(ctx context.Context, uuid string) error
+	ResetPersonalInfo(ctx context.Context, uuid string) error
 	GetRandomBot(ctx context.Context) (*entity.User, error)
 
 	AddFollower(ctx context.Context, targetUser, follower uint) error
