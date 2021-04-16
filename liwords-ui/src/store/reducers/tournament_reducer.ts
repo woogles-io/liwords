@@ -208,7 +208,7 @@ const divisionDataResponseToObj = (
     players: Array<TournamentPerson>(),
     standingsMap: {},
     pairings: Array<RoundPairings>(),
-    divisionControls: dd.getControls(),
+    divisionControls: dd.getControls(), // game request, etc
     roundControls: Array<RoundControl>(),
     currentRound: dd.getCurrentRound(),
     playerIndexMap: {},
@@ -258,6 +258,7 @@ const divisionDataResponseToObj = (
       });
     newPairings.push({ roundPairings: newRoundPairings });
   });
+  ret.numRounds = dd.getRoundControlsList().length;
 
   dd.getPairingMapMap().forEach((value: Pairing, key: string) => {
     const newPairing = {
@@ -572,6 +573,7 @@ export function TournamentReducer(
         loginState: LoginState;
       };
 
+      console.log('fdivs', dd.fullDivisions.toObject());
       const divisions: { [name: string]: Division } = {};
       const divisionsMap = dd.fullDivisions.getDivisionsMap();
       const fullLoggedInID = `${dd.loginState.userID}:${dd.loginState.username}`;

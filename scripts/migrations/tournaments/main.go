@@ -29,40 +29,6 @@ import (
 
 // Legacy realtime types that have probably since changed are
 // copied here so we don't have to think about conflicts
-type OldGameMode int32
-
-type OldRatingMode int32
-
-type OldGameRules struct {
-	state         protoimpl.MessageState
-	sizeCache     protoimpl.SizeCache
-	unknownFields protoimpl.UnknownFields
-
-	BoardLayoutName        string `protobuf:"bytes,1,opt,name=board_layout_name,json=boardLayoutName,proto3" json:"board_layout_name,omitempty"`
-	LetterDistributionName string `protobuf:"bytes,2,opt,name=letter_distribution_name,json=letterDistributionName,proto3" json:"letter_distribution_name,omitempty"`
-	// If blank, variant is classic, otherwise it could be some other game
-	// (a is worth 100, dogworms, etc.)
-	VariantName string `protobuf:"bytes,3,opt,name=variant_name,json=variantName,proto3" json:"variant_name,omitempty"`
-}
-
-type OldTournamentGameResult int32
-
-type OldGameEndReason int32
-
-type OldPairingMethod int32
-
-type OldFirstMethod int32
-
-type OldTournamentGame struct {
-	state         protoimpl.MessageState
-	sizeCache     protoimpl.SizeCache
-	unknownFields protoimpl.UnknownFields
-
-	Scores        []int32                   `protobuf:"varint,1,rep,packed,name=scores,proto3" json:"scores,omitempty"`
-	Results       []OldTournamentGameResult `protobuf:"varint,2,rep,packed,name=results,proto3,enum=liwords.TournamentGameResult" json:"results,omitempty"`
-	GameEndReason OldGameEndReason          `protobuf:"varint,3,opt,name=game_end_reason,json=gameEndReason,proto3,enum=liwords.GameEndReason" json:"game_end_reason,omitempty"`
-	Id            string                    `protobuf:"bytes,4,opt,name=id,proto3" json:"id,omitempty"`
-}
 
 type OldTournamentPersons struct {
 	state         protoimpl.MessageState
@@ -79,10 +45,10 @@ type OldPlayerRoundInfo struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Players     []string                  `protobuf:"bytes,1,rep,name=players,proto3" json:"players,omitempty"`
-	Games       []*OldTournamentGame      `protobuf:"bytes,2,rep,name=games,proto3" json:"games,omitempty"` // can be a list, for elimination tourneys
-	Outcomes    []OldTournamentGameResult `protobuf:"varint,3,rep,packed,name=outcomes,proto3,enum=liwords.TournamentGameResult" json:"outcomes,omitempty"`
-	ReadyStates []string                  `protobuf:"bytes,4,rep,name=ready_states,json=readyStates,proto3" json:"ready_states,omitempty"`
+	Players     []string                        `protobuf:"bytes,1,rep,name=players,proto3" json:"players,omitempty"`
+	Games       []*realtime.TournamentGame      `protobuf:"bytes,2,rep,name=games,proto3" json:"games,omitempty"` // can be a list, for elimination tourneys
+	Outcomes    []realtime.TournamentGameResult `protobuf:"varint,3,rep,packed,name=outcomes,proto3,enum=liwords.TournamentGameResult" json:"outcomes,omitempty"`
+	ReadyStates []string                        `protobuf:"bytes,4,rep,name=ready_states,json=readyStates,proto3" json:"ready_states,omitempty"`
 }
 
 type OldPlayerProperties struct {
@@ -475,12 +441,26 @@ func main() {
 				newClassicDivision.DivisionControls.SuspendedSpread = -50
 				newClassicDivision.DivisionControls.AutoStart = oldDivision.Controls.AutoStart
 
+				for _, player := range oldDivision.DivisionManager.Players {
+					playerIndex := newClassicDivision.PlayerIndexMap[player]
+					newClassicDivision.Players.Persons =
+						append(newClassicDivision.Players.Persons,
+							&realtime.TournamentPerson{
+								Id:        player,
+								Rating:    oldDivision.DivisionManager.PlayersProperties[playerIndex].Rating,
+								Suspended: oldDivision.DivisionManager.PlayersProperties[playerIndex].Removed,
+							})
+				}
+
 				for round, pairings := range oldDivision.DivisionManager.Matrix {
 					for _, pairingKey := range pairings {
-						oldPairing, ok := newClassicDivision.PairingMap[pairingKey]
+						oldPairing, ok := oldDivision.DivisionManager.PairingMap[pairingKey]
 						if ok {
 							newClassicDivision.PairingMap[pairingKey] = &realtime.Pairing{
-								Players:     oldPairing.Players,
+								Players: []int32{
+									newClassicDivision.PlayerIndexMap[oldPairing.Players[0]],
+									newClassicDivision.PlayerIndexMap[oldPairing.Players[1]],
+								},
 								Games:       oldPairing.Games,
 								Outcomes:    oldPairing.Outcomes,
 								ReadyStates: oldPairing.ReadyStates,
@@ -493,17 +473,6 @@ func main() {
 					}
 				}
 				newClassicDivision.CurrentRound = int32(oldDivision.DivisionManager.CurrentRound)
-
-				for player := range oldDivision.Players.Persons {
-					playerIndex := newClassicDivision.PlayerIndexMap[player]
-					newClassicDivision.Players.Persons =
-						append(newClassicDivision.Players.Persons,
-							&realtime.TournamentPerson{
-								Id:        player,
-								Rating:    oldDivision.DivisionManager.PlayersProperties[playerIndex].Rating,
-								Suspended: oldDivision.DivisionManager.PlayersProperties[playerIndex].Removed,
-							})
-				}
 
 				newDivision.DivisionManager = newClassicDivision
 				newDivisions[name] = newDivision

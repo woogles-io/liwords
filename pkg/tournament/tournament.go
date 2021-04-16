@@ -1027,6 +1027,7 @@ func GetXHRResponse(ctx context.Context, ts TournamentStore, id string) (*realti
 		xhr.Division = divisionKey
 		response.Divisions[divisionKey] = xhr
 	}
+	log.Debug().Interface("xhrResp", response).Msg("get-xhr")
 	return response, nil
 }
 

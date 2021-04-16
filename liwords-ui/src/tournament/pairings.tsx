@@ -31,6 +31,7 @@ const pairingsForRound = (
       }
     }
   });
+  console.log('pairingsForRound', round, division, n);
   return n;
 };
 
@@ -126,9 +127,8 @@ export const Pairings = (props: Props) => {
     };
     const pairingsData = pairings.map(
       (pairing: SinglePairing): PairingTableData => {
-        const playerNames = pairing.players
-          .map((v) => v.getId())
-          .map(usernameFromPlayerEntry);
+        const playerFullIDs = pairing.players.map((v) => v.getId());
+        const playerNames = playerFullIDs.map(usernameFromPlayerEntry);
         const isBye = pairing.outcomes[0] === TournamentGameResult.BYE;
         const isForfeit =
           pairing.outcomes[0] === TournamentGameResult.FORFEIT_LOSS;
@@ -143,8 +143,8 @@ export const Pairings = (props: Props) => {
         if (isMyGame) {
           sortPriority = 2;
         }
-        const isRemoved = (playerName: string) =>
-          division.players[division.playerIndexMap[playerName]].getSuspended();
+        const isRemoved = (playerID: string) =>
+          division.players[division.playerIndexMap[playerID]]?.getSuspended();
 
         const players =
           playerNames[0] === playerNames[1] ? (
@@ -160,16 +160,16 @@ export const Pairings = (props: Props) => {
                 }
                 {isBye && <Tag className="ant-tag-bye">Bye</Tag>}
                 {isForfeit && <Tag className="ant-tag-forfeit">Forfeit</Tag>}
-                {isRemoved(playerNames[0]) && (
+                {isRemoved(playerFullIDs[0]) && (
                   <Tag className="ant-tag-removed">Removed</Tag>
                 )}
               </p>
             </div>
           ) : (
             <div>
-              {playerNames.map((playerName) => (
-                <p key={playerName}>
-                  {playerName}{' '}
+              {playerFullIDs.map((playerID) => (
+                <p key={playerID}>
+                  {usernameFromPlayerEntry(playerID)}{' '}
                   {
                     // <PlayerTag
                     //   username={playerName}
@@ -177,7 +177,7 @@ export const Pairings = (props: Props) => {
                     //   tournamentSlug={tournamentContext.metadata.slug}
                     // />
                   }
-                  {isRemoved(playerName) && (
+                  {isRemoved(playerID) && (
                     <Tag className="ant-tag-removed">Removed</Tag>
                   )}
                 </p>
@@ -329,6 +329,7 @@ export const Pairings = (props: Props) => {
         };
       }
     );
+    console.log('formatted', division, round, pairingsData);
     return pairingsData.sort((a, b) => b.sort - a.sort);
   };
 
