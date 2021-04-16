@@ -91,11 +91,10 @@ export const BriefProfiles = (props: any) => {
   }, []);
 
   const cache = cacheRef.current;
-  const value = useMemo(() => ({ cache, request }), [
-    cache,
-    request,
-    profileId,
-  ]);
+  const value = useMemo(() => {
+    void profileId; // we really want to return a new instance when this changes
+    return { cache, request };
+  }, [cache, request, profileId]);
 
   return (
     <BriefProfilesContext.Provider value={value}>
