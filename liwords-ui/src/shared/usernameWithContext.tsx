@@ -2,6 +2,7 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { Dropdown } from 'antd';
 import { TheBlocker } from './blocker';
+import { useBriefProfile } from '../utils/brief_profiles';
 import { useLoginStateStoreContext } from '../store/store';
 import { canMod } from '../mod/perms';
 
@@ -24,6 +25,7 @@ type UsernameWithContextProps = {
 export const UsernameWithContext = (props: UsernameWithContextProps) => {
   const { loginState } = useLoginStateStoreContext();
   const { userID, perms } = loginState;
+  const briefProfile = useBriefProfile(props.userID);
 
   const userMenu = (
     <ul>
@@ -86,7 +88,12 @@ export const UsernameWithContext = (props: UsernameWithContextProps) => {
       placement="bottomLeft"
       trigger={['click']}
     >
-      <span className="user-context-menu">{props.username}</span>
+      <span className="user-context-menu">
+        {false && briefProfile && (
+          <React.Fragment>{briefProfile!.getCountryCode()} </React.Fragment>
+        )}
+        {props.username}
+      </span>
     </Dropdown>
   );
 };
