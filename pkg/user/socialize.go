@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/domino14/liwords/pkg/apiserver"
+	"github.com/domino14/liwords/pkg/entity"
 	realtime "github.com/domino14/liwords/rpc/api/proto/realtime"
 	pb "github.com/domino14/liwords/rpc/api/proto/user_service"
 	"github.com/rs/zerolog/log"
@@ -194,6 +195,26 @@ func (ss *SocializeService) GetChatsForChannel(ctx context.Context, req *pb.GetC
 	if err != nil {
 		return nil, err
 	}
+	chatters := make(map[string]*entity.User)
+	for _, chatMessage := range chats {
+		chatters[chatMessage.UserId] = nil
+	}
+	// TODO: need help to make this not n+1 while still using gorm
+	for userId := range chatters {
+		user, err := ss.userStore.GetByUUID(ctx, userId)
+		if err != nil {
+			log.Err(err).Str("userID", userId).Msg("getting-user-from-chat")
+		} else {
+			chatters[userId] = user
+		}
+	}
+	for _, chatMessage := range chats {
+		sendingUser := chatters[chatMessage.UserId]
+		if sendingUser != nil {
+			sendingUser.AugmentChatMessage(chatMessage)
+		}
+	}
+
 	return &realtime.ChatMessages{Messages: chats}, err
 }
 

@@ -77,6 +77,7 @@ func (b *Bus) chat(ctx context.Context, userID string, evt *pb.ChatMessage) erro
 	if err != nil {
 		return err
 	}
+	sendingUser.AugmentChatMessage(chatMessage)
 	toSend := entity.WrapEvent(chatMessage, pb.MessageType_CHAT_MESSAGE)
 	data, err := toSend.Serialize()
 
