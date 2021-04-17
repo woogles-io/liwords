@@ -223,3 +223,8 @@ func (ss *SocializeService) GetChatsForChannel(ctx context.Context, req *pb.GetC
 
 // 	return &pb.GetBlockedByResponse{Users: basicUsers}, nil
 // }
+
+func (ss *SocializeService) GetModList(ctx context.Context, req *pb.GetModListRequest) (*pb.GetModListResponse, error) {
+	// this endpoint should work without login
+	return ss.userStore.GetModList(ctx)
+}
