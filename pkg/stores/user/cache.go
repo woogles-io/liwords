@@ -52,6 +52,8 @@ type backingStore interface {
 	UsersByPrefix(ctx context.Context, prefix string) ([]*pb.BasicUser, error)
 	Count(ctx context.Context) (int64, error)
 	Set(ctx context.Context, u *entity.User) error
+
+	GetModList(ctx context.Context) (*pb.GetModListResponse, error)
 }
 
 const (
@@ -64,6 +66,12 @@ type BriefProfileCache struct {
 	cache map[string]*pb.BriefProfile
 }
 
+type modListCache struct {
+	sync.Mutex
+	expiry   time.Time
+	response *pb.GetModListResponse
+}
+
 // Cache will reside in-memory, and will be per-node.
 type Cache struct {
 	cache *lru.Cache
@@ -71,6 +79,8 @@ type Cache struct {
 	backing backingStore
 
 	briefProfileCache *BriefProfileCache
+
+	cachedModList modListCache
 }
 
 func NewCache(backing backingStore) *Cache {
@@ -393,4 +403,21 @@ func (c *Cache) Set(ctx context.Context, u *entity.User) error {
 	// readd to cache
 	c.cache.Add(u.UUID, u)
 	return nil
+}
+
+func (c *Cache) GetModList(ctx context.Context) (*pb.GetModListResponse, error) {
+	c.cachedModList.Lock()
+	defer c.cachedModList.Unlock()
+	if c.cachedModList.response != nil && time.Now().Before(c.cachedModList.expiry) {
+		return c.cachedModList.response, nil
+	}
+
+	resp, err := c.backing.GetModList(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	c.cachedModList.response = resp
+	c.cachedModList.expiry = time.Now().Add(time.Minute)
+	return resp, nil
 }

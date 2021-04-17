@@ -47,6 +47,8 @@ type Store interface {
 	UsersByPrefix(ctx context.Context, prefix string) ([]*upb.BasicUser, error)
 	CachedCount(ctx context.Context) int
 	Set(ctx context.Context, u *entity.User) error
+
+	GetModList(ctx context.Context) (*upb.GetModListResponse, error)
 }
 
 // PresenceStore stores user presence. Since it is meant to be easily user-visible,

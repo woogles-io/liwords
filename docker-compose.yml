@@ -32,6 +32,8 @@ services:
     ports:
       - "8001:8001"
     labels:
+      - "traefik.http.middlewares.floc.headers.customresponseheaders.Permissions-Policy=interest-cohort=()"
+      - "traefik.http.routers.liwords.middlewares=floc"
       - "traefik.http.routers.liwords.rule=PathPrefix(`/twirp/`)"
       - "traefik.http.routers.liwords.entrypoints=web"
       - "traefik.http.services.liwords.loadbalancer.server.port=8001"
@@ -70,6 +72,8 @@ services:
     networks:
       - aeronet
     labels:
+      - "traefik.http.middlewares.floc.headers.customresponseheaders.Permissions-Policy=interest-cohort=()"
+      - "traefik.http.routers.liwords-socket.middlewares=floc"
       - "traefik.http.routers.liwords-socket.rule=PathPrefix(`/ws`)"
       - "traefik.http.routers.liwords-socket.entrypoints=web"
       - "traefik.http.services.liwords-socket.loadbalancer.server.port=8087"
@@ -137,6 +141,8 @@ services:
     networks:
       - aeronet
     labels:
+      - "traefik.http.middlewares.floc.headers.customresponseheaders.Permissions-Policy=interest-cohort=()"
+      - "traefik.http.routers.liwords-fe.middlewares=floc"
       - "traefik.http.routers.liwords-fe.rule=PathPrefix(`/`)"
       - "traefik.http.services.liwords-fe.loadbalancer.server.port=3000"
       - traefik.enable=true

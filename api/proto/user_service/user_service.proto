@@ -253,6 +253,13 @@ message GetBlocksResponse { repeated BasicUser users = 1; }
 // the backend but we need to write a lot of hard code for that.
 message GetFullBlocksResponse { repeated string user_ids = 1; }
 
+message GetModListRequest {}
+
+message GetModListResponse {
+  repeated string admin_user_ids = 1;
+  repeated string mod_user_ids = 2;
+}
+
 // Yeah I know
 service SocializeService {
   rpc AddFollow(AddFollowRequest) returns(OKResponse);
@@ -268,4 +275,5 @@ service SocializeService {
   rpc GetActiveChatChannels(GetActiveChatChannelsRequest)
       returns(ActiveChatChannels);
   rpc GetChatsForChannel(GetChatsRequest) returns(liwords.ChatMessages);
+  rpc GetModList(GetModListRequest) returns (GetModListResponse);
 }

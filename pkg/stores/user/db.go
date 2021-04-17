@@ -36,9 +36,9 @@ type User struct {
 	// Password will be hashed.
 	Password    string `gorm:"type:varchar(128)"`
 	InternalBot bool   `gorm:"default:false;index"`
-	IsAdmin     bool   `gorm:"default:false"`
+	IsAdmin     bool   `gorm:"default:false;index"`
 	IsDirector  bool   `gorm:"default:false"`
-	IsMod       bool   `gorm:"default:false"`
+	IsMod       bool   `gorm:"default:false;index"`
 	ApiKey      string
 
 	Actions postgres.Jsonb
@@ -928,4 +928,31 @@ func (s *DBStore) Count(ctx context.Context) (int64, error) {
 
 func (s *DBStore) CachedCount(ctx context.Context) int {
 	return 0
+}
+
+func (s *DBStore) GetModList(ctx context.Context) (*pb.GetModListResponse, error) {
+	var users []User
+	if result := s.db.
+		Where("is_admin = ?", true).Or("is_mod = ?", true).
+		Select([]string{"uuid", "is_admin", "is_mod"}).
+		Find(&users); result.Error != nil {
+		return nil, result.Error
+	}
+
+	var adminUserIds []string
+	var modUserIds []string
+
+	for _, user := range users {
+		if user.IsAdmin {
+			adminUserIds = append(adminUserIds, user.UUID)
+		}
+		if user.IsMod {
+			modUserIds = append(modUserIds, user.UUID)
+		}
+	}
+
+	return &pb.GetModListResponse{
+		AdminUserIds: adminUserIds,
+		ModUserIds:   modUserIds,
+	}, nil
 }
