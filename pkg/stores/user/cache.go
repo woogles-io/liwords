@@ -2,6 +2,8 @@ package user
 
 import (
 	"context"
+	"sync"
+	"time"
 
 	"github.com/domino14/liwords/pkg/entity"
 	lru "github.com/hashicorp/golang-lru"
@@ -57,11 +59,18 @@ const (
 	CacheCap = 400
 )
 
+type BriefProfileCache struct {
+	sync.Mutex
+	cache map[string]*pb.BriefProfile
+}
+
 // Cache will reside in-memory, and will be per-node.
 type Cache struct {
 	cache *lru.Cache
 
 	backing backingStore
+
+	briefProfileCache *BriefProfileCache
 }
 
 func NewCache(backing backingStore) *Cache {
@@ -74,6 +83,9 @@ func NewCache(backing backingStore) *Cache {
 	return &Cache{
 		backing: backing,
 		cache:   lrucache,
+		briefProfileCache: &BriefProfileCache{
+			cache: make(map[string]*pb.BriefProfile),
+		},
 	}
 }
 
@@ -138,8 +150,48 @@ func (c *Cache) SetAvatarUrl(ctx context.Context, uuid string, avatarUrl string)
 }
 
 func (c *Cache) GetBriefProfiles(ctx context.Context, uuids []string) (map[string]*pb.BriefProfile, error) {
-	// no caching
-	return c.backing.GetBriefProfiles(ctx, uuids)
+	c.briefProfileCache.Lock()
+	defer c.briefProfileCache.Unlock()
+
+	missingUuids := make([]string, 0, len(uuids))
+	ret := make(map[string]*pb.BriefProfile)
+	for _, uuid := range uuids {
+		if cached, ok := c.briefProfileCache.cache[uuid]; ok {
+			ret[uuid] = cached
+		} else {
+			missingUuids = append(missingUuids, uuid)
+		}
+	}
+
+	if len(missingUuids) > 0 {
+		additionalStuffs, err := c.backing.GetBriefProfiles(ctx, missingUuids)
+		if err != nil {
+			return nil, err
+		}
+
+		if len(additionalStuffs) > 0 {
+			// only cache existing values, so cache size is bounded by database size.
+
+			for uuid, value := range additionalStuffs {
+				ret[uuid] = value
+				c.briefProfileCache.cache[uuid] = value
+			}
+
+			// this one goroutine will evict all of these values at the same time
+			go func() {
+				time.Sleep(5 * time.Minute)
+
+				c.briefProfileCache.Lock()
+				defer c.briefProfileCache.Unlock()
+
+				for uuid := range additionalStuffs {
+					delete(c.briefProfileCache.cache, uuid)
+				}
+			}()
+		}
+	}
+
+	return ret, nil
 }
 
 func (c *Cache) SetPersonalInfo(ctx context.Context, uuid string, email string, firstName string, lastName string, countryCode string, about string) error {
