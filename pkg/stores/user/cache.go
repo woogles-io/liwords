@@ -153,8 +153,11 @@ func (c *Cache) SetAvatarUrl(ctx context.Context, uuid string, avatarUrl string)
 		return err
 	}
 	u.Profile.AvatarUrl = avatarUrl
-	defer c.uncacheBriefProfile(uuid)
-	return c.backing.SetAvatarUrl(ctx, uuid, avatarUrl)
+	if err = c.backing.SetAvatarUrl(ctx, uuid, avatarUrl); err != nil {
+		return err
+	}
+	c.uncacheBriefProfile(uuid)
+	return nil
 }
 
 func (c *Cache) GetBriefProfiles(ctx context.Context, uuids []string) (map[string]*pb.BriefProfile, error) {
@@ -211,8 +214,11 @@ func (c *Cache) SetPersonalInfo(ctx context.Context, uuid string, email string, 
 	u.Profile.FirstName = firstName
 	u.Profile.LastName = lastName
 	u.Profile.CountryCode = countryCode
-	defer c.uncacheBriefProfile(uuid)
-	return c.backing.SetPersonalInfo(ctx, uuid, email, firstName, lastName, countryCode, about)
+	if err = c.backing.SetPersonalInfo(ctx, uuid, email, firstName, lastName, countryCode, about); err != nil {
+		return err
+	}
+	c.uncacheBriefProfile(uuid)
+	return nil
 }
 
 func (c *Cache) ResetPersonalInfo(ctx context.Context, uuid string) error {
@@ -227,8 +233,11 @@ func (c *Cache) ResetPersonalInfo(ctx context.Context, uuid string) error {
 	u.Profile.Title = ""
 	u.Profile.AvatarUrl = ""
 	u.Profile.About = ""
-	defer c.uncacheBriefProfile(uuid)
-	return c.backing.ResetPersonalInfo(ctx, uuid)
+	if err = c.backing.ResetPersonalInfo(ctx, uuid); err != nil {
+		return err
+	}
+	c.uncacheBriefProfile(uuid)
+	return nil
 }
 
 func (c *Cache) SetRatings(ctx context.Context, p0uuid string, p1uuid string, variant entity.VariantKey, p0Rating entity.SingleRating, p1Rating entity.SingleRating) error {
