@@ -89,6 +89,13 @@ func NewCache(backing backingStore) *Cache {
 	}
 }
 
+func (c *Cache) uncacheBriefProfile(uuid string) {
+	c.briefProfileCache.Lock()
+	defer c.briefProfileCache.Unlock()
+
+	delete(c.briefProfileCache.cache, uuid)
+}
+
 func (c *Cache) Get(ctx context.Context, username string) (*entity.User, error) {
 	return c.backing.Get(ctx, username)
 }
@@ -146,6 +153,7 @@ func (c *Cache) SetAvatarUrl(ctx context.Context, uuid string, avatarUrl string)
 		return err
 	}
 	u.Profile.AvatarUrl = avatarUrl
+	defer c.uncacheBriefProfile(uuid)
 	return c.backing.SetAvatarUrl(ctx, uuid, avatarUrl)
 }
 
@@ -203,6 +211,7 @@ func (c *Cache) SetPersonalInfo(ctx context.Context, uuid string, email string, 
 	u.Profile.FirstName = firstName
 	u.Profile.LastName = lastName
 	u.Profile.CountryCode = countryCode
+	defer c.uncacheBriefProfile(uuid)
 	return c.backing.SetPersonalInfo(ctx, uuid, email, firstName, lastName, countryCode, about)
 }
 
@@ -218,6 +227,7 @@ func (c *Cache) ResetPersonalInfo(ctx context.Context, uuid string) error {
 	u.Profile.Title = ""
 	u.Profile.AvatarUrl = ""
 	u.Profile.About = ""
+	defer c.uncacheBriefProfile(uuid)
 	return c.backing.ResetPersonalInfo(ctx, uuid)
 }
 
