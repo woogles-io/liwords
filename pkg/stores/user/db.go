@@ -36,9 +36,9 @@ type User struct {
 	// Password will be hashed.
 	Password    string `gorm:"type:varchar(128)"`
 	InternalBot bool   `gorm:"default:false;index"`
-	IsAdmin     bool   `gorm:"default:false"`
+	IsAdmin     bool   `gorm:"default:false;index"`
 	IsDirector  bool   `gorm:"default:false"`
-	IsMod       bool   `gorm:"default:false"`
+	IsMod       bool   `gorm:"default:false;index"`
 	ApiKey      string
 
 	Actions postgres.Jsonb
