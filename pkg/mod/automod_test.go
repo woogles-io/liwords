@@ -2,6 +2,7 @@ package mod_test
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"testing"
@@ -17,6 +18,7 @@ import (
 	"github.com/domino14/liwords/pkg/stores/user"
 	"github.com/domino14/liwords/pkg/tournament"
 	pkguser "github.com/domino14/liwords/pkg/user"
+	ms "github.com/domino14/liwords/rpc/api/proto/mod_service"
 	pb "github.com/domino14/liwords/rpc/api/proto/realtime"
 	"github.com/domino14/macondo/alphabet"
 	macondoconfig "github.com/domino14/macondo/config"
@@ -141,7 +143,7 @@ func recreateDB() {
 	ustore.(*user.DBStore).Disconnect()
 }
 
-func makeGame(cfg *config.Config, ustore pkguser.Store, gstore gameplay.GameStore, longGame bool) (
+func makeGame(cfg *config.Config, ustore pkguser.Store, gstore gameplay.GameStore, initialTime int, ratingMode pb.RatingMode) (
 	*entity.Game, *entity.FakeNower, context.CancelFunc, chan bool, *evtConsumer) {
 
 	ctx := context.Background()
@@ -150,9 +152,8 @@ func makeGame(cfg *config.Config, ustore pkguser.Store, gstore gameplay.GameStor
 	// see the gameReq in game_test.go in this package
 	gr := proto.Clone(gameReq).(*pb.GameRequest)
 
-	if longGame {
-		gr.InitialTimeSeconds = 60 * 60
-	}
+	gr.InitialTimeSeconds = int32(initialTime * 60)
+	gr.RatingMode = ratingMode
 	g, _ := gameplay.InstantiateNewGame(ctx, gstore, cfg, [2]*entity.User{cesar, jesse},
 		1, gr, nil)
 
@@ -228,19 +229,70 @@ func playGame(g *entity.Game,
 	return nil
 }
 
+func equalActions(a1 *ms.ModAction, a2 *ms.ModAction) bool {
+	return a1.UserId == a2.UserId &&
+		a1.Type == a2.Type &&
+		a1.Duration == a2.Duration
+}
+
+func equalActionHistories(ah1 []*ms.ModAction, ah2 []*ms.ModAction) error {
+	if len(ah1) != len(ah2) {
+		return errors.New("history lengths are not the same")
+	}
+	for i := 0; i < len(ah1); i++ {
+		a1 := ah1[i]
+		a2 := ah2[i]
+		if !equalActions(a1, a2) {
+			return fmt.Errorf("actions are not equal:\n  a1.UserId: %s a1.Type: %s, a1.Duration: %d\n"+
+				"  a1.UserId: %s a1.Type: %s, a1.Duration: %d\n", a1.UserId, a1.Type, a1.Duration,
+				a2.UserId, a2.Type, a2.Duration)
+		}
+	}
+	return nil
+}
+
 func printPlayerNotorieties(ustore pkguser.Store) {
+	notorietyString := "err = comparePlayerNotorieties([]*ms.NotorietyReport{"
 	for _, playerId := range playerIds {
 		score, games, err := mod.GetNotorietyReport(context.Background(), ustore, playerId)
 		if err != nil {
 			panic(err)
 		}
-		gamesString := "[]*ms.NotoriousGames{"
-		for _, game := range games {
-			gamesString += fmt.Sprintf("{Type: ms.NotoriousGameType_%s},", game.Type.String())
+		gamesString := "[]*ms.NotoriousGame{\n"
+		for idx, game := range games {
+			gamesString += fmt.Sprintf("                       {Type: ms.NotoriousGameType_%s},", game.Type.String())
+			if idx != len(games)-1 {
+				gamesString += "\n"
+			}
 		}
 		gamesString += "}"
-		fmt.Printf("&ms.NotorietyReport{Score: %d, Games: %s}\n", score, gamesString)
+		notorietyString += fmt.Sprintf("\n                       {Score: %d, Games: %s},", score, gamesString)
 	}
+	notorietyString += "}, ustore)\nis.NoErr(err)"
+	fmt.Printf("%s\n", notorietyString)
+}
+
+func comparePlayerNotorieties(pnrs []*ms.NotorietyReport, ustore pkguser.Store) error {
+	for idx, playerId := range playerIds {
+		score, games, err := mod.GetNotorietyReport(context.Background(), ustore, playerId)
+		if err != nil {
+			return err
+		}
+		if int(pnrs[idx].Score) != score {
+			return fmt.Errorf("scores are not equal for player %d: %d != %d\n", idx, pnrs[idx].Score, score)
+		}
+		if len(pnrs[idx].Games) != len(games) {
+			return fmt.Errorf("games length are not equal for player %d: %d != %d", idx, len(pnrs[idx].Games), len(games))
+		}
+		for gameIndex := range pnrs[idx].Games {
+			ge := pnrs[idx].Games[gameIndex]
+			ga := games[gameIndex]
+			if ge.Type != ga.Type {
+				return fmt.Errorf("game arrays do not match at index %d: %s != %s", gameIndex, ge.Type.String(), ga.Type.String())
+			}
+		}
+	}
+	return nil
 }
 
 func TestNotoriety(t *testing.T) {
@@ -270,38 +322,228 @@ func TestNotoriety(t *testing.T) {
 			PositionCoords: "O1",
 			Tiles:          "MAYPOPS",
 		},
+		{
+			Type:           pb.ClientGameplayEvent_TILE_PLACEMENT,
+			PositionCoords: "9H",
+			Tiles:          "RETINAS",
+		},
+		{
+			Type:           pb.ClientGameplayEvent_TILE_PLACEMENT,
+			PositionCoords: "10B",
+			Tiles:          "RETINAS",
+		},
+		{
+			Type:           pb.ClientGameplayEvent_TILE_PLACEMENT,
+			PositionCoords: "11H",
+			Tiles:          "ZI",
+		},
 	}
 
-	// player1ng := []*ms.NotoriousGame{}
-	// player2ng := []*ms.NotoriousGame{}
-	// Main tests
 	// No play
-	fmt.Println("NO PLAY")
-	g, _, _, _, _ := makeGame(cfg, ustore, gstore, true)
-	err := playGame(g, ustore, lstore, tstore, gstore, nil, 0, pb.GameEndReason_RESIGNED)
+	g, _, _, _, _ := makeGame(cfg, ustore, gstore, 60, pb.RatingMode_RATED)
+	err := playGame(g, ustore, lstore, tstore, gstore, defaultTurns[:1], 0, pb.GameEndReason_TIME)
 	is.NoErr(err)
-	printPlayerNotorieties(ustore)
+	//printPlayerNotorieties(ustore)
+	err = comparePlayerNotorieties([]*ms.NotorietyReport{
+		{Score: 6, Games: []*ms.NotoriousGame{
+			{Type: ms.NotoriousGameType_NO_PLAY}}},
+		{Score: 0, Games: []*ms.NotoriousGame{}}}, ustore)
+	is.NoErr(err)
+
+	// Play two good games to bring down notoriety
+	g, _, _, _, _ = makeGame(cfg, ustore, gstore, 60, pb.RatingMode_RATED)
+	err = playGame(g, ustore, lstore, tstore, gstore, defaultTurns[:1], 0, pb.GameEndReason_TRIPLE_CHALLENGE)
+	is.NoErr(err)
+	g, _, _, _, _ = makeGame(cfg, ustore, gstore, 60, pb.RatingMode_RATED)
+	err = playGame(g, ustore, lstore, tstore, gstore, defaultTurns[:1], 0, pb.GameEndReason_TRIPLE_CHALLENGE)
+	is.NoErr(err)
+
 	// Lost on time, reasonable
-	fmt.Println("LOST ON TIME, REASONABLE")
-	g, _, _, _, _ = makeGame(cfg, ustore, gstore, false)
+	g, _, _, _, _ = makeGame(cfg, ustore, gstore, 7, pb.RatingMode_RATED)
 	err = playGame(g, ustore, lstore, tstore, gstore, defaultTurns, 0, pb.GameEndReason_TIME)
 	is.NoErr(err)
-	printPlayerNotorieties(ustore)
+	// printPlayerNotorieties(ustore)
+	err = comparePlayerNotorieties([]*ms.NotorietyReport{
+		{Score: 3, Games: []*ms.NotoriousGame{
+			{Type: ms.NotoriousGameType_NO_PLAY}}},
+		{Score: 0, Games: []*ms.NotoriousGame{}}}, ustore)
+	is.NoErr(err)
+
 	// Lost on time, unreasonable
-	fmt.Println("LOST ON TIME, UNREASONABLE")
-	g, _, _, _, _ = makeGame(cfg, ustore, gstore, true)
+	g, _, _, _, _ = makeGame(cfg, ustore, gstore, 60, pb.RatingMode_RATED)
 	err = playGame(g, ustore, lstore, tstore, gstore, defaultTurns, 0, pb.GameEndReason_TIME)
 	is.NoErr(err)
-	printPlayerNotorieties(ustore)
+	//printPlayerNotorieties(ustore)
+	err = comparePlayerNotorieties([]*ms.NotorietyReport{
+		{Score: 7, Games: []*ms.NotoriousGame{
+			{Type: ms.NotoriousGameType_NO_PLAY},
+			{Type: ms.NotoriousGameType_SITTING}}},
+		{Score: 0, Games: []*ms.NotoriousGame{}}}, ustore)
+	is.NoErr(err)
+
 	// Resigned, unrated game, unreasonable
+	g, _, _, _, _ = makeGame(cfg, ustore, gstore, 60, pb.RatingMode_CASUAL)
+	err = playGame(g, ustore, lstore, tstore, gstore, defaultTurns, 0, pb.GameEndReason_RESIGNED)
+	is.NoErr(err)
+	//printPlayerNotorieties(ustore)
+	err = comparePlayerNotorieties([]*ms.NotorietyReport{
+		{Score: 7, Games: []*ms.NotoriousGame{
+			{Type: ms.NotoriousGameType_NO_PLAY},
+			{Type: ms.NotoriousGameType_SITTING}}},
+		{Score: 0, Games: []*ms.NotoriousGame{}}}, ustore)
+	is.NoErr(err)
+
 	// Resigned, rated game, reasonable
+	g, _, _, _, _ = makeGame(cfg, ustore, gstore, 60, pb.RatingMode_RATED)
+	err = playGame(g, ustore, lstore, tstore, gstore, defaultTurns, 0, pb.GameEndReason_RESIGNED)
+	is.NoErr(err)
+	//printPlayerNotorieties(ustore)
+	err = comparePlayerNotorieties([]*ms.NotorietyReport{
+		{Score: 6, Games: []*ms.NotoriousGame{
+			{Type: ms.NotoriousGameType_NO_PLAY},
+			{Type: ms.NotoriousGameType_SITTING}}},
+		{Score: 0, Games: []*ms.NotoriousGame{}}}, ustore)
+	is.NoErr(err)
+
 	// Resigned, rated game, unreasonable
+	g, _, _, _, _ = makeGame(cfg, ustore, gstore, 60, pb.RatingMode_RATED)
+	err = playGame(g, ustore, lstore, tstore, gstore, nil, 0, pb.GameEndReason_RESIGNED)
+	is.NoErr(err)
+	//printPlayerNotorieties(ustore)
+	err = comparePlayerNotorieties([]*ms.NotorietyReport{
+		{Score: 10, Games: []*ms.NotoriousGame{
+			{Type: ms.NotoriousGameType_NO_PLAY},
+			{Type: ms.NotoriousGameType_SITTING},
+			{Type: ms.NotoriousGameType_SANDBAG}}},
+		{Score: 0, Games: []*ms.NotoriousGame{}}}, ustore)
+	is.NoErr(err)
+
+	// Make sure no action exists
+	err = mod.ActionExists(context.Background(), ustore, playerIds[0], false, []ms.ModActionType{ms.ModActionType_SUSPEND_GAMES})
+	is.NoErr(err)
+
+	// Add these additional misbehaved games bring the user over the threshold
+	g, _, _, _, _ = makeGame(cfg, ustore, gstore, 60, pb.RatingMode_RATED)
+	err = playGame(g, ustore, lstore, tstore, gstore, nil, 0, pb.GameEndReason_RESIGNED)
+	is.NoErr(err)
+	//printPlayerNotorieties(ustore)
+	err = comparePlayerNotorieties([]*ms.NotorietyReport{
+		{Score: 14, Games: []*ms.NotoriousGame{
+			{Type: ms.NotoriousGameType_NO_PLAY},
+			{Type: ms.NotoriousGameType_SITTING},
+			{Type: ms.NotoriousGameType_SANDBAG},
+			{Type: ms.NotoriousGameType_SANDBAG}}},
+		{Score: 0, Games: []*ms.NotoriousGame{}}}, ustore)
+	is.NoErr(err)
+
+	// Check mod actions here
+	err = mod.ActionExists(context.Background(), ustore, playerIds[0], false, []ms.ModActionType{ms.ModActionType_SUSPEND_GAMES})
+	is.True(err != nil)
+
+	g, _, _, _, _ = makeGame(cfg, ustore, gstore, 60, pb.RatingMode_RATED)
+	err = playGame(g, ustore, lstore, tstore, gstore, nil, 0, pb.GameEndReason_RESIGNED)
+	is.NoErr(err)
+	//printPlayerNotorieties(ustore)
+	err = comparePlayerNotorieties([]*ms.NotorietyReport{
+		{Score: 18, Games: []*ms.NotoriousGame{
+			{Type: ms.NotoriousGameType_NO_PLAY},
+			{Type: ms.NotoriousGameType_SITTING},
+			{Type: ms.NotoriousGameType_SANDBAG},
+			{Type: ms.NotoriousGameType_SANDBAG},
+			{Type: ms.NotoriousGameType_SANDBAG}}},
+		{Score: 0, Games: []*ms.NotoriousGame{}}}, ustore)
+	is.NoErr(err)
+
+	// Check mod actions here again
+	// There should be an action in the action history
+	actionGames := &ms.ModAction{UserId: playerIds[0], Type: ms.ModActionType_SUSPEND_GAMES, Duration: 60 * 60 * 24 * 4}
+	err = mod.ActionExists(context.Background(), ustore, playerIds[0], false, []ms.ModActionType{ms.ModActionType_SUSPEND_GAMES})
+	is.True(err != nil)
+	history, err := mod.GetActionHistory(context.Background(), ustore, playerIds[0])
+	is.NoErr(err)
+	is.NoErr(equalActionHistories(history, []*ms.ModAction{actionGames}))
+
 	// Triple Challenge
+	g, _, _, _, _ = makeGame(cfg, ustore, gstore, 60, pb.RatingMode_RATED)
+	err = playGame(g, ustore, lstore, tstore, gstore, defaultTurns[:1], 0, pb.GameEndReason_TRIPLE_CHALLENGE)
+	is.NoErr(err)
+	//printPlayerNotorieties(ustore)
+	err = comparePlayerNotorieties([]*ms.NotorietyReport{
+		{Score: 17, Games: []*ms.NotoriousGame{
+			{Type: ms.NotoriousGameType_NO_PLAY},
+			{Type: ms.NotoriousGameType_SITTING},
+			{Type: ms.NotoriousGameType_SANDBAG},
+			{Type: ms.NotoriousGameType_SANDBAG},
+			{Type: ms.NotoriousGameType_SANDBAG}}},
+		{Score: 0, Games: []*ms.NotoriousGame{}}}, ustore)
+	is.NoErr(err)
 
-	// Test in parallel
-	// Increase notoriety, under threshold
-	// Decrease notoriety
-	// Increase notoriety, under to over
-	// Increase notoriety, over to over
+	// The other play has now misbehaved
+	// Now both plays have a nonzero notoriety
+	g, _, _, _, _ = makeGame(cfg, ustore, gstore, 60, pb.RatingMode_RATED)
+	err = playGame(g, ustore, lstore, tstore, gstore, nil, 1, pb.GameEndReason_RESIGNED)
+	is.NoErr(err)
+	//printPlayerNotorieties(ustore)
+	err = comparePlayerNotorieties([]*ms.NotorietyReport{
+		{Score: 16, Games: []*ms.NotoriousGame{
+			{Type: ms.NotoriousGameType_NO_PLAY},
+			{Type: ms.NotoriousGameType_SITTING},
+			{Type: ms.NotoriousGameType_SANDBAG},
+			{Type: ms.NotoriousGameType_SANDBAG},
+			{Type: ms.NotoriousGameType_SANDBAG}}},
+		{Score: 4, Games: []*ms.NotoriousGame{
+			{Type: ms.NotoriousGameType_SANDBAG}}}}, ustore)
+	is.NoErr(err)
 
+	// One player's notoriety should increase, the other's should decrease
+	g, _, _, _, _ = makeGame(cfg, ustore, gstore, 60, pb.RatingMode_RATED)
+	err = playGame(g, ustore, lstore, tstore, gstore, nil, 0, pb.GameEndReason_RESIGNED)
+	is.NoErr(err)
+	//printPlayerNotorieties(ustore)
+	err = comparePlayerNotorieties([]*ms.NotorietyReport{
+		{Score: 20, Games: []*ms.NotoriousGame{
+			{Type: ms.NotoriousGameType_NO_PLAY},
+			{Type: ms.NotoriousGameType_SITTING},
+			{Type: ms.NotoriousGameType_SANDBAG},
+			{Type: ms.NotoriousGameType_SANDBAG},
+			{Type: ms.NotoriousGameType_SANDBAG},
+			{Type: ms.NotoriousGameType_SANDBAG}}},
+		{Score: 3, Games: []*ms.NotoriousGame{
+			{Type: ms.NotoriousGameType_SANDBAG}}}}, ustore)
+	is.NoErr(err)
+
+	actionGames1 := &ms.ModAction{UserId: playerIds[0], Type: ms.ModActionType_SUSPEND_GAMES, Duration: 60 * 60 * 24 * 4}
+	actionGames2 := &ms.ModAction{UserId: playerIds[0], Type: ms.ModActionType_SUSPEND_GAMES, Duration: 60 * 60 * 24 * 8}
+	err = mod.ActionExists(context.Background(), ustore, playerIds[0], false, []ms.ModActionType{ms.ModActionType_SUSPEND_GAMES})
+	is.True(err != nil)
+	history, err = mod.GetActionHistory(context.Background(), ustore, playerIds[0])
+	is.NoErr(err)
+	is.NoErr(equalActionHistories(history, []*ms.ModAction{actionGames1, actionGames2}))
+
+	// Both players' notorieties should decrease
+	g, _, _, _, _ = makeGame(cfg, ustore, gstore, 60, pb.RatingMode_RATED)
+	err = playGame(g, ustore, lstore, tstore, gstore, defaultTurns[:1], 0, pb.GameEndReason_TRIPLE_CHALLENGE)
+	is.NoErr(err)
+	//printPlayerNotorieties(ustore)
+	err = comparePlayerNotorieties([]*ms.NotorietyReport{
+		{Score: 19, Games: []*ms.NotoriousGame{
+			{Type: ms.NotoriousGameType_NO_PLAY},
+			{Type: ms.NotoriousGameType_SITTING},
+			{Type: ms.NotoriousGameType_SANDBAG},
+			{Type: ms.NotoriousGameType_SANDBAG},
+			{Type: ms.NotoriousGameType_SANDBAG},
+			{Type: ms.NotoriousGameType_SANDBAG}}},
+		{Score: 2, Games: []*ms.NotoriousGame{
+			{Type: ms.NotoriousGameType_SANDBAG}}}}, ustore)
+	is.NoErr(err)
+
+	// Test resetting the notorieties
+	err = mod.ResetNotoriety(context.Background(), ustore, playerIds[0])
+	is.NoErr(err)
+	err = mod.ResetNotoriety(context.Background(), ustore, playerIds[1])
+	is.NoErr(err)
+	err = comparePlayerNotorieties([]*ms.NotorietyReport{
+		{Score: 0, Games: []*ms.NotoriousGame{}},
+		{Score: 0, Games: []*ms.NotoriousGame{}}}, ustore)
+	is.NoErr(err)
 }

@@ -10,6 +10,7 @@ import (
 	"github.com/domino14/liwords/pkg/stats"
 	"github.com/domino14/liwords/pkg/tournament"
 	"github.com/domino14/liwords/pkg/user"
+	"github.com/domino14/liwords/rpc/api/proto/realtime"
 	pb "github.com/domino14/liwords/rpc/api/proto/realtime"
 	macondoconfig "github.com/domino14/macondo/config"
 	macondopb "github.com/domino14/macondo/gen/api/proto/macondo"
@@ -183,9 +184,11 @@ func performEndgameDuties(ctx context.Context, g *entity.Game, gameStore GameSto
 	}
 
 	// Applies penalties to players who have misbehaved during the game
-	err = mod.Automod(ctx, userStore, u0, u1, g)
-	if err != nil {
-		return err
+	if g.GameReq.RatingMode == realtime.RatingMode_RATED {
+		err = mod.Automod(ctx, userStore, u0, u1, g)
+		if err != nil {
+			return err
+		}
 	}
 
 	// Save and unload the game from the cache.

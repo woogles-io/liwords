@@ -62,7 +62,7 @@ func Automod(ctx context.Context, us user.Store, u0 *entity.User, u1 *entity.Use
 			// The loser let their clock run down, this is rude
 			lngt = ms.NotoriousGameType_SITTING
 		}
-	} else if g.GameEndReason == realtime.GameEndReason_RESIGNED && g.GameReq.RatingMode == realtime.RatingMode_RATED {
+	} else if g.GameEndReason == realtime.GameEndReason_RESIGNED {
 		// This could be a case of sandbagging
 		totalMoves := 0
 		for i := 0; i < len(history.Events); i++ {
