@@ -1333,6 +1333,11 @@ p.rune {
         height: 120px;
       }
     }
+    .notepad-card {
+      .ant-card-body {
+        padding-top: 0;
+      }
+    }
     .analyzer-card {
       .ant-card-body {
         padding: 0;
