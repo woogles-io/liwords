@@ -11,6 +11,7 @@ import { Lobby } from './lobby/lobby';
 import {
   useExcludedPlayersStoreContext,
   useResetStoreContext,
+  useModeratorStoreContext,
 } from './store/store';
 
 import { LiwordsSocket } from './socket/socket';
@@ -33,6 +34,11 @@ type Blocks = {
   user_ids: Array<string>;
 };
 
+type ModsResponse = {
+  admin_user_ids: Array<string>;
+  mod_user_ids: Array<string>;
+};
+
 const useDarkMode = localStorage?.getItem('darkMode') === 'true';
 
 document?.body?.classList?.add(`mode--${useDarkMode ? 'dark' : 'default'}`);
@@ -46,6 +52,13 @@ const App = React.memo(() => {
     pendingBlockRefresh,
     setPendingBlockRefresh,
   } = useExcludedPlayersStoreContext();
+
+  const {
+    setAdmins,
+    setModerators,
+    setModsFetched,
+  } = useModeratorStoreContext();
+
   const { resetStore } = useResetStoreContext();
 
   // See store.tsx for how this works.
@@ -95,6 +108,29 @@ const App = React.memo(() => {
       getFullBlocks();
     }
   }, [getFullBlocks, pendingBlockRefresh]);
+
+  const getMods = useCallback(() => {
+    axios
+      .post<ModsResponse>(
+        toAPIUrl('user_service.SocializeService', 'GetModList'),
+        {},
+        { withCredentials: true }
+      )
+      .then((resp) => {
+        setAdmins(new Set<string>(resp.data.admin_user_ids));
+        setModerators(new Set<string>(resp.data.mod_user_ids));
+      })
+      .catch((e) => {
+        console.log(e);
+      })
+      .finally(() => {
+        setModsFetched(true);
+      });
+  }, [setAdmins, setModerators, setModsFetched]);
+
+  useEffect(() => {
+    getMods();
+  }, [getMods]);
 
   const sendChat = useCallback(
     (msg: string, chan: string) => {

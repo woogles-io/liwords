@@ -92,6 +92,15 @@ type ExcludedPlayersStoreData = {
   setPendingBlockRefresh: React.Dispatch<React.SetStateAction<boolean>>;
 };
 
+type ModeratorsStoreData = {
+  moderators: Set<string>;
+  setModerators: React.Dispatch<React.SetStateAction<Set<string>>>;
+  admins: Set<string>;
+  setAdmins: React.Dispatch<React.SetStateAction<Set<string>>>;
+  modsFetched: boolean;
+  setModsFetched: React.Dispatch<React.SetStateAction<boolean>>;
+};
+
 type ChallengeResultEventStoreData = {
   challengeResultEvent: (sge: ServerChallengeResultEvent) => void;
 };
@@ -235,6 +244,16 @@ const ExcludedPlayersContext = createContext<ExcludedPlayersStoreData>({
   setExcludedPlayersFetched: defaultFunction,
   pendingBlockRefresh: false,
   setPendingBlockRefresh: defaultFunction,
+});
+
+const ModeratorsContext = createContext<ModeratorsStoreData>({
+  // used for displaying mod status to other users, should not be trusted for actually granting powers
+  moderators: new Set<string>(),
+  setModerators: defaultFunction,
+  admins: new Set<string>(),
+  setAdmins: defaultFunction,
+  modsFetched: false,
+  setModsFetched: defaultFunction,
 });
 
 const ChallengeResultEventContext = createContext<
@@ -751,6 +770,9 @@ const RealStore = ({ children, ...props }: Props) => {
   const [excludedPlayers, setExcludedPlayers] = useState(new Set<string>());
   const [excludedPlayersFetched, setExcludedPlayersFetched] = useState(false);
   const [pendingBlockRefresh, setPendingBlockRefresh] = useState(false);
+  const [moderators, setModerators] = useState(new Set<string>());
+  const [admins, setAdmins] = useState(new Set<string>());
+  const [modsFetched, setModsFetched] = useState(false);
   const [presences, setPresences] = useState(new Array<PresenceEntity>());
 
   const addChat = useCallback((entity: ChatEntityObj) => {
@@ -905,6 +927,17 @@ const RealStore = ({ children, ...props }: Props) => {
       setPendingBlockRefresh,
     ]
   );
+  const moderatorsStore = useMemo(
+    () => ({
+      moderators,
+      setModerators,
+      admins,
+      setAdmins,
+      modsFetched,
+      setModsFetched,
+    }),
+    [moderators, setModerators, admins, setAdmins, modsFetched, setModsFetched]
+  );
   const challengeResultEventStore = useMemo(
     () => ({
       challengeResultEvent,
@@ -1000,6 +1033,7 @@ const RealStore = ({ children, ...props }: Props) => {
       children={ret}
     />
   );
+  ret = <ModeratorsContext.Provider value={moderatorsStore} children={ret} />;
   ret = (
     <ChallengeResultEventContext.Provider
       value={challengeResultEventStore}
@@ -1063,6 +1097,7 @@ export const useTournamentStoreContext = () => useContext(TournamentContext);
 export const useTentativeTileContext = () => useContext(TentativePlayContext);
 export const useExcludedPlayersStoreContext = () =>
   useContext(ExcludedPlayersContext);
+export const useModeratorStoreContext = () => useContext(ModeratorsContext);
 export const useChallengeResultEventStoreContext = () =>
   useContext(ChallengeResultEventContext);
 export const useGameContextStoreContext = () => useContext(GameContextContext);
