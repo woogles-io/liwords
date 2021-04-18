@@ -79,6 +79,10 @@ p.streak-loss {
     button.ant-btn-icon-only > * {
       font-size: inherit;
     }
+    .controls {
+      display: flex;
+      flex-direction: row;
+    }
     .notepad {
       resize: none;
       width: 100%;
