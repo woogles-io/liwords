@@ -114,7 +114,7 @@ const App = React.memo(() => {
       .post<ModsResponse>(
         toAPIUrl('user_service.SocializeService', 'GetModList'),
         {},
-        { withCredentials: true }
+        {}
       )
       .then((resp) => {
         setAdmins(new Set<string>(resp.data.admin_user_ids));
