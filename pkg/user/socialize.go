@@ -23,16 +23,80 @@ func NewSocializeService(u Store, c ChatStore) *SocializeService {
 }
 
 func (ss *SocializeService) AddFollow(ctx context.Context, req *pb.AddFollowRequest) (*pb.OKResponse, error) {
-	// stub
+	sess, err := apiserver.GetSession(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	user, err := ss.userStore.Get(ctx, sess.Username)
+	if err != nil {
+		log.Err(err).Msg("getting-user")
+		return nil, twirp.InternalErrorWith(err)
+	}
+
+	followed, err := ss.userStore.GetByUUID(ctx, req.Uuid)
+	if err != nil {
+		log.Err(err).Msg("getting-followed")
+		return nil, twirp.NewError(twirp.InvalidArgument, err.Error())
+	}
+
+	err = ss.userStore.AddFollower(ctx, followed.ID, user.ID)
+	if err != nil {
+		return nil, twirp.NewError(twirp.InvalidArgument, err.Error())
+	}
 	return &pb.OKResponse{}, nil
 }
 
 func (ss *SocializeService) RemoveFollow(ctx context.Context, req *pb.RemoveFollowRequest) (*pb.OKResponse, error) {
+	sess, err := apiserver.GetSession(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	user, err := ss.userStore.Get(ctx, sess.Username)
+	if err != nil {
+		log.Err(err).Msg("getting-user")
+		return nil, twirp.InternalErrorWith(err)
+	}
+
+	unfollowed, err := ss.userStore.GetByUUID(ctx, req.Uuid)
+	if err != nil {
+		log.Err(err).Msg("getting-unfollowed")
+		return nil, twirp.NewError(twirp.InvalidArgument, err.Error())
+	}
+
+	err = ss.userStore.RemoveFollower(ctx, unfollowed.ID, user.ID)
+	if err != nil {
+		return nil, twirp.NewError(twirp.InvalidArgument, err.Error())
+	}
 	return &pb.OKResponse{}, nil
 }
 
 func (ss *SocializeService) GetFollows(ctx context.Context, req *pb.GetFollowsRequest) (*pb.GetFollowsResponse, error) {
-	return &pb.GetFollowsResponse{}, nil
+	sess, err := apiserver.GetSession(ctx)
+	if err != nil {
+		return nil, err
+	}
+	user, err := ss.userStore.Get(ctx, sess.Username)
+	if err != nil {
+		log.Err(err).Msg("getting-user")
+		return nil, twirp.InternalErrorWith(err)
+	}
+
+	users, err := ss.userStore.GetFollows(ctx, user.ID)
+	if err != nil {
+		return nil, twirp.InternalErrorWith(err)
+	}
+
+	basicUsers := make([]*pb.BasicUser, len(users))
+	for i, u := range users {
+		basicUsers[i] = &pb.BasicUser{
+			Uuid:     u.UUID,
+			Username: u.Username,
+		}
+	}
+
+	return &pb.GetFollowsResponse{Users: basicUsers}, nil
 }
 
 // blocks
@@ -223,3 +287,8 @@ func (ss *SocializeService) GetChatsForChannel(ctx context.Context, req *pb.GetC
 
 // 	return &pb.GetBlockedByResponse{Users: basicUsers}, nil
 // }
+
+func (ss *SocializeService) GetModList(ctx context.Context, req *pb.GetModListRequest) (*pb.GetModListResponse, error) {
+	// this endpoint should work without login
+	return ss.userStore.GetModList(ctx)
+}

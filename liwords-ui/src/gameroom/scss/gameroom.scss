@@ -79,6 +79,10 @@ p.streak-loss {
     button.ant-btn-icon-only > * {
       font-size: inherit;
     }
+    .controls {
+      display: flex;
+      flex-direction: row;
+    }
     .notepad {
       resize: none;
       width: 100%;
@@ -1327,6 +1331,11 @@ p.rune {
       }
       .notepad {
         height: 120px;
+      }
+    }
+    .notepad-card {
+      .ant-card-body {
+        padding-top: 0;
       }
     }
     .analyzer-card {

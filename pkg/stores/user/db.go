@@ -36,9 +36,9 @@ type User struct {
 	// Password will be hashed.
 	Password    string `gorm:"type:varchar(128)"`
 	InternalBot bool   `gorm:"default:false;index"`
-	IsAdmin     bool   `gorm:"default:false"`
+	IsAdmin     bool   `gorm:"default:false;index"`
 	IsDirector  bool   `gorm:"default:false"`
-	IsMod       bool   `gorm:"default:false"`
+	IsMod       bool   `gorm:"default:false;index"`
 	ApiKey      string
 
 	Actions postgres.Jsonb
@@ -408,17 +408,11 @@ func (s *DBStore) SetPersonalInfo(ctx context.Context, uuid string, email string
 	if result := s.db.Model(u).Related(p); result.Error != nil {
 		return result.Error
 	}
-	if result := s.db.Model(p).Update("first_name", firstName); result.Error != nil {
-		return result.Error
-	}
-	if result := s.db.Model(p).Update("last_name", lastName); result.Error != nil {
-		return result.Error
-	}
-	if result := s.db.Model(p).Update("about", about); result.Error != nil {
-		return result.Error
-	}
 
-	return s.db.Model(p).Update("country_code", countryCode).Error
+	return s.db.Model(p).Update(map[string]interface{}{"first_name": firstName,
+		"last_name":    lastName,
+		"about":        about,
+		"country_code": countryCode}).Error
 }
 
 // SetRatings set the specific ratings for the given variant in a transaction.
@@ -849,6 +843,33 @@ func (s *DBStore) ResetStatsAndRatings(ctx context.Context, uid string) error {
 	return nil
 }
 
+func (s *DBStore) ResetPersonalInfo(ctx context.Context, uuid string) error {
+	u := &User{}
+	p := &profile{}
+
+	if result := s.db.Where("uuid = ?", uuid).First(u); result.Error != nil {
+		return result.Error
+	}
+	if result := s.db.Model(u).Related(p); result.Error != nil {
+		return result.Error
+	}
+
+	return s.db.Model(p).Update(map[string]interface{}{"first_name": "",
+		"last_name":    "",
+		"about":        "",
+		"title":        "",
+		"avatar_url":   "",
+		"country_code": ""}).Error
+}
+
+func (s *DBStore) ResetProfile(ctx context.Context, uid string) error {
+	err := s.ResetStatsAndRatings(ctx, uid)
+	if err != nil {
+		return err
+	}
+	return s.ResetPersonalInfo(ctx, uid)
+}
+
 func (s *DBStore) Disconnect() {
 	s.db.Close()
 }
@@ -864,4 +885,31 @@ func (s *DBStore) Count(ctx context.Context) (int64, error) {
 
 func (s *DBStore) CachedCount(ctx context.Context) int {
 	return 0
+}
+
+func (s *DBStore) GetModList(ctx context.Context) (*pb.GetModListResponse, error) {
+	var users []User
+	if result := s.db.
+		Where("is_admin = ?", true).Or("is_mod = ?", true).
+		Select([]string{"uuid", "is_admin", "is_mod"}).
+		Find(&users); result.Error != nil {
+		return nil, result.Error
+	}
+
+	var adminUserIds []string
+	var modUserIds []string
+
+	for _, user := range users {
+		if user.IsAdmin {
+			adminUserIds = append(adminUserIds, user.UUID)
+		}
+		if user.IsMod {
+			modUserIds = append(modUserIds, user.UUID)
+		}
+	}
+
+	return &pb.GetModListResponse{
+		AdminUserIds: adminUserIds,
+		ModUserIds:   modUserIds,
+	}, nil
 }

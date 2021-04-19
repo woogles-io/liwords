@@ -54,9 +54,8 @@ export const PersonalInfo = React.memo((props: Props) => {
   );
   const [bioTipsModalVisible, setBioTipsModalVisible] = useState(false);
   const [avatarErr, setAvatarErr] = useState('');
-  const [avatarFile, setAvatarFile] = useState(new File([''], ''));
 
-  const avatarErrorCatcher = (e: AxiosError) => {
+  const avatarErrorCatcher = useCallback((e: AxiosError) => {
     if (e.response) {
       // From Twirp
       console.log(e);
@@ -65,7 +64,7 @@ export const PersonalInfo = React.memo((props: Props) => {
       setAvatarErr('unknown error, see console');
       console.log(e);
     }
-  };
+  }, []);
 
   const fileProps = {
     beforeUpload: (file: File) => {
@@ -74,10 +73,7 @@ export const PersonalInfo = React.memo((props: Props) => {
     maxCount: 1,
     onChange: (info: any) => {
       if (info.fileList.length > 0) {
-        setAvatarFile(info.fileList[0].originFileObj);
-        updateAvatar();
-      } else {
-        setAvatarFile(new File([''], ''));
+        updateAvatar(info.fileList[0].originFileObj);
       }
     },
     accept: 'image/jpeg',
@@ -87,6 +83,8 @@ export const PersonalInfo = React.memo((props: Props) => {
   const cancelRemoveAvatarModal = useCallback(() => {
     setRemoveAvatarModalVisible(false);
   }, []);
+
+  const propsUpdatedAvatar = props.updatedAvatar;
 
   const removeAvatar = useCallback(() => {
     axios
@@ -103,35 +101,38 @@ export const PersonalInfo = React.memo((props: Props) => {
           description: 'Your avatar was removed.',
         });
         setRemoveAvatarModalVisible(false);
-        props.updatedAvatar('');
+        propsUpdatedAvatar('');
       })
       .catch(avatarErrorCatcher);
-  }, [props]);
+  }, [propsUpdatedAvatar, avatarErrorCatcher]);
 
-  const updateAvatar = useCallback(() => {
-    let reader = new FileReader();
-    reader.onload = () => {
-      axios
-        .post(
-          toAPIUrl('user_service.ProfileService', 'UpdateAvatar'),
-          {
-            jpg_data: btoa(String(reader.result)),
-          },
-          {
-            withCredentials: true,
-          }
-        )
-        .then((resp) => {
-          notification.info({
-            message: 'Success',
-            description: 'Your avatar was updated.',
-          });
-          props.updatedAvatar(resp.data.avatar_url);
-        })
-        .catch(avatarErrorCatcher);
-    };
-    reader.readAsBinaryString(avatarFile);
-  }, [props, avatarFile]);
+  const updateAvatar = useCallback(
+    (avatarFile: Blob) => {
+      let reader = new FileReader();
+      reader.onload = () => {
+        axios
+          .post(
+            toAPIUrl('user_service.ProfileService', 'UpdateAvatar'),
+            {
+              jpg_data: btoa(String(reader.result)),
+            },
+            {
+              withCredentials: true,
+            }
+          )
+          .then((resp) => {
+            notification.info({
+              message: 'Success',
+              description: 'Your avatar was updated.',
+            });
+            propsUpdatedAvatar(resp.data.avatar_url);
+          })
+          .catch(avatarErrorCatcher);
+      };
+      reader.readAsBinaryString(avatarFile);
+    },
+    [propsUpdatedAvatar, avatarErrorCatcher]
+  );
 
   const updateFields = (values: { [key: string]: string }) => {
     axios

@@ -365,6 +365,9 @@ export namespace LogoutResponse {
 }
 
 export class NotifyAccountClosureRequest extends jspb.Message {
+  getPassword(): string;
+  setPassword(value: string): void;
+
   serializeBinary(): Uint8Array;
   toObject(includeInstance?: boolean): NotifyAccountClosureRequest.AsObject;
   static toObject(includeInstance: boolean, msg: NotifyAccountClosureRequest): NotifyAccountClosureRequest.AsObject;
@@ -377,6 +380,7 @@ export class NotifyAccountClosureRequest extends jspb.Message {
 
 export namespace NotifyAccountClosureRequest {
   export type AsObject = {
+    password: string,
   }
 }
 
@@ -1181,6 +1185,50 @@ export class GetFullBlocksResponse extends jspb.Message {
 export namespace GetFullBlocksResponse {
   export type AsObject = {
     userIdsList: Array<string>,
+  }
+}
+
+export class GetModListRequest extends jspb.Message {
+  serializeBinary(): Uint8Array;
+  toObject(includeInstance?: boolean): GetModListRequest.AsObject;
+  static toObject(includeInstance: boolean, msg: GetModListRequest): GetModListRequest.AsObject;
+  static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+  static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+  static serializeBinaryToWriter(message: GetModListRequest, writer: jspb.BinaryWriter): void;
+  static deserializeBinary(bytes: Uint8Array): GetModListRequest;
+  static deserializeBinaryFromReader(message: GetModListRequest, reader: jspb.BinaryReader): GetModListRequest;
+}
+
+export namespace GetModListRequest {
+  export type AsObject = {
+  }
+}
+
+export class GetModListResponse extends jspb.Message {
+  clearAdminUserIdsList(): void;
+  getAdminUserIdsList(): Array<string>;
+  setAdminUserIdsList(value: Array<string>): void;
+  addAdminUserIds(value: string, index?: number): string;
+
+  clearModUserIdsList(): void;
+  getModUserIdsList(): Array<string>;
+  setModUserIdsList(value: Array<string>): void;
+  addModUserIds(value: string, index?: number): string;
+
+  serializeBinary(): Uint8Array;
+  toObject(includeInstance?: boolean): GetModListResponse.AsObject;
+  static toObject(includeInstance: boolean, msg: GetModListResponse): GetModListResponse.AsObject;
+  static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+  static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+  static serializeBinaryToWriter(message: GetModListResponse, writer: jspb.BinaryWriter): void;
+  static deserializeBinary(bytes: Uint8Array): GetModListResponse;
+  static deserializeBinaryFromReader(message: GetModListResponse, reader: jspb.BinaryReader): GetModListResponse;
+}
+
+export namespace GetModListResponse {
+  export type AsObject = {
+    adminUserIdsList: Array<string>,
+    modUserIdsList: Array<string>,
   }
 }
 
