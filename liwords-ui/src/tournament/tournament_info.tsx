@@ -1,12 +1,12 @@
 /* eslint-disable jsx-a11y/anchor-is-valid */
 import React from 'react';
-import { Card, Divider } from 'antd';
+import { Card } from 'antd';
 import ReactMarkdown from 'react-markdown';
 import { useTournamentStoreContext } from '../store/store';
 import { UsernameWithContext } from '../shared/usernameWithContext';
 import { CompetitorStatus } from './competitor_status';
 import { readyForTournamentGame } from '../store/reducers/tournament_reducer';
-import { isPairedMode } from '../store/constants';
+import { isClubType } from '../store/constants';
 
 type TournamentInfoProps = {
   setSelectedGameTab: (tab: string) => void;
@@ -17,12 +17,12 @@ export const TournamentInfo = (props: TournamentInfoProps) => {
   const { tournamentContext } = useTournamentStoreContext();
   const { competitorState: competitorContext, metadata } = tournamentContext;
   const directors = tournamentContext.metadata.directors.map((username, i) => (
-    <span key={username}>
+    <span className="director" key={username}>
       {i > 0 && ', '}
       <UsernameWithContext username={username} omitSendMessage />
     </span>
   ));
-
+  const type = isClubType(metadata.type) ? 'Club' : 'Tournament';
   return (
     <div className="tournament-info">
       {/* Mobile version of the status widget, hidden by css elsewhere */}
@@ -37,22 +37,12 @@ export const TournamentInfo = (props: TournamentInfoProps) => {
           }
         />
       )}
-      <Card title="Tournament Information" className="tournament">
-        <h3 className="tournament-name">{tournamentContext.metadata.name}</h3>
-        <h4>Directors: {directors}</h4>
+      <Card title={tournamentContext.metadata.name} className="tournament">
+        <h4>Directed by: {directors}</h4>
+        <h5 className="section-header">{type} Details</h5>
         <ReactMarkdown linkTarget="_blank">
           {tournamentContext.metadata.description}
         </ReactMarkdown>
-        {!isPairedMode(metadata.type) && (
-          <>
-            <Divider />
-            Recent games can now be found in the{' '}
-            <a onClick={() => props.setSelectedGameTab('RECENT')}>
-              RECENT GAMES
-            </a>{' '}
-            tab in the center panel.
-          </>
-        )}
       </Card>
     </div>
   );

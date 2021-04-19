@@ -163,7 +163,7 @@ export const SoughtGames = (props: Props) => {
           ) : (
             sg.seeker
           ),
-          rating: sg.userRating,
+          rating: outgoing ? '' : sg.userRating,
           lexicon: sg.lexicon,
           time: timeFormat(
             sg.initialTimeSecs,
