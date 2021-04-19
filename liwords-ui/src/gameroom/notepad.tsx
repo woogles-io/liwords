@@ -6,7 +6,7 @@ import React, {
   useMemo,
 } from 'react';
 import { Button, Card } from 'antd';
-import { PlusOutlined } from '@ant-design/icons';
+import { DeleteOutlined, PlusOutlined } from '@ant-design/icons';
 import {
   useGameContextStoreContext,
   useTentativeTileContext,
@@ -135,6 +135,30 @@ export const Notepad = React.memo((props: NotepadProps) => {
     }
     numWolgesWas.current = numWolges;
   }, [numWolges]);
+  const controls = useCallback(
+    () => (
+      <React.Fragment>
+        {easterEggEnabled && <EasterEgg />}
+        {curNotepad.length > 0 && (
+          <Button
+            shape="circle"
+            icon={<DeleteOutlined />}
+            type="primary"
+            onClick={() => {
+              setCurNotepad('');
+            }}
+          />
+        )}
+        <Button
+          shape="circle"
+          icon={<PlusOutlined />}
+          type="primary"
+          onClick={addPlay}
+        />
+      </React.Fragment>
+    ),
+    [curNotepad, easterEggEnabled, setCurNotepad, addPlay]
+  );
   const notepadContainer = (
     <div className="notepad-container" style={props.style}>
       <textarea
@@ -145,34 +169,12 @@ export const Notepad = React.memo((props: NotepadProps) => {
         style={props.style}
         onChange={handleNotepadChange}
       />
-      <React.Fragment>
-        {easterEggEnabled && <EasterEgg />}
-        <Button
-          shape="circle"
-          icon={<PlusOutlined />}
-          type="primary"
-          onClick={addPlay}
-        />
-      </React.Fragment>
+      <div className="controls">{controls()}</div>
     </div>
   );
   if (props.includeCard) {
     return (
-      <Card
-        title="Notepad"
-        className="notepad-card"
-        extra={
-          <React.Fragment>
-            {easterEggEnabled && <EasterEgg />}
-            <Button
-              shape="circle"
-              icon={<PlusOutlined />}
-              type="primary"
-              onClick={addPlay}
-            />
-          </React.Fragment>
-        }
-      >
+      <Card title="Notepad" className="notepad-card" extra={controls()}>
         {notepadContainer}
       </Card>
     );
