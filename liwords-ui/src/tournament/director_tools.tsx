@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useCallback } from 'react';
 // import { toAPIUrl } from '../api/api';
 // import { useMountedState } from '../utils/mounted';
 import { useTournamentStoreContext } from '../store/store';
@@ -26,9 +26,6 @@ export const DirectorTools = React.memo((props: DTProps) => {
 
   const { tournamentContext } = useTournamentStoreContext();
 
-  const divisions = tournamentContext.divisions;
-
-  console.log('divisions in directortools', divisions);
   /*   const addPlayers = (p: playersToAdd) => {
     Object.entries(p).forEach(([div, players]) => {
       axios
@@ -94,8 +91,9 @@ export const DirectorTools = React.memo((props: DTProps) => {
       </Modal>
     );*/
 
-  const renderRoster = () => {
-    return Object.values(divisions).map((d) => {
+  const renderRoster = useCallback(() => {
+    console.log('defining renderRoster with divs', tournamentContext.divisions);
+    return Object.values(tournamentContext.divisions).map((d) => {
       return (
         <div key={d.divisionID}>
           <h4 className="division-name">{d.divisionID} entrants</h4>
@@ -118,7 +116,7 @@ export const DirectorTools = React.memo((props: DTProps) => {
         </div>
       );
     });
-  };
+  }, [tournamentContext.divisions]);
 
   const renderStartButton = () => {
     const startTournament = () => {
@@ -140,8 +138,8 @@ export const DirectorTools = React.memo((props: DTProps) => {
         });
     };
     if (
-      Object.values(divisions).length &&
-      Object.values(divisions)[0].currentRound === -1 &&
+      Object.values(tournamentContext.divisions).length &&
+      Object.values(tournamentContext.divisions)[0].currentRound === -1 &&
       !tournamentContext.started
     ) {
       return (
@@ -173,7 +171,11 @@ export const DirectorTools = React.memo((props: DTProps) => {
 
   return (
     <div className="director-tools">
-      {renderStartButton()}
+      {/* {renderStartButton()} */
+      /* there is no tournament start button anymore; open round instead
+        or look at StartRoundCountdown and pass in flag to start all rounds
+
+      */}
       {renderRoster()}
       {renderGhettoTools()}
     </div>

@@ -305,6 +305,8 @@ func AddDivision(ctx context.Context, ts TournamentStore, id string, division st
 	if err != nil {
 		return err
 	}
+	tdevt.Id = id
+	tdevt.Division = division
 	wrapped := entity.WrapEvent(tdevt, realtime.MessageType_TOURNAMENT_DIVISION_MESSAGE)
 	return SendTournamentMessage(ctx, ts, id, wrapped)
 }
@@ -330,6 +332,10 @@ func RemoveDivision(ctx context.Context, ts TournamentStore, id string, division
 
 	if t.IsStarted {
 		return fmt.Errorf("cannot remove division %s after the tournament has started", division)
+	}
+
+	if len(t.Divisions[division].DivisionManager.GetPlayers().GetPersons()) > 0 {
+		return fmt.Errorf("cannot remove division %s since it has at least one player in it", division)
 	}
 
 	delete(t.Divisions, division)
@@ -1094,38 +1100,6 @@ func TournamentDataResponse(ctx context.Context, ts TournamentStore, id string) 
 		ExecutiveDirector: t.ExecutiveDirector,
 		Directors:         t.Directors,
 		IsStarted:         t.IsStarted}, nil
-}
-
-func TournamentDivisionDataResponse(ctx context.Context, ts TournamentStore,
-	id string, division string) (*realtime.TournamentDivisionDataResponse, error) {
-	t, err := ts.Get(ctx, id)
-	if err != nil {
-		return nil, err
-	}
-
-	divisionObject, ok := t.Divisions[division]
-
-	if !ok {
-		return nil, fmt.Errorf("division %s does not exist", division)
-	}
-
-	response := &realtime.TournamentDivisionDataResponse{}
-	if divisionObject.DivisionManager != nil {
-		response, err = divisionObject.DivisionManager.GetXHRResponse()
-		if err != nil {
-			return nil, err
-		}
-	}
-	if response == nil {
-		return nil, nil // XXX: should return an error?
-	}
-	response.Id = id
-	response.Division = division
-	// response.Controls = divisionObject.Controls
-	log.Debug().
-		Str("division", division).
-		Str("id", id).Msg("tournament-division-data-response")
-	return response, nil
 }
 
 func PairingsToResponse(id string, division string, pairings []*realtime.Pairing, standings map[int32]*realtime.RoundStandings) *realtime.DivisionPairingsResponse {

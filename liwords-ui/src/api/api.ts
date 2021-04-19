@@ -12,11 +12,6 @@ interface PBMsg {
   serializeBinary(): Uint8Array;
 }
 
-// Warning -- trying to install @types/google-protobuf (so that we can use
-// the built-in jspb.Message interface) resulted in completely
-// unrelated build errors for me. I have no idea why. This can be revisited later
-// I hope.
-
 export const postBinary = async (
   service: string,
   method: string,

@@ -46,12 +46,13 @@ const getPerformance = (
   if (roundOfRecord < 0) {
     roundOfRecord = 0;
   }
-  const results = division.standingsMap[roundOfRecord].standingsList.find((s) =>
-    s.playerId.endsWith(`:${playerName}`)
-  );
+  const results = division.standingsMap
+    .get(roundOfRecord)
+    ?.getStandingsList()
+    .find((s) => s.getPlayerId().endsWith(`:${playerName}`));
   return results
-    ? `(${results.wins + results.draws / 2}-${
-        results.losses + results.draws / 2
+    ? `(${results.getWins() + results.getDraws() / 2}-${
+        results.getLosses() + results.getDraws() / 2
       })`
     : '(0-0)';
 };
@@ -100,7 +101,7 @@ export const Pairings = (props: Props) => {
   const history = useHistory();
   const currentRound = useMemo(
     () =>
-      props.selectedDivision
+      props.selectedDivision && divisions[props.selectedDivision]
         ? divisions[props.selectedDivision].currentRound
         : tournamentContext.competitorState.currentRound,
     [props.selectedDivision, divisions, tournamentContext.competitorState]

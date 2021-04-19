@@ -24,7 +24,6 @@ import {
   ClientGameplayEvent,
   DeclineMatchRequest,
   ErrorMessage,
-  FullTournamentDivisions,
   GameDeletion,
   GameEndedEvent,
   GameHistoryRefresher,
@@ -120,7 +119,6 @@ export const parseMsgs = (msg: Uint8Array) => {
       [MessageType.TOURNAMENT_DIVISION_PLAYER_CHANGE_MESSAGE]: PlayersAddedOrRemovedResponse,
       [MessageType.TOURNAMENT_FINISHED_MESSAGE]: TournamentFinishedResponse,
       [MessageType.TOURNAMENT_DIVISION_DELETED_MESSAGE]: TournamentDivisionDeletedResponse,
-      [MessageType.TOURNAMENT_FULL_DIVISIONS_MESSAGE]: FullTournamentDivisions,
       [MessageType.CHAT_MESSAGE_DELETED]: ChatMessageDeleted,
       [MessageType.TOURNAMENT_MESSAGE]: TournamentDataResponse,
       [MessageType.TOURNAMENT_DIVISION_MESSAGE]: TournamentDivisionDataResponse,
@@ -509,7 +507,7 @@ export const useOnSocketMsg = () => {
             dispatchTournamentContext({
               actionType: ActionType.SetDivisionRoundControls,
               payload: {
-                divisionMessage: tdrcm,
+                roundControls: tdrcm,
                 loginState,
               },
             });
@@ -523,7 +521,7 @@ export const useOnSocketMsg = () => {
             dispatchTournamentContext({
               actionType: ActionType.SetDivisionPairings,
               payload: {
-                divisionMessage: tdpm,
+                dpr: tdpm,
                 loginState,
               },
             });
@@ -537,7 +535,7 @@ export const useOnSocketMsg = () => {
             dispatchTournamentContext({
               actionType: ActionType.SetDivisionControls,
               payload: {
-                divisionMessage: tdcm,
+                divisionControls: tdcm,
                 loginState,
               },
             });
@@ -546,12 +544,12 @@ export const useOnSocketMsg = () => {
           }
 
           case MessageType.TOURNAMENT_DIVISION_PLAYER_CHANGE_MESSAGE: {
-            const tdpcm = parsedMsg as PlayersAddedOrRemovedResponse;
+            const parr = parsedMsg as PlayersAddedOrRemovedResponse;
 
             dispatchTournamentContext({
               actionType: ActionType.SetDivisionPlayers,
               payload: {
-                divisionMessage: tdpcm,
+                parr,
                 loginState,
               },
             });
@@ -748,18 +746,27 @@ export const useOnSocketMsg = () => {
             break;
           }
 
-          // case MessageType.TOURNAMENT_FULL_DIVISIONS_MESSAGE: {
-          //   const tfdm = parsedMsg as FullTournamentDivisions;
-          //   dispatchTournamentContext({
-          //     actionType: ActionType.SetDivisionsData,
-          //     payload: {
-          //       fullDivisions: tfdm,
-          //       loginState,
-          //     },
-          //   });
+          case MessageType.TOURNAMENT_DIVISION_MESSAGE: {
+            const tdm = parsedMsg as TournamentDivisionDataResponse;
 
-          //   break;
-          // }
+            dispatchTournamentContext({
+              actionType: ActionType.SetDivisionData,
+              payload: {
+                divisionMessage: tdm,
+                loginState,
+              },
+            });
+            break;
+          }
+
+          case MessageType.TOURNAMENT_DIVISION_DELETED_MESSAGE: {
+            const tdd = parsedMsg as TournamentDivisionDeletedResponse;
+
+            dispatchTournamentContext({
+              actionType: ActionType.DeleteDivision,
+              payload: tdd,
+            });
+          }
         }
       });
     },

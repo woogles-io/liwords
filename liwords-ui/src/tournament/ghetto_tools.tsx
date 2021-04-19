@@ -103,9 +103,7 @@ export const GhettoTools = (props: Props) => {
 
   return (
     <>
-      <p>
-        <ul>{listItems}</ul>
-      </p>
+      <ul>{listItems}</ul>
       <FormModal
         title={modalTitle}
         visible={modalVisible}
@@ -201,7 +199,8 @@ const RemoveDivision = (props: { tournamentID: string }) => {
 
 const AddPlayers = (props: { tournamentID: string }) => {
   const onFinish = (vals: Store) => {
-    const playerMap: { [username: string]: number } = {};
+    const players = [];
+    // const playerMap: { [username: string]: number } = {};
     if (!vals.players) {
       message.error({
         content: 'Add some players first',
@@ -209,7 +208,6 @@ const AddPlayers = (props: { tournamentID: string }) => {
       });
       return;
     }
-    console.log(vals.players);
     for (let i = 0; i < vals.players.length; i++) {
       const enteredUsername = vals.players[i].username;
       if (!enteredUsername) {
@@ -219,10 +217,13 @@ const AddPlayers = (props: { tournamentID: string }) => {
       if (username === '') {
         continue;
       }
-      playerMap[username] = parseInt(vals.players[i].rating);
+      players.push({
+        id: username,
+        rating: vals.players[i].rating,
+      });
     }
 
-    if (Object.keys(playerMap).length === 0) {
+    if (players.length === 0) {
       message.error({
         content: 'Add some players first',
         duration: 5,
@@ -233,7 +234,7 @@ const AddPlayers = (props: { tournamentID: string }) => {
     const obj = {
       id: props.tournamentID,
       division: vals.division,
-      persons: playerMap,
+      persons: players,
     };
     console.log(obj);
     axios
@@ -317,7 +318,11 @@ const RemovePlayer = (props: { tournamentID: string }) => {
     const obj = {
       id: props.tournamentID,
       division: vals.division,
-      persons: { [vals.username]: 0 },
+      persons: [
+        {
+          id: vals.username,
+        },
+      ],
     };
     console.log(obj);
     axios
@@ -401,6 +406,7 @@ const ClearCheckedIn = (props: { tournamentID: string }) => {
   );
 };
 
+// userUUID looks up the UUID of a username
 const userUUID = (username: string, divobj: Division) => {
   if (!divobj) {
     return '';
