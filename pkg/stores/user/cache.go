@@ -9,6 +9,7 @@ import (
 	lru "github.com/hashicorp/golang-lru"
 	"github.com/rs/zerolog/log"
 
+	cpb "github.com/domino14/liwords/rpc/api/proto/config_service"
 	pb "github.com/domino14/liwords/rpc/api/proto/user_service"
 )
 
@@ -51,6 +52,7 @@ type backingStore interface {
 	UsersByPrefix(ctx context.Context, prefix string) ([]*pb.BasicUser, error)
 	Count(ctx context.Context) (int64, error)
 	Set(ctx context.Context, u *entity.User) error
+	SetPermissions(ctx context.Context, req *cpb.PermissionsRequest) error
 
 	GetModList(ctx context.Context) (*pb.GetModListResponse, error)
 }
@@ -328,6 +330,10 @@ func (c *Cache) Set(ctx context.Context, u *entity.User) error {
 	// readd to cache
 	c.cache.Add(u.UUID, u)
 	return nil
+}
+
+func (c *Cache) SetPermissions(ctx context.Context, req *cpb.PermissionsRequest) error {
+	return c.backing.SetPermissions(ctx, req)
 }
 
 func (c *Cache) GetModList(ctx context.Context) (*pb.GetModListResponse, error) {

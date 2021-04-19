@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/domino14/liwords/pkg/entity"
+	cpb "github.com/domino14/liwords/rpc/api/proto/config_service"
 	pb "github.com/domino14/liwords/rpc/api/proto/realtime"
 	upb "github.com/domino14/liwords/rpc/api/proto/user_service"
 )
@@ -46,6 +47,7 @@ type Store interface {
 	UsersByPrefix(ctx context.Context, prefix string) ([]*upb.BasicUser, error)
 	CachedCount(ctx context.Context) int
 	Set(ctx context.Context, u *entity.User) error
+	SetPermissions(ctx context.Context, req *cpb.PermissionsRequest) error
 
 	GetModList(ctx context.Context) (*upb.GetModListResponse, error)
 }
