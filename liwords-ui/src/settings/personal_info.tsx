@@ -54,14 +54,17 @@ export const PersonalInfo = React.memo((props: Props) => {
   );
   const [bioTipsModalVisible, setBioTipsModalVisible] = useState(false);
   const [avatarErr, setAvatarErr] = useState('');
+  const [uploadPending, setUploadPending] = useState(false);
   const avatarErrorCatcher = useCallback((e: AxiosError) => {
     if (e.response) {
       // From Twirp
       console.log(e);
       setAvatarErr(e.response.data.msg);
+      setUploadPending(false);
     } else {
       setAvatarErr('unknown error, see console');
       console.log(e);
+      setUploadPending(false);
     }
   }, []);
   const propsUpdatedAvatar = props.updatedAvatar;
@@ -121,6 +124,7 @@ export const PersonalInfo = React.memo((props: Props) => {
             canvas.getContext('2d')?.drawImage(image, 0, 0, width, height);
             // The endpoint doesn't want the file type data so cut that off
             const jpegString = canvas.toDataURL('image/jpeg', 1).split(',')[1];
+            setUploadPending(true);
             axios
               .post(
                 toAPIUrl('user_service.ProfileService', 'UpdateAvatar'),
@@ -136,6 +140,7 @@ export const PersonalInfo = React.memo((props: Props) => {
                   message: 'Success',
                   description: 'Your avatar was updated.',
                 });
+                setUploadPending(false);
                 propsUpdatedAvatar(resp.data.avatar_url);
               })
               .catch(avatarErrorCatcher);
@@ -253,7 +258,9 @@ export const PersonalInfo = React.memo((props: Props) => {
         <div className="no-avatar-section">
           {' '}
           <Upload {...fileProps}>
-            <Button className="change-avatar">Add a Profile photo</Button>
+            <Button className="change-avatar" disabled={uploadPending}>
+              {uploadPending ? 'Uploading...' : 'Add a Profile photo'}
+            </Button>
           </Upload>
         </div>
       )}
@@ -330,7 +337,7 @@ export const PersonalInfo = React.memo((props: Props) => {
             props.startClosingAccount();
           }}
         >
-          Close my account
+          Delete my account
         </Col>
         <Col span={16}>
           <Form.Item>
