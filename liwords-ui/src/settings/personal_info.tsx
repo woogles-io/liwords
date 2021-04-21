@@ -121,7 +121,9 @@ export const PersonalInfo = React.memo((props: Props) => {
           } else {
             canvas.width = 96;
             canvas.height = 96;
-            canvas.getContext('2d')?.drawImage(image, 0, 0, width, height);
+            canvas
+              .getContext('2d')
+              ?.drawImage(image, 0, 0, image.width, image.height, 0, 0, 96, 96);
             // The endpoint doesn't want the file type data so cut that off
             const jpegString = canvas.toDataURL('image/jpeg', 1).split(',')[1];
             setUploadPending(true);
