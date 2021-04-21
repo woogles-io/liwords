@@ -15,6 +15,7 @@ import (
 	"github.com/rs/zerolog/log"
 
 	"github.com/domino14/liwords/pkg/entity"
+	cpb "github.com/domino14/liwords/rpc/api/proto/config_service"
 	pb "github.com/domino14/liwords/rpc/api/proto/user_service"
 )
 
@@ -165,6 +166,33 @@ func (s *DBStore) Set(ctx context.Context, u *entity.User) error {
 	result := s.db.Model(&User{}).Set("gorm:query_option", "FOR UPDATE").
 		Where("uuid = ?", u.UUID).Update(dbu)
 	return result.Error
+}
+
+func (s *DBStore) SetPermissions(ctx context.Context, req *cpb.PermissionsRequest) error {
+	updates := make(map[string]interface{})
+	if req.Bot != nil {
+		updates["internal_bot"] = req.Bot.Value
+	}
+	if req.Admin != nil {
+		updates["is_admin"] = req.Admin.Value
+	}
+	if req.Director != nil {
+		updates["is_director"] = req.Director.Value
+	}
+	if req.Mod != nil {
+		updates["is_mod"] = req.Mod.Value
+	}
+
+	result := s.db.Table("users").Where("lower(username) = ?", strings.ToLower(req.Username)).Updates(updates)
+	if result.Error != nil {
+		return result.Error
+	}
+	if result.RowsAffected != 1 {
+		// gorm also sets result.RowsAffected == 0 if len(updates) == 0
+		return gorm.ErrRecordNotFound
+	}
+
+	return nil
 }
 
 // GetByEmail gets the user by email. It does not try to get the profile.
