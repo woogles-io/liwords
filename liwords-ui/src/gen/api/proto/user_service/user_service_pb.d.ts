@@ -806,6 +806,71 @@ export namespace RemoveAvatarResponse {
   }
 }
 
+export class BriefProfilesRequest extends jspb.Message {
+  clearUserIdsList(): void;
+  getUserIdsList(): Array<string>;
+  setUserIdsList(value: Array<string>): void;
+  addUserIds(value: string, index?: number): string;
+
+  serializeBinary(): Uint8Array;
+  toObject(includeInstance?: boolean): BriefProfilesRequest.AsObject;
+  static toObject(includeInstance: boolean, msg: BriefProfilesRequest): BriefProfilesRequest.AsObject;
+  static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+  static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+  static serializeBinaryToWriter(message: BriefProfilesRequest, writer: jspb.BinaryWriter): void;
+  static deserializeBinary(bytes: Uint8Array): BriefProfilesRequest;
+  static deserializeBinaryFromReader(message: BriefProfilesRequest, reader: jspb.BinaryReader): BriefProfilesRequest;
+}
+
+export namespace BriefProfilesRequest {
+  export type AsObject = {
+    userIdsList: Array<string>,
+  }
+}
+
+export class BriefProfile extends jspb.Message {
+  getCountryCode(): string;
+  setCountryCode(value: string): void;
+
+  getAvatarUrl(): string;
+  setAvatarUrl(value: string): void;
+
+  serializeBinary(): Uint8Array;
+  toObject(includeInstance?: boolean): BriefProfile.AsObject;
+  static toObject(includeInstance: boolean, msg: BriefProfile): BriefProfile.AsObject;
+  static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+  static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+  static serializeBinaryToWriter(message: BriefProfile, writer: jspb.BinaryWriter): void;
+  static deserializeBinary(bytes: Uint8Array): BriefProfile;
+  static deserializeBinaryFromReader(message: BriefProfile, reader: jspb.BinaryReader): BriefProfile;
+}
+
+export namespace BriefProfile {
+  export type AsObject = {
+    countryCode: string,
+    avatarUrl: string,
+  }
+}
+
+export class BriefProfilesResponse extends jspb.Message {
+  getResponseMap(): jspb.Map<string, BriefProfile>;
+  clearResponseMap(): void;
+  serializeBinary(): Uint8Array;
+  toObject(includeInstance?: boolean): BriefProfilesResponse.AsObject;
+  static toObject(includeInstance: boolean, msg: BriefProfilesResponse): BriefProfilesResponse.AsObject;
+  static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+  static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+  static serializeBinaryToWriter(message: BriefProfilesResponse, writer: jspb.BinaryWriter): void;
+  static deserializeBinary(bytes: Uint8Array): BriefProfilesResponse;
+  static deserializeBinaryFromReader(message: BriefProfilesResponse, reader: jspb.BinaryReader): BriefProfilesResponse;
+}
+
+export namespace BriefProfilesResponse {
+  export type AsObject = {
+    responseMap: Array<[string, BriefProfile.AsObject]>,
+  }
+}
+
 export class UsernameSearchRequest extends jspb.Message {
   getPrefix(): string;
   setPrefix(value: string): void;
@@ -1185,6 +1250,50 @@ export class GetFullBlocksResponse extends jspb.Message {
 export namespace GetFullBlocksResponse {
   export type AsObject = {
     userIdsList: Array<string>,
+  }
+}
+
+export class GetModListRequest extends jspb.Message {
+  serializeBinary(): Uint8Array;
+  toObject(includeInstance?: boolean): GetModListRequest.AsObject;
+  static toObject(includeInstance: boolean, msg: GetModListRequest): GetModListRequest.AsObject;
+  static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+  static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+  static serializeBinaryToWriter(message: GetModListRequest, writer: jspb.BinaryWriter): void;
+  static deserializeBinary(bytes: Uint8Array): GetModListRequest;
+  static deserializeBinaryFromReader(message: GetModListRequest, reader: jspb.BinaryReader): GetModListRequest;
+}
+
+export namespace GetModListRequest {
+  export type AsObject = {
+  }
+}
+
+export class GetModListResponse extends jspb.Message {
+  clearAdminUserIdsList(): void;
+  getAdminUserIdsList(): Array<string>;
+  setAdminUserIdsList(value: Array<string>): void;
+  addAdminUserIds(value: string, index?: number): string;
+
+  clearModUserIdsList(): void;
+  getModUserIdsList(): Array<string>;
+  setModUserIdsList(value: Array<string>): void;
+  addModUserIds(value: string, index?: number): string;
+
+  serializeBinary(): Uint8Array;
+  toObject(includeInstance?: boolean): GetModListResponse.AsObject;
+  static toObject(includeInstance: boolean, msg: GetModListResponse): GetModListResponse.AsObject;
+  static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+  static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+  static serializeBinaryToWriter(message: GetModListResponse, writer: jspb.BinaryWriter): void;
+  static deserializeBinary(bytes: Uint8Array): GetModListResponse;
+  static deserializeBinaryFromReader(message: GetModListResponse, reader: jspb.BinaryReader): GetModListResponse;
+}
+
+export namespace GetModListResponse {
+  export type AsObject = {
+    adminUserIdsList: Array<string>,
+    modUserIdsList: Array<string>,
   }
 }
 

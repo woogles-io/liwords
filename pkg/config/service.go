@@ -114,17 +114,7 @@ func (cs *ConfigService) SetUserPermissions(ctx context.Context, req *pb.Permiss
 		return nil, twirp.NewError(twirp.Unauthenticated, errRequiresAdmin.Error())
 	}
 
-	targetUser, err := cs.userStore.Get(ctx, req.Username)
-	if err != nil {
-		return nil, twirp.NewError(twirp.InvalidArgument, err.Error())
-	}
-
-	targetUser.IsAdmin = req.Admin
-	targetUser.IsDirector = req.Director
-	targetUser.IsMod = req.Mod
-	targetUser.IsBot = req.Bot
-
-	err = cs.userStore.Set(ctx, targetUser)
+	err = cs.userStore.SetPermissions(ctx, req)
 	if err != nil {
 		return nil, twirp.NewError(twirp.InvalidArgument, err.Error())
 	}

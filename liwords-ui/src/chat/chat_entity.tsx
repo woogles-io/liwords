@@ -1,9 +1,18 @@
 import React from 'react';
 import moment from 'moment';
-import { ChatEntityType, useExcludedPlayersStoreContext } from '../store/store';
+import {
+  ChatEntityType,
+  useExcludedPlayersStoreContext,
+  useModeratorStoreContext,
+} from '../store/store';
 import { UsernameWithContext } from '../shared/usernameWithContext';
 import { Wooglinkify } from '../shared/wooglinkify';
 import { Modal, Tag } from 'antd';
+import {
+  CrownFilled,
+  SafetyCertificateFilled,
+  StarFilled,
+} from '@ant-design/icons';
 import { ExclamationCircleOutlined } from '@ant-design/icons';
 import { moderateUser, deleteChatMessage } from '../mod/moderate';
 
@@ -47,11 +56,14 @@ export const ChatEntity = (props: EntityProps) => {
     excludedPlayers,
     excludedPlayersFetched,
   } = useExcludedPlayersStoreContext();
+  const { moderators, admins } = useModeratorStoreContext();
   if (props.timestamp) {
     ts = moment(props.timestamp).format('MMM Do - LT');
   }
   let el;
   let senderClass = 'sender';
+  let fromMod = false;
+  let fromAdmin = false;
   const channel = '';
 
   // Don't render until we know who's been blocked
@@ -62,7 +74,13 @@ export const ChatEntity = (props: EntityProps) => {
   if (props.senderId && excludedPlayers.has(props.senderId)) {
     return null;
   }
-  if (props.highlight) {
+  if (props.senderId && moderators.has(props.senderId)) {
+    fromMod = true;
+  }
+  if (props.senderId && admins.has(props.senderId)) {
+    fromAdmin = true;
+  }
+  if (props.highlight || fromMod || fromAdmin) {
     senderClass = 'special-sender';
   }
   switch (props.entityType) {
@@ -109,7 +127,27 @@ export const ChatEntity = (props: EntityProps) => {
                 moderate={moderateUser}
               />
               {props.highlightText && props.highlight && (
-                <Tag color={'#d5cad6'}>{props.highlightText}</Tag>
+                <Tag
+                  className="director"
+                  icon={<CrownFilled />}
+                  color={'#d5cad6'}
+                >
+                  {props.highlightText}
+                </Tag>
+              )}
+              {!props.highlight && fromAdmin && (
+                <Tag className="admin" icon={<StarFilled />} color={'#F4B000'}>
+                  Admin
+                </Tag>
+              )}
+              {!props.highlight && !fromAdmin && fromMod && (
+                <Tag
+                  className="mod"
+                  icon={<SafetyCertificateFilled />}
+                  color={'#E6FFDF'}
+                >
+                  Moderator
+                </Tag>
               )}
             </span>
             <span className="message">

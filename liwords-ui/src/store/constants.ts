@@ -19,6 +19,9 @@ export const isPairedMode = (type: string) => {
   return type === 'CHILD' || type === 'STANDARD';
 };
 
+export const isClubType = (type: string) => {
+  return type === 'CHILD' || type === 'CLUB';
+};
 // See cutoffs in variants.go. XXX: Try to tie these together better.
 export const timeCtrlToDisplayName = (
   secs: number,

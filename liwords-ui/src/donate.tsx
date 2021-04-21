@@ -61,7 +61,7 @@ export const Donate = () => {
     <>
       <div className="title">Help us keep Woogles.io going!</div>
       <p>
-        We’re an entirely volunteer-run 503(c) NFP. If you’re enjoying the site,
+        We’re an entirely volunteer-run 501(c)(3) non-profit. If you’re enjoying the site,
         please feel free to contribute a few dollars to us!
       </p>
       <div className="donation-buttons">

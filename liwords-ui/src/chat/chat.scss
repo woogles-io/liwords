@@ -260,7 +260,15 @@ p {
           letter-spacing: 0.16em;
           padding: 0 2px 0 4px;
           line-height: 14px;
-          color: #52186d;
+          &.director {
+            color: #52186d;
+          }
+          &.admin {
+            color: #444444;
+          }
+          &.mod {
+            color: #1d6b0a;
+          }
         }
       }
       .message-body {

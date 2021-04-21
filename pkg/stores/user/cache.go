@@ -2,11 +2,14 @@ package user
 
 import (
 	"context"
+	"sync"
+	"time"
 
 	"github.com/domino14/liwords/pkg/entity"
 	lru "github.com/hashicorp/golang-lru"
 	"github.com/rs/zerolog/log"
 
+	cpb "github.com/domino14/liwords/rpc/api/proto/config_service"
 	pb "github.com/domino14/liwords/rpc/api/proto/user_service"
 )
 
@@ -23,6 +26,7 @@ type backingStore interface {
 	SetPassword(ctx context.Context, uuid string, hashpass string) error
 	SetAbout(ctx context.Context, uuid string, about string) error
 	SetAvatarUrl(ctx context.Context, uuid string, avatarUrl string) error
+	GetBriefProfiles(ctx context.Context, uuids []string) (map[string]*pb.BriefProfile, error)
 	SetPersonalInfo(ctx context.Context, uuid string, email string, firstName string, lastName string, countryCode string, about string) error
 	SetRatings(ctx context.Context, p0uuid string, p1uuid string, variant entity.VariantKey,
 		p1Rating entity.SingleRating, p2Rating entity.SingleRating) error
@@ -49,6 +53,9 @@ type backingStore interface {
 	UsersByPrefix(ctx context.Context, prefix string) ([]*pb.BasicUser, error)
 	Count(ctx context.Context) (int64, error)
 	Set(ctx context.Context, u *entity.User) error
+	SetPermissions(ctx context.Context, req *cpb.PermissionsRequest) error
+
+	GetModList(ctx context.Context) (*pb.GetModListResponse, error)
 }
 
 const (
@@ -56,11 +63,26 @@ const (
 	CacheCap = 400
 )
 
+type BriefProfileCache struct {
+	sync.Mutex
+	cache map[string]*pb.BriefProfile
+}
+
+type modListCache struct {
+	sync.Mutex
+	expiry   time.Time
+	response *pb.GetModListResponse
+}
+
 // Cache will reside in-memory, and will be per-node.
 type Cache struct {
 	cache *lru.Cache
 
 	backing backingStore
+
+	briefProfileCache *BriefProfileCache
+
+	cachedModList modListCache
 }
 
 func NewCache(backing backingStore) *Cache {
@@ -73,7 +95,17 @@ func NewCache(backing backingStore) *Cache {
 	return &Cache{
 		backing: backing,
 		cache:   lrucache,
+		briefProfileCache: &BriefProfileCache{
+			cache: make(map[string]*pb.BriefProfile),
+		},
 	}
+}
+
+func (c *Cache) uncacheBriefProfile(uuid string) {
+	c.briefProfileCache.Lock()
+	defer c.briefProfileCache.Unlock()
+
+	delete(c.briefProfileCache.cache, uuid)
 }
 
 func (c *Cache) Get(ctx context.Context, username string) (*entity.User, error) {
@@ -133,7 +165,56 @@ func (c *Cache) SetAvatarUrl(ctx context.Context, uuid string, avatarUrl string)
 		return err
 	}
 	u.Profile.AvatarUrl = avatarUrl
-	return c.backing.SetAvatarUrl(ctx, uuid, avatarUrl)
+	if err = c.backing.SetAvatarUrl(ctx, uuid, avatarUrl); err != nil {
+		return err
+	}
+	c.uncacheBriefProfile(uuid)
+	return nil
+}
+
+func (c *Cache) GetBriefProfiles(ctx context.Context, uuids []string) (map[string]*pb.BriefProfile, error) {
+	c.briefProfileCache.Lock()
+	defer c.briefProfileCache.Unlock()
+
+	missingUuids := make([]string, 0, len(uuids))
+	ret := make(map[string]*pb.BriefProfile)
+	for _, uuid := range uuids {
+		if cached, ok := c.briefProfileCache.cache[uuid]; ok {
+			ret[uuid] = cached
+		} else {
+			missingUuids = append(missingUuids, uuid)
+		}
+	}
+
+	if len(missingUuids) > 0 {
+		additionalStuffs, err := c.backing.GetBriefProfiles(ctx, missingUuids)
+		if err != nil {
+			return nil, err
+		}
+
+		if len(additionalStuffs) > 0 {
+			// only cache existing values, so cache size is bounded by database size.
+
+			for uuid, value := range additionalStuffs {
+				ret[uuid] = value
+				c.briefProfileCache.cache[uuid] = value
+			}
+
+			// this one goroutine will evict all of these values at the same time
+			go func() {
+				time.Sleep(5 * time.Minute)
+
+				c.briefProfileCache.Lock()
+				defer c.briefProfileCache.Unlock()
+
+				for uuid := range additionalStuffs {
+					delete(c.briefProfileCache.cache, uuid)
+				}
+			}()
+		}
+	}
+
+	return ret, nil
 }
 
 func (c *Cache) SetPersonalInfo(ctx context.Context, uuid string, email string, firstName string, lastName string, countryCode string, about string) error {
@@ -145,7 +226,11 @@ func (c *Cache) SetPersonalInfo(ctx context.Context, uuid string, email string, 
 	u.Profile.FirstName = firstName
 	u.Profile.LastName = lastName
 	u.Profile.CountryCode = countryCode
-	return c.backing.SetPersonalInfo(ctx, uuid, email, firstName, lastName, countryCode, about)
+	if err = c.backing.SetPersonalInfo(ctx, uuid, email, firstName, lastName, countryCode, about); err != nil {
+		return err
+	}
+	c.uncacheBriefProfile(uuid)
+	return nil
 }
 
 func (c *Cache) ResetPersonalInfo(ctx context.Context, uuid string) error {
@@ -160,7 +245,11 @@ func (c *Cache) ResetPersonalInfo(ctx context.Context, uuid string) error {
 	u.Profile.Title = ""
 	u.Profile.AvatarUrl = ""
 	u.Profile.About = ""
-	return c.backing.ResetPersonalInfo(ctx, uuid)
+	if err = c.backing.ResetPersonalInfo(ctx, uuid); err != nil {
+		return err
+	}
+	c.uncacheBriefProfile(uuid)
+	return nil
 }
 
 func (c *Cache) SetRatings(ctx context.Context, p0uuid string, p1uuid string, variant entity.VariantKey, p0Rating entity.SingleRating, p1Rating entity.SingleRating) error {
@@ -316,4 +405,25 @@ func (c *Cache) Set(ctx context.Context, u *entity.User) error {
 	// readd to cache
 	c.cache.Add(u.UUID, u)
 	return nil
+}
+
+func (c *Cache) SetPermissions(ctx context.Context, req *cpb.PermissionsRequest) error {
+	return c.backing.SetPermissions(ctx, req)
+}
+
+func (c *Cache) GetModList(ctx context.Context) (*pb.GetModListResponse, error) {
+	c.cachedModList.Lock()
+	defer c.cachedModList.Unlock()
+	if c.cachedModList.response != nil && time.Now().Before(c.cachedModList.expiry) {
+		return c.cachedModList.response, nil
+	}
+
+	resp, err := c.backing.GetModList(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	c.cachedModList.response = resp
+	c.cachedModList.expiry = time.Now().Add(time.Minute)
+	return resp, nil
 }
