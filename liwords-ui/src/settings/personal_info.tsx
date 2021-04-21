@@ -54,7 +54,6 @@ export const PersonalInfo = React.memo((props: Props) => {
   );
   const [bioTipsModalVisible, setBioTipsModalVisible] = useState(false);
   const [avatarErr, setAvatarErr] = useState('');
-
   const avatarErrorCatcher = useCallback((e: AxiosError) => {
     if (e.response) {
       // From Twirp
@@ -65,7 +64,7 @@ export const PersonalInfo = React.memo((props: Props) => {
       console.log(e);
     }
   }, []);
-
+  const propsUpdatedAvatar = props.updatedAvatar;
   const fileProps = {
     beforeUpload: (file: File) => {
       return false;
@@ -73,18 +72,17 @@ export const PersonalInfo = React.memo((props: Props) => {
     maxCount: 1,
     onChange: (info: any) => {
       if (info.fileList.length > 0) {
-        updateAvatar(info.fileList[0].originFileObj);
+        // If they try again, the new one goes to the end of the list
+        updateAvatar(info.fileList[info.fileList.length - 1].originFileObj);
       }
     },
-    accept: 'image/jpeg',
+    accept: 'image/*',
     showUploadList: false,
   };
 
   const cancelRemoveAvatarModal = useCallback(() => {
     setRemoveAvatarModalVisible(false);
   }, []);
-
-  const propsUpdatedAvatar = props.updatedAvatar;
 
   const removeAvatar = useCallback(() => {
     axios
@@ -109,27 +107,43 @@ export const PersonalInfo = React.memo((props: Props) => {
   const updateAvatar = useCallback(
     (avatarFile: Blob) => {
       let reader = new FileReader();
-      reader.onload = () => {
-        axios
-          .post(
-            toAPIUrl('user_service.ProfileService', 'UpdateAvatar'),
-            {
-              jpg_data: btoa(String(reader.result)),
-            },
-            {
-              withCredentials: true,
-            }
-          )
-          .then((resp) => {
-            notification.info({
-              message: 'Success',
-              description: 'Your avatar was updated.',
-            });
-            propsUpdatedAvatar(resp.data.avatar_url);
-          })
-          .catch(avatarErrorCatcher);
+      reader.onload = (readerEvent) => {
+        let image = new Image();
+        image.onload = () => {
+          const canvas = document.createElement('canvas'),
+            width = image.width,
+            height = image.height;
+          if (width < 96 || width != height) {
+            setAvatarErr('Image must be square and at least 96x96.');
+          } else {
+            canvas.width = 96;
+            canvas.height = 96;
+            canvas.getContext('2d')?.drawImage(image, 0, 0, width, height);
+            // The endpoint doesn't want the file type data so cut that off
+            const jpegString = canvas.toDataURL('image/jpeg', 1).split(',')[1];
+            axios
+              .post(
+                toAPIUrl('user_service.ProfileService', 'UpdateAvatar'),
+                {
+                  jpg_data: jpegString,
+                },
+                {
+                  withCredentials: true,
+                }
+              )
+              .then((resp) => {
+                notification.info({
+                  message: 'Success',
+                  description: 'Your avatar was updated.',
+                });
+                propsUpdatedAvatar(resp.data.avatar_url);
+              })
+              .catch(avatarErrorCatcher);
+          }
+        };
+        image.src = String(reader.result);
       };
-      reader.readAsBinaryString(avatarFile);
+      reader.readAsDataURL(avatarFile);
     },
     [propsUpdatedAvatar, avatarErrorCatcher]
   );
