@@ -143,6 +143,8 @@ func main() {
 		panic(err)
 	}
 	stores.PresenceStore = user.NewRedisPresenceStore(redisPool)
+	pleaseQuitPresence := make(chan bool)
+	presenceHasQuit := stores.PresenceStore.StartCachingPresence(pleaseQuitPresence)
 	stores.ChatStore = user.NewRedisChatStore(redisPool, stores.PresenceStore, stores.TournamentStore)
 
 	authenticationService := auth.NewAuthenticationService(stores.UserStore, stores.SessionStore, stores.ConfigStore,
@@ -152,7 +154,7 @@ func main() {
 	profileService := pkgprofile.NewProfileService(stores.UserStore, pkguser.NewS3Uploader(os.Getenv("AVATAR_UPLOAD_BUCKET")))
 	wordService := words.NewWordService(&cfg.MacondoConfig)
 	autocompleteService := pkguser.NewAutocompleteService(stores.UserStore)
-	socializeService := pkguser.NewSocializeService(stores.UserStore, stores.ChatStore)
+	socializeService := pkguser.NewSocializeService(stores.UserStore, stores.ChatStore, stores.PresenceStore)
 	configService := config.NewConfigService(stores.ConfigStore, stores.UserStore)
 	tournamentService := tournament.NewTournamentService(stores.TournamentStore, stores.UserStore)
 	modService := mod.NewModService(stores.UserStore, stores.ChatStore)
@@ -252,6 +254,8 @@ func main() {
 	}
 	// XXX: We need to wait until all goroutines end. Not just the pubsub but possibly the bot,
 	// etc.
+	pleaseQuitPresence <- true
 	<-idleConnsClosed
+	<-presenceHasQuit
 	log.Info().Msg("server gracefully shutting down")
 }

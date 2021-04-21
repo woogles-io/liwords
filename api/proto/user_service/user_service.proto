@@ -225,6 +225,12 @@ message BasicUser {
   string username = 2;
 }
 
+message BasicUserWithChannels {
+  string uuid = 1;
+  string username = 2;
+  repeated string channels = 3;
+}
+
 message GetActiveChatChannelsRequest {
   int32 number = 1;
   int32 offset = 2;
@@ -247,7 +253,7 @@ message ActiveChatChannels {
 
 message GetChatsRequest { string channel = 1; }
 
-message GetFollowsResponse { repeated BasicUser users = 1; }
+message GetFollowsResponse { repeated BasicUserWithChannels users = 1; }
 message GetBlocksResponse { repeated BasicUser users = 1; }
 // XXX: We should eventually obsolete this and handle blocks purely on
 // the backend but we need to write a lot of hard code for that.

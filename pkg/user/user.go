@@ -53,6 +53,16 @@ type Store interface {
 	GetModList(ctx context.Context) (*upb.GetModListResponse, error)
 }
 
+type CachedPresenceType struct {
+	Username string // If multiple tabs are open before and after changing username, this may be outdated. Just ignore this and get the latest value from db instead.
+	Channels []string
+}
+
+type CachedPresencesType struct {
+	SeenStrings   map[string]string // map every value to itself
+	UserPresences map[string]*CachedPresenceType
+}
+
 // PresenceStore stores user presence. Since it is meant to be easily user-visible,
 // we deal with unique usernames in addition to UUIDs.
 // Presence applies to chat channels, as well as an overall site-wide presence.
@@ -76,6 +86,9 @@ type PresenceStore interface {
 	BatchGetPresence(ctx context.Context, users []*entity.User) ([]*entity.User, error)
 
 	LastSeen(ctx context.Context, uuid string) (int64, error)
+
+	StartCachingPresence(pleaseQuit chan bool) <-chan bool
+	GetCachedPresences() *CachedPresencesType
 }
 
 // ChatStore stores user and channel chats and messages

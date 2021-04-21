@@ -1081,6 +1081,36 @@ export namespace BasicUser {
   }
 }
 
+export class BasicUserWithChannels extends jspb.Message {
+  getUuid(): string;
+  setUuid(value: string): void;
+
+  getUsername(): string;
+  setUsername(value: string): void;
+
+  clearChannelsList(): void;
+  getChannelsList(): Array<string>;
+  setChannelsList(value: Array<string>): void;
+  addChannels(value: string, index?: number): string;
+
+  serializeBinary(): Uint8Array;
+  toObject(includeInstance?: boolean): BasicUserWithChannels.AsObject;
+  static toObject(includeInstance: boolean, msg: BasicUserWithChannels): BasicUserWithChannels.AsObject;
+  static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+  static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+  static serializeBinaryToWriter(message: BasicUserWithChannels, writer: jspb.BinaryWriter): void;
+  static deserializeBinary(bytes: Uint8Array): BasicUserWithChannels;
+  static deserializeBinaryFromReader(message: BasicUserWithChannels, reader: jspb.BinaryReader): BasicUserWithChannels;
+}
+
+export namespace BasicUserWithChannels {
+  export type AsObject = {
+    uuid: string,
+    username: string,
+    channelsList: Array<string>,
+  }
+}
+
 export class GetActiveChatChannelsRequest extends jspb.Message {
   getNumber(): number;
   setNumber(value: number): void;
@@ -1189,9 +1219,9 @@ export namespace GetChatsRequest {
 
 export class GetFollowsResponse extends jspb.Message {
   clearUsersList(): void;
-  getUsersList(): Array<BasicUser>;
-  setUsersList(value: Array<BasicUser>): void;
-  addUsers(value?: BasicUser, index?: number): BasicUser;
+  getUsersList(): Array<BasicUserWithChannels>;
+  setUsersList(value: Array<BasicUserWithChannels>): void;
+  addUsers(value?: BasicUserWithChannels, index?: number): BasicUserWithChannels;
 
   serializeBinary(): Uint8Array;
   toObject(includeInstance?: boolean): GetFollowsResponse.AsObject;
@@ -1205,7 +1235,7 @@ export class GetFollowsResponse extends jspb.Message {
 
 export namespace GetFollowsResponse {
   export type AsObject = {
-    usersList: Array<BasicUser.AsObject>,
+    usersList: Array<BasicUserWithChannels.AsObject>,
   }
 }
 

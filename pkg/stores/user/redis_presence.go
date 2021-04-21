@@ -5,10 +5,13 @@ import (
 	_ "embed"
 	"errors"
 	"fmt"
+	"sort"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	"github.com/domino14/liwords/pkg/entity"
+	"github.com/domino14/liwords/pkg/user"
 	"github.com/gomodule/redigo/redis"
 	"github.com/rs/zerolog/log"
 )
@@ -24,6 +27,8 @@ type RedisPresenceStore struct {
 	setPresenceScript   *redis.Script
 	clearPresenceScript *redis.Script
 	renewPresenceScript *redis.Script
+
+	cachedPresences atomic.Value
 }
 
 // SetPresenceScript is a Lua script that handles presence in an atomic way.
@@ -41,12 +46,18 @@ var ClearPresenceScript string
 var RenewPresenceScript string
 
 func NewRedisPresenceStore(r *redis.Pool) *RedisPresenceStore {
+	var cachedPresences atomic.Value
+	cachedPresences.Store(&user.CachedPresencesType{
+		SeenStrings:   make(map[string]string),
+		UserPresences: make(map[string]*user.CachedPresenceType),
+	})
 
 	return &RedisPresenceStore{
 		redisPool:           r,
 		setPresenceScript:   redis.NewScript(0, SetPresenceScript),
 		clearPresenceScript: redis.NewScript(0, ClearPresenceScript),
 		renewPresenceScript: redis.NewScript(0, RenewPresenceScript),
+		cachedPresences:     cachedPresences,
 	}
 }
 
@@ -226,4 +237,178 @@ func (s *RedisPresenceStore) LastSeen(ctx context.Context, uuid string) (int64, 
 		return 0, err
 	}
 	return int64(val), nil
+}
+
+// nextToken("abc#def#ghi") = ("abc", "def#ghi")
+// nextToken("ghi") = ("ghi", "")
+func nextToken(s string) (string, string) {
+	// Use this instead of strings.Split to reduce garbage.
+	p := strings.IndexByte(s, '#')
+	if p >= 0 {
+		return s[:p], s[p+1:]
+	} else {
+		return s, s[len(s):]
+	}
+}
+
+func (s *RedisPresenceStore) StartCachingPresence(pleaseQuit chan bool) <-chan bool {
+	// No mutex. Please run exactly one StartCachingPresence goroutine. I beg/trust you.
+
+	hasQuit := make(chan bool)
+	go func() {
+	loop:
+		for {
+			if err := func() error {
+				key := "userpresences"
+				cursor := int64(0)
+				var multiBulk []string
+
+				old := s.cachedPresences.Load().(*user.CachedPresencesType)
+				newSeenStrings := make(map[string]string)
+				keepString := func(s string) string {
+					// Keep one copy of each unique string to reduce garbage.
+					if t, ok := newSeenStrings[s]; ok {
+						return t
+					}
+					// Reuse the copy in previous iteration if any.
+					if t, ok := old.SeenStrings[s]; ok {
+						s = t
+					}
+					newSeenStrings[s] = s
+					return s
+				}
+
+				// Get the current state from redis. This will allocate a lot of things.
+				newUserPresences := make(map[string]*user.CachedPresenceType)
+				conn := s.redisPool.Get()
+				defer conn.Close()
+				for {
+					// Using ZSCAN loop here instead of ZRANGE.
+					// ZSCAN does not incur sorting cost.
+					// ZSCAN does not block other redis usages.
+					// ZSCAN allows filtering away anonymous connections.
+					// ZSCAN will not return an unexpected a huge slice.
+					vals, err := redis.Values(conn.Do("ZSCAN", key, cursor, "MATCH", "*#auth#*"))
+					if err != nil {
+						return err
+					}
+					vals, err = redis.Scan(vals, &cursor, &multiBulk)
+					if err != nil {
+						return err
+					}
+
+					// Save what we need from this batch.
+					for i := 0; i < len(multiBulk); i += 2 {
+						// [i] is uuid#username#auth#connID#channel
+						// [i+1] is ttlEpochSecondsAsString
+						s := multiBulk[i]
+						uuid, s := nextToken(s)
+						username, s := nextToken(s)
+						auth, s := nextToken(s)
+						if auth != "auth" {
+							continue
+						}
+						_, s = nextToken(s) // connID
+						channel, _ := nextToken(s)
+
+						if vp, ok := newUserPresences[uuid]; ok {
+							// This appends directly within the map, because vp is a pointer type.
+							vp.Channels = append(vp.Channels, keepString(channel))
+						} else {
+							newUserPresences[keepString(uuid)] = &user.CachedPresenceType{
+								Username: keepString(username),
+								Channels: []string{keepString(channel)},
+							}
+						}
+					}
+
+					// ZSCAN returns 0 on final scan.
+					if cursor == 0 {
+						break
+					}
+				}
+				conn.Close() // The defer will still run but redigo no-ops it at the cost of an uncontended mutex.
+
+				// Deduplicate channel names and deduplicate objects against previous iteration.
+				userPresencesChanged := len(newUserPresences) != len(old.UserPresences)
+				for uuid, vp := range newUserPresences {
+					// Multi-tabbing users connect multiple times to the same channel, sort/deduplicate them.
+					newChannels := vp.Channels
+					if len(newChannels) > 1 {
+						sort.Strings(newChannels)
+						w := 1
+						for r := 1; r < len(newChannels); r++ {
+							if newChannels[r] != newChannels[r-1] {
+								newChannels[w] = newChannels[r]
+								w++
+							}
+						}
+						newChannels = newChannels[:w]
+						vp.Channels = newChannels // This may not be necessary because we never append().
+					}
+
+					if oldUserPresence, ok := old.UserPresences[uuid]; ok {
+						channelsAreUnchanged := false
+						oldChannels := oldUserPresence.Channels
+					compareChannels:
+						for len(newChannels) == len(oldChannels) {
+							for ri, r := range newChannels {
+								if r != oldChannels[ri] {
+									break compareChannels
+								}
+							}
+							newChannels = oldChannels // Reuse the old slice.
+							channelsAreUnchanged = true
+							break // The for-loop is just an if with a breakable label.
+						}
+
+						if channelsAreUnchanged && oldUserPresence.Username == vp.Username {
+							// Insert they are the same meme.
+							newUserPresences[uuid] = oldUserPresence
+						} else {
+							vp.Channels = newChannels
+							userPresencesChanged = true
+						}
+					}
+				}
+
+				if userPresencesChanged {
+					// To reduce garbage, reuse oldSeenStrings if it's the same.
+					oldSeenStrings := old.SeenStrings
+				compareSeenStrings:
+					for len(newSeenStrings) == len(oldSeenStrings) {
+						for k := range newSeenStrings {
+							if _, ok := oldSeenStrings[k]; !ok {
+								break compareSeenStrings
+							}
+						}
+						newSeenStrings = oldSeenStrings
+						break // The for-loop is just an if with a breakable label.
+					}
+
+					s.cachedPresences.Store(&user.CachedPresencesType{
+						SeenStrings:   newSeenStrings,
+						UserPresences: newUserPresences,
+					})
+				}
+
+				return nil
+			}(); err != nil {
+				log.Err(err).Msg("cache-presence")
+			}
+
+			select {
+			case <-pleaseQuit:
+				break loop
+			case <-time.After(5 * time.Second):
+			}
+		}
+		hasQuit <- true
+	}()
+	return hasQuit
+}
+
+// Please treat the returned value as read-only. Golang cannot enforce this, but defensive copying is too expensive.
+func (s *RedisPresenceStore) GetCachedPresences() *user.CachedPresencesType {
+	return s.cachedPresences.Load().(*user.CachedPresencesType)
 }

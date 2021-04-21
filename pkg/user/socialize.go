@@ -14,12 +14,13 @@ import (
 )
 
 type SocializeService struct {
-	userStore Store
-	chatStore ChatStore
+	userStore     Store
+	chatStore     ChatStore
+	presenceStore PresenceStore
 }
 
-func NewSocializeService(u Store, c ChatStore) *SocializeService {
-	return &SocializeService{userStore: u, chatStore: c}
+func NewSocializeService(u Store, c ChatStore, p PresenceStore) *SocializeService {
+	return &SocializeService{userStore: u, chatStore: c, presenceStore: p}
 }
 
 func (ss *SocializeService) AddFollow(ctx context.Context, req *pb.AddFollowRequest) (*pb.OKResponse, error) {
@@ -88,15 +89,23 @@ func (ss *SocializeService) GetFollows(ctx context.Context, req *pb.GetFollowsRe
 		return nil, twirp.InternalErrorWith(err)
 	}
 
-	basicUsers := make([]*pb.BasicUser, len(users))
+	presences := ss.presenceStore.GetCachedPresences()
+
+	basicUsersWithChannels := make([]*pb.BasicUserWithChannels, len(users))
 	for i, u := range users {
-		basicUsers[i] = &pb.BasicUser{
+		var channels []string
+		if presence, ok := presences.UserPresences[u.UUID]; ok {
+			// Let's hope protobuf does not mutilate this slice.
+			channels = presence.Channels
+		}
+		basicUsersWithChannels[i] = &pb.BasicUserWithChannels{
 			Uuid:     u.UUID,
 			Username: u.Username,
+			Channels: channels,
 		}
 	}
 
-	return &pb.GetFollowsResponse{Users: basicUsers}, nil
+	return &pb.GetFollowsResponse{Users: basicUsersWithChannels}, nil
 }
 
 // blocks
