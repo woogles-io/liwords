@@ -122,9 +122,13 @@ export const DirectorTools = React.memo((props: DTProps) => {
     const startTournament = () => {
       axios
         .post(
-          toAPIUrl('tournament_service.TournamentService', 'StartTournament'),
+          toAPIUrl(
+            'tournament_service.TournamentService',
+            'StartRoundCountdown'
+          ),
           {
             id: props.tournamentID,
+            start_all_rounds: true,
           },
           { withCredentials: true }
         )
@@ -171,11 +175,7 @@ export const DirectorTools = React.memo((props: DTProps) => {
 
   return (
     <div className="director-tools">
-      {/* {renderStartButton()} */
-      /* there is no tournament start button anymore; open round instead
-        or look at StartRoundCountdown and pass in flag to start all rounds
-
-      */}
+      {renderStartButton()}
       {renderRoster()}
       {renderGhettoTools()}
     </div>

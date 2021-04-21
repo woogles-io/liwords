@@ -51,7 +51,7 @@ func (b *Bus) seekRequest(ctx context.Context, auth, userID, connID string,
 	reqUser.UserId = userID
 	req.User = reqUser
 
-	err = gameplay.ValidateSoughtGame(ctx, gameRequest)
+	err = entity.ValidateGameRequest(ctx, gameRequest)
 	if err != nil {
 		return err
 	}
@@ -115,7 +115,7 @@ func (b *Bus) matchRequest(ctx context.Context, auth, userID, connID string,
 		return err
 	}
 
-	err = gameplay.ValidateSoughtGame(ctx, gameRequest)
+	err = entity.ValidateGameRequest(ctx, gameRequest)
 	if err != nil {
 		return err
 	}

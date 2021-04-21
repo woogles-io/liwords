@@ -1,6 +1,10 @@
 // Ghetto tools are Cesar tools before making things pretty.
 
-import { MinusCircleOutlined, PlusOutlined } from '@ant-design/icons';
+import {
+  MinusCircleOutlined,
+  PlusOutlined,
+  SmileOutlined,
+} from '@ant-design/icons';
 import {
   Button,
   Form,
@@ -11,11 +15,21 @@ import {
   Select,
   Space,
   Switch,
+  Typography,
 } from 'antd';
 import axios from 'axios';
 import { Store } from 'rc-field-form/lib/interface';
 import React, { useState } from 'react';
-import { toAPIUrl } from '../api/api';
+import { postBinary, toAPIUrl } from '../api/api';
+import {
+  DivisionControls,
+  GameMode,
+  GameRequest,
+  GameRules,
+  TournamentGameResult,
+} from '../gen/api/proto/realtime/realtime_pb';
+import { TournamentResponse } from '../gen/api/proto/tournament_service/tournament_service_pb';
+import { SoughtGame } from '../store/reducers/lobby_reducer';
 import { Division } from '../store/reducers/tournament_reducer';
 import { useTournamentStoreContext } from '../store/store';
 
@@ -40,6 +54,9 @@ const FormModal = (props: ModalProps) => {
     'set-pairing': <SetPairing tournamentID={props.tournamentID} />,
     'set-result': <SetResult tournamentID={props.tournamentID} />,
     'pair-round': <PairRound tournamentID={props.tournamentID} />,
+    'set-tournament-controls': (
+      <SetTournamentControls tournamentID={props.tournamentID} />
+    ),
   };
 
   type FormKeys = keyof typeof forms;
@@ -85,7 +102,7 @@ export const GhettoTools = (props: Props) => {
     'Add players',
     'Remove player',
     'Set tournament controls',
-    'Set single round controls',
+    'Set round controls',
     'Set pairing', // Set a single pairing
     'Pair round', // Pair a whole round
     'Set result', // Set a single result
@@ -680,6 +697,101 @@ const PairRound = (props: { tournamentID: string }) => {
 
       <Form.Item name="round" label="Round (1-indexed)">
         <InputNumber min={1} />
+      </Form.Item>
+
+      <Form.Item>
+        <Button type="primary" htmlType="submit">
+          Submit
+        </Button>
+      </Form.Item>
+    </Form>
+  );
+};
+
+const SetTournamentControls = (props: { tournamentID: string }) => {
+  const onFinish = async (vals: Store) => {
+    const gr = new GameRequest();
+    const rules = new GameRules();
+    rules.setBoardLayoutName('CrosswordGame');
+    rules.setLetterDistributionName('English');
+    gr.setLexicon(vals.lexicon);
+    gr.setRules(rules);
+    gr.setIncrementSeconds(vals.incrementSeconds);
+    gr.setInitialTimeSeconds(vals.initialTimeSeconds);
+    gr.setChallengeRule(vals.challengeRule);
+    gr.setGameMode(GameMode.REAL_TIME);
+    gr.setRatingMode(vals.ratingMode);
+    gr.setMaxOvertimeMinutes(vals.maxOvertimeMinutes);
+
+    const ctrls = new DivisionControls();
+    ctrls.setId(props.tournamentID);
+    ctrls.setDivision(vals.division);
+    ctrls.setGameRequest(gr);
+    // can set this later to whatever values, along with a spread
+    ctrls.setSuspendedResult(TournamentGameResult.BYE);
+    ctrls.setAutoStart(false);
+
+    try {
+      const rbin = await postBinary(
+        'tournament_service.TournamentService',
+        'SetDivisionControls',
+        ctrls
+      );
+
+      const resp = TournamentResponse.deserializeBinary(rbin.data);
+      console.log('setTournamentControls', resp);
+      message.info({
+        content: 'Controls set',
+        duration: 3,
+      });
+    } catch (err) {
+      message.error({
+        content: 'Error ' + err.response?.data?.msg,
+        duration: 5,
+      });
+    }
+  };
+
+  return (
+    <Form onFinish={onFinish}>
+      <Form.Item
+        name="division"
+        label="Division Name"
+        rules={[
+          {
+            required: true,
+            message: 'Please input division name',
+          },
+        ]}
+      >
+        {/* lazy right now but all of these need required */}
+        <Input />
+      </Form.Item>
+
+      <Form.Item
+        label="Game Settings"
+        shouldUpdate={(prevValues, curValues) =>
+          prevValues.users !== curValues.users
+        }
+      >
+        {({ getFieldValue }) => {
+          const soughtGame =
+            (getFieldValue('soughtGame') as SoughtGame) || undefined;
+          return soughtGame ? (
+            <ul>
+              <li>Initial Time (Minutes): {soughtGame.incrementSecs / 60}</li>
+              <li>Lexicon: {soughtGame.lexicon}</li>
+              <li>Max Overtime (Minutes): {soughtGame.maxOvertimeMinutes}</li>
+              <li>Increment (Seconds): {soughtGame.incrementSecs}</li>
+              <li>Challenge Rule: {soughtGame.challengeRule}</li>
+              <li>Rated: {soughtGame.rated}</li>
+            </ul>
+          ) : (
+            <Typography.Text className="ant-form-text" type="secondary">
+              ( <SmileOutlined /> No game settings yet. )
+            </Typography.Text>
+          );
+        }}
       </Form.Item>
 
       <Form.Item>

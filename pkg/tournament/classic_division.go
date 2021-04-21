@@ -1,6 +1,7 @@
 package tournament
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"math/rand"
@@ -48,7 +49,13 @@ func (t *ClassicDivision) GetDivisionControls() *realtime.DivisionControls {
 }
 
 func (t *ClassicDivision) SetDivisionControls(divisionControls *realtime.DivisionControls) (*realtime.DivisionControls, error) {
+	err := entity.ValidateGameRequest(context.Background(), divisionControls.GameRequest)
+	if err != nil {
+		return nil, err
+	}
+
 	t.DivisionControls = divisionControls
+
 	return t.DivisionControls, nil
 }
 
@@ -876,7 +883,7 @@ func (t *ClassicDivision) GetStandings(round int, includeSuspended bool) (*realt
 
 func (t *ClassicDivision) IsRoundReady(round int) (bool, error) {
 	if round >= len(t.Matrix) || round < 0 {
-		return false, fmt.Errorf("round number out of rang (IsRoundReady): %d", round)
+		return false, fmt.Errorf("round number out of range (IsRoundReady): %d", round)
 	}
 	// Check that everyone is paired
 	for _, pairingKey := range t.Matrix[round] {
