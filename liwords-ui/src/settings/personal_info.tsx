@@ -113,7 +113,7 @@ export const PersonalInfo = React.memo((props: Props) => {
           const canvas = document.createElement('canvas'),
             width = image.width,
             height = image.height;
-          if (width < 96 || width != height) {
+          if (width < 96 || width !== height) {
             setAvatarErr('Image must be square and at least 96x96.');
           } else {
             canvas.width = 96;
