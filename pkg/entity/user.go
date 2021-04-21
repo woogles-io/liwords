@@ -9,8 +9,6 @@ import (
 
 	"github.com/domino14/liwords/pkg/glicko"
 	ms "github.com/domino14/liwords/rpc/api/proto/mod_service"
-	pb "github.com/domino14/liwords/rpc/api/proto/realtime"
-	"github.com/rs/zerolog/log"
 )
 
 const (
@@ -147,15 +145,5 @@ func (u *User) AvatarUrl() string {
 		return "https://woogles-prod-assets.s3.amazonaws.com/macondog.png"
 	} else {
 		return u.Profile.AvatarUrl
-	}
-}
-
-func (u *User) AugmentChatMessage(chatMessage *pb.ChatMessage) {
-	if u.Profile != nil {
-		chatMessage.CountryCode = u.Profile.CountryCode
-		chatMessage.AvatarUrl = u.AvatarUrl()
-	} else {
-		// not sure if it can be nil, but we don't want to crash if that happens
-		log.Warn().Interface("chat-message", chatMessage).Msg("chat-no-profile")
 	}
 }

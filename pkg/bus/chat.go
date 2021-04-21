@@ -77,7 +77,13 @@ func (b *Bus) chat(ctx context.Context, userID string, evt *pb.ChatMessage) erro
 	if err != nil {
 		return err
 	}
-	sendingUser.AugmentChatMessage(chatMessage)
+	if sendingUser.Profile != nil {
+		chatMessage.CountryCode = sendingUser.Profile.CountryCode
+		chatMessage.AvatarUrl = sendingUser.AvatarUrl()
+	} else {
+		// not sure if it can be nil, but we don't want to crash if that happens
+		log.Warn().Interface("chat-message", chatMessage).Msg("chat-no-profile")
+	}
 	toSend := entity.WrapEvent(chatMessage, pb.MessageType_CHAT_MESSAGE)
 	data, err := toSend.Serialize()
 

@@ -4,10 +4,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sort"
 	"strings"
 
 	"github.com/domino14/liwords/pkg/apiserver"
-	"github.com/domino14/liwords/pkg/entity"
 	realtime "github.com/domino14/liwords/rpc/api/proto/realtime"
 	pb "github.com/domino14/liwords/rpc/api/proto/user_service"
 	"github.com/rs/zerolog/log"
@@ -259,27 +259,32 @@ func (ss *SocializeService) GetChatsForChannel(ctx context.Context, req *pb.GetC
 	if err != nil {
 		return nil, err
 	}
-	chatters := make(map[string]*entity.User)
-	for _, chatMessage := range chats {
-		chatters[chatMessage.UserId] = nil
-	}
-	// TODO: need help to make this not n+1 while still using gorm
-	for userId := range chatters {
-		user, err := ss.userStore.GetByUUID(ctx, userId)
+	if len(chats) > 0 {
+		chatterUuids := make([]string, 0, len(chats))
+		for _, chatMessage := range chats {
+			chatterUuids = append(chatterUuids, chatMessage.UserId)
+		}
+		sort.Strings(chatterUuids)
+		w := 1
+		for r := 1; r < len(chatterUuids); r++ {
+			if chatterUuids[r] != chatterUuids[r-1] {
+				chatterUuids[w] = chatterUuids[r]
+				w++
+			}
+		}
+		chatterUuids = chatterUuids[:w]
+		chatterBriefProfiles, err := ss.userStore.GetBriefProfiles(ctx, chatterUuids)
 		if err != nil {
-			log.Err(err).Str("userID", userId).Msg("getting-user-from-chat")
-		} else {
-			chatters[userId] = user
+			return nil, err
+		}
+		for _, chatMessage := range chats {
+			if chatterBriefProfile, ok := chatterBriefProfiles[chatMessage.UserId]; ok {
+				chatMessage.CountryCode = chatterBriefProfile.CountryCode
+				chatMessage.AvatarUrl = chatterBriefProfile.AvatarUrl
+			}
 		}
 	}
-	for _, chatMessage := range chats {
-		sendingUser := chatters[chatMessage.UserId]
-		if sendingUser != nil {
-			sendingUser.AugmentChatMessage(chatMessage)
-		}
-	}
-
-	return &realtime.ChatMessages{Messages: chats}, err
+	return &realtime.ChatMessages{Messages: chats}, nil
 }
 
 // func (ss *SocializeService) GetBlockedBy(ctx context.Context, req *pb.GetBlocksRequest) (*pb.GetBlockedByResponse, error) {
