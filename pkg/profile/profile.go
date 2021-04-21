@@ -247,3 +247,14 @@ func (ps *ProfileService) RemoveAvatar(ctx context.Context, r *pb.RemoveAvatarRe
 
 	return &pb.RemoveAvatarResponse{}, nil
 }
+
+func (ps *ProfileService) GetBriefProfiles(ctx context.Context, r *pb.BriefProfilesRequest) (*pb.BriefProfilesResponse, error) {
+	// this endpoint should work without login
+
+	response, err := ps.userStore.GetBriefProfiles(ctx, r.UserIds)
+	if err != nil {
+		return nil, err
+	}
+
+	return &pb.BriefProfilesResponse{Response: response}, nil
+}

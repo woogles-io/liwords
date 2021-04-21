@@ -423,6 +423,49 @@ func (s *DBStore) SetAvatarUrl(ctx context.Context, uuid string, avatarUrl strin
 	return s.db.Model(p).Update("avatar_url", avatarUrl).Error
 }
 
+func (s *DBStore) GetBriefProfiles(ctx context.Context, uuids []string) (map[string]*pb.BriefProfile, error) {
+	var users []User
+	if result := s.db.
+		Where("uuid in (?)", uuids).
+		Select([]string{"id", "uuid", "internal_bot"}).
+		Find(&users); result.Error != nil {
+		return nil, result.Error
+	}
+	userIds := make([]uint, 0, len(users))
+	for _, user := range users {
+		userIds = append(userIds, user.ID)
+	}
+	var profiles []*profile
+	if result := s.db.
+		Where("user_id in (?)", userIds).
+		Select([]string{"user_id", "country_code", "avatar_url"}).
+		Find(&profiles); result.Error != nil {
+		return nil, result.Error
+	}
+	profileMap := make(map[uint]*profile)
+	for _, profile := range profiles {
+		profileMap[profile.UserID] = profile
+	}
+
+	response := make(map[string]*pb.BriefProfile)
+	for _, user := range users {
+		prof, hasProfile := profileMap[user.ID]
+		if !hasProfile {
+			prof = &profile{}
+		}
+		if prof.AvatarUrl == "" && user.InternalBot {
+			// see entity/user.go
+			prof.AvatarUrl = "https://woogles-prod-assets.s3.amazonaws.com/macondog.png"
+		}
+		response[user.UUID] = &pb.BriefProfile{
+			CountryCode: prof.CountryCode,
+			AvatarUrl:   prof.AvatarUrl,
+		}
+	}
+
+	return response, nil
+}
+
 func (s *DBStore) SetPersonalInfo(ctx context.Context, uuid string, email string, firstName string, lastName string, countryCode string, about string) error {
 	u := &User{}
 	p := &profile{}

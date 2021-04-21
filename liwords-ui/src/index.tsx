@@ -5,6 +5,7 @@ import { BrowserRouter } from 'react-router-dom';
 import App from './App';
 import * as serviceWorker from './serviceWorker';
 import { Store } from './store/store';
+import { BriefProfiles } from './utils/brief_profiles';
 
 declare global {
   interface Window {
@@ -43,7 +44,9 @@ ReactDOM.render(
   <React.StrictMode>
     <BrowserRouter>
       <Store>
-        <App />
+        <BriefProfiles>
+          <App />
+        </BriefProfiles>
       </Store>
     </BrowserRouter>
   </React.StrictMode>,
