@@ -16,7 +16,16 @@ const prices = {
 };
 
 const DOMAIN = new URL('/', window.location.href).href;
-const stripePromise = loadStripe(PUBLISHABLE_KEY);
+const stripePromise = (async () => {
+  try {
+    return await loadStripe(PUBLISHABLE_KEY);
+  } catch (e) {
+    console.groupCollapsed('cannot load Stripe');
+    console.error(e);
+    console.groupEnd();
+    return null;
+  }
+})();
 
 export const Donate = () => {
   const { loginState } = useLoginStateStoreContext();
@@ -61,8 +70,8 @@ export const Donate = () => {
     <>
       <div className="title">Help us keep Woogles.io going!</div>
       <p>
-        We’re an entirely volunteer-run 501(c)(3) non-profit. If you’re enjoying the site,
-        please feel free to contribute a few dollars to us!
+        We’re an entirely volunteer-run 501(c)(3) non-profit. If you’re enjoying
+        the site, please feel free to contribute a few dollars to us!
       </p>
       <div className="donation-buttons">
         <Button onClick={() => donateClick(5)}>Donate $5 one-time</Button>
