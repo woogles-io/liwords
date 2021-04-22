@@ -15,9 +15,8 @@ const (
 	GlickoToGlicko225Conversion float64 = 173.7178
 	ConvergenceTolerance        float64 = 0.000001
 	SpreadScaling               int     = 125
-	WinBoost                    float64 = float64(1.0/3.0)
+	MinimumWinBoost             float64 = float64(1.0 / 3.0)
 	Steepness                   float64 = 0.005
-	K                           float64 = (float64(4*SpreadScaling) * WinBoost) / (1 - (2 * WinBoost))
 	RatingPeriodinSeconds       int     = 60 * 60 * 24 * 4
 	iterationMaximum            int     = 1000
 )
@@ -46,7 +45,7 @@ func Rate(
 	variance := 1 / variance(opponentAdjustedRatingDeviation, expectedValue)
 
 	// Step 4 of the Glicko-225 algorithm
-	awb := adjustWinBoost((playerRating + opponentRating) / 2)
+	awb := adjustWinBoost(float64(playerUnscaledRating+opponentUnscaledRating) / 2)
 	improvement := improvement(opponentAdjustedRatingDeviation, awb, expectedValue, spread)
 	improvementDelta := variance * improvement
 
@@ -119,7 +118,7 @@ func convertRatingDeviationFromGlicko225(ratingDeviation float64) float64 {
 }
 
 func adjustWinBoost(rating float64) float64 {
-	return ((0.5 - WinBoost) / (1 + math.Exp(-Steepness * (rating - float64(InitialRating))))) + WinBoost
+	return ((0.5 - MinimumWinBoost) / (1 + math.Exp(-Steepness*(rating-float64(InitialRating))))) + MinimumWinBoost
 }
 
 func variance(opponentAdjustedRatingDeviation float64, expectedValue float64) float64 {
@@ -127,7 +126,7 @@ func variance(opponentAdjustedRatingDeviation float64, expectedValue float64) fl
 }
 
 func improvement(opponentAdjustedRatingDeviation float64, awb float64, expectedValue float64, spread int) float64 {
-	return opponentAdjustedRatingDeviation * ((boundedResult(float64(spread)/((2*float64(SpreadScaling))+K)+(float64(sign(spread))*awb)) + 0.5) - expectedValue)
+	return opponentAdjustedRatingDeviation * ((boundedResult(float64(spread)/((2*float64(SpreadScaling))+kfunction(awb))+(float64(sign(spread))*awb)) + 0.5) - expectedValue)
 }
 
 func boundedResult(result float64) float64 {
@@ -153,6 +152,10 @@ func adjustedRatingDeviation(ratingDeviation float64) float64 {
 
 func expectedValue(playerRating float64, opponentRating float64, opponentAdjustedRatingDeviation float64) float64 {
 	return 1 / (1 + math.Exp(-opponentAdjustedRatingDeviation*(playerRating-opponentRating)))
+}
+
+func kfunction(wb float64) float64 {
+	return (float64(4*float64(SpreadScaling)) * wb) / (1 - (2 * wb))
 }
 
 func sign(spread int) int {
