@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sort"
 	"strings"
 
 	"github.com/domino14/liwords/pkg/apiserver"
@@ -258,7 +259,32 @@ func (ss *SocializeService) GetChatsForChannel(ctx context.Context, req *pb.GetC
 	if err != nil {
 		return nil, err
 	}
-	return &realtime.ChatMessages{Messages: chats}, err
+	if len(chats) > 0 {
+		chatterUuids := make([]string, 0, len(chats))
+		for _, chatMessage := range chats {
+			chatterUuids = append(chatterUuids, chatMessage.UserId)
+		}
+		sort.Strings(chatterUuids)
+		w := 1
+		for r := 1; r < len(chatterUuids); r++ {
+			if chatterUuids[r] != chatterUuids[r-1] {
+				chatterUuids[w] = chatterUuids[r]
+				w++
+			}
+		}
+		chatterUuids = chatterUuids[:w]
+		chatterBriefProfiles, err := ss.userStore.GetBriefProfiles(ctx, chatterUuids)
+		if err != nil {
+			return nil, err
+		}
+		for _, chatMessage := range chats {
+			if chatterBriefProfile, ok := chatterBriefProfiles[chatMessage.UserId]; ok {
+				chatMessage.CountryCode = chatterBriefProfile.CountryCode
+				chatMessage.AvatarUrl = chatterBriefProfile.AvatarUrl
+			}
+		}
+	}
+	return &realtime.ChatMessages{Messages: chats}, nil
 }
 
 // func (ss *SocializeService) GetBlockedBy(ctx context.Context, req *pb.GetBlocksRequest) (*pb.GetBlockedByResponse, error) {
