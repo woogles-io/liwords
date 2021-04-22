@@ -10,6 +10,9 @@
   line-height: 20px;
   display: flex;
   justify-content: center;
+  .ant-alert {
+    margin-top: 12px;
+  }
   h3 {
     font-family: $font-default;
     font-weight: bold;
