@@ -40,7 +40,7 @@ export const letterPronunciations = new Map([
   ['E', 'e'],
   ['F', 'ef'],
   ['G', 'gee'],
-  ['H', 'ehch'],
+  ['H', 'age'],
   ['I', 'i'],
   ['J', 'jay'],
   ['K', 'kay'],
