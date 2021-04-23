@@ -247,7 +247,10 @@ export const PersonalInfo = React.memo((props: Props) => {
         <div className="avatar-section">
           <PlayerAvatar player={props.player} />
           <Upload {...fileProps}>
-            <Button className="change-avatar">Change</Button>
+            <Button className="change-avatar" disabled={uploadPending}>
+              {' '}
+              {uploadPending ? 'Uploading...' : 'Change'}
+            </Button>
           </Upload>
           <Button
             className="remove-avatar"
