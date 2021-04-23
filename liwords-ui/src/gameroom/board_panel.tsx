@@ -1005,6 +1005,7 @@ export const BoardPanel = React.memo((props: Props) => {
       blindfoldCommand,
       blindfoldUseNPA,
       gameContext.pool,
+      gameContext.board,
       examinableGameContext.playState,
       examinableTimerContext.p0,
       examinableTimerContext.p1,
