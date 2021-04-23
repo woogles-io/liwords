@@ -32,6 +32,34 @@ export const parseBlindfoldCoordinates = (
   }
   return { row: row, col: col, horizontal: horizontal };
 };
+export const letterPronunciations = new Map([
+  ['A', 'eh'],
+  ['B', 'bee'],
+  ['C', 'cee'],
+  ['D', 'dee'],
+  ['E', 'e'],
+  ['F', 'ef'],
+  ['G', 'gee'],
+  ['H', 'aitch'],
+  ['I', 'i'],
+  ['J', 'jay'],
+  ['K', 'kay'],
+  ['L', 'el'],
+  ['M', 'em'],
+  ['N', 'en'],
+  ['O', 'o'],
+  ['P', 'pee'],
+  ['Q', 'cue'],
+  ['R', 'ar'],
+  ['S', 'ess'],
+  ['T', 'tee'],
+  ['U', 'u'],
+  ['V', 'vee'],
+  ['W', 'double u'],
+  ['X', 'ex'],
+  ['Y', 'wy'],
+  ['Z', 'zee'],
+]);
 
 export const natoPhoneticAlphabet = new Map([
   ['A', 'Alpha'],
