@@ -58,7 +58,7 @@ export const letterPronunciations = new Map([
   ['W', 'double u'],
   ['X', 'ex'],
   ['Y', 'wy'],
-  ['Z', 'zee'],
+  ['Z', 'zed'],
 ]);
 
 export const natoPhoneticAlphabet = new Map([

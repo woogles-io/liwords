@@ -39,7 +39,7 @@ import {
   resignMoveEvent,
   challengeMoveEvent,
 } from '../utils/cwgame/game_event';
-import { Board } from '../utils/cwgame/board';
+import { blankLayout, Board } from '../utils/cwgame/board';
 import { encodeToSocketFmt } from '../utils/protobuf';
 import {
   MessageType,
@@ -847,15 +847,23 @@ export const BoardPanel = React.memo((props: Props) => {
             }
             let numTilesRemaining = 0;
             let tilesRemaining = '';
+            let blankString = ' ';
             for (const [key, value] of Object.entries(bag)) {
               const letter = key + '. ';
-              numTilesRemaining += value;
-              tilesRemaining += letter.repeat(value);
+              if (value > 0) {
+                numTilesRemaining += value;
+                if (key === '?') {
+                  blankString = value + ', blank';
+                } else {
+                  tilesRemaining += value + ', ' + letter;
+                }
+              }
             }
             say(
               numTilesRemaining +
                 ' tiles unseen, ' +
-                wordToSayString(tilesRemaining),
+                wordToSayString(tilesRemaining) +
+                blankString,
               ''
             );
           } else if (
@@ -864,12 +872,15 @@ export const BoardPanel = React.memo((props: Props) => {
             blindfoldCommand.charAt(1).match(/[a-z.]/i)
           ) {
             const bag = { ...gameContext.pool };
+            for (let i = 0; i < props.currentRack.length; i += 1) {
+              bag[props.currentRack[i]] -= 1;
+            }
             let tile = blindfoldCommand.charAt(1).toUpperCase();
             if (tile === '.') {
               tile = '?';
             }
             const numTiles = bag[tile];
-            say(wordToSayString(tile + ', ' + numTiles), '');
+            say(wordToSayString(numTiles + ', ' + tile), '');
           } else if (blindfoldCommand.toUpperCase() === 'N') {
             setBlindfoldUseNPA(!blindfoldUseNPA);
             say(
