@@ -876,11 +876,14 @@ export const BoardPanel = React.memo((props: Props) => {
               bag[props.currentRack[i]] -= 1;
             }
             let tile = blindfoldCommand.charAt(1).toUpperCase();
+            let numTiles = bag[tile];
             if (tile === '.') {
               tile = '?';
+              numTiles = bag[tile];
+              say(numTiles + ', blank', '');
+            } else {
+              say(wordToSayString(numTiles + ', ' + tile), '');
             }
-            const numTiles = bag[tile];
-            say(wordToSayString(numTiles + ', ' + tile), '');
           } else if (blindfoldCommand.toUpperCase() === 'N') {
             setBlindfoldUseNPA(!blindfoldUseNPA);
             say(
