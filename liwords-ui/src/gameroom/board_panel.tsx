@@ -39,7 +39,7 @@ import {
   resignMoveEvent,
   challengeMoveEvent,
 } from '../utils/cwgame/game_event';
-import { blankLayout, Board } from '../utils/cwgame/board';
+import { Board } from '../utils/cwgame/board';
 import { encodeToSocketFmt } from '../utils/protobuf';
 import {
   MessageType,
