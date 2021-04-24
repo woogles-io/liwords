@@ -42,7 +42,8 @@ type User struct {
 	IsMod       bool   `gorm:"default:false;index"`
 	ApiKey      string
 
-	Actions postgres.Jsonb
+	ChatInfo postgres.Jsonb
+	Actions  postgres.Jsonb
 }
 
 // A user profile is in a one-to-one relationship with a user. It is the
@@ -139,6 +140,12 @@ func (s *DBStore) Get(ctx context.Context, username string) (*entity.User, error
 		log.Err(err).Msg("convert-user-actions")
 	}
 
+	var chatInfo entity.ChatInfo
+	err = json.Unmarshal(u.ChatInfo.RawMessage, &chatInfo)
+	if err != nil {
+		log.Err(err).Msg("convert-user-chatinfo")
+	}
+
 	entu := &entity.User{
 		ID:         u.ID,
 		Username:   u.Username,
@@ -151,6 +158,7 @@ func (s *DBStore) Get(ctx context.Context, username string) (*entity.User, error
 		IsAdmin:    u.IsAdmin,
 		IsDirector: u.IsDirector,
 		IsMod:      u.IsMod,
+		ChatInfo:   &chatInfo,
 		Actions:    &actions,
 	}
 
@@ -279,6 +287,12 @@ func (s *DBStore) GetByUUID(ctx context.Context, uuid string) (*entity.User, err
 			log.Err(err).Msg("convert-user-actions")
 		}
 
+		var chatInfo entity.ChatInfo
+		err = json.Unmarshal(u.ChatInfo.RawMessage, &chatInfo)
+		if err != nil {
+			log.Err(err).Msg("convert-user-chatinfo")
+		}
+
 		entu = &entity.User{
 			ID:         u.ID,
 			Username:   u.Username,
@@ -290,6 +304,7 @@ func (s *DBStore) GetByUUID(ctx context.Context, uuid string) (*entity.User, err
 			IsAdmin:    u.IsAdmin,
 			IsDirector: u.IsDirector,
 			IsMod:      u.IsMod,
+			ChatInfo:   &chatInfo,
 			Actions:    &actions,
 		}
 	}
@@ -314,6 +329,12 @@ func (s *DBStore) GetByAPIKey(ctx context.Context, apikey string) (*entity.User,
 		log.Err(err).Msg("convert-user-actions")
 	}
 
+	var chatInfo entity.ChatInfo
+	err = json.Unmarshal(u.ChatInfo.RawMessage, &chatInfo)
+	if err != nil {
+		log.Err(err).Msg("convert-user-chatinfo")
+	}
+
 	entu := &entity.User{
 		ID:         u.ID,
 		Username:   u.Username,
@@ -325,6 +346,7 @@ func (s *DBStore) GetByAPIKey(ctx context.Context, apikey string) (*entity.User,
 		IsAdmin:    u.IsAdmin,
 		IsDirector: u.IsDirector,
 		IsMod:      u.IsMod,
+		ChatInfo:   &chatInfo,
 		Actions:    &actions,
 	}
 
@@ -333,6 +355,10 @@ func (s *DBStore) GetByAPIKey(ctx context.Context, apikey string) (*entity.User,
 
 func (s *DBStore) toDBObj(u *entity.User) (*User, error) {
 	actions, err := json.Marshal(u.Actions)
+	if err != nil {
+		return nil, err
+	}
+	chatInfo, err := json.Marshal(u.ChatInfo)
 	if err != nil {
 		return nil, err
 	}
@@ -345,6 +371,7 @@ func (s *DBStore) toDBObj(u *entity.User) (*User, error) {
 		IsAdmin:     u.IsAdmin,
 		IsDirector:  u.IsDirector,
 		IsMod:       u.IsMod,
+		ChatInfo:    postgres.Jsonb{RawMessage: chatInfo},
 		Actions:     postgres.Jsonb{RawMessage: actions},
 	}, nil
 }

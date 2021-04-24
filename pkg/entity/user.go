@@ -9,12 +9,18 @@ import (
 
 	"github.com/domino14/liwords/pkg/glicko"
 	ms "github.com/domino14/liwords/rpc/api/proto/mod_service"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 const (
 	// SessionExpiration - Expire a session after this much time.
 	SessionExpiration = time.Hour * 24 * 30
 )
+
+type ChatInfo struct {
+	LastMessage     string
+	LastMessageTime *timestamppb.Timestamp
+}
 
 type Actions struct {
 	Current map[string]*ms.ModAction
@@ -42,7 +48,8 @@ type User struct {
 	IsMod          bool
 	IsAdmin        bool
 
-	Actions *Actions
+	ChatInfo *ChatInfo
+	Actions  *Actions
 }
 
 type UserPermission int

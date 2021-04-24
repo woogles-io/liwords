@@ -4,9 +4,11 @@ import (
 	"context"
 	"errors"
 	"strings"
+	"time"
 
 	"github.com/domino14/liwords/pkg/mod"
 	"github.com/domino14/liwords/pkg/user"
+	"github.com/golang/protobuf/ptypes"
 
 	"github.com/domino14/liwords/pkg/entity"
 	ms "github.com/domino14/liwords/rpc/api/proto/mod_service"
@@ -34,6 +36,43 @@ func (b *Bus) chat(ctx context.Context, userID string, evt *pb.ChatMessage) erro
 	err = mod.ActionExists(ctx, b.userStore, userID, false, []ms.ModActionType{ms.ModActionType_SUSPEND_ACCOUNT, ms.ModActionType_MUTE})
 	if err != nil {
 		return err
+	}
+
+	// Regulate chat only if the user is not privileged and the
+	// chat is not a game chat
+	if !sendingUser.IsAdmin && !sendingUser.IsMod && !sendingUser.IsDirector && !strings.HasPrefix(evt.Channel, "chat.game.") {
+		if sendingUser.ChatInfo == nil || sendingUser.ChatInfo.LastMessageTime == nil {
+			// Instantiate chat info
+			sendingUser.ChatInfo = &entity.ChatInfo{LastMessage: ""}
+			initialLastMessageTime, err := ptypes.TimestampProto(time.Unix(0, 0))
+			if err != nil {
+				return err
+			}
+			sendingUser.ChatInfo.LastMessageTime = initialLastMessageTime
+		}
+		// Check if the message is identical to the last one
+		if evt.Message == sendingUser.ChatInfo.LastMessage {
+			return errors.New("you cannot send a message identical to the previous one")
+		}
+
+		// Check if the cooldown is over
+		lastMessageTime, err := ptypes.Timestamp(sendingUser.ChatInfo.LastMessageTime)
+		if err != nil {
+			return err
+		}
+		cooldownFinishedTime := lastMessageTime.Add(time.Second * time.Duration(MessageCooldownTime))
+		now := time.Now()
+		if cooldownFinishedTime.After(now) {
+			return errors.New("you cannot send messages that quickly")
+		}
+
+		newLastMessageTime, err := ptypes.TimestampProto(now)
+		if err != nil {
+			return err
+		}
+
+		sendingUser.ChatInfo.LastMessageTime = newLastMessageTime
+		sendingUser.ChatInfo.LastMessage = evt.Message
 	}
 
 	userFriendlyChannelName := ""

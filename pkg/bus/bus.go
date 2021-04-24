@@ -29,7 +29,8 @@ import (
 )
 
 const (
-	MaxMessageLength = 500
+	MaxMessageLength    = 500
+	MessageCooldownTime = 5
 
 	AdjudicateInterval   = 10 * time.Second
 	GamesCounterInterval = 60 * time.Minute
