@@ -29,6 +29,7 @@ import {
 import {
   parseBlindfoldCoordinates,
   natoPhoneticAlphabet,
+  letterPronunciations,
 } from '../utils/cwgame/blindfold';
 
 import {
@@ -714,15 +715,16 @@ export const BoardPanel = React.memo((props: Props) => {
               // it is unclear and using the NATO Phonetic Alphabet
               // will remove the ambiguity.
               if (word[i] >= 'a' && word[i] <= 'z') {
-                speech += 'blank. ';
+                speech += 'blank, ';
               }
               if (blindfoldUseNPA) {
-                speech += word[i] + ' for ' + natoWord + '. ';
+                speech += natoWord + ', ';
               } else {
-                speech += word[i] + '. ';
+                const pword = letterPronunciations.get(word[i].toUpperCase());
+                speech += pword + ', ';
               }
             } else if (word[i] === '?') {
-              speech += 'blank. ';
+              speech += 'blank, ';
             } else {
               // It's a number
               let middleOfNumber = false;
@@ -779,7 +781,7 @@ export const BoardPanel = React.memo((props: Props) => {
           } else {
             // This is a bum way to deal with all other events
             // but I am holding out for a better solution to saying events altogether
-            say(nickname + ' ' + type.toString(), '');
+            say(nickname + ' 5 point challenge or outplay', '');
           }
         };
 
@@ -829,12 +831,12 @@ export const BoardPanel = React.memo((props: Props) => {
               sayGameEvent(gameContext.turns[gameContext.turns.length - 1]);
             }
           } else if (blindfoldCommand.toUpperCase() === 'S') {
-            const [p0id, p0Score, , p1id, p1Score] = PlayerScoresAndTimes();
-            const scoresay = `${p0id} have ${p0Score} points. ${p1id} has ${p1Score} points.`;
+            const [, p0Score, , , p1Score] = PlayerScoresAndTimes();
+            const scoresay = `${p0Score} to ${p1Score}`;
             say(scoresay, '');
           } else if (blindfoldCommand.toUpperCase() === 'T') {
-            const [p0id, , p0Time, p1id, , p1Time] = PlayerScoresAndTimes();
-            const timesay = `${p0id} have ${p0Time}. ${p1id} has ${p1Time}.`;
+            const [, , p0Time, , , p1Time] = PlayerScoresAndTimes();
+            const timesay = `${p0Time} to ${p1Time}.`;
             say(timesay, '');
           } else if (blindfoldCommand.toUpperCase() === 'R') {
             say(wordToSayString(props.currentRack), '');
@@ -845,18 +847,43 @@ export const BoardPanel = React.memo((props: Props) => {
             }
             let numTilesRemaining = 0;
             let tilesRemaining = '';
+            let blankString = ' ';
             for (const [key, value] of Object.entries(bag)) {
               const letter = key + '. ';
-              numTilesRemaining += value;
-              tilesRemaining += letter.repeat(value);
+              if (value > 0) {
+                numTilesRemaining += value;
+                if (key === '?') {
+                  blankString = value + ', blank';
+                } else {
+                  tilesRemaining += value + ', ' + letter;
+                }
+              }
             }
             say(
-              'There are ' +
-                numTilesRemaining +
-                ' tiles unseen. ' +
-                wordToSayString(tilesRemaining),
+              numTilesRemaining +
+                ' tiles unseen, ' +
+                wordToSayString(tilesRemaining) +
+                blankString,
               ''
             );
+          } else if (
+            blindfoldCommand.charAt(0).toUpperCase() === 'B' &&
+            blindfoldCommand.length === 2 &&
+            blindfoldCommand.charAt(1).match(/[a-z.]/i)
+          ) {
+            const bag = { ...gameContext.pool };
+            for (let i = 0; i < props.currentRack.length; i += 1) {
+              bag[props.currentRack[i]] -= 1;
+            }
+            let tile = blindfoldCommand.charAt(1).toUpperCase();
+            let numTiles = bag[tile];
+            if (tile === '.') {
+              tile = '?';
+              numTiles = bag[tile];
+              say(numTiles + ', blank', '');
+            } else {
+              say(wordToSayString(numTiles + ', ' + tile), '');
+            }
           } else if (blindfoldCommand.toUpperCase() === 'N') {
             setBlindfoldUseNPA(!blindfoldUseNPA);
             say(
@@ -882,13 +909,20 @@ export const BoardPanel = React.memo((props: Props) => {
             if (blindfoldCoordinates !== undefined) {
               // Valid coordinates, place the arrow
               say(wordToSayString(blindfoldCommand), '');
-              setArrowProperties({
-                row: blindfoldCoordinates.row,
-                col: blindfoldCoordinates.col,
-                horizontal: blindfoldCoordinates.horizontal,
-                show: true,
-              });
+              const board = { ...gameContext.board };
+              const existingTile = board.letters[
+                blindfoldCoordinates.row * 15 + blindfoldCoordinates.col
+              ].trim();
+              if (!existingTile) {
+                setArrowProperties({
+                  row: blindfoldCoordinates.row,
+                  col: blindfoldCoordinates.col,
+                  horizontal: blindfoldCoordinates.horizontal,
+                  show: true,
+                });
+              }
             } else {
+              console.log('invalid command: ', blindfoldCommand);
               say('invalid command', '');
             }
           }
@@ -985,6 +1019,7 @@ export const BoardPanel = React.memo((props: Props) => {
       blindfoldCommand,
       blindfoldUseNPA,
       gameContext.pool,
+      gameContext.board,
       examinableGameContext.playState,
       examinableTimerContext.p0,
       examinableTimerContext.p1,
