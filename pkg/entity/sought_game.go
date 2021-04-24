@@ -86,6 +86,9 @@ func (sg *SoughtGame) Seeker() string {
 
 // ValidateGameRequest validates a generic game request.
 func ValidateGameRequest(ctx context.Context, req *pb.GameRequest) error {
+	if req == nil {
+		return errors.New("game request is missing")
+	}
 	if req.InitialTimeSeconds < 15 {
 		return errors.New("the initial time must be at least 15 seconds")
 	}

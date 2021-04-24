@@ -42,6 +42,19 @@ export const timeCtrlToDisplayName = (
   return ['Regular', 'blue'];
 };
 
+export const timeScaleToNum = (val: string) => {
+  switch (val) {
+    case '¼':
+      return 0.25;
+    case '½':
+      return 0.5;
+    case '¾':
+      return 0.75;
+    default:
+      return parseInt(val, 10);
+  }
+};
+
 export const initialTimeLabel = (secs: number) => {
   let initTLabel;
   switch (secs) {
@@ -59,6 +72,25 @@ export const initialTimeLabel = (secs: number) => {
   }
   return initTLabel;
 };
+
+const wholetimes = [];
+for (let i = 1; i <= 25; i++) {
+  wholetimes.push(i.toString());
+}
+
+export const initTimeDiscreteScale = [
+  '¼',
+  '½',
+  '¾',
+  ...wholetimes,
+  '30',
+  '35',
+  '40',
+  '45',
+  '50',
+  '55',
+  '60',
+];
 
 export const timeToString = (
   secs: number,

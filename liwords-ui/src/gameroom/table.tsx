@@ -42,7 +42,7 @@ import {
   StreakInfoResponse,
 } from './game_info';
 import { BoopSounds } from '../sound/boop';
-import { postBinary, toAPIUrl } from '../api/api';
+import { postBinary, toAPIUrl, twirpErrToMsg } from '../api/api';
 import { StreakWidget } from './streak_widget';
 import {
   GameEvent,
@@ -251,7 +251,9 @@ export const Table = React.memo((props: Props) => {
       setGameInfo({ ...gameInfo, players: players });
     } catch (err) {
       message.error({
-        content: `Failed to fetch player information; please refresh. (Error: ${err.message})`,
+        content: `Failed to fetch player information; please refresh. (Error: ${twirpErrToMsg(
+          err
+        )})`,
         duration: 10,
       });
     }

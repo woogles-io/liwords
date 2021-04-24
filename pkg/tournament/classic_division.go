@@ -53,6 +53,7 @@ func (t *ClassicDivision) SetDivisionControls(divisionControls *realtime.Divisio
 	if err != nil {
 		return nil, err
 	}
+	log.Debug().Interface("game-req", divisionControls.GameRequest).Msg("divctrls-validated-game-request")
 
 	t.DivisionControls = divisionControls
 

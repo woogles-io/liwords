@@ -20,18 +20,27 @@ import {
 import axios from 'axios';
 import { Store } from 'rc-field-form/lib/interface';
 import React, { useState } from 'react';
-import { postBinary, toAPIUrl } from '../api/api';
+import { postBinary, toAPIUrl, twirpErrToMsg } from '../api/api';
 import {
   DivisionControls,
   GameMode,
   GameRequest,
   GameRules,
+  RatingMode,
   TournamentGameResult,
 } from '../gen/api/proto/realtime/realtime_pb';
 import { TournamentResponse } from '../gen/api/proto/tournament_service/tournament_service_pb';
 import { SoughtGame } from '../store/reducers/lobby_reducer';
 import { Division } from '../store/reducers/tournament_reducer';
 import { useTournamentStoreContext } from '../store/store';
+import { useMountedState } from '../utils/mounted';
+import { SettingsForm } from './game_settings_form';
+import '../lobby/seek_form.scss';
+import {
+  challRuleToStr,
+  initTimeDiscreteScale,
+  timeScaleToNum,
+} from '../store/constants';
 
 type ModalProps = {
   title: string;
@@ -68,6 +77,7 @@ const FormModal = (props: ModalProps) => {
       footer={null}
       destroyOnClose={true}
       onCancel={props.handleCancel}
+      className="seek-modal" // temporary hack
     >
       {forms[props.type as FormKeys]}
 
@@ -709,24 +719,37 @@ const PairRound = (props: { tournamentID: string }) => {
 };
 
 const SetTournamentControls = (props: { tournamentID: string }) => {
-  const onFinish = async (vals: Store) => {
-    const gr = new GameRequest();
-    const rules = new GameRules();
-    rules.setBoardLayoutName('CrosswordGame');
-    rules.setLetterDistributionName('English');
-    gr.setLexicon(vals.lexicon);
-    gr.setRules(rules);
-    gr.setIncrementSeconds(vals.incrementSeconds);
-    gr.setInitialTimeSeconds(vals.initialTimeSeconds);
-    gr.setChallengeRule(vals.challengeRule);
-    gr.setGameMode(GameMode.REAL_TIME);
-    gr.setRatingMode(vals.ratingMode);
-    gr.setMaxOvertimeMinutes(vals.maxOvertimeMinutes);
+  const { useState } = useMountedState();
+  const [modalVisible, setModalVisible] = useState(false);
 
+  const SettingsModalForm = (mprops: {
+    visible: boolean;
+    onCancel: () => void;
+  }) => {
+    const [form] = Form.useForm();
+    const onOk = () => {
+      form.submit();
+    };
+
+    return (
+      <Modal
+        title="Set Game Request"
+        visible={mprops.visible}
+        onOk={onOk}
+        onCancel={mprops.onCancel}
+        className="seek-modal"
+      >
+        <SettingsForm form={form} />
+      </Modal>
+    );
+  };
+
+  const onFinish = async (vals: Store) => {
+    console.log('onFinish', vals);
     const ctrls = new DivisionControls();
     ctrls.setId(props.tournamentID);
     ctrls.setDivision(vals.division);
-    ctrls.setGameRequest(gr);
+    ctrls.setGameRequest(vals.gameRequest);
     // can set this later to whatever values, along with a spread
     ctrls.setSuspendedResult(TournamentGameResult.BYE);
     ctrls.setAutoStart(false);
@@ -746,59 +769,115 @@ const SetTournamentControls = (props: { tournamentID: string }) => {
       });
     } catch (err) {
       message.error({
-        content: 'Error ' + err.response?.data?.msg,
+        content: 'Error ' + twirpErrToMsg(err),
         duration: 5,
       });
     }
   };
 
   return (
-    <Form onFinish={onFinish}>
-      <Form.Item
-        name="division"
-        label="Division Name"
-        rules={[
-          {
-            required: true,
-            message: 'Please input division name',
-          },
-        ]}
-      >
-        {/* lazy right now but all of these need required */}
-        <Input />
-      </Form.Item>
+    <Form.Provider
+      onFormFinish={(name, { values, forms }) => {
+        if (name === 'gameSettingsForm') {
+          const { setCtrlsForm } = forms;
 
-      <Form.Item
-        label="Game Settings"
-        shouldUpdate={(prevValues, curValues) =>
-          prevValues.users !== curValues.users
-        }
-      >
-        {({ getFieldValue }) => {
-          const soughtGame =
-            (getFieldValue('soughtGame') as SoughtGame) || undefined;
-          return soughtGame ? (
-            <ul>
-              <li>Initial Time (Minutes): {soughtGame.incrementSecs / 60}</li>
-              <li>Lexicon: {soughtGame.lexicon}</li>
-              <li>Max Overtime (Minutes): {soughtGame.maxOvertimeMinutes}</li>
-              <li>Increment (Seconds): {soughtGame.incrementSecs}</li>
-              <li>Challenge Rule: {soughtGame.challengeRule}</li>
-              <li>Rated: {soughtGame.rated}</li>
-            </ul>
-          ) : (
-            <Typography.Text className="ant-form-text" type="secondary">
-              ( <SmileOutlined /> No game settings yet. )
-            </Typography.Text>
+          const gr = new GameRequest();
+          const rules = new GameRules();
+          rules.setBoardLayoutName('CrosswordGame');
+          rules.setLetterDistributionName('English');
+          gr.setRules(rules);
+
+          gr.setLexicon(values.lexicon);
+          gr.setInitialTimeSeconds(
+            timeScaleToNum(initTimeDiscreteScale[values.initialtime]) * 60
           );
-        }}
-      </Form.Item>
 
-      <Form.Item>
-        <Button type="primary" htmlType="submit">
-          Submit
-        </Button>
-      </Form.Item>
-    </Form>
+          if (values.incOrOT === 'increment') {
+            gr.setIncrementSeconds(values.extratime);
+          } else {
+            gr.setMaxOvertimeMinutes(values.extratime);
+          }
+          gr.setChallengeRule(values.challengerule);
+          gr.setGameMode(GameMode.REAL_TIME);
+          gr.setRatingMode(values.rated ? RatingMode.RATED : RatingMode.CASUAL);
+
+          setCtrlsForm.setFieldsValue({
+            gameRequest: gr,
+          });
+          console.log('setCtrlsForm gr', gr);
+          setModalVisible(false);
+        }
+      }}
+    >
+      <Form onFinish={onFinish} name="setCtrlsForm">
+        <Form.Item
+          name="division"
+          label="Division Name"
+          rules={[
+            {
+              required: true,
+              message: 'Please input division name',
+            },
+          ]}
+        >
+          {/* lazy right now but all of these need required */}
+          <Input />
+        </Form.Item>
+
+        <Form.Item
+          label="Game Settings"
+          shouldUpdate={(prevValues, curValues) =>
+            prevValues.gameRequest !== curValues.gameRequest
+          }
+        >
+          {({ getFieldValue }) => {
+            const gr =
+              (getFieldValue('gameRequest') as GameRequest) || undefined;
+            return gr ? (
+              <dl>
+                <dt>Initial Time (Minutes)</dt>
+                <dd>{gr.getInitialTimeSeconds() / 60}</dd>
+                <dt>Lexicon</dt>
+                <dd>{gr.getLexicon()}</dd>
+                <dt>Max Overtime (Minutes)</dt>
+                <dd>{gr.getMaxOvertimeMinutes()}</dd>
+                <dt>Increment (Seconds)</dt>
+                <dd>{gr.getIncrementSeconds()}</dd>
+                <dt>Challenge Rule</dt>
+                <dd>{challRuleToStr(gr.getChallengeRule())}</dd>
+                <dt>Rated</dt>
+                <dd>
+                  {gr.getRatingMode() === RatingMode.RATED ? 'Yes' : 'No'}
+                </dd>
+              </dl>
+            ) : (
+              <Typography.Text className="ant-form-text" type="secondary">
+                ( <SmileOutlined /> No game settings yet. )
+              </Typography.Text>
+            );
+          }}
+        </Form.Item>
+
+        <Form.Item>
+          <Button
+            htmlType="button"
+            style={{
+              margin: '0 8px',
+            }}
+            onClick={() => setModalVisible(true)}
+          >
+            Edit Game Settings
+          </Button>
+          <Button type="primary" htmlType="submit">
+            Submit
+          </Button>
+        </Form.Item>
+      </Form>
+
+      <SettingsModalForm
+        visible={modalVisible}
+        onCancel={() => setModalVisible(false)}
+      />
+    </Form.Provider>
   );
 };

@@ -263,7 +263,9 @@ func SetDivisionControls(ctx context.Context, ts TournamentStore, id string, div
 	}
 
 	newDivisionControls, err := divisionObject.DivisionManager.SetDivisionControls(controls)
-
+	if err != nil {
+		return err
+	}
 	err = ts.Set(ctx, t)
 	if err != nil {
 		return err
