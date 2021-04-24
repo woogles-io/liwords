@@ -7,9 +7,14 @@ import {
   useExcludedPlayersStoreContext,
   useLoginStateStoreContext,
 } from '../store/store';
+import { useBriefProfile } from '../utils/brief_profiles';
 import { useMountedState } from '../utils/mounted';
 import { toAPIUrl } from '../api/api';
 import { debounce } from '../utils/debounce';
+import { ActiveChatChannels } from '../gen/api/proto/user_service/user_service_pb';
+import { PlayerAvatar } from '../shared/player_avatar';
+import { DisplayFlag } from '../shared/display_flag';
+import { TrophyOutlined, TeamOutlined, UserOutlined } from '@ant-design/icons';
 
 type Props = {
   defaultChannel: string;
@@ -27,6 +32,39 @@ export type ChatChannelLabel = {
   avatar?: ReactNode;
   title: string;
   label: string;
+};
+
+const getChannelType = (channel: string): string => {
+  return channel?.split('.')[1] || '';
+};
+
+const getChannelIcon = (channelType: string): ReactNode => {
+  // Note: We may allow tournaments and clubs to have their own avatar going forward
+  switch (channelType) {
+    case 'lobby':
+      return (
+        <div className={`player-avatar channel-icon ch-${channelType}`}>?</div>
+      );
+    case 'game':
+      return (
+        <div className={`player-avatar channel-icon ch${channelType}`}>
+          <UserOutlined />
+        </div>
+      );
+    case 'gametv':
+      return (
+        <div className={`player-avatar channel-icon ch-${channelType}`}>
+          <TeamOutlined />
+        </div>
+      );
+    case 'tournament':
+      return (
+        <div className={`player-avatar channel-icon ch-${channelType}`}>
+          <TrophyOutlined />
+        </div>
+      );
+  }
+  return <div className={`player-avatar channel-icon ch-unknown`}>?</div>;
 };
 
 export const parseChannelLabel = (
@@ -56,30 +94,43 @@ export const parseChannelLabel = (
 };
 
 const getLocationLabel = (defaultChannel: string): string => {
-  const tokenized = defaultChannel.split('.');
-  if (tokenized.length > 1) {
-    if (tokenized[1] === 'game') {
+  const channelType = getChannelType(defaultChannel);
+  switch (channelType) {
+    case 'game':
       return 'Game Chat';
-    }
-    if (tokenized[1] === 'gametv') {
+    case 'gametv':
       return 'Observer Chat';
-    }
-    if (tokenized[1] === 'lobby') {
+    case 'lobby':
       return '';
-    }
-    if (tokenized[1] === 'tournament') {
-      return 'Tournament Chat';
-    }
+    case 'tournament':
+      return 'Tournament/Club Chat';
   }
   return '';
 };
+
 type user = {
-  username: string;
-  uuid: string;
+  username?: string;
+  uuid?: string;
 };
 
 type SearchResponse = {
   users: Array<user>;
+};
+
+const extractUser = (
+  ch: ActiveChatChannels.Channel.AsObject,
+  userId: string,
+  username: string
+): user => {
+  const nameTokens = ch.displayName.split(':');
+  if (nameTokens[0] === 'pm' || 'game') {
+    const chatUsername =
+      nameTokens[1] === username ? nameTokens[2] : nameTokens[1];
+    const idTokens = ch.name.split('.')[2]?.split('_');
+    const chatUserId = idTokens[0] === userId ? idTokens[1] : idTokens[0];
+    return { uuid: chatUserId, username: chatUsername };
+  }
+  return {};
 };
 
 export const ChatChannels = React.memo((props: Props) => {
@@ -181,6 +232,9 @@ export const ChatChannels = React.memo((props: Props) => {
         undefined
       );
       const isUnread = props.updatedChannels?.has(ch.name) || lastUnread;
+      const chatUser = extractUser(ch, userID, username);
+      const briefProfile = useBriefProfile(chatUser.uuid);
+      const channelType = getChannelType(ch.name);
       return (
         <div
           className={`channel-listing${isUnread ? ' unread' : ''}`}
@@ -189,13 +243,28 @@ export const ChatChannels = React.memo((props: Props) => {
             props.onChannelSelect(ch.name, channelLabel.title);
           }}
         >
-          <p className="listing-name">
-            {channelLabel.label}
-            {isUnread && <span className="unread-marker">•</span>}
-          </p>
-          <p className="listing-preview">
-            {lastUnread?.message || ch.lastMessage}
-          </p>
+          {channelType === 'pm' && chatUser.username ? (
+            <PlayerAvatar
+              player={{
+                user_id: chatUser.uuid,
+                nickname: chatUser.username,
+              }}
+            />
+          ) : (
+            getChannelIcon(getChannelType(ch.name))
+          )}
+          <div>
+            <p className="listing-name">
+              {channelLabel.label}
+              {briefProfile && (
+                <DisplayFlag countryCode={briefProfile.getCountryCode()} />
+              )}
+              {isUnread && <span className="unread-marker">•</span>}
+            </p>
+            <p className={`listing-preview`}>
+              {lastUnread?.message || ch.lastMessage}
+            </p>
+          </div>
         </div>
       );
     });
@@ -222,11 +291,14 @@ export const ChatChannels = React.memo((props: Props) => {
           props.onChannelSelect(props.defaultChannel, props.defaultDescription);
         }}
       >
-        <p className="listing-name">
-          {props.defaultDescription}
-          {defaultUnread && <span className="unread-marker">•</span>}
-        </p>
-        <p className="listing-preview">{props.defaultLastMessage}</p>
+        {getChannelIcon(getChannelType(props.defaultChannel))}
+        <div>
+          <p className="listing-name">
+            {props.defaultDescription}
+            {defaultUnread && <span className="unread-marker">•</span>}
+          </p>
+          <p className="listing-preview">{props.defaultLastMessage}</p>
+        </div>
       </div>
       <div className="breadcrumb">
         <p>YOUR CHATS</p>
@@ -236,7 +308,7 @@ export const ChatChannels = React.memo((props: Props) => {
             setShowSearch((s) => !s);
           }}
         >
-          + New chat
+          + Start new chat
         </p>
       </div>
       {showSearch && (

@@ -5,9 +5,12 @@ import { TheBlocker } from './blocker';
 import { useBriefProfile } from '../utils/brief_profiles';
 import { useLoginStateStoreContext } from '../store/store';
 import { canMod } from '../mod/perms';
+import { DisplayFlag } from './display_flag';
+import { SettingOutlined } from '@ant-design/icons';
 
 type UsernameWithContextProps = {
   additionalMenuItems?: React.ReactNode;
+  includeFlag?: boolean;
   omitProfileLink?: boolean;
   omitSendMessage?: boolean;
   omitBlock?: boolean;
@@ -15,11 +18,11 @@ type UsernameWithContextProps = {
   userID?: string;
   sendMessage?: (uuid: string, username: string) => void;
   blockCallback?: () => void;
-
   showModTools?: boolean;
   showDeleteMessage?: boolean;
   moderate?: (uuid: string, username: string) => void;
   deleteMessage?: () => void;
+  iconOnly?: boolean;
 };
 
 export const UsernameWithContext = (props: UsernameWithContextProps) => {
@@ -58,6 +61,7 @@ export const UsernameWithContext = (props: UsernameWithContextProps) => {
           className="link plain"
           target={props.userID}
           tagName="li"
+          userName={props.username}
         />
       ) : null}
       {props.showModTools && canMod(perms) && props.userID !== userID ? (
@@ -89,10 +93,16 @@ export const UsernameWithContext = (props: UsernameWithContextProps) => {
       trigger={['click']}
     >
       <span className="user-context-menu">
-        {false && briefProfile && (
-          <React.Fragment>{briefProfile!.getCountryCode()} </React.Fragment>
+        {props.iconOnly ? ( // Not yet used
+          <SettingOutlined />
+        ) : (
+          <>
+            {props.username}
+            {briefProfile && props.includeFlag && (
+              <DisplayFlag countryCode={briefProfile!.getCountryCode()} />
+            )}
+          </>
         )}
-        {props.username}
       </span>
     </Dropdown>
   );
