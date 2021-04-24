@@ -40,13 +40,13 @@ func Automod(ctx context.Context, us user.Store, u0 *entity.User, u1 *entity.Use
 
 	isBotGame := u0.IsBot || u1.IsBot
 
-	if g.GameEndReason == realtime.GameEndReason_TIME && totalGameTime > int32(UnreasonableTime) && !isBotGame {
+	if (g.GameEndReason == realtime.GameEndReason_TIME || g.GameEndReason == realtime.GameEndReason_RESIGNED) &&
+		totalGameTime > int32(UnreasonableTime) && !isBotGame {
 		// Someone lost on time, determine if the loser made no plays at all
 		var loserLastEvent *pb.GameEvent
 		for i := len(history.Events) - 1; i >= 0; i-- {
 			evt := history.Events[i]
 			if evt.Nickname == loserNickname && (evt.Type == pb.GameEvent_TILE_PLACEMENT_MOVE ||
-				evt.Type == pb.GameEvent_PASS ||
 				evt.Type == pb.GameEvent_EXCHANGE ||
 				evt.Type == pb.GameEvent_UNSUCCESSFUL_CHALLENGE_TURN_LOSS ||
 				evt.Type == pb.GameEvent_CHALLENGE) {
