@@ -44,11 +44,16 @@ type PersonalInfoResponse = {
   about: string;
 };
 
-const getInitialCategory = (categoryShortcut: string) => {
+const getInitialCategory = (categoryShortcut: string, loggedIn: boolean) => {
   // We don't want to keep /donate or any other shortcuts in the url after reading it on first load
   // These are just shortcuts for backwards compatibility so we can send existing urls to the new
   // settings pages
+  if (!loggedIn && categoryShortcut === 'donate') {
+    // Don't redirect if they aren't logged in and just donating
+    return Category.Support;
+  }
   window.history.replaceState({}, 'settings', '/settings');
+
   switch (categoryShortcut) {
     case 'donate':
     case 'support':
@@ -73,7 +78,9 @@ export const Settings = React.memo((props: Props) => {
   const { useState } = useMountedState();
   const { resetStore } = useResetStoreContext();
   const { section } = useParams();
-  const [category, setCategory] = useState(getInitialCategory(section));
+  const [category, setCategory] = useState(
+    getInitialCategory(section, loggedIn)
+  );
   const [player, setPlayer] = useState<Partial<PlayerMetadata> | undefined>(
     undefined
   );
@@ -99,7 +106,7 @@ export const Settings = React.memo((props: Props) => {
   };
 
   useEffect(() => {
-    if (viewer === '') return;
+    if (viewer === '' || (!loggedIn && category === Category.Support)) return;
     if (!loggedIn) {
       setCategory(Category.NoUser);
       return;
@@ -123,7 +130,7 @@ export const Settings = React.memo((props: Props) => {
         setAbout(resp.data.about);
       })
       .catch(errorCatcher);
-  }, [viewer, loggedIn]);
+  }, [viewer, loggedIn, category]);
 
   type CategoryProps = {
     title: string;
@@ -278,8 +285,13 @@ export const Settings = React.memo((props: Props) => {
             {category === Category.NoUser ? logIn : null}
           </div>
         </div>
+      ) : null}
+      {!loggedIn && category === Category.Support ? (
+        <div className="settings stand-alone">
+          <Support handleContribute={handleContribute} />
+        </div>
       ) : (
-        <div className="settings loggedOut">{logIn}</div>
+        !loggedIn && <div className="settings loggedOut">{logIn}</div>
       )}
     </>
   );
