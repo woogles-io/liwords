@@ -73,6 +73,10 @@ func (b *Bus) chat(ctx context.Context, userID string, evt *pb.ChatMessage) erro
 
 		sendingUser.ChatInfo.LastMessageTime = newLastMessageTime
 		sendingUser.ChatInfo.LastMessage = evt.Message
+		err = b.userStore.Set(ctx, sendingUser)
+		if err != nil {
+			return err
+		}
 	}
 
 	userFriendlyChannelName := ""
