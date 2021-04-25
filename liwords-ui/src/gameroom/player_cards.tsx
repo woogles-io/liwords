@@ -41,10 +41,11 @@ const timepenalty = (time: Millis) => {
 
 const PlayerCard = React.memo((props: CardProps) => {
   const { isExamining } = useExamineStoreContext();
+  const briefProfile = useBriefProfile(props.player?.userID);
+
   if (!props.player) {
     return <Card />;
   }
-  const briefProfile = useBriefProfile(props.player!.userID);
   // Find the metadata for this player.
   const meta = props.meta.find((pi) => pi.user_id === props.player?.userID);
   const timeStr =
