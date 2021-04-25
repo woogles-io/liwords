@@ -186,6 +186,12 @@ export class ChatMessage extends jspb.Message {
   getId(): string;
   setId(value: string): void;
 
+  getCountryCode(): string;
+  setCountryCode(value: string): void;
+
+  getAvatarUrl(): string;
+  setAvatarUrl(value: string): void;
+
   serializeBinary(): Uint8Array;
   toObject(includeInstance?: boolean): ChatMessage.AsObject;
   static toObject(includeInstance: boolean, msg: ChatMessage): ChatMessage.AsObject;
@@ -204,6 +210,8 @@ export namespace ChatMessage {
     timestamp: number,
     userId: string,
     id: string,
+    countryCode: string,
+    avatarUrl: string,
   }
 }
 

@@ -2307,7 +2307,9 @@ proto.liwords.ChatMessage.toObject = function(includeInstance, msg) {
     message: jspb.Message.getFieldWithDefault(msg, 3, ""),
     timestamp: jspb.Message.getFieldWithDefault(msg, 4, 0),
     userId: jspb.Message.getFieldWithDefault(msg, 5, ""),
-    id: jspb.Message.getFieldWithDefault(msg, 6, "")
+    id: jspb.Message.getFieldWithDefault(msg, 6, ""),
+    countryCode: jspb.Message.getFieldWithDefault(msg, 7, ""),
+    avatarUrl: jspb.Message.getFieldWithDefault(msg, 8, "")
   };
 
   if (includeInstance) {
@@ -2367,6 +2369,14 @@ proto.liwords.ChatMessage.deserializeBinaryFromReader = function(msg, reader) {
     case 6:
       var value = /** @type {string} */ (reader.readString());
       msg.setId(value);
+      break;
+    case 7:
+      var value = /** @type {string} */ (reader.readString());
+      msg.setCountryCode(value);
+      break;
+    case 8:
+      var value = /** @type {string} */ (reader.readString());
+      msg.setAvatarUrl(value);
       break;
     default:
       reader.skipField();
@@ -2436,6 +2446,20 @@ proto.liwords.ChatMessage.serializeBinaryToWriter = function(message, writer) {
   if (f.length > 0) {
     writer.writeString(
       6,
+      f
+    );
+  }
+  f = message.getCountryCode();
+  if (f.length > 0) {
+    writer.writeString(
+      7,
+      f
+    );
+  }
+  f = message.getAvatarUrl();
+  if (f.length > 0) {
+    writer.writeString(
+      8,
       f
     );
   }
@@ -2547,6 +2571,42 @@ proto.liwords.ChatMessage.prototype.getId = function() {
  */
 proto.liwords.ChatMessage.prototype.setId = function(value) {
   return jspb.Message.setProto3StringField(this, 6, value);
+};
+
+
+/**
+ * optional string country_code = 7;
+ * @return {string}
+ */
+proto.liwords.ChatMessage.prototype.getCountryCode = function() {
+  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 7, ""));
+};
+
+
+/**
+ * @param {string} value
+ * @return {!proto.liwords.ChatMessage} returns this
+ */
+proto.liwords.ChatMessage.prototype.setCountryCode = function(value) {
+  return jspb.Message.setProto3StringField(this, 7, value);
+};
+
+
+/**
+ * optional string avatar_url = 8;
+ * @return {string}
+ */
+proto.liwords.ChatMessage.prototype.getAvatarUrl = function() {
+  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 8, ""));
+};
+
+
+/**
+ * @param {string} value
+ * @return {!proto.liwords.ChatMessage} returns this
+ */
+proto.liwords.ChatMessage.prototype.setAvatarUrl = function(value) {
+  return jspb.Message.setProto3StringField(this, 8, value);
 };
 
 

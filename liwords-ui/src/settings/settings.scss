@@ -10,10 +10,21 @@
   line-height: 20px;
   display: flex;
   justify-content: center;
+  &.stand-alone {
+    flex-direction: column;
+    align-items: center;
+    .right-column {
+      max-width: 600px;
+    }
+  }
+  .ant-alert {
+    margin-top: 12px;
+  }
   h3 {
     font-family: $font-default;
     font-weight: bold;
     letter-spacing: 0;
+    margin-bottom: 24px;
   }
   .div {
     line-height: 20px;
@@ -51,7 +62,7 @@
   }
 
   .category {
-    max-width: 600px;
+    max-width: 800px;
     flex-grow: 2;
     .log-out {
       .ant-btn {
@@ -103,12 +114,15 @@
   .support-woogles {
     display: flex;
     flex-direction: row;
-    align-items: flex-start;
+    align-items: center;
+    .bolder {
+      font-weight: 800;
+    }
     img.woogles {
       display: none;
+      margin-right: 24px;
       @media (min-width: $screen-tablet-min) {
         display: block;
-        margin-top: 48px;
       }
     }
     .right-column {
@@ -116,15 +130,13 @@
     }
 
     .donation-buttons {
-      margin: 24px 0;
-      display: flex;
-      flex-direction: column;
+      margin: 24px 0px 12px;
     }
+
     button {
-      margin-top: 24px;
-      margin-left: 0;
+      margin: 0 12px 12px 0;
       border-width: 2px;
-      width: 200px;
+      width: 150px;
       height: 40px;
       font-size: 14px;
       font-weight: bold;

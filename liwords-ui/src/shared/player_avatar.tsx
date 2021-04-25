@@ -28,19 +28,17 @@ export const PlayerAvatar = (props: AvatarProps) => {
   }
 
   const renderAvatar = (
-    <div>
-      <div className="player-avatar" style={avatarStyle}>
-        {!props.player?.avatar_url
-          ? fixedCharAt(
-              props.player?.full_name ||
-                props.player?.nickname ||
-                props.username ||
-                '?',
-              0,
-              1
-            )
-          : ''}
-      </div>
+    <div className="player-avatar" style={avatarStyle}>
+      {!props.player?.avatar_url
+        ? fixedCharAt(
+            props.player?.full_name ||
+              props.player?.nickname ||
+              props.username ||
+              '?',
+            0,
+            1
+          )
+        : ''}
     </div>
   );
   if (!props.withTooltip) {

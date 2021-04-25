@@ -35,7 +35,14 @@ export const Secret = React.memo((props: Props) => {
       <div className="secret-warning">
         Please use these secret, experimental features at your own discretion.
         They may be limited in functionality and/or impact your Woogles user
-        experience.
+        experience.{' '}
+        <a
+          href="https://github.com/domino14/liwords/wiki/Secret-features"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          Learn More.
+        </a>
       </div>
       <div>
         <div className="toggle-section">

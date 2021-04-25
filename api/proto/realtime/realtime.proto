@@ -125,6 +125,9 @@ message ChatMessage {
   int64 timestamp = 4;
   string user_id = 5;
   string id = 6;
+  // these are only loaded by specific endpoints.
+  string country_code = 7;
+  string avatar_url = 8;
 }
 
 message ChatMessages { repeated ChatMessage messages = 1; }

@@ -35,6 +35,12 @@
   }
 }
 
+.country-flag {
+  width: 20px;
+  position: relative;
+  top: -2px;
+  margin-right: 6px;
+}
 .ant-dropdown.user-menu {
   @include colorModed() {
     background-color: m($background);

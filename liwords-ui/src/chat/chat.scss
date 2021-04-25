@@ -132,7 +132,7 @@ p {
         font-weight: normal;
         display: inline;
         @include colorModed() {
-          color: m($gray-medium);
+          color: m($gray-medium)
         }
       }
     }
@@ -156,11 +156,29 @@ p {
     }
     .channel-listing {
       cursor: pointer;
+      display: flex;
+      align-items: center;
+      margin-bottom: 18px;
+      .player-avatar {
+        margin-right: 12px;
+        &.channel-icon {
+          &.ch-tournament {
+            background: #955f9a;
+          }
+          &.ch-lobby {
+            background:  #888;
+          }
+        }
+      }
       .listing-name {
-        font-weight: 400;
+        font-weight: 800;
         @include colorModed() {
           color: m($gray-extreme);
         }
+      }
+
+      .country-flag {
+        margin: 0 0 0 6px;
       }
       &.unread {
         .listing-name {
@@ -168,9 +186,10 @@ p {
         }
         .listing-preview {
           font-weight: 700;
-            @include colorModed() {
-              color: m($primary-dark);
-            }
+          margin-top: 0;
+          @include colorModed() {
+            color: m($primary-dark);
+          }
         }
       }
       &:first-child {
@@ -187,15 +206,22 @@ p {
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
-      margin-bottom: 18px;
+      text-overflow: ellipsis;
+      line-height: 1em;
+      padding-bottom: 6px;
       @include colorModed() {
         color: m($gray-extreme);
       }
     }
   }
-  .description .unread-marker {
-    font-size: inherit;
-    padding: 0 6px;
+  .description {
+    display: flex;
+    width: 100%;
+    justify-content: space-between;
+    .unread-marker {
+      font-size: inherit;
+      padding: 0 6px;
+    }
   }
   .channel-list .breadcrumb {
     text-transform: uppercase;
@@ -239,23 +265,59 @@ p {
   .entities {
     padding: 12px 24px 0px;
     .chat-entity {
+      width: 100%;
+      width: 100%;
+      display: flex;
+      align-items: flex-start;
+      margin-bottom: 15px;
+      &:hover {
+        .timestamp {
+          visibility: visible;
+        }
+      }
       .sender {
         font-weight: 800;
-        margin: 0 9px 0 0;
+        margin: 0 6px 0 0;
         @include colorModed() {
           color: m($primary-dark);
         }
       }
+      .message {
+        line-height: normal;
+      }
+      .player-avatar {
+        width: 36px;
+        height: 36px;
+        min-width: 36px;
+        font-size: 20px;
+        margin-right: 12px;
+        @media (min-width: $screen-tablet-min) {
+          width: 36px;
+          height: 36px;
+          min-width: 36px;
+          font-size: 20px;
+        }
+      }
+      .country-flag {
+        margin: 0 0 0 6px;
+      }
+      .message-details {
+        flex: 2;
+        line-height: 1.2em;
+      }
       .special-sender {
         @include colorModed() {
           color: m($primary-dark);
+        }
+        span.user-context-menu.ant-dropdown-trigger {
+          padding-right: 9px;
+          margin: 0;
         }
         font-weight: 800;
         .ant-tag {
           position: relative;
           top: -1px;
           font-size: 11px;
-          margin: 0 9px 0 9px;
           text-transform: uppercase;
           letter-spacing: 0.16em;
           padding: 0 2px 0 4px;
@@ -271,9 +333,9 @@ p {
           }
         }
       }
-      .message-body {
-        margin-bottom: 4px;
-        line-height: 1.4em;
+      .sender-info {
+        margin-bottom: 6px;
+
         @include colorModed() {
           color: m($gray-extreme);
         }
@@ -282,10 +344,13 @@ p {
         @include colorModed() {
           color: m($secondary);
         }
+        visibility: hidden;
+        float: right;
         font-size: 75%;
         margin: 3px 0;
         position: relative;
-        top: 2px;
+        text-align: right;
+        top: -2px;
       }
     }
     .server-error {

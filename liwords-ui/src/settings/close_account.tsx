@@ -13,7 +13,7 @@ type Props = {
 export const CloseAccount = React.memo((props: Props) => {
   return (
     <div className="close-account">
-      <h3>Close account</h3>
+      <h3>Delete account</h3>
       <div className="avatar-container">
         <PlayerAvatar player={props.player} />
         <div className="full-name">{props.player?.full_name}</div>
@@ -78,7 +78,7 @@ export const CloseAccount = React.memo((props: Props) => {
           <Col span={12}>
             <Form.Item>
               <Button className="close-account-button" htmlType="submit">
-                Yes, close my account
+                Yes, delete my account
               </Button>
             </Form.Item>
           </Col>

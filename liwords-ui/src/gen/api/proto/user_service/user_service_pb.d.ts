@@ -806,6 +806,71 @@ export namespace RemoveAvatarResponse {
   }
 }
 
+export class BriefProfilesRequest extends jspb.Message {
+  clearUserIdsList(): void;
+  getUserIdsList(): Array<string>;
+  setUserIdsList(value: Array<string>): void;
+  addUserIds(value: string, index?: number): string;
+
+  serializeBinary(): Uint8Array;
+  toObject(includeInstance?: boolean): BriefProfilesRequest.AsObject;
+  static toObject(includeInstance: boolean, msg: BriefProfilesRequest): BriefProfilesRequest.AsObject;
+  static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+  static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+  static serializeBinaryToWriter(message: BriefProfilesRequest, writer: jspb.BinaryWriter): void;
+  static deserializeBinary(bytes: Uint8Array): BriefProfilesRequest;
+  static deserializeBinaryFromReader(message: BriefProfilesRequest, reader: jspb.BinaryReader): BriefProfilesRequest;
+}
+
+export namespace BriefProfilesRequest {
+  export type AsObject = {
+    userIdsList: Array<string>,
+  }
+}
+
+export class BriefProfile extends jspb.Message {
+  getCountryCode(): string;
+  setCountryCode(value: string): void;
+
+  getAvatarUrl(): string;
+  setAvatarUrl(value: string): void;
+
+  serializeBinary(): Uint8Array;
+  toObject(includeInstance?: boolean): BriefProfile.AsObject;
+  static toObject(includeInstance: boolean, msg: BriefProfile): BriefProfile.AsObject;
+  static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+  static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+  static serializeBinaryToWriter(message: BriefProfile, writer: jspb.BinaryWriter): void;
+  static deserializeBinary(bytes: Uint8Array): BriefProfile;
+  static deserializeBinaryFromReader(message: BriefProfile, reader: jspb.BinaryReader): BriefProfile;
+}
+
+export namespace BriefProfile {
+  export type AsObject = {
+    countryCode: string,
+    avatarUrl: string,
+  }
+}
+
+export class BriefProfilesResponse extends jspb.Message {
+  getResponseMap(): jspb.Map<string, BriefProfile>;
+  clearResponseMap(): void;
+  serializeBinary(): Uint8Array;
+  toObject(includeInstance?: boolean): BriefProfilesResponse.AsObject;
+  static toObject(includeInstance: boolean, msg: BriefProfilesResponse): BriefProfilesResponse.AsObject;
+  static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+  static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+  static serializeBinaryToWriter(message: BriefProfilesResponse, writer: jspb.BinaryWriter): void;
+  static deserializeBinary(bytes: Uint8Array): BriefProfilesResponse;
+  static deserializeBinaryFromReader(message: BriefProfilesResponse, reader: jspb.BinaryReader): BriefProfilesResponse;
+}
+
+export namespace BriefProfilesResponse {
+  export type AsObject = {
+    responseMap: Array<[string, BriefProfile.AsObject]>,
+  }
+}
+
 export class UsernameSearchRequest extends jspb.Message {
   getPrefix(): string;
   setPrefix(value: string): void;
