@@ -1081,6 +1081,36 @@ export namespace BasicUser {
   }
 }
 
+export class BasicFollowedUser extends jspb.Message {
+  getUuid(): string;
+  setUuid(value: string): void;
+
+  getUsername(): string;
+  setUsername(value: string): void;
+
+  clearChannelList(): void;
+  getChannelList(): Array<string>;
+  setChannelList(value: Array<string>): void;
+  addChannel(value: string, index?: number): string;
+
+  serializeBinary(): Uint8Array;
+  toObject(includeInstance?: boolean): BasicFollowedUser.AsObject;
+  static toObject(includeInstance: boolean, msg: BasicFollowedUser): BasicFollowedUser.AsObject;
+  static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+  static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+  static serializeBinaryToWriter(message: BasicFollowedUser, writer: jspb.BinaryWriter): void;
+  static deserializeBinary(bytes: Uint8Array): BasicFollowedUser;
+  static deserializeBinaryFromReader(message: BasicFollowedUser, reader: jspb.BinaryReader): BasicFollowedUser;
+}
+
+export namespace BasicFollowedUser {
+  export type AsObject = {
+    uuid: string,
+    username: string,
+    channelList: Array<string>,
+  }
+}
+
 export class GetActiveChatChannelsRequest extends jspb.Message {
   getNumber(): number;
   setNumber(value: number): void;
@@ -1189,9 +1219,9 @@ export namespace GetChatsRequest {
 
 export class GetFollowsResponse extends jspb.Message {
   clearUsersList(): void;
-  getUsersList(): Array<BasicUser>;
-  setUsersList(value: Array<BasicUser>): void;
-  addUsers(value?: BasicUser, index?: number): BasicUser;
+  getUsersList(): Array<BasicFollowedUser>;
+  setUsersList(value: Array<BasicFollowedUser>): void;
+  addUsers(value?: BasicFollowedUser, index?: number): BasicFollowedUser;
 
   serializeBinary(): Uint8Array;
   toObject(includeInstance?: boolean): GetFollowsResponse.AsObject;
@@ -1205,7 +1235,7 @@ export class GetFollowsResponse extends jspb.Message {
 
 export namespace GetFollowsResponse {
   export type AsObject = {
-    usersList: Array<BasicUser.AsObject>,
+    usersList: Array<BasicFollowedUser.AsObject>,
   }
 }
 
