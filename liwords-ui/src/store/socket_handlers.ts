@@ -125,6 +125,7 @@ export const parseMsgs = (msg: Uint8Array) => {
     };
 
     const parsedMsg = msgTypes[msgType];
+    console.log('parsedMsg', parsedMsg, msgType);
     const topush = {
       msgType,
       parsedMsg: parsedMsg?.deserializeBinary(msgBytes),

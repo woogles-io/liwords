@@ -721,6 +721,10 @@ const PairRound = (props: { tournamentID: string }) => {
 const SetTournamentControls = (props: { tournamentID: string }) => {
   const { useState } = useMountedState();
   const [modalVisible, setModalVisible] = useState(false);
+  const [
+    selectedGameRequest,
+    setSelectedGameRequest,
+  ] = useState<GameRequest | null>(null);
 
   const SettingsModalForm = (mprops: {
     visible: boolean;
@@ -746,10 +750,17 @@ const SetTournamentControls = (props: { tournamentID: string }) => {
 
   const onFinish = async (vals: Store) => {
     console.log('onFinish', vals);
+    if (!selectedGameRequest) {
+      message.error({
+        content: 'Error: No game request',
+        duration: 5,
+      });
+      return;
+    }
     const ctrls = new DivisionControls();
     ctrls.setId(props.tournamentID);
     ctrls.setDivision(vals.division);
-    ctrls.setGameRequest(vals.gameRequest);
+    ctrls.setGameRequest(selectedGameRequest);
     // can set this later to whatever values, along with a spread
     ctrls.setSuspendedResult(TournamentGameResult.BYE);
     ctrls.setAutoStart(false);
@@ -780,7 +791,6 @@ const SetTournamentControls = (props: { tournamentID: string }) => {
       onFormFinish={(name, { values, forms }) => {
         if (name === 'gameSettingsForm') {
           const { setCtrlsForm } = forms;
-
           const gr = new GameRequest();
           const rules = new GameRules();
           rules.setBoardLayoutName('CrosswordGame');
@@ -804,6 +814,11 @@ const SetTournamentControls = (props: { tournamentID: string }) => {
           setCtrlsForm.setFieldsValue({
             gameRequest: gr,
           });
+          // We should ONLY need the above setFieldsValue, but it doesn't work
+          // because of this issue:
+          // https://github.com/ant-design/ant-design/issues/25087
+          // So do a work-around with setState:
+          setSelectedGameRequest(gr);
           console.log('setCtrlsForm gr', gr);
           setModalVisible(false);
         }
@@ -881,3 +896,34 @@ const SetTournamentControls = (props: { tournamentID: string }) => {
     </Form.Provider>
   );
 };
+
+/*
+const SetDivisionRoundControls = (props: { tournamentID: string }) => {
+  return (
+    <Form onFinish={onFinish}>
+      <Form.Item
+        name="division"
+        label="Division Name"
+        rules={[
+          {
+            required: true,
+            message: 'Please input division name',
+          },
+        ]}
+      >
+        <Input />
+      </Form.Item>
+
+      <Form.Item name="round" label="Round (1-indexed)">
+        <InputNumber min={1} />
+      </Form.Item>
+
+      <Form.Item>
+        <Button type="primary" htmlType="submit">
+          Submit
+        </Button>
+      </Form.Item>
+    </Form>
+  );
+};
+*/

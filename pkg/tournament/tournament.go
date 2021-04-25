@@ -270,7 +270,12 @@ func SetDivisionControls(ctx context.Context, ts TournamentStore, id string, div
 	if err != nil {
 		return err
 	}
-	wrapped := entity.WrapEvent(newDivisionControls, realtime.MessageType_TOURNAMENT_DIVISION_CONTROLS_MESSAGE)
+	resp := &realtime.DivisionControlsResponse{
+		Id:               id,
+		Division:         division,
+		DivisionControls: newDivisionControls,
+	}
+	wrapped := entity.WrapEvent(resp, realtime.MessageType_TOURNAMENT_DIVISION_CONTROLS_MESSAGE)
 	return SendTournamentMessage(ctx, ts, id, wrapped)
 }
 
