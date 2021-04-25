@@ -100,6 +100,9 @@ export const Chat = React.memo((props: Props) => {
   const onChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     setCurMsg(e.target.value);
   }, []);
+  const channelType = useMemo(() => {
+    return channel?.split('.')[1] || '';
+  }, [channel]);
 
   const doChatAutoScroll = useCallback(
     (force = false) => {
@@ -244,7 +247,6 @@ export const Chat = React.memo((props: Props) => {
   }, [defaultChannel, defaultDescription]);
 
   const decoratedDescription = useMemo(() => {
-    const channelType = channel?.split('.')[1] || '';
     switch (channelType) {
       case 'game':
         return `Game chat with ${description}`;
@@ -252,7 +254,7 @@ export const Chat = React.memo((props: Props) => {
         return `Game chat for ${description}`;
     }
     return description;
-  }, [channel, description]);
+  }, [description, channelType]);
 
   useEffect(() => {
     // Remove this channel's messages from the unseen list when we switch back to message view
@@ -265,6 +267,7 @@ export const Chat = React.memo((props: Props) => {
       return undefined;
     });
   }, [channel, showChannels]);
+
   useEffect(() => {
     if (chatTab || showChannels) {
       // chat entities changed.
@@ -602,7 +605,7 @@ export const Chat = React.memo((props: Props) => {
                   ) : null}
                 </div>
                 <div
-                  className="entities"
+                  className={`entities ${channelType}`}
                   style={
                     maxEntitiesHeight
                       ? {

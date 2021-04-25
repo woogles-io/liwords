@@ -15,6 +15,8 @@ import {
 } from '@ant-design/icons';
 import { ExclamationCircleOutlined } from '@ant-design/icons';
 import { moderateUser, deleteChatMessage } from '../mod/moderate';
+import { PlayerAvatar } from '../shared/player_avatar';
+import { useBriefProfile } from '../utils/brief_profiles';
 
 type EntityProps = {
   entityType: ChatEntityType;
@@ -57,8 +59,16 @@ export const ChatEntity = (props: EntityProps) => {
     excludedPlayersFetched,
   } = useExcludedPlayersStoreContext();
   const { moderators, admins } = useModeratorStoreContext();
+  const briefProfile = useBriefProfile(props.senderId);
   if (props.timestamp) {
-    ts = moment(props.timestamp).format('MMM Do - LT');
+    if (
+      moment(Date.now()).format('MMM Do') !==
+      moment(props.timestamp).format('MMM Do')
+    ) {
+      ts = moment(props.timestamp).format('MMM Do - LT');
+    } else {
+      ts = moment(props.timestamp).format('LT');
+    }
   }
   let el;
   let senderClass = 'sender';
@@ -101,59 +111,73 @@ export const ChatEntity = (props: EntityProps) => {
     case ChatEntityType.UserChat:
       el = (
         <div className="chat-entity">
-          <p className="timestamp">
-            {ts}
-            {channel}
-          </p>
-          <p className="message-body">
-            <span className={senderClass}>
-              <UsernameWithContext
-                username={props.sender}
-                userID={props.senderId}
-                omitSendMessage={!props.sendMessage}
-                sendMessage={props.sendMessage}
-                showDeleteMessage
-                showModTools
-                deleteMessage={() => {
-                  if (props.senderId) {
-                    deleteMessage(
-                      props.senderId,
-                      props.msgID,
-                      props.message,
-                      props.channel
-                    );
-                  }
-                }}
-                moderate={moderateUser}
-              />
-              {props.highlightText && props.highlight && (
-                <Tag
-                  className="director"
-                  icon={<CrownFilled />}
-                  color={'#d5cad6'}
-                >
-                  {props.highlightText}
-                </Tag>
-              )}
-              {!props.highlight && fromAdmin && (
-                <Tag className="admin" icon={<StarFilled />} color={'#F4B000'}>
-                  Admin
-                </Tag>
-              )}
-              {!props.highlight && !fromAdmin && fromMod && (
-                <Tag
-                  className="mod"
-                  icon={<SafetyCertificateFilled />}
-                  color={'#E6FFDF'}
-                >
-                  Moderator
-                </Tag>
-              )}
-            </span>
-            <span className="message">
-              <Wooglinkify message={props.message} />
-            </span>
-          </p>
+          <PlayerAvatar
+            player={{
+              avatar_url: briefProfile?.getAvatarUrl(),
+            }}
+            username={props.sender}
+          />
+          <div className="message-details">
+            <p className="sender-info">
+              <span className={senderClass}>
+                <UsernameWithContext
+                  username={props.sender}
+                  userID={props.senderId}
+                  includeFlag
+                  omitSendMessage={!props.sendMessage}
+                  sendMessage={props.sendMessage}
+                  showDeleteMessage
+                  showModTools
+                  deleteMessage={() => {
+                    if (props.senderId) {
+                      deleteMessage(
+                        props.senderId,
+                        props.msgID,
+                        props.message,
+                        props.channel
+                      );
+                    }
+                  }}
+                  moderate={moderateUser}
+                />
+                {props.highlightText && props.highlight && (
+                  <Tag
+                    className="director"
+                    icon={<CrownFilled />}
+                    color={'#d5cad6'}
+                  >
+                    {props.highlightText}
+                  </Tag>
+                )}
+                {!props.highlight && fromAdmin && (
+                  <Tag
+                    className="admin"
+                    icon={<StarFilled />}
+                    color={'#F4B000'}
+                  >
+                    Admin
+                  </Tag>
+                )}
+                {!props.highlight && !fromAdmin && fromMod && (
+                  <Tag
+                    className="mod"
+                    icon={<SafetyCertificateFilled />}
+                    color={'#E6FFDF'}
+                  >
+                    Moderator
+                  </Tag>
+                )}
+                <span className="timestamp">
+                  {ts} {channel}
+                </span>
+              </span>
+            </p>
+            <p>
+              <span className="message">
+                <Wooglinkify message={props.message} />
+              </span>
+            </p>
+          </div>
         </div>
       );
       break;
