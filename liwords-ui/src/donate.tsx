@@ -74,17 +74,16 @@ export const Donate = () => {
         the site, please feel free to contribute a few dollars to us!
       </p>
       <div className="donation-buttons">
-        <Button onClick={() => donateClick(5)}>Donate $5 one-time</Button>
-        <Button onClick={() => donateClick(20)}>Donate $20 one-time</Button>
-        <Button onClick={() => donateClick(50)}>Donate $50 one-time</Button>
-        <Button onClick={() => donateClick(100)}>Donate $100 one-time</Button>
-        <Button onClick={() => donateClick(500)}>Donate $500 one-time</Button>
+        <Button onClick={() => donateClick(5)}>Contribute $5</Button>
+        <Button onClick={() => donateClick(20)}>Contribute $20</Button>
+        <Button onClick={() => donateClick(50)}>Contribute $50</Button>
+        <Button onClick={() => donateClick(100)}>Contribute $100</Button>
+        <Button onClick={() => donateClick(500)}>Contribute $500</Button>
       </div>
       <p>
-        You can also donate using our Patreon account, for recurring payments:{' '}
-        <a href="https://www.patreon.com/woogles_io">
-          https://www.patreon.com/woogles_io
-        </a>
+        <span className="bolder">Want to make a monthly donation?</span> Check
+        out the
+        <a href="https://www.patreon.com/woogles_io"> Woogles Patreon.</a>
       </p>
     </>
   );
