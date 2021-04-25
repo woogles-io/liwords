@@ -298,6 +298,9 @@ p {
           font-size: 20px;
         }
       }
+      .country-flag {
+        margin: 0 0 0 6px;
+      }
       .message-details {
         flex: 2;
         line-height: 1.2em;
@@ -309,9 +312,6 @@ p {
         span.user-context-menu.ant-dropdown-trigger {
           padding-right: 9px;
           margin: 0;
-          .country-flag {
-            margin: 0 0 0 6px;
-          }
         }
         font-weight: 800;
         .ant-tag {
