@@ -20,7 +20,10 @@ export const endGameMessage = (gee: GameEndedEvent): string => {
   let summaryReason = '';
   let summaryAddendum = '';
   if (tie) {
-    [winner, loser] = scores.keys();
+    // Doesn't matter who we call the "winner" and "loser" here.
+    const wlArray = scores.toArray();
+    winner = wlArray[0][0];
+    loser = wlArray[1][0];
   }
   const winscore = scores.get(winner);
   const losescore = scores.get(loser);
