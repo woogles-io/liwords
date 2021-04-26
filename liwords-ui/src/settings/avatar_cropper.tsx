@@ -39,7 +39,7 @@ export const AvatarCropper = React.memo((props: Props) => {
         canvas.width,
         canvas.height
       );
-      const newDataUrl = canvas.toDataURL('/image.jpeg', 1);
+      const newDataUrl = canvas.toDataURL('image/jpeg', 1);
       onSave(newDataUrl);
     };
     image.src = dataUrl;
@@ -67,7 +67,7 @@ export const AvatarCropper = React.memo((props: Props) => {
         ctx!.fillStyle = 'rgba(255,255,255,1)';
         ctx!.fillRect(0, 0, width, height);
         ctx!.drawImage(image, 0, 0, width, height);
-        setDataUrl(canvas.toDataURL('/image.jpeg', 1));
+        setDataUrl(canvas.toDataURL('image/jpeg', 1));
       };
       image.src = String(reader.result);
     };
