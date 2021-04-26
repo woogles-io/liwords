@@ -7,6 +7,7 @@ import {
 } from '@ant-design/icons';
 import {
   Button,
+  Divider,
   Form,
   Input,
   InputNumber,
@@ -26,11 +27,11 @@ import {
   GameMode,
   GameRequest,
   GameRules,
+  PairingMethod,
   RatingMode,
   TournamentGameResult,
 } from '../gen/api/proto/realtime/realtime_pb';
 import { TournamentResponse } from '../gen/api/proto/tournament_service/tournament_service_pb';
-import { SoughtGame } from '../store/reducers/lobby_reducer';
 import { Division } from '../store/reducers/tournament_reducer';
 import { useTournamentStoreContext } from '../store/store';
 import { useMountedState } from '../utils/mounted';
@@ -41,6 +42,13 @@ import {
   initTimeDiscreteScale,
   timeScaleToNum,
 } from '../store/constants';
+
+import {
+  fieldsForMethod,
+  pairingMethod,
+  PairingMethodField,
+  RoundSetting,
+} from './pairing_methods';
 
 type ModalProps = {
   title: string;
@@ -66,6 +74,9 @@ const FormModal = (props: ModalProps) => {
     'set-tournament-controls': (
       <SetTournamentControls tournamentID={props.tournamentID} />
     ),
+    'set-round-controls': (
+      <SetDivisionRoundControls tournamentID={props.tournamentID} />
+    ),
   };
 
   type FormKeys = keyof typeof forms;
@@ -77,7 +88,7 @@ const FormModal = (props: ModalProps) => {
       footer={null}
       destroyOnClose={true}
       onCancel={props.handleCancel}
-      className="seek-modal" // temporary hack
+      className="seek-modal" // temporary display hack
     >
       {forms[props.type as FormKeys]}
 
@@ -122,15 +133,15 @@ export const GhettoTools = (props: Props) => {
   const listItems = types.map((v) => {
     const key = lowerAndJoin(v);
     return (
-      <li key={key} onClick={() => showModal(key, v)}>
+      <Button key={key} onClick={() => showModal(key, v)} size="small">
         {v}
-      </li>
+      </Button>
     );
   });
 
   return (
     <>
-      <ul>{listItems}</ul>
+      <>{listItems}</>
       <FormModal
         title={modalTitle}
         visible={modalVisible}
@@ -897,8 +908,145 @@ const SetTournamentControls = (props: { tournamentID: string }) => {
   );
 };
 
-/*
+type RdCtrlFieldsProps = {
+  setting: RoundSetting;
+  onChange: (
+    fieldName: keyof RoundSetting,
+    value: string | number | boolean | pairingMethod
+  ) => void;
+};
+
+const RoundControlFields = (props: RdCtrlFieldsProps) => {
+  const { setting } = props;
+
+  const addlFields = fieldsForMethod(setting.pairingType);
+
+  return (
+    <>
+      First round:
+      <InputNumber
+        min={1}
+        value={setting.beginRound}
+        onChange={(e) => props.onChange('beginRound', e as number)}
+      />
+      Last round:
+      <InputNumber
+        min={1}
+        value={setting.endRound}
+        onChange={(e) => props.onChange('endRound', e as number)}
+      />
+      <Select
+        value={setting.pairingType}
+        onChange={(e) => {
+          props.onChange('pairingType', e);
+          // Show more fields potentially.
+        }}
+      >
+        <Select.Option value={PairingMethod.RANDOM}>Random</Select.Option>
+        <Select.Option value={PairingMethod.SWISS}>Swiss</Select.Option>
+
+        <Select.Option value={PairingMethod.ROUND_ROBIN}>
+          Round Robin
+        </Select.Option>
+        <Select.Option value={PairingMethod.INITIAL_FONTES}>
+          Initial Fontes
+        </Select.Option>
+        <Select.Option value={PairingMethod.KING_OF_THE_HILL}>
+          King of the Hill
+        </Select.Option>
+        <Select.Option value={PairingMethod.FACTOR}>Factor</Select.Option>
+        <Select.Option value={PairingMethod.MANUAL}>Manual</Select.Option>
+        <Select.Option value={PairingMethod.TEAM_ROUND_ROBIN}>
+          Team Round Robin
+        </Select.Option>
+      </Select>
+      <p></p>
+      {/* potential additional fields */}
+      {addlFields.map((v: PairingMethodField, idx) => {
+        const key = `ni-${idx}`;
+        const [fieldType, fieldName, displayName] = v;
+        switch (fieldType) {
+          case 'number':
+            return (
+              <p>
+                {displayName}
+                <InputNumber
+                  key={key}
+                  min={0}
+                  value={setting[fieldName] as number}
+                  onChange={(e) => {
+                    props.onChange(fieldName, e as number);
+                  }}
+                />
+              </p>
+            );
+
+          case 'bool':
+            return (
+              <p>
+                {displayName}
+                <Switch
+                  key={key}
+                  checked={setting[fieldName] as boolean}
+                  onChange={(e) => props.onChange(fieldName, e)}
+                />
+              </p>
+            );
+        }
+      })}
+      <Divider />
+    </>
+  );
+};
+
 const SetDivisionRoundControls = (props: { tournamentID: string }) => {
+  // This form is too complicated to use the Ant Design built-in forms;
+  // So we're just going to use form components instead.
+
+  const [roundArray, setRoundArray] = useState<Array<RoundSetting>>([]);
+  const [division, setDivision] = useState('');
+
+  return (
+    <>
+      <p>
+        Division:
+        <Input value={division} onChange={(e) => setDivision(e.target.value)} />
+      </p>
+      <Divider />
+      {roundArray.map((v, idx) => (
+        <RoundControlFields
+          key={`rdctrl-${idx}`}
+          setting={v}
+          onChange={(
+            fieldName: keyof RoundSetting,
+            value: string | number | boolean | pairingMethod
+          ) => {
+            const newRdArray = [...roundArray];
+            newRdArray[idx] = {
+              ...newRdArray[idx],
+              [fieldName]: value,
+            };
+            setRoundArray(newRdArray);
+          }}
+        />
+      ))}
+      <Button
+        onClick={() => {
+          const newRdArray = [...roundArray];
+          newRdArray.push({
+            beginRound: 1,
+            endRound: 1,
+            pairingType: PairingMethod.MANUAL,
+          });
+          setRoundArray(newRdArray);
+        }}
+      >
+        + Add more pairings
+      </Button>
+    </>
+  );
+
+  /*
   return (
     <Form onFinish={onFinish}>
       <Form.Item
@@ -914,9 +1062,65 @@ const SetDivisionRoundControls = (props: { tournamentID: string }) => {
         <Input />
       </Form.Item>
 
-      <Form.Item name="round" label="Round (1-indexed)">
-        <InputNumber min={1} />
-      </Form.Item>
+      <Form.List name="rounds">
+        {(fields, { add, remove }) => (
+          <>
+            {fields.map((field) => (
+              <Space
+                key={field.key}
+                style={{ display: 'flex', marginBottom: 8 }}
+                align="baseline"
+              >
+                <Form.Item
+                  {...field}
+                  name={[field.name, 'pairingMethod']}
+                  fieldKey={[field.fieldKey, 'pairingMethod']}
+                  rules={[
+                    { required: true, message: 'Missing pairing method' },
+                  ]}
+                >
+                  <Select>
+                    <Select.Option value={PairingMethod.RANDOM}>
+                      Random
+                    </Select.Option>
+                    <Select.Option value={PairingMethod.SWISS}>
+                      Swiss
+                    </Select.Option>
+
+                    <Select.Option value={PairingMethod.ROUND_ROBIN}>
+                      Round Robin
+                    </Select.Option>
+                    <Select.Option value={PairingMethod.INITIAL_FONTES}>
+                      Initial Fontes
+                    </Select.Option>
+                    <Select.Option value={PairingMethod.KING_OF_THE_HILL}>
+                      King of the Hill
+                    </Select.Option>
+                    <Select.Option value={PairingMethod.FACTOR}>
+                      Factor
+                    </Select.Option>
+                    <Select.Option value={PairingMethod.MANUAL}>
+                      Manual
+                    </Select.Option>
+                    <Select.Option value={PairingMethod.TEAM_ROUND_ROBIN}>
+                      Team Round Robin
+                    </Select.Option>
+                  </Select>
+                </Form.Item
+                  {...field}
+                  name={[field.name, '']}
+                >
+
+                <Form.Item>
+
+                </Form.Item>
+
+                <MinusCircleOutlined onClick={() => remove(field.name)} />
+              </Space>
+            ))}
+          </>
+        )}
+      </Form.List>
 
       <Form.Item>
         <Button type="primary" htmlType="submit">
@@ -924,6 +1128,5 @@ const SetDivisionRoundControls = (props: { tournamentID: string }) => {
         </Button>
       </Form.Item>
     </Form>
-  );
+  );*/
 };
-*/
