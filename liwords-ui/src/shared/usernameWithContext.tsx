@@ -78,7 +78,7 @@ export const UsernameWithContext = (props: UsernameWithContextProps) => {
       ) : null}
       {props.showDeleteMessage && canMod(perms) && props.userID !== userID ? (
         <li className="link plain" onClick={props.deleteMessage}>
-          Delete this Message
+          Delete this message
         </li>
       ) : null}
       {props.additionalMenuItems}
