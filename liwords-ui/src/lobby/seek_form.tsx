@@ -97,10 +97,6 @@ export const SeekForm = (props: Props) => {
     () => localStorage.getItem('enableAllLexicons') === 'true',
     []
   );
-  const enableECWL = React.useMemo(
-    () => localStorage.getItem('enableECWL') === 'true',
-    []
-  );
 
   const enableCSW19X = React.useMemo(
     () => localStorage.getItem('enableCSW19X') === 'true',
@@ -338,11 +334,9 @@ export const SeekForm = (props: Props) => {
           {enableAllLexicons && (
             <React.Fragment>
               <Select.Option value="NWL18">NWL 18 (Obsolete)</Select.Option>
-              {enableECWL && (
-                <Select.Option value="ECWL">
-                  English Common Word List
-                </Select.Option>
-              )}
+              <Select.Option value="ECWL">
+                English Common Word List
+              </Select.Option>
               {enableCSW19X && (
                 <Select.Option value="CSW19X">
                   CSW19X (ASCI Expurgated)
