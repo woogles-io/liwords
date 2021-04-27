@@ -997,6 +997,7 @@ const RoundControlFields = (props: RdCtrlFieldsProps) => {
               </p>
             );
         }
+        return null;
       })}
       <Button onClick={props.onRemove}>- Remove</Button>
       <Divider />
