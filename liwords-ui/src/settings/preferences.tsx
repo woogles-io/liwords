@@ -67,8 +67,8 @@ const KNOWN_TILE_STYLES = [
     value: 'pastel',
   },
   {
-    name: 'Fuschia',
-    value: 'fuschia',
+    name: 'Fuchsia',
+    value: 'fuchsiaish',
   },
   {
     name: 'Blue',

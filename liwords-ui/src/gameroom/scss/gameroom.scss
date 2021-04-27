@@ -714,7 +714,7 @@ p.streak-loss {
       }
       @include userTile() {
         color: ut($tile-blank-text); // Fallback if border is a gradient
-        color: ut($tile-last-background); // Fallback if border is a gradient
+        color: ut($tile-last-background);
         background: ut($tile-last-blank);
       }
     }
@@ -750,11 +750,11 @@ p.streak-loss {
   }
   &.blank p.rune {
     @include colorModed() {
-      background-color: m($tile-background-quartenary);
+      background-color: m($tile-background-quaternary);
       color: m($tile-background);
     }
     @include userTile() {
-      background-color: ut($tile-background-quartenary);
+      background-color: ut($tile-background-quaternary);
       color: ut($tile-blank-text);
     }
   }

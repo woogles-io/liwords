@@ -8,7 +8,7 @@ $tiles: (
           color-tile-background: ignore,
           color-tile-background-secondary: ignore,
           color-tile-background-tertiary: ignore,
-          color-tile-background-quartenary: ignore,
+          color-tile-background-quaternary: ignore,
           color-tile-blank-text: ignore,
           color-tile-text: ignore,
           color-tile-last-background: ignore,
@@ -19,7 +19,7 @@ $tiles: (
           color-tile-background: #414141,
           color-tile-background-secondary: #606060, //Circle in blank
           color-tile-background-tertiary: #585858, //Tentative background
-          color-tile-background-quartenary: #414141,  //Tentative blank circle
+          color-tile-background-quaternary: #414141,  //Tentative blank circle
           color-tile-blank-text: #ffffff,
           color-tile-text: #FFF,
           color-tile-last-background: #888,
@@ -30,7 +30,7 @@ $tiles: (
           color-tile-background: #efefef,
           color-tile-background-secondary: #777, //Circle in blank
           color-tile-background-tertiary: #c8c8c8, //Tentative background
-          color-tile-background-quartenary: #777,  //Tentative blank circle
+          color-tile-background-quaternary: #777,  //Tentative blank circle
           color-tile-blank-text: #efefef,
           color-tile-text: #292929,
           color-tile-last-background: #CCC,
@@ -41,7 +41,7 @@ $tiles: (
           color-tile-background: linear-gradient(45deg, #97a0ca 0%, #e0d2c0 30%, #f1eee8 44%, #a7bdcd 96%),
           color-tile-background-secondary: rgba(1,1,1,0.3), //Circle in blank
           color-tile-background-tertiary: linear-gradient(126deg, #9398b7 0%, #e9e2d4 30%, #c3bdb5 64%, #6b8191 96%), //Tentative background
-          color-tile-background-quartenary: rgba(1,1,1,0.3), //Tentative blank circle
+          color-tile-background-quaternary: rgba(1,1,1,0.3), //Tentative blank circle
           color-tile-blank-text: #efefef,
           color-tile-text: #292929,
           color-tile-last-background: linear-gradient(76deg, #858bae 0%, #b1aca2 30%, #807b72 44%, #567791 96%),
@@ -52,7 +52,7 @@ $tiles: (
           color-tile-background: #efd8c0,
           color-tile-background-secondary: #856950,
           color-tile-background-tertiary: #c3a589,
-          color-tile-background-quartenary: #5d4a37,
+          color-tile-background-quaternary: #5d4a37,
           color-tile-blank-text: #f6ede3,
           color-tile-text: #432,
           color-tile-last-background: #9d8367,
@@ -63,7 +63,7 @@ $tiles: (
           color-tile-background: #582d25,
           color-tile-background-secondary: #321510, //Circle in blank
           color-tile-background-tertiary: #401e18, //Tentative background
-          color-tile-background-quartenary: #5f362f,  //Tentative blank circle
+          color-tile-background-quaternary: #5f362f,  //Tentative blank circle
           color-tile-blank-text: #e9c3a7,
           color-tile-text: #e9c3a7,
           color-tile-last-background: #9d5442,
@@ -74,7 +74,7 @@ $tiles: (
           color-tile-background: #831721,
           color-tile-background-secondary: #60080f, //Circle in blank
           color-tile-background-tertiary: #660810, //Tentative background
-          color-tile-background-quartenary: #881c26,  //Tentative blank circle
+          color-tile-background-quaternary: #881c26,  //Tentative blank circle
           color-tile-blank-text: #fac6b9,
           color-tile-text: #ffe6e3,
           color-tile-last-background: #cb6369,
@@ -85,7 +85,7 @@ $tiles: (
           color-tile-background: #175133,
           color-tile-background-secondary: #0e3926, //Circle in blank
           color-tile-background-tertiary: #2e8554, //Tentative background
-          color-tile-background-quartenary: #12432e,  //Tentative blank circle
+          color-tile-background-quaternary: #12432e,  //Tentative blank circle
           color-tile-blank-text: #fbffe3,
           color-tile-text: #fbffe3,
           color-tile-last-background: #57ae6a,
@@ -96,7 +96,7 @@ $tiles: (
           color-tile-background: #008080,
           color-tile-background-secondary: #0e5454, //Circle in blank
           color-tile-background-tertiary: #054a51, //Tentative background
-          color-tile-background-quartenary: #008080,  //Tentative blank circle
+          color-tile-background-quaternary: #008080,  //Tentative blank circle
           color-tile-blank-text: #f0fae9,
           color-tile-text: #f0fae9,
           color-tile-last-background: #61bab3,
@@ -107,18 +107,18 @@ $tiles: (
             color-tile-background: #f8cdc1,
             color-tile-background-secondary: #5c455f, //Circle in blank
             color-tile-background-tertiary: #de979a, //Tentative background
-            color-tile-background-quartenary: #725975,  //Tentative blank circle
+            color-tile-background-quaternary: #725975,  //Tentative blank circle
             color-tile-blank-text: #eea5a9,
             color-tile-text: #5c455f,
             color-tile-last-background: #674f69,
             color-tile-last-text: #fad4c9,
             color-tile-last-blank: #fad4c9,
         ),
-        fuschia: (
+        fuchsiaish: (
           color-tile-background: #c82559,
           color-tile-background-secondary: #ef5284, //Circle in blank
           color-tile-background-tertiary: #940e39, //Tentative background
-          color-tile-background-quartenary: #c82559,  //Tentative blank circle
+          color-tile-background-quaternary: #c82559,  //Tentative blank circle
           color-tile-blank-text: #fff,
           color-tile-text: #fff,
           color-tile-last-background: #ef5284,
@@ -129,7 +129,7 @@ $tiles: (
           color-tile-background: #2d6a9e,
           color-tile-background-secondary: #1c486e, //Circle in blank
           color-tile-background-tertiary: #1a3e5f, //Tentative background
-          color-tile-background-quartenary: #2d6a9e,  //Tentative blank circle
+          color-tile-background-quaternary: #2d6a9e,  //Tentative blank circle
           color-tile-blank-text: #fff,
           color-tile-text: #fff,
           color-tile-last-background: #a4dffc,
