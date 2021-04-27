@@ -24,11 +24,13 @@ import React, { useState } from 'react';
 import { postBinary, toAPIUrl, twirpErrToMsg } from '../api/api';
 import {
   DivisionControls,
+  DivisionRoundControls,
   GameMode,
   GameRequest,
   GameRules,
   PairingMethod,
   RatingMode,
+  RoundControl,
   TournamentGameResult,
 } from '../gen/api/proto/realtime/realtime_pb';
 import { TournamentResponse } from '../gen/api/proto/tournament_service/tournament_service_pb';
@@ -914,6 +916,7 @@ type RdCtrlFieldsProps = {
     fieldName: keyof RoundSetting,
     value: string | number | boolean | pairingMethod
   ) => void;
+  onRemove: () => void;
 };
 
 const RoundControlFields = (props: RdCtrlFieldsProps) => {
@@ -994,6 +997,7 @@ const RoundControlFields = (props: RdCtrlFieldsProps) => {
             );
         }
       })}
+      <Button onClick={props.onRemove}>- Remove</Button>
       <Divider />
     </>
   );
@@ -1005,6 +1009,57 @@ const SetDivisionRoundControls = (props: { tournamentID: string }) => {
 
   const [roundArray, setRoundArray] = useState<Array<RoundSetting>>([]);
   const [division, setDivision] = useState('');
+
+  const showError = (msg: string) => {
+    message.error({
+      content: 'Error ' + msg,
+      duration: 5,
+    });
+  };
+
+  const setRoundControls = async () => {
+    if (!division) {
+      showError('Division is missing');
+      return;
+    }
+    if (!roundArray.length) {
+      showError('Round controls are missing');
+      return;
+    }
+    // validate round array
+    let lastRd = 0;
+    for (let i = 0; i < roundArray.length; i++) {
+      const rdCtrl = roundArray[i];
+      if (rdCtrl.beginRound < lastRd) {
+        showError('Round numbers must be consecutive and increasing');
+        return;
+      }
+      if (rdCtrl.endRound < rdCtrl.beginRound) {
+        showError('End round must not be smaller than begin round');
+        return;
+      }
+      if (rdCtrl.beginRound > lastRd + 1) {
+        showError('Round numbers must be consecutive; you cannot skip rounds');
+        return;
+      }
+      lastRd = rdCtrl.endRound;
+    }
+
+    const ctrls = new DivisionRoundControls();
+    ctrls.setId(props.tournamentID);
+    ctrls.setDivision(division);
+
+    const roundControls = new Array<RoundControl>();
+
+    roundArray.forEach((v) => {
+      for (let i = v.beginRound; i <= v.endRound; i++) {
+        switch (v.pairingType) {
+        }
+      }
+    });
+
+    ctrls.setRoundControlsList(roundControls);
+  };
 
   return (
     <>
@@ -1028,6 +1083,11 @@ const SetDivisionRoundControls = (props: { tournamentID: string }) => {
             };
             setRoundArray(newRdArray);
           }}
+          onRemove={() => {
+            const newRdArray = [...roundArray];
+            newRdArray.splice(idx, 1);
+            setRoundArray(newRdArray);
+          }}
         />
       ))}
       <Button
@@ -1044,7 +1104,7 @@ const SetDivisionRoundControls = (props: { tournamentID: string }) => {
         + Add more pairings
       </Button>
 
-      <Button onClick={() => console.log(roundArray)}>Submit</Button>
+      <Button onClick={() => setRoundControls()}>Submit</Button>
     </>
   );
 };
