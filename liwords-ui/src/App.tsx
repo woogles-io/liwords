@@ -85,24 +85,26 @@ const App = React.memo(() => {
   }, [isCurrentLocation, resetStore]);
 
   const getFullBlocks = useCallback(() => {
-    if (!loggedIn) return;
     void userID; // used only as effect dependency
-    axios
-      .post<Blocks>(
-        toAPIUrl('user_service.SocializeService', 'GetFullBlocks'),
-        {},
-        { withCredentials: true }
-      )
-      .then((resp) => {
-        setExcludedPlayers(new Set<string>(resp.data.user_ids));
-      })
-      .catch((e) => {
+    (async () => {
+      let toExclude = new Set<string>();
+      try {
+        if (loggedIn) {
+          const resp = await axios.post<Blocks>(
+            toAPIUrl('user_service.SocializeService', 'GetFullBlocks'),
+            {},
+            { withCredentials: true }
+          );
+          toExclude = new Set<string>(resp.data.user_ids);
+        }
+      } catch (e) {
         console.log(e);
-      })
-      .finally(() => {
+      } finally {
+        setExcludedPlayers(toExclude);
         setExcludedPlayersFetched(true);
         setPendingBlockRefresh(false);
-      });
+      }
+    })();
   }, [
     loggedIn,
     userID,
