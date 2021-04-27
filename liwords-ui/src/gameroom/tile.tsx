@@ -16,7 +16,7 @@ type TileLetterProps = {
 
 export const TILE_TYPE = 'TILE_TYPE';
 
-const TileLetter = React.memo((props: TileLetterProps) => {
+export const TileLetter = React.memo((props: TileLetterProps) => {
   let { rune } = props;
   // if (rune.toUpperCase() !== rune) {
   //   rune = rune.toUpperCase();
@@ -32,7 +32,7 @@ type PointValueProps = {
   value: number;
 };
 
-const PointValue = React.memo((props: PointValueProps) => {
+export const PointValue = React.memo((props: PointValueProps) => {
   if (!props.value) {
     return null;
   }

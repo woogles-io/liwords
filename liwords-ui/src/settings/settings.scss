@@ -449,3 +449,20 @@
     }
   }
 }
+.tile-selection {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 6px 0;
+  .ant-select {
+    min-width: 150px;
+  }
+  .previewer {
+    display: flex;
+    .tile-previewer {
+      margin: 6px 6px 0 0;
+      display: flex;
+    }
+  }
+
+}
