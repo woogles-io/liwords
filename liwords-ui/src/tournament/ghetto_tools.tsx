@@ -25,6 +25,7 @@ import { postBinary, toAPIUrl, twirpErrToMsg } from '../api/api';
 import {
   DivisionControls,
   DivisionRoundControls,
+  FirstMethod,
   GameMode,
   GameRequest,
   GameRules,
@@ -1030,7 +1031,7 @@ const SetDivisionRoundControls = (props: { tournamentID: string }) => {
     let lastRd = 0;
     for (let i = 0; i < roundArray.length; i++) {
       const rdCtrl = roundArray[i];
-      if (rdCtrl.beginRound < lastRd) {
+      if (rdCtrl.beginRound <= lastRd) {
         showError('Round numbers must be consecutive and increasing');
         return;
       }
@@ -1053,12 +1054,50 @@ const SetDivisionRoundControls = (props: { tournamentID: string }) => {
 
     roundArray.forEach((v) => {
       for (let i = v.beginRound; i <= v.endRound; i++) {
+        const rdCtrl = new RoundControl();
+        rdCtrl.setFirstMethod(FirstMethod.AUTOMATIC_FIRST);
+        rdCtrl.setGamesPerRound(1);
+        rdCtrl.setPairingMethod(v.pairingType);
+
         switch (v.pairingType) {
+          case PairingMethod.SWISS:
+          case PairingMethod.FACTOR:
+            rdCtrl.setMaxRepeats(v.maxRepeats || 0);
+            rdCtrl.setAllowOverMaxRepeats(v.allowOverMaxRepeats || false);
+            rdCtrl.setRepeatRelativeWeight(v.repeatRelativeWeight || 0);
+            rdCtrl.setWinDifferenceRelativeWeight(
+              v.winDifferenceRelativeWeight || 0
+            );
+            // This should be auto-calculated, and only for factor
+            rdCtrl.setFactor(v.factor || 0);
+            break;
+
+          case PairingMethod.TEAM_ROUND_ROBIN:
+            rdCtrl.setGamesPerRound(v.gamesPerRound || 1);
+            break;
         }
+        // for everything else it doesn't matter, we just repeat.
+        roundControls.push(rdCtrl);
       }
     });
-
     ctrls.setRoundControlsList(roundControls);
+
+    try {
+      const rbin = await postBinary(
+        'tournament_service.TournamentService',
+        'SetRoundControls',
+        ctrls
+      );
+
+      const resp = TournamentResponse.deserializeBinary(rbin.data);
+      console.log('setRoundControls', resp);
+      message.info({
+        content: 'Controls set',
+        duration: 3,
+      });
+    } catch (err) {
+      showError(twirpErrToMsg(err));
+    }
   };
 
   return (
