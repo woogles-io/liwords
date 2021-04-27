@@ -86,9 +86,9 @@ export const Preferences = React.memo((props: Props) => {
   const [darkMode, setDarkMode] = useState(
     localStorage?.getItem('darkMode') === 'true'
   );
-  const initalTileStyle = localStorage?.getItem('userTile') || 'default';
+  const initialTileStyle = localStorage?.getItem('userTile') || 'default';
 
-  const [userTile, setUserTile] = useState<string>(initalTileStyle);
+  const [userTile, setUserTile] = useState<string>(initialTileStyle);
   const toggleDarkMode = useCallback(() => {
     const useDarkMode = localStorage?.getItem('darkMode') !== 'true';
     localStorage.setItem('darkMode', useDarkMode ? 'true' : 'false');
