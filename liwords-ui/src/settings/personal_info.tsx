@@ -19,6 +19,7 @@ import axios, { AxiosError } from 'axios';
 import { toAPIUrl } from '../api/api';
 import { countryArray } from './country_map';
 import { MarkdownTips } from './markdown_tips';
+import { AvatarCropper } from './avatar_cropper';
 
 type PersonalInfo = {
   email: string;
@@ -55,6 +56,11 @@ export const PersonalInfo = React.memo((props: Props) => {
   const [bioTipsModalVisible, setBioTipsModalVisible] = useState(false);
   const [avatarErr, setAvatarErr] = useState('');
   const [uploadPending, setUploadPending] = useState(false);
+  const [cropperOpen, setCropperOpen] = useState(false);
+  const [imageToUpload, setImageToUpload] = useState<Blob | undefined>(
+    undefined
+  );
+
   const avatarErrorCatcher = useCallback((e: AxiosError) => {
     if (e.response) {
       // From Twirp
@@ -76,7 +82,8 @@ export const PersonalInfo = React.memo((props: Props) => {
     onChange: (info: any) => {
       if (info.fileList.length > 0) {
         // If they try again, the new one goes to the end of the list
-        updateAvatar(info.fileList[info.fileList.length - 1].originFileObj);
+        setImageToUpload(info.fileList[info.fileList.length - 1].originFileObj);
+        setCropperOpen(true);
       }
     },
     accept: 'image/*',
@@ -107,50 +114,29 @@ export const PersonalInfo = React.memo((props: Props) => {
       .catch(avatarErrorCatcher);
   }, [propsUpdatedAvatar, avatarErrorCatcher]);
 
-  const updateAvatar = useCallback(
-    (avatarFile: Blob) => {
-      let reader = new FileReader();
-      reader.onload = (readerEvent) => {
-        let image = new Image();
-        image.onload = () => {
-          const canvas = document.createElement('canvas'),
-            width = image.width,
-            height = image.height;
-          if (width < 96 || width !== height) {
-            setAvatarErr('Image must be square and at least 96x96.');
-          } else {
-            canvas.width = 96;
-            canvas.height = 96;
-            canvas
-              .getContext('2d')
-              ?.drawImage(image, 0, 0, image.width, image.height, 0, 0, 96, 96);
-            // The endpoint doesn't want the file type data so cut that off
-            const jpegString = canvas.toDataURL('image/jpeg', 1).split(',')[1];
-            setUploadPending(true);
-            axios
-              .post(
-                toAPIUrl('user_service.ProfileService', 'UpdateAvatar'),
-                {
-                  jpg_data: jpegString,
-                },
-                {
-                  withCredentials: true,
-                }
-              )
-              .then((resp) => {
-                notification.info({
-                  message: 'Success',
-                  description: 'Your avatar was updated.',
-                });
-                setUploadPending(false);
-                propsUpdatedAvatar(resp.data.avatar_url);
-              })
-              .catch(avatarErrorCatcher);
+  const saveAvatar = useCallback(
+    (imageDataUrl: string) => {
+      const jpegString = imageDataUrl.split(',')[1];
+      setUploadPending(true);
+      axios
+        .post(
+          toAPIUrl('user_service.ProfileService', 'UpdateAvatar'),
+          {
+            jpg_data: jpegString,
+          },
+          {
+            withCredentials: true,
           }
-        };
-        image.src = String(reader.result);
-      };
-      reader.readAsDataURL(avatarFile);
+        )
+        .then((resp) => {
+          notification.info({
+            message: 'Success',
+            description: 'Your avatar was updated.',
+          });
+          setUploadPending(false);
+          propsUpdatedAvatar(resp.data.avatar_url);
+        })
+        .catch(avatarErrorCatcher);
     },
     [propsUpdatedAvatar, avatarErrorCatcher]
   );
@@ -247,7 +233,9 @@ export const PersonalInfo = React.memo((props: Props) => {
         <div className="avatar-section">
           <PlayerAvatar player={props.player} />
           <Upload {...fileProps}>
-            <Button className="change-avatar">Change</Button>
+            <Button className="change-avatar">
+              {uploadPending ? 'Uploading...' : 'Change'}
+            </Button>
           </Upload>
           <Button
             className="remove-avatar"
@@ -274,7 +262,22 @@ export const PersonalInfo = React.memo((props: Props) => {
         onOk={removeAvatar}
         onCancel={cancelRemoveAvatarModal}
       />
-
+      {cropperOpen && (
+        <AvatarCropper
+          file={imageToUpload}
+          onCancel={() => {
+            setCropperOpen(false);
+          }}
+          onError={(errorMessage) => {
+            setAvatarErr(errorMessage);
+            setCropperOpen(false);
+          }}
+          onSave={(imageDataUrl) => {
+            setCropperOpen(false);
+            saveAvatar(imageDataUrl);
+          }}
+        />
+      )}
       <Row>
         <Col span={23}>
           <div className="section-header bio-section-header">

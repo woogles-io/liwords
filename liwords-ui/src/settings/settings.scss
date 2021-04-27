@@ -111,6 +111,7 @@
     width: 144px;
     height: 236px;
   }
+
   .support-woogles {
     display: flex;
     flex-direction: row;
@@ -400,4 +401,68 @@
 
 .secret .title {
   margin-top: 24px;
+}
+
+.cropper-modal {
+  width: 328px;
+  .ant-modal-body {
+    padding: 0 16px;
+    .cropper {
+      @include colorModed() {
+        background: m($primary-dark);
+      }
+      position: relative;
+      width: 296px;
+      height: 296px;
+    }
+  }
+  .ant-modal-footer {
+    display: flex;
+    align-items: center;
+  }
+  .zoom-slider {
+    display: flex;
+    align-items: center;
+    font-size: 32px;
+    padding: 0px 6px 0 12px;
+    .ant-slider {
+      margin: 16px;
+      width: 100%;
+      top: 2px;
+      .ant-slider-track, .ant-slider-rail {
+        @include colorModed() {
+          background: m($gray-extreme);
+        }
+      }
+      .ant-slider-handle {
+        width: 24px;
+        height: 24px;
+        top: 0px;
+        @include colorModed() {
+          background-color: m($primary-dark);
+          border-color: m($primary-dark)
+        }
+      }
+    }
+    @include colorModed() {
+      color: m($gray-extreme);
+    }
+  }
+}
+.tile-selection {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 6px 0;
+  .ant-select {
+    min-width: 150px;
+  }
+  .previewer {
+    display: flex;
+    .tile-previewer {
+      margin: 6px 6px 0 0;
+      display: flex;
+    }
+  }
+
 }

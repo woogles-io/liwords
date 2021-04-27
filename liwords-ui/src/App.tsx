@@ -10,6 +10,7 @@ import TileImages from './gameroom/tile_images';
 import { Lobby } from './lobby/lobby';
 import {
   useExcludedPlayersStoreContext,
+  useLoginStateStoreContext,
   useResetStoreContext,
   useModeratorStoreContext,
 } from './store/store';
@@ -40,8 +41,12 @@ type ModsResponse = {
 };
 
 const useDarkMode = localStorage?.getItem('darkMode') === 'true';
-
 document?.body?.classList?.add(`mode--${useDarkMode ? 'dark' : 'default'}`);
+
+const userTile = localStorage?.getItem('userTile');
+if (userTile) {
+  document?.body?.classList?.add(`tile--${userTile}`);
+}
 
 const App = React.memo(() => {
   const { useState } = useMountedState();
@@ -52,6 +57,9 @@ const App = React.memo(() => {
     pendingBlockRefresh,
     setPendingBlockRefresh,
   } = useExcludedPlayersStoreContext();
+
+  const { loginState } = useLoginStateStoreContext();
+  const { loggedIn, userID } = loginState;
 
   const {
     setAdmins,
@@ -81,6 +89,8 @@ const App = React.memo(() => {
   }, [isCurrentLocation, resetStore]);
 
   const getFullBlocks = useCallback(() => {
+    if (!loggedIn) return;
+    void userID; // used only as effect dependency
     axios
       .post<Blocks>(
         toAPIUrl('user_service.SocializeService', 'GetFullBlocks'),
@@ -97,7 +107,13 @@ const App = React.memo(() => {
         setExcludedPlayersFetched(true);
         setPendingBlockRefresh(false);
       });
-  }, [setExcludedPlayers, setExcludedPlayersFetched, setPendingBlockRefresh]);
+  }, [
+    loggedIn,
+    userID,
+    setExcludedPlayers,
+    setExcludedPlayersFetched,
+    setPendingBlockRefresh,
+  ]);
 
   useEffect(() => {
     getFullBlocks();

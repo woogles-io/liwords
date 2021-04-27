@@ -27,7 +27,7 @@ type UsernameWithContextProps = {
 
 export const UsernameWithContext = (props: UsernameWithContextProps) => {
   const { loginState } = useLoginStateStoreContext();
-  const { userID, perms } = loginState;
+  const { loggedIn, userID, perms } = loginState;
   const briefProfile = useBriefProfile(props.userID);
 
   const userMenu = (
@@ -55,7 +55,7 @@ export const UsernameWithContext = (props: UsernameWithContextProps) => {
           Message
         </li>
       ) : null}
-      {props.userID && !props.omitBlock ? (
+      {loggedIn && props.userID && !props.omitBlock ? (
         <TheBlocker
           blockCallback={props.blockCallback}
           className="link plain"
@@ -78,7 +78,7 @@ export const UsernameWithContext = (props: UsernameWithContextProps) => {
       ) : null}
       {props.showDeleteMessage && canMod(perms) && props.userID !== userID ? (
         <li className="link plain" onClick={props.deleteMessage}>
-          Delete this Message
+          Delete this message
         </li>
       ) : null}
       {props.additionalMenuItems}
