@@ -625,6 +625,8 @@ export const Table = React.memo((props: Props) => {
             ? ['NWL20']
             : lexicon === 'ECWL'
             ? ['CSW19', 'NWL20']
+            : lexicon === 'CSW19X'
+            ? ['CSW19']
             : []) {
             const wordsToRedefine = [];
             for (const word of wordsToDefine) {
