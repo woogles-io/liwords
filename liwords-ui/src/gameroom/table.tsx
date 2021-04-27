@@ -641,7 +641,7 @@ export const Table = React.memo((props: Props) => {
               {
                 lexicon: otherLexicon,
                 words: wordsToRedefine,
-                definitions: showDefinitionHover,
+                definitions: !!showDefinitionHover,
               },
               { cancelToken: cancelTokenSource.token }
             );
