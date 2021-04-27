@@ -834,6 +834,32 @@ export const BoardPanel = React.memo((props: Props) => {
             const [, p0Score, , , p1Score] = PlayerScoresAndTimes();
             const scoresay = `${p0Score} to ${p1Score}`;
             say(scoresay, '');
+          } else if (
+            blindfoldCommand.toUpperCase() === 'E' &&
+            exchangeAllowed &&
+            !props.gameDone
+          ) {
+            evt.preventDefault();
+            if (handleNeitherShortcut.current) handleNeitherShortcut.current();
+            setCurrentMode('EXCHANGE_MODAL');
+          } else if (
+            blindfoldCommand.toUpperCase() === 'PASS' &&
+            !props.gameDone
+          ) {
+            evt.preventDefault();
+            props.onPass();
+            setCurrentPopUp('NONE');
+            setCurrentMode('NORMAL');
+          } else if (
+            blindfoldCommand.toUpperCase() === 'CHAL' &&
+            !props.gameDone
+          ) {
+            setCurrentMode('NORMAL');
+            evt.preventDefault();
+            if (handleChallengeShortcut.current)
+              handleChallengeShortcut.current();
+            say('Press Enter to confirm challenge.', '');
+            return;
           } else if (blindfoldCommand.toUpperCase() === 'T') {
             const [, , p0Time, , , p1Time] = PlayerScoresAndTimes();
             const timesay = `${p0Time} to ${p1Time}.`;
