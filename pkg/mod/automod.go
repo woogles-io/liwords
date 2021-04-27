@@ -2,6 +2,7 @@ package mod
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -21,6 +22,8 @@ var BehaviorToScore map[ms.NotoriousGameType]int = map[ms.NotoriousGameType]int{
 
 var AutomodUserId string = "AUTOMOD"
 var SandbaggingThreshold int = 3
+
+// var InsurmountablePerTurnScore int = 70
 var NotorietyThreshold int = 10
 var NotorietyDecrement int = 1
 var DurationMultiplier int = 24 * 60 * 60
@@ -42,6 +45,11 @@ func Automod(ctx context.Context, us user.Store, u0 *entity.User, u1 *entity.Use
 
 	if (g.GameEndReason == realtime.GameEndReason_TIME || g.GameEndReason == realtime.GameEndReason_RESIGNED) &&
 		totalGameTime > int32(UnreasonableTime) && !isBotGame {
+		// g.LoserIdx should never be -1, but if it is somehow, then the whole app will
+		// crash, so let's just be sure
+		if g.LoserIdx == -1 {
+			return errors.New("game ended in resignation but does not have a winner")
+		}
 		// Someone lost on time, determine if the loser made no plays at all
 		var loserLastEvent *pb.GameEvent
 		for i := len(history.Events) - 1; i >= 0; i-- {
@@ -58,6 +66,11 @@ func Automod(ctx context.Context, us user.Store, u0 *entity.User, u1 *entity.Use
 		if loserLastEvent == nil {
 			// The loser didn't make a play, this is rude
 			lngt = ms.NotoriousGameType_NO_PLAY
+		} else if g.GameEndReason == realtime.GameEndReason_RESIGNED {
+			timeOfResignation := int32(g.Timers.TimeRemaining[g.LoserIdx])
+			if unreasonableTime(loserLastEvent.MillisRemaining - timeOfResignation) {
+				lngt = ms.NotoriousGameType_SITTING
+			}
 		} else if unreasonableTime(loserLastEvent.MillisRemaining) {
 			// The loser let their clock run down, this is rude
 			lngt = ms.NotoriousGameType_SITTING
@@ -72,7 +85,8 @@ func Automod(ctx context.Context, us user.Store, u0 *entity.User, u1 *entity.Use
 				totalMoves++
 			}
 		}
-
+		// scoreDifference := int(g.Quickdata.FinalScores[g.WinnerIdx] - g.Quickdata.FinalScores[g.LoserIdx])
+		// if totalMoves < SandbaggingThreshold && scoreDifference/totalMoves < InsurmountablePerTurnScore {
 		if totalMoves < SandbaggingThreshold {
 			lngt = ms.NotoriousGameType_SANDBAG
 		}
