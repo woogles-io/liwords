@@ -2,7 +2,8 @@ import React, { useCallback } from 'react';
 import { useMountedState } from '../utils/mounted';
 import { Col, Row, Select, Switch } from 'antd';
 import { preferredSortOrder, setPreferredSortOrder } from '../store/constants';
-
+import '../gameroom/scss/gameroom.scss';
+import { TileLetter, PointValue } from '../gameroom/tile';
 type Props = {};
 
 const KNOWN_TILE_ORDERS = [
@@ -28,12 +29,66 @@ const KNOWN_TILE_ORDERS = [
   },
 ];
 
+const KNOWN_TILE_STYLES = [
+  {
+    name: 'default',
+    value: '',
+  },
+  {
+    name: 'Charcoal',
+    value: 'charcoal',
+  },
+  {
+    name: 'White',
+    value: 'whitish',
+  },
+  {
+    name: 'Mahogany',
+    value: 'mahogany',
+  },
+  {
+    name: 'Balsa',
+    value: 'balsa',
+  },
+  {
+    name: 'Brick',
+    value: 'brick',
+  },
+  {
+    name: 'Forest',
+    value: 'forest',
+  },
+  {
+    name: 'Teal',
+    value: 'tealish',
+  },
+  {
+    name: 'Pastel',
+    value: 'pastel',
+  },
+  {
+    name: 'Fuschia',
+    value: 'fuschia',
+  },
+  {
+    name: 'Blue',
+    value: 'blueish',
+  },
+  {
+    name: 'Metallic',
+    value: 'metallic',
+  },
+];
+
 export const Preferences = React.memo((props: Props) => {
   const { useState } = useMountedState();
 
   const [darkMode, setDarkMode] = useState(
     localStorage?.getItem('darkMode') === 'true'
   );
+  const initalTileStyle = localStorage?.getItem('userTile') || 'default';
+
+  const [userTile, setUserTile] = useState<string>(initalTileStyle);
   const toggleDarkMode = useCallback(() => {
     const useDarkMode = localStorage?.getItem('darkMode') !== 'true';
     localStorage.setItem('darkMode', useDarkMode ? 'true' : 'false');
@@ -45,6 +100,20 @@ export const Preferences = React.memo((props: Props) => {
       document?.body?.classList?.remove('mode--dark');
     }
     setDarkMode((x) => !x);
+  }, []);
+
+  const handleUserTileChange = useCallback((tileStyle: string) => {
+    const classes = document?.body?.className
+      .split(' ')
+      .filter((c) => !c.includes('tile--'));
+    document.body.className = classes.join(' ').trim();
+    if (tileStyle !== 'default') {
+      localStorage.setItem('userTile', tileStyle);
+      document?.body?.classList?.add(`tile--${tileStyle}`);
+    } else {
+      localStorage.removeItem('userTile');
+    }
+    setUserTile(tileStyle);
   }, []);
 
   const [enableAllLexicons, setEnableAllLexicons] = useState(
@@ -98,6 +167,67 @@ export const Preferences = React.memo((props: Props) => {
               <Select.Option value={tileOrder}>Custom</Select.Option>
             )}
           </Select>
+          <div className="tile-order">Tile style</div>
+          <div className="tile-selection">
+            <Select
+              className="tile-style-select"
+              size="large"
+              defaultValue={userTile}
+              onChange={handleUserTileChange}
+            >
+              {KNOWN_TILE_STYLES.map(({ name, value }) => (
+                <Select.Option value={value} key={value}>
+                  {name}
+                </Select.Option>
+              ))}
+            </Select>
+            <div className="previewer">
+              <div className={`tile-previewer tile--${userTile}`}>
+                <div className="tile">
+                  <TileLetter rune="W" />
+                  <PointValue value={4} />
+                </div>
+                <div className="tile">
+                  <TileLetter rune="O" />
+                  <PointValue value={1} />
+                </div>
+                <div className="tile">
+                  <TileLetter rune="O" />
+                  <PointValue value={1} />
+                </div>
+                <div className="tile blank">
+                  <TileLetter rune="G" />
+                  <PointValue value={0} />
+                </div>
+                <div className="tile">
+                  <TileLetter rune="L" />
+                  <PointValue value={1} />
+                </div>
+                <div className="tile">
+                  <TileLetter rune="E" />
+                  <PointValue value={1} />
+                </div>
+                <div className="tile">
+                  <TileLetter rune="S" />
+                  <PointValue value={1} />
+                </div>
+              </div>
+              <div className={`tile-previewer tile--${userTile}`}>
+                <div className="tile last-played">
+                  <TileLetter rune="O" />
+                  <PointValue value={1} />
+                </div>
+                <div className="tile last-played blank">
+                  <TileLetter rune="M" />
+                  <PointValue value={0} />
+                </div>
+                <div className="tile last-played">
+                  <TileLetter rune="G" />
+                  <PointValue value={2} />
+                </div>
+              </div>
+            </div>
+          </div>
         </Col>
       </Row>
       <div className="section-header">Lexicons</div>

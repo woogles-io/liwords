@@ -1,5 +1,6 @@
 @import '../../base';
 @import '../../shared/layout';
+@import '../../tile_modes';
 
 @include button;
 @include notification;
@@ -278,12 +279,19 @@ p.streak-loss {
     z-index: 5;
     transition: $tile-transition;
     @include colorModed() {
-      background-color: m($tile-background);
+      background: m($tile-background);
       color: m($background);
+    }
+    @include userTile() {
+      background: ut($tile-background);
+      color: ut($tile-text);
     }
     p.rune {
       @include colorModed() {
         color: m($background);
+      }
+      @include userTile() {
+        background: ut($tile-background);
       }
     }
   }
@@ -636,6 +644,9 @@ p.streak-loss {
     }
     */
   }
+  @include userTile() {
+    background: ut($tile-background);
+  }
 }
 .tile.blank {
   display: flex;
@@ -667,14 +678,18 @@ p.streak-loss {
   transform: rotate(-10deg);
   font-size: $tile-font-size-mobile * 0.95;
   @include colorModed() {
-    color: m($tile-background);
+    color: m($tile-blank-text);
     background-color: m($tile-background-secondary);
+  }
+  @include userTile() {
+    color: ut($tile-blank-text);
+    background: ut($tile-background-secondary);
   }
 }
 .tile.last-played {
   @include colorModed() {
     border: 1px solid m($tile-last-background);
-    background-color: m($tile-last-background);
+    background: m($tile-last-background);
     /* TODO
     &.tile-p0 {
       border: 1px solid m($someColor);
@@ -686,12 +701,21 @@ p.streak-loss {
     }
     */
   }
+  @include userTile() {
+    border: 0px solid transparent; // Fallback if border is a gradient
+    border: 1px solid ut($tile-last-background);
+    background: ut($tile-last-background);
+  }
   &.blank {
     p.rune {
       @include colorModed() {
         background-color: m($tile-last-blank);
         color: m($tile-last-background);
-
+      }
+      @include userTile() {
+        color: ut($tile-blank-text); // Fallback if border is a gradient
+        color: ut($tile-last-background); // Fallback if border is a gradient
+        background: ut($tile-last-blank);
       }
     }
   }
@@ -699,29 +723,39 @@ p.streak-loss {
     @include colorModed() {
       color: m($tile-last-text);
     }
+    @include userTile() {
+      color: ut($tile-last-text);
+    }
   }
 }
 .tile.tentative {
   @include colorModed() {
-    background-color: m($tile-background-tertiary);
+    background: m($tile-background-tertiary);
     /* TODO
 
     &.tile-p0 {
      @include colorModed() {
-        background-color: m($someColor);
+        background: m($someColor);
       }
     }
     &.tile-p1 {
            @include colorModed() {
-        background-color: m($someColor);
+        background: m($someColor);
       }
     }
     */
+  }
+  @include userTile() {
+      background: ut($tile-background-tertiary);
   }
   &.blank p.rune {
     @include colorModed() {
       background-color: m($tile-background-quartenary);
       color: m($tile-background);
+    }
+    @include userTile() {
+      background-color: ut($tile-background-quartenary);
+      color: ut($tile-blank-text);
     }
   }
 }
@@ -757,6 +791,9 @@ p.rune {
   @include colorModed() {
     color: m($background);
   }
+  @include userTile() {
+    color: ut($tile-text);
+  }
 }
 .tile.blank p.rune {
   font-size: $tile-font-size-mobile * 0.9;
@@ -774,19 +811,28 @@ p.rune {
   @include colorModed() {
     color: m($background);
   }
+  @include userTile() {
+    color: ut($tile-text);
+  }
 }
 
 .rack .tile, .tile.preview:not(.over-board) {
   width: $tile-size-desktop;
   height: $tile-size-desktop;
   @include colorModed() {
-    background-color: m($tile-background);
+    background: m($tile-background);
+  }
+  @include userTile() {
+    background: ut($tile-background);
   }
   margin: 2px;
   p.rune {
     font-size: $tile-font-size-desktop;
     @include colorModed() {
       color: m($background);
+    }
+    @include userTile() {
+      color: ut($tile-text);
     }
   }
   .point-value {
@@ -796,7 +842,10 @@ p.rune {
     opacity: 0.4;
   }
   @include colorModed() {
-    background-color: m($tile-background);
+    background: m($tile-background);
+  }
+  @include userTile() {
+    background: ut($tile-background);
   }
   transition: $tile-transition;
 }

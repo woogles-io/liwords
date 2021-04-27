@@ -40,8 +40,12 @@ type ModsResponse = {
 };
 
 const useDarkMode = localStorage?.getItem('darkMode') === 'true';
-
 document?.body?.classList?.add(`mode--${useDarkMode ? 'dark' : 'default'}`);
+
+const userTile = localStorage?.getItem('userTile');
+if (userTile) {
+  document?.body?.classList?.add(`tile--${userTile}`);
+}
 
 const App = React.memo(() => {
   const { useState } = useMountedState();
