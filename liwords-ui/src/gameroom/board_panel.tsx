@@ -846,19 +846,14 @@ export const BoardPanel = React.memo((props: Props) => {
             blindfoldCommand.toUpperCase() === 'PASS' &&
             !props.gameDone
           ) {
-            evt.preventDefault();
-            props.onPass();
-            setCurrentPopUp('NONE');
+            makeMove('pass');
             setCurrentMode('NORMAL');
           } else if (
             blindfoldCommand.toUpperCase() === 'CHAL' &&
             !props.gameDone
           ) {
+            makeMove('challenge');
             setCurrentMode('NORMAL');
-            evt.preventDefault();
-            if (handleChallengeShortcut.current)
-              handleChallengeShortcut.current();
-            say('Press Enter to confirm challenge.', '');
             return;
           } else if (blindfoldCommand.toUpperCase() === 'T') {
             const [, , p0Time, , , p1Time] = PlayerScoresAndTimes();
