@@ -139,10 +139,16 @@ func (t *ClassicDivision) prepair() ([]*realtime.Pairing, map[int32]*realtime.Ro
 			standings = combineStandingsResponses(standings, firstRoundStandings)
 		}
 
+		numberOfPlayers := len(t.Players.Persons)
 		// We can make all standings independent pairings right now
 		for i := 1; i < len(t.RoundControls); i++ {
 			pm := t.RoundControls[i].PairingMethod
-			if pair.IsStandingsIndependent(pm) && pm != realtime.PairingMethod_MANUAL {
+			initFontes := t.RoundControls[i].InitialFontes
+			// Don't pair Initial Fontes round if there are more initial fontes
+			// rounds than players
+			if pair.IsStandingsIndependent(pm) &&
+				numberOfPlayers >= int(initFontes)+1 &&
+				pm != realtime.PairingMethod_MANUAL {
 				roundIPairings, roundIStandings, err := t.PairRound(i)
 				if err != nil {
 					return nil, nil, err

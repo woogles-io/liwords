@@ -560,7 +560,7 @@ export function TournamentReducer(
         newPlayers.push(value);
       });
 
-      const expandedPairings = copyPairings(state.divisions[division].pairings);
+      let expandedPairings = copyPairings(state.divisions[division].pairings);
 
       if (
         state.started &&
@@ -576,6 +576,10 @@ export function TournamentReducer(
             value.roundPairings.push({} as SinglePairing);
           }
         });
+      }
+
+      if (!state.started) {
+        expandedPairings = Array<RoundPairings>();
       }
 
       const newPairings = reducePairings(

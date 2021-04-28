@@ -347,6 +347,8 @@ func getInitialFontesPairings(numberOfPlayers int, numberOfNtiles int, round int
 
 	// If there are more Ntiles than players, InitialFontes is not valid
 	// Return all byes
+	// In practice this should never be true, since it is usually undesirable
+	// behavior. This extra check is here to avoid a panic.
 	if numberOfPlayers < numberOfNtiles {
 		pairings := make([]int, numberOfPlayers)
 		for i := 0; i < numberOfPlayers; i++ {

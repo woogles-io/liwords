@@ -928,13 +928,13 @@ func TestClassicDivisionInitialFontes(t *testing.T) {
 
 	// InitialFontes can only be used in contiguous defaultRounds
 	// starting with round 1
-	tc, err := compactNewClassicDivision(defaultPlayers, roundControls, true)
+	_, err := compactNewClassicDivision(defaultPlayers, roundControls, true)
 	is.True(err != nil)
 
 	roundControls[0].PairingMethod = realtime.PairingMethod_INITIAL_FONTES
 
 	// The number of InitialFontes pairings must be odd
-	tc, err = compactNewClassicDivision(defaultPlayers, roundControls, true)
+	_, err = compactNewClassicDivision(defaultPlayers, roundControls, true)
 	is.True(err != nil)
 
 	numberOfRoundsForInitialFontesTest := 4
@@ -942,6 +942,20 @@ func TestClassicDivisionInitialFontes(t *testing.T) {
 
 	for i := 0; i < 3; i++ {
 		roundControls[i].PairingMethod = realtime.PairingMethod_INITIAL_FONTES
+	}
+
+	// InitialFontes should not be paired if there are more initial fontes rounds
+	// than players
+	tc, err := compactNewClassicDivision(makeTournamentPersons(map[string]int32{"Will": 10000}), roundControls, true)
+	is.NoErr(err)
+
+	// There should be no pairings at all
+	for i := 0; i < len(tc.Matrix[0]); i++ {
+		for j := 0; j < len(tc.Matrix[0][0]); j++ {
+			fmt.Printf("round %d\n", i)
+			tc.printPriPairings(i)
+			is.True(tc.Matrix[i][j] == "")
+		}
 	}
 
 	tc, err = compactNewClassicDivision(defaultPlayers, roundControls, true)
