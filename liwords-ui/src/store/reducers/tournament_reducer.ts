@@ -166,7 +166,8 @@ const reducePairings = (
   existingPairings: Array<RoundPairings>,
   newPairings: Pairing[]
 ): Array<RoundPairings> => {
-  const updatedPairings = existingPairings;
+  console.log('existingPairings', existingPairings);
+  const updatedPairings = [...existingPairings];
 
   newPairings.forEach((value: Pairing) => {
     const newSinglePairing = {
@@ -180,6 +181,7 @@ const reducePairings = (
         results: g.getResultsList(),
       })),
     } as SinglePairing;
+    console.log('the value is', value);
     updatedPairings[value.getRound()].roundPairings[
       value.getPlayersList()[0]
     ] = newSinglePairing;
@@ -199,22 +201,26 @@ const copyPairings = (existingPairings: Array<RoundPairings>) => {
 
     value.roundPairings.forEach((value: SinglePairing) => {
       const players = new Array<TournamentPerson>();
-      value.players.forEach((person) => {
-        players.push(person.cloneMessage());
-      });
-      const newSinglePairing = {
-        players,
-        outcomes: [...value.outcomes],
-        readyStates: [...value.readyStates],
-        games: value.games.map((g) => ({
-          scores: [...g.scores],
-          gameEndReason: g.gameEndReason,
-          id: g.id,
-          results: [...g.results],
-        })),
-      } as SinglePairing;
+      if (!value.players || !value.players.length) {
+        roundPairings.push({} as SinglePairing);
+      } else {
+        value.players.forEach((person) => {
+          players.push(person.cloneMessage());
+        });
+        const newSinglePairing = {
+          players,
+          outcomes: [...value.outcomes],
+          readyStates: [...value.readyStates],
+          games: value.games.map((g) => ({
+            scores: [...g.scores],
+            gameEndReason: g.gameEndReason,
+            id: g.id,
+            results: [...g.results],
+          })),
+        } as SinglePairing;
 
-      roundPairings.push(newSinglePairing);
+        roundPairings.push(newSinglePairing);
+      }
     });
     pairingsCopy.push({ roundPairings });
   });
@@ -225,7 +231,11 @@ const reduceStandings = (
   existingStandings: jspb.Map<number, RoundStandings>,
   newStandings: jspb.Map<number, RoundStandings>
 ): jspb.Map<number, RoundStandings> => {
-  const updatedStandings = existingStandings;
+  const updatedStandings = new jspb.Map<number, RoundStandings>([]);
+
+  existingStandings.forEach((value: RoundStandings, key: number) => {
+    updatedStandings.set(key, value);
+  });
 
   newStandings.forEach((value: RoundStandings, key: number) => {
     updatedStandings.set(key, value);
@@ -294,6 +304,7 @@ const divisionDataResponseToObj = (
   ret.numRounds = dd.getRoundControlsList().length;
 
   dd.getPairingMapMap().forEach((value: Pairing, key: string) => {
+    console.log('pairing', value.toObject(), key);
     const newPairing = {
       players: value.getPlayersList().map((v) => newPlayers[v]),
       outcomes: value.getOutcomesList(),
@@ -305,6 +316,7 @@ const divisionDataResponseToObj = (
         results: g.getResultsList(),
       })),
     } as SinglePairing;
+    console.log('newPairing is', newPairing);
     newPairings[value.getRound()].roundPairings[
       playerIndexMap[newPairing.players[0].getId()]
     ] = newPairing;
@@ -567,7 +579,7 @@ export function TournamentReducer(
       }
 
       const newPairings = reducePairings(
-        state.divisions[division].players,
+        newPlayers,
         expandedPairings,
         dp.parr.getDivisionPairingsList()
       );
@@ -611,8 +623,8 @@ export function TournamentReducer(
         };
       }
       console.log('competitor state is', JSON.stringify(competitorState));
-
-      return Object.assign({}, state, {
+      console.log('old-state', state);
+      const newState = Object.assign({}, state, {
         competitorState,
         divisions: Object.assign({}, state.divisions, {
           [division]: Object.assign({}, state.divisions[division], {
@@ -623,6 +635,8 @@ export function TournamentReducer(
           }),
         }),
       });
+      console.log('new-state', newState);
+      return newState;
     }
 
     case ActionType.SetTournamentFinished: {

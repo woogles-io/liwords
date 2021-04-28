@@ -125,6 +125,8 @@ func (t *ClassicDivision) SetRoundControls(roundControls []*realtime.RoundContro
 }
 
 func (t *ClassicDivision) prepair() ([]*realtime.Pairing, map[int32]*realtime.RoundStandings, error) {
+	t.PairingMap = make(map[string]*realtime.Pairing)
+	t.Standings = make(map[int32]*realtime.RoundStandings)
 	pairings := []*realtime.Pairing{}
 	standings := make(map[int32]*realtime.RoundStandings)
 	if t.IsStartable() {

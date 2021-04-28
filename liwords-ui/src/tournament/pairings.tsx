@@ -119,6 +119,7 @@ export const Pairings = (props: Props) => {
     }
     const { status } = tournamentContext.competitorState;
     const pairings = pairingsForRound(props.selectedRound, division);
+    console.log('pairings are', pairings);
     const findGameIdFromActive = (playerName: string) => {
       //This assumes one game per round per user
       const game = tournamentContext.activeGames.find((game) => {
