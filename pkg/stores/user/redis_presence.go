@@ -103,11 +103,31 @@ func getChannelsForUUID(conn redis.Conn, uuid string) ([]string, error) {
 	return channels, nil
 }
 
-func getChannels(conn redis.Conn, uuid string, anon bool) ([]string, error) {
-	if anon {
-		return nil, nil
+func fromRedisToArrayOfLengthN(ret interface{}, n int) ([]interface{}, error) {
+	arr, ok := ret.([]interface{})
+	if !ok {
+		return nil, fmt.Errorf("unexpected result: %T", ret)
 	}
-	return getChannelsForUUID(conn, uuid)
+	if len(arr) != n {
+		return nil, fmt.Errorf("unexpected length (want %v, got %v): %v", n, len(arr), arr)
+	}
+	return arr, nil
+}
+
+func fromRedisArrayToArrayOfString(v interface{}) ([]string, error) {
+	arr, ok := v.([]interface{})
+	if !ok {
+		return nil, fmt.Errorf("unexpected subresult: %T", v)
+	}
+	cvt := make([]string, len(arr))
+	for i, el := range arr {
+		barr, ok := el.([]byte)
+		if !ok {
+			return nil, fmt.Errorf("unexpected interface type: %T", el)
+		}
+		cvt[i] = string(barr)
+	}
+	return cvt, nil
 }
 
 // SetPresence sets the user's presence channel.
@@ -132,18 +152,21 @@ func (s *RedisPresenceStore) SetPresence(ctx context.Context, uuid, username str
 		authUser = "anon"
 	}
 
-	oldChannels, err := getChannels(conn, uuid, anon)
-	if err != nil {
-		return nil, nil, err
-	}
-
 	ts := time.Now().Unix()
-	_, err = s.setPresenceScript.Do(conn, uuid, username, authUser, connID, channel, ts)
+	ret, err := s.setPresenceScript.Do(conn, uuid, username, authUser, connID, channel, ts)
+	if err != nil {
+		return nil, nil, err
+	}
+	arr, err := fromRedisToArrayOfLengthN(ret, 2)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	newChannels, err := getChannels(conn, uuid, anon)
+	oldChannels, err := fromRedisArrayToArrayOfString(arr[0])
+	if err != nil {
+		return nil, nil, err
+	}
+	newChannels, err := fromRedisArrayToArrayOfString(arr[1])
 	if err != nil {
 		return nil, nil, err
 	}
@@ -163,38 +186,30 @@ func (s *RedisPresenceStore) ClearPresence(ctx context.Context, uuid, username s
 
 	log.Debug().Str("username", username).Str("connID", connID).Msg("clear-presence")
 
-	oldChannels, err := getChannels(conn, uuid, anon)
-	if err != nil {
-		return nil, nil, nil, err
-	}
-
 	ts := time.Now().Unix()
 	ret, err := s.clearPresenceScript.Do(conn, uuid, username, authUser, connID, ts)
 	if err != nil {
 		return nil, nil, nil, err
 	}
-	log.Debug().Interface("ret", ret).Msg("clear-presence-return")
-
-	newChannels, err := getChannels(conn, uuid, anon)
+	arr, err := fromRedisToArrayOfLengthN(ret, 3)
 	if err != nil {
 		return nil, nil, nil, err
 	}
 
-	switch v := ret.(type) {
-	case []interface{}:
-		cvt := make([]string, len(v))
-		for i, el := range v {
-			barr, ok := el.([]byte)
-			if !ok {
-				return nil, nil, nil, fmt.Errorf("unexpected interface type: %T", el)
-			}
-			// This is just the channel now. No more conn_id#channel.
-			// We only need an array of channels.
-			cvt[i] = string(barr)
-		}
-		return oldChannels, newChannels, cvt, nil
+	oldChannels, err := fromRedisArrayToArrayOfString(arr[0])
+	if err != nil {
+		return nil, nil, nil, err
 	}
-	return nil, nil, nil, fmt.Errorf("unexpected clear presence result: %T", ret)
+	newChannels, err := fromRedisArrayToArrayOfString(arr[1])
+	if err != nil {
+		return nil, nil, nil, err
+	}
+	removedChannels, err := fromRedisArrayToArrayOfString(arr[2])
+	if err != nil {
+		return nil, nil, nil, err
+	}
+
+	return oldChannels, newChannels, removedChannels, nil
 }
 
 func (s *RedisPresenceStore) GetInChannel(ctx context.Context, channel string) ([]*entity.User, error) {
@@ -268,18 +283,21 @@ func (s *RedisPresenceStore) RenewPresence(ctx context.Context, userID, username
 		authUser = "anon"
 	}
 
-	oldChannels, err := getChannels(conn, userID, anon)
-	if err != nil {
-		return nil, nil, err
-	}
-
 	ts := time.Now().Unix()
-	_, err = s.renewPresenceScript.Do(conn, userID, username, authUser, connID, ts)
+	ret, err := s.renewPresenceScript.Do(conn, userID, username, authUser, connID, ts)
+	if err != nil {
+		return nil, nil, err
+	}
+	arr, err := fromRedisToArrayOfLengthN(ret, 2)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	newChannels, err := getChannels(conn, userID, anon)
+	oldChannels, err := fromRedisArrayToArrayOfString(arr[0])
+	if err != nil {
+		return nil, nil, err
+	}
+	newChannels, err := fromRedisArrayToArrayOfString(arr[1])
 	if err != nil {
 		return nil, nil, err
 	}
