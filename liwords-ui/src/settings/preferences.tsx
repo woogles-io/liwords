@@ -29,6 +29,17 @@ const KNOWN_TILE_ORDERS = [
   },
 ];
 
+const KNOWN_BOARD_STYLES = [
+  {
+    name: 'default',
+    value: '',
+  },
+  {
+    name: 'NASSC',
+    value: 'nassc',
+  },
+];
+
 const KNOWN_TILE_STYLES = [
   {
     name: 'default',
@@ -87,8 +98,11 @@ export const Preferences = React.memo((props: Props) => {
     localStorage?.getItem('darkMode') === 'true'
   );
   const initialTileStyle = localStorage?.getItem('userTile') || 'default';
-
   const [userTile, setUserTile] = useState<string>(initialTileStyle);
+
+  const initialBoardStyle = localStorage?.getItem('userBoard') || 'default';
+  const [userBoard, setUserBoard] = useState<string>(initialBoardStyle);
+
   const toggleDarkMode = useCallback(() => {
     const useDarkMode = localStorage?.getItem('darkMode') !== 'true';
     localStorage.setItem('darkMode', useDarkMode ? 'true' : 'false');
@@ -114,6 +128,20 @@ export const Preferences = React.memo((props: Props) => {
       localStorage.removeItem('userTile');
     }
     setUserTile(tileStyle);
+  }, []);
+
+  const handleUserBoardChange = useCallback((boardStyle: string) => {
+    const classes = document?.body?.className
+      .split(' ')
+      .filter((c) => !c.includes('board--'));
+    document.body.className = classes.join(' ').trim();
+    if (boardStyle !== 'default') {
+      localStorage.setItem('userBoard', boardStyle);
+      document?.body?.classList?.add(`board--${boardStyle}`);
+    } else {
+      localStorage.removeItem('userBoard');
+    }
+    setUserBoard(boardStyle);
   }, []);
 
   const [enableAllLexicons, setEnableAllLexicons] = useState(
@@ -226,6 +254,21 @@ export const Preferences = React.memo((props: Props) => {
                   <PointValue value={2} />
                 </div>
               </div>
+            </div>
+            <div className="tile-order">Tile style</div>
+            <div className="board-selection">
+              <Select
+                className="board-style-select"
+                size="large"
+                defaultValue={userBoard}
+                onChange={handleUserBoardChange}
+              >
+                {KNOWN_BOARD_STYLES.map(({ name, value }) => (
+                  <Select.Option value={value} key={value}>
+                    {name}
+                  </Select.Option>
+                ))}
+              </Select>
             </div>
           </div>
         </Col>

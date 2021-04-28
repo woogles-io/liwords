@@ -1,0 +1,72 @@
+// Theming system adapted from Katie McTigue https://medium.com/@katiemctigue/how-to-create-a-dark-board-in-sass-609f131a3995
+
+//Strings for calling the mixin are defined in color_boards.scss
+
+$boards: (
+    default: ( //intentionally invalid css colors,
+      // to allow dark and light mode to have their own defaults
+        color-board-dls: ignore,
+        color-board-dws: ignore,
+        color-board-tls: ignore,
+        color-board-tws: ignore,
+        color-board-empty: ignore,
+        color-grid: ignore,
+        color-board-fill: transparent,
+        number-board-space-opacity: 1,
+        type-board-space-mix-mode: normal,
+        color-center-icon: ignore,
+        color-center-fill: ignore,
+        color-bonus-text: ignore,
+        color-selection-color: ignore,
+    ),
+    nassc: ( //intentionally not an option in preferences,
+        // created for nassc under their license with its copyright holder
+        color-board-dls: #0099d4,
+        color-board-dws: #ff3131,
+        color-board-tws: #ff6b00,
+        color-board-tls: #8fd76d,
+        color-board-empty: #ffffff,
+        color-grid: #c3c3c3,
+        color-board-fill: #c3c3c3,
+        number-board-space-opacity: 1,
+        type-board-space-mix-mode: normal,
+        color-center-icon: #ffffff,
+        color-center-fill: ignore,
+        color-bonus-text: #ffffff,
+        color-selection-color: #5fa53d,
+    ),
+);
+
+@mixin userboard() {
+  @each $board, $map in $boards {
+    .board--#{$board} & {
+      $board-map: () !global;
+      @each $key, $submap in $map {
+        $value: map-get(map-get($boards, $board), '#{$key}');
+        $board-map: map-merge($board-map, ($key: $value)) !global;
+      }
+      @content;
+      $board-map: null !global;
+    }
+  }
+}
+
+@function ub($key) {
+  @return map-get($board-map, $key);
+}
+
+@function blender($color, $background) {
+  @if $color == 'ignore' {
+    @return $color;
+  }
+  @if $background == 'ignore' {
+    @return $color;
+  }
+  @return  mix($color, $background, $weight: 50%);
+}
+@function lightener($color) {
+  @if $color == 'ignore' {
+    @return $color;
+  }
+  @return  scale-color($color, $lightness: -10%);
+}
