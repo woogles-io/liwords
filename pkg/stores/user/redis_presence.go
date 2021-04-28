@@ -4,7 +4,6 @@ import (
 	"context"
 	_ "embed"
 	"fmt"
-	"sort"
 	"strings"
 	"time"
 
@@ -25,6 +24,7 @@ type RedisPresenceStore struct {
 	setPresenceScript   *redis.Script
 	clearPresenceScript *redis.Script
 	renewPresenceScript *redis.Script
+	getChannelsScript   *redis.Script
 
 	eventChan chan *entity.EventWrapper
 }
@@ -43,6 +43,10 @@ var ClearPresenceScript string
 //go:embed renew_presence.lua
 var RenewPresenceScript string
 
+// GetChannelsScript gets the channels
+//go:embed get_channels.lua
+var GetChannelsScript string
+
 func NewRedisPresenceStore(r *redis.Pool) *RedisPresenceStore {
 
 	return &RedisPresenceStore{
@@ -50,57 +54,9 @@ func NewRedisPresenceStore(r *redis.Pool) *RedisPresenceStore {
 		setPresenceScript:   redis.NewScript(0, SetPresenceScript),
 		clearPresenceScript: redis.NewScript(0, ClearPresenceScript),
 		renewPresenceScript: redis.NewScript(0, RenewPresenceScript),
+		getChannelsScript:   redis.NewScript(0, GetChannelsScript),
 		eventChan:           nil,
 	}
-}
-
-// nextToken("abc#def#ghi") = ("abc", "def#ghi")
-// nextToken("ghi") = ("ghi", "")
-func nextToken(s string) (string, string) {
-	// Use this instead of strings.Split to reduce garbage.
-	p := strings.IndexByte(s, '#')
-	if p >= 0 {
-		return s[:p], s[p+1:]
-	} else {
-		return s, s[len(s):]
-	}
-}
-
-func sortDedupStrings(parr *[]string) {
-	if len(*parr) > 1 {
-		sort.Strings(*parr)
-		w := 1
-		for r := 1; r < len(*parr); r++ {
-			if (*parr)[r] != (*parr)[r-1] {
-				(*parr)[w] = (*parr)[r]
-				w++
-			}
-		}
-		*parr = (*parr)[:w]
-	}
-}
-
-func getChannelsForUUID(conn redis.Conn, uuid string) ([]string, error) {
-	key := "userpresence:" + uuid
-
-	m, err := redis.Strings(conn.Do("ZRANGE", key, 0, -1))
-	if err != nil {
-		return nil, err
-	}
-
-	channels := make([]string, 0, len(m))
-	for _, el := range m {
-		st := el
-		connID, st := nextToken(st)
-		channel, _ := nextToken(st)
-		if len(connID)+1+len(channel) != len(el) {
-			return nil, fmt.Errorf("unexpected presence member for %v: %v (%v)", uuid, el, m)
-		}
-		channels = append(channels, channel)
-	}
-	sortDedupStrings(&channels)
-
-	return channels, nil
 }
 
 func fromRedisToArrayOfLengthN(ret interface{}, n int) ([]interface{}, error) {
@@ -128,6 +84,24 @@ func fromRedisArrayToArrayOfString(v interface{}) ([]string, error) {
 		cvt[i] = string(barr)
 	}
 	return cvt, nil
+}
+
+func (s *RedisPresenceStore) getChannelsForUUID(conn redis.Conn, uuid string) ([]string, error) {
+	ret, err := s.getChannelsScript.Do(conn, uuid)
+	if err != nil {
+		return nil, err
+	}
+	arr, err := fromRedisToArrayOfLengthN(ret, 1)
+	if err != nil {
+		return nil, err
+	}
+
+	channels, err := fromRedisArrayToArrayOfString(arr[0])
+	if err != nil {
+		return nil, err
+	}
+
+	return channels, nil
 }
 
 // SetPresence sets the user's presence channel.
@@ -351,7 +325,7 @@ func (s *RedisPresenceStore) BatchGetChannels(ctx context.Context, uuids []strin
 
 	ret := make([][]string, 0, len(uuids))
 	for _, uuid := range uuids {
-		ret1, err := getChannelsForUUID(conn, uuid)
+		ret1, err := s.getChannelsForUUID(conn, uuid)
 		if err != nil {
 			return nil, err
 		}
@@ -370,7 +344,7 @@ func (s *RedisPresenceStore) UpdateFollower(ctx context.Context, followee, follo
 			conn := s.redisPool.Get()
 			defer conn.Close()
 
-			channels, err = getChannelsForUUID(conn, followee.UUID)
+			channels, err = s.getChannelsForUUID(conn, followee.UUID)
 		}()
 		if err != nil {
 			return err
