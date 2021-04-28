@@ -179,7 +179,7 @@ func combinePairings(upperPairings []int, lowerPairings []int) []int {
 	for i := 0; i < len(lowerPairings); i++ {
 		newPairing := -1
 		if lowerPairings[i] != -1 {
-			newPairing = lowerPairings[i]+numberOfUpperPlayers
+			newPairing = lowerPairings[i] + numberOfUpperPlayers
 		}
 		upperPairings = append(upperPairings, newPairing)
 	}
@@ -344,6 +344,17 @@ func getFactorPairings(numberOfPlayers int, factor int) ([]int, error) {
 }
 
 func getInitialFontesPairings(numberOfPlayers int, numberOfNtiles int, round int) ([]int, error) {
+
+	// If there are more Ntiles than players, InitialFontes is not valid
+	// Return all byes
+	if numberOfPlayers < numberOfNtiles {
+		pairings := make([]int, numberOfPlayers)
+		for i := 0; i < numberOfPlayers; i++ {
+			pairings[i] = -1
+		}
+		return pairings, nil
+	}
+
 	addBye := numberOfPlayers%2 == 1
 
 	if addBye {
@@ -405,7 +416,6 @@ func getInitialFontesPairings(numberOfPlayers int, numberOfNtiles int, round int
 
 	for i := 0; i < len(pairings); i++ {
 		if pairings[i] < -1 {
-
 			return nil, fmt.Errorf("initial fontes pairing failure for %d players", numberOfPlayers)
 		}
 	}
