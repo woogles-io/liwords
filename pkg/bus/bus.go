@@ -106,6 +106,7 @@ func NewBus(cfg *config.Config, stores Stores, redisPool *redis.Pool) (*Bus, err
 	bus.gameStore.SetGameEventChan(bus.gameEventChan)
 	bus.tournamentStore.SetTournamentEventChan(bus.tournamentEventChan)
 	bus.chatStore.SetEventChan(bus.genericEventChan)
+	bus.presenceStore.SetEventChan(bus.genericEventChan)
 
 	topics := []string{
 		// ipc.pb are generic publishes
@@ -550,6 +551,52 @@ func (b *Bus) pubToConnectionID(connID, userID string, evt *entity.EventWrapper)
 	return b.natsconn.Publish("connid."+connID, bts)
 }
 
+func didChannelsChange(oldChannels, newChannels []string) bool {
+	// just compare the arrays because they're already sort/dedup'ed
+	if len(newChannels) != len(oldChannels) {
+		return true
+	}
+	for ri, r := range newChannels {
+		if r != oldChannels[ri] {
+			return true
+		}
+	}
+	return false
+}
+
+func (b *Bus) broadcastChannelChanges(ctx context.Context, oldChannels, newChannels []string, userID, username string) error {
+	if !didChannelsChange(oldChannels, newChannels) {
+		return nil
+	}
+
+	// Courtesy note: followee* is not acceptable in csw19.
+	followee, err := b.userStore.GetByUUID(ctx, userID)
+	if err != nil {
+		return err
+	}
+
+	followerUsers, err := b.userStore.GetFollowedBy(ctx, followee.ID)
+	if err != nil {
+		return err
+	}
+
+	if len(followerUsers) > 0 && b.genericEventChan != nil {
+		wrapped := entity.WrapEvent(&pb.PresenceEntry{
+			Username: username,
+			UserId:   userID,
+			Channel:  newChannels,
+		}, pb.MessageType_PRESENCE_ENTRY)
+
+		for _, fu := range followerUsers {
+			wrapped.AddAudience(entity.AudUser, fu.UUID)
+		}
+
+		b.genericEventChan <- wrapped
+	}
+
+	return nil
+}
+
 func (b *Bus) initRealmInfo(ctx context.Context, evt *pb.InitRealmInfo, connID string) error {
 	// For consistency sake, use the `dotted` channels for presence
 	// i.e. game.<gameID>, gametv.<gameID>
@@ -578,7 +625,14 @@ func (b *Bus) initRealmInfo(ctx context.Context, evt *pb.InitRealmInfo, connID s
 
 		if presenceChan != "" {
 			log.Debug().Str("presence-chan", presenceChan).Str("username", username).Msg("SetPresence")
-			b.presenceStore.SetPresence(ctx, evt.UserId, username, anon, presenceChan, connID)
+			oldChannels, newChannels, err := b.presenceStore.SetPresence(ctx, evt.UserId, username, anon, presenceChan, connID)
+			if err != nil {
+				// this was not checked?
+				return err
+			}
+			if err = b.broadcastChannelChanges(ctx, oldChannels, newChannels, evt.UserId, username); err != nil {
+				return err
+			}
 		}
 
 		if realm == "lobby" {
@@ -647,7 +701,7 @@ func (b *Bus) leaveTab(ctx context.Context, userID, connID string) error {
 	if err != nil {
 		return err
 	}
-	channels, err := b.presenceStore.ClearPresence(ctx, userID, username, anon, connID)
+	oldChannels, newChannels, channels, err := b.presenceStore.ClearPresence(ctx, userID, username, anon, connID)
 	if err != nil {
 		return err
 	}
@@ -663,8 +717,15 @@ func (b *Bus) leaveTab(ctx context.Context, userID, connID string) error {
 	if err != nil {
 		return err
 	}
-	return b.deleteTournamentReadyMsgs(ctx, userID, connID)
 	// Delete any tournament ready messages
+	err = b.deleteTournamentReadyMsgs(ctx, userID, connID)
+	if err != nil {
+		return err
+	}
+	if err = b.broadcastChannelChanges(ctx, oldChannels, newChannels, userID, username); err != nil {
+		return err
+	}
+	return nil
 }
 
 func (b *Bus) deleteTournamentReadyMsgs(ctx context.Context, userID, connID string) error {
@@ -700,7 +761,14 @@ func (b *Bus) pongReceived(ctx context.Context, userID, connID string) error {
 	if err != nil {
 		return err
 	}
-	return b.presenceStore.RenewPresence(ctx, userID, username, anon, connID)
+	oldChannels, newChannels, err := b.presenceStore.RenewPresence(ctx, userID, username, anon, connID)
+	if err != nil {
+		return err
+	}
+	if err = b.broadcastChannelChanges(ctx, oldChannels, newChannels, userID, username); err != nil {
+		return err
+	}
+	return nil
 }
 
 func (b *Bus) activeGames(ctx context.Context, tourneyID string) (*entity.EventWrapper, error) {

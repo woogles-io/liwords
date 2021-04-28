@@ -42,6 +42,7 @@ type backingStore interface {
 	RemoveFollower(ctx context.Context, targetUser, follower uint) error
 	// GetFollows gets all the users that the passed-in DB ID is following.
 	GetFollows(ctx context.Context, uid uint) ([]*entity.User, error)
+	GetFollowedBy(ctx context.Context, uid uint) ([]*entity.User, error)
 
 	AddBlock(ctx context.Context, targetUser, blocker uint) error
 	RemoveBlock(ctx context.Context, targetUser, blocker uint) error
@@ -362,6 +363,10 @@ func (c *Cache) RemoveFollower(ctx context.Context, targetUser, follower uint) e
 
 func (c *Cache) GetFollows(ctx context.Context, uid uint) ([]*entity.User, error) {
 	return c.backing.GetFollows(ctx, uid)
+}
+
+func (c *Cache) GetFollowedBy(ctx context.Context, uid uint) ([]*entity.User, error) {
+	return c.backing.GetFollowedBy(ctx, uid)
 }
 
 func (c *Cache) AddBlock(ctx context.Context, targetUser, blocker uint) error {

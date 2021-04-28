@@ -35,6 +35,7 @@ import {
   MessageType,
   MessageTypeMap,
   NewGameEvent,
+  PresenceEntry,
   ReadyForGame,
   ReadyForTournamentGame,
   RematchStartedEvent,
@@ -114,6 +115,7 @@ export const parseMsgs = (msg: Uint8Array) => {
       [MessageType.TOURNAMENT_DIVISION_DELETED_MESSAGE]: TournamentDivisionDeletedResponse,
       [MessageType.TOURNAMENT_FULL_DIVISIONS_MESSAGE]: FullTournamentDivisions,
       [MessageType.CHAT_MESSAGE_DELETED]: ChatMessageDeleted,
+      [MessageType.PRESENCE_ENTRY]: PresenceEntry,
     };
 
     const parsedMsg = msgTypes[msgType];
@@ -410,6 +412,7 @@ export const useOnSocketMsg = () => {
           }
 
           case MessageType.USER_PRESENCE: {
+            // Note: UserPresence is for chats. Not for follows.
             console.log('userpresence', parsedMsg);
 
             const up = parsedMsg as UserPresence;
@@ -428,6 +431,7 @@ export const useOnSocketMsg = () => {
           }
 
           case MessageType.USER_PRESENCES: {
+            // Note: UserPresences is for chats. Not for follows.
             const ups = parsedMsg as UserPresences;
 
             const toAdd = new Array<PresenceEntity>();
@@ -445,6 +449,33 @@ export const useOnSocketMsg = () => {
             });
 
             addPresences(toAdd);
+            break;
+          }
+
+          case MessageType.PRESENCE_ENTRY: {
+            // Note: PresenceEntry is for follows. Not for chats.
+            const pe = parsedMsg as PresenceEntry;
+
+            console.log('got presence entry', pe.toObject());
+
+            // TODO.
+
+            // Interpretation notes (check Go code if these are still valid):
+            // - The channel list is always sorted and unique.
+            // - [] may also mean we have just unfollowed.
+            // - No initial state is sent on connect.
+            // - When doing GetFollows after socket (re)connects, assume the
+            //   response arrived before the socket reconnected (any
+            //   PresenceEntry received after the socket reconnects overrides
+            //   the GetFollows response). So if we received a PresenceEntry
+            //   with [] before GetFollows returns some channels, the [] wins.
+            // - Latest sent entry wins, generally.
+            // - Duplicate PresenceEntry may be sent. Ignore them.
+            // - Multiple PresenceEntry may be sent quickly. It is recommended
+            //   not to immediately display a toast notification on receipt.
+            // - It may be good to have a function that takes a set of channels
+            //   and picks at most one primary channel.
+
             break;
           }
 

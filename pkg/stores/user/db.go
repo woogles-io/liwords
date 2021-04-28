@@ -689,6 +689,29 @@ func (s *DBStore) GetFollows(ctx context.Context, uid uint) ([]*entity.User, err
 	return entUsers, nil
 }
 
+// GetFollowedBy gets all the users that are following the passed-in user DB ID.
+func (s *DBStore) GetFollowedBy(ctx context.Context, uid uint) ([]*entity.User, error) {
+	type followedby struct {
+		Username string
+		Uuid     string
+	}
+
+	var users []followedby
+
+	if result := s.db.Table("followings").Select("u0.username, u0.uuid").
+		Joins("JOIN users as u0 ON u0.id = follower_id").
+		Where("user_id = ?", uid).Scan(&users); result.Error != nil {
+
+		return nil, result.Error
+	}
+	log.Debug().Int("num-followed-by", len(users)).Msg("found-followed-by")
+	entUsers := make([]*entity.User, len(users))
+	for idx, u := range users {
+		entUsers[idx] = &entity.User{UUID: u.Uuid, Username: u.Username}
+	}
+	return entUsers, nil
+}
+
 func (s *DBStore) AddBlock(ctx context.Context, targetUser, blocker uint) error {
 	dbb := &blocking{UserID: targetUser, BlockerID: blocker}
 	result := s.db.Create(dbb)

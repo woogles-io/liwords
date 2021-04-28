@@ -15,12 +15,13 @@ import (
 )
 
 type SocializeService struct {
-	userStore Store
-	chatStore ChatStore
+	userStore     Store
+	chatStore     ChatStore
+	presenceStore PresenceStore
 }
 
-func NewSocializeService(u Store, c ChatStore) *SocializeService {
-	return &SocializeService{userStore: u, chatStore: c}
+func NewSocializeService(u Store, c ChatStore, p PresenceStore) *SocializeService {
+	return &SocializeService{userStore: u, chatStore: c, presenceStore: p}
 }
 
 func (ss *SocializeService) AddFollow(ctx context.Context, req *pb.AddFollowRequest) (*pb.OKResponse, error) {
@@ -45,6 +46,13 @@ func (ss *SocializeService) AddFollow(ctx context.Context, req *pb.AddFollowRequ
 	if err != nil {
 		return nil, twirp.NewError(twirp.InvalidArgument, err.Error())
 	}
+
+	err = ss.presenceStore.UpdateFollower(ctx, followed, user, true)
+	if err != nil {
+		// we cannot rollback the follow
+		return nil, twirp.NewError(twirp.DataLoss, err.Error())
+	}
+
 	return &pb.OKResponse{}, nil
 }
 
@@ -70,6 +78,13 @@ func (ss *SocializeService) RemoveFollow(ctx context.Context, req *pb.RemoveFoll
 	if err != nil {
 		return nil, twirp.NewError(twirp.InvalidArgument, err.Error())
 	}
+
+	err = ss.presenceStore.UpdateFollower(ctx, unfollowed, user, false)
+	if err != nil {
+		// we cannot rollback the unfollow
+		return nil, twirp.NewError(twirp.DataLoss, err.Error())
+	}
+
 	return &pb.OKResponse{}, nil
 }
 
@@ -89,15 +104,25 @@ func (ss *SocializeService) GetFollows(ctx context.Context, req *pb.GetFollowsRe
 		return nil, twirp.InternalErrorWith(err)
 	}
 
-	basicUsers := make([]*pb.BasicUser, len(users))
+	uuids := make([]string, 0, len(users))
+	for _, u := range users {
+		uuids = append(uuids, u.UUID)
+	}
+	channels, err := ss.presenceStore.BatchGetChannels(ctx, uuids)
+	if err != nil {
+		return nil, twirp.InternalErrorWith(err)
+	}
+
+	basicFollowedUsers := make([]*pb.BasicFollowedUser, len(users))
 	for i, u := range users {
-		basicUsers[i] = &pb.BasicUser{
+		basicFollowedUsers[i] = &pb.BasicFollowedUser{
 			Uuid:     u.UUID,
 			Username: u.Username,
+			Channel:  channels[i],
 		}
 	}
 
-	return &pb.GetFollowsResponse{Users: basicUsers}, nil
+	return &pb.GetFollowsResponse{Users: basicFollowedUsers}, nil
 }
 
 // blocks
