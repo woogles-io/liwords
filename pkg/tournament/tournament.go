@@ -229,16 +229,9 @@ func SetRoundControls(ctx context.Context, ts TournamentStore, id string, divisi
 		return err
 	}
 
-	// XXX: Order matters here. This is probably fragile.
-	wrapped := entity.WrapEvent(&realtime.DivisionRoundControls{Id: id, Division: division, RoundControls: newDivisionRoundControls},
-		realtime.MessageType_TOURNAMENT_DIVISION_ROUND_CONTROLS_MESSAGE)
-	err = SendTournamentMessage(ctx, ts, id, wrapped)
-	if err != nil {
-		return err
-	}
-
 	pairingsMessage := PairingsToResponse(id, division, pairings, make(map[int32]*realtime.RoundStandings))
-	wrapped = entity.WrapEvent(pairingsMessage, realtime.MessageType_TOURNAMENT_DIVISION_PAIRINGS_MESSAGE)
+	wrapped := entity.WrapEvent(&realtime.DivisionRoundControls{Id: id, Division: division, RoundControls: newDivisionRoundControls, DivisionPairings: pairingsMessage},
+		realtime.MessageType_TOURNAMENT_DIVISION_ROUND_CONTROLS_MESSAGE)
 	return SendTournamentMessage(ctx, ts, id, wrapped)
 }
 

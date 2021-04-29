@@ -10961,7 +10961,7 @@ proto.liwords.PlayersAddedOrRemovedResponse.prototype.clearDivisionStandingsMap 
  * @private {!Array<number>}
  * @const
  */
-proto.liwords.DivisionRoundControls.repeatedFields_ = [3];
+proto.liwords.DivisionRoundControls.repeatedFields_ = [3,4];
 
 
 
@@ -10997,7 +10997,9 @@ proto.liwords.DivisionRoundControls.toObject = function(includeInstance, msg) {
     id: jspb.Message.getFieldWithDefault(msg, 1, ""),
     division: jspb.Message.getFieldWithDefault(msg, 2, ""),
     roundControlsList: jspb.Message.toObjectList(msg.getRoundControlsList(),
-    proto.liwords.RoundControl.toObject, includeInstance)
+    proto.liwords.RoundControl.toObject, includeInstance),
+    divisionPairingsList: jspb.Message.toObjectList(msg.getDivisionPairingsList(),
+    proto.liwords.Pairing.toObject, includeInstance)
   };
 
   if (includeInstance) {
@@ -11046,6 +11048,11 @@ proto.liwords.DivisionRoundControls.deserializeBinaryFromReader = function(msg, 
       var value = new proto.liwords.RoundControl;
       reader.readMessage(value,proto.liwords.RoundControl.deserializeBinaryFromReader);
       msg.addRoundControls(value);
+      break;
+    case 4:
+      var value = new proto.liwords.Pairing;
+      reader.readMessage(value,proto.liwords.Pairing.deserializeBinaryFromReader);
+      msg.addDivisionPairings(value);
       break;
     default:
       reader.skipField();
@@ -11096,6 +11103,14 @@ proto.liwords.DivisionRoundControls.serializeBinaryToWriter = function(message, 
       3,
       f,
       proto.liwords.RoundControl.serializeBinaryToWriter
+    );
+  }
+  f = message.getDivisionPairingsList();
+  if (f.length > 0) {
+    writer.writeRepeatedMessage(
+      4,
+      f,
+      proto.liwords.Pairing.serializeBinaryToWriter
     );
   }
 };
@@ -11172,6 +11187,44 @@ proto.liwords.DivisionRoundControls.prototype.addRoundControls = function(opt_va
  */
 proto.liwords.DivisionRoundControls.prototype.clearRoundControlsList = function() {
   return this.setRoundControlsList([]);
+};
+
+
+/**
+ * repeated Pairing division_pairings = 4;
+ * @return {!Array<!proto.liwords.Pairing>}
+ */
+proto.liwords.DivisionRoundControls.prototype.getDivisionPairingsList = function() {
+  return /** @type{!Array<!proto.liwords.Pairing>} */ (
+    jspb.Message.getRepeatedWrapperField(this, proto.liwords.Pairing, 4));
+};
+
+
+/**
+ * @param {!Array<!proto.liwords.Pairing>} value
+ * @return {!proto.liwords.DivisionRoundControls} returns this
+*/
+proto.liwords.DivisionRoundControls.prototype.setDivisionPairingsList = function(value) {
+  return jspb.Message.setRepeatedWrapperField(this, 4, value);
+};
+
+
+/**
+ * @param {!proto.liwords.Pairing=} opt_value
+ * @param {number=} opt_index
+ * @return {!proto.liwords.Pairing}
+ */
+proto.liwords.DivisionRoundControls.prototype.addDivisionPairings = function(opt_value, opt_index) {
+  return jspb.Message.addToRepeatedWrapperField(this, 4, opt_value, proto.liwords.Pairing, opt_index);
+};
+
+
+/**
+ * Clears the list making it empty but non-null.
+ * @return {!proto.liwords.DivisionRoundControls} returns this
+ */
+proto.liwords.DivisionRoundControls.prototype.clearDivisionPairingsList = function() {
+  return this.setDivisionPairingsList([]);
 };
 
 

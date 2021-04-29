@@ -492,10 +492,30 @@ export function TournamentReducer(
       };
       const division = drc.roundControls.getDivision();
 
+      let newPairings = copyPairings(state.divisions[division].pairings);
+      let newStandings = reduceStandings(
+        state.divisions[division].standingsMap,
+        new jspb.Map<number, RoundStandings>([])
+      );
+
+      if (!state.started) {
+        newPairings = Array<RoundPairings>();
+        for (let i = 0; i < state.divisions[division].numRounds; i++) {
+          const newRoundPairings = new Array<SinglePairing>();
+          state.divisions[division].players.forEach(() => {
+            newRoundPairings.push({} as SinglePairing);
+          });
+          newPairings.push({ roundPairings: newRoundPairings });
+        }
+        newStandings = new jspb.Map<number, RoundStandings>([]);
+      }
+
       return Object.assign({}, state, {
         divisions: Object.assign({}, state.divisions, {
           [division]: Object.assign({}, state.divisions[division], {
             roundControls: drc.roundControls,
+            standings: newStandings,
+            pairings: newPairings,
           }),
         }),
       });

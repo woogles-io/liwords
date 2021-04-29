@@ -503,6 +503,7 @@ message DivisionRoundControls {
   string id = 1;
   string division = 2;
   repeated RoundControl round_controls = 3;
+  repeated Pairing division_pairings = 4;
 }
 
 message DivisionControlsResponse {
