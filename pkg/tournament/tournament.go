@@ -220,21 +220,25 @@ func SetRoundControls(ctx context.Context, ts TournamentStore, id string, divisi
 	}
 
 	pairings, newDivisionRoundControls, err := divisionObject.DivisionManager.SetRoundControls(roundControls)
+	if err != nil {
+		return err
+	}
 
 	err = ts.Set(ctx, t)
 	if err != nil {
 		return err
 	}
 
-	pairingsMessage := PairingsToResponse(id, division, pairings, make(map[int32]*realtime.RoundStandings))
-	wrapped := entity.WrapEvent(pairingsMessage, realtime.MessageType_TOURNAMENT_DIVISION_PAIRINGS_MESSAGE)
+	// XXX: Order matters here. This is probably fragile.
+	wrapped := entity.WrapEvent(&realtime.DivisionRoundControls{Id: id, Division: division, RoundControls: newDivisionRoundControls},
+		realtime.MessageType_TOURNAMENT_DIVISION_ROUND_CONTROLS_MESSAGE)
 	err = SendTournamentMessage(ctx, ts, id, wrapped)
 	if err != nil {
 		return err
 	}
 
-	wrapped = entity.WrapEvent(&realtime.DivisionRoundControls{Id: id, Division: division, RoundControls: newDivisionRoundControls},
-		realtime.MessageType_TOURNAMENT_DIVISION_ROUND_CONTROLS_MESSAGE)
+	pairingsMessage := PairingsToResponse(id, division, pairings, make(map[int32]*realtime.RoundStandings))
+	wrapped = entity.WrapEvent(pairingsMessage, realtime.MessageType_TOURNAMENT_DIVISION_PAIRINGS_MESSAGE)
 	return SendTournamentMessage(ctx, ts, id, wrapped)
 }
 
@@ -844,7 +848,7 @@ func StartRoundCountdown(ctx context.Context, ts TournamentStore, id string,
 		}*/
 
 	if !t.IsStarted {
-		return fmt.Errorf("cannot start division %s before starting the tournament", t.Name)
+		return fmt.Errorf("cannot start division %s before starting the tournament", division)
 	}
 
 	ready, err := divisionObject.DivisionManager.IsRoundReady(round)

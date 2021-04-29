@@ -135,7 +135,7 @@ export const DirectorTools = React.memo((props: DTProps) => {
         .catch((err) => {
           message.error({
             content:
-              'Tournament cannot be started yet. Please check with the Woogles team.',
+              'Tournament cannot be started yet. Please ensure all your divisions have at least 2 players and are fully paired.',
             duration: 8,
           });
           console.log('Error starting tournament: ' + err.response?.data?.msg);

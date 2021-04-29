@@ -184,7 +184,8 @@ export const ActionsPanel = React.memo((props: Props) => {
         .catch((err) => {
           message.error({
             content:
-              'Round cannot be started yet. Please check with the Woogles team.',
+              'Round cannot be started yet. The error message was: ' +
+              err.response?.data?.msg,
             duration: 8,
           });
           console.log('Error starting round: ' + err.response?.data?.msg);
@@ -307,7 +308,10 @@ export const ActionsPanel = React.memo((props: Props) => {
     const divisionArray = Object.values(divisions);
     const foundDivision = userID
       ? divisionArray.find((d) => {
-          return d.players.map((v) => v.getId()).map(idFromPlayerEntry).includes(userID);
+          return d.players
+            .map((v) => v.getId())
+            .map(idFromPlayerEntry)
+            .includes(userID);
         })
       : undefined;
     if (foundDivision) {

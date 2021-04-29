@@ -252,7 +252,7 @@ const divisionDataResponseToObj = (
     players: Array<TournamentPerson>(),
     pairings: Array<RoundPairings>(),
     divisionControls: dd.getControls(), // game request, etc
-    roundControls: Array<RoundControl>(),
+    roundControls: dd.getRoundControlsList(),
     currentRound: dd.getCurrentRound(),
     playerIndexMap: {},
     numRounds: 0,
@@ -291,8 +291,9 @@ const divisionDataResponseToObj = (
   // Reduce pairings
 
   const newPairings = new Array<RoundPairings>();
+  ret.numRounds = dd.getRoundControlsList().length;
 
-  dd.getRoundControlsList().forEach(() => {
+  for (let i = 0; i < ret.numRounds; i++) {
     const newRoundPairings = new Array<SinglePairing>();
     dd.getPlayers()
       ?.getPersonsList()
@@ -300,8 +301,7 @@ const divisionDataResponseToObj = (
         newRoundPairings.push({} as SinglePairing);
       });
     newPairings.push({ roundPairings: newRoundPairings });
-  });
-  ret.numRounds = dd.getRoundControlsList().length;
+  }
 
   dd.getPairingMapMap().forEach((value: Pairing, key: string) => {
     console.log('pairing', value.toObject(), key);
@@ -561,6 +561,10 @@ export function TournamentReducer(
       });
 
       let expandedPairings = copyPairings(state.divisions[division].pairings);
+      let newStandings = reduceStandings(
+        state.divisions[division].standingsMap,
+        new jspb.Map<number, RoundStandings>([])
+      );
 
       if (
         state.started &&
@@ -580,6 +584,14 @@ export function TournamentReducer(
 
       if (!state.started) {
         expandedPairings = Array<RoundPairings>();
+        for (let i = 0; i < state.divisions[division].numRounds; i++) {
+          const newRoundPairings = new Array<SinglePairing>();
+          newPlayers.forEach(() => {
+            newRoundPairings.push({} as SinglePairing);
+          });
+          expandedPairings.push({ roundPairings: newRoundPairings });
+        }
+        newStandings = new jspb.Map<number, RoundStandings>([]);
       }
 
       const newPairings = reducePairings(
@@ -587,8 +599,8 @@ export function TournamentReducer(
         expandedPairings,
         dp.parr.getDivisionPairingsList()
       );
-      const newStandings = reduceStandings(
-        state.divisions[division].standingsMap,
+      newStandings = reduceStandings(
+        newStandings,
         dp.parr.getDivisionStandingsMap()
       );
 
