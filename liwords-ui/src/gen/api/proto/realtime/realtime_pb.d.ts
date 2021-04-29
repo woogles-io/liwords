@@ -295,6 +295,36 @@ export namespace UserPresences {
   }
 }
 
+export class PresenceEntry extends jspb.Message {
+  getUsername(): string;
+  setUsername(value: string): void;
+
+  getUserId(): string;
+  setUserId(value: string): void;
+
+  clearChannelList(): void;
+  getChannelList(): Array<string>;
+  setChannelList(value: Array<string>): void;
+  addChannel(value: string, index?: number): string;
+
+  serializeBinary(): Uint8Array;
+  toObject(includeInstance?: boolean): PresenceEntry.AsObject;
+  static toObject(includeInstance: boolean, msg: PresenceEntry): PresenceEntry.AsObject;
+  static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+  static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+  static serializeBinaryToWriter(message: PresenceEntry, writer: jspb.BinaryWriter): void;
+  static deserializeBinary(bytes: Uint8Array): PresenceEntry;
+  static deserializeBinaryFromReader(message: PresenceEntry, reader: jspb.BinaryReader): PresenceEntry;
+}
+
+export namespace PresenceEntry {
+  export type AsObject = {
+    username: string,
+    userId: string,
+    channelList: Array<string>,
+  }
+}
+
 export class SeekRequest extends jspb.Message {
   hasGameRequest(): boolean;
   clearGameRequest(): void;
@@ -1675,6 +1705,7 @@ export interface MessageTypeMap {
   TOURNAMENT_DIVISION_CONTROLS_MESSAGE: 36;
   TOURNAMENT_DIVISION_PLAYER_CHANGE_MESSAGE: 37;
   TOURNAMENT_FINISHED_MESSAGE: 38;
+  PRESENCE_ENTRY: 40;
 }
 
 export const MessageType: MessageTypeMap;

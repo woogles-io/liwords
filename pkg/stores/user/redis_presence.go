@@ -3,12 +3,12 @@ package user
 import (
 	"context"
 	_ "embed"
-	"errors"
 	"fmt"
 	"strings"
 	"time"
 
 	"github.com/domino14/liwords/pkg/entity"
+	pb "github.com/domino14/liwords/rpc/api/proto/realtime"
 	"github.com/gomodule/redigo/redis"
 	"github.com/rs/zerolog/log"
 )
@@ -24,6 +24,9 @@ type RedisPresenceStore struct {
 	setPresenceScript   *redis.Script
 	clearPresenceScript *redis.Script
 	renewPresenceScript *redis.Script
+	getChannelsScript   *redis.Script
+
+	eventChan chan *entity.EventWrapper
 }
 
 // SetPresenceScript is a Lua script that handles presence in an atomic way.
@@ -40,6 +43,10 @@ var ClearPresenceScript string
 //go:embed renew_presence.lua
 var RenewPresenceScript string
 
+// GetChannelsScript gets the channels
+//go:embed get_channels.lua
+var GetChannelsScript string
+
 func NewRedisPresenceStore(r *redis.Pool) *RedisPresenceStore {
 
 	return &RedisPresenceStore{
@@ -47,12 +54,59 @@ func NewRedisPresenceStore(r *redis.Pool) *RedisPresenceStore {
 		setPresenceScript:   redis.NewScript(0, SetPresenceScript),
 		clearPresenceScript: redis.NewScript(0, ClearPresenceScript),
 		renewPresenceScript: redis.NewScript(0, RenewPresenceScript),
+		getChannelsScript:   redis.NewScript(0, GetChannelsScript),
+		eventChan:           nil,
 	}
+}
+
+func fromRedisToArrayOfLengthN(ret interface{}, n int) ([]interface{}, error) {
+	arr, ok := ret.([]interface{})
+	if !ok {
+		return nil, fmt.Errorf("unexpected result: %T", ret)
+	}
+	if len(arr) != n {
+		return nil, fmt.Errorf("unexpected length (want %v, got %v): %v", n, len(arr), arr)
+	}
+	return arr, nil
+}
+
+func fromRedisArrayToArrayOfString(v interface{}) ([]string, error) {
+	arr, ok := v.([]interface{})
+	if !ok {
+		return nil, fmt.Errorf("unexpected subresult: %T", v)
+	}
+	cvt := make([]string, len(arr))
+	for i, el := range arr {
+		barr, ok := el.([]byte)
+		if !ok {
+			return nil, fmt.Errorf("unexpected interface type: %T", el)
+		}
+		cvt[i] = string(barr)
+	}
+	return cvt, nil
+}
+
+func (s *RedisPresenceStore) getChannelsForUUID(conn redis.Conn, uuid string) ([]string, error) {
+	ret, err := s.getChannelsScript.Do(conn, uuid)
+	if err != nil {
+		return nil, err
+	}
+	arr, err := fromRedisToArrayOfLengthN(ret, 1)
+	if err != nil {
+		return nil, err
+	}
+
+	channels, err := fromRedisArrayToArrayOfString(arr[0])
+	if err != nil {
+		return nil, err
+	}
+
+	return channels, nil
 }
 
 // SetPresence sets the user's presence channel.
 func (s *RedisPresenceStore) SetPresence(ctx context.Context, uuid, username string, anon bool,
-	channel, connID string) error {
+	channel, connID string) ([]string, []string, error) {
 	// We try to map channels closely to the pubsub NATS channels (and realms),
 	// with some exceptions.
 	// If the user is online in two different tabs, we go in priority order,
@@ -73,13 +127,29 @@ func (s *RedisPresenceStore) SetPresence(ctx context.Context, uuid, username str
 	}
 
 	ts := time.Now().Unix()
+	ret, err := s.setPresenceScript.Do(conn, uuid, username, authUser, connID, channel, ts)
+	if err != nil {
+		return nil, nil, err
+	}
+	arr, err := fromRedisToArrayOfLengthN(ret, 2)
+	if err != nil {
+		return nil, nil, err
+	}
 
-	_, err := s.setPresenceScript.Do(conn, uuid, username, authUser, connID, channel, ts)
-	return err
+	oldChannels, err := fromRedisArrayToArrayOfString(arr[0])
+	if err != nil {
+		return nil, nil, err
+	}
+	newChannels, err := fromRedisArrayToArrayOfString(arr[1])
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return oldChannels, newChannels, nil
 }
 
 func (s *RedisPresenceStore) ClearPresence(ctx context.Context, uuid, username string,
-	anon bool, connID string) ([]string, error) {
+	anon bool, connID string) ([]string, []string, []string, error) {
 	conn := s.redisPool.Get()
 	defer conn.Close()
 
@@ -89,35 +159,31 @@ func (s *RedisPresenceStore) ClearPresence(ctx context.Context, uuid, username s
 	}
 
 	log.Debug().Str("username", username).Str("connID", connID).Msg("clear-presence")
-	ts := time.Now().Unix()
 
+	ts := time.Now().Unix()
 	ret, err := s.clearPresenceScript.Do(conn, uuid, username, authUser, connID, ts)
 	if err != nil {
-		return nil, err
+		return nil, nil, nil, err
 	}
-	log.Debug().Interface("ret", ret).Msg("clear-presence-return")
+	arr, err := fromRedisToArrayOfLengthN(ret, 3)
+	if err != nil {
+		return nil, nil, nil, err
+	}
 
-	switch v := ret.(type) {
-	case bool:
-		// can only be false. User was not found anywhere, so nowhere to leave from.
-		if !v {
-			return nil, nil
-		}
-		return nil, errors.New("unexpected bool")
-	case []interface{}:
-		cvt := make([]string, len(v))
-		for i, el := range v {
-			barr, ok := el.([]byte)
-			if !ok {
-				return nil, fmt.Errorf("unexpected interface type: %T", el)
-			}
-			// This is just the channel now. No more conn_id#channel.
-			// We only need an array of channels.
-			cvt[i] = string(barr)
-		}
-		return cvt, nil
+	oldChannels, err := fromRedisArrayToArrayOfString(arr[0])
+	if err != nil {
+		return nil, nil, nil, err
 	}
-	return nil, fmt.Errorf("unexpected clear presence result: %T", ret)
+	newChannels, err := fromRedisArrayToArrayOfString(arr[1])
+	if err != nil {
+		return nil, nil, nil, err
+	}
+	removedChannels, err := fromRedisArrayToArrayOfString(arr[2])
+	if err != nil {
+		return nil, nil, nil, err
+	}
+
+	return oldChannels, newChannels, removedChannels, nil
 }
 
 func (s *RedisPresenceStore) GetInChannel(ctx context.Context, channel string) ([]*entity.User, error) {
@@ -179,7 +245,7 @@ func (s *RedisPresenceStore) GetPresence(ctx context.Context, uuid string) ([]st
 }
 
 func (s *RedisPresenceStore) RenewPresence(ctx context.Context, userID, username string,
-	anon bool, connID string) error {
+	anon bool, connID string) ([]string, []string, error) {
 
 	conn := s.redisPool.Get()
 	defer conn.Close()
@@ -192,8 +258,25 @@ func (s *RedisPresenceStore) RenewPresence(ctx context.Context, userID, username
 	}
 
 	ts := time.Now().Unix()
-	_, err := s.renewPresenceScript.Do(conn, userID, username, authUser, connID, ts)
-	return err
+	ret, err := s.renewPresenceScript.Do(conn, userID, username, authUser, connID, ts)
+	if err != nil {
+		return nil, nil, err
+	}
+	arr, err := fromRedisToArrayOfLengthN(ret, 2)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	oldChannels, err := fromRedisArrayToArrayOfString(arr[0])
+	if err != nil {
+		return nil, nil, err
+	}
+	newChannels, err := fromRedisArrayToArrayOfString(arr[1])
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return oldChannels, newChannels, nil
 }
 
 func (s *RedisPresenceStore) CountInChannel(ctx context.Context, channel string) (int, error) {
@@ -226,4 +309,61 @@ func (s *RedisPresenceStore) LastSeen(ctx context.Context, uuid string) (int64, 
 		return 0, err
 	}
 	return int64(val), nil
+}
+
+func (s *RedisPresenceStore) SetEventChan(c chan *entity.EventWrapper) {
+	s.eventChan = c
+}
+
+func (s *RedisPresenceStore) EventChan() chan *entity.EventWrapper {
+	return s.eventChan
+}
+
+func (s *RedisPresenceStore) BatchGetChannels(ctx context.Context, uuids []string) ([][]string, error) {
+	conn := s.redisPool.Get()
+	defer conn.Close()
+
+	ret := make([][]string, 0, len(uuids))
+	for _, uuid := range uuids {
+		ret1, err := s.getChannelsForUUID(conn, uuid)
+		if err != nil {
+			return nil, err
+		}
+		ret = append(ret, ret1)
+	}
+
+	return ret, nil
+}
+
+func (s *RedisPresenceStore) UpdateFollower(ctx context.Context, followee, follower *entity.User, following bool) error {
+	var channels []string
+
+	if following {
+		var err error
+		func() {
+			conn := s.redisPool.Get()
+			defer conn.Close()
+
+			channels, err = s.getChannelsForUUID(conn, followee.UUID)
+		}()
+		if err != nil {
+			return err
+		}
+	}
+
+	// when following, send the (possibly empty) current list of channels.
+	// when unfollowing, always send [].
+
+	evtChan := s.EventChan()
+	if evtChan != nil {
+		wrapped := entity.WrapEvent(&pb.PresenceEntry{
+			Username: followee.Username,
+			UserId:   followee.UUID,
+			Channel:  channels,
+		}, pb.MessageType_PRESENCE_ENTRY)
+		wrapped.AddAudience(entity.AudUser, follower.UUID)
+		evtChan <- wrapped
+	}
+
+	return nil
 }

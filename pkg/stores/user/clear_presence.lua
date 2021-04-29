@@ -3,43 +3,66 @@
 
 local userpresencekey = "userpresence:"..ARGV[1]
 local userkey = ARGV[1].."#"..ARGV[2].."#"..ARGV[3].."#"..ARGV[4]  -- uuid#username#anon#conn_id
-
--- get the current channels that this presence is in.
-
-local curchannels = redis.call("ZRANGE", userpresencekey, 0, -1)
-
-local deletedfrom = {}
-local stillconnectedto = {}
 local ts = tonumber(ARGV[5])
 
--- only delete the users where the conn_id actually matches
-for i, v in ipairs(curchannels) do
-	-- v looks like conn_id#channel
-	local conn_id, chan = string.match(v, "^([%a%d]+)#([%a%.%d]+)$")
-	if not (conn_id and chan) then
-		-- should not happen
-	elseif conn_id == ARGV[4] then
-		table.insert(deletedfrom, chan)
-		-- delete from the relevant channel key
-		redis.call("ZREM", "channelpresence:"..chan, userkey)
-		redis.call("ZREM", userpresencekey, v)
-		redis.call("ZREM", "userpresences", userkey.."#"..chan)
-		-- update the last known presence time.
-		if ARGV[3] == "auth" then
-			redis.call("ZADD", "lastpresences", ts, ARGV[1])
-		end
-	else
-		-- user is still in chan through another conn, do not delete yet
-		stillconnectedto[chan] = true
-	end
+-- delete where conn_id matches.
+local shouldtouch = false
+local setbefore = {}
+for _, simpleuserkey in ipairs(redis.call("ZRANGE", userpresencekey, 0, -1)) do
+  -- simpleuserkey looks like conn_id#channel
+  local conn_id, chan = string.match(simpleuserkey, "^([%a%d]+)#([%a%.%d]+)$")
+  if conn_id and chan then
+    setbefore[chan] = true
+    if conn_id == ARGV[4] then
+      redis.call("ZREM", "channelpresence:"..chan, userkey)
+      redis.call("ZREM", userpresencekey, simpleuserkey)
+      redis.call("ZREM", "userpresences", userkey.."#"..chan)
+      shouldtouch = true
+    end
+  end
 end
 
-local totallydisconnectedfrom = {}
-for _, chan in ipairs(deletedfrom) do
-	if not stillconnectedto[chan] then
-		table.insert(totallydisconnectedfrom, chan)
-	end
+-- update the last known presence time.
+if shouldtouch and ARGV[3] == "auth" then
+  redis.call("ZADD", "lastpresences", ts, ARGV[1])
 end
 
--- return the channel(s) this user totally disconnected from.
-return totallydisconnectedfrom
+-- inefficient, but easier to write.
+-- an efficient algorithm sets setafter for kept keys during earlier iteration.
+local setafter = {}
+for _, simpleuserkey in ipairs(redis.call("ZRANGE", userpresencekey, 0, -1)) do
+  -- simpleuserkey looks like conn_id#channel
+  local conn_id, chan = string.match(simpleuserkey, "^([%a%d]+)#([%a%.%d]+)$")
+  if conn_id and chan then
+    setafter[chan] = true
+  end
+end
+
+-- inefficient, but easier to write.
+-- an efficient algorithm is linear over arraybefore and arrayafter.
+local setremoved = {}
+for chan in pairs(setbefore) do
+  if not setafter[chan] then
+    setremoved[chan] = true
+  end
+end
+
+-- make sorted sets.
+local arraybefore = {}
+for chan in pairs(setbefore) do
+  table.insert(arraybefore, chan)
+end
+table.sort(arraybefore)
+local arrayafter = {}
+for chan in pairs(setafter) do
+  table.insert(arrayafter, chan)
+end
+table.sort(arrayafter)
+local arrayremoved = {}
+for chan in pairs(setremoved) do
+  table.insert(arrayremoved, chan)
+end
+table.sort(arrayremoved)
+
+-- return channels before, channels after, and channels removed.
+return { arraybefore, arrayafter, arrayremoved }

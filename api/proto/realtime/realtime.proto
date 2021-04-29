@@ -109,6 +109,7 @@ enum MessageType {
   // We should definitely not be using anywhere close to 255 events, and
   // in order to enforce that I'll be forcing the event type header to just be
   // a byte long.
+  PRESENCE_ENTRY = 40;
 }
 
 message GameDeletion { string id = 1; }
@@ -141,6 +142,13 @@ message UserPresence {
 }
 
 message UserPresences { repeated UserPresence presences = 1; }
+
+// Only authenticated connections.
+message PresenceEntry {
+  string username = 1;
+  string user_id = 2;
+  repeated string channel = 3;
+}
 
 message SeekRequest {
   GameRequest game_request = 1;
