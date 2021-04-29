@@ -229,8 +229,7 @@ func SetRoundControls(ctx context.Context, ts TournamentStore, id string, divisi
 		return err
 	}
 
-	pairingsMessage := PairingsToResponse(id, division, pairings, make(map[int32]*realtime.RoundStandings))
-	wrapped := entity.WrapEvent(&realtime.DivisionRoundControls{Id: id, Division: division, RoundControls: newDivisionRoundControls, DivisionPairings: pairingsMessage},
+	wrapped := entity.WrapEvent(&realtime.DivisionRoundControls{Id: id, Division: division, RoundControls: newDivisionRoundControls, DivisionPairings: pairings},
 		realtime.MessageType_TOURNAMENT_DIVISION_ROUND_CONTROLS_MESSAGE)
 	return SendTournamentMessage(ctx, ts, id, wrapped)
 }
