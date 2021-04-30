@@ -772,10 +772,17 @@ func StartAllRoundCountdowns(ctx context.Context, ts TournamentStore, id string,
 		return fmt.Errorf("tournament %s has finished", id)
 	}
 
+	if len(t.Divisions) == 0 {
+		return fmt.Errorf("cannot start tournament %s with no divisions", t.Name)
+	}
+
 	for division := range t.Divisions {
 		dm := t.Divisions[division].DivisionManager
 		if dm == nil {
 			return fmt.Errorf("cannot start round %d for division %s because it has a nil division manager", round, division)
+		}
+		if dm.GetDivisionControls().GameRequest == nil {
+			return fmt.Errorf("no division game controls have been set for division %v", division)
 		}
 		isReady, err := dm.IsRoundReady(round)
 		if err != nil {
@@ -786,19 +793,13 @@ func StartAllRoundCountdowns(ctx context.Context, ts TournamentStore, id string,
 		}
 	}
 
-	divisions := []string{}
-	rounds := []int32{}
 	for division := range t.Divisions {
 		t.IsStarted = true
 		err := StartRoundCountdown(ctx, ts, id, division, round, false, false)
 		if err != nil {
+			t.IsStarted = false
 			return err
 		}
-		divisions = append(divisions, division)
-		rounds = append(rounds, int32(round))
-	}
-	if !t.IsStarted {
-		return fmt.Errorf("cannot start tournament %s with no divisions", t.Name)
 	}
 	return ts.Set(ctx, t)
 }
