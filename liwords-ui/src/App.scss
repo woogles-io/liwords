@@ -119,3 +119,9 @@ a.plain,
     }
   }
 }
+
+.bnjyMode {
+  .tile[data-rune='I'], .tile[data-rune='O'], .tile[data-rune='X'] {
+    transform: rotate(180deg);
+  }
+}
