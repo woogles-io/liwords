@@ -578,7 +578,37 @@ export function TournamentReducer(
         dp.dpr.getDivisionStandingsMap()
       );
 
+      const fullLoggedInID = `${dp.loginState.userID}:${dp.loginState.username}`;
+      const userIndex =
+        state.divisions[division].playerIndexMap[fullLoggedInID];
+      let newStatus = state.competitorState.status;
+
+      if (userIndex) {
+        dp.dpr.getDivisionPairingsList().forEach((pairing: Pairing) => {
+          if (pairing.getRound() == state.divisions[division].currentRound) {
+            const pairingPlayers = pairing.getPlayersList();
+            if (
+              pairingPlayers &&
+              ((pairingPlayers[0] && pairingPlayers[0] === userIndex) ||
+                (pairingPlayers[1] && pairingPlayers[1] === userIndex))
+            ) {
+              let playerIndex = 0;
+              if (pairingPlayers[1] === userIndex) {
+                playerIndex = 1;
+              }
+              const outcome = pairing.getOutcomesList()[playerIndex];
+              if (outcome !== TournamentGameResult.NO_RESULT) {
+                newStatus = TourneyStatus.ROUND_GAME_FINISHED;
+              }
+            }
+          }
+        });
+      }
+
       return Object.assign({}, state, {
+        competitorState: Object.assign({}, state.competitorState, {
+          [status]: newStatus,
+        }),
         divisions: Object.assign({}, state.divisions, {
           [division]: Object.assign({}, state.divisions[division], {
             pairings: newPairings,
