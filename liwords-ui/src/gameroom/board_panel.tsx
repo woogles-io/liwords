@@ -842,6 +842,9 @@ export const BoardPanel = React.memo((props: Props) => {
             evt.preventDefault();
             if (handleNeitherShortcut.current) handleNeitherShortcut.current();
             setCurrentMode('EXCHANGE_MODAL');
+            setBlindfoldCommand('');
+            say('exchange modal opened', '');
+            return;
           } else if (
             blindfoldCommand.toUpperCase() === 'PASS' &&
             !props.gameDone
