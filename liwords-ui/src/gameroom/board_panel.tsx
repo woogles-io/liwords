@@ -834,6 +834,30 @@ export const BoardPanel = React.memo((props: Props) => {
             const [, p0Score, , , p1Score] = PlayerScoresAndTimes();
             const scoresay = `${p0Score} to ${p1Score}`;
             say(scoresay, '');
+          } else if (
+            blindfoldCommand.toUpperCase() === 'E' &&
+            exchangeAllowed &&
+            !props.gameDone
+          ) {
+            evt.preventDefault();
+            if (handleNeitherShortcut.current) handleNeitherShortcut.current();
+            setCurrentMode('EXCHANGE_MODAL');
+            setBlindfoldCommand('');
+            say('exchange modal opened', '');
+            return;
+          } else if (
+            blindfoldCommand.toUpperCase() === 'PASS' &&
+            !props.gameDone
+          ) {
+            makeMove('pass');
+            setCurrentMode('NORMAL');
+          } else if (
+            blindfoldCommand.toUpperCase() === 'CHAL' &&
+            !props.gameDone
+          ) {
+            makeMove('challenge');
+            setCurrentMode('NORMAL');
+            return;
           } else if (blindfoldCommand.toUpperCase() === 'T') {
             const [, , p0Time, , , p1Time] = PlayerScoresAndTimes();
             const timesay = `${p0Time} to ${p1Time}.`;
@@ -899,7 +923,11 @@ export const BoardPanel = React.memo((props: Props) => {
             }
           } else if (blindfoldCommand.toUpperCase() === 'L') {
             say(
-              'B for bag. C for current play. N for NATO pronunciations. P for the previous play. R for rack. S for score. T for time. W for turn.',
+              'B for bag. C for current play. ' +
+                'E for exchange. N for NATO pronunciations. ' +
+                'P for the previous play. R for rack. ' +
+                'S for score. T for time. W for turn. ' +
+                'P, A, S, S, for pass. C, H, A, L, for challenge.',
               ''
             );
           } else {
