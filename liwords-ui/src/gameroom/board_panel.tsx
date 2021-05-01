@@ -923,7 +923,11 @@ export const BoardPanel = React.memo((props: Props) => {
             }
           } else if (blindfoldCommand.toUpperCase() === 'L') {
             say(
-              'B for bag. C for current play. N for NATO pronunciations. P for the previous play. R for rack. S for score. T for time. W for turn.',
+              'B for bag. C for current play. ' +
+                'E for exchange. N for NATO pronunciations. ' +
+                'P for the previous play. R for rack. ' +
+                'S for score. T for time. W for turn. ' +
+                'P, A, S, S, for pass. C, H, A, L, for challenge.',
               ''
             );
           } else {
