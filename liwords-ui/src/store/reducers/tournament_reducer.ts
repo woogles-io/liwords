@@ -607,7 +607,7 @@ export function TournamentReducer(
 
       return Object.assign({}, state, {
         competitorState: Object.assign({}, state.competitorState, {
-          [status]: newStatus,
+          status: newStatus,
         }),
         divisions: Object.assign({}, state.divisions, {
           [division]: Object.assign({}, state.divisions[division], {
