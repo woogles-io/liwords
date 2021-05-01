@@ -795,7 +795,7 @@ func StartAllRoundCountdowns(ctx context.Context, ts TournamentStore, id string,
 
 	for division := range t.Divisions {
 		t.IsStarted = true
-		err := StartRoundCountdown(ctx, ts, id, division, round, false, false)
+		err := StartRoundCountdown(ctx, ts, id, division, round, false, true)
 		if err != nil {
 			t.IsStarted = false
 			return err
