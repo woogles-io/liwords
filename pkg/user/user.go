@@ -37,6 +37,7 @@ type Store interface {
 	RemoveFollower(ctx context.Context, targetUser, follower uint) error
 	// GetFollows gets all the users that the passed-in DB ID is following.
 	GetFollows(ctx context.Context, uid uint) ([]*entity.User, error)
+	GetFollowedBy(ctx context.Context, uid uint) ([]*entity.User, error)
 
 	AddBlock(ctx context.Context, targetUser, blocker uint) error
 	RemoveBlock(ctx context.Context, targetUser, blocker uint) error
@@ -61,13 +62,13 @@ type Store interface {
 type PresenceStore interface {
 	// SetPresence sets the presence. If channel is the string NULL this is
 	// equivalent to saying the user logged off.
-	SetPresence(ctx context.Context, uuid, username string, anon bool, channel string, connID string) error
-	ClearPresence(ctx context.Context, uuid, username string, anon bool, connID string) ([]string, error)
+	SetPresence(ctx context.Context, uuid, username string, anon bool, channel string, connID string) ([]string, []string, error)
+	ClearPresence(ctx context.Context, uuid, username string, anon bool, connID string) ([]string, []string, []string, error)
 	GetPresence(ctx context.Context, uuid string) ([]string, error)
 	// RenewPresence prevents the presence store from expiring the relevant keys.
 	// Basically, we're telling the presence store "this user and connection are still here".
 	// Otherwise, missing a few of these events will destroy the relevant presences.
-	RenewPresence(ctx context.Context, uuid, username string, anon bool, connID string) error
+	RenewPresence(ctx context.Context, uuid, username string, anon bool, connID string) ([]string, []string, error)
 
 	CountInChannel(ctx context.Context, channel string) (int, error)
 	GetInChannel(ctx context.Context, channel string) ([]*entity.User, error)
@@ -76,6 +77,12 @@ type PresenceStore interface {
 	BatchGetPresence(ctx context.Context, users []*entity.User) ([]*entity.User, error)
 
 	LastSeen(ctx context.Context, uuid string) (int64, error)
+
+	SetEventChan(chan *entity.EventWrapper)
+	EventChan() chan *entity.EventWrapper
+
+	BatchGetChannels(ctx context.Context, uuids []string) ([][]string, error)
+	UpdateFollower(ctx context.Context, followee, follower *entity.User, following bool) error
 }
 
 // ChatStore stores user and channel chats and messages
