@@ -103,6 +103,7 @@ export type TournamentState = {
   gamesPageSize: number;
   gamesOffset: number;
   finished: boolean;
+  initializedFromXHR: boolean;
 };
 
 export const defaultTournamentState = {
@@ -123,6 +124,7 @@ export const defaultTournamentState = {
   gamesPageSize: 20,
   gamesOffset: 0,
   finished: false,
+  initializedFromXHR: false,
 };
 
 export enum TourneyStatus {
@@ -477,6 +479,28 @@ export function TournamentReducer(
   state: TournamentState,
   action: Action
 ): TournamentState {
+  if (!state.initializedFromXHR) {
+    // Throw away messages if we haven't received the XHR back yet.
+    // Yes, this can result in potential race conditions.
+    // We should buffer messages received prior to the XHR, apply them
+    // post-XHR receipt, and make all reducers idempotent.
+    if (
+      ![
+        ActionType.SetDivisionsData,
+        ActionType.SetTourneyMetadata,
+        // These are legacy events for CLUB/LEGACY tournament types
+        ActionType.AddActiveGames,
+        ActionType.AddActiveGame,
+        ActionType.RemoveActiveGame,
+        ActionType.AddTourneyGameResult,
+        ActionType.AddTourneyGameResults,
+        ActionType.SetTourneyGamesOffset,
+      ].includes(action.actionType)
+    ) {
+      return state;
+    }
+  }
+
   switch (action.actionType) {
     case ActionType.SetTourneyMetadata:
       const metadata = action.payload as TournamentMetadata;
@@ -731,6 +755,7 @@ export function TournamentReducer(
     }
 
     case ActionType.SetDivisionsData: {
+      // Handles XHR request for GetDivisions
       const dd = action.payload as {
         fullDivisions: FullTournamentDivisions;
         loginState: LoginState;
@@ -773,6 +798,7 @@ export function TournamentReducer(
         started: dd.fullDivisions.getStarted(),
         divisions,
         competitorState,
+        initializedFromXHR: true,
       };
     }
 

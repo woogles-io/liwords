@@ -3,15 +3,12 @@ import React from 'react';
 import { useCallback, useEffect, useMemo } from 'react';
 
 import { useParams } from 'react-router-dom';
-import axios from 'axios';
-import { message } from 'antd';
-import { clubRedirects } from '../lobby/fixed_seek_controls';
+
 import {
   useLoginStateStoreContext,
   useTournamentStoreContext,
 } from '../store/store';
 import { useMountedState } from '../utils/mounted';
-import { postBinary, toAPIUrl } from '../api/api';
 import { TopBar } from '../topbar/topbar';
 import { singularCount } from '../utils/plural';
 import { Chat } from '../chat/chat';
@@ -20,14 +17,9 @@ import { sendAccept, sendSeek } from '../lobby/sought_game_interactions';
 import { SoughtGame } from '../store/reducers/lobby_reducer';
 import { ActionsPanel } from './actions_panel';
 import { CompetitorStatus } from './competitor_status';
-import { Action, ActionType } from '../actions/actions';
-import {
-  readyForTournamentGame,
-  TournamentMetadata,
-} from '../store/reducers/tournament_reducer';
+import { readyForTournamentGame } from '../store/reducers/tournament_reducer';
 import './room.scss';
-import { GetTournamentRequest } from '../gen/api/proto/tournament_service/tournament_service_pb';
-import { FullTournamentDivisions } from '../gen/api/proto/realtime/realtime_pb';
+import { useTourneyMetadata } from './utils';
 
 type Props = {
   sendSocketMsg: (msg: Uint8Array) => void;
@@ -51,80 +43,13 @@ export const TournamentRoom = (props: Props) => {
   const [badTournament, setBadTournament] = useState(false);
   const [selectedGameTab, setSelectedGameTab] = useState('GAMES');
 
-  const getTourneyMetadata = useCallback(
-    async (
-      path: string,
-      dispatchTournamentContext: (action: Action) => void
-    ) => {
-      try {
-        const resp = await axios.post<TournamentMetadata>(
-          toAPIUrl(
-            'tournament_service.TournamentService',
-            'GetTournamentMetadata'
-          ),
-          {
-            slug: path,
-          }
-        );
-        dispatchTournamentContext({
-          actionType: ActionType.SetTourneyMetadata,
-          payload: resp.data,
-        });
-
-        if (resp.data.type === 'LEGACY' || resp.data.type === 'CLUB') {
-          // This tournament does not have built-in pairings, so no need to fetch
-          // tournament divisions.
-          return;
-        }
-        const treq = new GetTournamentRequest();
-        treq.setId(resp.data.id);
-
-        const tresp = await postBinary(
-          'tournament_service.TournamentService',
-          'GetTournament',
-          treq
-        );
-
-        console.log(
-          FullTournamentDivisions.deserializeBinary(tresp.data).toObject()
-        );
-
-        dispatchTournamentContext({
-          actionType: ActionType.SetDivisionsData,
-          payload: {
-            fullDivisions: FullTournamentDivisions.deserializeBinary(
-              tresp.data
-            ),
-            loginState: loginState,
-          },
-        });
-      } catch (err) {
-        message.error({
-          content: 'Error fetching tournament data',
-          duration: 5,
-        });
-        setBadTournament(true);
-      }
-    },
-    [loginState]
+  useTourneyMetadata(
+    path,
+    '',
+    dispatchTournamentContext,
+    loginState,
+    setBadTournament
   );
-
-  useEffect(() => {
-    if (!partialSlug || !path) {
-      return;
-    }
-    // Temporary redirect code:
-    if (path.startsWith('/tournament/')) {
-      const oldslug = path.substr('/tournament/'.length);
-      if (oldslug in clubRedirects) {
-        const slug = clubRedirects[oldslug];
-        window.location.replace(
-          `${window.location.protocol}//${window.location.hostname}${slug}`
-        );
-      }
-    }
-    getTourneyMetadata(path, dispatchTournamentContext);
-  }, [path, partialSlug, dispatchTournamentContext, getTourneyMetadata]);
 
   const tournamentID = useMemo(() => {
     return tournamentContext.metadata.id;

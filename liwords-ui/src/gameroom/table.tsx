@@ -65,6 +65,7 @@ import {
   UsersGameInfoRequest,
   UsersGameInfoResponse,
 } from '../gen/api/proto/user_service/user_service_pb';
+import { useTourneyMetadata } from '../tournament/utils';
 
 type Props = {
   sendSocketMsg: (msg: Uint8Array) => void;
@@ -354,27 +355,13 @@ export const Table = React.memo((props: Props) => {
     getAvatarData();
   }, [gameInfo, getAvatarData, needAvatars]);
 
-  useEffect(() => {
-    if (!gameInfo.tournament_id) {
-      return;
-    }
-    axios
-      .post<TournamentMetadata>(
-        toAPIUrl(
-          'tournament_service.TournamentService',
-          'GetTournamentMetadata'
-        ),
-        {
-          id: gameInfo.tournament_id,
-        }
-      )
-      .then((resp) => {
-        dispatchTournamentContext({
-          actionType: ActionType.SetTourneyMetadata,
-          payload: resp.data,
-        });
-      });
-  }, [gameInfo.tournament_id, dispatchTournamentContext]);
+  useTourneyMetadata(
+    '',
+    gameInfo.tournament_id,
+    dispatchTournamentContext,
+    loginState,
+    undefined
+  );
 
   useEffect(() => {
     // Request streak info only if a few conditions are true.
