@@ -585,7 +585,7 @@ export function TournamentReducer(
 
       if (userIndex) {
         dp.dpr.getDivisionPairingsList().forEach((pairing: Pairing) => {
-          if (pairing.getRound() == state.divisions[division].currentRound) {
+          if (pairing.getRound() === state.divisions[division].currentRound) {
             const pairingPlayers = pairing.getPlayersList();
             if (
               pairingPlayers &&
