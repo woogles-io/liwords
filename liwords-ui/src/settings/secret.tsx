@@ -17,6 +17,20 @@ export const Secret = React.memo((props: Props) => {
     );
     setTelestrator((x) => !x);
   }, []);
+
+  const [enableAllLexicons, setEnableAllLexicons] = useState(
+    localStorage?.getItem('enableAllLexicons') === 'true'
+  );
+  const toggleEnableAllLexicons = useCallback(() => {
+    const wantEnableAllLexicons =
+      localStorage?.getItem('enableAllLexicons') !== 'true';
+    localStorage.setItem(
+      'enableAllLexicons',
+      wantEnableAllLexicons ? 'true' : 'false'
+    );
+    setEnableAllLexicons((x) => !x);
+  }, []);
+
   const [blindfold, setBlindfold] = useState(
     localStorage?.getItem('enableBlindfoldMode') === 'true'
   );
@@ -61,6 +75,15 @@ export const Secret = React.memo((props: Props) => {
             defaultChecked={blindfold}
             onChange={toggleBlindfold}
             className="blindfold-toggle"
+          />
+        </div>
+        <div className="toggle-section">
+          <div className="title">Lexicons</div>
+          <div>Enable all lexicons</div>
+          <Switch
+            defaultChecked={enableAllLexicons}
+            onChange={toggleEnableAllLexicons}
+            className="dark-toggle"
           />
         </div>
       </div>

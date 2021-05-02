@@ -53,7 +53,7 @@ const KNOWN_BOARD_STYLES = [
   },
   {
     name: 'Teal and Plum',
-    value: 'teal',
+    value: 'tealish',
   },
   {
     name: 'Pastel',
@@ -185,19 +185,6 @@ export const Preferences = React.memo((props: Props) => {
     setUserBoard(boardStyle);
   }, []);
 
-  const [enableAllLexicons, setEnableAllLexicons] = useState(
-    localStorage?.getItem('enableAllLexicons') === 'true'
-  );
-  const toggleEnableAllLexicons = useCallback(() => {
-    const wantEnableAllLexicons =
-      localStorage?.getItem('enableAllLexicons') !== 'true';
-    localStorage.setItem(
-      'enableAllLexicons',
-      wantEnableAllLexicons ? 'true' : 'false'
-    );
-    setEnableAllLexicons((x) => !x);
-  }, []);
-
   const [tileOrder, setTileOrder] = useState(preferredSortOrder ?? '');
   const handleTileOrderChange = useCallback((value) => {
     setTileOrder(value);
@@ -317,15 +304,6 @@ export const Preferences = React.memo((props: Props) => {
           </div>
         </Col>
       </Row>
-      <div className="section-header">Lexicons</div>
-      <div className="toggle-section">
-        <div>Enable all lexicons</div>
-        <Switch
-          defaultChecked={enableAllLexicons}
-          onChange={toggleEnableAllLexicons}
-          className="dark-toggle"
-        />
-      </div>
     </div>
   );
 });

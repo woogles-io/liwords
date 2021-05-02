@@ -11,6 +11,10 @@ import {
 } from '../store/constants';
 import { SoughtGame } from '../store/reducers/lobby_reducer';
 import { useMountedState } from '../utils/mounted';
+import { PlayerAvatar } from '../shared/player_avatar';
+import { DisplayFlag } from '../shared/display_flag';
+import { useBriefProfile } from '../utils/brief_profiles';
+import { RatingBadge } from './rating_badge';
 
 export const timeFormat = (
   initialTimeSecs: number,
@@ -38,6 +42,28 @@ export const challengeFormat = (cr: number) => {
   );
 };
 
+type PlayerProps = {
+  userID?: string;
+  username: string;
+};
+
+export const PlayerDisplay = (props: PlayerProps) => {
+  const profile = useBriefProfile(props.userID);
+  return (
+    <div className="player-display">
+      <PlayerAvatar
+        player={{
+          avatar_url: profile?.getAvatarUrl(),
+          user_id: props.userID,
+          nickname: props.username,
+        }}
+      />
+      <span className="player-name">{props.username}</span>
+      <DisplayFlag countryCode={profile?.getCountryCode()} />
+    </div>
+  );
+};
+
 type Props = {
   isMatch?: boolean;
   newGame: (seekID: string) => void;
@@ -45,7 +71,6 @@ type Props = {
   username?: string;
   requests: Array<SoughtGame>;
 };
-
 export const SoughtGames = (props: Props) => {
   const { useState } = useMountedState();
   const [cancelVisible, setCancelVisible] = useState(false);
@@ -59,7 +84,7 @@ export const SoughtGames = (props: Props) => {
     {
       title: 'Rating',
       className: 'rating',
-      dataIndex: 'rating',
+      dataIndex: 'ratingBadge',
       key: 'rating',
       sorter: (a: SoughtGameTableData, b: SoughtGameTableData) =>
         parseInt(a.rating) - parseInt(b.rating),
@@ -112,6 +137,7 @@ export const SoughtGames = (props: Props) => {
   type SoughtGameTableData = {
     seeker: string | ReactNode;
     rating: string;
+    ratingBadge?: ReactNode;
     lexicon: string;
     time: string;
     totalTime: number;
@@ -161,9 +187,10 @@ export const SoughtGames = (props: Props) => {
               </div>
             </Popconfirm>
           ) : (
-            sg.seeker
+            <PlayerDisplay userID={sg.seekerID!} username={sg.seeker} />
           ),
           rating: outgoing ? '' : sg.userRating,
+          ratingBadge: outgoing ? null : <RatingBadge rating={sg.userRating} />,
           lexicon: sg.lexicon,
           time: timeFormat(
             sg.initialTimeSecs,
