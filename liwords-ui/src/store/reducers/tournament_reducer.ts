@@ -306,7 +306,6 @@ const divisionDataResponseToObj = (
   }
 
   dd.getPairingMapMap().forEach((value: Pairing, key: string) => {
-    console.log('pairing', value.toObject(), key);
     const newPairing = {
       players: value.getPlayersList().map((v) => newPlayers[v]),
       outcomes: value.getOutcomesList(),
@@ -318,7 +317,6 @@ const divisionDataResponseToObj = (
         results: g.getResultsList(),
       })),
     } as SinglePairing;
-    console.log('newPairing is', newPairing);
     newPairings[value.getRound()].roundPairings[
       playerIndexMap[newPairing.players[0].getId()]
     ] = newPairing;
@@ -791,7 +789,7 @@ export function TournamentReducer(
         loginState: LoginState;
       };
 
-      console.log('fdivs', dd.fullDivisions.toObject());
+      console.log('fdivs', JSON.stringify(dd.fullDivisions.toObject()));
       const divisions: { [name: string]: Division } = {};
       const divisionsMap = dd.fullDivisions.getDivisionsMap();
       const fullLoggedInID = `${dd.loginState.userID}:${dd.loginState.username}`;

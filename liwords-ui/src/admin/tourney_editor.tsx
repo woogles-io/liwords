@@ -149,9 +149,8 @@ export const TourneyEditor = (props: Props) => {
         toAPIUrl('tournament_service.TournamentService', 'AddDirectors'),
         {
           id: form.getFieldValue('id'),
-          persons: {
-            [director]: 10, // or whatever number?
-          },
+          // Need a non-zero "rating" for director..
+          persons: [{ id: director, rating: 1 }],
         }
       )
       .then((resp) => {

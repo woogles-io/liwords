@@ -20,6 +20,8 @@ import (
 	pb "github.com/domino14/liwords/rpc/api/proto/tournament_service"
 )
 
+const MaxDivisionNameLength = 24
+
 type TournamentStore interface {
 	Get(context.Context, string) (*entity.Tournament, error)
 	GetBySlug(context.Context, string) (*entity.Tournament, error)
@@ -292,6 +294,10 @@ func AddDivision(ctx context.Context, ts TournamentStore, id string, division st
 		return errors.New("cannot add division after the tournament has started")
 	}
 
+	if len(division) == 0 || len(division) > MaxDivisionNameLength {
+		return errors.New("your division name is too long or too short")
+	}
+
 	_, ok := t.Divisions[division]
 
 	if ok {
@@ -403,10 +409,12 @@ func AddDirectors(ctx context.Context, ts TournamentStore, us user.Store, id str
 	if err != nil {
 		return err
 	}
+
 	tdevt, err := TournamentDataResponse(ctx, ts, id)
 	if err != nil {
 		return err
 	}
+
 	wrapped := entity.WrapEvent(tdevt, realtime.MessageType_TOURNAMENT_MESSAGE)
 	return SendTournamentMessage(ctx, ts, id, wrapped)
 }

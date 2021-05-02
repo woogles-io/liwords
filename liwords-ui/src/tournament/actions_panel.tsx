@@ -303,8 +303,9 @@ export const ActionsPanel = React.memo((props: Props) => {
       />
     </Modal>
   );
+
+  const idFromPlayerEntry = useCallback((p: string) => p.split(':')[0], []);
   useEffect(() => {
-    const idFromPlayerEntry = (p: string) => p.split(':')[0];
     const divisionArray = Object.values(divisions);
     const foundDivision = userID
       ? divisionArray.find((d) => {
@@ -314,6 +315,7 @@ export const ActionsPanel = React.memo((props: Props) => {
             .includes(userID);
         })
       : undefined;
+    // look for ourselves in the division.
     if (foundDivision) {
       if (!competitorStatusLoaded) {
         setCompetitorStatusLoaded(true);
@@ -323,9 +325,13 @@ export const ActionsPanel = React.memo((props: Props) => {
         setSelectedDivision(foundDivision.divisionID);
         setSelectedRound(foundDivision.currentRound);
       } else if (selectedRound === -1) {
-        setSelectedRound(foundDivision.currentRound);
+        // If we are directing _and_ playing, this, combined with the code
+        // in pairings.tsx to hide initial pairings, will show preview
+        // pairings for the director.
+        setSelectedRound(isDirector ? 0 : foundDivision.currentRound);
       }
     } else {
+      // we are an observer
       if (divisionArray.length) {
         if (!selectedDivision) {
           setSelectedDivision(divisionArray[0].divisionID);

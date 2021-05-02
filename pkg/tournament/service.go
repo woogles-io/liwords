@@ -254,6 +254,7 @@ func (ts *TournamentService) AddDirectors(ctx context.Context, req *realtime.Tou
 	if err != nil {
 		return nil, twirp.NewError(twirp.InvalidArgument, err.Error())
 	}
+
 	return &pb.TournamentResponse{}, nil
 }
 func (ts *TournamentService) RemoveDirectors(ctx context.Context, req *realtime.TournamentPersons) (*pb.TournamentResponse, error) {

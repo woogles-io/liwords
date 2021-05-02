@@ -16,6 +16,10 @@ export const useTourneyMetadata = (
   setBadTournament: React.Dispatch<React.SetStateAction<boolean>> | undefined
 ) => {
   useEffect(() => {
+    if (!loginState.connectedToSocket) {
+      return;
+    }
+
     const getTourneyMetadata = async (
       path: string,
       tournamentID: string,
@@ -25,6 +29,14 @@ export const useTourneyMetadata = (
         | React.Dispatch<React.SetStateAction<boolean>>
         | undefined
     ) => {
+      console.log(
+        'inputs are',
+        path,
+        tournamentID,
+        dispatchTournamentContext,
+        loginState,
+        setBadTournament
+      );
       if (!path && !tournamentID) {
         return;
       }
