@@ -133,6 +133,17 @@ const extractUser = (
   return {};
 };
 
+const DisplayFlagForUUID = ({ uuid }: { uuid: string | undefined }) => {
+  const briefProfile = useBriefProfile(uuid);
+  return (
+    <React.Fragment>
+      {briefProfile && (
+        <DisplayFlag countryCode={briefProfile.getCountryCode()} />
+      )}
+    </React.Fragment>
+  );
+};
+
 export const ChatChannels = React.memo((props: Props) => {
   const { useState } = useMountedState();
   const { chatChannels } = useChatStoreContext();
@@ -233,7 +244,6 @@ export const ChatChannels = React.memo((props: Props) => {
       );
       const isUnread = props.updatedChannels?.has(ch.name) || lastUnread;
       const chatUser = extractUser(ch, userID, username);
-      const briefProfile = useBriefProfile(chatUser.uuid);
       const channelType = getChannelType(ch.name);
       return (
         <div
@@ -256,9 +266,7 @@ export const ChatChannels = React.memo((props: Props) => {
           <div>
             <p className="listing-name">
               {channelLabel.label}
-              {briefProfile && (
-                <DisplayFlag countryCode={briefProfile.getCountryCode()} />
-              )}
+              <DisplayFlagForUUID uuid={chatUser.uuid} />
               {isUnread && <span className="unread-marker">•</span>}
             </p>
             <p className={`listing-preview`}>
