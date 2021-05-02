@@ -73,6 +73,14 @@ type profile struct {
 	// More complex stats might be in a separate place.
 }
 
+type briefProfile struct {
+	UUID        string
+	Username    string
+	InternalBot bool
+	CountryCode string
+	AvatarUrl   string
+}
+
 type following struct {
 	// Follower follows user; pretty straightforward.
 	UserID uint
@@ -424,40 +432,33 @@ func (s *DBStore) SetAvatarUrl(ctx context.Context, uuid string, avatarUrl strin
 }
 
 func (s *DBStore) GetBriefProfiles(ctx context.Context, uuids []string) (map[string]*pb.BriefProfile, error) {
-	var users []User
+	var profiles []*briefProfile
 	if result := s.db.
+		Table("users").
+		Joins("left join profiles on users.id = profiles.user_id").
 		Where("uuid in (?)", uuids).
-		Select([]string{"id", "uuid", "internal_bot"}).
-		Find(&users); result.Error != nil {
-		return nil, result.Error
-	}
-	userIds := make([]uint, 0, len(users))
-	for _, user := range users {
-		userIds = append(userIds, user.ID)
-	}
-	var profiles []*profile
-	if result := s.db.
-		Where("user_id in (?)", userIds).
-		Select([]string{"user_id", "country_code", "avatar_url"}).
+		Select([]string{"uuid", "username", "internal_bot", "country_code", "avatar_url"}).
 		Find(&profiles); result.Error != nil {
 		return nil, result.Error
 	}
-	profileMap := make(map[uint]*profile)
+
+	profileMap := make(map[string]*briefProfile)
 	for _, profile := range profiles {
-		profileMap[profile.UserID] = profile
+		profileMap[profile.UUID] = profile
 	}
 
 	response := make(map[string]*pb.BriefProfile)
-	for _, user := range users {
-		prof, hasProfile := profileMap[user.ID]
+	for _, uuid := range uuids {
+		prof, hasProfile := profileMap[uuid]
 		if !hasProfile {
-			prof = &profile{}
+			prof = &briefProfile{}
 		}
-		if prof.AvatarUrl == "" && user.InternalBot {
+		if prof.AvatarUrl == "" && prof.InternalBot {
 			// see entity/user.go
 			prof.AvatarUrl = "https://woogles-prod-assets.s3.amazonaws.com/macondog.png"
 		}
-		response[user.UUID] = &pb.BriefProfile{
+		response[uuid] = &pb.BriefProfile{
+			Username:    prof.Username,
 			CountryCode: prof.CountryCode,
 			AvatarUrl:   prof.AvatarUrl,
 		}

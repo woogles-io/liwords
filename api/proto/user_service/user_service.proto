@@ -179,6 +179,7 @@ message BriefProfilesRequest {
 
 // this is a subset of ProfileResponse
 message BriefProfile {
+  string username = 1;
   string country_code = 3;
   string avatar_url = 9;
 }
