@@ -1,6 +1,6 @@
 import React from 'react';
 
-import { useCallback, useEffect, useMemo } from 'react';
+import { useCallback, useMemo } from 'react';
 
 import { useParams } from 'react-router-dom';
 
@@ -29,7 +29,6 @@ type Props = {
 export const TournamentRoom = (props: Props) => {
   const { useState } = useMountedState();
 
-  const { partialSlug } = useParams();
   const { loginState } = useLoginStateStoreContext();
   const {
     tournamentContext,

@@ -345,6 +345,8 @@ export const ActionsPanel = React.memo((props: Props) => {
     }
   }, [
     divisions,
+    idFromPlayerEntry,
+    isDirector,
     selectedDivision,
     competitorStatusLoaded,
     selectedRound,

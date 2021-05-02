@@ -53,11 +53,7 @@ import { singularCount } from '../utils/plural';
 import { Notepad, NotepadContextProvider } from './notepad';
 import { Analyzer, AnalyzerContextProvider } from './analyzer';
 import { isPairedMode, sortTiles } from '../store/constants';
-import { ActionType } from '../actions/actions';
-import {
-  readyForTournamentGame,
-  TournamentMetadata,
-} from '../store/reducers/tournament_reducer';
+import { readyForTournamentGame } from '../store/reducers/tournament_reducer';
 import { CompetitorStatus } from '../tournament/competitor_status';
 import { Unrace } from '../utils/unrace';
 import { Blank } from '../utils/cwgame/common';
