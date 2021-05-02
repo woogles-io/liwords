@@ -29,14 +29,6 @@ export const useTourneyMetadata = (
         | React.Dispatch<React.SetStateAction<boolean>>
         | undefined
     ) => {
-      console.log(
-        'inputs are',
-        path,
-        tournamentID,
-        dispatchTournamentContext,
-        loginState,
-        setBadTournament
-      );
       if (!path && !tournamentID) {
         return;
       }
