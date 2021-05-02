@@ -80,27 +80,52 @@ func redisStreamTS(key string) (int64, error) {
 // AddChat takes in sender information, the message, and the name of the channel.
 // Additionally, a user-readable name for the channel should be provided.
 func (r *RedisChatStore) AddChat(ctx context.Context, senderUsername, senderUID, msg,
-	channel, channelFriendly string) (*pb.ChatMessage, error) {
+	channel, channelFriendly, regulateChat string) (*pb.ChatMessage, error) {
 	conn := r.redisPool.Get()
 	defer conn.Close()
 
-	ret, err := r.addChatScript.Do(conn, senderUsername, senderUID, msg, channel, channelFriendly)
+	tsNow := time.Now().Unix()
+
+	ret, err := r.addChatScript.Do(conn, senderUsername, senderUID, msg, channel, channelFriendly, tsNow, regulateChat)
 	if err != nil {
 		return nil, err
 	}
 	log.Debug().Interface("ret", ret).Msg("add-chat-return")
-	arr, err := fromRedisToArrayOfLengthN(ret, 2)
-	if err != nil {
-		return nil, err
+	arr, ok := ret.([]interface{})
+	if !ok {
+		return nil, fmt.Errorf("unexpected result: %T", ret)
 	}
 
-	ts, ok := arr[0].(int64)
+	was_ok, ok := arr[0].([]byte)
 	if !ok {
 		return nil, fmt.Errorf("unexpected type for arr[0]: %T", arr[0])
 	}
-	retIdBytes, ok := arr[1].([]byte)
+	switch string(was_ok) {
+	case "err":
+		if len(arr) != 2 {
+			return nil, fmt.Errorf("unexpected length (want %v, got %v): %v", 2, len(arr), arr)
+		}
+		reasonBytes, ok := arr[1].([]byte)
+		if !ok {
+			return nil, fmt.Errorf("unexpected type for arr[1]: %T", arr[1])
+		}
+		return nil, fmt.Errorf("%s", reasonBytes)
+	case "ok":
+	default:
+		return nil, fmt.Errorf("unexpected value for arr[0]: %s", was_ok)
+	}
+
+	if len(arr) != 3 {
+		return nil, fmt.Errorf("unexpected length (want %v, got %v): %v", 3, len(arr), arr)
+	}
+
+	ts, ok := arr[1].(int64)
 	if !ok {
 		return nil, fmt.Errorf("unexpected type for arr[1]: %T", arr[1])
+	}
+	retIdBytes, ok := arr[2].([]byte)
+	if !ok {
+		return nil, fmt.Errorf("unexpected type for arr[2]: %T", arr[2])
 	}
 
 	return &pb.ChatMessage{

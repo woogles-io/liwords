@@ -36,6 +36,16 @@ func (b *Bus) chat(ctx context.Context, userID string, evt *pb.ChatMessage) erro
 		return err
 	}
 
+	// Regulate chat only if the user is not privileged and the
+	// chat is not a game chat
+	regulateChat := "regulated"
+	if sendingUser.IsAdmin ||
+		sendingUser.IsMod ||
+		sendingUser.IsDirector ||
+		strings.HasPrefix(evt.Channel, "chat.game.") {
+		regulateChat = "unregulated"
+	}
+
 	userFriendlyChannelName := ""
 	if strings.HasPrefix(evt.Channel, "chat.pm.") {
 		receiver, err := user.ChatChannelReceiver(userID, evt.Channel)
@@ -73,7 +83,7 @@ func (b *Bus) chat(ctx context.Context, userID string, evt *pb.ChatMessage) erro
 		userFriendlyChannelName = "tournament:" + t.Name
 	}
 
-	chatMessage, err := b.chatStore.AddChat(ctx, sendingUser.Username, userID, evt.Message, evt.Channel, userFriendlyChannelName)
+	chatMessage, err := b.chatStore.AddChat(ctx, sendingUser.Username, userID, evt.Message, evt.Channel, userFriendlyChannelName, regulateChat)
 	if err != nil {
 		return err
 	}
