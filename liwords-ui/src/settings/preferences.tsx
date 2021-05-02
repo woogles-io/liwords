@@ -4,6 +4,7 @@ import { Col, Row, Select, Switch } from 'antd';
 import { preferredSortOrder, setPreferredSortOrder } from '../store/constants';
 import '../gameroom/scss/gameroom.scss';
 import { TileLetter, PointValue } from '../gameroom/tile';
+import { BoardPreview } from './board_preview';
 type Props = {};
 
 const KNOWN_TILE_ORDERS = [
@@ -309,6 +310,9 @@ export const Preferences = React.memo((props: Props) => {
                   </Select.Option>
                 ))}
               </Select>
+            </div>
+            <div className="previewer">
+              <BoardPreview />
             </div>
           </div>
         </Col>

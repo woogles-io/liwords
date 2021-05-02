@@ -457,6 +457,11 @@
   .ant-select {
     min-width: 150px;
   }
+  .board-preview {
+    transform: scale(0.6);
+    left: -96px;
+    top: -96px;
+  }
   .previewer {
     display: flex;
     padding-bottom: 12px;
