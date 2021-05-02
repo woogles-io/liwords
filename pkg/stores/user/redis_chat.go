@@ -80,13 +80,18 @@ func redisStreamTS(key string) (int64, error) {
 // AddChat takes in sender information, the message, and the name of the channel.
 // Additionally, a user-readable name for the channel should be provided.
 func (r *RedisChatStore) AddChat(ctx context.Context, senderUsername, senderUID, msg,
-	channel, channelFriendly, regulateChat string) (*pb.ChatMessage, error) {
+	channel, channelFriendly string, regulateChat bool) (*pb.ChatMessage, error) {
 	conn := r.redisPool.Get()
 	defer conn.Close()
 
+	regulateChatString := "unregulated"
+	if regulateChat {
+		regulateChatString = "regulated"
+	}
+
 	tsNow := time.Now().Unix()
 
-	ret, err := r.addChatScript.Do(conn, senderUsername, senderUID, msg, channel, channelFriendly, tsNow, regulateChat)
+	ret, err := r.addChatScript.Do(conn, senderUsername, senderUID, msg, channel, channelFriendly, tsNow, regulateChatString)
 	if err != nil {
 		return nil, err
 	}

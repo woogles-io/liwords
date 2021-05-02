@@ -87,7 +87,7 @@ type PresenceStore interface {
 
 // ChatStore stores user and channel chats and messages
 type ChatStore interface {
-	AddChat(ctx context.Context, senderUsername, senderUID, msg, channel, channelFriendly, regulateChat string) (*pb.ChatMessage, error)
+	AddChat(ctx context.Context, senderUsername, senderUID, msg, channel, channelFriendly string, regulateChat bool) (*pb.ChatMessage, error)
 	OldChats(ctx context.Context, channel string, n int) ([]*pb.ChatMessage, error)
 	LatestChannels(ctx context.Context, count, offset int, uid, tid string) (*upb.ActiveChatChannels, error)
 
