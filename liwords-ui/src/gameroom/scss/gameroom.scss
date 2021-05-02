@@ -720,6 +720,7 @@ p.streak-loss {
 .tile {
   @include colorModed() {
     background: m($tile-background);
+    border: m($tile-border);
     /* TODO
     &.tile-p0.tile-p0 {
       background-color: #0000ff;
@@ -731,6 +732,7 @@ p.streak-loss {
   }
   @include userTile() {
     background: ut($tile-background);
+    border: ut($tile-border);
   }
 }
 .tile.blank {
@@ -788,7 +790,7 @@ p.streak-loss {
   }
   @include userTile() {
     border: 0px solid transparent; // Fallback if border is a gradient
-    border: 1px solid ut($tile-last-background);
+    border: ut($tile-border);
     background: ut($tile-last-background);
   }
   &.blank {

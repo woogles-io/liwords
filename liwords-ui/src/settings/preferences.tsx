@@ -31,18 +31,54 @@ const KNOWN_TILE_ORDERS = [
 
 const KNOWN_BOARD_STYLES = [
   {
-    name: 'default',
+    name: 'Default',
     value: '',
   },
   {
-    name: 'NASSC',
-    value: 'nassc',
+    name: 'Cheery',
+    value: 'cheery',
+  },
+  {
+    name: 'Almost Colorless',
+    value: 'charcoal',
+  },
+  {
+    name: 'Forest',
+    value: 'forest',
+  },
+  {
+    name: 'Aflame',
+    value: 'aflame',
+  },
+  {
+    name: 'Teal and Plum',
+    value: 'teal',
+  },
+  {
+    name: 'Pastel',
+    value: 'pastel',
+  },
+  {
+    name: 'Vintage',
+    value: 'vintage',
+  },
+  {
+    name: 'Balsa',
+    value: 'balsa',
+  },
+  {
+    name: 'Mahogany',
+    value: 'mahogany',
+  },
+  {
+    name: 'Metallic',
+    value: 'metallic',
   },
 ];
 
 const KNOWN_TILE_STYLES = [
   {
-    name: 'default',
+    name: 'Default',
     value: '',
   },
   {
@@ -72,6 +108,10 @@ const KNOWN_TILE_STYLES = [
   {
     name: 'Teal',
     value: 'tealish',
+  },
+  {
+    name: 'Plum',
+    value: 'plumish',
   },
   {
     name: 'Pastel',
@@ -255,7 +295,7 @@ export const Preferences = React.memo((props: Props) => {
                 </div>
               </div>
             </div>
-            <div className="tile-order">Tile style</div>
+            <div className="board-style">Board style</div>
             <div className="board-selection">
               <Select
                 className="board-style-select"
