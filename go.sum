@@ -48,8 +48,8 @@ github.com/denisenkom/go-mssqldb v0.0.0-20200428022330-06a60b6afbbc h1:VRRKCwnzq
 github.com/denisenkom/go-mssqldb v0.0.0-20200428022330-06a60b6afbbc/go.mod h1:xbL0rPBG9cCiLr28tMa8zpbdarY27NDyej4t/EjAShU=
 github.com/dgrijalva/jwt-go v3.2.0+incompatible h1:7qlOGliEKZXTDg6OTjfoBKDXWrumCAMpl/TFQ4/5kLM=
 github.com/dgrijalva/jwt-go v3.2.0+incompatible/go.mod h1:E3ru+11k8xSBh+hMPgOLZmtrrCbhqsmaPHjLKYnJCaQ=
-github.com/domino14/macondo v0.4.5-0.20210313160700-3e8f4f5ff02a h1:0qBu0vspjlGku4jf7hbo1++/7dBv1JM3FB5m3/1JVBE=
-github.com/domino14/macondo v0.4.5-0.20210313160700-3e8f4f5ff02a/go.mod h1:PrS4/yiDGFM65QpBVqa6tJm5UJ7m5QU8BeGPqeRsv2Q=
+github.com/domino14/macondo v0.4.5-0.20210501031829-83edfa269b5d h1:7nPqNO8LaLNIFxAXl0eDxp4kW8LdIewNhYs7RUrNbUY=
+github.com/domino14/macondo v0.4.5-0.20210501031829-83edfa269b5d/go.mod h1:PrS4/yiDGFM65QpBVqa6tJm5UJ7m5QU8BeGPqeRsv2Q=
 github.com/envoyproxy/go-control-plane v0.9.1-0.20191026205805-5f8ba28d4473/go.mod h1:YTl/9mNaCwkRvm6d1a2C3ymFceY/DCBVvsKhRF0iEA4=
 github.com/envoyproxy/protoc-gen-validate v0.1.0/go.mod h1:iSmxcyjqTsJpI2R4NaDN7+kN2VEUnK/pcBlmesArF7c=
 github.com/erikstmartin/go-testdb v0.0.0-20160219214506-8d10e4a1bae5 h1:Yzb9+7DPaBjB8zlTR87/ElzFsnQfuHnVUVqpZZIcV5Y=
@@ -219,8 +219,6 @@ github.com/pkg/errors v0.9.1/go.mod h1:bwawxfHBFNV+L2hUp1rHADufV3IMtnDRdf1r5NINE
 github.com/pmezard/go-difflib v1.0.0 h1:4DBwDE0NGyQoBHbLQYPwSUPoCMWR5BEzIk/f1lZbAQM=
 github.com/pmezard/go-difflib v1.0.0/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
 github.com/prometheus/client_model v0.0.0-20190812154241-14fe0d1b01d4/go.mod h1:xMI15A0UPsDsEKsMN9yxemIoYk6Tm2C1GtYGdfGttqA=
-github.com/pyros2097/go-embed v0.0.0-20210109052941-d7cf67a0c154 h1:CcxaLLZjFFnugPFfiZ46nLBrGcgtPeA7Qk8cjtif/tA=
-github.com/pyros2097/go-embed v0.0.0-20210109052941-d7cf67a0c154/go.mod h1:/Pm5mr3VMg5ErYEDpCZGgWmp7vwN6VpcOG05QVhT37A=
 github.com/rogpeppe/go-internal v1.3.0/go.mod h1:M8bDsm7K2OlrFYOpmOWEs/qY81heoFRclV5y23lUDJ4=
 github.com/rs/xid v1.2.1 h1:mhH9Nq+C1fY2l1XIpgxIiUOfNpRBYH1kKcr+qfKgjRc=
 github.com/rs/xid v1.2.1/go.mod h1:+uKXf+4Djp6Md1KODXJxgGQPKngRmWyn10oCKFzNHOQ=
