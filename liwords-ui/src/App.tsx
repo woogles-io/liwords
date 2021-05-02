@@ -48,6 +48,15 @@ if (userTile) {
   document?.body?.classList?.add(`tile--${userTile}`);
 }
 
+const userBoard = localStorage?.getItem('userBoard');
+if (userBoard) {
+  document?.body?.classList?.add(`board--${userBoard}`);
+}
+const bnjyTile = localStorage?.getItem('bnjyMode') === 'true';
+if (bnjyTile) {
+  document?.body?.classList?.add(`bnjyMode`);
+}
+
 const App = React.memo(() => {
   const { useState } = useMountedState();
 

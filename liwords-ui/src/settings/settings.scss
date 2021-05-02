@@ -172,7 +172,7 @@
     }
   }
   .preferences {
-    .tile-order {
+    .tile-order, .tile-style, .board-style {
       font-weight: bold;
     }
     .tile-order-select {
@@ -449,7 +449,7 @@
     }
   }
 }
-.tile-selection {
+.tile-selection, .board-selection {
   display: flex;
   flex-direction: column;
   justify-content: space-between;
@@ -457,8 +457,14 @@
   .ant-select {
     min-width: 150px;
   }
+  .board-preview {
+    transform: scale(0.6);
+    left: -96px;
+    top: -96px;
+  }
   .previewer {
     display: flex;
+    padding-bottom: 12px;
     .tile-previewer {
       margin: 6px 6px 0 0;
       display: flex;

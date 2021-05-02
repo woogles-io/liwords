@@ -403,8 +403,10 @@ func (b *Bus) broadcastGameCreation(g *entity.Game, acceptor, requester *entity.
 	ratingKey := entity.ToVariantKey(g.GameReq.Lexicon, variant, timefmt)
 	players := []*gs.PlayerInfo{
 		{Rating: acceptor.GetRelevantRating(ratingKey),
+			UserId:   acceptor.UUID,
 			Nickname: acceptor.Username},
 		{Rating: requester.GetRelevantRating(ratingKey),
+			UserId:   requester.UUID,
 			Nickname: requester.Username},
 	}
 

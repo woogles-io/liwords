@@ -41,6 +41,13 @@ $board-dws: 'color-board-dws';
 $board-tws: 'color-board-tws';
 $board-tls: 'color-board-tls';
 $board-empty: 'color-board-empty';
+$board-fill: 'color-board-fill';
+$board-space-opacity: 'number-board-space-opacity';
+$board-space-mix-mode: 'type-board-space-mix-mode';
+$board-center-icon: 'color-center-icon';
+$board-center-fill: 'color-center-fill';
+$board-bonus-text: 'color-bonus-text';
+$board-selection-color: 'color-selection-color';
 
 $tile-background: 'color-tile-background';
 $tile-background-secondary: 'color-tile-background-secondary';
@@ -51,7 +58,7 @@ $tile-text: 'color-tile-text';
 $tile-last-background: 'color-tile-last-background';
 $tile-last-text: 'color-tile-last-text';
 $tile-last-blank: 'color-tile-last-blank';
-
+$tile-border: 'color-tile-border';
 $list-header: 'color-list-header';
 $list-header-text: 'color-list-header-text';
 
@@ -118,6 +125,7 @@ $modes: (
           color-tile-last-background: #f4b000,
           color-tile-last-text: #414141,
           color-tile-last-blank: #414141,
+          color-tile-border: 0px solid transparent,
 
           color-timer-light: #e5ffdf,
           color-timer-dark: #449e2d,
@@ -177,6 +185,7 @@ $modes: (
           color-tile-last-background: #fbe5ae,
           color-tile-last-text: #414141,
           color-tile-last-blank: #414141,
+          color-tile-border: 0px solid transparent,
 
           color-timer-light: #24542d,
           color-timer-dark: #b2e49b,

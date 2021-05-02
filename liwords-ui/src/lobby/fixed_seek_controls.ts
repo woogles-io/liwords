@@ -103,6 +103,16 @@ const nyc = {
   vsBot: false,
 };
 
+const wandertypo = {
+  challengerule: ChallengeRule.VOID,
+  initialtime: 7, // 5 minutes
+  rated: true,
+  extratime: 5,
+  friend: '',
+  incOrOT: 'increment',
+  vsBot: false,
+};
+
 export const fixedSettings: { [key: string]: settings } = {
   phillyvirtual,
   cococlub,
@@ -114,6 +124,7 @@ export const fixedSettings: { [key: string]: settings } = {
   cbCrE5EAnfTpacaZkxc4SZ: asci, // /tournament
   CSLUwqH4rHUTKzNcp7cPRP: asci, // /club
   CL9GW5sDfNqeX2yiPRg9YF: nyc,
+  aGaSXfc4XDwUFBpkhZ9Jz3: wandertypo,
 };
 
 // A temporary map of club redirects. Map internal tournament ID to slug:

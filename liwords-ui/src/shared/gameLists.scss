@@ -12,6 +12,9 @@
       transition: none;
     }
   }
+  .ant-table-column-sorters {
+    padding: 16px 0;
+  }
   .ant-table-thead > tr, .ant-table-tbody > tr {
     @include colorModed() {
       background: m($card-background);
@@ -27,6 +30,9 @@
     text-transform: uppercase;
     &.details {
       text-align: right;
+    }
+    &.time, &.lexicon {
+      text-align: center;
     }
   }
   .ant-table-thead > tr > th, .ant-table-tbody > tr > td {
@@ -79,14 +85,66 @@
     }
   }
   .games {
+    .player-display {
+      display: flex;
+      align-items: center;
+      .player-avatar {
+        display: none;
+        width: 24px;
+        height: 24px;
+        min-width: 24px;
+        font-size: 15px;
+        margin-right: 6px;
+        @media (min-width: $screen-desktop-min) {
+          display: flex;
+          width: 36px;
+          height: 36px;
+          min-width: 36px;
+          font-size: 20px;
+          margin-right: 12px;
+        }
+      }
+      .player-name {
+        font-weight: 700;
+      }
+      .country-flag {
+        top: 0px;
+        margin-left: 6px;
+        width: 15px;
+        height: 11px;
+      }
+    }
     tr.ant-table-row.game-listing {
       cursor: pointer;
       &.resume,
       &.outgoing {
-        font-weight: bold;
         .anticon {
           margin-left: 6px;
         }
+      }
+      .seeker {
+        width: 300px;
+      }
+      .players {
+        width: 350px;
+      }
+      .time, .lexicon {
+        text-align: center;
+      }
+      .players > div {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 3px 0;
+        .ant-tag {
+          height: 22px;
+        }
+      }
+      td
+      { vertical-align: middle;
+      }
+      .rating {
+        text-align: center;
       }
       &.resume, &.outgoing {
         position: relative;

@@ -9,6 +9,7 @@ import {
 
 export type SoughtGame = {
   seeker: string;
+  seekerID?: string;
   lexicon: string;
   initialTimeSecs: number;
   incrementSecs: number;
@@ -27,6 +28,7 @@ export type SoughtGame = {
 type playerMeta = {
   rating: string;
   displayName: string;
+  uuid?: string;
 };
 
 export type ActiveGame = {
@@ -73,6 +75,7 @@ export const SeekRequestToSoughtGame = (
 
   return {
     seeker: user.getDisplayName(),
+    seekerID: user.getUserId(),
     userRating: user.getRelevantRating(),
     lexicon: gameReq.getLexicon(),
     initialTimeSecs: gameReq.getInitialTimeSeconds(),
@@ -93,16 +96,15 @@ export const GameInfoResponseToActiveGame = (
 ): ActiveGame | null => {
   const users = gi.getPlayersList();
   const gameReq = gi.getGameRequest();
-
   const players = users.map((um) => ({
     rating: um.getRating(),
     displayName: um.getNickname(),
+    uuid: um.getUserId(),
   }));
 
   if (!gameReq) {
     return null;
   }
-
   let variant = gameReq.getRules()?.getVariantName();
   if (!variant) {
     variant = gameReq.getRules()?.getBoardLayoutName()!;
