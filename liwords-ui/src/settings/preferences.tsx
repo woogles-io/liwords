@@ -4,6 +4,7 @@ import { Col, Row, Select, Switch } from 'antd';
 import { preferredSortOrder, setPreferredSortOrder } from '../store/constants';
 import '../gameroom/scss/gameroom.scss';
 import { TileLetter, PointValue } from '../gameroom/tile';
+import { BoardPreview } from './board_preview';
 type Props = {};
 
 const KNOWN_TILE_ORDERS = [
@@ -29,9 +30,56 @@ const KNOWN_TILE_ORDERS = [
   },
 ];
 
+const KNOWN_BOARD_STYLES = [
+  {
+    name: 'Default',
+    value: '',
+  },
+  {
+    name: 'Cheery',
+    value: 'cheery',
+  },
+  {
+    name: 'Almost Colorless',
+    value: 'charcoal',
+  },
+  {
+    name: 'Forest',
+    value: 'forest',
+  },
+  {
+    name: 'Aflame',
+    value: 'aflame',
+  },
+  {
+    name: 'Teal and Plum',
+    value: 'tealish',
+  },
+  {
+    name: 'Pastel',
+    value: 'pastel',
+  },
+  {
+    name: 'Vintage',
+    value: 'vintage',
+  },
+  {
+    name: 'Balsa',
+    value: 'balsa',
+  },
+  {
+    name: 'Mahogany',
+    value: 'mahogany',
+  },
+  {
+    name: 'Metallic',
+    value: 'metallic',
+  },
+];
+
 const KNOWN_TILE_STYLES = [
   {
-    name: 'default',
+    name: 'Default',
     value: '',
   },
   {
@@ -63,6 +111,10 @@ const KNOWN_TILE_STYLES = [
     value: 'tealish',
   },
   {
+    name: 'Plum',
+    value: 'plumish',
+  },
+  {
     name: 'Pastel',
     value: 'pastel',
   },
@@ -87,8 +139,11 @@ export const Preferences = React.memo((props: Props) => {
     localStorage?.getItem('darkMode') === 'true'
   );
   const initialTileStyle = localStorage?.getItem('userTile') || 'default';
-
   const [userTile, setUserTile] = useState<string>(initialTileStyle);
+
+  const initialBoardStyle = localStorage?.getItem('userBoard') || 'default';
+  const [userBoard, setUserBoard] = useState<string>(initialBoardStyle);
+
   const toggleDarkMode = useCallback(() => {
     const useDarkMode = localStorage?.getItem('darkMode') !== 'true';
     localStorage.setItem('darkMode', useDarkMode ? 'true' : 'false');
@@ -116,17 +171,18 @@ export const Preferences = React.memo((props: Props) => {
     setUserTile(tileStyle);
   }, []);
 
-  const [enableAllLexicons, setEnableAllLexicons] = useState(
-    localStorage?.getItem('enableAllLexicons') === 'true'
-  );
-  const toggleEnableAllLexicons = useCallback(() => {
-    const wantEnableAllLexicons =
-      localStorage?.getItem('enableAllLexicons') !== 'true';
-    localStorage.setItem(
-      'enableAllLexicons',
-      wantEnableAllLexicons ? 'true' : 'false'
-    );
-    setEnableAllLexicons((x) => !x);
+  const handleUserBoardChange = useCallback((boardStyle: string) => {
+    const classes = document?.body?.className
+      .split(' ')
+      .filter((c) => !c.includes('board--'));
+    document.body.className = classes.join(' ').trim();
+    if (boardStyle !== 'default') {
+      localStorage.setItem('userBoard', boardStyle);
+      document?.body?.classList?.add(`board--${boardStyle}`);
+    } else {
+      localStorage.removeItem('userBoard');
+    }
+    setUserBoard(boardStyle);
   }, []);
 
   const [tileOrder, setTileOrder] = useState(preferredSortOrder ?? '');
@@ -227,18 +283,27 @@ export const Preferences = React.memo((props: Props) => {
                 </div>
               </div>
             </div>
+            <div className="board-style">Board style</div>
+            <div className="board-selection">
+              <Select
+                className="board-style-select"
+                size="large"
+                defaultValue={userBoard}
+                onChange={handleUserBoardChange}
+              >
+                {KNOWN_BOARD_STYLES.map(({ name, value }) => (
+                  <Select.Option value={value} key={value}>
+                    {name}
+                  </Select.Option>
+                ))}
+              </Select>
+            </div>
+            <div className="previewer">
+              <BoardPreview />
+            </div>
           </div>
         </Col>
       </Row>
-      <div className="section-header">Lexicons</div>
-      <div className="toggle-section">
-        <div>Enable all lexicons</div>
-        <Switch
-          defaultChecked={enableAllLexicons}
-          onChange={toggleEnableAllLexicons}
-          className="dark-toggle"
-        />
-      </div>
     </div>
   );
 });

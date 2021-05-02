@@ -105,8 +105,6 @@ export const GameInfoResponseToActiveGame = (
   if (!gameReq) {
     return null;
   }
-  console.log('Trying, ', players);
-
   let variant = gameReq.getRules()?.getVariantName();
   if (!variant) {
     variant = gameReq.getRules()?.getBoardLayoutName()!;

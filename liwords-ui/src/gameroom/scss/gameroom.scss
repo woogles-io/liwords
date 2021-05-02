@@ -1,6 +1,7 @@
 @import '../../base';
 @import '../../shared/layout';
 @import '../../tile_modes';
+@import '../../board_modes';
 
 @include button;
 @include notification;
@@ -330,6 +331,9 @@ p.streak-loss {
   @include colorModed() {
     background: m($grid);
   }
+  @include userboard() {
+    background: ub($grid);
+  }
 }
 .board-spaces,
 .tiles {
@@ -346,6 +350,9 @@ p.streak-loss {
   // Using a box shadow that looks like a border to not mess up the grid
   @include colorModed() {
     box-shadow: m($board-shadow);
+  }
+  @include userboard() {
+    background: ub($board-fill);
   }
 }
 
@@ -370,11 +377,18 @@ p.streak-loss {
   display: flex;
   justify-content: center;
   align-items: center;
+  border: transparent 1px solid;
   @include colorModed() {
     background-color: m($background);
     border-color: transparent transparent m($grid) m($grid);
   }
-  border: transparent 1px solid;
+  @include userboard() {
+    opacity: ub($board-space-opacity);
+    mix-blend-mode: ub($board-space-mix-mode);
+    background-color: ub($board-empty);
+    border-color: transparent transparent ub($grid) ub($grid);
+  }
+
 
 }
 
@@ -392,6 +406,9 @@ p.streak-loss {
     @include colorModed() {
       color: m($timer-dark);
     }
+    @include userboard() {
+      color: ub($board-selection-color);
+    }
   }
   .bonus-label {
     text-align: center;
@@ -405,6 +422,9 @@ p.streak-loss {
     opacity: 0;
     @include colorModed() {
       color: m($background);
+    }
+    @include userboard() {
+      color: ub($board-bonus-text);
     }
    }
   &:hover {
@@ -421,14 +441,23 @@ p.streak-loss {
     @include colorModed() {
       background: m($board-empty);
     }
+    @include userboard() {
+      background: ub($board-empty);
+    }
   }
   &.bonus-3WS {
     @include colorModed() {
       background-color: m($board-tws);
     }
+    @include userboard() {
+      background-color: ub($board-tws);
+    }
     .bonus-label {
       @include colorModed() {
         color: m($white);
+      }
+      @include userboard() {
+        color: ub($board-bonus-text);
       }
     }
     &.selected {
@@ -436,9 +465,16 @@ p.streak-loss {
         background-color: mix(m($board-tws), m($white), $weight: 70%);
         border-color: scale-color(m($timer-light), $lightness: -10%);
       };
+      @include userboard() {
+        background-color: blender(ub($board-tws), ub($board-empty));
+        border-color: lightener(ub($board-selection-color));
+      }
       .anticon {
         @include colorModed() {
           color: scale-color(m($timer-light), $lightness: -10%);
+        }
+        @include userboard() {
+          color: ub($board-selection-color);
         }
       }
     }
@@ -447,32 +483,60 @@ p.streak-loss {
     @include colorModed() {
       background-color: m($board-dws);
     }
+    @include userboard() {
+      background-color: ub($board-dws);
+    }
     .anticon-star {
       @include colorModed() {
         color: m($board-tws);
       }
-    }
-    &.selected {
-      @include colorModed() {
-        background-color: mix(m($board-dws), m($timer-light), $weight: 60%);
-      };
-      .anticon-star {
-        display: none;
+      @include userboard() {
+        color: ub($board-center-icon);
       }
     }
     .bonus-label {
       @include colorModed() {
         color: mix(m($board-tws), m($gray-extreme), $weight: 30%);
       };
+      @include userboard() {
+        color: ub($board-bonus-text);
+      }
     }
+    &.selected {
+      @include colorModed() {
+        background-color: mix(m($board-dws), m($timer-light), $weight: 60%);
+      };
+      @include userboard() {
+        background-color: blender(ub($board-dws), ub($board-empty));
+        border-color: lightener(ub($board-selection-color));
+      }
+      .anticon {
+        @include colorModed() {
+          color: m($timer-dark);
+        }
+        @include userboard() {
+          color: ub($board-selection-color);
+        }
+      }
+      .anticon-star {
+        display: none;
+      }
+    }
+
   }
   &.bonus-3LS {
     @include colorModed() {
       background-color: m($board-tls);
     };
+    @include userboard() {
+      background-color: ub($board-tls);
+    }
     .bonus-label {
       @include colorModed() {
         color: m($white);
+      };
+      @include userboard() {
+        color: ub($board-bonus-text);
       };
     }
     &.selected {
@@ -480,9 +544,16 @@ p.streak-loss {
         background-color: mix(m($board-tls), m($white), $weight: 70%);
         border-color: scale-color(m($timer-light), $lightness: -10%);
       };
+      @include userboard() {
+        background-color: blender(ub($board-tls), ub($board-empty));
+        border-color: lightener(ub($board-selection-color));
+      }
       .anticon {
         @include colorModed() {
           color: scale-color(m($timer-light), $lightness: -10%);
+        }
+        @include userboard() {
+          color: ub($board-selection-color);
         }
       }
     }
@@ -491,15 +562,25 @@ p.streak-loss {
     @include colorModed() {
       background-color: m($board-dls);
     };
+    @include userboard() {
+      background-color: ub($board-dls);
+    }
     &.selected {
       @include colorModed() {
         background-color: mix(m($board-dls), m($timer-light), $weight: 30%);
       };
+      @include userboard() {
+        background-color: blender(ub($board-dls), ub($board-empty));
+        border-color: lightener(ub($board-selection-color));
+      }
     }
     .bonus-label {
       @include colorModed() {
         color: mix(m($board-tls), m($gray-extreme), $weight: 20%);
       };
+      @include userboard() {
+        color: ub($board-bonus-text);
+      }
     }
   }
   &.selected {
@@ -507,6 +588,10 @@ p.streak-loss {
       border: 1px solid m($timer-dark);
       background-color: m($timer-light);
     };
+    @include userboard() {
+      border: 1px solid ub($board-selection-color);
+      background-color: blender(ub($board-empty), ub($board-selection-color), );
+    }
   }
 }
 @keyframes fadeIn {
@@ -635,6 +720,7 @@ p.streak-loss {
 .tile {
   @include colorModed() {
     background: m($tile-background);
+    border: m($tile-border);
     /* TODO
     &.tile-p0.tile-p0 {
       background-color: #0000ff;
@@ -646,6 +732,7 @@ p.streak-loss {
   }
   @include userTile() {
     background: ut($tile-background);
+    border: ut($tile-border);
   }
 }
 .tile.blank {
@@ -703,7 +790,7 @@ p.streak-loss {
   }
   @include userTile() {
     border: 0px solid transparent; // Fallback if border is a gradient
-    border: 1px solid ut($tile-last-background);
+    border: ut($tile-border);
     background: ut($tile-last-background);
   }
   &.blank {

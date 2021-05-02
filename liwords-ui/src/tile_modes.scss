@@ -14,6 +14,7 @@ $tiles: (
           color-tile-last-background: ignore,
           color-tile-last-text: ignore,
           color-tile-last-blank: ignore,
+          color-tile-border: ignore,
         ),
         charcoal: (
           color-tile-background: #414141,
@@ -25,6 +26,7 @@ $tiles: (
           color-tile-last-background: #888,
           color-tile-last-text: #222,
           color-tile-last-blank: #222,
+          color-tile-border: 0px solid transparent,
         ),
         whitish: (
           color-tile-background: #efefef,
@@ -36,6 +38,7 @@ $tiles: (
           color-tile-last-background: #CCC,
           color-tile-last-text: #414141,
           color-tile-last-blank: #414141,
+          color-tile-border: 0px solid transparent,
         ),
         metallic: (
           color-tile-background: linear-gradient(45deg, #97a0ca 0%, #e0d2c0 30%, #f1eee8 44%, #a7bdcd 96%),
@@ -47,6 +50,7 @@ $tiles: (
           color-tile-last-background: linear-gradient(76deg, #858bae 0%, #b1aca2 30%, #807b72 44%, #567791 96%),
           color-tile-last-text: #FFF,
           color-tile-last-blank: rgba(1,1,1,0.3),
+          color-tile-border: 1px solid #888,
         ),
         balsa: (
           color-tile-background: #efd8c0,
@@ -58,6 +62,7 @@ $tiles: (
           color-tile-last-background: #9d8367,
           color-tile-last-text: #fff0da,
           color-tile-last-blank: #f6ede3,
+          color-tile-border: 0px solid transparent,
         ),
         mahogany: (
           color-tile-background: #582d25,
@@ -69,6 +74,7 @@ $tiles: (
           color-tile-last-background: #9d5442,
           color-tile-last-text: #f5ddb7,
           color-tile-last-blank: #f5ddb7,
+          color-tile-border: 0px solid transparent,
         ),
         brick: (
           color-tile-background: #831721,
@@ -80,6 +86,19 @@ $tiles: (
           color-tile-last-background: #cb6369,
           color-tile-last-text: #431417,
           color-tile-last-blank: #431417,
+          color-tile-border: 0px solid transparent,
+        ),
+        plumish: (
+          color-tile-background: #63304c,
+          color-tile-background-secondary: #8d6e92, //Circle in blank
+          color-tile-background-tertiary: #6b3a57, //Tentative background
+          color-tile-background-quaternary: #8d6e92,  //Tentative blank circle
+          color-tile-blank-text: #fcf8f4,
+          color-tile-text: #FCF8F4,
+          color-tile-last-background: #8d6e92,
+          color-tile-last-text: #FCF8F4,
+          color-tile-last-blank: #481d35,
+          color-tile-border: 0px solid transparent,
         ),
         forest: (
           color-tile-background: #175133,
@@ -91,6 +110,7 @@ $tiles: (
           color-tile-last-background: #57ae6a,
           color-tile-last-text: #043511,
           color-tile-last-blank: #043511,
+          color-tile-border: 0px solid transparent,
         ),
         tealish: (
           color-tile-background: #008080,
@@ -102,6 +122,7 @@ $tiles: (
           color-tile-last-background: #61bab3,
           color-tile-last-text: #124545,
           color-tile-last-blank: #124545,
+          color-tile-border: 0px solid transparent,
         ),
         pastel: (
             color-tile-background: #f8cdc1,
@@ -113,6 +134,7 @@ $tiles: (
             color-tile-last-background: #674f69,
             color-tile-last-text: #fad4c9,
             color-tile-last-blank: #fad4c9,
+            color-tile-border: 0px solid transparent,
         ),
         fuchsiaish: (
           color-tile-background: #c82559,
@@ -124,6 +146,7 @@ $tiles: (
           color-tile-last-background: #ef5284,
           color-tile-last-text: #fff,
           color-tile-last-blank: #fff,
+          color-tile-border: 0px solid transparent,
         ),
         blueish: (
           color-tile-background: #2d6a9e,
@@ -135,6 +158,7 @@ $tiles: (
           color-tile-last-background: #a4dffc,
           color-tile-last-text: #193a57,
           color-tile-last-blank: #193a57,
+          color-tile-border: 0px solid transparent,
         ),
 );
 
