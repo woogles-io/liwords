@@ -82,7 +82,11 @@ const App = React.memo(() => {
     setModsFetched,
   } = useModeratorStoreContext();
 
-  const { setFriends } = useFriendsStoreContext();
+  const {
+    setFriends,
+    pendingFriendsRefresh,
+    setPendingFriendsRefresh,
+  } = useFriendsStoreContext();
 
   const { resetStore } = useResetStoreContext();
 
@@ -184,12 +188,19 @@ const App = React.memo(() => {
       })
       .catch((e) => {
         console.log(e);
-      });
-  }, [setFriends]);
+      })
+      .finally(() => setPendingFriendsRefresh(false));
+  }, [setFriends, setPendingFriendsRefresh]);
 
   useEffect(() => {
     getFriends();
   }, [getFriends]);
+
+  useEffect(() => {
+    if (pendingFriendsRefresh) {
+      getFriends();
+    }
+  }, [getFriends, pendingFriendsRefresh]);
 
   const sendChat = useCallback(
     (msg: string, chan: string) => {

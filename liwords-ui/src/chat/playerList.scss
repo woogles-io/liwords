@@ -1,0 +1,89 @@
+@import '../base';
+
+.player-pane {
+  padding: 24px;
+  .breadcrumb {
+    margin: 12px 0;
+    @include colorModed() {
+      color: m($gray-dark);
+    }
+  }
+}
+.player-list {
+  p.prompt {
+    padding: 12px 0;
+    @include colorModed() {
+      color: m($gray-extreme);
+    }
+  }
+  input {
+    margin-bottom: 12px;
+  }
+  .player-display {
+    margin: 6px 0;
+    display: flex;
+    align-items: center;
+    .player-avatar {
+      display: flex;
+      margin-right: 12px;
+      position: relative;
+      &:after {
+        width: 15px;
+        height: 15px;
+        border-radius: 50%;
+        border: 2px solid white;
+        position: absolute;
+        top: 0;
+        left: 0;
+        content: " ";
+        white-space: pre;
+        @include colorModed() {
+          background: m($timer-dark);
+          border-color: m($card-background);
+        }
+      }
+    }
+    .player-name {
+      font-weight: 700;
+      @include colorModed() {
+        color: m($gray-extreme);
+      }
+    }
+    .country-flag {
+      margin-left: 9px;
+      width: 15px;
+      height: 11px;
+    }
+    &.offline {
+      .player-name {
+        @include colorModed() {
+          color: m($gray-medium);
+        }
+        font-style: oblique;
+      }
+      .player-avatar:after {
+        background: transparent;
+        border: 0px solid transparent;
+      }
+    }
+    &.ingame {
+      .player-avatar:after {
+        border-radius: 1px;
+        width: 14px;
+        height: 14px;
+        @include colorModed() {
+          background: m($primary-dark);
+        }
+      }
+    }
+    &.search {
+      .player-name {
+        @include colorModed() {
+          color: m($gray-extreme);
+        }
+        font-style: normal;
+        font-weight: 400;
+      }
+    }
+  }
+}

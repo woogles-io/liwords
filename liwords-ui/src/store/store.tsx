@@ -103,6 +103,8 @@ type FriendsStoreData = {
   setFriends: React.Dispatch<
     React.SetStateAction<{ [uuid: string]: FriendUser }>
   >;
+  pendingFriendsRefresh: boolean;
+  setPendingFriendsRefresh: React.Dispatch<React.SetStateAction<boolean>>;
 };
 
 type ModeratorsStoreData = {
@@ -262,6 +264,8 @@ const ExcludedPlayersContext = createContext<ExcludedPlayersStoreData>({
 const FriendsContext = createContext<FriendsStoreData>({
   friends: {},
   setFriends: defaultFunction,
+  pendingFriendsRefresh: false,
+  setPendingFriendsRefresh: defaultFunction,
 });
 
 const ModeratorsContext = createContext<ModeratorsStoreData>({
@@ -787,6 +791,7 @@ const RealStore = ({ children, ...props }: Props) => {
   >(undefined);
   const [excludedPlayers, setExcludedPlayers] = useState(new Set<string>());
   const [friends, setFriends] = useState({});
+  const [pendingFriendsRefresh, setPendingFriendsRefresh] = useState(false);
   const [excludedPlayersFetched, setExcludedPlayersFetched] = useState(false);
   const [pendingBlockRefresh, setPendingBlockRefresh] = useState(false);
   const [moderators, setModerators] = useState(new Set<string>());
@@ -950,8 +955,10 @@ const RealStore = ({ children, ...props }: Props) => {
     () => ({
       friends,
       setFriends,
+      pendingFriendsRefresh,
+      setPendingFriendsRefresh,
     }),
-    [friends, setFriends]
+    [friends, setFriends, pendingFriendsRefresh, setPendingFriendsRefresh]
   );
   const moderatorsStore = useMemo(
     () => ({

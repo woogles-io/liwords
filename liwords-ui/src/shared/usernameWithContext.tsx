@@ -35,6 +35,22 @@ export const UsernameWithContext = (props: UsernameWithContextProps) => {
 
   const userMenu = (
     <ul>
+      {loggedIn &&
+      !props.omitSendMessage &&
+      props.userID &&
+      props.userID !== userID &&
+      props.sendMessage ? (
+        <li
+          className="link plain"
+          onClick={() => {
+            if (props.sendMessage) {
+              props.sendMessage(props.userID!, props.username);
+            }
+          }}
+        >
+          Chat
+        </li>
+      ) : null}
       {!props.omitProfileLink && (
         <li>
           <Link
@@ -54,18 +70,7 @@ export const UsernameWithContext = (props: UsernameWithContextProps) => {
           tagName="li"
         />
       ) : null}
-      {!props.omitSendMessage && props.userID && props.userID !== userID ? (
-        <li
-          className="link plain"
-          onClick={() => {
-            if (props.sendMessage) {
-              props.sendMessage(props.userID!, props.username);
-            }
-          }}
-        >
-          Message
-        </li>
-      ) : null}
+
       {loggedIn && props.userID && !props.omitBlock ? (
         <TheBlocker
           blockCallback={props.blockCallback}

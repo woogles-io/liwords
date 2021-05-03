@@ -48,7 +48,7 @@ type JSONActiveChatChannels = {
   channels: Array<JSONChatChannel>;
 };
 
-export const Chat = React.memo((props: Props) => {
+export const Chat = (props: Props) => {
   const { useState } = useMountedState();
   const { loginState } = useLoginStateStoreContext();
   const { tournamentContext } = useTournamentStoreContext();
@@ -57,20 +57,19 @@ export const Chat = React.memo((props: Props) => {
   const [curMsg, setCurMsg] = useState('');
   const [hasScroll, setHasScroll] = useState(false);
   const [channelsFetched, setChannelsFetched] = useState(false);
-  const [showChannels, setShowChannels] = useState(false);
-  const [selectedChatTab, setSelectedChatTab] = useState('CHAT');
   const [presenceVisible, setPresenceVisible] = useState(false);
   // We cannot useRef because we need to awoken effects relying on the element.
   const [
     tabContainerElement,
     setTabContainerElement,
   ] = useState<HTMLDivElement | null>(null);
+  const { defaultChannel, defaultDescription } = props;
+  const [showChannels, setShowChannels] = useState(false);
   const propsSendChat = useMemo(() => props.sendChat, [props.sendChat]);
+  const [selectedChatTab, setSelectedChatTab] = useState('CHAT');
   const chatTab = selectedChatTab === 'CHAT' ? tabContainerElement : null;
-
   // Chat auto-scrolls when the last entity is visible.
   const [hasUnreadChat, setHasUnreadChat] = useState(false);
-  const { defaultChannel, defaultDescription } = props;
   const {
     chat: chatEntities,
     clearChat,
@@ -141,6 +140,28 @@ export const Chat = React.memo((props: Props) => {
       doChatAutoScroll();
     }
   }, [doChatAutoScroll, maxEntitiesHeight]);
+
+  const sendNewMessage = useCallback(
+    (receiverId: string, username: string) => {
+      const calculatePMChannel = (receiverID: string) => {
+        let u1 = loginState.userID;
+        let u2 = receiverID;
+        if (u2 < u1) {
+          [u1, u2] = [u2, u1];
+        }
+        return `chat.pm.${u1}_${u2}`;
+      };
+      if (loginState.loggedIn) {
+        setSelectedChatTab('CHAT');
+        setChannel(calculatePMChannel(receiverId));
+        setDescription(`Chat with ${username}`);
+        setShowChannels(false);
+      } else {
+        console.log(loginState);
+      }
+    },
+    [loginState]
+  );
 
   useEffect(() => {
     setHeight();
@@ -245,7 +266,10 @@ export const Chat = React.memo((props: Props) => {
   useEffect(() => {
     setChannel(defaultChannel);
     setDescription(defaultDescription);
-  }, [defaultChannel, defaultDescription]);
+    if (loggedIn && defaultChannel === 'chat.lobby') {
+      setSelectedChatTab('PLAYERS');
+    }
+  }, [defaultChannel, defaultDescription, loggedIn]);
 
   const decoratedDescription = useMemo(() => {
     switch (channelType) {
@@ -401,18 +425,6 @@ export const Chat = React.memo((props: Props) => {
     }
   }, [chatTab]);
 
-  const calculatePMChannel = useCallback(
-    (receiverID: string) => {
-      let u1 = userID;
-      let u2 = receiverID;
-      if (u2 < u1) {
-        [u1, u2] = [u2, u1];
-      }
-      return `chat.pm.${u1}_${u2}`;
-    },
-    [userID]
-  );
-
   const entities = useMemo(
     () =>
       chatEntities
@@ -438,15 +450,7 @@ export const Chat = React.memo((props: Props) => {
               timestamp={ent.timestamp}
               highlight={specialSender}
               highlightText={props.highlightText}
-              sendMessage={
-                loggedIn
-                  ? (userID: string, username: string) => {
-                      setChannel(calculatePMChannel(userID));
-                      setDescription(`Chat with ${username}`);
-                      setShowChannels(false);
-                    }
-                  : undefined
-              }
+              sendMessage={sendNewMessage}
             />
           );
         }),
@@ -455,8 +459,7 @@ export const Chat = React.memo((props: Props) => {
       props.highlight,
       props.highlightText,
       channel,
-      loggedIn,
-      calculatePMChannel,
+      sendNewMessage,
     ]
   );
 
@@ -494,17 +497,9 @@ export const Chat = React.memo((props: Props) => {
   );
   return (
     <Card className="chat" id="chat">
-      <Tabs
-        defaultActiveKey={defaultChannel === 'chat.lobby' ? 'PLAYERS' : 'CHAT'}
-        centered
-        onTabClick={handleTabClick}
-      >
-        {/* TabPane for available players to chat with goes here:
-          past chats, friends, all online players.
-          It's not the same as the users in this current chat group.
-         */}
-        <TabPane tab={<>Players</>} key="PLAYERS">
-          <Players />
+      <Tabs activeKey={selectedChatTab} centered onTabClick={handleTabClick}>
+        <TabPane tab={<>Players</>} key="PLAYERS" className="player-pane">
+          <Players sendMessage={sendNewMessage} />
         </TabPane>
         <TabPane tab="Chat" key="CHAT">
           {showChannels ? (
@@ -521,15 +516,7 @@ export const Chat = React.memo((props: Props) => {
                 }
                 setShowChannels(false);
               }}
-              sendMessage={
-                loggedIn
-                  ? (userID: string, username: string) => {
-                      setChannel(calculatePMChannel(userID));
-                      setDescription(`Chat with ${username}`);
-                      setShowChannels(false);
-                    }
-                  : undefined
-              }
+              sendMessage={sendNewMessage}
               tournamentID={props.tournamentID}
             />
           ) : (
@@ -594,15 +581,7 @@ export const Chat = React.memo((props: Props) => {
                           <Presences
                             players={presences}
                             channel={channel}
-                            sendMessage={
-                              loggedIn
-                                ? (userID: string, username: string) => {
-                                    setChannel(calculatePMChannel(userID));
-                                    setDescription(`Chat with ${username}`);
-                                    setShowChannels(false);
-                                  }
-                                : undefined
-                            }
+                            sendMessage={sendNewMessage}
                           />
                         </p>
                       ) : null}
@@ -630,6 +609,7 @@ export const Chat = React.memo((props: Props) => {
                       ? 'Ask or answer question...'
                       : 'chat...'
                   }
+                  name="chat-input"
                   disabled={!loggedIn}
                   onKeyDown={onKeyDown}
                   onChange={onChange}
@@ -644,4 +624,4 @@ export const Chat = React.memo((props: Props) => {
       </Tabs>
     </Card>
   );
-});
+};

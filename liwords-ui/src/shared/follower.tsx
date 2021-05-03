@@ -15,7 +15,7 @@ type FollowerProps = {
 };
 
 export const TheFollower = (props: FollowerProps) => {
-  const { friends } = useFriendsStoreContext();
+  const { friends, setPendingFriendsRefresh } = useFriendsStoreContext();
   const { loginState } = useLoginStateStoreContext();
   const { userID } = loginState;
 
@@ -25,8 +25,7 @@ export const TheFollower = (props: FollowerProps) => {
 
   let apiFunc: string;
   let friendText: string;
-
-  if (friends[userID]) {
+  if (friends[props.target]) {
     apiFunc = 'Remove';
     friendText = 'Remove from friends';
   } else {
@@ -59,6 +58,9 @@ export const TheFollower = (props: FollowerProps) => {
         } else {
           console.log(e);
         }
+      })
+      .finally(() => {
+        setPendingFriendsRefresh(true);
       });
   };
 
