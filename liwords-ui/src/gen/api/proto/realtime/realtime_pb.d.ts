@@ -1407,6 +1407,8 @@ export class DivisionRoundControls extends jspb.Message {
   setDivisionPairingsList(value: Array<Pairing>): void;
   addDivisionPairings(value?: Pairing, index?: number): Pairing;
 
+  getDivisionStandingsMap(): jspb.Map<number, RoundStandings>;
+  clearDivisionStandingsMap(): void;
   serializeBinary(): Uint8Array;
   toObject(includeInstance?: boolean): DivisionRoundControls.AsObject;
   static toObject(includeInstance: boolean, msg: DivisionRoundControls): DivisionRoundControls.AsObject;
@@ -1423,6 +1425,7 @@ export namespace DivisionRoundControls {
     division: string,
     roundControlsList: Array<RoundControl.AsObject>,
     divisionPairingsList: Array<Pairing.AsObject>,
+    divisionStandingsMap: Array<[number, RoundStandings.AsObject]>,
   }
 }
 

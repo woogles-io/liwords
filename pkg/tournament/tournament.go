@@ -174,6 +174,10 @@ func SetSingleRoundControls(ctx context.Context, ts TournamentStore, id string, 
 		return fmt.Errorf("tournament %s has finished", id)
 	}
 
+	if !t.IsStarted {
+		return errors.New("cannot set controls for a single round before the tournament has started")
+	}
+
 	divisionObject, ok := t.Divisions[division]
 
 	if !ok {
@@ -182,6 +186,11 @@ func SetSingleRoundControls(ctx context.Context, ts TournamentStore, id string, 
 
 	if divisionObject.DivisionManager == nil {
 		return fmt.Errorf("division manager null for division %s", division)
+	}
+
+	currentRound := divisionObject.DivisionManager.GetCurrentRound()
+	if round < currentRound+1 {
+		return fmt.Errorf("cannot set single round controls for non-future round %d since current round is %d", round, currentRound)
 	}
 
 	newControls, err := divisionObject.DivisionManager.SetSingleRoundControls(round, controls)
@@ -221,7 +230,7 @@ func SetRoundControls(ctx context.Context, ts TournamentStore, id string, divisi
 		return errors.New("cannot set division round controls after it has started")
 	}
 
-	pairings, newDivisionRoundControls, err := divisionObject.DivisionManager.SetRoundControls(roundControls)
+	pairings, standings, newDivisionRoundControls, err := divisionObject.DivisionManager.SetRoundControls(roundControls)
 	if err != nil {
 		return err
 	}
@@ -231,7 +240,10 @@ func SetRoundControls(ctx context.Context, ts TournamentStore, id string, divisi
 		return err
 	}
 
-	wrapped := entity.WrapEvent(&realtime.DivisionRoundControls{Id: id, Division: division, RoundControls: newDivisionRoundControls, DivisionPairings: pairings},
+	wrapped := entity.WrapEvent(&realtime.DivisionRoundControls{Id: id, Division: division,
+		RoundControls:     newDivisionRoundControls,
+		DivisionPairings:  pairings,
+		DivisionStandings: standings},
 		realtime.MessageType_TOURNAMENT_DIVISION_ROUND_CONTROLS_MESSAGE)
 	return SendTournamentMessage(ctx, ts, id, wrapped)
 }

@@ -10999,7 +10999,8 @@ proto.liwords.DivisionRoundControls.toObject = function(includeInstance, msg) {
     roundControlsList: jspb.Message.toObjectList(msg.getRoundControlsList(),
     proto.liwords.RoundControl.toObject, includeInstance),
     divisionPairingsList: jspb.Message.toObjectList(msg.getDivisionPairingsList(),
-    proto.liwords.Pairing.toObject, includeInstance)
+    proto.liwords.Pairing.toObject, includeInstance),
+    divisionStandingsMap: (f = msg.getDivisionStandingsMap()) ? f.toObject(includeInstance, proto.liwords.RoundStandings.toObject) : []
   };
 
   if (includeInstance) {
@@ -11053,6 +11054,12 @@ proto.liwords.DivisionRoundControls.deserializeBinaryFromReader = function(msg, 
       var value = new proto.liwords.Pairing;
       reader.readMessage(value,proto.liwords.Pairing.deserializeBinaryFromReader);
       msg.addDivisionPairings(value);
+      break;
+    case 5:
+      var value = msg.getDivisionStandingsMap();
+      reader.readMessage(value, function(message, reader) {
+        jspb.Map.deserializeBinary(message, reader, jspb.BinaryReader.prototype.readInt32, jspb.BinaryReader.prototype.readMessage, proto.liwords.RoundStandings.deserializeBinaryFromReader, 0, new proto.liwords.RoundStandings());
+         });
       break;
     default:
       reader.skipField();
@@ -11112,6 +11119,10 @@ proto.liwords.DivisionRoundControls.serializeBinaryToWriter = function(message, 
       f,
       proto.liwords.Pairing.serializeBinaryToWriter
     );
+  }
+  f = message.getDivisionStandingsMap(true);
+  if (f && f.getLength() > 0) {
+    f.serializeBinary(5, writer, jspb.BinaryWriter.prototype.writeInt32, jspb.BinaryWriter.prototype.writeMessage, proto.liwords.RoundStandings.serializeBinaryToWriter);
   }
 };
 
@@ -11226,6 +11237,28 @@ proto.liwords.DivisionRoundControls.prototype.addDivisionPairings = function(opt
 proto.liwords.DivisionRoundControls.prototype.clearDivisionPairingsList = function() {
   return this.setDivisionPairingsList([]);
 };
+
+
+/**
+ * map<int32, RoundStandings> division_standings = 5;
+ * @param {boolean=} opt_noLazyCreate Do not create the map if
+ * empty, instead returning `undefined`
+ * @return {!jspb.Map<number,!proto.liwords.RoundStandings>}
+ */
+proto.liwords.DivisionRoundControls.prototype.getDivisionStandingsMap = function(opt_noLazyCreate) {
+  return /** @type {!jspb.Map<number,!proto.liwords.RoundStandings>} */ (
+      jspb.Message.getMapField(this, 5, opt_noLazyCreate,
+      proto.liwords.RoundStandings));
+};
+
+
+/**
+ * Clears values from the map. The map will be non-null.
+ * @return {!proto.liwords.DivisionRoundControls} returns this
+ */
+proto.liwords.DivisionRoundControls.prototype.clearDivisionStandingsMap = function() {
+  this.getDivisionStandingsMap().clear();
+  return this;};
 
 
 

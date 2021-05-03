@@ -347,6 +347,7 @@ func TestTournamentSingleDivision(t *testing.T) {
 	is.True(!isStarted)
 
 	XHRResponse, err = div1.DivisionManager.GetXHRResponse()
+	is.NoErr(err)
 	// Set pairing should work before the tournament starts
 	pairings := []*pb.TournamentPairingRequest{&pb.TournamentPairingRequest{PlayerOneId: "Will:Will", PlayerTwoId: "Jesse:Jesse", Round: 0}}
 	err = tournament.SetPairings(ctx, tstore, ty.UUID, divOneName, pairings)

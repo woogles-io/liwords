@@ -313,10 +313,10 @@ func TestClassicDivisionKingOfTheHill(t *testing.T) {
 	standings, err := tc.GetStandings(0, false)
 	is.NoErr(err)
 
-	expectedstandings := &realtime.RoundStandings{Standings: []*realtime.PlayerStanding{&realtime.PlayerStanding{PlayerId: player4, Wins: 1, Losses: 0, Draws: 0, Spread: 400},
-		&realtime.PlayerStanding{PlayerId: player1, Wins: 1, Losses: 0, Draws: 0, Spread: 150},
-		&realtime.PlayerStanding{PlayerId: player2, Wins: 0, Losses: 1, Draws: 0, Spread: -150},
-		&realtime.PlayerStanding{PlayerId: player3, Wins: 0, Losses: 1, Draws: 0, Spread: -400},
+	expectedstandings := &realtime.RoundStandings{Standings: []*realtime.PlayerStanding{{PlayerId: player4, Wins: 1, Losses: 0, Draws: 0, Spread: 400},
+		{PlayerId: player1, Wins: 1, Losses: 0, Draws: 0, Spread: 150},
+		{PlayerId: player2, Wins: 0, Losses: 1, Draws: 0, Spread: -150},
+		{PlayerId: player3, Wins: 0, Losses: 1, Draws: 0, Spread: -400},
 	}}
 
 	is.NoErr(equalStandings(expectedstandings, standings))
@@ -345,10 +345,10 @@ func TestClassicDivisionKingOfTheHill(t *testing.T) {
 	standings, err = tc.GetStandings(1, false)
 	is.NoErr(err)
 
-	expectedstandings = &realtime.RoundStandings{Standings: []*realtime.PlayerStanding{&realtime.PlayerStanding{PlayerId: player1, Wins: 2, Losses: 0, Draws: 0, Spread: 420},
-		&realtime.PlayerStanding{PlayerId: player4, Wins: 1, Losses: 1, Draws: 0, Spread: 130},
-		&realtime.PlayerStanding{PlayerId: player2, Wins: 0, Losses: 1, Draws: 1, Spread: -150},
-		&realtime.PlayerStanding{PlayerId: player3, Wins: 0, Losses: 1, Draws: 1, Spread: -400},
+	expectedstandings = &realtime.RoundStandings{Standings: []*realtime.PlayerStanding{{PlayerId: player1, Wins: 2, Losses: 0, Draws: 0, Spread: 420},
+		{PlayerId: player4, Wins: 1, Losses: 1, Draws: 0, Spread: 130},
+		{PlayerId: player2, Wins: 0, Losses: 1, Draws: 1, Spread: -150},
+		{PlayerId: player3, Wins: 0, Losses: 1, Draws: 1, Spread: -400},
 	}}
 
 	is.NoErr(equalStandings(expectedstandings, standings))
@@ -439,14 +439,14 @@ func TestClassicDivisionFactor(t *testing.T) {
 	standings, err := tc.GetStandings(0, false)
 	is.NoErr(err)
 
-	expectedstandings := &realtime.RoundStandings{Standings: []*realtime.PlayerStanding{&realtime.PlayerStanding{PlayerId: "h", Wins: 1, Losses: 0, Draws: 0, Spread: 400},
-		&realtime.PlayerStanding{PlayerId: "g", Wins: 1, Losses: 0, Draws: 0, Spread: 300},
-		&realtime.PlayerStanding{PlayerId: "d", Wins: 1, Losses: 0, Draws: 0, Spread: 200},
-		&realtime.PlayerStanding{PlayerId: "c", Wins: 1, Losses: 0, Draws: 0, Spread: 100},
-		&realtime.PlayerStanding{PlayerId: "b", Wins: 0, Losses: 1, Draws: 0, Spread: -100},
-		&realtime.PlayerStanding{PlayerId: "a", Wins: 0, Losses: 1, Draws: 0, Spread: -200},
-		&realtime.PlayerStanding{PlayerId: "e", Wins: 0, Losses: 1, Draws: 0, Spread: -300},
-		&realtime.PlayerStanding{PlayerId: "f", Wins: 0, Losses: 1, Draws: 0, Spread: -400},
+	expectedstandings := &realtime.RoundStandings{Standings: []*realtime.PlayerStanding{{PlayerId: "h", Wins: 1, Losses: 0, Draws: 0, Spread: 400},
+		{PlayerId: "g", Wins: 1, Losses: 0, Draws: 0, Spread: 300},
+		{PlayerId: "d", Wins: 1, Losses: 0, Draws: 0, Spread: 200},
+		{PlayerId: "c", Wins: 1, Losses: 0, Draws: 0, Spread: 100},
+		{PlayerId: "b", Wins: 0, Losses: 1, Draws: 0, Spread: -100},
+		{PlayerId: "a", Wins: 0, Losses: 1, Draws: 0, Spread: -200},
+		{PlayerId: "e", Wins: 0, Losses: 1, Draws: 0, Spread: -300},
+		{PlayerId: "f", Wins: 0, Losses: 1, Draws: 0, Spread: -400},
 	}}
 
 	is.NoErr(equalStandings(expectedstandings, standings))
@@ -589,10 +589,10 @@ func TestClassicDivisionSwiss(t *testing.T) {
 	standings, err := tc.GetStandings(3, false)
 	is.NoErr(err)
 
-	expectedstandings := &realtime.RoundStandings{Standings: []*realtime.PlayerStanding{&realtime.PlayerStanding{PlayerId: player1, Wins: 3, Losses: 1, Draws: 0, Spread: 800},
-		&realtime.PlayerStanding{PlayerId: player2, Wins: 3, Losses: 1, Draws: 0, Spread: 600},
-		&realtime.PlayerStanding{PlayerId: player3, Wins: 2, Losses: 2, Draws: 0, Spread: -300},
-		&realtime.PlayerStanding{PlayerId: player4, Wins: 0, Losses: 4, Draws: 0, Spread: -1100},
+	expectedstandings := &realtime.RoundStandings{Standings: []*realtime.PlayerStanding{{PlayerId: player1, Wins: 3, Losses: 1, Draws: 0, Spread: 800},
+		{PlayerId: player2, Wins: 3, Losses: 1, Draws: 0, Spread: 600},
+		{PlayerId: player3, Wins: 2, Losses: 2, Draws: 0, Spread: -300},
+		{PlayerId: player4, Wins: 0, Losses: 4, Draws: 0, Spread: -1100},
 	}}
 
 	is.NoErr(equalStandings(expectedstandings, standings))
@@ -618,10 +618,10 @@ func TestClassicDivisionSwiss(t *testing.T) {
 	standings, err = tc.GetStandings(4, false)
 	is.NoErr(err)
 
-	expectedstandings = &realtime.RoundStandings{Standings: []*realtime.PlayerStanding{&realtime.PlayerStanding{PlayerId: player1, Wins: 4, Losses: 1, Draws: 0, Spread: 900},
-		&realtime.PlayerStanding{PlayerId: player2, Wins: 3, Losses: 2, Draws: 0, Spread: 300},
-		&realtime.PlayerStanding{PlayerId: player3, Wins: 2, Losses: 3, Draws: 0, Spread: -400},
-		&realtime.PlayerStanding{PlayerId: player4, Wins: 1, Losses: 4, Draws: 0, Spread: -800},
+	expectedstandings = &realtime.RoundStandings{Standings: []*realtime.PlayerStanding{{PlayerId: player1, Wins: 4, Losses: 1, Draws: 0, Spread: 900},
+		{PlayerId: player2, Wins: 3, Losses: 2, Draws: 0, Spread: 300},
+		{PlayerId: player3, Wins: 2, Losses: 3, Draws: 0, Spread: -400},
+		{PlayerId: player4, Wins: 1, Losses: 4, Draws: 0, Spread: -800},
 	}}
 
 	is.NoErr(equalStandings(expectedstandings, standings))
@@ -1036,10 +1036,10 @@ func TestClassicDivisionManual(t *testing.T) {
 	standings, err := tc.GetStandings(0, false)
 	is.NoErr(err)
 
-	expectedstandings := &realtime.RoundStandings{Standings: []*realtime.PlayerStanding{&realtime.PlayerStanding{PlayerId: player4, Wins: 1, Losses: 0, Draws: 0, Spread: 250},
-		&realtime.PlayerStanding{PlayerId: player3, Wins: 1, Losses: 0, Draws: 0, Spread: 100},
-		&realtime.PlayerStanding{PlayerId: player2, Wins: 0, Losses: 1, Draws: 0, Spread: -100},
-		&realtime.PlayerStanding{PlayerId: player1, Wins: 0, Losses: 1, Draws: 0, Spread: -250},
+	expectedstandings := &realtime.RoundStandings{Standings: []*realtime.PlayerStanding{{PlayerId: player4, Wins: 1, Losses: 0, Draws: 0, Spread: 250},
+		{PlayerId: player3, Wins: 1, Losses: 0, Draws: 0, Spread: 100},
+		{PlayerId: player2, Wins: 0, Losses: 1, Draws: 0, Spread: -100},
+		{PlayerId: player1, Wins: 0, Losses: 1, Draws: 0, Spread: -250},
 	}}
 
 	is.NoErr(equalStandings(expectedstandings, standings))
@@ -1059,10 +1059,10 @@ func TestClassicDivisionManual(t *testing.T) {
 	standings, err = tc.GetStandings(0, false)
 	is.NoErr(err)
 
-	expectedstandings = &realtime.RoundStandings{Standings: []*realtime.PlayerStanding{&realtime.PlayerStanding{PlayerId: player3, Wins: 1, Losses: 0, Draws: 0, Spread: 100},
-		&realtime.PlayerStanding{PlayerId: player1, Wins: 1, Losses: 0, Draws: 0, Spread: 50},
-		&realtime.PlayerStanding{PlayerId: player4, Wins: 0, Losses: 1, Draws: 0, Spread: -50},
-		&realtime.PlayerStanding{PlayerId: player2, Wins: 0, Losses: 1, Draws: 0, Spread: -100},
+	expectedstandings = &realtime.RoundStandings{Standings: []*realtime.PlayerStanding{{PlayerId: player3, Wins: 1, Losses: 0, Draws: 0, Spread: 100},
+		{PlayerId: player1, Wins: 1, Losses: 0, Draws: 0, Spread: 50},
+		{PlayerId: player4, Wins: 0, Losses: 1, Draws: 0, Spread: -50},
+		{PlayerId: player2, Wins: 0, Losses: 1, Draws: 0, Spread: -100},
 	}}
 
 	is.NoErr(equalStandings(expectedstandings, standings))
@@ -1122,10 +1122,10 @@ func TestClassicDivisionElimination(t *testing.T) {
 	is.NoErr(err)
 
 	// Ensure standings for Elimination are correct
-	expectedstandings := &realtime.RoundStandings{Standings: []*realtime.PlayerStanding{&realtime.PlayerStanding{PlayerId: player1, Wins: 0, Losses: 0, Draws: 0, Spread: 0},
-		&realtime.PlayerStanding{PlayerId: player2, Wins: 0, Losses: 0, Draws: 0, Spread: 0},
-		&realtime.PlayerStanding{PlayerId: player3, Wins: 0, Losses: 0, Draws: 0, Spread: 0},
-		&realtime.PlayerStanding{PlayerId: player4, Wins: 0, Losses: 0, Draws: 0, Spread: 0},
+	expectedstandings := &realtime.RoundStandings{Standings: []*realtime.PlayerStanding{{PlayerId: player1, Wins: 0, Losses: 0, Draws: 0, Spread: 0},
+		{PlayerId: player2, Wins: 0, Losses: 0, Draws: 0, Spread: 0},
+		{PlayerId: player3, Wins: 0, Losses: 0, Draws: 0, Spread: 0},
+		{PlayerId: player4, Wins: 0, Losses: 0, Draws: 0, Spread: 0},
 	}}
 
 	is.NoErr(equalStandings(expectedstandings, standings))
@@ -1223,10 +1223,10 @@ func TestClassicDivisionElimination(t *testing.T) {
 
 	// Elimination standings are based on wins and player order only
 	// Losses are not recorded in Elimination standings
-	expectedstandings = &realtime.RoundStandings{Standings: []*realtime.PlayerStanding{&realtime.PlayerStanding{PlayerId: player1, Wins: 1, Losses: 0, Draws: 0, Spread: 60},
-		&realtime.PlayerStanding{PlayerId: player3, Wins: 1, Losses: 0, Draws: 0, Spread: 150},
-		&realtime.PlayerStanding{PlayerId: player2, Wins: 0, Losses: 1, Draws: 0, Spread: -60},
-		&realtime.PlayerStanding{PlayerId: player4, Wins: 0, Losses: 1, Draws: 0, Spread: -150},
+	expectedstandings = &realtime.RoundStandings{Standings: []*realtime.PlayerStanding{{PlayerId: player1, Wins: 1, Losses: 0, Draws: 0, Spread: 60},
+		{PlayerId: player3, Wins: 1, Losses: 0, Draws: 0, Spread: 150},
+		{PlayerId: player2, Wins: 0, Losses: 1, Draws: 0, Spread: -60},
+		{PlayerId: player4, Wins: 0, Losses: 1, Draws: 0, Spread: -150},
 	}}
 
 	is.NoErr(equalStandings(expectedstandings, standings))
@@ -1340,9 +1340,6 @@ func TestClassicDivisionElimination(t *testing.T) {
 
 	pairing2, err = tc.getPairing(player3, 0)
 	is.NoErr(err)
-
-	expectedpairing1 = newClassicPairing(tc, 0, 1, 0)
-	expectedpairing2 = newClassicPairing(tc, 2, 3, 0)
 
 	// The match is decided in two games
 	_, _, err = tc.SubmitResult(0, player1, player2, 500, 490,
@@ -1459,10 +1456,11 @@ func TestClassicDivisionElimination(t *testing.T) {
 	standings, err = tc.GetStandings(0, false)
 	is.NoErr(err)
 
-	expectedstandings = &realtime.RoundStandings{Standings: []*realtime.PlayerStanding{&realtime.PlayerStanding{PlayerId: player1, Wins: 1, Losses: 0, Draws: 0, Spread: 60},
-		&realtime.PlayerStanding{PlayerId: player3, Wins: 1, Losses: 0, Draws: 0, Spread: 300},
-		&realtime.PlayerStanding{PlayerId: player2, Wins: 0, Losses: 1, Draws: 0, Spread: -60},
-		&realtime.PlayerStanding{PlayerId: player4, Wins: 0, Losses: 1, Draws: 0, Spread: -300},
+	expectedstandings = &realtime.RoundStandings{Standings: []*realtime.PlayerStanding{
+		{PlayerId: player1, Wins: 1, Losses: 0, Draws: 0, Spread: 60},
+		{PlayerId: player3, Wins: 1, Losses: 0, Draws: 0, Spread: 300},
+		{PlayerId: player2, Wins: 0, Losses: 1, Draws: 0, Spread: -60},
+		{PlayerId: player4, Wins: 0, Losses: 1, Draws: 0, Spread: -300},
 	}}
 
 	is.NoErr(equalStandings(expectedstandings, standings))
@@ -1535,11 +1533,12 @@ func TestClassicDivisionAddLatecomers(t *testing.T) {
 	standings, err := tc.GetStandings(1, false)
 	is.NoErr(err)
 
-	expectedstandings := &realtime.RoundStandings{Standings: []*realtime.PlayerStanding{&realtime.PlayerStanding{PlayerId: player1, Wins: 2, Losses: 0, Draws: 0, Spread: 420},
-		&realtime.PlayerStanding{PlayerId: player4, Wins: 1, Losses: 1, Draws: 0, Spread: 130},
-		&realtime.PlayerStanding{PlayerId: player3, Wins: 1, Losses: 1, Draws: 0, Spread: -300},
-		&realtime.PlayerStanding{PlayerId: "Bum", Wins: 0, Losses: 2, Draws: 0, Spread: -100},
-		&realtime.PlayerStanding{PlayerId: player2, Wins: 0, Losses: 2, Draws: 0, Spread: -250},
+	expectedstandings := &realtime.RoundStandings{Standings: []*realtime.PlayerStanding{
+		{PlayerId: player1, Wins: 2, Losses: 0, Draws: 0, Spread: 420},
+		{PlayerId: player4, Wins: 1, Losses: 1, Draws: 0, Spread: 130},
+		{PlayerId: player3, Wins: 1, Losses: 1, Draws: 0, Spread: -300},
+		{PlayerId: "Bum", Wins: 0, Losses: 2, Draws: 0, Spread: -100},
+		{PlayerId: player2, Wins: 0, Losses: 2, Draws: 0, Spread: -250},
 	}}
 	is.NoErr(equalStandings(expectedstandings, standings))
 
@@ -1563,11 +1562,12 @@ func TestClassicDivisionAddLatecomers(t *testing.T) {
 	standings, err = tc.GetStandings(2, false)
 	is.NoErr(err)
 
-	expectedstandings = &realtime.RoundStandings{Standings: []*realtime.PlayerStanding{&realtime.PlayerStanding{PlayerId: player1, Wins: 3, Losses: 0, Draws: 0, Spread: 520},
-		&realtime.PlayerStanding{PlayerId: player3, Wins: 2, Losses: 1, Draws: 0, Spread: 100},
-		&realtime.PlayerStanding{PlayerId: player4, Wins: 1, Losses: 2, Draws: 0, Spread: 30},
-		&realtime.PlayerStanding{PlayerId: player2, Wins: 1, Losses: 2, Draws: 0, Spread: -200},
-		&realtime.PlayerStanding{PlayerId: "Bum", Wins: 0, Losses: 3, Draws: 0, Spread: -500},
+	expectedstandings = &realtime.RoundStandings{Standings: []*realtime.PlayerStanding{
+		{PlayerId: player1, Wins: 3, Losses: 0, Draws: 0, Spread: 520},
+		{PlayerId: player3, Wins: 2, Losses: 1, Draws: 0, Spread: 100},
+		{PlayerId: player4, Wins: 1, Losses: 2, Draws: 0, Spread: 30},
+		{PlayerId: player2, Wins: 1, Losses: 2, Draws: 0, Spread: -200},
+		{PlayerId: "Bum", Wins: 0, Losses: 3, Draws: 0, Spread: -500},
 	}}
 	is.NoErr(equalStandings(expectedstandings, standings))
 
@@ -1596,13 +1596,13 @@ func TestClassicDivisionAddLatecomers(t *testing.T) {
 	standings, err = tc.GetStandings(3, false)
 	is.NoErr(err)
 
-	expectedstandings = &realtime.RoundStandings{Standings: []*realtime.PlayerStanding{&realtime.PlayerStanding{PlayerId: player1, Wins: 4, Losses: 0, Draws: 0, Spread: 620},
-		&realtime.PlayerStanding{PlayerId: player2, Wins: 2, Losses: 2, Draws: 0, Spread: 200},
-		&realtime.PlayerStanding{PlayerId: player3, Wins: 2, Losses: 2, Draws: 0, Spread: 0},
-		&realtime.PlayerStanding{PlayerId: player4, Wins: 1, Losses: 3, Draws: 0, Spread: -370},
-		&realtime.PlayerStanding{PlayerId: "Bum", Wins: 1, Losses: 3, Draws: 0, Spread: -450},
-		&realtime.PlayerStanding{PlayerId: "Bummest", Wins: 0, Losses: 4, Draws: 0, Spread: -200},
-		&realtime.PlayerStanding{PlayerId: "Bummer", Wins: 0, Losses: 4, Draws: 0, Spread: -200},
+	expectedstandings = &realtime.RoundStandings{Standings: []*realtime.PlayerStanding{{PlayerId: player1, Wins: 4, Losses: 0, Draws: 0, Spread: 620},
+		{PlayerId: player2, Wins: 2, Losses: 2, Draws: 0, Spread: 200},
+		{PlayerId: player3, Wins: 2, Losses: 2, Draws: 0, Spread: 0},
+		{PlayerId: player4, Wins: 1, Losses: 3, Draws: 0, Spread: -370},
+		{PlayerId: "Bum", Wins: 1, Losses: 3, Draws: 0, Spread: -450},
+		{PlayerId: "Bummest", Wins: 0, Losses: 4, Draws: 0, Spread: -200},
+		{PlayerId: "Bummer", Wins: 0, Losses: 4, Draws: 0, Spread: -200},
 	}}
 	is.NoErr(equalStandings(expectedstandings, standings))
 
@@ -1639,13 +1639,13 @@ func TestClassicDivisionAddLatecomers(t *testing.T) {
 	standings, err = tc.GetStandings(4, false)
 	is.NoErr(err)
 
-	expectedstandings = &realtime.RoundStandings{Standings: []*realtime.PlayerStanding{&realtime.PlayerStanding{PlayerId: player1, Wins: 5, Losses: 0, Draws: 0, Spread: 720},
-		&realtime.PlayerStanding{PlayerId: player2, Wins: 2, Losses: 3, Draws: 0, Spread: 100},
-		&realtime.PlayerStanding{PlayerId: player4, Wins: 2, Losses: 3, Draws: 0, Spread: 30},
-		&realtime.PlayerStanding{PlayerId: "Bum", Wins: 2, Losses: 3, Draws: 0, Spread: -250},
-		&realtime.PlayerStanding{PlayerId: player3, Wins: 2, Losses: 3, Draws: 0, Spread: -400},
-		&realtime.PlayerStanding{PlayerId: "Bummer", Wins: 1, Losses: 4, Draws: 0, Spread: -150},
-		&realtime.PlayerStanding{PlayerId: "Bummest", Wins: 0, Losses: 5, Draws: 0, Spread: -400},
+	expectedstandings = &realtime.RoundStandings{Standings: []*realtime.PlayerStanding{{PlayerId: player1, Wins: 5, Losses: 0, Draws: 0, Spread: 720},
+		{PlayerId: player2, Wins: 2, Losses: 3, Draws: 0, Spread: 100},
+		{PlayerId: player4, Wins: 2, Losses: 3, Draws: 0, Spread: 30},
+		{PlayerId: "Bum", Wins: 2, Losses: 3, Draws: 0, Spread: -250},
+		{PlayerId: player3, Wins: 2, Losses: 3, Draws: 0, Spread: -400},
+		{PlayerId: "Bummer", Wins: 1, Losses: 4, Draws: 0, Spread: -150},
+		{PlayerId: "Bummest", Wins: 0, Losses: 5, Draws: 0, Spread: -400},
 	}}
 	is.NoErr(equalStandings(expectedstandings, standings))
 }
@@ -1692,10 +1692,10 @@ func TestClassicDivisionRemovePlayers(t *testing.T) {
 	standings, err := tc.GetStandings(0, false)
 	is.NoErr(err)
 
-	expectedstandings := &realtime.RoundStandings{Standings: []*realtime.PlayerStanding{&realtime.PlayerStanding{PlayerId: player1, Wins: 1, Losses: 0, Draws: 0, Spread: 200},
-		&realtime.PlayerStanding{PlayerId: player3, Wins: 1, Losses: 0, Draws: 0, Spread: 100},
-		&realtime.PlayerStanding{PlayerId: player4, Wins: 0, Losses: 1, Draws: 0, Spread: -100},
-		&realtime.PlayerStanding{PlayerId: player2, Wins: 0, Losses: 1, Draws: 0, Spread: -200},
+	expectedstandings := &realtime.RoundStandings{Standings: []*realtime.PlayerStanding{{PlayerId: player1, Wins: 1, Losses: 0, Draws: 0, Spread: 200},
+		{PlayerId: player3, Wins: 1, Losses: 0, Draws: 0, Spread: 100},
+		{PlayerId: player4, Wins: 0, Losses: 1, Draws: 0, Spread: -100},
+		{PlayerId: player2, Wins: 0, Losses: 1, Draws: 0, Spread: -200},
 	}}
 
 	is.NoErr(equalStandings(expectedstandings, standings))
@@ -1717,10 +1717,10 @@ func TestClassicDivisionRemovePlayers(t *testing.T) {
 	standings, err = tc.GetStandings(1, false)
 	is.NoErr(err)
 
-	expectedstandings = &realtime.RoundStandings{Standings: []*realtime.PlayerStanding{&realtime.PlayerStanding{PlayerId: player2, Wins: 1, Losses: 1, Draws: 0, Spread: 0},
-		&realtime.PlayerStanding{PlayerId: player3, Wins: 1, Losses: 1, Draws: 0, Spread: -100},
-		&realtime.PlayerStanding{PlayerId: player4, Wins: 0, Losses: 2, Draws: 0, Spread: -300},
-		// &realtime.PlayerStanding{PlayerId: player1, Wins: 2, Losses: 0, Draws: 0, Spread: 400},
+	expectedstandings = &realtime.RoundStandings{Standings: []*realtime.PlayerStanding{{PlayerId: player2, Wins: 1, Losses: 1, Draws: 0, Spread: 0},
+		{PlayerId: player3, Wins: 1, Losses: 1, Draws: 0, Spread: -100},
+		{PlayerId: player4, Wins: 0, Losses: 2, Draws: 0, Spread: -300},
+		// {PlayerId: player1, Wins: 2, Losses: 0, Draws: 0, Spread: 400},
 	}}
 
 	is.NoErr(equalStandings(expectedstandings, standings))
@@ -1752,10 +1752,10 @@ func TestClassicDivisionRemovePlayers(t *testing.T) {
 	standings, err = tc.GetStandings(4, false)
 	is.NoErr(err)
 
-	expectedstandings = &realtime.RoundStandings{Standings: []*realtime.PlayerStanding{&realtime.PlayerStanding{PlayerId: player2, Wins: 3, Losses: 1, Draws: 1, Spread: 400},
-		&realtime.PlayerStanding{PlayerId: player3, Wins: 3, Losses: 2, Draws: 0, Spread: -150},
-		&realtime.PlayerStanding{PlayerId: player4, Wins: 1, Losses: 4, Draws: 0, Spread: -550},
-		// &realtime.PlayerStanding{PlayerId: player1, Wins: 2, Losses: 2, Draws: 1, Spread: 300},
+	expectedstandings = &realtime.RoundStandings{Standings: []*realtime.PlayerStanding{{PlayerId: player2, Wins: 3, Losses: 1, Draws: 1, Spread: 400},
+		{PlayerId: player3, Wins: 3, Losses: 2, Draws: 0, Spread: -150},
+		{PlayerId: player4, Wins: 1, Losses: 4, Draws: 0, Spread: -550},
+		// {PlayerId: player1, Wins: 2, Losses: 2, Draws: 1, Spread: 300},
 	}}
 
 	is.NoErr(equalStandings(expectedstandings, standings))
@@ -1786,10 +1786,10 @@ func TestClassicDivisionRemovePlayers(t *testing.T) {
 	standings, err = tc.GetStandings(5, false)
 	is.NoErr(err)
 
-	expectedstandings = &realtime.RoundStandings{Standings: []*realtime.PlayerStanding{&realtime.PlayerStanding{PlayerId: player2, Wins: 4, Losses: 1, Draws: 1, Spread: 600},
-		&realtime.PlayerStanding{PlayerId: player3, Wins: 3, Losses: 3, Draws: 0, Spread: -350},
-		// &realtime.PlayerStanding{PlayerId: player1, Wins: 2, Losses: 3, Draws: 1, Spread: 250},
-		// &realtime.PlayerStanding{PlayerId: player4, Wins: 2, Losses: 4, Draws: 0, Spread: -500},
+	expectedstandings = &realtime.RoundStandings{Standings: []*realtime.PlayerStanding{{PlayerId: player2, Wins: 4, Losses: 1, Draws: 1, Spread: 600},
+		{PlayerId: player3, Wins: 3, Losses: 3, Draws: 0, Spread: -350},
+		// {PlayerId: player1, Wins: 2, Losses: 3, Draws: 1, Spread: 250},
+		// {PlayerId: player4, Wins: 2, Losses: 4, Draws: 0, Spread: -500},
 	}}
 
 	is.NoErr(equalStandings(expectedstandings, standings))
@@ -1822,10 +1822,10 @@ func TestClassicDivisionRemovePlayers(t *testing.T) {
 	standings, err = tc.GetStandings(8, false)
 	is.NoErr(err)
 
-	expectedstandings = &realtime.RoundStandings{Standings: []*realtime.PlayerStanding{&realtime.PlayerStanding{PlayerId: player2, Wins: 7, Losses: 1, Draws: 1, Spread: 1200},
-		&realtime.PlayerStanding{PlayerId: player3, Wins: 3, Losses: 6, Draws: 0, Spread: -950},
-		// &realtime.PlayerStanding{PlayerId: player4, Wins: 3, Losses: 6, Draws: 0, Spread: -550},
-		// &realtime.PlayerStanding{PlayerId: player1, Wins: 2, Losses: 6, Draws: 1, Spread: 100},
+	expectedstandings = &realtime.RoundStandings{Standings: []*realtime.PlayerStanding{{PlayerId: player2, Wins: 7, Losses: 1, Draws: 1, Spread: 1200},
+		{PlayerId: player3, Wins: 3, Losses: 6, Draws: 0, Spread: -950},
+		// {PlayerId: player4, Wins: 3, Losses: 6, Draws: 0, Spread: -550},
+		// {PlayerId: player1, Wins: 2, Losses: 6, Draws: 1, Spread: 100},
 	}}
 
 	is.NoErr(equalStandings(expectedstandings, standings))
@@ -1851,9 +1851,9 @@ func TestClassicDivisionRemovePlayers(t *testing.T) {
 	standings, err = tc.GetStandings(11, false)
 	is.NoErr(err)
 
-	expectedstandings = &realtime.RoundStandings{Standings: []*realtime.PlayerStanding{&realtime.PlayerStanding{PlayerId: player3, Wins: 5, Losses: 7, Draws: 0, Spread: -1050}}} // &realtime.PlayerStanding{PlayerId: player2, Wins: 8, Losses: 3, Draws: 1, Spread: 1300},
-	// &realtime.PlayerStanding{PlayerId: player4, Wins: 3, Losses: 9, Draws: 0, Spread: -700},
-	// &realtime.PlayerStanding{PlayerId: player1, Wins: 2, Losses: 9, Draws: 1, Spread: -50},
+	expectedstandings = &realtime.RoundStandings{Standings: []*realtime.PlayerStanding{{PlayerId: player3, Wins: 5, Losses: 7, Draws: 0, Spread: -1050}}} // {PlayerId: player2, Wins: 8, Losses: 3, Draws: 1, Spread: 1300},
+	// {PlayerId: player4, Wins: 3, Losses: 9, Draws: 0, Spread: -700},
+	// {PlayerId: player1, Wins: 2, Losses: 9, Draws: 1, Spread: -50},
 
 	is.NoErr(equalStandings(expectedstandings, standings))
 }
@@ -1977,10 +1977,10 @@ func TestClassicDivisionRemovePlayersFactorPair(t *testing.T) {
 	standings, err := tc.GetStandings(2, false)
 	is.NoErr(err)
 
-	expectedstandings := &realtime.RoundStandings{Standings: []*realtime.PlayerStanding{&realtime.PlayerStanding{PlayerId: "h", Wins: 3, Losses: 0, Draws: 0, Spread: 850},
-		&realtime.PlayerStanding{PlayerId: "g", Wins: 3, Losses: 0, Draws: 0, Spread: 650},
-		&realtime.PlayerStanding{PlayerId: "e", Wins: 2, Losses: 1, Draws: 0, Spread: -150},
-		&realtime.PlayerStanding{PlayerId: "d", Wins: 1, Losses: 2, Draws: 0, Spread: -300},
+	expectedstandings := &realtime.RoundStandings{Standings: []*realtime.PlayerStanding{{PlayerId: "h", Wins: 3, Losses: 0, Draws: 0, Spread: 850},
+		{PlayerId: "g", Wins: 3, Losses: 0, Draws: 0, Spread: 650},
+		{PlayerId: "e", Wins: 2, Losses: 1, Draws: 0, Spread: -150},
+		{PlayerId: "d", Wins: 1, Losses: 2, Draws: 0, Spread: -300},
 	}}
 
 	is.NoErr(equalStandings(expectedstandings, standings))
@@ -2006,10 +2006,10 @@ func TestClassicDivisionRemovePlayersFactorPair(t *testing.T) {
 	standings, err = tc.GetStandings(3, false)
 	is.NoErr(err)
 
-	expectedstandings = &realtime.RoundStandings{Standings: []*realtime.PlayerStanding{&realtime.PlayerStanding{PlayerId: "h", Wins: 4, Losses: 0, Draws: 0, Spread: 1250},
-		&realtime.PlayerStanding{PlayerId: "g", Wins: 4, Losses: 0, Draws: 0, Spread: 950},
-		&realtime.PlayerStanding{PlayerId: "e", Wins: 2, Losses: 2, Draws: 0, Spread: -550},
-		&realtime.PlayerStanding{PlayerId: "d", Wins: 1, Losses: 3, Draws: 0, Spread: -600},
+	expectedstandings = &realtime.RoundStandings{Standings: []*realtime.PlayerStanding{{PlayerId: "h", Wins: 4, Losses: 0, Draws: 0, Spread: 1250},
+		{PlayerId: "g", Wins: 4, Losses: 0, Draws: 0, Spread: 950},
+		{PlayerId: "e", Wins: 2, Losses: 2, Draws: 0, Spread: -550},
+		{PlayerId: "d", Wins: 1, Losses: 3, Draws: 0, Spread: -600},
 	}}
 
 	is.NoErr(equalStandings(expectedstandings, standings))
@@ -2049,13 +2049,14 @@ func TestClassicDivisionRemovePlayersFactorPair(t *testing.T) {
 	standings, err = tc.GetStandings(4, false)
 	is.NoErr(err)
 
-	expectedstandings = &realtime.RoundStandings{Standings: []*realtime.PlayerStanding{&realtime.PlayerStanding{PlayerId: "h", Wins: 5, Losses: 0, Draws: 0, Spread: 1650},
-		&realtime.PlayerStanding{PlayerId: "g", Wins: 5, Losses: 0, Draws: 0, Spread: 1250},
-		&realtime.PlayerStanding{PlayerId: "d", Wins: 2, Losses: 3, Draws: 0, Spread: -400},
-		&realtime.PlayerStanding{PlayerId: "e", Wins: 2, Losses: 3, Draws: 0, Spread: -950},
-		&realtime.PlayerStanding{PlayerId: "f", Wins: 1, Losses: 4, Draws: 0, Spread: -250},
-		&realtime.PlayerStanding{PlayerId: "b", Wins: 1, Losses: 4, Draws: 0, Spread: -400},
-		&realtime.PlayerStanding{PlayerId: "c", Wins: 0, Losses: 5, Draws: 0, Spread: -550},
+	expectedstandings = &realtime.RoundStandings{Standings: []*realtime.PlayerStanding{
+		{PlayerId: "h", Wins: 5, Losses: 0, Draws: 0, Spread: 1650},
+		{PlayerId: "g", Wins: 5, Losses: 0, Draws: 0, Spread: 1250},
+		{PlayerId: "d", Wins: 2, Losses: 3, Draws: 0, Spread: -400},
+		{PlayerId: "e", Wins: 2, Losses: 3, Draws: 0, Spread: -950},
+		{PlayerId: "f", Wins: 1, Losses: 4, Draws: 0, Spread: -250},
+		{PlayerId: "b", Wins: 1, Losses: 4, Draws: 0, Spread: -400},
+		{PlayerId: "c", Wins: 0, Losses: 5, Draws: 0, Spread: -550},
 	}}
 	is.NoErr(equalStandings(expectedstandings, standings))
 
@@ -2216,7 +2217,7 @@ func TestClassicDivisionMessages(t *testing.T) {
 	}
 
 	tc, err := compactNewClassicDivision(defaultPlayers, roundControls, false)
-
+	is.NoErr(err)
 	player1 := defaultPlayers.Persons[0].Id
 	player2 := defaultPlayers.Persons[1].Id
 	player3 := defaultPlayers.Persons[2].Id
@@ -2284,7 +2285,7 @@ func TestClassicDivisionMessages(t *testing.T) {
 			Outcomes:    []realtime.TournamentGameResult{0, 0},
 			ReadyStates: []string{"", ""}}}
 
-	pairingsRsp, controlsRsp, err := tc.SetRoundControls(roundControls)
+	pairingsRsp, _, controlsRsp, err := tc.SetRoundControls(roundControls)
 	is.NoErr(err)
 
 	is.NoErr(equalPairingsResponses(expectedPairingsRsp, pairingsRsp))
@@ -2476,10 +2477,10 @@ func TestClassicDivisionMessages(t *testing.T) {
 	is.NoErr(err)
 	is.NoErr(equalStandings(expectedStandings, standingsRsp[0]))
 
-	manualExpectedStandings := &realtime.RoundStandings{Standings: []*realtime.PlayerStanding{&realtime.PlayerStanding{PlayerId: player4, Wins: 1, Losses: 0, Draws: 0, Spread: 250},
-		&realtime.PlayerStanding{PlayerId: player3, Wins: 1, Losses: 0, Draws: 0, Spread: 100},
-		&realtime.PlayerStanding{PlayerId: player2, Wins: 0, Losses: 1, Draws: 0, Spread: -100},
-		&realtime.PlayerStanding{PlayerId: player1, Wins: 0, Losses: 1, Draws: 0, Spread: -250},
+	manualExpectedStandings := &realtime.RoundStandings{Standings: []*realtime.PlayerStanding{{PlayerId: player4, Wins: 1, Losses: 0, Draws: 0, Spread: 250},
+		{PlayerId: player3, Wins: 1, Losses: 0, Draws: 0, Spread: 100},
+		{PlayerId: player2, Wins: 0, Losses: 1, Draws: 0, Spread: -100},
+		{PlayerId: player1, Wins: 0, Losses: 1, Draws: 0, Spread: -250},
 	}}
 	is.NoErr(equalStandings(expectedStandings, manualExpectedStandings))
 
@@ -3234,15 +3235,15 @@ func equalRoundControls(rc1 []*realtime.RoundControl, rc2 []*realtime.RoundContr
 
 func equalSingleRoundControls(rc1 *realtime.RoundControl, rc2 *realtime.RoundControl) bool {
 	return rc1.PairingMethod == rc2.PairingMethod &&
-		rc2.FirstMethod == rc2.FirstMethod &&
-		rc2.GamesPerRound == rc2.GamesPerRound &&
-		rc2.Round == rc2.Round &&
-		rc2.Factor == rc2.Factor &&
-		rc2.InitialFontes == rc2.InitialFontes &&
-		rc2.MaxRepeats == rc2.MaxRepeats &&
-		rc2.AllowOverMaxRepeats == rc2.AllowOverMaxRepeats &&
-		rc2.RepeatRelativeWeight == rc2.RepeatRelativeWeight &&
-		rc2.WinDifferenceRelativeWeight == rc2.WinDifferenceRelativeWeight
+		rc1.FirstMethod == rc2.FirstMethod &&
+		rc1.GamesPerRound == rc2.GamesPerRound &&
+		rc1.Round == rc2.Round &&
+		rc1.Factor == rc2.Factor &&
+		rc1.InitialFontes == rc2.InitialFontes &&
+		rc1.MaxRepeats == rc2.MaxRepeats &&
+		rc1.AllowOverMaxRepeats == rc2.AllowOverMaxRepeats &&
+		rc1.RepeatRelativeWeight == rc2.RepeatRelativeWeight &&
+		rc1.WinDifferenceRelativeWeight == rc2.WinDifferenceRelativeWeight
 }
 
 func equalPairingsResponses(pr1 []*realtime.Pairing, pr2 []*realtime.Pairing) error {
@@ -3313,7 +3314,7 @@ func compactNewClassicDivision(players *realtime.TournamentPersons, roundControl
 		return nil, err
 	}
 
-	_, _, err = t.SetRoundControls(roundControls)
+	_, _, _, err = t.SetRoundControls(roundControls)
 	if err != nil {
 		return nil, err
 	}

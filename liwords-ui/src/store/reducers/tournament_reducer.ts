@@ -513,7 +513,9 @@ export function TournamentReducer(
         loginState: LoginState;
       };
       const division = drc.roundControls.getDivision();
-
+      // copy old stuff
+      let newNumRounds = state.divisions[division].numRounds;
+      let newRoundControls = state.divisions[division].roundControls;
       let newPairings = copyPairings(state.divisions[division].pairings);
       let newStandings = reduceStandings(
         state.divisions[division].standingsMap,
@@ -521,23 +523,42 @@ export function TournamentReducer(
       );
 
       if (!state.started) {
-        newPairings = Array<RoundPairings>();
-        for (let i = 0; i < state.divisions[division].numRounds; i++) {
+        // This can only be a full set of round controls
+        newPairings = new Array<RoundPairings>();
+        newRoundControls = drc.roundControls.getRoundControlsList();
+        newNumRounds = newRoundControls.length;
+        for (let i = 0; i < newNumRounds; i++) {
+          // reset all pairings
           const newRoundPairings = new Array<SinglePairing>();
           state.divisions[division].players.forEach(() => {
             newRoundPairings.push({} as SinglePairing);
           });
           newPairings.push({ roundPairings: newRoundPairings });
         }
-        newStandings = new jspb.Map<number, RoundStandings>([]);
+        newPairings = reducePairings(
+          state.divisions[division].players,
+          newPairings,
+          drc.roundControls.getDivisionPairingsList()
+        );
+        newStandings = drc.roundControls.getDivisionStandingsMap();
+      } else {
+        // This can only be an individual round control in the future.
+        newRoundControls = new Array<RoundControl>();
+        state.divisions[division].roundControls.forEach((rc: RoundControl) => {
+          newRoundControls.push(rc.cloneMessage());
+        });
+        drc.roundControls.getRoundControlsList().forEach((rc: RoundControl) => {
+          newRoundControls[rc.getRound()] = rc;
+        });
       }
 
       return Object.assign({}, state, {
         divisions: Object.assign({}, state.divisions, {
           [division]: Object.assign({}, state.divisions[division], {
-            roundControls: drc.roundControls,
+            roundControls: newRoundControls,
             standings: newStandings,
             pairings: newPairings,
+            numRounds: newNumRounds,
           }),
         }),
       });
@@ -789,7 +810,6 @@ export function TournamentReducer(
         loginState: LoginState;
       };
 
-      console.log('fdivs', JSON.stringify(dd.fullDivisions.toObject()));
       const divisions: { [name: string]: Division } = {};
       const divisionsMap = dd.fullDivisions.getDivisionsMap();
       const fullLoggedInID = `${dd.loginState.userID}:${dd.loginState.username}`;
@@ -803,7 +823,6 @@ export function TournamentReducer(
         }
       );
 
-      console.log('divisions', divisions);
       let competitorState: CompetitorState = state.competitorState;
       if (registeredDivision) {
         console.log('registereddiv', registeredDivision);

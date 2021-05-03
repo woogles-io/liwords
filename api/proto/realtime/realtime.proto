@@ -504,6 +504,7 @@ message DivisionRoundControls {
   string division = 2;
   repeated RoundControl round_controls = 3;
   repeated Pairing division_pairings = 4;
+  map<int32, RoundStandings> division_standings = 5;
 }
 
 message DivisionControlsResponse {

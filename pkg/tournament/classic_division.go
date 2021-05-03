@@ -60,17 +60,18 @@ func (t *ClassicDivision) SetDivisionControls(divisionControls *realtime.Divisio
 	return t.DivisionControls, nil
 }
 
-func (t *ClassicDivision) SetRoundControls(roundControls []*realtime.RoundControl) ([]*realtime.Pairing, []*realtime.RoundControl, error) {
+func (t *ClassicDivision) SetRoundControls(roundControls []*realtime.RoundControl) (
+	[]*realtime.Pairing, map[int32]*realtime.RoundStandings, []*realtime.RoundControl, error) {
 
 	numberOfRounds := len(roundControls)
 	numberOfPlayers := len(t.Players.Persons)
 
 	if numberOfRounds <= 0 {
-		return nil, nil, fmt.Errorf("cannot set round controls with empty array")
+		return nil, nil, nil, fmt.Errorf("cannot set round controls with empty array")
 	}
 
 	if t.CurrentRound >= 0 {
-		return nil, nil, fmt.Errorf("cannot set all round controls after the tournament has started")
+		return nil, nil, nil, fmt.Errorf("cannot set all round controls after the tournament has started")
 	}
 
 	isElimination := false
@@ -87,11 +88,11 @@ func (t *ClassicDivision) SetRoundControls(roundControls []*realtime.RoundContro
 	for i := 0; i < numberOfRounds; i++ {
 		control := roundControls[i]
 		if isElimination && control.PairingMethod != realtime.PairingMethod_ELIMINATION {
-			return nil, nil, errors.New("cannot mix Elimination pairings with any other pairing method")
+			return nil, nil, nil, errors.New("cannot mix Elimination pairings with any other pairing method")
 		} else if i != 0 {
 			if control.PairingMethod == realtime.PairingMethod_INITIAL_FONTES &&
 				roundControls[i-1].PairingMethod != realtime.PairingMethod_INITIAL_FONTES {
-				return nil, nil, errors.New("cannot use Initial Fontes pairing when an earlier round used a different pairing method")
+				return nil, nil, nil, errors.New("cannot use Initial Fontes pairing when an earlier round used a different pairing method")
 			} else if control.PairingMethod != realtime.PairingMethod_INITIAL_FONTES &&
 				roundControls[i-1].PairingMethod == realtime.PairingMethod_INITIAL_FONTES {
 				initialFontes = int32(i)
@@ -100,7 +101,7 @@ func (t *ClassicDivision) SetRoundControls(roundControls []*realtime.RoundContro
 	}
 
 	if initialFontes > 0 && initialFontes%2 == 0 {
-		return nil, nil, fmt.Errorf("number of rounds paired with Initial Fontes must be odd, have %d instead", initialFontes)
+		return nil, nil, nil, fmt.Errorf("number of rounds paired with Initial Fontes must be odd, have %d instead", initialFontes)
 	}
 
 	// For now, assume we require exactly n rounds and 2 ^ n players for an elimination tournament
@@ -108,7 +109,7 @@ func (t *ClassicDivision) SetRoundControls(roundControls []*realtime.RoundContro
 	if roundControls[0].PairingMethod == realtime.PairingMethod_ELIMINATION {
 		expectedNumberOfPlayers := 1 << numberOfRounds
 		if expectedNumberOfPlayers != numberOfPlayers {
-			return nil, nil, fmt.Errorf("invalid number of players based on the number of rounds: "+
+			return nil, nil, nil, fmt.Errorf("invalid number of players based on the number of rounds: "+
 				" have %d players, expected %d players based on the number of rounds which is %d",
 				numberOfPlayers, expectedNumberOfPlayers, numberOfRounds)
 		}
@@ -120,8 +121,8 @@ func (t *ClassicDivision) SetRoundControls(roundControls []*realtime.RoundContro
 	}
 	t.RoundControls = roundControls
 	t.Matrix = newPairingMatrix(len(t.RoundControls), len(t.Players.Persons))
-	initialPairings, _, err := t.prepair()
-	return initialPairings, t.RoundControls, err
+	initialPairings, initialStandings, err := t.prepair()
+	return initialPairings, initialStandings, t.RoundControls, err
 }
 
 func (t *ClassicDivision) prepair() ([]*realtime.Pairing, map[int32]*realtime.RoundStandings, error) {

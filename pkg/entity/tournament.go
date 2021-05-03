@@ -16,7 +16,7 @@ type DivisionManager interface {
 	GetPlayers() *realtime.TournamentPersons
 	SetPairing(string, string, int) ([]*realtime.Pairing, map[int32]*realtime.RoundStandings, error)
 	SetSingleRoundControls(int, *realtime.RoundControl) (*realtime.RoundControl, error)
-	SetRoundControls([]*realtime.RoundControl) ([]*realtime.Pairing, []*realtime.RoundControl, error)
+	SetRoundControls([]*realtime.RoundControl) ([]*realtime.Pairing, map[int32]*realtime.RoundStandings, []*realtime.RoundControl, error)
 	SetDivisionControls(*realtime.DivisionControls) (*realtime.DivisionControls, error)
 	GetDivisionControls() *realtime.DivisionControls
 	AddPlayers(*realtime.TournamentPersons) ([]*realtime.Pairing, map[int32]*realtime.RoundStandings, error)
