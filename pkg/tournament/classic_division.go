@@ -717,6 +717,7 @@ func (t *ClassicDivision) AddPlayers(players *realtime.TournamentPersons) ([]*re
 			if err != nil {
 				return nil, nil, err
 			}
+			t.Standings[int32(i)] = roundStandings
 			standingsResponse = combineStandingsResponses(standingsResponse, map[int32]*realtime.RoundStandings{int32(i): roundStandings})
 		}
 	}
@@ -792,6 +793,7 @@ func (t *ClassicDivision) RemovePlayers(persons *realtime.TournamentPersons) ([]
 			if err != nil {
 				return nil, nil, err
 			}
+			t.Standings[int32(i)] = roundStandings
 			standingsResponse = combineStandingsResponses(standingsResponse, map[int32]*realtime.RoundStandings{int32(i): roundStandings})
 		}
 	}
