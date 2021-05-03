@@ -29,6 +29,7 @@ type DivisionManager interface {
 	GetXHRResponse() (*realtime.TournamentDivisionDataResponse, error)
 	SetReadyForGame(userID, connID string, round, gameIndex int, unready bool) ([]string, bool, error)
 	ClearReadyStates(userID string, round, gameIndex int) ([]*realtime.Pairing, error)
+	ResetToBeginning() error
 }
 
 /**	SetCheckedIn(userID string) error

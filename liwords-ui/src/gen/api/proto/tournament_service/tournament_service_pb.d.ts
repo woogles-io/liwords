@@ -545,6 +545,26 @@ export namespace RecentGamesResponse {
   }
 }
 
+export class UnstartTournamentRequest extends jspb.Message {
+  getId(): string;
+  setId(value: string): void;
+
+  serializeBinary(): Uint8Array;
+  toObject(includeInstance?: boolean): UnstartTournamentRequest.AsObject;
+  static toObject(includeInstance: boolean, msg: UnstartTournamentRequest): UnstartTournamentRequest.AsObject;
+  static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+  static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+  static serializeBinaryToWriter(message: UnstartTournamentRequest, writer: jspb.BinaryWriter): void;
+  static deserializeBinary(bytes: Uint8Array): UnstartTournamentRequest;
+  static deserializeBinaryFromReader(message: UnstartTournamentRequest, reader: jspb.BinaryReader): UnstartTournamentRequest;
+}
+
+export namespace UnstartTournamentRequest {
+  export type AsObject = {
+    id: string,
+  }
+}
+
 export class UncheckInRequest extends jspb.Message {
   getId(): string;
   setId(value: string): void;

@@ -511,3 +511,36 @@ func (ts *TournamentService) UncheckIn(ctx context.Context, req *pb.UncheckInReq
 	}
 	return &pb.TournamentResponse{}, nil
 }
+
+func (ts *TournamentService) UnstartTournament(ctx context.Context, req *pb.UnstartTournamentRequest) (*pb.TournamentResponse, error) {
+	// Unstarting a tournament rolls the round back to zero, and deletes all game info,
+	// but does not delete the players or divisions.
+	// Obviously this is only meant to be used for testing purposes.
+	err := authenticateDirector(ctx, ts, req.Id, false)
+	if err != nil {
+		return nil, err
+	}
+
+	t, err := ts.tournamentStore.Get(ctx, req.Id)
+	if err != nil {
+		return nil, err
+	}
+
+	for division := range t.Divisions {
+		dm := t.Divisions[division].DivisionManager
+		if dm == nil {
+			return nil, fmt.Errorf("cannot reset division %s because it has a nil division manager", division)
+		}
+		err = dm.ResetToBeginning()
+		if err != nil {
+			return nil, err
+		}
+	}
+	t.IsStarted = false
+
+	err = ts.tournamentStore.Set(ctx, t)
+	if err != nil {
+		return nil, err
+	}
+	return &pb.TournamentResponse{}, nil
+}

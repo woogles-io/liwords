@@ -250,7 +250,16 @@ it('adds new divisions and pairings', () => {
 
   console.log('the final state', finalState);
   expect(finalState.divisions['NWL B'].pairings.length).toBe(1);
-  console.log(finalState.divisions['NWL B'].pairings);
+  expect(
+    finalState.divisions[
+      'NWL B'
+    ].pairings[0].roundPairings[0].players[0].getId()
+  ).toBe('JkW7MXvVPfj7HdgAwLQzJ4:will');
+  expect(
+    finalState.divisions[
+      'NWL B'
+    ].pairings[0].roundPairings[0].players[1].getId()
+  ).toBe('ViSLeuyqNcSA3GcHJP5rA5:nigel');
 });
 
 // it('tests my pairings', () => {

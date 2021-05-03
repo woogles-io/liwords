@@ -809,6 +809,16 @@ func (t *ClassicDivision) GetPlayers() *realtime.TournamentPersons {
 	return t.Players
 }
 
+func (t *ClassicDivision) ResetToBeginning() error {
+	t.CurrentRound = -1
+
+	_, _, err := t.prepair()
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 func (t *ClassicDivision) GetStandings(round int, includeSuspended bool) (*realtime.RoundStandings, error) {
 	if round < 0 || round >= len(t.Matrix) {
 		return nil, fmt.Errorf("round number out of range (GetStandings): %d", round)
