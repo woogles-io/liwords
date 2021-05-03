@@ -227,6 +227,7 @@ func (c *Cache) SetPersonalInfo(ctx context.Context, uuid string, email string, 
 	u.Profile.FirstName = firstName
 	u.Profile.LastName = lastName
 	u.Profile.CountryCode = countryCode
+	u.Profile.About = about
 	if err = c.backing.SetPersonalInfo(ctx, uuid, email, firstName, lastName, countryCode, about); err != nil {
 		return err
 	}
