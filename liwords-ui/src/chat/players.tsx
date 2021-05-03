@@ -151,7 +151,6 @@ export const Players = React.memo((props: Props) => {
 
   const renderPlayerList = useCallback(
     (userList: Partial<FriendUser>[], className: string = ''): ReactNode => {
-      console.log(className, userList);
       return (
         <>
           {userList.map((p) => (

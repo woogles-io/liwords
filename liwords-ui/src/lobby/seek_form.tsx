@@ -1,4 +1,4 @@
-import React, { useCallback } from 'react';
+import React, { useCallback, useEffect } from 'react';
 import {
   Form,
   Radio,
@@ -21,6 +21,10 @@ import { SoughtGame } from '../store/reducers/lobby_reducer';
 import { toAPIUrl } from '../api/api';
 import { debounce } from '../utils/debounce';
 import { fixedSettings } from './fixed_seek_controls';
+import {
+  useFriendsStoreContext,
+  usePresenceStoreContext,
+} from '../store/store';
 
 export type seekPropVals = { [val: string]: string | number | boolean };
 
@@ -76,6 +80,7 @@ type Props = {
   tournamentID?: string;
   storageKey?: string;
   prefixItems?: React.ReactNode;
+  username?: string;
 };
 
 const otLabel = 'Overtime';
@@ -93,6 +98,9 @@ const incUnitLabel = (
 
 export const SeekForm = (props: Props) => {
   const { useState } = useMountedState();
+  const { friends } = useFriendsStoreContext();
+  const { presences } = usePresenceStoreContext();
+  const { tournamentID, username } = props;
   const enableAllLexicons = React.useMemo(
     () => localStorage.getItem('enableAllLexicons') === 'true',
     []
@@ -190,6 +198,7 @@ export const SeekForm = (props: Props) => {
     setSliderTooltipVisible(!open);
   }, []);
   const [usernameOptions, setUsernameOptions] = useState<Array<string>>([]);
+
   const onFormChange = (val: Store, allvals: Store) => {
     if (window.localStorage) {
       localStorage.setItem(
@@ -224,21 +233,29 @@ export const SeekForm = (props: Props) => {
     setTtag(tt);
   };
 
-  const onUsernameSearch = (searchText: string) => {
-    axios
-      .post<SearchResponse>(
-        toAPIUrl('user_service.AutocompleteService', 'GetCompletion'),
-        {
-          prefix: searchText,
-        }
-      )
-      .then((resp) => {
-        console.log('resp', resp.data);
-        setUsernameOptions(
-          !searchText ? [] : resp.data.users.map((u) => u.username)
-        );
-      });
-  };
+  const onUsernameSearch = useCallback(
+    (searchText: string) => {
+      axios
+        .post<SearchResponse>(
+          toAPIUrl('user_service.AutocompleteService', 'GetCompletion'),
+          {
+            prefix: searchText,
+          }
+        )
+        .then((resp) => {
+          console.log('resp', resp.data);
+          const defaultOptions = tournamentID
+            ? presences.map((p) => p.username).filter((u) => u !== username)
+            : Object.values(friends).map((f) => f.username);
+          setUsernameOptions(
+            !searchText
+              ? defaultOptions || []
+              : resp.data.users.map((u) => u.username)
+          );
+        });
+    },
+    [friends, presences, username, tournamentID]
+  );
 
   const searchUsernameDebounced = debounce(onUsernameSearch, 300);
 
@@ -274,6 +291,15 @@ export const SeekForm = (props: Props) => {
   const validateMessages = {
     required: 'This field is required.',
   };
+
+  useEffect(() => {
+    if (usernameOptions.length === 0) {
+      const defaultOptions = tournamentID
+        ? presences.map((p) => p.username).filter((u) => u !== username)
+        : Object.values(friends).map((f) => f.username);
+      setUsernameOptions(defaultOptions);
+    }
+  }, [friends, presences, username, usernameOptions, tournamentID]);
 
   return (
     <Form

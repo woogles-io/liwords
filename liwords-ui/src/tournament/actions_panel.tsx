@@ -296,6 +296,7 @@ export const ActionsPanel = React.memo((props: Props) => {
       <SeekForm
         onFormSubmit={onFormSubmit}
         loggedIn={props.loggedIn}
+        username={props.username}
         showFriendInput={true}
         id="match-seek"
         tournamentID={props.tournamentID}

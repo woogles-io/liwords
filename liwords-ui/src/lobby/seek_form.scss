@@ -4,6 +4,7 @@
 @include modal;
 
 .ant-modal-root .seek-modal {
+
   .ant-modal-header {
     @include colorModed() {
       background-image: linear-gradient(m($header) 30%, m($background) 100%);
@@ -52,9 +53,10 @@
     }
   }
   .ant-form-item-explain, .ant-form-item-extra {
-    @include colorModed() {
-      color: m($gray-extreme);
-    }
+    display: none;
+  }
+  .ant-form-item-with-help {
+    margin-bottom: 24px;
   }
   .ant-select-selector, .ant-select-item , .ant-select-dropdown{
     @include colorModed() {
