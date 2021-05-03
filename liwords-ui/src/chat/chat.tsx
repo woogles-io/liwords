@@ -48,7 +48,7 @@ type JSONActiveChatChannels = {
   channels: Array<JSONChatChannel>;
 };
 
-export const Chat = (props: Props) => {
+export const Chat = React.memo((props: Props) => {
   const { useState } = useMountedState();
   const { loginState } = useLoginStateStoreContext();
   const { tournamentContext } = useTournamentStoreContext();
@@ -88,6 +88,10 @@ export const Chat = (props: Props) => {
   const [defaultLastMessage, setDefaultLastMessage] = useState('');
   const [channelSelectedTime, setChannelSelectedTime] = useState(Date.now());
   const [channelReadTime, setChannelReadTime] = useState(Date.now());
+  const [notificationCount, setNotificationCount] = useState<number>(0);
+  const [lastNotificationTimestamp, setLastNotificationTimestamp] = useState<
+    number
+  >(Date.now());
   // Messages that come in for other channels
   const [unseenMessages, setUnseenMessages] = useState(
     new Array<ChatEntityObj>()
@@ -231,6 +235,13 @@ export const Chat = (props: Props) => {
                   })
               )
             );
+            const count =
+              newChannels?.channelsList
+                ?.filter((ch) => ch.hasUpdate)
+                ?.map((ch) => {
+                  return ch.name;
+                }).length || 0;
+            setNotificationCount(count);
           }
         });
     }
@@ -239,6 +250,7 @@ export const Chat = (props: Props) => {
     enableChatAutoScroll,
     channelsFetched,
     loggedIn,
+    setNotificationCount,
     props.tournamentID,
   ]);
 
@@ -268,6 +280,7 @@ export const Chat = (props: Props) => {
     setDescription(defaultDescription);
     if (loggedIn && defaultChannel === 'chat.lobby') {
       setSelectedChatTab('PLAYERS');
+      setShowChannels(true);
     }
   }, [defaultChannel, defaultDescription, loggedIn]);
 
@@ -374,6 +387,33 @@ export const Chat = (props: Props) => {
   ]);
 
   useEffect(() => {
+    if (selectedChatTab === 'PLAYERS') {
+      const lastMessage = chatEntities.reduce(
+        (acc: ChatEntityObj | undefined, ch) =>
+          'timestamp' in ch &&
+          (acc === undefined || ch.timestamp! > acc.timestamp!)
+            ? ch
+            : acc,
+        undefined
+      );
+      if (
+        lastMessage?.channel !== 'chat.lobby' &&
+        (lastMessage?.timestamp || 0) > lastNotificationTimestamp
+      ) {
+        setNotificationCount((x) => x + 1);
+        setLastNotificationTimestamp((x) =>
+          lastMessage?.timestamp || 0 > x ? lastMessage?.timestamp || x : x
+        );
+      }
+    }
+  }, [
+    chatEntities,
+    selectedChatTab,
+    lastNotificationTimestamp,
+    setNotificationCount,
+  ]);
+
+  useEffect(() => {
     window.addEventListener('resize', enableChatAutoScroll);
     return () => {
       window.removeEventListener('resize', enableChatAutoScroll);
@@ -465,6 +505,8 @@ export const Chat = (props: Props) => {
 
   const handleTabClick = useCallback((key) => {
     setSelectedChatTab(key);
+    setNotificationCount(0);
+    setLastNotificationTimestamp(Date.now());
   }, []);
   const handleHideList = useCallback(() => {
     setPresenceVisible(false);
@@ -504,7 +546,19 @@ export const Chat = (props: Props) => {
             defaultChannelType={defaultChannel.split('.')[1] || ''}
           />
         </TabPane>
-        <TabPane tab="Chat" key="CHAT">
+        <TabPane
+          tab={
+            <>
+              Chat
+              {notificationCount > 0 && (
+                <span className="notification">
+                  {notificationCount < 10 ? notificationCount : '!'}
+                </span>
+              )}
+            </>
+          }
+          key="CHAT"
+        >
           {showChannels ? (
             <ChatChannels
               defaultChannel={defaultChannel}
@@ -607,6 +661,7 @@ export const Chat = (props: Props) => {
                 </div>
                 <Input
                   autoFocus={!defaultChannel.startsWith('chat.game')}
+                  autoComplete="off"
                   placeholder={
                     channel === 'chat.lobby'
                       ? 'Ask or answer question...'
@@ -627,4 +682,4 @@ export const Chat = (props: Props) => {
       </Tabs>
     </Card>
   );
-};
+});

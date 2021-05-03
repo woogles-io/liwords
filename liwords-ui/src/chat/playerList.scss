@@ -36,6 +36,10 @@
   }
   input {
     margin-bottom: 12px;
+    @include colorModed() {
+      background: m($card-background);
+      color: m($gray-extreme);
+    }
   }
   .player-display {
     margin: 9px 0;
