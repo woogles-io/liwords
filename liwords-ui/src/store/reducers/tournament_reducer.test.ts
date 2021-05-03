@@ -43,6 +43,31 @@ const startTourneyMessage = () => {
   return msg;
 };
 
+const fullDivisionsState = () => {
+  const state = defaultTournamentState;
+
+  const state1 = TournamentReducer(state, {
+    actionType: ActionType.SetTourneyMetadata,
+    payload: tourneyMetadata(),
+  });
+
+  const state2 = TournamentReducer(state1, {
+    actionType: ActionType.SetDivisionsData,
+    payload: {
+      fullDivisions: initialTourneyXHRMessage(),
+      loginState: {
+        username: 'foo',
+        userID: 'foo123',
+        loggedIn: true,
+        connId: 'conn-123',
+        connectedToSocket: true,
+      },
+    },
+  });
+
+  return state2;
+};
+
 it('tests initial fulldivisions message', () => {
   const state = defaultTournamentState;
   const newState = TournamentReducer(state, {
@@ -73,33 +98,24 @@ it('tests initial fulldivisions message', () => {
 });
 
 it('tests tourneystart', () => {
-  const state = defaultTournamentState;
+  const state = fullDivisionsState();
 
-  const state1 = TournamentReducer(state, {
-    actionType: ActionType.SetTourneyMetadata,
-    payload: tourneyMetadata(),
-  });
-
-  const state2 = TournamentReducer(state1, {
-    actionType: ActionType.SetDivisionsData,
-    payload: {
-      fullDivisions: initialTourneyXHRMessage(),
-      loginState: {
-        username: 'foo',
-        userID: 'foo123',
-        loggedIn: true,
-        connId: 'conn-123',
-        connectedToSocket: true,
-      },
-    },
-  });
-
-  const finalState = TournamentReducer(state2, {
+  const finalState = TournamentReducer(state, {
     actionType: ActionType.StartTourneyRound,
     payload: startTourneyMessage(),
   });
 
   expect(finalState.started).toBe(true);
+});
+
+it('adds new divisions and pairings', () => {
+  const state = fullDivisionsState();
+
+  // Add a new division, add two players, add random pairings.
+
+  // const finalState = TournamentReducer(state, {
+  //   actionType:
+  // })
 });
 
 // it('tests my pairings', () => {
