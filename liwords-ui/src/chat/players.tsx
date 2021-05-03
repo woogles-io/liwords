@@ -216,6 +216,13 @@ export const Players = React.memo((props: Props) => {
     [username]
   );
 
+  useEffect(() => {
+    window.addEventListener('resize', setHeight);
+    return () => {
+      window.removeEventListener('resize', setHeight);
+    };
+  }, [setHeight]);
+
   const getPresenceLabel = (channelType: string) => {
     switch (channelType) {
       case 'lobby':
