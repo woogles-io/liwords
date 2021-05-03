@@ -43,9 +43,7 @@ export const UsernameWithContext = (props: UsernameWithContextProps) => {
         <li
           className="link plain"
           onClick={() => {
-            if (props.sendMessage) {
-              props.sendMessage(props.userID!, props.username);
-            }
+            props.sendMessage!(props.userID!, props.username);
           }}
         >
           Chat

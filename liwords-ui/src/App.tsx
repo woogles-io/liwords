@@ -172,25 +172,27 @@ const App = React.memo(() => {
   }, [getMods]);
 
   const getFriends = useCallback(() => {
-    axios
-      .post<FriendsResponse>(
-        toAPIUrl('user_service.SocializeService', 'GetFollows'),
-        {},
-        {}
-      )
-      .then((resp) => {
-        console.log('Fetched friends:', resp);
-        const friends: { [uuid: string]: FriendUser } = {};
-        Object.values(resp.data.users).forEach((f: FriendUser) => {
-          friends[f.uuid] = f;
-        });
-        setFriends(friends);
-      })
-      .catch((e) => {
-        console.log(e);
-      })
-      .finally(() => setPendingFriendsRefresh(false));
-  }, [setFriends, setPendingFriendsRefresh]);
+    if (loggedIn) {
+      axios
+        .post<FriendsResponse>(
+          toAPIUrl('user_service.SocializeService', 'GetFollows'),
+          {},
+          {}
+        )
+        .then((resp) => {
+          console.log('Fetched friends:', resp);
+          const friends: { [uuid: string]: FriendUser } = {};
+          resp.data.users.forEach((f: FriendUser) => {
+            friends[f.uuid] = f;
+          });
+          setFriends(friends);
+        })
+        .catch((e) => {
+          console.log(e);
+        })
+        .finally(() => setPendingFriendsRefresh(false));
+    }
+  }, [setFriends, setPendingFriendsRefresh, loggedIn]);
 
   useEffect(() => {
     getFriends();

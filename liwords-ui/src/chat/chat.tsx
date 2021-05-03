@@ -225,23 +225,15 @@ export const Chat = React.memo((props: Props) => {
           if (initial) {
             // If these were set already, just return that list,
             // otherwise respect the hasUpdate fields
-
-            setUpdatedChannels(
-              new Set(
-                newChannels?.channelsList
-                  ?.filter((ch) => ch.hasUpdate)
-                  ?.map((ch) => {
-                    return ch.name;
-                  })
-              )
-            );
-            const count =
+            const newUpdatedChannels = new Set(
               newChannels?.channelsList
                 ?.filter((ch) => ch.hasUpdate)
                 ?.map((ch) => {
                   return ch.name;
-                }).length || 0;
-            setNotificationCount(count);
+                })
+            );
+            setUpdatedChannels(newUpdatedChannels);
+            setNotificationCount(newUpdatedChannels.size);
           }
         });
     }
@@ -402,7 +394,7 @@ export const Chat = React.memo((props: Props) => {
       ) {
         setNotificationCount((x) => x + 1);
         setLastNotificationTimestamp((x) =>
-          lastMessage?.timestamp || 0 > x ? lastMessage?.timestamp || x : x
+          (lastMessage?.timestamp || 0) > x ? lastMessage?.timestamp || x : x
         );
       }
     }

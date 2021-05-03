@@ -244,9 +244,11 @@ export const SeekForm = (props: Props) => {
         )
         .then((resp) => {
           console.log('resp', resp.data);
-          const defaultOptions = tournamentID
-            ? presences.map((p) => p.username).filter((u) => u !== username)
-            : Object.values(friends).map((f) => f.username);
+          const defaultOptions = !searchText
+            ? tournamentID
+              ? presences.map((p) => p.username).filter((u) => u !== username)
+              : Object.values(friends).map((f) => f.username)
+            : [];
           setUsernameOptions(
             !searchText
               ? defaultOptions || []

@@ -1,4 +1,4 @@
-import React, { ReactNode, useCallback, useEffect } from 'react';
+import React, { ReactNode, useCallback, useEffect, useMemo } from 'react';
 import {
   FriendUser,
   PresenceEntity,
@@ -36,11 +36,9 @@ const Player = React.memo((props: PlayerProps) => {
 
   const online = props.fromChat || (props.channel && props.channel?.length > 0);
   let inGame =
-    props.channel &&
-    props.channel.filter((c) => c.includes('chat.game.')).length > 0;
+    props.channel && props.channel.some((c) => c.includes('chat.game.'));
   let watching =
-    props.channel &&
-    props.channel.filter((c) => c.includes('chat.gametv.')).length > 0;
+    props.channel && props.channel.some((c) => c.includes('chat.gametv.'));
   if (!props.username) {
     return null;
   }
@@ -118,9 +116,7 @@ export const Players = React.memo((props: Props) => {
           .then((resp) => {
             // Exclude your friends
             const nonfriends = resp.data.users.filter((u) => {
-              return !Object.values(friends).some(
-                (f) => f.username.toLowerCase() === u.username?.toLowerCase()
-              );
+              return u.uuid && !(u.uuid in friends);
             });
             // Exclude yourself
             setSearchResults(
@@ -183,29 +179,36 @@ export const Players = React.memo((props: Props) => {
 
   const transformAndFilterPresences = useCallback(
     (
-      presenceUsers: PresenceEntity[],
+      presenceEntities: PresenceEntity[],
       searchTerm: string
     ): Partial<FriendUser>[] => {
-      const presencePlayers = presenceUsers
+      const presencePlayersMap: { [uuid: string]: FriendUser } = {};
+      presenceEntities
         .filter((p) => !p.anon)
+        .forEach((p) => {
+          if (p.uuid in presencePlayersMap) {
+            presencePlayersMap[p.uuid] = {
+              ...presencePlayersMap[p.uuid],
+              channel: presencePlayersMap[p.uuid].channel.concat(p.channel),
+            };
+          } else {
+            presencePlayersMap[p.uuid] = {
+              username: p.username,
+              uuid: p.uuid,
+              channel: [p.channel],
+            };
+          }
+        });
+      const presencePlayers = Object.values(presencePlayersMap)
         .sort((a, b) => {
-          if (a.username < b.username) {
+          if (a.username > b.username) {
             return -1;
           }
-          if (a.username > b.username) {
+          if (a.username < b.username) {
             return 1;
           }
           return 0;
         })
-        .map(
-          (p): Partial<FriendUser> => {
-            return {
-              username: p.username,
-              uuid: p.uuid,
-              channel: new Array<string>().concat(p.channel),
-            };
-          }
-        )
         .filter((u) => u.username?.toLowerCase() !== username.toLowerCase());
       return searchTerm?.length
         ? presencePlayers.filter((u) =>
@@ -214,6 +217,11 @@ export const Players = React.memo((props: Props) => {
         : presencePlayers;
     },
     [username]
+  );
+
+  const transformedAndFilteredPresences = useMemo(
+    () => transformAndFilterPresences(presences, searchText),
+    [transformAndFilterPresences, presences, searchText]
   );
 
   useEffect(() => {
@@ -234,6 +242,8 @@ export const Players = React.memo((props: Props) => {
     }
     return 'IN ROOM';
   };
+
+  const friendsValues = useMemo(() => Object.values(friends), [friends]);
   return (
     <div className="player-list">
       <Form name="search-players">
@@ -262,10 +272,10 @@ export const Players = React.memo((props: Props) => {
           {loggedIn && <div className="breadcrumb">FRIENDS</div>}
           {loggedIn &&
             renderPlayerList(
-              filterPlayerListBySearch(searchText, Object.values(friends)),
+              filterPlayerListBySearch(searchText, friendsValues),
               'friends'
             )}
-          {loggedIn && Object.values(friends).length === 0 && (
+          {loggedIn && friendsValues.length === 0 && (
             <p className="prompt">
               You haven't added any friends. Add some now to see when they're
               online!
@@ -273,12 +283,12 @@ export const Players = React.memo((props: Props) => {
           )}
         </section>
         <section className="present">
-          {transformAndFilterPresences(presences, searchText).length > 0 && (
+          {transformedAndFilteredPresences.length > 0 && (
             <div className="breadcrumb">
               {getPresenceLabel(props.defaultChannelType || '')}
             </div>
           )}
-          {renderPlayerList(transformAndFilterPresences(presences, searchText))}
+          {renderPlayerList(transformedAndFilteredPresences)}
         </section>
         <section className="search">
           {searchResults?.length > 0 && searchText.length > 0 && (
