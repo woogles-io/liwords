@@ -13,6 +13,8 @@ import {
   useLoginStateStoreContext,
   useResetStoreContext,
   useModeratorStoreContext,
+  FriendUser,
+  useFriendsStoreContext,
 } from './store/store';
 
 import { LiwordsSocket } from './socket/socket';
@@ -38,6 +40,10 @@ type Blocks = {
 type ModsResponse = {
   admin_user_ids: Array<string>;
   mod_user_ids: Array<string>;
+};
+
+type FriendsResponse = {
+  users: Array<FriendUser>;
 };
 
 const useDarkMode = localStorage?.getItem('darkMode') === 'true';
@@ -75,6 +81,8 @@ const App = React.memo(() => {
     setModerators,
     setModsFetched,
   } = useModeratorStoreContext();
+
+  const { setFriends } = useFriendsStoreContext();
 
   const { resetStore } = useResetStoreContext();
 
@@ -158,6 +166,30 @@ const App = React.memo(() => {
   useEffect(() => {
     getMods();
   }, [getMods]);
+
+  const getFriends = useCallback(() => {
+    axios
+      .post<FriendsResponse>(
+        toAPIUrl('user_service.SocializeService', 'GetFollows'),
+        {},
+        {}
+      )
+      .then((resp) => {
+        console.log('Fetched friends:', resp);
+        const friends: { [uuid: string]: FriendUser } = {};
+        Object.values(resp.data.users).forEach((f: FriendUser) => {
+          friends[f.uuid] = f;
+        });
+        setFriends(friends);
+      })
+      .catch((e) => {
+        console.log(e);
+      });
+  }, [setFriends]);
+
+  useEffect(() => {
+    getFriends();
+  }, [getFriends]);
 
   const sendChat = useCallback(
     (msg: string, chan: string) => {

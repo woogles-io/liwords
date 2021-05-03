@@ -92,6 +92,19 @@ type ExcludedPlayersStoreData = {
   setPendingBlockRefresh: React.Dispatch<React.SetStateAction<boolean>>;
 };
 
+export type FriendUser = {
+  username: string;
+  uuid: string;
+  channel: string[];
+};
+
+type FriendsStoreData = {
+  friends: { [uuid: string]: FriendUser };
+  setFriends: React.Dispatch<
+    React.SetStateAction<{ [uuid: string]: FriendUser }>
+  >;
+};
+
 type ModeratorsStoreData = {
   moderators: Set<string>;
   setModerators: React.Dispatch<React.SetStateAction<Set<string>>>;
@@ -244,6 +257,11 @@ const ExcludedPlayersContext = createContext<ExcludedPlayersStoreData>({
   setExcludedPlayersFetched: defaultFunction,
   pendingBlockRefresh: false,
   setPendingBlockRefresh: defaultFunction,
+});
+
+const FriendsContext = createContext<FriendsStoreData>({
+  friends: {},
+  setFriends: defaultFunction,
 });
 
 const ModeratorsContext = createContext<ModeratorsStoreData>({
@@ -768,6 +786,7 @@ const RealStore = ({ children, ...props }: Props) => {
     ActiveChatChannels.AsObject | undefined
   >(undefined);
   const [excludedPlayers, setExcludedPlayers] = useState(new Set<string>());
+  const [friends, setFriends] = useState({});
   const [excludedPlayersFetched, setExcludedPlayersFetched] = useState(false);
   const [pendingBlockRefresh, setPendingBlockRefresh] = useState(false);
   const [moderators, setModerators] = useState(new Set<string>());
@@ -927,6 +946,13 @@ const RealStore = ({ children, ...props }: Props) => {
       setPendingBlockRefresh,
     ]
   );
+  const friendsStore = useMemo(
+    () => ({
+      friends,
+      setFriends,
+    }),
+    [friends, setFriends]
+  );
   const moderatorsStore = useMemo(
     () => ({
       moderators,
@@ -1033,6 +1059,7 @@ const RealStore = ({ children, ...props }: Props) => {
       children={ret}
     />
   );
+  ret = <FriendsContext.Provider value={friendsStore} children={ret} />;
   ret = <ModeratorsContext.Provider value={moderatorsStore} children={ret} />;
   ret = (
     <ChallengeResultEventContext.Provider
@@ -1097,6 +1124,7 @@ export const useTournamentStoreContext = () => useContext(TournamentContext);
 export const useTentativeTileContext = () => useContext(TentativePlayContext);
 export const useExcludedPlayersStoreContext = () =>
   useContext(ExcludedPlayersContext);
+export const useFriendsStoreContext = () => useContext(FriendsContext);
 export const useModeratorStoreContext = () => useContext(ModeratorsContext);
 export const useChallengeResultEventStoreContext = () =>
   useContext(ChallengeResultEventContext);

@@ -21,6 +21,7 @@ import {
   chatMessageToChatEntity,
 } from '../store/constants';
 import { ActiveChatChannels } from '../gen/api/proto/user_service/user_service_pb';
+import { Players } from './players';
 
 const { TabPane } = Tabs;
 
@@ -493,13 +494,17 @@ export const Chat = React.memo((props: Props) => {
   );
   return (
     <Card className="chat" id="chat">
-      <Tabs defaultActiveKey="CHAT" centered onTabClick={handleTabClick}>
+      <Tabs
+        defaultActiveKey={defaultChannel === 'chat.lobby' ? 'PLAYERS' : 'CHAT'}
+        centered
+        onTabClick={handleTabClick}
+      >
         {/* TabPane for available players to chat with goes here:
           past chats, friends, all online players.
           It's not the same as the users in this current chat group.
          */}
-        <TabPane tab={<>Players{/* Notification dot */}</>} key="PLAYERS">
-          Coming soon! This will be your friends list.
+        <TabPane tab={<>Players</>} key="PLAYERS">
+          <Players />
         </TabPane>
         <TabPane tab="Chat" key="CHAT">
           {showChannels ? (

@@ -8,6 +8,11 @@ p {
 }
 .chat-area {
   order: 3;
+  .player-list {
+    .player-display {
+      margin: 6px 0;
+    }
+  }
   p {
     font-family: $font-default;
   }
@@ -19,6 +24,64 @@ p {
 
       overflow-y: auto;
       max-height: $main-container-width-tablet - 122px;
+    }
+  }
+  .player-display {
+    display: flex;
+    align-items: center;
+    .player-avatar {
+      display: flex;
+      margin-right: 12px;
+      position: relative;
+      &:after {
+        width: 15px;
+        height: 15px;
+        border-radius: 50%;
+        border: 2px solid white;
+        position: absolute;
+        top: 0;
+        left: 0;
+        content: " ";
+        white-space: pre;
+        @include colorModed() {
+          background: m($timer-dark);
+          border-color: m($card-background);
+        }
+      }
+    }
+    .player-name {
+      font-weight: 700;
+      @include colorModed() {
+        color: m($gray-extreme);
+      }
+    }
+    .country-flag {
+      top: 0px;
+      margin-left: 6px;
+      width: 15px;
+      height: 11px;
+    }
+    &.offline {
+      .player-name {
+        @include colorModed() {
+          color: m($gray-medium);
+        }
+        font-style: oblique;
+      }
+      .player-avatar:after {
+        background: transparent;
+        border: 0px solid transparent;
+      }
+    }
+    &.ingame {
+      .player-avatar:after {
+        border-radius: 1px;
+        width: 14px;
+        height: 14px;
+        @include colorModed() {
+          background: m($primary-dark);
+        }
+      }
     }
   }
   p.disabled-message {

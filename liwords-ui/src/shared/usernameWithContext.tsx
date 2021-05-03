@@ -7,16 +7,19 @@ import { useLoginStateStoreContext } from '../store/store';
 import { canMod } from '../mod/perms';
 import { DisplayFlag } from './display_flag';
 import { SettingOutlined } from '@ant-design/icons';
+import { TheFollower } from './follower';
 
 type UsernameWithContextProps = {
   additionalMenuItems?: React.ReactNode;
   includeFlag?: boolean;
   omitProfileLink?: boolean;
   omitSendMessage?: boolean;
+  omitFriend?: boolean;
   omitBlock?: boolean;
   username: string;
   userID?: string;
   sendMessage?: (uuid: string, username: string) => void;
+  friendCallback?: () => void;
   blockCallback?: () => void;
   showModTools?: boolean;
   showDeleteMessage?: boolean;
@@ -43,6 +46,14 @@ export const UsernameWithContext = (props: UsernameWithContextProps) => {
           </Link>
         </li>
       )}
+      {loggedIn && props.userID && !props.omitFriend ? (
+        <TheFollower
+          friendCallback={props.friendCallback}
+          className="link plain"
+          target={props.userID}
+          tagName="li"
+        />
+      ) : null}
       {!props.omitSendMessage && props.userID && props.userID !== userID ? (
         <li
           className="link plain"
@@ -64,6 +75,7 @@ export const UsernameWithContext = (props: UsernameWithContextProps) => {
           userName={props.username}
         />
       ) : null}
+
       {props.showModTools && canMod(perms) && props.userID !== userID ? (
         <li
           className="link plain"
