@@ -706,14 +706,18 @@ func (t *ClassicDivision) AddPlayers(players *realtime.TournamentPersons) ([]*re
 			} else {
 				pm := t.RoundControls[i].PairingMethod
 				if (i == int(t.CurrentRound)+1 || pair.IsStandingsIndependent(pm)) && pm != realtime.PairingMethod_MANUAL {
-					newPairings, newStandings, err := t.PairRound(i)
+					newPairings, _, err := t.PairRound(i)
 					if err != nil {
 						return nil, nil, err
 					}
 					pairingResponse = combinePairingsResponses(pairingResponse, newPairings)
-					standingsResponse = combineStandingsResponses(standingsResponse, newStandings)
 				}
 			}
+			roundStandings, err := t.GetStandings(i, false)
+			if err != nil {
+				return nil, nil, err
+			}
+			standingsResponse = combineStandingsResponses(standingsResponse, map[int32]*realtime.RoundStandings{int32(i): roundStandings})
 		}
 	}
 	return pairingResponse, standingsResponse, nil
@@ -776,13 +780,19 @@ func (t *ClassicDivision) RemovePlayers(persons *realtime.TournamentPersons) ([]
 		for i := int(t.CurrentRound + 1); i < len(t.Matrix); i++ {
 			pm := t.RoundControls[i].PairingMethod
 			if (i == int(t.CurrentRound)+1 || pair.IsStandingsIndependent(pm)) && pm != realtime.PairingMethod_MANUAL {
-				newPairings, newStandings, err := t.PairRound(i)
+				newPairings, _, err := t.PairRound(i)
 				if err != nil {
 					return nil, nil, err
 				}
 				pairingResponse = combinePairingsResponses(pairingResponse, newPairings)
-				standingsResponse = combineStandingsResponses(standingsResponse, newStandings)
 			}
+		}
+		for i := 0; i < len(t.Matrix); i++ {
+			roundStandings, err := t.GetStandings(i, false)
+			if err != nil {
+				return nil, nil, err
+			}
+			standingsResponse = combineStandingsResponses(standingsResponse, map[int32]*realtime.RoundStandings{int32(i): roundStandings})
 		}
 	}
 
