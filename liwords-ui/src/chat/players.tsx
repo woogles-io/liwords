@@ -18,6 +18,7 @@ import { debounce } from '../utils/debounce';
 import { useMountedState } from '../utils/mounted';
 
 type Props = {
+  defaultChannelType?: string;
   sendMessage?: (uuid: string, username: string) => void;
 };
 
@@ -214,6 +215,18 @@ export const Players = React.memo((props: Props) => {
     },
     [username]
   );
+
+  const getPresenceLabel = (channelType: string) => {
+    switch (channelType) {
+      case 'lobby':
+        return 'IN LOBBY';
+      case 'game':
+        return 'YOUR OPPONENT';
+      case 'gametv':
+        return 'OBSERVERS';
+    }
+    return 'IN ROOM';
+  };
   return (
     <div className="player-list">
       <Form name="search-players">
@@ -225,8 +238,10 @@ export const Players = React.memo((props: Props) => {
           autoComplete="off"
         />
       </Form>
-      <section
-        className="player-lists"
+      <div
+        className={`player-sections ${
+          props.defaultChannelType ? props.defaultChannelType : ''
+        }`}
         style={
           maxHeight
             ? {
@@ -236,30 +251,37 @@ export const Players = React.memo((props: Props) => {
             : undefined
         }
       >
-        {loggedIn && <div className="breadcrumb">FRIENDS</div>}
-        {loggedIn &&
-          renderPlayerList(
-            filterPlayerListBySearch(searchText, Object.values(friends)),
-            'friends'
+        <section className="friends">
+          {loggedIn && <div className="breadcrumb">FRIENDS</div>}
+          {loggedIn &&
+            renderPlayerList(
+              filterPlayerListBySearch(searchText, Object.values(friends)),
+              'friends'
+            )}
+          {loggedIn && Object.values(friends).length === 0 && (
+            <p className="prompt">
+              You haven't added any friends. Add some now to see when they're
+              online!
+            </p>
           )}
-        {loggedIn && Object.values(friends).length === 0 && (
-          <p className="prompt">
-            You haven't added any friends. Add some now to see when they're
-            online!
-          </p>
-        )}
-        {transformAndFilterPresences(presences, searchText).length > 0 && (
-          <div className="breadcrumb">IN ROOM</div>
-        )}
-        {renderPlayerList(transformAndFilterPresences(presences, searchText))}
-
-        {searchResults?.length > 0 && searchText.length > 0 && (
-          <div className="breadcrumb">ALL PLAYERS</div>
-        )}
-        {searchResults?.length > 0 &&
-          searchText.length > 0 &&
-          renderPlayerList(searchResults, 'search')}
-      </section>
+        </section>
+        <section className="present">
+          {transformAndFilterPresences(presences, searchText).length > 0 && (
+            <div className="breadcrumb">
+              {getPresenceLabel(props.defaultChannelType || '')}
+            </div>
+          )}
+          {renderPlayerList(transformAndFilterPresences(presences, searchText))}
+        </section>
+        <section className="search">
+          {searchResults?.length > 0 && searchText.length > 0 && (
+            <div className="breadcrumb">ALL PLAYERS</div>
+          )}
+          {searchResults?.length > 0 &&
+            searchText.length > 0 &&
+            renderPlayerList(searchResults, 'search')}
+        </section>
+      </div>
     </div>
   );
 });

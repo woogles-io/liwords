@@ -499,7 +499,10 @@ export const Chat = (props: Props) => {
     <Card className="chat" id="chat">
       <Tabs activeKey={selectedChatTab} centered onTabClick={handleTabClick}>
         <TabPane tab={<>Players</>} key="PLAYERS" className="player-pane">
-          <Players sendMessage={sendNewMessage} />
+          <Players
+            sendMessage={sendNewMessage}
+            defaultChannelType={defaultChannel.split('.')[1] || ''}
+          />
         </TabPane>
         <TabPane tab="Chat" key="CHAT">
           {showChannels ? (

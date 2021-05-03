@@ -9,6 +9,24 @@
     }
   }
 }
+.player-sections {
+  display: flex;
+  flex-direction: column;
+  section {
+    width: 100%;
+  }
+  &.game, &.gametv, &.tournament {
+    .present {
+      order: 1;
+    }
+    .friends {
+      order: 2;
+    }
+    .search {
+      order: 3;
+    }
+  }
+}
 .player-list {
   p.prompt {
     padding: 12px 0;
