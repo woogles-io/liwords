@@ -10,6 +10,7 @@ import {
   useExcludedPlayersStoreContext,
   useGameContextStoreContext,
   useGameEndMessageStoreContext,
+  useFriendsStoreContext,
   useLagStoreContext,
   useLobbyStoreContext,
   useLoginStateStoreContext,
@@ -153,6 +154,7 @@ export const useOnSocketMsg = () => {
   } = useTournamentStoreContext();
   const { loginState } = useLoginStateStoreContext();
   const { setPresence, addPresences } = usePresenceStoreContext();
+  const { friends, setFriends } = useFriendsStoreContext();
   const { setRematchRequest } = useRematchRequestStoreContext();
   const { stopClock } = useTimerStoreContext();
   const { isExamining } = useExamineStoreContext();
@@ -458,7 +460,14 @@ export const useOnSocketMsg = () => {
 
             console.log('got presence entry', pe.toObject());
 
-            // TODO.
+            setFriends({
+              ...friends,
+              [pe.toObject().userId]: {
+                uuid: pe.getUserId(),
+                username: pe.getUsername(),
+                channel: pe.getChannelList(),
+              },
+            });
 
             // Interpretation notes (check Go code if these are still valid):
             // - The channel list is always sorted and unique.
@@ -739,6 +748,8 @@ export const useOnSocketMsg = () => {
       excludedPlayers,
       gameContext,
       loginState,
+      friends,
+      setFriends,
       setCurrentLagMs,
       setGameEndMessage,
       setPresence,

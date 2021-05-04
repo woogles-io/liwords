@@ -6,8 +6,57 @@
 p {
   margin: 0;
 }
+
+.breadcrumb {
+  padding: 6px 0 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 12px;
+  letter-spacing: 1.3px;
+  @include colorModed() {
+    color: m($gray-medium);
+  }
+  p {
+    @include colorModed() {
+      color: m($gray-medium);
+    }
+  }
+  .link.plain {
+    text-transform: none;
+    font-size: 14px;
+    @include colorModed() {
+      color: m($primary-dark);
+    }
+  }
+  .anticon {
+    font-size: 18px;
+    margin-right: 12px;
+  }
+}
+
+.notification {
+  display: inline-flex;
+  width: 15px;
+  height: 15px;
+  font-size: 10px;
+  font-family: 'Muli';
+  line-height: 0;
+  text-align: center;
+  padding: 1px 0 0 2px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  margin-left: 6px;
+  color: white;
+  @include colorModed() {
+    background: m($timer-out-dark);
+  }
+}
+
 .chat-area {
   order: 3;
+
   p {
     font-family: $font-default;
   }
@@ -21,6 +70,7 @@ p {
       max-height: $main-container-width-tablet - 122px;
     }
   }
+
   p.disabled-message {
     padding: 24px;
     @include colorModed() {
@@ -30,9 +80,7 @@ p {
   .ant-card.chat .ant-card-body {
     padding: 0 0 40px 0;
   }
-  #rc-tabs-0-panel-PLAYERS {
-    padding: 24px;
-  }
+
   .channel-list {
     overflow-y: auto;
     max-height: $main-container-width-tablet;
@@ -80,32 +128,7 @@ p {
         }
       }
     }
-    .breadcrumb {
-      padding: 6px 0 0;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      font-size: 12px;
-      @include colorModed() {
-        color: m($gray-medium);
-      }
-      p {
-        @include colorModed() {
-          color: m($gray-medium);
-        }
-      }
-      .link.plain {
-        text-transform: none;
-        font-size: 14px;
-        @include colorModed() {
-          color: m($primary-dark);
-        }
-      }
-      .anticon {
-        font-size: 18px;
-        margin-right: 12px;
-      }
-    }
+
     .presence-count {
       position: relative;
       display: flex;
@@ -366,13 +389,15 @@ p {
   }
 }
 
+
+
 .game-table {
   .chat-area .ant-card.chat {
     height: 400px;
   }
 }
 
-.chat input {
+.chat input[name='chat-input'] {
   position: absolute;
   bottom: 0;
   left: 0;

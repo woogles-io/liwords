@@ -7,16 +7,19 @@ import { useLoginStateStoreContext } from '../store/store';
 import { canMod } from '../mod/perms';
 import { DisplayFlag } from './display_flag';
 import { SettingOutlined } from '@ant-design/icons';
+import { TheFollower } from './follower';
 
 type UsernameWithContextProps = {
   additionalMenuItems?: React.ReactNode;
   includeFlag?: boolean;
   omitProfileLink?: boolean;
   omitSendMessage?: boolean;
+  omitFriend?: boolean;
   omitBlock?: boolean;
   username: string;
   userID?: string;
   sendMessage?: (uuid: string, username: string) => void;
+  friendCallback?: () => void;
   blockCallback?: () => void;
   showModTools?: boolean;
   showDeleteMessage?: boolean;
@@ -32,6 +35,20 @@ export const UsernameWithContext = (props: UsernameWithContextProps) => {
 
   const userMenu = (
     <ul>
+      {loggedIn &&
+      !props.omitSendMessage &&
+      props.userID &&
+      props.userID !== userID &&
+      props.sendMessage ? (
+        <li
+          className="link plain"
+          onClick={() => {
+            props.sendMessage!(props.userID!, props.username);
+          }}
+        >
+          Chat
+        </li>
+      ) : null}
       {!props.omitProfileLink && (
         <li>
           <Link
@@ -43,18 +60,15 @@ export const UsernameWithContext = (props: UsernameWithContextProps) => {
           </Link>
         </li>
       )}
-      {!props.omitSendMessage && props.userID && props.userID !== userID ? (
-        <li
+      {loggedIn && props.userID && !props.omitFriend ? (
+        <TheFollower
+          friendCallback={props.friendCallback}
           className="link plain"
-          onClick={() => {
-            if (props.sendMessage) {
-              props.sendMessage(props.userID!, props.username);
-            }
-          }}
-        >
-          Message
-        </li>
+          target={props.userID}
+          tagName="li"
+        />
       ) : null}
+
       {loggedIn && props.userID && !props.omitBlock ? (
         <TheBlocker
           blockCallback={props.blockCallback}
@@ -64,6 +78,7 @@ export const UsernameWithContext = (props: UsernameWithContextProps) => {
           userName={props.username}
         />
       ) : null}
+
       {props.showModTools && canMod(perms) && props.userID !== userID ? (
         <li
           className="link plain"

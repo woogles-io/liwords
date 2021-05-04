@@ -90,18 +90,17 @@
       align-items: center;
       .player-avatar {
         display: none;
-        width: 24px;
-        height: 24px;
-        min-width: 24px;
-        font-size: 15px;
-        margin-right: 6px;
+        width: 36px;
+        height: 36px;
+        min-width: 36px;
+        font-size: 20px;
+        margin-right: 12px;
         @media (min-width: $screen-desktop-min) {
           display: flex;
           width: 36px;
           height: 36px;
           min-width: 36px;
           font-size: 20px;
-          margin-right: 12px;
         }
       }
       .player-name {
