@@ -502,6 +502,7 @@ export function TournamentReducer(
   switch (action.actionType) {
     case ActionType.SetTourneyMetadata:
       const metadata = action.payload as TournamentMetadata;
+      console.log('gonna set metadata', metadata);
       return {
         ...state,
         metadata,
@@ -890,6 +891,7 @@ export function TournamentReducer(
 
     case ActionType.AddActiveGames: {
       const activeGames = action.payload as Array<ActiveGame>;
+      console.log('activeGames', activeGames);
       return {
         ...state,
         activeGames,

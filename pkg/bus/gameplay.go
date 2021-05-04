@@ -347,6 +347,9 @@ func (b *Bus) readyForTournamentGame(ctx context.Context, evt *pb.ReadyForTourna
 	if otherID == userID {
 		return errors.New("both users have same ID?")
 	}
+	if otherUserIdx == -1 {
+		return errors.New("unexpected behavior; did not find other player")
+	}
 	users[otherUserIdx], err = b.userStore.GetByUUID(ctx, otherID)
 	if err != nil {
 		return err

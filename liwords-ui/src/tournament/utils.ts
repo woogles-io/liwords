@@ -71,6 +71,7 @@ export const useTourneyMetadata = (
         );
 
         console.log(
+          'after GetTournament, in useTourneyMetadata',
           FullTournamentDivisions.deserializeBinary(tresp.data).toObject()
         );
 
