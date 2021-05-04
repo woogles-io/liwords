@@ -401,21 +401,6 @@ func (s *DBStore) SetPassword(ctx context.Context, uuid string, hashpass string)
 	return s.db.Model(u).Update("password", hashpass).Error
 }
 
-// SetAbout sets the about (profile field) for the user.
-func (s *DBStore) SetAbout(ctx context.Context, uuid string, about string) error {
-	u := &User{}
-	p := &profile{}
-
-	if result := s.db.Where("uuid = ?", uuid).First(u); result.Error != nil {
-		return result.Error
-	}
-	if result := s.db.Model(u).Related(p); result.Error != nil {
-		return result.Error
-	}
-
-	return s.db.Model(p).Update("about", about).Error
-}
-
 // SetAvatarUrl sets the avatar_url (profile field) for the user.
 func (s *DBStore) SetAvatarUrl(ctx context.Context, uuid string, avatarUrl string) error {
 	u := &User{}
@@ -471,20 +456,23 @@ func (s *DBStore) SetPersonalInfo(ctx context.Context, uuid string, email string
 	u := &User{}
 	p := &profile{}
 
-	if result := s.db.Where("uuid = ?", uuid).First(u); result.Error != nil {
-		return result.Error
-	}
-	if result := s.db.Model(u).Update("email", email); result.Error != nil {
-		return result.Error
-	}
-	if result := s.db.Model(u).Related(p); result.Error != nil {
-		return result.Error
-	}
+	return s.db.Transaction(func(tx *gorm.DB) error {
+		if result := tx.Where("uuid = ?", uuid).First(u); result.Error != nil {
+			return result.Error
+		}
+		if result := tx.Model(u).Update("email", email); result.Error != nil {
+			return result.Error
+		}
+		if result := tx.Model(u).Related(p); result.Error != nil {
+			return result.Error
+		}
 
-	return s.db.Model(p).Update(map[string]interface{}{"first_name": firstName,
-		"last_name":    lastName,
-		"about":        about,
-		"country_code": countryCode}).Error
+		return tx.Model(p).Update(map[string]interface{}{"first_name": firstName,
+			"last_name":    lastName,
+			"about":        about,
+			"country_code": countryCode}).Error
+	})
+
 }
 
 // SetRatings set the specific ratings for the given variant in a transaction.

@@ -223,14 +223,15 @@ func (c *Cache) SetPersonalInfo(ctx context.Context, uuid string, email string, 
 	if err != nil {
 		return err
 	}
+
+	if err = c.backing.SetPersonalInfo(ctx, uuid, email, firstName, lastName, countryCode, about); err != nil {
+		return err
+	}
 	u.Email = email
 	u.Profile.FirstName = firstName
 	u.Profile.LastName = lastName
 	u.Profile.CountryCode = countryCode
 	u.Profile.About = about
-	if err = c.backing.SetPersonalInfo(ctx, uuid, email, firstName, lastName, countryCode, about); err != nil {
-		return err
-	}
 	c.uncacheBriefProfile(uuid)
 	return nil
 }
@@ -241,15 +242,15 @@ func (c *Cache) ResetPersonalInfo(ctx context.Context, uuid string) error {
 		return err
 	}
 
+	if err = c.backing.ResetPersonalInfo(ctx, uuid); err != nil {
+		return err
+	}
 	u.Profile.FirstName = ""
 	u.Profile.LastName = ""
 	u.Profile.CountryCode = ""
 	u.Profile.Title = ""
 	u.Profile.AvatarUrl = ""
 	u.Profile.About = ""
-	if err = c.backing.ResetPersonalInfo(ctx, uuid); err != nil {
-		return err
-	}
 	c.uncacheBriefProfile(uuid)
 	return nil
 }
@@ -260,6 +261,11 @@ func (c *Cache) SetRatings(ctx context.Context, p0uuid string, p1uuid string, va
 		return err
 	}
 	u1, err := c.GetByUUID(ctx, p1uuid)
+	if err != nil {
+		return err
+	}
+
+	err = c.backing.SetRatings(ctx, p0uuid, p1uuid, variant, p0Rating, p1Rating)
 	if err != nil {
 		return err
 	}
@@ -275,10 +281,6 @@ func (c *Cache) SetRatings(ctx context.Context, p0uuid string, p1uuid string, va
 	u0.Profile.Ratings.Data[variant] = p0Rating
 	u1.Profile.Ratings.Data[variant] = p1Rating
 
-	err = c.backing.SetRatings(ctx, p0uuid, p1uuid, variant, p0Rating, p1Rating)
-	if err != nil {
-		return err
-	}
 	return nil
 }
 
@@ -287,11 +289,11 @@ func (c *Cache) ResetRatings(ctx context.Context, uuid string) error {
 	if err != nil {
 		return err
 	}
-	u.Profile.Ratings.Data = nil
 	err = c.backing.ResetRatings(ctx, uuid)
 	if err != nil {
 		return err
 	}
+	u.Profile.Ratings.Data = nil
 	return nil
 }
 
@@ -306,6 +308,10 @@ func (c *Cache) SetStats(ctx context.Context, p0uuid string, p1uuid string, vari
 		return err
 	}
 
+	err = c.backing.SetStats(ctx, p0uuid, p1uuid, variant, p0Stats, p1Stats)
+	if err != nil {
+		return err
+	}
 	if u0.Profile.Stats.Data == nil {
 		u0.Profile.Stats.Data = make(map[entity.VariantKey]*entity.Stats)
 	}
@@ -316,12 +322,6 @@ func (c *Cache) SetStats(ctx context.Context, p0uuid string, p1uuid string, vari
 
 	u0.Profile.Stats.Data[variant] = p0Stats
 	u1.Profile.Stats.Data[variant] = p1Stats
-
-	err = c.backing.SetStats(ctx, p0uuid, p1uuid, variant, p0Stats, p1Stats)
-	if err != nil {
-		return err
-	}
-
 	return nil
 }
 
@@ -330,11 +330,11 @@ func (c *Cache) ResetStats(ctx context.Context, uuid string) error {
 	if err != nil {
 		return err
 	}
-	u.Profile.Stats.Data = nil
 	err = c.backing.ResetStats(ctx, uuid)
 	if err != nil {
 		return err
 	}
+	u.Profile.Stats.Data = nil
 	return nil
 }
 
