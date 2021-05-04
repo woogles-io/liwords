@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect } from 'react';
+import React, { useCallback, useEffect, useMemo } from 'react';
 import {
   Form,
   Radio,
@@ -25,7 +25,6 @@ import {
   useFriendsStoreContext,
   usePresenceStoreContext,
 } from '../store/store';
-
 export type seekPropVals = { [val: string]: string | number | boolean };
 
 const wholetimes = [];
@@ -232,7 +231,20 @@ export const SeekForm = (props: Props) => {
     setTimectrl(tc);
     setTtag(tt);
   };
-
+  const defaultOptions = useMemo(() => {
+    let defaultPlayers: string[] = [];
+    if (tournamentID && presences.length) {
+      defaultPlayers = presences
+        .map((p) => p.username)
+        .filter((u) => u !== username);
+    } else {
+      const friendsArray = friends ? Object.values(friends) : [];
+      if (friendsArray.length) {
+        defaultPlayers = friendsArray.map((f) => f.username);
+      }
+    }
+    return defaultPlayers;
+  }, [friends, presences, username, tournamentID]);
   const onUsernameSearch = useCallback(
     (searchText: string) => {
       axios
@@ -244,19 +256,15 @@ export const SeekForm = (props: Props) => {
         )
         .then((resp) => {
           console.log('resp', resp.data);
-          const defaultOptions = !searchText
-            ? tournamentID
-              ? presences.map((p) => p.username).filter((u) => u !== username)
-              : Object.values(friends).map((f) => f.username)
-            : [];
+
           setUsernameOptions(
             !searchText
-              ? defaultOptions || []
+              ? defaultOptions
               : resp.data.users.map((u) => u.username)
           );
         });
     },
-    [friends, presences, username, tournamentID]
+    [defaultOptions]
   );
 
   const searchUsernameDebounced = debounce(onUsernameSearch, 300);
@@ -295,13 +303,14 @@ export const SeekForm = (props: Props) => {
   };
 
   useEffect(() => {
+    if (!(tournamentID && presences.length) || !Object.values(friends).length) {
+      return;
+    }
+
     if (usernameOptions.length === 0) {
-      const defaultOptions = tournamentID
-        ? presences.map((p) => p.username).filter((u) => u !== username)
-        : Object.values(friends).map((f) => f.username);
       setUsernameOptions(defaultOptions);
     }
-  }, [friends, presences, username, usernameOptions, tournamentID]);
+  }, [defaultOptions, tournamentID, presences, friends, usernameOptions]);
 
   return (
     <Form
@@ -329,6 +338,7 @@ export const SeekForm = (props: Props) => {
           <AutoComplete
             onSearch={searchUsernameDebounced}
             placeholder="username..."
+            onClick={() => setUsernameOptions(defaultOptions)}
             filterOption={(inputValue, option) =>
               !option ||
               !option.value ||
