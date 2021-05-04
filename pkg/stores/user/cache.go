@@ -24,7 +24,6 @@ type backingStore interface {
 	Username(ctx context.Context, uuid string) (string, bool, error)
 	New(ctx context.Context, user *entity.User) error
 	SetPassword(ctx context.Context, uuid string, hashpass string) error
-	SetAbout(ctx context.Context, uuid string, about string) error
 	SetAvatarUrl(ctx context.Context, uuid string, avatarUrl string) error
 	GetBriefProfiles(ctx context.Context, uuids []string) (map[string]*pb.BriefProfile, error)
 	SetPersonalInfo(ctx context.Context, uuid string, email string, firstName string, lastName string, countryCode string, about string) error
@@ -149,15 +148,6 @@ func (c *Cache) SetPassword(ctx context.Context, uuid string, hashpass string) e
 	}
 	u.Password = hashpass
 	return c.backing.SetPassword(ctx, uuid, hashpass)
-}
-
-func (c *Cache) SetAbout(ctx context.Context, uuid string, about string) error {
-	u, err := c.GetByUUID(ctx, uuid)
-	if err != nil {
-		return err
-	}
-	u.Profile.About = about
-	return c.backing.SetAbout(ctx, uuid, about)
 }
 
 func (c *Cache) SetAvatarUrl(ctx context.Context, uuid string, avatarUrl string) error {
