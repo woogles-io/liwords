@@ -86,7 +86,7 @@ export const Players = React.memo((props: Props) => {
   const { useState } = useMountedState();
   const { friends } = useFriendsStoreContext();
   const { loginState } = useLoginStateStoreContext();
-  const { sendMessage } = props;
+  const { sendMessage, defaultChannelType } = props;
   const { username, loggedIn } = loginState;
   const [maxHeight, setMaxHeight] = useState<number | undefined>(0);
   const [searchResults, setSearchResults] = useState<
@@ -224,6 +224,34 @@ export const Players = React.memo((props: Props) => {
     [transformAndFilterPresences, presences, searchText]
   );
 
+  const tournamentPresences = useMemo(() => {
+    if (defaultChannelType === 'lobby') {
+      return [];
+    }
+    const tournamentPresences = transformedAndFilteredPresences.filter(
+      (p) =>
+        p.channel &&
+        p.channel.some((c) => {
+          return c.startsWith('chat.tournament');
+        })
+    );
+    return tournamentPresences;
+  }, [transformedAndFilteredPresences, defaultChannelType]);
+
+  const gamePresence = useMemo(() => {
+    if (defaultChannelType === 'lobby') {
+      return [];
+    }
+    const gamePresences = transformedAndFilteredPresences.filter(
+      (p) =>
+        p.channel &&
+        p.channel.some((c) => {
+          return c.startsWith('chat.game');
+        })
+    );
+    return gamePresences;
+  }, [transformedAndFilteredPresences, defaultChannelType]);
+
   useEffect(() => {
     window.addEventListener('resize', setHeight);
     return () => {
@@ -236,9 +264,11 @@ export const Players = React.memo((props: Props) => {
       case 'lobby':
         return 'IN LOBBY';
       case 'game':
-        return 'YOUR OPPONENT';
+        return 'OPPONENT';
       case 'gametv':
         return 'OBSERVERS';
+      case 'tournament':
+        return 'CLUB/TOURNAMENT';
     }
     return 'IN ROOM';
   };
@@ -283,12 +313,26 @@ export const Players = React.memo((props: Props) => {
           )}
         </section>
         <section className="present">
-          {transformedAndFilteredPresences.length > 0 && (
+          {gamePresence.length > 0 && (
             <div className="breadcrumb">
-              {getPresenceLabel(props.defaultChannelType || '')}
+              {getPresenceLabel(defaultChannelType || '')}
             </div>
           )}
-          {renderPlayerList(transformedAndFilteredPresences)}
+          {renderPlayerList(gamePresence)}
+          {tournamentPresences.length > 0 && (
+            <div className="breadcrumb">{getPresenceLabel('tournament')}</div>
+          )}
+          {renderPlayerList(tournamentPresences)}
+          {!gamePresence.length &&
+            !tournamentPresences.length &&
+            transformedAndFilteredPresences.length > 0 && (
+              <>
+                <div className="breadcrumb">
+                  {getPresenceLabel(props.defaultChannelType || '')}
+                </div>
+                {renderPlayerList(transformedAndFilteredPresences)}
+              </>
+            )}
         </section>
         <section className="search">
           {searchResults?.length > 0 && searchText.length > 0 && (
