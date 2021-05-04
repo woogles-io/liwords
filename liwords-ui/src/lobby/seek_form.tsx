@@ -303,14 +303,10 @@ export const SeekForm = (props: Props) => {
   };
 
   useEffect(() => {
-    if (!(tournamentID && presences.length) || !Object.values(friends).length) {
-      return;
-    }
-
-    if (usernameOptions.length === 0) {
+    if (usernameOptions.length === 0 && defaultOptions.length > 0) {
       setUsernameOptions(defaultOptions);
     }
-  }, [defaultOptions, tournamentID, presences, friends, usernameOptions]);
+  }, [defaultOptions, usernameOptions]);
 
   return (
     <Form
