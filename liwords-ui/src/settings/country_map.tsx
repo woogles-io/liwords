@@ -1225,11 +1225,6 @@ export const countryArray = [
     emoji: '🇬🇧',
   },
   {
-    code: 'UN',
-    name: 'United Nations',
-    emoji: '🇺🇳',
-  },
-  {
     code: 'US',
     name: 'United States',
     emoji: '🇺🇸',
