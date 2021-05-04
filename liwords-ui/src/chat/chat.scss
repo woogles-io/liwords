@@ -226,14 +226,23 @@ p {
       font-size: 14px;
       font-weight: 200;
       width: 100%;
+      max-width: 400px;
       white-space: nowrap;
       overflow: hidden;
-      text-overflow: ellipsis;
       text-overflow: ellipsis;
       line-height: 1em;
       padding-bottom: 6px;
       @include colorModed() {
         color: m($gray-extreme);
+      }
+      @media (min-width: $screen-tablet-min) {
+        max-width: 100%;
+      }
+      @media (min-width: $screen-laptop-min) {
+        max-width: 220px;
+      }
+      @media (min-width: $screen-desktop-min) {
+        max-width: calc(100vw / 5);
       }
     }
   }

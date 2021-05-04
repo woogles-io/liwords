@@ -219,9 +219,26 @@ export const Players = React.memo((props: Props) => {
     [username]
   );
 
+  const onlineAlphaComparator = useCallback(
+    (a: Partial<FriendUser>, b: Partial<FriendUser>) => {
+      const countA = (a.channel || []).length > 0 ? 1 : -1;
+      const countB = (b.channel || []).length > 0 ? 1 : -1;
+      return (
+        countB - countA ||
+        ((a.username || '').toLowerCase() || '').localeCompare(
+          (b.username || '').toLowerCase()
+        )
+      );
+    },
+    []
+  );
+
   const transformedAndFilteredPresences = useMemo(
-    () => transformAndFilterPresences(presences, searchText),
-    [transformAndFilterPresences, presences, searchText]
+    () =>
+      transformAndFilterPresences(presences, searchText).sort(
+        onlineAlphaComparator
+      ),
+    [transformAndFilterPresences, presences, searchText, onlineAlphaComparator]
   );
 
   const tournamentPresences = useMemo(() => {
@@ -278,6 +295,7 @@ export const Players = React.memo((props: Props) => {
     <div className="player-list">
       <Form name="search-players">
         <Input
+          allowClear
           placeholder="Search players"
           name="search-players"
           onChange={handleSearchChange}
@@ -286,7 +304,7 @@ export const Players = React.memo((props: Props) => {
         />
       </Form>
       <div
-        className={`player-sections ${
+        className={`player-sections p-${
           props.defaultChannelType ? props.defaultChannelType : ''
         }`}
         style={
@@ -302,7 +320,9 @@ export const Players = React.memo((props: Props) => {
           {loggedIn && <div className="breadcrumb">FRIENDS</div>}
           {loggedIn &&
             renderPlayerList(
-              filterPlayerListBySearch(searchText, friendsValues),
+              filterPlayerListBySearch(searchText, friendsValues).sort(
+                onlineAlphaComparator
+              ),
               'friends'
             )}
           {loggedIn && friendsValues.length === 0 && (
