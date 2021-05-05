@@ -600,8 +600,7 @@ export function TournamentReducer(
       const userIndex =
         state.divisions[division].playerIndexMap[fullLoggedInID];
       let newStatus = state.competitorState.status;
-
-      if (userIndex) {
+      if (userIndex != undefined) {
         dp.dpr.getDivisionPairingsList().forEach((pairing: Pairing) => {
           if (pairing.getRound() === state.divisions[division].currentRound) {
             const pairingPlayers = pairing.getPlayersList();
