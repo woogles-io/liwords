@@ -276,7 +276,10 @@ export const Players = React.memo((props: Props) => {
     return 'IN ROOM';
   };
 
-  const friendsValues = useMemo(() => Object.values(friends), [friends]);
+  const friendsValues = useMemo(
+    () => Object.values(friends).sort(onlineAlphaComparator),
+    [friends]
+  );
   return (
     <div className="player-list">
       <Form name="search-players">
@@ -306,9 +309,7 @@ export const Players = React.memo((props: Props) => {
           {loggedIn && <div className="breadcrumb">FRIENDS</div>}
           {loggedIn &&
             renderPlayerList(
-              filterPlayerListBySearch(searchText, friendsValues).sort(
-                onlineAlphaComparator
-              ),
+              filterPlayerListBySearch(searchText, friendsValues),
               'friends'
             )}
           {loggedIn && friendsValues.length === 0 && (
