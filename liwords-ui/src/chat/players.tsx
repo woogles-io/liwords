@@ -278,7 +278,7 @@ export const Players = React.memo((props: Props) => {
 
   const friendsValues = useMemo(
     () => Object.values(friends).sort(onlineAlphaComparator),
-    [friends]
+    [friends, onlineAlphaComparator]
   );
   return (
     <div className="player-list">
