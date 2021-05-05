@@ -507,7 +507,10 @@ export const useOnSocketMsg = () => {
             const trs = parsedMsg as TournamentRoundStarted;
             dispatchTournamentContext({
               actionType: ActionType.StartTourneyRound,
-              payload: trs,
+              payload: {
+                trs,
+                loginState,
+              },
             });
             if (
               tournamentContext?.competitorState?.division === trs.getDivision()
@@ -526,7 +529,10 @@ export const useOnSocketMsg = () => {
 
             dispatchTournamentContext({
               actionType: ActionType.RemoveActiveGame,
-              payload: gee.getGameId(),
+              payload: {
+                game: gee.getGameId(),
+                loginState,
+              },
             });
 
             break;
@@ -727,7 +733,10 @@ export const useOnSocketMsg = () => {
               : dispatchLobbyContext;
             dispatchFn({
               actionType: ActionType.AddActiveGame,
-              payload: activeGame,
+              payload: {
+                activeGame,
+                loginState,
+              },
             });
             break;
           }
@@ -744,9 +753,12 @@ export const useOnSocketMsg = () => {
             console.log('dispatchFn', dispatchFn.toString());
             dispatchFn({
               actionType: ActionType.AddActiveGames,
-              payload: age
-                .getGameInfoList()
-                .map((g) => GameInfoResponseToActiveGame(g)),
+              payload: {
+                activeGames: age
+                  .getGameInfoList()
+                  .map((g) => GameInfoResponseToActiveGame(g)),
+                loginState,
+              },
             });
             break;
           }

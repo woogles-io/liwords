@@ -402,10 +402,8 @@ const getPairing = (
 //      (how do we determine that? a combination of the live games
 //       currently ongoing and a game result already being in for this game?)
 const tourneyStatus = (
-  started: boolean,
   division: Division,
   activeGames: Array<ActiveGame>,
-  currentRound: number,
   loginContext: LoginState
 ): TourneyStatus => {
   if (!division) {
@@ -413,7 +411,7 @@ const tourneyStatus = (
   }
 
   const fullPlayerID = `${loginContext.userID}:${loginContext.username}`;
-  const pairing = getPairing(currentRound, fullPlayerID, division);
+  const pairing = getPairing(division.currentRound, fullPlayerID, division);
 
   if (!pairing || !pairing.players) {
     return TourneyStatus.PRETOURNEY;
@@ -486,10 +484,10 @@ export function TournamentReducer(
       ![
         ActionType.SetDivisionsData,
         ActionType.SetTourneyMetadata,
-        // These are legacy events for CLUB/LEGACY tournament types
         ActionType.AddActiveGames,
         ActionType.AddActiveGame,
         ActionType.RemoveActiveGame,
+        // These are legacy events for CLUB/LEGACY tournament types
         ActionType.AddTourneyGameResult,
         ActionType.AddTourneyGameResults,
         ActionType.SetTourneyGamesOffset,
@@ -719,10 +717,8 @@ export function TournamentReducer(
           division: registeredDivision.divisionID,
           currentRound: registeredDivision.currentRound,
           status: tourneyStatus(
-            state.started,
             registeredDivision,
             state.activeGames,
-            registeredDivision.currentRound,
             dp.loginState
           ),
         };
@@ -775,10 +771,8 @@ export function TournamentReducer(
           division: registeredDivision.divisionID,
           currentRound: registeredDivision.currentRound,
           status: tourneyStatus(
-            state.started,
             registeredDivision,
             state.activeGames,
-            registeredDivision.currentRound,
             dd.loginState
           ),
         };
@@ -826,16 +820,19 @@ export function TournamentReducer(
 
       let competitorState: CompetitorState = state.competitorState;
       if (registeredDivision) {
-        console.log('registereddiv', registeredDivision);
+        console.log(
+          'registereddiv',
+          registeredDivision,
+          'stateactivegames',
+          state.activeGames
+        );
         competitorState = {
           isRegistered: true,
           division: registeredDivision.divisionID,
           currentRound: registeredDivision.currentRound,
           status: tourneyStatus(
-            dd.fullDivisions.getStarted(),
             registeredDivision,
             state.activeGames,
-            registeredDivision.currentRound,
             dd.loginState
           ),
         };
@@ -851,29 +848,41 @@ export function TournamentReducer(
     }
 
     case ActionType.StartTourneyRound: {
-      const m = action.payload as TournamentRoundStarted;
+      const m = action.payload as {
+        trs: TournamentRoundStarted;
+        loginState: LoginState;
+      };
       // Make sure the tournament ID matches. (Why wouldn't it, though?)
-      if (state.metadata.id !== m.getTournamentId()) {
+      if (state.metadata.id !== m.trs.getTournamentId()) {
         return state;
       }
-      const division = m.getDivision();
+      const division = m.trs.getDivision();
       // Mark the round for the passed-in division to be the passed-in round.
+
+      const newDivisions = Object.assign({}, state.divisions, {
+        [division]: Object.assign({}, state.divisions[division], {
+          currentRound: m.trs.getRound(),
+        }),
+      });
+
+      const newStatus =
+        state.competitorState.division === division
+          ? tourneyStatus(
+              newDivisions[division],
+              state.activeGames,
+              m.loginState
+            )
+          : state.competitorState.status;
+
       return Object.assign({}, state, {
         started: true,
-        divisions: Object.assign({}, state.divisions, {
-          [division]: Object.assign({}, state.divisions[division], {
-            currentRound: m.getRound(),
-          }),
-        }),
+        divisions: newDivisions,
         competitorState: Object.assign({}, state.competitorState, {
           currentRound:
             state.competitorState.division === division
-              ? m.getRound()
+              ? m.trs.getRound()
               : state.competitorState.currentRound,
-          status:
-            state.competitorState.division === division
-              ? TourneyStatus.ROUND_OPEN
-              : state.competitorState.status,
+          status: newStatus,
         }),
       });
     }
@@ -889,35 +898,86 @@ export function TournamentReducer(
       };
     }
 
+    // For the following three actions, it is important to recalculate
+    // the competitorState if it exists; this is because
+    // competitorState.status depends on state.activeGames.
     case ActionType.AddActiveGames: {
-      const activeGames = action.payload as Array<ActiveGame>;
-      console.log('activeGames', activeGames);
+      const g = action.payload as {
+        activeGames: Array<ActiveGame>;
+        loginState: LoginState;
+      };
+      const registeredDivision = state.competitorState.division;
+      let newCompetitorState = state.competitorState;
+      if (registeredDivision) {
+        newCompetitorState = {
+          ...state.competitorState,
+          status: tourneyStatus(
+            state.divisions[registeredDivision],
+            g.activeGames,
+            g.loginState
+          ),
+        };
+      }
+
       return {
         ...state,
-        activeGames,
+        activeGames: g.activeGames,
+        competitorState: newCompetitorState,
       };
     }
 
     case ActionType.AddActiveGame: {
       const { activeGames } = state;
-      const activeGame = action.payload as ActiveGame;
+      const g = action.payload as {
+        activeGame: ActiveGame;
+        loginState: LoginState;
+      };
+      const registeredDivision = state.competitorState.division;
+      let newCompetitorState = state.competitorState;
+      if (registeredDivision) {
+        newCompetitorState = {
+          ...state.competitorState,
+          status: tourneyStatus(
+            state.divisions[registeredDivision],
+            [...state.activeGames, g.activeGame],
+            g.loginState
+          ),
+        };
+      }
+
       return {
         ...state,
-        activeGames: [...activeGames, activeGame],
+        activeGames: [...activeGames, g.activeGame],
+        competitorState: newCompetitorState,
       };
     }
 
     case ActionType.RemoveActiveGame: {
       const { activeGames } = state;
-      const id = action.payload as string;
+      const g = action.payload as {
+        game: string;
+        loginState: LoginState;
+      };
 
       const newArr = activeGames.filter((ag) => {
-        return ag.gameID !== id;
+        return ag.gameID !== g.game;
       });
-
+      const registeredDivision = state.competitorState.division;
+      let newCompetitorState = state.competitorState;
+      if (registeredDivision) {
+        newCompetitorState = {
+          ...state.competitorState,
+          status: tourneyStatus(
+            state.divisions[registeredDivision],
+            newArr,
+            g.loginState
+          ),
+        };
+      }
       return {
         ...state,
         activeGames: newArr,
+        competitorState: newCompetitorState,
       };
     }
 

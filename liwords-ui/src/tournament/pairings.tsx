@@ -146,7 +146,14 @@ export const Pairings = (props: Props) => {
         }
         const isRemoved = (playerID: string) =>
           division.players[division.playerIndexMap[playerID]]?.getSuspended();
-
+        console.log(
+          'playerNames[0] === playerNames[1]',
+          playerNames[0],
+          playerNames[1],
+          playerNames[0] === playerNames[1],
+          isBye,
+          isForfeit
+        );
         const players =
           playerNames[0] === playerNames[1] ? (
             <div>
@@ -187,6 +194,7 @@ export const Pairings = (props: Props) => {
           );
         let actions;
         //Current round gets special buttons
+        console.log('rcrimg', round, currentRound, isMyGame, status);
         if (round === currentRound) {
           if (isMyGame && status) {
             if (
