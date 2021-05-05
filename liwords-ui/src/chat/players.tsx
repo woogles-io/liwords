@@ -177,6 +177,17 @@ export const Players = React.memo((props: Props) => {
     []
   );
 
+  const onlineAlphaComparator = useCallback(
+    (a: Partial<FriendUser>, b: Partial<FriendUser>) => {
+      const countA = (a.channel || []).length > 0 ? 1 : -1;
+      const countB = (b.channel || []).length > 0 ? 1 : -1;
+      return (
+        countB - countA || a.username!.localeCompare(b.username!.toLowerCase())
+      );
+    },
+    []
+  );
+
   const transformAndFilterPresences = useCallback(
     (
       presenceEntities: PresenceEntity[],
@@ -200,15 +211,7 @@ export const Players = React.memo((props: Props) => {
           }
         });
       const presencePlayers = Object.values(presencePlayersMap)
-        .sort((a, b) => {
-          if (a.username > b.username) {
-            return -1;
-          }
-          if (a.username < b.username) {
-            return 1;
-          }
-          return 0;
-        })
+        .sort(onlineAlphaComparator)
         .filter((u) => u.username?.toLowerCase() !== username.toLowerCase());
       return searchTerm?.length
         ? presencePlayers.filter((u) =>
@@ -216,29 +219,12 @@ export const Players = React.memo((props: Props) => {
           )
         : presencePlayers;
     },
-    [username]
-  );
-
-  const onlineAlphaComparator = useCallback(
-    (a: Partial<FriendUser>, b: Partial<FriendUser>) => {
-      const countA = (a.channel || []).length > 0 ? 1 : -1;
-      const countB = (b.channel || []).length > 0 ? 1 : -1;
-      return (
-        countB - countA ||
-        ((a.username || '').toLowerCase() || '').localeCompare(
-          (b.username || '').toLowerCase()
-        )
-      );
-    },
-    []
+    [username, onlineAlphaComparator]
   );
 
   const transformedAndFilteredPresences = useMemo(
-    () =>
-      transformAndFilterPresences(presences, searchText).sort(
-        onlineAlphaComparator
-      ),
-    [transformAndFilterPresences, presences, searchText, onlineAlphaComparator]
+    () => transformAndFilterPresences(presences, searchText),
+    [transformAndFilterPresences, presences, searchText]
   );
 
   const tournamentPresences = useMemo(() => {

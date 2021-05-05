@@ -225,6 +225,7 @@ p {
     .listing-preview {
       font-size: 14px;
       font-weight: 200;
+      margin-top: 6px;
       width: 100%;
       max-width: 400px;
       white-space: nowrap;
@@ -239,10 +240,10 @@ p {
         max-width: 100%;
       }
       @media (min-width: $screen-laptop-min) {
-        max-width: 220px;
+        max-width: calc(15vw);
       }
-      @media (min-width: $screen-desktop-min) {
-        max-width: calc(100vw / 5);
+      @media (min-width: $screen-desktop-l-min) {
+        max-width: calc(20vw);
       }
     }
   }
