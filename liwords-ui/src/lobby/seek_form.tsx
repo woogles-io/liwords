@@ -240,7 +240,9 @@ export const SeekForm = (props: Props) => {
     } else {
       const friendsArray = friends ? Object.values(friends) : [];
       if (friendsArray.length) {
-        defaultPlayers = friendsArray.map((f) => f.username);
+        defaultPlayers = friendsArray
+          .filter((f) => f.channel && f.channel.length > 0)
+          .map((f) => f.username);
       }
     }
     return defaultPlayers;

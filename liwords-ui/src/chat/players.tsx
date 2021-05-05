@@ -177,6 +177,17 @@ export const Players = React.memo((props: Props) => {
     []
   );
 
+  const onlineAlphaComparator = useCallback(
+    (a: Partial<FriendUser>, b: Partial<FriendUser>) => {
+      const countA = (a.channel || []).length > 0 ? 1 : -1;
+      const countB = (b.channel || []).length > 0 ? 1 : -1;
+      return (
+        countB - countA || a.username!.localeCompare(b.username!.toLowerCase())
+      );
+    },
+    []
+  );
+
   const transformAndFilterPresences = useCallback(
     (
       presenceEntities: PresenceEntity[],
@@ -200,15 +211,7 @@ export const Players = React.memo((props: Props) => {
           }
         });
       const presencePlayers = Object.values(presencePlayersMap)
-        .sort((a, b) => {
-          if (a.username > b.username) {
-            return -1;
-          }
-          if (a.username < b.username) {
-            return 1;
-          }
-          return 0;
-        })
+        .sort(onlineAlphaComparator)
         .filter((u) => u.username?.toLowerCase() !== username.toLowerCase());
       return searchTerm?.length
         ? presencePlayers.filter((u) =>
@@ -216,7 +219,7 @@ export const Players = React.memo((props: Props) => {
           )
         : presencePlayers;
     },
-    [username]
+    [username, onlineAlphaComparator]
   );
 
   const transformedAndFilteredPresences = useMemo(
@@ -273,11 +276,15 @@ export const Players = React.memo((props: Props) => {
     return 'IN ROOM';
   };
 
-  const friendsValues = useMemo(() => Object.values(friends), [friends]);
+  const friendsValues = useMemo(
+    () => Object.values(friends).sort(onlineAlphaComparator),
+    [friends, onlineAlphaComparator]
+  );
   return (
     <div className="player-list">
       <Form name="search-players">
         <Input
+          allowClear
           placeholder="Search players"
           name="search-players"
           onChange={handleSearchChange}
@@ -286,7 +293,7 @@ export const Players = React.memo((props: Props) => {
         />
       </Form>
       <div
-        className={`player-sections ${
+        className={`player-sections p-${
           props.defaultChannelType ? props.defaultChannelType : ''
         }`}
         style={

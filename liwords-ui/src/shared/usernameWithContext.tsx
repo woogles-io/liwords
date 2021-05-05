@@ -32,7 +32,6 @@ export const UsernameWithContext = (props: UsernameWithContextProps) => {
   const { loginState } = useLoginStateStoreContext();
   const { loggedIn, userID, perms } = loginState;
   const briefProfile = useBriefProfile(props.userID);
-
   const userMenu = (
     <ul>
       {loggedIn &&

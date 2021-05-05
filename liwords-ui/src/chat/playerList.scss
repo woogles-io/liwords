@@ -1,9 +1,9 @@
 @import '../base';
 
 .player-pane {
-  padding: 24px;
+  padding: 24px 0 0 0;
   .breadcrumb {
-    margin: 12px 0;
+    margin: 18px 0;
     @include colorModed() {
       color: m($gray-dark);
     }
@@ -12,10 +12,12 @@
 .player-sections {
   display: flex;
   flex-direction: column;
+  margin: 0 0 0 24px;
+  padding: 12px  0 24px 0;
   section {
     width: 100%;
   }
-  &.game, &.gametv, &.tournament {
+  &.p-game, &.p-gametv, &.p-tournament {
     .present {
       order: 1;
     }
@@ -34,15 +36,31 @@
       color: m($gray-extreme);
     }
   }
-  input {
-    margin-bottom: 12px;
+  .ant-input-affix-wrapper {
+    margin: 0 24px 0px;
+    width: calc(100% - 48px);
     @include colorModed() {
       background: m($card-background);
       color: m($gray-extreme);
     }
+    .anticon {
+      @include colorModed() {
+        color: m($gray-medium);
+        background: m($card-background);
+      }
+    }
+    .ant-input-suffix {
+      max-width: 40px
+    }
+    input {
+      @include colorModed() {
+        background: m($card-background);
+        color: m($gray-extreme);
+      }
+    }
   }
   .player-display {
-    margin: 9px 0;
+    margin: 18px 0 0;
     display: flex;
     align-items: center;
     .player-avatar {
