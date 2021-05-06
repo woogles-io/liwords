@@ -798,7 +798,7 @@ func (t *ClassicDivision) RemovePlayers(persons *realtime.TournamentPersons) ([]
 			}
 		}
 		for i := 0; i < len(t.Matrix); i++ {
-			roundStandings, err := t.GetStandings(i, false)
+			roundStandings, err := t.GetStandings(i, true)
 			if err != nil {
 				return nil, nil, err
 			}
