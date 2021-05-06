@@ -31,6 +31,7 @@ export const Standings = (props: Props) => {
   if (!division) {
     return null;
   }
+
   let formatStandings;
   if (currentRound > -1) {
     formatStandings = division.standingsMap

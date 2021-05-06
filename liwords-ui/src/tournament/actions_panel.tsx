@@ -163,7 +163,8 @@ export const ActionsPanel = React.memo((props: Props) => {
     if (
       !isDirector ||
       !(typeof roundToStart === 'number') ||
-      !(roundToStart === selectedRound)
+      !(roundToStart === selectedRound) ||
+      roundToStart === 0 // (handle this with Start Tournament)
     ) {
       return null;
     }

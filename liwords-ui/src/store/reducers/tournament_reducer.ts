@@ -1,4 +1,5 @@
 import * as jspb from 'google-protobuf';
+import { finished } from 'stream';
 
 import { Action, ActionType } from '../../actions/actions';
 import {
@@ -168,7 +169,6 @@ const reducePairings = (
   existingPairings: Array<RoundPairings>,
   newPairings: Pairing[]
 ): Array<RoundPairings> => {
-  console.log('existingPairings', existingPairings);
   const updatedPairings = [...existingPairings];
 
   newPairings.forEach((value: Pairing) => {
@@ -183,7 +183,6 @@ const reducePairings = (
         results: g.getResultsList(),
       })),
     } as SinglePairing;
-    console.log('the value is', value);
     updatedPairings[value.getRound()].roundPairings[
       value.getPlayersList()[0]
     ] = newSinglePairing;
@@ -556,7 +555,7 @@ export function TournamentReducer(
         divisions: Object.assign({}, state.divisions, {
           [division]: Object.assign({}, state.divisions[division], {
             roundControls: newRoundControls,
-            standings: newStandings,
+            standingsMap: newStandings,
             pairings: newPairings,
             numRounds: newNumRounds,
           }),
@@ -585,7 +584,6 @@ export function TournamentReducer(
         dpr: DivisionPairingsResponse;
         loginState: LoginState;
       };
-      console.log('got pairings', dp.dpr.toObject());
       const division = dp.dpr.getDivision();
       const newPairings = reducePairings(
         state.divisions[division].players,
@@ -602,7 +600,6 @@ export function TournamentReducer(
       const userIndex =
         state.divisions[division].playerIndexMap[fullLoggedInID];
       let newStatus = state.competitorState.status;
-      console.log('old status', newStatus, 'userIndex', userIndex);
       if (userIndex != null) {
         dp.dpr.getDivisionPairingsList().forEach((pairing: Pairing) => {
           if (pairing.getRound() === state.divisions[division].currentRound) {
@@ -624,19 +621,34 @@ export function TournamentReducer(
           }
         });
       }
-      console.log('in setpairings, competitorstatus', newStatus);
 
-      return Object.assign({}, state, {
+      const finishedGamesMap: { [id: string]: boolean } = {};
+      dp.dpr.getDivisionPairingsList().forEach((p) => {
+        p.getGamesList().forEach((tg) => {
+          const gameID = tg.getId();
+          if (tg.getGameEndReason()) {
+            finishedGamesMap[gameID] = true;
+          }
+        });
+      });
+
+      const newActiveGames = state.activeGames.filter(
+        (ag) => !finishedGamesMap[ag.gameID]
+      );
+
+      const newState = Object.assign({}, state, {
         competitorState: Object.assign({}, state.competitorState, {
           status: newStatus,
         }),
         divisions: Object.assign({}, state.divisions, {
           [division]: Object.assign({}, state.divisions[division], {
             pairings: newPairings,
-            standings: newStandings,
+            standingsMap: newStandings,
           }),
         }),
+        activeGames: newActiveGames,
       });
+      return newState;
     }
 
     case ActionType.SetDivisionPlayers: {
@@ -735,7 +747,7 @@ export function TournamentReducer(
         divisions: Object.assign({}, state.divisions, {
           [division]: Object.assign({}, state.divisions[division], {
             pairings: newPairings,
-            standings: newStandings,
+            standingsMap: newStandings,
             playerIndexMap: newPlayerIndexMap,
             players: newPlayers,
           }),
@@ -897,7 +909,7 @@ export function TournamentReducer(
       };
     }
 
-    // For the following three actions, it is important to recalculate
+    // For the following two actions, it is important to recalculate
     // the competitorState if it exists; this is because
     // competitorState.status depends on state.activeGames.
     case ActionType.AddActiveGames: {

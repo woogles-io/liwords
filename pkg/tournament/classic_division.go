@@ -450,8 +450,17 @@ func (t *ClassicDivision) SubmitResult(round int,
 	}
 
 	t.Standings[int32(round)] = standings
-
 	standingsResponse := map[int32]*realtime.RoundStandings{int32(round): standings}
+
+	if round != len(t.Matrix)-1 {
+		// update standings for round+1
+		nextRoundStandings, err := t.GetStandings(round+1, true)
+		if err != nil {
+			return nil, nil, err
+		}
+		t.Standings[int32(round)+1] = nextRoundStandings
+		standingsResponse[int32(round)+1] = nextRoundStandings
+	}
 
 	// Only pair if this round is complete and the tournament
 	// is not over. Don't pair for standings independent pairings since those pairings
@@ -713,7 +722,7 @@ func (t *ClassicDivision) AddPlayers(players *realtime.TournamentPersons) ([]*re
 					pairingResponse = combinePairingsResponses(pairingResponse, newPairings)
 				}
 			}
-			roundStandings, err := t.GetStandings(i, false)
+			roundStandings, err := t.GetStandings(i, true)
 			if err != nil {
 				return nil, nil, err
 			}

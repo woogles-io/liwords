@@ -56,11 +56,7 @@ const getPerformance = (
     : '(0-0)';
 };
 
-const getScores = (
-  playerName: string,
-  viewedRound: number,
-  pairing: SinglePairing
-) => {
+const getScores = (playerName: string, pairing: SinglePairing) => {
   const playerIndex = pairing.players[0].getId().endsWith(`:${playerName}`)
     ? 0
     : 1;
@@ -146,14 +142,7 @@ export const Pairings = (props: Props) => {
         }
         const isRemoved = (playerID: string) =>
           division.players[division.playerIndexMap[playerID]]?.getSuspended();
-        console.log(
-          'playerNames[0] === playerNames[1]',
-          playerNames[0],
-          playerNames[1],
-          playerNames[0] === playerNames[1],
-          isBye,
-          isForfeit
-        );
+
         const players =
           playerNames[0] === playerNames[1] ? (
             <div>
@@ -194,7 +183,6 @@ export const Pairings = (props: Props) => {
           );
         let actions;
         //Current round gets special buttons
-        console.log('rcrimg', round, currentRound, isMyGame, status);
         if (round === currentRound) {
           if (isMyGame && status) {
             if (
@@ -323,9 +311,7 @@ export const Pairings = (props: Props) => {
           playerNames[0] === playerNames[1]
             ? null
             : playerNames.map((playerName) => (
-                <p key={`${playerName}wl`}>
-                  {getScores(playerName, round, pairing)}
-                </p>
+                <p key={`${playerName}wl`}>{getScores(playerName, pairing)}</p>
               ));
         return {
           players,
@@ -338,7 +324,6 @@ export const Pairings = (props: Props) => {
         };
       }
     );
-    console.log('formatted', division, round, pairingsData);
     return pairingsData.sort((a, b) => b.sort - a.sort);
   };
 
