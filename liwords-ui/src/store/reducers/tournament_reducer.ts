@@ -486,8 +486,9 @@ export function TournamentReducer(
         ActionType.SetTourneyMetadata,
         ActionType.AddActiveGames,
         ActionType.AddActiveGame,
-        ActionType.RemoveActiveGame,
         // These are legacy events for CLUB/LEGACY tournament types
+
+        ActionType.RemoveActiveGame,
         ActionType.AddTourneyGameResult,
         ActionType.AddTourneyGameResults,
         ActionType.SetTourneyGamesOffset,
@@ -584,6 +585,7 @@ export function TournamentReducer(
         dpr: DivisionPairingsResponse;
         loginState: LoginState;
       };
+      console.log('got pairings', dp.dpr.toObject());
       const division = dp.dpr.getDivision();
       const newPairings = reducePairings(
         state.divisions[division].players,
@@ -600,14 +602,15 @@ export function TournamentReducer(
       const userIndex =
         state.divisions[division].playerIndexMap[fullLoggedInID];
       let newStatus = state.competitorState.status;
-      if (userIndex != undefined) {
+      console.log('old status', newStatus, 'userIndex', userIndex);
+      if (userIndex != null) {
         dp.dpr.getDivisionPairingsList().forEach((pairing: Pairing) => {
           if (pairing.getRound() === state.divisions[division].currentRound) {
             const pairingPlayers = pairing.getPlayersList();
             if (
               pairingPlayers &&
-              ((pairingPlayers[0] && pairingPlayers[0] === userIndex) ||
-                (pairingPlayers[1] && pairingPlayers[1] === userIndex))
+              (pairingPlayers[0] === userIndex ||
+                pairingPlayers[1] === userIndex)
             ) {
               let playerIndex = 0;
               if (pairingPlayers[1] === userIndex) {
@@ -621,6 +624,7 @@ export function TournamentReducer(
           }
         });
       }
+      console.log('in setpairings, competitorstatus', newStatus);
 
       return Object.assign({}, state, {
         competitorState: Object.assign({}, state.competitorState, {
@@ -708,7 +712,6 @@ export function TournamentReducer(
         newPlayerIndexMap
       );
       let competitorState: CompetitorState = state.competitorState;
-      console.log('old competitor state is', JSON.stringify(competitorState));
 
       if (registeredDivision) {
         competitorState = {
@@ -727,8 +730,6 @@ export function TournamentReducer(
           isRegistered: false,
         };
       }
-      console.log('competitor state is', JSON.stringify(competitorState));
-      console.log('old-state', state);
       const newState = Object.assign({}, state, {
         competitorState,
         divisions: Object.assign({}, state.divisions, {
@@ -740,7 +741,6 @@ export function TournamentReducer(
           }),
         }),
       });
-      console.log('new-state', newState);
       return newState;
     }
 
@@ -952,31 +952,18 @@ export function TournamentReducer(
     }
 
     case ActionType.RemoveActiveGame: {
+      // LEGACY event. When games end in regular tournaments, we just get
+      // a divisions pairing message.
       const { activeGames } = state;
-      const g = action.payload as {
-        game: string;
-        loginState: LoginState;
-      };
+      const g = action.payload as string;
 
       const newArr = activeGames.filter((ag) => {
-        return ag.gameID !== g.game;
+        return ag.gameID !== g;
       });
-      const registeredDivision = state.competitorState.division;
-      let newCompetitorState = state.competitorState;
-      if (registeredDivision) {
-        newCompetitorState = {
-          ...state.competitorState,
-          status: tourneyStatus(
-            state.divisions[registeredDivision],
-            newArr,
-            g.loginState
-          ),
-        };
-      }
+
       return {
         ...state,
         activeGames: newArr,
-        competitorState: newCompetitorState,
       };
     }
 

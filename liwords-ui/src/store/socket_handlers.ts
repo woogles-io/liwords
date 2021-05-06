@@ -521,6 +521,7 @@ export const useOnSocketMsg = () => {
           }
 
           case MessageType.TOURNAMENT_GAME_ENDED_EVENT: {
+            // LEGACY tournament game ended event.
             const gee = parsedMsg as TournamentGameEndedEvent;
             dispatchTournamentContext({
               actionType: ActionType.AddTourneyGameResult,
@@ -529,10 +530,7 @@ export const useOnSocketMsg = () => {
 
             dispatchTournamentContext({
               actionType: ActionType.RemoveActiveGame,
-              payload: {
-                game: gee.getGameId(),
-                loginState,
-              },
+              payload: gee.getGameId(),
             });
 
             break;
