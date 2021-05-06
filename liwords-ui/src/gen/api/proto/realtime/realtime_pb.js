@@ -5824,7 +5824,8 @@ proto.liwords.TournamentGameEndedEvent.Player.toObject = function(includeInstanc
   var f, obj = {
     username: jspb.Message.getFieldWithDefault(msg, 1, ""),
     score: jspb.Message.getFieldWithDefault(msg, 2, 0),
-    result: jspb.Message.getFieldWithDefault(msg, 3, 0)
+    result: jspb.Message.getFieldWithDefault(msg, 3, 0),
+    userId: jspb.Message.getFieldWithDefault(msg, 4, "")
   };
 
   if (includeInstance) {
@@ -5873,6 +5874,10 @@ proto.liwords.TournamentGameEndedEvent.Player.deserializeBinaryFromReader = func
       var value = /** @type {!proto.liwords.TournamentGameResult} */ (reader.readEnum());
       msg.setResult(value);
       break;
+    case 4:
+      var value = /** @type {string} */ (reader.readString());
+      msg.setUserId(value);
+      break;
     default:
       reader.skipField();
       break;
@@ -5920,6 +5925,13 @@ proto.liwords.TournamentGameEndedEvent.Player.serializeBinaryToWriter = function
   if (f !== 0.0) {
     writer.writeEnum(
       3,
+      f
+    );
+  }
+  f = message.getUserId();
+  if (f.length > 0) {
+    writer.writeString(
+      4,
       f
     );
   }
@@ -5977,6 +5989,24 @@ proto.liwords.TournamentGameEndedEvent.Player.prototype.getResult = function() {
  */
 proto.liwords.TournamentGameEndedEvent.Player.prototype.setResult = function(value) {
   return jspb.Message.setProto3EnumField(this, 3, value);
+};
+
+
+/**
+ * optional string user_id = 4;
+ * @return {string}
+ */
+proto.liwords.TournamentGameEndedEvent.Player.prototype.getUserId = function() {
+  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 4, ""));
+};
+
+
+/**
+ * @param {string} value
+ * @return {!proto.liwords.TournamentGameEndedEvent.Player} returns this
+ */
+proto.liwords.TournamentGameEndedEvent.Player.prototype.setUserId = function(value) {
+  return jspb.Message.setProto3StringField(this, 4, value);
 };
 
 

@@ -248,6 +248,7 @@ export const TourneyGameEndedEvtToRecentGame = (
 
   const players = evtPlayers.map((ep) => ({
     username: ep.getUsername(),
+    userId: ep.getUserId(),
     score: ep.getScore(),
     result: toResultStr(ep.getResult()),
   }));

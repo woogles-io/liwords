@@ -480,8 +480,9 @@ func SetResult(ctx context.Context,
 		}
 
 		players := []*realtime.TournamentGameEndedEvent_Player{
-			{Username: p1user.Username, Score: int32(playerOneScore), Result: playerOneResult},
-			{Username: p2user.Username, Score: int32(playerTwoScore), Result: playerTwoResult},
+			{Username: p1user.Username, UserId: playerOneId, Score: int32(playerOneScore), Result: playerOneResult},
+			{Username: p2user.Username, UserId: playerTwoId, Score: int32(playerTwoScore), Result: playerTwoResult},
+
 		}
 
 		gameID := ""

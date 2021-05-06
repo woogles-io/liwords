@@ -256,8 +256,8 @@ func (s *DBStore) GetRecentGames(ctx context.Context, tourneyID string, numGames
 			continue
 		}
 		players := []*realtime.TournamentGameEndedEvent_Player{
-			{Username: info.Players[0].Nickname, Score: info.Scores[0], Result: res1},
-			{Username: info.Players[1].Nickname, Score: info.Scores[1], Result: res2},
+			{Username: info.Players[0].Nickname, UserId: info.Players[0].UserId, Score: info.Scores[0], Result: res1},
+			{Username: info.Players[1].Nickname, UserId: info.Players[1].UserId, Score: info.Scores[1], Result: res2},
 		}
 		if info.Players[1].First {
 			players[0], players[1] = players[1], players[0]

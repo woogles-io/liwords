@@ -695,6 +695,9 @@ export namespace TournamentGameEndedEvent {
     getResult(): TournamentGameResultMap[keyof TournamentGameResultMap];
     setResult(value: TournamentGameResultMap[keyof TournamentGameResultMap]): void;
 
+    getUserId(): string;
+    setUserId(value: string): void;
+
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): Player.AsObject;
     static toObject(includeInstance: boolean, msg: Player): Player.AsObject;
@@ -710,6 +713,7 @@ export namespace TournamentGameEndedEvent {
       username: string,
       score: number,
       result: TournamentGameResultMap[keyof TournamentGameResultMap],
+      userId: string,
     }
   }
 }
