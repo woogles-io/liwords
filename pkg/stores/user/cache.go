@@ -26,7 +26,7 @@ type backingStore interface {
 	SetPassword(ctx context.Context, uuid string, hashpass string) error
 	SetAvatarUrl(ctx context.Context, uuid string, avatarUrl string) error
 	GetBriefProfiles(ctx context.Context, uuids []string) (map[string]*pb.BriefProfile, error)
-	SetPersonalInfo(ctx context.Context, uuid string, email string, firstName string, lastName string, countryCode string, about string) error
+	SetPersonalInfo(ctx context.Context, uuid string, email string, firstName string, lastName string, birthDate string, countryCode string, about string) error
 	SetRatings(ctx context.Context, p0uuid string, p1uuid string, variant entity.VariantKey,
 		p1Rating entity.SingleRating, p2Rating entity.SingleRating) error
 	SetStats(ctx context.Context, p0uuid string, p1uuid string, variant entity.VariantKey,
@@ -208,18 +208,19 @@ func (c *Cache) GetBriefProfiles(ctx context.Context, uuids []string) (map[strin
 	return ret, nil
 }
 
-func (c *Cache) SetPersonalInfo(ctx context.Context, uuid string, email string, firstName string, lastName string, countryCode string, about string) error {
+func (c *Cache) SetPersonalInfo(ctx context.Context, uuid string, email string, firstName string, lastName string, birthDate string, countryCode string, about string) error {
 	u, err := c.GetByUUID(ctx, uuid)
 	if err != nil {
 		return err
 	}
 
-	if err = c.backing.SetPersonalInfo(ctx, uuid, email, firstName, lastName, countryCode, about); err != nil {
+	if err = c.backing.SetPersonalInfo(ctx, uuid, email, firstName, lastName, birthDate, countryCode, about); err != nil {
 		return err
 	}
 	u.Email = email
 	u.Profile.FirstName = firstName
 	u.Profile.LastName = lastName
+	u.Profile.BirthDate = birthDate
 	u.Profile.CountryCode = countryCode
 	u.Profile.About = about
 	c.uncacheBriefProfile(uuid)
@@ -237,6 +238,7 @@ func (c *Cache) ResetPersonalInfo(ctx context.Context, uuid string) error {
 	}
 	u.Profile.FirstName = ""
 	u.Profile.LastName = ""
+	u.Profile.BirthDate = ""
 	u.Profile.CountryCode = ""
 	u.Profile.Title = ""
 	u.Profile.AvatarUrl = ""

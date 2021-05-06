@@ -57,6 +57,8 @@ type profile struct {
 	FirstName string `gorm:"type:varchar(32)"`
 	LastName  string `gorm:"type:varchar(64)"`
 
+	BirthDate string `gorm:"type:varchar(11)"`
+
 	CountryCode string `gorm:"type:varchar(3)"`
 	// Title is some sort of acronym/shorthand for a title. Like GM, EX, SM, UK-GM (UK Grandmaster?)
 	Title string `gorm:"type:varchar(8)"`
@@ -244,6 +246,7 @@ func dbProfileToProfile(p *profile) (*entity.Profile, error) {
 	return &entity.Profile{
 		FirstName:   p.FirstName,
 		LastName:    p.LastName,
+		BirthDate:   p.BirthDate,
 		CountryCode: p.CountryCode,
 		Title:       p.Title,
 		About:       p.About,
@@ -452,7 +455,7 @@ func (s *DBStore) GetBriefProfiles(ctx context.Context, uuids []string) (map[str
 	return response, nil
 }
 
-func (s *DBStore) SetPersonalInfo(ctx context.Context, uuid string, email string, firstName string, lastName string, countryCode string, about string) error {
+func (s *DBStore) SetPersonalInfo(ctx context.Context, uuid string, email string, firstName string, lastName string, birthDate string, countryCode string, about string) error {
 	u := &User{}
 	p := &profile{}
 
@@ -467,8 +470,9 @@ func (s *DBStore) SetPersonalInfo(ctx context.Context, uuid string, email string
 			return result.Error
 		}
 
-		return tx.Model(p).Update(map[string]interface{}{"first_name": firstName,
+		return s.db.Model(p).Update(map[string]interface{}{"first_name": firstName,
 			"last_name":    lastName,
+			"birth_date":   birthDate,
 			"about":        about,
 			"country_code": countryCode}).Error
 	})

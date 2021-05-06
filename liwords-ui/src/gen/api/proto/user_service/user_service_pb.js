@@ -4998,7 +4998,8 @@ proto.user_service.ProfileResponse.toObject = function(includeInstance, msg) {
     userId: jspb.Message.getFieldWithDefault(msg, 8, ""),
     avatarUrl: jspb.Message.getFieldWithDefault(msg, 9, ""),
     fullName: jspb.Message.getFieldWithDefault(msg, 10, ""),
-    avatarsEditable: jspb.Message.getBooleanFieldWithDefault(msg, 11, false)
+    avatarsEditable: jspb.Message.getBooleanFieldWithDefault(msg, 11, false),
+    birthDate: jspb.Message.getFieldWithDefault(msg, 12, "")
   };
 
   if (includeInstance) {
@@ -5078,6 +5079,10 @@ proto.user_service.ProfileResponse.deserializeBinaryFromReader = function(msg, r
     case 11:
       var value = /** @type {boolean} */ (reader.readBool());
       msg.setAvatarsEditable(value);
+      break;
+    case 12:
+      var value = /** @type {string} */ (reader.readString());
+      msg.setBirthDate(value);
       break;
     default:
       reader.skipField();
@@ -5182,6 +5187,13 @@ proto.user_service.ProfileResponse.serializeBinaryToWriter = function(message, w
   if (f) {
     writer.writeBool(
       11,
+      f
+    );
+  }
+  f = message.getBirthDate();
+  if (f.length > 0) {
+    writer.writeString(
+      12,
       f
     );
   }
@@ -5386,6 +5398,24 @@ proto.user_service.ProfileResponse.prototype.setAvatarsEditable = function(value
 };
 
 
+/**
+ * optional string birth_date = 12;
+ * @return {string}
+ */
+proto.user_service.ProfileResponse.prototype.getBirthDate = function() {
+  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 12, ""));
+};
+
+
+/**
+ * @param {string} value
+ * @return {!proto.user_service.ProfileResponse} returns this
+ */
+proto.user_service.ProfileResponse.prototype.setBirthDate = function(value) {
+  return jspb.Message.setProto3StringField(this, 12, value);
+};
+
+
 
 
 
@@ -5525,7 +5555,8 @@ proto.user_service.PersonalInfoResponse.toObject = function(includeInstance, msg
     countryCode: jspb.Message.getFieldWithDefault(msg, 4, ""),
     avatarUrl: jspb.Message.getFieldWithDefault(msg, 5, ""),
     fullName: jspb.Message.getFieldWithDefault(msg, 6, ""),
-    about: jspb.Message.getFieldWithDefault(msg, 7, "")
+    about: jspb.Message.getFieldWithDefault(msg, 7, ""),
+    birthDate: jspb.Message.getFieldWithDefault(msg, 8, "")
   };
 
   if (includeInstance) {
@@ -5589,6 +5620,10 @@ proto.user_service.PersonalInfoResponse.deserializeBinaryFromReader = function(m
     case 7:
       var value = /** @type {string} */ (reader.readString());
       msg.setAbout(value);
+      break;
+    case 8:
+      var value = /** @type {string} */ (reader.readString());
+      msg.setBirthDate(value);
       break;
     default:
       reader.skipField();
@@ -5665,6 +5700,13 @@ proto.user_service.PersonalInfoResponse.serializeBinaryToWriter = function(messa
   if (f.length > 0) {
     writer.writeString(
       7,
+      f
+    );
+  }
+  f = message.getBirthDate();
+  if (f.length > 0) {
+    writer.writeString(
+      8,
       f
     );
   }
@@ -5797,6 +5839,24 @@ proto.user_service.PersonalInfoResponse.prototype.setAbout = function(value) {
 };
 
 
+/**
+ * optional string birth_date = 8;
+ * @return {string}
+ */
+proto.user_service.PersonalInfoResponse.prototype.getBirthDate = function() {
+  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 8, ""));
+};
+
+
+/**
+ * @param {string} value
+ * @return {!proto.user_service.PersonalInfoResponse} returns this
+ */
+proto.user_service.PersonalInfoResponse.prototype.setBirthDate = function(value) {
+  return jspb.Message.setProto3StringField(this, 8, value);
+};
+
+
 
 
 
@@ -5835,7 +5895,8 @@ proto.user_service.UpdatePersonalInfoRequest.toObject = function(includeInstance
     countryCode: jspb.Message.getFieldWithDefault(msg, 4, ""),
     avatarUrl: jspb.Message.getFieldWithDefault(msg, 5, ""),
     fullName: jspb.Message.getFieldWithDefault(msg, 6, ""),
-    about: jspb.Message.getFieldWithDefault(msg, 7, "")
+    about: jspb.Message.getFieldWithDefault(msg, 7, ""),
+    birthDate: jspb.Message.getFieldWithDefault(msg, 8, "")
   };
 
   if (includeInstance) {
@@ -5899,6 +5960,10 @@ proto.user_service.UpdatePersonalInfoRequest.deserializeBinaryFromReader = funct
     case 7:
       var value = /** @type {string} */ (reader.readString());
       msg.setAbout(value);
+      break;
+    case 8:
+      var value = /** @type {string} */ (reader.readString());
+      msg.setBirthDate(value);
       break;
     default:
       reader.skipField();
@@ -5975,6 +6040,13 @@ proto.user_service.UpdatePersonalInfoRequest.serializeBinaryToWriter = function(
   if (f.length > 0) {
     writer.writeString(
       7,
+      f
+    );
+  }
+  f = message.getBirthDate();
+  if (f.length > 0) {
+    writer.writeString(
+      8,
       f
     );
   }
@@ -6104,6 +6176,24 @@ proto.user_service.UpdatePersonalInfoRequest.prototype.getAbout = function() {
  */
 proto.user_service.UpdatePersonalInfoRequest.prototype.setAbout = function(value) {
   return jspb.Message.setProto3StringField(this, 7, value);
+};
+
+
+/**
+ * optional string birth_date = 8;
+ * @return {string}
+ */
+proto.user_service.UpdatePersonalInfoRequest.prototype.getBirthDate = function() {
+  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 8, ""));
+};
+
+
+/**
+ * @param {string} value
+ * @return {!proto.user_service.UpdatePersonalInfoRequest} returns this
+ */
+proto.user_service.UpdatePersonalInfoRequest.prototype.setBirthDate = function(value) {
+  return jspb.Message.setProto3StringField(this, 8, value);
 };
 
 

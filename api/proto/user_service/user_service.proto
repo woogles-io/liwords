@@ -133,6 +133,7 @@ message ProfileResponse {
   string avatar_url = 9;
   string full_name = 10;
   bool avatars_editable = 11;
+  string birth_date = 12;
 }
 
 message PersonalInfoRequest { }
@@ -145,6 +146,7 @@ message PersonalInfoResponse {
   string avatar_url = 5;
   string full_name = 6;
   string about = 7;
+  string birth_date = 8;
 }
 
 message UpdatePersonalInfoRequest {
@@ -155,6 +157,7 @@ message UpdatePersonalInfoRequest {
   string avatar_url = 5;
   string full_name = 6;
   string about = 7;
+  string birth_date = 8;
 }
 
 message UpdatePersonalInfoResponse { }

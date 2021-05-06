@@ -77,6 +77,7 @@ func (ps *ProfileService) GetProfile(ctx context.Context, r *pb.ProfileRequest) 
 	return &pb.ProfileResponse{
 		FirstName:       user.Profile.FirstName,
 		LastName:        user.Profile.LastName,
+		BirthDate:       user.Profile.BirthDate,
 		FullName:        user.RealName(),
 		CountryCode:     user.Profile.CountryCode,
 		Title:           user.Profile.Title,
@@ -108,6 +109,7 @@ func (ps *ProfileService) GetPersonalInfo(ctx context.Context, r *pb.PersonalInf
 		Email:       user.Email,
 		FirstName:   user.Profile.FirstName,
 		LastName:    user.Profile.LastName,
+		BirthDate:   user.Profile.BirthDate,
 		CountryCode: user.Profile.CountryCode,
 		AvatarUrl:   user.AvatarUrl(),
 		FullName:    user.RealName(),
@@ -130,7 +132,7 @@ func (ps *ProfileService) UpdatePersonalInfo(ctx context.Context, r *pb.UpdatePe
 		return nil, twirp.InternalErrorWith(err)
 	}
 
-	updateErr := ps.userStore.SetPersonalInfo(ctx, user.UUID, r.Email, r.FirstName, r.LastName, r.CountryCode, r.About)
+	updateErr := ps.userStore.SetPersonalInfo(ctx, user.UUID, r.Email, r.FirstName, r.LastName, r.BirthDate, r.CountryCode, r.About)
 	if updateErr != nil {
 		return nil, twirp.InternalErrorWith(updateErr)
 	}

@@ -64,8 +64,10 @@ type Session struct {
 
 // Profile is a user profile. It might not be defined for anonymous users.
 type Profile struct {
-	FirstName   string
-	LastName    string
+	FirstName string
+	LastName  string
+	// BirthDate uses ISO format YYYY-MM-DD
+	BirthDate   string
 	CountryCode string
 	Title       string
 	About       string

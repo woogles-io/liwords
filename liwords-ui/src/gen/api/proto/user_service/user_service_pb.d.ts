@@ -586,6 +586,9 @@ export class ProfileResponse extends jspb.Message {
   getAvatarsEditable(): boolean;
   setAvatarsEditable(value: boolean): void;
 
+  getBirthDate(): string;
+  setBirthDate(value: string): void;
+
   serializeBinary(): Uint8Array;
   toObject(includeInstance?: boolean): ProfileResponse.AsObject;
   static toObject(includeInstance: boolean, msg: ProfileResponse): ProfileResponse.AsObject;
@@ -609,6 +612,7 @@ export namespace ProfileResponse {
     avatarUrl: string,
     fullName: string,
     avatarsEditable: boolean,
+    birthDate: string,
   }
 }
 
@@ -650,6 +654,9 @@ export class PersonalInfoResponse extends jspb.Message {
   getAbout(): string;
   setAbout(value: string): void;
 
+  getBirthDate(): string;
+  setBirthDate(value: string): void;
+
   serializeBinary(): Uint8Array;
   toObject(includeInstance?: boolean): PersonalInfoResponse.AsObject;
   static toObject(includeInstance: boolean, msg: PersonalInfoResponse): PersonalInfoResponse.AsObject;
@@ -669,6 +676,7 @@ export namespace PersonalInfoResponse {
     avatarUrl: string,
     fullName: string,
     about: string,
+    birthDate: string,
   }
 }
 
@@ -694,6 +702,9 @@ export class UpdatePersonalInfoRequest extends jspb.Message {
   getAbout(): string;
   setAbout(value: string): void;
 
+  getBirthDate(): string;
+  setBirthDate(value: string): void;
+
   serializeBinary(): Uint8Array;
   toObject(includeInstance?: boolean): UpdatePersonalInfoRequest.AsObject;
   static toObject(includeInstance: boolean, msg: UpdatePersonalInfoRequest): UpdatePersonalInfoRequest.AsObject;
@@ -713,6 +724,7 @@ export namespace UpdatePersonalInfoRequest {
     avatarUrl: string,
     fullName: string,
     about: string,
+    birthDate: string,
   }
 }
 
