@@ -477,7 +477,12 @@ func main() {
 				newDivision.DivisionManager = newClassicDivision
 				newDivisions[name] = newDivision
 			}
-
+			finished := oldTournament.IsFinished
+			if len(newDivisions) > 0 {
+				// Finish all "new style" tournaments.
+				// (let's also drop the data in the registrants table by hand)
+				finished = true
+			}
 			mt := &entity.Tournament{
 				UUID:              oldTournament.UUID,
 				Name:              oldTournament.Name,
@@ -487,7 +492,7 @@ func main() {
 				ExecutiveDirector: oldTournament.ExecutiveDirector,
 				Directors:         newDirectors,
 				IsStarted:         oldTournament.IsStarted,
-				IsFinished:        oldTournament.IsFinished,
+				IsFinished:        finished,
 				Divisions:         newDivisions,
 				DefaultSettings:   oldTournament.DefaultSettings,
 				Type:              oldTournament.Type,
