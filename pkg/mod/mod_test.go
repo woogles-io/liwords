@@ -275,7 +275,7 @@ func TestMod(t *testing.T) {
 
 	// Apply a delete action and ensure that the profile is deleted and the account is suspended
 	deleteAbout := "plz delet this"
-	err = us.SetAbout(ctx, "Deleter", deleteAbout)
+	err = us.SetPersonalInfo(ctx, "Deleter", "email", "firstname", "lastname", "USA", deleteAbout)
 	is.NoErr(err)
 
 	deleterUser, err := us.GetByUUID(ctx, "Deleter")
