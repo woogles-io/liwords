@@ -204,7 +204,7 @@ export const PersonalInfo = React.memo((props: Props) => {
             if (newWindow) newWindow.opener = null;
           }}
         >
-          See Full Guide
+          See full guide
         </Button>,
         <Button
           onClick={() => {

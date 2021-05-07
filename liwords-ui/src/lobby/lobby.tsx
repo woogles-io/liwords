@@ -59,7 +59,7 @@ export const Lobby = (props: Props) => {
           <Chat
             sendChat={props.sendChat}
             defaultChannel="chat.lobby"
-            defaultDescription="Help Chat"
+            defaultDescription="Help chat"
             peopleOnlineContext={peopleOnlineContext}
             DISCONNECT={props.DISCONNECT}
           />

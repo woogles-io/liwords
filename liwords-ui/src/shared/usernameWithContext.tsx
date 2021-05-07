@@ -55,7 +55,7 @@ export const UsernameWithContext = (props: UsernameWithContextProps) => {
             to={`/profile/${encodeURIComponent(props.username)}`}
             target="_blank"
           >
-            View Profile
+            View profile
           </Link>
         </li>
       )}

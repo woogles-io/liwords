@@ -237,7 +237,7 @@ export const ActionsPanel = React.memo((props: Props) => {
     if (selectedGameTab === 'RECENT') {
       return (
         <>
-          <h4>Recent Games</h4>
+          <h4>Recent games</h4>
           <RecentTourneyGames
             games={tournamentContext.finishedTourneyGames}
             fetchPrev={
@@ -289,7 +289,7 @@ export const ActionsPanel = React.memo((props: Props) => {
           type="submit"
           disabled={formDisabled}
         >
-          Create Game
+          Create game
         </button>,
       ]}
     >
@@ -447,7 +447,7 @@ export const ActionsPanel = React.memo((props: Props) => {
                 }}
                 className={selectedGameTab === 'RECENT' ? 'tab active' : 'tab'}
               >
-                Recent Games
+                Recent games
               </div>
             ) : (
               <div
