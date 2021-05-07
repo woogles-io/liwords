@@ -23,6 +23,10 @@ import {
 } from './tournament_reducer';
 import { ftData } from './testdata/tourney_1_divisions';
 import { ChallengeRule } from '../../gen/macondo/api/proto/macondo/macondo_pb';
+import {
+  TournamentMetadata,
+  TType,
+} from '../../gen/api/proto/tournament_service/tournament_service_pb';
 
 const toArr = (s: string) => {
   const bytes = new Uint8Array(Math.ceil(s.length / 2));
@@ -38,15 +42,17 @@ const initialTourneyXHRMessage = () => {
   return FullTournamentDivisions.deserializeBinary(msg);
 };
 
-const tourneyMetadata = () => {
+const tourneyMetadataPayload = () => {
+  const metadata = new TournamentMetadata();
+  metadata.setName('Wolges Incorporated');
+  metadata.setDescription('Welcome to Wolges: population: You');
+  metadata.setSlug('/tournament/wolges');
+  metadata.setId('qzqWHsGVBrAgiuAZp9nJJm');
+  metadata.setType(TType.STANDARD);
+
   return {
-    name: 'Wolges Incorporated',
-    description: 'Welcome to Wolges: population: You',
     directors: ['cesar', 'thedirector'],
-    slug: '/tournament/wolges',
-    id: 'qzqWHsGVBrAgiuAZp9nJJm',
-    type: 'STANDARD',
-    divisions: ['CSW', 'NWL'],
+    metadata,
   };
 };
 
@@ -58,12 +64,22 @@ const startTourneyMessage = () => {
   return msg;
 };
 
+const cesarLoginState = () => {
+  return {
+    username: 'cesar',
+    userID: 'ncSw3WeNGMzATfwzz7pdkF',
+    loggedIn: true,
+    connId: 'conn-123',
+    connectedToSocket: true,
+  };
+};
+
 const fullDivisionsState = () => {
   const state = defaultTournamentState;
 
   const state1 = TournamentReducer(state, {
     actionType: ActionType.SetTourneyMetadata,
-    payload: tourneyMetadata(),
+    payload: tourneyMetadataPayload(),
   });
 
   const state2 = TournamentReducer(state1, {
@@ -117,7 +133,10 @@ it('tests tourneystart', () => {
 
   const finalState = TournamentReducer(state, {
     actionType: ActionType.StartTourneyRound,
-    payload: startTourneyMessage(),
+    payload: {
+      trs: startTourneyMessage(),
+      loginState: cesarLoginState(),
+    },
   });
 
   expect(finalState.started).toBe(true);
@@ -206,13 +225,7 @@ const newDivisionRoundControlsMessage = () => {
 it('adds new divisions and pairings', () => {
   const state = fullDivisionsState();
 
-  const loginState = {
-    username: 'cesar',
-    userID: 'ncSw3WeNGMzATfwzz7pdkF',
-    loggedIn: true,
-    connId: 'conn-123',
-    connectedToSocket: true,
-  };
+  const loginState = cesarLoginState();
 
   // Add a new division, add two players, add random pairings.
 

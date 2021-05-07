@@ -1,3 +1,7 @@
+import {
+  TType,
+  TTypeMap,
+} from '../gen/api/proto/tournament_service/tournament_service_pb';
 import { ChallengeRule } from '../gen/macondo/api/proto/macondo/macondo_pb';
 import { Blank } from '../utils/cwgame/common';
 import { ChatEntityObj, ChatEntityType, randomID } from './store';
@@ -15,12 +19,14 @@ export const calculateTotalTime = (
   return secs + maxOvertime * 60 + incrementSecs * turnsPerGame;
 };
 
-export const isPairedMode = (type: string) => {
-  return type === 'CHILD' || type === 'STANDARD';
+type valueof<T> = T[keyof T];
+
+export const isPairedMode = (type: valueof<TTypeMap>) => {
+  return type === TType.CHILD || type === TType.STANDARD;
 };
 
-export const isClubType = (type: string) => {
-  return type === 'CHILD' || type === 'CLUB';
+export const isClubType = (type: valueof<TTypeMap>) => {
+  return type === TType.CHILD || type === TType.CLUB;
 };
 // See cutoffs in variants.go. XXX: Try to tie these together better.
 export const timeCtrlToDisplayName = (

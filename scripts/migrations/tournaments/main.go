@@ -168,7 +168,6 @@ type OldTournament struct {
 	IsStarted         bool                              `json:"started"`
 	IsFinished        bool                              `json:"finished"`
 	Divisions         map[string]*OldTournamentDivision `json:"divs"`
-	DefaultSettings   *realtime.GameRequest             `json:"settings"`
 	Type              entity.CompetitionType            `json:"type"`
 	ParentID          string                            `json:"parent"`
 	Slug              string                            `json:"slug"`
@@ -194,11 +193,6 @@ type oldtournament struct {
 	Divisions         datatypes.JSON
 	// Slug looks like /tournament/abcdef, /club/madison, /club/madison/2020-04-20
 	Slug string `gorm:"uniqueIndex:,expression:lower(slug)"`
-	// DefaultSettings are mostly used for clubs. It's the default settings for
-	// games in that club. It can be used for non-clubs as well, in perhaps
-	// an advertisement or other such tournament page. (But in tournaments,
-	// each division has their own settings).
-	DefaultSettings datatypes.JSON
 	// Type is tournament, club, session, and maybe other things.
 	Type string
 	// Parent is a tournament parent ID.
@@ -243,12 +237,6 @@ func oldDatabaseObjectToEntity(ctx context.Context, s *DBStore, id string) (*Old
 		return nil, err
 	}
 
-	var defaultSettings realtime.GameRequest
-	err = json.Unmarshal(tm.DefaultSettings, &defaultSettings)
-	if err != nil {
-		// it's ok, don't error out; this tournament has no default settings
-	}
-
 	tme := &OldTournament{UUID: tm.UUID,
 		Name:              tm.Name,
 		Description:       tm.Description,
@@ -258,7 +246,6 @@ func oldDatabaseObjectToEntity(ctx context.Context, s *DBStore, id string) (*Old
 		IsStarted:         tm.IsStarted,
 		IsFinished:        tm.IsFinished,
 		Divisions:         divisions,
-		DefaultSettings:   &defaultSettings,
 		Type:              entity.CompetitionType(tm.Type),
 		ParentID:          tm.Parent,
 		Slug:              tm.Slug,
@@ -283,11 +270,6 @@ type tournament struct {
 	Divisions         datatypes.JSON
 	// Slug looks like /tournament/abcdef, /club/madison, /club/madison/2020-04-20
 	Slug string `gorm:"uniqueIndex:,expression:lower(slug)"`
-	// DefaultSettings are mostly used for clubs. It's the default settings for
-	// games in that club. It can be used for non-clubs as well, in perhaps
-	// an advertisement or other such tournament page. (But in tournaments,
-	// each division has their own settings).
-	DefaultSettings datatypes.JSON
 	// Type is tournament, club, session, and maybe other things.
 	Type string
 	// Parent is a tournament parent ID.
@@ -356,12 +338,6 @@ func (s *DBStore) toDBObj(t *entity.Tournament) (*tournament, error) {
 		return nil, err
 	}
 
-	defaultSettings, err := json.Marshal(t.DefaultSettings)
-	if err != nil {
-		// for now
-		defaultSettings = []byte("{}")
-	}
-
 	dbt := &tournament{
 		UUID:              t.UUID,
 		Name:              t.Name,
@@ -372,7 +348,6 @@ func (s *DBStore) toDBObj(t *entity.Tournament) (*tournament, error) {
 		IsStarted:         t.IsStarted,
 		IsFinished:        t.IsFinished,
 		Divisions:         divisions,
-		DefaultSettings:   defaultSettings,
 		Type:              string(t.Type),
 		Parent:            t.ParentID,
 		Slug:              t.Slug,
@@ -494,7 +469,6 @@ func main() {
 				IsStarted:         oldTournament.IsStarted,
 				IsFinished:        finished,
 				Divisions:         newDivisions,
-				DefaultSettings:   oldTournament.DefaultSettings,
 				Type:              oldTournament.Type,
 				ParentID:          oldTournament.ParentID,
 				Slug:              oldTournament.Slug,

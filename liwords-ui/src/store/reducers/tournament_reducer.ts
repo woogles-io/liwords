@@ -1,5 +1,4 @@
 import * as jspb from 'google-protobuf';
-import { finished } from 'stream';
 
 import { Action, ActionType } from '../../actions/actions';
 import {
@@ -24,26 +23,19 @@ import {
   TournamentRoundStarted,
   TournamentDivisionDeletedResponse,
 } from '../../gen/api/proto/realtime/realtime_pb';
+import {
+  TournamentMetadata,
+  TType,
+} from '../../gen/api/proto/tournament_service/tournament_service_pb';
 import { RecentGame } from '../../tournament/recent_game';
 import { encodeToSocketFmt } from '../../utils/protobuf';
 import { LoginState } from '../login_state';
 import { ActiveGame } from './lobby_reducer';
 
-type tourneytypes = 'STANDARD' | 'CLUB' | 'CHILD' | 'LEGACY';
 type valueof<T> = T[keyof T];
 
 type tournamentGameResult = valueof<TournamentGameResultMap>;
 type gameEndReason = valueof<GameEndReasonMap>;
-
-export type TournamentMetadata = {
-  name: string;
-  description: string;
-  directors: Array<string>;
-  slug: string;
-  id: string;
-  type: tourneytypes;
-  divisions: Array<string>;
-};
 
 type TournamentGame = {
   scores: Array<number>;
@@ -92,6 +84,7 @@ export const defaultCompetitorState = {
 
 export type TournamentState = {
   metadata: TournamentMetadata;
+  directors: Array<string>;
   // standings, pairings, etc. more stuff here to come.
   started: boolean;
   divisions: { [name: string]: Division };
@@ -107,16 +100,12 @@ export type TournamentState = {
   initializedFromXHR: boolean;
 };
 
+const defaultMetadata = new TournamentMetadata();
+defaultMetadata.setType(TType.LEGACY);
+
 export const defaultTournamentState = {
-  metadata: {
-    name: '',
-    description: '',
-    directors: new Array<string>(),
-    slug: '',
-    id: '',
-    type: 'LEGACY' as tourneytypes,
-    divisions: new Array<string>(),
-  },
+  metadata: defaultMetadata,
+  directors: new Array<string>(),
   started: false,
   divisions: {},
   competitorState: defaultCompetitorState,
@@ -499,11 +488,15 @@ export function TournamentReducer(
 
   switch (action.actionType) {
     case ActionType.SetTourneyMetadata:
-      const metadata = action.payload as TournamentMetadata;
-      console.log('gonna set metadata', metadata);
+      const m = action.payload as {
+        directors: Array<string>;
+        metadata: TournamentMetadata;
+      };
+      console.log('gonna set metadata', m);
       return {
         ...state,
-        metadata,
+        directors: m.directors,
+        metadata: m.metadata,
       };
 
     case ActionType.SetDivisionRoundControls: {
@@ -712,7 +705,7 @@ export function TournamentReducer(
       );
 
       const fullLoggedInID = `${dp.loginState.userID}:${dp.loginState.username}`;
-
+      console.log('divisions are', state.divisions);
       let registeredDivision: Division | undefined;
       if (fullLoggedInID in newPlayerIndexMap) {
         registeredDivision = state.divisions[division];
@@ -864,7 +857,7 @@ export function TournamentReducer(
         loginState: LoginState;
       };
       // Make sure the tournament ID matches. (Why wouldn't it, though?)
-      if (state.metadata.id !== m.trs.getTournamentId()) {
+      if (state.metadata.getId() !== m.trs.getTournamentId()) {
         return state;
       }
       const division = m.trs.getDivision();

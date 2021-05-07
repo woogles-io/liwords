@@ -16,13 +16,13 @@ type TournamentInfoProps = {
 export const TournamentInfo = (props: TournamentInfoProps) => {
   const { tournamentContext } = useTournamentStoreContext();
   const { competitorState: competitorContext, metadata } = tournamentContext;
-  const directors = tournamentContext.metadata.directors.map((username, i) => (
+  const directors = tournamentContext.directors.map((username, i) => (
     <span className="director" key={username}>
       {i > 0 && ', '}
       <UsernameWithContext username={username} omitSendMessage />
     </span>
   ));
-  const type = isClubType(metadata.type) ? 'Club' : 'Tournament';
+  const type = isClubType(metadata.getType()) ? 'Club' : 'Tournament';
   return (
     <div className="tournament-info">
       {/* Mobile version of the status widget, hidden by css elsewhere */}
@@ -31,17 +31,17 @@ export const TournamentInfo = (props: TournamentInfoProps) => {
           sendReady={() =>
             readyForTournamentGame(
               props.sendSocketMsg,
-              tournamentContext.metadata.id,
+              tournamentContext.metadata.getId(),
               competitorContext
             )
           }
         />
       )}
-      <Card title={tournamentContext.metadata.name} className="tournament">
+      <Card title={tournamentContext.metadata.getName()} className="tournament">
         <h4>Directed by: {directors}</h4>
         <h5 className="section-header">{type} Details</h5>
         <ReactMarkdown linkTarget="_blank">
-          {tournamentContext.metadata.description}
+          {tournamentContext.metadata.getDescription()}
         </ReactMarkdown>
       </Card>
     </div>

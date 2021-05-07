@@ -268,7 +268,8 @@ export const useOnSocketMsg = () => {
                 // This is a match game attached to a tourney.
                 console.log('match attached to tourney');
                 if (
-                  tournamentContext.metadata.id === soughtGame.tournamentID &&
+                  tournamentContext.metadata?.getId() ===
+                    soughtGame.tournamentID &&
                   !gameContext.gameID
                 ) {
                   console.log('matches this tourney, and we are not in a game');
@@ -726,7 +727,7 @@ export const useOnSocketMsg = () => {
             if (!activeGame) {
               return;
             }
-            const dispatchFn = tournamentContext.metadata.id
+            const dispatchFn = tournamentContext.metadata?.getId()
               ? dispatchTournamentContext
               : dispatchLobbyContext;
             dispatchFn({
@@ -763,7 +764,9 @@ export const useOnSocketMsg = () => {
 
           case MessageType.READY_FOR_TOURNAMENT_GAME: {
             const ready = parsedMsg as ReadyForTournamentGame;
-            if (tournamentContext.metadata.id !== ready.getTournamentId()) {
+            if (
+              tournamentContext.metadata?.getId() !== ready.getTournamentId()
+            ) {
               // Ignore this message (for now -- we may actually want to display
               // this in other contexts, like the lobby, an unrelated game, etc).
               break;

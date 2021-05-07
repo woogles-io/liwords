@@ -49,13 +49,13 @@ export const TournamentRoom = (props: Props) => {
   );
 
   const tournamentID = useMemo(() => {
-    return tournamentContext.metadata.id;
+    return tournamentContext.metadata.getId();
   }, [tournamentContext.metadata]);
 
   // Should be more like "amdirector"
   const isDirector = useMemo(() => {
-    return tournamentContext.metadata.directors.includes(username);
-  }, [tournamentContext.metadata, username]);
+    return tournamentContext.directors.includes(username);
+  }, [tournamentContext.directors, username]);
 
   const handleNewGame = useCallback(
     (seekID: string) => {
@@ -102,9 +102,9 @@ export const TournamentRoom = (props: Props) => {
           <Chat
             sendChat={props.sendChat}
             defaultChannel={`chat.tournament.${tournamentID}`}
-            defaultDescription={tournamentContext.metadata.name}
+            defaultDescription={tournamentContext.metadata.getName()}
             peopleOnlineContext={peopleOnlineContext}
-            highlight={tournamentContext.metadata.directors}
+            highlight={tournamentContext.directors}
             highlightText="Director"
             tournamentID={tournamentID}
           />
@@ -113,7 +113,7 @@ export const TournamentRoom = (props: Props) => {
               sendReady={() =>
                 readyForTournamentGame(
                   sendSocketMsg,
-                  tournamentContext.metadata.id,
+                  tournamentContext.metadata.getId(),
                   competitorContext
                 )
               }
@@ -133,7 +133,7 @@ export const TournamentRoom = (props: Props) => {
           sendReady={() =>
             readyForTournamentGame(
               sendSocketMsg,
-              tournamentContext.metadata.id,
+              tournamentContext.metadata.getId(),
               competitorContext
             )
           }

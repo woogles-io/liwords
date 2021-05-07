@@ -98,6 +98,7 @@ func NewTournament(ctx context.Context,
 		Type:              ttype,
 		ParentID:          parent,
 		Slug:              slug,
+		ExtraMeta:         &entity.TournamentMeta{},
 	}
 
 	err = tournamentStore.Create(ctx, entTournament)
@@ -125,39 +126,51 @@ func SendTournamentMessage(ctx context.Context, ts TournamentStore, id string, w
 	return nil
 }
 
-func SetTournamentMetadata(ctx context.Context, ts TournamentStore, id string, name string, description string,
-	slug string, ttype entity.CompetitionType) error {
+func SetTournamentMetadata(ctx context.Context, ts TournamentStore, meta *pb.TournamentMetadata) error {
 
-	t, err := ts.Get(ctx, id)
+	ttype, err := validateTournamentMeta(meta.Type, meta.Slug)
+	if err != nil {
+		return err
+	}
+
+	t, err := ts.Get(ctx, meta.Id)
 	if err != nil {
 		return err
 	}
 
 	if t.IsFinished {
-		return fmt.Errorf("tournament %s has finished", id)
+		return fmt.Errorf("tournament %s has finished", meta.Id)
 	}
 
 	t.Lock()
 	defer t.Unlock()
-	name = strings.TrimSpace(name)
+	name := strings.TrimSpace(meta.Name)
 	if name == "" {
 		return errors.New("name cannot be blank")
 	}
 	t.Name = name
-	t.Description = description
-	t.Slug = slug
+	t.Description = meta.Description
+	t.Slug = meta.Slug
 	t.Type = ttype
+	t.ExtraMeta = &entity.TournamentMeta{
+		Disclaimer:                meta.Disclaimer,
+		TileStyle:                 meta.TileStyle,
+		BoardStyle:                meta.BoardStyle,
+		DefaultClubSettings:       meta.DefaultClubSettings,
+		FreeformClubSettingFields: meta.FreeformClubSettingFields,
+		Password:                  meta.Password,
+	}
 
 	err = ts.Set(ctx, t)
 	if err != nil {
 		return err
 	}
-	tdevt, err := TournamentDataResponse(ctx, ts, id)
+	tdevt, err := TournamentDataResponse(ctx, ts, meta.Id)
 	if err != nil {
 		return err
 	}
 	wrapped := entity.WrapEvent(tdevt, realtime.MessageType_TOURNAMENT_MESSAGE)
-	return SendTournamentMessage(ctx, ts, id, wrapped)
+	return SendTournamentMessage(ctx, ts, meta.Id, wrapped)
 }
 
 func SetSingleRoundControls(ctx context.Context, ts TournamentStore, id string, division string, round int, controls *realtime.RoundControl) error {

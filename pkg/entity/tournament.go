@@ -68,6 +68,15 @@ type TournamentDivision struct {
 	DivisionManager    DivisionManager `json:"-"`
 }
 
+type TournamentMeta struct {
+	Disclaimer                string                `json:"disclaimer"`
+	TileStyle                 string                `json:"tileStyle"`
+	BoardStyle                string                `json:"boardStyle"`
+	DefaultClubSettings       *realtime.GameRequest `json:"defaultClubSettings"`
+	FreeformClubSettingFields []string              `json:"freeformClubSettingFields"`
+	Password                  string                `json:"password"`
+}
+
 type Tournament struct {
 	sync.RWMutex
 	UUID        string `json:"uuid"`
@@ -82,8 +91,8 @@ type Tournament struct {
 	IsStarted         bool                           `json:"started"`
 	IsFinished        bool                           `json:"finished"`
 	Divisions         map[string]*TournamentDivision `json:"divs"`
-	DefaultSettings   *realtime.GameRequest          `json:"settings"`
 	Type              CompetitionType                `json:"type"`
 	ParentID          string                         `json:"parent"`
 	Slug              string                         `json:"slug"`
+	ExtraMeta         *TournamentMeta                `json:"extraMeta"`
 }

@@ -31,13 +31,36 @@ message NewTournamentRequest {
   TType type = 5;
 }
 
-message SetTournamentMetadataRequest {
+message TournamentMetadata {
   string id = 1;
   string name = 2;
+  // description is the markdown information for the tournament on the
+  // right-hand side
   string description = 3;
   string slug = 4;
   TType type = 5;
+  // a caption that shows up for the tournament in various places.
+  string disclaimer = 6;
+  // tile_style if set is default
+  string tile_style = 7;
+  // board_style if set is default
+  string board_style = 8;
+  // for clubs (not tournaments) we want to be able to hard-code settings
+  // if the following parameter is set.
+  liwords.GameRequest default_club_settings = 9;
+  // When setting the game request, some clubs would like some parameters
+  // to be more freeform (for example, lexicon option or time setting).
+  // The following parameter is a list of field names that are freeform.
+  // (Use protobuf field names for consistency, for example,
+  // initial_time_seconds).
+  repeated string freeform_club_setting_fields = 10;
+  // a simple password for this tournament. Without it you can't see what is
+  // happening. Likely front-end only implementation, although password
+  // will be at least hashed. For clubs that want to be more private.
+  string password = 11;
 }
+
+message SetTournamentMetadataRequest { TournamentMetadata metadata = 1; }
 
 message SingleRoundControlsRequest {
   string id = 1;
@@ -107,20 +130,15 @@ message GetTournamentMetadataRequest {
   string slug = 2;
 }
 
-message GetTournamentRequest {
-  string id = 1;
-}
+message GetTournamentRequest { string id = 1; }
 
 message FinishTournamentRequest { string id = 1; }
 
 message TournamentMetadataResponse {
-  string name = 1;
-  string description = 2;
-  repeated string directors = 3;
-  string slug = 4;
-  string id = 5;
-  TType type = 6;
-  repeated string divisions = 7;
+  TournamentMetadata metadata = 1;
+  // directors are not part of the metadata. We decided to make those
+  // individually addable/removable (See AddDirectors)
+  repeated string directors = 2;
 }
 
 message RecentGamesRequest {

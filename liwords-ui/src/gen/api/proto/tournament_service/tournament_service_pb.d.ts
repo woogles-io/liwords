@@ -67,7 +67,7 @@ export namespace NewTournamentRequest {
   }
 }
 
-export class SetTournamentMetadataRequest extends jspb.Message {
+export class TournamentMetadata extends jspb.Message {
   getId(): string;
   setId(value: string): void;
 
@@ -83,6 +83,60 @@ export class SetTournamentMetadataRequest extends jspb.Message {
   getType(): TTypeMap[keyof TTypeMap];
   setType(value: TTypeMap[keyof TTypeMap]): void;
 
+  getDisclaimer(): string;
+  setDisclaimer(value: string): void;
+
+  getTileStyle(): string;
+  setTileStyle(value: string): void;
+
+  getBoardStyle(): string;
+  setBoardStyle(value: string): void;
+
+  hasDefaultClubSettings(): boolean;
+  clearDefaultClubSettings(): void;
+  getDefaultClubSettings(): api_proto_realtime_realtime_pb.GameRequest | undefined;
+  setDefaultClubSettings(value?: api_proto_realtime_realtime_pb.GameRequest): void;
+
+  clearFreeformClubSettingFieldsList(): void;
+  getFreeformClubSettingFieldsList(): Array<string>;
+  setFreeformClubSettingFieldsList(value: Array<string>): void;
+  addFreeformClubSettingFields(value: string, index?: number): string;
+
+  getPassword(): string;
+  setPassword(value: string): void;
+
+  serializeBinary(): Uint8Array;
+  toObject(includeInstance?: boolean): TournamentMetadata.AsObject;
+  static toObject(includeInstance: boolean, msg: TournamentMetadata): TournamentMetadata.AsObject;
+  static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+  static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+  static serializeBinaryToWriter(message: TournamentMetadata, writer: jspb.BinaryWriter): void;
+  static deserializeBinary(bytes: Uint8Array): TournamentMetadata;
+  static deserializeBinaryFromReader(message: TournamentMetadata, reader: jspb.BinaryReader): TournamentMetadata;
+}
+
+export namespace TournamentMetadata {
+  export type AsObject = {
+    id: string,
+    name: string,
+    description: string,
+    slug: string,
+    type: TTypeMap[keyof TTypeMap],
+    disclaimer: string,
+    tileStyle: string,
+    boardStyle: string,
+    defaultClubSettings?: api_proto_realtime_realtime_pb.GameRequest.AsObject,
+    freeformClubSettingFieldsList: Array<string>,
+    password: string,
+  }
+}
+
+export class SetTournamentMetadataRequest extends jspb.Message {
+  hasMetadata(): boolean;
+  clearMetadata(): void;
+  getMetadata(): TournamentMetadata | undefined;
+  setMetadata(value?: TournamentMetadata): void;
+
   serializeBinary(): Uint8Array;
   toObject(includeInstance?: boolean): SetTournamentMetadataRequest.AsObject;
   static toObject(includeInstance: boolean, msg: SetTournamentMetadataRequest): SetTournamentMetadataRequest.AsObject;
@@ -95,11 +149,7 @@ export class SetTournamentMetadataRequest extends jspb.Message {
 
 export namespace SetTournamentMetadataRequest {
   export type AsObject = {
-    id: string,
-    name: string,
-    description: string,
-    slug: string,
-    type: TTypeMap[keyof TTypeMap],
+    metadata?: TournamentMetadata.AsObject,
   }
 }
 
@@ -448,30 +498,15 @@ export namespace FinishTournamentRequest {
 }
 
 export class TournamentMetadataResponse extends jspb.Message {
-  getName(): string;
-  setName(value: string): void;
-
-  getDescription(): string;
-  setDescription(value: string): void;
+  hasMetadata(): boolean;
+  clearMetadata(): void;
+  getMetadata(): TournamentMetadata | undefined;
+  setMetadata(value?: TournamentMetadata): void;
 
   clearDirectorsList(): void;
   getDirectorsList(): Array<string>;
   setDirectorsList(value: Array<string>): void;
   addDirectors(value: string, index?: number): string;
-
-  getSlug(): string;
-  setSlug(value: string): void;
-
-  getId(): string;
-  setId(value: string): void;
-
-  getType(): TTypeMap[keyof TTypeMap];
-  setType(value: TTypeMap[keyof TTypeMap]): void;
-
-  clearDivisionsList(): void;
-  getDivisionsList(): Array<string>;
-  setDivisionsList(value: Array<string>): void;
-  addDivisions(value: string, index?: number): string;
 
   serializeBinary(): Uint8Array;
   toObject(includeInstance?: boolean): TournamentMetadataResponse.AsObject;
@@ -485,13 +520,8 @@ export class TournamentMetadataResponse extends jspb.Message {
 
 export namespace TournamentMetadataResponse {
   export type AsObject = {
-    name: string,
-    description: string,
+    metadata?: TournamentMetadata.AsObject,
     directorsList: Array<string>,
-    slug: string,
-    id: string,
-    type: TTypeMap[keyof TTypeMap],
-    divisionsList: Array<string>,
   }
 }
 

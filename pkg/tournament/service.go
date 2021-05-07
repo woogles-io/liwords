@@ -60,17 +60,15 @@ func (ts *TournamentService) RemoveDivision(ctx context.Context, req *pb.Tournam
 }
 
 func (ts *TournamentService) SetTournamentMetadata(ctx context.Context, req *pb.SetTournamentMetadataRequest) (*pb.TournamentResponse, error) {
-	err := authenticateDirector(ctx, ts, req.Id, false)
+	if req.Metadata == nil {
+		return nil, twirp.NewError(twirp.InvalidArgument, "tournament metadata was empty")
+	}
+	err := authenticateDirector(ctx, ts, req.Metadata.Id, false)
 	if err != nil {
 		return nil, err
 	}
 
-	ttype, err := validateTournamentMeta(req.Type, req.Slug)
-	if err != nil {
-		return nil, err
-	}
-
-	err = SetTournamentMetadata(ctx, ts.tournamentStore, req.Id, req.Name, req.Description, req.Slug, ttype)
+	err = SetTournamentMetadata(ctx, ts.tournamentStore, req.Metadata)
 	if err != nil {
 		return nil, twirp.NewError(twirp.InvalidArgument, err.Error())
 	}
@@ -156,7 +154,7 @@ func (ts *TournamentService) NewTournament(ctx context.Context, req *pb.NewTourn
 func (ts *TournamentService) GetTournament(ctx context.Context, req *pb.GetTournamentRequest) (*realtime.FullTournamentDivisions, error) {
 	response, err := GetXHRResponse(ctx, ts.tournamentStore, req.Id)
 	if err != nil {
-		return nil, err
+		return nil, twirp.NewError(twirp.InvalidArgument, err.Error())
 	}
 	return response, nil
 }
@@ -225,21 +223,23 @@ func (ts *TournamentService) GetTournamentMetadata(ctx context.Context, req *pb.
 	default:
 		return nil, fmt.Errorf("unrecognized tournament type: %v", t.Type)
 	}
-	divNames := make([]string, len(t.Divisions))
-	idx := 0
-	for d := range t.Divisions {
-		divNames[idx] = d
-		idx++
+	metadata := &pb.TournamentMetadata{
+		Id:                        t.UUID,
+		Name:                      t.Name,
+		Description:               t.Description,
+		Slug:                      t.Slug,
+		Type:                      tt,
+		Disclaimer:                t.ExtraMeta.Disclaimer,
+		TileStyle:                 t.ExtraMeta.TileStyle,
+		BoardStyle:                t.ExtraMeta.BoardStyle,
+		DefaultClubSettings:       t.ExtraMeta.DefaultClubSettings,
+		FreeformClubSettingFields: t.ExtraMeta.FreeformClubSettingFields,
+		Password:                  t.ExtraMeta.Password,
 	}
 
 	return &pb.TournamentMetadataResponse{
-		Name:        t.Name,
-		Description: t.Description,
-		Directors:   directors,
-		Slug:        t.Slug,
-		Id:          t.UUID,
-		Type:        tt,
-		Divisions:   divNames,
+		Metadata:  metadata,
+		Directors: directors,
 	}, nil
 
 }

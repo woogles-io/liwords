@@ -73,7 +73,7 @@ export const ActionsPanel = React.memo((props: Props) => {
   const [selectedRound, setSelectedRound] = useState(initialRound);
   const [selectedDivision, setSelectedDivision] = useState(initialDivision);
   const { lobbyContext } = useLobbyStoreContext();
-  const tournamentID = tournamentContext.metadata.id;
+  const tournamentID = tournamentContext.metadata?.getId();
 
   const lobbyContextMatchRequests = lobbyContext?.matchRequests;
   const thisTournamentMatchRequests = useMemo(
@@ -200,7 +200,7 @@ export const ActionsPanel = React.memo((props: Props) => {
   };
   const renderGamesTab = () => {
     if (selectedGameTab === 'GAMES') {
-      if (isPairedMode(tournamentContext.metadata.type)) {
+      if (isPairedMode(tournamentContext.metadata?.getType())) {
         return (
           <div className="pairings-container">
             {/* <CheckIn /> */}
@@ -359,11 +359,14 @@ export const ActionsPanel = React.memo((props: Props) => {
       return [];
     }
     let matchButtonText = 'Start tournament game';
-    if (isClubType(tournamentContext.metadata.type)) {
+    if (isClubType(tournamentContext.metadata?.getType())) {
       matchButtonText = 'Start club game';
     }
     const availableActions = new Array<ReactNode>();
-    if (props.loggedIn && !isPairedMode(tournamentContext.metadata.type)) {
+    if (
+      props.loggedIn &&
+      !isPairedMode(tournamentContext.metadata?.getType())
+    ) {
       // We are allowing free-form match requests in CLUBHOUSE mode, if desired.
       availableActions.push(
         <div
@@ -378,7 +381,7 @@ export const ActionsPanel = React.memo((props: Props) => {
       );
     }
     if (
-      isPairedMode(tournamentContext.metadata.type) &&
+      isPairedMode(tournamentContext.metadata?.getType()) &&
       selectedRound > -1 &&
       tournamentContext.divisions[selectedDivision]
     ) {
@@ -437,7 +440,7 @@ export const ActionsPanel = React.memo((props: Props) => {
       <Card
         actions={actions}
         className={
-          isPairedMode(tournamentContext.metadata.type)
+          isPairedMode(tournamentContext.metadata?.getType())
             ? 'paired-mode'
             : 'free-form'
         }
@@ -452,7 +455,7 @@ export const ActionsPanel = React.memo((props: Props) => {
             >
               Games
             </div>
-            {!isPairedMode(tournamentContext.metadata.type) ? (
+            {!isPairedMode(tournamentContext.metadata?.getType()) ? (
               <div
                 onClick={() => {
                   setSelectedGameTab('RECENT');

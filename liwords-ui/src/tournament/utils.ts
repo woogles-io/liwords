@@ -1,9 +1,12 @@
 import { useEffect } from 'react';
 import { Action, ActionType } from '../actions/actions';
-import axios from 'axios';
-import { TournamentMetadata } from '../store/reducers/tournament_reducer';
-import { postBinary, toAPIUrl } from '../api/api';
-import { GetTournamentRequest } from '../gen/api/proto/tournament_service/tournament_service_pb';
+import { postBinary } from '../api/api';
+import {
+  GetTournamentMetadataRequest,
+  GetTournamentRequest,
+  TournamentMetadataResponse,
+  TType,
+} from '../gen/api/proto/tournament_service/tournament_service_pb';
 import { FullTournamentDivisions } from '../gen/api/proto/realtime/realtime_pb';
 import { LoginState } from '../store/login_state';
 import { message } from 'antd';
@@ -32,47 +35,41 @@ export const useTourneyMetadata = (
       if (!path && !tournamentID) {
         return;
       }
-      let metadataArg;
+      const tmreq = new GetTournamentMetadataRequest();
       if (tournamentID) {
-        metadataArg = {
-          id: tournamentID,
-        };
+        tmreq.setId(tournamentID);
       } else if (path) {
-        metadataArg = {
-          slug: path,
-        };
+        tmreq.setSlug(path);
       }
 
       try {
-        const resp = await axios.post<TournamentMetadata>(
-          toAPIUrl(
-            'tournament_service.TournamentService',
-            'GetTournamentMetadata'
-          ),
-          metadataArg
+        const resp = await postBinary(
+          'tournament_service.TournamentService',
+          'GetTournamentMetadata',
+          tmreq
         );
+        const meta = TournamentMetadataResponse.deserializeBinary(resp.data);
+        console.log('got meta', meta);
         dispatchTournamentContext({
           actionType: ActionType.SetTourneyMetadata,
-          payload: resp.data,
+          payload: {
+            directors: meta.getDirectorsList(),
+            metadata: meta.getMetadata(),
+          },
         });
-
-        if (resp.data.type === 'LEGACY' || resp.data.type === 'CLUB') {
+        const ttype = meta.getMetadata()?.getType();
+        if (ttype === TType.LEGACY || ttype === TType.CLUB) {
           // This tournament does not have built-in pairings, so no need to fetch
           // tournament divisions.
           return;
         }
         const treq = new GetTournamentRequest();
-        treq.setId(resp.data.id);
+        treq.setId(meta.getMetadata()?.getId()!);
 
         const tresp = await postBinary(
           'tournament_service.TournamentService',
           'GetTournament',
           treq
-        );
-
-        console.log(
-          'after GetTournament, in useTourneyMetadata',
-          FullTournamentDivisions.deserializeBinary(tresp.data).toObject()
         );
 
         dispatchTournamentContext({

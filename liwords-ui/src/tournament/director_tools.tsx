@@ -8,6 +8,7 @@ import { Button, Divider, message } from 'antd';
 import axios from 'axios';
 import { toAPIUrl } from '../api/api';
 import { GhettoTools } from './ghetto_tools';
+import { TType } from '../gen/api/proto/tournament_service/tournament_service_pb';
 /*
 import { AddPlayerForm, playersToAdd } from './add_player_form';
 import axios from 'axios';
@@ -160,8 +161,8 @@ export const DirectorTools = React.memo((props: DTProps) => {
 
   const renderGhettoTools = () => {
     if (
-      tournamentContext.metadata.type === 'LEGACY' ||
-      tournamentContext.metadata.type === 'CLUB'
+      tournamentContext.metadata.getType() === TType.LEGACY ||
+      tournamentContext.metadata.getType() === TType.CLUB
     ) {
       return null;
     }
