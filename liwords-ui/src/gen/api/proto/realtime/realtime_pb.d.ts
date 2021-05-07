@@ -147,6 +147,60 @@ export namespace GameDeletion {
   }
 }
 
+export class ActiveGamePlayer extends jspb.Message {
+  getUsername(): string;
+  setUsername(value: string): void;
+
+  getUserId(): string;
+  setUserId(value: string): void;
+
+  serializeBinary(): Uint8Array;
+  toObject(includeInstance?: boolean): ActiveGamePlayer.AsObject;
+  static toObject(includeInstance: boolean, msg: ActiveGamePlayer): ActiveGamePlayer.AsObject;
+  static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+  static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+  static serializeBinaryToWriter(message: ActiveGamePlayer, writer: jspb.BinaryWriter): void;
+  static deserializeBinary(bytes: Uint8Array): ActiveGamePlayer;
+  static deserializeBinaryFromReader(message: ActiveGamePlayer, reader: jspb.BinaryReader): ActiveGamePlayer;
+}
+
+export namespace ActiveGamePlayer {
+  export type AsObject = {
+    username: string,
+    userId: string,
+  }
+}
+
+export class ActiveGameEntry extends jspb.Message {
+  getId(): string;
+  setId(value: string): void;
+
+  clearPlayerList(): void;
+  getPlayerList(): Array<ActiveGamePlayer>;
+  setPlayerList(value: Array<ActiveGamePlayer>): void;
+  addPlayer(value?: ActiveGamePlayer, index?: number): ActiveGamePlayer;
+
+  getTtl(): number;
+  setTtl(value: number): void;
+
+  serializeBinary(): Uint8Array;
+  toObject(includeInstance?: boolean): ActiveGameEntry.AsObject;
+  static toObject(includeInstance: boolean, msg: ActiveGameEntry): ActiveGameEntry.AsObject;
+  static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+  static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+  static serializeBinaryToWriter(message: ActiveGameEntry, writer: jspb.BinaryWriter): void;
+  static deserializeBinary(bytes: Uint8Array): ActiveGameEntry;
+  static deserializeBinaryFromReader(message: ActiveGameEntry, reader: jspb.BinaryReader): ActiveGameEntry;
+}
+
+export namespace ActiveGameEntry {
+  export type AsObject = {
+    id: string,
+    playerList: Array<ActiveGamePlayer.AsObject>,
+    ttl: number,
+  }
+}
+
 export class LagMeasurement extends jspb.Message {
   getLagMs(): number;
   setLagMs(value: number): void;
@@ -1584,6 +1638,7 @@ export interface MessageTypeMap {
   TOURNAMENT_DIVISION_DELETED_MESSAGE: 31;
   TOURNAMENT_FULL_DIVISIONS_MESSAGE: 32;
   PRESENCE_ENTRY: 40;
+  ACTIVE_GAME_ENTRY: 41;
 }
 
 export const MessageType: MessageTypeMap;

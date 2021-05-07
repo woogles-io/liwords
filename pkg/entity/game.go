@@ -277,6 +277,29 @@ func (g *Game) SendChange(e *EventWrapper) {
 	log.Debug().Msg("change sent")
 }
 
+func (g *Game) NewActiveGameEntry(gameStillActive bool) *EventWrapper {
+	ttl := int64(0) // seconds
+	if gameStillActive {
+		// Ideally we would set this based on time remaining (and round it up).
+		// In a 60-min + 10-min overtime game, first player may take 69.9 min and then make a move.
+		// That is ok, we extend the expiry when the opponent's turn starts.
+		ttl = 71 * 60
+	}
+	players := g.History().Players
+	activeGamePlayers := make([]*pb.ActiveGamePlayer, 0, len(players))
+	for _, player := range players {
+		activeGamePlayers = append(activeGamePlayers, &pb.ActiveGamePlayer{
+			Username: player.Nickname,
+			UserId:   player.UserId,
+		})
+	}
+	return WrapEvent(&pb.ActiveGameEntry{
+		Id:     g.GameID(),
+		Player: activeGamePlayers,
+		Ttl:    ttl,
+	}, pb.MessageType_ACTIVE_GAME_ENTRY)
+}
+
 func (g *Game) SetGameEndReason(r pb.GameEndReason) {
 	g.GameEndReason = r
 }

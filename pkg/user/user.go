@@ -82,6 +82,7 @@ type PresenceStore interface {
 
 	BatchGetChannels(ctx context.Context, uuids []string) ([][]string, error)
 	UpdateFollower(ctx context.Context, followee, follower *entity.User, following bool) error
+	UpdateActiveGame(ctx context.Context, activeGameEntry *pb.ActiveGameEntry) ([][][]string, error)
 }
 
 // ChatStore stores user and channel chats and messages

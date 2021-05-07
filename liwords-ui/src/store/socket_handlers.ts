@@ -20,6 +20,7 @@ import {
   useTournamentStoreContext,
 } from './store';
 import {
+  ActiveGameEntry,
   ChatMessage,
   ChatMessageDeleted,
   ClientGameplayEvent,
@@ -117,6 +118,7 @@ export const parseMsgs = (msg: Uint8Array) => {
       [MessageType.TOURNAMENT_FULL_DIVISIONS_MESSAGE]: FullTournamentDivisions,
       [MessageType.CHAT_MESSAGE_DELETED]: ChatMessageDeleted,
       [MessageType.PRESENCE_ENTRY]: PresenceEntry,
+      [MessageType.ACTIVE_GAME_ENTRY]: ActiveGameEntry,
     };
 
     const parsedMsg = msgTypes[msgType];
@@ -484,6 +486,15 @@ export const useOnSocketMsg = () => {
             //   not to immediately display a toast notification on receipt.
             // - It may be good to have a function that takes a set of channels
             //   and picks at most one primary channel.
+
+            break;
+          }
+
+          case MessageType.ACTIVE_GAME_ENTRY: {
+            // Note: This is actually never sent out to the frontend.
+            const age = parsedMsg as ActiveGameEntry;
+
+            console.log('got active game entry', age.toObject());
 
             break;
           }

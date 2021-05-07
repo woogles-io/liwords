@@ -1,6 +1,7 @@
 -- Arguments to this Lua script:
 -- uuid
 
+local activeusergameskey = "activeusergames:"..ARGV[1]
 local userpresencekey = "userpresence:"..ARGV[1]
 
 -- get current set of channels.
@@ -11,6 +12,12 @@ for _, simpleuserkey in ipairs(redis.call("ZRANGE", userpresencekey, 0, -1)) do
   if conn_id and chan then
     setchannel[chan] = true
   end
+end
+
+-- add active games.
+for _, gameuuid in ipairs(redis.call("ZRANGE", activeusergameskey, 0, -1)) do
+  local activegamepseudochan = "activegame:"..gameuuid
+  setchannel[activegamepseudochan] = true
 end
 
 -- make sorted set.
