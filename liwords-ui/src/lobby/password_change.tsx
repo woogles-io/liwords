@@ -103,7 +103,7 @@ export const PasswordChange = (props: Props) => {
         </Form.Item>
 
         <Form.Item
-          label="Confirm New Password"
+          label="Confirm new password"
           name="confirmnewPassword"
           rules={[
             {

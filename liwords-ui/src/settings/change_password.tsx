@@ -92,7 +92,7 @@ export const ChangePassword = React.memo((props: Props) => {
           <Col span={1} />
           <Col span={11}>
             <Form.Item
-              label="New Password"
+              label="New password"
               name="newPassword"
               rules={[
                 {

@@ -590,7 +590,7 @@ export const Chat = React.memo((props: Props) => {
                         fetchChannels();
                       }}
                     >
-                      <LeftOutlined /> All Chats
+                      <LeftOutlined /> All chats
                       {((updatedChannels && updatedChannels!.size > 0) ||
                         unseenMessages.length > 0) && (
                         <span className="unread-marker">•</span>
