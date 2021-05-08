@@ -1,6 +1,7 @@
 -- Arguments to this Lua script:
 -- uuid, username, auth, connID, ts (ARGV[1] through [5])
 
+local activeusergameskey = "activeusergames:"..ARGV[1]
 local userpresencekey = "userpresence:"..ARGV[1]
 local userkey = ARGV[1].."#"..ARGV[2].."#"..ARGV[3].."#"..ARGV[4] -- uuid#username#auth#connID
 local ts = tonumber(ARGV[5])
@@ -11,7 +12,7 @@ local expiry = 180
 -- renew where conn_id matches.
 local shouldtouch = false
 local setbefore = {}
-local setpurged = {}
+local setpurged = {activeusergameskey}
 for _, simpleuserkey in ipairs(redis.call("ZRANGE", userpresencekey, 0, -1)) do
   -- simpleuserkey looks like conn_id#channel
   local conn_id, chan = string.match(simpleuserkey, "^([%a%d]+)#([%a%.%d]+)$")
@@ -37,6 +38,12 @@ if shouldtouch and ARGV[3] == "auth" then
   redis.call("ZADD", "lastpresences", ts, ARGV[1])
 end
 
+-- add active games to setbefore.
+for _, gameuuid in ipairs(redis.call("ZRANGE", activeusergameskey, 0, -1)) do
+  local activegamepseudochan = "activegame:"..gameuuid
+  setbefore[activegamepseudochan] = true
+end
+
 -- remove all subkeys inside the zsets that have expired.
 for k in pairs(setpurged) do
   redis.call("ZREMRANGEBYSCORE", k, -math.huge, ts)
@@ -51,6 +58,12 @@ for _, simpleuserkey in ipairs(redis.call("ZRANGE", userpresencekey, 0, -1)) do
   if conn_id and chan then
     setafter[chan] = true
   end
+end
+
+-- add active games to setafter.
+for _, gameuuid in ipairs(redis.call("ZRANGE", activeusergameskey, 0, -1)) do
+  local activegamepseudochan = "activegame:"..gameuuid
+  setafter[activegamepseudochan] = true
 end
 
 -- make sorted sets.

@@ -242,6 +242,8 @@ func (b *Bus) readyForGame(ctx context.Context, evt *pb.ReadyForGame, userID str
 		if err != nil {
 			log.Err(err).Msg("starting-game")
 		}
+		// Note: for PlayerVsBot, readyForGame is called twice when player is ready and every time player refreshes, why? :-(
+		g.SendChange(g.NewActiveGameEntry(true))
 
 		if g.GameReq.PlayerVsBot && g.PlayerIDOnTurn() != userID {
 			// Make a bot move if it's the bot's turn at the beginning.
@@ -395,6 +397,8 @@ func (b *Bus) readyForTournamentGame(ctx context.Context, evt *pb.ReadyForTourna
 		Str("tournamentID", string(evt.TournamentId)).
 		Str("onturn", g.NickOnTurn()).Msg("tournament-game-started")
 
+	// This is untested.
+	g.SendChange(g.NewActiveGameEntry(true))
 	return nil
 }
 
@@ -456,6 +460,7 @@ func (b *Bus) adjudicateGames(ctx context.Context) error {
 			// XXX: Fix for tourneys ?
 			wrapped.AddAudience(entity.AudLobby, "gameEnded")
 			b.gameEventChan <- wrapped
+			b.gameEventChan <- entGame.NewActiveGameEntry(false)
 
 			// If this game is part of a tournament that is not in clubhouse
 			// mode, we must allow the players to try to play again.
