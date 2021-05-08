@@ -281,9 +281,11 @@ func (g *Game) NewActiveGameEntry(gameStillActive bool) *EventWrapper {
 	ttl := int64(0) // seconds
 	if gameStillActive {
 		// Ideally we would set this based on time remaining (and round it up).
-		// In a 60-min + 10-min overtime game, first player may take 69.9 min and then make a move.
-		// That is ok, we extend the expiry when the opponent's turn starts.
-		ttl = 71 * 60
+		// But since we don't want to refresh every turn, we can just set a very long expiry here.
+		// A 60min + 60sec increment game can take 12 hours.
+		// - Both players start with 60 mins each.
+		// - Game lasts 600 turns (5 passes, play one tile, repeat 100 times).
+		ttl = 12 * 60 * 60
 	}
 	players := g.History().Players
 	activeGamePlayers := make([]*pb.ActiveGamePlayer, 0, len(players))
