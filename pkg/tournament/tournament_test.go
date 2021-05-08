@@ -204,16 +204,24 @@ func TestTournamentSingleDivision(t *testing.T) {
 	directorsTwoExecutives := makeTournamentPersons(map[string]int32{"Kieran:Kieran": 0, "Vince:Vince": 0, "Jennifer:Jennifer": 2})
 	directorsNoExecutives := makeTournamentPersons(map[string]int32{"Kieran:Kieran": 1, "Vince:Vince": 3, "Jennifer:Jennifer": 2})
 
-	ty, err := makeTournament(ctx, tstore, cfg, directorsTwoExecutives)
+	_, err := makeTournament(ctx, tstore, cfg, directorsTwoExecutives)
 	is.True(err != nil)
 
-	ty, err = makeTournament(ctx, tstore, cfg, directorsNoExecutives)
+	_, err = makeTournament(ctx, tstore, cfg, directorsNoExecutives)
 	is.True(err != nil)
 
-	ty, err = makeTournament(ctx, tstore, cfg, directors)
+	ty, err := makeTournament(ctx, tstore, cfg, directors)
 	is.NoErr(err)
 
-	err = tournament.SetTournamentMetadata(ctx, tstore, ty.UUID, "New Name", "New Description", "/tournament/foo", entity.TypeStandard)
+	meta := &pb.TournamentMetadata{
+		Id:          ty.UUID,
+		Name:        "New Name",
+		Description: "New Description",
+		Slug:        "/tournament/foo",
+		Type:        pb.TType_STANDARD,
+	}
+
+	err = tournament.SetTournamentMetadata(ctx, tstore, meta)
 	is.NoErr(err)
 
 	// Check that directors are set correctly
