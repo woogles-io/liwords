@@ -83,7 +83,7 @@ export const TopBar = React.memo((props: Props) => {
     <ul>
       <li>
         <Link className="plain" to={`/profile/${encodeURIComponent(username)}`}>
-          View Profile
+          View profile
         </Link>
       </li>
       <li>

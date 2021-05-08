@@ -433,7 +433,7 @@ export const SeekForm = (props: Props) => {
       )}
       <Form.Item
         className="initial"
-        label="Initial Minutes"
+        label="Initial minutes"
         name="initialtime"
         extra={<Tag color={ttag}>{timectrl}</Tag>}
       >
@@ -445,10 +445,10 @@ export const SeekForm = (props: Props) => {
           tooltipVisible={sliderTooltipVisible || usernameOptions.length === 0}
         />
       </Form.Item>
-      <Form.Item label="Time Setting" name="incOrOT">
+      <Form.Item label="Time setting" name="incOrOT">
         <Radio.Group disabled={disableControls}>
-          <Radio.Button value="overtime">Use Max Overtime</Radio.Button>
-          <Radio.Button value="increment">Use Increment</Radio.Button>
+          <Radio.Button value="overtime">Use max overtime</Radio.Button>
+          <Radio.Button value="increment">Use increment</Radio.Button>
         </Radio.Group>
       </Form.Item>
       <Form.Item

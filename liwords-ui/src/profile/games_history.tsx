@@ -171,7 +171,7 @@ export const GamesHistoryCard = React.memo((props: Props) => {
   ];
   // TODO: use the normal Ant table pagination when the backend can give us a total
   return (
-    <Card title="Game History">
+    <Card title="Game history">
       <Table
         className="game-history"
         columns={columns}
