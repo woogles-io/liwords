@@ -470,7 +470,7 @@ func (s *DBStore) SetPersonalInfo(ctx context.Context, uuid string, email string
 			return result.Error
 		}
 
-		return s.db.Model(p).Update(map[string]interface{}{"first_name": firstName,
+		return tx.Model(p).Update(map[string]interface{}{"first_name": firstName,
 			"last_name":    lastName,
 			"birth_date":   birthDate,
 			"about":        about,
