@@ -885,7 +885,7 @@ func StartAllRoundCountdowns(ctx context.Context, ts TournamentStore, id string,
 // for sending communications regarding a tournament and division.
 func DivisionChannelName(tid, division string) string {
 	// We encode to b64 because division can contain spaces.
-	return string(base64.URLEncoding.EncodeToString([]byte(tid + ":" + division)))
+	return base64.URLEncoding.EncodeToString([]byte(tid + ":" + division))
 }
 
 func StartRoundCountdown(ctx context.Context, ts TournamentStore, id string,
