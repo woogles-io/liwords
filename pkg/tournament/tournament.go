@@ -649,8 +649,10 @@ func SetPairings(ctx context.Context, ts TournamentStore, id string, division st
 		pairingsResponse = combinePairingsResponses(pairingsResponse, newPairings)
 		standingsResponse = combineStandingsResponses(standingsResponse, newStandings)
 	}
-	possiblyEndTournament(ctx, ts, t, division)
-
+	err = possiblyEndTournament(ctx, ts, t, division)
+	if err != nil {
+		return err
+	}
 	err = ts.Set(ctx, t)
 	if err != nil {
 		return err

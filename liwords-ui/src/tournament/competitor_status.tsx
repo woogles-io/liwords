@@ -182,7 +182,6 @@ export const CompetitorStatus = (props: Props) => {
         return (
           <>
             <ClockCircleOutlined />
-            return (
             <p>
               Thanks so much for playing in the{' '}
               {tournamentContext.metadata.getName()}!
