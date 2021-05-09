@@ -311,7 +311,9 @@ export const Pairings = (props: Props) => {
           playerNames[0] === playerNames[1]
             ? null
             : playerNames.map((playerName) => (
-                <p key={`${playerName}wl`}>{getScores(playerName, pairing)}</p>
+                <p key={`${playerName}scores`}>
+                  {getScores(playerName, pairing)}
+                </p>
               ));
         return {
           players,

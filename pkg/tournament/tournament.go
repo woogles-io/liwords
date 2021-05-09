@@ -786,7 +786,10 @@ func SetResult(ctx context.Context,
 		return err
 	}
 
-	possiblyEndTournament(ctx, ts, t, division)
+	err = possiblyEndTournament(ctx, ts, t, division)
+	if err != nil {
+		return err
+	}
 
 	err = ts.Set(ctx, t)
 	if err != nil {
