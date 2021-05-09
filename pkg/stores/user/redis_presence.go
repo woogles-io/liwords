@@ -21,10 +21,11 @@ const (
 type RedisPresenceStore struct {
 	redisPool *redis.Pool
 
-	setPresenceScript   *redis.Script
-	clearPresenceScript *redis.Script
-	renewPresenceScript *redis.Script
-	getChannelsScript   *redis.Script
+	setPresenceScript      *redis.Script
+	clearPresenceScript    *redis.Script
+	renewPresenceScript    *redis.Script
+	getChannelsScript      *redis.Script
+	updateActiveGameScript *redis.Script
 
 	eventChan chan *entity.EventWrapper
 }
@@ -47,15 +48,20 @@ var RenewPresenceScript string
 //go:embed get_channels.lua
 var GetChannelsScript string
 
+// updateActiveGameScript gets the channels
+//go:embed update_active_game.lua
+var UpdateActiveGameScript string
+
 func NewRedisPresenceStore(r *redis.Pool) *RedisPresenceStore {
 
 	return &RedisPresenceStore{
-		redisPool:           r,
-		setPresenceScript:   redis.NewScript(0, SetPresenceScript),
-		clearPresenceScript: redis.NewScript(0, ClearPresenceScript),
-		renewPresenceScript: redis.NewScript(0, RenewPresenceScript),
-		getChannelsScript:   redis.NewScript(0, GetChannelsScript),
-		eventChan:           nil,
+		redisPool:              r,
+		setPresenceScript:      redis.NewScript(0, SetPresenceScript),
+		clearPresenceScript:    redis.NewScript(0, ClearPresenceScript),
+		renewPresenceScript:    redis.NewScript(0, RenewPresenceScript),
+		getChannelsScript:      redis.NewScript(0, GetChannelsScript),
+		updateActiveGameScript: redis.NewScript(0, UpdateActiveGameScript),
+		eventChan:              nil,
 	}
 }
 
@@ -366,4 +372,45 @@ func (s *RedisPresenceStore) UpdateFollower(ctx context.Context, followee, follo
 	}
 
 	return nil
+}
+
+func (s *RedisPresenceStore) UpdateActiveGame(ctx context.Context, activeGameEntry *pb.ActiveGameEntry) ([][][]string, error) {
+	args := make([]interface{}, 0, 2+len(activeGameEntry.Player))
+	args = append(args, activeGameEntry.Id)
+	args = append(args, activeGameEntry.Ttl)
+	for _, player := range activeGameEntry.Player {
+		args = append(args, player.UserId)
+	}
+
+	conn := s.redisPool.Get()
+	defer conn.Close()
+
+	ret, err := s.updateActiveGameScript.Do(conn, args...)
+	if err != nil {
+		return nil, err
+	}
+
+	// Script returns an array of [before, after] channels, both are sorted unique arrays.
+	arr, err := fromRedisToArrayOfLengthN(ret, len(activeGameEntry.Player))
+	if err != nil {
+		return nil, err
+	}
+	channels := make([][][]string, 0, len(arr))
+	for _, redisElt := range arr {
+		row, err := fromRedisToArrayOfLengthN(redisElt, 2)
+		if err != nil {
+			return nil, err
+		}
+		oldChannels, err := fromRedisArrayToArrayOfString(row[0])
+		if err != nil {
+			return nil, err
+		}
+		newChannels, err := fromRedisArrayToArrayOfString(row[1])
+		if err != nil {
+			return nil, err
+		}
+		channels = append(channels, [][]string{oldChannels, newChannels})
+	}
+
+	return channels, nil
 }

@@ -70,7 +70,7 @@ const channel275 = {
   vsBot: false,
 };
 
-const asci = {
+const nssg = {
   lexicon: 'CSW19X',
   challengerule: ChallengeRule.FIVE_POINT,
   initialtime: 15, // 13 minutes
@@ -79,6 +79,16 @@ const asci = {
   friend: '',
   incOrOT: 'overtime',
   vsBot: false,
+};
+
+const nssg16 = {
+  ...nssg,
+  initialtime: 18, // 16 mins
+};
+
+const nssg19 = {
+  ...nssg,
+  initialtime: 21, // 19 mins
 };
 
 const phillyasap = {
@@ -121,8 +131,10 @@ export const fixedSettings: { [key: string]: settings } = {
   cocoblitz,
   channel275,
   GqgfauAMzorWxGGrCqhV5J: phillyasap,
-  cbCrE5EAnfTpacaZkxc4SZ: asci, // /tournament
-  CSLUwqH4rHUTKzNcp7cPRP: asci, // /club
+  cbCrE5EAnfTpacaZkxc4SZ: nssg, // /tournament
+  CSLUwqH4rHUTKzNcp7cPRP: nssg, // /club
+  K4MwE8nesdmPAQJkHbVpbi: nssg16,
+  nEc9xsgU6h78eeKRA3MeCT: nssg19,
   CL9GW5sDfNqeX2yiPRg9YF: nyc,
   aGaSXfc4XDwUFBpkhZ9Jz3: wandertypo,
 };

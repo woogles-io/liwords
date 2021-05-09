@@ -1,4 +1,4 @@
-import React, { useCallback } from 'react';
+import React, { useCallback, useEffect, useMemo } from 'react';
 import {
   Form,
   Radio,
@@ -26,7 +26,10 @@ import { toAPIUrl } from '../api/api';
 import { debounce } from '../utils/debounce';
 import { fixedSettings } from './fixed_seek_controls';
 import { ChallengeRulesFormItem } from './challenge_rules_form_item';
-
+import {
+  useFriendsStoreContext,
+  usePresenceStoreContext,
+} from '../store/store';
 export type seekPropVals = { [val: string]: string | number | boolean };
 
 const initTimeFormatter = (val?: number) => {
@@ -51,6 +54,7 @@ type Props = {
   tournamentID?: string;
   storageKey?: string;
   prefixItems?: React.ReactNode;
+  username?: string;
 };
 
 const otLabel = 'Overtime';
@@ -68,6 +72,9 @@ const incUnitLabel = (
 
 export const SeekForm = (props: Props) => {
   const { useState } = useMountedState();
+  const { friends } = useFriendsStoreContext();
+  const { presences } = usePresenceStoreContext();
+  const { tournamentID, username } = props;
   const enableAllLexicons = React.useMemo(
     () => localStorage.getItem('enableAllLexicons') === 'true',
     []
@@ -75,6 +82,10 @@ export const SeekForm = (props: Props) => {
 
   const enableCSW19X = React.useMemo(
     () => localStorage.getItem('enableCSW19X') === 'true',
+    []
+  );
+  const enableOSPD6 = React.useMemo(
+    () => localStorage.getItem('enableOSPD6') === 'true',
     []
   );
 
@@ -165,6 +176,7 @@ export const SeekForm = (props: Props) => {
     setSliderTooltipVisible(!open);
   }, []);
   const [usernameOptions, setUsernameOptions] = useState<Array<string>>([]);
+
   const onFormChange = (val: Store, allvals: Store) => {
     if (window.localStorage) {
       localStorage.setItem(
@@ -198,22 +210,43 @@ export const SeekForm = (props: Props) => {
     setTimectrl(tc);
     setTtag(tt);
   };
+  const defaultOptions = useMemo(() => {
+    let defaultPlayers: string[] = [];
+    if (tournamentID && presences.length) {
+      defaultPlayers = presences
+        .map((p) => p.username)
+        .filter((u) => u !== username);
+    } else {
+      const friendsArray = friends ? Object.values(friends) : [];
+      if (friendsArray.length) {
+        defaultPlayers = friendsArray
+          .filter((f) => f.channel && f.channel.length > 0)
+          .map((f) => f.username);
+      }
+    }
+    return defaultPlayers;
+  }, [friends, presences, username, tournamentID]);
+  const onUsernameSearch = useCallback(
+    (searchText: string) => {
+      axios
+        .post<SearchResponse>(
+          toAPIUrl('user_service.AutocompleteService', 'GetCompletion'),
+          {
+            prefix: searchText,
+          }
+        )
+        .then((resp) => {
+          console.log('resp', resp.data);
 
-  const onUsernameSearch = (searchText: string) => {
-    axios
-      .post<SearchResponse>(
-        toAPIUrl('user_service.AutocompleteService', 'GetCompletion'),
-        {
-          prefix: searchText,
-        }
-      )
-      .then((resp) => {
-        console.log('resp', resp.data);
-        setUsernameOptions(
-          !searchText ? [] : resp.data.users.map((u) => u.username)
-        );
-      });
-  };
+          setUsernameOptions(
+            !searchText
+              ? defaultOptions
+              : resp.data.users.map((u) => u.username)
+          );
+        });
+    },
+    [defaultOptions]
+  );
 
   const searchUsernameDebounced = debounce(onUsernameSearch, 300);
 
@@ -250,6 +283,12 @@ export const SeekForm = (props: Props) => {
     required: 'This field is required.',
   };
 
+  useEffect(() => {
+    if (usernameOptions.length === 0 && defaultOptions.length > 0) {
+      setUsernameOptions(defaultOptions);
+    }
+  }, [defaultOptions, usernameOptions]);
+
   return (
     <Form
       id={props.id}
@@ -277,6 +316,7 @@ export const SeekForm = (props: Props) => {
           <AutoComplete
             onSearch={searchUsernameDebounced}
             placeholder="username..."
+            onClick={() => setUsernameOptions(defaultOptions)}
             filterOption={(inputValue, option) =>
               !option ||
               !option.value ||
@@ -318,6 +358,9 @@ export const SeekForm = (props: Props) => {
                   CSW19X (ASCI Expurgated)
                 </Select.Option>
               )}
+              {enableOSPD6 && (
+                <Select.Option value="OSPD6">OSPD6</Select.Option>
+              )}
             </React.Fragment>
           )}
         </Select>
@@ -329,7 +372,7 @@ export const SeekForm = (props: Props) => {
       )}
       <Form.Item
         className="initial"
-        label="Initial Minutes"
+        label="Initial minutes"
         name="initialtime"
         extra={<Tag color={ttag}>{timectrl}</Tag>}
       >
@@ -341,10 +384,10 @@ export const SeekForm = (props: Props) => {
           tooltipVisible={sliderTooltipVisible || usernameOptions.length === 0}
         />
       </Form.Item>
-      <Form.Item label="Time Setting" name="incOrOT">
+      <Form.Item label="Time setting" name="incOrOT">
         <Radio.Group disabled={disableControls}>
-          <Radio.Button value="overtime">Use Max Overtime</Radio.Button>
-          <Radio.Button value="increment">Use Increment</Radio.Button>
+          <Radio.Button value="overtime">Use max overtime</Radio.Button>
+          <Radio.Button value="increment">Use increment</Radio.Button>
         </Radio.Group>
       </Form.Item>
       <Form.Item

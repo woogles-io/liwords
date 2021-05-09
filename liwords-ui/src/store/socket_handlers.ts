@@ -10,6 +10,7 @@ import {
   useExcludedPlayersStoreContext,
   useGameContextStoreContext,
   useGameEndMessageStoreContext,
+  useFriendsStoreContext,
   useLagStoreContext,
   useLobbyStoreContext,
   useLoginStateStoreContext,
@@ -19,6 +20,7 @@ import {
   useTournamentStoreContext,
 } from './store';
 import {
+  ActiveGameEntry,
   ChatMessage,
   ChatMessageDeleted,
   ClientGameplayEvent,
@@ -124,6 +126,7 @@ export const parseMsgs = (msg: Uint8Array) => {
       [MessageType.TOURNAMENT_MESSAGE]: TournamentDataResponse,
       [MessageType.TOURNAMENT_DIVISION_MESSAGE]: TournamentDivisionDataResponse,
       [MessageType.PRESENCE_ENTRY]: PresenceEntry,
+      [MessageType.ACTIVE_GAME_ENTRY]: ActiveGameEntry,
     };
 
     const parsedMsg = msgTypes[msgType];
@@ -161,6 +164,7 @@ export const useOnSocketMsg = () => {
   } = useTournamentStoreContext();
   const { loginState } = useLoginStateStoreContext();
   const { setPresence, addPresences } = usePresenceStoreContext();
+  const { friends, setFriends } = useFriendsStoreContext();
   const { setRematchRequest } = useRematchRequestStoreContext();
   const { stopClock } = useTimerStoreContext();
   const { isExamining } = useExamineStoreContext();
@@ -467,7 +471,14 @@ export const useOnSocketMsg = () => {
 
             console.log('got presence entry', pe.toObject());
 
-            // TODO.
+            setFriends({
+              ...friends,
+              [pe.toObject().userId]: {
+                uuid: pe.getUserId(),
+                username: pe.getUsername(),
+                channel: pe.getChannelList(),
+              },
+            });
 
             // Interpretation notes (check Go code if these are still valid):
             // - The channel list is always sorted and unique.
@@ -484,6 +495,15 @@ export const useOnSocketMsg = () => {
             //   not to immediately display a toast notification on receipt.
             // - It may be good to have a function that takes a set of channels
             //   and picks at most one primary channel.
+
+            break;
+          }
+
+          case MessageType.ACTIVE_GAME_ENTRY: {
+            // Note: This is actually never sent out to the frontend.
+            const age = parsedMsg as ActiveGameEntry;
+
+            console.log('got active game entry', age.toObject());
 
             break;
           }
@@ -828,6 +848,8 @@ export const useOnSocketMsg = () => {
       excludedPlayers,
       gameContext,
       loginState,
+      friends,
+      setFriends,
       setCurrentLagMs,
       setGameEndMessage,
       setPresence,

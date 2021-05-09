@@ -239,7 +239,7 @@ export const ActionsPanel = React.memo((props: Props) => {
     if (selectedGameTab === 'RECENT') {
       return (
         <>
-          <h4>Recent Games</h4>
+          <h4>Recent games</h4>
           <RecentTourneyGames
             games={tournamentContext.finishedTourneyGames}
             fetchPrev={
@@ -268,7 +268,7 @@ export const ActionsPanel = React.memo((props: Props) => {
   const matchModal = (
     <Modal
       className="seek-modal"
-      title="Send Match Request"
+      title="Send match request"
       visible={matchModalVisible}
       destroyOnClose
       onCancel={() => {
@@ -291,13 +291,14 @@ export const ActionsPanel = React.memo((props: Props) => {
           type="submit"
           disabled={formDisabled}
         >
-          Create Game
+          Create game
         </button>,
       ]}
     >
       <SeekForm
         onFormSubmit={onFormSubmit}
         loggedIn={props.loggedIn}
+        username={props.username}
         showFriendInput={true}
         id="match-seek"
         tournamentID={props.tournamentID}
@@ -462,7 +463,7 @@ export const ActionsPanel = React.memo((props: Props) => {
                 }}
                 className={selectedGameTab === 'RECENT' ? 'tab active' : 'tab'}
               >
-                Recent Games
+                Recent games
               </div>
             ) : (
               <div

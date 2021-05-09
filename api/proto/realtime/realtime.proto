@@ -110,9 +110,21 @@ enum MessageType {
   // in order to enforce that I'll be forcing the event type header to just be
   // a byte long.
   PRESENCE_ENTRY = 40;
+  ACTIVE_GAME_ENTRY = 41;
 }
 
 message GameDeletion { string id = 1; }
+
+message ActiveGamePlayer {
+  string username = 1;
+  string user_id = 2;
+}
+
+message ActiveGameEntry {
+  string id = 1;
+  repeated ActiveGamePlayer player = 2;
+  int64 ttl = 3; // time to live, in seconds
+}
 
 message LagMeasurement { int32 lag_ms = 1; }
 

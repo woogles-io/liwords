@@ -75,7 +75,7 @@ export const Login = React.memo(() => {
 
           <Form.Item>
             <Button type="primary" htmlType="submit">
-              Log In
+              Log in
             </Button>
           </Form.Item>
         </Form>

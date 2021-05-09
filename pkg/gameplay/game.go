@@ -417,6 +417,9 @@ func PlayMove(ctx context.Context,
 	if err != nil {
 		return err
 	}
+	// This cannot be deferred, because if performEndgameDuties expires the game this would unexpire it.
+	// But we are not doing this every turn, because at start of game we already set a very long expiry.
+	//entGame.SendChange(entGame.NewActiveGameEntry(true))
 
 	if m.Action() == move.MoveTypeChallenge {
 		// Handle in another way

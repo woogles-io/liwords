@@ -219,9 +219,9 @@ export const Settings = React.memo((props: Props) => {
 
   const categoriesColumn = (
     <div className="categories">
-      <CategoryChoice title="Personal Info" category={Category.PersonalInfo} />
+      <CategoryChoice title="Personal info" category={Category.PersonalInfo} />
       <CategoryChoice
-        title="Change Password"
+        title="Change password"
         category={Category.ChangePassword}
       />
       <CategoryChoice title="Preferences" category={Category.Preferences} />

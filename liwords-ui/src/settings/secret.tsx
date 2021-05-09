@@ -45,7 +45,7 @@ export const Secret = React.memo((props: Props) => {
   }, []);
   return (
     <div className="preferences secret">
-      <h3>Secret Features</h3>
+      <h3>Secret features</h3>
       <div className="secret-warning">
         Please use these secret, experimental features at your own discretion.
         They may be limited in functionality and/or impact your Woogles user
@@ -55,7 +55,7 @@ export const Secret = React.memo((props: Props) => {
           target="_blank"
           rel="noopener noreferrer"
         >
-          Learn More.
+          Learn more.
         </a>
       </div>
       <div>

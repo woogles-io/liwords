@@ -19,7 +19,6 @@ type Store interface {
 	Username(ctx context.Context, uuid string) (string, bool, error)
 	New(ctx context.Context, user *entity.User) error
 	SetPassword(ctx context.Context, uuid string, hashpass string) error
-	SetAbout(ctx context.Context, uuid string, about string) error
 	SetAvatarUrl(ctx context.Context, uuid string, avatarUrl string) error
 	GetBriefProfiles(ctx context.Context, uuids []string) (map[string]*upb.BriefProfile, error)
 	SetPersonalInfo(ctx context.Context, uuid string, email string, firstName string, lastName string, countryCode string, about string) error
@@ -83,6 +82,7 @@ type PresenceStore interface {
 
 	BatchGetChannels(ctx context.Context, uuids []string) ([][]string, error)
 	UpdateFollower(ctx context.Context, followee, follower *entity.User, following bool) error
+	UpdateActiveGame(ctx context.Context, activeGameEntry *pb.ActiveGameEntry) ([][][]string, error)
 }
 
 // ChatStore stores user and channel chats and messages

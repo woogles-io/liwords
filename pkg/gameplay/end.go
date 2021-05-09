@@ -190,6 +190,7 @@ func performEndgameDuties(ctx context.Context, g *entity.Game, gameStore GameSto
 
 	log.Info().Str("gameID", g.GameID()).Msg("game-ended-unload-cache")
 	gameStore.Unload(ctx, g.GameID())
+	g.SendChange(g.NewActiveGameEntry(false))
 	return nil
 }
 
