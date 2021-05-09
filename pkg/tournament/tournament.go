@@ -36,6 +36,7 @@ type TournamentStore interface {
 	GetRecentClubSessions(ctx context.Context, clubID string, numSessions int, offset int) (*pb.ClubSessionsResponse, error)
 	AddRegistrants(ctx context.Context, tid string, userIDs []string, division string) error
 	RemoveRegistrants(ctx context.Context, tid string, userIDs []string, division string) error
+	RemoveRegistrantsForTournament(ctx context.Context, tid string) error
 	ActiveTournamentsFor(ctx context.Context, userID string) ([][2]string, error)
 }
 
@@ -783,6 +784,34 @@ func SetResult(ctx context.Context,
 	if err != nil {
 		return err
 	}
+	ended, err := divisionObject.DivisionManager.IsFinished()
+	if err != nil {
+		return err
+	}
+	allended := ended
+	if ended {
+		for dname, div := range t.Divisions {
+			if dname == division {
+				continue
+				// no need to check again
+			}
+			dended, err := div.DivisionManager.IsFinished()
+			if err != nil {
+				return err
+			}
+			if !dended {
+				allended = false
+				break
+			}
+		}
+	}
+	if allended {
+		t.IsFinished = true
+		err := deleteRegistrants(ctx, ts, t.UUID)
+		if err != nil {
+			return err
+		}
+	}
 
 	err = ts.Set(ctx, t)
 	if err != nil {
@@ -791,6 +820,10 @@ func SetResult(ctx context.Context,
 	pairingsMessage := PairingsToResponse(id, division, pairing, standings)
 	wrapped := entity.WrapEvent(pairingsMessage, realtime.MessageType_TOURNAMENT_DIVISION_PAIRINGS_MESSAGE)
 	return SendTournamentMessage(ctx, ts, id, wrapped)
+}
+
+func deleteRegistrants(ctx context.Context, ts TournamentStore, tid string) error {
+	return ts.RemoveRegistrantsForTournament(ctx, tid)
 }
 
 func StartAllRoundCountdowns(ctx context.Context, ts TournamentStore, id string, round int) error {

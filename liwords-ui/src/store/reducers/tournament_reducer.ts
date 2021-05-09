@@ -421,6 +421,9 @@ const tourneyStatus = (
     return TourneyStatus.PRETOURNEY;
   }
   if (pairing.games[0] && pairing.games[0].gameEndReason) {
+    if (division.currentRound === division.numRounds - 1) {
+      return TourneyStatus.POSTTOURNEY;
+    }
     // Game already finished
     return TourneyStatus.ROUND_GAME_FINISHED;
   }

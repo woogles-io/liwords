@@ -335,6 +335,13 @@ func (s *DBStore) RemoveRegistrants(ctx context.Context, tid string, userIDs []s
 	return result.Error
 }
 
+func (s *DBStore) RemoveRegistrantsForTournament(ctx context.Context, tid string) error {
+	ctxDB := s.db.WithContext(ctx)
+
+	result := ctxDB.Delete(registrant{}, "tournament_id = ?", tid)
+	return result.Error
+}
+
 // ActiveTournamentsFor returns a list of 2-tuples of tournament ID, division ID
 // that this user is registered in - only for active tournaments (ones that have not finished).
 func (s *DBStore) ActiveTournamentsFor(ctx context.Context, userID string) ([][2]string, error) {
