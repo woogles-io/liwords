@@ -8,7 +8,7 @@ import React, {
 } from 'react';
 import { useMountedState } from './mounted';
 import { Unrace } from './unrace';
-import { postBinary } from '../api/api';
+import { postProto } from '../api/api';
 import {
   BriefProfile,
   BriefProfilesRequest,
@@ -51,12 +51,12 @@ export const BriefProfiles = (props: any) => {
       const req = new BriefProfilesRequest();
       req.setUserIdsList(Array.from(toRequestHere));
       try {
-        const rbin = await postBinary(
+        const respObj = await postProto(
+          BriefProfilesResponse,
           'user_service.ProfileService',
           'GetBriefProfiles',
           req
         );
-        const respObj = BriefProfilesResponse.deserializeBinary(rbin.data);
         const respMap = respObj.getResponseMap();
         // because of the await, toRequest.current may have accumulated more items
         const expires = performance.now() + 300000; // 5 minutes
