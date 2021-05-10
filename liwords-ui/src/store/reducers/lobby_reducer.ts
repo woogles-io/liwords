@@ -215,12 +215,10 @@ export function LobbyReducer(state: LobbyState, action: Action): LobbyState {
 
     case ActionType.RemoveActiveGame: {
       const { activeGames } = state;
-      const g = action.payload as {
-        game: string;
-      };
+      const g = action.payload as string;
 
       const newArr = activeGames.filter((ag) => {
-        return ag.gameID !== g.game;
+        return ag.gameID !== g;
       });
 
       return {
