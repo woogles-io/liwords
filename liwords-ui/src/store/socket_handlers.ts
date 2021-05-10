@@ -426,8 +426,6 @@ export const useOnSocketMsg = () => {
 
           case MessageType.USER_PRESENCE: {
             // Note: UserPresence is for chats. Not for follows.
-            console.log('userpresence', parsedMsg);
-
             const up = parsedMsg as UserPresence;
             if (excludedPlayers.has(up.getUserId())) {
               break;
@@ -769,7 +767,6 @@ export const useOnSocketMsg = () => {
             if (gameinfos[0]?.getTournamentId()) {
               dispatchFn = dispatchTournamentContext;
             }
-            console.log('dispatchFn', dispatchFn.toString());
             dispatchFn({
               actionType: ActionType.AddActiveGames,
               payload: {

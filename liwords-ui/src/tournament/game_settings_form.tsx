@@ -123,9 +123,7 @@ export const SettingsForm = (props: Props) => {
         </Select>
       </Form.Item>
 
-      <Form.Item>
-        <ChallengeRulesFormItem disabled={false} />
-      </Form.Item>
+      <ChallengeRulesFormItem disabled={false} />
 
       <Form.Item
         className="initial"
