@@ -360,9 +360,7 @@ export const SeekForm = (props: Props) => {
         </Select>
       </Form.Item>
       {showChallengeRule && (
-        <Form.Item label="Challenge rule" name="challengerule">
-          <ChallengeRulesFormItem disabled={disableChallengeControls} />
-        </Form.Item>
+        <ChallengeRulesFormItem disabled={disableChallengeControls} />
       )}
       <Form.Item
         className="initial"
