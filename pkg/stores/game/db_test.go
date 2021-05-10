@@ -18,6 +18,7 @@ import (
 	"github.com/domino14/macondo/gaddag"
 	macondogame "github.com/domino14/macondo/game"
 	macondopb "github.com/domino14/macondo/gen/api/proto/macondo"
+	"github.com/domino14/macondo/move"
 
 	"github.com/domino14/liwords/pkg/config"
 	"github.com/domino14/liwords/pkg/entity"
@@ -111,6 +112,7 @@ func recreateDB() {
 		}
 	}
 	addfakeGames(ustore)
+	addGameWithPhony(ustore)
 }
 
 func addfakeGames(ustore pkguser.Store) {
@@ -139,6 +141,43 @@ func addfakeGames(ustore pkguser.Store) {
 		`{"lu": 1595824425928, "mo": 0, "tr": [60000, 60000], "ts": 1595824425928}`,
 		true, 0, 0, 0, req, protocts,
 		`{"pi":[{"nickname":"mina","rating":"1600?"},{"nickname":"cesar","rating":"500?"}]}`)
+
+	if db.Error != nil {
+		log.Fatal().Err(db.Error).Msg("error")
+	}
+	store.Disconnect()
+	ustore.(*user.DBStore).Disconnect()
+
+}
+
+func addGameWithPhony(ustore pkguser.Store) {
+	protocts, err := ioutil.ReadFile("./testdata/game2/history.pb")
+	if err != nil {
+		log.Fatal().Err(err).Msg("error")
+	}
+	protocts, err = hex.DecodeString(string(protocts))
+	if err != nil {
+		log.Fatal().Err(err).Msg("error")
+	}
+
+	req, err := hex.DecodeString("0a05435357313912180a0d43726f7373776f726447616d651207656e676c69736818b009280342166f67726237355770576837535661534b76773673513648015a166f67726237355770576837535661534b767736735136")
+	if err != nil {
+		log.Fatal().Err(err).Msg("error")
+	}
+
+	store, err := NewDBStore(&config.Config{
+		DBConnString: TestingDBConnStr + " dbname=liwords_test"}, ustore)
+	if err != nil {
+		log.Fatal().Err(err).Msg("error")
+	}
+	db := store.db.Exec("INSERT INTO games(created_at, updated_at, uuid, "+
+		"player0_id, player1_id, timers, started, game_end_reason, winner_idx, loser_idx, "+
+		"request, history, quickdata) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+		"2020-08-27 04:33:45.938304+00", "2020-08-27 04:33:45.938304+00",
+		"pECpWydZ", 2, 1,
+		`{"lu": 1595824425928, "mo": 0, "tr": [60000, 60000], "ts": 1595824425928}`,
+		true, 0, 0, 0, req, protocts,
+		`{"pi":[{"nickname":"bnjy","rating":"1600?"},{"nickname":"cesar","rating":"500?"}]}`)
 
 	if db.Error != nil {
 		log.Fatal().Err(db.Error).Msg("error")
@@ -307,6 +346,54 @@ func TestGet(t *testing.T) {
 	is.Equal(entGame.RackLettersFor(1), "AEEGOUU")
 	is.Equal(entGame.ChallengeRule(), macondopb.ChallengeRule_FIVE_POINT)
 	is.Equal(entGame.History().ChallengeRule, macondopb.ChallengeRule_FIVE_POINT)
+	// Clean up connections
+	ustore.(*user.DBStore).Disconnect()
+	store.Disconnect()
+}
+
+func TestGetWithPhony(t *testing.T) {
+	log.Info().Msg("TestGetWithPhony")
+	recreateDB()
+
+	is := is.New(t)
+
+	ustore := userStore(TestingDBConnStr + " dbname=liwords_test")
+	store, err := NewDBStore(&config.Config{
+		MacondoConfig: DefaultConfig,
+		DBConnString:  TestingDBConnStr + " dbname=liwords_test",
+	}, ustore)
+	is.NoErr(err)
+
+	entGame, err := store.Get(context.Background(), "pECpWydZ")
+	is.NoErr(err)
+	log.Info().Interface("entGame history", entGame.History()).Msg("history")
+
+	is.Equal(entGame.GameID(), "pECpWydZ")
+	is.Equal(entGame.NickOnTurn(), "cesar")
+	is.Equal(entGame.RackLettersFor(0), "EEHKNOQ")
+	is.Equal(entGame.RackLettersFor(1), "DEMOOW?")
+	is.Equal(entGame.ChallengeRule(), macondopb.ChallengeRule_FIVE_POINT)
+	is.Equal(entGame.History().ChallengeRule, macondopb.ChallengeRule_FIVE_POINT)
+
+	m := move.NewChallengeMove(alphabet.RackFromString("EEHKNOQ", entGame.Alphabet()).TilesOn(),
+		entGame.Alphabet())
+
+	_, err = entGame.Game.ValidateMove(m)
+	is.NoErr(err)
+
+	valid, err := entGame.Game.ChallengeEvent(0, 1234)
+	is.NoErr(err)
+	is.Equal(valid, false)
+
+	// Check that the game rolled back successfully
+	is.Equal(len(entGame.History().Events), 3)
+	is.Equal(entGame.History().Events[2].Type, macondopb.GameEvent_PHONY_TILES_RETURNED)
+	// The tiles in the phony "DORMINE" should be gone.
+	// An already empty tile to the left of DORMINE*
+	is.Equal(entGame.Game.Board().GetLetter(6, 6).IsPlayedTile(), false)
+	// The D in DORMINE:
+	is.Equal(entGame.Game.Board().GetLetter(6, 7).IsPlayedTile(), false)
+
 	// Clean up connections
 	ustore.(*user.DBStore).Disconnect()
 	store.Disconnect()

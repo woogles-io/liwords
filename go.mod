@@ -8,7 +8,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/feature/s3/manager v1.0.2
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.2.0
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible
-	github.com/domino14/macondo v0.4.5-0.20210501031829-83edfa269b5d
+	github.com/domino14/macondo v0.4.5-0.20210510023038-1148d5a5590d
 	github.com/golang/protobuf v1.4.2
 	github.com/gomodule/redigo v1.8.2
 	github.com/hashicorp/golang-lru v0.5.4
