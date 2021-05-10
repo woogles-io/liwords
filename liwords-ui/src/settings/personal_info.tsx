@@ -10,7 +10,9 @@ import {
   Row,
   Select,
   notification,
+  DatePicker,
 } from 'antd';
+import moment from 'moment';
 import { PlayerAvatar } from '../shared/player_avatar';
 import { PlayerMetadata } from '../gameroom/game_info';
 import { useMountedState } from '../utils/mounted';
@@ -22,6 +24,7 @@ import { MarkdownTips } from './markdown_tips';
 import { AvatarCropper } from './avatar_cropper';
 
 type PersonalInfo = {
+  birthDate: string;
   email: string;
   firstName: string;
   lastName: string;
@@ -53,6 +56,7 @@ export const PersonalInfo = React.memo((props: Props) => {
   const [removeAvatarModalVisible, setRemoveAvatarModalVisible] = useState(
     false
   );
+  const [birthDate, setBirthDate] = useState(props.personalInfo.birthDate);
   const [bioTipsModalVisible, setBioTipsModalVisible] = useState(false);
   const [avatarErr, setAvatarErr] = useState('');
   const [uploadPending, setUploadPending] = useState(false);
@@ -145,7 +149,10 @@ export const PersonalInfo = React.memo((props: Props) => {
     axios
       .post(
         toAPIUrl('user_service.ProfileService', 'UpdatePersonalInfo'),
-        values,
+        {
+          ...values,
+          birthDate,
+        },
         {
           withCredentials: true,
         }
@@ -218,14 +225,18 @@ export const PersonalInfo = React.memo((props: Props) => {
       <MarkdownTips />
     </Modal>
   );
-
   return (
     <Form
       form={form}
       {...layout}
       className="personal-info"
       onFinish={updateFields}
-      initialValues={props.personalInfo}
+      initialValues={{
+        ...props.personalInfo,
+        birth: props.personalInfo.birthDate
+          ? moment(props.personalInfo.birthDate, 'YYYY-MM-DD')
+          : null,
+      }}
     >
       <h3>Personal info</h3>
       <div className="section-header">Profile picture</div>
@@ -298,6 +309,34 @@ export const PersonalInfo = React.memo((props: Props) => {
       </Row>
 
       <div className="section-header">Account details</div>
+      <Row>
+        <Col span={23}>
+          <Form.Item
+            name="birth"
+            label={
+              <>
+                Date of birth{' '}
+                <span className="notice">(This will not be displayed.)</span>
+              </>
+            }
+            rules={[
+              {
+                required: true,
+                message:
+                  'Your profile information will be private unless you provide a birthdate.',
+              },
+            ]}
+          >
+            <DatePicker
+              format={'YYYY-MM-DD'}
+              onChange={(date, dateString) => {
+                setBirthDate(dateString);
+              }}
+              placeholder="YYYY-MM-DD"
+            />
+          </Form.Item>
+        </Col>
+      </Row>
       <Row>
         <Col span={11}>
           <Form.Item

@@ -16,6 +16,7 @@ import { decodeToMsg } from '../utils/protobuf';
 import { toAPIUrl } from '../api/api';
 import { ActionType } from '../actions/actions';
 import { reloadAction } from './reload';
+import { birthdateWarning } from './birthdateWarning';
 
 const getSocketURI = (): string => {
   const loc = window.location;
@@ -42,6 +43,7 @@ type TokenResponse = {
 type DecodedToken = {
   unn: string;
   uid: string;
+  cs: string;
   a: boolean; // authed
   perms: string;
 };
@@ -107,10 +109,26 @@ export const LiwordsSocket = (props: {
           userID: decoded.uid,
           loggedIn: decoded.a,
           connID: cid,
+          isChild: decoded.cs,
           path: pathname,
           perms: decoded.perms?.split(','),
         },
       });
+      if (
+        parseInt(decoded.cs) === 2 &&
+        (!localStorage?.getItem('birthdateWarning') ||
+          Date.now() - parseInt(localStorage?.getItem('birthdateWarning')!) >
+            24 * 3600)
+      ) {
+        message.warning({
+          content: birthdateWarning,
+          className: 'board-hud-message',
+          key: 'birthdate-warning',
+          duration: 5,
+        });
+        // Only warn them once a day
+        localStorage.setItem('birthdateWarning', Date.now().toString());
+      }
       if (!isMountedRef.current) return failUrl;
       console.log('Got token, setting state, and will try to connect...');
       if (window.RUNTIME_CONFIGURATION.appVersion !== front_end_version) {

@@ -12,6 +12,7 @@ import { TheFollower } from './follower';
 type UsernameWithContextProps = {
   additionalMenuItems?: React.ReactNode;
   includeFlag?: boolean;
+  fullName?: string;
   omitProfileLink?: boolean;
   omitSendMessage?: boolean;
   omitFriend?: boolean;
@@ -111,7 +112,7 @@ export const UsernameWithContext = (props: UsernameWithContextProps) => {
           <SettingOutlined />
         ) : (
           <>
-            {props.username}
+            {props.fullName || props.username}
             {briefProfile && props.includeFlag && (
               <DisplayFlag countryCode={briefProfile!.getCountryCode()} />
             )}

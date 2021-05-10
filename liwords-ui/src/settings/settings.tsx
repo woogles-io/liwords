@@ -36,6 +36,7 @@ enum Category {
 
 type PersonalInfoResponse = {
   avatar_url: string;
+  birth_date: string;
   full_name: string;
   first_name: string;
   last_name: string;
@@ -84,6 +85,7 @@ export const Settings = React.memo((props: Props) => {
   const [player, setPlayer] = useState<Partial<PlayerMetadata> | undefined>(
     undefined
   );
+  const [birthDate, setBirthDate] = useState('');
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [countryCode, setCountryCode] = useState('');
@@ -123,6 +125,7 @@ export const Settings = React.memo((props: Props) => {
           avatar_url: resp.data.avatar_url,
           full_name: resp.data.full_name,
         });
+        setBirthDate(resp.data.birth_date);
         setFirstName(resp.data.first_name);
         setLastName(resp.data.last_name);
         setCountryCode(resp.data.country_code);
@@ -261,6 +264,7 @@ export const Settings = React.memo((props: Props) => {
                 <PersonalInfo
                   player={player}
                   personalInfo={{
+                    birthDate: birthDate,
                     email: email,
                     firstName: firstName,
                     lastName: lastName,
