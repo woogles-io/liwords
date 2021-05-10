@@ -39,3 +39,11 @@ export const twirpErrToMsg = (err: TwirpError) => {
   const errJSON = new TextDecoder().decode(err.response.data);
   return JSON.parse(errJSON).msg;
 };
+
+export const postProto: <T>(
+  responseType: { deserializeBinary(x: Uint8Array): T },
+  service: string,
+  method: string,
+  msg: { serializeBinary(): Uint8Array }
+) => Promise<T> = async (responseType, service, method, msg) =>
+  responseType.deserializeBinary((await postBinary(service, method, msg)).data);
