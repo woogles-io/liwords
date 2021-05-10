@@ -84,10 +84,6 @@ export const SeekForm = (props: Props) => {
     () => localStorage.getItem('enableCSW19X') === 'true',
     []
   );
-  const enableOSPD6 = React.useMemo(
-    () => localStorage.getItem('enableOSPD6') === 'true',
-    []
-  );
 
   let storageKey = 'lastSeekForm';
   if (props.vsBot) {
@@ -353,13 +349,11 @@ export const SeekForm = (props: Props) => {
               <Select.Option value="ECWL">
                 English Common Word List
               </Select.Option>
+              <Select.Option value="OSPD6">OSPD6</Select.Option>
               {enableCSW19X && (
                 <Select.Option value="CSW19X">
                   CSW19X (ASCI Expurgated)
                 </Select.Option>
-              )}
-              {enableOSPD6 && (
-                <Select.Option value="OSPD6">OSPD6</Select.Option>
               )}
             </React.Fragment>
           )}
