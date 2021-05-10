@@ -15,52 +15,27 @@ import axios from 'axios';
 import { Store } from 'antd/lib/form/interface';
 import { useMountedState } from '../utils/mounted';
 import { ChallengeRule } from '../gen/macondo/api/proto/macondo/macondo_pb';
-import { timeCtrlToDisplayName } from '../store/constants';
+import {
+  initTimeDiscreteScale,
+  timeCtrlToDisplayName,
+  timeScaleToNum,
+} from '../store/constants';
 import { MatchUser } from '../gen/api/proto/realtime/realtime_pb';
 import { SoughtGame } from '../store/reducers/lobby_reducer';
 import { toAPIUrl } from '../api/api';
 import { debounce } from '../utils/debounce';
 import { fixedSettings } from './fixed_seek_controls';
+import { ChallengeRulesFormItem } from './challenge_rules_form_item';
 import {
   useFriendsStoreContext,
   usePresenceStoreContext,
 } from '../store/store';
 export type seekPropVals = { [val: string]: string | number | boolean };
 
-const wholetimes = [];
-for (let i = 1; i <= 25; i++) {
-  wholetimes.push(i.toString());
-}
-const initTimeDiscreteScale = [
-  '¼',
-  '½',
-  '¾',
-  ...wholetimes,
-  '30',
-  '35',
-  '40',
-  '45',
-  '50',
-  '55',
-  '60',
-];
-
 const initTimeFormatter = (val?: number) => {
   return initTimeDiscreteScale[val!];
 };
 
-const timeScaleToNum = (val: string) => {
-  switch (val) {
-    case '¼':
-      return 0.25;
-    case '½':
-      return 0.5;
-    case '¾':
-      return 0.75;
-    default:
-      return parseInt(val, 10);
-  }
-};
 type user = {
   username: string;
   uuid: string;
@@ -324,6 +299,7 @@ export const SeekForm = (props: Props) => {
       wrapperCol={{ span: 24 }}
       layout="horizontal"
       validateMessages={validateMessages}
+      name="seekForm"
     >
       {props.prefixItems || null}
 
@@ -391,44 +367,7 @@ export const SeekForm = (props: Props) => {
       </Form.Item>
       {showChallengeRule && (
         <Form.Item label="Challenge rule" name="challengerule">
-          <Select disabled={disableChallengeControls}>
-            <Select.Option value={ChallengeRule.FIVE_POINT}>
-              5 points{' '}
-              <span className="hover-help">
-                (Reward for winning a challenge)
-              </span>
-            </Select.Option>
-            <Select.Option value={ChallengeRule.TEN_POINT}>
-              10 points{' '}
-              <span className="hover-help">
-                (Reward for winning a challenge)
-              </span>
-            </Select.Option>
-            <Select.Option value={ChallengeRule.DOUBLE}>
-              Double{' '}
-              <span className="hover-help">
-                (Turn loss for challenging a valid word)
-              </span>
-            </Select.Option>
-            <Select.Option value={ChallengeRule.SINGLE}>
-              Single{' '}
-              <span className="hover-help">
-                (No penalty for challenging a valid word)
-              </span>
-            </Select.Option>
-            <Select.Option value={ChallengeRule.VOID}>
-              Void{' '}
-              <span className="hover-help">
-                (All words are checked before play)
-              </span>
-            </Select.Option>
-            <Select.Option value={ChallengeRule.TRIPLE}>
-              Triple{' '}
-              <span className="hover-help">
-                (Losing a challenge loses the game)
-              </span>
-            </Select.Option>
-          </Select>
+          <ChallengeRulesFormItem disabled={disableChallengeControls} />
         </Form.Item>
       )}
       <Form.Item

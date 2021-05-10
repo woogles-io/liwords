@@ -1,17 +1,12 @@
 import React from 'react';
 
-import { useCallback, useEffect, useMemo } from 'react';
+import { useCallback, useMemo } from 'react';
 
-import { useParams } from 'react-router-dom';
-import axios from 'axios';
-import { message } from 'antd';
-import { clubRedirects } from '../lobby/fixed_seek_controls';
 import {
   useLoginStateStoreContext,
   useTournamentStoreContext,
 } from '../store/store';
 import { useMountedState } from '../utils/mounted';
-import { toAPIUrl } from '../api/api';
 import { TopBar } from '../topbar/topbar';
 import { singularCount } from '../utils/plural';
 import { Chat } from '../chat/chat';
@@ -20,12 +15,9 @@ import { sendAccept, sendSeek } from '../lobby/sought_game_interactions';
 import { SoughtGame } from '../store/reducers/lobby_reducer';
 import { ActionsPanel } from './actions_panel';
 import { CompetitorStatus } from './competitor_status';
-import { ActionType } from '../actions/actions';
-import {
-  readyForTournamentGame,
-  TournamentMetadata,
-} from '../store/reducers/tournament_reducer';
+import { readyForTournamentGame } from '../store/reducers/tournament_reducer';
 import './room.scss';
+import { useTourneyMetadata } from './utils';
 
 type Props = {
   sendSocketMsg: (msg: Uint8Array) => void;
@@ -35,7 +27,6 @@ type Props = {
 export const TournamentRoom = (props: Props) => {
   const { useState } = useMountedState();
 
-  const { partialSlug } = useParams();
   const { loginState } = useLoginStateStoreContext();
   const {
     tournamentContext,
@@ -49,54 +40,22 @@ export const TournamentRoom = (props: Props) => {
   const [badTournament, setBadTournament] = useState(false);
   const [selectedGameTab, setSelectedGameTab] = useState('GAMES');
 
-  useEffect(() => {
-    if (!partialSlug || !path) {
-      return;
-    }
-    // Temporary redirect code:
-    if (path.startsWith('/tournament/')) {
-      const oldslug = path.substr('/tournament/'.length);
-      if (oldslug in clubRedirects) {
-        const slug = clubRedirects[oldslug];
-        window.location.replace(
-          `${window.location.protocol}//${window.location.hostname}${slug}`
-        );
-      }
-    }
-
-    axios
-      .post<TournamentMetadata>(
-        toAPIUrl(
-          'tournament_service.TournamentService',
-          'GetTournamentMetadata'
-        ),
-        {
-          slug: path,
-        }
-      )
-      .then((resp) => {
-        dispatchTournamentContext({
-          actionType: ActionType.SetTourneyMetadata,
-          payload: resp.data,
-        });
-      })
-      .catch((err) => {
-        message.error({
-          content: 'Error fetching tournament data',
-          duration: 5,
-        });
-        setBadTournament(true);
-      });
-  }, [path, partialSlug, dispatchTournamentContext]);
+  useTourneyMetadata(
+    path,
+    '',
+    dispatchTournamentContext,
+    loginState,
+    setBadTournament
+  );
 
   const tournamentID = useMemo(() => {
-    return tournamentContext.metadata.id;
+    return tournamentContext.metadata.getId();
   }, [tournamentContext.metadata]);
 
   // Should be more like "amdirector"
   const isDirector = useMemo(() => {
-    return tournamentContext.metadata.directors.includes(username);
-  }, [tournamentContext.metadata, username]);
+    return tournamentContext.directors.includes(username);
+  }, [tournamentContext.directors, username]);
 
   const handleNewGame = useCallback(
     (seekID: string) => {
@@ -143,9 +102,9 @@ export const TournamentRoom = (props: Props) => {
           <Chat
             sendChat={props.sendChat}
             defaultChannel={`chat.tournament.${tournamentID}`}
-            defaultDescription={tournamentContext.metadata.name}
+            defaultDescription={tournamentContext.metadata.getName()}
             peopleOnlineContext={peopleOnlineContext}
-            highlight={tournamentContext.metadata.directors}
+            highlight={tournamentContext.directors}
             highlightText="Director"
             tournamentID={tournamentID}
           />
@@ -154,7 +113,7 @@ export const TournamentRoom = (props: Props) => {
               sendReady={() =>
                 readyForTournamentGame(
                   sendSocketMsg,
-                  tournamentContext.metadata.id,
+                  tournamentContext.metadata.getId(),
                   competitorContext
                 )
               }
@@ -174,7 +133,7 @@ export const TournamentRoom = (props: Props) => {
           sendReady={() =>
             readyForTournamentGame(
               sendSocketMsg,
-              tournamentContext.metadata.id,
+              tournamentContext.metadata.getId(),
               competitorContext
             )
           }

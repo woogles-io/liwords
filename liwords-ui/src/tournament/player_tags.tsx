@@ -6,6 +6,7 @@ const playerTag = (
   players: Array<string>,
   tournamentSlug: string
 ) => {
+  console.log('tournamentSlug', tournamentSlug, teamTourneys);
   // Look up the player in players to figure out its index.
   if (!(tournamentSlug in teamTourneys)) {
     return '';

@@ -94,7 +94,13 @@ func TestTeamRoundRobin(t *testing.T) {
 func TestInitialFontes(t *testing.T) {
 	is := is.New(t)
 
-	_, err := getInitialFontesPairings(9, 4, 0)
+	allByes, err := getInitialFontesPairings(6, 7, 0)
+	is.NoErr(err)
+	for i := 0; i < len(allByes); i++ {
+		is.True(allByes[i] == -1)
+	}
+
+	_, err = getInitialFontesPairings(9, 4, 0)
 	is.NoErr(err)
 	_, err = getInitialFontesPairings(9, 4, 1)
 	is.NoErr(err)

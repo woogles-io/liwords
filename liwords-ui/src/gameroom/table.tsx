@@ -42,7 +42,7 @@ import {
   StreakInfoResponse,
 } from './game_info';
 import { BoopSounds } from '../sound/boop';
-import { postBinary, toAPIUrl } from '../api/api';
+import { postBinary, toAPIUrl, twirpErrToMsg } from '../api/api';
 import { StreakWidget } from './streak_widget';
 import {
   GameEvent,
@@ -52,12 +52,8 @@ import { endGameMessageFromGameInfo } from '../store/end_of_game';
 import { singularCount } from '../utils/plural';
 import { Notepad, NotepadContextProvider } from './notepad';
 import { Analyzer, AnalyzerContextProvider } from './analyzer';
-import { isPairedMode, sortTiles } from '../store/constants';
-import { ActionType } from '../actions/actions';
-import {
-  readyForTournamentGame,
-  TournamentMetadata,
-} from '../store/reducers/tournament_reducer';
+import { isClubType, isPairedMode, sortTiles } from '../store/constants';
+import { readyForTournamentGame } from '../store/reducers/tournament_reducer';
 import { CompetitorStatus } from '../tournament/competitor_status';
 import { Unrace } from '../utils/unrace';
 import { Blank } from '../utils/cwgame/common';
@@ -65,6 +61,7 @@ import {
   UsersGameInfoRequest,
   UsersGameInfoResponse,
 } from '../gen/api/proto/user_service/user_service_pb';
+import { useTourneyMetadata } from '../tournament/utils';
 
 type Props = {
   sendSocketMsg: (msg: Uint8Array) => void;
@@ -221,6 +218,44 @@ export const Table = React.memo((props: Props) => {
   });
   const [isObserver, setIsObserver] = useState(false);
 
+  const getAvatarData = useCallback(async () => {
+    const req = new UsersGameInfoRequest();
+    req.setUuidsList(gameInfo.players.map((p) => p.user_id));
+    try {
+      const rbin = await postBinary(
+        'user_service.ProfileService',
+        'GetUsersGameInfo',
+        req
+      );
+      const resp = UsersGameInfoResponse.deserializeBinary(
+        rbin.data
+      ).toObject();
+      setNeedAvatars(false);
+      const players = [...gameInfo.players];
+      resp.infosList.forEach((info) => {
+        if (info.avatarUrl.length) {
+          const index = gameInfo.players.findIndex(
+            (p) => p.user_id === info.uuid
+          );
+          if (index >= 0) {
+            players[index] = {
+              ...players[index],
+              avatar_url: info.avatarUrl,
+            };
+          }
+        }
+      });
+      setGameInfo({ ...gameInfo, players: players });
+    } catch (err) {
+      message.error({
+        content: `Failed to fetch player information; please refresh. (Error: ${twirpErrToMsg(
+          err
+        )})`,
+        duration: 10,
+      });
+    }
+  }, [gameInfo]);
+
   useEffect(() => {
     // Prevent backspace unless we're in an input element. We don't want to
     // leave if we're on Firefox.
@@ -313,60 +348,16 @@ export const Table = React.memo((props: Props) => {
     if (!gameInfo.game_id || !needAvatars) {
       return;
     }
+    getAvatarData();
+  }, [gameInfo, getAvatarData, needAvatars]);
 
-    const req = new UsersGameInfoRequest();
-    req.setUuidsList(gameInfo.players.map((p) => p.user_id));
-    postBinary('user_service.ProfileService', 'GetUsersGameInfo', req)
-      .then((rbin) => {
-        const resp = UsersGameInfoResponse.deserializeBinary(
-          rbin.data
-        ).toObject();
-        setNeedAvatars(false);
-        const players = [...gameInfo.players];
-        resp.infosList.forEach((info) => {
-          if (info.avatarUrl.length) {
-            const index = gameInfo.players.findIndex(
-              (p) => p.user_id === info.uuid
-            );
-            if (index >= 0) {
-              players[index] = {
-                ...players[index],
-                avatar_url: info.avatarUrl,
-              };
-            }
-          }
-        });
-        setGameInfo({ ...gameInfo, players: players });
-      })
-      .catch((err) => {
-        message.error({
-          content: `Failed to fetch player information; please refresh. (Error: ${err.message})`,
-          duration: 10,
-        });
-      });
-  }, [gameInfo, needAvatars]);
-
-  useEffect(() => {
-    if (!gameInfo.tournament_id) {
-      return;
-    }
-    axios
-      .post<TournamentMetadata>(
-        toAPIUrl(
-          'tournament_service.TournamentService',
-          'GetTournamentMetadata'
-        ),
-        {
-          id: gameInfo.tournament_id,
-        }
-      )
-      .then((resp) => {
-        dispatchTournamentContext({
-          actionType: ActionType.SetTourneyMetadata,
-          payload: resp.data,
-        });
-      });
-  }, [gameInfo.tournament_id, dispatchTournamentContext]);
+  useTourneyMetadata(
+    '',
+    gameInfo.tournament_id,
+    dispatchTournamentContext,
+    loginState,
+    undefined
+  );
 
   useEffect(() => {
     // Request streak info only if a few conditions are true.
@@ -891,10 +882,10 @@ export const Table = React.memo((props: Props) => {
         <div className="chat-area" id="left-sidebar">
           <Card className="left-menu">
             {gameInfo.tournament_id ? (
-              <Link to={tournamentContext.metadata.slug}>
+              <Link to={tournamentContext.metadata?.getSlug()}>
                 <HomeOutlined />
                 Back to
-                {['CLUB', 'CHILD'].includes(tournamentContext.metadata.type)
+                {isClubType(tournamentContext.metadata?.getType())
                   ? ' Club'
                   : ' Tournament'}
               </Link>
@@ -908,7 +899,7 @@ export const Table = React.memo((props: Props) => {
           {playerNames.length > 1 ? (
             <Chat
               sendChat={props.sendChat}
-              highlight={tournamentContext.metadata.directors}
+              highlight={tournamentContext.directors}
               highlightText="Director"
               defaultChannel={`chat.${
                 isObserver ? 'gametv' : 'game'
@@ -933,7 +924,7 @@ export const Table = React.memo((props: Props) => {
               sendReady={() =>
                 readyForTournamentGame(
                   sendSocketMsg,
-                  tournamentContext.metadata.id,
+                  tournamentContext.metadata?.getId(),
                   competitorState
                 )
               }
@@ -959,9 +950,9 @@ export const Table = React.memo((props: Props) => {
             gameDone={gameDone}
             playerMeta={gameInfo.players}
             tournamentID={gameInfo.tournament_id}
-            tournamentSlug={tournamentContext.metadata.slug}
+            tournamentSlug={tournamentContext.metadata?.getSlug()}
             tournamentPairedMode={isPairedMode(
-              tournamentContext?.metadata?.type
+              tournamentContext.metadata?.getType()
             )}
             lexicon={gameInfo.game_request.lexicon}
             challengeRule={gameInfo.game_request.challenge_rule}
@@ -983,7 +974,7 @@ export const Table = React.memo((props: Props) => {
               sendReady={() =>
                 readyForTournamentGame(
                   sendSocketMsg,
-                  tournamentContext.metadata.id,
+                  tournamentContext.metadata?.getId(),
                   competitorState
                 )
               }
@@ -993,7 +984,7 @@ export const Table = React.memo((props: Props) => {
           <PlayerCards gameMeta={gameInfo} playerMeta={gameInfo.players} />
           <GameInfo
             meta={gameInfo}
-            tournamentName={tournamentContext.metadata.name}
+            tournamentName={tournamentContext.metadata?.getName()}
           />
           <Pool
             pool={examinableGameContext?.pool}

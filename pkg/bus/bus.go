@@ -890,27 +890,6 @@ func (b *Bus) sendTournamentContext(ctx context.Context, realm, userID, connID s
 		return err
 	}
 
-	// Send a TournamentDivisionDataResponse for every division in the tournament.
-
-	t, err := b.tournamentStore.Get(ctx, tourneyID)
-	if err != nil {
-		return err
-	}
-
-	for name := range t.Divisions {
-		r, err := tournament.TournamentDivisionDataResponse(ctx, b.tournamentStore, tourneyID, name)
-		if err != nil {
-			return err
-		}
-
-		evt := entity.WrapEvent(r, pb.MessageType_TOURNAMENT_DIVISION_MESSAGE)
-		err = b.pubToConnectionID(connID, userID, evt)
-		if err != nil {
-			return err
-		}
-
-	}
-
 	return err
 }
 

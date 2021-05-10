@@ -349,11 +349,17 @@ func (b *Bus) readyForTournamentGame(ctx context.Context, evt *pb.ReadyForTourna
 	if otherID == userID {
 		return errors.New("both users have same ID?")
 	}
+	if otherUserIdx == -1 {
+		return errors.New("unexpected behavior; did not find other player")
+	}
 	users[otherUserIdx], err = b.userStore.GetByUUID(ctx, otherID)
 	if err != nil {
 		return err
 	}
-	gameReq := t.Divisions[evt.Division].Controls.GameRequest
+	if t.Divisions[evt.Division].DivisionManager == nil {
+		return fmt.Errorf("division manager for division %s is nil", evt.Division)
+	}
+	gameReq := t.Divisions[evt.Division].DivisionManager.GetDivisionControls().GameRequest
 	tdata := &entity.TournamentData{
 		Id:        evt.TournamentId,
 		Division:  evt.Division,

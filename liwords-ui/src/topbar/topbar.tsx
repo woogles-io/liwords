@@ -14,6 +14,7 @@ import {
 import { toAPIUrl } from '../api/api';
 import { Login } from '../lobby/login';
 import { useMountedState } from '../utils/mounted';
+import { isClubType } from '../store/constants';
 
 const colors = require('../base.scss');
 
@@ -97,7 +98,9 @@ export const TopBar = React.memo((props: Props) => {
     </ul>
   );
 
-  const homeLink = props.tournamentID ? tournamentContext.metadata.slug : '/';
+  const homeLink = props.tournamentID
+    ? tournamentContext.metadata?.getSlug()
+    : '/';
 
   return (
     <nav className="top-header" id="main-nav">
@@ -121,7 +124,7 @@ export const TopBar = React.memo((props: Props) => {
             {props.tournamentID ? (
               <div className="tournament">
                 Back to
-                {['CLUB', 'CHILD'].includes(tournamentContext.metadata.type)
+                {isClubType(tournamentContext.metadata?.getType())
                   ? ' Club'
                   : ' Tournament'}
               </div>

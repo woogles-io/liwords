@@ -26,7 +26,6 @@ import {
   ClientGameplayEvent,
   DeclineMatchRequest,
   ErrorMessage,
-  FullTournamentDivisions,
   GameDeletion,
   GameEndedEvent,
   GameHistoryRefresher,
@@ -49,6 +48,11 @@ import {
   SoughtGameProcessEvent,
   TimedOut,
   TournamentDataResponse,
+  DivisionPairingsResponse,
+  PlayersAddedOrRemovedResponse,
+  DivisionControlsResponse,
+  DivisionRoundControls,
+  TournamentFinishedResponse,
   TournamentDivisionDataResponse,
   TournamentDivisionDeletedResponse,
   TournamentGameEndedEvent,
@@ -112,11 +116,15 @@ export const parseMsgs = (msg: Uint8Array) => {
       [MessageType.MATCH_REQUEST_CANCELLATION]: MatchRequestCancellation,
       [MessageType.TOURNAMENT_GAME_ENDED_EVENT]: TournamentGameEndedEvent,
       [MessageType.REMATCH_STARTED]: RematchStartedEvent,
+      [MessageType.TOURNAMENT_DIVISION_ROUND_CONTROLS_MESSAGE]: DivisionRoundControls,
+      [MessageType.TOURNAMENT_DIVISION_PAIRINGS_MESSAGE]: DivisionPairingsResponse,
+      [MessageType.TOURNAMENT_DIVISION_CONTROLS_MESSAGE]: DivisionControlsResponse,
+      [MessageType.TOURNAMENT_DIVISION_PLAYER_CHANGE_MESSAGE]: PlayersAddedOrRemovedResponse,
+      [MessageType.TOURNAMENT_FINISHED_MESSAGE]: TournamentFinishedResponse,
+      [MessageType.TOURNAMENT_DIVISION_DELETED_MESSAGE]: TournamentDivisionDeletedResponse,
+      [MessageType.CHAT_MESSAGE_DELETED]: ChatMessageDeleted,
       [MessageType.TOURNAMENT_MESSAGE]: TournamentDataResponse,
       [MessageType.TOURNAMENT_DIVISION_MESSAGE]: TournamentDivisionDataResponse,
-      [MessageType.TOURNAMENT_DIVISION_DELETED_MESSAGE]: TournamentDivisionDeletedResponse,
-      [MessageType.TOURNAMENT_FULL_DIVISIONS_MESSAGE]: FullTournamentDivisions,
-      [MessageType.CHAT_MESSAGE_DELETED]: ChatMessageDeleted,
       [MessageType.PRESENCE_ENTRY]: PresenceEntry,
       [MessageType.ACTIVE_GAME_ENTRY]: ActiveGameEntry,
     };
@@ -264,7 +272,8 @@ export const useOnSocketMsg = () => {
                 // This is a match game attached to a tourney.
                 console.log('match attached to tourney');
                 if (
-                  tournamentContext.metadata.id === soughtGame.tournamentID &&
+                  tournamentContext.metadata?.getId() ===
+                    soughtGame.tournamentID &&
                   !gameContext.gameID
                 ) {
                   console.log('matches this tourney, and we are not in a game');
@@ -519,7 +528,10 @@ export const useOnSocketMsg = () => {
             const trs = parsedMsg as TournamentRoundStarted;
             dispatchTournamentContext({
               actionType: ActionType.StartTourneyRound,
-              payload: trs,
+              payload: {
+                trs,
+                loginState,
+              },
             });
             if (
               tournamentContext?.competitorState?.division === trs.getDivision()
@@ -530,6 +542,7 @@ export const useOnSocketMsg = () => {
           }
 
           case MessageType.TOURNAMENT_GAME_ENDED_EVENT: {
+            // LEGACY tournament game ended event.
             const gee = parsedMsg as TournamentGameEndedEvent;
             dispatchTournamentContext({
               actionType: ActionType.AddTourneyGameResult,
@@ -544,13 +557,69 @@ export const useOnSocketMsg = () => {
             break;
           }
 
-          case MessageType.TOURNAMENT_DIVISION_MESSAGE: {
-            const tdm = parsedMsg as TournamentDivisionDataResponse;
+          case MessageType.TOURNAMENT_DIVISION_ROUND_CONTROLS_MESSAGE: {
+            const tdrcm = parsedMsg as DivisionRoundControls;
 
             dispatchTournamentContext({
-              actionType: ActionType.SetDivisionData,
+              actionType: ActionType.SetDivisionRoundControls,
               payload: {
-                divisionMessage: tdm,
+                roundControls: tdrcm,
+                loginState,
+              },
+            });
+
+            break;
+          }
+
+          case MessageType.TOURNAMENT_DIVISION_PAIRINGS_MESSAGE: {
+            const tdpm = parsedMsg as DivisionPairingsResponse;
+
+            dispatchTournamentContext({
+              actionType: ActionType.SetDivisionPairings,
+              payload: {
+                dpr: tdpm,
+                loginState,
+              },
+            });
+
+            break;
+          }
+
+          case MessageType.TOURNAMENT_DIVISION_CONTROLS_MESSAGE: {
+            const tdcm = parsedMsg as DivisionControlsResponse;
+
+            dispatchTournamentContext({
+              actionType: ActionType.SetDivisionControls,
+              payload: {
+                divisionControls: tdcm,
+                loginState,
+              },
+            });
+
+            break;
+          }
+
+          case MessageType.TOURNAMENT_DIVISION_PLAYER_CHANGE_MESSAGE: {
+            const parr = parsedMsg as PlayersAddedOrRemovedResponse;
+
+            dispatchTournamentContext({
+              actionType: ActionType.SetDivisionPlayers,
+              payload: {
+                parr,
+                loginState,
+              },
+            });
+
+            break;
+          }
+
+          case MessageType.TOURNAMENT_FINISHED_MESSAGE: {
+            const tfm = parsedMsg as TournamentFinishedResponse;
+
+            dispatchTournamentContext({
+              actionType: ActionType.SetTournamentFinished,
+              payload: {
+                divisionMessage: tfm,
                 loginState,
               },
             });
@@ -678,35 +747,46 @@ export const useOnSocketMsg = () => {
             if (!activeGame) {
               return;
             }
-            const dispatchFn = tournamentContext.metadata.id
+            const dispatchFn = tournamentContext.metadata?.getId()
               ? dispatchTournamentContext
               : dispatchLobbyContext;
             dispatchFn({
               actionType: ActionType.AddActiveGame,
-              payload: activeGame,
+              payload: {
+                activeGame,
+                loginState,
+              },
             });
             break;
           }
 
           case MessageType.ONGOING_GAMES: {
             const age = parsedMsg as GameInfoResponses;
-            console.log('got active games', age);
-            const dispatchFn = tournamentContext.metadata.id
-              ? dispatchTournamentContext
-              : dispatchLobbyContext;
+            console.log('got active games', age, 'tc', tournamentContext);
+            let dispatchFn = dispatchLobbyContext;
 
+            const gameinfos = age.getGameInfoList();
+            if (gameinfos[0]?.getTournamentId()) {
+              dispatchFn = dispatchTournamentContext;
+            }
+            console.log('dispatchFn', dispatchFn.toString());
             dispatchFn({
               actionType: ActionType.AddActiveGames,
-              payload: age
-                .getGameInfoList()
-                .map((g) => GameInfoResponseToActiveGame(g)),
+              payload: {
+                activeGames: age
+                  .getGameInfoList()
+                  .map((g) => GameInfoResponseToActiveGame(g)),
+                loginState,
+              },
             });
             break;
           }
 
           case MessageType.READY_FOR_TOURNAMENT_GAME: {
             const ready = parsedMsg as ReadyForTournamentGame;
-            if (tournamentContext.metadata.id !== ready.getTournamentId()) {
+            if (
+              tournamentContext.metadata?.getId() !== ready.getTournamentId()
+            ) {
               // Ignore this message (for now -- we may actually want to display
               // this in other contexts, like the lobby, an unrelated game, etc).
               break;
@@ -733,17 +813,26 @@ export const useOnSocketMsg = () => {
             break;
           }
 
-          case MessageType.TOURNAMENT_FULL_DIVISIONS_MESSAGE: {
-            const tfdm = parsedMsg as FullTournamentDivisions;
+          case MessageType.TOURNAMENT_DIVISION_MESSAGE: {
+            const tdm = parsedMsg as TournamentDivisionDataResponse;
+
             dispatchTournamentContext({
-              actionType: ActionType.SetDivisionsData,
+              actionType: ActionType.SetDivisionData,
               payload: {
-                fullDivisions: tfdm,
+                divisionMessage: tdm,
                 loginState,
               },
             });
-
             break;
+          }
+
+          case MessageType.TOURNAMENT_DIVISION_DELETED_MESSAGE: {
+            const tdd = parsedMsg as TournamentDivisionDeletedResponse;
+
+            dispatchTournamentContext({
+              actionType: ActionType.DeleteDivision,
+              payload: tdd,
+            });
           }
         }
       });

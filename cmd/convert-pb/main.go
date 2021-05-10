@@ -56,6 +56,8 @@ func main() {
 			pbmsg = &realtime.GameHistoryRefresher{}
 		case "ServerGameplayEvent":
 			pbmsg = &realtime.ServerGameplayEvent{}
+		case "FullTournamentDivisions":
+			pbmsg = &realtime.FullTournamentDivisions{}
 		default:
 			panic("message " + *messageName + " not handled")
 		}

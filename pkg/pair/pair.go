@@ -177,7 +177,11 @@ func splitMembers(members *entity.UnpairedPoolMembers, i int) (*entity.UnpairedP
 func combinePairings(upperPairings []int, lowerPairings []int) []int {
 	numberOfUpperPlayers := len(upperPairings)
 	for i := 0; i < len(lowerPairings); i++ {
-		upperPairings = append(upperPairings, lowerPairings[i]+numberOfUpperPlayers)
+		newPairing := -1
+		if lowerPairings[i] != -1 {
+			newPairing = lowerPairings[i] + numberOfUpperPlayers
+		}
+		upperPairings = append(upperPairings, newPairing)
 	}
 	return upperPairings
 }
@@ -214,7 +218,7 @@ func minWeightMatching(members *entity.UnpairedPoolMembers) ([]int, error) {
 	}
 
 	if len(pairings) != numberOfMembers {
-		log.Debug().Msgf("matching incomplete: %v", edges)
+		log.Debug().Msgf("matching incomplete: %v, %v", pairings, edges)
 		return nil, errors.New("pairings and members are not the same length")
 	}
 
@@ -269,12 +273,6 @@ func weighSwiss(members *entity.UnpairedPoolMembers, i int, j int) int64 {
 	p1 := members.PoolMembers[i]
 	p2 := members.PoolMembers[j]
 
-	// Egregious, temporary hack
-	var removedWeight int64 = 0
-	if p1.Removed || p2.Removed {
-		removedWeight = entity.WinWeightScaling * 100
-	}
-
 	// Scale up wins to ensure any single edge win difference weight
 	// outweighs the sum of all of the edge's possible spread weight
 
@@ -301,7 +299,7 @@ func weighSwiss(members *entity.UnpairedPoolMembers, i int, j int) int64 {
 	} else if repeatsOverMax > 0 {
 		repeatWeight = entity.ProhibitiveWeight
 	}
-	return winDiffWeight + spreadDiffWeight + repeatWeight + removedWeight
+	return winDiffWeight + spreadDiffWeight + repeatWeight
 }
 
 func weighQuickpair(members *entity.UnpairedPoolMembers, i int, j int) int64 {
@@ -346,6 +344,19 @@ func getFactorPairings(numberOfPlayers int, factor int) ([]int, error) {
 }
 
 func getInitialFontesPairings(numberOfPlayers int, numberOfNtiles int, round int) ([]int, error) {
+
+	// If there are more Ntiles than players, InitialFontes is not valid
+	// Return all byes
+	// In practice this should never be true, since it is usually undesirable
+	// behavior. This extra check is here to avoid a panic.
+	if numberOfPlayers < numberOfNtiles {
+		pairings := make([]int, numberOfPlayers)
+		for i := 0; i < numberOfPlayers; i++ {
+			pairings[i] = -1
+		}
+		return pairings, nil
+	}
+
 	addBye := numberOfPlayers%2 == 1
 
 	if addBye {
@@ -407,7 +418,6 @@ func getInitialFontesPairings(numberOfPlayers int, numberOfNtiles int, round int
 
 	for i := 0; i < len(pairings); i++ {
 		if pairings[i] < -1 {
-
 			return nil, fmt.Errorf("initial fontes pairing failure for %d players", numberOfPlayers)
 		}
 	}
