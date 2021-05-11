@@ -761,12 +761,11 @@ export const useOnSocketMsg = () => {
           case MessageType.ONGOING_GAMES: {
             const age = parsedMsg as GameInfoResponses;
             console.log('got active games', age, 'tc', tournamentContext);
-            let dispatchFn = dispatchLobbyContext;
 
-            const gameinfos = age.getGameInfoList();
-            if (gameinfos[0]?.getTournamentId()) {
-              dispatchFn = dispatchTournamentContext;
-            }
+            const dispatchFn = tournamentContext.metadata?.getId()
+              ? dispatchTournamentContext
+              : dispatchLobbyContext;
+
             dispatchFn({
               actionType: ActionType.AddActiveGames,
               payload: {
