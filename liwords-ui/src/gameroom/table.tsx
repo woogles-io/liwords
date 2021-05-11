@@ -62,6 +62,7 @@ import {
   UsersGameInfoResponse,
 } from '../gen/api/proto/user_service/user_service_pb';
 import { useTourneyMetadata } from '../tournament/utils';
+import { themeSettings } from '../lobby/fixed_seek_controls';
 
 type Props = {
   sendSocketMsg: (msg: Uint8Array) => void;
@@ -873,12 +874,12 @@ export const Table = React.memo((props: Props) => {
         : singularCount(n, 'Player', 'Players'),
     [isObserver]
   );
-
+  const clubTheme = themeSettings[gameInfo.tournament_id] || '';
   let ret = (
     <div className={`game-container${isRegistered ? ' competitor' : ''}`}>
       <ManageWindowTitleAndTurnSound />
       <TopBar tournamentID={gameInfo.tournament_id} />
-      <div className="game-table">
+      <div className={`game-table ${clubTheme}`}>
         <div className="chat-area" id="left-sidebar">
           <Card className="left-menu">
             {gameInfo.tournament_id ? (

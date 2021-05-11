@@ -16,18 +16,6 @@ $tiles: (
           color-tile-last-blank: ignore,
           color-tile-border: ignore,
         ),
-        charcoal: (
-          color-tile-background: #414141,
-          color-tile-background-secondary: #606060, //Circle in blank
-          color-tile-background-tertiary: #585858, //Tentative background
-          color-tile-background-quaternary: #414141,  //Tentative blank circle
-          color-tile-blank-text: #ffffff,
-          color-tile-text: #FFF,
-          color-tile-last-background: #888,
-          color-tile-last-text: #222,
-          color-tile-last-blank: #222,
-          color-tile-border: 0px solid transparent,
-        ),
         whitish: (
           color-tile-background: #efefef,
           color-tile-background-secondary: #777, //Circle in blank
@@ -158,6 +146,18 @@ $tiles: (
           color-tile-last-background: #a4dffc,
           color-tile-last-text: #193a57,
           color-tile-last-blank: #193a57,
+          color-tile-border: 0px solid transparent,
+        ),
+        charcoal: (
+          color-tile-background: #414141,
+          color-tile-background-secondary: #606060, //Circle in blank
+          color-tile-background-tertiary: #585858, //Tentative background
+          color-tile-background-quaternary: #414141,  //Tentative blank circle
+          color-tile-blank-text: #ffffff,
+          color-tile-text: #FFF,
+          color-tile-last-background: #888,
+          color-tile-last-text: #222,
+          color-tile-last-blank: #222,
           color-tile-border: 0px solid transparent,
         ),
 );
