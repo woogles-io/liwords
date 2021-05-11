@@ -762,7 +762,19 @@ export const useOnSocketMsg = () => {
             const age = parsedMsg as GameInfoResponses;
             console.log('got active games', age, 'tc', tournamentContext);
 
-            const dispatchFn = tournamentContext.metadata?.getId()
+            let inTourney = !!tournamentContext.metadata?.getId();
+            const tourneyIds = new Set(
+              age.getGameInfoList().map((g) => g.getTournamentId())
+            );
+            if (tourneyIds.size === 1) {
+              const tourneyId = Array.from(tourneyIds)[0];
+              if (tourneyId) {
+                console.log('in a tourney');
+                inTourney = true;
+              }
+            }
+
+            const dispatchFn = inTourney
               ? dispatchTournamentContext
               : dispatchLobbyContext;
 
