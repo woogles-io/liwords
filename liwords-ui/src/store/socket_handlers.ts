@@ -763,14 +763,16 @@ export const useOnSocketMsg = () => {
             console.log('got active games', age, 'tc', tournamentContext);
 
             let inTourney = !!tournamentContext.metadata?.getId();
-            const tourneyIds = new Set(
-              age.getGameInfoList().map((g) => g.getTournamentId())
-            );
-            if (tourneyIds.size === 1) {
-              const tourneyId = Array.from(tourneyIds)[0];
-              if (tourneyId) {
-                console.log('in a tourney');
-                inTourney = true;
+            if (!inTourney) {
+              const tourneyIds = new Set(
+                age.getGameInfoList().map((g) => g.getTournamentId())
+              );
+              if (tourneyIds.size === 1) {
+                const tourneyId = Array.from(tourneyIds)[0];
+                if (tourneyId) {
+                  console.log('in a tourney');
+                  inTourney = true;
+                }
               }
             }
 
