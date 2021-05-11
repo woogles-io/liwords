@@ -764,15 +764,16 @@ export const useOnSocketMsg = () => {
 
             let inTourney = !!tournamentContext.metadata?.getId();
             if (!inTourney) {
-              const tourneyIds = new Set(
-                age.getGameInfoList().map((g) => g.getTournamentId())
-              );
-              if (tourneyIds.size === 1) {
-                const tourneyId = Array.from(tourneyIds)[0];
-                if (tourneyId) {
-                  console.log('in a tourney');
-                  inTourney = true;
-                }
+              const gil = age.getGameInfoList();
+              if (
+                gil.length &&
+                gil[0].getTournamentId() &&
+                gil.every(
+                  (g) => g.getTournamentId() === gil[0].getTournamentId()
+                )
+              ) {
+                console.log('in a tourney');
+                inTourney = true;
               }
             }
 
