@@ -6973,6 +6973,7 @@ proto.user_service.BriefProfile.prototype.toObject = function(opt_includeInstanc
 proto.user_service.BriefProfile.toObject = function(includeInstance, msg) {
   var f, obj = {
     username: jspb.Message.getFieldWithDefault(msg, 1, ""),
+    fullName: jspb.Message.getFieldWithDefault(msg, 2, ""),
     countryCode: jspb.Message.getFieldWithDefault(msg, 3, ""),
     avatarUrl: jspb.Message.getFieldWithDefault(msg, 9, "")
   };
@@ -7014,6 +7015,10 @@ proto.user_service.BriefProfile.deserializeBinaryFromReader = function(msg, read
     case 1:
       var value = /** @type {string} */ (reader.readString());
       msg.setUsername(value);
+      break;
+    case 2:
+      var value = /** @type {string} */ (reader.readString());
+      msg.setFullName(value);
       break;
     case 3:
       var value = /** @type {string} */ (reader.readString());
@@ -7059,6 +7064,13 @@ proto.user_service.BriefProfile.serializeBinaryToWriter = function(message, writ
       f
     );
   }
+  f = message.getFullName();
+  if (f.length > 0) {
+    writer.writeString(
+      2,
+      f
+    );
+  }
   f = message.getCountryCode();
   if (f.length > 0) {
     writer.writeString(
@@ -7091,6 +7103,24 @@ proto.user_service.BriefProfile.prototype.getUsername = function() {
  */
 proto.user_service.BriefProfile.prototype.setUsername = function(value) {
   return jspb.Message.setProto3StringField(this, 1, value);
+};
+
+
+/**
+ * optional string full_name = 2;
+ * @return {string}
+ */
+proto.user_service.BriefProfile.prototype.getFullName = function() {
+  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 2, ""));
+};
+
+
+/**
+ * @param {string} value
+ * @return {!proto.user_service.BriefProfile} returns this
+ */
+proto.user_service.BriefProfile.prototype.setFullName = function(value) {
+  return jspb.Message.setProto3StringField(this, 2, value);
 };
 
 

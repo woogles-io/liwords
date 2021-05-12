@@ -844,6 +844,9 @@ export class BriefProfile extends jspb.Message {
   getUsername(): string;
   setUsername(value: string): void;
 
+  getFullName(): string;
+  setFullName(value: string): void;
+
   getCountryCode(): string;
   setCountryCode(value: string): void;
 
@@ -863,6 +866,7 @@ export class BriefProfile extends jspb.Message {
 export namespace BriefProfile {
   export type AsObject = {
     username: string,
+    fullName: string,
     countryCode: string,
     avatarUrl: string,
   }
