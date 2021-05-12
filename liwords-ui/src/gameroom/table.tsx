@@ -209,7 +209,7 @@ export const Table = React.memo((props: Props) => {
   const competitorState = tournamentContext.competitorState;
   const isRegistered = competitorState.isRegistered;
   const [playerNames, setPlayerNames] = useState(new Array<string>());
-  const [needAvatars, setNeedAvatars] = useState(false);
+  const [needUserGameInfo, setNeedUserGameInfo] = useState(false);
   const { sendSocketMsg } = props;
   // const location = useLocation();
   const [gameInfo, setGameInfo] = useState<GameMetadata>(defaultGameInfo);
@@ -218,7 +218,8 @@ export const Table = React.memo((props: Props) => {
   });
   const [isObserver, setIsObserver] = useState(false);
 
-  const getAvatarData = useCallback(async () => {
+  // XXX This should be obsoleted by adding more to BriefProfiles and using that.
+  const getUserGameInfo = useCallback(async () => {
     const req = new UsersGameInfoRequest();
     req.setUuidsList(gameInfo.players.map((p) => p.user_id));
     try {
@@ -230,19 +231,18 @@ export const Table = React.memo((props: Props) => {
       const resp = UsersGameInfoResponse.deserializeBinary(
         rbin.data
       ).toObject();
-      setNeedAvatars(false);
+      setNeedUserGameInfo(false);
       const players = [...gameInfo.players];
       resp.infosList.forEach((info) => {
-        if (info.avatarUrl.length) {
-          const index = gameInfo.players.findIndex(
-            (p) => p.user_id === info.uuid
-          );
-          if (index >= 0) {
-            players[index] = {
-              ...players[index],
-              avatar_url: info.avatarUrl,
-            };
-          }
+        const index = gameInfo.players.findIndex(
+          (p) => p.user_id === info.uuid
+        );
+        if (index >= 0) {
+          players[index] = {
+            ...players[index],
+            avatar_url: info.avatarUrl,
+            full_name: info.fullName,
+          };
         }
       });
       setGameInfo({ ...gameInfo, players: players });
@@ -317,7 +317,7 @@ export const Table = React.memo((props: Props) => {
       )
       .then((resp) => {
         setGameInfo(resp.data);
-        setNeedAvatars(true);
+        setNeedUserGameInfo(true);
         if (localStorage?.getItem('poolFormat')) {
           setPoolFormat(
             parseInt(localStorage.getItem('poolFormat') || '0', 10)
@@ -345,11 +345,11 @@ export const Table = React.memo((props: Props) => {
   }, [gameID]);
 
   useEffect(() => {
-    if (!gameInfo.game_id || !needAvatars) {
+    if (!gameInfo.game_id || !needUserGameInfo) {
       return;
     }
-    getAvatarData();
-  }, [gameInfo, getAvatarData, needAvatars]);
+    getUserGameInfo();
+  }, [gameInfo, getUserGameInfo, needUserGameInfo]);
 
   useTourneyMetadata(
     '',

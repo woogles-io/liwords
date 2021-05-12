@@ -78,7 +78,7 @@ func (ps *ProfileService) GetProfile(ctx context.Context, r *pb.ProfileRequest) 
 		FirstName:       user.Profile.FirstName,
 		LastName:        user.Profile.LastName,
 		BirthDate:       user.Profile.BirthDate,
-		FullName:        user.RealName(),
+		FullName:        user.RealNameIfNotYouth(),
 		CountryCode:     user.Profile.CountryCode,
 		Title:           user.Profile.Title,
 		About:           user.Profile.About,
@@ -150,6 +150,7 @@ func (ps *ProfileService) GetUsersGameInfo(ctx context.Context, r *pb.UsersGameI
 				Uuid:      uuid,
 				AvatarUrl: user.AvatarUrl(),
 				Title:     user.Profile.Title,
+				FullName:  user.RealNameIfNotYouth(),
 			})
 		}
 	}

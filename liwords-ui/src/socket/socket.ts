@@ -114,11 +114,12 @@ export const LiwordsSocket = (props: {
           perms: decoded.perms?.split(','),
         },
       });
+      const bdateWarning = localStorage?.getItem('birthdateWarning');
       if (
         parseInt(decoded.cs) === 2 &&
-        (!localStorage?.getItem('birthdateWarning') ||
-          Date.now() - parseInt(localStorage?.getItem('birthdateWarning')!) >
-            24 * 3600)
+        decoded.a &&
+        (!bdateWarning ||
+          Date.now() - parseInt(bdateWarning) > 24 * 3600 * 1000)
       ) {
         message.warning({
           content: birthdateWarning,

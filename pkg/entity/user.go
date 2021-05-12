@@ -9,6 +9,8 @@ import (
 
 	"github.com/domino14/liwords/pkg/glicko"
 	ms "github.com/domino14/liwords/rpc/api/proto/mod_service"
+	"github.com/domino14/liwords/rpc/api/proto/realtime"
+	"github.com/rs/zerolog/log"
 )
 
 const (
@@ -142,10 +144,46 @@ func (u *User) RealName() string {
 	return ""
 }
 
+// RealNameIfNotYouth returns a user's real name, only if they are older than
+// 13. If a birth date has not been provided, do not show it.
+func (u *User) RealNameIfNotYouth() string {
+	if u.Profile == nil {
+		return ""
+	}
+	if u.IsChild() == realtime.ChildStatus_NOT_CHILD {
+		return u.RealName()
+	}
+	return ""
+}
+
 func (u *User) AvatarUrl() string {
 	if u.IsBot && u.Profile.AvatarUrl == "" {
 		return "https://woogles-prod-assets.s3.amazonaws.com/macondog.png"
 	} else {
 		return u.Profile.AvatarUrl
 	}
+}
+
+func (u *User) IsChild() realtime.ChildStatus {
+	if u.Profile == nil {
+		log.Error().Str("uuid", u.UUID).Msg("unexpected-nil-profile")
+		return realtime.ChildStatus_UNKNOWN
+	}
+	// Determine Child Status
+	var childStatus realtime.ChildStatus
+	// The birth date must be in the form YYYY-MM-DD
+	birthDateTime, err := time.Parse(time.RFC3339Nano, u.Profile.BirthDate+"T00:00:00.000Z")
+	if err != nil {
+		// This means the birth date was either not defined or malformed
+		// Either way, the child status should be unknown
+		childStatus = realtime.ChildStatus_UNKNOWN
+	} else {
+		timeOfNotChild := birthDateTime.AddDate(13, 0, 0)
+		if time.Now().After(timeOfNotChild) {
+			childStatus = realtime.ChildStatus_NOT_CHILD
+		} else {
+			childStatus = realtime.ChildStatus_CHILD
+		}
+	}
+	return childStatus
 }

@@ -26,7 +26,6 @@ import (
 	"github.com/domino14/liwords/pkg/user"
 
 	ms "github.com/domino14/liwords/rpc/api/proto/mod_service"
-	"github.com/domino14/liwords/rpc/api/proto/realtime"
 	pb "github.com/domino14/liwords/rpc/api/proto/user_service"
 )
 
@@ -175,29 +174,14 @@ func (as *AuthenticationService) GetSocketToken(ctx context.Context, r *pb.Socke
 	if u.IsMod {
 		perms = append(perms, "mod")
 	}
-	// Determine Child Status
-	var childStatus realtime.ChildStatus
-	// The birth date must be in the form YYYY-MM-DD
-	birthDateTime, err := time.Parse(time.RFC3339Nano, u.Profile.BirthDate+"T00:00:00.000Z")
-	if err != nil {
-		// This means the birth date was either not defined or malformed
-		// Either way, the child status should be unknown
-		childStatus = realtime.ChildStatus_UNKNOWN
-	} else {
-		timeOfNotChild := birthDateTime.AddDate(13, 0, 0)
-		if time.Now().After(timeOfNotChild) {
-			childStatus = realtime.ChildStatus_NOT_CHILD
-		} else {
-			childStatus = realtime.ChildStatus_CHILD
-		}
-	}
+
 	// Create an unauth token.
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
 		"exp":   time.Now().Add(TokenExpiration).Unix(),
 		"uid":   uuid,
 		"unn":   unn,
 		"a":     authed,
-		"cs":    childStatus,
+		"cs":    u.IsChild(),
 		"perms": strings.Join(perms, ","),
 	})
 	tokenString, err := token.SignedString([]byte(as.secretKey))

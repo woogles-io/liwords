@@ -55,7 +55,8 @@ message UserGameInfo {
   string avatar_url = 2;
   string title = 3;
   string full_name = 4;
-  CountryFlag flag = 5;
+  // CountryFlag appears to be obsolete; we fetch these using BriefProfiles
+  CountryFlag flag = 5 [deprecated=true]; 
   repeated KickstarterBadge kickstarter_badges = 6;
 }
 
