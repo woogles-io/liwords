@@ -42,7 +42,7 @@ import {
   StreakInfoResponse,
 } from './game_info';
 import { BoopSounds } from '../sound/boop';
-import { postBinary, toAPIUrl, twirpErrToMsg } from '../api/api';
+import { toAPIUrl } from '../api/api';
 import { StreakWidget } from './streak_widget';
 import {
   GameEvent,
@@ -57,10 +57,6 @@ import { readyForTournamentGame } from '../store/reducers/tournament_reducer';
 import { CompetitorStatus } from '../tournament/competitor_status';
 import { Unrace } from '../utils/unrace';
 import { Blank } from '../utils/cwgame/common';
-import {
-  UsersGameInfoRequest,
-  UsersGameInfoResponse,
-} from '../gen/api/proto/user_service/user_service_pb';
 import { useTourneyMetadata } from '../tournament/utils';
 
 type Props = {
@@ -209,7 +205,6 @@ export const Table = React.memo((props: Props) => {
   const competitorState = tournamentContext.competitorState;
   const isRegistered = competitorState.isRegistered;
   const [playerNames, setPlayerNames] = useState(new Array<string>());
-  const [needUserGameInfo, setNeedUserGameInfo] = useState(false);
   const { sendSocketMsg } = props;
   // const location = useLocation();
   const [gameInfo, setGameInfo] = useState<GameMetadata>(defaultGameInfo);
@@ -217,44 +212,6 @@ export const Table = React.memo((props: Props) => {
     streak: [],
   });
   const [isObserver, setIsObserver] = useState(false);
-
-  // XXX This should be obsoleted by adding more to BriefProfiles and using that.
-  const getUserGameInfo = useCallback(async () => {
-    const req = new UsersGameInfoRequest();
-    req.setUuidsList(gameInfo.players.map((p) => p.user_id));
-    try {
-      const rbin = await postBinary(
-        'user_service.ProfileService',
-        'GetUsersGameInfo',
-        req
-      );
-      const resp = UsersGameInfoResponse.deserializeBinary(
-        rbin.data
-      ).toObject();
-      setNeedUserGameInfo(false);
-      const players = [...gameInfo.players];
-      resp.infosList.forEach((info) => {
-        const index = gameInfo.players.findIndex(
-          (p) => p.user_id === info.uuid
-        );
-        if (index >= 0) {
-          players[index] = {
-            ...players[index],
-            avatar_url: info.avatarUrl,
-            full_name: info.fullName,
-          };
-        }
-      });
-      setGameInfo({ ...gameInfo, players: players });
-    } catch (err) {
-      message.error({
-        content: `Failed to fetch player information; please refresh. (Error: ${twirpErrToMsg(
-          err
-        )})`,
-        duration: 10,
-      });
-    }
-  }, [gameInfo]);
 
   useEffect(() => {
     // Prevent backspace unless we're in an input element. We don't want to
@@ -317,7 +274,6 @@ export const Table = React.memo((props: Props) => {
       )
       .then((resp) => {
         setGameInfo(resp.data);
-        setNeedUserGameInfo(true);
         if (localStorage?.getItem('poolFormat')) {
           setPoolFormat(
             parseInt(localStorage.getItem('poolFormat') || '0', 10)
@@ -343,13 +299,6 @@ export const Table = React.memo((props: Props) => {
     // React Hook useEffect has missing dependencies: 'setGameEndMessage' and 'setPoolFormat'.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [gameID]);
-
-  useEffect(() => {
-    if (!gameInfo.game_id || !needUserGameInfo) {
-      return;
-    }
-    getUserGameInfo();
-  }, [gameInfo, getUserGameInfo, needUserGameInfo]);
 
   useTourneyMetadata(
     '',
