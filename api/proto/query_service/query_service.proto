@@ -1,0 +1,47 @@
+syntax = "proto3";
+package query_service;
+option go_package = "github.com/domino14/liwords/rpc/api/proto/query_service";
+
+// GetGamesRequest should be designed to make all fields of a game accessible
+// to a query
+
+// type game struct {
+// 	gorm.Model
+// 	UUID string `gorm:"type:varchar(24);index"`
+// 
+// 	Player0ID uint `gorm:"foreignKey"`
+// 	Player0   user.User
+// 
+// 	Player1ID uint `gorm:"foreignKey"`
+// 	Player1   user.User
+// 
+// 	ReadyFlag uint // When both players are ready, this game starts.
+// 
+// 	Timers datatypes.JSON // A JSON blob containing the game timers.
+// 
+// 	Started       bool
+// 	GameEndReason int `gorm:"index"`
+// 	WinnerIdx     int
+// 	LoserIdx      int
+// 
+// 	Quickdata datatypes.JSON // A JSON blob containing the game quickdata.
+// 
+// 	// Protobuf representations of the game request and history.
+// 	Request []byte
+// 	History []byte
+// 
+// 	Stats datatypes.JSON
+// 
+// 	// This is purposefully not a foreign key. It can be empty/NULL for
+// 	// most games.
+// 	TournamentID   string `gorm:"index"`
+// 	TournamentData datatypes.JSON
+// }
+
+message GetGamesRequest {}
+
+message GetGamesResponse {}
+
+service QueryService {
+  rpc GetGames(GetGamesRequest) returns (GetGamesResponse);
+}
