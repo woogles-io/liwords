@@ -4,7 +4,6 @@
 @include modal;
 
 .ant-modal-root .seek-modal {
-
   .ant-modal-header {
     @include colorModed() {
       background-image: linear-gradient(m($header) 30%, m($background) 100%);
@@ -52,13 +51,21 @@
       }
     }
   }
-  .ant-form-item-explain, .ant-form-item-extra {
+  .ant-form-item-explain,
+  .ant-form-item-extra {
     display: none;
   }
   .ant-form-item-with-help {
     margin-bottom: 24px;
   }
-  .ant-select-selector, .ant-select-item , .ant-select-dropdown{
+  dl {
+    @include colorModed() {
+      color: m($gray-extreme);
+    }
+  }
+  .ant-select-selector,
+  .ant-select-item,
+  .ant-select-dropdown {
     @include colorModed() {
       background: m($background);
       color: m($gray-extreme);
@@ -69,7 +76,10 @@
     }
   }
 
-  .ant-form-item input, .ant-select-single:not(.ant-select-customize-input) .ant-select-selector .ant-select-selection-search-input {
+  .ant-form-item input,
+  .ant-select-single:not(.ant-select-customize-input)
+    .ant-select-selector
+    .ant-select-selection-search-input {
     @include colorModed() {
       background: m($background);
       color: m($gray-extreme);
@@ -84,7 +94,8 @@
   .ant-form-item-control-input {
     width: 100%;
   }
-  .extra-time-setter, .initial {
+  .extra-time-setter,
+  .initial {
     display: flex;
     align-items: center;
     .ant-form-item-control-input {
@@ -112,7 +123,6 @@
   .ant-slider {
     width: 220px;
   }
-
 
   .ant-switch-handle:before {
     @include colorModed() {

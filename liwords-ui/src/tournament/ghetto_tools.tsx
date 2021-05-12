@@ -1,8 +1,13 @@
 // Ghetto tools are Cesar tools before making things pretty.
 
-import { MinusCircleOutlined, PlusOutlined } from '@ant-design/icons';
+import {
+  MinusCircleOutlined,
+  PlusOutlined,
+  SmileOutlined,
+} from '@ant-design/icons';
 import {
   Button,
+  Divider,
   Form,
   Input,
   InputNumber,
@@ -11,13 +16,42 @@ import {
   Select,
   Space,
   Switch,
+  Typography,
 } from 'antd';
 import axios from 'axios';
 import { Store } from 'rc-field-form/lib/interface';
 import React, { useState } from 'react';
-import { toAPIUrl } from '../api/api';
+import { postBinary, toAPIUrl, twirpErrToMsg } from '../api/api';
+import {
+  DivisionControls,
+  DivisionRoundControls,
+  FirstMethod,
+  GameMode,
+  GameRequest,
+  GameRules,
+  PairingMethod,
+  RatingMode,
+  RoundControl,
+  TournamentGameResult,
+} from '../gen/api/proto/realtime/realtime_pb';
+import { TournamentResponse } from '../gen/api/proto/tournament_service/tournament_service_pb';
 import { Division } from '../store/reducers/tournament_reducer';
 import { useTournamentStoreContext } from '../store/store';
+import { useMountedState } from '../utils/mounted';
+import { SettingsForm } from './game_settings_form';
+import '../lobby/seek_form.scss';
+import {
+  challRuleToStr,
+  initTimeDiscreteScale,
+  timeScaleToNum,
+} from '../store/constants';
+
+import {
+  fieldsForMethod,
+  pairingMethod,
+  PairingMethodField,
+  RoundSetting,
+} from './pairing_methods';
 
 type ModalProps = {
   title: string;
@@ -40,6 +74,12 @@ const FormModal = (props: ModalProps) => {
     'set-pairing': <SetPairing tournamentID={props.tournamentID} />,
     'set-result': <SetResult tournamentID={props.tournamentID} />,
     'pair-round': <PairRound tournamentID={props.tournamentID} />,
+    'set-tournament-controls': (
+      <SetTournamentControls tournamentID={props.tournamentID} />
+    ),
+    'set-round-controls': (
+      <SetDivisionRoundControls tournamentID={props.tournamentID} />
+    ),
   };
 
   type FormKeys = keyof typeof forms;
@@ -51,6 +91,7 @@ const FormModal = (props: ModalProps) => {
       footer={null}
       destroyOnClose={true}
       onCancel={props.handleCancel}
+      className="seek-modal" // temporary display hack
     >
       {forms[props.type as FormKeys]}
 
@@ -85,7 +126,7 @@ export const GhettoTools = (props: Props) => {
     'Add players',
     'Remove player',
     'Set tournament controls',
-    'Set single round controls',
+    'Set round controls',
     'Set pairing', // Set a single pairing
     'Pair round', // Pair a whole round
     'Set result', // Set a single result
@@ -95,17 +136,15 @@ export const GhettoTools = (props: Props) => {
   const listItems = types.map((v) => {
     const key = lowerAndJoin(v);
     return (
-      <li key={key} onClick={() => showModal(key, v)}>
+      <Button key={key} onClick={() => showModal(key, v)} size="small">
         {v}
-      </li>
+      </Button>
     );
   });
 
   return (
     <>
-      <p>
-        <ul>{listItems}</ul>
-      </p>
+      <>{listItems}</>
       <FormModal
         title={modalTitle}
         visible={modalVisible}
@@ -201,7 +240,8 @@ const RemoveDivision = (props: { tournamentID: string }) => {
 
 const AddPlayers = (props: { tournamentID: string }) => {
   const onFinish = (vals: Store) => {
-    const playerMap: { [username: string]: number } = {};
+    const players = [];
+    // const playerMap: { [username: string]: number } = {};
     if (!vals.players) {
       message.error({
         content: 'Add some players first',
@@ -209,7 +249,6 @@ const AddPlayers = (props: { tournamentID: string }) => {
       });
       return;
     }
-    console.log(vals.players);
     for (let i = 0; i < vals.players.length; i++) {
       const enteredUsername = vals.players[i].username;
       if (!enteredUsername) {
@@ -219,10 +258,13 @@ const AddPlayers = (props: { tournamentID: string }) => {
       if (username === '') {
         continue;
       }
-      playerMap[username] = parseInt(vals.players[i].rating);
+      players.push({
+        id: username,
+        rating: vals.players[i].rating,
+      });
     }
 
-    if (Object.keys(playerMap).length === 0) {
+    if (players.length === 0) {
       message.error({
         content: 'Add some players first',
         duration: 5,
@@ -233,7 +275,7 @@ const AddPlayers = (props: { tournamentID: string }) => {
     const obj = {
       id: props.tournamentID,
       division: vals.division,
-      persons: playerMap,
+      persons: players,
     };
     console.log(obj);
     axios
@@ -317,7 +359,11 @@ const RemovePlayer = (props: { tournamentID: string }) => {
     const obj = {
       id: props.tournamentID,
       division: vals.division,
-      persons: { [vals.username]: 0 },
+      persons: [
+        {
+          id: vals.username,
+        },
+      ],
     };
     console.log(obj);
     axios
@@ -401,12 +447,13 @@ const ClearCheckedIn = (props: { tournamentID: string }) => {
   );
 };
 
+// userUUID looks up the UUID of a username
 const userUUID = (username: string, divobj: Division) => {
   if (!divobj) {
     return '';
   }
   const p = divobj.players.find((p) => {
-    const parts = p.split(':');
+    const parts = p.getId().split(':');
     const pusername = parts[1].toLowerCase();
 
     if (username.toLowerCase() === pusername) {
@@ -417,7 +464,7 @@ const userUUID = (username: string, divobj: Division) => {
   if (!p) {
     return '';
   }
-  return p.split(':')[0];
+  return p.getId().split(':')[0];
 };
 
 const SetPairing = (props: { tournamentID: string }) => {
@@ -682,5 +729,422 @@ const PairRound = (props: { tournamentID: string }) => {
         </Button>
       </Form.Item>
     </Form>
+  );
+};
+
+const SetTournamentControls = (props: { tournamentID: string }) => {
+  const { useState } = useMountedState();
+  const [modalVisible, setModalVisible] = useState(false);
+  const [
+    selectedGameRequest,
+    setSelectedGameRequest,
+  ] = useState<GameRequest | null>(null);
+
+  const SettingsModalForm = (mprops: {
+    visible: boolean;
+    onCancel: () => void;
+  }) => {
+    const [form] = Form.useForm();
+    const onOk = () => {
+      form.submit();
+    };
+
+    return (
+      <Modal
+        title="Set Game Request"
+        visible={mprops.visible}
+        onOk={onOk}
+        onCancel={mprops.onCancel}
+        className="seek-modal"
+      >
+        <SettingsForm form={form} />
+      </Modal>
+    );
+  };
+
+  const onFinish = async (vals: Store) => {
+    console.log('onFinish', vals);
+    if (!selectedGameRequest) {
+      message.error({
+        content: 'Error: No game request',
+        duration: 5,
+      });
+      return;
+    }
+    const ctrls = new DivisionControls();
+    ctrls.setId(props.tournamentID);
+    ctrls.setDivision(vals.division);
+    ctrls.setGameRequest(selectedGameRequest);
+    // can set this later to whatever values, along with a spread
+    ctrls.setSuspendedResult(TournamentGameResult.BYE);
+    ctrls.setAutoStart(false);
+
+    try {
+      const rbin = await postBinary(
+        'tournament_service.TournamentService',
+        'SetDivisionControls',
+        ctrls
+      );
+
+      const resp = TournamentResponse.deserializeBinary(rbin.data);
+      console.log('setTournamentControls', resp);
+      message.info({
+        content: 'Controls set',
+        duration: 3,
+      });
+    } catch (err) {
+      message.error({
+        content: 'Error ' + twirpErrToMsg(err),
+        duration: 5,
+      });
+    }
+  };
+
+  return (
+    <Form.Provider
+      onFormFinish={(name, { values, forms }) => {
+        if (name === 'gameSettingsForm') {
+          const { setCtrlsForm } = forms;
+          const gr = new GameRequest();
+          const rules = new GameRules();
+          rules.setBoardLayoutName('CrosswordGame');
+          rules.setLetterDistributionName('English');
+          gr.setRules(rules);
+
+          gr.setLexicon(values.lexicon);
+          gr.setInitialTimeSeconds(
+            timeScaleToNum(initTimeDiscreteScale[values.initialtime]) * 60
+          );
+
+          if (values.incOrOT === 'increment') {
+            gr.setIncrementSeconds(values.extratime);
+          } else {
+            gr.setMaxOvertimeMinutes(values.extratime);
+          }
+          gr.setChallengeRule(values.challengerule);
+          gr.setGameMode(GameMode.REAL_TIME);
+          gr.setRatingMode(values.rated ? RatingMode.RATED : RatingMode.CASUAL);
+
+          setCtrlsForm.setFieldsValue({
+            gameRequest: gr,
+          });
+          // We should ONLY need the above setFieldsValue, but it doesn't work
+          // because of this issue:
+          // https://github.com/ant-design/ant-design/issues/25087
+          // So do a work-around with setState:
+          setSelectedGameRequest(gr);
+          console.log('setCtrlsForm gr', gr);
+          setModalVisible(false);
+        }
+      }}
+    >
+      <Form onFinish={onFinish} name="setCtrlsForm">
+        <Form.Item
+          name="division"
+          label="Division Name"
+          rules={[
+            {
+              required: true,
+              message: 'Please input division name',
+            },
+          ]}
+        >
+          {/* lazy right now but all of these need required */}
+          <Input />
+        </Form.Item>
+
+        <Form.Item
+          label="Game Settings"
+          shouldUpdate={(prevValues, curValues) =>
+            prevValues.gameRequest !== curValues.gameRequest
+          }
+        >
+          {({ getFieldValue }) => {
+            const gr =
+              (getFieldValue('gameRequest') as GameRequest) || undefined;
+            return gr ? (
+              <dl>
+                <dt>Initial Time (Minutes)</dt>
+                <dd>{gr.getInitialTimeSeconds() / 60}</dd>
+                <dt>Lexicon</dt>
+                <dd>{gr.getLexicon()}</dd>
+                <dt>Max Overtime (Minutes)</dt>
+                <dd>{gr.getMaxOvertimeMinutes()}</dd>
+                <dt>Increment (Seconds)</dt>
+                <dd>{gr.getIncrementSeconds()}</dd>
+                <dt>Challenge Rule</dt>
+                <dd>{challRuleToStr(gr.getChallengeRule())}</dd>
+                <dt>Rated</dt>
+                <dd>
+                  {gr.getRatingMode() === RatingMode.RATED ? 'Yes' : 'No'}
+                </dd>
+              </dl>
+            ) : (
+              <Typography.Text className="ant-form-text" type="secondary">
+                ( <SmileOutlined /> No game settings yet. )
+              </Typography.Text>
+            );
+          }}
+        </Form.Item>
+
+        <Form.Item>
+          <Button
+            htmlType="button"
+            style={{
+              margin: '0 8px',
+            }}
+            onClick={() => setModalVisible(true)}
+          >
+            Edit Game Settings
+          </Button>
+          <Button type="primary" htmlType="submit">
+            Submit
+          </Button>
+        </Form.Item>
+      </Form>
+
+      <SettingsModalForm
+        visible={modalVisible}
+        onCancel={() => setModalVisible(false)}
+      />
+    </Form.Provider>
+  );
+};
+
+type RdCtrlFieldsProps = {
+  setting: RoundSetting;
+  onChange: (
+    fieldName: keyof RoundSetting,
+    value: string | number | boolean | pairingMethod
+  ) => void;
+  onRemove: () => void;
+};
+
+const RoundControlFields = (props: RdCtrlFieldsProps) => {
+  const { setting } = props;
+
+  const addlFields = fieldsForMethod(setting.pairingType);
+
+  return (
+    <>
+      First round:
+      <InputNumber
+        min={1}
+        value={setting.beginRound}
+        onChange={(e) => props.onChange('beginRound', e as number)}
+      />
+      Last round:
+      <InputNumber
+        min={1}
+        value={setting.endRound}
+        onChange={(e) => props.onChange('endRound', e as number)}
+      />
+      <Select
+        value={setting.pairingType}
+        onChange={(e) => {
+          props.onChange('pairingType', e);
+          // Show more fields potentially.
+        }}
+      >
+        <Select.Option value={PairingMethod.RANDOM}>Random</Select.Option>
+        <Select.Option value={PairingMethod.SWISS}>Swiss</Select.Option>
+
+        <Select.Option value={PairingMethod.ROUND_ROBIN}>
+          Round Robin
+        </Select.Option>
+        <Select.Option value={PairingMethod.INITIAL_FONTES}>
+          Initial Fontes
+        </Select.Option>
+        <Select.Option value={PairingMethod.KING_OF_THE_HILL}>
+          King of the Hill
+        </Select.Option>
+        <Select.Option value={PairingMethod.FACTOR}>Factor</Select.Option>
+        <Select.Option value={PairingMethod.MANUAL}>Manual</Select.Option>
+        <Select.Option value={PairingMethod.TEAM_ROUND_ROBIN}>
+          Team Round Robin
+        </Select.Option>
+      </Select>
+      <p></p>
+      {/* potential additional fields */}
+      {addlFields.map((v: PairingMethodField, idx) => {
+        const key = `ni-${idx}`;
+        const [fieldType, fieldName, displayName] = v;
+        switch (fieldType) {
+          case 'number':
+            return (
+              <p>
+                {displayName}
+                <InputNumber
+                  key={key}
+                  min={0}
+                  value={setting[fieldName] as number}
+                  onChange={(e) => {
+                    props.onChange(fieldName, e as number);
+                  }}
+                />
+              </p>
+            );
+
+          case 'bool':
+            return (
+              <p>
+                {displayName}
+                <Switch
+                  key={key}
+                  checked={setting[fieldName] as boolean}
+                  onChange={(e) => props.onChange(fieldName, e)}
+                />
+              </p>
+            );
+        }
+        return null;
+      })}
+      <Button onClick={props.onRemove}>- Remove</Button>
+      <Divider />
+    </>
+  );
+};
+
+const SetDivisionRoundControls = (props: { tournamentID: string }) => {
+  // This form is too complicated to use the Ant Design built-in forms;
+  // So we're just going to use form components instead.
+
+  const [roundArray, setRoundArray] = useState<Array<RoundSetting>>([]);
+  const [division, setDivision] = useState('');
+
+  const showError = (msg: string) => {
+    message.error({
+      content: 'Error ' + msg,
+      duration: 5,
+    });
+  };
+
+  const setRoundControls = async () => {
+    if (!division) {
+      showError('Division is missing');
+      return;
+    }
+    if (!roundArray.length) {
+      showError('Round controls are missing');
+      return;
+    }
+    // validate round array
+    let lastRd = 0;
+    for (let i = 0; i < roundArray.length; i++) {
+      const rdCtrl = roundArray[i];
+      if (rdCtrl.beginRound <= lastRd) {
+        showError('Round numbers must be consecutive and increasing');
+        return;
+      }
+      if (rdCtrl.endRound < rdCtrl.beginRound) {
+        showError('End round must not be smaller than begin round');
+        return;
+      }
+      if (rdCtrl.beginRound > lastRd + 1) {
+        showError('Round numbers must be consecutive; you cannot skip rounds');
+        return;
+      }
+      lastRd = rdCtrl.endRound;
+    }
+
+    const ctrls = new DivisionRoundControls();
+    ctrls.setId(props.tournamentID);
+    ctrls.setDivision(division);
+
+    const roundControls = new Array<RoundControl>();
+
+    roundArray.forEach((v) => {
+      for (let i = v.beginRound; i <= v.endRound; i++) {
+        const rdCtrl = new RoundControl();
+        rdCtrl.setFirstMethod(FirstMethod.AUTOMATIC_FIRST);
+        rdCtrl.setGamesPerRound(1);
+        rdCtrl.setPairingMethod(v.pairingType);
+
+        switch (v.pairingType) {
+          case PairingMethod.SWISS:
+          case PairingMethod.FACTOR:
+            rdCtrl.setMaxRepeats(v.maxRepeats || 0);
+            rdCtrl.setAllowOverMaxRepeats(v.allowOverMaxRepeats || false);
+            rdCtrl.setRepeatRelativeWeight(v.repeatRelativeWeight || 0);
+            rdCtrl.setWinDifferenceRelativeWeight(
+              v.winDifferenceRelativeWeight || 0
+            );
+            // This should be auto-calculated, and only for factor
+            rdCtrl.setFactor(v.factor || 0);
+            break;
+
+          case PairingMethod.TEAM_ROUND_ROBIN:
+            rdCtrl.setGamesPerRound(v.gamesPerRound || 1);
+            break;
+        }
+        // for everything else it doesn't matter, we just repeat.
+        roundControls.push(rdCtrl);
+      }
+    });
+    ctrls.setRoundControlsList(roundControls);
+
+    try {
+      const rbin = await postBinary(
+        'tournament_service.TournamentService',
+        'SetRoundControls',
+        ctrls
+      );
+
+      const resp = TournamentResponse.deserializeBinary(rbin.data);
+      console.log('setRoundControls', resp);
+      message.info({
+        content: 'Controls set',
+        duration: 3,
+      });
+    } catch (err) {
+      showError(twirpErrToMsg(err));
+    }
+  };
+
+  return (
+    <>
+      <p>
+        Division:
+        <Input value={division} onChange={(e) => setDivision(e.target.value)} />
+      </p>
+      <Divider />
+      {roundArray.map((v, idx) => (
+        <RoundControlFields
+          key={`rdctrl-${idx}`}
+          setting={v}
+          onChange={(
+            fieldName: keyof RoundSetting,
+            value: string | number | boolean | pairingMethod
+          ) => {
+            const newRdArray = [...roundArray];
+            newRdArray[idx] = {
+              ...newRdArray[idx],
+              [fieldName]: value,
+            };
+            setRoundArray(newRdArray);
+          }}
+          onRemove={() => {
+            const newRdArray = [...roundArray];
+            newRdArray.splice(idx, 1);
+            setRoundArray(newRdArray);
+          }}
+        />
+      ))}
+      <Button
+        onClick={() => {
+          const newRdArray = [...roundArray];
+          newRdArray.push({
+            beginRound: 1,
+            endRound: 1,
+            pairingType: PairingMethod.MANUAL,
+          });
+          setRoundArray(newRdArray);
+        }}
+      >
+        + Add more pairings
+      </Button>
+
+      <Button onClick={() => setRoundControls()}>Submit</Button>
+    </>
   );
 };

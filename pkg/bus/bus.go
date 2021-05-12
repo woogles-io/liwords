@@ -200,6 +200,31 @@ outerfor:
 			}()
 
 		case msg := <-b.gameEventChan:
+			if msg.Type == pb.MessageType_ACTIVE_GAME_ENTRY {
+				// This message usually has no audience.
+				if evt, ok := msg.Event.(*pb.ActiveGameEntry); ok {
+					log.Debug().Interface("event", evt).Msg("active-game-entry")
+					ret, err := b.presenceStore.UpdateActiveGame(ctx, evt)
+					if err != nil {
+						log.Err(err).Msg("update-active-game-error")
+						// but continue anyway
+					} else {
+						for idx, chans := range ret {
+							oldChannels := chans[0]
+							newChannels := chans[1]
+							userId := evt.Player[idx].UserId
+							username := evt.Player[idx].Username
+							if err = b.broadcastChannelChanges(ctx, oldChannels, newChannels, userId, username); err != nil {
+								log.Err(err).Msg("broadcast-active-game-error")
+								// but continue anyway
+							}
+						}
+					}
+				} else {
+					log.Error().Interface("event", msg.Event).Msg("bad-active-game-entry")
+				}
+			}
+
 			// A game event. Publish directly to the right realm.
 			topics := msg.Audience()
 			data, err := msg.Serialize()
@@ -863,27 +888,6 @@ func (b *Bus) sendTournamentContext(ctx context.Context, realm, userID, connID s
 	err = b.pubToConnectionID(connID, userID, matches)
 	if err != nil {
 		return err
-	}
-
-	// Send a TournamentDivisionDataResponse for every division in the tournament.
-
-	t, err := b.tournamentStore.Get(ctx, tourneyID)
-	if err != nil {
-		return err
-	}
-
-	for name := range t.Divisions {
-		r, err := tournament.TournamentDivisionDataResponse(ctx, b.tournamentStore, tourneyID, name)
-		if err != nil {
-			return err
-		}
-
-		evt := entity.WrapEvent(r, pb.MessageType_TOURNAMENT_DIVISION_MESSAGE)
-		err = b.pubToConnectionID(connID, userID, evt)
-		if err != nil {
-			return err
-		}
-
 	}
 
 	return err

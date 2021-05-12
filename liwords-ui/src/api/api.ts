@@ -12,12 +12,11 @@ interface PBMsg {
   serializeBinary(): Uint8Array;
 }
 
-// Warning -- trying to install @types/google-protobuf (so that we can use
-// the built-in jspb.Message interface) resulted in completely
-// unrelated build errors for me. I have no idea why. This can be revisited later
-// I hope.
-
-export const postBinary = (service: string, method: string, msg: PBMsg) => {
+export const postBinary = async (
+  service: string,
+  method: string,
+  msg: PBMsg
+) => {
   return axios.post(toAPIUrl(service, method), msg.serializeBinary(), {
     headers: {
       'Content-Type': 'application/protobuf',
@@ -25,3 +24,26 @@ export const postBinary = (service: string, method: string, msg: PBMsg) => {
     responseType: 'arraybuffer',
   });
 };
+
+interface TwirpError {
+  response: {
+    data: Uint8Array;
+  };
+}
+
+export const twirpErrToMsg = (err: TwirpError) => {
+  // Twirp always returns JSON error messages no matter what. But since the
+  // responseType is set to `arraybuffer` above it is annoying to deal with.
+  // This function turns it into the JSON-encoded string that it is and
+  // extracts the error message.
+  const errJSON = new TextDecoder().decode(err.response.data);
+  return JSON.parse(errJSON).msg;
+};
+
+export const postProto: <T>(
+  responseType: { deserializeBinary(x: Uint8Array): T },
+  service: string,
+  method: string,
+  msg: { serializeBinary(): Uint8Array }
+) => Promise<T> = async (responseType, service, method, msg) =>
+  responseType.deserializeBinary((await postBinary(service, method, msg)).data);

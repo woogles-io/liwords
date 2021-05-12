@@ -211,7 +211,7 @@ export const PersonalInfo = React.memo((props: Props) => {
             if (newWindow) newWindow.opener = null;
           }}
         >
-          See Full Guide
+          See full guide
         </Button>,
         <Button
           onClick={() => {
@@ -260,7 +260,7 @@ export const PersonalInfo = React.memo((props: Props) => {
           {' '}
           <Upload {...fileProps}>
             <Button className="change-avatar" disabled={uploadPending}>
-              {uploadPending ? 'Uploading...' : 'Add a Profile photo'}
+              {uploadPending ? 'Uploading...' : 'Add a profile photo'}
             </Button>
           </Upload>
         </div>

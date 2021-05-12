@@ -1,6 +1,7 @@
 -- Arguments to this Lua script:
 -- uuid, username, authOrAnon, connID, channel string, timestamp  (ARGV[1] through [6])
 
+local activeusergameskey = "activeusergames:"..ARGV[1]
 local userpresencekey = "userpresence:"..ARGV[1]
 local channelpresencekey = "channelpresence:"..ARGV[5]
 local userkey = ARGV[1].."#"..ARGV[2].."#"..ARGV[3].."#"..ARGV[4] -- uuid#username#auth#connID
@@ -41,6 +42,13 @@ for _, simpleuserkey in ipairs(redis.call("ZRANGE", userpresencekey, 0, -1)) do
   if conn_id and chan then
     setafter[chan] = true
   end
+end
+
+-- add active games to both sets.
+for _, gameuuid in ipairs(redis.call("ZRANGE", activeusergameskey, 0, -1)) do
+  local activegamepseudochan = "activegame:"..gameuuid
+  setbefore[activegamepseudochan] = true
+  setafter[activegamepseudochan] = true
 end
 
 -- make sorted sets.

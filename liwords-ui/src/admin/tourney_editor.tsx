@@ -19,8 +19,13 @@ import '../lobby/lobby.scss';
 import 'antd/dist/antd.css';
 import ReactMarkdown from 'react-markdown';
 import { useMountedState } from '../utils/mounted';
-import { toAPIUrl } from '../api/api';
-import { TournamentMetadata } from '../store/reducers/tournament_reducer';
+import { postBinary, toAPIUrl } from '../api/api';
+import {
+  GetTournamentMetadataRequest,
+  TournamentMetadataResponse,
+  TType,
+  TTypeMap,
+} from '../gen/api/proto/tournament_service/tournament_service_pb';
 
 type DProps = {
   markdown: string;
@@ -53,70 +58,74 @@ export const TourneyEditor = (props: Props) => {
   const { useState } = useMountedState();
   const [description, setDescription] = useState('');
 
-  // const [formVals, setFormVals] = useState({
-  //   name: '',
-  //   description: '',
-  //   slug: '',
-  //   id: '',
-  //   type: 'STANDARD',
-  //   directors: '',
-  // });
   const [form] = Form.useForm();
 
-  const onSearch = (val: string) => {
-    axios
-      .post<TournamentMetadata>(
-        toAPIUrl(
-          'tournament_service.TournamentService',
-          'GetTournamentMetadata'
-        ),
-        {
-          slug: val,
-        }
-      )
-      .then((resp) => {
-        setDescription(resp.data.description);
+  const onSearch = async (val: string) => {
+    const tmreq = new GetTournamentMetadataRequest();
+    tmreq.setSlug(val);
 
-        form.setFieldsValue({
-          name: resp.data.name,
-          description: resp.data.description,
-          slug: resp.data.slug,
-          id: resp.data.id,
-          type: resp.data.type,
-          directors: resp.data.directors.join(', '),
-        });
-      })
-      .catch((err) => {
-        message.error({
-          content: 'Error: ' + err.response?.data?.msg,
-          duration: 5,
-        });
+    try {
+      const resp = await postBinary(
+        'tournament_service.TournamentService',
+        'GetTournamentMetadata',
+        tmreq
+      );
+      const m = TournamentMetadataResponse.deserializeBinary(resp.data);
+      const metadata = m.getMetadata();
+      setDescription(metadata?.getDescription()!);
+
+      form.setFieldsValue({
+        name: metadata?.getName(),
+        description: metadata?.getDescription(),
+        slug: metadata?.getSlug(),
+        id: metadata?.getId(),
+        type: metadata?.getType(),
+        directors: m.getDirectorsList().join(', '),
       });
+    } catch (err) {
+      message.error({
+        content: 'Error: ' + err.response?.data?.msg,
+        duration: 5,
+      });
+    }
   };
   const onFinish = (vals: Store) => {
     console.log('vals', vals);
     let apicall = '';
     let obj = {};
+
+    const reverseTypeMap = {
+      [TType.CHILD]: 'CHILD',
+      [TType.CLUB]: 'CLUB',
+      [TType.STANDARD]: 'STANDARD',
+      [TType.LEGACY]: 'LEGACY',
+    };
+
+    const jsontype = reverseTypeMap[vals.type as TTypeMap[keyof TTypeMap]];
+
     if (props.mode === 'new') {
       apicall = 'NewTournament';
       const directors = (vals.directors as string)
         .split(',')
         .map((u) => u.trim());
+
       obj = {
         name: vals.name,
         description: vals.description,
         slug: vals.slug,
-        type: vals.type,
+        type: jsontype,
         director_usernames: directors,
       };
     } else if (props.mode === 'edit') {
       apicall = 'SetTournamentMetadata';
       obj = {
-        id: vals.id,
-        name: vals.name,
-        description: vals.description,
-        slug: vals.slug,
-        type: vals.type,
+        metadata: {
+          id: vals.id,
+          name: vals.name,
+          description: vals.description,
+          slug: vals.slug,
+          type: jsontype,
+        },
       };
     }
 
@@ -149,9 +158,8 @@ export const TourneyEditor = (props: Props) => {
         toAPIUrl('tournament_service.TournamentService', 'AddDirectors'),
         {
           id: form.getFieldValue('id'),
-          persons: {
-            [director]: 10, // or whatever number?
-          },
+          // Need a non-zero "rating" for director..
+          persons: [{ id: director, rating: 1 }],
         }
       )
       .then((resp) => {
@@ -249,14 +257,14 @@ export const TourneyEditor = (props: Props) => {
 
             <Form.Item name="type" label="Type">
               <Select>
-                <Select.Option value="CLUB">Club</Select.Option>
-                <Select.Option value="CHILD">
+                <Select.Option value={TType.CLUB}>Club</Select.Option>
+                <Select.Option value={TType.CHILD}>
                   Club Session (or Child Tournament)
                 </Select.Option>
-                <Select.Option value="STANDARD">
+                <Select.Option value={TType.STANDARD}>
                   Standard Tournament
                 </Select.Option>
-                <Select.Option value="LEGACY">
+                <Select.Option value={TType.LEGACY}>
                   Legacy Tournament (Clubhouse mode)
                 </Select.Option>
               </Select>

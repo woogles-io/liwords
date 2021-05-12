@@ -40,7 +40,7 @@ export const About = (props: Props) => {
       </Row>
       <Row>
         <Col span={24} className="section-head">
-          <h1>Meet the Team</h1>
+          <h1>Meet the team</h1>
         </Col>
       </Row>
       <div className="bios">

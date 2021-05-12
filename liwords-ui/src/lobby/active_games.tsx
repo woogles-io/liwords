@@ -149,7 +149,7 @@ export const ActiveGames = (props: Props) => {
 
   return (
     <>
-      <h4>{props.type === 'RESUME' ? 'Resume' : 'Games Live Now'}</h4>
+      <h4>{props.type === 'RESUME' ? 'Resume' : 'Games live now'}</h4>
       <Table
         className="games observe"
         dataSource={formatGameData(props.activeGames)}

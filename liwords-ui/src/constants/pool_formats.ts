@@ -19,7 +19,7 @@ export const PoolFormats: PoolFormat[] = [
   },
   {
     poolFormatType: PoolFormatType.VowelConsonant,
-    displayName: 'Vowels First',
+    displayName: 'Vowels first',
     format: 'AEIOU,BCDFGHJKLMNPQRSTVWXYZ?',
   },
   {
