@@ -16,7 +16,6 @@ import {
 import { ExclamationCircleOutlined } from '@ant-design/icons';
 import { moderateUser, deleteChatMessage } from '../mod/moderate';
 import { PlayerAvatar } from '../shared/player_avatar';
-import { useBriefProfile } from '../utils/brief_profiles';
 
 type EntityProps = {
   entityType: ChatEntityType;
@@ -59,7 +58,6 @@ export const ChatEntity = (props: EntityProps) => {
     excludedPlayersFetched,
   } = useExcludedPlayersStoreContext();
   const { moderators, admins } = useModeratorStoreContext();
-  const briefProfile = useBriefProfile(props.senderId);
   if (props.timestamp) {
     if (
       moment(Date.now()).format('MMM Do') !==
@@ -113,7 +111,7 @@ export const ChatEntity = (props: EntityProps) => {
         <div className="chat-entity">
           <PlayerAvatar
             player={{
-              avatar_url: briefProfile?.getAvatarUrl(),
+              user_id: props.senderId,
             }}
             username={props.sender}
           />

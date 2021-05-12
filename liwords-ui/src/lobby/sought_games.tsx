@@ -53,7 +53,6 @@ export const PlayerDisplay = (props: PlayerProps) => {
     <div className="player-display">
       <PlayerAvatar
         player={{
-          avatar_url: profile?.getAvatarUrl(),
           user_id: props.userID,
           nickname: props.username,
         }}
