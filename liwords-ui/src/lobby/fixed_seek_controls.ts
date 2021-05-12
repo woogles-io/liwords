@@ -124,7 +124,7 @@ const wandertypo = {
 };
 
 const nasscChampionship = {
-  lexicon: 'NWL20',
+  lexicon: 'OSPD6',
   challengerule: ChallengeRule.FIVE_POINT,
   initialtime: 22, // 20 minutes
   rated: true,
@@ -173,7 +173,6 @@ export const fixedSettings: { [key: string]: settings } = {
   vhM3xsCFtxvM794dCK2mE6: nasscChampionship,
   Uzfx4iW2kLhyzWUz6MWQxY: nasscNovice,
   XZDoU8Z6fMk7WrVitthkeU: nasscHighSchool,
-  XYp7CqmEQRiyoVQyviC5Zc: nasscChampionship,
 };
 
 // A temporary map of club redirects. Map internal tournament ID to slug:
@@ -217,23 +216,4 @@ export const teamTourneys: { [key: string]: teamSettings } = {
     odds: '🇨🇦',
     evens: '🇺🇸',
   },
-};
-
-export const showDisclaimer = (tournamentId: string) => {
-  return (
-    tournamentId === 'vhM3xsCFtxvM794dCK2mE6' ||
-    'Uzfx4iW2kLhyzWUz6MWQxY' ||
-    'XZDoU8Z6fMk7WrVitthkeU' ||
-    'XYp7CqmEQRiyoVQyviC5Zc'
-  );
-};
-
-export const disclaimerText =
-  'The 2021 North American School Scrabble Championships Online, brought to you by the FairPlay Agency under license from Hasbro.';
-
-export const themeSettings: { [key: string]: string } = {
-  vhM3xsCFtxvM794dCK2mE6: 'board--nassc tile--charcoal club--nassc',
-  Uzfx4iW2kLhyzWUz6MWQxY: 'board--nassc tile--charcoal club--nassc',
-  XZDoU8Z6fMk7WrVitthkeU: 'board--nassc tile--charcoal club--nassc',
-  XYp7CqmEQRiyoVQyviC5Zc: 'board--nassc tile--charcoal club--nassc',
 };

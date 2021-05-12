@@ -1126,14 +1126,24 @@ p.rune {
     @include colorModed() {
       color: m($secondary);
     }
-    font-size: 12px;
+    font-size: 13px;
+    letter-spacing: 1.2px;
+    text-transform: uppercase;
   }
   &.ant-card .ant-card-body {
     padding: 12px;
+    display: flex;
+    justify-content: space-around;
   }
   .variant {
     font-weight: 600;
     font-size: 16px;
+  }
+  .metadata {
+    flex-grow: 2;
+  }
+  .club-logo {
+    width: 78px;
   }
 }
 

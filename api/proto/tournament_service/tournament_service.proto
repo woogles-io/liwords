@@ -58,6 +58,10 @@ message TournamentMetadata {
   // happening. Likely front-end only implementation, although password
   // will be at least hashed. For clubs that want to be more private.
   string password = 11;
+  // a url to a logo in the metadata card, disclaimer card and center square.
+  string logo = 12;
+  // an override color for the gradient in the tournament info
+  string color = 13;
 }
 
 message SetTournamentMetadataRequest { TournamentMetadata metadata = 1; }

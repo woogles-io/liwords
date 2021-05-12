@@ -235,6 +235,8 @@ func (ts *TournamentService) GetTournamentMetadata(ctx context.Context, req *pb.
 		DefaultClubSettings:       t.ExtraMeta.DefaultClubSettings,
 		FreeformClubSettingFields: t.ExtraMeta.FreeformClubSettingFields,
 		Password:                  t.ExtraMeta.Password,
+		Logo:                      t.ExtraMeta.Logo,
+		Color:                     t.ExtraMeta.Color,
 	}
 
 	return &pb.TournamentMetadataResponse{

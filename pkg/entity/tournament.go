@@ -75,6 +75,8 @@ type TournamentMeta struct {
 	DefaultClubSettings       *realtime.GameRequest `json:"defaultClubSettings"`
 	FreeformClubSettingFields []string              `json:"freeformClubSettingFields"`
 	Password                  string                `json:"password"`
+	Logo                      string                `json:"logo"`
+	Color                     string                `json:"color"`
 }
 
 type Tournament struct {

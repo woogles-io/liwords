@@ -402,8 +402,29 @@ p {
 
 
 .game-table {
-  .chat-area .ant-card.chat {
-    height: 400px;
+  .chat-area {
+    .ant-card.chat {
+      height: 400px;
+    }
+    &.has-disclaimer {
+      .ant-card.disclaimer {
+        height: 100px;
+        line-height: 1.3em;
+        margin-top: 12px;
+        font-size: 13px;
+        .ant-card-body {
+          padding: 6px 12px;
+          display: flex;
+          justify-content: space-around;
+          align-items: center;
+        }
+
+        .club-logo {
+          width: 78px;
+          margin: 3px 0 3px 9px;
+        }
+      }
+    }
   }
 }
 
@@ -422,14 +443,38 @@ p {
 
 @media (min-width: $screen-laptop-min) {
   .game-table {
-    .chat-area .ant-card.chat {
-      height: 355px;
-      margin-bottom: 12px;
+    .chat-area {
+      .ant-card.chat {
+        height: 355px;
+        margin-bottom: 12px;
+      }
+      &.has-disclaimer {
+        .ant-card.chat {
+          height: 328px;
+        }
+        .ant-card.notepad-card, .ant-card.analyzer-card {
+          .ant-card-body {
+            height: 90px;
+          }
+        }
+      }
     }
   }
   .competitor .game-table {
-    .chat-area .ant-card.chat {
-      height: 290px;
+    .chat-area {
+      .ant-card.chat {
+        height: 290px;
+      }
+      &.has-disclaimer {
+        .ant-card.chat {
+          height: 290px;
+        }
+        .ant-card.notepad-card, .ant-card.analyzer-card {
+          .ant-card-body {
+            height: 90px;
+          }
+        }
+      }
     }
   }
   .chat-area {
@@ -444,26 +489,74 @@ p {
 
 @media (min-height: $screen-min-height-desktop-min) and (min-width: $screen-desktop-min) {
   .game-table {
-    .chat-area .ant-card.chat {
-      height: 495px;
+    .chat-area {
+      .ant-card.chat {
+        height: 495px;
+      }
+      &.has-disclaimer {
+        .ant-card.chat {
+          height: 420px;
+        }
+        .ant-card.notepad-card, .ant-card.analyzer-card {
+          .ant-card-body {
+            height: 90px;
+          }
+        }
+      }
     }
   }
   .competitor .game-table {
-    .chat-area .ant-card.chat {
-      height: 430px;
+    .chat-area {
+      .ant-card.chat {
+        height: 430px;
+      }
+      &.has-disclaimer {
+        .ant-card.chat {
+          height: 430px;
+        }
+        .ant-card.notepad-card, .ant-card.analyzer-card {
+          .ant-card-body {
+            height: 90px;
+          }
+        }
+      }
     }
   }
 }
 
 @media (min-height: $screen-min-height-desktop-max) and (min-width: $screen-desktop-min) {
   .game-table {
-    .chat-area .ant-card.chat {
-      height: 564px;
+    .chat-area {
+      .ant-card.chat {
+        height: 564px;
+      }
+      &.has-disclaimer {
+        .ant-card.chat {
+          height: 564px;
+        }
+        .ant-card.notepad-card, .ant-card.analyzer-card {
+          .ant-card-body {
+            height: 90px;
+          }
+        }
+      }
     }
   }
   .competitor .game-table {
-    .chat-area .ant-card.chat {
-      height: 499px;
+    .chat-area {
+      .ant-card.chat {
+        height: 499px;
+      }
+      &.has-disclaimer {
+        .ant-card.chat {
+          height: 499px;
+        }
+        .ant-card.notepad-card, .ant-card.analyzer-card {
+          .ant-card-body {
+            height: 90px;
+          }
+        }
+      }
     }
   }
 }

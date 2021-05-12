@@ -28,14 +28,33 @@ import {
 } from '../gen/api/proto/tournament_service/tournament_service_pb';
 
 type DProps = {
-  markdown: string;
+  description: string;
+  disclaimer: string;
+  title: string;
+  color: string;
+  logo: string;
 };
 
 const DescriptionPreview = (props: DProps) => {
+  const title = <span style={{ color: props.color }}>{props.title}</span>;
   return (
     <div className="tournament-info">
-      <Card title="Tournament Information">
-        <ReactMarkdown linkTarget="_blank">{props.markdown}</ReactMarkdown>
+      <Card title={title} className="tournament">
+        {props.logo && (
+          <img
+            src={props.logo}
+            alt={props.title}
+            style={{
+              width: 200,
+              textAlign: 'center',
+              margin: '0 auto 18px',
+              display: 'block',
+            }}
+          />
+        )}
+        <ReactMarkdown linkTarget="_blank">{props.description}</ReactMarkdown>
+        <br />
+        <ReactMarkdown linkTarget="_blank">{props.disclaimer}</ReactMarkdown>
       </Card>
     </div>
   );
@@ -57,7 +76,10 @@ type Props = {
 export const TourneyEditor = (props: Props) => {
   const { useState } = useMountedState();
   const [description, setDescription] = useState('');
-
+  const [disclaimer, setDisclaimer] = useState('');
+  const [name, setName] = useState('');
+  const [color, setColor] = useState('');
+  const [logo, setLogo] = useState('');
   const [form] = Form.useForm();
 
   const onSearch = async (val: string) => {
@@ -73,7 +95,10 @@ export const TourneyEditor = (props: Props) => {
       const m = TournamentMetadataResponse.deserializeBinary(resp.data);
       const metadata = m.getMetadata();
       setDescription(metadata?.getDescription()!);
-
+      setDisclaimer(metadata?.getDisclaimer() || '');
+      setName(metadata?.getName()!);
+      setColor(metadata?.getColor() || '');
+      setLogo(metadata?.getLogo() || '');
       form.setFieldsValue({
         name: metadata?.getName(),
         description: metadata?.getDescription(),
@@ -81,6 +106,11 @@ export const TourneyEditor = (props: Props) => {
         id: metadata?.getId(),
         type: metadata?.getType(),
         directors: m.getDirectorsList().join(', '),
+        boardStyle: metadata?.getBoardStyle(),
+        tileStyle: metadata?.getTileStyle(),
+        disclaimer: metadata?.getDisclaimer(),
+        logo: metadata?.getLogo(),
+        color: metadata?.getColor(),
       });
     } catch (err) {
       message.error({
@@ -115,6 +145,11 @@ export const TourneyEditor = (props: Props) => {
         slug: vals.slug,
         type: jsontype,
         director_usernames: directors,
+        boardStyle: vals.boardStyle,
+        tileStyle: vals.tileStyle,
+        disclaimer: vals.disclaimer,
+        logo: vals.logo,
+        color: vals.color,
       };
     } else if (props.mode === 'edit') {
       apicall = 'SetTournamentMetadata';
@@ -125,6 +160,11 @@ export const TourneyEditor = (props: Props) => {
           description: vals.description,
           slug: vals.slug,
           type: jsontype,
+          boardStyle: vals.boardStyle,
+          tileStyle: vals.tileStyle,
+          disclaimer: vals.disclaimer,
+          logo: vals.logo,
+          color: vals.color,
         },
       };
     }
@@ -147,6 +187,18 @@ export const TourneyEditor = (props: Props) => {
   };
   const onDescriptionChange = (evt: React.ChangeEvent<HTMLTextAreaElement>) => {
     setDescription(evt.target.value);
+  };
+  const onDisclaimerChange = (evt: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setDisclaimer(evt.target.value);
+  };
+  const onNameChange = (evt: React.ChangeEvent<HTMLInputElement>) => {
+    setName(evt.target.value);
+  };
+  const onColorChange = (evt: React.ChangeEvent<HTMLInputElement>) => {
+    setColor(evt.target.value);
+  };
+  const onLogoChange = (evt: React.ChangeEvent<HTMLInputElement>) => {
+    setLogo(evt.target.value);
   };
   const addDirector = () => {
     const director = prompt('Enter a new director username to add:');
@@ -207,7 +259,7 @@ export const TourneyEditor = (props: Props) => {
   };
 
   return (
-    <>
+    <div className="tourney-editor">
       <Form {...layout} hidden={props.mode === 'new'}>
         <Form.Item label="Tournament URL">
           <Search
@@ -224,7 +276,7 @@ export const TourneyEditor = (props: Props) => {
         <Col span={12}>
           <Form {...layout} form={form} layout="horizontal" onFinish={onFinish}>
             <Form.Item name="name" label="Tournament Name">
-              <Input />
+              <Input onChange={onNameChange} />
             </Form.Item>
 
             <Form.Item name="slug" label="Tournament Slug (URL)">
@@ -269,11 +321,25 @@ export const TourneyEditor = (props: Props) => {
                 </Select.Option>
               </Select>
             </Form.Item>
-
             <Form.Item name="description" label="Description">
               <Input.TextArea onChange={onDescriptionChange} rows={20} />
             </Form.Item>
-
+            <h3>The following will usually not be set.</h3>
+            <Form.Item name="boardStyle" label="Board theme (optional)">
+              <Input />
+            </Form.Item>
+            <Form.Item name="tileStyle" label="Tile theme (optional)">
+              <Input />
+            </Form.Item>
+            <Form.Item name="disclaimer" label="Disclaimer (optional)">
+              <Input.TextArea onChange={onDisclaimerChange} rows={20} />
+            </Form.Item>
+            <Form.Item name="logo" label="Logo URL (optional)">
+              <Input onChange={onLogoChange} />
+            </Form.Item>
+            <Form.Item name="color" label="Hex Color (optional)">
+              <Input onChange={onColorChange} />
+            </Form.Item>
             <Form.Item wrapperCol={{ ...layout.wrapperCol, offset: 4 }}>
               <Button type="primary" htmlType="submit">
                 Submit
@@ -281,8 +347,14 @@ export const TourneyEditor = (props: Props) => {
             </Form.Item>
           </Form>
         </Col>
-        <DescriptionPreview markdown={description} />
+        <DescriptionPreview
+          description={description}
+          disclaimer={disclaimer}
+          title={name}
+          color={color}
+          logo={logo}
+        />
       </Row>
-    </>
+    </div>
   );
 };

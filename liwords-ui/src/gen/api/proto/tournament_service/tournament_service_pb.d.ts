@@ -105,6 +105,12 @@ export class TournamentMetadata extends jspb.Message {
   getPassword(): string;
   setPassword(value: string): void;
 
+  getLogo(): string;
+  setLogo(value: string): void;
+
+  getColor(): string;
+  setColor(value: string): void;
+
   serializeBinary(): Uint8Array;
   toObject(includeInstance?: boolean): TournamentMetadata.AsObject;
   static toObject(includeInstance: boolean, msg: TournamentMetadata): TournamentMetadata.AsObject;
@@ -128,6 +134,8 @@ export namespace TournamentMetadata {
     defaultClubSettings?: api_proto_realtime_realtime_pb.GameRequest.AsObject,
     freeformClubSettingFieldsList: Array<string>,
     password: string,
+    logo: string,
+    color: string,
   }
 }
 

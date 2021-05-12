@@ -160,6 +160,8 @@ func SetTournamentMetadata(ctx context.Context, ts TournamentStore, meta *pb.Tou
 		DefaultClubSettings:       meta.DefaultClubSettings,
 		FreeformClubSettingFields: meta.FreeformClubSettingFields,
 		Password:                  meta.Password,
+		Logo:                      meta.Logo,
+		Color:                     meta.Color,
 	}
 
 	err = ts.Set(ctx, t)

@@ -38,10 +38,26 @@ export const TournamentInfo = (props: TournamentInfoProps) => {
         />
       )}
       <Card title={tournamentContext.metadata.getName()} className="tournament">
+        {tournamentContext.metadata.getLogo() && (
+          <img
+            src={tournamentContext.metadata.getLogo()}
+            alt={tournamentContext.metadata.getName()}
+            style={{
+              width: 150,
+              textAlign: 'center',
+              margin: '0 auto 18px',
+              display: 'block',
+            }}
+          />
+        )}
         <h4>Directed by: {directors}</h4>
         <h5 className="section-header">{type} Details</h5>
         <ReactMarkdown linkTarget="_blank">
           {tournamentContext.metadata.getDescription()}
+        </ReactMarkdown>
+        <h5 className="section-header">{type} Notice</h5>
+        <ReactMarkdown linkTarget="_blank">
+          {tournamentContext.metadata.getDisclaimer()}
         </ReactMarkdown>
       </Card>
     </div>
