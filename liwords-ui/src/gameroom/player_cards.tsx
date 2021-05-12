@@ -62,7 +62,9 @@ const PlayerCard = React.memo((props: CardProps) => {
       <Row className="player">
         <PlayerAvatar player={meta} />
         <div className="player-info">
-          <p className="player-name">{meta?.full_name || meta?.nickname}</p>
+          <p className="player-name">
+            {briefProfile?.getFullName() || meta?.nickname}
+          </p>
           <div className="player-details">
             <DisplayFlag countryCode={briefProfile?.getCountryCode()} />
             {meta?.rating || 'Unrated'} •{' '}
