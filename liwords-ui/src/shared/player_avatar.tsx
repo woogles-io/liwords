@@ -3,6 +3,7 @@ import { fixedCharAt } from '../utils/cwgame/common';
 import './avatar.scss';
 import { Tooltip } from 'antd';
 import { PlayerMetadata } from '../gameroom/game_info';
+import { useBriefProfile } from '../utils/brief_profiles';
 const colors = require('../base.scss');
 
 type AvatarProps = {
@@ -13,6 +14,13 @@ type AvatarProps = {
 };
 
 export const PlayerAvatar = (props: AvatarProps) => {
+  // Do not useBriefProfile if avatar_url is explicitly passed in as "".
+  const givenAvatarUrl = props.player?.avatar_url;
+  const profile = useBriefProfile(
+    givenAvatarUrl != null ? undefined : props.player?.user_id
+  );
+  const avatarUrl = givenAvatarUrl ?? profile?.getAvatarUrl();
+
   let avatarStyle = {};
 
   if (props.player?.first) {
@@ -21,15 +29,15 @@ export const PlayerAvatar = (props: AvatarProps) => {
     };
   }
 
-  if (props.player?.avatar_url) {
+  if (avatarUrl) {
     avatarStyle = {
-      backgroundImage: `url(${props.player?.avatar_url})`,
+      backgroundImage: `url(${avatarUrl})`,
     };
   }
 
   const renderAvatar = (
     <div className="player-avatar" style={avatarStyle}>
-      {!props.player?.avatar_url
+      {!avatarUrl
         ? fixedCharAt(
             props.player?.full_name ||
               props.player?.nickname ||
