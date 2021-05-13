@@ -125,5 +125,20 @@ a.plain,
 .bnjyMode {
   .tile[data-rune='I'], .tile[data-rune='O'], .tile[data-rune='X'] {
     transform: rotate(180deg);
+
+    /* this mirrors gameroom/scss/gameroom.scss */
+
+    & .tentative-score.tentative-score-horizontal {
+      left: calc(100% + 2px);
+    }
+
+    & .tentative-score.tentative-score-vertical {
+      left: 2px;
+      top: calc(100% + 4px);
+    }
+
+    & .tentative-score {
+      transform: rotate(180deg);
+    }
   }
 }
