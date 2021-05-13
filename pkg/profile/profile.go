@@ -4,8 +4,10 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"time"
 
 	"github.com/domino14/liwords/pkg/apiserver"
+	"github.com/domino14/liwords/pkg/entity"
 	"github.com/domino14/liwords/pkg/mod"
 	"github.com/domino14/liwords/pkg/user"
 	"github.com/rs/zerolog/log"
@@ -57,10 +59,18 @@ func (ps *ProfileService) GetStats(ctx context.Context, r *pb.StatsRequest) (*pb
 }
 
 func (ps *ProfileService) GetProfile(ctx context.Context, r *pb.ProfileRequest) (*pb.ProfileResponse, error) {
+	sess, err := apiserver.GetSession(ctx)
+	if err != nil {
+		// This is fine. No, not that meme. It's really fine.
+		sess = nil
+	}
+
 	user, err := ps.userStore.Get(ctx, r.Username)
 	if err != nil {
 		return nil, twirp.NewError(twirp.InvalidArgument, err.Error())
 	}
+
+	subjectIsMe := sess != nil && sess.UserUUID == user.UUID
 
 	ratings := user.Profile.Ratings
 	ratjson, err := json.Marshal(ratings)
@@ -74,18 +84,28 @@ func (ps *ProfileService) GetProfile(ctx context.Context, r *pb.ProfileRequest) 
 		return nil, twirp.InternalErrorWith(err)
 	}
 
+	subjectIsAdult := entity.IsAdult(user.Profile.BirthDate, time.Now())
+	concealIf := func(b bool, s string) string {
+		if b {
+			return ""
+		} else {
+			return s
+		}
+	}
+	childProof := func(s string) string { return concealIf(!(subjectIsMe || subjectIsAdult), s) }
+
 	return &pb.ProfileResponse{
-		FirstName:       user.Profile.FirstName,
-		LastName:        user.Profile.LastName,
-		BirthDate:       user.Profile.BirthDate,
-		FullName:        user.RealNameIfNotYouth(),
+		FirstName:       childProof(user.Profile.FirstName),
+		LastName:        childProof(user.Profile.LastName),
+		BirthDate:       concealIf(!subjectIsMe, user.Profile.BirthDate),
+		FullName:        childProof(user.RealName()),
 		CountryCode:     user.Profile.CountryCode,
 		Title:           user.Profile.Title,
-		About:           user.Profile.About,
+		About:           childProof(user.Profile.About),
 		RatingsJson:     string(ratjson),
 		StatsJson:       string(statjson),
 		UserId:          user.UUID,
-		AvatarUrl:       user.AvatarUrl(),
+		AvatarUrl:       childProof(user.AvatarUrl()),
 		AvatarsEditable: ps.avatarService != nil,
 	}, nil
 }

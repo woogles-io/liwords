@@ -136,7 +136,11 @@ func (u *User) GetRating(ratingKey VariantKey) (*SingleRating, error) {
 func (u *User) RealName() string {
 	if u.Profile != nil {
 		if u.Profile.FirstName != "" {
-			return u.Profile.FirstName + " " + u.Profile.LastName
+			if u.Profile.LastName != "" {
+				return u.Profile.FirstName + " " + u.Profile.LastName
+			} else {
+				return u.Profile.FirstName
+			}
 		} else {
 			return u.Profile.LastName
 		}
@@ -164,26 +168,31 @@ func (u *User) AvatarUrl() string {
 	}
 }
 
+func InferChildStatus(dob string, now time.Time) realtime.ChildStatus {
+	// The birth date must be in the form YYYY-MM-DD
+	birthDateTime, err := time.Parse(time.RFC3339Nano, dob+"T00:00:00.000Z")
+	if err != nil {
+		// This means the birth date was either not defined or malformed
+		// Either way, the child status should be unknown
+		return realtime.ChildStatus_UNKNOWN
+	} else {
+		timeOfNotChild := birthDateTime.AddDate(13, 0, 0)
+		if now.After(timeOfNotChild) {
+			return realtime.ChildStatus_NOT_CHILD
+		} else {
+			return realtime.ChildStatus_CHILD
+		}
+	}
+}
+
+func IsAdult(dob string, now time.Time) bool {
+	return InferChildStatus(dob, now) == realtime.ChildStatus_NOT_CHILD
+}
+
 func (u *User) IsChild() realtime.ChildStatus {
 	if u.Profile == nil {
 		log.Error().Str("uuid", u.UUID).Msg("unexpected-nil-profile")
 		return realtime.ChildStatus_UNKNOWN
 	}
-	// Determine Child Status
-	var childStatus realtime.ChildStatus
-	// The birth date must be in the form YYYY-MM-DD
-	birthDateTime, err := time.Parse(time.RFC3339Nano, u.Profile.BirthDate+"T00:00:00.000Z")
-	if err != nil {
-		// This means the birth date was either not defined or malformed
-		// Either way, the child status should be unknown
-		childStatus = realtime.ChildStatus_UNKNOWN
-	} else {
-		timeOfNotChild := birthDateTime.AddDate(13, 0, 0)
-		if time.Now().After(timeOfNotChild) {
-			childStatus = realtime.ChildStatus_NOT_CHILD
-		} else {
-			childStatus = realtime.ChildStatus_CHILD
-		}
-	}
-	return childStatus
+	return InferChildStatus(u.Profile.BirthDate, time.Now())
 }

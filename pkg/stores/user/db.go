@@ -8,6 +8,7 @@ import (
 	"math/rand"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/jinzhu/gorm"
 	"github.com/jinzhu/gorm/dialects/postgres"
@@ -438,6 +439,8 @@ func (s *DBStore) GetBriefProfiles(ctx context.Context, uuids []string) (map[str
 		profileMap[profile.UUID] = profile
 	}
 
+	now := time.Now()
+
 	response := make(map[string]*pb.BriefProfile)
 	for _, uuid := range uuids {
 		prof, hasProfile := profileMap[uuid]
@@ -448,19 +451,27 @@ func (s *DBStore) GetBriefProfiles(ctx context.Context, uuids []string) (map[str
 			// see entity/user.go
 			prof.AvatarUrl = "https://woogles-prod-assets.s3.amazonaws.com/macondog.png"
 		}
-		// XXX This allocates. Please move RealNameIfNotYouth() to a standalone function.
-		u := &entity.User{
-			Profile: &entity.Profile{
-				FirstName: prof.FirstName,
-				LastName:  prof.LastName,
-				BirthDate: prof.BirthDate,
-			},
+		subjectIsAdult := entity.IsAdult(prof.BirthDate, now)
+		avatarUrl := ""
+		fullName := ""
+		if subjectIsAdult {
+			avatarUrl = prof.AvatarUrl
+			// see entity/user.go RealName()
+			if prof.FirstName != "" {
+				if prof.LastName != "" {
+					fullName = prof.FirstName + " " + prof.LastName
+				} else {
+					fullName = prof.FirstName
+				}
+			} else {
+				fullName = prof.LastName
+			}
 		}
 		response[uuid] = &pb.BriefProfile{
 			Username:    prof.Username,
 			CountryCode: prof.CountryCode,
-			AvatarUrl:   prof.AvatarUrl,
-			FullName:    u.RealNameIfNotYouth(),
+			AvatarUrl:   avatarUrl,
+			FullName:    fullName,
 		}
 	}
 
