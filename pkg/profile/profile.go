@@ -140,26 +140,6 @@ func (ps *ProfileService) UpdatePersonalInfo(ctx context.Context, r *pb.UpdatePe
 	return &pb.UpdatePersonalInfoResponse{}, nil
 }
 
-func (ps *ProfileService) GetUsersGameInfo(ctx context.Context, r *pb.UsersGameInfoRequest) (*pb.UsersGameInfoResponse, error) {
-	var infos []*pb.UserGameInfo
-
-	for _, uuid := range r.Uuids {
-		user, err := ps.userStore.GetByUUID(ctx, uuid)
-		if err == nil {
-			infos = append(infos, &pb.UserGameInfo{
-				Uuid:      uuid,
-				AvatarUrl: user.AvatarUrl(),
-				Title:     user.Profile.Title,
-				FullName:  user.RealNameIfNotYouth(),
-			})
-		}
-	}
-
-	return &pb.UsersGameInfoResponse{
-		Infos: infos,
-	}, nil
-}
-
 func (ps *ProfileService) UpdateAvatar(ctx context.Context, r *pb.UpdateAvatarRequest) (*pb.UpdateAvatarResponse, error) {
 	// This view requires authentication.
 	sess, err := apiserver.GetSession(ctx)

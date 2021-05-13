@@ -244,50 +244,6 @@ export namespace UserGameInfo {
   }
 }
 
-export class UsersGameInfoRequest extends jspb.Message {
-  clearUuidsList(): void;
-  getUuidsList(): Array<string>;
-  setUuidsList(value: Array<string>): void;
-  addUuids(value: string, index?: number): string;
-
-  serializeBinary(): Uint8Array;
-  toObject(includeInstance?: boolean): UsersGameInfoRequest.AsObject;
-  static toObject(includeInstance: boolean, msg: UsersGameInfoRequest): UsersGameInfoRequest.AsObject;
-  static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
-  static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
-  static serializeBinaryToWriter(message: UsersGameInfoRequest, writer: jspb.BinaryWriter): void;
-  static deserializeBinary(bytes: Uint8Array): UsersGameInfoRequest;
-  static deserializeBinaryFromReader(message: UsersGameInfoRequest, reader: jspb.BinaryReader): UsersGameInfoRequest;
-}
-
-export namespace UsersGameInfoRequest {
-  export type AsObject = {
-    uuidsList: Array<string>,
-  }
-}
-
-export class UsersGameInfoResponse extends jspb.Message {
-  clearInfosList(): void;
-  getInfosList(): Array<UserGameInfo>;
-  setInfosList(value: Array<UserGameInfo>): void;
-  addInfos(value?: UserGameInfo, index?: number): UserGameInfo;
-
-  serializeBinary(): Uint8Array;
-  toObject(includeInstance?: boolean): UsersGameInfoResponse.AsObject;
-  static toObject(includeInstance: boolean, msg: UsersGameInfoResponse): UsersGameInfoResponse.AsObject;
-  static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
-  static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
-  static serializeBinaryToWriter(message: UsersGameInfoResponse, writer: jspb.BinaryWriter): void;
-  static deserializeBinary(bytes: Uint8Array): UsersGameInfoResponse;
-  static deserializeBinaryFromReader(message: UsersGameInfoResponse, reader: jspb.BinaryReader): UsersGameInfoResponse;
-}
-
-export namespace UsersGameInfoResponse {
-  export type AsObject = {
-    infosList: Array<UserGameInfo.AsObject>,
-  }
-}
-
 export class SocketTokenRequest extends jspb.Message {
   serializeBinary(): Uint8Array;
   toObject(includeInstance?: boolean): SocketTokenRequest.AsObject;
