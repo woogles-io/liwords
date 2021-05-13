@@ -51,10 +51,10 @@ type game struct {
 	gorm.Model
 	UUID string `gorm:"type:varchar(24);index"`
 
-	Player0ID uint `gorm:"foreignKey"`
+	Player0ID uint `gorm:"foreignKey;index"`
 	Player0   user.User
 
-	Player1ID uint `gorm:"foreignKey"`
+	Player1ID uint `gorm:"foreignKey;index"`
 	Player1   user.User
 
 	ReadyFlag uint // When both players are ready, this game starts.
@@ -201,12 +201,13 @@ func (s *DBStore) GetRecentGames(ctx context.Context, username string, numGames 
 	}
 	ctxDB := s.db.WithContext(ctx)
 	var games []*game
+	// gorm does not intend to support with clause. https://github.com/go-gorm/gorm/issues/3955#issuecomment-761939460
 	if results := ctxDB.Limit(numGames).
 		Offset(offset).
-		Joins("JOIN users as u0  ON u0.id = games.player0_id").
-		Joins("JOIN users as u1  ON u1.id = games.player1_id").
-		Where("(lower(u0.username) = lower(?) OR lower(u1.username) = lower(?)) AND game_end_reason NOT IN (?, ?, ?)",
-			username, username, pb.GameEndReason_NONE, pb.GameEndReason_ABORTED, pb.GameEndReason_CANCELLED).
+		Joins("inner join (?) u on player0_id = u.id or player1_id = u.id",
+			s.db.Model(&user.User{}).Select("id").Where("lower(username) = lower(?)", username)).
+		Where("game_end_reason not in (?, ?, ?)",
+			pb.GameEndReason_NONE, pb.GameEndReason_ABORTED, pb.GameEndReason_CANCELLED).
 		Order("created_at desc").
 		Find(&games); results.Error != nil {
 		return nil, results.Error
