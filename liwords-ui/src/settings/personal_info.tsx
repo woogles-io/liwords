@@ -333,6 +333,7 @@ export const PersonalInfo = React.memo((props: Props) => {
                 setBirthDate(dateString);
               }}
               placeholder="YYYY-MM-DD"
+              showToday={false}
             />
           </Form.Item>
         </Col>
