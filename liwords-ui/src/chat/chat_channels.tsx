@@ -7,13 +7,12 @@ import {
   useExcludedPlayersStoreContext,
   useLoginStateStoreContext,
 } from '../store/store';
-import { useBriefProfile } from '../utils/brief_profiles';
 import { useMountedState } from '../utils/mounted';
 import { toAPIUrl } from '../api/api';
 import { debounce } from '../utils/debounce';
 import { ActiveChatChannels } from '../gen/api/proto/user_service/user_service_pb';
 import { PlayerAvatar } from '../shared/player_avatar';
-import { DisplayFlag } from '../shared/display_flag';
+import { DisplayUserFlag } from '../shared/display_flag';
 import { TrophyOutlined, TeamOutlined, UserOutlined } from '@ant-design/icons';
 
 type Props = {
@@ -131,17 +130,6 @@ const extractUser = (
     return { uuid: chatUserId, username: chatUsername };
   }
   return {};
-};
-
-const DisplayFlagForUUID = ({ uuid }: { uuid: string | undefined }) => {
-  const briefProfile = useBriefProfile(uuid);
-  return (
-    <React.Fragment>
-      {briefProfile && (
-        <DisplayFlag countryCode={briefProfile.getCountryCode()} />
-      )}
-    </React.Fragment>
-  );
 };
 
 export const ChatChannels = React.memo((props: Props) => {
@@ -266,7 +254,7 @@ export const ChatChannels = React.memo((props: Props) => {
           <div>
             <p className="listing-name">
               {channelLabel.label}
-              <DisplayFlagForUUID uuid={chatUser.uuid} />
+              <DisplayUserFlag uuid={chatUser.uuid} />
               {isUnread && <span className="unread-marker">•</span>}
             </p>
             <p className={`listing-preview`}>
