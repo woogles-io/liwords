@@ -15,7 +15,6 @@ import { GameMetadata, RecentGamesResponse } from '../gameroom/game_info';
 import { GamesHistoryCard } from './games_history';
 import { UsernameWithContext } from '../shared/usernameWithContext';
 import { moderateUser } from '../mod/moderate';
-import moment from 'moment';
 import { DisplayFlag } from '../shared/display_flag';
 
 type ProfileResponse = {
@@ -235,8 +234,7 @@ export const UserProfile = React.memo((props: Props) => {
   const { loginState } = useLoginStateStoreContext();
   const { username: viewer } = loginState;
   const [recentGamesOffset, setRecentGamesOffset] = useState(0);
-  const [isChild, setIsChild] = useState(true);
-  const [missingBirthdate, setMissingBirthdate] = useState(true);
+  const [missingBirthdate, setMissingBirthdate] = useState(true); // always true except for self
   useEffect(() => {
     axios
       .post<ProfileResponse>(
@@ -246,14 +244,7 @@ export const UserProfile = React.memo((props: Props) => {
         }
       )
       .then((resp) => {
-        if (resp.data.birth_date) {
-          const birth = moment(resp.data.birth_date, 'YYYY-MM-DD');
-          const under13 = moment().diff(birth, 'years') < 13;
-          setIsChild(under13);
-          setMissingBirthdate(false);
-        } else {
-          setMissingBirthdate(true);
-        }
+        setMissingBirthdate(!resp.data.birth_date);
         setRatings(JSON.parse(resp.data.ratings_json).Data);
         setStats(JSON.parse(resp.data.stats_json).Data);
         setUserID(resp.data.user_id);
@@ -320,7 +311,7 @@ export const UserProfile = React.memo((props: Props) => {
               <UsernameWithContext
                 omitProfileLink
                 omitSendMessage
-                fullName={!isChild && !missingBirthdate ? fullName : undefined}
+                fullName={fullName}
                 includeFlag
                 username={username}
                 userID={userID}
@@ -329,17 +320,13 @@ export const UserProfile = React.memo((props: Props) => {
               />
             ) : (
               <span className="user">
-                <span>
-                  {!isChild && !missingBirthdate && fullName
-                    ? fullName
-                    : username}
-                </span>
+                <span>{fullName || username}</span>
                 <DisplayFlag countryCode={countryCode} />
               </span>
             )}
           </h3>
         </header>
-        {!isChild && !missingBirthdate && (
+        {!(missingBirthdate && viewer === username) && (
           <BioCard bio={bio} bioLoaded={bioLoaded} />
         )}
         {missingBirthdate && viewer === username && (
