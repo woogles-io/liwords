@@ -202,13 +202,10 @@ func (s *DBStore) GetRecentGames(ctx context.Context, username string, numGames 
 	ctxDB := s.db.WithContext(ctx)
 	var games []*game
 	// gorm does not intend to support with clause. https://github.com/go-gorm/gorm/issues/3955#issuecomment-761939460
-	if results := ctxDB.Limit(numGames).
-		Offset(offset).
-		Joins("inner join (?) u on player0_id = u.id or player1_id = u.id",
-			s.db.Model(&user.User{}).Select("id").Where("lower(username) = lower(?)", username)).
-		Where("game_end_reason not in (?, ?, ?)",
-			pb.GameEndReason_NONE, pb.GameEndReason_ABORTED, pb.GameEndReason_CANCELLED).
-		Order("created_at desc").
+	if results := ctxDB.Raw(`with u as (select id from users where lower(username) = lower(?))
+		select games.* from games inner join u on (player0_id = u.id or player1_id = u.id)
+		where game_end_reason not in (?, ?, ?) order by created_at desc limit ? offset ?`,
+		username, pb.GameEndReason_NONE, pb.GameEndReason_ABORTED, pb.GameEndReason_CANCELLED, numGames, offset).
 		Find(&games); results.Error != nil {
 		return nil, results.Error
 	}
