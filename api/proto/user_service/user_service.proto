@@ -60,16 +60,6 @@ message UserGameInfo {
   repeated KickstarterBadge kickstarter_badges = 6;
 }
 
-// Request information for multiple users in a game.
-message UsersGameInfoRequest {
-  repeated string uuids = 1;
-}
-
-// Return information for multiple users in a game.
-message UsersGameInfoResponse {
-  repeated UserGameInfo infos = 1;
-}
-
 // SocketTokenRequest requests a token in order to authenticate with the
 // socket server
 message SocketTokenRequest {}
@@ -199,7 +189,6 @@ service ProfileService {
   rpc GetProfile(ProfileRequest) returns(ProfileResponse);
   rpc GetPersonalInfo(PersonalInfoRequest) returns(PersonalInfoResponse);
   rpc UpdatePersonalInfo(UpdatePersonalInfoRequest) returns(UpdatePersonalInfoResponse);
-  rpc GetUsersGameInfo(UsersGameInfoRequest) returns(UsersGameInfoResponse);
   rpc UpdateAvatar(UpdateAvatarRequest) returns(UpdateAvatarResponse);
   rpc RemoveAvatar(RemoveAvatarRequest) returns(RemoveAvatarResponse);
   rpc GetBriefProfiles(BriefProfilesRequest) returns(BriefProfilesResponse);
