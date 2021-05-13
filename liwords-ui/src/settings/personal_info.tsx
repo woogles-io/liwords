@@ -56,7 +56,6 @@ export const PersonalInfo = React.memo((props: Props) => {
   const [removeAvatarModalVisible, setRemoveAvatarModalVisible] = useState(
     false
   );
-  const [birthDate, setBirthDate] = useState(props.personalInfo.birthDate);
   const [bioTipsModalVisible, setBioTipsModalVisible] = useState(false);
   const [avatarErr, setAvatarErr] = useState('');
   const [uploadPending, setUploadPending] = useState(false);
@@ -146,6 +145,9 @@ export const PersonalInfo = React.memo((props: Props) => {
   );
 
   const updateFields = (values: { [key: string]: string }) => {
+    const birthDate = values.birthDate
+      ? moment(values.birthDate).format('YYYY-MM-DD')
+      : '';
     axios
       .post(
         toAPIUrl('user_service.ProfileService', 'UpdatePersonalInfo'),
@@ -233,7 +235,7 @@ export const PersonalInfo = React.memo((props: Props) => {
       onFinish={updateFields}
       initialValues={{
         ...props.personalInfo,
-        birth: props.personalInfo.birthDate
+        birthDate: props.personalInfo.birthDate
           ? moment(props.personalInfo.birthDate, 'YYYY-MM-DD')
           : null,
       }}
@@ -312,7 +314,7 @@ export const PersonalInfo = React.memo((props: Props) => {
       <Row>
         <Col span={23}>
           <Form.Item
-            name="birth"
+            name="birthDate"
             label={
               <>
                 Date of birth{' '}
@@ -329,9 +331,6 @@ export const PersonalInfo = React.memo((props: Props) => {
           >
             <DatePicker
               format={'YYYY-MM-DD'}
-              onChange={(date, dateString) => {
-                setBirthDate(dateString);
-              }}
               placeholder="YYYY-MM-DD"
               showToday={false}
             />
