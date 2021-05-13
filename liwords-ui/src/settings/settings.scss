@@ -274,6 +274,31 @@
       padding-bottom: 9.1px;
       margin-bottom: 20px;
       font-size: 14px;
+      &#birth {
+        margin-bottom: 0;
+        width: 100px;
+      }
+    }
+    .ant-picker {
+      padding: 0 9px;
+      margin-bottom: 20px;
+      @include colorModed() {
+        background: m($background);
+      }
+      .anticon, .anticon:hover {
+        @include colorModed() {
+          color: m($gray-medium);
+          background: m($background);
+        }
+      }
+    }
+    span.notice {
+      margin-left: 6px;
+      font-style: italic;
+      font-weight: normal;
+      @include colorModed() {
+        color: m($gray-medium);
+      }
     }
   }
   .close-account-button,

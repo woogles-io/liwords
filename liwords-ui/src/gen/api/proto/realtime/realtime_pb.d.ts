@@ -1730,6 +1730,14 @@ export interface RatingModeMap {
 
 export const RatingMode: RatingModeMap;
 
+export interface ChildStatusMap {
+  CHILD: 0;
+  NOT_CHILD: 1;
+  UNKNOWN: 2;
+}
+
+export const ChildStatus: ChildStatusMap;
+
 export interface MessageTypeMap {
   SEEK_REQUEST: 0;
   MATCH_REQUEST: 1;

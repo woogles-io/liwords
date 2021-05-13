@@ -30,6 +30,12 @@ enum RatingMode {
   CASUAL = 1;
 }
 
+enum ChildStatus {
+  CHILD = 0;
+  NOT_CHILD = 1;
+  UNKNOWN = 2;
+}
+
 // Game initialization
 // Both SeekRequest and MatchRequest encapsulate a more general GameRequest
 // object Both these types of requests can be sent from client to server or

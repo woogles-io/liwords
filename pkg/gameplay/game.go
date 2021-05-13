@@ -71,7 +71,7 @@ func InstantiateNewGame(ctx context.Context, gameStore GameStore, cfg *config.Co
 		players = append(players, &macondopb.PlayerInfo{
 			Nickname: u.Username,
 			UserId:   u.UUID,
-			RealName: u.RealName(),
+			RealName: u.RealNameIfNotYouth(),
 		})
 		dbids[idx] = u.ID
 	}
@@ -155,13 +155,6 @@ func InstantiateNewGame(ctx context.Context, gameStore GameStore, cfg *config.Co
 			Rating:   u.GetRelevantRating(ratingKey),
 			IsBot:    u.IsBot,
 			First:    gameRunner.FirstPlayer().UserId == u.UUID,
-		}
-		if u.Profile != nil {
-			playerinfos[idx].FullName = u.RealName()
-			playerinfos[idx].CountryCode = u.Profile.CountryCode
-			playerinfos[idx].Title = u.Profile.Title
-			// There is no avatar URL yet.
-			// playerinfos[idx].AvatarUrl = u.Profile.AvatarUrl
 		}
 	}
 

@@ -15,8 +15,10 @@ import { GameMetadata, RecentGamesResponse } from '../gameroom/game_info';
 import { GamesHistoryCard } from './games_history';
 import { UsernameWithContext } from '../shared/usernameWithContext';
 import { moderateUser } from '../mod/moderate';
+import { DisplayFlag } from '../shared/display_flag';
 
 type ProfileResponse = {
+  birth_date: string;
   first_name: string;
   last_name: string;
   country_code: string;
@@ -226,12 +228,13 @@ export const UserProfile = React.memo((props: Props) => {
   const [avatarUrl, setAvatarUrl] = useState('');
   const [avatarsEditable, setAvatarsEditable] = useState(false);
   const [bio, setBio] = useState('');
+  const [countryCode, setCountryCode] = useState('');
   const [bioLoaded, setBioLoaded] = useState(false);
   const [recentGames, setRecentGames] = useState<Array<GameMetadata>>([]);
   const { loginState } = useLoginStateStoreContext();
   const { username: viewer } = loginState;
   const [recentGamesOffset, setRecentGamesOffset] = useState(0);
-  const [blockedUsers, setBlockedUsers] = useState<Array<user>>([]);
+  const [missingBirthdate, setMissingBirthdate] = useState(true); // always true except for self
   useEffect(() => {
     axios
       .post<ProfileResponse>(
@@ -241,9 +244,11 @@ export const UserProfile = React.memo((props: Props) => {
         }
       )
       .then((resp) => {
+        setMissingBirthdate(!resp.data.birth_date);
         setRatings(JSON.parse(resp.data.ratings_json).Data);
         setStats(JSON.parse(resp.data.stats_json).Data);
         setUserID(resp.data.user_id);
+        setCountryCode(resp.data.country_code);
         setFullName(resp.data.full_name);
         setAvatarUrl(resp.data.avatar_url);
         setAvatarsEditable(resp.data.avatars_editable);
@@ -252,18 +257,6 @@ export const UserProfile = React.memo((props: Props) => {
       })
       .catch(errorCatcher);
   }, [username, location.pathname]);
-  const refreshBlocks = useCallback(() => {
-    axios
-      .post(
-        toAPIUrl('user_service.SocializeService', 'GetBlocks'),
-        {},
-        { withCredentials: true }
-      )
-      .then((res) => {
-        setBlockedUsers(res.data.users);
-      });
-  }, []);
-  useEffect(refreshBlocks, [refreshBlocks]);
   useEffect(() => {
     axios
       .post<RecentGamesResponse>(
@@ -302,33 +295,46 @@ export const UserProfile = React.memo((props: Props) => {
       </Row>
 
       <div className="profile">
+        {viewer === username ? (
+          <div className="settings-link">
+            <Link to="/settings">Edit settings</Link>
+          </div>
+        ) : null}{' '}
         <header>
+          <PlayerAvatar
+            player={player}
+            editable={avatarEditable}
+            username={username}
+          />
           <h3>
             {viewer !== username ? (
               <UsernameWithContext
                 omitProfileLink
                 omitSendMessage
+                fullName={fullName}
+                includeFlag
                 username={username}
                 userID={userID}
                 showModTools
                 moderate={moderateUser}
               />
             ) : (
-              username
+              <span className="user">
+                <span>{fullName || username}</span>
+                <DisplayFlag countryCode={countryCode} />
+              </span>
             )}
-            <PlayerAvatar
-              player={player}
-              editable={avatarEditable}
-              username={username}
-            ></PlayerAvatar>
           </h3>
-          {viewer === username ? (
-            <div>
-              <Link to="/settings">Edit settings</Link>
-            </div>
-          ) : null}{' '}
         </header>
-        <BioCard bio={bio} bioLoaded={bioLoaded} />
+        {!(missingBirthdate && viewer === username) && (
+          <BioCard bio={bio} bioLoaded={bioLoaded} />
+        )}
+        {missingBirthdate && viewer === username && (
+          <div className="bio">
+            <Link to={'/settings'}>Let us know your birthdate</Link> to share
+            your bio and details
+          </div>
+        )}
         <RatingsCard ratings={ratings} />
         <GamesHistoryCard
           games={recentGames}
@@ -338,23 +344,6 @@ export const UserProfile = React.memo((props: Props) => {
           fetchNext={recentGames.length < gamesPageSize ? undefined : fetchNext}
         />
         <StatsCard stats={stats} />
-
-        {viewer === username && blockedUsers.length > 0 && (
-          <Card title="Blocked Users" className="blocked-users">
-            {blockedUsers.map((u) => (
-              <UsernameWithContext
-                key={u.uuid}
-                blockCallback={refreshBlocks}
-                omitProfileLink
-                omitSendMessage
-                username={u.username}
-                userID={u.uuid}
-                showModTools
-                moderate={moderateUser}
-              />
-            ))}
-          </Card>
-        )}
       </div>
     </>
   );

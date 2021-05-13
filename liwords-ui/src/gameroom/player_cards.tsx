@@ -12,7 +12,7 @@ import { PlayerAvatar } from '../shared/player_avatar';
 import './scss/playerCards.scss';
 import { GameMetadata, PlayerMetadata } from './game_info';
 import { PlayState } from '../gen/macondo/api/proto/macondo/macondo_pb';
-import { DisplayFlag } from '../shared/display_flag';
+import { DisplayUserFlag } from '../shared/display_flag';
 import { useBriefProfile } from '../utils/brief_profiles';
 
 const colors = require('../base.scss');
@@ -62,10 +62,11 @@ const PlayerCard = React.memo((props: CardProps) => {
       <Row className="player">
         <PlayerAvatar player={meta} />
         <div className="player-info">
-          <p className="player-name">{meta?.full_name || meta?.nickname}</p>
-
+          <p className="player-name">
+            {briefProfile?.getFullName() || meta?.nickname}
+          </p>
           <div className="player-details">
-            <DisplayFlag countryCode={briefProfile?.getCountryCode()} />
+            <DisplayUserFlag uuid={props.player?.userID} />
             {meta?.rating || 'Unrated'} •{' '}
             <Link
               target="_blank"

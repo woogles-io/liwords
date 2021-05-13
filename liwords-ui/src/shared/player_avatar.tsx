@@ -15,11 +15,8 @@ type AvatarProps = {
 
 export const PlayerAvatar = (props: AvatarProps) => {
   // Do not useBriefProfile if avatar_url is explicitly passed in as "".
-  const givenAvatarUrl = props.player?.avatar_url;
-  const profile = useBriefProfile(
-    givenAvatarUrl != null ? undefined : props.player?.user_id
-  );
-  const avatarUrl = givenAvatarUrl ?? profile?.getAvatarUrl();
+  const profile = useBriefProfile(props.player?.user_id);
+  const avatarUrl = props.player?.avatar_url ?? profile?.getAvatarUrl();
 
   let avatarStyle = {};
 
@@ -39,7 +36,7 @@ export const PlayerAvatar = (props: AvatarProps) => {
     <div className="player-avatar" style={avatarStyle}>
       {!avatarUrl
         ? fixedCharAt(
-            props.player?.full_name ||
+            profile?.getFullName() ||
               props.player?.nickname ||
               props.username ||
               '?',

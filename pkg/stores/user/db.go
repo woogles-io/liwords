@@ -8,6 +8,7 @@ import (
 	"math/rand"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/jinzhu/gorm"
 	"github.com/jinzhu/gorm/dialects/postgres"
@@ -57,6 +58,8 @@ type profile struct {
 	FirstName string `gorm:"type:varchar(32)"`
 	LastName  string `gorm:"type:varchar(64)"`
 
+	BirthDate string `gorm:"type:varchar(11)"`
+
 	CountryCode string `gorm:"type:varchar(3)"`
 	// Title is some sort of acronym/shorthand for a title. Like GM, EX, SM, UK-GM (UK Grandmaster?)
 	Title string `gorm:"type:varchar(8)"`
@@ -79,6 +82,9 @@ type briefProfile struct {
 	InternalBot bool
 	CountryCode string
 	AvatarUrl   string
+	FirstName   string // XXX please add full_name to db instead.
+	LastName    string // XXX please add full_name to db instead.
+	BirthDate   string
 }
 
 type following struct {
@@ -244,6 +250,7 @@ func dbProfileToProfile(p *profile) (*entity.Profile, error) {
 	return &entity.Profile{
 		FirstName:   p.FirstName,
 		LastName:    p.LastName,
+		BirthDate:   p.BirthDate,
 		CountryCode: p.CountryCode,
 		Title:       p.Title,
 		About:       p.About,
@@ -422,7 +429,7 @@ func (s *DBStore) GetBriefProfiles(ctx context.Context, uuids []string) (map[str
 		Table("users").
 		Joins("left join profiles on users.id = profiles.user_id").
 		Where("uuid in (?)", uuids).
-		Select([]string{"uuid", "username", "internal_bot", "country_code", "avatar_url"}).
+		Select([]string{"uuid", "username", "internal_bot", "country_code", "avatar_url", "first_name", "last_name", "birth_date"}).
 		Find(&profiles); result.Error != nil {
 		return nil, result.Error
 	}
@@ -431,6 +438,8 @@ func (s *DBStore) GetBriefProfiles(ctx context.Context, uuids []string) (map[str
 	for _, profile := range profiles {
 		profileMap[profile.UUID] = profile
 	}
+
+	now := time.Now()
 
 	response := make(map[string]*pb.BriefProfile)
 	for _, uuid := range uuids {
@@ -442,17 +451,34 @@ func (s *DBStore) GetBriefProfiles(ctx context.Context, uuids []string) (map[str
 			// see entity/user.go
 			prof.AvatarUrl = "https://woogles-prod-assets.s3.amazonaws.com/macondog.png"
 		}
+		subjectIsAdult := entity.IsAdult(prof.BirthDate, now)
+		avatarUrl := ""
+		fullName := ""
+		if subjectIsAdult {
+			avatarUrl = prof.AvatarUrl
+			// see entity/user.go RealName()
+			if prof.FirstName != "" {
+				if prof.LastName != "" {
+					fullName = prof.FirstName + " " + prof.LastName
+				} else {
+					fullName = prof.FirstName
+				}
+			} else {
+				fullName = prof.LastName
+			}
+		}
 		response[uuid] = &pb.BriefProfile{
 			Username:    prof.Username,
 			CountryCode: prof.CountryCode,
-			AvatarUrl:   prof.AvatarUrl,
+			AvatarUrl:   avatarUrl,
+			FullName:    fullName,
 		}
 	}
 
 	return response, nil
 }
 
-func (s *DBStore) SetPersonalInfo(ctx context.Context, uuid string, email string, firstName string, lastName string, countryCode string, about string) error {
+func (s *DBStore) SetPersonalInfo(ctx context.Context, uuid string, email string, firstName string, lastName string, birthDate string, countryCode string, about string) error {
 	u := &User{}
 	p := &profile{}
 
@@ -469,6 +495,7 @@ func (s *DBStore) SetPersonalInfo(ctx context.Context, uuid string, email string
 
 		return tx.Model(p).Update(map[string]interface{}{"first_name": firstName,
 			"last_name":    lastName,
+			"birth_date":   birthDate,
 			"about":        about,
 			"country_code": countryCode}).Error
 	})

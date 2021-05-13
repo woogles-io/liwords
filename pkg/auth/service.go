@@ -174,12 +174,14 @@ func (as *AuthenticationService) GetSocketToken(ctx context.Context, r *pb.Socke
 	if u.IsMod {
 		perms = append(perms, "mod")
 	}
+
 	// Create an unauth token.
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
 		"exp":   time.Now().Add(TokenExpiration).Unix(),
 		"uid":   uuid,
 		"unn":   unn,
 		"a":     authed,
+		"cs":    u.IsChild(),
 		"perms": strings.Join(perms, ","),
 	})
 	tokenString, err := token.SignedString([]byte(as.secretKey))
