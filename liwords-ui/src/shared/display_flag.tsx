@@ -1,4 +1,5 @@
 import React from 'react';
+import { useBriefProfile } from '../utils/brief_profiles';
 
 type DisplayFlagProps = {
   className?: string;
@@ -16,3 +17,15 @@ export const DisplayFlag = (props: DisplayFlagProps) => (
     ) : null}
   </>
 );
+
+export const DisplayUserFlag = ({ uuid }: { uuid: string | undefined }) => {
+  const briefProfile = useBriefProfile(uuid);
+
+  return (
+    <React.Fragment>
+      {briefProfile && (
+        <DisplayFlag countryCode={briefProfile.getCountryCode()} />
+      )}
+    </React.Fragment>
+  );
+};
