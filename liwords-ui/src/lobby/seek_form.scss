@@ -53,7 +53,9 @@
   }
   .ant-form-item-explain,
   .ant-form-item-extra {
-    display: none;
+    @include colorModed() {
+      color: m($gray-extreme);
+    }
   }
   .ant-form-item-with-help {
     margin-bottom: 24px;
