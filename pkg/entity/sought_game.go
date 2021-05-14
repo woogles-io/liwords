@@ -104,8 +104,5 @@ func ValidateGameRequest(ctx context.Context, req *pb.GameRequest) error {
 	if req.MaxOvertimeMinutes > 0 && req.IncrementSeconds > 0 {
 		return errors.New("you can have increments or max overtime, but not both")
 	}
-	if req.PlayerVsBot && TotalTimeEstimate(req) < 45 {
-		return errors.New("this time control is too fast for our poor bot")
-	}
 	return nil
 }
