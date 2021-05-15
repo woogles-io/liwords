@@ -408,7 +408,7 @@ func TestListActive(t *testing.T) {
 	createGame("jesse", "mina", int32(240), is)
 	ustore := userStore(TestingDBConnStr + " dbname=liwords_test")
 
-	// There should be an additional game, so 3 total, from recreateDB()
+	// There should be two additional games, so 4 total, from recreateDB()
 	// The first game is cesar vs mina. (see TestGet)
 	store, err := NewDBStore(&config.Config{
 		MacondoConfig: DefaultConfig,
@@ -417,7 +417,7 @@ func TestListActive(t *testing.T) {
 
 	games, err := store.ListActive(context.Background(), "")
 	is.NoErr(err)
-	is.Equal(len(games.GameInfo), 3)
+	is.Equal(len(games.GameInfo), 4)
 	is.Equal(games.GameInfo[0].Players, []*gs.PlayerInfo{
 		{Rating: "1600?", Nickname: "mina"},
 		{Rating: "500?", Nickname: "cesar"},
