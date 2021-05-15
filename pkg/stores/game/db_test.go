@@ -222,6 +222,7 @@ func createGame(p0, p1 string, initTime int32, is *is.I) *entity.Game {
 	mcg.StartGame()
 	mcg.SetChallengeRule(macondopb.ChallengeRule_FIVE_POINT)
 	mcg.SetBackupMode(macondogame.InteractiveGameplayMode)
+	mcg.SetStateStackLength(1)
 	entGame := entity.NewGame(mcg, &pb.GameRequest{
 		InitialTimeSeconds: initTime,
 		ChallengeRule:      macondopb.ChallengeRule_FIVE_POINT,
