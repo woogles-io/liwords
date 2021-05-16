@@ -18,7 +18,6 @@ import (
 	"github.com/domino14/macondo/gaddag"
 	macondogame "github.com/domino14/macondo/game"
 	macondopb "github.com/domino14/macondo/gen/api/proto/macondo"
-	"github.com/domino14/macondo/move"
 
 	"github.com/domino14/liwords/pkg/config"
 	"github.com/domino14/liwords/pkg/entity"
@@ -352,54 +351,6 @@ func TestGet(t *testing.T) {
 	store.Disconnect()
 }
 
-func TestGetWithPhony(t *testing.T) {
-	log.Info().Msg("TestGetWithPhony")
-	ustore := recreateDB()
-	addGameWithPhony(ustore)
-
-	is := is.New(t)
-
-	store, err := NewDBStore(&config.Config{
-		MacondoConfig: DefaultConfig,
-		DBConnString:  TestingDBConnStr + " dbname=liwords_test",
-	}, ustore)
-	is.NoErr(err)
-
-	entGame, err := store.Get(context.Background(), "pECpWydZ")
-	is.NoErr(err)
-	log.Info().Interface("entGame history", entGame.History()).Msg("history")
-
-	is.Equal(entGame.GameID(), "pECpWydZ")
-	is.Equal(entGame.NickOnTurn(), "cesar")
-	is.Equal(entGame.RackLettersFor(0), "EEHKNOQ")
-	is.Equal(entGame.RackLettersFor(1), "DEMOOW?")
-	is.Equal(entGame.ChallengeRule(), macondopb.ChallengeRule_FIVE_POINT)
-	is.Equal(entGame.History().ChallengeRule, macondopb.ChallengeRule_FIVE_POINT)
-
-	m := move.NewChallengeMove(alphabet.RackFromString("EEHKNOQ", entGame.Alphabet()).TilesOn(),
-		entGame.Alphabet())
-
-	_, err = entGame.Game.ValidateMove(m)
-	is.NoErr(err)
-
-	valid, err := entGame.Game.ChallengeEvent(0, 1234)
-	is.NoErr(err)
-	is.Equal(valid, false)
-
-	// Check that the game rolled back successfully
-	is.Equal(len(entGame.History().Events), 3)
-	is.Equal(entGame.History().Events[2].Type, macondopb.GameEvent_PHONY_TILES_RETURNED)
-	// The tiles in the phony "DORMINE" should be gone.
-	// An already empty tile to the left of DORMINE*
-	is.Equal(entGame.Game.Board().GetLetter(6, 6).IsPlayedTile(), false)
-	// The D in DORMINE:
-	is.Equal(entGame.Game.Board().GetLetter(6, 7).IsPlayedTile(), false)
-
-	// Clean up connections
-	ustore.(*user.DBStore).Disconnect()
-	store.Disconnect()
-}
-
 func TestListActive(t *testing.T) {
 	log.Info().Msg("TestListActive")
 	recreateDB()
@@ -414,6 +365,7 @@ func TestListActive(t *testing.T) {
 		MacondoConfig: DefaultConfig,
 		DBConnString:  TestingDBConnStr + " dbname=liwords_test",
 	}, ustore)
+	is.NoErr(err)
 
 	games, err := store.ListActive(context.Background(), "")
 	is.NoErr(err)
