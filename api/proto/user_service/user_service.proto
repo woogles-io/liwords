@@ -55,18 +55,9 @@ message UserGameInfo {
   string avatar_url = 2;
   string title = 3;
   string full_name = 4;
-  CountryFlag flag = 5;
+  // CountryFlag appears to be obsolete; we fetch these using BriefProfiles
+  CountryFlag flag = 5 [deprecated=true]; 
   repeated KickstarterBadge kickstarter_badges = 6;
-}
-
-// Request information for multiple users in a game.
-message UsersGameInfoRequest {
-  repeated string uuids = 1;
-}
-
-// Return information for multiple users in a game.
-message UsersGameInfoResponse {
-  repeated UserGameInfo infos = 1;
 }
 
 // SocketTokenRequest requests a token in order to authenticate with the
@@ -133,6 +124,7 @@ message ProfileResponse {
   string avatar_url = 9;
   string full_name = 10;
   bool avatars_editable = 11;
+  string birth_date = 12;
 }
 
 message PersonalInfoRequest { }
@@ -145,6 +137,7 @@ message PersonalInfoResponse {
   string avatar_url = 5;
   string full_name = 6;
   string about = 7;
+  string birth_date = 8;
 }
 
 message UpdatePersonalInfoRequest {
@@ -155,6 +148,7 @@ message UpdatePersonalInfoRequest {
   string avatar_url = 5;
   string full_name = 6;
   string about = 7;
+  string birth_date = 8;
 }
 
 message UpdatePersonalInfoResponse { }
@@ -180,6 +174,7 @@ message BriefProfilesRequest {
 // this is a subset of ProfileResponse
 message BriefProfile {
   string username = 1;
+  string full_name = 2; // omitted for non-adults
   string country_code = 3;
   string avatar_url = 9;
 }
@@ -194,7 +189,6 @@ service ProfileService {
   rpc GetProfile(ProfileRequest) returns(ProfileResponse);
   rpc GetPersonalInfo(PersonalInfoRequest) returns(PersonalInfoResponse);
   rpc UpdatePersonalInfo(UpdatePersonalInfoRequest) returns(UpdatePersonalInfoResponse);
-  rpc GetUsersGameInfo(UsersGameInfoRequest) returns(UsersGameInfoResponse);
   rpc UpdateAvatar(UpdateAvatarRequest) returns(UpdateAvatarResponse);
   rpc RemoveAvatar(RemoveAvatarRequest) returns(RemoveAvatarResponse);
   rpc GetBriefProfiles(BriefProfilesRequest) returns(BriefProfilesResponse);

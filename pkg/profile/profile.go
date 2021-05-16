@@ -4,8 +4,10 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"time"
 
 	"github.com/domino14/liwords/pkg/apiserver"
+	"github.com/domino14/liwords/pkg/entity"
 	"github.com/domino14/liwords/pkg/mod"
 	"github.com/domino14/liwords/pkg/user"
 	"github.com/rs/zerolog/log"
@@ -57,10 +59,18 @@ func (ps *ProfileService) GetStats(ctx context.Context, r *pb.StatsRequest) (*pb
 }
 
 func (ps *ProfileService) GetProfile(ctx context.Context, r *pb.ProfileRequest) (*pb.ProfileResponse, error) {
+	sess, err := apiserver.GetSession(ctx)
+	if err != nil {
+		// This is fine. No, not that meme. It's really fine.
+		sess = nil
+	}
+
 	user, err := ps.userStore.Get(ctx, r.Username)
 	if err != nil {
 		return nil, twirp.NewError(twirp.InvalidArgument, err.Error())
 	}
+
+	subjectIsMe := sess != nil && sess.UserUUID == user.UUID
 
 	ratings := user.Profile.Ratings
 	ratjson, err := json.Marshal(ratings)
@@ -74,17 +84,28 @@ func (ps *ProfileService) GetProfile(ctx context.Context, r *pb.ProfileRequest) 
 		return nil, twirp.InternalErrorWith(err)
 	}
 
+	subjectIsAdult := entity.IsAdult(user.Profile.BirthDate, time.Now())
+	concealIf := func(b bool, s string) string {
+		if b {
+			return ""
+		} else {
+			return s
+		}
+	}
+	childProof := func(s string) string { return concealIf(!(subjectIsMe || subjectIsAdult), s) }
+
 	return &pb.ProfileResponse{
-		FirstName:       user.Profile.FirstName,
-		LastName:        user.Profile.LastName,
-		FullName:        user.RealName(),
+		FirstName:       childProof(user.Profile.FirstName),
+		LastName:        childProof(user.Profile.LastName),
+		BirthDate:       concealIf(!subjectIsMe, user.Profile.BirthDate),
+		FullName:        childProof(user.RealName()),
 		CountryCode:     user.Profile.CountryCode,
 		Title:           user.Profile.Title,
-		About:           user.Profile.About,
+		About:           childProof(user.Profile.About),
 		RatingsJson:     string(ratjson),
 		StatsJson:       string(statjson),
 		UserId:          user.UUID,
-		AvatarUrl:       user.AvatarUrl(),
+		AvatarUrl:       childProof(user.AvatarUrl()),
 		AvatarsEditable: ps.avatarService != nil,
 	}, nil
 }
@@ -108,6 +129,7 @@ func (ps *ProfileService) GetPersonalInfo(ctx context.Context, r *pb.PersonalInf
 		Email:       user.Email,
 		FirstName:   user.Profile.FirstName,
 		LastName:    user.Profile.LastName,
+		BirthDate:   user.Profile.BirthDate,
 		CountryCode: user.Profile.CountryCode,
 		AvatarUrl:   user.AvatarUrl(),
 		FullName:    user.RealName(),
@@ -130,31 +152,12 @@ func (ps *ProfileService) UpdatePersonalInfo(ctx context.Context, r *pb.UpdatePe
 		return nil, twirp.InternalErrorWith(err)
 	}
 
-	updateErr := ps.userStore.SetPersonalInfo(ctx, user.UUID, r.Email, r.FirstName, r.LastName, r.CountryCode, r.About)
+	updateErr := ps.userStore.SetPersonalInfo(ctx, user.UUID, r.Email, r.FirstName, r.LastName, r.BirthDate, r.CountryCode, r.About)
 	if updateErr != nil {
 		return nil, twirp.InternalErrorWith(updateErr)
 	}
 
 	return &pb.UpdatePersonalInfoResponse{}, nil
-}
-
-func (ps *ProfileService) GetUsersGameInfo(ctx context.Context, r *pb.UsersGameInfoRequest) (*pb.UsersGameInfoResponse, error) {
-	var infos []*pb.UserGameInfo
-
-	for _, uuid := range r.Uuids {
-		user, err := ps.userStore.GetByUUID(ctx, uuid)
-		if err == nil {
-			infos = append(infos, &pb.UserGameInfo{
-				Uuid:      uuid,
-				AvatarUrl: user.AvatarUrl(),
-				Title:     user.Profile.Title,
-			})
-		}
-	}
-
-	return &pb.UsersGameInfoResponse{
-		Infos: infos,
-	}, nil
 }
 
 func (ps *ProfileService) UpdateAvatar(ctx context.Context, r *pb.UpdateAvatarRequest) (*pb.UpdateAvatarResponse, error) {

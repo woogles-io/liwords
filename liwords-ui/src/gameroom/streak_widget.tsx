@@ -113,6 +113,12 @@ export const StreakWidget = React.memo((props: Props) => {
       );
     });
 
+  const pStyle = {
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap' as 'nowrap',
+  };
+
   return (
     <Card style={{ marginTop: 10 }}>
       <Row>
@@ -120,9 +126,9 @@ export const StreakWidget = React.memo((props: Props) => {
           {pergame}
         </Col>
         <Col span={6}>
-          <div style={{ marginLeft: 20, display: 'inline-block' }}>
-            <p>{first}</p>
-            <p>{second}</p>
+          <div style={{ marginLeft: 20 }}>
+            <p style={pStyle}>{first}</p>
+            <p style={pStyle}>{second}</p>
           </div>
         </Col>
         <Col span={2}>

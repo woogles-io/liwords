@@ -721,7 +721,8 @@ ul {
   .ant-notification,
   .ant-message {
     .ant-notification-notice,
-    .ant-message-notice-content {
+    .ant-message-notice-content,
+    a {
       @include type-default;
       font-size: 15px;
       font-weight: 600;

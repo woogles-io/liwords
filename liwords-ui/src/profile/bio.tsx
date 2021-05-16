@@ -3,7 +3,6 @@ import ReactMarkdown from 'react-markdown';
 import { useMountedState } from '../utils/mounted';
 import { useParams } from 'react-router-dom';
 import { useLoginStateStoreContext } from '../store/store';
-import { Card } from 'antd';
 
 type BioProps = {
   bio: string;
@@ -20,16 +19,13 @@ export const BioCard = React.memo((props: BioProps) => {
 
   React.useEffect(() => {
     setLatestBio(props.bio);
-    console.log('useEffect');
   }, [props.bio]);
 
   return viewer === username || latestBio !== '' ? (
-    <Card title="Bio">
+    <div className="bio">
       <ReactMarkdown>
         {latestBio ? latestBio : "You haven't yet provided your bio."}
       </ReactMarkdown>
-    </Card>
-  ) : (
-    <React.Fragment />
-  );
+    </div>
+  ) : null;
 });

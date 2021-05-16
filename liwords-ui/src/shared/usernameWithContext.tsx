@@ -2,16 +2,16 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { Dropdown } from 'antd';
 import { TheBlocker } from './blocker';
-import { useBriefProfile } from '../utils/brief_profiles';
 import { useLoginStateStoreContext } from '../store/store';
 import { canMod } from '../mod/perms';
-import { DisplayFlag } from './display_flag';
+import { DisplayUserFlag } from './display_flag';
 import { SettingOutlined } from '@ant-design/icons';
 import { TheFollower } from './follower';
 
 type UsernameWithContextProps = {
   additionalMenuItems?: React.ReactNode;
   includeFlag?: boolean;
+  fullName?: string;
   omitProfileLink?: boolean;
   omitSendMessage?: boolean;
   omitFriend?: boolean;
@@ -31,7 +31,6 @@ type UsernameWithContextProps = {
 export const UsernameWithContext = (props: UsernameWithContextProps) => {
   const { loginState } = useLoginStateStoreContext();
   const { loggedIn, userID, perms } = loginState;
-  const briefProfile = useBriefProfile(props.userID);
   const userMenu = (
     <ul>
       {loggedIn &&
@@ -111,10 +110,8 @@ export const UsernameWithContext = (props: UsernameWithContextProps) => {
           <SettingOutlined />
         ) : (
           <>
-            {props.username}
-            {briefProfile && props.includeFlag && (
-              <DisplayFlag countryCode={briefProfile!.getCountryCode()} />
-            )}
+            {props.fullName || props.username}
+            {props.includeFlag && <DisplayUserFlag uuid={props.userID} />}
           </>
         )}
       </span>

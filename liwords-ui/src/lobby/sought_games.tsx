@@ -12,8 +12,7 @@ import {
 import { SoughtGame } from '../store/reducers/lobby_reducer';
 import { useMountedState } from '../utils/mounted';
 import { PlayerAvatar } from '../shared/player_avatar';
-import { DisplayFlag } from '../shared/display_flag';
-import { useBriefProfile } from '../utils/brief_profiles';
+import { DisplayUserFlag } from '../shared/display_flag';
 import { RatingBadge } from './rating_badge';
 
 export const timeFormat = (
@@ -48,18 +47,16 @@ type PlayerProps = {
 };
 
 export const PlayerDisplay = (props: PlayerProps) => {
-  const profile = useBriefProfile(props.userID);
   return (
     <div className="player-display">
       <PlayerAvatar
         player={{
-          avatar_url: profile?.getAvatarUrl(),
           user_id: props.userID,
           nickname: props.username,
         }}
       />
       <span className="player-name">{props.username}</span>
-      <DisplayFlag countryCode={profile?.getCountryCode()} />
+      <DisplayUserFlag uuid={props.userID} />
     </div>
   );
 };

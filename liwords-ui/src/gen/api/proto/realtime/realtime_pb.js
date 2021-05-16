@@ -24,6 +24,7 @@ goog.exportSymbol('proto.liwords.ActiveGamePlayer', null, global);
 goog.exportSymbol('proto.liwords.ChatMessage', null, global);
 goog.exportSymbol('proto.liwords.ChatMessageDeleted', null, global);
 goog.exportSymbol('proto.liwords.ChatMessages', null, global);
+goog.exportSymbol('proto.liwords.ChildStatus', null, global);
 goog.exportSymbol('proto.liwords.ClientGameplayEvent', null, global);
 goog.exportSymbol('proto.liwords.ClientGameplayEvent.EventType', null, global);
 goog.exportSymbol('proto.liwords.DeclineMatchRequest', null, global);
@@ -13364,6 +13365,15 @@ proto.liwords.GameMode = {
 proto.liwords.RatingMode = {
   RATED: 0,
   CASUAL: 1
+};
+
+/**
+ * @enum {number}
+ */
+proto.liwords.ChildStatus = {
+  CHILD: 0,
+  NOT_CHILD: 1,
+  UNKNOWN: 2
 };
 
 /**

@@ -6,7 +6,6 @@ import {
   useLoginStateStoreContext,
   usePresenceStoreContext,
 } from '../store/store';
-import { useBriefProfile } from '../utils/brief_profiles';
 import { PlayerAvatar } from '../shared/player_avatar';
 import { moderateUser } from '../mod/moderate';
 import { Form, Input } from 'antd';
@@ -32,8 +31,6 @@ type PlayerProps = {
 };
 
 const Player = React.memo((props: PlayerProps) => {
-  const profile = useBriefProfile(props.uuid);
-
   const online = props.fromChat || (props.channel && props.channel?.length > 0);
   let inGame =
     props.channel && props.channel.some((c) => c.includes('chat.game.'));
@@ -51,7 +48,6 @@ const Player = React.memo((props: PlayerProps) => {
     >
       <PlayerAvatar
         player={{
-          avatar_url: profile?.getAvatarUrl(),
           user_id: props.uuid,
           nickname: props.username,
         }}
