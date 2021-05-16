@@ -326,6 +326,31 @@ func (g *Game) SendChange(e *EventWrapper) {
 	log.Debug().Msg("change sent")
 }
 
+func (g *Game) NewActiveGameEntry(gameStillActive bool) *EventWrapper {
+	ttl := int64(0) // seconds
+	if gameStillActive {
+		// Ideally we would set this based on time remaining (and round it up).
+		// But since we don't want to refresh every turn, we can just set a very long expiry here.
+		// A 60min + 60sec increment game can take 12 hours.
+		// - Both players start with 60 mins each.
+		// - Game lasts 600 turns (5 passes, play one tile, repeat 100 times).
+		ttl = 12 * 60 * 60
+	}
+	players := g.History().Players
+	activeGamePlayers := make([]*pb.ActiveGamePlayer, 0, len(players))
+	for _, player := range players {
+		activeGamePlayers = append(activeGamePlayers, &pb.ActiveGamePlayer{
+			Username: player.Nickname,
+			UserId:   player.UserId,
+		})
+	}
+	return WrapEvent(&pb.ActiveGameEntry{
+		Id:     g.GameID(),
+		Player: activeGamePlayers,
+		Ttl:    ttl,
+	}, pb.MessageType_ACTIVE_GAME_ENTRY)
+}
+
 func (g *Game) SetGameEndReason(r pb.GameEndReason) {
 	g.GameEndReason = r
 }

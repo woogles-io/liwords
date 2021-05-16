@@ -17,9 +17,10 @@ import { ActionType } from '../actions/actions';
 import axios from 'axios';
 import { toAPIUrl } from '../api/api';
 import { Pairings } from './pairings';
-import { isPairedMode } from '../store/constants';
+import { isPairedMode, isClubType } from '../store/constants';
 import { Standings } from './standings';
 import { DirectorTools } from './director_tools';
+// import { CheckIn } from './check_in';
 
 export type RecentTournamentGames = {
   games: Array<RecentGame>;
@@ -72,7 +73,7 @@ export const ActionsPanel = React.memo((props: Props) => {
   const [selectedRound, setSelectedRound] = useState(initialRound);
   const [selectedDivision, setSelectedDivision] = useState(initialDivision);
   const { lobbyContext } = useLobbyStoreContext();
-  const tournamentID = tournamentContext.metadata.id;
+  const tournamentID = tournamentContext.metadata?.getId();
 
   const lobbyContextMatchRequests = lobbyContext?.matchRequests;
   const thisTournamentMatchRequests = useMemo(
@@ -162,7 +163,8 @@ export const ActionsPanel = React.memo((props: Props) => {
     if (
       !isDirector ||
       !(typeof roundToStart === 'number') ||
-      !(roundToStart === selectedRound)
+      !(roundToStart === selectedRound) ||
+      roundToStart === 0 // (handle this with Start Tournament)
     ) {
       return null;
     }
@@ -183,7 +185,8 @@ export const ActionsPanel = React.memo((props: Props) => {
         .catch((err) => {
           message.error({
             content:
-              'Round cannot be started yet. Please check with the Woogles team.',
+              'Round cannot be started yet. The error message was: ' +
+              err.response?.data?.msg,
             duration: 8,
           });
           console.log('Error starting round: ' + err.response?.data?.msg);
@@ -197,9 +200,10 @@ export const ActionsPanel = React.memo((props: Props) => {
   };
   const renderGamesTab = () => {
     if (selectedGameTab === 'GAMES') {
-      if (isPairedMode(tournamentContext.metadata.type)) {
+      if (isPairedMode(tournamentContext.metadata?.getType())) {
         return (
           <div className="pairings-container">
+            {/* <CheckIn /> */}
             <div className="round-options">
               {renderDivisionSelector}
               {renderStartRoundButton()}
@@ -209,6 +213,7 @@ export const ActionsPanel = React.memo((props: Props) => {
               selectedDivision={selectedDivision}
               username={username}
               sendReady={props.sendReady}
+              isDirector={isDirector}
             />
           </div>
         );
@@ -234,7 +239,7 @@ export const ActionsPanel = React.memo((props: Props) => {
     if (selectedGameTab === 'RECENT') {
       return (
         <>
-          <h4>Recent Games</h4>
+          <h4>Recent games</h4>
           <RecentTourneyGames
             games={tournamentContext.finishedTourneyGames}
             fetchPrev={
@@ -263,7 +268,7 @@ export const ActionsPanel = React.memo((props: Props) => {
   const matchModal = (
     <Modal
       className="seek-modal"
-      title="Send Match Request"
+      title="Send match request"
       visible={matchModalVisible}
       destroyOnClose
       onCancel={() => {
@@ -286,27 +291,33 @@ export const ActionsPanel = React.memo((props: Props) => {
           type="submit"
           disabled={formDisabled}
         >
-          Create Game
+          Create game
         </button>,
       ]}
     >
       <SeekForm
         onFormSubmit={onFormSubmit}
         loggedIn={props.loggedIn}
+        username={props.username}
         showFriendInput={true}
         id="match-seek"
         tournamentID={props.tournamentID}
       />
     </Modal>
   );
+
+  const idFromPlayerEntry = useCallback((p: string) => p.split(':')[0], []);
   useEffect(() => {
-    const idFromPlayerEntry = (p: string) => p.split(':')[0];
     const divisionArray = Object.values(divisions);
     const foundDivision = userID
       ? divisionArray.find((d) => {
-          return d.players.map(idFromPlayerEntry).includes(userID);
+          return d.players
+            .map((v) => v.getId())
+            .map(idFromPlayerEntry)
+            .includes(userID);
         })
       : undefined;
+    // look for ourselves in the division.
     if (foundDivision) {
       if (!competitorStatusLoaded) {
         setCompetitorStatusLoaded(true);
@@ -316,9 +327,13 @@ export const ActionsPanel = React.memo((props: Props) => {
         setSelectedDivision(foundDivision.divisionID);
         setSelectedRound(foundDivision.currentRound);
       } else if (selectedRound === -1) {
-        setSelectedRound(foundDivision.currentRound);
+        // If we are directing _and_ playing, this, combined with the code
+        // in pairings.tsx to hide initial pairings, will show preview
+        // pairings for the director.
+        setSelectedRound(isDirector ? 0 : foundDivision.currentRound);
       }
     } else {
+      // we are an observer
       if (divisionArray.length) {
         if (!selectedDivision) {
           setSelectedDivision(divisionArray[0].divisionID);
@@ -332,6 +347,8 @@ export const ActionsPanel = React.memo((props: Props) => {
     }
   }, [
     divisions,
+    idFromPlayerEntry,
+    isDirector,
     selectedDivision,
     competitorStatusLoaded,
     selectedRound,
@@ -343,11 +360,14 @@ export const ActionsPanel = React.memo((props: Props) => {
       return [];
     }
     let matchButtonText = 'Start tournament game';
-    if (['CLUB', 'CHILD'].includes(tournamentContext.metadata.type)) {
+    if (isClubType(tournamentContext.metadata?.getType())) {
       matchButtonText = 'Start club game';
     }
     const availableActions = new Array<ReactNode>();
-    if (props.loggedIn && !isPairedMode(tournamentContext.metadata.type)) {
+    if (
+      props.loggedIn &&
+      !isPairedMode(tournamentContext.metadata?.getType())
+    ) {
       // We are allowing free-form match requests in CLUBHOUSE mode, if desired.
       availableActions.push(
         <div
@@ -362,7 +382,7 @@ export const ActionsPanel = React.memo((props: Props) => {
       );
     }
     if (
-      isPairedMode(tournamentContext.metadata.type) &&
+      isPairedMode(tournamentContext.metadata?.getType()) &&
       selectedRound > -1 &&
       tournamentContext.divisions[selectedDivision]
     ) {
@@ -421,7 +441,7 @@ export const ActionsPanel = React.memo((props: Props) => {
       <Card
         actions={actions}
         className={
-          isPairedMode(tournamentContext.metadata.type)
+          isPairedMode(tournamentContext.metadata?.getType())
             ? 'paired-mode'
             : 'free-form'
         }
@@ -436,14 +456,14 @@ export const ActionsPanel = React.memo((props: Props) => {
             >
               Games
             </div>
-            {!isPairedMode(tournamentContext.metadata.type) ? (
+            {!isPairedMode(tournamentContext.metadata?.getType()) ? (
               <div
                 onClick={() => {
                   setSelectedGameTab('RECENT');
                 }}
                 className={selectedGameTab === 'RECENT' ? 'tab active' : 'tab'}
               >
-                Recent Games
+                Recent games
               </div>
             ) : (
               <div

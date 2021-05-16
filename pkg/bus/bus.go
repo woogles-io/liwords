@@ -107,6 +107,7 @@ func NewBus(cfg *config.Config, stores Stores, redisPool *redis.Pool) (*Bus, err
 	bus.gameStore.SetGameEventChan(bus.gameEventChan)
 	bus.tournamentStore.SetTournamentEventChan(bus.tournamentEventChan)
 	bus.chatStore.SetEventChan(bus.genericEventChan)
+	bus.presenceStore.SetEventChan(bus.genericEventChan)
 
 	topics := []string{
 		// ipc.pb are generic publishes
@@ -200,6 +201,31 @@ outerfor:
 			}()
 
 		case msg := <-b.gameEventChan:
+			if msg.Type == pb.MessageType_ACTIVE_GAME_ENTRY {
+				// This message usually has no audience.
+				if evt, ok := msg.Event.(*pb.ActiveGameEntry); ok {
+					log.Debug().Interface("event", evt).Msg("active-game-entry")
+					ret, err := b.presenceStore.UpdateActiveGame(ctx, evt)
+					if err != nil {
+						log.Err(err).Msg("update-active-game-error")
+						// but continue anyway
+					} else {
+						for idx, chans := range ret {
+							oldChannels := chans[0]
+							newChannels := chans[1]
+							userId := evt.Player[idx].UserId
+							username := evt.Player[idx].Username
+							if err = b.broadcastChannelChanges(ctx, oldChannels, newChannels, userId, username); err != nil {
+								log.Err(err).Msg("broadcast-active-game-error")
+								// but continue anyway
+							}
+						}
+					}
+				} else {
+					log.Error().Interface("event", msg.Event).Msg("bad-active-game-entry")
+				}
+			}
+
 			// A game event. Publish directly to the right realm.
 			topics := msg.Audience()
 			data, err := msg.Serialize()
@@ -259,7 +285,6 @@ outerfor:
 			err := b.adjudicateGames(ctx)
 			if err != nil {
 				log.Err(err).Msg("adjudicate-error")
-				break
 			}
 
 		case <-gameCounter.C:
@@ -274,7 +299,6 @@ outerfor:
 			err := b.soughtGameStore.ExpireOld(ctx)
 			if err != nil {
 				log.Err(err).Msg("expiration-error")
-				break
 			}
 		}
 	}
@@ -444,6 +468,7 @@ func (b *Bus) handleNatsPublish(ctx context.Context, subtopics []string, data []
 			return err
 		}
 		entGame.RLock()
+		defer entGame.RUnlock()
 		// Determine if one of our players is a bot (no bot-vs-bot supported yet?)
 		// and if it is the bot's turn.
 		if entGame.GameReq != nil &&
@@ -451,11 +476,7 @@ func (b *Bus) handleNatsPublish(ctx context.Context, subtopics []string, data []
 			entGame.Game.Playing() != macondopb.PlayState_GAME_OVER &&
 			entGame.PlayerIDOnTurn() != userID {
 
-			entGame.RUnlock()
-			// Do this in a separate goroutine as it blocks while waiting for bot move.
-			go b.handleBotMove(ctx, entGame)
-		} else {
-			entGame.RUnlock()
+			b.goHandleBotMove(ctx, entGame)
 		}
 		return nil
 
@@ -545,6 +566,9 @@ func (b *Bus) pubToUser(userID string, evt *entity.EventWrapper,
 	// Publish to a user, but pass in a specific channel. Only publish to those
 	// user sockets that are in this channel/realm/what-have-you.
 	sanitized, err := sanitize(evt, userID)
+	if err != nil {
+		return err
+	}
 	bts, err := sanitized.Serialize()
 	if err != nil {
 		return err
@@ -562,11 +586,60 @@ func (b *Bus) pubToUser(userID string, evt *entity.EventWrapper,
 func (b *Bus) pubToConnectionID(connID, userID string, evt *entity.EventWrapper) error {
 	// Publish to a specific connection ID.
 	sanitized, err := sanitize(evt, userID)
+	if err != nil {
+		return err
+	}
 	bts, err := sanitized.Serialize()
 	if err != nil {
 		return err
 	}
 	return b.natsconn.Publish("connid."+connID, bts)
+}
+
+func didChannelsChange(oldChannels, newChannels []string) bool {
+	// just compare the arrays because they're already sort/dedup'ed
+	if len(newChannels) != len(oldChannels) {
+		return true
+	}
+	for ri, r := range newChannels {
+		if r != oldChannels[ri] {
+			return true
+		}
+	}
+	return false
+}
+
+func (b *Bus) broadcastChannelChanges(ctx context.Context, oldChannels, newChannels []string, userID, username string) error {
+	if !didChannelsChange(oldChannels, newChannels) {
+		return nil
+	}
+
+	// Courtesy note: followee* is not acceptable in csw19.
+	followee, err := b.userStore.GetByUUID(ctx, userID)
+	if err != nil {
+		return err
+	}
+
+	followerUsers, err := b.userStore.GetFollowedBy(ctx, followee.ID)
+	if err != nil {
+		return err
+	}
+
+	if len(followerUsers) > 0 && b.genericEventChan != nil {
+		wrapped := entity.WrapEvent(&pb.PresenceEntry{
+			Username: username,
+			UserId:   userID,
+			Channel:  newChannels,
+		}, pb.MessageType_PRESENCE_ENTRY)
+
+		for _, fu := range followerUsers {
+			wrapped.AddAudience(entity.AudUser, fu.UUID)
+		}
+
+		b.genericEventChan <- wrapped
+	}
+
+	return nil
 }
 
 func (b *Bus) initRealmInfo(ctx context.Context, evt *pb.InitRealmInfo, connID string) error {
@@ -597,7 +670,14 @@ func (b *Bus) initRealmInfo(ctx context.Context, evt *pb.InitRealmInfo, connID s
 
 		if presenceChan != "" {
 			log.Debug().Str("presence-chan", presenceChan).Str("username", username).Msg("SetPresence")
-			b.presenceStore.SetPresence(ctx, evt.UserId, username, anon, presenceChan, connID)
+			oldChannels, newChannels, err := b.presenceStore.SetPresence(ctx, evt.UserId, username, anon, presenceChan, connID)
+			if err != nil {
+				// this was not checked?
+				return err
+			}
+			if err = b.broadcastChannelChanges(ctx, oldChannels, newChannels, evt.UserId, username); err != nil {
+				return err
+			}
 		}
 
 		if realm == "lobby" {
@@ -666,7 +746,7 @@ func (b *Bus) leaveTab(ctx context.Context, userID, connID string) error {
 	if err != nil {
 		return err
 	}
-	channels, err := b.presenceStore.ClearPresence(ctx, userID, username, anon, connID)
+	oldChannels, newChannels, channels, err := b.presenceStore.ClearPresence(ctx, userID, username, anon, connID)
 	if err != nil {
 		return err
 	}
@@ -682,8 +762,15 @@ func (b *Bus) leaveTab(ctx context.Context, userID, connID string) error {
 	if err != nil {
 		return err
 	}
-	return b.deleteTournamentReadyMsgs(ctx, userID, connID)
 	// Delete any tournament ready messages
+	err = b.deleteTournamentReadyMsgs(ctx, userID, connID)
+	if err != nil {
+		return err
+	}
+	if err = b.broadcastChannelChanges(ctx, oldChannels, newChannels, userID, username); err != nil {
+		return err
+	}
+	return nil
 }
 
 func (b *Bus) deleteTournamentReadyMsgs(ctx context.Context, userID, connID string) error {
@@ -719,7 +806,14 @@ func (b *Bus) pongReceived(ctx context.Context, userID, connID string) error {
 	if err != nil {
 		return err
 	}
-	return b.presenceStore.RenewPresence(ctx, userID, username, anon, connID)
+	oldChannels, newChannels, err := b.presenceStore.RenewPresence(ctx, userID, username, anon, connID)
+	if err != nil {
+		return err
+	}
+	if err = b.broadcastChannelChanges(ctx, oldChannels, newChannels, userID, username); err != nil {
+		return err
+	}
+	return nil
 }
 
 func (b *Bus) activeGames(ctx context.Context, tourneyID string) (*entity.EventWrapper, error) {
@@ -815,37 +909,6 @@ func (b *Bus) sendTournamentContext(ctx context.Context, realm, userID, connID s
 	if err != nil {
 		return err
 	}
-
-	// Send a TournamentDivisionDataResponse for every division in the tournament.
-
-	t, err := b.tournamentStore.Get(ctx, tourneyID)
-	if err != nil {
-		return err
-	}
-	// msg := &pb.FullTournamentDivisions{
-	// 	Divisions: make(map[string]*pb.TournamentDivisionDataResponse),
-	// 	Started:   t.IsStarted,
-	// }
-	// Send empty divisions
-	// evt := entity.WrapEvent(msg, pb.MessageType_TOURNAMENT_FULL_DIVISIONS_MESSAGE)
-	// err = b.pubToConnectionID(connID, userID, evt)
-
-	for name := range t.Divisions {
-		// r, err := tournament.TournamentDivisionDataResponse(ctx, b.tournamentStore, tourneyID, name)
-		// if err != nil {
-		// 	return err
-		// }
-		// msg.Divisions[name] = r
-
-		// evt := entity.WrapEvent(r)
-
-		err := tournament.SendTournamentDivisionMessage(ctx, b.tournamentStore, tourneyID, name)
-		if err != nil {
-			return err
-		}
-
-	}
-	// SEND
 
 	return err
 }

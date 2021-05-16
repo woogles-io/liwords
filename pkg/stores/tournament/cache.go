@@ -24,6 +24,7 @@ type backingStore interface {
 
 	AddRegistrants(ctx context.Context, tid string, userIDs []string, division string) error
 	RemoveRegistrants(ctx context.Context, tid string, userIDs []string, division string) error
+	RemoveRegistrantsForTournament(ctx context.Context, tid string) error
 	ActiveTournamentsFor(ctx context.Context, userID string) ([][2]string, error)
 }
 
@@ -132,6 +133,10 @@ func (c *Cache) AddRegistrants(ctx context.Context, tid string, userIDs []string
 
 func (c *Cache) RemoveRegistrants(ctx context.Context, tid string, userIDs []string, division string) error {
 	return c.backing.RemoveRegistrants(ctx, tid, userIDs, division)
+}
+
+func (c *Cache) RemoveRegistrantsForTournament(ctx context.Context, tid string) error {
+	return c.backing.RemoveRegistrantsForTournament(ctx, tid)
 }
 
 func (c *Cache) ActiveTournamentsFor(ctx context.Context, userID string) ([][2]string, error) {

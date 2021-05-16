@@ -23,6 +23,9 @@ type ConfigStore interface {
 
 	SetFEHash(context.Context, string) error
 	FEHash(context.Context) (string, error)
+
+	SetAnnouncements(context.Context, []*pb.Announcement) error
+	GetAnnouncements(context.Context) ([]*pb.Announcement, error)
 }
 
 type ConfigService struct {
@@ -111,17 +114,7 @@ func (cs *ConfigService) SetUserPermissions(ctx context.Context, req *pb.Permiss
 		return nil, twirp.NewError(twirp.Unauthenticated, errRequiresAdmin.Error())
 	}
 
-	targetUser, err := cs.userStore.Get(ctx, req.Username)
-	if err != nil {
-		return nil, twirp.NewError(twirp.InvalidArgument, err.Error())
-	}
-
-	targetUser.IsAdmin = req.Admin
-	targetUser.IsDirector = req.Director
-	targetUser.IsMod = req.Mod
-	targetUser.IsBot = req.Bot
-
-	err = cs.userStore.Set(ctx, targetUser)
+	err = cs.userStore.SetPermissions(ctx, req)
 	if err != nil {
 		return nil, twirp.NewError(twirp.InvalidArgument, err.Error())
 	}
@@ -152,4 +145,27 @@ func (cs *ConfigService) GetUserDetails(ctx context.Context, req *pb.UserRequest
 		IsMod:      u.IsMod,
 		IsAdmin:    u.IsAdmin,
 	}, nil
+}
+
+func (cs *ConfigService) SetAnnouncements(ctx context.Context, req *pb.SetAnnouncementsRequest) (*pb.ConfigResponse, error) {
+	allowed, err := isAdmin(ctx, cs.userStore)
+	if err != nil {
+		return nil, err
+	}
+	if !allowed {
+		return nil, twirp.NewError(twirp.Unauthenticated, errRequiresAdmin.Error())
+	}
+	err = cs.store.SetAnnouncements(ctx, req.Announcements)
+	if err != nil {
+		return nil, err
+	}
+	return &pb.ConfigResponse{}, nil
+}
+
+func (cs *ConfigService) GetAnnouncements(ctx context.Context, req *pb.GetAnnouncementsRequest) (*pb.AnnouncementsResponse, error) {
+	announcements, err := cs.store.GetAnnouncements(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return &pb.AnnouncementsResponse{Announcements: announcements}, nil
 }

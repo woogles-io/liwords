@@ -51,7 +51,7 @@ func (b *Bus) seekRequest(ctx context.Context, auth, userID, connID string,
 	reqUser.UserId = userID
 	req.User = reqUser
 
-	err = gameplay.ValidateSoughtGame(ctx, gameRequest)
+	err = entity.ValidateGameRequest(ctx, gameRequest)
 	if err != nil {
 		return err
 	}
@@ -115,7 +115,7 @@ func (b *Bus) matchRequest(ctx context.Context, auth, userID, connID string,
 		return err
 	}
 
-	err = gameplay.ValidateSoughtGame(ctx, gameRequest)
+	err = entity.ValidateGameRequest(ctx, gameRequest)
 	if err != nil {
 		return err
 	}
@@ -428,8 +428,10 @@ func (b *Bus) broadcastGameCreation(g *entity.Game, acceptor, requester *entity.
 	ratingKey := entity.ToVariantKey(g.GameReq.Lexicon, variant, timefmt)
 	players := []*gs.PlayerInfo{
 		{Rating: acceptor.GetRelevantRating(ratingKey),
+			UserId:   acceptor.UUID,
 			Nickname: acceptor.Username},
 		{Rating: requester.GetRelevantRating(ratingKey),
+			UserId:   requester.UUID,
 			Nickname: requester.Username},
 	}
 

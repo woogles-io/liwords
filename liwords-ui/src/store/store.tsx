@@ -82,6 +82,30 @@ type ExcludedPlayersStoreData = {
   setPendingBlockRefresh: React.Dispatch<React.SetStateAction<boolean>>;
 };
 
+export type FriendUser = {
+  username: string;
+  uuid: string;
+  channel: string[];
+};
+
+type FriendsStoreData = {
+  friends: { [uuid: string]: FriendUser };
+  setFriends: React.Dispatch<
+    React.SetStateAction<{ [uuid: string]: FriendUser }>
+  >;
+  pendingFriendsRefresh: boolean;
+  setPendingFriendsRefresh: React.Dispatch<React.SetStateAction<boolean>>;
+};
+
+type ModeratorsStoreData = {
+  moderators: Set<string>;
+  setModerators: React.Dispatch<React.SetStateAction<Set<string>>>;
+  admins: Set<string>;
+  setAdmins: React.Dispatch<React.SetStateAction<Set<string>>>;
+  modsFetched: boolean;
+  setModsFetched: React.Dispatch<React.SetStateAction<boolean>>;
+};
+
 type ChallengeResultEventStoreData = {
   challengeResultEvent: (sge: ServerChallengeResultEvent) => void;
 };
@@ -144,9 +168,13 @@ type TentativePlayData = {
   placedTilesTempScore: number | undefined;
   placedTiles: Set<EphemeralTile>;
   displayedRack: string;
+  blindfoldCommand: string;
+  blindfoldUseNPA: boolean;
   setPlacedTilesTempScore: (s: number | undefined) => void;
   setPlacedTiles: (t: Set<EphemeralTile>) => void;
   setDisplayedRack: (l: string) => void;
+  setBlindfoldCommand: (l: string) => void;
+  setBlindfoldUseNPA: (l: boolean) => void;
 };
 
 type PoolFormatStoreData = {
@@ -209,9 +237,13 @@ const TentativePlayContext = createContext<TentativePlayData>({
   placedTilesTempScore: undefined,
   placedTiles: new Set<EphemeralTile>(),
   displayedRack: '',
+  blindfoldCommand: '',
+  blindfoldUseNPA: false,
   setPlacedTilesTempScore: defaultFunction,
   setPlacedTiles: defaultFunction,
   setDisplayedRack: defaultFunction,
+  setBlindfoldCommand: defaultFunction,
+  setBlindfoldUseNPA: defaultFunction,
 });
 
 const ExcludedPlayersContext = createContext<ExcludedPlayersStoreData>({
@@ -222,6 +254,23 @@ const ExcludedPlayersContext = createContext<ExcludedPlayersStoreData>({
   setExcludedPlayersFetched: defaultFunction,
   pendingBlockRefresh: false,
   setPendingBlockRefresh: defaultFunction,
+});
+
+const FriendsContext = createContext<FriendsStoreData>({
+  friends: {},
+  setFriends: defaultFunction,
+  pendingFriendsRefresh: false,
+  setPendingFriendsRefresh: defaultFunction,
+});
+
+const ModeratorsContext = createContext<ModeratorsStoreData>({
+  // used for displaying mod status to other users, should not be trusted for actually granting powers
+  moderators: new Set<string>(),
+  setModerators: defaultFunction,
+  admins: new Set<string>(),
+  setAdmins: defaultFunction,
+  modsFetched: false,
+  setModsFetched: defaultFunction,
 });
 
 const ChallengeResultEventContext = createContext<
@@ -426,23 +475,17 @@ const ExaminableStore = ({ children }: { children: React.ReactNode }) => {
       }
       ret.players[i].score = score;
 
-      // The last few turns may have zero time.
-      // Find out the last turn that has nonzero time.
-      // (This will also incorrectly eliminate unlikely legitimate events
-      // at zero millisecond time at the end.)
-      let timeCutoff = gameContext.turns.length;
-      while (
-        timeCutoff > 0 &&
-        gameContext.turns[timeCutoff - 1].getMillisRemaining() === 0
-      ) {
-        --timeCutoff;
-      }
-
       // Time comes from the most recent past.
       // But may belong to either player, depending on event type.
       let time = Infinity; // No gameInfo here, patch in PlayerCard.
-      for (let j = Math.min(timeCutoff, replayedTurns.length); --j >= 0; ) {
+      for (let j = replayedTurns.length; --j >= 0; ) {
         const turn = gameContext.turns[j];
+        if (
+          turn.getType() === GameEvent.Type.END_RACK_PTS ||
+          turn.getType() === GameEvent.Type.END_RACK_PENALTY
+        ) {
+          continue;
+        }
 
         // Logic from game_reducer setClock.
         let flipTimeRemaining = false;
@@ -469,6 +512,13 @@ const ExaminableStore = ({ children }: { children: React.ReactNode }) => {
       let rack = gameContext.players[i].currentRack;
       for (let j = replayedTurns.length; j < gameContext.turns.length; ++j) {
         const turn = gameContext.turns[j];
+        if (
+          turn.getType() === GameEvent.Type.END_RACK_PTS ||
+          turn.getType() === GameEvent.Type.END_RACK_PENALTY
+        ) {
+          continue;
+        }
+
         if (turn.getNickname() === nickname) {
           rack = turn.getRack();
           break;
@@ -702,6 +752,8 @@ const RealStore = ({ children, ...props }: Props) => {
   >(undefined);
   const [placedTiles, setPlacedTiles] = useState(new Set<EphemeralTile>());
   const [displayedRack, setDisplayedRack] = useState('');
+  const [blindfoldCommand, setBlindfoldCommand] = useState('');
+  const [blindfoldUseNPA, setBlindfoldUseNPA] = useState(false);
 
   const {
     clockController,
@@ -739,8 +791,13 @@ const RealStore = ({ children, ...props }: Props) => {
     ActiveChatChannels.AsObject | undefined
   >(undefined);
   const [excludedPlayers, setExcludedPlayers] = useState(new Set<string>());
+  const [friends, setFriends] = useState({});
+  const [pendingFriendsRefresh, setPendingFriendsRefresh] = useState(false);
   const [excludedPlayersFetched, setExcludedPlayersFetched] = useState(false);
   const [pendingBlockRefresh, setPendingBlockRefresh] = useState(false);
+  const [moderators, setModerators] = useState(new Set<string>());
+  const [admins, setAdmins] = useState(new Set<string>());
+  const [modsFetched, setModsFetched] = useState(false);
   const [presences, setPresences] = useState(new Array<PresenceEntity>());
 
   const addChat = useCallback((entity: ChatEntityObj) => {
@@ -848,17 +905,25 @@ const RealStore = ({ children, ...props }: Props) => {
       placedTilesTempScore,
       placedTiles,
       displayedRack,
+      blindfoldCommand,
+      blindfoldUseNPA,
       setPlacedTilesTempScore,
       setPlacedTiles,
       setDisplayedRack,
+      setBlindfoldCommand,
+      setBlindfoldUseNPA,
     }),
     [
       placedTilesTempScore,
       placedTiles,
       displayedRack,
+      blindfoldCommand,
+      blindfoldUseNPA,
       setPlacedTilesTempScore,
       setPlacedTiles,
       setDisplayedRack,
+      setBlindfoldCommand,
+      setBlindfoldUseNPA,
     ]
   );
   const excludedPlayersStore = useMemo(
@@ -878,6 +943,26 @@ const RealStore = ({ children, ...props }: Props) => {
       pendingBlockRefresh,
       setPendingBlockRefresh,
     ]
+  );
+  const friendsStore = useMemo(
+    () => ({
+      friends,
+      setFriends,
+      pendingFriendsRefresh,
+      setPendingFriendsRefresh,
+    }),
+    [friends, setFriends, pendingFriendsRefresh, setPendingFriendsRefresh]
+  );
+  const moderatorsStore = useMemo(
+    () => ({
+      moderators,
+      setModerators,
+      admins,
+      setAdmins,
+      modsFetched,
+      setModsFetched,
+    }),
+    [moderators, setModerators, admins, setAdmins, modsFetched, setModsFetched]
   );
   const challengeResultEventStore = useMemo(
     () => ({
@@ -983,6 +1068,8 @@ const RealStore = ({ children, ...props }: Props) => {
       children={ret}
     />
   );
+  ret = <FriendsContext.Provider value={friendsStore} children={ret} />;
+  ret = <ModeratorsContext.Provider value={moderatorsStore} children={ret} />;
   ret = (
     <ChallengeResultEventContext.Provider
       value={challengeResultEventStore}
@@ -1052,6 +1139,8 @@ export const useTournamentStoreContext = () => useContext(TournamentContext);
 export const useTentativeTileContext = () => useContext(TentativePlayContext);
 export const useExcludedPlayersStoreContext = () =>
   useContext(ExcludedPlayersContext);
+export const useFriendsStoreContext = () => useContext(FriendsContext);
+export const useModeratorStoreContext = () => useContext(ModeratorsContext);
 export const useChallengeResultEventStoreContext = () =>
   useContext(ChallengeResultEventContext);
 export const useGameContextStoreContext = () => useContext(GameContextContext);

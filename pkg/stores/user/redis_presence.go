@@ -2,12 +2,13 @@ package user
 
 import (
 	"context"
-	"errors"
+	_ "embed"
 	"fmt"
 	"strings"
 	"time"
 
 	"github.com/domino14/liwords/pkg/entity"
+	pb "github.com/domino14/liwords/rpc/api/proto/realtime"
 	"github.com/gomodule/redigo/redis"
 	"github.com/rs/zerolog/log"
 )
@@ -20,146 +21,98 @@ const (
 type RedisPresenceStore struct {
 	redisPool *redis.Pool
 
-	setPresenceScript   *redis.Script
-	clearPresenceScript *redis.Script
-	renewPresenceScript *redis.Script
+	setPresenceScript      *redis.Script
+	clearPresenceScript    *redis.Script
+	renewPresenceScript    *redis.Script
+	getChannelsScript      *redis.Script
+	updateActiveGameScript *redis.Script
+
+	eventChan chan *entity.EventWrapper
 }
 
 // SetPresenceScript is a Lua script that handles presence in an atomic way.
 // We may want to move this to a separate file if we start adding more Lua
 // scripts.
-const SetPresenceScript = `
--- Arguments to this Lua script:
--- uuid, username, authOrAnon, connID, channel string, timestamp  (ARGV[1] through [6])
-
-local userpresencekey = "userpresence:"..ARGV[1]
-local channelpresencekey = "channelpresence:"..ARGV[5]
-local userkey = ARGV[1].."#"..ARGV[2].."#"..ARGV[3].."#"..ARGV[4] -- uuid#username#auth#connID
--- 3 minutes. We will renew these keys constantly.
-local expiry = 180
-local ts = tonumber(ARGV[6])
-local simpleuserkey = ARGV[4].."#"..ARGV[5] -- just conn_id#channel
--- Set user presence:
-redis.call("ZADD", userpresencekey, ts + expiry, simpleuserkey)
-redis.call("ZADD", "userpresences", ts + expiry, userkey.."#"..ARGV[5])
--- Do not modify lastpresences here. We only modify that when people leave, or on
--- the renew presence here. We'd like there to be a little time (a few seconds)
--- when the user logs in to determine how long it's been since they last logged in.
--- Set channel presence:
-redis.call("ZADD", channelpresencekey, ts + expiry, userkey)
--- Expire ephemeral presence keys:
-
-redis.call("EXPIRE", userpresencekey, expiry)
-redis.call("EXPIRE", channelpresencekey, expiry)
-`
+//go:embed set_presence.lua
+var SetPresenceScript string
 
 // ClearPresenceScript clears the presence and returns the channel(s) it was in.
-const ClearPresenceScript = `
--- Arguments to this Lua script:
--- uuid, username, authOrAnon, connID, timestamp
+//go:embed clear_presence.lua
+var ClearPresenceScript string
 
-local userpresencekey = "userpresence:"..ARGV[1]
-local userkey = ARGV[1].."#"..ARGV[2].."#"..ARGV[3].."#"..ARGV[4]  -- uuid#username#anon#conn_id
+// RenewPresenceScript renews the presence
+//go:embed renew_presence.lua
+var RenewPresenceScript string
 
--- get the current channels that this presence is in.
+// GetChannelsScript gets the channels
+//go:embed get_channels.lua
+var GetChannelsScript string
 
-local curchannels = redis.call("ZRANGE", userpresencekey, 0, -1)
-
-local deletedfrom = {}
-local stillconnectedto = {}
-local ts = tonumber(ARGV[5])
-
--- only delete the users where the conn_id actually matches
-for i, v in ipairs(curchannels) do
-	-- v looks like conn_id#channel
-	local conn_id, chan = string.match(v, "^([%a%d]+)#([%a%.%d]+)$")
-	if not (conn_id and chan) then
-		-- should not happen
-	elseif conn_id == ARGV[4] then
-		table.insert(deletedfrom, chan)
-		-- delete from the relevant channel key
-		redis.call("ZREM", "channelpresence:"..chan, userkey)
-		redis.call("ZREM", userpresencekey, v)
-		redis.call("ZREM", "userpresences", userkey.."#"..chan)
-		-- update the last known presence time.
-		if ARGV[3] == "auth" then
-			redis.call("ZADD", "lastpresences", ts, ARGV[1])
-		end
-	else
-		-- user is still in chan through another conn, do not delete yet
-		stillconnectedto[chan] = true
-	end
-end
-
-local totallydisconnectedfrom = {}
-for _, chan in ipairs(deletedfrom) do
-	if not stillconnectedto[chan] then
-		table.insert(totallydisconnectedfrom, chan)
-	end
-end
-
--- return the channel(s) this user totally disconnected from.
-return totallydisconnectedfrom
-`
-
-const RenewPresenceScript = `
--- Arguments to this Lua script:
--- uuid, username, auth, connID, ts (ARGV[1] through [5])
-local userpresencekey = "userpresence:"..ARGV[1]
-local userkey = ARGV[1].."#"..ARGV[2].."#"..ARGV[3].."#"..ARGV[4] -- uuid#username#auth#connID
-
-local expiry = 180
-local ts = tonumber(ARGV[5])
-
-local purgeold = {}
-
--- Get all members of userpresencekey
-local curchannels = redis.call("ZRANGE", userpresencekey, 0, -1)
-
--- For every channel that we are in, we renew that channel, only for this conn id.
-for i, v in ipairs(curchannels) do
-	-- v looks like conn_id#channel
-	local chan = string.match(v, ARGV[4].."#([%a%.%d]+)")
-	if chan then
-		-- extend expiries of the channelpresence...
-		redis.call("ZADD", "channelpresence:"..chan, ts + expiry, userkey)
-		redis.call("EXPIRE", "channelpresence:"..chan, expiry)
-		-- and of the userpresence
-		redis.call("ZADD", userpresencekey, ts + expiry, v)
-		redis.call("EXPIRE", userpresencekey, expiry)
-		-- and the overall set of user presences.
-		redis.call("ZADD", "userpresences", ts + expiry, userkey.."#"..chan)
-		-- set the last known presence time.
-		if ARGV[3] == "auth" then
-			redis.call("ZADD", "lastpresences", ts, ARGV[1])
-		end
-		table.insert(purgeold, "channelpresence:"..chan)
-		table.insert(purgeold, userpresencekey)
-		table.insert(purgeold, "userpresences")
-	end
-end
-
--- remove all subkeys inside the zsets that have expired.
-for i, v in ipairs(purgeold) do
-	redis.call("ZREMRANGEBYSCORE", v, 0, ts)
-end
-
-return purgeold
-`
+// updateActiveGameScript gets the channels
+//go:embed update_active_game.lua
+var UpdateActiveGameScript string
 
 func NewRedisPresenceStore(r *redis.Pool) *RedisPresenceStore {
 
 	return &RedisPresenceStore{
-		redisPool:           r,
-		setPresenceScript:   redis.NewScript(0, SetPresenceScript),
-		clearPresenceScript: redis.NewScript(0, ClearPresenceScript),
-		renewPresenceScript: redis.NewScript(0, RenewPresenceScript),
+		redisPool:              r,
+		setPresenceScript:      redis.NewScript(0, SetPresenceScript),
+		clearPresenceScript:    redis.NewScript(0, ClearPresenceScript),
+		renewPresenceScript:    redis.NewScript(0, RenewPresenceScript),
+		getChannelsScript:      redis.NewScript(0, GetChannelsScript),
+		updateActiveGameScript: redis.NewScript(0, UpdateActiveGameScript),
+		eventChan:              nil,
 	}
+}
+
+func fromRedisToArrayOfLengthN(ret interface{}, n int) ([]interface{}, error) {
+	arr, ok := ret.([]interface{})
+	if !ok {
+		return nil, fmt.Errorf("unexpected result: %T", ret)
+	}
+	if len(arr) != n {
+		return nil, fmt.Errorf("unexpected length (want %v, got %v): %v", n, len(arr), arr)
+	}
+	return arr, nil
+}
+
+func fromRedisArrayToArrayOfString(v interface{}) ([]string, error) {
+	arr, ok := v.([]interface{})
+	if !ok {
+		return nil, fmt.Errorf("unexpected subresult: %T", v)
+	}
+	cvt := make([]string, len(arr))
+	for i, el := range arr {
+		barr, ok := el.([]byte)
+		if !ok {
+			return nil, fmt.Errorf("unexpected interface type: %T", el)
+		}
+		cvt[i] = string(barr)
+	}
+	return cvt, nil
+}
+
+func (s *RedisPresenceStore) getChannelsForUUID(conn redis.Conn, uuid string) ([]string, error) {
+	ret, err := s.getChannelsScript.Do(conn, uuid)
+	if err != nil {
+		return nil, err
+	}
+	arr, err := fromRedisToArrayOfLengthN(ret, 1)
+	if err != nil {
+		return nil, err
+	}
+
+	channels, err := fromRedisArrayToArrayOfString(arr[0])
+	if err != nil {
+		return nil, err
+	}
+
+	return channels, nil
 }
 
 // SetPresence sets the user's presence channel.
 func (s *RedisPresenceStore) SetPresence(ctx context.Context, uuid, username string, anon bool,
-	channel, connID string) error {
+	channel, connID string) ([]string, []string, error) {
 	// We try to map channels closely to the pubsub NATS channels (and realms),
 	// with some exceptions.
 	// If the user is online in two different tabs, we go in priority order,
@@ -180,13 +133,29 @@ func (s *RedisPresenceStore) SetPresence(ctx context.Context, uuid, username str
 	}
 
 	ts := time.Now().Unix()
+	ret, err := s.setPresenceScript.Do(conn, uuid, username, authUser, connID, channel, ts)
+	if err != nil {
+		return nil, nil, err
+	}
+	arr, err := fromRedisToArrayOfLengthN(ret, 2)
+	if err != nil {
+		return nil, nil, err
+	}
 
-	_, err := s.setPresenceScript.Do(conn, uuid, username, authUser, connID, channel, ts)
-	return err
+	oldChannels, err := fromRedisArrayToArrayOfString(arr[0])
+	if err != nil {
+		return nil, nil, err
+	}
+	newChannels, err := fromRedisArrayToArrayOfString(arr[1])
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return oldChannels, newChannels, nil
 }
 
 func (s *RedisPresenceStore) ClearPresence(ctx context.Context, uuid, username string,
-	anon bool, connID string) ([]string, error) {
+	anon bool, connID string) ([]string, []string, []string, error) {
 	conn := s.redisPool.Get()
 	defer conn.Close()
 
@@ -196,35 +165,31 @@ func (s *RedisPresenceStore) ClearPresence(ctx context.Context, uuid, username s
 	}
 
 	log.Debug().Str("username", username).Str("connID", connID).Msg("clear-presence")
-	ts := time.Now().Unix()
 
+	ts := time.Now().Unix()
 	ret, err := s.clearPresenceScript.Do(conn, uuid, username, authUser, connID, ts)
 	if err != nil {
-		return nil, err
+		return nil, nil, nil, err
 	}
-	log.Debug().Interface("ret", ret).Msg("clear-presence-return")
+	arr, err := fromRedisToArrayOfLengthN(ret, 3)
+	if err != nil {
+		return nil, nil, nil, err
+	}
 
-	switch v := ret.(type) {
-	case bool:
-		// can only be false. User was not found anywhere, so nowhere to leave from.
-		if !v {
-			return nil, nil
-		}
-		return nil, errors.New("unexpected bool")
-	case []interface{}:
-		cvt := make([]string, len(v))
-		for i, el := range v {
-			barr, ok := el.([]byte)
-			if !ok {
-				return nil, fmt.Errorf("unexpected interface type: %T", el)
-			}
-			// This is just the channel now. No more conn_id#channel.
-			// We only need an array of channels.
-			cvt[i] = string(barr)
-		}
-		return cvt, nil
+	oldChannels, err := fromRedisArrayToArrayOfString(arr[0])
+	if err != nil {
+		return nil, nil, nil, err
 	}
-	return nil, fmt.Errorf("unexpected clear presence result: %T", ret)
+	newChannels, err := fromRedisArrayToArrayOfString(arr[1])
+	if err != nil {
+		return nil, nil, nil, err
+	}
+	removedChannels, err := fromRedisArrayToArrayOfString(arr[2])
+	if err != nil {
+		return nil, nil, nil, err
+	}
+
+	return oldChannels, newChannels, removedChannels, nil
 }
 
 func (s *RedisPresenceStore) GetInChannel(ctx context.Context, channel string) ([]*entity.User, error) {
@@ -286,7 +251,7 @@ func (s *RedisPresenceStore) GetPresence(ctx context.Context, uuid string) ([]st
 }
 
 func (s *RedisPresenceStore) RenewPresence(ctx context.Context, userID, username string,
-	anon bool, connID string) error {
+	anon bool, connID string) ([]string, []string, error) {
 
 	conn := s.redisPool.Get()
 	defer conn.Close()
@@ -299,8 +264,25 @@ func (s *RedisPresenceStore) RenewPresence(ctx context.Context, userID, username
 	}
 
 	ts := time.Now().Unix()
-	_, err := s.renewPresenceScript.Do(conn, userID, username, authUser, connID, ts)
-	return err
+	ret, err := s.renewPresenceScript.Do(conn, userID, username, authUser, connID, ts)
+	if err != nil {
+		return nil, nil, err
+	}
+	arr, err := fromRedisToArrayOfLengthN(ret, 2)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	oldChannels, err := fromRedisArrayToArrayOfString(arr[0])
+	if err != nil {
+		return nil, nil, err
+	}
+	newChannels, err := fromRedisArrayToArrayOfString(arr[1])
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return oldChannels, newChannels, nil
 }
 
 func (s *RedisPresenceStore) CountInChannel(ctx context.Context, channel string) (int, error) {
@@ -333,4 +315,102 @@ func (s *RedisPresenceStore) LastSeen(ctx context.Context, uuid string) (int64, 
 		return 0, err
 	}
 	return int64(val), nil
+}
+
+func (s *RedisPresenceStore) SetEventChan(c chan *entity.EventWrapper) {
+	s.eventChan = c
+}
+
+func (s *RedisPresenceStore) EventChan() chan *entity.EventWrapper {
+	return s.eventChan
+}
+
+func (s *RedisPresenceStore) BatchGetChannels(ctx context.Context, uuids []string) ([][]string, error) {
+	conn := s.redisPool.Get()
+	defer conn.Close()
+
+	ret := make([][]string, 0, len(uuids))
+	for _, uuid := range uuids {
+		ret1, err := s.getChannelsForUUID(conn, uuid)
+		if err != nil {
+			return nil, err
+		}
+		ret = append(ret, ret1)
+	}
+
+	return ret, nil
+}
+
+func (s *RedisPresenceStore) UpdateFollower(ctx context.Context, followee, follower *entity.User, following bool) error {
+	var channels []string
+
+	if following {
+		var err error
+		func() {
+			conn := s.redisPool.Get()
+			defer conn.Close()
+
+			channels, err = s.getChannelsForUUID(conn, followee.UUID)
+		}()
+		if err != nil {
+			return err
+		}
+	}
+
+	// when following, send the (possibly empty) current list of channels.
+	// when unfollowing, always send [].
+
+	evtChan := s.EventChan()
+	if evtChan != nil {
+		wrapped := entity.WrapEvent(&pb.PresenceEntry{
+			Username: followee.Username,
+			UserId:   followee.UUID,
+			Channel:  channels,
+		}, pb.MessageType_PRESENCE_ENTRY)
+		wrapped.AddAudience(entity.AudUser, follower.UUID)
+		evtChan <- wrapped
+	}
+
+	return nil
+}
+
+func (s *RedisPresenceStore) UpdateActiveGame(ctx context.Context, activeGameEntry *pb.ActiveGameEntry) ([][][]string, error) {
+	args := make([]interface{}, 0, 2+len(activeGameEntry.Player))
+	args = append(args, activeGameEntry.Id)
+	args = append(args, activeGameEntry.Ttl)
+	for _, player := range activeGameEntry.Player {
+		args = append(args, player.UserId)
+	}
+
+	conn := s.redisPool.Get()
+	defer conn.Close()
+
+	ret, err := s.updateActiveGameScript.Do(conn, args...)
+	if err != nil {
+		return nil, err
+	}
+
+	// Script returns an array of [before, after] channels, both are sorted unique arrays.
+	arr, err := fromRedisToArrayOfLengthN(ret, len(activeGameEntry.Player))
+	if err != nil {
+		return nil, err
+	}
+	channels := make([][][]string, 0, len(arr))
+	for _, redisElt := range arr {
+		row, err := fromRedisToArrayOfLengthN(redisElt, 2)
+		if err != nil {
+			return nil, err
+		}
+		oldChannels, err := fromRedisArrayToArrayOfString(row[0])
+		if err != nil {
+			return nil, err
+		}
+		newChannels, err := fromRedisArrayToArrayOfString(row[1])
+		if err != nil {
+			return nil, err
+		}
+		channels = append(channels, [][]string{oldChannels, newChannels})
+	}
+
+	return channels, nil
 }

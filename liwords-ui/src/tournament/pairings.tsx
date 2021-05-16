@@ -8,6 +8,7 @@ import {
 } from '../store/reducers/tournament_reducer';
 import { TournamentGameResult } from '../gen/api/proto/realtime/realtime_pb';
 import { useHistory } from 'react-router-dom';
+// import { PlayerTag } from './player_tags';
 
 const usernameFromPlayerEntry = (p: string) =>
   p.split(':').length > 0 ? p.split(':')[1] : 'Unknown player';
@@ -17,16 +18,20 @@ const pairingsForRound = (
   division: Division
 ): Array<SinglePairing> => {
   const m = new Set<string>();
-  const n = new Array<string>();
-  const numPlayers = division.players.length;
-  for (let idx = round * numPlayers; idx < (round + 1) * numPlayers; idx++) {
-    const key = division.roundInfo[idx];
-    if (key && !m.has(key)) {
-      n.push(key);
-      m.add(key);
-    }
+  const n = new Array<SinglePairing>();
+  if (!division.pairings[round]) {
+    return n;
   }
-  return n.map((key) => division.pairingMap[key]);
+  division.pairings[round].roundPairings.forEach((value: SinglePairing) => {
+    if (value.players) {
+      const key = value.players[0] + ':' + value.players[1];
+      if (key && !m.has(key)) {
+        n.push(value);
+        m.add(key);
+      }
+    }
+  });
+  return n;
 };
 
 const getPerformance = (
@@ -40,22 +45,21 @@ const getPerformance = (
   if (roundOfRecord < 0) {
     roundOfRecord = 0;
   }
-  const results = division.standingsMap[roundOfRecord].standingsList.find((s) =>
-    s.player.endsWith(`:${playerName}`)
-  );
+  const results = division.standingsMap
+    .get(roundOfRecord)
+    ?.getStandingsList()
+    .find((s) => s.getPlayerId().endsWith(`:${playerName}`));
   return results
-    ? `(${results.wins + results.draws / 2}-${
-        results.losses + results.draws / 2
+    ? `(${results.getWins() + results.getDraws() / 2}-${
+        results.getLosses() + results.getDraws() / 2
       })`
     : '(0-0)';
 };
 
-const getScores = (
-  playerName: string,
-  viewedRound: number,
-  pairing: SinglePairing
-) => {
-  const playerIndex = pairing.players[0].endsWith(`:${playerName}`) ? 0 : 1;
+const getScores = (playerName: string, pairing: SinglePairing) => {
+  const playerIndex = pairing.players[0].getId().endsWith(`:${playerName}`)
+    ? 0
+    : 1;
   const results = pairing.outcomes;
   if (
     pairing.games.length &&
@@ -73,6 +77,7 @@ type Props = {
   selectedRound: number;
   username?: string;
   sendReady?: () => void;
+  isDirector: boolean;
 };
 
 type PairingTableData = {
@@ -91,7 +96,7 @@ export const Pairings = (props: Props) => {
   const history = useHistory();
   const currentRound = useMemo(
     () =>
-      props.selectedDivision
+      props.selectedDivision && divisions[props.selectedDivision]
         ? divisions[props.selectedDivision].currentRound
         : tournamentContext.competitorState.currentRound,
     [props.selectedDivision, divisions, tournamentContext.competitorState]
@@ -100,11 +105,16 @@ export const Pairings = (props: Props) => {
     division: Division,
     round: number
   ): PairingTableData[] => {
-    if (!division || currentRound === -1) {
+    if (!division) {
+      return new Array<PairingTableData>();
+    }
+    // Hide initial pairings from anyone except directors
+    if (currentRound === -1 && !props.isDirector) {
       return new Array<PairingTableData>();
     }
     const { status } = tournamentContext.competitorState;
     const pairings = pairingsForRound(props.selectedRound, division);
+
     const findGameIdFromActive = (playerName: string) => {
       //This assumes one game per round per user
       const game = tournamentContext.activeGames.find((game) => {
@@ -114,7 +124,8 @@ export const Pairings = (props: Props) => {
     };
     const pairingsData = pairings.map(
       (pairing: SinglePairing): PairingTableData => {
-        const playerNames = pairing.players.map(usernameFromPlayerEntry);
+        const playerFullIDs = pairing.players.map((v) => v.getId());
+        const playerNames = playerFullIDs.map(usernameFromPlayerEntry);
         const isBye = pairing.outcomes[0] === TournamentGameResult.BYE;
         const isForfeit =
           pairing.outcomes[0] === TournamentGameResult.FORFEIT_LOSS;
@@ -129,27 +140,41 @@ export const Pairings = (props: Props) => {
         if (isMyGame) {
           sortPriority = 2;
         }
-        const isRemoved = (playerName: string) =>
-          division.removedPlayers.includes(playerName);
+        const isRemoved = (playerID: string) =>
+          division.players[division.playerIndexMap[playerID]]?.getSuspended();
 
         const players =
           playerNames[0] === playerNames[1] ? (
             <div>
               <p>
-                {playerNames[0]}
+                {playerNames[0]}{' '}
+                {
+                  // <PlayerTag
+                  //   username={playerNames[0]}
+                  //   players={division.players}
+                  //   tournamentSlug={tournamentContext.metadata.slug}
+                  // />
+                }
                 {isBye && <Tag className="ant-tag-bye">Bye</Tag>}
                 {isForfeit && <Tag className="ant-tag-forfeit">Forfeit</Tag>}
-                {isRemoved(playerNames[0]) && (
+                {isRemoved(playerFullIDs[0]) && (
                   <Tag className="ant-tag-removed">Removed</Tag>
                 )}
               </p>
             </div>
           ) : (
             <div>
-              {playerNames.map((playerName) => (
-                <p key={playerName}>
-                  {playerName}
-                  {isRemoved(playerName) && (
+              {playerFullIDs.map((playerID) => (
+                <p key={playerID}>
+                  {usernameFromPlayerEntry(playerID)}{' '}
+                  {
+                    // <PlayerTag
+                    //   username={playerName}
+                    //   players={division.players}
+                    //   tournamentSlug={tournamentContext.metadata.slug}
+                    // />
+                  }
+                  {isRemoved(playerID) && (
                     <Tag className="ant-tag-removed">Removed</Tag>
                   )}
                 </p>
@@ -286,8 +311,8 @@ export const Pairings = (props: Props) => {
           playerNames[0] === playerNames[1]
             ? null
             : playerNames.map((playerName) => (
-                <p key={`${playerName}wl`}>
-                  {getScores(playerName, round, pairing)}
+                <p key={`${playerName}scores`}>
+                  {getScores(playerName, pairing)}
                 </p>
               ));
         return {

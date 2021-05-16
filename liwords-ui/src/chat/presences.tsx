@@ -26,9 +26,12 @@ export const Presences = React.memo((props: Props) => {
   );
   const knownUsers = currentChannelPresences.filter((p) => !p.anon);
   const presences = knownUsers.length
-    ? knownUsers
-        .map<React.ReactNode>((u) => profileLink(u))
-        .reduce((prev, curr) => [prev, ', ', curr])
+    ? knownUsers.map<React.ReactNode>((u, i) => (
+        <React.Fragment key={u.username}>
+          {i > 0 && ', '}
+          {profileLink(u)}
+        </React.Fragment>
+      ))
     : null;
   const anonCount = currentChannelPresences.length - knownUsers.length;
   if (!knownUsers.length) {

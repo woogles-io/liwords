@@ -2,6 +2,7 @@ package user
 
 import (
 	"context"
+	_ "embed"
 	"errors"
 	"fmt"
 	"strconv"
@@ -18,49 +19,13 @@ import (
 	upb "github.com/domino14/liwords/rpc/api/proto/user_service"
 )
 
-const LatestChannelsScript = `
--- Arguments
--- UID, count, offset, nowTS (ARGV[1] through [4])
+//go:embed add_chat.lua
+var AddChatScript string
 
-local lckey = "latestchannel:"..ARGV[1]
--- expire anything that needs expiring
-local ts = tonumber(ARGV[4])
-redis.call("ZREMRANGEBYSCORE", lckey, 0, ts)
--- get all channels
-local offset = tonumber(ARGV[3])
-local count = tonumber(ARGV[2])
-local rresp = redis.call("ZREVRANGEBYSCORE", lckey, "+inf", "-inf", "LIMIT", offset, count)
--- parse through redis results
+//go:embed latest_channels.lua
+var LatestChannelsScript string
 
-local results = {}
-
-for i, v in ipairs(rresp) do
-	-- channel looks like  channel:friendly_name
-	-- capture the channel.
-	-- Accepted characters in channel name (the thing after "chat." --
-	--  letters, numbers, period, dash and underscore.
-	-- Note: the dash is only there to fix a legacy crash. (liwords GH Issue #325)
-	-- We can remove this after a few weeks, once any old channels expire. It won't
-	-- work because presence channels use dashes as separators (realms).
-	local chan = string.match(v, "chat%.([%a%.%d%-_]+):.+")
-	if chan then
-		-- get the last chat msg
-		local chatkey = "chat:"..chan
-		local lastchat = redis.call("XREVRANGE", chatkey, "+", "-", "COUNT", 1)
-		if lastchat ~= nil and lastchat[1] ~= nil then
-			-- lastchat[1][1] is the timestamp, lastchat[1][2] is the bulk reply
-			-- lastchat[1][2][4] is always the message
-			-- So insert, in order: the full channel name (v), the timestamp of
-			-- the last chat, and the last chat.
-			table.insert(results, v)
-			table.insert(results, lastchat[1][1])
-			table.insert(results, lastchat[1][2][4])
-		end
-	end
-end
-
-return results
-`
+// note: some of these consts may have been moved to lua entirely.
 
 // Expire all non-lobby channels after this many seconds. Lobby channel doesn't expire.
 // (We may have other non-expiring channels as well later?)
@@ -81,6 +46,7 @@ type RedisChatStore struct {
 	redisPool            *redis.Pool
 	presenceStore        user.PresenceStore
 	tournamentStore      tournament.TournamentStore
+	addChatScript        *redis.Script
 	latestChannelsScript *redis.Script
 	eventChan            chan *entity.EventWrapper
 }
@@ -91,6 +57,7 @@ func NewRedisChatStore(r *redis.Pool, p user.PresenceStore, t tournament.Tournam
 		redisPool:            r,
 		presenceStore:        p,
 		tournamentStore:      t,
+		addChatScript:        redis.NewScript(0, AddChatScript),
 		latestChannelsScript: redis.NewScript(0, LatestChannelsScript),
 		eventChan:            nil,
 	}
@@ -98,11 +65,12 @@ func NewRedisChatStore(r *redis.Pool, p user.PresenceStore, t tournament.Tournam
 
 // redisStreamTS returns the timestamp of the stream data object, in MILLISECONDS.
 func redisStreamTS(key string) (int64, error) {
+	// note: inefficient
 	tskey := strings.Split(key, "-")
 	if len(tskey) != 2 {
 		return 0, errors.New("wrong timestamp format")
 	}
-	ts, err := strconv.Atoi(tskey[0])
+	ts, err := strconv.ParseInt(tskey[0], 10, 64)
 	if err != nil {
 		return 0, err
 	}
@@ -112,53 +80,57 @@ func redisStreamTS(key string) (int64, error) {
 // AddChat takes in sender information, the message, and the name of the channel.
 // Additionally, a user-readable name for the channel should be provided.
 func (r *RedisChatStore) AddChat(ctx context.Context, senderUsername, senderUID, msg,
-	channel, channelFriendly string) (*pb.ChatMessage, error) {
+	channel, channelFriendly string, regulateChat bool) (*pb.ChatMessage, error) {
 	conn := r.redisPool.Get()
 	defer conn.Close()
-	redisKey := "chat:" + strings.TrimPrefix(channel, "chat.")
 
-	ret, err := redis.String(conn.Do("XADD", redisKey, "MAXLEN", "~", "500", "*",
-		"username", senderUsername, "message", msg, "userID", senderUID))
+	regulateChatString := "unregulated"
+	if regulateChat {
+		regulateChatString = "regulated"
+	}
+
+	tsNow := time.Now().Unix()
+
+	ret, err := r.addChatScript.Do(conn, senderUsername, senderUID, msg, channel, channelFriendly, tsNow, regulateChatString)
 	if err != nil {
 		return nil, err
 	}
-
-	// ts is in milliseconds
-	ts, err := redisStreamTS(ret)
-	if err != nil {
-		return nil, err
-	}
-	tsSeconds := ts / 1000
-
-	if channel != LobbyChatChannel {
-		var exp int
-		if strings.HasPrefix(channel, "chat.tournament.") || strings.HasPrefix(channel, "chat.pm.") {
-			exp = LongChannelExpiration
-		} else {
-			exp = GameChatChannelExpiration
-		}
-		_, err = conn.Do("EXPIRE", redisKey, exp)
-		if err != nil {
-			return nil, err
-		}
+	log.Debug().Interface("ret", ret).Msg("add-chat-return")
+	arr, ok := ret.([]interface{})
+	if !ok {
+		return nil, fmt.Errorf("unexpected result: %T", ret)
 	}
 
-	if strings.HasPrefix(channel, "chat.pm.") {
-		users := strings.Split(strings.TrimPrefix(channel, "chat.pm."), "_")
+	was_ok, ok := arr[0].([]byte)
+	if !ok {
+		return nil, fmt.Errorf("unexpected type for arr[0]: %T", arr[0])
+	}
+	switch string(was_ok) {
+	case "err":
+		if len(arr) != 2 {
+			return nil, fmt.Errorf("unexpected length (want %v, got %v): %v", 2, len(arr), arr)
+		}
+		reasonBytes, ok := arr[1].([]byte)
+		if !ok {
+			return nil, fmt.Errorf("unexpected type for arr[1]: %T", arr[1])
+		}
+		return nil, fmt.Errorf("%s", reasonBytes)
+	case "ok":
+	default:
+		return nil, fmt.Errorf("unexpected value for arr[0]: %s", was_ok)
+	}
 
-		for _, user := range users {
-			// Update the entry for each latestchannel key for each user in this
-			// private-message channel.
-			err := r.storeLatestChat(conn, msg, user, channel, channelFriendly, tsSeconds)
-			if err != nil {
-				return nil, err
-			}
-		}
-	} else if strings.HasPrefix(channel, "chat.tournament.") {
-		err = r.storeLatestChat(conn, msg, senderUID, channel, channelFriendly, tsSeconds)
-		if err != nil {
-			return nil, err
-		}
+	if len(arr) != 3 {
+		return nil, fmt.Errorf("unexpected length (want %v, got %v): %v", 3, len(arr), arr)
+	}
+
+	ts, ok := arr[1].(int64)
+	if !ok {
+		return nil, fmt.Errorf("unexpected type for arr[1]: %T", arr[1])
+	}
+	retIdBytes, ok := arr[2].([]byte)
+	if !ok {
+		return nil, fmt.Errorf("unexpected type for arr[2]: %T", arr[2])
 	}
 
 	return &pb.ChatMessage{
@@ -167,27 +139,8 @@ func (r *RedisChatStore) AddChat(ctx context.Context, senderUsername, senderUID,
 		Channel:   channel,
 		Message:   msg,
 		Timestamp: ts,
-		Id:        ret,
+		Id:        string(retIdBytes),
 	}, nil
-}
-
-func (r *RedisChatStore) storeLatestChat(conn redis.Conn,
-	msg, userID, channel, channelFriendly string, tsSeconds int64) error {
-	// Add to the relevant "latest channels" key
-	lchanKeyPrefix := "latestchannel:"
-
-	key := lchanKeyPrefix + userID
-
-	_, err := conn.Do("ZADD", key, tsSeconds+LongChannelExpiration,
-		channel+LatestChatSeparator+channelFriendly)
-	if err != nil {
-		return err
-	}
-	_, err = conn.Do("EXPIRE", key, LongChannelExpiration)
-	if err != nil {
-		return err
-	}
-	return nil
 }
 
 func (r *RedisChatStore) OldChats(ctx context.Context, channel string, n int) ([]*pb.ChatMessage, error) {

@@ -9,6 +9,7 @@ import {
 
 export type SoughtGame = {
   seeker: string;
+  seekerID?: string;
   lexicon: string;
   initialTimeSecs: number;
   incrementSecs: number;
@@ -27,6 +28,7 @@ export type SoughtGame = {
 type playerMeta = {
   rating: string;
   displayName: string;
+  uuid?: string;
 };
 
 export type ActiveGame = {
@@ -73,6 +75,7 @@ export const SeekRequestToSoughtGame = (
 
   return {
     seeker: user.getDisplayName(),
+    seekerID: user.getUserId(),
     userRating: user.getRelevantRating(),
     lexicon: gameReq.getLexicon(),
     initialTimeSecs: gameReq.getInitialTimeSeconds(),
@@ -93,16 +96,15 @@ export const GameInfoResponseToActiveGame = (
 ): ActiveGame | null => {
   const users = gi.getPlayersList();
   const gameReq = gi.getGameRequest();
-
   const players = users.map((um) => ({
     rating: um.getRating(),
     displayName: um.getNickname(),
+    uuid: um.getUserId(),
   }));
 
   if (!gameReq) {
     return null;
   }
-
   let variant = gameReq.getRules()?.getVariantName();
   if (!variant) {
     variant = gameReq.getRules()?.getBoardLayoutName()!;
@@ -191,28 +193,32 @@ export function LobbyReducer(state: LobbyState, action: Action): LobbyState {
     }
 
     case ActionType.AddActiveGames: {
-      const activeGames = action.payload as Array<ActiveGame>;
+      const p = action.payload as {
+        activeGames: Array<ActiveGame>;
+      };
       return {
         ...state,
-        activeGames,
+        activeGames: p.activeGames,
       };
     }
 
     case ActionType.AddActiveGame: {
       const { activeGames } = state;
-      const activeGame = action.payload as ActiveGame;
+      const p = action.payload as {
+        activeGame: ActiveGame;
+      };
       return {
         ...state,
-        activeGames: [...activeGames, activeGame],
+        activeGames: [...activeGames, p.activeGame],
       };
     }
 
     case ActionType.RemoveActiveGame: {
       const { activeGames } = state;
-      const id = action.payload as string;
+      const g = action.payload as string;
 
       const newArr = activeGames.filter((ag) => {
-        return ag.gameID !== id;
+        return ag.gameID !== g;
       });
 
       return {

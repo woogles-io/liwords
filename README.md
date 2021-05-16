@@ -29,6 +29,8 @@ This source code is AGPL-licensed. You can modify the source for this app, or fo
 127.0.0.1	liwords.localhost
 ```
 
+(If you are on Windows and you want to use Chrome, you cannot use `.localhost`. Use `liwords.local` in your `C:\Windows\System32\drivers\etc\hosts`.)
+
 7. Access the app at http://liwords.localhost
 8. If you wish to add a new front-end package, you can run `npm install` LOCALLY (in your host OS) in the `liwords-ui` directory. This adds the package to `package.json`. Then you can do `docker-compose build frontend` to rebuild the frontend and install the package in the internal node_modules directory.
 9. You can register a user by going to http://liwords.localhost/ and clicking on `SIGN UP` at the top right.
@@ -74,3 +76,9 @@ S: single dog bark 3 by crazymonke9 -- https://freesound.org/s/418105/
 #### Code
 
 Part of the front-end timer code borrows from https://github.com/ornicar/lila's code (AGPL licensed, like this app).
+
+Wolges-wasm is Copyright (C) 2020-2021 Andy Kurnia and released under the MIT license. It can be found at https://github.com/andy-k/wolges-wasm/.
+
+### Images
+
+Country flags created by https://hampusborgos.github.io/

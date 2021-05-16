@@ -1,5 +1,5 @@
 import React from 'react';
-import { Card, Row } from 'antd';
+import { Card } from 'antd';
 import { timeCtrlToDisplayName, timeToString } from '../store/constants';
 
 // At some point we should get this from the pb but then we have to use
@@ -102,6 +102,8 @@ export type GCGResponse = {
 type Props = {
   meta: GameMetadata;
   tournamentName: string;
+  colorOverride?: string;
+  logoUrl?: string;
 };
 
 export const GameInfo = React.memo((props: Props) => {
@@ -123,26 +125,42 @@ export const GameInfo = React.memo((props: Props) => {
 
   const card = (
     <Card className="game-info">
-      {props.meta.tournament_id ? (
-        <Row className="tournament-name">{props.tournamentName}</Row>
-      ) : null}
-      <Row className="variant">
-        {`${
-          timeCtrlToDisplayName(
+      <div className="metadata">
+        {props.meta.tournament_id && (
+          <p
+            className="tournament-name"
+            style={{ color: props.colorOverride || 'ignore' }}
+          >
+            {props.tournamentName}
+          </p>
+        )}
+        <p className="variant">
+          {`${
+            timeCtrlToDisplayName(
+              props.meta.game_request.initial_time_seconds,
+              props.meta.game_request.increment_seconds,
+              props.meta.game_request.max_overtime_minutes
+            )[0]
+          } ${timeToString(
             props.meta.game_request.initial_time_seconds,
             props.meta.game_request.increment_seconds,
             props.meta.game_request.max_overtime_minutes
-          )[0]
-        } ${timeToString(
-          props.meta.game_request.initial_time_seconds,
-          props.meta.game_request.increment_seconds,
-          props.meta.game_request.max_overtime_minutes
-        )}`}{' '}
-        • {variant} • {props.meta.game_request.lexicon}
-      </Row>
-      <Row>
-        {challenge} challenge • {rated}
-      </Row>
+          )}`}{' '}
+          • {variant} • {props.meta.game_request.lexicon}
+        </p>
+        <p>
+          {challenge} challenge • {rated}
+        </p>
+      </div>
+      {props.logoUrl && (
+        <div className="logo-container">
+          <img
+            className="club-logo"
+            src={props.logoUrl}
+            alt={props.tournamentName}
+          />
+        </div>
+      )}
     </Card>
   );
   return card;

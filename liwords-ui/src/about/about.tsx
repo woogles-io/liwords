@@ -1,7 +1,7 @@
-import React from 'react';
+import React, { useCallback } from 'react';
 import { TopBar } from '../topbar/topbar';
 import './about.scss';
-import { Col, Row } from 'antd';
+import { Col, Dropdown, Row } from 'antd';
 import cesar from '../assets/bio/bio_cesar.jpg';
 import conrad from '../assets/bio/bio_conrad.jpg';
 import doug from '../assets/bio/bio_doug.jpg';
@@ -10,11 +10,27 @@ import josh from '../assets/bio/bio_josh.jpg';
 import lola from '../assets/bio/bio_lola.jpg';
 import macondo from '../assets/bio/bio_macondo.jpg';
 import woogles from '../assets/bio/bio_woogles.jpg';
-import will from '../assets/bio/bio_will.jpg';
+import benjy from '../assets/bio/bio_benjy.jpg';
+import { useMountedState } from '../utils/mounted';
 
 type Props = {};
 
 export const About = (props: Props) => {
+  const { useState } = useMountedState();
+  const [bnjyMode, setBnjyMode] = useState(
+    localStorage?.getItem('bnjyMode') === 'true'
+  );
+  const toggleBnjyMode = useCallback(() => {
+    const useBenjyMode = localStorage?.getItem('bnjyMode') !== 'true';
+    localStorage.setItem('bnjyMode', useBenjyMode ? 'true' : 'false');
+    if (useBenjyMode) {
+      document?.body?.classList?.add('bnjyMode');
+    } else {
+      document?.body?.classList?.remove('bnjyMode');
+    }
+    setBnjyMode((x) => !x);
+  }, []);
+
   return (
     <>
       <Row>
@@ -24,7 +40,7 @@ export const About = (props: Props) => {
       </Row>
       <Row>
         <Col span={24} className="section-head">
-          <h1>Meet the Team</h1>
+          <h1>Meet the team</h1>
         </Col>
       </Row>
       <div className="bios">
@@ -198,21 +214,43 @@ export const About = (props: Props) => {
         <Row>
           <Col span={24} className="bio">
             <div className="container">
-              <img src={will} alt="Will Anderson" />
+              <img src={benjy} alt="Ben Schoenbrun" />
               <div className="team-info">
-                <h3>Will Anderson</h3>
+                <h3 style={{ cursor: 'pointer' }}>
+                  <Dropdown
+                    overlayClassName="user-menu"
+                    overlay={
+                      <ul>
+                        <li className="link plain" onClick={toggleBnjyMode}>
+                          {bnjyMode
+                            ? 'Disable wonky tiles'
+                            : 'Enable wonky tiles'}
+                        </li>
+                      </ul>
+                    }
+                    getPopupContainer={() =>
+                      document.getElementById('root') as HTMLElement
+                    }
+                    overlayStyle={{
+                      width: 240,
+                    }}
+                    placement="bottomLeft"
+                    trigger={['click']}
+                  >
+                    <span>Ben Schoenbrun</span>
+                  </Dropdown>
+                </h3>
                 <p>
-                  Will is a competitive Scrabble® player and former national
-                  champion with a passion for bringing the joy of the game to a
-                  wider audience. Whether providing commentary for live events,
-                  streaming on his Twitch channel, or producing online Scrabble®
-                  events for others, his goal is the same - translate the depth
-                  and beauty of the game in a way that resonates with even
-                  casual fans. He firmly believes that Woogles is a critical
-                  component of the future of word games, and his role on the
-                  team is to leverage existing platforms and develop content to
-                  bring Woogles the exposure it deserves. He vehemently rejects
-                  condiments of all kinds.
+                  Ben Schoenbrun, better known as just "bnjy", was having fun
+                  playing at his high school Scrabble® club. A quick google
+                  search for a way to play online was all it took to completely
+                  change his life. He dabbles in other games, but for the past
+                  15 years Scrabble® has remained his one true love. He's
+                  constantly thinking of new ways to grow the game and will
+                  happily shout about them from his soapbox to anyone who will
+                  listen. [He'll also never shut up about being on twitch back
+                  in 2016, before it was cool.] He loves bad puns, and he's
+                  mustered the strength to tell you all that ketchup is gross.
                 </p>
               </div>
             </div>

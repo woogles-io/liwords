@@ -1,0 +1,129 @@
+@import '../base';
+
+.player-pane {
+  padding: 24px 0 0 0;
+  .breadcrumb {
+    margin: 18px 0;
+    @include colorModed() {
+      color: m($gray-dark);
+    }
+  }
+}
+.player-sections {
+  display: flex;
+  flex-direction: column;
+  margin: 0 0 0 24px;
+  padding: 12px  0 24px 0;
+  section {
+    width: 100%;
+  }
+  &.p-game, &.p-gametv, &.p-tournament {
+    .present {
+      order: 1;
+    }
+    .friends {
+      order: 2;
+    }
+    .search {
+      order: 3;
+    }
+  }
+}
+.player-list {
+  p.prompt {
+    padding: 12px 0;
+    @include colorModed() {
+      color: m($gray-extreme);
+    }
+  }
+  .ant-input-affix-wrapper {
+    margin: 0 24px 0px;
+    width: calc(100% - 48px);
+    @include colorModed() {
+      background: m($card-background);
+      color: m($gray-extreme);
+    }
+    .anticon {
+      @include colorModed() {
+        color: m($gray-medium);
+        background: m($card-background);
+      }
+    }
+    .ant-input-suffix {
+      max-width: 40px
+    }
+    input {
+      @include colorModed() {
+        background: m($card-background);
+        color: m($gray-extreme);
+      }
+    }
+  }
+  .player-display {
+    margin: 18px 0 0;
+    display: flex;
+    align-items: center;
+    .player-avatar {
+      display: flex;
+      margin-right: 12px;
+      position: relative;
+      &:after {
+        width: 15px;
+        height: 15px;
+        border-radius: 50%;
+        border: 2px solid white;
+        position: absolute;
+        top: 0;
+        left: 0;
+        content: " ";
+        white-space: pre;
+        @include colorModed() {
+          background: m($timer-dark);
+          border-color: m($card-background);
+        }
+      }
+    }
+    .player-name {
+      font-weight: 700;
+      @include colorModed() {
+        color: m($gray-extreme);
+      }
+    }
+    .country-flag {
+      margin-left: 9px;
+      width: 15px;
+      height: 11px;
+    }
+    &.offline {
+      .player-name {
+        @include colorModed() {
+          color: m($gray-medium);
+        }
+        font-style: oblique;
+      }
+      .player-avatar:after {
+        background: transparent;
+        border: 0px solid transparent;
+      }
+    }
+    &.ingame {
+      .player-avatar:after {
+        border-radius: 1px;
+        width: 14px;
+        height: 14px;
+        @include colorModed() {
+          background: m($primary-dark);
+        }
+      }
+    }
+    &.search {
+      .player-name {
+        @include colorModed() {
+          color: m($gray-extreme);
+        }
+        font-style: normal;
+        font-weight: 400;
+      }
+    }
+  }
+}

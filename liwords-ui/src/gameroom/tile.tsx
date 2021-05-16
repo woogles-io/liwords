@@ -8,6 +8,7 @@ import {
   isTouchDevice,
   uniqueTileIdx,
 } from '../utils/cwgame/common';
+import { Popover } from 'antd';
 
 type TileLetterProps = {
   rune: string;
@@ -15,7 +16,7 @@ type TileLetterProps = {
 
 export const TILE_TYPE = 'TILE_TYPE';
 
-const TileLetter = React.memo((props: TileLetterProps) => {
+export const TileLetter = React.memo((props: TileLetterProps) => {
   let { rune } = props;
   // if (rune.toUpperCase() !== rune) {
   //   rune = rune.toUpperCase();
@@ -31,7 +32,7 @@ type PointValueProps = {
   value: number;
 };
 
-const PointValue = React.memo((props: PointValueProps) => {
+export const PointValue = React.memo((props: PointValueProps) => {
   if (!props.value) {
     return null;
   }
@@ -128,6 +129,8 @@ type TileProps = {
   onMouseLeave?: (evt: React.MouseEvent<HTMLElement>) => void;
   x?: number | undefined;
   y?: number | undefined;
+  popoverContent?: React.ReactNode;
+  onPopoverClick?: (evt: React.MouseEvent<HTMLElement>) => void;
 };
 
 const Tile = React.memo((props: TileProps) => {
@@ -212,7 +215,7 @@ const Tile = React.memo((props: TileProps) => {
   }${props.lastPlayed ? ' last-played' : ''}${
     isDesignatedBlank(props.rune) ? ' blank' : ''
   }${props.playerOfTile ? ' tile-p1' : ' tile-p0'}`;
-  return (
+  let ret = (
     <div onDragOver={handleDropOver} onDrop={handleDrop} ref={tileRef}>
       <div
         className={computedClassName}
@@ -234,6 +237,15 @@ const Tile = React.memo((props: TileProps) => {
       </div>
     </div>
   );
+  ret = (
+    <Popover
+      content={<div onClick={props.onPopoverClick}>{props.popoverContent}</div>}
+      visible={props.popoverContent != null}
+    >
+      {ret}
+    </Popover>
+  );
+  return ret;
 });
 
 export default Tile;

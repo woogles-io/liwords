@@ -251,7 +251,10 @@ export const ScoreCard = React.memo((props: Props) => {
       if (getVW() > parseInt(screenSizes.screenSizeDesktop)) {
         offset = 25;
       }
-      if (boardHeight && getVW() > parseInt(screenSizes.screenSizeTablet, 10)) {
+      if (
+        boardHeight &&
+        getVW() >= parseInt(screenSizes.screenSizeTablet, 10)
+      ) {
         setCardHeight(
           boardHeight +
             offset -

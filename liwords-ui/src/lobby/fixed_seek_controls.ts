@@ -70,7 +70,7 @@ const channel275 = {
   vsBot: false,
 };
 
-const asci = {
+const nssg = {
   lexicon: 'CSW19X',
   challengerule: ChallengeRule.FIVE_POINT,
   initialtime: 15, // 13 minutes
@@ -79,6 +79,16 @@ const asci = {
   friend: '',
   incOrOT: 'overtime',
   vsBot: false,
+};
+
+const nssg16 = {
+  ...nssg,
+  initialtime: 18, // 16 mins
+};
+
+const nssg19 = {
+  ...nssg,
+  initialtime: 21, // 19 mins
 };
 
 const phillyasap = {
@@ -103,6 +113,48 @@ const nyc = {
   vsBot: false,
 };
 
+const learners = {
+  initialtime: 12, // 10 minutes
+  rated: true,
+  extratime: 0,
+  friend: '',
+  incOrOT: 'overtime',
+  vsBot: false,
+};
+
+const nasscChampionship = {
+  lexicon: 'OSPD6',
+  challengerule: ChallengeRule.FIVE_POINT,
+  initialtime: 22, // 20 minutes
+  rated: true,
+  extratime: 1,
+  friend: '',
+  incOrOT: 'overtime',
+  vsBot: false,
+};
+
+const nasscNovice = {
+  lexicon: 'OSPD6',
+  challengerule: ChallengeRule.VOID,
+  initialtime: 22, // 20 minutes
+  rated: true,
+  extratime: 1,
+  friend: '',
+  incOrOT: 'overtime',
+  vsBot: false,
+};
+
+const nasscHighSchool = {
+  lexicon: 'OSPD6',
+  challengerule: ChallengeRule.DOUBLE,
+  initialtime: 22, // 20 minutes
+  rated: true,
+  extratime: 1,
+  friend: '',
+  incOrOT: 'overtime',
+  vsBot: false,
+};
+
 export const fixedSettings: { [key: string]: settings } = {
   phillyvirtual,
   cococlub,
@@ -111,9 +163,15 @@ export const fixedSettings: { [key: string]: settings } = {
   cocoblitz,
   channel275,
   GqgfauAMzorWxGGrCqhV5J: phillyasap,
-  cbCrE5EAnfTpacaZkxc4SZ: asci, // /tournament
-  CSLUwqH4rHUTKzNcp7cPRP: asci, // /club
+  cbCrE5EAnfTpacaZkxc4SZ: nssg, // /tournament
+  CSLUwqH4rHUTKzNcp7cPRP: nssg, // /club
+  K4MwE8nesdmPAQJkHbVpbi: nssg16,
+  nEc9xsgU6h78eeKRA3MeCT: nssg19,
   CL9GW5sDfNqeX2yiPRg9YF: nyc,
+  vhM3xsCFtxvM794dCK2mE6: nasscChampionship,
+  Uzfx4iW2kLhyzWUz6MWQxY: nasscNovice,
+  XZDoU8Z6fMk7WrVitthkeU: nasscHighSchool,
+  KU8PSEu8p4Pni4qvmhn9x3: learners,
 };
 
 // A temporary map of club redirects. Map internal tournament ID to slug:
@@ -142,4 +200,19 @@ export const clubRedirects: { [key: string]: string } = {
   coloradosprings: '/club/coloradosprings',
   bridgewaterclub: '/club/bridgewater',
   cococlub: '/club/coco',
+};
+
+// Temporary teams for some tournaments. We should add support for this natively
+// in the backend.
+
+type teamSettings = {
+  odds: string;
+  evens: string;
+};
+
+export const teamTourneys: { [key: string]: teamSettings } = {
+  '/tournament/vcanam': {
+    odds: '🇨🇦',
+    evens: '🇺🇸',
+  },
 };

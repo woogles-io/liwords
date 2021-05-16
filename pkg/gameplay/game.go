@@ -72,7 +72,7 @@ func InstantiateNewGame(ctx context.Context, gameStore GameStore, cfg *config.Co
 		players = append(players, &macondopb.PlayerInfo{
 			Nickname: u.Username,
 			UserId:   u.UUID,
-			RealName: u.RealName(),
+			RealName: u.RealNameIfNotYouth(),
 		})
 		dbids[idx] = u.ID
 	}
@@ -156,13 +156,6 @@ func InstantiateNewGame(ctx context.Context, gameStore GameStore, cfg *config.Co
 			Rating:   u.GetRelevantRating(ratingKey),
 			IsBot:    u.IsBot,
 			First:    gameRunner.FirstPlayer().UserId == u.UUID,
-		}
-		if u.Profile != nil {
-			playerinfos[idx].FullName = u.RealName()
-			playerinfos[idx].CountryCode = u.Profile.CountryCode
-			playerinfos[idx].Title = u.Profile.Title
-			// There is no avatar URL yet.
-			// playerinfos[idx].AvatarUrl = u.Profile.AvatarUrl
 		}
 	}
 
@@ -420,6 +413,9 @@ func PlayMove(ctx context.Context,
 	if err != nil {
 		return err
 	}
+	// This cannot be deferred, because if performEndgameDuties expires the game this would unexpire it.
+	// But we are not doing this every turn, because at start of game we already set a very long expiry.
+	//entGame.SendChange(entGame.NewActiveGameEntry(true))
 
 	if m.Action() == move.MoveTypeChallenge {
 		// Handle in another way

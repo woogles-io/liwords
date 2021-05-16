@@ -12,6 +12,7 @@ type BlockerProps = {
   target: string;
   tagName?: string;
   blockCallback?: () => void;
+  userName?: string;
 };
 
 export const TheBlocker = (props: BlockerProps) => {
@@ -32,10 +33,12 @@ export const TheBlocker = (props: BlockerProps) => {
 
   if (excludedPlayers.has(props.target)) {
     apiFunc = 'Remove';
-    blockText = 'Unblock this user';
+    blockText = props.userName
+      ? `Unblock ${props.userName}`
+      : 'Unblock this user';
   } else {
     apiFunc = 'Add';
-    blockText = 'Block this user';
+    blockText = props.userName ? `Block ${props.userName}` : 'Block this user';
     // Add some confirmation.
   }
 

@@ -1,38 +1,41 @@
+import * as jspb from 'google-protobuf';
+
 import { Action, ActionType } from '../../actions/actions';
 import {
   FullTournamentDivisions,
   GameEndReasonMap,
   MessageType,
-  PlayerProperties,
-  PlayerRoundInfo,
   ReadyForTournamentGame,
   RoundStandings,
   TournamentDivisionDataResponse,
+  DivisionPairingsResponse,
+  PlayersAddedOrRemovedResponse,
+  DivisionControlsResponse,
+  DivisionRoundControls,
+  // TournamentFinishedResponse,
+  DivisionControls,
+  RoundControl,
+  Pairing,
+  TournamentPerson,
   TournamentGameEndedEvent,
   TournamentGameResult,
   TournamentGameResultMap,
   TournamentRoundStarted,
+  TournamentDivisionDeletedResponse,
 } from '../../gen/api/proto/realtime/realtime_pb';
+import {
+  TournamentMetadata,
+  TType,
+} from '../../gen/api/proto/tournament_service/tournament_service_pb';
 import { RecentGame } from '../../tournament/recent_game';
 import { encodeToSocketFmt } from '../../utils/protobuf';
 import { LoginState } from '../login_state';
 import { ActiveGame } from './lobby_reducer';
 
-type tourneytypes = 'STANDARD' | 'CLUB' | 'CHILD' | 'LEGACY';
 type valueof<T> = T[keyof T];
 
 type tournamentGameResult = valueof<TournamentGameResultMap>;
 type gameEndReason = valueof<GameEndReasonMap>;
-
-export type TournamentMetadata = {
-  name: string;
-  description: string;
-  directors: Array<string>;
-  slug: string;
-  id: string;
-  type: tourneytypes;
-  divisions: Array<string>;
-};
 
 type TournamentGame = {
   scores: Array<number>;
@@ -42,26 +45,29 @@ type TournamentGame = {
 };
 
 export type SinglePairing = {
-  players: Array<string>;
+  players: Array<TournamentPerson>;
   outcomes: Array<tournamentGameResult>;
   readyStates: Array<string>;
   games: Array<TournamentGame>;
 };
 
+type RoundPairings = {
+  roundPairings: Array<SinglePairing>;
+};
+
 export type Division = {
   tournamentID: string;
   divisionID: string;
-  players: Array<string>;
-  // Add TournamentControls here.
-  roundInfo: Array<string>; // a 1-d array, implementing the backend 2-d array of pairings
-  playerIndexMap: { [playerID: string]: number };
-  pairingMap: { [roundUserKey: string]: SinglePairing };
-  removedPlayers: Array<string>;
-  numRounds: number;
-  // Note: currentRound is zero-indexed
+  players: Array<TournamentPerson>;
+  standingsMap: jspb.Map<number, RoundStandings>;
+  pairings: Array<RoundPairings>;
+  divisionControls: DivisionControls | undefined;
+  roundControls: Array<RoundControl>;
+  // currentRound is zero-indexed
   currentRound: number;
-  // Add Standings here
-  standingsMap: { [round: number]: RoundStandings.AsObject };
+  playerIndexMap: { [playerID: string]: number };
+  numRounds: number;
+  // checkedInPlayers: Set<string>;
 };
 
 export type CompetitorState = {
@@ -78,6 +84,7 @@ export const defaultCompetitorState = {
 
 export type TournamentState = {
   metadata: TournamentMetadata;
+  directors: Array<string>;
   // standings, pairings, etc. more stuff here to come.
   started: boolean;
   divisions: { [name: string]: Division };
@@ -89,18 +96,16 @@ export type TournamentState = {
   finishedTourneyGames: Array<RecentGame>;
   gamesPageSize: number;
   gamesOffset: number;
+  finished: boolean;
+  initializedFromXHR: boolean;
 };
 
+const defaultMetadata = new TournamentMetadata();
+defaultMetadata.setType(TType.LEGACY);
+
 export const defaultTournamentState = {
-  metadata: {
-    name: '',
-    description: '',
-    directors: new Array<string>(),
-    slug: '',
-    id: '',
-    type: 'LEGACY' as tourneytypes,
-    divisions: new Array<string>(),
-  },
+  metadata: defaultMetadata,
+  directors: new Array<string>(),
   started: false,
   divisions: {},
   competitorState: defaultCompetitorState,
@@ -108,6 +113,8 @@ export const defaultTournamentState = {
   finishedTourneyGames: new Array<RecentGame>(),
   gamesPageSize: 20,
   gamesOffset: 0,
+  finished: false,
+  initializedFromXHR: false,
 };
 
 export enum TourneyStatus {
@@ -146,46 +153,16 @@ export const readyForTournamentGame = (
   );
 };
 
-const divisionDataResponseToObj = (
-  dd: TournamentDivisionDataResponse
-): Division => {
-  const ret = {
-    tournamentID: dd.getId(),
-    divisionID: dd.getDivisionId(),
-    players: dd.getPlayersList(),
-    currentRound: dd.getCurrentRound(),
-    numRounds:
-      dd.getPlayersList().length > 0
-        ? dd.getDivisionList().length / dd.getPlayersList().length
-        : 0,
-    roundInfo: dd.getDivisionList(),
-    pairingMap: {},
-    playerIndexMap: {},
-    standingsMap: {},
-    removedPlayers: new Array<string>(),
-  };
+const reducePairings = (
+  players: Array<TournamentPerson>,
+  existingPairings: Array<RoundPairings>,
+  newPairings: Pairing[]
+): Array<RoundPairings> => {
+  const updatedPairings = [...existingPairings];
 
-  const pairingMap: { [key: string]: SinglePairing } = {};
-  const playerIndexMap: { [playerID: string]: number } = {};
-  const standingsMap: { [roundId: number]: RoundStandings.AsObject } = {};
-  const removedPlayers = new Array<string>();
-  dd.getPlayersPropertiesList().forEach((value: PlayerProperties, index) => {
-    if (value.getRemoved()) {
-      removedPlayers.push(dd.getPlayersList()[index]);
-    }
-  });
-  dd.getPlayersList().forEach((value: string, index: number) => {
-    playerIndexMap[value] = index;
-  });
-  const playerNameByIndexMap: { [idx: number]: string } = {};
-  dd.getPlayersList().forEach((value: string, index: number) => {
-    playerNameByIndexMap[index] = value;
-  });
-  dd.getPairingMapMap().forEach((value: PlayerRoundInfo, key: string) => {
-    pairingMap[key] = {
-      players: value
-        .getPlayersList()
-        .map((v) => playerNameByIndexMap[parseInt(v, 10)]),
+  newPairings.forEach((value: Pairing) => {
+    const newSinglePairing = {
+      players: value.getPlayersList().map((v) => players[v]),
       outcomes: value.getOutcomesList(),
       readyStates: value.getReadyStatesList(),
       games: value.getGamesList().map((g) => ({
@@ -194,16 +171,150 @@ const divisionDataResponseToObj = (
         id: g.getId(),
         results: g.getResultsList(),
       })),
-    };
+    } as SinglePairing;
+    updatedPairings[value.getRound()].roundPairings[
+      value.getPlayersList()[0]
+    ] = newSinglePairing;
+    updatedPairings[value.getRound()].roundPairings[
+      value.getPlayersList()[1]
+    ] = newSinglePairing;
+  });
+  return updatedPairings;
+};
+
+// Create a deep copy.
+const copyPairings = (existingPairings: Array<RoundPairings>) => {
+  const pairingsCopy = new Array<RoundPairings>();
+
+  existingPairings.forEach((value: RoundPairings) => {
+    const roundPairings = new Array<SinglePairing>();
+
+    value.roundPairings.forEach((value: SinglePairing) => {
+      const players = new Array<TournamentPerson>();
+      if (!value.players || !value.players.length) {
+        roundPairings.push({} as SinglePairing);
+      } else {
+        value.players.forEach((person) => {
+          players.push(person.cloneMessage());
+        });
+        const newSinglePairing = {
+          players,
+          outcomes: [...value.outcomes],
+          readyStates: [...value.readyStates],
+          games: value.games.map((g) => ({
+            scores: [...g.scores],
+            gameEndReason: g.gameEndReason,
+            id: g.id,
+            results: [...g.results],
+          })),
+        } as SinglePairing;
+
+        roundPairings.push(newSinglePairing);
+      }
+    });
+    pairingsCopy.push({ roundPairings });
+  });
+  return pairingsCopy;
+};
+
+const reduceStandings = (
+  existingStandings: jspb.Map<number, RoundStandings>,
+  newStandings: jspb.Map<number, RoundStandings>
+): jspb.Map<number, RoundStandings> => {
+  const updatedStandings = new jspb.Map<number, RoundStandings>([]);
+
+  existingStandings.forEach((value: RoundStandings, key: number) => {
+    updatedStandings.set(key, value);
   });
 
-  dd.getStandingsMap().forEach((value: RoundStandings, key: number) => {
-    standingsMap[key] = value.toObject();
+  newStandings.forEach((value: RoundStandings, key: number) => {
+    updatedStandings.set(key, value);
   });
-  ret.pairingMap = pairingMap;
-  ret.removedPlayers = removedPlayers;
+  return updatedStandings;
+};
+
+const divisionDataResponseToObj = (
+  dd: TournamentDivisionDataResponse
+): Division => {
+  const ret = {
+    tournamentID: dd.getId(),
+    divisionID: dd.getDivision(),
+    players: Array<TournamentPerson>(),
+    pairings: Array<RoundPairings>(),
+    divisionControls: dd.getControls(), // game request, etc
+    roundControls: dd.getRoundControlsList(),
+    currentRound: dd.getCurrentRound(),
+    playerIndexMap: {},
+    numRounds: 0,
+    standingsMap: dd.getStandingsMap(),
+    //     checkedInPlayers: new Set<string>(),
+  };
+
+  // Reduce Standings
+
+  // const standingsMap: { [roundId: number]: RoundStandings } = {};
+
+  // dd.getStandingsMap().forEach((value: RoundStandings, key: number) => {
+  //   standingsMap[key] = value;
+  // });
+
+  /**
+   *     if (value.getCheckedIn()) {
+      checkedInPlayers.add(dd.getPlayersList()[index]);
+    }
+   */
+
+  // Reduce playerIndexMap and players
+
+  const playerIndexMap: { [playerID: string]: number } = {};
+  const newPlayers = Array<TournamentPerson>();
+  dd.getPlayers()
+    ?.getPersonsList()
+    .forEach((value: TournamentPerson, index: number) => {
+      playerIndexMap[value.getId()] = index;
+      newPlayers.push(value);
+    });
+
   ret.playerIndexMap = playerIndexMap;
-  ret.standingsMap = standingsMap;
+  ret.players = newPlayers;
+
+  // Reduce pairings
+
+  const newPairings = new Array<RoundPairings>();
+  ret.numRounds = dd.getRoundControlsList().length;
+
+  for (let i = 0; i < ret.numRounds; i++) {
+    const newRoundPairings = new Array<SinglePairing>();
+    dd.getPlayers()
+      ?.getPersonsList()
+      .forEach(() => {
+        newRoundPairings.push({} as SinglePairing);
+      });
+    newPairings.push({ roundPairings: newRoundPairings });
+  }
+
+  dd.getPairingMapMap().forEach((value: Pairing, key: string) => {
+    const newPairing = {
+      players: value.getPlayersList().map((v) => newPlayers[v]),
+      outcomes: value.getOutcomesList(),
+      readyStates: value.getReadyStatesList(),
+      games: value.getGamesList().map((g) => ({
+        scores: g.getScoresList(),
+        gameEndReason: g.getGameEndReason(),
+        id: g.getId(),
+        results: g.getResultsList(),
+      })),
+    } as SinglePairing;
+    newPairings[value.getRound()].roundPairings[
+      playerIndexMap[newPairing.players[0].getId()]
+    ] = newPairing;
+    newPairings[value.getRound()].roundPairings[
+      playerIndexMap[newPairing.players[1].getId()]
+    ] = newPairing;
+  });
+
+  ret.pairings = newPairings;
+
   return ret;
 };
 
@@ -254,14 +365,23 @@ export const TourneyGameEndedEvtToRecentGame = (
   };
 };
 
-const getRoundInfo = (
+const getPairing = (
   round: number,
   fullPlayerID: string,
   division: Division
-): SinglePairing => {
-  const idx = division.playerIndexMap[fullPlayerID];
-  const key = division.roundInfo[idx + round * division.players.length];
-  return division.pairingMap[key];
+): SinglePairing | undefined => {
+  if (
+    !(
+      division.pairings &&
+      division.pairings[round] &&
+      division.pairings[round].roundPairings
+    )
+  ) {
+    return undefined;
+  }
+  return division.pairings[round].roundPairings[
+    division.playerIndexMap[fullPlayerID]
+  ];
 };
 
 // The "Ready" button and pairings should be displayed based on:
@@ -270,10 +390,8 @@ const getRoundInfo = (
 //      (how do we determine that? a combination of the live games
 //       currently ongoing and a game result already being in for this game?)
 const tourneyStatus = (
-  started: boolean,
   division: Division,
   activeGames: Array<ActiveGame>,
-  currentRound: number,
   loginContext: LoginState
 ): TourneyStatus => {
   if (!division) {
@@ -281,21 +399,18 @@ const tourneyStatus = (
   }
 
   const fullPlayerID = `${loginContext.userID}:${loginContext.username}`;
-  if (!division) {
-    // This really shouldn't happen, but it's a check to make sure we don't crash.
-    return TourneyStatus.PRETOURNEY;
-  }
-  const roundInfo = getRoundInfo(currentRound, fullPlayerID, division);
+  const pairing = getPairing(division.currentRound, fullPlayerID, division);
 
-  if (!roundInfo) {
+  if (!pairing || !pairing.players) {
     return TourneyStatus.PRETOURNEY;
   }
-  const playerIdx = roundInfo.players.indexOf(fullPlayerID);
+
+  const playerIdx = pairing.players.map((v) => v.getId()).indexOf(fullPlayerID);
   if (playerIdx === undefined) {
     return TourneyStatus.PRETOURNEY;
   }
-  if (roundInfo.players[0] === roundInfo.players[1]) {
-    switch (roundInfo.outcomes[0]) {
+  if (pairing.players[0] === pairing.players[1]) {
+    switch (pairing.outcomes[0]) {
       case TournamentGameResult.BYE:
         return TourneyStatus.ROUND_BYE;
       case TournamentGameResult.FORFEIT_LOSS:
@@ -305,7 +420,10 @@ const tourneyStatus = (
     }
     return TourneyStatus.PRETOURNEY;
   }
-  if (roundInfo.games[0] && roundInfo.games[0].gameEndReason) {
+  if (pairing.games[0] && pairing.games[0].gameEndReason) {
+    if (division.currentRound === division.numRounds - 1) {
+      return TourneyStatus.POSTTOURNEY;
+    }
     // Game already finished
     return TourneyStatus.ROUND_GAME_FINISHED;
   }
@@ -320,22 +438,22 @@ const tourneyStatus = (
     return TourneyStatus.ROUND_GAME_ACTIVE;
   }
   if (
-    roundInfo.readyStates[playerIdx] === '' &&
-    roundInfo.readyStates[1 - playerIdx] !== ''
+    pairing.readyStates[playerIdx] === '' &&
+    pairing.readyStates[1 - playerIdx] !== ''
   ) {
     // Our opponent is ready
     return TourneyStatus.ROUND_OPPONENT_WAITING;
   } else if (
-    roundInfo.readyStates[1 - playerIdx] === '' &&
-    roundInfo.readyStates[playerIdx] !== ''
+    pairing.readyStates[1 - playerIdx] === '' &&
+    pairing.readyStates[playerIdx] !== ''
   ) {
     // We're ready
     return TourneyStatus.ROUND_READY;
   }
 
   if (
-    roundInfo.readyStates[playerIdx] === '' &&
-    roundInfo.readyStates[1 - playerIdx] === ''
+    pairing.readyStates[playerIdx] === '' &&
+    pairing.readyStates[1 - playerIdx] === ''
   ) {
     return TourneyStatus.ROUND_OPEN;
   }
@@ -348,16 +466,299 @@ export function TournamentReducer(
   state: TournamentState,
   action: Action
 ): TournamentState {
+  if (!state.initializedFromXHR) {
+    // Throw away messages if we haven't received the XHR back yet.
+    // Yes, this can result in potential race conditions.
+    // We should buffer messages received prior to the XHR, apply them
+    // post-XHR receipt, and make all reducers idempotent.
+    if (
+      ![
+        ActionType.SetDivisionsData,
+        ActionType.SetTourneyMetadata,
+        ActionType.AddActiveGames,
+        ActionType.AddActiveGame,
+        // These are legacy events for CLUB/LEGACY tournament types
+
+        ActionType.RemoveActiveGame,
+        ActionType.AddTourneyGameResult,
+        ActionType.AddTourneyGameResults,
+        ActionType.SetTourneyGamesOffset,
+      ].includes(action.actionType)
+    ) {
+      return state;
+    }
+  }
+
   switch (action.actionType) {
     case ActionType.SetTourneyMetadata:
-      const metadata = action.payload as TournamentMetadata;
+      const m = action.payload as {
+        directors: Array<string>;
+        metadata: TournamentMetadata;
+      };
+      console.log('gonna set metadata', m);
       return {
         ...state,
-        metadata,
+        directors: m.directors,
+        metadata: m.metadata,
       };
 
-    // This message gets set often, every time anything happens (a game ends,
-    // users get edited, new pairings get set, etc.)
+    case ActionType.SetDivisionRoundControls: {
+      const drc = action.payload as {
+        roundControls: DivisionRoundControls;
+        loginState: LoginState;
+      };
+      const division = drc.roundControls.getDivision();
+      // copy old stuff
+      let newNumRounds = state.divisions[division].numRounds;
+      let newRoundControls = state.divisions[division].roundControls;
+      let newPairings = copyPairings(state.divisions[division].pairings);
+      let newStandings = reduceStandings(
+        state.divisions[division].standingsMap,
+        new jspb.Map<number, RoundStandings>([])
+      );
+
+      if (!state.started) {
+        // This can only be a full set of round controls
+        newPairings = new Array<RoundPairings>();
+        newRoundControls = drc.roundControls.getRoundControlsList();
+        newNumRounds = newRoundControls.length;
+        for (let i = 0; i < newNumRounds; i++) {
+          // reset all pairings
+          const newRoundPairings = new Array<SinglePairing>();
+          state.divisions[division].players.forEach(() => {
+            newRoundPairings.push({} as SinglePairing);
+          });
+          newPairings.push({ roundPairings: newRoundPairings });
+        }
+        newPairings = reducePairings(
+          state.divisions[division].players,
+          newPairings,
+          drc.roundControls.getDivisionPairingsList()
+        );
+        newStandings = drc.roundControls.getDivisionStandingsMap();
+      } else {
+        // This can only be an individual round control in the future.
+        newRoundControls = new Array<RoundControl>();
+        state.divisions[division].roundControls.forEach((rc: RoundControl) => {
+          newRoundControls.push(rc.cloneMessage());
+        });
+        drc.roundControls.getRoundControlsList().forEach((rc: RoundControl) => {
+          newRoundControls[rc.getRound()] = rc;
+        });
+      }
+
+      return Object.assign({}, state, {
+        divisions: Object.assign({}, state.divisions, {
+          [division]: Object.assign({}, state.divisions[division], {
+            roundControls: newRoundControls,
+            standingsMap: newStandings,
+            pairings: newPairings,
+            numRounds: newNumRounds,
+          }),
+        }),
+      });
+    }
+
+    case ActionType.SetDivisionControls: {
+      const dc = action.payload as {
+        divisionControls: DivisionControlsResponse;
+        loginState: LoginState;
+      };
+      const division = dc.divisionControls.getDivision();
+
+      return Object.assign({}, state, {
+        divisions: Object.assign({}, state.divisions, {
+          [division]: Object.assign({}, state.divisions[division], {
+            divisionControls: dc.divisionControls,
+          }),
+        }),
+      });
+    }
+
+    case ActionType.SetDivisionPairings: {
+      const dp = action.payload as {
+        dpr: DivisionPairingsResponse;
+        loginState: LoginState;
+      };
+      const division = dp.dpr.getDivision();
+      const newPairings = reducePairings(
+        state.divisions[division].players,
+        state.divisions[division].pairings,
+        dp.dpr.getDivisionPairingsList()
+      );
+
+      const newStandings = reduceStandings(
+        state.divisions[division].standingsMap,
+        dp.dpr.getDivisionStandingsMap()
+      );
+
+      const fullLoggedInID = `${dp.loginState.userID}:${dp.loginState.username}`;
+      const userIndex =
+        state.divisions[division].playerIndexMap[fullLoggedInID];
+      let newStatus = state.competitorState.status;
+      if (userIndex != null) {
+        dp.dpr.getDivisionPairingsList().forEach((pairing: Pairing) => {
+          if (pairing.getRound() === state.divisions[division].currentRound) {
+            const pairingPlayers = pairing.getPlayersList();
+            if (
+              pairingPlayers &&
+              (pairingPlayers[0] === userIndex ||
+                pairingPlayers[1] === userIndex)
+            ) {
+              let playerIndex = 0;
+              if (pairingPlayers[1] === userIndex) {
+                playerIndex = 1;
+              }
+              const outcome = pairing.getOutcomesList()[playerIndex];
+              if (outcome !== TournamentGameResult.NO_RESULT) {
+                newStatus = TourneyStatus.ROUND_GAME_FINISHED;
+              }
+            }
+          }
+        });
+      }
+
+      const finishedGamesMap: { [id: string]: boolean } = {};
+      dp.dpr.getDivisionPairingsList().forEach((p) => {
+        p.getGamesList().forEach((tg) => {
+          const gameID = tg.getId();
+          if (tg.getGameEndReason()) {
+            finishedGamesMap[gameID] = true;
+          }
+        });
+      });
+
+      const newActiveGames = state.activeGames.filter(
+        (ag) => !finishedGamesMap[ag.gameID]
+      );
+
+      const newState = Object.assign({}, state, {
+        competitorState: Object.assign({}, state.competitorState, {
+          status: newStatus,
+        }),
+        divisions: Object.assign({}, state.divisions, {
+          [division]: Object.assign({}, state.divisions[division], {
+            pairings: newPairings,
+            standingsMap: newStandings,
+          }),
+        }),
+        activeGames: newActiveGames,
+      });
+      return newState;
+    }
+
+    case ActionType.SetDivisionPlayers: {
+      const dp = action.payload as {
+        parr: PlayersAddedOrRemovedResponse;
+        loginState: LoginState;
+      };
+
+      const division = dp.parr.getDivision();
+      const respPlayers = dp.parr.getPlayers()?.getPersonsList();
+      const newPlayerIndexMap: { [playerID: string]: number } = {};
+      const newPlayers = Array<TournamentPerson>();
+
+      respPlayers?.forEach((value: TournamentPerson, index: number) => {
+        newPlayerIndexMap[value.getId()] = index;
+        newPlayers.push(value);
+      });
+
+      let expandedPairings = copyPairings(state.divisions[division].pairings);
+      let newStandings = reduceStandings(
+        state.divisions[division].standingsMap,
+        new jspb.Map<number, RoundStandings>([])
+      );
+
+      if (
+        state.started &&
+        respPlayers &&
+        respPlayers?.length > newPlayers.length
+      ) {
+        // Players have been added and the tournament has already started
+        // This means we must expand the current pairings
+        const numberOfAddedPlayers = respPlayers?.length - newPlayers.length;
+
+        expandedPairings.forEach((value: RoundPairings) => {
+          for (let i = numberOfAddedPlayers; i >= 0; i--) {
+            value.roundPairings.push({} as SinglePairing);
+          }
+        });
+      }
+
+      if (!state.started) {
+        expandedPairings = Array<RoundPairings>();
+        for (let i = 0; i < state.divisions[division].numRounds; i++) {
+          const newRoundPairings = new Array<SinglePairing>();
+          newPlayers.forEach(() => {
+            newRoundPairings.push({} as SinglePairing);
+          });
+          expandedPairings.push({ roundPairings: newRoundPairings });
+        }
+        newStandings = new jspb.Map<number, RoundStandings>([]);
+      }
+
+      const newPairings = reducePairings(
+        newPlayers,
+        expandedPairings,
+        dp.parr.getDivisionPairingsList()
+      );
+      newStandings = reduceStandings(
+        newStandings,
+        dp.parr.getDivisionStandingsMap()
+      );
+
+      const fullLoggedInID = `${dp.loginState.userID}:${dp.loginState.username}`;
+      console.log('divisions are', state.divisions);
+      let registeredDivision: Division | undefined;
+      if (fullLoggedInID in newPlayerIndexMap) {
+        registeredDivision = state.divisions[division];
+      }
+      console.log(
+        'registered division',
+        registeredDivision,
+        fullLoggedInID,
+        newPlayerIndexMap
+      );
+      let competitorState: CompetitorState = state.competitorState;
+
+      if (registeredDivision) {
+        competitorState = {
+          isRegistered: true,
+          division: registeredDivision.divisionID,
+          currentRound: registeredDivision.currentRound,
+          status: tourneyStatus(
+            registeredDivision,
+            state.activeGames,
+            dp.loginState
+          ),
+        };
+      } else {
+        competitorState = {
+          ...competitorState,
+          isRegistered: false,
+        };
+      }
+      const newState = Object.assign({}, state, {
+        competitorState,
+        divisions: Object.assign({}, state.divisions, {
+          [division]: Object.assign({}, state.divisions[division], {
+            pairings: newPairings,
+            standingsMap: newStandings,
+            playerIndexMap: newPlayerIndexMap,
+            players: newPlayers,
+          }),
+        }),
+      });
+      return newState;
+    }
+
+    case ActionType.SetTournamentFinished: {
+      return {
+        ...state,
+        finished: true,
+      };
+    }
+
     case ActionType.SetDivisionData: {
       // Convert the protobuf object to a nicer JS representation:
       const dd = action.payload as {
@@ -367,7 +768,7 @@ export function TournamentReducer(
       const divData = divisionDataResponseToObj(dd.divisionMessage);
       const fullLoggedInID = `${dd.loginState.userID}:${dd.loginState.username}`;
       let registeredDivision: Division | undefined;
-      if (divData.players.includes(fullLoggedInID)) {
+      if (fullLoggedInID in divData.playerIndexMap) {
         registeredDivision = divData;
       }
       let competitorState: CompetitorState = state.competitorState;
@@ -377,10 +778,8 @@ export function TournamentReducer(
           division: registeredDivision.divisionID,
           currentRound: registeredDivision.currentRound,
           status: tourneyStatus(
-            state.started,
             registeredDivision,
             state.activeGames,
-            registeredDivision.currentRound,
             dd.loginState
           ),
         };
@@ -388,12 +787,26 @@ export function TournamentReducer(
       return Object.assign({}, state, {
         competitorState,
         divisions: Object.assign({}, state.divisions, {
-          [dd.divisionMessage.getDivisionId()]: divData,
+          [dd.divisionMessage.getDivision()]: divData,
         }),
       });
     }
 
+    case ActionType.DeleteDivision: {
+      const dd = action.payload as TournamentDivisionDeletedResponse;
+      // Only empty divisions can be deleted, so no need to worry about competitor state
+
+      const deleted = dd.getDivision();
+
+      const { [deleted]: _, ...divisions } = state.divisions;
+
+      return Object.assign({}, state, {
+        divisions: Object.assign({}, divisions),
+      });
+    }
+
     case ActionType.SetDivisionsData: {
+      // Handles XHR request for GetDivisions
       const dd = action.payload as {
         fullDivisions: FullTournamentDivisions;
         loginState: LoginState;
@@ -406,25 +819,27 @@ export function TournamentReducer(
       divisionsMap.forEach(
         (value: TournamentDivisionDataResponse, key: string) => {
           divisions[key] = divisionDataResponseToObj(value);
-          if (divisions[key].players.includes(fullLoggedInID)) {
+          if (fullLoggedInID in divisions[key].playerIndexMap) {
             registeredDivision = divisions[key];
           }
         }
       );
-      // However we should check to see if we've already played the game,
-      // or are playing the game.
 
       let competitorState: CompetitorState = state.competitorState;
       if (registeredDivision) {
+        console.log(
+          'registereddiv',
+          registeredDivision,
+          'stateactivegames',
+          state.activeGames
+        );
         competitorState = {
           isRegistered: true,
           division: registeredDivision.divisionID,
           currentRound: registeredDivision.currentRound,
           status: tourneyStatus(
-            dd.fullDivisions.getStarted(),
             registeredDivision,
             state.activeGames,
-            registeredDivision.currentRound,
             dd.loginState
           ),
         };
@@ -435,33 +850,46 @@ export function TournamentReducer(
         started: dd.fullDivisions.getStarted(),
         divisions,
         competitorState,
+        initializedFromXHR: true,
       };
     }
 
     case ActionType.StartTourneyRound: {
-      const m = action.payload as TournamentRoundStarted;
+      const m = action.payload as {
+        trs: TournamentRoundStarted;
+        loginState: LoginState;
+      };
       // Make sure the tournament ID matches. (Why wouldn't it, though?)
-      if (state.metadata.id !== m.getTournamentId()) {
+      if (state.metadata.getId() !== m.trs.getTournamentId()) {
         return state;
       }
-      const division = m.getDivision();
+      const division = m.trs.getDivision();
       // Mark the round for the passed-in division to be the passed-in round.
-      return Object.assign(state, {
-        started: true,
-        divisions: Object.assign({}, state.divisions, {
-          [division]: Object.assign({}, state.divisions[division], {
-            currentRound: m.getRound(),
-          }),
+
+      const newDivisions = Object.assign({}, state.divisions, {
+        [division]: Object.assign({}, state.divisions[division], {
+          currentRound: m.trs.getRound(),
         }),
+      });
+
+      const newStatus =
+        state.competitorState.division === division
+          ? tourneyStatus(
+              newDivisions[division],
+              state.activeGames,
+              m.loginState
+            )
+          : state.competitorState.status;
+
+      return Object.assign({}, state, {
+        started: true,
+        divisions: newDivisions,
         competitorState: Object.assign({}, state.competitorState, {
           currentRound:
             state.competitorState.division === division
-              ? m.getRound()
+              ? m.trs.getRound()
               : state.competitorState.currentRound,
-          status:
-            state.competitorState.division === division
-              ? TourneyStatus.ROUND_OPEN
-              : state.competitorState.status,
+          status: newStatus,
         }),
       });
     }
@@ -477,29 +905,68 @@ export function TournamentReducer(
       };
     }
 
+    // For the following two actions, it is important to recalculate
+    // the competitorState if it exists; this is because
+    // competitorState.status depends on state.activeGames.
     case ActionType.AddActiveGames: {
-      const activeGames = action.payload as Array<ActiveGame>;
+      const g = action.payload as {
+        activeGames: Array<ActiveGame>;
+        loginState: LoginState;
+      };
+      const registeredDivision = state.competitorState.division;
+      let newCompetitorState = state.competitorState;
+      if (registeredDivision) {
+        newCompetitorState = {
+          ...state.competitorState,
+          status: tourneyStatus(
+            state.divisions[registeredDivision],
+            g.activeGames,
+            g.loginState
+          ),
+        };
+      }
+
       return {
         ...state,
-        activeGames,
+        activeGames: g.activeGames,
+        competitorState: newCompetitorState,
       };
     }
 
     case ActionType.AddActiveGame: {
       const { activeGames } = state;
-      const activeGame = action.payload as ActiveGame;
+      const g = action.payload as {
+        activeGame: ActiveGame;
+        loginState: LoginState;
+      };
+      const registeredDivision = state.competitorState.division;
+      let newCompetitorState = state.competitorState;
+      if (registeredDivision) {
+        newCompetitorState = {
+          ...state.competitorState,
+          status: tourneyStatus(
+            state.divisions[registeredDivision],
+            [...state.activeGames, g.activeGame],
+            g.loginState
+          ),
+        };
+      }
+
       return {
         ...state,
-        activeGames: [...activeGames, activeGame],
+        activeGames: [...activeGames, g.activeGame],
+        competitorState: newCompetitorState,
       };
     }
 
     case ActionType.RemoveActiveGame: {
+      // LEGACY event. When games end in regular tournaments, we just get
+      // a divisions pairing message.
       const { activeGames } = state;
-      const id = action.payload as string;
+      const g = action.payload as string;
 
       const newArr = activeGames.filter((ag) => {
-        return ag.gameID !== id;
+        return ag.gameID !== g;
       });
 
       return {
