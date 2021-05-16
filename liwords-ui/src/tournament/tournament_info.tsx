@@ -23,6 +23,11 @@ export const TournamentInfo = (props: TournamentInfoProps) => {
     </span>
   ));
   const type = isClubType(metadata.getType()) ? 'Club' : 'Tournament';
+  const title = (
+    <span style={{ color: tournamentContext.metadata.getColor() }}>
+      {tournamentContext.metadata.getName()}
+    </span>
+  );
   return (
     <div className="tournament-info">
       {/* Mobile version of the status widget, hidden by css elsewhere */}
@@ -37,7 +42,7 @@ export const TournamentInfo = (props: TournamentInfoProps) => {
           }
         />
       )}
-      <Card title={tournamentContext.metadata.getName()} className="tournament">
+      <Card title={title} className="tournament">
         {tournamentContext.metadata.getLogo() && (
           <img
             src={tournamentContext.metadata.getLogo()}
@@ -55,10 +60,14 @@ export const TournamentInfo = (props: TournamentInfoProps) => {
         <ReactMarkdown linkTarget="_blank">
           {tournamentContext.metadata.getDescription()}
         </ReactMarkdown>
-        <h5 className="section-header">{type} Notice</h5>
-        <ReactMarkdown linkTarget="_blank">
-          {tournamentContext.metadata.getDisclaimer()}
-        </ReactMarkdown>
+        {tournamentContext.metadata.getDisclaimer() && (
+          <>
+            <h5 className="section-header">{type} Notice</h5>
+            <ReactMarkdown linkTarget="_blank">
+              {tournamentContext.metadata.getDisclaimer()}
+            </ReactMarkdown>
+          </>
+        )}
       </Card>
     </div>
   );
