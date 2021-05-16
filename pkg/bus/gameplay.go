@@ -473,17 +473,6 @@ func (b *Bus) adjudicateGames(ctx context.Context) error {
 			wrapped.AddAudience(entity.AudLobby, "gameEnded")
 			b.gameEventChan <- wrapped
 			b.gameEventChan <- entGame.NewActiveGameEntry(false)
-
-			// If this game is part of a tournament that is not in clubhouse
-			// mode, we must allow the players to try to play again.
-			if g.TournamentId != "" {
-				err = b.redoCancelledGamePairings(
-					ctx, g.Players[0].UserId+":"+g.Players[0].Nickname,
-					g.TournamentId, g.TournamentDivision,
-					int(g.TournamentRound), int(g.TournamentGameIndex))
-				log.Err(err).Msg("redo-cancelled-game-pairings")
-			}
-
 		}
 	}
 	return nil

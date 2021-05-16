@@ -33,7 +33,6 @@
     "react-scripts": "3.4.1",
     "react-use-websocket": "^2.5.0",
     "ts-protoc-gen": "^0.14.0",
-    "typescript": "~3.7.2",
     "wolges-wasm": "file:wolges-wasm-pkg"
   },
   "scripts": {
