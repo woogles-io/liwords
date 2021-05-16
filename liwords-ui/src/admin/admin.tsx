@@ -5,8 +5,8 @@ import { TourneyEditor } from './tourney_editor';
 // import { UserEditor } from './user_editor';
 import { useMountedState } from '../utils/mounted';
 import { AnnouncementEditor } from './announcement_editor';
+import './admin.scss';
 // import { TourneyManager } from './tourney_manager';
-// import '../App.scss';
 // import 'antd/dist/antd.css';
 
 type Props = {};

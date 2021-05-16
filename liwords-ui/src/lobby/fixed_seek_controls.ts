@@ -122,6 +122,39 @@ const learners = {
   vsBot: false,
 };
 
+const nasscChampionship = {
+  lexicon: 'OSPD6',
+  challengerule: ChallengeRule.FIVE_POINT,
+  initialtime: 22, // 20 minutes
+  rated: true,
+  extratime: 1,
+  friend: '',
+  incOrOT: 'overtime',
+  vsBot: false,
+};
+
+const nasscNovice = {
+  lexicon: 'OSPD6',
+  challengerule: ChallengeRule.VOID,
+  initialtime: 22, // 20 minutes
+  rated: true,
+  extratime: 1,
+  friend: '',
+  incOrOT: 'overtime',
+  vsBot: false,
+};
+
+const nasscHighSchool = {
+  lexicon: 'OSPD6',
+  challengerule: ChallengeRule.DOUBLE,
+  initialtime: 22, // 20 minutes
+  rated: true,
+  extratime: 1,
+  friend: '',
+  incOrOT: 'overtime',
+  vsBot: false,
+};
+
 export const fixedSettings: { [key: string]: settings } = {
   phillyvirtual,
   cococlub,
@@ -135,6 +168,9 @@ export const fixedSettings: { [key: string]: settings } = {
   K4MwE8nesdmPAQJkHbVpbi: nssg16,
   nEc9xsgU6h78eeKRA3MeCT: nssg19,
   CL9GW5sDfNqeX2yiPRg9YF: nyc,
+  vhM3xsCFtxvM794dCK2mE6: nasscChampionship,
+  Uzfx4iW2kLhyzWUz6MWQxY: nasscNovice,
+  XZDoU8Z6fMk7WrVitthkeU: nasscHighSchool,
   KU8PSEu8p4Pni4qvmhn9x3: learners,
 };
 

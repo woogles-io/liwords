@@ -1077,7 +1077,9 @@ proto.tournament_service.TournamentMetadata.toObject = function(includeInstance,
     boardStyle: jspb.Message.getFieldWithDefault(msg, 8, ""),
     defaultClubSettings: (f = msg.getDefaultClubSettings()) && api_proto_realtime_realtime_pb.GameRequest.toObject(includeInstance, f),
     freeformClubSettingFieldsList: (f = jspb.Message.getRepeatedField(msg, 10)) == null ? undefined : f,
-    password: jspb.Message.getFieldWithDefault(msg, 11, "")
+    password: jspb.Message.getFieldWithDefault(msg, 11, ""),
+    logo: jspb.Message.getFieldWithDefault(msg, 12, ""),
+    color: jspb.Message.getFieldWithDefault(msg, 13, "")
   };
 
   if (includeInstance) {
@@ -1158,6 +1160,14 @@ proto.tournament_service.TournamentMetadata.deserializeBinaryFromReader = functi
     case 11:
       var value = /** @type {string} */ (reader.readString());
       msg.setPassword(value);
+      break;
+    case 12:
+      var value = /** @type {string} */ (reader.readString());
+      msg.setLogo(value);
+      break;
+    case 13:
+      var value = /** @type {string} */ (reader.readString());
+      msg.setColor(value);
       break;
     default:
       reader.skipField();
@@ -1263,6 +1273,20 @@ proto.tournament_service.TournamentMetadata.serializeBinaryToWriter = function(m
   if (f.length > 0) {
     writer.writeString(
       11,
+      f
+    );
+  }
+  f = message.getLogo();
+  if (f.length > 0) {
+    writer.writeString(
+      12,
+      f
+    );
+  }
+  f = message.getColor();
+  if (f.length > 0) {
+    writer.writeString(
+      13,
       f
     );
   }
@@ -1502,6 +1526,42 @@ proto.tournament_service.TournamentMetadata.prototype.getPassword = function() {
  */
 proto.tournament_service.TournamentMetadata.prototype.setPassword = function(value) {
   return jspb.Message.setProto3StringField(this, 11, value);
+};
+
+
+/**
+ * optional string logo = 12;
+ * @return {string}
+ */
+proto.tournament_service.TournamentMetadata.prototype.getLogo = function() {
+  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 12, ""));
+};
+
+
+/**
+ * @param {string} value
+ * @return {!proto.tournament_service.TournamentMetadata} returns this
+ */
+proto.tournament_service.TournamentMetadata.prototype.setLogo = function(value) {
+  return jspb.Message.setProto3StringField(this, 12, value);
+};
+
+
+/**
+ * optional string color = 13;
+ * @return {string}
+ */
+proto.tournament_service.TournamentMetadata.prototype.getColor = function() {
+  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 13, ""));
+};
+
+
+/**
+ * @param {string} value
+ * @return {!proto.tournament_service.TournamentMetadata} returns this
+ */
+proto.tournament_service.TournamentMetadata.prototype.setColor = function(value) {
+  return jspb.Message.setProto3StringField(this, 13, value);
 };
 
 

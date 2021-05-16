@@ -58,6 +58,7 @@ import { CompetitorStatus } from '../tournament/competitor_status';
 import { Unrace } from '../utils/unrace';
 import { Blank } from '../utils/cwgame/common';
 import { useTourneyMetadata } from '../tournament/utils';
+import { Disclaimer } from './disclaimer';
 
 type Props = {
   sendSocketMsg: (msg: Uint8Array) => void;
@@ -820,13 +821,21 @@ export const Table = React.memo((props: Props) => {
         : singularCount(n, 'Player', 'Players'),
     [isObserver]
   );
+  const boardTheme =
+    'board--' + tournamentContext.metadata.getBoardStyle() || '';
+  const tileTheme = 'tile--' + tournamentContext.metadata.getTileStyle() || '';
 
   let ret = (
     <div className={`game-container${isRegistered ? ' competitor' : ''}`}>
       <ManageWindowTitleAndTurnSound />
       <TopBar tournamentID={gameInfo.tournament_id} />
-      <div className="game-table">
-        <div className="chat-area" id="left-sidebar">
+      <div className={`game-table ${boardTheme} ${tileTheme}`}>
+        <div
+          className={`chat-area ${
+            tournamentContext.metadata.getDisclaimer() ? 'has-disclaimer' : ''
+          }`}
+          id="left-sidebar"
+        >
           <Card className="left-menu">
             {gameInfo.tournament_id ? (
               <Link to={tournamentContext.metadata?.getSlug()}>
@@ -860,11 +869,16 @@ export const Table = React.memo((props: Props) => {
               tournamentID={gameInfo.tournament_id}
             />
           ) : null}
-
           {isExamining ? (
             <Analyzer includeCard lexicon={gameInfo.game_request.lexicon} />
           ) : (
             <Notepad includeCard />
+          )}
+          {tournamentContext.metadata.getDisclaimer() && (
+            <Disclaimer
+              disclaimer={tournamentContext.metadata.getDisclaimer()}
+              logoUrl={tournamentContext.metadata.getLogo()}
+            />
           )}
           {isRegistered && (
             <CompetitorStatus
@@ -932,6 +946,8 @@ export const Table = React.memo((props: Props) => {
           <GameInfo
             meta={gameInfo}
             tournamentName={tournamentContext.metadata?.getName()}
+            colorOverride={tournamentContext.metadata?.getColor()}
+            logoUrl={tournamentContext.metadata?.getLogo()}
           />
           <Pool
             pool={examinableGameContext?.pool}
