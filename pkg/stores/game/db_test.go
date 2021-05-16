@@ -80,7 +80,7 @@ func userStore(dbURL string) pkguser.Store {
 	return ustore
 }
 
-func recreateDB() {
+func recreateDB() pkguser.Store {
 	// Create a database.
 	db, err := gorm.Open("postgres", TestingDBConnStr+" dbname=postgres")
 	if err != nil {
@@ -111,6 +111,7 @@ func recreateDB() {
 		}
 	}
 	addfakeGames(ustore)
+	return ustore
 }
 
 func addfakeGames(ustore pkguser.Store) {
@@ -130,7 +131,9 @@ func addfakeGames(ustore pkguser.Store) {
 	// Add some fake games to the table
 	store, err := NewDBStore(&config.Config{
 		DBConnString: TestingDBConnStr + " dbname=liwords_test"}, ustore)
-
+	if err != nil {
+		log.Fatal().Err(err).Msg("error")
+	}
 	db := store.db.Exec("INSERT INTO games(created_at, updated_at, uuid, "+
 		"player0_id, player1_id, timers, started, game_end_reason, winner_idx, loser_idx, "+
 		"request, history, quickdata) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
@@ -183,6 +186,7 @@ func createGame(p0, p1 string, initTime int32, is *is.I) *entity.Game {
 	mcg.StartGame()
 	mcg.SetChallengeRule(macondopb.ChallengeRule_FIVE_POINT)
 	mcg.SetBackupMode(macondogame.InteractiveGameplayMode)
+	mcg.SetStateStackLength(1)
 	entGame := entity.NewGame(mcg, &pb.GameRequest{
 		InitialTimeSeconds: initTime,
 		ChallengeRule:      macondopb.ChallengeRule_FIVE_POINT,
@@ -326,6 +330,7 @@ func TestListActive(t *testing.T) {
 		MacondoConfig: DefaultConfig,
 		DBConnString:  TestingDBConnStr + " dbname=liwords_test",
 	}, ustore)
+	is.NoErr(err)
 
 	games, err := store.ListActive(context.Background(), "")
 	is.NoErr(err)
