@@ -113,13 +113,12 @@ const nyc = {
   vsBot: false,
 };
 
-const wandertypo = {
-  challengerule: ChallengeRule.VOID,
-  initialtime: 7, // 5 minutes
+const learners = {
+  initialtime: 12, // 10 minutes
   rated: true,
-  extratime: 5,
+  extratime: 0,
   friend: '',
-  incOrOT: 'increment',
+  incOrOT: 'overtime',
   vsBot: false,
 };
 
@@ -136,7 +135,7 @@ export const fixedSettings: { [key: string]: settings } = {
   K4MwE8nesdmPAQJkHbVpbi: nssg16,
   nEc9xsgU6h78eeKRA3MeCT: nssg19,
   CL9GW5sDfNqeX2yiPRg9YF: nyc,
-  aGaSXfc4XDwUFBpkhZ9Jz3: wandertypo,
+  KU8PSEu8p4Pni4qvmhn9x3: learners,
 };
 
 // A temporary map of club redirects. Map internal tournament ID to slug:
