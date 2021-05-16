@@ -131,7 +131,9 @@ func addfakeGames(ustore pkguser.Store) {
 	// Add some fake games to the table
 	store, err := NewDBStore(&config.Config{
 		DBConnString: TestingDBConnStr + " dbname=liwords_test"}, ustore)
-
+	if err != nil {
+		log.Fatal().Err(err).Msg("error")
+	}
 	db := store.db.Exec("INSERT INTO games(created_at, updated_at, uuid, "+
 		"player0_id, player1_id, timers, started, game_end_reason, winner_idx, loser_idx, "+
 		"request, history, quickdata) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
@@ -140,43 +142,6 @@ func addfakeGames(ustore pkguser.Store) {
 		`{"lu": 1595824425928, "mo": 0, "tr": [60000, 60000], "ts": 1595824425928}`,
 		true, 0, 0, 0, req, protocts,
 		`{"pi":[{"nickname":"mina","rating":"1600?"},{"nickname":"cesar","rating":"500?"}]}`)
-
-	if db.Error != nil {
-		log.Fatal().Err(db.Error).Msg("error")
-	}
-	store.Disconnect()
-	ustore.(*user.DBStore).Disconnect()
-
-}
-
-func addGameWithPhony(ustore pkguser.Store) {
-	protocts, err := ioutil.ReadFile("./testdata/game2/history.pb")
-	if err != nil {
-		log.Fatal().Err(err).Msg("error")
-	}
-	protocts, err = hex.DecodeString(string(protocts))
-	if err != nil {
-		log.Fatal().Err(err).Msg("error")
-	}
-
-	req, err := hex.DecodeString("0a05435357313912180a0d43726f7373776f726447616d651207656e676c69736818b009280342166f67726237355770576837535661534b76773673513648015a166f67726237355770576837535661534b767736735136")
-	if err != nil {
-		log.Fatal().Err(err).Msg("error")
-	}
-
-	store, err := NewDBStore(&config.Config{
-		DBConnString: TestingDBConnStr + " dbname=liwords_test"}, ustore)
-	if err != nil {
-		log.Fatal().Err(err).Msg("error")
-	}
-	db := store.db.Exec("INSERT INTO games(created_at, updated_at, uuid, "+
-		"player0_id, player1_id, timers, started, game_end_reason, winner_idx, loser_idx, "+
-		"request, history, quickdata) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-		"2020-08-27 04:33:45.938304+00", "2020-08-27 04:33:45.938304+00",
-		"pECpWydZ", 2, 1,
-		`{"lu": 1595824425928, "mo": 0, "tr": [60000, 60000], "ts": 1595824425928}`,
-		true, 0, 0, 0, req, protocts,
-		`{"pi":[{"nickname":"bnjy","rating":"1600?"},{"nickname":"cesar","rating":"500?"}]}`)
 
 	if db.Error != nil {
 		log.Fatal().Err(db.Error).Msg("error")
