@@ -375,6 +375,9 @@ func fromState(timers entity.Timers, qdata *entity.Quickdata, Started bool,
 	}
 	// XXX: We should probably move this to `NewFromHistory`:
 	mcg.SetBackupMode(macondogame.InteractiveGameplayMode)
+	// Note: we don't need to set the stack length here, as NewFromHistory
+	// above does it.
+
 	g.Game = *mcg
 	log.Debug().Interface("history", g.History()).Msg("from-state")
 	// Finally, restore the play state from the passed-in history. This
