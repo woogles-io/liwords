@@ -1,4 +1,10 @@
-import React, { createContext, useCallback, useContext, useMemo } from 'react';
+import React, {
+  createContext,
+  useCallback,
+  useContext,
+  useMemo,
+  useRef,
+} from 'react';
 import { useMountedState } from '../utils/mounted';
 
 import { EnglishCrosswordGameDistribution } from '../constants/tile_distributions';
@@ -54,6 +60,13 @@ export type PresenceEntity = {
 };
 
 const MaxChatLength = 150;
+
+const defaultTimerContext = {
+  p0: 0,
+  p1: 0,
+  activePlayer: 'p0' as PlayerOrder,
+  lastUpdate: 0,
+};
 
 const defaultFunction = () => {};
 
@@ -712,6 +725,20 @@ const ExaminableStore = ({ children }: { children: React.ReactNode }) => {
 const RealStore = ({ children, ...props }: Props) => {
   const { useState } = useMountedState();
 
+  const clockController = useRef<ClockController | null>(null);
+
+  const onClockTick = useCallback((p: PlayerOrder, t: Millis) => {
+    if (!clockController || !clockController.current) {
+      return;
+    }
+    const newCtx = { ...clockController.current!.times, [p]: t };
+    setTimerContext(newCtx);
+  }, []);
+
+  const onClockTimeout = useCallback((p: PlayerOrder) => {
+    setPTimedOut(p);
+  }, []);
+
   const [lobbyContext, setLobbyContext] = useState<LobbyState>({
     soughtGames: [],
     activeGames: [],
@@ -755,22 +782,17 @@ const RealStore = ({ children, ...props }: Props) => {
   const [blindfoldCommand, setBlindfoldCommand] = useState('');
   const [blindfoldUseNPA, setBlindfoldUseNPA] = useState(false);
 
-  const {
-    clockController,
-    onClockTick,
-    onClockTimeout,
-    stopClock,
-    timerContext,
-    pTimedOut,
-    setPTimedOut,
-  } = useTimer();
-
   const [gameContext, setGameContext] = useState<GameState>(() =>
     gameStateInitializer(clockController, onClockTick, onClockTimeout)
   );
   const dispatchGameContext = useCallback(
     (action) => setGameContext((state) => GameReducer(state, action)),
     []
+  );
+
+  const [timerContext, setTimerContext] = useState<Times>(defaultTimerContext);
+  const [pTimedOut, setPTimedOut] = useState<PlayerOrder | undefined>(
+    undefined
   );
 
   const [gameMetaEventContext, setGameMetaEventContext] = useState<
@@ -871,6 +893,14 @@ const RealStore = ({ children, ...props }: Props) => {
     },
     [setPresence]
   );
+
+  const stopClock = useCallback(() => {
+    if (!clockController.current) {
+      return;
+    }
+    clockController.current.stopClock();
+    setTimerContext({ ...clockController.current.times });
+  }, []);
 
   const lobbyStore = useMemo(
     () => ({
