@@ -145,11 +145,6 @@ export const TourneyEditor = (props: Props) => {
         slug: vals.slug,
         type: jsontype,
         director_usernames: directors,
-        boardStyle: vals.boardStyle,
-        tileStyle: vals.tileStyle,
-        disclaimer: vals.disclaimer,
-        logo: vals.logo,
-        color: vals.color,
       };
     } else if (props.mode === 'edit') {
       apicall = 'SetTournamentMetadata';
@@ -324,20 +319,42 @@ export const TourneyEditor = (props: Props) => {
             <Form.Item name="description" label="Description">
               <Input.TextArea onChange={onDescriptionChange} rows={20} />
             </Form.Item>
-            <h3>The following will usually not be set.</h3>
-            <Form.Item name="boardStyle" label="Board theme (optional)">
+            <h3 hidden={props.mode === 'new'}>
+              The following will usually not be set.
+            </h3>
+            <Form.Item
+              name="boardStyle"
+              label="Board theme (optional)"
+              hidden={props.mode === 'new'}
+            >
               <Input />
             </Form.Item>
-            <Form.Item name="tileStyle" label="Tile theme (optional)">
+            <Form.Item
+              name="tileStyle"
+              label="Tile theme (optional)"
+              hidden={props.mode === 'new'}
+            >
               <Input />
             </Form.Item>
-            <Form.Item name="disclaimer" label="Disclaimer (optional)">
+            <Form.Item
+              name="disclaimer"
+              label="Disclaimer (optional)"
+              hidden={props.mode === 'new'}
+            >
               <Input.TextArea onChange={onDisclaimerChange} rows={20} />
             </Form.Item>
-            <Form.Item name="logo" label="Logo URL (optional)">
+            <Form.Item
+              name="logo"
+              label="Logo URL (optional)"
+              hidden={props.mode === 'new'}
+            >
               <Input onChange={onLogoChange} />
             </Form.Item>
-            <Form.Item name="color" label="Hex Color (optional)">
+            <Form.Item
+              name="color"
+              label="Hex Color (optional)"
+              hidden={props.mode === 'new'}
+            >
               <Input onChange={onColorChange} />
             </Form.Item>
             <Form.Item wrapperCol={{ ...layout.wrapperCol, offset: 4 }}>
