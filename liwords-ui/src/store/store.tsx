@@ -32,7 +32,6 @@ import {
   TournamentReducer,
   TournamentState,
 } from './reducers/tournament_reducer';
-import { defaultTimerContext, useTimer } from './use_timer';
 import { MetaEventState, MetaStates } from './meta_game_events';
 
 export enum ChatEntityType {
@@ -295,6 +294,9 @@ const ChallengeResultEventContext = createContext<
 const GameMetaEventContext = createContext<GameMetaEventStoreData>({
   gameMetaEventContext: {
     curEvt: MetaStates.NO_ACTIVE_REQUEST,
+    initialExpirySecs: 0,
+    evtId: '',
+    evtCreator: '',
     // timer: null,
   },
   setGameMetaEventContext: defaultFunction,
@@ -799,6 +801,9 @@ const RealStore = ({ children, ...props }: Props) => {
     MetaEventState
   >({
     curEvt: MetaStates.NO_ACTIVE_REQUEST,
+    initialExpirySecs: 0,
+    evtId: '',
+    evtCreator: '',
     // clockController: null,
   });
 

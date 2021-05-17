@@ -212,6 +212,7 @@ export const Table = React.memo((props: Props) => {
   const [gameInfo, setGameInfo] = useState<GameMetadata>(defaultGameInfo);
   const [streakGameInfo, setStreakGameInfo] = useState<StreakInfoResponse>({
     streak: [],
+    players: [],
   });
   const [isObserver, setIsObserver] = useState(false);
 
@@ -942,7 +943,10 @@ export const Table = React.memo((props: Props) => {
             handleUnsetHover={hideDefinitionHover}
             definitionPopover={definitionPopover}
           />
-          <MetaEventDisplay />
+          <MetaEventDisplay
+            sendSocketMsg={props.sendSocketMsg}
+            gameID={gameID}
+          />
           <StreakWidget streakInfo={streakGameInfo} />
         </div>
         <div className="data-area" id="right-sidebar">

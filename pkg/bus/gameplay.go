@@ -60,7 +60,7 @@ func (b *Bus) instantiateAndStartGame(ctx context.Context, accUser *entity.User,
 	var tournamentID string
 	if sg.Type == entity.TypeMatch {
 		if sg.MatchRequest.RematchFor != "" {
-			// Assign firsts to be the the other player.
+			// Assign firsts to be the other player.
 			gameID := sg.MatchRequest.RematchFor
 			g, err := b.gameStore.Get(ctx, gameID)
 			if err != nil {

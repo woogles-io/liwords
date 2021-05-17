@@ -257,9 +257,7 @@ func HandleMetaEvent(ctx context.Context, evt *pb.GameMetaEvent, eventChan chan<
 			return err
 		}
 
-		// Send the event here as well. XXX can move outside of switch?
-		// XXX only send it for denies. If game is aborted / adjudicated we don't
-		// need to send the event for that.
+		// Send the event here as well.
 		wrapped := entity.WrapEvent(evt, pb.MessageType_GAME_META_EVENT)
 		wrapped.AddAudience(entity.AudGame, evt.GameId)
 		wrapped.AddAudience(entity.AudGameTV, evt.GameId)

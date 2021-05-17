@@ -64,13 +64,13 @@ export const defaultGameInfo: GameMetadata = {
 };
 
 export type SingleGameStreakInfo = {
-  players: Array<string>;
   game_id: string;
   winner: number;
 };
 
 export type StreakInfoResponse = {
   streak: Array<SingleGameStreakInfo>;
+  players: Array<string>;
 };
 
 export type DefineWordsResponse = {

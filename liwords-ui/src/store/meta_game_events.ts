@@ -1,7 +1,5 @@
 import { message } from 'antd';
 import { GameMetaEvent } from '../gen/api/proto/realtime/realtime_pb';
-import { PlayerOrder } from './constants';
-import { ClockController, Millis } from './timer_controller';
 
 export enum MetaStates {
   NO_ACTIVE_REQUEST,
@@ -13,21 +11,13 @@ export enum MetaStates {
 
 export type MetaEventState = {
   curEvt: MetaStates;
+  initialExpirySecs: number;
+  evtId: string;
+  evtCreator: string; // the user ID of the player that generated this event.
   // clockController: React.MutableRefObject<ClockController | null>;
   // onClockTick: (p: PlayerOrder, t: Millis) => void;
   // onClockTimeout: (p: PlayerOrder) => void;
 };
-
-// export const metaStateInitializer = (
-//   clockController: React.MutableRefObject<ClockController | null>,
-//   onClockTick: (p: PlayerOrder, t: Millis) => void,
-//   onClockTimeout: (p: PlayerOrder) => void
-// ): MetaEventState => ({
-//   curEvt: MetaStates.NO_ACTIVE_REQUEST,
-//   clockController,
-//   onClockTick,
-//   onClockTimeout,
-// });
 
 export const metaStateFromMetaEvent = (
   oldState: MetaEventState,
@@ -35,6 +25,9 @@ export const metaStateFromMetaEvent = (
   us: string
 ) => {
   let metaState = MetaStates.NO_ACTIVE_REQUEST;
+  let initialExpirySecs = 0;
+  let evtId = '';
+  let evtCreator = '';
   switch (metaEvent.getType()) {
     case GameMetaEvent.EventType.REQUEST_ABORT: {
       if (us === metaEvent.getPlayerId()) {
@@ -42,6 +35,9 @@ export const metaStateFromMetaEvent = (
       } else {
         metaState = MetaStates.RECEIVER_ABORT_COUNTDOWN;
       }
+      initialExpirySecs = metaEvent.getExpiry();
+      evtId = metaEvent.getOrigEventId();
+      evtCreator = metaEvent.getPlayerId();
       break;
     }
 
@@ -51,13 +47,33 @@ export const metaStateFromMetaEvent = (
       } else {
         metaState = MetaStates.RECEIVER_ADJUDICATION_COUNTDOWN;
       }
+      initialExpirySecs = metaEvent.getExpiry();
+      evtId = metaEvent.getOrigEventId();
+      evtCreator = metaEvent.getPlayerId();
       break;
     }
 
     case GameMetaEvent.EventType.ABORT_DENIED: {
       message.info({
-        content: 'The abort request was denied',
+        content: 'The abort request was denied.',
       });
+      initialExpirySecs = 0;
+      metaState = MetaStates.NO_ACTIVE_REQUEST;
+      // the evtCreator is the one that denied the abort.
+      evtCreator = metaEvent.getPlayerId();
+      evtId = '';
+      break;
+    }
+
+    case GameMetaEvent.EventType.ABORT_ACCEPTED: {
+      message.info({
+        content: 'The abort request was accepted.',
+      });
+      initialExpirySecs = 0;
+      metaState = MetaStates.NO_ACTIVE_REQUEST;
+      // the evtCreator is the one that denied the abort.
+      evtCreator = metaEvent.getPlayerId();
+      evtId = '';
       break;
     }
   }
@@ -65,5 +81,8 @@ export const metaStateFromMetaEvent = (
   return {
     ...oldState,
     curEvt: metaState,
+    initialExpirySecs,
+    evtId,
+    evtCreator,
   };
 };

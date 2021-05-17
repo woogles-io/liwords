@@ -254,7 +254,7 @@ if (goog.DEBUG && !COMPILED) {
  * @constructor
  */
 proto.game_service.StreakInfoResponse.SingleGameInfo = function(opt_data) {
-  jspb.Message.initialize(this, opt_data, 0, -1, proto.game_service.StreakInfoResponse.SingleGameInfo.repeatedFields_, null);
+  jspb.Message.initialize(this, opt_data, 0, -1, null, null);
 };
 goog.inherits(proto.game_service.StreakInfoResponse.SingleGameInfo, jspb.Message);
 if (goog.DEBUG && !COMPILED) {
@@ -2256,7 +2256,7 @@ proto.game_service.RecentGamesRequest.prototype.setOffset = function(value) {
  * @private {!Array<number>}
  * @const
  */
-proto.game_service.StreakInfoResponse.repeatedFields_ = [1];
+proto.game_service.StreakInfoResponse.repeatedFields_ = [1,2];
 
 
 
@@ -2290,7 +2290,8 @@ proto.game_service.StreakInfoResponse.prototype.toObject = function(opt_includeI
 proto.game_service.StreakInfoResponse.toObject = function(includeInstance, msg) {
   var f, obj = {
     streakList: jspb.Message.toObjectList(msg.getStreakList(),
-    proto.game_service.StreakInfoResponse.SingleGameInfo.toObject, includeInstance)
+    proto.game_service.StreakInfoResponse.SingleGameInfo.toObject, includeInstance),
+    playersList: (f = jspb.Message.getRepeatedField(msg, 2)) == null ? undefined : f
   };
 
   if (includeInstance) {
@@ -2332,6 +2333,10 @@ proto.game_service.StreakInfoResponse.deserializeBinaryFromReader = function(msg
       reader.readMessage(value,proto.game_service.StreakInfoResponse.SingleGameInfo.deserializeBinaryFromReader);
       msg.addStreak(value);
       break;
+    case 2:
+      var value = /** @type {string} */ (reader.readString());
+      msg.addPlayers(value);
+      break;
     default:
       reader.skipField();
       break;
@@ -2369,16 +2374,16 @@ proto.game_service.StreakInfoResponse.serializeBinaryToWriter = function(message
       proto.game_service.StreakInfoResponse.SingleGameInfo.serializeBinaryToWriter
     );
   }
+  f = message.getPlayersList();
+  if (f.length > 0) {
+    writer.writeRepeatedString(
+      2,
+      f
+    );
+  }
 };
 
 
-
-/**
- * List of repeated fields within this message type.
- * @private {!Array<number>}
- * @const
- */
-proto.game_service.StreakInfoResponse.SingleGameInfo.repeatedFields_ = [2];
 
 
 
@@ -2412,7 +2417,6 @@ proto.game_service.StreakInfoResponse.SingleGameInfo.prototype.toObject = functi
 proto.game_service.StreakInfoResponse.SingleGameInfo.toObject = function(includeInstance, msg) {
   var f, obj = {
     gameId: jspb.Message.getFieldWithDefault(msg, 1, ""),
-    playersList: (f = jspb.Message.getRepeatedField(msg, 2)) == null ? undefined : f,
     winner: jspb.Message.getFieldWithDefault(msg, 3, 0)
   };
 
@@ -2454,10 +2458,6 @@ proto.game_service.StreakInfoResponse.SingleGameInfo.deserializeBinaryFromReader
       var value = /** @type {string} */ (reader.readString());
       msg.setGameId(value);
       break;
-    case 2:
-      var value = /** @type {string} */ (reader.readString());
-      msg.addPlayers(value);
-      break;
     case 3:
       var value = /** @type {number} */ (reader.readInt32());
       msg.setWinner(value);
@@ -2498,13 +2498,6 @@ proto.game_service.StreakInfoResponse.SingleGameInfo.serializeBinaryToWriter = f
       f
     );
   }
-  f = message.getPlayersList();
-  if (f.length > 0) {
-    writer.writeRepeatedString(
-      2,
-      f
-    );
-  }
   f = message.getWinner();
   if (f !== 0) {
     writer.writeInt32(
@@ -2530,43 +2523,6 @@ proto.game_service.StreakInfoResponse.SingleGameInfo.prototype.getGameId = funct
  */
 proto.game_service.StreakInfoResponse.SingleGameInfo.prototype.setGameId = function(value) {
   return jspb.Message.setProto3StringField(this, 1, value);
-};
-
-
-/**
- * repeated string players = 2;
- * @return {!Array<string>}
- */
-proto.game_service.StreakInfoResponse.SingleGameInfo.prototype.getPlayersList = function() {
-  return /** @type {!Array<string>} */ (jspb.Message.getRepeatedField(this, 2));
-};
-
-
-/**
- * @param {!Array<string>} value
- * @return {!proto.game_service.StreakInfoResponse.SingleGameInfo} returns this
- */
-proto.game_service.StreakInfoResponse.SingleGameInfo.prototype.setPlayersList = function(value) {
-  return jspb.Message.setField(this, 2, value || []);
-};
-
-
-/**
- * @param {string} value
- * @param {number=} opt_index
- * @return {!proto.game_service.StreakInfoResponse.SingleGameInfo} returns this
- */
-proto.game_service.StreakInfoResponse.SingleGameInfo.prototype.addPlayers = function(value, opt_index) {
-  return jspb.Message.addToRepeatedField(this, 2, value, opt_index);
-};
-
-
-/**
- * Clears the list making it empty but non-null.
- * @return {!proto.game_service.StreakInfoResponse.SingleGameInfo} returns this
- */
-proto.game_service.StreakInfoResponse.SingleGameInfo.prototype.clearPlayersList = function() {
-  return this.setPlayersList([]);
 };
 
 
@@ -2623,6 +2579,43 @@ proto.game_service.StreakInfoResponse.prototype.addStreak = function(opt_value, 
  */
 proto.game_service.StreakInfoResponse.prototype.clearStreakList = function() {
   return this.setStreakList([]);
+};
+
+
+/**
+ * repeated string players = 2;
+ * @return {!Array<string>}
+ */
+proto.game_service.StreakInfoResponse.prototype.getPlayersList = function() {
+  return /** @type {!Array<string>} */ (jspb.Message.getRepeatedField(this, 2));
+};
+
+
+/**
+ * @param {!Array<string>} value
+ * @return {!proto.game_service.StreakInfoResponse} returns this
+ */
+proto.game_service.StreakInfoResponse.prototype.setPlayersList = function(value) {
+  return jspb.Message.setField(this, 2, value || []);
+};
+
+
+/**
+ * @param {string} value
+ * @param {number=} opt_index
+ * @return {!proto.game_service.StreakInfoResponse} returns this
+ */
+proto.game_service.StreakInfoResponse.prototype.addPlayers = function(value, opt_index) {
+  return jspb.Message.addToRepeatedField(this, 2, value, opt_index);
+};
+
+
+/**
+ * Clears the list making it empty but non-null.
+ * @return {!proto.game_service.StreakInfoResponse} returns this
+ */
+proto.game_service.StreakInfoResponse.prototype.clearPlayersList = function() {
+  return this.setPlayersList([]);
 };
 
 

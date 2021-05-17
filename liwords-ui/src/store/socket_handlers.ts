@@ -61,6 +61,7 @@ import {
   TournamentRoundStarted,
   UserPresence,
   UserPresences,
+  FullTournamentDivisions,
 } from '../gen/api/proto/realtime/realtime_pb';
 import { ActionType } from '../actions/actions';
 import { endGameMessage } from './end_of_game';
@@ -120,6 +121,7 @@ export const parseMsgs = (msg: Uint8Array) => {
       [MessageType.TOURNAMENT_GAME_ENDED_EVENT]: TournamentGameEndedEvent,
       [MessageType.REMATCH_STARTED]: RematchStartedEvent,
       [MessageType.GAME_META_EVENT]: GameMetaEvent,
+      [MessageType.TOURNAMENT_FULL_DIVISIONS_MESSAGE]: FullTournamentDivisions,
       [MessageType.TOURNAMENT_DIVISION_ROUND_CONTROLS_MESSAGE]: DivisionRoundControls,
       [MessageType.TOURNAMENT_DIVISION_PAIRINGS_MESSAGE]: DivisionPairingsResponse,
       [MessageType.TOURNAMENT_DIVISION_CONTROLS_MESSAGE]: DivisionControlsResponse,
@@ -159,7 +161,10 @@ export const useOnSocketMsg = () => {
   const { addChat, deleteChat } = useChatStoreContext();
   const { excludedPlayers } = useExcludedPlayersStoreContext();
   const { dispatchGameContext, gameContext } = useGameContextStoreContext();
-  const { setGameMetaEventContext } = useGameMetaEventContext();
+  const {
+    gameMetaEventContext,
+    setGameMetaEventContext,
+  } = useGameMetaEventContext();
   const { setGameEndMessage } = useGameEndMessageStoreContext();
   const { setCurrentLagMs } = useLagStoreContext();
   const { dispatchLobbyContext } = useLobbyStoreContext();
@@ -524,6 +529,12 @@ export const useOnSocketMsg = () => {
             break;
           }
 
+          case MessageType.TOURNAMENT_FULL_DIVISIONS_MESSAGE: {
+            // socket doesn't send this anymore (At the moment)
+            // we may make it start doing so again.
+            break;
+          }
+
           case MessageType.TOURNAMENT_ROUND_STARTED: {
             const trs = parsedMsg as TournamentRoundStarted;
             dispatchTournamentContext({
@@ -534,7 +545,7 @@ export const useOnSocketMsg = () => {
               },
             });
             if (
-              tournamentContext?.competitorState?.division === trs.getDivision()
+              tournamentContext.competitorState?.division === trs.getDivision()
             ) {
               BoopSounds.playSound('startTourneyRoundSound');
             }
@@ -725,7 +736,11 @@ export const useOnSocketMsg = () => {
           case MessageType.GAME_META_EVENT: {
             const gme = parsedMsg as GameMetaEvent;
             setGameMetaEventContext(
-              metaStateFromMetaEvent(gme, loginState.userID)
+              metaStateFromMetaEvent(
+                gameMetaEventContext,
+                gme,
+                loginState.userID
+              )
             );
 
             break;
@@ -861,6 +876,7 @@ export const useOnSocketMsg = () => {
       dispatchTournamentContext,
       excludedPlayers,
       gameContext,
+      gameMetaEventContext,
       loginState,
       friends,
       setFriends,
