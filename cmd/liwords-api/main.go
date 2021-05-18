@@ -21,6 +21,7 @@ import (
 	"github.com/domino14/liwords/pkg/mod"
 	cfgstore "github.com/domino14/liwords/pkg/stores/config"
 	"github.com/domino14/liwords/pkg/stores/game"
+	modstore "github.com/domino14/liwords/pkg/stores/mod"
 	"github.com/domino14/liwords/pkg/stores/session"
 	"github.com/domino14/liwords/pkg/stores/soughtgame"
 	"github.com/domino14/liwords/pkg/stores/stats"
@@ -139,6 +140,10 @@ func main() {
 	}
 	stores.ConfigStore = cfgstore.NewRedisConfigStore(redisPool)
 	stores.ListStatStore, err = stats.NewListStatStore(cfg.DBConnString)
+	if err != nil {
+		panic(err)
+	}
+	stores.NotorietyStore, err = modstore.NewNotorietyStore(cfg.DBConnString)
 	if err != nil {
 		panic(err)
 	}

@@ -41,8 +41,8 @@ type User struct {
 	IsMod       bool   `gorm:"default:false"`
 	ApiKey      string
 
+	Notoriety int
 	Actions   postgres.Jsonb
-	Notoriety postgres.Jsonb
 }
 
 // A user profile is in a one-to-one relationship with a user. It is the
@@ -139,12 +139,6 @@ func (s *DBStore) Get(ctx context.Context, username string) (*entity.User, error
 		log.Err(err).Msg("convert-user-actions")
 	}
 
-	var notoriety entity.Notoriety
-	err = json.Unmarshal(u.Notoriety.RawMessage, &notoriety)
-	if err != nil {
-		log.Err(err).Msg("convert-user-notoriety")
-	}
-
 	entu := &entity.User{
 		ID:         u.ID,
 		Username:   u.Username,
@@ -157,8 +151,8 @@ func (s *DBStore) Get(ctx context.Context, username string) (*entity.User, error
 		IsAdmin:    u.IsAdmin,
 		IsDirector: u.IsDirector,
 		IsMod:      u.IsMod,
+		Notoriety:  u.Notoriety,
 		Actions:    &actions,
-		Notoriety:  &notoriety,
 	}
 
 	return entu, nil
@@ -259,12 +253,6 @@ func (s *DBStore) GetByUUID(ctx context.Context, uuid string) (*entity.User, err
 			log.Err(err).Msg("convert-user-actions")
 		}
 
-		var notoriety entity.Notoriety
-		err = json.Unmarshal(u.Notoriety.RawMessage, &notoriety)
-		if err != nil {
-			log.Err(err).Msg("convert-user-notoriety")
-		}
-
 		entu = &entity.User{
 			ID:         u.ID,
 			Username:   u.Username,
@@ -276,8 +264,8 @@ func (s *DBStore) GetByUUID(ctx context.Context, uuid string) (*entity.User, err
 			IsAdmin:    u.IsAdmin,
 			IsDirector: u.IsDirector,
 			IsMod:      u.IsMod,
+			Notoriety:  u.Notoriety,
 			Actions:    &actions,
-			Notoriety:  &notoriety,
 		}
 	}
 
@@ -301,12 +289,6 @@ func (s *DBStore) GetByAPIKey(ctx context.Context, apikey string) (*entity.User,
 		log.Err(err).Msg("convert-user-actions")
 	}
 
-	var notoriety entity.Notoriety
-	err = json.Unmarshal(u.Notoriety.RawMessage, &notoriety)
-	if err != nil {
-		log.Err(err).Msg("convert-user-notoriety")
-	}
-
 	entu := &entity.User{
 		ID:         u.ID,
 		Username:   u.Username,
@@ -318,8 +300,8 @@ func (s *DBStore) GetByAPIKey(ctx context.Context, apikey string) (*entity.User,
 		IsAdmin:    u.IsAdmin,
 		IsDirector: u.IsDirector,
 		IsMod:      u.IsMod,
+		Notoriety:  u.Notoriety,
 		Actions:    &actions,
-		Notoriety:  &notoriety,
 	}
 
 	return entu, nil
@@ -330,10 +312,7 @@ func (s *DBStore) toDBObj(u *entity.User) (*User, error) {
 	if err != nil {
 		return nil, err
 	}
-	notoriety, err := json.Marshal(u.Notoriety)
-	if err != nil {
-		return nil, err
-	}
+
 	return &User{
 		UUID:        u.UUID,
 		Username:    u.Username,
@@ -343,8 +322,8 @@ func (s *DBStore) toDBObj(u *entity.User) (*User, error) {
 		IsAdmin:     u.IsAdmin,
 		IsDirector:  u.IsDirector,
 		IsMod:       u.IsMod,
+		Notoriety:   u.Notoriety,
 		Actions:     postgres.Jsonb{RawMessage: actions},
-		Notoriety:   postgres.Jsonb{RawMessage: notoriety},
 	}, nil
 }
 

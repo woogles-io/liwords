@@ -14,6 +14,12 @@ import (
 	"github.com/golang/protobuf/ptypes"
 )
 
+type NotorietyStore interface {
+	AddNotoriousGame(gameID string, playerID string, gameType int, time int64) error
+	GetNotoriousGames(playerID string) ([]*ms.NotoriousGame, error)
+	DeleteNotoriousGames(playerID string) error
+}
+
 var BehaviorToScore map[ms.NotoriousGameType]int = map[ms.NotoriousGameType]int{
 	ms.NotoriousGameType_NO_PLAY: 6,
 	ms.NotoriousGameType_SITTING: 4,
@@ -29,7 +35,7 @@ var NotorietyDecrement int = 1
 var DurationMultiplier int = 24 * 60 * 60
 var UnreasonableTime int = 5 * 60
 
-func Automod(ctx context.Context, us user.Store, u0 *entity.User, u1 *entity.User, g *entity.Game) error {
+func Automod(ctx context.Context, us user.Store, ns NotorietyStore, u0 *entity.User, u1 *entity.User, g *entity.Game) error {
 	totalGameTime := g.GameReq.InitialTimeSeconds + (60 * g.GameReq.MaxOvertimeMinutes)
 	lngt := ms.NotoriousGameType_GOOD
 	wngt := ms.NotoriousGameType_GOOD
@@ -100,14 +106,14 @@ func Automod(ctx context.Context, us user.Store, u0 *entity.User, u1 *entity.Use
 	}
 
 	if !wuser.IsBot {
-		err := updateNotoriety(ctx, us, wuser, g.Uid(), wngt)
+		err := updateNotoriety(ctx, us, ns, wuser, g.Uid(), wngt)
 		if err != nil {
 			return err
 		}
 	}
 
 	if !luser.IsBot {
-		err := updateNotoriety(ctx, us, luser, g.Uid(), lngt)
+		err := updateNotoriety(ctx, us, ns, luser, g.Uid(), lngt)
 		if err != nil {
 			return err
 		}
@@ -116,76 +122,69 @@ func Automod(ctx context.Context, us user.Store, u0 *entity.User, u1 *entity.Use
 	return nil
 }
 
-func GetNotorietyReport(ctx context.Context, us user.Store, uuid string) (int, []*ms.NotoriousGame, error) {
+func GetNotorietyReport(ctx context.Context, us user.Store, ns NotorietyStore, uuid string) (int, []*ms.NotoriousGame, error) {
 	user, err := us.GetByUUID(ctx, uuid)
 	if err != nil {
 		return 0, nil, err
 	}
-	instantiateNotoriety(user)
-	return user.Notoriety.Score, user.Notoriety.Games, nil
+	games, err := ns.GetNotoriousGames(uuid)
+	if err != nil {
+		return 0, nil, err
+	}
+	return user.Notoriety, games, nil
 }
 
-func ResetNotoriety(ctx context.Context, us user.Store, uuid string) error {
+func ResetNotoriety(ctx context.Context, us user.Store, ns NotorietyStore, uuid string) error {
 	user, err := us.GetByUUID(ctx, uuid)
 	if err != nil {
 		return err
 	}
-	instantiateNotoriety(user)
-	user.Notoriety = &entity.Notoriety{Score: 0, Games: []*ms.NotoriousGame{}}
+	user.Notoriety = 0
+	err = ns.DeleteNotoriousGames(user.UUID)
+	if err != nil {
+		return err
+	}
 	return us.Set(ctx, user)
 }
 
-func updateNotoriety(ctx context.Context, us user.Store, user *entity.User, guid string, ngt ms.NotoriousGameType) error {
+func updateNotoriety(ctx context.Context, us user.Store, ns NotorietyStore, user *entity.User, guid string, ngt ms.NotoriousGameType) error {
 
-	instantiateNotoriety(user)
-	previousNotorietyScore := user.Notoriety.Score
+	previousNotorietyScore := user.Notoriety
 	if ngt != ms.NotoriousGameType_GOOD {
 
 		// The user misbehaved, add this game to the list of notorious games
-		createdAtTime, err := ptypes.TimestampProto(time.Now())
+		err := ns.AddNotoriousGame(user.UUID, guid, int(ngt), time.Now().Unix())
 		if err != nil {
 			return err
 		}
-		addNotoriousGame(user, &ms.NotoriousGame{Id: guid, Type: ngt, CreatedAt: createdAtTime})
-
 		gameScore, ok := BehaviorToScore[ngt]
 		if ok {
-			user.Notoriety.Score += gameScore
+			user.Notoriety += gameScore
 		}
 
-		if user.Notoriety.Score > NotorietyThreshold {
+		if user.Notoriety > NotorietyThreshold {
 			err = setCurrentAction(user, &ms.ModAction{UserId: user.UUID,
 				Type:          ms.ModActionType_SUSPEND_GAMES,
 				StartTime:     ptypes.TimestampNow(),
 				ApplierUserId: AutomodUserId,
-				Duration:      int32(DurationMultiplier * (user.Notoriety.Score - NotorietyThreshold))})
+				Duration:      int32(DurationMultiplier * (user.Notoriety - NotorietyThreshold))})
 			if err != nil {
 				return err
 			}
 		}
-	} else if user.Notoriety.Score > 0 {
-		user.Notoriety.Score -= NotorietyDecrement
-		if user.Notoriety.Score < 0 {
-			user.Notoriety.Score = 0
+	} else if user.Notoriety > 0 {
+		user.Notoriety -= NotorietyDecrement
+		if user.Notoriety < 0 {
+			user.Notoriety = 0
 		}
 	}
 
-	if previousNotorietyScore != user.Notoriety.Score {
+	if previousNotorietyScore != user.Notoriety {
 		return us.Set(ctx, user)
 	}
 	return nil
 }
 
-func addNotoriousGame(u *entity.User, ng *ms.NotoriousGame) {
-	u.Notoriety.Games = append(u.Notoriety.Games, ng)
-}
-
 func unreasonableTime(millisRemaining int32) bool {
 	return millisRemaining > int32(1000*UnreasonableTime)
-}
-
-func instantiateNotoriety(u *entity.User) {
-	if u.Notoriety == nil {
-		u.Notoriety = &entity.Notoriety{Score: 0, Games: []*ms.NotoriousGame{}}
-	}
 }

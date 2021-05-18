@@ -185,7 +185,7 @@ func (b *Bus) handleBotMoveInternally(ctx context.Context, g *entity.Game, onTur
 			timeRemaining := g.TimeRemaining(onTurn)
 
 			m := game.MoveFromEvent(r.Move, g.Alphabet(), g.Board())
-			err = gameplay.PlayMove(ctx, g, b.gameStore, b.userStore, b.listStatStore, b.tournamentStore, userID, onTurn, timeRemaining, m)
+			err = gameplay.PlayMove(ctx, g, b.gameStore, b.userStore, b.notorietyStore, b.listStatStore, b.tournamentStore, userID, onTurn, timeRemaining, m)
 			if err != nil {
 				log.Err(err).Msg("bot-cant-move-play-error")
 				return
@@ -437,7 +437,7 @@ func (b *Bus) adjudicateGames(ctx context.Context) error {
 		entGame.RUnlock()
 		if started && timeRanOut {
 			log.Debug().Str("gid", g.GameId).Msg("adjudicating-time-ran-out")
-			err = gameplay.TimedOut(ctx, b.gameStore, b.userStore,
+			err = gameplay.TimedOut(ctx, b.gameStore, b.userStore, b.notorietyStore,
 				b.listStatStore, b.tournamentStore, entGame.Game.PlayerIDOnTurn(), g.GameId)
 			log.Err(err).Msg("adjudicating-after-gameplay-timed-out")
 		} else if !started && now.Sub(entGame.CreatedAt) > CancelAfter {

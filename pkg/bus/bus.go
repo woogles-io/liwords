@@ -19,6 +19,7 @@ import (
 	"github.com/domino14/liwords/pkg/config"
 	"github.com/domino14/liwords/pkg/entity"
 	"github.com/domino14/liwords/pkg/gameplay"
+	"github.com/domino14/liwords/pkg/mod"
 	"github.com/domino14/liwords/pkg/sessions"
 	"github.com/domino14/liwords/pkg/stats"
 	"github.com/domino14/liwords/pkg/tournament"
@@ -49,6 +50,7 @@ type Stores struct {
 	PresenceStore   user.PresenceStore
 	ChatStore       user.ChatStore
 	ListStatStore   stats.ListStatStore
+	NotorietyStore  mod.NotorietyStore
 	TournamentStore tournament.TournamentStore
 	ConfigStore     config.ConfigStore
 	SessionStore    sessions.SessionStore
@@ -63,6 +65,7 @@ type Bus struct {
 	soughtGameStore gameplay.SoughtGameStore
 	presenceStore   user.PresenceStore
 	listStatStore   stats.ListStatStore
+	notorietyStore  mod.NotorietyStore
 	tournamentStore tournament.TournamentStore
 	configStore     config.ConfigStore
 	chatStore       user.ChatStore
@@ -421,7 +424,7 @@ func (b *Bus) handleNatsPublish(ctx context.Context, subtopics []string, data []
 		if err != nil {
 			return err
 		}
-		entGame, err := gameplay.HandleEvent(ctx, b.gameStore, b.userStore, b.listStatStore,
+		entGame, err := gameplay.HandleEvent(ctx, b.gameStore, b.userStore, b.notorietyStore, b.listStatStore,
 			b.tournamentStore, userID, evt)
 		if err != nil {
 			return err
@@ -445,7 +448,7 @@ func (b *Bus) handleNatsPublish(ctx context.Context, subtopics []string, data []
 		if err != nil {
 			return err
 		}
-		return gameplay.TimedOut(ctx, b.gameStore, b.userStore, b.listStatStore, b.tournamentStore, evt.UserId, evt.GameId)
+		return gameplay.TimedOut(ctx, b.gameStore, b.userStore, b.notorietyStore, b.listStatStore, b.tournamentStore, evt.UserId, evt.GameId)
 
 	case "initRealmInfo":
 		evt := &pb.InitRealmInfo{}

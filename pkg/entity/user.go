@@ -16,11 +16,6 @@ const (
 	SessionExpiration = time.Hour * 24 * 30
 )
 
-type Notoriety struct {
-	Score int
-	Games []*ms.NotoriousGame
-}
-
 type Actions struct {
 	Current map[string]*ms.ModAction
 	History []*ms.ModAction
@@ -48,7 +43,7 @@ type User struct {
 	IsAdmin        bool
 
 	Actions   *Actions
-	Notoriety *Notoriety
+	Notoriety int
 }
 
 type UserPermission int
