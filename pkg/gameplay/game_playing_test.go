@@ -157,6 +157,7 @@ func TestWrongTurn(t *testing.T) {
 	is.Equal(len(consumer.evts), 1)
 	ustore.(*user.DBStore).Disconnect()
 	lstore.(*stats.ListStatStore).Disconnect()
+	nstore.(*mod.NotorietyStore).Disconnect()
 	gstore.(*game.Cache).Disconnect()
 	tstore.(*ts.Cache).Disconnect()
 }
@@ -206,6 +207,7 @@ func Test5ptBadWord(t *testing.T) {
 
 	ustore.(*user.DBStore).Disconnect()
 	lstore.(*stats.ListStatStore).Disconnect()
+	nstore.(*mod.NotorietyStore).Disconnect()
 	gstore.(*game.Cache).Disconnect()
 	tstore.(*ts.Cache).Disconnect()
 }
@@ -272,6 +274,7 @@ func TestDoubleChallengeBadWord(t *testing.T) {
 
 	ustore.(*user.DBStore).Disconnect()
 	lstore.(*stats.ListStatStore).Disconnect()
+	nstore.(*mod.NotorietyStore).Disconnect()
 	gstore.(*game.Cache).Disconnect()
 	tstore.(*ts.Cache).Disconnect()
 }
@@ -336,6 +339,7 @@ func TestDoubleChallengeGoodWord(t *testing.T) {
 
 	ustore.(*user.DBStore).Disconnect()
 	lstore.(*stats.ListStatStore).Disconnect()
+	nstore.(*mod.NotorietyStore).Disconnect()
 	gstore.(*game.Cache).Disconnect()
 	tstore.(*ts.Cache).Disconnect()
 }
@@ -407,6 +411,7 @@ func TestQuickdata(t *testing.T) {
 	cancel()
 	<-donechan
 	ustore.(*user.DBStore).Disconnect()
+	nstore.(*mod.NotorietyStore).Disconnect()
 	lstore.(*stats.ListStatStore).Disconnect()
 	gstore.(*game.Cache).Disconnect()
 	tstore.(*ts.Cache).Disconnect()
