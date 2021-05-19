@@ -8,6 +8,7 @@ import { MetaStates } from '../store/meta_game_events';
 import { useGameMetaEventContext } from '../store/store';
 import { useMountedState } from '../utils/mounted';
 import { encodeToSocketFmt } from '../utils/protobuf';
+import { SimpleTimer } from './simple_timer';
 
 /*
     case ActionType.ProcessGameMetaEvent: {
@@ -19,38 +20,6 @@ import { encodeToSocketFmt } from '../utils/protobuf';
       return newState;
     }*/
 
-// This magical timer was written by Andy. I am not sure how it works.
-const ShowTimer = ({
-  lastRefreshedPerformanceNow,
-  millisAtLastRefresh,
-  isRunning,
-}: {
-  lastRefreshedPerformanceNow: number;
-  millisAtLastRefresh: number;
-  isRunning: boolean;
-}) => {
-  const { useState } = useMountedState();
-  const [rerender, setRerender] = useState([]);
-  void rerender;
-  const lastRaf = useRef(0);
-
-  const cb = useCallback(() => {
-    setRerender([]);
-    lastRaf.current = requestAnimationFrame(cb);
-  }, []);
-
-  useEffect(() => {
-    cb();
-    return () => cancelAnimationFrame(lastRaf.current);
-  }, [cb]);
-
-  const currentMillis = isRunning
-    ? millisAtLastRefresh - (performance.now() - lastRefreshedPerformanceNow)
-    : millisAtLastRefresh;
-  const currentSec = Math.ceil(currentMillis / 1000);
-  return <>{`${currentSec} second${currentSec === 1 ? '' : 's'}`}</>;
-};
-
 type Props = {
   sendSocketMsg: (msg: Uint8Array) => void;
   gameID: string;
@@ -59,6 +28,13 @@ type Props = {
 export const MetaEventDisplay = (props: Props) => {
   const { gameMetaEventContext } = useGameMetaEventContext();
   const { sendSocketMsg, gameID } = props;
+  const { useState } = useMountedState();
+  const [timerParams, setTimerParams] = useState({
+    millisAtLastRefresh: 0,
+    lastRefreshedPerformanceNow: performance.now(),
+    isRunning: false,
+  });
+
   const denyAbort = useCallback(
     (evtid: string) => {
       const deny = new GameMetaEvent();
@@ -97,12 +73,19 @@ export const MetaEventDisplay = (props: Props) => {
     switch (gameMetaEventContext.curEvt) {
       case MetaStates.REQUESTED_ABORT:
         const startTime = performance.now();
-        console.log(
-          'now',
-          startTime,
-          'expiry',
-          gameMetaEventContext.initialExpirySecs
-        );
+        // setTimerParams((tp) => ({
+        //   millisAtLastRefresh: tp.isRunning
+        //     ? tp.millisAtLastRefresh -
+        //       (startTime - tp.lastRefreshedPerformanceNow)
+        //     : tp.millisAtLastRefresh,
+        //   lastRefreshedPerformanceNow: startTime,
+        //   isRunning: true,
+        // }));
+        setTimerParams((tp) => ({
+          lastRefreshedPerformanceNow: startTime,
+          millisAtLastRefresh: gameMetaEventContext.initialExpirySecs * 1000,
+          isRunning: true,
+        }));
         notification.info({
           message: '',
           description: (
@@ -110,13 +93,7 @@ export const MetaEventDisplay = (props: Props) => {
               <p>
                 Waiting for your opponent to respond to your cancel request.
               </p>
-              <ShowTimer
-                lastRefreshedPerformanceNow={startTime}
-                millisAtLastRefresh={
-                  gameMetaEventContext.initialExpirySecs * 1000
-                }
-                isRunning
-              />
+              <SimpleTimer {...timerParams} />
             </>
           ),
           placement: 'bottomRight',

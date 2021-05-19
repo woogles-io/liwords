@@ -7,7 +7,6 @@ import {
 export const endGameMessage = (gee: GameEndedEvent): string => {
   const scores = gee.getScoresMap();
   const ratings = gee.getNewRatingsMap();
-  console.log('scores are', scores);
   // const ratings = gee.getNewRatingsMap();
   const reason = gee.getEndReason();
   let winner = gee.getWinner();
@@ -29,37 +28,51 @@ export const endGameMessage = (gee: GameEndedEvent): string => {
   const losescore = scores.get(loser);
   const winrating = ratings.get(winner);
   const loserating = ratings.get(loser);
-
+  let properEnding = false;
   switch (reason) {
     case GameEndReason.STANDARD:
+      properEnding = true;
       summaryAddendum = `Final score: ${winscore} - ${losescore}`;
       break;
     case GameEndReason.TIME:
       // timed out.
+      properEnding = true;
       summaryReason = ` (${loser} timed out!)`;
       break;
     case GameEndReason.CONSECUTIVE_ZEROES:
+      properEnding = true;
       summaryReason = ' (six consecutive scores of zero)';
       summaryAddendum = `Final score: ${winscore} - ${losescore}`;
       break;
 
     case GameEndReason.RESIGNED:
+      properEnding = true;
       summaryReason = ` (${loser} resigned)`;
       break;
     case GameEndReason.TRIPLE_CHALLENGE:
+      properEnding = true;
       summaryReason = ' (triple challenge!)';
       break;
+    case GameEndReason.ABORTED:
+      summaryReason = 'Game was aborted.';
+      break;
+    case GameEndReason.CANCELLED:
+      summaryReason = 'Game was cancelled.';
+      break;
   }
-
-  if (!tie) {
-    summary = [`${winner} wins${summaryReason}. ${summaryAddendum}`];
+  if (!properEnding) {
+    summary.push(summaryReason);
   } else {
-    summary = [`Tie game! ${summaryAddendum}`];
-  }
-  if (winrating || loserating) {
-    summary.push(
-      `New ratings: ${winner}: ${winrating}, ${loser}: ${loserating}`
-    );
+    if (!tie) {
+      summary = [`${winner} wins${summaryReason}. ${summaryAddendum}`];
+    } else {
+      summary = [`Tie game! ${summaryAddendum}`];
+    }
+    if (winrating || loserating) {
+      summary.push(
+        `New ratings: ${winner}: ${winrating}, ${loser}: ${loserating}`
+      );
+    }
   }
   return summary.join('\n');
 };
