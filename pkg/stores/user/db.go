@@ -184,7 +184,7 @@ func (s *DBStore) Set(ctx context.Context, u *entity.User) error {
 		"password":     dbu.Password,
 		"internal_bot": dbu.InternalBot,
 		"is_admin":     dbu.IsAdmin,
-		"is_directory": dbu.IsDirector,
+		"is_director":  dbu.IsDirector,
 		"is_mod":       dbu.IsMod,
 		"actions":      dbu.Actions})
 	return result.Error
