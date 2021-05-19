@@ -178,7 +178,15 @@ func (s *DBStore) Set(ctx context.Context, u *entity.User) error {
 	}
 
 	result := s.db.Model(&User{}).Set("gorm:query_option", "FOR UPDATE").
-		Where("uuid = ?", u.UUID).Update(dbu)
+		Where("uuid = ?", u.UUID).Update(map[string]interface{}{"uuid": dbu.UUID,
+		"username":     dbu.Username,
+		"email":        dbu.Email,
+		"password":     dbu.Password,
+		"internal_bot": dbu.InternalBot,
+		"is_admin":     dbu.IsAdmin,
+		"is_directory": dbu.IsDirector,
+		"is_mod":       dbu.IsMod,
+		"actions":      dbu.Actions})
 	return result.Error
 }
 
