@@ -13,10 +13,12 @@ type AvatarProps = {
   editable?: boolean;
 };
 
+// XXX: AvatarProps should probably not be based on game info's struct.
 export const PlayerAvatar = (props: AvatarProps) => {
   // Do not useBriefProfile if avatar_url is explicitly passed in as "".
   const profile = useBriefProfile(props.player?.user_id);
   const avatarUrl = props.player?.avatar_url ?? profile?.getAvatarUrl();
+  const username = props.username ?? profile?.getUsername();
 
   let avatarStyle = {};
 
@@ -36,10 +38,7 @@ export const PlayerAvatar = (props: AvatarProps) => {
     <div className="player-avatar" style={avatarStyle}>
       {!avatarUrl
         ? fixedCharAt(
-            profile?.getFullName() ||
-              props.player?.nickname ||
-              props.username ||
-              '?',
+            profile?.getFullName() || props.player?.nickname || username || '?',
             0,
             1
           )
