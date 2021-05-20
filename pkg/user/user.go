@@ -24,6 +24,7 @@ type Store interface {
 		p1Rating entity.SingleRating, p2Rating entity.SingleRating) error
 	SetStats(ctx context.Context, p0uuid string, p1uuid string, variant entity.VariantKey,
 		p0stats *entity.Stats, p1stats *entity.Stats) error
+	SetNotoriety(ctx context.Context, u *entity.User, notoriety int) error
 	ResetRatings(ctx context.Context, uuid string) error
 	ResetStats(ctx context.Context, uuid string) error
 	GetRandomBot(ctx context.Context) (*entity.User, error)

@@ -27,6 +27,7 @@ type backingStore interface {
 		p1Rating entity.SingleRating, p2Rating entity.SingleRating) error
 	SetStats(ctx context.Context, p0uuid string, p1uuid string, variant entity.VariantKey,
 		p0stats *entity.Stats, p1stats *entity.Stats) error
+	SetNotoriety(ctx context.Context, u *entity.User, notoriety int) error
 	ResetRatings(ctx context.Context, uuid string) error
 	ResetStats(ctx context.Context, uuid string) error
 	GetRandomBot(ctx context.Context) (*entity.User, error)
@@ -217,7 +218,6 @@ func (c *Cache) ResetStats(ctx context.Context, uuid string) error {
 	return nil
 }
 
-
 func (c *Cache) GetRandomBot(ctx context.Context) (*entity.User, error) {
 	return c.backing.GetRandomBot(ctx)
 }
@@ -275,4 +275,10 @@ func (c *Cache) Set(ctx context.Context, u *entity.User) error {
 	// readd to cache
 	c.cache.Add(u.UUID, u)
 	return nil
+}
+
+// This was written to avoid the zero value trap
+func (c *Cache) SetNotoriety(ctx context.Context, u *entity.User, notoriety int) error {
+	u.Notoriety = notoriety
+	return c.backing.SetNotoriety(ctx, u, notoriety)
 }

@@ -139,12 +139,11 @@ func ResetNotoriety(ctx context.Context, us user.Store, ns NotorietyStore, uuid 
 	if err != nil {
 		return err
 	}
-	user.Notoriety = 0
 	err = ns.DeleteNotoriousGames(user.UUID)
 	if err != nil {
 		return err
 	}
-	return us.Set(ctx, user)
+	return us.SetNotoriety(ctx, user, 0)
 }
 
 func updateNotoriety(ctx context.Context, us user.Store, ns NotorietyStore, user *entity.User, guid string, ngt ms.NotoriousGameType) error {

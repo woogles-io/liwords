@@ -169,6 +169,12 @@ func (s *DBStore) Set(ctx context.Context, u *entity.User) error {
 	return result.Error
 }
 
+// This was written to avoid the zero value trap
+func (s *DBStore) SetNotoriety(ctx context.Context, u *entity.User, notoriety int) error {
+	result := s.db.Model(&User{}).Where("uuid = ?", u.UUID).Update(map[string]interface{}{"notoriety": notoriety})
+	return result.Error
+}
+
 // GetByEmail gets the user by email. It does not try to get the profile.
 // We don't get the profile here because GetByEmail is only used for things
 // like password resets and there is no need.
