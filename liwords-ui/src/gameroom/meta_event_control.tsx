@@ -1,5 +1,5 @@
-import { Button, notification } from 'antd';
-import React, { useCallback, useEffect, useRef } from 'react';
+import { notification } from 'antd';
+import React, { useCallback, useEffect } from 'react';
 import {
   GameMetaEvent,
   MessageType,
@@ -8,32 +8,19 @@ import { MetaStates } from '../store/meta_game_events';
 import { useGameMetaEventContext } from '../store/store';
 import { useMountedState } from '../utils/mounted';
 import { encodeToSocketFmt } from '../utils/protobuf';
-import { SimpleTimer } from './simple_timer';
-
-/*
-    case ActionType.ProcessGameMetaEvent: {
-      const p = action.payload as {
-        gme: GameMetaEvent;
-        us: string;
-      };
-      const newState = newGameStateFromMetaEvent(state, p.gme, p.us);
-      return newState;
-    }*/
+import { ShowNotif } from './show_notif';
 
 type Props = {
   sendSocketMsg: (msg: Uint8Array) => void;
   gameID: string;
 };
 
-export const MetaEventDisplay = (props: Props) => {
+export const MetaEventControl = (props: Props) => {
   const { gameMetaEventContext } = useGameMetaEventContext();
   const { sendSocketMsg, gameID } = props;
   const { useState } = useMountedState();
-  const [timerParams, setTimerParams] = useState({
-    millisAtLastRefresh: 0,
-    lastRefreshedPerformanceNow: performance.now(),
-    isRunning: false,
-  });
+  // can't get this to work with types:
+  const [activeNotif, setActiveNotif] = useState<any>(null);
 
   const denyAbort = useCallback(
     (evtid: string) => {
@@ -72,65 +59,35 @@ export const MetaEventDisplay = (props: Props) => {
 
     switch (gameMetaEventContext.curEvt) {
       case MetaStates.REQUESTED_ABORT:
-        const startTime = performance.now();
-        // setTimerParams((tp) => ({
-        //   millisAtLastRefresh: tp.isRunning
-        //     ? tp.millisAtLastRefresh -
-        //       (startTime - tp.lastRefreshedPerformanceNow)
-        //     : tp.millisAtLastRefresh,
-        //   lastRefreshedPerformanceNow: startTime,
-        //   isRunning: true,
-        // }));
-        setTimerParams((tp) => ({
-          lastRefreshedPerformanceNow: startTime,
-          millisAtLastRefresh: gameMetaEventContext.initialExpirySecs * 1000,
-          isRunning: true,
-        }));
-        notification.info({
-          message: '',
-          description: (
-            <>
-              <p>
-                Waiting for your opponent to respond to your cancel request.
-              </p>
-              <SimpleTimer {...timerParams} />
-            </>
-          ),
-          placement: 'bottomRight',
-          key: 'request-abort',
-          duration: 0,
-        });
+        setActiveNotif(
+          <ShowNotif
+            maxDuration={gameMetaEventContext.initialExpirySecs * 1000}
+            onExpire={() => {}}
+            onAccept={undefined}
+            onDecline={undefined}
+            introText="Waiting for your opponent to respond to your cancel request."
+            acceptText=""
+            declineText=""
+          />
+        );
         break;
 
       case MetaStates.RECEIVER_ABORT_COUNTDOWN:
-        notification.info({
-          message: '',
-          description: (
-            <>
-              <p>
-                Your opponent wants to cancel the game. Ratings won't change.
-              </p>
-              <Button
-                type="text"
-                onClick={() => {
-                  denyAbort(gameMetaEventContext.evtId);
-                }}
-              >
-                Keep playing
-              </Button>
-              <Button
-                onClick={() => {
-                  acceptAbort(gameMetaEventContext.evtId);
-                }}
-              >
-                Yes, cancel
-              </Button>
-            </>
-          ),
-          key: 'received-abort',
-          placement: 'bottomRight',
-          duration: 0,
-        });
+        setActiveNotif(
+          <ShowNotif
+            maxDuration={gameMetaEventContext.initialExpirySecs * 1000}
+            onExpire={() => {}}
+            onAccept={() => {
+              acceptAbort(gameMetaEventContext.evtId);
+            }}
+            onDecline={() => {
+              denyAbort(gameMetaEventContext.evtId);
+            }}
+            introText="Your opponent wants to cancel the game. Ratings won't change."
+            acceptText="Yes, cancel"
+            declineText="Keep playing"
+          />
+        );
         break;
 
       case MetaStates.REQUESTED_ADJUDICATION:
@@ -156,5 +113,5 @@ export const MetaEventDisplay = (props: Props) => {
     }
   }, [gameMetaEventContext, acceptAbort, denyAbort]);
 
-  return null;
+  return activeNotif;
 };

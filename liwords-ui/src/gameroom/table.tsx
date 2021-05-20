@@ -56,7 +56,7 @@ import { isClubType, isPairedMode, sortTiles } from '../store/constants';
 import { readyForTournamentGame } from '../store/reducers/tournament_reducer';
 import { CompetitorStatus } from '../tournament/competitor_status';
 import { Unrace } from '../utils/unrace';
-import { MetaEventDisplay } from './meta_event_display';
+import { MetaEventControl } from './meta_event_control';
 import { Blank } from '../utils/cwgame/common';
 import { useTourneyMetadata } from '../tournament/utils';
 import { Disclaimer } from './disclaimer';
@@ -943,7 +943,7 @@ export const Table = React.memo((props: Props) => {
             handleUnsetHover={hideDefinitionHover}
             definitionPopover={definitionPopover}
           />
-          <MetaEventDisplay
+          <MetaEventControl
             sendSocketMsg={props.sendSocketMsg}
             gameID={gameID}
           />
