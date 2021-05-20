@@ -53,17 +53,15 @@ const loadablesByLexicon: { [key: string]: Array<Loadable> } = {};
 
 for (const { lexicons, cacheKey, path } of [
   {
-    lexicons: ['CSW19', 'CSW19X', 'NWL20', 'NWL18', 'NSWL20', 'OSPD6', 'ECWL'],
+    lexicons: ['CSW19', 'CSW19X', 'NWL20', 'NWL18', 'NSWL20', 'ECWL'],
     cacheKey: 'klv/english',
     path: '/wasm/leaves.klv',
   },
-  ...['CSW19', 'CSW19X', 'NWL20', 'NWL18', 'NSWL20', 'OSPD6', 'ECWL'].map(
-    (name) => ({
-      lexicons: [name],
-      cacheKey: `kwg/${name}`,
-      path: `/wasm/${name}.kwg`,
-    })
-  ),
+  ...['CSW19', 'CSW19X', 'NWL20', 'NWL18', 'NSWL20', 'ECWL'].map((name) => ({
+    lexicons: [name],
+    cacheKey: `kwg/${name}`,
+    path: `/wasm/${name}.kwg`,
+  })),
 ]) {
   const loadable = new Loadable(cacheKey, path);
   for (const lexicon of lexicons) {
