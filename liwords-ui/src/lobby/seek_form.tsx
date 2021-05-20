@@ -346,6 +346,9 @@ export const SeekForm = (props: Props) => {
           {enableAllLexicons && (
             <React.Fragment>
               <Select.Option value="NWL18">NWL 18 (Obsolete)</Select.Option>
+              <Select.Option value="NSWL20">
+                NSWL 20 (NASPA School Word List)
+              </Select.Option>
               <Select.Option value="ECWL">
                 English Common Word List
               </Select.Option>

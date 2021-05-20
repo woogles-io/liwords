@@ -123,7 +123,7 @@ const learners = {
 };
 
 const nasscChampionship = {
-  lexicon: 'OSPD6',
+  lexicon: 'NSWL20',
   challengerule: ChallengeRule.FIVE_POINT,
   initialtime: 22, // 20 minutes
   rated: true,
@@ -134,7 +134,7 @@ const nasscChampionship = {
 };
 
 const nasscNovice = {
-  lexicon: 'OSPD6',
+  lexicon: 'NSWL20',
   challengerule: ChallengeRule.VOID,
   initialtime: 22, // 20 minutes
   rated: true,
@@ -145,7 +145,7 @@ const nasscNovice = {
 };
 
 const nasscHighSchool = {
-  lexicon: 'OSPD6',
+  lexicon: 'NSWL20',
   challengerule: ChallengeRule.DOUBLE,
   initialtime: 22, // 20 minutes
   rated: true,
