@@ -163,8 +163,9 @@ export const Players = React.memo((props: Props) => {
   const filterPlayerListBySearch = useCallback(
     (searchTerm: string, list: Partial<FriendUser>[]) => {
       if (searchTerm?.length) {
+        const lowercasedSearchTerm = searchTerm.toLowerCase();
         return list.filter((u) =>
-          u.username?.toLowerCase().startsWith(searchTerm.toLowerCase())
+          u.username?.toLowerCase().startsWith(lowercasedSearchTerm)
         );
       } else {
         return list;
@@ -209,9 +210,10 @@ export const Players = React.memo((props: Props) => {
       const presencePlayers = Object.values(presencePlayersMap)
         .sort(onlineAlphaComparator)
         .filter((u) => u.username?.toLowerCase() !== username.toLowerCase());
+      const lowercasedSearchTerm = searchTerm.toLowerCase();
       return searchTerm?.length
         ? presencePlayers.filter((u) =>
-            u.username?.toLowerCase().startsWith(searchTerm.toLowerCase())
+            u.username?.toLowerCase().startsWith(lowercasedSearchTerm)
           )
         : presencePlayers;
     },
