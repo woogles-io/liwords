@@ -204,14 +204,9 @@ export const Players = React.memo((props: Props) => {
       const presencePlayers = Object.values(presencePlayersMap)
         .sort(onlineAlphaComparator)
         .filter((u) => u.uuid !== userID);
-      const lowercasedSearchTerm = searchTerm.toLowerCase();
-      return searchTerm?.length
-        ? presencePlayers.filter((u) =>
-            u.username?.toLowerCase().startsWith(lowercasedSearchTerm)
-          )
-        : presencePlayers;
+      return filterPlayerListBySearch(searchTerm, presencePlayers);
     },
-    [userID, onlineAlphaComparator]
+    [userID, onlineAlphaComparator, filterPlayerListBySearch]
   );
 
   const transformedAndFilteredPresences = useMemo(
