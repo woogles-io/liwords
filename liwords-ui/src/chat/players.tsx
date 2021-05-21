@@ -174,9 +174,7 @@ export const Players = React.memo((props: Props) => {
     (a: Partial<FriendUser>, b: Partial<FriendUser>) => {
       const countA = (a.channel || []).length > 0 ? 1 : -1;
       const countB = (b.channel || []).length > 0 ? 1 : -1;
-      return (
-        countB - countA || a.username!.localeCompare(b.username!.toLowerCase())
-      );
+      return countB - countA || a.username!.localeCompare(b.username!);
     },
     []
   );
