@@ -110,13 +110,13 @@ export const Players = React.memo((props: Props) => {
             }
           )
           .then((resp) => {
-            // Exclude your friends
-            const nonfriends = resp.data.users.filter((u) => {
-              return u.uuid && !(u.uuid in friends);
-            });
-            // Exclude yourself
+            // Exclude yourself and your friends
             setSearchResults(
-              !searchText ? [] : nonfriends.filter((u) => u.uuid !== userID)
+              !searchText
+                ? []
+                : resp.data.users.filter(
+                    (u) => u.uuid && u.uuid !== userID && !(u.uuid in friends)
+                  )
             );
           });
       } else {
