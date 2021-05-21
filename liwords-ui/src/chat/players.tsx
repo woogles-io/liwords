@@ -188,25 +188,27 @@ export const Players = React.memo((props: Props) => {
       searchTerm: string
     ): Partial<FriendUser>[] => {
       const presencePlayersMap: { [uuid: string]: FriendUser } = {};
-      presenceEntities
-        .filter((p) => !p.anon)
-        .forEach((p) => {
-          if (p.uuid in presencePlayersMap) {
-            presencePlayersMap[p.uuid] = {
-              ...presencePlayersMap[p.uuid],
-              channel: presencePlayersMap[p.uuid].channel.concat(p.channel),
-            };
-          } else {
-            presencePlayersMap[p.uuid] = {
-              username: p.username,
-              uuid: p.uuid,
-              channel: [p.channel],
-            };
-          }
-        });
-      const presencePlayers = Object.values(presencePlayersMap)
-        .sort(onlineAlphaComparator)
-        .filter((u) => u.uuid !== userID);
+      presenceEntities.forEach((p) => {
+        if (p.uuid === userID) {
+          // ignore self
+        } else if (p.anon) {
+          // ignore anonymous
+        } else if (p.uuid in presencePlayersMap) {
+          presencePlayersMap[p.uuid] = {
+            ...presencePlayersMap[p.uuid],
+            channel: presencePlayersMap[p.uuid].channel.concat(p.channel),
+          };
+        } else {
+          presencePlayersMap[p.uuid] = {
+            username: p.username,
+            uuid: p.uuid,
+            channel: [p.channel],
+          };
+        }
+      });
+      const presencePlayers = Object.values(presencePlayersMap).sort(
+        onlineAlphaComparator
+      );
       return filterPlayerListBySearch(searchTerm, presencePlayers);
     },
     [userID, onlineAlphaComparator, filterPlayerListBySearch]
