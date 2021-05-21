@@ -23,7 +23,7 @@ import {
 import { MatchUser } from '../gen/api/proto/realtime/realtime_pb';
 import { SoughtGame } from '../store/reducers/lobby_reducer';
 import { toAPIUrl } from '../api/api';
-import { debounce } from '../utils/debounce';
+import { useDebounce } from '../utils/debounce';
 import { fixedSettings } from './fixed_seek_controls';
 import { ChallengeRulesFormItem } from './challenge_rules_form_item';
 import {
@@ -244,7 +244,7 @@ export const SeekForm = (props: Props) => {
     [defaultOptions]
   );
 
-  const searchUsernameDebounced = debounce(onUsernameSearch, 300);
+  const searchUsernameDebounced = useDebounce(onUsernameSearch, 300);
 
   const onFormSubmit = (val: Store) => {
     const receiver = new MatchUser();

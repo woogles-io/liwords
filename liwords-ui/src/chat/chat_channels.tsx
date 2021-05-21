@@ -9,7 +9,7 @@ import {
 } from '../store/store';
 import { useMountedState } from '../utils/mounted';
 import { toAPIUrl } from '../api/api';
-import { debounce } from '../utils/debounce';
+import { useDebounce } from '../utils/debounce';
 import { ActiveChatChannels } from '../gen/api/proto/user_service/user_service_pb';
 import { PlayerAvatar } from '../shared/player_avatar';
 import { DisplayUserFlag } from '../shared/display_flag';
@@ -155,7 +155,7 @@ export const ChatChannels = React.memo((props: Props) => {
       });
   }, []);
 
-  const searchUsernameDebounced = debounce(onUsernameSearch, 300);
+  const searchUsernameDebounced = useDebounce(onUsernameSearch, 300);
 
   const handleUsernameSelect = useCallback(
     (data) => {
