@@ -99,6 +99,16 @@ export const Players = React.memo((props: Props) => {
   useEffect(() => {
     setHeight();
   }, [setHeight]);
+
+  const onlineAlphaComparator = useCallback(
+    (a: Partial<FriendUser>, b: Partial<FriendUser>) => {
+      const countA = (a.channel || []).length > 0 ? 1 : -1;
+      const countB = (b.channel || []).length > 0 ? 1 : -1;
+      return countB - countA || a.username!.localeCompare(b.username!);
+    },
+    []
+  );
+
   const onPlayerSearch = useCallback(
     (searchText: string) => {
       if (searchText?.length > 0) {
@@ -114,16 +124,18 @@ export const Players = React.memo((props: Props) => {
             setSearchResults(
               !searchText
                 ? []
-                : resp.data.users.filter(
-                    (u) => u.uuid && u.uuid !== userID && !(u.uuid in friends)
-                  )
+                : resp.data.users
+                    .filter(
+                      (u) => u.uuid && u.uuid !== userID && !(u.uuid in friends)
+                    )
+                    .sort(onlineAlphaComparator)
             );
           });
       } else {
         setSearchResults([]);
       }
     },
-    [userID, friends]
+    [userID, friends, onlineAlphaComparator]
   );
   const searchUsernameDebounced = debounce(onPlayerSearch, 200);
 
@@ -166,15 +178,6 @@ export const Players = React.memo((props: Props) => {
       } else {
         return list;
       }
-    },
-    []
-  );
-
-  const onlineAlphaComparator = useCallback(
-    (a: Partial<FriendUser>, b: Partial<FriendUser>) => {
-      const countA = (a.channel || []).length > 0 ? 1 : -1;
-      const countB = (b.channel || []).length > 0 ? 1 : -1;
-      return countB - countA || a.username!.localeCompare(b.username!);
     },
     []
   );
