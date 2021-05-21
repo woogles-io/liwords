@@ -83,7 +83,7 @@ export const Players = React.memo((props: Props) => {
   const { friends } = useFriendsStoreContext();
   const { loginState } = useLoginStateStoreContext();
   const { sendMessage, defaultChannelType } = props;
-  const { username, loggedIn } = loginState;
+  const { userID, loggedIn } = loginState;
   const [maxHeight, setMaxHeight] = useState<number | undefined>(0);
   const [searchResults, setSearchResults] = useState<
     Array<Partial<FriendUser>>
@@ -116,18 +116,14 @@ export const Players = React.memo((props: Props) => {
             });
             // Exclude yourself
             setSearchResults(
-              !searchText
-                ? []
-                : nonfriends.filter(
-                    (u) => u.username?.toLowerCase() !== username.toLowerCase()
-                  )
+              !searchText ? [] : nonfriends.filter((u) => u.uuid !== userID)
             );
           });
       } else {
         setSearchResults([]);
       }
     },
-    [username, friends]
+    [userID, friends]
   );
   const searchUsernameDebounced = debounce(onPlayerSearch, 200);
 
@@ -209,7 +205,7 @@ export const Players = React.memo((props: Props) => {
         });
       const presencePlayers = Object.values(presencePlayersMap)
         .sort(onlineAlphaComparator)
-        .filter((u) => u.username?.toLowerCase() !== username.toLowerCase());
+        .filter((u) => u.uuid !== userID);
       const lowercasedSearchTerm = searchTerm.toLowerCase();
       return searchTerm?.length
         ? presencePlayers.filter((u) =>
@@ -217,7 +213,7 @@ export const Players = React.memo((props: Props) => {
           )
         : presencePlayers;
     },
-    [username, onlineAlphaComparator]
+    [userID, onlineAlphaComparator]
   );
 
   const transformedAndFilteredPresences = useMemo(
