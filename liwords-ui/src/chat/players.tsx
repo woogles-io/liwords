@@ -194,10 +194,8 @@ export const Players = React.memo((props: Props) => {
         } else if (p.anon) {
           // ignore anonymous
         } else if (p.uuid in presencePlayersMap) {
-          presencePlayersMap[p.uuid] = {
-            ...presencePlayersMap[p.uuid],
-            channel: presencePlayersMap[p.uuid].channel.concat(p.channel),
-          };
+          // mutating this in-place is safe, it has not been shared
+          presencePlayersMap[p.uuid].channel.push(p.channel);
         } else {
           presencePlayersMap[p.uuid] = {
             username: p.username,
