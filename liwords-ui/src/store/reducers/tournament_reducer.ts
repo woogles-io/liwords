@@ -894,15 +894,69 @@ export function TournamentReducer(
       });
     }
 
-    case ActionType.SetTourneyStatus: {
-      const m = action.payload as TourneyStatus;
-      return {
-        ...state,
-        competitorState: {
-          ...state.competitorState,
-          status: m,
-        },
+    case ActionType.SetReadyForGame: {
+      const m = action.payload as {
+        ready: ReadyForTournamentGame;
+        loginState: LoginState;
       };
+
+      const registeredDivision = state.competitorState.division;
+      if (!registeredDivision) {
+        // this should not happen, we should not get a ready state if we
+        // are not in some division
+        return state;
+      }
+      const division = state.divisions[registeredDivision];
+      const fullPlayerID = `${m.loginState.userID}:${m.loginState.username}`;
+      console.log('division', JSON.stringify(division));
+
+      const pairing = getPairing(division.currentRound, fullPlayerID, division);
+      if (!pairing) {
+        return state;
+      }
+      const newPairing = {
+        ...pairing,
+        readyStates: [...pairing.readyStates],
+      };
+      let usloc;
+      const involvedIDs = newPairing.players.map((x) => x.getId());
+      if (newPairing.players[0].getId() === fullPlayerID) {
+        usloc = 0;
+      } else if (newPairing.players[1].getId() === fullPlayerID) {
+        usloc = 1;
+      } else {
+        console.error('unexpected usloc', newPairing);
+        return state;
+      }
+      let tomodify;
+      if (m.ready.getPlayerId() === fullPlayerID) {
+        tomodify = usloc;
+      } else {
+        // it's the opponent
+        tomodify = 1 - usloc;
+      }
+
+      newPairing.readyStates[tomodify] = m.ready.getUnready() ? '' : 'ready';
+
+      const updatedPairings = [...division.pairings];
+      updatedPairings[division.currentRound].roundPairings[
+        division.playerIndexMap[involvedIDs[0]]
+      ] = newPairing;
+      updatedPairings[division.currentRound].roundPairings[
+        division.playerIndexMap[involvedIDs[1]]
+      ] = newPairing;
+
+      return Object.assign({}, state, {
+        divisions: Object.assign({}, state.divisions, {
+          [registeredDivision]: Object.assign(
+            {},
+            state.divisions[registeredDivision],
+            {
+              pairings: updatedPairings,
+            }
+          ),
+        }),
+      });
     }
 
     // For the following two actions, it is important to recalculate
