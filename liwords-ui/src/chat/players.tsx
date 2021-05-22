@@ -13,7 +13,7 @@ import { UsernameWithContext } from '../shared/usernameWithContext';
 import './playerList.scss';
 import axios from 'axios';
 import { toAPIUrl } from '../api/api';
-import { debounce } from '../utils/debounce';
+import { useDebounce } from '../utils/debounce';
 import { useMountedState } from '../utils/mounted';
 
 type Props = {
@@ -137,7 +137,7 @@ export const Players = React.memo((props: Props) => {
     },
     [userID, friends, onlineAlphaComparator]
   );
-  const searchUsernameDebounced = debounce(onPlayerSearch, 200);
+  const searchUsernameDebounced = useDebounce(onPlayerSearch, 200);
 
   const handleSearchChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {

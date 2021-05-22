@@ -1,12 +1,18 @@
+import { useCallback, useRef } from 'react';
+
+// evolved from
 // https://www.matthewgerstman.com/tech/throttle-and-debounce/
 
-export function debounce(func: Function, timeout: number) {
-  let timer: NodeJS.Timeout;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  return (...args: any) => {
-    clearTimeout(timer);
-    timer = setTimeout(() => {
-      func(...args);
-    }, timeout);
-  };
+export function useDebounce(func: Function, timeout: number) {
+  const timer = useRef<NodeJS.Timeout>();
+  const debounced = useCallback(
+    (...args) => {
+      if (timer.current != null) clearTimeout(timer.current);
+      timer.current = setTimeout(() => {
+        func(...args);
+      }, timeout);
+    },
+    [func, timeout]
+  );
+  return debounced;
 }
