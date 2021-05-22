@@ -282,6 +282,7 @@ export const UserProfile = React.memo((props: Props) => {
   const player = {
     avatar_url: avatarUrl,
     full_name: fullName,
+    user_id: userID, // for name-based avatar initial to work
   };
 
   const avatarEditable = avatarsEditable && viewer === username;
