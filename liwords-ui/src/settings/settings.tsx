@@ -134,7 +134,7 @@ export const Settings = React.memo((props: Props) => {
         setAbout(resp.data.about);
       })
       .catch(errorCatcher);
-  }, [viewer, loggedIn, category]);
+  }, [viewer, loggedIn, category, userID]);
 
   type CategoryProps = {
     title: string;
