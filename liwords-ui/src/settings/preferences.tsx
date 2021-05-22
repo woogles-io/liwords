@@ -160,7 +160,7 @@ export const Preferences = React.memo((props: Props) => {
   const handleUserTileChange = useCallback((tileStyle: string) => {
     const classes = document?.body?.className
       .split(' ')
-      .filter((c) => !c.includes('tile--'));
+      .filter((c) => !c.startsWith('tile--'));
     document.body.className = classes.join(' ').trim();
     if (tileStyle) {
       localStorage.setItem('userTile', tileStyle);
@@ -174,7 +174,7 @@ export const Preferences = React.memo((props: Props) => {
   const handleUserBoardChange = useCallback((boardStyle: string) => {
     const classes = document?.body?.className
       .split(' ')
-      .filter((c) => !c.includes('board--'));
+      .filter((c) => !c.startsWith('board--'));
     document.body.className = classes.join(' ').trim();
     if (boardStyle) {
       localStorage.setItem('userBoard', boardStyle);
