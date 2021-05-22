@@ -59,6 +59,10 @@ export const endGameMessage = (gee: GameEndedEvent): string => {
     case GameEndReason.CANCELLED:
       summaryReason = 'Game was cancelled.';
       break;
+    case GameEndReason.FORCE_FORFEIT:
+      properEnding = true;
+      summaryReason = ' by forfeit.';
+      break;
   }
   if (!properEnding) {
     summary.push(summaryReason);

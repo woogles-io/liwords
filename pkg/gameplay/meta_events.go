@@ -131,8 +131,9 @@ func HandleMetaEvent(ctx context.Context, evt *pb.GameMetaEvent, eventChan chan<
 	defer g.Unlock()
 
 	if g.GameEndReason != pb.GameEndReason_NONE {
-		// game is over
-		return errGameNotActive
+		// game is over. Don't actually return an error; but log the situation.
+		log.Info().Msg("game-not-active")
+		return nil
 	}
 
 	now := g.TimerModule().Now()

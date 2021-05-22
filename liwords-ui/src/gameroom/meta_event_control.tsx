@@ -49,6 +49,20 @@ export const MetaEventControl = (props: Props) => {
     [sendSocketMsg, gameID]
   );
 
+  const eventTimeout = useCallback(
+    (evtid: string) => {
+      const to = new GameMetaEvent();
+      to.setType(GameMetaEvent.EventType.TIMER_EXPIRED);
+      to.setOrigEventId(evtid);
+      to.setGameId(gameID);
+
+      sendSocketMsg(
+        encodeToSocketFmt(MessageType.GAME_META_EVENT, to.serializeBinary())
+      );
+    },
+    [sendSocketMsg, gameID]
+  );
+
   // const [renderStartTime, setRenderStartTime] = useState(performance.now());
   // const [modalVisible, setModalVisible] = useState(false);
   useEffect(() => {
@@ -62,7 +76,9 @@ export const MetaEventControl = (props: Props) => {
         setActiveNotif(
           <ShowNotif
             maxDuration={gameMetaEventContext.initialExpirySecs * 1000}
-            onExpire={() => {}}
+            onExpire={() => {
+              eventTimeout(gameMetaEventContext.evtId);
+            }}
             onAccept={undefined}
             onDecline={undefined}
             introText="Waiting for your opponent to respond to your cancel request."
@@ -76,7 +92,9 @@ export const MetaEventControl = (props: Props) => {
         setActiveNotif(
           <ShowNotif
             maxDuration={gameMetaEventContext.initialExpirySecs * 1000}
-            onExpire={() => {}}
+            onExpire={() => {
+              eventTimeout(gameMetaEventContext.evtId);
+            }}
             onAccept={() => {
               acceptAbort(gameMetaEventContext.evtId);
             }}
@@ -111,7 +129,7 @@ export const MetaEventControl = (props: Props) => {
         });
         break;
     }
-  }, [gameMetaEventContext, acceptAbort, denyAbort]);
+  }, [gameMetaEventContext, acceptAbort, denyAbort, eventTimeout]);
 
   return activeNotif;
 };
