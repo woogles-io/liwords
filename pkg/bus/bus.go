@@ -754,6 +754,8 @@ func (b *Bus) leaveTab(ctx context.Context, userID, connID string) error {
 }
 
 func (b *Bus) deleteTournamentReadyMsgs(ctx context.Context, userID, connID string) error {
+	// When a user leaves the site, we want to make sure to clear any of their
+	// "tournament ready" messages in the actual tournament.
 	conn := b.redisPool.Get()
 	defer conn.Close()
 	bts, err := redis.Bytes(conn.Do("GET", "tready:"+connID))
