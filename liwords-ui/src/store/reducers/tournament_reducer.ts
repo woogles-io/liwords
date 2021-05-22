@@ -909,8 +909,19 @@ export function TournamentReducer(
       const division = state.divisions[registeredDivision];
       const fullPlayerID = `${m.loginState.userID}:${m.loginState.username}`;
       console.log('division', JSON.stringify(division));
-
-      const pairing = getPairing(division.currentRound, fullPlayerID, division);
+      if (m.ready.getRound() !== division.currentRound) {
+        // this should not happen, the ready state should always be for the
+        // current round.
+        console.error('ready state current round does not match');
+        return state;
+      }
+      if (m.ready.getDivision() !== registeredDivision) {
+        // this should not happen, the ready state should always be for the
+        // current division.
+        console.error('ready state current division does not match');
+        return state;
+      }
+      const pairing = getPairing(m.ready.getRound(), fullPlayerID, division);
       if (!pairing) {
         return state;
       }
@@ -918,44 +929,57 @@ export function TournamentReducer(
         ...pairing,
         readyStates: [...pairing.readyStates],
       };
-      let usloc;
+      // find out where _we_ are
+      let usLoc;
       const involvedIDs = newPairing.players.map((x) => x.getId());
       if (newPairing.players[0].getId() === fullPlayerID) {
-        usloc = 0;
+        usLoc = 0;
       } else if (newPairing.players[1].getId() === fullPlayerID) {
-        usloc = 1;
+        usLoc = 1;
       } else {
-        console.error('unexpected usloc', newPairing);
+        console.error('unexpected usLoc', newPairing);
         return state;
       }
-      let tomodify;
+      let toModify;
       if (m.ready.getPlayerId() === fullPlayerID) {
-        tomodify = usloc;
+        toModify = usLoc;
       } else {
         // it's the opponent
-        tomodify = 1 - usloc;
+        toModify = 1 - usLoc;
       }
 
-      newPairing.readyStates[tomodify] = m.ready.getUnready() ? '' : 'ready';
+      newPairing.readyStates[toModify] = m.ready.getUnready() ? '' : 'ready';
 
-      const updatedPairings = [...division.pairings];
-      updatedPairings[division.currentRound].roundPairings[
+      const updatedPairings = copyPairings(division.pairings);
+      updatedPairings[m.ready.getRound()].roundPairings[
         division.playerIndexMap[involvedIDs[0]]
       ] = newPairing;
-      updatedPairings[division.currentRound].roundPairings[
+      updatedPairings[m.ready.getRound()].roundPairings[
         division.playerIndexMap[involvedIDs[1]]
       ] = newPairing;
 
+      const newRegisteredDiv = Object.assign(
+        {},
+        state.divisions[registeredDivision],
+        {
+          pairings: updatedPairings,
+        }
+      );
+
+      const newCompetitorState = {
+        ...state.competitorState,
+        status: tourneyStatus(
+          newRegisteredDiv,
+          state.activeGames,
+          m.loginState
+        ),
+      };
+
       return Object.assign({}, state, {
         divisions: Object.assign({}, state.divisions, {
-          [registeredDivision]: Object.assign(
-            {},
-            state.divisions[registeredDivision],
-            {
-              pairings: updatedPairings,
-            }
-          ),
+          [registeredDivision]: newRegisteredDiv,
         }),
+        competitorState: newCompetitorState,
       });
     }
 
