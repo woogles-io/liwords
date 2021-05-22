@@ -162,7 +162,7 @@ export const Preferences = React.memo((props: Props) => {
       .split(' ')
       .filter((c) => !c.includes('tile--'));
     document.body.className = classes.join(' ').trim();
-    if (tileStyle !== 'default') {
+    if (tileStyle) {
       localStorage.setItem('userTile', tileStyle);
       document?.body?.classList?.add(`tile--${tileStyle}`);
     } else {
@@ -176,7 +176,7 @@ export const Preferences = React.memo((props: Props) => {
       .split(' ')
       .filter((c) => !c.includes('board--'));
     document.body.className = classes.join(' ').trim();
-    if (boardStyle !== 'default') {
+    if (boardStyle) {
       localStorage.setItem('userBoard', boardStyle);
       document?.body?.classList?.add(`board--${boardStyle}`);
     } else {
