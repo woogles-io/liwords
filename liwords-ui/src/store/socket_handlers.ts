@@ -810,25 +810,7 @@ export const useOnSocketMsg = () => {
                 loginState,
               },
             });
-            // if (
-            //   ready.getPlayerId() ===
-            //   `${loginState.userID}:${loginState.username}`
-            // ) {
-            //   dispatchTournamentContext({
-            //     actionType: ActionType.SetTourneyStatus,
-            //     payload: ready.getUnready()
-            //       ? TourneyStatus.ROUND_OPEN
-            //       : TourneyStatus.ROUND_READY,
-            //   });
-            // } else {
-            //   // The opponent sent this message.
-            //   dispatchTournamentContext({
-            //     actionType: ActionType.SetTourneyStatus,
-            //     payload: ready.getUnready()
-            //       ? TourneyStatus.ROUND_OPEN
-            //       : TourneyStatus.ROUND_OPPONENT_WAITING,
-            //   });
-            // }
+
             break;
           }
 

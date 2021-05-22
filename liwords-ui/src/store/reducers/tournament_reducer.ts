@@ -908,7 +908,6 @@ export function TournamentReducer(
       }
       const division = state.divisions[registeredDivision];
       const fullPlayerID = `${m.loginState.userID}:${m.loginState.username}`;
-      console.log('division', JSON.stringify(division));
       if (m.ready.getRound() !== division.currentRound) {
         // this should not happen, the ready state should always be for the
         // current round.
