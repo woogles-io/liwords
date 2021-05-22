@@ -138,10 +138,10 @@ export const Preferences = React.memo((props: Props) => {
   const [darkMode, setDarkMode] = useState(
     localStorage?.getItem('darkMode') === 'true'
   );
-  const initialTileStyle = localStorage?.getItem('userTile') || 'default';
+  const initialTileStyle = localStorage?.getItem('userTile') || 'Default';
   const [userTile, setUserTile] = useState<string>(initialTileStyle);
 
-  const initialBoardStyle = localStorage?.getItem('userBoard') || 'default';
+  const initialBoardStyle = localStorage?.getItem('userBoard') || 'Default';
   const [userBoard, setUserBoard] = useState<string>(initialBoardStyle);
 
   const toggleDarkMode = useCallback(() => {
@@ -160,9 +160,9 @@ export const Preferences = React.memo((props: Props) => {
   const handleUserTileChange = useCallback((tileStyle: string) => {
     const classes = document?.body?.className
       .split(' ')
-      .filter((c) => !c.includes('tile--'));
+      .filter((c) => !c.startsWith('tile--'));
     document.body.className = classes.join(' ').trim();
-    if (tileStyle !== 'default') {
+    if (tileStyle) {
       localStorage.setItem('userTile', tileStyle);
       document?.body?.classList?.add(`tile--${tileStyle}`);
     } else {
@@ -174,9 +174,9 @@ export const Preferences = React.memo((props: Props) => {
   const handleUserBoardChange = useCallback((boardStyle: string) => {
     const classes = document?.body?.className
       .split(' ')
-      .filter((c) => !c.includes('board--'));
+      .filter((c) => !c.startsWith('board--'));
     document.body.className = classes.join(' ').trim();
-    if (boardStyle !== 'default') {
+    if (boardStyle) {
       localStorage.setItem('userBoard', boardStyle);
       document?.body?.classList?.add(`board--${boardStyle}`);
     } else {

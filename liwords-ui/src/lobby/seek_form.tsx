@@ -23,7 +23,7 @@ import {
 import { MatchUser } from '../gen/api/proto/realtime/realtime_pb';
 import { SoughtGame } from '../store/reducers/lobby_reducer';
 import { toAPIUrl } from '../api/api';
-import { debounce } from '../utils/debounce';
+import { useDebounce } from '../utils/debounce';
 import { fixedSettings } from './fixed_seek_controls';
 import { ChallengeRulesFormItem } from './challenge_rules_form_item';
 import {
@@ -244,7 +244,7 @@ export const SeekForm = (props: Props) => {
     [defaultOptions]
   );
 
-  const searchUsernameDebounced = debounce(onUsernameSearch, 300);
+  const searchUsernameDebounced = useDebounce(onUsernameSearch, 300);
 
   const onFormSubmit = (val: Store) => {
     const receiver = new MatchUser();
@@ -346,6 +346,9 @@ export const SeekForm = (props: Props) => {
           {enableAllLexicons && (
             <React.Fragment>
               <Select.Option value="NWL18">NWL 18 (Obsolete)</Select.Option>
+              <Select.Option value="NSWL20">
+                NSWL 20 (NASPA School Word List)
+              </Select.Option>
               <Select.Option value="ECWL">
                 English Common Word List
               </Select.Option>

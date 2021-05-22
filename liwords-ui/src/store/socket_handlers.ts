@@ -480,7 +480,7 @@ export const useOnSocketMsg = () => {
 
             setFriends({
               ...friends,
-              [pe.toObject().userId]: {
+              [pe.getUserId()]: {
                 uuid: pe.getUserId(),
                 username: pe.getUsername(),
                 channel: pe.getChannelList(),
