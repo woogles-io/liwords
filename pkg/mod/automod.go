@@ -149,6 +149,7 @@ func ResetNotoriety(ctx context.Context, us user.Store, ns NotorietyStore, uuid 
 func updateNotoriety(ctx context.Context, us user.Store, ns NotorietyStore, user *entity.User, guid string, ngt ms.NotoriousGameType) error {
 
 	previousNotorietyScore := user.Notoriety
+	newNotoriety := user.Notoriety
 	if ngt != ms.NotoriousGameType_GOOD {
 
 		// The user misbehaved, add this game to the list of notorious games
@@ -158,28 +159,28 @@ func updateNotoriety(ctx context.Context, us user.Store, ns NotorietyStore, user
 		}
 		gameScore, ok := BehaviorToScore[ngt]
 		if ok {
-			user.Notoriety += gameScore
+			newNotoriety += gameScore
 		}
 
-		if user.Notoriety > NotorietyThreshold {
+		if newNotoriety > NotorietyThreshold {
 			err = setCurrentAction(user, &ms.ModAction{UserId: user.UUID,
 				Type:          ms.ModActionType_SUSPEND_GAMES,
 				StartTime:     ptypes.TimestampNow(),
 				ApplierUserId: AutomodUserId,
-				Duration:      int32(DurationMultiplier * (user.Notoriety - NotorietyThreshold))})
+				Duration:      int32(DurationMultiplier * (newNotoriety - NotorietyThreshold))})
 			if err != nil {
 				return err
 			}
 		}
-	} else if user.Notoriety > 0 {
-		user.Notoriety -= NotorietyDecrement
-		if user.Notoriety < 0 {
-			user.Notoriety = 0
+	} else if newNotoriety > 0 {
+		newNotoriety -= NotorietyDecrement
+		if newNotoriety < 0 {
+			newNotoriety = 0
 		}
 	}
 
-	if previousNotorietyScore != user.Notoriety {
-		return us.Set(ctx, user)
+	if previousNotorietyScore != newNotoriety {
+		return us.SetNotoriety(ctx, user, newNotoriety)
 	}
 	return nil
 }

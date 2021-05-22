@@ -279,6 +279,10 @@ func (c *Cache) Set(ctx context.Context, u *entity.User) error {
 
 // This was written to avoid the zero value trap
 func (c *Cache) SetNotoriety(ctx context.Context, u *entity.User, notoriety int) error {
+	err := c.backing.SetNotoriety(ctx, u, notoriety)
+	if err != nil {
+		return err
+	}
 	u.Notoriety = notoriety
-	return c.backing.SetNotoriety(ctx, u, notoriety)
+	return nil
 }
