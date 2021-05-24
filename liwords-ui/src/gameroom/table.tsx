@@ -870,7 +870,11 @@ export const Table = React.memo((props: Props) => {
             />
           ) : null}
           {isExamining ? (
-            <Analyzer includeCard lexicon={gameInfo.game_request.lexicon} />
+            <Analyzer
+              includeCard
+              lexicon={gameInfo.game_request.lexicon}
+              variant={gameInfo.game_request.rules.variant_name}
+            />
           ) : (
             <Notepad includeCard />
           )}
@@ -970,6 +974,7 @@ export const Table = React.memo((props: Props) => {
             username={username}
             playing={us !== undefined}
             lexicon={gameInfo.game_request.lexicon}
+            variant={gameInfo.game_request.rules.variant_name}
             events={examinableGameContext.turns}
             board={examinableGameContext.board}
             playerMeta={gameInfo.players}
