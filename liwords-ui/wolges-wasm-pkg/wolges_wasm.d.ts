@@ -14,7 +14,22 @@ export function precache_kwg(key: string, value: Uint8Array): void;
 */
 export function precache_klv(key: string, value: Uint8Array): void;
 /**
-* @param {string} question_str
+* @param {string} req_str
 * @returns {any}
 */
-export function analyze(question_str: string): any;
+export function analyze(req_str: string): any;
+/**
+* @param {string} req_str
+* @returns {any}
+*/
+export function sim_prepare(req_str: string): any;
+/**
+* @param {number} sim_pid
+* @returns {any}
+*/
+export function sim_test(sim_pid: number): any;
+/**
+* @param {number} sim_pid
+* @returns {any}
+*/
+export function sim_drop(sim_pid: number): any;
