@@ -239,18 +239,25 @@ export const AnalyzerContextProvider = ({
 
         const howMany = 15;
 
+        let effectiveLexicon = lexicon;
+        let rules = 'CrosswordGame';
+        // TODO: figure out how to choose this by variant
+        if (false) {
+          effectiveLexicon = `${lexicon}.WordSmog`;
+          rules = 'WordSmog';
+        }
         const boardObj = {
           rack: rackNum,
           board: Array.from(new Array(dim), (_, row) =>
             Array.from(letters.substr(row * dim, dim), labelToNum)
           ),
           count: howMany + 1, // need to +1 in case Pass evaluated well.
-          lexicon,
+          lexicon: effectiveLexicon,
           leave: 'english',
-          rules: 'CrosswordGame',
+          rules,
         };
 
-        const wolges = await getWolges(lexicon);
+        const wolges = await getWolges(effectiveLexicon);
         if (examinerIdAtStart !== examinerId.current) return;
 
         const boardStr = JSON.stringify(boardObj);
