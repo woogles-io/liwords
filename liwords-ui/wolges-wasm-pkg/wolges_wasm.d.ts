@@ -18,18 +18,3 @@ export function precache_klv(key: string, value: Uint8Array): void;
 * @returns {any}
 */
 export function analyze(req_str: string): any;
-/**
-* @param {string} req_str
-* @returns {any}
-*/
-export function sim_prepare(req_str: string): any;
-/**
-* @param {number} sim_pid
-* @returns {any}
-*/
-export function sim_test(sim_pid: number): any;
-/**
-* @param {number} sim_pid
-* @returns {any}
-*/
-export function sim_drop(sim_pid: number): any;
