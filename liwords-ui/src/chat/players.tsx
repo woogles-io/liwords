@@ -32,10 +32,32 @@ type PlayerProps = {
 
 const Player = React.memo((props: PlayerProps) => {
   const online = props.fromChat || (props.channel && props.channel?.length > 0);
-  let inGame =
-    props.channel && props.channel.some((c) => c.includes('chat.game.'));
-  let watching =
-    props.channel && props.channel.some((c) => c.includes('chat.gametv.'));
+  const games = new Map<string, Set<string>>();
+  if (props.channel) {
+    const re = /^(activegame:|chat\.game\.|chat\.gametv\.)(.*)$/;
+    for (const c of props.channel) {
+      const m = c.match(re);
+      if (m) {
+        const [, groupName, gameID] = m;
+        if (!games.has(gameID)) {
+          games.set(gameID, new Set());
+        }
+        games.get(gameID)!.add(groupName);
+      }
+    }
+  }
+  const currentActiveGames: Array<string> = [];
+  const currentWatchedGames: Array<string> = [];
+  games.forEach((groupNames, gameId) => {
+    if (groupNames.has('activegame:') && groupNames.has('chat.game.')) {
+      currentActiveGames.push(gameId);
+    } else if (groupNames.has('chat.gametv.')) {
+      currentWatchedGames.push(gameId);
+    }
+  });
+
+  const inGame = currentActiveGames.length > 0;
+  const watching = currentWatchedGames.length > 0;
   if (!props.username) {
     return null;
   }
@@ -62,6 +84,8 @@ const Player = React.memo((props: PlayerProps) => {
             omitBlock={props.className === 'friends'}
             showModTools
             sendMessage={props.sendMessage}
+            currentActiveGames={currentActiveGames}
+            currentWatchedGames={currentWatchedGames}
           />
         </p>
         {inGame || watching ? (
