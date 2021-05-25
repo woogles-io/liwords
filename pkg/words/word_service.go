@@ -65,28 +65,68 @@ func (ws *WordService) DefineWords(ctx context.Context, req *pb.DefineWordsReque
 
 	var wordsToDefine []string
 	results := make(map[string]*pb.DefineWordsResult)
-	for _, word := range req.Words {
-		machineWord, err := alphabet.ToMachineWord(word, alph)
-		if err != nil {
-			return nil, twirp.NewError(twirp.InvalidArgument, err.Error())
-		}
 
-		if _, found := results[word]; found {
-			continue
-		}
+	var anagrams map[string][]string
+	if req.Anagrams {
+		anagrams = make(map[string][]string)
+		da := gaddag.DawgAnagrammer{}
+		for _, query := range req.Words {
+			if strings.IndexByte(query, alphabet.BlankToken) >= 0 {
+				return nil, twirp.NewError(twirp.InvalidArgument, "word cannot have blanks")
+			}
+			if err = da.InitForString(gd, query); err != nil {
+				return nil, twirp.NewError(twirp.InvalidArgument, err.Error())
+			}
 
-		if gaddag.FindMachineWord(gd, machineWord) {
-			definition := ""
-			if req.Definitions {
-				// IMPORTANT: "" will make frontend do infinite loop
-				definition = word // lame
-				if hasDefiner {
-					wordsToDefine = append(wordsToDefine, word)
+			var words []string
+			da.Anagram(gd, func(word alphabet.MachineWord) error {
+				words = append(words, word.UserVisible(alph))
+				return nil
+			})
+
+			if len(words) > 0 {
+				anagrams[query] = words
+				for _, word := range words {
+					if _, found := results[word]; found {
+						continue
+					}
+
+					definition := ""
+					if req.Definitions {
+						// IMPORTANT: "" will make frontend do infinite loop
+						definition = word // lame
+						if hasDefiner {
+							wordsToDefine = append(wordsToDefine, word)
+						}
+					}
+					results[word] = &pb.DefineWordsResult{D: definition, V: true}
 				}
 			}
-			results[word] = &pb.DefineWordsResult{D: definition, V: true}
-		} else {
-			results[word] = &pb.DefineWordsResult{D: "", V: false}
+		}
+	} else {
+		for _, word := range req.Words {
+			machineWord, err := alphabet.ToMachineWord(word, alph)
+			if err != nil {
+				return nil, twirp.NewError(twirp.InvalidArgument, err.Error())
+			}
+
+			if _, found := results[word]; found {
+				continue
+			}
+
+			if gaddag.FindMachineWord(gd, machineWord) {
+				definition := ""
+				if req.Definitions {
+					// IMPORTANT: "" will make frontend do infinite loop
+					definition = word // lame
+					if hasDefiner {
+						wordsToDefine = append(wordsToDefine, word)
+					}
+				}
+				results[word] = &pb.DefineWordsResult{D: definition, V: true}
+			} else {
+				results[word] = &pb.DefineWordsResult{D: "", V: false}
+			}
 		}
 	}
 
@@ -101,6 +141,31 @@ func (ws *WordService) DefineWords(ctx context.Context, req *pb.DefineWordsReque
 				if definition, ok := definitions[word]; ok && definition != "" {
 					results[word].D = definition
 				}
+			}
+		}
+	}
+
+	if req.Anagrams {
+		originalResults := results
+		results = make(map[string]*pb.DefineWordsResult)
+		for _, query := range req.Words {
+			if words, found := anagrams[query]; found {
+				definitions := ""
+				if req.Definitions {
+					var definitionBytes []byte
+					for _, word := range words {
+						if len(definitionBytes) > 0 {
+							definitionBytes = append(definitionBytes, '\n')
+						}
+						definitionBytes = append(definitionBytes, word...)
+						definitionBytes = append(definitionBytes, " - "...)
+						definitionBytes = append(definitionBytes, originalResults[word].D...)
+					}
+					definitions = string(definitionBytes)
+				}
+				results[query] = &pb.DefineWordsResult{D: definitions, V: true}
+			} else {
+				results[query] = &pb.DefineWordsResult{D: "", V: false}
 			}
 		}
 	}
