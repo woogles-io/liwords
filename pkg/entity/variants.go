@@ -14,7 +14,7 @@ type TimeControl string
 const (
 	VarClassic   Variant = "classic"
 	VarAWorth100         = "a-is-worth-100"
-	VarDogworms          = "dogworms" // OMGWords scrambled = dogworms?
+	VarWordsmog          = "wordsmog" // OMGWords scrambled = dogworms? wordsmog?
 	VarSuper             = "superomg"
 )
 
@@ -59,9 +59,12 @@ func VariantFromGameReq(gamereq *pb.GameRequest) (TimeControl, Variant, error) {
 		timefmt = TCRegular
 	}
 	var variant Variant
-	if gamereq.Rules.BoardLayoutName == CrosswordGame {
+	switch gamereq.Rules.VariantName {
+	case "", string(VarClassic):
 		variant = VarClassic
-	} else {
+	case string(VarWordsmog):
+		variant = VarWordsmog
+	default:
 		return "", "", errors.New("unsupported game type")
 	}
 

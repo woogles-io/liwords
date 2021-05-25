@@ -19,6 +19,7 @@ export type SoughtGame = {
   rated: boolean;
   seekID: string;
   playerVsBot: boolean;
+  variant: string;
   // Only for direct match requests:
   receiver: MatchUser;
   rematchFor: string;
