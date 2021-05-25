@@ -407,6 +407,8 @@ export const Table = React.memo((props: Props) => {
   >(undefined);
   const [willHideDefinitionHover, setWillHideDefinitionHover] = useState(false);
 
+  const anagrams = gameInfo.game_request.rules.variant_name === 'wordsmog';
+
   const definitionPopover = useMemo(() => {
     if (!showDefinitionHover) return undefined;
     const entries = [];
@@ -415,20 +417,69 @@ export const Table = React.memo((props: Props) => {
       const definition = wordInfo[uppercasedWord];
       // if phony-checker returned {v:true,d:""}, wait for definition to load
       if (definition && !(definition.v && !definition.d)) {
-        entries.push(
-          <li key={entries.length} className="definition-entry">
-            <span className="defined-word">
-              {uppercasedWord}
-              {definition.v ? '' : '*'}
-            </span>{' '}
-            -{' '}
-            {definition.v ? (
-              <span className="definition">{String(definition.d)}</span>
-            ) : (
-              <span className="invalid-word">not a word</span>
-            )}
-          </li>
-        );
+        if (anagrams && definition.v) {
+          if (false) {
+            // this may cause layout reflow if too many definitions.
+            // that causes the popover to close immediately. :(
+            entries.push(
+              <li key={entries.length} className="definition-entry">
+                <span className="defined-word">{uppercasedWord}</span> =
+              </li>
+            );
+            for (const singleEntry of definition!.d.split('\n')) {
+              const m = singleEntry.match(/^([^-]*) - (.*)$/)!;
+              if (m) {
+                const [, actualWord, actualDefinition] = m;
+                entries.push(
+                  <li key={entries.length} className="definition-entry">
+                    <span className="defined-word">{actualWord}</span> -{' '}
+                    {actualDefinition}
+                  </li>
+                );
+              } else {
+                entries.push(
+                  <li key={entries.length} className="definition-entry">
+                    {singleEntry}
+                  </li>
+                );
+              }
+            }
+          } else {
+            // just list the words.
+            entries.push(
+              <li key={entries.length} className="definition-entry">
+                <span className="defined-word">{uppercasedWord}</span> -{' '}
+                {definition!.d
+                  .split('\n')
+                  .map((singleEntry) => {
+                    const m = singleEntry.match(/^([^-]*) - (.*)$/);
+                    if (m) {
+                      const [, actualWord, actualDefinition] = m;
+                      return actualWord;
+                    } else {
+                      return singleEntry;
+                    }
+                  })
+                  .join(', ')}
+              </li>
+            );
+          }
+        } else {
+          entries.push(
+            <li key={entries.length} className="definition-entry">
+              <span className="defined-word">
+                {uppercasedWord}
+                {definition.v ? '' : '*'}
+              </span>{' '}
+              -{' '}
+              {definition.v ? (
+                <span className="definition">{String(definition.d)}</span>
+              ) : (
+                <span className="invalid-word">not a word</span>
+              )}
+            </li>
+          );
+        }
       }
     }
     if (!entries.length) return undefined;
@@ -437,7 +488,7 @@ export const Table = React.memo((props: Props) => {
       y: showDefinitionHover.y,
       content: <ul className="definitions">{entries}</ul>,
     };
-  }, [showDefinitionHover, wordInfo]);
+  }, [anagrams, showDefinitionHover, wordInfo]);
 
   const hideDefinitionHover = useCallback(() => {
     setShowDefinitionHover(undefined);
@@ -557,6 +608,7 @@ export const Table = React.memo((props: Props) => {
             lexicon,
             words: wordsToDefine,
             definitions: !!showDefinitionHover,
+            anagrams,
           },
           { cancelToken: cancelTokenSource.token }
         );
@@ -585,6 +637,7 @@ export const Table = React.memo((props: Props) => {
                 lexicon: otherLexicon,
                 words: wordsToRedefine,
                 definitions: !!showDefinitionHover,
+                anagrams,
               },
               { cancelToken: cancelTokenSource.token }
             );
@@ -615,7 +668,13 @@ export const Table = React.memo((props: Props) => {
     return () => {
       cancelTokenSource.cancel();
     };
-  }, [showDefinitionHover, gameInfo.game_request.lexicon, wordInfo, unrace]);
+  }, [
+    anagrams,
+    showDefinitionHover,
+    gameInfo.game_request.lexicon,
+    wordInfo,
+    unrace,
+  ]);
 
   useEffect(() => {
     if (phonies === null) {
