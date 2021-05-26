@@ -159,6 +159,7 @@ export const fixedSettings: { [key: string]: settings } = {
   phillyvirtual,
   cococlub,
   madisonclub,
+  eqRyXi3cBrUrDduuKDGuB9: cococlub,
   '26VtG4JCfeD6qvSGJEwRLm': laclub,
   cocoblitz,
   channel275,
