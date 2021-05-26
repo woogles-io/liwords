@@ -79,6 +79,10 @@ func (ws *WordService) DefineWords(ctx context.Context, req *pb.DefineWordsReque
 		da := daPool.Get().(gaddag.DawgAnagrammer)
 		defer daPool.Put(da)
 		for _, query := range req.Words {
+			if _, found := anagrams[query]; found {
+				continue
+			}
+
 			if strings.IndexByte(query, alphabet.BlankToken) >= 0 {
 				return nil, twirp.NewError(twirp.InvalidArgument, "word cannot have blanks")
 			}
@@ -92,8 +96,8 @@ func (ws *WordService) DefineWords(ctx context.Context, req *pb.DefineWordsReque
 				return nil
 			})
 
+			anagrams[query] = words
 			if len(words) > 0 {
-				anagrams[query] = words
 				for _, word := range words {
 					if _, found := results[word]; found {
 						continue
@@ -157,7 +161,11 @@ func (ws *WordService) DefineWords(ctx context.Context, req *pb.DefineWordsReque
 		originalResults := results
 		results = make(map[string]*pb.DefineWordsResult)
 		for _, query := range req.Words {
-			if words, found := anagrams[query]; found {
+			if _, found := results[query]; found {
+				continue
+			}
+
+			if words, found := anagrams[query]; found && len(words) > 0 {
 				definitions := ""
 				if req.Definitions {
 					var definitionBytes []byte
