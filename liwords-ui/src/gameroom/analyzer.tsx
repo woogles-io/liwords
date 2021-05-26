@@ -23,6 +23,7 @@ type AnalyzerProps = {
   includeCard?: boolean;
   style?: React.CSSProperties;
   lexicon: string;
+  variant: string;
 };
 
 type JsonMove =
@@ -168,14 +169,14 @@ const AnalyzerContext = React.createContext<{
   setAutoMode: React.Dispatch<React.SetStateAction<boolean>>;
   cachedMoves: Array<AnalyzerMove> | null;
   examinerLoading: boolean;
-  requestAnalysis: (lexicon: string) => void;
+  requestAnalysis: (lexicon: string, variant: string) => void;
   showMovesForTurn: number;
   setShowMovesForTurn: (a: number) => void;
 }>({
   autoMode: false,
   cachedMoves: null,
   examinerLoading: false,
-  requestAnalysis: (lexicon: string) => {},
+  requestAnalysis: (lexicon: string, variant: string) => {},
   showMovesForTurn: -1,
   setShowMovesForTurn: (a: number) => {},
   setAutoMode: () => {},
@@ -207,7 +208,7 @@ export const AnalyzerContextProvider = ({
   }, [examinableGameContext.gameID]);
 
   const requestAnalysis = useCallback(
-    (lexicon) => {
+    (lexicon, variant) => {
       const examinerIdAtStart = examinerId.current;
       const turn = examinableGameContext.turns.length;
       // null = loading. undefined = not yet requested.
@@ -239,18 +240,24 @@ export const AnalyzerContextProvider = ({
 
         const howMany = 15;
 
+        let effectiveLexicon = lexicon;
+        let rules = 'CrosswordGame';
+        if (variant === 'wordsmog') {
+          effectiveLexicon = `${lexicon}.WordSmog`;
+          rules = 'WordSmog';
+        }
         const boardObj = {
           rack: rackNum,
           board: Array.from(new Array(dim), (_, row) =>
             Array.from(letters.substr(row * dim, dim), labelToNum)
           ),
           count: howMany + 1, // need to +1 in case Pass evaluated well.
-          lexicon,
+          lexicon: effectiveLexicon,
           leave: 'english',
-          rules: 'CrosswordGame',
+          rules,
         };
 
-        const wolges = await getWolges(lexicon);
+        const wolges = await getWolges(effectiveLexicon);
         if (examinerIdAtStart !== examinerId.current) return;
 
         const boardStr = JSON.stringify(boardObj);
@@ -320,7 +327,7 @@ export const AnalyzerContextProvider = ({
 };
 
 export const Analyzer = React.memo((props: AnalyzerProps) => {
-  const { lexicon } = props;
+  const { lexicon, variant } = props;
   const {
     autoMode,
     setAutoMode,
@@ -395,12 +402,13 @@ export const Analyzer = React.memo((props: AnalyzerProps) => {
 
   const handleExaminer = useCallback(() => {
     setShowMovesForTurn(examinableGameContext.turns.length);
-    requestAnalysis(lexicon);
+    requestAnalysis(lexicon, variant);
   }, [
     examinableGameContext.turns.length,
     lexicon,
     requestAnalysis,
     setShowMovesForTurn,
+    variant,
   ]);
 
   const toggleAutoMode = useCallback(() => {
