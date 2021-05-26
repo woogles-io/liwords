@@ -408,59 +408,50 @@ export const Table = React.memo((props: Props) => {
   const [willHideDefinitionHover, setWillHideDefinitionHover] = useState(false);
 
   const anagrams = gameInfo.game_request.rules.variant_name === 'wordsmog';
+  const [definedAnagram, setDefinedAnagram] = useState(0);
+  const definedAnagramRef = useRef(definedAnagram);
+  definedAnagramRef.current = definedAnagram;
 
   const definitionPopover = useMemo(() => {
     if (!showDefinitionHover) return undefined;
     const entries = [];
+    let numAnagramsEach = [];
     for (const word of showDefinitionHover.words) {
       const uppercasedWord = word.toUpperCase();
       const definition = wordInfo[uppercasedWord];
       // if phony-checker returned {v:true,d:""}, wait for definition to load
       if (definition && !(definition.v && !definition.d)) {
         if (anagrams && definition.v) {
-          if (false) {
-            // this may cause layout reflow if too many definitions.
-            // that causes the popover to close immediately. :(
-            entries.push(
-              <li key={entries.length} className="definition-entry">
-                <span className="defined-word">{uppercasedWord}</span> =
-              </li>
-            );
-            for (const singleEntry of definition!.d.split('\n')) {
-              const m = singleEntry.match(/^([^-]*) - (.*)$/)!;
-              if (m) {
-                const [, actualWord, actualDefinition] = m;
-                entries.push(
-                  <li key={entries.length} className="definition-entry">
-                    <span className="defined-word">{actualWord}</span> -{' '}
-                    {actualDefinition}
-                  </li>
-                );
-              } else {
-                entries.push(
-                  <li key={entries.length} className="definition-entry">
-                    {singleEntry}
-                  </li>
-                );
-              }
+          const shortList = []; // list of words and invalid entries
+          const anagramDefinitions = []; // defined words
+          for (const singleEntry of definition.d.split('\n')) {
+            const m = singleEntry.match(/^([^-]*) - (.*)$/)!;
+            if (m) {
+              const [, actualWord, actualDefinition] = m;
+              anagramDefinitions.push(
+                <React.Fragment>
+                  <span className="defined-word">{actualWord}</span> -{' '}
+                  {actualDefinition}
+                </React.Fragment>
+              );
+              shortList.push(actualWord);
+            } else {
+              shortList.push(singleEntry);
             }
-          } else {
-            // just list the words.
+          }
+          entries.push(
+            <li key={entries.length} className="definition-entry">
+              <span className="defined-word">{uppercasedWord}</span> -{' '}
+              {shortList.join(', ')}
+            </li>
+          );
+          if (anagramDefinitions.length > 0) {
+            numAnagramsEach.push(anagramDefinitions.length);
+            const defineWhich =
+              definedAnagramRef.current % anagramDefinitions.length;
             entries.push(
               <li key={entries.length} className="definition-entry">
-                <span className="defined-word">{uppercasedWord}</span> -{' '}
-                {definition!.d
-                  .split('\n')
-                  .map((singleEntry) => {
-                    const m = singleEntry.match(/^([^-]*) - (.*)$/);
-                    if (m) {
-                      const [, actualWord] = m;
-                      return actualWord;
-                    } else {
-                      return singleEntry;
-                    }
-                  })
-                  .join(', ')}
+                {anagramDefinitions[defineWhich]}
               </li>
             );
           }
@@ -483,6 +474,20 @@ export const Table = React.memo((props: Props) => {
           );
         }
       }
+    }
+    if (numAnagramsEach.length > 0) {
+      const numAnagramsLCM = numAnagramsEach.reduce((a, b) => {
+        const ab = a * b;
+        while (b !== 0) {
+          const t = b;
+          b = a % b;
+          a = t;
+        }
+        return ab / a; // a = gcd, so ab/a = lcm
+      });
+      setDefinedAnagram((definedAnagramRef.current + 1) % numAnagramsLCM);
+    } else {
+      setDefinedAnagram(0);
     }
     if (!entries.length) return undefined;
     return {
@@ -516,7 +521,12 @@ export const Table = React.memo((props: Props) => {
       if (enableHoverDefine && words) {
         setWillHideDefinitionHover(false);
         setShowDefinitionHover((oldValue) => {
-          const newValue = { x, y, words };
+          const newValue = {
+            x,
+            y,
+            words,
+            definedAnagram,
+          };
           // if the pointer is moved out of a tile and back in, and the words
           // formed have not changed, reuse the object to avoid rerendering.
           if (JSON.stringify(oldValue) === JSON.stringify(newValue)) {
@@ -528,7 +538,7 @@ export const Table = React.memo((props: Props) => {
         setWillHideDefinitionHover(true);
       }
     },
-    [enableHoverDefine]
+    [enableHoverDefine, definedAnagram]
   );
 
   const [playedWords, setPlayedWords] = useState(new Set());
