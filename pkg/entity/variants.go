@@ -4,19 +4,13 @@ import (
 	"errors"
 
 	pb "github.com/domino14/liwords/rpc/api/proto/realtime"
+	"github.com/domino14/macondo/game"
 )
 
 // Variants, time controls, etc.
 
 type Variant string
 type TimeControl string
-
-const (
-	VarClassic   Variant = "classic"
-	VarAWorth100         = "a-is-worth-100"
-	VarWordsmog          = "wordsmog" // OMGWords scrambled = dogworms? wordsmog?
-	VarSuper             = "superomg"
-)
 
 const (
 	TCRegular    TimeControl = "regular"    // > 14/0
@@ -43,7 +37,7 @@ func TotalTimeEstimate(gamereq *pb.GameRequest) int32 {
 		(gamereq.IncrementSeconds * turnsPerGame)
 }
 
-func VariantFromGameReq(gamereq *pb.GameRequest) (TimeControl, Variant, error) {
+func VariantFromGameReq(gamereq *pb.GameRequest) (TimeControl, game.Variant, error) {
 	// hardcoded values here; fix sometime
 	var timefmt TimeControl
 
@@ -58,12 +52,12 @@ func VariantFromGameReq(gamereq *pb.GameRequest) (TimeControl, Variant, error) {
 	} else {
 		timefmt = TCRegular
 	}
-	var variant Variant
+	var variant game.Variant
 	switch gamereq.Rules.VariantName {
-	case "", string(VarClassic):
-		variant = VarClassic
-	case string(VarWordsmog):
-		variant = VarWordsmog
+	case "", string(game.VarClassic):
+		variant = game.VarClassic
+	case string(game.VarWordSmog):
+		variant = game.VarWordSmog
 	default:
 		return "", "", errors.New("unsupported game type")
 	}

@@ -89,6 +89,7 @@ export const SeekRequestToSoughtGame = (
     incrementSecs: gameReq.getIncrementSeconds(),
     playerVsBot: gameReq.getPlayerVsBot(),
     tournamentID,
+    variant: gameReq.getRules()?.getVariantName() || '',
   };
 };
 
@@ -108,7 +109,7 @@ export const GameInfoResponseToActiveGame = (
   }
   let variant = gameReq.getRules()?.getVariantName();
   if (!variant) {
-    variant = gameReq.getRules()?.getBoardLayoutName()!;
+    variant = 'classic';
   }
   return {
     players,
