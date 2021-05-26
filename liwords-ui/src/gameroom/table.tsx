@@ -454,7 +454,7 @@ export const Table = React.memo((props: Props) => {
                   .map((singleEntry) => {
                     const m = singleEntry.match(/^([^-]*) - (.*)$/);
                     if (m) {
-                      const [, actualWord, actualDefinition] = m;
+                      const [, actualWord] = m;
                       return actualWord;
                     } else {
                       return singleEntry;
