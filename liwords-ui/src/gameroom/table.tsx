@@ -475,7 +475,9 @@ export const Table = React.memo((props: Props) => {
               {definition.v ? (
                 <span className="definition">{String(definition.d)}</span>
               ) : (
-                <span className="invalid-word">not a word</span>
+                <span className="invalid-word">
+                  {anagrams ? 'no valid words' : 'not a word'}
+                </span>
               )}
             </li>
           );
