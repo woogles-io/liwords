@@ -31,9 +31,10 @@ type PlayerProps = {
 };
 
 const Player = React.memo((props: PlayerProps) => {
-  const online = props.fromChat || (props.channel && props.channel?.length > 0);
+  let online = props.fromChat;
   const games = new Map<string, Set<string>>();
   if (props.channel) {
+    let numChannels = props.channel.length;
     const re = /^(activegame:|chat\.game\.|chat\.gametv\.)(.*)$/;
     for (const c of props.channel) {
       const m = c.match(re);
@@ -43,7 +44,13 @@ const Player = React.memo((props: PlayerProps) => {
           games.set(gameID, new Set());
         }
         games.get(gameID)!.add(groupName);
+        if (groupName === 'activegame:') {
+          --numChannels;
+        }
       }
+    }
+    if (numChannels > 0) {
+      online = true;
     }
   }
   const currentActiveGames: Array<string> = [];
