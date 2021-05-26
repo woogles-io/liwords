@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+	"sync"
 
 	pb "github.com/domino14/liwords/rpc/api/proto/word_service"
 	"github.com/domino14/macondo/alphabet"
@@ -54,6 +55,12 @@ func NewWordService(cfg *macondoconfig.Config) *WordService {
 	return &WordService{cfg, definitionSources}
 }
 
+var daPool = sync.Pool{
+	New: func() interface{} {
+		return gaddag.DawgAnagrammer{}
+	},
+}
+
 func (ws *WordService) DefineWords(ctx context.Context, req *pb.DefineWordsRequest) (*pb.DefineWordsResponse, error) {
 	gd, err := gaddag.GetDawg(ws.cfg, req.Lexicon)
 	if err != nil {
@@ -69,7 +76,8 @@ func (ws *WordService) DefineWords(ctx context.Context, req *pb.DefineWordsReque
 	var anagrams map[string][]string
 	if req.Anagrams {
 		anagrams = make(map[string][]string)
-		da := gaddag.DawgAnagrammer{}
+		da := daPool.Get().(gaddag.DawgAnagrammer)
+		defer daPool.Put(da)
 		for _, query := range req.Words {
 			if strings.IndexByte(query, alphabet.BlankToken) >= 0 {
 				return nil, twirp.NewError(twirp.InvalidArgument, "word cannot have blanks")
