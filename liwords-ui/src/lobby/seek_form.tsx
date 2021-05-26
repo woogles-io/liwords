@@ -85,6 +85,11 @@ export const SeekForm = (props: Props) => {
     []
   );
 
+  const enableWordSmog = React.useMemo(
+    () => localStorage.getItem('enableWordSmog') === 'true',
+    []
+  );
+
   let storageKey = 'lastSeekForm';
   if (props.vsBot) {
     storageKey = 'lastBotForm';
@@ -108,6 +113,7 @@ export const SeekForm = (props: Props) => {
     friend: '',
     incOrOT: 'overtime',
     vsBot: false,
+    variant: 'classic',
   };
   let disableControls = false;
   let disableLexiconControls = false;
@@ -271,6 +277,7 @@ export const SeekForm = (props: Props) => {
       rematchFor: '',
       playerVsBot: props.vsBot || false,
       tournamentID: props.tournamentID || '',
+      variant: val.variant as string,
     };
     props.onFormSubmit(obj, val);
   };
@@ -329,6 +336,16 @@ export const SeekForm = (props: Props) => {
           </AutoComplete>
         </Form.Item>
       )}
+
+      {enableWordSmog && (
+        <Form.Item label="Variant" name="variant">
+          <Select>
+            <Select.Option value="classic">Classic</Select.Option>
+            <Select.Option value="wordsmog">WordSmog</Select.Option>
+          </Select>
+        </Form.Item>
+      )}
+
       <Form.Item
         label="Dictionary"
         name="lexicon"

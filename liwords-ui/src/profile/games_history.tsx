@@ -60,6 +60,7 @@ export const GamesHistoryCard = React.memo((props: Props) => {
                 <FundOutlined />
               </Tooltip>
             ) : null}
+            {item.game_request.rules.variant_name === 'wordsmog' ? '☁️' : ''}
           </>
         );
       };

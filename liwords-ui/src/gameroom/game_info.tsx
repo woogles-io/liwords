@@ -108,10 +108,13 @@ type Props = {
 
 export const GameInfo = React.memo((props: Props) => {
   let variant = props.meta.game_request.rules.variant_name || 'classic';
-  if (variant === 'classic') {
-    variant = 'Classic';
-  } else if (variant === 'wordsmog') {
-    variant = 'WordSmog';
+  switch (variant) {
+    case 'classic':
+      variant = 'Classic';
+      break;
+    case 'wordsmog':
+      variant = 'WordSmog';
+      break;
   }
 
   const rated =

@@ -87,7 +87,6 @@ const variantToName = (variant: string) => {
   } else if (lex.startsWith('CSW')) {
     lex = 'CSW';
   }
-  // get rid of the middle element (classic) for now
   const timectrl = {
     ultrablitz: 'Ultra-Blitz!',
     blitz: 'Blitz',
@@ -95,7 +94,12 @@ const variantToName = (variant: string) => {
     regular: 'Regular',
   }[arr[2] as 'ultrablitz' | 'blitz' | 'rapid' | 'regular']; // cmon typescript
 
-  return `${lex} (${timectrl})`;
+  switch (arr[1]) {
+    case 'classic':
+      return `${lex} (${timectrl})`;
+    case 'wordsmog':
+      return `☁ ${lex} (${timectrl})`;
+  }
 };
 
 const RatingsCard = React.memo((props: RatingsProps) => {

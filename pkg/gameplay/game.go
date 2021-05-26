@@ -17,9 +17,6 @@ import (
 	"google.golang.org/protobuf/proto"
 
 	"github.com/domino14/macondo/alphabet"
-	"github.com/domino14/macondo/board"
-	"github.com/domino14/macondo/cross_set"
-	"github.com/domino14/macondo/gaddag"
 	"github.com/domino14/macondo/game"
 	macondopb "github.com/domino14/macondo/gen/api/proto/macondo"
 	"github.com/domino14/macondo/move"
@@ -80,33 +77,20 @@ func InstantiateNewGame(ctx context.Context, gameStore GameStore, cfg *config.Co
 		return nil, errors.New("no rules")
 	}
 
-	var bd []string
-	switch req.Rules.BoardLayoutName {
-	case entity.CrosswordGame:
-		bd = board.CrosswordGameBoard
-	default:
-		return nil, errors.New("unsupported board layout")
-	}
+	log.Debug().Interface("req-rules", req.Rules).Msg("new-game-rules")
 
 	firstAssigned := false
 	if assignedFirst != -1 {
 		firstAssigned = true
 	}
 
-	dist, err := alphabet.Get(&cfg.MacondoConfig, req.Rules.LetterDistributionName)
+	rules, err := game.NewBasicGameRules(
+		&cfg.MacondoConfig, req.Lexicon, req.Rules.BoardLayoutName,
+		req.Rules.LetterDistributionName, game.CrossScoreOnly,
+		game.Variant(req.Rules.VariantName))
 	if err != nil {
 		return nil, err
 	}
-
-	dawg, err := gaddag.GetDawg(&cfg.MacondoConfig, req.Lexicon)
-	if err != nil {
-		return nil, err
-	}
-
-	rules := game.NewGameRules(
-		&cfg.MacondoConfig, dist, board.MakeBoard(bd),
-		&gaddag.Lexicon{GenericDawg: dawg},
-		cross_set.CrossScoreOnlyGenerator{Dist: dist})
 
 	var gameRunner *runner.GameRunner
 	for {

@@ -1,3 +1,4 @@
+// XXX: these distributions should come from the backend!
 const EnglishCrosswordGameDistribution = {
   A: 9,
   B: 2,
