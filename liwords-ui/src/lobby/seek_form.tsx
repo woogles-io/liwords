@@ -30,6 +30,7 @@ import {
   useFriendsStoreContext,
   usePresenceStoreContext,
 } from '../store/store';
+import { VariantIcon } from '../shared/variant_icons';
 export type seekPropVals = { [val: string]: string | number | boolean };
 
 const initTimeFormatter = (val?: number) => {
@@ -86,7 +87,7 @@ export const SeekForm = (props: Props) => {
   );
 
   const enableWordSmog = React.useMemo(
-    () => localStorage.getItem('enableWordSmog') === 'true',
+    () => localStorage.getItem('enableWordSmog') === 'true' && !props.vsBot,
     []
   );
 
@@ -341,7 +342,9 @@ export const SeekForm = (props: Props) => {
         <Form.Item label="Variant" name="variant">
           <Select>
             <Select.Option value="classic">Classic</Select.Option>
-            <Select.Option value="wordsmog">WordSmog</Select.Option>
+            <Select.Option value="wordsmog">
+              <VariantIcon vcode="wordsmog" withName />
+            </Select.Option>
           </Select>
         </Form.Item>
       )}

@@ -6,6 +6,7 @@ import { RatingBadge } from './rating_badge';
 import { challengeFormat, PlayerDisplay, timeFormat } from './sought_games';
 import { ActiveGame } from '../store/reducers/lobby_reducer';
 import { calculateTotalTime } from '../store/constants';
+import { VariantIcon } from '../shared/variant_icons';
 
 type Props = {
   activeGames: ActiveGame[];
@@ -47,6 +48,7 @@ export const ActiveGames = (props: Props) => {
           const getDetails = () => {
             return (
               <>
+                <VariantIcon vcode={ag.variant} />{' '}
                 {challengeFormat(ag.challengeRule)}
                 {ag.rated ? (
                   <Tooltip title="Rated">

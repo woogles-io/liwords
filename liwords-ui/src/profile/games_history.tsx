@@ -6,6 +6,7 @@ import { CheckCircleTwoTone } from '@ant-design/icons';
 import { FundOutlined } from '@ant-design/icons/lib';
 import { GameMetadata } from '../gameroom/game_info';
 import { timeToString } from '../store/constants';
+import { VariantIcon } from '../shared/variant_icons';
 
 type Props = {
   games: Array<GameMetadata>;
@@ -52,6 +53,11 @@ export const GamesHistoryCard = React.memo((props: Props) => {
       const getDetails = () => {
         return (
           <>
+            {item.game_request.rules.variant_name === 'wordsmog' ? (
+              <>
+                <VariantIcon vcode="wordsmog" />{' '}
+              </>
+            ) : null}
             <span className={`challenge-rule mode_${challenge}`}>
               {challenge}
             </span>
@@ -60,7 +66,6 @@ export const GamesHistoryCard = React.memo((props: Props) => {
                 <FundOutlined />
               </Tooltip>
             ) : null}
-            {item.game_request.rules.variant_name === 'wordsmog' ? '☁️' : ''}
           </>
         );
       };
@@ -92,7 +97,7 @@ export const GamesHistoryCard = React.memo((props: Props) => {
           endReason = 'Cancelled';
           break;
         case 'TRIPLE_CHALLENGE':
-          endReason = 'Triple Challenge';
+          endReason = 'Triple challenge';
           break;
         case 'STANDARD':
           endReason = 'Completed';

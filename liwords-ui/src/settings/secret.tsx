@@ -43,6 +43,16 @@ export const Secret = React.memo((props: Props) => {
     );
     setBlindfold((x) => !x);
   }, []);
+
+  const [wordSmog, setWordSmog] = useState(
+    localStorage?.getItem('enableWordSmog') === 'true'
+  );
+  const toggleWordSmog = useCallback(() => {
+    const useWordSmog = localStorage?.getItem('enableWordSmog') !== 'true';
+    localStorage.setItem('enableWordSmog', useWordSmog ? 'true' : 'false');
+    setWordSmog((x) => !x);
+  }, []);
+
   return (
     <div className="preferences secret">
       <h3>Secret features</h3>
@@ -84,6 +94,15 @@ export const Secret = React.memo((props: Props) => {
             defaultChecked={enableAllLexicons}
             onChange={toggleEnableAllLexicons}
             className="dark-toggle"
+          />
+        </div>
+        <div className="toggle-section">
+          <div className="title">WordSmog</div>
+          <div>Enable WordSmog</div>
+          <Switch
+            defaultChecked={wordSmog}
+            onChange={toggleWordSmog}
+            className="wordsmog-toggle"
           />
         </div>
       </div>

@@ -1,6 +1,7 @@
 import React from 'react';
 import { Card } from 'antd';
 import { timeCtrlToDisplayName, timeToString } from '../store/constants';
+import { VariantIcon } from '../shared/variant_icons';
 
 // At some point we should get this from the pb but then we have to use
 // twirp for this and we really shouldn't need to. Wait on it probably.
@@ -107,16 +108,12 @@ type Props = {
 };
 
 export const GameInfo = React.memo((props: Props) => {
-  let variant = props.meta.game_request.rules.variant_name || 'classic';
-  switch (variant) {
-    case 'classic':
-      variant = 'Classic';
-      break;
-    case 'wordsmog':
-      variant = 'WordSmog';
-      break;
-  }
-
+  const variant = (
+    <VariantIcon
+      vcode={props.meta.game_request.rules.variant_name || 'classic'}
+      withName
+    />
+  );
   const rated =
     props.meta.game_request.rating_mode === 'RATED' ? 'Rated' : 'Unrated';
   const challenge = {

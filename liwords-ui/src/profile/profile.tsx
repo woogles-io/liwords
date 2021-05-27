@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect } from 'react';
 import { useParams, useLocation } from 'react-router-dom';
-import { notification, Card, Table, Row, Col } from 'antd';
+import { notification, Card, Table, Row, Col, Tooltip } from 'antd';
 import axios, { AxiosError } from 'axios';
 import { useMountedState } from '../utils/mounted';
 import { TopBar } from '../topbar/topbar';
@@ -16,6 +16,7 @@ import { GamesHistoryCard } from './games_history';
 import { UsernameWithContext } from '../shared/usernameWithContext';
 import { moderateUser } from '../mod/moderate';
 import { DisplayFlag } from '../shared/display_flag';
+import { VariantIcon } from '../shared/variant_icons';
 
 type ProfileResponse = {
   birth_date: string;
@@ -94,12 +95,11 @@ const variantToName = (variant: string) => {
     regular: 'Regular',
   }[arr[2] as 'ultrablitz' | 'blitz' | 'rapid' | 'regular']; // cmon typescript
 
-  switch (arr[1]) {
-    case 'classic':
-      return `${lex} (${timectrl})`;
-    case 'wordsmog':
-      return `☁ ${lex} (${timectrl})`;
-  }
+  return (
+    <>
+      <VariantIcon vcode={arr[1]} /> {`${lex} (${timectrl})`}
+    </>
+  );
 };
 
 const RatingsCard = React.memo((props: RatingsProps) => {
