@@ -105,7 +105,10 @@ func JoshNationalsFromGames(useJSON bool, listStatStore ListStatStore) (*entity.
 	files := []string{}
 	for i := 1; i <= 31; i++ {
 		annotatedGame := fmt.Sprintf("./testdata/%s%d.gcg", annotatedGamePrefix, i)
-		otherStats, _ := InstantiateNewStatsWithHistory(annotatedGame, listStatStore)
+		otherStats, err := InstantiateNewStatsWithHistory(annotatedGame, listStatStore)
+		if err != nil {
+			return nil, nil, err
+		}
 		files = append(files, annotatedGame)
 		if useJSON {
 			bytes, err := json.Marshal(otherStats)
@@ -283,6 +286,31 @@ func TestNotable(t *testing.T) {
 	is.True(len(stats.NotableData[entity.FOUR_OR_MORE_CONSECUTIVE_BINGOS_STAT].List) == 1)
 	listStatStore.Disconnect()
 
+}
+
+func TestPhonyHooks(t *testing.T) {
+	is := is.New(t)
+
+	recreateDB()
+	listStatStore, err := statstore.NewListStatStore(TestingDBConnStr + " dbname=liwords_test")
+	is.NoErr(err)
+	stats := InstantiateNewStats("1", "2")
+
+	phonyHooks, err := InstantiateNewStatsWithHistory("./testdata/phonies_formed.gcg", listStatStore)
+	is.NoErr(err)
+
+	AddStats(stats, phonyHooks)
+
+	err = Finalize(stats, listStatStore, []string{
+		"./testdata/phonies_formed.gcg",
+	}, "", "")
+	is.NoErr(err)
+
+	// fmt.Println(StatsToString(stats))
+	is.True(stats.PlayerOneData[entity.UNCHALLENGED_PHONIES_STAT].Total == 2)
+	is.True(stats.PlayerTwoData[entity.UNCHALLENGED_PHONIES_STAT].Total == 2)
+
+	listStatStore.Disconnect()
 }
 
 func isEqual(statsOne *entity.Stats, statsTwo *entity.Stats) bool {

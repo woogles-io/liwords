@@ -944,15 +944,22 @@ func isUnchallengedPhonyEvent(event *pb.GameEvent,
 	history *pb.GameHistory,
 	cfg *macondoconfig.Config) (bool, error) {
 	phony := false
-	var err error
 	if event.Type == pb.GameEvent_TILE_PLACEMENT_MOVE {
 		dawg, err := gaddag.GetDawg(cfg, history.Lexicon)
 		if err != nil {
 			return phony, err
 		}
-		phony, err = isPhony(dawg, event.WordsFormed[0])
+		for _, word := range event.WordsFormed {
+			phony, err := isPhony(dawg, word)
+			if err != nil {
+				return false, err
+			}
+			if phony {
+				return phony, nil
+			}
+		}
 	}
-	return phony, err
+	return false, nil
 }
 
 func isPhony(gd gaddag.GenericDawg, word string) (bool, error) {
