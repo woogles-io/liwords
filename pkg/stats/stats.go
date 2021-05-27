@@ -982,10 +982,10 @@ func isPhony(gd gaddag.GenericDawg, word, variant string) (bool, error) {
 	}
 	var valid bool
 	switch string(variant) {
-	case string(game.VarClassic):
-		valid = lex.HasWord(machineWord)
 	case string(game.VarWordSmog):
 		valid = lex.HasAnagram(machineWord)
+	default:
+		valid = lex.HasWord(machineWord)
 	}
 	return !valid, nil
 }
