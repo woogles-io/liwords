@@ -1,6 +1,10 @@
 package entity
 
-import "strings"
+import (
+	"strings"
+
+	"github.com/domino14/macondo/game"
+)
 
 // SingleRating encodes a whole Glicko-225 rating object.
 type SingleRating struct {
@@ -18,7 +22,7 @@ type Ratings struct {
 
 type VariantKey string
 
-func ToVariantKey(lexiconName string, variantName Variant, timeControl TimeControl) VariantKey {
+func ToVariantKey(lexiconName string, variantName game.Variant, timeControl TimeControl) VariantKey {
 	// Transform Lexicon name
 	var newlex string
 	switch {

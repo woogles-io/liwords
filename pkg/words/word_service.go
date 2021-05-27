@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+	"sync"
 
 	pb "github.com/domino14/liwords/rpc/api/proto/word_service"
 	"github.com/domino14/macondo/alphabet"
@@ -54,6 +55,12 @@ func NewWordService(cfg *macondoconfig.Config) *WordService {
 	return &WordService{cfg, definitionSources}
 }
 
+var daPool = sync.Pool{
+	New: func() interface{} {
+		return gaddag.DawgAnagrammer{}
+	},
+}
+
 func (ws *WordService) DefineWords(ctx context.Context, req *pb.DefineWordsRequest) (*pb.DefineWordsResponse, error) {
 	gd, err := gaddag.GetDawg(ws.cfg, req.Lexicon)
 	if err != nil {
@@ -65,28 +72,73 @@ func (ws *WordService) DefineWords(ctx context.Context, req *pb.DefineWordsReque
 
 	var wordsToDefine []string
 	results := make(map[string]*pb.DefineWordsResult)
-	for _, word := range req.Words {
-		machineWord, err := alphabet.ToMachineWord(word, alph)
-		if err != nil {
-			return nil, twirp.NewError(twirp.InvalidArgument, err.Error())
-		}
 
-		if _, found := results[word]; found {
-			continue
-		}
+	var anagrams map[string][]string
+	if req.Anagrams {
+		anagrams = make(map[string][]string)
+		da := daPool.Get().(gaddag.DawgAnagrammer)
+		defer daPool.Put(da)
+		for _, query := range req.Words {
+			if _, found := anagrams[query]; found {
+				continue
+			}
 
-		if gaddag.FindMachineWord(gd, machineWord) {
-			definition := ""
-			if req.Definitions {
-				// IMPORTANT: "" will make frontend do infinite loop
-				definition = word // lame
-				if hasDefiner {
-					wordsToDefine = append(wordsToDefine, word)
+			if strings.IndexByte(query, alphabet.BlankToken) >= 0 {
+				return nil, twirp.NewError(twirp.InvalidArgument, "word cannot have blanks")
+			}
+			if err = da.InitForString(gd, query); err != nil {
+				return nil, twirp.NewError(twirp.InvalidArgument, err.Error())
+			}
+
+			var words []string
+			da.Anagram(gd, func(word alphabet.MachineWord) error {
+				words = append(words, word.UserVisible(alph))
+				return nil
+			})
+
+			anagrams[query] = words
+			if len(words) > 0 {
+				for _, word := range words {
+					if _, found := results[word]; found {
+						continue
+					}
+
+					definition := ""
+					if req.Definitions {
+						// IMPORTANT: "" will make frontend do infinite loop
+						definition = word // lame
+						if hasDefiner {
+							wordsToDefine = append(wordsToDefine, word)
+						}
+					}
+					results[word] = &pb.DefineWordsResult{D: definition, V: true}
 				}
 			}
-			results[word] = &pb.DefineWordsResult{D: definition, V: true}
-		} else {
-			results[word] = &pb.DefineWordsResult{D: "", V: false}
+		}
+	} else {
+		for _, word := range req.Words {
+			machineWord, err := alphabet.ToMachineWord(word, alph)
+			if err != nil {
+				return nil, twirp.NewError(twirp.InvalidArgument, err.Error())
+			}
+
+			if _, found := results[word]; found {
+				continue
+			}
+
+			if gaddag.FindMachineWord(gd, machineWord) {
+				definition := ""
+				if req.Definitions {
+					// IMPORTANT: "" will make frontend do infinite loop
+					definition = word // lame
+					if hasDefiner {
+						wordsToDefine = append(wordsToDefine, word)
+					}
+				}
+				results[word] = &pb.DefineWordsResult{D: definition, V: true}
+			} else {
+				results[word] = &pb.DefineWordsResult{D: "", V: false}
+			}
 		}
 	}
 
@@ -101,6 +153,35 @@ func (ws *WordService) DefineWords(ctx context.Context, req *pb.DefineWordsReque
 				if definition, ok := definitions[word]; ok && definition != "" {
 					results[word].D = definition
 				}
+			}
+		}
+	}
+
+	if req.Anagrams {
+		originalResults := results
+		results = make(map[string]*pb.DefineWordsResult)
+		for _, query := range req.Words {
+			if _, found := results[query]; found {
+				continue
+			}
+
+			if words, found := anagrams[query]; found && len(words) > 0 {
+				definitions := ""
+				if req.Definitions {
+					var definitionBytes []byte
+					for _, word := range words {
+						if len(definitionBytes) > 0 {
+							definitionBytes = append(definitionBytes, '\n')
+						}
+						definitionBytes = append(definitionBytes, word...)
+						definitionBytes = append(definitionBytes, " - "...)
+						definitionBytes = append(definitionBytes, originalResults[word].D...)
+					}
+					definitions = string(definitionBytes)
+				}
+				results[query] = &pb.DefineWordsResult{D: definitions, V: true}
+			} else {
+				results[query] = &pb.DefineWordsResult{D: "", V: false}
 			}
 		}
 	}
