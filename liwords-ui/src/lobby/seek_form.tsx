@@ -117,12 +117,14 @@ export const SeekForm = (props: Props) => {
     variant: 'classic',
   };
   let disableControls = false;
+  let disableVariantControls = false;
   let disableLexiconControls = false;
   let disableChallengeControls = false;
   let initialValues;
 
   if (props.tournamentID && props.tournamentID in fixedSettings) {
     disableControls = true;
+    disableVariantControls = 'variant' in fixedSettings[props.tournamentID];
     disableLexiconControls = 'lexicon' in fixedSettings[props.tournamentID];
     disableChallengeControls =
       'challengerule' in fixedSettings[props.tournamentID];
@@ -131,6 +133,12 @@ export const SeekForm = (props: Props) => {
       friend: '',
     };
     // This is a bit of a hack; sorry.
+    if (!disableVariantControls) {
+      initialValues = {
+        ...initialValues,
+        variant: storedValues.variant || defaultValues.variant,
+      };
+    }
     if (!disableLexiconControls) {
       initialValues = {
         ...initialValues,
@@ -279,6 +287,13 @@ export const SeekForm = (props: Props) => {
       playerVsBot: props.vsBot || false,
       tournamentID: props.tournamentID || '',
       variant: val.variant as string,
+      ...(props.tournamentID &&
+        fixedSettings[props.tournamentID] && {
+          ...(typeof fixedSettings[props.tournamentID].variant === 'string' && {
+            // this is necessary, because variant may not be rendered depending on localStorage.
+            variant: fixedSettings[props.tournamentID].variant as string,
+          }),
+        }),
     };
     props.onFormSubmit(obj, val);
   };
@@ -340,7 +355,7 @@ export const SeekForm = (props: Props) => {
 
       {enableWordSmog && (
         <Form.Item label="Variant" name="variant">
-          <Select>
+          <Select disabled={disableVariantControls}>
             <Select.Option value="classic">Classic</Select.Option>
             <Select.Option value="wordsmog">
               <VariantIcon vcode="wordsmog" withName />
