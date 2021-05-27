@@ -23,13 +23,14 @@ import {
 import { MatchUser } from '../gen/api/proto/realtime/realtime_pb';
 import { SoughtGame } from '../store/reducers/lobby_reducer';
 import { toAPIUrl } from '../api/api';
-import { debounce } from '../utils/debounce';
+import { useDebounce } from '../utils/debounce';
 import { fixedSettings } from './fixed_seek_controls';
 import { ChallengeRulesFormItem } from './challenge_rules_form_item';
 import {
   useFriendsStoreContext,
   usePresenceStoreContext,
 } from '../store/store';
+import { VariantIcon } from '../shared/variant_icons';
 export type seekPropVals = { [val: string]: string | number | boolean };
 
 const initTimeFormatter = (val?: number) => {
@@ -85,6 +86,11 @@ export const SeekForm = (props: Props) => {
     []
   );
 
+  const enableWordSmog = React.useMemo(
+    () => localStorage.getItem('enableWordSmog') === 'true' && !props.vsBot,
+    [props.vsBot]
+  );
+
   let storageKey = 'lastSeekForm';
   if (props.vsBot) {
     storageKey = 'lastBotForm';
@@ -108,6 +114,7 @@ export const SeekForm = (props: Props) => {
     friend: '',
     incOrOT: 'overtime',
     vsBot: false,
+    variant: 'classic',
   };
   let disableControls = false;
   let disableLexiconControls = false;
@@ -244,7 +251,7 @@ export const SeekForm = (props: Props) => {
     [defaultOptions]
   );
 
-  const searchUsernameDebounced = debounce(onUsernameSearch, 300);
+  const searchUsernameDebounced = useDebounce(onUsernameSearch, 300);
 
   const onFormSubmit = (val: Store) => {
     const receiver = new MatchUser();
@@ -271,6 +278,7 @@ export const SeekForm = (props: Props) => {
       rematchFor: '',
       playerVsBot: props.vsBot || false,
       tournamentID: props.tournamentID || '',
+      variant: val.variant as string,
     };
     props.onFormSubmit(obj, val);
   };
@@ -329,6 +337,18 @@ export const SeekForm = (props: Props) => {
           </AutoComplete>
         </Form.Item>
       )}
+
+      {enableWordSmog && (
+        <Form.Item label="Variant" name="variant">
+          <Select>
+            <Select.Option value="classic">Classic</Select.Option>
+            <Select.Option value="wordsmog">
+              <VariantIcon vcode="wordsmog" withName />
+            </Select.Option>
+          </Select>
+        </Form.Item>
+      )}
+
       <Form.Item
         label="Dictionary"
         name="lexicon"
@@ -346,6 +366,9 @@ export const SeekForm = (props: Props) => {
           {enableAllLexicons && (
             <React.Fragment>
               <Select.Option value="NWL18">NWL 18 (Obsolete)</Select.Option>
+              <Select.Option value="NSWL20">
+                NSWL 20 (NASPA School Word List)
+              </Select.Option>
               <Select.Option value="ECWL">
                 English Common Word List
               </Select.Option>

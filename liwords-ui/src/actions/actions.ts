@@ -30,9 +30,7 @@ export enum ActionType {
   SetDivisionPlayers,
   SetTournamentFinished,
   StartTourneyRound,
-
-  // competitor context
-  SetTourneyStatus,
+  SetReadyForGame,
 
   /* game actions */
   AddGameEvent,

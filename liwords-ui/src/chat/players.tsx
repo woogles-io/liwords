@@ -13,7 +13,7 @@ import { UsernameWithContext } from '../shared/usernameWithContext';
 import './playerList.scss';
 import axios from 'axios';
 import { toAPIUrl } from '../api/api';
-import { debounce } from '../utils/debounce';
+import { useDebounce } from '../utils/debounce';
 import { useMountedState } from '../utils/mounted';
 
 type Props = {
@@ -31,11 +31,40 @@ type PlayerProps = {
 };
 
 const Player = React.memo((props: PlayerProps) => {
-  const online = props.fromChat || (props.channel && props.channel?.length > 0);
-  let inGame =
-    props.channel && props.channel.some((c) => c.includes('chat.game.'));
-  let watching =
-    props.channel && props.channel.some((c) => c.includes('chat.gametv.'));
+  let online = props.fromChat;
+  const games = new Map<string, Set<string>>();
+  if (props.channel) {
+    let numChannels = props.channel.length;
+    const re = /^(activegame:|chat\.game\.|chat\.gametv\.)(.*)$/;
+    for (const c of props.channel) {
+      const m = c.match(re);
+      if (m) {
+        const [, groupName, gameID] = m;
+        if (!games.has(gameID)) {
+          games.set(gameID, new Set());
+        }
+        games.get(gameID)!.add(groupName);
+        if (groupName === 'activegame:') {
+          --numChannels;
+        }
+      }
+    }
+    if (numChannels > 0) {
+      online = true;
+    }
+  }
+  const currentActiveGames: Array<string> = [];
+  const currentWatchedGames: Array<string> = [];
+  games.forEach((groupNames, gameId) => {
+    if (groupNames.has('activegame:') && groupNames.has('chat.game.')) {
+      currentActiveGames.push(gameId);
+    } else if (groupNames.has('chat.gametv.')) {
+      currentWatchedGames.push(gameId);
+    }
+  });
+
+  const inGame = currentActiveGames.length > 0;
+  const watching = currentWatchedGames.length > 0;
   if (!props.username) {
     return null;
   }
@@ -62,6 +91,8 @@ const Player = React.memo((props: PlayerProps) => {
             omitBlock={props.className === 'friends'}
             showModTools
             sendMessage={props.sendMessage}
+            currentActiveGames={currentActiveGames}
+            currentWatchedGames={currentWatchedGames}
           />
         </p>
         {inGame || watching ? (
@@ -83,7 +114,7 @@ export const Players = React.memo((props: Props) => {
   const { friends } = useFriendsStoreContext();
   const { loginState } = useLoginStateStoreContext();
   const { sendMessage, defaultChannelType } = props;
-  const { username, loggedIn } = loginState;
+  const { userID, loggedIn } = loginState;
   const [maxHeight, setMaxHeight] = useState<number | undefined>(0);
   const [searchResults, setSearchResults] = useState<
     Array<Partial<FriendUser>>
@@ -99,6 +130,16 @@ export const Players = React.memo((props: Props) => {
   useEffect(() => {
     setHeight();
   }, [setHeight]);
+
+  const onlineAlphaComparator = useCallback(
+    (a: Partial<FriendUser>, b: Partial<FriendUser>) => {
+      const countA = (a.channel || []).length > 0 ? 1 : -1;
+      const countB = (b.channel || []).length > 0 ? 1 : -1;
+      return countB - countA || a.username!.localeCompare(b.username!);
+    },
+    []
+  );
+
   const onPlayerSearch = useCallback(
     (searchText: string) => {
       if (searchText?.length > 0) {
@@ -110,26 +151,24 @@ export const Players = React.memo((props: Props) => {
             }
           )
           .then((resp) => {
-            // Exclude your friends
-            const nonfriends = resp.data.users.filter((u) => {
-              return u.uuid && !(u.uuid in friends);
-            });
-            // Exclude yourself
+            // Exclude yourself and your friends
             setSearchResults(
               !searchText
                 ? []
-                : nonfriends.filter(
-                    (u) => u.username?.toLowerCase() !== username.toLowerCase()
-                  )
+                : resp.data.users
+                    .filter(
+                      (u) => u.uuid && u.uuid !== userID && !(u.uuid in friends)
+                    )
+                    .sort(onlineAlphaComparator)
             );
           });
       } else {
         setSearchResults([]);
       }
     },
-    [username, friends]
+    [userID, friends, onlineAlphaComparator]
   );
-  const searchUsernameDebounced = debounce(onPlayerSearch, 200);
+  const searchUsernameDebounced = useDebounce(onPlayerSearch, 200);
 
   const handleSearchChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -163,23 +202,13 @@ export const Players = React.memo((props: Props) => {
   const filterPlayerListBySearch = useCallback(
     (searchTerm: string, list: Partial<FriendUser>[]) => {
       if (searchTerm?.length) {
+        const lowercasedSearchTerm = searchTerm.toLowerCase();
         return list.filter((u) =>
-          u.username?.toLowerCase().startsWith(searchTerm.toLowerCase())
+          u.username?.toLowerCase().startsWith(lowercasedSearchTerm)
         );
       } else {
         return list;
       }
-    },
-    []
-  );
-
-  const onlineAlphaComparator = useCallback(
-    (a: Partial<FriendUser>, b: Partial<FriendUser>) => {
-      const countA = (a.channel || []).length > 0 ? 1 : -1;
-      const countB = (b.channel || []).length > 0 ? 1 : -1;
-      return (
-        countB - countA || a.username!.localeCompare(b.username!.toLowerCase())
-      );
     },
     []
   );
@@ -190,32 +219,28 @@ export const Players = React.memo((props: Props) => {
       searchTerm: string
     ): Partial<FriendUser>[] => {
       const presencePlayersMap: { [uuid: string]: FriendUser } = {};
-      presenceEntities
-        .filter((p) => !p.anon)
-        .forEach((p) => {
-          if (p.uuid in presencePlayersMap) {
-            presencePlayersMap[p.uuid] = {
-              ...presencePlayersMap[p.uuid],
-              channel: presencePlayersMap[p.uuid].channel.concat(p.channel),
-            };
-          } else {
-            presencePlayersMap[p.uuid] = {
-              username: p.username,
-              uuid: p.uuid,
-              channel: [p.channel],
-            };
-          }
-        });
-      const presencePlayers = Object.values(presencePlayersMap)
-        .sort(onlineAlphaComparator)
-        .filter((u) => u.username?.toLowerCase() !== username.toLowerCase());
-      return searchTerm?.length
-        ? presencePlayers.filter((u) =>
-            u.username?.toLowerCase().startsWith(searchTerm.toLowerCase())
-          )
-        : presencePlayers;
+      presenceEntities.forEach((p) => {
+        if (p.uuid === userID) {
+          // ignore self
+        } else if (p.anon) {
+          // ignore anonymous
+        } else if (p.uuid in presencePlayersMap) {
+          // mutating this in-place is safe, it has not been shared
+          presencePlayersMap[p.uuid].channel.push(p.channel);
+        } else {
+          presencePlayersMap[p.uuid] = {
+            username: p.username,
+            uuid: p.uuid,
+            channel: [p.channel],
+          };
+        }
+      });
+      const presencePlayers = Object.values(presencePlayersMap).sort(
+        onlineAlphaComparator
+      );
+      return filterPlayerListBySearch(searchTerm, presencePlayers);
     },
-    [username, onlineAlphaComparator]
+    [userID, onlineAlphaComparator, filterPlayerListBySearch]
   );
 
   const transformedAndFilteredPresences = useMemo(

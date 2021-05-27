@@ -11,11 +11,8 @@ import (
 	"github.com/matryer/is"
 	"github.com/rs/zerolog/log"
 
-	"github.com/domino14/macondo/alphabet"
 	"github.com/domino14/macondo/board"
 	macondoconfig "github.com/domino14/macondo/config"
-	"github.com/domino14/macondo/cross_set"
-	"github.com/domino14/macondo/gaddag"
 	macondogame "github.com/domino14/macondo/game"
 	macondopb "github.com/domino14/macondo/gen/api/proto/macondo"
 
@@ -40,21 +37,13 @@ var TestDBHost = os.Getenv("TEST_DB_HOST")
 var TestingDBConnStr = "host=" + TestDBHost + " port=5432 user=postgres password=pass sslmode=disable"
 
 func newMacondoGame(users [2]*entity.User) *macondogame.Game {
-	dist, err := alphabet.Get(&DefaultConfig, DefaultConfig.DefaultLetterDistribution)
+	rules, err := macondogame.NewBasicGameRules(
+		&DefaultConfig, DefaultConfig.DefaultLexicon,
+		board.CrosswordGameLayout, DefaultConfig.DefaultLetterDistribution,
+		macondogame.CrossScoreOnly, "")
 	if err != nil {
 		panic(err)
 	}
-
-	dawg, err := gaddag.GetDawg(&DefaultConfig, DefaultConfig.DefaultLexicon)
-	if err != nil {
-		panic(err)
-	}
-
-	rules := macondogame.NewGameRules(&DefaultConfig, dist,
-		board.MakeBoard(board.CrosswordGameBoard),
-		&gaddag.Lexicon{GenericDawg: dawg},
-		cross_set.CrossScoreOnlyGenerator{Dist: dist})
-
 	var players []*macondopb.PlayerInfo
 
 	for _, u := range users {

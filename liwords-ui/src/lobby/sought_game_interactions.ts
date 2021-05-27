@@ -20,6 +20,7 @@ export const sendSeek = (
   const gr = new GameRequest();
   const rules = new GameRules();
   rules.setBoardLayoutName('CrosswordGame');
+  rules.setVariantName(game.variant);
   rules.setLetterDistributionName('english');
 
   gr.setChallengeRule(

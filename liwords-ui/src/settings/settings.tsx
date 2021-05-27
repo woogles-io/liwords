@@ -75,7 +75,7 @@ const getInitialCategory = (categoryShortcut: string, loggedIn: boolean) => {
 
 export const Settings = React.memo((props: Props) => {
   const { loginState } = useLoginStateStoreContext();
-  const { username: viewer, loggedIn } = loginState;
+  const { userID, username: viewer, loggedIn } = loginState;
   const { useState } = useMountedState();
   const { resetStore } = useResetStoreContext();
   const { section } = useParams();
@@ -124,6 +124,7 @@ export const Settings = React.memo((props: Props) => {
         setPlayer({
           avatar_url: resp.data.avatar_url,
           full_name: resp.data.full_name,
+          user_id: userID, // for name-based avatar initial to work
         });
         setBirthDate(resp.data.birth_date);
         setFirstName(resp.data.first_name);
@@ -133,7 +134,7 @@ export const Settings = React.memo((props: Props) => {
         setAbout(resp.data.about);
       })
       .catch(errorCatcher);
-  }, [viewer, loggedIn, category]);
+  }, [viewer, loggedIn, category, userID]);
 
   type CategoryProps = {
     title: string;
