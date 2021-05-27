@@ -428,30 +428,45 @@ export const Table = React.memo((props: Props) => {
             const m = singleEntry.match(/^([^-]*) - (.*)$/)!;
             if (m) {
               const [, actualWord, actualDefinition] = m;
-              anagramDefinitions.push(
-                <React.Fragment>
-                  <span className="defined-word">{actualWord}</span> -{' '}
-                  {actualDefinition}
-                </React.Fragment>
-              );
+              anagramDefinitions.push({
+                word: actualWord,
+                definition: (
+                  <React.Fragment>
+                    <span className="defined-word">{actualWord}</span> -{' '}
+                    {actualDefinition}
+                  </React.Fragment>
+                ),
+              });
               shortList.push(actualWord);
             } else {
               shortList.push(singleEntry);
             }
           }
+          const defineWhich =
+            anagramDefinitions.length > 0
+              ? definedAnagramRef.current % anagramDefinitions.length
+              : 0;
+          const anagramDefinition = anagramDefinitions[defineWhich];
           entries.push(
             <li key={entries.length} className="definition-entry">
-              <span className="defined-word">{uppercasedWord}</span> -{' '}
-              {shortList.join(', ')}
+              {uppercasedWord} -{' '}
+              {shortList.map((word, idx) => (
+                <React.Fragment key={idx}>
+                  {idx > 0 && ', '}
+                  {word === anagramDefinition.word ? (
+                    <span className="defined-word">{word}</span>
+                  ) : (
+                    word
+                  )}
+                </React.Fragment>
+              ))}
             </li>
           );
           if (anagramDefinitions.length > 0) {
             numAnagramsEach.push(anagramDefinitions.length);
-            const defineWhich =
-              definedAnagramRef.current % anagramDefinitions.length;
             entries.push(
               <li key={entries.length} className="definition-entry">
-                {anagramDefinitions[defineWhich]}
+                {anagramDefinition.definition}
               </li>
             );
           }
