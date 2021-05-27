@@ -55,6 +55,21 @@ export const GameLists = React.memo((props: Props) => {
   const opponent = currentGame?.players.find((p) => p.displayName !== username)
     ?.displayName;
 
+  const enableWordSmog = React.useMemo(
+    () => localStorage.getItem('enableWordSmog') === 'true',
+    []
+  );
+  const unsanitizedSoughtGames = lobbyContext.soughtGames;
+  const sanitizedSoughtGames = React.useMemo(
+    () =>
+      (unsanitizedSoughtGames || []).filter((soughtGame) => {
+        if (!enableWordSmog && soughtGame.variant === 'wordsmog') return false;
+        return true;
+      }),
+
+    [enableWordSmog, unsanitizedSoughtGames]
+  );
+
   const matchButtonText = 'Match a friend';
 
   const renderGames = () => {
@@ -84,7 +99,7 @@ export const GameLists = React.memo((props: Props) => {
             userID={userID}
             username={username}
             newGame={newGame}
-            requests={lobbyContext?.soughtGames}
+            requests={sanitizedSoughtGames}
           />
         </>
       );
