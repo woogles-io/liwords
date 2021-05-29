@@ -11,6 +11,7 @@ import {
 } from '../store/constants';
 import { useMountedState } from '../utils/mounted';
 import { ChallengeRulesFormItem } from '../lobby/challenge_rules_form_item';
+import { VariantIcon } from '../shared/variant_icons';
 
 type Props = {
   form?: FormInstance<any>;
@@ -38,6 +39,7 @@ export const SettingsForm = (props: Props) => {
 
   const initialValues = {
     lexicon: 'CSW19',
+    variant: 'classic',
     challengerule: ChallengeRule.FIVE_POINT,
     initialtime: 22, // Note this isn't minutes, but the slider position.
     rated: true,
@@ -120,6 +122,15 @@ export const SettingsForm = (props: Props) => {
           </Select.Option>
           <Select.Option value="NWL18">NWL 18 (Obsolete)</Select.Option>
           <Select.Option value="ECWL">English Common Word List</Select.Option>
+        </Select>
+      </Form.Item>
+
+      <Form.Item label="Variant" name="variant" rules={[{ required: true }]}>
+        <Select>
+          <Select.Option value="classic">Classic</Select.Option>
+          <Select.Option value="wordsmog">
+            <VariantIcon vcode="wordsmog" withName />
+          </Select.Option>
         </Select>
       </Form.Item>
 

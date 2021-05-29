@@ -809,6 +809,7 @@ const SetTournamentControls = (props: { tournamentID: string }) => {
           const rules = new GameRules();
           rules.setBoardLayoutName('CrosswordGame');
           rules.setLetterDistributionName('English');
+          rules.setVariantName(values.variant);
           gr.setRules(rules);
 
           gr.setLexicon(values.lexicon);
@@ -866,6 +867,8 @@ const SetTournamentControls = (props: { tournamentID: string }) => {
               <dl>
                 <dt>Initial Time (Minutes)</dt>
                 <dd>{gr.getInitialTimeSeconds() / 60}</dd>
+                <dt>Variant</dt>
+                <dd>{gr.getRules()?.getVariantName()}</dd>
                 <dt>Lexicon</dt>
                 <dd>{gr.getLexicon()}</dd>
                 <dt>Max Overtime (Minutes)</dt>

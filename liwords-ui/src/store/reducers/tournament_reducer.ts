@@ -708,26 +708,27 @@ export function TournamentReducer(
       );
 
       const fullLoggedInID = `${dp.loginState.userID}:${dp.loginState.username}`;
+      const myPreviousDivision = state.competitorState.division;
       console.log('divisions are', state.divisions);
-      let registeredDivision: Division | undefined;
+      let myRegisteredDivision: Division | undefined;
       if (fullLoggedInID in newPlayerIndexMap) {
-        registeredDivision = state.divisions[division];
+        myRegisteredDivision = state.divisions[division];
       }
       console.log(
         'registered division',
-        registeredDivision,
+        myRegisteredDivision,
         fullLoggedInID,
         newPlayerIndexMap
       );
       let competitorState: CompetitorState = state.competitorState;
 
-      if (registeredDivision) {
+      if (myRegisteredDivision) {
         competitorState = {
           isRegistered: true,
-          division: registeredDivision.divisionID,
-          currentRound: registeredDivision.currentRound,
+          division: myRegisteredDivision.divisionID,
+          currentRound: myRegisteredDivision.currentRound,
           status: tourneyStatus(
-            registeredDivision,
+            myRegisteredDivision,
             state.activeGames,
             dp.loginState
           ),
@@ -735,7 +736,11 @@ export function TournamentReducer(
       } else {
         competitorState = {
           ...competitorState,
-          isRegistered: false,
+          isRegistered:
+            // we're only still registered if we were already registered,
+            // and the division we were registered in is not the division that came in
+            // (otherwise, it would have listed us as a player)
+            myPreviousDivision !== undefined && myPreviousDivision !== division,
         };
       }
       const newState = Object.assign({}, state, {
