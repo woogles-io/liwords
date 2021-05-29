@@ -234,11 +234,7 @@ func (r *RedisChatStore) GetChat(ctx context.Context, channel, msgID string) (*p
 }
 
 func maybeTrim(msg string) string {
-	runes := []rune(msg)
-
-	if len(runes) > ChatPreviewLength {
-		msg = string(runes[:ChatPreviewLength]) + "…"
-	}
+	// No, don't trim on the backend.
 	return msg
 }
 
