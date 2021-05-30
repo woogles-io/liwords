@@ -262,7 +262,8 @@ export const AnalyzerContextProvider = ({
 
         const boardStr = JSON.stringify(boardObj);
         const movesStr = await wolges.analyze(boardStr);
-        if (examinerIdAtStart !== examinerId.current) return;
+        // do not waste the analysis, save it anyway
+        // if (examinerIdAtStart !== examinerId.current) return;
         const movesObj = JSON.parse(movesStr) as Array<JsonMove>;
 
         // Return '?' for 0, because this is used for exchanges.
