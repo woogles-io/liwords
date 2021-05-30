@@ -60,12 +60,6 @@ export class GameHistory extends jspb.Message {
   getWinner(): number;
   setWinner(value: number): void;
 
-  getBoardLayout(): string;
-  setBoardLayout(value: string): void;
-
-  getLetterDistribution(): string;
-  setLetterDistribution(value: string): void;
-
   serializeBinary(): Uint8Array;
   toObject(includeInstance?: boolean): GameHistory.AsObject;
   static toObject(includeInstance: boolean, msg: GameHistory): GameHistory.AsObject;
@@ -94,8 +88,6 @@ export namespace GameHistory {
     finalScoresList: Array<number>,
     variant: string,
     winner: number,
-    boardLayout: string,
-    letterDistribution: string,
   }
 }
 

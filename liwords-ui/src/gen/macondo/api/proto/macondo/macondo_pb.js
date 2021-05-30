@@ -252,9 +252,7 @@ proto.macondo.GameHistory.toObject = function(includeInstance, msg) {
     playState: jspb.Message.getFieldWithDefault(msg, 13, 0),
     finalScoresList: (f = jspb.Message.getRepeatedField(msg, 14)) == null ? undefined : f,
     variant: jspb.Message.getFieldWithDefault(msg, 15, ""),
-    winner: jspb.Message.getFieldWithDefault(msg, 16, 0),
-    boardLayout: jspb.Message.getFieldWithDefault(msg, 17, ""),
-    letterDistribution: jspb.Message.getFieldWithDefault(msg, 18, "")
+    winner: jspb.Message.getFieldWithDefault(msg, 16, 0)
   };
 
   if (includeInstance) {
@@ -358,14 +356,6 @@ proto.macondo.GameHistory.deserializeBinaryFromReader = function(msg, reader) {
     case 16:
       var value = /** @type {number} */ (reader.readInt32());
       msg.setWinner(value);
-      break;
-    case 17:
-      var value = /** @type {string} */ (reader.readString());
-      msg.setBoardLayout(value);
-      break;
-    case 18:
-      var value = /** @type {string} */ (reader.readString());
-      msg.setLetterDistribution(value);
       break;
     default:
       reader.skipField();
@@ -507,20 +497,6 @@ proto.macondo.GameHistory.serializeBinaryToWriter = function(message, writer) {
   if (f !== 0) {
     writer.writeInt32(
       16,
-      f
-    );
-  }
-  f = message.getBoardLayout();
-  if (f.length > 0) {
-    writer.writeString(
-      17,
-      f
-    );
-  }
-  f = message.getLetterDistribution();
-  if (f.length > 0) {
-    writer.writeString(
-      18,
       f
     );
   }
@@ -890,42 +866,6 @@ proto.macondo.GameHistory.prototype.getWinner = function() {
  */
 proto.macondo.GameHistory.prototype.setWinner = function(value) {
   return jspb.Message.setProto3IntField(this, 16, value);
-};
-
-
-/**
- * optional string board_layout = 17;
- * @return {string}
- */
-proto.macondo.GameHistory.prototype.getBoardLayout = function() {
-  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 17, ""));
-};
-
-
-/**
- * @param {string} value
- * @return {!proto.macondo.GameHistory} returns this
- */
-proto.macondo.GameHistory.prototype.setBoardLayout = function(value) {
-  return jspb.Message.setProto3StringField(this, 17, value);
-};
-
-
-/**
- * optional string letter_distribution = 18;
- * @return {string}
- */
-proto.macondo.GameHistory.prototype.getLetterDistribution = function() {
-  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 18, ""));
-};
-
-
-/**
- * @param {string} value
- * @return {!proto.macondo.GameHistory} returns this
- */
-proto.macondo.GameHistory.prototype.setLetterDistribution = function(value) {
-  return jspb.Message.setProto3StringField(this, 18, value);
 };
 
 

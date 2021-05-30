@@ -475,6 +475,7 @@ message DivisionControls {
   TournamentGameResult suspended_result = 4;
   int32 suspended_spread = 5;
   bool auto_start = 6;
+  int32 spread_cap = 7;
 }
 
 message TournamentGame {
