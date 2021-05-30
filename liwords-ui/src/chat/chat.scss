@@ -317,7 +317,7 @@ p {
       }
       .message {
         line-height: normal;
-        overflow-wrap: anywhere;
+        overflow-wrap: break-word;
       }
       .player-avatar {
         width: 36px;
