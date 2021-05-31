@@ -13,6 +13,7 @@ import (
 
 	"github.com/domino14/macondo/runner"
 
+	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"google.golang.org/protobuf/proto"
 
@@ -471,13 +472,17 @@ func HandleEvent(ctx context.Context, gameStore GameStore, userStore user.Store,
 	entGame.Lock()
 	defer entGame.Unlock()
 
-	return handleEventAfterLockingGame(ctx, gameStore, userStore, listStatStore, tournamentStore, userID, cge, entGame)
+	log := zerolog.Ctx(ctx).With().Str("gameID", entGame.GameID()).Logger()
+
+	return handleEventAfterLockingGame(log.WithContext(ctx), gameStore, userStore, listStatStore, tournamentStore, userID, cge, entGame)
 }
 
 // Assume entGame is already locked.
 func handleEventAfterLockingGame(ctx context.Context, gameStore GameStore, userStore user.Store,
 	listStatStore stats.ListStatStore, tournamentStore tournament.TournamentStore, userID string, cge *pb.ClientGameplayEvent,
 	entGame *entity.Game) (*entity.Game, error) {
+
+	log := zerolog.Ctx(ctx)
 
 	if entGame.Game.Playing() == macondopb.PlayState_GAME_OVER {
 		return entGame, errGameNotActive
@@ -490,7 +495,7 @@ func handleEventAfterLockingGame(ctx context.Context, gameStore GameStore, userS
 		return entGame, errNotOnTurn
 	}
 	timeRemaining := entGame.TimeRemaining(onTurn)
-	log.Debug().Int("time-remaining", timeRemaining).Msg("checking-time-remaining")
+	log.Debug().Interface("cge", cge).Int("time-remaining", timeRemaining).Msg("handle-gameplay-event")
 	// Check that we didn't run out of time.
 	// Allow auto-passing.
 	if !(entGame.Game.Playing() == macondopb.PlayState_WAITING_FOR_FINAL_PASS &&
