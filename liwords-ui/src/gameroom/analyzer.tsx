@@ -189,9 +189,11 @@ export const AnalyzerContextProvider = ({
 }) => {
   const { useState } = useMountedState();
 
-  const [movesCache, setMovesCache] = useState<
-    Array<Array<AnalyzerMove> | null>
-  >([]);
+  const [, setMovesCacheId] = useState(0);
+  const rerenderMoves = useCallback(
+    () => setMovesCacheId((n) => (n + 1) | 0),
+    []
+  );
   const [showMovesForTurn, setShowMovesForTurn] = useState(-1);
   const [autoMode, setAutoMode] = useState(false);
   const [unrace, setUnrace] = useState(new Unrace());
@@ -201,9 +203,10 @@ export const AnalyzerContextProvider = ({
   } = useExaminableGameContextStoreContext();
 
   const examinerId = useRef(0);
+  const movesCacheRef = useRef<Array<Array<AnalyzerMove> | null>>([]);
   useEffect(() => {
     examinerId.current = (examinerId.current + 1) | 0;
-    setMovesCache([]);
+    movesCacheRef.current = [];
     setUnrace(new Unrace());
   }, [examinableGameContext.gameID]);
 
@@ -211,13 +214,10 @@ export const AnalyzerContextProvider = ({
     (lexicon, variant) => {
       const examinerIdAtStart = examinerId.current;
       const turn = examinableGameContext.turns.length;
+      const movesCache = movesCacheRef.current;
       // null = loading. undefined = not yet requested.
       if (movesCache[turn] !== undefined) return;
-      setMovesCache((oldMovesCache) => {
-        const ret = [...oldMovesCache];
-        ret[turn] = null;
-        return ret;
-      });
+      movesCache[turn] = null;
 
       unrace.run(async () => {
         const {
@@ -262,8 +262,7 @@ export const AnalyzerContextProvider = ({
 
         const boardStr = JSON.stringify(boardObj);
         const movesStr = await wolges.analyze(boardStr);
-        // do not waste the analysis, save it anyway
-        // if (examinerIdAtStart !== examinerId.current) return;
+        if (examinerIdAtStart !== examinerId.current) return;
         const movesObj = JSON.parse(movesStr) as Array<JsonMove>;
 
         // Return '?' for 0, because this is used for exchanges.
@@ -278,17 +277,14 @@ export const AnalyzerContextProvider = ({
         const formattedMoves = movesObj.map((move) =>
           analyzerMoveFromJsonMove(move, dim, letters, rackNum, numToLabel)
         );
-        setMovesCache((oldMovesCache) => {
-          const ret = [...oldMovesCache];
-          ret[turn] = formattedMoves;
-          return ret;
-        });
+        movesCache[turn] = formattedMoves;
+        rerenderMoves();
       });
     },
-    [examinableGameContext, movesCache, unrace]
+    [examinableGameContext, rerenderMoves, unrace]
   );
 
-  const cachedMoves = movesCache[examinableGameContext.turns.length];
+  const cachedMoves = movesCacheRef.current[examinableGameContext.turns.length];
   const examinerLoading = cachedMoves === null;
   const contextValue = useMemo(
     () => ({

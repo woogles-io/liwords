@@ -417,7 +417,7 @@ export const Table = React.memo((props: Props) => {
   const definitionPopover = useMemo(() => {
     if (!showDefinitionHover) return undefined;
     const entries = [];
-    let numAnagramsEach = [];
+    const numAnagramsEach = [];
     for (const word of showDefinitionHover.words) {
       const uppercasedWord = word.toUpperCase();
       const definition = wordInfo[uppercasedWord];
