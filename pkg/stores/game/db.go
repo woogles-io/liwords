@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"sort"
 	"time"
 
 	"github.com/rs/zerolog/log"
@@ -159,7 +160,8 @@ func (s *DBStore) GetMetadata(ctx context.Context, id string) (*gs.GameInfoRespo
 func (s *DBStore) GetRematchStreak(ctx context.Context, originalRequestId string) (*gs.StreakInfoResponse, error) {
 	games := []*game{}
 	if results := s.db.
-		Where("quickdata->>'o' = ? AND game_end_reason != 0", originalRequestId).
+		Where("quickdata->>'o' = ? AND game_end_reason not in (?, ?, ?)",
+			originalRequestId, pb.GameEndReason_NONE, pb.GameEndReason_ABORTED, pb.GameEndReason_CANCELLED).
 		Order("created_at desc").
 		Find(&games); results.Error != nil {
 		return nil, results.Error
@@ -177,14 +179,25 @@ func (s *DBStore) GetRematchStreak(ctx context.Context, originalRequestId string
 			// If it's empty or unconvertible don't quit. We need this
 			// for backwards compatibility.
 		}
-		players := make([]string, len(mdata.PlayerInfo))
-		for i, p := range mdata.PlayerInfo {
-			players[i] = p.Nickname
+		if idx == 0 {
+			players := make([]string, len(mdata.PlayerInfo))
+			for i, p := range mdata.PlayerInfo {
+				players[i] = p.Nickname
+			}
+			sort.Strings(players)
+			resp.Players = players
+		}
+		winner := g.WinnerIdx
+		if len(resp.Players) > 0 && len(mdata.PlayerInfo) > 0 &&
+			resp.Players[0] != mdata.PlayerInfo[0].Nickname {
+
+			if winner != -1 {
+				winner = 1 - winner
+			}
 		}
 		resp.Streak[idx] = &gs.StreakInfoResponse_SingleGameInfo{
-			GameId:  g.UUID,
-			Winner:  int32(g.WinnerIdx),
-			Players: players,
+			GameId: g.UUID,
+			Winner: int32(winner),
 		}
 	}
 
