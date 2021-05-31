@@ -75,7 +75,6 @@ import {
   GameInfoResponse,
   GameInfoResponses,
 } from '../gen/api/proto/game_service/game_service_pb';
-import { TourneyStatus } from './reducers/tournament_reducer';
 import { metaStateFromMetaEvent } from './meta_game_events';
 
 // Feature flag.
@@ -794,7 +793,9 @@ export const useOnSocketMsg = () => {
                 inTourney = true;
               }
             }
-
+            // XXX: This method of determining whether we're in a tourney
+            // is a temporary one until we close
+            // https://github.com/domino14/liwords/issues/614
             const dispatchFn = inTourney
               ? dispatchTournamentContext
               : dispatchLobbyContext;
@@ -820,25 +821,14 @@ export const useOnSocketMsg = () => {
               // this in other contexts, like the lobby, an unrelated game, etc).
               break;
             }
-            if (
-              ready.getPlayerId() ===
-              `${loginState.userID}:${loginState.username}`
-            ) {
-              dispatchTournamentContext({
-                actionType: ActionType.SetTourneyStatus,
-                payload: ready.getUnready()
-                  ? TourneyStatus.ROUND_OPEN
-                  : TourneyStatus.ROUND_READY,
-              });
-            } else {
-              // The opponent sent this message.
-              dispatchTournamentContext({
-                actionType: ActionType.SetTourneyStatus,
-                payload: ready.getUnready()
-                  ? TourneyStatus.ROUND_OPEN
-                  : TourneyStatus.ROUND_OPPONENT_WAITING,
-              });
-            }
+            dispatchTournamentContext({
+              actionType: ActionType.SetReadyForGame,
+              payload: {
+                ready,
+                loginState,
+              },
+            });
+
             break;
           }
 

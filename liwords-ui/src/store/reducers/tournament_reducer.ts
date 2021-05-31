@@ -708,26 +708,27 @@ export function TournamentReducer(
       );
 
       const fullLoggedInID = `${dp.loginState.userID}:${dp.loginState.username}`;
+      const myPreviousDivision = state.competitorState.division;
       console.log('divisions are', state.divisions);
-      let registeredDivision: Division | undefined;
+      let myRegisteredDivision: Division | undefined;
       if (fullLoggedInID in newPlayerIndexMap) {
-        registeredDivision = state.divisions[division];
+        myRegisteredDivision = state.divisions[division];
       }
       console.log(
         'registered division',
-        registeredDivision,
+        myRegisteredDivision,
         fullLoggedInID,
         newPlayerIndexMap
       );
       let competitorState: CompetitorState = state.competitorState;
 
-      if (registeredDivision) {
+      if (myRegisteredDivision) {
         competitorState = {
           isRegistered: true,
-          division: registeredDivision.divisionID,
-          currentRound: registeredDivision.currentRound,
+          division: myRegisteredDivision.divisionID,
+          currentRound: myRegisteredDivision.currentRound,
           status: tourneyStatus(
-            registeredDivision,
+            myRegisteredDivision,
             state.activeGames,
             dp.loginState
           ),
@@ -735,7 +736,11 @@ export function TournamentReducer(
       } else {
         competitorState = {
           ...competitorState,
-          isRegistered: false,
+          isRegistered:
+            // we're only still registered if we were already registered,
+            // and the division we were registered in is not the division that came in
+            // (otherwise, it would have listed us as a player)
+            myPreviousDivision !== undefined && myPreviousDivision !== division,
         };
       }
       const newState = Object.assign({}, state, {
@@ -894,15 +899,92 @@ export function TournamentReducer(
       });
     }
 
-    case ActionType.SetTourneyStatus: {
-      const m = action.payload as TourneyStatus;
-      return {
-        ...state,
-        competitorState: {
-          ...state.competitorState,
-          status: m,
-        },
+    case ActionType.SetReadyForGame: {
+      const m = action.payload as {
+        ready: ReadyForTournamentGame;
+        loginState: LoginState;
       };
+
+      const registeredDivision = state.competitorState.division;
+      if (!registeredDivision) {
+        // this should not happen, we should not get a ready state if we
+        // are not in some division
+        return state;
+      }
+      const division = state.divisions[registeredDivision];
+      const fullPlayerID = `${m.loginState.userID}:${m.loginState.username}`;
+      if (m.ready.getRound() !== division.currentRound) {
+        // this should not happen, the ready state should always be for the
+        // current round.
+        console.error('ready state current round does not match');
+        return state;
+      }
+      if (m.ready.getDivision() !== registeredDivision) {
+        // this should not happen, the ready state should always be for the
+        // current division.
+        console.error('ready state current division does not match');
+        return state;
+      }
+      const pairing = getPairing(m.ready.getRound(), fullPlayerID, division);
+      if (!pairing) {
+        return state;
+      }
+      const newPairing = {
+        ...pairing,
+        readyStates: [...pairing.readyStates],
+      };
+      // find out where _we_ are
+      let usLoc;
+      const involvedIDs = newPairing.players.map((x) => x.getId());
+      if (newPairing.players[0].getId() === fullPlayerID) {
+        usLoc = 0;
+      } else if (newPairing.players[1].getId() === fullPlayerID) {
+        usLoc = 1;
+      } else {
+        console.error('unexpected usLoc', newPairing);
+        return state;
+      }
+      let toModify;
+      if (m.ready.getPlayerId() === fullPlayerID) {
+        toModify = usLoc;
+      } else {
+        // it's the opponent
+        toModify = 1 - usLoc;
+      }
+
+      newPairing.readyStates[toModify] = m.ready.getUnready() ? '' : 'ready';
+
+      const updatedPairings = copyPairings(division.pairings);
+      updatedPairings[m.ready.getRound()].roundPairings[
+        division.playerIndexMap[involvedIDs[0]]
+      ] = newPairing;
+      updatedPairings[m.ready.getRound()].roundPairings[
+        division.playerIndexMap[involvedIDs[1]]
+      ] = newPairing;
+
+      const newRegisteredDiv = Object.assign(
+        {},
+        state.divisions[registeredDivision],
+        {
+          pairings: updatedPairings,
+        }
+      );
+
+      const newCompetitorState = {
+        ...state.competitorState,
+        status: tourneyStatus(
+          newRegisteredDiv,
+          state.activeGames,
+          m.loginState
+        ),
+      };
+
+      return Object.assign({}, state, {
+        divisions: Object.assign({}, state.divisions, {
+          [registeredDivision]: newRegisteredDiv,
+        }),
+        competitorState: newCompetitorState,
+      });
     }
 
     // For the following two actions, it is important to recalculate

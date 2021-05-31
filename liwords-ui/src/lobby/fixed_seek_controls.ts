@@ -6,6 +6,7 @@ import { ChallengeRule } from '../gen/macondo/api/proto/macondo/macondo_pb';
 type settings = { [key: string]: string | number | boolean };
 
 const phillyvirtual = {
+  variant: 'classic',
   lexicon: 'NWL20',
   challengerule: ChallengeRule.VOID,
   initialtime: 22, // Slider position is equivalent to 20 minutes.
@@ -17,6 +18,7 @@ const phillyvirtual = {
 };
 
 const cococlub = {
+  variant: 'classic',
   lexicon: 'CSW19',
   challengerule: ChallengeRule.FIVE_POINT,
   initialtime: 17, // 15 minutes
@@ -28,6 +30,7 @@ const cococlub = {
 };
 
 const laclub = {
+  variant: 'classic',
   lexicon: 'NWL20',
   challengerule: ChallengeRule.DOUBLE,
   initialtime: 22, // 20 minutes
@@ -39,6 +42,7 @@ const laclub = {
 };
 
 const madisonclub = {
+  variant: 'classic',
   challengerule: ChallengeRule.FIVE_POINT,
   initialtime: 22, // 20 minutes
   rated: true,
@@ -49,6 +53,7 @@ const madisonclub = {
 };
 
 const cocoblitz = {
+  variant: 'classic',
   lexicon: 'CSW19',
   challengerule: ChallengeRule.FIVE_POINT,
   initialtime: 5, // 3 minutes
@@ -60,6 +65,7 @@ const cocoblitz = {
 };
 
 const channel275 = {
+  variant: 'classic',
   lexicon: 'CSW19',
   challengerule: ChallengeRule.FIVE_POINT,
   initialtime: 22, // 20 minutes
@@ -71,6 +77,7 @@ const channel275 = {
 };
 
 const nssg = {
+  variant: 'classic',
   lexicon: 'CSW19X',
   challengerule: ChallengeRule.FIVE_POINT,
   initialtime: 15, // 13 minutes
@@ -82,16 +89,19 @@ const nssg = {
 };
 
 const nssg16 = {
+  variant: 'classic',
   ...nssg,
   initialtime: 18, // 16 mins
 };
 
 const nssg19 = {
+  variant: 'classic',
   ...nssg,
   initialtime: 21, // 19 mins
 };
 
 const phillyasap = {
+  variant: 'classic',
   lexicon: 'NWL20',
   challengerule: ChallengeRule.VOID,
   initialtime: 22, // 20 minutes
@@ -103,6 +113,7 @@ const phillyasap = {
 };
 
 const nyc = {
+  variant: 'classic',
   lexicon: 'NWL20',
   challengerule: ChallengeRule.DOUBLE,
   initialtime: 19, // 17 minutes
@@ -114,6 +125,7 @@ const nyc = {
 };
 
 const learners = {
+  variant: 'classic',
   initialtime: 12, // 10 minutes
   rated: true,
   extratime: 0,
@@ -123,6 +135,7 @@ const learners = {
 };
 
 const nasscChampionship = {
+  variant: 'classic',
   lexicon: 'NSWL20',
   challengerule: ChallengeRule.FIVE_POINT,
   initialtime: 22, // 20 minutes
@@ -134,6 +147,7 @@ const nasscChampionship = {
 };
 
 const nasscNovice = {
+  variant: 'classic',
   lexicon: 'NSWL20',
   challengerule: ChallengeRule.VOID,
   initialtime: 22, // 20 minutes
@@ -145,6 +159,7 @@ const nasscNovice = {
 };
 
 const nasscHighSchool = {
+  variant: 'classic',
   lexicon: 'NSWL20',
   challengerule: ChallengeRule.DOUBLE,
   initialtime: 22, // 20 minutes
@@ -159,6 +174,7 @@ export const fixedSettings: { [key: string]: settings } = {
   phillyvirtual,
   cococlub,
   madisonclub,
+  eqRyXi3cBrUrDduuKDGuB9: cococlub,
   '26VtG4JCfeD6qvSGJEwRLm': laclub,
   cocoblitz,
   channel275,

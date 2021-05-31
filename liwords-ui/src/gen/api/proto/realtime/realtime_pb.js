@@ -9932,7 +9932,8 @@ proto.liwords.DivisionControls.toObject = function(includeInstance, msg) {
     gameRequest: (f = msg.getGameRequest()) && proto.liwords.GameRequest.toObject(includeInstance, f),
     suspendedResult: jspb.Message.getFieldWithDefault(msg, 4, 0),
     suspendedSpread: jspb.Message.getFieldWithDefault(msg, 5, 0),
-    autoStart: jspb.Message.getBooleanFieldWithDefault(msg, 6, false)
+    autoStart: jspb.Message.getBooleanFieldWithDefault(msg, 6, false),
+    spreadCap: jspb.Message.getFieldWithDefault(msg, 7, 0)
   };
 
   if (includeInstance) {
@@ -9993,6 +9994,10 @@ proto.liwords.DivisionControls.deserializeBinaryFromReader = function(msg, reade
     case 6:
       var value = /** @type {boolean} */ (reader.readBool());
       msg.setAutoStart(value);
+      break;
+    case 7:
+      var value = /** @type {number} */ (reader.readInt32());
+      msg.setSpreadCap(value);
       break;
     default:
       reader.skipField();
@@ -10063,6 +10068,13 @@ proto.liwords.DivisionControls.serializeBinaryToWriter = function(message, write
   if (f) {
     writer.writeBool(
       6,
+      f
+    );
+  }
+  f = message.getSpreadCap();
+  if (f !== 0) {
+    writer.writeInt32(
+      7,
       f
     );
   }
@@ -10193,6 +10205,24 @@ proto.liwords.DivisionControls.prototype.getAutoStart = function() {
  */
 proto.liwords.DivisionControls.prototype.setAutoStart = function(value) {
   return jspb.Message.setProto3BooleanField(this, 6, value);
+};
+
+
+/**
+ * optional int32 spread_cap = 7;
+ * @return {number}
+ */
+proto.liwords.DivisionControls.prototype.getSpreadCap = function() {
+  return /** @type {number} */ (jspb.Message.getFieldWithDefault(this, 7, 0));
+};
+
+
+/**
+ * @param {number} value
+ * @return {!proto.liwords.DivisionControls} returns this
+ */
+proto.liwords.DivisionControls.prototype.setSpreadCap = function(value) {
+  return jspb.Message.setProto3IntField(this, 7, value);
 };
 
 

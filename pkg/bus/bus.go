@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/gomodule/redigo/redis"
+	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 
 	nats "github.com/nats-io/nats.go"
@@ -142,7 +143,8 @@ func NewBus(cfg *config.Config, stores Stores, redisPool *redis.Pool) (*Bus, err
 func (b *Bus) ProcessMessages(ctx context.Context) {
 
 	ctx = context.WithValue(ctx, gameplay.ConfigCtxKey("config"), &b.config.MacondoConfig)
-
+	ctx = log.Logger.WithContext(ctx)
+	log := zerolog.Ctx(ctx)
 	// Adjudicate unfinished games every few seconds.
 	adjudicator := time.NewTicker(AdjudicateInterval)
 	defer adjudicator.Stop()
@@ -158,11 +160,12 @@ outerfor:
 		select {
 		case msg := <-b.subchans["ipc.pb.>"]:
 			// Regular messages.
-			log.Debug().Str("topic", msg.Subject).Msg("got ipc.pb message")
+			log := log.With().Interface("msg-subject", msg.Subject).Logger()
+			log.Debug().Msg("got ipc.pb message")
 			subtopics := strings.Split(msg.Subject, ".")
 
-			go func() {
-				err := b.handleNatsPublish(ctx, subtopics[2:], msg.Data)
+			go func(subtopics []string, data []byte) {
+				err := b.handleNatsPublish(log.WithContext(ctx), subtopics[2:], data)
 				if err != nil {
 					log.Err(err).Msg("process-message-publish-error")
 					// The user ID should have hopefully come in the topic name.
@@ -174,15 +177,16 @@ outerfor:
 							pb.MessageType_ERROR_MESSAGE))
 					}
 				}
-			}()
+			}(subtopics, msg.Data)
 
 		case msg := <-b.subchans["ipc.request.>"]:
-			log.Debug().Str("topic", msg.Subject).Msg("got ipc.request")
+			log := log.With().Interface("msg-subject", msg.Subject).Logger()
+			log.Debug().Msg("got ipc.request")
 			// Requests. We must respond on a specific topic.
 			subtopics := strings.Split(msg.Subject, ".")
 
 			go func() {
-				err := b.handleNatsRequest(ctx, subtopics[2], msg.Reply, msg.Data)
+				err := b.handleNatsRequest(log.WithContext(ctx), subtopics[2], msg.Reply, msg.Data)
 				if err != nil {
 					log.Err(err).Msg("process-message-request-error")
 					// just send a blank response so there isn't a timeout on
@@ -395,6 +399,7 @@ func (b *Bus) handleNatsRequest(ctx context.Context, topic string,
 
 // handleNatsPublish runs in a separate goroutine
 func (b *Bus) handleNatsPublish(ctx context.Context, subtopics []string, data []byte) error {
+
 	log.Debug().Interface("subtopics", subtopics).Msg("handling nats publish")
 
 	msgType := subtopics[0]
@@ -774,6 +779,8 @@ func (b *Bus) leaveTab(ctx context.Context, userID, connID string) error {
 }
 
 func (b *Bus) deleteTournamentReadyMsgs(ctx context.Context, userID, connID string) error {
+	// When a user leaves the site, we want to make sure to clear any of their
+	// "tournament ready" messages in the actual tournament.
 	conn := b.redisPool.Get()
 	defer conn.Close()
 	bts, err := redis.Bytes(conn.Do("GET", "tready:"+connID))
@@ -822,7 +829,7 @@ func (b *Bus) activeGames(ctx context.Context, tourneyID string) (*entity.EventW
 	if err != nil {
 		return nil, err
 	}
-	log.Debug().Interface("active-games", games).Msg("active-games")
+	log.Debug().Int("num-active-games", len(games.GameInfo)).Msg("active-games")
 
 	evt := entity.WrapEvent(games, pb.MessageType_ONGOING_GAMES)
 	return evt, nil

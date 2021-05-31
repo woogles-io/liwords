@@ -14,6 +14,7 @@ import { useMountedState } from '../utils/mounted';
 import { PlayerAvatar } from '../shared/player_avatar';
 import { DisplayUserFlag } from '../shared/display_flag';
 import { RatingBadge } from './rating_badge';
+import { VariantIcon } from '../shared/variant_icons';
 
 export const timeFormat = (
   initialTimeSecs: number,
@@ -149,6 +150,7 @@ export const SoughtGames = (props: Props) => {
         const getDetails = () => {
           return (
             <>
+              <VariantIcon vcode={sg.variant} />{' '}
               {challengeFormat(sg.challengeRule)}
               {sg.rated ? (
                 <Tooltip title="Rated">

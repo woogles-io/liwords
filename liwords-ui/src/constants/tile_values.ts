@@ -1,6 +1,7 @@
 // Turn the rune into a point value.
 // Note: This should be part of its own Alphabet or Bag or similar
 // class. This is for a quick MVP. We use these keys for blank designation.
+// XXX: These should come from the backend.
 const CrosswordGameTileValues = {
   A: 1,
   B: 3,

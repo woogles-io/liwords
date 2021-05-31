@@ -875,6 +875,13 @@ func (t *ClassicDivision) GetStandings(round int, includeSuspended bool) (*realt
 							pairing.Outcomes[1] == realtime.TournamentGameResult_FORFEIT_LOSS {
 							incSpread = t.DivisionControls.SuspendedSpread
 						}
+						if t.DivisionControls.SpreadCap > 0 {
+							if incSpread > t.DivisionControls.SpreadCap {
+								incSpread = t.DivisionControls.SpreadCap
+							} else if incSpread < -t.DivisionControls.SpreadCap {
+								incSpread = -t.DivisionControls.SpreadCap
+							}
+						}
 						spread += incSpread
 					}
 				}

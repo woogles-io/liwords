@@ -23,10 +23,6 @@ import (
 	pkguser "github.com/domino14/liwords/pkg/user"
 	gs "github.com/domino14/liwords/rpc/api/proto/game_service"
 	pb "github.com/domino14/liwords/rpc/api/proto/realtime"
-	"github.com/domino14/macondo/alphabet"
-	"github.com/domino14/macondo/board"
-	"github.com/domino14/macondo/cross_set"
-	"github.com/domino14/macondo/gaddag"
 	macondogame "github.com/domino14/macondo/game"
 	macondopb "github.com/domino14/macondo/gen/api/proto/macondo"
 )
@@ -357,35 +353,16 @@ func fromState(timers entity.Timers, qdata *entity.Quickdata, Started bool,
 	}
 	log.Info().Interface("hist", hist).Msg("hist-unmarshal")
 
-	var bd []string
-	switch req.Rules.BoardLayoutName {
-	case entity.CrosswordGame:
-		bd = board.CrosswordGameBoard
-	default:
-		return nil, errors.New("unsupported board layout")
-	}
-
-	dist, err := alphabet.Get(&cfg.MacondoConfig, req.Rules.LetterDistributionName)
-	if err != nil {
-		return nil, err
-	}
-
 	lexicon := hist.Lexicon
 	if lexicon == "" {
 		// This can happen for some early games where we didn't migrate this.
 		lexicon = req.Lexicon
 	}
 
-	dawg, err := gaddag.GetDawg(&cfg.MacondoConfig, lexicon)
-	if err != nil {
-		return nil, err
-	}
-
-	rules := macondogame.NewGameRules(
-		&cfg.MacondoConfig, dist, board.MakeBoard(bd),
-		&gaddag.Lexicon{GenericDawg: dawg},
-		cross_set.CrossScoreOnlyGenerator{Dist: dist})
-
+	rules, err := macondogame.NewBasicGameRules(
+		&cfg.MacondoConfig, lexicon, req.Rules.BoardLayoutName,
+		req.Rules.LetterDistributionName, macondogame.CrossScoreOnly,
+		macondogame.Variant(req.Rules.VariantName))
 	if err != nil {
 		return nil, err
 	}

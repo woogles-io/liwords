@@ -16,6 +16,7 @@ import { GamesHistoryCard } from './games_history';
 import { UsernameWithContext } from '../shared/usernameWithContext';
 import { moderateUser } from '../mod/moderate';
 import { DisplayFlag } from '../shared/display_flag';
+import { VariantIcon } from '../shared/variant_icons';
 
 type ProfileResponse = {
   birth_date: string;
@@ -87,7 +88,6 @@ const variantToName = (variant: string) => {
   } else if (lex.startsWith('CSW')) {
     lex = 'CSW';
   }
-  // get rid of the middle element (classic) for now
   const timectrl = {
     ultrablitz: 'Ultra-Blitz!',
     blitz: 'Blitz',
@@ -95,7 +95,11 @@ const variantToName = (variant: string) => {
     regular: 'Regular',
   }[arr[2] as 'ultrablitz' | 'blitz' | 'rapid' | 'regular']; // cmon typescript
 
-  return `${lex} (${timectrl})`;
+  return (
+    <>
+      <VariantIcon vcode={arr[1]} /> {`${lex} (${timectrl})`}
+    </>
+  );
 };
 
 const RatingsCard = React.memo((props: RatingsProps) => {

@@ -409,29 +409,102 @@ export const Table = React.memo((props: Props) => {
   >(undefined);
   const [willHideDefinitionHover, setWillHideDefinitionHover] = useState(false);
 
+  const anagrams = gameInfo.game_request.rules.variant_name === 'wordsmog';
+  const [definedAnagram, setDefinedAnagram] = useState(0);
+  const definedAnagramRef = useRef(definedAnagram);
+  definedAnagramRef.current = definedAnagram;
+
   const definitionPopover = useMemo(() => {
     if (!showDefinitionHover) return undefined;
     const entries = [];
+    let numAnagramsEach = [];
     for (const word of showDefinitionHover.words) {
       const uppercasedWord = word.toUpperCase();
       const definition = wordInfo[uppercasedWord];
       // if phony-checker returned {v:true,d:""}, wait for definition to load
       if (definition && !(definition.v && !definition.d)) {
-        entries.push(
-          <li key={entries.length} className="definition-entry">
-            <span className="defined-word">
-              {uppercasedWord}
-              {definition.v ? '' : '*'}
-            </span>{' '}
-            -{' '}
-            {definition.v ? (
-              <span className="definition">{String(definition.d)}</span>
-            ) : (
-              <span className="invalid-word">not a word</span>
-            )}
-          </li>
-        );
+        if (anagrams && definition.v) {
+          const shortList = []; // list of words and invalid entries
+          const anagramDefinitions = []; // defined words
+          for (const singleEntry of definition.d.split('\n')) {
+            const m = singleEntry.match(/^([^-]*) - (.*)$/m)!;
+            if (m) {
+              const [, actualWord, actualDefinition] = m;
+              anagramDefinitions.push({
+                word: actualWord,
+                definition: (
+                  <React.Fragment>
+                    <span className="defined-word">{actualWord}</span> -{' '}
+                    {actualDefinition}
+                  </React.Fragment>
+                ),
+              });
+              shortList.push(actualWord);
+            } else {
+              shortList.push(singleEntry);
+            }
+          }
+          const defineWhich =
+            anagramDefinitions.length > 0
+              ? definedAnagramRef.current % anagramDefinitions.length
+              : 0;
+          const anagramDefinition = anagramDefinitions[defineWhich];
+          entries.push(
+            <li key={entries.length} className="definition-entry">
+              {uppercasedWord} -{' '}
+              {shortList.map((word, idx) => (
+                <React.Fragment key={idx}>
+                  {idx > 0 && ', '}
+                  {word === anagramDefinition?.word ? (
+                    <span className="defined-word">{word}</span>
+                  ) : (
+                    word
+                  )}
+                </React.Fragment>
+              ))}
+            </li>
+          );
+          if (anagramDefinitions.length > 0) {
+            numAnagramsEach.push(anagramDefinitions.length);
+            entries.push(
+              <li key={entries.length} className="definition-entry">
+                {anagramDefinition.definition}
+              </li>
+            );
+          }
+        } else {
+          entries.push(
+            <li key={entries.length} className="definition-entry">
+              <span className="defined-word">
+                {uppercasedWord}
+                {definition.v ? '' : '*'}
+              </span>{' '}
+              -{' '}
+              {definition.v ? (
+                <span className="definition">{String(definition.d)}</span>
+              ) : (
+                <span className="invalid-word">
+                  {anagrams ? 'no valid words' : 'not a word'}
+                </span>
+              )}
+            </li>
+          );
+        }
       }
+    }
+    if (numAnagramsEach.length > 0) {
+      const numAnagramsLCM = numAnagramsEach.reduce((a, b) => {
+        const ab = a * b;
+        while (b !== 0) {
+          const t = b;
+          b = a % b;
+          a = t;
+        }
+        return ab / a; // a = gcd, so ab/a = lcm
+      });
+      setDefinedAnagram((definedAnagramRef.current + 1) % numAnagramsLCM);
+    } else {
+      setDefinedAnagram(0);
     }
     if (!entries.length) return undefined;
     return {
@@ -439,7 +512,7 @@ export const Table = React.memo((props: Props) => {
       y: showDefinitionHover.y,
       content: <ul className="definitions">{entries}</ul>,
     };
-  }, [showDefinitionHover, wordInfo]);
+  }, [anagrams, showDefinitionHover, wordInfo]);
 
   const hideDefinitionHover = useCallback(() => {
     setShowDefinitionHover(undefined);
@@ -465,7 +538,12 @@ export const Table = React.memo((props: Props) => {
       if (enableHoverDefine && words) {
         setWillHideDefinitionHover(false);
         setShowDefinitionHover((oldValue) => {
-          const newValue = { x, y, words };
+          const newValue = {
+            x,
+            y,
+            words,
+            definedAnagram,
+          };
           // if the pointer is moved out of a tile and back in, and the words
           // formed have not changed, reuse the object to avoid rerendering.
           if (JSON.stringify(oldValue) === JSON.stringify(newValue)) {
@@ -477,7 +555,7 @@ export const Table = React.memo((props: Props) => {
         setWillHideDefinitionHover(true);
       }
     },
-    [enableHoverDefine]
+    [enableHoverDefine, definedAnagram]
   );
 
   const [playedWords, setPlayedWords] = useState(new Set());
@@ -559,6 +637,7 @@ export const Table = React.memo((props: Props) => {
             lexicon,
             words: wordsToDefine,
             definitions: !!showDefinitionHover,
+            anagrams,
           },
           { cancelToken: cancelTokenSource.token }
         );
@@ -587,6 +666,7 @@ export const Table = React.memo((props: Props) => {
                 lexicon: otherLexicon,
                 words: wordsToRedefine,
                 definitions: !!showDefinitionHover,
+                anagrams,
               },
               { cancelToken: cancelTokenSource.token }
             );
@@ -617,7 +697,13 @@ export const Table = React.memo((props: Props) => {
     return () => {
       cancelTokenSource.cancel();
     };
-  }, [showDefinitionHover, gameInfo.game_request.lexicon, wordInfo, unrace]);
+  }, [
+    anagrams,
+    showDefinitionHover,
+    gameInfo.game_request.lexicon,
+    wordInfo,
+    unrace,
+  ]);
 
   useEffect(() => {
     if (phonies === null) {
@@ -886,7 +972,11 @@ export const Table = React.memo((props: Props) => {
             />
           ) : null}
           {isExamining ? (
-            <Analyzer includeCard lexicon={gameInfo.game_request.lexicon} />
+            <Analyzer
+              includeCard
+              lexicon={gameInfo.game_request.lexicon}
+              variant={gameInfo.game_request.rules.variant_name}
+            />
           ) : (
             <Notepad includeCard />
           )}
@@ -991,6 +1081,7 @@ export const Table = React.memo((props: Props) => {
             username={username}
             playing={us !== undefined}
             lexicon={gameInfo.game_request.lexicon}
+            variant={gameInfo.game_request.rules.variant_name}
             events={examinableGameContext.turns}
             board={examinableGameContext.board}
             playerMeta={gameInfo.players}

@@ -13,13 +13,11 @@ import (
 
 	"github.com/domino14/macondo/runner"
 
+	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"google.golang.org/protobuf/proto"
 
 	"github.com/domino14/macondo/alphabet"
-	"github.com/domino14/macondo/board"
-	"github.com/domino14/macondo/cross_set"
-	"github.com/domino14/macondo/gaddag"
 	"github.com/domino14/macondo/game"
 	macondopb "github.com/domino14/macondo/gen/api/proto/macondo"
 	"github.com/domino14/macondo/move"
@@ -81,33 +79,20 @@ func InstantiateNewGame(ctx context.Context, gameStore GameStore, cfg *config.Co
 		return nil, errors.New("no rules")
 	}
 
-	var bd []string
-	switch req.Rules.BoardLayoutName {
-	case entity.CrosswordGame:
-		bd = board.CrosswordGameBoard
-	default:
-		return nil, errors.New("unsupported board layout")
-	}
+	log.Debug().Interface("req-rules", req.Rules).Msg("new-game-rules")
 
 	firstAssigned := false
 	if assignedFirst != -1 {
 		firstAssigned = true
 	}
 
-	dist, err := alphabet.Get(&cfg.MacondoConfig, req.Rules.LetterDistributionName)
+	rules, err := game.NewBasicGameRules(
+		&cfg.MacondoConfig, req.Lexicon, req.Rules.BoardLayoutName,
+		req.Rules.LetterDistributionName, game.CrossScoreOnly,
+		game.Variant(req.Rules.VariantName))
 	if err != nil {
 		return nil, err
 	}
-
-	dawg, err := gaddag.GetDawg(&cfg.MacondoConfig, req.Lexicon)
-	if err != nil {
-		return nil, err
-	}
-
-	rules := game.NewGameRules(
-		&cfg.MacondoConfig, dist, board.MakeBoard(bd),
-		&gaddag.Lexicon{GenericDawg: dawg},
-		cross_set.CrossScoreOnlyGenerator{Dist: dist})
 
 	var gameRunner *runner.GameRunner
 	for {
@@ -490,13 +475,17 @@ func HandleEvent(ctx context.Context, gameStore GameStore, userStore user.Store,
 	entGame.Lock()
 	defer entGame.Unlock()
 
-	return handleEventAfterLockingGame(ctx, gameStore, userStore, listStatStore, tournamentStore, userID, cge, entGame)
+	log := zerolog.Ctx(ctx).With().Str("gameID", entGame.GameID()).Logger()
+
+	return handleEventAfterLockingGame(log.WithContext(ctx), gameStore, userStore, listStatStore, tournamentStore, userID, cge, entGame)
 }
 
 // Assume entGame is already locked.
 func handleEventAfterLockingGame(ctx context.Context, gameStore GameStore, userStore user.Store,
 	listStatStore stats.ListStatStore, tournamentStore tournament.TournamentStore, userID string, cge *pb.ClientGameplayEvent,
 	entGame *entity.Game) (*entity.Game, error) {
+
+	log := zerolog.Ctx(ctx)
 
 	if entGame.Game.Playing() == macondopb.PlayState_GAME_OVER {
 		return entGame, errGameNotActive
@@ -509,7 +498,7 @@ func handleEventAfterLockingGame(ctx context.Context, gameStore GameStore, userS
 		return entGame, errNotOnTurn
 	}
 	timeRemaining := entGame.TimeRemaining(onTurn)
-	log.Debug().Int("time-remaining", timeRemaining).Msg("checking-time-remaining")
+	log.Debug().Interface("cge", cge).Int("time-remaining", timeRemaining).Msg("handle-gameplay-event")
 	// Check that we didn't run out of time.
 	// Allow auto-passing.
 	if !(entGame.Game.Playing() == macondopb.PlayState_WAITING_FOR_FINAL_PASS &&

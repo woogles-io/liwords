@@ -26,11 +26,43 @@ type UsernameWithContextProps = {
   moderate?: (uuid: string, username: string) => void;
   deleteMessage?: () => void;
   iconOnly?: boolean;
+  currentActiveGames?: Array<string>;
+  currentWatchedGames?: Array<string>;
 };
 
 export const UsernameWithContext = (props: UsernameWithContextProps) => {
+  const { currentActiveGames, currentWatchedGames } = props;
   const { loginState } = useLoginStateStoreContext();
   const { loggedIn, userID, perms } = loginState;
+  const gameLink = React.useMemo(() => {
+    if (currentActiveGames && currentActiveGames.length > 0) {
+      const gameID =
+        currentActiveGames[
+          Math.floor(Math.random() * currentActiveGames.length)
+        ];
+      return (
+        <li>
+          <Link className="plain" to={`/game/${encodeURIComponent(gameID)}`}>
+            Watch
+          </Link>
+        </li>
+      );
+    } else if (currentWatchedGames && currentWatchedGames.length > 0) {
+      const gameID =
+        currentWatchedGames[
+          Math.floor(Math.random() * currentWatchedGames.length)
+        ];
+      return (
+        <li>
+          <Link className="plain" to={`/game/${encodeURIComponent(gameID)}`}>
+            Join
+          </Link>
+        </li>
+      );
+    } else {
+      return null;
+    }
+  }, [currentActiveGames, currentWatchedGames]);
   const userMenu = (
     <ul>
       {loggedIn &&
@@ -58,6 +90,7 @@ export const UsernameWithContext = (props: UsernameWithContextProps) => {
           </Link>
         </li>
       )}
+      {gameLink}
       {loggedIn && props.userID && !props.omitFriend ? (
         <TheFollower
           friendCallback={props.friendCallback}
