@@ -453,7 +453,7 @@ export const Table = React.memo((props: Props) => {
               {shortList.map((word, idx) => (
                 <React.Fragment key={idx}>
                   {idx > 0 && ', '}
-                  {word === anagramDefinition.word ? (
+                  {word === anagramDefinition?.word ? (
                     <span className="defined-word">{word}</span>
                   ) : (
                     word
