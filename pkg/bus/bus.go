@@ -7,6 +7,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 
@@ -413,13 +414,19 @@ func (b *Bus) handleNatsPublish(ctx context.Context, subtopics []string, data []
 		wsConnID = subtopics[3]
 	}
 
-	switch msgType {
-	case "seekRequest":
-		return b.seekRequest(ctx, auth, userID, wsConnID, data)
-	case "matchRequest":
-		return b.matchRequest(ctx, auth, userID, wsConnID, data)
+	pnum, err := strconv.Atoi(msgType)
+	if err == nil {
+		msgType = pb.MessageType(pnum).String()
+	}
+	// XXX: Otherwise, ignore error for now
 
-	case "chat":
+	switch msgType {
+	// XXX: remove the camelCased version of these soon, after deploying new socket server
+	case "seekRequest", pb.MessageType_SEEK_REQUEST.String():
+		return b.seekRequest(ctx, auth, userID, wsConnID, data)
+	case "matchRequest", pb.MessageType_MATCH_REQUEST.String():
+		return b.matchRequest(ctx, auth, userID, wsConnID, data)
+	case "chat", pb.MessageType_CHAT_MESSAGE.String():
 		// The user is subtopics[2]
 		evt := &pb.ChatMessage{}
 		err := proto.Unmarshal(data, evt)
@@ -428,7 +435,7 @@ func (b *Bus) handleNatsPublish(ctx context.Context, subtopics []string, data []
 		}
 		log.Debug().Str("user", userID).Str("msg", evt.Message).Str("channel", evt.Channel).Msg("chat")
 		return b.chat(ctx, userID, evt)
-	case "declineMatchRequest":
+	case "declineMatchRequest", pb.MessageType_DECLINE_MATCH_REQUEST.String():
 		evt := &pb.DeclineMatchRequest{}
 		err := proto.Unmarshal(data, evt)
 		if err != nil {
@@ -437,7 +444,7 @@ func (b *Bus) handleNatsPublish(ctx context.Context, subtopics []string, data []
 		log.Debug().Str("user", userID).Str("reqid", evt.RequestId).Msg("decline-rematch")
 		return b.matchDeclined(ctx, evt, userID)
 
-	case "soughtGameProcess":
+	case "soughtGameProcess", pb.MessageType_SOUGHT_GAME_PROCESS_EVENT.String():
 		evt := &pb.SoughtGameProcessEvent{}
 		err := proto.Unmarshal(data, evt)
 		if err != nil {
@@ -446,7 +453,7 @@ func (b *Bus) handleNatsPublish(ctx context.Context, subtopics []string, data []
 
 		return b.gameAccepted(ctx, evt, userID, wsConnID)
 
-	case "gameplayEvent":
+	case "gameplayEvent", pb.MessageType_CLIENT_GAMEPLAY_EVENT.String():
 		evt := &pb.ClientGameplayEvent{}
 		err := proto.Unmarshal(data, evt)
 		if err != nil {
@@ -470,7 +477,7 @@ func (b *Bus) handleNatsPublish(ctx context.Context, subtopics []string, data []
 		}
 		return nil
 
-	case "timedOut":
+	case "timedOut", pb.MessageType_TIMED_OUT.String():
 		evt := &pb.TimedOut{}
 		err := proto.Unmarshal(data, evt)
 		if err != nil {
@@ -478,21 +485,14 @@ func (b *Bus) handleNatsPublish(ctx context.Context, subtopics []string, data []
 		}
 		return gameplay.TimedOut(ctx, b.gameStore, b.userStore, b.listStatStore, b.tournamentStore, evt.UserId, evt.GameId)
 
-	case "initRealmInfo":
-		evt := &pb.InitRealmInfo{}
-		err := proto.Unmarshal(data, evt)
-		if err != nil {
-			return err
-		}
-		return b.initRealmInfo(ctx, evt, wsConnID)
-	case "readyForGame":
+	case "readyForGame", pb.MessageType_READY_FOR_GAME.String():
 		evt := &pb.ReadyForGame{}
 		err := proto.Unmarshal(data, evt)
 		if err != nil {
 			return err
 		}
 		return b.readyForGame(ctx, evt, userID)
-	case "readyForTournamentGame":
+	case "readyForTournamentGame", pb.MessageType_READY_FOR_TOURNAMENT_GAME.String():
 		evt := &pb.ReadyForTournamentGame{}
 		err := proto.Unmarshal(data, evt)
 		if err != nil {
@@ -500,13 +500,25 @@ func (b *Bus) handleNatsPublish(ctx context.Context, subtopics []string, data []
 		}
 		return b.readyForTournamentGame(ctx, evt, userID, wsConnID)
 
+		// The messages after this are messages sent only from liwords-socket to liwords,
+		// so there are no MessageType enums for these. It's ok:
+	case "initRealmInfo":
+		evt := &pb.InitRealmInfo{}
+		err := proto.Unmarshal(data, evt)
+		if err != nil {
+			return err
+		}
+		return b.initRealmInfo(ctx, evt, wsConnID)
+
 	case "leaveSite":
 		// There is no event here. We have the user ID in the subject.
 		return b.leaveSite(ctx, userID)
 	case "leaveTab":
 		return b.leaveTab(ctx, userID, wsConnID)
+
 	case "pongReceived":
 		return b.pongReceived(ctx, userID, wsConnID)
+
 	default:
 		return fmt.Errorf("unhandled-publish-topic: %v", subtopics)
 	}
