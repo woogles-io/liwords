@@ -425,7 +425,7 @@ export const Table = React.memo((props: Props) => {
           const shortList = []; // list of words and invalid entries
           const anagramDefinitions = []; // defined words
           for (const singleEntry of definition.d.split('\n')) {
-            const m = singleEntry.match(/^([^-]*) - (.*)$/)!;
+            const m = singleEntry.match(/^([^-]*) - (.*)$/m)!;
             if (m) {
               const [, actualWord, actualDefinition] = m;
               anagramDefinitions.push({
