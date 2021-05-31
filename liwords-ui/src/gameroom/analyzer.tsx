@@ -4,6 +4,7 @@ import React, {
   useEffect,
   useMemo,
   useRef,
+  useState,
 } from 'react';
 import { Button, Card, Switch } from 'antd';
 import { BulbOutlined } from '@ant-design/icons';
@@ -47,7 +48,7 @@ type AnalyzerMove = {
   coordinates: string;
   leave: string;
   score: number;
-  equity: string;
+  equity: number;
   row: number;
   col: number;
   vertical: boolean;
@@ -70,7 +71,7 @@ export const analyzerMoveFromJsonMove = (
     col: 0,
     row: 0,
     score: 0,
-    equity: (0.0).toFixed(2),
+    equity: 0.0,
     tiles: '',
     isExchange: false,
   };
@@ -131,7 +132,7 @@ export const analyzerMoveFromJsonMove = (
         col,
         row,
         score: move.score,
-        equity: move.equity.toFixed(2),
+        equity: move.equity,
         tiles: tilesBeingMoved,
         isExchange: false,
       };
@@ -150,7 +151,7 @@ export const analyzerMoveFromJsonMove = (
         ...defaultRet,
         displayMove: tilesBeingMoved ? `Exch. ${tilesBeingMoved}` : 'Pass',
         leave: sortTiles(makeLeaveStr(leaveNum)),
-        equity: move.equity.toFixed(2),
+        equity: move.equity,
         tiles: tilesBeingMoved,
         isExchange: true,
       };
@@ -424,6 +425,8 @@ export const Analyzer = React.memo((props: AnalyzerProps) => {
     cachedMoves,
   ]);
 
+  const [showEquityLoss, setShowEquityLoss] = useState(false);
+  void setShowEquityLoss; // pending UI
   const renderAnalyzerMoves = useMemo(
     () =>
       moves?.map((m: AnalyzerMove, idx) => (
@@ -437,10 +440,12 @@ export const Analyzer = React.memo((props: AnalyzerProps) => {
           <td className="move">{m.displayMove}</td>
           <td className="move-score">{m.score}</td>
           <td className="move-leave">{m.leave}</td>
-          <td className="move-equity">{m.equity}</td>
+          <td className="move-equity">
+            {(m.equity - (showEquityLoss ? moves[0].equity : 0)).toFixed(2)}
+          </td>
         </tr>
       )) ?? null,
-    [moves, placeMove]
+    [moves, placeMove, showEquityLoss]
   );
   const analyzerControls = (
     <div className="analyzer-controls">
