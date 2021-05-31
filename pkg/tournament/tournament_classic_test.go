@@ -264,6 +264,93 @@ func TestClassicDivisionRandom(t *testing.T) {
 	is.NoErr(validatePairings(tc, 0))
 }
 
+func TestClassicDivisionSpreadCap(t *testing.T) {
+	// This test is used to ensure that the standings are
+	// calculated correctly and that King of the Hill
+	// pairings are correct
+
+	is := is.New(t)
+
+	roundControls := defaultRoundControls(defaultRounds)
+
+	for i := 0; i < defaultRounds; i++ {
+		roundControls[i].PairingMethod = realtime.PairingMethod_KING_OF_THE_HILL
+	}
+
+	tc, err := compactNewClassicDivision(defaultPlayers, roundControls, true)
+	is.NoErr(err)
+	is.True(tc != nil)
+
+	is.NoErr(validatePairings(tc, 0))
+
+	// Change Spread Cap
+	tc.DivisionControls.SpreadCap = 200
+
+	// Tournament should not be over
+
+	player1 := defaultPlayers.Persons[0].Id
+	player2 := defaultPlayers.Persons[1].Id
+	player3 := defaultPlayers.Persons[2].Id
+	player4 := defaultPlayers.Persons[3].Id
+
+	tournamentIsFinished, err := tc.IsFinished()
+	is.NoErr(err)
+	is.True(!tournamentIsFinished)
+	err = tc.StartRound()
+	is.NoErr(err)
+
+	// Submit results for the round
+	_, _, err = tc.SubmitResult(0, player1, player2, 500, 301,
+		realtime.TournamentGameResult_WIN,
+		realtime.TournamentGameResult_LOSS,
+		realtime.GameEndReason_STANDARD, false, 0, "")
+	is.NoErr(err)
+
+	_, _, err = tc.SubmitResult(0, player3, player4, 300, 500,
+		realtime.TournamentGameResult_LOSS,
+		realtime.TournamentGameResult_WIN,
+		realtime.GameEndReason_STANDARD, false, 0, "")
+	is.NoErr(err)
+
+	// Get the standings for round 1
+	standings, err := tc.GetStandings(0, false)
+	is.NoErr(err)
+
+	expectedstandings := &realtime.RoundStandings{Standings: []*realtime.PlayerStanding{{PlayerId: player4, Wins: 1, Losses: 0, Draws: 0, Spread: 200},
+		{PlayerId: player1, Wins: 1, Losses: 0, Draws: 0, Spread: 199},
+		{PlayerId: player2, Wins: 0, Losses: 1, Draws: 0, Spread: -199},
+		{PlayerId: player3, Wins: 0, Losses: 1, Draws: 0, Spread: -200},
+	}}
+
+	is.NoErr(equalStandings(expectedstandings, standings))
+
+	// Submit results for the round
+	_, _, err = tc.SubmitResult(1, player1, player4, 601, 400,
+		realtime.TournamentGameResult_WIN,
+		realtime.TournamentGameResult_LOSS,
+		realtime.GameEndReason_STANDARD, false, 0, "")
+	is.NoErr(err)
+
+	_, _, err = tc.SubmitResult(1, player3, player2, 250, 200,
+		realtime.TournamentGameResult_WIN,
+		realtime.TournamentGameResult_LOSS,
+		realtime.GameEndReason_STANDARD, false, 0, "")
+	is.NoErr(err)
+
+	// Get the standings for round 2
+	standings, err = tc.GetStandings(1, false)
+	is.NoErr(err)
+
+	expectedstandings = &realtime.RoundStandings{Standings: []*realtime.PlayerStanding{
+		{PlayerId: player1, Wins: 2, Losses: 0, Draws: 0, Spread: 399},
+		{PlayerId: player4, Wins: 1, Losses: 1, Draws: 0, Spread: 0},
+		{PlayerId: player3, Wins: 1, Losses: 1, Draws: 0, Spread: -150},
+		{PlayerId: player2, Wins: 0, Losses: 2, Draws: 0, Spread: -249},
+	}}
+
+	is.NoErr(equalStandings(expectedstandings, standings))
+}
+
 func TestClassicDivisionKingOfTheHill(t *testing.T) {
 	// This test is used to ensure that the standings are
 	// calculated correctly and that King of the Hill

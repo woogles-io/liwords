@@ -1213,6 +1213,9 @@ export class DivisionControls extends jspb.Message {
   getAutoStart(): boolean;
   setAutoStart(value: boolean): void;
 
+  getSpreadCap(): number;
+  setSpreadCap(value: number): void;
+
   serializeBinary(): Uint8Array;
   toObject(includeInstance?: boolean): DivisionControls.AsObject;
   static toObject(includeInstance: boolean, msg: DivisionControls): DivisionControls.AsObject;
@@ -1231,6 +1234,7 @@ export namespace DivisionControls {
     suspendedResult: TournamentGameResultMap[keyof TournamentGameResultMap],
     suspendedSpread: number,
     autoStart: boolean,
+    spreadCap: number,
   }
 }
 
