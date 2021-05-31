@@ -809,7 +809,7 @@ func (b *Bus) activeGames(ctx context.Context, tourneyID string) (*entity.EventW
 	if err != nil {
 		return nil, err
 	}
-	log.Debug().Interface("active-games", games).Msg("active-games")
+	log.Debug().Int("num-active-games", len(games.GameInfo)).Msg("active-games")
 
 	evt := entity.WrapEvent(games, pb.MessageType_ONGOING_GAMES)
 	return evt, nil
