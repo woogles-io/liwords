@@ -4,13 +4,13 @@ import React, {
   useEffect,
   useMemo,
   useRef,
-  useState,
 } from 'react';
 import { Button, Card, Switch } from 'antd';
 import { BulbOutlined } from '@ant-design/icons';
 import {
   useExaminableGameContextStoreContext,
   useExamineStoreContext,
+  useGameContextStoreContext,
   useTentativeTileContext,
 } from '../store/store';
 import { getWolges } from '../wasm/loader';
@@ -19,6 +19,9 @@ import { RedoOutlined } from '@ant-design/icons/lib';
 import { EmptySpace, EphemeralTile } from '../utils/cwgame/common';
 import { Unrace } from '../utils/unrace';
 import { sortTiles } from '../store/constants';
+import { GameEvent } from '../gen/macondo/api/proto/macondo/macondo_pb';
+import { Direction } from '../utils/cwgame/common';
+import { GameState } from '../store/reducers/game_reducer';
 
 type AnalyzerProps = {
   includeCard?: boolean;
@@ -32,6 +35,7 @@ type JsonMove =
       equity: number;
       action: 'exchange';
       tiles: Array<number>;
+      valid?: boolean;
     }
   | {
       equity: number;
@@ -41,9 +45,41 @@ type JsonMove =
       idx: number;
       word: Array<number>;
       score: number;
+      valid?: boolean;
     };
 
+const jsonMoveToKey = (v: JsonMove) => {
+  switch (v.action) {
+    case 'exchange': {
+      return JSON.stringify(
+        ['action', 'tiles'].reduce((h: { [key: string]: any }, k: string) => {
+          h[k] = (v as { [key: string]: any })[k];
+          return h;
+        }, {})
+      );
+    }
+    case 'play': {
+      return JSON.stringify(
+        ['action', 'down', 'lane', 'idx', 'word'].reduce(
+          (h: { [key: string]: any }, k: string) => {
+            h[k] = (v as { [key: string]: any })[k];
+            return h;
+          },
+          {}
+        )
+      );
+    }
+    default: {
+      return JSON.stringify({ invalid_object: v });
+    }
+  }
+};
+
 type AnalyzerMove = {
+  jsonKey: string;
+  chosen?: boolean; // true for played, undefined for analyzer-generated moves
+  valid?: boolean; // undefined for analyzer-generated moves
+  urp?: boolean; // true if analyzer only found better moves, else undefined
   displayMove: string;
   coordinates: string;
   leave: string;
@@ -63,7 +99,9 @@ export const analyzerMoveFromJsonMove = (
   rackNum: Array<number>,
   numToLabel: (n: number) => string
 ): AnalyzerMove => {
+  const jsonKey = jsonMoveToKey(move);
   const defaultRet = {
+    jsonKey,
     displayMove: '',
     coordinates: '',
     // always leave out leave
@@ -125,6 +163,7 @@ export const analyzerMoveFromJsonMove = (
       }
       if (inParen) displayMove += ')';
       return {
+        jsonKey,
         displayMove,
         coordinates,
         leave: sortTiles(makeLeaveStr(leaveNum)),
@@ -164,6 +203,57 @@ export const analyzerMoveFromJsonMove = (
     }
   }
 };
+
+const parseExaminableGameContext = (
+  examinableGameContext: GameState,
+  lexicon: string,
+  variant: string
+) => {
+  const {
+    board: { dim, letters },
+    onturn,
+    players,
+  } = examinableGameContext;
+
+  const rackStr = players[onturn].currentRack;
+  const rackNum = Array.from(rackStr, labelToNum);
+
+  let effectiveLexicon = lexicon;
+  let rules = 'CrosswordGame';
+  if (variant === 'wordsmog') {
+    effectiveLexicon = `${lexicon}.WordSmog`;
+    rules = 'WordSmog';
+  }
+  const boardObj = {
+    rack: rackNum,
+    board: Array.from(new Array(dim), (_, row) =>
+      Array.from(letters.substr(row * dim, dim), labelToNum)
+    ),
+    lexicon: effectiveLexicon,
+    leave: 'english',
+    rules,
+  };
+
+  return { dim, letters, rackNum, effectiveLexicon, boardObj };
+};
+
+// Return 0 for both board's ' ' and rack's '?'.
+// English-only.
+const labelToNum = (c: string) =>
+  c >= 'A' && c <= 'Z'
+    ? c.charCodeAt(0) - 0x40
+    : c >= 'a' && c <= 'z'
+    ? -(c.charCodeAt(0) - 0x60)
+    : 0;
+
+// Return '?' for 0, because this is used for exchanges.
+// English-only.
+const numToLabel = (n: number) =>
+  n > 0
+    ? String.fromCharCode(0x40 + n)
+    : n < 0
+    ? String.fromCharCode(0x60 - n)
+    : '?';
 
 const AnalyzerContext = React.createContext<{
   autoMode: boolean;
@@ -222,41 +312,13 @@ export const AnalyzerContextProvider = ({
 
       unrace.run(async () => {
         const {
-          board: { dim, letters },
-          onturn,
-          players,
-        } = examinableGameContext;
-
-        // Return 0 for both board's ' ' and rack's '?'.
-        // English-only.
-        const labelToNum = (c: string) =>
-          c >= 'A' && c <= 'Z'
-            ? c.charCodeAt(0) - 0x40
-            : c >= 'a' && c <= 'z'
-            ? -(c.charCodeAt(0) - 0x60)
-            : 0;
-
-        const rackStr = players[onturn].currentRack;
-        const rackNum = Array.from(rackStr, labelToNum);
-
-        const howMany = 15;
-
-        let effectiveLexicon = lexicon;
-        let rules = 'CrosswordGame';
-        if (variant === 'wordsmog') {
-          effectiveLexicon = `${lexicon}.WordSmog`;
-          rules = 'WordSmog';
-        }
-        const boardObj = {
-          rack: rackNum,
-          board: Array.from(new Array(dim), (_, row) =>
-            Array.from(letters.substr(row * dim, dim), labelToNum)
-          ),
-          count: howMany,
-          lexicon: effectiveLexicon,
-          leave: 'english',
-          rules,
-        };
+          dim,
+          letters,
+          rackNum,
+          effectiveLexicon,
+          boardObj: bareBoardObj,
+        } = parseExaminableGameContext(examinableGameContext, lexicon, variant);
+        const boardObj = { ...bareBoardObj, count: 15 };
 
         const wolges = await getWolges(effectiveLexicon);
         if (examinerIdAtStart !== examinerId.current) return;
@@ -265,15 +327,6 @@ export const AnalyzerContextProvider = ({
         const movesStr = await wolges.analyze(boardStr);
         if (examinerIdAtStart !== examinerId.current) return;
         const movesObj = JSON.parse(movesStr) as Array<JsonMove>;
-
-        // Return '?' for 0, because this is used for exchanges.
-        // English-only.
-        const numToLabel = (n: number) =>
-          n > 0
-            ? String.fromCharCode(0x40 + n)
-            : n < 0
-            ? String.fromCharCode(0x60 - n)
-            : '?';
 
         const formattedMoves = movesObj.map((move) =>
           analyzerMoveFromJsonMove(move, dim, letters, rackNum, numToLabel)
@@ -312,6 +365,7 @@ export const AnalyzerContextProvider = ({
 };
 
 export const Analyzer = React.memo((props: AnalyzerProps) => {
+  const { useState } = useMountedState();
   const { lexicon, variant } = props;
   const {
     autoMode,
@@ -327,6 +381,7 @@ export const Analyzer = React.memo((props: AnalyzerProps) => {
     gameContext: examinableGameContext,
   } = useExaminableGameContextStoreContext();
   const { addHandleExaminer, removeHandleExaminer } = useExamineStoreContext();
+  const { gameContext } = useGameContextStoreContext();
   const {
     setDisplayedRack,
     setPlacedTiles,
@@ -420,30 +475,182 @@ export const Analyzer = React.memo((props: AnalyzerProps) => {
   }, [autoMode, handleExaminer, showMovesForTurn]);
 
   const showMoves = showMovesForTurn === examinableGameContext.turns.length;
-  const moves = useMemo(() => (showMoves ? cachedMoves : null), [
-    showMoves,
-    cachedMoves,
-  ]);
+  const actualEvent = useMemo(() => {
+    for (
+      let i = examinableGameContext.turns.length;
+      i < gameContext.turns.length;
+      ++i
+    ) {
+      const evt = gameContext.turns[i];
+      switch (evt.getType()) {
+        case GameEvent.Type.TILE_PLACEMENT_MOVE:
+        case GameEvent.Type.PHONY_TILES_RETURNED:
+        case GameEvent.Type.PASS:
+        case GameEvent.Type.EXCHANGE:
+          return evt;
+      }
+    }
+    return null;
+  }, [gameContext, examinableGameContext]);
+  const actualMove = useMemo(() => {
+    const evt = actualEvent;
+    if (evt) {
+      switch (evt.getType()) {
+        case GameEvent.Type.TILE_PLACEMENT_MOVE: {
+          const down = evt.getDirection() === Direction.Vertical;
+          return {
+            action: 'play',
+            down,
+            lane: down ? evt.getColumn() : evt.getRow(),
+            idx: down ? evt.getRow() : evt.getColumn(),
+            word: Array.from(evt.getPlayedTiles(), labelToNum),
+            score: evt.getScore(),
+          };
+        }
+        case GameEvent.Type.PHONY_TILES_RETURNED: {
+          return null;
+        }
+        case GameEvent.Type.PASS: {
+          return { action: 'exchange', tiles: [] };
+        }
+        case GameEvent.Type.EXCHANGE: {
+          return {
+            action: 'exchange',
+            tiles: Array.from(evt.getExchanged(), labelToNum),
+          };
+        }
+      }
+    }
+    return null;
+  }, [actualEvent]);
+  const evaluatedMoveId = useRef(0);
+  const [evaluatedMove, setEvaluatedMove] = useState<{
+    evaluatedMoveId: number;
+    moveObj: JsonMove | null;
+    analyzerMove: AnalyzerMove | null;
+  }>({
+    evaluatedMoveId: -1,
+    moveObj: null,
+    analyzerMove: null,
+  });
+  useEffect(() => {
+    evaluatedMoveId.current = (evaluatedMoveId.current + 1) | 0;
+    const evaluatedMoveIdAtStart = evaluatedMoveId.current;
+    if (actualMove) {
+      (async () => {
+        const {
+          dim,
+          letters,
+          rackNum,
+          effectiveLexicon,
+          boardObj: bareBoardObj,
+        } = parseExaminableGameContext(examinableGameContext, lexicon, variant);
+        const boardObj = { ...bareBoardObj, plays: [actualMove] };
+
+        const wolges = await getWolges(effectiveLexicon);
+        if (evaluatedMoveIdAtStart !== evaluatedMoveId.current) return;
+
+        const boardStr = JSON.stringify(boardObj);
+        const movesStr = await wolges.play_score(boardStr);
+        if (evaluatedMoveIdAtStart !== evaluatedMoveId.current) return;
+        const movesObj = JSON.parse(movesStr);
+        const moveObj = movesObj[0];
+
+        if (moveObj.result === 'scored') {
+          const analyzerMove = analyzerMoveFromJsonMove(
+            moveObj,
+            dim,
+            letters,
+            rackNum,
+            numToLabel
+          );
+          setEvaluatedMove({
+            evaluatedMoveId: evaluatedMoveIdAtStart,
+            moveObj: moveObj,
+            analyzerMove: {
+              ...analyzerMove,
+              chosen: true,
+              valid: moveObj.valid,
+            },
+          });
+        } else {
+          console.error('invalid move', moveObj);
+          setEvaluatedMove({
+            evaluatedMoveId: evaluatedMoveIdAtStart,
+            moveObj: null,
+            analyzerMove: null,
+          });
+        }
+      })();
+    }
+  }, [actualMove, examinableGameContext, lexicon, variant]);
+  const currentEvaluatedMove =
+    evaluatedMove.evaluatedMoveId === evaluatedMoveId.current &&
+    evaluatedMove.moveObj &&
+    evaluatedMove.analyzerMove
+      ? evaluatedMove
+      : null;
+  const moves = useMemo(() => {
+    if (!showMoves) return null;
+    if (cachedMoves == null) return cachedMoves;
+    if (currentEvaluatedMove) {
+      let found = false;
+      const arr = [];
+      for (const elt of cachedMoves) {
+        if (!found) {
+          if (elt.jsonKey === currentEvaluatedMove.analyzerMove!.jsonKey) {
+            arr.push(currentEvaluatedMove.analyzerMove!);
+            found = true;
+            continue;
+          }
+          if (elt.equity < currentEvaluatedMove.moveObj!.equity) {
+            // phonies may have better equity than valid plays
+            arr.push(currentEvaluatedMove.analyzerMove!);
+            found = true;
+          }
+        }
+        arr.push(elt);
+      }
+      if (!found) {
+        arr.push({
+          ...currentEvaluatedMove.analyzerMove!,
+          urp: true,
+        });
+      }
+      return arr;
+    }
+    return cachedMoves;
+  }, [showMoves, cachedMoves, currentEvaluatedMove]);
 
   const [showEquityLoss, setShowEquityLoss] = useState(false);
   void setShowEquityLoss; // pending UI
   const renderAnalyzerMoves = useMemo(
     () =>
       moves?.map((m: AnalyzerMove, idx) => (
-        <tr
-          key={idx}
-          onClick={() => {
-            placeMove(m);
-          }}
-        >
-          <td className="move-coords">{m.coordinates}</td>
-          <td className="move">{m.displayMove}</td>
-          <td className="move-score">{m.score}</td>
-          <td className="move-leave">{m.leave}</td>
-          <td className="move-equity">
-            {(m.equity - (showEquityLoss ? moves[0].equity : 0)).toFixed(2)}
-          </td>
-        </tr>
+        <React.Fragment key={idx}>
+          {m.urp && (
+            <tr>
+              <td colSpan={5}>...</td>
+            </tr>
+          )}
+          <tr
+            onClick={() => {
+              placeMove(m);
+            }}
+          >
+            <td className="move-coords">
+              {(m.chosen ?? false) && <React.Fragment>&gt;</React.Fragment>}
+              {m.coordinates}
+            </td>
+            <td className="move">{m.displayMove}</td>
+            <td className="move-score">{m.score}</td>
+            <td className="move-leave">{m.leave}</td>
+            <td className="move-equity">
+              {(m.equity - (showEquityLoss ? moves[0].equity : 0)).toFixed(2)}
+              {!(m.valid ?? true) && <React.Fragment>*</React.Fragment>}
+            </td>
+          </tr>
+        </React.Fragment>
       )) ?? null,
     [moves, placeMove, showEquityLoss]
   );
