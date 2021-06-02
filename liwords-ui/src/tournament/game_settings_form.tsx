@@ -120,12 +120,15 @@ export const SettingsForm = (props: Props) => {
           <Select.Option value="NWL20">
             NWL 20 (North American English)
           </Select.Option>
-          <Select.Option value="NWL18">NWL 18 (Obsolete)</Select.Option>
           <Select.Option value="ECWL">English Common Word List</Select.Option>
+          <Select.Option value="NSWL20">
+            NSWL 20 (NASPA School Word List)
+          </Select.Option>
+          <Select.Option value="NWL18">NWL 18 (Obsolete)</Select.Option>
         </Select>
       </Form.Item>
 
-      <Form.Item label="Variant" name="variant" rules={[{ required: true }]}>
+      <Form.Item label="Game type" name="variant" rules={[{ required: true }]}>
         <Select>
           <Select.Option value="classic">Classic</Select.Option>
           <Select.Option value="wordsmog">
