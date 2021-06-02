@@ -67,9 +67,9 @@ export const MetaEventControl = (props: Props) => {
   // const [modalVisible, setModalVisible] = useState(false);
   useEffect(() => {
     if (gameMetaEventContext.curEvt === MetaStates.NO_ACTIVE_REQUEST) {
+      setActiveNotif(null);
       return;
     }
-    // setModalVisible(true);
 
     switch (gameMetaEventContext.curEvt) {
       case MetaStates.REQUESTED_ABORT:

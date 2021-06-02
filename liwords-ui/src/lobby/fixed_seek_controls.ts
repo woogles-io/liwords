@@ -89,13 +89,11 @@ const nssg = {
 };
 
 const nssg16 = {
-  variant: 'classic',
   ...nssg,
   initialtime: 18, // 16 mins
 };
 
 const nssg19 = {
-  variant: 'classic',
   ...nssg,
   initialtime: 21, // 19 mins
 };
