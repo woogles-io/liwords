@@ -776,7 +776,7 @@ const SetTournamentControls = (props: { tournamentID: string }) => {
     ctrls.setDivision(vals.division);
     ctrls.setGameRequest(selectedGameRequest);
     // can set this later to whatever values, along with a spread
-    ctrls.setSuspendedResult(TournamentGameResult.BYE);
+    ctrls.setSuspendedResult(TournamentGameResult.FORFEIT_LOSS);
     ctrls.setAutoStart(false);
 
     try {
