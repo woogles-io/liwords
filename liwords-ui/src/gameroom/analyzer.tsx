@@ -637,11 +637,9 @@ export const Analyzer = React.memo((props: AnalyzerProps) => {
             onClick={() => {
               placeMove(m);
             }}
+            {...((m.chosen ?? false) && { className: 'move-chosen' })}
           >
-            <td className="move-coords">
-              {(m.chosen ?? false) && <React.Fragment>&gt;</React.Fragment>}
-              {m.coordinates}
-            </td>
+            <td className="move-coords">{m.coordinates}</td>
             <td className="move">{m.displayMove}</td>
             <td className="move-score">{m.score}</td>
             <td className="move-leave">{m.leave}</td>
