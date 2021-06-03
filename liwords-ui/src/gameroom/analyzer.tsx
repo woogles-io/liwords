@@ -79,7 +79,6 @@ type AnalyzerMove = {
   jsonKey: string;
   chosen?: boolean; // true for played, undefined for analyzer-generated moves
   valid?: boolean; // undefined for analyzer-generated moves
-  urp?: boolean; // true if analyzer only found better moves, else undefined
   displayMove: string;
   coordinates: string;
   leave: string;
@@ -612,10 +611,7 @@ export const Analyzer = React.memo((props: AnalyzerProps) => {
         arr.push(elt);
       }
       if (!found) {
-        arr.push({
-          ...currentEvaluatedMove.analyzerMove!,
-          urp: true,
-        });
+        arr.push(currentEvaluatedMove.analyzerMove!);
       }
       return arr;
     }
@@ -627,28 +623,22 @@ export const Analyzer = React.memo((props: AnalyzerProps) => {
   const renderAnalyzerMoves = useMemo(
     () =>
       moves?.map((m: AnalyzerMove, idx) => (
-        <React.Fragment key={idx}>
-          {m.urp && (
-            <tr>
-              <td colSpan={5}>...</td>
-            </tr>
-          )}
-          <tr
-            onClick={() => {
-              placeMove(m);
-            }}
-            {...((m.chosen ?? false) && { className: 'move-chosen' })}
-          >
-            <td className="move-coords">{m.coordinates}</td>
-            <td className="move">{m.displayMove}</td>
-            <td className="move-score">{m.score}</td>
-            <td className="move-leave">{m.leave}</td>
-            <td className="move-equity">
-              {(m.equity - (showEquityLoss ? moves[0].equity : 0)).toFixed(2)}
-              {!(m.valid ?? true) && <React.Fragment>*</React.Fragment>}
-            </td>
-          </tr>
-        </React.Fragment>
+        <tr
+          key={idx}
+          onClick={() => {
+            placeMove(m);
+          }}
+          {...((m.chosen ?? false) && { className: 'move-chosen' })}
+        >
+          <td className="move-coords">{m.coordinates}</td>
+          <td className="move">{m.displayMove}</td>
+          <td className="move-score">{m.score}</td>
+          <td className="move-leave">{m.leave}</td>
+          <td className="move-equity">
+            {(m.equity - (showEquityLoss ? moves[0].equity : 0)).toFixed(2)}
+            {!(m.valid ?? true) && <React.Fragment>*</React.Fragment>}
+          </td>
+        </tr>
       )) ?? null,
     [moves, placeMove, showEquityLoss]
   );
