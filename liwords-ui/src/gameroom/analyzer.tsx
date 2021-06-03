@@ -618,8 +618,10 @@ export const Analyzer = React.memo((props: AnalyzerProps) => {
     return cachedMoves;
   }, [showMoves, cachedMoves, currentEvaluatedMove]);
 
-  const [showEquityLoss, setShowEquityLoss] = useState(false);
-  void setShowEquityLoss; // pending UI
+  const showEquityLoss = React.useMemo(
+    () => localStorage.getItem('enableShowEquityLoss') === 'true',
+    []
+  );
   const renderAnalyzerMoves = useMemo(
     () =>
       moves?.map((m: AnalyzerMove, idx) => (
