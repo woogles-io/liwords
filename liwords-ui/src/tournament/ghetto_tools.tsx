@@ -20,7 +20,7 @@ import {
 } from 'antd';
 import axios from 'axios';
 import { Store } from 'rc-field-form/lib/interface';
-import React, { useState } from 'react';
+import React from 'react';
 import { postBinary, toAPIUrl, twirpErrToMsg } from '../api/api';
 import {
   DivisionControls,
@@ -110,6 +110,7 @@ type Props = {
 };
 
 export const GhettoTools = (props: Props) => {
+  const { useState } = useMountedState();
   const [modalTitle, setModalTitle] = useState('');
   const [modalVisible, setModalVisible] = useState(false);
   const [modalType, setModalType] = useState('');
@@ -1009,6 +1010,7 @@ const RoundControlFields = (props: RdCtrlFieldsProps) => {
 };
 
 const SetDivisionRoundControls = (props: { tournamentID: string }) => {
+  const { useState } = useMountedState();
   // This form is too complicated to use the Ant Design built-in forms;
   // So we're just going to use form components instead.
 
