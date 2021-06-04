@@ -37,10 +37,11 @@ func (b *Bus) chat(ctx context.Context, userID string, evt *pb.ChatMessage) erro
 	}
 
 	// Regulate chat only if the user is not privileged and the
-	// chat is not a game chat
+	// chat is not a private chat or a game chat
 	regulateChat := !(sendingUser.IsAdmin ||
 		sendingUser.IsMod ||
 		sendingUser.IsDirector ||
+		strings.HasPrefix(evt.Channel, "chat.pm.") ||
 		strings.HasPrefix(evt.Channel, "chat.game."))
 
 	userFriendlyChannelName := ""
