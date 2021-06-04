@@ -4,6 +4,7 @@ import { useDrag, useDragLayer, useDrop } from 'react-dnd';
 import TentativeScore from './tentative_score';
 import {
   Blank,
+  EmptySpace,
   isDesignatedBlank,
   isTouchDevice,
   uniqueTileIdx,
@@ -261,7 +262,10 @@ const Tile = React.memo((props: TileProps) => {
       <div
         className={computedClassName}
         data-rune={props.rune}
-        style={{ cursor: props.grabbable ? 'grab' : 'default' }}
+        style={{
+          cursor: props.grabbable ? 'grab' : 'default',
+          ...(props.rune === EmptySpace ? { visibility: 'hidden' } : null),
+        }}
         onClick={props.onClick}
         onMouseEnter={props.onMouseEnter}
         onMouseLeave={props.onMouseLeave}
@@ -269,8 +273,12 @@ const Tile = React.memo((props: TileProps) => {
         onDragEnd={handleEndDrag}
         draggable={props.grabbable}
       >
-        <TileLetter rune={props.rune} />
-        <PointValue value={props.value} />
+        {props.rune !== EmptySpace && (
+          <React.Fragment>
+            <TileLetter rune={props.rune} />
+            <PointValue value={props.value} />
+          </React.Fragment>
+        )}
         <TentativeScore
           score={props.tentativeScore}
           horizontal={props.tentativeScoreIsHorizontal}

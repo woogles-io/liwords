@@ -91,7 +91,15 @@ const handleTileDeletion = (
         // unassign the blank
         letter = Blank;
       }
-      newUnplacedTiles += letter;
+      const emptyIndex = newUnplacedTiles.indexOf(EmptySpace);
+      if (emptyIndex >= 0) {
+        newUnplacedTiles =
+          newUnplacedTiles.substring(0, emptyIndex) +
+          letter +
+          newUnplacedTiles.substring(emptyIndex + 1);
+      } else {
+        newUnplacedTiles += letter;
+      }
     }
   });
 
@@ -249,6 +257,7 @@ export const handleKeyPress = (
     });
     newUnplacedTiles =
       unplacedTiles.substring(0, blankIdx) +
+      EmptySpace +
       unplacedTiles.substring(blankIdx + 1);
   } else {
     // check if the key is in the unplaced tiles.
@@ -265,7 +274,9 @@ export const handleKeyPress = (
         });
 
         newUnplacedTiles =
-          unplacedTiles.substring(0, i) + unplacedTiles.substring(i + 1);
+          unplacedTiles.substring(0, i) +
+          EmptySpace +
+          unplacedTiles.substring(i + 1);
         existed = true;
         break;
       }
@@ -282,6 +293,7 @@ export const handleKeyPress = (
 
       newUnplacedTiles =
         unplacedTiles.substring(0, blankIdx) +
+        EmptySpace +
         unplacedTiles.substring(blankIdx + 1);
     } else {
       // Can't place this tile at all.
@@ -300,6 +312,46 @@ export const handleKeyPress = (
     newDisplayedRack: newUnplacedTiles,
     playScore: calculateTemporaryScore(newPlacedTiles, board),
   };
+};
+
+// Insert a rune to unplacedTiles at the preferred position.
+// Remove a nearby gap if any to keep length the same.
+// Assume 0 <= rackIndex <= unplacedTiles.length and rune.length === 1.
+export const stableInsertRack = (
+  unplacedTiles: string,
+  rackIndex: number,
+  rune: string
+): string => {
+  let newUnplacedTilesLeft = unplacedTiles.substring(0, rackIndex);
+  let newUnplacedTilesRight = unplacedTiles.substring(rackIndex);
+  let emptyIndexLeft = newUnplacedTilesLeft.lastIndexOf(EmptySpace);
+  let emptyIndexRight = newUnplacedTilesRight.indexOf(EmptySpace);
+  if (emptyIndexLeft >= 0 && emptyIndexRight >= 0) {
+    // Determine which gap to recover.
+    // Right has an advantage because it starts from 0, Left starts from 1.
+    if (newUnplacedTilesLeft.length - emptyIndexLeft < emptyIndexRight) {
+      // Left wins anyway.
+      emptyIndexRight = -1;
+    } else {
+      emptyIndexLeft = -1;
+    }
+  }
+  if (emptyIndexLeft >= 0) {
+    newUnplacedTilesLeft =
+      newUnplacedTilesLeft.substring(0, emptyIndexLeft) +
+      newUnplacedTilesLeft.substring(emptyIndexLeft + 1);
+    // Keep Left's length the same if possible.
+    if (newUnplacedTilesRight.length > 0) {
+      newUnplacedTilesLeft += newUnplacedTilesRight[0];
+      newUnplacedTilesRight = newUnplacedTilesRight.substring(1);
+    }
+  } else if (emptyIndexRight >= 0) {
+    newUnplacedTilesRight =
+      newUnplacedTilesRight.substring(0, emptyIndexRight) +
+      newUnplacedTilesRight.substring(emptyIndexRight + 1);
+  }
+  // It is also possible there are no gaps left, just insert in that case.
+  return newUnplacedTilesLeft + rune + newUnplacedTilesRight;
 };
 
 export const returnTileToRack = (
@@ -326,11 +378,9 @@ export const returnTileToRack = (
   } else {
     return null;
   }
-  const newRack = unplacedTiles.split('');
-  newRack.splice(rackIndex, 0, rune);
   return {
     newPlacedTiles,
-    newDisplayedRack: newRack.join(''),
+    newDisplayedRack: stableInsertRack(unplacedTiles, rackIndex, rune),
     playScore: calculateTemporaryScore(newPlacedTiles, board),
   };
 };
@@ -373,6 +423,7 @@ export const handleDroppedTile = (
     } else {
       newUnplacedTiles =
         unplacedTiles.substring(0, rackIndex) +
+        EmptySpace +
         unplacedTiles.substring(rackIndex + 1);
     }
   } else {

@@ -46,6 +46,7 @@ type AnalyzerMove = {
   displayMove: string;
   coordinates: string;
   leave: string;
+  leaveWithGaps: string;
   score: number;
   equity: string;
   row: number;
@@ -79,6 +80,21 @@ export const analyzerMoveFromJsonMove = (
     for (const t of leaveNum) {
       if (!isNaN(t)) {
         leaveStr += numToLabel(t);
+      }
+    }
+    return leaveStr;
+  };
+  const addGapsToLeaveStr = (
+    leaveNum: Array<number>,
+    sortedLeaveStr: string
+  ) => {
+    let leaveStr = '';
+    let r = 0;
+    for (const t of leaveNum) {
+      if (!isNaN(t)) {
+        leaveStr += sortedLeaveStr[r++];
+      } else {
+        leaveStr += EmptySpace;
       }
     }
     return leaveStr;
@@ -123,10 +139,12 @@ export const analyzerMoveFromJsonMove = (
         else ++c;
       }
       if (inParen) displayMove += ')';
+      const leaveStr = sortTiles(makeLeaveStr(leaveNum));
       return {
         displayMove,
         coordinates,
-        leave: sortTiles(makeLeaveStr(leaveNum)),
+        leave: leaveStr,
+        leaveWithGaps: addGapsToLeaveStr(leaveNum, leaveStr),
         vertical,
         col,
         row,
@@ -146,19 +164,23 @@ export const analyzerMoveFromJsonMove = (
         if (usedTileIndex >= 0) leaveNum[usedTileIndex] = NaN;
       }
       tilesBeingMoved = sortTiles(tilesBeingMoved);
+      const leaveStr = sortTiles(makeLeaveStr(leaveNum));
       return {
         ...defaultRet,
         displayMove: tilesBeingMoved ? `Exch. ${tilesBeingMoved}` : 'Pass',
-        leave: sortTiles(makeLeaveStr(leaveNum)),
+        leave: leaveStr,
+        leaveWithGaps: addGapsToLeaveStr(leaveNum, leaveStr),
         equity: move.equity.toFixed(2),
         tiles: tilesBeingMoved,
         isExchange: true,
       };
     }
     default: {
+      const leaveStr = makeLeaveStr(rackNum);
       return {
         ...defaultRet,
-        leave: makeLeaveStr(rackNum),
+        leave: leaveStr,
+        leaveWithGaps: addGapsToLeaveStr(rackNum, leaveStr),
       };
     }
   }
@@ -372,7 +394,7 @@ export const Analyzer = React.memo((props: AnalyzerProps) => {
         if (vertical) ++row;
         else ++col;
       }
-      setDisplayedRack(move.leave);
+      setDisplayedRack(move.leaveWithGaps);
       setPlacedTiles(newPlacedTiles);
       setPlacedTilesTempScore(move.score);
     },
