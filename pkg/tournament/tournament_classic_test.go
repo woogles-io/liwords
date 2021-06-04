@@ -1007,7 +1007,18 @@ func TestClassicDivisionInitialFontes(t *testing.T) {
 
 	is := is.New(t)
 
-	roundControls := defaultRoundControls(defaultRounds)
+	roundControls := defaultRoundControls(3)
+
+	// Make all rounds Initial Fontes
+	// This doesn't make sense and shouldn't be done
+	// but we can test it anyway
+	for i := 0; i < 3; i++ {
+		roundControls[i].PairingMethod = realtime.PairingMethod_INITIAL_FONTES
+	}
+	_, err := compactNewClassicDivision(defaultPlayers, roundControls, true)
+	is.NoErr(err)
+
+	roundControls = defaultRoundControls(defaultRounds)
 
 	for i := 1; i < defaultRounds; i++ {
 		roundControls[i].PairingMethod = realtime.PairingMethod_INITIAL_FONTES
@@ -1015,7 +1026,7 @@ func TestClassicDivisionInitialFontes(t *testing.T) {
 
 	// InitialFontes can only be used in contiguous defaultRounds
 	// starting with round 1
-	_, err := compactNewClassicDivision(defaultPlayers, roundControls, true)
+	_, err = compactNewClassicDivision(defaultPlayers, roundControls, true)
 	is.True(err != nil)
 
 	roundControls[0].PairingMethod = realtime.PairingMethod_INITIAL_FONTES

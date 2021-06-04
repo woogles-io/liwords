@@ -65,7 +65,6 @@ func (t *ClassicDivision) SetRoundControls(roundControls []*realtime.RoundContro
 
 	numberOfRounds := len(roundControls)
 	numberOfPlayers := len(t.Players.Persons)
-
 	if numberOfRounds <= 0 {
 		return nil, nil, nil, fmt.Errorf("cannot set round controls with empty array")
 	}
@@ -96,6 +95,9 @@ func (t *ClassicDivision) SetRoundControls(roundControls []*realtime.RoundContro
 			} else if control.PairingMethod != realtime.PairingMethod_INITIAL_FONTES &&
 				roundControls[i-1].PairingMethod == realtime.PairingMethod_INITIAL_FONTES {
 				initialFontes = int32(i)
+			} else if control.PairingMethod == realtime.PairingMethod_INITIAL_FONTES &&
+				i == numberOfRounds-1 {
+				initialFontes = int32(numberOfRounds)
 			}
 		}
 	}
