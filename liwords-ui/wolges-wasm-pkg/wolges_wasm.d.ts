@@ -18,3 +18,8 @@ export function precache_klv(key: string, value: Uint8Array): void;
 * @returns {any}
 */
 export function analyze(req_str: string): any;
+/**
+* @param {string} req_str
+* @returns {any}
+*/
+export function play_score(req_str: string): any;
