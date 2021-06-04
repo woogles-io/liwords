@@ -9,6 +9,7 @@ import (
 	"github.com/domino14/macondo/game"
 	macondopb "github.com/domino14/macondo/gen/api/proto/macondo"
 	"github.com/rs/zerolog/log"
+	"google.golang.org/protobuf/proto"
 )
 
 const (
@@ -263,7 +264,8 @@ func LastOutstandingMetaRequest(evts []*pb.GameMetaEvent, uid string) *pb.GameMe
 		case pb.GameMetaEvent_ABORT_ACCEPTED,
 			pb.GameMetaEvent_ABORT_DENIED,
 			pb.GameMetaEvent_ADJUDICATION_ACCEPTED,
-			pb.GameMetaEvent_ADJUDICATION_DENIED:
+			pb.GameMetaEvent_ADJUDICATION_DENIED,
+			pb.GameMetaEvent_TIMER_EXPIRED:
 
 			if e.OrigEventId == lastReqID {
 				// We found a match, so clear the last request
@@ -272,7 +274,14 @@ func LastOutstandingMetaRequest(evts []*pb.GameMetaEvent, uid string) *pb.GameMe
 			}
 		}
 	}
-
+	if lastReq != nil && lastReq.Timestamp != nil {
+		now := time.Now()
+		sinceBeginning := now.Sub(lastReq.Timestamp.AsTime())
+		// calculate lastReq's expiry as of _now_ (but we're not saving it back,
+		// this is just for FE purposes)
+		lastReq = proto.Clone(lastReq).(*pb.GameMetaEvent)
+		lastReq.Expiry -= int32(sinceBeginning.Seconds())
+	}
 	log.Debug().Interface("lastReq", lastReq).Msg("returning last outstanding req")
 
 	return lastReq
@@ -283,14 +292,17 @@ func (g *Game) HistoryRefresherEvent() *pb.GameHistoryRefresher {
 
 	g.calculateAndSetTimeRemaining(0, now, false)
 	g.calculateAndSetTimeRemaining(1, now, false)
+	var outstandingEvent *pb.GameMetaEvent
+	if g.Playing() != macondopb.PlayState_GAME_OVER {
+		outstandingEvent = LastOutstandingMetaRequest(g.MetaEvents.Events, "")
+	}
 
 	return &pb.GameHistoryRefresher{
 		History:            g.History(),
 		TimePlayer1:        int32(g.TimeRemaining(0)),
 		TimePlayer2:        int32(g.TimeRemaining(1)),
 		MaxOvertimeMinutes: g.GameReq.MaxOvertimeMinutes,
-		// XXX: Calculate how much time is remaining in the outstanding meta request:
-		OutstandingEvent: LastOutstandingMetaRequest(g.MetaEvents.Events, ""),
+		OutstandingEvent:   outstandingEvent,
 	}
 }
 

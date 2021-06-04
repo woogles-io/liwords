@@ -673,6 +673,19 @@ export const useOnSocketMsg = () => {
               payload: ghr,
             });
 
+            // If the history refresher contains a meta event,
+            // set it properly.
+            const gme = ghr.getOutstandingEvent();
+            if (gme) {
+              setGameMetaEventContext(
+                metaStateFromMetaEvent(
+                  gameMetaEventContext,
+                  gme,
+                  loginState.userID
+                )
+              );
+            }
+
             // If there is an Antd message about "waiting for game", destroy it.
             message.destroy('server-message');
             break;

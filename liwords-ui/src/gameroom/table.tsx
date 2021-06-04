@@ -1033,10 +1033,12 @@ export const Table = React.memo((props: Props) => {
             handleUnsetHover={hideDefinitionHover}
             definitionPopover={definitionPopover}
           />
-          <MetaEventControl
-            sendSocketMsg={props.sendSocketMsg}
-            gameID={gameID}
-          />
+          {!gameDone && (
+            <MetaEventControl
+              sendSocketMsg={props.sendSocketMsg}
+              gameID={gameID}
+            />
+          )}
           <StreakWidget streakInfo={streakGameInfo} />
         </div>
         <div className="data-area" id="right-sidebar">
