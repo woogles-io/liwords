@@ -131,6 +131,12 @@ type TileProps = {
   y?: number | undefined;
   popoverContent?: React.ReactNode;
   onPopoverClick?: (evt: React.MouseEvent<HTMLElement>) => void;
+  handleTileDrop?: (
+    row: number,
+    col: number,
+    rackIndex: number | undefined,
+    tileIndex: number | undefined
+  ) => void;
 };
 
 const Tile = React.memo((props: TileProps) => {
@@ -159,6 +165,15 @@ const Tile = React.memo((props: TileProps) => {
   };
 
   const handleDrop = (e: any) => {
+    if (props.handleTileDrop && props.y != null && props.x != null) {
+      props.handleTileDrop(
+        props.y,
+        props.x,
+        parseInt(e.dataTransfer.getData('rackIndex'), 10),
+        parseInt(e.dataTransfer.getData('tileIndex'), 10)
+      );
+      return;
+    }
     if (props.moveRackTile && e.dataTransfer.getData('rackIndex')) {
       props.moveRackTile(
         props.rackIndex,
