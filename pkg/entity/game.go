@@ -250,14 +250,18 @@ func LastOutstandingMetaRequest(evts []*pb.GameMetaEvent, uid string) *pb.GameMe
 	var lastReq *pb.GameMetaEvent
 	var lastReqID string
 	for _, e := range evts {
-		if uid != "" && e.PlayerId != uid {
-			continue
-		}
+
 		switch e.Type {
 		case pb.GameMetaEvent_REQUEST_ABORT,
 			pb.GameMetaEvent_REQUEST_ADJUDICATION,
 			pb.GameMetaEvent_REQUEST_UNDO,
 			pb.GameMetaEvent_REQUEST_ADJOURN:
+
+			if uid != "" && e.PlayerId != uid {
+				// not our event
+				break
+			}
+
 			lastReqID = e.OrigEventId
 			lastReq = e
 

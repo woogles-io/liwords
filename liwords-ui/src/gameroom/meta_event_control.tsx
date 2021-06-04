@@ -35,6 +35,19 @@ export const MetaEventControl = (props: Props) => {
     [sendSocketMsg, gameID]
   );
 
+  const denyAdjudication = useCallback(
+    (evtid: string) => {
+      const deny = new GameMetaEvent();
+      deny.setType(GameMetaEvent.EventType.ADJUDICATION_DENIED);
+      deny.setOrigEventId(evtid);
+      deny.setGameId(gameID);
+      sendSocketMsg(
+        encodeToSocketFmt(MessageType.GAME_META_EVENT, deny.serializeBinary())
+      );
+    },
+    [sendSocketMsg, gameID]
+  );
+
   const acceptAbort = useCallback(
     (evtid: string) => {
       const accept = new GameMetaEvent();
@@ -109,27 +122,49 @@ export const MetaEventControl = (props: Props) => {
         break;
 
       case MetaStates.REQUESTED_ADJUDICATION:
-        notification.info({
-          message: '',
-          description: 'Waiting for your opponent to respond to your nudge.',
-          key: 'request-adjudication',
-          placement: 'bottomRight',
-          duration: 0,
-        });
+        setActiveNotif(
+          <ShowNotif
+            maxDuration={gameMetaEventContext.initialExpirySecs * 1000}
+            onExpire={() => {
+              eventTimeout(gameMetaEventContext.evtId);
+            }}
+            onAccept={undefined}
+            onDecline={undefined}
+            introText="Waiting for your opponent to respond to your nudge."
+            acceptText=""
+            declineText=""
+          />
+        );
+
         break;
 
       case MetaStates.RECEIVER_ADJUDICATION_COUNTDOWN:
-        notification.info({
-          message: '',
-          description:
-            'Your opponent nudged you! Hit "Keep playing" if you\'re still there.',
-          key: 'received-adjudication',
-          placement: 'bottomRight',
-          duration: 0,
-        });
+        setActiveNotif(
+          <ShowNotif
+            maxDuration={gameMetaEventContext.initialExpirySecs * 1000}
+            onExpire={() => {
+              eventTimeout(gameMetaEventContext.evtId);
+            }}
+            onDecline={() => {
+              denyAdjudication(gameMetaEventContext.evtId);
+            }}
+            introText={
+              'Your opponent nudged you! Hit "Keep playing" if you\'re still there.'
+            }
+            acceptText=""
+            declineText="Keep playing"
+          />
+        );
+
         break;
     }
-  }, [gameMetaEventContext, acceptAbort, denyAbort, eventTimeout]);
+  }, [
+    gameMetaEventContext,
+    acceptAbort,
+    denyAbort,
+    denyAdjudication,
+    eventTimeout,
+  ]);
 
   return activeNotif;
 };

@@ -71,7 +71,31 @@ export const metaStateFromMetaEvent = (
       });
       initialExpirySecs = 0;
       metaState = MetaStates.NO_ACTIVE_REQUEST;
-      // the evtCreator is the one that denied the abort.
+      // the evtCreator is the one that accepted the abort.
+      evtCreator = metaEvent.getPlayerId();
+      evtId = '';
+      break;
+    }
+
+    case GameMetaEvent.EventType.ADJUDICATION_ACCEPTED: {
+      message.info({
+        content: 'The game was adjudicated.',
+      });
+      initialExpirySecs = 0;
+      metaState = MetaStates.NO_ACTIVE_REQUEST;
+      // the evtCreator is the one that accepted the adjudication.
+      evtCreator = metaEvent.getPlayerId();
+      evtId = '';
+      break;
+    }
+
+    case GameMetaEvent.EventType.ADJUDICATION_DENIED: {
+      message.info({
+        content: 'The game will continue.',
+      });
+      initialExpirySecs = 0;
+      metaState = MetaStates.NO_ACTIVE_REQUEST;
+      // the evtCreator is the one that denied the adjudication.
       evtCreator = metaEvent.getPlayerId();
       evtId = '';
       break;
