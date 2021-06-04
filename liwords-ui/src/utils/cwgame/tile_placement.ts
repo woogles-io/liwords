@@ -346,43 +346,67 @@ export const handleDroppedTile = (
 ): PlacementHandlerReturn | null => {
   // Create an ephemeral tile map with unique keys.
   const ephTileMap: { [tileIdx: number]: EphemeralTile } = {};
+  let targetSquare: EphemeralTile | undefined;
+  let sourceSquare: EphemeralTile | undefined;
   currentlyPlacedTiles.forEach((t) => {
-    ephTileMap[uniqueTileIdx(t.row, t.col)] = t;
+    if (t.row === row && t.col === col) {
+      targetSquare = t;
+    } else {
+      const thisTileIndex = uniqueTileIdx(t.row, t.col);
+      if (!(rackIndex >= 0) && tileIndex === thisTileIndex) {
+        sourceSquare = t;
+      } else {
+        ephTileMap[thisTileIndex] = t;
+      }
+    }
   });
   let newUnplacedTiles = unplacedTiles;
-  const newPlacedTiles = new Set(currentlyPlacedTiles);
+  const newPlacedTiles = new Set(Object.values(ephTileMap));
   let rune;
-  if (rackIndex > -1) {
+  if (rackIndex >= 0) {
     rune = unplacedTiles[rackIndex];
+    if (targetSquare) {
+      newUnplacedTiles =
+        unplacedTiles.substring(0, rackIndex) +
+        (isBlank(targetSquare.letter) ? Blank : targetSquare.letter) +
+        unplacedTiles.substring(rackIndex + 1);
+    } else {
+      newUnplacedTiles =
+        unplacedTiles.substring(0, rackIndex) +
+        unplacedTiles.substring(rackIndex + 1);
+    }
   } else {
-    if (!(tileIndex in ephTileMap)) {
+    if (!sourceSquare) {
       // Dragged tile no longer at source, likely because opponent moved there.
+      // Also the case if dragging to the same spot.
       return null;
     }
-    rune = ephTileMap[tileIndex].letter;
-    newPlacedTiles.delete(ephTileMap[tileIndex]);
+    rune = sourceSquare.letter;
+    if (targetSquare) {
+      // Behold this prestidigitation!
+      newPlacedTiles.add({
+        ...sourceSquare,
+        letter: targetSquare.letter,
+      });
+    }
+  }
+
+  if (isBlank(rune)) {
+    // reset moved blanks
+    rune = Blank;
   }
 
   newPlacedTiles.add({
     row: row,
     col: col,
-    // reset moved blanks
-    letter: isBlank(rune) ? Blank : rune,
+    letter: rune,
   });
-
-  if (rackIndex > -1) {
-    newUnplacedTiles =
-      unplacedTiles.substring(0, rackIndex) +
-      unplacedTiles.substring(rackIndex + 1);
-  } else {
-    newUnplacedTiles = unplacedTiles;
-  }
 
   return {
     newPlacedTiles,
     newDisplayedRack: newUnplacedTiles,
     playScore: calculateTemporaryScore(newPlacedTiles, board),
-    isUndesignated: isBlank(rune),
+    isUndesignated: rune === Blank,
   };
 };
 

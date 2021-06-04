@@ -1,6 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import { useMountedState } from '../utils/mounted';
-import { useDrag, useDragLayer } from 'react-dnd';
+import { useDrag, useDragLayer, useDrop } from 'react-dnd';
 import TentativeScore from './tentative_score';
 import {
   Blank,
@@ -131,6 +131,12 @@ type TileProps = {
   y?: number | undefined;
   popoverContent?: React.ReactNode;
   onPopoverClick?: (evt: React.MouseEvent<HTMLElement>) => void;
+  handleTileDrop?: (
+    row: number,
+    col: number,
+    rackIndex: number | undefined,
+    tileIndex: number | undefined
+  ) => void;
 };
 
 const Tile = React.memo((props: TileProps) => {
@@ -159,6 +165,15 @@ const Tile = React.memo((props: TileProps) => {
   };
 
   const handleDrop = (e: any) => {
+    if (props.handleTileDrop && props.y != null && props.x != null) {
+      props.handleTileDrop(
+        props.y,
+        props.x,
+        parseInt(e.dataTransfer.getData('rackIndex'), 10),
+        parseInt(e.dataTransfer.getData('tileIndex'), 10)
+      );
+      return;
+    }
     if (props.moveRackTile && e.dataTransfer.getData('rackIndex')) {
       props.moveRackTile(
         props.rackIndex,
@@ -203,10 +218,36 @@ const Tile = React.memo((props: TileProps) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  const [, drop] = useDrop({
+    accept: TILE_TYPE,
+    drop: (item: any, monitor: any) => {
+      if (props.handleTileDrop && props.y != null && props.x != null) {
+        props.handleTileDrop(
+          props.y,
+          props.x,
+          parseInt(item.rackIndex, 10),
+          parseInt(item.tileIndex, 10)
+        );
+      }
+    },
+    collect: (monitor) => ({
+      isOver: !!monitor.isOver(),
+      canDrop: !!monitor.canDrop(),
+    }),
+  });
+
   const tileRef = useRef(null);
-  if (props.grabbable && isTouchDevice()) {
-    drag(tileRef);
-  }
+  const isTouchDeviceResult = isTouchDevice();
+  useEffect(() => {
+    if (props.grabbable && isTouchDeviceResult) {
+      drag(tileRef);
+    }
+  }, [props.grabbable, isTouchDeviceResult, drag]);
+  useEffect(() => {
+    if (isTouchDeviceResult) {
+      drop(tileRef);
+    }
+  }, [isTouchDeviceResult, drop]);
 
   const computedClassName = `tile${
     isDragging || isMouseDragging ? ' dragging' : ''

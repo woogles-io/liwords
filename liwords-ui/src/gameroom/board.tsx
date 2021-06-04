@@ -75,6 +75,7 @@ const Board = React.memo((props: Props) => {
           handleSetHover={props.handleSetHover}
           handleUnsetHover={props.handleUnsetHover}
           definitionPopover={props.definitionPopover}
+          handleTileDrop={props.handleTileDrop}
         />
         {svgDrawing}
       </div>
