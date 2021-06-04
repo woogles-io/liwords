@@ -1,6 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import { useMountedState } from '../utils/mounted';
-import { useDrag, useDragLayer } from 'react-dnd';
+import { useDrag, useDragLayer, useDrop } from 'react-dnd';
 import TentativeScore from './tentative_score';
 import {
   Blank,
@@ -218,6 +218,24 @@ const Tile = React.memo((props: TileProps) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  const [, drop] = useDrop({
+    accept: TILE_TYPE,
+    drop: (item: any, monitor: any) => {
+      if (props.handleTileDrop && props.y != null && props.x != null) {
+        props.handleTileDrop(
+          props.y,
+          props.x,
+          parseInt(item.rackIndex, 10),
+          parseInt(item.tileIndex, 10)
+        );
+      }
+    },
+    collect: (monitor) => ({
+      isOver: !!monitor.isOver(),
+      canDrop: !!monitor.canDrop(),
+    }),
+  });
+
   const tileRef = useRef(null);
   const isTouchDeviceResult = isTouchDevice();
   useEffect(() => {
@@ -225,6 +243,11 @@ const Tile = React.memo((props: TileProps) => {
       drag(tileRef);
     }
   }, [props.grabbable, isTouchDeviceResult, drag]);
+  useEffect(() => {
+    if (isTouchDeviceResult) {
+      drop(tileRef);
+    }
+  }, [isTouchDeviceResult, drop]);
 
   const computedClassName = `tile${
     isDragging || isMouseDragging ? ' dragging' : ''
