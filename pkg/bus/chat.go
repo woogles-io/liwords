@@ -79,6 +79,19 @@ func (b *Bus) chat(ctx context.Context, userID string, evt *pb.ChatMessage) erro
 			return err
 		}
 		userFriendlyChannelName = "tournament:" + t.Name
+		if regulateChat {
+			for _, director := range t.Directors.Persons {
+				uuid := director.Id
+				colon := strings.IndexByte(uuid, ':')
+				if colon >= 0 {
+					uuid = uuid[:colon]
+				}
+				if userID == uuid {
+					regulateChat = false
+					break
+				}
+			}
+		}
 	}
 
 	chatMessage, err := b.chatStore.AddChat(ctx, sendingUser.Username, userID, evt.Message, evt.Channel, userFriendlyChannelName, regulateChat)
