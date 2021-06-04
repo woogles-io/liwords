@@ -219,9 +219,12 @@ const Tile = React.memo((props: TileProps) => {
   }, []);
 
   const tileRef = useRef(null);
-  if (props.grabbable && isTouchDevice()) {
-    drag(tileRef);
-  }
+  const isTouchDeviceResult = isTouchDevice();
+  useEffect(() => {
+    if (props.grabbable && isTouchDeviceResult) {
+      drag(tileRef);
+    }
+  }, [props.grabbable, isTouchDeviceResult, drag]);
 
   const computedClassName = `tile${
     isDragging || isMouseDragging ? ' dragging' : ''
