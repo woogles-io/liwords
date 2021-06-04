@@ -38,6 +38,12 @@ type Props = {
   definitionPopover?:
     | { x: number; y: number; content: React.ReactNode }
     | undefined;
+  handleTileDrop?: (
+    row: number,
+    col: number,
+    rackIndex: number | undefined,
+    tileIndex: number | undefined
+  ) => void;
 };
 
 const Tiles = React.memo((props: Props) => {
@@ -233,6 +239,7 @@ const Tiles = React.memo((props: Props) => {
               tentativeScore={tentativeScoreHere}
               tentativeScoreIsHorizontal={tentativeScoreHereIsHorizontal}
               grabbable={true}
+              handleTileDrop={props.handleTileDrop}
               {...(tentativeTile.letter !== Blank && definitionHandlers)}
             />
           );

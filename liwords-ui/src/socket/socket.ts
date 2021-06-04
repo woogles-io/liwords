@@ -211,25 +211,24 @@ export const LiwordsSocket = (props: {
     []
   );
   useEffect(() => {
-    if (!isConnectedToSocket) {
-      return doNothing;
-    }
     const t = setTimeout(() => {
-      console.log('no more msgs');
+      console.log('reconnecting socket');
       resetSocket();
     }, 15000);
     return () => {
       clearTimeout(t);
     };
-  }, [isConnectedToSocket, patienceId, resetSocket]);
+  }, [patienceId, resetSocket]);
 
   const { sendMessage: originalSendMessage } = useWebSocket(
     getFullSocketUrlAsync,
     {
       onOpen: () => {
+        resetPatience();
         setIsConnectedToSocket(true);
       },
       onClose: () => {
+        resetPatience();
         setIsConnectedToSocket(false);
       },
       reconnectAttempts: Infinity,
