@@ -195,6 +195,7 @@ const Tile = React.memo((props: TileProps) => {
     e.stopPropagation();
   };
 
+  const canDrag = props.grabbable && props.rune !== EmptySpace;
   const [{ isDragging }, drag, preview] = useDrag({
     item: {
       type: TILE_TYPE,
@@ -212,6 +213,7 @@ const Tile = React.memo((props: TileProps) => {
     collect: (monitor) => ({
       isDragging: monitor.isDragging(),
     }),
+    canDrag: (monitor) => canDrag,
   });
 
   useEffect(() => {
@@ -240,19 +242,20 @@ const Tile = React.memo((props: TileProps) => {
   const tileRef = useRef(null);
   const isTouchDeviceResult = isTouchDevice();
   useEffect(() => {
-    if (props.grabbable && isTouchDeviceResult) {
+    if (canDrag && isTouchDeviceResult) {
       drag(tileRef);
     }
-  }, [props.grabbable, isTouchDeviceResult, drag]);
+  }, [canDrag, isTouchDeviceResult, drag]);
+  const canDrop = props.handleTileDrop && props.y != null && props.x != null;
   useEffect(() => {
-    if (isTouchDeviceResult) {
+    if (canDrop && isTouchDeviceResult) {
       drop(tileRef);
     }
-  }, [isTouchDeviceResult, drop]);
+  }, [canDrop, isTouchDeviceResult, drop]);
 
   const computedClassName = `tile${
     isDragging || isMouseDragging ? ' dragging' : ''
-  }${props.grabbable ? ' droppable' : ''}${props.selected ? ' selected' : ''}${
+  }${canDrag ? ' droppable' : ''}${props.selected ? ' selected' : ''}${
     props.tentative ? ' tentative' : ''
   }${props.lastPlayed ? ' last-played' : ''}${
     isDesignatedBlank(props.rune) ? ' blank' : ''
@@ -263,15 +266,15 @@ const Tile = React.memo((props: TileProps) => {
         className={computedClassName}
         data-rune={props.rune}
         style={{
-          cursor: props.grabbable ? 'grab' : 'default',
+          cursor: canDrag ? 'grab' : 'default',
           ...(props.rune === EmptySpace ? { visibility: 'hidden' } : null),
         }}
         onClick={props.onClick}
         onMouseEnter={props.onMouseEnter}
         onMouseLeave={props.onMouseLeave}
-        onDragStart={handleStartDrag}
-        onDragEnd={handleEndDrag}
-        draggable={props.grabbable}
+        onDragStart={canDrag ? handleStartDrag : undefined}
+        onDragEnd={canDrag ? handleEndDrag : undefined}
+        draggable={canDrag}
       >
         {props.rune !== EmptySpace && (
           <React.Fragment>
