@@ -47,15 +47,21 @@ type TilePreviewProps = {
 export const TilePreview = React.memo((props: TilePreviewProps) => {
   const { useState } = useMountedState();
   const [updateCount, setUpdateCount] = useState(0);
-  const { isDragging, xyPosition, initialPosition, rune, value } = useDragLayer(
-    (monitor) => ({
-      xyPosition: monitor.getClientOffset(),
-      initialPosition: monitor.getInitialClientOffset(),
-      isDragging: monitor.isDragging(),
-      rune: monitor.getItem()?.rune,
-      value: monitor.getItem()?.value,
-    })
-  );
+  const {
+    isDragging,
+    xyPosition,
+    initialPosition,
+    rune,
+    value,
+    playerOfTile,
+  } = useDragLayer((monitor) => ({
+    xyPosition: monitor.getClientOffset(),
+    initialPosition: monitor.getInitialClientOffset(),
+    isDragging: monitor.isDragging(),
+    rune: monitor.getItem()?.rune,
+    value: monitor.getItem()?.value,
+    playerOfTile: monitor.getItem()?.playerOfTile,
+  }));
   const [position, setPosition] = useState(initialPosition);
   const boardElement = document.getElementById('board-spaces');
   useEffect(() => {
@@ -91,7 +97,9 @@ export const TilePreview = React.memo((props: TilePreviewProps) => {
       top,
       left,
     };
-    const computedClass = `tile preview${overBoard ? ' over-board' : ''}`;
+    const computedClass = `tile preview${overBoard ? ' over-board' : ''}${
+      isDesignatedBlank(rune) ? ' blank' : ''
+    }${playerOfTile ? ' tile-p1' : ' tile-p0'}`;
     if (isDragging) {
       return (
         <div className={computedClass} style={computedStyle}>
@@ -141,13 +149,8 @@ type TileProps = {
 };
 
 const Tile = React.memo((props: TileProps) => {
-  const { useState } = useMountedState();
-
-  const [isMouseDragging, setIsMouseDragging] = useState(false);
-
   const handleStartDrag = (e: any) => {
     if (e) {
-      setIsMouseDragging(true);
       e.dataTransfer.dropEffect = 'move';
       if (
         props.tentative &&
@@ -159,10 +162,6 @@ const Tile = React.memo((props: TileProps) => {
         e.dataTransfer.setData('rackIndex', props.rackIndex);
       }
     }
-  };
-
-  const handleEndDrag = () => {
-    setIsMouseDragging(false);
   };
 
   const handleDrop = (e: any) => {
@@ -209,6 +208,7 @@ const Tile = React.memo((props: TileProps) => {
           : undefined,
       rune: props.rune,
       value: props.value,
+      playerOfTile: props.playerOfTile,
     },
     collect: (monitor) => ({
       isDragging: monitor.isDragging(),
@@ -253,13 +253,13 @@ const Tile = React.memo((props: TileProps) => {
     }
   }, [canDrop, isTouchDeviceResult, drop]);
 
-  const computedClassName = `tile${
-    isDragging || isMouseDragging ? ' dragging' : ''
-  }${canDrag ? ' droppable' : ''}${props.selected ? ' selected' : ''}${
-    props.tentative ? ' tentative' : ''
-  }${props.lastPlayed ? ' last-played' : ''}${
-    isDesignatedBlank(props.rune) ? ' blank' : ''
-  }${props.playerOfTile ? ' tile-p1' : ' tile-p0'}`;
+  const computedClassName = `tile${isDragging ? ' dragging' : ''}${
+    canDrag ? ' droppable' : ''
+  }${props.selected ? ' selected' : ''}${props.tentative ? ' tentative' : ''}${
+    props.lastPlayed ? ' last-played' : ''
+  }${isDesignatedBlank(props.rune) ? ' blank' : ''}${
+    props.playerOfTile ? ' tile-p1' : ' tile-p0'
+  }`;
   let ret = (
     <div onDragOver={handleDropOver} onDrop={handleDrop} ref={tileRef}>
       <div
@@ -273,7 +273,6 @@ const Tile = React.memo((props: TileProps) => {
         onMouseEnter={props.onMouseEnter}
         onMouseLeave={props.onMouseLeave}
         onDragStart={canDrag ? handleStartDrag : undefined}
-        onDragEnd={canDrag ? handleEndDrag : undefined}
         draggable={canDrag}
       >
         {props.rune !== EmptySpace && (
