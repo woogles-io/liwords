@@ -40,7 +40,7 @@ $font-tile: 'Roboto Mono', monospace;
 
 $tile-size-mobile: 34px;
 $tile-size-tablet: 34px;
-$tile-size-laptop:  34px;
+$tile-size-laptop: 34px;
 $tile-size-desktop: 44px;
 
 $board-size-mobile: $tile-size-mobile * 15;
@@ -54,8 +54,14 @@ $main-container-width-laptop: $board-size-laptop + 24px;
 $main-container-width-desktop: $board-size-desktop + 24px;
 
 $sidebar-width-tablet: calc((100% - #{$main-container-width-laptop}) - 24px);
-$sidebar-width-laptop:  calc((100% - #{$main-container-width-laptop}) / 2  - 12px);
-$sidebar-width-desktop:  calc((100% - #{$main-container-width-desktop}) / 2  - 12px);
+$sidebar-width-laptop: calc(
+  (100% - #{$main-container-width-laptop}) / 2 - 12px
+);
+$sidebar-width-desktop: calc(
+  (100% - #{$main-container-width-desktop}) / 2 - 12px
+);
+
+$settings-width: calc(35%);
 
 $tile-font-size-mobile: $tile-size-mobile * 0.68;
 $tile-font-size-tablet: $tile-size-tablet * 0.68;
@@ -151,8 +157,7 @@ h4 {
   font-size: 16px;
 }
 
-ul
-{
+ul {
   list-style: none;
   padding: 0;
   margin: 0;
@@ -185,7 +190,6 @@ ul
   border-color: #fcc65e;
 }
 
-
 .ant-tag-cyan {
   background: #55c0e9;
   color: #414141;
@@ -210,7 +214,8 @@ ul
   border-color: #abec63;
 }
 
-.ant-tag-orange, .ant-tag-bye {
+.ant-tag-orange,
+.ant-tag-bye {
   background: #fcac69;
   color: #414141;
   border-color: #fcac69;
@@ -233,13 +238,14 @@ ul
   border-color: #b2e49b;
 }
 
-
 .ant-tag-blue {
   background: #b2dcf0;
   color: #414141;
   border-color: #b2dcf0;
 }
-.ant-tag-red, .ant-tag-removed, .ant-tag-forfeit {
+.ant-tag-red,
+.ant-tag-removed,
+.ant-tag-forfeit {
   background: #8a0f23;
   color: #ffffff;
   border-color: #8a0f23;
@@ -275,7 +281,8 @@ ul
   }
 }
 
-.ant-dropdown-menu, .ant-select-dropdown {
+.ant-dropdown-menu,
+.ant-select-dropdown {
   padding: 0;
   z-index: 1100;
   @include colorModed() {
@@ -292,7 +299,45 @@ ul
   }
 }
 
-.ant-form .ant-form-item{
+.ant-select-selector,
+.ant-select-item,
+.ant-select-dropdown,
+.ant-select:not(.ant-select-customize-input) .ant-select-selector,
+.ant-select-arrow {
+  @include colorModed() {
+    background: m($background);
+    color: m($gray-extreme);
+  }
+  z-index: 1100;
+  .hover-help {
+    display: none;
+  }
+}
+.ant-input-affix-wrapper, .ant-input-affix-wrapper .anticon {
+  @include colorModed() {
+    background: m($background);
+    color: m($gray-extreme);
+  }
+}
+.ant-form-item input, .ant-select-single:not(.ant-select-customize-input) .ant-select-selector .ant-select-selection-search-input {
+  @include colorModed() {
+    background: m($background);
+    color: m($gray-extreme);
+  }
+}
+.ant-switch-checked {
+  @include colorModed() {
+    background: m($primary-midDark);
+  }
+}
+.ant-input-number-input {
+  @include colorModed() {
+    background: m($card-background);
+    color: m($gray-extreme);
+  }
+}
+
+.ant-form .ant-form-item {
   label {
     @include colorModed() {
       color: m($gray-extreme);
@@ -305,9 +350,12 @@ ul
   }
 }
 
-.ant-dropdown-menu-item, .ant-dropdown-menu-submenu-title, .ant-radio-wrapper {
+.ant-dropdown-menu-item,
+.ant-dropdown-menu-submenu-title,
+.ant-radio-wrapper {
   transition: none;
-  &, .ant-radio-wrapper {
+  &,
+  .ant-radio-wrapper {
     @include colorModed() {
       background: m($background);
       color: m($gray-extreme);
@@ -383,12 +431,12 @@ ul
     color: m($gray-extreme);
   }
 }
-.ant-popover-placement-top > .ant-popover-content > .ant-popover-arrow, .ant-popover-placement-topLeft > .ant-popover-content > .ant-popover-arrow, .ant-popover-placement-topRight > .ant-popover-content > .ant-popover-arrow
-{
+.ant-popover-placement-top > .ant-popover-content > .ant-popover-arrow,
+.ant-popover-placement-topLeft > .ant-popover-content > .ant-popover-arrow,
+.ant-popover-placement-topRight > .ant-popover-content > .ant-popover-arrow {
   @include colorModed() {
     border-right-color: m($card-background);
     border-bottom-color: m($card-background);
-
   }
 }
 .user-context-menu {
@@ -446,7 +494,8 @@ ul
           background: m($primary-light);
         }
       }
-      &:nth-child(3), &:only-child {
+      &:nth-child(3),
+      &:only-child {
         @include colorModed() {
           background: m($primary-dark);
         }
@@ -468,7 +517,7 @@ ul
         border-radius: 0 0 8px 0;
       }
       &:only-child {
-        border-radius: 0 0 8px 8px
+        border-radius: 0 0 8px 8px;
       }
     }
   }
@@ -514,13 +563,14 @@ ul
         flex-wrap: nowrap;
         align-items: center;
       }
-      &:active, &:hover, &.ant-tabs-tab-active  {
+      &:active,
+      &:hover,
+      &.ant-tabs-tab-active {
         .ant-tabs-tab-btn {
           @include colorModed() {
             color: m($primary-dark);
           }
         }
-
       }
     }
   }
@@ -568,7 +618,7 @@ ul
     @include colorModed() {
       background-color: m($background);
       border-color: m($primary-dark);
-      color:  m($primary-dark);
+      color: m($primary-dark);
     }
     &:not(.ant-btn-circle) {
       padding: 3px 18px;
@@ -591,7 +641,7 @@ ul
       @include colorModed() {
         background-color: m($background);
         border-color: m($primary-dark);
-        color:  m($primary-dark);
+        color: m($primary-dark);
       }
     }
     &:disabled {
@@ -615,13 +665,14 @@ ul
     height: 32px;
   }
 
-  button.ant-btn-primary, button.primary, a.btn-primary {
+  button.ant-btn-primary,
+  button.primary,
+  a.btn-primary {
     margin: 6px 3px;
     @include colorModed() {
       background-color: m($button);
       color: m($button-text);
     }
-    text-transform: capitalize;
     border: 0;
     outline: 0;
     transition: none;
@@ -653,7 +704,8 @@ ul
       }
       transition: none;
     }
-    &:disabled, &:disabled:hover {
+    &:disabled,
+    &:disabled:hover {
       @include colorModed() {
         background-color: m($gray-subtle);
         color: m($background);
@@ -666,8 +718,11 @@ ul
   .ant-message {
     pointer-events: none;
   }
-  .ant-notification, .ant-message {
-    .ant-notification-notice, .ant-message-notice-content {
+  .ant-notification,
+  .ant-message {
+    .ant-notification-notice,
+    .ant-message-notice-content,
+    a {
       @include type-default;
       font-size: 15px;
       font-weight: 600;
@@ -695,4 +750,3 @@ ul
     }
   }
 }
-

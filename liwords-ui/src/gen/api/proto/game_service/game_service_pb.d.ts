@@ -290,6 +290,11 @@ export class StreakInfoResponse extends jspb.Message {
   setStreakList(value: Array<StreakInfoResponse.SingleGameInfo>): void;
   addStreak(value?: StreakInfoResponse.SingleGameInfo, index?: number): StreakInfoResponse.SingleGameInfo;
 
+  clearPlayersList(): void;
+  getPlayersList(): Array<string>;
+  setPlayersList(value: Array<string>): void;
+  addPlayers(value: string, index?: number): string;
+
   serializeBinary(): Uint8Array;
   toObject(includeInstance?: boolean): StreakInfoResponse.AsObject;
   static toObject(includeInstance: boolean, msg: StreakInfoResponse): StreakInfoResponse.AsObject;
@@ -303,16 +308,12 @@ export class StreakInfoResponse extends jspb.Message {
 export namespace StreakInfoResponse {
   export type AsObject = {
     streakList: Array<StreakInfoResponse.SingleGameInfo.AsObject>,
+    playersList: Array<string>,
   }
 
   export class SingleGameInfo extends jspb.Message {
     getGameId(): string;
     setGameId(value: string): void;
-
-    clearPlayersList(): void;
-    getPlayersList(): Array<string>;
-    setPlayersList(value: Array<string>): void;
-    addPlayers(value: string, index?: number): string;
 
     getWinner(): number;
     setWinner(value: number): void;
@@ -335,7 +336,6 @@ export namespace StreakInfoResponse {
   export namespace SingleGameInfo {
     export type AsObject = {
       gameId: string,
-      playersList: Array<string>,
       winner: number,
       playerIdsList: Array<string>,
     }

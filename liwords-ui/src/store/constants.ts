@@ -1,3 +1,7 @@
+import {
+  TType,
+  TTypeMap,
+} from '../gen/api/proto/tournament_service/tournament_service_pb';
 import { ChallengeRule } from '../gen/macondo/api/proto/macondo/macondo_pb';
 import { Blank } from '../utils/cwgame/common';
 import { ChatEntityObj, ChatEntityType, randomID } from './store';
@@ -15,10 +19,15 @@ export const calculateTotalTime = (
   return secs + maxOvertime * 60 + incrementSecs * turnsPerGame;
 };
 
-export const isPairedMode = (type: string) => {
-  return type === 'CHILD' || type === 'STANDARD';
+type valueof<T> = T[keyof T];
+
+export const isPairedMode = (type: valueof<TTypeMap>) => {
+  return type === TType.CHILD || type === TType.STANDARD;
 };
 
+export const isClubType = (type: valueof<TTypeMap>) => {
+  return type === TType.CHILD || type === TType.CLUB;
+};
 // See cutoffs in variants.go. XXX: Try to tie these together better.
 export const timeCtrlToDisplayName = (
   secs: number,
@@ -39,6 +48,19 @@ export const timeCtrlToDisplayName = (
   return ['Regular', 'blue'];
 };
 
+export const timeScaleToNum = (val: string) => {
+  switch (val) {
+    case '¼':
+      return 0.25;
+    case '½':
+      return 0.5;
+    case '¾':
+      return 0.75;
+    default:
+      return parseInt(val, 10);
+  }
+};
+
 export const initialTimeLabel = (secs: number) => {
   let initTLabel;
   switch (secs) {
@@ -56,6 +78,25 @@ export const initialTimeLabel = (secs: number) => {
   }
   return initTLabel;
 };
+
+const wholetimes = [];
+for (let i = 1; i <= 25; i++) {
+  wholetimes.push(i.toString());
+}
+
+export const initTimeDiscreteScale = [
+  '¼',
+  '½',
+  '¾',
+  ...wholetimes,
+  '30',
+  '35',
+  '40',
+  '45',
+  '50',
+  '55',
+  '60',
+];
 
 export const timeToString = (
   secs: number,

@@ -33,13 +33,14 @@ func NewModService(us user.Store, cs user.ChatStore) *ModService {
 
 var AdminRequiredMap = map[pb.ModActionType]bool{
 	pb.ModActionType_MUTE:                    false,
-	pb.ModActionType_SUSPEND_ACCOUNT:         true,
-	pb.ModActionType_SUSPEND_RATED_GAMES:     true,
-	pb.ModActionType_SUSPEND_GAMES:           true,
+	pb.ModActionType_SUSPEND_ACCOUNT:         false,
+	pb.ModActionType_SUSPEND_RATED_GAMES:     false,
+	pb.ModActionType_SUSPEND_GAMES:           false,
 	pb.ModActionType_RESET_RATINGS:           true,
 	pb.ModActionType_RESET_STATS:             true,
 	pb.ModActionType_RESET_STATS_AND_RATINGS: true,
 	pb.ModActionType_REMOVE_CHAT:             false,
+	pb.ModActionType_DELETE_ACCOUNT:          true,
 }
 
 func (ms *ModService) GetActions(ctx context.Context, req *pb.GetActionsRequest) (*pb.ModActionsMap, error) {

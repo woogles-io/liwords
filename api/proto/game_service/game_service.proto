@@ -62,12 +62,12 @@ message RecentGamesRequest {
 message StreakInfoResponse {
   message SingleGameInfo {
     string game_id = 1;
-    repeated string players = 2; // player nicknames
     int32 winner = 3; // the index in `players` or -1 if no winner (tie)
     repeated string player_ids = 4; // player uuids needed for censoring
   }
 
   repeated SingleGameInfo streak = 1;
+  repeated string players = 2;
 }
 
 message RematchStreakRequest { string original_request_id = 1; }

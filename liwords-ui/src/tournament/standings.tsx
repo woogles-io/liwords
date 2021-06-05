@@ -2,6 +2,7 @@ import React, { ReactNode, useMemo } from 'react';
 import { useTournamentStoreContext } from '../store/store';
 import { UsernameWithContext } from '../shared/usernameWithContext';
 import { Table } from 'antd';
+// import { PlayerTag } from './player_tags';
 
 type Props = {
   selectedDivision: string;
@@ -30,28 +31,39 @@ export const Standings = (props: Props) => {
   if (!division) {
     return null;
   }
-  let formatStandings = new Array<StandingsTableData>();
+
+  let formatStandings;
   if (currentRound > -1) {
-    formatStandings = division.standingsMap[currentRound].standingsList.map(
-      (standing, index): StandingsTableData => {
-        const [playerId, playerName] = standing.player.split(':');
-        return {
-          rank: index + 1,
-          player: (
-            <UsernameWithContext
-              username={playerName}
-              userID={playerId}
-              omitSendMessage
-              omitBlock
-            />
-          ),
-          wins: standing.wins + standing.draws / 2,
-          losses: standing.losses + standing.draws / 2,
-          spread: standing.spread,
-          //actions: null, //scorecard button goes here
-        };
-      }
-    );
+    formatStandings = division.standingsMap
+      .get(currentRound)
+      ?.getStandingsList()
+      .map(
+        (standing, index): StandingsTableData => {
+          const [playerId, playerName] = standing.getPlayerId().split(':');
+          return {
+            rank: index + 1,
+            player: (
+              <>
+                <UsernameWithContext
+                  username={playerName}
+                  userID={playerId}
+                  omitSendMessage
+                  omitBlock
+                />{' '}
+                {/* <PlayerTag
+                username={playerName}
+                players={division.players}
+                tournamentSlug={tournamentContext.metadata.slug}
+              /> */}
+              </>
+            ),
+            wins: standing.getWins() + standing.getDraws() / 2,
+            losses: standing.getLosses() + standing.getDraws() / 2,
+            spread: standing.getSpread(),
+            //actions: null, //scorecard button goes here
+          };
+        }
+      );
   }
   const columns = [
     {

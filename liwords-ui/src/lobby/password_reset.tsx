@@ -58,7 +58,7 @@ export const PasswordReset = () => {
             style={{ marginTop: 20 }}
           >
             <Form.Item
-              label="Email Address"
+              label="Email address"
               name="email"
               rules={[
                 {

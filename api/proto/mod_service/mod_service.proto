@@ -15,6 +15,7 @@ enum ModActionType {
   RESET_STATS = 5;
   RESET_STATS_AND_RATINGS = 6;
   REMOVE_CHAT = 7;
+  DELETE_ACCOUNT = 8;
 }
 
 message ModAction {

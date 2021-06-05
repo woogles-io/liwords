@@ -41,10 +41,10 @@ func TestSetPresence(t *testing.T) {
 
 	ctx := context.Background()
 
-	err := ps.SetPresence(ctx, "uuid1", "cesar", false, "lobby", "connx1")
+	_, _, err := ps.SetPresence(ctx, "uuid1", "cesar", false, "lobby", "connx1")
 	is.NoErr(err)
 
-	err = ps.SetPresence(ctx, "uuid2", "mina", false, "lobby", "connx2")
+	_, _, err = ps.SetPresence(ctx, "uuid2", "mina", false, "lobby", "connx2")
 	is.NoErr(err)
 
 	ct, err := ps.CountInChannel(ctx, "lobby")
@@ -60,13 +60,13 @@ func TestSetPresenceLeaveAndComeback(t *testing.T) {
 
 	ctx := context.Background()
 
-	err := ps.SetPresence(ctx, "uuid1", "cesar", false, "lobby", "connx1")
+	_, _, err := ps.SetPresence(ctx, "uuid1", "cesar", false, "lobby", "connx1")
 	is.NoErr(err)
 
-	err = ps.SetPresence(ctx, "uuid2", "mina", false, "lobby", "connx2")
+	_, _, err = ps.SetPresence(ctx, "uuid2", "mina", false, "lobby", "connx2")
 	is.NoErr(err)
 
-	val, err := ps.ClearPresence(ctx, "uuid1", "cesar", false, "connx1")
+	_, _, val, err := ps.ClearPresence(ctx, "uuid1", "cesar", false, "connx1")
 	is.NoErr(err)
 	is.Equal(val, []string{"lobby"})
 
@@ -83,10 +83,10 @@ func TestGetPresence(t *testing.T) {
 
 	ctx := context.Background()
 
-	err := ps.SetPresence(ctx, "uuid1", "cesar", false, "lobby", "connx1")
+	_, _, err := ps.SetPresence(ctx, "uuid1", "cesar", false, "lobby", "connx1")
 	is.NoErr(err)
 
-	err = ps.SetPresence(ctx, "uuid2", "mina", false, "lobby", "connx2")
+	_, _, err = ps.SetPresence(ctx, "uuid2", "mina", false, "lobby", "connx2")
 	is.NoErr(err)
 
 	channels, err := ps.GetPresence(ctx, "uuid2")
@@ -106,34 +106,34 @@ func TestGetInChannel(t *testing.T) {
 
 	ctx := context.Background()
 
-	err := ps.SetPresence(ctx, "uuid1", "cesar", false, "lobby", "connx1")
+	_, _, err := ps.SetPresence(ctx, "uuid1", "cesar", false, "lobby", "connx1")
 	is.NoErr(err)
 
-	err = ps.SetPresence(ctx, "uuid2", "mina", false, "lobby", "connx2")
+	_, _, err = ps.SetPresence(ctx, "uuid2", "mina", false, "lobby", "connx2")
 	is.NoErr(err)
 
-	err = ps.SetPresence(ctx, "uuid5", "jesse", false, "lobby", "connx5")
+	_, _, err = ps.SetPresence(ctx, "uuid5", "jesse", false, "lobby", "connx5")
 	is.NoErr(err)
 
-	err = ps.SetPresence(ctx, "uuid6", "conrad", false, "lobby", "connx6")
+	_, _, err = ps.SetPresence(ctx, "uuid6", "conrad", false, "lobby", "connx6")
 	is.NoErr(err)
 
-	_, err = ps.ClearPresence(ctx, "uuid1", "cesar", false, "connx1")
+	_, _, _, err = ps.ClearPresence(ctx, "uuid1", "cesar", false, "connx1")
 	is.NoErr(err)
 
-	err = ps.SetPresence(ctx, "uuid1", "cesar", false, "gametv:abc", "connx11")
+	_, _, err = ps.SetPresence(ctx, "uuid1", "cesar", false, "gametv:abc", "connx11")
 	is.NoErr(err)
 
-	err = ps.SetPresence(ctx, "uuid3", "josh", false, "game:abc", "connx3")
+	_, _, err = ps.SetPresence(ctx, "uuid3", "josh", false, "game:abc", "connx3")
 	is.NoErr(err)
 
-	err = ps.SetPresence(ctx, "uuid4", "lola", false, "game:abc", "connx4")
+	_, _, err = ps.SetPresence(ctx, "uuid4", "lola", false, "game:abc", "connx4")
 	is.NoErr(err)
 
-	err = ps.SetPresence(ctx, "uuid7", "puneet", false, "lobby", "connx7")
+	_, _, err = ps.SetPresence(ctx, "uuid7", "puneet", false, "lobby", "connx7")
 	is.NoErr(err)
 
-	err = ps.SetPresence(ctx, "uuid2", "mina", false, "gametv:abc", "connx22")
+	_, _, err = ps.SetPresence(ctx, "uuid2", "mina", false, "gametv:abc", "connx22")
 	is.NoErr(err)
 
 	ct, err := ps.CountInChannel(ctx, "game:abc")
@@ -193,16 +193,16 @@ func TestGetInChannel(t *testing.T) {
 
 // 	ctx := context.Background()
 
-// 	err := ps.SetPresence(ctx, "uuid1", "cesar", false, "tournament.abc", "connx1")
+// 	_, _, err := ps.SetPresence(ctx, "uuid1", "cesar", false, "tournament.abc", "connx1")
 // 	is.NoErr(err)
 
-// 	err = ps.SetPresence(ctx, "uuid2", "mina", false, "lobby", "connx2")
+// 	_, _, err = ps.SetPresence(ctx, "uuid2", "mina", false, "lobby", "connx2")
 // 	is.NoErr(err)
 // 	// cesar is in the tournament abc and in a game with the same conn id.
-// 	err = ps.SetPresence(ctx, "uuid1", "cesar", false, "game.bar", "connx1")
+// 	_, _, err = ps.SetPresence(ctx, "uuid1", "cesar", false, "game.bar", "connx1")
 // 	is.NoErr(err)
 
-// 	err = ps.RenewPresence(ctx, "uuid1", "cesar", false, "connx1")
+// 	_, _, err = ps.RenewPresence(ctx, "uuid1", "cesar", false, "connx1")
 
 // 	// Pretend that mina's connection died a few minutes ago.
 // 	ts := time.Now().UTC().Unix() + 300 // 5 minutes (expiry is only 3 minutes)

@@ -2,11 +2,14 @@ package user
 
 import (
 	"context"
+	"sync"
+	"time"
 
 	"github.com/domino14/liwords/pkg/entity"
 	lru "github.com/hashicorp/golang-lru"
 	"github.com/rs/zerolog/log"
 
+	cpb "github.com/domino14/liwords/rpc/api/proto/config_service"
 	pb "github.com/domino14/liwords/rpc/api/proto/user_service"
 )
 
@@ -21,20 +24,24 @@ type backingStore interface {
 	Username(ctx context.Context, uuid string) (string, bool, error)
 	New(ctx context.Context, user *entity.User) error
 	SetPassword(ctx context.Context, uuid string, hashpass string) error
-	SetAbout(ctx context.Context, uuid string, about string) error
 	SetAvatarUrl(ctx context.Context, uuid string, avatarUrl string) error
+	GetBriefProfiles(ctx context.Context, uuids []string) (map[string]*pb.BriefProfile, error)
+	SetPersonalInfo(ctx context.Context, uuid string, email string, firstName string, lastName string, birthDate string, countryCode string, about string) error
 	SetRatings(ctx context.Context, p0uuid string, p1uuid string, variant entity.VariantKey,
 		p1Rating entity.SingleRating, p2Rating entity.SingleRating) error
 	SetStats(ctx context.Context, p0uuid string, p1uuid string, variant entity.VariantKey,
 		p0stats *entity.Stats, p1stats *entity.Stats) error
 	ResetRatings(ctx context.Context, uuid string) error
 	ResetStats(ctx context.Context, uuid string) error
+	ResetProfile(ctx context.Context, uuid string) error
+	ResetPersonalInfo(ctx context.Context, uuid string) error
 	GetRandomBot(ctx context.Context) (*entity.User, error)
 
 	AddFollower(ctx context.Context, targetUser, follower uint) error
 	RemoveFollower(ctx context.Context, targetUser, follower uint) error
 	// GetFollows gets all the users that the passed-in DB ID is following.
 	GetFollows(ctx context.Context, uid uint) ([]*entity.User, error)
+	GetFollowedBy(ctx context.Context, uid uint) ([]*entity.User, error)
 
 	AddBlock(ctx context.Context, targetUser, blocker uint) error
 	RemoveBlock(ctx context.Context, targetUser, blocker uint) error
@@ -46,6 +53,9 @@ type backingStore interface {
 	UsersByPrefix(ctx context.Context, prefix string) ([]*pb.BasicUser, error)
 	Count(ctx context.Context) (int64, error)
 	Set(ctx context.Context, u *entity.User) error
+	SetPermissions(ctx context.Context, req *cpb.PermissionsRequest) error
+
+	GetModList(ctx context.Context) (*pb.GetModListResponse, error)
 }
 
 const (
@@ -53,11 +63,26 @@ const (
 	CacheCap = 400
 )
 
+type BriefProfileCache struct {
+	sync.Mutex
+	cache map[string]*pb.BriefProfile
+}
+
+type modListCache struct {
+	sync.Mutex
+	expiry   time.Time
+	response *pb.GetModListResponse
+}
+
 // Cache will reside in-memory, and will be per-node.
 type Cache struct {
 	cache *lru.Cache
 
 	backing backingStore
+
+	briefProfileCache *BriefProfileCache
+
+	cachedModList modListCache
 }
 
 func NewCache(backing backingStore) *Cache {
@@ -70,7 +95,17 @@ func NewCache(backing backingStore) *Cache {
 	return &Cache{
 		backing: backing,
 		cache:   lrucache,
+		briefProfileCache: &BriefProfileCache{
+			cache: make(map[string]*pb.BriefProfile),
+		},
 	}
+}
+
+func (c *Cache) uncacheBriefProfile(uuid string) {
+	c.briefProfileCache.Lock()
+	defer c.briefProfileCache.Unlock()
+
+	delete(c.briefProfileCache.cache, uuid)
 }
 
 func (c *Cache) Get(ctx context.Context, username string) (*entity.User, error) {
@@ -115,22 +150,101 @@ func (c *Cache) SetPassword(ctx context.Context, uuid string, hashpass string) e
 	return c.backing.SetPassword(ctx, uuid, hashpass)
 }
 
-func (c *Cache) SetAbout(ctx context.Context, uuid string, about string) error {
-	u, err := c.GetByUUID(ctx, uuid)
-	if err != nil {
-		return err
-	}
-	u.Profile.About = about
-	return c.backing.SetAbout(ctx, uuid, about)
-}
-
 func (c *Cache) SetAvatarUrl(ctx context.Context, uuid string, avatarUrl string) error {
 	u, err := c.GetByUUID(ctx, uuid)
 	if err != nil {
 		return err
 	}
 	u.Profile.AvatarUrl = avatarUrl
-	return c.backing.SetAvatarUrl(ctx, uuid, avatarUrl)
+	if err = c.backing.SetAvatarUrl(ctx, uuid, avatarUrl); err != nil {
+		return err
+	}
+	c.uncacheBriefProfile(uuid)
+	return nil
+}
+
+func (c *Cache) GetBriefProfiles(ctx context.Context, uuids []string) (map[string]*pb.BriefProfile, error) {
+	c.briefProfileCache.Lock()
+	defer c.briefProfileCache.Unlock()
+
+	missingUuids := make([]string, 0, len(uuids))
+	ret := make(map[string]*pb.BriefProfile)
+	for _, uuid := range uuids {
+		if cached, ok := c.briefProfileCache.cache[uuid]; ok {
+			ret[uuid] = cached
+		} else {
+			missingUuids = append(missingUuids, uuid)
+		}
+	}
+
+	if len(missingUuids) > 0 {
+		additionalStuffs, err := c.backing.GetBriefProfiles(ctx, missingUuids)
+		if err != nil {
+			return nil, err
+		}
+
+		if len(additionalStuffs) > 0 {
+			// only cache existing values, so cache size is bounded by database size.
+
+			for uuid, value := range additionalStuffs {
+				ret[uuid] = value
+				c.briefProfileCache.cache[uuid] = value
+			}
+
+			// this one goroutine will evict all of these values at the same time
+			go func() {
+				time.Sleep(5 * time.Minute)
+
+				c.briefProfileCache.Lock()
+				defer c.briefProfileCache.Unlock()
+
+				for uuid := range additionalStuffs {
+					delete(c.briefProfileCache.cache, uuid)
+				}
+			}()
+		}
+	}
+
+	return ret, nil
+}
+
+func (c *Cache) SetPersonalInfo(ctx context.Context, uuid string, email string, firstName string, lastName string, birthDate string, countryCode string, about string) error {
+	u, err := c.GetByUUID(ctx, uuid)
+	if err != nil {
+		return err
+	}
+
+	if err = c.backing.SetPersonalInfo(ctx, uuid, email, firstName, lastName, birthDate, countryCode, about); err != nil {
+		return err
+	}
+	u.Email = email
+	u.Profile.FirstName = firstName
+	u.Profile.LastName = lastName
+	u.Profile.BirthDate = birthDate
+	u.Profile.CountryCode = countryCode
+	u.Profile.About = about
+	c.uncacheBriefProfile(uuid)
+	return nil
+}
+
+func (c *Cache) ResetPersonalInfo(ctx context.Context, uuid string) error {
+	u, err := c.GetByUUID(ctx, uuid)
+	if err != nil {
+		return err
+	}
+
+	if err = c.backing.ResetPersonalInfo(ctx, uuid); err != nil {
+		return err
+	}
+	u.Profile.FirstName = ""
+	u.Profile.LastName = ""
+	u.Profile.BirthDate = ""
+	u.Profile.CountryCode = ""
+	u.Profile.Title = ""
+	u.Profile.AvatarUrl = ""
+	u.Profile.About = ""
+	c.uncacheBriefProfile(uuid)
+	return nil
 }
 
 func (c *Cache) SetRatings(ctx context.Context, p0uuid string, p1uuid string, variant entity.VariantKey, p0Rating entity.SingleRating, p1Rating entity.SingleRating) error {
@@ -139,6 +253,11 @@ func (c *Cache) SetRatings(ctx context.Context, p0uuid string, p1uuid string, va
 		return err
 	}
 	u1, err := c.GetByUUID(ctx, p1uuid)
+	if err != nil {
+		return err
+	}
+
+	err = c.backing.SetRatings(ctx, p0uuid, p1uuid, variant, p0Rating, p1Rating)
 	if err != nil {
 		return err
 	}
@@ -154,10 +273,6 @@ func (c *Cache) SetRatings(ctx context.Context, p0uuid string, p1uuid string, va
 	u0.Profile.Ratings.Data[variant] = p0Rating
 	u1.Profile.Ratings.Data[variant] = p1Rating
 
-	err = c.backing.SetRatings(ctx, p0uuid, p1uuid, variant, p0Rating, p1Rating)
-	if err != nil {
-		return err
-	}
 	return nil
 }
 
@@ -166,11 +281,11 @@ func (c *Cache) ResetRatings(ctx context.Context, uuid string) error {
 	if err != nil {
 		return err
 	}
-	u.Profile.Ratings.Data = nil
 	err = c.backing.ResetRatings(ctx, uuid)
 	if err != nil {
 		return err
 	}
+	u.Profile.Ratings.Data = nil
 	return nil
 }
 
@@ -185,6 +300,10 @@ func (c *Cache) SetStats(ctx context.Context, p0uuid string, p1uuid string, vari
 		return err
 	}
 
+	err = c.backing.SetStats(ctx, p0uuid, p1uuid, variant, p0Stats, p1Stats)
+	if err != nil {
+		return err
+	}
 	if u0.Profile.Stats.Data == nil {
 		u0.Profile.Stats.Data = make(map[entity.VariantKey]*entity.Stats)
 	}
@@ -195,12 +314,6 @@ func (c *Cache) SetStats(ctx context.Context, p0uuid string, p1uuid string, vari
 
 	u0.Profile.Stats.Data[variant] = p0Stats
 	u1.Profile.Stats.Data[variant] = p1Stats
-
-	err = c.backing.SetStats(ctx, p0uuid, p1uuid, variant, p0Stats, p1Stats)
-	if err != nil {
-		return err
-	}
-
 	return nil
 }
 
@@ -209,14 +322,25 @@ func (c *Cache) ResetStats(ctx context.Context, uuid string) error {
 	if err != nil {
 		return err
 	}
-	u.Profile.Stats.Data = nil
 	err = c.backing.ResetStats(ctx, uuid)
 	if err != nil {
 		return err
 	}
+	u.Profile.Stats.Data = nil
 	return nil
 }
 
+func (c *Cache) ResetProfile(ctx context.Context, uuid string) error {
+	err := c.ResetStats(ctx, uuid)
+	if err != nil {
+		return err
+	}
+	err = c.ResetRatings(ctx, uuid)
+	if err != nil {
+		return err
+	}
+	return c.ResetPersonalInfo(ctx, uuid)
+}
 
 func (c *Cache) GetRandomBot(ctx context.Context) (*entity.User, error) {
 	return c.backing.GetRandomBot(ctx)
@@ -232,6 +356,10 @@ func (c *Cache) RemoveFollower(ctx context.Context, targetUser, follower uint) e
 
 func (c *Cache) GetFollows(ctx context.Context, uid uint) ([]*entity.User, error) {
 	return c.backing.GetFollows(ctx, uid)
+}
+
+func (c *Cache) GetFollowedBy(ctx context.Context, uid uint) ([]*entity.User, error) {
+	return c.backing.GetFollowedBy(ctx, uid)
 }
 
 func (c *Cache) AddBlock(ctx context.Context, targetUser, blocker uint) error {
@@ -275,4 +403,25 @@ func (c *Cache) Set(ctx context.Context, u *entity.User) error {
 	// readd to cache
 	c.cache.Add(u.UUID, u)
 	return nil
+}
+
+func (c *Cache) SetPermissions(ctx context.Context, req *cpb.PermissionsRequest) error {
+	return c.backing.SetPermissions(ctx, req)
+}
+
+func (c *Cache) GetModList(ctx context.Context) (*pb.GetModListResponse, error) {
+	c.cachedModList.Lock()
+	defer c.cachedModList.Unlock()
+	if c.cachedModList.response != nil && time.Now().Before(c.cachedModList.expiry) {
+		return c.cachedModList.response, nil
+	}
+
+	resp, err := c.backing.GetModList(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	c.cachedModList.response = resp
+	c.cachedModList.expiry = time.Now().Add(time.Minute)
+	return resp, nil
 }

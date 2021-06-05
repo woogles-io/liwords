@@ -67,11 +67,8 @@ export const StreakWidget = React.memo((props: Props) => {
     return null;
   }
   // Determine which player is listed on top and which on bottom.
-  let first = props.streakInfo.streak[0].players[0];
-  let second = props.streakInfo.streak[0].players[1];
-  if (second > first) {
-    [first, second] = [second, first];
-  }
+  const first = props.streakInfo.players[0];
+  const second = props.streakInfo.players[1];
 
   let p0wins = 0;
   let p1wins = 0;
@@ -80,25 +77,13 @@ export const StreakWidget = React.memo((props: Props) => {
     .slice(0) // reverse a shallow copy of the array.
     .reverse()
     .map((g) => {
-      let p0idx;
-      let p1idx;
       let p0win = 0;
       let p1win = 0;
-      if (first === g.players[0]) {
-        p0idx = 0;
-        p1idx = 1;
-      } else {
-        p0idx = 1;
-        p1idx = 0;
-      }
 
-      if ((g.winner === 0 && p0idx === 0) || (g.winner === 1 && p0idx === 1)) {
+      if (g.winner === 0) {
         p0win = 1;
         p1win = 0;
-      } else if (
-        (g.winner === 1 && p1idx === 1) ||
-        (g.winner === 0 && p1idx === 0)
-      ) {
+      } else if (g.winner === 1) {
         p0win = 0;
         p1win = 1;
       } else if (g.winner === -1) {
@@ -113,6 +98,12 @@ export const StreakWidget = React.memo((props: Props) => {
       );
     });
 
+  const pStyle = {
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap' as 'nowrap',
+  };
+
   return (
     <Card style={{ marginTop: 10 }}>
       <Row>
@@ -120,9 +111,9 @@ export const StreakWidget = React.memo((props: Props) => {
           {pergame}
         </Col>
         <Col span={6}>
-          <div style={{ marginLeft: 20, display: 'inline-block' }}>
-            <p>{first}</p>
-            <p>{second}</p>
+          <div style={{ marginLeft: 20 }}>
+            <p style={pStyle}>{first}</p>
+            <p style={pStyle}>{second}</p>
           </div>
         </Col>
         <Col span={2}>

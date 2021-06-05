@@ -2,7 +2,7 @@ import { Button, Form, InputNumber, Select } from 'antd';
 import React, { useCallback } from 'react';
 import axios from 'axios';
 
-import { debounce } from '../utils/debounce';
+import { useDebounce } from '../utils/debounce';
 import { toAPIUrl } from '../api/api';
 import { AutoComplete } from 'antd';
 import { useMountedState } from '../utils/mounted';
@@ -52,7 +52,7 @@ export const AddPlayerForm = (props: Props) => {
       });
   }, []);
 
-  const searchUsernameDebounced = debounce(onUsernameSearch, 300);
+  const searchUsernameDebounced = useDebounce(onUsernameSearch, 300);
 
   const onFormSubmit = (val: Store) => {
     const playersCopy = { ...playersToAdd };

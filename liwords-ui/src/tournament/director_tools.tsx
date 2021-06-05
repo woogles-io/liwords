@@ -1,12 +1,14 @@
-import React from 'react';
+import React, { useCallback } from 'react';
 // import { toAPIUrl } from '../api/api';
 // import { useMountedState } from '../utils/mounted';
 import { useTournamentStoreContext } from '../store/store';
 import './director_tools.scss';
 import { UsernameWithContext } from '../shared/usernameWithContext';
-import { Button, message } from 'antd';
+import { Button, Divider, message } from 'antd';
 import axios from 'axios';
 import { toAPIUrl } from '../api/api';
+import { GhettoTools } from './ghetto_tools';
+import { TType } from '../gen/api/proto/tournament_service/tournament_service_pb';
 /*
 import { AddPlayerForm, playersToAdd } from './add_player_form';
 import axios from 'axios';
@@ -24,8 +26,6 @@ export const DirectorTools = React.memo((props: DTProps) => {
   // const { useState } = useMountedState();
 
   const { tournamentContext } = useTournamentStoreContext();
-
-  const divisions = tournamentContext.divisions;
 
   /*   const addPlayers = (p: playersToAdd) => {
     Object.entries(p).forEach(([div, players]) => {
@@ -92,22 +92,24 @@ export const DirectorTools = React.memo((props: DTProps) => {
       </Modal>
     );*/
 
-  const renderRoster = () => {
-    return Object.values(divisions).map((d) => {
+  const renderRoster = useCallback(() => {
+    console.log('defining renderRoster with divs', tournamentContext.divisions);
+    return Object.values(tournamentContext.divisions).map((d) => {
       return (
         <div key={d.divisionID}>
           <h4 className="division-name">{d.divisionID} entrants</h4>
           <ul>
             {d.players.map((p) => {
-              const [userID, playerName] = p.split(':');
+              const [userID, playerName] = p.getId().split(':');
               return (
-                <li key={p} className="player-name">
+                <li key={p.getId()} className="player-name">
                   <UsernameWithContext
                     username={playerName}
                     userID={userID}
                     omitSendMessage
                     omitBlock
                   />
+                  {/* &nbsp;{d.checkedInPlayers.has(p) ? '✓' : ''} */}
                 </li>
               );
             })}
@@ -115,30 +117,34 @@ export const DirectorTools = React.memo((props: DTProps) => {
         </div>
       );
     });
-  };
+  }, [tournamentContext.divisions]);
 
   const renderStartButton = () => {
     const startTournament = () => {
       axios
         .post(
-          toAPIUrl('tournament_service.TournamentService', 'StartTournament'),
+          toAPIUrl(
+            'tournament_service.TournamentService',
+            'StartRoundCountdown'
+          ),
           {
             id: props.tournamentID,
+            start_all_rounds: true,
           },
           { withCredentials: true }
         )
         .catch((err) => {
           message.error({
             content:
-              'Tournament cannot be started yet. Please check with the Woogles team.',
+              'Tournament cannot be started yet. Please ensure all your divisions have at least 2 players and are fully paired.',
             duration: 8,
           });
           console.log('Error starting tournament: ' + err.response?.data?.msg);
         });
     };
     if (
-      Object.values(divisions).length &&
-      Object.values(divisions)[0].currentRound === -1 &&
+      Object.values(tournamentContext.divisions).length &&
+      Object.values(tournamentContext.divisions)[0].currentRound === -1 &&
       !tournamentContext.started
     ) {
       return (
@@ -153,10 +159,26 @@ export const DirectorTools = React.memo((props: DTProps) => {
     return null;
   };
 
+  const renderGhettoTools = () => {
+    if (
+      tournamentContext.metadata.getType() === TType.LEGACY ||
+      tournamentContext.metadata.getType() === TType.CLUB
+    ) {
+      return null;
+    }
+    return (
+      <>
+        <Divider />
+        <GhettoTools tournamentID={props.tournamentID} />
+      </>
+    );
+  };
+
   return (
     <div className="director-tools">
       {renderStartButton()}
       {renderRoster()}
+      {renderGhettoTools()}
     </div>
   );
 });

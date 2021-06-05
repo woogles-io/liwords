@@ -113,17 +113,18 @@ const Moderation = (props: ModProps) => {
           <Select>
             <Select.Option value="MUTE">Mute</Select.Option>
             <Select.Option value="SUSPEND_ACCOUNT">
-              Suspend Account
+              Suspend account
             </Select.Option>
             <Select.Option value="SUSPEND_RATED_GAMES">
-              Suspend Rated Games
+              Suspend rated games
             </Select.Option>
-            <Select.Option value="SUSPEND_GAMES">Suspend Games</Select.Option>
-            <Select.Option value="RESET_RATINGS">Reset Ratings</Select.Option>
-            <Select.Option value="RESET_STATS">Reset Stats</Select.Option>
+            <Select.Option value="SUSPEND_GAMES">Suspend games</Select.Option>
+            <Select.Option value="RESET_RATINGS">Reset ratings</Select.Option>
+            <Select.Option value="RESET_STATS">Reset stats</Select.Option>
             <Select.Option value="RESET_STATS_AND_RATINGS">
-              Reset Stats and Ratings
+              Reset stats and ratings
             </Select.Option>
+            <Select.Option value="DELETE_ACCOUNT">Delete account</Select.Option>
           </Select>
         </Form.Item>
 
@@ -140,14 +141,14 @@ const Moderation = (props: ModProps) => {
 
         <Form.Item>
           <Button type="primary" htmlType="submit">
-            Apply Action
+            Apply action
           </Button>
         </Form.Item>
       </Form>
 
-      <h3>Active Mod Actions</h3>
+      <h3>Active mod actions</h3>
       <pre>{JSON.stringify(activeActions, null, 2)}</pre>
-      <h3>Moderation History</h3>
+      <h3>Moderation history</h3>
       <pre style={{ maxHeight: 200, overflowY: 'scroll' }}>
         {JSON.stringify(actionsHistory, null, 2)}
       </pre>

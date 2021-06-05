@@ -1,5 +1,7 @@
 @import '../../base';
 @import '../../shared/layout';
+@import '../../tile_modes';
+@import '../../board_modes';
 
 @include button;
 @include notification;
@@ -79,6 +81,10 @@ p.streak-loss {
     button.ant-btn-icon-only > * {
       font-size: inherit;
     }
+    .controls {
+      display: flex;
+      flex-direction: row;
+    }
     .notepad {
       resize: none;
       width: 100%;
@@ -118,6 +124,16 @@ p.streak-loss {
         }
       }
     }
+    .ant-card-extra {
+      .analyzer-controls {
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+        .analyze-trigger {
+          order: 2;
+        }
+      }
+    }
     .ant-card-body {
       padding: 12px;
       height: 240px;
@@ -143,12 +159,26 @@ p.streak-loss {
         height: 100%;
         align-items: center;
         justify-content: center;
+        .analyze-trigger {
+          margin-left: 0px;
+        }
         .suggestions {
           max-height: 244px;
           overflow-y: auto;
         }
       }
     }
+  }
+  .auto-label {
+    display: inline-block;
+    font-size: 14px;
+    margin-right: 6px;
+    @include colorModed() {
+      color: m($gray-medium);
+    }
+  }
+  .analyze-trigger {
+    margin-left: 12px;
   }
   .analyzer-container {
     .anticon.anticon-redo {
@@ -158,6 +188,7 @@ p.streak-loss {
         color: m($gray-medium);
       }
     }
+
     .suggestions {
       font-family: $font-monospaced;
       width: 100%;
@@ -202,6 +233,31 @@ p.streak-loss {
     }
   }
 }
+.definitions {
+  font-family: $font-monospaced;
+  @include colorModed() {
+    background-color: m($card-background);
+  }
+  .definition-entry {
+    max-width: 13em;
+    &:nth-child(n + 2) {
+      margin-top: 1em;
+    }
+    @include colorModed() {
+      color: m($gray-extreme);
+    }
+    .defined-word {
+      font-weight: bold;
+    }
+    .definition {
+    }
+    .invalid-word {
+      @include colorModed() {
+        color: m($timer-out-dark);
+      }
+    }
+  }
+}
 .ant-dropdown-menu {
   padding: 0;
 }
@@ -224,12 +280,19 @@ p.streak-loss {
     z-index: 5;
     transition: $tile-transition;
     @include colorModed() {
-      background-color: m($tile-background);
+      background: m($tile-background);
       color: m($background);
+    }
+    @include userTile() {
+      background: ut($tile-background);
+      color: ut($tile-text);
     }
     p.rune {
       @include colorModed() {
         color: m($background);
+      }
+      @include userTile() {
+        background: ut($tile-background);
       }
     }
   }
@@ -268,6 +331,9 @@ p.streak-loss {
   @include colorModed() {
     background: m($grid);
   }
+  @include userboard() {
+    background: ub($grid);
+  }
 }
 .board-spaces,
 .tiles {
@@ -284,6 +350,9 @@ p.streak-loss {
   // Using a box shadow that looks like a border to not mess up the grid
   @include colorModed() {
     box-shadow: m($board-shadow);
+  }
+  @include userboard() {
+    background: ub($board-fill);
   }
 }
 
@@ -308,11 +377,18 @@ p.streak-loss {
   display: flex;
   justify-content: center;
   align-items: center;
+  border: transparent 1px solid;
   @include colorModed() {
     background-color: m($background);
     border-color: transparent transparent m($grid) m($grid);
   }
-  border: transparent 1px solid;
+  @include userboard() {
+    opacity: ub($board-space-opacity);
+    mix-blend-mode: ub($board-space-mix-mode);
+    background-color: ub($board-empty);
+    border-color: transparent transparent ub($grid) ub($grid);
+  }
+
 
 }
 
@@ -330,6 +406,9 @@ p.streak-loss {
     @include colorModed() {
       color: m($timer-dark);
     }
+    @include userboard() {
+      color: ub($board-selection-color);
+    }
   }
   .bonus-label {
     text-align: center;
@@ -343,6 +422,9 @@ p.streak-loss {
     opacity: 0;
     @include colorModed() {
       color: m($background);
+    }
+    @include userboard() {
+      color: ub($board-bonus-text);
     }
    }
   &:hover {
@@ -359,14 +441,23 @@ p.streak-loss {
     @include colorModed() {
       background: m($board-empty);
     }
+    @include userboard() {
+      background: ub($board-empty);
+    }
   }
   &.bonus-3WS {
     @include colorModed() {
       background-color: m($board-tws);
     }
+    @include userboard() {
+      background-color: ub($board-tws);
+    }
     .bonus-label {
       @include colorModed() {
         color: m($white);
+      }
+      @include userboard() {
+        color: ub($board-bonus-text);
       }
     }
     &.selected {
@@ -374,9 +465,16 @@ p.streak-loss {
         background-color: mix(m($board-tws), m($white), $weight: 70%);
         border-color: scale-color(m($timer-light), $lightness: -10%);
       };
+      @include userboard() {
+        background-color: blender(ub($board-tws), ub($board-empty));
+        border-color: lightener(ub($board-selection-color));
+      }
       .anticon {
         @include colorModed() {
           color: scale-color(m($timer-light), $lightness: -10%);
+        }
+        @include userboard() {
+          color: ub($board-selection-color);
         }
       }
     }
@@ -385,32 +483,60 @@ p.streak-loss {
     @include colorModed() {
       background-color: m($board-dws);
     }
+    @include userboard() {
+      background-color: ub($board-dws);
+    }
     .anticon-star {
       @include colorModed() {
         color: m($board-tws);
       }
-    }
-    &.selected {
-      @include colorModed() {
-        background-color: mix(m($board-dws), m($timer-light), $weight: 60%);
-      };
-      .anticon-star {
-        display: none;
+      @include userboard() {
+        color: ub($board-center-icon);
       }
     }
     .bonus-label {
       @include colorModed() {
         color: mix(m($board-tws), m($gray-extreme), $weight: 30%);
       };
+      @include userboard() {
+        color: ub($board-bonus-text);
+      }
     }
+    &.selected {
+      @include colorModed() {
+        background-color: mix(m($board-dws), m($timer-light), $weight: 60%);
+      };
+      @include userboard() {
+        background-color: blender(ub($board-dws), ub($board-empty));
+        border-color: lightener(ub($board-selection-color));
+      }
+      .anticon {
+        @include colorModed() {
+          color: m($timer-dark);
+        }
+        @include userboard() {
+          color: ub($board-selection-color);
+        }
+      }
+      .anticon-star {
+        display: none;
+      }
+    }
+
   }
   &.bonus-3LS {
     @include colorModed() {
       background-color: m($board-tls);
     };
+    @include userboard() {
+      background-color: ub($board-tls);
+    }
     .bonus-label {
       @include colorModed() {
         color: m($white);
+      };
+      @include userboard() {
+        color: ub($board-bonus-text);
       };
     }
     &.selected {
@@ -418,9 +544,16 @@ p.streak-loss {
         background-color: mix(m($board-tls), m($white), $weight: 70%);
         border-color: scale-color(m($timer-light), $lightness: -10%);
       };
+      @include userboard() {
+        background-color: blender(ub($board-tls), ub($board-empty));
+        border-color: lightener(ub($board-selection-color));
+      }
       .anticon {
         @include colorModed() {
           color: scale-color(m($timer-light), $lightness: -10%);
+        }
+        @include userboard() {
+          color: ub($board-selection-color);
         }
       }
     }
@@ -429,15 +562,25 @@ p.streak-loss {
     @include colorModed() {
       background-color: m($board-dls);
     };
+    @include userboard() {
+      background-color: ub($board-dls);
+    }
     &.selected {
       @include colorModed() {
         background-color: mix(m($board-dls), m($timer-light), $weight: 30%);
       };
+      @include userboard() {
+        background-color: blender(ub($board-dls), ub($board-empty));
+        border-color: lightener(ub($board-selection-color));
+      }
     }
     .bonus-label {
       @include colorModed() {
         color: mix(m($board-tls), m($gray-extreme), $weight: 20%);
       };
+      @include userboard() {
+        color: ub($board-bonus-text);
+      }
     }
   }
   &.selected {
@@ -445,6 +588,10 @@ p.streak-loss {
       border: 1px solid m($timer-dark);
       background-color: m($timer-light);
     };
+    @include userboard() {
+      border: 1px solid ub($board-selection-color);
+      background-color: blender(ub($board-empty), ub($board-selection-color), );
+    }
   }
 }
 @keyframes fadeIn {
@@ -573,6 +720,7 @@ p.streak-loss {
 .tile {
   @include colorModed() {
     background: m($tile-background);
+    border: m($tile-border);
     /* TODO
     &.tile-p0.tile-p0 {
       background-color: #0000ff;
@@ -581,6 +729,10 @@ p.streak-loss {
       background-color: #ff0000;
     }
     */
+  }
+  @include userTile() {
+    background: ut($tile-background);
+    border: ut($tile-border);
   }
 }
 .tile.blank {
@@ -613,43 +765,84 @@ p.streak-loss {
   transform: rotate(-10deg);
   font-size: $tile-font-size-mobile * 0.95;
   @include colorModed() {
-    color: m($tile-background);
+    color: m($tile-blank-text);
     background-color: m($tile-background-secondary);
+  }
+  @include userTile() {
+    color: ut($tile-blank-text);
+    background: ut($tile-background-secondary);
   }
 }
 .tile.last-played {
   @include colorModed() {
-    border: 1px solid m($tile-background);
-    background-color: m($tile-background);
-    box-shadow:  inset 0px 0px 0px 2px m($tile-background-secondary);
+    border: 1px solid m($tile-last-background);
+    background: m($tile-last-background);
     /* TODO
     &.tile-p0 {
-      border: 1px solid #0000ff;
-      box-shadow: inset 0px 0px 0px 2px #8080ff;
+      border: 1px solid m($someColor);
+      box-shadow: inset 0px 0px 0px 2px m($someColor);
     }
     &.tile-p1 {
-      border: 1px solid #ff0000;
-      box-shadow: inset 0px 0px 0px 2px #ff8080;
+      border: 1px solid m($someColor);
+      box-shadow: inset 0px 0px 0px 2px m($someColor);;
     }
     */
+  }
+  @include userTile() {
+    border: 0px solid transparent; // Fallback if border is a gradient
+    border: ut($tile-border);
+    background: ut($tile-last-background);
+  }
+  &.blank {
+    p.rune {
+      @include colorModed() {
+        background-color: m($tile-last-blank);
+        color: m($tile-last-background);
+      }
+      @include userTile() {
+        color: ut($tile-blank-text); // Fallback if border is a gradient
+        color: ut($tile-last-background);
+        background: ut($tile-last-blank);
+      }
+    }
+  }
+  p.rune, p.point-value {
+    @include colorModed() {
+      color: m($tile-last-text);
+    }
+    @include userTile() {
+      color: ut($tile-last-text);
+    }
   }
 }
 .tile.tentative {
   @include colorModed() {
-    background-color: m($tile-background-tertiary);
+    background: m($tile-background-tertiary);
     /* TODO
+
     &.tile-p0 {
-      background-color: #8080ff;
+     @include colorModed() {
+        background: m($someColor);
+      }
     }
     &.tile-p1 {
-      background-color: #ff8080;
+           @include colorModed() {
+        background: m($someColor);
+      }
     }
     */
   }
+  @include userTile() {
+      background: ut($tile-background-tertiary);
+  }
   &.blank p.rune {
     @include colorModed() {
-      background-color: m($tile-background-quartenary);
+      background-color: m($tile-background-quaternary);
       color: m($tile-background);
+    }
+    @include userTile() {
+      background-color: ut($tile-background-quaternary);
+      color: ut($tile-blank-text);
     }
   }
 }
@@ -685,6 +878,9 @@ p.rune {
   @include colorModed() {
     color: m($background);
   }
+  @include userTile() {
+    color: ut($tile-text);
+  }
 }
 .tile.blank p.rune {
   font-size: $tile-font-size-mobile * 0.9;
@@ -702,19 +898,28 @@ p.rune {
   @include colorModed() {
     color: m($background);
   }
+  @include userTile() {
+    color: ut($tile-text);
+  }
 }
 
 .rack .tile, .tile.preview:not(.over-board) {
   width: $tile-size-desktop;
   height: $tile-size-desktop;
   @include colorModed() {
-    background-color: m($tile-background);
+    background: m($tile-background);
+  }
+  @include userTile() {
+    background: ut($tile-background);
   }
   margin: 2px;
   p.rune {
     font-size: $tile-font-size-desktop;
     @include colorModed() {
       color: m($background);
+    }
+    @include userTile() {
+      color: ut($tile-text);
     }
   }
   .point-value {
@@ -724,7 +929,10 @@ p.rune {
     opacity: 0.4;
   }
   @include colorModed() {
-    background-color: m($tile-background);
+    background: m($tile-background);
+  }
+  @include userTile() {
+    background: ut($tile-background);
   }
   transition: $tile-transition;
 }
@@ -918,14 +1126,24 @@ p.rune {
     @include colorModed() {
       color: m($secondary);
     }
-    font-size: 12px;
+    font-size: 13px;
+    letter-spacing: 1.2px;
+    text-transform: uppercase;
   }
   &.ant-card .ant-card-body {
     padding: 12px;
+    display: flex;
+    justify-content: space-around;
   }
   .variant {
     font-weight: 600;
     font-size: 16px;
+  }
+  .metadata {
+    flex-grow: 2;
+  }
+  .club-logo {
+    width: 78px;
   }
 }
 
@@ -1156,8 +1374,13 @@ p.rune {
         .anticon.anticon-redo {
           margin-bottom: 0;
         }
+        .analyzer-controls {
+          align-items: center;
+          display: flex;
+          flex-direction: column;
+        }
         .suggestions {
-          width: calc(100% - 60px);
+          width: calc(100% - 90px);
           overflow-y: auto;
           table {
             align-self: flex-start;
@@ -1241,9 +1464,6 @@ p.rune {
           line-height: 1.5em;
           font-size: 14px;
         }
-        .ant-card-extra {
-          font-size: 14px;
-        }
       }
     }
     .notepad-card, .analyzer-card {
@@ -1259,9 +1479,15 @@ p.rune {
         height: 120px;
       }
     }
+    .notepad-card {
+      .ant-card-body {
+        padding-top: 0;
+      }
+    }
     .analyzer-card {
       .ant-card-body {
         padding: 0;
+
         .analyzer-container {
           .suggestions {
             font-size: 13px;

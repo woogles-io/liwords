@@ -40,11 +40,10 @@ type tournament struct {
 	Divisions         datatypes.JSON
 	// Slug looks like /tournament/abcdef, /club/madison, /club/madison/2020-04-20
 	Slug string `gorm:"uniqueIndex:,expression:lower(slug)"`
-	// DefaultSettings are mostly used for clubs. It's the default settings for
-	// games in that club. It can be used for non-clubs as well, in perhaps
-	// an advertisement or other such tournament page. (But in tournaments,
-	// each division has their own settings).
-	DefaultSettings datatypes.JSON
+	// ExtraMeta contains some extra metadata for the tournament,
+	// such as default board/tile style, disclaimer, default
+	// club settings, and a possible password.
+	ExtraMeta datatypes.JSON
 	// Type is tournament, club, session, and maybe other things.
 	Type string
 	// Parent is a tournament parent ID.
@@ -96,10 +95,10 @@ func (s *DBStore) dbObjToEntity(tm *tournament) (*entity.Tournament, error) {
 		return nil, err
 	}
 
-	var defaultSettings *realtime.GameRequest
-	err = json.Unmarshal(tm.DefaultSettings, defaultSettings)
+	extraMeta := &entity.TournamentMeta{}
+	err = json.Unmarshal(tm.ExtraMeta, extraMeta)
 	if err != nil {
-		// it's ok, don't error out; this tournament has no default settings
+		// it's ok, don't error out; this tournament has no extra meta
 	}
 
 	tme := &entity.Tournament{UUID: tm.UUID,
@@ -111,7 +110,7 @@ func (s *DBStore) dbObjToEntity(tm *tournament) (*entity.Tournament, error) {
 		IsStarted:         tm.IsStarted,
 		IsFinished:        tm.IsFinished,
 		Divisions:         divisions,
-		DefaultSettings:   defaultSettings,
+		ExtraMeta:         extraMeta,
 		Type:              entity.CompetitionType(tm.Type),
 		ParentID:          tm.Parent,
 		Slug:              tm.Slug,
@@ -200,10 +199,9 @@ func (s *DBStore) toDBObj(t *entity.Tournament) (*tournament, error) {
 		return nil, err
 	}
 
-	defaultSettings, err := json.Marshal(t.DefaultSettings)
+	extraMeta, err := json.Marshal(t.ExtraMeta)
 	if err != nil {
-		// for now
-		defaultSettings = []byte("{}")
+		return nil, err
 	}
 
 	dbt := &tournament{
@@ -216,7 +214,7 @@ func (s *DBStore) toDBObj(t *entity.Tournament) (*tournament, error) {
 		IsStarted:         t.IsStarted,
 		IsFinished:        t.IsFinished,
 		Divisions:         divisions,
-		DefaultSettings:   defaultSettings,
+		ExtraMeta:         extraMeta,
 		Type:              string(t.Type),
 		Parent:            t.ParentID,
 		Slug:              t.Slug,
@@ -334,6 +332,13 @@ func (s *DBStore) RemoveRegistrants(ctx context.Context, tid string, userIDs []s
 
 	result := ctxDB.Delete(registrant{}, "user_id IN ? AND tournament_id = ? AND division_id = ?",
 		userIDs, tid, division)
+	return result.Error
+}
+
+func (s *DBStore) RemoveRegistrantsForTournament(ctx context.Context, tid string) error {
+	ctxDB := s.db.WithContext(ctx)
+
+	result := ctxDB.Delete(registrant{}, "tournament_id = ?", tid)
 	return result.Error
 }
 

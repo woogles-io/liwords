@@ -8,6 +8,7 @@ import (
 	"github.com/domino14/liwords/pkg/entity"
 	realtime "github.com/domino14/liwords/rpc/api/proto/realtime"
 	"github.com/domino14/macondo/alphabet"
+	"github.com/domino14/macondo/board"
 	macondoconfig "github.com/domino14/macondo/config"
 	"github.com/domino14/macondo/gaddag"
 	"github.com/domino14/macondo/game"
@@ -794,9 +795,15 @@ func addTripleTriples(info *IncrementInfo) error {
 		succEvent = events[info.EventIndex+1]
 	}
 	if event.Type == pb.GameEvent_TILE_PLACEMENT_MOVE &&
-		(succEvent == nil || succEvent.Type != pb.GameEvent_PHONY_TILES_RETURNED) &&
-		countBonusSquares(info, event, '=') >= 2 {
-		incrementStatItem(info.StatItem, info.Lss, event, info.GameId, info.PlayerId, info.Evt.Time)
+		(succEvent == nil || succEvent.Type != pb.GameEvent_PHONY_TILES_RETURNED) {
+
+		bonuses, err := countBonusSquares(info, event, '=')
+		if err != nil {
+			return err
+		}
+		if bonuses >= 2 {
+			incrementStatItem(info.StatItem, info.Lss, event, info.GameId, info.PlayerId, info.Evt.Time)
+		}
 	}
 	return nil
 }
@@ -899,7 +906,12 @@ func addBonusSquares(info *IncrementInfo, bonusSquare byte) error {
 	}
 	if event.Type == pb.GameEvent_TILE_PLACEMENT_MOVE &&
 		(succEvent == nil || succEvent.Type != pb.GameEvent_PHONY_TILES_RETURNED) {
-		info.StatItem.Total += countBonusSquares(info, event, bonusSquare)
+
+		bonuses, err := countBonusSquares(info, event, bonusSquare)
+		if err != nil {
+			return err
+		}
+		info.StatItem.Total += bonuses
 	}
 	return nil
 }
@@ -923,17 +935,24 @@ func getOccupiedIndexes(event *pb.GameEvent) [][]int {
 
 func countBonusSquares(info *IncrementInfo,
 	event *pb.GameEvent,
-	bonusSquare byte) int {
+	bonusSquare byte) (int, error) {
 	occupiedIndexes := getOccupiedIndexes(event)
-	boardLayout, _ := game.HistoryToVariant(info.History)
+	boardLayout, _, _ := game.HistoryToVariant(info.History)
+	var bd []string
+	switch boardLayout {
+	case "", board.CrosswordGameLayout:
+		bd = board.CrosswordGameBoard
+	default:
+		return 0, errors.New("board not supported")
+	}
 	count := 0
 	for j := 0; j < len(occupiedIndexes); j++ {
 		rowAndColumn := occupiedIndexes[j]
-		if boardLayout[rowAndColumn[0]][rowAndColumn[1]] == bonusSquare {
+		if bd[rowAndColumn[0]][rowAndColumn[1]] == bonusSquare {
 			count++
 		}
 	}
-	return count
+	return count, nil
 }
 
 func isBingoNineOrAbove(event *pb.GameEvent) bool {
@@ -944,24 +963,39 @@ func isUnchallengedPhonyEvent(event *pb.GameEvent,
 	history *pb.GameHistory,
 	cfg *macondoconfig.Config) (bool, error) {
 	phony := false
-	var err error
 	if event.Type == pb.GameEvent_TILE_PLACEMENT_MOVE {
 		dawg, err := gaddag.GetDawg(cfg, history.Lexicon)
 		if err != nil {
 			return phony, err
 		}
-		phony, err = isPhony(dawg, event.WordsFormed[0])
+		for _, word := range event.WordsFormed {
+			phony, err := isPhony(dawg, word, history.Variant)
+			if err != nil {
+				return false, err
+			}
+			if phony {
+				return phony, nil
+			}
+		}
+
 	}
-	return phony, err
+	return false, nil
 }
 
-func isPhony(gd gaddag.GenericDawg, word string) (bool, error) {
-	alph := gd.GetAlphabet()
-	machineWord, err := alphabet.ToMachineWord(word, alph)
+func isPhony(gd gaddag.GenericDawg, word, variant string) (bool, error) {
+	lex := gaddag.Lexicon{GenericDawg: gd}
+	machineWord, err := alphabet.ToMachineWord(word, lex.GetAlphabet())
 	if err != nil {
 		return false, err
 	}
-	return !gaddag.FindMachineWord(gd, machineWord), nil
+	var valid bool
+	switch string(variant) {
+	case string(game.VarWordSmog):
+		valid = lex.HasAnagram(machineWord)
+	default:
+		valid = lex.HasWord(machineWord)
+	}
+	return !valid, nil
 }
 
 func instantiatePlayerData() map[string]*entity.StatItem {

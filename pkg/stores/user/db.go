@@ -8,6 +8,7 @@ import (
 	"math/rand"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/jinzhu/gorm"
 	"github.com/jinzhu/gorm/dialects/postgres"
@@ -15,6 +16,7 @@ import (
 	"github.com/rs/zerolog/log"
 
 	"github.com/domino14/liwords/pkg/entity"
+	cpb "github.com/domino14/liwords/rpc/api/proto/config_service"
 	pb "github.com/domino14/liwords/rpc/api/proto/user_service"
 )
 
@@ -36,9 +38,9 @@ type User struct {
 	// Password will be hashed.
 	Password    string `gorm:"type:varchar(128)"`
 	InternalBot bool   `gorm:"default:false;index"`
-	IsAdmin     bool   `gorm:"default:false"`
+	IsAdmin     bool   `gorm:"default:false;index"`
 	IsDirector  bool   `gorm:"default:false"`
-	IsMod       bool   `gorm:"default:false"`
+	IsMod       bool   `gorm:"default:false;index"`
 	ApiKey      string
 
 	Actions postgres.Jsonb
@@ -56,6 +58,8 @@ type profile struct {
 	FirstName string `gorm:"type:varchar(32)"`
 	LastName  string `gorm:"type:varchar(64)"`
 
+	BirthDate string `gorm:"type:varchar(11)"`
+
 	CountryCode string `gorm:"type:varchar(3)"`
 	// Title is some sort of acronym/shorthand for a title. Like GM, EX, SM, UK-GM (UK Grandmaster?)
 	Title string `gorm:"type:varchar(8)"`
@@ -70,6 +74,17 @@ type profile struct {
 	Ratings postgres.Jsonb // A complex dictionary of ratings with variants/lexica/etc.
 	Stats   postgres.Jsonb // Profile stats such as average score per variant, bingos, a lot of other simple stats.
 	// More complex stats might be in a separate place.
+}
+
+type briefProfile struct {
+	UUID        string
+	Username    string
+	InternalBot bool
+	CountryCode string
+	AvatarUrl   string
+	FirstName   string // XXX please add full_name to db instead.
+	LastName    string // XXX please add full_name to db instead.
+	BirthDate   string
 }
 
 type following struct {
@@ -167,6 +182,33 @@ func (s *DBStore) Set(ctx context.Context, u *entity.User) error {
 	return result.Error
 }
 
+func (s *DBStore) SetPermissions(ctx context.Context, req *cpb.PermissionsRequest) error {
+	updates := make(map[string]interface{})
+	if req.Bot != nil {
+		updates["internal_bot"] = req.Bot.Value
+	}
+	if req.Admin != nil {
+		updates["is_admin"] = req.Admin.Value
+	}
+	if req.Director != nil {
+		updates["is_director"] = req.Director.Value
+	}
+	if req.Mod != nil {
+		updates["is_mod"] = req.Mod.Value
+	}
+
+	result := s.db.Table("users").Where("lower(username) = ?", strings.ToLower(req.Username)).Updates(updates)
+	if result.Error != nil {
+		return result.Error
+	}
+	if result.RowsAffected != 1 {
+		// gorm also sets result.RowsAffected == 0 if len(updates) == 0
+		return gorm.ErrRecordNotFound
+	}
+
+	return nil
+}
+
 // GetByEmail gets the user by email. It does not try to get the profile.
 // We don't get the profile here because GetByEmail is only used for things
 // like password resets and there is no need.
@@ -208,6 +250,7 @@ func dbProfileToProfile(p *profile) (*entity.Profile, error) {
 	return &entity.Profile{
 		FirstName:   p.FirstName,
 		LastName:    p.LastName,
+		BirthDate:   p.BirthDate,
 		CountryCode: p.CountryCode,
 		Title:       p.Title,
 		About:       p.About,
@@ -365,21 +408,6 @@ func (s *DBStore) SetPassword(ctx context.Context, uuid string, hashpass string)
 	return s.db.Model(u).Update("password", hashpass).Error
 }
 
-// SetAbout sets the about (profile field) for the user.
-func (s *DBStore) SetAbout(ctx context.Context, uuid string, about string) error {
-	u := &User{}
-	p := &profile{}
-
-	if result := s.db.Where("uuid = ?", uuid).First(u); result.Error != nil {
-		return result.Error
-	}
-	if result := s.db.Model(u).Related(p); result.Error != nil {
-		return result.Error
-	}
-
-	return s.db.Model(p).Update("about", about).Error
-}
-
 // SetAvatarUrl sets the avatar_url (profile field) for the user.
 func (s *DBStore) SetAvatarUrl(ctx context.Context, uuid string, avatarUrl string) error {
 	u := &User{}
@@ -395,28 +423,108 @@ func (s *DBStore) SetAvatarUrl(ctx context.Context, uuid string, avatarUrl strin
 	return s.db.Model(p).Update("avatar_url", avatarUrl).Error
 }
 
+func (s *DBStore) GetBriefProfiles(ctx context.Context, uuids []string) (map[string]*pb.BriefProfile, error) {
+	var profiles []*briefProfile
+	if result := s.db.
+		Table("users").
+		Joins("left join profiles on users.id = profiles.user_id").
+		Where("uuid in (?)", uuids).
+		Select([]string{"uuid", "username", "internal_bot", "country_code", "avatar_url", "first_name", "last_name", "birth_date"}).
+		Find(&profiles); result.Error != nil {
+		return nil, result.Error
+	}
+
+	profileMap := make(map[string]*briefProfile)
+	for _, profile := range profiles {
+		profileMap[profile.UUID] = profile
+	}
+
+	now := time.Now()
+
+	response := make(map[string]*pb.BriefProfile)
+	for _, uuid := range uuids {
+		prof, hasProfile := profileMap[uuid]
+		if !hasProfile {
+			prof = &briefProfile{}
+		}
+		if prof.AvatarUrl == "" && prof.InternalBot {
+			// see entity/user.go
+			prof.AvatarUrl = "https://woogles-prod-assets.s3.amazonaws.com/macondog.png"
+		}
+		subjectIsAdult := entity.IsAdult(prof.BirthDate, now)
+		avatarUrl := ""
+		fullName := ""
+		if subjectIsAdult {
+			avatarUrl = prof.AvatarUrl
+			// see entity/user.go RealName()
+			if prof.FirstName != "" {
+				if prof.LastName != "" {
+					fullName = prof.FirstName + " " + prof.LastName
+				} else {
+					fullName = prof.FirstName
+				}
+			} else {
+				fullName = prof.LastName
+			}
+		}
+		response[uuid] = &pb.BriefProfile{
+			Username:    prof.Username,
+			CountryCode: prof.CountryCode,
+			AvatarUrl:   avatarUrl,
+			FullName:    fullName,
+		}
+	}
+
+	return response, nil
+}
+
+func (s *DBStore) SetPersonalInfo(ctx context.Context, uuid string, email string, firstName string, lastName string, birthDate string, countryCode string, about string) error {
+	u := &User{}
+	p := &profile{}
+
+	return s.db.Transaction(func(tx *gorm.DB) error {
+		if result := tx.Where("uuid = ?", uuid).First(u); result.Error != nil {
+			return result.Error
+		}
+		if result := tx.Model(u).Update("email", email); result.Error != nil {
+			return result.Error
+		}
+		if result := tx.Model(u).Related(p); result.Error != nil {
+			return result.Error
+		}
+
+		return tx.Model(p).Update(map[string]interface{}{"first_name": firstName,
+			"last_name":    lastName,
+			"birth_date":   birthDate,
+			"about":        about,
+			"country_code": countryCode}).Error
+	})
+
+}
+
 // SetRatings set the specific ratings for the given variant in a transaction.
 func (s *DBStore) SetRatings(ctx context.Context, p0uuid string, p1uuid string, variant entity.VariantKey,
 	p0Rating entity.SingleRating, p1Rating entity.SingleRating) error {
 
-	p0Profile, p0RatingBytes, err := getRatingBytes(s, ctx, p0uuid, variant, p0Rating)
-	if err != nil {
-		return err
-	}
-
-	p1Profile, p1RatingBytes, err := getRatingBytes(s, ctx, p1uuid, variant, p1Rating)
-	if err != nil {
-		return err
-	}
-
 	return s.db.Transaction(func(tx *gorm.DB) error {
-		err := s.db.Model(p0Profile).Update("ratings", postgres.Jsonb{RawMessage: p0RatingBytes}).Error
+
+		p0Profile, p0RatingBytes, err := getRatingBytes(tx, ctx, p0uuid, variant, p0Rating)
+		if err != nil {
+			return err
+		}
+
+		err = tx.Model(p0Profile).Update("ratings", postgres.Jsonb{RawMessage: p0RatingBytes}).Error
 
 		if err != nil {
 			return err
 		}
 
-		err = s.db.Model(p1Profile).Update("ratings", postgres.Jsonb{RawMessage: p1RatingBytes}).Error
+		p1Profile, p1RatingBytes, err := getRatingBytes(tx, ctx, p1uuid, variant, p1Rating)
+		if err != nil {
+			return err
+		}
+
+		err = tx.Model(p1Profile).Update("ratings", postgres.Jsonb{RawMessage: p1RatingBytes}).Error
 
 		if err != nil {
 			return err
@@ -426,15 +534,15 @@ func (s *DBStore) SetRatings(ctx context.Context, p0uuid string, p1uuid string, 
 	})
 }
 
-func getRatingBytes(s *DBStore, ctx context.Context, uuid string, variant entity.VariantKey,
+func getRatingBytes(tx *gorm.DB, ctx context.Context, uuid string, variant entity.VariantKey,
 	rating entity.SingleRating) (*profile, []byte, error) {
 	u := &User{}
 	p := &profile{}
 
-	if result := s.db.Where("uuid = ?", uuid).First(u); result.Error != nil {
+	if result := tx.Where("uuid = ?", uuid).First(u); result.Error != nil {
 		return nil, nil, result.Error
 	}
-	if result := s.db.Model(u).Related(p); result.Error != nil {
+	if result := tx.Model(u).Related(p); result.Error != nil {
 		return nil, nil, result.Error
 	}
 
@@ -465,24 +573,25 @@ func getExistingRatings(p *profile) *entity.Ratings {
 func (s *DBStore) SetStats(ctx context.Context, p0uuid string, p1uuid string, variant entity.VariantKey,
 	p0Stats *entity.Stats, p1Stats *entity.Stats) error {
 
-	p0Profile, p0StatsBytes, err := getStatsBytes(s, ctx, p0uuid, variant, p0Stats)
-	if err != nil {
-		return err
-	}
-
-	p1Profile, p1StatsBytes, err := getStatsBytes(s, ctx, p1uuid, variant, p1Stats)
-	if err != nil {
-		return err
-	}
-
 	return s.db.Transaction(func(tx *gorm.DB) error {
-		err := s.db.Model(p0Profile).Update("stats", postgres.Jsonb{RawMessage: p0StatsBytes}).Error
+
+		p0Profile, p0StatsBytes, err := getStatsBytes(tx, ctx, p0uuid, variant, p0Stats)
+		if err != nil {
+			return err
+		}
+
+		err = tx.Model(p0Profile).Update("stats", postgres.Jsonb{RawMessage: p0StatsBytes}).Error
 
 		if err != nil {
 			return err
 		}
 
-		err = s.db.Model(p1Profile).Update("stats", postgres.Jsonb{RawMessage: p1StatsBytes}).Error
+		p1Profile, p1StatsBytes, err := getStatsBytes(tx, ctx, p1uuid, variant, p1Stats)
+		if err != nil {
+			return err
+		}
+
+		err = tx.Model(p1Profile).Update("stats", postgres.Jsonb{RawMessage: p1StatsBytes}).Error
 
 		if err != nil {
 			return err
@@ -492,15 +601,15 @@ func (s *DBStore) SetStats(ctx context.Context, p0uuid string, p1uuid string, va
 	})
 }
 
-func getStatsBytes(s *DBStore, ctx context.Context, uuid string, variant entity.VariantKey,
+func getStatsBytes(tx *gorm.DB, ctx context.Context, uuid string, variant entity.VariantKey,
 	stats *entity.Stats) (*profile, []byte, error) {
 	u := &User{}
 	p := &profile{}
 
-	if result := s.db.Where("uuid = ?", uuid).First(u); result.Error != nil {
+	if result := tx.Where("uuid = ?", uuid).First(u); result.Error != nil {
 		return nil, nil, result.Error
 	}
-	if result := s.db.Model(u).Related(p); result.Error != nil {
+	if result := tx.Model(u).Related(p); result.Error != nil {
 		return nil, nil, result.Error
 	}
 
@@ -589,6 +698,29 @@ func (s *DBStore) GetFollows(ctx context.Context, uid uint) ([]*entity.User, err
 		return nil, result.Error
 	}
 	log.Debug().Int("num-followed", len(users)).Msg("found-followed")
+	entUsers := make([]*entity.User, len(users))
+	for idx, u := range users {
+		entUsers[idx] = &entity.User{UUID: u.Uuid, Username: u.Username}
+	}
+	return entUsers, nil
+}
+
+// GetFollowedBy gets all the users that are following the passed-in user DB ID.
+func (s *DBStore) GetFollowedBy(ctx context.Context, uid uint) ([]*entity.User, error) {
+	type followedby struct {
+		Username string
+		Uuid     string
+	}
+
+	var users []followedby
+
+	if result := s.db.Table("followings").Select("u0.username, u0.uuid").
+		Joins("JOIN users as u0 ON u0.id = follower_id").
+		Where("user_id = ?", uid).Scan(&users); result.Error != nil {
+
+		return nil, result.Error
+	}
+	log.Debug().Int("num-followed-by", len(users)).Msg("found-followed-by")
 	entUsers := make([]*entity.User, len(users))
 	for idx, u := range users {
 		entUsers[idx] = &entity.User{UUID: u.Uuid, Username: u.Username}
@@ -826,6 +958,33 @@ func (s *DBStore) ResetStatsAndRatings(ctx context.Context, uid string) error {
 	return nil
 }
 
+func (s *DBStore) ResetPersonalInfo(ctx context.Context, uuid string) error {
+	u := &User{}
+	p := &profile{}
+
+	if result := s.db.Where("uuid = ?", uuid).First(u); result.Error != nil {
+		return result.Error
+	}
+	if result := s.db.Model(u).Related(p); result.Error != nil {
+		return result.Error
+	}
+
+	return s.db.Model(p).Update(map[string]interface{}{"first_name": "",
+		"last_name":    "",
+		"about":        "",
+		"title":        "",
+		"avatar_url":   "",
+		"country_code": ""}).Error
+}
+
+func (s *DBStore) ResetProfile(ctx context.Context, uid string) error {
+	err := s.ResetStatsAndRatings(ctx, uid)
+	if err != nil {
+		return err
+	}
+	return s.ResetPersonalInfo(ctx, uid)
+}
+
 func (s *DBStore) Disconnect() {
 	s.db.Close()
 }
@@ -841,4 +1000,31 @@ func (s *DBStore) Count(ctx context.Context) (int64, error) {
 
 func (s *DBStore) CachedCount(ctx context.Context) int {
 	return 0
+}
+
+func (s *DBStore) GetModList(ctx context.Context) (*pb.GetModListResponse, error) {
+	var users []User
+	if result := s.db.
+		Where("is_admin = ?", true).Or("is_mod = ?", true).
+		Select([]string{"uuid", "is_admin", "is_mod"}).
+		Find(&users); result.Error != nil {
+		return nil, result.Error
+	}
+
+	var adminUserIds []string
+	var modUserIds []string
+
+	for _, user := range users {
+		if user.IsAdmin {
+			adminUserIds = append(adminUserIds, user.UUID)
+		}
+		if user.IsMod {
+			modUserIds = append(modUserIds, user.UUID)
+		}
+	}
+
+	return &pb.GetModListResponse{
+		AdminUserIds: adminUserIds,
+		ModUserIds:   modUserIds,
+	}, nil
 }

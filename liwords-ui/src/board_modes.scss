@@ -1,0 +1,222 @@
+// Theming system adapted from Katie McTigue https://medium.com/@katiemctigue/how-to-create-a-dark-board-in-sass-609f131a3995
+
+//Strings for calling the mixin are defined in color_boards.scss
+
+$boards: (
+    default: ( //intentionally invalid css colors,
+      // to allow dark and light mode to have their own defaults
+        color-board-dls: ignore,
+        color-board-dws: ignore,
+        color-board-tls: ignore,
+        color-board-tws: ignore,
+        color-board-empty: ignore,
+        color-grid: ignore,
+        color-board-fill: transparent,
+        number-board-space-opacity: 1,
+        type-board-space-mix-mode: normal,
+        color-center-icon: ignore,
+        color-center-fill: ignore,
+        color-bonus-text: ignore,
+        color-selection-color: ignore,
+    ),
+      cheery: (
+          color-board-dls: #b5e468,
+          color-board-dws: #ffa84d,
+          color-board-tws: #dc1d4b,
+          color-board-tls: #108ebe,
+          color-board-empty: #ffedb5,
+          color-grid: #c30e39,
+          color-board-fill: #c3c3c3,
+          number-board-space-opacity: 1,
+          type-board-space-mix-mode: normal,
+          color-center-icon: #dc1d4b,
+          color-center-fill: ignore,
+          color-bonus-text: #333,
+          color-selection-color: #5fa53d,
+      ),
+      aflame: (
+          color-board-dls: #fad757,
+          color-board-tls: #f8aa4b,
+          color-board-dws: #e06329,
+          color-board-tws: #9d0215,
+          color-board-empty: #313131,
+          color-grid: #232323,
+          color-board-fill: #232323,
+          number-board-space-opacity: 1,
+          type-board-space-mix-mode: normal,
+          color-center-icon: #a9081c,
+          color-center-fill: ignore,
+          color-bonus-text: #313131,
+          color-selection-color: #5f5f5f,
+      ),
+        charcoal: (
+            color-board-dls: #7f9194,
+            color-board-tls: #3e494c,
+            color-board-dws: #948285,
+            color-board-tws: #644448,
+            color-board-empty: #ababab,
+            color-grid: #232323,
+            color-board-fill: #232323,
+            number-board-space-opacity: 1,
+            type-board-space-mix-mode: normal,
+            color-center-icon: #633d42,
+            color-center-fill: ignore,
+            color-bonus-text: #FFF,
+            color-selection-color: #5f5f5f,
+        ),
+      tealish: (
+          color-board-dls: #058484,
+          color-board-tls: #0c4c4c,
+          color-board-dws: #6c596f,
+          color-board-tws: #481d35,
+          color-board-empty: #a5ccc1,
+          color-grid: #232323,
+          color-board-fill: #a5ccc1,
+          number-board-space-opacity: 1,
+          type-board-space-mix-mode: normal,
+          color-center-icon: #481d35,
+          color-center-fill: ignore,
+          color-bonus-text: #FFF,
+          color-selection-color: #2f4031,
+      ),
+      pastel: (
+          color-board-dls: #a3e5de,
+          color-board-tls: #54bebe,
+          color-board-dws: #e08c8c,
+          color-board-tws: #9a3c49,
+          color-board-empty: #fff,
+          color-grid: #b4a1b7,
+          color-board-fill: #ffead5,
+          number-board-space-opacity: 1,
+          type-board-space-mix-mode: normal,
+          color-center-icon: #9a3c49,
+          color-center-fill: ignore,
+          color-bonus-text: #FFF,
+          color-selection-color: #2f4031,
+      ),
+      forest: (
+          color-board-dls: #66afa5,
+          color-board-tls: #156960,
+          color-board-dws: #4e8639,
+          color-board-tws: #175133,
+          color-board-empty: #afd782,
+          color-grid: #175133,
+          color-board-fill: #175133,
+          number-board-space-opacity: 1,
+          type-board-space-mix-mode: normal,
+          color-center-icon: #1a4843,
+          color-center-fill: ignore,
+          color-bonus-text: #FFF,
+          color-selection-color: #162d0e,
+      ),
+    metallic: (
+          color-board-dls: rgba(60, 98, 114, 0.47),
+          color-board-dws: rgba(119, 90, 90, 0.73),
+          color-board-tws: rgba(72, 9, 26, 0.55),
+          color-board-tls: rgba(7, 56, 80, 0.55),
+          color-board-empty: #ffffff00,
+          color-grid: #d9d9d9,
+          color-board-fill: url("https://woogles-prod-assets.s3.amazonaws.com/metallicback.jpg"),
+          number-board-space-opacity: 1,
+          type-board-space-mix-mode: hard-light,
+          color-center-icon: #4c1e1ee0,
+          color-center-fill: ignore,
+          color-bonus-text: #FFF,
+          color-selection-color: #335322,
+    ),
+      vintage: (
+          color-board-dls: rgba(60, 98, 114, 0.47),
+          color-board-dws: rgba(119, 90, 90, 0.73),
+          color-board-tws: rgba(72, 9, 26, 0.55),
+          color-board-tls: rgba(7, 56, 80, 0.55),
+          color-board-empty: #ffffff00,
+          color-grid: #665e59,
+          color-board-fill: url("https://woogles-prod-assets.s3.amazonaws.com/paper.jpg"),
+          number-board-space-opacity: 1,
+          type-board-space-mix-mode: hard-light,
+          color-center-icon: #4c1e1ee0,
+          color-center-fill: ignore,
+          color-bonus-text: #292522,
+          color-selection-color: #335322,
+      ),
+      balsa: (
+          color-board-dls: rgba(60, 98, 114, 0.65),
+          color-board-dws: rgba(109, 69, 71, 0.73),
+          color-board-tws: rgba(72, 3, 3, 0.65),
+          color-board-tls: rgba(4, 61, 90, 0.65),
+          color-board-empty: #ffffff00,
+          color-grid: #665e59,
+          color-board-fill: url("https://woogles-prod-assets.s3.amazonaws.com/balsa.jpg"),
+          number-board-space-opacity: 1,
+          type-board-space-mix-mode: hard-light,
+          color-center-icon: #4c1e1ee0,
+          color-center-fill: ignore,
+          color-bonus-text: #292522,
+          color-selection-color: #335322,
+      ),
+      mahogany: (
+          color-board-dls: rgba(95, 175, 208, 0.45),
+          color-board-dws: rgba(181, 91, 96, 0.53),
+          color-board-tws: #5d121e,
+          color-board-tls: rgba(3, 66, 99, 0.65),
+          color-board-empty: #ffffff00,
+          color-grid: #3e332f,
+          color-board-fill: url("https://woogles-prod-assets.s3.amazonaws.com/mahogany.jpg"),
+          number-board-space-opacity: 1,
+          type-board-space-mix-mode: screen,
+          color-center-icon: #C8AE91,
+          color-center-fill: ignore,
+          color-bonus-text: #C8AE91,
+          color-selection-color: #538638,
+      ),
+      nassc: ( //intentionally not an option in preferences,
+        // created for nassc under their license with its copyright holder
+              color-board-dls: #0099d4,
+              color-board-dws: #ff3131,
+              color-board-tws: #ff6b00,
+              color-board-tls: #8fd76d,
+              color-board-empty: #ffffff,
+              color-grid: #c3c3c3,
+              color-board-fill: #c3c3c3,
+              number-board-space-opacity: 1,
+              type-board-space-mix-mode: normal,
+              color-center-icon: #ffffff,
+              color-center-fill: ignore,
+              color-bonus-text: #ffffff,
+              color-selection-color: #5fa53d,
+      ),
+);
+
+@mixin userboard() {
+  @each $board, $map in $boards {
+    .board--#{$board} & {
+      $board-map: () !global;
+      @each $key, $submap in $map {
+        $value: map-get(map-get($boards, $board), '#{$key}');
+        $board-map: map-merge($board-map, ($key: $value)) !global;
+      }
+      @content;
+      $board-map: null !global;
+    }
+  }
+}
+
+@function ub($key) {
+  @return map-get($board-map, $key);
+}
+
+@function blender($color, $background) {
+  @if $color == 'ignore' {
+    @return $color;
+  }
+  @if $background == 'ignore' {
+    @return $color;
+  }
+  @return  mix($color, $background, $weight: 50%);
+}
+@function lightener($color) {
+  @if $color == 'ignore' {
+    @return $color;
+  }
+  @return  scale-color($color, $lightness: -10%);
+}

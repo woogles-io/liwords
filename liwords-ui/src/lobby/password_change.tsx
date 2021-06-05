@@ -77,7 +77,7 @@ export const PasswordChange = (props: Props) => {
         style={{ marginTop: 20 }}
       >
         <Form.Item
-          label="Old Password"
+          label="Old password"
           name="oldPassword"
           rules={[
             {
@@ -90,7 +90,7 @@ export const PasswordChange = (props: Props) => {
         </Form.Item>
 
         <Form.Item
-          label="New Password"
+          label="New password"
           name="newPassword"
           rules={[
             {
@@ -103,7 +103,7 @@ export const PasswordChange = (props: Props) => {
         </Form.Item>
 
         <Form.Item
-          label="Confirm New Password"
+          label="Confirm new password"
           name="confirmnewPassword"
           rules={[
             {

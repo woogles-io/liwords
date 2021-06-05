@@ -6,6 +6,7 @@ import { ChallengeRule } from '../gen/macondo/api/proto/macondo/macondo_pb';
 type settings = { [key: string]: string | number | boolean };
 
 const phillyvirtual = {
+  variant: 'classic',
   lexicon: 'NWL20',
   challengerule: ChallengeRule.VOID,
   initialtime: 22, // Slider position is equivalent to 20 minutes.
@@ -17,6 +18,7 @@ const phillyvirtual = {
 };
 
 const cococlub = {
+  variant: 'classic',
   lexicon: 'CSW19',
   challengerule: ChallengeRule.FIVE_POINT,
   initialtime: 17, // 15 minutes
@@ -28,6 +30,7 @@ const cococlub = {
 };
 
 const laclub = {
+  variant: 'classic',
   lexicon: 'NWL20',
   challengerule: ChallengeRule.DOUBLE,
   initialtime: 22, // 20 minutes
@@ -39,6 +42,7 @@ const laclub = {
 };
 
 const madisonclub = {
+  variant: 'classic',
   challengerule: ChallengeRule.FIVE_POINT,
   initialtime: 22, // 20 minutes
   rated: true,
@@ -48,18 +52,8 @@ const madisonclub = {
   vsBot: false,
 };
 
-const wysc = {
-  lexicon: 'CSW19',
-  challengerule: ChallengeRule.SINGLE,
-  initialtime: 17, // 15 minutes
-  rated: true,
-  extratime: 3,
-  friend: '',
-  incOrOT: 'overtime',
-  vsBot: false,
-};
-
 const cocoblitz = {
+  variant: 'classic',
   lexicon: 'CSW19',
   challengerule: ChallengeRule.FIVE_POINT,
   initialtime: 5, // 3 minutes
@@ -68,19 +62,132 @@ const cocoblitz = {
   friend: '',
   incOrOT: 'overtime',
   vsBot: false,
-}
+};
+
+const channel275 = {
+  variant: 'classic',
+  lexicon: 'CSW19',
+  challengerule: ChallengeRule.FIVE_POINT,
+  initialtime: 22, // 20 minutes
+  rated: true,
+  extratime: 1,
+  friend: '',
+  incOrOT: 'overtime',
+  vsBot: false,
+};
+
+const nssg = {
+  variant: 'classic',
+  lexicon: 'CSW19X',
+  challengerule: ChallengeRule.FIVE_POINT,
+  initialtime: 15, // 13 minutes
+  rated: true,
+  extratime: 1,
+  friend: '',
+  incOrOT: 'overtime',
+  vsBot: false,
+};
+
+const nssg16 = {
+  variant: 'classic',
+  ...nssg,
+  initialtime: 18, // 16 mins
+};
+
+const nssg19 = {
+  variant: 'classic',
+  ...nssg,
+  initialtime: 21, // 19 mins
+};
+
+const phillyasap = {
+  variant: 'classic',
+  lexicon: 'NWL20',
+  challengerule: ChallengeRule.VOID,
+  initialtime: 22, // 20 minutes
+  rated: true,
+  extratime: 2,
+  friend: '',
+  incOrOT: 'overtime',
+  vsBot: false,
+};
+
+const nyc = {
+  variant: 'classic',
+  lexicon: 'NWL20',
+  challengerule: ChallengeRule.DOUBLE,
+  initialtime: 19, // 17 minutes
+  rated: true,
+  extratime: 1,
+  friend: '',
+  incOrOT: 'overtime',
+  vsBot: false,
+};
+
+const learners = {
+  variant: 'classic',
+  initialtime: 12, // 10 minutes
+  rated: true,
+  extratime: 0,
+  friend: '',
+  incOrOT: 'overtime',
+  vsBot: false,
+};
+
+const nasscChampionship = {
+  variant: 'classic',
+  lexicon: 'NSWL20',
+  challengerule: ChallengeRule.FIVE_POINT,
+  initialtime: 22, // 20 minutes
+  rated: true,
+  extratime: 1,
+  friend: '',
+  incOrOT: 'overtime',
+  vsBot: false,
+};
+
+const nasscNovice = {
+  variant: 'classic',
+  lexicon: 'NSWL20',
+  challengerule: ChallengeRule.VOID,
+  initialtime: 22, // 20 minutes
+  rated: true,
+  extratime: 1,
+  friend: '',
+  incOrOT: 'overtime',
+  vsBot: false,
+};
+
+const nasscHighSchool = {
+  variant: 'classic',
+  lexicon: 'NSWL20',
+  challengerule: ChallengeRule.DOUBLE,
+  initialtime: 22, // 20 minutes
+  rated: true,
+  extratime: 1,
+  friend: '',
+  incOrOT: 'overtime',
+  vsBot: false,
+};
 
 export const fixedSettings: { [key: string]: settings } = {
   phillyvirtual,
   cococlub,
   madisonclub,
+  eqRyXi3cBrUrDduuKDGuB9: cococlub,
   '26VtG4JCfeD6qvSGJEwRLm': laclub,
-  zgvv6NiShyGrMW6u77iu5n: wysc, // group a
-  dFeYGcG7vXENujB5v8tQv5: wysc, // group b
-  AMQ7jnA3NWzaTQuNwiEU9U: wysc, // group c
-  '9Jujm6qBnUwkcePaXX5TsB': wysc, // group d
-  T6TVX9rPfiUFB7x8vYkWgk: wysc, // brackets
   cocoblitz,
+  channel275,
+  GqgfauAMzorWxGGrCqhV5J: phillyasap,
+  cbCrE5EAnfTpacaZkxc4SZ: nssg, // /tournament
+  CSLUwqH4rHUTKzNcp7cPRP: nssg, // /club
+  K4MwE8nesdmPAQJkHbVpbi: nssg16,
+  nEc9xsgU6h78eeKRA3MeCT: nssg19,
+  CL9GW5sDfNqeX2yiPRg9YF: nyc,
+  vhM3xsCFtxvM794dCK2mE6: nasscChampionship,
+  Uzfx4iW2kLhyzWUz6MWQxY: nasscNovice,
+  XZDoU8Z6fMk7WrVitthkeU: nasscHighSchool,
+  KU8PSEu8p4Pni4qvmhn9x3: learners,
 };
 
 // A temporary map of club redirects. Map internal tournament ID to slug:
@@ -109,4 +216,19 @@ export const clubRedirects: { [key: string]: string } = {
   coloradosprings: '/club/coloradosprings',
   bridgewaterclub: '/club/bridgewater',
   cococlub: '/club/coco',
+};
+
+// Temporary teams for some tournaments. We should add support for this natively
+// in the backend.
+
+type teamSettings = {
+  odds: string;
+  evens: string;
+};
+
+export const teamTourneys: { [key: string]: teamSettings } = {
+  '/tournament/vcanam': {
+    odds: '🇨🇦',
+    evens: '🇺🇸',
+  },
 };

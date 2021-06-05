@@ -10,6 +10,9 @@
   justify-content: center;
   align-items: flex-start;
   flex-wrap: wrap;
+  &.competitor {
+    padding-bottom: 64px;
+  }
   .game-lists {
     order: 2;
     flex-grow: 2;
@@ -55,39 +58,56 @@
 }
 
 .announcements {
-  li {
-    padding-bottom: 18px;
-    @include colorModed() {
-      color: m($gray-extreme);
-    }
-    a,
-    a:focus,
-    a:active,
-    a:hover {
-      color: inherit;
-      letter-spacing: 0;
-      font-weight: inherit;
-    }
-    a p:hover {
+  a {
+    li {
+      padding-bottom: 18px;
       @include colorModed() {
-        background-color: mix(m($primary-middle), m($background), $weight: 50%);
+        color: m($gray-extreme);
       }
+
+      &,
+      &:focus,
+      &:active,
+      &:hover {
+        color: inherit;
+        letter-spacing: 0;
+        font-weight: inherit;
+      }
+
+      p {
+        font-weight: 300;
+      }
+
+      &:hover h4, &:hover p{
+        @include colorModed() {
+          background-color: mix(m($primary-middle), m($background), $weight: 50%);
+        }
+      }
+
     }
   }
 }
 
 .tournament-info .tournament {
-  h3 {
-    font-size: 18px;
-    &.recent-header {
-      font-size: 18px;
+  h4 {
+    span.director {
       @include colorModed() {
-        color: m($gray-medium);
+        color: m($primary-dark);
       }
     }
+  }
+  h3 {
+    font-size: 18px;
     margin-top: 8px;
   }
-
+  h5.section-header {
+    @include colorModed() {
+      color: m($gray-medium);
+    }
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    margin: 16px 0 8px;
+  }
   h3.tournament-name {
     font-size: 24px;
     @include colorModed() {
@@ -95,14 +115,15 @@
     }
   }
   .ant-card-head {
+    padding-bottom: 8px;
     @include colorModed() {
       background-image: linear-gradient(
-        m($header) 30%,
+        m($header) 50%,
         m($card-background) 100%
       );
     }
     .ant-card-head-title {
-      font-size: 18px;
+      font-size: 22px;
     }
   }
   ul {
@@ -117,6 +138,9 @@
 }
 
 @media (min-width: $screen-tablet-min) {
+  .lobby.competitor {
+    padding-bottom: 0;
+  }
   .announcements,
   .tournament-info .tournament {
     order: initial;

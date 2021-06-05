@@ -7,18 +7,17 @@ package gameplay
 import (
 	"context"
 	"errors"
+	"sort"
 	"strconv"
 	"time"
 
 	"github.com/domino14/macondo/runner"
 
+	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"google.golang.org/protobuf/proto"
 
 	"github.com/domino14/macondo/alphabet"
-	"github.com/domino14/macondo/board"
-	"github.com/domino14/macondo/cross_set"
-	"github.com/domino14/macondo/gaddag"
 	"github.com/domino14/macondo/game"
 	macondopb "github.com/domino14/macondo/gen/api/proto/macondo"
 	"github.com/domino14/macondo/move"
@@ -71,7 +70,7 @@ func InstantiateNewGame(ctx context.Context, gameStore GameStore, cfg *config.Co
 		players = append(players, &macondopb.PlayerInfo{
 			Nickname: u.Username,
 			UserId:   u.UUID,
-			RealName: u.RealName(),
+			RealName: u.RealNameIfNotYouth(),
 		})
 		dbids[idx] = u.ID
 	}
@@ -80,33 +79,20 @@ func InstantiateNewGame(ctx context.Context, gameStore GameStore, cfg *config.Co
 		return nil, errors.New("no rules")
 	}
 
-	var bd []string
-	switch req.Rules.BoardLayoutName {
-	case entity.CrosswordGame:
-		bd = board.CrosswordGameBoard
-	default:
-		return nil, errors.New("unsupported board layout")
-	}
+	log.Debug().Interface("req-rules", req.Rules).Msg("new-game-rules")
 
 	firstAssigned := false
 	if assignedFirst != -1 {
 		firstAssigned = true
 	}
 
-	dist, err := alphabet.Get(&cfg.MacondoConfig, req.Rules.LetterDistributionName)
+	rules, err := game.NewBasicGameRules(
+		&cfg.MacondoConfig, req.Lexicon, req.Rules.BoardLayoutName,
+		req.Rules.LetterDistributionName, game.CrossScoreOnly,
+		game.Variant(req.Rules.VariantName))
 	if err != nil {
 		return nil, err
 	}
-
-	dawg, err := gaddag.GetDawg(&cfg.MacondoConfig, req.Lexicon)
-	if err != nil {
-		return nil, err
-	}
-
-	rules := game.NewGameRules(
-		&cfg.MacondoConfig, dist, board.MakeBoard(bd),
-		&gaddag.Lexicon{GenericDawg: dawg},
-		cross_set.CrossScoreOnlyGenerator{Dist: dist})
 
 	var gameRunner *runner.GameRunner
 	for {
@@ -155,13 +141,6 @@ func InstantiateNewGame(ctx context.Context, gameStore GameStore, cfg *config.Co
 			Rating:   u.GetRelevantRating(ratingKey),
 			IsBot:    u.IsBot,
 			First:    gameRunner.FirstPlayer().UserId == u.UUID,
-		}
-		if u.Profile != nil {
-			playerinfos[idx].FullName = u.RealName()
-			playerinfos[idx].CountryCode = u.Profile.CountryCode
-			playerinfos[idx].Title = u.Profile.Title
-			// There is no avatar URL yet.
-			// playerinfos[idx].AvatarUrl = u.Profile.AvatarUrl
 		}
 	}
 
@@ -283,6 +262,33 @@ func players(entGame *entity.Game) []string {
 	return ps
 }
 
+// allocates sorted runes from strings
+func sortedRunes(s string) []rune {
+	a := []rune(s)
+	sort.Slice(a, func(i, j int) bool { return a[i] < a[j] })
+	return a
+}
+
+// given two sorted runes, overwrite a with a-b, return the shortened slice
+func minusRunes(a, b []rune) []rune {
+	la := len(a)
+	lb := len(b)
+	rb := 0
+	wa := 0
+	for ra := 0; ra < la; ra++ {
+		for rb < lb && b[rb] < a[ra] {
+			rb++
+		}
+		if rb < lb && b[rb] == a[ra] {
+			rb++
+		} else {
+			a[wa] = a[ra]
+			wa++
+		}
+	}
+	return a[:wa]
+}
+
 func handleChallenge(ctx context.Context, entGame *entity.Game, gameStore GameStore,
 	userStore user.Store, listStatStore stats.ListStatStore, tournamentStore tournament.TournamentStore,
 	timeRemaining int, challengerID string) error {
@@ -292,14 +298,28 @@ func handleChallenge(ctx context.Context, entGame *entity.Game, gameStore GameSt
 	}
 	numEvts := len(entGame.Game.History().Events)
 	// curTurn := entGame.Game.Turn()
+
+	var returnedTiles string
+	if numEvts > 0 {
+		// this must be done before ChallengeEvent irreversibly modifies the history
+		lastEvent := entGame.Game.LastEvent()
+		numPlayers := entGame.Game.NumPlayers() // if this is always 2, we can just do PlayerOnTurn() ^ 1
+		// there is no need to remove alphabet.ASCIIPlayedThrough from playedTiles because it should not appear on Rack
+		returnedTiles = string(minusRunes(sortedRunes(entGame.Game.History().LastKnownRacks[(entGame.Game.PlayerOnTurn()+numPlayers-1)%numPlayers]), minusRunes(sortedRunes(lastEvent.Rack), sortedRunes(lastEvent.PlayedTiles))))
+	}
+
 	valid, err := entGame.Game.ChallengeEvent(0, timeRemaining)
 	if err != nil {
 		return err
+	}
+	if valid {
+		returnedTiles = ""
 	}
 	resultEvent := &pb.ServerChallengeResultEvent{
 		Valid:         valid,
 		ChallengeRule: entGame.ChallengeRule(),
 		Challenger:    challengerID,
+		ReturnedTiles: returnedTiles,
 	}
 	evt := entity.WrapEvent(resultEvent, pb.MessageType_SERVER_CHALLENGE_RESULT_EVENT)
 	evt.AddAudience(entity.AudGame, entGame.GameID())
@@ -377,6 +397,9 @@ func PlayMove(ctx context.Context,
 	if err != nil {
 		return err
 	}
+	// This cannot be deferred, because if performEndgameDuties expires the game this would unexpire it.
+	// But we are not doing this every turn, because at start of game we already set a very long expiry.
+	//entGame.SendChange(entGame.NewActiveGameEntry(true))
 
 	if m.Action() == move.MoveTypeChallenge {
 		// Handle in another way
@@ -451,13 +474,17 @@ func HandleEvent(ctx context.Context, gameStore GameStore, userStore user.Store,
 	entGame.Lock()
 	defer entGame.Unlock()
 
-	return handleEventAfterLockingGame(ctx, gameStore, userStore, listStatStore, tournamentStore, userID, cge, entGame)
+	log := zerolog.Ctx(ctx).With().Str("gameID", entGame.GameID()).Logger()
+
+	return handleEventAfterLockingGame(log.WithContext(ctx), gameStore, userStore, listStatStore, tournamentStore, userID, cge, entGame)
 }
 
 // Assume entGame is already locked.
 func handleEventAfterLockingGame(ctx context.Context, gameStore GameStore, userStore user.Store,
 	listStatStore stats.ListStatStore, tournamentStore tournament.TournamentStore, userID string, cge *pb.ClientGameplayEvent,
 	entGame *entity.Game) (*entity.Game, error) {
+
+	log := zerolog.Ctx(ctx)
 
 	if entGame.Game.Playing() == macondopb.PlayState_GAME_OVER {
 		return entGame, errGameNotActive
@@ -470,7 +497,7 @@ func handleEventAfterLockingGame(ctx context.Context, gameStore GameStore, userS
 		return entGame, errNotOnTurn
 	}
 	timeRemaining := entGame.TimeRemaining(onTurn)
-	log.Debug().Int("time-remaining", timeRemaining).Msg("checking-time-remaining")
+	log.Debug().Interface("cge", cge).Int("time-remaining", timeRemaining).Msg("handle-gameplay-event")
 	// Check that we didn't run out of time.
 	// Allow auto-passing.
 	if !(entGame.Game.Playing() == macondopb.PlayState_WAITING_FOR_FINAL_PASS &&

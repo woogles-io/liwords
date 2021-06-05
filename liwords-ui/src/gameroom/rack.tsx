@@ -1,4 +1,4 @@
-import React, { useRef } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { useDrop, XYCoord } from 'react-dnd';
 import {
   CrosswordGameTileValues,
@@ -90,9 +90,12 @@ export const Rack = React.memo((props: Props) => {
     }),
   });
   const rackRef = useRef(null);
-  if (props.moveRackTile && isTouchDevice()) {
-    drop(rackRef);
-  }
+  const isTouchDeviceResult = isTouchDevice();
+  useEffect(() => {
+    if (isTouchDeviceResult) {
+      drop(rackRef);
+    }
+  }, [isTouchDeviceResult, drop]);
   const renderTiles = () => {
     const tiles = [];
     if (!props.letters || props.letters.length === 0) {
@@ -126,14 +129,10 @@ export const Rack = React.memo((props: Props) => {
   };
 
   return (
-    <div
-      className="rack"
-      ref={rackRef}
-      id={props.moveRackTile ? 'rack' : 'exchangeRack'}
-    >
+    <div className="rack" ref={rackRef} id="rack">
       <div
         className="empty-rack droppable"
-        id={props.moveRackTile ? 'left-empty' : 'exch-left-empty'}
+        id="left-empty"
         onDragOver={handleDropOver}
         onDrop={(e) => {
           handleDrop(e, 0);

@@ -1,13 +1,15 @@
 import React, { useEffect, useRef } from 'react';
 import { useMountedState } from '../utils/mounted';
-import { useDrag, useDragLayer } from 'react-dnd';
+import { useDrag, useDragLayer, useDrop } from 'react-dnd';
 import TentativeScore from './tentative_score';
 import {
   Blank,
+  EmptySpace,
   isDesignatedBlank,
   isTouchDevice,
   uniqueTileIdx,
 } from '../utils/cwgame/common';
+import { Popover } from 'antd';
 
 type TileLetterProps = {
   rune: string;
@@ -15,7 +17,7 @@ type TileLetterProps = {
 
 export const TILE_TYPE = 'TILE_TYPE';
 
-const TileLetter = React.memo((props: TileLetterProps) => {
+export const TileLetter = React.memo((props: TileLetterProps) => {
   let { rune } = props;
   // if (rune.toUpperCase() !== rune) {
   //   rune = rune.toUpperCase();
@@ -31,7 +33,7 @@ type PointValueProps = {
   value: number;
 };
 
-const PointValue = React.memo((props: PointValueProps) => {
+export const PointValue = React.memo((props: PointValueProps) => {
   if (!props.value) {
     return null;
   }
@@ -128,6 +130,14 @@ type TileProps = {
   onMouseLeave?: (evt: React.MouseEvent<HTMLElement>) => void;
   x?: number | undefined;
   y?: number | undefined;
+  popoverContent?: React.ReactNode;
+  onPopoverClick?: (evt: React.MouseEvent<HTMLElement>) => void;
+  handleTileDrop?: (
+    row: number,
+    col: number,
+    rackIndex: number | undefined,
+    tileIndex: number | undefined
+  ) => void;
 };
 
 const Tile = React.memo((props: TileProps) => {
@@ -156,6 +166,15 @@ const Tile = React.memo((props: TileProps) => {
   };
 
   const handleDrop = (e: any) => {
+    if (props.handleTileDrop && props.y != null && props.x != null) {
+      props.handleTileDrop(
+        props.y,
+        props.x,
+        parseInt(e.dataTransfer.getData('rackIndex'), 10),
+        parseInt(e.dataTransfer.getData('tileIndex'), 10)
+      );
+      return;
+    }
     if (props.moveRackTile && e.dataTransfer.getData('rackIndex')) {
       props.moveRackTile(
         props.rackIndex,
@@ -176,6 +195,7 @@ const Tile = React.memo((props: TileProps) => {
     e.stopPropagation();
   };
 
+  const canDrag = props.grabbable && props.rune !== EmptySpace;
   const [{ isDragging }, drag, preview] = useDrag({
     item: {
       type: TILE_TYPE,
@@ -193,6 +213,7 @@ const Tile = React.memo((props: TileProps) => {
     collect: (monitor) => ({
       isDragging: monitor.isDragging(),
     }),
+    canDrag: (monitor) => canDrag,
   });
 
   useEffect(() => {
@@ -200,33 +221,67 @@ const Tile = React.memo((props: TileProps) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  const [, drop] = useDrop({
+    accept: TILE_TYPE,
+    drop: (item: any, monitor: any) => {
+      if (props.handleTileDrop && props.y != null && props.x != null) {
+        props.handleTileDrop(
+          props.y,
+          props.x,
+          parseInt(item.rackIndex, 10),
+          parseInt(item.tileIndex, 10)
+        );
+      }
+    },
+    collect: (monitor) => ({
+      isOver: !!monitor.isOver(),
+      canDrop: !!monitor.canDrop(),
+    }),
+  });
+
   const tileRef = useRef(null);
-  if (props.grabbable && isTouchDevice()) {
-    drag(tileRef);
-  }
+  const isTouchDeviceResult = isTouchDevice();
+  useEffect(() => {
+    if (canDrag && isTouchDeviceResult) {
+      drag(tileRef);
+    }
+  }, [canDrag, isTouchDeviceResult, drag]);
+  const canDrop = props.handleTileDrop && props.y != null && props.x != null;
+  useEffect(() => {
+    if (canDrop && isTouchDeviceResult) {
+      drop(tileRef);
+    }
+  }, [canDrop, isTouchDeviceResult, drop]);
 
   const computedClassName = `tile${
     isDragging || isMouseDragging ? ' dragging' : ''
-  }${props.grabbable ? ' droppable' : ''}${props.selected ? ' selected' : ''}${
+  }${canDrag ? ' droppable' : ''}${props.selected ? ' selected' : ''}${
     props.tentative ? ' tentative' : ''
   }${props.lastPlayed ? ' last-played' : ''}${
     isDesignatedBlank(props.rune) ? ' blank' : ''
   }${props.playerOfTile ? ' tile-p1' : ' tile-p0'}`;
-  return (
+  let ret = (
     <div onDragOver={handleDropOver} onDrop={handleDrop} ref={tileRef}>
       <div
         className={computedClassName}
         data-rune={props.rune}
-        style={{ cursor: props.grabbable ? 'grab' : 'default' }}
+        style={{
+          cursor: canDrag ? 'grab' : 'default',
+          ...(props.rune === EmptySpace ? { visibility: 'hidden' } : null),
+        }}
         onClick={props.onClick}
         onMouseEnter={props.onMouseEnter}
         onMouseLeave={props.onMouseLeave}
-        onDragStart={handleStartDrag}
-        onDragEnd={handleEndDrag}
-        draggable={props.grabbable}
+        onDragStart={canDrag ? handleStartDrag : undefined}
+        onDragEnd={canDrag ? handleEndDrag : undefined}
+        draggable={canDrag}
       >
-        <TileLetter rune={props.rune} />
-        <PointValue value={props.value} />
+        {props.rune !== EmptySpace && (
+          <React.Fragment>
+            <TileLetter rune={props.rune} />
+            <PointValue value={props.value} />
+          </React.Fragment>
+        )}
         <TentativeScore
           score={props.tentativeScore}
           horizontal={props.tentativeScoreIsHorizontal}
@@ -234,6 +289,15 @@ const Tile = React.memo((props: TileProps) => {
       </div>
     </div>
   );
+  ret = (
+    <Popover
+      content={<div onClick={props.onPopoverClick}>{props.popoverContent}</div>}
+      visible={props.popoverContent != null}
+    >
+      {ret}
+    </Popover>
+  );
+  return ret;
 });
 
 export default Tile;

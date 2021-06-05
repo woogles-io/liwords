@@ -11,6 +11,10 @@ import {
 } from '../store/constants';
 import { SoughtGame } from '../store/reducers/lobby_reducer';
 import { useMountedState } from '../utils/mounted';
+import { PlayerAvatar } from '../shared/player_avatar';
+import { DisplayUserFlag } from '../shared/display_flag';
+import { RatingBadge } from './rating_badge';
+import { VariantIcon } from '../shared/variant_icons';
 
 export const timeFormat = (
   initialTimeSecs: number,
@@ -38,6 +42,26 @@ export const challengeFormat = (cr: number) => {
   );
 };
 
+type PlayerProps = {
+  userID?: string;
+  username: string;
+};
+
+export const PlayerDisplay = (props: PlayerProps) => {
+  return (
+    <div className="player-display">
+      <PlayerAvatar
+        player={{
+          user_id: props.userID,
+          nickname: props.username,
+        }}
+      />
+      <span className="player-name">{props.username}</span>
+      <DisplayUserFlag uuid={props.userID} />
+    </div>
+  );
+};
+
 type Props = {
   isMatch?: boolean;
   newGame: (seekID: string) => void;
@@ -45,7 +69,6 @@ type Props = {
   username?: string;
   requests: Array<SoughtGame>;
 };
-
 export const SoughtGames = (props: Props) => {
   const { useState } = useMountedState();
   const [cancelVisible, setCancelVisible] = useState(false);
@@ -59,7 +82,7 @@ export const SoughtGames = (props: Props) => {
     {
       title: 'Rating',
       className: 'rating',
-      dataIndex: 'rating',
+      dataIndex: 'ratingBadge',
       key: 'rating',
       sorter: (a: SoughtGameTableData, b: SoughtGameTableData) =>
         parseInt(a.rating) - parseInt(b.rating),
@@ -112,6 +135,7 @@ export const SoughtGames = (props: Props) => {
   type SoughtGameTableData = {
     seeker: string | ReactNode;
     rating: string;
+    ratingBadge?: ReactNode;
     lexicon: string;
     time: string;
     totalTime: number;
@@ -126,6 +150,7 @@ export const SoughtGames = (props: Props) => {
         const getDetails = () => {
           return (
             <>
+              <VariantIcon vcode={sg.variant} />{' '}
               {challengeFormat(sg.challengeRule)}
               {sg.rated ? (
                 <Tooltip title="Rated">
@@ -161,9 +186,10 @@ export const SoughtGames = (props: Props) => {
               </div>
             </Popconfirm>
           ) : (
-            sg.seeker
+            <PlayerDisplay userID={sg.seekerID!} username={sg.seeker} />
           ),
-          rating: sg.userRating,
+          rating: outgoing ? '' : sg.userRating,
+          ratingBadge: outgoing ? null : <RatingBadge rating={sg.userRating} />,
           lexicon: sg.lexicon,
           time: timeFormat(
             sg.initialTimeSecs,
@@ -186,7 +212,7 @@ export const SoughtGames = (props: Props) => {
 
   return (
     <>
-      {props.isMatch ? <h4>Match Requests</h4> : <h4>Available Games</h4>}
+      {props.isMatch ? <h4>Match requests</h4> : <h4>Available games</h4>}
       <Table
         className={`games ${props.isMatch ? 'match' : 'seek'}`}
         dataSource={formatGameData(props.requests)}

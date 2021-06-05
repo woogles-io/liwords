@@ -6,6 +6,7 @@ import {
 } from '../constants/tile_values';
 import Tile from './tile';
 import {
+  Blank,
   EmptySpace,
   EphemeralTile,
   PlayedTiles,
@@ -32,6 +33,16 @@ type Props = {
     x: number,
     y: number,
     words: Array<string> | undefined
+  ) => void;
+  handleUnsetHover?: () => void;
+  definitionPopover?:
+    | { x: number; y: number; content: React.ReactNode }
+    | undefined;
+  handleTileDrop?: (
+    row: number,
+    col: number,
+    rackIndex: number | undefined,
+    tileIndex: number | undefined
   ) => void;
 };
 
@@ -108,6 +119,16 @@ const Tiles = React.memo((props: Props) => {
     }
   }
 
+  const tentativeBoard = Array.from(new Array(props.gridDim), (_, y) =>
+    Array.from(
+      new Array(props.gridDim),
+      (_, x) => props.tilesLayout[y * props.gridDim + x]
+    )
+  );
+  for (const { row, col, letter } of tentativeTiles) {
+    tentativeBoard[row][col] = letter;
+  }
+
   for (let y = 0; y < props.gridDim; y += 1) {
     for (let x = 0; x < props.gridDim; x += 1) {
       const rune = props.tilesLayout[y * props.gridDim + x];
@@ -121,6 +142,59 @@ const Tiles = React.memo((props: Props) => {
       const tentativeScoreHereIsHorizontal = tentativeScoreIsHere
         ? isHorizontal
         : undefined;
+      const definitionHandlers = {
+        ...(props.handleSetHover && {
+          onClick: (evt: React.MouseEvent<HTMLElement>) => {
+            // if the pointer stays on a tile when a word is played through
+            // it, the words being defined are not updated until the
+            // pointer is moved out of the tile and back in. this is an
+            // intentional design decision to improve usability and
+            // responsiveness.
+            let sh = '';
+            {
+              let i = x;
+              while (i > 0 && tentativeBoard[y][i - 1] !== EmptySpace) --i;
+              for (
+                ;
+                i < props.gridDim && tentativeBoard[y][i] !== EmptySpace;
+                ++i
+              ) {
+                sh += tentativeBoard[y][i];
+              }
+            }
+            let sv = '';
+            {
+              let i = y;
+              while (i > 0 && tentativeBoard[i - 1][x] !== EmptySpace) --i;
+              for (
+                ;
+                i < props.gridDim && tentativeBoard[i][x] !== EmptySpace;
+                ++i
+              ) {
+                sv += tentativeBoard[i][x];
+              }
+            }
+            const formedWords = [sh, sv].filter((word) => word.length >= 2);
+            props.handleSetHover!(
+              x,
+              y,
+              formedWords.length ? formedWords : undefined
+            );
+          },
+          onMouseLeave: (evt: React.MouseEvent<HTMLElement>) => {
+            props.handleSetHover!(x, y, undefined);
+          },
+        }),
+        ...(props.definitionPopover &&
+          props.definitionPopover.x === x &&
+          props.definitionPopover.y === y && {
+            onPopoverClick: (evt: React.MouseEvent<HTMLElement>) => {
+              props.handleUnsetHover?.();
+            },
+            popoverContent: props.definitionPopover.content,
+          }),
+      };
+
       if (rune !== ' ') {
         const lastPlayed = props.lastPlayedTiles[`R${y}C${x}`] === true;
         const playerOfTile = props.playerOfTileAt[`R${y}C${x}`];
@@ -135,59 +209,7 @@ const Tiles = React.memo((props: Props) => {
             tentativeScore={tentativeScoreHere}
             tentativeScoreIsHorizontal={tentativeScoreHereIsHorizontal}
             grabbable={false}
-            {...(props.handleSetHover && {
-              onMouseEnter: (evt: React.MouseEvent<HTMLElement>) => {
-                // if the pointer stays on a tile when a word is played through
-                // it, the words being defined are not updated until the
-                // pointer is moved out of the tile and back in. this is an
-                // intentional design decision to improve usability and
-                // responsiveness.
-                let sh = '';
-                {
-                  let i = x;
-                  while (
-                    i > 0 &&
-                    props.tilesLayout[y * props.gridDim + i - 1] !== EmptySpace
-                  )
-                    --i;
-                  for (
-                    ;
-                    i < props.gridDim &&
-                    props.tilesLayout[y * props.gridDim + i] !== EmptySpace;
-                    ++i
-                  ) {
-                    sh += props.tilesLayout[y * props.gridDim + i];
-                  }
-                }
-                let sv = '';
-                {
-                  let i = y;
-                  while (
-                    i > 0 &&
-                    props.tilesLayout[(i - 1) * props.gridDim + x] !==
-                      EmptySpace
-                  )
-                    --i;
-                  for (
-                    ;
-                    i < props.gridDim &&
-                    props.tilesLayout[i * props.gridDim + x] !== EmptySpace;
-                    ++i
-                  ) {
-                    sv += props.tilesLayout[i * props.gridDim + x];
-                  }
-                }
-                const formedWords = [sh, sv].filter((word) => word.length >= 2);
-                props.handleSetHover!(
-                  x,
-                  y,
-                  formedWords.length ? formedWords : undefined
-                );
-              },
-              onMouseLeave: (evt: React.MouseEvent<HTMLElement>) => {
-                props.handleSetHover!(x, y, undefined);
-              },
-            })}
+            {...definitionHandlers}
           />
         );
       } else {
@@ -198,6 +220,8 @@ const Tiles = React.memo((props: Props) => {
           tiles.push(
             <Tile
               onClick={() => {
+                // This seems to be used only for undesignated blank.
+                // Definition handler will take over for other letters.
                 props.onClick(tentativeTile.letter);
               }}
               rune={tentativeTile.letter}
@@ -215,6 +239,8 @@ const Tiles = React.memo((props: Props) => {
               tentativeScore={tentativeScoreHere}
               tentativeScoreIsHorizontal={tentativeScoreHereIsHorizontal}
               grabbable={true}
+              handleTileDrop={props.handleTileDrop}
+              {...(tentativeTile.letter !== Blank && definitionHandlers)}
             />
           );
         } else {

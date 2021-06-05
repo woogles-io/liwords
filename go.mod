@@ -1,6 +1,6 @@
 module github.com/domino14/liwords
 
-go 1.15
+go 1.16
 
 require (
 	github.com/aws/aws-sdk-go-v2 v1.2.0
@@ -8,13 +8,13 @@ require (
 	github.com/aws/aws-sdk-go-v2/feature/s3/manager v1.0.2
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.2.0
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible
-	github.com/domino14/macondo v0.4.5-0.20201220182339-824fc6974fc7
+	github.com/domino14/macondo v0.4.5-0.20210531192418-a90d8bcad61e
 	github.com/golang/protobuf v1.4.2
 	github.com/gomodule/redigo v1.8.2
 	github.com/hashicorp/golang-lru v0.5.4
 	github.com/jinzhu/gorm v1.9.16
 	github.com/justinas/alice v1.2.0
-	github.com/kr/text v0.2.0 // indirect
+	github.com/lib/pq v1.10.0
 	github.com/lithammer/shortuuid v3.0.0+incompatible
 	github.com/mailgun/mailgun-go/v4 v4.1.4
 	github.com/matryer/is v1.4.0

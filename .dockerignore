@@ -3,3 +3,4 @@ liwords-ui/node_modules
 liwords-ui/build
 scripts
 .vscode
+data/lexica/words/*.txt

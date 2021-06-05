@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"sort"
 	"time"
 
 	"github.com/rs/zerolog/log"
@@ -22,10 +23,6 @@ import (
 	pkguser "github.com/domino14/liwords/pkg/user"
 	gs "github.com/domino14/liwords/rpc/api/proto/game_service"
 	pb "github.com/domino14/liwords/rpc/api/proto/realtime"
-	"github.com/domino14/macondo/alphabet"
-	"github.com/domino14/macondo/board"
-	"github.com/domino14/macondo/cross_set"
-	"github.com/domino14/macondo/gaddag"
 	macondogame "github.com/domino14/macondo/game"
 	macondopb "github.com/domino14/macondo/gen/api/proto/macondo"
 )
@@ -51,10 +48,10 @@ type game struct {
 	gorm.Model
 	UUID string `gorm:"type:varchar(24);index"`
 
-	Player0ID uint `gorm:"foreignKey"`
+	Player0ID uint `gorm:"foreignKey;index"`
 	Player0   user.User
 
-	Player1ID uint `gorm:"foreignKey"`
+	Player1ID uint `gorm:"foreignKey;index"`
 	Player1   user.User
 
 	ReadyFlag uint // When both players are ready, this game starts.
@@ -163,7 +160,8 @@ func (s *DBStore) GetMetadata(ctx context.Context, id string) (*gs.GameInfoRespo
 func (s *DBStore) GetRematchStreak(ctx context.Context, originalRequestId string) (*gs.StreakInfoResponse, error) {
 	games := []*game{}
 	if results := s.db.
-		Where("quickdata->>'o' = ? AND game_end_reason != 0", originalRequestId).
+		Where("quickdata->>'o' = ? AND game_end_reason not in (?, ?, ?)",
+			originalRequestId, pb.GameEndReason_NONE, pb.GameEndReason_ABORTED, pb.GameEndReason_CANCELLED).
 		Order("created_at desc").
 		Find(&games); results.Error != nil {
 		return nil, results.Error
@@ -181,17 +179,25 @@ func (s *DBStore) GetRematchStreak(ctx context.Context, originalRequestId string
 			// If it's empty or unconvertible don't quit. We need this
 			// for backwards compatibility.
 		}
-		players := make([]string, len(mdata.PlayerInfo))
-		playerIds := make([]string, len(mdata.PlayerInfo))
-		for i, p := range mdata.PlayerInfo {
-			players[i] = p.Nickname
-			playerIds[i] = p.UserId
+		if idx == 0 {
+			players := make([]string, len(mdata.PlayerInfo))
+			for i, p := range mdata.PlayerInfo {
+				players[i] = p.Nickname
+			}
+			sort.Strings(players)
+			resp.Players = players
+		}
+		winner := g.WinnerIdx
+		if len(resp.Players) > 0 && len(mdata.PlayerInfo) > 0 &&
+			resp.Players[0] != mdata.PlayerInfo[0].Nickname {
+
+			if winner != -1 {
+				winner = 1 - winner
+			}
 		}
 		resp.Streak[idx] = &gs.StreakInfoResponse_SingleGameInfo{
-			GameId:    g.UUID,
-			Winner:    int32(g.WinnerIdx),
-			Players:   players,
-			PlayerIds: playerIds,
+			GameId: g.UUID,
+			Winner: int32(winner),
 		}
 	}
 
@@ -204,13 +210,11 @@ func (s *DBStore) GetRecentGames(ctx context.Context, username string, numGames 
 	}
 	ctxDB := s.db.WithContext(ctx)
 	var games []*game
-	if results := ctxDB.Limit(numGames).
-		Offset(offset).
-		Joins("JOIN users as u0  ON u0.id = games.player0_id").
-		Joins("JOIN users as u1  ON u1.id = games.player1_id").
-		Where("(lower(u0.username) = lower(?) OR lower(u1.username) = lower(?)) AND game_end_reason NOT IN (?, ?, ?)",
-			username, username, pb.GameEndReason_NONE, pb.GameEndReason_ABORTED, pb.GameEndReason_CANCELLED).
-		Order("created_at desc").
+	// gorm does not intend to support with clause. https://github.com/go-gorm/gorm/issues/3955#issuecomment-761939460
+	if results := ctxDB.Raw(`with u as (select id from users where lower(username) = lower(?))
+		select games.* from games inner join u on (player0_id = u.id or player1_id = u.id)
+		where game_end_reason not in (?, ?, ?) order by created_at desc limit ? offset ?`,
+		username, pb.GameEndReason_NONE, pb.GameEndReason_ABORTED, pb.GameEndReason_CANCELLED, numGames, offset).
 		Find(&games); results.Error != nil {
 		return nil, results.Error
 	}
@@ -335,35 +339,16 @@ func fromState(timers entity.Timers, qdata *entity.Quickdata, Started bool,
 	}
 	log.Info().Interface("hist", hist).Msg("hist-unmarshal")
 
-	var bd []string
-	switch req.Rules.BoardLayoutName {
-	case entity.CrosswordGame:
-		bd = board.CrosswordGameBoard
-	default:
-		return nil, errors.New("unsupported board layout")
-	}
-
-	dist, err := alphabet.Get(&cfg.MacondoConfig, req.Rules.LetterDistributionName)
-	if err != nil {
-		return nil, err
-	}
-
 	lexicon := hist.Lexicon
 	if lexicon == "" {
 		// This can happen for some early games where we didn't migrate this.
 		lexicon = req.Lexicon
 	}
 
-	dawg, err := gaddag.GetDawg(&cfg.MacondoConfig, lexicon)
-	if err != nil {
-		return nil, err
-	}
-
-	rules := macondogame.NewGameRules(
-		&cfg.MacondoConfig, dist, board.MakeBoard(bd),
-		&gaddag.Lexicon{GenericDawg: dawg},
-		cross_set.CrossScoreOnlyGenerator{Dist: dist})
-
+	rules, err := macondogame.NewBasicGameRules(
+		&cfg.MacondoConfig, lexicon, req.Rules.BoardLayoutName,
+		req.Rules.LetterDistributionName, macondogame.CrossScoreOnly,
+		macondogame.Variant(req.Rules.VariantName))
 	if err != nil {
 		return nil, err
 	}
@@ -380,6 +365,9 @@ func fromState(timers entity.Timers, qdata *entity.Quickdata, Started bool,
 	}
 	// XXX: We should probably move this to `NewFromHistory`:
 	mcg.SetBackupMode(macondogame.InteractiveGameplayMode)
+	// Note: we don't need to set the stack length here, as NewFromHistory
+	// above does it.
+
 	g.Game = *mcg
 	log.Debug().Interface("history", g.History()).Msg("from-state")
 	// Finally, restore the play state from the passed-in history. This

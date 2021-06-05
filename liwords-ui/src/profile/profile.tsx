@@ -1,9 +1,10 @@
 import React, { useCallback, useEffect } from 'react';
-import { Link, useParams, useLocation } from 'react-router-dom';
-import { notification, Card, Table, Row, Col, Select, Switch } from 'antd';
+import { useParams, useLocation } from 'react-router-dom';
+import { notification, Card, Table, Row, Col } from 'antd';
 import axios, { AxiosError } from 'axios';
 import { useMountedState } from '../utils/mounted';
 import { TopBar } from '../topbar/topbar';
+import { Link } from 'react-router-dom';
 
 import './profile.scss';
 import { toAPIUrl } from '../api/api';
@@ -13,10 +14,12 @@ import { useLoginStateStoreContext } from '../store/store';
 import { GameMetadata, RecentGamesResponse } from '../gameroom/game_info';
 import { GamesHistoryCard } from './games_history';
 import { UsernameWithContext } from '../shared/usernameWithContext';
-import { preferredSortOrder, setPreferredSortOrder } from '../store/constants';
 import { moderateUser } from '../mod/moderate';
+import { DisplayFlag } from '../shared/display_flag';
+import { VariantIcon } from '../shared/variant_icons';
 
 type ProfileResponse = {
+  birth_date: string;
   first_name: string;
   last_name: string;
   country_code: string;
@@ -85,7 +88,6 @@ const variantToName = (variant: string) => {
   } else if (lex.startsWith('CSW')) {
     lex = 'CSW';
   }
-  // get rid of the middle element (classic) for now
   const timectrl = {
     ultrablitz: 'Ultra-Blitz!',
     blitz: 'Blitz',
@@ -93,7 +95,11 @@ const variantToName = (variant: string) => {
     regular: 'Regular',
   }[arr[2] as 'ultrablitz' | 'blitz' | 'rapid' | 'regular']; // cmon typescript
 
-  return `${lex} (${timectrl})`;
+  return (
+    <>
+      <VariantIcon vcode={arr[1]} /> {`${lex} (${timectrl})`}
+    </>
+  );
 };
 
 const RatingsCard = React.memo((props: RatingsProps) => {
@@ -213,29 +219,6 @@ type Props = {};
 
 const gamesPageSize = 10;
 
-const KNOWN_TILE_ORDERS = [
-  {
-    name: 'Alphabetical',
-    value: '',
-  },
-  {
-    name: 'Vowels first',
-    value: 'AEIOU',
-  },
-  {
-    name: 'Consonants first',
-    value: 'BCDFGHJKLMNPQRSTVWXYZ',
-  },
-  {
-    name: 'Descending points',
-    value: 'QZJXKFHVWYBCMPDG',
-  },
-  {
-    name: 'Blanks first',
-    value: '?',
-  },
-];
-
 export const UserProfile = React.memo((props: Props) => {
   const { useState } = useMountedState();
 
@@ -249,23 +232,13 @@ export const UserProfile = React.memo((props: Props) => {
   const [avatarUrl, setAvatarUrl] = useState('');
   const [avatarsEditable, setAvatarsEditable] = useState(false);
   const [bio, setBio] = useState('');
+  const [countryCode, setCountryCode] = useState('');
   const [bioLoaded, setBioLoaded] = useState(false);
-  const [darkMode, setDarkMode] = useState(
-    localStorage?.getItem('darkMode') === 'true'
-  );
-  const [enableAllLexicons, setEnableAllLexicons] = useState(
-    localStorage?.getItem('enableAllLexicons') === 'true'
-  );
-  const [tileOrder, setTileOrder] = useState(preferredSortOrder ?? '');
-  const handleTileOrderChange = useCallback((value) => {
-    setTileOrder(value);
-    setPreferredSortOrder(value);
-  }, []);
   const [recentGames, setRecentGames] = useState<Array<GameMetadata>>([]);
   const { loginState } = useLoginStateStoreContext();
   const { username: viewer } = loginState;
   const [recentGamesOffset, setRecentGamesOffset] = useState(0);
-  const [blockedUsers, setBlockedUsers] = useState<Array<user>>([]);
+  const [missingBirthdate, setMissingBirthdate] = useState(true); // always true except for self
   useEffect(() => {
     axios
       .post<ProfileResponse>(
@@ -275,9 +248,11 @@ export const UserProfile = React.memo((props: Props) => {
         }
       )
       .then((resp) => {
+        setMissingBirthdate(!resp.data.birth_date);
         setRatings(JSON.parse(resp.data.ratings_json).Data);
         setStats(JSON.parse(resp.data.stats_json).Data);
         setUserID(resp.data.user_id);
+        setCountryCode(resp.data.country_code);
         setFullName(resp.data.full_name);
         setAvatarUrl(resp.data.avatar_url);
         setAvatarsEditable(resp.data.avatars_editable);
@@ -286,18 +261,6 @@ export const UserProfile = React.memo((props: Props) => {
       })
       .catch(errorCatcher);
   }, [username, location.pathname]);
-  const refreshBlocks = useCallback(() => {
-    axios
-      .post(
-        toAPIUrl('user_service.SocializeService', 'GetBlocks'),
-        {},
-        { withCredentials: true }
-      )
-      .then((res) => {
-        setBlockedUsers(res.data.users);
-      });
-  }, []);
-  useEffect(refreshBlocks, [refreshBlocks]);
   useEffect(() => {
     axios
       .post<RecentGamesResponse>(
@@ -313,27 +276,6 @@ export const UserProfile = React.memo((props: Props) => {
       })
       .catch(errorCatcher);
   }, [username, recentGamesOffset]);
-  const toggleDarkMode = useCallback(() => {
-    const useDarkMode = localStorage?.getItem('darkMode') !== 'true';
-    localStorage.setItem('darkMode', useDarkMode ? 'true' : 'false');
-    if (useDarkMode) {
-      document?.body?.classList?.add('mode--dark');
-      document?.body?.classList?.remove('mode--default');
-    } else {
-      document?.body?.classList?.add('mode--default');
-      document?.body?.classList?.remove('mode--dark');
-    }
-    setDarkMode((x) => !x);
-  }, []);
-  const toggleEnableAllLexicons = useCallback(() => {
-    const wantEnableAllLexicons =
-      localStorage?.getItem('enableAllLexicons') !== 'true';
-    localStorage.setItem(
-      'enableAllLexicons',
-      wantEnableAllLexicons ? 'true' : 'false'
-    );
-    setEnableAllLexicons((x) => !x);
-  }, []);
   const fetchPrev = useCallback(() => {
     setRecentGamesOffset((r) => Math.max(r - gamesPageSize, 0));
   }, []);
@@ -344,6 +286,7 @@ export const UserProfile = React.memo((props: Props) => {
   const player = {
     avatar_url: avatarUrl,
     full_name: fullName,
+    user_id: userID, // for name-based avatar initial to work
   };
 
   const avatarEditable = avatarsEditable && viewer === username;
@@ -357,61 +300,46 @@ export const UserProfile = React.memo((props: Props) => {
       </Row>
 
       <div className="profile">
+        {viewer === username ? (
+          <div className="settings-link">
+            <Link to="/settings">Edit settings</Link>
+          </div>
+        ) : null}{' '}
         <header>
+          <PlayerAvatar
+            player={player}
+            editable={avatarEditable}
+            username={username}
+          />
           <h3>
             {viewer !== username ? (
               <UsernameWithContext
                 omitProfileLink
                 omitSendMessage
+                fullName={fullName}
+                includeFlag
                 username={username}
                 userID={userID}
                 showModTools
                 moderate={moderateUser}
               />
             ) : (
-              username
+              <span className="user">
+                <span>{fullName || username}</span>
+                <DisplayFlag countryCode={countryCode} />
+              </span>
             )}
-            <PlayerAvatar
-              player={player}
-              editable={avatarEditable}
-              username={username}
-            ></PlayerAvatar>
           </h3>
-          {viewer === username ? (
-            <div>
-              <label>
-                Tile order &nbsp;{' '}
-                <Select
-                  defaultValue={tileOrder}
-                  onChange={handleTileOrderChange}
-                >
-                  {KNOWN_TILE_ORDERS.map(({ name, value }) => (
-                    <Select.Option value={value} key={value}>
-                      {name}
-                    </Select.Option>
-                  ))}
-                  {KNOWN_TILE_ORDERS.some(
-                    ({ value }) => value === tileOrder
-                  ) || <Select.Option value={tileOrder}>Custom</Select.Option>}
-                </Select>
-              </label>{' '}
-              &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <label>Enable all lexicons</label>
-              <Switch
-                defaultChecked={enableAllLexicons}
-                onChange={toggleEnableAllLexicons}
-                className="dark-toggle"
-              />
-              <label>Enable dark mode</label>
-              <Switch
-                defaultChecked={darkMode}
-                onChange={toggleDarkMode}
-                className="dark-toggle"
-              />
-              <Link to="/password/change">Change your password</Link>
-            </div>
-          ) : null}
         </header>
-        <BioCard bio={bio} bioLoaded={bioLoaded} />
+        {!(missingBirthdate && viewer === username) && (
+          <BioCard bio={bio} bioLoaded={bioLoaded} />
+        )}
+        {missingBirthdate && viewer === username && (
+          <div className="bio">
+            <Link to={'/settings'}>Let us know your birthdate</Link> to share
+            your bio and details
+          </div>
+        )}
         <RatingsCard ratings={ratings} />
         <GamesHistoryCard
           games={recentGames}
@@ -421,23 +349,6 @@ export const UserProfile = React.memo((props: Props) => {
           fetchNext={recentGames.length < gamesPageSize ? undefined : fetchNext}
         />
         <StatsCard stats={stats} />
-
-        {viewer === username && blockedUsers.length > 0 && (
-          <Card title="Blocked Users" className="blocked-users">
-            {blockedUsers.map((u) => (
-              <UsernameWithContext
-                key={u.uuid}
-                blockCallback={refreshBlocks}
-                omitProfileLink
-                omitSendMessage
-                username={u.username}
-                userID={u.uuid}
-                showModTools
-                moderate={moderateUser}
-              />
-            ))}
-          </Card>
-        )}
       </div>
     </>
   );

@@ -1,0 +1,422 @@
+{
+  "divisions": {
+    "CSW": {
+      "id": "qzqWHsGVBrAgiuAZp9nJJm",
+      "division": "CSW",
+      "players": {
+        "persons": [
+          { "id": "ncSw3WeNGMzATfwzz7pdkF:cesar", "rating": 5555 },
+          { "id": "HWgz3KJaQeqaRXDMRAqo6:corny", "rating": 2345 },
+          { "id": "MoczSz5dksZuKMnxcH6yVT:mina", "rating": 2134 },
+          { "id": "fM8AY4okLXVJ2fxUgPRvKf:bnjy", "rating": 214 }
+        ]
+      },
+      "pairing_map": {
+        "0": {
+          "players": [3, 0],
+          "games": [{ "scores": [0, 0], "results": [0, 0] }],
+          "outcomes": [0, 0],
+          "ready_states": ["", ""]
+        },
+        "1": {
+          "players": [2, 1],
+          "games": [{ "scores": [0, 0], "results": [0, 0] }],
+          "outcomes": [0, 0],
+          "ready_states": ["", ""]
+        },
+        "2": {
+          "players": [0, 2],
+          "round": 1,
+          "games": [{ "scores": [0, 0], "results": [0, 0] }],
+          "outcomes": [0, 0],
+          "ready_states": ["", ""]
+        },
+        "3": {
+          "players": [1, 3],
+          "round": 1,
+          "games": [{ "scores": [0, 0], "results": [0, 0] }],
+          "outcomes": [0, 0],
+          "ready_states": ["", ""]
+        },
+        "4": {
+          "players": [0, 1],
+          "round": 2,
+          "games": [{ "scores": [0, 0], "results": [0, 0] }],
+          "outcomes": [0, 0],
+          "ready_states": ["", ""]
+        },
+        "5": {
+          "players": [2, 3],
+          "round": 2,
+          "games": [{ "scores": [0, 0], "results": [0, 0] }],
+          "outcomes": [0, 0],
+          "ready_states": ["", ""]
+        }
+      },
+      "controls": {
+        "id": "qzqWHsGVBrAgiuAZp9nJJm",
+        "division": "CSW",
+        "game_request": {
+          "lexicon": "CSW19",
+          "rules": {
+            "board_layout_name": "CrosswordGame",
+            "letter_distribution_name": "English"
+          },
+          "initial_time_seconds": 1200,
+          "challenge_rule": 3,
+          "max_overtime_minutes": 1
+        },
+        "suspended_result": 4
+      },
+      "round_controls": [
+        {
+          "pairing_method": 5,
+          "first_method": 2,
+          "games_per_round": 1,
+          "initial_fontes": 3
+        },
+        {
+          "pairing_method": 5,
+          "first_method": 2,
+          "games_per_round": 1,
+          "round": 1,
+          "initial_fontes": 3
+        },
+        {
+          "pairing_method": 5,
+          "first_method": 2,
+          "games_per_round": 1,
+          "round": 2,
+          "initial_fontes": 3
+        },
+        {
+          "pairing_method": 6,
+          "first_method": 2,
+          "games_per_round": 1,
+          "round": 3,
+          "initial_fontes": 3,
+          "max_repeats": 1,
+          "allow_over_max_repeats": true,
+          "repeat_relative_weight": 1,
+          "win_difference_relative_weight": 2
+        },
+        {
+          "pairing_method": 6,
+          "first_method": 2,
+          "games_per_round": 1,
+          "round": 4,
+          "initial_fontes": 3,
+          "max_repeats": 1,
+          "allow_over_max_repeats": true,
+          "repeat_relative_weight": 1,
+          "win_difference_relative_weight": 2
+        },
+        {
+          "pairing_method": 6,
+          "first_method": 2,
+          "games_per_round": 1,
+          "round": 5,
+          "initial_fontes": 3,
+          "max_repeats": 1,
+          "allow_over_max_repeats": true,
+          "repeat_relative_weight": 1,
+          "win_difference_relative_weight": 2
+        },
+        {
+          "pairing_method": 6,
+          "first_method": 2,
+          "games_per_round": 1,
+          "round": 6,
+          "initial_fontes": 3,
+          "max_repeats": 1,
+          "allow_over_max_repeats": true,
+          "repeat_relative_weight": 1,
+          "win_difference_relative_weight": 2
+        },
+        {
+          "pairing_method": 2,
+          "first_method": 2,
+          "games_per_round": 1,
+          "round": 7,
+          "initial_fontes": 3
+        }
+      ],
+      "current_round": -1
+    },
+    "NWL": {
+      "id": "qzqWHsGVBrAgiuAZp9nJJm",
+      "division": "NWL",
+      "players": {
+        "persons": [
+          { "id": "wqKcBR24feBCH55LaMTPmH:lola", "rating": 2345 },
+          { "id": "dcHy8DxjX3dmsCAaEMR5AH:josh", "rating": 1234 },
+          { "id": "FFGUXhQd3B8F6EXJUvmn5a:thedirector", "rating": 1234 }
+        ]
+      },
+      "standings": {
+        "0": {
+          "standings": [
+            {
+              "player_id": "dcHy8DxjX3dmsCAaEMR5AH:josh",
+              "wins": 1,
+              "spread": 50
+            },
+            { "player_id": "wqKcBR24feBCH55LaMTPmH:lola" },
+            { "player_id": "FFGUXhQd3B8F6EXJUvmn5a:thedirector" }
+          ]
+        },
+        "1": {
+          "standings": [
+            {
+              "player_id": "wqKcBR24feBCH55LaMTPmH:lola",
+              "wins": 1,
+              "spread": 50
+            },
+            {
+              "player_id": "dcHy8DxjX3dmsCAaEMR5AH:josh",
+              "wins": 1,
+              "spread": 50
+            },
+            { "player_id": "FFGUXhQd3B8F6EXJUvmn5a:thedirector" }
+          ]
+        },
+        "2": {
+          "standings": [
+            {
+              "player_id": "dcHy8DxjX3dmsCAaEMR5AH:josh",
+              "wins": 2,
+              "spread": 100
+            },
+            {
+              "player_id": "wqKcBR24feBCH55LaMTPmH:lola",
+              "wins": 1,
+              "spread": 50
+            },
+            { "player_id": "FFGUXhQd3B8F6EXJUvmn5a:thedirector" }
+          ]
+        },
+        "3": {
+          "standings": [
+            {
+              "player_id": "dcHy8DxjX3dmsCAaEMR5AH:josh",
+              "wins": 3,
+              "spread": 150
+            },
+            {
+              "player_id": "wqKcBR24feBCH55LaMTPmH:lola",
+              "wins": 1,
+              "spread": 50
+            },
+            { "player_id": "FFGUXhQd3B8F6EXJUvmn5a:thedirector" }
+          ]
+        },
+        "4": {
+          "standings": [
+            {
+              "player_id": "dcHy8DxjX3dmsCAaEMR5AH:josh",
+              "wins": 4,
+              "spread": 200
+            },
+            {
+              "player_id": "wqKcBR24feBCH55LaMTPmH:lola",
+              "wins": 1,
+              "spread": 50
+            },
+            { "player_id": "FFGUXhQd3B8F6EXJUvmn5a:thedirector" }
+          ]
+        },
+        "5": {
+          "standings": [
+            {
+              "player_id": "dcHy8DxjX3dmsCAaEMR5AH:josh",
+              "wins": 5,
+              "spread": 250
+            },
+            {
+              "player_id": "wqKcBR24feBCH55LaMTPmH:lola",
+              "wins": 1,
+              "spread": 50
+            },
+            { "player_id": "FFGUXhQd3B8F6EXJUvmn5a:thedirector" }
+          ]
+        },
+        "6": {
+          "standings": [
+            {
+              "player_id": "dcHy8DxjX3dmsCAaEMR5AH:josh",
+              "wins": 5,
+              "spread": 250
+            },
+            {
+              "player_id": "wqKcBR24feBCH55LaMTPmH:lola",
+              "wins": 1,
+              "spread": 50
+            },
+            {
+              "player_id": "FFGUXhQd3B8F6EXJUvmn5a:thedirector",
+              "wins": 1,
+              "spread": 50
+            }
+          ]
+        },
+        "7": {
+          "standings": [
+            {
+              "player_id": "dcHy8DxjX3dmsCAaEMR5AH:josh",
+              "wins": 5,
+              "spread": 250
+            },
+            {
+              "player_id": "FFGUXhQd3B8F6EXJUvmn5a:thedirector",
+              "wins": 2,
+              "spread": 100
+            },
+            {
+              "player_id": "wqKcBR24feBCH55LaMTPmH:lola",
+              "wins": 1,
+              "spread": 50
+            }
+          ]
+        }
+      },
+      "pairing_map": {
+        "10": {
+          "players": [1, 2],
+          "round": 1,
+          "games": [{ "scores": [0, 0], "results": [0, 0] }],
+          "outcomes": [0, 0],
+          "ready_states": ["", ""]
+        },
+        "11": {
+          "players": [0, 0],
+          "round": 1,
+          "games": [{ "scores": [0, 50], "results": [4, 4] }],
+          "outcomes": [4, 4],
+          "ready_states": ["", ""]
+        },
+        "12": {
+          "players": [0, 2],
+          "round": 2,
+          "games": [{ "scores": [0, 0], "results": [0, 0] }],
+          "outcomes": [0, 0],
+          "ready_states": ["", ""]
+        },
+        "13": {
+          "players": [1, 1],
+          "round": 2,
+          "games": [{ "scores": [0, 50], "results": [4, 4] }],
+          "outcomes": [4, 4],
+          "ready_states": ["", ""]
+        },
+        "14": {
+          "players": [1, 1],
+          "round": 3,
+          "games": [{ "scores": [0, 50], "results": [4, 4] }],
+          "outcomes": [4, 4],
+          "ready_states": ["", ""]
+        },
+        "15": {
+          "players": [2, 0],
+          "round": 3,
+          "games": [{ "scores": [0, 0], "results": [0, 0] }],
+          "outcomes": [0, 0],
+          "ready_states": ["", ""]
+        },
+        "16": {
+          "players": [1, 1],
+          "round": 4,
+          "games": [{ "scores": [0, 50], "results": [4, 4] }],
+          "outcomes": [4, 4],
+          "ready_states": ["", ""]
+        },
+        "17": {
+          "players": [0, 2],
+          "round": 4,
+          "games": [{ "scores": [0, 0], "results": [0, 0] }],
+          "outcomes": [0, 0],
+          "ready_states": ["", ""]
+        },
+        "18": {
+          "players": [1, 1],
+          "round": 5,
+          "games": [{ "scores": [0, 50], "results": [4, 4] }],
+          "outcomes": [4, 4],
+          "ready_states": ["", ""]
+        },
+        "19": {
+          "players": [2, 0],
+          "round": 5,
+          "games": [{ "scores": [0, 0], "results": [0, 0] }],
+          "outcomes": [0, 0],
+          "ready_states": ["", ""]
+        },
+        "20": {
+          "players": [1, 0],
+          "round": 6,
+          "games": [{ "scores": [0, 0], "results": [0, 0] }],
+          "outcomes": [0, 0],
+          "ready_states": ["", ""]
+        },
+        "21": {
+          "players": [2, 2],
+          "round": 6,
+          "games": [{ "scores": [0, 50], "results": [4, 4] }],
+          "outcomes": [4, 4],
+          "ready_states": ["", ""]
+        },
+        "22": {
+          "players": [0, 1],
+          "round": 7,
+          "games": [{ "scores": [0, 0], "results": [0, 0] }],
+          "outcomes": [0, 0],
+          "ready_states": ["", ""]
+        },
+        "23": {
+          "players": [2, 2],
+          "round": 7,
+          "games": [{ "scores": [0, 50], "results": [4, 4] }],
+          "outcomes": [4, 4],
+          "ready_states": ["", ""]
+        },
+        "8": {
+          "players": [2, 0],
+          "games": [{ "scores": [0, 0], "results": [0, 0] }],
+          "outcomes": [0, 0],
+          "ready_states": ["", ""]
+        },
+        "9": {
+          "players": [1, 1],
+          "games": [{ "scores": [0, 50], "results": [4, 4] }],
+          "outcomes": [4, 4],
+          "ready_states": ["", ""]
+        }
+      },
+      "controls": {
+        "id": "qzqWHsGVBrAgiuAZp9nJJm",
+        "division": "NWL",
+        "game_request": {
+          "lexicon": "NWL20",
+          "rules": {
+            "board_layout_name": "CrosswordGame",
+            "letter_distribution_name": "English"
+          },
+          "initial_time_seconds": 1200,
+          "challenge_rule": 2,
+          "max_overtime_minutes": 1
+        },
+        "suspended_result": 4
+      },
+      "round_controls": [
+        { "first_method": 2, "games_per_round": 1 },
+        { "first_method": 2, "games_per_round": 1, "round": 1 },
+        { "first_method": 2, "games_per_round": 1, "round": 2 },
+        { "first_method": 2, "games_per_round": 1, "round": 3 },
+        { "first_method": 2, "games_per_round": 1, "round": 4 },
+        { "first_method": 2, "games_per_round": 1, "round": 5 },
+        { "first_method": 2, "games_per_round": 1, "round": 6 },
+        { "first_method": 2, "games_per_round": 1, "round": 7 }
+      ],
+      "current_round": -1
+    }
+  }
+}

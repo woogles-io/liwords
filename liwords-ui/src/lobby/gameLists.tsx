@@ -55,6 +55,21 @@ export const GameLists = React.memo((props: Props) => {
   const opponent = currentGame?.players.find((p) => p.displayName !== username)
     ?.displayName;
 
+  const enableWordSmog = React.useMemo(
+    () => localStorage.getItem('enableWordSmog') === 'true',
+    []
+  );
+  const unsanitizedSoughtGames = lobbyContext.soughtGames;
+  const sanitizedSoughtGames = React.useMemo(
+    () =>
+      (unsanitizedSoughtGames || []).filter((soughtGame) => {
+        if (!enableWordSmog && soughtGame.variant === 'wordsmog') return false;
+        return true;
+      }),
+
+    [enableWordSmog, unsanitizedSoughtGames]
+  );
+
   const matchButtonText = 'Match a friend';
 
   const renderGames = () => {
@@ -84,7 +99,7 @@ export const GameLists = React.memo((props: Props) => {
             userID={userID}
             username={username}
             newGame={newGame}
-            requests={lobbyContext?.soughtGames}
+            requests={sanitizedSoughtGames}
           />
         </>
       );
@@ -121,7 +136,7 @@ export const GameLists = React.memo((props: Props) => {
   };
   const seekModal = (
     <Modal
-      title="Create a Game"
+      title="Create a game"
       className="seek-modal"
       visible={seekModalVisible}
       destroyOnClose
@@ -145,7 +160,7 @@ export const GameLists = React.memo((props: Props) => {
           type="submit"
           disabled={formDisabled}
         >
-          Create Game
+          Create game
         </button>,
       ]}
     >
@@ -160,7 +175,7 @@ export const GameLists = React.memo((props: Props) => {
   const matchModal = (
     <Modal
       className="seek-modal"
-      title="Match a Friend"
+      title="Match a friend"
       visible={matchModalVisible}
       destroyOnClose
       onCancel={() => {
@@ -183,7 +198,7 @@ export const GameLists = React.memo((props: Props) => {
           type="submit"
           disabled={formDisabled}
         >
-          Create Game
+          Create game
         </button>,
       ]}
     >
@@ -197,7 +212,7 @@ export const GameLists = React.memo((props: Props) => {
   );
   const botModal = (
     <Modal
-      title="Play a Computer"
+      title="Play a computer"
       visible={botModalVisible}
       className="seek-modal"
       destroyOnClose
@@ -221,7 +236,7 @@ export const GameLists = React.memo((props: Props) => {
           type="submit"
           disabled={formDisabled}
         >
-          Create Game
+          Create game
         </button>,
       ]}
     >

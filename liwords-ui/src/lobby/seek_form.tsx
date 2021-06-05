@@ -1,4 +1,4 @@
-import React, { useCallback } from 'react';
+import React, { useCallback, useEffect, useMemo } from 'react';
 import {
   Form,
   Radio,
@@ -15,49 +15,28 @@ import axios from 'axios';
 import { Store } from 'antd/lib/form/interface';
 import { useMountedState } from '../utils/mounted';
 import { ChallengeRule } from '../gen/macondo/api/proto/macondo/macondo_pb';
-import { timeCtrlToDisplayName } from '../store/constants';
+import {
+  initTimeDiscreteScale,
+  timeCtrlToDisplayName,
+  timeScaleToNum,
+} from '../store/constants';
 import { MatchUser } from '../gen/api/proto/realtime/realtime_pb';
 import { SoughtGame } from '../store/reducers/lobby_reducer';
 import { toAPIUrl } from '../api/api';
-import { debounce } from '../utils/debounce';
+import { useDebounce } from '../utils/debounce';
 import { fixedSettings } from './fixed_seek_controls';
-
+import { ChallengeRulesFormItem } from './challenge_rules_form_item';
+import {
+  useFriendsStoreContext,
+  usePresenceStoreContext,
+} from '../store/store';
+import { VariantIcon } from '../shared/variant_icons';
 export type seekPropVals = { [val: string]: string | number | boolean };
-
-const wholetimes = [];
-for (let i = 1; i <= 25; i++) {
-  wholetimes.push(i.toString());
-}
-const initTimeDiscreteScale = [
-  '¼',
-  '½',
-  '¾',
-  ...wholetimes,
-  '30',
-  '35',
-  '40',
-  '45',
-  '50',
-  '55',
-  '60',
-];
 
 const initTimeFormatter = (val?: number) => {
   return initTimeDiscreteScale[val!];
 };
 
-const timeScaleToNum = (val: string) => {
-  switch (val) {
-    case '¼':
-      return 0.25;
-    case '½':
-      return 0.5;
-    case '¾':
-      return 0.75;
-    default:
-      return parseInt(val, 10);
-  }
-};
 type user = {
   username: string;
   uuid: string;
@@ -76,6 +55,7 @@ type Props = {
   tournamentID?: string;
   storageKey?: string;
   prefixItems?: React.ReactNode;
+  username?: string;
 };
 
 const otLabel = 'Overtime';
@@ -93,13 +73,22 @@ const incUnitLabel = (
 
 export const SeekForm = (props: Props) => {
   const { useState } = useMountedState();
+  const { friends } = useFriendsStoreContext();
+  const { presences } = usePresenceStoreContext();
+  const { tournamentID, username } = props;
   const enableAllLexicons = React.useMemo(
     () => localStorage.getItem('enableAllLexicons') === 'true',
     []
   );
-  const enableECWL = React.useMemo(
-    () => localStorage.getItem('enableECWL') === 'true',
+
+  const enableCSW19X = React.useMemo(
+    () => localStorage.getItem('enableCSW19X') === 'true',
     []
+  );
+
+  const enableWordSmog = React.useMemo(
+    () => localStorage.getItem('enableWordSmog') === 'true' && !props.vsBot,
+    [props.vsBot]
   );
 
   let storageKey = 'lastSeekForm';
@@ -125,23 +114,42 @@ export const SeekForm = (props: Props) => {
     friend: '',
     incOrOT: 'overtime',
     vsBot: false,
+    variant: 'classic',
   };
   let disableControls = false;
+  let disableVariantControls = false;
   let disableLexiconControls = false;
+  let disableChallengeControls = false;
   let initialValues;
 
   if (props.tournamentID && props.tournamentID in fixedSettings) {
     disableControls = true;
+    disableVariantControls = 'variant' in fixedSettings[props.tournamentID];
     disableLexiconControls = 'lexicon' in fixedSettings[props.tournamentID];
+    disableChallengeControls =
+      'challengerule' in fixedSettings[props.tournamentID];
     initialValues = {
       ...fixedSettings[props.tournamentID],
       friend: '',
     };
     // This is a bit of a hack; sorry.
+    if (!disableVariantControls) {
+      initialValues = {
+        ...initialValues,
+        variant: storedValues.variant || defaultValues.variant,
+      };
+    }
     if (!disableLexiconControls) {
       initialValues = {
         ...initialValues,
-        lexicon: storedValues.lexicon,
+        lexicon: storedValues.lexicon || defaultValues.lexicon,
+      };
+    }
+    if (!disableChallengeControls) {
+      initialValues = {
+        ...initialValues,
+        challengerule:
+          storedValues.challengerule || defaultValues.challengerule,
       };
     }
   } else {
@@ -179,6 +187,7 @@ export const SeekForm = (props: Props) => {
     setSliderTooltipVisible(!open);
   }, []);
   const [usernameOptions, setUsernameOptions] = useState<Array<string>>([]);
+
   const onFormChange = (val: Store, allvals: Store) => {
     if (window.localStorage) {
       localStorage.setItem(
@@ -212,24 +221,45 @@ export const SeekForm = (props: Props) => {
     setTimectrl(tc);
     setTtag(tt);
   };
+  const defaultOptions = useMemo(() => {
+    let defaultPlayers: string[] = [];
+    if (tournamentID && presences.length) {
+      defaultPlayers = presences
+        .map((p) => p.username)
+        .filter((u) => u !== username);
+    } else {
+      const friendsArray = friends ? Object.values(friends) : [];
+      if (friendsArray.length) {
+        defaultPlayers = friendsArray
+          .filter((f) => f.channel && f.channel.length > 0)
+          .map((f) => f.username);
+      }
+    }
+    return defaultPlayers;
+  }, [friends, presences, username, tournamentID]);
+  const onUsernameSearch = useCallback(
+    (searchText: string) => {
+      axios
+        .post<SearchResponse>(
+          toAPIUrl('user_service.AutocompleteService', 'GetCompletion'),
+          {
+            prefix: searchText,
+          }
+        )
+        .then((resp) => {
+          console.log('resp', resp.data);
 
-  const onUsernameSearch = (searchText: string) => {
-    axios
-      .post<SearchResponse>(
-        toAPIUrl('user_service.AutocompleteService', 'GetCompletion'),
-        {
-          prefix: searchText,
-        }
-      )
-      .then((resp) => {
-        console.log('resp', resp.data);
-        setUsernameOptions(
-          !searchText ? [] : resp.data.users.map((u) => u.username)
-        );
-      });
-  };
+          setUsernameOptions(
+            !searchText
+              ? defaultOptions
+              : resp.data.users.map((u) => u.username)
+          );
+        });
+    },
+    [defaultOptions]
+  );
 
-  const searchUsernameDebounced = debounce(onUsernameSearch, 300);
+  const searchUsernameDebounced = useDebounce(onUsernameSearch, 300);
 
   const onFormSubmit = (val: Store) => {
     const receiver = new MatchUser();
@@ -256,6 +286,14 @@ export const SeekForm = (props: Props) => {
       rematchFor: '',
       playerVsBot: props.vsBot || false,
       tournamentID: props.tournamentID || '',
+      variant: val.variant as string,
+      ...(props.tournamentID &&
+        fixedSettings[props.tournamentID] && {
+          ...(typeof fixedSettings[props.tournamentID].variant === 'string' && {
+            // this is necessary, because variant may not be rendered depending on localStorage.
+            variant: fixedSettings[props.tournamentID].variant as string,
+          }),
+        }),
     };
     props.onFormSubmit(obj, val);
   };
@@ -263,6 +301,12 @@ export const SeekForm = (props: Props) => {
   const validateMessages = {
     required: 'This field is required.',
   };
+
+  useEffect(() => {
+    if (usernameOptions.length === 0 && defaultOptions.length > 0) {
+      setUsernameOptions(defaultOptions);
+    }
+  }, [defaultOptions, usernameOptions]);
 
   return (
     <Form
@@ -274,6 +318,7 @@ export const SeekForm = (props: Props) => {
       wrapperCol={{ span: 24 }}
       layout="horizontal"
       validateMessages={validateMessages}
+      name="seekForm"
     >
       {props.prefixItems || null}
 
@@ -290,6 +335,7 @@ export const SeekForm = (props: Props) => {
           <AutoComplete
             onSearch={searchUsernameDebounced}
             placeholder="username..."
+            onClick={() => setUsernameOptions(defaultOptions)}
             filterOption={(inputValue, option) =>
               !option ||
               !option.value ||
@@ -306,6 +352,18 @@ export const SeekForm = (props: Props) => {
           </AutoComplete>
         </Form.Item>
       )}
+
+      {enableWordSmog && (
+        <Form.Item label="Game type" name="variant">
+          <Select disabled={disableVariantControls}>
+            <Select.Option value="classic">Classic</Select.Option>
+            <Select.Option value="wordsmog">
+              <VariantIcon vcode="wordsmog" withName />
+            </Select.Option>
+          </Select>
+        </Form.Item>
+      )}
+
       <Form.Item
         label="Dictionary"
         name="lexicon"
@@ -323,9 +381,15 @@ export const SeekForm = (props: Props) => {
           {enableAllLexicons && (
             <React.Fragment>
               <Select.Option value="NWL18">NWL 18 (Obsolete)</Select.Option>
-              {enableECWL && (
-                <Select.Option value="ECWL">
-                  English Common Word List
+              <Select.Option value="NSWL20">
+                NSWL 20 (NASPA School Word List)
+              </Select.Option>
+              <Select.Option value="ECWL">
+                English Common Word List
+              </Select.Option>
+              {enableCSW19X && (
+                <Select.Option value="CSW19X">
+                  CSW19X (ASCI Expurgated)
                 </Select.Option>
               )}
             </React.Fragment>
@@ -333,50 +397,11 @@ export const SeekForm = (props: Props) => {
         </Select>
       </Form.Item>
       {showChallengeRule && (
-        <Form.Item label="Challenge rule" name="challengerule">
-          <Select disabled={disableControls}>
-            <Select.Option value={ChallengeRule.FIVE_POINT}>
-              5 points{' '}
-              <span className="hover-help">
-                (Reward for winning a challenge)
-              </span>
-            </Select.Option>
-            <Select.Option value={ChallengeRule.TEN_POINT}>
-              10 points{' '}
-              <span className="hover-help">
-                (Reward for winning a challenge)
-              </span>
-            </Select.Option>
-            <Select.Option value={ChallengeRule.DOUBLE}>
-              Double{' '}
-              <span className="hover-help">
-                (Turn loss for challenging a valid word)
-              </span>
-            </Select.Option>
-            <Select.Option value={ChallengeRule.SINGLE}>
-              Single{' '}
-              <span className="hover-help">
-                (No penalty for challenging a valid word)
-              </span>
-            </Select.Option>
-            <Select.Option value={ChallengeRule.VOID}>
-              Void{' '}
-              <span className="hover-help">
-                (All words are checked before play)
-              </span>
-            </Select.Option>
-            <Select.Option value={ChallengeRule.TRIPLE}>
-              Triple{' '}
-              <span className="hover-help">
-                (Losing a challenge loses the game)
-              </span>
-            </Select.Option>
-          </Select>
-        </Form.Item>
+        <ChallengeRulesFormItem disabled={disableChallengeControls} />
       )}
       <Form.Item
         className="initial"
-        label="Initial Minutes"
+        label="Initial minutes"
         name="initialtime"
         extra={<Tag color={ttag}>{timectrl}</Tag>}
       >
@@ -388,10 +413,10 @@ export const SeekForm = (props: Props) => {
           tooltipVisible={sliderTooltipVisible || usernameOptions.length === 0}
         />
       </Form.Item>
-      <Form.Item label="Time Setting" name="incOrOT">
+      <Form.Item label="Time setting" name="incOrOT">
         <Radio.Group disabled={disableControls}>
-          <Radio.Button value="overtime">Use Max Overtime</Radio.Button>
-          <Radio.Button value="increment">Use Increment</Radio.Button>
+          <Radio.Button value="overtime">Use max overtime</Radio.Button>
+          <Radio.Button value="increment">Use increment</Radio.Button>
         </Radio.Group>
       </Form.Item>
       <Form.Item

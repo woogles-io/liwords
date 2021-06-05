@@ -6,7 +6,13 @@
     background-color: m($background);
   }
 
-  p, h1, h2, h3, h4, h5, h6 {
+  p,
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
     @include colorModed() {
       color: m($gray-extreme);
     }
@@ -29,6 +35,14 @@
   }
 }
 
+.country-flag {
+  width: 20px;
+  height: 14px;
+  box-shadow: 0px 0px 3px 1px #00000029;
+  position: relative;
+  top: -2px;
+  margin-right: 6px;
+}
 .ant-dropdown.user-menu {
   @include colorModed() {
     background-color: m($background);
@@ -37,7 +51,8 @@
   padding: 6px 24px 6px 12px;
   min-width: 200px;
 }
-a, button.link {
+a,
+button.link {
   cursor: pointer;
   @include colorModed() {
     color: m($primary-dark);
@@ -59,7 +74,8 @@ button.link {
   }
 }
 
-a.plain, .link.plain {
+a.plain,
+.link.plain {
   cursor: pointer;
   font-weight: 700;
   @include colorModed() {
@@ -84,3 +100,45 @@ a.plain, .link.plain {
   }
 }
 
+.ant-layout-content {
+  @include colorModed() {
+    color: m($primary-dark);
+    background-color: m($background);
+  }
+}
+
+.donations {
+  @include container;
+  padding: 48px 18px;
+
+  &.donation-success {
+    text-align: center;
+    h4 {
+      @include type-default;
+      font-weight: 600;
+      font-size: 18px;
+      letter-spacing: 0;
+    }
+  }
+}
+
+.bnjyMode {
+  .tile[data-rune='I'], .tile[data-rune='O'], .tile[data-rune='X'] {
+    transform: rotate(180deg);
+
+    /* this mirrors gameroom/scss/gameroom.scss */
+
+    & .tentative-score.tentative-score-horizontal {
+      left: calc(100% + 2px);
+    }
+
+    & .tentative-score.tentative-score-vertical {
+      left: 2px;
+      top: calc(100% + 4px);
+    }
+
+    & .tentative-score {
+      transform: rotate(180deg);
+    }
+  }
+}

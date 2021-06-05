@@ -60,6 +60,12 @@ export class GameHistory extends jspb.Message {
   getWinner(): number;
   setWinner(value: number): void;
 
+  getBoardLayout(): string;
+  setBoardLayout(value: string): void;
+
+  getLetterDistribution(): string;
+  setLetterDistribution(value: string): void;
+
   serializeBinary(): Uint8Array;
   toObject(includeInstance?: boolean): GameHistory.AsObject;
   static toObject(includeInstance: boolean, msg: GameHistory): GameHistory.AsObject;
@@ -88,6 +94,8 @@ export namespace GameHistory {
     finalScoresList: Array<number>,
     variant: string,
     winner: number,
+    boardLayout: string,
+    letterDistribution: string,
   }
 }
 
@@ -237,6 +245,11 @@ export class BotRequest extends jspb.Message {
   getGameHistory(): GameHistory | undefined;
   setGameHistory(value?: GameHistory): void;
 
+  hasEvaluationRequest(): boolean;
+  clearEvaluationRequest(): void;
+  getEvaluationRequest(): EvaluationRequest | undefined;
+  setEvaluationRequest(value?: EvaluationRequest): void;
+
   serializeBinary(): Uint8Array;
   toObject(includeInstance?: boolean): BotRequest.AsObject;
   static toObject(includeInstance: boolean, msg: BotRequest): BotRequest.AsObject;
@@ -250,6 +263,89 @@ export class BotRequest extends jspb.Message {
 export namespace BotRequest {
   export type AsObject = {
     gameHistory?: GameHistory.AsObject,
+    evaluationRequest?: EvaluationRequest.AsObject,
+  }
+}
+
+export class EvaluationRequest extends jspb.Message {
+  getUser(): string;
+  setUser(value: string): void;
+
+  serializeBinary(): Uint8Array;
+  toObject(includeInstance?: boolean): EvaluationRequest.AsObject;
+  static toObject(includeInstance: boolean, msg: EvaluationRequest): EvaluationRequest.AsObject;
+  static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+  static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+  static serializeBinaryToWriter(message: EvaluationRequest, writer: jspb.BinaryWriter): void;
+  static deserializeBinary(bytes: Uint8Array): EvaluationRequest;
+  static deserializeBinaryFromReader(message: EvaluationRequest, reader: jspb.BinaryReader): EvaluationRequest;
+}
+
+export namespace EvaluationRequest {
+  export type AsObject = {
+    user: string,
+  }
+}
+
+export class Evaluation extends jspb.Message {
+  clearPlayEvalList(): void;
+  getPlayEvalList(): Array<SingleEvaluation>;
+  setPlayEvalList(value: Array<SingleEvaluation>): void;
+  addPlayEval(value?: SingleEvaluation, index?: number): SingleEvaluation;
+
+  serializeBinary(): Uint8Array;
+  toObject(includeInstance?: boolean): Evaluation.AsObject;
+  static toObject(includeInstance: boolean, msg: Evaluation): Evaluation.AsObject;
+  static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+  static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+  static serializeBinaryToWriter(message: Evaluation, writer: jspb.BinaryWriter): void;
+  static deserializeBinary(bytes: Uint8Array): Evaluation;
+  static deserializeBinaryFromReader(message: Evaluation, reader: jspb.BinaryReader): Evaluation;
+}
+
+export namespace Evaluation {
+  export type AsObject = {
+    playEvalList: Array<SingleEvaluation.AsObject>,
+  }
+}
+
+export class SingleEvaluation extends jspb.Message {
+  getEquityLoss(): number;
+  setEquityLoss(value: number): void;
+
+  getWinPctLoss(): number;
+  setWinPctLoss(value: number): void;
+
+  getMissedBingo(): boolean;
+  setMissedBingo(value: boolean): void;
+
+  getPossibleStarPlay(): boolean;
+  setPossibleStarPlay(value: boolean): void;
+
+  getMissedStarPlay(): boolean;
+  setMissedStarPlay(value: boolean): void;
+
+  getTopIsBingo(): boolean;
+  setTopIsBingo(value: boolean): void;
+
+  serializeBinary(): Uint8Array;
+  toObject(includeInstance?: boolean): SingleEvaluation.AsObject;
+  static toObject(includeInstance: boolean, msg: SingleEvaluation): SingleEvaluation.AsObject;
+  static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+  static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+  static serializeBinaryToWriter(message: SingleEvaluation, writer: jspb.BinaryWriter): void;
+  static deserializeBinary(bytes: Uint8Array): SingleEvaluation;
+  static deserializeBinaryFromReader(message: SingleEvaluation, reader: jspb.BinaryReader): SingleEvaluation;
+}
+
+export namespace SingleEvaluation {
+  export type AsObject = {
+    equityLoss: number,
+    winPctLoss: number,
+    missedBingo: boolean,
+    possibleStarPlay: boolean,
+    missedStarPlay: boolean,
+    topIsBingo: boolean,
   }
 }
 
@@ -263,6 +359,11 @@ export class BotResponse extends jspb.Message {
   clearError(): void;
   getError(): string;
   setError(value: string): void;
+
+  hasEval(): boolean;
+  clearEval(): void;
+  getEval(): Evaluation | undefined;
+  setEval(value?: Evaluation): void;
 
   getResponseCase(): BotResponse.ResponseCase;
   serializeBinary(): Uint8Array;
@@ -279,6 +380,7 @@ export namespace BotResponse {
   export type AsObject = {
     move?: GameEvent.AsObject,
     error: string,
+    eval?: Evaluation.AsObject,
   }
 
   export enum ResponseCase {

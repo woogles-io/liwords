@@ -73,3 +73,8 @@ func (s *XTUploadService) Upload(ctx context.Context, prefix string, data []byte
 
 	return val.AvatarUrl, nil
 }
+
+func (s *XTUploadService) Delete(ctx context.Context, url string) error {
+	return nil
+}
+

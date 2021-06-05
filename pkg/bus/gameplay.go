@@ -140,10 +140,18 @@ func (b *Bus) instantiateAndStartGame(ctx context.Context, accUser *entity.User,
 	return nil
 }
 
-func (b *Bus) handleBotMove(ctx context.Context, g *entity.Game) {
+func (b *Bus) goHandleBotMove(ctx context.Context, g *entity.Game) {
 	// This function should only be called if it's the bot's turn.
+	// Call it while holding at least a read lock!
 	onTurn := g.Game.PlayerOnTurn()
 	userID := g.Game.PlayerIDOnTurn()
+
+	go b.handleBotMoveInternally(ctx, g, onTurn, userID)
+}
+
+func (b *Bus) handleBotMoveInternally(ctx context.Context, g *entity.Game, onTurn int, userID string) {
+	// This function should only be called by goHandleBotMove.
+	// Caller should pass the bot's onTurn and userID.
 	g.Lock()
 	defer g.Unlock()
 	// We check if that game is not over because a triple challenge
@@ -235,10 +243,12 @@ func (b *Bus) readyForGame(ctx context.Context, evt *pb.ReadyForGame, userID str
 		if err != nil {
 			log.Err(err).Msg("starting-game")
 		}
+		// Note: for PlayerVsBot, readyForGame is called twice when player is ready and every time player refreshes, why? :-(
+		g.SendChange(g.NewActiveGameEntry(true))
 
 		if g.GameReq.PlayerVsBot && g.PlayerIDOnTurn() != userID {
 			// Make a bot move if it's the bot's turn at the beginning.
-			go b.handleBotMove(ctx, g)
+			b.goHandleBotMove(ctx, g)
 		}
 	}
 	return nil
@@ -340,11 +350,17 @@ func (b *Bus) readyForTournamentGame(ctx context.Context, evt *pb.ReadyForTourna
 	if otherID == userID {
 		return errors.New("both users have same ID?")
 	}
+	if otherUserIdx == -1 {
+		return errors.New("unexpected behavior; did not find other player")
+	}
 	users[otherUserIdx], err = b.userStore.GetByUUID(ctx, otherID)
 	if err != nil {
 		return err
 	}
-	gameReq := t.Divisions[evt.Division].Controls.GameRequest
+	if t.Divisions[evt.Division].DivisionManager == nil {
+		return fmt.Errorf("division manager for division %s is nil", evt.Division)
+	}
+	gameReq := t.Divisions[evt.Division].DivisionManager.GetDivisionControls().GameRequest
 	tdata := &entity.TournamentData{
 		Id:        evt.TournamentId,
 		Division:  evt.Division,
@@ -388,6 +404,8 @@ func (b *Bus) readyForTournamentGame(ctx context.Context, evt *pb.ReadyForTourna
 		Str("tournamentID", string(evt.TournamentId)).
 		Str("onturn", g.NickOnTurn()).Msg("tournament-game-started")
 
+	// This is untested.
+	g.SendChange(g.NewActiveGameEntry(true))
 	return nil
 }
 
@@ -451,6 +469,7 @@ func (b *Bus) adjudicateGames(ctx context.Context) error {
 			// XXX: Fix for tourneys ?
 			wrapped.AddAudience(entity.AudLobby, "gameEnded")
 			b.gameEventChan <- wrapped
+			b.gameEventChan <- entGame.NewActiveGameEntry(false)
 
 			// If this game is part of a tournament that is not in clubhouse
 			// mode, we must allow the players to try to play again.

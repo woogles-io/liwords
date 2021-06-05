@@ -49,6 +49,16 @@ Love,
 The Woogles.io team
 `
 
+const AccountClosureTemplate = `
+Dear Woogles Administrators,
+
+The following user has deleted their account:
+
+User:  %s
+Email: %s
+
+`
+
 var errPasswordTooShort = errors.New("your password is too short, use 8 or more characters")
 
 type AuthenticationService struct {
@@ -90,7 +100,7 @@ func (as *AuthenticationService) Login(ctx context.Context, r *pb.UserLoginReque
 
 	err = mod.ActionExists(ctx, as.userStore, user.UUID, false, []ms.ModActionType{ms.ModActionType_SUSPEND_ACCOUNT})
 	if err != nil {
-		log.Err(err).Str("username", r.Username).Str("userID", user.UUID).Msg("action-exists")
+		log.Err(err).Str("username", r.Username).Str("userID", user.UUID).Msg("action-exists-login")
 		return nil, err
 	}
 
@@ -164,12 +174,14 @@ func (as *AuthenticationService) GetSocketToken(ctx context.Context, r *pb.Socke
 	if u.IsMod {
 		perms = append(perms, "mod")
 	}
+
 	// Create an unauth token.
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
 		"exp":   time.Now().Add(TokenExpiration).Unix(),
 		"uid":   uuid,
 		"unn":   unn,
 		"a":     authed,
+		"cs":    u.IsChild(),
 		"perms": strings.Join(perms, ","),
 	})
 	tokenString, err := token.SignedString([]byte(as.secretKey))
@@ -197,6 +209,12 @@ func (as *AuthenticationService) ResetPasswordStep1(ctx context.Context, r *pb.R
 	u, err := as.userStore.GetByEmail(ctx, email)
 	if err != nil {
 		return nil, twirp.NewError(twirp.Unauthenticated, err.Error())
+	}
+
+	err = mod.ActionExists(ctx, as.userStore, u.UUID, false, []ms.ModActionType{ms.ModActionType_SUSPEND_ACCOUNT})
+	if err != nil {
+		log.Err(err).Str("userID", u.UUID).Msg("action-exists-reset-password-step-one")
+		return nil, err
 	}
 
 	// Create a token for the reset
@@ -242,6 +260,12 @@ func (as *AuthenticationService) ResetPasswordStep2(ctx context.Context, r *pb.R
 			return nil, twirp.NewError(twirp.Malformed, "wrongly formatted uuid in token")
 		}
 
+		err = mod.ActionExists(ctx, as.userStore, uuid, false, []ms.ModActionType{ms.ModActionType_SUSPEND_ACCOUNT})
+		if err != nil {
+			log.Err(err).Str("userID", uuid).Msg("action-exists-reset-password-step-two")
+			return nil, err
+		}
+
 		config := NewPasswordConfig(as.argonConfig.Time, as.argonConfig.Memory, as.argonConfig.Threads, as.argonConfig.Keylen)
 		if len(r.Password) < 8 {
 			return nil, twirp.NewError(twirp.InvalidArgument, errPasswordTooShort.Error())
@@ -275,6 +299,13 @@ func (as *AuthenticationService) ChangePassword(ctx context.Context, r *pb.Chang
 		// usernames easily.
 		return nil, twirp.InternalErrorWith(err)
 	}
+
+	err = mod.ActionExists(ctx, as.userStore, user.UUID, false, []ms.ModActionType{ms.ModActionType_SUSPEND_ACCOUNT})
+	if err != nil {
+		log.Err(err).Str("userID", user.UUID).Msg("action-exists-change-password")
+		return nil, err
+	}
+
 	matches, err := ComparePassword(r.OldPassword, user.Password)
 	if !matches {
 		return nil, twirp.NewError(twirp.InvalidArgument, "your password is incorrect")
@@ -294,4 +325,50 @@ func (as *AuthenticationService) ChangePassword(ctx context.Context, r *pb.Chang
 		return nil, twirp.InternalErrorWith(err)
 	}
 	return &pb.ChangePasswordResponse{}, nil
+}
+
+func (as *AuthenticationService) NotifyAccountClosure(ctx context.Context, r *pb.NotifyAccountClosureRequest) (*pb.NotifyAccountClosureResponse, error) {
+	sess, err := apiserver.GetSession(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	err = mod.ActionExists(ctx, as.userStore, sess.UserUUID, false, []ms.ModActionType{ms.ModActionType_SUSPEND_ACCOUNT})
+	if err != nil {
+		log.Err(err).Str("userID", sess.UserUUID).Msg("action-exists-account-closure")
+		return nil, err
+	}
+
+	// Get the user so we can send the notification with their email address
+	user, err := as.userStore.Get(ctx, sess.Username)
+	if err != nil {
+		return nil, err
+	}
+
+	matches, err := ComparePassword(r.Password, user.Password)
+	if err != nil {
+		return nil, twirp.InternalErrorWith(err)
+	}
+	if !matches {
+		return nil, twirp.NewError(twirp.Unauthenticated, "password incorrect")
+	}
+
+	// This action will not need to use the chat store so we can pass the nil value
+	err = mod.ApplyActions(ctx, as.userStore, nil, []*ms.ModAction{{
+		UserId:   sess.UserUUID,
+		Duration: 0,
+		Note:     "User initiated account deletion",
+		Type:     ms.ModActionType_DELETE_ACCOUNT}})
+	if err != nil {
+		return nil, err
+	}
+
+	id, err := emailer.SendSimpleMessage(as.mailgunKey, emailer.WooglesAdministratorAddress, fmt.Sprintf("%s Account Closure", sess.Username),
+		fmt.Sprintf(AccountClosureTemplate, sess.Username, user.Email))
+	if err != nil {
+		return nil, twirp.InternalErrorWith(err)
+	}
+	log.Info().Str("id", id).Str("email", emailer.WooglesAdministratorAddress).Msg("sent-account-closure")
+
+	return &pb.NotifyAccountClosureResponse{}, nil
 }
