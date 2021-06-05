@@ -207,6 +207,11 @@ p.streak-loss {
           }
         }
       }
+      tr.move-chosen:not(:hover) {
+        @include colorModed() {
+          background-color: m($gray-subtle);
+        }
+      }
       td {
         padding: 6px 3px;
         &:first-child {
