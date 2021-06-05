@@ -61,7 +61,7 @@ export const endGameMessage = (gee: GameEndedEvent): string => {
       break;
     case GameEndReason.FORCE_FORFEIT:
       properEnding = true;
-      summaryReason = ' by forfeit.';
+      summaryReason = ' by forfeit';
       break;
   }
   if (!properEnding) {
