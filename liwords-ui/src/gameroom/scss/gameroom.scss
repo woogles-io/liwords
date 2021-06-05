@@ -642,6 +642,7 @@ p.streak-loss {
 /* Rack */
 
 .rack {
+  touch-action: manipulation;
   display: flex;
   justify-content: center;
   align-items: center;
