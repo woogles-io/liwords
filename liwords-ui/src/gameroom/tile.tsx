@@ -47,15 +47,21 @@ type TilePreviewProps = {
 export const TilePreview = React.memo((props: TilePreviewProps) => {
   const { useState } = useMountedState();
   const [updateCount, setUpdateCount] = useState(0);
-  const { isDragging, xyPosition, initialPosition, rune, value } = useDragLayer(
-    (monitor) => ({
-      xyPosition: monitor.getClientOffset(),
-      initialPosition: monitor.getInitialClientOffset(),
-      isDragging: monitor.isDragging(),
-      rune: monitor.getItem()?.rune,
-      value: monitor.getItem()?.value,
-    })
-  );
+  const {
+    isDragging,
+    xyPosition,
+    initialPosition,
+    rune,
+    value,
+    playerOfTile,
+  } = useDragLayer((monitor) => ({
+    xyPosition: monitor.getClientOffset(),
+    initialPosition: monitor.getInitialClientOffset(),
+    isDragging: monitor.isDragging(),
+    rune: monitor.getItem()?.rune,
+    value: monitor.getItem()?.value,
+    playerOfTile: monitor.getItem()?.playerOfTile,
+  }));
   const [position, setPosition] = useState(initialPosition);
   const boardElement = document.getElementById('board-spaces');
   useEffect(() => {
@@ -91,7 +97,9 @@ export const TilePreview = React.memo((props: TilePreviewProps) => {
       top,
       left,
     };
-    const computedClass = `tile preview${overBoard ? ' over-board' : ''}`;
+    const computedClass = `tile preview${overBoard ? ' over-board' : ''}${
+      isDesignatedBlank(rune) ? ' blank' : ''
+    }${playerOfTile ? ' tile-p1' : ' tile-p0'}`;
     if (isDragging) {
       return (
         <div className={computedClass} style={computedStyle}>
@@ -200,6 +208,7 @@ const Tile = React.memo((props: TileProps) => {
           : undefined,
       rune: props.rune,
       value: props.value,
+      playerOfTile: props.playerOfTile,
     },
     collect: (monitor) => ({
       isDragging: monitor.isDragging(),
