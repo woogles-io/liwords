@@ -98,7 +98,7 @@ export const TilePreview = React.memo((props: TilePreviewProps) => {
       left,
     };
     const computedClass = `tile preview${overBoard ? ' over-board' : ''}${
-      isDesignatedBlank(rune) ? ' blank' : ''
+      rune && isDesignatedBlank(rune) ? ' blank' : ''
     }${playerOfTile ? ' tile-p1' : ' tile-p0'}`;
     if (isDragging) {
       return (
