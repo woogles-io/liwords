@@ -273,7 +273,7 @@ const Tile = React.memo((props: TileProps) => {
         onMouseEnter={props.onMouseEnter}
         onMouseLeave={props.onMouseLeave}
         onDragStart={canDrag ? handleStartDrag : undefined}
-        onDragEnd={canDrag ? handleEndDrag : undefined}
+        onDragEnd={handleEndDrag}
         draggable={canDrag}
       >
         {props.rune !== EmptySpace && (
