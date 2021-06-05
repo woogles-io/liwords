@@ -75,7 +75,7 @@ export const TilePreview = React.memo((props: TilePreviewProps) => {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [xyPosition]);
-  if (boardElement && position) {
+  if (isDragging && boardElement && position) {
     const boardTop = boardElement.getBoundingClientRect().top;
     const boardLeft = boardElement.getBoundingClientRect().left;
     const boardWidth = boardElement.getBoundingClientRect().width;
@@ -100,14 +100,12 @@ export const TilePreview = React.memo((props: TilePreviewProps) => {
     const computedClass = `tile preview${overBoard ? ' over-board' : ''}${
       rune && isDesignatedBlank(rune) ? ' blank' : ''
     }${playerOfTile ? ' tile-p1' : ' tile-p0'}`;
-    if (isDragging) {
-      return (
-        <div className={computedClass} style={computedStyle}>
-          <TileLetter rune={rune} />
-          <PointValue value={value} />
-        </div>
-      );
-    }
+    return (
+      <div className={computedClass} style={computedStyle}>
+        <TileLetter rune={rune} />
+        <PointValue value={value} />
+      </div>
+    );
   }
 
   return null;
