@@ -303,29 +303,29 @@ export const GameLists = React.memo((props: Props) => {
   return (
     <div className="game-lists">
       <Card actions={actions}>
-        <div className="main-content">
-          <div className="tabs">
-            {loggedIn ? (
-              <div
-                onClick={() => {
-                  setSelectedGameTab('PLAY');
-                }}
-                className={selectedGameTab === 'PLAY' ? 'tab active' : 'tab'}
-              >
-                Play
-              </div>
-            ) : null}
+        <div className="tabs">
+          {loggedIn ? (
             <div
               onClick={() => {
-                setSelectedGameTab('WATCH');
+                setSelectedGameTab('PLAY');
               }}
-              className={
-                selectedGameTab === 'WATCH' || !loggedIn ? 'tab active' : 'tab'
-              }
+              className={selectedGameTab === 'PLAY' ? 'tab active' : 'tab'}
             >
-              Watch
+              Play
             </div>
+          ) : null}
+          <div
+            onClick={() => {
+              setSelectedGameTab('WATCH');
+            }}
+            className={
+              selectedGameTab === 'WATCH' || !loggedIn ? 'tab active' : 'tab'
+            }
+          >
+            Watch
           </div>
+        </div>
+        <div className="main-content">
           {renderGames()}
           {seekModal}
           {matchModal}
