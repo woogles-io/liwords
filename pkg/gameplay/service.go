@@ -139,7 +139,6 @@ func censorStreakInfoResponse(ctx context.Context, us user.Store, sir *pb.Streak
 			knownUsers[playerOne] = mod.IsCensorable(ctx, us, playerOne)
 		}
 		if knownUsers[playerOne] {
-			game.Players[0] = mod.CensoredUsername
 			// Perhaps not necessary since average users cannot
 			// deduct a user from a UUID, but best to hide it anyway
 			game.PlayerIds[0] = mod.CensoredUsername
@@ -150,7 +149,6 @@ func censorStreakInfoResponse(ctx context.Context, us user.Store, sir *pb.Streak
 			knownUsers[playerTwo] = mod.IsCensorable(ctx, us, playerTwo)
 		}
 		if knownUsers[playerTwo] {
-			game.Players[1] = mod.CensoredUsername
 			// Perhaps not necessary since average users cannot
 			// deduct a user from a UUID, but best to hide it anyway
 			game.PlayerIds[1] = mod.CensoredUsername

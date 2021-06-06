@@ -149,6 +149,7 @@ func TestGetInChannel(t *testing.T) {
 	is.Equal(ct, 4)
 
 	users, err := ps.GetInChannel(ctx, "game:abc")
+	is.NoErr(err)
 	sort.Slice(users, func(a, b int) bool {
 		return users[a].UUID < users[b].UUID
 	})
@@ -158,6 +159,7 @@ func TestGetInChannel(t *testing.T) {
 	})
 
 	users, err = ps.GetInChannel(ctx, "lobby")
+	is.NoErr(err)
 	sort.Slice(users, func(a, b int) bool {
 		return users[a].UUID < users[b].UUID
 	})
@@ -169,6 +171,7 @@ func TestGetInChannel(t *testing.T) {
 	})
 
 	users, err = ps.GetInChannel(ctx, "gametv:abc")
+	is.NoErr(err)
 	sort.Slice(users, func(a, b int) bool {
 		return users[a].UUID < users[b].UUID
 	})
@@ -178,6 +181,7 @@ func TestGetInChannel(t *testing.T) {
 	})
 
 	users, err = ps.GetInChannel(ctx, "gametv:abcd")
+	is.NoErr(err)
 	sort.Slice(users, func(a, b int) bool {
 		return users[a].UUID < users[b].UUID
 	})

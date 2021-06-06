@@ -846,8 +846,7 @@ func (s *DBStore) UsersByPrefix(ctx context.Context, prefix string) ([]*pb.Basic
 	// get the string the correct way with ms.ModActionType_SUSPEND_ACCOUNT.String(),
 	// so we hard code it here.
 	if result := s.db.Table("users").Select("username, uuid").
-		Where("lower(username) like ? AND internal_bot = ? AND (actions IS NULL OR actions->>'SUSPEND_ACCOUNT' IS NULL OR
-			actions->'SUSPEND_ACCOUNT'->end_time->seconds < extract(epoch from now()))",
+		Where("lower(username) like ? AND internal_bot = ? AND (actions IS NULL OR actions->>'SUSPEND_ACCOUNT' IS NULL OR actions->'SUSPEND_ACCOUNT'->end_time->seconds < extract(epoch from now()))",
 			strings.ToLower(prefix)+"%", false).
 		Limit(20).
 		Scan(&us); result.Error != nil {

@@ -129,32 +129,6 @@ func (ps *ProfileService) GetProfile(ctx context.Context, r *pb.ProfileRequest) 
 	}, nil
 }
 
-func (ps *ProfileService) GetUsersGameInfo(ctx context.Context, r *pb.UsersGameInfoRequest) (*pb.UsersGameInfoResponse, error) {
-	var infos []*pb.UserGameInfo
-
-	for _, uuid := range r.Uuids {
-		user, err := ps.userStore.GetByUUID(ctx, uuid)
-		if err == nil {
-			avatarUrl := user.AvatarUrl()
-			title := user.Profile.Title
-			err := mod.ActionExists(ctx, ps.userStore, uuid, true, []ms.ModActionType{ms.ModActionType_SUSPEND_ACCOUNT})
-			if err != nil {
-				avatarUrl = mod.CensoredAvatarUrl
-				title = mod.CensoredUsername
-			}
-			infos = append(infos, &pb.UserGameInfo{
-				Uuid:      uuid,
-				AvatarUrl: avatarUrl,
-				Title:     title,
-			})
-		}
-	}
-
-	return &pb.UsersGameInfoResponse{
-		Infos: infos,
-	}, nil
-}
-
 func (ps *ProfileService) GetPersonalInfo(ctx context.Context, r *pb.PersonalInfoRequest) (*pb.PersonalInfoResponse, error) {
 	// This view requires authentication.
 	sess, err := apiserver.GetSession(ctx)
