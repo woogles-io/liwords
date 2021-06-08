@@ -656,8 +656,8 @@ export const Analyzer = React.memo((props: AnalyzerProps) => {
         >
           <td className="move-coords">{m.coordinates}</td>
           <td className="move">
-            {(m.valid ?? true) && m.displayMove}
-            {!(m.valid ?? true) && <React.Fragment>(phony)</React.Fragment>}
+            {m.displayMove}
+            {!(m.valid ?? true) && <React.Fragment> &#x1f648;</React.Fragment>}
           </td>
           <td className="move-score">{m.score}</td>
           <td className="move-leave">{m.leave}</td>
