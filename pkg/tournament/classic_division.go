@@ -1427,9 +1427,7 @@ func combinePairingsResponses(pr1 []*realtime.Pairing, pr2 []*realtime.Pairing) 
 		}
 	}
 
-	for _, pairing := range pr2 {
-		newResponse = append(newResponse, pairing)
-	}
+	newResponse = append(newResponse, pr2...)
 
 	return newResponse
 }

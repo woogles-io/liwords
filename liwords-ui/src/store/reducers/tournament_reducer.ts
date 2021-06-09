@@ -153,8 +153,28 @@ export const readyForTournamentGame = (
   );
 };
 
+const findOpponentIdx = (
+  player: number,
+  playerIndexMap: { [playerID: string]: number },
+  pairings: Array<RoundPairings>,
+  round: number
+): number => {
+  if (!pairings[round].roundPairings[player].players) {
+    return -1;
+  }
+
+  let opponent =
+    playerIndexMap[pairings[round].roundPairings[player].players[0].getId()];
+  if (opponent === player) {
+    opponent =
+      playerIndexMap[pairings[round].roundPairings[player].players[1].getId()];
+  }
+  return opponent;
+};
+
 const reducePairings = (
   players: Array<TournamentPerson>,
+  playerIndexMap: { [playerID: string]: number },
   existingPairings: Array<RoundPairings>,
   newPairings: Pairing[]
 ): Array<RoundPairings> => {
@@ -172,6 +192,23 @@ const reducePairings = (
         results: g.getResultsList(),
       })),
     } as SinglePairing;
+
+    // check if any of these players are already paired.
+
+    for (let pidx = 0; pidx <= 1; pidx++) {
+      const opp = findOpponentIdx(
+        value.getPlayersList()[pidx],
+        playerIndexMap,
+        updatedPairings,
+        value.getRound()
+      );
+      if (opp !== -1) {
+        updatedPairings[value.getRound()].roundPairings[
+          opp
+        ] = {} as SinglePairing;
+      }
+    }
+
     updatedPairings[value.getRound()].roundPairings[
       value.getPlayersList()[0]
     ] = newSinglePairing;
@@ -532,6 +569,7 @@ export function TournamentReducer(
         }
         newPairings = reducePairings(
           state.divisions[division].players,
+          state.divisions[division].playerIndexMap,
           newPairings,
           drc.roundControls.getDivisionPairingsList()
         );
@@ -583,6 +621,7 @@ export function TournamentReducer(
       const division = dp.dpr.getDivision();
       const newPairings = reducePairings(
         state.divisions[division].players,
+        state.divisions[division].playerIndexMap,
         state.divisions[division].pairings,
         dp.dpr.getDivisionPairingsList()
       );
@@ -699,6 +738,7 @@ export function TournamentReducer(
 
       const newPairings = reducePairings(
         newPlayers,
+        newPlayerIndexMap,
         expandedPairings,
         dp.parr.getDivisionPairingsList()
       );

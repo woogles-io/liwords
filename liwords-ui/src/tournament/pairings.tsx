@@ -1,6 +1,6 @@
 import React, { ReactNode, useMemo } from 'react';
 import { useTournamentStoreContext } from '../store/store';
-import { Button, Table, Tag } from 'antd';
+import { Button, List, Table, Tag } from 'antd';
 import {
   Division,
   SinglePairing,
@@ -16,22 +16,26 @@ const usernameFromPlayerEntry = (p: string) =>
 const pairingsForRound = (
   round: number,
   division: Division
-): Array<SinglePairing> => {
+): [Array<SinglePairing>, Set<string>] => {
   const m = new Set<string>();
   const n = new Array<SinglePairing>();
   if (!division.pairings[round]) {
-    return n;
+    return [n, new Set<string>()];
   }
+  const unpairedPlayers = new Set(division.players.map((tp) => tp.getId()));
+
   division.pairings[round].roundPairings.forEach((value: SinglePairing) => {
     if (value.players) {
       const key = value.players[0] + ':' + value.players[1];
       if (key && !m.has(key)) {
         n.push(value);
         m.add(key);
+        unpairedPlayers.delete(value.players[0].getId());
+        unpairedPlayers.delete(value.players[1].getId());
       }
     }
   });
-  return n;
+  return [n, unpairedPlayers];
 };
 
 const getPerformance = (
@@ -90,7 +94,8 @@ type PairingTableData = {
   isMine: boolean;
   actions: ReactNode;
 };
-export const Pairings = (props: Props) => {
+
+export const Pairings = React.memo((props: Props) => {
   const { tournamentContext } = useTournamentStoreContext();
   const { divisions } = tournamentContext;
   const history = useHistory();
@@ -101,9 +106,20 @@ export const Pairings = (props: Props) => {
         : tournamentContext.competitorState.currentRound,
     [props.selectedDivision, divisions, tournamentContext.competitorState]
   );
+
+  if (!props.selectedDivision) {
+    return null;
+  }
+
+  const [pairings, unpairedPlayers] = pairingsForRound(
+    props.selectedRound,
+    divisions[props.selectedDivision]
+  );
+
   const formatPairingsData = (
     division: Division,
-    round: number
+    round: number,
+    pairings: Array<SinglePairing>
   ): PairingTableData[] => {
     if (!division) {
       return new Array<PairingTableData>();
@@ -113,7 +129,6 @@ export const Pairings = (props: Props) => {
       return new Array<PairingTableData>();
     }
     const { status } = tournamentContext.competitorState;
-    const pairings = pairingsForRound(props.selectedRound, division);
 
     const findGameIdFromActive = (playerName: string) => {
       //This assumes one game per round per user
@@ -360,41 +375,52 @@ export const Pairings = (props: Props) => {
     className: 'actions',
   });
 
-  if (!props.selectedDivision) {
-    return null;
-  }
+  const tableData = formatPairingsData(
+    divisions[props.selectedDivision],
+    props.selectedRound,
+    pairings
+  );
 
   return (
-    <Table
-      className={`pairings ${
-        currentRound < props.selectedRound
-          ? 'future'
-          : currentRound > props.selectedRound
-          ? 'completed'
-          : 'current'
-      }`}
-      columns={columns}
-      pagination={false}
-      rowKey={(record) => {
-        return `${record.key}`;
-      }}
-      locale={{
-        emptyText: 'The pairings are not yet available for this round.',
-      }}
-      dataSource={formatPairingsData(
-        divisions[props.selectedDivision],
-        props.selectedRound
-      )}
-      rowClassName={(record) => {
-        let computedClass = `single-pairing ${tournamentContext.competitorState.status}`;
-        if (record.isMine) {
-          computedClass += ' mine';
-        }
-        if (props.selectedRound === currentRound) {
-          computedClass += ' current';
-        }
-        return computedClass;
-      }}
-    />
+    <>
+      <Table
+        className={`pairings ${
+          currentRound < props.selectedRound
+            ? 'future'
+            : currentRound > props.selectedRound
+            ? 'completed'
+            : 'current'
+        }`}
+        columns={columns}
+        pagination={false}
+        rowKey={(record) => {
+          return `${record.key}`;
+        }}
+        locale={{
+          emptyText: 'The pairings are not yet available for this round.',
+        }}
+        dataSource={tableData}
+        rowClassName={(record) => {
+          let computedClass = `single-pairing ${tournamentContext.competitorState.status}`;
+          if (record.isMine) {
+            computedClass += ' mine';
+          }
+          if (props.selectedRound === currentRound) {
+            computedClass += ' current';
+          }
+          return computedClass;
+        }}
+      />
+      {unpairedPlayers.size && tableData.length ? (
+        <>
+          <h5 style={{ marginTop: 10 }}>Unpaired players</h5>
+          <List
+            size="small"
+            dataSource={Array.from(unpairedPlayers).map((v) => v.split(':')[1])}
+            renderItem={(item) => <List.Item>{item}</List.Item>}
+          />
+        </>
+      ) : null}
+    </>
   );
-};
+});

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/camelcase */
 // Ghetto tools are Cesar tools before making things pretty.
 
 import {
@@ -510,6 +511,25 @@ const userUUID = (username: string, divobj: Division) => {
   return p.getId().split(':')[0];
 };
 
+const fullPlayerID = (username: string, divobj: Division) => {
+  if (!divobj) {
+    return '';
+  }
+  const p = divobj.players.find((p) => {
+    const parts = p.getId().split(':');
+    const pusername = parts[1].toLowerCase();
+
+    if (username.toLowerCase() === pusername) {
+      return true;
+    }
+    return false;
+  });
+  if (!p) {
+    return '';
+  }
+  return p.getId();
+};
+
 const SetPairing = (props: { tournamentID: string }) => {
   const { tournamentContext } = useTournamentStoreContext();
 
@@ -519,14 +539,14 @@ const SetPairing = (props: { tournamentID: string }) => {
       division: vals.division,
       pairings: [
         {
-          player_one_id:
-            userUUID(vals.p1, tournamentContext.divisions[vals.division]) +
-            ':' +
+          player_one_id: fullPlayerID(
             vals.p1,
-          player_two_id:
-            userUUID(vals.p2, tournamentContext.divisions[vals.division]) +
-            ':' +
+            tournamentContext.divisions[vals.division]
+          ),
+          player_two_id: fullPlayerID(
             vals.p2,
+            tournamentContext.divisions[vals.division]
+          ),
           round: vals.round - 1, // 1-indexed input
         },
       ],
