@@ -66,7 +66,6 @@ const toFormValues = (gameRequest: GameRequest | null) => {
     lexicon: gameRequest.getLexicon(),
     variant: gameRequest.getRules()?.getVariantName(),
     challengerule: gameRequest.getChallengeRule(),
-    // initialtime: 22,
     rated: gameRequest.getRatingMode() === RatingMode.RATED,
     initialtime: 0,
     extratime: 0,
