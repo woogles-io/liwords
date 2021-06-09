@@ -561,15 +561,15 @@ export function TournamentReducer(
 
     case ActionType.SetDivisionControls: {
       const dc = action.payload as {
-        divisionControls: DivisionControlsResponse;
+        divisionControlsResponse: DivisionControlsResponse;
         loginState: LoginState;
       };
-      const division = dc.divisionControls.getDivision();
+      const division = dc.divisionControlsResponse.getDivision();
 
       return Object.assign({}, state, {
         divisions: Object.assign({}, state.divisions, {
           [division]: Object.assign({}, state.divisions[division], {
-            divisionControls: dc.divisionControls,
+            divisionControls: dc.divisionControlsResponse.getDivisionControls(),
           }),
         }),
       });

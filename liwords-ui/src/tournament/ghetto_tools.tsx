@@ -20,15 +20,13 @@ import {
 } from 'antd';
 import axios from 'axios';
 import { Store } from 'rc-field-form/lib/interface';
-import React, { useEffect, useMemo } from 'react';
+import React, { useEffect } from 'react';
 import { postBinary, toAPIUrl, twirpErrToMsg } from '../api/api';
 import {
   DivisionControls,
   DivisionRoundControls,
   FirstMethod,
-  GameMode,
   GameRequest,
-  GameRules,
   PairingMethod,
   RatingMode,
   RoundControl,
@@ -43,11 +41,7 @@ import { useTournamentStoreContext } from '../store/store';
 import { useMountedState } from '../utils/mounted';
 import { SettingsForm } from './game_settings_form';
 import '../lobby/seek_form.scss';
-import {
-  challRuleToStr,
-  initTimeDiscreteScale,
-  timeScaleToNum,
-} from '../store/constants';
+import { challRuleToStr } from '../store/constants';
 
 import {
   fieldsForMethod,
@@ -170,10 +164,11 @@ export const GhettoTools = (props: Props) => {
 
   return (
     <>
-      <h5>Pre-tournament settings</h5>
+      <h3>Tournament Tools</h3>
+      <h4>Pre-tournament settings</h4>
       <ul>{preListItems}</ul>
       <Divider />
-      <h5>In-tournament management</h5>
+      <h4>In-tournament management</h4>
       <ul>{inListItems}</ul>
       <Divider />
       <FormModal
@@ -204,7 +199,10 @@ const DivisionSelector = (props: {
   );
 };
 
-const DivisionFormItem = () => {
+const DivisionFormItem = (props: {
+  onChange?: (value: string) => void;
+  value?: string;
+}) => {
   return (
     <Form.Item
       name="division"
@@ -216,7 +214,7 @@ const DivisionFormItem = () => {
         },
       ]}
     >
-      <DivisionSelector />
+      <DivisionSelector onChange={props.onChange} value={props.value} />
     </Form.Item>
   );
 };
@@ -261,8 +259,6 @@ const AddDivision = (props: { tournamentID: string }) => {
 };
 
 const RemoveDivision = (props: { tournamentID: string }) => {
-  const { tournamentContext } = useTournamentStoreContext();
-
   const onFinish = (vals: Store) => {
     const obj = {
       id: props.tournamentID,
@@ -751,30 +747,47 @@ const SetTournamentControls = (props: { tournamentID: string }) => {
     setSelectedGameRequest,
   ] = useState<GameRequest | null>(null);
 
+  const [division, setDivision] = useState('');
+  const { tournamentContext } = useTournamentStoreContext();
+
+  useEffect(() => {
+    if (!division) {
+      setSelectedGameRequest(null);
+      return;
+    }
+    const div = tournamentContext.divisions[division];
+    const gameRequest = div.divisionControls?.getGameRequest();
+    if (gameRequest) {
+      setSelectedGameRequest(gameRequest);
+    } else {
+      setSelectedGameRequest(null);
+    }
+  }, [division, tournamentContext.divisions]);
+
   const SettingsModalForm = (mprops: {
     visible: boolean;
     onCancel: () => void;
   }) => {
-    const [form] = Form.useForm();
-    const onOk = () => {
-      form.submit();
-    };
-
     return (
       <Modal
         title="Set Game Request"
         visible={mprops.visible}
-        onOk={onOk}
         onCancel={mprops.onCancel}
         className="seek-modal"
+        okButtonProps={{ style: { display: 'none' } }}
       >
-        <SettingsForm form={form} />
+        <SettingsForm
+          setGameRequest={(gr) => {
+            setSelectedGameRequest(gr);
+            setModalVisible(false);
+          }}
+          gameRequest={selectedGameRequest}
+        />
       </Modal>
     );
   };
 
-  const onFinish = async (vals: Store) => {
-    console.log('onFinish', vals);
+  const submit = async () => {
     if (!selectedGameRequest) {
       message.error({
         content: 'Error: No game request',
@@ -784,7 +797,7 @@ const SetTournamentControls = (props: { tournamentID: string }) => {
     }
     const ctrls = new DivisionControls();
     ctrls.setId(props.tournamentID);
-    ctrls.setDivision(vals.division);
+    ctrls.setDivision(division);
     ctrls.setGameRequest(selectedGameRequest);
     // can set this later to whatever values, along with a spread
     ctrls.setSuspendedResult(TournamentGameResult.FORFEIT_LOSS);
@@ -811,103 +824,61 @@ const SetTournamentControls = (props: { tournamentID: string }) => {
     }
   };
 
+  const displayedGameSetting = (gr: GameRequest | null) => {
+    return gr ? (
+      <dl>
+        <dt>Initial Time (Minutes)</dt>
+        <dd>{gr.getInitialTimeSeconds() / 60}</dd>
+        <dt>Variant</dt>
+        <dd>{gr.getRules()?.getVariantName()}</dd>
+        <dt>Lexicon</dt>
+        <dd>{gr.getLexicon()}</dd>
+        <dt>Max Overtime (Minutes)</dt>
+        <dd>{gr.getMaxOvertimeMinutes()}</dd>
+        <dt>Increment (Seconds)</dt>
+        <dd>{gr.getIncrementSeconds()}</dd>
+        <dt>Challenge Rule</dt>
+        <dd>{challRuleToStr(gr.getChallengeRule())}</dd>
+        <dt>Rated</dt>
+        <dd>{gr.getRatingMode() === RatingMode.RATED ? 'Yes' : 'No'}</dd>
+      </dl>
+    ) : (
+      <Typography.Text className="ant-form-text" type="secondary">
+        ( <SmileOutlined /> No game settings yet. )
+      </Typography.Text>
+    );
+  };
+
   return (
-    <Form.Provider
-      onFormFinish={(name, { values, forms }) => {
-        if (name === 'gameSettingsForm') {
-          const { setCtrlsForm } = forms;
-          const gr = new GameRequest();
-          const rules = new GameRules();
-          rules.setBoardLayoutName('CrosswordGame');
-          rules.setLetterDistributionName('English');
-          rules.setVariantName(values.variant);
-          gr.setRules(rules);
+    <>
+      <div>
+        Division:
+        <DivisionSelector
+          value={division}
+          onChange={(value: string) => setDivision(value)}
+        />
+      </div>
 
-          gr.setLexicon(values.lexicon);
-          gr.setInitialTimeSeconds(
-            timeScaleToNum(initTimeDiscreteScale[values.initialtime]) * 60
-          );
+      <div>{displayedGameSetting(selectedGameRequest)}</div>
 
-          if (values.incOrOT === 'increment') {
-            gr.setIncrementSeconds(values.extratime);
-          } else {
-            gr.setMaxOvertimeMinutes(values.extratime);
-          }
-          gr.setChallengeRule(values.challengerule);
-          gr.setGameMode(GameMode.REAL_TIME);
-          gr.setRatingMode(values.rated ? RatingMode.RATED : RatingMode.CASUAL);
-
-          setCtrlsForm.setFieldsValue({
-            gameRequest: gr,
-          });
-          // We should ONLY need the above setFieldsValue, but it doesn't work
-          // because of this issue:
-          // https://github.com/ant-design/ant-design/issues/25087
-          // So do a work-around with setState:
-          setSelectedGameRequest(gr);
-          console.log('setCtrlsForm gr', gr);
-          setModalVisible(false);
-        }
-      }}
-    >
-      <Form onFinish={onFinish} name="setCtrlsForm">
-        <Form.Item
-          label="Game Settings"
-          shouldUpdate={(prevValues, curValues) =>
-            prevValues.gameRequest !== curValues.gameRequest
-          }
-        >
-          {({ getFieldValue }) => {
-            const gr =
-              (getFieldValue('gameRequest') as GameRequest) || undefined;
-            return gr ? (
-              <dl>
-                <dt>Initial Time (Minutes)</dt>
-                <dd>{gr.getInitialTimeSeconds() / 60}</dd>
-                <dt>Variant</dt>
-                <dd>{gr.getRules()?.getVariantName()}</dd>
-                <dt>Lexicon</dt>
-                <dd>{gr.getLexicon()}</dd>
-                <dt>Max Overtime (Minutes)</dt>
-                <dd>{gr.getMaxOvertimeMinutes()}</dd>
-                <dt>Increment (Seconds)</dt>
-                <dd>{gr.getIncrementSeconds()}</dd>
-                <dt>Challenge Rule</dt>
-                <dd>{challRuleToStr(gr.getChallengeRule())}</dd>
-                <dt>Rated</dt>
-                <dd>
-                  {gr.getRatingMode() === RatingMode.RATED ? 'Yes' : 'No'}
-                </dd>
-              </dl>
-            ) : (
-              <Typography.Text className="ant-form-text" type="secondary">
-                ( <SmileOutlined /> No game settings yet. )
-              </Typography.Text>
-            );
-          }}
-        </Form.Item>
-
-        <Form.Item>
-          <Button
-            htmlType="button"
-            style={{
-              margin: '0 8px',
-            }}
-            onClick={() => setModalVisible(true)}
-          >
-            Edit Game Settings
-          </Button>
-          <Button type="primary" htmlType="submit">
-            Submit
-          </Button>
-        </Form.Item>
-      </Form>
+      <Button
+        htmlType="button"
+        style={{
+          margin: '0 8px',
+        }}
+        onClick={() => setModalVisible(true)}
+      >
+        Edit Game Settings
+      </Button>
+      <Button type="primary" onClick={submit}>
+        Save Game Settings
+      </Button>
 
       <SettingsModalForm
         visible={modalVisible}
         onCancel={() => setModalVisible(false)}
       />
-    </Form.Provider>
+    </>
   );
 };
 
@@ -1197,7 +1168,7 @@ const SetDivisionRoundControls = (props: { tournamentID: string }) => {
     }
 
     setRoundArray(settings);
-  }, [division]);
+  }, [division, tournamentContext.divisions]);
 
   const showError = (msg: string) => {
     message.error({
@@ -1267,13 +1238,13 @@ const SetDivisionRoundControls = (props: { tournamentID: string }) => {
 
   return (
     <>
-      <p>
+      <div>
         Division:
         <DivisionSelector
           value={division}
           onChange={(value: string) => setDivision(value)}
         />
-      </p>
+      </div>
       <Divider />
       {roundArray.map((v, idx) => (
         <RoundControlFields
