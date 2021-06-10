@@ -211,7 +211,7 @@ export const Table = React.memo((props: Props) => {
   const [gameInfo, setGameInfo] = useState<GameMetadata>(defaultGameInfo);
   const [streakGameInfo, setStreakGameInfo] = useState<StreakInfoResponse>({
     streak: [],
-    players: [],
+    playersInfo: [],
   });
   const [isObserver, setIsObserver] = useState(false);
 

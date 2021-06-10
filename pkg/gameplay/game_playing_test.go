@@ -87,7 +87,7 @@ func makeGame(cfg *config.Config, ustore pkguser.Store, gstore gameplay.GameStor
 	nower := entity.NewFakeNower(1234)
 	g.SetTimerModule(nower)
 
-	gameplay.StartGame(ctx, gstore, ch, g.GameID())
+	gameplay.StartGame(ctx, gstore, ustore, ch, g.GameID())
 
 	return g, nower, cancel, donechan, consumer
 }
