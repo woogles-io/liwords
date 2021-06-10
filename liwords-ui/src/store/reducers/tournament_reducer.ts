@@ -49,6 +49,7 @@ export type SinglePairing = {
   outcomes: Array<tournamentGameResult>;
   readyStates: Array<string>;
   games: Array<TournamentGame>;
+  pairingCount?: number;
 };
 
 type RoundPairings = {

@@ -19,7 +19,10 @@
     }
   }
 
-  .ant-tag-bye, ,ant-tag-removed, .ant-tag-forfeit {
+  .ant-tag-bye,
+  ant-tag-removed,
+  .ant-tag-forfeit,
+  .ant-tag-repeat {
     margin: 0 12px;
     top: -1px;
     position: relative;
@@ -27,12 +30,13 @@
 
   .single-pairing {
     &.mine {
-      &.ROUND_OPEN.current, &.ROUND_OPPONENT_WAITING.current  {
+      &.ROUND_OPEN.current,
+      &.ROUND_OPPONENT_WAITING.current {
         @include colorModed() {
           background: m($primary-light);
         }
       }
-      &.ROUND_LATE.current  {
+      &.ROUND_LATE.current {
         @include colorModed() {
           background: m($timer-out-light);
         }
@@ -44,10 +48,9 @@
       }
     }
   }
-
-
 }
-.standings-container, .pairings-container {
+.standings-container,
+.pairings-container {
   padding: 16px;
   .round-options {
     display: flex;
@@ -76,7 +79,8 @@
         color: m($gray-medium);
       }
     }
-    input, .ant-select-selector {
+    input,
+    .ant-select-selector {
       @include colorModed() {
         background: m($card-background);
         color: m($gray-extreme);
@@ -85,9 +89,9 @@
   }
 }
 
-
 .ant-table-wrapper.standings {
-  .rank, .player {
+  .rank,
+  .player {
     font-weight: 700;
   }
   .spread {
@@ -95,7 +99,8 @@
   }
 }
 
-.ant-table-wrapper.standings, .ant-table-wrapper.pairings {
+.ant-table-wrapper.standings,
+.ant-table-wrapper.pairings {
   .ant-table-placeholder {
     td {
       padding: 18px 0;
@@ -146,7 +151,7 @@
       }
       .anticon {
         width: 36px;
-        height:36px;
+        height: 36px;
         border-radius: 50%;
         margin: 0 15px;
         display: flex;
@@ -194,5 +199,4 @@
       }
     }
   }
-
 }

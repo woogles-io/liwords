@@ -6,7 +6,10 @@ import {
   SinglePairing,
   TourneyStatus,
 } from '../store/reducers/tournament_reducer';
-import { TournamentGameResult } from '../gen/api/proto/realtime/realtime_pb';
+import {
+  TournamentGameResult,
+  TournamentPerson,
+} from '../gen/api/proto/realtime/realtime_pb';
 import { useHistory } from 'react-router-dom';
 // import { PlayerTag } from './player_tags';
 
@@ -24,14 +27,38 @@ const pairingsForRound = (
   }
   const unpairedPlayers = new Set(division.players.map((tp) => tp.getId()));
 
+  const key = (persons: TournamentPerson[]): string => {
+    let k = persons[0] + ':' + persons[1];
+    if (persons[1] > persons[0]) {
+      k = persons[1] + ':' + persons[0];
+    }
+    return k;
+  };
+
   division.pairings[round].roundPairings.forEach((value: SinglePairing) => {
     if (value.players) {
-      const key = value.players[0] + ':' + value.players[1];
-      if (key && !m.has(key)) {
+      const k = key(value.players);
+      if (k && !m.has(k)) {
         n.push(value);
-        m.add(key);
+        m.add(k);
         unpairedPlayers.delete(value.players[0].getId());
         unpairedPlayers.delete(value.players[1].getId());
+        // count repeats.
+        let pairingCt = 1;
+        for (let i = 0; i < round; i++) {
+          const dp = division.pairings[i];
+          for (let j = 0; j < dp.roundPairings.length; j++) {
+            const v = dp.roundPairings[j];
+            if (v.players) {
+              const kk = key(v.players);
+              if (kk === k) {
+                pairingCt += 1;
+                break;
+              }
+            }
+          }
+        }
+        value.pairingCount = pairingCt;
       }
     }
   });
@@ -158,6 +185,14 @@ export const Pairings = React.memo((props: Props) => {
         const isRemoved = (playerID: string) =>
           division.players[division.playerIndexMap[playerID]]?.getSuspended();
 
+        const pairingCt = pairing.pairingCount || 1;
+        const repeatCount =
+          pairingCt <= 1
+            ? ''
+            : pairingCt === 2
+            ? 'Repeat'
+            : `${pairingCt}-peat`;
+
         const players =
           playerNames[0] === playerNames[1] ? (
             <div>
@@ -171,6 +206,9 @@ export const Pairings = React.memo((props: Props) => {
                   // />
                 }
                 {isBye && <Tag className="ant-tag-bye">Bye</Tag>}
+                {isBye && pairingCt > 1 && (
+                  <Tag className="ant-tag-repeat">{repeatCount}</Tag>
+                )}
                 {isForfeit && <Tag className="ant-tag-forfeit">Forfeit</Tag>}
                 {isRemoved(playerFullIDs[0]) && (
                   <Tag className="ant-tag-removed">Removed</Tag>
@@ -194,6 +232,9 @@ export const Pairings = React.memo((props: Props) => {
                   )}
                 </p>
               ))}
+              {pairingCt > 1 && (
+                <Tag className="ant-tag-repeat">{repeatCount}</Tag>
+              )}
             </div>
           );
         let actions;
@@ -330,6 +371,7 @@ export const Pairings = React.memo((props: Props) => {
                   {getScores(playerName, pairing)}
                 </p>
               ));
+
         return {
           players,
           key: playerNames.join(':'),
