@@ -18,11 +18,11 @@ import (
 	macondopb "github.com/domino14/macondo/gen/api/proto/macondo"
 )
 
-// Square brackets are never allowed in usernames,
+// Spaces are never allowed in usernames,
 // so this string will never be a valid username.
-var CensoredUsername = "[deactivated]"
+var CensoredUsername = "Unknown Woogler"
 var CensoredAvatarUrl = "https://static-cdn.jtvnw.net/emoticons/v1/301428702/3.0"
-var CensoredAboutText = "This account has been deactivated."
+var CensoredAboutText = "This account does not exist."
 
 var ModActionDispatching = map[string]func(context.Context, user.Store, user.ChatStore, *ms.ModAction) error{
 
@@ -50,10 +50,10 @@ var ModActionTextMap = map[ms.ModActionType]string{
 	ms.ModActionType_SUSPEND_GAMES:       "playing games",
 }
 
-func ActionExists(ctx context.Context, us user.Store, uuid string, forceInsistLogout bool, actionTypes []ms.ModActionType) error {
+func ActionExists(ctx context.Context, us user.Store, uuid string, forceInsistLogout bool, actionTypes []ms.ModActionType) (bool, error) {
 	currentActions, err := GetActions(ctx, us, uuid)
 	if err != nil {
-		return err
+		return false, err
 	}
 
 	// We want to show the user longest ban out of all the actions,
@@ -80,7 +80,7 @@ func ActionExists(ctx context.Context, us user.Store, uuid string, forceInsistLo
 			}
 			golangEndTime, err := ptypes.Timestamp(action.EndTime)
 			if err != nil {
-				return err
+				return false, err
 			}
 			latestTime, secondTimeIsLater = getLaterTime(latestTime, golangEndTime)
 			if secondTimeIsLater {
@@ -95,7 +95,7 @@ func ActionExists(ctx context.Context, us user.Store, uuid string, forceInsistLo
 		numberOfActionsChecked := len(actionTypes)
 		actionText, ok := ModActionTextMap[relevantActionType]
 		if !ok {
-			return fmt.Errorf("Action %s is unmapped. Please report this to the Woogles team immediately.", relevantActionType.String())
+			return false, fmt.Errorf("Action %s is unmapped. Please report this to the Woogles team immediately.", relevantActionType.String())
 		}
 		if forceInsistLogout || (numberOfActionsChecked > 1 && relevantActionType == ms.ModActionType_SUSPEND_ACCOUNT) {
 			disabledError = errors.New("Whoops, something went wrong! Please log out and try logging in again.")
@@ -109,10 +109,10 @@ func ActionExists(ctx context.Context, us user.Store, uuid string, forceInsistLo
 			year, month, day := latestTime.Date()
 			disabledError = fmt.Errorf("You are suspended from %s until %v %v, %v.", actionText, month, day, year)
 		} else {
-			return errors.New("Encountered an error while checking available user actions. Please report this to the Woogles team immediately.")
+			return false, errors.New("Encountered an error while checking available user actions. Please report this to the Woogles team immediately.")
 		}
 	}
-	return disabledError
+	return permaban, disabledError
 }
 
 func GetActions(ctx context.Context, us user.Store, uuid string) (map[string]*ms.ModAction, error) {
@@ -211,7 +211,8 @@ func RemoveActions(ctx context.Context, us user.Store, actions []*ms.ModAction) 
 }
 
 func IsCensorable(ctx context.Context, us user.Store, uuid string) bool {
-	return ActionExists(ctx, us, uuid, false, []ms.ModActionType{ms.ModActionType_SUSPEND_ACCOUNT}) != nil
+	permaban, _ := ActionExists(ctx, us, uuid, false, []ms.ModActionType{ms.ModActionType_SUSPEND_ACCOUNT})
+	return permaban
 }
 
 func censorPlayerInHistory(hist *macondopb.GameHistory, playerIndex int) {

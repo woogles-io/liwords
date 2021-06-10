@@ -128,30 +128,10 @@ func censorGameInfoResponse(ctx context.Context, us user.Store, gir *pb.GameInfo
 }
 
 func censorStreakInfoResponse(ctx context.Context, us user.Store, sir *pb.StreakInfoResponse) {
-	knownUsers := make(map[string]bool)
-
-	for _, game := range sir.Streak {
-		playerOne := game.PlayerIds[0]
-		playerTwo := game.PlayerIds[1]
-
-		_, known := knownUsers[playerOne]
-		if !known {
-			knownUsers[playerOne] = mod.IsCensorable(ctx, us, playerOne)
-		}
-		if knownUsers[playerOne] {
-			// Perhaps not necessary since average users cannot
-			// deduct a user from a UUID, but best to hide it anyway
-			game.PlayerIds[0] = mod.CensoredUsername
-		}
-
-		_, known = knownUsers[playerTwo]
-		if !known {
-			knownUsers[playerTwo] = mod.IsCensorable(ctx, us, playerTwo)
-		}
-		if knownUsers[playerTwo] {
-			// Perhaps not necessary since average users cannot
-			// deduct a user from a UUID, but best to hide it anyway
-			game.PlayerIds[1] = mod.CensoredUsername
+	for _, pi := range sir.PlayersInfo {
+		if mod.IsCensorable(ctx, us, pi.Uuid) {
+			pi.Nickname = mod.CensoredUsername
+			pi.Uuid = mod.CensoredUsername
 		}
 	}
 }

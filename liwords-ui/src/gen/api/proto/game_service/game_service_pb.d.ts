@@ -290,10 +290,10 @@ export class StreakInfoResponse extends jspb.Message {
   setStreakList(value: Array<StreakInfoResponse.SingleGameInfo>): void;
   addStreak(value?: StreakInfoResponse.SingleGameInfo, index?: number): StreakInfoResponse.SingleGameInfo;
 
-  clearPlayersList(): void;
-  getPlayersList(): Array<string>;
-  setPlayersList(value: Array<string>): void;
-  addPlayers(value: string, index?: number): string;
+  clearPlayersinfoList(): void;
+  getPlayersinfoList(): Array<StreakInfoResponse.PlayerInfo>;
+  setPlayersinfoList(value: Array<StreakInfoResponse.PlayerInfo>): void;
+  addPlayersinfo(value?: StreakInfoResponse.PlayerInfo, index?: number): StreakInfoResponse.PlayerInfo;
 
   serializeBinary(): Uint8Array;
   toObject(includeInstance?: boolean): StreakInfoResponse.AsObject;
@@ -308,7 +308,7 @@ export class StreakInfoResponse extends jspb.Message {
 export namespace StreakInfoResponse {
   export type AsObject = {
     streakList: Array<StreakInfoResponse.SingleGameInfo.AsObject>,
-    playersList: Array<string>,
+    playersinfoList: Array<StreakInfoResponse.PlayerInfo.AsObject>,
   }
 
   export class SingleGameInfo extends jspb.Message {
@@ -317,11 +317,6 @@ export namespace StreakInfoResponse {
 
     getWinner(): number;
     setWinner(value: number): void;
-
-    clearPlayerIdsList(): void;
-    getPlayerIdsList(): Array<string>;
-    setPlayerIdsList(value: Array<string>): void;
-    addPlayerIds(value: string, index?: number): string;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): SingleGameInfo.AsObject;
@@ -337,7 +332,30 @@ export namespace StreakInfoResponse {
     export type AsObject = {
       gameId: string,
       winner: number,
-      playerIdsList: Array<string>,
+    }
+  }
+
+  export class PlayerInfo extends jspb.Message {
+    getNickname(): string;
+    setNickname(value: string): void;
+
+    getUuid(): string;
+    setUuid(value: string): void;
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): PlayerInfo.AsObject;
+    static toObject(includeInstance: boolean, msg: PlayerInfo): PlayerInfo.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: PlayerInfo, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): PlayerInfo;
+    static deserializeBinaryFromReader(message: PlayerInfo, reader: jspb.BinaryReader): PlayerInfo;
+  }
+
+  export namespace PlayerInfo {
+    export type AsObject = {
+      nickname: string,
+      uuid: string,
     }
   }
 }
