@@ -29,7 +29,7 @@ const pairingsForRound = (
 
   const key = (persons: TournamentPerson[]): string => {
     let k = persons[0] + ':' + persons[1];
-    if (persons[1] > persons[0]) {
+    if (persons[1] < persons[0]) {
       k = persons[1] + ':' + persons[0];
     }
     return k;
