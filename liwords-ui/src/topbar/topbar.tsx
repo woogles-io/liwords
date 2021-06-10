@@ -168,6 +168,7 @@ export const TopBar = React.memo((props: Props) => {
               }}
               footer={null}
               width={332}
+              zIndex={1150}
             >
               <Login />
             </Modal>
