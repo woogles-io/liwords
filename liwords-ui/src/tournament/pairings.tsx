@@ -217,7 +217,7 @@ export const Pairings = React.memo((props: Props) => {
             </div>
           ) : (
             <div>
-              {playerFullIDs.map((playerID) => (
+              {playerFullIDs.map((playerID, idx) => (
                 <p key={playerID}>
                   {usernameFromPlayerEntry(playerID)}{' '}
                   {
@@ -230,11 +230,11 @@ export const Pairings = React.memo((props: Props) => {
                   {isRemoved(playerID) && (
                     <Tag className="ant-tag-removed">Removed</Tag>
                   )}
+                  {idx === 0 && pairingCt > 1 && (
+                    <Tag className="ant-tag-repeat">{repeatCount}</Tag>
+                  )}
                 </p>
               ))}
-              {pairingCt > 1 && (
-                <Tag className="ant-tag-repeat">{repeatCount}</Tag>
-              )}
             </div>
           );
         let actions;

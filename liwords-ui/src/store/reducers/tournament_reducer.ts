@@ -192,7 +192,7 @@ const reducePairings = (
         id: g.getId(),
         results: g.getResultsList(),
       })),
-    } as SinglePairing;
+    };
 
     // check if any of these players are already paired.
 
