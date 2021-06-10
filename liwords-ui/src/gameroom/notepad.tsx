@@ -209,6 +209,9 @@ const EasterEgg = (props: any) => {
   const handler = useCallback(
     (song: string) => {
       stopIt();
+      if (!BoopSounds.soundIsEnabled(`${song}Song`)) {
+        return;
+      }
 
       const chans = [0.125, 0.5, 0.0625].map((mul) => {
         const chan = ctx.createGain();
