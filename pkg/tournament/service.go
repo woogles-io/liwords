@@ -522,7 +522,7 @@ func censorRecentGamesResponse(ctx context.Context, us user.Store, rgr *pb.Recen
 			knownUsers[playerTwo] = mod.IsCensorable(ctx, us, playerTwo)
 		}
 		if knownUsers[playerTwo] {
-			game.Players[0].Username = mod.CensoredUsername
+			game.Players[1].Username = mod.CensoredUsername
 		}
 	}
 	return nil
