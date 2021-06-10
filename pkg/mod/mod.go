@@ -21,7 +21,7 @@ import (
 // Spaces are never allowed in usernames,
 // so this string will never be a valid username.
 var CensoredUsername = "Unknown Woogler"
-var CensoredAvatarUrl = "https://static-cdn.jtvnw.net/emoticons/v1/301428702/3.0"
+var CensoredAvatarUrl = "https://woogles-prod-assets.s3.amazonaws.com/unknown-woogler.png"
 var CensoredAboutText = "This account does not exist."
 
 var ModActionDispatching = map[string]func(context.Context, user.Store, user.ChatStore, *ms.ModAction) error{
