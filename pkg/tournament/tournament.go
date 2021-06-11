@@ -218,7 +218,11 @@ func SetSingleRoundControls(ctx context.Context, ts TournamentStore, id string, 
 	if err != nil {
 		return err
 	}
-	wrapped := entity.WrapEvent(newControls, realtime.MessageType_TOURNAMENT_DIVISION_ROUND_CONTROLS_MESSAGE)
+	wrapped := entity.WrapEvent(&realtime.DivisionRoundControls{
+		Id:            id,
+		Division:      division,
+		RoundControls: []*realtime.RoundControl{newControls},
+	}, realtime.MessageType_TOURNAMENT_DIVISION_ROUND_CONTROLS_MESSAGE)
 	return SendTournamentMessage(ctx, ts, id, wrapped)
 }
 
