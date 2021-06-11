@@ -67,8 +67,8 @@ export const StreakWidget = React.memo((props: Props) => {
     return null;
   }
   // Determine which player is listed on top and which on bottom.
-  const first = props.streakInfo.players[0];
-  const second = props.streakInfo.players[1];
+  const first = props.streakInfo.playersInfo[0].nickname;
+  const second = props.streakInfo.playersInfo[1].nickname;
 
   let p0wins = 0;
   let p1wins = 0;

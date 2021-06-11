@@ -14,6 +14,7 @@ import (
 
 	"github.com/domino14/liwords/pkg/entity"
 	"github.com/domino14/liwords/pkg/gameplay"
+	"github.com/domino14/liwords/pkg/mod"
 	"github.com/domino14/liwords/pkg/tournament"
 	pb "github.com/domino14/liwords/rpc/api/proto/realtime"
 	"github.com/domino14/macondo/game"
@@ -239,7 +240,7 @@ func (b *Bus) readyForGame(ctx context.Context, evt *pb.ReadyForGame, userID str
 	// Start the game if both players are ready (or if it's a bot game).
 	// readyflag will be (01 | 10) = 3 for two players.
 	if rf == (1<<len(g.History().Players))-1 || g.GameReq.PlayerVsBot {
-		err = gameplay.StartGame(ctx, b.gameStore, b.gameEventChan, g.GameID())
+		err = gameplay.StartGame(ctx, b.gameStore, b.userStore, b.gameEventChan, g.GameID())
 		if err != nil {
 			log.Err(err).Msg("starting-game")
 		}
@@ -421,7 +422,9 @@ func (b *Bus) gameRefresher(ctx context.Context, gameID string) (*entity.EventWr
 		return entity.WrapEvent(&pb.ServerMessage{Message: "Game is starting soon!"},
 			pb.MessageType_SERVER_MESSAGE), nil
 	}
-	evt := entity.WrapEvent(entGame.HistoryRefresherEvent(),
+	hre := entGame.HistoryRefresherEvent()
+	hre.History = mod.CensorHistory(ctx, b.userStore, hre.History)
+	evt := entity.WrapEvent(hre,
 		pb.MessageType_GAME_HISTORY_REFRESHER)
 	return evt, nil
 }

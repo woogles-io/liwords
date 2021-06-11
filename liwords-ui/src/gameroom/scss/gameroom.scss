@@ -207,6 +207,11 @@ p.streak-loss {
           }
         }
       }
+      tr.move-chosen:not(:hover) {
+        @include colorModed() {
+          background-color: m($gray-subtle);
+        }
+      }
       td {
         padding: 6px 3px;
         &:first-child {
@@ -642,6 +647,7 @@ p.streak-loss {
 /* Rack */
 
 .rack {
+  touch-action: manipulation;
   display: flex;
   justify-content: center;
   align-items: center;
@@ -703,19 +709,6 @@ p.streak-loss {
   text-align: center;
   width: $tile-size-mobile;
   height: $tile-size-mobile;
-  &[data-rune="Q"] {
-    p.rune {
-      position: relative;
-      left: -2px;
-    }
-  }
-  &[data-rune="Z"] {
-    p.rune {
-      position: relative;
-      left: -1px;
-    }
-  }
-
 }
 .tile {
   @include colorModed() {
@@ -888,11 +881,11 @@ p.rune {
 .tile .point-value {
   position: absolute;
   bottom: 5px;
-  right: 0;
+  right: 0.15em;
   padding: 3px 2px;
   line-height: 0;
   margin: 0;
-  letter-spacing: -0.1em;
+  letter-spacing: -0.25em;
   font-size: $point-size-mobile;
   font-weight: bold;
   @include colorModed() {
@@ -1530,16 +1523,6 @@ p.rune {
   .empty-space {
     height: $tile-size-laptop;
     width: $tile-size-laptop;
-    &[data-rune="Q"] {
-      p.rune {
-        left: -2px;
-      }
-    }
-    &[data-rune="Z"] {
-      p.rune {
-        left: -1px;
-      }
-    }
   }
   .tile.droppable {
     pointer-events: all;

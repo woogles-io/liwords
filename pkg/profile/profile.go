@@ -70,7 +70,35 @@ func (ps *ProfileService) GetProfile(ctx context.Context, r *pb.ProfileRequest) 
 		return nil, twirp.NewError(twirp.InvalidArgument, err.Error())
 	}
 
+	permaban, possiblyForceLogout := mod.ActionExists(ctx, ps.userStore, user.UUID, true, []ms.ModActionType{ms.ModActionType_SUSPEND_ACCOUNT})
+
 	subjectIsMe := sess != nil && sess.UserUUID == user.UUID
+
+	// If the user is permabanned, the profile is hidden to unprivileged users
+	if permaban {
+		sess, err := apiserver.GetSession(ctx)
+		if err != nil {
+			return nil, err
+		}
+
+		viewer, err := ps.userStore.Get(ctx, sess.Username)
+		if err != nil {
+			log.Err(err).Msg("getting-user")
+			return nil, twirp.InternalErrorWith(err)
+		}
+
+		if !viewer.IsMod && !viewer.IsAdmin {
+			// If this is the user's profile, telling them
+			// 'record not found' may make them suspicious.
+			// Instead, give a subtler message that is more
+			// likely to prompt a logout.
+			if subjectIsMe {
+				return nil, possiblyForceLogout
+			} else {
+				return nil, twirp.NewError(twirp.InvalidArgument, "record not found")
+			}
+		}
+	}
 
 	ratings := user.Profile.Ratings
 	ratjson, err := json.Marshal(ratings)
@@ -175,7 +203,7 @@ func (ps *ProfileService) UpdateAvatar(ctx context.Context, r *pb.UpdateAvatarRe
 		return nil, twirp.InternalErrorWith(err)
 	}
 
-	err = mod.ActionExists(ctx, ps.userStore, user.UUID, true, []ms.ModActionType{ms.ModActionType_SUSPEND_ACCOUNT})
+	_, err = mod.ActionExists(ctx, ps.userStore, user.UUID, true, []ms.ModActionType{ms.ModActionType_SUSPEND_ACCOUNT})
 	if err != nil {
 		return nil, err
 	}

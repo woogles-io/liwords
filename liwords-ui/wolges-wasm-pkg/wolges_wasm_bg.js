@@ -71,7 +71,7 @@ function makeMutClosure(arg0, arg1, dtor, f) {
 
     return real;
 }
-function __wbg_adapter_10(arg0, arg1, arg2) {
+function __wbg_adapter_12(arg0, arg1, arg2) {
     wasm._dyn_core__ops__function__FnMut__A____Output___R_as_wasm_bindgen__closure__WasmClosure___describe__invoke__h1716e9bca73978f3(arg0, arg1, addHeapObject(arg2));
 }
 
@@ -179,6 +179,17 @@ export function analyze(req_str) {
     return takeObject(ret);
 }
 
+/**
+* @param {string} req_str
+* @returns {any}
+*/
+export function play_score(req_str) {
+    var ptr0 = passStringToWasm0(req_str, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+    var len0 = WASM_VECTOR_LEN;
+    var ret = wasm.play_score(ptr0, len0);
+    return takeObject(ret);
+}
+
 let cachegetInt32Memory0 = null;
 function getInt32Memory0() {
     if (cachegetInt32Memory0 === null || cachegetInt32Memory0.buffer !== wasm.memory.buffer) {
@@ -194,9 +205,13 @@ function handleError(f, args) {
         wasm.__wbindgen_exn_store(addHeapObject(e));
     }
 }
-function __wbg_adapter_23(arg0, arg1, arg2, arg3) {
+function __wbg_adapter_26(arg0, arg1, arg2, arg3) {
     wasm.wasm_bindgen__convert__closures__invoke2_mut__h9616cbc34c8cfa72(arg0, arg1, addHeapObject(arg2), addHeapObject(arg3));
 }
+
+export function __wbindgen_object_drop_ref(arg0) {
+    takeObject(arg0);
+};
 
 export function __wbindgen_cb_drop(arg0) {
     const obj = takeObject(arg0).original;
@@ -206,10 +221,6 @@ export function __wbindgen_cb_drop(arg0) {
     }
     var ret = false;
     return ret;
-};
-
-export function __wbindgen_object_drop_ref(arg0) {
-    takeObject(arg0);
 };
 
 export function __wbindgen_string_new(arg0, arg1) {
@@ -250,7 +261,7 @@ export function __wbg_new_c143a4f563f78c4e(arg0, arg1) {
             const a = state0.a;
             state0.a = 0;
             try {
-                return __wbg_adapter_23(a, state0.b, arg0, arg1);
+                return __wbg_adapter_26(a, state0.b, arg0, arg1);
             } finally {
                 state0.a = a;
             }
@@ -281,8 +292,12 @@ export function __wbindgen_throw(arg0, arg1) {
     throw new Error(getStringFromWasm0(arg0, arg1));
 };
 
-export function __wbindgen_closure_wrapper227(arg0, arg1, arg2) {
-    var ret = makeMutClosure(arg0, arg1, 74, __wbg_adapter_10);
+export function __wbindgen_rethrow(arg0) {
+    throw takeObject(arg0);
+};
+
+export function __wbindgen_closure_wrapper312(arg0, arg1, arg2) {
+    var ret = makeMutClosure(arg0, arg1, 89, __wbg_adapter_12);
     return addHeapObject(ret);
 };
 

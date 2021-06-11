@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useCallback, useEffect } from 'react';
 
 import {
   message,
@@ -105,10 +105,23 @@ const Moderation = (props: ModProps) => {
       });
   }, [props.userID]);
 
+  const [form] = Form.useForm();
+
+  const handleSetShortDuration = useCallback(() => {
+    form.setFieldsValue({
+      duration: 0.0003, // 1.08 seconds
+    });
+  }, [form]);
+
   return (
     <div>
       <h3>Apply mod action</h3>
-      <Form name="modder" onFinish={onFinish} initialValues={{ duration: 1 }}>
+      <Form
+        name="modder"
+        onFinish={onFinish}
+        initialValues={{ duration: 1 }}
+        form={form}
+      >
         <Form.Item name="action" label="Action" rules={[{ required: true }]}>
           <Select>
             <Select.Option value="MUTE">Mute</Select.Option>
@@ -143,6 +156,7 @@ const Moderation = (props: ModProps) => {
           <Button type="primary" htmlType="submit">
             Apply action
           </Button>
+          <Button onClick={handleSetShortDuration}>Set short duration</Button>
         </Form.Item>
       </Form>
 

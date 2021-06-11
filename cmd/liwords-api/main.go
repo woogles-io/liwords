@@ -40,6 +40,7 @@ import (
 	pkgprofile "github.com/domino14/liwords/pkg/profile"
 	tournamentstore "github.com/domino14/liwords/pkg/stores/tournament"
 	"github.com/domino14/liwords/pkg/stores/user"
+	pkgredis "github.com/domino14/liwords/pkg/stores/redis"
 	pkguser "github.com/domino14/liwords/pkg/user"
 	configservice "github.com/domino14/liwords/rpc/api/proto/config_service"
 	gameservice "github.com/domino14/liwords/rpc/api/proto/game_service"
@@ -142,8 +143,8 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	stores.PresenceStore = user.NewRedisPresenceStore(redisPool)
-	stores.ChatStore = user.NewRedisChatStore(redisPool, stores.PresenceStore, stores.TournamentStore)
+	stores.PresenceStore = pkgredis.NewRedisPresenceStore(redisPool)
+	stores.ChatStore = pkgredis.NewRedisChatStore(redisPool, stores.PresenceStore, stores.TournamentStore)
 
 	authenticationService := auth.NewAuthenticationService(stores.UserStore, stores.SessionStore, stores.ConfigStore,
 		cfg.SecretKey, cfg.MailgunKey, cfg.ArgonConfig)

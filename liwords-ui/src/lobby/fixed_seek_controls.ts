@@ -168,6 +168,18 @@ const nasscHighSchool = {
   vsBot: false,
 };
 
+const premiumswerve = {
+  variant: 'wordsmog',
+  lexicon: 'CSW19',
+  challengerule: ChallengeRule.FIVE_POINT,
+  initialtime: 24, // 22 minutes
+  rated: true,
+  extratime: 1,
+  friend: '',
+  incOrOT: 'overtime',
+  vsBot: false,
+};
+
 export const fixedSettings: { [key: string]: settings } = {
   phillyvirtual,
   cococlub,
@@ -186,6 +198,7 @@ export const fixedSettings: { [key: string]: settings } = {
   Uzfx4iW2kLhyzWUz6MWQxY: nasscNovice,
   XZDoU8Z6fMk7WrVitthkeU: nasscHighSchool,
   KU8PSEu8p4Pni4qvmhn9x3: learners,
+  rmuXRr9CPzpcwjF4vnYdaB: premiumswerve,
 };
 
 // A temporary map of club redirects. Map internal tournament ID to slug:

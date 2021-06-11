@@ -31,16 +31,17 @@ func (b *Bus) chat(ctx context.Context, userID string, evt *pb.ChatMessage) erro
 		return err
 	}
 
-	err = mod.ActionExists(ctx, b.userStore, userID, false, []ms.ModActionType{ms.ModActionType_SUSPEND_ACCOUNT, ms.ModActionType_MUTE})
+	_, err = mod.ActionExists(ctx, b.userStore, userID, false, []ms.ModActionType{ms.ModActionType_SUSPEND_ACCOUNT, ms.ModActionType_MUTE})
 	if err != nil {
 		return err
 	}
 
 	// Regulate chat only if the user is not privileged and the
-	// chat is not a game chat
+	// chat is not a private chat or a game chat
 	regulateChat := !(sendingUser.IsAdmin ||
 		sendingUser.IsMod ||
 		sendingUser.IsDirector ||
+		strings.HasPrefix(evt.Channel, "chat.pm.") ||
 		strings.HasPrefix(evt.Channel, "chat.game."))
 
 	userFriendlyChannelName := ""
@@ -78,6 +79,19 @@ func (b *Bus) chat(ctx context.Context, userID string, evt *pb.ChatMessage) erro
 			return err
 		}
 		userFriendlyChannelName = "tournament:" + t.Name
+		if regulateChat {
+			for _, director := range t.Directors.Persons {
+				uuid := director.Id
+				colon := strings.IndexByte(uuid, ':')
+				if colon >= 0 {
+					uuid = uuid[:colon]
+				}
+				if userID == uuid {
+					regulateChat = false
+					break
+				}
+			}
+		}
 	}
 
 	chatMessage, err := b.chatStore.AddChat(ctx, sendingUser.Username, userID, evt.Message, evt.Channel, userFriendlyChannelName, regulateChat)

@@ -193,16 +193,19 @@ func (s *DBStore) GetRematchStreak(ctx context.Context, originalRequestId string
 			// for backwards compatibility.
 		}
 		if idx == 0 {
-			players := make([]string, len(mdata.PlayerInfo))
+			playersInfo := make([]*gs.StreakInfoResponse_PlayerInfo, len(mdata.PlayerInfo))
 			for i, p := range mdata.PlayerInfo {
-				players[i] = p.Nickname
+				playersInfo[i] = &gs.StreakInfoResponse_PlayerInfo{
+					Nickname: p.Nickname,
+					Uuid:     p.UserId,
+				}
 			}
-			sort.Strings(players)
-			resp.Players = players
+			sort.Slice(playersInfo, func(i, j int) bool { return playersInfo[i].Nickname > playersInfo[j].Nickname })
+			resp.PlayersInfo = playersInfo
 		}
 		winner := g.WinnerIdx
-		if len(resp.Players) > 0 && len(mdata.PlayerInfo) > 0 &&
-			resp.Players[0] != mdata.PlayerInfo[0].Nickname {
+		if len(resp.PlayersInfo) > 0 && len(mdata.PlayerInfo) > 0 &&
+			resp.PlayersInfo[0].Nickname != mdata.PlayerInfo[0].Nickname {
 
 			if winner != -1 {
 				winner = 1 - winner

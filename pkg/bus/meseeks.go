@@ -534,13 +534,13 @@ func (b *Bus) openMatches(ctx context.Context, receiverID string, tourneyID stri
 
 func actionExists(ctx context.Context, us user.Store, userID string, req *pb.GameRequest) error {
 
-	err := mod.ActionExists(ctx, us, userID, false, []ms.ModActionType{ms.ModActionType_SUSPEND_ACCOUNT, ms.ModActionType_SUSPEND_GAMES})
+	_, err := mod.ActionExists(ctx, us, userID, false, []ms.ModActionType{ms.ModActionType_SUSPEND_ACCOUNT, ms.ModActionType_SUSPEND_GAMES})
 	if err != nil {
 		return err
 	}
 
 	if req.RatingMode == pb.RatingMode_RATED {
-		err = mod.ActionExists(ctx, us, userID, false, []ms.ModActionType{ms.ModActionType_SUSPEND_RATED_GAMES})
+		_, err = mod.ActionExists(ctx, us, userID, false, []ms.ModActionType{ms.ModActionType_SUSPEND_RATED_GAMES})
 		if err != nil {
 			return err
 		}

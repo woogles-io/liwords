@@ -98,7 +98,7 @@ func (as *AuthenticationService) Login(ctx context.Context, r *pb.UserLoginReque
 		return nil, twirp.NewError(twirp.Unauthenticated, "password incorrect")
 	}
 
-	err = mod.ActionExists(ctx, as.userStore, user.UUID, false, []ms.ModActionType{ms.ModActionType_SUSPEND_ACCOUNT})
+	_, err = mod.ActionExists(ctx, as.userStore, user.UUID, false, []ms.ModActionType{ms.ModActionType_SUSPEND_ACCOUNT})
 	if err != nil {
 		log.Err(err).Str("username", r.Username).Str("userID", user.UUID).Msg("action-exists-login")
 		return nil, err
@@ -211,7 +211,7 @@ func (as *AuthenticationService) ResetPasswordStep1(ctx context.Context, r *pb.R
 		return nil, twirp.NewError(twirp.Unauthenticated, err.Error())
 	}
 
-	err = mod.ActionExists(ctx, as.userStore, u.UUID, false, []ms.ModActionType{ms.ModActionType_SUSPEND_ACCOUNT})
+	_, err = mod.ActionExists(ctx, as.userStore, u.UUID, false, []ms.ModActionType{ms.ModActionType_SUSPEND_ACCOUNT})
 	if err != nil {
 		log.Err(err).Str("userID", u.UUID).Msg("action-exists-reset-password-step-one")
 		return nil, err
@@ -260,7 +260,7 @@ func (as *AuthenticationService) ResetPasswordStep2(ctx context.Context, r *pb.R
 			return nil, twirp.NewError(twirp.Malformed, "wrongly formatted uuid in token")
 		}
 
-		err = mod.ActionExists(ctx, as.userStore, uuid, false, []ms.ModActionType{ms.ModActionType_SUSPEND_ACCOUNT})
+		_, err = mod.ActionExists(ctx, as.userStore, uuid, false, []ms.ModActionType{ms.ModActionType_SUSPEND_ACCOUNT})
 		if err != nil {
 			log.Err(err).Str("userID", uuid).Msg("action-exists-reset-password-step-two")
 			return nil, err
@@ -300,7 +300,7 @@ func (as *AuthenticationService) ChangePassword(ctx context.Context, r *pb.Chang
 		return nil, twirp.InternalErrorWith(err)
 	}
 
-	err = mod.ActionExists(ctx, as.userStore, user.UUID, false, []ms.ModActionType{ms.ModActionType_SUSPEND_ACCOUNT})
+	_, err = mod.ActionExists(ctx, as.userStore, user.UUID, false, []ms.ModActionType{ms.ModActionType_SUSPEND_ACCOUNT})
 	if err != nil {
 		log.Err(err).Str("userID", user.UUID).Msg("action-exists-change-password")
 		return nil, err
@@ -333,7 +333,7 @@ func (as *AuthenticationService) NotifyAccountClosure(ctx context.Context, r *pb
 		return nil, err
 	}
 
-	err = mod.ActionExists(ctx, as.userStore, sess.UserUUID, false, []ms.ModActionType{ms.ModActionType_SUSPEND_ACCOUNT})
+	_, err = mod.ActionExists(ctx, as.userStore, sess.UserUUID, false, []ms.ModActionType{ms.ModActionType_SUSPEND_ACCOUNT})
 	if err != nil {
 		log.Err(err).Str("userID", sess.UserUUID).Msg("action-exists-account-closure")
 		return nil, err

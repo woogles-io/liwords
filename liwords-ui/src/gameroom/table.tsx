@@ -212,7 +212,7 @@ export const Table = React.memo((props: Props) => {
   const [gameInfo, setGameInfo] = useState<GameMetadata>(defaultGameInfo);
   const [streakGameInfo, setStreakGameInfo] = useState<StreakInfoResponse>({
     streak: [],
-    players: [],
+    playersInfo: [],
   });
   const [isObserver, setIsObserver] = useState(false);
 
@@ -730,6 +730,7 @@ export const Table = React.memo((props: Props) => {
     }
   }, [gameDone, phonies, playedWords, wordInfo]);
 
+  const lastPhonyReport = useRef('');
   useEffect(() => {
     if (!phonies) return;
     if (phonies.length) {
@@ -754,33 +755,44 @@ export const Table = React.memo((props: Props) => {
       const challengedPhonies = phonies.filter((word) =>
         groupedWords[1].has(word)
       );
-      if (challengedPhonies.length) {
-        addChat({
-          entityType: ChatEntityType.ErrorMsg,
-          sender: '',
-          message: `Invalid words challenged off: ${challengedPhonies
-            .map((x) => `${x}*`)
-            .join(', ')}`,
-          channel: 'server',
-        });
-      }
-      if (unchallengedPhonies.length) {
-        addChat({
-          entityType: ChatEntityType.ErrorMsg,
-          sender: '',
-          message: `Invalid words played and not challenged: ${unchallengedPhonies
-            .map((x) => `${x}*`)
-            .join(', ')}`,
-          channel: 'server',
-        });
+      const thisPhonyReport = JSON.stringify({
+        challengedPhonies,
+        unchallengedPhonies,
+      });
+      if (lastPhonyReport.current !== thisPhonyReport) {
+        lastPhonyReport.current = thisPhonyReport;
+        if (challengedPhonies.length) {
+          addChat({
+            entityType: ChatEntityType.ErrorMsg,
+            sender: '',
+            message: `Invalid words challenged off: ${challengedPhonies
+              .map((x) => `${x}*`)
+              .join(', ')}`,
+            channel: 'server',
+          });
+        }
+        if (unchallengedPhonies.length) {
+          addChat({
+            entityType: ChatEntityType.ErrorMsg,
+            sender: '',
+            message: `Invalid words played and not challenged: ${unchallengedPhonies
+              .map((x) => `${x}*`)
+              .join(', ')}`,
+            channel: 'server',
+          });
+        }
       }
     } else {
-      addChat({
-        entityType: ChatEntityType.ServerMsg,
-        sender: '',
-        message: 'All words played are valid',
-        channel: 'server',
-      });
+      const thisPhonyReport = 'all valid';
+      if (lastPhonyReport.current !== thisPhonyReport) {
+        lastPhonyReport.current = thisPhonyReport;
+        addChat({
+          entityType: ChatEntityType.ServerMsg,
+          sender: '',
+          message: 'All words played are valid',
+          channel: 'server',
+        });
+      }
     }
   }, [gameContext, phonies, addChat]);
 

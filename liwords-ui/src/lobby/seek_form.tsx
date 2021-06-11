@@ -354,7 +354,7 @@ export const SeekForm = (props: Props) => {
       )}
 
       {enableWordSmog && (
-        <Form.Item label="Variant" name="variant">
+        <Form.Item label="Game type" name="variant">
           <Select disabled={disableVariantControls}>
             <Select.Option value="classic">Classic</Select.Option>
             <Select.Option value="wordsmog">

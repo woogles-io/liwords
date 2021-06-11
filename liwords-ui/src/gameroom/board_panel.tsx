@@ -24,6 +24,7 @@ import {
   handleDroppedTile,
   returnTileToRack,
   designateBlank,
+  stableInsertRack,
 } from '../utils/cwgame/tile_placement';
 
 import {
@@ -99,8 +100,9 @@ type Props = {
 };
 
 const shuffleString = (a: string): string => {
-  const alist = a.split('');
-  const n = a.length;
+  const alistWithGaps = Array.from(a);
+  const alist = alistWithGaps.filter((x) => x !== EmptySpace);
+  const n = alist.length;
 
   let somethingChanged = false;
   for (let i = n - 1; i > 0; i--) {
@@ -131,7 +133,9 @@ const shuffleString = (a: string): string => {
     }
   }
 
-  return alist.join('');
+  // Preserve the gaps.
+  let r = 0;
+  return alistWithGaps.map((x) => (x === EmptySpace ? x : alist[r++])).join('');
 };
 
 const gcgExport = (gameID: string, playerMeta: Array<PlayerMetadata>) => {
@@ -1257,10 +1261,21 @@ export const BoardPanel = React.memo((props: Props) => {
   const moveRackTile = useCallback(
     (newIndex: number | undefined, oldIndex: number | undefined) => {
       if (typeof newIndex === 'number' && typeof oldIndex === 'number') {
-        const newRack = displayedRack.split('');
-        newRack.splice(oldIndex, 1);
-        newRack.splice(newIndex, 0, displayedRack[oldIndex]);
-        setDisplayedRack(newRack.join(''));
+        const leftIndex = Math.min(oldIndex, newIndex);
+        const rightIndex = Math.max(oldIndex, newIndex) + 1;
+        // Within only the affected area, replace oldIndex with empty,
+        // and then insert that removed tile at the desired place.
+        setDisplayedRack(
+          displayedRack.substring(0, leftIndex) +
+            stableInsertRack(
+              displayedRack.substring(leftIndex, oldIndex) +
+                EmptySpace +
+                displayedRack.substring(oldIndex + 1, rightIndex),
+              newIndex - leftIndex,
+              displayedRack[oldIndex]
+            ) +
+            displayedRack.substring(rightIndex)
+        );
       }
     },
     [displayedRack, setDisplayedRack]

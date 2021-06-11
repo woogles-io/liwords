@@ -601,7 +601,7 @@ export const useOnSocketMsg = () => {
             dispatchTournamentContext({
               actionType: ActionType.SetDivisionControls,
               payload: {
-                divisionControls: tdcm,
+                divisionControlsResponse: tdcm,
                 loginState,
               },
             });

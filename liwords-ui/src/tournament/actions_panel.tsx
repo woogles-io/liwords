@@ -446,50 +446,48 @@ export const ActionsPanel = React.memo((props: Props) => {
             : 'free-form'
         }
       >
-        <div className="main-content">
-          <div className="tabs">
+        <div className="tabs">
+          <div
+            onClick={() => {
+              setSelectedGameTab('GAMES');
+            }}
+            className={selectedGameTab === 'GAMES' ? 'tab active' : 'tab'}
+          >
+            Games
+          </div>
+          {!isPairedMode(tournamentContext.metadata?.getType()) ? (
             <div
               onClick={() => {
-                setSelectedGameTab('GAMES');
+                setSelectedGameTab('RECENT');
               }}
-              className={selectedGameTab === 'GAMES' ? 'tab active' : 'tab'}
+              className={selectedGameTab === 'RECENT' ? 'tab active' : 'tab'}
             >
-              Games
+              Recent games
             </div>
-            {!isPairedMode(tournamentContext.metadata?.getType()) ? (
-              <div
-                onClick={() => {
-                  setSelectedGameTab('RECENT');
-                }}
-                className={selectedGameTab === 'RECENT' ? 'tab active' : 'tab'}
-              >
-                Recent games
-              </div>
-            ) : (
-              <div
-                onClick={() => {
-                  setSelectedGameTab('STANDINGS');
-                }}
-                className={
-                  selectedGameTab === 'STANDINGS' ? 'tab active' : 'tab'
-                }
-              >
-                Standings
-              </div>
-            )}
-            {isDirector && (
-              <div
-                onClick={() => {
-                  setSelectedGameTab('DIRECTOR TOOLS');
-                }}
-                className={
-                  selectedGameTab === 'DIRECTOR TOOLS' ? 'tab active' : 'tab'
-                }
-              >
-                Director Tools
-              </div>
-            )}
-          </div>
+          ) : (
+            <div
+              onClick={() => {
+                setSelectedGameTab('STANDINGS');
+              }}
+              className={selectedGameTab === 'STANDINGS' ? 'tab active' : 'tab'}
+            >
+              Standings
+            </div>
+          )}
+          {isDirector && (
+            <div
+              onClick={() => {
+                setSelectedGameTab('DIRECTOR TOOLS');
+              }}
+              className={
+                selectedGameTab === 'DIRECTOR TOOLS' ? 'tab active' : 'tab'
+              }
+            >
+              Director Tools
+            </div>
+          )}
+        </div>
+        <div className="main-content">
           {isDirector &&
             selectedGameTab === 'DIRECTOR TOOLS' &&
             renderDirectorTools()}

@@ -52,6 +52,31 @@ export const Secret = React.memo((props: Props) => {
     localStorage.setItem('enableWordSmog', useWordSmog ? 'true' : 'false');
     setWordSmog((x) => !x);
   }, []);
+  const [showEquityLoss, setShowEquityLoss] = useState(
+    localStorage?.getItem('enableShowEquityLoss') === 'true'
+  );
+  const toggleShowEquityLoss = useCallback(() => {
+    const useShowEquityLoss =
+      localStorage?.getItem('enableShowEquityLoss') !== 'true';
+    localStorage.setItem(
+      'enableShowEquityLoss',
+      useShowEquityLoss ? 'true' : 'false'
+    );
+    setShowEquityLoss((x) => !x);
+  }, []);
+
+  const [enableSilentSite, setEnableSilentSite] = useState(
+    localStorage?.getItem('enableSilentSite') === 'true'
+  );
+  const toggleEnableSilentSite = useCallback(() => {
+    const wantEnableSilentSite =
+      localStorage?.getItem('enableSilentSite') !== 'true';
+    localStorage.setItem(
+      'enableSilentSite',
+      wantEnableSilentSite ? 'true' : 'false'
+    );
+    setEnableSilentSite((x) => !x);
+  }, []);
 
   return (
     <div className="preferences secret">
@@ -103,6 +128,24 @@ export const Secret = React.memo((props: Props) => {
             defaultChecked={wordSmog}
             onChange={toggleWordSmog}
             className="wordsmog-toggle"
+          />
+        </div>
+        <div className="toggle-section">
+          <div className="title">Show equity loss</div>
+          <div>Show equity loss in analyzer</div>
+          <Switch
+            defaultChecked={showEquityLoss}
+            onChange={toggleShowEquityLoss}
+            className="show-equity-loss-toggle"
+          />
+        </div>
+        <div className="toggle-section">
+          <div className="title">Enable silent site</div>
+          <div>Mute all sounds</div>
+          <Switch
+            defaultChecked={enableSilentSite}
+            onChange={toggleEnableSilentSite}
+            className="sounds-toggle"
           />
         </div>
       </div>

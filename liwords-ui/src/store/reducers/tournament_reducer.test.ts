@@ -248,7 +248,7 @@ it('adds new divisions and pairings', () => {
   const state3 = TournamentReducer(state2, {
     actionType: ActionType.SetDivisionControls,
     payload: {
-      divisionControls: newTournamentControlsMessage(),
+      divisionControlsResponse: newTournamentControlsMessage(),
       loginState,
     },
   });

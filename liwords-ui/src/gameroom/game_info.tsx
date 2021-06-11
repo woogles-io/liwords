@@ -64,6 +64,11 @@ export const defaultGameInfo: GameMetadata = {
   time_control_name: '',
 };
 
+export type PlayersStreakInfo = {
+  nickname: string;
+  uuid: number;
+};
+
 export type SingleGameStreakInfo = {
   game_id: string;
   winner: number;
@@ -71,7 +76,7 @@ export type SingleGameStreakInfo = {
 
 export type StreakInfoResponse = {
   streak: Array<SingleGameStreakInfo>;
-  players: Array<string>;
+  playersInfo: Array<PlayersStreakInfo>;
 };
 
 export type DefineWordsResponse = {

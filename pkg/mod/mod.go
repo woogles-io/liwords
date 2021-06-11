@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/golang/protobuf/ptypes"
+	"google.golang.org/protobuf/proto"
 
 	"github.com/domino14/liwords/pkg/apiserver"
 	"github.com/domino14/liwords/pkg/entity"
@@ -14,7 +15,14 @@ import (
 	ms "github.com/domino14/liwords/rpc/api/proto/mod_service"
 
 	pb "github.com/domino14/liwords/rpc/api/proto/realtime"
+	macondopb "github.com/domino14/macondo/gen/api/proto/macondo"
 )
+
+// Spaces are never allowed in usernames,
+// so this string will never be a valid username.
+var CensoredUsername = "Unknown Woogler"
+var CensoredAvatarUrl = "https://woogles-prod-assets.s3.amazonaws.com/unknown-woogler.png"
+var CensoredAboutText = "This account does not exist."
 
 var ModActionDispatching = map[string]func(context.Context, user.Store, user.ChatStore, *ms.ModAction) error{
 
@@ -42,10 +50,10 @@ var ModActionTextMap = map[ms.ModActionType]string{
 	ms.ModActionType_SUSPEND_GAMES:       "playing games",
 }
 
-func ActionExists(ctx context.Context, us user.Store, uuid string, forceInsistLogout bool, actionTypes []ms.ModActionType) error {
+func ActionExists(ctx context.Context, us user.Store, uuid string, forceInsistLogout bool, actionTypes []ms.ModActionType) (bool, error) {
 	currentActions, err := GetActions(ctx, us, uuid)
 	if err != nil {
-		return err
+		return false, err
 	}
 
 	// We want to show the user longest ban out of all the actions,
@@ -72,7 +80,7 @@ func ActionExists(ctx context.Context, us user.Store, uuid string, forceInsistLo
 			}
 			golangEndTime, err := ptypes.Timestamp(action.EndTime)
 			if err != nil {
-				return err
+				return false, err
 			}
 			latestTime, secondTimeIsLater = getLaterTime(latestTime, golangEndTime)
 			if secondTimeIsLater {
@@ -87,7 +95,7 @@ func ActionExists(ctx context.Context, us user.Store, uuid string, forceInsistLo
 		numberOfActionsChecked := len(actionTypes)
 		actionText, ok := ModActionTextMap[relevantActionType]
 		if !ok {
-			return fmt.Errorf("Action %s is unmapped. Please report this to the Woogles team immediately.", relevantActionType.String())
+			return false, fmt.Errorf("Action %s is unmapped. Please report this to the Woogles team immediately.", relevantActionType.String())
 		}
 		if forceInsistLogout || (numberOfActionsChecked > 1 && relevantActionType == ms.ModActionType_SUSPEND_ACCOUNT) {
 			disabledError = errors.New("Whoops, something went wrong! Please log out and try logging in again.")
@@ -101,10 +109,10 @@ func ActionExists(ctx context.Context, us user.Store, uuid string, forceInsistLo
 			year, month, day := latestTime.Date()
 			disabledError = fmt.Errorf("You are suspended from %s until %v %v, %v.", actionText, month, day, year)
 		} else {
-			return errors.New("Encountered an error while checking available user actions. Please report this to the Woogles team immediately.")
+			return false, errors.New("Encountered an error while checking available user actions. Please report this to the Woogles team immediately.")
 		}
 	}
-	return disabledError
+	return permaban, disabledError
 }
 
 func GetActions(ctx context.Context, us user.Store, uuid string) (map[string]*ms.ModAction, error) {
@@ -200,6 +208,45 @@ func RemoveActions(ctx context.Context, us user.Store, actions []*ms.ModAction) 
 		}
 	}
 	return nil
+}
+
+func IsCensorable(ctx context.Context, us user.Store, uuid string) bool {
+	permaban, _ := ActionExists(ctx, us, uuid, false, []ms.ModActionType{ms.ModActionType_SUSPEND_ACCOUNT})
+	return permaban
+}
+
+func censorPlayerInHistory(hist *macondopb.GameHistory, playerIndex int) {
+	uncensoredNickname := hist.Players[playerIndex].Nickname
+	hist.Players[playerIndex].RealName = CensoredUsername
+	hist.Players[playerIndex].Nickname = CensoredUsername
+	for idx, _ := range hist.Events {
+		if hist.Events[idx].Nickname == uncensoredNickname {
+			hist.Events[idx].Nickname = CensoredUsername
+		}
+	}
+}
+
+func CensorHistory(ctx context.Context, us user.Store, hist *macondopb.GameHistory) *macondopb.GameHistory {
+	playerOne := hist.Players[0].UserId
+	playerTwo := hist.Players[1].UserId
+
+	playerOneCensorable := IsCensorable(ctx, us, playerOne)
+	playerTwoCensorable := IsCensorable(ctx, us, playerTwo)
+
+	if !playerOneCensorable && !playerTwoCensorable {
+		return hist
+	}
+
+	censoredHistory := proto.Clone(hist).(*macondopb.GameHistory)
+
+	if playerOneCensorable {
+		censorPlayerInHistory(censoredHistory, 0)
+	}
+
+	if playerTwoCensorable {
+		censorPlayerInHistory(censoredHistory, 1)
+	}
+	return censoredHistory
 }
 
 func updateActions(user *entity.User) (bool, error) {
