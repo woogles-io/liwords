@@ -39,7 +39,9 @@ const humanReadablePosition = (
 
 const NotepadContext = React.createContext({
   curNotepad: '',
-  setCurNotepad: (a: string) => {},
+  setCurNotepad: ((a: string) => {}) as React.Dispatch<
+    React.SetStateAction<string>
+  >,
 });
 
 export const NotepadContextProvider = ({
@@ -99,22 +101,16 @@ export const Notepad = React.memo((props: NotepadProps) => {
       if (inParen) play += ')';
     }
     setCurNotepad(
-      `${curNotepad ? curNotepad + '\n' : ''}${
-        play ? position + ' ' + play + ' ' : ''
-      }${placedTilesTempScore ? placedTilesTempScore + ' ' : ''}${leave}`
+      (curNotepad) =>
+        `${curNotepad ? curNotepad + '\n' : ''}${
+          play ? position + ' ' + play + ' ' : ''
+        }${placedTilesTempScore ? placedTilesTempScore + ' ' : ''}${leave}`
     );
     // Return focus to board on all but mobile so the key commands can be used immediately
     if (!isMobile()) {
       document.getElementById('board-container')?.focus();
     }
-  }, [
-    displayedRack,
-    placedTiles,
-    placedTilesTempScore,
-    curNotepad,
-    setCurNotepad,
-    board,
-  ]);
+  }, [displayedRack, placedTiles, placedTilesTempScore, setCurNotepad, board]);
   useEffect(() => {
     if (notepadEl.current && !(notepadEl.current === document.activeElement)) {
       notepadEl.current.scrollTop = notepadEl.current.scrollHeight || 0;
