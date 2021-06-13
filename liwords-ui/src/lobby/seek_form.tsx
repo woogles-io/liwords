@@ -16,25 +16,24 @@ import { Store } from 'antd/lib/form/interface';
 import { useMountedState } from '../utils/mounted';
 import { ChallengeRule } from '../gen/macondo/api/proto/macondo/macondo_pb';
 import {
+  initialTimeMinutesToSlider,
   initTimeDiscreteScale,
   timeCtrlToDisplayName,
-  timeScaleToNum,
 } from '../store/constants';
 import { MatchUser } from '../gen/api/proto/realtime/realtime_pb';
 import { SoughtGame } from '../store/reducers/lobby_reducer';
 import { toAPIUrl } from '../api/api';
 import { useDebounce } from '../utils/debounce';
-import { fixedSettings } from './fixed_seek_controls';
+import { fixedSettings, seekPropVals } from './fixed_seek_controls';
 import { ChallengeRulesFormItem } from './challenge_rules_form_item';
 import {
   useFriendsStoreContext,
   usePresenceStoreContext,
 } from '../store/store';
 import { VariantIcon } from '../shared/variant_icons';
-export type seekPropVals = { [val: string]: string | number | boolean };
 
 const initTimeFormatter = (val?: number) => {
-  return initTimeDiscreteScale[val!];
+  return val != null ? initTimeDiscreteScale[val].label : null;
 };
 
 type user = {
@@ -108,7 +107,7 @@ export const SeekForm = (props: Props) => {
   const defaultValues: seekPropVals = {
     lexicon: 'CSW19',
     challengerule: ChallengeRule.FIVE_POINT,
-    initialtime: 22, // Note this isn't minutes, but the slider position.
+    initialtimeslider: initialTimeMinutesToSlider(20),
     rated: true,
     extratime: 1,
     friend: '',
@@ -160,7 +159,7 @@ export const SeekForm = (props: Props) => {
     };
   }
   const [itc, itt] = timeCtrlToDisplayName(
-    timeScaleToNum(initTimeDiscreteScale[initialValues.initialtime]) * 60,
+    initTimeDiscreteScale[initialValues.initialtimeslider].seconds,
     initialValues.incOrOT === 'increment'
       ? Math.round(initialValues.extratime as number)
       : 0,
@@ -205,7 +204,7 @@ export const SeekForm = (props: Props) => {
       setExtraTimeLabel(otUnitLabel);
     }
     const [tc, tt] = timeCtrlToDisplayName(
-      timeScaleToNum(initTimeDiscreteScale[allvals.initialtime]) * 60,
+      initTimeDiscreteScale[allvals.initialtimeslider].seconds,
       allvals.incOrOT === 'increment'
         ? Math.round(allvals.extratime as number)
         : 0,
@@ -275,8 +274,7 @@ export const SeekForm = (props: Props) => {
         (val.lexicon as string) === 'ECWL'
           ? ChallengeRule.VOID
           : (val.challengerule as number),
-      initialTimeSecs:
-        timeScaleToNum(initTimeDiscreteScale[val.initialtime]) * 60,
+      initialTimeSecs: initTimeDiscreteScale[val.initialtimeslider].seconds,
       incrementSecs:
         val.incOrOT === 'increment' ? Math.round(val.extratime as number) : 0,
       rated: val.rated as boolean,
@@ -402,7 +400,7 @@ export const SeekForm = (props: Props) => {
       <Form.Item
         className="initial"
         label="Initial minutes"
-        name="initialtime"
+        name="initialtimeslider"
         extra={<Tag color={ttag}>{timectrl}</Tag>}
       >
         <Slider

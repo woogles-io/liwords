@@ -48,20 +48,7 @@ export const timeCtrlToDisplayName = (
   return ['Regular', 'blue'];
 };
 
-export const timeScaleToNum = (val: string) => {
-  switch (val) {
-    case '¼':
-      return 0.25;
-    case '½':
-      return 0.5;
-    case '¾':
-      return 0.75;
-    default:
-      return parseInt(val, 10);
-  }
-};
-
-export const initialTimeLabel = (secs: number) => {
+const initialTimeLabel = (secs: number) => {
   let initTLabel;
   switch (secs) {
     case 15:
@@ -79,24 +66,25 @@ export const initialTimeLabel = (secs: number) => {
   return initTLabel;
 };
 
-const wholetimes = [];
-for (let i = 1; i <= 25; i++) {
-  wholetimes.push(i.toString());
-}
-
 export const initTimeDiscreteScale = [
-  '¼',
-  '½',
-  '¾',
-  ...wholetimes,
-  '30',
-  '35',
-  '40',
-  '45',
-  '50',
-  '55',
-  '60',
-];
+  15,
+  30,
+  45,
+  ...Array.from(new Array(25), (_, x) => (x + 1) * 60),
+  ...[30, 35, 40, 45, 50, 55, 60].map((x) => x * 60),
+].map((seconds) => ({
+  seconds,
+  label: initialTimeLabel(seconds),
+}));
+
+export const initialTimeSecondsToSlider = (secs: number) => {
+  const ret = initTimeDiscreteScale.findIndex((x) => x.seconds === secs);
+  if (ret >= 0) return ret;
+  throw new Error(`bad initial time: ${secs} seconds`);
+};
+
+export const initialTimeMinutesToSlider = (mins: number) =>
+  initialTimeSecondsToSlider(mins * 60);
 
 export const timeToString = (
   secs: number,

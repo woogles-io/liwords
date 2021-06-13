@@ -13,12 +13,14 @@ import { Store } from 'rc-field-form/lib/interface';
 import React from 'react';
 import { ChallengeRule } from '../gen/macondo/api/proto/macondo/macondo_pb';
 import {
+  initialTimeMinutesToSlider,
+  initialTimeSecondsToSlider,
   initTimeDiscreteScale,
   timeCtrlToDisplayName,
-  timeScaleToNum,
 } from '../store/constants';
 import { useMountedState } from '../utils/mounted';
 import { ChallengeRulesFormItem } from '../lobby/challenge_rules_form_item';
+import { seekPropVals } from '../lobby/fixed_seek_controls';
 import { VariantIcon } from '../shared/variant_icons';
 import {
   GameMode,
@@ -46,38 +48,54 @@ const incUnitLabel = (
 );
 
 const initTimeFormatter = (val?: number) => {
-  return initTimeDiscreteScale[val!];
+  return val != null ? initTimeDiscreteScale[val].label : null;
 };
 
-const toFormValues = (gameRequest: GameRequest | null) => {
+type mandatoryFormValues = Partial<seekPropVals> &
+  Pick<
+    seekPropVals,
+    | 'lexicon'
+    | 'challengerule'
+    | 'initialtimeslider'
+    | 'rated'
+    | 'extratime'
+    | 'incOrOT'
+    | 'variant'
+  >;
+
+const toFormValues: (gameRequest: GameRequest | null) => mandatoryFormValues = (
+  gameRequest: GameRequest | null
+) => {
   if (!gameRequest) {
     return {
       lexicon: 'CSW19',
       variant: 'classic',
-      challengeRule: ChallengeRule.FIVE_POINT,
-      initialtime: 17, // Note this isn't minutes, but the slider position.
+      challengerule: ChallengeRule.FIVE_POINT,
+      initialtimeslider: initialTimeMinutesToSlider(15),
       rated: true,
       extratime: 1,
       incOrOT: 'overtime',
     };
   }
 
-  const vals = {
+  const vals: mandatoryFormValues = {
     lexicon: gameRequest.getLexicon(),
-    variant: gameRequest.getRules()?.getVariantName(),
+    variant: gameRequest.getRules()?.getVariantName() ?? '',
     challengerule: gameRequest.getChallengeRule(),
     rated: gameRequest.getRatingMode() === RatingMode.RATED,
-    initialtime: 0,
+    initialtimeslider: 0,
     extratime: 0,
     incOrOT: 'overtime',
   };
 
   const secs = gameRequest.getInitialTimeSeconds();
-  const mins = secs / 60;
-  if (mins >= 1) {
-    vals.initialtime = mins + 2; // magic slider position
-  } else {
-    vals.initialtime = secs / 15 - 1; // magic slider position
+  try {
+    vals.initialtimeslider = initialTimeSecondsToSlider(secs);
+  } catch (e) {
+    const msg = `cannot find ${secs} seconds in slider`;
+    console.error(msg, e);
+    alert(msg);
+    vals.initialtimeslider = 0;
   }
   if (gameRequest.getMaxOvertimeMinutes()) {
     vals.extratime = gameRequest.getMaxOvertimeMinutes();
@@ -95,7 +113,7 @@ export const SettingsForm = (props: Props) => {
   const initialValues = toFormValues(gameRequest);
 
   const [itc, itt] = timeCtrlToDisplayName(
-    timeScaleToNum(initTimeDiscreteScale[initialValues.initialtime]) * 60,
+    initTimeDiscreteScale[initialValues.initialtimeslider].seconds,
     initialValues.incOrOT === 'increment'
       ? Math.round(initialValues.extratime as number)
       : 0,
@@ -126,7 +144,7 @@ export const SettingsForm = (props: Props) => {
       setExtraTimeLabel(otUnitLabel);
     }
     const [tc, tt] = timeCtrlToDisplayName(
-      timeScaleToNum(initTimeDiscreteScale[allvals.initialtime]) * 60,
+      initTimeDiscreteScale[allvals.initialtimeslider].seconds,
       allvals.incOrOT === 'increment'
         ? Math.round(allvals.extratime as number)
         : 0,
@@ -152,7 +170,7 @@ export const SettingsForm = (props: Props) => {
 
     gr.setLexicon(values.lexicon);
     gr.setInitialTimeSeconds(
-      timeScaleToNum(initTimeDiscreteScale[values.initialtime]) * 60
+      initTimeDiscreteScale[values.initialtimeslider].seconds
     );
 
     if (values.incOrOT === 'increment') {
@@ -213,7 +231,7 @@ export const SettingsForm = (props: Props) => {
       <Form.Item
         className="initial"
         label="Initial Minutes"
-        name="initialtime"
+        name="initialtimeslider"
         extra={<Tag color={ttag}>{timectrl}</Tag>}
       >
         <Slider
