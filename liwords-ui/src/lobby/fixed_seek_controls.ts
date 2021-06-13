@@ -1,11 +1,34 @@
 // Note: this is a TEMPORARY file. Once we add this ability to the tournament
 // backend, we can remove this.
 
-import { ChallengeRule } from '../gen/macondo/api/proto/macondo/macondo_pb';
+import {
+  ChallengeRule,
+  ChallengeRuleMap,
+} from '../gen/macondo/api/proto/macondo/macondo_pb';
 
-type settings = { [key: string]: string | number | boolean };
+export type seekPropVals = {
+  lexicon: string;
+  challengerule: ChallengeRuleMap[keyof ChallengeRuleMap];
+  initialtime: number;
+  rated: boolean;
+  extratime: number;
+  friend: string;
+  incOrOT: 'overtime' | 'increment';
+  vsBot: boolean;
+  variant: string;
+};
 
-const phillyvirtual = {
+type hardcodedSeekPropVals = Partial<seekPropVals> &
+  Pick<
+    seekPropVals,
+    'initialtime' | 'rated' | 'extratime' | 'incOrOT' | 'variant'
+  > &
+  Partial<{
+    lexicon: 'CSW19' | 'CSW19X' | 'NSWL20' | 'NWL20'; // add more only as needed
+    variant: 'classic' | 'wordsmog';
+  }>;
+
+const phillyvirtual: hardcodedSeekPropVals = {
   variant: 'classic',
   lexicon: 'NWL20',
   challengerule: ChallengeRule.VOID,
@@ -17,7 +40,7 @@ const phillyvirtual = {
   vsBot: false,
 };
 
-const cococlub = {
+const cococlub: hardcodedSeekPropVals = {
   variant: 'classic',
   lexicon: 'CSW19',
   challengerule: ChallengeRule.FIVE_POINT,
@@ -29,7 +52,7 @@ const cococlub = {
   vsBot: false,
 };
 
-const laclub = {
+const laclub: hardcodedSeekPropVals = {
   variant: 'classic',
   lexicon: 'NWL20',
   challengerule: ChallengeRule.DOUBLE,
@@ -41,7 +64,7 @@ const laclub = {
   vsBot: false,
 };
 
-const madisonclub = {
+const madisonclub: hardcodedSeekPropVals = {
   variant: 'classic',
   challengerule: ChallengeRule.FIVE_POINT,
   initialtime: 22, // 20 minutes
@@ -52,7 +75,7 @@ const madisonclub = {
   vsBot: false,
 };
 
-const cocoblitz = {
+const cocoblitz: hardcodedSeekPropVals = {
   variant: 'classic',
   lexicon: 'CSW19',
   challengerule: ChallengeRule.FIVE_POINT,
@@ -64,7 +87,7 @@ const cocoblitz = {
   vsBot: false,
 };
 
-const channel275 = {
+const channel275: hardcodedSeekPropVals = {
   variant: 'classic',
   lexicon: 'CSW19',
   challengerule: ChallengeRule.FIVE_POINT,
@@ -76,7 +99,7 @@ const channel275 = {
   vsBot: false,
 };
 
-const nssg = {
+const nssg: hardcodedSeekPropVals = {
   variant: 'classic',
   lexicon: 'CSW19X',
   challengerule: ChallengeRule.FIVE_POINT,
@@ -88,19 +111,19 @@ const nssg = {
   vsBot: false,
 };
 
-const nssg16 = {
+const nssg16: hardcodedSeekPropVals = {
   variant: 'classic',
   ...nssg,
   initialtime: 18, // 16 mins
 };
 
-const nssg19 = {
+const nssg19: hardcodedSeekPropVals = {
   variant: 'classic',
   ...nssg,
   initialtime: 21, // 19 mins
 };
 
-const phillyasap = {
+const phillyasap: hardcodedSeekPropVals = {
   variant: 'classic',
   lexicon: 'NWL20',
   challengerule: ChallengeRule.VOID,
@@ -112,7 +135,7 @@ const phillyasap = {
   vsBot: false,
 };
 
-const nyc = {
+const nyc: hardcodedSeekPropVals = {
   variant: 'classic',
   lexicon: 'NWL20',
   challengerule: ChallengeRule.DOUBLE,
@@ -124,7 +147,7 @@ const nyc = {
   vsBot: false,
 };
 
-const learners = {
+const learners: hardcodedSeekPropVals = {
   variant: 'classic',
   initialtime: 12, // 10 minutes
   rated: true,
@@ -134,7 +157,7 @@ const learners = {
   vsBot: false,
 };
 
-const nasscChampionship = {
+const nasscChampionship: hardcodedSeekPropVals = {
   variant: 'classic',
   lexicon: 'NSWL20',
   challengerule: ChallengeRule.FIVE_POINT,
@@ -146,7 +169,7 @@ const nasscChampionship = {
   vsBot: false,
 };
 
-const nasscNovice = {
+const nasscNovice: hardcodedSeekPropVals = {
   variant: 'classic',
   lexicon: 'NSWL20',
   challengerule: ChallengeRule.VOID,
@@ -158,7 +181,7 @@ const nasscNovice = {
   vsBot: false,
 };
 
-const nasscHighSchool = {
+const nasscHighSchool: hardcodedSeekPropVals = {
   variant: 'classic',
   lexicon: 'NSWL20',
   challengerule: ChallengeRule.DOUBLE,
@@ -170,7 +193,7 @@ const nasscHighSchool = {
   vsBot: false,
 };
 
-const premiumswerve = {
+const premiumswerve: hardcodedSeekPropVals = {
   variant: 'wordsmog',
   lexicon: 'CSW19',
   challengerule: ChallengeRule.FIVE_POINT,
@@ -182,7 +205,7 @@ const premiumswerve = {
   vsBot: false,
 };
 
-export const fixedSettings: { [key: string]: settings } = {
+export const fixedSettings: { [key: string]: hardcodedSeekPropVals } = {
   phillyvirtual,
   cococlub,
   madisonclub,

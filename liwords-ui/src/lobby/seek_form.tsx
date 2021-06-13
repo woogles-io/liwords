@@ -24,14 +24,13 @@ import { MatchUser } from '../gen/api/proto/realtime/realtime_pb';
 import { SoughtGame } from '../store/reducers/lobby_reducer';
 import { toAPIUrl } from '../api/api';
 import { useDebounce } from '../utils/debounce';
-import { fixedSettings } from './fixed_seek_controls';
+import { fixedSettings, seekPropVals } from './fixed_seek_controls';
 import { ChallengeRulesFormItem } from './challenge_rules_form_item';
 import {
   useFriendsStoreContext,
   usePresenceStoreContext,
 } from '../store/store';
 import { VariantIcon } from '../shared/variant_icons';
-export type seekPropVals = { [val: string]: string | number | boolean };
 
 const initTimeFormatter = (val?: number) => {
   return initTimeDiscreteScale[val!];

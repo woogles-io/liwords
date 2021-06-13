@@ -19,6 +19,7 @@ import {
 } from '../store/constants';
 import { useMountedState } from '../utils/mounted';
 import { ChallengeRulesFormItem } from '../lobby/challenge_rules_form_item';
+import { seekPropVals } from '../lobby/fixed_seek_controls';
 import { VariantIcon } from '../shared/variant_icons';
 import {
   GameMode,
@@ -49,12 +50,26 @@ const initTimeFormatter = (val?: number) => {
   return initTimeDiscreteScale[val!];
 };
 
-const toFormValues = (gameRequest: GameRequest | null) => {
+type mandatoryFormValues = Partial<seekPropVals> &
+  Pick<
+    seekPropVals,
+    | 'lexicon'
+    | 'challengerule'
+    | 'initialtime'
+    | 'rated'
+    | 'extratime'
+    | 'incOrOT'
+    | 'variant'
+  >;
+
+const toFormValues: (gameRequest: GameRequest | null) => mandatoryFormValues = (
+  gameRequest: GameRequest | null
+) => {
   if (!gameRequest) {
     return {
       lexicon: 'CSW19',
       variant: 'classic',
-      challengeRule: ChallengeRule.FIVE_POINT,
+      challengerule: ChallengeRule.FIVE_POINT,
       initialtime: 17, // Note this isn't minutes, but the slider position.
       rated: true,
       extratime: 1,
@@ -62,9 +77,9 @@ const toFormValues = (gameRequest: GameRequest | null) => {
     };
   }
 
-  const vals = {
+  const vals: mandatoryFormValues = {
     lexicon: gameRequest.getLexicon(),
-    variant: gameRequest.getRules()?.getVariantName(),
+    variant: gameRequest.getRules()?.getVariantName() ?? '',
     challengerule: gameRequest.getChallengeRule(),
     rated: gameRequest.getRatingMode() === RatingMode.RATED,
     initialtime: 0,
