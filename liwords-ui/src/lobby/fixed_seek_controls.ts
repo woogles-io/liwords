@@ -9,7 +9,7 @@ import {
 export type seekPropVals = {
   lexicon: string;
   challengerule: ChallengeRuleMap[keyof ChallengeRuleMap];
-  initialtime: number;
+  initialtimeslider: number;
   rated: boolean;
   extratime: number;
   friend: string;
@@ -21,7 +21,7 @@ export type seekPropVals = {
 type hardcodedSeekPropVals = Partial<seekPropVals> &
   Pick<
     seekPropVals,
-    'initialtime' | 'rated' | 'extratime' | 'incOrOT' | 'variant'
+    'initialtimeslider' | 'rated' | 'extratime' | 'incOrOT' | 'variant'
   > &
   Partial<{
     lexicon: 'CSW19' | 'CSW19X' | 'NSWL20' | 'NWL20'; // add more only as needed
@@ -32,7 +32,7 @@ const phillyvirtual: hardcodedSeekPropVals = {
   variant: 'classic',
   lexicon: 'NWL20',
   challengerule: ChallengeRule.VOID,
-  initialtime: 22, // Slider position is equivalent to 20 minutes.
+  initialtimeslider: 22, // Slider position is equivalent to 20 minutes.
   rated: true,
   extratime: 2,
   friend: '',
@@ -44,7 +44,7 @@ const cococlub: hardcodedSeekPropVals = {
   variant: 'classic',
   lexicon: 'CSW19',
   challengerule: ChallengeRule.FIVE_POINT,
-  initialtime: 17, // 15 minutes
+  initialtimeslider: 17, // 15 minutes
   rated: true,
   extratime: 1,
   friend: '',
@@ -56,7 +56,7 @@ const laclub: hardcodedSeekPropVals = {
   variant: 'classic',
   lexicon: 'NWL20',
   challengerule: ChallengeRule.DOUBLE,
-  initialtime: 22, // 20 minutes
+  initialtimeslider: 22, // 20 minutes
   rated: true,
   extratime: 3,
   friend: '',
@@ -67,7 +67,7 @@ const laclub: hardcodedSeekPropVals = {
 const madisonclub: hardcodedSeekPropVals = {
   variant: 'classic',
   challengerule: ChallengeRule.FIVE_POINT,
-  initialtime: 22, // 20 minutes
+  initialtimeslider: 22, // 20 minutes
   rated: true,
   extratime: 1,
   friend: '',
@@ -79,7 +79,7 @@ const cocoblitz: hardcodedSeekPropVals = {
   variant: 'classic',
   lexicon: 'CSW19',
   challengerule: ChallengeRule.FIVE_POINT,
-  initialtime: 5, // 3 minutes
+  initialtimeslider: 5, // 3 minutes
   rated: true,
   extratime: 1,
   friend: '',
@@ -91,7 +91,7 @@ const channel275: hardcodedSeekPropVals = {
   variant: 'classic',
   lexicon: 'CSW19',
   challengerule: ChallengeRule.FIVE_POINT,
-  initialtime: 22, // 20 minutes
+  initialtimeslider: 22, // 20 minutes
   rated: true,
   extratime: 1,
   friend: '',
@@ -103,7 +103,7 @@ const nssg: hardcodedSeekPropVals = {
   variant: 'classic',
   lexicon: 'CSW19X',
   challengerule: ChallengeRule.FIVE_POINT,
-  initialtime: 15, // 13 minutes
+  initialtimeslider: 15, // 13 minutes
   rated: true,
   extratime: 1,
   friend: '',
@@ -114,20 +114,20 @@ const nssg: hardcodedSeekPropVals = {
 const nssg16: hardcodedSeekPropVals = {
   variant: 'classic',
   ...nssg,
-  initialtime: 18, // 16 mins
+  initialtimeslider: 18, // 16 mins
 };
 
 const nssg19: hardcodedSeekPropVals = {
   variant: 'classic',
   ...nssg,
-  initialtime: 21, // 19 mins
+  initialtimeslider: 21, // 19 mins
 };
 
 const phillyasap: hardcodedSeekPropVals = {
   variant: 'classic',
   lexicon: 'NWL20',
   challengerule: ChallengeRule.VOID,
-  initialtime: 22, // 20 minutes
+  initialtimeslider: 22, // 20 minutes
   rated: true,
   extratime: 2,
   friend: '',
@@ -139,7 +139,7 @@ const nyc: hardcodedSeekPropVals = {
   variant: 'classic',
   lexicon: 'NWL20',
   challengerule: ChallengeRule.DOUBLE,
-  initialtime: 19, // 17 minutes
+  initialtimeslider: 19, // 17 minutes
   rated: true,
   extratime: 1,
   friend: '',
@@ -149,7 +149,7 @@ const nyc: hardcodedSeekPropVals = {
 
 const learners: hardcodedSeekPropVals = {
   variant: 'classic',
-  initialtime: 12, // 10 minutes
+  initialtimeslider: 12, // 10 minutes
   rated: true,
   extratime: 0,
   friend: '',
@@ -161,7 +161,7 @@ const nasscChampionship: hardcodedSeekPropVals = {
   variant: 'classic',
   lexicon: 'NSWL20',
   challengerule: ChallengeRule.FIVE_POINT,
-  initialtime: 22, // 20 minutes
+  initialtimeslider: 22, // 20 minutes
   rated: true,
   extratime: 1,
   friend: '',
@@ -173,7 +173,7 @@ const nasscNovice: hardcodedSeekPropVals = {
   variant: 'classic',
   lexicon: 'NSWL20',
   challengerule: ChallengeRule.VOID,
-  initialtime: 22, // 20 minutes
+  initialtimeslider: 22, // 20 minutes
   rated: true,
   extratime: 1,
   friend: '',
@@ -185,7 +185,7 @@ const nasscHighSchool: hardcodedSeekPropVals = {
   variant: 'classic',
   lexicon: 'NSWL20',
   challengerule: ChallengeRule.DOUBLE,
-  initialtime: 22, // 20 minutes
+  initialtimeslider: 22, // 20 minutes
   rated: true,
   extratime: 1,
   friend: '',
@@ -197,7 +197,7 @@ const premiumswerve: hardcodedSeekPropVals = {
   variant: 'wordsmog',
   lexicon: 'CSW19',
   challengerule: ChallengeRule.FIVE_POINT,
-  initialtime: 24, // 22 minutes
+  initialtimeslider: 24, // 22 minutes
   rated: true,
   extratime: 1,
   friend: '',

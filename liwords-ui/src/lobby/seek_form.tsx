@@ -107,7 +107,7 @@ export const SeekForm = (props: Props) => {
   const defaultValues: seekPropVals = {
     lexicon: 'CSW19',
     challengerule: ChallengeRule.FIVE_POINT,
-    initialtime: 22, // Note this isn't minutes, but the slider position.
+    initialtimeslider: 22, // Note this isn't minutes, but the slider position.
     rated: true,
     extratime: 1,
     friend: '',
@@ -159,7 +159,7 @@ export const SeekForm = (props: Props) => {
     };
   }
   const [itc, itt] = timeCtrlToDisplayName(
-    timeScaleToNum(initTimeDiscreteScale[initialValues.initialtime]) * 60,
+    timeScaleToNum(initTimeDiscreteScale[initialValues.initialtimeslider]) * 60,
     initialValues.incOrOT === 'increment'
       ? Math.round(initialValues.extratime as number)
       : 0,
@@ -204,7 +204,7 @@ export const SeekForm = (props: Props) => {
       setExtraTimeLabel(otUnitLabel);
     }
     const [tc, tt] = timeCtrlToDisplayName(
-      timeScaleToNum(initTimeDiscreteScale[allvals.initialtime]) * 60,
+      timeScaleToNum(initTimeDiscreteScale[allvals.initialtimeslider]) * 60,
       allvals.incOrOT === 'increment'
         ? Math.round(allvals.extratime as number)
         : 0,
@@ -275,7 +275,7 @@ export const SeekForm = (props: Props) => {
           ? ChallengeRule.VOID
           : (val.challengerule as number),
       initialTimeSecs:
-        timeScaleToNum(initTimeDiscreteScale[val.initialtime]) * 60,
+        timeScaleToNum(initTimeDiscreteScale[val.initialtimeslider]) * 60,
       incrementSecs:
         val.incOrOT === 'increment' ? Math.round(val.extratime as number) : 0,
       rated: val.rated as boolean,
@@ -401,7 +401,7 @@ export const SeekForm = (props: Props) => {
       <Form.Item
         className="initial"
         label="Initial minutes"
-        name="initialtime"
+        name="initialtimeslider"
         extra={<Tag color={ttag}>{timectrl}</Tag>}
       >
         <Slider

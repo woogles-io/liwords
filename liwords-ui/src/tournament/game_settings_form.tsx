@@ -55,7 +55,7 @@ type mandatoryFormValues = Partial<seekPropVals> &
     seekPropVals,
     | 'lexicon'
     | 'challengerule'
-    | 'initialtime'
+    | 'initialtimeslider'
     | 'rated'
     | 'extratime'
     | 'incOrOT'
@@ -70,7 +70,7 @@ const toFormValues: (gameRequest: GameRequest | null) => mandatoryFormValues = (
       lexicon: 'CSW19',
       variant: 'classic',
       challengerule: ChallengeRule.FIVE_POINT,
-      initialtime: 17, // Note this isn't minutes, but the slider position.
+      initialtimeslider: 17, // Note this isn't minutes, but the slider position.
       rated: true,
       extratime: 1,
       incOrOT: 'overtime',
@@ -82,7 +82,7 @@ const toFormValues: (gameRequest: GameRequest | null) => mandatoryFormValues = (
     variant: gameRequest.getRules()?.getVariantName() ?? '',
     challengerule: gameRequest.getChallengeRule(),
     rated: gameRequest.getRatingMode() === RatingMode.RATED,
-    initialtime: 0,
+    initialtimeslider: 0,
     extratime: 0,
     incOrOT: 'overtime',
   };
@@ -90,9 +90,9 @@ const toFormValues: (gameRequest: GameRequest | null) => mandatoryFormValues = (
   const secs = gameRequest.getInitialTimeSeconds();
   const mins = secs / 60;
   if (mins >= 1) {
-    vals.initialtime = mins + 2; // magic slider position
+    vals.initialtimeslider = mins + 2; // magic slider position
   } else {
-    vals.initialtime = secs / 15 - 1; // magic slider position
+    vals.initialtimeslider = secs / 15 - 1; // magic slider position
   }
   if (gameRequest.getMaxOvertimeMinutes()) {
     vals.extratime = gameRequest.getMaxOvertimeMinutes();
@@ -110,7 +110,7 @@ export const SettingsForm = (props: Props) => {
   const initialValues = toFormValues(gameRequest);
 
   const [itc, itt] = timeCtrlToDisplayName(
-    timeScaleToNum(initTimeDiscreteScale[initialValues.initialtime]) * 60,
+    timeScaleToNum(initTimeDiscreteScale[initialValues.initialtimeslider]) * 60,
     initialValues.incOrOT === 'increment'
       ? Math.round(initialValues.extratime as number)
       : 0,
@@ -141,7 +141,7 @@ export const SettingsForm = (props: Props) => {
       setExtraTimeLabel(otUnitLabel);
     }
     const [tc, tt] = timeCtrlToDisplayName(
-      timeScaleToNum(initTimeDiscreteScale[allvals.initialtime]) * 60,
+      timeScaleToNum(initTimeDiscreteScale[allvals.initialtimeslider]) * 60,
       allvals.incOrOT === 'increment'
         ? Math.round(allvals.extratime as number)
         : 0,
@@ -167,7 +167,7 @@ export const SettingsForm = (props: Props) => {
 
     gr.setLexicon(values.lexicon);
     gr.setInitialTimeSeconds(
-      timeScaleToNum(initTimeDiscreteScale[values.initialtime]) * 60
+      timeScaleToNum(initTimeDiscreteScale[values.initialtimeslider]) * 60
     );
 
     if (values.incOrOT === 'increment') {
@@ -228,7 +228,7 @@ export const SettingsForm = (props: Props) => {
       <Form.Item
         className="initial"
         label="Initial Minutes"
-        name="initialtime"
+        name="initialtimeslider"
         extra={<Tag color={ttag}>{timectrl}</Tag>}
       >
         <Slider
