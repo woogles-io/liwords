@@ -13,6 +13,7 @@ import { Store } from 'rc-field-form/lib/interface';
 import React from 'react';
 import { ChallengeRule } from '../gen/macondo/api/proto/macondo/macondo_pb';
 import {
+  initialTimeMinutesToSlider,
   initTimeDiscreteScale,
   timeCtrlToDisplayName,
 } from '../store/constants';
@@ -69,7 +70,7 @@ const toFormValues: (gameRequest: GameRequest | null) => mandatoryFormValues = (
       lexicon: 'CSW19',
       variant: 'classic',
       challengerule: ChallengeRule.FIVE_POINT,
-      initialtimeslider: 17, // Note this isn't minutes, but the slider position.
+      initialtimeslider: initialTimeMinutesToSlider(15),
       rated: true,
       extratime: 1,
       incOrOT: 'overtime',

@@ -77,6 +77,15 @@ export const initTimeDiscreteScale = [
   label: initialTimeLabel(seconds),
 }));
 
+export const initialTimeSecondsToSlider = (secs: number) => {
+  const ret = initTimeDiscreteScale.findIndex((x) => x.seconds === secs);
+  if (ret >= 0) return ret;
+  throw new Error(`bad initial time: ${secs} seconds`);
+};
+
+export const initialTimeMinutesToSlider = (mins: number) =>
+  initialTimeSecondsToSlider(mins * 60);
+
 export const timeToString = (
   secs: number,
   incrementSecs: number,

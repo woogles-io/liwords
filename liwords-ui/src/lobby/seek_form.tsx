@@ -16,6 +16,7 @@ import { Store } from 'antd/lib/form/interface';
 import { useMountedState } from '../utils/mounted';
 import { ChallengeRule } from '../gen/macondo/api/proto/macondo/macondo_pb';
 import {
+  initialTimeMinutesToSlider,
   initTimeDiscreteScale,
   timeCtrlToDisplayName,
 } from '../store/constants';
@@ -106,7 +107,7 @@ export const SeekForm = (props: Props) => {
   const defaultValues: seekPropVals = {
     lexicon: 'CSW19',
     challengerule: ChallengeRule.FIVE_POINT,
-    initialtimeslider: 22, // Note this isn't minutes, but the slider position.
+    initialtimeslider: initialTimeMinutesToSlider(20),
     rated: true,
     extratime: 1,
     friend: '',
