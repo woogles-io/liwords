@@ -14,6 +14,7 @@ import React from 'react';
 import { ChallengeRule } from '../gen/macondo/api/proto/macondo/macondo_pb';
 import {
   initialTimeMinutesToSlider,
+  initialTimeSecondsToSlider,
   initTimeDiscreteScale,
   timeCtrlToDisplayName,
 } from '../store/constants';
@@ -88,11 +89,13 @@ const toFormValues: (gameRequest: GameRequest | null) => mandatoryFormValues = (
   };
 
   const secs = gameRequest.getInitialTimeSeconds();
-  const mins = secs / 60;
-  if (mins >= 1) {
-    vals.initialtimeslider = mins + 2; // magic slider position
-  } else {
-    vals.initialtimeslider = secs / 15 - 1; // magic slider position
+  try {
+    vals.initialtimeslider = initialTimeSecondsToSlider(secs);
+  } catch (e) {
+    const msg = `cannot find ${secs} seconds in slider`;
+    console.error(msg, e);
+    alert(msg);
+    vals.initialtimeslider = 0;
   }
   if (gameRequest.getMaxOvertimeMinutes()) {
     vals.extratime = gameRequest.getMaxOvertimeMinutes();
