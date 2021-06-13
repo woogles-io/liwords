@@ -111,6 +111,9 @@ export const Notepad = React.memo((props: NotepadProps) => {
       document.getElementById('board-container')?.focus();
     }
   }, [displayedRack, placedTiles, placedTilesTempScore, setCurNotepad, board]);
+  const clearNotepad = useCallback(() => {
+    setCurNotepad('');
+  }, [setCurNotepad]);
   useEffect(() => {
     if (notepadEl.current && !(notepadEl.current === document.activeElement)) {
       notepadEl.current.scrollTop = notepadEl.current.scrollHeight || 0;
@@ -135,18 +138,17 @@ export const Notepad = React.memo((props: NotepadProps) => {
     }
     numWolgesWas.current = numWolges;
   }, [numWolges]);
+  const notepadIsNotEmpty = curNotepad.length > 0;
   const controls = useCallback(
     () => (
       <React.Fragment>
         {easterEggEnabled && <EasterEgg />}
-        {curNotepad.length > 0 && (
+        {notepadIsNotEmpty && (
           <Button
             shape="circle"
             icon={<DeleteOutlined />}
             type="primary"
-            onClick={() => {
-              setCurNotepad('');
-            }}
+            onClick={clearNotepad}
           />
         )}
         <Button
@@ -157,7 +159,7 @@ export const Notepad = React.memo((props: NotepadProps) => {
         />
       </React.Fragment>
     ),
-    [curNotepad, easterEggEnabled, setCurNotepad, addPlay]
+    [easterEggEnabled, notepadIsNotEmpty, clearNotepad, addPlay]
   );
   const notepadContainer = (
     <div className="notepad-container" style={props.style}>
