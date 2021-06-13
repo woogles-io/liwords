@@ -18,7 +18,6 @@ import { ChallengeRule } from '../gen/macondo/api/proto/macondo/macondo_pb';
 import {
   initTimeDiscreteScale,
   timeCtrlToDisplayName,
-  timeScaleToNum,
 } from '../store/constants';
 import { MatchUser } from '../gen/api/proto/realtime/realtime_pb';
 import { SoughtGame } from '../store/reducers/lobby_reducer';
@@ -33,7 +32,7 @@ import {
 import { VariantIcon } from '../shared/variant_icons';
 
 const initTimeFormatter = (val?: number) => {
-  return initTimeDiscreteScale[val!];
+  return val != null ? initTimeDiscreteScale[val].label : null;
 };
 
 type user = {
@@ -159,7 +158,7 @@ export const SeekForm = (props: Props) => {
     };
   }
   const [itc, itt] = timeCtrlToDisplayName(
-    timeScaleToNum(initTimeDiscreteScale[initialValues.initialtimeslider]) * 60,
+    initTimeDiscreteScale[initialValues.initialtimeslider].seconds,
     initialValues.incOrOT === 'increment'
       ? Math.round(initialValues.extratime as number)
       : 0,
@@ -204,7 +203,7 @@ export const SeekForm = (props: Props) => {
       setExtraTimeLabel(otUnitLabel);
     }
     const [tc, tt] = timeCtrlToDisplayName(
-      timeScaleToNum(initTimeDiscreteScale[allvals.initialtimeslider]) * 60,
+      initTimeDiscreteScale[allvals.initialtimeslider].seconds,
       allvals.incOrOT === 'increment'
         ? Math.round(allvals.extratime as number)
         : 0,
@@ -274,8 +273,7 @@ export const SeekForm = (props: Props) => {
         (val.lexicon as string) === 'ECWL'
           ? ChallengeRule.VOID
           : (val.challengerule as number),
-      initialTimeSecs:
-        timeScaleToNum(initTimeDiscreteScale[val.initialtimeslider]) * 60,
+      initialTimeSecs: initTimeDiscreteScale[val.initialtimeslider].seconds,
       incrementSecs:
         val.incOrOT === 'increment' ? Math.round(val.extratime as number) : 0,
       rated: val.rated as boolean,

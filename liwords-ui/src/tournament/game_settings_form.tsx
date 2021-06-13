@@ -15,7 +15,6 @@ import { ChallengeRule } from '../gen/macondo/api/proto/macondo/macondo_pb';
 import {
   initTimeDiscreteScale,
   timeCtrlToDisplayName,
-  timeScaleToNum,
 } from '../store/constants';
 import { useMountedState } from '../utils/mounted';
 import { ChallengeRulesFormItem } from '../lobby/challenge_rules_form_item';
@@ -47,7 +46,7 @@ const incUnitLabel = (
 );
 
 const initTimeFormatter = (val?: number) => {
-  return initTimeDiscreteScale[val!];
+  return val != null ? initTimeDiscreteScale[val].label : null;
 };
 
 type mandatoryFormValues = Partial<seekPropVals> &
@@ -110,7 +109,7 @@ export const SettingsForm = (props: Props) => {
   const initialValues = toFormValues(gameRequest);
 
   const [itc, itt] = timeCtrlToDisplayName(
-    timeScaleToNum(initTimeDiscreteScale[initialValues.initialtimeslider]) * 60,
+    initTimeDiscreteScale[initialValues.initialtimeslider].seconds,
     initialValues.incOrOT === 'increment'
       ? Math.round(initialValues.extratime as number)
       : 0,
@@ -141,7 +140,7 @@ export const SettingsForm = (props: Props) => {
       setExtraTimeLabel(otUnitLabel);
     }
     const [tc, tt] = timeCtrlToDisplayName(
-      timeScaleToNum(initTimeDiscreteScale[allvals.initialtimeslider]) * 60,
+      initTimeDiscreteScale[allvals.initialtimeslider].seconds,
       allvals.incOrOT === 'increment'
         ? Math.round(allvals.extratime as number)
         : 0,
@@ -167,7 +166,7 @@ export const SettingsForm = (props: Props) => {
 
     gr.setLexicon(values.lexicon);
     gr.setInitialTimeSeconds(
-      timeScaleToNum(initTimeDiscreteScale[values.initialtimeslider]) * 60
+      initTimeDiscreteScale[values.initialtimeslider].seconds
     );
 
     if (values.incOrOT === 'increment') {
