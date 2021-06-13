@@ -103,7 +103,9 @@ export const Notepad = React.memo((props: NotepadProps) => {
     setCurNotepad(
       (curNotepad) =>
         `${curNotepad ? curNotepad + '\n' : ''}${
-          play ? `${position} ${play} ${placedTilesTempScore} ` : ''
+          play
+            ? `${position} ${play} ${placedTilesTempScore}${leave ? ' ' : ''}`
+            : ''
         }${leave}`
     );
     // Return focus to board on all but mobile so the key commands can be used immediately
