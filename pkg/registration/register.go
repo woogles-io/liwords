@@ -31,6 +31,9 @@ func RegisterUser(ctx context.Context, username string, password string, email s
 	if strings.HasPrefix(username, "-") || strings.HasPrefix(username, ".") || strings.HasPrefix(username, "_") {
 		return errors.New("username must start with a number or a letter")
 	}
+	if strings.HasSuffix(username, "-") || strings.HasSuffix(username, ".") || strings.HasSuffix(username, "_") {
+		return errors.New("username must end with a number or a letter")
+	}
 
 	if len(password) < 8 {
 		return errors.New("your new password is too short, use 8 or more characters")
