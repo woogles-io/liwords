@@ -201,6 +201,7 @@ p.streak-loss {
       tr {
         cursor: pointer;
         text-align: left;
+        vertical-align: top;
         &:hover {
           @include colorModed() {
             background-color: m($off-background);
