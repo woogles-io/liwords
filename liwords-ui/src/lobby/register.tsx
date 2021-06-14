@@ -115,6 +115,10 @@ export const Register = () => {
                   pattern: new RegExp(/^[0-9a-zA-Z\-_.]+$/),
                   message: 'Valid characters are A-Z a-z 0-9 . _ -',
                 },
+                {
+                  pattern: /^[0-9a-zA-Z]/,
+                  message: 'Valid starting characters are A-Z a-z 0-9',
+                },
               ]}
             >
               <Input placeholder="Username" maxLength={20} />
