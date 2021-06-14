@@ -1,20 +1,37 @@
 // This form has a lot in common with the form in seek_form.tsx, but it is simpler.
-import { FormInstance } from 'antd/lib/form';
-import { Form, InputNumber, Radio, Select, Slider, Switch, Tag } from 'antd';
+import {
+  Button,
+  Form,
+  InputNumber,
+  Radio,
+  Select,
+  Slider,
+  Switch,
+  Tag,
+} from 'antd';
 import { Store } from 'rc-field-form/lib/interface';
 import React from 'react';
 import { ChallengeRule } from '../gen/macondo/api/proto/macondo/macondo_pb';
 import {
+  initialTimeMinutesToSlider,
+  initialTimeSecondsToSlider,
   initTimeDiscreteScale,
   timeCtrlToDisplayName,
-  timeScaleToNum,
 } from '../store/constants';
 import { useMountedState } from '../utils/mounted';
 import { ChallengeRulesFormItem } from '../lobby/challenge_rules_form_item';
+import { seekPropVals } from '../lobby/fixed_seek_controls';
 import { VariantIcon } from '../shared/variant_icons';
+import {
+  GameMode,
+  GameRequest,
+  GameRules,
+  RatingMode,
+} from '../gen/api/proto/realtime/realtime_pb';
 
 type Props = {
-  form?: FormInstance<any>;
+  setGameRequest: (gr: GameRequest) => void;
+  gameRequest: GameRequest | null;
 };
 
 const otLabel = 'Overtime';
@@ -31,24 +48,72 @@ const incUnitLabel = (
 );
 
 const initTimeFormatter = (val?: number) => {
-  return initTimeDiscreteScale[val!];
+  return val != null ? initTimeDiscreteScale[val].label : null;
+};
+
+type mandatoryFormValues = Partial<seekPropVals> &
+  Pick<
+    seekPropVals,
+    | 'lexicon'
+    | 'challengerule'
+    | 'initialtimeslider'
+    | 'rated'
+    | 'extratime'
+    | 'incOrOT'
+    | 'variant'
+  >;
+
+const toFormValues: (gameRequest: GameRequest | null) => mandatoryFormValues = (
+  gameRequest: GameRequest | null
+) => {
+  if (!gameRequest) {
+    return {
+      lexicon: 'CSW19',
+      variant: 'classic',
+      challengerule: ChallengeRule.FIVE_POINT,
+      initialtimeslider: initialTimeMinutesToSlider(15),
+      rated: true,
+      extratime: 1,
+      incOrOT: 'overtime',
+    };
+  }
+
+  const vals: mandatoryFormValues = {
+    lexicon: gameRequest.getLexicon(),
+    variant: gameRequest.getRules()?.getVariantName() ?? '',
+    challengerule: gameRequest.getChallengeRule(),
+    rated: gameRequest.getRatingMode() === RatingMode.RATED,
+    initialtimeslider: 0,
+    extratime: 0,
+    incOrOT: 'overtime',
+  };
+
+  const secs = gameRequest.getInitialTimeSeconds();
+  try {
+    vals.initialtimeslider = initialTimeSecondsToSlider(secs);
+  } catch (e) {
+    const msg = `cannot find ${secs} seconds in slider`;
+    console.error(msg, e);
+    alert(msg);
+    vals.initialtimeslider = 0;
+  }
+  if (gameRequest.getMaxOvertimeMinutes()) {
+    vals.extratime = gameRequest.getMaxOvertimeMinutes();
+    vals.incOrOT = 'overtime';
+  } else if (gameRequest.getIncrementSeconds()) {
+    vals.extratime = gameRequest.getIncrementSeconds();
+    vals.incOrOT = 'increment';
+  }
+  return vals;
 };
 
 export const SettingsForm = (props: Props) => {
   const { useState } = useMountedState();
-
-  const initialValues = {
-    lexicon: 'CSW19',
-    variant: 'classic',
-    challengerule: ChallengeRule.FIVE_POINT,
-    initialtime: 22, // Note this isn't minutes, but the slider position.
-    rated: true,
-    extratime: 1,
-    incOrOT: 'overtime',
-  };
+  const { gameRequest } = props;
+  const initialValues = toFormValues(gameRequest);
 
   const [itc, itt] = timeCtrlToDisplayName(
-    timeScaleToNum(initTimeDiscreteScale[initialValues.initialtime]) * 60,
+    initTimeDiscreteScale[initialValues.initialtimeslider].seconds,
     initialValues.incOrOT === 'increment'
       ? Math.round(initialValues.extratime as number)
       : 0,
@@ -79,7 +144,7 @@ export const SettingsForm = (props: Props) => {
       setExtraTimeLabel(otUnitLabel);
     }
     const [tc, tt] = timeCtrlToDisplayName(
-      timeScaleToNum(initTimeDiscreteScale[allvals.initialtime]) * 60,
+      initTimeDiscreteScale[allvals.initialtimeslider].seconds,
       allvals.incOrOT === 'increment'
         ? Math.round(allvals.extratime as number)
         : 0,
@@ -95,6 +160,30 @@ export const SettingsForm = (props: Props) => {
     required: 'This field is required.',
   };
 
+  const submitGameReq = (values: Store) => {
+    const gr = new GameRequest();
+    const rules = new GameRules();
+    rules.setBoardLayoutName('CrosswordGame');
+    rules.setLetterDistributionName('English');
+    rules.setVariantName(values.variant);
+    gr.setRules(rules);
+
+    gr.setLexicon(values.lexicon);
+    gr.setInitialTimeSeconds(
+      initTimeDiscreteScale[values.initialtimeslider].seconds
+    );
+
+    if (values.incOrOT === 'increment') {
+      gr.setIncrementSeconds(values.extratime);
+    } else {
+      gr.setMaxOvertimeMinutes(values.extratime);
+    }
+    gr.setChallengeRule(values.challengerule);
+    gr.setGameMode(GameMode.REAL_TIME);
+    gr.setRatingMode(values.rated ? RatingMode.RATED : RatingMode.CASUAL);
+    props.setGameRequest(gr);
+  };
+
   return (
     <Form
       onValuesChange={onFormChange}
@@ -104,7 +193,7 @@ export const SettingsForm = (props: Props) => {
       layout="horizontal"
       validateMessages={validateMessages}
       name="gameSettingsForm"
-      form={props.form}
+      onFinish={submitGameReq}
     >
       <Form.Item
         label="Dictionary"
@@ -142,7 +231,7 @@ export const SettingsForm = (props: Props) => {
       <Form.Item
         className="initial"
         label="Initial Minutes"
-        name="initialtime"
+        name="initialtimeslider"
         extra={<Tag color={ttag}>{timectrl}</Tag>}
       >
         <Slider
@@ -171,6 +260,12 @@ export const SettingsForm = (props: Props) => {
 
       <Form.Item label="Rated" name="rated" valuePropName="checked">
         <Switch />
+      </Form.Item>
+
+      <Form.Item>
+        <Button type="primary" htmlType="submit">
+          Submit
+        </Button>
       </Form.Item>
     </Form>
   );

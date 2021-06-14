@@ -1,5 +1,4 @@
 import React, { useEffect, useRef } from 'react';
-import { useMountedState } from '../utils/mounted';
 import { useDrag, useDragLayer, useDrop } from 'react-dnd';
 import TentativeScore from './tentative_score';
 import {
@@ -45,12 +44,9 @@ type TilePreviewProps = {
 };
 
 export const TilePreview = React.memo((props: TilePreviewProps) => {
-  const { useState } = useMountedState();
-  const [updateCount, setUpdateCount] = useState(0);
   const {
     isDragging,
-    xyPosition,
-    initialPosition,
+    xyPosition: position,
     rune,
     value,
     playerOfTile,
@@ -62,19 +58,7 @@ export const TilePreview = React.memo((props: TilePreviewProps) => {
     value: monitor.getItem()?.value,
     playerOfTile: monitor.getItem()?.playerOfTile,
   }));
-  const [position, setPosition] = useState(initialPosition);
   const boardElement = document.getElementById('board-spaces');
-  useEffect(() => {
-    // This makes us only re-render 1/5 of the time, to improve performance
-    setUpdateCount(updateCount + 1);
-    if (!xyPosition) {
-      setPosition(null);
-    }
-    if (updateCount % 5 === 0 && xyPosition) {
-      setPosition(xyPosition);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [xyPosition]);
   if (isDragging && boardElement && position) {
     const boardTop = boardElement.getBoundingClientRect().top;
     const boardLeft = boardElement.getBoundingClientRect().left;

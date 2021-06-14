@@ -1,15 +1,40 @@
 // Note: this is a TEMPORARY file. Once we add this ability to the tournament
 // backend, we can remove this.
 
-import { ChallengeRule } from '../gen/macondo/api/proto/macondo/macondo_pb';
+import { initialTimeMinutesToSlider } from '../store/constants';
 
-type settings = { [key: string]: string | number | boolean };
+import {
+  ChallengeRule,
+  ChallengeRuleMap,
+} from '../gen/macondo/api/proto/macondo/macondo_pb';
 
-const phillyvirtual = {
+export type seekPropVals = {
+  lexicon: string;
+  challengerule: ChallengeRuleMap[keyof ChallengeRuleMap];
+  initialtimeslider: number;
+  rated: boolean;
+  extratime: number;
+  friend: string;
+  incOrOT: 'overtime' | 'increment';
+  vsBot: boolean;
+  variant: string;
+};
+
+type hardcodedSeekPropVals = Partial<seekPropVals> &
+  Pick<
+    seekPropVals,
+    'initialtimeslider' | 'rated' | 'extratime' | 'incOrOT' | 'variant'
+  > &
+  Partial<{
+    lexicon: 'CSW19' | 'CSW19X' | 'NSWL20' | 'NWL20'; // add more only as needed
+    variant: 'classic' | 'wordsmog';
+  }>;
+
+const phillyvirtual: hardcodedSeekPropVals = {
   variant: 'classic',
   lexicon: 'NWL20',
   challengerule: ChallengeRule.VOID,
-  initialtime: 22, // Slider position is equivalent to 20 minutes.
+  initialtimeslider: initialTimeMinutesToSlider(20),
   rated: true,
   extratime: 2,
   friend: '',
@@ -17,11 +42,11 @@ const phillyvirtual = {
   vsBot: false,
 };
 
-const cococlub = {
+const cococlub: hardcodedSeekPropVals = {
   variant: 'classic',
   lexicon: 'CSW19',
   challengerule: ChallengeRule.FIVE_POINT,
-  initialtime: 17, // 15 minutes
+  initialtimeslider: initialTimeMinutesToSlider(15),
   rated: true,
   extratime: 1,
   friend: '',
@@ -29,11 +54,11 @@ const cococlub = {
   vsBot: false,
 };
 
-const laclub = {
+const laclub: hardcodedSeekPropVals = {
   variant: 'classic',
   lexicon: 'NWL20',
   challengerule: ChallengeRule.DOUBLE,
-  initialtime: 22, // 20 minutes
+  initialtimeslider: initialTimeMinutesToSlider(20),
   rated: true,
   extratime: 3,
   friend: '',
@@ -41,10 +66,10 @@ const laclub = {
   vsBot: false,
 };
 
-const madisonclub = {
+const madisonclub: hardcodedSeekPropVals = {
   variant: 'classic',
   challengerule: ChallengeRule.FIVE_POINT,
-  initialtime: 22, // 20 minutes
+  initialtimeslider: initialTimeMinutesToSlider(20),
   rated: true,
   extratime: 1,
   friend: '',
@@ -52,23 +77,11 @@ const madisonclub = {
   vsBot: false,
 };
 
-const cocoblitz = {
-  variant: 'classic',
-  lexicon: 'CSW19',
-  challengerule: ChallengeRule.FIVE_POINT,
-  initialtime: 5, // 3 minutes
-  rated: true,
-  extratime: 1,
-  friend: '',
-  incOrOT: 'overtime',
-  vsBot: false,
-};
-
-const channel275 = {
+const cocoblitz: hardcodedSeekPropVals = {
   variant: 'classic',
   lexicon: 'CSW19',
   challengerule: ChallengeRule.FIVE_POINT,
-  initialtime: 22, // 20 minutes
+  initialtimeslider: initialTimeMinutesToSlider(3),
   rated: true,
   extratime: 1,
   friend: '',
@@ -76,11 +89,23 @@ const channel275 = {
   vsBot: false,
 };
 
-const nssg = {
+const channel275: hardcodedSeekPropVals = {
+  variant: 'classic',
+  lexicon: 'CSW19',
+  challengerule: ChallengeRule.FIVE_POINT,
+  initialtimeslider: initialTimeMinutesToSlider(20),
+  rated: true,
+  extratime: 1,
+  friend: '',
+  incOrOT: 'overtime',
+  vsBot: false,
+};
+
+const nssg: hardcodedSeekPropVals = {
   variant: 'classic',
   lexicon: 'CSW19X',
   challengerule: ChallengeRule.FIVE_POINT,
-  initialtime: 15, // 13 minutes
+  initialtimeslider: initialTimeMinutesToSlider(13),
   rated: true,
   extratime: 1,
   friend: '',
@@ -88,23 +113,23 @@ const nssg = {
   vsBot: false,
 };
 
-const nssg16 = {
+const nssg16: hardcodedSeekPropVals = {
   variant: 'classic',
   ...nssg,
-  initialtime: 18, // 16 mins
+  initialtimeslider: initialTimeMinutesToSlider(16),
 };
 
-const nssg19 = {
+const nssg19: hardcodedSeekPropVals = {
   variant: 'classic',
   ...nssg,
-  initialtime: 21, // 19 mins
+  initialtimeslider: initialTimeMinutesToSlider(19),
 };
 
-const phillyasap = {
+const phillyasap: hardcodedSeekPropVals = {
   variant: 'classic',
   lexicon: 'NWL20',
   challengerule: ChallengeRule.VOID,
-  initialtime: 22, // 20 minutes
+  initialtimeslider: initialTimeMinutesToSlider(20),
   rated: true,
   extratime: 2,
   friend: '',
@@ -112,11 +137,11 @@ const phillyasap = {
   vsBot: false,
 };
 
-const nyc = {
+const nyc: hardcodedSeekPropVals = {
   variant: 'classic',
   lexicon: 'NWL20',
   challengerule: ChallengeRule.DOUBLE,
-  initialtime: 19, // 17 minutes
+  initialtimeslider: initialTimeMinutesToSlider(17),
   rated: true,
   extratime: 1,
   friend: '',
@@ -124,9 +149,9 @@ const nyc = {
   vsBot: false,
 };
 
-const learners = {
+const learners: hardcodedSeekPropVals = {
   variant: 'classic',
-  initialtime: 12, // 10 minutes
+  initialtimeslider: initialTimeMinutesToSlider(10),
   rated: true,
   extratime: 0,
   friend: '',
@@ -134,11 +159,11 @@ const learners = {
   vsBot: false,
 };
 
-const nasscChampionship = {
+const nasscChampionship: hardcodedSeekPropVals = {
   variant: 'classic',
   lexicon: 'NSWL20',
   challengerule: ChallengeRule.FIVE_POINT,
-  initialtime: 22, // 20 minutes
+  initialtimeslider: initialTimeMinutesToSlider(20),
   rated: true,
   extratime: 1,
   friend: '',
@@ -146,11 +171,11 @@ const nasscChampionship = {
   vsBot: false,
 };
 
-const nasscNovice = {
+const nasscNovice: hardcodedSeekPropVals = {
   variant: 'classic',
   lexicon: 'NSWL20',
   challengerule: ChallengeRule.VOID,
-  initialtime: 22, // 20 minutes
+  initialtimeslider: initialTimeMinutesToSlider(20),
   rated: true,
   extratime: 1,
   friend: '',
@@ -158,11 +183,11 @@ const nasscNovice = {
   vsBot: false,
 };
 
-const nasscHighSchool = {
+const nasscHighSchool: hardcodedSeekPropVals = {
   variant: 'classic',
   lexicon: 'NSWL20',
   challengerule: ChallengeRule.DOUBLE,
-  initialtime: 22, // 20 minutes
+  initialtimeslider: initialTimeMinutesToSlider(20),
   rated: true,
   extratime: 1,
   friend: '',
@@ -170,7 +195,19 @@ const nasscHighSchool = {
   vsBot: false,
 };
 
-export const fixedSettings: { [key: string]: settings } = {
+const premiumswerve: hardcodedSeekPropVals = {
+  variant: 'wordsmog',
+  lexicon: 'CSW19',
+  challengerule: ChallengeRule.FIVE_POINT,
+  initialtimeslider: initialTimeMinutesToSlider(22),
+  rated: true,
+  extratime: 1,
+  friend: '',
+  incOrOT: 'overtime',
+  vsBot: false,
+};
+
+export const fixedSettings: { [key: string]: hardcodedSeekPropVals } = {
   phillyvirtual,
   cococlub,
   madisonclub,
@@ -188,6 +225,7 @@ export const fixedSettings: { [key: string]: settings } = {
   Uzfx4iW2kLhyzWUz6MWQxY: nasscNovice,
   XZDoU8Z6fMk7WrVitthkeU: nasscHighSchool,
   KU8PSEu8p4Pni4qvmhn9x3: learners,
+  rmuXRr9CPzpcwjF4vnYdaB: premiumswerve,
 };
 
 // A temporary map of club redirects. Map internal tournament ID to slug:

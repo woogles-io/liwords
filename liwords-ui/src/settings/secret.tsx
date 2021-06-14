@@ -65,6 +65,19 @@ export const Secret = React.memo((props: Props) => {
     setShowEquityLoss((x) => !x);
   }, []);
 
+  const [enableSilentSite, setEnableSilentSite] = useState(
+    localStorage?.getItem('enableSilentSite') === 'true'
+  );
+  const toggleEnableSilentSite = useCallback(() => {
+    const wantEnableSilentSite =
+      localStorage?.getItem('enableSilentSite') !== 'true';
+    localStorage.setItem(
+      'enableSilentSite',
+      wantEnableSilentSite ? 'true' : 'false'
+    );
+    setEnableSilentSite((x) => !x);
+  }, []);
+
   return (
     <div className="preferences secret">
       <h3>Secret features</h3>
@@ -124,6 +137,15 @@ export const Secret = React.memo((props: Props) => {
             defaultChecked={showEquityLoss}
             onChange={toggleShowEquityLoss}
             className="show-equity-loss-toggle"
+          />
+        </div>
+        <div className="toggle-section">
+          <div className="title">Enable silent site</div>
+          <div>Mute all sounds</div>
+          <Switch
+            defaultChecked={enableSilentSite}
+            onChange={toggleEnableSilentSite}
+            className="sounds-toggle"
           />
         </div>
       </div>

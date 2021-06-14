@@ -644,6 +644,11 @@ export const Analyzer = React.memo((props: AnalyzerProps) => {
     () => localStorage.getItem('enableShowEquityLoss') === 'true',
     []
   );
+  const equityBase = React.useMemo(
+    () =>
+      showEquityLoss ? moves?.find((x) => x.valid ?? true)?.equity ?? 0 : 0,
+    [moves, showEquityLoss]
+  );
   const renderAnalyzerMoves = useMemo(
     () =>
       moves?.map((m: AnalyzerMove, idx) => (
@@ -662,12 +667,12 @@ export const Analyzer = React.memo((props: AnalyzerProps) => {
           <td className="move-score">{m.score}</td>
           <td className="move-leave">{m.leave}</td>
           <td className="move-equity">
-            {(m.equity - (showEquityLoss ? moves[0].equity : 0)).toFixed(2)}
+            {(m.equity - equityBase).toFixed(2)}
             {!(m.valid ?? true) && <React.Fragment>*</React.Fragment>}
           </td>
         </tr>
       )) ?? null,
-    [moves, placeMove, showEquityLoss]
+    [equityBase, moves, placeMove]
   );
   const analyzerControls = (
     <div className="analyzer-controls">

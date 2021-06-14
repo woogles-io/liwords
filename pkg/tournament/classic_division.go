@@ -315,11 +315,11 @@ func (t *ClassicDivision) SubmitResult(round int,
 	reason realtime.GameEndReason,
 	amend bool,
 	gameIndex int,
-	id string) ([]*realtime.Pairing, map[int32]*realtime.RoundStandings, error) {
+	gid string) ([]*realtime.Pairing, map[int32]*realtime.RoundStandings, error) {
 
 	log.Debug().Str("p1", p1).Str("p2", p2).Int("p1Score", p1Score).Int("p2Score", p2Score).
 		Interface("p1Result", p1Result).Interface("p2Result", p2Result).Interface("gameendReason", reason).
-		Bool("amend", amend).Int("gameIndex", gameIndex).Str("tid", id).Msg("submit-result")
+		Bool("amend", amend).Int("gameIndex", gameIndex).Str("gid", gid).Msg("submit-result")
 	// Fetch the player round records
 	pk1, err := t.getPairingKey(p1, round)
 	if err != nil {
@@ -388,8 +388,8 @@ func (t *ClassicDivision) SubmitResult(round int,
 	if !amend && ((pairing.Outcomes[0] != realtime.TournamentGameResult_NO_RESULT &&
 		pairing.Outcomes[1] != realtime.TournamentGameResult_NO_RESULT) ||
 
-		pairing.Games[gameIndex].Results[0] != realtime.TournamentGameResult_NO_RESULT &&
-			pairing.Games[gameIndex].Results[1] != realtime.TournamentGameResult_NO_RESULT) {
+		(pairing.Games[gameIndex].Results[0] != realtime.TournamentGameResult_NO_RESULT &&
+			pairing.Games[gameIndex].Results[1] != realtime.TournamentGameResult_NO_RESULT)) {
 		return nil, nil, fmt.Errorf("result is already submitted for round %d, %s vs. %s", round, p1, p2)
 	}
 
@@ -407,13 +407,18 @@ func (t *ClassicDivision) SubmitResult(round int,
 		p1Index = 1
 	}
 
+	if amend && gid == "" {
+		// Don't change the ID of the game if it already exists.
+		gid = pairing.Games[gameIndex].Id
+	}
+
 	if pairingMethod == realtime.PairingMethod_ELIMINATION {
 		pairing.Games[gameIndex].Scores[p1Index] = int32(p1Score)
 		pairing.Games[gameIndex].Scores[1-p1Index] = int32(p2Score)
 		pairing.Games[gameIndex].Results[p1Index] = p1Result
 		pairing.Games[gameIndex].Results[1-p1Index] = p2Result
 		pairing.Games[gameIndex].GameEndReason = reason
-		pairing.Games[gameIndex].Id = id
+		pairing.Games[gameIndex].Id = gid
 
 		// Get elimination outcomes will take care of the indexing
 		// for us because the newOutcomes are aligned with the data
@@ -430,7 +435,7 @@ func (t *ClassicDivision) SubmitResult(round int,
 		pairing.Games[0].Results[p1Index] = p1Result
 		pairing.Games[0].Results[1-p1Index] = p2Result
 		pairing.Games[0].GameEndReason = reason
-		pairing.Games[0].Id = id
+		pairing.Games[0].Id = gid
 		pairing.Outcomes[p1Index] = p1Result
 		pairing.Outcomes[1-p1Index] = p2Result
 	}
@@ -1427,9 +1432,7 @@ func combinePairingsResponses(pr1 []*realtime.Pairing, pr2 []*realtime.Pairing) 
 		}
 	}
 
-	for _, pairing := range pr2 {
-		newResponse = append(newResponse, pairing)
-	}
+	newResponse = append(newResponse, pr2...)
 
 	return newResponse
 }

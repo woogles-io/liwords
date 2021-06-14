@@ -65,8 +65,12 @@ message StreakInfoResponse {
     int32 winner = 3; // the index in `players` or -1 if no winner (tie)
   }
 
+  message PlayerInfo {
+    string nickname = 1;
+    string uuid = 2; // player uuid needed for censoring
+  }
   repeated SingleGameInfo streak = 1;
-  repeated string players = 2;
+  repeated PlayerInfo playersInfo = 3;
 }
 
 message RematchStreakRequest { string original_request_id = 1; }

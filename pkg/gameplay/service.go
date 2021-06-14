@@ -3,7 +3,10 @@ package gameplay
 import (
 	"context"
 
+	"github.com/domino14/liwords/pkg/apiserver"
+	"github.com/domino14/liwords/pkg/mod"
 	"github.com/domino14/macondo/gcgio"
+	"github.com/rs/zerolog/log"
 	"github.com/twitchtv/twirp"
 
 	"github.com/domino14/liwords/pkg/user"
@@ -26,8 +29,13 @@ func NewGameService(u user.Store, gs GameStore) *GameService {
 
 // GetMetadata gets metadata for the given game.
 func (gs *GameService) GetMetadata(ctx context.Context, req *pb.GameInfoRequest) (*pb.GameInfoResponse, error) {
-	return gs.gameStore.GetMetadata(ctx, req.GameId)
-
+	gir, err := gs.gameStore.GetMetadata(ctx, req.GameId)
+	if err != nil {
+		return nil, err
+	}
+	// Censors the response in-place
+	censorGameInfoResponse(ctx, gs.userStore, gir)
+	return gir, nil
 }
 
 //  GetRematchStreak gets quickdata for the given rematch streak.
@@ -36,6 +44,8 @@ func (gs *GameService) GetRematchStreak(ctx context.Context, req *pb.RematchStre
 	if err != nil {
 		return nil, twirp.InternalErrorWith(err)
 	}
+	// Censors the response in-place
+	censorStreakInfoResponse(ctx, gs.userStore, resp)
 	return resp, nil
 }
 
@@ -46,6 +56,28 @@ func (gs *GameService) GetRecentGames(ctx context.Context, req *pb.RecentGamesRe
 	if err != nil {
 		return nil, twirp.NewError(twirp.InvalidArgument, err.Error())
 	}
+	user, err := gs.userStore.Get(ctx, req.Username)
+	if err != nil {
+		return nil, twirp.NewError(twirp.InvalidArgument, err.Error())
+	}
+	if mod.IsCensorable(ctx, gs.userStore, user.UUID) {
+		// This view requires authentication.
+		sess, err := apiserver.GetSession(ctx)
+		if err != nil {
+			return nil, err
+		}
+
+		viewer, err := gs.userStore.Get(ctx, sess.Username)
+		if err != nil {
+			log.Err(err).Msg("getting-user")
+			return nil, twirp.InternalErrorWith(err)
+		}
+		if !viewer.IsMod && !viewer.IsAdmin {
+			return &pb.GameInfoResponses{}, nil
+		}
+	}
+	// Censors the responses in-place
+	censorGameInfoResponses(ctx, gs.userStore, resp)
 	return resp, nil
 }
 
@@ -55,6 +87,7 @@ func (gs *GameService) GetGCG(ctx context.Context, req *pb.GCGRequest) (*pb.GCGR
 	if err != nil {
 		return nil, twirp.NewError(twirp.InvalidArgument, err.Error())
 	}
+	hist = mod.CensorHistory(ctx, gs.userStore, hist)
 	if hist.PlayState != macondopb.PlayState_GAME_OVER {
 		return nil, twirp.NewError(twirp.InvalidArgument, "please wait until the game is over to download GCG")
 	}
@@ -70,8 +103,60 @@ func (gs *GameService) GetGameHistory(ctx context.Context, req *pb.GameHistoryRe
 	if err != nil {
 		return nil, twirp.NewError(twirp.InvalidArgument, err.Error())
 	}
+	hist = mod.CensorHistory(ctx, gs.userStore, hist)
 	if hist.PlayState != macondopb.PlayState_GAME_OVER {
 		return nil, twirp.NewError(twirp.InvalidArgument, "please wait until the game is over to download GCG")
 	}
 	return &pb.GameHistoryResponse{History: hist}, nil
+}
+
+func censorPlayer(gir *pb.GameInfoResponse, playerIndex int) {
+	gir.Players[playerIndex].FullName = mod.CensoredUsername
+	gir.Players[playerIndex].Nickname = mod.CensoredUsername
+	gir.Players[playerIndex].CountryCode = ""
+	gir.Players[playerIndex].Title = ""
+	gir.Players[playerIndex].Rating = ""
+}
+
+func censorGameInfoResponse(ctx context.Context, us user.Store, gir *pb.GameInfoResponse) {
+	if mod.IsCensorable(ctx, us, gir.Players[0].UserId) {
+		censorPlayer(gir, 0)
+	}
+	if mod.IsCensorable(ctx, us, gir.Players[1].UserId) {
+		censorPlayer(gir, 1)
+	}
+}
+
+func censorStreakInfoResponse(ctx context.Context, us user.Store, sir *pb.StreakInfoResponse) {
+	for _, pi := range sir.PlayersInfo {
+		if mod.IsCensorable(ctx, us, pi.Uuid) {
+			pi.Nickname = mod.CensoredUsername
+			pi.Uuid = mod.CensoredUsername
+		}
+	}
+}
+
+func censorGameInfoResponses(ctx context.Context, us user.Store, girs *pb.GameInfoResponses) {
+	knownUsers := make(map[string]bool)
+
+	for _, gir := range girs.GameInfo {
+		playerOne := gir.Players[0].UserId
+		playerTwo := gir.Players[1].UserId
+
+		_, known := knownUsers[playerOne]
+		if !known {
+			knownUsers[playerOne] = mod.IsCensorable(ctx, us, playerOne)
+		}
+		if knownUsers[playerOne] {
+			censorPlayer(gir, 0)
+		}
+
+		_, known = knownUsers[playerTwo]
+		if !known {
+			knownUsers[playerTwo] = mod.IsCensorable(ctx, us, playerTwo)
+		}
+		if knownUsers[playerTwo] {
+			censorPlayer(gir, 1)
+		}
+	}
 }

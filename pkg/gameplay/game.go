@@ -24,6 +24,7 @@ import (
 
 	"github.com/domino14/liwords/pkg/config"
 	"github.com/domino14/liwords/pkg/entity"
+	"github.com/domino14/liwords/pkg/mod"
 	"github.com/domino14/liwords/pkg/stats"
 	"github.com/domino14/liwords/pkg/tournament"
 	"github.com/domino14/liwords/pkg/user"
@@ -199,7 +200,7 @@ func clientEventToMove(cge *pb.ClientGameplayEvent, g *game.Game) (*move.Move, e
 	return nil, errors.New("client gameplay event not handled")
 }
 
-func StartGame(ctx context.Context, gameStore GameStore, eventChan chan<- *entity.EventWrapper, id string) error {
+func StartGame(ctx context.Context, gameStore GameStore, userStore user.Store, eventChan chan<- *entity.EventWrapper, id string) error {
 	// Note that StartGame does _not_ start the Macondo game, which
 	// has already started, but we don't "know" that. It is _this_
 	// function that will actually start the game in the user's eyes.
@@ -227,6 +228,7 @@ func StartGame(ctx context.Context, gameStore GameStore, eventChan chan<- *entit
 	log.Debug().Interface("history", entGame.Game.History()).Msg("game history")
 
 	evt := entGame.HistoryRefresherEvent()
+	evt.History = mod.CensorHistory(ctx, userStore, evt.History)
 	wrapped := entity.WrapEvent(evt, pb.MessageType_GAME_HISTORY_REFRESHER)
 	wrapped.AddAudience(entity.AudGameTV, entGame.GameID())
 	for _, p := range players(entGame) {

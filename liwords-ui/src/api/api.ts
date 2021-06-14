@@ -36,6 +36,9 @@ export const twirpErrToMsg = (err: TwirpError) => {
   // responseType is set to `arraybuffer` above it is annoying to deal with.
   // This function turns it into the JSON-encoded string that it is and
   // extracts the error message.
+  if (!err.response || !err.response.data) {
+    return 'non-twirp error: ' + String(err);
+  }
   const errJSON = new TextDecoder().decode(err.response.data);
   return JSON.parse(errJSON).msg;
 };

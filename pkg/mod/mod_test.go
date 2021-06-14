@@ -111,9 +111,15 @@ func TestMod(t *testing.T) {
 	err = ApplyActions(ctx, us, cs, []*ms.ModAction{muteAction, resetAction, suspendAction})
 	is.NoErr(err)
 
-	is.True(ActionExists(ctx, us, "Spammer", false, []ms.ModActionType{muteAction.Type}) != nil)
-	is.NoErr(ActionExists(ctx, us, "Sandbagger", false, []ms.ModActionType{resetAction.Type}))
-	is.True(ActionExists(ctx, us, "Cheater", false, []ms.ModActionType{suspendAction.Type}) != nil)
+	permaban, err := ActionExists(ctx, us, "Spammer", false, []ms.ModActionType{muteAction.Type})
+	is.True(!permaban)
+	is.True(err != nil)
+	permaban, err = ActionExists(ctx, us, "Sandbagger", false, []ms.ModActionType{resetAction.Type})
+	is.True(!permaban)
+	is.NoErr(err)
+	permaban, err = ActionExists(ctx, us, "Cheater", false, []ms.ModActionType{suspendAction.Type})
+	is.True(!permaban)
+	is.True(err != nil)
 
 	// Check Actions
 	expectedSpammerActions, err := GetActions(ctx, us, "Spammer")
@@ -172,7 +178,9 @@ func TestMod(t *testing.T) {
 	is.NoErr(equalTimes(expectedCheaterHistory[0].EndTime, expectedCheaterHistory[0].RemovedTime))
 
 	// Recheck Spammer actions
-	is.True(ActionExists(ctx, us, "Spammer", false, []ms.ModActionType{muteAction.Type}) != nil)
+	permaban, err = ActionExists(ctx, us, "Spammer", false, []ms.ModActionType{muteAction.Type})
+	is.True(!permaban)
+	is.True(err != nil)
 
 	expectedSpammerActions, err = GetActions(ctx, us, "Spammer")
 	is.NoErr(err)
@@ -188,7 +196,9 @@ func TestMod(t *testing.T) {
 	time.Sleep(time.Duration(muteDuration+1) * time.Second)
 
 	// Recheck Spammer actions
-	is.NoErr(ActionExists(ctx, us, "Spammer", false, []ms.ModActionType{muteAction.Type}))
+	permaban, err = ActionExists(ctx, us, "Spammer", false, []ms.ModActionType{muteAction.Type})
+	is.True(!permaban)
+	is.NoErr(err)
 	expectedSpammerActions, err = GetActions(ctx, us, "Spammer")
 	is.NoErr(err)
 	is.NoErr(equalActionMaps(expectedSpammerActions, makeActionMap([]*ms.ModAction{})))
@@ -214,8 +224,12 @@ func TestMod(t *testing.T) {
 	err = ApplyActions(ctx, us, cs, []*ms.ModAction{permanentSuspendAction})
 	is.NoErr(err)
 
-	is.True(ActionExists(ctx, us, "Sandbagger", false, []ms.ModActionType{permanentSuspendAction.Type}).Error() == "This account has been deactivated. If you think this is an error, contact conduct@woogles.io.")
-	is.True(ActionExists(ctx, us, "Sandbagger", true, []ms.ModActionType{permanentSuspendAction.Type}).Error() == "Whoops, something went wrong! Please log out and try logging in again.")
+	permaban, err = ActionExists(ctx, us, "Sandbagger", false, []ms.ModActionType{permanentSuspendAction.Type})
+	is.True(permaban)
+	is.True(err.Error() == "This account has been deactivated. If you think this is an error, contact conduct@woogles.io.")
+	permaban, err = ActionExists(ctx, us, "Sandbagger", true, []ms.ModActionType{permanentSuspendAction.Type})
+	is.True(permaban)
+	is.True(err.Error() == "Whoops, something went wrong! Please log out and try logging in again.")
 
 	expectedSandbaggerActions, err = GetActions(ctx, us, "Sandbagger")
 	is.NoErr(err)
@@ -231,7 +245,9 @@ func TestMod(t *testing.T) {
 	err = RemoveActions(ctx, us, []*ms.ModAction{permanentSuspendAction})
 	is.NoErr(err)
 
-	is.NoErr(ActionExists(ctx, us, "Sandbagger", false, []ms.ModActionType{permanentSuspendAction.Type}))
+	permaban, err = ActionExists(ctx, us, "Sandbagger", false, []ms.ModActionType{permanentSuspendAction.Type})
+	is.True(!permaban)
+	is.NoErr(err)
 
 	expectedSandbaggerActions, err = GetActions(ctx, us, "Sandbagger")
 	is.NoErr(err)
@@ -258,7 +274,7 @@ func TestMod(t *testing.T) {
 	err = ApplyActions(ctx, us, cs, []*ms.ModAction{hackerAction, longerHackerAction})
 	is.NoErr(err)
 
-	err = ActionExists(ctx, us, "Hacker", false, []ms.ModActionType{hackerAction.Type, longerHackerAction.Type})
+	_, err = ActionExists(ctx, us, "Hacker", false, []ms.ModActionType{hackerAction.Type, longerHackerAction.Type})
 	year, month, day := futureDate.UTC().Date()
 	errString = fmt.Sprintf("You are suspended from playing rated games until %v %v, %v.", month, day, year)
 	is.True(err.Error() == errString)
@@ -270,7 +286,7 @@ func TestMod(t *testing.T) {
 	err = ApplyActions(ctx, us, cs, []*ms.ModAction{permanentHackerAction})
 	is.NoErr(err)
 
-	err = ActionExists(ctx, us, "Hacker", false, []ms.ModActionType{hackerAction.Type, longerHackerAction.Type, permanentHackerAction.Type})
+	_, err = ActionExists(ctx, us, "Hacker", false, []ms.ModActionType{hackerAction.Type, longerHackerAction.Type, permanentHackerAction.Type})
 	is.True(err.Error() == "Whoops, something went wrong! Please log out and try logging in again.")
 
 	// Apply a delete action and ensure that the profile is deleted and the account is suspended
@@ -286,7 +302,8 @@ func TestMod(t *testing.T) {
 	err = ApplyActions(ctx, us, cs, []*ms.ModAction{deleteAction})
 	is.NoErr(err)
 
-	err = ActionExists(ctx, us, "Deleter", false, []ms.ModActionType{ms.ModActionType_SUSPEND_ACCOUNT})
+	permaban, err = ActionExists(ctx, us, "Deleter", false, []ms.ModActionType{ms.ModActionType_SUSPEND_ACCOUNT})
+	is.True(permaban)
 	is.True(err.Error() == "This account has been deactivated. If you think this is an error, contact conduct@woogles.io.")
 	deleterUser, err = us.GetByUUID(ctx, "Deleter")
 	is.NoErr(err)
