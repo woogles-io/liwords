@@ -28,7 +28,7 @@ func RegisterUser(ctx context.Context, username string, password string, email s
 	if strings.ToLower(username) == "anonymous" {
 		return errors.New("username is not acceptable")
 	}
-	if strings.HasPrefix(username, ".") || strings.HasPrefix(username, "-") {
+	if strings.HasPrefix(username, "-") || strings.HasPrefix(username, ".") || strings.HasPrefix(username, "_") {
 		return errors.New("username must start with a number or a letter")
 	}
 
