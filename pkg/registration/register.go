@@ -14,6 +14,7 @@ import (
 
 // RegisterUser registers a user.
 func RegisterUser(ctx context.Context, username string, password string, email string,
+	firstName string, lastName string, birthDate string, countryCode string,
 	userStore user.Store, bot bool, argonConfig config.ArgonConfig) error {
 	// username = strings.Rep
 	if len(username) < 3 || len(username) > 20 {
@@ -52,7 +53,13 @@ func RegisterUser(ctx context.Context, username string, password string, email s
 		Username: username,
 		Password: hashPass,
 		Email:    email,
-		IsBot:    bot,
+		Profile: &entity.Profile{
+			FirstName:   firstName,
+			LastName:    lastName,
+			BirthDate:   birthDate,
+			CountryCode: countryCode,
+		},
+		IsBot: bot,
 	})
 	if err != nil {
 		if err, ok := err.(*pq.Error); ok {
