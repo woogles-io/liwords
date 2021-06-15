@@ -1,13 +1,14 @@
 import React from 'react';
-import { useHistory } from 'react-router-dom';
+import { Link, useHistory } from 'react-router-dom';
 import { useMountedState } from '../utils/mounted';
 import axios from 'axios';
 import { TopBar } from '../topbar/topbar';
-import { Input, Form, Button, Alert, Checkbox } from 'antd';
+import { Input, Form, Button, Alert, Checkbox, Select } from 'antd';
 import { Rule } from 'antd/lib/form';
 import { toAPIUrl } from '../api/api';
 import './accountForms.scss';
 import woogles from '../assets/woogles.png';
+import { countryArray } from '../settings/country_map';
 
 const usernameValidator = async (rule: Rule, value: string) => {
   if (!value) {
@@ -30,6 +31,31 @@ const usernameValidator = async (rule: Rule, value: string) => {
   }
 };
 
+const birthDateValidator = async (rule: Rule, value: string) => {
+  let valid = false;
+  if (value) {
+    const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+    if (match) {
+      const [, sy, sm, sd] = match;
+      const iy = +sy;
+      const im = +sm - 1; // zero-based month
+      const id = +sd;
+      // TODO: check for allowed range?
+      const d = new Date(Date.UTC(iy, im, id));
+      if (
+        d.getUTCFullYear() === iy &&
+        d.getUTCMonth() === im &&
+        d.getUTCDate() === id
+      ) {
+        valid = true;
+      }
+    }
+  }
+  if (!valid) {
+    throw new Error('Please input your birth date in YYYY-MM-DD');
+  }
+};
+
 export const Register = () => {
   const { useState } = useMountedState();
 
@@ -43,6 +69,10 @@ export const Register = () => {
         password: values.password,
         email: values.email,
         registrationCode: values.registrationCode,
+        birthDate: values.birthDate,
+        firstName: values.firstName,
+        lastName: values.lastName,
+        countryCode: values.countryCode,
       })
       .then(() => {
         // Try logging in after registering.
@@ -87,6 +117,20 @@ export const Register = () => {
     }
   }, [history, loggedIn]);
 
+  // XXX: This is copied from settings/personal_info.tsx (with added placeholder).
+  // It has the same issues (such as the emoji not displaying on Windows).
+  const countrySelector = (
+    <Select size="large" bordered={false} placeholder="Country">
+      {countryArray.map((country) => {
+        return (
+          <Select.Option key={country.code} value={country.code.toLowerCase()}>
+            {country.emoji} {country.name}
+          </Select.Option>
+        );
+      })}
+    </Select>
+  );
+
   return (
     <>
       <TopBar />
@@ -97,10 +141,16 @@ export const Register = () => {
           <p>
             Welcome to Woogles, the online home for word games! If you want to
             be the champion of crossword game, or maybe just want to find a
-            friendly match you’re in the right place.
+            friendly match you’re in the right place. By the way, signing up
+            means you agree to our{' '}
+            <Link target="_blank" to="/about">
+              Privacy Policy
+            </Link>
+            .
           </p>
           <p>- Woogles and team</p>
           <Form layout="inline" name="register" onFinish={onFinish}>
+            <p className="group-title">Required information</p>
             <Form.Item
               name="email"
               hasFeedback
@@ -115,7 +165,7 @@ export const Register = () => {
                 },
               ]}
             >
-              <Input placeholder="Email address" />
+              <Input placeholder="Email" />
             </Form.Item>
             <Form.Item
               name="username"
@@ -150,6 +200,11 @@ export const Register = () => {
               />
             </Form.Item>
 
+            <p className="persistent-explanation">
+              Password must include at least one lowercase letter, upper case
+              letter, number, and symbol.
+            </p>
+
             {/* This is probably obsolete but in case we have to pause registration
             <Form.Item
               name="registrationCode"
@@ -164,26 +219,63 @@ export const Register = () => {
               <Input placeholder="Secret code" />
             </Form.Item>
             */}
+
             <Form.Item
+              name="birthDate"
+              hasFeedback
               rules={[
                 {
-                  required: true,
-                  message: 'You must agree to this condition',
-                  transform: (value) => value || undefined,
-                  type: 'boolean',
+                  validator: birthDateValidator,
                 },
               ]}
-              valuePropName="checked"
-              initialValue={false}
-              name="nocheating"
             >
-              <Checkbox>
-                <p className="no-cheat">
-                  I promise not to use word finders or game analyzers without
-                  the express permission of my opponent.
-                </p>
-              </Checkbox>
+              <Input placeholder="Birth date (YYYY-MM-DD)" />
             </Form.Item>
+
+            <p className="persistent-explanation">
+              Birthday info will never be displayed on Woogles.
+            </p>
+
+            <p className="group-title">Optional info</p>
+
+            <Form.Item name="firstName">
+              <Input placeholder="First name" />
+            </Form.Item>
+
+            <Form.Item name="lastName">
+              <Input placeholder="Last name" />
+            </Form.Item>
+
+            <span className="country-code">
+              <Form.Item name="countryCode">{countrySelector}</Form.Item>
+            </span>
+
+            <span className="full-width">
+              <Form.Item
+                rules={[
+                  {
+                    required: true,
+                    message: 'You must agree to this condition',
+                    transform: (value) => value || undefined,
+                    type: 'boolean',
+                  },
+                ]}
+                valuePropName="checked"
+                initialValue={false}
+                name="nocheating"
+              >
+                <Checkbox>
+                  <p className="no-cheat">
+                    I agree to the{' '}
+                    <Link target="_blank" to="/about">
+                      Woogles Terms of Service
+                    </Link>
+                    . Notably, I promise not to use word finders or game
+                    analyzers in rated games.
+                  </p>
+                </Checkbox>
+              </Form.Item>
+            </span>
 
             <Form.Item>
               <Button type="primary" htmlType="submit">
@@ -192,6 +284,11 @@ export const Register = () => {
             </Form.Item>
           </Form>
           {err !== '' ? <Alert message={err} type="error" /> : null}
+
+          <p>
+            Already have a Woogles account? No worries!{' '}
+            <Link to="/">Log in here</Link>
+          </p>
         </div>
       </div>
     </>

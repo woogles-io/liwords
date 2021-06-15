@@ -28,6 +28,52 @@ div.account {
     p {
       margin: 2em 0;
     }
+    .group-title {
+      flex: 1 0 100%;
+      font-size: 16px;
+      font-weight: 700;
+      margin: 1em 0;
+    }
+    .persistent-explanation {
+      flex: 1 0 100%;
+      font-style: italic;
+      margin: 0 0 0.75em;
+      @include colorModed() {
+        color: m($gray-subtle);
+      }
+    }
+    .full-width {
+      flex: 1 0 100%;
+    }
+
+    /* copying these from ../settings/settings.scss for the country dropdown, idk what it does */
+    .ant-select {
+      border: 1px solid #cfcfcf;
+      border-radius: 4px;
+    }
+    .ant-select-selector, .ant-select-item , .ant-select-dropdown{
+      @include colorModed() {
+        background: m($background);
+        color: m($gray-extreme);
+      }
+      z-index: 1100;
+      .hover-help {
+        display: none;
+      }
+    }
+
+    .ant-select-selection-item {
+      font-weight: normal;
+      font-size: 14px;
+    }
+    /* end copy from ../settings/settings.scss */
+
+    .country-code .ant-select {
+      width: 300px;
+      height: 48px;
+      padding-top: 3px;
+      font-size: 14px;
+    }
     input {
       width: 300px;
       height: 48px;
@@ -37,15 +83,18 @@ div.account {
       top: auto;
     }
     .ant-checkbox-wrapper {
-      max-width: calc(100vw - 64px);
+      max-width: min(100vw - 64px, 634px); /* wrap properly */
+      padding-top: 24px;
       padding-right: 24px;
       display: flex;
-      align-items: center;
-      margin: 0;
       padding-bottom: 24px;
       p.no-cheat {
         padding-left: 16px;
         margin: 6px 0;
+      }
+      .ant-checkbox {
+        margin: 9px 0 0; /* match the paragraph's first line */
+        height: 100%; /* patch hover/toggle animation size */
       }
     }
     .ant-row.ant-form-item.password {
