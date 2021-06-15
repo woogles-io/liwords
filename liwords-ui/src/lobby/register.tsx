@@ -10,7 +10,7 @@ import './accountForms.scss';
 import woogles from '../assets/woogles.png';
 
 const usernameValidator = async (rule: Rule, value: string) => {
-  if (value.length === 0) {
+  if (!value) {
     throw new Error('Please input your username');
   }
   if (value.length < 3) {
