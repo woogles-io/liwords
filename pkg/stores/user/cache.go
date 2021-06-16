@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/domino14/liwords/pkg/entity"
+	"github.com/domino14/liwords/pkg/mod"
 	lru "github.com/hashicorp/golang-lru"
 	"github.com/rs/zerolog/log"
 
@@ -92,11 +93,20 @@ func NewCache(backing backingStore) *Cache {
 		panic(err)
 	}
 
+	// good thing this doesn't auto-expire...
+	bpc := make(map[string]*pb.BriefProfile)
+	bpc[mod.CensoredUsername] = &pb.BriefProfile{
+		Username:    mod.CensoredUsername,
+		FullName:    mod.CensoredUsername,
+		CountryCode: "",
+		AvatarUrl:   mod.CensoredAvatarUrl,
+	}
+
 	return &Cache{
 		backing: backing,
 		cache:   lrucache,
 		briefProfileCache: &BriefProfileCache{
-			cache: make(map[string]*pb.BriefProfile),
+			cache: bpc,
 		},
 	}
 }
