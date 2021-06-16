@@ -45,6 +45,13 @@ div.account {
     .full-width {
       flex: 1 0 100%;
     }
+    .ant-form-item input,
+    .ant-input-password {
+      @include colorModed() {
+        background: m($background);
+        color: m($gray-extreme);
+      }
+    }
 
     /* copying these from ../settings/settings.scss for the country dropdown, idk what it does */
     .ant-select {
