@@ -1,10 +1,10 @@
-import React from 'react';
+import React, { useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { useMountedState } from '../utils/mounted';
 import { useResetStoreContext } from '../store/store';
 import './accountForms.scss';
 
-import { Form, Input, Button, Alert } from 'antd';
+import { Form, Input, Button, Alert, Modal } from 'antd';
 import axios from 'axios';
 import { toAPIUrl } from '../api/api';
 
@@ -87,3 +87,27 @@ export const Login = React.memo(() => {
     </div>
   );
 });
+
+export const LoginModal = (props: {
+  loginModalVisible: boolean;
+  setLoginModalVisible: React.Dispatch<React.SetStateAction<boolean>>;
+}) => {
+  const { loginModalVisible, setLoginModalVisible } = props;
+  const handleHideLoginModal = useCallback(() => {
+    setLoginModalVisible(false);
+  }, [setLoginModalVisible]);
+
+  return (
+    <Modal
+      className="login-modal"
+      title="Welcome back, friend!"
+      visible={loginModalVisible}
+      onCancel={handleHideLoginModal}
+      footer={null}
+      width={332}
+      zIndex={1150}
+    >
+      <Login />
+    </Modal>
+  );
+};

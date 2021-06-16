@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useCallback } from 'react';
 import { Link, useHistory } from 'react-router-dom';
 import { useMountedState } from '../utils/mounted';
 import axios from 'axios';
@@ -8,6 +8,8 @@ import { Rule } from 'antd/lib/form';
 import { toAPIUrl } from '../api/api';
 import './accountForms.scss';
 import woogles from '../assets/woogles.png';
+import { useLoginStateStoreContext } from '../store/store';
+import { LoginModal } from './login';
 import { countryArray } from '../settings/country_map';
 
 const usernameValidator = async (rule: Rule, value: string) => {
@@ -60,7 +62,17 @@ export const Register = () => {
   const { useState } = useMountedState();
 
   const [err, setErr] = useState('');
-  const [loggedIn, setLoggedIn] = useState(false);
+  const [signedUp, setSignedUp] = useState(false);
+
+  const [loginModalVisible, setLoginModalVisible] = useState(false);
+  const { loginState } = useLoginStateStoreContext();
+  const handleShowLoginModal = useCallback(
+    (evt: React.MouseEvent<HTMLElement>) => {
+      evt.preventDefault();
+      setLoginModalVisible(true);
+    },
+    []
+  );
 
   const onFinish = (values: { [key: string]: string }) => {
     axios
@@ -87,7 +99,7 @@ export const Register = () => {
           )
           .then(() => {
             // Automatically will set cookie
-            setLoggedIn(true);
+            setSignedUp(true);
           })
           .catch((e) => {
             if (e.response) {
@@ -111,6 +123,7 @@ export const Register = () => {
   };
 
   const history = useHistory();
+  const loggedIn = signedUp || loginState.loggedIn;
   React.useEffect(() => {
     if (loggedIn) {
       history.replace('/');
@@ -287,7 +300,10 @@ export const Register = () => {
 
           <p>
             Already have a Woogles account? No worries!{' '}
-            <Link to="/">Log in here</Link>
+            <Link to="/" onClick={handleShowLoginModal}>
+              Log in here
+            </Link>
+            <LoginModal {...{ loginModalVisible, setLoginModalVisible }} />
           </p>
         </div>
       </div>
