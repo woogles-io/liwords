@@ -27,24 +27,24 @@ func sanitize(us user.Store, evt *entity.EventWrapper, userID string) (*entity.E
 		// who is playing in the game. This is because observers can also
 		// receive these events directly (through AudUser).
 		subevt, ok := evt.Event.(*pb.GameHistoryRefresher)
+
+		// Possibly censors users
+		cloned := proto.Clone(subevt).(*pb.GameHistoryRefresher)
+		cloned.History = mod.CensorHistory(context.Background(), us, cloned.History)
+
 		if !ok {
 			return nil, errors.New("subevt-wrong-format")
 		}
 		if subevt.History.PlayState == macondopb.PlayState_GAME_OVER {
 			// no need to sanitize if the game is over.
-			return evt, nil
+			return entity.WrapEvent(cloned, pb.MessageType_GAME_HISTORY_REFRESHER), nil
 		}
 		mynick := nicknameFromUserID(userID, subevt.History.Players)
 		if mynick == "" {
 			// No need to sanitize if we don't have a nickname IN THE GAME;
 			// this only happens if we are not playing the game.
-			return evt, nil
+			return entity.WrapEvent(cloned, pb.MessageType_GAME_HISTORY_REFRESHER), nil
 		}
-
-		cloned := proto.Clone(subevt).(*pb.GameHistoryRefresher)
-
-		// Possibly censors users
-		cloned.History = mod.CensorHistory(context.Background(), us, cloned.History)
 
 		// Only sanitize if the nickname is not empty. The nickname is
 		// empty if they are not playing in this game.
