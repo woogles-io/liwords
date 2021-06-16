@@ -111,6 +111,7 @@ func (gs *GameService) GetGameHistory(ctx context.Context, req *pb.GameHistoryRe
 }
 
 func censorPlayer(gir *pb.GameInfoResponse, playerIndex int) {
+	gir.Players[playerIndex].UserId = mod.CensoredUsername
 	gir.Players[playerIndex].FullName = mod.CensoredUsername
 	gir.Players[playerIndex].Nickname = mod.CensoredUsername
 	gir.Players[playerIndex].CountryCode = ""

@@ -20,7 +20,7 @@ import (
 
 // Spaces are never allowed in usernames,
 // so this string will never be a valid username.
-var CensoredUsername = "Unknown Woogler"
+var CensoredUsername = "Unwoogler"
 var CensoredAvatarUrl = "https://woogles-prod-assets.s3.amazonaws.com/unknown-woogler.png"
 var CensoredAboutText = "This account does not exist."
 
