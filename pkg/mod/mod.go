@@ -214,14 +214,22 @@ func IsCensorable(ctx context.Context, us user.Store, uuid string) bool {
 	return permaban
 }
 
-func censorPlayerInHistory(hist *macondopb.GameHistory, playerIndex int) {
+func censorPlayerInHistory(hist *macondopb.GameHistory, playerIndex int, bothCensorable bool) {
 	uncensoredNickname := hist.Players[playerIndex].Nickname
-	hist.Players[playerIndex].UserId = utilities.CensoredUsername
-	hist.Players[playerIndex].RealName = utilities.CensoredUsername
-	hist.Players[playerIndex].Nickname = utilities.CensoredUsername
+	censoredUsername := utilities.CensoredUsername
+	if bothCensorable {
+		if playerIndex == 0 {
+			censoredUsername += "One"
+		} else if playerIndex == 1 {
+			censoredUsername += "Two"
+		}
+	}
+	hist.Players[playerIndex].UserId = censoredUsername
+	hist.Players[playerIndex].RealName = censoredUsername
+	hist.Players[playerIndex].Nickname = censoredUsername
 	for idx, _ := range hist.Events {
 		if hist.Events[idx].Nickname == uncensoredNickname {
-			hist.Events[idx].Nickname = utilities.CensoredUsername
+			hist.Events[idx].Nickname = censoredUsername
 		}
 	}
 }
@@ -232,6 +240,7 @@ func CensorHistory(ctx context.Context, us user.Store, hist *macondopb.GameHisto
 
 	playerOneCensorable := IsCensorable(ctx, us, playerOne)
 	playerTwoCensorable := IsCensorable(ctx, us, playerTwo)
+	bothCensorable := playerOneCensorable && playerTwoCensorable
 
 	if !playerOneCensorable && !playerTwoCensorable {
 		return hist
@@ -240,11 +249,11 @@ func CensorHistory(ctx context.Context, us user.Store, hist *macondopb.GameHisto
 	censoredHistory := proto.Clone(hist).(*macondopb.GameHistory)
 
 	if playerOneCensorable {
-		censorPlayerInHistory(censoredHistory, 0)
+		censorPlayerInHistory(censoredHistory, 0, bothCensorable)
 	}
 
 	if playerTwoCensorable {
-		censorPlayerInHistory(censoredHistory, 1)
+		censorPlayerInHistory(censoredHistory, 1, bothCensorable)
 	}
 	return censoredHistory
 }
