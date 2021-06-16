@@ -829,20 +829,6 @@ export const Table = React.memo((props: Props) => {
     [sendSocketMsg]
   );
 
-  // const declineAbort = useCallback(
-  //   (reqID: string) => {
-  //     const evt = new DeclineAbortRequest();
-  //     evt.setRequestId(reqID);
-  //     sendSocketMsg(
-  //       encodeToSocketFmt(
-  //         MessageType.DECLINE_ABORT_REQUEST,
-  //         evt.serializeBinary()
-  //       )
-  //     );
-  //   },
-  //   [sendSocketMsg]
-  // );
-
   const handleDeclineRematch = useCallback(() => {
     declineRematch(rematchRequest.getGameRequest()!.getRequestId());
     setRematchRequest(new MatchRequest());

@@ -557,6 +557,17 @@ func handleEventAfterLockingGame(ctx context.Context, gameStore GameStore, userS
 	// it was already saved to the store somewhere above (in performEndgameDuties)
 	// and we don't want to save it again as it will reload it into the cache.
 	if entGame.GameEndReason == pb.GameEndReason_NONE {
+
+		// Since we processed a game event, we should cancel any outstanding
+		// game meta events.
+		lastMeta := entity.LastOutstandingMetaRequest(entGame.MetaEvents.Events, "")
+		if lastMeta != nil {
+			err := cancelMetaEvent(ctx, entGame, lastMeta)
+			if err != nil {
+				return entGame, err
+			}
+		}
+
 		if err := gameStore.Set(ctx, entGame); err != nil {
 			log.Err(err).Msg("error-saving")
 			return entGame, err

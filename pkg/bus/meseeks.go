@@ -386,31 +386,6 @@ func (b *Bus) matchDeclined(ctx context.Context, evt *pb.DeclineMatchRequest, us
 	return b.pubToUser(decliner, wrapped, "")
 }
 
-// func (b *Bus) abortDeclined(ctx context.Context, evt *pb.DeclineMatchRequest, userID string) error {
-// 	// the sending user declined the abort request. Send this declination
-// 	// to the requester and delete the request.
-// 	ab, err := b.abortRequestStore.Get(ctx, evt.RequestId)
-// 	if err != nil {
-// 		return err
-// 	}
-
-// 	if ab.ReceivingUserId != userID {
-// 		return errors.New("request userID does not match")
-// 	}
-
-// 	requester := ab.UserId
-// 	decliner := ab.ReceivingUserId
-
-// 	wrapped := entity.WrapEvent(evt, pb.MessageType_DECLINE_ABORT_REQUEST)
-
-// 	// Publish decline to requester
-// 	err = b.pubToUser(requester, wrapped, "")
-// 	if err != nil {
-// 		return err
-// 	}
-// 	return b.pubToUser(decliner, wrapped, "")
-// }
-
 func (b *Bus) broadcastSeekDeletion(seekID string) error {
 	toSend := entity.WrapEvent(&pb.SoughtGameProcessEvent{RequestId: seekID},
 		pb.MessageType_SOUGHT_GAME_PROCESS_EVENT)

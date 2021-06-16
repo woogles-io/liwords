@@ -268,6 +268,40 @@ func HandleMetaEvent(ctx context.Context, evt *pb.GameMetaEvent, eventChan chan<
 	return nil
 }
 
+func cancelMetaEvent(ctx context.Context, g *entity.Game, evt *pb.GameMetaEvent) error {
+
+	var pseudoEvt *pb.GameMetaEvent
+	if evt.Type == pb.GameMetaEvent_REQUEST_ADJUDICATION {
+		pseudoEvt = &pb.GameMetaEvent{
+			OrigEventId: evt.OrigEventId,
+			Timestamp:   evt.Timestamp,
+			Type:        pb.GameMetaEvent_ADJUDICATION_DENIED,
+			GameId:      g.GameID(),
+			// Do not add a player ID since technically this event was not denied by the player.
+		}
+	} else if evt.Type == pb.GameMetaEvent_REQUEST_ABORT {
+		pseudoEvt = &pb.GameMetaEvent{
+			OrigEventId: evt.OrigEventId,
+			Timestamp:   evt.Timestamp,
+			Type:        pb.GameMetaEvent_ABORT_DENIED,
+			GameId:      g.GameID(),
+			// Do not add a player ID since technically this event was not denied by the player.
+		}
+	}
+	// don't need to call processMetaEvent here as a "deny" event is essentially
+	// a no-op (we only add it to the list of events).
+	g.MetaEvents.Events = append(g.MetaEvents.Events, pseudoEvt)
+
+	// send the cancellation event.
+
+	wrapped := entity.WrapEvent(pseudoEvt, pb.MessageType_GAME_META_EVENT)
+	wrapped.AddAudience(entity.AudGame, evt.GameId)
+	wrapped.AddAudience(entity.AudGameTV, evt.GameId)
+	g.SendChange(wrapped)
+
+	return nil
+}
+
 func processMetaEvent(ctx context.Context, g *entity.Game, evt *pb.GameMetaEvent, matchingEvt *pb.GameMetaEvent,
 	gameStore GameStore, userStore user.Store,
 	listStatStore stats.ListStatStore, tournamentStore tournament.TournamentStore) error {
