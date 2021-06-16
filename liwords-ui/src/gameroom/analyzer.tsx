@@ -36,6 +36,7 @@ type JsonMove =
       action: 'exchange';
       tiles: Array<number>;
       valid?: boolean;
+      invalid_words?: Array<Array<number>>;
     }
   | {
       equity: number;
@@ -46,6 +47,7 @@ type JsonMove =
       word: Array<number>;
       score: number;
       valid?: boolean;
+      invalid_words?: Array<Array<number>>;
     };
 
 const jsonMoveToKey = (v: JsonMove) => {
@@ -79,6 +81,7 @@ type AnalyzerMove = {
   jsonKey: string;
   chosen?: boolean; // true for played, undefined for analyzer-generated moves
   valid?: boolean; // undefined for analyzer-generated moves
+  invalid_words?: Array<string>;
   displayMove: string;
   coordinates: string;
   leave: string;
@@ -592,6 +595,9 @@ export const Analyzer = React.memo((props: AnalyzerProps) => {
               ...analyzerMove,
               chosen: true,
               valid: moveObj.valid,
+              invalid_words: moveObj.invalid_words?.map(
+                (tiles: Array<number>) => tiles.map((tile) => numToLabel(tile))
+              ),
             },
           });
         } else {
@@ -660,7 +666,21 @@ export const Analyzer = React.memo((props: AnalyzerProps) => {
           {...((m.chosen ?? false) && { className: 'move-chosen' })}
         >
           <td className="move-coords">{m.coordinates}</td>
-          <td className="move">{m.displayMove}</td>
+          <td className="move">
+            {m.displayMove}
+            {m.invalid_words && m.invalid_words.length > 0 && (
+              <React.Fragment>
+                <br />(
+                {m.invalid_words.map((word, idx) => (
+                  <React.Fragment key={idx}>
+                    {idx > 0 && ', '}
+                    {word}*
+                  </React.Fragment>
+                ))}
+                )
+              </React.Fragment>
+            )}
+          </td>
           <td className="move-score">{m.score}</td>
           <td className="move-leave">{m.leave}</td>
           <td className="move-equity">

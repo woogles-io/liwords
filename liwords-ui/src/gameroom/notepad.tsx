@@ -16,7 +16,7 @@ import {
   contiguousTilesFromTileSet,
   simpletile,
 } from '../utils/cwgame/scoring';
-import { Direction, isMobile } from '../utils/cwgame/common';
+import { Direction, EmptySpace, isMobile } from '../utils/cwgame/common';
 import { useMountedState } from '../utils/mounted';
 import { BoopSounds } from '../sound/boop';
 
@@ -39,7 +39,9 @@ const humanReadablePosition = (
 
 const NotepadContext = React.createContext({
   curNotepad: '',
-  setCurNotepad: (a: string) => {},
+  setCurNotepad: ((a: string) => {}) as React.Dispatch<
+    React.SetStateAction<string>
+  >,
 });
 
 export const NotepadContextProvider = ({
@@ -71,7 +73,11 @@ export const Notepad = React.memo((props: NotepadProps) => {
     const contiguousTiles = contiguousTilesFromTileSet(placedTiles, board);
     let play = '';
     let position = '';
-    const leave = sortTiles(displayedRack.split('').sort().join(''));
+    const leave = sortTiles(
+      Array.from(displayedRack)
+        .filter((x) => x !== EmptySpace)
+        .join('')
+    );
     if (contiguousTiles?.length === 2) {
       position = humanReadablePosition(
         contiguousTiles[1],
@@ -95,22 +101,21 @@ export const Notepad = React.memo((props: NotepadProps) => {
       if (inParen) play += ')';
     }
     setCurNotepad(
-      `${curNotepad ? curNotepad + '\n' : ''}${
-        play ? position + ' ' + play + ' ' : ''
-      }${placedTilesTempScore ? placedTilesTempScore + ' ' : ''}${leave}`
+      (curNotepad) =>
+        `${curNotepad ? curNotepad + '\n' : ''}${
+          play
+            ? `${position} ${play} ${placedTilesTempScore}${leave ? ' ' : ''}`
+            : ''
+        }${leave}`
     );
     // Return focus to board on all but mobile so the key commands can be used immediately
     if (!isMobile()) {
       document.getElementById('board-container')?.focus();
     }
-  }, [
-    displayedRack,
-    placedTiles,
-    placedTilesTempScore,
-    curNotepad,
-    setCurNotepad,
-    board,
-  ]);
+  }, [displayedRack, placedTiles, placedTilesTempScore, setCurNotepad, board]);
+  const clearNotepad = useCallback(() => {
+    setCurNotepad('');
+  }, [setCurNotepad]);
   useEffect(() => {
     if (notepadEl.current && !(notepadEl.current === document.activeElement)) {
       notepadEl.current.scrollTop = notepadEl.current.scrollHeight || 0;
@@ -135,18 +140,17 @@ export const Notepad = React.memo((props: NotepadProps) => {
     }
     numWolgesWas.current = numWolges;
   }, [numWolges]);
+  const notepadIsNotEmpty = curNotepad.length > 0;
   const controls = useCallback(
     () => (
       <React.Fragment>
         {easterEggEnabled && <EasterEgg />}
-        {curNotepad.length > 0 && (
+        {notepadIsNotEmpty && (
           <Button
             shape="circle"
             icon={<DeleteOutlined />}
             type="primary"
-            onClick={() => {
-              setCurNotepad('');
-            }}
+            onClick={clearNotepad}
           />
         )}
         <Button
@@ -157,7 +161,7 @@ export const Notepad = React.memo((props: NotepadProps) => {
         />
       </React.Fragment>
     ),
-    [curNotepad, easterEggEnabled, setCurNotepad, addPlay]
+    [easterEggEnabled, notepadIsNotEmpty, clearNotepad, addPlay]
   );
   const notepadContainer = (
     <div className="notepad-container" style={props.style}>

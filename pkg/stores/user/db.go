@@ -845,9 +845,10 @@ func (s *DBStore) UsersByPrefix(ctx context.Context, prefix string) ([]*pb.Basic
 	// package would result in a circular dependency, we cannot
 	// get the string the correct way with ms.ModActionType_SUSPEND_ACCOUNT.String(),
 	// so we hard code it here.
+	lowerPrefix := strings.ToLower(prefix)
 	if result := s.db.Table("users").Select("username, uuid").
-		Where("lower(username) like ? AND internal_bot = ? AND (actions IS NULL OR actions->'Current' IS NULL OR actions->'Current'->'SUSPEND_ACCOUNT' IS NULL OR actions->'Current'->'SUSPEND_ACCOUNT'->'end_time' IS NOT NULL)",
-			strings.ToLower(prefix)+"%", false).
+		Where("substr(lower(username), 1, length(?)) = ? AND internal_bot = ? AND (actions IS NULL OR actions->'Current' IS NULL OR actions->'Current'->'SUSPEND_ACCOUNT' IS NULL OR actions->'Current'->'SUSPEND_ACCOUNT'->'end_time' IS NOT NULL)",
+			lowerPrefix, lowerPrefix, false).
 		Limit(20).
 		Scan(&us); result.Error != nil {
 		return nil, result.Error

@@ -4,9 +4,31 @@ import { useMountedState } from '../utils/mounted';
 import axios from 'axios';
 import { TopBar } from '../topbar/topbar';
 import { Input, Form, Button, Alert, Checkbox } from 'antd';
+import { Rule } from 'antd/lib/form';
 import { toAPIUrl } from '../api/api';
 import './accountForms.scss';
 import woogles from '../assets/woogles.png';
+
+const usernameValidator = async (rule: Rule, value: string) => {
+  if (!value) {
+    throw new Error('Please input your username');
+  }
+  if (value.length < 3) {
+    throw new Error('Min username length is 3');
+  }
+  if (value.length > 20) {
+    throw new Error('Max username length is 20');
+  }
+  if (!/^[0-9a-zA-Z\-_.]+$/.test(value)) {
+    throw new Error('Valid characters are A-Z a-z 0-9 . _ -');
+  }
+  if (!/^[0-9a-zA-Z]/.test(value)) {
+    throw new Error('Valid starting characters are A-Z a-z 0-9');
+  }
+  if (!/[0-9a-zA-Z]$/.test(value)) {
+    throw new Error('Valid ending characters are A-Z a-z 0-9');
+  }
+};
 
 export const Register = () => {
   const { useState } = useMountedState();
@@ -100,20 +122,7 @@ export const Register = () => {
               hasFeedback
               rules={[
                 {
-                  required: true,
-                  message: 'Please input your username',
-                },
-                {
-                  min: 3,
-                  message: 'Min username length is 3',
-                },
-                {
-                  max: 20,
-                  message: 'Max username length is 20',
-                },
-                {
-                  pattern: new RegExp(/^[0-9a-zA-Z\-_.]+$/),
-                  message: 'Valid characters are A-Z a-z 0-9 . _ -',
+                  validator: usernameValidator,
                 },
               ]}
             >
