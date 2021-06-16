@@ -206,6 +206,10 @@ func RemoveActions(ctx context.Context, us user.Store, actions []*ms.ModAction) 
 }
 
 func IsCensorable(ctx context.Context, us user.Store, uuid string) bool {
+	// Don't censor if already censored
+	if uuid == utilities.CensoredUsername {
+		return false
+	}
 	permaban, _ := ActionExists(ctx, us, uuid, false, []ms.ModActionType{ms.ModActionType_SUSPEND_ACCOUNT})
 	return permaban
 }
