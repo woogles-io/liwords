@@ -5,6 +5,7 @@ import (
 
 	"github.com/domino14/liwords/pkg/apiserver"
 	"github.com/domino14/liwords/pkg/mod"
+	"github.com/domino14/liwords/pkg/utilities"
 	"github.com/domino14/macondo/gcgio"
 	"github.com/rs/zerolog/log"
 	"github.com/twitchtv/twirp"
@@ -111,9 +112,9 @@ func (gs *GameService) GetGameHistory(ctx context.Context, req *pb.GameHistoryRe
 }
 
 func censorPlayer(gir *pb.GameInfoResponse, playerIndex int) {
-	gir.Players[playerIndex].UserId = mod.CensoredUsername
-	gir.Players[playerIndex].FullName = mod.CensoredUsername
-	gir.Players[playerIndex].Nickname = mod.CensoredUsername
+	gir.Players[playerIndex].UserId = utilities.CensoredUsername
+	gir.Players[playerIndex].FullName = utilities.CensoredUsername
+	gir.Players[playerIndex].Nickname = utilities.CensoredUsername
 	gir.Players[playerIndex].CountryCode = ""
 	gir.Players[playerIndex].Title = ""
 	gir.Players[playerIndex].Rating = ""
@@ -131,8 +132,8 @@ func censorGameInfoResponse(ctx context.Context, us user.Store, gir *pb.GameInfo
 func censorStreakInfoResponse(ctx context.Context, us user.Store, sir *pb.StreakInfoResponse) {
 	for _, pi := range sir.PlayersInfo {
 		if mod.IsCensorable(ctx, us, pi.Uuid) {
-			pi.Nickname = mod.CensoredUsername
-			pi.Uuid = mod.CensoredUsername
+			pi.Nickname = utilities.CensoredUsername
+			pi.Uuid = utilities.CensoredUsername
 		}
 	}
 }

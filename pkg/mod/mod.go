@@ -12,17 +12,12 @@ import (
 	"github.com/domino14/liwords/pkg/apiserver"
 	"github.com/domino14/liwords/pkg/entity"
 	"github.com/domino14/liwords/pkg/user"
+	"github.com/domino14/liwords/pkg/utilities"
 	ms "github.com/domino14/liwords/rpc/api/proto/mod_service"
 
 	pb "github.com/domino14/liwords/rpc/api/proto/realtime"
 	macondopb "github.com/domino14/macondo/gen/api/proto/macondo"
 )
-
-// Spaces are never allowed in usernames,
-// so this string will never be a valid username.
-var CensoredUsername = "Unwoogler"
-var CensoredAvatarUrl = "https://woogles-prod-assets.s3.amazonaws.com/unknown-woogler.png"
-var CensoredAboutText = "This account does not exist."
 
 var ModActionDispatching = map[string]func(context.Context, user.Store, user.ChatStore, *ms.ModAction) error{
 
@@ -217,11 +212,11 @@ func IsCensorable(ctx context.Context, us user.Store, uuid string) bool {
 
 func censorPlayerInHistory(hist *macondopb.GameHistory, playerIndex int) {
 	uncensoredNickname := hist.Players[playerIndex].Nickname
-	hist.Players[playerIndex].RealName = CensoredUsername
-	hist.Players[playerIndex].Nickname = CensoredUsername
+	hist.Players[playerIndex].RealName = utilities.CensoredUsername
+	hist.Players[playerIndex].Nickname = utilities.CensoredUsername
 	for idx, _ := range hist.Events {
 		if hist.Events[idx].Nickname == uncensoredNickname {
-			hist.Events[idx].Nickname = CensoredUsername
+			hist.Events[idx].Nickname = utilities.CensoredUsername
 		}
 	}
 }
