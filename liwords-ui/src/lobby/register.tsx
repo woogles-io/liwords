@@ -1,9 +1,17 @@
-import React, { useCallback } from 'react';
+import React, { useCallback, useEffect, useMemo } from 'react';
 import { Link, useHistory } from 'react-router-dom';
 import { useMountedState } from '../utils/mounted';
 import axios from 'axios';
 import { TopBar } from '../topbar/topbar';
-import { Input, Form, Button, Alert, Checkbox, Select } from 'antd';
+import {
+  Input,
+  Form,
+  Button,
+  Alert,
+  Checkbox,
+  Select,
+  AutoComplete,
+} from 'antd';
 import { Rule } from 'antd/lib/form';
 import { toAPIUrl } from '../api/api';
 import './accountForms.scss';
@@ -11,6 +19,121 @@ import woogles from '../assets/woogles.png';
 import { useLoginStateStoreContext } from '../store/store';
 import { LoginModal } from './login';
 import { countryArray } from '../settings/country_map';
+
+const allMonthNames = [
+  'January',
+  'February',
+  'March',
+  'April',
+  'May',
+  'June',
+  'July',
+  'August',
+  'September',
+  'October',
+  'November',
+  'December',
+];
+const allMonthLowercaseNames = allMonthNames.map((name) => name.toLowerCase());
+const allMonthOptions = allMonthNames.map((name, idx) => {
+  const mm = String(idx + 1).padStart(2, '0');
+  return {
+    value: mm,
+    label: (
+      <React.Fragment>
+        {mm} - {name}
+      </React.Fragment>
+    ),
+  };
+});
+
+const allDateOptions = Array.from(new Array(31), (_, x) => ({
+  value: String(x + 1).padStart(2, '0'),
+}));
+
+// 2006-01-02 (hi Golang), 2012-01-02, 2006-10-02, 2006-01-09 are Mondays.
+// Returns [0, 1, 2] in some order where 0 = year, 1 = month, 2 = date.
+const determineLocalDateSequence = () => {
+  const fmt = new Intl.DateTimeFormat();
+  const s1 = fmt.format(new Date(2006, 0, 2));
+  const dist = (s2: string) => {
+    const l = Math.min(s1.length, s2.length);
+    for (let i = 0; i < l; ++i) if (s1[i] !== s2[i]) return i;
+    return l;
+  };
+  return [
+    dist(fmt.format(new Date(2012, 0, 2))) * 3,
+    dist(fmt.format(new Date(2006, 9, 2))) * 3 + 1,
+    dist(fmt.format(new Date(2006, 0, 9))) * 3 + 2,
+  ]
+    .sort((a, b) => (a < b ? -1 : 1))
+    .map((x) => x % 3);
+};
+
+type Option = {
+  label?: string | React.ReactElement;
+  value: string;
+};
+
+const useBirthBox = (
+  allOptions: Array<Option>,
+  deduceSelection: (s: string) => number | undefined,
+  formatSelection: (n: number) => string,
+  filterOptions: (s: string) => Array<Option>,
+  placeholder: string
+) => {
+  const { useState } = useMountedState();
+  const [selection, setSelection] = useState<number | undefined>(undefined);
+  const [searched, setSearched] = useState('');
+  const [shownOptions, setShownOptions] = useState(allOptions);
+  useEffect(() => {
+    setShownOptions(allOptions);
+  }, [allOptions]);
+  const handleChange = useCallback(
+    (s) => {
+      const selection = deduceSelection(s);
+      setSelection(selection);
+      if (selection != null) {
+        setSearched(formatSelection(selection));
+      }
+      setShownOptions(allOptions);
+    },
+    [deduceSelection, formatSelection, allOptions]
+  );
+  const handleSearch = useCallback(
+    (s) => {
+      setSearched(s);
+      setShownOptions(filterOptions(s));
+    },
+    [filterOptions]
+  );
+  const handleDropdownVisibleChange = useCallback(
+    (open) => {
+      if (!open) {
+        if (selection != null) {
+          setSearched(formatSelection(selection));
+        }
+        setShownOptions(allOptions);
+      }
+    },
+    [selection, formatSelection, allOptions]
+  );
+
+  return [
+    <Form.Item>
+      <AutoComplete
+        value={searched}
+        options={shownOptions}
+        onChange={handleChange}
+        onSearch={handleSearch}
+        onDropdownVisibleChange={handleDropdownVisibleChange}
+      >
+        <Input bordered={false} {...{ placeholder }} />
+      </AutoComplete>
+    </Form.Item>,
+    selection,
+  ];
+};
 
 const usernameValidator = async (rule: Rule, value: string) => {
   if (!value) {
@@ -42,19 +165,20 @@ const birthDateValidator = async (rule: Rule, value: string) => {
       const iy = +sy;
       const im = +sm - 1; // zero-based month
       const id = +sd;
-      // TODO: check for allowed range?
       const d = new Date(Date.UTC(iy, im, id));
       if (
         d.getUTCFullYear() === iy &&
         d.getUTCMonth() === im &&
-        d.getUTCDate() === id
+        d.getUTCDate() === id &&
+        // ignore any timezone-induced off-by-1-day, they're too young anyway
+        +d <= Date.now()
       ) {
         valid = true;
       }
     }
   }
   if (!valid) {
-    throw new Error('Please input your birth date in YYYY-MM-DD');
+    throw new Error('Please input your birth date');
   }
 };
 
@@ -124,7 +248,7 @@ export const Register = () => {
 
   const history = useHistory();
   const loggedIn = signedUp || loginState.loggedIn;
-  React.useEffect(() => {
+  useEffect(() => {
     if (loggedIn) {
       history.replace('/');
     }
@@ -144,6 +268,132 @@ export const Register = () => {
     </Select>
   );
 
+  const currentTime = new Date(Date.now());
+  const currentYear = currentTime.getFullYear(); // intentionally using browser timezone
+  const birthYearOptions = useMemo(() => {
+    const a = [];
+    for (let i = currentYear; i >= 1900; --i) {
+      a.push({ value: String(i).padStart(4, '0') });
+    }
+    return a;
+  }, [currentYear]);
+
+  const [birthYearBox, birthYearSelected] = useBirthBox(
+    birthYearOptions,
+    useCallback(
+      (s) => {
+        // use the actual value because the index may shift near start of year
+        let y = birthYearOptions.find(({ value }) => value === s);
+        if (y == null && /^\d+$/.test(s)) {
+          // allow omitting leading zeros
+          const i = +s;
+          y = birthYearOptions.find(({ value }) => +value === i);
+          if (y == null && s.length === 2) {
+            // allow typing just two digits
+            y = birthYearOptions.find(({ value }) => {
+              const ivalue = +value;
+              const age = currentYear - ivalue;
+              return age >= 0 && age <= 99 && ivalue % 100 === i;
+            });
+          }
+        }
+        return y == null ? undefined : +y.value;
+      },
+      [birthYearOptions, currentYear]
+    ),
+    useCallback((n) => String(n).padStart(4, '0'), []),
+    useCallback(
+      (s) => birthYearOptions.filter(({ value }) => value.includes(s)),
+      [birthYearOptions]
+    ),
+    'Year'
+  );
+
+  const [birthMonthBox, birthMonthSelected] = useBirthBox(
+    allMonthOptions,
+    useCallback((s) => {
+      let idx = allMonthOptions.findIndex(({ value }) => value === s);
+      if (idx < 0) {
+        if (/^\d+$/.test(s)) {
+          // allow omitting leading zeros
+          const i = +s;
+          idx = allMonthOptions.findIndex(({ value }) => +value === i);
+        }
+        if (idx < 0 && s.length >= 3) {
+          // allow month prefixes
+          const lowerSearch = s.toLowerCase();
+          const matchingMonths = allMonthLowercaseNames.filter(
+            (monthLowercaseName) => monthLowercaseName.startsWith(lowerSearch)
+          );
+          if (matchingMonths.length === 1) {
+            // only one match, it wins
+            idx = allMonthLowercaseNames.findIndex((monthLowercaseName) =>
+              monthLowercaseName.startsWith(lowerSearch)
+            );
+          }
+        }
+      }
+      return idx < 0 ? undefined : idx + 1;
+    }, []),
+    useCallback((n) => String(n).padStart(2, '0'), []),
+    useCallback((s) => {
+      const lowerSearch = s.toLowerCase();
+      return allMonthOptions.filter(
+        ({ value }, idx) =>
+          allMonthLowercaseNames[idx].includes(lowerSearch) ||
+          value.includes(lowerSearch)
+      );
+    }, []),
+    'Month'
+  );
+
+  const [birthDateBox, birthDateSelected] = useBirthBox(
+    allDateOptions,
+    useCallback((s) => {
+      let idx = allDateOptions.findIndex(({ value }) => value === s);
+      if (idx < 0 && /^\d+$/.test(s)) {
+        // allow omitting leading zeros
+        const i = +s;
+        idx = allDateOptions.findIndex(({ value }) => +value === i);
+      }
+      return idx < 0 ? undefined : idx + 1;
+    }, []),
+    useCallback((n) => String(n).padStart(2, '0'), []),
+    useCallback(
+      (s) => allDateOptions.filter(({ value }) => value.includes(s)),
+      []
+    ),
+    'Date'
+  );
+
+  const localDateSequence = useMemo(() => determineLocalDateSequence(), []);
+  const birthBoxes = [
+    <span className="birth-year">{birthYearBox}</span>,
+    <span className="birth-month">{birthMonthBox}</span>,
+    <span className="birth-date">{birthDateBox}</span>,
+  ];
+
+  const [form] = Form.useForm();
+  useEffect(() => {
+    const birthDate =
+      birthYearSelected != null &&
+      birthMonthSelected != null &&
+      birthDateSelected != null
+        ? `${String(birthYearSelected).padStart(4, '0')}-${String(
+            birthMonthSelected
+          ).padStart(2, '0')}-${String(birthDateSelected).padStart(2, '0')}`
+        : '';
+    const oldValue = form.getFieldValue('birthDate') ?? '';
+    if (oldValue !== birthDate) {
+      form.setFieldsValue({ birthDate });
+      if (birthDate) {
+        // validate only when complete, don't nag "required" while filling in.
+        // for example this would show an error when selecting 31 Feb.
+        form.validateFields(['birthDate']); // async
+      }
+    }
+  }, [form, birthYearSelected, birthMonthSelected, birthDateSelected]);
+
   return (
     <>
       <TopBar />
@@ -162,7 +412,7 @@ export const Register = () => {
             .
           </p>
           <p>- Woogles and team</p>
-          <Form layout="inline" name="register" onFinish={onFinish}>
+          <Form layout="inline" name="register" onFinish={onFinish} form={form}>
             <p className="group-title">Required information</p>
             <Form.Item
               name="email"
@@ -233,17 +483,19 @@ export const Register = () => {
             </Form.Item>
             */}
 
-            <Form.Item
-              name="birthDate"
-              hasFeedback
-              rules={[
-                {
-                  validator: birthDateValidator,
-                },
-              ]}
-            >
-              <Input placeholder="Birth date (YYYY-MM-DD)" />
-            </Form.Item>
+            {localDateSequence.map((k) => (
+              <React.Fragment key={k}>{birthBoxes[k]}</React.Fragment>
+            ))}
+            <span className="full-width only-errors">
+              <Form.Item
+                name="birthDate"
+                rules={[
+                  {
+                    validator: birthDateValidator,
+                  },
+                ]}
+              ></Form.Item>
+            </span>
 
             <p className="persistent-explanation">
               Birthday info will never be displayed on Woogles.

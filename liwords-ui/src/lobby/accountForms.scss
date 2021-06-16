@@ -52,6 +52,9 @@ div.account {
         color: m($gray-extreme);
       }
     }
+    .only-errors .ant-form-item-control-input {
+      display: none;
+    }
 
     /* copying these from ../settings/settings.scss for the country dropdown, idk what it does */
     .ant-select {
@@ -75,6 +78,21 @@ div.account {
     }
     /* end copy from ../settings/settings.scss */
 
+    .birth-year .ant-select,
+    .birth-month .ant-select,
+    .birth-date .ant-select {
+      /* (300px - 16px) / 2 */
+      width: 142px;
+      height: 48px;
+      padding-top: 3px;
+      font-size: 14px;
+      margin-bottom: 12px;
+      input {
+        width: 100%;
+        height: 40px;
+        margin-bottom: unset;
+      }
+    }
     .country-code .ant-select {
       width: 300px;
       height: 48px;
