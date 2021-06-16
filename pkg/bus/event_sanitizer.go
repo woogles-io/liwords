@@ -1,6 +1,7 @@
 package bus
 
 import (
+	"context"
 	"errors"
 	"strconv"
 
@@ -9,13 +10,15 @@ import (
 	macondopb "github.com/domino14/macondo/gen/api/proto/macondo"
 
 	"github.com/domino14/liwords/pkg/entity"
+	"github.com/domino14/liwords/pkg/mod"
+	"github.com/domino14/liwords/pkg/user"
 	pb "github.com/domino14/liwords/rpc/api/proto/realtime"
 )
 
 // Events need to be sanitized so that we don't send user racks to people
 // who shouldn't get them. Note that sanitize only runs for events that are
 // sent DIRECTLY to a player (see AudUser), and not for AudGameTv for example.
-func sanitize(evt *entity.EventWrapper, userID string) (*entity.EventWrapper, error) {
+func sanitize(us user.Store, evt *entity.EventWrapper, userID string) (*entity.EventWrapper, error) {
 	// Depending on the event type and even the state of the game, we return a
 	// sanitized event (or not).
 	switch evt.Type {
@@ -39,6 +42,10 @@ func sanitize(evt *entity.EventWrapper, userID string) (*entity.EventWrapper, er
 		}
 
 		cloned := proto.Clone(subevt).(*pb.GameHistoryRefresher)
+
+		// Possibly censors users
+		cloned.History = mod.CensorHistory(context.Background(), us, cloned.History)
+
 		// Only sanitize if the nickname is not empty. The nickname is
 		// empty if they are not playing in this game.
 		for _, evt := range cloned.History.Events {
