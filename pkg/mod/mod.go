@@ -219,9 +219,9 @@ func censorPlayerInHistory(hist *macondopb.GameHistory, playerIndex int, bothCen
 	censoredUsername := utilities.CensoredUsername
 	if bothCensorable {
 		if playerIndex == 0 {
-			censoredUsername += "One"
+			censoredUsername += utilities.CensoredIdentifierOne
 		} else if playerIndex == 1 {
-			censoredUsername += "Two"
+			censoredUsername += utilities.CensoredIdentifierTwo
 		}
 	}
 	hist.Players[playerIndex].UserId = censoredUsername

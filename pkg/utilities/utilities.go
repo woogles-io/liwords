@@ -7,6 +7,8 @@ import (
 
 // This username is prevented on login and will never be valid.
 var CensoredUsername = "Unwoogler"
+var CensoredIdentifierOne = "One"
+var CensoredIdentifierTwo = "Two"
 var CensoredAvatarUrl = "https://woogles-prod-assets.s3.amazonaws.com/unknown-woogler.png"
 
 func MinArr(array []int) int {

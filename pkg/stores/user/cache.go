@@ -95,6 +95,7 @@ func NewCache(backing backingStore) *Cache {
 
 	// good thing this doesn't auto-expire...
 	bpc := make(map[string]*pb.BriefProfile)
+
 	bpc[utilities.CensoredUsername] = &pb.BriefProfile{
 		Username:    utilities.CensoredUsername,
 		FullName:    utilities.CensoredUsername,
@@ -102,6 +103,19 @@ func NewCache(backing backingStore) *Cache {
 		AvatarUrl:   utilities.CensoredAvatarUrl,
 	}
 
+	bpc[utilities.CensoredUsername] = &pb.BriefProfile{
+		Username:    utilities.CensoredUsername + utilities.CensoredIdentifierOne,
+		FullName:    utilities.CensoredUsername + utilities.CensoredIdentifierOne,
+		CountryCode: "",
+		AvatarUrl:   utilities.CensoredAvatarUrl,
+	}
+
+	bpc[utilities.CensoredUsername] = &pb.BriefProfile{
+		Username:    utilities.CensoredUsername + utilities.CensoredIdentifierTwo,
+		FullName:    utilities.CensoredUsername + utilities.CensoredIdentifierTwo,
+		CountryCode: "",
+		AvatarUrl:   utilities.CensoredAvatarUrl,
+	}
 	return &Cache{
 		backing: backing,
 		cache:   lrucache,
