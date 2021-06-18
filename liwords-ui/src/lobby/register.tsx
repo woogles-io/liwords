@@ -476,8 +476,11 @@ export const Register = () => {
             </Form.Item>
 
             <p className="persistent-explanation">
+              Password should be at least 8 characters.
+              {/*
               Password must include at least one lowercase letter, upper case
               letter, number, and symbol.
+              */}
             </p>
 
             {/* This is probably obsolete but in case we have to pause registration
