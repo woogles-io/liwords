@@ -38,7 +38,7 @@ const allMonthLowercaseNames = allMonthNames.map((name) => name.toLowerCase());
 const allMonthOptions = allMonthNames.map((name, idx) => {
   const mm = String(idx + 1).padStart(2, '0');
   return {
-    value: mm,
+    value: name,
     label: (
       <React.Fragment>
         {mm} - {name}
@@ -318,25 +318,25 @@ export const Register = () => {
   const [birthMonthBox, birthMonthSelected] = useBirthBox(
     allMonthOptions,
     useCallback((s) => {
-      let idx = allMonthOptions.findIndex(({ value }) => value === s);
-      if (idx < 0) {
-        if (/^\d+$/.test(s)) {
-          // allow omitting leading zeros
-          const i = +s;
-          idx = allMonthOptions.findIndex(({ value }) => +value === i);
-        }
-        if (idx < 0 && s.length >= 3) {
-          // allow month prefixes
-          const lowerSearch = s.toLowerCase();
-          const matchingMonths = allMonthLowercaseNames.filter(
-            (monthLowercaseName) => monthLowercaseName.startsWith(lowerSearch)
+      let idx = -1;
+      if (s.length >= 3) {
+        // allow month prefixes
+        const lowerSearch = s.toLowerCase();
+        const matchingMonths = allMonthLowercaseNames.filter(
+          (monthLowercaseName) => monthLowercaseName.startsWith(lowerSearch)
+        );
+        if (matchingMonths.length === 1) {
+          // only one match, it wins
+          idx = allMonthLowercaseNames.findIndex((monthLowercaseName) =>
+            monthLowercaseName.startsWith(lowerSearch)
           );
-          if (matchingMonths.length === 1) {
-            // only one match, it wins
-            idx = allMonthLowercaseNames.findIndex((monthLowercaseName) =>
-              monthLowercaseName.startsWith(lowerSearch)
-            );
-          }
+        }
+      }
+      if (idx < 0 && /^\d+$/.test(s)) {
+        // allow month numbers and omitting leading zeros
+        const i = +s;
+        if (i >= 1 && i <= allMonthNames.length) {
+          idx = i - 1;
         }
       }
       return idx < 0 ? undefined : idx + 1;
