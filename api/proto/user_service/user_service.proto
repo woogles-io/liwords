@@ -91,6 +91,10 @@ message UserRegistrationRequest {
   string password = 2;
   string email = 3;
   string registration_code = 4;
+  string birth_date = 5;
+  string first_name = 6;
+  string last_name = 7;
+  string country_code = 8;
 }
 
 message RegistrationResponse { string message = 1; }
