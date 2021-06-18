@@ -107,17 +107,23 @@ const useBirthBox = (
     },
     [filterOptions]
   );
-  const handleDropdownVisibleChange = useCallback(
-    (open) => {
-      if (!open) {
-        if (selection != null) {
-          setSearched(formatSelection(selection));
-        }
-        setShownOptions(allOptions);
+  const [reformatSelection, setReformatSelection] = useState<boolean>(false);
+  const handleDropdownVisibleChange = useCallback((open) => {
+    if (!open) {
+      // the reformatting has to be in the next render,
+      // otherwise it would revert to the current value instead.
+      setReformatSelection(true);
+    }
+  }, []);
+  useEffect(() => {
+    if (reformatSelection) {
+      setReformatSelection(false);
+      if (selection != null) {
+        setSearched(formatSelection(selection));
       }
-    },
-    [selection, formatSelection, allOptions]
-  );
+      setShownOptions(allOptions);
+    }
+  }, [reformatSelection, selection, formatSelection, allOptions]);
 
   return [
     <Form.Item>
