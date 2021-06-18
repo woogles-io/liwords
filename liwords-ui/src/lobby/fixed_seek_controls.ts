@@ -114,13 +114,11 @@ const nssg: hardcodedSeekPropVals = {
 };
 
 const nssg16: hardcodedSeekPropVals = {
-  variant: 'classic',
   ...nssg,
   initialtimeslider: initialTimeMinutesToSlider(16),
 };
 
 const nssg19: hardcodedSeekPropVals = {
-  variant: 'classic',
   ...nssg,
   initialtimeslider: initialTimeMinutesToSlider(19),
 };

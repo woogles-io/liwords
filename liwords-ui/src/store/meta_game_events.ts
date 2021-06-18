@@ -54,13 +54,19 @@ export const metaStateFromMetaEvent = (
     }
 
     case GameMetaEvent.EventType.ABORT_DENIED: {
+      evtCreator = metaEvent.getPlayerId();
+      let content = 'The abort request was denied.';
+      if (!evtCreator) {
+        // if this isn't filled in, the abort request is auto cancelled.
+        content = 'The abort request was cancelled.';
+      }
+
       message.info({
-        content: 'The abort request was denied.',
+        content,
       });
       initialExpirySecs = 0;
       metaState = MetaStates.NO_ACTIVE_REQUEST;
       // the evtCreator is the one that denied the abort.
-      evtCreator = metaEvent.getPlayerId();
       evtId = '';
       break;
     }
