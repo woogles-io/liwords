@@ -12,17 +12,12 @@ import (
 	"github.com/domino14/liwords/pkg/apiserver"
 	"github.com/domino14/liwords/pkg/entity"
 	"github.com/domino14/liwords/pkg/user"
+	"github.com/domino14/liwords/pkg/utilities"
 	ms "github.com/domino14/liwords/rpc/api/proto/mod_service"
 
 	pb "github.com/domino14/liwords/rpc/api/proto/realtime"
 	macondopb "github.com/domino14/macondo/gen/api/proto/macondo"
 )
-
-// Spaces are never allowed in usernames,
-// so this string will never be a valid username.
-var CensoredUsername = "Unknown Woogler"
-var CensoredAvatarUrl = "https://woogles-prod-assets.s3.amazonaws.com/unknown-woogler.png"
-var CensoredAboutText = "This account does not exist."
 
 var ModActionDispatching = map[string]func(context.Context, user.Store, user.ChatStore, *ms.ModAction) error{
 
@@ -211,17 +206,27 @@ func RemoveActions(ctx context.Context, us user.Store, actions []*ms.ModAction) 
 }
 
 func IsCensorable(ctx context.Context, us user.Store, uuid string) bool {
+	// Don't censor if already censored
+	if uuid == utilities.CensoredUsername ||
+		uuid == utilities.AnotherCensoredUsername {
+		return false
+	}
 	permaban, _ := ActionExists(ctx, us, uuid, false, []ms.ModActionType{ms.ModActionType_SUSPEND_ACCOUNT})
 	return permaban
 }
 
-func censorPlayerInHistory(hist *macondopb.GameHistory, playerIndex int) {
+func censorPlayerInHistory(hist *macondopb.GameHistory, playerIndex int, bothCensorable bool) {
 	uncensoredNickname := hist.Players[playerIndex].Nickname
-	hist.Players[playerIndex].RealName = CensoredUsername
-	hist.Players[playerIndex].Nickname = CensoredUsername
+	censoredUsername := utilities.CensoredUsername
+	if bothCensorable && playerIndex == 1 {
+		censoredUsername = utilities.AnotherCensoredUsername
+	}
+	hist.Players[playerIndex].UserId = censoredUsername
+	hist.Players[playerIndex].RealName = censoredUsername
+	hist.Players[playerIndex].Nickname = censoredUsername
 	for idx, _ := range hist.Events {
 		if hist.Events[idx].Nickname == uncensoredNickname {
-			hist.Events[idx].Nickname = CensoredUsername
+			hist.Events[idx].Nickname = censoredUsername
 		}
 	}
 }
@@ -232,6 +237,7 @@ func CensorHistory(ctx context.Context, us user.Store, hist *macondopb.GameHisto
 
 	playerOneCensorable := IsCensorable(ctx, us, playerOne)
 	playerTwoCensorable := IsCensorable(ctx, us, playerTwo)
+	bothCensorable := playerOneCensorable && playerTwoCensorable
 
 	if !playerOneCensorable && !playerTwoCensorable {
 		return hist
@@ -240,11 +246,11 @@ func CensorHistory(ctx context.Context, us user.Store, hist *macondopb.GameHisto
 	censoredHistory := proto.Clone(hist).(*macondopb.GameHistory)
 
 	if playerOneCensorable {
-		censorPlayerInHistory(censoredHistory, 0)
+		censorPlayerInHistory(censoredHistory, 0, bothCensorable)
 	}
 
 	if playerTwoCensorable {
-		censorPlayerInHistory(censoredHistory, 1)
+		censorPlayerInHistory(censoredHistory, 1, bothCensorable)
 	}
 	return censoredHistory
 }

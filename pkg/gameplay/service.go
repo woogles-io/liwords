@@ -5,6 +5,7 @@ import (
 
 	"github.com/domino14/liwords/pkg/apiserver"
 	"github.com/domino14/liwords/pkg/mod"
+	"github.com/domino14/liwords/pkg/utilities"
 	"github.com/domino14/macondo/gcgio"
 	"github.com/rs/zerolog/log"
 	"github.com/twitchtv/twirp"
@@ -110,28 +111,42 @@ func (gs *GameService) GetGameHistory(ctx context.Context, req *pb.GameHistoryRe
 	return &pb.GameHistoryResponse{History: hist}, nil
 }
 
-func censorPlayer(gir *pb.GameInfoResponse, playerIndex int) {
-	gir.Players[playerIndex].FullName = mod.CensoredUsername
-	gir.Players[playerIndex].Nickname = mod.CensoredUsername
+func censorPlayer(gir *pb.GameInfoResponse, playerIndex int, censoredUsername string) {
+	gir.Players[playerIndex].UserId = censoredUsername
+	gir.Players[playerIndex].FullName = censoredUsername
+	gir.Players[playerIndex].Nickname = censoredUsername
 	gir.Players[playerIndex].CountryCode = ""
 	gir.Players[playerIndex].Title = ""
 	gir.Players[playerIndex].Rating = ""
 }
 
 func censorGameInfoResponse(ctx context.Context, us user.Store, gir *pb.GameInfoResponse) {
+	playerCensored := false
 	if mod.IsCensorable(ctx, us, gir.Players[0].UserId) {
-		censorPlayer(gir, 0)
+		censorPlayer(gir, 0, utilities.CensoredUsername)
+		playerCensored = true
 	}
 	if mod.IsCensorable(ctx, us, gir.Players[1].UserId) {
-		censorPlayer(gir, 1)
+		censoredUsername := utilities.CensoredUsername
+		if playerCensored {
+			censoredUsername = utilities.AnotherCensoredUsername
+		}
+		censorPlayer(gir, 1, censoredUsername)
 	}
 }
 
 func censorStreakInfoResponse(ctx context.Context, us user.Store, sir *pb.StreakInfoResponse) {
+	// This assumes up to two players
+	playerCensored := false
 	for _, pi := range sir.PlayersInfo {
 		if mod.IsCensorable(ctx, us, pi.Uuid) {
-			pi.Nickname = mod.CensoredUsername
-			pi.Uuid = mod.CensoredUsername
+			pi.Nickname = utilities.CensoredUsername
+			pi.Uuid = utilities.CensoredUsername
+			if playerCensored {
+				pi.Nickname = utilities.AnotherCensoredUsername
+				pi.Uuid = utilities.AnotherCensoredUsername
+			}
+			playerCensored = true
 		}
 	}
 }
@@ -148,7 +163,7 @@ func censorGameInfoResponses(ctx context.Context, us user.Store, girs *pb.GameIn
 			knownUsers[playerOne] = mod.IsCensorable(ctx, us, playerOne)
 		}
 		if knownUsers[playerOne] {
-			censorPlayer(gir, 0)
+			censorPlayer(gir, 0, utilities.CensoredUsername)
 		}
 
 		_, known = knownUsers[playerTwo]
@@ -156,7 +171,11 @@ func censorGameInfoResponses(ctx context.Context, us user.Store, girs *pb.GameIn
 			knownUsers[playerTwo] = mod.IsCensorable(ctx, us, playerTwo)
 		}
 		if knownUsers[playerTwo] {
-			censorPlayer(gir, 1)
+			censoredUsername := utilities.CensoredUsername
+			if knownUsers[playerOne] {
+				censoredUsername = utilities.AnotherCensoredUsername
+			}
+			censorPlayer(gir, 1, censoredUsername)
 		}
 	}
 }

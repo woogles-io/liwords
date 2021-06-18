@@ -14,6 +14,7 @@ import (
 	"github.com/domino14/liwords/pkg/entity"
 	"github.com/domino14/liwords/pkg/mod"
 	"github.com/domino14/liwords/pkg/user"
+	"github.com/domino14/liwords/pkg/utilities"
 
 	realtime "github.com/domino14/liwords/rpc/api/proto/realtime"
 	pb "github.com/domino14/liwords/rpc/api/proto/tournament_service"
@@ -514,7 +515,7 @@ func censorRecentGamesResponse(ctx context.Context, us user.Store, rgr *pb.Recen
 			knownUsers[playerOne] = mod.IsCensorable(ctx, us, playerOne)
 		}
 		if knownUsers[playerOne] {
-			game.Players[0].Username = mod.CensoredUsername
+			game.Players[0].Username = utilities.CensoredUsername
 		}
 
 		_, known = knownUsers[playerTwo]
@@ -522,7 +523,10 @@ func censorRecentGamesResponse(ctx context.Context, us user.Store, rgr *pb.Recen
 			knownUsers[playerTwo] = mod.IsCensorable(ctx, us, playerTwo)
 		}
 		if knownUsers[playerTwo] {
-			game.Players[1].Username = mod.CensoredUsername
+			game.Players[1].Username = utilities.CensoredUsername
+			if knownUsers[playerOne] {
+				game.Players[1].Username = utilities.AnotherCensoredUsername
+			}
 		}
 	}
 	return nil
