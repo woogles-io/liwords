@@ -567,6 +567,7 @@ export const Register = () => {
             <Link to="/" onClick={handleShowLoginModal}>
               Log in here
             </Link>
+            .
             <LoginModal {...{ loginModalVisible, setLoginModalVisible }} />
           </p>
         </div>
