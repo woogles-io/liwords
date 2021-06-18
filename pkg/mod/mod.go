@@ -208,8 +208,7 @@ func RemoveActions(ctx context.Context, us user.Store, actions []*ms.ModAction) 
 func IsCensorable(ctx context.Context, us user.Store, uuid string) bool {
 	// Don't censor if already censored
 	if uuid == utilities.CensoredUsername ||
-		uuid == utilities.CensoredUsername+utilities.CensoredIdentifierOne ||
-		uuid == utilities.CensoredUsername+utilities.CensoredIdentifierTwo {
+		uuid == utilities.AnotherCensoredUsername {
 		return false
 	}
 	permaban, _ := ActionExists(ctx, us, uuid, false, []ms.ModActionType{ms.ModActionType_SUSPEND_ACCOUNT})
@@ -219,12 +218,8 @@ func IsCensorable(ctx context.Context, us user.Store, uuid string) bool {
 func censorPlayerInHistory(hist *macondopb.GameHistory, playerIndex int, bothCensorable bool) {
 	uncensoredNickname := hist.Players[playerIndex].Nickname
 	censoredUsername := utilities.CensoredUsername
-	if bothCensorable {
-		if playerIndex == 0 {
-			censoredUsername += utilities.CensoredIdentifierOne
-		} else if playerIndex == 1 {
-			censoredUsername += utilities.CensoredIdentifierTwo
-		}
+	if bothCensorable && playerIndex == 1 {
+		censoredUsername = utilities.AnotherCensoredUsername
 	}
 	hist.Players[playerIndex].UserId = censoredUsername
 	hist.Players[playerIndex].RealName = censoredUsername

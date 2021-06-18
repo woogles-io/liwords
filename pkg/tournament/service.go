@@ -524,6 +524,9 @@ func censorRecentGamesResponse(ctx context.Context, us user.Store, rgr *pb.Recen
 		}
 		if knownUsers[playerTwo] {
 			game.Players[1].Username = utilities.CensoredUsername
+			if knownUsers[playerOne] {
+				game.Players[1].Username = utilities.AnotherCensoredUsername
+			}
 		}
 	}
 	return nil

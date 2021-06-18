@@ -26,7 +26,9 @@ func RegisterUser(ctx context.Context, username string, password string, email s
 		return errors.New("username can only contain letters, digits, period, hyphen or underscore")
 	}
 	// Should we have other unacceptable usernames?
-	if strings.EqualFold(username, "anonymous") || strings.EqualFold(username, utilities.CensoredUsername) {
+	if strings.EqualFold(username, "anonymous") ||
+		strings.EqualFold(username, utilities.CensoredUsername) ||
+		strings.EqualFold(username, utilities.AnotherCensoredUsername) {
 		return errors.New("username is not acceptable")
 	}
 	if strings.HasPrefix(username, "-") || strings.HasPrefix(username, ".") || strings.HasPrefix(username, "_") {

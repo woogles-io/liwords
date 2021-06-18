@@ -103,19 +103,13 @@ func NewCache(backing backingStore) *Cache {
 		AvatarUrl:   utilities.CensoredAvatarUrl,
 	}
 
-	bpc[utilities.CensoredUsername] = &pb.BriefProfile{
-		Username:    utilities.CensoredUsername + utilities.CensoredIdentifierOne,
-		FullName:    utilities.CensoredUsername + utilities.CensoredIdentifierOne,
+	bpc[utilities.AnotherCensoredUsername] = &pb.BriefProfile{
+		Username:    utilities.AnotherCensoredUsername,
+		FullName:    utilities.AnotherCensoredUsername,
 		CountryCode: "",
 		AvatarUrl:   utilities.CensoredAvatarUrl,
 	}
 
-	bpc[utilities.CensoredUsername] = &pb.BriefProfile{
-		Username:    utilities.CensoredUsername + utilities.CensoredIdentifierTwo,
-		FullName:    utilities.CensoredUsername + utilities.CensoredIdentifierTwo,
-		CountryCode: "",
-		AvatarUrl:   utilities.CensoredAvatarUrl,
-	}
 	return &Cache{
 		backing: backing,
 		cache:   lrucache,
