@@ -341,7 +341,13 @@ export const Register = () => {
       }
       return idx < 0 ? undefined : idx + 1;
     }, []),
-    useCallback((n) => String(n).padStart(2, '0'), []),
+    useCallback((n) => {
+      if (n >= 1 && n <= allMonthNames.length) {
+        return allMonthNames[n - 1];
+      } else {
+        return String(n).padStart(2, '0');
+      }
+    }, []),
     useCallback((s) => {
       const lowerSearch = s.toLowerCase();
       return allMonthOptions.filter(
