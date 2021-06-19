@@ -92,11 +92,13 @@ export const MetaEventControl = (props: Props) => {
               eventTimeout(gameMetaEventContext.evtId);
             }}
             onAccept={undefined}
-            onDecline={undefined}
+            onDecline={() => {
+              denyAbort(gameMetaEventContext.evtId);
+            }}
             introText="Waiting for your opponent to respond to your cancel request."
             countdownText="Automatic cancellation in "
             acceptText=""
-            declineText=""
+            declineText="Keep playing"
           />
         );
         break;
@@ -130,11 +132,13 @@ export const MetaEventControl = (props: Props) => {
               eventTimeout(gameMetaEventContext.evtId);
             }}
             onAccept={undefined}
-            onDecline={undefined}
+            onDecline={() => {
+              denyAbort(gameMetaEventContext.evtId);
+            }}
             introText="Waiting for your opponent to respond to your nudge."
             countdownText="Automatic forfeit in "
             acceptText=""
-            declineText=""
+            declineText="Keep playing"
           />
         );
 
