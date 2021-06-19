@@ -1,11 +1,11 @@
-import React from 'react';
+import React, { useCallback, useEffect, useRef } from 'react';
 import { Link, useHistory } from 'react-router-dom';
 import { Card, Modal, Button } from 'antd';
 import { useMountedState } from '../utils/mounted';
 import { SoughtGames } from './sought_games';
 import { ActiveGames } from './active_games';
 import { SeekForm } from './seek_form';
-import { useLobbyStoreContext } from '../store/store';
+import { useContextMatchContext, useLobbyStoreContext } from '../store/store';
 import { ActiveGame, SoughtGame } from '../store/reducers/lobby_reducer';
 import './seek_form.scss';
 
@@ -37,6 +37,32 @@ export const GameLists = React.memo((props: Props) => {
   const [seekModalVisible, setSeekModalVisible] = useState(false);
   const [matchModalVisible, setMatchModalVisible] = useState(false);
   const [botModalVisible, setBotModalVisible] = useState(false);
+
+  const {
+    addHandleContextMatch,
+    removeHandleContextMatch,
+  } = useContextMatchContext();
+  const friendRef = useRef('');
+  const handleContextMatch = useCallback((s: string) => {
+    friendRef.current = s;
+    setMatchModalVisible(true);
+  }, []);
+  useEffect(() => {
+    if (!(seekModalVisible || matchModalVisible || botModalVisible)) {
+      addHandleContextMatch(handleContextMatch);
+      return () => {
+        removeHandleContextMatch(handleContextMatch);
+      };
+    }
+  }, [
+    seekModalVisible,
+    matchModalVisible,
+    botModalVisible,
+    handleContextMatch,
+    addHandleContextMatch,
+    removeHandleContextMatch,
+  ]);
+
   const [simultaneousModeEnabled, setSimultaneousModeEnabled] = useState(false);
   const handleEnableSimultaneousMode = React.useCallback((evt) => {
     evt.preventDefault();
@@ -206,6 +232,7 @@ export const GameLists = React.memo((props: Props) => {
         onFormSubmit={onFormSubmit}
         loggedIn={props.loggedIn}
         showFriendInput={true}
+        friendRef={friendRef}
         id="match-seek"
       />
     </Modal>

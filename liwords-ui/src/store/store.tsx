@@ -68,6 +68,13 @@ const defaultTimerContext = {
 const defaultFunction = () => {};
 
 // Functions and data to deal with the global store.
+
+type ContextMatchStoreData = {
+  handleContextMatches: Array<(s: string) => void>;
+  addHandleContextMatch: (x: (s: string) => void) => void;
+  removeHandleContextMatch: (x: (s: string) => void) => void;
+};
+
 type LobbyStoreData = {
   lobbyContext: LobbyState;
   dispatchLobbyContext: (action: Action) => void;
@@ -210,6 +217,12 @@ const defaultGameState = startingGameState(
 // This is annoying, but we have to add a default for everything in this
 // declaration. Declaring it as a Partial<StoreData> breaks things elsewhere.
 // For context, these used to be a single StoreData that contained everything.
+
+const ContextMatchContext = createContext<ContextMatchStoreData>({
+  handleContextMatches: [],
+  addHandleContextMatch: defaultFunction,
+  removeHandleContextMatch: defaultFunction,
+});
 
 const LobbyContext = createContext<LobbyStoreData>({
   lobbyContext: {
@@ -879,6 +892,32 @@ const RealStore = ({ children, ...props }: Props) => {
     setTimerContext({ ...clockController.current.times });
   }, []);
 
+  const [handleContextMatches, setHandleContextMatches] = useState(
+    new Array<(s: string) => void>()
+  );
+  const addHandleContextMatch = useCallback((x) => {
+    setHandleContextMatches((a: Array<(s: string) => void>) => {
+      if (!a.includes(x)) {
+        a = [...a, x];
+      }
+      return a;
+    });
+  }, []);
+  const removeHandleContextMatch = useCallback((x) => {
+    setHandleContextMatches((a) => {
+      const b = a.filter((y) => y !== x);
+      return a.length === b.length ? a : b;
+    });
+  }, []);
+
+  const contextMatchStore = useMemo(
+    () => ({
+      handleContextMatches,
+      addHandleContextMatch,
+      removeHandleContextMatch,
+    }),
+    [handleContextMatches, addHandleContextMatch, removeHandleContextMatch]
+  );
   const lobbyStore = useMemo(
     () => ({
       lobbyContext,
@@ -1051,6 +1090,9 @@ const RealStore = ({ children, ...props }: Props) => {
   );
 
   let ret = <ExaminableStore children={children} />;
+  ret = (
+    <ContextMatchContext.Provider value={contextMatchStore} children={ret} />
+  );
   ret = <LobbyContext.Provider value={lobbyStore} children={ret} />;
   ret = <LoginStateContext.Provider value={loginStateStore} children={ret} />;
   ret = <LagContext.Provider value={lagStore} children={ret} />;
@@ -1124,6 +1166,7 @@ export const Store = ({ children }: { children: React.ReactNode }) => {
   );
 };
 
+export const useContextMatchContext = () => useContext(ContextMatchContext);
 export const useLobbyStoreContext = () => useContext(LobbyContext);
 export const useLoginStateStoreContext = () => useContext(LoginStateContext);
 export const useLagStoreContext = () => useContext(LagContext);

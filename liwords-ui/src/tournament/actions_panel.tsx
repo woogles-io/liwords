@@ -1,12 +1,19 @@
 import { Button, Card, message, Select } from 'antd';
 import Modal from 'antd/lib/modal/Modal';
-import React, { ReactNode, useCallback, useEffect, useMemo } from 'react';
+import React, {
+  ReactNode,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+} from 'react';
 import { LeftOutlined, RightOutlined } from '@ant-design/icons';
 import { ActiveGames } from '../lobby/active_games';
 import { SeekForm } from '../lobby/seek_form';
 import { SoughtGames } from '../lobby/sought_games';
 import { SoughtGame } from '../store/reducers/lobby_reducer';
 import {
+  useContextMatchContext,
   useLobbyStoreContext,
   useTournamentStoreContext,
 } from '../store/store';
@@ -43,6 +50,30 @@ type Props = {
 export const ActionsPanel = React.memo((props: Props) => {
   const { useState } = useMountedState();
   const [matchModalVisible, setMatchModalVisible] = useState(false);
+
+  const {
+    addHandleContextMatch,
+    removeHandleContextMatch,
+  } = useContextMatchContext();
+  const friendRef = useRef('');
+  const handleContextMatch = useCallback((s: string) => {
+    friendRef.current = s;
+    setMatchModalVisible(true);
+  }, []);
+  useEffect(() => {
+    if (!matchModalVisible) {
+      addHandleContextMatch(handleContextMatch);
+      return () => {
+        removeHandleContextMatch(handleContextMatch);
+      };
+    }
+  }, [
+    matchModalVisible,
+    handleContextMatch,
+    addHandleContextMatch,
+    removeHandleContextMatch,
+  ]);
+
   const [formDisabled, setFormDisabled] = useState(false);
   const {
     selectedGameTab,
@@ -300,6 +331,7 @@ export const ActionsPanel = React.memo((props: Props) => {
         loggedIn={props.loggedIn}
         username={props.username}
         showFriendInput={true}
+        friendRef={friendRef}
         id="match-seek"
         tournamentID={props.tournamentID}
       />
