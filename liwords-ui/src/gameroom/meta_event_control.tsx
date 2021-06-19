@@ -1,4 +1,3 @@
-import { notification } from 'antd';
 import React, { useCallback, useEffect } from 'react';
 import {
   GameMetaEvent,

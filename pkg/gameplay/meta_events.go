@@ -24,7 +24,8 @@ var (
 	ErrPleaseWaitToEnd              = errors.New("this game is almost over; request not sent")
 	ErrMetaEventExpirationIncorrect = errors.New("meta event did not expire")
 	ErrAlreadyOutstandingRequest    = errors.New("you already have an outstanding request")
-	// generic not allowed:
+	// generic not allowed error; the front-end should disallow anything that can
+	// return this error:
 	ErrNotAllowed = errors.New("that action is not allowed")
 )
 
@@ -180,6 +181,11 @@ func HandleMetaEvent(ctx context.Context, evt *pb.GameMetaEvent, eventChan chan<
 		log.Debug().Int("timeRemaining", timeRemaining).Int("onturn", onTurn).Msg("timeremaining")
 		if timeRemaining < DisallowMsecsRemaining {
 			return ErrPleaseWaitToEnd
+		}
+
+		if g.Game.PlayerIDOnTurn() == evt.PlayerId && evt.Type == pb.GameMetaEvent_REQUEST_ADJUDICATION {
+			// people with running clocks shouldn't be allowed to request adjudication.
+			return ErrNotAllowed
 		}
 
 		// Add expiry time to event.

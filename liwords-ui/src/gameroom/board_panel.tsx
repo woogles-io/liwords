@@ -1412,9 +1412,9 @@ export const BoardPanel = React.memo((props: Props) => {
     return !props.vsBot && gameContext.turns.length <= 7;
   }, [gameContext.turns, props.vsBot]);
   const showNudge = useMemo(() => {
-    // Only show nudge if this is not a tournament/club game.
-    return !props.vsBot && props.tournamentID === '';
-  }, [props.tournamentID, props.vsBot]);
+    // Only show nudge if this is not a tournament/club game and it's not our turn.
+    return !isMyTurn() && !props.vsBot && props.tournamentID === '';
+  }, [isMyTurn, props.tournamentID, props.vsBot]);
 
   const gameBoard = (
     <div
