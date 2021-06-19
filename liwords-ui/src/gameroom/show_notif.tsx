@@ -20,6 +20,7 @@ export const ShowNotif = (props: Props) => {
   React.useEffect(() => {
     notification.info({
       // other params, TODO
+      closeIcon: <></>,
       key: myId,
       message: '',
       description: <TimedNotif {...props} />,
