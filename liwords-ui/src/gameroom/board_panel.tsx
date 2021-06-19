@@ -248,7 +248,7 @@ export const BoardPanel = React.memo((props: Props) => {
   } = useTentativeTileContext();
 
   const observer = !props.playerMeta.some((p) => p.nickname === props.username);
-  const isMyTurn = useCallback(() => {
+  const isMyTurn = useMemo(() => {
     const iam = gameContext.nickToPlayerOrder[props.username];
     return iam && iam === `p${examinableGameContext.onturn}`;
   }, [
@@ -263,7 +263,7 @@ export const BoardPanel = React.memo((props: Props) => {
     (move: string, addl?: string) => {
       if (isExamining) return;
       let moveEvt;
-      if (move !== 'resign' && !isMyTurn()) {
+      if (move !== 'resign' && !isMyTurn) {
         console.log(
           'off turn move attempts',
           gameContext.nickToPlayerOrder,
@@ -432,7 +432,7 @@ export const BoardPanel = React.memo((props: Props) => {
   const lastLettersRef = useRef<string>();
   const readOnlyEffectDependenciesRef = useRef<{
     displayedRack: string;
-    isMyTurn: () => boolean;
+    isMyTurn: boolean;
     placedTiles: Set<EphemeralTile>;
     dim: number;
     arrowProperties: {
@@ -468,7 +468,7 @@ export const BoardPanel = React.memo((props: Props) => {
     } else if (isExamining) {
       // Prevent stuck tiles.
       fullReset = true;
-    } else if (!dep.isMyTurn()) {
+    } else if (!dep.isMyTurn) {
       // Opponent's turn means we have just made a move. (Assumption: there are only two players.)
       fullReset = true;
     } else {
@@ -554,7 +554,7 @@ export const BoardPanel = React.memo((props: Props) => {
   useEffect(() => {
     if (
       examinableGameContext.playState === PlayState.WAITING_FOR_FINAL_PASS &&
-      isMyTurn()
+      isMyTurn
     ) {
       const finalAction = (
         <>
@@ -939,7 +939,7 @@ export const BoardPanel = React.memo((props: Props) => {
               ''
             );
           } else if (blindfoldCommand.toUpperCase() === 'W') {
-            if (isMyTurn()) {
+            if (isMyTurn) {
               say('It is your turn.', '');
             } else {
               say("It is your opponent's turn", '');
@@ -994,7 +994,7 @@ export const BoardPanel = React.memo((props: Props) => {
           setCurrentMode('BLIND');
           return;
         }
-        if (isMyTurn() && !props.gameDone) {
+        if (isMyTurn && !props.gameDone) {
           if (key === '2') {
             evt.preventDefault();
             if (handlePassShortcut.current) handlePassShortcut.current();
@@ -1413,7 +1413,7 @@ export const BoardPanel = React.memo((props: Props) => {
   }, [gameContext.turns, props.vsBot]);
   const showNudge = useMemo(() => {
     // Only show nudge if this is not a tournament/club game and it's not our turn.
-    return !isMyTurn() && !props.vsBot && props.tournamentID === '';
+    return !isMyTurn && !props.vsBot && props.tournamentID === '';
   }, [isMyTurn, props.tournamentID, props.vsBot]);
 
   const gameBoard = (
@@ -1488,7 +1488,7 @@ export const BoardPanel = React.memo((props: Props) => {
       {isTouchDevice() ? <TilePreview gridDim={props.board.dim} /> : null}
       <GameControls
         isExamining={isExamining}
-        myTurn={isMyTurn()}
+        myTurn={isMyTurn}
         finalPassOrChallenge={
           examinableGameContext.playState === PlayState.WAITING_FOR_FINAL_PASS
         }
