@@ -8,6 +8,7 @@ type Props = {
   onAccept?: () => void;
   onDecline?: () => void;
   introText: string;
+  countdownText: string;
   acceptText: string;
   declineText: string;
 };

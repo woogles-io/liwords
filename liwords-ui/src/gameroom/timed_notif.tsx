@@ -8,6 +8,7 @@ type Props = {
   onAccept?: () => void;
   onDecline?: () => void;
   introText: string;
+  countdownText: string;
   acceptText: string;
   declineText: string;
 };
@@ -19,6 +20,7 @@ export const TimedNotif = (props: Props) => {
     onAccept,
     onDecline,
     introText,
+    countdownText,
     acceptText,
     declineText,
   } = props;
@@ -31,14 +33,19 @@ export const TimedNotif = (props: Props) => {
 
   return (
     <>
-      {introText}
-      <SimpleTimer
-        lastRefreshedPerformanceNow={whenLoaded}
-        millisAtLastRefresh={maxDuration}
-        isRunning
-      />
-      {onDecline && <Button onClick={onDecline}>{declineText}</Button>}
-      {onAccept && <Button onClick={onAccept}>{acceptText}</Button>}
+      <p>{introText}</p>
+      <p>
+        {countdownText}
+        <SimpleTimer
+          lastRefreshedPerformanceNow={whenLoaded}
+          millisAtLastRefresh={maxDuration}
+          isRunning
+        />
+      </p>
+      <p>
+        {onDecline && <Button onClick={onDecline}>{declineText}</Button>}
+        {onAccept && <Button onClick={onAccept}>{acceptText}</Button>}
+      </p>
     </>
   );
 };
