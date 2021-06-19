@@ -3631,7 +3631,11 @@ proto.user_service.UserRegistrationRequest.toObject = function(includeInstance, 
     username: jspb.Message.getFieldWithDefault(msg, 1, ""),
     password: jspb.Message.getFieldWithDefault(msg, 2, ""),
     email: jspb.Message.getFieldWithDefault(msg, 3, ""),
-    registrationCode: jspb.Message.getFieldWithDefault(msg, 4, "")
+    registrationCode: jspb.Message.getFieldWithDefault(msg, 4, ""),
+    birthDate: jspb.Message.getFieldWithDefault(msg, 5, ""),
+    firstName: jspb.Message.getFieldWithDefault(msg, 6, ""),
+    lastName: jspb.Message.getFieldWithDefault(msg, 7, ""),
+    countryCode: jspb.Message.getFieldWithDefault(msg, 8, "")
   };
 
   if (includeInstance) {
@@ -3683,6 +3687,22 @@ proto.user_service.UserRegistrationRequest.deserializeBinaryFromReader = functio
     case 4:
       var value = /** @type {string} */ (reader.readString());
       msg.setRegistrationCode(value);
+      break;
+    case 5:
+      var value = /** @type {string} */ (reader.readString());
+      msg.setBirthDate(value);
+      break;
+    case 6:
+      var value = /** @type {string} */ (reader.readString());
+      msg.setFirstName(value);
+      break;
+    case 7:
+      var value = /** @type {string} */ (reader.readString());
+      msg.setLastName(value);
+      break;
+    case 8:
+      var value = /** @type {string} */ (reader.readString());
+      msg.setCountryCode(value);
       break;
     default:
       reader.skipField();
@@ -3738,6 +3758,34 @@ proto.user_service.UserRegistrationRequest.serializeBinaryToWriter = function(me
   if (f.length > 0) {
     writer.writeString(
       4,
+      f
+    );
+  }
+  f = message.getBirthDate();
+  if (f.length > 0) {
+    writer.writeString(
+      5,
+      f
+    );
+  }
+  f = message.getFirstName();
+  if (f.length > 0) {
+    writer.writeString(
+      6,
+      f
+    );
+  }
+  f = message.getLastName();
+  if (f.length > 0) {
+    writer.writeString(
+      7,
+      f
+    );
+  }
+  f = message.getCountryCode();
+  if (f.length > 0) {
+    writer.writeString(
+      8,
       f
     );
   }
@@ -3813,6 +3861,78 @@ proto.user_service.UserRegistrationRequest.prototype.getRegistrationCode = funct
  */
 proto.user_service.UserRegistrationRequest.prototype.setRegistrationCode = function(value) {
   return jspb.Message.setProto3StringField(this, 4, value);
+};
+
+
+/**
+ * optional string birth_date = 5;
+ * @return {string}
+ */
+proto.user_service.UserRegistrationRequest.prototype.getBirthDate = function() {
+  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 5, ""));
+};
+
+
+/**
+ * @param {string} value
+ * @return {!proto.user_service.UserRegistrationRequest} returns this
+ */
+proto.user_service.UserRegistrationRequest.prototype.setBirthDate = function(value) {
+  return jspb.Message.setProto3StringField(this, 5, value);
+};
+
+
+/**
+ * optional string first_name = 6;
+ * @return {string}
+ */
+proto.user_service.UserRegistrationRequest.prototype.getFirstName = function() {
+  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 6, ""));
+};
+
+
+/**
+ * @param {string} value
+ * @return {!proto.user_service.UserRegistrationRequest} returns this
+ */
+proto.user_service.UserRegistrationRequest.prototype.setFirstName = function(value) {
+  return jspb.Message.setProto3StringField(this, 6, value);
+};
+
+
+/**
+ * optional string last_name = 7;
+ * @return {string}
+ */
+proto.user_service.UserRegistrationRequest.prototype.getLastName = function() {
+  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 7, ""));
+};
+
+
+/**
+ * @param {string} value
+ * @return {!proto.user_service.UserRegistrationRequest} returns this
+ */
+proto.user_service.UserRegistrationRequest.prototype.setLastName = function(value) {
+  return jspb.Message.setProto3StringField(this, 7, value);
+};
+
+
+/**
+ * optional string country_code = 8;
+ * @return {string}
+ */
+proto.user_service.UserRegistrationRequest.prototype.getCountryCode = function() {
+  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 8, ""));
+};
+
+
+/**
+ * @param {string} value
+ * @return {!proto.user_service.UserRegistrationRequest} returns this
+ */
+proto.user_service.UserRegistrationRequest.prototype.setCountryCode = function(value) {
+  return jspb.Message.setProto3StringField(this, 8, value);
 };
 
 

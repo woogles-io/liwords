@@ -390,11 +390,24 @@ func (s *DBStore) New(ctx context.Context, u *entity.User) error {
 	if err != nil {
 		return err
 	}
-	dbp := &profile{
-		User:    *dbu,
-		Ratings: postgres.Jsonb{RawMessage: ratbytes},
-		Stats:   postgres.Jsonb{RawMessage: statbytes},
+	prof := u.Profile
+	if prof == nil {
+		prof = &entity.Profile{}
 	}
+	// XXX: no validation for BirthDate etc. :-(
+	dbp := &profile{
+		User:        *dbu,
+		FirstName:   prof.FirstName,
+		LastName:    prof.LastName,
+		BirthDate:   prof.BirthDate,
+		CountryCode: prof.CountryCode,
+		Title:       prof.Title,
+		AvatarUrl:   prof.AvatarUrl,
+		About:       prof.About,
+		Ratings:     postgres.Jsonb{RawMessage: ratbytes},
+		Stats:       postgres.Jsonb{RawMessage: statbytes},
+	}
+	// XXX: Should be in transaction.
 	result = s.db.Create(dbp)
 	return result.Error
 }

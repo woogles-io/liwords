@@ -1,6 +1,7 @@
 package bus
 
 import (
+	"context"
 	"errors"
 	"strconv"
 
@@ -9,13 +10,15 @@ import (
 	macondopb "github.com/domino14/macondo/gen/api/proto/macondo"
 
 	"github.com/domino14/liwords/pkg/entity"
+	"github.com/domino14/liwords/pkg/mod"
+	"github.com/domino14/liwords/pkg/user"
 	pb "github.com/domino14/liwords/rpc/api/proto/realtime"
 )
 
 // Events need to be sanitized so that we don't send user racks to people
 // who shouldn't get them. Note that sanitize only runs for events that are
 // sent DIRECTLY to a player (see AudUser), and not for AudGameTv for example.
-func sanitize(evt *entity.EventWrapper, userID string) (*entity.EventWrapper, error) {
+func sanitize(us user.Store, evt *entity.EventWrapper, userID string) (*entity.EventWrapper, error) {
 	// Depending on the event type and even the state of the game, we return a
 	// sanitized event (or not).
 	switch evt.Type {
@@ -27,18 +30,21 @@ func sanitize(evt *entity.EventWrapper, userID string) (*entity.EventWrapper, er
 		if !ok {
 			return nil, errors.New("subevt-wrong-format")
 		}
+		// Possibly censors users
+		cloned := proto.Clone(subevt).(*pb.GameHistoryRefresher)
+		cloned.History = mod.CensorHistory(context.Background(), us, cloned.History)
+
 		if subevt.History.PlayState == macondopb.PlayState_GAME_OVER {
 			// no need to sanitize if the game is over.
-			return evt, nil
+			return entity.WrapEvent(cloned, pb.MessageType_GAME_HISTORY_REFRESHER), nil
 		}
 		mynick := nicknameFromUserID(userID, subevt.History.Players)
 		if mynick == "" {
 			// No need to sanitize if we don't have a nickname IN THE GAME;
 			// this only happens if we are not playing the game.
-			return evt, nil
+			return entity.WrapEvent(cloned, pb.MessageType_GAME_HISTORY_REFRESHER), nil
 		}
 
-		cloned := proto.Clone(subevt).(*pb.GameHistoryRefresher)
 		// Only sanitize if the nickname is not empty. The nickname is
 		// empty if they are not playing in this game.
 		for _, evt := range cloned.History.Events {

@@ -4,7 +4,7 @@ import axios from 'axios';
 import { Link } from 'react-router-dom';
 import './topbar.scss';
 import { DisconnectOutlined, SettingOutlined } from '@ant-design/icons/lib';
-import { notification, Dropdown, Tooltip, Modal } from 'antd';
+import { notification, Dropdown, Tooltip } from 'antd';
 import {
   useLagStoreContext,
   useLoginStateStoreContext,
@@ -12,7 +12,7 @@ import {
   useTournamentStoreContext,
 } from '../store/store';
 import { toAPIUrl } from '../api/api';
-import { Login } from '../lobby/login';
+import { LoginModal } from '../lobby/login';
 import { useMountedState } from '../utils/mounted';
 import { isClubType } from '../store/constants';
 
@@ -159,19 +159,7 @@ export const TopBar = React.memo((props: Props) => {
             <Link to="/register">
               <button className="primary">Sign Up</button>
             </Link>
-            <Modal
-              className="login-modal"
-              title="Welcome back, friend!"
-              visible={loginModalVisible}
-              onCancel={() => {
-                setLoginModalVisible(false);
-              }}
-              footer={null}
-              width={332}
-              zIndex={1150}
-            >
-              <Login />
-            </Modal>
+            <LoginModal {...{ loginModalVisible, setLoginModalVisible }} />
           </div>
         )}
       </div>

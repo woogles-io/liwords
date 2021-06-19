@@ -369,6 +369,18 @@ export class UserRegistrationRequest extends jspb.Message {
   getRegistrationCode(): string;
   setRegistrationCode(value: string): void;
 
+  getBirthDate(): string;
+  setBirthDate(value: string): void;
+
+  getFirstName(): string;
+  setFirstName(value: string): void;
+
+  getLastName(): string;
+  setLastName(value: string): void;
+
+  getCountryCode(): string;
+  setCountryCode(value: string): void;
+
   serializeBinary(): Uint8Array;
   toObject(includeInstance?: boolean): UserRegistrationRequest.AsObject;
   static toObject(includeInstance: boolean, msg: UserRegistrationRequest): UserRegistrationRequest.AsObject;
@@ -385,6 +397,10 @@ export namespace UserRegistrationRequest {
     password: string,
     email: string,
     registrationCode: string,
+    birthDate: string,
+    firstName: string,
+    lastName: string,
+    countryCode: string,
   }
 }
 

@@ -9,11 +9,13 @@ import (
 	"github.com/domino14/liwords/pkg/config"
 	"github.com/domino14/liwords/pkg/entity"
 	"github.com/domino14/liwords/pkg/user"
+	"github.com/domino14/liwords/pkg/utilities"
 	"github.com/lib/pq"
 )
 
 // RegisterUser registers a user.
 func RegisterUser(ctx context.Context, username string, password string, email string,
+	firstName string, lastName string, birthDate string, countryCode string,
 	userStore user.Store, bot bool, argonConfig config.ArgonConfig) error {
 	// username = strings.Rep
 	if len(username) < 3 || len(username) > 20 {
@@ -25,7 +27,9 @@ func RegisterUser(ctx context.Context, username string, password string, email s
 		return errors.New("username can only contain letters, digits, period, hyphen or underscore")
 	}
 	// Should we have other unacceptable usernames?
-	if strings.ToLower(username) == "anonymous" {
+	if strings.EqualFold(username, "anonymous") ||
+		strings.EqualFold(username, utilities.CensoredUsername) ||
+		strings.EqualFold(username, utilities.AnotherCensoredUsername) {
 		return errors.New("username is not acceptable")
 	}
 	if strings.HasPrefix(username, "-") || strings.HasPrefix(username, ".") || strings.HasPrefix(username, "_") {
@@ -52,7 +56,13 @@ func RegisterUser(ctx context.Context, username string, password string, email s
 		Username: username,
 		Password: hashPass,
 		Email:    email,
-		IsBot:    bot,
+		Profile: &entity.Profile{
+			FirstName:   firstName,
+			LastName:    lastName,
+			BirthDate:   birthDate,
+			CountryCode: countryCode,
+		},
+		IsBot: bot,
 	})
 	if err != nil {
 		if err, ok := err.(*pq.Error); ok {
