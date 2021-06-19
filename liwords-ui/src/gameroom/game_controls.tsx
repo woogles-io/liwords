@@ -79,12 +79,13 @@ const ExamineGameControls = React.memo((props: { lexicon: string }) => {
 
 type OptionsMenuProps = {
   handleOptionsClick: (e: MenuInfo) => void;
+  hideMe: (e: React.MouseEvent<HTMLElement>) => void;
   showAbort: boolean;
   showNudge: boolean;
 };
 
 const OptionsGameMenu = (props: OptionsMenuProps) => (
-  <Menu onClick={props.handleOptionsClick}>
+  <Menu onClick={props.handleOptionsClick} onMouseLeave={props.hideMe}>
     <Menu.Item key="resign">Resign</Menu.Item>
     {props.showAbort && <Menu.Item key="abort">Cancel game</Menu.Item>}
     {props.showNudge && <Menu.Item key="nudge">Nudge</Menu.Item>}
@@ -251,6 +252,9 @@ const GameControls = React.memo((props: Props) => {
     <OptionsGameMenu
       showAbort={props.showAbort}
       showNudge={props.showNudge}
+      hideMe={(e) => {
+        setOptionsMenuVisible(false);
+      }}
       handleOptionsClick={(e) => {
         message.info('clicked an item');
         console.log(e.key);
