@@ -45,7 +45,7 @@ export const TimedNotif = (props: Props) => {
           isRunning
         />
       </p>
-      <p>
+      <p className="row-of-buttons">
         {onDecline && (
           <Button
             type={onDecline && onAccept ? 'primary' : undefined}
