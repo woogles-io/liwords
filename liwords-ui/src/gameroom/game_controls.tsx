@@ -272,9 +272,10 @@ const GameControls = React.memo((props: Props) => {
         switch (e.key) {
           case 'resign':
             Modal.confirm({
-              title: 'Are you sure you wish to resign?',
+              title: <p>Are you sure you wish to resign?</p>,
               icon: <ExclamationCircleOutlined />,
-              content: 'Your rating will be maximally affected.',
+              // XXX: what if it's unrated?
+              content: <p>Your rating will be maximally affected.</p>,
               onOk() {
                 props.onResign();
               },
@@ -282,9 +283,9 @@ const GameControls = React.memo((props: Props) => {
             break;
           case 'abort':
             Modal.confirm({
-              title: 'Request an abort',
+              title: <p>Request an abort</p>,
               icon: <ExclamationCircleOutlined />,
-              content: 'This will request an abort from your opponent.',
+              content: <p>This will request an abort from your opponent.</p>,
               onOk() {
                 props.onRequestAbort();
               },
@@ -292,11 +293,14 @@ const GameControls = React.memo((props: Props) => {
             break;
           case 'nudge':
             Modal.confirm({
-              title: 'Nudge your opponent',
+              title: <p>Nudge your opponent</p>,
               icon: <ExclamationCircleOutlined />,
-              content:
-                'Clicking OK will send a nudge to your opponent. ' +
-                'If they do not respond, the game will be adjudicated in your favor.',
+              content: (
+                <p>
+                  Clicking OK will send a nudge to your opponent. If they do not
+                  respond, the game will be adjudicated in your favor.
+                </p>
+              ),
               onOk() {
                 props.onNudge();
               },
