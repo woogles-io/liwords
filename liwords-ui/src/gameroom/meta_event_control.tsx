@@ -19,7 +19,9 @@ export const MetaEventControl = (props: Props) => {
   const { sendSocketMsg, gameID } = props;
   const { useState } = useMountedState();
   // can't get this to work with types:
-  const [activeNotif, setActiveNotif] = useState<any>(null);
+  const [activeNotif, setActiveNotif] = useState<React.ReactElement | null>(
+    null
+  );
 
   const denyAbort = useCallback(
     (evtid: string) => {
@@ -92,10 +94,13 @@ export const MetaEventControl = (props: Props) => {
               eventTimeout(gameMetaEventContext.evtId);
             }}
             onAccept={undefined}
-            onDecline={undefined}
+            onDecline={() => {
+              denyAbort(gameMetaEventContext.evtId);
+            }}
             introText="Waiting for your opponent to respond to your cancel request."
+            countdownText="Automatic cancellation in "
             acceptText=""
-            declineText=""
+            declineText="Keep playing"
           />
         );
         break;
@@ -114,6 +119,7 @@ export const MetaEventControl = (props: Props) => {
               denyAbort(gameMetaEventContext.evtId);
             }}
             introText="Your opponent wants to cancel the game. Ratings won't change."
+            countdownText="Automatic cancellation in "
             acceptText="Yes, cancel"
             declineText="Keep playing"
           />
@@ -128,10 +134,13 @@ export const MetaEventControl = (props: Props) => {
               eventTimeout(gameMetaEventContext.evtId);
             }}
             onAccept={undefined}
-            onDecline={undefined}
+            onDecline={() => {
+              denyAdjudication(gameMetaEventContext.evtId);
+            }}
             introText="Waiting for your opponent to respond to your nudge."
+            countdownText="Automatic forfeit in "
             acceptText=""
-            declineText=""
+            declineText="Keep playing"
           />
         );
 
@@ -150,6 +159,7 @@ export const MetaEventControl = (props: Props) => {
             introText={
               'Your opponent nudged you! Hit "Keep playing" if you\'re still there.'
             }
+            countdownText="Automatic forfeit in "
             acceptText=""
             declineText="Keep playing"
           />

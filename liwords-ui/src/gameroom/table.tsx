@@ -925,6 +925,31 @@ export const Table = React.memo((props: Props) => {
     'board--' + tournamentContext.metadata.getBoardStyle() || '';
   const tileTheme = 'tile--' + tournamentContext.metadata.getTileStyle() || '';
 
+  const showingFinalTurn =
+    gameContext.turns.length === examinableGameContext.turns.length;
+  const gameEpilog = useMemo(() => {
+    // XXX: this doesn't get updated when game ends, only when refresh?
+
+    return (
+      <React.Fragment>
+        {showingFinalTurn && (
+          <React.Fragment>
+            {gameInfo.game_end_reason === 'FORCE_FORFEIT' && (
+              <React.Fragment>
+                Game ended in forfeit.{/* XXX: How to get winners? */}
+              </React.Fragment>
+            )}
+            {gameInfo.game_end_reason === 'ABORTED' && (
+              <React.Fragment>
+                The game was aborted. Rating and statistics were not affected.
+              </React.Fragment>
+            )}
+          </React.Fragment>
+        )}
+      </React.Fragment>
+    );
+  }, [gameInfo.game_end_reason, showingFinalTurn]);
+
   let ret = (
     <div className={`game-container${isRegistered ? ' competitor' : ''}`}>
       <ManageWindowTitleAndTurnSound />
@@ -1087,6 +1112,7 @@ export const Table = React.memo((props: Props) => {
             board={examinableGameContext.board}
             playerMeta={gameInfo.players}
             poolFormat={poolFormat}
+            gameEpilog={gameEpilog}
           />
         </div>
       </div>

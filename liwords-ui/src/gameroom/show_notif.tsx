@@ -8,6 +8,7 @@ type Props = {
   onAccept?: () => void;
   onDecline?: () => void;
   introText: string;
+  countdownText: string;
   acceptText: string;
   declineText: string;
 };
@@ -20,6 +21,7 @@ export const ShowNotif = (props: Props) => {
   React.useEffect(() => {
     notification.info({
       // other params, TODO
+      closeIcon: <></>,
       key: myId,
       message: '',
       description: <TimedNotif {...props} />,

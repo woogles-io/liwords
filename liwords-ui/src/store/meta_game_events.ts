@@ -59,6 +59,8 @@ export const metaStateFromMetaEvent = (
       if (!evtCreator) {
         // if this isn't filled in, the abort request is auto cancelled.
         content = 'The abort request was cancelled.';
+      } else if (evtCreator === oldState.evtCreator) {
+        content = 'The abort request was withdrawn.';
       }
 
       message.info({

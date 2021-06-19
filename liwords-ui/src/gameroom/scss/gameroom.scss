@@ -1657,3 +1657,19 @@ p.rune {
   }
 }
 
+.timed-notification {
+  & > p:nth-of-type(n + 2) {
+    margin-top: 1em;
+  }
+
+  & > .row-of-buttons {
+    text-align: right;
+  }
+}
+.ant-modal-body {
+  p {
+    @include colorModed() {
+      color: m($gray-extreme);
+    }
+  }
+}
