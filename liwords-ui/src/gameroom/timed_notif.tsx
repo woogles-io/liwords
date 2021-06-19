@@ -31,6 +31,9 @@ export const TimedNotif = (props: Props) => {
     return () => clearTimeout(t);
   }, [maxDuration, onExpire]);
 
+  // in antd, "primary" button is blue. this is perfect for the non-primary button.
+  // (please facepalm.)
+
   return (
     <div className="timed-notification">
       <p>{introText}</p>
@@ -43,7 +46,14 @@ export const TimedNotif = (props: Props) => {
         />
       </p>
       <p>
-        {onDecline && <Button onClick={onDecline}>{declineText}</Button>}
+        {onDecline && (
+          <Button
+            type={onDecline && onAccept ? 'primary' : undefined}
+            onClick={onDecline}
+          >
+            {declineText}
+          </Button>
+        )}
         {onAccept && <Button onClick={onAccept}>{acceptText}</Button>}
       </p>
     </div>
