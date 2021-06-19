@@ -24,7 +24,15 @@ export const GamesHistoryCard = React.memo((props: Props) => {
       (item) => item.players?.length && item.game_end_reason !== 'CANCELLED'
     )
     .map((item) => {
-      const userplace = item.players[0].user_id === userID ? 0 : 1;
+      let userplace = 1;
+      if (
+        item.players[0].user_id === userID ||
+        ((item.players[0].user_id === 'Unwoogler' ||
+          item.players[0].user_id === 'AnotherUnwoogler') &&
+          item.players[1].user_id !== userID)
+      ) {
+        userplace = 0;
+      }
       const opponent = (
         <Link
           to={`/profile/${encodeURIComponent(
