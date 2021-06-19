@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef } from 'react';
 import { useHistory } from 'react-router-dom';
 import { Button, Dropdown, Menu, Modal, message, Popconfirm } from 'antd';
 import { MenuInfo } from 'rc-menu/lib/interface';
@@ -82,10 +82,15 @@ type OptionsMenuProps = {
   hideMe: (e: React.MouseEvent<HTMLElement>) => void;
   showAbort: boolean;
   showNudge: boolean;
+  darkMode: boolean;
 };
 
 const OptionsGameMenu = (props: OptionsMenuProps) => (
-  <Menu onClick={props.handleOptionsClick} onMouseLeave={props.hideMe}>
+  <Menu
+    onClick={props.handleOptionsClick}
+    onMouseLeave={props.hideMe}
+    theme={props.darkMode ? 'dark' : 'light'}
+  >
     <Menu.Item key="resign">Resign</Menu.Item>
     {props.showAbort && <Menu.Item key="abort">Cancel game</Menu.Item>}
     {props.showNudge && <Menu.Item key="nudge">Nudge</Menu.Item>}
@@ -148,6 +153,11 @@ const GameControls = React.memo((props: Props) => {
 
   const passButton = useRef<HTMLElement>(null);
   const challengeButton = useRef<HTMLElement>(null);
+
+  const darkMode = useMemo(
+    () => localStorage?.getItem('darkMode') === 'true',
+    []
+  );
 
   const history = useHistory();
   const handleExitToLobby = useCallback(() => {
@@ -308,6 +318,7 @@ const GameControls = React.memo((props: Props) => {
             break;
         }
       }}
+      darkMode={darkMode}
     />
   );
 
