@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useRef } from 'react';
 import { useHistory } from 'react-router-dom';
 import { Button, Dropdown, Menu, Modal, message, Popconfirm } from 'antd';
+import { MenuInfo } from 'rc-menu/lib/interface';
 
 import {
   DoubleLeftOutlined,
@@ -77,7 +78,7 @@ const ExamineGameControls = React.memo((props: { lexicon: string }) => {
 });
 
 type OptionsMenuProps = {
-  handleOptionsClick: (e: any /* GOD what is the actual type here */) => void;
+  handleOptionsClick: (e: MenuInfo) => void;
   showAbort: boolean;
   showNudge: boolean;
 };
