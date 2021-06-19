@@ -222,6 +222,15 @@ const GameControls = React.memo((props: Props) => {
     setHandleNeitherShortcut(() => handleNeitherShortcut);
   }, [handleNeitherShortcut, setHandleNeitherShortcut]);
 
+  const [optionsMenuId, setOptionsMenuId] = useState(0);
+  useEffect(() => {
+    if (!optionsMenuVisible) {
+      // when the menu is hidden, yeet it and replace with a new instance altogether.
+      // this works around old items being selected when reopening the menu.
+      setOptionsMenuId((n) => (n + 1) | 0);
+    }
+  }, [optionsMenuVisible]);
+
   if (isExamining) {
     return <ExamineGameControls lexicon={props.lexicon} />;
   }
@@ -250,6 +259,7 @@ const GameControls = React.memo((props: Props) => {
 
   const optionsMenu = (
     <OptionsGameMenu
+      key={optionsMenuId}
       showAbort={props.showAbort}
       showNudge={props.showNudge}
       hideMe={(e) => {
