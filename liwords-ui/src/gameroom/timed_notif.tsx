@@ -32,7 +32,7 @@ export const TimedNotif = (props: Props) => {
   }, [maxDuration, onExpire]);
 
   return (
-    <>
+    <div className="timed-notification">
       <p>{introText}</p>
       <p>
         {countdownText}
@@ -46,6 +46,6 @@ export const TimedNotif = (props: Props) => {
         {onDecline && <Button onClick={onDecline}>{declineText}</Button>}
         {onAccept && <Button onClick={onAccept}>{acceptText}</Button>}
       </p>
-    </>
+    </div>
   );
 };
