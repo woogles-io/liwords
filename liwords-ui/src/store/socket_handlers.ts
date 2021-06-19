@@ -754,6 +754,7 @@ export const useOnSocketMsg = () => {
                 loginState.userID
               )
             );
+            BoopSounds.playSound('abortnudge');
 
             break;
           }

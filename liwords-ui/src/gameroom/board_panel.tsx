@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef } from 'react';
 import { TouchBackend } from 'react-dnd-touch-backend';
 import { Button, Modal, notification, message, Tooltip } from 'antd';
 import { DndProvider } from 'react-dnd';
@@ -97,6 +97,7 @@ type Props = {
   definitionPopover?:
     | { x: number; y: number; content: React.ReactNode }
     | undefined;
+  vsBot: boolean;
 };
 
 const shuffleString = (a: string): string => {
@@ -1406,6 +1407,14 @@ export const BoardPanel = React.memo((props: Props) => {
   const handleNudge = useCallback(() => {
     sendMetaEvent(GameMetaEvent.EventType.REQUEST_ADJUDICATION);
   }, [sendMetaEvent]);
+  const showAbort = useMemo(() => {
+    // This hardcoded number is also on the backend.
+    return !props.vsBot && gameContext.turns.length <= 7;
+  }, [gameContext.turns, props.vsBot]);
+  const showNudge = useMemo(() => {
+    // Only show nudge if this is not a tournament/club game.
+    return !props.vsBot && props.tournamentID === '';
+  }, [props.tournamentID, props.vsBot]);
 
   const gameBoard = (
     <div
@@ -1496,6 +1505,8 @@ export const BoardPanel = React.memo((props: Props) => {
         onRematch={props.handleAcceptRematch ?? rematch}
         onExamine={handleExamineStart}
         onExportGCG={handleExportGCG}
+        showNudge={showNudge}
+        showAbort={showAbort}
         showRematch={examinableGameEndMessage !== ''}
         gameEndControls={examinableGameEndMessage !== '' || props.gameDone}
         currentRack={props.currentRack}

@@ -41,6 +41,7 @@ export type GameRequest = {
   rating_mode: string;
   max_overtime_minutes: number;
   original_request_id: string;
+  player_vs_bot: boolean;
 };
 
 export const defaultGameInfo: GameMetadata = {
@@ -58,6 +59,7 @@ export const defaultGameInfo: GameMetadata = {
     rating_mode: 'RATED',
     max_overtime_minutes: 0,
     original_request_id: '',
+    player_vs_bot: false,
   },
   tournament_id: '',
   game_end_reason: 'NONE',

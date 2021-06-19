@@ -78,13 +78,15 @@ const ExamineGameControls = React.memo((props: { lexicon: string }) => {
 
 type OptionsMenuProps = {
   handleOptionsClick: (e: any /* GOD what is the actual type here */) => void;
+  showAbort: boolean;
+  showNudge: boolean;
 };
 
 const OptionsGameMenu = (props: OptionsMenuProps) => (
   <Menu onClick={props.handleOptionsClick}>
     <Menu.Item key="resign">Resign</Menu.Item>
-    <Menu.Item key="abort">Cancel game</Menu.Item>
-    <Menu.Item key="nudge">Nudge</Menu.Item>
+    {props.showAbort && <Menu.Item key="abort">Cancel game</Menu.Item>}
+    {props.showNudge && <Menu.Item key="nudge">Nudge</Menu.Item>}
   </Menu>
 );
 
@@ -115,6 +117,8 @@ export type Props = {
   setHandleChallengeShortcut: ((handler: (() => void) | null) => void) | null;
   setHandleNeitherShortcut: ((handler: (() => void) | null) => void) | null;
   tournamentPairedMode?: boolean;
+  showNudge: boolean;
+  showAbort: boolean;
 };
 
 const GameControls = React.memo((props: Props) => {
@@ -122,8 +126,9 @@ const GameControls = React.memo((props: Props) => {
 
   // Poka-yoke against accidentally having multiple pop-ups active.
   const [actualCurrentPopUp, setCurrentPopUp] = useState<
-    'NONE' | 'CHALLENGE' | 'PASS' | 'RESIGN'
+    'NONE' | 'CHALLENGE' | 'PASS'
   >('NONE');
+  const [optionsMenuVisible, setOptionsMenuVisible] = useState(false);
   // This should match disabled= and/or hidden= props.
   const currentPopUp =
     (actualCurrentPopUp === 'CHALLENGE' &&
@@ -243,9 +248,12 @@ const GameControls = React.memo((props: Props) => {
 
   const optionsMenu = (
     <OptionsGameMenu
+      showAbort={props.showAbort}
+      showNudge={props.showNudge}
       handleOptionsClick={(e) => {
         message.info('clicked an item');
         console.log(e.key);
+        setOptionsMenuVisible(false);
         switch (e.key) {
           case 'resign':
             Modal.confirm({
@@ -287,8 +295,12 @@ const GameControls = React.memo((props: Props) => {
   return (
     <div className="game-controls">
       <div className="secondary-controls">
-        <Dropdown overlay={optionsMenu} trigger={['click']}>
-          <Button>
+        <Dropdown
+          overlay={optionsMenu}
+          trigger={['click']}
+          visible={optionsMenuVisible}
+        >
+          <Button onClick={() => setOptionsMenuVisible((v) => !v)}>
             Options <DownOutlined />
           </Button>
         </Dropdown>
