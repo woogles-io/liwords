@@ -135,7 +135,7 @@ export const MetaEventControl = (props: Props) => {
             }}
             onAccept={undefined}
             onDecline={() => {
-              denyAbort(gameMetaEventContext.evtId);
+              denyAdjudication(gameMetaEventContext.evtId);
             }}
             introText="Waiting for your opponent to respond to your nudge."
             countdownText="Automatic forfeit in "
