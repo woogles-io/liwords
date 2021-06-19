@@ -167,6 +167,7 @@ func HandleMetaEvent(ctx context.Context, evt *pb.GameMetaEvent, eventChan chan<
 		if entity.LastOutstandingMetaRequest(g.MetaEvents.Events, evt.PlayerId) != nil {
 			return ErrAlreadyOutstandingRequest
 		}
+		// XXX: What if player A sends a meta request and player B sends a different meta request?
 		if g.TournamentData != nil && g.TournamentData.Id != "" {
 			// disallow adjudication/adjourn
 			if evt.Type == pb.GameMetaEvent_REQUEST_ADJUDICATION ||
@@ -176,9 +177,11 @@ func HandleMetaEvent(ctx context.Context, evt *pb.GameMetaEvent, eventChan chan<
 			}
 		}
 
+		// XXX: Receiver may not be the one on turn, since either player may request abort.
 		onTurn := g.Game.PlayerOnTurn()
 		timeRemaining := g.TimeRemaining(onTurn)
 		log.Debug().Int("timeRemaining", timeRemaining).Int("onturn", onTurn).Msg("timeremaining")
+		// XXX: Should time remaining include overtime?
 		if timeRemaining < DisallowMsecsRemaining {
 			return ErrPleaseWaitToEnd
 		}
@@ -188,6 +191,7 @@ func HandleMetaEvent(ctx context.Context, evt *pb.GameMetaEvent, eventChan chan<
 			return ErrNotAllowed
 		}
 
+		// XXX: Adjust reasonably based on receiver's remaining time.
 		// Add expiry time to event.
 		if evt.Type == pb.GameMetaEvent_REQUEST_ABORT {
 			evt.Expiry = int32(AbortTimeout.Seconds())
