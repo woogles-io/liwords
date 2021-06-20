@@ -24,6 +24,7 @@ var (
 	ErrPleaseWaitToEnd              = errors.New("this game is almost over; request not sent")
 	ErrMetaEventExpirationIncorrect = errors.New("meta event did not expire")
 	ErrAlreadyOutstandingRequest    = errors.New("you already have an outstanding request")
+	ErrOutstandingRequestExists     = errors.New("please respond to existing request")
 	// generic not allowed error; the front-end should disallow anything that can
 	// return this error:
 	ErrNotAllowed = errors.New("that action is not allowed")
@@ -167,7 +168,10 @@ func HandleMetaEvent(ctx context.Context, evt *pb.GameMetaEvent, eventChan chan<
 		if entity.LastOutstandingMetaRequest(g.MetaEvents.Events, evt.PlayerId, now) != nil {
 			return ErrAlreadyOutstandingRequest
 		}
-		// XXX: What if player A sends a meta request and player B sends a different meta request?
+		// Check if other player has an outstanding request open
+		if entity.LastOutstandingMetaRequest(g.MetaEvents.Events, "", now) != nil {
+			return ErrOutstandingRequestExists
+		}
 		if g.TournamentData != nil && g.TournamentData.Id != "" {
 			// disallow adjudication/adjourn
 			if evt.Type == pb.GameMetaEvent_REQUEST_ADJUDICATION ||
