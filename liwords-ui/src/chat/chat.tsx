@@ -554,7 +554,7 @@ export const Chat = React.memo((props: Props) => {
     const t = setTimeout(() => {
       // lag this update to allow opponent to refresh the window.
       setLaggedGameChannelPresenceCount(gameChannelPresenceCount);
-    }, 10000);
+    }, 5000);
     return () => {
       clearTimeout(t);
     };
