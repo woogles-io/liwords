@@ -1,9 +1,10 @@
 import { notification } from 'antd';
 import React from 'react';
+import { Millis } from '../store/timer_controller';
 import { TimedNotif } from './timed_notif';
 
 type Props = {
-  maxDuration: number;
+  maxDuration: Millis;
   onExpire: () => void;
   onAccept?: () => void;
   onDecline?: () => void;
@@ -25,7 +26,7 @@ export const ShowNotif = (props: Props) => {
       key: myId,
       message: '',
       description: <TimedNotif {...props} />,
-      placement: 'bottomRight',
+      placement: 'topRight',
       duration: 0,
     });
     return () => {

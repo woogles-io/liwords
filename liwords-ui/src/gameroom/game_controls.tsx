@@ -276,8 +276,6 @@ const GameControls = React.memo((props: Props) => {
         setOptionsMenuVisible(false);
       }}
       handleOptionsClick={(e) => {
-        message.info('clicked an item');
-        console.log(e.key);
         setOptionsMenuVisible(false);
         switch (e.key) {
           case 'resign':

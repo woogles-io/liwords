@@ -294,7 +294,7 @@ const ChallengeResultEventContext = createContext<
 const GameMetaEventContext = createContext<GameMetaEventStoreData>({
   gameMetaEventContext: {
     curEvt: MetaStates.NO_ACTIVE_REQUEST,
-    initialExpirySecs: 0,
+    initialExpiry: 0,
     evtId: '',
     evtCreator: '',
     // timer: null,
@@ -801,7 +801,7 @@ const RealStore = ({ children, ...props }: Props) => {
     MetaEventState
   >({
     curEvt: MetaStates.NO_ACTIVE_REQUEST,
-    initialExpirySecs: 0,
+    initialExpiry: 0,
     evtId: '',
     evtCreator: '',
     // clockController: null,

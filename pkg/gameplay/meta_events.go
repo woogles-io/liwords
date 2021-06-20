@@ -164,7 +164,7 @@ func HandleMetaEvent(ctx context.Context, evt *pb.GameMetaEvent, eventChan chan<
 			return ErrTooManyTurns
 		}
 		// Check if this player has another outstanding request open.
-		if entity.LastOutstandingMetaRequest(g.MetaEvents.Events, evt.PlayerId) != nil {
+		if entity.LastOutstandingMetaRequest(g.MetaEvents.Events, evt.PlayerId, now) != nil {
 			return ErrAlreadyOutstandingRequest
 		}
 		// XXX: What if player A sends a meta request and player B sends a different meta request?
@@ -194,9 +194,9 @@ func HandleMetaEvent(ctx context.Context, evt *pb.GameMetaEvent, eventChan chan<
 		// XXX: Adjust reasonably based on receiver's remaining time.
 		// Add expiry time to event.
 		if evt.Type == pb.GameMetaEvent_REQUEST_ABORT {
-			evt.Expiry = int32(AbortTimeout.Seconds())
+			evt.Expiry = int32(AbortTimeout.Seconds() * 1000)
 		} else if evt.Type == pb.GameMetaEvent_REQUEST_ADJUDICATION {
-			evt.Expiry = int32(NudgeTimeout.Seconds())
+			evt.Expiry = int32(NudgeTimeout.Seconds() * 1000)
 		}
 
 		// For this type of event, we just append it to the list and return.

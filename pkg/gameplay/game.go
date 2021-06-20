@@ -560,7 +560,7 @@ func handleEventAfterLockingGame(ctx context.Context, gameStore GameStore, userS
 
 		// Since we processed a game event, we should cancel any outstanding
 		// game meta events.
-		lastMeta := entity.LastOutstandingMetaRequest(entGame.MetaEvents.Events, "")
+		lastMeta := entity.LastOutstandingMetaRequest(entGame.MetaEvents.Events, "", entGame.TimerModule().Now())
 		if lastMeta != nil {
 			err := cancelMetaEvent(ctx, entGame, lastMeta)
 			if err != nil {

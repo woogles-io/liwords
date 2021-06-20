@@ -298,7 +298,8 @@ message GameMetaEvent {
   EventType type = 3;
   string player_id = 4; // the player that performed the event.
   string game_id = 5;
-  int32 expiry = 6; // how long should this event remain active, in seconds?
+  int32 expiry = 6; // how long should this event remain active, in milliseconds?
+  // 4M seconds should be enough for an event of this type.
 }
 
 // TournamentGameEndedEvent gets sent to a tournament channel when a game is

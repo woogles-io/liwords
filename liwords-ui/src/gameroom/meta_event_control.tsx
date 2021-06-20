@@ -89,7 +89,7 @@ export const MetaEventControl = (props: Props) => {
       case MetaStates.REQUESTED_ABORT:
         setActiveNotif(
           <ShowNotif
-            maxDuration={gameMetaEventContext.initialExpirySecs * 1000}
+            maxDuration={gameMetaEventContext.initialExpiry}
             onExpire={() => {
               eventTimeout(gameMetaEventContext.evtId);
             }}
@@ -108,7 +108,7 @@ export const MetaEventControl = (props: Props) => {
       case MetaStates.RECEIVER_ABORT_COUNTDOWN:
         setActiveNotif(
           <ShowNotif
-            maxDuration={gameMetaEventContext.initialExpirySecs * 1000}
+            maxDuration={gameMetaEventContext.initialExpiry}
             onExpire={() => {
               eventTimeout(gameMetaEventContext.evtId);
             }}
@@ -129,7 +129,7 @@ export const MetaEventControl = (props: Props) => {
       case MetaStates.REQUESTED_ADJUDICATION:
         setActiveNotif(
           <ShowNotif
-            maxDuration={gameMetaEventContext.initialExpirySecs * 1000}
+            maxDuration={gameMetaEventContext.initialExpiry}
             onExpire={() => {
               eventTimeout(gameMetaEventContext.evtId);
             }}
@@ -149,7 +149,7 @@ export const MetaEventControl = (props: Props) => {
       case MetaStates.RECEIVER_ADJUDICATION_COUNTDOWN:
         setActiveNotif(
           <ShowNotif
-            maxDuration={gameMetaEventContext.initialExpirySecs * 1000}
+            maxDuration={gameMetaEventContext.initialExpiry}
             onExpire={() => {
               eventTimeout(gameMetaEventContext.evtId);
             }}

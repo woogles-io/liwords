@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect } from 'react';
+import { Millis } from '../store/timer_controller';
 import { useMountedState } from '../utils/mounted';
 
 // This magical timer was written by Andy. I am not sure how it works.
@@ -7,8 +8,8 @@ export const SimpleTimer = ({
   millisAtLastRefresh,
   isRunning,
 }: {
-  lastRefreshedPerformanceNow: number;
-  millisAtLastRefresh: number;
+  lastRefreshedPerformanceNow: Millis;
+  millisAtLastRefresh: Millis;
   isRunning: boolean;
 }) => {
   const { useState } = useMountedState();

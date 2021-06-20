@@ -246,7 +246,7 @@ func (g *Game) RecordTimeOfMove(idx int) {
 // LastOutstandingMetaRequest returns the last meta request that has not yet been responded to.
 // If a user ID is passed in, it only returns that user's last request, if it exists.
 // If no such event exists, it returns nil.
-func LastOutstandingMetaRequest(evts []*pb.GameMetaEvent, uid string) *pb.GameMetaEvent {
+func LastOutstandingMetaRequest(evts []*pb.GameMetaEvent, uid string, now int64) *pb.GameMetaEvent {
 	var lastReq *pb.GameMetaEvent
 	var lastReqID string
 	for _, e := range evts {
@@ -279,12 +279,12 @@ func LastOutstandingMetaRequest(evts []*pb.GameMetaEvent, uid string) *pb.GameMe
 		}
 	}
 	if lastReq != nil && lastReq.Timestamp != nil {
-		now := time.Now()
-		sinceBeginning := now.Sub(lastReq.Timestamp.AsTime())
+		// convert to milliseconds, as `now` is in milliseconds.
+		sinceBeginning := now - (lastReq.Timestamp.AsTime().UnixNano() / int64(time.Millisecond))
 		// calculate lastReq's expiry as of _now_ (but we're not saving it back,
 		// this is just for FE purposes)
 		lastReq = proto.Clone(lastReq).(*pb.GameMetaEvent)
-		lastReq.Expiry -= int32(sinceBeginning.Seconds())
+		lastReq.Expiry -= int32(sinceBeginning)
 	}
 	log.Debug().Interface("lastReq", lastReq).Msg("returning last outstanding req")
 
@@ -298,7 +298,7 @@ func (g *Game) HistoryRefresherEvent() *pb.GameHistoryRefresher {
 	g.calculateAndSetTimeRemaining(1, now, false)
 	var outstandingEvent *pb.GameMetaEvent
 	if g.Playing() != macondopb.PlayState_GAME_OVER {
-		outstandingEvent = LastOutstandingMetaRequest(g.MetaEvents.Events, "")
+		outstandingEvent = LastOutstandingMetaRequest(g.MetaEvents.Events, "", now)
 	}
 
 	return &pb.GameHistoryRefresher{

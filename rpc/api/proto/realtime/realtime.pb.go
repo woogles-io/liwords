@@ -2270,7 +2270,7 @@ type GameMetaEvent struct {
 	Type        GameMetaEvent_EventType `protobuf:"varint,3,opt,name=type,proto3,enum=liwords.GameMetaEvent_EventType" json:"type,omitempty"`
 	PlayerId    string                  `protobuf:"bytes,4,opt,name=player_id,json=playerId,proto3" json:"player_id,omitempty"` // the player that performed the event.
 	GameId      string                  `protobuf:"bytes,5,opt,name=game_id,json=gameId,proto3" json:"game_id,omitempty"`
-	Expiry      int32                   `protobuf:"varint,6,opt,name=expiry,proto3" json:"expiry,omitempty"` // how long should this event remain active, in seconds?
+	Expiry      int32                   `protobuf:"varint,6,opt,name=expiry,proto3" json:"expiry,omitempty"` // how long should this event remain active, in milliseconds?
 }
 
 func (x *GameMetaEvent) Reset() {

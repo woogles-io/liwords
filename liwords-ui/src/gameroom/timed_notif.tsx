@@ -1,9 +1,10 @@
 import { Button } from 'antd';
 import React from 'react';
+import { Millis } from '../store/timer_controller';
 import { SimpleTimer } from './simple_timer';
 
 type Props = {
-  maxDuration: number;
+  maxDuration: Millis;
   onExpire: () => void;
   onAccept?: () => void;
   onDecline?: () => void;
@@ -24,7 +25,7 @@ export const TimedNotif = (props: Props) => {
     acceptText,
     declineText,
   } = props;
-  const whenLoaded = React.useMemo(() => performance.now(), []);
+  const whenLoaded = React.useMemo(() => performance.now() as Millis, []);
   React.useEffect(() => {
     // andy: i prefer not to write setTimeout(onExpire, ...)
     const t = setTimeout(() => onExpire(), maxDuration);
