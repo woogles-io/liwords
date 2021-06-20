@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef } from 'react';
 import { useHistory } from 'react-router-dom';
-import { Button, Dropdown, Menu, Modal, message, Popconfirm } from 'antd';
+import { Button, Dropdown, Menu, Modal, Popconfirm } from 'antd';
 import { MenuInfo } from 'rc-menu/lib/interface';
 
 import {
