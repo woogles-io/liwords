@@ -271,7 +271,7 @@ func (b *Bus) readyForTournamentGame(ctx context.Context, evt *pb.ReadyForTourna
 		return err
 	}
 
-	fullUserID := userID + ":" + reqUser.Username
+	fullUserID := reqUser.TournamentID()
 
 	t, err := b.tournamentStore.Get(ctx, evt.TournamentId)
 	if err != nil {

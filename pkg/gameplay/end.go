@@ -302,7 +302,8 @@ func redoCancelledGamePairings(ctx context.Context, tstore tournament.Tournament
 	div := g.TournamentData.Division
 	round := g.TournamentData.Round
 	gidx := g.TournamentData.GameIndex
-	userID := g.Quickdata.PlayerInfo[0].UserId
+
+	userID := g.Quickdata.PlayerInfo[0].UserId + ":" + g.Quickdata.PlayerInfo[0].Nickname
 
 	return tournament.ClearReadyStates(ctx, tstore, t, div, userID, round, gidx)
 
@@ -349,7 +350,7 @@ func AbortGame(ctx context.Context, gameStore GameStore, tournamentStore tournam
 		wrapped.AddAudience(entity.AudUser, p+".game."+g.GameID())
 	}
 	wrapped.AddAudience(entity.AudGameTV, g.GameID())
-	g.SendChange(wrapped)
+	evtChan <- wrapped
 
 	// If this game is part of a tournament that is not in clubhouse
 	// mode, we must allow the players to try to play again.
