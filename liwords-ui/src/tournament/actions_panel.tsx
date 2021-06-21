@@ -50,30 +50,6 @@ type Props = {
 export const ActionsPanel = React.memo((props: Props) => {
   const { useState } = useMountedState();
   const [matchModalVisible, setMatchModalVisible] = useState(false);
-
-  const {
-    addHandleContextMatch,
-    removeHandleContextMatch,
-  } = useContextMatchContext();
-  const friendRef = useRef('');
-  const handleContextMatch = useCallback((s: string) => {
-    friendRef.current = s;
-    setMatchModalVisible(true);
-  }, []);
-  useEffect(() => {
-    if (!matchModalVisible) {
-      addHandleContextMatch(handleContextMatch);
-      return () => {
-        removeHandleContextMatch(handleContextMatch);
-      };
-    }
-  }, [
-    matchModalVisible,
-    handleContextMatch,
-    addHandleContextMatch,
-    removeHandleContextMatch,
-  ]);
-
   const [formDisabled, setFormDisabled] = useState(false);
   const {
     selectedGameTab,
@@ -109,6 +85,30 @@ export const ActionsPanel = React.memo((props: Props) => {
   const [selectedDivision, setSelectedDivision] = useState(initialDivision);
   const { lobbyContext } = useLobbyStoreContext();
   const tournamentID = tournamentContext.metadata?.getId();
+
+  const {
+    addHandleContextMatch,
+    removeHandleContextMatch,
+  } = useContextMatchContext();
+  const friendRef = useRef('');
+  const handleContextMatch = useCallback((s: string) => {
+    friendRef.current = s;
+    setMatchModalVisible(true);
+  }, []);
+  useEffect(() => {
+    if (!itIsPairedMode && !matchModalVisible) {
+      addHandleContextMatch(handleContextMatch);
+      return () => {
+        removeHandleContextMatch(handleContextMatch);
+      };
+    }
+  }, [
+    itIsPairedMode,
+    matchModalVisible,
+    handleContextMatch,
+    addHandleContextMatch,
+    removeHandleContextMatch,
+  ]);
 
   const lobbyContextMatchRequests = lobbyContext?.matchRequests;
   const thisTournamentMatchRequests = useMemo(
