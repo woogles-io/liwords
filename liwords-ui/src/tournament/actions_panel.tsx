@@ -1,12 +1,19 @@
 import { Button, Card, message, Select } from 'antd';
 import Modal from 'antd/lib/modal/Modal';
-import React, { ReactNode, useCallback, useEffect, useMemo } from 'react';
+import React, {
+  ReactNode,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+} from 'react';
 import { LeftOutlined, RightOutlined } from '@ant-design/icons';
 import { ActiveGames } from '../lobby/active_games';
 import { SeekForm } from '../lobby/seek_form';
 import { SoughtGames } from '../lobby/sought_games';
 import { SoughtGame } from '../store/reducers/lobby_reducer';
 import {
+  useContextMatchContext,
   useLobbyStoreContext,
   useTournamentStoreContext,
 } from '../store/store';
@@ -60,6 +67,10 @@ export const ActionsPanel = React.memo((props: Props) => {
     dispatchTournamentContext,
     tournamentContext,
   } = useTournamentStoreContext();
+  const itIsPairedMode = useMemo(
+    () => isPairedMode(tournamentContext.metadata?.getType()),
+    [tournamentContext]
+  );
   const { divisions } = tournamentContext;
   const [competitorStatusLoaded, setCompetitorStatusLoaded] = useState(
     tournamentContext.competitorState.isRegistered
@@ -74,6 +85,30 @@ export const ActionsPanel = React.memo((props: Props) => {
   const [selectedDivision, setSelectedDivision] = useState(initialDivision);
   const { lobbyContext } = useLobbyStoreContext();
   const tournamentID = tournamentContext.metadata?.getId();
+
+  const {
+    addHandleContextMatch,
+    removeHandleContextMatch,
+  } = useContextMatchContext();
+  const friendRef = useRef('');
+  const handleContextMatch = useCallback((s: string) => {
+    friendRef.current = s;
+    setMatchModalVisible(true);
+  }, []);
+  useEffect(() => {
+    if (!itIsPairedMode && !matchModalVisible) {
+      addHandleContextMatch(handleContextMatch);
+      return () => {
+        removeHandleContextMatch(handleContextMatch);
+      };
+    }
+  }, [
+    itIsPairedMode,
+    matchModalVisible,
+    handleContextMatch,
+    addHandleContextMatch,
+    removeHandleContextMatch,
+  ]);
 
   const lobbyContextMatchRequests = lobbyContext?.matchRequests;
   const thisTournamentMatchRequests = useMemo(
@@ -200,7 +235,7 @@ export const ActionsPanel = React.memo((props: Props) => {
   };
   const renderGamesTab = () => {
     if (selectedGameTab === 'GAMES') {
-      if (isPairedMode(tournamentContext.metadata?.getType())) {
+      if (itIsPairedMode) {
         return (
           <div className="pairings-container">
             {/* <CheckIn /> */}
@@ -300,6 +335,7 @@ export const ActionsPanel = React.memo((props: Props) => {
         loggedIn={props.loggedIn}
         username={props.username}
         showFriendInput={true}
+        friendRef={friendRef}
         id="match-seek"
         tournamentID={props.tournamentID}
       />
@@ -364,10 +400,7 @@ export const ActionsPanel = React.memo((props: Props) => {
       matchButtonText = 'Start club game';
     }
     const availableActions = new Array<ReactNode>();
-    if (
-      props.loggedIn &&
-      !isPairedMode(tournamentContext.metadata?.getType())
-    ) {
+    if (props.loggedIn && !itIsPairedMode) {
       // We are allowing free-form match requests in CLUBHOUSE mode, if desired.
       availableActions.push(
         <div
@@ -382,7 +415,7 @@ export const ActionsPanel = React.memo((props: Props) => {
       );
     }
     if (
-      isPairedMode(tournamentContext.metadata?.getType()) &&
+      itIsPairedMode &&
       selectedRound > -1 &&
       tournamentContext.divisions[selectedDivision]
     ) {
@@ -430,6 +463,7 @@ export const ActionsPanel = React.memo((props: Props) => {
     }
     return availableActions;
   }, [
+    itIsPairedMode,
     props.loggedIn,
     tournamentContext,
     selectedDivision,
@@ -440,11 +474,7 @@ export const ActionsPanel = React.memo((props: Props) => {
     <div className="game-lists">
       <Card
         actions={actions}
-        className={
-          isPairedMode(tournamentContext.metadata?.getType())
-            ? 'paired-mode'
-            : 'free-form'
-        }
+        className={itIsPairedMode ? 'paired-mode' : 'free-form'}
       >
         <div className="tabs">
           <div
@@ -455,7 +485,7 @@ export const ActionsPanel = React.memo((props: Props) => {
           >
             Games
           </div>
-          {!isPairedMode(tournamentContext.metadata?.getType()) ? (
+          {!itIsPairedMode ? (
             <div
               onClick={() => {
                 setSelectedGameTab('RECENT');

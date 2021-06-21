@@ -2,7 +2,10 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { Dropdown } from 'antd';
 import { TheBlocker } from './blocker';
-import { useLoginStateStoreContext } from '../store/store';
+import {
+  useContextMatchContext,
+  useLoginStateStoreContext,
+} from '../store/store';
 import { canMod } from '../mod/perms';
 import { DisplayUserFlag } from './display_flag';
 import { SettingOutlined } from '@ant-design/icons';
@@ -32,6 +35,7 @@ type UsernameWithContextProps = {
 
 export const UsernameWithContext = (props: UsernameWithContextProps) => {
   const { currentActiveGames, currentWatchedGames } = props;
+  const { handleContextMatches } = useContextMatchContext();
   const { loginState } = useLoginStateStoreContext();
   const { loggedIn, userID, perms } = loginState;
   const gameLink = React.useMemo(() => {
@@ -91,6 +95,22 @@ export const UsernameWithContext = (props: UsernameWithContextProps) => {
         </li>
       )}
       {gameLink}
+      {loggedIn &&
+        props.userID &&
+        props.userID !== userID &&
+        props.username &&
+        handleContextMatches.length > 0 && (
+          <li
+            className="link plain"
+            onClick={() => {
+              for (const handleContextMatch of handleContextMatches) {
+                handleContextMatch(props.username!);
+              }
+            }}
+          >
+            Match user
+          </li>
+        )}
       {loggedIn && props.userID && !props.omitFriend ? (
         <TheFollower
           friendCallback={props.friendCallback}

@@ -49,6 +49,7 @@ type Props = {
   onFormSubmit: (g: SoughtGame, v?: Store) => void;
   loggedIn: boolean;
   showFriendInput: boolean;
+  friendRef?: React.MutableRefObject<string>;
   vsBot?: boolean;
   id: string;
   tournamentID?: string;
@@ -104,6 +105,16 @@ export const SeekForm = (props: Props) => {
   const storedValues = window.localStorage
     ? JSON.parse(window.localStorage.getItem(storageKey) || '{}')
     : {};
+  const givenFriend = useMemo(() => props.friendRef?.current ?? '', [
+    props.friendRef,
+  ]);
+  useEffect(() => {
+    if (props.friendRef) {
+      return () => {
+        props.friendRef!.current = '';
+      };
+    }
+  }, [props.friendRef]);
   const defaultValues: seekPropVals = {
     lexicon: 'CSW19',
     challengerule: ChallengeRule.FIVE_POINT,
@@ -129,7 +140,7 @@ export const SeekForm = (props: Props) => {
       'challengerule' in fixedSettings[props.tournamentID];
     initialValues = {
       ...fixedSettings[props.tournamentID],
-      friend: '',
+      friend: givenFriend,
     };
     // This is a bit of a hack; sorry.
     if (!disableVariantControls) {
@@ -155,7 +166,7 @@ export const SeekForm = (props: Props) => {
     initialValues = {
       ...defaultValues,
       ...storedValues,
-      friend: '',
+      friend: givenFriend,
     };
   }
   const [itc, itt] = timeCtrlToDisplayName(
