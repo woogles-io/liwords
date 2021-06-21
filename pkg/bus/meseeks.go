@@ -131,6 +131,9 @@ func (b *Bus) matchRequest(ctx context.Context, auth, userID, connID string,
 	req.User = reqUser
 
 	timefmt, variant, err := entity.VariantFromGameReq(gameRequest)
+	if err != nil {
+		return err
+	}
 	ratingKey := entity.ToVariantKey(gameRequest.Lexicon, variant, timefmt)
 
 	u, err := b.userStore.GetByUUID(ctx, reqUser.UserId)

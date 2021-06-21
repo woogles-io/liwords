@@ -133,7 +133,7 @@ func (ts *TournamentService) NewTournament(ctx context.Context, req *pb.NewTourn
 		if err != nil {
 			return nil, err
 		}
-		directors.Persons = append(directors.Persons, &realtime.TournamentPerson{Id: u.UUID + ":" + u.Username, Rating: int32(idx)})
+		directors.Persons = append(directors.Persons, &realtime.TournamentPerson{Id: u.TournamentID(), Rating: int32(idx)})
 	}
 
 	log.Debug().Interface("directors", directors).Msg("directors")
@@ -472,7 +472,7 @@ func authenticateDirector(ctx context.Context, ts *TournamentService, id string,
 	if err != nil {
 		return twirp.InternalErrorWith(err)
 	}
-	fullID := user.UUID + ":" + user.Username
+	fullID := user.TournamentID()
 	log.Debug().Str("fullID", fullID).Interface("persons", t.Directors.Persons).Msg("authenticating-director")
 
 	if authenticateExecutive && fullID != t.ExecutiveDirector {
@@ -539,7 +539,7 @@ func (ts *TournamentService) CheckIn(ctx context.Context, req *pb.CheckinRequest
 		return nil, err
 	}
 
-	err = CheckIn(ctx, ts.tournamentStore, req.Id, user.UUID+":"+user.Username)
+	err = CheckIn(ctx, ts.tournamentStore, req.Id, user.TournamentID())
 	if err != nil {
 		return nil, twirp.NewError(twirp.InvalidArgument, err.Error())
 	}

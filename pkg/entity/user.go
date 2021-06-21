@@ -168,6 +168,12 @@ func (u *User) AvatarUrl() string {
 	}
 }
 
+// TournamentID returns the "player ID" of a user. UUID:username is probably not
+// a good design, but let's at least narrow it down to this function.
+func (u *User) TournamentID() string {
+	return u.UUID + ":" + u.Username
+}
+
 func InferChildStatus(dob string, now time.Time) realtime.ChildStatus {
 	// The birth date must be in the form YYYY-MM-DD
 	birthDateTime, err := time.Parse(time.RFC3339Nano, dob+"T00:00:00.000Z")

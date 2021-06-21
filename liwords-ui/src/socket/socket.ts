@@ -251,7 +251,6 @@ export const LiwordsSocket = (props: {
 
       msgs.forEach((m) => {
         const { msgType, parsedMsg } = m;
-
         console.log(
           '%csent',
           'background: cyan',

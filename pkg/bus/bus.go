@@ -443,6 +443,14 @@ func (b *Bus) handleNatsPublish(ctx context.Context, subtopics []string, data []
 		}
 		log.Debug().Str("user", userID).Str("reqid", evt.RequestId).Msg("decline-rematch")
 		return b.matchDeclined(ctx, evt, userID)
+	case "gameMetaEvent", pb.MessageType_GAME_META_EVENT.String():
+		evt := &pb.GameMetaEvent{}
+		err := proto.Unmarshal(data, evt)
+		if err != nil {
+			return err
+		}
+		log.Debug().Str("user", userID).Interface("evt", evt).Msg("game-meta-event")
+		return b.gameMetaEvent(ctx, evt, userID)
 
 	case "soughtGameProcess", pb.MessageType_SOUGHT_GAME_PROCESS_EVENT.String():
 		evt := &pb.SoughtGameProcessEvent{}

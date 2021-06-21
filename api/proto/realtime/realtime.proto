@@ -106,17 +106,21 @@ enum MessageType {
   REMATCH_STARTED = 29;
   TOURNAMENT_DIVISION_MESSAGE = 30;
   TOURNAMENT_DIVISION_DELETED_MESSAGE = 31;
+  TOURNAMENT_FULL_DIVISIONS_MESSAGE = 32;
   TOURNAMENT_DIVISION_ROUND_CONTROLS_MESSAGE = 34;
   TOURNAMENT_DIVISION_PAIRINGS_MESSAGE = 35;
   TOURNAMENT_DIVISION_CONTROLS_MESSAGE = 36;
   TOURNAMENT_DIVISION_PLAYER_CHANGE_MESSAGE = 37;
   TOURNAMENT_FINISHED_MESSAGE = 38;
+
+  PRESENCE_ENTRY = 40;
+  ACTIVE_GAME_ENTRY = 41;
+  GAME_META_EVENT = 42;
+
   // Add more events here. The total number of events should fit in a byte.
   // We should definitely not be using anywhere close to 255 events, and
   // in order to enforce that I'll be forcing the event type header to just be
   // a byte long.
-  PRESENCE_ENTRY = 40;
-  ACTIVE_GAME_ENTRY = 41;
 }
 
 message GameDeletion { string id = 1; }
@@ -258,6 +262,46 @@ message GameEndedEvent {
   macondo.GameHistory history = 9;
 }
 
+// GameMetaEvent defines how we serialize meta events to the database.
+message GameMetaEvent {
+  enum EventType {
+    // These are "original events"
+    REQUEST_ABORT = 0;
+    // Adjudication is just seen as a "nudge" on the front end.
+    REQUEST_ADJUDICATION = 1;
+    REQUEST_UNDO = 2;
+    REQUEST_ADJOURN = 3; // Are we going to implement this someday?
+
+    // And these are responses:
+    // A user can accept an abort, or the client will auto-accept when time
+    // expires:
+    ABORT_ACCEPTED = 4;
+    ABORT_DENIED = 5;
+    // A user would not accept an adjudication. The client auto-accepts this
+    // when time expires
+    ADJUDICATION_ACCEPTED = 6;
+    // An adjudication is denied when the receiver responds positively to a
+    // nudge.
+    ADJUDICATION_DENIED = 7;
+    UNDO_ACCEPTED = 8;
+    UNDO_DENIED = 9;
+
+    // More:
+    ADD_TIME = 10; // add X seconds at a time (30?) to opponent's clock
+
+    // Some meta events have a timer associated with them. Send this with the
+    // original event id after time has expired.
+    TIMER_EXPIRED = 11;
+  }
+  string orig_event_id = 1;
+  google.protobuf.Timestamp timestamp = 2;
+  EventType type = 3;
+  string player_id = 4; // the player that performed the event.
+  string game_id = 5;
+  int32 expiry = 6; // how long should this event remain active, in milliseconds?
+  // 4M seconds should be enough for an event of this type.
+}
+
 // TournamentGameEndedEvent gets sent to a tournament channel when a game is
 // over. This is a legacy way of showing tournament results right in the
 // tournament lobby in realtime. New tournaments will use full tournament
@@ -322,6 +366,9 @@ message GameHistoryRefresher {
   int32 time_player1 = 2;
   int32 time_player2 = 3;
   int32 max_overtime_minutes = 4;
+  // outstanding_event refers to any possible outstanding game meta event that
+  // has not yet been responded to or expired.
+  GameMetaEvent outstanding_event = 5;
 }
 
 // A NewGameEvent gets sent from the server to the involved clients when a new

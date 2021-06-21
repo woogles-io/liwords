@@ -32,6 +32,7 @@ import {
   TournamentReducer,
   TournamentState,
 } from './reducers/tournament_reducer';
+import { MetaEventState, MetaStates } from './meta_game_events';
 
 export enum ChatEntityType {
   UserChat,
@@ -65,6 +66,7 @@ const defaultTimerContext = {
   activePlayer: 'p0' as PlayerOrder,
   lastUpdate: 0,
 };
+
 const defaultFunction = () => {};
 
 // Functions and data to deal with the global store.
@@ -125,6 +127,11 @@ type ModeratorsStoreData = {
 
 type ChallengeResultEventStoreData = {
   challengeResultEvent: (sge: ServerChallengeResultEvent) => void;
+};
+
+type GameMetaEventStoreData = {
+  gameMetaEventContext: MetaEventState;
+  setGameMetaEventContext: React.Dispatch<React.SetStateAction<MetaEventState>>;
 };
 
 type GameContextStoreData = {
@@ -295,6 +302,17 @@ const ChallengeResultEventContext = createContext<
   ChallengeResultEventStoreData
 >({
   challengeResultEvent: defaultFunction,
+});
+
+const GameMetaEventContext = createContext<GameMetaEventStoreData>({
+  gameMetaEventContext: {
+    curEvt: MetaStates.NO_ACTIVE_REQUEST,
+    initialExpiry: 0,
+    evtId: '',
+    evtCreator: '',
+    // timer: null,
+  },
+  setGameMetaEventContext: defaultFunction,
 });
 
 const [GameContextContext, ExaminableGameContextContext] = Array.from(
@@ -792,6 +810,16 @@ const RealStore = ({ children, ...props }: Props) => {
     undefined
   );
 
+  const [gameMetaEventContext, setGameMetaEventContext] = useState<
+    MetaEventState
+  >({
+    curEvt: MetaStates.NO_ACTIVE_REQUEST,
+    initialExpiry: 0,
+    evtId: '',
+    evtCreator: '',
+    // clockController: null,
+  });
+
   const [poolFormat, setPoolFormat] = useState<PoolFormatType>(
     PoolFormatType.Alphabet
   );
@@ -1023,6 +1051,15 @@ const RealStore = ({ children, ...props }: Props) => {
     }),
     [gameContext, dispatchGameContext]
   );
+
+  const gameMetaEventContextStore = useMemo(
+    () => ({
+      gameMetaEventContext,
+      setGameMetaEventContext,
+    }),
+    [gameMetaEventContext, setGameMetaEventContext]
+  );
+
   const chatStore = useMemo(
     () => ({
       addChat,
@@ -1117,6 +1154,12 @@ const RealStore = ({ children, ...props }: Props) => {
     />
   );
   ret = <GameContextContext.Provider value={gameContextStore} children={ret} />;
+  ret = (
+    <GameMetaEventContext.Provider
+      value={gameMetaEventContextStore}
+      children={ret}
+    />
+  );
   ret = <ChatContext.Provider value={chatStore} children={ret} />;
   ret = <PresenceContext.Provider value={presenceStore} children={ret} />;
   ret = (
@@ -1179,6 +1222,7 @@ export const useModeratorStoreContext = () => useContext(ModeratorsContext);
 export const useChallengeResultEventStoreContext = () =>
   useContext(ChallengeResultEventContext);
 export const useGameContextStoreContext = () => useContext(GameContextContext);
+export const useGameMetaEventContext = () => useContext(GameMetaEventContext);
 export const useChatStoreContext = () => useContext(ChatContext);
 export const usePresenceStoreContext = () => useContext(PresenceContext);
 export const useGameEndMessageStoreContext = () =>

@@ -51,6 +51,7 @@ type GameStore interface {
 	ListActive(context.Context, string, bool) (*gs.GameInfoResponses, error)
 	Count(ctx context.Context) (int64, error)
 	CachedCount(ctx context.Context) int
+	GameEventChan() chan<- *entity.EventWrapper
 	SetGameEventChan(c chan<- *entity.EventWrapper)
 	Unload(context.Context, string)
 	SetReady(ctx context.Context, gid string, pidx int) (int, error)
@@ -153,6 +154,8 @@ func InstantiateNewGame(ctx context.Context, gameStore GameStore, cfg *config.Co
 	// as the CreatedAt date. We need to put it here though in order to
 	// keep the cached version in sync with the saved version at the beginning.
 	entGame.CreatedAt = time.Now()
+
+	entGame.MetaEvents = &entity.MetaEventData{}
 
 	// Save the game to the store.
 	if err = gameStore.Create(ctx, entGame); err != nil {
@@ -554,6 +557,17 @@ func handleEventAfterLockingGame(ctx context.Context, gameStore GameStore, userS
 	// it was already saved to the store somewhere above (in performEndgameDuties)
 	// and we don't want to save it again as it will reload it into the cache.
 	if entGame.GameEndReason == pb.GameEndReason_NONE {
+
+		// Since we processed a game event, we should cancel any outstanding
+		// game meta events.
+		lastMeta := entity.LastOutstandingMetaRequest(entGame.MetaEvents.Events, "", entGame.TimerModule().Now())
+		if lastMeta != nil {
+			err := cancelMetaEvent(ctx, entGame, lastMeta)
+			if err != nil {
+				return entGame, err
+			}
+		}
+
 		if err := gameStore.Set(ctx, entGame); err != nil {
 			log.Err(err).Msg("error-saving")
 			return entGame, err

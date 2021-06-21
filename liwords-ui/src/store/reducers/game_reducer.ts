@@ -119,7 +119,7 @@ const clonePlayers = (players: Array<RawPlayerInfo>) => {
   return pclone;
 };
 
-const newGameState = (
+const newGameStateFromGameplayEvent = (
   state: GameState,
   sge: ServerGameplayEvent
 ): GameState => {
@@ -488,7 +488,7 @@ export const GameReducer = (state: GameState, action: Action): GameState => {
         return state; // no change
       }
       console.log('add game event', sge);
-      const ngs = newGameState(state, sge);
+      const ngs = newGameStateFromGameplayEvent(state, sge);
 
       // Always pass the clock ref along. Begin imperative section:
       ngs.clockController = state.clockController;

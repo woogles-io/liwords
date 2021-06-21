@@ -56,6 +56,7 @@ import { isClubType, isPairedMode, sortTiles } from '../store/constants';
 import { readyForTournamentGame } from '../store/reducers/tournament_reducer';
 import { CompetitorStatus } from '../tournament/competitor_status';
 import { Unrace } from '../utils/unrace';
+import { MetaEventControl } from './meta_event_control';
 import { Blank } from '../utils/cwgame/common';
 import { useTourneyMetadata } from '../tournament/utils';
 import { Disclaimer } from './disclaimer';
@@ -924,6 +925,31 @@ export const Table = React.memo((props: Props) => {
     'board--' + tournamentContext.metadata.getBoardStyle() || '';
   const tileTheme = 'tile--' + tournamentContext.metadata.getTileStyle() || '';
 
+  const showingFinalTurn =
+    gameContext.turns.length === examinableGameContext.turns.length;
+  const gameEpilog = useMemo(() => {
+    // XXX: this doesn't get updated when game ends, only when refresh?
+
+    return (
+      <React.Fragment>
+        {showingFinalTurn && (
+          <React.Fragment>
+            {gameInfo.game_end_reason === 'FORCE_FORFEIT' && (
+              <React.Fragment>
+                Game ended in forfeit.{/* XXX: How to get winners? */}
+              </React.Fragment>
+            )}
+            {gameInfo.game_end_reason === 'ABORTED' && (
+              <React.Fragment>
+                The game was aborted. Rating and statistics were not affected.
+              </React.Fragment>
+            )}
+          </React.Fragment>
+        )}
+      </React.Fragment>
+    );
+  }, [gameInfo.game_end_reason, showingFinalTurn]);
+
   let ret = (
     <div className={`game-container${isRegistered ? ' competitor' : ''}`}>
       <ManageWindowTitleAndTurnSound />
@@ -1014,6 +1040,7 @@ export const Table = React.memo((props: Props) => {
             gameDone={gameDone}
             playerMeta={gameInfo.players}
             tournamentID={gameInfo.tournament_id}
+            vsBot={gameInfo.game_request.player_vs_bot}
             tournamentSlug={tournamentContext.metadata?.getSlug()}
             tournamentPairedMode={isPairedMode(
               tournamentContext.metadata?.getType()
@@ -1025,10 +1052,17 @@ export const Table = React.memo((props: Props) => {
                 ? handleAcceptRematch
                 : null
             }
+            handleAcceptAbort={() => {}}
             handleSetHover={handleSetHover}
             handleUnsetHover={hideDefinitionHover}
             definitionPopover={definitionPopover}
           />
+          {!gameDone && (
+            <MetaEventControl
+              sendSocketMsg={props.sendSocketMsg}
+              gameID={gameID}
+            />
+          )}
           <StreakWidget streakInfo={streakGameInfo} />
         </div>
         <div className="data-area" id="right-sidebar">
@@ -1078,6 +1112,7 @@ export const Table = React.memo((props: Props) => {
             board={examinableGameContext.board}
             playerMeta={gameInfo.players}
             poolFormat={poolFormat}
+            gameEpilog={gameEpilog}
           />
         </div>
       </div>

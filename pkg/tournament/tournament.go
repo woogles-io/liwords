@@ -395,7 +395,7 @@ func constructFullID(ctx context.Context, us user.Store, user string) (string, s
 	if err != nil {
 		return "", "", fmt.Errorf("full ID for player %s could not be constructed: %s", user, err.Error())
 	}
-	return u.UUID + ":" + u.Username, u.UUID, nil
+	return u.TournamentID(), u.UUID, nil
 }
 
 func AddDirectors(ctx context.Context, ts TournamentStore, us user.Store, id string, directors *realtime.TournamentPersons) error {
@@ -780,8 +780,8 @@ func SetResult(ctx context.Context,
 	}
 
 	pairing, standings, err := divisionObject.DivisionManager.SubmitResult(round,
-		p1.UUID+":"+p1.Username,
-		p2.UUID+":"+p2.Username,
+		p1.TournamentID(),
+		p2.TournamentID(),
 		playerOneScore,
 		playerTwoScore,
 		playerOneResult,
