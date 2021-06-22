@@ -280,10 +280,18 @@ const GameControls = React.memo((props: Props) => {
         switch (e.key) {
           case 'resign':
             Modal.confirm({
-              title: <p>Are you sure you wish to resign?</p>,
+              title: (
+                <p className="readable-text-color">
+                  Are you sure you wish to resign?
+                </p>
+              ),
               icon: <ExclamationCircleOutlined />,
               // XXX: what if it's unrated?
-              content: <p>Your rating will be maximally affected.</p>,
+              content: (
+                <p className="readable-text-color">
+                  Your rating will be maximally affected.
+                </p>
+              ),
               onOk() {
                 props.onResign();
               },
@@ -291,9 +299,13 @@ const GameControls = React.memo((props: Props) => {
             break;
           case 'abort':
             Modal.confirm({
-              title: <p>Request an abort</p>,
+              title: <p className="readable-text-color">Request an abort</p>,
               icon: <ExclamationCircleOutlined />,
-              content: <p>This will request an abort from your opponent.</p>,
+              content: (
+                <p className="readable-text-color">
+                  This will request an abort from your opponent.
+                </p>
+              ),
               onOk() {
                 props.onRequestAbort();
               },
@@ -301,10 +313,10 @@ const GameControls = React.memo((props: Props) => {
             break;
           case 'nudge':
             Modal.confirm({
-              title: <p>Nudge your opponent</p>,
+              title: <p className="readable-text-color">Nudge your opponent</p>,
               icon: <ExclamationCircleOutlined />,
               content: (
-                <p>
+                <p className="readable-text-color">
                   Clicking OK will send a nudge to your opponent. If they do not
                   respond, the game will be adjudicated in your favor.
                 </p>

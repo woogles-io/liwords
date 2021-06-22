@@ -1666,10 +1666,3 @@ p.rune {
     text-align: right;
   }
 }
-.ant-modal-body {
-  p {
-    @include colorModed() {
-      color: m($gray-extreme);
-    }
-  }
-}

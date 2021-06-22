@@ -38,9 +38,11 @@ const deleteMessage = (
   channel: string
 ) => {
   Modal.confirm({
-    title: 'Do you want to delete this message?',
+    title: (
+      <p className="readable-text-color">Do you want to delete this message</p>
+    ),
     icon: <ExclamationCircleOutlined />,
-    content: message,
+    content: <p className="readable-text-color">{message}</p>,
     onOk() {
       deleteChatMessage(sender, msgid, channel);
     },

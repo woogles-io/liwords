@@ -161,9 +161,14 @@ const Moderation = (props: ModProps) => {
       </Form>
 
       <h3>Active mod actions</h3>
-      <pre>{JSON.stringify(activeActions, null, 2)}</pre>
+      <pre className="readable-text-color">
+        {JSON.stringify(activeActions, null, 2)}
+      </pre>
       <h3>Moderation history</h3>
-      <pre style={{ maxHeight: 200, overflowY: 'scroll' }}>
+      <pre
+        className="readable-text-color"
+        style={{ maxHeight: 200, overflowY: 'scroll' }}
+      >
         {JSON.stringify(actionsHistory, null, 2)}
       </pre>
     </div>
@@ -172,7 +177,9 @@ const Moderation = (props: ModProps) => {
 
 export const moderateUser = (uuid: string, username: string) => {
   const modal = Modal.info({
-    title: `Moderation for user ${username}`,
+    title: (
+      <p className="readable-text-color">Moderation for user {username}</p>
+    ),
     icon: <ExclamationCircleOutlined />,
     content: <Moderation userID={uuid} destroy={() => modal.destroy()} />,
     onOk() {
