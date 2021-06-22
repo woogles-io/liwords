@@ -1667,7 +1667,7 @@ p.rune {
   }
 }
 .ant-modal-body {
-  p {
+  p :not(.rune) {
     @include colorModed() {
       color: m($gray-extreme);
     }
