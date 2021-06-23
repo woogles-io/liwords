@@ -59,6 +59,8 @@ const getInitialCategory = (categoryShortcut: string, loggedIn: boolean) => {
     case 'donate':
     case 'support':
       return Category.Support;
+    case 'personal':
+      return Category.PersonalInfo;
     case 'password':
       return Category.ChangePassword;
     case 'preferences':
@@ -70,7 +72,8 @@ const getInitialCategory = (categoryShortcut: string, loggedIn: boolean) => {
     case 'logout':
       return Category.LogOut;
   }
-  return Category.PersonalInfo;
+  // to be streaming-friendly, PersonalInfo should not be the default tab.
+  return Category.Preferences;
 };
 
 export const Settings = React.memo((props: Props) => {
