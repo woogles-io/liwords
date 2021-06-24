@@ -459,7 +459,7 @@ func directorOrAdmin(ctx context.Context, ts *TournamentService) (*entity.User, 
 }
 
 func authenticateDirector(ctx context.Context, ts *TournamentService, id string, authenticateExecutive bool) error {
-	user, err := directorOrAdmin(ctx, ts)
+	user, err := sessionUser(ctx, ts)
 	if err != nil {
 		return err
 	}
