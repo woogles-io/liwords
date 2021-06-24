@@ -336,8 +336,8 @@ export const UserProfile = React.memo((props: Props) => {
         )}
         {missingBirthdate && viewer === username && (
           <div className="bio">
-            <Link to={'/settings'}>Let us know your birthdate</Link> to share
-            your bio and details
+            <Link to={'/settings/personal'}>Let us know your birthdate</Link> to
+            share your bio and details
           </div>
         )}
         <RatingsCard ratings={ratings} />
