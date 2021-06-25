@@ -10,7 +10,6 @@ function renderChat(props: Partial<Props> = {}) {
     return;
   };
   const defaultProps: Props = {
-    peopleOnlineContext: (n) => 'Whatever',
     defaultChannel: 'lobby',
     defaultDescription: 'description',
     sendChat: dummyFunction,
