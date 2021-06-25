@@ -66,6 +66,7 @@ import {
 } from '../gen/macondo/api/proto/macondo/macondo_pb';
 import { toAPIUrl } from '../api/api';
 import { TilePreview } from './tile';
+import { Alphabet } from '../constants/alphabets';
 
 // The frame atop is 24 height
 // The frames on the sides are 24 in width, surrounded by a 14 pix gutter
@@ -86,6 +87,7 @@ type Props = {
   tournamentID?: string;
   tournamentPairedMode?: boolean;
   lexicon: string;
+  alphabet: Alphabet;
   handleAcceptRematch: (() => void) | null;
   handleAcceptAbort: (() => void) | null;
   handleSetHover?: (
@@ -1052,7 +1054,8 @@ export const BoardPanel = React.memo((props: Props) => {
           props.board,
           key,
           displayedRack,
-          placedTiles
+          placedTiles,
+          props.alphabet
         );
 
         if (handlerReturn === null) {
@@ -1077,6 +1080,7 @@ export const BoardPanel = React.memo((props: Props) => {
       gameContext.players,
       gameContext.turns,
       isExamining,
+      props.alphabet,
       props.playerMeta,
       props.username,
       currentMode,
@@ -1107,7 +1111,8 @@ export const BoardPanel = React.memo((props: Props) => {
         displayedRack,
         placedTiles,
         rackIndex,
-        tileIndex
+        tileIndex,
+        props.alphabet
       );
       if (handlerReturn === null) {
         return;
@@ -1123,6 +1128,7 @@ export const BoardPanel = React.memo((props: Props) => {
     [
       displayedRack,
       placedTiles,
+      props.alphabet,
       props.board,
       setDisplayedRack,
       setPlacedTilesTempScore,
@@ -1146,7 +1152,8 @@ export const BoardPanel = React.memo((props: Props) => {
         displayedRack,
         placedTiles,
         rackIndex,
-        uniqueTileIdx(arrowProperties.row, arrowProperties.col)
+        uniqueTileIdx(arrowProperties.row, arrowProperties.col),
+        props.alphabet
       );
       if (handlerReturn === null) {
         return;
@@ -1191,6 +1198,7 @@ export const BoardPanel = React.memo((props: Props) => {
       arrowProperties.show,
       displayedRack,
       placedTiles,
+      props.alphabet,
       setDisplayedRack,
       setPlacedTiles,
       setPlacedTilesTempScore,
@@ -1210,7 +1218,8 @@ export const BoardPanel = React.memo((props: Props) => {
         props.board,
         placedTiles,
         displayedRack,
-        rune
+        rune,
+        props.alphabet
       );
       if (handlerReturn === null) {
         return;
@@ -1222,6 +1231,7 @@ export const BoardPanel = React.memo((props: Props) => {
     [
       displayedRack,
       placedTiles,
+      props.alphabet,
       props.board,
       setPlacedTiles,
       setPlacedTilesTempScore,
@@ -1238,6 +1248,7 @@ export const BoardPanel = React.memo((props: Props) => {
         props.board,
         displayedRack,
         placedTiles,
+        props.alphabet,
         rackIndex,
         tileIndex
       );
@@ -1255,6 +1266,7 @@ export const BoardPanel = React.memo((props: Props) => {
       setPlacedTilesTempScore,
       setDisplayedRack,
       setPlacedTiles,
+      props.alphabet,
       props.board,
     ]
   );
@@ -1442,6 +1454,7 @@ export const BoardPanel = React.memo((props: Props) => {
         handleSetHover={props.handleSetHover}
         handleUnsetHover={props.handleUnsetHover}
         definitionPopover={props.definitionPopover}
+        alphabet={props.alphabet}
       />
       {!examinableGameEndMessage ? (
         <div className="rack-container">
@@ -1465,6 +1478,7 @@ export const BoardPanel = React.memo((props: Props) => {
             returnToRack={returnToRack}
             onTileClick={clickToBoard}
             moveRackTile={moveRackTile}
+            alphabet={props.alphabet}
           />
           <Tooltip
             title="Shuffle &uarr;"
@@ -1519,6 +1533,7 @@ export const BoardPanel = React.memo((props: Props) => {
         setHandleNeitherShortcut={setHandleNeitherShortcut}
       />
       <ExchangeTiles
+        alphabet={props.alphabet}
         rack={props.currentRack}
         modalVisible={currentMode === 'EXCHANGE_MODAL'}
         onOk={handleExchangeModalOk}
@@ -1532,7 +1547,10 @@ export const BoardPanel = React.memo((props: Props) => {
         width={360}
         footer={null}
       >
-        <BlankSelector handleSelection={handleBlankSelection} />
+        <BlankSelector
+          handleSelection={handleBlankSelection}
+          alphabet={props.alphabet}
+        />
       </Modal>
     </div>
   );

@@ -277,7 +277,7 @@ const App = React.memo(() => {
           <Settings />
         </Route>
         <Route path="/tile_images">
-          <TileImages />
+          <TileImages letterDistribution="english" />
         </Route>
         <Route path="/admin">
           <Admin />

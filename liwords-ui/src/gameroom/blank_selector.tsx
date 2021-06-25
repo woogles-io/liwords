@@ -1,10 +1,11 @@
 import React from 'react';
-import { CrosswordGameTileValues } from '../constants/tile_values';
 import Tile from './tile';
 import { useExaminableGameContextStoreContext } from '../store/store';
+import { Alphabet } from '../constants/alphabets';
 
 type Props = {
   handleSelection: (rune: string) => void;
+  alphabet: Alphabet;
 };
 
 export const BlankSelector = (props: Props) => {
@@ -14,7 +15,7 @@ export const BlankSelector = (props: Props) => {
 
   return (
     <div className="blank-selector">
-      {Object.keys(CrosswordGameTileValues).map((rune) => (
+      {Object.keys(props.alphabet.letterMap).map((rune) => (
         <Tile
           lastPlayed={false}
           playerOfTile={examinableGameContext.onturn}

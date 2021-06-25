@@ -8,10 +8,12 @@ import {
 import Pool from './pool';
 import { singularCount } from '../utils/plural';
 import { Button, Modal } from 'antd';
+import { Alphabet } from '../constants/alphabets';
 // Render an exchange widget.
 
 type Props = {
   rack: string;
+  alphabet: Alphabet;
   onCancel: () => void;
   onOk: (tilesToExchange: string) => void;
   modalVisible: boolean;
@@ -182,6 +184,7 @@ export const ExchangeTiles = React.memo((props: Props) => {
         onTileClick={selectTileForExchange}
         moveRackTile={doNothing}
         selected={exchangedRackIndices}
+        alphabet={props.alphabet}
       />
 
       <Pool

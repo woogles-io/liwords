@@ -60,6 +60,7 @@ import { MetaEventControl } from './meta_event_control';
 import { Blank } from '../utils/cwgame/common';
 import { useTourneyMetadata } from '../tournament/utils';
 import { Disclaimer } from './disclaimer';
+import { alphabetFromName } from '../constants/alphabets';
 
 type Props = {
   sendSocketMsg: (msg: Uint8Array) => void;
@@ -1046,6 +1047,9 @@ export const Table = React.memo((props: Props) => {
               tournamentContext.metadata?.getType()
             )}
             lexicon={gameInfo.game_request.lexicon}
+            alphabet={alphabetFromName(
+              gameInfo.game_request.rules.letter_distribution_name
+            )}
             challengeRule={gameInfo.game_request.challenge_rule}
             handleAcceptRematch={
               rematchRequest.getRematchFor() === gameID
