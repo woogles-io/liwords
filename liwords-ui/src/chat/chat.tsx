@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef } from 'react';
 import { Card, Input, Tabs } from 'antd';
 import { LeftOutlined } from '@ant-design/icons';
 import { useMountedState } from '../utils/mounted';
+import { singularCount } from '../utils/plural';
 import { ChatEntity } from './chat_entity';
 import {
   ChatEntityObj,
@@ -26,7 +27,6 @@ import { Players } from './players';
 const { TabPane } = Tabs;
 
 export type Props = {
-  peopleOnlineContext: (n: number) => string; // should return "1 person" or "2 people"
   sendChat: (msg: string, chan: string) => void;
   defaultChannel: string;
   defaultDescription: string;
@@ -597,6 +597,13 @@ export const Chat = React.memo((props: Props) => {
       checkOpponentPresence.current.count = laggedGameChannelPresenceCount;
     }
   }, [addChat, gameChannel, laggedGameChannelPresenceCount]);
+  const peopleOnlineCounter = useMemo(
+    () =>
+      channel?.startsWith('chat.gametv.')
+        ? singularCount(presenceCount, 'Observer', 'Observers')
+        : singularCount(presenceCount, 'Player', 'Players'),
+    [channel, presenceCount]
+  );
 
   return (
     <Card className="chat" id="chat">
@@ -677,7 +684,7 @@ export const Chat = React.memo((props: Props) => {
                   {presenceCount && !channel.startsWith('chat.pm.') ? (
                     <>
                       <p className="presence-count">
-                        <span>{props.peopleOnlineContext(presenceCount)}</span>
+                        <span>{peopleOnlineCounter}</span>
                         {presenceVisible ? (
                           <span
                             className="list-trigger"

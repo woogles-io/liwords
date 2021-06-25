@@ -49,7 +49,6 @@ import {
   PlayState,
 } from '../gen/macondo/api/proto/macondo/macondo_pb';
 import { endGameMessageFromGameInfo } from '../store/end_of_game';
-import { singularCount } from '../utils/plural';
 import { Notepad, NotepadContextProvider } from './notepad';
 import { Analyzer, AnalyzerContextProvider } from './analyzer';
 import { isClubType, isPairedMode, sortTiles } from '../store/constants';
@@ -914,13 +913,6 @@ export const Table = React.memo((props: Props) => {
     searchParams,
     searchedTurn,
   ]);
-  const peopleOnlineContext = useCallback(
-    (n: number) =>
-      isObserver
-        ? singularCount(n, 'Observer', 'Observers')
-        : singularCount(n, 'Player', 'Players'),
-    [isObserver]
-  );
   const boardTheme =
     'board--' + tournamentContext.metadata.getBoardStyle() || '';
   const tileTheme = 'tile--' + tournamentContext.metadata.getTileStyle() || '';
@@ -990,7 +982,6 @@ export const Table = React.memo((props: Props) => {
                 username,
                 isObserver
               )}
-              peopleOnlineContext={peopleOnlineContext}
               tournamentID={gameInfo.tournament_id}
             />
           ) : null}

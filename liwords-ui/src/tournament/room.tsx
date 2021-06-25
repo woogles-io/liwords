@@ -8,7 +8,6 @@ import {
 } from '../store/store';
 import { useMountedState } from '../utils/mounted';
 import { TopBar } from '../topbar/topbar';
-import { singularCount } from '../utils/plural';
 import { Chat } from '../chat/chat';
 import { TournamentInfo } from './tournament_info';
 import { sendAccept, sendSeek } from '../lobby/sought_game_interactions';
@@ -70,11 +69,6 @@ export const TournamentRoom = (props: Props) => {
     [sendSocketMsg]
   );
 
-  const peopleOnlineContext = useCallback(
-    (n: number) => singularCount(n, 'Player', 'Players'),
-    []
-  );
-
   if (badTournament) {
     return (
       <>
@@ -103,7 +97,6 @@ export const TournamentRoom = (props: Props) => {
             sendChat={props.sendChat}
             defaultChannel={`chat.tournament.${tournamentID}`}
             defaultDescription={tournamentContext.metadata.getName()}
-            peopleOnlineContext={peopleOnlineContext}
             highlight={tournamentContext.directors}
             highlightText="Director"
             tournamentID={tournamentID}
