@@ -957,7 +957,9 @@ export const Table = React.memo((props: Props) => {
       <div className={`game-table ${boardTheme} ${tileTheme}`}>
         <div
           className={`chat-area ${
-            tournamentContext.metadata.getDisclaimer() ? 'has-disclaimer' : ''
+            !isExamining && tournamentContext.metadata.getDisclaimer()
+              ? 'has-disclaimer'
+              : ''
           }`}
           id="left-sidebar"
         >
@@ -1001,13 +1003,15 @@ export const Table = React.memo((props: Props) => {
               variant={gameInfo.game_request.rules.variant_name}
             />
           ) : (
-            <Notepad includeCard />
-          )}
-          {tournamentContext.metadata.getDisclaimer() && (
-            <Disclaimer
-              disclaimer={tournamentContext.metadata.getDisclaimer()}
-              logoUrl={tournamentContext.metadata.getLogo()}
-            />
+            <React.Fragment key="not-examining">
+              <Notepad includeCard />
+              {tournamentContext.metadata.getDisclaimer() && (
+                <Disclaimer
+                  disclaimer={tournamentContext.metadata.getDisclaimer()}
+                  logoUrl={tournamentContext.metadata.getLogo()}
+                />
+              )}
+            </React.Fragment>
           )}
           {isRegistered && (
             <CompetitorStatus
