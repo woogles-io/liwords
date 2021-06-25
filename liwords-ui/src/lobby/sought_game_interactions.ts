@@ -11,7 +11,7 @@ import { ChallengeRuleMap } from '../gen/macondo/api/proto/macondo/macondo_pb';
 import { SoughtGame } from '../store/reducers/lobby_reducer';
 import { encodeToSocketFmt } from '../utils/protobuf';
 
-const defaultLetterDistribution = (lexicon: string): string => {
+export const defaultLetterDistribution = (lexicon: string): string => {
   switch (lexicon.toLowerCase()) {
     case 'deutsch':
       return 'german';
