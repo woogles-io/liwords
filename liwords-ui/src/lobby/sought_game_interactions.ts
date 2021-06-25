@@ -11,6 +11,17 @@ import { ChallengeRuleMap } from '../gen/macondo/api/proto/macondo/macondo_pb';
 import { SoughtGame } from '../store/reducers/lobby_reducer';
 import { encodeToSocketFmt } from '../utils/protobuf';
 
+const defaultLetterDistribution = (lexicon: string): string => {
+  switch (lexicon.toLowerCase()) {
+    case 'deutsch':
+      return 'german';
+    case 'nsf20':
+      return 'norwegian';
+    default:
+      return 'english';
+  }
+};
+
 export const sendSeek = (
   game: SoughtGame,
   sendSocketMsg: (msg: Uint8Array) => void
@@ -21,7 +32,7 @@ export const sendSeek = (
   const rules = new GameRules();
   rules.setBoardLayoutName('CrosswordGame');
   rules.setVariantName(game.variant);
-  rules.setLetterDistributionName('english');
+  rules.setLetterDistributionName(defaultLetterDistribution(game.lexicon));
 
   gr.setChallengeRule(
     game.challengeRule as ChallengeRuleMap[keyof ChallengeRuleMap]

@@ -4,7 +4,7 @@
  * for now.
  */
 
-const BlankRune = '?';
+import { Blank } from '../utils/cwgame/common';
 
 type AlphabetLetter = {
   rune: string; // the physical displayed character(s)
@@ -50,7 +50,7 @@ export const StandardEnglishAlphabet: Alphabet = {
     { rune: 'X', score: 8, count: 1, vowel: false, category: 3 },
     { rune: 'Y', score: 4, count: 2, vowel: false, category: 2 },
     { rune: 'Z', score: 10, count: 1, vowel: false, category: 3 },
-    { rune: BlankRune, score: 0, count: 2, vowel: false, category: 3 },
+    { rune: Blank, score: 0, count: 2, vowel: false, category: 3 },
   ],
   letterMap: {},
 };
@@ -86,7 +86,7 @@ export const StandardGermanAlphabet: Alphabet = {
     { rune: 'X', score: 8, count: 1, vowel: false, category: 3 },
     { rune: 'Y', score: 10, count: 1, vowel: false, category: 3 },
     { rune: 'Z', score: 3, count: 1, vowel: false, category: 2 },
-    { rune: BlankRune, score: 0, count: 2, vowel: false, category: 3 },
+    { rune: Blank, score: 0, count: 2, vowel: false, category: 3 },
   ],
   letterMap: {},
 };
@@ -127,7 +127,7 @@ export const StandardNorwegianAlphabet: Alphabet = {
     { rune: 'Æ', score: 6, count: 1, vowel: true, category: 3 },
     { rune: 'Ø', score: 5, count: 2, vowel: true, category: 3 },
     { rune: 'Å', score: 4, count: 2, vowel: true, category: 2 },
-    { rune: BlankRune, score: 0, count: 2, vowel: false, category: 3 },
+    { rune: Blank, score: 0, count: 2, vowel: false, category: 3 },
   ],
   letterMap: {},
 };

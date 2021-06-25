@@ -193,6 +193,7 @@ export const ExchangeTiles = React.memo((props: Props) => {
         currentRack={props.rack}
         poolFormat={poolFormat}
         setPoolFormat={setPoolFormat}
+        alphabet={props.alphabet}
       />
     </Modal>
   );
