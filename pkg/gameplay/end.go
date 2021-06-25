@@ -341,7 +341,7 @@ func AbortGame(ctx context.Context, gameStore GameStore, tournamentStore tournam
 	evtChan <- wrapped
 
 	evt := &pb.GameEndedEvent{
-		EndReason: pb.GameEndReason_ABORTED,
+		EndReason: gameEndReason,
 		Time:      g.Timers.TimeOfLastUpdate,
 		History:   g.History(),
 	}
