@@ -64,12 +64,30 @@ for (const { lexicons, cacheKey, path } of [
     cacheKey: 'klv/english',
     path: '/wasm/leaves.klv',
   },
-  ...['CSW19', 'CSW19X', 'NWL20', 'NWL18', 'NSWL20', 'ECWL'].map((name) => ({
+  ...[
+    'CSW19',
+    'CSW19X',
+    'NWL20',
+    'NWL18',
+    'NSWL20',
+    'ECWL',
+    'Deutsch',
+    'NSF20',
+  ].map((name) => ({
     lexicons: [name],
     cacheKey: `kwg/${name}`,
     path: `/wasm/${name}.kwg`,
   })),
-  ...['CSW19', 'CSW19X', 'NWL20', 'NWL18', 'NSWL20', 'ECWL'].map((name) => ({
+  ...[
+    'CSW19',
+    'CSW19X',
+    'NWL20',
+    'NWL18',
+    'NSWL20',
+    'ECWL',
+    'Deutsch',
+    'NSF20',
+  ].map((name) => ({
     lexicons: [`${name}.WordSmog`],
     cacheKey: `kwg/${name}.WordSmog`,
     path: `/wasm/${name}.kad`,
