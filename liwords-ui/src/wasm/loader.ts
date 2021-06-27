@@ -71,7 +71,7 @@ for (const { lexicons, cacheKey, path } of [
     'NWL18',
     'NSWL20',
     'ECWL',
-    'Deutsch',
+    'Deutsch20',
     'NSF20',
   ].map((name) => ({
     lexicons: [name],
@@ -85,7 +85,7 @@ for (const { lexicons, cacheKey, path } of [
     'NWL18',
     'NSWL20',
     'ECWL',
-    'Deutsch',
+    'Deutsch20',
     'NSF20',
   ].map((name) => ({
     lexicons: [`${name}.WordSmog`],

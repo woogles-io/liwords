@@ -12,13 +12,13 @@ import { SoughtGame } from '../store/reducers/lobby_reducer';
 import { encodeToSocketFmt } from '../utils/protobuf';
 
 export const defaultLetterDistribution = (lexicon: string): string => {
-  switch (lexicon.toLowerCase()) {
-    case 'deutsch':
-      return 'german';
-    case 'nsf20':
-      return 'norwegian';
-    default:
-      return 'english';
+  const lowercasedLexicon = lexicon.toLowerCase();
+  if (lowercasedLexicon.startsWith('deutsch')) {
+    return 'german';
+  } else if (lowercasedLexicon.startsWith('nsf')) {
+    return 'norwegian';
+  } else {
+    return 'english';
   }
 };
 
