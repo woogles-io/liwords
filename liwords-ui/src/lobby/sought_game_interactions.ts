@@ -13,7 +13,7 @@ import { encodeToSocketFmt } from '../utils/protobuf';
 
 export const defaultLetterDistribution = (lexicon: string): string => {
   const lowercasedLexicon = lexicon.toLowerCase();
-  if (lowercasedLexicon.startsWith('deutsch')) {
+  if (lowercasedLexicon.startsWith('rd')) {
     return 'german';
   } else if (lowercasedLexicon.startsWith('nsf')) {
     return 'norwegian';
