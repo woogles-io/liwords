@@ -1216,6 +1216,15 @@ export class DivisionControls extends jspb.Message {
   getSpreadCap(): number;
   setSpreadCap(value: number): void;
 
+  getGibsonize(): boolean;
+  setGibsonize(value: boolean): void;
+
+  getGibsonSpread(): number;
+  setGibsonSpread(value: number): void;
+
+  getMinimumPlacement(): number;
+  setMinimumPlacement(value: number): void;
+
   serializeBinary(): Uint8Array;
   toObject(includeInstance?: boolean): DivisionControls.AsObject;
   static toObject(includeInstance: boolean, msg: DivisionControls): DivisionControls.AsObject;
@@ -1235,6 +1244,9 @@ export namespace DivisionControls {
     suspendedSpread: number,
     autoStart: boolean,
     spreadCap: number,
+    gibsonize: boolean,
+    gibsonSpread: number,
+    minimumPlacement: number,
   }
 }
 
@@ -1390,6 +1402,8 @@ export class DivisionPairingsResponse extends jspb.Message {
 
   getDivisionStandingsMap(): jspb.Map<number, RoundStandings>;
   clearDivisionStandingsMap(): void;
+  getGibonsizedPlayersMap(): jspb.Map<string, number>;
+  clearGibonsizedPlayersMap(): void;
   serializeBinary(): Uint8Array;
   toObject(includeInstance?: boolean): DivisionPairingsResponse.AsObject;
   static toObject(includeInstance: boolean, msg: DivisionPairingsResponse): DivisionPairingsResponse.AsObject;
@@ -1406,6 +1420,35 @@ export namespace DivisionPairingsResponse {
     division: string,
     divisionPairingsList: Array<Pairing.AsObject>,
     divisionStandingsMap: Array<[number, RoundStandings.AsObject]>,
+    gibonsizedPlayersMap: Array<[string, number]>,
+  }
+}
+
+export class DivisionPairingsDeletedResponse extends jspb.Message {
+  getId(): string;
+  setId(value: string): void;
+
+  getDivision(): string;
+  setDivision(value: string): void;
+
+  getRound(): number;
+  setRound(value: number): void;
+
+  serializeBinary(): Uint8Array;
+  toObject(includeInstance?: boolean): DivisionPairingsDeletedResponse.AsObject;
+  static toObject(includeInstance: boolean, msg: DivisionPairingsDeletedResponse): DivisionPairingsDeletedResponse.AsObject;
+  static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+  static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+  static serializeBinaryToWriter(message: DivisionPairingsDeletedResponse, writer: jspb.BinaryWriter): void;
+  static deserializeBinary(bytes: Uint8Array): DivisionPairingsDeletedResponse;
+  static deserializeBinaryFromReader(message: DivisionPairingsDeletedResponse, reader: jspb.BinaryReader): DivisionPairingsDeletedResponse;
+}
+
+export namespace DivisionPairingsDeletedResponse {
+  export type AsObject = {
+    id: string,
+    division: string,
+    round: number,
   }
 }
 
@@ -1780,6 +1823,7 @@ export interface MessageTypeMap {
   TOURNAMENT_DIVISION_CONTROLS_MESSAGE: 36;
   TOURNAMENT_DIVISION_PLAYER_CHANGE_MESSAGE: 37;
   TOURNAMENT_FINISHED_MESSAGE: 38;
+  TOURNAMENT_DIVISION_PAIRINGS_DELETED_MESSAGE: 39;
   PRESENCE_ENTRY: 40;
   ACTIVE_GAME_ENTRY: 41;
 }

@@ -1991,7 +1991,8 @@ proto.tournament_service.PairRoundRequest.toObject = function(includeInstance, m
   var f, obj = {
     id: jspb.Message.getFieldWithDefault(msg, 1, ""),
     division: jspb.Message.getFieldWithDefault(msg, 2, ""),
-    round: jspb.Message.getFieldWithDefault(msg, 3, 0)
+    round: jspb.Message.getFieldWithDefault(msg, 3, 0),
+    overwriteByes: jspb.Message.getBooleanFieldWithDefault(msg, 4, false)
   };
 
   if (includeInstance) {
@@ -2040,6 +2041,10 @@ proto.tournament_service.PairRoundRequest.deserializeBinaryFromReader = function
       var value = /** @type {number} */ (reader.readInt32());
       msg.setRound(value);
       break;
+    case 4:
+      var value = /** @type {boolean} */ (reader.readBool());
+      msg.setOverwriteByes(value);
+      break;
     default:
       reader.skipField();
       break;
@@ -2087,6 +2092,13 @@ proto.tournament_service.PairRoundRequest.serializeBinaryToWriter = function(mes
   if (f !== 0) {
     writer.writeInt32(
       3,
+      f
+    );
+  }
+  f = message.getOverwriteByes();
+  if (f) {
+    writer.writeBool(
+      4,
       f
     );
   }
@@ -2144,6 +2156,24 @@ proto.tournament_service.PairRoundRequest.prototype.getRound = function() {
  */
 proto.tournament_service.PairRoundRequest.prototype.setRound = function(value) {
   return jspb.Message.setProto3IntField(this, 3, value);
+};
+
+
+/**
+ * optional bool overwrite_byes = 4;
+ * @return {boolean}
+ */
+proto.tournament_service.PairRoundRequest.prototype.getOverwriteByes = function() {
+  return /** @type {boolean} */ (jspb.Message.getBooleanFieldWithDefault(this, 4, false));
+};
+
+
+/**
+ * @param {boolean} value
+ * @return {!proto.tournament_service.PairRoundRequest} returns this
+ */
+proto.tournament_service.PairRoundRequest.prototype.setOverwriteByes = function(value) {
+  return jspb.Message.setProto3BooleanField(this, 4, value);
 };
 
 

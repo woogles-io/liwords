@@ -49,6 +49,7 @@ import {
   TimedOut,
   TournamentDataResponse,
   DivisionPairingsResponse,
+  DivisionPairingsDeletedResponse,
   PlayersAddedOrRemovedResponse,
   DivisionControlsResponse,
   DivisionRoundControls,
@@ -121,6 +122,7 @@ export const parseMsgs = (msg: Uint8Array) => {
       [MessageType.TOURNAMENT_DIVISION_PLAYER_CHANGE_MESSAGE]: PlayersAddedOrRemovedResponse,
       [MessageType.TOURNAMENT_FINISHED_MESSAGE]: TournamentFinishedResponse,
       [MessageType.TOURNAMENT_DIVISION_DELETED_MESSAGE]: TournamentDivisionDeletedResponse,
+      [MessageType.TOURNAMENT_DIVISION_PAIRINGS_DELETED_MESSAGE]: DivisionPairingsDeletedResponse,
       [MessageType.CHAT_MESSAGE_DELETED]: ChatMessageDeleted,
       [MessageType.TOURNAMENT_MESSAGE]: TournamentDataResponse,
       [MessageType.TOURNAMENT_DIVISION_MESSAGE]: TournamentDivisionDataResponse,
@@ -573,6 +575,20 @@ export const useOnSocketMsg = () => {
 
             dispatchTournamentContext({
               actionType: ActionType.SetDivisionPairings,
+              payload: {
+                dpr: tdpm,
+                loginState,
+              },
+            });
+
+            break;
+          }
+
+          case MessageType.TOURNAMENT_DIVISION_PAIRINGS_DELETED_MESSAGE: {
+            const tdpm = parsedMsg as DivisionPairingsResponse;
+
+            dispatchTournamentContext({
+              actionType: ActionType.DeleteDivisionPairings,
               payload: {
                 dpr: tdpm,
                 loginState,

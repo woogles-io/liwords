@@ -26,6 +26,7 @@ export enum ActionType {
   SetDivisionsData,
   SetDivisionRoundControls,
   SetDivisionPairings,
+  DeleteDivisionPairings,
   SetDivisionControls,
   SetDivisionPlayers,
   SetTournamentFinished,

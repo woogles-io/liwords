@@ -111,6 +111,7 @@ enum MessageType {
   TOURNAMENT_DIVISION_CONTROLS_MESSAGE = 36;
   TOURNAMENT_DIVISION_PLAYER_CHANGE_MESSAGE = 37;
   TOURNAMENT_FINISHED_MESSAGE = 38;
+  TOURNAMENT_DIVISION_PAIRINGS_DELETED_MESSAGE = 39;
   // Add more events here. The total number of events should fit in a byte.
   // We should definitely not be using anywhere close to 255 events, and
   // in order to enforce that I'll be forcing the event type header to just be
@@ -476,6 +477,9 @@ message DivisionControls {
   int32 suspended_spread = 5;
   bool auto_start = 6;
   int32 spread_cap = 7;
+  bool gibsonize = 8;
+  int32 gibson_spread = 9;
+  int32 minimum_placement = 10;
 }
 
 message TournamentGame {
@@ -508,6 +512,13 @@ message DivisionPairingsResponse {
   string division = 2;
   repeated Pairing division_pairings = 3;
   map<int32, RoundStandings> division_standings = 4;
+  map<string, int32> gibonsized_players = 5;
+}
+
+message DivisionPairingsDeletedResponse {
+  string id = 1;
+  string division = 2;
+  int32 round = 3;
 }
 
 message PlayersAddedOrRemovedResponse {

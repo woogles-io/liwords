@@ -344,7 +344,19 @@ func (ts *TournamentService) PairRound(ctx context.Context, req *pb.PairRoundReq
 	if err != nil {
 		return nil, err
 	}
-	err = PairRound(ctx, ts.tournamentStore, req.Id, req.Division, int(req.Round))
+	err = PairRound(ctx, ts.tournamentStore, req.Id, req.Division, int(req.Round), req.OverwriteByes)
+	if err != nil {
+		return nil, twirp.NewError(twirp.InvalidArgument, err.Error())
+	}
+	return &pb.TournamentResponse{}, nil
+}
+
+func (ts *TournamentService) DeletePairings(ctx context.Context, req *pb.PairRoundRequest) (*pb.TournamentResponse, error) {
+	err := authenticateDirector(ctx, ts, req.Id, false)
+	if err != nil {
+		return nil, err
+	}
+	err = DeletePairings(ctx, ts.tournamentStore, req.Id, req.Division, int(req.Round))
 	if err != nil {
 		return nil, twirp.NewError(twirp.InvalidArgument, err.Error())
 	}

@@ -250,7 +250,7 @@ func SetRoundControls(ctx context.Context, ts TournamentStore, id string, divisi
 		return errors.New("cannot set division round controls after it has started")
 	}
 
-	pairings, standings, newDivisionRoundControls, err := divisionObject.DivisionManager.SetRoundControls(roundControls)
+	pairingsResp, newDivisionRoundControls, err := divisionObject.DivisionManager.SetRoundControls(roundControls)
 	if err != nil {
 		return err
 	}
@@ -262,8 +262,8 @@ func SetRoundControls(ctx context.Context, ts TournamentStore, id string, divisi
 
 	wrapped := entity.WrapEvent(&realtime.DivisionRoundControls{Id: id, Division: division,
 		RoundControls:     newDivisionRoundControls,
-		DivisionPairings:  pairings,
-		DivisionStandings: standings},
+		DivisionPairings:  pairingsResp.DivisionPairings,
+		DivisionStandings: pairingsResp.DivisionStandings},
 		realtime.MessageType_TOURNAMENT_DIVISION_ROUND_CONTROLS_MESSAGE)
 	return SendTournamentMessage(ctx, ts, id, wrapped)
 }
@@ -529,7 +529,7 @@ func AddPlayers(ctx context.Context, ts TournamentStore, us user.Store, id strin
 		userUUIDs = append(userUUIDs, UUID)
 	}
 
-	addPlayersPairings, addPlayersStandings, err := divisionObject.DivisionManager.AddPlayers(players)
+	pairingsResp, err := divisionObject.DivisionManager.AddPlayers(players)
 	if err != nil {
 		return err
 	}
@@ -546,13 +546,14 @@ func AddPlayers(ctx context.Context, ts TournamentStore, us user.Store, id strin
 		return err
 	}
 
-	pairingsResponse := PairingsToResponse(id, division, addPlayersPairings, addPlayersStandings)
+	pairingsResp.Id = id
+	pairingsResp.Division = division
 
 	addPlayersMessage := &realtime.PlayersAddedOrRemovedResponse{Id: id,
 		Division:          division,
 		Players:           allCurrentPlayers,
-		DivisionPairings:  pairingsResponse.DivisionPairings,
-		DivisionStandings: pairingsResponse.DivisionStandings}
+		DivisionPairings:  pairingsResp.DivisionPairings,
+		DivisionStandings: pairingsResp.DivisionStandings}
 	wrapped := entity.WrapEvent(addPlayersMessage, realtime.MessageType_TOURNAMENT_DIVISION_PLAYER_CHANGE_MESSAGE)
 	return SendTournamentMessage(ctx, ts, id, wrapped)
 }
@@ -591,7 +592,7 @@ func RemovePlayers(ctx context.Context, ts TournamentStore, us user.Store, id st
 		userUUIDs = append(userUUIDs, UUID)
 	}
 
-	removePlayersPairings, removePlayersStandings, err := divisionObject.DivisionManager.RemovePlayers(players)
+	pairingsResp, err := divisionObject.DivisionManager.RemovePlayers(players)
 	if err != nil {
 		return err
 	}
@@ -608,13 +609,14 @@ func RemovePlayers(ctx context.Context, ts TournamentStore, us user.Store, id st
 		return err
 	}
 
-	pairingsResponse := PairingsToResponse(id, division, removePlayersPairings, removePlayersStandings)
+	pairingsResp.Id = id
+	pairingsResp.Division = division
 
 	removePlayersMessage := &realtime.PlayersAddedOrRemovedResponse{Id: id,
 		Division:          division,
 		Players:           allCurrentPlayers,
-		DivisionPairings:  pairingsResponse.DivisionPairings,
-		DivisionStandings: pairingsResponse.DivisionStandings}
+		DivisionPairings:  pairingsResp.DivisionPairings,
+		DivisionStandings: pairingsResp.DivisionStandings}
 	wrapped := entity.WrapEvent(removePlayersMessage, realtime.MessageType_TOURNAMENT_DIVISION_PLAYER_CHANGE_MESSAGE)
 	return SendTournamentMessage(ctx, ts, id, wrapped)
 }
@@ -648,12 +650,12 @@ func SetPairings(ctx context.Context, ts TournamentStore, id string, division st
 			return fmt.Errorf("division %s does not have enough players or controls to set pairings", division)
 		}
 
-		newPairings, newStandings, err := divisionObject.DivisionManager.SetPairing(pairing.PlayerOneId, pairing.PlayerTwoId, int(pairing.Round))
+		pairingsResp, err := divisionObject.DivisionManager.SetPairing(pairing.PlayerOneId, pairing.PlayerTwoId, int(pairing.Round))
 		if err != nil {
 			return err
 		}
-		pairingsResponse = combinePairingsResponses(pairingsResponse, newPairings)
-		standingsResponse = combineStandingsResponses(standingsResponse, newStandings)
+		pairingsResponse = combinePairingsResponses(pairingsResponse, pairingsResp.DivisionPairings)
+		standingsResponse = combineStandingsResponses(standingsResponse, pairingsResp.DivisionStandings)
 	}
 	err = possiblyEndTournament(ctx, ts, t, division)
 	if err != nil {
@@ -779,7 +781,7 @@ func SetResult(ctx context.Context,
 		gid = g.GameID()
 	}
 
-	pairing, standings, err := divisionObject.DivisionManager.SubmitResult(round,
+	pairingsResp, err := divisionObject.DivisionManager.SubmitResult(round,
 		p1.UUID+":"+p1.Username,
 		p2.UUID+":"+p2.Username,
 		playerOneScore,
@@ -803,8 +805,9 @@ func SetResult(ctx context.Context,
 	if err != nil {
 		return err
 	}
-	pairingsMessage := PairingsToResponse(id, division, pairing, standings)
-	wrapped := entity.WrapEvent(pairingsMessage, realtime.MessageType_TOURNAMENT_DIVISION_PAIRINGS_MESSAGE)
+	pairingsResp.Id = id
+	pairingsResp.Division = division
+	wrapped := entity.WrapEvent(pairingsResp, realtime.MessageType_TOURNAMENT_DIVISION_PAIRINGS_MESSAGE)
 	return SendTournamentMessage(ctx, ts, id, wrapped)
 }
 
@@ -971,7 +974,7 @@ func StartRoundCountdown(ctx context.Context, ts TournamentStore, id string,
 	return nil
 }
 
-func PairRound(ctx context.Context, ts TournamentStore, id string, division string, round int) error {
+func PairRound(ctx context.Context, ts TournamentStore, id string, division string, round int, overwriteByes bool) error {
 	t, err := ts.Get(ctx, id)
 	if err != nil {
 		return err
@@ -999,7 +1002,7 @@ func PairRound(ctx context.Context, ts TournamentStore, id string, division stri
 		return fmt.Errorf("cannot repair non-future round %d since current round is %d", round, currentRound)
 	}
 
-	pairings, standings, err := divisionObject.DivisionManager.PairRound(round)
+	pairingsResp, err := divisionObject.DivisionManager.PairRound(round, overwriteByes)
 
 	if err != nil {
 		return err
@@ -1010,8 +1013,54 @@ func PairRound(ctx context.Context, ts TournamentStore, id string, division stri
 		return err
 	}
 
-	pairingsMessage := PairingsToResponse(id, division, pairings, standings)
-	wrapped := entity.WrapEvent(pairingsMessage, realtime.MessageType_TOURNAMENT_DIVISION_PAIRINGS_MESSAGE)
+	pairingsResp.Id = id
+	pairingsResp.Division = division
+	wrapped := entity.WrapEvent(pairingsResp, realtime.MessageType_TOURNAMENT_DIVISION_PAIRINGS_MESSAGE)
+	return SendTournamentMessage(ctx, ts, id, wrapped)
+}
+
+func DeletePairings(ctx context.Context, ts TournamentStore, id string, division string, round int) error {
+	t, err := ts.Get(ctx, id)
+	if err != nil {
+		return err
+	}
+
+	t.Lock()
+	defer t.Unlock()
+
+	if t.IsFinished {
+		return fmt.Errorf("tournament %s has finished", id)
+	}
+
+	divisionObject, ok := t.Divisions[division]
+
+	if !ok {
+		return fmt.Errorf("division %s does not exist", division)
+	}
+
+	if !t.IsStarted {
+		return errors.New("cannot erase pairings before the tournament has started")
+	}
+
+	currentRound := divisionObject.DivisionManager.GetCurrentRound()
+	if round < currentRound+1 {
+		return fmt.Errorf("cannot erase pairings for non-future round %d since current round is %d", round, currentRound)
+	}
+
+	err = divisionObject.DivisionManager.DeletePairings(round)
+
+	if err != nil {
+		return err
+	}
+
+	err = ts.Set(ctx, t)
+	if err != nil {
+		return err
+	}
+
+	wrapped := entity.WrapEvent(&realtime.DivisionPairingsDeletedResponse{Id: id,
+		Division: division,
+		Round:    int32(round)}, realtime.MessageType_TOURNAMENT_DIVISION_PAIRINGS_DELETED_MESSAGE)
 	return SendTournamentMessage(ctx, ts, id, wrapped)
 }
 

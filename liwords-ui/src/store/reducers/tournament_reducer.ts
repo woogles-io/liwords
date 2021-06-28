@@ -9,6 +9,7 @@ import {
   RoundStandings,
   TournamentDivisionDataResponse,
   DivisionPairingsResponse,
+  DivisionPairingsDeletedResponse,
   PlayersAddedOrRemovedResponse,
   DivisionControlsResponse,
   DivisionRoundControls,
@@ -171,6 +172,20 @@ const findOpponentIdx = (
       playerIndexMap[pairings[round].roundPairings[player].players[1].getId()];
   }
   return opponent;
+};
+
+const deletePairings = (
+  players: Array<TournamentPerson>,
+  playerIndexMap: { [playerID: string]: number },
+  existingPairings: Array<RoundPairings>,
+  round: number
+): Array<RoundPairings> => {
+  const updatedPairings = [...existingPairings];
+
+  for (let i = 0; i < updatedPairings[round].roundPairings.length; i++) {
+    updatedPairings[round].roundPairings[i] = {} as SinglePairing;
+  }
+  return updatedPairings;
 };
 
 const reducePairings = (
@@ -612,6 +627,28 @@ export function TournamentReducer(
           }),
         }),
       });
+    }
+
+    case ActionType.DeleteDivisionPairings: {
+      const dp = action.payload as {
+        dpdr: DivisionPairingsDeletedResponse;
+        loginState: LoginState;
+      };
+      const division = dp.dpdr.getDivision();
+      const newPairings = deletePairings(
+        state.divisions[division].players,
+        state.divisions[division].playerIndexMap,
+        state.divisions[division].pairings,
+        dp.dpdr.getRound()
+      );
+      const newState = Object.assign({}, state, {
+        divisions: Object.assign({}, state.divisions, {
+          [division]: Object.assign({}, state.divisions[division], {
+            pairings: newPairings,
+          }),
+        }),
+      });
+      return newState;
     }
 
     case ActionType.SetDivisionPairings: {
