@@ -72,7 +72,7 @@ for (const { lexicons, cacheKey, path } of [
     'NSWL20',
     'ECWL',
     'RD28',
-    'NSF20',
+    'NSF21',
   ].map((name) => ({
     lexicons: [name],
     cacheKey: `kwg/${name}`,
@@ -86,7 +86,7 @@ for (const { lexicons, cacheKey, path } of [
     'NSWL20',
     'ECWL',
     'RD28',
-    'NSF20',
+    'NSF21',
   ].map((name) => ({
     lexicons: [`${name}.WordSmog`],
     cacheKey: `kwg/${name}.WordSmog`,
