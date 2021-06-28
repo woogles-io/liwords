@@ -387,7 +387,7 @@ export const SeekForm = (props: Props) => {
           <Select.Option value="NWL20">
             NWL 20 (North American English)
           </Select.Option>
-          <Select.Option value="Deutsch20">Deutsch (German)</Select.Option>
+          <Select.Option value="RD28">Deutsch (German)</Select.Option>
           <Select.Option value="NSF20">Norsk (Norwegian)</Select.Option>
           {enableAllLexicons && (
             <React.Fragment>
