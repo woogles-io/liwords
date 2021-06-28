@@ -475,7 +475,6 @@ func (b *Bus) adjudicateGames(ctx context.Context) error {
 			// XXX: Fix for tourneys ?
 			wrapped.AddAudience(entity.AudLobby, "gameEnded")
 			b.gameEventChan <- wrapped
-			b.gameEventChan <- entGame.NewActiveGameEntry(false)
 		}
 	}
 	return nil

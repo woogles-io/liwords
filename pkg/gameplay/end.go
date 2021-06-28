@@ -341,7 +341,7 @@ func AbortGame(ctx context.Context, gameStore GameStore, tournamentStore tournam
 	evtChan <- wrapped
 
 	evt := &pb.GameEndedEvent{
-		EndReason: pb.GameEndReason_ABORTED,
+		EndReason: gameEndReason,
 		Time:      g.Timers.TimeOfLastUpdate,
 		History:   g.History(),
 	}
@@ -352,6 +352,7 @@ func AbortGame(ctx context.Context, gameStore GameStore, tournamentStore tournam
 	}
 	wrapped.AddAudience(entity.AudGameTV, g.GameID())
 	evtChan <- wrapped
+	evtChan <- g.NewActiveGameEntry(false)
 
 	// If this game is part of a tournament that is not in clubhouse
 	// mode, we must allow the players to try to play again.
