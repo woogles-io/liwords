@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 
 import { Select, Form } from 'antd';
 import { AllLexica } from './lexica';

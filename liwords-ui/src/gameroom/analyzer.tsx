@@ -262,7 +262,12 @@ const parseExaminableGameContext = (
       Array.from(letters.substr(row * dim, dim), labelToNum)
     ),
     lexicon: effectiveLexicon,
-    leave: letterDistribution === 'english' ? 'english' : 'noleave',
+    leave:
+      letterDistribution === 'english' ||
+      letterDistribution === 'german' ||
+      letterDistribution === 'norwegian'
+        ? letterDistribution
+        : 'noleave',
     rules,
   };
 
