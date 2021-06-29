@@ -200,7 +200,7 @@ export const SeekForm = (props: Props) => {
   }, []);
   const [usernameOptions, setUsernameOptions] = useState<Array<string>>([]);
   const [lexiconCopyright, setLexiconCopyright] = useState(
-    AllLexica[initialValues.lexicon].longDescription
+    AllLexica[initialValues.lexicon]?.longDescription
   );
 
   const onFormChange = (val: Store, allvals: Store) => {
