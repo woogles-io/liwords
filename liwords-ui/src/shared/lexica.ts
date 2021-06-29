@@ -8,7 +8,7 @@ type Lexicon = {
   ratingName: string; // the name that shows up in your profile ratings
   matchName: string; // the name that shows up in a match/seek/watch
   longDescription?: string;
-  flag?: string;
+  flagCode?: string;
 };
 
 export const AllLexica: { [code: string]: Lexicon } = {
@@ -59,7 +59,7 @@ export const AllLexica: { [code: string]: Lexicon } = {
     matchName: 'Deutsch',
     longDescription:
       'The “Scrabble®-Turnierliste” used as the German Lexicon is subject to copyright and related rights of Scrabble® Deutschland e.V. With the friendly assistance of Gero Illings SuperDic.',
-    flag: 'https://woogles-flags.s3.us-east-2.amazonaws.com/de.png',
+    flagCode: 'de',
   },
   NSF21: {
     code: 'NSF21',
@@ -68,7 +68,7 @@ export const AllLexica: { [code: string]: Lexicon } = {
     matchName: 'Norsk',
     longDescription:
       'The NSF word list is provided by the language committee of the Norwegian Scrabble Player Association. Used with permission.',
-    flag: 'https://woogles-flags.s3.us-east-2.amazonaws.com/no.png',
+    flagCode: 'no',
   },
   CSW19X: {
     code: 'CSW19X',

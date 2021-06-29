@@ -2,9 +2,39 @@ import React from 'react';
 
 import { Select, Form } from 'antd';
 import { AllLexica } from './lexica';
+
 type Props = {
   excludedLexica?: Set<string>;
   disabled?: boolean;
+};
+
+export const MatchLexiconDisplay = (props: {
+  lexiconCode: string;
+  useShortDescription?: boolean;
+}) => {
+  const lex = AllLexica[props.lexiconCode];
+  if (!lex) {
+    return null;
+  }
+  const desc = (
+    <>
+      {props.useShortDescription ? lex.shortDescription : lex.matchName}
+      {lex.flagCode ? (
+        <>
+          {' '}
+          <img
+            src={`https://woogles-flags.s3.us-east-2.amazonaws.com/${lex.flagCode}.png`}
+            className="country-flag"
+            alt={`${lex.flagCode.toUpperCase()} flag`}
+          />
+        </>
+      ) : (
+        <></>
+      )}
+    </>
+  );
+
+  return desc;
 };
 
 export const LexiconFormItem = (props: Props) => {
@@ -21,23 +51,11 @@ export const LexiconFormItem = (props: Props) => {
 
   const options = order
     .filter((k) => !props.excludedLexica?.has(k))
-    .map((k) => {
-      let shortDescription: string | React.ReactElement =
-        AllLexica[k].shortDescription;
-      if (AllLexica[k].flag) {
-        shortDescription = (
-          <>
-            {shortDescription}{' '}
-            <img src={AllLexica[k].flag} className="country-flag" />
-          </>
-        );
-      }
-      return (
-        <Select.Option key={k} value={k}>
-          {shortDescription}
-        </Select.Option>
-      );
-    });
+    .map((k) => (
+      <Select.Option key={k} value={k}>
+        <MatchLexiconDisplay lexiconCode={k} useShortDescription />
+      </Select.Option>
+    ));
   return (
     <Form.Item
       label="Dictionary"
@@ -70,26 +88,4 @@ export const excludedLexica = (
     return new Set<string>(['CSW19X']);
   }
   return new Set<string>();
-};
-
-export const MatchLexiconDisplay = (props: { lexiconCode: string }) => {
-  const lex = AllLexica[props.lexiconCode];
-  if (!lex) {
-    return null;
-  }
-  const desc = (
-    <>
-      {lex.matchName}
-      {lex.flag ? (
-        <>
-          {' '}
-          <img src={lex.flag} className="country-flag" />
-        </>
-      ) : (
-        <></>
-      )}
-    </>
-  );
-
-  return desc;
 };
