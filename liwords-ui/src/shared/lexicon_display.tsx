@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useState } from 'react';
 
 import { Select, Form } from 'antd';
 import { AllLexica } from './lexica';
+import { DisplayFlag } from './display_flag';
 
 type Props = {
   excludedLexica?: Set<string>;
@@ -19,17 +20,11 @@ export const MatchLexiconDisplay = (props: {
   const desc = (
     <>
       {props.useShortDescription ? lex.shortDescription : lex.matchName}
-      {lex.flagCode ? (
+      {lex.flagCode && (
         <>
           {' '}
-          <img
-            src={`https://woogles-flags.s3.us-east-2.amazonaws.com/${lex.flagCode}.png`}
-            className="country-flag"
-            alt={`${lex.flagCode.toUpperCase()} flag`}
-          />
+          <DisplayFlag countryCode={lex.flagCode} />
         </>
-      ) : (
-        <></>
       )}
     </>
   );
@@ -37,7 +32,7 @@ export const MatchLexiconDisplay = (props: {
   return desc;
 };
 
-export const LexiconFormItem = (props: Props) => {
+export const LexiconFormItem = React.memo((props: Props) => {
   const order = [
     'CSW19',
     'NWL20',
@@ -69,21 +64,14 @@ export const LexiconFormItem = (props: Props) => {
       <Select disabled={props.disabled}>{options}</Select>
     </Form.Item>
   );
-};
+});
 
 export const excludedLexica = (
   enableAllLexicons: boolean,
   enableCSW19X: boolean
 ): Set<string> => {
   if (!enableAllLexicons) {
-    return new Set<string>([
-      'NWL18',
-      'NSWL20',
-      'ECWL',
-      'CSW19X',
-      'RD28',
-      'NSF21',
-    ]);
+    return new Set<string>(['NWL18', 'NSWL20', 'ECWL', 'CSW19X']);
   } else if (!enableCSW19X) {
     return new Set<string>(['CSW19X']);
   }

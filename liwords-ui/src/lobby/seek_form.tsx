@@ -32,6 +32,7 @@ import {
 } from '../store/store';
 import { VariantIcon } from '../shared/variant_icons';
 import { excludedLexica, LexiconFormItem } from '../shared/lexicon_display';
+import { AllLexica } from '../shared/lexica';
 
 const initTimeFormatter = (val?: number) => {
   return val != null ? initTimeDiscreteScale[val].label : null;
@@ -198,6 +199,9 @@ export const SeekForm = (props: Props) => {
     setSliderTooltipVisible(!open);
   }, []);
   const [usernameOptions, setUsernameOptions] = useState<Array<string>>([]);
+  const [lexiconCopyright, setLexiconCopyright] = useState(
+    AllLexica[initialValues.lexicon].longDescription
+  );
 
   const onFormChange = (val: Store, allvals: Store) => {
     if (window.localStorage) {
@@ -231,6 +235,7 @@ export const SeekForm = (props: Props) => {
     }
     setTimectrl(tc);
     setTtag(tt);
+    setLexiconCopyright(AllLexica[allvals.lexicon].longDescription);
   };
   const defaultOptions = useMemo(() => {
     let defaultPlayers: string[] = [];
@@ -413,6 +418,9 @@ export const SeekForm = (props: Props) => {
       <Form.Item label="Rated" name="rated" valuePropName="checked">
         <Switch disabled={disableControls} />
       </Form.Item>
+      <small className="readable-text-color">
+        {lexiconCopyright ? lexiconCopyright : ''}
+      </small>
     </Form>
   );
 };

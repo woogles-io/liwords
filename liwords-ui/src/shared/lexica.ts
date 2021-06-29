@@ -38,7 +38,7 @@ export const AllLexica: { [code: string]: Lexicon } = {
   },
   CSW19: {
     code: 'CSW19',
-    shortDescription: 'CSW19 (World English)',
+    shortDescription: 'CSW 19 (World English)',
     ratingName: 'CSW',
     matchName: 'CSW19',
     longDescription:
