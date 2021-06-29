@@ -4,18 +4,17 @@ import { TouchBackend } from 'react-dnd-touch-backend';
 import BoardSpace from './board_space';
 import Tile from './tile';
 import { BonusType } from '../constants/board_layout';
-import {
-  CrosswordGameTileValues,
-  runeToValues,
-} from '../constants/tile_values';
+import { alphabetFromName, runeToValues } from '../constants/alphabets';
 
-const TileImages = React.memo((props: {}) => {
+const TileImages = React.memo((props: { letterDistribution: string }) => {
   // 1. Go to this page (see App.tsx for url).
   // 2. Screen-capture normally. Any white border can be cropped later.
   //    On Mac: cmd+shift+4.
   // 3. Crop the white border and assign transparency.
   //    On Mac: brew install netpbm
   // pngtopnm img.png | pnmcrop | pnmtopng -transparent '=#000000' > tiles.png
+
+  const alphabet = alphabetFromName(props.letterDistribution);
 
   return (
     <DndProvider backend={TouchBackend}>
@@ -42,7 +41,7 @@ const TileImages = React.memo((props: {}) => {
               <div>
                 <Tile
                   rune={ch}
-                  value={runeToValues(ch, CrosswordGameTileValues)}
+                  value={runeToValues(alphabet, ch)}
                   lastPlayed={false}
                   playerOfTile={0}
                   key={ch}
@@ -61,7 +60,7 @@ const TileImages = React.memo((props: {}) => {
             BonusType.StartingSquare,
             BonusType.NoBonus,
           ].map((bonusType) => (
-            <div style={{ minWidth: '34px' }}>
+            <div style={{ minWidth: '34px' }} key={bonusType}>
               <BoardSpace
                 bonusType={
                   bonusType === BonusType.StartingSquare

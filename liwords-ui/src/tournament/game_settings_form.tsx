@@ -28,6 +28,7 @@ import {
   GameRules,
   RatingMode,
 } from '../gen/api/proto/realtime/realtime_pb';
+import { LexiconFormItem } from '../shared/lexicon_display';
 
 type Props = {
   setGameRequest: (gr: GameRequest) => void;
@@ -195,27 +196,7 @@ export const SettingsForm = (props: Props) => {
       name="gameSettingsForm"
       onFinish={submitGameReq}
     >
-      <Form.Item
-        label="Dictionary"
-        name="lexicon"
-        rules={[
-          {
-            required: true,
-          },
-        ]}
-      >
-        <Select>
-          <Select.Option value="CSW19">CSW 19 (World English)</Select.Option>
-          <Select.Option value="NWL20">
-            NWL 20 (North American English)
-          </Select.Option>
-          <Select.Option value="ECWL">English Common Word List</Select.Option>
-          <Select.Option value="NSWL20">
-            NSWL 20 (NASPA School Word List)
-          </Select.Option>
-          <Select.Option value="NWL18">NWL 18 (Obsolete)</Select.Option>
-        </Select>
-      </Form.Item>
+      <LexiconFormItem />
 
       <Form.Item label="Game type" name="variant" rules={[{ required: true }]}>
         <Select>

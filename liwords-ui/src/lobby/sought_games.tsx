@@ -15,6 +15,7 @@ import { PlayerAvatar } from '../shared/player_avatar';
 import { DisplayUserFlag } from '../shared/display_flag';
 import { RatingBadge } from './rating_badge';
 import { VariantIcon } from '../shared/variant_icons';
+import { MatchLexiconDisplay } from '../shared/lexicon_display';
 
 export const timeFormat = (
   initialTimeSecs: number,
@@ -92,29 +93,17 @@ export const SoughtGames = (props: Props) => {
       className: 'lexicon',
       dataIndex: 'lexicon',
       key: 'lexicon',
-      filters: [
-        {
-          text: 'CSW19',
-          value: 'CSW19',
-        },
-        {
-          text: 'NWL20',
-          value: 'NWL20',
-        },
-        {
-          text: 'NWL18',
-          value: 'NWL18',
-        },
-        {
-          text: 'ECWL',
-          value: 'ECWL',
-        },
-      ],
+      filters: ['CSW19', 'NWL20', 'NWL18', 'ECWL', 'RD28', 'NSF21'].map(
+        (l) => ({
+          text: <MatchLexiconDisplay lexiconCode={l} />,
+          value: l,
+        })
+      ),
       filterMultiple: false,
       onFilter: (
         value: string | number | boolean,
         record: SoughtGameTableData
-      ) => record.lexicon.indexOf(value.toString()) === 0,
+      ) => record.lexiconCode.indexOf(value.toString()) === 0,
     },
     {
       title: 'Time',
@@ -136,7 +125,8 @@ export const SoughtGames = (props: Props) => {
     seeker: string | ReactNode;
     rating: string;
     ratingBadge?: ReactNode;
-    lexicon: string;
+    lexicon: ReactNode;
+    lexiconCode: string;
     time: string;
     totalTime: number;
     details?: ReactNode;
@@ -190,7 +180,7 @@ export const SoughtGames = (props: Props) => {
           ),
           rating: outgoing ? '' : sg.userRating,
           ratingBadge: outgoing ? null : <RatingBadge rating={sg.userRating} />,
-          lexicon: sg.lexicon,
+          lexicon: <MatchLexiconDisplay lexiconCode={sg.lexicon} />,
           time: timeFormat(
             sg.initialTimeSecs,
             sg.incrementSecs,
@@ -204,6 +194,7 @@ export const SoughtGames = (props: Props) => {
           details: getDetails(),
           outgoing,
           seekID: sg.seekID,
+          lexiconCode: sg.lexicon,
         };
       }
     );

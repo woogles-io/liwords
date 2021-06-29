@@ -7,7 +7,6 @@ import React, {
 } from 'react';
 import { useMountedState } from '../utils/mounted';
 
-import { EnglishCrosswordGameDistribution } from '../constants/tile_distributions';
 import { GameEvent } from '../gen/macondo/api/proto/macondo/macondo_pb';
 import {
   ServerChallengeResultEvent,
@@ -33,6 +32,7 @@ import {
   TournamentState,
 } from './reducers/tournament_reducer';
 import { MetaEventState, MetaStates } from './meta_game_events';
+import { StandardEnglishAlphabet } from '../constants/alphabets';
 
 export enum ChatEntityType {
   UserChat,
@@ -215,11 +215,7 @@ type ExamineStoreData = {
   removeHandleExaminer: (x: () => void) => void;
 };
 
-const defaultGameState = startingGameState(
-  EnglishCrosswordGameDistribution,
-  [],
-  ''
-);
+const defaultGameState = startingGameState(StandardEnglishAlphabet, [], '');
 
 // This is annoying, but we have to add a default for everything in this
 // declaration. Declaring it as a Partial<StoreData> breaks things elsewhere.
@@ -465,7 +461,7 @@ const ExaminableStore = ({ children }: { children: React.ReactNode }) => {
   const examinableGameContext = useMemo(() => {
     if (!isExamining) return gameContext;
     const ret = startingGameState(
-      gameContext.tileDistribution,
+      gameContext.alphabet,
       gameContext.players.map(({ userID }) => ({
         userID,
         score: 0,

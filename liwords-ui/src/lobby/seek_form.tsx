@@ -31,6 +31,8 @@ import {
   usePresenceStoreContext,
 } from '../store/store';
 import { VariantIcon } from '../shared/variant_icons';
+import { excludedLexica, LexiconFormItem } from '../shared/lexicon_display';
+import { AllLexica } from '../shared/lexica';
 
 const initTimeFormatter = (val?: number) => {
   return val != null ? initTimeDiscreteScale[val].label : null;
@@ -197,6 +199,9 @@ export const SeekForm = (props: Props) => {
     setSliderTooltipVisible(!open);
   }, []);
   const [usernameOptions, setUsernameOptions] = useState<Array<string>>([]);
+  const [lexiconCopyright, setLexiconCopyright] = useState(
+    AllLexica[initialValues.lexicon]?.longDescription
+  );
 
   const onFormChange = (val: Store, allvals: Store) => {
     if (window.localStorage) {
@@ -230,6 +235,7 @@ export const SeekForm = (props: Props) => {
     }
     setTimectrl(tc);
     setTtag(tt);
+    setLexiconCopyright(AllLexica[allvals.lexicon].longDescription);
   };
   const defaultOptions = useMemo(() => {
     let defaultPlayers: string[] = [];
@@ -373,38 +379,11 @@ export const SeekForm = (props: Props) => {
         </Form.Item>
       )}
 
-      <Form.Item
-        label="Dictionary"
-        name="lexicon"
-        rules={[
-          {
-            required: true,
-          },
-        ]}
-      >
-        <Select disabled={disableLexiconControls}>
-          <Select.Option value="CSW19">CSW 19 (World English)</Select.Option>
-          <Select.Option value="NWL20">
-            NWL 20 (North American English)
-          </Select.Option>
-          {enableAllLexicons && (
-            <React.Fragment>
-              <Select.Option value="NWL18">NWL 18 (Obsolete)</Select.Option>
-              <Select.Option value="NSWL20">
-                NSWL 20 (NASPA School Word List)
-              </Select.Option>
-              <Select.Option value="ECWL">
-                English Common Word List
-              </Select.Option>
-              {enableCSW19X && (
-                <Select.Option value="CSW19X">
-                  CSW19X (ASCI Expurgated)
-                </Select.Option>
-              )}
-            </React.Fragment>
-          )}
-        </Select>
-      </Form.Item>
+      <LexiconFormItem
+        disabled={disableLexiconControls}
+        excludedLexica={excludedLexica(enableAllLexicons, enableCSW19X)}
+      />
+
       {showChallengeRule && (
         <ChallengeRulesFormItem disabled={disableChallengeControls} />
       )}
@@ -439,6 +418,9 @@ export const SeekForm = (props: Props) => {
       <Form.Item label="Rated" name="rated" valuePropName="checked">
         <Switch disabled={disableControls} />
       </Form.Item>
+      <small className="readable-text-color">
+        {lexiconCopyright ? lexiconCopyright : ''}
+      </small>
     </Form>
   );
 };

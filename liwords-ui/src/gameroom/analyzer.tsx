@@ -7,6 +7,7 @@ import React, {
 } from 'react';
 import { Button, Card, Switch } from 'antd';
 import { BulbOutlined } from '@ant-design/icons';
+import { defaultLetterDistribution } from '../lobby/sought_game_interactions';
 import {
   useExaminableGameContextStoreContext,
   useExamineStoreContext,
@@ -239,6 +240,10 @@ const parseExaminableGameContext = (
     players,
   } = examinableGameContext;
 
+  const letterDistribution = defaultLetterDistribution(lexicon);
+  const labelToNum = labelToNumFor(letterDistribution);
+  const numToLabel = numToLabelFor(letterDistribution);
+
   const rackStr = players[onturn].currentRack;
   const rackNum = Array.from(rackStr, labelToNum);
 
@@ -248,36 +253,97 @@ const parseExaminableGameContext = (
     effectiveLexicon = `${lexicon}.WordSmog`;
     rules = 'WordSmog';
   }
+  if (letterDistribution !== 'english') {
+    rules += `/${letterDistribution}`;
+  }
   const boardObj = {
     rack: rackNum,
     board: Array.from(new Array(dim), (_, row) =>
       Array.from(letters.substr(row * dim, dim), labelToNum)
     ),
     lexicon: effectiveLexicon,
-    leave: 'english',
+    leave:
+      letterDistribution === 'english' ||
+      letterDistribution === 'german' ||
+      letterDistribution === 'norwegian'
+        ? letterDistribution
+        : 'noleave',
     rules,
   };
 
-  return { dim, letters, rackNum, effectiveLexicon, boardObj };
+  return { dim, letters, rackNum, effectiveLexicon, boardObj, numToLabel };
 };
 
 // Return 0 for both board's ' ' and rack's '?'.
 // English-only.
-const labelToNum = (c: string) =>
+const englishLabelToNum = (c: string) =>
   c >= 'A' && c <= 'Z'
     ? c.charCodeAt(0) - 0x40
     : c >= 'a' && c <= 'z'
     ? -(c.charCodeAt(0) - 0x60)
     : 0;
 
+const GERMAN_TILES = Array.from('AÄBCDEFGHIJKLMNOÖPQRSTUÜVWXYZ');
+const GERMAN_BLANK_TILES = Array.from('aäbcdefghijklmnoöpqrstuüvwxyz');
+
+const germanLabelToNum = (c: string) => {
+  let idx = GERMAN_TILES.indexOf(c);
+  if (idx >= 0) return idx + 1;
+  idx = GERMAN_BLANK_TILES.indexOf(c);
+  if (idx >= 0) return -(idx + 1);
+  return 0;
+};
+
+// note: internal wolges ordering
+const NORWEGIAN_TILES = Array.from('ABCDEFGHIJKLMNOPQRSTUVWXYÜZÆÄØÖÅ');
+const NORWEGIAN_BLANK_TILES = Array.from('abcdefghijklmnopqrstuvwxyüzæäøöå');
+
+const norwegianLabelToNum = (c: string) => {
+  let idx = NORWEGIAN_TILES.indexOf(c);
+  if (idx >= 0) return idx + 1;
+  idx = NORWEGIAN_BLANK_TILES.indexOf(c);
+  if (idx >= 0) return -(idx + 1);
+  return 0;
+};
+
+const labelToNumFor = (letterDistribution: string) => {
+  switch (letterDistribution) {
+    case 'english':
+      return englishLabelToNum;
+    case 'german':
+      return germanLabelToNum;
+    case 'norwegian':
+      return norwegianLabelToNum;
+  }
+  return englishLabelToNum;
+};
+
 // Return '?' for 0, because this is used for exchanges.
 // English-only.
-const numToLabel = (n: number) =>
+const englishNumToLabel = (n: number) =>
   n > 0
     ? String.fromCharCode(0x40 + n)
     : n < 0
     ? String.fromCharCode(0x60 - n)
     : '?';
+
+const germanNumToLabel = (n: number) =>
+  n > 0 ? GERMAN_TILES[n - 1] : n < 0 ? GERMAN_BLANK_TILES[-1 - n] : '?';
+
+const norwegianNumToLabel = (n: number) =>
+  n > 0 ? NORWEGIAN_TILES[n - 1] : n < 0 ? NORWEGIAN_BLANK_TILES[-1 - n] : '?';
+
+const numToLabelFor = (letterDistribution: string) => {
+  switch (letterDistribution) {
+    case 'english':
+      return englishNumToLabel;
+    case 'german':
+      return germanNumToLabel;
+    case 'norwegian':
+      return norwegianNumToLabel;
+  }
+  return englishNumToLabel;
+};
 
 const AnalyzerContext = React.createContext<{
   autoMode: boolean;
@@ -341,6 +407,7 @@ export const AnalyzerContextProvider = ({
           rackNum,
           effectiveLexicon,
           boardObj: bareBoardObj,
+          numToLabel,
         } = parseExaminableGameContext(examinableGameContext, lexicon, variant);
         const boardObj = { ...bareBoardObj, count: 15 };
 
@@ -411,6 +478,13 @@ export const Analyzer = React.memo((props: AnalyzerProps) => {
     setPlacedTiles,
     setPlacedTilesTempScore,
   } = useTentativeTileContext();
+
+  const letterDistribution = useMemo(() => defaultLetterDistribution(lexicon), [
+    lexicon,
+  ]);
+  const labelToNum = useMemo(() => labelToNumFor(letterDistribution), [
+    letterDistribution,
+  ]);
 
   const placeMove = useCallback(
     (move) => {
@@ -546,7 +620,7 @@ export const Analyzer = React.memo((props: AnalyzerProps) => {
       }
     }
     return null;
-  }, [actualEvent]);
+  }, [actualEvent, labelToNum]);
   const evaluatedMoveId = useRef(0);
   const [evaluatedMove, setEvaluatedMove] = useState<{
     evaluatedMoveId: number;
@@ -568,6 +642,7 @@ export const Analyzer = React.memo((props: AnalyzerProps) => {
           rackNum,
           effectiveLexicon,
           boardObj: bareBoardObj,
+          numToLabel,
         } = parseExaminableGameContext(examinableGameContext, lexicon, variant);
         const boardObj = { ...bareBoardObj, plays: [actualMove] };
 
