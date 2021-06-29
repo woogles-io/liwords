@@ -56,9 +56,9 @@ func TestHandleAbort(t *testing.T) {
 	<-gsetup.donechan
 
 	// expected events: game history, request abort, game deletion (from lobby),
-	// game ended event, abort accepted
+	// game ended event, active game entry, abort accepted
 	log.Debug().Interface("evts", gsetup.consumer.evts).Msg("evts")
-	is.Equal(len(gsetup.consumer.evts), 5)
+	is.Equal(len(gsetup.consumer.evts), 6)
 	is.Equal(gsetup.g.Playing(), macondopb.PlayState_GAME_OVER)
 
 	teardownGame(gsetup)
@@ -334,9 +334,9 @@ func TestHandleAbortAutoaccept(t *testing.T) {
 	<-gsetup.donechan
 
 	// expected events: game history, request abort, game deletion (from lobby),
-	// game ended event
+	// game ended event, active game entry
 	log.Debug().Interface("evts", gsetup.consumer.evts).Msg("evts")
-	is.Equal(len(gsetup.consumer.evts), 4)
+	is.Equal(len(gsetup.consumer.evts), 5)
 
 	teardownGame(gsetup)
 }
