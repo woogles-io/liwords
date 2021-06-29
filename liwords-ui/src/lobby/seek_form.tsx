@@ -31,6 +31,7 @@ import {
   usePresenceStoreContext,
 } from '../store/store';
 import { VariantIcon } from '../shared/variant_icons';
+import { excludedLexica, LexiconFormItem } from '../shared/lexicon_display';
 
 const initTimeFormatter = (val?: number) => {
   return val != null ? initTimeDiscreteScale[val].label : null;
@@ -373,40 +374,11 @@ export const SeekForm = (props: Props) => {
         </Form.Item>
       )}
 
-      <Form.Item
-        label="Dictionary"
-        name="lexicon"
-        rules={[
-          {
-            required: true,
-          },
-        ]}
-      >
-        <Select disabled={disableLexiconControls}>
-          <Select.Option value="CSW19">CSW 19 (World English)</Select.Option>
-          <Select.Option value="NWL20">
-            NWL 20 (North American English)
-          </Select.Option>
-          <Select.Option value="RD28">Deutsch (German)</Select.Option>
-          <Select.Option value="NSF21">Norsk (Norwegian)</Select.Option>
-          {enableAllLexicons && (
-            <React.Fragment>
-              <Select.Option value="NWL18">NWL 18 (Obsolete)</Select.Option>
-              <Select.Option value="NSWL20">
-                NSWL 20 (NASPA School Word List)
-              </Select.Option>
-              <Select.Option value="ECWL">
-                English Common Word List
-              </Select.Option>
-              {enableCSW19X && (
-                <Select.Option value="CSW19X">
-                  CSW19X (ASCI Expurgated)
-                </Select.Option>
-              )}
-            </React.Fragment>
-          )}
-        </Select>
-      </Form.Item>
+      <LexiconFormItem
+        disabled={disableLexiconControls}
+        excludedLexica={excludedLexica(enableAllLexicons, enableCSW19X)}
+      />
+
       {showChallengeRule && (
         <ChallengeRulesFormItem disabled={disableChallengeControls} />
       )}

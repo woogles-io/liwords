@@ -2,6 +2,7 @@ import React from 'react';
 import { Card } from 'antd';
 import { timeCtrlToDisplayName, timeToString } from '../store/constants';
 import { VariantIcon } from '../shared/variant_icons';
+import { MatchLexiconDisplay } from '../shared/lexicon_display';
 
 // At some point we should get this from the pb but then we have to use
 // twirp for this and we really shouldn't need to. Wait on it probably.
@@ -155,7 +156,8 @@ export const GameInfo = React.memo((props: Props) => {
             props.meta.game_request.increment_seconds,
             props.meta.game_request.max_overtime_minutes
           )}`}{' '}
-          • {variant} • {props.meta.game_request.lexicon}
+          • {variant} •{' '}
+          <MatchLexiconDisplay lexiconCode={props.meta.game_request.lexicon} />
         </p>
         <p>
           {challenge} challenge • {rated}
