@@ -65,6 +65,11 @@ for (const { lexicons, cacheKey, path } of [
     path: '/wasm/english.klv',
   },
   {
+    lexicons: ['FRA20'].flatMap((name) => [name, `${name}.WordSmog`]),
+    cacheKey: 'klv/french',
+    path: '/wasm/french.klv',
+  },
+  {
     lexicons: ['RD28'].flatMap((name) => [name, `${name}.WordSmog`]),
     cacheKey: 'klv/german',
     path: '/wasm/german.klv',
