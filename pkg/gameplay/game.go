@@ -10,6 +10,7 @@ import (
 	"sort"
 	"strconv"
 	"time"
+	"unicode/utf8"
 
 	"github.com/domino14/macondo/runner"
 
@@ -627,8 +628,9 @@ func sanitizeEvent(sge *pb.ServerGameplayEvent) *pb.ServerGameplayEvent {
 	cloned := proto.Clone(sge).(*pb.ServerGameplayEvent)
 	cloned.NewRack = ""
 	cloned.Event.Rack = ""
+	// len() > 0 is fine
 	if len(cloned.Event.Exchanged) > 0 {
-		cloned.Event.Exchanged = strconv.Itoa(len(cloned.Event.Exchanged))
+		cloned.Event.Exchanged = strconv.Itoa(utf8.RuneCountInString(cloned.Event.Exchanged))
 	}
 	return cloned
 }
