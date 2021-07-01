@@ -265,7 +265,8 @@ const parseExaminableGameContext = (
     leave:
       letterDistribution === 'english' ||
       letterDistribution === 'german' ||
-      letterDistribution === 'norwegian'
+      letterDistribution === 'norwegian' ||
+      letterDistribution === 'french'
         ? letterDistribution
         : 'noleave',
     rules,
@@ -491,7 +492,7 @@ export const Analyzer = React.memo((props: AnalyzerProps) => {
       const {
         board: { dim, letters },
       } = examinableGameContext;
-      let newPlacedTiles = new Set<EphemeralTile>();
+      const newPlacedTiles = new Set<EphemeralTile>();
       let row = move.row;
       let col = move.col;
       let vertical = move.vertical;

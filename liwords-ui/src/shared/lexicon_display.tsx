@@ -38,6 +38,7 @@ export const LexiconFormItem = React.memo((props: Props) => {
     'NWL20',
     'ECWL',
     'RD28',
+    'FRA20',
     'NSF21',
     'NWL18',
     'NSWL20',

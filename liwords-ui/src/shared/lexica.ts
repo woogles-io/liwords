@@ -70,6 +70,13 @@ export const AllLexica: { [code: string]: Lexicon } = {
       'The NSF word list is provided by the language committee of the Norwegian Scrabble Player Association. Used with permission.',
     flagCode: 'no',
   },
+  FRA20: {
+    code: 'FRA20',
+    shortDescription: 'Français (French)',
+    ratingName: 'Français',
+    matchName: 'Français',
+    flagCode: 'fr',
+  },
   CSW19X: {
     code: 'CSW19X',
     shortDescription: 'CSW19X (School Expurgated)',
