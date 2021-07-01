@@ -81,6 +81,7 @@ for (const { lexicons, cacheKey, path } of [
     'NWL18',
     'NSWL20',
     'ECWL',
+    'FRA20',
     'RD28',
     'NSF21',
   ].map((name) => ({
@@ -95,6 +96,7 @@ for (const { lexicons, cacheKey, path } of [
     'NWL18',
     'NSWL20',
     'ECWL',
+    'FRA20',
     'RD28',
     'NSF21',
   ].map((name) => ({
