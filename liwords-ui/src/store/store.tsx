@@ -619,11 +619,7 @@ const ExaminableStore = ({ children }: { children: React.ReactNode }) => {
 
   const handleExamineShortcuts = useCallback(
     (evt) => {
-      if (
-        isExamining &&
-        (shouldTrigger(document.activeElement) ||
-          shouldTrigger(window.getSelection()?.focusNode?.parentElement))
-      ) {
+      if (isExamining && shouldTrigger(document.activeElement)) {
         if (evt.ctrlKey || evt.altKey || evt.metaKey) {
           // If a modifier key is held, never mind.
         } else {

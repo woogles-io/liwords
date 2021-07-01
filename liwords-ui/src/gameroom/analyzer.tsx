@@ -805,7 +805,12 @@ export const Analyzer = React.memo((props: AnalyzerProps) => {
   );
   if (props.includeCard) {
     return (
-      <Card title="Analyzer" className="analyzer-card" extra={analyzerControls}>
+      <Card
+        title="Analyzer"
+        className="analyzer-card"
+        extra={analyzerControls}
+        tabIndex={-1} /* enable Examine shortcuts on clicking card title */
+      >
         {analyzerContainer}
       </Card>
     );
