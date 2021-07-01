@@ -132,11 +132,45 @@ export const StandardNorwegianAlphabet: Alphabet = {
   letterMap: {},
 };
 
+export const StandardFrenchAlphabet: Alphabet = {
+  letters: [
+    { rune: 'A', score: 1, count: 9, vowel: true, category: 0 },
+    { rune: 'B', score: 3, count: 2, vowel: false, category: 2 },
+    { rune: 'C', score: 3, count: 2, vowel: false, category: 2 },
+    { rune: 'D', score: 2, count: 3, vowel: false, category: 1 },
+    { rune: 'E', score: 1, count: 15, vowel: true, category: 0 },
+    { rune: 'F', score: 4, count: 2, vowel: false, category: 2 },
+    { rune: 'G', score: 2, count: 2, vowel: false, category: 1 },
+    { rune: 'H', score: 4, count: 2, vowel: false, category: 2 },
+    { rune: 'I', score: 1, count: 8, vowel: true, category: 0 },
+    { rune: 'J', score: 8, count: 1, vowel: false, category: 3 },
+    { rune: 'K', score: 10, count: 1, vowel: false, category: 3 },
+    { rune: 'L', score: 1, count: 5, vowel: false, category: 1 },
+    { rune: 'M', score: 2, count: 3, vowel: false, category: 1 },
+    { rune: 'N', score: 1, count: 6, vowel: false, category: 1 },
+    { rune: 'O', score: 1, count: 6, vowel: true, category: 0 },
+    { rune: 'P', score: 3, count: 2, vowel: false, category: 1 },
+    { rune: 'Q', score: 8, count: 1, vowel: false, category: 3 },
+    { rune: 'R', score: 1, count: 6, vowel: false, category: 1 },
+    { rune: 'S', score: 1, count: 6, vowel: false, category: 3 },
+    { rune: 'T', score: 1, count: 6, vowel: false, category: 1 },
+    { rune: 'U', score: 1, count: 6, vowel: true, category: 0 },
+    { rune: 'V', score: 4, count: 2, vowel: false, category: 2 },
+    { rune: 'W', score: 10, count: 1, vowel: false, category: 3 },
+    { rune: 'X', score: 10, count: 1, vowel: false, category: 3 },
+    { rune: 'Y', score: 10, count: 1, vowel: true, category: 3 },
+    { rune: 'Z', score: 10, count: 1, vowel: false, category: 3 },
+    { rune: Blank, score: 0, count: 2, vowel: false, category: 3 },
+  ],
+  letterMap: {},
+};
+
 // Create letter maps for faster access.
 [
   StandardEnglishAlphabet,
   StandardGermanAlphabet,
   StandardNorwegianAlphabet,
+  StandardFrenchAlphabet,
 ].forEach((alph) => {
   alph.letters.forEach((letter) => {
     alph.letterMap[letter.rune] = letter;
@@ -151,6 +185,8 @@ export const alphabetFromName = (letterDistribution: string): Alphabet => {
       return StandardGermanAlphabet;
     case 'english':
       return StandardEnglishAlphabet;
+    case 'french':
+      return StandardFrenchAlphabet;
     default:
       return StandardEnglishAlphabet;
   }

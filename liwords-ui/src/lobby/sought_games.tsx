@@ -93,12 +93,18 @@ export const SoughtGames = (props: Props) => {
       className: 'lexicon',
       dataIndex: 'lexicon',
       key: 'lexicon',
-      filters: ['CSW19', 'NWL20', 'NWL18', 'ECWL', 'RD28', 'NSF21'].map(
-        (l) => ({
-          text: <MatchLexiconDisplay lexiconCode={l} />,
-          value: l,
-        })
-      ),
+      filters: [
+        'CSW19',
+        'NWL20',
+        'NWL18',
+        'ECWL',
+        'RD28',
+        'FRA20',
+        'NSF21',
+      ].map((l) => ({
+        text: <MatchLexiconDisplay lexiconCode={l} />,
+        value: l,
+      })),
       filterMultiple: false,
       onFilter: (
         value: string | number | boolean,
