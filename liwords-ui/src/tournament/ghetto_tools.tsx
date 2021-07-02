@@ -863,7 +863,10 @@ const SetTournamentControls = (props: { tournamentID: string }) => {
         <dd>{gr.getRatingMode() === RatingMode.RATED ? 'Yes' : 'No'}</dd>
       </dl>
     ) : (
-      <Typography.Text className="ant-form-text" type="secondary">
+      <Typography.Text
+        className="ant-form-text readable-text-color"
+        type="secondary"
+      >
         ( <SmileOutlined /> No game settings yet. )
       </Typography.Text>
     );

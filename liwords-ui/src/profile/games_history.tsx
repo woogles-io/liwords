@@ -19,12 +19,17 @@ type Props = {
 export const GamesHistoryCard = React.memo((props: Props) => {
   const { userID } = props;
 
+  const special = ['Unwoogler', 'AnotherUnwoogler', userID];
   const formattedGames = props.games
     .filter(
       (item) => item.players?.length && item.game_end_reason !== 'CANCELLED'
     )
     .map((item) => {
-      const userplace = item.players[0].user_id === userID ? 0 : 1;
+      const userplace =
+        special.indexOf(item.players[0].user_id) >
+        special.indexOf(item.players[1].user_id)
+          ? 0
+          : 1;
       const opponent = (
         <Link
           to={`/profile/${encodeURIComponent(
@@ -89,6 +94,9 @@ export const GamesHistoryCard = React.memo((props: Props) => {
           break;
         case 'RESIGNED':
           endReason = 'Resignation';
+          break;
+        case 'FORCE_FORFEIT':
+          endReason = 'Forfeit';
           break;
         case 'ABORTED':
           endReason = 'Aborted';

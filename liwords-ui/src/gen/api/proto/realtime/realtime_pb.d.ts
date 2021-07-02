@@ -694,6 +694,65 @@ export namespace GameEndedEvent {
   }
 }
 
+export class GameMetaEvent extends jspb.Message {
+  getOrigEventId(): string;
+  setOrigEventId(value: string): void;
+
+  hasTimestamp(): boolean;
+  clearTimestamp(): void;
+  getTimestamp(): google_protobuf_timestamp_pb.Timestamp | undefined;
+  setTimestamp(value?: google_protobuf_timestamp_pb.Timestamp): void;
+
+  getType(): GameMetaEvent.EventTypeMap[keyof GameMetaEvent.EventTypeMap];
+  setType(value: GameMetaEvent.EventTypeMap[keyof GameMetaEvent.EventTypeMap]): void;
+
+  getPlayerId(): string;
+  setPlayerId(value: string): void;
+
+  getGameId(): string;
+  setGameId(value: string): void;
+
+  getExpiry(): number;
+  setExpiry(value: number): void;
+
+  serializeBinary(): Uint8Array;
+  toObject(includeInstance?: boolean): GameMetaEvent.AsObject;
+  static toObject(includeInstance: boolean, msg: GameMetaEvent): GameMetaEvent.AsObject;
+  static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+  static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+  static serializeBinaryToWriter(message: GameMetaEvent, writer: jspb.BinaryWriter): void;
+  static deserializeBinary(bytes: Uint8Array): GameMetaEvent;
+  static deserializeBinaryFromReader(message: GameMetaEvent, reader: jspb.BinaryReader): GameMetaEvent;
+}
+
+export namespace GameMetaEvent {
+  export type AsObject = {
+    origEventId: string,
+    timestamp?: google_protobuf_timestamp_pb.Timestamp.AsObject,
+    type: GameMetaEvent.EventTypeMap[keyof GameMetaEvent.EventTypeMap],
+    playerId: string,
+    gameId: string,
+    expiry: number,
+  }
+
+  export interface EventTypeMap {
+    REQUEST_ABORT: 0;
+    REQUEST_ADJUDICATION: 1;
+    REQUEST_UNDO: 2;
+    REQUEST_ADJOURN: 3;
+    ABORT_ACCEPTED: 4;
+    ABORT_DENIED: 5;
+    ADJUDICATION_ACCEPTED: 6;
+    ADJUDICATION_DENIED: 7;
+    UNDO_ACCEPTED: 8;
+    UNDO_DENIED: 9;
+    ADD_TIME: 10;
+    TIMER_EXPIRED: 11;
+  }
+
+  export const EventType: EventTypeMap;
+}
+
 export class TournamentGameEndedEvent extends jspb.Message {
   getGameId(): string;
   setGameId(value: string): void;
@@ -841,6 +900,11 @@ export class GameHistoryRefresher extends jspb.Message {
   getMaxOvertimeMinutes(): number;
   setMaxOvertimeMinutes(value: number): void;
 
+  hasOutstandingEvent(): boolean;
+  clearOutstandingEvent(): void;
+  getOutstandingEvent(): GameMetaEvent | undefined;
+  setOutstandingEvent(value?: GameMetaEvent): void;
+
   serializeBinary(): Uint8Array;
   toObject(includeInstance?: boolean): GameHistoryRefresher.AsObject;
   static toObject(includeInstance: boolean, msg: GameHistoryRefresher): GameHistoryRefresher.AsObject;
@@ -857,6 +921,7 @@ export namespace GameHistoryRefresher {
     timePlayer1: number,
     timePlayer2: number,
     maxOvertimeMinutes: number,
+    outstandingEvent?: GameMetaEvent.AsObject,
   }
 }
 
@@ -1818,6 +1883,7 @@ export interface MessageTypeMap {
   REMATCH_STARTED: 29;
   TOURNAMENT_DIVISION_MESSAGE: 30;
   TOURNAMENT_DIVISION_DELETED_MESSAGE: 31;
+  TOURNAMENT_FULL_DIVISIONS_MESSAGE: 32;
   TOURNAMENT_DIVISION_ROUND_CONTROLS_MESSAGE: 34;
   TOURNAMENT_DIVISION_PAIRINGS_MESSAGE: 35;
   TOURNAMENT_DIVISION_CONTROLS_MESSAGE: 36;
@@ -1826,6 +1892,7 @@ export interface MessageTypeMap {
   TOURNAMENT_DIVISION_PAIRINGS_DELETED_MESSAGE: 39;
   PRESENCE_ENTRY: 40;
   ACTIVE_GAME_ENTRY: 41;
+  GAME_META_EVENT: 42;
 }
 
 export const MessageType: MessageTypeMap;

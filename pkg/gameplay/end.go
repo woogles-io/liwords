@@ -286,27 +286,81 @@ func setTimedOut(ctx context.Context, entGame *entity.Game, pidx int, gameStore 
 	return performEndgameDuties(ctx, entGame, gameStore, userStore, listStatStore, tournamentStore)
 }
 
-// AbortGame aborts a game. This should only be done for games that never started.
-func AbortGame(ctx context.Context, gameStore GameStore, gameID string) error {
-	entGame, err := gameStore.Get(ctx, gameID)
+func redoCancelledGamePairings(ctx context.Context, tstore tournament.TournamentStore,
+	g *entity.Game) error {
 
+	tid := g.TournamentData.Id
+	t, err := tstore.Get(ctx, tid)
 	if err != nil {
 		return err
 	}
-	entGame.Lock()
-	defer entGame.Unlock()
-	entGame.SetGameEndReason(pb.GameEndReason_CANCELLED)
 
-	entGame.History().PlayState = macondopb.PlayState_GAME_OVER
+	if t.Type == entity.TypeClub || t.Type == entity.TypeLegacy {
+		log.Info().Str("tid", tid).Msg("no pairings to redo for club or legacy type")
+		return nil
+	}
+	div := g.TournamentData.Division
+	round := g.TournamentData.Round
+	gidx := g.TournamentData.GameIndex
+
+	// this should match entity.User.TournamentID()
+	userID := g.Quickdata.PlayerInfo[0].UserId + ":" + g.Quickdata.PlayerInfo[0].Nickname
+
+	return tournament.ClearReadyStates(ctx, tstore, t, div, userID, round, gidx)
+
+}
+
+// AbortGame aborts a game. This should be done for games that never started,
+// or games that were aborted by mutual consent.
+// It will send events to the correct places, and takes in a locked game.
+func AbortGame(ctx context.Context, gameStore GameStore, tournamentStore tournament.TournamentStore,
+	g *entity.Game, gameEndReason pb.GameEndReason) error {
+
+	g.SetGameEndReason(gameEndReason)
+	g.History().PlayState = macondopb.PlayState_GAME_OVER
+	g.Game.SetPlaying(macondopb.PlayState_GAME_OVER)
 
 	// save the game back into the store
-	err = gameStore.Set(ctx, entGame)
+	err := gameStore.Set(ctx, g)
 	if err != nil {
 		return err
 	}
 	// Unload the game
-	log.Info().Str("gameID", gameID).Msg("game-aborted-unload-cache")
-	gameStore.Unload(ctx, gameID)
+	log.Info().Str("gameID", g.GameID()).Msg("game-aborted-unload-cache")
+	gameStore.Unload(ctx, g.GameID())
+
+	// We use this instead of the game's event channel directly because there's
+	// a possibility that a game that never got started never got its channel
+	// registered.
+	evtChan := gameStore.GameEventChan()
+
+	wrapped := entity.WrapEvent(&pb.GameDeletion{Id: g.GameID()},
+		pb.MessageType_GAME_DELETION)
+	// XXX: Fix for tourneys ?
+	wrapped.AddAudience(entity.AudLobby, "gameEnded")
+	evtChan <- wrapped
+
+	evt := &pb.GameEndedEvent{
+		EndReason: gameEndReason,
+		Time:      g.Timers.TimeOfLastUpdate,
+		History:   g.History(),
+	}
+
+	wrapped = entity.WrapEvent(evt, pb.MessageType_GAME_ENDED_EVENT)
+	for _, p := range players(g) {
+		wrapped.AddAudience(entity.AudUser, p+".game."+g.GameID())
+	}
+	wrapped.AddAudience(entity.AudGameTV, g.GameID())
+	evtChan <- wrapped
+	evtChan <- g.NewActiveGameEntry(false)
+
+	// If this game is part of a tournament that is not in clubhouse
+	// mode, we must allow the players to try to play again.
+	if g.TournamentData != nil && g.TournamentData.Id != "" {
+		err = redoCancelledGamePairings(ctx, tournamentStore, g)
+		log.Err(err).Msg("redo-cancelled-game-pairings")
+	}
+
 	return nil
 }
 

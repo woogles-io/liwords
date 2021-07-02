@@ -1,6 +1,7 @@
 import { calculateTemporaryScore, borders, touchesBoardTile } from './scoring';
 import { EphemeralTile } from './common';
 import { Board } from './board';
+import { StandardEnglishAlphabet } from '../../constants/alphabets';
 
 const someTileLayout = [
   '         RADIOS',
@@ -97,13 +98,17 @@ it('tests scores', () => {
   const board = new Board();
   board.setTileLayout(someTileLayout);
 
-  expect(calculateTemporaryScore(placedTiles, board)).toEqual(32);
+  expect(
+    calculateTemporaryScore(placedTiles, board, StandardEnglishAlphabet)
+  ).toEqual(32);
   placedTiles.add({
     row: 9,
     col: 5,
     letter: 'L',
   });
-  expect(calculateTemporaryScore(placedTiles, board)).toEqual(35);
+  expect(
+    calculateTemporaryScore(placedTiles, board, StandardEnglishAlphabet)
+  ).toEqual(35);
 });
 
 it('tests more scores', () => {
@@ -127,7 +132,9 @@ it('tests more scores', () => {
   const board = new Board();
   board.setTileLayout(someTileLayout);
 
-  expect(calculateTemporaryScore(placedTiles, board)).toEqual(13);
+  expect(
+    calculateTemporaryScore(placedTiles, board, StandardEnglishAlphabet)
+  ).toEqual(13);
 });
 
 const oxyTilesLayout = [
@@ -187,7 +194,9 @@ it('tests more complex scores', () => {
   });
   const board = new Board();
   board.setTileLayout(oxyTilesLayout);
-  expect(calculateTemporaryScore(placedTiles, board)).toEqual(1780);
+  expect(
+    calculateTemporaryScore(placedTiles, board, StandardEnglishAlphabet)
+  ).toEqual(1780);
 });
 
 it('tests opening score', () => {
@@ -195,7 +204,9 @@ it('tests opening score', () => {
   placedTiles.add({ row: 7, col: 7, letter: 'Q' });
   placedTiles.add({ row: 7, col: 8, letter: 'I' });
   const board = new Board();
-  expect(calculateTemporaryScore(placedTiles, board)).toEqual(22);
+  expect(
+    calculateTemporaryScore(placedTiles, board, StandardEnglishAlphabet)
+  ).toEqual(22);
 });
 
 it('tests scores vertical', () => {
@@ -208,13 +219,17 @@ it('tests scores vertical', () => {
   const board = new Board();
   board.setTileLayout(someTileLayout);
 
-  expect(calculateTemporaryScore(placedTiles, board)).toEqual(4);
+  expect(
+    calculateTemporaryScore(placedTiles, board, StandardEnglishAlphabet)
+  ).toEqual(4);
   placedTiles.add({
     row: 8,
     col: 7,
     letter: 'L',
   });
-  expect(calculateTemporaryScore(placedTiles, board)).toEqual(5);
+  expect(
+    calculateTemporaryScore(placedTiles, board, StandardEnglishAlphabet)
+  ).toEqual(5);
 });
 
 it('tests scores horizontal', () => {
@@ -227,11 +242,15 @@ it('tests scores horizontal', () => {
   const board = new Board();
   board.setTileLayout(someTileLayout);
 
-  expect(calculateTemporaryScore(placedTiles, board)).toEqual(4);
+  expect(
+    calculateTemporaryScore(placedTiles, board, StandardEnglishAlphabet)
+  ).toEqual(4);
   placedTiles.add({
     row: 10,
     col: 5,
     letter: 'L',
   });
-  expect(calculateTemporaryScore(placedTiles, board)).toEqual(5);
+  expect(
+    calculateTemporaryScore(placedTiles, board, StandardEnglishAlphabet)
+  ).toEqual(5);
 });

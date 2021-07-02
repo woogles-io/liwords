@@ -1,5 +1,4 @@
 /** @fileoverview business logic for placing tiles on a board */
-import { EnglishCrosswordGameDistribution } from '../../constants/tile_distributions';
 
 import {
   EphemeralTile,
@@ -10,6 +9,7 @@ import {
 } from './common';
 import { calculateTemporaryScore } from './scoring';
 import { Board } from './board';
+import { Alphabet } from '../../constants/alphabets';
 
 const NormalizedBackspace = 'BACKSPACE';
 const NormalizedSpace = ' ';
@@ -75,7 +75,8 @@ const handleTileDeletion = (
   arrowProperty: PlacementArrow,
   unplacedTiles: string, // tiles currently still on rack
   currentlyPlacedTiles: Set<EphemeralTile>,
-  board: Board
+  board: Board,
+  alphabet: Alphabet
 ): KeypressHandlerReturn => {
   // Remove any tiles.
   let newUnplacedTiles = unplacedTiles;
@@ -107,7 +108,7 @@ const handleTileDeletion = (
     newArrow: arrowProperty,
     newPlacedTiles,
     newDisplayedRack: newUnplacedTiles,
-    playScore: calculateTemporaryScore(newPlacedTiles, board),
+    playScore: calculateTemporaryScore(newPlacedTiles, board, alphabet),
   };
 };
 
@@ -123,7 +124,8 @@ export const handleKeyPress = (
   board: Board,
   key: string,
   unplacedTiles: string, // tiles currently still on rack
-  currentlyPlacedTiles: Set<EphemeralTile>
+  currentlyPlacedTiles: Set<EphemeralTile>,
+  alphabet: Alphabet
 ): KeypressHandlerReturn | null => {
   const normalizedKey = key.toUpperCase();
 
@@ -136,10 +138,7 @@ export const handleKeyPress = (
   });
 
   if (
-    !Object.prototype.hasOwnProperty.call(
-      EnglishCrosswordGameDistribution,
-      normalizedKey
-    ) &&
+    !Object.prototype.hasOwnProperty.call(alphabet.letterMap, normalizedKey) &&
     normalizedKey !== NormalizedBackspace &&
     normalizedKey !== NormalizedSpace
   ) {
@@ -213,7 +212,8 @@ export const handleKeyPress = (
       },
       unplacedTiles,
       currentlyPlacedTiles,
-      board
+      board,
+      alphabet
     );
   }
 
@@ -238,7 +238,7 @@ export const handleKeyPress = (
       },
       newPlacedTiles,
       newDisplayedRack: newUnplacedTiles,
-      playScore: calculateTemporaryScore(newPlacedTiles, board),
+      playScore: calculateTemporaryScore(newPlacedTiles, board, alphabet),
     };
   }
 
@@ -310,7 +310,7 @@ export const handleKeyPress = (
     },
     newPlacedTiles,
     newDisplayedRack: newUnplacedTiles,
-    playScore: calculateTemporaryScore(newPlacedTiles, board),
+    playScore: calculateTemporaryScore(newPlacedTiles, board, alphabet),
   };
 };
 
@@ -358,8 +358,9 @@ export const returnTileToRack = (
   board: Board,
   unplacedTiles: string,
   currentlyPlacedTiles: Set<EphemeralTile>,
-  rackIndex: number = -1,
-  tileIndex: number = -1
+  alphabet: Alphabet,
+  rackIndex = -1,
+  tileIndex = -1
 ): PlacementHandlerReturn | null => {
   // Create an ephemeral tile map with unique keys.
   const ephTileMap: { [tileIdx: number]: EphemeralTile } = {};
@@ -381,7 +382,7 @@ export const returnTileToRack = (
   return {
     newPlacedTiles,
     newDisplayedRack: stableInsertRack(unplacedTiles, rackIndex, rune),
-    playScore: calculateTemporaryScore(newPlacedTiles, board),
+    playScore: calculateTemporaryScore(newPlacedTiles, board, alphabet),
   };
 };
 
@@ -392,7 +393,8 @@ export const handleDroppedTile = (
   unplacedTiles: string,
   currentlyPlacedTiles: Set<EphemeralTile>,
   rackIndex: number,
-  tileIndex: number
+  tileIndex: number,
+  alphabet: Alphabet
 ): PlacementHandlerReturn | null => {
   // Create an ephemeral tile map with unique keys.
   const ephTileMap: { [tileIdx: number]: EphemeralTile } = {};
@@ -456,7 +458,7 @@ export const handleDroppedTile = (
   return {
     newPlacedTiles,
     newDisplayedRack: newUnplacedTiles,
-    playScore: calculateTemporaryScore(newPlacedTiles, board),
+    playScore: calculateTemporaryScore(newPlacedTiles, board, alphabet),
     isUndesignated: rune === Blank,
   };
 };
@@ -465,7 +467,8 @@ export const designateBlank = (
   board: Board,
   currentlyPlacedTiles: Set<EphemeralTile>,
   displayedRack: string,
-  rune: string
+  rune: string,
+  alphabet: Alphabet
 ): PlacementHandlerReturn | null => {
   // Find the undesignated blank
   const newPlacedTiles = new Set(currentlyPlacedTiles);
@@ -477,6 +480,6 @@ export const designateBlank = (
   return {
     newPlacedTiles,
     newDisplayedRack: displayedRack,
-    playScore: calculateTemporaryScore(newPlacedTiles, board),
+    playScore: calculateTemporaryScore(newPlacedTiles, board, alphabet),
   };
 };

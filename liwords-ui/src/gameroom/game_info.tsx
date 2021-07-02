@@ -2,6 +2,7 @@ import React from 'react';
 import { Card } from 'antd';
 import { timeCtrlToDisplayName, timeToString } from '../store/constants';
 import { VariantIcon } from '../shared/variant_icons';
+import { MatchLexiconDisplay } from '../shared/lexicon_display';
 
 // At some point we should get this from the pb but then we have to use
 // twirp for this and we really shouldn't need to. Wait on it probably.
@@ -41,6 +42,7 @@ export type GameRequest = {
   rating_mode: string;
   max_overtime_minutes: number;
   original_request_id: string;
+  player_vs_bot: boolean;
 };
 
 export const defaultGameInfo: GameMetadata = {
@@ -58,6 +60,7 @@ export const defaultGameInfo: GameMetadata = {
     rating_mode: 'RATED',
     max_overtime_minutes: 0,
     original_request_id: '',
+    player_vs_bot: false,
   },
   tournament_id: '',
   game_end_reason: 'NONE',
@@ -153,7 +156,8 @@ export const GameInfo = React.memo((props: Props) => {
             props.meta.game_request.increment_seconds,
             props.meta.game_request.max_overtime_minutes
           )}`}{' '}
-          • {variant} • {props.meta.game_request.lexicon}
+          • {variant} •{' '}
+          <MatchLexiconDisplay lexiconCode={props.meta.game_request.lexicon} />
         </p>
         <p>
           {challenge} challenge • {rated}

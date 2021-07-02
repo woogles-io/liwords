@@ -31,6 +31,8 @@ import {
   usePresenceStoreContext,
 } from '../store/store';
 import { VariantIcon } from '../shared/variant_icons';
+import { excludedLexica, LexiconFormItem } from '../shared/lexicon_display';
+import { AllLexica } from '../shared/lexica';
 
 const initTimeFormatter = (val?: number) => {
   return val != null ? initTimeDiscreteScale[val].label : null;
@@ -49,6 +51,7 @@ type Props = {
   onFormSubmit: (g: SoughtGame, v?: Store) => void;
   loggedIn: boolean;
   showFriendInput: boolean;
+  friendRef?: React.MutableRefObject<string>;
   vsBot?: boolean;
   id: string;
   tournamentID?: string;
@@ -104,6 +107,16 @@ export const SeekForm = (props: Props) => {
   const storedValues = window.localStorage
     ? JSON.parse(window.localStorage.getItem(storageKey) || '{}')
     : {};
+  const givenFriend = useMemo(() => props.friendRef?.current ?? '', [
+    props.friendRef,
+  ]);
+  useEffect(() => {
+    if (props.friendRef) {
+      return () => {
+        props.friendRef!.current = '';
+      };
+    }
+  }, [props.friendRef]);
   const defaultValues: seekPropVals = {
     lexicon: 'CSW19',
     challengerule: ChallengeRule.FIVE_POINT,
@@ -129,7 +142,7 @@ export const SeekForm = (props: Props) => {
       'challengerule' in fixedSettings[props.tournamentID];
     initialValues = {
       ...fixedSettings[props.tournamentID],
-      friend: '',
+      friend: givenFriend,
     };
     // This is a bit of a hack; sorry.
     if (!disableVariantControls) {
@@ -155,7 +168,7 @@ export const SeekForm = (props: Props) => {
     initialValues = {
       ...defaultValues,
       ...storedValues,
-      friend: '',
+      friend: givenFriend,
     };
   }
   const [itc, itt] = timeCtrlToDisplayName(
@@ -186,6 +199,9 @@ export const SeekForm = (props: Props) => {
     setSliderTooltipVisible(!open);
   }, []);
   const [usernameOptions, setUsernameOptions] = useState<Array<string>>([]);
+  const [lexiconCopyright, setLexiconCopyright] = useState(
+    AllLexica[initialValues.lexicon]?.longDescription
+  );
 
   const onFormChange = (val: Store, allvals: Store) => {
     if (window.localStorage) {
@@ -219,6 +235,7 @@ export const SeekForm = (props: Props) => {
     }
     setTimectrl(tc);
     setTtag(tt);
+    setLexiconCopyright(AllLexica[allvals.lexicon].longDescription);
   };
   const defaultOptions = useMemo(() => {
     let defaultPlayers: string[] = [];
@@ -362,38 +379,11 @@ export const SeekForm = (props: Props) => {
         </Form.Item>
       )}
 
-      <Form.Item
-        label="Dictionary"
-        name="lexicon"
-        rules={[
-          {
-            required: true,
-          },
-        ]}
-      >
-        <Select disabled={disableLexiconControls}>
-          <Select.Option value="CSW19">CSW 19 (World English)</Select.Option>
-          <Select.Option value="NWL20">
-            NWL 20 (North American English)
-          </Select.Option>
-          {enableAllLexicons && (
-            <React.Fragment>
-              <Select.Option value="NWL18">NWL 18 (Obsolete)</Select.Option>
-              <Select.Option value="NSWL20">
-                NSWL 20 (NASPA School Word List)
-              </Select.Option>
-              <Select.Option value="ECWL">
-                English Common Word List
-              </Select.Option>
-              {enableCSW19X && (
-                <Select.Option value="CSW19X">
-                  CSW19X (ASCI Expurgated)
-                </Select.Option>
-              )}
-            </React.Fragment>
-          )}
-        </Select>
-      </Form.Item>
+      <LexiconFormItem
+        disabled={disableLexiconControls}
+        excludedLexica={excludedLexica(enableAllLexicons, enableCSW19X)}
+      />
+
       {showChallengeRule && (
         <ChallengeRulesFormItem disabled={disableChallengeControls} />
       )}
@@ -428,6 +418,9 @@ export const SeekForm = (props: Props) => {
       <Form.Item label="Rated" name="rated" valuePropName="checked">
         <Switch disabled={disableControls} />
       </Form.Item>
+      <small className="readable-text-color">
+        {lexiconCopyright ? lexiconCopyright : ''}
+      </small>
     </Form>
   );
 };

@@ -4,6 +4,7 @@ import (
 	"errors"
 	"strings"
 	"unicode"
+	"unicode/utf8"
 
 	"github.com/domino14/liwords/pkg/entity"
 	realtime "github.com/domino14/liwords/rpc/api/proto/realtime"
@@ -956,7 +957,7 @@ func countBonusSquares(info *IncrementInfo,
 }
 
 func isBingoNineOrAbove(event *pb.GameEvent) bool {
-	return event.IsBingo && len(event.PlayedTiles) >= 9
+	return event.IsBingo && utf8.RuneCountInString(event.PlayedTiles) >= 9
 }
 
 func isUnchallengedPhonyEvent(event *pb.GameEvent,

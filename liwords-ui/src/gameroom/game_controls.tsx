@@ -1,9 +1,13 @@
-import React, { useCallback, useEffect, useRef } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef } from 'react';
 import { useHistory } from 'react-router-dom';
-import { Button, Popconfirm } from 'antd';
+import { Button, Dropdown, Menu, Modal, Popconfirm } from 'antd';
+import { MenuInfo } from 'rc-menu/lib/interface';
+
 import {
   DoubleLeftOutlined,
   DoubleRightOutlined,
+  DownOutlined,
+  ExclamationCircleOutlined,
   LeftOutlined,
   RightOutlined,
 } from '@ant-design/icons';
@@ -73,6 +77,26 @@ const ExamineGameControls = React.memo((props: { lexicon: string }) => {
   );
 });
 
+type OptionsMenuProps = {
+  handleOptionsClick: (e: MenuInfo) => void;
+  hideMe: (e: React.MouseEvent<HTMLElement>) => void;
+  showAbort: boolean;
+  showNudge: boolean;
+  darkMode: boolean;
+};
+
+const OptionsGameMenu = (props: OptionsMenuProps) => (
+  <Menu
+    onClick={props.handleOptionsClick}
+    onMouseLeave={props.hideMe}
+    theme={props.darkMode ? 'dark' : 'light'}
+  >
+    <Menu.Item key="resign">Resign</Menu.Item>
+    {props.showAbort && <Menu.Item key="abort">Cancel game</Menu.Item>}
+    {props.showNudge && <Menu.Item key="nudge">Nudge</Menu.Item>}
+  </Menu>
+);
+
 export type Props = {
   isExamining: boolean;
   exchangeAllowed?: boolean;
@@ -82,6 +106,8 @@ export type Props = {
   showExchangeModal: () => void;
   onPass: () => void;
   onResign: () => void;
+  onRequestAbort: () => void;
+  onNudge: () => void;
   onRecall: () => void;
   onChallenge: () => void;
   onCommit: () => void;
@@ -98,6 +124,8 @@ export type Props = {
   setHandleChallengeShortcut: ((handler: (() => void) | null) => void) | null;
   setHandleNeitherShortcut: ((handler: (() => void) | null) => void) | null;
   tournamentPairedMode?: boolean;
+  showNudge: boolean;
+  showAbort: boolean;
 };
 
 const GameControls = React.memo((props: Props) => {
@@ -105,8 +133,9 @@ const GameControls = React.memo((props: Props) => {
 
   // Poka-yoke against accidentally having multiple pop-ups active.
   const [actualCurrentPopUp, setCurrentPopUp] = useState<
-    'NONE' | 'CHALLENGE' | 'PASS' | 'RESIGN'
+    'NONE' | 'CHALLENGE' | 'PASS'
   >('NONE');
+  const [optionsMenuVisible, setOptionsMenuVisible] = useState(false);
   // This should match disabled= and/or hidden= props.
   const currentPopUp =
     (actualCurrentPopUp === 'CHALLENGE' &&
@@ -124,6 +153,11 @@ const GameControls = React.memo((props: Props) => {
 
   const passButton = useRef<HTMLElement>(null);
   const challengeButton = useRef<HTMLElement>(null);
+
+  const darkMode = useMemo(
+    () => localStorage?.getItem('darkMode') === 'true',
+    []
+  );
 
   const history = useHistory();
   const handleExitToLobby = useCallback(() => {
@@ -198,6 +232,15 @@ const GameControls = React.memo((props: Props) => {
     setHandleNeitherShortcut(() => handleNeitherShortcut);
   }, [handleNeitherShortcut, setHandleNeitherShortcut]);
 
+  const [optionsMenuId, setOptionsMenuId] = useState(0);
+  useEffect(() => {
+    if (!optionsMenuVisible) {
+      // when the menu is hidden, yeet it and replace with a new instance altogether.
+      // this works around old items being selected when reopening the menu.
+      setOptionsMenuId((n) => (n + 1) | 0);
+    }
+  }, [optionsMenuVisible]);
+
   if (isExamining) {
     return <ExamineGameControls lexicon={props.lexicon} />;
   }
@@ -224,37 +267,83 @@ const GameControls = React.memo((props: Props) => {
     );
   }
 
+  const optionsMenu = (
+    <OptionsGameMenu
+      key={optionsMenuId}
+      showAbort={props.showAbort}
+      showNudge={props.showNudge}
+      hideMe={(e) => {
+        setOptionsMenuVisible(false);
+      }}
+      handleOptionsClick={(e) => {
+        setOptionsMenuVisible(false);
+        switch (e.key) {
+          case 'resign':
+            Modal.confirm({
+              title: (
+                <p className="readable-text-color">
+                  Are you sure you wish to resign?
+                </p>
+              ),
+              icon: <ExclamationCircleOutlined />,
+              // XXX: what if it's unrated?
+              content: (
+                <p className="readable-text-color">
+                  Your rating will be maximally affected.
+                </p>
+              ),
+              onOk() {
+                props.onResign();
+              },
+            });
+            break;
+          case 'abort':
+            Modal.confirm({
+              title: <p className="readable-text-color">Request an abort</p>,
+              icon: <ExclamationCircleOutlined />,
+              content: (
+                <p className="readable-text-color">
+                  This will request an abort from your opponent.
+                </p>
+              ),
+              onOk() {
+                props.onRequestAbort();
+              },
+            });
+            break;
+          case 'nudge':
+            Modal.confirm({
+              title: <p className="readable-text-color">Nudge your opponent</p>,
+              icon: <ExclamationCircleOutlined />,
+              content: (
+                <p className="readable-text-color">
+                  Clicking OK will send a nudge to your opponent. If they do not
+                  respond, the game will be adjudicated in your favor.
+                </p>
+              ),
+              onOk() {
+                props.onNudge();
+              },
+            });
+            break;
+        }
+      }}
+      darkMode={darkMode}
+    />
+  );
+
   return (
     <div className="game-controls">
       <div className="secondary-controls">
-        <Popconfirm
-          title="Are you sure you wish to resign?"
-          onCancel={() => {
-            setCurrentPopUp('NONE');
-          }}
-          onConfirm={() => {
-            props.onResign();
-            setCurrentPopUp('NONE');
-          }}
-          onVisibleChange={(visible) => {
-            setCurrentPopUp(visible ? 'RESIGN' : 'NONE');
-          }}
-          okText="Yes"
-          cancelText="No"
-          visible={currentPopUp === 'RESIGN'}
+        <Dropdown
+          overlay={optionsMenu}
+          trigger={['click']}
+          visible={optionsMenuVisible}
         >
-          <Button
-            danger
-            onClick={() => {
-              if (currentPopUp === 'RESIGN') {
-                props.onResign();
-                setCurrentPopUp('NONE');
-              }
-            }}
-          >
-            Resign
+          <Button onClick={() => setOptionsMenuVisible((v) => !v)}>
+            Options <DownOutlined />
           </Button>
-        </Popconfirm>
+        </Dropdown>
 
         <Popconfirm
           title="Are you sure you wish to pass?"

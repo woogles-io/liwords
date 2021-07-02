@@ -7,6 +7,7 @@ import { challengeFormat, PlayerDisplay, timeFormat } from './sought_games';
 import { ActiveGame } from '../store/reducers/lobby_reducer';
 import { calculateTotalTime } from '../store/constants';
 import { VariantIcon } from '../shared/variant_icons';
+import { MatchLexiconDisplay } from '../shared/lexicon_display';
 
 type Props = {
   activeGames: ActiveGame[];
@@ -20,7 +21,8 @@ export const ActiveGames = (props: Props) => {
   type ActiveGameTableData = {
     gameID: string;
     players: ReactNode;
-    lexicon: string;
+    lexicon: ReactNode;
+    lexiconCode: string;
     time: string;
     totalTime: number;
     details?: ReactNode;
@@ -78,7 +80,8 @@ export const ActiveGames = (props: Props) => {
                 </div>
               </>
             ),
-            lexicon: ag.lexicon,
+            lexicon: <MatchLexiconDisplay lexiconCode={ag.lexicon} />,
+            lexiconCode: ag.lexicon,
             time: timeFormat(
               ag.initialTimeSecs,
               ag.incrementSecs,
@@ -110,28 +113,22 @@ export const ActiveGames = (props: Props) => {
       dataIndex: 'lexicon',
       key: 'lexicon',
       filters: [
-        {
-          text: 'CSW19',
-          value: 'CSW19',
-        },
-        {
-          text: 'NWL20',
-          value: 'NWL20',
-        },
-        {
-          text: 'NWL18',
-          value: 'NWL18',
-        },
-        {
-          text: 'ECWL',
-          value: 'ECWL',
-        },
-      ],
+        'CSW19',
+        'NWL20',
+        'NWL18',
+        'ECWL',
+        'RD28',
+        'FRA20',
+        'NSF21',
+      ].map((l) => ({
+        text: <MatchLexiconDisplay lexiconCode={l} />,
+        value: l,
+      })),
       filterMultiple: false,
       onFilter: (
         value: string | number | boolean,
         record: ActiveGameTableData
-      ) => record.lexicon.indexOf(value.toString()) === 0,
+      ) => record.lexiconCode.indexOf(value.toString()) === 0,
     },
     {
       title: 'Time',

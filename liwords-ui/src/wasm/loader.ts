@@ -62,14 +62,49 @@ for (const { lexicons, cacheKey, path } of [
       'ECWL',
     ].flatMap((name) => [name, `${name}.WordSmog`]),
     cacheKey: 'klv/english',
-    path: '/wasm/leaves.klv',
+    path: '/wasm/english.klv',
   },
-  ...['CSW19', 'CSW19X', 'NWL20', 'NWL18', 'NSWL20', 'ECWL'].map((name) => ({
+  {
+    lexicons: ['FRA20'].flatMap((name) => [name, `${name}.WordSmog`]),
+    cacheKey: 'klv/french',
+    path: '/wasm/french.klv',
+  },
+  {
+    lexicons: ['RD28'].flatMap((name) => [name, `${name}.WordSmog`]),
+    cacheKey: 'klv/german',
+    path: '/wasm/german.klv',
+  },
+  {
+    lexicons: ['NSF21'].flatMap((name) => [name, `${name}.WordSmog`]),
+    cacheKey: 'klv/norwegian',
+    path: '/wasm/norwegian.klv',
+  },
+  ...[
+    'CSW19',
+    'CSW19X',
+    'NWL20',
+    'NWL18',
+    'NSWL20',
+    'ECWL',
+    'FRA20',
+    'RD28',
+    'NSF21',
+  ].map((name) => ({
     lexicons: [name],
     cacheKey: `kwg/${name}`,
     path: `/wasm/${name}.kwg`,
   })),
-  ...['CSW19', 'CSW19X', 'NWL20', 'NWL18', 'NSWL20', 'ECWL'].map((name) => ({
+  ...[
+    'CSW19',
+    'CSW19X',
+    'NWL20',
+    'NWL18',
+    'NSWL20',
+    'ECWL',
+    'FRA20',
+    'RD28',
+    'NSF21',
+  ].map((name) => ({
     lexicons: [`${name}.WordSmog`],
     cacheKey: `kwg/${name}.WordSmog`,
     path: `/wasm/${name}.kad`,

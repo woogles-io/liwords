@@ -12,7 +12,7 @@ local expiry = 180
 -- renew where conn_id matches.
 local shouldtouch = false
 local setbefore = {}
-local setpurged = {activeusergameskey}
+local setpurged = {[activeusergameskey]=true}
 for _, simpleuserkey in ipairs(redis.call("ZRANGE", userpresencekey, 0, -1)) do
   -- simpleuserkey looks like conn_id#channel
   local conn_id, chan = string.match(simpleuserkey, "^([%a%d]+)#([%a%.%d]+)$")

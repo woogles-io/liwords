@@ -296,8 +296,8 @@ export function __wbindgen_rethrow(arg0) {
     throw takeObject(arg0);
 };
 
-export function __wbindgen_closure_wrapper311(arg0, arg1, arg2) {
-    var ret = makeMutClosure(arg0, arg1, 88, __wbg_adapter_12);
+export function __wbindgen_closure_wrapper314(arg0, arg1, arg2) {
+    var ret = makeMutClosure(arg0, arg1, 89, __wbg_adapter_12);
     return addHeapObject(ret);
 };
 

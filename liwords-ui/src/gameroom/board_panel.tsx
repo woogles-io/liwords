@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef } from 'react';
 import { TouchBackend } from 'react-dnd-touch-backend';
 import { Button, Modal, notification, message, Tooltip } from 'antd';
 import { DndProvider } from 'react-dnd';
@@ -46,6 +46,7 @@ import {
   MessageType,
   MatchRequest,
   MatchUser,
+  GameMetaEvent,
 } from '../gen/api/proto/realtime/realtime_pb';
 import {
   useExaminableGameContextStoreContext,
@@ -65,6 +66,7 @@ import {
 } from '../gen/macondo/api/proto/macondo/macondo_pb';
 import { toAPIUrl } from '../api/api';
 import { TilePreview } from './tile';
+import { Alphabet } from '../constants/alphabets';
 
 // The frame atop is 24 height
 // The frames on the sides are 24 in width, surrounded by a 14 pix gutter
@@ -85,7 +87,9 @@ type Props = {
   tournamentID?: string;
   tournamentPairedMode?: boolean;
   lexicon: string;
+  alphabet: Alphabet;
   handleAcceptRematch: (() => void) | null;
+  handleAcceptAbort: (() => void) | null;
   handleSetHover?: (
     x: number,
     y: number,
@@ -95,6 +99,7 @@ type Props = {
   definitionPopover?:
     | { x: number; y: number; content: React.ReactNode }
     | undefined;
+  vsBot: boolean;
 };
 
 const shuffleString = (a: string): string => {
@@ -245,7 +250,7 @@ export const BoardPanel = React.memo((props: Props) => {
   } = useTentativeTileContext();
 
   const observer = !props.playerMeta.some((p) => p.nickname === props.username);
-  const isMyTurn = useCallback(() => {
+  const isMyTurn = useMemo(() => {
     const iam = gameContext.nickToPlayerOrder[props.username];
     return iam && iam === `p${examinableGameContext.onturn}`;
   }, [
@@ -260,7 +265,7 @@ export const BoardPanel = React.memo((props: Props) => {
     (move: string, addl?: string) => {
       if (isExamining) return;
       let moveEvt;
-      if (move !== 'resign' && !isMyTurn()) {
+      if (move !== 'resign' && !isMyTurn) {
         console.log(
           'off turn move attempts',
           gameContext.nickToPlayerOrder,
@@ -331,6 +336,22 @@ export const BoardPanel = React.memo((props: Props) => {
       sendSocketMsg,
       username,
     ]
+  );
+
+  const sendMetaEvent = useCallback(
+    (evtType: GameMetaEvent.EventTypeMap[keyof GameMetaEvent.EventTypeMap]) => {
+      const metaEvt = new GameMetaEvent();
+      metaEvt.setType(evtType);
+      metaEvt.setGameId(gameID);
+
+      sendSocketMsg(
+        encodeToSocketFmt(
+          MessageType.GAME_META_EVENT,
+          metaEvt.serializeBinary()
+        )
+      );
+    },
+    [sendSocketMsg, gameID]
   );
 
   const recallTiles = useCallback(() => {
@@ -413,7 +434,7 @@ export const BoardPanel = React.memo((props: Props) => {
   const lastLettersRef = useRef<string>();
   const readOnlyEffectDependenciesRef = useRef<{
     displayedRack: string;
-    isMyTurn: () => boolean;
+    isMyTurn: boolean;
     placedTiles: Set<EphemeralTile>;
     dim: number;
     arrowProperties: {
@@ -449,7 +470,7 @@ export const BoardPanel = React.memo((props: Props) => {
     } else if (isExamining) {
       // Prevent stuck tiles.
       fullReset = true;
-    } else if (!dep.isMyTurn()) {
+    } else if (!dep.isMyTurn) {
       // Opponent's turn means we have just made a move. (Assumption: there are only two players.)
       fullReset = true;
     } else {
@@ -535,7 +556,7 @@ export const BoardPanel = React.memo((props: Props) => {
   useEffect(() => {
     if (
       examinableGameContext.playState === PlayState.WAITING_FOR_FINAL_PASS &&
-      isMyTurn()
+      isMyTurn
     ) {
       const finalAction = (
         <>
@@ -920,7 +941,7 @@ export const BoardPanel = React.memo((props: Props) => {
               ''
             );
           } else if (blindfoldCommand.toUpperCase() === 'W') {
-            if (isMyTurn()) {
+            if (isMyTurn) {
               say('It is your turn.', '');
             } else {
               say("It is your opponent's turn", '');
@@ -975,7 +996,7 @@ export const BoardPanel = React.memo((props: Props) => {
           setCurrentMode('BLIND');
           return;
         }
-        if (isMyTurn() && !props.gameDone) {
+        if (isMyTurn && !props.gameDone) {
           if (key === '2') {
             evt.preventDefault();
             if (handlePassShortcut.current) handlePassShortcut.current();
@@ -1033,7 +1054,8 @@ export const BoardPanel = React.memo((props: Props) => {
           props.board,
           key,
           displayedRack,
-          placedTiles
+          placedTiles,
+          props.alphabet
         );
 
         if (handlerReturn === null) {
@@ -1058,6 +1080,7 @@ export const BoardPanel = React.memo((props: Props) => {
       gameContext.players,
       gameContext.turns,
       isExamining,
+      props.alphabet,
       props.playerMeta,
       props.username,
       currentMode,
@@ -1088,7 +1111,8 @@ export const BoardPanel = React.memo((props: Props) => {
         displayedRack,
         placedTiles,
         rackIndex,
-        tileIndex
+        tileIndex,
+        props.alphabet
       );
       if (handlerReturn === null) {
         return;
@@ -1104,6 +1128,7 @@ export const BoardPanel = React.memo((props: Props) => {
     [
       displayedRack,
       placedTiles,
+      props.alphabet,
       props.board,
       setDisplayedRack,
       setPlacedTilesTempScore,
@@ -1127,7 +1152,8 @@ export const BoardPanel = React.memo((props: Props) => {
         displayedRack,
         placedTiles,
         rackIndex,
-        uniqueTileIdx(arrowProperties.row, arrowProperties.col)
+        uniqueTileIdx(arrowProperties.row, arrowProperties.col),
+        props.alphabet
       );
       if (handlerReturn === null) {
         return;
@@ -1172,6 +1198,7 @@ export const BoardPanel = React.memo((props: Props) => {
       arrowProperties.show,
       displayedRack,
       placedTiles,
+      props.alphabet,
       setDisplayedRack,
       setPlacedTiles,
       setPlacedTilesTempScore,
@@ -1191,7 +1218,8 @@ export const BoardPanel = React.memo((props: Props) => {
         props.board,
         placedTiles,
         displayedRack,
-        rune
+        rune,
+        props.alphabet
       );
       if (handlerReturn === null) {
         return;
@@ -1203,6 +1231,7 @@ export const BoardPanel = React.memo((props: Props) => {
     [
       displayedRack,
       placedTiles,
+      props.alphabet,
       props.board,
       setPlacedTiles,
       setPlacedTilesTempScore,
@@ -1219,6 +1248,7 @@ export const BoardPanel = React.memo((props: Props) => {
         props.board,
         displayedRack,
         placedTiles,
+        props.alphabet,
         rackIndex,
         tileIndex
       );
@@ -1236,6 +1266,7 @@ export const BoardPanel = React.memo((props: Props) => {
       setPlacedTilesTempScore,
       setDisplayedRack,
       setPlacedTiles,
+      props.alphabet,
       props.board,
     ]
   );
@@ -1382,6 +1413,20 @@ export const BoardPanel = React.memo((props: Props) => {
   const handleExchangeTilesCancel = useCallback(() => {
     setCurrentMode('NORMAL');
   }, []);
+  const handleRequestAbort = useCallback(() => {
+    sendMetaEvent(GameMetaEvent.EventType.REQUEST_ABORT);
+  }, [sendMetaEvent]);
+  const handleNudge = useCallback(() => {
+    sendMetaEvent(GameMetaEvent.EventType.REQUEST_ADJUDICATION);
+  }, [sendMetaEvent]);
+  const showAbort = useMemo(() => {
+    // This hardcoded number is also on the backend.
+    return !props.vsBot && gameContext.turns.length <= 7;
+  }, [gameContext.turns, props.vsBot]);
+  const showNudge = useMemo(() => {
+    // Only show nudge if this is not a tournament/club game and it's not our turn.
+    return !isMyTurn && !props.vsBot && props.tournamentID === '';
+  }, [isMyTurn, props.tournamentID, props.vsBot]);
 
   const gameBoard = (
     <div
@@ -1409,6 +1454,7 @@ export const BoardPanel = React.memo((props: Props) => {
         handleSetHover={props.handleSetHover}
         handleUnsetHover={props.handleUnsetHover}
         definitionPopover={props.definitionPopover}
+        alphabet={props.alphabet}
       />
       {!examinableGameEndMessage ? (
         <div className="rack-container">
@@ -1432,6 +1478,7 @@ export const BoardPanel = React.memo((props: Props) => {
             returnToRack={returnToRack}
             onTileClick={clickToBoard}
             moveRackTile={moveRackTile}
+            alphabet={props.alphabet}
           />
           <Tooltip
             title="Shuffle &uarr;"
@@ -1455,7 +1502,7 @@ export const BoardPanel = React.memo((props: Props) => {
       {isTouchDevice() ? <TilePreview gridDim={props.board.dim} /> : null}
       <GameControls
         isExamining={isExamining}
-        myTurn={isMyTurn()}
+        myTurn={isMyTurn}
         finalPassOrChallenge={
           examinableGameContext.playState === PlayState.WAITING_FOR_FINAL_PASS
         }
@@ -1465,11 +1512,15 @@ export const BoardPanel = React.memo((props: Props) => {
         showExchangeModal={showExchangeModal}
         onPass={handlePass}
         onResign={handleResign}
+        onRequestAbort={handleRequestAbort}
+        onNudge={handleNudge}
         onChallenge={handleChallenge}
         onCommit={handleCommit}
         onRematch={props.handleAcceptRematch ?? rematch}
         onExamine={handleExamineStart}
         onExportGCG={handleExportGCG}
+        showNudge={showNudge}
+        showAbort={showAbort}
         showRematch={examinableGameEndMessage !== ''}
         gameEndControls={examinableGameEndMessage !== '' || props.gameDone}
         currentRack={props.currentRack}
@@ -1482,6 +1533,7 @@ export const BoardPanel = React.memo((props: Props) => {
         setHandleNeitherShortcut={setHandleNeitherShortcut}
       />
       <ExchangeTiles
+        alphabet={props.alphabet}
         rack={props.currentRack}
         modalVisible={currentMode === 'EXCHANGE_MODAL'}
         onOk={handleExchangeModalOk}
@@ -1495,7 +1547,10 @@ export const BoardPanel = React.memo((props: Props) => {
         width={360}
         footer={null}
       >
-        <BlankSelector handleSelection={handleBlankSelection} />
+        <BlankSelector
+          handleSelection={handleBlankSelection}
+          alphabet={props.alphabet}
+        />
       </Modal>
     </div>
   );

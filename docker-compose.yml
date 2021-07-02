@@ -48,7 +48,7 @@ services:
       LETTER_DISTRIBUTION_PATH: /opt/program/data/letterdistributions
       STRATEGY_PARAMS_PATH: /opt/program/data/strategy
       NATS_URL: nats://nats:4222
-      DEBUG: 1
+      DEBUG: 0
     volumes:
       - ../macondo:/opt/program:rw
       # Use the same gaddag files we use for the WASM integration.
@@ -69,6 +69,7 @@ services:
     volumes:
       - ../liwords-socket:/opt/program:rw
     command: ["go", "run", "-race", "cmd/socketsrv/main.go"]
+    depends_on: ["nats"]
     networks:
       - aeronet
     labels:

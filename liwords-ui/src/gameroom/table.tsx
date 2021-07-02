@@ -49,16 +49,17 @@ import {
   PlayState,
 } from '../gen/macondo/api/proto/macondo/macondo_pb';
 import { endGameMessageFromGameInfo } from '../store/end_of_game';
-import { singularCount } from '../utils/plural';
 import { Notepad, NotepadContextProvider } from './notepad';
 import { Analyzer, AnalyzerContextProvider } from './analyzer';
 import { isClubType, isPairedMode, sortTiles } from '../store/constants';
 import { readyForTournamentGame } from '../store/reducers/tournament_reducer';
 import { CompetitorStatus } from '../tournament/competitor_status';
 import { Unrace } from '../utils/unrace';
+import { MetaEventControl } from './meta_event_control';
 import { Blank } from '../utils/cwgame/common';
 import { useTourneyMetadata } from '../tournament/utils';
 import { Disclaimer } from './disclaimer';
+import { alphabetFromName } from '../constants/alphabets';
 
 type Props = {
   sendSocketMsg: (msg: Uint8Array) => void;
@@ -913,16 +914,38 @@ export const Table = React.memo((props: Props) => {
     searchParams,
     searchedTurn,
   ]);
-  const peopleOnlineContext = useCallback(
-    (n: number) =>
-      isObserver
-        ? singularCount(n, 'Observer', 'Observers')
-        : singularCount(n, 'Player', 'Players'),
-    [isObserver]
-  );
   const boardTheme =
     'board--' + tournamentContext.metadata.getBoardStyle() || '';
   const tileTheme = 'tile--' + tournamentContext.metadata.getTileStyle() || '';
+  const alphabet = useMemo(
+    () =>
+      alphabetFromName(gameInfo.game_request.rules.letter_distribution_name),
+    [gameInfo]
+  );
+  const showingFinalTurn =
+    gameContext.turns.length === examinableGameContext.turns.length;
+  const gameEpilog = useMemo(() => {
+    // XXX: this doesn't get updated when game ends, only when refresh?
+
+    return (
+      <React.Fragment>
+        {showingFinalTurn && (
+          <React.Fragment>
+            {gameInfo.game_end_reason === 'FORCE_FORFEIT' && (
+              <React.Fragment>
+                Game ended in forfeit.{/* XXX: How to get winners? */}
+              </React.Fragment>
+            )}
+            {gameInfo.game_end_reason === 'ABORTED' && (
+              <React.Fragment>
+                The game was aborted. Rating and statistics were not affected.
+              </React.Fragment>
+            )}
+          </React.Fragment>
+        )}
+      </React.Fragment>
+    );
+  }, [gameInfo.game_end_reason, showingFinalTurn]);
 
   let ret = (
     <div className={`game-container${isRegistered ? ' competitor' : ''}`}>
@@ -931,7 +954,9 @@ export const Table = React.memo((props: Props) => {
       <div className={`game-table ${boardTheme} ${tileTheme}`}>
         <div
           className={`chat-area ${
-            tournamentContext.metadata.getDisclaimer() ? 'has-disclaimer' : ''
+            !isExamining && tournamentContext.metadata.getDisclaimer()
+              ? 'has-disclaimer'
+              : ''
           }`}
           id="left-sidebar"
         >
@@ -964,7 +989,6 @@ export const Table = React.memo((props: Props) => {
                 username,
                 isObserver
               )}
-              peopleOnlineContext={peopleOnlineContext}
               tournamentID={gameInfo.tournament_id}
             />
           ) : null}
@@ -975,13 +999,15 @@ export const Table = React.memo((props: Props) => {
               variant={gameInfo.game_request.rules.variant_name}
             />
           ) : (
-            <Notepad includeCard />
-          )}
-          {tournamentContext.metadata.getDisclaimer() && (
-            <Disclaimer
-              disclaimer={tournamentContext.metadata.getDisclaimer()}
-              logoUrl={tournamentContext.metadata.getLogo()}
-            />
+            <React.Fragment key="not-examining">
+              <Notepad includeCard />
+              {tournamentContext.metadata.getDisclaimer() && (
+                <Disclaimer
+                  disclaimer={tournamentContext.metadata.getDisclaimer()}
+                  logoUrl={tournamentContext.metadata.getLogo()}
+                />
+              )}
+            </React.Fragment>
           )}
           {isRegistered && (
             <CompetitorStatus
@@ -1014,21 +1040,30 @@ export const Table = React.memo((props: Props) => {
             gameDone={gameDone}
             playerMeta={gameInfo.players}
             tournamentID={gameInfo.tournament_id}
+            vsBot={gameInfo.game_request.player_vs_bot}
             tournamentSlug={tournamentContext.metadata?.getSlug()}
             tournamentPairedMode={isPairedMode(
               tournamentContext.metadata?.getType()
             )}
             lexicon={gameInfo.game_request.lexicon}
+            alphabet={alphabet}
             challengeRule={gameInfo.game_request.challenge_rule}
             handleAcceptRematch={
               rematchRequest.getRematchFor() === gameID
                 ? handleAcceptRematch
                 : null
             }
+            handleAcceptAbort={() => {}}
             handleSetHover={handleSetHover}
             handleUnsetHover={hideDefinitionHover}
             definitionPopover={definitionPopover}
           />
+          {!gameDone && (
+            <MetaEventControl
+              sendSocketMsg={props.sendSocketMsg}
+              gameID={gameID}
+            />
+          )}
           <StreakWidget streakInfo={streakGameInfo} />
         </div>
         <div className="data-area" id="right-sidebar">
@@ -1057,6 +1092,7 @@ export const Table = React.memo((props: Props) => {
             currentRack={sortedRack}
             poolFormat={poolFormat}
             setPoolFormat={setPoolFormat}
+            alphabet={alphabet}
           />
           <Popconfirm
             title={`${rematchRequest
@@ -1078,6 +1114,7 @@ export const Table = React.memo((props: Props) => {
             board={examinableGameContext.board}
             playerMeta={gameInfo.players}
             poolFormat={poolFormat}
+            gameEpilog={gameEpilog}
           />
         </div>
       </div>
