@@ -11402,7 +11402,7 @@ proto.liwords.DivisionPairingsResponse.toObject = function(includeInstance, msg)
     divisionPairingsList: jspb.Message.toObjectList(msg.getDivisionPairingsList(),
     proto.liwords.Pairing.toObject, includeInstance),
     divisionStandingsMap: (f = msg.getDivisionStandingsMap()) ? f.toObject(includeInstance, proto.liwords.RoundStandings.toObject) : [],
-    gibonsizedPlayersMap: (f = msg.getGibonsizedPlayersMap()) ? f.toObject(includeInstance, undefined) : []
+    gibsonizedPlayersMap: (f = msg.getGibsonizedPlayersMap()) ? f.toObject(includeInstance, undefined) : []
   };
 
   if (includeInstance) {
@@ -11459,7 +11459,7 @@ proto.liwords.DivisionPairingsResponse.deserializeBinaryFromReader = function(ms
          });
       break;
     case 5:
-      var value = msg.getGibonsizedPlayersMap();
+      var value = msg.getGibsonizedPlayersMap();
       reader.readMessage(value, function(message, reader) {
         jspb.Map.deserializeBinary(message, reader, jspb.BinaryReader.prototype.readString, jspb.BinaryReader.prototype.readInt32, null, "", 0);
          });
@@ -11519,7 +11519,7 @@ proto.liwords.DivisionPairingsResponse.serializeBinaryToWriter = function(messag
   if (f && f.getLength() > 0) {
     f.serializeBinary(4, writer, jspb.BinaryWriter.prototype.writeInt32, jspb.BinaryWriter.prototype.writeMessage, proto.liwords.RoundStandings.serializeBinaryToWriter);
   }
-  f = message.getGibonsizedPlayersMap(true);
+  f = message.getGibsonizedPlayersMap(true);
   if (f && f.getLength() > 0) {
     f.serializeBinary(5, writer, jspb.BinaryWriter.prototype.writeString, jspb.BinaryWriter.prototype.writeInt32);
   }
@@ -11623,12 +11623,12 @@ proto.liwords.DivisionPairingsResponse.prototype.clearDivisionStandingsMap = fun
 
 
 /**
- * map<string, int32> gibonsized_players = 5;
+ * map<string, int32> gibsonized_players = 5;
  * @param {boolean=} opt_noLazyCreate Do not create the map if
  * empty, instead returning `undefined`
  * @return {!jspb.Map<string,number>}
  */
-proto.liwords.DivisionPairingsResponse.prototype.getGibonsizedPlayersMap = function(opt_noLazyCreate) {
+proto.liwords.DivisionPairingsResponse.prototype.getGibsonizedPlayersMap = function(opt_noLazyCreate) {
   return /** @type {!jspb.Map<string,number>} */ (
       jspb.Message.getMapField(this, 5, opt_noLazyCreate,
       null));
@@ -11639,8 +11639,8 @@ proto.liwords.DivisionPairingsResponse.prototype.getGibonsizedPlayersMap = funct
  * Clears values from the map. The map will be non-null.
  * @return {!proto.liwords.DivisionPairingsResponse} returns this
  */
-proto.liwords.DivisionPairingsResponse.prototype.clearGibonsizedPlayersMap = function() {
-  this.getGibonsizedPlayersMap().clear();
+proto.liwords.DivisionPairingsResponse.prototype.clearGibsonizedPlayersMap = function() {
+  this.getGibsonizedPlayersMap().clear();
   return this;};
 
 

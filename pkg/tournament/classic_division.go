@@ -54,9 +54,7 @@ func (t *ClassicDivision) SetDivisionControls(divisionControls *realtime.Divisio
 		return nil, err
 	}
 	log.Debug().Interface("game-req", divisionControls.GameRequest).Msg("divctrls-validated-game-request")
-	if len(t.Matrix) < int(divisionControls.MinimumPlacement) {
-		return nil, fmt.Errorf("minimum placement is larger than the number of players: %d", t.DivisionControls.MinimumPlacement)
-	}
+
 	t.DivisionControls = divisionControls
 
 	return t.DivisionControls, nil
@@ -600,6 +598,10 @@ func (t *ClassicDivision) PairRound(round int, overwriteByes bool) (*realtime.Di
 
 	// Determine Gibsonizations
 	if t.DivisionControls.Gibsonize {
+		minimumPlacement := int(t.DivisionControls.MinimumPlacement)
+		if minimumPlacement >= len(poolMembers) {
+			minimumPlacement = len(poolMembers) - 1
+		}
 		gibsonPairedPlayers := make(map[string]bool)
 		gibsonRank := -1
 		for i := 0; i < len(poolMembers)-1; i++ {
@@ -609,7 +611,7 @@ func (t *ClassicDivision) PairRound(round int, overwriteByes bool) (*realtime.Di
 			}
 			if !cc {
 				gibsonRank = i
-				pmessage.GibonsizedPlayers[poolMembers[i].Id] = int32(round)
+				pmessage.GibsonizedPlayers[poolMembers[i].Id] = int32(round)
 			} else {
 				break
 			}
@@ -623,12 +625,8 @@ func (t *ClassicDivision) PairRound(round int, overwriteByes bool) (*realtime.Di
 			} else if i == gibsonRank {
 				// Pair with someone who cannot cash
 				// If everyone can still cash, pair them with the player in last
-				if int(t.DivisionControls.MinimumPlacement) >= len(poolMembers) {
-					playerOne = i
-					playerTwo = len(poolMembers) - 1
-				}
 				for j := i + 1; j < len(poolMembers); j++ {
-					cc, err := t.canCatch(poolMembers, round, int(t.DivisionControls.MinimumPlacement), j)
+					cc, err := t.canCatch(poolMembers, round, minimumPlacement, j)
 					if err != nil {
 						return nil, err
 					}
@@ -1537,14 +1535,14 @@ func (t *ClassicDivision) opponentOf(player string, round int) (string, error) {
 func newPairingsMessage() *realtime.DivisionPairingsResponse {
 	return &realtime.DivisionPairingsResponse{DivisionPairings: []*realtime.Pairing{},
 		DivisionStandings: make(map[int32]*realtime.RoundStandings),
-		GibonsizedPlayers: make(map[string]int32)}
+		GibsonizedPlayers: make(map[string]int32)}
 }
 
 func combinePairingMessages(pm1 *realtime.DivisionPairingsResponse, pm2 *realtime.DivisionPairingsResponse) *realtime.DivisionPairingsResponse {
 	newPairings := combinePairingsResponses(pm1.DivisionPairings, pm2.DivisionPairings)
 	newStandings := combineStandingsResponses(pm1.DivisionStandings, pm2.DivisionStandings)
-	newGibs := combineGibsonizedPlayers(pm1.GibonsizedPlayers, pm2.GibonsizedPlayers)
-	return &realtime.DivisionPairingsResponse{DivisionPairings: newPairings, DivisionStandings: newStandings, GibonsizedPlayers: newGibs}
+	newGibs := combineGibsonizedPlayers(pm1.GibsonizedPlayers, pm2.GibsonizedPlayers)
+	return &realtime.DivisionPairingsResponse{DivisionPairings: newPairings, DivisionStandings: newStandings, GibsonizedPlayers: newGibs}
 }
 
 func combineGibsonizedPlayers(g1 map[string]int32, g2 map[string]int32) map[string]int32 {

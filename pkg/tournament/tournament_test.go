@@ -417,14 +417,6 @@ func TestTournamentSingleDivision(t *testing.T) {
 	err = tournament.RemoveDivision(ctx, tstore, ty.UUID, divOneName)
 	is.True(err.Error() == "cannot remove division "+divOneName+" after the tournament has started")
 
-	// Trying setting the controls after the tournament has started, this should fail
-	err = tournament.SetDivisionControls(ctx,
-		tstore,
-		ty.UUID,
-		divOneName,
-		makeControls())
-	is.True(err.Error() == "cannot set tournament controls after it has started")
-
 	// Tournament pairings and results are tested in the
 	// entity package
 	pairings = []*pb.TournamentPairingRequest{&pb.TournamentPairingRequest{PlayerOneId: "Will:Will", PlayerTwoId: "Jesse:Jesse", Round: 0},

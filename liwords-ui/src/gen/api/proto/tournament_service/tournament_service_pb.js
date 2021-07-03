@@ -1992,7 +1992,8 @@ proto.tournament_service.PairRoundRequest.toObject = function(includeInstance, m
     id: jspb.Message.getFieldWithDefault(msg, 1, ""),
     division: jspb.Message.getFieldWithDefault(msg, 2, ""),
     round: jspb.Message.getFieldWithDefault(msg, 3, 0),
-    overwriteByes: jspb.Message.getBooleanFieldWithDefault(msg, 4, false)
+    overwriteByes: jspb.Message.getBooleanFieldWithDefault(msg, 4, false),
+    deletePairings: jspb.Message.getBooleanFieldWithDefault(msg, 5, false)
   };
 
   if (includeInstance) {
@@ -2044,6 +2045,10 @@ proto.tournament_service.PairRoundRequest.deserializeBinaryFromReader = function
     case 4:
       var value = /** @type {boolean} */ (reader.readBool());
       msg.setOverwriteByes(value);
+      break;
+    case 5:
+      var value = /** @type {boolean} */ (reader.readBool());
+      msg.setDeletePairings(value);
       break;
     default:
       reader.skipField();
@@ -2099,6 +2104,13 @@ proto.tournament_service.PairRoundRequest.serializeBinaryToWriter = function(mes
   if (f) {
     writer.writeBool(
       4,
+      f
+    );
+  }
+  f = message.getDeletePairings();
+  if (f) {
+    writer.writeBool(
+      5,
       f
     );
   }
@@ -2174,6 +2186,24 @@ proto.tournament_service.PairRoundRequest.prototype.getOverwriteByes = function(
  */
 proto.tournament_service.PairRoundRequest.prototype.setOverwriteByes = function(value) {
   return jspb.Message.setProto3BooleanField(this, 4, value);
+};
+
+
+/**
+ * optional bool delete_pairings = 5;
+ * @return {boolean}
+ */
+proto.tournament_service.PairRoundRequest.prototype.getDeletePairings = function() {
+  return /** @type {boolean} */ (jspb.Message.getBooleanFieldWithDefault(this, 5, false));
+};
+
+
+/**
+ * @param {boolean} value
+ * @return {!proto.tournament_service.PairRoundRequest} returns this
+ */
+proto.tournament_service.PairRoundRequest.prototype.setDeletePairings = function(value) {
+  return jspb.Message.setProto3BooleanField(this, 5, value);
 };
 
 

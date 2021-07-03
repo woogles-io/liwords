@@ -78,6 +78,7 @@ message PairRoundRequest {
   string division = 2;
   int32 round = 3;
   bool overwrite_byes = 4;
+  bool delete_pairings = 5;
 }
 
 message TournamentDivisionRequest {

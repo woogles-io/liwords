@@ -288,10 +288,6 @@ func SetDivisionControls(ctx context.Context, ts TournamentStore, id string, div
 		return fmt.Errorf("division %s does not exist", division)
 	}
 
-	if t.IsStarted {
-		return errors.New("cannot set tournament controls after it has started")
-	}
-
 	newDivisionControls, err := divisionObject.DivisionManager.SetDivisionControls(controls)
 	if err != nil {
 		return err
