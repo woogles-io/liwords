@@ -8,19 +8,17 @@ import {
   Slider,
   Switch,
   Tag,
+  Typography,
 } from 'antd';
 import { Store } from 'rc-field-form/lib/interface';
 import React from 'react';
-import { ChallengeRule } from '../gen/macondo/api/proto/macondo/macondo_pb';
 import {
-  initialTimeMinutesToSlider,
-  initialTimeSecondsToSlider,
+  challRuleToStr,
   initTimeDiscreteScale,
   timeCtrlToDisplayName,
 } from '../store/constants';
 import { useMountedState } from '../utils/mounted';
 import { ChallengeRulesFormItem } from '../lobby/challenge_rules_form_item';
-import { seekPropVals } from '../lobby/fixed_seek_controls';
 import { VariantIcon } from '../shared/variant_icons';
 import {
   GameMode,
@@ -29,6 +27,8 @@ import {
   RatingMode,
 } from '../gen/api/proto/realtime/realtime_pb';
 import { LexiconFormItem } from '../shared/lexicon_display';
+import { SmileOutlined } from '@ant-design/icons';
+import { GameRequestToFormValues } from '../lobby/seek_form';
 
 type Props = {
   setGameRequest: (gr: GameRequest) => void;
@@ -52,66 +52,10 @@ const initTimeFormatter = (val?: number) => {
   return val != null ? initTimeDiscreteScale[val].label : null;
 };
 
-type mandatoryFormValues = Partial<seekPropVals> &
-  Pick<
-    seekPropVals,
-    | 'lexicon'
-    | 'challengerule'
-    | 'initialtimeslider'
-    | 'rated'
-    | 'extratime'
-    | 'incOrOT'
-    | 'variant'
-  >;
-
-const toFormValues: (gameRequest: GameRequest | null) => mandatoryFormValues = (
-  gameRequest: GameRequest | null
-) => {
-  if (!gameRequest) {
-    return {
-      lexicon: 'CSW19',
-      variant: 'classic',
-      challengerule: ChallengeRule.FIVE_POINT,
-      initialtimeslider: initialTimeMinutesToSlider(15),
-      rated: true,
-      extratime: 1,
-      incOrOT: 'overtime',
-    };
-  }
-
-  const vals: mandatoryFormValues = {
-    lexicon: gameRequest.getLexicon(),
-    variant: gameRequest.getRules()?.getVariantName() ?? '',
-    challengerule: gameRequest.getChallengeRule(),
-    rated: gameRequest.getRatingMode() === RatingMode.RATED,
-    initialtimeslider: 0,
-    extratime: 0,
-    incOrOT: 'overtime',
-  };
-
-  const secs = gameRequest.getInitialTimeSeconds();
-  try {
-    vals.initialtimeslider = initialTimeSecondsToSlider(secs);
-  } catch (e) {
-    const msg = `cannot find ${secs} seconds in slider`;
-    console.error(msg, e);
-    alert(msg);
-    vals.initialtimeslider = 0;
-  }
-  if (gameRequest.getMaxOvertimeMinutes()) {
-    vals.extratime = gameRequest.getMaxOvertimeMinutes();
-    vals.incOrOT = 'overtime';
-  } else if (gameRequest.getIncrementSeconds()) {
-    vals.extratime = gameRequest.getIncrementSeconds();
-    vals.incOrOT = 'increment';
-  }
-  return vals;
-};
-
 export const SettingsForm = (props: Props) => {
   const { useState } = useMountedState();
   const { gameRequest } = props;
-  const initialValues = toFormValues(gameRequest);
+  const initialValues = GameRequestToFormValues(gameRequest);
 
   const [itc, itt] = timeCtrlToDisplayName(
     initTimeDiscreteScale[initialValues.initialtimeslider].seconds,
@@ -249,5 +193,33 @@ export const SettingsForm = (props: Props) => {
         </Button>
       </Form.Item>
     </Form>
+  );
+};
+
+export const DisplayedGameSetting = (gr: GameRequest | null) => {
+  return gr ? (
+    <dl className="ant-form-text readable-text-color">
+      <dt>Initial Time (Minutes)</dt>
+      <dd>{gr.getInitialTimeSeconds() / 60}</dd>
+      <dt>Variant</dt>
+      <dd>{gr.getRules()?.getVariantName()}</dd>
+      <dt>Lexicon</dt>
+      <dd>{gr.getLexicon()}</dd>
+      <dt>Max Overtime (Minutes)</dt>
+      <dd>{gr.getMaxOvertimeMinutes()}</dd>
+      <dt>Increment (Seconds)</dt>
+      <dd>{gr.getIncrementSeconds()}</dd>
+      <dt>Challenge Rule</dt>
+      <dd>{challRuleToStr(gr.getChallengeRule())}</dd>
+      <dt>Rated</dt>
+      <dd>{gr.getRatingMode() === RatingMode.RATED ? 'Yes' : 'No'}</dd>
+    </dl>
+  ) : (
+    <Typography.Text
+      className="ant-form-text readable-text-color"
+      type="secondary"
+    >
+      ( <SmileOutlined /> No game settings yet. )
+    </Typography.Text>
   );
 };
