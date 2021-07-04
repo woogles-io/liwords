@@ -355,18 +355,6 @@ func (ts *TournamentService) PairRound(ctx context.Context, req *pb.PairRoundReq
 	return &pb.TournamentResponse{}, nil
 }
 
-func (ts *TournamentService) DeletePairings(ctx context.Context, req *pb.PairRoundRequest) (*pb.TournamentResponse, error) {
-	err := authenticateDirector(ctx, ts, req.Id, false)
-	if err != nil {
-		return nil, err
-	}
-	err = DeletePairings(ctx, ts.tournamentStore, req.Id, req.Division, int(req.Round))
-	if err != nil {
-		return nil, twirp.NewError(twirp.InvalidArgument, err.Error())
-	}
-	return &pb.TournamentResponse{}, nil
-}
-
 func (ts *TournamentService) RecentGames(ctx context.Context, req *pb.RecentGamesRequest) (*pb.RecentGamesResponse, error) {
 	response, err := ts.tournamentStore.GetRecentGames(ctx, req.Id, int(req.NumGames), int(req.Offset))
 	if err != nil {
