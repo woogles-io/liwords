@@ -94,7 +94,6 @@ const SettingsModalForm = (mprops: {
       onCancel={mprops.onCancel}
       className="seek-modal"
       okButtonProps={{ style: { display: 'none' } }}
-      // zIndex={1150}
       destroyOnClose
     >
       <SettingsForm
