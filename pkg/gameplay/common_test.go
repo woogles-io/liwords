@@ -8,6 +8,7 @@ import (
 	pkgmod "github.com/domino14/liwords/pkg/mod"
 	pkgstats "github.com/domino14/liwords/pkg/stats"
 	"github.com/domino14/liwords/pkg/stores/game"
+	"github.com/domino14/liwords/pkg/stores/mod"
 	"github.com/domino14/liwords/pkg/stores/stats"
 	ts "github.com/domino14/liwords/pkg/stores/tournament"
 	"github.com/domino14/liwords/pkg/stores/user"
@@ -47,6 +48,7 @@ func setupNewGame() *gamesetup {
 
 func teardownGame(g *gamesetup) {
 	g.ustore.(*user.DBStore).Disconnect()
+	g.nstore.(*mod.NotorietyStore).Disconnect()
 	g.lstore.(*stats.ListStatStore).Disconnect()
 	g.gstore.(*game.Cache).Disconnect()
 	g.tstore.(*ts.Cache).Disconnect()
