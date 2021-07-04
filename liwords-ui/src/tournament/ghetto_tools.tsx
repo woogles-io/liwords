@@ -1,11 +1,7 @@
 /* eslint-disable @typescript-eslint/camelcase */
 // Ghetto tools are Cesar tools before making things pretty.
 
-import {
-  MinusCircleOutlined,
-  PlusOutlined,
-  SmileOutlined,
-} from '@ant-design/icons';
+import { MinusCircleOutlined, PlusOutlined } from '@ant-design/icons';
 import {
   Button,
   Divider,
@@ -17,7 +13,6 @@ import {
   Select,
   Space,
   Switch,
-  Typography,
 } from 'antd';
 import axios from 'axios';
 import { Store } from 'rc-field-form/lib/interface';
@@ -29,7 +24,6 @@ import {
   FirstMethod,
   GameRequest,
   PairingMethod,
-  RatingMode,
   RoundControl,
   TournamentGameResult,
 } from '../gen/api/proto/realtime/realtime_pb';
@@ -40,9 +34,8 @@ import {
 import { Division } from '../store/reducers/tournament_reducer';
 import { useTournamentStoreContext } from '../store/store';
 import { useMountedState } from '../utils/mounted';
-import { SettingsForm } from './game_settings_form';
+import { DisplayedGameSetting, SettingsForm } from './game_settings_form';
 import '../lobby/seek_form.scss';
-import { challRuleToStr } from '../store/constants';
 
 import {
   fieldsForMethod,
@@ -844,34 +837,6 @@ const SetTournamentControls = (props: { tournamentID: string }) => {
     }
   };
 
-  const displayedGameSetting = (gr: GameRequest | null) => {
-    return gr ? (
-      <dl>
-        <dt>Initial Time (Minutes)</dt>
-        <dd>{gr.getInitialTimeSeconds() / 60}</dd>
-        <dt>Variant</dt>
-        <dd>{gr.getRules()?.getVariantName()}</dd>
-        <dt>Lexicon</dt>
-        <dd>{gr.getLexicon()}</dd>
-        <dt>Max Overtime (Minutes)</dt>
-        <dd>{gr.getMaxOvertimeMinutes()}</dd>
-        <dt>Increment (Seconds)</dt>
-        <dd>{gr.getIncrementSeconds()}</dd>
-        <dt>Challenge Rule</dt>
-        <dd>{challRuleToStr(gr.getChallengeRule())}</dd>
-        <dt>Rated</dt>
-        <dd>{gr.getRatingMode() === RatingMode.RATED ? 'Yes' : 'No'}</dd>
-      </dl>
-    ) : (
-      <Typography.Text
-        className="ant-form-text readable-text-color"
-        type="secondary"
-      >
-        ( <SmileOutlined /> No game settings yet. )
-      </Typography.Text>
-    );
-  };
-
   return (
     <>
       <div>
@@ -882,7 +847,7 @@ const SetTournamentControls = (props: { tournamentID: string }) => {
         />
       </div>
 
-      <div>{displayedGameSetting(selectedGameRequest)}</div>
+      <div>{DisplayedGameSetting(selectedGameRequest)}</div>
 
       <Button
         htmlType="button"

@@ -9,6 +9,7 @@ import {
   Divider,
   Form,
   Input,
+  Modal,
   message,
   Row,
   Select,
@@ -18,6 +19,11 @@ import '../App.scss';
 import '../lobby/lobby.scss';
 import 'antd/dist/antd.css';
 import ReactMarkdown from 'react-markdown';
+import {
+  DisplayedGameSetting,
+  SettingsForm,
+} from '../tournament/game_settings_form';
+
 import { useMountedState } from '../utils/mounted';
 import { postBinary, toAPIUrl } from '../api/api';
 import {
@@ -26,6 +32,7 @@ import {
   TType,
   TTypeMap,
 } from '../gen/api/proto/tournament_service/tournament_service_pb';
+import { GameRequest } from '../gen/api/proto/realtime/realtime_pb';
 
 type DProps = {
   description: string;
@@ -73,6 +80,34 @@ type Props = {
   mode: string;
 };
 
+const SettingsModalForm = (mprops: {
+  visible: boolean;
+  onCancel: () => void;
+  setModalVisible: (v: boolean) => void;
+  selectedGameRequest: GameRequest | null;
+  setSelectedGameRequest: (gr: GameRequest) => void;
+}) => {
+  return (
+    <Modal
+      title="Set Game Request"
+      visible={mprops.visible}
+      onCancel={mprops.onCancel}
+      className="seek-modal"
+      okButtonProps={{ style: { display: 'none' } }}
+      // zIndex={1150}
+      destroyOnClose
+    >
+      <SettingsForm
+        setGameRequest={(gr) => {
+          mprops.setSelectedGameRequest(gr);
+          mprops.setModalVisible(false);
+        }}
+        gameRequest={mprops.selectedGameRequest}
+      />
+    </Modal>
+  );
+};
+
 export const TourneyEditor = (props: Props) => {
   const { useState } = useMountedState();
   const [description, setDescription] = useState('');
@@ -80,6 +115,11 @@ export const TourneyEditor = (props: Props) => {
   const [name, setName] = useState('');
   const [color, setColor] = useState('');
   const [logo, setLogo] = useState('');
+  const [settingsModalVisible, setSettingsModalVisible] = useState(false);
+  const [
+    selectedGameRequest,
+    setSelectedGameRequest,
+  ] = useState<GameRequest | null>(null);
   const [form] = Form.useForm();
 
   const onSearch = async (val: string) => {
@@ -99,6 +139,7 @@ export const TourneyEditor = (props: Props) => {
       setName(metadata?.getName()!);
       setColor(metadata?.getColor() || '');
       setLogo(metadata?.getLogo() || '');
+      setSelectedGameRequest(metadata?.getDefaultClubSettings() || null);
       form.setFieldsValue({
         name: metadata?.getName(),
         description: metadata?.getDescription(),
@@ -106,6 +147,7 @@ export const TourneyEditor = (props: Props) => {
         id: metadata?.getId(),
         type: metadata?.getType(),
         directors: m.getDirectorsList().join(', '),
+        freeformItems: metadata?.getFreeformClubSettingFieldsList(),
         boardStyle: metadata?.getBoardStyle(),
         tileStyle: metadata?.getTileStyle(),
         disclaimer: metadata?.getDisclaimer(),
@@ -145,6 +187,10 @@ export const TourneyEditor = (props: Props) => {
         slug: vals.slug,
         type: jsontype,
         director_usernames: directors,
+        freeformClubSettingFields: vals.freeformItems,
+        defaultClubSettings: selectedGameRequest
+          ? selectedGameRequest.toObject()
+          : undefined,
       };
     } else if (props.mode === 'edit') {
       apicall = 'SetTournamentMetadata';
@@ -155,6 +201,10 @@ export const TourneyEditor = (props: Props) => {
           description: vals.description,
           slug: vals.slug,
           type: jsontype,
+          defaultClubSettings: selectedGameRequest
+            ? selectedGameRequest.toObject()
+            : undefined,
+          freeformClubSettingFields: vals.freeformItems,
           boardStyle: vals.boardStyle,
           tileStyle: vals.tileStyle,
           disclaimer: vals.disclaimer,
@@ -319,6 +369,44 @@ export const TourneyEditor = (props: Props) => {
             <Form.Item name="description" label="Description">
               <Input.TextArea onChange={onDescriptionChange} rows={20} />
             </Form.Item>
+            <h3>
+              The following applies only to clubs and tournaments in clubhouse
+              mode.
+            </h3>
+            <Form.Item>
+              <Button
+                htmlType="button"
+                onClick={() => setSettingsModalVisible(true)}
+              >
+                Edit Club Game Settings
+              </Button>
+            </Form.Item>
+
+            <Form.Item label="Selected game settings">
+              {DisplayedGameSetting(selectedGameRequest)}
+            </Form.Item>
+
+            <Form.Item name="freeformItems" label="Settings allowed to change">
+              <Select
+                mode="multiple"
+                allowClear
+                placeholder="Please select"
+                style={{ zIndex: 10 }}
+              >
+                <Select.Option value="lexicon">Lexicon</Select.Option>
+                <Select.Option value="time">Time Settings</Select.Option>
+                <Select.Option value="challenge_rule">
+                  Challenge Rule
+                </Select.Option>
+                <Select.Option value="rating_mode">
+                  Rated / Unrated
+                </Select.Option>
+                <Select.Option value="variant_name">
+                  Classic / WordSmog
+                </Select.Option>
+              </Select>
+            </Form.Item>
+
             <h3 hidden={props.mode === 'new'}>
               The following will usually not be set.
             </h3>
@@ -357,6 +445,7 @@ export const TourneyEditor = (props: Props) => {
             >
               <Input onChange={onColorChange} />
             </Form.Item>
+
             <Form.Item wrapperCol={{ ...layout.wrapperCol, offset: 4 }}>
               <Button type="primary" htmlType="submit">
                 Submit
@@ -370,6 +459,13 @@ export const TourneyEditor = (props: Props) => {
           title={name}
           color={color}
           logo={logo}
+        />
+        <SettingsModalForm
+          visible={settingsModalVisible}
+          onCancel={() => setSettingsModalVisible(false)}
+          setModalVisible={(v: boolean) => setSettingsModalVisible(v)}
+          selectedGameRequest={selectedGameRequest}
+          setSelectedGameRequest={setSelectedGameRequest}
         />
       </Row>
     </div>
