@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"testing"
+	"time"
 
 	"github.com/domino14/liwords/pkg/config"
 	"github.com/domino14/liwords/pkg/entity"
@@ -25,10 +26,11 @@ import (
 	macondoconfig "github.com/domino14/macondo/config"
 	macondopb "github.com/domino14/macondo/gen/api/proto/macondo"
 	"github.com/jinzhu/gorm"
+	"github.com/lithammer/shortuuid"
 	"github.com/matryer/is"
-	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"google.golang.org/protobuf/proto"
+	timestamppb "google.golang.org/protobuf/types/known/timestamppb"
 )
 
 var TestDBHost = os.Getenv("TEST_DB_HOST")
@@ -88,11 +90,15 @@ func notorietyStore(dbURL string) pkgmod.NotorietyStore {
 
 type evtConsumer struct {
 	evts []*entity.EventWrapper
+	ch   chan *entity.EventWrapper
 }
 
 func (ec *evtConsumer) consumeEventChan(ctx context.Context,
 	ch chan *entity.EventWrapper,
 	done chan bool) {
+
+	ec.ch = ch
+
 	defer func() { done <- true }()
 	for {
 		select {
@@ -104,12 +110,12 @@ func (ec *evtConsumer) consumeEventChan(ctx context.Context,
 	}
 }
 
-func userStore(dbURL string) pkguser.Store {
+func userStore(dbURL string) (pkguser.Store, *user.DBStore) {
 	tmp, err := user.NewDBStore(TestingDBConnStr + " dbname=liwords_test")
 	if err != nil {
 		log.Fatal().Err(err).Msg("error")
 	}
-	return user.NewCache(tmp)
+	return user.NewCache(tmp), tmp
 }
 
 func listStatStore(dbURL string) pkgstats.ListStatStore {
@@ -136,7 +142,7 @@ func recreateDB() {
 		log.Fatal().Err(db.Error).Msg("error")
 	}
 	// Create a user table. Initialize the user store.
-	ustore := userStore(TestingDBConnStr + " dbname=liwords_test")
+	ustore, _ := userStore(TestingDBConnStr + " dbname=liwords_test")
 
 	// Insert a couple of users into the table.
 
@@ -168,6 +174,7 @@ func makeGame(cfg *config.Config, ustore pkguser.Store, gstore gameplay.GameStor
 	ch := make(chan *entity.EventWrapper)
 	donechan := make(chan bool)
 	consumer := &evtConsumer{}
+	gstore.SetGameEventChan(ch)
 
 	cctx, cancel := context.WithCancel(ctx)
 	go consumer.consumeEventChan(cctx, ch, donechan)
@@ -310,12 +317,12 @@ func comparePlayerNotorieties(pnrs []*ms.NotorietyReport, ustore pkguser.Store, 
 }
 
 func TestNotoriety(t *testing.T) {
-	zerolog.SetGlobalLevel(zerolog.Disabled)
+	//zerolog.SetGlobalLevel(zerolog.Disabled)
 	is := is.New(t)
 	recreateDB()
 	cstr := TestingDBConnStr + " dbname=liwords_test"
 
-	ustore := userStore(cstr)
+	ustore, uDBstore := userStore(cstr)
 	lstore := listStatStore(cstr)
 	nstore := notorietyStore(cstr)
 	cfg, gstore := gameStore(cstr, ustore)
@@ -552,6 +559,54 @@ func TestNotoriety(t *testing.T) {
 			{Type: ms.NotoriousGameType_NO_PLAY}}}}, ustore, nstore)
 	is.NoErr(err)
 
+	g, _, _, _, consumer := makeGame(cfg, ustore, gstore, 60, pb.RatingMode_RATED)
+	is.NoErr(err)
+
+	evtID := shortuuid.New()
+
+	metaEvt := &pb.GameMetaEvent{
+		Timestamp:   timestamppb.New(time.Now()),
+		Type:        pb.GameMetaEvent_REQUEST_ABORT,
+		PlayerId:    g.Quickdata.PlayerInfo[1].UserId,
+		GameId:      g.GameID(),
+		OrigEventId: evtID,
+	}
+
+	err = gameplay.HandleMetaEvent(context.Background(), metaEvt,
+		consumer.ch, gstore, ustore, nstore, lstore,
+		tstore)
+
+	is.NoErr(err)
+
+	metaEvt = &pb.GameMetaEvent{
+		Timestamp:   timestamppb.New(time.Now()),
+		Type:        pb.GameMetaEvent_ABORT_DENIED,
+		PlayerId:    g.Quickdata.PlayerInfo[0].UserId,
+		GameId:      g.GameID(),
+		OrigEventId: evtID,
+	}
+
+	err = gameplay.HandleMetaEvent(context.Background(), metaEvt,
+		consumer.ch, gstore, ustore, nstore, lstore,
+		tstore)
+	is.NoErr(err)
+
+	err = playGame(g, ustore, lstore, nstore, tstore, gstore, nil, 0, pb.GameEndReason_RESIGNED, false)
+	is.NoErr(err)
+
+	err = comparePlayerNotorieties([]*ms.NotorietyReport{
+		{Score: 35, Games: []*ms.NotoriousGame{
+			{Type: ms.NotoriousGameType_NO_PLAY},
+			{Type: ms.NotoriousGameType_SITTING},
+			{Type: ms.NotoriousGameType_SITTING},
+			{Type: ms.NotoriousGameType_NO_PLAY},
+			{Type: ms.NotoriousGameType_NO_PLAY},
+			{Type: ms.NotoriousGameType_NO_PLAY},
+			{Type: ms.NotoriousGameType_NO_PLAY_IGNORE_NUDGE}}},
+		{Score: 3, Games: []*ms.NotoriousGame{
+			{Type: ms.NotoriousGameType_NO_PLAY}}}}, ustore, nstore)
+	is.NoErr(err)
+
 	// Test resetting the notorieties
 	err = pkgmod.ResetNotoriety(context.Background(), ustore, nstore, playerIds[0])
 	is.NoErr(err)
@@ -582,5 +637,11 @@ func TestNotoriety(t *testing.T) {
 			{Type: ms.NotoriousGameType_SITTING}}},
 		{Score: 0, Games: []*ms.NotoriousGame{}}}, ustore, nstore)
 	is.NoErr(err)
+
+	uDBstore.Disconnect()
+	lstore.(*stats.ListStatStore).Disconnect()
+	nstore.(*mod.NotorietyStore).Disconnect()
+	gstore.(*game.Cache).Disconnect()
+	tstore.(*ts.Cache).Disconnect()
 	// Test sandbag
 }

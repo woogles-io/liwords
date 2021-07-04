@@ -21,9 +21,10 @@ type NotorietyStore interface {
 }
 
 var BehaviorToScore map[ms.NotoriousGameType]int = map[ms.NotoriousGameType]int{
-	ms.NotoriousGameType_NO_PLAY: 6,
-	ms.NotoriousGameType_SITTING: 4,
-	ms.NotoriousGameType_SANDBAG: 4,
+	ms.NotoriousGameType_NO_PLAY_IGNORE_NUDGE: 10,
+	ms.NotoriousGameType_NO_PLAY:              6,
+	ms.NotoriousGameType_SITTING:              4,
+	ms.NotoriousGameType_SANDBAG:              4,
 }
 
 var AutomodUserId string = "AUTOMOD"
@@ -42,6 +43,7 @@ func Automod(ctx context.Context, us user.Store, ns NotorietyStore, u0 *entity.U
 	history := g.History()
 	// Perhaps too cute, but solves cases where g.LoserIdex is -1
 	loserNickname := history.Players[g.LoserIdx*g.LoserIdx].Nickname
+	loserId := history.Players[g.LoserIdx*g.LoserIdx].UserId
 	// This should not even be possible but might as well check
 	if u0.Username != loserNickname && u1.Username != loserNickname {
 		return fmt.Errorf("loser (%s) not found in players (%s, %s)", loserNickname, u0.Username, u1.Username)
@@ -71,7 +73,13 @@ func Automod(ctx context.Context, us user.Store, ns NotorietyStore, u0 *entity.U
 
 		if loserLastEvent == nil {
 			// The loser didn't make a play, this is rude
-			lngt = ms.NotoriousGameType_NO_PLAY
+			// If the loser also denied an abort or adjudication,
+			// this is even ruder
+			if loserDeniedNudge(g, loserId) {
+				lngt = ms.NotoriousGameType_NO_PLAY_IGNORE_NUDGE
+			} else {
+				lngt = ms.NotoriousGameType_NO_PLAY
+			}
 		} else if g.GameEndReason == realtime.GameEndReason_RESIGNED {
 			timeOfResignation := int32(g.Timers.TimeRemaining[g.LoserIdx])
 			if unreasonableTime(loserLastEvent.MillisRemaining - timeOfResignation) {
@@ -187,4 +195,15 @@ func updateNotoriety(ctx context.Context, us user.Store, ns NotorietyStore, user
 
 func unreasonableTime(millisRemaining int32) bool {
 	return millisRemaining > int32(1000*UnreasonableTime)
+}
+
+func loserDeniedNudge(g *entity.Game, userId string) bool {
+	for _, evt := range g.MetaEvents.Events {
+		if evt.PlayerId == userId &&
+			(evt.Type == realtime.GameMetaEvent_ABORT_DENIED ||
+				evt.Type == realtime.GameMetaEvent_ADJUDICATION_DENIED) {
+			return true
+		}
+	}
+	return false
 }
