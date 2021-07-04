@@ -369,11 +369,11 @@ export const TourneyEditor = (props: Props) => {
             <Form.Item name="description" label="Description">
               <Input.TextArea onChange={onDescriptionChange} rows={20} />
             </Form.Item>
-            <h3>
+            <h3 hidden={props.mode === 'new'}>
               The following applies only to clubs and tournaments in clubhouse
               mode.
             </h3>
-            <Form.Item>
+            <Form.Item hidden={props.mode === 'new'}>
               <Button
                 htmlType="button"
                 onClick={() => setSettingsModalVisible(true)}
@@ -382,11 +382,18 @@ export const TourneyEditor = (props: Props) => {
               </Button>
             </Form.Item>
 
-            <Form.Item label="Selected game settings">
+            <Form.Item
+              label="Selected game settings"
+              hidden={props.mode === 'new'}
+            >
               {DisplayedGameSetting(selectedGameRequest)}
             </Form.Item>
 
-            <Form.Item name="freeformItems" label="Settings allowed to change">
+            <Form.Item
+              name="freeformItems"
+              label="Settings allowed to change"
+              hidden={props.mode === 'new'}
+            >
               <Select
                 mode="multiple"
                 allowClear
